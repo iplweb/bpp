@@ -10752,7 +10752,8 @@ CREATE TABLE public.import_pracownikow_profilmapowania (
     nazwa character varying(200) NOT NULL,
     mapowanie jsonb NOT NULL,
     ostatnio_uzyty timestamp with time zone,
-    utworzony_przez_id integer
+    utworzony_przez_id integer,
+    uczelnia_id integer
 );
 
 
@@ -17046,6 +17047,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 894	raport_slotow	0015_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
 895	raport_slotow	0016_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
 896	raport_slotow	0017_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+998	bpp	0455_faza_b_i2	2000-01-01 00:00:00+00
 897	raport_slotow	0018_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
 1001	bpp	0458_faza_b_ii1_views	2000-01-01 00:00:00+00
 898	raport_slotow	0019_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
@@ -17138,7 +17140,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 995	bpp	0452_jednostka_pola_faza_a	2000-01-01 00:00:00+00
 996	bpp	0453_zrodlo_trigram_indexes	2000-01-01 00:00:00+00
 997	bpp	0454_faza_b_i1	2000-01-01 00:00:00+00
-998	bpp	0455_faza_b_i2	2000-01-01 00:00:00+00
 999	bpp	0456_faza_b_i3	2000-01-01 00:00:00+00
 1000	bpp	0457_faza_b_i4	2000-01-01 00:00:00+00
 1002	bpp	0444_charakter_formalny_ukryty_charakter_pbn_ukryty_and_more	2000-01-01 00:00:00+00
@@ -17227,6 +17228,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1086	orcid_integration	0001_initial	2000-01-01 00:00:00+00
 1087	import_pracownikow	0025_importpracownikow_plik_po_imporcie	2000-01-01 00:00:00+00
 1088	import_pracownikow	0026_importpracownikow_uczelnia	2000-01-01 00:00:00+00
+1089	import_pracownikow	0027_profil_uczelnia	2000-01-01 00:00:00+00
 \.
 
 
@@ -17592,21 +17594,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-118	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
-119	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
-120	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-121	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-122	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-123	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-124	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-125	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-126	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-127	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-128	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-129	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-130	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-131	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-132	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -17797,7 +17784,7 @@ COPY public.import_pracownikow_importpracownikowtytul (id, nazwa_zrodlowa, tryb,
 -- Data for Name: import_pracownikow_profilmapowania; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.import_pracownikow_profilmapowania (id, nazwa, mapowanie, ostatnio_uzyty, utworzony_przez_id) FROM stdin;
+COPY public.import_pracownikow_profilmapowania (id, nazwa, mapowanie, ostatnio_uzyty, utworzony_przez_id, uczelnia_id) FROM stdin;
 \.
 
 
@@ -19195,7 +19182,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1088, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1089, true);
 
 
 --
@@ -22643,11 +22630,11 @@ ALTER TABLE ONLY public.import_pracownikow_importpracownikowtytul
 
 
 --
--- Name: import_pracownikow_profilmapowania import_pracownikow_profilmapowania_nazwa_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: import_pracownikow_profilmapowania import_pracownikow_profi_uczelnia_id_nazwa_2d14de10_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.import_pracownikow_profilmapowania
-    ADD CONSTRAINT import_pracownikow_profilmapowania_nazwa_key UNIQUE (nazwa);
+    ADD CONSTRAINT import_pracownikow_profi_uczelnia_id_nazwa_2d14de10_uniq UNIQUE (uczelnia_id, nazwa);
 
 
 --
@@ -28985,10 +28972,10 @@ CREATE INDEX import_pracownikow_importpracownikowtytul_utworzony_id_1f7b6f47 ON 
 
 
 --
--- Name: import_pracownikow_profilmapowania_nazwa_09af16d7_like; Type: INDEX; Schema: public; Owner: -
+-- Name: import_pracownikow_profilmapowania_uczelnia_id_6677230e; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX import_pracownikow_profilmapowania_nazwa_09af16d7_like ON public.import_pracownikow_profilmapowania USING btree (nazwa varchar_pattern_ops);
+CREATE INDEX import_pracownikow_profilmapowania_uczelnia_id_6677230e ON public.import_pracownikow_profilmapowania USING btree (uczelnia_id);
 
 
 --
@@ -35403,6 +35390,14 @@ ALTER TABLE ONLY public.import_pracownikow_importpracownikowrow
 
 ALTER TABLE ONLY public.import_pracownikow_importpracownikowrow
     ADD CONSTRAINT import_pracownikow_i_zrodlo_tytulu_id_d6a79329_fk_import_pr FOREIGN KEY (zrodlo_tytulu_id) REFERENCES public.import_pracownikow_importpracownikowtytul(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: import_pracownikow_profilmapowania import_pracownikow_p_uczelnia_id_6677230e_fk_bpp_uczel; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.import_pracownikow_profilmapowania
+    ADD CONSTRAINT import_pracownikow_p_uczelnia_id_6677230e_fk_bpp_uczel FOREIGN KEY (uczelnia_id) REFERENCES public.bpp_uczelnia(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
