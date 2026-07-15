@@ -18,7 +18,15 @@
     {# op-status/op-progress/op-log/op-stages/op-result (OOB-swap z workera). #}
     {# Przycisk "Zobacz pełne wyniki" pojawia się w #op-result (panel wyniku) #}
     {# dopiero po zakończeniu importu — patrz _result.html. #}
-    {% live_operation object %}
+    {# hx-headers wstrzykuje token CSRF nagłówkiem X-CSRFToken: przyciski #}
+    {# Anuluj/Ponów liveops to gołe przyciski htmx poza formularzem, a BPP ma #}
+    {# CSRF_COOKIE_HTTPONLY=True, więc liveops.js nie odczyta tokenu z ciasteczka #}
+    {# (getCookie zwraca pusty łańcuch) → POST bez tokenu = 403 CSRF token missing. #}
+    {# Wrapper nie jest podmieniany przy OOB-swapie regionów op-*, więc token #}
+    {# dziedziczą też przyciski dorenderowane po odświeżeniu przez WebSocket. #}
+    <div hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+        {% live_operation object %}
+    </div>
 
     {# Kolejność ładowania jest istotna: htmx → klient channels_broadcast → #}
     {# liveops.js (patchuje channelsBroadcast.addMessage i inicjuje socket). #}
