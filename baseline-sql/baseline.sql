@@ -10495,6 +10495,7 @@ CREATE TABLE public.import_pracownikow_importpracownikow (
     tworz_brakujace_stanowiska boolean NOT NULL,
     tworz_brakujace_stopnie boolean NOT NULL,
     plik_po_imporcie character varying(100),
+    uczelnia_id integer,
     CONSTRAINT import_pracownikow_importpracownikow_log_seq_check CHECK ((log_seq >= 0)),
     CONSTRAINT import_pracownikow_importpracownikow_percent_check CHECK ((percent >= 0))
 );
@@ -17046,6 +17047,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 895	raport_slotow	0016_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
 896	raport_slotow	0017_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
 897	raport_slotow	0018_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+1001	bpp	0458_faza_b_ii1_views	2000-01-01 00:00:00+00
 898	raport_slotow	0019_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
 899	raport_slotow	0020_fix_do_roku_default_modulowa_funkcja	2000-01-01 00:00:00+00
 900	reversion	0001_squashed_0004_auto_20160611_1202	2000-01-01 00:00:00+00
@@ -17139,7 +17141,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 998	bpp	0455_faza_b_i2	2000-01-01 00:00:00+00
 999	bpp	0456_faza_b_i3	2000-01-01 00:00:00+00
 1000	bpp	0457_faza_b_i4	2000-01-01 00:00:00+00
-1001	bpp	0458_faza_b_ii1_views	2000-01-01 00:00:00+00
 1002	bpp	0444_charakter_formalny_ukryty_charakter_pbn_ukryty_and_more	2000-01-01 00:00:00+00
 1003	bpp	0459_faza_b_ii1_retarget	2000-01-01 00:00:00+00
 1004	bpp	0460_faza_b_ii2_repoint	2000-01-01 00:00:00+00
@@ -17225,6 +17226,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1085	oidc_integration	0001_initial	2000-01-01 00:00:00+00
 1086	orcid_integration	0001_initial	2000-01-01 00:00:00+00
 1087	import_pracownikow	0025_importpracownikow_plik_po_imporcie	2000-01-01 00:00:00+00
+1088	import_pracownikow	0026_importpracownikow_uczelnia	2000-01-01 00:00:00+00
 \.
 
 
@@ -17590,6 +17592,21 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+118	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+119	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
+120	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+121	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+122	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+123	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+124	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+125	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+126	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+127	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+128	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+129	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+130	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+131	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+132	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -17716,7 +17733,7 @@ COPY public.import_polon_wierszimportuplikupolon (id, autor_id, parent_id, dane_
 -- Data for Name: import_pracownikow_importpracownikow; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.import_pracownikow_importpracownikow (id, created_on, started_on, finished_on, finished_successfully, traceback, plik_xls, owner_id, cancel_requested, cancelled, current_stage, language, log, log_seq, percent, result_context, stage_states, stan, status_text, mapowanie_kolumn, tworz_brakujace_jednostki, tworz_brakujace_tytuly, zakres_integracji, data_zmian_personalnych, przepnij_wszystkie_prace, tworz_brakujace_stanowiska, tworz_brakujace_stopnie, plik_po_imporcie) FROM stdin;
+COPY public.import_pracownikow_importpracownikow (id, created_on, started_on, finished_on, finished_successfully, traceback, plik_xls, owner_id, cancel_requested, cancelled, current_stage, language, log, log_seq, percent, result_context, stage_states, stan, status_text, mapowanie_kolumn, tworz_brakujace_jednostki, tworz_brakujace_tytuly, zakres_integracji, data_zmian_personalnych, przepnij_wszystkie_prace, tworz_brakujace_stanowiska, tworz_brakujace_stopnie, plik_po_imporcie, uczelnia_id) FROM stdin;
 \.
 
 
@@ -19178,7 +19195,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1087, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1088, true);
 
 
 --
@@ -19409,7 +19426,7 @@ SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 42,
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 117, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 132, true);
 
 
 --
@@ -28891,6 +28908,13 @@ CREATE INDEX import_pracownikow_importpracownikow_owner_id_fe839858 ON public.im
 
 
 --
+-- Name: import_pracownikow_importpracownikow_uczelnia_id_9810ac18; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX import_pracownikow_importpracownikow_uczelnia_id_9810ac18 ON public.import_pracownikow_importpracownikow USING btree (uczelnia_id);
+
+
+--
 -- Name: import_pracownikow_importpracownikowodpiecie_parent_id_4611ee4d; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -35251,6 +35275,14 @@ ALTER TABLE ONLY public.import_pracownikow_importpracownikowrow
 
 ALTER TABLE ONLY public.import_pracownikow_importpracownikowrow
     ADD CONSTRAINT import_pracownikow_i_tytul_id_6feb1c49_fk_bpp_tytul FOREIGN KEY (tytul_id) REFERENCES public.bpp_tytul(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: import_pracownikow_importpracownikow import_pracownikow_i_uczelnia_id_9810ac18_fk_bpp_uczel; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.import_pracownikow_importpracownikow
+    ADD CONSTRAINT import_pracownikow_i_uczelnia_id_9810ac18_fk_bpp_uczel FOREIGN KEY (uczelnia_id) REFERENCES public.bpp_uczelnia(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --

@@ -13,7 +13,7 @@ from copy import copy
 
 from django.core.exceptions import ObjectDoesNotExist
 
-from bpp.models import Autor_Jednostka, Uczelnia, Wydzial
+from bpp.models import Autor_Jednostka, Wydzial
 from import_common.core import (
     matchuj_autora,
     matchuj_funkcja_autora,
@@ -774,10 +774,11 @@ def _przetworz_wiersz(
 def _materializuj_odpiecia(parent):
     """Tworzy wiersze ``ImportPracownikowOdpiecie`` (zaznaczone=False) dla
     powiązań spoza pliku (§9). Delete-first → idempotentne względem re-analizy
-    (``on_restart`` też je kasuje). Uczelnię ustala
-    ``get_single_uczelnia_or_none`` (brak requestu w tle) — ``None`` pomija
-    wykluczenie obcej jednostki. Zwraca liczbę utworzonych odpięć."""
-    uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
+    (``on_restart`` też je kasuje). Uczelnię ustala ``uczelnia_do_integracji``
+    (uczelnia importu z requestu; fallback: jedyna w systemie) — w multi-hosted
+    (>1 uczelnia) inaczej byłoby ``None`` i wykluczenie obcej jednostki nie
+    działałoby. ``None`` (nieustalona) pomija wykluczenie. Zwraca liczbę odpięć."""
+    uczelnia = parent.uczelnia_do_integracji()
     parent.odpiecia.all().delete()
     ImportPracownikowOdpiecie.objects.bulk_create(
         [
