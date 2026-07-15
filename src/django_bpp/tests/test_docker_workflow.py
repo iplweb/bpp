@@ -26,5 +26,7 @@ def test_docker_workflow_nie_ma_pustego_jobu_guard():
     workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
     jobs = workflow.split("\njobs:\n", maxsplit=1)[1]
 
-    assert jobs.startswith("  docker:\n")
+    assert "\n  build:\n" in jobs
+    assert "\n  scan:\n" in jobs
+    assert "\n  promote:\n" in jobs
     assert "\n  check-flag:" not in jobs

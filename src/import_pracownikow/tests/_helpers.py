@@ -18,3 +18,8 @@ def unikalna_nazwa(baza: str) -> str:
     ("nazwę klastra"), po którym nadal poznać o co chodzi w logu/diffie.
     """
     return f"{baza} [{uuid.uuid4().hex[:8]}]"
+
+
+def unikalny_id(baza: str) -> str:
+    """Zwróć czytelny identyfikator odporny na dane pozostawione w testowej DB."""
+    return f"{baza}-{uuid.uuid4().hex[:8]}"

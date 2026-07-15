@@ -1,3 +1,4 @@
+import uuid
 from io import BytesIO
 
 import pytest
@@ -303,7 +304,8 @@ def test_pbn_uuid_24_znaki_jest_emitowany():
         }
     )
     j = baker.make(Jednostka, nazwa=unikalna_nazwa("Klinika PBN"))
-    scientist = baker.make(Scientist, mongoId="a" * 24)
+    mongo_id = uuid.uuid4().hex[:24]
+    scientist = baker.make(Scientist, mongoId=mongo_id)
     a = baker.make(Autor, nazwisko="Pbn", imiona="Poprawny", pbn_uid=scientist)
     aj = baker.make(Autor_Jednostka, autor=a, jednostka=j)
     _wiersz(imp, loc=0, autor=a, autor_jednostka=aj)
@@ -312,7 +314,7 @@ def test_pbn_uuid_24_znaki_jest_emitowany():
 
     assert "PBN UUID" in naglowki
     kol = {n: i for i, n in enumerate(naglowki)}
-    assert wiersze[0][kol["PBN UUID"]] == "a" * 24
+    assert wiersze[0][kol["PBN UUID"]] == mongo_id
 
 
 @pytest.mark.django_db
@@ -329,7 +331,7 @@ def test_pbn_uuid_nietypowej_dlugosci_jest_pomijany():
         }
     )
     j = baker.make(Jednostka, nazwa=unikalna_nazwa("Klinika PBN Zła"))
-    scientist = baker.make(Scientist, mongoId="krotki-id")
+    scientist = baker.make(Scientist, mongoId=f"krotki-{uuid.uuid4().hex[:8]}")
     a = baker.make(Autor, nazwisko="Pbn", imiona="Zly", pbn_uid=scientist)
     aj = baker.make(Autor_Jednostka, autor=a, jednostka=j)
     _wiersz(imp, loc=0, autor=a, autor_jednostka=aj)
