@@ -19,6 +19,26 @@
         utworzona (lub użyte zostanie auto-dopasowanie) — możesz to zmienić.
     </p>
 
+    {% if uczelnia_nieokreslona %}
+        <div class="callout alert" data-uczelnia-nieokreslona="1">
+            {# Uczelni nie da się ustalić (multi-hosted: >1 uczelnia, nie #}
+            {# rozpoznano jej z adresu importu) → jednostki „do utworzenia" NIE #}
+            {# powstaną. Piszemy o tym GŁOŚNO, zamiast po cichu pomijać import. #}
+            <p style="margin-bottom: 0.5rem;">
+                <span class="fi-alert"></span>
+                <strong>Nie ustalono uczelni dla tego importu.</strong>
+            </p>
+            <p style="margin-bottom: 0;">
+                Jednostki oznaczone „do utworzenia” <strong>nie zostaną
+                utworzone</strong>, dopóki uczelnia pozostaje nieokreślona — ta
+                instalacja obsługuje więcej niż jedną uczelnię, a nie rozpoznano
+                jej z adresu, spod którego wgrano plik. Zaimportuj plik będąc na
+                adresie (domenie) właściwej uczelni, albo poproś administratora
+                o powiązanie domeny z uczelnią.
+            </p>
+        </div>
+    {% endif %}
+
     {% if not decyzje_brak and not decyzje_zgadywanie %}
         <div class="callout success">
             {# brak decyzji = wszystkie jednostki dopasowane dokładnie #}

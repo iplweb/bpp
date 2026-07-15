@@ -179,6 +179,21 @@ class ImportPracownikow(LiveOperation):
         "+ stanowiska (bez osób). Ustawiane przez przycisk zatwierdzenia na "
         "hubie.",
     )
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="uczelnia",
+        help_text="Uczelnia, do której należy ten import — ustalana z requestu "
+        "(host → Site → Uczelnia) w chwili utworzenia importu. Integracja biegnie "
+        "w tle (bez requestu), więc uczelnię trzeba złapać w widoku i tu utrwalić. "
+        "W instalacji multi-hosted (>1 uczelnia) to JEDYNE wiarygodne źródło "
+        "uczelni do tworzenia jednostek — bez tego "
+        "``get_single_uczelnia_or_none()`` zwróciłoby ``None`` i nowe jednostki "
+        "nie powstałyby. ``NULL`` dla starych importów i instalacji "
+        "single-tenant (fallback: jedyna uczelnia w systemie).",
+    )
 
     stages = ["Wczytywanie", "Integracja"]
 
@@ -665,6 +680,41 @@ class ImportPracownikow(LiveOperation):
                 utworzone__isnull=True, tryb=ImportPracownikowStanowisko.TRYB_BRAK
             ).exists()
         )
+
+    def uczelnia_do_integracji(self):
+        """Uczelnia użyta przez pipeline w tle (analiza + integracja) — JEDNO
+        źródło prawdy dla tworzenia jednostek i wykluczeń „obcej jednostki".
+
+        Kolejność: (1) ``self.uczelnia`` złapana z requestu przy tworzeniu
+        importu — jedyne wiarygodne źródło w multi-hosted (>1 uczelnia);
+        (2) fallback ``get_single_uczelnia_or_none()`` dla instalacji
+        single-tenant i starych importów sprzed pola ``uczelnia`` (przy 0 lub
+        >1 uczelni bez ustawionego ``self.uczelnia`` → ``None`` i łagodna
+        degradacja jak dotąd, BEZ zgadywania pierwszej-z-brzegu). Świadomie NIE
+        woła ``get_for_request`` — tło nie ma requestu; uczelnię ustala widok."""
+        from bpp.models import Uczelnia
+
+        if self.uczelnia_id is not None:
+            return self.uczelnia
+        return Uczelnia.objects.get_single_uczelnia_or_none()
+
+    @property
+    def uczelnia_nieokreslona_a_potrzebna(self):
+        """True gdy są jednostki „do utworzenia" (nierozstrzygnięty ``BRAK``),
+        ale uczelni NIE da się ustalić jednoznacznie (``uczelnia_do_integracji``
+        = ``None``) — wtedy integracja NIE utworzy tych jednostek.
+
+        Steruje WIDOCZNYM ostrzeżeniem nad listą jednostek (ekran ``/jednostki/``
+        + hub) zamiast cichego pominięcia: operator ma wiedzieć, że jednostki nie
+        powstaną i dlaczego (domena → Site → Uczelnia nierozstrzygnięta lub >1
+        uczelnia bez ustalonej uczelni importu), ZANIM kliknie import. Gdy uczelnia
+        jest ustalona (typowy multi-hosted po złapaniu z requestu) → ``False``,
+        ostrzeżenie się nie pokazuje."""
+        if self.uczelnia_do_integracji() is not None:
+            return False
+        return self.jednostki_do_decyzji.filter(
+            utworzona__isnull=True, tryb=ImportPracownikowJednostka.TRYB_BRAK
+        ).exists()
 
 
 class ImportPracownikowRow(ImportRowMixin, models.Model):

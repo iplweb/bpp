@@ -36,7 +36,6 @@ from bpp.models import (
     StanowiskoDydaktyczne,
     StopienSluzbowy,
     Tytul,
-    Uczelnia,
     Wymiar_Etatu,
 )
 from import_common.core.jednostka import unikalny_skrot, zaproponuj_skrot
@@ -566,8 +565,13 @@ def _rozstrzygnij_jednostki(parent, p):
     MUSI być pierwszym krokiem ``integruj`` — przed snapshotem ``stare_jednostki``
     (inaczej świeżo podłączone wiersze nie trafią do snapshotu → przepięcia
     milczą) i przed fazą nowych autorów (inaczej wiersz z odroczoną jednostką
-    poszedłby w ``get_or_create(jednostka_id=None)`` → IntegrityError)."""
-    uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
+    poszedłby w ``get_or_create(jednostka_id=None)`` → IntegrityError).
+
+    Uczelnię bierzemy z ``parent.uczelnia_do_integracji()`` (uczelnia importu
+    złapana z requestu; fallback: jedyna w systemie) — w multi-hosted (>1
+    uczelnia) ``get_single_uczelnia_or_none()`` zwróciłoby ``None`` i FAZA 0 NIE
+    utworzyłaby żadnej jednostki (regresja: ciche pominięcie)."""
+    uczelnia = parent.uczelnia_do_integracji()
     zajete_skroty = set()
     utworzono = 0
     _cache = {}

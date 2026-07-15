@@ -161,6 +161,12 @@ class NowyImportView(GroupRequiredMixin, CreateLiveOperationView):
         # NIE enqueue — najpierw ekran mapowania (analiza dopiero po zmapowaniu).
         self.object = form.save(commit=False)
         self.object.owner = self.request.user
+        # Multi-hosted: łapiemy uczelnię z requestu (host → Site → Uczelnia) i
+        # utrwalamy na imporcie — integracja biegnie w tle (bez requestu), a przy
+        # >1 uczelni to JEDYNE wiarygodne źródło. Bez tego FAZA 0 nie utworzyłaby
+        # jednostek (get_single_uczelnia_or_none() = None). None (domena
+        # nierozstrzygnięta) → ostrzeżenie nad listą jednostek, nie ciche pominięcie.
+        self.object.uczelnia = Uczelnia.objects.get_for_request(self.request)
         self.object.stan = ImportPracownikow.STAN_UTWORZONY
         self.object.save()
         return HttpResponseRedirect(
@@ -934,7 +940,12 @@ class WeryfikacjaJednostekView(GroupRequiredMixin, View):
         re-renderu po błędzie walidacji. Przy re-renderze ``decyzje`` mają
         NAŁOŻONE (niezapisane) wartości z POST, więc formularz nie gubi tego, co
         user ustawił; ``bledne_pks`` podświetla wiersze „mapuj bez celu”."""
-        uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
+        # Uczelnia importu (multi-hosted: złapana z requestu; fallback: jedyna).
+        # Nią też ZAWĘŻAMY pule „Mapuj na" / „Wydział (parent)" — w multi-hosted
+        # nie wolno mapować/parentować na jednostkę innej uczelni (Jednostka.uczelnia
+        # jest NOT NULL, więc filtr jest no-opem w single-tenant, a poprawny przy >1).
+        uczelnia = parent.uczelnia_do_integracji()
+        parent_opcje, mapuj_opcje = self._pule_jednostek(uczelnia)
         return {
             "parent_object": parent,
             "decyzje_brak": [
@@ -946,18 +957,30 @@ class WeryfikacjaJednostekView(GroupRequiredMixin, View):
                 if d.tryb == ImportPracownikowJednostka.TRYB_ZGADYWANIE
             ],
             "uzywaj_wydzialow": bool(uczelnia and uczelnia.uzywaj_wydzialow),
-            "parent_opcje": Jednostka.objects.filter(parent__isnull=True).order_by(
-                "nazwa"
-            ),
-            "mapuj_opcje": Jednostka.objects.filter(
-                skupia_pracownikow=True, widoczna=True
-            ).order_by("nazwa"),
+            "parent_opcje": parent_opcje,
+            "mapuj_opcje": mapuj_opcje,
             "moze_edytowac": parent.stan == ImportPracownikow.STAN_PRZEANALIZOWANY,
             "bledne_pks": bledne_pks,
+            # Ostrzeżenie NAD listą jednostek: uczelni nie da się ustalić, więc
+            # jednostki „do utworzenia" NIE powstaną (zamiast cichego pominięcia).
+            "uczelnia_nieokreslona": parent.uczelnia_nieokreslona_a_potrzebna,
             "DECYZJA_AKCEPTUJ": ImportPracownikowJednostka.DECYZJA_AKCEPTUJ,
             "DECYZJA_MAPUJ": ImportPracownikowJednostka.DECYZJA_MAPUJ,
             "DECYZJA_POMIN": ImportPracownikowJednostka.DECYZJA_POMIN,
         }
+
+    @staticmethod
+    def _pule_jednostek(uczelnia):
+        """Pule kontrolek „Wydział (parent)" i „Mapuj na", zawężone do uczelni
+        importu gdy jest ustalona (multi-hosted). Wspólne dla kontekstu (UI) i
+        walidacji POST (``_z_puli``) — jedno źródło prawdy, więc spreparowany POST
+        nie przypisze pracowników do jednostki innej uczelni."""
+        parent_opcje = Jednostka.objects.filter(parent__isnull=True)
+        mapuj_opcje = Jednostka.objects.filter(skupia_pracownikow=True, widoczna=True)
+        if uczelnia is not None:
+            parent_opcje = parent_opcje.filter(uczelnia=uczelnia)
+            mapuj_opcje = mapuj_opcje.filter(uczelnia=uczelnia)
+        return parent_opcje.order_by("nazwa"), mapuj_opcje.order_by("nazwa")
 
     @staticmethod
     def _z_puli(raw, queryset):
@@ -975,23 +998,22 @@ class WeryfikacjaJednostekView(GroupRequiredMixin, View):
             return None
         return queryset.filter(pk=int(raw)).first()
 
-    def _naloz_post(self, dec, prawidlowe):
+    def _naloz_post(self, dec, prawidlowe, parent_opcje, mapuj_opcje):
         """Nakłada wybory z POST na obiekt decyzji (BEZ zapisu do bazy). Wspólne
         dla walidacji, re-renderu po błędzie i finalnego zapisu — jedno źródło
-        prawdy o tym, jak POST mapuje się na pola decyzji."""
+        prawdy o tym, jak POST mapuje się na pola decyzji. ``parent_opcje`` /
+        ``mapuj_opcje`` to TE SAME (zawężone do uczelni importu) pule co UI —
+        ``_z_puli`` waliduje pk względem nich, więc spreparowany POST nie
+        przypisze pracowników do jednostki innej uczelni."""
         pref = f"dec_{dec.pk}_"
         decyzja = self.request.POST.get(pref + "decyzja")
         if decyzja in prawidlowe:
             dec.decyzja = decyzja
-        # Te same querysety co pula UI w ``_build_context`` (parent_opcje /
-        # mapuj_opcje) — patrz ``_z_puli``.
         dec.wybrany_parent = self._z_puli(
-            self.request.POST.get(pref + "parent"),
-            Jednostka.objects.filter(parent__isnull=True),
+            self.request.POST.get(pref + "parent"), parent_opcje
         )
         dec.wybrana_jednostka = self._z_puli(
-            self.request.POST.get(pref + "wybrana"),
-            Jednostka.objects.filter(skupia_pracownikow=True, widoczna=True),
+            self.request.POST.get(pref + "wybrana"), mapuj_opcje
         )
 
     def get(self, request, *args, **kwargs):
@@ -1013,9 +1035,13 @@ class WeryfikacjaJednostekView(GroupRequiredMixin, View):
             ImportPracownikowJednostka.DECYZJA_MAPUJ,
             ImportPracownikowJednostka.DECYZJA_POMIN,
         }
+        # Pule zawężone do uczelni importu — te same dla UI i walidacji POST.
+        parent_opcje, mapuj_opcje = self._pule_jednostek(
+            parent.uczelnia_do_integracji()
+        )
         decyzje = list(self._decyzje())
         for dec in decyzje:
-            self._naloz_post(dec, prawidlowe)
+            self._naloz_post(dec, prawidlowe, parent_opcje, mapuj_opcje)
         # Walidacja: „mapuj na istniejącą" bez wskazanej jednostki docelowej to
         # cicha pułapka — integracja zostawiłaby te wiersze niedopasowane.
         # Alarmuj i NIE zapisuj, ale RE-RENDERUJ z nałożonymi wartościami (BEZ
