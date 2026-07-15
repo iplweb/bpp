@@ -7,7 +7,7 @@ from import_list_ministerialnych.util import (
 )
 
 
-def detect_duplicates(data):
+def detect_duplicates(data):  # noqa: C901
     """
     Detect duplicate journals in the Excel data based on ISSN, E-ISSN, and mniswId.
 
@@ -78,8 +78,8 @@ def detect_duplicates(data):
     return duplicates
 
 
-def analyze_excel_file_import_list_ministerialnych(
-    fn, parent_model: ImportListMinisterialnych
+def analyze_excel_file_import_list_ministerialnych(  # noqa: C901
+    fn, parent_model: ImportListMinisterialnych, p
 ):
     napraw_literowki_w_bazie()
 
@@ -98,10 +98,10 @@ def analyze_excel_file_import_list_ministerialnych(
                 dane_z_xls={},
                 rezultat=error_msg,
             )
-            parent_model.send_notification(error_msg, "error")
-            # Mark the operation as finished with error but don't re-raise
-            # This will be handled by the task_perform method
-            raise ValueError(error_msg)
+            p.log(error_msg)
+            # Podnosimy wyjątek — runner liveops złapie go i oznaczy operację
+            # jako zakończoną błędem (dawniej robił to task_perform).
+            raise ValueError(error_msg) from e
         else:
             # Re-raise other ValueErrors
             raise
@@ -113,7 +113,7 @@ def analyze_excel_file_import_list_ministerialnych(
             dane_z_xls={},
             rezultat=error_msg,
         )
-        parent_model.send_notification(error_msg, "error")
+        p.log(error_msg)
         raise
 
     total = len(data)
@@ -124,9 +124,12 @@ def analyze_excel_file_import_list_ministerialnych(
     # Detect duplicates before processing
     duplicates = detect_duplicates(data)
 
-    for nr_wiersza, elem in enumerate(data, 3):
-        parent_model.send_progress(nr_wiersza * 100.0 / total)
-
+    # p.track: aktualizuje pasek postępu (throttlowany) i sprawdza anulowanie
+    # (cancel_requested) przed każdym wierszem — zastępuje ręczny
+    # parent_model.send_progress(...). total liczone z len(data).
+    for nr_wiersza, elem in p.track(
+        list(enumerate(data, 3)), total=total, label="Import list ministerialnych"
+    ):
         tytul_zrodla = elem["Tytul_1"] or elem["Tytul_2"]
 
         # Extract mniswId from Excel column "Unikatowy Identyfikator Czasopisma"

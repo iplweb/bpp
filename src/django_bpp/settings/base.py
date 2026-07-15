@@ -452,6 +452,9 @@ INSTALLED_APPS = [
     "compressor",
     "session_security",
     "channels_broadcast",
+    # django-liveops — nastepca `long_running`. Routing live/cancel/restart
+    # jest generyczny (op_type) i mieszka w samym pakiecie (liveops.urls),
+    # wiec nie potrzebujemy juz zadnej warstwy posredniej po stronie BPP.
     "liveops",
     "integrator2",
     "nowe_raporty",
@@ -1040,16 +1043,20 @@ CHANNEL_LAYERS = {
     },
 }
 
-# django-liveops: długo-działające operacje (np. skan duplikatów źródeł) z
-# live-progressem przez WebSocket + HTMX. RUNNER="celery" dispatchuje run()
-# jako shared_task na tym samym workerze co reszta BPP (autodiscover). Live
-# push wymaga Redis channel-layer (skonfigurowany wyżej). W testach RUNNER
-# jest nadpisywany na "eager" (settings/test.py) — skan biegnie synchronicznie
-# bez Redis/workera.
+# django-liveops: długo-działające operacje (np. skan duplikatów źródeł,
+# import list ministerialnych) z live-progressem przez WebSocket + HTMX.
+# RUNNER="celery" dispatchuje run() jako shared_task na tym samym workerze co
+# reszta BPP (autodiscover). Live push wymaga Redis channel-layer
+# (skonfigurowany wyżej). W testach RUNNER jest nadpisywany na "eager"
+# (settings/test.py) — operacja biegnie synchronicznie bez Redis/workera.
+# THROTTLE_HZ — max liczba pushy % na sekunde. REQUIRED_GROUP bramkuje
+# wszystkie operacje live; od 0.2.0 liveops ZWALNIA superuserów z tej bramki
+# (parytet z braces/adminem), wiec mozna jej uzyc bez regresji.
 LIVEOPS = {
     "BASE_TEMPLATE": "base.html",
     "RUNNER": "celery",
     "THROTTLE_HZ": 10,
+    "REQUIRED_GROUP": "wprowadzanie danych",
 }
 
 # Pozwól anonimowym użytkownikom łączyć się z WebSocketem notyfikacji
