@@ -250,6 +250,65 @@ def test_import_nie_modyfikuje_autora_innej_uczelni(tmp_path):
     )
 
 
+# --- Finding 4: lista importów zawężona do bieżącej uczelni ------------------
+
+
+def _rzadaj_dla_uczelni(uczelnia, user):
+    """RequestFactory GET z rozstrzygniętą uczelnią (jak po
+    SiteResolutionMiddleware) i zalogowanym userem."""
+    from django.test import RequestFactory
+
+    request = RequestFactory().get("/import_polon/dane/")
+    request.user = user
+    request._uczelnia = uczelnia  # honorowane przez Uczelnia.get_for_request
+    return request
+
+
+@pytest.mark.django_db
+def test_lista_importow_zawezona_do_uczelni_z_requestu(django_user_model):
+    """PokazImporty na stronie uczelni X pokazuje TYLKO importy tej uczelni
+    (plus stare uczelnia=None — wstecz-kompat), nie importy uczelni Y."""
+    from import_polon.views import PokazImporty
+
+    owner = django_user_model.objects.create_user(username="owner", password="x")
+    uczelnia_x = baker.make(Uczelnia, nazwa="Uczelnia X", skrot="UX")
+    uczelnia_y = baker.make(Uczelnia, nazwa="Uczelnia Y", skrot="UY")
+
+    import_x = baker.make(ImportPlikuPolon, owner=owner, uczelnia=uczelnia_x, rok=2020)
+    import_y = baker.make(ImportPlikuPolon, owner=owner, uczelnia=uczelnia_y, rok=2020)
+    import_legacy = baker.make(ImportPlikuPolon, owner=owner, uczelnia=None, rok=2020)
+
+    view = PokazImporty()
+    view.request = _rzadaj_dla_uczelni(uczelnia_x, owner)
+    pks = set(view.get_queryset().values_list("pk", flat=True))
+
+    assert import_x.pk in pks, "import bieżącej uczelni musi być widoczny"
+    assert import_legacy.pk in pks, "stary import (uczelnia=None) — wstecz-kompat"
+    assert import_y.pk not in pks, (
+        "import INNEJ uczelni nie może pojawić się na tej stronie uczelni"
+    )
+
+
+@pytest.mark.django_db
+def test_lista_importow_bez_rozstrzygnietej_uczelni_bez_zawezenia(django_user_model):
+    """Gdy uczelni nie da się rozstrzygnąć (single-host bez domeny / pusta
+    baza) → brak zawężenia (zachowanie wsteczne, wszystkie importy właściciela)."""
+    from import_polon.views import PokazImporty
+
+    owner = django_user_model.objects.create_user(username="owner", password="x")
+    uczelnia_x = baker.make(Uczelnia, nazwa="Uczelnia X", skrot="UX")
+    uczelnia_y = baker.make(Uczelnia, nazwa="Uczelnia Y", skrot="UY")
+
+    import_x = baker.make(ImportPlikuPolon, owner=owner, uczelnia=uczelnia_x, rok=2020)
+    import_y = baker.make(ImportPlikuPolon, owner=owner, uczelnia=uczelnia_y, rok=2020)
+
+    view = PokazImporty()
+    view.request = _rzadaj_dla_uczelni(None, owner)
+    pks = set(view.get_queryset().values_list("pk", flat=True))
+
+    assert import_x.pk in pks and import_y.pk in pks
+
+
 # --- Wiring: widok tworzący przypina uczelnię z requestu --------------------
 
 
