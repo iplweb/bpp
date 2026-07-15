@@ -1,15 +1,11 @@
-import logging
-
 from django.contrib import admin
+from pbn_client.error_record import parse
 
 from bpp.admin.helpers.pbn_api.gui import sprobuj_wyslac_do_pbn_gui
 from bpp.admin.helpers.site_filtered import SiteFilteredAdminMixin
-from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.admin.base import BasePBNAPIAdminNoReadonly
 from pbn_api.admin.widgets import JSONWithActionsWidget
 from pbn_api.models import SentData
-
-logger = logging.getLogger(__name__)
 
 
 @admin.register(SentData)
@@ -89,17 +85,22 @@ class SentDataAdmin(SiteFilteredAdminMixin, BasePBNAPIAdminNoReadonly):
         return super().formfield_for_dbfield(db_field, request, **kwargs)
 
     def exception_details(self, obj):
-        if obj.exception:
-            try:
-                return obj.exception.split('"details":')[1][:-3]
-            except Exception:
-                zaloguj_polkniety_wyjatek(
-                    f"Nie udało się wyłuskać 'details' z pola exception "
-                    f"obiektu SentData pk={obj.pk} — pokazuję surowy tekst",
-                    logger=logger,
-                    do_rollbar=True,
-                )
-                return obj.exception
+        """Czytelny opis błędu z ``SentData.exception``.
+
+        Zunifikowane parsowanie przez ``pbn_client.error_record.parse`` zastąpiło
+        kruchy hack ``obj.exception.split('"details":')[1][:-3]`` (zostawiał
+        m.in. wiszące ``}}`` na tracebackach i milkł na innych kształtach).
+        Pokazujemy skondensowane komunikaty walidacyjne PBN, a w razie ich
+        braku — komunikat wyjątku lub surowy tekst.
+        """
+        if not obj.exception:
+            return None
+        rec = parse(obj.exception)
+        if rec.messages:
+            return "; ".join(rec.messages)
+        if rec.message:
+            return rec.message
+        return obj.exception
 
     exception_details.short_description = "Opis problemu"
     exception_details.admin_order_field = "exception"

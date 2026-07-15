@@ -33,7 +33,7 @@ dependencies = [
     "Django>=5.2.16,<5.3",
     # Reużywalne pakiety PBN wydzielone na PyPI (github.com/iplweb/*).
     "django-pbn-client>=0.2,<0.3",
-    "pbn-client>=0.2,<0.3",
+    "pbn-client>=0.2.1,<0.3",
     "django-polish-inflection>=0.1,<0.2",
     "django-axes>=7.0,<9",
     "arrow>=1.3,<2",
@@ -311,6 +311,10 @@ default = true
 # WYCOFAĆ gdy upstream wyda release z #2156 → wróć na PyPI `>=4.5`. Tracking: #280.
 [tool.uv.sources]
 django-import-export = { git = "https://github.com/mpasternak/django-import-export.git", rev = "d6ee0d39194fee31437affbdc6fee5ce549b4b8f" }
+# TYMCZASOWO: pbn-client 0.3.0 (ErrorRecord) nie jest jeszcze na PyPI. Pin do
+# commita gałęzi feat/error-record, żeby CI/lokalnie rozwiązać zależność.
+# USUŃ po wydaniu pbn-client 0.3.0 na PyPI (wtedy sam pin >=0.3,<0.4 wystarczy).
+pbn-client = { git = "https://github.com/iplweb/pbn-client.git", rev = "84503cf41b308bc86edc6f8709b71383a8676cac" }
 
 # Konfiguracja `pytest-testcontainers-django` — pluginu pytest, ktory
 # startuje kontenery PG/Redis przed importem Django settings i wstrzykuje
