@@ -1065,6 +1065,19 @@ LIVEOPS = {
 # nie publikuj na nim danych wrażliwych.
 CHANNELS_BROADCAST_ENABLE_ANONYMOUS = True
 
+# Autoryzator subskrypcji kanałów-stron (?extraChannels=). Bez niego
+# channels_broadcast używa domyślnego _deny_all, który ODRZUCA każdą
+# subskrypcję extraChannels — a paski postępu operacji long_running
+# (import POLON, absencje, raporty…) subskrybują właśnie tak
+# (extraChannels=[operation.pk]). Skutkiem braku było: dane importują się,
+# ale pasek postępu stoi i strona nie przekierowuje po zakończeniu —
+# użytkownik musiał ręcznie odświeżać. Autoryzator przepuszcza kanał-stronę
+# operacji wyłącznie jej właścicielowi. Kanały liveop.* jadą tokenem
+# (subscription_token) i omijają ten autoryzator.
+CHANNELS_BROADCAST_SUBSCRIPTION_AUTHORIZER = (
+    "long_running.authorizers.authorize_operation_channel"
+)
+
 
 # django-compressor dla każdej wersji będzie miał swoją nazwę katalogu
 # wyjściowego, z tej prostej przyczyny, że nie wszystkie przeglądarki
