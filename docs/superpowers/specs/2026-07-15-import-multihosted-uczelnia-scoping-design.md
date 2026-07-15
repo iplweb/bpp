@@ -71,9 +71,20 @@ class WymagajUczelniZRequestuMixin:
         return super().dispatch(request, *args, **kwargs)
 
     def sprawdz_uczelnie(self, obj):
-        if obj.uczelnia_do_integracji() != self.uczelnia_biezaca:
+        u = obj.uczelnia_do_integracji()
+        if u is not None and u != self.uczelnia_biezaca:
             raise Http404
 ```
+
+**Uwaga (doprecyzowane przy implementacji):** ``sprawdz_uczelnie`` daje 404
+wyłącznie dla importu należącego do INNEJ, JEDNOZNACZNEJ uczelni. Import o
+uczelni nieokreślonej (``uczelnia_do_integracji()`` → ``None``: brak
+``uczelnia`` i brak jedynej uczelni w systemie) jest PRZEPUSZCZANY. W produkcji
+każdy import ma uczelnię (łapaną z requestu przy tworzeniu; bramka gwarantuje
+non-None), więc różnica dotyczy tylko rekordów legacy/``NULL``, których na
+multi-hosted nie ma. Ta łagodniejsza reguła zapobiega też fałszywym 404 w
+testach, gdzie ``baker.make(Jednostka)`` auto-tworzy dodatkową ``Uczelnia``
+(licznik > 1 → fallback ``get_single_uczelnia_or_none`` = ``None``).
 
 Kolejność baz (MRO): `GroupRequiredMixin, WymagajUczelniZRequestuMixin,
 <widok generyczny>` — najpierw auth/grupa (anonim → login, brak grupy →
