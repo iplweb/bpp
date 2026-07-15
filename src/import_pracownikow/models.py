@@ -698,6 +698,17 @@ class ImportPracownikow(LiveOperation):
             return self.uczelnia
         return Uczelnia.objects.get_single_uczelnia_or_none()
 
+    @classmethod
+    def widoczne_dla_uczelni(cls, uczelnia):
+        """Importy należące do danej uczelni — ORM-owy odpowiednik
+        ``uczelnia_do_integracji``. Multi-tenant: ściśle ``uczelnia=U``.
+        Single-tenant: także legacy ``NULL`` (należy do jedynej uczelni)."""
+        from bpp.models import Uczelnia
+
+        if Uczelnia.objects.exclude(pk=uczelnia.pk).exists():
+            return cls.objects.filter(uczelnia=uczelnia)
+        return cls.objects.filter(Q(uczelnia=uczelnia) | Q(uczelnia__isnull=True))
+
     @property
     def uczelnia_nieokreslona_a_potrzebna(self):
         """True gdy są jednostki „do utworzenia" (nierozstrzygnięty ``BRAK``),
