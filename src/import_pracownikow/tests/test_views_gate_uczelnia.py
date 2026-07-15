@@ -44,3 +44,32 @@ def test_lista_scoped_do_biezacej_uczelni(admin_client, admin_user, settings):
     baker.make(ImportPracownikow, owner=admin_user, uczelnia=inna)
     resp = admin_client.get(reverse("import_pracownikow:index"), HTTP_HOST=host)
     assert list(resp.context["object_list"]) == [moj]
+
+
+@pytest.mark.django_db
+def test_obiekt_innej_uczelni_404(admin_client, admin_user, settings):
+    """Import należący do innej uczelni → 404 (nawet dla superusera/właściciela)."""
+    u = baker.make(Uczelnia)
+    inna = baker.make(Uczelnia)
+    host = ustaw_biezaca_uczelnie(u, settings)
+    obcy = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        uczelnia=inna,
+        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+    )
+    url = reverse("import_pracownikow:przeglad", kwargs={"pk": obcy.pk})
+    resp = admin_client.get(url, HTTP_HOST=host)
+    assert resp.status_code == 404
+
+
+@pytest.mark.django_db
+def test_download_innej_uczelni_404(admin_client, admin_user, settings):
+    """Pobranie pliku importu innej uczelni → 404."""
+    u = baker.make(Uczelnia)
+    inna = baker.make(Uczelnia)
+    host = ustaw_biezaca_uczelnie(u, settings)
+    obcy = baker.make(ImportPracownikow, owner=admin_user, uczelnia=inna)
+    url = reverse("import_pracownikow:pobierz-oryginal", kwargs={"pk": obcy.pk})
+    resp = admin_client.get(url, HTTP_HOST=host)
+    assert resp.status_code == 404
