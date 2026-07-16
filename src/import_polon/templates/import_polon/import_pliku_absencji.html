@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load static liveops %}
+
+{% block extratitle %}
+    Import absencji - {{ object.plik.name }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "import_polon:index-absencji" %}">import absencji</a></li>
+    <li class="current">import {{ object.plik.name }}</li>
+{% endblock %}
+
+{% block content %}
+    <h1>Import absencji — przetwarzanie</h1>
+
+    {# Region live-operacji + wrapper CSRF (CSRF_COOKIE_HTTPONLY=True) — patrz #}
+    {# import_pliku_polon.html po komentarz szczegółowy. #}
+    <div hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+        {% live_operation object %}
+    </div>
+
+    <script src="{% static 'liveops/vendor/htmx.min.js' %}"></script>
+    <script src="{% static 'channels_broadcast/js/notifications.js' %}"></script>
+    <script src="{% static 'liveops/liveops.js' %}"></script>
+{% endblock %}

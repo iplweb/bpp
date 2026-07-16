@@ -1,54 +1,89 @@
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.db.models import Count, Q
-from liveops.progress import Progress
+from liveops.models import LiveOperation
 
 from bpp.fields import YearField
 from bpp.models import Autor, Dyscyplina_Naukowa
-from long_running.models import Operation
-from long_running.notification_mixins import ASGINotificationMixin
+
+# Pola stanu operacji liveops zerowane przed (po)ponownym enqueue. Zwierciadło
+# ``liveops.views.RestartView.post`` (liveops inline'uje ten reset, nie wystawia
+# go jako metody modelu) — trzymamy JEDNĄ kopię, żeby ``ZapiszDoBazyMixin`` nie
+# zdryfował. Bez tego ``cancel_requested=True`` po anulowanym runie od razu
+# ubiłby nowy przebieg.
+_POLA_LIVEOPS_RESET = (
+    "finished_on",
+    "started_on",
+    "finished_successfully",
+    "cancelled",
+    "cancel_requested",
+    "traceback",
+    "result_context",
+    "current_stage",
+    "stage_states",
+    "log",
+    "percent",
+    "log_seq",
+)
 
 
-class _LegacyProgressBridge(Progress):
-    """Most zgodności Fazy 1: rdzeń importu przyjmuje już ``Progress`` (liveops),
-    ale model nadal jest legacy ``Operation`` (bez pola ``cancel_requested``).
+class _LiveopsResetMixin:
+    """Wspólny ``reset_liveops_state`` dla importów POLON/absencji."""
 
-    FORWARDUJE emisje do starego API ``ASGINotificationMixin`` — pasek postępu
-    na dotychczasowej stronie details działa dalej między Fazą 1 a 2. NIE jest
-    to czysty no-op ani ``TextProgress``: ``check_cancelled`` MUSI być no-op, bo
-    ``Progress.track`` wołałby ``refresh_from_db(fields=["cancel_requested"])``,
-    a legacy ``Operation`` tego pola nie ma → ``ValueError`` w realnej ścieżce
-    celery. Cała klasa znika w Fazie 2 (model przechodzi na ``LiveOperation``).
-    """
-
-    def _emit_percent(self, value: int) -> None:
-        self._operation.send_progress(value)
-
-    def status(self, text: str, level: str = "info") -> None:
-        self._operation.send_notification(text, level)
-
-    def log(self, line: str) -> None:
-        self._operation.send_notification(line, "info")
-
-    def error(self, message: str) -> None:
-        self._operation.send_notification(message, "error")
-
-    def check_cancelled(self) -> None:
-        # Legacy Operation nie ma pola cancel_requested — no-op (patrz docstring).
-        pass
+    def reset_liveops_state(self):
+        """Zeruje pola stanu operacji liveops (jak ``RestartView.post``), tak by
+        kolejny ``enqueue()`` wystartował z czystym przebiegiem. NIE zapisuje
+        (caller składa ``update_fields``) i NIE woła ``enqueue``. Zwraca listę
+        ustawionych pól — do doklejenia w ``save(update_fields=)``."""
+        self.finished_on = None
+        self.started_on = None
+        self.finished_successfully = False
+        self.cancelled = False
+        self.cancel_requested = False
+        self.traceback = None
+        self.result_context = None
+        self.current_stage = -1
+        self.stage_states = {}
+        self.log = []
+        self.percent = 0
+        self.log_seq = 0
+        return list(_POLA_LIVEOPS_RESET)
 
 
-class ImportPlikuAbsencji(ASGINotificationMixin, Operation):
+def _uruchom_import(parent, p, analyze):
+    """Wspólny ``run`` dla obu importów: woła rdzeń z liveops ``Progress`` i
+    finalizuje wynikiem (``total`` z wierszy-dzieci).
+
+    ``liveops.runner._handle_error`` zapisuje traceback WYŁĄCZNIE do pola
+    ``traceback`` (bez śladu na konsoli workera i bez rollbara). Owijamy
+    właściwy przebieg, żeby błąd był WIDOCZNY: surowy traceback na stderr
+    (konsola celery/run-site) + rollbar (konwencja bg-tasków), po czym
+    re-raise — liveops i tak zapisze traceback do bazy i pokaże błąd w UI."""
+    try:
+        analyze(parent.plik.path, parent, p)
+    except Exception:
+        import sys
+        import traceback as _traceback
+
+        import rollbar
+
+        _traceback.print_exc()
+        rollbar.report_exc_info(sys.exc_info())
+        raise
+    p.result({"total": parent.get_details_set().count()})
+
+
+class ImportPlikuAbsencji(_LiveopsResetMixin, LiveOperation):
     plik = models.FileField(max_length=255, upload_to="protected/import_polon")
     zapisz_zmiany_do_bazy = models.BooleanField(default=False)
 
-    def on_reset(self):
+    def on_restart(self):
         self.wierszimportuplikuabsencji_set.all().delete()
 
-    def perform(self):
+    def run(self, p):
         from .core.import_absencji import analyze_file_import_absencji
 
-        analyze_file_import_absencji(self.plik.path, self, _LegacyProgressBridge(self))
+        _uruchom_import(self, p, analyze_file_import_absencji)
 
     def get_details_set(self):
         return self.wierszimportuplikuabsencji_set.all()
@@ -70,7 +105,7 @@ class WierszImportuPlikuAbsencji(models.Model):
         ordering = ("nr_wiersza",)
 
 
-class ImportPlikuPolon(ASGINotificationMixin, Operation):
+class ImportPlikuPolon(_LiveopsResetMixin, LiveOperation):
     rok = YearField()
     plik = models.FileField(max_length=255, upload_to="protected/import_polon")
     ukryj_niezmatchowanych_autorow = models.BooleanField(default=True)
@@ -93,13 +128,13 @@ class ImportPlikuPolon(ASGINotificationMixin, Operation):
         help_text="Uczelnia, dla której wykonywany jest import (multi-hosted).",
     )
 
-    def on_reset(self):
+    def on_restart(self):
         self.wierszimportuplikupolon_set.all().delete()
 
-    def perform(self):
+    def run(self, p):
         from import_polon.core import analyze_file_import_polon
 
-        analyze_file_import_polon(self.plik.path, self, _LegacyProgressBridge(self))
+        _uruchom_import(self, p, analyze_file_import_polon)
 
     def get_details_set(self):
         return WierszImportuPlikuPolon.objects.filter(parent=self)
