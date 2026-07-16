@@ -117,7 +117,10 @@ class ImportListIf(LiveOperation):
         self.get_details_set().delete()
 
     def get_details_set(self):
-        return self.importlistifrow_set.all().select_related("zrodlo")
+        # order_by("id") = kolejność wstawiania = kolejność wierszy w pliku;
+        # deterministyczna paginacja tabeli wyników (ImportListIfRow nie ma
+        # Meta.ordering, więc bez tego paginator ostrzega o niestabilności).
+        return self.importlistifrow_set.all().select_related("zrodlo").order_by("id")
 
 
 class ImportListIfRow(ImportRowMixin, models.Model):

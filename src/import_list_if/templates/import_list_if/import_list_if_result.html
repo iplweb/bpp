@@ -1,0 +1,20 @@
+{# Fragment wyniku (liveops result_template_name). Renderowany po p.result() #}
+{# jako OOB-swap #op-result oraz przy wejściu na zakończoną operację. #}
+{# Kontekst: operation + klucze z result_context (total, zintegrowano, #}
+{# niedopasowane, rok). #}
+<div class="panel callout success">
+    <h3>
+        <span class="fi-check"></span>
+        Import zakończony
+    </h3>
+    <p>
+        Przetworzono wierszy: <strong>{{ total }}</strong>,
+        zintegrowano: <strong>{{ zintegrowano }}</strong>,
+        niedopasowanych źródeł: <strong>{{ niedopasowane }}</strong>{% if rok %}
+        (rok {{ rok }}){% endif %}.
+    </p>
+    <a href="{% url 'import_list_if:importlistif-results' operation.pk %}"
+       class="button">
+        <span class="fi-list"></span> Zobacz pełne wyniki importu
+    </a>
+</div>

@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load render_table from django_tables2 %}
+{% extends "base.html" %}
 
 {% block extratitle %}
     Import list IF
@@ -6,7 +6,7 @@
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li><a href="{% url "import_pracownikow:index" %}">import list IF</a></li>
+    <li><a href="{% url "import_list_if:index" %}">import list IF</a></li>
 {% endblock %}
 
 {% block content %}{% load static %}
@@ -24,7 +24,7 @@
     <ul>
         {% for object in object_list %}
             <li>
-                <a href="{% url "import_list_if:importlistif-router" object.pk %}">plik {{ object.plik_xls.name }}</a>:
+                <a href="{{ object.get_absolute_url }}">plik {{ object.plik_xls.name }}</a>:
                 import utworzono {{ object.created_on }}{% if object.finished_on %}, ukończono {{ object.finished_on }}
                 {% if object.finished_successfully %}, zakończono pomyślnie{% else %}, zakończono z błędem{% endif %}
             {% endif %}
