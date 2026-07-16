@@ -1,0 +1,12 @@
+{# Fragment wyniku (liveops result_template_name). Renderowany po zakończeniu #}
+{# generacji jako OOB-swap #op-result oraz przy wejściu na zakończoną #}
+{# operację. Dla Reportu realny „wynik" to osobna tabela (-results): #}
+{# get_success_url() przenosi tam usera z JS. Ten panel to fallback no-JS. #}
+<div class="panel callout success">
+    <h3><span class="fi-check"></span> Raport gotowy</h3>
+    <p>Raport slotów został wygenerowany. Przechodzę do wyników…</p>
+    <a href="{% url 'raport_slotow:raportslotowuczelnia-results' operation.pk %}"
+       class="button primary">
+        <span class="fi-list"></span> Zobacz wyniki
+    </a>
+</div>
