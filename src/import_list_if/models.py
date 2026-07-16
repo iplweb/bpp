@@ -49,8 +49,8 @@ class ImportListIf(LiveOperation):
         # Punkt wejścia liveops (dawniej ImportOperation.perform()). Owijamy
         # ciało w transaction.atomic() dla parytetu z legacy task_perform:
         # OperationCancelled / XLSParseError cofa (rollback) już zapisane
-        # wiersze → import jest all-or-nothing. p.result() jest POZA blokiem
-        # (i tak defer push przez transaction.on_commit).
+        # wiersze → import jest all-or-nothing. p.result() jest POZA blokiem,
+        # więc panel wyniku dostaje policzone (zacommitowane) wiersze.
         with transaction.atomic():
             x = self.get_xls_import_file()
             total = x.count()

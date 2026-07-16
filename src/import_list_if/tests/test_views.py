@@ -100,3 +100,16 @@ def test_results_view_renderuje_wiersze_owner_scoped(
     client.force_login(inny)
     resp = client.get(url)
     assert resp.status_code == 404
+
+
+@pytest.mark.django_db
+def test_results_view_nieistniejacy_pk_daje_404(client, django_user_model):
+    """Nieistniejący pk rodzica → 404 (nie 500). Parytet z get_object_or_404
+    we wzorcu import_pracownikow."""
+    from uuid import uuid4
+
+    owner = _user_w_grupie(django_user_model, "owner")
+    client.force_login(owner)
+    url = reverse("import_list_if:importlistif-results", args=[uuid4()])
+    resp = client.get(url)
+    assert resp.status_code == 404

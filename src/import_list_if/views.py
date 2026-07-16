@@ -1,5 +1,6 @@
 from braces.views import GroupRequiredMixin
 from django.http import Http404
+from django.shortcuts import get_object_or_404
 from django.utils.functional import cached_property
 from django.views.generic import ListView
 from liveops.views import CreateLiveOperationView
@@ -52,7 +53,10 @@ class ImportListIfResultsView(BaseImportListIfMixin, ListView):
 
     @cached_property
     def parent_object(self):
-        o = self.model.objects.get(pk=self.kwargs["pk"])
+        # Nieistniejący pk → 404 (nie 500); parytet z get_object_or_404 we
+        # wzorcu import_pracownikow. Owner-mismatch też 404 (nie ujawniamy
+        # istnienia cudzej operacji).
+        o = get_object_or_404(self.model, pk=self.kwargs["pk"])
         if o.owner != self.request.user:
             raise Http404
         return o
