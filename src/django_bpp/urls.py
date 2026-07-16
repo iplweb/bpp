@@ -212,6 +212,10 @@ urlpatterns = (
             include(("nowe_raporty.urls", "nowe_raporty"), namespace="nowe_raporty"),
         ),
         path("raport_slotow/", include("raport_slotow.urls")),
+        path(
+            "ai-search/",
+            include(("ai_search.urls", "ai_search"), namespace="ai_search"),
+        ),
         url(r"^bpp/", include(("bpp.urls", "bpp"), namespace="bpp")),
         url(r"^oswiadczenia/", include("oswiadczenia.urls", namespace="oswiadczenia")),
         path(
