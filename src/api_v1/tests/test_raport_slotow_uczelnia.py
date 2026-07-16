@@ -77,6 +77,50 @@ def test_raport_slotow_uczelnia_other_user_report_not_visible():
     assert response.json()["count"] == 0
 
 
+@pytest.mark.django_db
+def test_raport_slotow_uczelnia_create_enqueue(django_capture_on_commit_callbacks):
+    """POST create: serializer zapisuje raport (owner z requestu) i kolejkuje
+    przez ``transaction.on_commit(inst.enqueue)``. Pod runnerem ``eager``
+    wykonanie callbacku on_commit odpala run() synchronicznie do stanu
+    terminalnego — dowód, że ścieżka create NIE woła już martwego
+    ``task_perform`` (regresja §4.5) i nie pęka na ``last_updated_on``.
+    """
+    user, pw = _make_api_user("user_raport_create")
+
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION=_basic_auth(user.username, pw))
+
+    url = reverse("api_v1:raport_slotow_uczelnia-list")
+    with django_capture_on_commit_callbacks(execute=True) as callbacks:
+        response = client.post(
+            url,
+            {
+                "od_roku": 2020,
+                "do_roku": 2020,
+                "akcja": RaportSlotowUczelnia.Akcje.SLOTY,
+                "slot": "1.0000",
+                "minimalny_pk": "0.00",
+                "dziel_na_jednostki_i_wydzialy": True,
+                "pokazuj_zerowych": False,
+            },
+            format="json",
+        )
+
+    assert response.status_code == 201, response.content
+    # enqueue został zaplanowany przez on_commit (run() dokłada własne
+    # on_commit-pushe, więc callbacków jest ≥1 — kluczowe: enqueue jest wśród).
+    assert any(
+        getattr(cb, "__func__", None) is RaportSlotowUczelnia.enqueue
+        for cb in callbacks
+    )
+
+    report = RaportSlotowUczelnia.objects.get(owner=user)
+    # Pod eager runnerem run() dobiegł do stanu terminalnego (bez danych w
+    # cache generuje 0 wierszy, ale kończy sukcesem) — czyli enqueue zadziałał.
+    assert report.finished_on is not None
+    assert report.finished_successfully is True
+
+
 def _basic_auth(username, password):
     import base64
 

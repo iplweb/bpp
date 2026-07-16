@@ -16,19 +16,25 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator
-from django.db import models
+from django.db import models, transaction
+from django.urls import reverse
+from liveops.models import LiveOperation
 
 from bpp.core import zbieraj_sloty
 from bpp.fields import YearField
 from bpp.models import Autor, Cache_Punktacja_Autora_Query
 from bpp.models.uczelnia import do_roku_default
 from bpp.util import year_last_month
-from long_running.models import Report
-from long_running.notification_mixins import ASGINotificationMixin
 from raport_slotow.core import autorzy_zerowi
 
 
-class RaportSlotowUczelnia(ASGINotificationMixin, Report):
+class RaportSlotowUczelnia(LiveOperation):
+    # Kolizja nazw szablonów: class_to_snake("RaportSlotowUczelnia") =
+    # "raport_slotow_uczelnia", więc auto host-template pokryłby się z
+    # istniejącym szablonem tabeli wyników (raport_slotow_uczelnia.html).
+    # Dlatego host/result nazywamy JAWNIE.
+    host_template_name = "raport_slotow/raport_slotow_uczelnia_live.html"
+    result_template_name = "raport_slotow/raport_slotow_uczelnia_result.html"
     od_roku = YearField(default=year_last_month)
     # default = funkcja modułowa (stabilnie serializowalna) — patrz docstring
     # bpp.models.uczelnia.do_roku_default. Wcześniej bound-method managera
@@ -70,8 +76,17 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
          czyli bez punktacji. """,
     )
 
-    def on_reset(self):
+    def on_restart(self):
         self.raportslotowuczelniawiersz_set.all().delete()
+
+    def get_success_url(self):
+        # Ścieżka A: po zakończeniu (FINISHED_OK) liveops.js przenosi usera
+        # prosto na tabelę wyników (osobna strona ``-results``). Wynik Reportu
+        # to wiersze w bazie, nie panel inline — result-fragment jest tylko
+        # fallbackiem no-JS.
+        return reverse(
+            "raport_slotow:raportslotowuczelnia-results", kwargs={"pk": self.pk}
+        )
 
     def clean(self):
         if self.od_roku > self.do_roku:
@@ -105,7 +120,14 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
                     }
                 )
 
-    def create_report(self):  # noqa: C901 (pre-existing complexity)
+    def run(self, p):  # noqa: C901 (pre-existing complexity)
+        # Generacja raportu jest all-or-nothing: liveops.task_run NIE owija
+        # run() w transakcję (long_running owijało), więc robimy to sami —
+        # inaczej błąd w połowie zostawiłby częściowe wiersze.
+        with transaction.atomic():
+            self._generuj(p)
+
+    def _generuj(self, p):  # noqa: C901 (pre-existing complexity)
         # lista wszystkich autorow z punktacja z okresu od-do roku
         lst = "autor_id", "dyscyplina_id"
         if self.dziel_na_jednostki_i_wydzialy:
@@ -161,8 +183,9 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
                 avg=avg,
             )
 
-            if not n % 10:
-                self.send_progress(n * 100.0 / total)
+            if total:
+                # Progress.percent ma wbudowany throttling — nie trzeba %10.
+                p.percent(int(n * 100 / total))
 
         if self.pokazuj_zerowych:
             zerowi = autorzy_zerowi(
