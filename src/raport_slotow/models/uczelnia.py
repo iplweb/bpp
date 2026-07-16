@@ -147,6 +147,12 @@ class RaportSlotowUczelnia(LiveOperation):
         total = kombinacje.count()
 
         for n, res in enumerate(kombinacje):
+            # Reaguj na „Anuluj": p.percent() nie sprawdza cancel_requested
+            # (robi to tylko p.track()), więc bez tego przycisk byłby no-op
+            # mid-run. OperationCancelled leci z bloku atomic w run() →
+            # rollback już-zapisanych wierszy (all-or-nothing).
+            p.check_cancelled()
+
             if self.dziel_na_jednostki_i_wydzialy:
                 autor_id, dyscyplina_id, jednostka_id = res
             else:

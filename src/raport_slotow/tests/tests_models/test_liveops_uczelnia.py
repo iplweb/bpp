@@ -57,6 +57,26 @@ def test_run_generuje_wiersze(rekord_slotu, rok, raport_slotow_uczelnia):
 
 
 @pytest.mark.django_db
+def test_run_anulowanie_rollback(rekord_slotu, rok, raport_slotow_uczelnia):
+    """„Anuluj" w trakcie generacji → OperationCancelled + rollback wierszy
+    (all-or-nothing). p.check_cancelled() na szczycie pętli reaguje na
+    cancel_requested, którego p.percent() nie sprawdza."""
+    from liveops.progress import OperationCancelled
+
+    raport_slotow_uczelnia.od_roku = rok
+    raport_slotow_uczelnia.do_roku = rok
+    raport_slotow_uczelnia.save()
+
+    # cancel_after=0 → 1. wywołanie check_cancelled (1. iteracja pętli) rzuca.
+    with pytest.raises(OperationCancelled):
+        raport_slotow_uczelnia.run(MockProgress(raport_slotow_uczelnia, cancel_after=0))
+
+    assert RaportSlotowUczelniaWiersz.objects.count() == 0, (
+        "anulowanie musi cofnąć już-zapisane wiersze (atomic rollback)"
+    )
+
+
+@pytest.mark.django_db
 def test_run_respektuje_scoping_uczelni(
     zwarte_dwie_uczelnie, jednostka, druga_uczelnia, rok
 ):

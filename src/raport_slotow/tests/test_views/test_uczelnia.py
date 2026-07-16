@@ -135,3 +135,13 @@ def test_RegenerujRaportuSlotowUczelnia_anon_302_bez_efektu(client, admin_user):
     assert "login" in res["Location"].lower()
     rsu.refresh_from_db()
     assert rsu.finished_on == first_finished_on
+
+
+@pytest.mark.django_db
+def test_UtworzRaportSlotowUczelnia_anon_302(client):
+    # Widok tworzenia dzieli ten sam _LiveopsNoPermissionCompatMixin co Regen
+    # (kolizja MRO braces vs liveops handle_no_permission). Anon → 302 na
+    # login, NIGDY 500 (TypeError z bez-argumentowego handle_no_permission).
+    res = client.get(reverse("raport_slotow:utworz-raport-slotow-uczelnia"))
+    assert res.status_code == 302
+    assert "login" in res["Location"].lower()
