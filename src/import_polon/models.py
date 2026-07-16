@@ -1,11 +1,41 @@
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.db.models import Count, Q
+from liveops.progress import Progress
 
 from bpp.fields import YearField
 from bpp.models import Autor, Dyscyplina_Naukowa
 from long_running.models import Operation
 from long_running.notification_mixins import ASGINotificationMixin
+
+
+class _LegacyProgressBridge(Progress):
+    """Most zgodności Fazy 1: rdzeń importu przyjmuje już ``Progress`` (liveops),
+    ale model nadal jest legacy ``Operation`` (bez pola ``cancel_requested``).
+
+    FORWARDUJE emisje do starego API ``ASGINotificationMixin`` — pasek postępu
+    na dotychczasowej stronie details działa dalej między Fazą 1 a 2. NIE jest
+    to czysty no-op ani ``TextProgress``: ``check_cancelled`` MUSI być no-op, bo
+    ``Progress.track`` wołałby ``refresh_from_db(fields=["cancel_requested"])``,
+    a legacy ``Operation`` tego pola nie ma → ``ValueError`` w realnej ścieżce
+    celery. Cała klasa znika w Fazie 2 (model przechodzi na ``LiveOperation``).
+    """
+
+    def _emit_percent(self, value: int) -> None:
+        self._operation.send_progress(value)
+
+    def status(self, text: str, level: str = "info") -> None:
+        self._operation.send_notification(text, level)
+
+    def log(self, line: str) -> None:
+        self._operation.send_notification(line, "info")
+
+    def error(self, message: str) -> None:
+        self._operation.send_notification(message, "error")
+
+    def check_cancelled(self) -> None:
+        # Legacy Operation nie ma pola cancel_requested — no-op (patrz docstring).
+        pass
 
 
 class ImportPlikuAbsencji(ASGINotificationMixin, Operation):
@@ -18,7 +48,7 @@ class ImportPlikuAbsencji(ASGINotificationMixin, Operation):
     def perform(self):
         from .core.import_absencji import analyze_file_import_absencji
 
-        analyze_file_import_absencji(self.plik.path, self)
+        analyze_file_import_absencji(self.plik.path, self, _LegacyProgressBridge(self))
 
     def get_details_set(self):
         return self.wierszimportuplikuabsencji_set.all()
@@ -69,7 +99,7 @@ class ImportPlikuPolon(ASGINotificationMixin, Operation):
     def perform(self):
         from import_polon.core import analyze_file_import_polon
 
-        analyze_file_import_polon(self.plik.path, self)
+        analyze_file_import_polon(self.plik.path, self, _LegacyProgressBridge(self))
 
     def get_details_set(self):
         return WierszImportuPlikuPolon.objects.filter(parent=self)

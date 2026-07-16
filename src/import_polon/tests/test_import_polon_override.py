@@ -8,6 +8,7 @@ when determining author types (B - badawczy, Z - non-research).
 import pandas as pd
 import pytest
 from django.core.files import File
+from liveops.testing import MockProgress
 from model_bakery import baker
 
 from bpp.models import Autor
@@ -59,7 +60,7 @@ def test_import_polon_override_badawczy_true(
         import_model.plik.save("test_override_true.xlsx", File(f))
 
     # Run import
-    analyze_file_import_polon(str(test_file), import_model)
+    analyze_file_import_polon(str(test_file), import_model, MockProgress(import_model))
 
     # Check if author was classified as type 'B' due to override
     ad = autor.autor_dyscyplina_set.get(rok=2023)
@@ -110,7 +111,7 @@ def test_import_polon_override_badawczy_false(
         import_model.plik.save("test_override_false.xlsx", File(f))
 
     # Run import
-    analyze_file_import_polon(str(test_file), import_model)
+    analyze_file_import_polon(str(test_file), import_model, MockProgress(import_model))
 
     # Check if author was classified as type 'Z' (not B) due to wymuszenie
     ad = autor.autor_dyscyplina_set.get(rok=2023)
@@ -157,7 +158,7 @@ def test_import_polon_no_override_uses_default_logic(
         import_model.plik.save("test_no_override.xlsx", File(f))
 
     # Run import
-    analyze_file_import_polon(str(test_file), import_model)
+    analyze_file_import_polon(str(test_file), import_model, MockProgress(import_model))
 
     # Check if author was classified as type 'B' using default logic
     ad = autor.autor_dyscyplina_set.get(rok=2023)
@@ -207,7 +208,7 @@ def test_import_polon_override_case_insensitive(
         import_model.plik.save("test_override_case.xlsx", File(f))
 
     # Run import
-    analyze_file_import_polon(str(test_file), import_model)
+    analyze_file_import_polon(str(test_file), import_model, MockProgress(import_model))
 
     # Check if author was classified as type 'B' despite different case
     ad = autor.autor_dyscyplina_set.get(rok=2023)
