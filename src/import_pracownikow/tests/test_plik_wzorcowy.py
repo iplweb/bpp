@@ -61,3 +61,23 @@ def test_naglowki_bez_smieci_formatujacych():
     for h in surowe:
         assert "\n" not in h
         assert h == h.strip()
+
+
+def test_plik_na_dysku_odzwierciedla_generator():
+    # Binarka na dysku musi odzwierciedlać aktualny generator — inaczej
+    # edycja generatora bez regeneracji przechodzi po cichu (stary plik
+    # wciąż się importuje). Porównanie po wartościach komórek, bo bajtowe
+    # by nie zadziałało (xlsx pakuje timestampy w zip).
+    import openpyxl
+
+    from import_pracownikow.management.commands.generuj_plik_wzorcowy import (
+        zbuduj_workbook,
+    )
+
+    gen = zbuduj_workbook()
+    disk = openpyxl.load_workbook(SCIEZKA_DOMYSLNA)
+    assert gen.sheetnames == disk.sheetnames
+    for sn in gen.sheetnames:
+        g = [[c.value for c in row] for row in gen[sn].iter_rows()]
+        d = [[c.value for c in row] for row in disk[sn].iter_rows()]
+        assert g == d, f"plik na dysku nieaktualny wzgledem generatora: {sn}"
