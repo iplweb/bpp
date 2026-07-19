@@ -16,6 +16,11 @@ from import_pracownikow.mapping import (
 _LOC = ("__xls_loc_sheet__", "__xls_loc_row__")
 
 
+def _tekst_komentarza(cell):
+    """Tekst komentarza komórki albo None — do porównania drift-guardem."""
+    return cell.comment.text if cell.comment is not None else None
+
+
 def _naglowki_ze_zrodla(zrodlo):
     pierwszy = next(iter(zrodlo.data()))
     return [k for k in pierwszy.keys() if k not in _LOC]
@@ -81,3 +86,9 @@ def test_plik_na_dysku_odzwierciedla_generator():
         g = [[c.value for c in row] for row in gen[sn].iter_rows()]
         d = [[c.value for c in row] for row in disk[sn].iter_rows()]
         assert g == d, f"plik na dysku nieaktualny wzgledem generatora: {sn}"
+        # Komentarze komórek to treść dla użytkownika (podpowiedź „TAK/NIE"
+        # itp.), przeniesiona ze specjalnie z nagłówków — porównujemy .text,
+        # bo sama równość wartości by tego rozjazdu nie złapała.
+        gk = [[_tekst_komentarza(c) for c in row] for row in gen[sn].iter_rows()]
+        dk = [[_tekst_komentarza(c) for c in row] for row in disk[sn].iter_rows()]
+        assert gk == dk, f"komentarze na dysku nieaktualne wzgledem generatora: {sn}"
