@@ -1,5 +1,11 @@
+import os
+
+import pytest
+from django.core.management.base import CommandError
+
 from import_pracownikow.management.commands.generuj_plik_wzorcowy import (
     NAGLOWKI,
+    Command,
     zbuduj_workbook,
 )
 
@@ -55,3 +61,18 @@ def test_zakladka_opis_kolumn_nie_wpada_w_detekcje_naglowka():
             1 for v in row if v is not None and normalize_cell_header(v) in zbior
         )
         assert trafienia < MIN_POINTS, f"wiersz wygląda jak nagłówek: {row}"
+
+
+def test_komenda_odmawia_zapisu_przez_symlink(tmp_path):
+    # Zapis przez dowiązanie symboliczne podążyłby za nim i nadpisał cel
+    # (np. fixture testowy na starym checkoutcie) — komenda musi odmówić.
+    cel = tmp_path / "cel.xlsx"
+    cel.write_text("nietkniete")
+    link = tmp_path / "link.xlsx"
+    os.symlink(cel, link)
+
+    with pytest.raises(CommandError):
+        Command().handle(output=str(link))
+
+    assert os.path.islink(link)  # symlink nietknięty
+    assert cel.read_text() == "nietkniete"  # cel nie nadpisany

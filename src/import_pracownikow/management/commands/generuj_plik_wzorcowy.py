@@ -12,7 +12,7 @@ zmianie generatora trzeba go zregenerować i zacommitować.
 
 import os
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from openpyxl import Workbook
 from openpyxl.comments import Comment
 from openpyxl.styles import Border, Font, Side
@@ -50,18 +50,25 @@ _KOMENTARZE = {
 
 # 4 wiersze przykładowe — różne przypadki (patrz spec). None = pusta komórka.
 # Kolejność wartości odpowiada NAGLOWKI.
+#
+# DANE CELOWO OCZYWIŚCIE TESTOWE. Importer nie odróżnia wierszy przykładowych
+# od danych klienta — kto zostawi te wiersze i doda swoje poniżej, zaimportuje
+# także przykłady. Dlatego: nazwiska/jednostki wprost „Przykładowy/Testowy",
+# BEZ realistycznego ORCID/PBN UUID/BPP ID (dopasowanie po identyfikatorze
+# mogłoby trafić w ISTNIEJĄCY rekord i go zmienić — po nazwisku tworzy najwyżej
+# nowy, oczywiście-testowy rekord). Numer kadrowy zostawiamy poglądowo.
 _WIERSZE = [
     # pełny etat, zatrudnienie trwa
     [
         9530,
-        "Kowalski",
+        "Przykładowy",
         "Jan",
         None,
         "lek. med.",
         "Asystent",
         "Badawczo-dydaktyczna",
-        "Katedra i Klinika Dermatologii",
-        "Wydział Lekarski",
+        "Przykładowa Katedra Testowa",
+        "Przykładowy Wydział",
         "2016-10-01",
         None,
         "TAK",
@@ -72,14 +79,14 @@ _WIERSZE = [
     # część etatu
     [
         9531,
-        "Nowak",
+        "Przykładowa",
         "Maria",
-        "0000-0002-2752-5144",
+        None,
         "dr n. med.",
         "Adiunkt",
         "Dydaktyczna",
-        "Katedra Testowa",
-        "Wydział Lekarski",
+        "Przykładowa Katedra Testowa",
+        "Przykładowy Wydział",
         "2018-02-01",
         None,
         "NIE",
@@ -90,14 +97,14 @@ _WIERSZE = [
     # zatrudnienie zakończone
     [
         9532,
-        "Wiśniewski",
+        "Testowy",
         "Adam",
         None,
         "prof. dr hab.",
         "Profesor",
         "Badawczo-dydaktyczna",
-        "Katedra Testowa",
-        "Wydział Lekarski",
+        "Przykładowa Katedra Testowa",
+        "Przykładowy Wydział",
         "2005-10-01",
         "2020-09-30",
         "TAK",
@@ -108,13 +115,13 @@ _WIERSZE = [
     # minimum danych (bez ORCID/PBN/BPP ID)
     [
         None,
-        "Lubelska",
+        "Testowa",
         "Anna",
         None,
         None,
         None,
         None,
-        "Katedra Testowa",
+        "Przykładowa Katedra Testowa",
         None,
         None,
         None,
@@ -205,5 +212,16 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         sciezka = options["output"] or SCIEZKA_DOMYSLNA
+        # Odmawiamy zapisu przez dowiązanie symboliczne: gdyby ktoś odpalił
+        # komendę na checkoutcie SPRZED wymiany symlinku (plik wskazywał
+        # wtedy na tests/testdata.xlsx), `save()` podążyłby za symlinkiem i
+        # nadpisał fixture testowy zamiast zastąpić dowiązanie. Trzeba wtedy
+        # najpierw usunąć symlink.
+        if os.path.islink(sciezka):
+            raise CommandError(
+                f"Ścieżka docelowa jest dowiązaniem symbolicznym: {sciezka}. "
+                f"Zapis podążyłby za symlinkiem i nadpisał jego cel. Usuń "
+                f"dowiązanie przed regeneracją."
+            )
         zbuduj_workbook().save(sciezka)
         self.stdout.write(f"Zapisano plik wzorcowy: {sciezka}")

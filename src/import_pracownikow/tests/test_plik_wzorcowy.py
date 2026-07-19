@@ -31,6 +31,15 @@ def test_plik_wzorcowy_nie_jest_symlinkiem():
     assert not os.path.islink(SCIEZKA_DOMYSLNA)
 
 
+def test_plik_wzorcowy_jest_faktycznie_xlsx():
+    # otworz_zrodlo wykrywa format po magic-bytes, nie po rozszerzeniu — plik
+    # bez sygnatury XLSX trafiłby do CSVSource (który zawsze zgłasza 1 arkusz)
+    # i przeszedłby resztę asercji mimo że NIE jest XLSX-em. Pilnujemy wprost.
+    from import_common.sources import wykryj_format
+
+    assert wykryj_format(SCIEZKA_DOMYSLNA) == "xlsx"
+
+
 def test_plik_wzorcowy_ma_dokladnie_jeden_arkusz_z_danymi():
     # Zakładka „Opis kolumn" NIE może wpaść w fuzzy-detekcję nagłówka
     # (inaczej sprawdz_pojedynczy_arkusz podniósłby BadNoOfSheetsException).
