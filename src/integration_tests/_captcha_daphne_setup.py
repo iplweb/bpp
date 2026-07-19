@@ -15,8 +15,9 @@ nie importuje niczego Django-owego na poziomie modułu — tylko wewnątrz
 funkcji, gdy apps są już gotowe.
 """
 
-# Stały klucz testowy (64 znaki hex) — captcha ON tylko dla testów w
-# test_zglos_captcha_gating.py. Re-eksportowany stamtąd jako `_TEST_KEY`.
+# Stały klucz testowy (64 znaki hex) — wymusza ALTCHA_HMAC_KEY w subprocesie
+# Daphne (patrz setup_captcha_daphne() niżej), żeby captcha była ON tylko
+# dla testów w test_zglos_captcha_gating.py.
 TEST_ALTCHA_HMAC_KEY = "0" * 64
 
 
