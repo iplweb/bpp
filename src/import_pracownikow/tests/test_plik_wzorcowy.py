@@ -1,0 +1,63 @@
+import os
+
+from import_common.sources import otworz_zrodlo
+from import_pracownikow.management.commands.generuj_plik_wzorcowy import (
+    SCIEZKA_DOMYSLNA,
+)
+from import_pracownikow.mapping import (
+    MIN_POINTS,
+    POLE_POMIN,
+    TRY_NAMES,
+    sprawdz_pojedynczy_arkusz,
+    waliduj_mapowanie,
+    zaproponuj_mapowanie,
+)
+
+_LOC = ("__xls_loc_sheet__", "__xls_loc_row__")
+
+
+def _naglowki_ze_zrodla(zrodlo):
+    pierwszy = next(iter(zrodlo.data()))
+    return [k for k in pierwszy.keys() if k not in _LOC]
+
+
+def test_plik_wzorcowy_nie_jest_symlinkiem():
+    # Rozdzielenie od fixture'a testowego (testdata.xlsx) musi się utrzymać.
+    assert not os.path.islink(SCIEZKA_DOMYSLNA)
+
+
+def test_plik_wzorcowy_ma_dokladnie_jeden_arkusz_z_danymi():
+    # Zakładka „Opis kolumn" NIE może wpaść w fuzzy-detekcję nagłówka
+    # (inaczej sprawdz_pojedynczy_arkusz podniósłby BadNoOfSheetsException).
+    zrodlo = otworz_zrodlo(SCIEZKA_DOMYSLNA, try_names=TRY_NAMES, min_points=MIN_POINTS)
+    assert zrodlo.liczba_arkuszy_z_danymi() == 1
+    sprawdz_pojedynczy_arkusz(zrodlo)  # nie podnosi wyjątku
+
+
+def test_plik_wzorcowy_mapuje_wszystkie_kolumny():
+    zrodlo = otworz_zrodlo(SCIEZKA_DOMYSLNA, try_names=TRY_NAMES, min_points=MIN_POINTS)
+    naglowki = _naglowki_ze_zrodla(zrodlo)
+    mapowanie = zaproponuj_mapowanie(naglowki)
+    assert POLE_POMIN not in mapowanie.values(), (
+        f"nierozpoznane kolumny: {[h for h, c in mapowanie.items() if c == POLE_POMIN]}"
+    )
+
+
+def test_plik_wzorcowy_przechodzi_walidacje_mapowania():
+    zrodlo = otworz_zrodlo(SCIEZKA_DOMYSLNA, try_names=TRY_NAMES, min_points=MIN_POINTS)
+    naglowki = _naglowki_ze_zrodla(zrodlo)
+    mapowanie = zaproponuj_mapowanie(naglowki)
+    assert waliduj_mapowanie(mapowanie) == []
+
+
+def test_naglowki_bez_smieci_formatujacych():
+    # Otwarcie źródła nie może podnosić wyjątku (spójność z resztą testów).
+    otworz_zrodlo(SCIEZKA_DOMYSLNA, try_names=TRY_NAMES, min_points=MIN_POINTS)
+    # Nagłówki są znormalizowane w źródle; sprawdzamy surowe komórki wprost.
+    import openpyxl
+
+    ws = openpyxl.load_workbook(SCIEZKA_DOMYSLNA)["Pracownicy"]
+    surowe = [ws.cell(row=1, column=c).value for c in range(1, 16)]
+    for h in surowe:
+        assert "\n" not in h
+        assert h == h.strip()
