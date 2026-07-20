@@ -399,11 +399,45 @@ def pytest_runtest_teardown(item):
     if wyciekle:
         komunikat = (
             f"[LEAK-GUARD/teardown] SPRAWCA: {item.nodeid} zostawił scommitowane "
-            f"wiersze w: {', '.join(wyciekle)}"
+            f"wiersze w: {', '.join(wyciekle)} | {_stan_izolacji(item)}"
         )
         _LEAK_GUARD["raporty"].append(komunikat)
         if os.environ.get("BPP_LEAK_GUARD_STRICT"):
             raise AssertionError(komunikat)
+
+
+def _stan_izolacji(item):
+    """Kontekst rozstrzygający MECHANIZM wycieku, dopisywany do raportu.
+
+    Trzy rzeczy, których nie da się wyczytać z samej listy tabel:
+
+    - ``tx`` — czy test był ``transaction=True``. Jeśli NIE, a mimo to zostawił
+      scommitowane wiersze, to jego atomic block nie objął tych zapisów.
+    - ``closed_in_tx`` / ``needs_rollback`` — czy połączenie zostało ZAMKNIĘTE
+      wewnątrz atomic bloku. ``CONN_MAX_AGE=0`` + ``close_old_connections`` na
+      ``request_finished`` potrafi to zrobić w teście używającym klienta HTTP;
+      Django ustawia wtedy te flagi, izolacja testu jest zerwana, a dalsze
+      zapisy lecą w autocommit. To główna hipoteza do rozstrzygnięcia.
+    - ``autocommit`` — stan końcowy połączenia.
+
+    Best-effort: diagnostyka nie może wywalić teardownu.
+    """
+    from django.db import connection
+
+    marker = item.get_closest_marker("django_db")
+    tx = bool(marker and marker.kwargs.get("transaction"))
+    try:
+        autocommit = connection.get_autocommit() if connection.connection else None
+    except Exception as exc:  # diagnostyka — nie propagujemy
+        autocommit = f"<{type(exc).__name__}>"
+    return (
+        f"tx={tx} "
+        f"in_atomic={getattr(connection, 'in_atomic_block', '?')} "
+        f"closed_in_tx={getattr(connection, 'closed_in_transaction', '?')} "
+        f"needs_rollback={getattr(connection, 'needs_rollback', '?')} "
+        f"autocommit={autocommit} "
+        f"poprzedni={_LEAK_GUARD['poprzedni']}"
+    )
 
 
 # =============================================================================
