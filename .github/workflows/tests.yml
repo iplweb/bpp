@@ -367,7 +367,15 @@ jobs:
         # 0-indexed (kept that way so the job names / required checks
         # don't change). Map group = shard + 1.
         GROUP=$((SHARD_ID + 1))
+        # GAŁĄŹ OBSERWACYJNA — NIE MERGOWAĆ DO dev.
+        # BPP_LEAK_GUARD_STRICT=1 zamienia wykrycie wycieku scommitowanych
+        # danych w twardy błąd testu, zamiast cichego TRUNCATE + raportu na
+        # końcu sesji. Na dev to zablokowałoby merge'e (przyczyna wycieku
+        # nieznana), więc siedzi na osobnej gałęzi — żeby ZOBACZYĆ pełny
+        # obraz: przy którym teście następuje wykrycie, czyje są wiersze
+        # i jaki jest wtedy stan izolacji połączenia.
         docker compose $COMPOSE_FILES run --rm \
+          -e BPP_LEAK_GUARD_STRICT=1 \
           test-runner uv run pytest \
             -n auto \
             --splits "$NUM_SHARDS" --group "$GROUP" \
