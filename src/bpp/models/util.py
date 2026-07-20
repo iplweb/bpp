@@ -129,9 +129,19 @@ class ModelZOpisemBibliograficznym(models.Model):
 
         return safe_opis_bibliograficzny_html(ret)
 
+    #: Atrybut, pod którym ``prefetch_autorzy_dla_opisu`` podstawia gotową
+    #: listę autorów. Ustawiany JAWNIE przez widok na czas renderowania jednej
+    #: strony — dzięki temu nie ma ryzyka, że pamięć podręczna przeżyje zapis
+    #: autorów na tej samej instancji (jak zrobiłaby to ``cached_property``).
+    PREFETCH_AUTORZY_ATTR = "_autorzy_dla_opisu_prefetch"
+
     def autorzy_dla_opisu(self):
         # Takie 'autorzy_set.all()' ale na potrzeby opisu bibliograficznego -- zaciąga
         # rekordy zależne za pomocą .select_related:
+
+        prefetched = getattr(self, self.PREFETCH_AUTORZY_ATTR, None)
+        if prefetched is not None:
+            return prefetched
 
         if not self.pk:
             return []
@@ -282,6 +292,48 @@ class ModelZOpisemBibliograficznym(models.Model):
 
     class Meta:  # noqa: DJ012 - kolejność zastana (sprzed naszego brancha).
         abstract = True
+
+
+def prefetch_dane_strony_rekordu(praca):
+    """Materializuje — jednym zapytaniem na zestaw — dane, po które szablon
+    strony rekordu sięga wielokrotnie: autorów opisu i streszczenia.
+
+    Wywoływane JAWNIE przez widok strony rekordu, tuż przed renderowaniem.
+    Nie jest to ``cached_property`` na modelu: pamięć podręczna ma żyć tylko
+    tyle, co jeden render, a nie tyle, co instancja modelu (inaczej kod,
+    który zapisuje autorów i od razu odświeża opis bibliograficzny na tej
+    samej instancji, zobaczyłby nieaktualne dane).
+    """
+    if praca is None:
+        return
+
+    from django.db.models import Prefetch, prefetch_related_objects
+    from django.db.models.fields.related_descriptors import (
+        ReverseManyToOneDescriptor,
+    )
+
+    descriptor = getattr(type(praca), "autorzy_set", None)
+    attr = getattr(praca, "PREFETCH_AUTORZY_ATTR", None)
+    if attr is not None and isinstance(descriptor, ReverseManyToOneDescriptor):
+        # Praca_Doktorska/Habilitacyjna mają 'autorzy_set' jako property
+        # zwracającą sztuczną listę — tam prefetch nie ma sensu i by się wywalił.
+        autorzy = praca.autorzy_set.model.objects.select_related(
+            "autor", "typ_odpowiedzialnosci"
+        ).order_by("kolejnosc")
+        prefetch_related_objects(
+            [praca],
+            Prefetch(
+                "autorzy_set",
+                queryset=autorzy,
+                to_attr=attr,
+            ),
+        )
+
+    try:
+        prefetch_related_objects([praca], "streszczenia")
+    except AttributeError:
+        # Patent, doktorat, habilitacja: brak relacji 'streszczenia'.
+        pass
 
 
 class ZapobiegajNiewlasciwymCharakterom(models.Model):

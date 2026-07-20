@@ -385,7 +385,18 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         * autor jest aktualnym współpracownikiem, jeżeli w polu aktualna_jednostka
           (pole obliczane na podstawie triggera bazodanowego) znajduje się ta sama
           jednostka co {self}
+
+        Domyślnie liczone od nowa przy każdym wywołaniu (kod modyfikujący
+        przypisania autorów musi widzieć świeży wynik). Widok strony jednostki
+        — gdzie wynik jest potrzebny dwa razy (``pracownicy()`` ORAZ
+        ``wspolpracowali()``) i nic się w międzyczasie nie zmienia — może
+        zawczasu wypełnić pamięć podręczną przez
+        ``prefetch_aktualnych_autorow()``.
         """
+        cached = getattr(self, "_aktualni_autorzy_cache", None)
+        if cached is not None:
+            return cached
+
         podstawowe_miejsce_pracy = set(
             Autor_Jednostka.objects.filter(
                 Q(
@@ -404,10 +415,22 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
 
         return podstawowe_miejsce_pracy.union(aktualni_autorzy)
 
+    def prefetch_aktualnych_autorow(self):
+        """Policz ``aktualni_autorzy()`` raz i zapamiętaj na tej instancji.
+
+        Wywoływane JAWNIE przez widok strony jednostki, tuż przed renderem —
+        dzięki temu domyślne zachowanie modelu (świeży odczyt) zostaje
+        nietknięte dla kodu, który zapisuje przypisania autorów."""
+        self._aktualni_autorzy_cache = self.aktualni_autorzy()
+
     def pracownicy(self):
         """Autorzy, którzy tą jednostkę mają wpisani jako AKTUALNA -- czyli
         aktualni pracownicy, obecni pracownicy"""
-        return Autor.objects.filter(pk__in=self.aktualni_autorzy(), pokazuj=True)
+        # select_related: strona jednostki wypisuje przy nazwisku
+        # 'aktualna_funkcja' — bez tego wychodzi N+1 po liście pracowników.
+        return Autor.objects.filter(
+            pk__in=self.aktualni_autorzy(), pokazuj=True
+        ).select_related("aktualna_funkcja")
 
     def wspolpracowali(self):
         """Autorzy, którzy popełnili jakiekolwiek prace z afiliacją na tę jednostkę,

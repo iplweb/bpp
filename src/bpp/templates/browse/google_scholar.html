@@ -39,7 +39,7 @@ These tags are recognized by Google Scholar and most reference managers
 {% elif praca.www %}
     <meta name="citation_pdf_url" content="{{ praca.www }}">
 {% endif %}
-{% if praca.streszczenia.exists %}
+{% if praca.streszczenia.all %}
     {% for streszczenie in praca.streszczenia.all %}
         {% if forloop.first %}
     <meta name="citation_abstract" content="{{ streszczenie.streszczenie|striptags|truncatewords:250 }}">
