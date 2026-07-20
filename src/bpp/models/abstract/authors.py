@@ -2,15 +2,18 @@
 Modele abstrakcyjne związane z odpowiedzialnością autorów.
 """
 
+import logging
 from decimal import Decimal
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import IntegrityError, models, transaction
 from django.db.models import CASCADE, SET_NULL, Q, Sum
 
 from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina, Dyscyplina_Naukowa
 from bpp.models.util import dodaj_autora
+
+logger = logging.getLogger(__name__)
 
 
 class BazaModeluOdpowiedzialnosciAutorow(models.Model):
@@ -109,10 +112,33 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
                 autor_id=self.autor_id, jednostka_id=self.jednostka_id
             ).exists()
         ):
-            Autor_Jednostka.objects.create(
-                autor_id=self.autor_id,
-                jednostka_id=self.jednostka_id,
-            )
+            try:
+                # Wlasny savepoint: w PostgreSQL IntegrityError uniewaznia
+                # CALA otaczajaca transakcje, wiec bez atomic() nie dalo by
+                # sie po nim kontynuowac zapisu autorstwa.
+                with transaction.atomic():
+                    Autor_Jednostka.objects.create(
+                        autor_id=self.autor_id,
+                        jednostka_id=self.jednostka_id,
+                    )
+            except IntegrityError:
+                # Wyscig: rownolegly zapis utworzyl to samo powiazanie w
+                # okienku miedzy exists() a create(). Stan docelowy —
+                # powiazanie autor-jednostka istnieje — jest osiagniety, wiec
+                # zapis autorstwa (najgoretsza sciezka w systemie) nie ma
+                # powodu sie wywalac uzytkownikowi w twarz. Jesli jednak
+                # powiazania nadal nie ma, IntegrityError mowil o czyms INNYM
+                # (np. zerwany FK) i musi poleciec dalej.
+                if not Autor_Jednostka.objects.filter(
+                    autor_id=self.autor_id, jednostka_id=self.jednostka_id
+                ).exists():
+                    raise
+                logger.debug(
+                    "Powiazanie autor=%s jednostka=%s utworzone rownolegle "
+                    "przez inna transakcje — pomijam.",
+                    self.autor_id,
+                    self.jednostka_id,
+                )
             # olewamy refresh_from_db i autor.aktualna_jednostka
 
         return super().save(*args, **kw)
