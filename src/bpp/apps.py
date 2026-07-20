@@ -67,10 +67,23 @@ class BppConfig(AppConfig):
         "Typ_KBN",
         "Jezyk",
         "Wydawca",
-        "Konferencja",
         "Seria_Wydawnicza",
         "Status_Korekty",
         "Typ_Odpowiedzialnosci",
+        # `Konferencja` CELOWO nie jest tu wymieniona — z tego samego powodu,
+        # dla którego nie ma jej w CACHEOPS (settings/production.py):
+        # `pbn_integrator.utils.conferences.integruj_konferencje` robi
+        # bezwarunkowy save() na KAŻDYM wierszu, każdy w osobnym atomic().
+        # Podpięta pod post_save oznaczałaby tyle bumpów generacji, ile
+        # konferencji w PBN — czyli wyzerowanie CAŁEGO cache'a stron
+        # publicznych na czas przebiegu integratora i zimny start po nim.
+        # A zyskać nie ma czego: nazwa konferencji nie pojawia się w ŻADNYM
+        # szablonie renderowanym przez widoki objęte cache'em (`lata`, `rok`,
+        # `autorzy`, `zrodla`, `jednostki`, `praca`) — widok materializowany
+        # `Rekord` niesie wyłącznie `konferencja_id`, nie nazwę. Inwalidacja
+        # nie mogłaby więc naprawić żadnej nieświeżej strony. Gdyby kiedyś
+        # nazwa konferencji trafiła na stronę publiczną, wróć tu — ale
+        # najpierw napraw integrator („zapisuj tylko gdy się zmieniło").
     )
 
     def _podepnij_inwalidacje_cache_publicznego(self):
