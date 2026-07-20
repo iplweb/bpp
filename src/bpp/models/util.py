@@ -329,11 +329,11 @@ def prefetch_dane_strony_rekordu(praca):
             ),
         )
 
-    try:
+    # Patent, doktorat, habilitacja nie mają relacji 'streszczenia'. Pytamy
+    # o obecność deskryptora zamiast łapać AttributeError — ten ostatni
+    # zamaskowałby prawdziwy błąd wyrzucony ze środka prefetcha.
+    if hasattr(type(praca), "streszczenia"):
         prefetch_related_objects([praca], "streszczenia")
-    except AttributeError:
-        # Patent, doktorat, habilitacja: brak relacji 'streszczenia'.
-        pass
 
 
 class ZapobiegajNiewlasciwymCharakterom(models.Model):

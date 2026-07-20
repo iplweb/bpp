@@ -135,7 +135,7 @@ def test_strona_jednostki_pracownicy_bez_powtorzen(client, uczelnia):
     # aktualna_funkcja ma być dociągnięta przez select_related, nie N+1
     # (strażnik na wypadek, gdyby ktoś usunął select_related z pracownicy())
     funkcje = _queries(ctx, 'FROM "bpp_funkcja_autora"')
-    assert len(funkcje) == 0, f"N+1 na aktualna_funkcja:\n" + "\n".join(funkcje)
+    assert len(funkcje) == 0, "N+1 na aktualna_funkcja:\n" + "\n".join(funkcje)
 
     # PRZED: 4 (aktualni_autorzy() liczone od nowa dla pracownicy()
     # i wspolpracowali(), każde po 3 wywołania z szablonu). PO: 1.
@@ -156,7 +156,7 @@ def test_strona_jednostki_podjednostki_bez_powtorzen(client, uczelnia):
         skupia_pracownikow=True,
         widoczna=True,
     )
-    for i in range(4):
+    for _ in range(4):
         baker.make(
             Jednostka,
             uczelnia=uczelnia,
@@ -208,23 +208,13 @@ def test_strona_autora_agregaty_liczone_raz(
         praca = any_ciagle(rok=rok, liczba_cytowan=10)
         praca.dodaj_autora(autor_jan_kowalski, jednostka)
 
-    # jawne wartości pól DecimalField — losowe z model_bakery przepełniają
-    # numeric(5,2) / numeric(4,2)
+    # procent_wykorzystania_slotow to jedyne numeric(5,2) w MetrykaAutora
+    # (reszta Decimali ma 10,4) — losowa wartość z model_bakery je przepełnia.
     for _ in range(3):
         baker.make(
             MetrykaAutora,
             autor=autor_jan_kowalski,
-            slot_maksymalny=Decimal("4.00"),
-            slot_nazbierany=Decimal("2.00"),
-            punkty_nazbierane=Decimal("100.00"),
-            srednia_za_slot_nazbierana=Decimal("50.00"),
-            slot_wszystkie=Decimal("3.00"),
-            punkty_wszystkie=Decimal("150.00"),
-            srednia_za_slot_wszystkie=Decimal("50.00"),
             procent_wykorzystania_slotow=Decimal("50.00"),
-            liczba_prac_wszystkie=3,
-            rok_min=2020,
-            rok_max=2022,
         )
 
     with CaptureQueriesContext(connection) as ctx:
@@ -247,9 +237,7 @@ def test_strona_autora_agregaty_liczone_raz(
     )
 
     # jednostki_gdzie_ma_publikacje — raz, nie dwa razy
-    jgmp = [
-        q for q in _queries(ctx, "bpp_autorzy_mat") if 'FROM "bpp_jednostka"' in q
-    ]
+    jgmp = [q for q in _queries(ctx, "bpp_autorzy_mat") if 'FROM "bpp_jednostka"' in q]
     assert len(jgmp) == 1, f"{len(jgmp)} zapytań o jednostki autora:\n" + "\n".join(
         jgmp
     )

@@ -3,14 +3,20 @@ Usunięto wielokrotnie powtarzane zapytania do bazy w publicznych szablonach
 tych samych metod modelu (``autorzy_dla_opisu``, ``pracownicy``,
 ``wspolpracowali``, ``liczba_cytowan``, ``jednostki_gdzie_ma_publikacje``,
 podjednostki, streszczenia, metryki ewaluacyjne), a każde odwołanie budowało
-świeży queryset, czyli osobny roundtrip do bazy. Dane są teraz materializowane
+świeży queryset, czyli osobne odpytanie warstwy danych. Dane są teraz materializowane
 raz — przez ``prefetch_related`` w widoku, przekazanie gotowych list przez
 kontekst oraz ``{% with %}`` w szablonach. Lista pracowników jednostki dostała
 dodatkowo ``select_related("aktualna_funkcja")``.
 
-Zmierzone liczby zapytań na żądanie (rekord z 6 autorami; jednostka z 12
-pracownikami; jednostka strukturalna z 4 podjednostkami; autor z 3 pracami
-i 3 metrykami):
+Poniższe liczby zmierzono na konfiguracji testowej, czyli przy WYŁĄCZONYM
+cacheops (``CACHEOPS_ENABLED = False`` w ``settings/test.py``). Na produkcji
+``bpp.jednostka`` oraz ``bpp.wydawnictwo_ciagle_streszczenie`` są w ``CACHEOPS``
+(``get``/``fetch``/``count``/``exists``), więc część usuniętych zapytań trafiała
+tam do Redisa, a nie do PostgreSQL — realny zysk dla strony strukturalnej
+jednostki i dla streszczeń będzie odpowiednio mniejszy. Wartości pokazują skalę
+powtórzeń, a nie gwarantowane przyspieszenie produkcyjne (rekord z 6 autorami;
+jednostka z 12 pracownikami; jednostka strukturalna z 4 podjednostkami; autor
+z 3 pracami i 3 metrykami):
 
 * strona rekordu: 43 → 41 zapytań ogółem; lista autorów opisu 4 → 1,
   streszczenia 6 → 1;
