@@ -30,7 +30,12 @@ class Wydawnictwo_Zwarte_AutorViewSet(
     UkryjStatusyKorektyRekorduMixin,
     viewsets.ReadOnlyModelViewSet,
 ):
-    queryset = Wydawnictwo_Zwarte_Autor.objects.all().select_related()
+    # Gołe select_related() ciągnęło WSZYSTKIE non-null FK (w tym te, których
+    # serializer w ogóle nie dotyka — hyperlinki czytają samo FK id). Jedyne
+    # pole wymagające joina to StringRelatedField typ_odpowiedzialnosci.
+    queryset = Wydawnictwo_Zwarte_Autor.objects.all().select_related(
+        "typ_odpowiedzialnosci"
+    )
     serializer_class = Wydawnictwo_Zwarte_AutorSerializer
     filterset_class = Wydawnictwo_Zwarte_AutorFilterSet
 
@@ -51,7 +56,14 @@ class Wydawnictwo_ZwarteViewSet(
     queryset = (
         Wydawnictwo_Zwarte.objects.exclude(nie_eksportuj_przez_api=True)
         .order_by("pk")
-        .select_related("status_korekty")
+        # Wszystkie StringRelatedField serializera (status_korekty + trójka
+        # openaccess) — każde pominięte pole to jedno zapytanie na wiersz.
+        .select_related(
+            "status_korekty",
+            "openaccess_tryb_dostepu",
+            "openaccess_wersja_tekstu",
+            "openaccess_licencja",
+        )
         .prefetch_related("autorzy_set", "nagrody", "slowa_kluczowe", "streszczenia")
     )
     serializer_class = Wydawnictwo_ZwarteSerializer

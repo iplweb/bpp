@@ -31,6 +31,22 @@ MODELE_DETAIL_VIEWNAME = {
     Praca_Habilitacyjna: "api_v1:praca_habilitacyjna-detail",
 }
 
+#: Minimalny zestaw kolumn ``Rekord`` potrzebny SzukajSerializer-owi.
+#: Mat-view ``bpp_rekord_mat`` ma ~50 kolumn, w tym tsvector ``search_index``
+#: (największa z nich) — bez ``only()`` każdy wiersz strony ciągnie je
+#: wszystkie. ``tytul_oryginalny_sort`` jest tu nie dla serializera, tylko
+#: dlatego, że sortuje po nim ORDER BY (przy DISTINCT Postgres wymaga, by
+#: wyrażenia sortujące były na liście SELECT).
+POLA_REKORDU_DLA_SZUKAJ = (
+    "id",
+    "slug",
+    "rok",
+    "opis_bibliograficzny_cache",
+    "ostatnio_zmieniony",
+    "tytul_oryginalny",
+    "tytul_oryginalny_sort",
+)
+
 
 class SzukajViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     """Rankowane wyszukiwanie pełnotekstowe po wszystkich typach publikacji.
@@ -92,15 +108,7 @@ class SzukajViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         qs = scope_rekord_api(qs, uczelnia, MODELE_DETAIL_VIEWNAME)
 
         # Nie ciągnij tsvectora ``search_index`` ani ~40 kolumn mat-view.
-        qs = qs.only(
-            "id",
-            "slug",
-            "rok",
-            "opis_bibliograficzny_cache",
-            "ostatnio_zmieniony",
-            "tytul_oryginalny",
-            "tytul_oryginalny_sort",
-        )
+        qs = qs.only(*POLA_REKORDU_DLA_SZUKAJ)
 
         # Deterministyczny tiebreaker: rank bywa remisowy → sam rank gubiłby/
         # dublował rekordy przy paginacji offsetem.
