@@ -368,19 +368,24 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
                     zakonczyl_prace=koniec_pracy,
                 )
         except IntegrityError:
-            # Wyscig: rownolegly zapis utworzyl to samo powiazanie (autor,
-            # jednostka) bez daty rozpoczecia w okienku miedzy exists() a
-            # create(). Chroni je czesciowy UniqueConstraint
-            # (rozpoczal_prace IS NULL). Jesli powiazanie faktycznie juz
-            # istnieje — stan docelowy jest osiagniety, wiec zachowujemy sie
-            # jak dotad (return None). Jesli jednak nadal go nie ma,
-            # IntegrityError mowil o czyms INNYM (np. zerwany FK, naruszony
-            # datowany unique_together) i musi poleciec dalej — inaczej realny
-            # blad danych podczas importu znikalby bez sladu jako cichy no-op.
+            # Wyscig: rownolegly zapis utworzyl DOKLADNIE ten sam wiersz
+            # (autor, jednostka, rozpoczal_prace=start_pracy) w okienku miedzy
+            # exists() a create(). Chroni go unique_together (autor, jednostka,
+            # rozpoczal_prace) — dla start_pracy=None dodatkowo czesciowy
+            # UniqueConstraint (rozpoczal_prace IS NULL). Post-check pyta o
+            # dokladnie ta trojke: dla braku roku (start_pracy=None) Django
+            # tlumaczy filter(rozpoczal_prace=None) na IS NULL, a dla podanego
+            # roku porownuje z konkretna data — wiec jedno wyrazenie obsluguje
+            # oba przypadki. Jesli wiersz faktycznie juz istnieje — stan
+            # docelowy jest osiagniety, wiec zachowujemy sie jak dotad
+            # (return None). Jesli jednak nadal go nie ma, IntegrityError mowil
+            # o czyms INNYM (np. zerwany FK) i musi poleciec dalej — inaczej
+            # realny blad danych podczas importu znikalby bez sladu jako cichy
+            # no-op.
             if not Autor_Jednostka.objects.filter(
                 autor=self,
                 jednostka=jednostka,
-                rozpoczal_prace__isnull=True,
+                rozpoczal_prace=start_pracy,
             ).exists():
                 raise
             logger.debug(

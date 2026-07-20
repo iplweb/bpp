@@ -184,3 +184,79 @@ def test_dodaj_jednostke_nie_polyka_obcego_integrityerror():
     assert not Autor_Jednostka.objects.filter(
         autor=autor, jednostka=jednostka
     ).exists()
+
+
+@pytest.mark.django_db
+def test_dodaj_jednostke_z_rokiem_nie_polyka_obcego_integrityerror():
+    """Genuine IntegrityError na sciezce DATOWANEJ (``rok=X``) PROPAGUJE.
+
+    Symetryczny do wariantu bez roku: ``create()`` rzuca IntegrityError, a
+    wiersz ``(autor, jednostka, rozpoczal_prace=date(X, 1, 1))`` nadal nie
+    istnieje — to nie wyscig, wiec wyjatek musi poleciec dalej, a nie zostac
+    polkniety jako cichy ``return None``.
+    """
+    autor = baker.make(Autor)
+    jednostka = baker.make(Jednostka)
+
+    with patch.object(
+        Autor_Jednostka.objects,
+        "create",
+        side_effect=IntegrityError(
+            "insert or update violates foreign key constraint"
+        ),
+    ):
+        with pytest.raises(IntegrityError):
+            autor.dodaj_jednostke(jednostka, rok=2020)
+
+    assert not Autor_Jednostka.objects.filter(
+        autor=autor, jednostka=jednostka
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_dodaj_jednostke_z_rokiem_wchlania_wyscig_na_datowanej_parze():
+    """Wyscig na datowanej parze -> ``return None`` (bez re-raise).
+
+    Regresja naprawiana tu: post-check pytal na sztywno o
+    ``rozpoczal_prace__isnull=True``, wiec dla ``rok=X`` (wiersz DATOWANY)
+    nigdy nie rozpoznawal prawdziwego wyscigu i re-raise'owal go jako 500.
+
+    Wiersz ``(autor, jednostka, rozpoczal_prace=date(2020, 1, 1))`` juz
+    istnieje (z ``zakonczyl_prace=None``, zeby interwalowy ``czy_juz_istnieje``
+    go NIE zlapal i doszlo do ``create()``). ``create()`` rzuca IntegrityError,
+    a post-check znajduje dokladnie te trojke -> ``return None``.
+    """
+    autor = baker.make(Autor)
+    jednostka = baker.make(Jednostka)
+
+    Autor_Jednostka.objects.create(
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2020, 1, 1),
+        zakonczyl_prace=None,
+    )
+
+    with patch.object(
+        Autor_Jednostka.objects,
+        "create",
+        side_effect=IntegrityError("duplicate key value violates unique constraint"),
+    ):
+        assert autor.dodaj_jednostke(jednostka, rok=2020) is None
+
+    # Nadal jeden wiersz — cichy no-op, bez propagacji:
+    assert (
+        Autor_Jednostka.objects.filter(autor=autor, jednostka=jednostka).count() == 1
+    )
+
+
+@pytest.mark.django_db
+def test_filter_rozpoczal_prace_none_generuje_is_null():
+    """``filter(rozpoczal_prace=None)`` musi kompilowac sie do ``IS NULL``.
+
+    Od tego zalezy poprawnosc post-checku dla sciezki bez roku (``start_pracy``
+    = None): gdyby Django wygenerowalo ``= NULL``, warunek nigdy nie zlapalby
+    NULL-owego wyscigu. Weryfikujemy to na wygenerowanym SQL.
+    """
+    sql = str(Autor_Jednostka.objects.filter(rozpoczal_prace=None).query)
+    assert "IS NULL" in sql
+    assert "= NULL" not in sql
