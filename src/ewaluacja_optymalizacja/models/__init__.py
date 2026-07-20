@@ -26,6 +26,7 @@ from .runs import (
 )
 from .status import (
     StatusDisciplineSwapAnalysis,
+    StatusOdpinaniaWszystkich,
     StatusOptymalizacjiBulk,
     StatusOptymalizacjiZOdpinaniem,
     StatusPrzegladarkaRecalc,
@@ -39,6 +40,7 @@ __all__ = [
     "OptimizationPublication",
     "OptimizationRun",
     "StatusDisciplineSwapAnalysis",
+    "StatusOdpinaniaWszystkich",
     "StatusOptymalizacjiBulk",
     "StatusOptymalizacjiZOdpinaniem",
     "StatusPrzegladarkaRecalc",

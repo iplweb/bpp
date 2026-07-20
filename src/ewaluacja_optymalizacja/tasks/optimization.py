@@ -512,7 +512,22 @@ def optimize_and_unpin_task(self, uczelnia_id, algorithm_mode="two-phase"):
     from ewaluacja_optymalizacja.models import (
         OptimizationAuthorResult,
         OptimizationRun,
+        StatusOptymalizacjiZOdpinaniem,
     )
+
+    # Bariera bazodanowa (niezależna od Redisa) — jeśli świeży przebieg już
+    # trwa, wycofaj się ZANIM wejdziesz w masowe odpinanie przypięć uczelni.
+    # Chroni przed duplikatem wpuszczonym po clear_locks na restarcie workera.
+    if not StatusOptymalizacjiZOdpinaniem.sprobuj_zajac_slot(self.request.id, logger):
+        logger.warning(
+            "optimize_and_unpin_task: świeży przebieg już trwa — pomijam "
+            "to uruchomienie (bariera bazodanowa)."
+        )
+        return {
+            "uczelnia_id": uczelnia_id,
+            "status": "already_running",
+            "message": "Optymalizacja z odpinaniem już trwa — pominięto duplikat.",
+        }
 
     uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
 

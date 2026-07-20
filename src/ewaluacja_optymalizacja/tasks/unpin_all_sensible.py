@@ -18,7 +18,34 @@ logger = logging.getLogger(__name__)
     bind=True,
     time_limit=7200,
 )
-def unpin_all_sensible_task(self, uczelnia_id, min_slot_filled=0.8):  # noqa: C901
+def unpin_all_sensible_task(self, uczelnia_id, min_slot_filled=0.8):
+    """Cienki wrapper z barierą bazodanową wokół ``_unpin_all_sensible``.
+
+    Bariera (niezależna od Redisa) chroni przed duplikatem masowego odpinania
+    wpuszczonym po ``clear_locks`` na restarcie dowolnego workera. Slot jest
+    zdejmowany w ``finally`` — w przeciwieństwie do optymalizacji z odpinaniem
+    widok tego zadania nie prowadzi własnego stanu statusu.
+    """
+    from ..models import StatusOdpinaniaWszystkich
+
+    if not StatusOdpinaniaWszystkich.sprobuj_zajac_slot(self.request.id, logger):
+        logger.warning(
+            "unpin_all_sensible_task: świeży przebieg już trwa — pomijam "
+            "to uruchomienie (bariera bazodanowa)."
+        )
+        return {
+            "uczelnia_id": uczelnia_id,
+            "status": "already_running",
+            "message": "Odpinanie sensownych możliwości już trwa — pominięto duplikat.",
+        }
+
+    try:
+        return _unpin_all_sensible(self, uczelnia_id, min_slot_filled)
+    finally:
+        StatusOdpinaniaWszystkich.zwolnij_slot(self.request.id)
+
+
+def _unpin_all_sensible(self, uczelnia_id, min_slot_filled=0.8):  # noqa: C901
     """
     Odpina wszystkie sensowne możliwości odpinania (makes_sense=True),
     czeka na denormalizację i przelicza metryki + analizę unpinning.
