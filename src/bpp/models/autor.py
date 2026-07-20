@@ -352,13 +352,21 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
             return czy_juz_istnieje.first()
 
         try:
-            ret = Autor_Jednostka.objects.create(
-                autor=self,
-                jednostka=jednostka,
-                funkcja=funkcja,
-                rozpoczal_prace=start_pracy,
-                zakonczyl_prace=koniec_pracy,
-            )
+            # Wlasny savepoint: ponizszy ``except IntegrityError`` istnial tu
+            # od dawna, ale bez atomic() BYL martwy — w PostgreSQL blad
+            # integralnosci uniewaznia cala otaczajaca transakcje, wiec
+            # "polkniecie" wyjatku zostawialo polamana transakcje. Odkad
+            # (autor, jednostka) z pusta data rozpoczecia jest chronione
+            # czesciowym UniqueConstraintem, ta sciezka realnie potrafi
+            # zlapac wyjatek (wywolanie ``dodaj_jednostke`` bez ``rok``).
+            with transaction.atomic():
+                ret = Autor_Jednostka.objects.create(
+                    autor=self,
+                    jednostka=jednostka,
+                    funkcja=funkcja,
+                    rozpoczal_prace=start_pracy,
+                    zakonczyl_prace=koniec_pracy,
+                )
         except IntegrityError:
             return
         self.defragmentuj_jednostke(jednostka)
@@ -677,6 +685,21 @@ class Autor_Jednostka(models.Model):
         verbose_name_plural = "powiązania autor-jednostka"
         ordering = ["autor__nazwisko", "rozpoczal_prace", "jednostka__nazwa"]
         unique_together = [("autor", "jednostka", "rozpoczal_prace")]
+        constraints = [
+            # unique_together powyzej deklaruje niezmiennik "jedno powiazanie
+            # na trojke", ale w PostgreSQL NULL-e w indeksie unikalnym sa
+            # wzajemnie rozroznialne — wiersze z rozpoczal_prace IS NULL nie
+            # byly wiec chronione niczym. Tymczasem check-then-create w
+            # bpp.models.abstract.authors (save() KAZDEGO autorstwa) tworzy
+            # dokladnie takie wiersze. Ten czesciowy indeks domyka luke;
+            # dotyczy WYLACZNIE wierszy z NULL-owa data rozpoczecia, wiec
+            # wielokrotne (datowane) okresy zatrudnienia sa nadal legalne.
+            models.UniqueConstraint(
+                fields=("autor", "jednostka"),
+                condition=models.Q(rozpoczal_prace__isnull=True),
+                name="bpp_autor_jednostka_bez_daty_unikalne",
+            ),
+        ]
         app_label = "bpp"
         # Niezmiennik "co najwyzej jedno podstawowe miejsce pracy na autora" NIE
         # jest tu egzekwowany przez UniqueConstraint (partial unique index byl
