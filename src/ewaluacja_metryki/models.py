@@ -250,6 +250,27 @@ class StatusGenerowania(models.Model):
     class Meta:
         verbose_name = "Status generowania metryk"
         verbose_name_plural = "Status generowania metryk"
+        constraints = [
+            # OneToOneField(null=True) daje zwykły indeks unikalny, a w
+            # PostgreSQL NULL-e są w nim wzajemnie rozróżnialne — nie
+            # ogranicza więc liczby wierszy z ``uczelnia IS NULL``. Dwa
+            # równoległe żądania tworzyły dwa takie wiersze i od tej chwili
+            # każde ``get_or_create()`` bez argumentu rzucało
+            # ``MultipleObjectsReturned`` (trwałe 500).
+            #
+            # Wyrażenie ``uczelnia IS NULL`` jest dla wierszy objętych
+            # warunkiem zawsze równe TRUE, więc częściowy indeks unikalny na
+            # nim dopuszcza dokładnie jeden taki wiersz. (Indeksu na samej
+            # kolumnie ``uczelnia`` użyć nie można — znów porównywałby NULL-e.)
+            models.UniqueConstraint(
+                models.ExpressionWrapper(
+                    models.Q(uczelnia__isnull=True),
+                    output_field=models.BooleanField(),
+                ),
+                condition=models.Q(uczelnia__isnull=True),
+                name="ewaluacja_metryki_status_jeden_wiersz_bez_uczelni",
+            ),
+        ]
 
     def __str__(self):
         if self.w_trakcie:
