@@ -56,6 +56,10 @@ def test_migracja_0010_deduplikuje_istniejace_nulle():
         StatusGenerowania.objects.create(uczelnia=None)
         StatusGenerowania.objects.create(uczelnia=None)
 
+        # UWAGA: przekazujemy realny rejestr aplikacji, nie historyczny stan
+        # migracji (`django-test-migrations` nie jest zależnością tego repo).
+        # Działa, dopóki pola `StatusGenerowania` się nie zmienią — po ich
+        # zmianie test zacznie sprawdzać co innego niż robi sama migracja.
         migracja.deduplikuj_statusy_bez_uczelni(django_apps, None)
 
         assert list(
@@ -64,9 +68,19 @@ def test_migracja_0010_deduplikuje_istniejace_nulle():
             )
         ) == [pierwszy.pk]
     finally:
+        # Kolejność ma znaczenie: NAJPIERW czyścimy tabelę, DOPIERO POTEM
+        # odtwarzamy indeks. Gdy asercja wyżej padnie przy kilku wierszach
+        # z uczelnia IS NULL, `CREATE UNIQUE INDEX` sam rzuciłby IntegrityError
+        # wewnątrz `finally` — przesłoniłby prawdziwy AssertionError i zostawił
+        # bazę bez indeksu. `pytest.ini` ma `--reuse-db`, więc taka baza
+        # przeżyłaby do kolejnych przebiegów i psuła je aż do `--create-db`.
+        StatusGenerowania.objects.all().delete()
+        # DDL zduplikowany ręcznie względem constraintu z modelu, zakładanego
+        # przez migrację 0011 (`AddConstraint` → UniqueConstraint o tej samej
+        # nazwie). Po zmianie constraintu w `ewaluacja_metryki.models`
+        # ZAKTUALIZUJ też ten SQL — inaczej rozjedzie się po cichu.
         with connection.cursor() as cursor:
             cursor.execute(
                 f"CREATE UNIQUE INDEX {INDEKS} ON ewaluacja_metryki_statusgenerowania "
                 "((uczelnia_id IS NULL)) WHERE uczelnia_id IS NULL"
             )
-        StatusGenerowania.objects.all().delete()

@@ -10,8 +10,12 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
+    # Bez krawędzi do `bpp` — autodetektor dopisywał tu czoło grafu `bpp`
+    # (0470), ale constraint dotyczy wyłącznie kolumny `uczelnia_id` w tabeli
+    # `ewaluacja_metryki_statusgenerowania`. Ta kolumna i FK do `bpp.Uczelnia`
+    # powstają w 0007, które zależy od `("bpp", "0428_cpd_uczelnia_not_null")`;
+    # ta krawędź jest tu dziedziczona łańcuchem 0010 → 0009 → 0008 → 0007.
     dependencies = [
-        ("bpp", "0470_indeksy_gin_i_funkcyjne"),
         ("ewaluacja_metryki", "0010_dedup_statusgenerowania_bez_uczelni"),
     ]
 

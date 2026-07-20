@@ -31,21 +31,21 @@ logger = logging.getLogger(__name__)
 def deduplikuj_statusy_bez_uczelni(apps, schema_editor):
     StatusGenerowania = apps.get_model("ewaluacja_metryki", "StatusGenerowania")
 
-    pk_i = list(
+    wszystkie_pk = list(
         StatusGenerowania.objects.filter(uczelnia__isnull=True)
         .order_by("pk")
         .values_list("pk", flat=True)
     )
-    if len(pk_i) < 2:
+    if len(wszystkie_pk) < 2:
         return
 
-    do_usuniecia = pk_i[1:]
-    StatusGenerowania.objects.filter(pk__in=do_usuniecia).delete()
+    pk_do_zostawienia, *pk_do_usuniecia = wszystkie_pk
+    StatusGenerowania.objects.filter(pk__in=pk_do_usuniecia).delete()
     logger.warning(
         "ewaluacja_metryki.StatusGenerowania: usunięto %s nadmiarowy(ch) "
         "wiersz(y) z uczelnia IS NULL, zostaje pk=%s",
-        len(do_usuniecia),
-        pk_i[0],
+        len(pk_do_usuniecia),
+        pk_do_zostawienia,
     )
 
 
