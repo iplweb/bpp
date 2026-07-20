@@ -10,6 +10,7 @@ from django.db import connection, transaction
 from django.utils import timezone
 
 from django_bpp.celery_tasks import GlobalSingleton
+from django_bpp.db_locks import advisory_lock_id
 
 from .utils.constants import MAX_PEWNOSC, MIN_PEWNOSC
 
@@ -52,20 +53,18 @@ SCAN_STALE_AFTER = SCAN_TIME_LIMIT + 15 * 60
 # Patrz `_przejmij_slot_skanu` — to on, a nie `select_for_update`, zapewnia
 # wzajemne wykluczanie (na pustej tabeli nie ma wierszy do zablokowania).
 #
-# Wartość wyprowadzona deterministycznie, żeby dało się ją odtworzyć i żeby
-# nikt nie użył przypadkiem tej samej gdzie indziej:
+# Wartość wyprowadzona deterministycznie (blake2s — patrz
+# `django_bpp.db_locks`), żeby dało się ją odtworzyć i żeby nikt nie użył
+# przypadkiem tej samej gdzie indziej.
 #
-#     hashlib.blake2s(
-#         b"deduplikator_autorow.scan_for_duplicates.slot", digest_size=8
-#     ) -> int.from_bytes(..., "big") & (2**63 - 1)
+# CELOWO nie `abs(hash(...))` — wbudowany `hash()` dla str jest solony
+# PYTHONHASHSEED-em, więc daje INNĄ wartość w każdym procesie Pythona, a
+# klucz liczony w ten sposób nie wyklucza niczego między workerami (każdy
+# zakłada lock na własnym numerze).
 #
-# CELOWO stała literalna, a nie `abs(hash(...))` — wbudowany `hash()` dla
-# str jest solony PYTHONHASHSEED-em, więc daje INNĄ wartość w każdym procesie
-# Pythona. Klucz liczony w ten sposób nie wyklucza niczego między workerami
-# (każdy zakłada lock na własnym numerze). W repo są takie miejsca
-# (pbn_downloader_app/tasks.py, pbn_wysylka_oswiadczen/views.py) — nie
-# powielamy tego wzorca.
-SCAN_SLOT_LOCK_ID = 8081800802642310148
+# Wynik jest bit-w-bit tą samą liczbą (8081800802642310148) co wcześniejsza
+# stała literalna — pilnuje tego test w `tests/test_advisory_lock_id.py`.
+SCAN_SLOT_LOCK_ID = advisory_lock_id("deduplikator_autorow.scan_for_duplicates.slot")
 
 
 def normalize_confidence(raw_score: int) -> float:
