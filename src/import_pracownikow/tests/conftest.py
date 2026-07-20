@@ -1,4 +1,3 @@
-import asyncio
 import os
 
 import pytest
@@ -13,34 +12,26 @@ from import_pracownikow.tests._helpers import unikalna_nazwa
 __all__ = ["unikalna_nazwa"]
 
 
-@pytest.fixture(autouse=True)
-def _bez_wycieklej_petli_zdarzen():
-    """Izoluje test od wyciekłej „bieżącej pętli zdarzeń" w wątku workera.
-
-    Testy Playwright (sync-API na greenletach) potrafią zostawić w wątku
-    ustawiony ``asyncio`` running-loop marker, który już się nie czyści. Gdy
-    taki test wypadnie na tym samym workerze xdist PRZED testem
-    ``import_pracownikow``, każde wywołanie ``asgiref.sync.async_to_sync``
-    w analizie (eager-runner liveops → ``WebProgress._push`` →
-    ``channel_layer.group_send``) wywala się na „You cannot use AsyncToSync in
-    the same thread as an async event loop"; wyjątek jest połknięty przez
-    runner, a stan importu utyka na ``zmapowany`` zamiast przejść dalej. Efekt:
-    flake zależny od kolejności shardowania (zielono w izolacji, czerwono po
-    teście Playwright na tym samym workerze).
-
-    Zerujemy marker NA CZAS testu (nasze testy są synchroniczne — nie potrzebują
-    działającej pętli), a po teście PRZYWRACAMY go w niezmienionej postaci, żeby
-    ewentualny kolejny test Playwright na tym workerze zastał swój współdzielony
-    stan pętli nietknięty. Prywatne ``asyncio.events._{get,set}_running_loop``
-    to jedyny sposób na ten marker — dopuszczalne w kodzie wyłącznie testowym.
-    """
-    zapisany = asyncio.events._get_running_loop()
-    if zapisany is not None:
-        asyncio.events._set_running_loop(None)
-    try:
-        yield
-    finally:
-        asyncio.events._set_running_loop(zapisany)
+# USUNIĘTY fixture ``_bez_wycieklej_petli_zdarzen``.
+#
+# Zerował marker running-loop na czas testu i PRZYWRACAŁ go w ``finally``,
+# żeby obejść wyciek markera z sync-API Playwrighta (flake „You cannot use
+# AsyncToSync in the same thread as an async event loop" w eager-runnerze
+# liveops).
+#
+# Okazał się przyczyną GORSZEGO problemu: Django trzyma połączenia w
+# ``asgiref.local.Local(thread_critical=True)``, którego magazyn zależy od
+# ``asyncio.get_running_loop()``. Przestawianie markera przy żywych
+# połączeniach przerzucało zapisy testu na INNE połączenie — bez atomic bloku,
+# w autocommit — więc dane commitowały się mimo ``django_db`` i wyciekały do
+# kolejnych testów na tym workerze. Na CI: 79 wykryć, wszystkie w tym appie,
+# bo ten autouse obejmował WSZYSTKIE jego testy.
+#
+# Marker jest teraz kasowany U ŹRÓDŁA — po KAŻDYM teście, w
+# ``_sprzatnij_marker_petli`` (``src/conftest.py``), zanim wstanie ``db``
+# następnego testu. To usuwa oba problemy naraz: nieświeży marker nie dożywa
+# kolejnego testu, więc ani ``AsyncToSync`` nie ma się o co wywrócić, ani
+# magazyn połączeń nie przełącza się w trakcie testu.
 
 
 @pytest.fixture(autouse=True)
