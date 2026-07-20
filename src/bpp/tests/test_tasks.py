@@ -238,3 +238,42 @@ def test_usun_stare_proby_logowania_axes_respektuje_parametr_days():
     # Retencja 5 dni — ten sam wpis wypada.
     assert usun_stare_proby_logowania_axes(days=5) == 1
     assert not AccessAttempt.objects.filter(pk=attempt.pk).exists()
+
+
+@pytest.mark.django_db
+def test_usun_stare_proby_logowania_axes_kasuje_partiami(monkeypatch):
+    """Kasowanie idzie partiami (nie jednym .delete() po całym querysecie),
+    a mimo to sprząta CAŁY backlog i nie rusza świeżych wpisów."""
+    from axes.models import AccessAttempt
+
+    from bpp import tasks as bpp_tasks
+
+    # Partia mniejsza niż liczba wpisów → wymusza kilka iteracji pętli.
+    monkeypatch.setattr(bpp_tasks, "AXES_ACCESSATTEMPT_DELETE_BATCH", 2)
+
+    def _attempt(username, ua):
+        return AccessAttempt.objects.create(
+            username=username,
+            ip_address="10.0.0.1",
+            user_agent=ua,
+            get_data="",
+            post_data="",
+            failures_since_start=1,
+        )
+
+    now = timezone.now()
+    stare = [_attempt(f"bot{i}", f"bot{i}") for i in range(7)]
+    swieze = [_attempt(f"user{i}", f"ff{i}") for i in range(3)]
+
+    cutoff = now - timedelta(days=AXES_ACCESSATTEMPT_RETENTION_DAYS)
+    AccessAttempt.objects.filter(pk__in=[a.pk for a in stare]).update(
+        attempt_time=cutoff - timedelta(days=1)
+    )
+    AccessAttempt.objects.filter(pk__in=[a.pk for a in swieze]).update(
+        attempt_time=now - timedelta(days=1)
+    )
+
+    # 7 starych przy partii 2 = kilka iteracji; wszystkie muszą zniknąć.
+    assert usun_stare_proby_logowania_axes() == 7
+    assert not AccessAttempt.objects.filter(pk__in=[a.pk for a in stare]).exists()
+    assert AccessAttempt.objects.filter(pk__in=[a.pk for a in swieze]).count() == 3

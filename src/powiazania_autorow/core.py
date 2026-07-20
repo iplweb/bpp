@@ -55,13 +55,22 @@ def calculate_author_connections():
     publikację, patologia przy pracach z setkami współautorów).
 
     **Buduj obok, potem podmień.** Wynik self-joinów ląduje najpierw w tabeli
-    tymczasowej (``TEMP TABLE``, widocznej tylko dla tej sesji), POZA
-    transakcją podmiany. Dopiero gotowy wynik jest przepisywany do tabeli
-    docelowej w krótkiej transakcji ``DELETE`` + ``INSERT ... SELECT`` ze
-    staging-u. Dzięki temu okno, w którym ``AuthorConnection`` jest zablokowana
-    dla pisarzy (m.in. ``update_single_author_connections_task``), skraca się z
-    „czas liczenia + czas zapisu" do samego czasu przepisania wierszy.
-    Czytelnicy nie są blokowani w żadnym wariancie (MVCC).
+    tymczasowej (``TEMP TABLE``, widocznej tylko dla tej sesji), a dopiero
+    gotowy jest przepisywany do tabeli docelowej krótką sekwencją ``DELETE`` +
+    ``INSERT ... SELECT`` ze staging-u, owiniętą w ``atomic()``. Dzięki temu
+    okno, w którym ``AuthorConnection`` jest zablokowana dla pisarzy (m.in.
+    ``update_single_author_connections_task``), skraca się z „czas liczenia +
+    czas zapisu" do samego czasu przepisania wierszy. Czytelnicy nie są
+    blokowani w żadnym wariancie (MVCC).
+
+    ZASTRZEŻENIE: zysk występuje tylko wtedy, gdy funkcja jest wołana POZA
+    zewnętrzną transakcją — czyli na ścieżce produkcyjnej (zadanie Celery,
+    komenda zarządzająca). Gdy woła ją coś, co samo trzyma transakcję —
+    migracja ``0003_*`` (``RunPython`` jest domyślnie atomic) albo test pod
+    ``@pytest.mark.django_db`` — budowanie staging-u dzieje się WEWNĄTRZ tej
+    transakcji, ``atomic()`` poniżej degraduje się do savepointu i okno
+    blokady jest takie samo jak przed zmianą. Poprawność jest identyczna w
+    obu wariantach; różni się wyłącznie długość blokady.
 
     Semantyka: ``shared_publications_count`` = liczba WSPÓLNYCH publikacji
     (DISTINCT rekord), sumowana po typach prac. Para autorów zapisywana jest raz,
@@ -78,11 +87,16 @@ def calculate_author_connections():
 
     logger.info("Przeliczanie powiązań autorów (SQL)...")
     with connection.cursor() as cur:
-        # Faza 1 (długa, BEZ blokady na tabeli docelowej): policz wszystko do
+        # Faza 1 (długa, bez blokady na tabeli docelowej): policz wszystko do
         # tabeli tymczasowej. TEMP TABLE jest prywatna dla tej sesji i znika
         # przy jej zamknięciu; DROP na starcie zabezpiecza przed resztką po
         # poprzednim przebiegu w tej samej, długo żyjącej sesji workera.
-        cur.execute(f'DROP TABLE IF EXISTS "{staging}"')
+        #
+        # Kwalifikacja `pg_temp.` jest istotna: nieskwalifikowana nazwa jest
+        # rozwiązywana przez `search_path`, który przy PIERWSZYM przebiegu w
+        # sesji (brak jeszcze schematu tymczasowego) celuje w `public` — DROP
+        # mierzyłby wtedy w zwykłą tabelę o tej nazwie, nie w nasz staging.
+        cur.execute(f'DROP TABLE IF EXISTS pg_temp."{staging}"')
         cur.execute(
             f"""
             CREATE TEMP TABLE "{staging}" AS
@@ -114,12 +128,12 @@ def calculate_author_connections():
                          shared_publications_count, last_updated)
                     SELECT primary_author_id, secondary_author_id,
                            shared_publications_count, now()
-                      FROM "{staging}"
+                      FROM pg_temp."{staging}"
                     """
                 )
         finally:
             # Staging bywa duży — nie trzymamy go do końca życia sesji workera.
-            cur.execute(f'DROP TABLE IF EXISTS "{staging}"')
+            cur.execute(f'DROP TABLE IF EXISTS pg_temp."{staging}"')
 
     total = AuthorConnection.objects.count()
     logger.info("Przeliczono %s powiązań autorów.", total)

@@ -3,12 +3,16 @@ Higiena zadań w tle i retencji danych:
 * długo działające zadania cykliczne (przeliczanie powiązań autorów, skan
   duplikatów autorów, automatyczna przebudowa cache dopasowań PBN) dostały
   limity czasu i blokadę pojedynczej instancji — zawieszone zadanie nie
-  zablokuje już slotu workera na 6 godzin, a dwa równoległe przebiegi nie
-  skasują sobie nawzajem wyników;
+  zablokuje już slotu workera na 6 godzin;
+* skanowanie duplikatów autorów dostało dodatkowo barierę w bazie danych:
+  przebieg wycofuje się, gdy inny już trwa, i to ZANIM skasuje dotychczasowe
+  wyniki. Sama blokada w Redisie nie wystarczała, bo restart dowolnego
+  workera ją zwalniał. Porzucone przebiegi (po ubitym workerze) są
+  automatycznie przeterminowywane, więc nie blokują skanowania na zawsze;
 * przeliczanie powiązań autorów buduje wynik w tabeli tymczasowej i dopiero
   gotowy przepisuje do tabeli docelowej — czas, przez który tabela powiązań
   jest zablokowana dla zapisów, skrócił się z całego przeliczania do samego
-  przepisania wierszy;
+  przepisania wierszy (na ścieżce zadania cyklicznego);
 * dobowa przebudowa cache dopasowań PBN przesunięta z 3:30 na 4:30, żeby nie
   startowała równocześnie z porządkowaniem kolejności rekordów;
 * nieudane próby logowania (django-axes) są kasowane po 90 dniach — dotąd

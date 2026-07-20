@@ -51,7 +51,11 @@ def _zlicz_wspolautorow(model_autorstwa, author, connections):
     # odtwarza CAŁĄ tabelę AuthorConnection, więc dwa równoległe przebiegi
     # deptałyby sobie po wynikach.
     base=Singleton,
-    lock_expiry=POWIAZANIA_TIME_LIMIT,
+    # lock_expiry > time_limit: lock jest brany przy PUBLIKACJI zadania, a
+    # twardy kill dopiero w `start + time_limit`. Gdy zadanie poczeka w
+    # kolejce, lock wygasłby PRZED ubiciem — otwierając okno na duplikat.
+    # +5 min pokrywa realistyczny czas oczekiwania w kolejce.
+    lock_expiry=POWIAZANIA_TIME_LIMIT + 300,
     time_limit=POWIAZANIA_TIME_LIMIT,
     soft_time_limit=int(0.95 * POWIAZANIA_TIME_LIMIT),
 )

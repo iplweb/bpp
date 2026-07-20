@@ -39,7 +39,11 @@ def rebuild_match_cache_task(operation_pk):
     # przebiegi tworzyłyby dwie MatchCacheRebuildOperation i dublowały zapisy
     # do CachedScientistMatch.
     base=Singleton,
-    lock_expiry=AUTO_REBUILD_TIME_LIMIT,
+    # lock_expiry > time_limit: lock jest brany przy PUBLIKACJI zadania, a
+    # twardy kill dopiero w `start + time_limit`. Gdy zadanie poczeka w
+    # kolejce, lock wygasłby PRZED ubiciem — otwierając okno na duplikat.
+    # +5 min pokrywa realistyczny czas oczekiwania w kolejce.
+    lock_expiry=AUTO_REBUILD_TIME_LIMIT + 300,
     time_limit=AUTO_REBUILD_TIME_LIMIT,
     soft_time_limit=int(0.95 * AUTO_REBUILD_TIME_LIMIT),
 )
