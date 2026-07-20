@@ -231,6 +231,9 @@ TransactionTestCase._fixture_teardown = _fixture_teardown
 _LEAK_GUARD = {
     "conn": None,
     "poprzedni": "<start sesji>",
+    # Test DB poprzedzajacy BIEZACY — "poprzedni" jest nadpisywany na setupie
+    # biezacego testu, wiec w raporcie teardownowym wskazywalby sam siebie.
+    "poprzedni_przed": "<start sesji>",
     # Raporty zbieramy i drukujemy w pytest_sessionfinish (POZA per-test
     # capture pytest-a) — inaczej print z fixture'a jest łykany i NIEwidoczny
     # w logach CI (właśnie po to jest ta diagnostyka).
@@ -295,10 +298,45 @@ def _leak_guard_conn(settings_dict):
     return conn
 
 
+# Kolumna identyfikująca wiersz — żeby raport mówił CZYJE są wyciekłe dane
+# (dane testu, który raportuje, czy zupełnie inne). To rozstrzyga między
+# „izolacja tego testu padła" a „ktoś zapisuje asynchronicznie w tle".
+_LEAK_GUARD_ETYKIETY = {
+    "bpp_autor": "nazwisko",
+    "bpp_jednostka": "nazwa",
+    "bpp_uczelnia": "nazwa",
+    "bpp_bppuser": "username",
+    "bpp_stopiensluzbowy": "nazwa",
+    "bpp_stanowiskodydaktyczne": "nazwa",
+    "bpp_grupa_pracownicza": "nazwa",
+    "import_pracownikow_importpracownikow": "id::text",
+}
+
+
+def _leak_probki(cur, tabele):
+    """Dla każdej wyciekłej tabeli: liczba wierszy + próbka etykiet."""
+    out = []
+    for t in tabele:
+        kol = _LEAK_GUARD_ETYKIETY.get(t)
+        if not kol:
+            out.append(t)
+            continue
+        try:
+            cur.execute(f"SELECT count(*) FROM {t}")
+            ile = cur.fetchone()[0]
+            cur.execute(f"SELECT {kol} FROM {t} LIMIT 3")
+            probki = ", ".join(str(r[0])[:40] for r in cur.fetchall())
+            out.append(f"{t}(n={ile}: {probki})")
+        except Exception as exc:  # diagnostyka nie może wywalić teardownu
+            out.append(f"{t}(<{type(exc).__name__}>)")
+    return out
+
+
 def _leak_probe():
     """Sonduje ``_LEAK_GUARD_TABLES`` osobnym autocommit-połączeniem.
 
-    Zwraca listę tabel z COMMITTED wierszami i czyści je (TRUNCATE CASCADE).
+    Zwraca listę opisów tabel z COMMITTED wierszami (nazwa + liczba + próbka
+    etykiet) i czyści je (TRUNCATE CASCADE).
     """
     import psycopg2
     from django.db import connection
@@ -315,6 +353,8 @@ def _leak_probe():
                 if jest
             ]
             if wyciekle:
+                # Próbki POBIERAMY PRZED truncatem — potem już ich nie ma.
+                wyciekle = _leak_probki(cur, wyciekle)
                 # Bez RESTART IDENTITY — jak flush (_fixture_teardown używa
                 # reset_sequences=False); sekwencje rosną dalej, brak
                 # niespodzianek z pk=1.
@@ -358,6 +398,7 @@ def _neutralizuj_wyciekle_dane(request):
             f"{', '.join(wyciekle)}. Najprawdopodobniejszy sprawca (poprzedni "
             f"test DB na tym workerze): {_LEAK_GUARD['poprzedni']}"
         )
+    _LEAK_GUARD["poprzedni_przed"] = _LEAK_GUARD["poprzedni"]
     _LEAK_GUARD["poprzedni"] = request.node.nodeid
 
     # UWAGA: sonda teardownowa NIE może być tutaj (po ``yield``). Finalizery
@@ -443,7 +484,7 @@ def _stan_izolacji(item):
         f"closed_in_tx={getattr(connection, 'closed_in_transaction', '?')} "
         f"needs_rollback={getattr(connection, 'needs_rollback', '?')} "
         f"autocommit={autocommit} "
-        f"poprzedni={_LEAK_GUARD['poprzedni']}"
+        f"poprzedni={_LEAK_GUARD['poprzedni_przed']}"
     )
 
 
