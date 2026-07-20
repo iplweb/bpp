@@ -70,13 +70,20 @@ def test_RaportSlotowUczelnia_zerowi_autorzy(
     Autor_Dyscyplina.objects.create(
         rok=rok, autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina1
     )
-    Autor_Jednostka.objects.create(autor=autor_jan_kowalski, jednostka=jednostka)
+    # get_or_create: powiazanie moze juz istniec, bo zapis autorstwa
+    # (fixture ``rekord_slotu``) sam je zaklada, a duplikat pary
+    # (autor, jednostka) bez daty rozpoczecia jest teraz zabroniony.
+    Autor_Jednostka.objects.get_or_create(
+        autor=autor_jan_kowalski, jednostka=jednostka, rozpoczal_prace=None
+    )
 
     # Autor "zerowy", przypisanie do dyscypliny
     Autor_Dyscyplina.objects.create(
         rok=rok, autor=autor_jan_nowak, dyscyplina_naukowa=dyscyplina1
     )
-    Autor_Jednostka.objects.create(autor=autor_jan_nowak, jednostka=jednostka)
+    Autor_Jednostka.objects.get_or_create(
+        autor=autor_jan_nowak, jednostka=jednostka, rozpoczal_prace=None
+    )
 
     assert RaportSlotowUczelniaWiersz.objects.count() == 0
     raport_slotow_uczelnia.create_report()
