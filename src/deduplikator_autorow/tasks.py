@@ -6,7 +6,7 @@ from datetime import timedelta
 
 from celery import shared_task
 from celery.utils.log import get_task_logger
-from django.db import transaction
+from django.db import connection, transaction
 from django.utils import timezone
 
 from django_bpp.celery_tasks import GlobalSingleton
@@ -47,6 +47,25 @@ SCAN_TIME_LIMIT = 3 * 60 * 60
 # RUNNING zakleszczyłby skanowanie NA ZAWSZE — a to gorsze niż ryzyko, przed
 # którym się bronimy.
 SCAN_STALE_AFTER = SCAN_TIME_LIMIT + 15 * 60
+
+# Klucz Postgresowego advisory locka chroniącego „slot" skanu duplikatów.
+# Patrz `_przejmij_slot_skanu` — to on, a nie `select_for_update`, zapewnia
+# wzajemne wykluczanie (na pustej tabeli nie ma wierszy do zablokowania).
+#
+# Wartość wyprowadzona deterministycznie, żeby dało się ją odtworzyć i żeby
+# nikt nie użył przypadkiem tej samej gdzie indziej:
+#
+#     hashlib.blake2s(
+#         b"deduplikator_autorow.scan_for_duplicates.slot", digest_size=8
+#     ) -> int.from_bytes(..., "big") & (2**63 - 1)
+#
+# CELOWO stała literalna, a nie `abs(hash(...))` — wbudowany `hash()` dla
+# str jest solony PYTHONHASHSEED-em, więc daje INNĄ wartość w każdym procesie
+# Pythona. Klucz liczony w ten sposób nie wyklucza niczego między workerami
+# (każdy zakłada lock na własnym numerze). W repo są takie miejsca
+# (pbn_downloader_app/tasks.py, pbn_wysylka_oswiadczen/views.py) — nie
+# powielamy tego wzorca.
+SCAN_SLOT_LOCK_ID = 8081800802642310148
 
 
 def normalize_confidence(raw_score: int) -> float:
@@ -477,19 +496,31 @@ def _przejmij_slot_skanu(user, celery_task_id):
     Wpisy RUNNING starsze niż SCAN_STALE_AFTER są przeterminowywane na FAILED
     — inaczej jeden SIGKILL workera zakleszczyłby skanowanie na zawsze.
 
-    Całość w jednej transakcji z `select_for_update`, więc dwa workery
-    wchodzące tu równocześnie szeregują się na blokadzie wiersza, a nie
-    ścigają się między SELECT-em a INSERT-em.
+    Wzajemne wykluczanie stoi na `pg_advisory_xact_lock`, NIE na
+    `select_for_update`. To istotne: `SELECT ... FOR UPDATE` blokuje
+    ZNALEZIONE wiersze, a gdy żaden skan nie trwa, zbiór wynikowy jest PUSTY —
+    nie ma czego zablokować i wszystkie równoległe transakcje przechodzą dalej,
+    każda tworząc własny wpis RUNNING (phantom read). Czyli dokładnie w
+    jedynym momencie, w którym bariera ma coś robić, `select_for_update` jest
+    dekoracją. Advisory lock jest zakładany na UMOWNYM obiekcie, który istnieje
+    niezależnie od wierszy, więc działa też przy pustej tabeli. Wariant
+    `_xact_` zwalnia się sam na COMMIT/ROLLBACK i przy zerwaniu połączenia,
+    więc nie wprowadza nowej klasy zombie.
     """
     from .models import DuplicateScanRun
 
     stale_cutoff = timezone.now() - timedelta(seconds=SCAN_STALE_AFTER)
 
     with transaction.atomic():
+        # MUSI być pierwszą instrukcją w transakcji — cała sekcja krytyczna
+        # (odczyt RUNNING + decyzja + INSERT) ma być pod tym lockiem.
+        with connection.cursor() as cur:
+            cur.execute("SELECT pg_advisory_xact_lock(%s)", [SCAN_SLOT_LOCK_ID])
+
         running = list(
-            DuplicateScanRun.objects.select_for_update()
-            .filter(status=DuplicateScanRun.Status.RUNNING)
-            .order_by("pk")
+            DuplicateScanRun.objects.filter(
+                status=DuplicateScanRun.Status.RUNNING
+            ).order_by("pk")
         )
 
         zywe = [r for r in running if r.started_at > stale_cutoff]
