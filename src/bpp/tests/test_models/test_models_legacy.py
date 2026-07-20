@@ -294,7 +294,10 @@ def test_autor_jednostka(autor_jednostka_setup):
     aj = Autor_Jednostka.objects.create(autor=a, jednostka=j, funkcja=f)
     assert str(aj) == "Lol Omg ↔ kierownik, L."
 
-    aj = Autor_Jednostka.objects.create(autor=a, jednostka=j, funkcja=None)
+    # Drugie powiazanie tej samej pary z pusta data rozpoczecia jest zabronione
+    # przez ``bpp_autor_jednostka_bez_daty_unikalne``, a i tak nie bylo tu
+    # potrzebne — sprawdzamy tylko ``__str__`` bez funkcji.
+    aj.funkcja = None
     assert str(aj) == "Lol Omg ↔ L."
 
     aj.rozpoczal_prace = datetime(2012, 1, 1)
