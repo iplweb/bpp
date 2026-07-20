@@ -34,6 +34,7 @@ from bpp.models import (
     Wydzial,
     Zrodlo,
 )
+from bpp.models.util import prefetch_dane_strony_rekordu
 from bpp.multiseek_registry import (
     JednostkaNadrzednaQueryObject,
     JednostkaQueryObject,
@@ -187,6 +188,11 @@ class JednostkaView(DetailView):
     template_name = "browse/jednostka.html"
     model = Jednostka
 
+    #: Listy podjednostek policzone w ``get()`` dla stylu strukturalnego —
+    #: szablon dostaje je przez kontekst, zamiast wołać metody modelu (i tak
+    #: potrzebne są tu na decyzję o przekierowaniu).
+    podjednostki = None
+
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
 
@@ -205,11 +211,23 @@ class JednostkaView(DetailView):
             if len(wszystkie) == 1:
                 return redirect("bpp:browse_jednostka", slug=wszystkie[0].slug)
 
+            self.podjednostki = {
+                "aktualne_podjednostki": aktualne,
+                "kola_naukowe": kola,
+                "historyczne_podjednostki": historyczne,
+            }
+
+        # Szablon woła zarówno pracownicy(), jak i wspolpracowali() — obie te
+        # metody potrzebują tego samego zbioru PK aktualnych autorów.
+        self.object.prefetch_aktualnych_autorow()
+
         context = self.get_context_data(object=self.object)
         return self.render_to_response(context)
 
     def get_context_data(self, **kwargs):
-        return super().get_context_data(typy=TYPY, **kwargs)
+        return super().get_context_data(
+            typy=TYPY, **(self.podjednostki or {}), **kwargs
+        )
 
 
 class AutorView(DetailView):
@@ -858,6 +876,11 @@ class PracaViewMixin:
             return HttpResponseRedirect(
                 reverse("bpp:browse_praca_by_slug", args=(self.object.slug,))
             )
+
+        # Szablon strony rekordu sięga po autorów opisu i po streszczenia
+        # z kilku miejsc (metadane w <head>, opis bibliograficzny, tabela
+        # informacji dodatkowych). Materializujemy je raz, przed renderem.
+        prefetch_dane_strony_rekordu(self.object.original)
 
         context = self.get_context_data(object=self.object)
         return self.render_to_response(context)
