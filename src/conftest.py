@@ -173,7 +173,7 @@ TransactionTestCase._fixture_teardown = _fixture_teardown
 #    workerze"). Heurystyka MYLI, gdy commit przyszedł z wątku/subprocesu już
 #    po teardownie sprawcy. NIE traktować tej etykiety jako dowodu.
 #
-# 2. sonda TEARDOWN (hook ``pytest_runtest_teardown`` niżej) — TWARDA atrybucja.
+# 2. sonda TEARDOWN (hook ``pytest_runtest_teardown`` niżej) — dokładny MOMENT
 #    Leci po pełnej finalizacji fixture'ów (czyli po flushu
 #    ``TransactionTestCase`` i po rollbacku ``django_db``). Jeśli w tym momencie
 #    tabele nie są puste, zostawił je TEN test. Zero heurystyki.
@@ -415,16 +415,28 @@ def _neutralizuj_wyciekle_dane(request):
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_teardown(item):
-    """Sonda PO pełnej finalizacji fixture'ów — atrybucja wycieku bez heurystyk.
+    """Sonda PO pełnej finalizacji fixture'ów — moment wykrycia bez heurystyk.
 
     Kod za ``yield`` leci gdy wszystkie finalizery (w tym flush
-    ``TransactionTestCase`` i rollback ``django_db``) już się wykonały. Jeśli
-    w tym momencie w bazie leżą scommitowane wiersze domenowe, to zostawił je
-    TEN test — nie „prawdopodobnie poprzedni", jak w sondzie setupowej.
+    ``TransactionTestCase`` i rollback ``django_db``) już się wykonały. To
+    dokładny, niezaheurystyzowany MOMENT wykrycia — w przeciwieństwie do sondy
+    setupowej, która zgaduje „poprzedni test DB".
 
-    ``BPP_LEAK_GUARD_STRICT=1`` zamienia raport w twardy błąd, żeby leaker
-    wywalał się w miejscu powstania (tryb polowania, nie domyślny — domyślnie
-    guard ma CI nie wywracać, tylko raportować i sprzątać).
+    UWAGA — moment wykrycia ≠ sprawca. Raport NIE nazywa tego testu sprawcą
+    i nie wolno tego pola tak czytać. Dane z CI (41 wykryć rozsypanych po 23
+    z ~30 plików appu, bez klastrowania) są niezgodne z hipotezą „ten konkretny
+    test jest zepsuty", a zgodne z asynchronicznym pisarzem, który trafia
+    w test akurat kończący się w danej chwili. Rozstrzyga dopiero WŁAŚCICIEL
+    wierszy — stąd próbki etykiet w raporcie (patrz ``_leak_probki``):
+    dane raportującego testu → padła jego izolacja; dane cudze → pisarz w tle.
+
+    (Ta ostrożność jest celowa: pierwotny guard nazywał „najprawdopodobniejszym
+    sprawcą" poprzedni test DB, co skierowało polowanie na martwy trop.
+    Nie powtarzamy tego z drugą sondą.)
+
+    ``BPP_LEAK_GUARD_STRICT=1`` zamienia raport w twardy błąd (tryb polowania,
+    nie domyślny — domyślnie guard ma CI nie wywracać, tylko raportować
+    i sprzątać).
     """
     yield
 
@@ -439,8 +451,11 @@ def pytest_runtest_teardown(item):
     wyciekle = _leak_probe()
     if wyciekle:
         komunikat = (
-            f"[LEAK-GUARD/teardown] SPRAWCA: {item.nodeid} zostawił scommitowane "
-            f"wiersze w: {', '.join(wyciekle)} | {_stan_izolacji(item)}"
+            f"[LEAK-GUARD/teardown] WYKRYTO PRZY: {item.nodeid} — po jego "
+            f"teardownie w bazie leżą scommitowane wiersze: "
+            f"{', '.join(wyciekle)} | {_stan_izolacji(item)} "
+            f"(to MOMENT wykrycia, NIE wskazanie sprawcy — rozstrzyga "
+            f"właściciel wierszy w próbkach wyżej)"
         )
         _LEAK_GUARD["raporty"].append(komunikat)
         if os.environ.get("BPP_LEAK_GUARD_STRICT"):
