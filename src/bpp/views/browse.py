@@ -94,28 +94,40 @@ def get_uczelnia_context_data(uczelnia, article_slug=None):
         # scope_rekord_do_uczelni. W single-host (jedna uczelnia) helper daje
         # no-op — rekordy bez wpisanego autorstwa pozostają liczone i widoczne,
         # parytet z zachowaniem sprzed multi-hosted (patrz test_single_host_parity).
-        context["recently_updated"] = (
-            scope_rekord_do_uczelni(Rekord.objects.all(), uczelnia)
-            .order_by("-ostatnio_zmieniony")
-            .distinct()[:12]
-        )
+        # BEZ ``.distinct()`` na tym poziomie: ``SELECT DISTINCT`` po
+        # bpp_rekord_mat porównuje 49 kolumn (w tym tsvector ``search_index``
+        # i duże ``opis_bibliograficzny_cache``), więc Postgres musi
+        # zmaterializować i posortować CAŁĄ tabelę zanim zadziała LIMIT 12 —
+        # indeks (ostatnio_zmieniony) idzie do kosza. Deduplikacja należy do
+        # ``scope_rekord_do_uczelni``: JOIN po M2M ``autorzy`` (jedyne źródło
+        # duplikatów tutaj) istnieje wyłącznie w trybie multi-host i helper
+        # dokłada tam ``.distinct()`` sam.
+        context["recently_updated"] = scope_rekord_do_uczelni(
+            Rekord.objects.all(), uczelnia
+        ).order_by("-ostatnio_zmieniony")[:12]
 
         recent_abstracts = Wydawnictwo_Ciagle_Streszczenie.objects.exclude(
             streszczenie__isnull=True
         ).exclude(streszczenie__exact="")
         # Ten sam guard co scope_rekord_do_uczelni, ale na querysecie Streszczeń
         # (helper przyjmuje qs Rekordów). Single-host / brak uczelni => bez filtra.
+        # ``.distinct()`` TYLKO w tej gałęzi: ``rekord__autorzy_set__…`` to
+        # JOIN po relacji wielowartościowej (rekord z N autorstwami tej samej
+        # uczelni dałby N kopii streszczenia). W single-install filtru nie ma,
+        # więc nie ma czego deduplikować.
         if uczelnia is not None and not tylko_jedna_uczelnia():
             recent_abstracts = recent_abstracts.filter(
                 rekord__autorzy_set__jednostka__uczelnia=uczelnia
-            )
+            ).distinct()
         context["recent_abstracts"] = recent_abstracts.order_by(
             "-rekord__ostatnio_zmieniony"
-        ).distinct()[:5]
+        )[:5]
 
-        context["total_rekord_count"] = (
-            scope_rekord_do_uczelni(Rekord.objects.all(), uczelnia).distinct().count()
-        )
+        # Bez ``.distinct()`` COUNT może pójść index-only scanem zamiast
+        # hashować 49 kolumn na wiersz; dedup — jak wyżej — jest w helperze.
+        context["total_rekord_count"] = scope_rekord_do_uczelni(
+            Rekord.objects.all(), uczelnia
+        ).count()
         context["current_year"] = timezone.now().date().year
 
     return context
@@ -306,7 +318,35 @@ class Browser(ListView):
                 qobj |= Q(**{self.literka_field + "__istartswith": x})
             qry = qry.filter(qobj)  # **{self.param + "__istartswith": literka})
 
-        return qry.distinct()
+        # BEZ ``.distinct()``: żadna ścieżka filtrowania nie zwraca tu
+        # zdublowanych wierszy, a Paginator wołał ``COUNT(DISTINCT …)`` po
+        # wszystkich kolumnach modelu (29 dla Autora) przy każdym wejściu i
+        # każdej kolejnej stronie. Ścieżka po ścieżce:
+        #
+        # * filtr „literki" — ``istartswith`` na własnej kolumnie modelu,
+        # * ``fulltext_filter`` dla ``Zrodlo`` i ``Jednostka`` — predykat na
+        #   jednokolumnowym tsvectorze, bez JOIN-a,
+        # * ``fulltext_filter`` dla ``Autor`` — UWAGA, tu JOIN JEST:
+        #   ``AutorManager.fulltext_annotate`` (``bpp/models/autor.py``)
+        #   nadpisuje wersję z ``FulltextSearchMixin`` i zwraca
+        #   ``Count("wydawnictwo_ciagle")``, co dokłada ``LEFT OUTER JOIN
+        #   bpp_wydawnictwo_ciagle_autor``. Wierszy nie mnoży wyłącznie
+        #   dlatego, że agregat wymusza ``GROUP BY`` po pk — deduplikacja
+        #   pochodzi stamtąd, nie z braku złączenia. Zmiana tej adnotacji na
+        #   NIEagregującą zostawi JOIN bez ``GROUP BY`` i wymaga własnej
+        #   deduplikacji (pilnuje tego
+        #   ``test_autorzy_view_fulltext_nie_mnozy_mimo_joinu_po_publikacjach``),
+        # * ``AutorzyView`` — ``Exists()``/``OuterRef`` (skorelowane
+        #   podzapytania) plus ``select_related`` po FK,
+        # * ``ZrodlaView`` — ``pk__in=<podzapytanie>`` (``IN``, nie JOIN),
+        # * ``JednostkiView`` — ``scope_jednostki_do_uczelni`` (równość po
+        #   skalarnym FK ``uczelnia``), ``widoczna``, ``parent=None``.
+        #
+        # Reguła na przyszłość: nowy filtr po relacji odwrotnej lub M2M ma
+        # przynieść własną deduplikację RAZEM z sobą (jak robi to
+        # ``scope_rekord_do_uczelni``), a nie przywracać bezwarunkowe
+        # ``.distinct()`` w klasie bazowej.
+        return qry
 
     def get_context_data(self, **kw):
         return super().get_context_data(
@@ -589,10 +629,16 @@ class LataView(ListView):
     def get_queryset(self):
         uczelnia = Uczelnia.objects.get_for_request(self.request)
         qs = scope_rekord_do_uczelni(Rekord.objects.all(), uczelnia)
+        # ``Count("id", distinct=True)``, NIE ``Count("*")``: w multi-host
+        # ``scope_rekord_do_uczelni`` dokłada JOIN po M2M ``autorzy``, więc
+        # ``Count("*")`` liczył wiersze złączenia — rekord z dwoma
+        # autorstwami tej samej uczelni podbijał licznik roku do 2.
+        # ``.distinct()`` z helpera tego nie ratuje: dotyczy zwiniętych par
+        # ``(rok, count)``, a nie wierszy wchodzących do agregatu.
         return [
             {"year": row["rok"], "count": row["count"]}
             for row in qs.values("rok")
-            .annotate(count=Count("*"))
+            .annotate(count=Count("id", distinct=True))
             .filter(count__gt=0)
             .order_by("-rok")
         ]
