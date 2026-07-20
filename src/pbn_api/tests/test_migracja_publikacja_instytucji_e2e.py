@@ -33,28 +33,42 @@ def test_migracja_przechodzi_na_bazie_z_duplikatami():
     # cofnij się PRZED constraint — dopiero wtedy baza wpuści duplikaty
     MigrationExecutor(connection).migrate([PRZED])
 
-    trojka = {
-        "institutionId": baker.make(Institution),
-        "publicationId": baker.make(Publication),
-        "insPersonId": baker.make(Scientist),
-    }
-    zostaje = PublikacjaInstytucji.objects.create(**trojka)
-    PublikacjaInstytucji.objects.create(**trojka)
-    PublikacjaInstytucji.objects.create(**trojka)
+    try:
+        trojka = {
+            "institutionId": baker.make(Institution),
+            "publicationId": baker.make(Publication),
+            "insPersonId": baker.make(Scientist),
+        }
+        zostaje = PublikacjaInstytucji.objects.create(**trojka)
+        PublikacjaInstytucji.objects.create(**trojka)
+        PublikacjaInstytucji.objects.create(**trojka)
 
-    assert PublikacjaInstytucji.objects.filter(**trojka).count() == 3
+        assert PublikacjaInstytucji.objects.filter(**trojka).count() == 3
 
-    # to jest właściwy asert: migracja NIE wywala się na bazie z duplikatami
-    executor = MigrationExecutor(connection)
-    executor.loader.build_graph()
-    executor.migrate([PO])
+        # to jest właściwy asert: migracja NIE wywala się na bazie z duplikatami
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        executor.migrate([PO])
 
-    assert PublikacjaInstytucji.objects.filter(**trojka).count() == 1
-    assert PublikacjaInstytucji.objects.filter(pk=zostaje.pk).exists()
-    assert (
-        _policz(
-            "SELECT count(*) FROM pg_constraint WHERE conname=%s",
-            NAZWA_CONSTRAINTU,
+        assert PublikacjaInstytucji.objects.filter(**trojka).count() == 1
+        assert PublikacjaInstytucji.objects.filter(pk=zostaje.pk).exists()
+        assert (
+            _policz(
+                "SELECT count(*) FROM pg_constraint WHERE conname=%s",
+                NAZWA_CONSTRAINTU,
+            )
+            == 1
         )
-        == 1
-    )
+    finally:
+        # Baza MUSI wrócić na docelową migrację (0079) niezależnie od tego,
+        # czy powyższe asercje przeszły — inaczej worker testowy zostaje na
+        # 0077 (bez constraintu) i psuje WSZYSTKIE kolejne testy w tym
+        # procesie kaskadą niezrozumiałych błędów zamiast jednego czytelnego
+        # AssertionError z bloku try.
+        #
+        # Same dane testowe nie wymagają tu ręcznego kasowania: migracja
+        # 0078 (RunPython dedup) dedupikuje dowolną liczbę pozostawionych
+        # wierszy trójki jako część forward-migrate, więc nie ma osobnego
+        # kroku „usuń dane" przed „odtwórz stan", który mógłby rzucić
+        # wyjątkiem maskującym oryginalny AssertionError z bloku try.
+        MigrationExecutor(connection).migrate([PO])
