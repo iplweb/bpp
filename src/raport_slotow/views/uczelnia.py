@@ -1,22 +1,18 @@
 import urllib
 
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import Http404
+from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
+from django.utils.functional import cached_property
+from django.views.generic import ListView
 from django_filters.views import FilterMixin
 from django_tables2 import RequestConfig, SingleTableMixin
 from formdefaults.helpers import FormDefaultsMixin
+from liveops.views import CreateLiveOperationView, RestartView
 
 from bpp.views.mixins import UczelniaSettingRequiredMixin
 from django_bpp.version import VERSION
-from long_running.tasks import perform_generic_long_running_task
-from long_running.views import (
-    CreateLongRunningOperationView,
-    LongRunningDetailsView,
-    LongRunningOperationsView,
-    LongRunningResultsView,
-    LongRunningRouterView,
-    RestartLongRunningOperationView,
-)
 from nowe_raporty.views import BaseRaportAuthMixin
 from raport_slotow.filters import (
     RaportSlotowUczelniaBezJednostekIWydzialowFilter,
@@ -31,13 +27,48 @@ from raport_slotow.tables import (
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 from raport_slotow.util import MyExportMixin
 
+# Stany terminalne liveops — restart/regen dozwolony TYLKO w nich (guard §8.4).
+_STANY_TERMINALNE = ("FINISHED_OK", "FINISHED_ERROR", "CANCELLED")
 
-class ListaRaportSlotowUczelnia(
-    BaseRaportAuthMixin, FormDefaultsMixin, LongRunningOperationsView
-):
+
+class _LiveopsNoPermissionCompatMixin:
+    """Ujednolica sygnaturę ``handle_no_permission`` przy łączeniu naszych
+    braces-owych mixinów (``UczelniaSettingRequiredMixin`` → braces
+    ``AccessMixin``) z liveops ``BaseLiveOperationMixin`` (Django ``AccessMixin``).
+
+    liveops woła ``self.handle_no_permission()`` BEZ argumentu (Django-style),
+    a braces wymaga ``request`` — kolizja w MRO (braces wygrywa, bo jest
+    wcześniej) → ``TypeError`` dla niezalogowanego. Nadpisujemy metodą
+    tolerującą oba wywołania i zawsze przekierowującą na login (raise_exception
+    domyślnie False → redirect, jak w legacy)."""
+
+    def handle_no_permission(self, request=None):
+        from django.contrib.auth.views import redirect_to_login
+
+        return redirect_to_login(
+            self.request.get_full_path(),
+            self.get_login_url(),
+            self.get_redirect_field_name(),
+        )
+
+
+class ListaRaportSlotowUczelnia(BaseRaportAuthMixin, FormDefaultsMixin, ListView):
+    """Lista raportów bieżącego użytkownika (owner-scoped).
+
+    Dawniej long_running.LongRunningOperationsView (który dodatkowo KASOWAŁ
+    stare operacje > 10). Teraz zwykły owner-scoped ListView — housekeeping to
+    nie zadanie list-view. Strona live/postępu jest osobno, pod centralnym
+    ``liveops:live`` (link przez ``object.get_absolute_url``).
+    """
+
     uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
     title = "Raport slotów - uczelnia"
     model = RaportSlotowUczelnia
+
+    def get_queryset(self):
+        return RaportSlotowUczelnia.objects.filter(owner=self.request.user).order_by(
+            "-created_on"
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -46,20 +77,28 @@ class ListaRaportSlotowUczelnia(
 
 
 class UtworzRaportSlotowUczelnia(
+    _LiveopsNoPermissionCompatMixin,
     UczelniaSettingRequiredMixin,
     FormDefaultsMixin,
-    CreateLongRunningOperationView,
+    CreateLiveOperationView,
 ):
     template_name = "raport_slotow/index.html"
     form_class = UtworzRaportSlotowUczelniaForm
     uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
     title = "Raport slotów - uczelnia"
     model = RaportSlotowUczelnia
-    task = perform_generic_long_running_task
 
     def form_valid(self, form):
-        form.instance.uczelnia = uczelnia_dla_odczytu(self.request)
-        return super().form_valid(form)
+        # Scoping per-uczelnia (§8.1): łapiemy uczelnię z requestu (host →
+        # Site → Uczelnia; superuser może nadpisać ?uczelnia=) i utrwalamy PRZED
+        # save() — generacja biegnie w tle (bez requestu). Enqueue bezpośrednio
+        # (bez on_commit): tworzenie nie jest w atomic i brak ATOMIC_REQUESTS.
+        self.object = form.save(commit=False)
+        self.object.owner = self.request.user
+        self.object.uczelnia = uczelnia_dla_odczytu(self.request)
+        self.object.save()
+        self.object.enqueue()
+        return redirect(self.object.get_absolute_url())
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -67,24 +106,37 @@ class UtworzRaportSlotowUczelnia(
         return context
 
 
-class RouterRaportuSlotowUczelnia(BaseRaportAuthMixin, LongRunningRouterView):
-    uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
-    model = RaportSlotowUczelnia
-
-
-class SzczegolyRaportSlotowUczelnia(BaseRaportAuthMixin, LongRunningDetailsView):
-    # template_name = "raport_slotow/raport_slotow_uczelnia_szcz.html"
-    uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
-    export_formats = ["html", "xlsx"]
-    # filterset_class = RaportSlotowUczelniaFilter
-    model = RaportSlotowUczelnia
-
-
 class WygenerujPonownieRaportSlotowUczelnia(
-    BaseRaportAuthMixin, RestartLongRunningOperationView
+    _LiveopsNoPermissionCompatMixin, BaseRaportAuthMixin, RestartView
 ):
+    """Regeneracja raportu (POST-only, jak liveops RestartView).
+
+    URL ma tylko ``pk`` (bez ``op_type``), więc nadpisujemy ``get_object``
+    i rozwiązujemy model wprost, owner-scoped. Bramka: ``BaseRaportAuthMixin``
+    (grupa GR_RAPORTY_WYSWIETLANIE + owner-scope) — liveops REQUIRED_GROUP nie
+    jest ustawione, więc sam liveops NIE gejtuje.
+
+    Guard „reset tylko gdy skończone" (§8.4): liveops RestartView resetuje
+    BEZWARUNKOWO (on_restart kasuje wiersze + re-enqueue). Raport slotów nie ma
+    maszyny stanów, więc regen w połowie runu skasowałby wiersze, które biegnący
+    task jeszcze pisze. Resetujemy WYŁĄCZNIE gdy stan terminalny.
+    """
+
     uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
     model = RaportSlotowUczelnia
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(
+            RaportSlotowUczelnia, pk=self.kwargs["pk"], owner=self.request.user
+        )
+
+    def post(self, request, *args, **kwargs):
+        obj = self.get_object()
+        if obj.get_state() not in _STANY_TERMINALNE:
+            # Nie-skończony raport (biegnie / nie wystartował) — nic nie rób,
+            # tylko wróć na stronę live (jak legacy „reset tylko gdy finished").
+            return redirect(obj.get_absolute_url())
+        return super().post(request, *args, **kwargs)
 
 
 class SzczegolyRaportSlotowUczelniaListaRekordow(
@@ -92,7 +144,7 @@ class SzczegolyRaportSlotowUczelniaListaRekordow(
     LoginRequiredMixin,
     MyExportMixin,
     SingleTableMixin,
-    LongRunningResultsView,
+    ListView,
     FilterMixin,
 ):
     template_name = "raport_slotow/raport_slotow_uczelnia.html"
@@ -100,6 +152,17 @@ class SzczegolyRaportSlotowUczelniaListaRekordow(
     export_formats = ["html", "xlsx"]
     filterset_class = RaportSlotowUczelniaFilter
     model = RaportSlotowUczelnia
+    paginate_by = 25
+
+    @cached_property
+    def parent_object(self):
+        obj = get_object_or_404(RaportSlotowUczelnia, pk=self.kwargs["pk"])
+        if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
+            raise Http404
+        return obj
+
+    def get_queryset(self):
+        return self.parent_object.get_details_set()
 
     def get_table_class(self):
         if self.parent_object.dziel_na_jednostki_i_wydzialy:

@@ -2,13 +2,10 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from rest_framework import serializers
 
-from long_running.tasks import perform_generic_long_running_task
 from raport_slotow.models.uczelnia import (
     RaportSlotowUczelnia,
     RaportSlotowUczelniaWiersz,
 )
-
-from django.contrib.contenttypes.models import ContentType
 
 # Serializers define the API representation.
 
@@ -22,7 +19,6 @@ class RaportSlotowUczelniaSerializer(serializers.ModelSerializer):
         model = RaportSlotowUczelnia
         read_only_fields = [
             "created_on",
-            "last_updated_on",
             "started_on",
             "finished_on",
             "finished_successfully",
@@ -31,11 +27,10 @@ class RaportSlotowUczelniaSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             #
-            # Report
+            # LiveOperation
             #
             # "owner",
             "created_on",
-            "last_updated_on",
             "started_on",
             "finished_on",
             "finished_successfully",
@@ -65,13 +60,18 @@ class RaportSlotowUczelniaSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
+        # LOW-4: ścieżka API (druga obok widoku) NIE ustawia ``uczelnia`` —
+        # raport z API jest nie-zawężony (wszystkie uczelnie). Owner-scope i
+        # tak izoluje odczyt. To zachowanie OBECNE (przed migracją), świadomie
+        # zachowane — patrz PR / plan §8.1.
         validated_data["owner"] = self.context["request"].user
         inst = super().create(validated_data)
 
-        ct = ContentType.objects.get_for_model(inst)
-        transaction.on_commit(
-            lambda: perform_generic_long_running_task(ct.app_label, ct.model, inst.pk)
-        )
+        # create() jest @transaction.atomic — enqueue MUSI iść przez
+        # on_commit, inaczej worker (celery) wystartowałby zanim wiersz się
+        # zacommituje. liveops.enqueue() nie ma retry-loopa, więc bez tego
+        # task nie znalazłby rekordu.
+        transaction.on_commit(inst.enqueue)
 
         return inst
 
