@@ -82,7 +82,7 @@
                 // Pas bezpieczeństwa na wyścig „verified przed listenerem":
                 // jeśli hidden input ALTCHA jest już wypełniony, odsłoń od razu.
                 // Pole nazywa się `captcha` (AltchaField), więc input ma
-                // id="id_captcha" i jest rodzeństwem <altcha-widget>.
+                // id="id_captcha" i jest rodzeństwem elementu altcha-widget.
                 var hidden = document.getElementById('id_captcha');
                 if (hidden && hidden.value) {
                     reveal();
