@@ -206,6 +206,14 @@ class MyTableExport(TableExport):
         # paginowanej to zwykły COUNT (bez materializacji), więc odmawiamy zanim
         # queryset wciągnie cały wynik do RAM. Bez cichego ucięcia: podnosimy
         # wyjątek z czytelnym komunikatem (łapany na granicy widoku → HTTP 400).
+        #
+        # UWAGA: ochrona OOM zależy od PAGINACJI tabeli. Na tabeli
+        # django_tables2 BEZ paginatora `len(self.table.rows)` degraduje do
+        # `len(self.data)`, czyli MATERIALIZUJE cały queryset ZANIM bramka
+        # zadziała — czyli dokładnie to, przed czym chroni. Wszystkie obecne
+        # widoki z `max_rows` są paginowane. Jeśli ustawiasz `max_rows` na
+        # nowym eksporcie, upewnij się, że tabela ma paginację (albo licz
+        # `qs.count()` wprost), inaczej limit jest dekoracją.
         if self.max_rows is not None:
             wiersze = len(self.table.rows)
             if wiersze > self.max_rows:
