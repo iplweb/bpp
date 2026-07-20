@@ -7,6 +7,8 @@ budowało świeży, niezmaterializowany QuerySet — czyli osobny roundtrip do
 bazy. Te testy pilnują, żeby każdy taki zestaw danych był pobierany raz.
 """
 
+from decimal import Decimal
+
 import pytest
 from django.contrib.contenttypes.models import ContentType
 from django.db import connection
@@ -206,8 +208,24 @@ def test_strona_autora_agregaty_liczone_raz(
         praca = any_ciagle(rok=rok, liczba_cytowan=10)
         praca.dodaj_autora(autor_jan_kowalski, jednostka)
 
+    # jawne wartości pól DecimalField — losowe z model_bakery przepełniają
+    # numeric(5,2) / numeric(4,2)
     for _ in range(3):
-        baker.make(MetrykaAutora, autor=autor_jan_kowalski)
+        baker.make(
+            MetrykaAutora,
+            autor=autor_jan_kowalski,
+            slot_maksymalny=Decimal("4.00"),
+            slot_nazbierany=Decimal("2.00"),
+            punkty_nazbierane=Decimal("100.00"),
+            srednia_za_slot_nazbierana=Decimal("50.00"),
+            slot_wszystkie=Decimal("3.00"),
+            punkty_wszystkie=Decimal("150.00"),
+            srednia_za_slot_wszystkie=Decimal("50.00"),
+            procent_wykorzystania_slotow=Decimal("50.00"),
+            liczba_prac_wszystkie=3,
+            rok_min=2020,
+            rok_max=2022,
+        )
 
     with CaptureQueriesContext(connection) as ctx:
         res = client.get(reverse("bpp:browse_autor", args=(autor_jan_kowalski.slug,)))
