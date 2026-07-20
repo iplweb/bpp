@@ -339,7 +339,37 @@ jobs:
       run: mkdir -p ci-output
 
     - name: Pull test-runner image
-      run: docker compose $COMPOSE_FILES pull test-runner
+      # Retry na transient network/registry error (timeout GHCR/Docker Hub
+      # to najczestszy szum CI — nie regresja kodu). 3 proby, 10s backoff;
+      # dopiero trwala porazka wywala krok.
+      run: |
+        n=0
+        until docker compose $COMPOSE_FILES pull test-runner; do
+          n=$((n + 1))
+          if [ "$n" -ge 3 ]; then
+            echo "docker pull test-runner nie powiodl sie po $n probach" >&2
+            exit 1
+          fi
+          echo "pull test-runner padl (proba $n), ponawiam za 10s..." >&2
+          sleep 10
+        done
+
+    - name: Pull service images (db, redis)
+      # Osobny, retry-owany pull obrazow z Docker Huba (iplweb/bpp_dbserver,
+      # redis) PRZED `up -d`. Wczesniej `up -d` pobieral je implicite bez
+      # retry — timeout Docker Huba na iplweb/bpp_dbserver wywalal caly shard
+      # (poz. 3.3 audytu). Teraz `up -d` widzi obrazy juz lokalnie.
+      run: |
+        n=0
+        until docker compose $COMPOSE_FILES pull db redis; do
+          n=$((n + 1))
+          if [ "$n" -ge 3 ]; then
+            echo "docker pull db/redis nie powiodl sie po $n probach" >&2
+            exit 1
+          fi
+          echo "pull db/redis padl (proba $n), ponawiam za 10s..." >&2
+          sleep 10
+        done
 
     - name: Start services
       run: docker compose $COMPOSE_FILES up -d db redis
