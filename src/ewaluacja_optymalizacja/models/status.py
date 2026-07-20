@@ -64,7 +64,13 @@ class StatusOptymalizacjiZOdpinaniem(models.Model):
 
     @classmethod
     def get_or_create(cls):
-        """Pobierz lub utwórz instancję singleton."""
+        """Pobierz lub utwórz instancję singleton.
+
+        Każdy caller wchodzi na wiersz pk=1 przez tę metodę, a żadna ścieżka
+        go nie kasuje — dlatego atomowe `filter(pk=1).update(...)` w
+        `rozpocznij`/`zakoncz` nigdy nie trafia na pusty zbiór (który byłby
+        cichym no-op zamiast INSERT-a robionego dawniej przez `save()`).
+        """
         obj, created = cls.objects.get_or_create(pk=1)
         return obj
 
