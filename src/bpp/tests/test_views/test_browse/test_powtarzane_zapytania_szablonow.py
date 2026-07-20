@@ -208,13 +208,22 @@ def test_strona_autora_agregaty_liczone_raz(
         praca = any_ciagle(rok=rok, liczba_cytowan=10)
         praca.dodaj_autora(autor_jan_kowalski, jednostka)
 
-    # procent_wykorzystania_slotow to jedyne numeric(5,2) w MetrykaAutora
-    # (reszta Decimali ma 10,4) — losowa wartość z model_bakery je przepełnia.
+    # MetrykaAutora.save() wylicza pola pochodne z ilorazów: procent =
+    # slot_nazbierany / slot_maksymalny * 100 (kolumna numeric(5,2), więc
+    # < 1000), a srednia_za_slot_* = punkty / slot (numeric(10,4)). Losowe
+    # wartości z model_bakery dają ilorazy przepełniające te kolumny —
+    # dlatego podajemy jawnie wszystkie cztery składniki tych działań.
+    # (Samo procent_wykorzystania_slotow ustawiać nie ma sensu — save() je
+    # nadpisze.)
     for _ in range(3):
         baker.make(
             MetrykaAutora,
             autor=autor_jan_kowalski,
-            procent_wykorzystania_slotow=Decimal("50.00"),
+            slot_maksymalny=Decimal("4.0000"),
+            slot_nazbierany=Decimal("2.0000"),
+            punkty_nazbierane=Decimal("100.0000"),
+            slot_wszystkie=Decimal("3.0000"),
+            punkty_wszystkie=Decimal("150.0000"),
         )
 
     with CaptureQueriesContext(connection) as ctx:
