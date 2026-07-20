@@ -166,17 +166,74 @@ TransactionTestCase._fixture_teardown = _fixture_teardown
 # COMMITTED wiersze (poza transakcją testu). Leak-triggered: TRUNCATE odpala
 # się tylko gdy wykryty wyciek, więc w normalnym przypadku to 1 tani probe.
 #
-# DIAGNOSTYKA: przy wykryciu wycieku guard wypisuje do stderr (widoczne w
-# logach CI) które tabele wyciekły oraz najprawdopodobniejszego SPRAWCĘ —
-# poprzedni test DB na tym workerze. Bo guard sprawdza każdy test DB i czyści
-# przy każdym wykryciu, więc wyciek widziany na setupie testu X powstał po
-# ostatnim czystym stanie = w poprzednim teście DB. To ścieżka do docelowego
-# root-cause fixa (namierzyć i naprawić test commitujący poza rollback).
+# DIAGNOSTYKA — DWIE sondy, o RÓŻNEJ sile dowodowej:
+#
+# 1. sonda SETUP (fixture ``_neutralizuj_wyciekle_dane``) — sieć bezpieczeństwa.
+#    Wskazuje sprawcę wyłącznie HEURYSTYCZNIE („poprzedni test DB na tym
+#    workerze"). Heurystyka MYLI, gdy commit przyszedł z wątku/subprocesu już
+#    po teardownie sprawcy. NIE traktować tej etykiety jako dowodu.
+#
+# 2. sonda TEARDOWN (hook ``pytest_runtest_teardown`` niżej) — dokładny MOMENT
+#    Leci po pełnej finalizacji fixture'ów (czyli po flushu
+#    ``TransactionTestCase`` i po rollbacku ``django_db``). Jeśli w tym momencie
+#    tabele nie są puste, zostawił je TEN test. Zero heurystyki.
+#    ``BPP_LEAK_GUARD_STRICT=1`` zamienia raport w twardy błąd.
+#
+# USTALENIA Z POLOWANIA (2026-07-20, po incydencie na PR #625):
+#
+# - Sonda teardownowa NIE MOŻE siedzieć w autouse fixture — finalizery lecą
+#   w odwrotnej kolejności setupu i fixture kończy się PRZED flushem. W tej
+#   pozycji oskarżała KAŻDY test ``transaction=True`` (kontrola: zwykły
+#   transakcyjny ``baker.make(Uczelnia)`` bez wątków też był „sprawcą").
+#   Stąd hook zamiast fixture'a.
+#
+# - Pełny przebieg lokalny (``pytest src/ -n auto``, 7666 testów) z poprawną
+#   sondą: ZERO raportów — ani setupowych, ani teardownowych. Żaden test nie
+#   kończy się brudnymi tabelami. W szczególności ``src/import_pracownikow/``
+#   jest CZYSTE (670 testów, zero wycieków) — wbrew pierwotnej hipotezie,
+#   że leaker siedzi w tym appie. Guard raportuje OFIARY, nie sprawców.
+#
+# - Trop „wątki w ``test_zatwierdz_wyscig_nie_dubluje_integracji`` commitują
+#   po teardownie" jest MARTWY — sprawdzony empirycznie przez wymuszenie
+#   (``join(0.001)`` + ``sleep(3)`` w workerze, czyli wątek gwarantowanie
+#   przeżywa teardown): wyciek NIE powstaje. Po flushu nie ma już ``admin_user``,
+#   więc ``force_login`` w wątku nie przechodzi i żądanie nic nie zapisuje.
+#   Komentarz przy ``assert not zywe`` w tamtym teście opisuje mechanizm,
+#   którego nie udało się odtworzyć — nie opierać się na nim.
+#
+# - Hipoteza „flush pada po cichu pod kontencją" — SPRAWDZONA, dwa wyniki:
+#
+#   (a) flush ZABLOKOWANY (druga sesja trzyma LOCK na truncate'owanej tabeli):
+#       teardown stoi tyle, ile trzyma lock — zmierzone 121 s — i ``--timeout``
+#       go NIE ubija (pytest-timeout wypisuje baner + stack, przebieg leci
+#       dalej). Flush w końcu przechodzi, więc WYCIEKU NIE MA. To wyjaśnia
+#       „zawieszony shard", nie ambient dane.
+#
+#   (b) flush PADAJĄCY trwale (wymuszony ``OperationalError`` z call_command):
+#       dane testu transakcyjnego zostają scommitowane → wyciek jest.
+#       ALE nie jest cichy: leci ``ERROR at teardown`` i widać go w
+#       podsumowaniu; ``--only-rerun OperationalError`` tego NIE rerunuje.
+#       Sonda teardownowa łapie ten przypadek i nazywa sprawcę poprawnie
+#       (zweryfikowane) — hookwrapper wykonuje kod po ``yield`` także wtedy,
+#       gdy finalizacja rzuciła.
+#
+#   Wniosek: skoro padający flush RAPORTUJE się jako ERROR, a na CI widzieliśmy
+#   ``IntegrityError`` na SETUPIE cudzych testów BEZ błędów teardownu, to
+#   deadlock we flushu prawdopodobnie NIE jest przyczyną. Hipoteza osłabiona.
+#
+# - CO ZOSTAJE DO SPRAWDZENIA: przyczyna wciąż nieznana. Sonda teardownowa jest
+#   sprawdzonym instrumentem (patrz (b)) — następny krok: przeczytać jej raport
+#   z realnego przebiegu CI. Jeśli MILCZY, a sonda setupowa krzyczy, znaczy że
+#   commit przychodzi PO teardownie sprawcy (wątek/subprocess) i trzeba szukać
+#   po stronie procesów przeżywających test, nie po stronie flusha.
 # =============================================================================
 
 _LEAK_GUARD = {
     "conn": None,
     "poprzedni": "<start sesji>",
+    # Test DB poprzedzajacy BIEZACY — "poprzedni" jest nadpisywany na setupie
+    # biezacego testu, wiec w raporcie teardownowym wskazywalby sam siebie.
+    "poprzedni_przed": "<start sesji>",
     # Raporty zbieramy i drukujemy w pytest_sessionfinish (POZA per-test
     # capture pytest-a) — inaczej print z fixture'a jest łykany i NIEwidoczny
     # w logach CI (właśnie po to jest ta diagnostyka).
@@ -214,6 +271,17 @@ _LEAK_GUARD_TABLES = (
 )
 
 
+class WykrytoWyciekDanych(Exception):
+    """Wyjątek trybu ``BPP_LEAK_GUARD_STRICT`` — CELOWO nie ``AssertionError``.
+
+    ``addopts`` w ``pytest.ini`` zawiera ``--only-rerun AssertionError`` (dla
+    flaky ``expect()`` Playwrighta). Gdyby guard rzucał ``AssertionError``,
+    pytest-rerunfailures powtarzałby każde wykrycie wycieku — mnożąc czas
+    i zaciemniając obraz właśnie tam, gdzie chcemy jednego, czystego sygnału.
+    Własny typ jest spoza listy ``--only-rerun``, więc leci raz.
+    """
+
+
 def _leak_guard_conn(settings_dict):
     import psycopg2
 
@@ -241,9 +309,86 @@ def _leak_guard_conn(settings_dict):
     return conn
 
 
+# Kolumna identyfikująca wiersz — żeby raport mówił CZYJE są wyciekłe dane
+# (dane testu, który raportuje, czy zupełnie inne). To rozstrzyga między
+# „izolacja tego testu padła" a „ktoś zapisuje asynchronicznie w tle".
+_LEAK_GUARD_ETYKIETY = {
+    "bpp_autor": "nazwisko",
+    "bpp_jednostka": "nazwa",
+    "bpp_uczelnia": "nazwa",
+    "bpp_bppuser": "username",
+    "bpp_stopiensluzbowy": "nazwa",
+    "bpp_stanowiskodydaktyczne": "nazwa",
+    "bpp_grupa_pracownicza": "nazwa",
+    "import_pracownikow_importpracownikow": "id::text",
+}
+
+
+def _leak_probki(cur, tabele):
+    """Dla każdej wyciekłej tabeli: liczba wierszy + próbka etykiet."""
+    out = []
+    for t in tabele:
+        kol = _LEAK_GUARD_ETYKIETY.get(t)
+        if not kol:
+            out.append(t)
+            continue
+        try:
+            cur.execute(f"SELECT count(*) FROM {t}")
+            ile = cur.fetchone()[0]
+            cur.execute(f"SELECT {kol} FROM {t} LIMIT 3")
+            probki = ", ".join(str(r[0])[:40] for r in cur.fetchall())
+            out.append(f"{t}(n={ile}: {probki})")
+        except Exception as exc:  # diagnostyka nie może wywalić teardownu
+            out.append(f"{t}(<{type(exc).__name__}>)")
+    return out
+
+
+def _leak_probe():
+    """Sonduje ``_LEAK_GUARD_TABLES`` osobnym autocommit-połączeniem.
+
+    Zwraca listę opisów tabel z COMMITTED wierszami (nazwa + liczba + próbka
+    etykiet) i czyści je (TRUNCATE CASCADE).
+    """
+    import psycopg2
+    from django.db import connection
+
+    # Per-tabela (nie jeden OR) — żeby w raporcie nazwać CO wyciekło.
+    probe = ", ".join(f"EXISTS(SELECT 1 FROM {t})" for t in _LEAK_GUARD_TABLES)
+    try:
+        conn = _leak_guard_conn(connection.settings_dict)
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT {probe}")
+            wyciekle = [
+                t
+                for t, jest in zip(_LEAK_GUARD_TABLES, cur.fetchone(), strict=False)
+                if jest
+            ]
+            if wyciekle:
+                # Próbki POBIERAMY PRZED truncatem — potem już ich nie ma.
+                wyciekle = _leak_probki(cur, wyciekle)
+                # Bez RESTART IDENTITY — jak flush (_fixture_teardown używa
+                # reset_sequences=False); sekwencje rosną dalej, brak
+                # niespodzianek z pk=1.
+                cur.execute("TRUNCATE " + ", ".join(_LEAK_GUARD_TABLES) + " CASCADE")
+        return wyciekle
+    except psycopg2.Error:
+        # Guard jest best-effort: brak połączenia / brak tabel (np. test
+        # bez pełnej migracji) nie może wywalić samego testu.
+        return []
+
+
 @pytest.fixture(autouse=True)
 def _neutralizuj_wyciekle_dane(request):
-    """Przed testem DB czyści ambient (scommitowane poza rollback) dane domenowe.
+    """Czyści ambient (scommitowane poza rollback) dane domenowe wokół testu DB.
+
+    Sonda odpala się DWA razy: na setupie i na teardownie.
+
+    - **setup** — sieć bezpieczeństwa: gdy mimo wszystko coś wyciekło (np. z
+      wątku, który commitował po teardownie sprawcy), test nie dostaje ambient
+      danych. Sprawcę wskazuje tylko heurystycznie („poprzedni test DB").
+    - **teardown** — WŁAŚCIWA atrybucja: jeśli po teście na jego własnym
+      teardownie w bazie leżą scommitowane wiersze, to TEN test je zostawił.
+      Żadnej heurystyki. To sonda, która namierza leakera.
 
     Patrz komentarz nad definicją ``_LEAK_GUARD_TABLES``. No-op dla testów bez
     bazy i gdy nic nie wyciekło.
@@ -253,45 +398,120 @@ def _neutralizuj_wyciekle_dane(request):
         or "db" in request.fixturenames
         or "transactional_db" in request.fixturenames
     )
-    if uzywa_db:
-        import psycopg2
-        from django.db import connection
+    if not uzywa_db:
+        yield
+        return
 
-        # Per-tabela (nie jeden OR) — żeby w raporcie nazwać CO wyciekło.
-        probe = ", ".join(f"EXISTS(SELECT 1 FROM {t})" for t in _LEAK_GUARD_TABLES)
-        try:
-            conn = _leak_guard_conn(connection.settings_dict)
-            with conn.cursor() as cur:
-                cur.execute(f"SELECT {probe}")
-                obecne = cur.fetchone()
-                wyciekle = [
-                    t
-                    for t, jest in zip(_LEAK_GUARD_TABLES, obecne, strict=False)
-                    if jest
-                ]
-                if wyciekle:
-                    # Guard sprawdza KAŻDY test DB i czyści przy każdym wykryciu,
-                    # więc wyciek widziany na setupie tego testu powstał po
-                    # ostatnim czystym stanie — sprawcą jest poprzedni test DB
-                    # na tym workerze (xdist → proces = worker, stan per-proces).
-                    _LEAK_GUARD["raporty"].append(
-                        f"[LEAK-GUARD/V1] wyciek scommitowanych danych na setupie "
-                        f"{request.node.nodeid}: {', '.join(wyciekle)}. "
-                        f"Najprawdopodobniejszy sprawca (poprzedni test DB na tym "
-                        f"workerze): {_LEAK_GUARD['poprzedni']}"
-                    )
-                    # Bez RESTART IDENTITY — jak flush (_fixture_teardown używa
-                    # reset_sequences=False); sekwencje rosną dalej, brak
-                    # niespodzianek z pk=1.
-                    cur.execute(
-                        "TRUNCATE " + ", ".join(_LEAK_GUARD_TABLES) + " CASCADE"
-                    )
-            _LEAK_GUARD["poprzedni"] = request.node.nodeid
-        except psycopg2.Error:
-            # Guard jest best-effort: brak połączenia / brak tabel (np. test
-            # bez pełnej migracji) nie może wywalić samego testu.
-            pass
+    wyciekle = _leak_probe()
+    if wyciekle:
+        _LEAK_GUARD["raporty"].append(
+            f"[LEAK-GUARD/setup] ambient dane na setupie {request.node.nodeid}: "
+            f"{', '.join(wyciekle)}. Najprawdopodobniejszy sprawca (poprzedni "
+            f"test DB na tym workerze): {_LEAK_GUARD['poprzedni']}"
+        )
+    _LEAK_GUARD["poprzedni_przed"] = _LEAK_GUARD["poprzedni"]
+    _LEAK_GUARD["poprzedni"] = request.node.nodeid
+
+    # UWAGA: sonda teardownowa NIE może być tutaj (po ``yield``). Finalizery
+    # fixture'ów lecą w odwrotnej kolejności setupu, a pytest-django wstrzykuje
+    # ``db``/``transactional_db`` na tyle wcześnie, że ten autouse fixture
+    # kończy się PRZED flushem ``TransactionTestCase``. Sonda w tym miejscu
+    # raportowała jako „sprawcę" KAŻDY test ``transaction=True`` (zweryfikowane
+    # kontrolnym testem: zwykły transakcyjny ``baker.make(Uczelnia)`` bez
+    # wątków też był oskarżany) — czyli same false-positive'y. Właściwa sonda
+    # siedzi w ``pytest_runtest_teardown`` niżej, który opakowuje całą
+    # finalizację fixture'ów.
     yield
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_teardown(item):
+    """Sonda PO pełnej finalizacji fixture'ów — moment wykrycia bez heurystyk.
+
+    Kod za ``yield`` leci gdy wszystkie finalizery (w tym flush
+    ``TransactionTestCase`` i rollback ``django_db``) już się wykonały. To
+    dokładny, niezaheurystyzowany MOMENT wykrycia — w przeciwieństwie do sondy
+    setupowej, która zgaduje „poprzedni test DB".
+
+    UWAGA — moment wykrycia ≠ sprawca. Raport NIE nazywa tego testu sprawcą
+    i nie wolno tego pola tak czytać. Dane z CI (41 wykryć rozsypanych po 23
+    z ~30 plików appu, bez klastrowania) są niezgodne z hipotezą „ten konkretny
+    test jest zepsuty", a zgodne z asynchronicznym pisarzem, który trafia
+    w test akurat kończący się w danej chwili. Rozstrzyga dopiero WŁAŚCICIEL
+    wierszy — stąd próbki etykiet w raporcie (patrz ``_leak_probki``):
+    dane raportującego testu → padła jego izolacja; dane cudze → pisarz w tle.
+
+    (Ta ostrożność jest celowa: pierwotny guard nazywał „najprawdopodobniejszym
+    sprawcą" poprzedni test DB, co skierowało polowanie na martwy trop.
+    Nie powtarzamy tego z drugą sondą.)
+
+    ``BPP_LEAK_GUARD_STRICT=1`` zamienia raport w twardy błąd (tryb polowania,
+    nie domyślny — domyślnie guard ma CI nie wywracać, tylko raportować
+    i sprzątać).
+    """
+    yield
+
+    uzywa_db = (
+        item.get_closest_marker("django_db") is not None
+        or "db" in getattr(item, "fixturenames", ())
+        or "transactional_db" in getattr(item, "fixturenames", ())
+    )
+    if not uzywa_db:
+        return
+
+    wyciekle = _leak_probe()
+    if wyciekle:
+        komunikat = (
+            f"[LEAK-GUARD/teardown] WYKRYTO PRZY: {item.nodeid} — po jego "
+            f"teardownie w bazie leżą scommitowane wiersze: "
+            f"{', '.join(wyciekle)} | {_stan_izolacji(item)} "
+            f"(to MOMENT wykrycia, NIE wskazanie sprawcy — rozstrzyga "
+            f"właściciel wierszy w próbkach wyżej)"
+        )
+        _LEAK_GUARD["raporty"].append(komunikat)
+        if os.environ.get("BPP_LEAK_GUARD_STRICT"):
+            raise WykrytoWyciekDanych(komunikat)
+
+
+def _stan_izolacji(item):
+    """Kontekst rozstrzygający MECHANIZM wycieku, dopisywany do raportu.
+
+    Trzy rzeczy, których nie da się wyczytać z samej listy tabel:
+
+    - ``tx`` — czy test był ``transaction=True``. Jeśli NIE, a mimo to zostawił
+      scommitowane wiersze, to jego atomic block nie objął tych zapisów.
+    - ``closed_in_tx`` / ``needs_rollback`` — czy połączenie zostało ZAMKNIĘTE
+      wewnątrz atomic bloku. Django ustawia wtedy te flagi, izolacja testu jest
+      zerwana, a dalsze zapisy lecą w autocommit. Pole zostaje, bo pokazuje
+      FAKT zerwania izolacji niezależnie od przyczyny.
+
+      UWAGA — hipoteza „to ``CONN_MAX_AGE=0`` + ``close_old_connections`` na
+      ``request_finished``" jest OBALONA, nie powtarzać jej: ``CONN_MAX_AGE=0``
+      to domyślna wartość Django (byłoby to zepsute wszędzie i zawsze), a
+      ``django/test/client.py`` JAWNIE odpina ``close_old_connections`` wokół
+      ``request_started``/``request_finished`` (12 miejsc) właśnie po to, żeby
+      połączenie nie zamknęło się w środku transakcji testu. Wyciekające testy
+      idą przez ``admin_client``/``client``, czyli przez tę ochronę.
+    - ``autocommit`` — stan końcowy połączenia.
+
+    Best-effort: diagnostyka nie może wywalić teardownu.
+    """
+    from django.db import connection
+
+    marker = item.get_closest_marker("django_db")
+    tx = bool(marker and marker.kwargs.get("transaction"))
+    try:
+        autocommit = connection.get_autocommit() if connection.connection else None
+    except Exception as exc:  # diagnostyka — nie propagujemy
+        autocommit = f"<{type(exc).__name__}>"
+    return (
+        f"tx={tx} "
+        f"in_atomic={getattr(connection, 'in_atomic_block', '?')} "
+        f"closed_in_tx={getattr(connection, 'closed_in_transaction', '?')} "
+        f"needs_rollback={getattr(connection, 'needs_rollback', '?')} "
+        f"autocommit={autocommit} "
+        f"poprzedni={_LEAK_GUARD['poprzedni_przed']}"
+    )
 
 
 # =============================================================================
