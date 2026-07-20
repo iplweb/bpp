@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import random
 
+from bpp.demo_data.db import bulk_create_retry
 from bpp.demo_data.manifest import Manifest
 from bpp.demo_data.progress import make_progress
 from bpp.demo_data.themes.base import Theme
@@ -43,7 +44,7 @@ def create_wydzialy(
     created: list[Wydzial] = []
     for start in pbar:
         chunk = objs[start : start + batch_size]
-        Wydzial.objects.bulk_create(chunk)
+        bulk_create_retry(Wydzial.objects, chunk)
         created.extend(chunk)
         manifest.append("bpp.Wydzial", [w.pk for w in chunk])
         manifest.save()

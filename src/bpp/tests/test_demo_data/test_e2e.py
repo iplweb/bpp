@@ -69,3 +69,46 @@ def test_e2e_medium_scale(fixtures_loaded, tmp_path):
     # Powiazania (kazda praca 1–8 autorow → min 60, max 480)
     assert Wydawnictwo_Ciagle_Autor.objects.count() >= 30
     assert Wydawnictwo_Zwarte_Autor.objects.count() >= 30
+
+
+@pytest.mark.django_db(transaction=True)
+def test_e2e_maly_motyw_wymusza_cyklowanie_nazw(fixtures_loaded, tmp_path):
+    """E2E dla motywu z MAŁĄ pulą (wiedzmin: 6 dziedzin wydziału, 7×8=56
+    kombinacji jednostek) przy skali, która wymusza cyklowanie obu pul:
+    8 wydziałów (>6) i 8×8=64 jednostek (>56).
+
+    Regresja: dawniej ``wydzial_nazwy`` i losowa kompozycja jednostek
+    tworzyły duplikaty → IntegrityError na ``bpp_wydzial_nazwa_key`` /
+    ``bpp_jednostka_nazwa_key``. Cała komenda musi przejść i utworzyć
+    globalnie unikalne nazwy."""
+    manifest = tmp_path / "m.json"
+    db_name = connection.settings_dict["NAME"]
+    call_command(
+        "create_demo_data",
+        "--motyw=wiedzmin",
+        "--wydzialow=8",
+        "--jednostek-na-wydzial=8",
+        "--autorow=15",
+        "--ile-ciaglych=10",
+        "--ile-zwartych=10",
+        "--zrodel=8",
+        "--wydawcow=5",
+        "--od-roku=2021",
+        "--do-roku=2022",
+        "--procent-z-dyscyplina=80",
+        "--procent-z-subdyscyplina=20",
+        "--procent-zmiana-dyscypliny=10",
+        "--seed=7",
+        f"--manifest-out={manifest}",
+        "--batch-size=10",
+        "--yes-i-am-sure",
+        f"--confirm-db={db_name}",
+    )
+    assert Wydzial.objects.count() == 8
+    # 8 wydz × 8 jedn = 64 realne jednostki + 8 węzłów-luster wydziałów.
+    assert Jednostka.objects.filter(legacy_wydzial_id__isnull=True).count() == 64
+    # Nazwy globalnie unikalne — inaczej bulk_create by nie przeszedł.
+    assert Wydzial.objects.values("nazwa").distinct().count() == 8
+    realne = Jednostka.objects.filter(legacy_wydzial_id__isnull=True)
+    assert realne.values("nazwa").distinct().count() == 64
+    assert Autor.objects.count() == 15

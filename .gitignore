@@ -231,3 +231,6 @@ src/bpp/static/rollbar/
 # pytest-playwright: katalog na trace/screenshot/video z --tracing itp.
 test-results/
 .rtk/
+
+# create_demo_data: ulotne manifesty (domyślnie zapisywane w CWD)
+demo_data_manifest_*.json

@@ -35,6 +35,36 @@ def test_create_wydzialy_creates_n_records(tmp_manifest_path, rng):
 
 
 @pytest.mark.django_db(transaction=True)
+def test_create_wydzialy_wiecej_niz_pula_zachowuje_unikalne_nazwy(
+    tmp_manifest_path, rng
+):
+    """Regresja: n > len(theme.wydzial_dziedziny) nie może naruszyć unique
+    constraintu ``Wydzial.nazwa``.
+
+    Dawniej ``wydzial_nazwy`` cyklowało pulę dziedzin bez deduplikacji, więc
+    dla motywu z małą pulą (wiedzmin/harry-potter mają 6 dziedzin) i domyślnej
+    liczby wydziałów (10) ``bulk_create`` wywalał się na
+    ``bpp_wydzial_nazwa_key`` (podwójna wartość klucza)."""
+    uczelnia = baker.make(Uczelnia, nazwa="Demo — Uczelnia", skrot="DEMO")
+    m = Manifest(path=tmp_manifest_path, database="db", command_args={})
+
+    wydzialy = create_wydzialy(
+        n=10,
+        uczelnia=uczelnia,
+        theme=get_theme("wiedzmin"),  # 6 dziedzin < 10 → cykl puli
+        manifest=m,
+        rng=rng,
+        prefix="Demo — ",
+        disable_progress=True,
+    )
+
+    assert len(wydzialy) == 10
+    assert Wydzial.objects.count() == 10
+    # Wszystkie nazwy unikalne — inaczej bulk_create by nie przeszedł.
+    assert len({w.nazwa for w in wydzialy}) == 10
+
+
+@pytest.mark.django_db(transaction=True)
 def test_create_jednostki_per_wydzial(tmp_manifest_path, rng):
     uczelnia = baker.make(Uczelnia, nazwa="Demo — Uczelnia", skrot="DEMO")
     m = Manifest(path=tmp_manifest_path, database="db", command_args={})
@@ -77,6 +107,45 @@ def test_create_jednostki_per_wydzial(tmp_manifest_path, rng):
         assert any(bez_markera.startswith(p) for p in SHARED_JEDNOSTKA_PREFIKSY)
         assert "Jednostka " not in j.nazwa
     assert sorted(m.objects_for("bpp.Jednostka")) == sorted(j.pk for j in jednostki)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_create_jednostki_wiecej_niz_pula_zachowuje_unikalne_nazwy(
+    tmp_manifest_path, rng
+):
+    """Regresja: liczba jednostek > iloczyn (prefiksy × dziedziny) nie może
+    naruszyć unique constraintu ``Jednostka.nazwa``.
+
+    ``compose_jednostka_nazwa`` losuje ``prefiks × dziedzina`` bez deduplikacji,
+    więc gdy jednostek jest więcej niż kombinacji (wiedzmin: 7 prefiksów × 8
+    dziedzin = 56), ``bulk_create`` wywalał się na ``bpp_jednostka_nazwa_key``."""
+    uczelnia = baker.make(Uczelnia, nazwa="Demo — Uczelnia", skrot="DEMO")
+    m = Manifest(path=tmp_manifest_path, database="db", command_args={})
+    theme = get_theme("wiedzmin")  # 7 prefiksów × 8 dziedzin = 56 kombinacji
+
+    wydzialy = create_wydzialy(
+        n=3,
+        uczelnia=uczelnia,
+        theme=theme,
+        manifest=m,
+        rng=rng,
+        prefix="Demo — ",
+        disable_progress=True,
+    )
+    # 3 wydz × 25 = 75 jednostek > 56 kombinacji → wymusza sufiksowanie.
+    jednostki = create_jednostki(
+        per_wydzial=25,
+        wydzialy=wydzialy,
+        uczelnia=uczelnia,
+        theme=theme,
+        manifest=m,
+        rng=rng,
+        prefix="Demo — ",
+        disable_progress=True,
+    )
+
+    assert len(jednostki) == 75
+    assert len({j.nazwa for j in jednostki}) == 75  # wszystkie unikalne
 
 
 @pytest.mark.django_db(transaction=True)
