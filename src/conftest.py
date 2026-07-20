@@ -271,6 +271,17 @@ _LEAK_GUARD_TABLES = (
 )
 
 
+class WykrytoWyciekDanych(Exception):
+    """Wyjątek trybu ``BPP_LEAK_GUARD_STRICT`` — CELOWO nie ``AssertionError``.
+
+    ``addopts`` w ``pytest.ini`` zawiera ``--only-rerun AssertionError`` (dla
+    flaky ``expect()`` Playwrighta). Gdyby guard rzucał ``AssertionError``,
+    pytest-rerunfailures powtarzałby każde wykrycie wycieku — mnożąc czas
+    i zaciemniając obraz właśnie tam, gdzie chcemy jednego, czystego sygnału.
+    Własny typ jest spoza listy ``--only-rerun``, więc leci raz.
+    """
+
+
 def _leak_guard_conn(settings_dict):
     import psycopg2
 
@@ -459,7 +470,7 @@ def pytest_runtest_teardown(item):
         )
         _LEAK_GUARD["raporty"].append(komunikat)
         if os.environ.get("BPP_LEAK_GUARD_STRICT"):
-            raise AssertionError(komunikat)
+            raise WykrytoWyciekDanych(komunikat)
 
 
 def _stan_izolacji(item):
