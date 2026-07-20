@@ -60,20 +60,20 @@ def _utworz_favicon(site, tytul, kolor):
 
     ``FaviconImg.as_html`` renderuje ``href`` po nazwie pliku
     (``slugify(title)-<size>s.png``), więc różne tytuły → różne ``<link>``.
+
+    Tworzymy NORMALNĄ ścieżką (``Favicon.objects.create`` → ``save()``), tak
+    jak robi to admin biblioteki. Dzięki patchowi ``_patch_favicon_save_per_site``
+    (``bpp.apps``) reset ``isFavicon`` jest per ``self.site``, więc zapis
+    favicona jednego tenanta NIE gasi już favicona innego — nie trzeba żadnego
+    ``.update()`` omijającego ``save()`` (który wcześniej maskował buga).
     """
-    fav = Favicon.objects.create(
+    return Favicon.objects.create(
         title=tytul,
         site=site,
         faviconImage=SimpleUploadedFile(
             f"{tytul}.png", _png_bytes(kolor), content_type="image/png"
         ),
     )
-    # ``Favicon.save()`` woła ``Favicon.on_site.exclude(...).update(
-    # isFavicon=False)`` (on_site = CurrentSiteManager po SITE_ID), więc zapis
-    # faviconu jednego Site potrafi zgasić ``isFavicon`` faviconu spod
-    # SITE_ID. Wymuszamy flagę przez queryset update (omija save()).
-    Favicon.objects.filter(pk=fav.pk).update(isFavicon=True)
-    return fav
 
 
 @pytest.fixture
@@ -88,15 +88,11 @@ def favicon_uczelnia2(site2):
 
 @pytest.fixture
 def favicony_obu(favicon_uczelnia1, favicon_uczelnia2):
-    """Oba favicony z re-afirmacją ``isFavicon`` PO utworzeniu obu.
+    """Oba favicony utworzone normalną ścieżką ``save()``.
 
-    Zapis drugiego faviconu (``Favicon.save()``) woła ``on_site.update(
-    isFavicon=False)`` po SITE_ID, więc potrafi zgasić flagę faviconu
-    pierwszego. Ustawiamy ją z powrotem dla OBU dopiero gdy oba istnieją.
+    Po naprawie zapis drugiego favicona nie gasi flagi pierwszego, więc obie
+    pozostają aktywne bez re-afirmacji.
     """
-    Favicon.objects.filter(
-        pk__in=[favicon_uczelnia1.pk, favicon_uczelnia2.pk]
-    ).update(isFavicon=True)
     return favicon_uczelnia1, favicon_uczelnia2
 
 
@@ -132,6 +128,52 @@ def test_tag_zwraca_favicon_wlasciwego_hosta(site1, site2, favicony_obu):
     )
     assert "uczelniadwa" in html2
     assert "uczelniajeden" not in html2
+
+
+@pytest.mark.django_db
+def test_zapis_favicona_tenanta_b_nie_gasi_favicona_tenanta_a(site1, site2):
+    """Ścieżka ZAPISU: create favicona site2 NIE gasi ``isFavicon`` site1.
+
+    Regresja Critical z code review: ``Favicon.save()`` biblioteki woła
+    ``on_site.exclude(pk).update(isFavicon=False)`` po ``settings.SITE_ID``.
+    ``site1`` ma ``pk=1`` == ``SITE_ID``, więc BEZ patcha utworzenie favicona
+    ``site2`` gasi flagę favicona ``site1`` (tenant spod SITE_ID traci
+    favicon). Tworzymy oba NORMALNĄ ścieżką ``create()``/``save()`` (jak
+    admin) i sprawdzamy, że oba zostają aktywne.
+
+    Dowód, że test łapie buga: po tymczasowym cofnięciu patcha (przywróceniu
+    ``Favicon.on_site.exclude(...).update(...)`` w ``save``) ten test FAILUJE
+    na asercji ``f1.isFavicon``.
+    """
+    f1 = _utworz_favicon(site1, "UczelniaJeden", "red")
+    assert f1.isFavicon is True
+
+    # Zapis favicona DRUGIEGO tenanta — nie może ruszyć favicona pierwszego.
+    _utworz_favicon(site2, "UczelniaDwa", "blue")
+
+    f1.refresh_from_db()
+    assert f1.isFavicon is True, (
+        "CLOBBERING: zapis favicona site2 zgasił isFavicon favicona site1 "
+        "(spod SITE_ID) — ścieżka save() gasi cudzego tenanta."
+    )
+
+
+@pytest.mark.django_db
+def test_zapis_favicona_gasi_poprzedni_favicon_TEGO_SAMEGO_site(site1):
+    """Semantyka „jeden aktywny favicon per site” MUSI zostać zachowana.
+
+    Drugi favicon TEGO SAMEGO site'u ma zgasić pierwszy (per-site reset),
+    inaczej patch złamałby oryginalne zachowanie biblioteki.
+    """
+    f1 = _utworz_favicon(site1, "PierwszyU1", "red")
+    f2 = _utworz_favicon(site1, "DrugiU1", "green")
+
+    f1.refresh_from_db()
+    assert f1.isFavicon is False, (
+        "Drugi favicon tego samego site'u nie zgasił pierwszego — złamana "
+        "semantyka „jeden aktywny favicon per site”."
+    )
+    assert f2.isFavicon is True
 
 
 @pytest.mark.django_db
