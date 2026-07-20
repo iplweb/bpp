@@ -771,7 +771,12 @@ CELERYBEAT_SCHEDULE = {
         "schedule": timedelta(days=5),
     },
     "pbn-api-kolejka-wyczysc-wpisy-bez-rekordow": {
-        "task": "pbn_api.tasks.kolejka_wyczysc_wpisy_bez_rekordow",
+        # Zadanie żyje w pbn_export_queue.tasks, NIE w pbn_api.tasks — wpis
+        # wskazywał na nieistniejącą nazwę, więc beat co tydzień wysyłał
+        # zadanie, którego żaden worker nie potrafił rozwiązać (czyli kolejka
+        # nigdy nie była czyszczona). Ta sama klasa błędu co brak wpisu dla
+        # retencji plików importu pracowników.
+        "task": "pbn_export_queue.tasks.kolejka_wyczysc_wpisy_bez_rekordow",
         "schedule": timedelta(days=7),
     },
     "scan-for-duplicates-daily": {
@@ -791,9 +796,17 @@ CELERYBEAT_SCHEDULE = {
         "task": "zglos_publikacje.tasks.wyczysc_zglos_tmp_pliki",
         "schedule": timedelta(hours=6),
     },
+    # UWAGA na kolizję harmonogramów: o 3:30 startuje `rebuild_kolejnosc`
+    # zaplanowany przez OFELIĘ (repozytorium bpp-deploy,
+    # docker-compose.application.yml) — całkowicie niezależny scheduler, który
+    # nic nie wie o Celery beat i nie ma jak się z nim zsynchronizować. Dwa
+    # ciężkie zadania startujące w tej samej minucie biły się o CPU bazy.
+    # Przesuwamy stronę, którą kontrolujemy z TEGO repo (beat), na 4:30:
+    # godzina po Ofelii i pół godziny po `powiazania-autorow-przelicz-codziennie`
+    # (4:00), które jest krótkie (czysty SQL, minuty).
     "rebuild-pbn-author-match-cache": {
         "task": "importer_autorow_pbn.tasks.auto_rebuild_match_cache_task",
-        "schedule": crontab(hour=3, minute=30),  # Daily at 3:30 AM
+        "schedule": crontab(hour=4, minute=30),  # Daily at 4:30 AM
     },
     "pbn-export-queue-watchdog": {
         "task": "pbn_export_queue.tasks.queue_watchdog",
@@ -813,6 +826,24 @@ CELERYBEAT_SCHEDULE = {
     "easyaudit-purge-stare-logi-logowania": {
         "task": "bpp.tasks.usun_stare_logi_logowania_easyaudit",
         "schedule": crontab(hour=2, minute=0, day_of_month=1),
+    },
+    # Retencja nieudanych prób logowania (django-axes): kasuj AccessAttempt
+    # starsze niż 90 dni. AXES_RESET_ON_SUCCESS czyści tylko po udanym
+    # logowaniu tej samej pary (login, IP) — wpisy od botów skanujących
+    # /admin/login/ nie mają „swojego" udanego logowania i rosłyby bez końca.
+    # Raz w tygodniu (niedziela 2:30), tabela rośnie powoli.
+    "axes-purge-stare-proby-logowania": {
+        "task": "bpp.tasks.usun_stare_proby_logowania_axes",
+        "schedule": crontab(hour=2, minute=30, day_of_week=0),
+    },
+    # Retencja plików XLS importu pracowników (IMPORT_PRACOWNIKOW_RETENCJA_DNI,
+    # domyślnie 90 dni). Kasuje sam blob, zostawiając rekord importu i wiersze.
+    # Komenda zarządzająca istniała od dawna, ale NIKT jej nie wołał (ani beat,
+    # ani Ofelia) — bloby nie były kasowane nigdy. Trzymamy wpis w kodzie, a
+    # nie w labelu Ofelii, żeby harmonogram był wersjonowany razem z aplikacją.
+    "import-pracownikow-usun-stare-pliki": {
+        "task": "import_pracownikow.tasks.usun_stare_pliki_importu_pracownikow",
+        "schedule": crontab(hour=1, minute=15),  # Daily at 1:15 AM
     },
 }
 

@@ -48,12 +48,20 @@ def _self_join_sql(db_table):
 def calculate_author_connections():
     """Przelicza od zera całą tabelę AuthorConnection z bieżących współautorstw.
 
-    Całość liczona w SQL: ``TRUNCATE`` + ``INSERT ... SELECT`` z self-joinem per
-    tabela autorstwa (Ciągłe / Zwarte / Patenty), zsumowane po parze autorów.
-    Zero round-tripów do Pythona i zero materializacji par w pamięci — w
-    odróżnieniu od dawnej wersji, która streamowała wszystkie wiersze i budowała
-    ogromny słownik par (O(k^2) na publikację, patologia przy pracach z setkami
-    współautorów).
+    Całość liczona w SQL: self-join per tabela autorstwa (Ciągłe / Zwarte /
+    Patenty), zsumowany po parze autorów. Zero round-tripów do Pythona i zero
+    materializacji par w pamięci — w odróżnieniu od dawnej wersji, która
+    streamowała wszystkie wiersze i budowała ogromny słownik par (O(k^2) na
+    publikację, patologia przy pracach z setkami współautorów).
+
+    **Buduj obok, potem podmień.** Wynik self-joinów ląduje najpierw w tabeli
+    tymczasowej (``TEMP TABLE``, widocznej tylko dla tej sesji), POZA
+    transakcją podmiany. Dopiero gotowy wynik jest przepisywany do tabeli
+    docelowej w krótkiej transakcji ``DELETE`` + ``INSERT ... SELECT`` ze
+    staging-u. Dzięki temu okno, w którym ``AuthorConnection`` jest zablokowana
+    dla pisarzy (m.in. ``update_single_author_connections_task``), skraca się z
+    „czas liczenia + czas zapisu" do samego czasu przepisania wierszy.
+    Czytelnicy nie są blokowani w żadnym wariancie (MVCC).
 
     Semantyka: ``shared_publications_count`` = liczba WSPÓLNYCH publikacji
     (DISTINCT rekord), sumowana po typach prac. Para autorów zapisywana jest raz,
@@ -66,29 +74,52 @@ def calculate_author_connections():
     union = "\n        UNION ALL\n".join(
         _self_join_sql(m._meta.db_table) for m in _MODELE_AUTORSTWA
     )
-    insert_sql = f"""
-        INSERT INTO "{table}"
-            (primary_author_id, secondary_author_id,
-             shared_publications_count, last_updated)
-        SELECT p, s, SUM(cnt) AS shared, now()
-          FROM (
-{union}
-          ) sub
-         GROUP BY p, s
-    """
+    staging = "powiazania_autorow_staging"
 
     logger.info("Przeliczanie powiązań autorów (SQL)...")
-    with transaction.atomic():
-        with connection.cursor() as cur:
-            # DELETE (nie TRUNCATE): TRUNCATE wywala się błędem ObjectInUse, gdy
-            # w tej samej transakcji były wcześniej INSERT-y do tabeli (oczekujące
-            # zdarzenia wyzwalaczy FK) — np. w testach owiniętych w transakcję lub
-            # gdy recompute leci po innej operacji na tabeli. DELETE bez WHERE to
-            # jedno zapytanie, transakcyjne i odporne na ten przypadek. Cały blok
-            # jest atomowy: przy błędzie INSERT-u DELETE też się cofa, więc tabela
-            # nigdy nie zostaje pusta.
-            cur.execute(f'DELETE FROM "{table}"')
-            cur.execute(insert_sql)
+    with connection.cursor() as cur:
+        # Faza 1 (długa, BEZ blokady na tabeli docelowej): policz wszystko do
+        # tabeli tymczasowej. TEMP TABLE jest prywatna dla tej sesji i znika
+        # przy jej zamknięciu; DROP na starcie zabezpiecza przed resztką po
+        # poprzednim przebiegu w tej samej, długo żyjącej sesji workera.
+        cur.execute(f'DROP TABLE IF EXISTS "{staging}"')
+        cur.execute(
+            f"""
+            CREATE TEMP TABLE "{staging}" AS
+            SELECT p AS primary_author_id,
+                   s AS secondary_author_id,
+                   SUM(cnt) AS shared_publications_count
+              FROM (
+{union}
+              ) sub
+             GROUP BY p, s
+            """
+        )
+
+        try:
+            # Faza 2 (krótka, pod blokadą): podmiana zawartości.
+            with transaction.atomic():
+                # DELETE (nie TRUNCATE): TRUNCATE wywala się błędem ObjectInUse,
+                # gdy w tej samej transakcji były wcześniej INSERT-y do tabeli
+                # (oczekujące zdarzenia wyzwalaczy FK) — np. w testach owiniętych
+                # w transakcję lub gdy recompute leci po innej operacji na tabeli.
+                # DELETE bez WHERE to jedno zapytanie, transakcyjne i odporne na
+                # ten przypadek. Blok jest atomowy: przy błędzie INSERT-u DELETE
+                # też się cofa, więc tabela nigdy nie zostaje pusta.
+                cur.execute(f'DELETE FROM "{table}"')
+                cur.execute(
+                    f"""
+                    INSERT INTO "{table}"
+                        (primary_author_id, secondary_author_id,
+                         shared_publications_count, last_updated)
+                    SELECT primary_author_id, secondary_author_id,
+                           shared_publications_count, now()
+                      FROM "{staging}"
+                    """
+                )
+        finally:
+            # Staging bywa duży — nie trzymamy go do końca życia sesji workera.
+            cur.execute(f'DROP TABLE IF EXISTS "{staging}"')
 
     total = AuthorConnection.objects.count()
     logger.info("Przeliczono %s powiązań autorów.", total)

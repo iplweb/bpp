@@ -7,10 +7,12 @@ from django.utils import timezone
 
 from bpp.models import Wydawnictwo_Ciagle
 from bpp.tasks import (
+    AXES_ACCESSATTEMPT_RETENTION_DAYS,
     EASYAUDIT_LOGINEVENT_RETENTION_MONTHS,
     _zaktualizuj_liczbe_cytowan,
     remove_file,
     usun_stare_logi_logowania_easyaudit,
+    usun_stare_proby_logowania_axes,
 )
 
 
@@ -168,3 +170,71 @@ def test_usun_stare_logi_logowania_easyaudit():
     assert LoginEvent.objects.filter(pk=nowy.pk).exists()
     # CRUDEvent nietknięty
     assert CRUDEvent.objects.filter(pk=crud.pk).exists()
+
+
+@pytest.mark.django_db
+def test_usun_stare_proby_logowania_axes():
+    """Kasuje AccessAttempt starsze niż retencja, zostawia świeże i nie rusza
+    AccessLog (udane logowania)."""
+    from axes.models import AccessAttempt, AccessLog
+
+    now = timezone.now()
+
+    def _attempt(username):
+        return AccessAttempt.objects.create(
+            username=username,
+            ip_address="10.0.0.1",
+            user_agent="bot",
+            get_data="",
+            post_data="",
+            failures_since_start=1,
+        )
+
+    stary = _attempt("bot-skanujacy")
+    nowy = _attempt("swiezy")
+    log = AccessLog.objects.create(
+        username="ktos", ip_address="10.0.0.2", user_agent="firefox"
+    )
+
+    # attempt_time to auto_now_add — przestawiamy ręcznie przez update()
+    cutoff = now - timedelta(days=AXES_ACCESSATTEMPT_RETENTION_DAYS)
+    AccessAttempt.objects.filter(pk=stary.pk).update(
+        attempt_time=cutoff - timedelta(days=1)
+    )
+    AccessAttempt.objects.filter(pk=nowy.pk).update(
+        attempt_time=now - timedelta(days=1)
+    )
+
+    deleted = usun_stare_proby_logowania_axes()
+
+    assert deleted == 1
+    assert not AccessAttempt.objects.filter(pk=stary.pk).exists()
+    assert AccessAttempt.objects.filter(pk=nowy.pk).exists()
+    # AccessLog (udane logowania) nietknięty
+    assert AccessLog.objects.filter(pk=log.pk).exists()
+
+
+@pytest.mark.django_db
+def test_usun_stare_proby_logowania_axes_respektuje_parametr_days():
+    """Parametr `days` przesuwa próg — ten sam wpis raz przeżywa, raz nie."""
+    from axes.models import AccessAttempt
+
+    attempt = AccessAttempt.objects.create(
+        username="bot",
+        ip_address="10.0.0.1",
+        user_agent="bot",
+        get_data="",
+        post_data="",
+        failures_since_start=1,
+    )
+    AccessAttempt.objects.filter(pk=attempt.pk).update(
+        attempt_time=timezone.now() - timedelta(days=10)
+    )
+
+    # Retencja 30 dni — wpis 10-dniowy zostaje.
+    assert usun_stare_proby_logowania_axes(days=30) == 0
+    assert AccessAttempt.objects.filter(pk=attempt.pk).exists()
+
+    # Retencja 5 dni — ten sam wpis wypada.
+    assert usun_stare_proby_logowania_axes(days=5) == 1
+    assert not AccessAttempt.objects.filter(pk=attempt.pk).exists()

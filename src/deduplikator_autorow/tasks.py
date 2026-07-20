@@ -7,6 +7,8 @@ from celery.utils.log import get_task_logger
 from django.db import transaction
 from django.utils import timezone
 
+from django_bpp.celery_tasks import GlobalSingleton
+
 from .utils.constants import MAX_PEWNOSC, MIN_PEWNOSC
 
 logger = get_task_logger(__name__)
@@ -16,6 +18,21 @@ MIN_CONFIDENCE_TO_STORE = 50
 
 # How often to update progress (every N authors)
 PROGRESS_UPDATE_INTERVAL = 100
+
+# Budżet czasu pełnego skanu duplikatów autorów.
+#
+# To najcięższe z zadań cyklicznych: dwie fazy (PBN + general) przechodzą
+# przez wszystkich autorów, budują bucket-y i generują pary kandydatów z
+# fuzzy-scoringiem. Bucketowanie ratuje przed pełnym O(n^2), ale przy dużym
+# korpusie to i tak dziesiątki minut.
+#
+# 3 h to zapas na najgorszy realny przypadek, z dwoma twardymi sufitami:
+#  * `visibility_timeout` brokera = 6 h — limit MUSI być wyraźnie niższy,
+#    inaczej Redis re-dostarczy zadanie jeszcze w trakcie jego wykonywania
+#    i dostaniemy dwa przebiegi „replace mode" naraz,
+#  * start o 3:00 (crontab) — 3 h kończy przebieg przed 6:00, czyli przed
+#    porannym ruchem użytkowników.
+SCAN_TIME_LIMIT = 3 * 60 * 60
 
 
 def normalize_confidence(raw_score: int) -> float:
@@ -429,7 +446,18 @@ def _run_pbn_phase(scan_run, min_confidence=MIN_CONFIDENCE_TO_STORE):
     )
 
 
-@shared_task(bind=True, name="deduplikator_autorow.scan_for_duplicates")
+@shared_task(
+    bind=True,
+    name="deduplikator_autorow.scan_for_duplicates",
+    # GlobalSingleton, nie Singleton: zadanie bierze `user_id`, a zwykły
+    # Singleton kluczuje lock po argumentach — dwóch użytkowników klikających
+    # „skanuj" dostałoby dwa równoległe przebiegi, a każdy zaczyna od
+    # `DuplicateCandidate.objects.all().delete()`. Lock musi być globalny.
+    base=GlobalSingleton,
+    lock_expiry=SCAN_TIME_LIMIT,
+    time_limit=SCAN_TIME_LIMIT,
+    soft_time_limit=int(0.95 * SCAN_TIME_LIMIT),
+)
 def scan_for_duplicates(self, user_id=None, min_confidence=MIN_CONFIDENCE_TO_STORE):
     """Combined task: faza PBN + faza general w jednym przebiegu.
 
