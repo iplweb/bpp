@@ -145,6 +145,66 @@ TransactionTestCase._fixture_teardown = _fixture_teardown
 
 
 # =============================================================================
+# liveops w testach: MockProgress zamiast WebProgress.
+#
+# ``liveops.runner._make_progress`` wybiera ``WebProgress``, gdy jest channel
+# layer — a ten pcha kazdy krok postepu przez
+# ``async_to_sync(channel_layer.group_send)``. W testach to sciezka
+# NIEPOTRZEBNA (nikt nie sluchа po WebSocket) i AKTYWNIE SZKODLIWA:
+#
+# Sync-API Playwrighta trzyma w watku workera ZYWA, dzialajaca petle zdarzen
+# zaparkowana w greenlecie (session-scoped ``browser`` utrzymuje ja przez cala
+# sesje; zmierzone: ``is_running()==True``). ``AsyncToSync.__call__`` sprawdza
+# ``asyncio.get_running_loop()`` i odmawia pracy: „You cannot use AsyncToSync
+# in the same thread as an async event loop". Stan jest globalny dla watku, wiec
+# obrywa KAZDY pozniejszy test w tym procesie — takze bez zwiazku z przegladarka
+# (``test_analyze_autoskip`` i spolka).
+#
+# ODRZUCONE WCZESNIEJSZE PODEJSCIA (oba sprawdzone, oba gorsze):
+#
+#   1. autouse fixture zdejmujacy wskaznik na CALY test (dawny
+#      ``_bez_wycieklej_petli_zdarzen`` w conftescie ``import_pracownikow``).
+#      Django wybiera magazyn polaczen po TYM SAMYM wskazniku
+#      (``asgiref.local.Local(thread_critical=True)``), wiec przestawianie go
+#      przy zywych polaczeniach przerzucalo zapisy testu na INNE polaczenie —
+#      poza atomic blokiem, w autocommit. Dane commitowaly sie mimo
+#      ``django_db`` i wyciekaly dalej: na CI 79 wykryc w jednym przebiegu.
+#
+#   2. ukrywanie wskaznika na czas samego ``WebProgress._push``. Dzialalo, ale
+#      bylo hackiem na klasie produkcyjnej i zostawialo w testach martwa
+#      sciezke ASGI, ktorej i tak nikt nie weryfikowal.
+#
+# Zamiast tego: w testach liveops raportuje przez ``MockProgress`` — zero
+# transportu, zero ``async_to_sync``, wiec problem znika u zrodla zamiast byc
+# obchodzony. ``MockProgress`` finalizuje operacje tak jak ``TextProgress``
+# (``finished_on``/``finished_successfully``/``result_context``), wiec testy
+# sprawdzajace STAN po ``run()`` dzialaja bez zmian. Jest to zreszta wzorzec
+# juz przyjety w repo (``import_punktacji_zrodel/tests``).
+#
+# Prawdziwa sciezka ASGI (liveop → group_send → WebSocket → pasek postepu)
+# nalezy do testu integracyjnego z zywym serwerem, nie do setek testow
+# jednostkowych.
+# =============================================================================
+
+
+def _zainstaluj_testowy_progress_liveops():
+    try:
+        from liveops import runner
+        from liveops.testing import MockProgress
+    except ImportError:  # liveops opcjonalne
+        return
+
+    if getattr(runner, "_bpp_testowy_progress", False):
+        return
+    runner._bpp_testowy_progress = True
+
+    runner._make_progress = lambda operation: MockProgress(operation)
+
+
+_zainstaluj_testowy_progress_liveops()
+
+
+# =============================================================================
 # Izolacja pod xdist: neutralizacja WYCIEKŁYCH scommitowanych danych domenowych.
 #
 # Problem (CI, sharding pytest-split + xdist -n auto): pod obciążeniem CI test,
