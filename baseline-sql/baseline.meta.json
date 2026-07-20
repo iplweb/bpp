@@ -1,5 +1,5 @@
 {
-  "git_sha": "669bae0a1b302fcacdec495f9cff17da75d3206c",
+  "git_sha": "3a09d97fbb515258c7b4e2b08b7aa3b74f9e6831",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
@@ -52,7 +52,7 @@
     "orcid_integration": "0001_initial",
     "oswiadczenia": "0005_migrate_template_to_dbtemplate",
     "password_policies": "0003_update_passwordprofile",
-    "pbn_api": "0075_sentdata_fee_sent_sentdata_fee_uploaded_okay",
+    "pbn_api": "0077_constrainty_uuid_dyscyplin",
     "pbn_downloader_app": "0004_alter_error_message_fields",
     "pbn_export_queue": "0010_atomowa_kolejka_pbn",
     "pbn_import": "0012_alter_importinconsistency_inconsistency_type",
