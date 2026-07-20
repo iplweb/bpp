@@ -17229,6 +17229,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1087	import_pracownikow	0025_importpracownikow_plik_po_imporcie	2000-01-01 00:00:00+00
 1088	import_pracownikow	0026_importpracownikow_uczelnia	2000-01-01 00:00:00+00
 1089	import_pracownikow	0027_profil_uczelnia	2000-01-01 00:00:00+00
+1090	bpp	0470_indeksy_gin_i_funkcyjne	2000-01-01 00:00:00+00
 \.
 
 
@@ -17594,6 +17595,21 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+133	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+134	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
+135	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+136	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+137	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+138	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+139	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+140	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+141	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+142	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+143	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+144	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+145	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+146	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+147	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -19182,7 +19198,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1089, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1090, true);
 
 
 --
@@ -19413,7 +19429,7 @@ SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 42,
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 132, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 147, true);
 
 
 --
@@ -24030,6 +24046,13 @@ CREATE INDEX bpp_autor_nazwisko_6cf7bdb0_like ON public.bpp_autor USING btree (n
 
 
 --
+-- Name: bpp_autor_nazwisko_upper_like; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_autor_nazwisko_upper_like ON public.bpp_autor USING btree (upper((nazwisko)::text) text_pattern_ops);
+
+
+--
 -- Name: bpp_autor_orcid_67cc1f38_like; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -24079,10 +24102,10 @@ CREATE INDEX bpp_autor_poprzednie_nazwiska_aa36b910_like ON public.bpp_autor USI
 
 
 --
--- Name: bpp_autor_search_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: bpp_autor_search_gin; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX bpp_autor_search_idx ON public.bpp_autor USING gist (search);
+CREATE INDEX bpp_autor_search_gin ON public.bpp_autor USING gin (search);
 
 
 --
@@ -24097,13 +24120,6 @@ CREATE INDEX bpp_autor_slug_61f9172c_like ON public.bpp_autor USING btree (slug 
 --
 
 CREATE INDEX bpp_autor_stopien_sluzbowy_id_1876c19d ON public.bpp_autor USING btree (stopien_sluzbowy_id);
-
-
---
--- Name: bpp_autor_ts; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX bpp_autor_ts ON public.bpp_autor USING gist (search);
 
 
 --
@@ -24478,6 +24494,13 @@ CREATE INDEX bpp_jednostka_nazwa_20b50aeb_like ON public.bpp_jednostka USING btr
 
 
 --
+-- Name: bpp_jednostka_nazwa_upper_like; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_jednostka_nazwa_upper_like ON public.bpp_jednostka USING btree (upper((nazwa)::text) text_pattern_ops);
+
+
+--
 -- Name: bpp_jednostka_ostatnio_zmieniony_3604ba97; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -24520,6 +24543,13 @@ CREATE INDEX bpp_jednostka_rodzic_parent_id_86359c7a ON public.bpp_jednostka_rod
 
 
 --
+-- Name: bpp_jednostka_search_gin; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_jednostka_search_gin ON public.bpp_jednostka USING gin (search);
+
+
+--
 -- Name: bpp_jednostka_skrot_8f71b146_like; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -24545,13 +24575,6 @@ CREATE INDEX bpp_jednostka_slug_a03ebcdd_like ON public.bpp_jednostka USING btre
 --
 
 CREATE INDEX bpp_jednostka_tree_id_14382644 ON public.bpp_jednostka USING btree (tree_id);
-
-
---
--- Name: bpp_jednostka_ts; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX bpp_jednostka_ts ON public.bpp_jednostka USING gist (search);
 
 
 --
@@ -24947,6 +24970,13 @@ CREATE INDEX bpp_patent_rok_bb34fa36 ON public.bpp_patent USING btree (rok);
 
 
 --
+-- Name: bpp_patent_search_index_gin; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_patent_search_index_gin ON public.bpp_patent USING gin (search_index);
+
+
+--
 -- Name: bpp_patent_slug_642566ca_like; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -24958,13 +24988,6 @@ CREATE INDEX bpp_patent_slug_642566ca_like ON public.bpp_patent USING btree (slu
 --
 
 CREATE INDEX bpp_patent_status_korekty_id_f4e3377a ON public.bpp_patent USING btree (status_korekty_id);
-
-
---
--- Name: bpp_patent_ts; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX bpp_patent_ts ON public.bpp_patent USING gist (search_index);
 
 
 --
@@ -25227,6 +25250,13 @@ CREATE INDEX bpp_praca_doktorska_rok_ecf17eec ON public.bpp_praca_doktorska USIN
 
 
 --
+-- Name: bpp_praca_doktorska_search_index_gin; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_praca_doktorska_search_index_gin ON public.bpp_praca_doktorska USING gin (search_index);
+
+
+--
 -- Name: bpp_praca_doktorska_slug_c87123c0_like; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -25238,13 +25268,6 @@ CREATE INDEX bpp_praca_doktorska_slug_c87123c0_like ON public.bpp_praca_doktorsk
 --
 
 CREATE INDEX bpp_praca_doktorska_status_korekty_id_595ec5e9 ON public.bpp_praca_doktorska USING btree (status_korekty_id);
-
-
---
--- Name: bpp_praca_doktorska_ts; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX bpp_praca_doktorska_ts ON public.bpp_praca_doktorska USING gist (search_index);
 
 
 --
@@ -25493,6 +25516,13 @@ CREATE INDEX bpp_praca_habilitacyjna_rok_34557498 ON public.bpp_praca_habilitacy
 
 
 --
+-- Name: bpp_praca_habilitacyjna_search_index_gin; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_praca_habilitacyjna_search_index_gin ON public.bpp_praca_habilitacyjna USING gin (search_index);
+
+
+--
 -- Name: bpp_praca_habilitacyjna_slug_340e95be_like; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -25504,13 +25534,6 @@ CREATE INDEX bpp_praca_habilitacyjna_slug_340e95be_like ON public.bpp_praca_habi
 --
 
 CREATE INDEX bpp_praca_habilitacyjna_status_korekty_id_10aafb36 ON public.bpp_praca_habilitacyjna USING btree (status_korekty_id);
-
-
---
--- Name: bpp_praca_habilitacyjna_ts; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX bpp_praca_habilitacyjna_ts ON public.bpp_praca_habilitacyjna USING gist (search_index);
 
 
 --
@@ -26347,6 +26370,13 @@ CREATE INDEX bpp_wydawnictwo_ciagle_rok_528fd6e8 ON public.bpp_wydawnictwo_ciagl
 
 
 --
+-- Name: bpp_wydawnictwo_ciagle_search_index_gin; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_wydawnictwo_ciagle_search_index_gin ON public.bpp_wydawnictwo_ciagle USING gin (search_index);
+
+
+--
 -- Name: bpp_wydawnictwo_ciagle_slug_9045cfeb_like; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -26372,13 +26402,6 @@ CREATE INDEX bpp_wydawnictwo_ciagle_str_jezyk_streszczenia_id_34c0a081 ON public
 --
 
 CREATE INDEX bpp_wydawnictwo_ciagle_streszczenie_rekord_id_20e3c8a4 ON public.bpp_wydawnictwo_ciagle_streszczenie USING btree (rekord_id);
-
-
---
--- Name: bpp_wydawnictwo_ciagle_ts; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX bpp_wydawnictwo_ciagle_ts ON public.bpp_wydawnictwo_ciagle USING gist (search_index);
 
 
 --
@@ -26746,6 +26769,13 @@ CREATE INDEX bpp_wydawnictwo_zwarte_rok_3672b38f ON public.bpp_wydawnictwo_zwart
 
 
 --
+-- Name: bpp_wydawnictwo_zwarte_search_index_gin; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_wydawnictwo_zwarte_search_index_gin ON public.bpp_wydawnictwo_zwarte USING gin (search_index);
+
+
+--
 -- Name: bpp_wydawnictwo_zwarte_seria_wydawnicza_id_6af405f7; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -26778,13 +26808,6 @@ CREATE INDEX bpp_wydawnictwo_zwarte_str_jezyk_streszczenia_id_8ff64189 ON public
 --
 
 CREATE INDEX bpp_wydawnictwo_zwarte_streszczenie_rekord_id_f550a95a ON public.bpp_wydawnictwo_zwarte_streszczenie USING btree (rekord_id);
-
-
---
--- Name: bpp_wydawnictwo_zwarte_ts; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX bpp_wydawnictwo_zwarte_ts ON public.bpp_wydawnictwo_zwarte USING gist (search_index);
 
 
 --
@@ -27068,6 +27091,13 @@ CREATE INDEX bpp_zrodlo_nazwa_trgm ON public.bpp_zrodlo USING gin (nazwa public.
 
 
 --
+-- Name: bpp_zrodlo_nazwa_upper_like; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_zrodlo_nazwa_upper_like ON public.bpp_zrodlo USING btree (upper((nazwa)::text) text_pattern_ops);
+
+
+--
 -- Name: bpp_zrodlo_openaccess_licencja_id_72b1144c; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -27131,10 +27161,10 @@ CREATE INDEX bpp_zrodlo_rodzaj_id_c0e0fe48 ON public.bpp_zrodlo USING btree (rod
 
 
 --
--- Name: bpp_zrodlo_search_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: bpp_zrodlo_search_gin; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX bpp_zrodlo_search_idx ON public.bpp_zrodlo USING gist (search);
+CREATE INDEX bpp_zrodlo_search_gin ON public.bpp_zrodlo USING gin (search);
 
 
 --
@@ -27177,13 +27207,6 @@ CREATE INDEX bpp_zrodlo_skrot_trgm ON public.bpp_zrodlo USING gin (skrot public.
 --
 
 CREATE INDEX bpp_zrodlo_slug_6381a5f1_like ON public.bpp_zrodlo USING btree (slug varchar_pattern_ops);
-
-
---
--- Name: bpp_zrodlo_ts; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX bpp_zrodlo_ts ON public.bpp_zrodlo USING gist (search);
 
 
 --
@@ -27842,6 +27865,13 @@ CREATE INDEX easyaudit_c_object__82020b_idx ON public.easyaudit_crudevent USING 
 --
 
 CREATE INDEX easyaudit_crudevent_content_type_id_618ed0c6 ON public.easyaudit_crudevent USING btree (content_type_id);
+
+
+--
+-- Name: easyaudit_crudevent_datetime_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX easyaudit_crudevent_datetime_idx ON public.easyaudit_crudevent USING btree (datetime);
 
 
 --
