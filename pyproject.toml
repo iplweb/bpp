@@ -124,7 +124,7 @@ dependencies = [
     "twisted[http2,tls]>=26.4.0",
     "django-dbtemplates-iplweb>=4.4.0",
     "django-soft-delete>=1.0.23",
-    "tqdm>=4.68.4",
+    "tqdm>=4.69.0",
     "xhtml2pdf>=0.2.16",
     "isbnlib>=3.10.14",
     "chardet>=7.4.3",
@@ -491,8 +491,8 @@ dev = [
     # .pre-commit-config.yaml. CI lints via pre-commit (that rev is the
     # source of truth); this `==` pin only keeps ad-hoc `uv run ruff`
     # producing identical output. Bump both together, never one alone.
-    "ruff==0.15.21",
-    "djlint>=1.40.5,<2",
+    "ruff==0.15.22",
+    "djlint>=1.41.0,<2",
     "pre-commit>=4.6.0",
     "twine>=5.1.0",
     "ipdb>=0.13.9",
