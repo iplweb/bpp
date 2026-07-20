@@ -5,42 +5,41 @@ zdarzenia czyszczone w złym momencie) i milczenie na CI czytalibyśmy jako
 „zapisów spoza głównego wątku nie ma" zamiast „nie mierzymy".
 """
 
-import sys
 import threading
 
 import pytest
 
 
-def _src_conftest():
+def _src_conftest(request):
     """Zwraca INSTANCJĘ modułu ``src/conftest.py`` załadowaną przez pytest.
 
-    Gołe ``import conftest`` jest pod pytestem niejednoznaczne: rozstrzyga się
-    na pierwszy ``conftest.py`` na ``sys.path``, a przy shardowaniu xdista bywa
-    to conftest aplikacyjny (np. ``import_pracownikow/tests/conftest.py``), bez
-    tracera → ``AttributeError`` na CI mimo zieleni lokalnie.
+    Wszystkie prostsze drogi zawodzą pod shardowaniem xdista na CI:
 
-    Świeży ``importlib`` też NIE wystarcza: dałby OSOBNĄ instancję z własnym
-    ``_LEAK_GUARD``, a tracer (zainstalowany przez tę właściwą instancję, bo
-    ``BPP_LEAK_GUARD_STRICT`` jest ustawiony) dopisuje zdarzenia do słownika
-    tamtej instancji. Musimy więc znaleźć DOKŁADNIE ten moduł, który pytest
-    już załadował — po obecności ``_zainstaluj_tracer_polaczen`` w ``sys.modules``.
+    - gołe ``import conftest`` rozstrzyga się na pierwszy ``conftest.py`` na
+      ``sys.path`` — bywa to conftest aplikacyjny bez tracera;
+    - świeży ``importlib`` daje OSOBNĄ instancję z własnym ``_LEAK_GUARD``,
+      a tracer dopisuje zdarzenia do instancji załadowanej przez pytest;
+    - filtr po ``__file__`` w ``sys.modules`` jest kruchy — na CI ścieżka
+      bywa WZGLĘDNA (``src/conftest.py``), więc ``endswith("/src/conftest.py")``
+      nie łapie.
+
+    Deterministycznie: pytest rejestruje KAŻDY ``conftest.py`` jako plugin.
+    Bierzemy ten z zarejestrowanych, który ma ``_zainstaluj_tracer_polaczen``
+    — czyli dokładnie rootdir-owy ``src/conftest.py``, tę samą instancję,
+    której używa runtime.
     """
     kandydaci = [
-        m
-        for m in sys.modules.values()
-        if m is not None
-        and (getattr(m, "__file__", "") or "")
-        .replace("\\", "/")
-        .endswith("/src/conftest.py")
-        and hasattr(m, "_zainstaluj_tracer_polaczen")
+        p
+        for p in request.config.pluginmanager.get_plugins()
+        if hasattr(p, "_zainstaluj_tracer_polaczen")
     ]
-    assert kandydaci, "nie znaleziono załadowanego src/conftest.py z tracerem"
+    assert kandydaci, "nie znaleziono zarejestrowanego src/conftest.py z tracerem"
     return kandydaci[0]
 
 
 @pytest.mark.django_db
-def test_tracer_widzi_polaczenie_z_innego_watku():
-    conftest = _src_conftest()
+def test_tracer_widzi_polaczenie_z_innego_watku(request):
+    conftest = _src_conftest(request)
 
     conftest._zainstaluj_tracer_polaczen()
     conftest._LEAK_GUARD["zdarzenia"] = []
