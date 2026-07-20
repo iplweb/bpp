@@ -9,6 +9,7 @@ from django.db.models import Count, Exists, OuterRef
 from django.db.models.functions import Substr
 from django.http import JsonResponse
 from django.utils import timezone
+from django.utils.decorators import method_decorator
 from django.utils.http import url_has_allowed_host_and_scheme
 
 try:
@@ -51,6 +52,7 @@ from bpp.util.uczelnia_scope import (
     scope_rekord_do_uczelni,
     tylko_jedna_uczelnia,
 )
+from bpp.views.cache_publiczny import cache_publiczny
 
 logger = logging.getLogger(__name__)
 
@@ -408,6 +410,7 @@ class Browser(ListView):
                 raise
 
 
+@method_decorator(cache_publiczny(), name="dispatch")
 class AutorzyView(Browser):
     template_name = "browse/autorzy_modern_bordered.html"
     model = Autor
@@ -503,6 +506,7 @@ class AutorzyView(Browser):
         return context
 
 
+@method_decorator(cache_publiczny(), name="dispatch")
 class ZrodlaView(Browser):
     template_name = "browse/zrodla.html"
     model = Zrodlo
@@ -554,6 +558,7 @@ class ZrodlaView(Browser):
         return context
 
 
+@method_decorator(cache_publiczny(), name="dispatch")
 class JednostkiView(Browser):
     template_name = "browse/jednostki.html"
     model = Jednostka
@@ -621,6 +626,7 @@ class ZrodloView(DetailView):
         return context
 
 
+@method_decorator(cache_publiczny(), name="dispatch")
 class LataView(ListView):
     template_name = "browse/lata.html"
     context_object_name = "years"
@@ -667,6 +673,7 @@ class LataView(ListView):
         return context
 
 
+@method_decorator(cache_publiczny(), name="dispatch")
 class RokView(ListView):
     template_name = "browse/rok.html"
     model = Rekord
@@ -866,6 +873,7 @@ class PracaViewMixin:
 END_NUMBER_REGEX = re.compile(r"(?P<content_type_id>\d+)-(?P<object_id>\d+)$")
 
 
+@method_decorator(cache_publiczny(), name="dispatch")
 class PracaViewBySlug(PracaViewMixin, DetailView):
     template_name = "browse/praca.html"
     model = Rekord
@@ -896,6 +904,7 @@ class PracaViewBySlug(PracaViewMixin, DetailView):
         raise Http404
 
 
+@method_decorator(cache_publiczny(), name="dispatch")
 class PracaView(PracaViewMixin, DetailView):
     template_name = "browse/praca.html"
     model = Rekord
