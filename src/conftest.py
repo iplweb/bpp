@@ -147,10 +147,12 @@ TransactionTestCase._fixture_teardown = _fixture_teardown
 # =============================================================================
 # liveops WebProgress: zdejmij wskaznik biezacej petli TYLKO na czas wysylki.
 #
-# Sync-API Playwrighta zostawia w watku workera ustawiony wskaznik biezacej
-# petli zdarzen (``asyncio.events._set_running_loop``) — pointer NIE jest
-# weryfikowany, wiec ``asyncio.get_running_loop()`` zwraca petle, ktora wcale
-# nie dziala. Kazdy pozniejszy test w TYM SAMYM procesie-workerze to widzi,
+# Sync-API Playwrighta trzyma w watku workera ZYWA, dzialajaca petle zdarzen,
+# zaparkowana w greenlecie; session-scoped ``browser`` utrzymuje ja przy zyciu
+# przez cala sesje. Wskaznik biezacej petli mowi wiec PRAWDE (zmierzone:
+# ``is_running()==True``) — to NIE jest niesprzatniety smiec.
+#
+# Konsekwencja: kazdy pozniejszy test w TYM SAMYM procesie-workerze to widzi,
 # niezaleznie od uzywanych fixture'ow (stad awarie w testach bez zwiazku
 # z przegladarka). ``async_to_sync`` sprawdza ten pointer i odmawia:
 # „You cannot use AsyncToSync in the same thread as an async event loop".

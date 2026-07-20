@@ -1,9 +1,9 @@
-"""Regresja: WebProgress musi działać mimo FAŁSZYWEGO wskaźnika bieżącej pętli.
+"""Regresja: WebProgress musi działać mimo wskaźnika PRAWDZIWEJ, zaparkowanej pętli.
 
 Sync-API Playwrighta zostawia w wątku workera ustawiony wskaźnik bieżącej
-pętli zdarzeń (``asyncio.events._set_running_loop``). Wskaźnik NIE jest
-weryfikowany — ``asyncio.get_running_loop()`` zwraca pętlę, która wcale nie
-działa. ``asgiref.sync.AsyncToSync.__call__`` sprawdza dokładnie ten wskaźnik
+pętli zdarzeń (``asyncio.events._set_running_loop``). Pętla NAPRAWDĘ działa (zmierzone: ``is_running()==True``) —
+jest zaparkowana w greenlecie, a session-scoped ``browser`` utrzymuje ją przy
+życiu przez całą sesję. Wskaźnik NIE kłamie. ``asgiref.sync.AsyncToSync.__call__`` sprawdza dokładnie ten wskaźnik
 i odmawia pracy: „You cannot use AsyncToSync in the same thread as an async
 event loop".
 
@@ -35,7 +35,7 @@ class _FakeOp:
         return "kanal-testowy"
 
 
-def _z_falszywym_wskaznikiem(fn):
+def _z_zaparkowana_petla(fn):
     poprzedni = asyncio.events._get_running_loop()
     petla = asyncio.new_event_loop()
     try:
@@ -46,11 +46,11 @@ def _z_falszywym_wskaznikiem(fn):
         petla.close()
 
 
-def test_push_dziala_mimo_falszywego_wskaznika_petli():
+def test_push_dziala_mimo_zaparkowanej_petli():
     layer = _FakeLayer()
     wp = WebProgress(_FakeOp(), layer)
 
-    _z_falszywym_wskaznikiem(lambda: wp._push("<div>postęp</div>"))
+    _z_zaparkowana_petla(lambda: wp._push("<div>postęp</div>"))
 
     assert len(layer.wyslane) == 1, layer.wyslane
     kanal, msg = layer.wyslane[0]
@@ -58,11 +58,11 @@ def test_push_dziala_mimo_falszywego_wskaznika_petli():
     assert msg["liveop_html"] == "<div>postęp</div>"
 
 
-def test_push_message_dziala_mimo_falszywego_wskaznika_petli():
+def test_push_message_dziala_mimo_zaparkowanej_petli():
     layer = _FakeLayer()
     wp = WebProgress(_FakeOp(), layer)
 
-    _z_falszywym_wskaznikiem(lambda: wp._push_message({"type": "x", "a": 1}))
+    _z_zaparkowana_petla(lambda: wp._push_message({"type": "x", "a": 1}))
 
     assert layer.wyslane == [("kanal-testowy", {"type": "x", "a": 1})]
 
