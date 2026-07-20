@@ -404,4 +404,13 @@ def test_zapisz_snapshot_populuje_pole_i_zgadza_sie_z_builderem():
     assert imp.plik_po_imporcie
     with imp.plik_po_imporcie.open("rb") as f:
         zapisane = f.read()
-    assert zapisane == zbuduj_plik_po_imporcie(imp)
+    # Porownanie SEMANTYCZNE (naglowki + wiersze), nie bajt-w-bajt: openpyxl
+    # pieczetuje kazdy zapis czasem — ``dcterms:created`` w docProps/core.xml
+    # (rozdzielczosc 1 s) oraz ``date_time`` kazdego wpisu ZIP-a. Dwa buildy
+    # tej samej tresci roznia sie wiec bajtami, gdy tylko przekrocza granice
+    # sekundy. Lokalnie oba buildy mieszcza sie w tej samej sekundzie i test
+    # przechodzil; na obciazonym CI potrafil rozjechac sie o sekunde i pekac
+    # jako ``assert b'PK\x03\x04...' == b'PK\x03\x04...'``. Intencja testu to
+    # „snapshot zawiera to samo, co zwraca builder" — tresc, nie identycznosc
+    # kontenera ZIP.
+    assert _wczytaj(zapisane) == _wczytaj(zbuduj_plik_po_imporcie(imp))
