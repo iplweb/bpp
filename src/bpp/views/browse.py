@@ -318,23 +318,34 @@ class Browser(ListView):
                 qobj |= Q(**{self.literka_field + "__istartswith": x})
             qry = qry.filter(qobj)  # **{self.param + "__istartswith": literka})
 
-        # BEZ ``.distinct()``: żaden filtr budowany tutaj ani w widokach
-        # pochodnych nie idzie JOIN-em po relacji wielowartościowej, więc
-        # duplikaty nie mają skąd powstać, a Paginator wołał
-        # ``COUNT(DISTINCT …)`` po wszystkich kolumnach modelu (29 dla Autora)
-        # przy każdym wejściu i każdej stronie. Konkretnie:
+        # BEZ ``.distinct()``: żadna ścieżka filtrowania nie zwraca tu
+        # zdublowanych wierszy, a Paginator wołał ``COUNT(DISTINCT …)`` po
+        # wszystkich kolumnach modelu (29 dla Autora) przy każdym wejściu i
+        # każdej kolejnej stronie. Ścieżka po ścieżce:
         #
-        # * ``fulltext_filter`` — predykat na jednokolumnowym tsvectorze,
         # * filtr „literki" — ``istartswith`` na własnej kolumnie modelu,
+        # * ``fulltext_filter`` dla ``Zrodlo`` i ``Jednostka`` — predykat na
+        #   jednokolumnowym tsvectorze, bez JOIN-a,
+        # * ``fulltext_filter`` dla ``Autor`` — UWAGA, tu JOIN JEST:
+        #   ``AutorManager.fulltext_annotate`` (``bpp/models/autor.py``)
+        #   nadpisuje wersję z ``FulltextSearchMixin`` i zwraca
+        #   ``Count("wydawnictwo_ciagle")``, co dokłada ``LEFT OUTER JOIN
+        #   bpp_wydawnictwo_ciagle_autor``. Wierszy nie mnoży wyłącznie
+        #   dlatego, że agregat wymusza ``GROUP BY`` po pk — deduplikacja
+        #   pochodzi stamtąd, nie z braku złączenia. Zmiana tej adnotacji na
+        #   NIEagregującą zostawi JOIN bez ``GROUP BY`` i wymaga własnej
+        #   deduplikacji (pilnuje tego
+        #   ``test_autorzy_view_fulltext_nie_mnozy_mimo_joinu_po_publikacjach``),
         # * ``AutorzyView`` — ``Exists()``/``OuterRef`` (skorelowane
         #   podzapytania) plus ``select_related`` po FK,
-        # * ``ZrodlaView`` — ``pk__in=<podzapytanie>``,
-        # * ``JednostkiView`` — ``scope_jednostki_do_uczelni`` (równość po FK
-        #   ``uczelnia``), ``widoczna``, ``parent=None``.
+        # * ``ZrodlaView`` — ``pk__in=<podzapytanie>`` (``IN``, nie JOIN),
+        # * ``JednostkiView`` — ``scope_jednostki_do_uczelni`` (równość po
+        #   skalarnym FK ``uczelnia``), ``widoczna``, ``parent=None``.
         #
-        # Jeżeli kiedyś dojdzie tu filtr po relacji odwrotnej lub M2M,
-        # deduplikację trzeba dołożyć RAZEM z nim (jak robi to
-        # ``scope_rekord_do_uczelni``), a nie bezwarunkowo w klasie bazowej.
+        # Reguła na przyszłość: nowy filtr po relacji odwrotnej lub M2M ma
+        # przynieść własną deduplikację RAZEM z sobą (jak robi to
+        # ``scope_rekord_do_uczelni``), a nie przywracać bezwarunkowe
+        # ``.distinct()`` w klasie bazowej.
         return qry
 
     def get_context_data(self, **kw):
@@ -618,10 +629,16 @@ class LataView(ListView):
     def get_queryset(self):
         uczelnia = Uczelnia.objects.get_for_request(self.request)
         qs = scope_rekord_do_uczelni(Rekord.objects.all(), uczelnia)
+        # ``Count("id", distinct=True)``, NIE ``Count("*")``: w multi-host
+        # ``scope_rekord_do_uczelni`` dokłada JOIN po M2M ``autorzy``, więc
+        # ``Count("*")`` liczył wiersze złączenia — rekord z dwoma
+        # autorstwami tej samej uczelni podbijał licznik roku do 2.
+        # ``.distinct()`` z helpera tego nie ratuje: dotyczy zwiniętych par
+        # ``(rok, count)``, a nie wierszy wchodzących do agregatu.
         return [
             {"year": row["rok"], "count": row["count"]}
             for row in qs.values("rok")
-            .annotate(count=Count("*"))
+            .annotate(count=Count("id", distinct=True))
             .filter(count__gt=0)
             .order_by("-rok")
         ]

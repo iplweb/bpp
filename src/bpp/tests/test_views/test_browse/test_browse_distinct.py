@@ -222,6 +222,48 @@ def test_autorzy_view_bez_duplikatow_przy_literce_i_szukaniu(
 
 
 @pytest.mark.django_db
+def test_autorzy_view_fulltext_nie_mnozy_mimo_joinu_po_publikacjach(
+    client, uczelnia, autor_z_wieloma_powiazaniami, jednostka
+):
+    """Ścieżka ``?search=`` dla ``Autor`` JOIN-uje, ale zwija przez GROUP BY.
+
+    ``AutorManager.fulltext_annotate`` (``bpp/models/autor.py``) nadpisuje
+    wersję z ``FulltextSearchMixin`` i zwraca ``Count("wydawnictwo_ciagle")``
+    — czyli agregat po relacji odwrotnej, który dokłada ``LEFT OUTER JOIN
+    bpp_wydawnictwo_ciagle_autor``. Autor z N publikacjami dałby N wierszy,
+    gdyby nie ``GROUP BY`` wymuszony przez sam agregat.
+
+    Ten test przypina tę własność: gdyby ktoś zmienił ``fulltext_annotate``
+    na adnotację NIEagregującą, JOIN zostałby, ``GROUP BY`` by zniknął i
+    lista autorów zaczęłaby po cichu dublować wpisy.
+    """
+    from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
+
+    # Dokładamy trzecią publikację — łącznie 3, przy 2 jednostkach autora.
+    wc = baker.make(Wydawnictwo_Ciagle)
+    baker.make(
+        Wydawnictwo_Ciagle_Autor,
+        rekord=wc,
+        autor=autor_z_wieloma_powiazaniami,
+        jednostka=jednostka,
+    )
+
+    res = client.get(reverse("bpp:browse_autorzy"), data={"search": "Nowak"})
+
+    assert res.status_code == 200
+    lista = list(res.context["object_list"])
+    assert _pks(lista).count(autor_z_wieloma_powiazaniami.pk) == 1
+    assert res.context["paginator"].count == 1
+
+    # Premisa testu: JOIN faktycznie tam jest, a dedup robi GROUP BY.
+    from bpp.models import Autor
+
+    sql = str(Autor.objects.fulltext_filter("Nowak").query).upper()
+    assert "JOIN" in sql
+    assert "GROUP BY" in sql
+
+
+@pytest.mark.django_db
 def test_autorzy_view_queryset_bez_distinct(uczelnia, autor_z_wieloma_powiazaniami):
     assert not _queryset_widoku(AutorzyView, uczelnia).query.distinct
 
@@ -425,3 +467,55 @@ def test_multihost_streszczenia_nadal_deduplikuja(
 
     lista = list(ctx["recent_abstracts"])
     assert _pks(lista) == [streszczenie.pk]
+
+
+@pytest.mark.django_db
+def test_multihost_lata_view_nie_zawyza_licznika(
+    settings,
+    site1,
+    uczelnia1,
+    uczelnia2,
+    jednostka_uczelnia1,
+    autor_uczelnia1,
+    typy_odpowiedzialnosci,
+    charaktery_formalne,
+    jezyki,
+    denorms,
+):
+    """``LataView`` liczy REKORDY, nie wiersze po JOIN-ie (błąd zastany).
+
+    W multi-host ``scope_rekord_do_uczelni`` dokłada JOIN po M2M ``autorzy``.
+    ``Count("*")`` liczył wtedy wiersze złączenia, więc rekord z dwoma
+    autorstwami tej samej uczelni podbijał licznik roku do 2. ``.distinct()``
+    z helpera nic tu nie dawał — dotyczy zwiniętych par ``(rok, count)``,
+    a nie wierszy wchodzących do agregatu.
+    """
+    from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
+    from bpp.views.browse import LataView
+    from fixtures.conftest_multisite import make_request_for_site
+
+    settings.ALLOWED_HOSTS = ["*"]
+
+    druga = Jednostka.objects.create(
+        nazwa="Druga jednostka uczelni 1",
+        skrot="DJU1",
+        uczelnia=uczelnia1,
+    )
+
+    wc = baker.make(Wydawnictwo_Ciagle, rok=2020)
+    for kolejnosc, jedn in enumerate((jednostka_uczelnia1, druga)):
+        baker.make(
+            Wydawnictwo_Ciagle_Autor,
+            rekord=wc,
+            autor=autor_uczelnia1,
+            jednostka=jedn,
+            kolejnosc=kolejnosc,
+        )
+
+    denorms.rebuildall()
+
+    view = LataView()
+    view.request = make_request_for_site(site1)
+    wiersze = view.get_queryset()
+
+    assert wiersze == [{"year": 2020, "count": 1}]
