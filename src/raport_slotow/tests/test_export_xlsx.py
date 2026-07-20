@@ -138,6 +138,42 @@ def test_export_zwraca_bajty():
     assert out[:2] == b"PK"  # ZIP/xlsx magic
 
 
+def test_export_bez_limitu_domyslnie_nie_gejtuje():
+    from raport_slotow.util import MyTableExport
+
+    # max_rows domyślnie None → duża liczba wierszy przechodzi bez wyjątku.
+    duzo = [{"name": f"R{i}", "value": i} for i in range(200)]
+    ws = _load(MyTableExport("xlsx", _DemoTable(duzo)).export_xlsx())
+    rows = _rows(ws)
+    # nagłówek + 200 danych + suma
+    assert len(rows) == 202
+    assert rows[0] == ("Name", "Value")
+    assert rows[-1][0] == "Suma"
+
+
+def test_export_ponizej_limitu_przechodzi():
+    from raport_slotow.util import MyTableExport
+
+    duzo = [{"name": f"R{i}", "value": i} for i in range(50)]
+    ws = _load(MyTableExport("xlsx", _DemoTable(duzo), max_rows=50).export_xlsx())
+    # 50 wierszy przy limicie 50 to jeszcze OK (> dopiero przekracza)
+    assert len(_rows(ws)) == 52  # nagłówek + 50 + suma
+
+
+def test_export_powyzej_limitu_podnosi_wyjatek_z_komunikatem():
+    from raport_slotow.util import ExportRowLimitExceeded, MyTableExport
+
+    duzo = [{"name": f"R{i}", "value": i} for i in range(51)]
+    exporter = MyTableExport("xlsx", _DemoTable(duzo), max_rows=50)
+    with pytest.raises(ExportRowLimitExceeded) as exc:
+        exporter.export_xlsx()
+    msg = str(exc.value)
+    # Jasny komunikat: limit, faktyczna liczba, sugestia — bez cichego ucięcia.
+    assert "50" in msg
+    assert "51" in msg
+    assert "Zawęź filtry" in msg
+
+
 def test_string_w_opisie_jest_zgloszany_jako_typeerror():
     """Quirk zachowany: zwykły string w opisie wywala TypeError.
 

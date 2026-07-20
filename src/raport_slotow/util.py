@@ -1,13 +1,30 @@
+import io
 from collections.abc import Iterable
-from tempfile import NamedTemporaryFile
 
 import openpyxl
 import openpyxl.styles
 from django.db import DEFAULT_DB_ALIAS, connections
+from django.http import HttpResponseBadRequest
 from django_tables2.export import ExportMixin, TableExport
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.filters import AutoFilter
 from openpyxl.worksheet.table import Table, TableColumn, TableStyleInfo
+
+# Limit wierszy synchronicznego eksportu XLSX (ochrona przed OOM/DoS). Eksport
+# leci w cyklu request/response i openpyxl trzyma cały arkusz w RAM, więc bez
+# górnej granicy duży raport (np. cała uczelnia) może wyczerpać pamięć procesu
+# web. Wartość dobrana wyżej niż limit Multiseeka (5000), bo raporty slotów są
+# podstawowym produktem eksportowym i pojedynczy autor/filtr bywa obszerniejszy,
+# ale nadal ograniczona. Przekroczenie → jasny komunikat (bez cichego ucięcia).
+RAPORT_SLOTOW_EXPORT_MAX_ROWS = 10000
+
+
+class ExportRowLimitExceeded(Exception):
+    """Eksport przekracza limit wierszy (RAPORT_SLOTOW_EXPORT_MAX_ROWS).
+
+    Podnoszone w trakcie budowy XLSX, przechwytywane na granicy widoku i
+    zamieniane na czytelny HTTP 400 — użytkownik dostaje komunikat, a nie
+    po cichu ucięty plik ani 500."""
 
 
 def drop_table(table_name, using=DEFAULT_DB_ALIAS):
@@ -162,35 +179,62 @@ class MyTableExport(TableExport):
         return True
 
     def __init__(
-        self, export_format, table, exclude_columns=None, export_description=None
+        self,
+        export_format,
+        table,
+        exclude_columns=None,
+        export_description=None,
+        max_rows=None,
     ):
-        super().__init__(
-            export_format=export_format, table=table, exclude_columns=exclude_columns
-        )
+        # Celowo NIE wołamy super().__init__ — bazowy TableExport zbudowałby od
+        # razu pełny tablib.Dataset (materializacja WSZYSTKICH wierszy przez
+        # table.as_values()). Strumieniujemy zamiast tego prosto do openpyxl
+        # (jedna kopia mniej), więc dataset jest zbędny.
+        if not self.is_valid_format(export_format):
+            raise TypeError(f'Export format "{export_format}" is not supported.')
+        self.format = export_format
         self.table = table
+        self.exclude_columns = exclude_columns
         self.export_description = export_description
+        self.max_rows = max_rows
 
     def export(self):
         return getattr(self, f"export_{self.format}")()
 
     def export_xlsx(self):
+        # Limit wierszy sprawdzamy PRZED iteracją — len(table.rows) na tabeli
+        # paginowanej to zwykły COUNT (bez materializacji), więc odmawiamy zanim
+        # queryset wciągnie cały wynik do RAM. Bez cichego ucięcia: podnosimy
+        # wyjątek z czytelnym komunikatem (łapany na granicy widoku → HTTP 400).
+        if self.max_rows is not None:
+            wiersze = len(self.table.rows)
+            if wiersze > self.max_rows:
+                raise ExportRowLimitExceeded(
+                    f"Eksport XLSX jest dostępny dla maksymalnie {self.max_rows} "
+                    f"wierszy, a ten raport ma ich {wiersze}. Zawęź filtry "
+                    "(np. rok, jednostkę, dyscyplinę) i spróbuj ponownie."
+                )
+
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Sheet 1"
 
         table_name = "Table1"
 
-        tablib_dataset = self.dataset
-
         if self.export_description:
             _write_export_description(ws, self.export_description)
 
+        # table.as_values() to generator: pierwszy element = nagłówki, kolejne =
+        # wiersze danych. Zamiast materializować pełny tablib.Dataset i kopiować
+        # go do openpyxl, dopisujemy wiersze wprost, w miarę jak spływają.
+        rows = self.table.as_values(exclude_columns=self.exclude_columns)
+        headers = next(rows, [])
+
         # Write the header row and make cells bold
-        ws.append(tablib_dataset.headers)
+        ws.append(headers)
 
         table_columns = tuple(
-            TableColumn(id=h, name=header)
-            for h, header in enumerate(tablib_dataset.headers, start=1)
+            TableColumn(id=h, name=header) for h, header in enumerate(headers, start=1)
         )
 
         footer_row = _build_footer_row(self.table.columns, table_columns, table_name)
@@ -199,27 +243,36 @@ class MyTableExport(TableExport):
             cell.font = openpyxl.styles.Font(bold=True)
 
         first_table_row = ws.max_row
-        for row in tablib_dataset:
+        data_rows = 0
+        for row in rows:
             ws.append(row)
+            data_rows += 1
         ws.append(footer_row)
 
-        if tablib_dataset:
+        if data_rows:
             _add_table(ws, table_name, first_table_row, table_columns)
 
         _autofit_columns(ws)
 
-        with NamedTemporaryFile() as tmp:
-            wb.save(tmp.name)
-            tmp.seek(0)
-            return tmp.read()
+        output = io.BytesIO()
+        wb.save(output)
+        return output.getvalue()
 
 
 class MyExportMixin(ExportMixin):
+    # Limit wierszy synchronicznego eksportu. Widoki, których eksport biegnie
+    # asynchronicznie/off-request (albo świadomie dopuszczają duże pliki), mogą
+    # nadpisać na None, żeby wyłączyć bramkę.
+    export_max_rows = RAPORT_SLOTOW_EXPORT_MAX_ROWS
+
     def get_export_description(self):
         """Nadpisz tą funkcję, aby wygenerować pola opisowe na potrzeby XLS, np.
         'metkę' z parametrami raportu. Powinna zwrócić listę ciągów znaków, które zostaną
         wstawione przed tabelę, jeden pod drugim."""
         return
+
+    def get_export_max_rows(self):
+        return self.export_max_rows
 
     def create_export(self, export_format):
         exporter = MyTableExport(
@@ -227,9 +280,13 @@ class MyExportMixin(ExportMixin):
             table=self.get_table(**self.get_table_kwargs()),
             exclude_columns=self.exclude_columns,
             export_description=self.get_export_description(),
+            max_rows=self.get_export_max_rows(),
         )
 
-        return exporter.response(filename=self.get_export_filename(export_format))
+        try:
+            return exporter.response(filename=self.get_export_filename(export_format))
+        except ExportRowLimitExceeded as e:
+            return HttpResponseBadRequest(str(e))
 
 
 class InitialValuesFromGETMixin:

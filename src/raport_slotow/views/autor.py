@@ -1,7 +1,7 @@
 import ssl
 from copy import copy
 
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseRedirect
 from django.template.defaultfilters import pluralize
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -18,7 +18,13 @@ from nowe_raporty.views import BaseRaportAuthMixin
 from raport_slotow.forms.autor import AutorRaportSlotowForm
 from raport_slotow.tables import RaportSlotowAutorTable
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
-from raport_slotow.util import InitialValuesFromGETMixin, MyExportMixin, MyTableExport
+from raport_slotow.util import (
+    RAPORT_SLOTOW_EXPORT_MAX_ROWS,
+    ExportRowLimitExceeded,
+    InitialValuesFromGETMixin,
+    MyExportMixin,
+    MyTableExport,
+)
 
 from .. import const
 
@@ -91,8 +97,14 @@ class RaportSlotow(BaseRaportAuthMixin, MyExportMixin, MultiTableMixin, Template
             export_format=export_format,
             table=tables[n],
             export_description=description,
+            max_rows=RAPORT_SLOTOW_EXPORT_MAX_ROWS,
         )
-        return exporter.response(filename=self.get_export_filename(export_format, n))
+        try:
+            return exporter.response(
+                filename=self.get_export_filename(export_format, n)
+            )
+        except ExportRowLimitExceeded as e:
+            return HttpResponseBadRequest(str(e))
 
     def get_tables(self):
         ret = []
