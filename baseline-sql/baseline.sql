@@ -17230,6 +17230,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1088	import_pracownikow	0026_importpracownikow_uczelnia	2000-01-01 00:00:00+00
 1089	import_pracownikow	0027_profil_uczelnia	2000-01-01 00:00:00+00
 1090	bpp	0470_indeksy_gin_i_funkcyjne	2000-01-01 00:00:00+00
+1091	pbn_api	0076_unikalne_uuid_dyscyplin	2000-01-01 00:00:00+00
+1092	pbn_api	0077_constrainty_uuid_dyscyplin	2000-01-01 00:00:00+00
 \.
 
 
@@ -17595,21 +17597,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-133	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
-134	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
-135	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-136	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-137	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-138	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-139	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-140	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-141	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-142	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-143	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-144	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-145	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-146	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-147	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -19198,7 +19185,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1090, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1092, true);
 
 
 --
@@ -23102,11 +23089,27 @@ ALTER TABLE ONLY public.pbn_api_discipline
 
 
 --
+-- Name: pbn_api_discipline pbn_api_discipline_uuid_unikalny_w_slowniku; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pbn_api_discipline
+    ADD CONSTRAINT pbn_api_discipline_uuid_unikalny_w_slowniku UNIQUE (parent_group_id, uuid);
+
+
+--
 -- Name: pbn_api_disciplinegroup pbn_api_disciplinegroup_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.pbn_api_disciplinegroup
     ADD CONSTRAINT pbn_api_disciplinegroup_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: pbn_api_disciplinegroup pbn_api_disciplinegroup_uuid_3309f8df_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pbn_api_disciplinegroup
+    ADD CONSTRAINT pbn_api_disciplinegroup_uuid_3309f8df_uniq UNIQUE (uuid);
 
 
 --
