@@ -59,9 +59,18 @@ def drop_denorm_triggers(apps, schema_editor):
 
 
 def init_denorm_triggers(apps, schema_editor):
-    """Zainstaluj triggery denorm na podstawie realnych modeli (``wydzial``
-    jest już self-FK denorm). Instaluje TYLKO triggery — wartości dał remap."""
-    call_command("denorm_init")
+    """Punkt reinstalacji triggerów denorm po retargecie ``wydzial``.
+
+    UWAGA: świadomie usunięto tu ``call_command("denorm_init")``. Triggery
+    denorm odtwarza teraz sygnał ``post_migrate`` (``denorm.apps`` →
+    ``denorm_install_triggers_after_migrate``) na KOMPLETNYM schemacie, po
+    wszystkich migracjach. Wołanie ``denorm_init`` w środku historii budowało
+    triggery z DZISIEJSZYCH modeli na cofniętym schemacie i rebuild-od-zera
+    padał na kolumnie z przyszłości (np. ``old.pbn_czy_projekt_fnp``).
+    Operacja zostaje jako ``RunPython`` (zachowany graf/state migracji), ale
+    jej ciało jest teraz no-opem. ``denorm_drop`` wyżej pozostaje bez zmian.
+    """
+    # Reinstalacja triggerów denorm dzieje się w `post_migrate` — patrz wyżej.
 
 
 def _find_root(node_id, parent_map):
