@@ -195,6 +195,15 @@ def zapisz_publikacje_instytucji(elem, klass, client=None, **extra):
         else:
             raise
 
+    # Import biegnie wielowątkowo (``pobierz_mongodb(use_threads=True)``).
+    # Przed dołożeniem unikalnego constraintu na tej trójce (migracje 0078 +
+    # 0079) dwa wątki cicho tworzyły dwa wiersze. Constraint zamienia to
+    # w ``IntegrityError``, ale WŁASNA obsługa wyjątku jest tu zbędna:
+    # ``get_or_create`` sam robi ``create`` w savepoincie
+    # (``transaction.atomic``) i domyka ``IntegrityError`` ponownym ``get``
+    # — czyli dokładnie to, co ``_update_or_create_odporne_na_wyscig``
+    # z ``pbn_api/client/disciplines.py``. Pilnuje tego
+    # ``test_get_or_create_przezywa_przegrany_wyscig``.
     rec, _ign = PublikacjaInstytucji.objects.get_or_create(
         institutionId_id=elem["institutionId"],
         publicationId_id=elem["publicationId"],
