@@ -197,6 +197,20 @@ _LEAK_GUARD_TABLES = (
     # baseline niepusta → CASCADE zostaje w danych domenowych.
     "bpp_uczelnia",
     "import_pracownikow_importpracownikow",
+    # Dodane po incydencie na PR #624: ten sam wzorzec co wyżej. Wyciekły,
+    # scommitowany user ``admin`` (fixture ``admin_user`` pytest-django w
+    # teście transakcyjnym) wywalał na setupie cudzego testu twarde
+    # ``IntegrityError: bpp_bppuser_username_key`` — bez śladu w raporcie
+    # guarda, bo tabela NIE była sondowana.
+    #
+    # CASCADE: zero NOWEGO zasięgu. ``bpp_bppuser.autor_id`` ma FK DO
+    # ``bpp_autor``, więc ``bpp_bppuser`` (a przez nią m.in.
+    # ``formdefaults_formfielddefaultvalue``) JUŻ jest w domknięciu
+    # CASCADE istniejącego wpisu ``bpp_autor`` — TRUNCATE i tak je czyścił
+    # przy każdym odpaleniu guarda. Ta linia dokłada wyłącznie SONDĘ, czyli
+    # zamienia nieczytelny IntegrityError na raport ze wskazaniem sprawcy.
+    # Sam ``bpp_bppuser`` ma 0 wierszy w baseline (zweryfikowane).
+    "bpp_bppuser",
 )
 
 

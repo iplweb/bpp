@@ -570,13 +570,6 @@ MEDIA_URL = "/media/"
 
 INTERNAL_IPS = ("127.0.0.1",)
 
-# djorm-pool
-DJORM_POOL_OPTIONS = {
-    "pool_size": 30,
-    "max_overflow": 0,
-    "recycle": 3600,  # the default value
-}
-
 TEST_RUNNER = "django.test.runner.DiscoverRunner"
 
 PROJECT_APPS = ("bpp",)
