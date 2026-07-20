@@ -201,12 +201,31 @@ TransactionTestCase._fixture_teardown = _fixture_teardown
 #   Komentarz przy ``assert not zywe`` w tamtym teście opisuje mechanizm,
 #   którego nie udało się odtworzyć — nie opierać się na nim.
 #
-# - CO ZOSTAJE DO SPRAWDZENIA: wyciek jest odtwarzalny wyłącznie na CI, więc
-#   różnicę robi środowisko, nie treść testów. Najmocniejsza pozostała
-#   hipoteza: flush w ``_fixture_teardown`` PADA pod kontencją (deadlock po
-#   wyczerpaniu 5 retry) i scommitowane dane testu transakcyjnego zostają.
-#   Sonda teardownowa złapie taki przypadek i nazwie test po imieniu — po to
-#   tu jest. Następny krok: przeczytać jej raport z realnego przebiegu CI.
+# - Hipoteza „flush pada po cichu pod kontencją" — SPRAWDZONA, dwa wyniki:
+#
+#   (a) flush ZABLOKOWANY (druga sesja trzyma LOCK na truncate'owanej tabeli):
+#       teardown stoi tyle, ile trzyma lock — zmierzone 121 s — i ``--timeout``
+#       go NIE ubija (pytest-timeout wypisuje baner + stack, przebieg leci
+#       dalej). Flush w końcu przechodzi, więc WYCIEKU NIE MA. To wyjaśnia
+#       „zawieszony shard", nie ambient dane.
+#
+#   (b) flush PADAJĄCY trwale (wymuszony ``OperationalError`` z call_command):
+#       dane testu transakcyjnego zostają scommitowane → wyciek jest.
+#       ALE nie jest cichy: leci ``ERROR at teardown`` i widać go w
+#       podsumowaniu; ``--only-rerun OperationalError`` tego NIE rerunuje.
+#       Sonda teardownowa łapie ten przypadek i nazywa sprawcę poprawnie
+#       (zweryfikowane) — hookwrapper wykonuje kod po ``yield`` także wtedy,
+#       gdy finalizacja rzuciła.
+#
+#   Wniosek: skoro padający flush RAPORTUJE się jako ERROR, a na CI widzieliśmy
+#   ``IntegrityError`` na SETUPIE cudzych testów BEZ błędów teardownu, to
+#   deadlock we flushu prawdopodobnie NIE jest przyczyną. Hipoteza osłabiona.
+#
+# - CO ZOSTAJE DO SPRAWDZENIA: przyczyna wciąż nieznana. Sonda teardownowa jest
+#   sprawdzonym instrumentem (patrz (b)) — następny krok: przeczytać jej raport
+#   z realnego przebiegu CI. Jeśli MILCZY, a sonda setupowa krzyczy, znaczy że
+#   commit przychodzi PO teardownie sprawcy (wątek/subprocess) i trzeba szukać
+#   po stronie procesów przeżywających test, nie po stronie flusha.
 # =============================================================================
 
 _LEAK_GUARD = {
