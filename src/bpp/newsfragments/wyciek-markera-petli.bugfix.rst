@@ -1,6 +1,7 @@
 Naprawiono wyciek scommitowanych danych między testami importu pracowników.
-Autouse fixture zerował marker działającej pętli zdarzeń na czas testu
-i przywracał go po — a ponieważ Django wybiera magazyn połączeń po tym
-markerze (``asgiref.local.Local(thread_critical=True)``), zapisy testu
+Autouse fixture zdejmował na czas testu wskaźnik bieżącej pętli zdarzeń
+i przywracał go po — a ponieważ Django wybiera magazyn połączeń właśnie po
+tym wskaźniku (``asgiref.local.Local(thread_critical=True)``), zapisy testu
 trafiały na inne połączenie, poza jego transakcją, i commitowały się mimo
-``django_db``.
+``django_db``. Wskaźnik jest teraz zdejmowany wyłącznie na czas wysyłki
+liveops do channel layer, gdzie nie ma dostępu do bazy.

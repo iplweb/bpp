@@ -145,6 +145,70 @@ TransactionTestCase._fixture_teardown = _fixture_teardown
 
 
 # =============================================================================
+# liveops WebProgress: zdejmij wskaznik biezacej petli TYLKO na czas wysylki.
+#
+# Sync-API Playwrighta zostawia w watku workera ustawiony wskaznik biezacej
+# petli zdarzen (``asyncio.events._set_running_loop``) — pointer NIE jest
+# weryfikowany, wiec ``asyncio.get_running_loop()`` zwraca petle, ktora wcale
+# nie dziala. Kazdy pozniejszy test w TYM SAMYM procesie-workerze to widzi,
+# niezaleznie od uzywanych fixture'ow (stad awarie w testach bez zwiazku
+# z przegladarka). ``async_to_sync`` sprawdza ten pointer i odmawia:
+# „You cannot use AsyncToSync in the same thread as an async event loop".
+#
+# DLACZEGO TAK WASKO. Wczesniej kompensowal to autouse fixture
+# ``_bez_wycieklej_petli_zdarzen`` (conftest ``import_pracownikow``), ktory
+# zerowal pointer na CALY test i przywracal w ``finally``. To bylo lekarstwo
+# gorsze od choroby: Django trzyma polaczenia w
+# ``asgiref.local.Local(thread_critical=True)``, ktorego magazyn zalezy wlasnie
+# od ``get_running_loop()`` — przestawianie pointera przy zywych polaczeniach
+# przerzucalo zapisy testu na INNE polaczenie, poza atomic blokiem, w
+# autocommit. Dane commitowaly sie mimo ``django_db`` i wyciekaly do kolejnych
+# testow (na CI: 79 wykryc, wszystkie w tym jednym appie).
+#
+# Tutaj okno jest minimalne i — co decydujace — ``_push``/``_push_message`` to
+# CZYSTE wysylki do channel layer, BEZ dostepu do bazy. Przelaczenie magazynu
+# nie ma wiec jak dotknac zadnego polaczenia. Pointer wraca natychmiast, w tym
+# samym bloku synchronicznym, wiec nie ma tez zadnej zaleznosci od kolejnosci
+# finalizacji fixture'ow.
+#
+# To kod WYLACZNIE testowy: w produkcji liveops chodzi pod celery/threading,
+# gdzie zaden falszywy pointer sie nie zaplacze.
+# =============================================================================
+
+
+def _zainstaluj_obejscie_liveops_petli():
+    import asyncio
+
+    try:
+        from liveops.progress import WebProgress
+    except ImportError:  # liveops opcjonalne — brak = nie ma czego latac
+        return
+
+    if getattr(WebProgress, "_bpp_bez_petli", False):
+        return
+    WebProgress._bpp_bez_petli = True
+
+    def bez_biezacej_petli(func):
+        def wrapper(*args, **kwargs):
+            zapisany = asyncio.events._get_running_loop()
+            if zapisany is None:
+                return func(*args, **kwargs)
+            asyncio.events._set_running_loop(None)
+            try:
+                return func(*args, **kwargs)
+            finally:
+                asyncio.events._set_running_loop(zapisany)
+
+        return wrapper
+
+    WebProgress._push = bez_biezacej_petli(WebProgress._push)
+    WebProgress._push_message = bez_biezacej_petli(WebProgress._push_message)
+
+
+_zainstaluj_obejscie_liveops_petli()
+
+
+# =============================================================================
 # Izolacja pod xdist: neutralizacja WYCIEKŁYCH scommitowanych danych domenowych.
 #
 # Problem (CI, sharding pytest-split + xdist -n auto): pod obciążeniem CI test,
