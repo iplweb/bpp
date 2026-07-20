@@ -154,3 +154,33 @@ def test_dodaj_jednostke_bez_roku_dwa_razy_nie_lamie_transakcji():
     assert (
         Autor_Jednostka.objects.filter(autor=autor, jednostka=jednostka).count() == 1
     )
+
+
+@pytest.mark.django_db
+def test_dodaj_jednostke_nie_polyka_obcego_integrityerror():
+    """Genuine IntegrityError (nie wyscig) w ``dodaj_jednostke`` PROPAGUJE.
+
+    Do tej gałęzi wpadał każdy ``IntegrityError`` — łącznie z realnym błędem
+    danych (zerwany FK, naruszony datowany unique_together), który cichłby
+    jako ``return None`` ignorowane przez importery. Symulujemy ``create()``
+    rzucający IntegrityError, przy czym powiazanie (autor, jednostka) bez daty
+    NADAL nie istnieje — to znaczy, że nie był to wyścig i wyjątek musi
+    polecieć dalej, a nie zostać połknięty.
+    """
+    autor = baker.make(Autor)
+    jednostka = baker.make(Jednostka)
+
+    with patch.object(
+        Autor_Jednostka.objects,
+        "create",
+        side_effect=IntegrityError(
+            "insert or update violates foreign key constraint"
+        ),
+    ):
+        with pytest.raises(IntegrityError):
+            autor.dodaj_jednostke(jednostka)
+
+    # Nie powstal zaden wiersz — potwierdza, ze to byl genuine blad, nie wyscig:
+    assert not Autor_Jednostka.objects.filter(
+        autor=autor, jednostka=jednostka
+    ).exists()

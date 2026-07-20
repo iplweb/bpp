@@ -368,7 +368,28 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
                     zakonczyl_prace=koniec_pracy,
                 )
         except IntegrityError:
-            return
+            # Wyscig: rownolegly zapis utworzyl to samo powiazanie (autor,
+            # jednostka) bez daty rozpoczecia w okienku miedzy exists() a
+            # create(). Chroni je czesciowy UniqueConstraint
+            # (rozpoczal_prace IS NULL). Jesli powiazanie faktycznie juz
+            # istnieje — stan docelowy jest osiagniety, wiec zachowujemy sie
+            # jak dotad (return None). Jesli jednak nadal go nie ma,
+            # IntegrityError mowil o czyms INNYM (np. zerwany FK, naruszony
+            # datowany unique_together) i musi poleciec dalej — inaczej realny
+            # blad danych podczas importu znikalby bez sladu jako cichy no-op.
+            if not Autor_Jednostka.objects.filter(
+                autor=self,
+                jednostka=jednostka,
+                rozpoczal_prace__isnull=True,
+            ).exists():
+                raise
+            logger.debug(
+                "Powiazanie autor=%s jednostka=%s utworzone rownolegle "
+                "przez inna transakcje — pomijam.",
+                self.pk,
+                jednostka.pk,
+            )
+            return None
         self.defragmentuj_jednostke(jednostka)
 
         return ret
