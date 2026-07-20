@@ -1,9 +1,27 @@
-"""Charakter formalny statistics views for admin dashboard."""
+"""Charakter formalny statistics views for admin dashboard.
+
+Widoki cache'owane przez `cache_page` deklarują `vary_on_headers("Host")`.
+
+UWAGA — to defense-in-depth, NIE naprawa wycieku. Wbrew temu, co łatwo
+założyć, `cache_page` SAM różnicuje po hoście: `_generate_cache_key` oraz
+`_generate_cache_header_key` hashują `request.build_absolute_uri()`, w którym
+host siedzi. Sprawdzone empirycznie — `learn_cache_key` BEZ żadnego `Vary`
+daje różne klucze dla dwóch domen. Wewnętrzny cache Django nigdy nie
+przeciekał między uczelniami.
+
+Nagłówek `Vary: Host` jest tu po to, żeby POŚREDNICZĄCE cache'y HTTP (proxy,
+CDN) też wiedziały, że odpowiedź zależy od domeny — one nie znają
+wewnętrznego klucza Django. BPP jest wielo-uczelniany
+(`SiteResolutionMiddleware`: domena → Site → Uczelnia), więc uczciwa
+deklaracja `Vary` jest tanim zabezpieczeniem. Wzorzec jak w
+`bpp.views.robots_txt`.
+"""
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Count, F
 from django.http import JsonResponse
 from django.views.decorators.cache import cache_page
+from django.views.decorators.vary import vary_on_headers
 
 from bpp.models import Charakter_Formalny
 
@@ -75,6 +93,7 @@ def _get_charakter_counts():
 
 @staff_member_required
 @cache_page(60 * 60 * 24)  # Cache for 24 hours
+@vary_on_headers("Host")
 def charakter_formalny_stats_top90(request):
     """JSON endpoint - Donut chart z charakterami stanowiącymi kumulatywnie 90% publikacji"""
     sorted_chars = _get_charakter_counts()
@@ -136,6 +155,7 @@ def charakter_formalny_stats_top90(request):
 
 @staff_member_required
 @cache_page(60 * 60 * 24)  # Cache for 24 hours
+@vary_on_headers("Host")
 def charakter_formalny_stats_remaining10(request):
     """JSON endpoint - Donut chart z pozostałymi 10%, podzielonymi na 90% + 10%"""
     sorted_chars = _get_charakter_counts()
@@ -235,6 +255,7 @@ def charakter_formalny_stats_remaining10(request):
 
 @staff_member_required
 @cache_page(60 * 60 * 24)  # Cache for 24 hours
+@vary_on_headers("Host")
 def charakter_formalny_stats_remaining1(request):
     """JSON endpoint - Donut chart z ostatnim 1% (10% z 10%)"""
     sorted_chars = _get_charakter_counts()
