@@ -145,69 +145,63 @@ TransactionTestCase._fixture_teardown = _fixture_teardown
 
 
 # =============================================================================
-# liveops WebProgress: zdejmij wskaznik biezacej petli TYLKO na czas wysylki.
+# liveops w testach: MockProgress zamiast WebProgress.
 #
-# Sync-API Playwrighta trzyma w watku workera ZYWA, dzialajaca petle zdarzen,
-# zaparkowana w greenlecie; session-scoped ``browser`` utrzymuje ja przy zyciu
-# przez cala sesje. Wskaznik biezacej petli mowi wiec PRAWDE (zmierzone:
-# ``is_running()==True``) — to NIE jest niesprzatniety smiec.
+# ``liveops.runner._make_progress`` wybiera ``WebProgress``, gdy jest channel
+# layer — a ten pcha kazdy krok postepu przez
+# ``async_to_sync(channel_layer.group_send)``. W testach to sciezka
+# NIEPOTRZEBNA (nikt nie sluchа po WebSocket) i AKTYWNIE SZKODLIWA:
 #
-# Konsekwencja: kazdy pozniejszy test w TYM SAMYM procesie-workerze to widzi,
-# niezaleznie od uzywanych fixture'ow (stad awarie w testach bez zwiazku
-# z przegladarka). ``async_to_sync`` sprawdza ten pointer i odmawia:
-# „You cannot use AsyncToSync in the same thread as an async event loop".
+# Sync-API Playwrighta trzyma w watku workera ZYWA, dzialajaca petle zdarzen
+# zaparkowana w greenlecie (session-scoped ``browser`` utrzymuje ja przez cala
+# sesje; zmierzone: ``is_running()==True``). ``AsyncToSync.__call__`` sprawdza
+# ``asyncio.get_running_loop()`` i odmawia pracy: „You cannot use AsyncToSync
+# in the same thread as an async event loop". Stan jest globalny dla watku, wiec
+# obrywa KAZDY pozniejszy test w tym procesie — takze bez zwiazku z przegladarka
+# (``test_analyze_autoskip`` i spolka).
 #
-# DLACZEGO TAK WASKO. Wczesniej kompensowal to autouse fixture
-# ``_bez_wycieklej_petli_zdarzen`` (conftest ``import_pracownikow``), ktory
-# zerowal pointer na CALY test i przywracal w ``finally``. To bylo lekarstwo
-# gorsze od choroby: Django trzyma polaczenia w
-# ``asgiref.local.Local(thread_critical=True)``, ktorego magazyn zalezy wlasnie
-# od ``get_running_loop()`` — przestawianie pointera przy zywych polaczeniach
-# przerzucalo zapisy testu na INNE polaczenie, poza atomic blokiem, w
-# autocommit. Dane commitowaly sie mimo ``django_db`` i wyciekaly do kolejnych
-# testow (na CI: 79 wykryc, wszystkie w tym jednym appie).
+# ODRZUCONE WCZESNIEJSZE PODEJSCIA (oba sprawdzone, oba gorsze):
 #
-# Tutaj okno jest minimalne i — co decydujace — ``_push``/``_push_message`` to
-# CZYSTE wysylki do channel layer, BEZ dostepu do bazy. Przelaczenie magazynu
-# nie ma wiec jak dotknac zadnego polaczenia. Pointer wraca natychmiast, w tym
-# samym bloku synchronicznym, wiec nie ma tez zadnej zaleznosci od kolejnosci
-# finalizacji fixture'ow.
+#   1. autouse fixture zdejmujacy wskaznik na CALY test (dawny
+#      ``_bez_wycieklej_petli_zdarzen`` w conftescie ``import_pracownikow``).
+#      Django wybiera magazyn polaczen po TYM SAMYM wskazniku
+#      (``asgiref.local.Local(thread_critical=True)``), wiec przestawianie go
+#      przy zywych polaczeniach przerzucalo zapisy testu na INNE polaczenie —
+#      poza atomic blokiem, w autocommit. Dane commitowaly sie mimo
+#      ``django_db`` i wyciekaly dalej: na CI 79 wykryc w jednym przebiegu.
 #
-# To kod WYLACZNIE testowy: w produkcji liveops chodzi pod celery/threading,
-# gdzie zaden falszywy pointer sie nie zaplacze.
+#   2. ukrywanie wskaznika na czas samego ``WebProgress._push``. Dzialalo, ale
+#      bylo hackiem na klasie produkcyjnej i zostawialo w testach martwa
+#      sciezke ASGI, ktorej i tak nikt nie weryfikowal.
+#
+# Zamiast tego: w testach liveops raportuje przez ``MockProgress`` — zero
+# transportu, zero ``async_to_sync``, wiec problem znika u zrodla zamiast byc
+# obchodzony. ``MockProgress`` finalizuje operacje tak jak ``TextProgress``
+# (``finished_on``/``finished_successfully``/``result_context``), wiec testy
+# sprawdzajace STAN po ``run()`` dzialaja bez zmian. Jest to zreszta wzorzec
+# juz przyjety w repo (``import_punktacji_zrodel/tests``).
+#
+# Prawdziwa sciezka ASGI (liveop → group_send → WebSocket → pasek postepu)
+# nalezy do testu integracyjnego z zywym serwerem, nie do setek testow
+# jednostkowych.
 # =============================================================================
 
 
-def _zainstaluj_obejscie_liveops_petli():
-    import asyncio
-
+def _zainstaluj_testowy_progress_liveops():
     try:
-        from liveops.progress import WebProgress
-    except ImportError:  # liveops opcjonalne — brak = nie ma czego latac
+        from liveops import runner
+        from liveops.testing import MockProgress
+    except ImportError:  # liveops opcjonalne
         return
 
-    if getattr(WebProgress, "_bpp_bez_petli", False):
+    if getattr(runner, "_bpp_testowy_progress", False):
         return
-    WebProgress._bpp_bez_petli = True
+    runner._bpp_testowy_progress = True
 
-    def bez_biezacej_petli(func):
-        def wrapper(*args, **kwargs):
-            zapisany = asyncio.events._get_running_loop()
-            if zapisany is None:
-                return func(*args, **kwargs)
-            asyncio.events._set_running_loop(None)
-            try:
-                return func(*args, **kwargs)
-            finally:
-                asyncio.events._set_running_loop(zapisany)
-
-        return wrapper
-
-    WebProgress._push = bez_biezacej_petli(WebProgress._push)
-    WebProgress._push_message = bez_biezacej_petli(WebProgress._push_message)
+    runner._make_progress = lambda operation: MockProgress(operation)
 
 
-_zainstaluj_obejscie_liveops_petli()
+_zainstaluj_testowy_progress_liveops()
 
 
 # =============================================================================

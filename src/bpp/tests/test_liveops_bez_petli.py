@@ -1,82 +1,76 @@
-"""Regresja: WebProgress musi działać mimo wskaźnika PRAWDZIWEJ, zaparkowanej pętli.
+"""Regresja: w testach liveops NIE może chodzić przez channel layer.
 
-Sync-API Playwrighta zostawia w wątku workera ustawiony wskaźnik bieżącej
-pętli zdarzeń (``asyncio.events._set_running_loop``). Pętla NAPRAWDĘ działa (zmierzone: ``is_running()==True``) —
-jest zaparkowana w greenlecie, a session-scoped ``browser`` utrzymuje ją przy
-życiu przez całą sesję. Wskaźnik NIE kłamie. ``asgiref.sync.AsyncToSync.__call__`` sprawdza dokładnie ten wskaźnik
-i odmawia pracy: „You cannot use AsyncToSync in the same thread as an async
-event loop".
+``liveops.runner._make_progress`` domyślnie wybiera ``WebProgress``, który
+pcha każdy krok postępu przez ``async_to_sync(channel_layer.group_send)``.
+W testach ta ścieżka jest niepotrzebna (nikt nie słucha po WebSocket)
+i aktywnie szkodliwa: sync-API Playwrighta trzyma w wątku workera żywą,
+zaparkowaną w greenlecie pętlę zdarzeń, a ``AsyncToSync`` odmawia wtedy
+pracy („You cannot use AsyncToSync in the same thread as an async event
+loop"). Stan jest globalny dla wątku, więc obrywał każdy późniejszy test
+w procesie — także bez związku z przeglądarką.
 
-Trafia to KAŻDY późniejszy test w tym samym procesie-workerze — stan jest
-globalny dla wątku, nie dziedziczony przez fixture'y. Stąd awarie w testach
-bez najmniejszego związku z przeglądarką (``test_analyze_autoskip`` i spółka).
-
-Obejście siedzi w ``src/conftest.py`` (``_zainstaluj_obejscie_liveops_petli``):
-zdejmuje wskaźnik na czas samej wysyłki do channel layer. Jest to bezpieczne,
-bo ``_push``/``_push_message`` NIE dotykają bazy — więc przełączenie magazynu
-w ``asgiref.local.Local`` nie ma jak dotknąć żadnego połączenia.
+Podmiana na ``MockProgress`` siedzi w ``src/conftest.py``.
 """
 
 import asyncio
 
-from liveops.progress import WebProgress
+import pytest
+from model_bakery import baker
+
+from bpp.models import Jednostka
 
 
-class _FakeLayer:
-    def __init__(self):
-        self.wyslane = []
+def test_liveops_uzywa_testowego_progressu():
+    from liveops.runner import _make_progress
+    from liveops.testing import MockProgress
 
-    async def group_send(self, kanal, msg):
-        self.wyslane.append((kanal, msg))
+    class _FakeOp:
+        def get_channel_name(self):
+            return "kanal"
 
-
-class _FakeOp:
-    def get_channel_name(self):
-        return "kanal-testowy"
+    assert isinstance(_make_progress(_FakeOp()), MockProgress)
 
 
-def _z_zaparkowana_petla(fn):
-    poprzedni = asyncio.events._get_running_loop()
+def test_progress_dziala_gdy_petla_zaparkowana_w_watku():
+    """Przy ustawionym wskaźniku bieżącej pętli budowa progressu i raportowanie
+    muszą przejść bez wyjątku.
+
+    UWAGA co do siły dowodu: bez podmiany w ``src/conftest.py`` ten test też
+    pada, ale na ``Database access not allowed`` (``WebProgress`` sięga do
+    bazy), a nie na ``AsyncToSync``. Sprawdza więc WŁASNOŚĆ, na której nam
+    zależy (progress działa mimo zaparkowanej pętli), a nie konkretny
+    mechanizm awarii. Czystym kontrfaktykiem jest test wyżej."""
+    from liveops.runner import _make_progress
+
+    class _FakeOp:
+        pk = None
+        finished_on = None
+        finished_successfully = None
+        result_context = None
+
+        def get_channel_name(self):
+            return "kanal"
+
+    poprzednia = asyncio.events._get_running_loop()
     petla = asyncio.new_event_loop()
     try:
         asyncio.events._set_running_loop(petla)
-        return fn()
+        p = _make_progress(_FakeOp())
+        p.log("krok")
+        p.percent(50)
+        assert p.logs == ["krok"]
+        assert 50 in p.percents
     finally:
-        asyncio.events._set_running_loop(poprzedni)
+        asyncio.events._set_running_loop(poprzednia)
         petla.close()
 
 
-def test_push_dziala_mimo_zaparkowanej_petli():
-    layer = _FakeLayer()
-    wp = WebProgress(_FakeOp(), layer)
+@pytest.mark.django_db
+def test_zapis_zostaje_w_transakcji_testu():
+    """Kanarek: gdyby coś znów przestawiło wskaźnik pętli przy żywej bazie,
+    zapis wypadłby poza atomic block i scommitował się na trwałe."""
+    from django.db import connection
 
-    _z_zaparkowana_petla(lambda: wp._push("<div>postęp</div>"))
-
-    assert len(layer.wyslane) == 1, layer.wyslane
-    kanal, msg = layer.wyslane[0]
-    assert kanal == "kanal-testowy"
-    assert msg["liveop_html"] == "<div>postęp</div>"
-
-
-def test_push_message_dziala_mimo_zaparkowanej_petli():
-    layer = _FakeLayer()
-    wp = WebProgress(_FakeOp(), layer)
-
-    _z_zaparkowana_petla(lambda: wp._push_message({"type": "x", "a": 1}))
-
-    assert layer.wyslane == [("kanal-testowy", {"type": "x", "a": 1})]
-
-
-def test_wskaznik_wraca_po_wysylce():
-    """Obejście nie może zjeść wskaźnika — Playwright potrzebuje go dalej."""
-    layer = _FakeLayer()
-    wp = WebProgress(_FakeOp(), layer)
-    petla = asyncio.new_event_loop()
-    poprzedni = asyncio.events._get_running_loop()
-    try:
-        asyncio.events._set_running_loop(petla)
-        wp._push("<div/>")
-        assert asyncio.events._get_running_loop() is petla
-    finally:
-        asyncio.events._set_running_loop(poprzedni)
-        petla.close()
+    assert connection.in_atomic_block
+    baker.make(Jednostka, nazwa="KANAREK-LIVEOPS", skrot="KL")
+    assert connection.in_atomic_block
