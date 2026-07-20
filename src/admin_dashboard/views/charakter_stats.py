@@ -1,9 +1,18 @@
-"""Charakter formalny statistics views for admin dashboard."""
+"""Charakter formalny statistics views for admin dashboard.
+
+Każdy widok cache'owany przez `cache_page` MUSI mieć `vary_on_headers("Host")`.
+BPP jest wielo-uczelniany — `SiteResolutionMiddleware` rozstrzyga domenę →
+Site → Uczelnia per request, a `cache_page` NIE uwzględnia hosta w kluczu.
+Bez `Vary: Host` odpowiedź policzona dla jednej uczelni zostałaby zaserwowana
+pod domeną innej (wyciek danych między uczelniami). Wzorzec jak w
+`bpp.views.robots_txt`.
+"""
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Count, F
 from django.http import JsonResponse
 from django.views.decorators.cache import cache_page
+from django.views.decorators.vary import vary_on_headers
 
 from bpp.models import Charakter_Formalny
 
@@ -75,6 +84,7 @@ def _get_charakter_counts():
 
 @staff_member_required
 @cache_page(60 * 60 * 24)  # Cache for 24 hours
+@vary_on_headers("Host")
 def charakter_formalny_stats_top90(request):
     """JSON endpoint - Donut chart z charakterami stanowiącymi kumulatywnie 90% publikacji"""
     sorted_chars = _get_charakter_counts()
@@ -136,6 +146,7 @@ def charakter_formalny_stats_top90(request):
 
 @staff_member_required
 @cache_page(60 * 60 * 24)  # Cache for 24 hours
+@vary_on_headers("Host")
 def charakter_formalny_stats_remaining10(request):
     """JSON endpoint - Donut chart z pozostałymi 10%, podzielonymi na 90% + 10%"""
     sorted_chars = _get_charakter_counts()
@@ -235,6 +246,7 @@ def charakter_formalny_stats_remaining10(request):
 
 @staff_member_required
 @cache_page(60 * 60 * 24)  # Cache for 24 hours
+@vary_on_headers("Host")
 def charakter_formalny_stats_remaining1(request):
     """JSON endpoint - Donut chart z ostatnim 1% (10% z 10%)"""
     sorted_chars = _get_charakter_counts()

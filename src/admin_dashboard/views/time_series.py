@@ -1,4 +1,12 @@
-"""Time series statistics views for admin dashboard."""
+"""Time series statistics views for admin dashboard.
+
+Każdy widok cache'owany przez `cache_page` MUSI mieć `vary_on_headers("Host")`.
+BPP jest wielo-uczelniany — `SiteResolutionMiddleware` rozstrzyga domenę →
+Site → Uczelnia per request, a `cache_page` NIE uwzględnia hosta w kluczu.
+Bez `Vary: Host` odpowiedź policzona dla jednej uczelni zostałaby zaserwowana
+pod domeną innej (wyciek danych między uczelniami). Wzorzec jak w
+`bpp.views.robots_txt`.
+"""
 
 from datetime import timedelta
 
@@ -9,6 +17,7 @@ from django.db.models.functions import TruncMonth
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.cache import cache_page
+from django.views.decorators.vary import vary_on_headers
 
 from bpp.models import (
     Wydawnictwo_Ciagle,
@@ -18,6 +27,7 @@ from bpp.models import (
 
 @staff_member_required
 @cache_page(60 * 60 * 24)  # Cache for 24 hours
+@vary_on_headers("Host")
 def weekday_stats(request):
     """JSON endpoint dla statystyk edycji według dni tygodnia (ostatni miesiąc, Pon-Czw)"""
     from django.db.models.functions import ExtractWeekDay
@@ -82,6 +92,7 @@ def weekday_stats(request):
 
 @staff_member_required
 @cache_page(60 * 60 * 24)  # Cache for 24 hours
+@vary_on_headers("Host")
 def day_of_month_activity_stats(request):
     """
     JSON endpoint dla aktywności w dniach miesiąca (ostatnie 6 miesięcy).
@@ -137,6 +148,7 @@ def day_of_month_activity_stats(request):
 
 @staff_member_required
 @cache_page(60 * 60 * 24)  # Cache for 24 hours
+@vary_on_headers("Host")
 def new_publications_stats(request):
     """JSON endpoint dla nowo dodanych prac - trend w czasie (ostatnie 5 lat)"""
 
@@ -214,6 +226,7 @@ def new_publications_stats(request):
 
 @staff_member_required
 @cache_page(60 * 60 * 24)  # Cache for 24 hours
+@vary_on_headers("Host")
 def cumulative_publications_stats(request):
     """JSON endpoint dla cumulative wykresu prac w bazie (od 1980)"""
 
@@ -293,6 +306,7 @@ def cumulative_publications_stats(request):
 
 @staff_member_required
 @cache_page(60 * 60 * 24)  # Cache for 24 hours
+@vary_on_headers("Host")
 def cumulative_impact_factor_stats(request):
     """JSON endpoint dla łącznego impact factor (od 2010)"""
     from django.db.models import Sum
@@ -373,6 +387,7 @@ def cumulative_impact_factor_stats(request):
 
 @staff_member_required
 @cache_page(60 * 60 * 24)  # Cache for 24 hours
+@vary_on_headers("Host")
 def cumulative_points_kbn_stats(request):
     """JSON endpoint dla łącznych punktów MNiSW (od 2010)"""
     from django.db.models import Sum
