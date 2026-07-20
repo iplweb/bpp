@@ -182,32 +182,6 @@
         </div>
     {% endif %}
 
-    <button id="toggle-details" class="button small secondary">
-        <span class="fi-info"></span> <span id="toggle-details-text">Pokaż</span> szczegóły operacji
-    </button>
-    <div id="operation-details-container" style="display: none; margin-top: 0.5rem;">
-        {% include "long_running/operation_details.html" %}
-    </div>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const toggleDetailsBtn = document.getElementById('toggle-details');
-            const toggleDetailsText = document.getElementById('toggle-details-text');
-            const detailsContainer = document.getElementById('operation-details-container');
-
-            if (toggleDetailsBtn) {
-                toggleDetailsBtn.addEventListener('click', function() {
-                    if (detailsContainer.style.display === 'none') {
-                        detailsContainer.style.display = 'block';
-                        toggleDetailsText.textContent = 'Ukryj';
-                    } else {
-                        detailsContainer.style.display = 'none';
-                        toggleDetailsText.textContent = 'Pokaż';
-                    }
-                });
-            }
-        });
-    </script>
-
     {% if object.finished_successfully and unmatched_count > 0 %}
         <div class="panel callout secondary">
             <h5><strong>Autorzy z przypisaniami dyscyplin w BPP, którzy nie byli w pliku Excel ({{ unmatched_count }})</strong></h5>

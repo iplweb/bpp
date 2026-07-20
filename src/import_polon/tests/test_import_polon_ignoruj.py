@@ -8,6 +8,7 @@ When ignoruj_miejsce_pracy=True, records with invalid ZATRUDNIENIE
 import pandas as pd
 import pytest
 from django.core.files import File
+from liveops.testing import MockProgress
 from model_bakery import baker
 
 from bpp.models import Autor
@@ -46,7 +47,7 @@ def test_analyze_file_import_polon_ignoruj_miejsce_pracy_true(tmp_path, uczelnia
         import_model.plik.save("test_ignoruj_miejsce_pracy.xlsx", File(f))
 
     # Run import
-    analyze_file_import_polon(str(test_file), import_model)
+    analyze_file_import_polon(str(test_file), import_model, MockProgress(import_model))
 
     # Check results - records should NOT be ignored due to ZATRUDNIENIE
     results = WierszImportuPlikuPolon.objects.filter(parent=import_model)
@@ -88,7 +89,7 @@ def test_analyze_file_import_polon_ignoruj_miejsce_pracy_false_default(
         import_model.plik.save("test_ignoruj_miejsce_pracy_false.xlsx", File(f))
 
     # Run import
-    analyze_file_import_polon(str(test_file), import_model)
+    analyze_file_import_polon(str(test_file), import_model, MockProgress(import_model))
 
     # Check results - record should be ignored
     results = WierszImportuPlikuPolon.objects.filter(parent=import_model)
@@ -142,7 +143,7 @@ def test_analyze_file_import_polon_ignoruj_miejsce_pracy_processes_author(
         import_model.plik.save("test_ignoruj_autor.xlsx", File(f))
 
     # Run import
-    analyze_file_import_polon(str(test_file), import_model)
+    analyze_file_import_polon(str(test_file), import_model, MockProgress(import_model))
 
     # Check that author was matched and processed
     results = WierszImportuPlikuPolon.objects.filter(parent=import_model)

@@ -11,6 +11,7 @@ import pytest
 from denorm import denorms
 from django.core.files import File
 from django.db import transaction
+from liveops.testing import MockProgress
 from model_bakery import baker
 
 from bpp.models import (
@@ -30,7 +31,7 @@ def test_analyze_excel_file_import_polon_zly_plik(fn_test_import_absencji):
     ipp: ImportPlikuPolon = baker.make(
         ImportPlikuPolon, zapisz_zmiany_do_bazy=True, rok=ROK
     )
-    analyze_file_import_polon(fn_test_import_absencji, ipp)
+    analyze_file_import_polon(fn_test_import_absencji, ipp, MockProgress(ipp))
 
 
 @pytest.mark.django_db
@@ -42,7 +43,7 @@ def test_analyze_excel_file_import_polon_plik_bez_dyscyplin(
         ImportPlikuPolon, zapisz_zmiany_do_bazy=True, rok=ROK
     )
     baker.make(Autor, nazwisko="Kowalski", imiona="Aleksander Bolesław")
-    analyze_file_import_polon(fn_test_import_polon_bledny, ipp)
+    analyze_file_import_polon(fn_test_import_polon_bledny, ipp, MockProgress(ipp))
 
 
 def test_analyze_excel_file_import_polon(
@@ -109,7 +110,7 @@ def test_analyze_excel_file_import_polon(
             rodzaj_autora=rodzaj_autora_z,
         )
 
-        analyze_file_import_polon(fn_test_import_polon, ipp)
+        analyze_file_import_polon(fn_test_import_polon, ipp, MockProgress(ipp))
 
         assert (
             artur_dyscyplinazn.autor_dyscyplina_set.get(rok=ROK).rodzaj_autora
@@ -157,7 +158,7 @@ def test_analyze_file_import_polon_with_invalid_zatrudnienie(tmp_path, uczelnia)
         import_model.plik.save("test_invalid_zatrudnienie.xlsx", File(f))
 
     # Run import
-    analyze_file_import_polon(str(test_file), import_model)
+    analyze_file_import_polon(str(test_file), import_model, MockProgress(import_model))
 
     # Check results - both records should be ignored
     results = WierszImportuPlikuPolon.objects.filter(parent=import_model)
@@ -203,7 +204,7 @@ def test_analyze_file_import_polon_with_valid_zatrudnienie(tmp_path, uczelnia):
         import_model.plik.save("test_valid_zatrudnienie.xlsx", File(f))
 
     # Run import
-    analyze_file_import_polon(str(test_file), import_model)
+    analyze_file_import_polon(str(test_file), import_model, MockProgress(import_model))
 
     # Check results - record should be processed (not ignored)
     results = WierszImportuPlikuPolon.objects.filter(parent=import_model)
@@ -238,7 +239,7 @@ def test_analyze_excel_file_import_polon_badawczy_type(
         )
 
         # Run import
-        analyze_file_import_polon(fn_test_import_polon, ipp)
+        analyze_file_import_polon(fn_test_import_polon, ipp, MockProgress(ipp))
 
         # Check if author was classified as type 'B' based on GRUPA_STANOWISK
         try:
