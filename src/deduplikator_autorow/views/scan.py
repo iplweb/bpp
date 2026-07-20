@@ -1,6 +1,7 @@
 """Scan-task lifecycle views (start / cancel / status)."""
 
 from datetime import timedelta
+from uuid import uuid4
 
 from django.contrib import messages
 from django.http import JsonResponse
@@ -39,13 +40,34 @@ def start_scan_view(request):
         )
         return redirect("deduplikator_autorow:duplicate_authors")
 
-    # Start new scan
-    scan_for_duplicates.delay(user_id=request.user.pk)
-    messages.success(
-        request,
-        "Skanowanie duplikatów zostało uruchomione w tle. "
-        "Odśwież stronę za chwilę, aby zobaczyć postęp.",
+    # Start new scan.
+    #
+    # Podajemy WŁASNY task_id, żeby odróżnić realny start od deduplikacji:
+    # `scan_for_duplicates` jest Singletonem z `raise_on_duplicate=False`,
+    # więc gdy przebieg już trwa, apply_async NIE startuje nic nowego, tylko
+    # zwraca AsyncResult ISTNIEJĄCEGO zadania. Bez tego porównania widok
+    # meldował „uruchomiono" również wtedy, gdy nic się nie uruchomiło.
+    # (Sprawdzenie `get_running_scan()` wyżej łapie typowy przypadek, ale nie
+    # zamyka wyścigu dwóch równoczesnych POST-ów ani przebiegu wystartowanego
+    # z beata pomiędzy jednym a drugim zapytaniem.)
+    zadany_task_id = str(uuid4())
+    result = scan_for_duplicates.apply_async(
+        kwargs={"user_id": request.user.pk}, task_id=zadany_task_id
     )
+
+    if result.id != zadany_task_id:
+        messages.warning(
+            request,
+            "Skanowanie duplikatów już trwa — to uruchomienie zostało "
+            "pominięte. Odśwież stronę, aby zobaczyć postęp trwającego "
+            "skanowania.",
+        )
+    else:
+        messages.success(
+            request,
+            "Skanowanie duplikatów zostało uruchomione w tle. "
+            "Odśwież stronę za chwilę, aby zobaczyć postęp.",
+        )
     return redirect("deduplikator_autorow:duplicate_authors")
 
 
