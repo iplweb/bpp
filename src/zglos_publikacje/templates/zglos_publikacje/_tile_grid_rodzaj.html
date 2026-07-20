@@ -1,0 +1,18 @@
+<div class="tile-grid">
+    {% for choice in wizard.form.rodzaj %}
+        <label class="tile-card"
+               data-value="{{ choice.data.value }}"
+               tabindex="0">
+            {{ choice.tag }}
+            <span class="tile-icon">
+                {% if choice.data.value == "ARTYKUL" %}📄{% elif choice.data.value == "MONOGRAFIA" %}📚{% elif choice.data.value == "ROZDZIAL" %}📖{% elif choice.data.value == "POZOSTALE" %}📎{% endif %}
+            </span>
+            <span class="tile-title">
+                {{ choice.choice_label }}
+            </span>
+            <span class="tile-desc">
+                {% if choice.data.value == "ARTYKUL" %}Artykuł w czasopiśmie naukowym{% elif choice.data.value == "MONOGRAFIA" %}Monografia naukowa{% elif choice.data.value == "ROZDZIAL" %}Rozdział w monografii{% elif choice.data.value == "POZOSTALE" %}Pozostałe rodzaje publikacji{% endif %}
+            </span>
+        </label>
+    {% endfor %}
+</div>

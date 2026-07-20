@@ -3,32 +3,14 @@
 {% block wizard_buttons %}{% endblock %}
 
 {% block wizard_content %}
-    <h3>Wybierz rodzaj publikacji</h3>
-
-    <div class="tile-grid">
-        {% for choice in wizard.form.rodzaj %}
-            <label class="tile-card"
-                   data-value="{{ choice.data.value }}"
-                   tabindex="0">
-                {{ choice.tag }}
-                <span class="tile-icon">
-                    {% if choice.data.value == "ARTYKUL" %}📄{% elif choice.data.value == "MONOGRAFIA" %}📚{% elif choice.data.value == "ROZDZIAL" %}📖{% elif choice.data.value == "POZOSTALE" %}📎{% endif %}
-                </span>
-                <span class="tile-title">
-                    {{ choice.choice_label }}
-                </span>
-                <span class="tile-desc">
-                    {% if choice.data.value == "ARTYKUL" %}Artykuł w czasopiśmie naukowym{% elif choice.data.value == "MONOGRAFIA" %}Monografia naukowa{% elif choice.data.value == "ROZDZIAL" %}Rozdział w monografii{% elif choice.data.value == "POZOSTALE" %}Pozostałe rodzaje publikacji{% endif %}
-                </span>
-            </label>
-        {% endfor %}
-    </div>
-
-    {# Widget ALTCHA + hint „zaloguj się" — obecne TYLKO gdy pole captcha #}
-    {# istnieje w formularzu, tj. dla anonima przy captcha ON (bramka w #}
-    {# forms/views). Dla zalogowanego pola nie ma → nic się nie renderuje. #}
+    {# Blok ALTCHA na górze, wyśrodkowany — obecny TYLKO gdy pole captcha #}
+    {# istnieje (anonim przy captcha ON; bramka w forms/views). Dla #}
+    {# zalogowanego i przy captcha OFF pola nie ma → cały gating pomijamy. #}
     {% if form.captcha %}
         <div class="zglos-captcha">
+            <p class="zglos-captcha-lead">
+                Zweryfikuj się, aby wybrać rodzaj publikacji.
+            </p>
             {{ form.captcha }}
             <p class="zglos-captcha-hint">
                 <span class="fi-lock" aria-hidden="true"></span>
@@ -37,6 +19,14 @@
                 aby pominąć tę weryfikację.
             </p>
         </div>
+
+        <div class="zglos-gated">
+            <h3>Wybierz rodzaj publikacji</h3>
+            {% include "zglos_publikacje/_tile_grid_rodzaj.html" %}
+        </div>
+    {% else %}
+        <h3>Wybierz rodzaj publikacji</h3>
+        {% include "zglos_publikacje/_tile_grid_rodzaj.html" %}
     {% endif %}
 
     <script>
@@ -44,7 +34,6 @@
             var tiles = document.querySelectorAll('.tile-card');
             var form = document.getElementById('form-container');
             tiles.forEach(function(tile) {
-                // Click handler
                 tile.addEventListener('click', function() {
                     var radio = tile.querySelector('input[type="radio"]');
                     if (radio) {
@@ -53,9 +42,7 @@
                     }
                 });
 
-                // Keyboard handler
                 tile.addEventListener('keydown', function(e) {
-                    // Enter or Space to select
                     if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
                         var radio = tile.querySelector('input[type="radio"]');
@@ -65,10 +52,8 @@
                         }
                     }
 
-                    // Arrow key navigation
                     var currentIndex = Array.prototype.indexOf.call(tiles, tile);
                     var newIndex;
-
                     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
                         e.preventDefault();
                         newIndex = (currentIndex + 1) % tiles.length;
@@ -80,6 +65,29 @@
                     }
                 });
             });
+
+            // Gating ALTCHA: kafelki (w .zglos-gated) odsłaniamy dopiero po
+            // statechange:verified. Odsłanianie jednokierunkowe — raz revealed
+            // zostaje (expired/error nie chowa; refetchonexpire liczy nowy PoW,
+            // a serwer i tak odrzuci POST na wygasłym challenge).
+            var gated = document.querySelector('.zglos-gated');
+            var widget = document.querySelector('altcha-widget');
+            if (gated && widget) {
+                var reveal = function() { gated.classList.add('revealed'); };
+                widget.addEventListener('statechange', function(e) {
+                    if (e.detail && e.detail.state === 'verified') {
+                        reveal();
+                    }
+                });
+                // Pas bezpieczeństwa na wyścig „verified przed listenerem":
+                // jeśli hidden input ALTCHA jest już wypełniony, odsłoń od razu.
+                // Pole nazywa się `captcha` (AltchaField), więc input ma
+                // id="id_captcha" i jest rodzeństwem elementu altcha-widget.
+                var hidden = document.getElementById('id_captcha');
+                if (hidden && hidden.value) {
+                    reveal();
+                }
+            }
         })();
     </script>
 {% endblock %}

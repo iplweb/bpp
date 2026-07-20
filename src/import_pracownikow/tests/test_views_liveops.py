@@ -593,6 +593,14 @@ def test_zatwierdz_wyscig_nie_dubluje_integracji(admin_user):
             w.start()
         for w in watki:
             w.join(15)
+        # ``join`` z timeoutem NIE rzuca — wraca też gdy wątek wciąż żyje.
+        # Bez tej asercji przeciążone CI mogło pojechać dalej, a spóźniony
+        # wątek commitował ``Uczelnia``/``ImportPracownikow`` (własne
+        # połączenie) JUŻ PO transakcyjnym flushu teardownu → scommitowane
+        # wiersze wyciekały do kolejnych testów na tym workerze
+        # (``bpp_uczelnia_site_id_key``, „extra items" w asercjach).
+        zywe = [w for w in watki if w.is_alive()]
+        assert not zywe, f"wątki nie skończyły w 15s: {zywe}"
 
     vals = list(statuses.values())
     assert len(vals) == 2, statuses

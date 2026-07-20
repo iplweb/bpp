@@ -188,6 +188,15 @@ _LEAK_GUARD_TABLES = (
     "bpp_stopiensluzbowy",
     "bpp_stanowiskodydaktyczne",
     "bpp_grupa_pracownicza",
+    # Dodane po incydencie na PR #625: wyciek TYCH tabel był dla guarda
+    # NIEWIDZIALNY (nie sondował ich), więc zamiast raportu dawał twarde
+    # ``IntegrityError: bpp_uczelnia_site_id_key`` na setupie cudzego testu
+    # oraz „extra items" w asercjach scope'ujących po uczelni. Warunek
+    # bezpieczeństwa z komentarza wyżej sprawdzony też dla nich: obie mają
+    # 0 wierszy w baseline, a z 38 tabel z FK DO nich żadna nie jest w
+    # baseline niepusta → CASCADE zostaje w danych domenowych.
+    "bpp_uczelnia",
+    "import_pracownikow_importpracownikow",
 )
 
 
