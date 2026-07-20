@@ -414,10 +414,17 @@ def _stan_izolacji(item):
     - ``tx`` — czy test był ``transaction=True``. Jeśli NIE, a mimo to zostawił
       scommitowane wiersze, to jego atomic block nie objął tych zapisów.
     - ``closed_in_tx`` / ``needs_rollback`` — czy połączenie zostało ZAMKNIĘTE
-      wewnątrz atomic bloku. ``CONN_MAX_AGE=0`` + ``close_old_connections`` na
-      ``request_finished`` potrafi to zrobić w teście używającym klienta HTTP;
-      Django ustawia wtedy te flagi, izolacja testu jest zerwana, a dalsze
-      zapisy lecą w autocommit. To główna hipoteza do rozstrzygnięcia.
+      wewnątrz atomic bloku. Django ustawia wtedy te flagi, izolacja testu jest
+      zerwana, a dalsze zapisy lecą w autocommit. Pole zostaje, bo pokazuje
+      FAKT zerwania izolacji niezależnie od przyczyny.
+
+      UWAGA — hipoteza „to ``CONN_MAX_AGE=0`` + ``close_old_connections`` na
+      ``request_finished``" jest OBALONA, nie powtarzać jej: ``CONN_MAX_AGE=0``
+      to domyślna wartość Django (byłoby to zepsute wszędzie i zawsze), a
+      ``django/test/client.py`` JAWNIE odpina ``close_old_connections`` wokół
+      ``request_started``/``request_finished`` (12 miejsc) właśnie po to, żeby
+      połączenie nie zamknęło się w środku transakcji testu. Wyciekające testy
+      idą przez ``admin_client``/``client``, czyli przez tę ochronę.
     - ``autocommit`` — stan końcowy połączenia.
 
     Best-effort: diagnostyka nie może wywalić teardownu.
