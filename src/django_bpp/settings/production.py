@@ -128,7 +128,11 @@ CACHEOPS = {
     "bpp.charakter_formalny": {"ops": ("get", "fetch", "count", "exists")},
     "bpp.funkcja_autora": {"ops": ("get", "fetch", "count", "exists")},
     "bpp.dyscyplina_naukowa": {"ops": ("get", "fetch", "count", "exists")},
-    "bpp.konferencja": {"ops": ("get", "fetch", "count", "exists")},
+    # `bpp.konferencja` CELOWO nie jest tu wymieniona. Wygląda na słownik, ale
+    # rośnie razem z danymi z PBN, a `pbn_integrator.utils.conferences` robi
+    # bezwarunkowy save() na KAŻDYM rekordzie przy każdym przebiegu integratora
+    # (nie „zapisz gdy się zmieniło"). Cache'owanie dałoby tysiące inwalidacji
+    # na przebieg — koszt większy niż zysk z czytań.
 }
 
 CACHEOPS_DEFAULTS = {"timeout": 60 * 60}
