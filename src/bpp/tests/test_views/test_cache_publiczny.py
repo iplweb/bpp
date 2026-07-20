@@ -477,6 +477,64 @@ def test_robot_indeksujacy_dzieli_jeden_kubelek(cache_locmem, site1, uczelnia1):
 
 
 @pytest.mark.django_db
+def test_smieciowe_ciasteczko_nie_tlumi_banera_zgody(
+    client, cache_locmem, site1, uczelnia1
+):
+    """Spreparowanym ciasteczkiem nie da się ukryć banera nowym osobom.
+
+    Regresja po drugiej recenzji. Wartość nieznana renderuje się jak
+    ``"0"`` (bez banera, bez GA), ale wpadała do kubełka „brak" — razem
+    z ``None``. Rozgrzanie cache'a śmieciem podawało więc świeżemu
+    odwiedzającemu stronę BEZ banera zgody, czyli tłumiło komunikat
+    prawny na czas TTL.
+    """
+    url = reverse("bpp:browse_lata")
+
+    client.cookies.clear()
+    client.cookies["cookielaw_accepted"] = "spreparowana-wartosc"
+    rozgrzewajacy = client.get(url, HTTP_HOST=site1.domain)
+    assert rozgrzewajacy["X-BPP-Cache"] == "MISS"
+    assert "CookielawBanner" not in rozgrzewajacy.content.decode()
+
+    # Świeży odwiedzający — bez żadnego ciasteczka.
+    client.cookies.clear()
+    swiezy = client.get(url, HTTP_HOST=site1.domain)
+
+    assert swiezy["X-BPP-Cache"] == "MISS", (
+        "Świeży odwiedzający dostał stronę z cache'a rozgrzanego "
+        "śmieciowym ciasteczkiem."
+    )
+    assert "CookielawBanner" in swiezy.content.decode(), (
+        "TŁUMIENIE KOMUNIKATU PRAWNEGO: świeży odwiedzający nie dostał "
+        "banera zgody na ciasteczka."
+    )
+
+
+@pytest.mark.django_db
+def test_nieznana_wartosc_ciasteczka_jest_rownowazna_odmowie(
+    cache_locmem, site1, uczelnia1
+):
+    """Kubełek ma odpowiadać RENDEROWANIU, a nie surowej wartości.
+
+    ``base.html`` używa tylko ``cookielaw.notset`` i ``cookielaw.accepted``
+    (``rejected`` nigdzie), więc wartość nieznana renderuje się dokładnie
+    tak jak ``"0"`` — i musi dzielić z nią kubełek.
+    """
+    from bpp.views.cache_publiczny import _stan_zgody
+
+    def stan(wartosc):
+        request = make_request_for_site(site1, path="/bpp/lata/")
+        if wartosc is not None:
+            request.COOKIES["cookielaw_accepted"] = wartosc
+        return _stan_zgody(request)
+
+    assert stan("smiec") == stan("0")
+    assert stan("smiec") != stan(None)
+    assert stan(None) == "brak"
+    assert stan("1") == "zgoda"
+
+
+@pytest.mark.django_db
 def test_dowolna_wartosc_ciasteczka_nie_zalewa_cache(cache_locmem, site1, uczelnia1):
     """Wartość ciasteczka jest sterowana przez klienta — musi być znormalizowana.
 

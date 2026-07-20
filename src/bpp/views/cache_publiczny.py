@@ -174,13 +174,25 @@ def _stan_zgody(request):
     Koszt dla ruchu, który ten cache ma odciążyć, jest bliski zeru:
     roboty indeksujące nie wykonują JavaScriptu i nigdy nie ustawiają
     tego ciasteczka, więc wszystkie lądują w kubełku „brak".
+
+    KUBEŁKI ODWZOROWUJĄ RENDEROWANIE, NIE SUROWE WARTOŚCI. Context
+    processor rozróżnia cztery stany surowe (``None`` / ``"1"`` / ``"0"``
+    / wartość nieznana), ale ``base.html`` czyta wyłącznie
+    ``cookielaw.notset`` (baner) i ``cookielaw.accepted`` (snippet GA) —
+    ``cookielaw.rejected`` nie jest używane nigdzie w szablonach. Wartość
+    NIEZNANA renderuje się więc identycznie jak ``"0"``: bez banera i bez
+    GA. Musi trafiać do kubełka „odmowa", nie „brak". Wrzucenie jej do
+    „brak" pozwalało spreparowanym ciasteczkiem rozgrzać cache stroną BEZ
+    banera zgody i podawać ją świeżym odwiedzającym, tłumiąc im komunikat
+    prawny na czas TTL.
     """
     wartosc = request.COOKIES.get(_CIASTECZKO_ZGODY)
+    if wartosc is None:
+        return "brak"
     if wartosc == "1":
         return "zgoda"
-    if wartosc == "0":
-        return "odmowa"
-    return "brak"
+    # Każda inna wartość, także śmieciowa, renderuje się jak ``"0"``.
+    return "odmowa"
 
 
 def _klucz(request):
