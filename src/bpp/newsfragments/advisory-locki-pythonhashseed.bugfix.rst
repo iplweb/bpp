@@ -17,7 +17,8 @@ Powodowało to, że po zmianie filtrów przez maksymalnie 5 minut wyświetlał s
 panel filtrów wyliczony dla innego, wcześniejszego zestawu parametrów (błędnie
 podświetlone aktywne filtry).
 
-W instalacjach wielouczelnianych statystyki na pulpicie administratora nie
-uwzględniały domeny w kluczu pamięci podręcznej, przez co dane wyliczone dla
-jednej uczelni mogły zostać pokazane pod domeną innej. Odpowiedzi są teraz
-różnicowane po domenie.
+Statystyki na pulpicie administratora deklarują teraz jawnie, że ich treść
+zależy od domeny (nagłówek ``Vary: Host``). Wewnętrzna pamięć podręczna
+rozdzielała je po domenie już wcześniej — to zabezpieczenie na wypadek
+pośredniczących pamięci podręcznych HTTP (proxy, CDN), które bez tego
+nagłówka mogłyby współdzielić odpowiedź między domenami.

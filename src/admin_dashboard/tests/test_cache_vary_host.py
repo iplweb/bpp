@@ -1,11 +1,17 @@
-"""Widoki dashboardu cache'owane `cache_page` muszą różnicować po hoście.
+"""Widoki dashboardu cache'owane `cache_page` deklarują `Vary: Host`.
 
-DLACZEGO to musi istnieć: BPP jest wielo-uczelniany —
-`SiteResolutionMiddleware` rozstrzyga domenę → Site → Uczelnia per request.
-`cache_page` NIE uwzględnia hosta w kluczu cache, więc bez
-`vary_on_headers("Host")` odpowiedź policzona dla uczelni A jest serwowana
-pod domeną uczelni B (wyciek danych między uczelniami). Cache trwa 24 h,
-więc pomyłka nie jest chwilowa.
+CZEGO TE TESTY NIE DOWODZĄ: nie ma tu naprawy wycieku między uczelniami,
+bo takiego wycieku nie było. `cache_page` SAM różnicuje po hoście —
+`_generate_cache_key` i `_generate_cache_header_key` hashują
+`request.build_absolute_uri()`, w którym host siedzi. Sprawdzone
+empirycznie: `learn_cache_key` BEZ żadnego `Vary` daje różne klucze dla
+dwóch domen, a `get_cache_key` drugiej domeny nie trafia we wpis pierwszej.
+
+PO CO WIĘC `vary_on_headers("Host")`: to defense-in-depth dla
+POŚREDNICZĄCYCH cache'y HTTP (proxy, CDN), które nie znają wewnętrznego
+klucza Django i bez jawnego nagłówka mogłyby współdzielić odpowiedź między
+domenami. BPP jest wielo-uczelniany (`SiteResolutionMiddleware`: domena →
+Site → Uczelnia), więc uczciwa deklaracja `Vary` jest tania i sensowna.
 
 Wzorzec jak przy `bpp.views.robots_txt` (`test_seo_metadata.py`).
 """
@@ -33,8 +39,9 @@ WIDOKI = [
 def test_widok_deklaruje_vary_host(client, admin_user, settings, nazwa_widoku):
     """Odpowiedź MUSI mieć `Vary: Host`.
 
-    Czerwony bez `@vary_on_headers("Host")` — sam `cache_page` nagłówka
-    nie ustawia, więc klucz cache jest wspólny dla wszystkich domen.
+    Czerwony bez `@vary_on_headers("Host")` — sam `cache_page` tego
+    nagłówka nie ustawia (choć swój wewnętrzny klucz i tak liczy z
+    hosta). Test pilnuje deklaracji dla pośredniczących cache'y HTTP.
     """
     settings.ALLOWED_HOSTS = ["uczelnia1.localhost", "uczelnia2.localhost"]
     client.force_login(admin_user)
@@ -43,19 +50,25 @@ def test_widok_deklaruje_vary_host(client, admin_user, settings, nazwa_widoku):
 
     assert res.status_code == 200
     assert "Host" in res.get("Vary", ""), (
-        f"{nazwa_widoku} nie deklaruje `Vary: Host` — cache_page zaserwuje "
-        "odpowiedź jednej uczelni pod domeną innej"
+        f"{nazwa_widoku} nie deklaruje `Vary: Host` — pośredniczący cache "
+        "HTTP (proxy, CDN) może współdzielić odpowiedź między domenami"
     )
 
 
 @pytest.mark.django_db
-def test_cache_nie_przecieka_miedzy_hostami(client, admin_user, settings, mocker):
+def test_cache_page_rozdziela_wpisy_po_hoscie(client, admin_user, settings, mocker):
     """Dwa hosty = dwa niezależne wpisy cache, więc widok liczy się DWA razy.
 
+    UWAGA co do zakresu: ten test opisuje ZASTANE zachowanie `cache_page`,
+    a nie skutek `@vary_on_headers("Host")`. Rozdzielność bierze się stąd,
+    że Django hashuje `request.build_absolute_uri()` (z hostem) — jest
+    ZIELONY także po zdjęciu dekoratora. Trzymamy go jako opis kontraktu,
+    na którym stoi wielo-uczelnianość: gdyby Django kiedyś przestało
+    kluczować po hoście, to tu wyjdzie.
+
     Porównywanie treści odpowiedzi niczego by nie dowiodło: na pustej bazie
-    obie są identyczne niezależnie od tego, czy cache przeciekł. Liczymy
-    więc, ile razy widok naprawdę policzył dane. Trafienie w cudzy wpis
-    dałoby jedno wykonanie na dwa żądania.
+    obie są identyczne niezależnie od rozdzielności cache. Liczymy więc,
+    ile razy widok naprawdę policzył dane.
     """
     from django.core.cache import cache
 
@@ -85,11 +98,11 @@ def test_cache_nie_przecieka_miedzy_hostami(client, admin_user, settings, mocker
 
     res_b = client.get(url, HTTP_HOST="uczelnia2.localhost")
     assert res_b.status_code == 200
-    assert "Host" in res_b.get("Vary", "")
 
     assert licznik.call_count == 2, (
-        "drugi host dostał odpowiedź zapamiętaną dla pierwszego — cache "
-        "przecieka między uczelniami"
+        "drugi host dostał odpowiedź zapamiętaną dla pierwszego — Django "
+        "przestało kluczować cache_page po hoście (regresja kontraktu, na "
+        "którym stoi wielo-uczelnianość)"
     )
 
     # Kontrola: ten sam host drugi raz MUSI trafić w cache (inaczej test

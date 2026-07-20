@@ -1,10 +1,19 @@
 """Charakter formalny statistics views for admin dashboard.
 
-Każdy widok cache'owany przez `cache_page` MUSI mieć `vary_on_headers("Host")`.
-BPP jest wielo-uczelniany — `SiteResolutionMiddleware` rozstrzyga domenę →
-Site → Uczelnia per request, a `cache_page` NIE uwzględnia hosta w kluczu.
-Bez `Vary: Host` odpowiedź policzona dla jednej uczelni zostałaby zaserwowana
-pod domeną innej (wyciek danych między uczelniami). Wzorzec jak w
+Widoki cache'owane przez `cache_page` deklarują `vary_on_headers("Host")`.
+
+UWAGA — to defense-in-depth, NIE naprawa wycieku. Wbrew temu, co łatwo
+założyć, `cache_page` SAM różnicuje po hoście: `_generate_cache_key` oraz
+`_generate_cache_header_key` hashują `request.build_absolute_uri()`, w którym
+host siedzi. Sprawdzone empirycznie — `learn_cache_key` BEZ żadnego `Vary`
+daje różne klucze dla dwóch domen. Wewnętrzny cache Django nigdy nie
+przeciekał między uczelniami.
+
+Nagłówek `Vary: Host` jest tu po to, żeby POŚREDNICZĄCE cache'y HTTP (proxy,
+CDN) też wiedziały, że odpowiedź zależy od domeny — one nie znają
+wewnętrznego klucza Django. BPP jest wielo-uczelniany
+(`SiteResolutionMiddleware`: domena → Site → Uczelnia), więc uczciwa
+deklaracja `Vary` jest tanim zabezpieczeniem. Wzorzec jak w
 `bpp.views.robots_txt`.
 """
 
