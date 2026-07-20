@@ -132,7 +132,6 @@ class Wydawnictwo_ZwarteAdmin_Baza(BaseBppAdminMixin, admin.ModelAdmin):
         "liczba_znakow_wydawniczych",
         "wydawnictwo_nadrzedne__tytul_oryginalny",
         "konferencja__nazwa",
-        "liczba_znakow_wydawniczych",
         "doi",
         "pbn_uid__pk",
     ]

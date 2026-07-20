@@ -109,6 +109,26 @@ CACHEOPS = {
     "bpp.wydzial": {"ops": ("get", "fetch", "count", "exists")},
     "bpp.jednostka": {"ops": ("get", "fetch", "count", "exists")},
     "bpp.wydawnictwo_ciagle_streszczenie": {"ops": ("get", "fetch", "count", "exists")},
+    # `SiteResolutionMiddleware` rozstrzyga domenę → Site przy KAŻDYM
+    # requeście (także anonimowym). Celowo nie używa `get_current_site`, bo
+    # ono priorytetyzuje SITE_ID (założenie single-site), a BPP jest
+    # multi-host — a więc omija też wbudowany SITE_CACHE Django. Cacheops
+    # daje ten cache z powrotem, z automatyczną inwalidacją przy zapisie
+    # Site (czego ręczny cache.set z TTL by nie zapewnił).
+    "sites.site": {"ops": ("get", "fetch", "count", "exists")},
+    # Filtr szablonowy `has_group` robi Group.objects.get(name=...) przy
+    # każdym wywołaniu — a wywołuje się go w szablonach wielokrotnie.
+    "auth.group": {"ops": ("get", "fetch", "count", "exists")},
+    # Słowniki: małe, rzadko zmieniane, a odpytywane jako FK praktycznie
+    # z każdej publikacji. Cacheops inwaliduje je przy zapisie, więc edycja
+    # w adminie jest widoczna natychmiast.
+    "bpp.tytul": {"ops": ("get", "fetch", "count", "exists")},
+    "bpp.jezyk": {"ops": ("get", "fetch", "count", "exists")},
+    "bpp.typ_kbn": {"ops": ("get", "fetch", "count", "exists")},
+    "bpp.charakter_formalny": {"ops": ("get", "fetch", "count", "exists")},
+    "bpp.funkcja_autora": {"ops": ("get", "fetch", "count", "exists")},
+    "bpp.dyscyplina_naukowa": {"ops": ("get", "fetch", "count", "exists")},
+    "bpp.konferencja": {"ops": ("get", "fetch", "count", "exists")},
 }
 
 CACHEOPS_DEFAULTS = {"timeout": 60 * 60}
