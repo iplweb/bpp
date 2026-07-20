@@ -1105,10 +1105,20 @@ CHANNELS_BROADCAST_SUBSCRIPTION_AUTHORIZER = (
 )
 
 
-# django-compressor dla każdej wersji będzie miał swoją nazwę katalogu
-# wyjściowego, z tej prostej przyczyny, że nie wszystkie przeglądarki
-# pamiętają, żeby odświeżyć cache:
-COMPRESS_OUTPUT_DIR = f"CACHE-{VERSION}"
+# django-compressor nazywa każdy plik wyjściowy 12-znakowym hashem jego
+# TREŚCI (compressor.base.Compressor.get_filepath →
+# get_hexdigest(content, 12)): np. "CACHE/js/58a8c0714e59.js". Nazwa pliku
+# zmienia się WTEDY I TYLKO WTEDY, gdy zmienia się treść — to wystarczający,
+# poprawny cache-busting współgrający z nagłówkiem `immutable`.
+#
+# Katalog był wcześniej wersjonowany (`CACHE-{VERSION}`) w intencji wymuszenia
+# odświeżenia cache na deploy. Był to jednak DRUGI, zbędny mechanizm bustujący
+# HURTEM: każde wydanie zmieniało ścieżkę WSZYSTKICH statyków (nowy katalog),
+# więc `immutable` + zmiana ścieżki kazały przeglądarkom pobrać ~305 KB gzip
+# JS/CSS ponownie po każdym deployu, nawet gdy ani bajt JS/CSS się nie zmienił.
+# Content-hash w nazwie pliku już gwarantuje bust dokładnie zmienionych plików,
+# więc katalog jest statyczny:
+COMPRESS_OUTPUT_DIR = "CACHE"
 
 # django-tabular-permissions
 
