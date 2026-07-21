@@ -250,6 +250,208 @@ def test_dodaj_jednostke_z_rokiem_wchlania_wyscig_na_datowanej_parze():
 
 
 @pytest.mark.django_db
+def test_nakladajace_sie_okresy_zatrudnienia_sa_zabronione():
+    """ExclusionConstraint: dwa DATOWANE okresy nie moga sie nakladac.
+
+    Pilnuje ``bpp_autor_jednostka_okresy_bez_nakladan`` (0474). Pierwszy okres
+    [2010..2015], drugi zaczyna sie w srodku [2013..2018] -> nakladaja sie ->
+    ``IntegrityError``.
+    """
+    autor = baker.make(Autor)
+    jednostka = baker.make(Jednostka)
+
+    Autor_Jednostka.objects.create(
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2010, 1, 1),
+        zakonczyl_prace=date(2015, 12, 31),
+    )
+
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            Autor_Jednostka.objects.create(
+                autor=autor,
+                jednostka=jednostka,
+                rozpoczal_prace=date(2013, 1, 1),
+                zakonczyl_prace=date(2018, 12, 31),
+            )
+
+
+@pytest.mark.django_db
+def test_okresy_dzielace_skrajny_dzien_sie_nakladaja():
+    """Granice '[]' inkluzywne: wspolny skrajny dzien = NAKLADANIE.
+
+    [2010..2012-12-31] i [2012-12-31..2015] dziela dzien 2012-12-31. Bo obie
+    granice sa domkniete, ten dzien nalezy do obu -> ``IntegrityError``.
+    """
+    autor = baker.make(Autor)
+    jednostka = baker.make(Jednostka)
+
+    Autor_Jednostka.objects.create(
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2010, 1, 1),
+        zakonczyl_prace=date(2012, 12, 31),
+    )
+
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            Autor_Jednostka.objects.create(
+                autor=autor,
+                jednostka=jednostka,
+                rozpoczal_prace=date(2012, 12, 31),
+                zakonczyl_prace=date(2015, 12, 31),
+            )
+
+
+@pytest.mark.django_db
+def test_przylegajace_okresy_sa_dozwolone():
+    """Przyleganie (koniec + 1 dzien = nastepny start) NIE jest nakladaniem.
+
+    [2010..2012-12-31] i [2013-01-01..2015] stykaja sie bez wspolnego dnia ->
+    obie granice '[]' sie nie przecinaja -> zapis PRZECHODZI. Nie wolno nam
+    falszywie blokowac legalnej, ciaglej historii zatrudnienia.
+    """
+    autor = baker.make(Autor)
+    jednostka = baker.make(Jednostka)
+
+    Autor_Jednostka.objects.create(
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2010, 1, 1),
+        zakonczyl_prace=date(2012, 12, 31),
+    )
+    Autor_Jednostka.objects.create(
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2013, 1, 1),
+        zakonczyl_prace=date(2015, 12, 31),
+    )
+
+    assert Autor_Jednostka.objects.filter(autor=autor, jednostka=jednostka).count() == 2
+
+
+@pytest.mark.django_db
+def test_rozlaczne_okresy_sa_dozwolone():
+    """Okresy z luka miedzy nimi PRZECHODZA (brak nakladania)."""
+    autor = baker.make(Autor)
+    jednostka = baker.make(Jednostka)
+
+    Autor_Jednostka.objects.create(
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2010, 1, 1),
+        zakonczyl_prace=date(2012, 12, 31),
+    )
+    Autor_Jednostka.objects.create(
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2015, 1, 1),
+        zakonczyl_prace=date(2018, 12, 31),
+    )
+
+    assert Autor_Jednostka.objects.filter(autor=autor, jednostka=jednostka).count() == 2
+
+
+@pytest.mark.django_db
+def test_otwarty_koniec_nakladajacy_pozniejszy_okres_jest_zabroniony():
+    """Otwarty koniec (``zakonczyl_prace`` NULL) = zakres [start, nieskonczonosc).
+
+    Autor z otwartym okresem [2010..) i drugi datowany okres [2015..2016]
+    zawarty w tamtym -> nakladaja sie -> ``IntegrityError``. Potwierdza, ze
+    ``daterange(start, NULL, '[]')`` obejmuje wszystko po ``start``.
+    """
+    autor = baker.make(Autor)
+    jednostka = baker.make(Jednostka)
+
+    Autor_Jednostka.objects.create(
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2010, 1, 1),
+        zakonczyl_prace=None,
+    )
+
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            Autor_Jednostka.objects.create(
+                autor=autor,
+                jednostka=jednostka,
+                rozpoczal_prace=date(2015, 1, 1),
+                zakonczyl_prace=date(2016, 12, 31),
+            )
+
+
+@pytest.mark.django_db
+def test_otwarty_koniec_przylegajacy_wczesniejszy_okres_jest_dozwolony():
+    """Zamkniety okres tuz przed otwartym (koniec + 1 = start) PRZECHODZI."""
+    autor = baker.make(Autor)
+    jednostka = baker.make(Jednostka)
+
+    Autor_Jednostka.objects.create(
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2013, 1, 1),
+        zakonczyl_prace=None,
+    )
+    Autor_Jednostka.objects.create(
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2010, 1, 1),
+        zakonczyl_prace=date(2012, 12, 31),
+    )
+
+    assert Autor_Jednostka.objects.filter(autor=autor, jednostka=jednostka).count() == 2
+
+
+@pytest.mark.django_db
+def test_dodaj_jednostke_wchlania_wyscig_przedzialowy_pokrywajacy():
+    """Wyscig na sciezce PRZEDZIALOWEJ: pokrywajacy okres -> zwroc go.
+
+    Rownolegla transakcja utworzyla okres [2019..2021] POKRYWAJACY zadany rok
+    2020 (o INNYM ``rozpoczal_prace``) DOPIERO w okienku miedzy ``exists()`` a
+    ``create()``, wiec nasz ``create()`` laduje na ExclusionConstraincie
+    'bpp_autor_jednostka_okresy_bez_nakladan'. Post-check pytajacy o dokladny
+    start (2020-01-01) by go NIE zlapal, bo tamten wiersz ma inny start —
+    dlatego ``dodaj_jednostke`` najpierw pyta o wiersz POKRYWAJACY zadany zakres
+    i zwraca go (stan docelowy osiagniety), zamiast re-raise'owac jako 500.
+
+    Wyscig symulujemy patchem ``filter`` (jak
+    ``test_zapis_autorstwa_przezywa_wyscig``): pierwszy ``filter`` — wejsciowy
+    ``exists()`` — mowi "nie ma", a ``filter`` w bloku ``except`` zwraca
+    pokrywajacy wiersz. Predykat wejsciowy i przedzialowy sa IDENTYCZNE, wiec
+    tylko taki mock oddaje wyscig (real DB nie da roznicy).
+    """
+    autor = baker.make(Autor)
+    jednostka = baker.make(Jednostka)
+
+    pokrywajacy = Autor_Jednostka.objects.create(
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2019, 1, 1),
+        zakonczyl_prace=date(2021, 12, 31),
+    )
+
+    with patch.object(
+        Autor_Jednostka.objects,
+        "create",
+        side_effect=IntegrityError(
+            "conflicting key value violates exclusion constraint"
+        ),
+    ):
+        with patch.object(
+            Autor_Jednostka.objects,
+            "filter",
+            side_effect=[
+                SimpleNamespace(exists=lambda: False),  # wejscie: "jeszcze nie ma"
+                SimpleNamespace(first=lambda: pokrywajacy),  # except: pokrywajacy
+            ],
+        ):
+            wynik = autor.dodaj_jednostke(jednostka, rok=2020)
+
+    assert wynik == pokrywajacy
+
+
+@pytest.mark.django_db
 def test_filter_rozpoczal_prace_none_generuje_is_null():
     """``filter(rozpoczal_prace=None)`` musi kompilowac sie do ``IS NULL``.
 
