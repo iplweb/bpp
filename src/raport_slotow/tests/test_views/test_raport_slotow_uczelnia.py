@@ -135,3 +135,72 @@ def test_raport_uczelnia_xlsx(raport_slotow_uczelnia_wiersz, admin_app):
     )
 
     assert res.click("Pobierz w formacie XLSX").status_code == 200
+
+
+def test_raport_uczelnia_xlsx_ponizej_limitu_przechodzi(
+    raport_slotow_uczelnia_wiersz, admin_app, monkeypatch
+):
+    # Poniżej limitu (2 wiersze < 3) → normalny eksport XLSX (HTTP 200).
+    from raport_slotow.views.uczelnia import (
+        SzczegolyRaportSlotowUczelniaListaRekordow,
+    )
+
+    parent = raport_slotow_uczelnia_wiersz.parent
+    parent.raportslotowuczelniawiersz_set.create(
+        autor=raport_slotow_uczelnia_wiersz.autor,
+        jednostka=raport_slotow_uczelnia_wiersz.jednostka,
+        dyscyplina=raport_slotow_uczelnia_wiersz.dyscyplina,
+        pkd_aut_sum=1.0,
+        slot=1.0,
+        avg=1,
+    )
+    monkeypatch.setattr(
+        SzczegolyRaportSlotowUczelniaListaRekordow, "export_max_rows", 3
+    )
+
+    res = admin_app.get(
+        reverse(
+            "raport_slotow:raportslotowuczelnia-results",
+            kwargs={"pk": parent.id},
+        ),
+        params={"_export": "xlsx"},
+    )
+    assert res.status_code == 200
+    assert res.content_type != "text/html"
+
+
+def test_raport_uczelnia_xlsx_powyzej_limitu_zwraca_400(
+    raport_slotow_uczelnia_wiersz, admin_app, monkeypatch
+):
+    # Przekroczenie limitu → HTTP 400 z czytelnym komunikatem (bez cichego
+    # ucięcia pliku). Limit obniżamy monkeypatchem, żeby nie tworzyć dziesiątek
+    # tysięcy wierszy w teście.
+    from raport_slotow.views.uczelnia import (
+        SzczegolyRaportSlotowUczelniaListaRekordow,
+    )
+
+    parent = raport_slotow_uczelnia_wiersz.parent
+    # Drugi wiersz: 2 > limit=1.
+    parent.raportslotowuczelniawiersz_set.create(
+        autor=raport_slotow_uczelnia_wiersz.autor,
+        jednostka=raport_slotow_uczelnia_wiersz.jednostka,
+        dyscyplina=raport_slotow_uczelnia_wiersz.dyscyplina,
+        pkd_aut_sum=1.0,
+        slot=1.0,
+        avg=1,
+    )
+    monkeypatch.setattr(
+        SzczegolyRaportSlotowUczelniaListaRekordow, "export_max_rows", 1
+    )
+
+    res = admin_app.get(
+        reverse(
+            "raport_slotow:raportslotowuczelnia-results",
+            kwargs={"pk": parent.id},
+        ),
+        params={"_export": "xlsx"},
+        expect_errors=True,
+    )
+    assert res.status_code == 400
+    assert "maksymalnie 1" in res.text
+    assert "2" in res.text
