@@ -1,5 +1,7 @@
 from django.urls import path
 
+from bpp.permissions import wymagaj_wprowadzania_danych_dla_urlpatterns
+
 from . import views
 
 app_name = "ewaluacja_optymalizacja"
@@ -216,3 +218,11 @@ urlpatterns = [
         name="browser-recalc-status",
     ),
 ]
+
+# Cała aplikacja to narzędzie redaktorskie (analiza/optymalizacja ewaluacji) —
+# bramkujemy KAŻDY widok wymaganiem uprawnień „wprowadzanie danych" na poziomie
+# URLconf. Dzięki temu nowe widoki są chronione domyślnie, bez pamiętania o
+# dekoratorze. Wcześniej widoki miały tylko @login_required (samo zalogowanie),
+# co pozwalało zwykłemu koncie m.in. na masowe odpinanie prac czy kasowanie
+# metryk.
+wymagaj_wprowadzania_danych_dla_urlpatterns(urlpatterns)

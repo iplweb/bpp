@@ -1,0 +1,7 @@
+{# Wrapper odpięcia — <tr> włączany w liście (odpiecia.html). Węzeł <tr> #}
+{# zostaje stały: toggle HTMX swapuje tylko jego zawartość (innerHTML → #}
+{# _odpiecie_row_kom.html), dzięki czemu DataTables odczytuje wiersz po swapie #}
+{# (uwaga reviewera #6). PrzelaczOdpiecieView zwraca SAM partial komórek. #}
+<tr id="odpiecie-{{ odp.pk }}">
+    {% include "import_pracownikow/partials/_odpiecie_row_kom.html" %}
+</tr>

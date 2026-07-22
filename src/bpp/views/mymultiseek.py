@@ -1,18 +1,12 @@
-import csv
 import hashlib
-import html
-import io
 import json
 import logging
-import re
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.cache import cache
 from django.db.models import Count, Sum
-from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
-from django.urls import reverse
-from django.utils.html import strip_tags
-from django.utils.http import content_disposition_header
+from django.http import HttpResponseBadRequest, JsonResponse
+from django.template.loader import render_to_string
 from django.views.decorators.cache import never_cache
 from django.views.generic import View
 from multiseek.logic import get_registry
@@ -22,10 +16,24 @@ from multiseek.views import (
     manually_add_or_remove,
 )
 
-from bpp import const
 from bpp.models import Uczelnia
 from bpp.multiseek_registry import registry as multiseek_registry
 from bpp.multiseek_registry.djangoql_export import multiseek_form_to_djangoql
+from bpp.views.multiseek_export import (
+    MULTISEEK_DEFAULT_REPORT_TITLE,
+    MULTISEEK_EXPORT_DANE_FIELDS,
+    MULTISEEK_EXPORT_HEADERS,  # noqa: F401 - re-eksport, uzywane w testach
+    MULTISEEK_EXPORT_OPIS_FIELDS,
+    MULTISEEK_EXPORT_XLSX_HEADERS,  # noqa: F401 - re-eksport, uzywane w testach
+    XLSX_WORKSHEET_TITLE_MAX_LENGTH,  # noqa: F401 - re-eksport, uzywane w testach
+    bibtex_export_response,
+    csv_export_response,
+    docx_export_response,
+    html_export_response,
+    plain_multiseek_report_title,
+    sanitize_export_html,
+    xlsx_export_response,
+)
 from bpp.views.zapytanie import WprowadzanieDanychOrSuperuserMixin
 
 logger = logging.getLogger(__name__)
@@ -38,59 +46,6 @@ MULTISEEK_EXPORT_MAX_ROWS = 5000
 # TTL cache agregatów wyników (count + sumy) — patrz get_context_data.
 MULTISEEK_AGGREGATE_CACHE_TIMEOUT = 30 * 60
 MULTISEEK_REPORT_TITLE_SESSION_KEY = "MULTISEEK_TITLE"
-MULTISEEK_DEFAULT_REPORT_TITLE = "Rezultat wyszukiwania"
-XLSX_WORKSHEET_TITLE_MAX_LENGTH = 31
-
-MULTISEEK_EXPORT_HEADERS = (
-    "tytul_oryginalny",
-    "autorzy",
-    "rok",
-    "impact_factor",
-    "pk",
-    "bpp_id",
-    "typ_rekordu",
-    "id_rekordu",
-    "pbn_uid_id",
-    "link_do_bpp_url",
-    "link_do_bpp_admin_url",
-    "link_do_pbn_url",
-)
-
-MULTISEEK_EXPORT_XLSX_HEADERS = (
-    "Tytuł oryginalny",
-    "Autorzy",
-    "Rok",
-    "Impact Factor",
-    "PK",
-    "BPP ID",
-    "Typ rekordu",
-    "ID rekordu",
-    "PBN UID",
-    "Link do BPP",
-    "Link do edycji w BPP",
-    "Link do PBN",
-)
-
-MULTISEEK_EXPORT_FIELDS = (
-    "id",
-    "tytul_oryginalny",
-    "opis_bibliograficzny_zapisani_autorzy_cache",
-    "rok",
-    "impact_factor",
-    "punkty_kbn",
-    "pbn_uid_id",
-)
-
-MULTISEEK_EXPORT_XLSX_URL_COLUMNS = (10, 11, 12)
-EXPORT_FILENAME_INVALID_CHARS_RE = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
-MULTISEEK_REPORT_TITLE_HTML_BREAK_RE = re.compile(
-    r"</?(?:br|hr|p|div|h[1-6])\b[^>]*>",
-    re.IGNORECASE,
-)
-XLSX_WORKSHEET_TITLE_INVALID_CHARS_RE = re.compile(
-    r"[\[\]:*?/\\\x00-\x08\x0b\x0c\x0e-\x1f]"
-)
-SPREADSHEET_FORMULA_INJECTION_LEAD = ("=", "+", "-", "@", "\t", "\r", "\n")
 
 EXTRA_TYPES = [
     PKT_WEWN,
@@ -100,6 +55,33 @@ EXTRA_TYPES = [
     PKT_WEWN_BEZ + "_cytowania",
     TABLE + "_cytowania",
 ]
+
+# report_type renderowane jako tabela (reszta: lista/numer_list/None).
+TABLE_REPORT_TYPES = frozenset(EXTRA_TYPES)
+
+# Tabele/widoki złączane przez filtry multiseeka na relacjach "do wielu"
+# (autorzy, bazy zewnętrzne). Ich JOIN może zwielokrotnić wiersze Rekordu
+# (jeden rekord × N autorów / N baz) → wtedy potrzebny distinct(). Wykrywamy
+# je po REALNYCH nazwach tabel w zapytaniu (query.alias_map), a NIE po
+# substringu w tekście SQL — poprzednie podejście było kruche: zależne od
+# aliasów i formatowania generowanego SQL-a.
+MULTISEEK_MNOZACE_ZLACZENIA = frozenset({"bpp_autorzy_mat", "bpp_zewnetrzne_bazy_view"})
+
+# Projekcje eksportu DOKUMENTU dostrojone do partiali renderu (nie do CSV/XLSX).
+# Bazowe get_queryset() gubi liczba_cytowan/uwagi → N+1 na całym querysecie.
+MULTISEEK_RENDER_LIST_FIELDS = ("id", "opis_bibliograficzny_cache", "uwagi")
+MULTISEEK_RENDER_TABLE_FIELDS = (
+    "id",
+    "opis_bibliograficzny_cache",
+    "impact_factor",
+    "punkty_kbn",
+    "liczba_cytowan",
+    "punktacja_wewnetrzna",
+    "charakter_formalny",
+    "typ_kbn",
+    "charakter_formalny__nazwa",
+    "typ_kbn__nazwa",
+)
 
 
 class MyMultiseekResults(MultiseekResults):
@@ -147,14 +129,27 @@ class MyMultiseekResults(MultiseekResults):
 
         ret = qset.only(*flds)
 
-        # Add DISTINCT when joining with views that can produce duplicates.
-        # This string-based SQL check is not ideal but avoids complex query
-        # introspection. The affected tables come from fulltext search joins.
-        sql = str(ret.query)
-        if "bpp_autorzy_mat" in sql or "bpp_zewnetrzne_bazy_view" in sql:
+        # DISTINCT tylko gdy zapytanie łączy relację "do wielu", która może
+        # zdublować Rekord (jeden rekord × N autorów / N baz zewnętrznych).
+        if self._zapytanie_mnozy_wiersze(ret):
             ret = ret.distinct()
 
         return ret
+
+    @staticmethod
+    def _zapytanie_mnozy_wiersze(qs):
+        """Czy zapytanie łączy relację do-wielu, która może zdublować Rekord?
+
+        Sprawdzamy REALNE nazwy tabel w złączeniach (``query.alias_map``), nie
+        tekst SQL — dzięki temu decyzja o ``distinct()`` nie zależy od aliasów
+        ani formatowania generowanego zapytania (poprzednio: substring w
+        ``str(query)``). ``alias_map`` mapuje alias → obiekt złączenia; bierzemy
+        z niego ``table_name``, więc self-joiny z aliasami T2/T3 też są ujęte.
+        """
+        tabele = {
+            getattr(join, "table_name", None) for join in qs.query.alias_map.values()
+        }
+        return bool(tabele & MULTISEEK_MNOZACE_ZLACZENIA)
 
     def get_queryset_for_current_mode(self):
         if not self.request.GET.get("print-removed", False):
@@ -232,25 +227,8 @@ class MyMultiseekResults(MultiseekResults):
         return ctx
 
 
-def _export_value(value):
-    if value is None:
-        return ""
-    return str(value)
-
-
-def _single_line_text(value):
-    return re.sub(r"\s+", " ", value).strip()
-
-
-def _plain_multiseek_report_title(value):
-    value = _export_value(value)
-    value = MULTISEEK_REPORT_TITLE_HTML_BREAK_RE.sub(" ", value)
-    value = html.unescape(strip_tags(value))
-    return _single_line_text(value) or MULTISEEK_DEFAULT_REPORT_TITLE
-
-
 def _multiseek_report_title(request):
-    return _plain_multiseek_report_title(
+    return plain_multiseek_report_title(
         request.session.get(
             MULTISEEK_REPORT_TITLE_SESSION_KEY,
             MULTISEEK_DEFAULT_REPORT_TITLE,
@@ -258,150 +236,16 @@ def _multiseek_report_title(request):
     )
 
 
-def _export_filename(export_format, report_title):
-    title = EXPORT_FILENAME_INVALID_CHARS_RE.sub(" ", report_title)
-    title = _single_line_text(title).strip(". ")
-    if not title:
-        title = "multiseek"
-    return f"eksport-{title}.{export_format}"
-
-
-def _xlsx_worksheet_title(report_title):
-    title = XLSX_WORKSHEET_TITLE_INVALID_CHARS_RE.sub(" ", report_title)
-    title = _single_line_text(title).strip("'")
-    if not title:
-        title = "Multiseek"
-    return title[:XLSX_WORKSHEET_TITLE_MAX_LENGTH]
-
-
-def _sanitize_spreadsheet_cell(value):
-    if isinstance(value, str) and value.startswith(SPREADSHEET_FORMULA_INJECTION_LEAD):
-        return "'" + value
-    return value
-
-
-def _sanitize_spreadsheet_row(row):
-    return tuple(_sanitize_spreadsheet_cell(value) for value in row)
-
-
-def _pbn_publication_url(pbn_uid_id, pbn_api_root):
-    if not pbn_uid_id or not pbn_api_root:
-        return ""
-    return const.LINK_PBN_DO_PUBLIKACJI.format(
-        pbn_api_root=pbn_api_root,
-        pbn_uid_id=pbn_uid_id,
-    )
-
-
-def _admin_change_url(rekord, request):
-    content_type = rekord.content_type
-    url = reverse(
-        f"admin:{content_type.app_label}_{content_type.model}_change",
-        args=(rekord.object_id,),
-    )
-    return request.build_absolute_uri(url)
-
-
-def _iter_export_rows(queryset, request):
-    uczelnia = Uczelnia.objects.get_for_request(request)
-    pbn_api_root = uczelnia.pbn_api_root if uczelnia is not None else ""
-
-    for rekord in queryset.iterator(chunk_size=1000):
-        yield (
-            rekord.tytul_oryginalny,
-            rekord.opis_bibliograficzny_zapisani_autorzy_cache,
-            rekord.rok,
-            rekord.impact_factor,
-            rekord.punkty_kbn,
-            str(tuple(rekord.pk)),
-            str(rekord.describe_content_type),
-            rekord.object_id,
-            _export_value(rekord.pbn_uid_id),
-            request.build_absolute_uri(rekord.get_absolute_url()),
-            _admin_change_url(rekord, request),
-            _pbn_publication_url(rekord.pbn_uid_id, pbn_api_root),
-        )
-
-
-def _csv_export_response(queryset, request, report_title):
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(MULTISEEK_EXPORT_HEADERS)
-    writer.writerows(
-        _sanitize_spreadsheet_row(row) for row in _iter_export_rows(queryset, request)
-    )
-
-    response = HttpResponse(output.getvalue(), content_type="text/csv; charset=utf-8")
-    response["Content-Disposition"] = content_disposition_header(
-        as_attachment=True,
-        filename=_export_filename("csv", report_title),
-    )
-    return response
-
-
-def _xlsx_export_response(queryset, request, report_title):
-    from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Font, PatternFill
-
-    from bpp.util import (
-        sanitize_xlsx_row,
-        worksheet_columns_autosize,
-        worksheet_create_table,
-    )
-
-    workbook = Workbook()
-    worksheet = workbook.active
-    worksheet.title = _xlsx_worksheet_title(report_title)
-    worksheet.append(MULTISEEK_EXPORT_XLSX_HEADERS)
-    for row in _iter_export_rows(queryset, request):
-        worksheet.append(sanitize_xlsx_row(row))
-
-    header_fill = PatternFill("solid", fgColor="1F4E78")
-    header_font = Font(color="FFFFFF", bold=True)
-    for cell in worksheet[1]:
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = Alignment(horizontal="center", vertical="center")
-
-    for row in worksheet.iter_rows(min_row=2):
-        for cell in row:
-            cell.alignment = Alignment(vertical="top", wrap_text=True)
-
-    for row in worksheet.iter_rows(min_row=2, min_col=4, max_col=5):
-        row[0].number_format = "0.000"
-        row[1].number_format = "0.00"
-
-    for row_idx in range(2, worksheet.max_row + 1):
-        for col_idx in MULTISEEK_EXPORT_XLSX_URL_COLUMNS:
-            cell = worksheet.cell(row=row_idx, column=col_idx)
-            if cell.value:
-                cell.value = f'=HYPERLINK("{cell.value}", "[link]")'
-
-    worksheet.freeze_panes = "B1"
-    worksheet_columns_autosize(worksheet)
-    if worksheet.max_row > 1:
-        worksheet_create_table(worksheet, title="MultiseekExport")
-
-    output = io.BytesIO()
-    workbook.save(output)
-    response = HttpResponse(
-        output.getvalue(),
-        content_type=(
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        ),
-    )
-    response["Content-Disposition"] = content_disposition_header(
-        as_attachment=True,
-        filename=_export_filename("xlsx", report_title),
-    )
-    return response
-
-
 class MyMultiseekExport(LoginRequiredMixin, MyMultiseekResults):
     http_method_names = ["get"]
 
+    # Eksport DANYCH: stałe kolumny, niezależne od report_type.
+    DATA_FORMATS = {"csv", "xlsx"}
+    # Eksport DOKUMENTU: odwzorowuje aktualny report_type (lista/tabela/bibtex).
+    DOCUMENT_FORMATS = {"html", "docx", "bib"}
+
     def get(self, request, export_format, *args, **kwargs):
-        if export_format not in {"csv", "xlsx"}:
+        if export_format not in self.DATA_FORMATS | self.DOCUMENT_FORMATS:
             return HttpResponseBadRequest("Nieznany format eksportu.")
 
         queryset = self.get_queryset_for_current_mode()
@@ -413,10 +257,86 @@ class MyMultiseekExport(LoginRequiredMixin, MyMultiseekResults):
             )
 
         report_title = _multiseek_report_title(request)
-        queryset = queryset.select_related(None).only(*MULTISEEK_EXPORT_FIELDS)
+        if export_format in self.DATA_FORMATS:
+            return self._export_data(request, export_format, queryset, report_title)
+        return self._export_document(request, export_format, queryset, report_title)
+
+    def _export_data(self, request, export_format, queryset, report_title):
+        wariant = request.GET.get("wariant", "dane")
+        if wariant not in {"dane", "opis"}:
+            wariant = "dane"
+        # opis to format czytelny (raportowy) — CSV opisu nie robimy
         if export_format == "csv":
-            return _csv_export_response(queryset, request, report_title)
-        return _xlsx_export_response(queryset, request, report_title)
+            wariant = "dane"
+
+        if wariant == "opis":
+            queryset = (
+                queryset.select_related(None)
+                .select_related("charakter_formalny", "typ_kbn")
+                .only(*MULTISEEK_EXPORT_OPIS_FIELDS)
+            )
+            return xlsx_export_response(queryset, request, report_title, "opis")
+
+        queryset = (
+            queryset.select_related(None)
+            .select_related("zrodlo", "typ_kbn")
+            .only(*MULTISEEK_EXPORT_DANE_FIELDS)
+        )
+        if export_format == "csv":
+            return csv_export_response(queryset, request, report_title)
+        return xlsx_export_response(queryset, request, report_title, "dane")
+
+    def _export_document(self, request, export_format, queryset, report_title):
+        registry = get_registry(self.registry)
+        report_type = registry.get_report_type(
+            self.get_multiseek_data(), request=request
+        )
+
+        if report_type == "bibtex":
+            # W widoku BibTeX html/docx degradują do .bib (D3).
+            return bibtex_export_response(queryset, report_title)
+        if export_format == "bib":
+            return HttpResponseBadRequest("BibTeX dostępny tylko w widoku BibTeX.")
+
+        if report_type in TABLE_REPORT_TYPES:
+            queryset = queryset.select_related("charakter_formalny", "typ_kbn").only(
+                *MULTISEEK_RENDER_TABLE_FIELDS
+            )
+            sumy = queryset.aggregate(
+                Sum("impact_factor"),
+                Sum("liczba_cytowan"),
+                Sum("punkty_kbn"),
+                Sum("punktacja_wewnetrzna"),
+            )
+            partial = "multiseek/report-body-table.html"
+        else:
+            queryset = queryset.only(*MULTISEEK_RENDER_LIST_FIELDS)
+            sumy = None
+            partial = "multiseek/report-body-list.html"
+
+        body_html = render_to_string(
+            partial,
+            {
+                "object_list": queryset,
+                "report_type": report_type,
+                "sumy": sumy,
+                "export_mode": True,
+                "start_index": 0,
+            },
+            request=request,
+        )
+        document_html = render_to_string(
+            "multiseek/export-document.html",
+            {
+                "body_html": sanitize_export_html(body_html),
+                "report_title": report_title,
+            },
+            request=request,
+        )
+
+        if export_format == "docx":
+            return docx_export_response(document_html, report_title)
+        return html_export_response(document_html, report_title)
 
 
 def _normalize_session_removed(request):

@@ -1,0 +1,24 @@
+{# Fragment wyniku (liveops result_template_name). Renderowany po p.result() #}
+{# jako OOB-swap #op-result oraz przy wejściu na zakończoną operację. #}
+{# Liczniki liczymy z operation.get_details_set() — stare importy mają #}
+{# result_context=NULL, więc nie polegamy wyłącznie na kontekście wyniku. #}
+<div class="panel callout {% if operation.zapisz_zmiany_do_bazy %}success{% else %}secondary{% endif %}">
+    <h3><span class="fi-check"></span> Import z POLON zakończony</h3>
+    <p>Przetworzono wierszy: <strong>{{ operation.get_details_set.count }}</strong>.</p>
+    {% if not operation.zapisz_zmiany_do_bazy %}
+        <p>Import uruchomiono w trybie <strong>podglądu</strong> — zmiany NIE
+            zostały zapisane do bazy danych.</p>
+    {% endif %}
+    <div class="button-group">
+        <a href="{% url 'import_polon:importplikupolon-results' operation.pk %}"
+           class="button secondary">
+            <span class="fi-list"></span> Zobacz wyniki
+        </a>
+        {% if not operation.zapisz_zmiany_do_bazy %}
+            <a href="{% url 'import_polon:importplikupolon-zapisz-do-bazy' operation.pk %}"
+               class="button alert">
+                <span class="fi-save"></span> Zapisz ten import do bazy danych
+            </a>
+        {% endif %}
+    </div>
+</div>

@@ -3,6 +3,7 @@ system kadrowy / PBN id) oraz po imieniu+nazwisku z kontekstem
 (jednostka, tytuł).
 """
 
+import re
 from dataclasses import dataclass
 
 from django.contrib.postgres.lookups import Unaccent
@@ -12,6 +13,7 @@ from django.db.models.functions import Lower
 from bpp.models import Autor, Autor_Jednostka, Jednostka, Tytul
 from import_common.normalization import (
     polish_english_first_name_variants,
+    poprzednie_nazwiska_token_regex,
     remove_polish_diacritics,
 )
 
@@ -36,10 +38,22 @@ class KandydatAutora:
 POWOD_IEXACT = "iexact"
 POWOD_IEXACT_PIERWSZE_IMIE = "iexact_pierwsze_imie"
 POWOD_POLISH_ENGLISH = "polish_english"
+POWOD_INICJAL = "inicjal"
 
 PEWNOSC_IEXACT = 1.0
 PEWNOSC_IEXACT_PIERWSZE_IMIE = 0.95
 PEWNOSC_POLISH_ENGLISH = 0.85
+PEWNOSC_INICJAL = 0.5
+
+# Próg pewności, poniżej którego ``matchuj_autora`` NIE wiąże autora
+# automatycznie — kandydat trafia tylko na listę do potwierdzenia przez
+# użytkownika. Dopasowanie po samym inicjale (0.5) jest za słabe na auto-bind;
+# warianty PL↔EN (0.85) i mocniejsze — wystarczające.
+PEWNOSC_MIN_AUTOMATYCZNA = PEWNOSC_POLISH_ENGLISH
+
+# Inicjał imienia: pojedyncza litera z opcjonalną kropką (np. "E" albo "E.").
+# Litera unicode (\w bez cyfry/podkreślenia) — ``Ł.`` też jest inicjałem.
+_INICJAL_RE = re.compile(r"^([^\W\d_])\.?$")
 
 
 def _try_get_autor_by_bpp_id(bpp_id: int | None) -> Autor | None:
@@ -108,10 +122,25 @@ def _try_match_autor_by_direct_ids(
     )
 
 
+def _poprzednie_nazwiska_q(nazwisko: str, prefix: str = "") -> Q:
+    """Q dopasowujące ``nazwisko`` jako pełny człon ``poprzednie_nazwiska``.
+
+    Pole ``poprzednie_nazwiska`` to lista rozdzielona przecinkami; dopasowujemy
+    dokładny człon (nie podłańcuch — patrz ``poprzednie_nazwiska_token_regex``),
+    żeby częste nazwiska nie generowały fałszywych trafień (FD#407). ``prefix``
+    pozwala celować w powiązany model (np. ``"autor__"``). Puste ``nazwisko``
+    daje Q, które nigdy nie trafia.
+    """
+    if not nazwisko:
+        return Q(pk__in=[])
+    field = f"{prefix}poprzednie_nazwiska"
+    return Q(**{f"{field}__iregex": poprzednie_nazwiska_token_regex(nazwisko)})
+
+
 def _build_autor_name_query(nazwisko: str, imiona: str) -> Q:
     """Buduje podstawowe zapytanie Q dla nazwiska i imion."""
     return Q(
-        Q(nazwisko__iexact=nazwisko) | Q(poprzednie_nazwiska__icontains=nazwisko),
+        Q(nazwisko__iexact=nazwisko) | _poprzednie_nazwiska_q(nazwisko),
         imiona__iexact=imiona,
     )
 
@@ -161,7 +190,7 @@ def _try_match_autor_in_jednostka(
 
     base_query = Q(
         Q(autor__nazwisko__iexact=nazwisko)
-        | Q(autor__poprzednie_nazwiska__icontains=nazwisko),
+        | _poprzednie_nazwiska_q(nazwisko, prefix="autor__"),
         autor__imiona__iexact=imiona,
     )
     queries = [base_query]
@@ -208,12 +237,18 @@ def _try_match_autor_by_polish_english_variants(
     for v in variants_norm:
         imie_q |= Q(im_n=v) | Q(im_n__startswith=v + " ")
 
+    # Fold nazwiska po aktualnym ORAZ poprzednich nazwiskach (FD#407).
+    nazwisko_q = Q(naz_n=nazwisko_norm) | Q(
+        poprz_n__iregex=poprzednie_nazwiska_token_regex(nazwisko_norm)
+    )
+
     qs = (
         Autor.objects.annotate(
             naz_n=Lower(Unaccent("nazwisko")),
+            poprz_n=Lower(Unaccent("poprzednie_nazwiska")),
             im_n=Lower(Unaccent("imiona")),
         )
-        .filter(naz_n=nazwisko_norm)
+        .filter(nazwisko_q)
         .filter(imie_q)
     )
 
@@ -256,7 +291,7 @@ def _try_match_autor_with_orcid_or_tytul(imiona: str, nazwisko: str) -> Autor | 
 def _strategia_iexact_pelne(imiona: str, nazwisko: str) -> dict[int, tuple[float, str]]:
     """Pełne ``imiona`` + nazwisko/poprzednie_nazwiska (iexact)."""
     qs = Autor.objects.filter(
-        Q(nazwisko__iexact=nazwisko) | Q(poprzednie_nazwiska__icontains=nazwisko),
+        Q(nazwisko__iexact=nazwisko) | _poprzednie_nazwiska_q(nazwisko),
         imiona__iexact=imiona,
     )
     return {
@@ -277,11 +312,11 @@ def _strategia_iexact_pierwsze_imie(
     # w bazie więcej niż w danych (qs2). Dedup z _strategia_iexact_pelne
     # wybierze potem pewnosc=1.0 dla pełnego matchu.
     qs = Autor.objects.filter(
-        Q(nazwisko__iexact=nazwisko) | Q(poprzednie_nazwiska__icontains=nazwisko),
+        Q(nazwisko__iexact=nazwisko) | _poprzednie_nazwiska_q(nazwisko),
         imiona__iexact=pierwsze,
     )
     qs2 = Autor.objects.filter(
-        Q(nazwisko__iexact=nazwisko) | Q(poprzednie_nazwiska__icontains=nazwisko),
+        Q(nazwisko__iexact=nazwisko) | _poprzednie_nazwiska_q(nazwisko),
         imiona__istartswith=pierwsze + " ",
     )
     pks = set(qs.values_list("pk", flat=True)) | set(qs2.values_list("pk", flat=True))
@@ -307,17 +342,68 @@ def _strategia_polish_english(
     for v in variants_norm:
         imie_q |= Q(im_n=v) | Q(im_n__startswith=v + " ")
 
+    # Nazwisko dopasowujemy po foldzie (Unaccent) — zarówno po aktualnym
+    # nazwisku, jak i po poprzednich nazwiskach (FD#407); poprzednie jako
+    # dokładny człon listy CSV (iregex), nie podłańcuch.
+    nazwisko_q = Q(naz_n=nazwisko_norm) | Q(
+        poprz_n__iregex=poprzednie_nazwiska_token_regex(nazwisko_norm)
+    )
+
+    qs = (
+        Autor.objects.annotate(
+            naz_n=Lower(Unaccent("nazwisko")),
+            poprz_n=Lower(Unaccent("poprzednie_nazwiska")),
+            im_n=Lower(Unaccent("imiona")),
+        )
+        .filter(nazwisko_q)
+        .filter(imie_q)
+    )
+    return {
+        pk: (PEWNOSC_POLISH_ENGLISH, POWOD_POLISH_ENGLISH)
+        for pk in qs.values_list("pk", flat=True)
+    }
+
+
+def _pierwszy_inicjal(imiona: str) -> str | None:
+    """Zwraca pierwszą literę (ASCII-fold, lowercase), jeśli ``imiona``
+    zaczynają się od inicjału — np. ``"E."`` → ``"e"``, ``"E. M."`` → ``"e"``.
+
+    Zwraca ``None``, gdy pierwszy token to pełne imię (``"Ewa"``) — wtedy
+    obsługują je mocniejsze strategie iexact / PL↔EN, a nie ta.
+    """
+    parts = imiona.split()
+    if not parts:
+        return None
+    m = _INICJAL_RE.match(parts[0])
+    if not m:
+        return None
+    return remove_polish_diacritics(m.group(1)).lower()
+
+
+def _strategia_inicjal(imiona: str, nazwisko: str) -> dict[int, tuple[float, str]]:
+    """Inicjał imienia + nazwisko (z Unaccent) — najsłabszy sygnał.
+
+    Źródła anglojęzyczne (CrossRef) potrafią podać tylko inicjał imienia
+    (``"Lech-Maranda E."``), gdy w BPP siedzi pełne imię (``"Ewa"``).
+    Dopasowujemy nazwisko po ``Unaccent`` (Marańda↔Maranda) oraz pierwszą
+    literę imienia (``startswith`` po Unaccent). Niska pewność (0.5) i brak
+    auto-bindu w ``matchuj_autora`` — decyzję o powiązaniu podejmuje user.
+    """
+    litera = _pierwszy_inicjal(imiona)
+    if not litera:
+        return {}
+
+    nazwisko_norm = remove_polish_diacritics(nazwisko).lower()
     qs = (
         Autor.objects.annotate(
             naz_n=Lower(Unaccent("nazwisko")),
             im_n=Lower(Unaccent("imiona")),
         )
         .filter(naz_n=nazwisko_norm)
-        .filter(imie_q)
+        .filter(im_n__startswith=litera)
     )
     return {
-        pk: (PEWNOSC_POLISH_ENGLISH, POWOD_POLISH_ENGLISH)
-        for pk in qs.values_list("pk", flat=True)
+        pk: (PEWNOSC_INICJAL, POWOD_INICJAL) for pk in qs.values_list("pk", flat=True)
     }
 
 
@@ -368,6 +454,8 @@ def znajdz_kandydatow_autora(
     - 1.00 — exact iexact pełne imiona + nazwisko
     - 0.95 — exact iexact pierwsze imię + nazwisko
     - 0.85 — PL↔EN: warianty v↔w + klastry imion + Unaccent nazwiska
+    - 0.50 — inicjał imienia + Unaccent nazwiska (tylko na listę
+      kandydatów; ``matchuj_autora`` nie wiąże tego automatycznie)
 
     Autor wpadający w kilka strategii zwracany jest **raz**, z najwyższą
     pewnością. Sortowanie DESC po: (pewnosc, ma ORCID, ma tytuł, liczba
@@ -391,6 +479,7 @@ def znajdz_kandydatow_autora(
         _strategia_iexact_pelne(imiona, nazwisko),
         _strategia_iexact_pierwsze_imie(imiona, nazwisko),
         _strategia_polish_english(imiona, nazwisko),
+        _strategia_inicjal(imiona, nazwisko),
     ):
         for pk, (pewnosc, powod) in strategia.items():
             existing = scores.get(pk)
@@ -485,15 +574,18 @@ def matchuj_autora(
     if result:
         return result
 
-    # 2. Discovery
+    # 2. Discovery. Auto-bind tylko dla pewności >= progu — kandydat oparty
+    # o sam inicjał (0.5) nie wiąże się automatycznie, trafia jedynie na
+    # listę do potwierdzenia (patrz PEWNOSC_MIN_AUTOMATYCZNA).
     kandydaci = znajdz_kandydatow_autora(imiona, nazwisko, max_wyniki=10)
-    if len(kandydaci) == 1:
-        return kandydaci[0].autor
-    if len(kandydaci) >= 2:
+    if kandydaci and kandydaci[0].pewnosc >= PEWNOSC_MIN_AUTOMATYCZNA:
+        if len(kandydaci) == 1:
+            return kandydaci[0].autor
         # Najlepszy z wyższą pewnością niż reszta wygrywa bez disambiguacji
         if kandydaci[0].pewnosc > kandydaci[1].pewnosc:
             return kandydaci[0].autor
-        # Inaczej spróbuj kontekstem (jednostka/tytuł)
+    if len(kandydaci) >= 2:
+        # Ambiguity (równa pewność) — spróbuj rozstrzygnąć kontekstem
         result = _disambiguate_kandydatow(kandydaci, jednostka, tytul_str)
         if result:
             return result

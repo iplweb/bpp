@@ -117,7 +117,6 @@ class Zgloszenie_PublikacjiAdmin(
         + (
             "email",
             "strona_www",
-            "importer_z_adresu",
             "pliki_do_pobrania",
             "wydawca_zgloszenia",
             "wydawca_bpp",
@@ -132,7 +131,7 @@ class Zgloszenie_PublikacjiAdmin(
         )
     )
 
-    readonly_fields = ["pliki_do_pobrania", "importer_z_adresu"]
+    readonly_fields = ["pliki_do_pobrania"]
 
     inlines = [
         Zgloszenie_Publikacji_AutorInline,
@@ -177,6 +176,16 @@ class Zgloszenie_PublikacjiAdmin(
         super_urls = super().get_urls()
 
         return urls + super_urls
+
+    def change_view(self, request, object_id, form_url="", extra_context=None):
+        # Udostępnij szablonowi URL importera, by przycisk „Użyj importera"
+        # mógł stanąć w pasku akcji nad tabelą (blok object-tools), a nie w
+        # readonly wierszu tabeli (Freshdesk #430).
+        extra_context = extra_context or {}
+        obj = self.get_object(request, object_id)
+        if obj is not None:
+            extra_context["importer_url"] = self.importer_url(obj)
+        return super().change_view(request, object_id, form_url, extra_context)
 
     zwroc_view_template = (
         "admin/zglos_publikacje/zgloszenie_publikacji/zwroc_zgloszenie.html"
@@ -377,45 +386,34 @@ class Zgloszenie_PublikacjiAdmin(
 
         return format_html_join("<br/>", "{}", ((part,) for part in parts))
 
-    @admin.display(description="Importer publikacji")
-    def importer_z_adresu(self, obj: Zgloszenie_Publikacji):
-        """Przycisk „użyj importera" przekazujący adres pracy do importera.
+    def importer_url(self, obj: Zgloszenie_Publikacji) -> str | None:
+        """Zbuduj URL importera dla adresu zgłoszenia albo zwróć ``None``.
 
-        Jeśli z pola „Dostępna w sieci pod adresem" (lub z pola DOI
-        zgłoszenia) da się wyłuskać DOI, importer dostanie go w polu
-        identyfikatora. Jeśli adres nie jest DOI-em — importer otwiera się
-        z pustym polem DOI (bez błędu), import kontynuujemy ręcznie.
+        Priorytet: jeśli z pola „Dostępna w sieci pod adresem" (lub z pola
+        DOI zgłoszenia) da się wyłuskać DOI — importer z providerem CrossRef
+        i wypełnionym identyfikatorem. W przeciwnym razie, jeśli adres w
+        ogóle jest — importer z providerem „Pozostałe strony WWW" (import z
+        ogólnej strony), z adresem w polu identyfikatora. Gdy adresu nie ma
+        — ``None`` (przycisku importera nie pokazujemy).
         """
         doi = extract_doi_from_url(obj.strona_www) or extract_doi_from_url(
             getattr(obj, "doi", None)
         )
 
-        params = {"provider": "CrossRef"}
         if doi:
-            params["identifier"] = doi
+            params = {"provider": "CrossRef", "identifier": doi}
+        elif obj.strona_www:
+            # Nazwa providera musi zgadzać się z WWWProvider.name.
+            params = {
+                "provider": "Pozostałe strony WWW",
+                "identifier": obj.strona_www,
+            }
+        else:
+            return None
 
-        url = "{}?{}".format(
+        return "{}?{}".format(
             reverse("importer_publikacji:index"),
             urlencode(params),
-        )
-
-        if doi:
-            etykieta = format_html(
-                "Rozpoznano DOI: <strong>{}</strong>",
-                doi,
-            )
-        else:
-            etykieta = format_html(
-                "{}",
-                "Adresu nie rozpoznano jako DOI — importer otworzy się "
-                "z pustym polem DOI.",
-            )
-
-        return format_html(
-            '<a class="button" href="{}" target="_blank" '
-            'rel="noopener">📥 Użyj importera</a><br/>{}',
-            url,
-            etykieta,
         )
 
     def wydzial_pierwszego_autora(self, obj: Zgloszenie_Publikacji):

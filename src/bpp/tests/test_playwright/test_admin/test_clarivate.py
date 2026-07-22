@@ -28,7 +28,14 @@ def _wait_for_dialog(page, predicate, timeout: float = 5.0, interval_ms: int = 5
 
 @pytest.fixture(scope="function")
 def page_z_wydawnictwem(admin_page: Page, live_server, wydawnictwo_ciagle):
-    """Set up admin page with an existing wydawnictwo_ciagle record."""
+    """Set up admin page with an existing wydawnictwo_ciagle record.
+
+    UWAGA: celowo ``live_server`` (WSGI, watek W PROCESIE testu), NIE
+    ``channels_live_server`` (Daphne, subprocess). Testy w tym pliku
+    patchuja ``Uczelnia.wosclient`` przez ``mocker.patch`` — monkeypatch
+    zyje tylko w procesie testu, subprocess Daphne go nie widzi i strona
+    wykonalaby prawdziwy kod (ImproperlyConfigured zamiast mocka).
+    """
     admin_page.goto(
         live_server.url
         + reverse("admin:bpp_wydawnictwo_ciagle_change", args=(wydawnictwo_ciagle.pk,))

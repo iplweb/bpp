@@ -5,13 +5,18 @@ import json
 import logging
 
 from django.contrib import admin
-from django.utils.html import format_html
+from django.utils.html import format_html, format_html_join
 from django.utils.safestring import mark_safe
 
 from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.util import zaloguj_polkniety_wyjatek
 
-from .models import ImportedAuthor, ImportSession
+from .models import (
+    ImportedAuthor,
+    ImportSession,
+    MultipleWorksImport,
+    MultipleWorksImportEntry,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -203,20 +208,32 @@ class ImportSessionAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
 
             matched_str = " | ".join(matched_info) if matched_info else "-"
 
+            # format_html escapuje KAŻDĄ wartość dynamiczną. display_name oraz
+            # matched_str pochodzą z danych importu (BibTeX itp.) bez sanityzacji
+            # — surowa interpolacja do mark_safe() dawała stored XSS w adminie.
             rows.append(
-                f"<tr>"
-                f"<td>{author.order}</td>"
-                f'<td><span class="label {color}">{author.get_match_status_display()}</span></td>'
-                f"<td>{author.display_name}</td>"
-                f"<td>{matched_str}</td>"
-                f"</tr>"
+                format_html(
+                    "<tr>"
+                    "<td>{}</td>"
+                    '<td><span class="label {}">{}</span></td>'
+                    "<td>{}</td>"
+                    "<td>{}</td>"
+                    "</tr>",
+                    author.order,
+                    color,
+                    author.get_match_status_display(),
+                    author.display_name,
+                    matched_str,
+                )
             )
 
-        return mark_safe(
-            f'<table class="hover">'
-            f"<thead><tr><th>Lp.</th><th>Status</th><th>Nazwa</th><th>Dopasowano do</th></tr></thead>"
-            f"<tbody>{''.join(rows)}</tbody>"
-            f"</table>"
+        return format_html(
+            '<table class="hover">'
+            "<thead><tr><th>Lp.</th><th>Status</th><th>Nazwa</th>"
+            "<th>Dopasowano do</th></tr></thead>"
+            "<tbody>{}</tbody>"
+            "</table>",
+            format_html_join("", "{}", ((row,) for row in rows)),
         )
 
     authors_display.short_description = "Autorzy"
@@ -359,3 +376,19 @@ class ImportedAuthorAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     def has_change_permission(self, request, obj=None):
         # Pozwól przeglądać, ale nie zmieniać
         return False
+
+
+class MultipleWorksImportEntryInline(admin.TabularInline):
+    model = MultipleWorksImportEntry
+    extra = 0
+    fields = ["order", "title", "skipped", "parse_error", "session"]
+    readonly_fields = ["order", "title", "parse_error", "session"]
+
+
+@admin.register(MultipleWorksImport)
+class MultipleWorksImportAdmin(admin.ModelAdmin):
+    list_display = ["id", "created", "provider_name", "created_by"]
+    list_filter = ["provider_name", "created", "created_by"]
+    list_select_related = ["created_by"]
+    date_hierarchy = "created"
+    inlines = [MultipleWorksImportEntryInline]

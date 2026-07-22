@@ -178,7 +178,8 @@ class Command(PBNBaseCommand):
             lambda: (
                 integruj_jezyki(client),
                 integruj_kraje(client),
-                client.download_disciplines(),
+                # sync_disciplines() sam woła download_disciplines() — nie
+                # dublujemy zaciągu słownika z PBN.
                 client.sync_disciplines(),
             ),
         )

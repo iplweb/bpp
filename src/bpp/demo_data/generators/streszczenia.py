@@ -5,6 +5,7 @@ from __future__ import annotations
 import random
 from collections.abc import Iterable
 
+from bpp.demo_data.db import bulk_create_retry
 from bpp.demo_data.manifest import Manifest
 from bpp.demo_data.progress import make_progress
 from bpp.demo_data.themes.base import Theme
@@ -55,7 +56,7 @@ def _create_for(
     )
     for start in pbar:
         chunk = objs[start : start + batch_size]
-        model.objects.bulk_create(chunk)
+        bulk_create_retry(model.objects, chunk)
         manifest.append(label, [o.pk for o in chunk])
         manifest.save()
 

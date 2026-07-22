@@ -5,6 +5,7 @@ from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import BACKEND_SESSION_KEY, logout
 from django.contrib.auth.views import LoginView
+from django.core.cache import cache
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
@@ -262,3 +263,48 @@ def is_superuser(request):
     resp["X-WEBAUTH-EMAIL"] = request.user.email or ""
     resp["X-WEBAUTH-NAME"] = request.user.get_full_name() or request.user.get_username()
     return resp
+
+
+class RateLimitedPasswordResetFormView:
+    """Owija ``PasswordResetFormView`` limitem żądań per-IP (M5, audyt 2026-07).
+
+    Bez limitu endpoint resetu hasła pozwala na email-bombing — nieograniczone
+    maile resetu na dowolny adres, wzmacniane przez kolejkę Celery. Limit jest
+    cache-based (per-IP, okno godzinne); w produkcji cache to Redis. Pod
+    DummyCache (dev/test) throttling jest no-op — świadomie, spójnie z resztą
+    throttlingu w projekcie. Nie ujawnia istnienia konta (limit jest per-IP,
+    zanim w ogóle patrzymy na e-mail).
+    """
+
+    RATELIMIT_MAX = 5
+    RATELIMIT_WINDOW = 60 * 60  # 1 godzina
+
+    @classmethod
+    def as_view(cls, **initkwargs):
+        from password_policies.views import PasswordResetFormView
+
+        from django_bpp.client_ip import get_client_ip
+
+        base_view = PasswordResetFormView.as_view(**initkwargs)
+
+        def _view(request, *args, **kwargs):
+            if request.method == "POST":
+                ip = get_client_ip(request) or "unknown"
+                key = f"pwreset-rl:{ip}"
+                if (cache.get(key) or 0) >= cls.RATELIMIT_MAX:
+                    resp = HttpResponse(
+                        "Zbyt wiele żądań resetu hasła z tego adresu. "
+                        "Spróbuj ponownie później.",
+                        status=429,
+                        content_type="text/plain; charset=utf-8",
+                    )
+                    resp["Retry-After"] = str(cls.RATELIMIT_WINDOW)
+                    return resp
+                try:
+                    cache.incr(key)
+                except ValueError:
+                    # Pierwsze żądanie w oknie — ustaw licznik z TTL.
+                    cache.set(key, 1, cls.RATELIMIT_WINDOW)
+            return base_view(request, *args, **kwargs)
+
+        return _view

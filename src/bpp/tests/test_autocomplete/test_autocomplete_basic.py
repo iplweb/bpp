@@ -84,10 +84,10 @@ def test_autor_autocomplete():
 def test_global_navigation_autocomplete(test_user):
     x = autocomplete.GlobalNavigationAutocomplete()
 
-    class MockUser:
-        is_anonymous = False
-
-    x.request = UserRequestFactory(MockUser()).get("/")
+    # Prawdziwy użytkownik (nie ręczny mock) — get_queryset woła
+    # moze_wprowadzac_dane, które wymaga pełnego interfejsu usera
+    # (is_authenticated / is_superuser / groups).
+    x.request = UserRequestFactory(test_user).get("/")
     x.q = None
     x.get_result_label("foo")
     x.get(None)

@@ -31,6 +31,7 @@ HARRY_POTTER = Theme(
         "Wróżbiarstwa",
     ),
     autor_imiona=(
+        # Bohaterowie, uczniowie i grono profesorskie:
         "Harry",
         "Hermiona",
         "Ron",
@@ -43,8 +44,18 @@ HARRY_POTTER = Theme(
         "Neville",
         "Ginny",
         "Sybilla",
+        # Czarne charaktery (śmierciożercy i inni wrogowie):
+        "Tom",
+        "Voldemort",
+        "Bellatrix",
+        "Lucjusz",
+        "Dolores",
+        "Fenrir",
+        "Gellert",
+        "Peter",
     ),
     autor_nazwiska=(
+        # Nazwiska bohaterów:
         "Potter",
         "Granger",
         "Weasley",
@@ -55,6 +66,13 @@ HARRY_POTTER = Theme(
         "Malfoy",
         "Lovegood",
         "Longbottom",
+        # Nazwiska czarnych charakterów:
+        "Riddle",
+        "Lestrange",
+        "Umbridge",
+        "Greyback",
+        "Grindelwald",
+        "Pettigrew",
     ),
     zrodlo_human=(
         "Hogvartensia",

@@ -53,7 +53,7 @@ class PatentSerializer(
     )
 
     autorzy_set = serializers.HyperlinkedRelatedField(
-        many=True, view_name="api_v1:wydawnictwo_zwarte_autor-detail", read_only=True
+        many=True, view_name="api_v1:patent_autor-detail", read_only=True
     )
 
     class Meta:

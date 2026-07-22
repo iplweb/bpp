@@ -318,10 +318,14 @@ if $RUN_PIPAUDIT; then
     echo -e "  ${BLUE}(pip-audit odpytuje serwis CVE PyPI per-pakiet —" \
         "to chwilę trwa, spinner poniżej)${NC}"
     set +e
+    # PYSEC-2026-3447 (setuptools): fix=83.0.0 usuwa pkg_resources wymagany
+    # przez pyoai/oaipmh (OAI-PMH) — bump wywala start Django. Ignore
+    # zsynchronizowany z .github/workflows/dependency-audit.yml.
     uvx --quiet --from pip-audit pip-audit \
         --requirement "$PIPAUDIT_REQ" \
         --disable-pip \
         --no-deps \
+        --ignore-vuln PYSEC-2026-3447 \
         --format json \
         --output "$PIPAUDIT_REPORT"
     pipaudit_exit=$?

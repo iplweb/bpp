@@ -426,7 +426,17 @@ class NotificationsMiddleware(MiddlewareMixin):
         if user_id is None:
             return
 
+        nieprzeczytane = Message.objects.filter(user_id=user_id, read=False)
+
+        # Dopasowanie treści jest przez ``icontains``, co PostgreSQL realizuje
+        # jako ``UPPER(message) LIKE UPPER('%...%')`` — pełny skan tabeli z
+        # wywołaniem funkcji na każdym wierszu, w dodatku jako ZAPIS (locki +
+        # WAL). Zdecydowana większość zalogowanych userów nie ma żadnej
+        # trwałej wiadomości, więc najpierw odsiewamy ich tanim EXISTS-em po
+        # zaindeksowanym ``user_id``. Wynik jest identyczny — UPDATE bez
+        # pasujących wierszy i tak nie zmieniłby niczego.
+        if not nieprzeczytane.exists():
+            return
+
         url = request.get_full_path()
-        Message.objects.filter(
-            user_id=user_id, read=False, message__icontains=url
-        ).update(read=True)
+        nieprzeczytane.filter(message__icontains=url).update(read=True)

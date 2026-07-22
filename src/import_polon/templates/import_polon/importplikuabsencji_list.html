@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    Import absencji
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "import_polon:index-absencji" %}">import absencji</a></li>
+{% endblock %}
+
+{% block content %}
+    <h1>Ostatnio importowane absencje:
+    <a class="button success" id="add-new-file" href="{% url "import_polon:utworz-import-absencji" %}">
+            <i class="fi-page-add"></i>
+            utwórz nowy import
+        </a>
+    </h1>
+    <ul>
+        {% for object in object_list %}
+            <li>
+                <a href="{{ object.get_absolute_url }}">plik {{ object.plik.name }}</a>:
+                import utworzono {{ object.created_on }}{% if object.finished_on %}, ukończono {{ object.finished_on }}
+                {% if object.finished_successfully %}, zakończono pomyślnie{% else %}, zakończono z błędem{% endif %}
+            {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+
+    {% if object_list.count == 0 %}
+        <script>
+            location.href = "{% url "import_polon:utworz-import-absencji" %}";
+        </script>
+    {% endif %}
+
+{% endblock %}

@@ -354,14 +354,23 @@ def _pobierz_pojedyncza_prace(client, publicationId):
     try:
         data = client.get_publication_by_id(publicationId)
     except HttpException as e:
+        # ``e.content`` bywa ``bytes`` (``smart_content`` zwraca surowe bajty
+        # przy ``UnicodeDecodeError``) — dekodujemy do str, żeby membership-test
+        # niżej sam nie rzucił ``TypeError``.
+        content = e.content
+        if isinstance(content, bytes):
+            content = content.decode("utf-8", errors="replace")
+
         if (
             e.status_code == 422
-            and f"Publication with ID {publicationId} was not exists!" in e.content
+            and f"Publication with ID {publicationId} was not exists!" in content
             # "was not exists" to oryginalna pisownia błędu z PBNu.
         ):
-            raise BrakIDPracyPoStroniePBN(e) from e
+            # ``BrakIDPracyPoStroniePBN`` dziedziczy po ``HttpException`` —
+            # trzeba przekazać (status_code, url, content), nie sam wyjątek.
+            raise BrakIDPracyPoStroniePBN(e.status_code, e.url, e.content) from e
 
-        if e.status_code == 500 and "Internal server error" in e.content:
+        if e.status_code == 500 and "Internal server error" in content:
             print(
                 f"\r\nSerwer PBN zwrocil blad 500 dla PBN UID {publicationId} --> {e.content}"
             )

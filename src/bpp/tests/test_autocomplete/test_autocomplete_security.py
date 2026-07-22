@@ -219,3 +219,61 @@ def test_autocomplete_long_query_multiple_endpoints(client, autocomplete_name):
     long_query = "X" * 500
     res = client.get(reverse(autocomplete_name), data={"q": long_query})
     assert res.status_code == 200
+
+
+# --- H1: XSS w etykietach globalnej wyszukiwarki -------------------------
+# GlobalNavigationAutocomplete renderuje etykiety jako HTML (widget DAL z
+# ``data-html: True`` robi ``$result.html(text)``). Nazwiska autorów oraz
+# nazwy jednostek/źródeł to zwykłe pola tekstowe bez sanityzacji — muszą być
+# zescapowane w etykiecie, inaczej wpisanie <script> w nazwisko daje stored
+# XSS wykonywany w przeglądarce każdego, kto wpisze frazę w wyszukiwarce.
+
+
+@pytest.mark.django_db
+def test_global_nav_label_escapes_author_name():
+    from model_bakery import baker
+
+    from bpp.models.autor import Autor
+    from bpp.views.autocomplete.navigation import GlobalNavigationAutocomplete
+
+    autor = baker.make(
+        Autor, nazwisko="<script>alert(1)</script>", imiona="Jan", tytul=None
+    )
+    label = GlobalNavigationAutocomplete().get_result_label(autor)
+
+    assert "<script>" not in label
+    assert "&lt;script&gt;" in label
+
+
+@pytest.mark.django_db
+def test_global_nav_label_escapes_unit_name():
+    from model_bakery import baker
+
+    from bpp.models import Jednostka
+    from bpp.views.autocomplete.navigation import GlobalNavigationAutocomplete
+
+    jednostka = baker.make(Jednostka, nazwa='<img src=x onerror="alert(1)">')
+    label = GlobalNavigationAutocomplete().get_result_label(jednostka)
+
+    # Surowy znacznik jest zescapowany do encji (renderuje się jako tekst,
+    # nie tworzy elementu <img>); "onerror" jako inertny tekst jest nieszkodliwe.
+    assert "<img" not in label
+    assert "&lt;img" in label
+
+
+@pytest.mark.django_db
+def test_admin_nav_label_escapes_author_name():
+    """Ten sam problem co w globalnej wyszukiwarce, ale w autocomplete admina
+    (staff-only): nazwiska trafiają do etykiety HTML przez super()."""
+    from model_bakery import baker
+
+    from bpp.models.autor import Autor
+    from bpp.views.autocomplete.navigation import AdminNavigationAutocomplete
+
+    autor = baker.make(
+        Autor, nazwisko="<script>alert(1)</script>", imiona="Jan", tytul=None
+    )
+    label = AdminNavigationAutocomplete().get_result_label(autor)
+
+    assert "<script>" not in label
+    assert "&lt;script&gt;" in label

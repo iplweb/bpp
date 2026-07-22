@@ -1,7 +1,24 @@
 from celery import shared_task
 from celery.utils.log import get_task_logger
+from celery_singleton import Singleton
 
 logger = get_task_logger(__name__)
+
+# Budżet czasu przeliczania powiązań autorów.
+#
+# Zadanie jest w całości SQL-owe: jeden INSERT..SELECT z trzema self-joinami
+# po tabelach *_Autor (Ciągłe/Zwarte/Patenty) plus kopia do tabeli docelowej.
+# Zero round-tripów do Pythona, zero ruchu sieciowego — realny czas to rząd
+# sekund/minut nawet przy kilkuset tysiącach wpisów autorstwa. 30 minut to
+# kilkunastokrotny zapas: jeśli zadanie tyle biegnie, to znak, że coś jest
+# chore (zakleszczenie na locku, zdegenerowany plan), a nie że „dziś było
+# więcej danych" — wtedy chcemy ubicia, nie czekania.
+#
+# Dlaczego to w ogóle musi mieć limit: bez `time_limit` zawieszone zadanie
+# trzyma slot workera aż do `visibility_timeout` brokera (6 h, patrz
+# CELERY_BROKER_TRANSPORT_OPTIONS w settings/base.py), a zadanie leci
+# codziennie o 4:00 — jeden zawis zjadałby slot na całą dobę.
+POWIAZANIA_TIME_LIMIT = 30 * 60
 
 
 def _zlicz_wspolautorow(model_autorstwa, author, connections):
@@ -28,7 +45,20 @@ def _zlicz_wspolautorow(model_autorstwa, author, connections):
             connections[coauthor_id] += 1
 
 
-@shared_task(name="powiazania_autorow.calculate_author_connections")
+@shared_task(
+    name="powiazania_autorow.calculate_author_connections",
+    # Singleton (bez argumentów → lock i tak jest globalny): zadanie kasuje i
+    # odtwarza CAŁĄ tabelę AuthorConnection, więc dwa równoległe przebiegi
+    # deptałyby sobie po wynikach.
+    base=Singleton,
+    # lock_expiry > time_limit: lock jest brany przy PUBLIKACJI zadania, a
+    # twardy kill dopiero w `start + time_limit`. Gdy zadanie poczeka w
+    # kolejce, lock wygasłby PRZED ubiciem — otwierając okno na duplikat.
+    # +5 min pokrywa realistyczny czas oczekiwania w kolejce.
+    lock_expiry=POWIAZANIA_TIME_LIMIT + 300,
+    time_limit=POWIAZANIA_TIME_LIMIT,
+    soft_time_limit=int(0.95 * POWIAZANIA_TIME_LIMIT),
+)
 def calculate_author_connections_task():
     """
     Celery task to calculate author connections in the background.

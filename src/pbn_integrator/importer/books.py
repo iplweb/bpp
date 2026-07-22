@@ -11,6 +11,7 @@ from bpp.models import (
     Wydawca,
     Wydawnictwo_Zwarte,
 )
+from bpp.util import safe_tytul_html
 from pbn_api.client import PBNClient
 
 from .authors import utworz_autorow
@@ -88,7 +89,7 @@ def importuj_ksiazke(
         pbn_json.pop("mainLanguage", None), pbn_json.get("title"), domyslny_jezyk
     )
     ret = Wydawnictwo_Zwarte(
-        tytul_oryginalny=pbn_json.pop("title"),
+        tytul_oryginalny=safe_tytul_html(pbn_json.pop("title")),
         isbn=pbn_json.pop("isbn", None) or "",
         rok=rok,
         strony=pbn_json.pop("pages", None) or "",

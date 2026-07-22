@@ -9,7 +9,7 @@
     <tbody>
     {% for op in object_list %}
       <tr>
-        <td><a href="{% url 'import_punktacji_zrodel:importpunktacjizrodel-router' op.pk %}">
+        <td><a href="{{ op.get_absolute_url }}">
             {{ op.created_on }}</a></td>
         <td>{{ op.rok|default:"—" }}</td>
         <td>{% if op.finished_successfully %}gotowe

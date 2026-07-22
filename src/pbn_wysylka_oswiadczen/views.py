@@ -231,7 +231,17 @@ class StartTaskView(View):
         # workerami wysyłającymi oświadczenia naraz.
         from django.db import connection, transaction
 
-        lock_key = abs(hash("PbnWysylkaOswiadczenTask")) % (2**31)
+        from django_bpp.db_locks import advisory_lock_id
+
+        # Klucz MUSI być deterministyczny między procesami — poprzednie
+        # `abs(hash(nazwa)) % 2**31` nie było, bo `hash()` dla str jest
+        # solony PYTHONHASHSEED-em: każdy proces gunicorna zakładał lock na
+        # własnym numerze, więc dwa równoległe POST-y przechodziły oba i
+        # kolejkowały ZDUPLIKOWANĄ wysyłkę oświadczeń do PBN.
+        # Patrz `django_bpp.db_locks`.
+        lock_key = advisory_lock_id(
+            "pbn_wysylka_oswiadczen.views.PbnWysylkaOswiadczenTask"
+        )
         with transaction.atomic():
             with connection.cursor() as cursor:
                 cursor.execute("SELECT pg_advisory_xact_lock(%s)", [lock_key])

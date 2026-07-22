@@ -671,3 +671,65 @@ def test_matchuj_publikacje_kandidat_bez_isbn_matchuje():
         isbn="978-83-7430-668-3",
     )
     assert result == pub
+
+
+@pytest.mark.django_db
+def test_matchuj_zrodlo_dwa_tytuly_disambiguacja_po_issn():
+    """Dwa źródła o tym samym tytule → ISSN z pliku rozstrzyga (pole issn)."""
+    a = baker.make(Zrodlo, nazwa="Duplikat Czasopismo", issn="1111-1111")
+    baker.make(Zrodlo, nazwa="Duplikat Czasopismo", issn="2222-2222")
+
+    result = matchuj_zrodlo("Duplikat Czasopismo", issn="1111-1111")
+    assert result == a
+
+
+@pytest.mark.django_db
+def test_matchuj_zrodlo_dwa_tytuly_disambiguacja_issn_pliku_w_polu_eissn():
+    """Cross-field: ISSN z pliku JCR trafia do pola e_issn źródła w BPP.
+
+    JCR miesza kolumny ISSN/eISSN, więc numer podany w pliku jako ISSN
+    bywa w BPP zapisany jako e-ISSN. Przy dwóch źródłach o tym samym
+    tytule dopasowanie musi to uwzględnić.
+    """
+    a = baker.make(Zrodlo, nazwa="Duplikat Czasopismo", issn="", e_issn="2222-2222")
+    baker.make(Zrodlo, nazwa="Duplikat Czasopismo", issn="", e_issn="3333-3333")
+
+    result = matchuj_zrodlo("Duplikat Czasopismo", issn="2222-2222")
+    assert result == a
+
+
+@pytest.mark.django_db
+def test_matchuj_zrodlo_dwa_tytuly_disambiguacja_eissn_pliku_w_polu_issn():
+    """Cross-field w drugą stronę: e-ISSN z pliku trafia do pola issn."""
+    a = baker.make(Zrodlo, nazwa="Duplikat Czasopismo", issn="4444-4444")
+    baker.make(Zrodlo, nazwa="Duplikat Czasopismo", issn="5555-5555")
+
+    result = matchuj_zrodlo("Duplikat Czasopismo", e_issn="4444-4444")
+    assert result == a
+
+
+@pytest.mark.django_db
+def test_matchuj_zrodlo_dwa_tytuly_bez_pasujacego_issn_zwraca_none():
+    """Dwa źródła o tym samym tytule + ISSN nie pasujący do żadnego → None.
+
+    Bez jednoznacznego rozstrzygnięcia nie wolno zgadywać — brak fałszywego
+    dopasowania jest tu zachowaniem poprawnym.
+    """
+    baker.make(Zrodlo, nazwa="Duplikat Czasopismo", issn="1111-1111")
+    baker.make(Zrodlo, nazwa="Duplikat Czasopismo", issn="2222-2222")
+
+    result = matchuj_zrodlo("Duplikat Czasopismo", issn="9999-9999")
+    assert result is None
+
+
+@pytest.mark.django_db
+def test_matchuj_zrodlo_dwa_tytuly_issn_niejednoznaczny_zwraca_none():
+    """ISSN z pliku pasuje do OBU źródeł o tym samym tytule → None.
+
+    Filtr po ISSN nie zawęża do jednego, więc nadal nie ma podstaw do wyboru.
+    """
+    baker.make(Zrodlo, nazwa="Duplikat Czasopismo", issn="1111-1111")
+    baker.make(Zrodlo, nazwa="Duplikat Czasopismo", issn="1111-1111")
+
+    result = matchuj_zrodlo("Duplikat Czasopismo", issn="1111-1111")
+    assert result is None

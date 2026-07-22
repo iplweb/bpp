@@ -6,15 +6,26 @@ except ImportError:
     from django.urls import reverse
 
 from django.db import transaction
+from django.http import HttpResponseRedirect
 from django.http.response import Http404
-from django.views.generic import RedirectView
+from django.views import View
 
 from bpp.models.patent import Patent, Patent_Autor
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
+from bpp.permissions import WprowadzanieDanychRequiredMixin
 
 
-class TozView(RedirectView):
+class TozView(WprowadzanieDanychRequiredMixin, View):
+    """Tworzy kopię ("Toż") rekordu wraz z przypisaniami autorów.
+
+    Mutacja wykonywana WYŁĄCZNIE przez POST + CSRF. Wcześniej klonowanie
+    działało na GET (``RedirectView``), co łamało kontrakt „GET jest
+    bezpieczny": rekord dało się sklonować samą nawigacją/linkiem/prefetchem
+    i bez ochrony CSRF. Dostęp ograniczony do redaktorów (grupa „wprowadzanie
+    danych" lub superuser) — patrz ``WprowadzanieDanychRequiredMixin``.
+    """
+
     @transaction.atomic
     def get_redirect_url(self, pk):
         try:
@@ -40,6 +51,9 @@ class TozView(RedirectView):
             wca_copy.save()
 
         return reverse(f"admin:bpp_{self.klass_name}_change", args=(w_copy.pk,))
+
+    def post(self, request, pk):
+        return HttpResponseRedirect(self.get_redirect_url(pk))
 
 
 class WydawnictwoCiagleTozView(TozView):

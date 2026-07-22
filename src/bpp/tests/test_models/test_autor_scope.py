@@ -10,7 +10,7 @@ Zakresy jako czytelne API managera:
 - WSZYSCY = ``Autor.objects.all()`` (bez metody).
 """
 
-from datetime import timedelta
+from datetime import date, timedelta
 
 import pytest
 from django.utils import timezone
@@ -97,8 +97,22 @@ def test_kiedykolwiek_zwiazani_zwraca_aktualnie_zatrudnionego(uczelnia, jednostk
 def test_kiedykolwiek_zwiazani_bez_duplikatow(uczelnia, jednostka):
     """Autor aktualny ORAZ z wieloma wpisami historycznymi = jeden wiersz."""
     autor = baker.make(Autor, aktualna_jednostka=jednostka)
-    baker.make("bpp.Autor_Jednostka", autor=autor, jednostka=jednostka)
-    baker.make("bpp.Autor_Jednostka", autor=autor, jednostka=jednostka)
+    # Rozne daty rozpoczecia: wpisy sa legalne wobec czesciowego constraintu
+    # ``bpp_autor_jednostka_bez_daty_unikalne`` (obejmuje wylacznie wiersze z
+    # NULL-owym ``rozpoczal_prace``), a test dalej sprawdza dokladnie to, co
+    # sprawdzal — ze zakres nie duplikuje autora przy wielu powiazaniach.
+    baker.make(
+        "bpp.Autor_Jednostka",
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2010, 1, 1),
+    )
+    baker.make(
+        "bpp.Autor_Jednostka",
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2015, 1, 1),
+    )
 
     wynik = list(Autor.objects.kiedykolwiek_zwiazani(uczelnia))
 

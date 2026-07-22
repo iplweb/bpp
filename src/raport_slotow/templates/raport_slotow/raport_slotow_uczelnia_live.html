@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load static liveops %}
+
+{% block extratitle %}
+    Raport slotów - uczelnia - generowanie
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li>ewaluacja</li>
+    <li><a href="{% url "raport_slotow:lista-raport-slotow-uczelnia" %}">Raport slotów - uczelnia</a></li>
+    <li class="current">generowanie raportu</li>
+{% endblock %}
+
+{% block content %}
+    <h1>Raport slotów - uczelnia — generowanie</h1>
+
+    {# Region live-operacji: kontener z data-liveop-channel/token + strefy #}
+    {# op-status/op-progress/op-log/op-result (OOB-swap z workera). Po #}
+    {# zakończeniu liveops.js przenosi usera na tabelę wyników (Ścieżka A, #}
+    {# get_success_url). Panel wyniku w #op-result to fallback no-JS. #}
+    {# hx-headers wstrzykuje token CSRF nagłówkiem X-CSRFToken: przyciski #}
+    {# Anuluj/Ponów liveops to gołe przyciski htmx poza formularzem, a BPP ma #}
+    {# CSRF_COOKIE_HTTPONLY=True, więc liveops.js nie odczyta tokenu z ciasteczka #}
+    {# → POST bez tokenu = 403. Wrapper nie jest podmieniany przy OOB-swapie #}
+    {# regionów op-*, więc token dziedziczą też przyciski dorenderowane po WS. #}
+    <div hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+        {% live_operation object %}
+    </div>
+
+    {# Kolejność ładowania jest istotna: htmx → klient channels_broadcast → #}
+    {# liveops.js (patchuje channelsBroadcast.addMessage i inicjuje socket). #}
+    <script src="{% static 'liveops/vendor/htmx.min.js' %}"></script>
+    <script src="{% static 'channels_broadcast/js/notifications.js' %}"></script>
+    <script src="{% static 'liveops/liveops.js' %}"></script>
+{% endblock %}

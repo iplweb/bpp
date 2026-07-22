@@ -60,7 +60,8 @@ def wydzial(uczelnia, db):
 
 
 def _autor_maker(imiona, nazwisko, tytul="dr", **kwargs):
-    tytul = Tytul.objects.get(skrot=tytul)
+    # Nie zakładaj baseline — transakcyjny flush sąsiada bywa go zmiata.
+    tytul, _ = Tytul.objects.get_or_create(skrot=tytul, defaults={"nazwa": tytul})
     return Autor.objects.get_or_create(
         tytul=tytul, imiona=imiona, nazwisko=nazwisko, **kwargs
     )[0]

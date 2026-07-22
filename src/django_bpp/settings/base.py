@@ -24,6 +24,7 @@ SCRIPT_PATH = os.path.abspath(os.path.dirname(__file__))
 SITE_ROOT = os.path.abspath(os.path.join(SCRIPT_PATH, "..", ".."))
 
 SECRET_KEY_UNSET = "Please set the DJANGO_BPP_SECRET_KEY variable."
+ALTCHA_HMAC_KEY_UNSET = "Please set the ALTCHA_HMAC_KEY variable."
 
 
 # Ponieważ konieczna jest konfiguracja django-ldap-auth i potrzebne będą kolejne zmienne
@@ -105,6 +106,8 @@ env = environ.Env(
     DJANGO_BPP_DB_DISABLE_SSL=(bool, False),
     DJANGO_BPP_TEST_TEMPLATE=(str, ""),
     DJANGO_BPP_SECRET_KEY=(str, SECRET_KEY_UNSET),
+    ALTCHA_HMAC_KEY=(str, ALTCHA_HMAC_KEY_UNSET),
+    ZGLOS_CAPTCHA_ENABLED=(bool, False),
     DJANGO_BPP_MEDIA_ROOT=(str, os.path.join(os.getenv("HOME", "C:/"), "bpp-media")),
     #
     # Konfiguracja wymuszania zmiany haseł
@@ -215,6 +218,12 @@ LOCALE_PATHS = [
 SITE_ID = env("DJANGO_BPP_SITE_ID", default=1, cast=int)
 USE_I18N = True
 USE_TZ = True
+
+# URL usługi html2docx (sidecar HTTP) używanej jako fallback konwersji DOCX,
+# gdy pandoc zawiedzie (np. core dump na VMWare ESX). None => fallback
+# wyłączony, degradacja miękka (DocxConversionError). Patrz
+# nowe_raporty.docx_export._convert_using_html2docx_service.
+HTML2DOCX_URL = env("DJANGO_BPP_HTML2DOCX_URL", default=None)
 
 # Django 5.0 transitional; stanie się domyślne w 6.0. Wycisza
 # RemovedInDjango60Warning z forms.URLField dla URL-i bez schematu.
@@ -328,6 +337,7 @@ MIDDLEWARE = [
     "bpp.middleware.NotificationsMiddleware",
     # 'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
     "bpp.middleware.CustomRollbarNotifierMiddleware",
+    "oauth_mcp.middleware.ApiReadOnlyForBearerMiddleware",
     # AxesMiddleware MUSI być ostatnie — przechwytuje AxesBackendPermissionDenied
     # z backendu logowania i renderuje odpowiedź "konto zablokowane".
     "axes.middleware.AxesMiddleware",
@@ -455,6 +465,8 @@ INSTALLED_APPS = [
     "import_dyscyplin",
     "mptt",
     "rest_framework",
+    "oauth_mcp",
+    "oauth2_provider",
     "django_filters",
     "api_v1",
     "adminsortable2",
@@ -507,6 +519,7 @@ INSTALLED_APPS = [
     "komparator_publikacji_pbn",
     "admin_dashboard",
     "importer_publikacji",
+    "import_sqlite",
     "django_pg_baseline",
 ]
 
@@ -556,13 +569,6 @@ LOGOUT_REDIRECT_URL = LOGIN_REDIRECT_URL
 MEDIA_URL = "/media/"
 
 INTERNAL_IPS = ("127.0.0.1",)
-
-# djorm-pool
-DJORM_POOL_OPTIONS = {
-    "pool_size": 30,
-    "max_overflow": 0,
-    "recycle": 3600,  # the default value
-}
 
 TEST_RUNNER = "django.test.runner.DiscoverRunner"
 
@@ -735,6 +741,15 @@ IMPORTER_STALL_TIMEOUT = env("IMPORTER_STALL_TIMEOUT", default=180, cast=int)
 # żeby był widoczny i konfigurowalny. Patrz crossref_bpp.models.
 CROSSREF_API_TIMEOUT = env("CROSSREF_API_TIMEOUT", default=30, cast=int)
 
+# Retencja (w dniach) plików XLS importu pracowników. Komenda zarządzająca
+# `usun_stare_pliki_importu_pracownikow` kasuje blob `plik_xls` importów
+# starszych niż tyle dni, zostawiając sam rekord i wiersze (historia
+# dopasowań pozostaje dostępna, plik źródłowy nie).
+# Patrz import_pracownikow.management.commands.usun_stare_pliki_importu_pracownikow.
+IMPORT_PRACOWNIKOW_RETENCJA_DNI = env(
+    "IMPORT_PRACOWNIKOW_RETENCJA_DNI", default=90, cast=int
+)
+
 CELERY_ROUTES = [
     {"denorm.tasks.flush_single": {"queue": "denorm"}},
 ]
@@ -749,7 +764,12 @@ CELERYBEAT_SCHEDULE = {
         "schedule": timedelta(days=5),
     },
     "pbn-api-kolejka-wyczysc-wpisy-bez-rekordow": {
-        "task": "pbn_api.tasks.kolejka_wyczysc_wpisy_bez_rekordow",
+        # Zadanie żyje w pbn_export_queue.tasks, NIE w pbn_api.tasks — wpis
+        # wskazywał na nieistniejącą nazwę, więc beat co tydzień wysyłał
+        # zadanie, którego żaden worker nie potrafił rozwiązać (czyli kolejka
+        # nigdy nie była czyszczona). Ta sama klasa błędu co brak wpisu dla
+        # retencji plików importu pracowników.
+        "task": "pbn_export_queue.tasks.kolejka_wyczysc_wpisy_bez_rekordow",
         "schedule": timedelta(days=7),
     },
     "scan-for-duplicates-daily": {
@@ -760,9 +780,26 @@ CELERYBEAT_SCHEDULE = {
         "task": "oswiadczenia.tasks.remove_old_oswiadczenia_export_files",
         "schedule": timedelta(days=1),
     },
+    # Retencja porzuconych plików tmp kreatora zgłoszeń publikacji (anonimowy
+    # formularz — porzucone uploady zostałyby na wolumenie media bez ograniczeń;
+    # anty-DoS na dysk, bpp #551). Kasuje sieroty >24h z osobnego katalogu tmp,
+    # nie ruszając finalnych załączników. Worker montuje media (jak sąsiednie
+    # cleanup-*), więc kasowanie działa.
+    "wyczysc-zglos-tmp-pliki": {
+        "task": "zglos_publikacje.tasks.wyczysc_zglos_tmp_pliki",
+        "schedule": timedelta(hours=6),
+    },
+    # UWAGA na kolizję harmonogramów: o 3:30 startuje `rebuild_kolejnosc`
+    # zaplanowany przez OFELIĘ (repozytorium bpp-deploy,
+    # docker-compose.application.yml) — całkowicie niezależny scheduler, który
+    # nic nie wie o Celery beat i nie ma jak się z nim zsynchronizować. Dwa
+    # ciężkie zadania startujące w tej samej minucie biły się o CPU bazy.
+    # Przesuwamy stronę, którą kontrolujemy z TEGO repo (beat), na 4:30:
+    # godzina po Ofelii i pół godziny po `powiazania-autorow-przelicz-codziennie`
+    # (4:00), które jest krótkie (czysty SQL, minuty).
     "rebuild-pbn-author-match-cache": {
         "task": "importer_autorow_pbn.tasks.auto_rebuild_match_cache_task",
-        "schedule": crontab(hour=3, minute=30),  # Daily at 3:30 AM
+        "schedule": crontab(hour=4, minute=30),  # Daily at 4:30 AM
     },
     "pbn-export-queue-watchdog": {
         "task": "pbn_export_queue.tasks.queue_watchdog",
@@ -782,6 +819,24 @@ CELERYBEAT_SCHEDULE = {
     "easyaudit-purge-stare-logi-logowania": {
         "task": "bpp.tasks.usun_stare_logi_logowania_easyaudit",
         "schedule": crontab(hour=2, minute=0, day_of_month=1),
+    },
+    # Retencja nieudanych prób logowania (django-axes): kasuj AccessAttempt
+    # starsze niż 90 dni. AXES_RESET_ON_SUCCESS czyści tylko po udanym
+    # logowaniu tej samej pary (login, IP) — wpisy od botów skanujących
+    # /admin/login/ nie mają „swojego" udanego logowania i rosłyby bez końca.
+    # Raz w tygodniu (niedziela 2:30), tabela rośnie powoli.
+    "axes-purge-stare-proby-logowania": {
+        "task": "bpp.tasks.usun_stare_proby_logowania_axes",
+        "schedule": crontab(hour=2, minute=30, day_of_week=0),
+    },
+    # Retencja plików XLS importu pracowników (IMPORT_PRACOWNIKOW_RETENCJA_DNI,
+    # domyślnie 90 dni). Kasuje sam blob, zostawiając rekord importu i wiersze.
+    # Komenda zarządzająca istniała od dawna, ale NIKT jej nie wołał (ani beat,
+    # ani Ofelia) — bloby nie były kasowane nigdy. Trzymamy wpis w kodzie, a
+    # nie w labelu Ofelii, żeby harmonogram był wersjonowany razem z aplikacją.
+    "import-pracownikow-usun-stare-pliki": {
+        "task": "import_pracownikow.tasks.usun_stare_pliki_importu_pracownikow",
+        "schedule": crontab(hour=1, minute=15),  # Daily at 1:15 AM
     },
 }
 
@@ -829,6 +884,14 @@ if _test_template:
     DATABASES["default"]["TEST"] = test_settings
 
 SECRET_KEY = env("DJANGO_BPP_SECRET_KEY")
+
+# ALTCHA — proof-of-work CAPTCHA na anonimowym formularzu zgłoszeń publikacji.
+# Model klucza jak SECRET_KEY: sentinel default, realny klucz z env (auto-gen
+# w bpp-deploy). Captcha domyślnie WYŁĄCZONA (opt-in). Brak hard-raise — miękki
+# system-check WARNING (zglos_publikacje/checks.py) sygnalizuje placeholder.
+ALTCHA_HMAC_KEY = env("ALTCHA_HMAC_KEY")
+ZGLOS_CAPTCHA_ENABLED = env("ZGLOS_CAPTCHA_ENABLED")
+INSTALLED_APPS += ["django_altcha"]
 
 # Klucz Fernet do szyfrowania sekretów integracji (DSpace itd.).
 # Wygeneruj: python -c "from cryptography.fernet import Fernet;
@@ -960,13 +1023,26 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly"
     ],
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
+    # Własna podklasa LimitOffsetPagination z twardym ``max_limit`` — patrz
+    # api_v1.pagination (goły LimitOffsetPagination nie ma żadnego cap-a).
+    "DEFAULT_PAGINATION_CLASS": "api_v1.pagination.BppLimitOffsetPagination",
     "PAGE_SIZE": 10,
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
-    # Nie limituj ilości zapytań (mpasternak, 6.06.2020) - jednakże, gdyby
-    # trzeba było, to wystarczy odkomentować poniższe dwie linie:
-    # "DEFAULT_THROTTLE_CLASSES": ("rest_framework.throttling.AnonRateThrottle",),
-    # "DEFAULT_THROTTLE_RATES": {"anon": "50/second",},
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "oauth_mcp.authentication.StrictOAuth2Authentication",
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.BasicAuthentication",
+    ],
+    # Globalny throttling pozostaje WYŁĄCZONY (mpasternak, 6.06.2020) — brak
+    # DEFAULT_THROTTLE_CLASSES, więc większość endpointów nie jest limitowana.
+    # Limitujemy WYŁĄCZNIE kosztowne endpointy wyszukiwania (opt-in per-viewset
+    # przez api_v1.throttling: /szukaj/ pełnotekstowe oraz /autor/ z filtrem
+    # nazwisko__icontains). Rate'y (klucze == scope) dają rozdzielne progi
+    # anon/user; pod DummyCache (dev/test) throttling jest no-op.
+    "DEFAULT_THROTTLE_RATES": {
+        "search_anon": "60/minute",
+        "search_user": "240/minute",
+    },
 }
 
 BPP_WALIDUJ_AFILIACJE_AUTOROW = (
@@ -1015,11 +1091,34 @@ LIVEOPS = {
 # nie publikuj na nim danych wrażliwych.
 CHANNELS_BROADCAST_ENABLE_ANONYMOUS = True
 
+# Autoryzator subskrypcji kanałów-stron (?extraChannels=). Bez niego
+# channels_broadcast używa domyślnego _deny_all, który ODRZUCA każdą
+# subskrypcję extraChannels — a paski postępu operacji long_running
+# (import POLON, absencje, raporty…) subskrybują właśnie tak
+# (extraChannels=[operation.pk]). Skutkiem braku było: dane importują się,
+# ale pasek postępu stoi i strona nie przekierowuje po zakończeniu —
+# użytkownik musiał ręcznie odświeżać. Autoryzator przepuszcza kanał-stronę
+# operacji wyłącznie jej właścicielowi. Kanały liveop.* jadą tokenem
+# (subscription_token) i omijają ten autoryzator.
+CHANNELS_BROADCAST_SUBSCRIPTION_AUTHORIZER = (
+    "long_running.authorizers.authorize_operation_channel"
+)
 
-# django-compressor dla każdej wersji będzie miał swoją nazwę katalogu
-# wyjściowego, z tej prostej przyczyny, że nie wszystkie przeglądarki
-# pamiętają, żeby odświeżyć cache:
-COMPRESS_OUTPUT_DIR = f"CACHE-{VERSION}"
+
+# django-compressor nazywa każdy plik wyjściowy 12-znakowym hashem jego
+# TREŚCI (compressor.base.Compressor.get_filepath →
+# get_hexdigest(content, 12)): np. "CACHE/js/58a8c0714e59.js". Nazwa pliku
+# zmienia się WTEDY I TYLKO WTEDY, gdy zmienia się treść — to wystarczający,
+# poprawny cache-busting współgrający z nagłówkiem `immutable`.
+#
+# Katalog był wcześniej wersjonowany (`CACHE-{VERSION}`) w intencji wymuszenia
+# odświeżenia cache na deploy. Był to jednak DRUGI, zbędny mechanizm bustujący
+# HURTEM: każde wydanie zmieniało ścieżkę WSZYSTKICH statyków (nowy katalog),
+# więc `immutable` + zmiana ścieżki kazały przeglądarkom pobrać ~305 KB gzip
+# JS/CSS ponownie po każdym deployu, nawet gdy ani bajt JS/CSS się nie zmienił.
+# Content-hash w nazwie pliku już gwarantuje bust dokładnie zmienionych plików,
+# więc katalog jest statyczny:
+COMPRESS_OUTPUT_DIR = "CACHE"
 
 # django-tabular-permissions
 
@@ -1275,9 +1374,17 @@ _OIDC_CONFIG = discover_oidc_config()
 OIDC_LOGIN_ENABLED = _OIDC_CONFIG is not None
 OIDC_LOGIN_SKROT = (_OIDC_CONFIG or {}).get("skrot") or ""
 
+# App zawsze zainstalowany — model/tabela OIDCIdentity muszą istnieć
+# niezależnie od env (routing i backend zostają warunkowe po _OIDC_CONFIG).
+if "oidc_integration" not in INSTALLED_APPS:
+    INSTALLED_APPS = list(INSTALLED_APPS) + ["oidc_integration"]
+
+# Defaulty bezpieczne również dla instalacji bez OIDC.
+OIDC_REQUIRE_EMAIL_VERIFIED = (_OIDC_CONFIG or {}).get("require_email_verified", True)
+OIDC_GRACE_BIND_ENABLED = (_OIDC_CONFIG or {}).get("grace_bind", False)
+
 if _OIDC_CONFIG:
-    if "oidc_integration" not in INSTALLED_APPS:
-        INSTALLED_APPS = list(INSTALLED_APPS) + ["oidc_integration"]
+    OIDC_OP_ISSUER = _OIDC_CONFIG["issuer"]
 
     OIDC_RP_CLIENT_ID = _OIDC_CONFIG["client_id"]
     OIDC_RP_CLIENT_SECRET = _OIDC_CONFIG["client_secret"]
@@ -1533,6 +1640,15 @@ X_FRAME_OPTIONS = "SAMEORIGIN"
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000
 
+# Twardy, parse-time limit liczby plików na jedno żądanie (Django default to
+# 100). Jedyny formularz w BPP przyjmujący wiele plików naraz to kreator
+# zgłaszania publikacji (MultipleFileField, max 5 plików); reszta wgrywa
+# pojedyncze pliki. Ustawiamy 10 (margines nad 5) — Django odrzuca nadmiar
+# już przy parsowaniu multiparta, zanim pliki wylądują w /tmp, ograniczając
+# anonimowy DoS przez masowe uploady. Twardy cap na bajty daje nginx
+# (client_max_body_size).
+DATA_UPLOAD_MAX_NUMBER_FILES = 10
+
 # django-formdefaults: pozwól wszystkim staff-userom edytować systemowe
 # wartości domyślne formularzy (domyślnie pakiet wpuszcza tylko superuserów).
 FORMDEFAULTS_CAN_EDIT_SYSTEM_WIDE = "bpp.formdefaults_perms.can_edit_system_wide"
@@ -1577,11 +1693,53 @@ DJANGO_BPP_ENABLE_TEST_CONFIGURATION = env("DJANGO_BPP_ENABLE_TEST_CONFIGURATION
 # ROLLBAR settings
 #
 
+# pyrollbar dopasowuje pola do scrubu po DOKŁADNEJ nazwie klucza (case-insensitive,
+# NIE po sufiksie) i PODMIENIA swoją domyślną listę, gdy podamy własną. Dlatego
+# odtwarzamy tu domyślny zestaw pyrollbara i DOKŁADAMY sekrety OAuth/MCP i PBN
+# (uwaga reviewera #3/#5): DOT oznacza jako wrażliwe tylko password/client_secret,
+# a Rollbar bez tej listy wysłałby aktywny refresh_token / code / code_verifier /
+# token przy nieoczekiwanym 500 na /o/token/ czy /o/revoke_token/.
+ROLLBAR_SCRUB_FIELDS = [
+    # domyślne pyrollbara (zachowujemy — nasza lista je nadpisuje):
+    "pw",
+    "passwd",
+    "password",
+    "secret",
+    "confirm_password",
+    "confirmPassword",
+    "password_confirmation",
+    "passwordConfirmation",
+    "access_token",
+    "accessToken",
+    "auth",
+    "authentication",
+    "authorization",
+    # sekrety OAuth/MCP (dokładne nazwy pól — exact match):
+    "token",
+    "refresh_token",
+    "refreshToken",
+    "code",
+    "code_verifier",
+    "codeVerifier",
+    "client_secret",
+    "clientSecret",
+    "secret_key",
+    "api_key",
+    # sekrety PBN / nagłówki uwierzytelniające (defense-in-depth, #4/#5):
+    "user_token",
+    "app_token",
+    "x-user-token",
+    "x-app-token",
+    "cookie",
+    "set-cookie",
+]
+
 ROLLBAR = {
     "access_token": env("ROLLBAR_ACCESS_TOKEN"),
     "environment": "development",
     "code_version": VERSION,
     "root": BASE_DIR,
+    "scrub_fields": ROLLBAR_SCRUB_FIELDS,
     "ignorable_404_urls": (
         re.compile(r"/favicon\.ico"),
         re.compile(r".*\{\{\s*clickURL\s*\}\}$"),
@@ -1734,3 +1892,18 @@ CONSTANCE_DATABASE_CACHE_BACKEND = "constance_cache"
 # Puste CONSTANCE_CONFIG zachowane dla backward compat z django-constance.
 CONSTANCE_CONFIG = {}
 CONSTANCE_CONFIG_FIELDSETS = {}
+
+#
+# django-oauth-toolkit (DOT) — Authorization Server dla serwera MCP (`/o/`).
+# NIE dodawaj `ALLOWED_GRANT_TYPES` — taki klucz nie istnieje w DOT i
+# zostałby po cichu zignorowany. Granty kontroluje DCR (Task 6/7) i atrybut
+# `Application.authorization_grant_type`.
+#
+OAUTH2_PROVIDER = {
+    "PKCE_REQUIRED": True,
+    "DEFAULT_SCOPES": ["read"],
+    "SCOPES": {"read": "Odczyt danych BPP w Twoim imieniu"},
+    "ROTATE_REFRESH_TOKEN": True,
+    "ACCESS_TOKEN_EXPIRE_SECONDS": 60 * 30,  # 30 min
+    "REFRESH_TOKEN_EXPIRE_SECONDS": 60 * 60 * 24 * 7,  # 7 dni (NIE None!)
+}

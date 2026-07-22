@@ -190,7 +190,7 @@
                                 closeURL: '{% url "messages_extends:message_mark_read" message.pk %}',
                             {% endif %}
                             pk: '{{ message.pk }}',
-                            text: '{{ message.message|just_single_quotes|safe }}',
+                            text: '{{ message.message|escapejs }}',
                             sound: false
                         });
                     {% endfor %}
@@ -216,7 +216,7 @@
                                 closeURL: '{% url "messages_extends:message_mark_read" message.pk %}',
                             {% endif %}
                             pk: '{{ message.pk }}',
-                            text: '{{ message.message|just_single_quotes|safe }}',
+                            text: '{{ message.message|escapejs }}',
                             sound: false
                         });
                     {% endfor %}
@@ -296,11 +296,21 @@
     </div>
 
     {% if cookielaw.accepted %}
-        {% cache 3600 google %}
-            {% if GOOGLE_ANALYTICS_PROPERTY_ID %}
-                {% include "google_analytics.html" %}
-            {% endif %}
-        {% endcache %}
+        {# CELOWO BEZ fragment-cache. Ten blok był kiedyś opakowany w tag #}
+        {# cache pod GLOBALNYM kluczem "google" — bez vary_on. Tymczasem #}
+        {# GOOGLE_ANALYTICS_PROPERTY_ID jest PER-UCZELNIA (context #}
+        {# processor bpp.context_processors.constance_config czyta go z #}
+        {# request._uczelnia). W instalacji wielo-uczelnianej pierwszy #}
+        {# odwiedzający uczelni A rozgrzewał fragment swoim ID, a przez #}
+        {# kolejną godzinę goście uczelni B dostawali snippet uczelni A — #}
+        {# ruch uczelni B raportował się do KONTA GOOGLE uczelni A. #}
+        {# Nie przywracamy cache'a z poprawnym vary_on, tylko go usuwamy: #}
+        {# treść to jeden warunek i jeden include statycznego snippetu — #}
+        {# zero zapytań do bazy, zero pętli. Round-trip do Redisa kosztuje #}
+        {# więcej niż wyrenderowanie tych dwóch tagów. #}
+        {% if GOOGLE_ANALYTICS_PROPERTY_ID %}
+            {% include "google_analytics.html" %}
+        {% endif %}
     {% endif %}
 
     {% if not TESTING %}

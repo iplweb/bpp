@@ -5,7 +5,7 @@ Autorzy
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from autoslug import AutoSlugField
 from django.contrib.postgres.search import SearchVectorField as VectorField
@@ -148,6 +148,13 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
     imiona = models.CharField(max_length=512, db_index=True)
     nazwisko = models.CharField(max_length=256, db_index=True)
     tytul = models.ForeignKey(Tytul, CASCADE, blank=True, null=True)
+    stopien_sluzbowy = models.ForeignKey(
+        "bpp.StopienSluzbowy",
+        SET_NULL,
+        blank=True,
+        null=True,
+        verbose_name="stopień służbowy",
+    )
     pseudonim = models.CharField(
         max_length=300,
         blank=True,
@@ -345,15 +352,49 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
             return czy_juz_istnieje.first()
 
         try:
-            ret = Autor_Jednostka.objects.create(
+            # Wlasny savepoint: ponizszy ``except IntegrityError`` istnial tu
+            # od dawna, ale bez atomic() BYL martwy — w PostgreSQL blad
+            # integralnosci uniewaznia cala otaczajaca transakcje, wiec
+            # "polkniecie" wyjatku zostawialo polamana transakcje. Odkad
+            # (autor, jednostka) z pusta data rozpoczecia jest chronione
+            # czesciowym UniqueConstraintem, ta sciezka realnie potrafi
+            # zlapac wyjatek (wywolanie ``dodaj_jednostke`` bez ``rok``).
+            with transaction.atomic():
+                ret = Autor_Jednostka.objects.create(
+                    autor=self,
+                    jednostka=jednostka,
+                    funkcja=funkcja,
+                    rozpoczal_prace=start_pracy,
+                    zakonczyl_prace=koniec_pracy,
+                )
+        except IntegrityError:
+            # Wyscig: rownolegly zapis utworzyl DOKLADNIE ten sam wiersz
+            # (autor, jednostka, rozpoczal_prace=start_pracy) w okienku miedzy
+            # exists() a create(). Chroni go unique_together (autor, jednostka,
+            # rozpoczal_prace) — dla start_pracy=None dodatkowo czesciowy
+            # UniqueConstraint (rozpoczal_prace IS NULL). Post-check pyta o
+            # dokladnie ta trojke: dla braku roku (start_pracy=None) Django
+            # tlumaczy filter(rozpoczal_prace=None) na IS NULL, a dla podanego
+            # roku porownuje z konkretna data — wiec jedno wyrazenie obsluguje
+            # oba przypadki. Jesli wiersz faktycznie juz istnieje — stan
+            # docelowy jest osiagniety, wiec zachowujemy sie jak dotad
+            # (return None). Jesli jednak nadal go nie ma, IntegrityError mowil
+            # o czyms INNYM (np. zerwany FK) i musi poleciec dalej — inaczej
+            # realny blad danych podczas importu znikalby bez sladu jako cichy
+            # no-op.
+            if not Autor_Jednostka.objects.filter(
                 autor=self,
                 jednostka=jednostka,
-                funkcja=funkcja,
                 rozpoczal_prace=start_pracy,
-                zakonczyl_prace=koniec_pracy,
+            ).exists():
+                raise
+            logger.debug(
+                "Powiazanie autor=%s jednostka=%s utworzone rownolegle "
+                "przez inna transakcje — pomijam.",
+                self.pk,
+                jednostka.pk,
             )
-        except IntegrityError:
-            return
+            return None
         self.defragmentuj_jednostke(jednostka)
 
         return ret
@@ -521,6 +562,27 @@ class Funkcja_Autora(NazwaISkrot):
         app_label = "bpp"
 
 
+class StopienSluzbowy(NazwaISkrot):
+    """Stopień służbowy (np. pożarniczy: kpt., bryg.) — słownik na autorze."""
+
+    class Meta:
+        verbose_name = "stopień służbowy"
+        verbose_name_plural = "stopnie służbowe"
+        ordering = ["nazwa"]
+        app_label = "bpp"
+
+
+class StanowiskoDydaktyczne(NazwaISkrot):
+    """Stanowisko dydaktyczne (np. adiunkt, profesor) — słownik na
+    powiązaniu autor-jednostka."""
+
+    class Meta:
+        verbose_name = "stanowisko dydaktyczne"
+        verbose_name_plural = "stanowiska dydaktyczne"
+        ordering = ["nazwa"]
+        app_label = "bpp"
+
+
 class Grupa_Pracownicza(ModelZNazwa):
     class Meta:
         verbose_name = "grupa pracownicza"
@@ -625,6 +687,13 @@ class Autor_Jednostka(models.Model):
         "Zakończył pracę", null=True, blank=True, db_index=True
     )
     funkcja = models.ForeignKey("bpp.Funkcja_Autora", CASCADE, null=True, blank=True)
+    stanowisko = models.ForeignKey(
+        "bpp.StanowiskoDydaktyczne",
+        SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="stanowisko dydaktyczne",
+    )
 
     podstawowe_miejsce_pracy = models.BooleanField(null=True, blank=True, default=None)
 
@@ -642,6 +711,21 @@ class Autor_Jednostka(models.Model):
         verbose_name_plural = "powiązania autor-jednostka"
         ordering = ["autor__nazwisko", "rozpoczal_prace", "jednostka__nazwa"]
         unique_together = [("autor", "jednostka", "rozpoczal_prace")]
+        constraints = [
+            # unique_together powyzej deklaruje niezmiennik "jedno powiazanie
+            # na trojke", ale w PostgreSQL NULL-e w indeksie unikalnym sa
+            # wzajemnie rozroznialne — wiersze z rozpoczal_prace IS NULL nie
+            # byly wiec chronione niczym. Tymczasem check-then-create w
+            # bpp.models.abstract.authors (save() KAZDEGO autorstwa) tworzy
+            # dokladnie takie wiersze. Ten czesciowy indeks domyka luke;
+            # dotyczy WYLACZNIE wierszy z NULL-owa data rozpoczecia, wiec
+            # wielokrotne (datowane) okresy zatrudnienia sa nadal legalne.
+            models.UniqueConstraint(
+                fields=("autor", "jednostka"),
+                condition=models.Q(rozpoczal_prace__isnull=True),
+                name="bpp_autor_jednostka_bez_daty_unikalne",
+            ),
+        ]
         app_label = "bpp"
         # Niezmiennik "co najwyzej jedno podstawowe miejsce pracy na autora" NIE
         # jest tu egzekwowany przez UniqueConstraint (partial unique index byl
@@ -674,12 +758,13 @@ class Autor_Jednostka(models.Model):
                     "Początek pracy późniejszy lub równy, jak zakończenie"
                 )
 
-        if self.zakonczyl_prace is not None:
-            if self.zakonczyl_prace >= datetime.now().date():
-                raise ValidationError(
-                    "Czas zakończenia pracy w jednostce nie może być taki sam"
-                    " lub większy, jak obecna data"
-                )
+        # UWAGA: świadomie NIE odrzucamy daty zakończenia w przyszłości —
+        # zatrudnienie bywa planowane naprzód („pan X pracuje do zaplanowanej
+        # daty"). Jest to spójne z triggerem `bpp_autor_ustaw_jednostka_aktualna`,
+        # który dla przyszłej daty „do" i tak liczy `aktualny = True`. Dawny
+        # zakaz (model + DB-owy CHECK `bez_dat_do_w_przyszlosci`) zdjęty w
+        # migracji 0469; w bazie zastąpiony odpornym na czas CHECK
+        # `rozpoczal_prace < zakonczyl_prace`.
 
         # UWAGA: niezmiennik "jedno podstawowe miejsce pracy na autora" NIE jest
         # tu walidowany per-instancja. Eager .exists() (widzacy stan sprzed

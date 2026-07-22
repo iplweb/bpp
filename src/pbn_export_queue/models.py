@@ -7,8 +7,8 @@ import rollbar
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import models
-from django.db.models import PositiveIntegerField
+from django.db import IntegrityError, models, transaction
+from django.db.models import PositiveIntegerField, Q
 from django.urls import reverse
 from django.utils import timezone
 
@@ -40,14 +40,27 @@ class PBN_Export_QueueManager(models.Manager):
         )
 
     def sprobuj_utowrzyc_wpis(self, user, rekord, uczelnia=None):
+        # Szybka ścieżka (przyjazny błąd bez trafiania w constraint bazy).
         if self.filter_rekord_do_wysylki(rekord).exists():
             raise AlreadyEnqueuedError("ten rekord jest już w kolejce do wysyłki")
 
-        return self.create(
-            rekord_do_wysylki=rekord,
-            zamowil=user,
-            uczelnia=uczelnia,
-        )
+        # Właściwe zabezpieczenie przed wyścigiem: między exists() a create()
+        # inny proces mógł dodać aktywny wpis. Częściowy unikat
+        # (content_type, object_id) WHERE wysylke_zakonczono IS NULL zamienia
+        # ten TOCTOU w twardy IntegrityError, który tłumaczymy na domenowy
+        # AlreadyEnqueuedError. savepoint (atomic) izoluje błąd, żeby nie
+        # unieważnić ewentualnej otaczającej transakcji.
+        try:
+            with transaction.atomic():
+                return self.create(
+                    rekord_do_wysylki=rekord,
+                    zamowil=user,
+                    uczelnia=uczelnia,
+                )
+        except IntegrityError as e:
+            raise AlreadyEnqueuedError(
+                "ten rekord jest już w kolejce do wysyłki"
+            ) from e
 
 
 class SendStatus(Enum):
@@ -61,6 +74,10 @@ class SendStatus(Enum):
 
     FINISHED_OKAY = 5
     FINISHED_ERROR = 6
+
+    # Inny worker trzyma wiersz (select_for_update skip_locked) — on go
+    # obsłuży; bieżące zadanie kończy bez ponawiania.
+    LOCKED_ELSEWHERE = 7
 
 
 class RodzajBledu(models.TextChoices):
@@ -126,6 +143,16 @@ class PBN_Export_Queue(models.Model):
         verbose_name = "Kolejka eksportu do PBN"
         verbose_name_plural = "Kolejka eksportu do PBN"
         ordering = ("-zamowiono", "zamowil")
+        constraints = [
+            # Co najwyżej JEDEN aktywny (niezakończony) wpis na dany rekord.
+            # Warunek pokrywa się z filter_rekord_do_wysylki() — dzięki temu
+            # równoległe zlecenia wysyłki nie tworzą duplikatów w kolejce.
+            models.UniqueConstraint(
+                fields=["content_type", "object_id"],
+                condition=Q(wysylke_zakonczono__isnull=True),
+                name="pbn_export_queue_jeden_aktywny_wpis_na_rekord",
+            ),
+        ]
 
     def __str__(self):
         return f"Zlecenie wysyłki do PBN dla {self.rekord_do_wysylki}"
@@ -159,8 +186,27 @@ class PBN_Export_Queue(models.Model):
             return False
 
     def prepare_for_resend(self, user=None, message_suffix=""):
-        """Przygotowuje obiekt do ponownej wysyłki."""
+        """Przygotowuje obiekt do ponownej wysyłki.
+
+        :raises AlreadyEnqueuedError: gdy wpis jest już zakończony, a dla tego
+            samego rekordu istnieje INNY aktywny wpis — uaktywnienie tego
+            złamałoby częściowy unikat (jeden aktywny wpis na rekord). Rekord
+            i tak czeka w kolejce, więc nie dublujemy.
+        """
         self.refresh_from_db()
+
+        if self.wysylke_zakonczono is not None:
+            istnieje_inny_aktywny = (
+                type(self)
+                .objects.filter_rekord_do_wysylki(self.rekord_do_wysylki)
+                .exclude(pk=self.pk)
+                .exists()
+            )
+            if istnieje_inny_aktywny:
+                raise AlreadyEnqueuedError(
+                    "dla tego rekordu istnieje już aktywny wpis w kolejce"
+                )
+
         self.wysylke_zakonczono = None
         self.zakonczono_pomyslnie = None
         self.retry_after_user_authorised = None
@@ -360,6 +406,43 @@ class PBN_Export_Queue(models.Model):
         self.save()
         return SendStatus.FINISHED_OKAY
 
+    def _zajmij_atomowo(self):
+        """Atomowo zajmij wpis do wysyłki (zabezpieczenie przed dwoma workerami).
+
+        ``select_for_update(skip_locked=True)`` blokuje wiersz na czas
+        krótkiej transakcji (sama zmiana statusu, NIE długi request HTTP do
+        PBN). Gdy inny worker już trzyma wiersz — pomijamy (``skip_locked``),
+        zwracając ``False``. To działa niezależnie od backendu cache (w prod
+        Redis-owy ``cache.add`` już serializuje po pk, ale na testach cache to
+        no-op DummyCache — wtedy to jedyny realny zamek).
+
+        :return: True gdy zajęto wpis, False gdy trzyma go ktoś inny albo
+            został w międzyczasie zakończony.
+        """
+        with transaction.atomic():
+            zablokowany = (
+                type(self)
+                .objects.select_for_update(skip_locked=True)
+                .filter(pk=self.pk, wysylke_zakonczono__isnull=True)
+                .first()
+            )
+            if zablokowany is None:
+                return False
+
+            zablokowany.wysylke_podjeto = timezone.now()
+            if zablokowany.retry_after_user_authorised:
+                zablokowany.retry_after_user_authorised = None
+            zablokowany.ilosc_prob += 1
+            zablokowany.save(
+                update_fields=[
+                    "wysylke_podjeto",
+                    "retry_after_user_authorised",
+                    "ilosc_prob",
+                ]
+            )
+        self.refresh_from_db()
+        return True
+
     def send_to_pbn(self):
         """:return: SendStatus"""
         self.refresh_from_db()
@@ -373,11 +456,10 @@ class PBN_Export_Queue(models.Model):
                 rodzaj=RodzajBledu.TECHNICZNY,
             )
 
-        self.wysylke_podjeto = timezone.now()
-        if self.retry_after_user_authorised:
-            self.retry_after_user_authorised = None
-        self.ilosc_prob += 1
-        self.save()
+        if not self._zajmij_atomowo():
+            # Inny worker zdążył zająć ten wiersz (row lock) albo go zakończył.
+            # On dokończy — bieżące zadanie kończymy bez ponawiania.
+            return SendStatus.LOCKED_ELSEWHERE
 
         from bpp.admin.helpers.pbn_api.cli import sprobuj_wyslac_do_pbn_celery
 

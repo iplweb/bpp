@@ -6,8 +6,12 @@ from api_v1.serializers.wydawnictwo_zwarte import (
     Wydawnictwo_Zwarte_StreszczenieSerializer,
     Wydawnictwo_ZwarteSerializer,
 )
-from api_v1.viewsets.common import StreszczeniaPagination, UkryjStatusyKorektyMixin
-
+from api_v1.viewsets.common import (
+    StreszczeniaPagination,
+    UkryjNieEksportowaneMixin,
+    UkryjStatusyKorektyMixin,
+    UkryjStatusyKorektyRekorduMixin,
+)
 from bpp.models import (
     Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Autor,
@@ -15,9 +19,25 @@ from bpp.models import (
 )
 
 
-class Wydawnictwo_Zwarte_AutorViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Wydawnictwo_Zwarte_Autor.objects.all().select_related()
+class Wydawnictwo_Zwarte_AutorFilterSet(django_filters.rest_framework.FilterSet):
+    class Meta:
+        fields = ["autor"]
+        model = Wydawnictwo_Zwarte_Autor
+
+
+class Wydawnictwo_Zwarte_AutorViewSet(
+    UkryjNieEksportowaneMixin,
+    UkryjStatusyKorektyRekorduMixin,
+    viewsets.ReadOnlyModelViewSet,
+):
+    # Gołe select_related() ciągnęło WSZYSTKIE non-null FK (w tym te, których
+    # serializer w ogóle nie dotyka — hyperlinki czytają samo FK id). Jedyne
+    # pole wymagające joina to StringRelatedField typ_odpowiedzialnosci.
+    queryset = Wydawnictwo_Zwarte_Autor.objects.all().select_related(
+        "typ_odpowiedzialnosci"
+    )
     serializer_class = Wydawnictwo_Zwarte_AutorSerializer
+    filterset_class = Wydawnictwo_Zwarte_AutorFilterSet
 
 
 class Wydawnictwo_ZwarteFilterSet(django_filters.rest_framework.FilterSet):
@@ -36,14 +56,25 @@ class Wydawnictwo_ZwarteViewSet(
     queryset = (
         Wydawnictwo_Zwarte.objects.exclude(nie_eksportuj_przez_api=True)
         .order_by("pk")
-        .select_related("status_korekty")
+        # Wszystkie StringRelatedField serializera (status_korekty + trójka
+        # openaccess) — każde pominięte pole to jedno zapytanie na wiersz.
+        .select_related(
+            "status_korekty",
+            "openaccess_tryb_dostepu",
+            "openaccess_wersja_tekstu",
+            "openaccess_licencja",
+        )
         .prefetch_related("autorzy_set", "nagrody", "slowa_kluczowe", "streszczenia")
     )
     serializer_class = Wydawnictwo_ZwarteSerializer
     filterset_class = Wydawnictwo_ZwarteFilterSet
 
 
-class Wydawnictwo_Zwarte_StreszczenieViewSet(viewsets.ReadOnlyModelViewSet):
+class Wydawnictwo_Zwarte_StreszczenieViewSet(
+    UkryjNieEksportowaneMixin,
+    UkryjStatusyKorektyRekorduMixin,
+    viewsets.ReadOnlyModelViewSet,
+):
     queryset = Wydawnictwo_Zwarte_Streszczenie.objects.all()
     serializer_class = Wydawnictwo_Zwarte_StreszczenieSerializer
     pagination_class = StreszczeniaPagination

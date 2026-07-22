@@ -16,7 +16,7 @@ def test_context_processor_dostarcza_lematy(settings):
 
 
 @pytest.mark.django_db
-def test_zapis_rzeczownika_inwaliduje_cache():
+def test_zapis_rzeczownika_inwaliduje_cache(rzeczowniki):
     from django.core.cache import cache
 
     from bpp.models import Rzeczownik

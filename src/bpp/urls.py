@@ -33,6 +33,7 @@ from bpp.views.autocomplete import (
     Dyscyplina_Naukowa_PrzypisanieAutocomplete,
     Dyscyplina_NaukowaAutocomplete,
     GlobalNavigationAutocomplete,
+    ImportAutorAutocomplete,
     JednostkaAutocomplete,
     KierunekStudiowAutocomplete,
     KonferencjaAutocomplete,
@@ -459,6 +460,11 @@ urlpatterns = [
         r"^public-autor-autocomplete/$",
         PublicAutorAutocomplete.as_view(),
         name="public-autor-autocomplete",
+    ),
+    url(
+        r"^import-autor-autocomplete/$",
+        ImportAutorAutocomplete.as_view(),
+        name="import-autor-autocomplete",
     ),
     url(
         r"^wydawca-autocomplete/$",

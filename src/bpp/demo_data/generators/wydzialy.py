@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import random
 
+from bpp.demo_data.db import bulk_create_retry, retry_write
 from bpp.demo_data.manifest import Manifest
 from bpp.demo_data.progress import make_progress
 from bpp.demo_data.themes.base import Theme
@@ -56,11 +57,13 @@ def create_wydzialy(
     created: list[Jednostka] = []
     for start in pbar:
         chunk = objs[start : start + batch_size]
-        Jednostka.objects.bulk_create(chunk)
+        bulk_create_retry(Jednostka.objects, chunk)
         created.extend(chunk)
         manifest.append("bpp.Jednostka", [w.pk for w in chunk])
         manifest.save()
 
-    Jednostka.objects.rebuild()
+    # rebuild() to masowy UPDATE (lft/rght/tree_id) — też odpala triggery
+    # denorm, więc też chronimy retry na deadlock ze współbieżnym flushem.
+    retry_write(Jednostka.objects.rebuild)
 
     return created

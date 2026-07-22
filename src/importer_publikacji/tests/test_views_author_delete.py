@@ -68,7 +68,7 @@ def test_delete_author_renders_authors_step(importer_client, importer_user):
     assert response.status_code == 200
     content = response.content.decode()
     # Po usunięciu jednego z dwóch zostaje jeden autor (ogółem)
-    assert "Krok 4: Dopasowanie autorów" in content
+    assert "Dopasowanie autorów" in content
     assert session.authors.count() == 1
 
 

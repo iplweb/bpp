@@ -196,7 +196,7 @@ skróty `make` (owijają `gh workflow run` + od razu `gh run watch`):
 ```bash
 make release-candidate    # Faza 1: zbuduj RC → :staging (nie rusza prod)
 # … staging pulluje :staging, testujesz …
-make release-promote      # Faza 2: RC → :latest (bez rebuildu, imagetools)
+make release-promote      # Faza 2: RC → :latest (patch version.py + flavor=release)
 ```
 
 Flagi: `make release-candidate SKIP_TESTS=1 SKIP_SCAN=1` (awaryjnie),
@@ -208,10 +208,25 @@ Pod spodem to zwykłe `workflow_dispatch`:
 
 ```bash
 gh workflow run release-candidate.yml --ref dev   # zbuduj RC → :staging
-gh workflow run promote.yml                        # RC → :latest (bez rebuildu)
+gh workflow run promote.yml                        # RC → :latest (patch-layer na RC)
 ```
 
-`push:master` NIE buduje już obrazów produkcyjnych — robi to promote (imagetools).
+`push:master` NIE buduje już obrazów produkcyjnych — robi to promote
+(patch-layer na przetestowanym RC, patrz sekcja niżej).
+
+## Newsfragmenty (towncrier) — dodawaj po każdej zmianie feature/bugfix
+
+Prawie każdy commit feature/fix dodaje newsfragment. Config:
+`[tool.towncrier]` w `pyproject.toml`; przy wydaniu kompiluje się do
+`HISTORY.md`. **Kanoniczny katalog: `src/bpp/newsfragments/`** — NIE
+`changes/newsfragments/` (towncrier go nie czyta → fragment przepada).
+
+Nazwa pliku: `<slug>.<typ>.rst` (albo `.md`), gdzie `<typ>`:
+- `feature` → „Usprawnienie"   - `bugfix` → „Naprawione"
+- `doc` → „Dokumentacja"        - `removal` → „Usunięto"
+
+Treść po polsku, zwięźle (jedno zdanie/akapit). Numer zgłoszenia w slugu
+dla ticketów (np. `fd407.bugfix.rst`); `#443` linkuje się do GitHub Issues.
 
 ## Autologin dla agentów (WebFetch / curl bez logowania)
 
@@ -306,7 +321,9 @@ Full details: [docs/deweloper/budowanie-css.md](docs/deweloper/budowanie-css.md)
 - Abstract models/mixins: `src/bpp/models/abstract/`
 - Admin interfaces: `src/bpp/admin/`
 - Admin helpers/mixins: `src/bpp/admin/helpers/`
-- API serializers: `src/api_v1/serializers/`
+- API (`/api/v1/`): serializery `src/api_v1/serializers/`, viewsety
+  `src/api_v1/viewsets/`, routing `src/api_v1/urls.py`, model uprawnień
+  (np. `MoznaUzywacZapytania`) `src/api_v1/permissions.py`
 - Context processors: `src/bpp/context_processors/`
 - Templates: `templates/` directories in each app
 - Static files: `src/*/static/` directories
@@ -364,6 +381,12 @@ przepina manifest pod kanoniczny tag podany przez wywolujacego. Produkcyjny
 `:latest` nie powstaje juz na pushu do `master` — robi to wylacznie
 `.github/workflows/promote.yml` z gotowego RC.
 
+Workflow nie uruchamia sie automatycznie na pushach ani PR-ach. Ma tylko dwa
+wejscia: `workflow_call` z `release-candidate.yml` oraz reczny
+`workflow_dispatch` (najwygodniej `make docker-images-on-ci` na wypchnietym,
+czystym branchu). Kazde uruchomienie przechodzi bezposrednio do jobu `docker` —
+nie ma juz guardu konczacego sie zielonym `docker: skipped`.
+
 **Dlaczego nie prosty „build → push → scan"?**
 Docker Hub nie ma mechanizmu „un-push". Jesli Trivy znajdzie CRITICAL
 CVE dopiero po pushu, obraz juz jest publicznie dostepny pod tagiem
@@ -395,8 +418,22 @@ sa jawnie tymczasowe (nie release).
 `docker buildx imagetools create -t <canonical> <staging>` kopiuje
 manifest w rejestrze. Nie rebuilduje, nie re-pushuje warstw — tylko
 zapisuje metadane z referencja do istniejacych layers. ~sek per obraz.
-Przy `release-candidate.yml` dodatkowo przepina kanal `:staging`.
-Tag `:latest` rusza dopiero w `promote.yml`, z immutable RC tagu.
+Przy `release-candidate.yml` dodatkowo przepina kanal `:staging`. Tak
+powstaja tagi RC (`:<wersja>rcN`, `:staging`) — obrazy RC sa
+**staging-flavored** (`BPP_BUILD_FLAVOR=staging`), zeby deployment `:staging`
+pokazywal w stopce wersje rcN + git SHA.
+
+**Faza 4 — Promote RC → produkcja (patch-layer, `promote.yml`)**
+Kanoniczny `:latest`/`:<wersja>` NIE powstaje przez imagetools — bo kopia
+manifestu bit-w-bit odziedziczylaby zapieczona w RC wersje rcN (stopka,
+panel admina, Rollbar `code_version`). Zamiast tego `promote.yml` naklada
+cienki patch-layer na przetestowany obraz RC (`docker/promote-patch/
+Dockerfile`): podmienia `src/django_bpp/version.py` na finalny (bez sufiksu
+rc), kasuje zapieczony `version.pyc` i ustawia `BPP_BUILD_FLAVOR=release`
+(stopka chowa "atrakcje", pokazuje czysta wersje). Warstwy bazowe pozostaja
+tymi samymi przetestowanymi warstwami RC (dedup w rejestrze; push doklada
+tylko 2 malutkie warstwy). Aplikacja czyta wersje przez `PYTHONPATH=/app/src`
+(`uv sync --no-install-project`), wiec podmiana jednego pliku wystarcza.
 
 **Zastrzezenie o rejestrze:**
 Raz pushniety digest (nawet pod staging tagiem) zyje w Docker Hub do
@@ -528,11 +565,12 @@ nie przetestowany — to NIE jest dowód, że cokolwiek działa. Zanim powiesz
 „zielono / działa", sprawdź że gejty niżej mają `conclusion: success`;
 inaczej milcz i czekaj.
 
-- **Dekoracyjne / skipowane (NIE walidują kodu):** `Docker - oficjalne
-  obrazy` (<1 min „success" = job `docker` jest `skipped`; dedupe: push na
-  branchu z otwartym PR-em = duplikat, realny build leci dopiero na
-  `master`), `Docs`, `Lint changed files`, `Check baseline freshness`,
-  CodeQL/GitGuardian. Szybkie, pomocnicze — nie są dowodem poprawności.
+- **Dekoracyjne / pomocnicze (NIE walidują całego kodu):** `Docs`,
+  `Lint changed files`, `Check baseline freshness`, CodeQL/GitGuardian.
+  Szybkie, pomocnicze — nie są dowodem poprawności.
+- `Docker - oficjalne obrazy` nie jest checkiem PR-a. Uruchamia się tylko
+  ręcznie albo jako część `release-candidate.yml`; zielony wynik oznacza, że
+  obrazy rzeczywiście zostały zbudowane i opublikowane.
 - **REALNE gejty PR-a (czekaj na ZIELEŃ tych dwóch):**
   - **`Build test-runner image`** — buduje obraz testowy; tu wychodzą błędy
     assetów / grunt / esbuild (np. „Could not resolve <entry>"), Dockerfile,

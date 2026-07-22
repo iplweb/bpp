@@ -4,8 +4,8 @@ from playwright.sync_api import Page
 
 
 @pytest.mark.django_db
-def test_AutorRaportSlotowForm_javascript(admin_page: Page, live_server):
-    url = live_server.url + reverse("raport_slotow:index")
+def test_AutorRaportSlotowForm_javascript(admin_page: Page, channels_live_server):
+    url = channels_live_server.url + reverse("raport_slotow:index")
     admin_page.goto(url)
     elem = admin_page.locator("#id_slot")
     elem.type("12")

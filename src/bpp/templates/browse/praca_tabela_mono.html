@@ -1,4 +1,8 @@
 {% load prace user_in_group dspace_links %}
+{# Streszczenia pobierane RAZ: szablon odwołuje się do nich w kilku #}
+{# miejscach (warunki, pętla, licznik języków). Widok dodatkowo robi #}
+{# prefetch, więc całość to jedno zapytanie na stronę. #}
+{% with streszczenia=praca.streszczenia.all %}
 
 {# Metadane bibliograficzne (citation_*, DC, PRISM, JSON-LD) są teraz #}
 {# wstrzykiwane do <head> przez browse/praca.html (blok extrahead) — #}
@@ -11,10 +15,10 @@
     <div class="praca-mono__title-section">
         <h2 class="praca-mono__title">
             {% if praca.tytul %}
-                {{ praca.tytul_oryginalny|safe }}
-                <span class="praca-mono__title-translation">({{ praca.tytul|safe }})</span>
+                {{ praca.tytul_oryginalny|safe_tytul }}
+                <span class="praca-mono__title-translation">({{ praca.tytul|safe_tytul }})</span>
             {% else %}
-                {{ praca.tytul_oryginalny|znak_na_koncu:"."|safe }}
+                {{ praca.tytul_oryginalny|znak_na_koncu:"."|safe_tytul }}
             {% endif %}
             {% if praca.charakter_formalny.charakter_ogolny != 'roz' %}
                 <span class="praca-mono__edition-mark">{{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}</span>
@@ -25,6 +29,7 @@
 
         <!-- Authors Section -->
         {% autorzy_skrocony praca uczelnia as box %}
+        {% if box.liczba %}
         <div class="praca-mono__authors-section{% if box.skrocony %} praca-mono__authors-section--collapsible{% endif %}">
 
             {% if box.skrocony %}
@@ -56,6 +61,7 @@
                 {% endif %}
             </div>
         </div>
+        {% endif %}
     </div>
 
     <!-- Main content in two columns -->
@@ -196,15 +202,15 @@
             </div>
 
             <!-- Abstracts Card -->
-            {% if praca.streszczenia.exists %}
+            {% if streszczenia %}
                 <div class="praca-mono__card">
                     <h3 class="praca-mono__card-title">
                         <span class="fi-page-edit"></span> Streszczenia
                         <div class="shaded-hr-div-small"></div>
                     </h3>
-                    {% for streszczenie in praca.streszczenia.all %}
+                    {% for streszczenie in streszczenia %}
                         <div class="praca-mono__abstract">
-                            {% if praca.streszczenia.count > 1 %}
+                            {% if streszczenia|length > 1 %}
                                 <strong class="praca-mono__abstract-label">
                                     {{ streszczenie.jezyk_streszczenia.nazwa }}:
                                 </strong>
@@ -582,7 +588,7 @@
     </div>
 
     <!-- Additional Information Card - Show here if no abstracts, taking full width -->
-    {% if not praca.streszczenia.exists %}
+    {% if not streszczenia %}
         <div class="praca-mono__additional-info">
             <div class="praca-mono__card">
                 <h3 class="praca-mono__card-title">
@@ -634,7 +640,7 @@
                                 <th class="praca-mono__table-cell--vertical-top">Odpowiedzialność za powstanie pracy:
                                 </th>
                                 <td class="praca-mono__table-cell">
-                                    {% for autor in praca.autorzy_set.all %}
+                                    {% for autor in autorzy %}
                                         {% if autor.procent %}
                                             {{ autor.procent }}% {{ autor.zapisany_jako }}<br/>
                                         {% endif %}
@@ -820,7 +826,7 @@
     {% endif %}
 
     <!-- Additional Information Card - Show here if there are abstracts -->
-    {% if praca.streszczenia.exists %}
+    {% if streszczenia %}
         <div class="praca-mono__additional-info">
             <div class="praca-mono__card">
                 <h3 class="praca-mono__card-title">
@@ -872,7 +878,7 @@
                                 <th class="praca-mono__table-cell--vertical-top">Odpowiedzialność za powstanie pracy:
                                 </th>
                                 <td class="praca-mono__table-cell">
-                                    {% for autor in praca.autorzy_set.all %}
+                                    {% for autor in autorzy %}
                                         {% if autor.procent %}
                                             {{ autor.procent }}% {{ autor.zapisany_jako }}<br/>
                                         {% endif %}
@@ -1281,3 +1287,4 @@
         }
     }
 </script>
+{% endwith %}

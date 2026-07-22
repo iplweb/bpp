@@ -9,6 +9,7 @@ from django.db.models import Count, Exists, OuterRef
 from django.db.models.functions import Substr
 from django.http import JsonResponse
 from django.utils import timezone
+from django.utils.decorators import method_decorator
 from django.utils.http import url_has_allowed_host_and_scheme
 
 try:
@@ -33,6 +34,7 @@ from bpp.models import (
     Wydawnictwo_Ciagle_Streszczenie,
     Zrodlo,
 )
+from bpp.models.util import prefetch_dane_strony_rekordu
 from bpp.multiseek_registry import (
     JednostkaNadrzednaQueryObject,
     JednostkaQueryObject,
@@ -43,11 +45,14 @@ from bpp.multiseek_registry import (
     ZakresLatQueryObject,
     ZrodloQueryObject,
 )
+from bpp.permissions import moze_wprowadzac_dane
+from bpp.util import sanitize_multiseek_title
 from bpp.util.uczelnia_scope import (
     scope_jednostki_do_uczelni,
     scope_rekord_do_uczelni,
     tylko_jedna_uczelnia,
 )
+from bpp.views.cache_publiczny import cache_publiczny
 
 logger = logging.getLogger(__name__)
 
@@ -91,28 +96,40 @@ def get_uczelnia_context_data(uczelnia, article_slug=None):
         # scope_rekord_do_uczelni. W single-host (jedna uczelnia) helper daje
         # no-op — rekordy bez wpisanego autorstwa pozostają liczone i widoczne,
         # parytet z zachowaniem sprzed multi-hosted (patrz test_single_host_parity).
-        context["recently_updated"] = (
-            scope_rekord_do_uczelni(Rekord.objects.all(), uczelnia)
-            .order_by("-ostatnio_zmieniony")
-            .distinct()[:12]
-        )
+        # BEZ ``.distinct()`` na tym poziomie: ``SELECT DISTINCT`` po
+        # bpp_rekord_mat porównuje 49 kolumn (w tym tsvector ``search_index``
+        # i duże ``opis_bibliograficzny_cache``), więc Postgres musi
+        # zmaterializować i posortować CAŁĄ tabelę zanim zadziała LIMIT 12 —
+        # indeks (ostatnio_zmieniony) idzie do kosza. Deduplikacja należy do
+        # ``scope_rekord_do_uczelni``: JOIN po M2M ``autorzy`` (jedyne źródło
+        # duplikatów tutaj) istnieje wyłącznie w trybie multi-host i helper
+        # dokłada tam ``.distinct()`` sam.
+        context["recently_updated"] = scope_rekord_do_uczelni(
+            Rekord.objects.all(), uczelnia
+        ).order_by("-ostatnio_zmieniony")[:12]
 
         recent_abstracts = Wydawnictwo_Ciagle_Streszczenie.objects.exclude(
             streszczenie__isnull=True
         ).exclude(streszczenie__exact="")
         # Ten sam guard co scope_rekord_do_uczelni, ale na querysecie Streszczeń
         # (helper przyjmuje qs Rekordów). Single-host / brak uczelni => bez filtra.
+        # ``.distinct()`` TYLKO w tej gałęzi: ``rekord__autorzy_set__…`` to
+        # JOIN po relacji wielowartościowej (rekord z N autorstwami tej samej
+        # uczelni dałby N kopii streszczenia). W single-install filtru nie ma,
+        # więc nie ma czego deduplikować.
         if uczelnia is not None and not tylko_jedna_uczelnia():
             recent_abstracts = recent_abstracts.filter(
                 rekord__autorzy_set__jednostka__uczelnia=uczelnia
-            )
+            ).distinct()
         context["recent_abstracts"] = recent_abstracts.order_by(
             "-rekord__ostatnio_zmieniony"
-        ).distinct()[:5]
+        )[:5]
 
-        context["total_rekord_count"] = (
-            scope_rekord_do_uczelni(Rekord.objects.all(), uczelnia).distinct().count()
-        )
+        # Bez ``.distinct()`` COUNT może pójść index-only scanem zamiast
+        # hashować 49 kolumn na wiersz; dedup — jak wyżej — jest w helperze.
+        context["total_rekord_count"] = scope_rekord_do_uczelni(
+            Rekord.objects.all(), uczelnia
+        ).count()
         context["current_year"] = timezone.now().date().year
 
     return context
@@ -161,6 +178,11 @@ class JednostkaView(DetailView):
     template_name = "browse/jednostka.html"
     model = Jednostka
 
+    #: Listy podjednostek policzone w ``get()`` dla stylu strukturalnego —
+    #: szablon dostaje je przez kontekst, zamiast wołać metody modelu (i tak
+    #: potrzebne są tu na decyzję o przekierowaniu).
+    podjednostki = None
+
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
 
@@ -179,11 +201,23 @@ class JednostkaView(DetailView):
             if len(wszystkie) == 1:
                 return redirect("bpp:browse_jednostka", slug=wszystkie[0].slug)
 
+            self.podjednostki = {
+                "aktualne_podjednostki": aktualne,
+                "kola_naukowe": kola,
+                "historyczne_podjednostki": historyczne,
+            }
+
+        # Szablon woła zarówno pracownicy(), jak i wspolpracowali() — obie te
+        # metody potrzebują tego samego zbioru PK aktualnych autorów.
+        self.object.prefetch_aktualnych_autorow()
+
         context = self.get_context_data(object=self.object)
         return self.render_to_response(context)
 
     def get_context_data(self, **kwargs):
-        return super().get_context_data(typy=TYPY, **kwargs)
+        return super().get_context_data(
+            typy=TYPY, **(self.podjednostki or {}), **kwargs
+        )
 
 
 class AutorView(DetailView):
@@ -292,7 +326,35 @@ class Browser(ListView):
                 qobj |= Q(**{self.literka_field + "__istartswith": x})
             qry = qry.filter(qobj)  # **{self.param + "__istartswith": literka})
 
-        return qry.distinct()
+        # BEZ ``.distinct()``: żadna ścieżka filtrowania nie zwraca tu
+        # zdublowanych wierszy, a Paginator wołał ``COUNT(DISTINCT …)`` po
+        # wszystkich kolumnach modelu (29 dla Autora) przy każdym wejściu i
+        # każdej kolejnej stronie. Ścieżka po ścieżce:
+        #
+        # * filtr „literki" — ``istartswith`` na własnej kolumnie modelu,
+        # * ``fulltext_filter`` dla ``Zrodlo`` i ``Jednostka`` — predykat na
+        #   jednokolumnowym tsvectorze, bez JOIN-a,
+        # * ``fulltext_filter`` dla ``Autor`` — UWAGA, tu JOIN JEST:
+        #   ``AutorManager.fulltext_annotate`` (``bpp/models/autor.py``)
+        #   nadpisuje wersję z ``FulltextSearchMixin`` i zwraca
+        #   ``Count("wydawnictwo_ciagle")``, co dokłada ``LEFT OUTER JOIN
+        #   bpp_wydawnictwo_ciagle_autor``. Wierszy nie mnoży wyłącznie
+        #   dlatego, że agregat wymusza ``GROUP BY`` po pk — deduplikacja
+        #   pochodzi stamtąd, nie z braku złączenia. Zmiana tej adnotacji na
+        #   NIEagregującą zostawi JOIN bez ``GROUP BY`` i wymaga własnej
+        #   deduplikacji (pilnuje tego
+        #   ``test_autorzy_view_fulltext_nie_mnozy_mimo_joinu_po_publikacjach``),
+        # * ``AutorzyView`` — ``Exists()``/``OuterRef`` (skorelowane
+        #   podzapytania) plus ``select_related`` po FK,
+        # * ``ZrodlaView`` — ``pk__in=<podzapytanie>`` (``IN``, nie JOIN),
+        # * ``JednostkiView`` — ``scope_jednostki_do_uczelni`` (równość po
+        #   skalarnym FK ``uczelnia``), ``widoczna``, ``parent=None``.
+        #
+        # Reguła na przyszłość: nowy filtr po relacji odwrotnej lub M2M ma
+        # przynieść własną deduplikację RAZEM z sobą (jak robi to
+        # ``scope_rekord_do_uczelni``), a nie przywracać bezwarunkowe
+        # ``.distinct()`` w klasie bazowej.
+        return qry
 
     def get_context_data(self, **kw):
         return super().get_context_data(
@@ -354,6 +416,7 @@ class Browser(ListView):
                 raise
 
 
+@method_decorator(cache_publiczny(), name="dispatch")
 class AutorzyView(Browser):
     template_name = "browse/autorzy_modern_bordered.html"
     model = Autor
@@ -449,6 +512,7 @@ class AutorzyView(Browser):
         return context
 
 
+@method_decorator(cache_publiczny(), name="dispatch")
 class ZrodlaView(Browser):
     template_name = "browse/zrodla.html"
     model = Zrodlo
@@ -500,6 +564,7 @@ class ZrodlaView(Browser):
         return context
 
 
+@method_decorator(cache_publiczny(), name="dispatch")
 class JednostkiView(Browser):
     template_name = "browse/jednostki.html"
     model = Jednostka
@@ -567,6 +632,7 @@ class ZrodloView(DetailView):
         return context
 
 
+@method_decorator(cache_publiczny(), name="dispatch")
 class LataView(ListView):
     template_name = "browse/lata.html"
     context_object_name = "years"
@@ -575,10 +641,16 @@ class LataView(ListView):
     def get_queryset(self):
         uczelnia = Uczelnia.objects.get_for_request(self.request)
         qs = scope_rekord_do_uczelni(Rekord.objects.all(), uczelnia)
+        # ``Count("id", distinct=True)``, NIE ``Count("*")``: w multi-host
+        # ``scope_rekord_do_uczelni`` dokłada JOIN po M2M ``autorzy``, więc
+        # ``Count("*")`` liczył wiersze złączenia — rekord z dwoma
+        # autorstwami tej samej uczelni podbijał licznik roku do 2.
+        # ``.distinct()`` z helpera tego nie ratuje: dotyczy zwiniętych par
+        # ``(rok, count)``, a nie wierszy wchodzących do agregatu.
         return [
             {"year": row["rok"], "count": row["count"]}
             for row in qs.values("rok")
-            .annotate(count=Count("*"))
+            .annotate(count=Count("id", distinct=True))
             .filter(count__gt=0)
             .order_by("-rok")
         ]
@@ -607,6 +679,7 @@ class LataView(ListView):
         return context
 
 
+@method_decorator(cache_publiczny(), name="dispatch")
 class RokView(ListView):
     template_name = "browse/rok.html"
     model = Rekord
@@ -745,8 +818,8 @@ class BuildSearch(RedirectView):
             zakres_lat_box,
         )
 
-        self.request.session["MULTISEEK_TITLE"] = self.request.POST.get(
-            "suggested-title", ""
+        self.request.session["MULTISEEK_TITLE"] = sanitize_multiseek_title(
+            self.request.POST.get("suggested-title", "")
         )
 
         # Usuń listę ręcznie wyrzuconych rekordów, ponieważ wchodzimy na świeże
@@ -767,8 +840,10 @@ class PracaViewMixin:
         # jednostka__uczelnia). No-op przy single-install.
         self.object._uczelnia_ogladajacego = uczelnia_dla_odczytu(request)
 
-        if request.user.is_anonymous:
-            # Jeżeli użytkownik jest anonimowy, to może obejmować go ukrywanie statusów
+        if not moze_wprowadzac_dane(request.user):
+            # Rekordy o statusie ukrytym na poziomie "podglad" są niedostępne
+            # dla wszystkich POZA użytkownikami z uprawnieniami redaktorskimi
+            # (anonim oraz zwykłe zalogowane konto → 403).
             uczelnia = Uczelnia.objects.get_for_request(request)
 
             if uczelnia is not None:
@@ -797,6 +872,11 @@ class PracaViewMixin:
                 reverse("bpp:browse_praca_by_slug", args=(self.object.slug,))
             )
 
+        # Szablon strony rekordu sięga po autorów opisu i po streszczenia
+        # z kilku miejsc (metadane w <head>, opis bibliograficzny, tabela
+        # informacji dodatkowych). Materializujemy je raz, przed renderem.
+        prefetch_dane_strony_rekordu(self.object.original)
+
         context = self.get_context_data(object=self.object)
         return self.render_to_response(context)
 
@@ -804,6 +884,7 @@ class PracaViewMixin:
 END_NUMBER_REGEX = re.compile(r"(?P<content_type_id>\d+)-(?P<object_id>\d+)$")
 
 
+@method_decorator(cache_publiczny(), name="dispatch")
 class PracaViewBySlug(PracaViewMixin, DetailView):
     template_name = "browse/praca.html"
     model = Rekord
@@ -834,6 +915,7 @@ class PracaViewBySlug(PracaViewMixin, DetailView):
         raise Http404
 
 
+@method_decorator(cache_publiczny(), name="dispatch")
 class PracaView(PracaViewMixin, DetailView):
     template_name = "browse/praca.html"
     model = Rekord

@@ -1,1 +1,0 @@
-Kasowanie jednostek w panelu administracyjnym jest teraz bezpieczne — usunąć można wyłącznie jednostkę w pełni pustą (bez podjednostek i bez żadnych obiektów przypiętych do niej przez klucze obce). Przy próbie skasowania niepustej jednostki system wyświetla listę tego, co ją blokuje, zamiast po cichu kasować powiązane dane w kaskadzie.

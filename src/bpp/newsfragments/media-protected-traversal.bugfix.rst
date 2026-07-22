@@ -1,0 +1,1 @@
+Załatano lukę path-traversal w serwowaniu mediów: ścieżka jest teraz normalizowana przed sprawdzeniem guardu, więc obejścia typu ``public/../protected/plik.pdf`` nie omijają już ochrony katalogu ``protected/``.

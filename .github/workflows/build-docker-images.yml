@@ -26,12 +26,12 @@ name: Docker - oficjalne obrazy
 #       • HIGH       → report-only w GitHub Step Summary. Dominuje szum
 #         (DoS w build-time libach, test fixtures z privnymi kluczami w
 #         bibliotekach pythonowych). Blokowanie HIGH spowodowalo by
-#         stale czerwone master bez dzialania po stronie kodu.
+#         stale czerwone release candidate bez dzialania po stronie kodu.
 #       • --ignore-unfixed → pomijamy CVE bez fixa (nic nie mozemy
 #         zrobic, nie blokujemy release-u w nieskonczonosc).
-#     Feature branche NIE sa skanowane — to +3.5 min na pipeline i nie
-#     dotycza release-u (pushuja do branch-specific tagu, ktory jest
-#     jawnie tymczasowy).
+#     Reczne buildy feature branchy NIE sa skanowane — to +3.5 min na
+#     pipeline i nie dotycza release-u (publikuja branch-specific tag,
+#     ktory jest jawnie tymczasowy).
 #
 #   Faza 3 — Promote staging → canonical tag
 #     Po przejsciu Trivy (release-candidate) lub bezwarunkowo (feature branch),
@@ -62,10 +62,10 @@ name: Docker - oficjalne obrazy
 # =============================================================================
 
 on:
-  # UWAGA: push:master USUNIĘTY. Produkcyjny :latest rusza WYŁĄCZNIE promote.yml
-  # (imagetools z gotowego RC) — build-once-promote, jedno źródło prawdy o prod.
-  pull_request:
-    types: [opened, synchronize, reopened]
+  # Brak automatycznych triggerów push/pull_request jest celowy:
+  # - release-candidate.yml wywołuje ten silnik przez workflow_call;
+  # - build dowolnego refa można uruchomić ręcznie przez workflow_dispatch.
+  # Produkcyjny :latest ustawia wyłącznie promote.yml z gotowego RC.
   workflow_dispatch:
   workflow_call:
     inputs:
@@ -89,125 +89,30 @@ on:
       DOCKER_PAT:
         required: true
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  check-flag:
-    # Guard job decyduje czy budowac obraz Docker.
-    # - workflow_call:               buduj zawsze (release-candidate.yml)
-    # - workflow_dispatch:           buduj zawsze (manual override, dowolny actor),
-    #                                 ale NIGDY nie ruszaj :latest
-    # - PR push / feature push:      buduj tylko gdy:
-    #                                 • actor=mpasternak
-    #                                 • ORAZ commit message zawiera [docker-build]
-    #                                   (case-insensitive, w subject lub body)
-    #                               W przeciwnym razie skip — aby nie palic
-    #                               Docker Cloud minutek na kazdy feature/fix
-    #                               branch. Mozna wymusic build recznie przez
-    #                               `gh workflow run build-docker-images.yml`.
-    # Plus dedupe: push do branchu z otwartym PR-em → skip (PR run obsluzy).
-    #
-    # Budowanie ad-hoc dowolnego branchu jako inny user:
-    #   gh workflow run build-docker-images.yml --ref <branch>
+  # ===================================================================
+  # JOB 1: build — buduje obrazy i pushuje je pod STAGING TAG.
+  # Ma DOCKER_PAT (login do Docker Hub + build cloud + bake push).
+  # Skan CVE jest CELOWO w osobnym jobie (`scan`) BEZ tego sekretu —
+  # patrz komentarz nad jobem `scan`.
+  # ===================================================================
+  build:
+    name: Build & push obrazów → staging tag
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
+    # Tagi policzone tutaj muszą dojechać do jobów `scan` i `promote`
+    # (osobne runnery, brak współdzielonego steps.* kontekstu) — eksponujemy
+    # je jako outputy joba.
     outputs:
-      should_build: ${{ steps.check.outputs.should_build }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          fetch-depth: 0  # Need full history for commit messages
-      - id: check
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REF_NAME: ${{ github.ref_name }}
-          # head_ref jest ustawione tylko dla pull_request eventów — to nazwa
-          # branchu zrodlowego PR-a (ref_name na PR to "<PR>/merge" ktorego
-          # workflow_dispatch nie akceptuje). Uzywane do hintu w komunikacie
-          # "jak wymusic build".
-          HEAD_REF: ${{ github.head_ref }}
-          EVENT_NAME: ${{ github.event_name }}
-          REPO: ${{ github.repository }}
-          ACTOR: ${{ github.actor }}
-          GIT_SHA: ${{ github.sha }}
-          VERSION_TAG: ${{ inputs.version_tag }}
-        run: |
-          # Wywołanie reusable (workflow_call): silnik buduje bezwarunkowo.
-          if [ -n "${VERSION_TAG:-}" ]; then
-            echo "should_build=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Docker build — workflow_call (version_tag=${VERSION_TAG})"
-            exit 0
-          fi
-
-          # Dedupe: push event na branchu z otwartym PR-em jest duplikatem
-          # pull_request eventu dla tego samego commita. Pomijamy push run,
-          # zeby nie budowac i nie pushowac tego samego SHA dwa razy do
-          # Docker Cloud (~7 min build + transfer do rejestru kazdorazowo).
-          # pull_request event bedzie tagowal obraz <PR#>-merge.
-          if [ "$EVENT_NAME" = "push" ] \
-             && [ "$REF_NAME" != "master" ] \
-             && [ "$REF_NAME" != "main" ]; then
-            PR=$(gh pr list --head "$REF_NAME" --state open \
-                 --repo "$REPO" \
-                 --json number --jq '.[0].number // empty')
-            if [ -n "$PR" ]; then
-              echo "should_build=false" >> "$GITHUB_OUTPUT"
-              echo "::notice::Pomijam push run — PR #${PR} obsluzy ten commit (tag ${PR}-merge)"
-              exit 0
-            fi
-          fi
-
-          # Zawsze: workflow_dispatch (manual). Takie buildy publikują tylko
-          # tag brancha/refa, nigdy produkcyjny :latest.
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            echo "should_build=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Docker build — workflow_dispatch (manual override)"
-            exit 0
-          fi
-
-          # Pozostale (PR event, feature push bez PR) — sprawdzamy flage
-          # [docker-build] w commit message (case-insensitive).
-          # Budujemy tylko gdy:
-          #   - actor to mpasternak
-          #   - ORAZ commit message zawiera [docker-build]
-          if [ "$ACTOR" != "mpasternak" ]; then
-            echo "should_build=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Pomijam Docker build — actor=${ACTOR} != mpasternak (flag check skipped)"
-            exit 0
-          fi
-
-          # Pobierz pelny commit message (subject + body)
-          COMMIT_MSG=$(git log -1 --format=%B "$GIT_SHA")
-
-          # Sprawdz flage [docker-build] (case-insensitive)
-          if echo "$COMMIT_MSG" | grep -qi "\[docker-build\]"; then
-            echo "should_build=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Docker build — znaleziono flage [docker-build] w commit message"
-          else
-            echo "should_build=false" >> "$GITHUB_OUTPUT"
-            # Dla pull_request event github.ref_name to "<PR#>/merge"
-            # (wewnetrzny merge-ref GH, nie branch). `gh workflow run --ref`
-            # wymaga nazwy brancha — dla PR pobieramy ja z `gh pr view`,
-            # dla push event'u uzywamy REF_NAME.
-            if [ "$EVENT_NAME" = "pull_request" ]; then
-              PR_NUM="${REF_NAME%/merge}"
-              DISPATCH_REF=$(gh pr view "$PR_NUM" --repo "$REPO" \
-                             --json headRefName --jq '.headRefName')
-            else
-              DISPATCH_REF="$REF_NAME"
-            fi
-            echo "::notice::Pomijam Docker build — brak flagi [docker-build] w commit message"
-            echo "::notice::Aby wymusic build, dodaj [docker-build] do commit message lub uruchom recznie: gh workflow run build-docker-images.yml --ref ${DISPATCH_REF}"
-          fi
-
-  docker:
-    needs: check-flag
-    if: needs.check-flag.outputs.should_build == 'true'
-    runs-on: ubuntu-latest
+      staging_tag: ${{ steps.tag.outputs.staging_tag }}
+      final_tag: ${{ steps.tag.outputs.final_tag }}
+      channel_tag: ${{ steps.tag.outputs.channel_tag }}
     steps:
       - name: Log in to Docker Hub
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
@@ -218,7 +123,15 @@ jobs:
       - name: Set up Docker Buildx Action
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
         with:
-          version: "lab:latest"
+          # PRZYPIĘTE do konkretnej wersji lab (buildx-desktop) zamiast ruchomego
+          # "lab:latest". "lab:latest" ściąga binarkę buildx z kanału lab, którego
+          # kompromitacja/podmiana leci w tym jobie z DOCKER_PAT w env — pin usuwa
+          # ten wektor. v0.34.1-desktop.1 = dokładnie to, na co "lab:latest"
+          # wskazywał w buildx-lab-releases.json (docker/actions-toolkit) w chwili
+          # przypięcia, więc jest gwarantowanie kompatybilne z driver: cloud.
+          # BUMP: sprawdź nowy klucz wersji w
+          # https://github.com/docker/actions-toolkit/blob/main/.github/buildx-lab-releases.json
+          version: "lab:v0.34.1-desktop.1"
           driver: cloud
           endpoint: "iplweb/bpp"
           cache-binary: true
@@ -226,37 +139,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          # Pusty ref (dispatch/PR) = domyślny ref eventu; przy workflow_call
-          # budujemy dokładnie gałąź wydania.
+          # Pusty ref (workflow_dispatch) = ref wybrany przy uruchomieniu;
+          # przy workflow_call budujemy dokładnie gałąź wydania.
           ref: ${{ inputs.ref }}
 
       - name: Resolve checked-out commit
         id: source
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Get version from Makefile
-        id: version
-        run: echo "version=$(grep '^DOCKER_VERSION=' Makefile | cut -d'=' -f2)" >> $GITHUB_OUTPUT
-
       - name: Compute Docker tags (staging + final)
         id: tag
         env:
           REF_NAME: ${{ github.ref_name }}
-          # head_ref jest ustawione tylko dla pull_request eventów — to nazwa
-          # gałęzi PR-a (czyli "feature/...", a nie "<PR#>/merge" jak ref_name).
-          # Sanityzujemy przed użyciem (sed/tr poniżej) — tag nie trafia
-          # bezpośrednio do shella jako kod, tylko jako argument do imagetools.
-          HEAD_REF: ${{ github.head_ref }}
-          BASE_VERSION: ${{ steps.version.outputs.version }}
           GIT_SHA: ${{ github.sha }}
           CHECKED_OUT_SHA: ${{ steps.source.outputs.sha }}
-          EVENT_NAME: ${{ github.event_name }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
           INPUT_VERSION_TAG: ${{ inputs.version_tag }}
           INPUT_CHANNEL: ${{ inputs.channel }}
         run: |
           # -----------------------------------------------------------------
-          # Dwa-trzy rodzaje tagow dla kazdego obrazu (patrz naglowek pliku):
+          # Dwa rodzaje tagow dla kazdego obrazu (patrz naglowek pliku):
           #
           # staging_tag: niekanoniczny, unikalny per build. Bake pushuje
           #              TU przed skanem. Format: "sha-<short_sha>".
@@ -266,15 +167,7 @@ jobs:
           # final_tag:   kanoniczny tag — tworzony DOPIERO po skanie przez
           #              promocje manifestu (imagetools create).
           #              • workflow_call→ version_tag z caller workflow
-          #              • pull_request → "<PR#>-merge" (jesli jest PR)
-          #              • manual/branch→ sanitized ref name
-          #
-          # branch_tag:  DODATKOWY alias = sanityzowana nazwa source brancha.
-          #              Ustawiany TYLKO dla pull_request eventow, zeby tester
-          #              mogl pullowac obraz po nazwie brancha (intuicyjne)
-          #              zamiast pamietac numer PR. Dla feature/fix push
-          #              brancha bez PR-a final_tag = branch_tag, wiec nie
-          #              ma sensu duplikowac.
+          #              • workflow_dispatch → sanityzowana nazwa refa
           # Produkcyjny :latest jest ustawiany wyłącznie przez promote.yml.
           # -----------------------------------------------------------------
 
@@ -287,25 +180,20 @@ jobs:
           if [ -n "${INPUT_VERSION_TAG:-}" ]; then
             echo "final_tag=${INPUT_VERSION_TAG}" >> "$GITHUB_OUTPUT"
             echo "channel_tag=${INPUT_CHANNEL}" >> "$GITHUB_OUTPUT"
-            echo "branch_tag=" >> "$GITHUB_OUTPUT"
+            # RC jest staging-flavored → stopka pokazuje wersję rcN + git SHA.
+            # BPP_IMAGE_TAG (footer_image_tag) zostaje PUSTY: tag obrazu = ta
+            # sama wersja rcN, więc duplikowałby "wersję" w stopce. Prod (po
+            # promote) jest release-flavored i tak chowa image_tag.
+            echo "footer_image_tag=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          if [ "$EVENT_NAME" = "pull_request" ] && [ -n "$PR_NUMBER" ]; then
-            echo "final_tag=${PR_NUMBER}-merge" >> "$GITHUB_OUTPUT"
-            BRANCH_TAG=$(echo "$HEAD_REF" \
-              | sed 's/[^a-zA-Z0-9._-]/-/g' \
-              | tr '[:upper:]' '[:lower:]')
-            echo "branch_tag=${BRANCH_TAG}" >> "$GITHUB_OUTPUT"
-            echo "channel_tag=" >> "$GITHUB_OUTPUT"
-          else
-            BRANCH_TAG=$(echo "$REF_NAME" \
-              | sed 's/[^a-zA-Z0-9._-]/-/g' \
-              | tr '[:upper:]' '[:lower:]')
-            echo "final_tag=${BRANCH_TAG}" >> "$GITHUB_OUTPUT"
-            echo "branch_tag=" >> "$GITHUB_OUTPUT"
-            echo "channel_tag=" >> "$GITHUB_OUTPUT"
-          fi
+          FINAL_TAG=$(echo "$REF_NAME" \
+            | sed 's/[^a-zA-Z0-9._-]/-/g' \
+            | tr '[:upper:]' '[:lower:]')
+          echo "final_tag=${FINAL_TAG}" >> "$GITHUB_OUTPUT"
+          echo "footer_image_tag=${FINAL_TAG}" >> "$GITHUB_OUTPUT"
+          echo "channel_tag=" >> "$GITHUB_OUTPUT"
 
       # -----------------------------------------------------------------
       # FAZA 1: Build → push do staging tagu
@@ -320,19 +208,21 @@ jobs:
           DOCKER_VERSION: ${{ steps.tag.outputs.staging_tag }}
           TAG_LATEST: "false"
           PUSH: "true"
-          # Wynikiem ekspresji jest literal "release" albo "dev" — nie ma
+          # Wynikiem ekspresji jest literal "staging"/"release"/"dev" — nie ma
           # tu untrusted input z github.event.*. Ref name jest weryfikowane
-          # przez równość z literałem, więc nie ma ryzyka injection. Reusable
-          # RC build też jest release-flavored, bo te same bajty idą na prod.
-          BPP_BUILD_FLAVOR: ${{ inputs.version_tag != '' && 'release' || (github.ref_name == 'master' && 'release' || 'dev') }}
-          # Kanoniczny tag finalny — wpisany do obrazu jako BPP_IMAGE_TAG
-          # ENV, żeby stopka dla dev buildów wyświetlała "119-merge" obok
-          # commit SHA. Wartość pochodzi ze stepa `tag` powyżej.
-          BPP_IMAGE_TAG: ${{ steps.tag.outputs.final_tag }}
-          # Alias nazwy brancha (np. "feature-nowe-zglos-publikacje") —
-          # ustawiany przez step `tag` tylko dla pull_request eventów,
-          # pusty inaczej. Stopka pokaże ten alias obok PR#-merge.
-          BPP_BRANCH_TAG: ${{ steps.tag.outputs.branch_tag }}
+          # przez równość z literałem, więc nie ma ryzyka injection.
+          #
+          # RC build (version_tag != '') jest STAGING-flavored, NIE release:
+          # te obrazy trafiają na :staging, a deployment staging pokazuje w
+          # stopce wersję rcN + git SHA (release-flavor chowałby te "atrakcje").
+          # Produkcyjny obraz powstaje dopiero w promote.yml, który nakłada
+          # patch-layer: finalny version.py (bez rc) + BPP_BUILD_FLAVOR=release.
+          # Patrz docker/promote-patch/Dockerfile.
+          BPP_BUILD_FLAVOR: ${{ inputs.version_tag != '' && 'staging' || (github.ref_name == 'master' && 'release' || 'dev') }}
+          # Tag obrazu wpisany do stopki (ręczne buildy: nazwa refa obok SHA).
+          # Dla RC pusty (footer_image_tag w stepie `tag`) — tag obrazu = wersja
+          # rcN, więc byłby redundantny ze "wersją". Prod i tak chowa image_tag.
+          BPP_IMAGE_TAG: ${{ steps.tag.outputs.footer_image_tag }}
         run: |
           docker buildx bake \
             base appserver workerserver \
@@ -341,18 +231,46 @@ jobs:
             --set "base.args.GIT_SHA=${GIT_SHA}" \
             --set "base.args.BPP_BUILD_FLAVOR=${BPP_BUILD_FLAVOR}" \
             --set "base.args.BPP_IMAGE_TAG=${BPP_IMAGE_TAG}" \
-            --set "base.args.BPP_BRANCH_TAG=${BPP_BRANCH_TAG}" \
             --set '*.platform=linux/amd64' \
             --allow=fs.read=/tmp \
             --allow=fs.write=/tmp
 
+  # ===================================================================
+  # JOB 2: scan — brama Trivy w ODDZIELNYM jobie, CELOWO BEZ DOCKER_PAT.
+  # ===================================================================
+  # Dlaczego osobny job: Trivy to zewnętrzne narzędzie odpalane z docker
+  # socketem. Gdyby dzieliło job z krokiem `docker login` (DOCKER_PAT),
+  # skompromitowany Trivy (nawet przy przypiętym digeście — np. dziura w
+  # samym narzędziu) miałby PAT w zasięgu. W osobnym jobie GitHub nie
+  # wstrzykuje sekretu, którego żaden krok nie referencuje → proces Trivy
+  # NIGDY nie ma PAT-a w środowisku. To defense-in-depth ponad pin obrazu.
+  #
+  # Skan PULL-uje obrazy staging z Docker Huba — repozytoria iplweb/bpp_*
+  # są PUBLICZNE (anonimowy pull działa), więc ten job nie potrzebuje
+  # ŻADNYCH credentiali do rejestru. (Obrazy z build-cloud i tak nie są
+  # w lokalnym daemonie — Trivy zawsze ciągnie je z rejestru.)
+  #
+  # `if` na poziomie joba: skan biegnie dla workflow_call (RC) ORAZ ręcznego
+  # buildu refa master. Dla ręcznego feature brancha (run_trivy=false) job
+  # jest 'skipped' → promote i tak przepuszcza (patrz `if` promote).
+  scan:
+    name: Skan CVE (Trivy) — bez DOCKER_PAT
+    needs: build
+    if: ${{ inputs.run_trivy || github.ref_name == 'master' }}
+    runs-on: ubuntu-latest
+    env:
+      # Trivy PRZYPIĘTY do wersji + digestu (multi-arch index), NIE ruchomego
+      # :latest — rejestr nie może podmienić zawartości pod niezmiennym
+      # digestem. Wersja 0.72.0 = ta sama co binarka trivy w
+      # release-candidate.yml (skan deps) — jeden trivy w całym pipeline.
+      # BUMP: podnieś wersję i digest z
+      #   docker buildx imagetools inspect aquasec/trivy:<wersja>
+      # (weź „Digest:" indeksu multi-arch, nie per-platform manifest).
+      TRIVY_IMAGE: "aquasec/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f"
+    steps:
       # -----------------------------------------------------------------
-      # FAZA 2: Trivy gate (gdy run_trivy=true lub master)
-      # -----------------------------------------------------------------
-      # Skanuje staging tag. Gate odpala się dla wywołań workflow_call
-      # (RC przez release-candidate.yml) ORAZ pushów na master.
-      # CRITICAL z dostepnym fix-em → exit 1, promocja sie nie wykona
-      # (krok "Promote" ma domyslnie "if: success()").
+      # Skanuje staging tag. CRITICAL z dostepnym fix-em → exit 1, cały job
+      # 'failure' → promocja sie nie wykona (patrz `if` joba promote).
       # HIGH → zapis do Step Summary, nie blokuje.
       #
       # Skipowane sciezki (znane false-positivy w zaleznosciach):
@@ -362,10 +280,9 @@ jobs:
       # dopisz tutaj z komentarzem wyjasniajacym dlaczego to nie jest
       # prawdziwy sekret.
       # -----------------------------------------------------------------
-      - name: Trivy CRITICAL gate (gdy run_trivy / master)
-        if: ${{ inputs.run_trivy || github.ref_name == 'master' }}
+      - name: Trivy CRITICAL gate
         env:
-          STAGING_TAG: ${{ steps.tag.outputs.staging_tag }}
+          STAGING_TAG: ${{ needs.build.outputs.staging_tag }}
         run: |
           set -u
           images=(
@@ -396,7 +313,7 @@ jobs:
             if ! docker run --rm \
               -v /var/run/docker.sock:/var/run/docker.sock \
               -v /tmp/trivy-cache:/root/.cache/trivy \
-              aquasec/trivy:latest image \
+              "${TRIVY_IMAGE}" image \
                 "${TRIVY_COMMON_ARGS[@]}" \
                 "${img}:${STAGING_TAG}"; then
               FAILED_IMAGES+=("${img}")
@@ -421,19 +338,18 @@ jobs:
               echo "Co zrobic:"
               echo "1. Przejrzyj log powyzej — Trivy wypisuje CVE ID i pakiet"
               echo "2. Zaktualizuj bazowy obraz / zaleznosc z fixem"
-              echo "3. Ponow push do mastera"
+              echo "3. Ponów release candidate albo ręczny build"
             } >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
 
-      - name: Trivy HIGH report (gdy run_trivy / master, report-only)
+      - name: Trivy HIGH report (report-only)
         # Pokaz liste HIGH w Step Summary, ale nie blokuj. To jest
         # pomocna informacja o "dlugu CVE" — pozwala zdecydowac co bumpnac
         # przy nastepnej aktualizacji zaleznosci, bez zatrzymywania release-u.
-        if: ${{ inputs.run_trivy || github.ref_name == 'master' }}
         continue-on-error: true
         env:
-          STAGING_TAG: ${{ steps.tag.outputs.staging_tag }}
+          STAGING_TAG: ${{ needs.build.outputs.staging_tag }}
         run: |
           set -u
           images=(
@@ -455,7 +371,7 @@ jobs:
             REPORT=$(docker run --rm \
               -v /var/run/docker.sock:/var/run/docker.sock \
               -v /tmp/trivy-cache:/root/.cache/trivy \
-              aquasec/trivy:latest image \
+              "${TRIVY_IMAGE}" image \
                 --severity HIGH \
                 --exit-code 0 \
                 --ignore-unfixed \
@@ -478,28 +394,46 @@ jobs:
             echo "::endgroup::"
           done
 
-      # -----------------------------------------------------------------
-      # FAZA 3: Promote staging tag → canonical tag(s)
-      # -----------------------------------------------------------------
-      # docker buildx imagetools create -t NEW SOURCE:
-      #   kopiuje manifest z SOURCE pod tag NEW w tym samym rejestrze.
-      #   Nie rebuilduje, nie pushuje warstw — tylko zapisuje manifest
-      #   z referencja do istniejacych (juz pushnietych) layers.
-      #   Koszt: 1-2 sek per tag.
-      #
-      # if: success() (domyslne) — na master wykona sie tylko jesli Trivy
-      # gate przeszedl. Na feature branch zawsze (tam skan sie nie uruchomil,
-      # poprzednie kroki byly "if: github.ref_name == 'master'" i zakonczyly
-      # sie jako "skipped" → success=true dla nastepnych).
-      # -----------------------------------------------------------------
+  # ===================================================================
+  # JOB 3: promote — kopiuje manifest staging → kanoniczny tag.
+  # ===================================================================
+  # Ma DOCKER_PAT: `imagetools create` PUSHUJE manifest do rejestru, więc
+  # wymaga loginu. Oddzielony od skanu — PAT nie jest w środowisku Trivy.
+  #
+  # docker buildx imagetools create -t NEW SOURCE:
+  #   kopiuje manifest z SOURCE pod tag NEW w tym samym rejestrze.
+  #   Nie rebuilduje, nie pushuje warstw — tylko zapisuje manifest
+  #   z referencja do istniejacych (juz pushnietych) layers.
+  #   Koszt: 1-2 sek per tag. (Nie potrzebuje cloud drivera — to operacja
+  #   na rejestrze; domyślny builder w zupełności wystarcza.)
+  #
+  # BRAMKA `if`: buduj kanoniczny tag tylko gdy build OK ORAZ skan zielony
+  # LUB pominięty. scan='skipped' = run_trivy=false (ręczny feature branch)
+  # → promocja tymczasowego tagu może iść od razu. scan='failure'/'cancelled'
+  # (CRITICAL CVE) → promocja się NIE wykona, kanoniczny tag nie powstanie.
+  promote:
+    name: Promote staging → kanoniczny tag
+    needs: [build, scan]
+    if: |
+      always()
+      && needs.build.result == 'success'
+      && (needs.scan.result == 'success' || needs.scan.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          username: ${{ vars.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PAT }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
       - name: Promote staging tag to canonical tag(s)
         env:
-          STAGING_TAG: ${{ steps.tag.outputs.staging_tag }}
-          FINAL_TAG: ${{ steps.tag.outputs.final_tag }}
-          # Alias-tag dla source brancha PR-a (pusty dla master/non-PR);
-          # patrz komentarz w stepie "Compute Docker tags".
-          BRANCH_TAG: ${{ steps.tag.outputs.branch_tag }}
-          CHANNEL_TAG: ${{ steps.tag.outputs.channel_tag }}
+          STAGING_TAG: ${{ needs.build.outputs.staging_tag }}
+          FINAL_TAG: ${{ needs.build.outputs.final_tag }}
+          CHANNEL_TAG: ${{ needs.build.outputs.channel_tag }}
         run: |
           set -eu
           images=(
@@ -511,7 +445,7 @@ jobs:
             iplweb/bpp_denorm_queue
           )
 
-          echo "::notice::Promocja: ${STAGING_TAG} → ${FINAL_TAG} (branch=${BRANCH_TAG:-})"
+          echo "::notice::Promocja: ${STAGING_TAG} → ${FINAL_TAG}"
 
           for img in "${images[@]}"; do
             echo "::group::Promote ${img}: ${STAGING_TAG} → ${FINAL_TAG}"
@@ -527,14 +461,6 @@ jobs:
                 "${img}:${STAGING_TAG}"
             fi
 
-            # Tester pullujący po nazwie brancha dostaje świeży obraz
-            # (PR-owy build re-promuje ten alias przy każdym pushu).
-            if [ -n "${BRANCH_TAG:-}" ] && [ "$BRANCH_TAG" != "$FINAL_TAG" ]; then
-              echo "→ also tagging :${BRANCH_TAG}"
-              docker buildx imagetools create \
-                -t "${img}:${BRANCH_TAG}" \
-                "${img}:${STAGING_TAG}"
-            fi
             echo "::endgroup::"
           done
 
@@ -543,7 +469,4 @@ jobs:
             echo ""
             echo "Staging tag: \`${STAGING_TAG}\`"
             echo "Final tag:   \`${FINAL_TAG}\`"
-            if [ -n "${BRANCH_TAG:-}" ] && [ "$BRANCH_TAG" != "$FINAL_TAG" ]; then
-              echo "Branch alias: \`:${BRANCH_TAG}\`"
-            fi
           } >> "$GITHUB_STEP_SUMMARY"

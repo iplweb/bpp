@@ -118,6 +118,25 @@ def _rule_nazwisko(a: dict, b: dict, sig: dict) -> tuple[int, str] | None:
     return None
 
 
+def _rule_poprzednie_nazwisko(a: dict, b: dict, sig: dict) -> tuple[int, str] | None:
+    """Nazwisko jednego autora figuruje w poprzednich nazwiskach drugiego.
+
+    Łapie zmianę nazwiska (panieńskie → po mężu, dwuczłonowe → jednoczłonowe):
+    to samo nazwisko jako obecne u jednego rekordu i jako poprzednie u drugiego,
+    albo wspólne poprzednie nazwisko po obu stronach (FD#407).
+    """
+    a_naz = a["nazwisko_norm"]
+    b_naz = b["nazwisko_norm"]
+    a_prev = set(a.get("poprzednie_nazwiska_norm") or [])
+    b_prev = set(b.get("poprzednie_nazwiska_norm") or [])
+    if (a_naz and a_naz in b_prev) or (b_naz and b_naz in a_prev):
+        return 40, "nazwisko figuruje w poprzednich nazwiskach drugiego autora"
+    wspolne = a_prev & b_prev
+    if wspolne:
+        return 35, f"wspólne poprzednie nazwisko ({', '.join(sorted(wspolne))})"
+    return None
+
+
 def _rule_swap(a: dict, b: dict, sig: dict) -> tuple[int, str] | None:
     if sig["wykryto_swap"]:
         return 50, "wykryto pełną zamianę imienia z nazwiskiem"
@@ -173,6 +192,7 @@ _RULES = (
     _rule_tytul,
     _rule_orcid,
     _rule_nazwisko,
+    _rule_poprzednie_nazwisko,
     _rule_swap,
     _rule_wspolne_imie,
     _rule_podobne_imie,

@@ -137,6 +137,50 @@ class SentDataManager(models.Manager):
             sd.submitted_at = timezone.now()
         sd.save()
 
+    def fee_upload_needed(self, rec, fee: dict, uczelnia=None):
+        """Czy trzeba wysłać opłatę do PBN?
+
+        Opłata leci osobnym endpointem (institution-profile fee) i — dla
+        ścieżki repozytoryjnej — NIE jest częścią payloadu publikacji ani
+        jego porównania. Śledzimy ją osobno (``fee_sent``), żeby wykryć
+        samą zmianę opłaty (FD#301). True gdy: brak śladu / poprzednia
+        wysyłka opłaty nie powiodła się / opłata się zmieniła.
+        """
+        try:
+            sd = self.get_for_rec(rec, uczelnia)
+        except SentData.DoesNotExist:
+            return True
+
+        if not sd.fee_uploaded_okay:
+            return True
+
+        return sd.fee_sent != fee
+
+    def record_fee_sent(self, rec, fee: dict, uczelnia=None, uploaded_okay=True):
+        """Zapamiętaj ostatnio wysłaną opłatę (create-or-update).
+
+        Zwykle wiersz ``SentData`` już istnieje (rekord był wcześniej
+        wysłany). Gdy nie istnieje — tworzymy go z pustym ``data_sent``
+        (sama opłata, bez śladu wysyłki payloadu publikacji).
+        """
+        try:
+            sd = self.get_for_rec(rec, uczelnia)
+        except SentData.DoesNotExist:
+            return self.create(
+                object=rec,
+                data_sent={},
+                uploaded_okay=False,
+                submitted_successfully=False,
+                fee_sent=fee,
+                fee_uploaded_okay=uploaded_okay,
+                uczelnia=uczelnia,
+            )
+
+        sd.fee_sent = fee
+        sd.fee_uploaded_okay = uploaded_okay
+        sd.save(update_fields=["fee_sent", "fee_uploaded_okay", "last_updated_on"])
+        return sd
+
     def ids_for_model(self, model, uczelnia=None):
         qs = self.filter(content_type=ContentType.objects.get_for_model(model))
         if uczelnia is not None:
@@ -171,6 +215,15 @@ class SentData(LinkDoPBNMixin, models.Model):
 
     data_sent = JSONField("Wysłane dane")
     last_updated_on = models.DateTimeField("Data operacji", auto_now=True)
+
+    # Ślad ostatnio wysłanej opłaty (institution-profile fee). Opłata leci
+    # osobnym endpointem i dla ścieżki repozytoryjnej wypada z payloadu
+    # publikacji, więc jej zmiany nie wykryłoby porównanie ``data_sent``.
+    # Osobny ślad pozwala wykryć samą zmianę opłaty i ją ponowić (FD#301).
+    fee_sent = JSONField("Wysłane dane o opłacie", null=True, blank=True)
+    fee_uploaded_okay = models.BooleanField(
+        "Opłatę wysłano poprawnie", default=False, db_index=True
+    )
 
     uploaded_okay = models.BooleanField(
         "Wysłano poprawnie", default=True, db_index=True

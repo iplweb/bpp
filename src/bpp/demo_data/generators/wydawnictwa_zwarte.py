@@ -6,6 +6,7 @@ import random
 from collections.abc import Iterable
 from dataclasses import dataclass
 
+from bpp.demo_data.db import bulk_create_retry
 from bpp.demo_data.generators._publikacje_common import (
     apply_denorm_pre_save_cache,
     autor_jednostka_mapping,
@@ -105,7 +106,7 @@ def _bulk_create_with_manifest(
     created: list[Wydawnictwo_Zwarte] = []
     for start in pbar:
         chunk = objs[start : start + batch_size]
-        Wydawnictwo_Zwarte.objects.bulk_create(chunk)
+        bulk_create_retry(Wydawnictwo_Zwarte.objects, chunk)
         created.extend(chunk)
         manifest.append("bpp.Wydawnictwo_Zwarte", [p.pk for p in chunk])
         manifest.save()
@@ -268,7 +269,7 @@ def create_wz(
     )
     for start in pbar:
         chunk = powiazania[start : start + batch_size]
-        Wydawnictwo_Zwarte_Autor.objects.bulk_create(chunk)
+        bulk_create_retry(Wydawnictwo_Zwarte_Autor.objects, chunk)
         manifest.append("bpp.Wydawnictwo_Zwarte_Autor", [c.pk for c in chunk])
         manifest.save()
 

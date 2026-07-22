@@ -25,6 +25,12 @@ class ProfilUzytkownikaView(LoginRequiredMixin, TemplateView):
         return super().get(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
+        if "unlink_identity" in request.POST:
+            return self._unlink_identity(request)
+
+        if "unlink_orcid_identity" in request.POST:
+            return self._unlink_orcid_identity(request)
+
         form = ProfilUstawieniaForm(request.POST, instance=request.user)
         if form.is_valid():
             form.save()
@@ -32,10 +38,66 @@ class ProfilUzytkownikaView(LoginRequiredMixin, TemplateView):
             return redirect(reverse("bpp:profil-uzytkownika"))
         return self.render_to_response(self.get_context_data(ustawienia_form=form))
 
+    def _unlink_identity(self, request):
+        """Odłącz wskazaną tożsamość SSO od konta użytkownika.
+
+        Blokada self-lockout: konto bez używalnego hasła nie może odłączyć
+        swojej OSTATNIEJ tożsamości OIDC — inaczej straciłoby jedyną drogę
+        logowania. Odłączyć można tylko własną tożsamość.
+        """
+        user = request.user
+        identity = user.oidc_identities.filter(
+            pk=request.POST.get("unlink_identity")
+        ).first()
+        if identity is None:
+            messages.error(request, "Nie znaleziono wskazanej tożsamości SSO.")
+            return redirect(reverse("bpp:profil-uzytkownika"))
+
+        if not user.has_usable_password() and user.oidc_identities.count() == 1:
+            messages.error(
+                request,
+                "Nie można odłączyć ostatniej tożsamości SSO od konta bez "
+                "hasła lokalnego — straciłbyś dostęp. Najpierw ustaw hasło.",
+            )
+            return redirect(reverse("bpp:profil-uzytkownika"))
+
+        identity.delete()
+        messages.success(request, "Tożsamość SSO została odłączona.")
+        return redirect(reverse("bpp:profil-uzytkownika"))
+
+    def _unlink_orcid_identity(self, request):
+        """Odłącz wskazaną tożsamość ORCID od konta użytkownika.
+
+        Blokada self-lockout: konto bez używalnego hasła nie może odłączyć
+        swojej OSTATNIEJ tożsamości ORCID — inaczej straciłoby jedyną drogę
+        logowania. Odłączyć można tylko własną tożsamość.
+        """
+        user = request.user
+        identity = user.orcid_identities.filter(
+            pk=request.POST.get("unlink_orcid_identity")
+        ).first()
+        if identity is None:
+            messages.error(request, "Nie znaleziono wskazanej tożsamości ORCID.")
+            return redirect(reverse("bpp:profil-uzytkownika"))
+
+        if not user.has_usable_password() and user.orcid_identities.count() == 1:
+            messages.error(
+                request,
+                "Nie można odłączyć ostatniej tożsamości ORCID od konta bez "
+                "hasła lokalnego — straciłbyś dostęp. Najpierw ustaw hasło.",
+            )
+            return redirect(reverse("bpp:profil-uzytkownika"))
+
+        identity.delete()
+        messages.success(request, "Tożsamość ORCID została odłączona.")
+        return redirect(reverse("bpp:profil-uzytkownika"))
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
         context.setdefault("ustawienia_form", ProfilUstawieniaForm(instance=user))
+        context["oidc_identities"] = user.oidc_identities.all()
+        context["orcid_identities"] = user.orcid_identities.all()
         autor = getattr(user, "autor", None)
         context["autor"] = autor
 

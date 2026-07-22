@@ -63,6 +63,7 @@ def task_sprobuj_wyslac_do_pbn(pk):
                 SendStatus.FINISHED_ERROR
                 | SendStatus.RETRY_AFTER_USER_AUTHORISED
                 | SendStatus.WYKLUCZONE
+                | SendStatus.LOCKED_ELSEWHERE
             ):
                 return
 

@@ -51,7 +51,11 @@ def _przejdz_kroki_0_1_2(
     # Krok 2: dane
     page.fill("[name='2-tytul_oryginalny']", "test")
     page.fill("[name='2-rok']", str(rok))
-    page.fill("[name='2-email']", "moj@email.pl")
+    # Pole e-mail jest `disabled` i pre-wypełnione kontem dla zalogowanego
+    # użytkownika z e-mailem (F2) — wypełniamy je tylko gdy edytowalne
+    # (anonim / zalogowany bez e-maila).
+    if page.is_editable("[name='2-email']"):
+        page.fill("[name='2-email']", "moj@email.pl")
     if strona_www:
         page.fill("[name='2-strona_www']", strona_www)
 

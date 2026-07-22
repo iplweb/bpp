@@ -3,6 +3,7 @@ from unittest.mock import patch
 from django.contrib import admin
 from django.db import ProgrammingError
 from django.urls import reverse
+from model_bakery import baker
 
 from bpp.admin.core import BaseBppAdminMixin
 from bpp.admin.filters import WydzialFilter
@@ -163,6 +164,47 @@ def test_JednostkaAdmin_changelist_pokazuje_kolumne_uczelnia(
     content = response.content.decode()
     assert "column-uczelnia_skrot" in content
     assert jednostka.uczelnia.skrot in content
+
+
+def test_JednostkaAdmin_get_list_filter_dodaje_uczelnia_przy_wielu(rf, admin_user):
+    # Multi-hosted (>1 uczelnia): superuser widzi jednostki wszystkich uczelni,
+    # więc changelist dostaje filtr „uczelnia" (pierwszy) do zawężenia.
+    baker.make(Uczelnia)
+    baker.make(Uczelnia)  # ≥2 uczelnie (ambient + te) → filtr się pojawia
+    request = rf.get(reverse("admin:bpp_jednostka_changelist"))
+    request.user = admin_user
+    ma = JednostkaAdmin(Jednostka, admin.site)
+    list_filter = ma.get_list_filter(request)
+    assert list_filter[0] == "uczelnia"
+
+
+def test_JednostkaAdmin_get_list_filter_bez_uczelni_przy_jednej(rf, admin_user):
+    # Single-tenant (1 uczelnia): filtr „uczelnia" byłby zbędny (jedna wartość)
+    # — NIE dokładamy go. Utwardzamy „dokładnie jedna" (jak fixture `uczelnia`).
+    u = baker.make(Uczelnia)
+    Uczelnia.objects.exclude(pk=u.pk).delete()
+    request = rf.get(reverse("admin:bpp_jednostka_changelist"))
+    request.user = admin_user
+    ma = JednostkaAdmin(Jednostka, admin.site)
+    assert "uczelnia" not in ma.get_list_filter(request)
+
+
+def test_JednostkaAdmin_changelist_renderuje_filtr_uczelnia_przy_wielu(
+    admin_client, jednostka: Jednostka
+):
+    # E2E: przy >1 uczelni changelist realnie renderuje filtr po uczelni
+    # (RelatedFieldListFilter) w pasku filtrów.
+    baker.make(Uczelnia)  # druga uczelnia (fixture `jednostka` dała pierwszą)
+    from django.contrib.admin.filters import RelatedFieldListFilter
+
+    response = admin_client.get(reverse("admin:bpp_jednostka_changelist"))
+    assert response.status_code == 200
+    assert any(
+        isinstance(spec, RelatedFieldListFilter)
+        and getattr(spec, "field", None) is not None
+        and spec.field.name == "uczelnia"
+        for spec in response.context["cl"].filter_specs
+    )
 
 
 def test_JednostkaNadrzednaFilter_widget_i_media_w_changeliście(admin_client):

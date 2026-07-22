@@ -19,6 +19,27 @@ def compose_jednostka_nazwa(theme: Theme, rng: random.Random) -> str:
     return f"{prefiks} {dziedzina}"
 
 
+def jednostka_nazwy(theme: Theme, rng: random.Random, n: int) -> list[str]:
+    """n UNIKALNYCH nazw '<prefiks> <dziedzina>' (Jednostka.nazwa ma unique=True).
+
+    Buduje iloczyn prefiks×dziedzina i tasuje (różnorodność); cyklicznie
+    pobiera, a gdy iloczyn < n, kolejne rundy dostają sufiks ' (2)', ' (3)' …
+    żeby nie zderzyć się z unique constraintem — analogicznie do
+    ``wydzial_nazwy`` / ``wydawca_nazwy``."""
+    pula = [
+        f"{prefiks} {dziedzina}"
+        for prefiks in theme.jednostka_prefiksy
+        for dziedzina in theme.jednostka_dziedziny
+    ]
+    rng.shuffle(pula)
+    out: list[str] = []
+    for i in range(n):
+        base = pula[i % len(pula)]
+        runda = i // len(pula)
+        out.append(base if runda == 0 else f"{base} ({runda + 1})")
+    return out
+
+
 def compose_zrodlo_nazwa(theme: Theme, rng: random.Random) -> str:
     """'<prefiks> <human>', np. 'Acta Kaedwenica'."""
     prefiks = rng.choice(theme.zrodlo_prefiksy)
@@ -27,11 +48,19 @@ def compose_zrodlo_nazwa(theme: Theme, rng: random.Random) -> str:
 
 
 def wydzial_nazwy(theme: Theme, rng: random.Random, n: int) -> list[str]:
-    """n nazw 'Wydział <dziedzina>'; shuffle+cycle dla różnorodności."""
-    dziedziny = list(theme.wydzial_dziedziny)
-    rng.shuffle(dziedziny)
-    dziedziny = (dziedziny * ((n // len(dziedziny)) + 1))[:n]
-    return [f"Wydział {d}" for d in dziedziny]
+    """n UNIKALNYCH nazw 'Wydział <dziedzina>' (Wydzial.nazwa ma unique=True).
+
+    Cykluje po puli dziedzin (shuffle dla różnorodności); gdy pula < n,
+    kolejne rundy dostają sufiks ' (2)', ' (3)' … żeby nie zderzyć się z
+    unique constraintem — analogicznie do ``wydawca_nazwy``."""
+    pula = list(theme.wydzial_dziedziny)
+    rng.shuffle(pula)
+    out: list[str] = []
+    for i in range(n):
+        base = f"Wydział {pula[i % len(pula)]}"
+        runda = i // len(pula)
+        out.append(base if runda == 0 else f"{base} ({runda + 1})")
+    return out
 
 
 def wydawca_nazwy(theme: Theme, rng: random.Random, n: int) -> list[str]:

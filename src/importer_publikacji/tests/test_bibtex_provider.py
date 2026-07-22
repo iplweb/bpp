@@ -358,3 +358,91 @@ def test_type_mapping_unknown():
     pub = p.fetch(bibtex)
     assert pub is not None
     assert pub.publication_type is None
+
+
+# --- @patent ---
+
+SAMPLE_PATENT = """
+@patent{pat2024,
+  title = {A New Widget},
+  author = {Kowalski, Jan},
+  number = {PL123456},
+  holder = {ACME Corp},
+  date = {2024-03-15},
+  location = {Poland},
+  type = {patent},
+  year = {2024},
+}
+"""
+
+
+def test_type_mapping_patent():
+    """BIBTEX_TYPE_MAP zna ``patent`` — dziś publication_type ladowal
+    sie jako None (cicho), operator ladowal na Verify z pustym typem."""
+    p = BibTeXProvider()
+    pub = p.fetch(SAMPLE_PATENT)
+    assert pub is not None
+    assert pub.publication_type == "patent"
+
+
+def test_patent_fields_populated_from_biblatex():
+    """``@patent`` wypelnia pola patentowe FetchedPublication best-effort."""
+    p = BibTeXProvider()
+    pub = p.fetch(SAMPLE_PATENT)
+    assert pub is not None
+    assert pub.patent_number == "PL123456"
+    assert pub.patent_holder == "ACME Corp"
+    assert pub.jurisdiction == "Poland"
+    assert pub.patent_type == "patent"
+    assert pub.filing_date == "2024-03-15"
+    # Brak osobnego pola numeru decyzji/daty decyzji w biblatex — zrodlo
+    # jest stratne, operator uzupelnia recznie w wizardzie.
+    assert pub.patent_grant_number is None
+    assert pub.grant_date is None
+
+
+def test_patent_fields_missing_are_none():
+    """Brak pol patentowych w BibTeX -> None, bez wyjatku."""
+    bibtex = """
+@patent{pat2024b,
+  title = {Minimal Patent},
+  author = {Nowak, Anna},
+  year = {2024},
+}
+"""
+    p = BibTeXProvider()
+    pub = p.fetch(bibtex)
+    assert pub is not None
+    assert pub.patent_number is None
+    assert pub.patent_holder is None
+    assert pub.jurisdiction is None
+    assert pub.patent_type is None
+    assert pub.filing_date is None
+
+
+def test_non_patent_entry_has_no_patent_fields():
+    """Wpisy nie-patentowe nie wypelniaja pol patentowych (regresja)."""
+    p = BibTeXProvider()
+    pub = p.fetch(SAMPLE_ARTICLE)
+    assert pub is not None
+    assert pub.patent_number is None
+    assert pub.patent_holder is None
+    assert pub.filing_date is None
+
+
+def test_patent_date_only_year_left_unset():
+    """Pole 'date' bez pelnej daty (sam rok) -> filing_date None (nie
+    zgadujemy miesiaca/dnia); operator uzupelnia w wizardzie."""
+    bibtex = """
+@patent{pat2024c,
+  title = {Yearly Patent},
+  author = {Nowak, Anna},
+  number = {PL999},
+  date = {2024},
+  year = {2024},
+}
+"""
+    p = BibTeXProvider()
+    pub = p.fetch(bibtex)
+    assert pub is not None
+    assert pub.filing_date is None

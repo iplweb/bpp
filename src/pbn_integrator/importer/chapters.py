@@ -13,6 +13,7 @@ from bpp.models import (
     Wydawnictwo_Zwarte_Streszczenie,
     Wydawnictwo_Zwarte_Tytul,
 )
+from bpp.util import safe_tytul_html
 from pbn_api.client import PBNClient
 from pbn_api.models import Publication
 
@@ -154,7 +155,7 @@ def importuj_rozdzial(
         wydawnictwo_nadrzedne = wydawnictwo_nadrzedne.original
 
     ret = Wydawnictwo_Zwarte(
-        tytul_oryginalny=pbn_json.pop("title"),
+        tytul_oryginalny=safe_tytul_html(pbn_json.pop("title")),
         isbn=wydawnictwo_nadrzedne.isbn,
         rok=rok,
         strony=pbn_json.pop("pagesFromTo", pbn_chapter_json.pop("pagesFromTo", None))

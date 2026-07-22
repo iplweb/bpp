@@ -1,5 +1,6 @@
 import pytest
 from django.core.exceptions import ValidationError
+from liveops.testing import MockProgress
 
 from bpp.models import Autor_Dyscyplina, Autor_Jednostka
 from raport_slotow.models.uczelnia import (
@@ -24,7 +25,7 @@ def test_RaportSlotowUczelnia_create_report(rekord_slotu, rok, raport_slotow_ucz
     raport_slotow_uczelnia.save()
 
     assert RaportSlotowUczelniaWiersz.objects.count() == 0
-    raport_slotow_uczelnia.create_report()
+    raport_slotow_uczelnia.run(MockProgress(raport_slotow_uczelnia))
 
     assert RaportSlotowUczelniaWiersz.objects.count() == 1
 
@@ -38,7 +39,7 @@ def test_RaportSlotowUczelnia_create_report_wszystkie(
     raport_slotow_uczelnia.save()
 
     assert RaportSlotowUczelniaWiersz.objects.count() == 0
-    raport_slotow_uczelnia.create_report()
+    raport_slotow_uczelnia.run(MockProgress(raport_slotow_uczelnia))
 
     assert RaportSlotowUczelniaWiersz.objects.count() == 1
 
@@ -70,16 +71,23 @@ def test_RaportSlotowUczelnia_zerowi_autorzy(
     Autor_Dyscyplina.objects.create(
         rok=rok, autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina1
     )
-    Autor_Jednostka.objects.create(autor=autor_jan_kowalski, jednostka=jednostka)
+    # get_or_create: powiazanie moze juz istniec, bo zapis autorstwa
+    # (fixture ``rekord_slotu``) sam je zaklada, a duplikat pary
+    # (autor, jednostka) bez daty rozpoczecia jest teraz zabroniony.
+    Autor_Jednostka.objects.get_or_create(
+        autor=autor_jan_kowalski, jednostka=jednostka, rozpoczal_prace=None
+    )
 
     # Autor "zerowy", przypisanie do dyscypliny
     Autor_Dyscyplina.objects.create(
         rok=rok, autor=autor_jan_nowak, dyscyplina_naukowa=dyscyplina1
     )
-    Autor_Jednostka.objects.create(autor=autor_jan_nowak, jednostka=jednostka)
+    Autor_Jednostka.objects.get_or_create(
+        autor=autor_jan_nowak, jednostka=jednostka, rozpoczal_prace=None
+    )
 
     assert RaportSlotowUczelniaWiersz.objects.count() == 0
-    raport_slotow_uczelnia.create_report()
+    raport_slotow_uczelnia.run(MockProgress(raport_slotow_uczelnia))
 
     assert RaportSlotowUczelniaWiersz.objects.count() == expected_rows
 
@@ -113,7 +121,7 @@ def test_RaportSlotowUczelnia_autor_niezerowy_jako_zerowy(
     )
 
     assert RaportSlotowUczelniaWiersz.objects.count() == 0
-    raport_slotow_uczelnia.create_report()
+    raport_slotow_uczelnia.run(MockProgress(raport_slotow_uczelnia))
 
     assert RaportSlotowUczelniaWiersz.objects.count() == 2
 
@@ -142,6 +150,6 @@ def test_RaportSlotowUczelnia_autor_zerowy_w_jednym_roku_niezerowy_w_innym(
     )
 
     assert RaportSlotowUczelniaWiersz.objects.count() == 0
-    raport_slotow_uczelnia.create_report()
+    raport_slotow_uczelnia.run(MockProgress(raport_slotow_uczelnia))
 
     assert RaportSlotowUczelniaWiersz.objects.count() == 1

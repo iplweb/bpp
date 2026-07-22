@@ -5,6 +5,7 @@ from django.core.management import BaseCommand, CommandError
 from bpp.models import BppUser, Uczelnia
 from pbn_api.client import BppPBNClient, RequestsTransport
 from pbn_client.conf import settings
+from pbn_client.utils import mask_secret
 
 
 def komunikat_bledu(exc):
@@ -144,10 +145,11 @@ class PBNBaseCommand(BaseCommand):
 
         transport = RequestsTransport(app_id, app_token, base_url, user_token)
         if verbose:
+            # Tokeny maskowane (uwaga #4) — verbose zostaje w CI/logach.
             print("App ID\t\t", app_id)
-            print("App token\t", app_token)
+            print("App token\t", mask_secret(app_token))
             print("Base URL\t", base_url)
-            print("User token\t", user_token)
+            print("User token\t", mask_secret(user_token))
         return BppPBNClient(
             transport, uczelnia=getattr(self, "_resolved_uczelnia", None)
         )

@@ -20,12 +20,15 @@ from pbn_api.const import (
 )
 from pbn_api.exceptions import (
     CannotDeleteStatementsException,
+    CannotUploadPublicationFee,
     DaneLokalneWymagajaAktualizacjiException,
     HttpException,
     NoFeeDataException,
     NoPBNUIDException,
     PBNUIDChangedException,
     PBNUIDSetToExistentException,
+    PBNValidationError,
+    PublicationDoesNotExistInInstitutionProfile,
     PublikacjaInstytucjiV2NieZnalezionaException,
     SameDataUploadedRecently,
     ZnalezionoWielePublikacjiInstytucjiV2Exception,
@@ -367,6 +370,11 @@ class PublicationSyncMixin(StatementsMixin):
             try:
                 self.post_discipline_statements(body)
                 return
+            except PBNValidationError:
+                # Walidacja się nie naprawi przez retry — przerwij natychmiast,
+                # propaguj (kolejka sklasyfikuje MERYTORYCZNY, admin pokaże
+                # czytelny komunikat).
+                raise
             except Exception as e:
                 last_error = e
                 logger.warning(
@@ -664,13 +672,27 @@ class PublicationSyncMixin(StatementsMixin):
         """
         pub = self.eventually_coerce_to_publication(pub)
 
-        # KROK 1: POST publikacji do endpointu repo (zawsze)
-        objectId, ret, js, _bez_oswiadczen = self.upload_publication(
-            pub,
-            force_upload=force_upload,
-            export_pk_zero=export_pk_zero,
-            always_affiliate_to_uid=always_affiliate_to_uid,
-        )
+        # KROK 1: POST publikacji. Gdy payload identyczny z ostatnio wysłanym,
+        # ``upload_publication`` rzuca ``SameDataUploadedRecently``. Nie
+        # przerywamy od razu: dla ścieżki repozytoryjnej opłata wypada z
+        # payloadu publikacji i mogła się zmienić mimo identycznego payloadu
+        # (FD#301) — łapiemy wyjątek i sprawdzamy jeszcze osobno opłatę.
+        try:
+            objectId, ret, js, bez_oswiadczen = self.upload_publication(
+                pub,
+                force_upload=force_upload,
+                export_pk_zero=export_pk_zero,
+                always_affiliate_to_uid=always_affiliate_to_uid,
+            )
+        except SameDataUploadedRecently:
+            _js, bez_oswiadczen = self._prepare_publication_json(
+                pub, export_pk_zero, always_affiliate_to_uid
+            )
+            if bez_oswiadczen and self._sync_fee_if_changed(pub, notificator):
+                # Publikacja bez zmian, ale opłatę zaktualizowano — nie
+                # sygnalizujemy „Identyczne dane", bo coś jednak poszło do PBN.
+                return None
+            raise
 
         if not objectId:
             self._handle_no_objectid(notificator, ret, js, pub)
@@ -738,6 +760,13 @@ class PublicationSyncMixin(StatementsMixin):
                     f"danych V2): {e}"
                 )
 
+        # KROK 6 (FD#301): ścieżka repozytoryjna usuwa opłatę z payloadu
+        # publikacji — wyślij ją osobnym endpointem, jeśli się zmieniła.
+        # Dla ścieżki /v1/publications opłata jedzie już w payloadzie i jest
+        # objęta porównaniem, więc nie ma potrzeby osobnej wysyłki.
+        if bez_oswiadczen:
+            self._sync_fee_if_changed(pub, notificator)
+
         return publication
 
     def eventually_coerce_to_publication(self, pub: Model | str) -> Model:
@@ -764,4 +793,55 @@ class PublicationSyncMixin(StatementsMixin):
                 f"Brak danych o opłatach za publikację {pub.pbn_uid_id}"
             )
 
-        return self.post_publication_fee(pub.pbn_uid_id, fee)
+        ret = self.post_publication_fee(pub.pbn_uid_id, fee)
+
+        # Zapamiętaj wysłaną opłatę — pozwala pominąć redundantne wysyłki i
+        # wykryć samą zmianę opłaty przy kolejnej synchronizacji (FD#301).
+        SentData.objects.record_fee_sent(
+            pub,
+            fee,
+            uczelnia=self.uczelnia,
+            uploaded_okay=bool(ret and ret.get("success")),
+        )
+
+        return ret
+
+    def _sync_fee_if_changed(self, pub, notificator=None):
+        """Wysyła opłatę do PBN, jeśli zmieniła się od ostatniej wysyłki.
+
+        Opłata leci osobnym endpointem (institution-profile fee) i dla
+        ścieżki repozytoryjnej NIE jest częścią payloadu publikacji —
+        ``convert_json_with_statements_to_no_statements`` usuwa klucz
+        ``fee``. Dlatego zmianę opłaty śledzimy osobno przez
+        ``SentData.fee_sent`` (FD#301).
+
+        Zwraca True gdy opłatę wysłano; False gdy nie było czego wysłać /
+        opłata bez zmian / PBN odrzucił ją miękko (brak obowiązku opłaty,
+        brak publikacji w profilu instytucji).
+        """
+        if pub.pbn_uid_id is None:
+            return False
+
+        fee = OplataZaWydawnictwoPBNAdapter(pub).pbn_get_json()
+        if not fee:
+            return False
+
+        if not SentData.objects.fee_upload_needed(pub, fee, uczelnia=self.uczelnia):
+            return False
+
+        try:
+            self.upload_publication_fee(pub)
+        except (
+            CannotUploadPublicationFee,
+            PublicationDoesNotExistInInstitutionProfile,
+            NoFeeDataException,
+        ) as e:
+            if notificator is not None:
+                notificator.warning(
+                    f"Zmieniono opłatę, ale nie udało się jej zaktualizować w PBN: {e}"
+                )
+            return False
+
+        if notificator is not None:
+            notificator.info("Zaktualizowano informację o opłacie za publikację w PBN.")
+        return True

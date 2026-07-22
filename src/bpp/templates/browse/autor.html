@@ -159,17 +159,20 @@
             </div>
 
         <!-- Evaluation metrics -->
-        {% if autor.metryki.exists %}
+        {# Metryki pobierane RAZ — licznik był wcześniej liczony #}
+        {# osobnym COUNT-em wewnątrz pętli po metrykach (N+1). #}
+        {% with metryki=autor.metryki.all %}
+        {% if metryki %}
             <div class="author-info-section">
                 <h3><i class="fi-graph-trend"></i> Metryki ewaluacyjne</h3>
                 <div class="grid-x grid-margin-x autor-page__grid-gap">
-                    {% for metryka in autor.metryki.all %}
+                    {% for metryka in metryki %}
                         <div class="cell shrink">
                             <a href="{{ metryka.get_absolute_url }}"
                                class="button primary autor-page__metrics-btn">
                                 <i class="fi-eye autor-page__icon--mr-md"></i>
                                 Metryka dla {{ metryka.dyscyplina_naukowa.nazwa }}
-                                {% if autor.metryki.count > 1 and metryka.jednostka %}
+                                {% if metryki|length > 1 and metryka.jednostka %}
                                     ({{ metryka.jednostka.skrot|default:metryka.jednostka.nazwa }})
                                 {% endif %}
                             </a>
@@ -179,6 +182,7 @@
             </div>
             <div class="shaded-hr-div-small"></div>
         {% endif %}
+        {% endwith %}
 
         <!-- Academic degrees -->
         {% if autor.praca_doktorska_set.exists or autor.praca_habilitacyjna %}
@@ -230,14 +234,18 @@
         <!-- Citations -->
         {% load czy_pokazywac %}
         {% czy_pokazywac liczbe_cytowan_na_stronie_autora ignoruj_grupe %}
-            {% if autor.liczba_cytowan %}
+            {# liczba_cytowan to ciężki agregat po bpp_rekord_mat; #}
+            {# szablon pytał o nią dwa razy (warunek + wypisanie). #}
+            {% with liczba_cytowan=autor.liczba_cytowan %}
+            {% if liczba_cytowan %}
                 <div class="author-info-section">
                     <h3><i class="fi-graph-trend"></i> Cytowania</h3>
-                    <p><strong>Liczba cytowań:</strong> {{ autor.liczba_cytowan }}</p>
+                    <p><strong>Liczba cytowań:</strong> {{ liczba_cytowan }}</p>
                     <p><strong>Liczba cytowań z jednostek afiliowanych:</strong> {{ autor.liczba_cytowan_afiliowane|default:"brak" }}</p>
                 </div>
                 <div class="shaded-hr-div-small"></div>
             {% endif %}
+            {% endwith %}
         {% end_czy_pokazywac %}
     </div>
 </div>
@@ -270,14 +278,16 @@
             </div>
         </div>
 
-        {% if autor.jednostki_gdzie_ma_publikacje %}
+        {# Jednostki autora — jeden queryset na warunek i pętlę. #}
+        {% with jednostki_autora=autor.jednostki_gdzie_ma_publikacje %}
+        {% if jednostki_autora %}
             <div class="card autor-page__search-card">
                 <div class="card-section">
                     <h6 class="autor-page__search-card-title">
                         <i class="fi-home autor-page__icon--mr-sm"></i>Opracowane w jednostkach:
                     </h6>
                     <div class="grid-x grid-margin-x">
-                        {% for jednostka in autor.jednostki_gdzie_ma_publikacje %}
+                        {% for jednostka in jednostki_autora %}
                             <div class="cell medium-6 autor-page__checkbox-item">
                                 <input type="checkbox"
                                        name="jednostka"
@@ -299,6 +309,7 @@
                 </div>
             </div>
         {% endif %}
+        {% endwith %}
 
         <!-- Years Selection Card -->
         <div class="card autor-page__search-card">

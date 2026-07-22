@@ -149,7 +149,9 @@ def any_wydawnictwo(klass, rok=None, **kw):
     for key, value in list(kw_wyd.items()):
         set_default(key, value, kw)
 
-    Status_Korekty.objects.get_or_create(pk=1, nazwa="przed korektą")
+    # Lookup po kluczu naturalnym (nazwa jest unique), nigdy po pk — inaczej
+    # wiersz o tej samej nazwie pod innym pk => INSERT => IntegrityError.
+    Status_Korekty.objects.get_or_create(nazwa="przed korektą")
 
     return baker.make(klass, rok=rok, **kw)
 

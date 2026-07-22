@@ -62,7 +62,7 @@
 <div class="callout">
     <h4>
         <span class="fi-torsos-all"></span>
-        Krok 4: Dopasowanie autorów
+        Dopasowanie autorów
     </h4>
 
     <div class="callout secondary">
@@ -201,9 +201,14 @@
                   hx-target="#importer-wizard"
                   hx-indicator="#authors-spinner">
                 {% csrf_token %}
+                {# Patent pomija krok Source → „Wstecz" cofa do Verify. #}
                 <button type="button"
                         class="button secondary"
+                        {% if is_patent %}
+                        hx-get="{% url 'importer_publikacji:verify' session.pk %}"
+                        {% else %}
                         hx-get="{% url 'importer_publikacji:source' session.pk %}"
+                        {% endif %}
                         hx-target="#importer-wizard">
                     <span class="fi-arrow-left"></span>
                     Wstecz
@@ -220,14 +225,14 @@
         </div>
         <div class="cell">
             <a href="{% url 'importer_publikacji:index' %}"
-               class="button hollow secondary small">
+               class="button hollow secondary">
                 <span class="fi-list"></span>
                 Powrót do listy
             </a>
         </div>
         <div class="cell">
             <button type="button"
-                    class="button alert hollow small"
+                    class="button alert hollow"
                     hx-post="{% url 'importer_publikacji:cancel' session.pk %}"
                     hx-target="#importer-wizard"
                     hx-confirm="Czy na pewno chcesz anulować import? Sesja zostanie skasowana.">
