@@ -9,6 +9,7 @@ from django.db.models import (
     Count,
     IntegerField,
     Prefetch,
+    Q,
     Value,
     When,
 )
@@ -53,6 +54,7 @@ from import_pracownikow.models import (
     ProfilMapowania,
     wiersz_kwalifikuje_do_przepiecia,
 )
+from import_pracownikow.okresy import wstepnie_zaladuj_okresy
 from import_pracownikow.pbn import adnotuj_pbn_instytucjonalny
 from import_pracownikow.pewnosc import (
     CONFIDENCE_CHOICES,
@@ -64,6 +66,14 @@ from import_pracownikow.pewnosc import (
 )
 
 GROUP_REQUIRED = "wprowadzanie danych"
+
+# Paginacja listy wyników importu. Bez opcji „wszystkie" — przy paginacji
+# serwerowej byłaby jednoklikowym powrotem do renderowania całego importu.
+ROZMIARY_STRONY = (10, 25, 50, 100)
+DOMYSLNY_ROZMIAR_STRONY = 25
+# Dozwolone wartości filtra stanu pola (pusty string = „wszystkie", czyli brak
+# filtra); komplet stanów zwracanych przez ekstraktory `POLA_ROZNIC`.
+STANY_POLA = ("zmienione", "zgodne", "brak")
 
 
 class WymagajUczelniZRequestuMixin:
@@ -461,6 +471,12 @@ def _zwiaz_autora_z_wierszem(row, autor):
     row.utworz_nowego = False
     row.przepnij_prace = False
     row.wybrany_kandydat = None
+    # Zmiana autora przestawia praktycznie każdy stan pola (ekstraktory czytają
+    # autora i jego powiązanie), a filtr listy wyników działa na zmaterializowanym
+    # `stany_pol_snapshot` w SQL — bez przeliczenia tutaj filtr kłamałby po cichu
+    # aż do końca fazy osób. Liczymy przez `stany_pol_live()`, bo `stany_pol()`
+    # przy niepustym snapshocie zwróciłoby po prostu starą wartość.
+    row.stany_pol_snapshot = row.stany_pol_live()
     row.save(
         update_fields=[
             "autor",
@@ -471,6 +487,7 @@ def _zwiaz_autora_z_wierszem(row, autor):
             "utworz_nowego",
             "przepnij_prace",
             "wybrany_kandydat",
+            "stany_pol_snapshot",
         ]
     )
 
@@ -707,6 +724,7 @@ class ImportPracownikowResultsView(
     group_required = GROUP_REQUIRED
     template_name = "import_pracownikow/importpracownikowrow_list.html"
     context_object_name = "object_list"
+    paginate_by = DOMYSLNY_ROZMIAR_STRONY
 
     @cached_property
     def parent_object(self):
@@ -716,13 +734,105 @@ class ImportPracownikowResultsView(
         self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         return obj
 
+    def get_paginate_by(self, queryset):
+        """Rozmiar strony z ``?per_page=``; śmieć degraduje do domyślnego.
+
+        Opcji „wszystkie" NIE ma świadomie — przy paginacji serwerowej byłaby
+        jednoklikowym powrotem do renderowania całego importu, czyli do problemu,
+        który ta zmiana usuwa.
+        """
+        try:
+            wybrany = int(self.request.GET.get("per_page", ""))
+        except (TypeError, ValueError):
+            return DOMYSLNY_ROZMIAR_STRONY
+        return wybrany if wybrany in ROZMIARY_STRONY else DOMYSLNY_ROZMIAR_STRONY
+
+    def _filtr_rodzaju(self, qs):
+        """``?rodzaj=`` — status dopasowania albo syntetyczne „do pominięcia".
+
+        „do pominięcia" czyta ``utworz_nowego`` WPROST z bazy (nie ze
+        zmaterializowanych stanów pól), więc jest świeże bez odświeżania
+        snapshotu — ten sam predykat co ``row.do_pominiecia``.
+        """
+        rodzaj = self.wybrany_rodzaj
+        if not rodzaj:
+            return qs
+        if rodzaj == "do-pominiecia":
+            return qs.filter(autor__isnull=True, utworz_nowego=False)
+        return qs.filter(confidence=rodzaj)
+
+    def _filtr_tekstu(self, qs):
+        """``?q=`` — odpowiednik dawnego filtra klienckiego po ``[data-szukaj]``.
+
+        Szukamy po tym, co widać w kolumnach Osoba / Autor / Jednostka: danych
+        z pliku, danych autora BPP (łącznie z ORCID-em i poprzednimi nazwiskami,
+        bo renderuje je ``_autor_dane.html``) oraz nazwach jednostek.
+        """
+        q = self.request.GET.get("q", "").strip()
+        if not q:
+            return qs
+        warunek = (
+            Q(**{"dane_znormalizowane__nazwisko__icontains": q})
+            | Q(**{"dane_znormalizowane__imię__icontains": q})
+            | Q(**{"dane_znormalizowane__tytuł_stopień__icontains": q})
+            | Q(autor__nazwisko__icontains=q)
+            | Q(autor__imiona__icontains=q)
+            | Q(autor__poprzednie_nazwiska__icontains=q)
+            | Q(autor__orcid__icontains=q)
+            | Q(jednostka__nazwa__icontains=q)
+            | Q(autor__aktualna_jednostka__nazwa__icontains=q)
+        )
+        return qs.filter(warunek)
+
+    def _filtr_stanow_pol(self, qs):
+        """``?stan_<klucz>=`` — filtr po zmaterializowanych stanach pól (JSONB).
+
+        Stan „brak" wymaga osobnego warunku: istnieją zamrożone snapshoty sprzed
+        dodania ``data_od``/``data_do``, którym tych kluczy po prostu brakuje
+        (``stany_pol()`` dopełnia je w Pythonie, ale równość w SQL ich nie
+        znajdzie). Dlatego „brak" = wartość „brak" LUB brak klucza.
+        """
+        from import_pracownikow.roznice import POLA_ROZNIC
+
+        for klucz, _etykieta, _ekstraktor in POLA_ROZNIC:
+            wartosc = self.request.GET.get(f"stan_{klucz}", "")
+            if wartosc not in STANY_POLA:
+                continue
+            pole = f"stany_pol_snapshot__{klucz}"
+            if wartosc == "brak":
+                qs = qs.filter(
+                    Q(**{pole: "brak"}) | ~Q(**{"stany_pol_snapshot__has_key": klucz})
+                )
+            else:
+                qs = qs.filter(**{pole: wartosc})
+        return qs
+
+    @cached_property
+    def wybrany_rodzaj(self):
+        """Zwalidowane ``?rodzaj=``; śmieć degraduje do „" (= wszystkie)."""
+        dozwolone = {"do-pominiecia"} | {k for k, _ in CONFIDENCE_CHOICES}
+        rodzaj = self.request.GET.get("rodzaj", "")
+        return rodzaj if rodzaj in dozwolone else ""
+
     def get_queryset(self):
+        # Backfill importów sprzed materializacji stanów pól. Filtr stanu pola
+        # działa w SQL na `stany_pol_snapshot`, więc wiersze z NULL-em byłyby
+        # dla niego niewidoczne. Robimy to RAZ na import (przy pierwszym wejściu
+        # po wdrożeniu) i wyłącznie dla wierszy pustych — niepusty snapshot bywa
+        # zamrożonym zapisem audytowym, którego nadpisanie skasowałoby ślad
+        # „co import zmienił". MUSI wykonać się PRZED filtrowaniem: warunek
+        # stanu „brak" używa `~Q(has_key)`, który dopasowałby także NULL-e.
+        if self.parent_object.importpracownikowrow_set.filter(
+            stany_pol_snapshot__isnull=True
+        ).exists():
+            self.parent_object.odswiez_stany_pol_wierszy(tylko_puste=True)
+
         # Rozstrzygnięte (twardy match + ręczny wybór operatora) na dół, wiersze
         # do rozstrzygnięcia (brak/wielu/zgadywanie) na górę, potem kolejność z
         # pliku. G5: prefetch kandydatów Z AUTOREM — partial dla wierszy `wielu`
         # iteruje row.kandydaci.all i czyta k.autor per opcja dropdownu; bez
         # tego N+1 (setki zapytań przy dużych plikach).
-        return (
+        qs = (
             adnotuj_pbn_instytucjonalny(self.parent_object.get_details_set())
             .annotate(
                 _prio=Case(
@@ -734,6 +844,20 @@ class ImportPracownikowResultsView(
                     output_field=IntegerField(),
                 )
             )
+            .select_related(
+                # `Jednostka.__str__` czyta `self.uczelnia.uzywaj_wydzialow`, a
+                # szablon renderuje DWIE jednostki na wiersz (`row.jednostka`
+                # i `row.autor.aktualna_jednostka`). `select_related` tworzy
+                # osobną instancję `Jednostka` per wiersz, więc cache FK na
+                # instancji nie pomaga — bez tego 2 zapytania na wiersz.
+                "jednostka__uczelnia",
+                "autor__aktualna_jednostka__uczelnia",
+                # Gdy `uzywaj_wydzialow` jest włączone, `__str__` sięga dalej po
+                # `self.wydzial`. `jednostka__wydzial` jest już w
+                # `get_details_set()`; tu brakowało odpowiednika dla jednostki
+                # aktualnej autora.
+                "autor__aktualna_jednostka__wydzial",
+            )
             .prefetch_related(
                 Prefetch(
                     "kandydaci",
@@ -744,6 +868,12 @@ class ImportPracownikowResultsView(
             )
             .order_by("_prio", "nr_arkusza", "nr_wiersza")
         )
+        # Filtry działają na CAŁYM imporcie, w SQL — nie na tym, co akurat jest
+        # w DOM-ie. Dawny filtr kliencki widziałby tylko bieżącą stronę, więc
+        # deep-link „pokaż wiersze do pominięcia" trafiałby w pustkę.
+        qs = self._filtr_rodzaju(qs)
+        qs = self._filtr_tekstu(qs)
+        return self._filtr_stanow_pol(qs)
 
     def get_context_data(self, **kwargs):
         # Sekcja odpięć („Ludzie spoza XLS") żyje teraz w OSOBNYM widoku
@@ -753,8 +883,13 @@ class ImportPracownikowResultsView(
             parent_object=parent,
             **kwargs,
         )
+        # Jedna lista instancji dla wszystkich adnotacji i dla renderu — memo
+        # `_aj_lista_cache` musi trafić w te same obiekty, które pójdą do
+        # szablonu.
+        rows = list(ctx["object_list"])
+        wstepnie_zaladuj_okresy(rows)
         if parent.edytowalny_podglad:
-            oznacz_przepiecie_prac(list(ctx["object_list"]), parent)
+            oznacz_przepiecie_prac(rows, parent)
         # Pasek filtrów stanu pól — etykiety z rejestru POLA_ROZNIC (jedno źródło
         # prawdy z modelem/szablonem). Dzielimy na ZAWSZE WIDOCZNE (główne) i
         # ZWIJANE (dodatkowe, w <details>). Stopień/stanowisko wypadają całkiem,
@@ -769,17 +904,40 @@ class ImportPracownikowResultsView(
             klucze_dodatkowe.remove("stopien")
         if not parent.ma_kolumne_stanowiska:
             klucze_dodatkowe.remove("stanowisko")
-        ctx["pola_glowne"] = [(k, etykiety[k]) for k in klucze_glowne]
-        ctx["pola_dodatkowe"] = [(k, etykiety[k]) for k in klucze_dodatkowe]
+
+        # Trójki (klucz, etykieta, wybrany) — partial odtwarza zaznaczenie radia
+        # z GET bez potrzeby filtra szablonowego do odczytu wartości ze słownika.
+        def _stan(klucz):
+            wartosc = self.request.GET.get(f"stan_{klucz}", "")
+            return wartosc if wartosc in STANY_POLA else ""
+
+        ctx["pola_glowne"] = [(k, etykiety[k], _stan(k)) for k in klucze_glowne]
+        ctx["pola_dodatkowe"] = [(k, etykiety[k], _stan(k)) for k in klucze_dodatkowe]
+        # Sekcja „Więcej filtrów…" ma być rozwinięta, gdy któryś z jej filtrów
+        # jest aktywny — inaczej użytkownik widzi zawężony wynik bez widocznej
+        # przyczyny.
+        ctx["ma_aktywny_filtr_dodatkowy"] = any(
+            wybrany for _k, _et, wybrany in ctx["pola_dodatkowe"]
+        )
         # Filtr „Rodzaj dopasowania" — opcje statusów (jedno źródło:
         # CONFIDENCE_CHOICES) + syntetyczne „do pominięcia" (autor IS NULL AND
         # NOT utworz_nowego, patrz row.do_pominiecia). Deep-link z ostrzeżenia
         # finalizacji przychodzi jako ?rodzaj=do-pominiecia; walidujemy go tu,
         # a śmieciowa wartość degraduje do "" (traktowane jak „wszystkie").
         ctx["rodzaje_confidence"] = list(CONFIDENCE_CHOICES)
-        dozwolone_rodzaje = {"do-pominiecia"} | {k for k, _ in CONFIDENCE_CHOICES}
-        rodzaj = self.request.GET.get("rodzaj", "")
-        ctx["wybrany_rodzaj"] = rodzaj if rodzaj in dozwolone_rodzaje else ""
+        ctx["wybrany_rodzaj"] = self.wybrany_rodzaj
+        # Stan formularza filtrów (odtwarzany z GET) + querystring bez `page`,
+        # żeby linki pagera zachowywały aktywne filtry.
+        ctx["szukany_tekst"] = self.request.GET.get("q", "").strip()
+        ctx["wybrane_stany"] = {
+            klucz: self.request.GET.get(f"stan_{klucz}", "")
+            for klucz, _et, _ekstraktor in POLA_ROZNIC
+        }
+        ctx["rozmiary_strony"] = ROZMIARY_STRONY
+        ctx["wybrany_rozmiar"] = self.get_paginate_by(None)
+        parametry = self.request.GET.copy()
+        parametry.pop("page", None)
+        ctx["querystring_filtrow"] = parametry.urlencode()
         return ctx
 
 

@@ -845,6 +845,11 @@ def analizuj(parent, p):
     )
     parent.save(update_fields=["stan"])
 
+    # Materializacja stanów pól dla filtra listy wyników — filtr działa na
+    # `stany_pol_snapshot` w SQL, więc pole musi być wypełnione od razu po
+    # analizie (inaczej filtr nie znalazłby świeżo przeanalizowanego importu).
+    parent.odswiez_stany_pol_wierszy()
+
     wiersze = parent.get_details_set()
     p.result(
         {
