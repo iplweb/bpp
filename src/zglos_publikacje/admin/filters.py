@@ -4,7 +4,7 @@ from django.db.models import Q, Window
 from django.db.models.functions import ExtractWeekDay, FirstValue
 
 from bpp.models import Jednostka
-from zglos_publikacje.models import Zgloszenie_Publikacji_Autor
+from zglos_publikacje.models import Zgloszenie_Publikacji, Zgloszenie_Publikacji_Autor
 
 
 class WydzialJednostkiPierwszegoAutora(SimpleListFilter):
@@ -69,6 +69,72 @@ class WydzialJednostkiPierwszegoAutora(SimpleListFilter):
         ]
 
         return queryset.filter(pk__in=rekordy)
+
+
+class StanObslugiFilter(SimpleListFilter):
+    """Filtr „Do obsługi / Załatwione / Wszystkie" (FD#443).
+
+    Domyślnie (brak parametru w URL-u) lista pokazuje wyłącznie zgłoszenia
+    wymagające reakcji operatora — bez odrzuconych, spamu i tych domkniętych
+    importerem. „Wszystkie" trzeba wybrać jawnie.
+
+    ``WYMAGA_ZMIAN`` świadomie nie należy do żadnej z dwóch grup: zgłoszenie
+    jest wtedy w rękach autora (aktywny ``kod_do_edycji``), więc ani nie
+    czeka na operatora, ani nie jest załatwione.
+    """
+
+    title = "stan obsługi"
+    parameter_name = "stan_obslugi"
+
+    DO_OBSLUGI = "do_obslugi"
+    ZALATWIONE = "zalatwione"
+    WSZYSTKIE = "wszystkie"
+
+    STATUSY_DO_OBSLUGI = (
+        Zgloszenie_Publikacji.Statusy.NOWY,
+        Zgloszenie_Publikacji.Statusy.PO_ZMIANACH,
+    )
+    STATUSY_ZALATWIONE = (
+        Zgloszenie_Publikacji.Statusy.ZAIMPORTOWANY,
+        Zgloszenie_Publikacji.Statusy.ZAAKCEPTOWANY,
+        Zgloszenie_Publikacji.Statusy.ODRZUCONO,
+        Zgloszenie_Publikacji.Statusy.SPAM,
+    )
+
+    def lookups(self, request, model_admin):
+        return [
+            (self.DO_OBSLUGI, "Do obsługi"),
+            (self.ZALATWIONE, "Załatwione"),
+            (self.WSZYSTKIE, "Wszystkie"),
+        ]
+
+    def choices(self, changelist):
+        # Nadpisujemy domyślne zachowanie ``SimpleListFilter``: tam brak
+        # parametru = „Wszystkie" i dodatkowa pozycja z ``value=None``. U nas
+        # brak parametru = „Do obsługi", a „Wszystkie" jest jawną wartością —
+        # inaczej nie dałoby się jej wybrać z poziomu interfejsu.
+        value = self.value()
+        for lookup, title in self.lookup_choices:
+            yield {
+                "selected": value == lookup
+                or (value is None and lookup == self.DO_OBSLUGI),
+                "query_string": changelist.get_query_string(
+                    {self.parameter_name: lookup}
+                ),
+                "display": title,
+            }
+
+    def queryset(self, request, queryset):
+        value = self.value()
+
+        if value == self.WSZYSTKIE:
+            return queryset
+
+        if value == self.ZALATWIONE:
+            return queryset.filter(status__in=self.STATUSY_ZALATWIONE)
+
+        # Domyślnie (brak parametru) oraz jawne „Do obsługi".
+        return queryset.filter(status__in=self.STATUSY_DO_OBSLUGI)
 
 
 class DzienTygodniaFilter(SimpleListFilter):

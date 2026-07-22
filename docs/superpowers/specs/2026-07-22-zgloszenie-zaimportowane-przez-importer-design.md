@@ -43,9 +43,22 @@ kontekst ginie.
    przez `_start_import_session` (`:183-202`). Parametr GET nieprzeniesiony
    ukrytym polem formularza **ginie bezpowrotnie**.
 3. **Soft-delete nie usuwa wiersza.** `Zgloszenie_Publikacji` dziedziczy
-   `SoftDeleteModel` (`models.py:61`); kasowanie ustawia `deleted_at`.
-   `on_delete=SET_NULL` nigdy się nie uruchomi, a dostęp przez FK idzie
-   `_base_manager`, który **nie filtruje usuniętych**.
+   `SoftDeleteModel` (`models.py:61`); kasowanie ustawia `deleted_at`,
+   a dostęp przez FK idzie `_base_manager`, który **nie filtruje
+   usuniętych** — sam FK nie ochroni przed oznaczeniem skasowanego
+   zgłoszenia.
+
+   Uściślenie po testach: `SoftDeleteModel.delete()` **emuluje `on_delete`**
+   dla relacji odwrotnych (`django_softdelete/models.py:281-283`), więc na
+   typowej ścieżce (operator kasuje zgłoszenie w module redagowania) FK na
+   sesji **zostanie wyzerowany**. Guard `deleted_at is None` pozostaje
+   konieczny dla ścieżek omijających `delete()`: bulk `UPDATE deleted_at`,
+   surowy SQL, migracje danych, wyścig transakcji.
+
+   Uboczna konsekwencja emulacji: skasowanie zgłoszenia **po cichu gubi
+   wiązanie**, więc po `restore()` sesja już go nie wskaże. Zachowanie
+   przypięte testem charakteryzującym, żeby zmiana biblioteki nie przeszła
+   niezauważona.
 4. **`report_progress` rzuca `ValueError` na nieznanym etapie**
    (`progress.py:49-50`), a wagi `FETCH_STAGES` sumują się do 100. Nie wolno
    dokładać nowych nazw etapów — trzeba reużyć istniejący `prefill_zgl`.

@@ -184,6 +184,29 @@ class ImportSession(models.Model):
         "created_record_id",
     )
 
+    zgloszenie = models.ForeignKey(
+        "zglos_publikacje.Zgloszenie_Publikacji",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sesje_importu",
+        verbose_name="Zgłoszenie publikacji",
+        help_text=(
+            "Zgłoszenie publikacji, które ten import domyka. Ustawiane "
+            "jawnie (przycisk „Użyj importera”) albo automatycznie po DOI. "
+            "Zadanie Celery dostaje wyłącznie id sesji — bez tego pola nie "
+            "miałoby jak ustalić, które zgłoszenie oznaczyć."
+        ),
+    )
+    zgloszenie_odrzucone_przez_operatora = models.BooleanField(
+        "Operator odrzucił propozycje zgłoszeń",
+        default=False,
+        help_text=(
+            "Operator kliknął „żadne z nich” na banerze kandydatów — "
+            "baner nie pokazuje się już dla tej sesji."
+        ),
+    )
+
     created = models.DateTimeField("utworzono", auto_now_add=True)
     modified = models.DateTimeField("zmodyfikowano", auto_now=True)
 
@@ -222,6 +245,26 @@ class ImportSession(models.Model):
 
     def __str__(self):
         return f"{self.provider_name}: {self.identifier} ({self.get_status_display()})"
+
+    @property
+    def kandydaci_zgloszen(self):
+        """Zgłoszenia publikacji, które ta sesja importu mogłaby domknąć.
+
+        Wyliczane przy każdym odczycie (nie cache'owane w polu) — DOI jest
+        stabilne, a dzięki temu lista nie starzeje się względem stanu bazy.
+        Pusta, gdy operator odrzucił propozycje („żadne z nich”).
+
+        Importy lokalne: ``zgloszenia`` importuje modele, więc import na
+        poziomie modułu zamknąłby cykl.
+        """
+        if self.zgloszenie_odrzucone_przez_operatora:
+            from zglos_publikacje.models import Zgloszenie_Publikacji
+
+            return Zgloszenie_Publikacji.objects.none()
+
+        from .zgloszenia import kandydaci_dla_sesji
+
+        return kandydaci_dla_sesji(self)
 
     def get_continue_url(self):
         from django.urls import reverse

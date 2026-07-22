@@ -53,6 +53,21 @@ class FetchForm(forms.Form):
         widget=forms.Textarea(attrs={"rows": 12, "cols": 80}),
         required=False,
     )
+    # Przenosi ``?zgloszenie=<pk>`` z linku „Użyj importera" przez rundę
+    # GET → render → POST: sesję importu tworzy dopiero ``FetchView.post``,
+    # więc parametr GET nieprzeniesiony ukrytym polem ginie bezpowrotnie.
+    # Walidacja (istnienie, soft-delete) jest po stronie widoku — tu
+    # sprawdzamy wyłącznie, czy to liczba; wartość niepoprawna nie może
+    # blokować importu, więc widok ignoruje ją po cichu.
+    # Zakres = zakres AutoField-a (DEFAULT_AUTO_FIELD = AutoField, int4):
+    # bez tego liczba spoza zakresu poszłaby do zapytania jako pk i mogłaby
+    # wywrócić request zamiast po cichu nie znaleźć zgłoszenia.
+    zgloszenie = forms.IntegerField(
+        required=False,
+        min_value=1,
+        max_value=2147483647,
+        widget=forms.HiddenInput,
+    )
 
     def __init__(self, *args, **kwargs):
         last_provider = kwargs.pop("last_provider", None)
@@ -70,6 +85,14 @@ class FetchForm(forms.Form):
 
     def clean(self):
         cleaned = super().clean()
+
+        # Śmieć w ukrytym polu (ręcznie podrasowany URL, stary link) nie może
+        # zablokować importu — kasujemy błąd i traktujemy jak brak wiązania.
+        # Właściwą walidację (istnienie, soft-delete) robi FetchView.post.
+        if "zgloszenie" in self.errors:
+            del self.errors["zgloszenie"]
+            cleaned["zgloszenie"] = None
+
         provider_name = cleaned.get("provider")
         if not provider_name:
             return cleaned

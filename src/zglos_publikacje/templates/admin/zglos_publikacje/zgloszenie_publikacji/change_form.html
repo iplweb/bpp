@@ -1,6 +1,8 @@
 {% extends "admin/change_form.html" %}
 
 {% block object-tools-items %}
+    {# „Użyj importera" nie pokazuje się dla zgłoszeń już zaimportowanych — #}
+    {# ``importer_url`` zwraca wtedy ``None`` (FD#443, §7 specyfikacji). #}
     {% if importer_url %}
         <li><a href="{{ importer_url }}" target="_blank" rel="noopener">📥 Użyj importera</a></li>
     {% endif %}
@@ -16,6 +18,27 @@
             <li><a href="{% url "admin:bpp_wydawnictwo_ciagle_add" %}?numer_zgloszenia={{ original.pk }}">Dodaj wyd. ciągłe</a></li>
             <li><a href="{% url "admin:bpp_wydawnictwo_zwarte_add" %}?numer_zgloszenia={{ original.pk }}">Dodaj wyd. zwarte</a></li>
         {% endif %}
+    {% endif %}
+    {{ block.super }}
+{% endblock %}
+
+{% block content %}
+    {# Informacja zwrotna po domknięciu zgłoszenia importerem (FD#443, §8). #}
+    {# Wyłącznie prezentacja: admin ma ``has_change_permission`` → False. #}
+    {% if original.czy_zaimportowane %}
+        <div class="module aligned" id="panel-zgloszenie-zaimportowane">
+            <p style="padding: 8px 12px; margin: 0;">
+                📥 <strong>Zaimportowane</strong>
+                {% if original.zaimportowano %}{{ original.zaimportowano|date:"d.m.Y H:i" }}{% endif %}
+                {% if original.zaimportowal %}przez {{ original.zaimportowal }}{% endif %}
+                {% if zaimportowany_rekord_url %}
+                    &middot; <a href="{{ zaimportowany_rekord_url }}">{{ zaimportowany_rekord_nazwa }} &#8599;</a>
+                {% endif %}
+                {% if sesja_importu_url %}
+                    &middot; <a href="{{ sesja_importu_url }}">sesja importu &#8599;</a>
+                {% endif %}
+            </p>
+        </div>
     {% endif %}
     {{ block.super }}
 {% endblock %}

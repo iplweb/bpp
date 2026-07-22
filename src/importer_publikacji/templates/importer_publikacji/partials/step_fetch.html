@@ -23,6 +23,10 @@
           hx-indicator="#fetch-spinner">
         {% csrf_token %}
         <input type="hidden" name="provider" value="{{ provider_name }}">
+        {# Przenosi ?zgloszenie=<pk> z przycisku „Użyj importera” do POST-a. #}
+        {# Sesję importu tworzy dopiero FetchView.post, więc bez tego pola #}
+        {# kontekst zgłoszenia ginie na rundzie GET → render → POST. #}
+        {{ form.zgloszenie }}
 
         {% if form.provider.errors %}
             {% for error in form.provider.errors %}

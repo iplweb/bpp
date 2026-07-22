@@ -9,6 +9,7 @@ import traceback
 
 from celery import shared_task
 from django.contrib.contenttypes.models import ContentType
+from django.db import transaction
 
 from .models import ImportSession
 from .progress import (
@@ -86,6 +87,17 @@ def fetch_session_task(self, session_id, request_user_id):
 
         report_progress(self, "prefill_zgl", stages=FETCH_STAGES)
         from .views.authors import _prefill_dyscypliny_z_zgloszen
+        from .zgloszenia import zwiaz_automatycznie
+
+        # Ścieżka B (FD#443): auto-wiązanie po DOI, gdy kandydat jest
+        # dokładnie jeden. Świadomie reużywamy istniejący etap paska
+        # postępu — ``report_progress`` rzuca ValueError na nieznanej
+        # nazwie etapu, a wagi FETCH_STAGES sumują się do 100.
+        # Kolejność: najpierw wiązanie, potem prefill — dzięki temu
+        # prefill dyscyplin korzysta z jawnie związanego zgłoszenia,
+        # zamiast z heurystyki po tytule.
+        if not session.zgloszenie_id:
+            zwiaz_automatycznie(session)
 
         _prefill_dyscypliny_z_zgloszen(session)
 
@@ -223,12 +235,24 @@ def create_publication_task(self, session_id, request_user_id, also_pbn):
             report_progress(self, "link_pbn", stages=CREATE_STAGES)
             _enqueue_pbn_export(request_user, record, session.uczelnia)
 
-        session.status = ImportSession.Status.COMPLETED
-        session.created_record_content_type = ContentType.objects.get_for_model(record)
-        session.created_record_id = record.pk
-        session.modified_by = request_user
-        session.celery_task_id = ""
-        session.save()
+        # Zapis zwrotny na zgłoszeniu (FD#443, D10) idzie w TYM SAMYM
+        # bloku, co przejście sesji w COMPLETED — nie w
+        # ``_create_publication``, którego własna transakcja już się
+        # zamknęła. Blok siedzi w gałęzi sukcesu, PRZED ``except``, więc
+        # nieudany import nie zmienia statusu zgłoszenia.
+        from .zgloszenia import oznacz_jako_zaimportowane
+
+        with transaction.atomic():
+            session.status = ImportSession.Status.COMPLETED
+            session.created_record_content_type = ContentType.objects.get_for_model(
+                record
+            )
+            session.created_record_id = record.pk
+            session.modified_by = request_user
+            session.celery_task_id = ""
+            session.save()
+
+            oznacz_jako_zaimportowane(session, record)
     except Exception as exc:
         session.status = ImportSession.Status.IMPORT_FAILED
         session.last_failed_stage = "create"

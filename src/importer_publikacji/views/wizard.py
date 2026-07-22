@@ -5,6 +5,7 @@ Authors → Review → Create → Done) plus boczne akcje na autorach i
 anulowanie sesji.
 """
 
+from django.contrib import messages
 from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
@@ -110,6 +111,14 @@ class IndexView(ImporterPermissionMixin, View):
         initial = {"provider": provider_name}
         if request.GET.get("identifier"):
             initial["identifier"] = request.GET["identifier"]
+        # ``?zgloszenie=<pk>`` z przycisku „Użyj importera" w adminie
+        # Zgłoszeń Publikacji. Ten widok NIE tworzy sesji importu (robi to
+        # dopiero FetchView.post), więc parametr musi przejechać rundę
+        # GET → render → POST w ukrytym polu formularza — inaczej ginie.
+        # Bez walidacji: wartość nieprawidłowa i tak zostanie odrzucona
+        # przy odczycie w FetchView.post.
+        if request.GET.get("zgloszenie"):
+            initial["zgloszenie"] = request.GET["zgloszenie"]
         form = FetchForm(initial=initial)
 
         ctx = _fetch_context(form, request=request, provider_name=provider_name)
@@ -180,12 +189,32 @@ def _create_batch(request, provider_name, normalized, records):
     return batch
 
 
-def _start_import_session(request, provider_name, identifier):
+def _zgloszenie_z_pola(value):
+    """Zwaliduj wartość ukrytego pola ``zgloszenie`` z ``FetchForm``.
+
+    Zwraca instancję ``Zgloszenie_Publikacji`` albo ``None``. ``objects`` to
+    ``SoftDeleteManager``, więc zgłoszenia soft-usunięte wypadają tą samą
+    gałęzią co nieistniejące. Wartość niepoprawna jest ignorowana po cichu —
+    import startuje bez wiązania i operator nie dostaje błędu.
+    """
+    if not value:
+        return None
+
+    from zglos_publikacje.models import Zgloszenie_Publikacji
+
+    return Zgloszenie_Publikacji.objects.filter(pk=value).first()
+
+
+def _start_import_session(request, provider_name, identifier, zgloszenie=None):
     """Utwórz sesję importu (FETCHING) + wystartuj task fetch.
 
     BEZ guardu double-click po ``identifier`` — używane też przez import
     pojedynczego wpisu paczki, gdzie duplikaty wpisów są dozwolone, a przed
     podwójnym startem chroni ``entry.session`` po stronie wołającego.
+
+    ``zgloszenie`` (opcjonalne) wiąże sesję ze zgłoszeniem publikacji, które
+    ten import ma domknąć — musi być zapisane już przy tworzeniu, bo zadanie
+    Celery dostaje wyłącznie id sesji.
     """
     session = ImportSession.objects.create(
         created_by=request.user,
@@ -195,6 +224,7 @@ def _start_import_session(request, provider_name, identifier):
         status=ImportSession.Status.FETCHING,
         raw_data={},
         normalized_data={},
+        zgloszenie=zgloszenie,
     )
     task = fetch_session_task.delay(session.pk, request.user.pk)
     session.celery_task_id = task.id
@@ -217,6 +247,7 @@ class FetchView(ImporterPermissionMixin, View):
         provider_name = form.cleaned_data["provider"]
         request.session["importer_last_provider"] = provider_name
         provider = get_provider(provider_name)
+        zgloszenie = _zgloszenie_z_pola(form.cleaned_data.get("zgloszenie"))
 
         if provider.input_mode == InputMode.TEXT:
             raw_input = form.cleaned_data["text_input"]
@@ -270,9 +301,19 @@ class FetchView(ImporterPermissionMixin, View):
             .first()
         )
         if recent_in_flight is not None:
+            # Ta gałąź omija _start_import_session, więc wiązanie ze
+            # zgłoszeniem zginęłoby po cichu. Dopisz je, gdy sesja jeszcze
+            # żadnego nie ma; NIE nadpisuj, gdy ma już inne — pierwsze
+            # wiązanie wygrywa, inaczej przypadkowy re-submit przestemplowałby
+            # sesję na cudze zgłoszenie.
+            if zgloszenie is not None and recent_in_flight.zgloszenie_id is None:
+                recent_in_flight.zgloszenie = zgloszenie
+                recent_in_flight.save(update_fields=["zgloszenie"])
             return _hx_or_redirect(request, recent_in_flight.get_continue_url())
 
-        session = _start_import_session(request, provider_name, normalized)
+        session = _start_import_session(
+            request, provider_name, normalized, zgloszenie=zgloszenie
+        )
 
         url = reverse(
             "importer_publikacji:task-status",
@@ -1066,6 +1107,56 @@ class CreateView(ImporterPermissionMixin, View):
         return HttpResponseRedirect(url)
 
 
+# Klucz w sesji HTTP: lista id sesji importu, dla których flash o domknięciu
+# zgłoszenia już poszedł. ``DoneView.get`` jest odświeżalny (F5), a wiadomość
+# ma się pokazać dokładnie raz.
+FLASH_ZGLOSZENIA_KEY = "importer_zgloszenie_flash"
+
+# Ile ostatnich id trzymać. Bez limitu lista rosłaby przez całe życie sesji
+# HTTP operatora; przy przekroczeniu wypadają najstarsze — a ich strony Done
+# i tak dawno nie są odświeżane.
+FLASH_ZGLOSZENIA_LIMIT = 50
+
+
+def _domkniete_zgloszenie(session):
+    """Zgłoszenie faktycznie domknięte przez tę sesję albo ``None``.
+
+    Trzy warunki: sesja ma wiązanie, zgłoszenie nie jest soft-usunięte (dostęp
+    przez FK idzie ``_base_manager``, który usuniętych NIE filtruje) i ma
+    status ``ZAIMPORTOWANY`` — czyli zapis zwrotny naprawdę się wykonał.
+    """
+    from zglos_publikacje.models import Zgloszenie_Publikacji
+
+    zgloszenie = session.zgloszenie
+    if zgloszenie is None or zgloszenie.is_deleted:
+        return None
+    if zgloszenie.status != Zgloszenie_Publikacji.Statusy.ZAIMPORTOWANY:
+        return None
+    return zgloszenie
+
+
+def _flash_domkniete_zgloszenie(request, session, zgloszenie):
+    """Postaw flash o domknięciu zgłoszenia — dokładnie raz na sesję importu.
+
+    Wiadomość MUSI powstawać tutaj, w cyklu żądania: worker Celery wyrzuca
+    wiadomości do kosza (``_NoopMessageStorage`` w ``tasks.py``), więc flash
+    postawiony w zadaniu przepadłby bez śladu.
+    """
+    pokazane = request.session.setdefault(FLASH_ZGLOSZENIA_KEY, [])
+    if session.pk in pokazane:
+        return
+    messages.success(
+        request,
+        f"Domknięto zgłoszenie publikacji #{zgloszenie.pk} — "
+        "jest teraz oznaczone jako zaimportowane.",
+    )
+    pokazane.append(session.pk)
+    # Przypisanie (nie mutacja w miejscu) — SessionBase wykrywa modyfikację
+    # przez __setitem__; sama .append() nie ustawiłaby flagi ``modified``,
+    # sesja nie zostałaby zapisana i flash wróciłby po F5.
+    request.session[FLASH_ZGLOSZENIA_KEY] = pokazane[-FLASH_ZGLOSZENIA_LIMIT:]
+
+
 class DoneView(ImporterPermissionMixin, View):
     """Strona potwierdzenia utworzenia rekordu (GET)."""
 
@@ -1080,6 +1171,16 @@ class DoneView(ImporterPermissionMixin, View):
         if batch_entry is not None:
             ctx["batch"] = batch_entry.parent
             ctx["batch_progress"] = batch_entry.parent.progress
+
+        zgloszenie = _domkniete_zgloszenie(session)
+        if zgloszenie is not None:
+            ctx["domkniete_zgloszenie"] = zgloszenie
+            ctx["domkniete_zgloszenie_url"] = reverse(
+                "admin:zglos_publikacje_zgloszenie_publikacji_change",
+                args=[zgloszenie.pk],
+            )
+            _flash_domkniete_zgloszenie(request, session, zgloszenie)
+
         return _render_full_page(request, STEP_DONE, ctx)
 
 
