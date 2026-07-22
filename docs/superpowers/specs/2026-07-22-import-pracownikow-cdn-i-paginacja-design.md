@@ -51,7 +51,7 @@ To **3 zapytania na każdy wiersz importu**, namierzone stack-trace'em:
    w PostgreSQL, N razy.
 
 Do tego **9,1 KB HTML na wiersz**, z czego **3830 bajtów to identyczny blok
-`<script>`** powtórzony w każdym wierszu (`_wiersz_preview_kom.html:160-231`).
+`<script>`** powtórzony w każdym wierszu (`partials/_wiersz_preview_kom.html:160-231`).
 Ma guard `window.__bppImportAutorPicker`, więc wykonuje się raz — ale przesyła się
 i parsuje N razy. Przy 1000 wierszy to 3,8 MB czystego duplikatu.
 
@@ -137,7 +137,7 @@ Trzy szablony jadą dziś na htmx **2.0.4** z CDN-a, a cała reszta aplikacji na
 raportuje `version:"1.9.12"`). Self-hosting oznacza więc **zejście o major**
 w tych trzech miejscach — ujednolicenie wersji w całej aplikacji.
 
-Ocena ryzyka: komentarze w `_wiersz_preview_kom.html:83-87` wprost tłumaczą obejście
+Ocena ryzyka: komentarze w `partials/_wiersz_preview_kom.html:83-87` wprost tłumaczą obejście
 napisane **pod semantykę 1.x** (filtr zdarzenia `change[target.classList…]` zamiast
 `from:`, bo „bare selektor w `from:` w htmx 1.x wiąże na CAŁYM dokumencie"). Kod był
 więc projektowany pod 1.x i na 2.x działa przypadkiem. Użyte API to wyłącznie
@@ -150,10 +150,21 @@ przeklikać ręcznie (lista w „Testowanie" niżej).
 ### Test regresyjny — brak zewnętrznych assetów
 
 Nowy test (`src/django_bpp/tests/test_brak_zewnetrznych_assetow.py`) skanuje
-wszystkie szablony w `src/**/templates/**` oraz wszystkie pliki `*.py` w `src/`
-(klasy `Media` mogą żyć nie tylko w `admin.py`, ale też w `forms.py`/`widgets.py`;
-dziś ich tam nie ma, ale szerszy skan jest odporniejszy na przyszłość) i szuka
-`<script src>` / `<link href>` wskazujących na `http://` lub `https://`.
+dwa rodzaje plików **dwoma różnymi wzorcami** — to jest istotne, bo naiwne
+przeniesienie wzorca tagowego na `.py` przepuściłoby jedną z pięciu naprawianych
+regresji:
+
+- **szablony** (`src/**/templates/**`) — wzorzec tagowy: `<script src=…>` /
+  `<link href=…>` wskazujące na `http://` lub `https://`;
+- **pliki `*.py`** w `src/` — wzorzec **literału URL**, nie tagu. Klasa `Media`
+  w `przemapuj_zrodlo/admin.py:109` nie zawiera żadnego tagu, tylko goły string
+  `"https://cdnjs.cloudflare.com/…"` w tuplecie `css`; tag renderuje dopiero
+  Django. Skanujemy więc literały `https?://` kończące się rozszerzeniem assetu
+  (`.js`, `.css`, `.woff`, `.woff2`, `.svg`, `.png`) — to odsiewa linki
+  dokumentacyjne w docstringach i `href`-y do stron zewnętrznych.
+
+Skan `.py` obejmuje wszystkie moduły, nie tylko `admin.py` — klasy `Media` mogą
+żyć też w `forms.py`/`widgets.py` (dziś ich tam nie ma, sprawdzone).
 
 Test naśladuje istniejący precedens `src/bpp/tests/test_admin_fonts_selfhosted.py`
 (strażnik self-hostowania fontów admina) — łącznie z dwiema jego nieoczywistymi
@@ -240,12 +251,12 @@ ta funkcja (`views.py:107-153`) nie dotyka `_aj_lista` ani `_okres`.
 
 Zmiana pozostaje potrzebna **także po** Zmianie 4: szablon woła
 `row.porownaj_z_baza` bezpośrednio, przy renderze bloku porównań
-(`_wiersz_preview_kom.html:263`), niezależnie od tego, skąd biorą się
+(`partials/_wiersz_preview_kom.html:263`), niezależnie od tego, skąd biorą się
 `data-diff-*`. Materializacja stanów pól usuwa jedno wołanie, nie wszystkie.
 
 ### Zmiana 3 — zdublowany `<script>`
 
-Blok `<script>` z `_wiersz_preview_kom.html:160-231` przenosimy do
+Blok `<script>` z `partials/_wiersz_preview_kom.html:160-231` przenosimy do
 `importpracownikowrow_list.html` (raz na stronę). Kod jest już napisany jako
 delegacja zdarzeń na `document` z guardem `window.__bppImportAutorPicker`, więc
 przeniesienie jest czysto mechaniczne — nie wymaga zmian w samym JS.
@@ -275,16 +286,36 @@ Zamiast tego materializujemy wynik.
 (migracja `0024`). Rozszerzamy jego cykl życia na dwie fazy:
 
 - **przed integracją** — żywy cache: liczony na koniec analizy i odświeżany po
-  każdej mutacji wiersza;
+  każdej mutacji **pól czytanych przez ekstraktory** (nie po każdej mutacji
+  wiersza — patrz „Czego świadomie NIE odświeżamy");
 - **przy integracji** — `integrate.py` zapisuje ostatnią wartość i przestaje
   odświeżać. Po integracji nic wiersza nie mutuje (wszystkie ścieżki mutujące są
   za bramką `edytowalny_podglad`), więc pole zamarza samo.
 
-**`stany_pol()` nie wymaga zmian.** Obecna implementacja (`models.py:1127-1142`)
-już robi dokładnie to, czego potrzebujemy: zwraca snapshot dopełniony neutralnym
-`"brak"` dla kluczy dodanych po jego zapisaniu, a gdy `None` — liczy na żywo.
-Zmienia się nie ta metoda, tylko fakt, że pole jest **zawsze wypełnione** także
-przed integracją.
+**Rozdzielenie „policz" od „przeczytaj" — warunek konieczny.** Obecna
+`stany_pol()` (`models.py:1127-1142`) jest metodą **czytającą**: gdy snapshot jest
+niepusty, **zwraca go** (`{**baza, **self.stany_pol_snapshot}`), a liczy tylko gdy
+pole jest `None`. Po tej zmianie pole jest niepuste od końca analizy, więc każde
+„przeliczenie" napisane jako `self.stany_pol_snapshot = self.stany_pol()` byłoby
+**kopiowaniem pola w samo siebie** — cichym no-opem. Dotyczyłoby to wszystkich
+punktów odświeżania naraz, czyli reaktywowałoby dokładnie ten błąd, któremu ta
+sekcja ma zapobiegać.
+
+Dlatego dokładamy metodę **liczącą**, bez gałęzi snapshotu:
+
+```python
+def stany_pol_live(self):
+    """Stan każdego pola policzony ekstraktorami POLA_ROZNIC — ZAWSZE świeżo,
+    z pominięciem ``stany_pol_snapshot``. Źródło prawdy dla materializacji."""
+    from import_pracownikow.roznice import POLA_ROZNIC
+
+    return {klucz: ekstraktor(self) for klucz, _et, ekstraktor in POLA_ROZNIC}
+```
+
+`stany_pol_live()` używają: `odswiez_stany_pol()`, backfill oraz zamrożenie
+w `integrate.py`. `stany_pol()` — czytana przez szablon i przez kod spoza tej
+zmiany — zachowuje dzisiejsze zachowanie; jej gałąź „policz na żywo" delegujemy
+do `stany_pol_live()`, żeby nie było dwóch kopii tej samej pętli.
 
 Świadomie **nie dodajemy** drugiej kolumny. Rozważona alternatywa (osobne
 `stany_pol_cache` obok `stany_pol_snapshot`) daje czytelniejszy rozdział ról, ale
@@ -300,9 +331,9 @@ czytane przez ekstraktory `POLA_ROZNIC`. Pierwsza wersja tej specyfikacji
 wskazywała tu widoki `Weryfikacja{Jednostek,Tytulow,Stopni,Stanowisk}View` — **to
 było błędne**. Te widoki zapisują wyłącznie obiekty decyzji
 (`dec.save(update_fields=["decyzja", "wybrany_parent", "wybrana_jednostka"])`,
-`views.py:1125`); wierszy nie dotykają. Faktyczne przypisanie pól wierszom dzieje
-się w `pipeline/integrate.py` przy „Zapisz strukturę": `row.jednostka` (:546),
-`row.tytul` (:742), `row.stopien` (:817), `row.stanowisko_dydaktyczne` (:883).
+`views.py:1122`); wierszy nie dotykają. Faktyczne przypisanie pól wierszom dzieje
+się w `pipeline/integrate.py` przy „Zapisz strukturę": `row.jednostka` (:543),
+`row.tytul` (:735), `row.stopien` (:810), `row.stanowisko_dydaktyczne` (:876).
 
 | miejsce | co mutuje |
 |---------|-----------|
@@ -315,11 +346,25 @@ się w `pipeline/integrate.py` przy „Zapisz strukturę": `row.jednostka` (:546
 stanem `STAN_STRUKTURA_ZINTEGROWANA`, który **nadal jest** `edytowalny_podglad`
 (`models.py:214-222`) — to jest Krok 2, faza osób, dokładnie ta, w której operator
 pracuje na widoku rezultatów. Bez odświeżenia w tym miejscu filtr `jednostka`
-(a także `data_od`, `data_do`, `funkcja`, `stanowisko`, których ekstraktory
-bramkują po `jednostka_id` — `roznice.py:56,69,80`) pokazywałby stan sprzed
-przypisania jednostek. Zakres strukturalny bywa uruchamiany **drugi raz** z fazy
-osób (dotworzenie słowników, `views.py:1480-1489`), więc odświeżenie musi być
+pokazywałby stan sprzed przypisania jednostek — a razem z nim `data_od` i `data_do`
+(ekstraktory bramkują po `jednostka_id`, `roznice.py:69,80`) oraz `funkcja`
+i `stanowisko` (zależą od `autor_jednostka`, przeliczanego przy przypisaniu
+jednostki). Zakres strukturalny bywa uruchamiany **drugi raz** z fazy osób
+(dotworzenie słowników, `views.py:1480-1489`), więc odświeżenie musi być
 idempotentne i wołane przy każdym przebiegu, nie tylko pierwszym.
+
+**Dlaczego przebieg PEŁNY nie potrzebuje osobnego punktu.** Reconcilery
+`_podlacz_wiersze_do_jednostek` / `_rozstrzygnij_{tytuly,stopnie,stanowiska}`
+biegną w **każdym** zakresie, także pełnym (`integrate.py:908-931`), a
+early-return dla zakresu strukturalnego (`:934-953`) w przebiegu pełnym się nie
+wykonuje — więc formalnie mutują wiersze poza wymienionymi punktami. Nie tworzy
+to dziury, bo: (a) widoki `Weryfikacja*` pozwalają edytować decyzje **tylko**
+w stanie `przeanalizowany` (`views.py:970`, `:1137` i analogiczne), (b) przebieg
+pełny wymaga wcześniejszego przebiegu strukturalnego, którego końcowy refresh
+zobaczył te same decyzje, a (c) reconcilery są idempotentne, więc ponowne
+przypisanie daje wartościowo tę samą jednostkę/tytuł/stopień/stanowisko. Wiersze
+z worklisty i tak przechodzą przez zamrożenie w `integrate.py:193`. Zapisujemy ten
+argument jawnie, żeby nie trzeba go było odtwarzać przy następnej zmianie w potoku.
 
 **Czego świadomie NIE odświeżamy.** `PrzelaczUtworzNowegoView`,
 `PrzepnijPraceView` i `ZaznaczWszystkiePrzepieciaView` mutują `utworz_nowego`
@@ -336,15 +381,34 @@ zabiegów.
 
 **Zachowanie zamrożonego snapshotu audytu — bez zmian.** Dziś snapshot dla wiersza
 „utwórz nowego" liczy się **po** tym, jak `_przygotuj_nowego_autora` (`integrate.py:983`,
-przed pętlą worklisty w :986) ustawił świeżo utworzonego autora — zamrożone stany
-porównują więc plik z nowym autorem. Gdybyśmy zostawili istniejące guardy
-`if stany_pol_snapshot is None` (`integrate.py:193`, `models.py:1366`), stałyby się
-one martwe (pole byłoby już wypełnione przez odświeżanie przedintegracyjne),
-a audyt pokazałby stan sprzed utworzenia autora (`autor=None` → wszędzie „brak").
-To byłaby cicha zmiana danych audytowych. Dlatego **oba guardy zamieniamy na
-bezwarunkowe przypisanie** w tym samym miejscu potoku: wartość audytowa pozostaje
-bit w bit taka jak dziś. Test asertuje snapshot wiersza „utwórz nowego" po pełnej
-integracji.
+przed pętlą worklisty w :986) ustawił świeżo utworzonego autora, a **przed**
+`_materializuj_diff` — zamrożone stany porównują więc plik z nowym autorem, ale
+z jeszcze niezmaterializowanym `Autor_Jednostka` (odroczone AJ = `None` →
+`funkcja` = „brak"). Tak mówi komentarz w `integrate.py:189-192` i to jest wartość,
+którą trzeba odtworzyć co do joty.
+
+Po tej zmianie pole jest już wypełnione przed integracją, więc guard
+`if stany_pol_snapshot is None` w `integrate.py:193` nigdy by nie strzelił i audyt
+pokazałby stan z końca analizy (`autor=None` → wszędzie „brak"). Dlatego **w tym
+jednym miejscu** zamieniamy guard na bezwarunkowe przeliczenie:
+
+```python
+row.stany_pol_snapshot = row.stany_pol_live()   # integrate.py:193, było: if ... is None
+```
+
+**Drugi guard, w `models.py:1366` (`ImportPracownikowRow.integrate()`), zostaje
+nietknięty.** To nie jest martwy kod, tylko aktywne zabezpieczenie: `integrate()`
+ma dokładnie jednego wywołującego (`_integruj_wiersz`, `integrate.py:219`)
+i wykonuje się **po** `_materializuj_diff`, czyli **po zmianie bazy**. Gdyby
+zamienić i ten guard na bezwarunkowe przeliczenie, nadpisałby świeże zamrożenie
+wartościami policzonymi względem już utworzonego AJ — dla każdego wiersza
+z `diff_do_utworzenia` (w tym każdego „utwórz nowego") `funkcja`, `data_od`
+i `data_do` wyszłyby inaczej niż dziś. To byłaby dokładnie ta korupcja audytu,
+przed którą guard chroni.
+
+Test niezmienności audytu musi asertować **konkretne dzisiejsze wartości**
+(np. `funkcja == "brak"` dla wiersza z odroczonym AJ), a nie samo „policzone
+względem nowego autora" — bo błędny wariant też spełniałby ten słabszy warunek.
 
 **Backfill (samonaprawianie).** Importy sprzed tej zmiany mają `NULL` i filtr SQL
 by ich nie znalazł. Zamiast migracji danych (musiałaby wykonać zapytania per wiersz
@@ -399,7 +463,7 @@ serwerowej byłaby jednoklikowym powrotem do problemu, który naprawiamy.
 
 **Zakres `?q=`.** Musi pokryć to, co dziś pokrywa kliencki filtr tekstowy —
 a ten przeszukuje wszystkie elementy `[data-szukaj]`, czyli **więcej** niż
-oczywiste nazwisko z pliku. Z `_wiersz_preview_kom.html:16-23,33-35,235-241`
+oczywiste nazwisko z pliku. Z `partials/_wiersz_preview_kom.html:16-23,33-35,235-241`
 wynika sześć pól:
 
 ```python
@@ -407,6 +471,7 @@ Q(dane_znormalizowane__nazwisko__icontains=q)
 | Q(**{"dane_znormalizowane__imię__icontains": q})
 | Q(**{"dane_znormalizowane__tytuł_stopień__icontains": q})
 | Q(autor__nazwisko__icontains=q) | Q(autor__imiona__icontains=q)
+| Q(autor__poprzednie_nazwiska__icontains=q) | Q(autor__orcid__icontains=q)
 | Q(jednostka__nazwa__icontains=q)
 | Q(autor__aktualna_jednostka__nazwa__icontains=q)
 ```
@@ -414,8 +479,16 @@ Q(dane_znormalizowane__nazwisko__icontains=q)
 Klucze `imię` i `tytuł_stopień` mają polskie znaki; `imię` jest poprawnym
 identyfikatorem Pythona, ale `tytuł_stopień` w zapisie `Q(a__tytuł_stopień=…)`
 byłby kruchy — dlatego oba przekazujemy przez `Q(**{...})`, jednolicie.
-Pominięcie `autor__imiona` i `autor__aktualna_jednostka__nazwa` byłoby cichym
-zawężeniem wyszukiwania względem stanu dzisiejszego.
+
+`poprzednie_nazwiska` i `orcid` wchodzą, bo `span[data-szukaj]`
+(`partials/_wiersz_preview_kom.html:33-35`) obejmuje **cały** include `_autor_dane.html`,
+a ten renderuje ORCID oraz `Autor.__str__`, doklejający poprzednie nazwiska.
+Operator wklejający ORCID w wyszukiwarkę to realny scenariusz.
+
+**Zaakceptowane zawężenie** (świadome, żeby nie budować wyszukiwania po
+wyrenderowanym tekście): serwerowe `?q=` nie dopasuje po skrócie wydziału
+doklejanym przez `Jednostka.__str__` przy włączonych wydziałach ani po skrócie
+tytułu z `Autor.__str__`. Oba są pochodnymi pól, po których i tak szukamy.
 
 **Stan `"brak"` wymaga osobnego lookupu.** Istnieją zamrożone snapshoty **bez**
 kluczy `data_od`/`data_do` — pochodzą sprzed dodania tych pól i dlatego
@@ -431,6 +504,11 @@ Q(**{f"stany_pol_snapshot__{klucz}": "brak"})
 Pozostałe stany (`zmienione`, `zgodne`) to zwykła równość. Nie „naprawiamy" tych
 snapshotów backfillem — są zamrożonym zapisem audytowym i backfill ich nie dotyka
 (patrz Zmiana 4).
+
+Uwaga na kolejność w `get_queryset()`: `~Q(has_key)` dopasowuje także wiersze
+z `stany_pol_snapshot IS NULL` (Django generuje `NOT (snap ? 'k' AND snap IS NOT
+NULL)`). Poprawność filtra `"brak"` zależy więc od tego, że **backfill biegnie
+przed filtrowaniem** w tym samym `get_queryset()` — po nim NULL-i już nie ma.
 
 `?rodzaj=` zachowuje dzisiejszą walidację i dzisiejszą semantykę deep-linku
 `?rodzaj=do-pominiecia` z ostrzeżenia finalizacji — z tą różnicą, że teraz filtruje
