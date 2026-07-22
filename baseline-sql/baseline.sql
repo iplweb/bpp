@@ -11,7 +11,7 @@ SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', 'public', false);
+SELECT pg_catalog.set_config('search_path', '', false);
 SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
@@ -2375,26 +2375,6 @@ $$;
 
 
 --
--- Name: f_d_aft_row_upd_on_bpp_patent(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_patent() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-    BEGIN
-        IF ((OLD."id" IS DISTINCT FROM NEW."id") OR (OLD."nie_eksportuj_przez_api" IS DISTINCT FROM NEW."nie_eksportuj_przez_api") OR (OLD."tekst_przed_pierwszym_autorem" IS DISTINCT FROM NEW."tekst_przed_pierwszym_autorem") OR (OLD."tekst_po_ostatnim_autorze" IS DISTINCT FROM NEW."tekst_po_ostatnim_autorze") OR (OLD."pbn_id" IS DISTINCT FROM NEW."pbn_id") OR (OLD."slowa_kluczowe_eng" IS DISTINCT FROM NEW."slowa_kluczowe_eng") OR (OLD."adnotacje" IS DISTINCT FROM NEW."adnotacje") OR (OLD."informacja_z_id" IS DISTINCT FROM NEW."informacja_z_id") OR (OLD."status_korekty_id" IS DISTINCT FROM NEW."status_korekty_id") OR (OLD."informacje" IS DISTINCT FROM NEW."informacje") OR (OLD."szczegoly" IS DISTINCT FROM NEW."szczegoly") OR (OLD."uwagi" IS DISTINCT FROM NEW."uwagi") OR (OLD."utworzono" IS DISTINCT FROM NEW."utworzono") OR (OLD."strony" IS DISTINCT FROM NEW."strony") OR (OLD."tom" IS DISTINCT FROM NEW."tom") OR (OLD."recenzowana" IS DISTINCT FROM NEW."recenzowana") OR (OLD."rok" IS DISTINCT FROM NEW."rok") OR (OLD."search_index" IS DISTINCT FROM NEW."search_index") OR (OLD."tytul_oryginalny_sort" IS DISTINCT FROM NEW."tytul_oryginalny_sort") OR (OLD."legacy_data" IS DISTINCT FROM NEW."legacy_data") OR (OLD."impact_factor" IS DISTINCT FROM NEW."impact_factor") OR (OLD."punkty_kbn" IS DISTINCT FROM NEW."punkty_kbn") OR (OLD."index_copernicus" IS DISTINCT FROM NEW."index_copernicus") OR (OLD."punktacja_wewnetrzna" IS DISTINCT FROM NEW."punktacja_wewnetrzna") OR (OLD."punktacja_snip" IS DISTINCT FROM NEW."punktacja_snip") OR (OLD."weryfikacja_punktacji" IS DISTINCT FROM NEW."weryfikacja_punktacji") OR (OLD."www" IS DISTINCT FROM NEW."www") OR (OLD."dostep_dnia" IS DISTINCT FROM NEW."dostep_dnia") OR (OLD."public_www" IS DISTINCT FROM NEW."public_www") OR (OLD."public_dostep_dnia" IS DISTINCT FROM NEW."public_dostep_dnia") OR (OLD."tytul_oryginalny" IS DISTINCT FROM NEW."tytul_oryginalny") OR (OLD."data_zgloszenia" IS DISTINCT FROM NEW."data_zgloszenia") OR (OLD."numer_zgloszenia" IS DISTINCT FROM NEW."numer_zgloszenia") OR (OLD."data_decyzji" IS DISTINCT FROM NEW."data_decyzji") OR (OLD."numer_prawa_wylacznego" IS DISTINCT FROM NEW."numer_prawa_wylacznego") OR (OLD."rodzaj_prawa_id" IS DISTINCT FROM NEW."rodzaj_prawa_id") OR (OLD."wdrozenie" IS DISTINCT FROM NEW."wdrozenie") OR (OLD."wydzial_id" IS DISTINCT FROM NEW."wydzial_id") OR (OLD."cached_punkty_dyscyplin" IS DISTINCT FROM NEW."cached_punkty_dyscyplin") OR (OLD."opis_bibliograficzny_cache" IS DISTINCT FROM NEW."opis_bibliograficzny_cache") OR (OLD."opis_bibliograficzny_autorzy_cache" IS DISTINCT FROM NEW."opis_bibliograficzny_autorzy_cache") OR (OLD."opis_bibliograficzny_zapisani_autorzy_cache" IS DISTINCT FROM NEW."opis_bibliograficzny_zapisani_autorzy_cache") OR (OLD."slug" IS DISTINCT FROM NEW."slug")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id) VALUES (1, NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
-        RETURN NULL;
-    END;
-$$;
-
-
---
 -- Name: f_d_aft_row_upd_on_bpp_patent_autor_patent_cached_punktye44e(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2603,26 +2583,6 @@ $$;
 
 
 --
--- Name: f_d_aft_row_upd_on_bpp_praca_doktorska(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_praca_doktorska() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-    BEGIN
-        IF ((OLD."id" IS DISTINCT FROM NEW."id") OR (OLD."nie_eksportuj_przez_api" IS DISTINCT FROM NEW."nie_eksportuj_przez_api") OR (OLD."tekst_przed_pierwszym_autorem" IS DISTINCT FROM NEW."tekst_przed_pierwszym_autorem") OR (OLD."tekst_po_ostatnim_autorze" IS DISTINCT FROM NEW."tekst_po_ostatnim_autorze") OR (OLD."opl_pub_cost_free" IS DISTINCT FROM NEW."opl_pub_cost_free") OR (OLD."opl_pub_research_potential" IS DISTINCT FROM NEW."opl_pub_research_potential") OR (OLD."opl_pub_research_or_development_projects" IS DISTINCT FROM NEW."opl_pub_research_or_development_projects") OR (OLD."opl_pub_other" IS DISTINCT FROM NEW."opl_pub_other") OR (OLD."opl_pub_amount" IS DISTINCT FROM NEW."opl_pub_amount") OR (OLD."pbn_id" IS DISTINCT FROM NEW."pbn_id") OR (OLD."isbn" IS DISTINCT FROM NEW."isbn") OR (OLD."e_isbn" IS DISTINCT FROM NEW."e_isbn") OR (OLD."doi" IS DISTINCT FROM NEW."doi") OR (OLD."pubmed_id" IS DISTINCT FROM NEW."pubmed_id") OR (OLD."pmc_id" IS DISTINCT FROM NEW."pmc_id") OR (OLD."slowa_kluczowe_eng" IS DISTINCT FROM NEW."slowa_kluczowe_eng") OR (OLD."adnotacje" IS DISTINCT FROM NEW."adnotacje") OR (OLD."informacja_z_id" IS DISTINCT FROM NEW."informacja_z_id") OR (OLD."status_korekty_id" IS DISTINCT FROM NEW."status_korekty_id") OR (OLD."informacje" IS DISTINCT FROM NEW."informacje") OR (OLD."szczegoly" IS DISTINCT FROM NEW."szczegoly") OR (OLD."uwagi" IS DISTINCT FROM NEW."uwagi") OR (OLD."utworzono" IS DISTINCT FROM NEW."utworzono") OR (OLD."strony" IS DISTINCT FROM NEW."strony") OR (OLD."tom" IS DISTINCT FROM NEW."tom") OR (OLD."tytul_oryginalny" IS DISTINCT FROM NEW."tytul_oryginalny") OR (OLD."tytul" IS DISTINCT FROM NEW."tytul") OR (OLD."liczba_cytowan" IS DISTINCT FROM NEW."liczba_cytowan") OR (OLD."pbn_uid_id" IS DISTINCT FROM NEW."pbn_uid_id") OR (OLD."recenzowana" IS DISTINCT FROM NEW."recenzowana") OR (OLD."typ_kbn_id" IS DISTINCT FROM NEW."typ_kbn_id") OR (OLD."jezyk_id" IS DISTINCT FROM NEW."jezyk_id") OR (OLD."jezyk_alt_id" IS DISTINCT FROM NEW."jezyk_alt_id") OR (OLD."jezyk_orig_id" IS DISTINCT FROM NEW."jezyk_orig_id") OR (OLD."rok" IS DISTINCT FROM NEW."rok") OR (OLD."search_index" IS DISTINCT FROM NEW."search_index") OR (OLD."tytul_oryginalny_sort" IS DISTINCT FROM NEW."tytul_oryginalny_sort") OR (OLD."legacy_data" IS DISTINCT FROM NEW."legacy_data") OR (OLD."impact_factor" IS DISTINCT FROM NEW."impact_factor") OR (OLD."punkty_kbn" IS DISTINCT FROM NEW."punkty_kbn") OR (OLD."index_copernicus" IS DISTINCT FROM NEW."index_copernicus") OR (OLD."punktacja_wewnetrzna" IS DISTINCT FROM NEW."punktacja_wewnetrzna") OR (OLD."punktacja_snip" IS DISTINCT FROM NEW."punktacja_snip") OR (OLD."weryfikacja_punktacji" IS DISTINCT FROM NEW."weryfikacja_punktacji") OR (OLD."numer_odbitki" IS DISTINCT FROM NEW."numer_odbitki") OR (OLD."www" IS DISTINCT FROM NEW."www") OR (OLD."dostep_dnia" IS DISTINCT FROM NEW."dostep_dnia") OR (OLD."public_www" IS DISTINCT FROM NEW."public_www") OR (OLD."public_dostep_dnia" IS DISTINCT FROM NEW."public_dostep_dnia") OR (OLD."miejsce_i_rok" IS DISTINCT FROM NEW."miejsce_i_rok") OR (OLD."wydawca_id" IS DISTINCT FROM NEW."wydawca_id") OR (OLD."wydawca_opis" IS DISTINCT FROM NEW."wydawca_opis") OR (OLD."oznaczenie_wydania" IS DISTINCT FROM NEW."oznaczenie_wydania") OR (OLD."redakcja" IS DISTINCT FROM NEW."redakcja") OR (OLD."jednostka_id" IS DISTINCT FROM NEW."jednostka_id") OR (OLD."opis_bibliograficzny_cache" IS DISTINCT FROM NEW."opis_bibliograficzny_cache") OR (OLD."opis_bibliograficzny_autorzy_cache" IS DISTINCT FROM NEW."opis_bibliograficzny_autorzy_cache") OR (OLD."opis_bibliograficzny_zapisani_autorzy_cache" IS DISTINCT FROM NEW."opis_bibliograficzny_zapisani_autorzy_cache") OR (OLD."slug" IS DISTINCT FROM NEW."slug") OR (OLD."autor_id" IS DISTINCT FROM NEW."autor_id") OR (OLD."promotor_id" IS DISTINCT FROM NEW."promotor_id")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id) VALUES (4, NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
-        RETURN NULL;
-    END;
-$$;
-
-
---
 -- Name: f_d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_b58a3(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2689,26 +2649,6 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_be
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
         INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), NEW."id", 'opis_bibliograficzny_zapisani_autorzy_cache') ON CONFLICT DO NOTHING;
-        RETURN NULL;
-    END;
-$$;
-
-
---
--- Name: f_d_aft_row_upd_on_bpp_praca_habilitacyjna(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_praca_habilitacyjna() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-    BEGIN
-        IF ((OLD."id" IS DISTINCT FROM NEW."id") OR (OLD."nie_eksportuj_przez_api" IS DISTINCT FROM NEW."nie_eksportuj_przez_api") OR (OLD."tekst_przed_pierwszym_autorem" IS DISTINCT FROM NEW."tekst_przed_pierwszym_autorem") OR (OLD."tekst_po_ostatnim_autorze" IS DISTINCT FROM NEW."tekst_po_ostatnim_autorze") OR (OLD."opl_pub_cost_free" IS DISTINCT FROM NEW."opl_pub_cost_free") OR (OLD."opl_pub_research_potential" IS DISTINCT FROM NEW."opl_pub_research_potential") OR (OLD."opl_pub_research_or_development_projects" IS DISTINCT FROM NEW."opl_pub_research_or_development_projects") OR (OLD."opl_pub_other" IS DISTINCT FROM NEW."opl_pub_other") OR (OLD."opl_pub_amount" IS DISTINCT FROM NEW."opl_pub_amount") OR (OLD."pbn_id" IS DISTINCT FROM NEW."pbn_id") OR (OLD."isbn" IS DISTINCT FROM NEW."isbn") OR (OLD."e_isbn" IS DISTINCT FROM NEW."e_isbn") OR (OLD."doi" IS DISTINCT FROM NEW."doi") OR (OLD."pubmed_id" IS DISTINCT FROM NEW."pubmed_id") OR (OLD."pmc_id" IS DISTINCT FROM NEW."pmc_id") OR (OLD."slowa_kluczowe_eng" IS DISTINCT FROM NEW."slowa_kluczowe_eng") OR (OLD."adnotacje" IS DISTINCT FROM NEW."adnotacje") OR (OLD."informacja_z_id" IS DISTINCT FROM NEW."informacja_z_id") OR (OLD."status_korekty_id" IS DISTINCT FROM NEW."status_korekty_id") OR (OLD."informacje" IS DISTINCT FROM NEW."informacje") OR (OLD."szczegoly" IS DISTINCT FROM NEW."szczegoly") OR (OLD."uwagi" IS DISTINCT FROM NEW."uwagi") OR (OLD."utworzono" IS DISTINCT FROM NEW."utworzono") OR (OLD."strony" IS DISTINCT FROM NEW."strony") OR (OLD."tom" IS DISTINCT FROM NEW."tom") OR (OLD."tytul_oryginalny" IS DISTINCT FROM NEW."tytul_oryginalny") OR (OLD."tytul" IS DISTINCT FROM NEW."tytul") OR (OLD."liczba_cytowan" IS DISTINCT FROM NEW."liczba_cytowan") OR (OLD."pbn_uid_id" IS DISTINCT FROM NEW."pbn_uid_id") OR (OLD."recenzowana" IS DISTINCT FROM NEW."recenzowana") OR (OLD."typ_kbn_id" IS DISTINCT FROM NEW."typ_kbn_id") OR (OLD."jezyk_id" IS DISTINCT FROM NEW."jezyk_id") OR (OLD."jezyk_alt_id" IS DISTINCT FROM NEW."jezyk_alt_id") OR (OLD."jezyk_orig_id" IS DISTINCT FROM NEW."jezyk_orig_id") OR (OLD."rok" IS DISTINCT FROM NEW."rok") OR (OLD."search_index" IS DISTINCT FROM NEW."search_index") OR (OLD."tytul_oryginalny_sort" IS DISTINCT FROM NEW."tytul_oryginalny_sort") OR (OLD."legacy_data" IS DISTINCT FROM NEW."legacy_data") OR (OLD."impact_factor" IS DISTINCT FROM NEW."impact_factor") OR (OLD."punkty_kbn" IS DISTINCT FROM NEW."punkty_kbn") OR (OLD."index_copernicus" IS DISTINCT FROM NEW."index_copernicus") OR (OLD."punktacja_wewnetrzna" IS DISTINCT FROM NEW."punktacja_wewnetrzna") OR (OLD."punktacja_snip" IS DISTINCT FROM NEW."punktacja_snip") OR (OLD."weryfikacja_punktacji" IS DISTINCT FROM NEW."weryfikacja_punktacji") OR (OLD."numer_odbitki" IS DISTINCT FROM NEW."numer_odbitki") OR (OLD."www" IS DISTINCT FROM NEW."www") OR (OLD."dostep_dnia" IS DISTINCT FROM NEW."dostep_dnia") OR (OLD."public_www" IS DISTINCT FROM NEW."public_www") OR (OLD."public_dostep_dnia" IS DISTINCT FROM NEW."public_dostep_dnia") OR (OLD."miejsce_i_rok" IS DISTINCT FROM NEW."miejsce_i_rok") OR (OLD."wydawca_id" IS DISTINCT FROM NEW."wydawca_id") OR (OLD."wydawca_opis" IS DISTINCT FROM NEW."wydawca_opis") OR (OLD."oznaczenie_wydania" IS DISTINCT FROM NEW."oznaczenie_wydania") OR (OLD."redakcja" IS DISTINCT FROM NEW."redakcja") OR (OLD."jednostka_id" IS DISTINCT FROM NEW."jednostka_id") OR (OLD."opis_bibliograficzny_cache" IS DISTINCT FROM NEW."opis_bibliograficzny_cache") OR (OLD."opis_bibliograficzny_autorzy_cache" IS DISTINCT FROM NEW."opis_bibliograficzny_autorzy_cache") OR (OLD."opis_bibliograficzny_zapisani_autorzy_cache" IS DISTINCT FROM NEW."opis_bibliograficzny_zapisani_autorzy_cache") OR (OLD."slug" IS DISTINCT FROM NEW."slug") OR (OLD."autor_id" IS DISTINCT FROM NEW."autor_id")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id) VALUES (5, NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
         RETURN NULL;
     END;
 $$;
@@ -2965,26 +2905,6 @@ $$;
 
 
 --
--- Name: f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-    BEGIN
-        IF ((OLD."id" IS DISTINCT FROM NEW."id") OR (OLD."nie_eksportuj_przez_api" IS DISTINCT FROM NEW."nie_eksportuj_przez_api") OR (OLD."tekst_przed_pierwszym_autorem" IS DISTINCT FROM NEW."tekst_przed_pierwszym_autorem") OR (OLD."tekst_po_ostatnim_autorze" IS DISTINCT FROM NEW."tekst_po_ostatnim_autorze") OR (OLD."opl_pub_cost_free" IS DISTINCT FROM NEW."opl_pub_cost_free") OR (OLD."opl_pub_research_potential" IS DISTINCT FROM NEW."opl_pub_research_potential") OR (OLD."opl_pub_research_or_development_projects" IS DISTINCT FROM NEW."opl_pub_research_or_development_projects") OR (OLD."opl_pub_other" IS DISTINCT FROM NEW."opl_pub_other") OR (OLD."opl_pub_amount" IS DISTINCT FROM NEW."opl_pub_amount") OR (OLD."pbn_id" IS DISTINCT FROM NEW."pbn_id") OR (OLD."issn" IS DISTINCT FROM NEW."issn") OR (OLD."e_issn" IS DISTINCT FROM NEW."e_issn") OR (OLD."doi" IS DISTINCT FROM NEW."doi") OR (OLD."pubmed_id" IS DISTINCT FROM NEW."pubmed_id") OR (OLD."pmc_id" IS DISTINCT FROM NEW."pmc_id") OR (OLD."slowa_kluczowe_eng" IS DISTINCT FROM NEW."slowa_kluczowe_eng") OR (OLD."adnotacje" IS DISTINCT FROM NEW."adnotacje") OR (OLD."informacja_z_id" IS DISTINCT FROM NEW."informacja_z_id") OR (OLD."status_korekty_id" IS DISTINCT FROM NEW."status_korekty_id") OR (OLD."charakter_formalny_id" IS DISTINCT FROM NEW."charakter_formalny_id") OR (OLD."informacje" IS DISTINCT FROM NEW."informacje") OR (OLD."szczegoly" IS DISTINCT FROM NEW."szczegoly") OR (OLD."uwagi" IS DISTINCT FROM NEW."uwagi") OR (OLD."utworzono" IS DISTINCT FROM NEW."utworzono") OR (OLD."strony" IS DISTINCT FROM NEW."strony") OR (OLD."tom" IS DISTINCT FROM NEW."tom") OR (OLD."nr_zeszytu" IS DISTINCT FROM NEW."nr_zeszytu") OR (OLD."tytul_oryginalny" IS DISTINCT FROM NEW."tytul_oryginalny") OR (OLD."tytul" IS DISTINCT FROM NEW."tytul") OR (OLD."openaccess_wersja_tekstu_id" IS DISTINCT FROM NEW."openaccess_wersja_tekstu_id") OR (OLD."openaccess_licencja_id" IS DISTINCT FROM NEW."openaccess_licencja_id") OR (OLD."openaccess_czas_publikacji_id" IS DISTINCT FROM NEW."openaccess_czas_publikacji_id") OR (OLD."openaccess_ilosc_miesiecy" IS DISTINCT FROM NEW."openaccess_ilosc_miesiecy") OR (OLD."openaccess_data_opublikowania" IS DISTINCT FROM NEW."openaccess_data_opublikowania") OR (OLD."liczba_cytowan" IS DISTINCT FROM NEW."liczba_cytowan") OR (OLD."pbn_uid_id" IS DISTINCT FROM NEW."pbn_uid_id") OR (OLD."pbn_czy_projekt_fnp" IS DISTINCT FROM NEW."pbn_czy_projekt_fnp") OR (OLD."pbn_czy_projekt_ncn" IS DISTINCT FROM NEW."pbn_czy_projekt_ncn") OR (OLD."pbn_czy_projekt_nprh" IS DISTINCT FROM NEW."pbn_czy_projekt_nprh") OR (OLD."pbn_czy_projekt_ue" IS DISTINCT FROM NEW."pbn_czy_projekt_ue") OR (OLD."pbn_czy_czasopismo_indeksowane" IS DISTINCT FROM NEW."pbn_czy_czasopismo_indeksowane") OR (OLD."pbn_czy_artykul_recenzyjny" IS DISTINCT FROM NEW."pbn_czy_artykul_recenzyjny") OR (OLD."pbn_czy_edycja_naukowa" IS DISTINCT FROM NEW."pbn_czy_edycja_naukowa") OR (OLD."liczba_znakow_wydawniczych" IS DISTINCT FROM NEW."liczba_znakow_wydawniczych") OR (OLD."recenzowana" IS DISTINCT FROM NEW."recenzowana") OR (OLD."typ_kbn_id" IS DISTINCT FROM NEW."typ_kbn_id") OR (OLD."jezyk_id" IS DISTINCT FROM NEW."jezyk_id") OR (OLD."jezyk_alt_id" IS DISTINCT FROM NEW."jezyk_alt_id") OR (OLD."jezyk_orig_id" IS DISTINCT FROM NEW."jezyk_orig_id") OR (OLD."rok" IS DISTINCT FROM NEW."rok") OR (OLD."konferencja_id" IS DISTINCT FROM NEW."konferencja_id") OR (OLD."search_index" IS DISTINCT FROM NEW."search_index") OR (OLD."tytul_oryginalny_sort" IS DISTINCT FROM NEW."tytul_oryginalny_sort") OR (OLD."legacy_data" IS DISTINCT FROM NEW."legacy_data") OR (OLD."praca_wybitna" IS DISTINCT FROM NEW."praca_wybitna") OR (OLD."uzasadnienie_wybitnosci" IS DISTINCT FROM NEW."uzasadnienie_wybitnosci") OR (OLD."impact_factor" IS DISTINCT FROM NEW."impact_factor") OR (OLD."punkty_kbn" IS DISTINCT FROM NEW."punkty_kbn") OR (OLD."index_copernicus" IS DISTINCT FROM NEW."index_copernicus") OR (OLD."punktacja_wewnetrzna" IS DISTINCT FROM NEW."punktacja_wewnetrzna") OR (OLD."punktacja_snip" IS DISTINCT FROM NEW."punktacja_snip") OR (OLD."kwartyl_w_scopus" IS DISTINCT FROM NEW."kwartyl_w_scopus") OR (OLD."kwartyl_w_wos" IS DISTINCT FROM NEW."kwartyl_w_wos") OR (OLD."weryfikacja_punktacji" IS DISTINCT FROM NEW."weryfikacja_punktacji") OR (OLD."numer_odbitki" IS DISTINCT FROM NEW."numer_odbitki") OR (OLD."www" IS DISTINCT FROM NEW."www") OR (OLD."dostep_dnia" IS DISTINCT FROM NEW."dostep_dnia") OR (OLD."public_www" IS DISTINCT FROM NEW."public_www") OR (OLD."public_dostep_dnia" IS DISTINCT FROM NEW."public_dostep_dnia") OR (OLD."openaccess_tryb_dostepu_id" IS DISTINCT FROM NEW."openaccess_tryb_dostepu_id") OR (OLD."zrodlo_id" IS DISTINCT FROM NEW."zrodlo_id") OR (OLD."uzupelnij_punktacje" IS DISTINCT FROM NEW."uzupelnij_punktacje") OR (OLD."cached_punkty_dyscyplin" IS DISTINCT FROM NEW."cached_punkty_dyscyplin") OR (OLD."opis_bibliograficzny_cache" IS DISTINCT FROM NEW."opis_bibliograficzny_cache") OR (OLD."opis_bibliograficzny_autorzy_cache" IS DISTINCT FROM NEW."opis_bibliograficzny_autorzy_cache") OR (OLD."opis_bibliograficzny_zapisani_autorzy_cache" IS DISTINCT FROM NEW."opis_bibliograficzny_zapisani_autorzy_cache") OR (OLD."slug" IS DISTINCT FROM NEW."slug")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id) VALUES (6, NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
-        RETURN NULL;
-    END;
-$$;
-
-
---
 -- Name: f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic00d9(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -3168,26 +3088,6 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_cif
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
         INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), NEW."id", 'slug') ON CONFLICT DO NOTHING;
-        RETURN NULL;
-    END;
-$$;
-
-
---
--- Name: f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-    BEGIN
-        IF ((OLD."id" IS DISTINCT FROM NEW."id") OR (OLD."nie_eksportuj_przez_api" IS DISTINCT FROM NEW."nie_eksportuj_przez_api") OR (OLD."tekst_przed_pierwszym_autorem" IS DISTINCT FROM NEW."tekst_przed_pierwszym_autorem") OR (OLD."tekst_po_ostatnim_autorze" IS DISTINCT FROM NEW."tekst_po_ostatnim_autorze") OR (OLD."opl_pub_cost_free" IS DISTINCT FROM NEW."opl_pub_cost_free") OR (OLD."opl_pub_research_potential" IS DISTINCT FROM NEW."opl_pub_research_potential") OR (OLD."opl_pub_research_or_development_projects" IS DISTINCT FROM NEW."opl_pub_research_or_development_projects") OR (OLD."opl_pub_other" IS DISTINCT FROM NEW."opl_pub_other") OR (OLD."opl_pub_amount" IS DISTINCT FROM NEW."opl_pub_amount") OR (OLD."pbn_id" IS DISTINCT FROM NEW."pbn_id") OR (OLD."issn" IS DISTINCT FROM NEW."issn") OR (OLD."e_issn" IS DISTINCT FROM NEW."e_issn") OR (OLD."isbn" IS DISTINCT FROM NEW."isbn") OR (OLD."e_isbn" IS DISTINCT FROM NEW."e_isbn") OR (OLD."doi" IS DISTINCT FROM NEW."doi") OR (OLD."pubmed_id" IS DISTINCT FROM NEW."pubmed_id") OR (OLD."pmc_id" IS DISTINCT FROM NEW."pmc_id") OR (OLD."slowa_kluczowe_eng" IS DISTINCT FROM NEW."slowa_kluczowe_eng") OR (OLD."adnotacje" IS DISTINCT FROM NEW."adnotacje") OR (OLD."informacja_z_id" IS DISTINCT FROM NEW."informacja_z_id") OR (OLD."status_korekty_id" IS DISTINCT FROM NEW."status_korekty_id") OR (OLD."charakter_formalny_id" IS DISTINCT FROM NEW."charakter_formalny_id") OR (OLD."informacje" IS DISTINCT FROM NEW."informacje") OR (OLD."szczegoly" IS DISTINCT FROM NEW."szczegoly") OR (OLD."uwagi" IS DISTINCT FROM NEW."uwagi") OR (OLD."utworzono" IS DISTINCT FROM NEW."utworzono") OR (OLD."strony" IS DISTINCT FROM NEW."strony") OR (OLD."tom" IS DISTINCT FROM NEW."tom") OR (OLD."tytul_oryginalny" IS DISTINCT FROM NEW."tytul_oryginalny") OR (OLD."tytul" IS DISTINCT FROM NEW."tytul") OR (OLD."openaccess_wersja_tekstu_id" IS DISTINCT FROM NEW."openaccess_wersja_tekstu_id") OR (OLD."openaccess_licencja_id" IS DISTINCT FROM NEW."openaccess_licencja_id") OR (OLD."openaccess_czas_publikacji_id" IS DISTINCT FROM NEW."openaccess_czas_publikacji_id") OR (OLD."openaccess_ilosc_miesiecy" IS DISTINCT FROM NEW."openaccess_ilosc_miesiecy") OR (OLD."openaccess_data_opublikowania" IS DISTINCT FROM NEW."openaccess_data_opublikowania") OR (OLD."liczba_cytowan" IS DISTINCT FROM NEW."liczba_cytowan") OR (OLD."pbn_uid_id" IS DISTINCT FROM NEW."pbn_uid_id") OR (OLD."pbn_czy_projekt_fnp" IS DISTINCT FROM NEW."pbn_czy_projekt_fnp") OR (OLD."pbn_czy_projekt_ncn" IS DISTINCT FROM NEW."pbn_czy_projekt_ncn") OR (OLD."pbn_czy_projekt_nprh" IS DISTINCT FROM NEW."pbn_czy_projekt_nprh") OR (OLD."pbn_czy_projekt_ue" IS DISTINCT FROM NEW."pbn_czy_projekt_ue") OR (OLD."pbn_czy_czasopismo_indeksowane" IS DISTINCT FROM NEW."pbn_czy_czasopismo_indeksowane") OR (OLD."pbn_czy_artykul_recenzyjny" IS DISTINCT FROM NEW."pbn_czy_artykul_recenzyjny") OR (OLD."pbn_czy_edycja_naukowa" IS DISTINCT FROM NEW."pbn_czy_edycja_naukowa") OR (OLD."liczba_znakow_wydawniczych" IS DISTINCT FROM NEW."liczba_znakow_wydawniczych") OR (OLD."recenzowana" IS DISTINCT FROM NEW."recenzowana") OR (OLD."typ_kbn_id" IS DISTINCT FROM NEW."typ_kbn_id") OR (OLD."jezyk_id" IS DISTINCT FROM NEW."jezyk_id") OR (OLD."jezyk_alt_id" IS DISTINCT FROM NEW."jezyk_alt_id") OR (OLD."jezyk_orig_id" IS DISTINCT FROM NEW."jezyk_orig_id") OR (OLD."rok" IS DISTINCT FROM NEW."rok") OR (OLD."seria_wydawnicza_id" IS DISTINCT FROM NEW."seria_wydawnicza_id") OR (OLD."numer_w_serii" IS DISTINCT FROM NEW."numer_w_serii") OR (OLD."konferencja_id" IS DISTINCT FROM NEW."konferencja_id") OR (OLD."search_index" IS DISTINCT FROM NEW."search_index") OR (OLD."tytul_oryginalny_sort" IS DISTINCT FROM NEW."tytul_oryginalny_sort") OR (OLD."legacy_data" IS DISTINCT FROM NEW."legacy_data") OR (OLD."praca_wybitna" IS DISTINCT FROM NEW."praca_wybitna") OR (OLD."uzasadnienie_wybitnosci" IS DISTINCT FROM NEW."uzasadnienie_wybitnosci") OR (OLD."impact_factor" IS DISTINCT FROM NEW."impact_factor") OR (OLD."punkty_kbn" IS DISTINCT FROM NEW."punkty_kbn") OR (OLD."index_copernicus" IS DISTINCT FROM NEW."index_copernicus") OR (OLD."punktacja_wewnetrzna" IS DISTINCT FROM NEW."punktacja_wewnetrzna") OR (OLD."punktacja_snip" IS DISTINCT FROM NEW."punktacja_snip") OR (OLD."weryfikacja_punktacji" IS DISTINCT FROM NEW."weryfikacja_punktacji") OR (OLD."numer_odbitki" IS DISTINCT FROM NEW."numer_odbitki") OR (OLD."www" IS DISTINCT FROM NEW."www") OR (OLD."dostep_dnia" IS DISTINCT FROM NEW."dostep_dnia") OR (OLD."public_www" IS DISTINCT FROM NEW."public_www") OR (OLD."public_dostep_dnia" IS DISTINCT FROM NEW."public_dostep_dnia") OR (OLD."miejsce_i_rok" IS DISTINCT FROM NEW."miejsce_i_rok") OR (OLD."wydawca_id" IS DISTINCT FROM NEW."wydawca_id") OR (OLD."wydawca_opis" IS DISTINCT FROM NEW."wydawca_opis") OR (OLD."oznaczenie_wydania" IS DISTINCT FROM NEW."oznaczenie_wydania") OR (OLD."redakcja" IS DISTINCT FROM NEW."redakcja") OR (OLD."openaccess_tryb_dostepu_id" IS DISTINCT FROM NEW."openaccess_tryb_dostepu_id") OR (OLD."wydawnictwo_nadrzedne_id" IS DISTINCT FROM NEW."wydawnictwo_nadrzedne_id") OR (OLD."wydawnictwo_nadrzedne_w_pbn_id" IS DISTINCT FROM NEW."wydawnictwo_nadrzedne_w_pbn_id") OR (OLD."calkowita_liczba_autorow" IS DISTINCT FROM NEW."calkowita_liczba_autorow") OR (OLD."calkowita_liczba_redaktorow" IS DISTINCT FROM NEW."calkowita_liczba_redaktorow") OR (OLD."cached_punkty_dyscyplin" IS DISTINCT FROM NEW."cached_punkty_dyscyplin") OR (OLD."opis_bibliograficzny_cache" IS DISTINCT FROM NEW."opis_bibliograficzny_cache") OR (OLD."opis_bibliograficzny_autorzy_cache" IS DISTINCT FROM NEW."opis_bibliograficzny_autorzy_cache") OR (OLD."opis_bibliograficzny_zapisani_autorzy_cache" IS DISTINCT FROM NEW."opis_bibliograficzny_zapisani_autorzy_cache") OR (OLD."slug" IS DISTINCT FROM NEW."slug")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id) VALUES (3, NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
         RETURN NULL;
     END;
 $$;
@@ -10236,7 +10136,6 @@ ALTER TABLE public.import_dyscyplin_kolumna ALTER COLUMN id ADD GENERATED BY DEF
 CREATE TABLE public.import_list_if_importlistif (
     id uuid NOT NULL,
     created_on timestamp with time zone NOT NULL,
-    last_updated_on timestamp with time zone NOT NULL,
     started_on timestamp with time zone,
     finished_on timestamp with time zone,
     finished_successfully boolean NOT NULL,
@@ -10244,6 +10143,18 @@ CREATE TABLE public.import_list_if_importlistif (
     plik_xls character varying(100) NOT NULL,
     rok smallint NOT NULL,
     owner_id integer NOT NULL,
+    cancel_requested boolean NOT NULL,
+    cancelled boolean NOT NULL,
+    current_stage integer NOT NULL,
+    language character varying(20) NOT NULL,
+    log jsonb NOT NULL,
+    log_seq integer NOT NULL,
+    percent smallint NOT NULL,
+    result_context jsonb,
+    stage_states jsonb NOT NULL,
+    status_text character varying(255) NOT NULL,
+    CONSTRAINT import_list_if_importlistif_log_seq_check CHECK ((log_seq >= 0)),
+    CONSTRAINT import_list_if_importlistif_percent_check CHECK ((percent >= 0)),
     CONSTRAINT import_list_if_importlistif_rok_check CHECK ((rok >= 0))
 );
 
@@ -10339,14 +10250,25 @@ ALTER TABLE public.import_list_ministerialnych_wierszimportulistyministerialnej 
 CREATE TABLE public.import_polon_importplikuabsencji (
     id uuid NOT NULL,
     created_on timestamp with time zone NOT NULL,
-    last_updated_on timestamp with time zone NOT NULL,
     started_on timestamp with time zone,
     finished_on timestamp with time zone,
     finished_successfully boolean NOT NULL,
     traceback text,
     plik character varying(255) NOT NULL,
     owner_id integer NOT NULL,
-    zapisz_zmiany_do_bazy boolean NOT NULL
+    zapisz_zmiany_do_bazy boolean NOT NULL,
+    cancel_requested boolean NOT NULL,
+    cancelled boolean NOT NULL,
+    current_stage integer NOT NULL,
+    language character varying(20) NOT NULL,
+    log jsonb NOT NULL,
+    log_seq integer NOT NULL,
+    percent smallint NOT NULL,
+    result_context jsonb,
+    stage_states jsonb NOT NULL,
+    status_text character varying(255) NOT NULL,
+    CONSTRAINT import_polon_importplikuabsencji_log_seq_check CHECK ((log_seq >= 0)),
+    CONSTRAINT import_polon_importplikuabsencji_percent_check CHECK ((percent >= 0))
 );
 
 
@@ -10357,7 +10279,6 @@ CREATE TABLE public.import_polon_importplikuabsencji (
 CREATE TABLE public.import_polon_importplikupolon (
     id uuid NOT NULL,
     created_on timestamp with time zone NOT NULL,
-    last_updated_on timestamp with time zone NOT NULL,
     started_on timestamp with time zone,
     finished_on timestamp with time zone,
     finished_successfully boolean NOT NULL,
@@ -10368,7 +10289,19 @@ CREATE TABLE public.import_polon_importplikupolon (
     zapisz_zmiany_do_bazy boolean NOT NULL,
     ukryj_niezmatchowanych_autorow boolean NOT NULL,
     ignoruj_miejsce_pracy boolean NOT NULL,
-    uczelnia_id integer
+    uczelnia_id integer,
+    cancel_requested boolean NOT NULL,
+    cancelled boolean NOT NULL,
+    current_stage integer NOT NULL,
+    language character varying(20) NOT NULL,
+    log jsonb NOT NULL,
+    log_seq integer NOT NULL,
+    percent smallint NOT NULL,
+    result_context jsonb,
+    stage_states jsonb NOT NULL,
+    status_text character varying(255) NOT NULL,
+    CONSTRAINT import_polon_importplikupolon_log_seq_check CHECK ((log_seq >= 0)),
+    CONSTRAINT import_polon_importplikupolon_percent_check CHECK ((percent >= 0))
 );
 
 
@@ -10995,7 +10928,9 @@ CREATE TABLE public.importer_publikacji_importsession (
     last_error_traceback text NOT NULL,
     last_failed_stage character varying(16) NOT NULL,
     uczelnia_id integer,
-    rodzaj_rekordu character varying(10) NOT NULL
+    rodzaj_rekordu character varying(10) NOT NULL,
+    zgloszenie_id bigint,
+    zgloszenie_odrzucone_przez_operatora boolean NOT NULL
 );
 
 
@@ -12700,7 +12635,6 @@ ALTER TABLE public.przemapuj_zrodlo_przemapowazrodla ALTER COLUMN id ADD GENERAT
 CREATE TABLE public.raport_slotow_raportslotowuczelnia (
     id uuid NOT NULL,
     created_on timestamp with time zone NOT NULL,
-    last_updated_on timestamp with time zone NOT NULL,
     started_on timestamp with time zone,
     finished_on timestamp with time zone,
     finished_successfully boolean NOT NULL,
@@ -12713,7 +12647,19 @@ CREATE TABLE public.raport_slotow_raportslotowuczelnia (
     owner_id integer NOT NULL,
     pokazuj_zerowych boolean NOT NULL,
     akcja character varying(10) NOT NULL,
-    uczelnia_id integer
+    uczelnia_id integer,
+    cancel_requested boolean NOT NULL,
+    cancelled boolean NOT NULL,
+    current_stage integer NOT NULL,
+    language character varying(20) NOT NULL,
+    log jsonb NOT NULL,
+    log_seq integer NOT NULL,
+    percent smallint NOT NULL,
+    result_context jsonb,
+    stage_states jsonb NOT NULL,
+    status_text character varying(255) NOT NULL,
+    CONSTRAINT raport_slotow_raportslotowuczelnia_log_seq_check CHECK ((log_seq >= 0)),
+    CONSTRAINT raport_slotow_raportslotowuczelnia_percent_check CHECK ((percent >= 0))
 );
 
 
@@ -13212,6 +13158,8 @@ CREATE TABLE public.zglos_publikacje_zgloszenie_publikacji (
     wydawnictwo_nadrzedne_bpp_id integer,
     wydawnictwo_nadrzedne_pbn_id character varying(32),
     wydawnictwo_nadrzedne_tekst character varying(512) NOT NULL,
+    zaimportowano timestamp with time zone,
+    zaimportowal_id integer,
     CONSTRAINT zglos_publikacje_zgloszenie__rodzaj_zglaszanej_publikacji_check CHECK ((rodzaj_zglaszanej_publikacji >= 0)),
     CONSTRAINT zglos_publikacje_zgloszenie_publikacji_forma_dostepu_check CHECK ((forma_dostepu >= 0)),
     CONSTRAINT zglos_publikacje_zgloszenie_publikacji_status_check CHECK ((status >= 0))
@@ -13348,406 +13296,306 @@ COPY public.auth_group (id, name) FROM stdin;
 --
 
 COPY public.auth_group_permissions (id, group_id, permission_id) FROM stdin;
-1	1	256
-2	1	257
-3	1	258
-4	1	259
-5	1	260
-6	1	261
-7	1	262
-8	1	263
-9	1	264
-10	1	265
-11	1	266
-12	1	267
-13	1	268
-14	1	269
-15	1	270
-16	1	271
-17	1	272
-18	1	273
-19	1	274
-20	1	307
-21	1	308
-22	1	309
-23	1	310
-24	1	323
-25	1	324
-26	1	325
-27	1	326
-28	1	327
-29	1	328
-30	1	329
-31	1	330
-32	1	331
-33	1	332
-34	1	333
-35	1	334
-36	1	335
-37	1	336
-38	1	337
-39	1	338
-40	1	339
-41	1	340
-42	1	341
-43	1	342
-44	1	343
-45	1	344
-46	1	345
-47	1	346
-48	1	363
-49	1	364
-50	1	365
-51	1	366
-52	1	375
-53	1	376
-54	1	377
-55	1	378
-56	1	383
-57	1	384
-58	1	385
-59	1	386
-60	1	391
-61	1	392
-62	1	393
-63	1	394
-64	1	155
-65	1	156
-66	1	157
-67	1	158
-68	1	159
-69	1	160
-70	1	161
-71	1	162
-72	1	443
-73	1	444
-74	1	445
-75	1	446
-76	1	199
-77	1	200
-78	1	201
-79	1	202
-80	1	203
-81	1	204
-82	1	205
-83	1	206
-84	1	459
-85	1	460
-86	1	461
-87	1	462
-88	1	211
-89	1	212
-90	1	213
-91	1	214
-92	1	463
-93	1	464
-94	1	465
-95	1	466
-96	1	471
-97	1	472
-98	1	473
-99	1	474
+1	1	515
+2	1	516
+3	1	517
+4	1	518
+5	1	531
+6	1	532
+7	1	533
+8	1	534
+9	1	287
+10	1	288
+11	1	289
+12	1	290
+13	1	291
+14	1	292
+15	1	293
+16	1	294
+17	1	551
+18	1	552
+19	1	553
+20	1	554
+21	1	295
+22	1	296
+23	1	297
+24	1	298
+25	1	299
+26	1	300
+27	1	301
+28	1	302
+29	1	303
+30	1	304
+31	1	305
+32	1	306
+33	1	339
+34	1	340
+35	1	341
+36	1	342
+37	1	355
+38	1	356
+39	1	357
+40	1	358
+41	1	359
+42	1	360
+43	1	361
+44	1	362
+45	1	363
+46	1	364
+47	1	365
+48	1	366
+49	1	367
+50	1	368
+51	1	369
+52	1	370
+53	1	371
+54	1	372
+55	1	373
+56	1	374
+57	1	375
+58	1	376
+59	1	377
+60	1	378
+61	1	391
+62	1	392
+63	1	393
+64	1	394
+65	1	403
+66	1	404
+67	1	405
+68	1	406
+69	1	411
+70	1	412
+71	1	413
+72	1	414
+73	1	419
+74	1	420
+75	1	421
+76	1	422
+77	1	491
+78	1	492
+79	1	493
+80	1	187
+81	1	188
+82	1	189
+83	1	190
+84	1	191
+85	1	192
+86	1	193
+87	1	194
+88	1	471
+89	1	472
+90	1	473
+91	1	474
+92	1	231
+93	1	232
+94	1	233
+95	1	234
+96	1	235
+97	1	236
+98	1	237
+99	1	238
 100	1	487
 101	1	488
 102	1	489
 103	1	490
-104	1	503
-105	1	504
-106	1	505
-107	1	506
-108	1	255
-109	2	451
-110	2	452
-111	2	453
-112	2	454
-113	2	207
-114	2	208
-115	2	209
-116	2	210
-117	2	275
-118	2	276
-119	2	277
-120	2	278
-121	2	347
-122	2	348
-123	2	349
-124	2	350
-129	3	279
-130	3	280
-131	3	281
-132	3	282
-133	3	283
-134	3	284
-135	3	285
-136	3	286
-137	3	287
-138	3	288
-139	3	289
-140	3	290
-141	3	291
-142	3	292
-143	3	293
-144	3	294
-145	3	303
-146	3	304
-147	3	305
-148	3	306
-149	3	351
-150	3	352
-151	3	353
-152	3	354
-153	3	355
-154	3	356
-155	3	357
-156	3	358
-157	3	359
-158	3	360
-159	3	361
-160	3	362
-161	3	379
-162	3	380
-163	3	381
-164	3	382
-165	3	483
-166	3	387
-167	3	388
-168	3	389
-169	3	390
-170	3	484
-171	3	485
-172	3	486
-173	3	407
-174	3	408
-175	3	409
-176	3	410
-177	3	411
-178	3	412
-179	3	413
-180	3	414
-181	3	431
-182	3	432
-183	3	433
-184	3	434
-185	3	439
-186	3	440
-187	3	441
-188	3	442
-189	3	191
-190	3	192
-191	3	193
-192	3	194
-193	3	195
-194	3	196
-195	3	197
-196	3	198
-197	3	447
-198	3	448
-199	3	449
-200	3	450
-201	3	467
-202	3	468
-203	3	469
-204	3	470
-205	3	223
-206	3	224
-207	3	225
-208	3	226
-209	3	227
-210	3	228
-211	3	229
-212	3	230
-213	3	479
-214	3	480
-215	3	481
-216	3	482
-217	3	235
-218	3	236
-219	3	237
-220	3	238
-221	3	239
-222	3	240
-223	3	241
-224	3	242
-225	3	243
-226	3	244
-227	3	245
-228	3	246
-229	3	247
-230	3	248
-231	3	249
-232	3	250
-233	3	251
-234	3	252
-235	3	253
-236	3	254
-237	4	192
-238	4	193
-239	4	194
-240	4	195
-241	4	196
-242	4	197
-243	4	198
-244	4	191
-245	5	147
-246	5	148
-247	5	149
-248	5	19
-249	5	20
-250	5	21
-251	5	22
-252	5	23
-253	5	24
-254	5	25
-255	5	26
-256	5	150
-257	5	35
-258	5	36
-259	5	37
-260	5	38
-261	5	187
-262	5	188
-263	5	189
-264	5	190
-265	6	43
-266	6	44
-267	6	45
-268	6	46
-269	7	128
-270	7	129
-271	7	130
-272	7	107
-273	7	108
-274	7	109
-275	7	110
-276	7	111
-277	7	112
-278	7	113
-279	7	114
-280	7	115
-281	7	116
-282	7	117
-283	7	118
-284	7	119
-285	7	120
-286	7	121
-287	7	122
-288	7	123
-289	7	124
-290	7	125
-291	7	126
-292	7	127
-293	8	139
-294	8	140
-295	8	141
-296	8	142
-297	8	143
-298	8	144
-299	8	145
-300	8	146
-301	1	527
-302	1	528
-303	1	529
-304	1	530
-305	1	531
-306	1	532
-307	1	533
-308	1	534
-309	1	535
-310	1	536
-311	1	537
-312	1	538
-313	1	539
-314	1	540
-315	1	541
-316	1	542
-317	1	543
-318	1	544
-319	1	545
-320	1	546
-321	1	547
-322	1	548
-323	1	549
-324	1	550
-325	1	551
-326	1	552
-327	1	553
-328	1	554
-329	1	555
-330	1	556
-331	1	557
-332	1	558
-333	1	563
-334	1	564
-335	1	565
-336	1	566
-337	1	567
-338	1	568
-339	1	823
-340	1	569
-341	1	824
-342	1	825
-343	1	826
-344	1	570
-345	1	711
-346	1	712
-347	1	713
-348	1	714
-349	1	983
-350	1	984
-351	1	985
-352	1	986
-353	2	723
-354	2	724
-355	2	725
-356	2	726
-357	2	987
-358	2	988
-359	2	989
-360	2	990
-361	3	843
-362	3	844
-363	3	845
-364	3	846
-365	3	847
-366	3	848
-367	3	849
-368	3	850
-369	3	715
-370	3	716
-371	3	717
-372	3	718
-373	3	663
-374	3	664
-375	3	665
-376	3	666
-377	3	667
-378	3	668
-379	3	669
-380	3	670
-381	3	859
-382	3	860
-383	3	861
-384	3	862
-385	5	632
-386	5	633
-387	5	634
-388	5	631
-389	6	799
-390	6	800
-391	6	801
-392	6	802
-393	6	687
-394	6	688
-395	6	689
-396	6	690
-397	6	691
-398	6	692
-399	6	693
-400	6	694
-401	6	695
-402	6	696
-403	6	697
-404	6	698
+104	1	243
+105	1	244
+106	1	245
+107	1	246
+108	1	494
+109	1	499
+110	1	500
+111	1	501
+112	1	502
+113	2	479
+114	2	480
+115	2	481
+116	2	482
+117	2	555
+118	2	556
+119	2	557
+120	2	558
+121	2	239
+122	2	240
+123	2	241
+124	2	242
+125	2	307
+126	2	308
+127	2	309
+128	2	310
+129	3	512
+130	3	513
+131	3	514
+132	3	256
+133	3	257
+134	3	258
+135	3	259
+136	3	260
+137	3	261
+138	3	262
+139	3	267
+140	3	268
+141	3	269
+142	3	270
+143	3	271
+144	3	272
+145	3	273
+146	3	274
+147	3	275
+148	3	276
+149	3	277
+150	3	278
+151	3	279
+152	3	280
+153	3	281
+154	3	282
+155	3	283
+156	3	284
+157	3	285
+158	3	286
+159	3	511
+160	3	311
+161	3	312
+162	3	313
+163	3	314
+164	3	315
+165	3	316
+166	3	317
+167	3	318
+168	3	319
+169	3	320
+170	3	321
+171	3	322
+172	3	323
+173	3	324
+174	3	325
+175	3	326
+176	3	335
+177	3	336
+178	3	337
+179	3	338
+180	3	379
+181	3	380
+182	3	381
+183	3	382
+184	3	383
+185	3	384
+186	3	385
+187	3	386
+188	3	387
+189	3	388
+190	3	389
+191	3	390
+192	3	407
+193	3	408
+194	3	409
+195	3	410
+196	3	415
+197	3	416
+198	3	417
+199	3	418
+200	3	435
+201	3	436
+202	3	437
+203	3	438
+204	3	439
+205	3	440
+206	3	441
+207	3	442
+208	3	459
+209	3	460
+210	3	461
+211	3	462
+212	3	467
+213	3	468
+214	3	469
+215	3	470
+216	3	475
+217	3	476
+218	3	477
+219	3	478
+220	3	223
+221	3	224
+222	3	225
+223	3	226
+224	3	227
+225	3	228
+226	3	229
+227	3	230
+228	3	495
+229	3	496
+230	3	497
+231	3	498
+232	3	507
+233	3	508
+234	3	509
+235	3	510
+236	3	255
+237	4	224
+238	4	225
+239	4	226
+240	4	227
+241	4	228
+242	4	229
+243	4	230
+244	4	223
+245	5	23
+246	5	24
+247	5	25
+248	5	26
+249	5	27
+250	5	28
+251	5	29
+252	5	30
+253	5	219
+254	5	220
+255	5	221
+256	5	222
+257	5	39
+258	5	40
+259	5	41
+260	5	42
+261	5	179
+262	5	180
+263	5	181
+264	5	182
+265	6	48
+266	6	49
+267	6	50
+268	6	47
+269	7	139
+270	7	140
+271	7	141
+272	7	142
+273	7	143
+274	7	144
+275	7	145
+276	7	146
+277	7	147
+278	7	148
+279	7	149
+280	7	150
+281	7	151
+282	7	152
+283	7	153
+284	7	154
+285	7	155
+286	7	156
+287	7	157
+288	7	158
+289	7	159
+290	7	160
+291	7	161
+292	7	162
+293	8	171
+294	8	172
+295	8	173
+296	8	174
+297	8	175
+298	8	176
+299	8	177
+300	8	178
 \.
 
 
@@ -13756,1084 +13604,1080 @@ COPY public.auth_group_permissions (id, group_id, permission_id) FROM stdin;
 --
 
 COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
-1	Can add dirty instance	7	add_dirtyinstance
-2	Can change dirty instance	7	change_dirtyinstance
-3	Can delete dirty instance	7	delete_dirtyinstance
-4	Can view dirty instance	7	view_dirtyinstance
-5	Can add revision	8	add_revision
-6	Can change revision	8	change_revision
-7	Can delete revision	8	delete_revision
-8	Can view revision	8	view_revision
-9	Can add version	9	add_version
-10	Can change version	9	change_version
-11	Can delete version	9	delete_version
-12	Can view version	9	view_version
-13	Can add constance	10	add_constance
-14	Can change constance	10	change_constance
-15	Can delete constance	10	delete_constance
-16	Can view constance	10	view_constance
-17	Can change config	10	change_config
-18	Can view config	10	view_config
-19	Can add Model admin	11	add_modeladmin
-20	Can change Model admin	11	change_modeladmin
-21	Can delete Model admin	11	delete_modeladmin
-22	Can view Model admin	11	view_modeladmin
-23	Can add Model admin column	12	add_modeladmincolumn
-24	Can change Model admin column	12	change_modeladmincolumn
-25	Can delete Model admin column	12	delete_modeladmincolumn
-26	Can view Model admin column	12	view_modeladmincolumn
-27	Can add content type	13	add_contenttype
-28	Can change content type	13	change_contenttype
-29	Can delete content type	13	delete_contenttype
-30	Can view content type	13	view_contenttype
-31	Can add permission	14	add_permission
-32	Can change permission	14	change_permission
-33	Can delete permission	14	delete_permission
-34	Can view permission	14	view_permission
-35	Can add group	15	add_group
-36	Can change group	15	change_group
-37	Can delete group	15	delete_group
-38	Can view group	15	view_group
-39	Can add session	16	add_session
-40	Can change session	16	change_session
-41	Can delete session	16	delete_session
-42	Can view session	16	view_session
-43	Can add site	17	add_site
-44	Can change site	17	change_site
-45	Can delete site	17	delete_site
-46	Can view site	17	view_site
-47	Can add Site shutdown countdown	18	add_sitecountdown
-48	Can change Site shutdown countdown	18	change_sitecountdown
-49	Can delete Site shutdown countdown	18	delete_sitecountdown
-50	Can view Site shutdown countdown	18	view_sitecountdown
-51	Can add import pracownikow	19	add_importpracownikow
-52	Can change import pracownikow	19	change_importpracownikow
-53	Can delete import pracownikow	19	delete_importpracownikow
-54	Can view import pracownikow	19	view_importpracownikow
-55	Can add import pracownikow row	20	add_importpracownikowrow
-56	Can change import pracownikow row	20	change_importpracownikowrow
-57	Can delete import pracownikow row	20	delete_importpracownikowrow
-58	Can view import pracownikow row	20	view_importpracownikowrow
-59	Can add import list if	21	add_importlistif
-60	Can change import list if	21	change_importlistif
-61	Can delete import list if	21	delete_importlistif
-62	Can view import list if	21	view_importlistif
-63	Can add import list if row	22	add_importlistifrow
-64	Can change import list if row	22	change_importlistifrow
-65	Can delete import list if row	22	delete_importlistifrow
-66	Can view import list if row	22	view_importlistifrow
-67	Can add enforced password change	23	add_passwordchangerequired
-68	Can change enforced password change	23	change_passwordchangerequired
-69	Can delete enforced password change	23	delete_passwordchangerequired
-70	Can view enforced password change	23	view_passwordchangerequired
-71	Can add password history entry	24	add_passwordhistory
-72	Can change password history entry	24	change_passwordhistory
-73	Can delete password history entry	24	delete_passwordhistory
-74	Can view password history entry	24	view_passwordhistory
-75	Can add password profile	25	add_passwordprofile
-76	Can change password profile	25	change_passwordprofile
-77	Can delete password profile	25	delete_passwordprofile
-78	Can view password profile	25	view_passwordprofile
-79	Can add access attempt	26	add_accessattempt
-80	Can change access attempt	26	change_accessattempt
-81	Can delete access attempt	26	delete_accessattempt
-82	Can view access attempt	26	view_accessattempt
-83	Can add access log	27	add_accesslog
-84	Can change access log	27	change_accesslog
-85	Can delete access log	27	delete_accesslog
-86	Can view access log	27	view_accesslog
-87	Can add access failure	28	add_accessfailurelog
-88	Can change access failure	28	change_accessfailurelog
-89	Can delete access failure	28	delete_accessfailurelog
-90	Can view access failure	28	view_accessfailurelog
-91	Can add access attempt expiration	29	add_accessattemptexpiration
-92	Can change access attempt expiration	29	change_accessattemptexpiration
-93	Can delete access attempt expiration	29	delete_accessattemptexpiration
-94	Can view access attempt expiration	29	view_accessattemptexpiration
-95	Can add task result	30	add_taskresult
-96	Can change task result	30	change_taskresult
-97	Can delete task result	30	delete_taskresult
-98	Can view task result	30	view_taskresult
-99	Can add chord counter	31	add_chordcounter
-100	Can change chord counter	31	change_chordcounter
-101	Can delete chord counter	31	delete_chordcounter
-102	Can view chord counter	31	view_chordcounter
-103	Can add group result	32	add_groupresult
-104	Can change group result	32	change_groupresult
-105	Can delete group result	32	delete_groupresult
-106	Can view group result	32	view_groupresult
-107	Can add Column	33	add_column
-108	Can change Column	33	change_column
-109	Can delete Column	33	delete_column
-110	Can view Column	33	view_column
-111	Can add Datasource	34	add_datasource
-112	Can change Datasource	34	change_datasource
-113	Can delete Datasource	34	delete_datasource
-114	Can view Datasource	34	view_datasource
-115	Can add Report	35	add_report
-116	Can change Report	35	change_report
-117	Can delete Report	35	delete_report
-118	Can view Report	35	view_report
-119	Can add Report element	36	add_reportelement
-120	Can change Report element	36	change_reportelement
-121	Can delete Report element	36	delete_reportelement
-122	Can view Report element	36	view_reportelement
-123	Can add Table	37	add_table
-124	Can change Table	37	change_table
-125	Can delete Table	37	delete_table
-126	Can view Table	37	view_table
-127	Can add Column order information	38	add_columnorder
-128	Can change Column order information	38	change_columnorder
-129	Can delete Column order information	38	delete_columnorder
-130	Can view Column order information	38	view_columnorder
-131	Can add tag	39	add_tag
-132	Can change tag	39	change_tag
-133	Can delete tag	39	delete_tag
-134	Can view tag	39	view_tag
-135	Can add tagged item	40	add_taggeditem
-136	Can change tagged item	40	change_taggeditem
-137	Can delete tagged item	40	delete_taggeditem
-138	Can view tagged item	40	view_taggeditem
-139	Can add zgłoszenie publikacji	41	add_zgloszenie_publikacji
-140	Can change zgłoszenie publikacji	41	change_zgloszenie_publikacji
-141	Can delete zgłoszenie publikacji	41	delete_zgloszenie_publikacji
-142	Can view zgłoszenie publikacji	41	view_zgloszenie_publikacji
-143	Can add autor w zgłoszeniu publikacji	42	add_zgloszenie_publikacji_autor
-144	Can change autor w zgłoszeniu publikacji	42	change_zgloszenie_publikacji_autor
-145	Can delete autor w zgłoszeniu publikacji	42	delete_zgloszenie_publikacji_autor
-146	Can view autor w zgłoszeniu publikacji	42	view_zgloszenie_publikacji_autor
-147	Can add obsługujący zgłoszenia dla wydziału	43	add_obslugujacy_zgloszenia_wydzialow
-148	Can change obsługujący zgłoszenia dla wydziału	43	change_obslugujacy_zgloszenia_wydzialow
-149	Can delete obsługujący zgłoszenia dla wydziału	43	delete_obslugujacy_zgloszenia_wydzialow
-150	Can view obsługujący zgłoszenia dla wydziału	43	view_obslugujacy_zgloszenia_wydzialow
-151	Can add załącznik zgłoszenia publikacji	44	add_zgloszenie_publikacji_zalacznik
-152	Can change załącznik zgłoszenia publikacji	44	change_zgloszenie_publikacji_zalacznik
-153	Can delete załącznik zgłoszenia publikacji	44	delete_zgloszenie_publikacji_zalacznik
-154	Can view załącznik zgłoszenia publikacji	44	view_zgloszenie_publikacji_zalacznik
-155	Can add Lista wartości domyślnych formularza	45	add_formrepresentation
-156	Can change Lista wartości domyślnych formularza	45	change_formrepresentation
-157	Can delete Lista wartości domyślnych formularza	45	delete_formrepresentation
-158	Can view Lista wartości domyślnych formularza	45	view_formrepresentation
-159	Can add Pole formularza	46	add_formfieldrepresentation
-160	Can change Pole formularza	46	change_formfieldrepresentation
-161	Can delete Pole formularza	46	delete_formfieldrepresentation
-162	Can view Pole formularza	46	view_formfieldrepresentation
-163	Can add Wartość domyslna dla pola formularza	47	add_formfielddefaultvalue
-164	Can change Wartość domyslna dla pola formularza	47	change_formfielddefaultvalue
-165	Can delete Wartość domyslna dla pola formularza	47	delete_formfielddefaultvalue
-166	Can view Wartość domyslna dla pola formularza	47	view_formfielddefaultvalue
-167	Can add raport zerowy entry	48	add_raportzerowyentry
-168	Can change raport zerowy entry	48	change_raportzerowyentry
-169	Can delete raport zerowy entry	48	delete_raportzerowyentry
-170	Can view raport zerowy entry	48	view_raportzerowyentry
-171	Can add raport uczelnia ewaluacja view	49	add_raportuczelniaewaluacjaview
-172	Can change raport uczelnia ewaluacja view	49	change_raportuczelniaewaluacjaview
-173	Can delete raport uczelnia ewaluacja view	49	delete_raportuczelniaewaluacjaview
-174	Can view raport uczelnia ewaluacja view	49	view_raportuczelniaewaluacjaview
-175	Can add raport slotow uczelnia	50	add_raportslotowuczelnia
-176	Can change raport slotow uczelnia	50	change_raportslotowuczelnia
-177	Can delete raport slotow uczelnia	50	delete_raportslotowuczelnia
-178	Can view raport slotow uczelnia	50	view_raportslotowuczelnia
-179	Can add raport slotow uczelnia wiersz	51	add_raportslotowuczelniawiersz
-180	Can change raport slotow uczelnia wiersz	51	change_raportslotowuczelniawiersz
-355	Can add seria wydawnicza	90	add_seria_wydawnicza
-181	Can delete raport slotow uczelnia wiersz	51	delete_raportslotowuczelniawiersz
-182	Can view raport slotow uczelnia wiersz	51	view_raportslotowuczelniawiersz
-183	Can add raport ewaluacja upowaznienia view	52	add_raportewaluacjaupowaznieniaview
-184	Can change raport ewaluacja upowaznienia view	52	change_raportewaluacjaupowaznieniaview
-185	Can delete raport ewaluacja upowaznienia view	52	delete_raportewaluacjaupowaznieniaview
-186	Can view raport ewaluacja upowaznienia view	52	view_raportewaluacjaupowaznieniaview
-187	Can add użytkownik	53	add_bppuser
-188	Can change użytkownik	53	change_bppuser
-189	Can delete użytkownik	53	delete_bppuser
-190	Can view użytkownik	53	view_bppuser
-191	Can add autor	54	add_autor
-192	Can change autor	54	change_autor
-193	Can delete autor	54	delete_autor
-194	Can view autor	54	view_autor
-195	Can add powiązanie autor-jednostka	55	add_autor_jednostka
-196	Can change powiązanie autor-jednostka	55	change_autor_jednostka
-197	Can delete powiązanie autor-jednostka	55	delete_autor_jednostka
-198	Can view powiązanie autor-jednostka	55	view_autor_jednostka
-199	Can add charakter formalny	56	add_charakter_formalny
-200	Can change charakter formalny	56	change_charakter_formalny
-201	Can delete charakter formalny	56	delete_charakter_formalny
-202	Can view charakter formalny	56	view_charakter_formalny
-203	Can add funkcja w jednostce	57	add_funkcja_autora
-204	Can change funkcja w jednostce	57	change_funkcja_autora
-205	Can delete funkcja w jednostce	57	delete_funkcja_autora
-206	Can view funkcja w jednostce	57	view_funkcja_autora
-207	Can add jednostka	58	add_jednostka
-208	Can change jednostka	58	change_jednostka
-209	Can delete jednostka	58	delete_jednostka
-210	Can view jednostka	58	view_jednostka
-211	Can add język	59	add_jezyk
-212	Can change język	59	change_jezyk
-213	Can delete język	59	delete_jezyk
-214	Can view język	59	view_jezyk
-215	Can add opi_2012_ afiliacja_ do_ wydzialu	60	add_opi_2012_afiliacja_do_wydzialu
-216	Can change opi_2012_ afiliacja_ do_ wydzialu	60	change_opi_2012_afiliacja_do_wydzialu
-217	Can delete opi_2012_ afiliacja_ do_ wydzialu	60	delete_opi_2012_afiliacja_do_wydzialu
-218	Can view opi_2012_ afiliacja_ do_ wydzialu	60	view_opi_2012_afiliacja_do_wydzialu
-219	Can add opi_2012_ tytul_ cache	61	add_opi_2012_tytul_cache
-220	Can change opi_2012_ tytul_ cache	61	change_opi_2012_tytul_cache
-221	Can delete opi_2012_ tytul_ cache	61	delete_opi_2012_tytul_cache
-222	Can view opi_2012_ tytul_ cache	61	view_opi_2012_tytul_cache
-223	Can add patent	1	add_patent
-224	Can change patent	1	change_patent
-225	Can delete patent	1	delete_patent
-226	Can view patent	1	view_patent
-227	Can add powiązanie autora z patentem	62	add_patent_autor
-228	Can change powiązanie autora z patentem	62	change_patent_autor
-229	Can delete powiązanie autora z patentem	62	delete_patent_autor
-230	Can view powiązanie autora z patentem	62	view_patent_autor
-231	Can add płeć	63	add_plec
-232	Can change płeć	63	change_plec
-233	Can delete płeć	63	delete_plec
-234	Can view płeć	63	view_plec
-235	Can add praca doktorska	4	add_praca_doktorska
-236	Can change praca doktorska	4	change_praca_doktorska
-237	Can delete praca doktorska	4	delete_praca_doktorska
-238	Can view praca doktorska	4	view_praca_doktorska
-239	Can add praca habilitacyjna	5	add_praca_habilitacyjna
-240	Can change praca habilitacyjna	5	change_praca_habilitacyjna
-241	Can delete praca habilitacyjna	5	delete_praca_habilitacyjna
-242	Can view praca habilitacyjna	5	view_praca_habilitacyjna
-243	Can add powiązanie publikacji z habilitacją	64	add_publikacja_habilitacyjna
-244	Can change powiązanie publikacji z habilitacją	64	change_publikacja_habilitacyjna
-245	Can delete powiązanie publikacji z habilitacją	64	delete_publikacja_habilitacyjna
-246	Can view powiązanie publikacji z habilitacją	64	view_publikacja_habilitacyjna
-247	Can add punktacja źródła	65	add_punktacja_zrodla
-248	Can change punktacja źródła	65	change_punktacja_zrodla
-249	Can delete punktacja źródła	65	delete_punktacja_zrodla
-250	Can view punktacja źródła	65	view_punktacja_zrodla
-251	Can add redaktor źródła	66	add_redakcja_zrodla
-252	Can change redaktor źródła	66	change_redakcja_zrodla
-253	Can delete redaktor źródła	66	delete_redakcja_zrodla
-254	Can view redaktor źródła	66	view_redakcja_zrodla
-255	Can add rodzaj źródła	67	add_rodzaj_zrodla
-256	Can change rodzaj źródła	67	change_rodzaj_zrodla
-257	Can delete rodzaj źródła	67	delete_rodzaj_zrodla
-258	Can view rodzaj źródła	67	view_rodzaj_zrodla
-259	Can add status korekty	68	add_status_korekty
-260	Can change status korekty	68	change_status_korekty
-261	Can delete status korekty	68	delete_status_korekty
-262	Can view status korekty	68	view_status_korekty
-263	Can add typ MNiSW/MEiN	69	add_typ_kbn
-264	Can change typ MNiSW/MEiN	69	change_typ_kbn
-265	Can delete typ MNiSW/MEiN	69	delete_typ_kbn
-266	Can view typ MNiSW/MEiN	69	view_typ_kbn
-267	Can add typ odpowiedzialności	70	add_typ_odpowiedzialnosci
-268	Can change typ odpowiedzialności	70	change_typ_odpowiedzialnosci
-269	Can delete typ odpowiedzialności	70	delete_typ_odpowiedzialnosci
-270	Can view typ odpowiedzialności	70	view_typ_odpowiedzialnosci
-271	Can add tytuł	71	add_tytul
-272	Can change tytuł	71	change_tytul
-273	Can delete tytuł	71	delete_tytul
-274	Can view tytuł	71	view_tytul
-275	Can add uczelnia	72	add_uczelnia
-276	Can change uczelnia	72	change_uczelnia
-277	Can delete uczelnia	72	delete_uczelnia
-278	Can view uczelnia	72	view_uczelnia
-279	Can add wydawnictwo ciągłe	6	add_wydawnictwo_ciagle
-280	Can change wydawnictwo ciągłe	6	change_wydawnictwo_ciagle
-281	Can delete wydawnictwo ciągłe	6	delete_wydawnictwo_ciagle
-282	Can view wydawnictwo ciągłe	6	view_wydawnictwo_ciagle
-283	Can add powiązanie autora z wyd. ciągłym	73	add_wydawnictwo_ciagle_autor
-284	Can change powiązanie autora z wyd. ciągłym	73	change_wydawnictwo_ciagle_autor
-285	Can delete powiązanie autora z wyd. ciągłym	73	delete_wydawnictwo_ciagle_autor
-286	Can view powiązanie autora z wyd. ciągłym	73	view_wydawnictwo_ciagle_autor
-287	Can add wydawnictwo zwarte	3	add_wydawnictwo_zwarte
-288	Can change wydawnictwo zwarte	3	change_wydawnictwo_zwarte
-289	Can delete wydawnictwo zwarte	3	delete_wydawnictwo_zwarte
-290	Can view wydawnictwo zwarte	3	view_wydawnictwo_zwarte
-291	Can add powiązanie autora z wyd. zwartym	74	add_wydawnictwo_zwarte_autor
-292	Can change powiązanie autora z wyd. zwartym	74	change_wydawnictwo_zwarte_autor
-293	Can delete powiązanie autora z wyd. zwartym	74	delete_wydawnictwo_zwarte_autor
-294	Can view powiązanie autora z wyd. zwartym	74	view_wydawnictwo_zwarte_autor
-295	Can add wydział	75	add_wydzial
-296	Can change wydział	75	change_wydzial
-297	Can delete wydział	75	delete_wydzial
-298	Can view wydział	75	view_wydzial
-299	Can add zasięg źródła	76	add_zasieg_zrodla
-300	Can change zasięg źródła	76	change_zasieg_zrodla
-301	Can delete zasięg źródła	76	delete_zasieg_zrodla
-302	Can view zasięg źródła	76	view_zasieg_zrodla
-303	Can add źródło	77	add_zrodlo
-304	Can change źródło	77	change_zrodlo
-305	Can delete źródło	77	delete_zrodlo
-306	Can view źródło	77	view_zrodlo
-307	Can add źródło informacji o bibliografii	78	add_zrodlo_informacji
-308	Can change źródło informacji o bibliografii	78	change_zrodlo_informacji
-309	Can delete źródło informacji o bibliografii	78	delete_zrodlo_informacji
-310	Can view źródło informacji o bibliografii	78	view_zrodlo_informacji
-311	Can add autorzy	79	add_autorzy
-312	Can change autorzy	79	change_autorzy
-313	Can delete autorzy	79	delete_autorzy
-314	Can view autorzy	79	view_autorzy
-315	Can add autorzy view	80	add_autorzyview
-316	Can change autorzy view	80	change_autorzyview
-317	Can delete autorzy view	80	delete_autorzyview
-318	Can view autorzy view	80	view_autorzyview
-319	Can add rekord	81	add_rekord
-320	Can change rekord	81	change_rekord
-321	Can delete rekord	81	delete_rekord
-322	Can view rekord	81	view_rekord
-323	Can add Charakter PBN	82	add_charakter_pbn
-324	Can change Charakter PBN	82	change_charakter_pbn
-325	Can delete Charakter PBN	82	delete_charakter_pbn
-326	Can view Charakter PBN	82	view_charakter_pbn
-327	Can add czas udostępnienia OpenAccess	83	add_czas_udostepnienia_openaccess
-328	Can change czas udostępnienia OpenAccess	83	change_czas_udostepnienia_openaccess
-329	Can delete czas udostępnienia OpenAccess	83	delete_czas_udostepnienia_openaccess
-330	Can view czas udostępnienia OpenAccess	83	view_czas_udostepnienia_openaccess
-331	Can add licencja OpenAccess	84	add_licencja_openaccess
-332	Can change licencja OpenAccess	84	change_licencja_openaccess
-333	Can delete licencja OpenAccess	84	delete_licencja_openaccess
-334	Can view licencja OpenAccess	84	view_licencja_openaccess
-335	Can add tryb OpenAccess wyd. ciągłych	85	add_tryb_openaccess_wydawnictwo_ciagle
-336	Can change tryb OpenAccess wyd. ciągłych	85	change_tryb_openaccess_wydawnictwo_ciagle
-337	Can delete tryb OpenAccess wyd. ciągłych	85	delete_tryb_openaccess_wydawnictwo_ciagle
-338	Can view tryb OpenAccess wyd. ciągłych	85	view_tryb_openaccess_wydawnictwo_ciagle
-339	Can add tryb OpenAccess wyd. zwartych	86	add_tryb_openaccess_wydawnictwo_zwarte
-340	Can change tryb OpenAccess wyd. zwartych	86	change_tryb_openaccess_wydawnictwo_zwarte
-341	Can delete tryb OpenAccess wyd. zwartych	86	delete_tryb_openaccess_wydawnictwo_zwarte
-342	Can view tryb OpenAccess wyd. zwartych	86	view_tryb_openaccess_wydawnictwo_zwarte
-343	Can add wersja tekstu OpenAccess	87	add_wersja_tekstu_openaccess
-344	Can change wersja tekstu OpenAccess	87	change_wersja_tekstu_openaccess
-345	Can delete wersja tekstu OpenAccess	87	delete_wersja_tekstu_openaccess
-346	Can view wersja tekstu OpenAccess	87	view_wersja_tekstu_openaccess
-347	Can add powiązanie jednostka-wydział	88	add_jednostka_wydzial
-348	Can change powiązanie jednostka-wydział	88	change_jednostka_wydzial
-349	Can delete powiązanie jednostka-wydział	88	delete_jednostka_wydzial
-350	Can view powiązanie jednostka-wydział	88	view_jednostka_wydzial
-351	Can add konferencja	89	add_konferencja
-352	Can change konferencja	89	change_konferencja
-353	Can delete konferencja	89	delete_konferencja
-354	Can view konferencja	89	view_konferencja
-356	Can change seria wydawnicza	90	change_seria_wydawnicza
-357	Can delete seria wydawnicza	90	delete_seria_wydawnicza
-358	Can view seria wydawnicza	90	view_seria_wydawnicza
-359	Can add nagroda	91	add_nagroda
-360	Can change nagroda	91	change_nagroda
-361	Can delete nagroda	91	delete_nagroda
-362	Can view nagroda	91	view_nagroda
-363	Can add Organ przyznający nagrodę	92	add_organprzyznajacynagrody
-364	Can change Organ przyznający nagrodę	92	change_organprzyznajacynagrody
-365	Can delete Organ przyznający nagrodę	92	delete_organprzyznajacynagrody
-366	Can view Organ przyznający nagrodę	92	view_organprzyznajacynagrody
-367	Can add nowe_ sumy_ view	93	add_nowe_sumy_view
-368	Can change nowe_ sumy_ view	93	change_nowe_sumy_view
-369	Can delete nowe_ sumy_ view	93	delete_nowe_sumy_view
-370	Can view nowe_ sumy_ view	93	view_nowe_sumy_view
-371	Can add rekord view	94	add_rekordview
-372	Can change rekord view	94	change_rekordview
-373	Can delete rekord view	94	delete_rekordview
-374	Can view rekord view	94	view_rekordview
-375	Can add rodzaj prawa patentowego	95	add_rodzaj_prawa_patentowego
-376	Can change rodzaj prawa patentowego	95	change_rodzaj_prawa_patentowego
-377	Can delete rodzaj prawa patentowego	95	delete_rodzaj_prawa_patentowego
-378	Can view rodzaj prawa patentowego	95	view_rodzaj_prawa_patentowego
-379	Can add powiązanie autor-dyscyplina	96	add_autor_dyscyplina
-380	Can change powiązanie autor-dyscyplina	96	change_autor_dyscyplina
-381	Can delete powiązanie autor-dyscyplina	96	delete_autor_dyscyplina
-382	Can view powiązanie autor-dyscyplina	96	view_autor_dyscyplina
-383	Can add dyscyplina naukowa	97	add_dyscyplina_naukowa
-384	Can change dyscyplina naukowa	97	change_dyscyplina_naukowa
-385	Can delete dyscyplina naukowa	97	delete_dyscyplina_naukowa
-386	Can view dyscyplina naukowa	97	view_dyscyplina_naukowa
-387	Can add powiązanie wyd. ciągłego z zewn. bazą danych	98	add_wydawnictwo_ciagle_zewnetrzna_baza_danych
-388	Can change powiązanie wyd. ciągłego z zewn. bazą danych	98	change_wydawnictwo_ciagle_zewnetrzna_baza_danych
-389	Can delete powiązanie wyd. ciągłego z zewn. bazą danych	98	delete_wydawnictwo_ciagle_zewnetrzna_baza_danych
-390	Can view powiązanie wyd. ciągłego z zewn. bazą danych	98	view_wydawnictwo_ciagle_zewnetrzna_baza_danych
-391	Can add zewnętrzna baza danych	99	add_zewnetrzna_baza_danych
-392	Can change zewnętrzna baza danych	99	change_zewnetrzna_baza_danych
-393	Can delete zewnętrzna baza danych	99	delete_zewnetrzna_baza_danych
-394	Can view zewnętrzna baza danych	99	view_zewnetrzna_baza_danych
-395	Can add zewnetrzne bazy danych view	100	add_zewnetrznebazydanychview
-396	Can change zewnetrzne bazy danych view	100	change_zewnetrznebazydanychview
-397	Can delete zewnetrzne bazy danych view	100	delete_zewnetrznebazydanychview
-398	Can view zewnetrzne bazy danych view	100	view_zewnetrznebazydanychview
-399	Can add cache_ punktacja_ autora	101	add_cache_punktacja_autora
-400	Can change cache_ punktacja_ autora	101	change_cache_punktacja_autora
-401	Can delete cache_ punktacja_ autora	101	delete_cache_punktacja_autora
-402	Can view cache_ punktacja_ autora	101	view_cache_punktacja_autora
-403	Can add cache_ punktacja_ dyscypliny	102	add_cache_punktacja_dyscypliny
-404	Can change cache_ punktacja_ dyscypliny	102	change_cache_punktacja_dyscypliny
-405	Can delete cache_ punktacja_ dyscypliny	102	delete_cache_punktacja_dyscypliny
-406	Can view cache_ punktacja_ dyscypliny	102	view_cache_punktacja_dyscypliny
-407	Can add poziom wydawcy	103	add_poziom_wydawcy
-408	Can change poziom wydawcy	103	change_poziom_wydawcy
-409	Can delete poziom wydawcy	103	delete_poziom_wydawcy
-410	Can view poziom wydawcy	103	view_poziom_wydawcy
-411	Can add wydawca	2	add_wydawca
-412	Can change wydawca	2	change_wydawca
-413	Can delete wydawca	2	delete_wydawca
-414	Can view wydawca	2	view_wydawca
-415	Can add cache_ punktacja_ autora_ query	104	add_cache_punktacja_autora_query
-416	Can change cache_ punktacja_ autora_ query	104	change_cache_punktacja_autora_query
-417	Can delete cache_ punktacja_ autora_ query	104	delete_cache_punktacja_autora_query
-418	Can view cache_ punktacja_ autora_ query	104	view_cache_punktacja_autora_query
-419	Can add cache_ punktacja_ autora_ sum	105	add_cache_punktacja_autora_sum
-420	Can change cache_ punktacja_ autora_ sum	105	change_cache_punktacja_autora_sum
-421	Can delete cache_ punktacja_ autora_ sum	105	delete_cache_punktacja_autora_sum
-422	Can view cache_ punktacja_ autora_ sum	105	view_cache_punktacja_autora_sum
-423	Can add cache_ punktacja_ autora_ sum_ group_ ponizej	106	add_cache_punktacja_autora_sum_group_ponizej
-424	Can change cache_ punktacja_ autora_ sum_ group_ ponizej	106	change_cache_punktacja_autora_sum_group_ponizej
-425	Can delete cache_ punktacja_ autora_ sum_ group_ ponizej	106	delete_cache_punktacja_autora_sum_group_ponizej
-426	Can view cache_ punktacja_ autora_ sum_ group_ ponizej	106	view_cache_punktacja_autora_sum_group_ponizej
-427	Can add cache_ punktacja_ autora_ sum_ ponizej	107	add_cache_punktacja_autora_sum_ponizej
-428	Can change cache_ punktacja_ autora_ sum_ ponizej	107	change_cache_punktacja_autora_sum_ponizej
-429	Can delete cache_ punktacja_ autora_ sum_ ponizej	107	delete_cache_punktacja_autora_sum_ponizej
-430	Can view cache_ punktacja_ autora_ sum_ ponizej	107	view_cache_punktacja_autora_sum_ponizej
-431	Can add powiązanie wyd. zwartego z zewn. bazami danych	108	add_wydawnictwo_zwarte_zewnetrzna_baza_danych
-432	Can change powiązanie wyd. zwartego z zewn. bazami danych	108	change_wydawnictwo_zwarte_zewnetrzna_baza_danych
-433	Can delete powiązanie wyd. zwartego z zewn. bazami danych	108	delete_wydawnictwo_zwarte_zewnetrzna_baza_danych
-434	Can view powiązanie wyd. zwartego z zewn. bazami danych	108	view_wydawnictwo_zwarte_zewnetrzna_baza_danych
-435	Can add cache_ punktacja_ autora_ query_ view	109	add_cache_punktacja_autora_query_view
-436	Can change cache_ punktacja_ autora_ query_ view	109	change_cache_punktacja_autora_query_view
-437	Can delete cache_ punktacja_ autora_ query_ view	109	delete_cache_punktacja_autora_query_view
-438	Can view cache_ punktacja_ autora_ query_ view	109	view_cache_punktacja_autora_query_view
-439	Can add element repozytorium	110	add_element_repozytorium
-440	Can change element repozytorium	110	change_element_repozytorium
-441	Can delete element repozytorium	110	delete_element_repozytorium
-442	Can view element repozytorium	110	view_element_repozytorium
-443	Can add grant	111	add_grant
-444	Can change grant	111	change_grant
-445	Can delete grant	111	delete_grant
-446	Can view grant	111	view_grant
-447	Can add grant rekordu	112	add_grant_rekordu
-448	Can change grant rekordu	112	change_grant_rekordu
-449	Can delete grant rekordu	112	delete_grant_rekordu
-450	Can view grant rekordu	112	view_grant_rekordu
-451	Can add ustawienie ukrywania statusu korekty	113	add_ukryj_status_korekty
-452	Can change ustawienie ukrywania statusu korekty	113	change_ukryj_status_korekty
-453	Can delete ustawienie ukrywania statusu korekty	113	delete_ukryj_status_korekty
-454	Can view ustawienie ukrywania statusu korekty	113	view_ukryj_status_korekty
-455	Can add slowa kluczowe view	114	add_slowakluczoweview
-456	Can change slowa kluczowe view	114	change_slowakluczoweview
-457	Can delete slowa kluczowe view	114	delete_slowakluczoweview
-458	Can view slowa kluczowe view	114	view_slowakluczoweview
-459	Can add grupa pracownicza	115	add_grupa_pracownicza
-460	Can change grupa pracownicza	115	change_grupa_pracownicza
-461	Can delete grupa pracownicza	115	delete_grupa_pracownicza
-462	Can view grupa pracownicza	115	view_grupa_pracownicza
-463	Can add wymiar etatu	116	add_wymiar_etatu
-464	Can change wymiar etatu	116	change_wymiar_etatu
-465	Can delete wymiar etatu	116	delete_wymiar_etatu
-466	Can view wymiar etatu	116	view_wymiar_etatu
-467	Can add przypisanie dyscypliny do źródła	117	add_dyscyplina_zrodla
-468	Can change przypisanie dyscypliny do źródła	117	change_dyscyplina_zrodla
-469	Can delete przypisanie dyscypliny do źródła	117	delete_dyscyplina_zrodla
-470	Can view przypisanie dyscypliny do źródła	117	view_dyscyplina_zrodla
-471	Can add widoczność opcji wyszukiwania	118	add_bppmultiseekvisibility
-472	Can change widoczność opcji wyszukiwania	118	change_bppmultiseekvisibility
-473	Can delete widoczność opcji wyszukiwania	118	delete_bppmultiseekvisibility
-474	Can view widoczność opcji wyszukiwania	118	view_bppmultiseekvisibility
-475	Can add powiązanie szablonu dla opisu bibliograficznego	119	add_szablondlaopisubibliograficznego
-476	Can change powiązanie szablonu dla opisu bibliograficznego	119	change_szablondlaopisubibliograficznego
-477	Can delete powiązanie szablonu dla opisu bibliograficznego	119	delete_szablondlaopisubibliograficznego
-478	Can view powiązanie szablonu dla opisu bibliograficznego	119	view_szablondlaopisubibliograficznego
-479	Can add streszczenie wydawnictwa zwartego	120	add_wydawnictwo_zwarte_streszczenie
-480	Can change streszczenie wydawnictwa zwartego	120	change_wydawnictwo_zwarte_streszczenie
-481	Can delete streszczenie wydawnictwa zwartego	120	delete_wydawnictwo_zwarte_streszczenie
-482	Can view streszczenie wydawnictwa zwartego	120	view_wydawnictwo_zwarte_streszczenie
-483	Can add streszczenie wydawnictwa ciągłego	121	add_wydawnictwo_ciagle_streszczenie
-484	Can change streszczenie wydawnictwa ciągłego	121	change_wydawnictwo_ciagle_streszczenie
-485	Can delete streszczenie wydawnictwa ciągłego	121	delete_wydawnictwo_ciagle_streszczenie
-486	Can view streszczenie wydawnictwa ciągłego	121	view_wydawnictwo_ciagle_streszczenie
-487	Can add kierunek studiów	122	add_kierunek_studiow
-488	Can change kierunek studiów	122	change_kierunek_studiow
-489	Can delete kierunek studiów	122	delete_kierunek_studiow
-490	Can view kierunek studiów	122	view_kierunek_studiow
-491	Can add rzeczownik	123	add_rzeczownik
-492	Can change rzeczownik	123	change_rzeczownik
-493	Can delete rzeczownik	123	delete_rzeczownik
-494	Can view rzeczownik	123	view_rzeczownik
-495	Can add absencja autora za rok	124	add_autor_absencja
-496	Can change absencja autora za rok	124	change_autor_absencja
-497	Can delete absencja autora za rok	124	delete_autor_absencja
-498	Can view absencja autora za rok	124	view_autor_absencja
-499	Can add cache_ liczba_ n_ last_ updated	125	add_cache_liczba_n_last_updated
-500	Can change cache_ liczba_ n_ last_ updated	125	change_cache_liczba_n_last_updated
-501	Can delete cache_ liczba_ n_ last_ updated	125	delete_cache_liczba_n_last_updated
-502	Can view cache_ liczba_ n_ last_ updated	125	view_cache_liczba_n_last_updated
-503	Can add mapowanie typu CrossRef na BPP	126	add_crossref_mapper
-504	Can change mapowanie typu CrossRef na BPP	126	change_crossref_mapper
-505	Can delete mapowanie typu CrossRef na BPP	126	delete_crossref_mapper
-506	Can view mapowanie typu CrossRef na BPP	126	view_crossref_mapper
-507	Can add Log zmian opłat za publikację	127	add_oplatypublikacjilog
-508	Can change Log zmian opłat za publikację	127	change_oplatypublikacjilog
-509	Can delete Log zmian opłat za publikację	127	delete_oplatypublikacjilog
-510	Can view Log zmian opłat za publikację	127	view_oplatypublikacjilog
-511	Can add cache_ punktacja_ autora_ sum_ group	128	add_cache_punktacja_autora_sum_group
-512	Can change cache_ punktacja_ autora_ sum_ group	128	change_cache_punktacja_autora_sum_group
-513	Can delete cache_ punktacja_ autora_ sum_ group	128	delete_cache_punktacja_autora_sum_group
-514	Can view cache_ punktacja_ autora_ sum_ group	128	view_cache_punktacja_autora_sum_group
-515	Can add crossref api cache	153	add_crossrefapicache
-516	Can change crossref api cache	153	change_crossrefapicache
-517	Can delete crossref api cache	153	delete_crossrefapicache
-518	Can view crossref api cache	153	view_crossrefapicache
-519	Can add country	154	add_country
-520	Can change country	154	change_country
-521	Can delete country	154	delete_country
-522	Can view country	154	view_country
-523	Can add language	155	add_language
-524	Can change language	155	change_language
-525	Can delete language	155	delete_language
-526	Can view language	155	view_language
-527	Can add Instytucja w PBN API	130	add_institution
-528	Can change Instytucja w PBN API	130	change_institution
-529	Can delete Instytucja w PBN API	130	delete_institution
-530	Can view Instytucja w PBN API	130	view_institution
-531	Can add Konferencja w PBN API	131	add_conference
-532	Can change Konferencja w PBN API	131	change_conference
-533	Can delete Konferencja w PBN API	131	delete_conference
-534	Can view Konferencja w PBN API	131	view_conference
-535	Can add Zródło w PBN API	129	add_journal
-536	Can change Zródło w PBN API	129	change_journal
-537	Can delete Zródło w PBN API	129	delete_journal
-538	Can view Zródło w PBN API	129	view_journal
-539	Can add Wydawca w PBN API	132	add_publisher
-540	Can change Wydawca w PBN API	132	change_publisher
-541	Can delete Wydawca w PBN API	132	delete_publisher
-542	Can view Wydawca w PBN API	132	view_publisher
-543	Can add Publikacja z PBN API	136	add_publication
-544	Can change Publikacja z PBN API	136	change_publication
-545	Can delete Publikacja z PBN API	136	delete_publication
-546	Can view Publikacja z PBN API	136	view_publication
-547	Can add Osoba w PBN API	133	add_scientist
-548	Can change Osoba w PBN API	133	change_scientist
-549	Can delete Osoba w PBN API	133	delete_scientist
-550	Can view Osoba w PBN API	133	view_scientist
-551	Can add Informacja o wysłanych danych	134	add_sentdata
-552	Can change Informacja o wysłanych danych	134	change_sentdata
-553	Can delete Informacja o wysłanych danych	134	delete_sentdata
-554	Can view Informacja o wysłanych danych	134	view_sentdata
-555	Can add Oświadczenie instytucji	137	add_oswiadczenieinstytucji
-556	Can change Oświadczenie instytucji	137	change_oswiadczenieinstytucji
-557	Can delete Oświadczenie instytucji	137	delete_oswiadczenieinstytucji
-558	Can view Oświadczenie instytucji	137	view_oswiadczenieinstytucji
-559	Can add Publikacja instytucji	156	add_publikacjainstytucji
-560	Can change Publikacja instytucji	156	change_publikacjainstytucji
-561	Can delete Publikacja instytucji	156	delete_publikacjainstytucji
-562	Can view Publikacja instytucji	156	view_publikacjainstytucji
-563	Can add słownik dyscyplin PBN	138	add_disciplinegroup
-564	Can change słownik dyscyplin PBN	138	change_disciplinegroup
-565	Can delete słownik dyscyplin PBN	138	delete_disciplinegroup
-566	Can view słownik dyscyplin PBN	138	view_disciplinegroup
-567	Can add Dyscyplina PBN	135	add_discipline
-568	Can change Dyscyplina PBN	135	change_discipline
-569	Can delete Dyscyplina PBN	135	delete_discipline
-570	Can view Dyscyplina PBN	135	view_discipline
-571	Can add rekord tłumacza dyscyplin BPP do PBN	157	add_tlumaczdyscyplin
-572	Can change rekord tłumacza dyscyplin BPP do PBN	157	change_tlumaczdyscyplin
-573	Can delete rekord tłumacza dyscyplin BPP do PBN	157	delete_tlumaczdyscyplin
-574	Can view rekord tłumacza dyscyplin BPP do PBN	157	view_tlumaczdyscyplin
-575	Can add Publikacja instytucji V2	158	add_publikacjainstytucji_v2
-576	Can change Publikacja instytucji V2	158	change_publikacjainstytucji_v2
-577	Can delete Publikacja instytucji V2	158	delete_publikacjainstytucji_v2
-578	Can view Publikacja instytucji V2	158	view_publikacjainstytucji_v2
-579	Can add osoba z instytucji	159	add_osobazinstytucji
-580	Can change osoba z instytucji	159	change_osobazinstytucji
-581	Can delete osoba z instytucji	159	delete_osobazinstytucji
-582	Can view osoba z instytucji	159	view_osobazinstytucji
-583	Can add Niepożądana odpowiedź PBN	160	add_pbnodpowiedziniepozadane
-584	Can change Niepożądana odpowiedź PBN	160	change_pbnodpowiedziniepozadane
-585	Can delete Niepożądana odpowiedź PBN	160	delete_pbnodpowiedziniepozadane
-586	Can view Niepożądana odpowiedź PBN	160	view_pbnodpowiedziniepozadane
-587	Can add Mapowanie DSpace	161	add_mapowanie_dspace
-588	Can change Mapowanie DSpace	161	change_mapowanie_dspace
-589	Can delete Mapowanie DSpace	161	delete_mapowanie_dspace
-590	Can view Mapowanie DSpace	161	view_mapowanie_dspace
-591	Can add Informacja o wysłaniu do DSpace	162	add_senttodspace
-592	Can change Informacja o wysłaniu do DSpace	162	change_senttodspace
-593	Can delete Informacja o wysłaniu do DSpace	162	delete_senttodspace
-594	Can view Informacja o wysłaniu do DSpace	162	view_senttodspace
-595	Can add Kolejka eksportu do PBN	163	add_pbn_export_queue
-596	Can change Kolejka eksportu do PBN	163	change_pbn_export_queue
-597	Can delete Kolejka eksportu do PBN	163	delete_pbn_export_queue
-598	Can view Kolejka eksportu do PBN	163	view_pbn_export_queue
-599	Can add Metadane komparatora źródeł	164	add_komparatorzrodelmeta
-600	Can change Metadane komparatora źródeł	164	change_komparatorzrodelmeta
-601	Can delete Metadane komparatora źródeł	164	delete_komparatorzrodelmeta
-602	Can view Metadane komparatora źródeł	164	view_komparatorzrodelmeta
-603	Can add Log aktualizacji źródła	165	add_logaktualizacjizrodla
-604	Can change Log aktualizacji źródła	165	change_logaktualizacjizrodla
-605	Can delete Log aktualizacji źródła	165	delete_logaktualizacjizrodla
-606	Can view Log aktualizacji źródła	165	view_logaktualizacjizrodla
-607	Can add Rozbieżność źródła BPP-PBN	166	add_rozbieznosczrodlapbn
-608	Can change Rozbieżność źródła BPP-PBN	166	change_rozbieznosczrodlapbn
-609	Can delete Rozbieżność źródła BPP-PBN	166	delete_rozbieznosczrodlapbn
-610	Can view Rozbieżność źródła BPP-PBN	166	view_rozbieznosczrodlapbn
-611	Can add Brakująca dyscyplina PBN	167	add_brakujacadyscyplinapbn
-612	Can change Brakująca dyscyplina PBN	167	change_brakujacadyscyplinapbn
-613	Can delete Brakująca dyscyplina PBN	167	delete_brakujacadyscyplinapbn
-614	Can view Brakująca dyscyplina PBN	167	view_brakujacadyscyplinapbn
-615	Can add log entry	168	add_logentry
-616	Can change log entry	168	change_logentry
-617	Can delete log entry	168	delete_logentry
-618	Can view log entry	168	view_logentry
-619	Can add bookmark	169	add_bookmark
-620	Can change bookmark	169	change_bookmark
-621	Can delete bookmark	169	delete_bookmark
-622	Can view bookmark	169	view_bookmark
-623	Can add dashboard preferences	170	add_dashboardpreferences
-624	Can change dashboard preferences	170	change_dashboardpreferences
-625	Can delete dashboard preferences	170	delete_dashboardpreferences
-626	Can view dashboard preferences	170	view_dashboardpreferences
-627	Can add message	171	add_message
-628	Can change message	171	change_message
-629	Can delete message	171	delete_message
-630	Can view message	171	view_message
-631	Can add search form	148	add_searchform
-632	Can change search form	148	change_searchform
-633	Can delete search form	148	delete_searchform
-634	Can view search form	148	view_searchform
-635	Can add Powiązanie autorów	172	add_authorconnection
-636	Can change Powiązanie autorów	172	change_authorconnection
-637	Can delete Powiązanie autorów	172	delete_authorconnection
-638	Can view Powiązanie autorów	172	view_authorconnection
-639	Can add notification	173	add_notification
-640	Can change notification	173	change_notification
-641	Can delete notification	173	delete_notification
-642	Can view notification	173	view_notification
-643	Can add lista ministerialna element	174	add_listaministerialnaelement
-644	Can change lista ministerialna element	174	change_listaministerialnaelement
-645	Can delete lista ministerialna element	174	delete_listaministerialnaelement
-646	Can view lista ministerialna element	174	view_listaministerialnaelement
-647	Can add integracja list ministerialnych	175	add_listaministerialnaintegration
-648	Can change integracja list ministerialnych	175	change_listaministerialnaintegration
-649	Can delete integracja list ministerialnych	175	delete_listaministerialnaintegration
-650	Can view integracja list ministerialnych	175	view_listaministerialnaintegration
-651	Can add definicja raportu	176	add_definicjaraportu
-652	Can change definicja raportu	176	change_definicjaraportu
-653	Can delete definicja raportu	176	delete_definicjaraportu
-654	Can view definicja raportu	176	view_definicjaraportu
-655	Can add brak przypisania view	177	add_brakprzypisaniaview
-656	Can change brak przypisania view	177	change_brakprzypisaniaview
-657	Can delete brak przypisania view	177	delete_brakprzypisaniaview
-658	Can view brak przypisania view	177	view_brakprzypisaniaview
-659	Can add rozbiezne przypisania view	178	add_rozbiezneprzypisaniaview
-660	Can change rozbiezne przypisania view	178	change_rozbiezneprzypisaniaview
-661	Can delete rozbiezne przypisania view	178	delete_rozbiezneprzypisaniaview
-662	Can view rozbiezne przypisania view	178	view_rozbiezneprzypisaniaview
-663	Can add rozbieżność rekordu i dyscyplin	143	add_rozbieznosciview
-664	Can change rozbieżność rekordu i dyscyplin	143	change_rozbieznosciview
-665	Can delete rozbieżność rekordu i dyscyplin	143	delete_rozbieznosciview
-666	Can view rozbieżność rekordu i dyscyplin	143	view_rozbieznosciview
-667	Can add rozbieżność dyscyplin źródeł	144	add_rozbieznoscizrodelview
-668	Can change rozbieżność dyscyplin źródeł	144	change_rozbieznoscizrodelview
-669	Can delete rozbieżność dyscyplin źródeł	144	delete_rozbieznoscizrodelview
-670	Can view rozbieżność dyscyplin źródeł	144	view_rozbieznoscizrodelview
-687	Can add Favicon	149	add_favicon
-688	Can change Favicon	149	change_favicon
-689	Can delete Favicon	149	delete_favicon
-690	Can view Favicon	149	view_favicon
-691	Can add favicon img	150	add_faviconimg
-692	Can change favicon img	150	change_faviconimg
-693	Can delete favicon img	150	delete_faviconimg
-694	Can view favicon img	150	view_faviconimg
-695	Can add Article	151	add_article
-696	Can change Article	151	change_article
-697	Can delete Article	151	delete_article
-698	Can view Article	151	view_article
-699	Can add import_ dyscyplin	183	add_import_dyscyplin
-700	Can change import_ dyscyplin	183	change_import_dyscyplin
-701	Can delete import_ dyscyplin	183	delete_import_dyscyplin
-702	Can view import_ dyscyplin	183	view_import_dyscyplin
-703	Can add import_ dyscyplin_ row	184	add_import_dyscyplin_row
-704	Can change import_ dyscyplin_ row	184	change_import_dyscyplin_row
-705	Can delete import_ dyscyplin_ row	184	delete_import_dyscyplin_row
-706	Can view import_ dyscyplin_ row	184	view_import_dyscyplin_row
-707	Can add kolumna	185	add_kolumna
-708	Can change kolumna	185	change_kolumna
-709	Can delete kolumna	185	delete_kolumna
-710	Can view kolumna	185	view_kolumna
-711	Can add Rodzaj autora	139	add_rodzaj_autora
-712	Can change Rodzaj autora	139	change_rodzaj_autora
-713	Can delete Rodzaj autora	139	delete_rodzaj_autora
-714	Can view Rodzaj autora	139	view_rodzaj_autora
-715	Can add Ilość udziałów dla autora za rok	142	add_iloscudzialowdlaautorazarok
-716	Can change Ilość udziałów dla autora za rok	142	change_iloscudzialowdlaautorazarok
-717	Can delete Ilość udziałów dla autora za rok	142	delete_iloscudzialowdlaautorazarok
-718	Can view Ilość udziałów dla autora za rok	142	view_iloscudzialowdlaautorazarok
-719	Can add Dyscyplina nieraportowana 2022-2025	186	add_dyscyplinanieraportowana
-720	Can change Dyscyplina nieraportowana 2022-2025	186	change_dyscyplinanieraportowana
-721	Can delete Dyscyplina nieraportowana 2022-2025	186	delete_dyscyplinanieraportowana
-722	Can view Dyscyplina nieraportowana 2022-2025	186	view_dyscyplinanieraportowana
-723	Can add Liczba N dla uczelni	141	add_liczbandlauczelni
-724	Can change Liczba N dla uczelni	141	change_liczbandlauczelni
-725	Can delete Liczba N dla uczelni	141	delete_liczbandlauczelni
-726	Can view Liczba N dla uczelni	141	view_liczbandlauczelni
-727	Can add Ilość udziałów dla autora za cały okres	187	add_iloscudzialowdlaautorazacalosc
-728	Can change Ilość udziałów dla autora za cały okres	187	change_iloscudzialowdlaautorazacalosc
-729	Can delete Ilość udziałów dla autora za cały okres	187	delete_iloscudzialowdlaautorazacalosc
-730	Can view Ilość udziałów dla autora za cały okres	187	view_iloscudzialowdlaautorazacalosc
-731	Can add Status generowania metryk	188	add_statusgenerowania
-732	Can change Status generowania metryk	188	change_statusgenerowania
-733	Can delete Status generowania metryk	188	delete_statusgenerowania
-734	Can view Status generowania metryk	188	view_statusgenerowania
-735	Can add Metryka autora	189	add_metrykaautora
-736	Can change Metryka autora	189	change_metrykaautora
-737	Can delete Metryka autora	189	delete_metrykaautora
-738	Can view Metryka autora	189	view_metrykaautora
-739	Can add Wynik autora w optymalizacji	190	add_optimizationauthorresult
-740	Can change Wynik autora w optymalizacji	190	change_optimizationauthorresult
-741	Can delete Wynik autora w optymalizacji	190	delete_optimizationauthorresult
-742	Can view Wynik autora w optymalizacji	190	view_optimizationauthorresult
-743	Can add Wynik optymalizacji	191	add_optimizationrun
-744	Can change Wynik optymalizacji	191	change_optimizationrun
-745	Can delete Wynik optymalizacji	191	delete_optimizationrun
-746	Can view Wynik optymalizacji	191	view_optimizationrun
-747	Can add Publikacja w optymalizacji	192	add_optimizationpublication
-748	Can change Publikacja w optymalizacji	192	change_optimizationpublication
-749	Can delete Publikacja w optymalizacji	192	delete_optimizationpublication
-750	Can view Publikacja w optymalizacji	192	view_optimizationpublication
-751	Can add Możliwość odpięcia	193	add_unpinningopportunity
-752	Can change Możliwość odpięcia	193	change_unpinningopportunity
-753	Can delete Możliwość odpięcia	193	delete_unpinningopportunity
-754	Can view Możliwość odpięcia	193	view_unpinningopportunity
-755	Can add Status optymalizacji z odpinaniem	194	add_statusoptymalizacjizodpinaniem
-756	Can change Status optymalizacji z odpinaniem	194	change_statusoptymalizacjizodpinaniem
-757	Can delete Status optymalizacji z odpinaniem	194	delete_statusoptymalizacjizodpinaniem
-758	Can view Status optymalizacji z odpinaniem	194	view_statusoptymalizacjizodpinaniem
-759	Can add Status optymalizacji bulk	195	add_statusoptymalizacjibulk
-760	Can change Status optymalizacji bulk	195	change_statusoptymalizacjibulk
-761	Can delete Status optymalizacji bulk	195	delete_statusoptymalizacjibulk
-762	Can view Status optymalizacji bulk	195	view_statusoptymalizacjibulk
-763	Can add Status analizy unpinning	196	add_statusunpinninganalyzy
-764	Can change Status analizy unpinning	196	change_statusunpinninganalyzy
-765	Can delete Status analizy unpinning	196	delete_statusunpinninganalyzy
-766	Can view Status analizy unpinning	196	view_statusunpinninganalyzy
-767	Can add Status analizy zamiany dyscyplin	197	add_statusdisciplineswapanalysis
-768	Can change Status analizy zamiany dyscyplin	197	change_statusdisciplineswapanalysis
-769	Can delete Status analizy zamiany dyscyplin	197	delete_statusdisciplineswapanalysis
-770	Can view Status analizy zamiany dyscyplin	197	view_statusdisciplineswapanalysis
-771	Can add Możliwość zamiany dyscypliny	198	add_disciplineswapopportunity
-772	Can change Możliwość zamiany dyscypliny	198	change_disciplineswapopportunity
-773	Can delete Możliwość zamiany dyscypliny	198	delete_disciplineswapopportunity
-774	Can view Możliwość zamiany dyscypliny	198	view_disciplineswapopportunity
-775	Can add Status przeliczania przeglądarki	199	add_statusprzegladarkarecalc
-776	Can change Status przeliczania przeglądarki	199	change_statusprzegladarkarecalc
-777	Can delete Status przeliczania przeglądarki	199	delete_statusprzegladarkarecalc
-778	Can view Status przeliczania przeglądarki	199	view_statusprzegladarkarecalc
-779	Can add Optymalizacja publikacji	200	add_optymalizacjapublikacji
-780	Can change Optymalizacja publikacji	200	change_optymalizacjapublikacji
-781	Can delete Optymalizacja publikacji	200	delete_optymalizacjapublikacji
-782	Can view Optymalizacja publikacji	200	view_optymalizacjapublikacji
-783	Can add Historia zmiany dyscypliny	201	add_historiazmiandyscypliny
-784	Can change Historia zmiany dyscypliny	201	change_historiazmiandyscypliny
-785	Can delete Historia zmiany dyscypliny	201	delete_historiazmiandyscypliny
-786	Can view Historia zmiany dyscypliny	201	view_historiazmiandyscypliny
-787	Can add test operation	202	add_testoperation
-788	Can change test operation	202	change_testoperation
-789	Can delete test operation	202	delete_testoperation
-790	Can view test operation	202	view_testoperation
-791	Can add test object that does not exist	203	add_testobjectthatdoesnotexist
-792	Can change test object that does not exist	203	change_testobjectthatdoesnotexist
-793	Can delete test object that does not exist	203	delete_testobjectthatdoesnotexist
-794	Can view test object that does not exist	203	view_testobjectthatdoesnotexist
-795	Can add test report	204	add_testreport
-796	Can change test report	204	change_testreport
-797	Can delete test report	204	delete_testreport
-798	Can view test report	204	view_testreport
-799	Can add template	152	add_template
-800	Can change template	152	change_template
-801	Can delete template	152	delete_template
-802	Can view template	152	view_template
-803	Can add oswiadczenia export task	205	add_oswiadczeniaexporttask
-804	Can change oswiadczenia export task	205	change_oswiadczeniaexporttask
-805	Can delete oswiadczenia export task	205	delete_oswiadczeniaexporttask
-806	Can view oswiadczenia export task	205	view_oswiadczeniaexporttask
-807	Can add import pliku polon	206	add_importplikupolon
-808	Can change import pliku polon	206	change_importplikupolon
-809	Can delete import pliku polon	206	delete_importplikupolon
-810	Can view import pliku polon	206	view_importplikupolon
-811	Can add wiersz importu pliku polon	207	add_wierszimportuplikupolon
-812	Can change wiersz importu pliku polon	207	change_wierszimportuplikupolon
-813	Can delete wiersz importu pliku polon	207	delete_wierszimportuplikupolon
-814	Can view wiersz importu pliku polon	207	view_wierszimportuplikupolon
-815	Can add import pliku absencji	208	add_importplikuabsencji
-816	Can change import pliku absencji	208	change_importplikuabsencji
-817	Can delete import pliku absencji	208	delete_importplikuabsencji
-818	Can view import pliku absencji	208	view_importplikuabsencji
-819	Can add wiersz importu pliku absencji	209	add_wierszimportuplikuabsencji
-820	Can change wiersz importu pliku absencji	209	change_wierszimportuplikuabsencji
-821	Can delete wiersz importu pliku absencji	209	delete_wierszimportuplikuabsencji
-822	Can view wiersz importu pliku absencji	209	view_wierszimportuplikuabsencji
-823	Can add Wymuszenie grupy stanowisk	140	add_importpolonoverride
-824	Can change Wymuszenie grupy stanowisk	140	change_importpolonoverride
-825	Can delete Wymuszenie grupy stanowisk	140	delete_importpolonoverride
-826	Can view Wymuszenie grupy stanowisk	140	view_importpolonoverride
-827	Can add import list ministerialnych	210	add_importlistministerialnych
-828	Can change import list ministerialnych	210	change_importlistministerialnych
-829	Can delete import list ministerialnych	210	delete_importlistministerialnych
-830	Can view import list ministerialnych	210	view_importlistministerialnych
-831	Can add wiersz importu listy ministerialnej	211	add_wierszimportulistyministerialnej
-832	Can change wiersz importu listy ministerialnej	211	change_wierszimportulistyministerialnej
-833	Can delete wiersz importu listy ministerialnej	211	delete_wierszimportulistyministerialnej
-834	Can view wiersz importu listy ministerialnej	211	view_wierszimportulistyministerialnej
-835	Can add snapshot odpiec	212	add_snapshotodpiec
-836	Can change snapshot odpiec	212	change_snapshotodpiec
-837	Can delete snapshot odpiec	212	delete_snapshotodpiec
-838	Can view snapshot odpiec	212	view_snapshotodpiec
-839	Can add wartosc snapshotu	213	add_wartoscsnapshotu
-840	Can change wartosc snapshotu	213	change_wartoscsnapshotu
-841	Can delete wartosc snapshotu	213	delete_wartoscsnapshotu
-842	Can view wartosc snapshotu	213	view_wartoscsnapshotu
-843	Can add Oznaczony jako nie-duplikat	145	add_notaduplicate
-844	Can change Oznaczony jako nie-duplikat	145	change_notaduplicate
-845	Can delete Oznaczony jako nie-duplikat	145	delete_notaduplicate
-846	Can view Oznaczony jako nie-duplikat	145	view_notaduplicate
-847	Can add Log scalania autorów	146	add_logscalania
-848	Can change Log scalania autorów	146	change_logscalania
-849	Can delete Log scalania autorów	146	delete_logscalania
-850	Can view Log scalania autorów	146	view_logscalania
-851	Can add Skanowanie duplikatów	214	add_duplicatescanrun
-852	Can change Skanowanie duplikatów	214	change_duplicatescanrun
-853	Can delete Skanowanie duplikatów	214	delete_duplicatescanrun
-854	Can view Skanowanie duplikatów	214	view_duplicatescanrun
-855	Can add Kandydat na duplikat	215	add_duplicatecandidate
-856	Can change Kandydat na duplikat	215	change_duplicatecandidate
-857	Can delete Kandydat na duplikat	215	delete_duplicatecandidate
-858	Can view Kandydat na duplikat	215	view_duplicatecandidate
-859	Can add Ignorowany Scientist (PBN)	147	add_ignoredscientist
-860	Can change Ignorowany Scientist (PBN)	147	change_ignoredscientist
-861	Can delete Ignorowany Scientist (PBN)	147	delete_ignoredscientist
-862	Can view Ignorowany Scientist (PBN)	147	view_ignoredscientist
-863	Can add Ignorowany autor (BPP)	216	add_ignoredauthor
-864	Can change Ignorowany autor (BPP)	216	change_ignoredauthor
-865	Can delete Ignorowany autor (BPP)	216	delete_ignoredauthor
-866	Can view Ignorowany autor (BPP)	216	view_ignoredauthor
-867	Can add Skanowanie duplikatów publikacji	217	add_publicationduplicatescanrun
-868	Can change Skanowanie duplikatów publikacji	217	change_publicationduplicatescanrun
-869	Can delete Skanowanie duplikatów publikacji	217	delete_publicationduplicatescanrun
-870	Can view Skanowanie duplikatów publikacji	217	view_publicationduplicatescanrun
-871	Can add Kandydat na duplikat publikacji	218	add_publicationduplicatecandidate
-872	Can change Kandydat na duplikat publikacji	218	change_publicationduplicatecandidate
-873	Can delete Kandydat na duplikat publikacji	218	delete_publicationduplicatecandidate
-874	Can view Kandydat na duplikat publikacji	218	view_publicationduplicatecandidate
-875	Can add źródło ignorowane w deduplikacji	219	add_ignoredsource
-876	Can change źródło ignorowane w deduplikacji	219	change_ignoredsource
-877	Can delete źródło ignorowane w deduplikacji	219	delete_ignoredsource
-878	Can view źródło ignorowane w deduplikacji	219	view_ignoredsource
-879	Can add oznaczenie 'to nie duplikat'	220	add_notaduplicate
-880	Can change oznaczenie 'to nie duplikat'	220	change_notaduplicate
-881	Can delete oznaczenie 'to nie duplikat'	220	delete_notaduplicate
-882	Can view oznaczenie 'to nie duplikat'	220	view_notaduplicate
-883	Can add Ignorowany naukowiec PBN	221	add_donotremind
-884	Can change Ignorowany naukowiec PBN	221	change_donotremind
-885	Can delete Ignorowany naukowiec PBN	221	delete_donotremind
-886	Can view Ignorowany naukowiec PBN	221	view_donotremind
-887	Can add Przebudowa cache'u importu autorów PBN	222	add_matchcacherebuildoperation
-888	Can change Przebudowa cache'u importu autorów PBN	222	change_matchcacherebuildoperation
-889	Can delete Przebudowa cache'u importu autorów PBN	222	delete_matchcacherebuildoperation
-890	Can view Przebudowa cache'u importu autorów PBN	222	view_matchcacherebuildoperation
-891	Can add Cache dopasowania naukowca PBN	223	add_cachedscientistmatch
-892	Can change Cache dopasowania naukowca PBN	223	change_cachedscientistmatch
-893	Can delete Cache dopasowania naukowca PBN	223	delete_cachedscientistmatch
-894	Can view Cache dopasowania naukowca PBN	223	view_cachedscientistmatch
-895	Can add Przemapowanie prac autora	224	add_przemapoaniepracautora
-896	Can change Przemapowanie prac autora	224	change_przemapoaniepracautora
-897	Can delete Przemapowanie prac autora	224	delete_przemapoaniepracautora
-898	Can view Przemapowanie prac autora	224	view_przemapoaniepracautora
-899	Can add Przemapowanie źródła	225	add_przemapowaniezrodla
-900	Can change Przemapowanie źródła	225	change_przemapowaniezrodla
-901	Can delete Przemapowanie źródła	225	delete_przemapowaniezrodla
-902	Can view Przemapowanie źródła	225	view_przemapowaniezrodla
-903	Can add Przemapowanie źródła	226	add_przemapowazrodla
-904	Can change Przemapowanie źródła	226	change_przemapowazrodla
-905	Can delete Przemapowanie źródła	226	delete_przemapowazrodla
-906	Can view Przemapowanie źródła	226	view_przemapowazrodla
-907	Can add PBN Download Task	227	add_pbndownloadtask
-908	Can change PBN Download Task	227	change_pbndownloadtask
-909	Can delete PBN Download Task	227	delete_pbndownloadtask
-910	Can view PBN Download Task	227	view_pbndownloadtask
-911	Can add PBN Institution People Download Task	228	add_pbninstitutionpeopletask
-912	Can change PBN Institution People Download Task	228	change_pbninstitutionpeopletask
-913	Can delete PBN Institution People Download Task	228	delete_pbninstitutionpeopletask
-914	Can view PBN Institution People Download Task	228	view_pbninstitutionpeopletask
-915	Can add PBN Journals Download Task	229	add_pbnjournalsdownloadtask
-916	Can change PBN Journals Download Task	229	change_pbnjournalsdownloadtask
-917	Can delete PBN Journals Download Task	229	delete_pbnjournalsdownloadtask
-918	Can view PBN Journals Download Task	229	view_pbnjournalsdownloadtask
-919	Can add Zadanie wysylki oswiadczen	230	add_pbnwysylkaoswiadczentask
-920	Can change Zadanie wysylki oswiadczen	230	change_pbnwysylkaoswiadczentask
-921	Can delete Zadanie wysylki oswiadczen	230	delete_pbnwysylkaoswiadczentask
-922	Can view Zadanie wysylki oswiadczen	230	view_pbnwysylkaoswiadczentask
-923	Can add Log wysylki	231	add_pbnwysylkalog
-924	Can change Log wysylki	231	change_pbnwysylkalog
-925	Can delete Log wysylki	231	delete_pbnwysylkalog
-926	Can view Log wysylki	231	view_pbnwysylkalog
-927	Can add Sesja importu	232	add_importsession
-928	Can change Sesja importu	232	change_importsession
-929	Can delete Sesja importu	232	delete_importsession
-930	Can view Sesja importu	232	view_importsession
-931	Can add Wpis dziennika importu	233	add_importlog
-932	Can change Wpis dziennika importu	233	change_importlog
-933	Can delete Wpis dziennika importu	233	delete_importlog
-934	Can view Wpis dziennika importu	233	view_importlog
-935	Can add Nieścisłość importu	234	add_importinconsistency
-936	Can change Nieścisłość importu	234	change_importinconsistency
-937	Can delete Nieścisłość importu	234	delete_importinconsistency
-938	Can view Nieścisłość importu	234	view_importinconsistency
-939	Can add Rozbieżność dyscyplin BPP-PBN	235	add_rozbieznoscdyscyplinpbn
-940	Can change Rozbieżność dyscyplin BPP-PBN	235	change_rozbieznoscdyscyplinpbn
-941	Can delete Rozbieżność dyscyplin BPP-PBN	235	delete_rozbieznoscdyscyplinpbn
-942	Can view Rozbieżność dyscyplin BPP-PBN	235	view_rozbieznoscdyscyplinpbn
-943	Can add Brak autora w publikacji	236	add_brakautorawpublikacji
-944	Can change Brak autora w publikacji	236	change_brakautorawpublikacji
-945	Can delete Brak autora w publikacji	236	delete_brakautorawpublikacji
-946	Can view Brak autora w publikacji	236	view_brakautorawpublikacji
-947	Can add Kliknięcie w menu	237	add_menuclick
-948	Can change Kliknięcie w menu	237	change_menuclick
-949	Can delete Kliknięcie w menu	237	delete_menuclick
-950	Can view Kliknięcie w menu	237	view_menuclick
-951	Can add sesja importu	238	add_importsession
-952	Can change sesja importu	238	change_importsession
-953	Can delete sesja importu	238	delete_importsession
-954	Can view sesja importu	238	view_importsession
-955	Can add importowany autor	239	add_importedauthor
-956	Can change importowany autor	239	change_importedauthor
-957	Can delete importowany autor	239	delete_importedauthor
-958	Can view importowany autor	239	view_importedauthor
-959	Can add kandydat na autora	240	add_importedauthor_candidate
-960	Can change kandydat na autora	240	change_importedauthor_candidate
-961	Can delete kandydat na autora	240	delete_importedauthor_candidate
-962	Can view kandydat na autora	240	view_importedauthor_candidate
-963	Can add CRUD event	241	add_crudevent
-964	Can change CRUD event	241	change_crudevent
-965	Can delete CRUD event	241	delete_crudevent
-966	Can view CRUD event	241	view_crudevent
-967	Can add login event	242	add_loginevent
-968	Can change login event	242	change_loginevent
-969	Can delete login event	242	delete_loginevent
-970	Can view login event	242	view_loginevent
-971	Can add request event	243	add_requestevent
-972	Can change request event	243	change_requestevent
-973	Can delete request event	243	delete_requestevent
-974	Can view request event	243	view_requestevent
-975	Can add dodatkowy tytuł wydawnictwa ciągłego	244	add_wydawnictwo_ciagle_tytul
-976	Can change dodatkowy tytuł wydawnictwa ciągłego	244	change_wydawnictwo_ciagle_tytul
-977	Can delete dodatkowy tytuł wydawnictwa ciągłego	244	delete_wydawnictwo_ciagle_tytul
-978	Can view dodatkowy tytuł wydawnictwa ciągłego	244	view_wydawnictwo_ciagle_tytul
-979	Can add dodatkowy tytuł wydawnictwa zwartego	245	add_wydawnictwo_zwarte_tytul
-980	Can change dodatkowy tytuł wydawnictwa zwartego	245	change_wydawnictwo_zwarte_tytul
-981	Can delete dodatkowy tytuł wydawnictwa zwartego	245	delete_wydawnictwo_zwarte_tytul
-982	Can view dodatkowy tytuł wydawnictwa zwartego	245	view_wydawnictwo_zwarte_tytul
-983	Can add rodzaj jednostki	246	add_rodzajjednostki
-984	Can change rodzaj jednostki	246	change_rodzajjednostki
-985	Can delete rodzaj jednostki	246	delete_rodzajjednostki
-986	Can view rodzaj jednostki	246	view_rodzajjednostki
-987	Can add powiązanie jednostka-rodzic	88	add_jednostka_rodzic
-988	Can change powiązanie jednostka-rodzic	88	change_jednostka_rodzic
-989	Can delete powiązanie jednostka-rodzic	88	delete_jednostka_rodzic
-990	Can view powiązanie jednostka-rodzic	88	view_jednostka_rodzic
-991	Can add log zmiany punktacji	247	add_rozbieznosclog
-992	Can change log zmiany punktacji	247	change_rozbieznosclog
-993	Can delete log zmiany punktacji	247	delete_rozbieznosclog
-994	Can view log zmiany punktacji	247	view_rozbieznosclog
-995	Can add ignorowana rozbieżność	248	add_ignorowanarozbieznosc
-996	Can change ignorowana rozbieżność	248	change_ignorowanarozbieznosc
-997	Can delete ignorowana rozbieżność	248	delete_ignorowanarozbieznosc
-998	Can view ignorowana rozbieżność	248	view_ignorowanarozbieznosc
-999	Can add import punktacji źródeł	249	add_importpunktacjizrodel
-1000	Can change import punktacji źródeł	249	change_importpunktacjizrodel
-1001	Can delete import punktacji źródeł	249	delete_importpunktacjizrodel
-1002	Can view import punktacji źródeł	249	view_importpunktacjizrodel
-1003	Can add wiersz importu punktacji zrodel	250	add_wierszimportupunktacjizrodel
-1004	Can change wiersz importu punktacji zrodel	250	change_wierszimportupunktacjizrodel
-1005	Can delete wiersz importu punktacji zrodel	250	delete_wierszimportupunktacjizrodel
-1006	Can view wiersz importu punktacji zrodel	250	view_wierszimportupunktacjizrodel
-1007	Can add Skanowanie duplikatów źródeł	251	add_scanzrodelforduplicates
-1008	Can change Skanowanie duplikatów źródeł	251	change_scanzrodelforduplicates
-1009	Can delete Skanowanie duplikatów źródeł	251	delete_scanzrodelforduplicates
-1010	Can view Skanowanie duplikatów źródeł	251	view_scanzrodelforduplicates
-1011	Can add Kandydat na duplikat źródła	252	add_sourceduplicatecandidate
-1012	Can change Kandydat na duplikat źródła	252	change_sourceduplicatecandidate
-1013	Can delete Kandydat na duplikat źródła	252	delete_sourceduplicatecandidate
-1014	Can view Kandydat na duplikat źródła	252	view_sourceduplicatecandidate
-1015	Can add profil mapowania importu pracowników	253	add_profilmapowania
-1016	Can change profil mapowania importu pracowników	253	change_profilmapowania
-1017	Can delete profil mapowania importu pracowników	253	delete_profilmapowania
-1018	Can view profil mapowania importu pracowników	253	view_profilmapowania
-1019	Can add kandydat na autora (import pracowników)	254	add_importpracownikowrowkandydat
-1020	Can change kandydat na autora (import pracowników)	254	change_importpracownikowrowkandydat
-1021	Can delete kandydat na autora (import pracowników)	254	delete_importpracownikowrowkandydat
-1022	Can view kandydat na autora (import pracowników)	254	view_importpracownikowrowkandydat
-1023	Can add odpięcie autora spoza pliku (import pracowników)	255	add_importpracownikowodpiecie
-1024	Can change odpięcie autora spoza pliku (import pracowników)	255	change_importpracownikowodpiecie
-1025	Can delete odpięcie autora spoza pliku (import pracowników)	255	delete_importpracownikowodpiecie
-1026	Can view odpięcie autora spoza pliku (import pracowników)	255	view_importpracownikowodpiecie
-1027	Can add decyzja o jednostce (import pracowników)	256	add_importpracownikowjednostka
-1028	Can change decyzja o jednostce (import pracowników)	256	change_importpracownikowjednostka
-1029	Can delete decyzja o jednostce (import pracowników)	256	delete_importpracownikowjednostka
-1030	Can view decyzja o jednostce (import pracowników)	256	view_importpracownikowjednostka
-1031	Can add decyzja o tytule (import pracowników)	257	add_importpracownikowtytul
-1032	Can change decyzja o tytule (import pracowników)	257	change_importpracownikowtytul
-1033	Can delete decyzja o tytule (import pracowników)	257	delete_importpracownikowtytul
-1034	Can view decyzja o tytule (import pracowników)	257	view_importpracownikowtytul
-1035	Can add application	258	add_application
-1036	Can change application	258	change_application
-1037	Can delete application	258	delete_application
-1038	Can view application	258	view_application
-1039	Can add access token	259	add_accesstoken
-1040	Can change access token	259	change_accesstoken
-1041	Can delete access token	259	delete_accesstoken
-1042	Can view access token	259	view_accesstoken
-1043	Can add grant	260	add_grant
-1044	Can change grant	260	change_grant
-1045	Can delete grant	260	delete_grant
-1046	Can view grant	260	view_grant
-1047	Can add refresh token	261	add_refreshtoken
-1048	Can change refresh token	261	change_refreshtoken
-1049	Can delete refresh token	261	delete_refreshtoken
-1050	Can view refresh token	261	view_refreshtoken
-1051	Can add id token	262	add_idtoken
-1052	Can change id token	262	change_idtoken
-1053	Can delete id token	262	delete_idtoken
-1054	Can view id token	262	view_idtoken
-1055	Can add device grant	263	add_devicegrant
-1056	Can change device grant	263	change_devicegrant
-1057	Can delete device grant	263	delete_devicegrant
-1058	Can view device grant	263	view_devicegrant
-1059	Can add import wielu prac	264	add_multipleworksimport
-1060	Can change import wielu prac	264	change_multipleworksimport
-1061	Can delete import wielu prac	264	delete_multipleworksimport
-1062	Can view import wielu prac	264	view_multipleworksimport
-1063	Can add wpis paczki	265	add_multipleworksimportentry
-1064	Can change wpis paczki	265	change_multipleworksimportentry
-1065	Can delete wpis paczki	265	delete_multipleworksimportentry
-1066	Can view wpis paczki	265	view_multipleworksimportentry
-1067	Can add first-run wizard state	266	add_firstrunwizardstate
-1068	Can change first-run wizard state	266	change_firstrunwizardstate
-1069	Can delete first-run wizard state	266	delete_firstrunwizardstate
-1070	Can view first-run wizard state	266	view_firstrunwizardstate
-1071	Can add decyzja o stanowisku dydaktycznym (import pracowników)	267	add_importpracownikowstanowisko
-1072	Can change decyzja o stanowisku dydaktycznym (import pracowników)	267	change_importpracownikowstanowisko
-1073	Can delete decyzja o stanowisku dydaktycznym (import pracowników)	267	delete_importpracownikowstanowisko
-1074	Can view decyzja o stanowisku dydaktycznym (import pracowników)	267	view_importpracownikowstanowisko
-1075	Can add decyzja o stopniu służbowym (import pracowników)	268	add_importpracownikowstopien
-1076	Can change decyzja o stopniu służbowym (import pracowników)	268	change_importpracownikowstopien
-1077	Can delete decyzja o stopniu służbowym (import pracowników)	268	delete_importpracownikowstopien
-1078	Can view decyzja o stopniu służbowym (import pracowników)	268	view_importpracownikowstopien
-1079	Can add stanowisko dydaktyczne	269	add_stanowiskodydaktyczne
-1080	Can change stanowisko dydaktyczne	269	change_stanowiskodydaktyczne
-1081	Can delete stanowisko dydaktyczne	269	delete_stanowiskodydaktyczne
-1082	Can view stanowisko dydaktyczne	269	view_stanowiskodydaktyczne
-1083	Can add stopień służbowy	270	add_stopiensluzbowy
-1084	Can change stopień służbowy	270	change_stopiensluzbowy
-1085	Can delete stopień służbowy	270	delete_stopiensluzbowy
-1086	Can view stopień służbowy	270	view_stopiensluzbowy
-1087	Can add tożsamość ORCID	271	add_orcididentity
-1088	Can change tożsamość ORCID	271	change_orcididentity
-1089	Can delete tożsamość ORCID	271	delete_orcididentity
-1090	Can view tożsamość ORCID	271	view_orcididentity
-1091	Can add tożsamość OIDC	272	add_oidcidentity
-1092	Can change tożsamość OIDC	272	change_oidcidentity
-1093	Can delete tożsamość OIDC	272	delete_oidcidentity
-1094	Can view tożsamość OIDC	272	view_oidcidentity
+1	Can add first-run wizard state	1	add_firstrunwizardstate
+2	Can change first-run wizard state	1	change_firstrunwizardstate
+3	Can delete first-run wizard state	1	delete_firstrunwizardstate
+4	Can view first-run wizard state	1	view_firstrunwizardstate
+5	Can add dirty instance	9	add_dirtyinstance
+6	Can change dirty instance	9	change_dirtyinstance
+7	Can delete dirty instance	9	delete_dirtyinstance
+8	Can view dirty instance	9	view_dirtyinstance
+9	Can add revision	10	add_revision
+10	Can change revision	10	change_revision
+11	Can delete revision	10	delete_revision
+12	Can view revision	10	view_revision
+13	Can add version	11	add_version
+14	Can change version	11	change_version
+15	Can delete version	11	delete_version
+16	Can view version	11	view_version
+17	Can add constance	12	add_constance
+18	Can change constance	12	change_constance
+19	Can delete constance	12	delete_constance
+20	Can view constance	12	view_constance
+21	Can change config	12	change_config
+22	Can view config	12	view_config
+23	Can add Model admin	13	add_modeladmin
+24	Can change Model admin	13	change_modeladmin
+25	Can delete Model admin	13	delete_modeladmin
+26	Can view Model admin	13	view_modeladmin
+27	Can add Model admin column	14	add_modeladmincolumn
+28	Can change Model admin column	14	change_modeladmincolumn
+29	Can delete Model admin column	14	delete_modeladmincolumn
+30	Can view Model admin column	14	view_modeladmincolumn
+31	Can add content type	15	add_contenttype
+32	Can change content type	15	change_contenttype
+33	Can delete content type	15	delete_contenttype
+34	Can view content type	15	view_contenttype
+35	Can add permission	16	add_permission
+36	Can change permission	16	change_permission
+37	Can delete permission	16	delete_permission
+38	Can view permission	16	view_permission
+39	Can add group	17	add_group
+40	Can change group	17	change_group
+41	Can delete group	17	delete_group
+42	Can view group	17	view_group
+43	Can add session	18	add_session
+44	Can change session	18	change_session
+45	Can delete session	18	delete_session
+46	Can view session	18	view_session
+47	Can add site	19	add_site
+48	Can change site	19	change_site
+49	Can delete site	19	delete_site
+50	Can view site	19	view_site
+51	Can add Site shutdown countdown	20	add_sitecountdown
+52	Can change Site shutdown countdown	20	change_sitecountdown
+53	Can delete Site shutdown countdown	20	delete_sitecountdown
+54	Can view Site shutdown countdown	20	view_sitecountdown
+55	Can add import pracownikow	21	add_importpracownikow
+56	Can change import pracownikow	21	change_importpracownikow
+57	Can delete import pracownikow	21	delete_importpracownikow
+58	Can view import pracownikow	21	view_importpracownikow
+59	Can add import pracownikow row	22	add_importpracownikowrow
+60	Can change import pracownikow row	22	change_importpracownikowrow
+61	Can delete import pracownikow row	22	delete_importpracownikowrow
+62	Can view import pracownikow row	22	view_importpracownikowrow
+63	Can add profil mapowania importu pracowników	23	add_profilmapowania
+64	Can change profil mapowania importu pracowników	23	change_profilmapowania
+65	Can delete profil mapowania importu pracowników	23	delete_profilmapowania
+66	Can view profil mapowania importu pracowników	23	view_profilmapowania
+67	Can add kandydat na autora (import pracowników)	24	add_importpracownikowrowkandydat
+68	Can change kandydat na autora (import pracowników)	24	change_importpracownikowrowkandydat
+69	Can delete kandydat na autora (import pracowników)	24	delete_importpracownikowrowkandydat
+70	Can view kandydat na autora (import pracowników)	24	view_importpracownikowrowkandydat
+71	Can add odpięcie autora spoza pliku (import pracowników)	25	add_importpracownikowodpiecie
+72	Can change odpięcie autora spoza pliku (import pracowników)	25	change_importpracownikowodpiecie
+73	Can delete odpięcie autora spoza pliku (import pracowników)	25	delete_importpracownikowodpiecie
+74	Can view odpięcie autora spoza pliku (import pracowników)	25	view_importpracownikowodpiecie
+75	Can add decyzja o jednostce (import pracowników)	26	add_importpracownikowjednostka
+76	Can change decyzja o jednostce (import pracowników)	26	change_importpracownikowjednostka
+77	Can delete decyzja o jednostce (import pracowników)	26	delete_importpracownikowjednostka
+78	Can view decyzja o jednostce (import pracowników)	26	view_importpracownikowjednostka
+79	Can add decyzja o tytule (import pracowników)	27	add_importpracownikowtytul
+80	Can change decyzja o tytule (import pracowników)	27	change_importpracownikowtytul
+81	Can delete decyzja o tytule (import pracowników)	27	delete_importpracownikowtytul
+82	Can view decyzja o tytule (import pracowników)	27	view_importpracownikowtytul
+83	Can add decyzja o stanowisku dydaktycznym (import pracowników)	28	add_importpracownikowstanowisko
+84	Can change decyzja o stanowisku dydaktycznym (import pracowników)	28	change_importpracownikowstanowisko
+85	Can delete decyzja o stanowisku dydaktycznym (import pracowników)	28	delete_importpracownikowstanowisko
+258	Can view patent	2	view_patent
+86	Can view decyzja o stanowisku dydaktycznym (import pracowników)	28	view_importpracownikowstanowisko
+87	Can add decyzja o stopniu służbowym (import pracowników)	29	add_importpracownikowstopien
+88	Can change decyzja o stopniu służbowym (import pracowników)	29	change_importpracownikowstopien
+89	Can delete decyzja o stopniu służbowym (import pracowników)	29	delete_importpracownikowstopien
+90	Can view decyzja o stopniu służbowym (import pracowników)	29	view_importpracownikowstopien
+91	Can add import list if	30	add_importlistif
+92	Can change import list if	30	change_importlistif
+93	Can delete import list if	30	delete_importlistif
+94	Can view import list if	30	view_importlistif
+95	Can add import list if row	31	add_importlistifrow
+96	Can change import list if row	31	change_importlistifrow
+97	Can delete import list if row	31	delete_importlistifrow
+98	Can view import list if row	31	view_importlistifrow
+99	Can add enforced password change	32	add_passwordchangerequired
+100	Can change enforced password change	32	change_passwordchangerequired
+101	Can delete enforced password change	32	delete_passwordchangerequired
+102	Can view enforced password change	32	view_passwordchangerequired
+103	Can add password history entry	33	add_passwordhistory
+104	Can change password history entry	33	change_passwordhistory
+105	Can delete password history entry	33	delete_passwordhistory
+106	Can view password history entry	33	view_passwordhistory
+107	Can add password profile	34	add_passwordprofile
+108	Can change password profile	34	change_passwordprofile
+109	Can delete password profile	34	delete_passwordprofile
+110	Can view password profile	34	view_passwordprofile
+111	Can add access attempt	35	add_accessattempt
+112	Can change access attempt	35	change_accessattempt
+113	Can delete access attempt	35	delete_accessattempt
+114	Can view access attempt	35	view_accessattempt
+115	Can add access log	36	add_accesslog
+116	Can change access log	36	change_accesslog
+117	Can delete access log	36	delete_accesslog
+118	Can view access log	36	view_accesslog
+119	Can add access failure	37	add_accessfailurelog
+120	Can change access failure	37	change_accessfailurelog
+121	Can delete access failure	37	delete_accessfailurelog
+122	Can view access failure	37	view_accessfailurelog
+123	Can add access attempt expiration	38	add_accessattemptexpiration
+124	Can change access attempt expiration	38	change_accessattemptexpiration
+125	Can delete access attempt expiration	38	delete_accessattemptexpiration
+126	Can view access attempt expiration	38	view_accessattemptexpiration
+127	Can add task result	39	add_taskresult
+128	Can change task result	39	change_taskresult
+129	Can delete task result	39	delete_taskresult
+130	Can view task result	39	view_taskresult
+131	Can add chord counter	40	add_chordcounter
+132	Can change chord counter	40	change_chordcounter
+133	Can delete chord counter	40	delete_chordcounter
+134	Can view chord counter	40	view_chordcounter
+135	Can add group result	41	add_groupresult
+136	Can change group result	41	change_groupresult
+137	Can delete group result	41	delete_groupresult
+138	Can view group result	41	view_groupresult
+139	Can add Column	42	add_column
+140	Can change Column	42	change_column
+141	Can delete Column	42	delete_column
+142	Can view Column	42	view_column
+143	Can add Datasource	43	add_datasource
+144	Can change Datasource	43	change_datasource
+145	Can delete Datasource	43	delete_datasource
+146	Can view Datasource	43	view_datasource
+147	Can add Report	44	add_report
+148	Can change Report	44	change_report
+149	Can delete Report	44	delete_report
+150	Can view Report	44	view_report
+151	Can add Report element	45	add_reportelement
+152	Can change Report element	45	change_reportelement
+153	Can delete Report element	45	delete_reportelement
+154	Can view Report element	45	view_reportelement
+155	Can add Table	46	add_table
+156	Can change Table	46	change_table
+157	Can delete Table	46	delete_table
+158	Can view Table	46	view_table
+159	Can add Column order information	47	add_columnorder
+160	Can change Column order information	47	change_columnorder
+161	Can delete Column order information	47	delete_columnorder
+162	Can view Column order information	47	view_columnorder
+163	Can add tag	48	add_tag
+164	Can change tag	48	change_tag
+165	Can delete tag	48	delete_tag
+166	Can view tag	48	view_tag
+167	Can add tagged item	49	add_taggeditem
+168	Can change tagged item	49	change_taggeditem
+169	Can delete tagged item	49	delete_taggeditem
+170	Can view tagged item	49	view_taggeditem
+171	Can add zgłoszenie publikacji	50	add_zgloszenie_publikacji
+172	Can change zgłoszenie publikacji	50	change_zgloszenie_publikacji
+173	Can delete zgłoszenie publikacji	50	delete_zgloszenie_publikacji
+174	Can view zgłoszenie publikacji	50	view_zgloszenie_publikacji
+175	Can add autor w zgłoszeniu publikacji	51	add_zgloszenie_publikacji_autor
+176	Can change autor w zgłoszeniu publikacji	51	change_zgloszenie_publikacji_autor
+177	Can delete autor w zgłoszeniu publikacji	51	delete_zgloszenie_publikacji_autor
+178	Can view autor w zgłoszeniu publikacji	51	view_zgloszenie_publikacji_autor
+179	Can add obsługujący zgłoszenia dla wydziału	52	add_obslugujacy_zgloszenia_wydzialow
+180	Can change obsługujący zgłoszenia dla wydziału	52	change_obslugujacy_zgloszenia_wydzialow
+181	Can delete obsługujący zgłoszenia dla wydziału	52	delete_obslugujacy_zgloszenia_wydzialow
+182	Can view obsługujący zgłoszenia dla wydziału	52	view_obslugujacy_zgloszenia_wydzialow
+183	Can add załącznik zgłoszenia publikacji	53	add_zgloszenie_publikacji_zalacznik
+184	Can change załącznik zgłoszenia publikacji	53	change_zgloszenie_publikacji_zalacznik
+185	Can delete załącznik zgłoszenia publikacji	53	delete_zgloszenie_publikacji_zalacznik
+186	Can view załącznik zgłoszenia publikacji	53	view_zgloszenie_publikacji_zalacznik
+187	Can add Lista wartości domyślnych formularza	54	add_formrepresentation
+188	Can change Lista wartości domyślnych formularza	54	change_formrepresentation
+189	Can delete Lista wartości domyślnych formularza	54	delete_formrepresentation
+190	Can view Lista wartości domyślnych formularza	54	view_formrepresentation
+191	Can add Pole formularza	55	add_formfieldrepresentation
+192	Can change Pole formularza	55	change_formfieldrepresentation
+193	Can delete Pole formularza	55	delete_formfieldrepresentation
+194	Can view Pole formularza	55	view_formfieldrepresentation
+195	Can add Wartość domyslna dla pola formularza	56	add_formfielddefaultvalue
+196	Can change Wartość domyslna dla pola formularza	56	change_formfielddefaultvalue
+197	Can delete Wartość domyslna dla pola formularza	56	delete_formfielddefaultvalue
+198	Can view Wartość domyslna dla pola formularza	56	view_formfielddefaultvalue
+199	Can add raport zerowy entry	57	add_raportzerowyentry
+200	Can change raport zerowy entry	57	change_raportzerowyentry
+201	Can delete raport zerowy entry	57	delete_raportzerowyentry
+202	Can view raport zerowy entry	57	view_raportzerowyentry
+203	Can add raport uczelnia ewaluacja view	58	add_raportuczelniaewaluacjaview
+204	Can change raport uczelnia ewaluacja view	58	change_raportuczelniaewaluacjaview
+205	Can delete raport uczelnia ewaluacja view	58	delete_raportuczelniaewaluacjaview
+206	Can view raport uczelnia ewaluacja view	58	view_raportuczelniaewaluacjaview
+207	Can add raport slotow uczelnia	59	add_raportslotowuczelnia
+208	Can change raport slotow uczelnia	59	change_raportslotowuczelnia
+209	Can delete raport slotow uczelnia	59	delete_raportslotowuczelnia
+210	Can view raport slotow uczelnia	59	view_raportslotowuczelnia
+211	Can add raport slotow uczelnia wiersz	60	add_raportslotowuczelniawiersz
+212	Can change raport slotow uczelnia wiersz	60	change_raportslotowuczelniawiersz
+213	Can delete raport slotow uczelnia wiersz	60	delete_raportslotowuczelniawiersz
+214	Can view raport slotow uczelnia wiersz	60	view_raportslotowuczelniawiersz
+215	Can add raport ewaluacja upowaznienia view	61	add_raportewaluacjaupowaznieniaview
+216	Can change raport ewaluacja upowaznienia view	61	change_raportewaluacjaupowaznieniaview
+217	Can delete raport ewaluacja upowaznienia view	61	delete_raportewaluacjaupowaznieniaview
+218	Can view raport ewaluacja upowaznienia view	61	view_raportewaluacjaupowaznieniaview
+219	Can add użytkownik	62	add_bppuser
+220	Can change użytkownik	62	change_bppuser
+221	Can delete użytkownik	62	delete_bppuser
+222	Can view użytkownik	62	view_bppuser
+223	Can add autor	63	add_autor
+224	Can change autor	63	change_autor
+225	Can delete autor	63	delete_autor
+226	Can view autor	63	view_autor
+227	Can add powiązanie autor-jednostka	64	add_autor_jednostka
+228	Can change powiązanie autor-jednostka	64	change_autor_jednostka
+229	Can delete powiązanie autor-jednostka	64	delete_autor_jednostka
+230	Can view powiązanie autor-jednostka	64	view_autor_jednostka
+231	Can add charakter formalny	65	add_charakter_formalny
+232	Can change charakter formalny	65	change_charakter_formalny
+233	Can delete charakter formalny	65	delete_charakter_formalny
+234	Can view charakter formalny	65	view_charakter_formalny
+235	Can add funkcja w jednostce	66	add_funkcja_autora
+236	Can change funkcja w jednostce	66	change_funkcja_autora
+237	Can delete funkcja w jednostce	66	delete_funkcja_autora
+238	Can view funkcja w jednostce	66	view_funkcja_autora
+239	Can add jednostka	3	add_jednostka
+240	Can change jednostka	3	change_jednostka
+241	Can delete jednostka	3	delete_jednostka
+242	Can view jednostka	3	view_jednostka
+243	Can add język	67	add_jezyk
+244	Can change język	67	change_jezyk
+245	Can delete język	67	delete_jezyk
+246	Can view język	67	view_jezyk
+247	Can add opi_2012_ afiliacja_ do_ wydzialu	68	add_opi_2012_afiliacja_do_wydzialu
+248	Can change opi_2012_ afiliacja_ do_ wydzialu	68	change_opi_2012_afiliacja_do_wydzialu
+249	Can delete opi_2012_ afiliacja_ do_ wydzialu	68	delete_opi_2012_afiliacja_do_wydzialu
+250	Can view opi_2012_ afiliacja_ do_ wydzialu	68	view_opi_2012_afiliacja_do_wydzialu
+251	Can add opi_2012_ tytul_ cache	69	add_opi_2012_tytul_cache
+252	Can change opi_2012_ tytul_ cache	69	change_opi_2012_tytul_cache
+253	Can delete opi_2012_ tytul_ cache	69	delete_opi_2012_tytul_cache
+254	Can view opi_2012_ tytul_ cache	69	view_opi_2012_tytul_cache
+255	Can add patent	2	add_patent
+256	Can change patent	2	change_patent
+257	Can delete patent	2	delete_patent
+259	Can add powiązanie autora z patentem	70	add_patent_autor
+260	Can change powiązanie autora z patentem	70	change_patent_autor
+261	Can delete powiązanie autora z patentem	70	delete_patent_autor
+262	Can view powiązanie autora z patentem	70	view_patent_autor
+263	Can add płeć	71	add_plec
+264	Can change płeć	71	change_plec
+265	Can delete płeć	71	delete_plec
+266	Can view płeć	71	view_plec
+267	Can add praca doktorska	6	add_praca_doktorska
+268	Can change praca doktorska	6	change_praca_doktorska
+269	Can delete praca doktorska	6	delete_praca_doktorska
+270	Can view praca doktorska	6	view_praca_doktorska
+271	Can add praca habilitacyjna	7	add_praca_habilitacyjna
+272	Can change praca habilitacyjna	7	change_praca_habilitacyjna
+273	Can delete praca habilitacyjna	7	delete_praca_habilitacyjna
+274	Can view praca habilitacyjna	7	view_praca_habilitacyjna
+275	Can add powiązanie publikacji z habilitacją	72	add_publikacja_habilitacyjna
+276	Can change powiązanie publikacji z habilitacją	72	change_publikacja_habilitacyjna
+277	Can delete powiązanie publikacji z habilitacją	72	delete_publikacja_habilitacyjna
+278	Can view powiązanie publikacji z habilitacją	72	view_publikacja_habilitacyjna
+279	Can add punktacja źródła	73	add_punktacja_zrodla
+280	Can change punktacja źródła	73	change_punktacja_zrodla
+281	Can delete punktacja źródła	73	delete_punktacja_zrodla
+282	Can view punktacja źródła	73	view_punktacja_zrodla
+283	Can add redaktor źródła	74	add_redakcja_zrodla
+284	Can change redaktor źródła	74	change_redakcja_zrodla
+285	Can delete redaktor źródła	74	delete_redakcja_zrodla
+286	Can view redaktor źródła	74	view_redakcja_zrodla
+287	Can add rodzaj źródła	75	add_rodzaj_zrodla
+288	Can change rodzaj źródła	75	change_rodzaj_zrodla
+289	Can delete rodzaj źródła	75	delete_rodzaj_zrodla
+290	Can view rodzaj źródła	75	view_rodzaj_zrodla
+291	Can add status korekty	76	add_status_korekty
+292	Can change status korekty	76	change_status_korekty
+293	Can delete status korekty	76	delete_status_korekty
+294	Can view status korekty	76	view_status_korekty
+295	Can add typ MNiSW/MEiN	77	add_typ_kbn
+296	Can change typ MNiSW/MEiN	77	change_typ_kbn
+297	Can delete typ MNiSW/MEiN	77	delete_typ_kbn
+298	Can view typ MNiSW/MEiN	77	view_typ_kbn
+299	Can add typ odpowiedzialności	78	add_typ_odpowiedzialnosci
+300	Can change typ odpowiedzialności	78	change_typ_odpowiedzialnosci
+301	Can delete typ odpowiedzialności	78	delete_typ_odpowiedzialnosci
+302	Can view typ odpowiedzialności	78	view_typ_odpowiedzialnosci
+303	Can add tytuł	79	add_tytul
+304	Can change tytuł	79	change_tytul
+305	Can delete tytuł	79	delete_tytul
+306	Can view tytuł	79	view_tytul
+307	Can add uczelnia	80	add_uczelnia
+308	Can change uczelnia	80	change_uczelnia
+309	Can delete uczelnia	80	delete_uczelnia
+310	Can view uczelnia	80	view_uczelnia
+311	Can add wydawnictwo ciągłe	8	add_wydawnictwo_ciagle
+312	Can change wydawnictwo ciągłe	8	change_wydawnictwo_ciagle
+313	Can delete wydawnictwo ciągłe	8	delete_wydawnictwo_ciagle
+314	Can view wydawnictwo ciągłe	8	view_wydawnictwo_ciagle
+315	Can add powiązanie autora z wyd. ciągłym	81	add_wydawnictwo_ciagle_autor
+316	Can change powiązanie autora z wyd. ciągłym	81	change_wydawnictwo_ciagle_autor
+317	Can delete powiązanie autora z wyd. ciągłym	81	delete_wydawnictwo_ciagle_autor
+318	Can view powiązanie autora z wyd. ciągłym	81	view_wydawnictwo_ciagle_autor
+319	Can add wydawnictwo zwarte	5	add_wydawnictwo_zwarte
+320	Can change wydawnictwo zwarte	5	change_wydawnictwo_zwarte
+321	Can delete wydawnictwo zwarte	5	delete_wydawnictwo_zwarte
+322	Can view wydawnictwo zwarte	5	view_wydawnictwo_zwarte
+323	Can add powiązanie autora z wyd. zwartym	82	add_wydawnictwo_zwarte_autor
+324	Can change powiązanie autora z wyd. zwartym	82	change_wydawnictwo_zwarte_autor
+325	Can delete powiązanie autora z wyd. zwartym	82	delete_wydawnictwo_zwarte_autor
+326	Can view powiązanie autora z wyd. zwartym	82	view_wydawnictwo_zwarte_autor
+327	Can add wydział	83	add_wydzial
+328	Can change wydział	83	change_wydzial
+329	Can delete wydział	83	delete_wydzial
+330	Can view wydział	83	view_wydzial
+331	Can add zasięg źródła	84	add_zasieg_zrodla
+332	Can change zasięg źródła	84	change_zasieg_zrodla
+333	Can delete zasięg źródła	84	delete_zasieg_zrodla
+334	Can view zasięg źródła	84	view_zasieg_zrodla
+335	Can add źródło	85	add_zrodlo
+336	Can change źródło	85	change_zrodlo
+337	Can delete źródło	85	delete_zrodlo
+338	Can view źródło	85	view_zrodlo
+339	Can add źródło informacji o bibliografii	86	add_zrodlo_informacji
+340	Can change źródło informacji o bibliografii	86	change_zrodlo_informacji
+341	Can delete źródło informacji o bibliografii	86	delete_zrodlo_informacji
+342	Can view źródło informacji o bibliografii	86	view_zrodlo_informacji
+343	Can add autorzy	87	add_autorzy
+344	Can change autorzy	87	change_autorzy
+345	Can delete autorzy	87	delete_autorzy
+346	Can view autorzy	87	view_autorzy
+347	Can add autorzy view	88	add_autorzyview
+348	Can change autorzy view	88	change_autorzyview
+349	Can delete autorzy view	88	delete_autorzyview
+350	Can view autorzy view	88	view_autorzyview
+351	Can add rekord	89	add_rekord
+352	Can change rekord	89	change_rekord
+353	Can delete rekord	89	delete_rekord
+354	Can view rekord	89	view_rekord
+355	Can add Charakter PBN	90	add_charakter_pbn
+356	Can change Charakter PBN	90	change_charakter_pbn
+357	Can delete Charakter PBN	90	delete_charakter_pbn
+358	Can view Charakter PBN	90	view_charakter_pbn
+359	Can add czas udostępnienia OpenAccess	91	add_czas_udostepnienia_openaccess
+360	Can change czas udostępnienia OpenAccess	91	change_czas_udostepnienia_openaccess
+361	Can delete czas udostępnienia OpenAccess	91	delete_czas_udostepnienia_openaccess
+362	Can view czas udostępnienia OpenAccess	91	view_czas_udostepnienia_openaccess
+363	Can add licencja OpenAccess	92	add_licencja_openaccess
+364	Can change licencja OpenAccess	92	change_licencja_openaccess
+365	Can delete licencja OpenAccess	92	delete_licencja_openaccess
+366	Can view licencja OpenAccess	92	view_licencja_openaccess
+367	Can add tryb OpenAccess wyd. ciągłych	93	add_tryb_openaccess_wydawnictwo_ciagle
+368	Can change tryb OpenAccess wyd. ciągłych	93	change_tryb_openaccess_wydawnictwo_ciagle
+369	Can delete tryb OpenAccess wyd. ciągłych	93	delete_tryb_openaccess_wydawnictwo_ciagle
+370	Can view tryb OpenAccess wyd. ciągłych	93	view_tryb_openaccess_wydawnictwo_ciagle
+371	Can add tryb OpenAccess wyd. zwartych	94	add_tryb_openaccess_wydawnictwo_zwarte
+372	Can change tryb OpenAccess wyd. zwartych	94	change_tryb_openaccess_wydawnictwo_zwarte
+373	Can delete tryb OpenAccess wyd. zwartych	94	delete_tryb_openaccess_wydawnictwo_zwarte
+374	Can view tryb OpenAccess wyd. zwartych	94	view_tryb_openaccess_wydawnictwo_zwarte
+375	Can add wersja tekstu OpenAccess	95	add_wersja_tekstu_openaccess
+376	Can change wersja tekstu OpenAccess	95	change_wersja_tekstu_openaccess
+377	Can delete wersja tekstu OpenAccess	95	delete_wersja_tekstu_openaccess
+378	Can view wersja tekstu OpenAccess	95	view_wersja_tekstu_openaccess
+379	Can add konferencja	96	add_konferencja
+380	Can change konferencja	96	change_konferencja
+381	Can delete konferencja	96	delete_konferencja
+382	Can view konferencja	96	view_konferencja
+383	Can add seria wydawnicza	97	add_seria_wydawnicza
+384	Can change seria wydawnicza	97	change_seria_wydawnicza
+385	Can delete seria wydawnicza	97	delete_seria_wydawnicza
+386	Can view seria wydawnicza	97	view_seria_wydawnicza
+387	Can add nagroda	98	add_nagroda
+388	Can change nagroda	98	change_nagroda
+389	Can delete nagroda	98	delete_nagroda
+390	Can view nagroda	98	view_nagroda
+391	Can add Organ przyznający nagrodę	99	add_organprzyznajacynagrody
+392	Can change Organ przyznający nagrodę	99	change_organprzyznajacynagrody
+393	Can delete Organ przyznający nagrodę	99	delete_organprzyznajacynagrody
+394	Can view Organ przyznający nagrodę	99	view_organprzyznajacynagrody
+395	Can add nowe_ sumy_ view	100	add_nowe_sumy_view
+396	Can change nowe_ sumy_ view	100	change_nowe_sumy_view
+397	Can delete nowe_ sumy_ view	100	delete_nowe_sumy_view
+398	Can view nowe_ sumy_ view	100	view_nowe_sumy_view
+399	Can add rekord view	101	add_rekordview
+400	Can change rekord view	101	change_rekordview
+401	Can delete rekord view	101	delete_rekordview
+402	Can view rekord view	101	view_rekordview
+403	Can add rodzaj prawa patentowego	102	add_rodzaj_prawa_patentowego
+404	Can change rodzaj prawa patentowego	102	change_rodzaj_prawa_patentowego
+405	Can delete rodzaj prawa patentowego	102	delete_rodzaj_prawa_patentowego
+406	Can view rodzaj prawa patentowego	102	view_rodzaj_prawa_patentowego
+407	Can add powiązanie autor-dyscyplina	103	add_autor_dyscyplina
+408	Can change powiązanie autor-dyscyplina	103	change_autor_dyscyplina
+409	Can delete powiązanie autor-dyscyplina	103	delete_autor_dyscyplina
+410	Can view powiązanie autor-dyscyplina	103	view_autor_dyscyplina
+411	Can add dyscyplina naukowa	104	add_dyscyplina_naukowa
+412	Can change dyscyplina naukowa	104	change_dyscyplina_naukowa
+413	Can delete dyscyplina naukowa	104	delete_dyscyplina_naukowa
+414	Can view dyscyplina naukowa	104	view_dyscyplina_naukowa
+415	Can add powiązanie wyd. ciągłego z zewn. bazą danych	105	add_wydawnictwo_ciagle_zewnetrzna_baza_danych
+416	Can change powiązanie wyd. ciągłego z zewn. bazą danych	105	change_wydawnictwo_ciagle_zewnetrzna_baza_danych
+417	Can delete powiązanie wyd. ciągłego z zewn. bazą danych	105	delete_wydawnictwo_ciagle_zewnetrzna_baza_danych
+418	Can view powiązanie wyd. ciągłego z zewn. bazą danych	105	view_wydawnictwo_ciagle_zewnetrzna_baza_danych
+419	Can add zewnętrzna baza danych	106	add_zewnetrzna_baza_danych
+420	Can change zewnętrzna baza danych	106	change_zewnetrzna_baza_danych
+421	Can delete zewnętrzna baza danych	106	delete_zewnetrzna_baza_danych
+422	Can view zewnętrzna baza danych	106	view_zewnetrzna_baza_danych
+423	Can add zewnetrzne bazy danych view	107	add_zewnetrznebazydanychview
+424	Can change zewnetrzne bazy danych view	107	change_zewnetrznebazydanychview
+425	Can delete zewnetrzne bazy danych view	107	delete_zewnetrznebazydanychview
+426	Can view zewnetrzne bazy danych view	107	view_zewnetrznebazydanychview
+427	Can add cache_ punktacja_ autora	108	add_cache_punktacja_autora
+428	Can change cache_ punktacja_ autora	108	change_cache_punktacja_autora
+429	Can delete cache_ punktacja_ autora	108	delete_cache_punktacja_autora
+430	Can view cache_ punktacja_ autora	108	view_cache_punktacja_autora
+431	Can add cache_ punktacja_ dyscypliny	109	add_cache_punktacja_dyscypliny
+432	Can change cache_ punktacja_ dyscypliny	109	change_cache_punktacja_dyscypliny
+433	Can delete cache_ punktacja_ dyscypliny	109	delete_cache_punktacja_dyscypliny
+434	Can view cache_ punktacja_ dyscypliny	109	view_cache_punktacja_dyscypliny
+435	Can add poziom wydawcy	110	add_poziom_wydawcy
+436	Can change poziom wydawcy	110	change_poziom_wydawcy
+437	Can delete poziom wydawcy	110	delete_poziom_wydawcy
+438	Can view poziom wydawcy	110	view_poziom_wydawcy
+439	Can add wydawca	4	add_wydawca
+440	Can change wydawca	4	change_wydawca
+441	Can delete wydawca	4	delete_wydawca
+442	Can view wydawca	4	view_wydawca
+443	Can add cache_ punktacja_ autora_ query	111	add_cache_punktacja_autora_query
+444	Can change cache_ punktacja_ autora_ query	111	change_cache_punktacja_autora_query
+445	Can delete cache_ punktacja_ autora_ query	111	delete_cache_punktacja_autora_query
+446	Can view cache_ punktacja_ autora_ query	111	view_cache_punktacja_autora_query
+447	Can add cache_ punktacja_ autora_ sum	112	add_cache_punktacja_autora_sum
+448	Can change cache_ punktacja_ autora_ sum	112	change_cache_punktacja_autora_sum
+449	Can delete cache_ punktacja_ autora_ sum	112	delete_cache_punktacja_autora_sum
+450	Can view cache_ punktacja_ autora_ sum	112	view_cache_punktacja_autora_sum
+451	Can add cache_ punktacja_ autora_ sum_ group_ ponizej	113	add_cache_punktacja_autora_sum_group_ponizej
+452	Can change cache_ punktacja_ autora_ sum_ group_ ponizej	113	change_cache_punktacja_autora_sum_group_ponizej
+453	Can delete cache_ punktacja_ autora_ sum_ group_ ponizej	113	delete_cache_punktacja_autora_sum_group_ponizej
+454	Can view cache_ punktacja_ autora_ sum_ group_ ponizej	113	view_cache_punktacja_autora_sum_group_ponizej
+455	Can add cache_ punktacja_ autora_ sum_ ponizej	114	add_cache_punktacja_autora_sum_ponizej
+456	Can change cache_ punktacja_ autora_ sum_ ponizej	114	change_cache_punktacja_autora_sum_ponizej
+457	Can delete cache_ punktacja_ autora_ sum_ ponizej	114	delete_cache_punktacja_autora_sum_ponizej
+458	Can view cache_ punktacja_ autora_ sum_ ponizej	114	view_cache_punktacja_autora_sum_ponizej
+459	Can add powiązanie wyd. zwartego z zewn. bazami danych	115	add_wydawnictwo_zwarte_zewnetrzna_baza_danych
+460	Can change powiązanie wyd. zwartego z zewn. bazami danych	115	change_wydawnictwo_zwarte_zewnetrzna_baza_danych
+461	Can delete powiązanie wyd. zwartego z zewn. bazami danych	115	delete_wydawnictwo_zwarte_zewnetrzna_baza_danych
+462	Can view powiązanie wyd. zwartego z zewn. bazami danych	115	view_wydawnictwo_zwarte_zewnetrzna_baza_danych
+463	Can add cache_ punktacja_ autora_ query_ view	116	add_cache_punktacja_autora_query_view
+464	Can change cache_ punktacja_ autora_ query_ view	116	change_cache_punktacja_autora_query_view
+465	Can delete cache_ punktacja_ autora_ query_ view	116	delete_cache_punktacja_autora_query_view
+466	Can view cache_ punktacja_ autora_ query_ view	116	view_cache_punktacja_autora_query_view
+467	Can add element repozytorium	117	add_element_repozytorium
+468	Can change element repozytorium	117	change_element_repozytorium
+469	Can delete element repozytorium	117	delete_element_repozytorium
+470	Can view element repozytorium	117	view_element_repozytorium
+471	Can add grant	118	add_grant
+472	Can change grant	118	change_grant
+473	Can delete grant	118	delete_grant
+474	Can view grant	118	view_grant
+475	Can add grant rekordu	119	add_grant_rekordu
+476	Can change grant rekordu	119	change_grant_rekordu
+477	Can delete grant rekordu	119	delete_grant_rekordu
+478	Can view grant rekordu	119	view_grant_rekordu
+479	Can add ustawienie ukrywania statusu korekty	120	add_ukryj_status_korekty
+480	Can change ustawienie ukrywania statusu korekty	120	change_ukryj_status_korekty
+481	Can delete ustawienie ukrywania statusu korekty	120	delete_ukryj_status_korekty
+482	Can view ustawienie ukrywania statusu korekty	120	view_ukryj_status_korekty
+483	Can add slowa kluczowe view	121	add_slowakluczoweview
+484	Can change slowa kluczowe view	121	change_slowakluczoweview
+485	Can delete slowa kluczowe view	121	delete_slowakluczoweview
+486	Can view slowa kluczowe view	121	view_slowakluczoweview
+487	Can add grupa pracownicza	122	add_grupa_pracownicza
+488	Can change grupa pracownicza	122	change_grupa_pracownicza
+489	Can delete grupa pracownicza	122	delete_grupa_pracownicza
+490	Can view grupa pracownicza	122	view_grupa_pracownicza
+491	Can add wymiar etatu	123	add_wymiar_etatu
+492	Can change wymiar etatu	123	change_wymiar_etatu
+493	Can delete wymiar etatu	123	delete_wymiar_etatu
+494	Can view wymiar etatu	123	view_wymiar_etatu
+495	Can add przypisanie dyscypliny do źródła	124	add_dyscyplina_zrodla
+496	Can change przypisanie dyscypliny do źródła	124	change_dyscyplina_zrodla
+497	Can delete przypisanie dyscypliny do źródła	124	delete_dyscyplina_zrodla
+498	Can view przypisanie dyscypliny do źródła	124	view_dyscyplina_zrodla
+499	Can add widoczność opcji wyszukiwania	125	add_bppmultiseekvisibility
+500	Can change widoczność opcji wyszukiwania	125	change_bppmultiseekvisibility
+501	Can delete widoczność opcji wyszukiwania	125	delete_bppmultiseekvisibility
+502	Can view widoczność opcji wyszukiwania	125	view_bppmultiseekvisibility
+503	Can add powiązanie szablonu dla opisu bibliograficznego	126	add_szablondlaopisubibliograficznego
+583	Can add Konferencja w PBN API	144	add_conference
+504	Can change powiązanie szablonu dla opisu bibliograficznego	126	change_szablondlaopisubibliograficznego
+505	Can delete powiązanie szablonu dla opisu bibliograficznego	126	delete_szablondlaopisubibliograficznego
+506	Can view powiązanie szablonu dla opisu bibliograficznego	126	view_szablondlaopisubibliograficznego
+507	Can add streszczenie wydawnictwa zwartego	127	add_wydawnictwo_zwarte_streszczenie
+508	Can change streszczenie wydawnictwa zwartego	127	change_wydawnictwo_zwarte_streszczenie
+509	Can delete streszczenie wydawnictwa zwartego	127	delete_wydawnictwo_zwarte_streszczenie
+510	Can view streszczenie wydawnictwa zwartego	127	view_wydawnictwo_zwarte_streszczenie
+511	Can add streszczenie wydawnictwa ciągłego	128	add_wydawnictwo_ciagle_streszczenie
+512	Can change streszczenie wydawnictwa ciągłego	128	change_wydawnictwo_ciagle_streszczenie
+513	Can delete streszczenie wydawnictwa ciągłego	128	delete_wydawnictwo_ciagle_streszczenie
+514	Can view streszczenie wydawnictwa ciągłego	128	view_wydawnictwo_ciagle_streszczenie
+515	Can add kierunek studiów	129	add_kierunek_studiow
+516	Can change kierunek studiów	129	change_kierunek_studiow
+517	Can delete kierunek studiów	129	delete_kierunek_studiow
+518	Can view kierunek studiów	129	view_kierunek_studiow
+519	Can add rzeczownik	130	add_rzeczownik
+520	Can change rzeczownik	130	change_rzeczownik
+521	Can delete rzeczownik	130	delete_rzeczownik
+522	Can view rzeczownik	130	view_rzeczownik
+523	Can add absencja autora za rok	131	add_autor_absencja
+524	Can change absencja autora za rok	131	change_autor_absencja
+525	Can delete absencja autora za rok	131	delete_autor_absencja
+526	Can view absencja autora za rok	131	view_autor_absencja
+527	Can add cache_ liczba_ n_ last_ updated	132	add_cache_liczba_n_last_updated
+528	Can change cache_ liczba_ n_ last_ updated	132	change_cache_liczba_n_last_updated
+529	Can delete cache_ liczba_ n_ last_ updated	132	delete_cache_liczba_n_last_updated
+530	Can view cache_ liczba_ n_ last_ updated	132	view_cache_liczba_n_last_updated
+531	Can add mapowanie typu CrossRef na BPP	133	add_crossref_mapper
+532	Can change mapowanie typu CrossRef na BPP	133	change_crossref_mapper
+533	Can delete mapowanie typu CrossRef na BPP	133	delete_crossref_mapper
+534	Can view mapowanie typu CrossRef na BPP	133	view_crossref_mapper
+535	Can add Log zmian opłat za publikację	134	add_oplatypublikacjilog
+536	Can change Log zmian opłat za publikację	134	change_oplatypublikacjilog
+537	Can delete Log zmian opłat za publikację	134	delete_oplatypublikacjilog
+538	Can view Log zmian opłat za publikację	134	view_oplatypublikacjilog
+539	Can add cache_ punktacja_ autora_ sum_ group	135	add_cache_punktacja_autora_sum_group
+540	Can change cache_ punktacja_ autora_ sum_ group	135	change_cache_punktacja_autora_sum_group
+541	Can delete cache_ punktacja_ autora_ sum_ group	135	delete_cache_punktacja_autora_sum_group
+542	Can view cache_ punktacja_ autora_ sum_ group	135	view_cache_punktacja_autora_sum_group
+543	Can add dodatkowy tytuł wydawnictwa ciągłego	136	add_wydawnictwo_ciagle_tytul
+544	Can change dodatkowy tytuł wydawnictwa ciągłego	136	change_wydawnictwo_ciagle_tytul
+545	Can delete dodatkowy tytuł wydawnictwa ciągłego	136	delete_wydawnictwo_ciagle_tytul
+546	Can view dodatkowy tytuł wydawnictwa ciągłego	136	view_wydawnictwo_ciagle_tytul
+547	Can add dodatkowy tytuł wydawnictwa zwartego	137	add_wydawnictwo_zwarte_tytul
+548	Can change dodatkowy tytuł wydawnictwa zwartego	137	change_wydawnictwo_zwarte_tytul
+549	Can delete dodatkowy tytuł wydawnictwa zwartego	137	delete_wydawnictwo_zwarte_tytul
+550	Can view dodatkowy tytuł wydawnictwa zwartego	137	view_wydawnictwo_zwarte_tytul
+551	Can add rodzaj jednostki	138	add_rodzajjednostki
+552	Can change rodzaj jednostki	138	change_rodzajjednostki
+553	Can delete rodzaj jednostki	138	delete_rodzajjednostki
+554	Can view rodzaj jednostki	138	view_rodzajjednostki
+555	Can add powiązanie jednostka-rodzic	139	add_jednostka_rodzic
+556	Can change powiązanie jednostka-rodzic	139	change_jednostka_rodzic
+557	Can delete powiązanie jednostka-rodzic	139	delete_jednostka_rodzic
+558	Can view powiązanie jednostka-rodzic	139	view_jednostka_rodzic
+559	Can add stanowisko dydaktyczne	140	add_stanowiskodydaktyczne
+560	Can change stanowisko dydaktyczne	140	change_stanowiskodydaktyczne
+561	Can delete stanowisko dydaktyczne	140	delete_stanowiskodydaktyczne
+562	Can view stanowisko dydaktyczne	140	view_stanowiskodydaktyczne
+563	Can add stopień służbowy	141	add_stopiensluzbowy
+564	Can change stopień służbowy	141	change_stopiensluzbowy
+565	Can delete stopień służbowy	141	delete_stopiensluzbowy
+566	Can view stopień służbowy	141	view_stopiensluzbowy
+567	Can add crossref api cache	166	add_crossrefapicache
+568	Can change crossref api cache	166	change_crossrefapicache
+569	Can delete crossref api cache	166	delete_crossrefapicache
+570	Can view crossref api cache	166	view_crossrefapicache
+571	Can add country	167	add_country
+572	Can change country	167	change_country
+573	Can delete country	167	delete_country
+574	Can view country	167	view_country
+575	Can add language	168	add_language
+576	Can change language	168	change_language
+577	Can delete language	168	delete_language
+578	Can view language	168	view_language
+579	Can add Instytucja w PBN API	143	add_institution
+580	Can change Instytucja w PBN API	143	change_institution
+581	Can delete Instytucja w PBN API	143	delete_institution
+582	Can view Instytucja w PBN API	143	view_institution
+584	Can change Konferencja w PBN API	144	change_conference
+585	Can delete Konferencja w PBN API	144	delete_conference
+586	Can view Konferencja w PBN API	144	view_conference
+587	Can add Zródło w PBN API	142	add_journal
+588	Can change Zródło w PBN API	142	change_journal
+589	Can delete Zródło w PBN API	142	delete_journal
+590	Can view Zródło w PBN API	142	view_journal
+591	Can add Wydawca w PBN API	145	add_publisher
+592	Can change Wydawca w PBN API	145	change_publisher
+593	Can delete Wydawca w PBN API	145	delete_publisher
+594	Can view Wydawca w PBN API	145	view_publisher
+595	Can add Publikacja z PBN API	149	add_publication
+596	Can change Publikacja z PBN API	149	change_publication
+597	Can delete Publikacja z PBN API	149	delete_publication
+598	Can view Publikacja z PBN API	149	view_publication
+599	Can add Osoba w PBN API	146	add_scientist
+600	Can change Osoba w PBN API	146	change_scientist
+601	Can delete Osoba w PBN API	146	delete_scientist
+602	Can view Osoba w PBN API	146	view_scientist
+603	Can add Informacja o wysłanych danych	147	add_sentdata
+604	Can change Informacja o wysłanych danych	147	change_sentdata
+605	Can delete Informacja o wysłanych danych	147	delete_sentdata
+606	Can view Informacja o wysłanych danych	147	view_sentdata
+607	Can add Oświadczenie instytucji	150	add_oswiadczenieinstytucji
+608	Can change Oświadczenie instytucji	150	change_oswiadczenieinstytucji
+609	Can delete Oświadczenie instytucji	150	delete_oswiadczenieinstytucji
+610	Can view Oświadczenie instytucji	150	view_oswiadczenieinstytucji
+611	Can add Publikacja instytucji	169	add_publikacjainstytucji
+612	Can change Publikacja instytucji	169	change_publikacjainstytucji
+613	Can delete Publikacja instytucji	169	delete_publikacjainstytucji
+614	Can view Publikacja instytucji	169	view_publikacjainstytucji
+615	Can add słownik dyscyplin PBN	151	add_disciplinegroup
+616	Can change słownik dyscyplin PBN	151	change_disciplinegroup
+617	Can delete słownik dyscyplin PBN	151	delete_disciplinegroup
+618	Can view słownik dyscyplin PBN	151	view_disciplinegroup
+619	Can add Dyscyplina PBN	148	add_discipline
+620	Can change Dyscyplina PBN	148	change_discipline
+621	Can delete Dyscyplina PBN	148	delete_discipline
+622	Can view Dyscyplina PBN	148	view_discipline
+623	Can add rekord tłumacza dyscyplin BPP do PBN	170	add_tlumaczdyscyplin
+624	Can change rekord tłumacza dyscyplin BPP do PBN	170	change_tlumaczdyscyplin
+625	Can delete rekord tłumacza dyscyplin BPP do PBN	170	delete_tlumaczdyscyplin
+626	Can view rekord tłumacza dyscyplin BPP do PBN	170	view_tlumaczdyscyplin
+627	Can add Publikacja instytucji V2	171	add_publikacjainstytucji_v2
+628	Can change Publikacja instytucji V2	171	change_publikacjainstytucji_v2
+629	Can delete Publikacja instytucji V2	171	delete_publikacjainstytucji_v2
+630	Can view Publikacja instytucji V2	171	view_publikacjainstytucji_v2
+631	Can add osoba z instytucji	172	add_osobazinstytucji
+632	Can change osoba z instytucji	172	change_osobazinstytucji
+633	Can delete osoba z instytucji	172	delete_osobazinstytucji
+634	Can view osoba z instytucji	172	view_osobazinstytucji
+635	Can add Niepożądana odpowiedź PBN	173	add_pbnodpowiedziniepozadane
+636	Can change Niepożądana odpowiedź PBN	173	change_pbnodpowiedziniepozadane
+637	Can delete Niepożądana odpowiedź PBN	173	delete_pbnodpowiedziniepozadane
+638	Can view Niepożądana odpowiedź PBN	173	view_pbnodpowiedziniepozadane
+639	Can add Mapowanie DSpace	174	add_mapowanie_dspace
+640	Can change Mapowanie DSpace	174	change_mapowanie_dspace
+641	Can delete Mapowanie DSpace	174	delete_mapowanie_dspace
+642	Can view Mapowanie DSpace	174	view_mapowanie_dspace
+643	Can add Informacja o wysłaniu do DSpace	175	add_senttodspace
+644	Can change Informacja o wysłaniu do DSpace	175	change_senttodspace
+645	Can delete Informacja o wysłaniu do DSpace	175	delete_senttodspace
+646	Can view Informacja o wysłaniu do DSpace	175	view_senttodspace
+647	Can add Kolejka eksportu do PBN	176	add_pbn_export_queue
+648	Can change Kolejka eksportu do PBN	176	change_pbn_export_queue
+649	Can delete Kolejka eksportu do PBN	176	delete_pbn_export_queue
+650	Can view Kolejka eksportu do PBN	176	view_pbn_export_queue
+651	Can add Metadane komparatora źródeł	177	add_komparatorzrodelmeta
+652	Can change Metadane komparatora źródeł	177	change_komparatorzrodelmeta
+653	Can delete Metadane komparatora źródeł	177	delete_komparatorzrodelmeta
+654	Can view Metadane komparatora źródeł	177	view_komparatorzrodelmeta
+655	Can add Log aktualizacji źródła	178	add_logaktualizacjizrodla
+656	Can change Log aktualizacji źródła	178	change_logaktualizacjizrodla
+657	Can delete Log aktualizacji źródła	178	delete_logaktualizacjizrodla
+658	Can view Log aktualizacji źródła	178	view_logaktualizacjizrodla
+659	Can add Rozbieżność źródła BPP-PBN	179	add_rozbieznosczrodlapbn
+660	Can change Rozbieżność źródła BPP-PBN	179	change_rozbieznosczrodlapbn
+661	Can delete Rozbieżność źródła BPP-PBN	179	delete_rozbieznosczrodlapbn
+662	Can view Rozbieżność źródła BPP-PBN	179	view_rozbieznosczrodlapbn
+663	Can add Brakująca dyscyplina PBN	180	add_brakujacadyscyplinapbn
+664	Can change Brakująca dyscyplina PBN	180	change_brakujacadyscyplinapbn
+665	Can delete Brakująca dyscyplina PBN	180	delete_brakujacadyscyplinapbn
+666	Can view Brakująca dyscyplina PBN	180	view_brakujacadyscyplinapbn
+667	Can add log entry	181	add_logentry
+668	Can change log entry	181	change_logentry
+669	Can delete log entry	181	delete_logentry
+670	Can view log entry	181	view_logentry
+671	Can add bookmark	182	add_bookmark
+672	Can change bookmark	182	change_bookmark
+673	Can delete bookmark	182	delete_bookmark
+674	Can view bookmark	182	view_bookmark
+675	Can add dashboard preferences	183	add_dashboardpreferences
+676	Can change dashboard preferences	183	change_dashboardpreferences
+677	Can delete dashboard preferences	183	delete_dashboardpreferences
+678	Can view dashboard preferences	183	view_dashboardpreferences
+679	Can add message	184	add_message
+680	Can change message	184	change_message
+681	Can delete message	184	delete_message
+682	Can view message	184	view_message
+683	Can add search form	161	add_searchform
+684	Can change search form	161	change_searchform
+685	Can delete search form	161	delete_searchform
+686	Can view search form	161	view_searchform
+687	Can add Powiązanie autorów	185	add_authorconnection
+688	Can change Powiązanie autorów	185	change_authorconnection
+689	Can delete Powiązanie autorów	185	delete_authorconnection
+690	Can view Powiązanie autorów	185	view_authorconnection
+691	Can add notification	186	add_notification
+692	Can change notification	186	change_notification
+693	Can delete notification	186	delete_notification
+694	Can view notification	186	view_notification
+695	Can add lista ministerialna element	187	add_listaministerialnaelement
+696	Can change lista ministerialna element	187	change_listaministerialnaelement
+697	Can delete lista ministerialna element	187	delete_listaministerialnaelement
+698	Can view lista ministerialna element	187	view_listaministerialnaelement
+699	Can add integracja list ministerialnych	188	add_listaministerialnaintegration
+700	Can change integracja list ministerialnych	188	change_listaministerialnaintegration
+701	Can delete integracja list ministerialnych	188	delete_listaministerialnaintegration
+702	Can view integracja list ministerialnych	188	view_listaministerialnaintegration
+703	Can add definicja raportu	189	add_definicjaraportu
+704	Can change definicja raportu	189	change_definicjaraportu
+705	Can delete definicja raportu	189	delete_definicjaraportu
+706	Can view definicja raportu	189	view_definicjaraportu
+707	Can add brak przypisania view	190	add_brakprzypisaniaview
+708	Can change brak przypisania view	190	change_brakprzypisaniaview
+709	Can delete brak przypisania view	190	delete_brakprzypisaniaview
+710	Can view brak przypisania view	190	view_brakprzypisaniaview
+711	Can add rozbiezne przypisania view	191	add_rozbiezneprzypisaniaview
+712	Can change rozbiezne przypisania view	191	change_rozbiezneprzypisaniaview
+713	Can delete rozbiezne przypisania view	191	delete_rozbiezneprzypisaniaview
+714	Can view rozbiezne przypisania view	191	view_rozbiezneprzypisaniaview
+715	Can add rozbieżność rekordu i dyscyplin	156	add_rozbieznosciview
+716	Can change rozbieżność rekordu i dyscyplin	156	change_rozbieznosciview
+717	Can delete rozbieżność rekordu i dyscyplin	156	delete_rozbieznosciview
+718	Can view rozbieżność rekordu i dyscyplin	156	view_rozbieznosciview
+719	Can add rozbieżność dyscyplin źródeł	157	add_rozbieznoscizrodelview
+720	Can change rozbieżność dyscyplin źródeł	157	change_rozbieznoscizrodelview
+721	Can delete rozbieżność dyscyplin źródeł	157	delete_rozbieznoscizrodelview
+722	Can view rozbieżność dyscyplin źródeł	157	view_rozbieznoscizrodelview
+723	Can add log zmiany punktacji	192	add_rozbieznosclog
+724	Can change log zmiany punktacji	192	change_rozbieznosclog
+725	Can delete log zmiany punktacji	192	delete_rozbieznosclog
+726	Can view log zmiany punktacji	192	view_rozbieznosclog
+727	Can add ignorowana rozbieżność	193	add_ignorowanarozbieznosc
+728	Can change ignorowana rozbieżność	193	change_ignorowanarozbieznosc
+729	Can delete ignorowana rozbieżność	193	delete_ignorowanarozbieznosc
+730	Can view ignorowana rozbieżność	193	view_ignorowanarozbieznosc
+731	Can add Favicon	162	add_favicon
+732	Can change Favicon	162	change_favicon
+733	Can delete Favicon	162	delete_favicon
+734	Can view Favicon	162	view_favicon
+735	Can add favicon img	163	add_faviconimg
+736	Can change favicon img	163	change_faviconimg
+737	Can delete favicon img	163	delete_faviconimg
+738	Can view favicon img	163	view_faviconimg
+739	Can add Article	164	add_article
+740	Can change Article	164	change_article
+741	Can delete Article	164	delete_article
+742	Can view Article	164	view_article
+743	Can add import_ dyscyplin	194	add_import_dyscyplin
+744	Can change import_ dyscyplin	194	change_import_dyscyplin
+745	Can delete import_ dyscyplin	194	delete_import_dyscyplin
+746	Can view import_ dyscyplin	194	view_import_dyscyplin
+747	Can add import_ dyscyplin_ row	195	add_import_dyscyplin_row
+748	Can change import_ dyscyplin_ row	195	change_import_dyscyplin_row
+749	Can delete import_ dyscyplin_ row	195	delete_import_dyscyplin_row
+750	Can view import_ dyscyplin_ row	195	view_import_dyscyplin_row
+751	Can add kolumna	196	add_kolumna
+752	Can change kolumna	196	change_kolumna
+753	Can delete kolumna	196	delete_kolumna
+754	Can view kolumna	196	view_kolumna
+755	Can add application	197	add_application
+756	Can change application	197	change_application
+757	Can delete application	197	delete_application
+758	Can view application	197	view_application
+759	Can add access token	198	add_accesstoken
+760	Can change access token	198	change_accesstoken
+761	Can delete access token	198	delete_accesstoken
+762	Can view access token	198	view_accesstoken
+763	Can add grant	199	add_grant
+764	Can change grant	199	change_grant
+765	Can delete grant	199	delete_grant
+766	Can view grant	199	view_grant
+767	Can add refresh token	200	add_refreshtoken
+768	Can change refresh token	200	change_refreshtoken
+769	Can delete refresh token	200	delete_refreshtoken
+770	Can view refresh token	200	view_refreshtoken
+771	Can add id token	201	add_idtoken
+772	Can change id token	201	change_idtoken
+773	Can delete id token	201	delete_idtoken
+774	Can view id token	201	view_idtoken
+775	Can add device grant	202	add_devicegrant
+776	Can change device grant	202	change_devicegrant
+777	Can delete device grant	202	delete_devicegrant
+778	Can view device grant	202	view_devicegrant
+779	Can add Rodzaj autora	152	add_rodzaj_autora
+780	Can change Rodzaj autora	152	change_rodzaj_autora
+781	Can delete Rodzaj autora	152	delete_rodzaj_autora
+782	Can view Rodzaj autora	152	view_rodzaj_autora
+783	Can add Ilość udziałów dla autora za rok	155	add_iloscudzialowdlaautorazarok
+784	Can change Ilość udziałów dla autora za rok	155	change_iloscudzialowdlaautorazarok
+785	Can delete Ilość udziałów dla autora za rok	155	delete_iloscudzialowdlaautorazarok
+786	Can view Ilość udziałów dla autora za rok	155	view_iloscudzialowdlaautorazarok
+787	Can add Dyscyplina nieraportowana 2022-2025	203	add_dyscyplinanieraportowana
+788	Can change Dyscyplina nieraportowana 2022-2025	203	change_dyscyplinanieraportowana
+789	Can delete Dyscyplina nieraportowana 2022-2025	203	delete_dyscyplinanieraportowana
+790	Can view Dyscyplina nieraportowana 2022-2025	203	view_dyscyplinanieraportowana
+791	Can add Liczba N dla uczelni	154	add_liczbandlauczelni
+792	Can change Liczba N dla uczelni	154	change_liczbandlauczelni
+793	Can delete Liczba N dla uczelni	154	delete_liczbandlauczelni
+794	Can view Liczba N dla uczelni	154	view_liczbandlauczelni
+795	Can add Ilość udziałów dla autora za cały okres	204	add_iloscudzialowdlaautorazacalosc
+796	Can change Ilość udziałów dla autora za cały okres	204	change_iloscudzialowdlaautorazacalosc
+797	Can delete Ilość udziałów dla autora za cały okres	204	delete_iloscudzialowdlaautorazacalosc
+798	Can view Ilość udziałów dla autora za cały okres	204	view_iloscudzialowdlaautorazacalosc
+799	Can add Status generowania metryk	205	add_statusgenerowania
+800	Can change Status generowania metryk	205	change_statusgenerowania
+801	Can delete Status generowania metryk	205	delete_statusgenerowania
+802	Can view Status generowania metryk	205	view_statusgenerowania
+803	Can add Metryka autora	206	add_metrykaautora
+804	Can change Metryka autora	206	change_metrykaautora
+805	Can delete Metryka autora	206	delete_metrykaautora
+806	Can view Metryka autora	206	view_metrykaautora
+807	Can add Wynik autora w optymalizacji	207	add_optimizationauthorresult
+808	Can change Wynik autora w optymalizacji	207	change_optimizationauthorresult
+809	Can delete Wynik autora w optymalizacji	207	delete_optimizationauthorresult
+810	Can view Wynik autora w optymalizacji	207	view_optimizationauthorresult
+811	Can add Wynik optymalizacji	208	add_optimizationrun
+812	Can change Wynik optymalizacji	208	change_optimizationrun
+813	Can delete Wynik optymalizacji	208	delete_optimizationrun
+814	Can view Wynik optymalizacji	208	view_optimizationrun
+815	Can add Publikacja w optymalizacji	209	add_optimizationpublication
+816	Can change Publikacja w optymalizacji	209	change_optimizationpublication
+817	Can delete Publikacja w optymalizacji	209	delete_optimizationpublication
+818	Can view Publikacja w optymalizacji	209	view_optimizationpublication
+819	Can add Możliwość odpięcia	210	add_unpinningopportunity
+820	Can change Możliwość odpięcia	210	change_unpinningopportunity
+821	Can delete Możliwość odpięcia	210	delete_unpinningopportunity
+822	Can view Możliwość odpięcia	210	view_unpinningopportunity
+823	Can add Status optymalizacji z odpinaniem	211	add_statusoptymalizacjizodpinaniem
+824	Can change Status optymalizacji z odpinaniem	211	change_statusoptymalizacjizodpinaniem
+825	Can delete Status optymalizacji z odpinaniem	211	delete_statusoptymalizacjizodpinaniem
+826	Can view Status optymalizacji z odpinaniem	211	view_statusoptymalizacjizodpinaniem
+827	Can add Status optymalizacji bulk	212	add_statusoptymalizacjibulk
+828	Can change Status optymalizacji bulk	212	change_statusoptymalizacjibulk
+829	Can delete Status optymalizacji bulk	212	delete_statusoptymalizacjibulk
+830	Can view Status optymalizacji bulk	212	view_statusoptymalizacjibulk
+831	Can add Status analizy unpinning	213	add_statusunpinninganalyzy
+832	Can change Status analizy unpinning	213	change_statusunpinninganalyzy
+833	Can delete Status analizy unpinning	213	delete_statusunpinninganalyzy
+834	Can view Status analizy unpinning	213	view_statusunpinninganalyzy
+835	Can add Status analizy zamiany dyscyplin	214	add_statusdisciplineswapanalysis
+836	Can change Status analizy zamiany dyscyplin	214	change_statusdisciplineswapanalysis
+837	Can delete Status analizy zamiany dyscyplin	214	delete_statusdisciplineswapanalysis
+838	Can view Status analizy zamiany dyscyplin	214	view_statusdisciplineswapanalysis
+839	Can add Możliwość zamiany dyscypliny	215	add_disciplineswapopportunity
+840	Can change Możliwość zamiany dyscypliny	215	change_disciplineswapopportunity
+841	Can delete Możliwość zamiany dyscypliny	215	delete_disciplineswapopportunity
+842	Can view Możliwość zamiany dyscypliny	215	view_disciplineswapopportunity
+843	Can add Status przeliczania przeglądarki	216	add_statusprzegladarkarecalc
+844	Can change Status przeliczania przeglądarki	216	change_statusprzegladarkarecalc
+845	Can delete Status przeliczania przeglądarki	216	delete_statusprzegladarkarecalc
+846	Can view Status przeliczania przeglądarki	216	view_statusprzegladarkarecalc
+847	Can add Optymalizacja publikacji	217	add_optymalizacjapublikacji
+848	Can change Optymalizacja publikacji	217	change_optymalizacjapublikacji
+849	Can delete Optymalizacja publikacji	217	delete_optymalizacjapublikacji
+850	Can view Optymalizacja publikacji	217	view_optymalizacjapublikacji
+851	Can add Historia zmiany dyscypliny	218	add_historiazmiandyscypliny
+852	Can change Historia zmiany dyscypliny	218	change_historiazmiandyscypliny
+853	Can delete Historia zmiany dyscypliny	218	delete_historiazmiandyscypliny
+854	Can view Historia zmiany dyscypliny	218	view_historiazmiandyscypliny
+855	Can add test operation	219	add_testoperation
+856	Can change test operation	219	change_testoperation
+857	Can delete test operation	219	delete_testoperation
+858	Can view test operation	219	view_testoperation
+859	Can add test object that does not exist	220	add_testobjectthatdoesnotexist
+860	Can change test object that does not exist	220	change_testobjectthatdoesnotexist
+861	Can delete test object that does not exist	220	delete_testobjectthatdoesnotexist
+862	Can view test object that does not exist	220	view_testobjectthatdoesnotexist
+863	Can add test report	221	add_testreport
+864	Can change test report	221	change_testreport
+865	Can delete test report	221	delete_testreport
+866	Can view test report	221	view_testreport
+867	Can add template	165	add_template
+868	Can change template	165	change_template
+869	Can delete template	165	delete_template
+870	Can view template	165	view_template
+871	Can add oswiadczenia export task	222	add_oswiadczeniaexporttask
+872	Can change oswiadczenia export task	222	change_oswiadczeniaexporttask
+873	Can delete oswiadczenia export task	222	delete_oswiadczeniaexporttask
+874	Can view oswiadczenia export task	222	view_oswiadczeniaexporttask
+875	Can add import pliku polon	223	add_importplikupolon
+876	Can change import pliku polon	223	change_importplikupolon
+877	Can delete import pliku polon	223	delete_importplikupolon
+878	Can view import pliku polon	223	view_importplikupolon
+879	Can add wiersz importu pliku polon	224	add_wierszimportuplikupolon
+880	Can change wiersz importu pliku polon	224	change_wierszimportuplikupolon
+881	Can delete wiersz importu pliku polon	224	delete_wierszimportuplikupolon
+882	Can view wiersz importu pliku polon	224	view_wierszimportuplikupolon
+883	Can add import pliku absencji	225	add_importplikuabsencji
+884	Can change import pliku absencji	225	change_importplikuabsencji
+885	Can delete import pliku absencji	225	delete_importplikuabsencji
+886	Can view import pliku absencji	225	view_importplikuabsencji
+887	Can add wiersz importu pliku absencji	226	add_wierszimportuplikuabsencji
+888	Can change wiersz importu pliku absencji	226	change_wierszimportuplikuabsencji
+889	Can delete wiersz importu pliku absencji	226	delete_wierszimportuplikuabsencji
+890	Can view wiersz importu pliku absencji	226	view_wierszimportuplikuabsencji
+891	Can add Wymuszenie grupy stanowisk	153	add_importpolonoverride
+892	Can change Wymuszenie grupy stanowisk	153	change_importpolonoverride
+893	Can delete Wymuszenie grupy stanowisk	153	delete_importpolonoverride
+894	Can view Wymuszenie grupy stanowisk	153	view_importpolonoverride
+895	Can add import list ministerialnych	227	add_importlistministerialnych
+896	Can change import list ministerialnych	227	change_importlistministerialnych
+897	Can delete import list ministerialnych	227	delete_importlistministerialnych
+898	Can view import list ministerialnych	227	view_importlistministerialnych
+899	Can add wiersz importu listy ministerialnej	228	add_wierszimportulistyministerialnej
+900	Can change wiersz importu listy ministerialnej	228	change_wierszimportulistyministerialnej
+901	Can delete wiersz importu listy ministerialnej	228	delete_wierszimportulistyministerialnej
+902	Can view wiersz importu listy ministerialnej	228	view_wierszimportulistyministerialnej
+903	Can add import punktacji źródeł	229	add_importpunktacjizrodel
+904	Can change import punktacji źródeł	229	change_importpunktacjizrodel
+905	Can delete import punktacji źródeł	229	delete_importpunktacjizrodel
+906	Can view import punktacji źródeł	229	view_importpunktacjizrodel
+907	Can add wiersz importu punktacji zrodel	230	add_wierszimportupunktacjizrodel
+908	Can change wiersz importu punktacji zrodel	230	change_wierszimportupunktacjizrodel
+909	Can delete wiersz importu punktacji zrodel	230	delete_wierszimportupunktacjizrodel
+910	Can view wiersz importu punktacji zrodel	230	view_wierszimportupunktacjizrodel
+911	Can add snapshot odpiec	231	add_snapshotodpiec
+912	Can change snapshot odpiec	231	change_snapshotodpiec
+913	Can delete snapshot odpiec	231	delete_snapshotodpiec
+914	Can view snapshot odpiec	231	view_snapshotodpiec
+915	Can add wartosc snapshotu	232	add_wartoscsnapshotu
+916	Can change wartosc snapshotu	232	change_wartoscsnapshotu
+917	Can delete wartosc snapshotu	232	delete_wartoscsnapshotu
+918	Can view wartosc snapshotu	232	view_wartoscsnapshotu
+919	Can add Oznaczony jako nie-duplikat	158	add_notaduplicate
+920	Can change Oznaczony jako nie-duplikat	158	change_notaduplicate
+921	Can delete Oznaczony jako nie-duplikat	158	delete_notaduplicate
+922	Can view Oznaczony jako nie-duplikat	158	view_notaduplicate
+923	Can add Log scalania autorów	159	add_logscalania
+924	Can change Log scalania autorów	159	change_logscalania
+925	Can delete Log scalania autorów	159	delete_logscalania
+926	Can view Log scalania autorów	159	view_logscalania
+927	Can add Skanowanie duplikatów	233	add_duplicatescanrun
+928	Can change Skanowanie duplikatów	233	change_duplicatescanrun
+929	Can delete Skanowanie duplikatów	233	delete_duplicatescanrun
+930	Can view Skanowanie duplikatów	233	view_duplicatescanrun
+931	Can add Kandydat na duplikat	234	add_duplicatecandidate
+932	Can change Kandydat na duplikat	234	change_duplicatecandidate
+933	Can delete Kandydat na duplikat	234	delete_duplicatecandidate
+934	Can view Kandydat na duplikat	234	view_duplicatecandidate
+935	Can add Ignorowany Scientist (PBN)	160	add_ignoredscientist
+936	Can change Ignorowany Scientist (PBN)	160	change_ignoredscientist
+937	Can delete Ignorowany Scientist (PBN)	160	delete_ignoredscientist
+938	Can view Ignorowany Scientist (PBN)	160	view_ignoredscientist
+939	Can add Ignorowany autor (BPP)	235	add_ignoredauthor
+940	Can change Ignorowany autor (BPP)	235	change_ignoredauthor
+941	Can delete Ignorowany autor (BPP)	235	delete_ignoredauthor
+942	Can view Ignorowany autor (BPP)	235	view_ignoredauthor
+943	Can add Skanowanie duplikatów publikacji	236	add_publicationduplicatescanrun
+944	Can change Skanowanie duplikatów publikacji	236	change_publicationduplicatescanrun
+945	Can delete Skanowanie duplikatów publikacji	236	delete_publicationduplicatescanrun
+946	Can view Skanowanie duplikatów publikacji	236	view_publicationduplicatescanrun
+947	Can add Kandydat na duplikat publikacji	237	add_publicationduplicatecandidate
+948	Can change Kandydat na duplikat publikacji	237	change_publicationduplicatecandidate
+949	Can delete Kandydat na duplikat publikacji	237	delete_publicationduplicatecandidate
+950	Can view Kandydat na duplikat publikacji	237	view_publicationduplicatecandidate
+951	Can add źródło ignorowane w deduplikacji	238	add_ignoredsource
+952	Can change źródło ignorowane w deduplikacji	238	change_ignoredsource
+953	Can delete źródło ignorowane w deduplikacji	238	delete_ignoredsource
+954	Can view źródło ignorowane w deduplikacji	238	view_ignoredsource
+955	Can add oznaczenie 'to nie duplikat'	239	add_notaduplicate
+956	Can change oznaczenie 'to nie duplikat'	239	change_notaduplicate
+957	Can delete oznaczenie 'to nie duplikat'	239	delete_notaduplicate
+958	Can view oznaczenie 'to nie duplikat'	239	view_notaduplicate
+959	Can add Skanowanie duplikatów źródeł	240	add_scanzrodelforduplicates
+960	Can change Skanowanie duplikatów źródeł	240	change_scanzrodelforduplicates
+961	Can delete Skanowanie duplikatów źródeł	240	delete_scanzrodelforduplicates
+962	Can view Skanowanie duplikatów źródeł	240	view_scanzrodelforduplicates
+963	Can add Kandydat na duplikat źródła	241	add_sourceduplicatecandidate
+964	Can change Kandydat na duplikat źródła	241	change_sourceduplicatecandidate
+965	Can delete Kandydat na duplikat źródła	241	delete_sourceduplicatecandidate
+966	Can view Kandydat na duplikat źródła	241	view_sourceduplicatecandidate
+967	Can add Ignorowany naukowiec PBN	242	add_donotremind
+968	Can change Ignorowany naukowiec PBN	242	change_donotremind
+969	Can delete Ignorowany naukowiec PBN	242	delete_donotremind
+970	Can view Ignorowany naukowiec PBN	242	view_donotremind
+971	Can add Przebudowa cache'u importu autorów PBN	243	add_matchcacherebuildoperation
+972	Can change Przebudowa cache'u importu autorów PBN	243	change_matchcacherebuildoperation
+973	Can delete Przebudowa cache'u importu autorów PBN	243	delete_matchcacherebuildoperation
+974	Can view Przebudowa cache'u importu autorów PBN	243	view_matchcacherebuildoperation
+975	Can add Cache dopasowania naukowca PBN	244	add_cachedscientistmatch
+976	Can change Cache dopasowania naukowca PBN	244	change_cachedscientistmatch
+977	Can delete Cache dopasowania naukowca PBN	244	delete_cachedscientistmatch
+978	Can view Cache dopasowania naukowca PBN	244	view_cachedscientistmatch
+979	Can add Przemapowanie prac autora	245	add_przemapoaniepracautora
+980	Can change Przemapowanie prac autora	245	change_przemapoaniepracautora
+981	Can delete Przemapowanie prac autora	245	delete_przemapoaniepracautora
+982	Can view Przemapowanie prac autora	245	view_przemapoaniepracautora
+983	Can add Przemapowanie źródła	246	add_przemapowaniezrodla
+984	Can change Przemapowanie źródła	246	change_przemapowaniezrodla
+985	Can delete Przemapowanie źródła	246	delete_przemapowaniezrodla
+986	Can view Przemapowanie źródła	246	view_przemapowaniezrodla
+987	Can add Przemapowanie źródła	247	add_przemapowazrodla
+988	Can change Przemapowanie źródła	247	change_przemapowazrodla
+989	Can delete Przemapowanie źródła	247	delete_przemapowazrodla
+990	Can view Przemapowanie źródła	247	view_przemapowazrodla
+991	Can add PBN Download Task	248	add_pbndownloadtask
+992	Can change PBN Download Task	248	change_pbndownloadtask
+993	Can delete PBN Download Task	248	delete_pbndownloadtask
+994	Can view PBN Download Task	248	view_pbndownloadtask
+995	Can add PBN Institution People Download Task	249	add_pbninstitutionpeopletask
+996	Can change PBN Institution People Download Task	249	change_pbninstitutionpeopletask
+997	Can delete PBN Institution People Download Task	249	delete_pbninstitutionpeopletask
+998	Can view PBN Institution People Download Task	249	view_pbninstitutionpeopletask
+999	Can add PBN Journals Download Task	250	add_pbnjournalsdownloadtask
+1000	Can change PBN Journals Download Task	250	change_pbnjournalsdownloadtask
+1001	Can delete PBN Journals Download Task	250	delete_pbnjournalsdownloadtask
+1002	Can view PBN Journals Download Task	250	view_pbnjournalsdownloadtask
+1003	Can add Zadanie wysylki oswiadczen	251	add_pbnwysylkaoswiadczentask
+1004	Can change Zadanie wysylki oswiadczen	251	change_pbnwysylkaoswiadczentask
+1005	Can delete Zadanie wysylki oswiadczen	251	delete_pbnwysylkaoswiadczentask
+1006	Can view Zadanie wysylki oswiadczen	251	view_pbnwysylkaoswiadczentask
+1007	Can add Log wysylki	252	add_pbnwysylkalog
+1008	Can change Log wysylki	252	change_pbnwysylkalog
+1009	Can delete Log wysylki	252	delete_pbnwysylkalog
+1010	Can view Log wysylki	252	view_pbnwysylkalog
+1011	Can add Sesja importu	253	add_importsession
+1012	Can change Sesja importu	253	change_importsession
+1013	Can delete Sesja importu	253	delete_importsession
+1014	Can view Sesja importu	253	view_importsession
+1015	Can add Wpis dziennika importu	254	add_importlog
+1016	Can change Wpis dziennika importu	254	change_importlog
+1017	Can delete Wpis dziennika importu	254	delete_importlog
+1018	Can view Wpis dziennika importu	254	view_importlog
+1019	Can add Nieścisłość importu	255	add_importinconsistency
+1020	Can change Nieścisłość importu	255	change_importinconsistency
+1021	Can delete Nieścisłość importu	255	delete_importinconsistency
+1022	Can view Nieścisłość importu	255	view_importinconsistency
+1023	Can add tożsamość ORCID	256	add_orcididentity
+1024	Can change tożsamość ORCID	256	change_orcididentity
+1025	Can delete tożsamość ORCID	256	delete_orcididentity
+1026	Can view tożsamość ORCID	256	view_orcididentity
+1027	Can add Rozbieżność dyscyplin BPP-PBN	257	add_rozbieznoscdyscyplinpbn
+1028	Can change Rozbieżność dyscyplin BPP-PBN	257	change_rozbieznoscdyscyplinpbn
+1029	Can delete Rozbieżność dyscyplin BPP-PBN	257	delete_rozbieznoscdyscyplinpbn
+1030	Can view Rozbieżność dyscyplin BPP-PBN	257	view_rozbieznoscdyscyplinpbn
+1031	Can add Brak autora w publikacji	258	add_brakautorawpublikacji
+1032	Can change Brak autora w publikacji	258	change_brakautorawpublikacji
+1033	Can delete Brak autora w publikacji	258	delete_brakautorawpublikacji
+1034	Can view Brak autora w publikacji	258	view_brakautorawpublikacji
+1035	Can add Kliknięcie w menu	259	add_menuclick
+1036	Can change Kliknięcie w menu	259	change_menuclick
+1037	Can delete Kliknięcie w menu	259	delete_menuclick
+1038	Can view Kliknięcie w menu	259	view_menuclick
+1039	Can add sesja importu	260	add_importsession
+1040	Can change sesja importu	260	change_importsession
+1041	Can delete sesja importu	260	delete_importsession
+1042	Can view sesja importu	260	view_importsession
+1043	Can add importowany autor	261	add_importedauthor
+1044	Can change importowany autor	261	change_importedauthor
+1045	Can delete importowany autor	261	delete_importedauthor
+1046	Can view importowany autor	261	view_importedauthor
+1047	Can add kandydat na autora	262	add_importedauthor_candidate
+1048	Can change kandydat na autora	262	change_importedauthor_candidate
+1049	Can delete kandydat na autora	262	delete_importedauthor_candidate
+1050	Can view kandydat na autora	262	view_importedauthor_candidate
+1051	Can add import wielu prac	263	add_multipleworksimport
+1052	Can change import wielu prac	263	change_multipleworksimport
+1053	Can delete import wielu prac	263	delete_multipleworksimport
+1054	Can view import wielu prac	263	view_multipleworksimport
+1055	Can add wpis paczki	264	add_multipleworksimportentry
+1056	Can change wpis paczki	264	change_multipleworksimportentry
+1057	Can delete wpis paczki	264	delete_multipleworksimportentry
+1058	Can view wpis paczki	264	view_multipleworksimportentry
+1059	Can add tożsamość OIDC	265	add_oidcidentity
+1060	Can change tożsamość OIDC	265	change_oidcidentity
+1061	Can delete tożsamość OIDC	265	delete_oidcidentity
+1062	Can view tożsamość OIDC	265	view_oidcidentity
+1063	Can add CRUD event	266	add_crudevent
+1064	Can change CRUD event	266	change_crudevent
+1065	Can delete CRUD event	266	delete_crudevent
+1066	Can view CRUD event	266	view_crudevent
+1067	Can add login event	267	add_loginevent
+1068	Can change login event	267	change_loginevent
+1069	Can delete login event	267	delete_loginevent
+1070	Can view login event	267	view_loginevent
+1071	Can add request event	268	add_requestevent
+1072	Can change request event	268	change_requestevent
+1073	Can delete request event	268	delete_requestevent
+1074	Can view request event	268	view_requestevent
 \.
 
 
@@ -15861,274 +15705,274 @@ COPY public.django_celery_results_taskresult (id, task_id, status, content_type,
 --
 
 COPY public.django_content_type (id, app_label, model) FROM stdin;
-1	bpp	patent
-2	bpp	wydawca
-3	bpp	wydawnictwo_zwarte
-4	bpp	praca_doktorska
-5	bpp	praca_habilitacyjna
-6	bpp	wydawnictwo_ciagle
-7	denorm	dirtyinstance
-8	reversion	revision
-9	reversion	version
-10	constance	constance
-11	dynamic_admin_columns	modeladmin
-12	dynamic_admin_columns	modeladmincolumn
-13	contenttypes	contenttype
-14	auth	permission
-15	auth	group
-16	sessions	session
-17	sites	site
-18	django_countdown	sitecountdown
-19	import_pracownikow	importpracownikow
-20	import_pracownikow	importpracownikowrow
-21	import_list_if	importlistif
-22	import_list_if	importlistifrow
-23	password_policies	passwordchangerequired
-24	password_policies	passwordhistory
-25	password_policies	passwordprofile
-26	axes	accessattempt
-27	axes	accesslog
-28	axes	accessfailurelog
-29	axes	accessattemptexpiration
-30	django_celery_results	taskresult
-31	django_celery_results	chordcounter
-32	django_celery_results	groupresult
-33	flexible_reports	column
-34	flexible_reports	datasource
-35	flexible_reports	report
-36	flexible_reports	reportelement
-37	flexible_reports	table
-38	flexible_reports	columnorder
-39	taggit	tag
-40	taggit	taggeditem
-41	zglos_publikacje	zgloszenie_publikacji
-42	zglos_publikacje	zgloszenie_publikacji_autor
-43	zglos_publikacje	obslugujacy_zgloszenia_wydzialow
-44	zglos_publikacje	zgloszenie_publikacji_zalacznik
-45	formdefaults	formrepresentation
-46	formdefaults	formfieldrepresentation
-47	formdefaults	formfielddefaultvalue
-48	raport_slotow	raportzerowyentry
-49	raport_slotow	raportuczelniaewaluacjaview
-50	raport_slotow	raportslotowuczelnia
-51	raport_slotow	raportslotowuczelniawiersz
-52	raport_slotow	raportewaluacjaupowaznieniaview
-53	bpp	bppuser
-54	bpp	autor
-55	bpp	autor_jednostka
-56	bpp	charakter_formalny
-57	bpp	funkcja_autora
-58	bpp	jednostka
-59	bpp	jezyk
-60	bpp	opi_2012_afiliacja_do_wydzialu
-61	bpp	opi_2012_tytul_cache
-62	bpp	patent_autor
-63	bpp	plec
-64	bpp	publikacja_habilitacyjna
-65	bpp	punktacja_zrodla
-66	bpp	redakcja_zrodla
-67	bpp	rodzaj_zrodla
-68	bpp	status_korekty
-69	bpp	typ_kbn
-70	bpp	typ_odpowiedzialnosci
-71	bpp	tytul
-72	bpp	uczelnia
-73	bpp	wydawnictwo_ciagle_autor
-74	bpp	wydawnictwo_zwarte_autor
-75	bpp	wydzial
-76	bpp	zasieg_zrodla
-77	bpp	zrodlo
-78	bpp	zrodlo_informacji
-79	bpp	autorzy
-80	bpp	autorzyview
-81	bpp	rekord
-82	bpp	charakter_pbn
-83	bpp	czas_udostepnienia_openaccess
-84	bpp	licencja_openaccess
-85	bpp	tryb_openaccess_wydawnictwo_ciagle
-86	bpp	tryb_openaccess_wydawnictwo_zwarte
-87	bpp	wersja_tekstu_openaccess
-89	bpp	konferencja
-90	bpp	seria_wydawnicza
-91	bpp	nagroda
-92	bpp	organprzyznajacynagrody
-93	bpp	nowe_sumy_view
-94	bpp	rekordview
-95	bpp	rodzaj_prawa_patentowego
-96	bpp	autor_dyscyplina
-97	bpp	dyscyplina_naukowa
-98	bpp	wydawnictwo_ciagle_zewnetrzna_baza_danych
-99	bpp	zewnetrzna_baza_danych
-100	bpp	zewnetrznebazydanychview
-101	bpp	cache_punktacja_autora
-102	bpp	cache_punktacja_dyscypliny
-103	bpp	poziom_wydawcy
-104	bpp	cache_punktacja_autora_query
-105	bpp	cache_punktacja_autora_sum
-106	bpp	cache_punktacja_autora_sum_group_ponizej
-107	bpp	cache_punktacja_autora_sum_ponizej
-108	bpp	wydawnictwo_zwarte_zewnetrzna_baza_danych
-109	bpp	cache_punktacja_autora_query_view
-110	bpp	element_repozytorium
-111	bpp	grant
-112	bpp	grant_rekordu
-113	bpp	ukryj_status_korekty
-114	bpp	slowakluczoweview
-115	bpp	grupa_pracownicza
-116	bpp	wymiar_etatu
-117	bpp	dyscyplina_zrodla
-118	bpp	bppmultiseekvisibility
-119	bpp	szablondlaopisubibliograficznego
-120	bpp	wydawnictwo_zwarte_streszczenie
-121	bpp	wydawnictwo_ciagle_streszczenie
-122	bpp	kierunek_studiow
-123	bpp	rzeczownik
-124	bpp	autor_absencja
-125	bpp	cache_liczba_n_last_updated
-126	bpp	crossref_mapper
-127	bpp	oplatypublikacjilog
-128	bpp	cache_punktacja_autora_sum_group
-129	pbn_api	journal
-130	pbn_api	institution
-131	pbn_api	conference
-132	pbn_api	publisher
-133	pbn_api	scientist
-134	pbn_api	sentdata
-135	pbn_api	discipline
-136	pbn_api	publication
-137	pbn_api	oswiadczenieinstytucji
-138	pbn_api	disciplinegroup
-139	ewaluacja_common	rodzaj_autora
-140	import_polon	importpolonoverride
-141	ewaluacja_liczba_n	liczbandlauczelni
-142	ewaluacja_liczba_n	iloscudzialowdlaautorazarok
-143	rozbieznosci_dyscyplin	rozbieznosciview
-144	rozbieznosci_dyscyplin	rozbieznoscizrodelview
-145	deduplikator_autorow	notaduplicate
-146	deduplikator_autorow	logscalania
-147	deduplikator_autorow	ignoredscientist
-148	multiseek	searchform
-149	favicon	favicon
-150	favicon	faviconimg
-151	siteblog	article
-152	dbtemplates	template
-153	crossref_bpp	crossrefapicache
-154	pbn_api	country
-155	pbn_api	language
-156	pbn_api	publikacjainstytucji
-157	pbn_api	tlumaczdyscyplin
-158	pbn_api	publikacjainstytucji_v2
-159	pbn_api	osobazinstytucji
-160	pbn_api	pbnodpowiedziniepozadane
-161	dspace_api	mapowanie_dspace
-162	dspace_api	senttodspace
-163	pbn_export_queue	pbn_export_queue
-164	pbn_komparator_zrodel	komparatorzrodelmeta
-165	pbn_komparator_zrodel	logaktualizacjizrodla
-166	pbn_komparator_zrodel	rozbieznosczrodlapbn
-167	pbn_komparator_zrodel	brakujacadyscyplinapbn
-168	admin	logentry
-169	menu	bookmark
-170	dashboard	dashboardpreferences
-171	messages_extends	message
-172	powiazania_autorow	authorconnection
-173	channels_broadcast	notification
-174	integrator2	listaministerialnaelement
-175	integrator2	listaministerialnaintegration
-176	nowe_raporty	definicjaraportu
-177	rozbieznosci_dyscyplin	brakprzypisaniaview
-178	rozbieznosci_dyscyplin	rozbiezneprzypisaniaview
-183	import_dyscyplin	import_dyscyplin
-184	import_dyscyplin	import_dyscyplin_row
-185	import_dyscyplin	kolumna
-186	ewaluacja_liczba_n	dyscyplinanieraportowana
-187	ewaluacja_liczba_n	iloscudzialowdlaautorazacalosc
-188	ewaluacja_metryki	statusgenerowania
-189	ewaluacja_metryki	metrykaautora
-190	ewaluacja_optymalizacja	optimizationauthorresult
-191	ewaluacja_optymalizacja	optimizationrun
-192	ewaluacja_optymalizacja	optimizationpublication
-193	ewaluacja_optymalizacja	unpinningopportunity
-194	ewaluacja_optymalizacja	statusoptymalizacjizodpinaniem
-195	ewaluacja_optymalizacja	statusoptymalizacjibulk
-196	ewaluacja_optymalizacja	statusunpinninganalyzy
-197	ewaluacja_optymalizacja	statusdisciplineswapanalysis
-198	ewaluacja_optymalizacja	disciplineswapopportunity
-199	ewaluacja_optymalizacja	statusprzegladarkarecalc
-200	ewaluacja_optymalizuj_publikacje	optymalizacjapublikacji
-201	ewaluacja_optymalizuj_publikacje	historiazmiandyscypliny
-202	test_bpp	testoperation
-203	test_bpp	testobjectthatdoesnotexist
-204	test_bpp	testreport
-205	oswiadczenia	oswiadczeniaexporttask
-206	import_polon	importplikupolon
-207	import_polon	wierszimportuplikupolon
-208	import_polon	importplikuabsencji
-209	import_polon	wierszimportuplikuabsencji
-210	import_list_ministerialnych	importlistministerialnych
-211	import_list_ministerialnych	wierszimportulistyministerialnej
-212	snapshot_odpiec	snapshotodpiec
-213	snapshot_odpiec	wartoscsnapshotu
-214	deduplikator_autorow	duplicatescanrun
-215	deduplikator_autorow	duplicatecandidate
-216	deduplikator_autorow	ignoredauthor
-217	deduplikator_publikacji	publicationduplicatescanrun
-218	deduplikator_publikacji	publicationduplicatecandidate
-219	deduplikator_zrodel	ignoredsource
-220	deduplikator_zrodel	notaduplicate
-221	importer_autorow_pbn	donotremind
-222	importer_autorow_pbn	matchcacherebuildoperation
-223	importer_autorow_pbn	cachedscientistmatch
-224	przemapuj_prace_autora	przemapoaniepracautora
-225	przemapuj_zrodla_pbn	przemapowaniezrodla
-226	przemapuj_zrodlo	przemapowazrodla
-227	pbn_downloader_app	pbndownloadtask
-228	pbn_downloader_app	pbninstitutionpeopletask
-229	pbn_downloader_app	pbnjournalsdownloadtask
-230	pbn_wysylka_oswiadczen	pbnwysylkaoswiadczentask
-231	pbn_wysylka_oswiadczen	pbnwysylkalog
-232	pbn_import	importsession
-233	pbn_import	importlog
-234	pbn_import	importinconsistency
-235	komparator_pbn_udzialy	rozbieznoscdyscyplinpbn
-236	komparator_pbn_udzialy	brakautorawpublikacji
-237	admin_dashboard	menuclick
-238	importer_publikacji	importsession
-239	importer_publikacji	importedauthor
-240	importer_publikacji	importedauthor_candidate
-241	easyaudit	crudevent
-242	easyaudit	loginevent
-243	easyaudit	requestevent
-88	bpp	jednostka_rodzic
-244	bpp	wydawnictwo_ciagle_tytul
-245	bpp	wydawnictwo_zwarte_tytul
-246	bpp	rodzajjednostki
-247	rozbieznosci	rozbieznosclog
-248	rozbieznosci	ignorowanarozbieznosc
-249	import_punktacji_zrodel	importpunktacjizrodel
-250	import_punktacji_zrodel	wierszimportupunktacjizrodel
-251	deduplikator_zrodel	scanzrodelforduplicates
-252	deduplikator_zrodel	sourceduplicatecandidate
-253	import_pracownikow	profilmapowania
-254	import_pracownikow	importpracownikowrowkandydat
-255	import_pracownikow	importpracownikowodpiecie
-256	import_pracownikow	importpracownikowjednostka
-257	import_pracownikow	importpracownikowtytul
-258	oauth2_provider	application
-259	oauth2_provider	accesstoken
-260	oauth2_provider	grant
-261	oauth2_provider	refreshtoken
-262	oauth2_provider	idtoken
-263	oauth2_provider	devicegrant
-264	importer_publikacji	multipleworksimport
-265	importer_publikacji	multipleworksimportentry
-266	first_run_wizard	firstrunwizardstate
-267	import_pracownikow	importpracownikowstanowisko
-268	import_pracownikow	importpracownikowstopien
-269	bpp	stanowiskodydaktyczne
-270	bpp	stopiensluzbowy
-271	orcid_integration	orcididentity
-272	oidc_integration	oidcidentity
+1	first_run_wizard	firstrunwizardstate
+2	bpp	patent
+3	bpp	jednostka
+4	bpp	wydawca
+5	bpp	wydawnictwo_zwarte
+6	bpp	praca_doktorska
+7	bpp	praca_habilitacyjna
+8	bpp	wydawnictwo_ciagle
+9	denorm	dirtyinstance
+10	reversion	revision
+11	reversion	version
+12	constance	constance
+13	dynamic_admin_columns	modeladmin
+14	dynamic_admin_columns	modeladmincolumn
+15	contenttypes	contenttype
+16	auth	permission
+17	auth	group
+18	sessions	session
+19	sites	site
+20	django_countdown	sitecountdown
+21	import_pracownikow	importpracownikow
+22	import_pracownikow	importpracownikowrow
+23	import_pracownikow	profilmapowania
+24	import_pracownikow	importpracownikowrowkandydat
+25	import_pracownikow	importpracownikowodpiecie
+26	import_pracownikow	importpracownikowjednostka
+27	import_pracownikow	importpracownikowtytul
+28	import_pracownikow	importpracownikowstanowisko
+29	import_pracownikow	importpracownikowstopien
+30	import_list_if	importlistif
+31	import_list_if	importlistifrow
+32	password_policies	passwordchangerequired
+33	password_policies	passwordhistory
+34	password_policies	passwordprofile
+35	axes	accessattempt
+36	axes	accesslog
+37	axes	accessfailurelog
+38	axes	accessattemptexpiration
+39	django_celery_results	taskresult
+40	django_celery_results	chordcounter
+41	django_celery_results	groupresult
+42	flexible_reports	column
+43	flexible_reports	datasource
+44	flexible_reports	report
+45	flexible_reports	reportelement
+46	flexible_reports	table
+47	flexible_reports	columnorder
+48	taggit	tag
+49	taggit	taggeditem
+50	zglos_publikacje	zgloszenie_publikacji
+51	zglos_publikacje	zgloszenie_publikacji_autor
+52	zglos_publikacje	obslugujacy_zgloszenia_wydzialow
+53	zglos_publikacje	zgloszenie_publikacji_zalacznik
+54	formdefaults	formrepresentation
+55	formdefaults	formfieldrepresentation
+56	formdefaults	formfielddefaultvalue
+57	raport_slotow	raportzerowyentry
+58	raport_slotow	raportuczelniaewaluacjaview
+59	raport_slotow	raportslotowuczelnia
+60	raport_slotow	raportslotowuczelniawiersz
+61	raport_slotow	raportewaluacjaupowaznieniaview
+62	bpp	bppuser
+63	bpp	autor
+64	bpp	autor_jednostka
+65	bpp	charakter_formalny
+66	bpp	funkcja_autora
+67	bpp	jezyk
+68	bpp	opi_2012_afiliacja_do_wydzialu
+69	bpp	opi_2012_tytul_cache
+70	bpp	patent_autor
+71	bpp	plec
+72	bpp	publikacja_habilitacyjna
+73	bpp	punktacja_zrodla
+74	bpp	redakcja_zrodla
+75	bpp	rodzaj_zrodla
+76	bpp	status_korekty
+77	bpp	typ_kbn
+78	bpp	typ_odpowiedzialnosci
+79	bpp	tytul
+80	bpp	uczelnia
+81	bpp	wydawnictwo_ciagle_autor
+82	bpp	wydawnictwo_zwarte_autor
+83	bpp	wydzial
+84	bpp	zasieg_zrodla
+85	bpp	zrodlo
+86	bpp	zrodlo_informacji
+87	bpp	autorzy
+88	bpp	autorzyview
+89	bpp	rekord
+90	bpp	charakter_pbn
+91	bpp	czas_udostepnienia_openaccess
+92	bpp	licencja_openaccess
+93	bpp	tryb_openaccess_wydawnictwo_ciagle
+94	bpp	tryb_openaccess_wydawnictwo_zwarte
+95	bpp	wersja_tekstu_openaccess
+96	bpp	konferencja
+97	bpp	seria_wydawnicza
+98	bpp	nagroda
+99	bpp	organprzyznajacynagrody
+100	bpp	nowe_sumy_view
+101	bpp	rekordview
+102	bpp	rodzaj_prawa_patentowego
+103	bpp	autor_dyscyplina
+104	bpp	dyscyplina_naukowa
+105	bpp	wydawnictwo_ciagle_zewnetrzna_baza_danych
+106	bpp	zewnetrzna_baza_danych
+107	bpp	zewnetrznebazydanychview
+108	bpp	cache_punktacja_autora
+109	bpp	cache_punktacja_dyscypliny
+110	bpp	poziom_wydawcy
+111	bpp	cache_punktacja_autora_query
+112	bpp	cache_punktacja_autora_sum
+113	bpp	cache_punktacja_autora_sum_group_ponizej
+114	bpp	cache_punktacja_autora_sum_ponizej
+115	bpp	wydawnictwo_zwarte_zewnetrzna_baza_danych
+116	bpp	cache_punktacja_autora_query_view
+117	bpp	element_repozytorium
+118	bpp	grant
+119	bpp	grant_rekordu
+120	bpp	ukryj_status_korekty
+121	bpp	slowakluczoweview
+122	bpp	grupa_pracownicza
+123	bpp	wymiar_etatu
+124	bpp	dyscyplina_zrodla
+125	bpp	bppmultiseekvisibility
+126	bpp	szablondlaopisubibliograficznego
+127	bpp	wydawnictwo_zwarte_streszczenie
+128	bpp	wydawnictwo_ciagle_streszczenie
+129	bpp	kierunek_studiow
+130	bpp	rzeczownik
+131	bpp	autor_absencja
+132	bpp	cache_liczba_n_last_updated
+133	bpp	crossref_mapper
+134	bpp	oplatypublikacjilog
+135	bpp	cache_punktacja_autora_sum_group
+136	bpp	wydawnictwo_ciagle_tytul
+137	bpp	wydawnictwo_zwarte_tytul
+138	bpp	rodzajjednostki
+139	bpp	jednostka_rodzic
+140	bpp	stanowiskodydaktyczne
+141	bpp	stopiensluzbowy
+142	pbn_api	journal
+143	pbn_api	institution
+144	pbn_api	conference
+145	pbn_api	publisher
+146	pbn_api	scientist
+147	pbn_api	sentdata
+148	pbn_api	discipline
+149	pbn_api	publication
+150	pbn_api	oswiadczenieinstytucji
+151	pbn_api	disciplinegroup
+152	ewaluacja_common	rodzaj_autora
+153	import_polon	importpolonoverride
+154	ewaluacja_liczba_n	liczbandlauczelni
+155	ewaluacja_liczba_n	iloscudzialowdlaautorazarok
+156	rozbieznosci_dyscyplin	rozbieznosciview
+157	rozbieznosci_dyscyplin	rozbieznoscizrodelview
+158	deduplikator_autorow	notaduplicate
+159	deduplikator_autorow	logscalania
+160	deduplikator_autorow	ignoredscientist
+161	multiseek	searchform
+162	favicon	favicon
+163	favicon	faviconimg
+164	siteblog	article
+165	dbtemplates	template
+166	crossref_bpp	crossrefapicache
+167	pbn_api	country
+168	pbn_api	language
+169	pbn_api	publikacjainstytucji
+170	pbn_api	tlumaczdyscyplin
+171	pbn_api	publikacjainstytucji_v2
+172	pbn_api	osobazinstytucji
+173	pbn_api	pbnodpowiedziniepozadane
+174	dspace_api	mapowanie_dspace
+175	dspace_api	senttodspace
+176	pbn_export_queue	pbn_export_queue
+177	pbn_komparator_zrodel	komparatorzrodelmeta
+178	pbn_komparator_zrodel	logaktualizacjizrodla
+179	pbn_komparator_zrodel	rozbieznosczrodlapbn
+180	pbn_komparator_zrodel	brakujacadyscyplinapbn
+181	admin	logentry
+182	menu	bookmark
+183	dashboard	dashboardpreferences
+184	messages_extends	message
+185	powiazania_autorow	authorconnection
+186	channels_broadcast	notification
+187	integrator2	listaministerialnaelement
+188	integrator2	listaministerialnaintegration
+189	nowe_raporty	definicjaraportu
+190	rozbieznosci_dyscyplin	brakprzypisaniaview
+191	rozbieznosci_dyscyplin	rozbiezneprzypisaniaview
+192	rozbieznosci	rozbieznosclog
+193	rozbieznosci	ignorowanarozbieznosc
+194	import_dyscyplin	import_dyscyplin
+195	import_dyscyplin	import_dyscyplin_row
+196	import_dyscyplin	kolumna
+197	oauth2_provider	application
+198	oauth2_provider	accesstoken
+199	oauth2_provider	grant
+200	oauth2_provider	refreshtoken
+201	oauth2_provider	idtoken
+202	oauth2_provider	devicegrant
+203	ewaluacja_liczba_n	dyscyplinanieraportowana
+204	ewaluacja_liczba_n	iloscudzialowdlaautorazacalosc
+205	ewaluacja_metryki	statusgenerowania
+206	ewaluacja_metryki	metrykaautora
+207	ewaluacja_optymalizacja	optimizationauthorresult
+208	ewaluacja_optymalizacja	optimizationrun
+209	ewaluacja_optymalizacja	optimizationpublication
+210	ewaluacja_optymalizacja	unpinningopportunity
+211	ewaluacja_optymalizacja	statusoptymalizacjizodpinaniem
+212	ewaluacja_optymalizacja	statusoptymalizacjibulk
+213	ewaluacja_optymalizacja	statusunpinninganalyzy
+214	ewaluacja_optymalizacja	statusdisciplineswapanalysis
+215	ewaluacja_optymalizacja	disciplineswapopportunity
+216	ewaluacja_optymalizacja	statusprzegladarkarecalc
+217	ewaluacja_optymalizuj_publikacje	optymalizacjapublikacji
+218	ewaluacja_optymalizuj_publikacje	historiazmiandyscypliny
+219	test_bpp	testoperation
+220	test_bpp	testobjectthatdoesnotexist
+221	test_bpp	testreport
+222	oswiadczenia	oswiadczeniaexporttask
+223	import_polon	importplikupolon
+224	import_polon	wierszimportuplikupolon
+225	import_polon	importplikuabsencji
+226	import_polon	wierszimportuplikuabsencji
+227	import_list_ministerialnych	importlistministerialnych
+228	import_list_ministerialnych	wierszimportulistyministerialnej
+229	import_punktacji_zrodel	importpunktacjizrodel
+230	import_punktacji_zrodel	wierszimportupunktacjizrodel
+231	snapshot_odpiec	snapshotodpiec
+232	snapshot_odpiec	wartoscsnapshotu
+233	deduplikator_autorow	duplicatescanrun
+234	deduplikator_autorow	duplicatecandidate
+235	deduplikator_autorow	ignoredauthor
+236	deduplikator_publikacji	publicationduplicatescanrun
+237	deduplikator_publikacji	publicationduplicatecandidate
+238	deduplikator_zrodel	ignoredsource
+239	deduplikator_zrodel	notaduplicate
+240	deduplikator_zrodel	scanzrodelforduplicates
+241	deduplikator_zrodel	sourceduplicatecandidate
+242	importer_autorow_pbn	donotremind
+243	importer_autorow_pbn	matchcacherebuildoperation
+244	importer_autorow_pbn	cachedscientistmatch
+245	przemapuj_prace_autora	przemapoaniepracautora
+246	przemapuj_zrodla_pbn	przemapowaniezrodla
+247	przemapuj_zrodlo	przemapowazrodla
+248	pbn_downloader_app	pbndownloadtask
+249	pbn_downloader_app	pbninstitutionpeopletask
+250	pbn_downloader_app	pbnjournalsdownloadtask
+251	pbn_wysylka_oswiadczen	pbnwysylkaoswiadczentask
+252	pbn_wysylka_oswiadczen	pbnwysylkalog
+253	pbn_import	importsession
+254	pbn_import	importlog
+255	pbn_import	importinconsistency
+256	orcid_integration	orcididentity
+257	komparator_pbn_udzialy	rozbieznoscdyscyplinpbn
+258	komparator_pbn_udzialy	brakautorawpublikacji
+259	admin_dashboard	menuclick
+260	importer_publikacji	importsession
+261	importer_publikacji	importedauthor
+262	importer_publikacji	importedauthor_candidate
+263	importer_publikacji	multipleworksimport
+264	importer_publikacji	multipleworksimportentry
+265	oidc_integration	oidcidentity
+266	easyaudit	crudevent
+267	easyaudit	loginevent
+268	easyaudit	requestevent
 \.
 
 
@@ -16145,22 +15989,7 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
-448	multiseek	0001_initial	2000-01-01 00:00:00+00
-545	bpp	0429_cache_trigger_v3	2000-01-01 00:00:00+00
-531	bpp	0418_merge_20260601_0954	2000-01-01 00:00:00+00
-434	bpp	0339_autor_opis	2000-01-01 00:00:00+00
-535	bpp	0421_cache_trigger_pk_filter	2000-01-01 00:00:00+00
-469	bpp	0362_rzeczownik	2000-01-01 00:00:00+00
-533	bpp	0419_merge_20260601_1319	2000-01-01 00:00:00+00
-329	bpp	0236_merge_20210202_0850	2000-01-01 00:00:00+00
-442	pbn_api	0045_pbn_export_queue	2000-01-01 00:00:00+00
-447	taggit	0005_auto_20220424_2025	2000-01-01 00:00:00+00
-903	rozbieznosci_dyscyplin	0002_rok_2017_i_wyzej	2000-01-01 00:00:00+00
-904	rozbieznosci_dyscyplin	0003_brakprzypisaniaview_rozbiezneprzypisaniaview_rozbieznosciview	2000-01-01 00:00:00+00
-905	rozbieznosci_dyscyplin	0004_recreate	2000-01-01 00:00:00+00
-906	rozbieznosci_dyscyplin	0005_recreate	2000-01-01 00:00:00+00
-35	pbn_api	0001_initial	2000-01-01 00:00:00+00
-36	pbn_api	0002_institution	2000-01-01 00:00:00+00
+598	bpp	0454_faza_b_i1	2000-01-01 00:00:00+00
 1	contenttypes	0001_initial	2000-01-01 00:00:00+00
 2	auth	0001_initial	2000-01-01 00:00:00+00
 3	bpp	0001_initial	2000-01-01 00:00:00+00
@@ -16190,1048 +16019,1074 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 27	axes	0008_accessfailurelog	2000-01-01 00:00:00+00
 28	axes	0009_add_session_hash	2000-01-01 00:00:00+00
 29	axes	0010_accessattemptexpiration	2000-01-01 00:00:00+00
-30	dynamic_admin_columns	0001_initial	2000-01-01 00:00:00+00
-31	ewaluacja_common	0001_initial	2000-01-01 00:00:00+00
-32	ewaluacja_common	0002_populate_rodzaje_autorow	2000-01-01 00:00:00+00
-33	ewaluacja_common	0003_add_sort_field	2000-01-01 00:00:00+00
-34	ewaluacja_common	0004_alter_rodzaj_autora_options	2000-01-01 00:00:00+00
-37	pbn_api	0003_conference	2000-01-01 00:00:00+00
-38	pbn_api	0004_journal	2000-01-01 00:00:00+00
-39	pbn_api	0005_auto_20210406_0436	2000-01-01 00:00:00+00
-40	pbn_api	0006_sciencist	2000-01-01 00:00:00+00
-41	pbn_api	0007_publication	2000-01-01 00:00:00+00
-42	pbn_api	0008_auto_20210406_0530	2000-01-01 00:00:00+00
-43	pbn_api	0009_sentdata	2000-01-01 00:00:00+00
-44	pbn_api	0010_auto_20210504_0040	2000-01-01 00:00:00+00
-45	pbn_api	0011_auto_20210509_2339	2000-01-01 00:00:00+00
-46	pbn_api	0012_auto_20210621_0947	2000-01-01 00:00:00+00
-47	pbn_api	0013_oswiadczenieinstytucji_publikacjainstytucji	2000-01-01 00:00:00+00
-48	pbn_api	0014_auto_20210713_2229	2000-01-01 00:00:00+00
-49	pbn_api	0015_auto_20210713_2234	2000-01-01 00:00:00+00
-50	pbn_api	0016_auto_20210713_2235	2000-01-01 00:00:00+00
-51	pbn_api	0017_publikacjainstytucji_usertype	2000-01-01 00:00:00+00
-52	pbn_api	0018_auto_20210714_0104	2000-01-01 00:00:00+00
-53	pbn_api	0019_auto_20210805_2306	2000-01-01 00:00:00+00
-54	pbn_api	0020_przemapuj	2000-01-01 00:00:00+00
-55	pbn_api	0021_auto_20210808_1204	2000-01-01 00:00:00+00
-56	pbn_api	0022_auto_20210809_0120	2000-01-01 00:00:00+00
-57	pbn_api	0023_auto_20210809_0122	2000-01-01 00:00:00+00
-58	pbn_api	0024_auto_20210809_0125	2000-01-01 00:00:00+00
-59	pbn_api	0025_auto_20210809_0149	2000-01-01 00:00:00+00
-60	pbn_api	0026_auto_20210816_0815	2000-01-01 00:00:00+00
-61	pbn_api	0027_przemapuj_rok_publikacji	2000-01-01 00:00:00+00
-62	pbn_api	0028_gist_idx_publications	2000-01-01 00:00:00+00
-63	pbn_api	0029_indeksy_gist_inne_tabele	2000-01-01 00:00:00+00
-64	pbn_api	0030_auto_20210818_2343	2000-01-01 00:00:00+00
-65	pbn_api	0031_auto_20210820_1544	2000-01-01 00:00:00+00
-66	pbn_api	0032_sent_data_pbn_uid	2000-01-01 00:00:00+00
-67	pbn_api	0033_sent_data_typ_rekordu	2000-01-01 00:00:00+00
-68	pbn_api	0034_auto_20211028_0341	2000-01-01 00:00:00+00
-69	pbn_api	0035_django32	2000-01-01 00:00:00+00
-70	pbn_api	0036_disciplinegroup_discipline	2000-01-01 00:00:00+00
-71	pbn_api	0037_alter_discipline_options_and_more	2000-01-01 00:00:00+00
-72	pbn_api	0038_oswiadczenieinstytucji_disciplines	2000-01-01 00:00:00+00
-73	pbn_api	0039_alter_oswiadczenieinstytucji_area	2000-01-01 00:00:00+00
-74	sites	0001_initial	2000-01-01 00:00:00+00
-75	dbtemplates	0001_initial	2000-01-01 00:00:00+00
-76	taggit	0001_initial	2000-01-01 00:00:00+00
-77	taggit	0002_auto_20150616_2121	2000-01-01 00:00:00+00
-78	taggit	0003_taggeditem_add_unique_index	2000-01-01 00:00:00+00
-79	bpp	0002_auto_20141020_1738	2000-01-01 00:00:00+00
-80	bpp	0003_auto_20141023_1419	2000-01-01 00:00:00+00
-81	bpp	0004_auto_20141107_1101	2000-01-01 00:00:00+00
-82	bpp	0005_auto_20141107_1950	2000-01-01 00:00:00+00
-83	bpp	0006_auto_20141112_1531	2000-01-01 00:00:00+00
-84	bpp	0007_charakter_formalny_nazwa_w_primo	2000-01-01 00:00:00+00
-85	bpp	0008_auto_20141126_1802	2000-01-01 00:00:00+00
-86	bpp	0009_auto_20141126_1804	2000-01-01 00:00:00+00
-87	bpp	0010_auto_20141126_1825	2000-01-01 00:00:00+00
-88	bpp	0011_auto_20150212_2203	2000-01-01 00:00:00+00
-89	bpp	0012_auto_20150530_1733	2000-01-01 00:00:00+00
-90	bpp	0013_wydzial_zezwalaj_na_ranking_autorow	2000-01-01 00:00:00+00
-91	bpp	0014_auto_20150530_1942	2000-01-01 00:00:00+00
-92	bpp	0015_auto_20150617_2247	2000-01-01 00:00:00+00
-93	bpp	0016_auto_20150824_1051	2000-01-01 00:00:00+00
-94	bpp	0017_typy_pbn	2000-01-01 00:00:00+00
-95	bpp	0018_auto_20150824_1233	2000-01-01 00:00:00+00
-96	bpp	0019_charakter_formalny_charakter_pbn	2000-01-01 00:00:00+00
-97	bpp	0020_auto_20150824_1609	2000-01-01 00:00:00+00
-98	bpp	0021_auto_20150825_2301	2000-01-01 00:00:00+00
-99	bpp	0022_auto_20150825_2303	2000-01-01 00:00:00+00
-100	bpp	0023_auto_20150830_1704	2000-01-01 00:00:00+00
-101	bpp	0024_auto_20150830_1705	2000-01-01 00:00:00+00
-102	bpp	0025_auto_20150830_1740	2000-01-01 00:00:00+00
-103	bpp	0026_auto_20150902_2102	2000-01-01 00:00:00+00
-104	bpp	0027_auto_20150921_2304	2000-01-01 00:00:00+00
-105	bpp	0028_openaccess	2000-01-01 00:00:00+00
-106	bpp	0029_auto_20150923_1343	2000-01-01 00:00:00+00
-107	bpp	0030_auto_20150923_1351	2000-01-01 00:00:00+00
-108	bpp	0031_zrodlo_openaccess_licencja	2000-01-01 00:00:00+00
-109	bpp	0032_auto_20151001_1413	2000-01-01 00:00:00+00
-110	bpp	0033_auto_20151001_1425	2000-01-01 00:00:00+00
-111	bpp	0034_auto_20151011_1514	2000-01-01 00:00:00+00
-112	bpp	0035_nomorefixtures_data_migration	2000-01-01 00:00:00+00
-113	bpp	0036_auto_20160117_2147	2000-01-01 00:00:00+00
-114	bpp	0037_auto_20160124_1336	2000-01-01 00:00:00+00
-115	bpp	0038_auto_20160708_0732	2000-01-01 00:00:00+00
-116	bpp	0039_wydzial_archiwalny	2000-01-01 00:00:00+00
-117	bpp	0040_auto_20160802_2209	2000-01-01 00:00:00+00
-118	bpp	0041_auto_20160802_2211	2000-01-01 00:00:00+00
-119	bpp	0042_auto_20160802_2346	2000-01-01 00:00:00+00
-120	bpp	0043_auto_20160817_1151	2000-01-01 00:00:00+00
-121	bpp	0044_zaktualizuj_obce_archiwalne	2000-01-01 00:00:00+00
-122	bpp	0045_auto_20160809_0004	2000-01-01 00:00:00+00
-123	bpp	0046_ostatnia_jednostka_trigger	2000-01-01 00:00:00+00
-124	bpp	0038_autor_pesel_md5	2000-01-01 00:00:00+00
-125	bpp	0040_merge	2000-01-01 00:00:00+00
-126	bpp	0041_auto_20160722_2230	2000-01-01 00:00:00+00
-127	bpp	0047_merge	2000-01-01 00:00:00+00
-128	bpp	0048_wyczysc_nazwy_jednostek	2000-01-01 00:00:00+00
-129	bpp	0049_auto_20160920_0333	2000-01-01 00:00:00+00
-130	bpp	0050_usun_model_historyczny	2000-01-01 00:00:00+00
-131	bpp	0051_uczelnia_obca_jednostka	2000-01-01 00:00:00+00
-132	bpp	0052_skupia_pracownikow_zarzadzaj_automatycznie	2000-01-01 00:00:00+00
-133	bpp	0053_obiekt_jednostka_pole_uczelnia	2000-01-01 00:00:00+00
-134	bpp	0054_obiekt_jednostka_pole_aktualna	2000-01-01 00:00:00+00
-135	bpp	0055_jednostka_wydzial	2000-01-01 00:00:00+00
-136	bpp	0056_jednostka_trigger_jednostka_wydzial	2000-01-01 00:00:00+00
-137	bpp	0057_jednostka_wydzial_jest_opcjonalny	2000-01-01 00:00:00+00
-138	bpp	0058_auto_20161113_2332	2000-01-01 00:00:00+00
-139	bpp	0059_auto_20161114_0945	2000-01-01 00:00:00+00
-140	bpp	0060_auto_20161114_1905	2000-01-01 00:00:00+00
-141	bpp	0061_utworz_jednostka_wydzial	2000-01-01 00:00:00+00
-142	bpp	0062_auto_20161119_2207	2000-01-01 00:00:00+00
-143	bpp	0063_autor_aktualny	2000-01-01 00:00:00+00
-144	bpp	0064_autor_jednostka_aktualna	2000-01-01 00:00:00+00
-145	bpp	0051_auto_20161201_1137	2000-01-01 00:00:00+00
-146	bpp	0065_merge	2000-01-01 00:00:00+00
-147	bpp	0066_wydawnictwo_zwarte_calkowita_liczba_autorow	2000-01-01 00:00:00+00
-148	bpp	0067_typ_kbn_artykul_pbn	2000-01-01 00:00:00+00
-149	bpp	0068_indeks_liczba_znakow	2000-01-01 00:00:00+00
-150	bpp	0069_eksport_pbn_charaktery	2000-01-01 00:00:00+00
-151	bpp	0070_auto_20170220_1757	2000-01-01 00:00:00+00
-152	bpp	0071_fix_liczba_znakow_wyd	2000-01-01 00:00:00+00
-153	bpp	0072_gist_to_gin	2000-01-01 00:00:00+00
-154	bpp	0073_auto_20170616_1709	2000-01-01 00:00:00+00
-155	bpp	0074_django110	2000-01-01 00:00:00+00
-156	bpp	0075_auto_20170622_0057	2000-01-01 00:00:00+00
-157	bpp	0076_auto_20170622_0058	2000-01-01 00:00:00+00
-158	bpp	0077_auto_20170624_0130	2000-01-01 00:00:00+00
-159	bpp	0078_django110_py3k	2000-01-01 00:00:00+00
-160	bpp	0079_wydzial_skrot_nazwy	2000-01-01 00:00:00+00
-161	bpp	0080_auto_20170708_2147	2000-01-01 00:00:00+00
-162	bpp	0081_konferencje	2000-01-01 00:00:00+00
-163	bpp	0082_konferencja_opcjonalne	2000-01-01 00:00:00+00
-164	bpp	0083_afiliuje_zatrudniony	2000-01-01 00:00:00+00
-165	bpp	0084_strona_tom_nr_zeszytu	2000-01-01 00:00:00+00
-166	bpp	0085_strony_help_text	2000-01-01 00:00:00+00
-167	bpp	0086_calkowita_liczba_redaktorow	2000-01-01 00:00:00+00
-168	bpp	0087_pokazuj_ic_pkt_wew	2000-01-01 00:00:00+00
-169	bpp	0088_orcid	2000-01-01 00:00:00+00
-170	bpp	0089_legacy_data	2000-01-01 00:00:00+00
-171	bpp	0090_pbn_id_dla_prac	2000-01-01 00:00:00+00
-172	bpp	0091_charakter_pbn_dla_typu_kbn	2000-01-01 00:00:00+00
-173	bpp	0092_pokazuj_status_korekty	2000-01-01 00:00:00+00
-174	bpp	0093_konferencja_wydawnictwo_ciagle	2000-01-01 00:00:00+00
-175	bpp	0094_seria_wydawnicza	2000-01-01 00:00:00+00
-176	bpp	0095_issn_dla_zwartego	2000-01-01 00:00:00+00
-177	bpp	0096_adnotacje_not_null	2000-01-01 00:00:00+00
-178	bpp	0097_nagrody	2000-01-01 00:00:00+00
-179	bpp	0098_wybitnosc	2000-01-01 00:00:00+00
-180	bpp	0099_nagrody	2000-01-01 00:00:00+00
-181	bpp	0100_init_nagrody	2000-01-01 00:00:00+00
-182	bpp	0101_openaccess_w_multiseek	2000-01-01 00:00:00+00
-183	bpp	0102_auto_20170723_2318	2000-01-01 00:00:00+00
-184	bpp	0103_widoki_nowe_sumy	2000-01-01 00:00:00+00
-185	bpp	0104_nowe_sumy_view	2000-01-01 00:00:00+00
-186	bpp	0105_rekord_z_konferencja	2000-01-01 00:00:00+00
-187	bpp	0106_pokazuj_uczelnia	2000-01-01 00:00:00+00
-188	bpp	0107_poprawki_wydajnosci	2000-01-01 00:00:00+00
-189	bpp	0108_bpp_nowe_sumy_view_bug	2000-01-01 00:00:00+00
-190	bpp	0109_rekordview	2000-01-01 00:00:00+00
-191	bpp	0110_uczelnia_pokazuj_praca_recenzowana	2000-01-01 00:00:00+00
-192	bpp	0111_autorzy_afiliacja_zatrudniony	2000-01-01 00:00:00+00
-193	bpp	0112_fix_refresh_cache	2000-01-01 00:00:00+00
-194	bpp	0113_auto_20171111_0035	2000-01-01 00:00:00+00
-195	bpp	0114_auto_20171111_0036	2000-01-01 00:00:00+00
-196	bpp	0115_auto_20171111_0038	2000-01-01 00:00:00+00
-197	bpp	0116_typ_odpowiedzialnosci_typ_ogolny	2000-01-01 00:00:00+00
-198	bpp	0117_auto_20180221_2327	2000-01-01 00:00:00+00
-199	bpp	0118_auto_20180221_2335	2000-01-01 00:00:00+00
-200	bpp	0119_pola_patentow	2000-01-01 00:00:00+00
-201	bpp	0120_kc_if_3_cyfry	2000-01-01 00:00:00+00
-202	bpp	0121_rekord_ostatnio_zmieniony_dla	2000-01-01 00:00:00+00
-203	bpp	0122_import_dyscyplin	2000-01-01 00:00:00+00
-204	bpp	0123_kod_dyscyplin	2000-01-01 00:00:00+00
-205	bpp	0124_auto_20180414_1917	2000-01-01 00:00:00+00
-206	bpp	0125_auto_20180415_2223	2000-01-01 00:00:00+00
-207	bpp	0126_zewnetrzna_baza_danych	2000-01-01 00:00:00+00
-208	bpp	0127_auto_20180416_1303	2000-01-01 00:00:00+00
-209	bpp	0128_zewnetrzne_bazy_view	2000-01-01 00:00:00+00
-210	bpp	0129_zewnetrznebazydanychview	2000-01-01 00:00:00+00
-211	bpp	0130_clarivate_analytics	2000-01-01 00:00:00+00
-212	bpp	0131_liczba_cytowan	2000-01-01 00:00:00+00
-213	bpp	0132_unique_rekord_id_kolejnosc	2000-01-01 00:00:00+00
-214	bpp	0133_liczba_autorow	2000-01-01 00:00:00+00
-215	bpp	0134_uczelnia_domyslnie_afiliuje	2000-01-01 00:00:00+00
-216	bpp	0134_liczba_cytowan_wyszukaj	2000-01-01 00:00:00+00
-217	bpp	0135_merge_20180612_2304	2000-01-01 00:00:00+00
-218	bpp	0136_ranking_liczba_cytowan	2000-01-01 00:00:00+00
-219	bpp	0137_auto_20180613_0015	2000-01-01 00:00:00+00
-220	bpp	0138_uczelnia_pokazuj_liczbe_cytowan_w_rankingu	2000-01-01 00:00:00+00
-221	bpp	0139_uczelnia_pokazuj_liczbe_cytowan_na_stronie_autora	2000-01-01 00:00:00+00
-222	bpp	0140_auto_20180624_1620	2000-01-01 00:00:00+00
-223	bpp	0141_konferencja_typ_konferencji	2000-01-01 00:00:00+00
-224	bpp	0142_auto_20180624_2245	2000-01-01 00:00:00+00
-339	bpp	0246_auto_20210312_1228	2000-01-01 00:00:00+00
-225	bpp	0143_uczelnia_wydruk_logo_szerokosc	2000-01-01 00:00:00+00
-226	bpp	0144_wyrzuc_w_z_informacji	2000-01-01 00:00:00+00
-227	bpp	0145_auto_20180629_1816	2000-01-01 00:00:00+00
-228	bpp	0146_auto_20180629_1835	2000-01-01 00:00:00+00
-229	bpp	0147_auto_20180707_1517	2000-01-01 00:00:00+00
-230	bpp	0148_charakter_formalny_nadrzedny	2000-01-01 00:00:00+00
-231	bpp	0149_ranking_afiliacje	2000-01-01 00:00:00+00
-232	bpp	0150_auto_20181125_1202	2000-01-01 00:00:00+00
-233	bpp	0151_snip	2000-01-01 00:00:00+00
-234	bpp	0152_merge	2000-01-01 00:00:00+00
-235	bpp	0153_django21	2000-01-01 00:00:00+00
-236	bpp	0154_auto_20190303_1029	2000-01-01 00:00:00+00
-237	bpp	0155_CASCADE	2000-01-01 00:00:00+00
-238	bpp	0156_auto_20190324_1828	2000-01-01 00:00:00+00
-239	bpp	0157_auto_20190324_1834	2000-01-01 00:00:00+00
-240	bpp	0156_auto_20190319_1648	2000-01-01 00:00:00+00
-241	bpp	0158_merge_20190325_2135	2000-01-01 00:00:00+00
-242	bpp	0159_auto_20190327_0028	2000-01-01 00:00:00+00
-243	bpp	0160_auto_20190627_0006	2000-01-01 00:00:00+00
-244	bpp	0161_dyscyplina_change_trigger	2000-01-01 00:00:00+00
-245	bpp	0162_auto_20190629_1239	2000-01-01 00:00:00+00
-246	bpp	0163_cachequeue	2000-01-01 00:00:00+00
-247	bpp	0164_auto_20190701_1303	2000-01-01 00:00:00+00
-248	bpp	0165_cache_punktacja_autora_cache_punktacja_dyscypliny	2000-01-01 00:00:00+00
-249	bpp	0166_auto_20190702_1200	2000-01-01 00:00:00+00
-250	bpp	0167_auto_20190707_2029	2000-01-01 00:00:00+00
-251	bpp	0166_auto_20190708_0022	2000-01-01 00:00:00+00
-252	bpp	0167_dyscyplina_change_trigger_fix	2000-01-01 00:00:00+00
-253	bpp	0168_dyscyplina_w_autorzy_mat	2000-01-01 00:00:00+00
-254	bpp	0169_dyscyplina_change_trigger_cacher	2000-01-01 00:00:00+00
-255	bpp	0170_wydawnictwo_wydawca	2000-01-01 00:00:00+00
-256	bpp	0171_auto_20190806_2015	2000-01-01 00:00:00+00
-257	bpp	0172_auto_20190806_2052	2000-01-01 00:00:00+00
-258	bpp	0173_auto_20190812_1412	2000-01-01 00:00:00+00
-259	bpp	0174_uczelnia_podpowiadaj_dyscypliny_konfig	2000-01-01 00:00:00+00
-260	bpp	0174_rodzaj_pbn_dla_charakteru	2000-01-01 00:00:00+00
-261	bpp	0175_merge_20190824_0948	2000-01-01 00:00:00+00
-262	bpp	0176_auto_20190903_0108	2000-01-01 00:00:00+00
-263	bpp	0177_cache_punktacja_autora_query	2000-01-01 00:00:00+00
-264	bpp	0178_auto_20190905_2020	2000-01-01 00:00:00+00
-265	bpp	0179_auto_20190910_2147	2000-01-01 00:00:00+00
-266	bpp	0179_auto_20190910_1416	2000-01-01 00:00:00+00
-267	bpp	0180_merge_20190910_2236	2000-01-01 00:00:00+00
-268	bpp	0181_cache_punktacja_autora_sum_cache_punktacja_autora_sum_gruop	2000-01-01 00:00:00+00
-269	bpp	0182_auto_20191013_2324	2000-01-01 00:00:00+00
-270	bpp	0183_auto_20191020_1535	2000-01-01 00:00:00+00
-271	bpp	0184_autor_expertus_id	2000-01-01 00:00:00+00
-272	bpp	0185_auto_20191021_2008	2000-01-01 00:00:00+00
-273	bpp	0186_auto_20191021_2008	2000-01-01 00:00:00+00
-274	bpp	0187_auto_20191027_1141	2000-01-01 00:00:00+00
-275	bpp	0188_auto_20191027_1737	2000-01-01 00:00:00+00
-276	bpp	0189_auto_20191027_2158	2000-01-01 00:00:00+00
-277	bpp	0190_auto_20191030_0532	2000-01-01 00:00:00+00
-278	bpp	0191_wydawnictwo_zwarte_zewnetrzna_baza_danych	2000-01-01 00:00:00+00
-279	bpp	0192_auto_20191107_0853	2000-01-01 00:00:00+00
-280	bpp	0193_jednostka_dla_punktacji_dyscyplin	2000-01-01 00:00:00+00
-281	bpp	0194_auto_20200213_2148	2000-01-01 00:00:00+00
-282	bpp	0195_cc0	2000-01-01 00:00:00+00
-283	bpp	0196_uczelnia_pokazuj_raport_slotow_zerowy	2000-01-01 00:00:00+00
-284	bpp	0197_auto_20200223_2142	2000-01-01 00:00:00+00
-285	bpp	0198_auto_20200229_1644	2000-01-01 00:00:00+00
-286	bpp	0199_alias_wydawcy_trigger	2000-01-01 00:00:00+00
-287	bpp	0200_auto_20200304_2253	2000-01-01 00:00:00+00
-288	bpp	0201_rekord_mat_z_www	2000-01-01 00:00:00+00
-289	bpp	0202_auto_20200308_2204	2000-01-01 00:00:00+00
-290	bpp	0203_auto_20200315_2021	2000-01-01 00:00:00+00
-291	bpp	0204_cache_punktacja_autora_query_view	2000-01-01 00:00:00+00
-292	bpp	0202_fix_autorzy_bez_nazwisk	2000-01-01 00:00:00+00
-293	bpp	0205_merge_20200315_2208	2000-01-01 00:00:00+00
-294	bpp	0206_auto_20200315_2212	2000-01-01 00:00:00+00
-295	bpp	0207_uczelnia_analiza_view	2000-01-01 00:00:00+00
-296	bpp	0208_auto_20200329_1719	2000-01-01 00:00:00+00
-297	bpp	0209_auto_20200421_0013	2000-01-01 00:00:00+00
-298	bpp	0210_uczelnia_sortuj_jednostki_alfabetycznie	2000-01-01 00:00:00+00
-299	bpp	0211_oznaczenie_wydania	2000-01-01 00:00:00+00
-300	bpp	0212_upowaznienie_pbn	2000-01-01 00:00:00+00
-301	bpp	0212_charakter_formalny_charakter_ogolny	2000-01-01 00:00:00+00
-302	bpp	0213_merge_20200607_2047	2000-01-01 00:00:00+00
-303	bpp	0214_auto_20200628_2344	2000-01-01 00:00:00+00
-304	bpp	0215_auto_20200727_1407	2000-01-01 00:00:00+00
-305	bpp	0216_element_repozytorium	2000-01-01 00:00:00+00
-306	bpp	0217_grant	2000-01-01 00:00:00+00
-307	bpp	0218_auto_20200727_2307	2000-01-01 00:00:00+00
-308	bpp	0219_auto_20200727_2308	2000-01-01 00:00:00+00
-309	bpp	0220_auto_20200728_0011	2000-01-01 00:00:00+00
-310	bpp	0215_auto_20200806_0146	2000-01-01 00:00:00+00
-311	bpp	0221_merge_20200806_0851	2000-01-01 00:00:00+00
-312	bpp	0222_auto_20200812_1927	2000-01-01 00:00:00+00
-313	bpp	0223_auto_20200812_1930	2000-01-01 00:00:00+00
-314	bpp	0224_auto_20201007_0956	2000-01-01 00:00:00+00
-315	bpp	0225_auto_20201007_1002	2000-01-01 00:00:00+00
-316	bpp	0226_rekord_mat_status	2000-01-01 00:00:00+00
-317	bpp	0227_auto_20201011_0010	2000-01-01 00:00:00+00
-318	bpp	0224_auto_20201111_1341	2000-01-01 00:00:00+00
-319	bpp	0225_charakter_sloty_referat	2000-01-01 00:00:00+00
-320	bpp	0228_merge_20201225_1931	2000-01-01 00:00:00+00
-321	bpp	0229_nowe_sumy_status_korekty	2000-01-01 00:00:00+00
-322	bpp	0230_metoda_do_roku_uczelnia	2000-01-01 00:00:00+00
-323	bpp	0231_ukryj_status_korekty	2000-01-01 00:00:00+00
-324	bpp	0232_auto_20210101_1751	2000-01-01 00:00:00+00
-325	bpp	0233_wiecej_doktoratow_dla_jednego	2000-01-01 00:00:00+00
-326	bpp	0234_rekord_mat_nadrzedne	2000-01-01 00:00:00+00
-327	bpp	0235_auto_20210201_1305	2000-01-01 00:00:00+00
-328	bpp	0235_auto_20210125_0042	2000-01-01 00:00:00+00
-330	bpp	0237_auto_20210223_2228	2000-01-01 00:00:00+00
-331	bpp	0238_drop_pesel_md5	2000-01-01 00:00:00+00
-332	bpp	0239_egeria_import_new_autor_flds	2000-01-01 00:00:00+00
-333	bpp	0240_auto_20210228_1739	2000-01-01 00:00:00+00
-334	bpp	0241_auto_20210228_1916	2000-01-01 00:00:00+00
-335	bpp	0242_auto_20210307_1110	2000-01-01 00:00:00+00
-336	bpp	0243_auto_20210307_1452	2000-01-01 00:00:00+00
-337	bpp	0244_auto_20210307_2329	2000-01-01 00:00:00+00
-338	bpp	0245_auto_20210308_1246	2000-01-01 00:00:00+00
-340	bpp	0247_funkcja_autora_pokazuj_za_nazwiskiem	2000-01-01 00:00:00+00
-341	bpp	0248_autorzy_mat_idx	2000-01-01 00:00:00+00
-342	bpp	0249_dyscyplina_zrodla	2000-01-01 00:00:00+00
-343	bpp	0250_auto_20210315_2104	2000-01-01 00:00:00+00
-344	bpp	0252_slug	2000-01-01 00:00:00+00
-345	bpp	0253_rekord_mat_slug	2000-01-01 00:00:00+00
-346	bpp	0254_uczelnia_pbn_uid	2000-01-01 00:00:00+00
-347	bpp	0255_auto_20210407_1138	2000-01-01 00:00:00+00
-348	bpp	0256_auto_20210407_1151	2000-01-01 00:00:00+00
-349	bpp	0257_wydawca_pbn_uid	2000-01-01 00:00:00+00
-350	bpp	0258_auto_20210407_2320	2000-01-01 00:00:00+00
-351	bpp	0259_auto_20210421_2323	2000-01-01 00:00:00+00
-352	bpp	0260_jednostka_pbn_uid	2000-01-01 00:00:00+00
-353	bpp	0261_auto_20210426_0124	2000-01-01 00:00:00+00
-354	bpp	0262_bppuser_pbn_token	2000-01-01 00:00:00+00
-355	bpp	0263_auto_20210427_2137	2000-01-01 00:00:00+00
-356	bpp	0264_auto_20210428_0011	2000-01-01 00:00:00+00
-357	bpp	0266_auto_20210504_0040	2000-01-01 00:00:00+00
-358	bpp	0265_rekord_mat_doi	2000-01-01 00:00:00+00
-359	bpp	0266_auto_20210519_0236	2000-01-01 00:00:00+00
-360	bpp	0267_auto_20210519_0237	2000-01-01 00:00:00+00
-361	bpp	0268_auto_20210519_0238	2000-01-01 00:00:00+00
-362	bpp	0269_wyzeruj_zrodlo_pbn_uid	2000-01-01 00:00:00+00
-363	bpp	0270_auto_20210530_0114	2000-01-01 00:00:00+00
-364	bpp	0271_auto_20210530_0225	2000-01-01 00:00:00+00
-365	bpp	0272_auto_20210605_2128	2000-01-01 00:00:00+00
-366	bpp	0273_jednostka_hier	2000-01-01 00:00:00+00
-367	bpp	0274_jednostka_hier	2000-01-01 00:00:00+00
-368	bpp	0275_jednostka_hier	2000-01-01 00:00:00+00
-369	bpp	0276_auto_20210607_0109	2000-01-01 00:00:00+00
-370	bpp	0277_lepsze_global_search	2000-01-01 00:00:00+00
-371	bpp	0278_autorzy_profil_orcid	2000-01-01 00:00:00+00
-372	bpp	0279_usun_ost_akt_pbn	2000-01-01 00:00:00+00
-373	bpp	0280_auto_20210725_2217	2000-01-01 00:00:00+00
-374	bpp	0281_auto_20210725_2332	2000-01-01 00:00:00+00
-375	bpp	0282_auto_20210808_2334	2000-01-01 00:00:00+00
-376	bpp	0283_auto_20210809_0142	2000-01-01 00:00:00+00
-377	bpp	0284_auto_20210814_0023	2000-01-01 00:00:00+00
-378	bpp	0285_auto_20210814_0103	2000-01-01 00:00:00+00
-379	bpp	0286_auto_20210814_0104	2000-01-01 00:00:00+00
-380	bpp	0287_trgrm_extnsn	2000-01-01 00:00:00+00
-381	bpp	0288_rekord_mat_isbn	2000-01-01 00:00:00+00
-382	bpp	0289_data_oswiadczenia	2000-01-01 00:00:00+00
-383	bpp	0290_bppmultiseekvis_detale	2000-01-01 00:00:00+00
-384	bpp	0291_kod_dyscypliny_field	2000-01-01 00:00:00+00
-385	bpp	0292_przypinanie_dyscyplin	2000-01-01 00:00:00+00
-386	bpp	0293_pbn_api_kasowanie_przed_nie_eksp_zero	2000-01-01 00:00:00+00
-387	bpp	0294_szablony_opisu_stron	2000-01-01 00:00:00+00
-388	bpp	0295_instaluj_szablony	2000-01-01 00:00:00+00
-389	bpp	0296_nulltest_szablonopisu	2000-01-01 00:00:00+00
-390	bpp	0297_wydawca_denorm	2000-01-01 00:00:00+00
-391	bpp	0298_wydawnictwo_zwarte_denorm	2000-01-01 00:00:00+00
-392	bpp	0299_wydawnictwo_ciagle_denorm	2000-01-01 00:00:00+00
-393	bpp	0300_patent_denorm	2000-01-01 00:00:00+00
-394	bpp	0301_doktorska_habilitacyjna_denorm	2000-01-01 00:00:00+00
-395	bpp	0302_denorm_autor_dyscyplina_new_trigger	2000-01-01 00:00:00+00
-396	bpp	0303_denorm_cleanup_cachequeue_gone	2000-01-01 00:00:00+00
-397	bpp	0304_auto_20211010_2247	2000-01-01 00:00:00+00
-398	bpp	0297_liczba_n_uczelni	2000-01-01 00:00:00+00
-399	bpp	0305_merge_20211010_2323	2000-01-01 00:00:00+00
-400	bpp	0306_delete_ewaluacja2021liczbandlauczelni	2000-01-01 00:00:00+00
-401	bpp	0307_streszczenia	2000-01-01 00:00:00+00
-402	bpp	0308_ewaluacja_upowaznienia_view	2000-01-01 00:00:00+00
-403	bpp	0309_auto_20211110_0000	2000-01-01 00:00:00+00
-404	bpp	0310_fix_refresh_cache_deadlocks	2000-01-01 00:00:00+00
-405	bpp	0311_wyd_ciagle_kwartyle	2000-01-01 00:00:00+00
-406	bpp	0312_przypieta	2000-01-01 00:00:00+00
-407	bpp	0313_meta_zewn_baza	2000-01-01 00:00:00+00
-408	bpp	0314_punktacja_zrodla_kwarty	2000-01-01 00:00:00+00
-409	bpp	0315_aktualna_jednostka_ostatnia_przypisana	2000-01-01 00:00:00+00
-410	bpp	0316_uczelnia_jednostek_na_strone	2000-01-01 00:00:00+00
-411	bpp	0317_uczelnia_pokaz_tylko_nadrzedne	2000-01-01 00:00:00+00
-412	bpp	0318_jedno_podstawowe_miejsce_pracy	2000-01-01 00:00:00+00
-413	bpp	0319_aktualna_jednostka_to_podstawowe_miejsce	2000-01-01 00:00:00+00
-414	bpp	0320_autor_aktualny_pole_znika	2000-01-01 00:00:00+00
-415	bpp	0321_aktualna_jednostka_moze_byc_zadna	2000-01-01 00:00:00+00
-416	bpp	0322_oplaty_za_publikacje	2000-01-01 00:00:00+00
-417	bpp	0323_jednostka_pokazuj_opis	2000-01-01 00:00:00+00
-418	bpp	0324_django32	2000-01-01 00:00:00+00
-419	bpp	0325_nullbooleanfield	2000-01-01 00:00:00+00
-420	bpp	0326_auto_20220818_0012	2000-01-01 00:00:00+00
-421	bpp	0327_uczelnia_pokazuj_formularz_zglaszania_publikacji	2000-01-01 00:00:00+00
-422	bpp	0328_charakter_formalny_charakter_crossref	2000-01-01 00:00:00+00
-423	bpp	0329_auto_20220921_2030	2000-01-01 00:00:00+00
-424	bpp	0328_alter_uczelnia_wymagaj_informacji_o_oplatach	2000-01-01 00:00:00+00
-425	bpp	0330_merge_20220921_2152	2000-01-01 00:00:00+00
-426	bpp	0331_kierunek_studiow	2000-01-01 00:00:00+00
-427	bpp	0332_pbn_zawsze_uid_uczelni	2000-01-01 00:00:00+00
-428	bpp	0333_autorzy_kierunek_studiow	2000-01-01 00:00:00+00
-429	bpp	0334_oswiadczenie_ken_modele	2000-01-01 00:00:00+00
-430	bpp	0335_autorzy_oswiadczenie_ken	2000-01-01 00:00:00+00
-431	bpp	0336_jednostka_opis_html	2000-01-01 00:00:00+00
-432	bpp	0337_oswiadczenie_ken_cleanup	2000-01-01 00:00:00+00
-433	bpp	0338_wydzial_pokazuj_opis	2000-01-01 00:00:00+00
-435	bpp	0340_skasuj_anonimowe_zdarzenia	2000-01-01 00:00:00+00
-436	bpp	0341_dyscyplina_naukowa_pbn_uid	2000-01-01 00:00:00+00
-437	pbn_api	0040_tlumaczdyscyplinmanager	2000-01-01 00:00:00+00
-438	pbn_api	0041_alter_publisher_options	2000-01-01 00:00:00+00
-439	pbn_api	0042_delete_tlumaczdyscyplinmanager_and_more	2000-01-01 00:00:00+00
-440	pbn_api	0043_remove_oswiadczenieinstytucji_id_and_more	2000-01-01 00:00:00+00
-441	pbn_api	0044_oswiadczenieinstytucji_id_and_more	2000-01-01 00:00:00+00
-443	pbn_api	0046_alter_pbn_export_queue_options_and_more	2000-01-01 00:00:00+00
-444	pbn_api	0047_alter_pbn_export_queue_options_and_more	2000-01-01 00:00:00+00
-445	pbn_api	0048_remove_pbn_export_queue_retry_politics_and_more	2000-01-01 00:00:00+00
-446	taggit	0004_alter_taggeditem_content_type_alter_taggeditem_tag	2000-01-01 00:00:00+00
-449	bpp	0342_remove_dyscyplina_naukowa_pbn_uid	2000-01-01 00:00:00+00
-547	bpp	0431_search_index_gin	2000-01-01 00:00:00+00
-450	bpp	0343_alter_typ_kbn_options_alter_patent_kc_punkty_kbn_and_more	2000-01-01 00:00:00+00
-451	bpp	0344_uczelnia_pbn_wysylaj_bez_oswiadczen	2000-01-01 00:00:00+00
-452	bpp	0345_alter_wydzial_opis	2000-01-01 00:00:00+00
-453	bpp	0346_rename_multiseek_searchform_data	2000-01-01 00:00:00+00
-454	bpp	0347_uczelnia_deklaracja_dostepnosci_tekst_and_more	2000-01-01 00:00:00+00
-455	bpp	0348_remove_uczelnia_pokazuj_raport_dla_komisji_centralnej_and_more	2000-01-01 00:00:00+00
-456	bpp	0349_uczelnia_ranking_autorow_bez_kol_naukowych	2000-01-01 00:00:00+00
-457	bpp	0350_uczelnia_pokazuj_autorow_obcych_w_przegladaniu_danych	2000-01-01 00:00:00+00
-458	bpp	0351_uczelnia_pokazuj_autorow_bez_prac_w_przegladaniu_danych	2000-01-01 00:00:00+00
-459	bpp	0352_dyscyplina_zrodla_rok	2000-01-01 00:00:00+00
-460	bpp	0353_rekord_mat_kwartyle	2000-01-01 00:00:00+00
-461	bpp	0354_alter_dyscyplina_zrodla_options_and_more	2000-01-01 00:00:00+00
-462	bpp	0355_uczelnia_drukuj_oswiadczenia_and_more	2000-01-01 00:00:00+00
-463	bpp	0356_drop_kc_komisja_centralna	2000-01-01 00:00:00+00
-464	bpp	0357_openaccess_data_opublikowania	2000-01-01 00:00:00+00
-465	bpp	0358_nowe_sumy_view_add_pk	2000-01-01 00:00:00+00
-466	bpp	0359_patent_slowa_kluczowe_eng_and_more	2000-01-01 00:00:00+00
-467	bpp	0360_uczelnia_pokazuj_zrodla_bez_prac_w_przegladaniu_danych_and_more	2000-01-01 00:00:00+00
-468	bpp	0361_alter_patent_slowa_kluczowe_eng_and_more	2000-01-01 00:00:00+00
-470	bpp	0363_uczelnia_pokazuj_jednostki_na_pierwszej_stronie_and_more	2000-01-01 00:00:00+00
-471	bpp	0364_rzeczownik_uczelnie_pl	2000-01-01 00:00:00+00
-472	bpp	0365_bppuser_pbn_token_updated	2000-01-01 00:00:00+00
-473	bpp	0366_alter_uczelnia_pbn_api_afiliacja_zawsze_na_uczelnie	2000-01-01 00:00:00+00
-474	bpp	0367_bppuser_przedstawiaj_w_pbn_jako	2000-01-01 00:00:00+00
-475	bpp	0368_wydawnictwo_zwarte_wydawnictwo_nadrzedne_w_pbn	2000-01-01 00:00:00+00
-476	bpp	0369_wyd_zwarte_nadrzedne_w_pbn	2000-01-01 00:00:00+00
-477	bpp	0370_alter_autor_dyscyplina_options_jezyk_widoczny	2000-01-01 00:00:00+00
-478	bpp	0371_usun_spacje_z_nazw_dyscyplin	2000-01-01 00:00:00+00
-479	bpp	0372_autor_dyscyplina_dni_absencji_and_more	2000-01-01 00:00:00+00
-480	bpp	0373_alter_praca_doktorska_jezyk_and_more	2000-01-01 00:00:00+00
-481	bpp	0374_remove_autor_dyscyplina_dni_absencji_and_more	2000-01-01 00:00:00+00
-482	bpp	0375_alter_autor_absencja_options_and_more	2000-01-01 00:00:00+00
-483	bpp	0376_alter_autor_dyscyplina_rodzaj_autora	2000-01-01 00:00:00+00
-484	bpp	0377_autor_dyscyplina_zatrudnienie_do_and_more	2000-01-01 00:00:00+00
-485	bpp	0378_alter_praca_doktorska_pbn_uid_and_more	2000-01-01 00:00:00+00
-486	bpp	0379_cache_liczba_n_last_updated_and_more	2000-01-01 00:00:00+00
-487	bpp	0380_rekord_wydawca	2000-01-01 00:00:00+00
-488	bpp	0381_uczelnia_przydzielaj_1_slot_gdy_udzial_mniejszy	2000-01-01 00:00:00+00
-489	bpp	0382_alter_uczelnia_przydzielaj_1_slot_gdy_udzial_mniejszy	2000-01-01 00:00:00+00
-490	bpp	0383_uczelnia_pytaj_o_zgode_na_publikacje_pelnego_tekstu	2000-01-01 00:00:00+00
-491	bpp	0384_remove_charakter_formalny_charakter_crossref_and_more	2000-01-01 00:00:00+00
-492	bpp	0385_alter_crossref_mapper_charakter_crossref_and_more	2000-01-01 00:00:00+00
-493	bpp	0386_alter_crossref_mapper_charakter_crossref	2000-01-01 00:00:00+00
-494	bpp	0387_fix_refresh_cache_locking_deadlocks	2000-01-01 00:00:00+00
-495	bpp	0388_uczelnia_uzywaj_wydzialow	2000-01-01 00:00:00+00
-496	bpp	0389_alter_uczelnia_uzywaj_wydzialow	2000-01-01 00:00:00+00
-497	bpp	0390_add_filters_to_sumy_view	2000-01-01 00:00:00+00
-498	bpp	0391_migrate_rodzaj_autora_to_foreignkey	2000-01-01 00:00:00+00
-499	bpp	0392_alter_autor_dyscyplina_rodzaj_autora	2000-01-01 00:00:00+00
-500	bpp	0393_uczelnia_tytul_strony_glownej	2000-01-01 00:00:00+00
-501	bpp	0394_alter_uczelnia_clarivate_password_and_more	2000-01-01 00:00:00+00
-502	bpp	0395_add_wymagaj_logowania_zglos_publikacje	2000-01-01 00:00:00+00
-503	bpp	0396_uczelnia_nowy_autor_z_formularza_pokazuj	2000-01-01 00:00:00+00
-504	bpp	0397_remove_null_from_string_fields	2000-01-01 00:00:00+00
-505	bpp	0398_alter_autor_string_fields_schema	2000-01-01 00:00:00+00
-506	bpp	0399_fix_refresh_cache_upsert	2000-01-01 00:00:00+00
-507	bpp	0400_add_status_optymalizacji_bulk	2000-01-01 00:00:00+00
-508	bpp	0401_autorzy_przypieta	2000-01-01 00:00:00+00
-509	bpp	0402_autorzy_data_oswiadczenia	2000-01-01 00:00:00+00
-510	bpp	0403_autorzy_ostatnio_zmieniony	2000-01-01 00:00:00+00
-511	bpp	0404_add_oplaty_publikacji_log	2000-01-01 00:00:00+00
-512	bpp	0405_add_rok_to_oplaty_log	2000-01-01 00:00:00+00
-513	bpp	0406_add_pbn_evaluation_fields	2000-01-01 00:00:00+00
-514	bpp	0407_remove_null_from_string_fields	2000-01-01 00:00:00+00
-515	bpp	0408_add_jest_wydawnictwem_zwartym_to_crossref_mapper	2000-01-01 00:00:00+00
-516	bpp	0409_set_default_jest_wydawnictwem_zwartym	2000-01-01 00:00:00+00
-517	bpp	0410_set_polish_skrot_crossref	2000-01-01 00:00:00+00
-518	bpp	0411_uczelnia_orcid_fields	2000-01-01 00:00:00+00
-519	bpp	0412_uczelnia_orcid_staff_only	2000-01-01 00:00:00+00
-520	bpp	0411_nowy_formularz_zgloszenia	2000-01-01 00:00:00+00
-521	bpp	0413_merge_20260416_2124	2000-01-01 00:00:00+00
-522	bpp	0413_bppuser_autor_onetoone	2000-01-01 00:00:00+00
-523	bpp	0414_merge_20260427_1123	2000-01-01 00:00:00+00
-524	bpp	0414_code_review_2026_05_fixes	2000-01-01 00:00:00+00
-525	bpp	0415_merge_20260504_0907	2000-01-01 00:00:00+00
-526	bpp	0416_rename_dynamic_columns_to_admin	2000-01-01 00:00:00+00
-527	bpp	0417_remove_uczelnia_pokazuj_raport_autorow_and_more	2000-01-01 00:00:00+00
-528	bpp	0414_uczelnia_pbn_kasuj_dyscypliny_selektywnie	2000-01-01 00:00:00+00
-529	bpp	0416_merge_20260504_1024	2000-01-01 00:00:00+00
-530	bpp	0417_merge_20260601_0632	2000-01-01 00:00:00+00
-532	bpp	0418_autor_dyscyplina_trigger_on_conflict	2000-01-01 00:00:00+00
-534	bpp	0420_autor_pokazuj_siec_powiazan_and_more	2000-01-01 00:00:00+00
-536	bpp	0422_drop_unused_cache_indexes	2000-01-01 00:00:00+00
-537	bpp	0423_drop_redundant_fk_indexes_autor	2000-01-01 00:00:00+00
-538	bpp	0424_alter_autor_dyscyplina_autor_and_more	2000-01-01 00:00:00+00
-539	bpp	0425_drop_redundant_raw_indexes	2000-01-01 00:00:00+00
-540	bpp	0426_fix_grant_textfield_null_and_redundant_indexes	2000-01-01 00:00:00+00
-541	bpp	0421_uczelnia_dspace_aktywny_uczelnia_dspace_api_endpoint_and_more	2000-01-01 00:00:00+00
-542	bpp	0422_element_repozytorium_deleted_at_and_more	2000-01-01 00:00:00+00
-543	bpp	0427_merge_20260604_1838	2000-01-01 00:00:00+00
-544	bpp	0428_weighted_publication_fulltext	2000-01-01 00:00:00+00
-546	bpp	0430_rekord_mat_slug_idx	2000-01-01 00:00:00+00
-548	bpp	0440_port_plpython_to_plpgsql	2000-01-01 00:00:00+00
-549	bpp	0441_drop_trigger_tytul_sort	2000-01-01 00:00:00+00
-550	bpp	0432_cache_trigger_plpgsql	2000-01-01 00:00:00+00
-551	bpp	0433_cache_trigger_when_gate	2000-01-01 00:00:00+00
-552	bpp	0442_drop_plpython3u	2000-01-01 00:00:00+00
-553	channels_broadcast	0001_initial	2000-01-01 00:00:00+00
-554	constance	0001_initial	2000-01-01 00:00:00+00
-555	constance	0002_migrate_from_old_table	2000-01-01 00:00:00+00
-556	constance	0003_drop_pickle	2000-01-01 00:00:00+00
-557	crossref_bpp	0001_initial	2000-01-01 00:00:00+00
-558	dashboard	0001_initial	2000-01-01 00:00:00+00
-559	dbtemplates	0002_alter_template_creation_date_and_more	2000-01-01 00:00:00+00
-560	pbn_api	0049_tlumacz_dyscyplin_2025	2000-01-01 00:00:00+00
-561	pbn_api	0050_zamapuj_nowe_dyscypliny_2025	2000-01-01 00:00:00+00
-562	pbn_api	0051_alter_discipline_options_and_more	2000-01-01 00:00:00+00
-563	pbn_api	0052_publikacjainstytucji_v2	2000-01-01 00:00:00+00
-564	pbn_api	0053_alter_publikacjainstytucji_v2_unique_together	2000-01-01 00:00:00+00
-565	pbn_api	0054_publikacjainstytucji_v2_created_on_and_more	2000-01-01 00:00:00+00
-566	pbn_api	0055_osobazinstytucji	2000-01-01 00:00:00+00
-567	pbn_api	0056_delete_osobazinstytucji	2000-01-01 00:00:00+00
-568	pbn_api	0057_osobazinstytucji	2000-01-01 00:00:00+00
-569	pbn_api	0058_alter_osobazinstytucji_title	2000-01-01 00:00:00+00
-570	pbn_api	0059_alter_osobazinstytucji__from	2000-01-01 00:00:00+00
-753	import_list_if	0001_initial	2000-01-01 00:00:00+00
-571	pbn_api	0060_alter_osobazinstytucji_personid	2000-01-01 00:00:00+00
-572	pbn_api	0061_remove_pbn_export_queue	2000-01-01 00:00:00+00
-573	pbn_api	0062_sent_data_success_tracking	2000-01-01 00:00:00+00
-574	pbn_api	0063_pbnodpowiedziniepozadane	2000-01-01 00:00:00+00
-575	pbn_api	0064_alter_pbnodpowiedziniepozadane_stary_uid_and_more	2000-01-01 00:00:00+00
-576	pbn_api	0065_make_uzytkownik_nullable	2000-01-01 00:00:00+00
-577	pbn_api	0066_add_duplicate_scan_models	2000-01-01 00:00:00+00
-578	deduplikator_autorow	0001_initial	2000-01-01 00:00:00+00
-579	deduplikator_autorow	0002_logautomatycznegoscalania	2000-01-01 00:00:00+00
-580	deduplikator_autorow	0003_alter_notaduplicate_scientist_pk	2000-01-01 00:00:00+00
-581	deduplikator_autorow	0004_alter_notaduplicate_unique_together_and_more	2000-01-01 00:00:00+00
-582	deduplikator_autorow	0005_replace_log_model	2000-01-01 00:00:00+00
-583	deduplikator_autorow	0006_add_ignored_author	2000-01-01 00:00:00+00
-584	deduplikator_autorow	0007_add_duplicate_scan_models	2000-01-01 00:00:00+00
-585	deduplikator_autorow	0008_add_priority_field	2000-01-01 00:00:00+00
-586	deduplikator_autorow	0009_rename_ignoredauthor_ignoredscientist	2000-01-01 00:00:00+00
-587	deduplikator_autorow	0010_add_ignored_author	2000-01-01 00:00:00+00
-588	deduplikator_autorow	0011_scan_mode_phase_partial	2000-01-01 00:00:00+00
-589	deduplikator_autorow	0012_alter_duplicatecandidate_main_autor_and_more	2000-01-01 00:00:00+00
-590	deduplikator_publikacji	0001_initial	2000-01-01 00:00:00+00
-591	deduplikator_publikacji	0002_remove_publicationduplicatecandidate_deduplikato_similar_17e420_idx_and_more	2000-01-01 00:00:00+00
-592	deduplikator_zrodel	0001_initial	2000-01-01 00:00:00+00
-593	denorm	0001_initial	2000-01-01 00:00:00+00
-594	denorm	0002_dirtyinstance_func_name	2000-01-01 00:00:00+00
-595	denorm	0003_auto_20211002_1955	2000-01-01 00:00:00+00
-596	denorm	0004_alter_dirtyinstance_success	2000-01-01 00:00:00+00
-597	denorm	0005_dirtyinstance_created_on	2000-01-01 00:00:00+00
-598	denorm	0006_auto_20211003_0346	2000-01-01 00:00:00+00
-599	denorm	0007_auto_created_on_now	2000-01-01 00:00:00+00
-600	denorm	0008_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-601	denorm	0009_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-602	denorm	0010_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-603	denorm	0011_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-604	denorm	0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-605	denorm	0013_alter_dirtyinstance_success	2000-01-01 00:00:00+00
-606	denorm	0014_parametrized_notify	2000-01-01 00:00:00+00
-607	denorm	0015_remove_dirtyinstance_processing_finished_and_more	2000-01-01 00:00:00+00
-608	denorm	0016_not_parametrized_notify	2000-01-01 00:00:00+00
-609	denorm	0017_dirtyinstance_unique_index	2000-01-01 00:00:00+00
-610	django_celery_results	0001_initial	2000-01-01 00:00:00+00
-611	django_celery_results	0002_add_task_name_args_kwargs	2000-01-01 00:00:00+00
-612	django_celery_results	0003_auto_20181106_1101	2000-01-01 00:00:00+00
-613	django_celery_results	0004_auto_20190516_0412	2000-01-01 00:00:00+00
-614	django_celery_results	0005_taskresult_worker	2000-01-01 00:00:00+00
-615	django_celery_results	0006_taskresult_date_created	2000-01-01 00:00:00+00
-616	django_celery_results	0007_remove_taskresult_hidden	2000-01-01 00:00:00+00
-617	django_celery_results	0008_chordcounter	2000-01-01 00:00:00+00
-618	django_celery_results	0009_groupresult	2000-01-01 00:00:00+00
-619	django_celery_results	0010_remove_duplicate_indices	2000-01-01 00:00:00+00
-620	django_celery_results	0011_taskresult_periodic_task_name	2000-01-01 00:00:00+00
-621	django_celery_results	0012_taskresult_date_started	2000-01-01 00:00:00+00
-622	django_celery_results	0013_taskresult_django_cele_periodi_1993cf_idx	2000-01-01 00:00:00+00
-623	django_celery_results	0014_alter_taskresult_status	2000-01-01 00:00:00+00
-624	sites	0002_alter_domain_unique	2000-01-01 00:00:00+00
-625	django_countdown	0001_initial	2000-01-01 00:00:00+00
-626	django_countdown	0002_alter_sitecountdown_countdown_time	2000-01-01 00:00:00+00
-627	django_countdown	0003_sitecountdown_maintenance_until	2000-01-01 00:00:00+00
-808	integrator2	0001_initial	2000-01-01 00:00:00+00
-628	django_countdown	0004_alter_sitecountdown_long_description	2000-01-01 00:00:00+00
-629	django_countdown	0005_alter_sitecountdown_options_and_more	2000-01-01 00:00:00+00
-630	dspace_api	0001_initial	2000-01-01 00:00:00+00
-631	dspace_api	0002_senttodspace	2000-01-01 00:00:00+00
-632	dspace_api	0003_senttodspace_bitstreams	2000-01-01 00:00:00+00
-633	dspace_api	0004_senttodspace_dspace_handle	2000-01-01 00:00:00+00
-634	easyaudit	0001_initial	2000-01-01 00:00:00+00
-635	easyaudit	0002_auto_20170125_0759	2000-01-01 00:00:00+00
-636	easyaudit	0003_auto_20170228_1505	2000-01-01 00:00:00+00
-637	easyaudit	0004_auto_20170620_1354	2000-01-01 00:00:00+00
-638	easyaudit	0005_auto_20170713_1155	2000-01-01 00:00:00+00
-639	easyaudit	0006_auto_20171018_1242	2000-01-01 00:00:00+00
-640	easyaudit	0007_auto_20180105_0838	2000-01-01 00:00:00+00
-641	easyaudit	0008_auto_20180220_1908	2000-01-01 00:00:00+00
-642	easyaudit	0009_auto_20180314_2225	2000-01-01 00:00:00+00
-643	easyaudit	0010_repr_text	2000-01-01 00:00:00+00
-644	easyaudit	0011_auto_20181101_1339	2000-01-01 00:00:00+00
-645	easyaudit	0012_auto_20181018_0012	2000-01-01 00:00:00+00
-646	easyaudit	0013_auto_20190723_0126	2000-01-01 00:00:00+00
-647	easyaudit	0014_auto_20200513_0008	2000-01-01 00:00:00+00
-648	easyaudit	0015_auto_20201019_1217	2000-01-01 00:00:00+00
-649	easyaudit	0016_alter_crudevent_event_type	2000-01-01 00:00:00+00
-650	easyaudit	0017_alter_requestevent_datetime	2000-01-01 00:00:00+00
-651	easyaudit	0018_rename_crudevent_object_id_content_type_index	2000-01-01 00:00:00+00
-652	easyaudit	0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
-653	ewaluacja2021	0001_initial	2000-01-01 00:00:00+00
-654	ewaluacja2021	0002_auto_20211026_1137	2000-01-01 00:00:00+00
-655	ewaluacja2021	0003_auto_20211027_2320	2000-01-01 00:00:00+00
-656	ewaluacja2021	0004_importmaksymalnychslotow_ostatnia_zmiana	2000-01-01 00:00:00+00
-657	ewaluacja2021	0005_auto_20211028_0039	2000-01-01 00:00:00+00
-658	ewaluacja2021	0006_auto_20211110_0000	2000-01-01 00:00:00+00
-659	ewaluacja2021	0007_auto_20211110_0002	2000-01-01 00:00:00+00
-660	ewaluacja2021	0008_auto_20211122_0103	2000-01-01 00:00:00+00
-661	ewaluacja2021	0009_zamowienienaraport_status	2000-01-01 00:00:00+00
-662	ewaluacja2021	0010_django32	2000-01-01 00:00:00+00
-663	ewaluacja2021	0011_nullbooleanfield	2000-01-01 00:00:00+00
-664	ewaluacja2021	0012_liczbandlauczelni_2022_2025_and_more	2000-01-01 00:00:00+00
-665	ewaluacja2021	0013_alter_iloscudzialowdlaautora_ilosc_udzialow_and_more	2000-01-01 00:00:00+00
-666	ewaluacja2021	0014_iloscudzialowzarok	2000-01-01 00:00:00+00
-667	ewaluacja2021	0015_dyscyplina_nie_raportowana	2000-01-01 00:00:00+00
-668	ewaluacja2021	0016_alter_iloscudzialowdlaautora_2022_2025_unique_together_and_more	2000-01-01 00:00:00+00
-669	ewaluacja2021	0017_alter_liczbandlauczelni_dyscyplina_naukowa_and_more	2000-01-01 00:00:00+00
-670	ewaluacja2021	0018_move_files_to_protected	2000-01-01 00:00:00+00
-671	ewaluacja2021	0019_remove_null_from_string_fields	2000-01-01 00:00:00+00
-672	ewaluacja2021	0020_delete_ewaluacja2021_models	2000-01-01 00:00:00+00
-673	ewaluacja_liczba_n	0001_initial	2000-01-01 00:00:00+00
-674	ewaluacja_liczba_n	0002_rename_dyscyplinanieraportowana_2022_2025_dyscyplinanieraportowana_and_more	2000-01-01 00:00:00+00
-675	ewaluacja_liczba_n	0003_add_liczba_n_to_dyscyplina_nieraportowana	2000-01-01 00:00:00+00
-676	ewaluacja_liczba_n	0004_add_ilosc_udzialow_za_calosc	2000-01-01 00:00:00+00
-677	ewaluacja_liczba_n	0005_iloscudzialowdlaautorazarok_autor_dyscyplina	2000-01-01 00:00:00+00
-678	ewaluacja_liczba_n	0006_alter_iloscudzialowdlaautorazacalosc_unique_together_and_more	2000-01-01 00:00:00+00
-679	ewaluacja_liczba_n	0007_alter_iloscudzialowdlaautorazacalosc_komentarz	2000-01-01 00:00:00+00
-680	ewaluacja_liczba_n	0008_add_sankcje	2000-01-01 00:00:00+00
-681	ewaluacja_liczba_n	0009_alter_dyscyplinanieraportowana_uczelnia_and_more	2000-01-01 00:00:00+00
-682	ewaluacja_metryki	0001_initial	2000-01-01 00:00:00+00
-683	ewaluacja_metryki	0002_alter_metrykaautora_jednostka	2000-01-01 00:00:00+00
-684	ewaluacja_metryki	0003_add_liczba_do_przetworzenia	2000-01-01 00:00:00+00
-685	ewaluacja_metryki	0004_metrykaautora_rodzaj_autora	2000-01-01 00:00:00+00
-686	ewaluacja_metryki	0005_alter_metrykaautora_rodzaj_autora_and_more	2000-01-01 00:00:00+00
-687	ewaluacja_metryki	0006_alter_metrykaautora_autor_and_more	2000-01-01 00:00:00+00
-688	ewaluacja_optymalizacja	0001_initial	2000-01-01 00:00:00+00
-689	ewaluacja_optymalizacja	0002_unpinningopportunity	2000-01-01 00:00:00+00
-690	ewaluacja_optymalizacja	0003_unpinningopportunity_punkty_roznica_b_and_more	2000-01-01 00:00:00+00
-691	ewaluacja_optymalizacja	0004_unpinningopportunity_punkty_roznica_a_and_more	2000-01-01 00:00:00+00
-692	ewaluacja_optymalizacja	0005_add_real_unpinning_values	2000-01-01 00:00:00+00
-693	ewaluacja_optymalizacja	0006_add_status_optymalizacji_z_odpinaniem	2000-01-01 00:00:00+00
-694	ewaluacja_optymalizacja	0007_add_status_optymalizacji_bulk	2000-01-01 00:00:00+00
-695	ewaluacja_optymalizacja	0008_add_status_unpinning_analizy	2000-01-01 00:00:00+00
-696	ewaluacja_optymalizacja	0009_add_plik_zip_wszystkie_xls	2000-01-01 00:00:00+00
-697	ewaluacja_optymalizacja	0010_add_is_optimal_to_optimizationrun	2000-01-01 00:00:00+00
-698	ewaluacja_optymalizacja	0011_move_files_to_protected	2000-01-01 00:00:00+00
-699	ewaluacja_optymalizacja	0012_add_discipline_swap_models	2000-01-01 00:00:00+00
-700	ewaluacja_optymalizacja	0013_add_status_przegladarka_recalc	2000-01-01 00:00:00+00
-701	ewaluacja_optymalizacja	0014_add_optimality_gap_to_optimization_run	2000-01-01 00:00:00+00
-702	ewaluacja_optymalizacja	0015_remove_disciplineswapopportunity_ewaluacja_o_uczelni_ed0a90_idx_and_more	2000-01-01 00:00:00+00
-703	ewaluacja_optymalizuj_publikacje	0001_initial	2000-01-01 00:00:00+00
-704	favicon	0001_initial	2000-01-01 00:00:00+00
-705	favicon	0002_favicon_site	2000-01-01 00:00:00+00
-706	favicon	0003_site_manager	2000-01-01 00:00:00+00
-707	favicon	0004_faviconimg_favicon_size_rel_unique	2000-01-01 00:00:00+00
-708	favicon	0005_leftover_changes	2000-01-01 00:00:00+00
-709	flexible_reports	0001_initial	2000-01-01 00:00:00+00
-710	flexible_reports	0002_auto_20170823_2225	2000-01-01 00:00:00+00
-711	flexible_reports	0003_table_attrs	2000-01-01 00:00:00+00
-712	flexible_reports	0004_auto_20170823_2342	2000-01-01 00:00:00+00
-713	flexible_reports	0005_column_attrs	2000-01-01 00:00:00+00
-714	flexible_reports	0006_default_ordering	2000-01-01 00:00:00+00
-715	flexible_reports	0007_sort_desc	2000-01-01 00:00:00+00
-716	flexible_reports	0008_auto_20171025_0553	2000-01-01 00:00:00+00
-717	flexible_reports	0009_auto_20171025_0558	2000-01-01 00:00:00+00
-718	flexible_reports	0010_auto_20171026_0340	2000-01-01 00:00:00+00
-719	flexible_reports	0011_alter_reportelement_options_alter_column_attrs_and_more	2000-01-01 00:00:00+00
-720	flexible_reports	0012_add_query_language	2000-01-01 00:00:00+00
-721	flexible_reports	0013_add_sample_context	2000-01-01 00:00:00+00
-722	flexible_reports	0014_alter_datasource_sample_context	2000-01-01 00:00:00+00
-723	formdefaults	0001_initial	2000-01-01 00:00:00+00
-724	formdefaults	0002_django32	2000-01-01 00:00:00+00
-725	formdefaults	0003_formrepresentation_pre_registered	2000-01-01 00:00:00+00
-726	formdefaults	0004_unique_field_user	2000-01-01 00:00:00+00
-727	formdefaults	0005_unique_field_system	2000-01-01 00:00:00+00
-728	formdefaults	0006_formfielddefaultvalue_is_auto_snapshot	2000-01-01 00:00:00+00
-729	formdefaults	0007_backfill_is_auto_snapshot	2000-01-01 00:00:00+00
-730	import_dyscyplin	0001_initial	2000-01-01 00:00:00+00
-731	import_dyscyplin	0002_import_dyscyplin_web_page_uid	2000-01-01 00:00:00+00
-732	import_dyscyplin	0003_auto_20180409_1129	2000-01-01 00:00:00+00
-733	import_dyscyplin	0004_auto_20180409_1240	2000-01-01 00:00:00+00
-734	import_dyscyplin	0005_auto_20180414_1801	2000-01-01 00:00:00+00
-735	import_dyscyplin	0006_auto_20180414_1841	2000-01-01 00:00:00+00
-736	import_dyscyplin	0007_auto_20180414_1917	2000-01-01 00:00:00+00
-737	import_dyscyplin	0008_auto_20180415_0813	2000-01-01 00:00:00+00
-738	import_dyscyplin	0009_auto_20180415_0847	2000-01-01 00:00:00+00
-739	import_dyscyplin	0010_auto_20180415_1107	2000-01-01 00:00:00+00
-740	import_dyscyplin	0011_auto_20180415_2223	2000-01-01 00:00:00+00
-741	import_dyscyplin	0012_import_dyscyplin_row_dyscyplina_ostateczna	2000-01-01 00:00:00+00
-742	import_dyscyplin	0013_auto_20190324_1826	2000-01-01 00:00:00+00
-743	import_dyscyplin	0014_auto_20190324_1906	2000-01-01 00:00:00+00
-744	import_dyscyplin	0015_auto_20190326_0553	2000-01-01 00:00:00+00
-745	import_dyscyplin	0016_auto_20190327_0129	2000-01-01 00:00:00+00
-746	import_dyscyplin	0017_auto_20190327_2246	2000-01-01 00:00:00+00
-747	import_dyscyplin	0018_auto_20200329_1719	2000-01-01 00:00:00+00
-748	import_dyscyplin	0019_drop_pesel_md5	2000-01-01 00:00:00+00
-749	import_dyscyplin	0020_django32	2000-01-01 00:00:00+00
-750	import_dyscyplin	0021_import_pustych_do_skasowania	2000-01-01 00:00:00+00
-751	import_dyscyplin	0022_move_files_to_protected	2000-01-01 00:00:00+00
-752	import_dyscyplin	0023_remove_null_from_string_fields	2000-01-01 00:00:00+00
-754	import_list_if	0002_auto_20210308_1246	2000-01-01 00:00:00+00
-755	import_list_if	0003_django32	2000-01-01 00:00:00+00
-756	import_list_if	0004_alter_importlistif_plik_xls	2000-01-01 00:00:00+00
-757	import_list_ministerialnych	0001_initial	2000-01-01 00:00:00+00
-758	import_list_ministerialnych	0002_alter_wierszimportudyscyplinzrodel_nr_wiersza	2000-01-01 00:00:00+00
-759	import_list_ministerialnych	0003_rename_wierszimportudyscyplinzrodel_wierszimportulistyministerialnej	2000-01-01 00:00:00+00
-760	import_list_ministerialnych	0004_importlistministerialnych_ignoruj_zrodla_bez_odpowiednika	2000-01-01 00:00:00+00
-761	import_list_ministerialnych	0005_add_duplicate_tracking_fields	2000-01-01 00:00:00+00
-762	import_list_ministerialnych	0006_importlistministerialnych_nie_porownuj_po_tytulach	2000-01-01 00:00:00+00
-763	import_list_ministerialnych	0007_move_files_to_protected	2000-01-01 00:00:00+00
-764	import_list_ministerialnych	0008_remove_null_from_string_fields	2000-01-01 00:00:00+00
-765	import_polon	0001_initial	2000-01-01 00:00:00+00
-766	import_polon	0002_remove_wierszimportuplikupolon_orig_and_more	2000-01-01 00:00:00+00
-767	import_polon	0003_wierszimportuplikupolon_dyscyplina_naukowa_and_more	2000-01-01 00:00:00+00
-768	import_polon	0004_importplikupolon_rok	2000-01-01 00:00:00+00
-769	import_polon	0005_alter_wierszimportuplikupolon_options_and_more	2000-01-01 00:00:00+00
-770	import_polon	0006_importplikupolon_zapisz_zmiany_do_bazy	2000-01-01 00:00:00+00
-771	import_polon	0007_importplikupolon_ukryj_niezmatchowanych_autorow	2000-01-01 00:00:00+00
-772	import_polon	0008_importplikuabsencji	2000-01-01 00:00:00+00
-773	import_polon	0009_wierszimportuplikuabsencji	2000-01-01 00:00:00+00
-774	import_polon	0010_alter_wierszimportuplikuabsencji_options_and_more	2000-01-01 00:00:00+00
-775	import_polon	0011_alter_wierszimportuplikuabsencji_ile_dni_and_more	2000-01-01 00:00:00+00
-776	import_polon	0012_importpolonoverride	2000-01-01 00:00:00+00
-777	import_polon	0013_alter_importpolonoverride_options_and_more	2000-01-01 00:00:00+00
-778	import_polon	0014_add_ignoruj_miejsce_pracy	2000-01-01 00:00:00+00
-779	import_polon	0015_move_files_to_protected	2000-01-01 00:00:00+00
-780	import_pracownikow	0001_initial	2000-01-01 00:00:00+00
-781	import_pracownikow	0002_importpracownikowrow	2000-01-01 00:00:00+00
-782	import_pracownikow	0003_auto_20210228_1916	2000-01-01 00:00:00+00
-783	import_pracownikow	0004_auto_20210307_1110	2000-01-01 00:00:00+00
-784	import_pracownikow	0005_auto_20210307_1204	2000-01-01 00:00:00+00
-785	import_pracownikow	0006_importpracownikowrow_tytul	2000-01-01 00:00:00+00
-786	import_pracownikow	0007_django32	2000-01-01 00:00:00+00
-787	import_pracownikow	0008_nullbooleanfield	2000-01-01 00:00:00+00
-788	import_pracownikow	0009_move_files_to_protected	2000-01-01 00:00:00+00
-789	pbn_api	0067_fix_osobazinstytucji_title_not_null	2000-01-01 00:00:00+00
-790	pbn_api	0068_add_cache_models	2000-01-01 00:00:00+00
-791	importer_autorow_pbn	0001_initial	2000-01-01 00:00:00+00
-792	importer_autorow_pbn	0002_add_cache_models	2000-01-01 00:00:00+00
-793	importer_publikacji	0001_initial	2000-01-01 00:00:00+00
-794	importer_publikacji	0002_remove_skip_match_status	2000-01-01 00:00:00+00
-795	importer_publikacji	0003_importedauthor_dyscyplina_source	2000-01-01 00:00:00+00
-796	importer_publikacji	0004_rename_user_to_created_by_add_modified_by	2000-01-01 00:00:00+00
-797	importer_publikacji	0005_importsession_wydawnictwo_nadrzedne	2000-01-01 00:00:00+00
-798	importer_publikacji	0005_alter_importsession_created_by	2000-01-01 00:00:00+00
-799	importer_publikacji	0006_merge_20260421_1100	2000-01-01 00:00:00+00
-800	importer_publikacji	0007_async_import_state	2000-01-01 00:00:00+00
-801	importer_publikacji	0008_identifier_textfield	2000-01-01 00:00:00+00
-802	importer_publikacji	0009_importedauthor_candidate	2000-01-01 00:00:00+00
-803	importer_publikacji	0010_importedauthor_zapisany_jako	2000-01-01 00:00:00+00
-804	importer_publikacji	0006_merge_20260420_2212	2000-01-01 00:00:00+00
-805	importer_publikacji	0007_merge_20260421_1248	2000-01-01 00:00:00+00
-806	importer_publikacji	0011_merge_20260601_0632	2000-01-01 00:00:00+00
-807	importer_publikacji	0012_alter_importedauthor_session	2000-01-01 00:00:00+00
-809	integrator2	0002_auto_20160124_1336	2000-01-01 00:00:00+00
-810	integrator2	0003_django110_py3k	2000-01-01 00:00:00+00
-811	integrator2	0004_django32	2000-01-01 00:00:00+00
-812	integrator2	0005_nullbooleanfield	2000-01-01 00:00:00+00
-813	integrator2	0006_move_files_to_protected	2000-01-01 00:00:00+00
-814	komparator_pbn	0001_initial	2000-01-01 00:00:00+00
-815	komparator_pbn	0002_pbndownloadtask_current_step_and_more	2000-01-01 00:00:00+00
-816	komparator_pbn	0003_delete_pbndownloadtask	2000-01-01 00:00:00+00
-817	pbn_api	0069_sentdata_api_url	2000-01-01 00:00:00+00
-818	pbn_api	0070_drop_unused_indexes	2000-01-01 00:00:00+00
-819	pbn_api	0071_alter_institution_addresspostalcode_and_more	2000-01-01 00:00:00+00
-820	pbn_api	0072_pbn_search_gin_indexes	2000-01-01 00:00:00+00
-821	komparator_pbn_udzialy	0001_initial	2000-01-01 00:00:00+00
-822	komparator_pbn_udzialy	0002_add_brakautora_model	2000-01-01 00:00:00+00
-1017	ewaluacja_liczba_n	0010_merge_20260604_1952	2000-01-01 00:00:00+00
-823	komparator_pbn_udzialy	0003_remove_brakautorawpublikacji_komparator__autor_i_e007d7_idx_and_more	2000-01-01 00:00:00+00
-824	menu	0001_initial	2000-01-01 00:00:00+00
-825	messages_extends	0001_initial	2000-01-01 00:00:00+00
-826	siteblog	0001_initial	2000-01-01 00:00:00+00
-827	miniblog	0001_initial	2000-01-01 00:00:00+00
-828	miniblog	0002_auto_20180101_2017	2000-01-01 00:00:00+00
-829	miniblog	0003_alter_article_article_body	2000-01-01 00:00:00+00
-830	miniblog	0004_migrate_to_siteblog_and_delete	2000-01-01 00:00:00+00
-831	nowe_raporty	0001_initial	2000-01-01 00:00:00+00
-832	oswiadczenia	0001_add_export_task_model	2000-01-01 00:00:00+00
-833	oswiadczenia	0002_add_offset_limit	2000-01-01 00:00:00+00
-834	oswiadczenia	0003_fix_export_format_max_length	2000-01-01 00:00:00+00
-835	oswiadczenia	0004_add_przypieta_filter	2000-01-01 00:00:00+00
-836	oswiadczenia	0005_migrate_template_to_dbtemplate	2000-01-01 00:00:00+00
-837	password_policies	0001_initial	2000-01-01 00:00:00+00
-838	password_policies	0002_passwordprofile	2000-01-01 00:00:00+00
-839	password_policies	0003_update_passwordprofile	2000-01-01 00:00:00+00
-840	pbn_downloader_app	0001_initial	2000-01-01 00:00:00+00
-841	pbn_downloader_app	0002_pbninstitutionpeopletask	2000-01-01 00:00:00+00
-842	pbn_downloader_app	0003_pbnjournalsdownloadtask	2000-01-01 00:00:00+00
-843	pbn_downloader_app	0004_alter_error_message_fields	2000-01-01 00:00:00+00
-934	test_bpp	0003_testreport	2000-01-01 00:00:00+00
-844	pbn_export_queue	0001_rename_table	2000-01-01 00:00:00+00
-845	pbn_export_queue	0002_initial	2000-01-01 00:00:00+00
-846	pbn_export_queue	0003_add_rodzaj_bledu	2000-01-01 00:00:00+00
-847	pbn_export_queue	0004_add_wykluczone_field	2000-01-01 00:00:00+00
-848	pbn_export_queue	0005_reclassify_old_validation_errors	2000-01-01 00:00:00+00
-849	pbn_export_queue	0006_reclassify_list_format_validation_errors	2000-01-01 00:00:00+00
-850	pbn_export_queue	0007_reclassify_doiorwwwmissing_errors	2000-01-01 00:00:00+00
-851	pbn_import	0001_initial	2000-01-01 00:00:00+00
-852	pbn_import	0002_add_task_id_field	2000-01-01 00:00:00+00
-853	pbn_import	0003_add_import_inconsistency	2000-01-01 00:00:00+00
-854	pbn_import	0004_add_bpp_publication_content_type	2000-01-01 00:00:00+00
-855	pbn_import	0005_remove_importstatistics	2000-01-01 00:00:00+00
-856	pbn_import	0006_remove_importstep	2000-01-01 00:00:00+00
-857	pbn_import	0007_add_last_updated_field	2000-01-01 00:00:00+00
-858	pbn_import	0008_add_importsession_indexes	2000-01-01 00:00:00+00
-859	pbn_import	0009_fix_error_fields_default	2000-01-01 00:00:00+00
-860	pbn_import	0010_alter_importinconsistency_inconsistency_type	2000-01-01 00:00:00+00
-861	pbn_import	0011_alter_importinconsistency_session_and_more	2000-01-01 00:00:00+00
-862	pbn_komparator_zrodel	0001_initial	2000-01-01 00:00:00+00
-863	pbn_komparator_zrodel	0002_add_brakujaca_dyscyplina_pbn	2000-01-01 00:00:00+00
-864	pbn_komparator_zrodel	0003_remove_rozbieznosczrodlapbn_pbn_kompara_zrodlo__8665da_idx_and_more	2000-01-01 00:00:00+00
-865	pbn_wysylka_oswiadczen	0001_initial	2000-01-01 00:00:00+00
-866	pbn_wysylka_oswiadczen	0002_add_tytul_field	2000-01-01 00:00:00+00
-867	pbn_wysylka_oswiadczen	0003_add_synchronized_count	2000-01-01 00:00:00+00
-868	pbn_wysylka_oswiadczen	0004_alter_pbnwysylkalog_content_type_and_more	2000-01-01 00:00:00+00
-869	powiazania_autorow	0001_initial	2000-01-01 00:00:00+00
-870	powiazania_autorow	0002_alter_authorconnection_primary_author_and_more	2000-01-01 00:00:00+00
-871	powiazania_autorow	0003_backfill_powiazania_istniejace	2000-01-01 00:00:00+00
-872	powiazania_autorow	0004_alter_authorconnection_primary_author	2000-01-01 00:00:00+00
-873	przemapuj_prace_autora	0001_initial	2000-01-01 00:00:00+00
-874	przemapuj_prace_autora	0002_przemapoaniepracautora_prace_ciagle_historia_and_more	2000-01-01 00:00:00+00
-875	przemapuj_zrodla_pbn	0001_initial	2000-01-01 00:00:00+00
-876	przemapuj_zrodla_pbn	0002_przemapowaniezrodla_typ_operacji_and_more	2000-01-01 00:00:00+00
-877	przemapuj_zrodla_pbn	0003_alter_przemapowaniezrodla_zrodlo_nowe_and_more	2000-01-01 00:00:00+00
-878	przemapuj_zrodlo	0001_initial	2000-01-01 00:00:00+00
-879	przemapuj_zrodlo	0002_remove_przemapowazrodla_przemapuj_z_zrodlo__8d9224_idx_and_more	2000-01-01 00:00:00+00
-880	raport_slotow	0001_initial	2000-01-01 00:00:00+00
-881	raport_slotow	0002_auto_20200316_2027	2000-01-01 00:00:00+00
-882	raport_slotow	0003_auto_20200329_1719	2000-01-01 00:00:00+00
-883	raport_slotow	0004_raportslotowuczelnia_raportslotowuczelniawiersz	2000-01-01 00:00:00+00
-884	raport_slotow	0005_auto_20210125_0256	2000-01-01 00:00:00+00
-885	raport_slotow	0006_auto_20210125_2330	2000-01-01 00:00:00+00
-886	raport_slotow	0007_auto_20210130_1407	2000-01-01 00:00:00+00
-887	raport_slotow	0008_auto_20210308_0839	2000-01-01 00:00:00+00
-888	raport_slotow	0009_auto_20210308_0846	2000-01-01 00:00:00+00
-889	raport_slotow	0010_auto_20210314_2204	2000-01-01 00:00:00+00
-890	raport_slotow	0011_auto_20210315_0141	2000-01-01 00:00:00+00
-891	raport_slotow	0012_django32	2000-01-01 00:00:00+00
-892	raport_slotow	0013_nullbooleanfield	2000-01-01 00:00:00+00
-893	raport_slotow	0014_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-894	raport_slotow	0015_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-895	raport_slotow	0016_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-896	raport_slotow	0017_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-998	bpp	0455_faza_b_i2	2000-01-01 00:00:00+00
-897	raport_slotow	0018_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-1001	bpp	0458_faza_b_ii1_views	2000-01-01 00:00:00+00
-898	raport_slotow	0019_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-899	raport_slotow	0020_fix_do_roku_default_modulowa_funkcja	2000-01-01 00:00:00+00
-900	reversion	0001_squashed_0004_auto_20160611_1202	2000-01-01 00:00:00+00
-901	reversion	0002_add_index_on_version_for_content_type_and_db	2000-01-01 00:00:00+00
-902	rozbieznosci_dyscyplin	0001_widok_rozbieznosci	2000-01-01 00:00:00+00
-907	rozbieznosci_dyscyplin	0006_recreate	2000-01-01 00:00:00+00
-908	rozbieznosci_dyscyplin	0007_recreate	2000-01-01 00:00:00+00
-909	rozbieznosci_dyscyplin	0008_recreate	2000-01-01 00:00:00+00
-910	rozbieznosci_dyscyplin	0009_recreate	2000-01-01 00:00:00+00
-911	rozbieznosci_dyscyplin	0010_recreate	2000-01-01 00:00:00+00
-912	rozbieznosci_dyscyplin	0011_null_is_wrong	2000-01-01 00:00:00+00
-913	rozbieznosci_dyscyplin	0012_rozbieznosci_dyscyplin_zrodel	2000-01-01 00:00:00+00
-914	rozbieznosci_dyscyplin	0013_rozbieznoscizrodelview	2000-01-01 00:00:00+00
-915	rozbieznosci_dyscyplin	0014_recreate	2000-01-01 00:00:00+00
-916	rozbieznosci_dyscyplin	0015_recreate	2000-01-01 00:00:00+00
-917	rozbieznosci_dyscyplin	0016_rozbieznosci_dyscyplin_zrodel_v2	2000-01-01 00:00:00+00
-918	rozbieznosci_dyscyplin	0017_add_punkty_kbn_and_charakter_formalny	2000-01-01 00:00:00+00
-919	rozbieznosci_dyscyplin	0018_recreate	2000-01-01 00:00:00+00
-920	rozbieznosci_dyscyplin	0019_recreate	2000-01-01 00:00:00+00
-921	rozbieznosci_dyscyplin	0020_recreate	2000-01-01 00:00:00+00
-922	rozbieznosci_dyscyplin	0021_alter_rozbieznosciview_options	2000-01-01 00:00:00+00
-928	sessions	0001_initial	2000-01-01 00:00:00+00
-929	snapshot_odpiec	0001_initial	2000-01-01 00:00:00+00
-930	snapshot_odpiec	0002_alter_snapshotodpiec_owner	2000-01-01 00:00:00+00
-931	taggit	0006_rename_taggeditem_content_type_object_id_taggit_tagg_content_8fc721_idx	2000-01-01 00:00:00+00
-932	test_bpp	0001_initial	2000-01-01 00:00:00+00
-933	test_bpp	0002_testobjectthatdoesnotexist	2000-01-01 00:00:00+00
-935	zglos_publikacje	0001_initial	2000-01-01 00:00:00+00
-936	zglos_publikacje	0002_auto_20220710_2331	2000-01-01 00:00:00+00
-937	zglos_publikacje	0003_auto_20220801_2045	2000-01-01 00:00:00+00
-938	zglos_publikacje	0004_auto_20220801_2128	2000-01-01 00:00:00+00
-939	zglos_publikacje	0005_auto_20220807_2329	2000-01-01 00:00:00+00
-940	zglos_publikacje	0006_auto_20220815_1752	2000-01-01 00:00:00+00
-941	zglos_publikacje	0007_auto_20220816_1019	2000-01-01 00:00:00+00
-942	zglos_publikacje	0008_auto_20220816_1255	2000-01-01 00:00:00+00
-943	zglos_publikacje	0009_alter_zgloszenie_publikacji_status	2000-01-01 00:00:00+00
-944	zglos_publikacje	0010_auto_20220818_0012	2000-01-01 00:00:00+00
-945	zglos_publikacje	0011_auto_20220910_1646	2000-01-01 00:00:00+00
-946	zglos_publikacje	0012_auto_20220910_1654	2000-01-01 00:00:00+00
-947	zglos_publikacje	0013_auto_20220910_2114	2000-01-01 00:00:00+00
-948	zglos_publikacje	0014_zgloszenie_publikacji_autor_kierunek_studiow	2000-01-01 00:00:00+00
-949	zglos_publikacje	0015_zgloszenie_publikacji_autor_oswiadczenie_ken	2000-01-01 00:00:00+00
-950	zglos_publikacje	0016_zgloszenie_publikacji_deleted_at_and_more	2000-01-01 00:00:00+00
-951	zglos_publikacje	0017_zgloszenie_publikacji_zgoda_na_publikacje_pelnego_tekstu	2000-01-01 00:00:00+00
-952	zglos_publikacje	0018_alter_zgloszenie_publikacji_rodzaj_zglaszanej_publikacji	2000-01-01 00:00:00+00
-953	zglos_publikacje	0019_zgloszenie_publikacji_autor_ostatnio_zmieniony	2000-01-01 00:00:00+00
-954	zglos_publikacje	0020_move_files_to_protected	2000-01-01 00:00:00+00
-955	zglos_publikacje	0021_fix_file_paths	2000-01-01 00:00:00+00
-956	zglos_publikacje	0022_uuid_filenames	2000-01-01 00:00:00+00
-957	zglos_publikacje	0023_nowy_formularz_zgloszenia	2000-01-01 00:00:00+00
-958	zglos_publikacje	0024_migracja_danych_nowy_formularz	2000-01-01 00:00:00+00
-959	zglos_publikacje	0025_alter_obslugujacy_zgloszenia_wydzialow_user	2000-01-01 00:00:00+00
-960	denorm	0001_squashed_0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-961	bpp	0165_cache_punktacja_autora_cache_punktacja_dyscypliny_squashed_0167_auto_20190707_2029	2000-01-01 00:00:00+00
-962	easyaudit	0004_auto_20170620_1354_squashed_0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
-963	bpp	0443_drop_pl_PL_collation	2000-01-01 00:00:00+00
-964	bpp	0411_uczelnia_site_theme_user_sites	2000-01-01 00:00:00+00
-965	bpp	0412_link_uczelnia_to_site	2000-01-01 00:00:00+00
-966	bpp	0413_uczelnia_constance_fields	2000-01-01 00:00:00+00
-967	bpp	0414_copy_constance_to_uczelnia	2000-01-01 00:00:00+00
-968	bpp	0415_rename_accessible_sites_to_uczelnie	2000-01-01 00:00:00+00
-969	bpp	0416_merge_20260428_1806	2000-01-01 00:00:00+00
-970	bpp	0417_ensure_uczelnia_site_not_null	2000-01-01 00:00:00+00
-971	bpp	0418_merge_20260521_1015	2000-01-01 00:00:00+00
-972	bpp	0419_merge_20260601_0952	2000-01-01 00:00:00+00
-973	bpp	0420_merge_20260601_1246	2000-01-01 00:00:00+00
-974	bpp	0421_alter_uczelnia_theme_name	2000-01-01 00:00:00+00
-975	bpp	0422_alter_uczelnia_theme_name	2000-01-01 00:00:00+00
-976	bpp	0423_merge_20260602_1430	2000-01-01 00:00:00+00
-977	bpp	0424_cache_punktacja_dyscypliny_uczelnia_and_more	2000-01-01 00:00:00+00
-978	bpp	0425_per_uczelnia_cache_view	2000-01-01 00:00:00+00
-979	bpp	0426_cache_punktacja_autora_view_uczelnia	2000-01-01 00:00:00+00
-980	bpp	0427_cpd_index_rekord_uczelnia_dyscyplina	2000-01-01 00:00:00+00
-981	bpp	0428_cpd_uczelnia_not_null	2000-01-01 00:00:00+00
-982	bpp	0429_merge_20260604_1952	2000-01-01 00:00:00+00
-983	bpp	0430_wydawnictwo_ciagle_tytul_wydawnictwo_zwarte_tytul	2000-01-01 00:00:00+00
-984	bpp	0431_merge_20260612_1504	2000-01-01 00:00:00+00
-985	bpp	0432_merge_0431_merge_20260612_1504_0431_search_index_gin	2000-01-01 00:00:00+00
-986	bpp	0444_merge_20260616_1920	2000-01-01 00:00:00+00
-987	bpp	0444_alter_uczelnia_wyszukiwanie_rekordy_na_strone_anonim_and_more	2000-01-01 00:00:00+00
-988	bpp	0445_merge_20260622_1134	2000-01-01 00:00:00+00
-989	bpp	0446_rzeczownik_tylko_mianownik	2000-01-01 00:00:00+00
-990	bpp	0447_fd390_aktualna_jednostka_demote_obca	2000-01-01 00:00:00+00
-991	bpp	0448_rodzajjednostki	2000-01-01 00:00:00+00
-992	bpp	0449_seed_rodzajjednostki	2000-01-01 00:00:00+00
-993	bpp	0450_jednostka_rodzaj	2000-01-01 00:00:00+00
-994	bpp	0451_backfill_jednostka_rodzaj	2000-01-01 00:00:00+00
-995	bpp	0452_jednostka_pola_faza_a	2000-01-01 00:00:00+00
-996	bpp	0453_zrodlo_trigram_indexes	2000-01-01 00:00:00+00
-997	bpp	0454_faza_b_i1	2000-01-01 00:00:00+00
-999	bpp	0456_faza_b_i3	2000-01-01 00:00:00+00
-1000	bpp	0457_faza_b_i4	2000-01-01 00:00:00+00
-1002	bpp	0444_charakter_formalny_ukryty_charakter_pbn_ukryty_and_more	2000-01-01 00:00:00+00
-1003	bpp	0459_faza_b_ii1_retarget	2000-01-01 00:00:00+00
-1004	bpp	0460_faza_b_ii2_repoint	2000-01-01 00:00:00+00
-1005	bpp	0461_faza_b_iii1_usun_rodzaj_jednostki	2000-01-01 00:00:00+00
-1006	bpp	0462_faza_b_iv1_przelicz_aktualna	2000-01-01 00:00:00+00
-1007	bpp	0463_faza_b_iv2_multiseek_values	2000-01-01 00:00:00+00
-1008	bpp	0464_rodzajjednostki_autor_moze_afiliowac	2000-01-01 00:00:00+00
-1009	bpp	0454_merge_20260706_0727	2000-01-01 00:00:00+00
-1010	bpp	0444_deferred_podstawowe_miejsce_pracy	2000-01-01 00:00:00+00
-1011	bpp	0445_merge_20260621_0640	2000-01-01 00:00:00+00
-1012	bpp	0465_merge_20260707_0736	2000-01-01 00:00:00+00
-1013	deduplikator_zrodel	0002_scanzrodelforduplicates_sourceduplicatecandidate	2000-01-01 00:00:00+00
-1014	denorm	0018_alter_dirtyinstance_content_type_and_more	2000-01-01 00:00:00+00
-1015	denorm	0019_conditional_notify_during_flush	2000-01-01 00:00:00+00
-1016	ewaluacja_liczba_n	0009_iloscudzialow_uczelnia	2000-01-01 00:00:00+00
-1018	ewaluacja_metryki	0006_metrykaautora_uczelnia	2000-01-01 00:00:00+00
-1019	ewaluacja_metryki	0007_statusgenerowania_uczelnia	2000-01-01 00:00:00+00
-1020	ewaluacja_metryki	0008_metrykaautora_uczelnia_notnull	2000-01-01 00:00:00+00
-1021	ewaluacja_metryki	0009_merge_20260604_1952	2000-01-01 00:00:00+00
-1022	import_dyscyplin	0024_faza_b_ii2_repoint_wydzial	2000-01-01 00:00:00+00
-1023	import_polon	0016_importplikupolon_uczelnia	2000-01-01 00:00:00+00
-1024	import_punktacji_zrodel	0001_initial	2000-01-01 00:00:00+00
-1025	importer_publikacji	0012_importsession_uczelnia	2000-01-01 00:00:00+00
-1026	importer_publikacji	0013_merge_20260604_1952	2000-01-01 00:00:00+00
-1027	pbn_api	0069_add_uczelnia_fk	2000-01-01 00:00:00+00
-1028	pbn_api	0070_link_pbn_to_uczelnia	2000-01-01 00:00:00+00
-1029	pbn_api	0071_merge_0069_sentdata_api_url_0070_link_pbn_to_uczelnia	2000-01-01 00:00:00+00
-1030	pbn_api	0072_backfill_sentdata_uczelnia	2000-01-01 00:00:00+00
-1031	pbn_api	0073_backfill_publikacjainstytucji_v2_uczelnia	2000-01-01 00:00:00+00
-1032	pbn_api	0074_merge_20260604_1952	2000-01-01 00:00:00+00
-1033	pbn_export_queue	0008_add_uczelnia_fk	2000-01-01 00:00:00+00
-1034	pbn_export_queue	0009_link_queue_to_uczelnia	2000-01-01 00:00:00+00
-1035	pbn_import	0012_alter_importinconsistency_inconsistency_type	2000-01-01 00:00:00+00
-1036	raport_slotow	0020_raportslotowuczelnia_uczelnia	2000-01-01 00:00:00+00
-1037	raport_slotow	0021_merge_20260604_1952	2000-01-01 00:00:00+00
-1038	rozbieznosci	0001_initial	2000-01-01 00:00:00+00
-1039	rozbieznosci	0002_usun_stare_rozbieznosci	2000-01-01 00:00:00+00
-1040	zglos_publikacje	0026_faza_b_ii2_repoint_wydzial	2000-01-01 00:00:00+00
-1041	bpp	0466_bppuser_zwijaj_dlugie_listy_autorow_and_more	2000-01-01 00:00:00+00
-1042	bpp	0467_seed_crossref_mapper_rows	2000-01-01 00:00:00+00
-1043	import_pracownikow	0010_liveops	2000-01-01 00:00:00+00
-1044	import_pracownikow	0011_row_nullable_diff	2000-01-01 00:00:00+00
-1045	import_pracownikow	0012_mapowanie_profile	2000-01-01 00:00:00+00
-1046	import_pracownikow	0013_confidence_kandydaci	2000-01-01 00:00:00+00
-1047	import_pracownikow	0014_utworz_nowego_odpiecie	2000-01-01 00:00:00+00
-1048	import_pracownikow	0015_przepnij_prace	2000-01-01 00:00:00+00
-1049	import_punktacji_zrodel	0002_alter_importpunktacjizrodel_options_and_more	2000-01-01 00:00:00+00
-1050	importer_publikacji	0014_importedauthor_typ_ogolny	2000-01-01 00:00:00+00
-1051	importer_publikacji	0015_alter_importsession_status	2000-01-01 00:00:00+00
-1052	importer_publikacji	0016_alter_importsession_status	2000-01-01 00:00:00+00
-1053	pbn_api	0075_sentdata_fee_sent_sentdata_fee_uploaded_okay	2000-01-01 00:00:00+00
-1054	przemapuj_prace_autora	0003_przemapoaniepracautora_zrodlowy_import	2000-01-01 00:00:00+00
-1055	import_pracownikow	0016_importpracownikow_tworz_brakujace_jednostki_and_more	2000-01-01 00:00:00+00
-1056	import_pracownikow	0017_importpracownikow_tworz_brakujace_tytuly_and_more	2000-01-01 00:00:00+00
-1057	import_pracownikow	0018_importpracownikow_zakres_integracji	2000-01-01 00:00:00+00
-1058	import_pracownikow	0019_alter_importpracownikow_stan	2000-01-01 00:00:00+00
-1059	importer_publikacji	0017_multiple_works_import	2000-01-01 00:00:00+00
-1060	importer_publikacji	0018_importsession_rodzaj_rekordu	2000-01-01 00:00:00+00
-1061	oauth2_provider	0001_initial	2000-01-01 00:00:00+00
-1062	oauth2_provider	0002_auto_20190406_1805	2000-01-01 00:00:00+00
-1063	oauth2_provider	0003_auto_20201211_1314	2000-01-01 00:00:00+00
-1064	oauth2_provider	0004_auto_20200902_2022	2000-01-01 00:00:00+00
-1065	oauth2_provider	0005_auto_20211222_2352	2000-01-01 00:00:00+00
-1066	oauth2_provider	0006_alter_application_client_secret	2000-01-01 00:00:00+00
-1067	oauth2_provider	0007_application_post_logout_redirect_uris	2000-01-01 00:00:00+00
-1068	oauth2_provider	0008_alter_accesstoken_token	2000-01-01 00:00:00+00
-1069	oauth2_provider	0009_add_hash_client_secret	2000-01-01 00:00:00+00
-1070	oauth2_provider	0010_application_allowed_origins	2000-01-01 00:00:00+00
-1071	oauth2_provider	0011_refreshtoken_token_family	2000-01-01 00:00:00+00
-1072	oauth2_provider	0012_add_token_checksum	2000-01-01 00:00:00+00
-1073	oauth2_provider	0013_alter_application_authorization_grant_type_device	2000-01-01 00:00:00+00
-1074	oauth2_provider	0014_alter_help_text	2000-01-01 00:00:00+00
-1075	import_pracownikow	0020_confidence_status_reczny	2000-01-01 00:00:00+00
-1076	import_pracownikow	0021_pola_data_zmian_i_przepnij_wszystkie	2000-01-01 00:00:00+00
-1077	importer_publikacji	0019_multipleworksimport_uczelnia	2000-01-01 00:00:00+00
-1078	pbn_export_queue	0010_atomowa_kolejka_pbn	2000-01-01 00:00:00+00
-1079	bpp	0468_stopien_sluzbowy_stanowisko_dydaktyczne	2000-01-01 00:00:00+00
-1080	first_run_wizard	0001_initial	2000-01-01 00:00:00+00
-1081	import_pracownikow	0022_alter_importpracownikowrow_confidence	2000-01-01 00:00:00+00
-1082	import_pracownikow	0023_slowniki_stopnie_stanowiska	2000-01-01 00:00:00+00
-1083	bpp	0469_przyszle_daty_zakonczenia_zatrudnienia	2000-01-01 00:00:00+00
-1084	import_pracownikow	0024_importpracownikowrow_stany_pol_snapshot	2000-01-01 00:00:00+00
-1085	oidc_integration	0001_initial	2000-01-01 00:00:00+00
-1086	orcid_integration	0001_initial	2000-01-01 00:00:00+00
-1087	import_pracownikow	0025_importpracownikow_plik_po_imporcie	2000-01-01 00:00:00+00
-1088	import_pracownikow	0026_importpracownikow_uczelnia	2000-01-01 00:00:00+00
-1089	import_pracownikow	0027_profil_uczelnia	2000-01-01 00:00:00+00
-1090	bpp	0470_indeksy_gin_i_funkcyjne	2000-01-01 00:00:00+00
-1091	pbn_api	0076_unikalne_uuid_dyscyplin	2000-01-01 00:00:00+00
-1092	pbn_api	0077_constrainty_uuid_dyscyplin	2000-01-01 00:00:00+00
+30	import_pracownikow	0001_initial	2000-01-01 00:00:00+00
+31	taggit	0001_initial	2000-01-01 00:00:00+00
+32	taggit	0002_auto_20150616_2121	2000-01-01 00:00:00+00
+33	taggit	0003_taggeditem_add_unique_index	2000-01-01 00:00:00+00
+34	bpp	0002_auto_20141020_1738	2000-01-01 00:00:00+00
+35	bpp	0003_auto_20141023_1419	2000-01-01 00:00:00+00
+36	bpp	0004_auto_20141107_1101	2000-01-01 00:00:00+00
+37	bpp	0005_auto_20141107_1950	2000-01-01 00:00:00+00
+38	bpp	0006_auto_20141112_1531	2000-01-01 00:00:00+00
+39	bpp	0007_charakter_formalny_nazwa_w_primo	2000-01-01 00:00:00+00
+40	bpp	0008_auto_20141126_1802	2000-01-01 00:00:00+00
+41	bpp	0009_auto_20141126_1804	2000-01-01 00:00:00+00
+42	bpp	0010_auto_20141126_1825	2000-01-01 00:00:00+00
+43	bpp	0011_auto_20150212_2203	2000-01-01 00:00:00+00
+44	bpp	0012_auto_20150530_1733	2000-01-01 00:00:00+00
+45	bpp	0013_wydzial_zezwalaj_na_ranking_autorow	2000-01-01 00:00:00+00
+46	bpp	0014_auto_20150530_1942	2000-01-01 00:00:00+00
+47	bpp	0015_auto_20150617_2247	2000-01-01 00:00:00+00
+48	bpp	0016_auto_20150824_1051	2000-01-01 00:00:00+00
+49	bpp	0017_typy_pbn	2000-01-01 00:00:00+00
+50	bpp	0018_auto_20150824_1233	2000-01-01 00:00:00+00
+51	bpp	0019_charakter_formalny_charakter_pbn	2000-01-01 00:00:00+00
+52	bpp	0020_auto_20150824_1609	2000-01-01 00:00:00+00
+53	bpp	0021_auto_20150825_2301	2000-01-01 00:00:00+00
+54	bpp	0022_auto_20150825_2303	2000-01-01 00:00:00+00
+55	bpp	0023_auto_20150830_1704	2000-01-01 00:00:00+00
+56	bpp	0024_auto_20150830_1705	2000-01-01 00:00:00+00
+57	bpp	0025_auto_20150830_1740	2000-01-01 00:00:00+00
+58	bpp	0026_auto_20150902_2102	2000-01-01 00:00:00+00
+59	bpp	0027_auto_20150921_2304	2000-01-01 00:00:00+00
+60	bpp	0028_openaccess	2000-01-01 00:00:00+00
+61	bpp	0029_auto_20150923_1343	2000-01-01 00:00:00+00
+62	bpp	0030_auto_20150923_1351	2000-01-01 00:00:00+00
+63	bpp	0031_zrodlo_openaccess_licencja	2000-01-01 00:00:00+00
+64	bpp	0032_auto_20151001_1413	2000-01-01 00:00:00+00
+65	bpp	0033_auto_20151001_1425	2000-01-01 00:00:00+00
+66	bpp	0034_auto_20151011_1514	2000-01-01 00:00:00+00
+67	bpp	0035_nomorefixtures_data_migration	2000-01-01 00:00:00+00
+68	bpp	0036_auto_20160117_2147	2000-01-01 00:00:00+00
+69	bpp	0037_auto_20160124_1336	2000-01-01 00:00:00+00
+70	bpp	0038_auto_20160708_0732	2000-01-01 00:00:00+00
+71	bpp	0039_wydzial_archiwalny	2000-01-01 00:00:00+00
+72	bpp	0040_auto_20160802_2209	2000-01-01 00:00:00+00
+73	bpp	0041_auto_20160802_2211	2000-01-01 00:00:00+00
+74	bpp	0042_auto_20160802_2346	2000-01-01 00:00:00+00
+75	bpp	0043_auto_20160817_1151	2000-01-01 00:00:00+00
+76	bpp	0044_zaktualizuj_obce_archiwalne	2000-01-01 00:00:00+00
+77	bpp	0045_auto_20160809_0004	2000-01-01 00:00:00+00
+78	bpp	0046_ostatnia_jednostka_trigger	2000-01-01 00:00:00+00
+79	bpp	0038_autor_pesel_md5	2000-01-01 00:00:00+00
+80	bpp	0040_merge	2000-01-01 00:00:00+00
+81	bpp	0041_auto_20160722_2230	2000-01-01 00:00:00+00
+82	bpp	0047_merge	2000-01-01 00:00:00+00
+83	bpp	0048_wyczysc_nazwy_jednostek	2000-01-01 00:00:00+00
+84	bpp	0049_auto_20160920_0333	2000-01-01 00:00:00+00
+85	bpp	0050_usun_model_historyczny	2000-01-01 00:00:00+00
+86	bpp	0051_uczelnia_obca_jednostka	2000-01-01 00:00:00+00
+87	bpp	0052_skupia_pracownikow_zarzadzaj_automatycznie	2000-01-01 00:00:00+00
+88	bpp	0053_obiekt_jednostka_pole_uczelnia	2000-01-01 00:00:00+00
+89	bpp	0054_obiekt_jednostka_pole_aktualna	2000-01-01 00:00:00+00
+90	bpp	0055_jednostka_wydzial	2000-01-01 00:00:00+00
+91	bpp	0056_jednostka_trigger_jednostka_wydzial	2000-01-01 00:00:00+00
+92	bpp	0057_jednostka_wydzial_jest_opcjonalny	2000-01-01 00:00:00+00
+93	bpp	0058_auto_20161113_2332	2000-01-01 00:00:00+00
+94	bpp	0059_auto_20161114_0945	2000-01-01 00:00:00+00
+95	bpp	0060_auto_20161114_1905	2000-01-01 00:00:00+00
+96	bpp	0061_utworz_jednostka_wydzial	2000-01-01 00:00:00+00
+97	bpp	0062_auto_20161119_2207	2000-01-01 00:00:00+00
+98	bpp	0063_autor_aktualny	2000-01-01 00:00:00+00
+99	bpp	0064_autor_jednostka_aktualna	2000-01-01 00:00:00+00
+100	bpp	0051_auto_20161201_1137	2000-01-01 00:00:00+00
+101	bpp	0065_merge	2000-01-01 00:00:00+00
+102	bpp	0066_wydawnictwo_zwarte_calkowita_liczba_autorow	2000-01-01 00:00:00+00
+103	bpp	0067_typ_kbn_artykul_pbn	2000-01-01 00:00:00+00
+104	bpp	0068_indeks_liczba_znakow	2000-01-01 00:00:00+00
+105	bpp	0069_eksport_pbn_charaktery	2000-01-01 00:00:00+00
+106	bpp	0070_auto_20170220_1757	2000-01-01 00:00:00+00
+107	bpp	0071_fix_liczba_znakow_wyd	2000-01-01 00:00:00+00
+108	bpp	0072_gist_to_gin	2000-01-01 00:00:00+00
+109	bpp	0073_auto_20170616_1709	2000-01-01 00:00:00+00
+110	bpp	0074_django110	2000-01-01 00:00:00+00
+111	bpp	0075_auto_20170622_0057	2000-01-01 00:00:00+00
+112	bpp	0076_auto_20170622_0058	2000-01-01 00:00:00+00
+113	bpp	0077_auto_20170624_0130	2000-01-01 00:00:00+00
+114	bpp	0078_django110_py3k	2000-01-01 00:00:00+00
+115	bpp	0079_wydzial_skrot_nazwy	2000-01-01 00:00:00+00
+116	bpp	0080_auto_20170708_2147	2000-01-01 00:00:00+00
+117	bpp	0081_konferencje	2000-01-01 00:00:00+00
+118	bpp	0082_konferencja_opcjonalne	2000-01-01 00:00:00+00
+119	bpp	0083_afiliuje_zatrudniony	2000-01-01 00:00:00+00
+120	bpp	0084_strona_tom_nr_zeszytu	2000-01-01 00:00:00+00
+121	bpp	0085_strony_help_text	2000-01-01 00:00:00+00
+122	bpp	0086_calkowita_liczba_redaktorow	2000-01-01 00:00:00+00
+123	bpp	0087_pokazuj_ic_pkt_wew	2000-01-01 00:00:00+00
+124	bpp	0088_orcid	2000-01-01 00:00:00+00
+125	bpp	0089_legacy_data	2000-01-01 00:00:00+00
+126	bpp	0090_pbn_id_dla_prac	2000-01-01 00:00:00+00
+127	bpp	0091_charakter_pbn_dla_typu_kbn	2000-01-01 00:00:00+00
+128	bpp	0092_pokazuj_status_korekty	2000-01-01 00:00:00+00
+129	bpp	0093_konferencja_wydawnictwo_ciagle	2000-01-01 00:00:00+00
+130	bpp	0094_seria_wydawnicza	2000-01-01 00:00:00+00
+131	bpp	0095_issn_dla_zwartego	2000-01-01 00:00:00+00
+132	bpp	0096_adnotacje_not_null	2000-01-01 00:00:00+00
+133	bpp	0097_nagrody	2000-01-01 00:00:00+00
+134	bpp	0098_wybitnosc	2000-01-01 00:00:00+00
+135	bpp	0099_nagrody	2000-01-01 00:00:00+00
+136	bpp	0100_init_nagrody	2000-01-01 00:00:00+00
+137	bpp	0101_openaccess_w_multiseek	2000-01-01 00:00:00+00
+138	bpp	0102_auto_20170723_2318	2000-01-01 00:00:00+00
+139	bpp	0103_widoki_nowe_sumy	2000-01-01 00:00:00+00
+140	bpp	0104_nowe_sumy_view	2000-01-01 00:00:00+00
+141	bpp	0105_rekord_z_konferencja	2000-01-01 00:00:00+00
+142	bpp	0106_pokazuj_uczelnia	2000-01-01 00:00:00+00
+143	bpp	0107_poprawki_wydajnosci	2000-01-01 00:00:00+00
+144	bpp	0108_bpp_nowe_sumy_view_bug	2000-01-01 00:00:00+00
+145	bpp	0109_rekordview	2000-01-01 00:00:00+00
+146	bpp	0110_uczelnia_pokazuj_praca_recenzowana	2000-01-01 00:00:00+00
+147	bpp	0111_autorzy_afiliacja_zatrudniony	2000-01-01 00:00:00+00
+148	bpp	0112_fix_refresh_cache	2000-01-01 00:00:00+00
+149	bpp	0113_auto_20171111_0035	2000-01-01 00:00:00+00
+150	bpp	0114_auto_20171111_0036	2000-01-01 00:00:00+00
+151	bpp	0115_auto_20171111_0038	2000-01-01 00:00:00+00
+152	bpp	0116_typ_odpowiedzialnosci_typ_ogolny	2000-01-01 00:00:00+00
+153	bpp	0117_auto_20180221_2327	2000-01-01 00:00:00+00
+154	bpp	0118_auto_20180221_2335	2000-01-01 00:00:00+00
+155	bpp	0119_pola_patentow	2000-01-01 00:00:00+00
+156	bpp	0120_kc_if_3_cyfry	2000-01-01 00:00:00+00
+157	bpp	0121_rekord_ostatnio_zmieniony_dla	2000-01-01 00:00:00+00
+158	bpp	0122_import_dyscyplin	2000-01-01 00:00:00+00
+159	bpp	0123_kod_dyscyplin	2000-01-01 00:00:00+00
+160	bpp	0124_auto_20180414_1917	2000-01-01 00:00:00+00
+161	bpp	0125_auto_20180415_2223	2000-01-01 00:00:00+00
+162	bpp	0126_zewnetrzna_baza_danych	2000-01-01 00:00:00+00
+163	bpp	0127_auto_20180416_1303	2000-01-01 00:00:00+00
+164	bpp	0128_zewnetrzne_bazy_view	2000-01-01 00:00:00+00
+165	bpp	0129_zewnetrznebazydanychview	2000-01-01 00:00:00+00
+166	bpp	0130_clarivate_analytics	2000-01-01 00:00:00+00
+167	bpp	0131_liczba_cytowan	2000-01-01 00:00:00+00
+168	bpp	0132_unique_rekord_id_kolejnosc	2000-01-01 00:00:00+00
+169	bpp	0133_liczba_autorow	2000-01-01 00:00:00+00
+170	bpp	0134_uczelnia_domyslnie_afiliuje	2000-01-01 00:00:00+00
+171	bpp	0134_liczba_cytowan_wyszukaj	2000-01-01 00:00:00+00
+172	bpp	0135_merge_20180612_2304	2000-01-01 00:00:00+00
+173	bpp	0136_ranking_liczba_cytowan	2000-01-01 00:00:00+00
+174	bpp	0137_auto_20180613_0015	2000-01-01 00:00:00+00
+175	bpp	0138_uczelnia_pokazuj_liczbe_cytowan_w_rankingu	2000-01-01 00:00:00+00
+176	bpp	0139_uczelnia_pokazuj_liczbe_cytowan_na_stronie_autora	2000-01-01 00:00:00+00
+177	bpp	0140_auto_20180624_1620	2000-01-01 00:00:00+00
+178	bpp	0141_konferencja_typ_konferencji	2000-01-01 00:00:00+00
+179	bpp	0142_auto_20180624_2245	2000-01-01 00:00:00+00
+180	bpp	0143_uczelnia_wydruk_logo_szerokosc	2000-01-01 00:00:00+00
+181	bpp	0144_wyrzuc_w_z_informacji	2000-01-01 00:00:00+00
+182	bpp	0145_auto_20180629_1816	2000-01-01 00:00:00+00
+183	bpp	0146_auto_20180629_1835	2000-01-01 00:00:00+00
+184	bpp	0147_auto_20180707_1517	2000-01-01 00:00:00+00
+185	bpp	0148_charakter_formalny_nadrzedny	2000-01-01 00:00:00+00
+186	bpp	0149_ranking_afiliacje	2000-01-01 00:00:00+00
+187	bpp	0150_auto_20181125_1202	2000-01-01 00:00:00+00
+188	bpp	0151_snip	2000-01-01 00:00:00+00
+189	bpp	0152_merge	2000-01-01 00:00:00+00
+190	bpp	0153_django21	2000-01-01 00:00:00+00
+191	bpp	0154_auto_20190303_1029	2000-01-01 00:00:00+00
+192	bpp	0155_CASCADE	2000-01-01 00:00:00+00
+193	bpp	0156_auto_20190324_1828	2000-01-01 00:00:00+00
+194	bpp	0157_auto_20190324_1834	2000-01-01 00:00:00+00
+195	bpp	0156_auto_20190319_1648	2000-01-01 00:00:00+00
+196	bpp	0158_merge_20190325_2135	2000-01-01 00:00:00+00
+197	bpp	0159_auto_20190327_0028	2000-01-01 00:00:00+00
+198	bpp	0160_auto_20190627_0006	2000-01-01 00:00:00+00
+199	bpp	0161_dyscyplina_change_trigger	2000-01-01 00:00:00+00
+200	bpp	0162_auto_20190629_1239	2000-01-01 00:00:00+00
+201	bpp	0163_cachequeue	2000-01-01 00:00:00+00
+202	bpp	0164_auto_20190701_1303	2000-01-01 00:00:00+00
+203	bpp	0165_cache_punktacja_autora_cache_punktacja_dyscypliny	2000-01-01 00:00:00+00
+204	bpp	0166_auto_20190702_1200	2000-01-01 00:00:00+00
+205	bpp	0167_auto_20190707_2029	2000-01-01 00:00:00+00
+206	bpp	0166_auto_20190708_0022	2000-01-01 00:00:00+00
+207	bpp	0167_dyscyplina_change_trigger_fix	2000-01-01 00:00:00+00
+208	bpp	0168_dyscyplina_w_autorzy_mat	2000-01-01 00:00:00+00
+209	bpp	0169_dyscyplina_change_trigger_cacher	2000-01-01 00:00:00+00
+210	bpp	0170_wydawnictwo_wydawca	2000-01-01 00:00:00+00
+211	bpp	0171_auto_20190806_2015	2000-01-01 00:00:00+00
+212	bpp	0172_auto_20190806_2052	2000-01-01 00:00:00+00
+213	bpp	0173_auto_20190812_1412	2000-01-01 00:00:00+00
+214	bpp	0174_uczelnia_podpowiadaj_dyscypliny_konfig	2000-01-01 00:00:00+00
+215	bpp	0174_rodzaj_pbn_dla_charakteru	2000-01-01 00:00:00+00
+216	bpp	0175_merge_20190824_0948	2000-01-01 00:00:00+00
+217	bpp	0176_auto_20190903_0108	2000-01-01 00:00:00+00
+218	bpp	0177_cache_punktacja_autora_query	2000-01-01 00:00:00+00
+219	bpp	0178_auto_20190905_2020	2000-01-01 00:00:00+00
+220	bpp	0179_auto_20190910_2147	2000-01-01 00:00:00+00
+221	bpp	0179_auto_20190910_1416	2000-01-01 00:00:00+00
+222	bpp	0180_merge_20190910_2236	2000-01-01 00:00:00+00
+223	bpp	0181_cache_punktacja_autora_sum_cache_punktacja_autora_sum_gruop	2000-01-01 00:00:00+00
+224	bpp	0182_auto_20191013_2324	2000-01-01 00:00:00+00
+225	bpp	0183_auto_20191020_1535	2000-01-01 00:00:00+00
+226	bpp	0184_autor_expertus_id	2000-01-01 00:00:00+00
+227	bpp	0185_auto_20191021_2008	2000-01-01 00:00:00+00
+228	bpp	0186_auto_20191021_2008	2000-01-01 00:00:00+00
+229	bpp	0187_auto_20191027_1141	2000-01-01 00:00:00+00
+230	bpp	0188_auto_20191027_1737	2000-01-01 00:00:00+00
+231	bpp	0189_auto_20191027_2158	2000-01-01 00:00:00+00
+232	bpp	0190_auto_20191030_0532	2000-01-01 00:00:00+00
+233	bpp	0191_wydawnictwo_zwarte_zewnetrzna_baza_danych	2000-01-01 00:00:00+00
+234	bpp	0192_auto_20191107_0853	2000-01-01 00:00:00+00
+235	bpp	0193_jednostka_dla_punktacji_dyscyplin	2000-01-01 00:00:00+00
+236	bpp	0194_auto_20200213_2148	2000-01-01 00:00:00+00
+237	bpp	0195_cc0	2000-01-01 00:00:00+00
+238	bpp	0196_uczelnia_pokazuj_raport_slotow_zerowy	2000-01-01 00:00:00+00
+239	bpp	0197_auto_20200223_2142	2000-01-01 00:00:00+00
+240	bpp	0198_auto_20200229_1644	2000-01-01 00:00:00+00
+241	bpp	0199_alias_wydawcy_trigger	2000-01-01 00:00:00+00
+242	bpp	0200_auto_20200304_2253	2000-01-01 00:00:00+00
+243	bpp	0201_rekord_mat_z_www	2000-01-01 00:00:00+00
+244	bpp	0202_auto_20200308_2204	2000-01-01 00:00:00+00
+245	bpp	0203_auto_20200315_2021	2000-01-01 00:00:00+00
+246	bpp	0204_cache_punktacja_autora_query_view	2000-01-01 00:00:00+00
+247	bpp	0202_fix_autorzy_bez_nazwisk	2000-01-01 00:00:00+00
+248	bpp	0205_merge_20200315_2208	2000-01-01 00:00:00+00
+249	bpp	0206_auto_20200315_2212	2000-01-01 00:00:00+00
+250	bpp	0207_uczelnia_analiza_view	2000-01-01 00:00:00+00
+251	bpp	0208_auto_20200329_1719	2000-01-01 00:00:00+00
+252	bpp	0209_auto_20200421_0013	2000-01-01 00:00:00+00
+253	bpp	0210_uczelnia_sortuj_jednostki_alfabetycznie	2000-01-01 00:00:00+00
+254	bpp	0211_oznaczenie_wydania	2000-01-01 00:00:00+00
+255	bpp	0212_upowaznienie_pbn	2000-01-01 00:00:00+00
+256	bpp	0212_charakter_formalny_charakter_ogolny	2000-01-01 00:00:00+00
+257	bpp	0213_merge_20200607_2047	2000-01-01 00:00:00+00
+258	bpp	0214_auto_20200628_2344	2000-01-01 00:00:00+00
+259	bpp	0215_auto_20200727_1407	2000-01-01 00:00:00+00
+260	bpp	0216_element_repozytorium	2000-01-01 00:00:00+00
+261	bpp	0217_grant	2000-01-01 00:00:00+00
+262	bpp	0218_auto_20200727_2307	2000-01-01 00:00:00+00
+263	bpp	0219_auto_20200727_2308	2000-01-01 00:00:00+00
+264	bpp	0220_auto_20200728_0011	2000-01-01 00:00:00+00
+265	bpp	0215_auto_20200806_0146	2000-01-01 00:00:00+00
+266	bpp	0221_merge_20200806_0851	2000-01-01 00:00:00+00
+267	bpp	0222_auto_20200812_1927	2000-01-01 00:00:00+00
+268	bpp	0223_auto_20200812_1930	2000-01-01 00:00:00+00
+269	bpp	0224_auto_20201007_0956	2000-01-01 00:00:00+00
+270	bpp	0225_auto_20201007_1002	2000-01-01 00:00:00+00
+271	bpp	0226_rekord_mat_status	2000-01-01 00:00:00+00
+272	bpp	0227_auto_20201011_0010	2000-01-01 00:00:00+00
+273	bpp	0224_auto_20201111_1341	2000-01-01 00:00:00+00
+274	bpp	0225_charakter_sloty_referat	2000-01-01 00:00:00+00
+275	bpp	0228_merge_20201225_1931	2000-01-01 00:00:00+00
+276	bpp	0229_nowe_sumy_status_korekty	2000-01-01 00:00:00+00
+277	bpp	0230_metoda_do_roku_uczelnia	2000-01-01 00:00:00+00
+278	bpp	0231_ukryj_status_korekty	2000-01-01 00:00:00+00
+279	bpp	0232_auto_20210101_1751	2000-01-01 00:00:00+00
+280	bpp	0233_wiecej_doktoratow_dla_jednego	2000-01-01 00:00:00+00
+281	bpp	0234_rekord_mat_nadrzedne	2000-01-01 00:00:00+00
+282	bpp	0235_auto_20210201_1305	2000-01-01 00:00:00+00
+283	bpp	0235_auto_20210125_0042	2000-01-01 00:00:00+00
+284	bpp	0236_merge_20210202_0850	2000-01-01 00:00:00+00
+285	bpp	0237_auto_20210223_2228	2000-01-01 00:00:00+00
+286	bpp	0238_drop_pesel_md5	2000-01-01 00:00:00+00
+287	bpp	0239_egeria_import_new_autor_flds	2000-01-01 00:00:00+00
+288	bpp	0240_auto_20210228_1739	2000-01-01 00:00:00+00
+289	import_pracownikow	0002_importpracownikowrow	2000-01-01 00:00:00+00
+290	import_pracownikow	0003_auto_20210228_1916	2000-01-01 00:00:00+00
+291	bpp	0241_auto_20210228_1916	2000-01-01 00:00:00+00
+292	bpp	0242_auto_20210307_1110	2000-01-01 00:00:00+00
+293	import_pracownikow	0004_auto_20210307_1110	2000-01-01 00:00:00+00
+294	import_pracownikow	0005_auto_20210307_1204	2000-01-01 00:00:00+00
+295	sites	0001_initial	2000-01-01 00:00:00+00
+296	dbtemplates	0001_initial	2000-01-01 00:00:00+00
+297	pbn_api	0001_initial	2000-01-01 00:00:00+00
+298	pbn_api	0002_institution	2000-01-01 00:00:00+00
+299	pbn_api	0003_conference	2000-01-01 00:00:00+00
+300	pbn_api	0004_journal	2000-01-01 00:00:00+00
+301	pbn_api	0005_auto_20210406_0436	2000-01-01 00:00:00+00
+302	pbn_api	0006_sciencist	2000-01-01 00:00:00+00
+303	pbn_api	0007_publication	2000-01-01 00:00:00+00
+304	pbn_api	0008_auto_20210406_0530	2000-01-01 00:00:00+00
+305	pbn_api	0009_sentdata	2000-01-01 00:00:00+00
+306	pbn_api	0010_auto_20210504_0040	2000-01-01 00:00:00+00
+307	pbn_api	0011_auto_20210509_2339	2000-01-01 00:00:00+00
+308	pbn_api	0012_auto_20210621_0947	2000-01-01 00:00:00+00
+309	pbn_api	0013_oswiadczenieinstytucji_publikacjainstytucji	2000-01-01 00:00:00+00
+310	pbn_api	0014_auto_20210713_2229	2000-01-01 00:00:00+00
+311	pbn_api	0015_auto_20210713_2234	2000-01-01 00:00:00+00
+312	pbn_api	0016_auto_20210713_2235	2000-01-01 00:00:00+00
+313	pbn_api	0017_publikacjainstytucji_usertype	2000-01-01 00:00:00+00
+314	pbn_api	0018_auto_20210714_0104	2000-01-01 00:00:00+00
+315	pbn_api	0019_auto_20210805_2306	2000-01-01 00:00:00+00
+316	pbn_api	0020_przemapuj	2000-01-01 00:00:00+00
+317	pbn_api	0021_auto_20210808_1204	2000-01-01 00:00:00+00
+318	bpp	0243_auto_20210307_1452	2000-01-01 00:00:00+00
+319	bpp	0244_auto_20210307_2329	2000-01-01 00:00:00+00
+320	bpp	0245_auto_20210308_1246	2000-01-01 00:00:00+00
+321	bpp	0246_auto_20210312_1228	2000-01-01 00:00:00+00
+322	bpp	0247_funkcja_autora_pokazuj_za_nazwiskiem	2000-01-01 00:00:00+00
+323	bpp	0248_autorzy_mat_idx	2000-01-01 00:00:00+00
+324	bpp	0249_dyscyplina_zrodla	2000-01-01 00:00:00+00
+325	bpp	0250_auto_20210315_2104	2000-01-01 00:00:00+00
+326	bpp	0252_slug	2000-01-01 00:00:00+00
+327	bpp	0253_rekord_mat_slug	2000-01-01 00:00:00+00
+328	bpp	0254_uczelnia_pbn_uid	2000-01-01 00:00:00+00
+329	bpp	0255_auto_20210407_1138	2000-01-01 00:00:00+00
+330	bpp	0256_auto_20210407_1151	2000-01-01 00:00:00+00
+331	bpp	0257_wydawca_pbn_uid	2000-01-01 00:00:00+00
+332	bpp	0258_auto_20210407_2320	2000-01-01 00:00:00+00
+333	bpp	0259_auto_20210421_2323	2000-01-01 00:00:00+00
+334	bpp	0260_jednostka_pbn_uid	2000-01-01 00:00:00+00
+335	bpp	0261_auto_20210426_0124	2000-01-01 00:00:00+00
+336	bpp	0262_bppuser_pbn_token	2000-01-01 00:00:00+00
+337	bpp	0263_auto_20210427_2137	2000-01-01 00:00:00+00
+338	bpp	0264_auto_20210428_0011	2000-01-01 00:00:00+00
+339	bpp	0266_auto_20210504_0040	2000-01-01 00:00:00+00
+340	bpp	0265_rekord_mat_doi	2000-01-01 00:00:00+00
+341	bpp	0266_auto_20210519_0236	2000-01-01 00:00:00+00
+342	bpp	0267_auto_20210519_0237	2000-01-01 00:00:00+00
+343	bpp	0268_auto_20210519_0238	2000-01-01 00:00:00+00
+344	bpp	0269_wyzeruj_zrodlo_pbn_uid	2000-01-01 00:00:00+00
+345	bpp	0270_auto_20210530_0114	2000-01-01 00:00:00+00
+346	bpp	0271_auto_20210530_0225	2000-01-01 00:00:00+00
+347	bpp	0272_auto_20210605_2128	2000-01-01 00:00:00+00
+348	bpp	0273_jednostka_hier	2000-01-01 00:00:00+00
+349	bpp	0274_jednostka_hier	2000-01-01 00:00:00+00
+350	bpp	0275_jednostka_hier	2000-01-01 00:00:00+00
+351	bpp	0276_auto_20210607_0109	2000-01-01 00:00:00+00
+352	bpp	0277_lepsze_global_search	2000-01-01 00:00:00+00
+353	bpp	0278_autorzy_profil_orcid	2000-01-01 00:00:00+00
+354	bpp	0279_usun_ost_akt_pbn	2000-01-01 00:00:00+00
+355	bpp	0280_auto_20210725_2217	2000-01-01 00:00:00+00
+356	bpp	0281_auto_20210725_2332	2000-01-01 00:00:00+00
+357	bpp	0282_auto_20210808_2334	2000-01-01 00:00:00+00
+358	bpp	0283_auto_20210809_0142	2000-01-01 00:00:00+00
+359	bpp	0284_auto_20210814_0023	2000-01-01 00:00:00+00
+360	bpp	0285_auto_20210814_0103	2000-01-01 00:00:00+00
+361	bpp	0286_auto_20210814_0104	2000-01-01 00:00:00+00
+362	bpp	0287_trgrm_extnsn	2000-01-01 00:00:00+00
+363	bpp	0288_rekord_mat_isbn	2000-01-01 00:00:00+00
+364	bpp	0289_data_oswiadczenia	2000-01-01 00:00:00+00
+365	bpp	0290_bppmultiseekvis_detale	2000-01-01 00:00:00+00
+366	bpp	0291_kod_dyscypliny_field	2000-01-01 00:00:00+00
+367	bpp	0292_przypinanie_dyscyplin	2000-01-01 00:00:00+00
+368	bpp	0293_pbn_api_kasowanie_przed_nie_eksp_zero	2000-01-01 00:00:00+00
+369	bpp	0294_szablony_opisu_stron	2000-01-01 00:00:00+00
+370	bpp	0295_instaluj_szablony	2000-01-01 00:00:00+00
+371	bpp	0296_nulltest_szablonopisu	2000-01-01 00:00:00+00
+372	bpp	0297_wydawca_denorm	2000-01-01 00:00:00+00
+373	bpp	0298_wydawnictwo_zwarte_denorm	2000-01-01 00:00:00+00
+374	bpp	0299_wydawnictwo_ciagle_denorm	2000-01-01 00:00:00+00
+375	bpp	0300_patent_denorm	2000-01-01 00:00:00+00
+376	bpp	0301_doktorska_habilitacyjna_denorm	2000-01-01 00:00:00+00
+377	bpp	0302_denorm_autor_dyscyplina_new_trigger	2000-01-01 00:00:00+00
+378	bpp	0303_denorm_cleanup_cachequeue_gone	2000-01-01 00:00:00+00
+379	bpp	0304_auto_20211010_2247	2000-01-01 00:00:00+00
+380	bpp	0297_liczba_n_uczelni	2000-01-01 00:00:00+00
+381	bpp	0305_merge_20211010_2323	2000-01-01 00:00:00+00
+382	bpp	0306_delete_ewaluacja2021liczbandlauczelni	2000-01-01 00:00:00+00
+383	bpp	0307_streszczenia	2000-01-01 00:00:00+00
+384	bpp	0308_ewaluacja_upowaznienia_view	2000-01-01 00:00:00+00
+385	bpp	0309_auto_20211110_0000	2000-01-01 00:00:00+00
+386	bpp	0310_fix_refresh_cache_deadlocks	2000-01-01 00:00:00+00
+387	bpp	0311_wyd_ciagle_kwartyle	2000-01-01 00:00:00+00
+388	bpp	0312_przypieta	2000-01-01 00:00:00+00
+389	bpp	0313_meta_zewn_baza	2000-01-01 00:00:00+00
+390	bpp	0314_punktacja_zrodla_kwarty	2000-01-01 00:00:00+00
+391	import_pracownikow	0006_importpracownikowrow_tytul	2000-01-01 00:00:00+00
+392	import_pracownikow	0007_django32	2000-01-01 00:00:00+00
+393	import_pracownikow	0008_nullbooleanfield	2000-01-01 00:00:00+00
+394	import_pracownikow	0009_move_files_to_protected	2000-01-01 00:00:00+00
+395	import_pracownikow	0010_liveops	2000-01-01 00:00:00+00
+396	multiseek	0001_initial	2000-01-01 00:00:00+00
+397	dynamic_admin_columns	0001_initial	2000-01-01 00:00:00+00
+398	ewaluacja_common	0001_initial	2000-01-01 00:00:00+00
+399	ewaluacja_common	0002_populate_rodzaje_autorow	2000-01-01 00:00:00+00
+400	ewaluacja_common	0003_add_sort_field	2000-01-01 00:00:00+00
+401	ewaluacja_common	0004_alter_rodzaj_autora_options	2000-01-01 00:00:00+00
+402	pbn_api	0022_auto_20210809_0120	2000-01-01 00:00:00+00
+403	pbn_api	0023_auto_20210809_0122	2000-01-01 00:00:00+00
+404	pbn_api	0024_auto_20210809_0125	2000-01-01 00:00:00+00
+405	pbn_api	0025_auto_20210809_0149	2000-01-01 00:00:00+00
+406	pbn_api	0026_auto_20210816_0815	2000-01-01 00:00:00+00
+407	pbn_api	0027_przemapuj_rok_publikacji	2000-01-01 00:00:00+00
+408	pbn_api	0028_gist_idx_publications	2000-01-01 00:00:00+00
+409	pbn_api	0029_indeksy_gist_inne_tabele	2000-01-01 00:00:00+00
+410	pbn_api	0030_auto_20210818_2343	2000-01-01 00:00:00+00
+411	pbn_api	0031_auto_20210820_1544	2000-01-01 00:00:00+00
+412	pbn_api	0032_sent_data_pbn_uid	2000-01-01 00:00:00+00
+413	pbn_api	0033_sent_data_typ_rekordu	2000-01-01 00:00:00+00
+414	pbn_api	0034_auto_20211028_0341	2000-01-01 00:00:00+00
+415	pbn_api	0035_django32	2000-01-01 00:00:00+00
+416	pbn_api	0036_disciplinegroup_discipline	2000-01-01 00:00:00+00
+417	pbn_api	0037_alter_discipline_options_and_more	2000-01-01 00:00:00+00
+418	pbn_api	0038_oswiadczenieinstytucji_disciplines	2000-01-01 00:00:00+00
+419	pbn_api	0039_alter_oswiadczenieinstytucji_area	2000-01-01 00:00:00+00
+420	bpp	0315_aktualna_jednostka_ostatnia_przypisana	2000-01-01 00:00:00+00
+421	bpp	0316_uczelnia_jednostek_na_strone	2000-01-01 00:00:00+00
+422	bpp	0317_uczelnia_pokaz_tylko_nadrzedne	2000-01-01 00:00:00+00
+423	bpp	0318_jedno_podstawowe_miejsce_pracy	2000-01-01 00:00:00+00
+424	bpp	0319_aktualna_jednostka_to_podstawowe_miejsce	2000-01-01 00:00:00+00
+425	bpp	0320_autor_aktualny_pole_znika	2000-01-01 00:00:00+00
+426	bpp	0321_aktualna_jednostka_moze_byc_zadna	2000-01-01 00:00:00+00
+427	bpp	0322_oplaty_za_publikacje	2000-01-01 00:00:00+00
+428	bpp	0323_jednostka_pokazuj_opis	2000-01-01 00:00:00+00
+429	bpp	0324_django32	2000-01-01 00:00:00+00
+430	bpp	0325_nullbooleanfield	2000-01-01 00:00:00+00
+431	bpp	0326_auto_20220818_0012	2000-01-01 00:00:00+00
+432	bpp	0327_uczelnia_pokazuj_formularz_zglaszania_publikacji	2000-01-01 00:00:00+00
+433	bpp	0328_charakter_formalny_charakter_crossref	2000-01-01 00:00:00+00
+434	bpp	0329_auto_20220921_2030	2000-01-01 00:00:00+00
+435	bpp	0328_alter_uczelnia_wymagaj_informacji_o_oplatach	2000-01-01 00:00:00+00
+436	bpp	0330_merge_20220921_2152	2000-01-01 00:00:00+00
+437	bpp	0331_kierunek_studiow	2000-01-01 00:00:00+00
+438	bpp	0332_pbn_zawsze_uid_uczelni	2000-01-01 00:00:00+00
+439	bpp	0333_autorzy_kierunek_studiow	2000-01-01 00:00:00+00
+440	bpp	0334_oswiadczenie_ken_modele	2000-01-01 00:00:00+00
+441	bpp	0335_autorzy_oswiadczenie_ken	2000-01-01 00:00:00+00
+442	bpp	0336_jednostka_opis_html	2000-01-01 00:00:00+00
+443	bpp	0337_oswiadczenie_ken_cleanup	2000-01-01 00:00:00+00
+444	bpp	0338_wydzial_pokazuj_opis	2000-01-01 00:00:00+00
+445	bpp	0339_autor_opis	2000-01-01 00:00:00+00
+446	bpp	0340_skasuj_anonimowe_zdarzenia	2000-01-01 00:00:00+00
+447	bpp	0341_dyscyplina_naukowa_pbn_uid	2000-01-01 00:00:00+00
+448	pbn_api	0040_tlumaczdyscyplinmanager	2000-01-01 00:00:00+00
+449	pbn_api	0041_alter_publisher_options	2000-01-01 00:00:00+00
+450	pbn_api	0042_delete_tlumaczdyscyplinmanager_and_more	2000-01-01 00:00:00+00
+451	pbn_api	0043_remove_oswiadczenieinstytucji_id_and_more	2000-01-01 00:00:00+00
+452	pbn_api	0044_oswiadczenieinstytucji_id_and_more	2000-01-01 00:00:00+00
+453	pbn_api	0045_pbn_export_queue	2000-01-01 00:00:00+00
+454	pbn_api	0046_alter_pbn_export_queue_options_and_more	2000-01-01 00:00:00+00
+455	pbn_api	0047_alter_pbn_export_queue_options_and_more	2000-01-01 00:00:00+00
+456	pbn_api	0048_remove_pbn_export_queue_retry_politics_and_more	2000-01-01 00:00:00+00
+457	taggit	0004_alter_taggeditem_content_type_alter_taggeditem_tag	2000-01-01 00:00:00+00
+458	taggit	0005_auto_20220424_2025	2000-01-01 00:00:00+00
+459	bpp	0342_remove_dyscyplina_naukowa_pbn_uid	2000-01-01 00:00:00+00
+460	bpp	0343_alter_typ_kbn_options_alter_patent_kc_punkty_kbn_and_more	2000-01-01 00:00:00+00
+461	bpp	0344_uczelnia_pbn_wysylaj_bez_oswiadczen	2000-01-01 00:00:00+00
+462	bpp	0345_alter_wydzial_opis	2000-01-01 00:00:00+00
+463	bpp	0346_rename_multiseek_searchform_data	2000-01-01 00:00:00+00
+464	bpp	0347_uczelnia_deklaracja_dostepnosci_tekst_and_more	2000-01-01 00:00:00+00
+465	bpp	0348_remove_uczelnia_pokazuj_raport_dla_komisji_centralnej_and_more	2000-01-01 00:00:00+00
+466	bpp	0349_uczelnia_ranking_autorow_bez_kol_naukowych	2000-01-01 00:00:00+00
+467	bpp	0350_uczelnia_pokazuj_autorow_obcych_w_przegladaniu_danych	2000-01-01 00:00:00+00
+468	bpp	0351_uczelnia_pokazuj_autorow_bez_prac_w_przegladaniu_danych	2000-01-01 00:00:00+00
+469	bpp	0352_dyscyplina_zrodla_rok	2000-01-01 00:00:00+00
+470	bpp	0353_rekord_mat_kwartyle	2000-01-01 00:00:00+00
+471	bpp	0354_alter_dyscyplina_zrodla_options_and_more	2000-01-01 00:00:00+00
+472	bpp	0355_uczelnia_drukuj_oswiadczenia_and_more	2000-01-01 00:00:00+00
+473	bpp	0356_drop_kc_komisja_centralna	2000-01-01 00:00:00+00
+474	bpp	0357_openaccess_data_opublikowania	2000-01-01 00:00:00+00
+475	bpp	0358_nowe_sumy_view_add_pk	2000-01-01 00:00:00+00
+476	bpp	0359_patent_slowa_kluczowe_eng_and_more	2000-01-01 00:00:00+00
+477	bpp	0360_uczelnia_pokazuj_zrodla_bez_prac_w_przegladaniu_danych_and_more	2000-01-01 00:00:00+00
+478	bpp	0361_alter_patent_slowa_kluczowe_eng_and_more	2000-01-01 00:00:00+00
+479	bpp	0362_rzeczownik	2000-01-01 00:00:00+00
+480	bpp	0363_uczelnia_pokazuj_jednostki_na_pierwszej_stronie_and_more	2000-01-01 00:00:00+00
+481	bpp	0364_rzeczownik_uczelnie_pl	2000-01-01 00:00:00+00
+482	bpp	0365_bppuser_pbn_token_updated	2000-01-01 00:00:00+00
+483	bpp	0366_alter_uczelnia_pbn_api_afiliacja_zawsze_na_uczelnie	2000-01-01 00:00:00+00
+484	bpp	0367_bppuser_przedstawiaj_w_pbn_jako	2000-01-01 00:00:00+00
+485	bpp	0368_wydawnictwo_zwarte_wydawnictwo_nadrzedne_w_pbn	2000-01-01 00:00:00+00
+486	bpp	0369_wyd_zwarte_nadrzedne_w_pbn	2000-01-01 00:00:00+00
+487	bpp	0370_alter_autor_dyscyplina_options_jezyk_widoczny	2000-01-01 00:00:00+00
+488	bpp	0371_usun_spacje_z_nazw_dyscyplin	2000-01-01 00:00:00+00
+489	bpp	0372_autor_dyscyplina_dni_absencji_and_more	2000-01-01 00:00:00+00
+490	bpp	0373_alter_praca_doktorska_jezyk_and_more	2000-01-01 00:00:00+00
+491	bpp	0374_remove_autor_dyscyplina_dni_absencji_and_more	2000-01-01 00:00:00+00
+492	bpp	0375_alter_autor_absencja_options_and_more	2000-01-01 00:00:00+00
+493	bpp	0376_alter_autor_dyscyplina_rodzaj_autora	2000-01-01 00:00:00+00
+494	bpp	0377_autor_dyscyplina_zatrudnienie_do_and_more	2000-01-01 00:00:00+00
+495	bpp	0378_alter_praca_doktorska_pbn_uid_and_more	2000-01-01 00:00:00+00
+496	bpp	0379_cache_liczba_n_last_updated_and_more	2000-01-01 00:00:00+00
+497	bpp	0380_rekord_wydawca	2000-01-01 00:00:00+00
+498	bpp	0381_uczelnia_przydzielaj_1_slot_gdy_udzial_mniejszy	2000-01-01 00:00:00+00
+499	bpp	0382_alter_uczelnia_przydzielaj_1_slot_gdy_udzial_mniejszy	2000-01-01 00:00:00+00
+500	bpp	0383_uczelnia_pytaj_o_zgode_na_publikacje_pelnego_tekstu	2000-01-01 00:00:00+00
+501	bpp	0384_remove_charakter_formalny_charakter_crossref_and_more	2000-01-01 00:00:00+00
+502	bpp	0385_alter_crossref_mapper_charakter_crossref_and_more	2000-01-01 00:00:00+00
+503	bpp	0386_alter_crossref_mapper_charakter_crossref	2000-01-01 00:00:00+00
+504	bpp	0387_fix_refresh_cache_locking_deadlocks	2000-01-01 00:00:00+00
+505	bpp	0388_uczelnia_uzywaj_wydzialow	2000-01-01 00:00:00+00
+506	bpp	0389_alter_uczelnia_uzywaj_wydzialow	2000-01-01 00:00:00+00
+507	bpp	0390_add_filters_to_sumy_view	2000-01-01 00:00:00+00
+508	bpp	0391_migrate_rodzaj_autora_to_foreignkey	2000-01-01 00:00:00+00
+509	bpp	0392_alter_autor_dyscyplina_rodzaj_autora	2000-01-01 00:00:00+00
+510	bpp	0393_uczelnia_tytul_strony_glownej	2000-01-01 00:00:00+00
+511	bpp	0394_alter_uczelnia_clarivate_password_and_more	2000-01-01 00:00:00+00
+512	bpp	0395_add_wymagaj_logowania_zglos_publikacje	2000-01-01 00:00:00+00
+513	bpp	0396_uczelnia_nowy_autor_z_formularza_pokazuj	2000-01-01 00:00:00+00
+514	bpp	0397_remove_null_from_string_fields	2000-01-01 00:00:00+00
+515	bpp	0398_alter_autor_string_fields_schema	2000-01-01 00:00:00+00
+516	bpp	0399_fix_refresh_cache_upsert	2000-01-01 00:00:00+00
+517	bpp	0400_add_status_optymalizacji_bulk	2000-01-01 00:00:00+00
+518	bpp	0401_autorzy_przypieta	2000-01-01 00:00:00+00
+519	bpp	0402_autorzy_data_oswiadczenia	2000-01-01 00:00:00+00
+520	bpp	0403_autorzy_ostatnio_zmieniony	2000-01-01 00:00:00+00
+521	bpp	0404_add_oplaty_publikacji_log	2000-01-01 00:00:00+00
+522	bpp	0405_add_rok_to_oplaty_log	2000-01-01 00:00:00+00
+523	bpp	0406_add_pbn_evaluation_fields	2000-01-01 00:00:00+00
+524	bpp	0407_remove_null_from_string_fields	2000-01-01 00:00:00+00
+525	bpp	0408_add_jest_wydawnictwem_zwartym_to_crossref_mapper	2000-01-01 00:00:00+00
+526	bpp	0409_set_default_jest_wydawnictwem_zwartym	2000-01-01 00:00:00+00
+527	bpp	0410_set_polish_skrot_crossref	2000-01-01 00:00:00+00
+528	bpp	0411_uczelnia_orcid_fields	2000-01-01 00:00:00+00
+529	bpp	0412_uczelnia_orcid_staff_only	2000-01-01 00:00:00+00
+530	bpp	0411_nowy_formularz_zgloszenia	2000-01-01 00:00:00+00
+531	bpp	0413_merge_20260416_2124	2000-01-01 00:00:00+00
+532	bpp	0413_bppuser_autor_onetoone	2000-01-01 00:00:00+00
+533	bpp	0414_merge_20260427_1123	2000-01-01 00:00:00+00
+534	bpp	0414_code_review_2026_05_fixes	2000-01-01 00:00:00+00
+535	bpp	0415_merge_20260504_0907	2000-01-01 00:00:00+00
+536	bpp	0416_rename_dynamic_columns_to_admin	2000-01-01 00:00:00+00
+537	bpp	0417_remove_uczelnia_pokazuj_raport_autorow_and_more	2000-01-01 00:00:00+00
+538	bpp	0414_uczelnia_pbn_kasuj_dyscypliny_selektywnie	2000-01-01 00:00:00+00
+539	bpp	0416_merge_20260504_1024	2000-01-01 00:00:00+00
+540	bpp	0417_merge_20260601_0632	2000-01-01 00:00:00+00
+541	bpp	0418_merge_20260601_0954	2000-01-01 00:00:00+00
+542	bpp	0418_autor_dyscyplina_trigger_on_conflict	2000-01-01 00:00:00+00
+543	bpp	0419_merge_20260601_1319	2000-01-01 00:00:00+00
+544	bpp	0420_autor_pokazuj_siec_powiazan_and_more	2000-01-01 00:00:00+00
+545	bpp	0421_cache_trigger_pk_filter	2000-01-01 00:00:00+00
+546	bpp	0422_drop_unused_cache_indexes	2000-01-01 00:00:00+00
+547	bpp	0423_drop_redundant_fk_indexes_autor	2000-01-01 00:00:00+00
+548	bpp	0424_alter_autor_dyscyplina_autor_and_more	2000-01-01 00:00:00+00
+549	bpp	0425_drop_redundant_raw_indexes	2000-01-01 00:00:00+00
+550	bpp	0426_fix_grant_textfield_null_and_redundant_indexes	2000-01-01 00:00:00+00
+551	bpp	0421_uczelnia_dspace_aktywny_uczelnia_dspace_api_endpoint_and_more	2000-01-01 00:00:00+00
+552	bpp	0422_element_repozytorium_deleted_at_and_more	2000-01-01 00:00:00+00
+553	bpp	0427_merge_20260604_1838	2000-01-01 00:00:00+00
+554	bpp	0428_weighted_publication_fulltext	2000-01-01 00:00:00+00
+555	bpp	0429_cache_trigger_v3	2000-01-01 00:00:00+00
+556	bpp	0430_rekord_mat_slug_idx	2000-01-01 00:00:00+00
+557	bpp	0431_search_index_gin	2000-01-01 00:00:00+00
+558	bpp	0440_port_plpython_to_plpgsql	2000-01-01 00:00:00+00
+559	bpp	0441_drop_trigger_tytul_sort	2000-01-01 00:00:00+00
+560	bpp	0432_cache_trigger_plpgsql	2000-01-01 00:00:00+00
+561	bpp	0433_cache_trigger_when_gate	2000-01-01 00:00:00+00
+562	bpp	0442_drop_plpython3u	2000-01-01 00:00:00+00
+563	bpp	0443_drop_pl_PL_collation	2000-01-01 00:00:00+00
+564	sites	0002_alter_domain_unique	2000-01-01 00:00:00+00
+565	bpp	0411_uczelnia_site_theme_user_sites	2000-01-01 00:00:00+00
+566	bpp	0412_link_uczelnia_to_site	2000-01-01 00:00:00+00
+567	bpp	0413_uczelnia_constance_fields	2000-01-01 00:00:00+00
+568	bpp	0414_copy_constance_to_uczelnia	2000-01-01 00:00:00+00
+569	bpp	0415_rename_accessible_sites_to_uczelnie	2000-01-01 00:00:00+00
+570	bpp	0416_merge_20260428_1806	2000-01-01 00:00:00+00
+571	bpp	0417_ensure_uczelnia_site_not_null	2000-01-01 00:00:00+00
+572	bpp	0418_merge_20260521_1015	2000-01-01 00:00:00+00
+573	bpp	0419_merge_20260601_0952	2000-01-01 00:00:00+00
+574	bpp	0420_merge_20260601_1246	2000-01-01 00:00:00+00
+575	bpp	0421_alter_uczelnia_theme_name	2000-01-01 00:00:00+00
+576	bpp	0422_alter_uczelnia_theme_name	2000-01-01 00:00:00+00
+577	bpp	0423_merge_20260602_1430	2000-01-01 00:00:00+00
+578	bpp	0424_cache_punktacja_dyscypliny_uczelnia_and_more	2000-01-01 00:00:00+00
+579	bpp	0425_per_uczelnia_cache_view	2000-01-01 00:00:00+00
+580	bpp	0426_cache_punktacja_autora_view_uczelnia	2000-01-01 00:00:00+00
+581	bpp	0427_cpd_index_rekord_uczelnia_dyscyplina	2000-01-01 00:00:00+00
+582	bpp	0428_cpd_uczelnia_not_null	2000-01-01 00:00:00+00
+583	bpp	0429_merge_20260604_1952	2000-01-01 00:00:00+00
+584	bpp	0430_wydawnictwo_ciagle_tytul_wydawnictwo_zwarte_tytul	2000-01-01 00:00:00+00
+585	bpp	0431_merge_20260612_1504	2000-01-01 00:00:00+00
+586	bpp	0432_merge_0431_merge_20260612_1504_0431_search_index_gin	2000-01-01 00:00:00+00
+587	bpp	0444_merge_20260616_1920	2000-01-01 00:00:00+00
+588	bpp	0444_alter_uczelnia_wyszukiwanie_rekordy_na_strone_anonim_and_more	2000-01-01 00:00:00+00
+589	bpp	0445_merge_20260622_1134	2000-01-01 00:00:00+00
+590	bpp	0446_rzeczownik_tylko_mianownik	2000-01-01 00:00:00+00
+591	bpp	0447_fd390_aktualna_jednostka_demote_obca	2000-01-01 00:00:00+00
+592	bpp	0448_rodzajjednostki	2000-01-01 00:00:00+00
+593	bpp	0449_seed_rodzajjednostki	2000-01-01 00:00:00+00
+594	bpp	0450_jednostka_rodzaj	2000-01-01 00:00:00+00
+595	bpp	0451_backfill_jednostka_rodzaj	2000-01-01 00:00:00+00
+596	bpp	0452_jednostka_pola_faza_a	2000-01-01 00:00:00+00
+597	bpp	0453_zrodlo_trigram_indexes	2000-01-01 00:00:00+00
+599	bpp	0455_faza_b_i2	2000-01-01 00:00:00+00
+600	bpp	0456_faza_b_i3	2000-01-01 00:00:00+00
+601	bpp	0457_faza_b_i4	2000-01-01 00:00:00+00
+602	bpp	0458_faza_b_ii1_views	2000-01-01 00:00:00+00
+603	bpp	0444_charakter_formalny_ukryty_charakter_pbn_ukryty_and_more	2000-01-01 00:00:00+00
+604	bpp	0459_faza_b_ii1_retarget	2000-01-01 00:00:00+00
+605	bpp	0460_faza_b_ii2_repoint	2000-01-01 00:00:00+00
+606	bpp	0461_faza_b_iii1_usun_rodzaj_jednostki	2000-01-01 00:00:00+00
+607	bpp	0462_faza_b_iv1_przelicz_aktualna	2000-01-01 00:00:00+00
+608	bpp	0463_faza_b_iv2_multiseek_values	2000-01-01 00:00:00+00
+609	bpp	0464_rodzajjednostki_autor_moze_afiliowac	2000-01-01 00:00:00+00
+610	bpp	0454_merge_20260706_0727	2000-01-01 00:00:00+00
+611	bpp	0444_deferred_podstawowe_miejsce_pracy	2000-01-01 00:00:00+00
+612	bpp	0445_merge_20260621_0640	2000-01-01 00:00:00+00
+613	bpp	0465_merge_20260707_0736	2000-01-01 00:00:00+00
+614	bpp	0466_bppuser_zwijaj_dlugie_listy_autorow_and_more	2000-01-01 00:00:00+00
+615	bpp	0467_seed_crossref_mapper_rows	2000-01-01 00:00:00+00
+616	import_pracownikow	0011_row_nullable_diff	2000-01-01 00:00:00+00
+617	import_pracownikow	0012_mapowanie_profile	2000-01-01 00:00:00+00
+618	import_pracownikow	0013_confidence_kandydaci	2000-01-01 00:00:00+00
+619	import_pracownikow	0014_utworz_nowego_odpiecie	2000-01-01 00:00:00+00
+620	easyaudit	0001_initial	2000-01-01 00:00:00+00
+621	bpp	0468_stopien_sluzbowy_stanowisko_dydaktyczne	2000-01-01 00:00:00+00
+622	bpp	0469_przyszle_daty_zakonczenia_zatrudnienia	2000-01-01 00:00:00+00
+623	bpp	0470_indeksy_gin_i_funkcyjne	2000-01-01 00:00:00+00
+624	bpp	0471_deduplikuj_autor_jednostka_bez_daty	2000-01-01 00:00:00+00
+625	bpp	0472_constraint_autor_jednostka_bez_daty	2000-01-01 00:00:00+00
+626	channels_broadcast	0001_initial	2000-01-01 00:00:00+00
+627	constance	0001_initial	2000-01-01 00:00:00+00
+628	constance	0002_migrate_from_old_table	2000-01-01 00:00:00+00
+629	constance	0003_drop_pickle	2000-01-01 00:00:00+00
+630	crossref_bpp	0001_initial	2000-01-01 00:00:00+00
+631	dashboard	0001_initial	2000-01-01 00:00:00+00
+632	dbtemplates	0002_alter_template_creation_date_and_more	2000-01-01 00:00:00+00
+633	pbn_api	0049_tlumacz_dyscyplin_2025	2000-01-01 00:00:00+00
+634	pbn_api	0050_zamapuj_nowe_dyscypliny_2025	2000-01-01 00:00:00+00
+635	pbn_api	0051_alter_discipline_options_and_more	2000-01-01 00:00:00+00
+636	pbn_api	0052_publikacjainstytucji_v2	2000-01-01 00:00:00+00
+637	pbn_api	0053_alter_publikacjainstytucji_v2_unique_together	2000-01-01 00:00:00+00
+638	pbn_api	0054_publikacjainstytucji_v2_created_on_and_more	2000-01-01 00:00:00+00
+639	pbn_api	0055_osobazinstytucji	2000-01-01 00:00:00+00
+640	pbn_api	0056_delete_osobazinstytucji	2000-01-01 00:00:00+00
+641	pbn_api	0057_osobazinstytucji	2000-01-01 00:00:00+00
+642	pbn_api	0058_alter_osobazinstytucji_title	2000-01-01 00:00:00+00
+643	pbn_api	0059_alter_osobazinstytucji__from	2000-01-01 00:00:00+00
+644	pbn_api	0060_alter_osobazinstytucji_personid	2000-01-01 00:00:00+00
+645	pbn_api	0061_remove_pbn_export_queue	2000-01-01 00:00:00+00
+646	pbn_api	0062_sent_data_success_tracking	2000-01-01 00:00:00+00
+647	pbn_api	0063_pbnodpowiedziniepozadane	2000-01-01 00:00:00+00
+648	pbn_api	0064_alter_pbnodpowiedziniepozadane_stary_uid_and_more	2000-01-01 00:00:00+00
+649	pbn_api	0065_make_uzytkownik_nullable	2000-01-01 00:00:00+00
+650	pbn_api	0066_add_duplicate_scan_models	2000-01-01 00:00:00+00
+651	deduplikator_autorow	0001_initial	2000-01-01 00:00:00+00
+652	deduplikator_autorow	0002_logautomatycznegoscalania	2000-01-01 00:00:00+00
+653	deduplikator_autorow	0003_alter_notaduplicate_scientist_pk	2000-01-01 00:00:00+00
+654	deduplikator_autorow	0004_alter_notaduplicate_unique_together_and_more	2000-01-01 00:00:00+00
+655	deduplikator_autorow	0005_replace_log_model	2000-01-01 00:00:00+00
+656	deduplikator_autorow	0006_add_ignored_author	2000-01-01 00:00:00+00
+657	deduplikator_autorow	0007_add_duplicate_scan_models	2000-01-01 00:00:00+00
+658	deduplikator_autorow	0008_add_priority_field	2000-01-01 00:00:00+00
+659	deduplikator_autorow	0009_rename_ignoredauthor_ignoredscientist	2000-01-01 00:00:00+00
+660	deduplikator_autorow	0010_add_ignored_author	2000-01-01 00:00:00+00
+661	deduplikator_autorow	0011_scan_mode_phase_partial	2000-01-01 00:00:00+00
+662	deduplikator_autorow	0012_alter_duplicatecandidate_main_autor_and_more	2000-01-01 00:00:00+00
+663	deduplikator_publikacji	0001_initial	2000-01-01 00:00:00+00
+664	deduplikator_publikacji	0002_remove_publicationduplicatecandidate_deduplikato_similar_17e420_idx_and_more	2000-01-01 00:00:00+00
+665	deduplikator_zrodel	0001_initial	2000-01-01 00:00:00+00
+666	deduplikator_zrodel	0002_scanzrodelforduplicates_sourceduplicatecandidate	2000-01-01 00:00:00+00
+667	denorm	0001_initial	2000-01-01 00:00:00+00
+668	denorm	0002_dirtyinstance_func_name	2000-01-01 00:00:00+00
+669	denorm	0003_auto_20211002_1955	2000-01-01 00:00:00+00
+670	denorm	0004_alter_dirtyinstance_success	2000-01-01 00:00:00+00
+671	denorm	0005_dirtyinstance_created_on	2000-01-01 00:00:00+00
+672	denorm	0006_auto_20211003_0346	2000-01-01 00:00:00+00
+673	denorm	0007_auto_created_on_now	2000-01-01 00:00:00+00
+674	denorm	0008_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+675	denorm	0009_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+676	denorm	0010_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+677	denorm	0011_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+678	denorm	0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+679	denorm	0013_alter_dirtyinstance_success	2000-01-01 00:00:00+00
+680	denorm	0014_parametrized_notify	2000-01-01 00:00:00+00
+681	denorm	0015_remove_dirtyinstance_processing_finished_and_more	2000-01-01 00:00:00+00
+682	denorm	0016_not_parametrized_notify	2000-01-01 00:00:00+00
+683	denorm	0017_dirtyinstance_unique_index	2000-01-01 00:00:00+00
+684	denorm	0018_alter_dirtyinstance_content_type_and_more	2000-01-01 00:00:00+00
+685	denorm	0019_conditional_notify_during_flush	2000-01-01 00:00:00+00
+686	django_celery_results	0001_initial	2000-01-01 00:00:00+00
+687	django_celery_results	0002_add_task_name_args_kwargs	2000-01-01 00:00:00+00
+688	django_celery_results	0003_auto_20181106_1101	2000-01-01 00:00:00+00
+689	django_celery_results	0004_auto_20190516_0412	2000-01-01 00:00:00+00
+690	django_celery_results	0005_taskresult_worker	2000-01-01 00:00:00+00
+691	django_celery_results	0006_taskresult_date_created	2000-01-01 00:00:00+00
+692	django_celery_results	0007_remove_taskresult_hidden	2000-01-01 00:00:00+00
+693	django_celery_results	0008_chordcounter	2000-01-01 00:00:00+00
+694	django_celery_results	0009_groupresult	2000-01-01 00:00:00+00
+695	django_celery_results	0010_remove_duplicate_indices	2000-01-01 00:00:00+00
+696	django_celery_results	0011_taskresult_periodic_task_name	2000-01-01 00:00:00+00
+697	django_celery_results	0012_taskresult_date_started	2000-01-01 00:00:00+00
+698	django_celery_results	0013_taskresult_django_cele_periodi_1993cf_idx	2000-01-01 00:00:00+00
+699	django_celery_results	0014_alter_taskresult_status	2000-01-01 00:00:00+00
+700	django_countdown	0001_initial	2000-01-01 00:00:00+00
+701	django_countdown	0002_alter_sitecountdown_countdown_time	2000-01-01 00:00:00+00
+702	django_countdown	0003_sitecountdown_maintenance_until	2000-01-01 00:00:00+00
+703	django_countdown	0004_alter_sitecountdown_long_description	2000-01-01 00:00:00+00
+704	django_countdown	0005_alter_sitecountdown_options_and_more	2000-01-01 00:00:00+00
+705	dspace_api	0001_initial	2000-01-01 00:00:00+00
+706	dspace_api	0002_senttodspace	2000-01-01 00:00:00+00
+707	dspace_api	0003_senttodspace_bitstreams	2000-01-01 00:00:00+00
+708	dspace_api	0004_senttodspace_dspace_handle	2000-01-01 00:00:00+00
+709	easyaudit	0002_auto_20170125_0759	2000-01-01 00:00:00+00
+710	easyaudit	0003_auto_20170228_1505	2000-01-01 00:00:00+00
+711	easyaudit	0004_auto_20170620_1354	2000-01-01 00:00:00+00
+712	easyaudit	0005_auto_20170713_1155	2000-01-01 00:00:00+00
+713	easyaudit	0006_auto_20171018_1242	2000-01-01 00:00:00+00
+714	easyaudit	0007_auto_20180105_0838	2000-01-01 00:00:00+00
+715	easyaudit	0008_auto_20180220_1908	2000-01-01 00:00:00+00
+716	easyaudit	0009_auto_20180314_2225	2000-01-01 00:00:00+00
+717	easyaudit	0010_repr_text	2000-01-01 00:00:00+00
+718	easyaudit	0011_auto_20181101_1339	2000-01-01 00:00:00+00
+719	easyaudit	0012_auto_20181018_0012	2000-01-01 00:00:00+00
+720	easyaudit	0013_auto_20190723_0126	2000-01-01 00:00:00+00
+721	easyaudit	0014_auto_20200513_0008	2000-01-01 00:00:00+00
+722	easyaudit	0015_auto_20201019_1217	2000-01-01 00:00:00+00
+723	easyaudit	0016_alter_crudevent_event_type	2000-01-01 00:00:00+00
+724	easyaudit	0017_alter_requestevent_datetime	2000-01-01 00:00:00+00
+725	easyaudit	0018_rename_crudevent_object_id_content_type_index	2000-01-01 00:00:00+00
+726	easyaudit	0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
+727	ewaluacja2021	0001_initial	2000-01-01 00:00:00+00
+728	ewaluacja2021	0002_auto_20211026_1137	2000-01-01 00:00:00+00
+729	ewaluacja2021	0003_auto_20211027_2320	2000-01-01 00:00:00+00
+730	ewaluacja2021	0004_importmaksymalnychslotow_ostatnia_zmiana	2000-01-01 00:00:00+00
+731	ewaluacja2021	0005_auto_20211028_0039	2000-01-01 00:00:00+00
+732	ewaluacja2021	0006_auto_20211110_0000	2000-01-01 00:00:00+00
+733	ewaluacja2021	0007_auto_20211110_0002	2000-01-01 00:00:00+00
+734	ewaluacja2021	0008_auto_20211122_0103	2000-01-01 00:00:00+00
+735	ewaluacja2021	0009_zamowienienaraport_status	2000-01-01 00:00:00+00
+736	ewaluacja2021	0010_django32	2000-01-01 00:00:00+00
+737	ewaluacja2021	0011_nullbooleanfield	2000-01-01 00:00:00+00
+738	ewaluacja2021	0012_liczbandlauczelni_2022_2025_and_more	2000-01-01 00:00:00+00
+739	ewaluacja2021	0013_alter_iloscudzialowdlaautora_ilosc_udzialow_and_more	2000-01-01 00:00:00+00
+740	ewaluacja2021	0014_iloscudzialowzarok	2000-01-01 00:00:00+00
+741	ewaluacja2021	0015_dyscyplina_nie_raportowana	2000-01-01 00:00:00+00
+742	ewaluacja2021	0016_alter_iloscudzialowdlaautora_2022_2025_unique_together_and_more	2000-01-01 00:00:00+00
+743	ewaluacja2021	0017_alter_liczbandlauczelni_dyscyplina_naukowa_and_more	2000-01-01 00:00:00+00
+744	ewaluacja2021	0018_move_files_to_protected	2000-01-01 00:00:00+00
+745	ewaluacja2021	0019_remove_null_from_string_fields	2000-01-01 00:00:00+00
+746	ewaluacja2021	0020_delete_ewaluacja2021_models	2000-01-01 00:00:00+00
+747	ewaluacja_liczba_n	0001_initial	2000-01-01 00:00:00+00
+748	ewaluacja_liczba_n	0002_rename_dyscyplinanieraportowana_2022_2025_dyscyplinanieraportowana_and_more	2000-01-01 00:00:00+00
+749	ewaluacja_liczba_n	0003_add_liczba_n_to_dyscyplina_nieraportowana	2000-01-01 00:00:00+00
+750	ewaluacja_liczba_n	0004_add_ilosc_udzialow_za_calosc	2000-01-01 00:00:00+00
+751	ewaluacja_liczba_n	0005_iloscudzialowdlaautorazarok_autor_dyscyplina	2000-01-01 00:00:00+00
+752	ewaluacja_liczba_n	0006_alter_iloscudzialowdlaautorazacalosc_unique_together_and_more	2000-01-01 00:00:00+00
+753	ewaluacja_liczba_n	0007_alter_iloscudzialowdlaautorazacalosc_komentarz	2000-01-01 00:00:00+00
+754	ewaluacja_liczba_n	0008_add_sankcje	2000-01-01 00:00:00+00
+755	ewaluacja_liczba_n	0009_iloscudzialow_uczelnia	2000-01-01 00:00:00+00
+756	ewaluacja_liczba_n	0009_alter_dyscyplinanieraportowana_uczelnia_and_more	2000-01-01 00:00:00+00
+757	ewaluacja_liczba_n	0010_merge_20260604_1952	2000-01-01 00:00:00+00
+758	ewaluacja_metryki	0001_initial	2000-01-01 00:00:00+00
+759	ewaluacja_metryki	0002_alter_metrykaautora_jednostka	2000-01-01 00:00:00+00
+760	ewaluacja_metryki	0003_add_liczba_do_przetworzenia	2000-01-01 00:00:00+00
+761	ewaluacja_metryki	0004_metrykaautora_rodzaj_autora	2000-01-01 00:00:00+00
+762	ewaluacja_metryki	0005_alter_metrykaautora_rodzaj_autora_and_more	2000-01-01 00:00:00+00
+763	ewaluacja_metryki	0006_metrykaautora_uczelnia	2000-01-01 00:00:00+00
+764	ewaluacja_metryki	0007_statusgenerowania_uczelnia	2000-01-01 00:00:00+00
+765	ewaluacja_metryki	0008_metrykaautora_uczelnia_notnull	2000-01-01 00:00:00+00
+766	ewaluacja_metryki	0006_alter_metrykaautora_autor_and_more	2000-01-01 00:00:00+00
+767	ewaluacja_metryki	0009_merge_20260604_1952	2000-01-01 00:00:00+00
+768	ewaluacja_metryki	0010_dedup_statusgenerowania_bez_uczelni	2000-01-01 00:00:00+00
+769	ewaluacja_metryki	0011_statusgenerowania_jeden_wiersz_bez_uczelni	2000-01-01 00:00:00+00
+770	ewaluacja_optymalizacja	0001_initial	2000-01-01 00:00:00+00
+771	ewaluacja_optymalizacja	0002_unpinningopportunity	2000-01-01 00:00:00+00
+772	ewaluacja_optymalizacja	0003_unpinningopportunity_punkty_roznica_b_and_more	2000-01-01 00:00:00+00
+773	ewaluacja_optymalizacja	0004_unpinningopportunity_punkty_roznica_a_and_more	2000-01-01 00:00:00+00
+774	ewaluacja_optymalizacja	0005_add_real_unpinning_values	2000-01-01 00:00:00+00
+775	ewaluacja_optymalizacja	0006_add_status_optymalizacji_z_odpinaniem	2000-01-01 00:00:00+00
+776	ewaluacja_optymalizacja	0007_add_status_optymalizacji_bulk	2000-01-01 00:00:00+00
+777	ewaluacja_optymalizacja	0008_add_status_unpinning_analizy	2000-01-01 00:00:00+00
+778	ewaluacja_optymalizacja	0009_add_plik_zip_wszystkie_xls	2000-01-01 00:00:00+00
+779	ewaluacja_optymalizacja	0010_add_is_optimal_to_optimizationrun	2000-01-01 00:00:00+00
+780	ewaluacja_optymalizacja	0011_move_files_to_protected	2000-01-01 00:00:00+00
+781	ewaluacja_optymalizacja	0012_add_discipline_swap_models	2000-01-01 00:00:00+00
+782	ewaluacja_optymalizacja	0013_add_status_przegladarka_recalc	2000-01-01 00:00:00+00
+783	ewaluacja_optymalizacja	0014_add_optimality_gap_to_optimization_run	2000-01-01 00:00:00+00
+784	ewaluacja_optymalizacja	0015_remove_disciplineswapopportunity_ewaluacja_o_uczelni_ed0a90_idx_and_more	2000-01-01 00:00:00+00
+785	ewaluacja_optymalizuj_publikacje	0001_initial	2000-01-01 00:00:00+00
+786	favicon	0001_initial	2000-01-01 00:00:00+00
+787	favicon	0002_favicon_site	2000-01-01 00:00:00+00
+788	favicon	0003_site_manager	2000-01-01 00:00:00+00
+789	favicon	0004_faviconimg_favicon_size_rel_unique	2000-01-01 00:00:00+00
+790	favicon	0005_leftover_changes	2000-01-01 00:00:00+00
+791	first_run_wizard	0001_initial	2000-01-01 00:00:00+00
+792	flexible_reports	0001_initial	2000-01-01 00:00:00+00
+793	flexible_reports	0002_auto_20170823_2225	2000-01-01 00:00:00+00
+794	flexible_reports	0003_table_attrs	2000-01-01 00:00:00+00
+795	flexible_reports	0004_auto_20170823_2342	2000-01-01 00:00:00+00
+796	flexible_reports	0005_column_attrs	2000-01-01 00:00:00+00
+797	flexible_reports	0006_default_ordering	2000-01-01 00:00:00+00
+798	flexible_reports	0007_sort_desc	2000-01-01 00:00:00+00
+799	flexible_reports	0008_auto_20171025_0553	2000-01-01 00:00:00+00
+800	flexible_reports	0009_auto_20171025_0558	2000-01-01 00:00:00+00
+801	flexible_reports	0010_auto_20171026_0340	2000-01-01 00:00:00+00
+802	flexible_reports	0011_alter_reportelement_options_alter_column_attrs_and_more	2000-01-01 00:00:00+00
+803	flexible_reports	0012_add_query_language	2000-01-01 00:00:00+00
+804	flexible_reports	0013_add_sample_context	2000-01-01 00:00:00+00
+805	flexible_reports	0014_alter_datasource_sample_context	2000-01-01 00:00:00+00
+806	formdefaults	0001_initial	2000-01-01 00:00:00+00
+807	formdefaults	0002_django32	2000-01-01 00:00:00+00
+808	formdefaults	0003_formrepresentation_pre_registered	2000-01-01 00:00:00+00
+809	formdefaults	0004_unique_field_user	2000-01-01 00:00:00+00
+810	formdefaults	0005_unique_field_system	2000-01-01 00:00:00+00
+811	formdefaults	0006_formfielddefaultvalue_is_auto_snapshot	2000-01-01 00:00:00+00
+812	formdefaults	0007_backfill_is_auto_snapshot	2000-01-01 00:00:00+00
+813	import_dyscyplin	0001_initial	2000-01-01 00:00:00+00
+814	import_dyscyplin	0002_import_dyscyplin_web_page_uid	2000-01-01 00:00:00+00
+815	import_dyscyplin	0003_auto_20180409_1129	2000-01-01 00:00:00+00
+816	import_dyscyplin	0004_auto_20180409_1240	2000-01-01 00:00:00+00
+817	import_dyscyplin	0005_auto_20180414_1801	2000-01-01 00:00:00+00
+818	import_dyscyplin	0006_auto_20180414_1841	2000-01-01 00:00:00+00
+819	import_dyscyplin	0007_auto_20180414_1917	2000-01-01 00:00:00+00
+820	import_dyscyplin	0008_auto_20180415_0813	2000-01-01 00:00:00+00
+821	import_dyscyplin	0009_auto_20180415_0847	2000-01-01 00:00:00+00
+822	import_dyscyplin	0010_auto_20180415_1107	2000-01-01 00:00:00+00
+823	import_dyscyplin	0011_auto_20180415_2223	2000-01-01 00:00:00+00
+824	import_dyscyplin	0012_import_dyscyplin_row_dyscyplina_ostateczna	2000-01-01 00:00:00+00
+825	import_dyscyplin	0013_auto_20190324_1826	2000-01-01 00:00:00+00
+826	import_dyscyplin	0014_auto_20190324_1906	2000-01-01 00:00:00+00
+827	import_dyscyplin	0015_auto_20190326_0553	2000-01-01 00:00:00+00
+828	import_dyscyplin	0016_auto_20190327_0129	2000-01-01 00:00:00+00
+829	import_dyscyplin	0017_auto_20190327_2246	2000-01-01 00:00:00+00
+830	import_dyscyplin	0018_auto_20200329_1719	2000-01-01 00:00:00+00
+831	import_dyscyplin	0019_drop_pesel_md5	2000-01-01 00:00:00+00
+832	import_dyscyplin	0020_django32	2000-01-01 00:00:00+00
+833	import_dyscyplin	0021_import_pustych_do_skasowania	2000-01-01 00:00:00+00
+834	import_dyscyplin	0022_move_files_to_protected	2000-01-01 00:00:00+00
+835	import_dyscyplin	0023_remove_null_from_string_fields	2000-01-01 00:00:00+00
+836	import_dyscyplin	0024_faza_b_ii2_repoint_wydzial	2000-01-01 00:00:00+00
+837	import_list_if	0001_initial	2000-01-01 00:00:00+00
+838	import_list_if	0002_auto_20210308_1246	2000-01-01 00:00:00+00
+839	import_list_if	0003_django32	2000-01-01 00:00:00+00
+840	import_list_if	0004_alter_importlistif_plik_xls	2000-01-01 00:00:00+00
+841	import_list_if	0005_liveops	2000-01-01 00:00:00+00
+842	import_list_ministerialnych	0001_initial	2000-01-01 00:00:00+00
+843	import_list_ministerialnych	0002_alter_wierszimportudyscyplinzrodel_nr_wiersza	2000-01-01 00:00:00+00
+844	import_list_ministerialnych	0003_rename_wierszimportudyscyplinzrodel_wierszimportulistyministerialnej	2000-01-01 00:00:00+00
+845	import_list_ministerialnych	0004_importlistministerialnych_ignoruj_zrodla_bez_odpowiednika	2000-01-01 00:00:00+00
+846	import_list_ministerialnych	0005_add_duplicate_tracking_fields	2000-01-01 00:00:00+00
+847	import_list_ministerialnych	0006_importlistministerialnych_nie_porownuj_po_tytulach	2000-01-01 00:00:00+00
+848	import_list_ministerialnych	0007_move_files_to_protected	2000-01-01 00:00:00+00
+849	import_list_ministerialnych	0008_remove_null_from_string_fields	2000-01-01 00:00:00+00
+850	import_polon	0001_initial	2000-01-01 00:00:00+00
+851	import_polon	0002_remove_wierszimportuplikupolon_orig_and_more	2000-01-01 00:00:00+00
+852	import_polon	0003_wierszimportuplikupolon_dyscyplina_naukowa_and_more	2000-01-01 00:00:00+00
+853	import_polon	0004_importplikupolon_rok	2000-01-01 00:00:00+00
+854	import_polon	0005_alter_wierszimportuplikupolon_options_and_more	2000-01-01 00:00:00+00
+855	import_polon	0006_importplikupolon_zapisz_zmiany_do_bazy	2000-01-01 00:00:00+00
+856	import_polon	0007_importplikupolon_ukryj_niezmatchowanych_autorow	2000-01-01 00:00:00+00
+857	import_polon	0008_importplikuabsencji	2000-01-01 00:00:00+00
+858	import_polon	0009_wierszimportuplikuabsencji	2000-01-01 00:00:00+00
+859	import_polon	0010_alter_wierszimportuplikuabsencji_options_and_more	2000-01-01 00:00:00+00
+860	import_polon	0011_alter_wierszimportuplikuabsencji_ile_dni_and_more	2000-01-01 00:00:00+00
+861	import_polon	0012_importpolonoverride	2000-01-01 00:00:00+00
+862	import_polon	0013_alter_importpolonoverride_options_and_more	2000-01-01 00:00:00+00
+863	import_polon	0014_add_ignoruj_miejsce_pracy	2000-01-01 00:00:00+00
+864	import_polon	0015_move_files_to_protected	2000-01-01 00:00:00+00
+865	import_polon	0016_importplikupolon_uczelnia	2000-01-01 00:00:00+00
+866	import_polon	0017_liveops	2000-01-01 00:00:00+00
+867	import_pracownikow	0015_przepnij_prace	2000-01-01 00:00:00+00
+868	import_pracownikow	0016_importpracownikow_tworz_brakujace_jednostki_and_more	2000-01-01 00:00:00+00
+869	import_pracownikow	0017_importpracownikow_tworz_brakujace_tytuly_and_more	2000-01-01 00:00:00+00
+870	import_pracownikow	0018_importpracownikow_zakres_integracji	2000-01-01 00:00:00+00
+871	import_pracownikow	0019_alter_importpracownikow_stan	2000-01-01 00:00:00+00
+872	import_pracownikow	0020_confidence_status_reczny	2000-01-01 00:00:00+00
+873	import_pracownikow	0021_pola_data_zmian_i_przepnij_wszystkie	2000-01-01 00:00:00+00
+874	import_pracownikow	0022_alter_importpracownikowrow_confidence	2000-01-01 00:00:00+00
+875	import_pracownikow	0023_slowniki_stopnie_stanowiska	2000-01-01 00:00:00+00
+876	import_pracownikow	0024_importpracownikowrow_stany_pol_snapshot	2000-01-01 00:00:00+00
+877	import_pracownikow	0025_importpracownikow_plik_po_imporcie	2000-01-01 00:00:00+00
+878	import_pracownikow	0026_importpracownikow_uczelnia	2000-01-01 00:00:00+00
+879	import_pracownikow	0027_profil_uczelnia	2000-01-01 00:00:00+00
+880	import_punktacji_zrodel	0001_initial	2000-01-01 00:00:00+00
+881	import_punktacji_zrodel	0002_alter_importpunktacjizrodel_options_and_more	2000-01-01 00:00:00+00
+882	pbn_api	0067_fix_osobazinstytucji_title_not_null	2000-01-01 00:00:00+00
+883	pbn_api	0068_add_cache_models	2000-01-01 00:00:00+00
+884	importer_autorow_pbn	0001_initial	2000-01-01 00:00:00+00
+885	importer_autorow_pbn	0002_add_cache_models	2000-01-01 00:00:00+00
+886	zglos_publikacje	0001_initial	2000-01-01 00:00:00+00
+887	zglos_publikacje	0002_auto_20220710_2331	2000-01-01 00:00:00+00
+888	zglos_publikacje	0003_auto_20220801_2045	2000-01-01 00:00:00+00
+889	zglos_publikacje	0004_auto_20220801_2128	2000-01-01 00:00:00+00
+890	zglos_publikacje	0005_auto_20220807_2329	2000-01-01 00:00:00+00
+891	zglos_publikacje	0006_auto_20220815_1752	2000-01-01 00:00:00+00
+892	zglos_publikacje	0007_auto_20220816_1019	2000-01-01 00:00:00+00
+893	zglos_publikacje	0008_auto_20220816_1255	2000-01-01 00:00:00+00
+894	zglos_publikacje	0009_alter_zgloszenie_publikacji_status	2000-01-01 00:00:00+00
+895	zglos_publikacje	0010_auto_20220818_0012	2000-01-01 00:00:00+00
+896	zglos_publikacje	0011_auto_20220910_1646	2000-01-01 00:00:00+00
+897	zglos_publikacje	0012_auto_20220910_1654	2000-01-01 00:00:00+00
+898	zglos_publikacje	0013_auto_20220910_2114	2000-01-01 00:00:00+00
+899	zglos_publikacje	0014_zgloszenie_publikacji_autor_kierunek_studiow	2000-01-01 00:00:00+00
+900	zglos_publikacje	0015_zgloszenie_publikacji_autor_oswiadczenie_ken	2000-01-01 00:00:00+00
+901	zglos_publikacje	0016_zgloszenie_publikacji_deleted_at_and_more	2000-01-01 00:00:00+00
+902	zglos_publikacje	0017_zgloszenie_publikacji_zgoda_na_publikacje_pelnego_tekstu	2000-01-01 00:00:00+00
+903	zglos_publikacje	0018_alter_zgloszenie_publikacji_rodzaj_zglaszanej_publikacji	2000-01-01 00:00:00+00
+904	zglos_publikacje	0019_zgloszenie_publikacji_autor_ostatnio_zmieniony	2000-01-01 00:00:00+00
+905	zglos_publikacje	0020_move_files_to_protected	2000-01-01 00:00:00+00
+906	zglos_publikacje	0021_fix_file_paths	2000-01-01 00:00:00+00
+907	zglos_publikacje	0022_uuid_filenames	2000-01-01 00:00:00+00
+908	zglos_publikacje	0023_nowy_formularz_zgloszenia	2000-01-01 00:00:00+00
+909	zglos_publikacje	0024_migracja_danych_nowy_formularz	2000-01-01 00:00:00+00
+910	zglos_publikacje	0025_alter_obslugujacy_zgloszenia_wydzialow_user	2000-01-01 00:00:00+00
+911	zglos_publikacje	0026_faza_b_ii2_repoint_wydzial	2000-01-01 00:00:00+00
+912	zglos_publikacje	0027_zgloszenie_zaimportowane	2000-01-01 00:00:00+00
+913	importer_publikacji	0001_initial	2000-01-01 00:00:00+00
+914	importer_publikacji	0002_remove_skip_match_status	2000-01-01 00:00:00+00
+915	importer_publikacji	0003_importedauthor_dyscyplina_source	2000-01-01 00:00:00+00
+916	importer_publikacji	0004_rename_user_to_created_by_add_modified_by	2000-01-01 00:00:00+00
+917	importer_publikacji	0005_importsession_wydawnictwo_nadrzedne	2000-01-01 00:00:00+00
+918	importer_publikacji	0005_alter_importsession_created_by	2000-01-01 00:00:00+00
+919	importer_publikacji	0006_merge_20260421_1100	2000-01-01 00:00:00+00
+920	importer_publikacji	0007_async_import_state	2000-01-01 00:00:00+00
+921	importer_publikacji	0008_identifier_textfield	2000-01-01 00:00:00+00
+922	importer_publikacji	0009_importedauthor_candidate	2000-01-01 00:00:00+00
+923	importer_publikacji	0010_importedauthor_zapisany_jako	2000-01-01 00:00:00+00
+924	importer_publikacji	0006_merge_20260420_2212	2000-01-01 00:00:00+00
+925	importer_publikacji	0007_merge_20260421_1248	2000-01-01 00:00:00+00
+926	importer_publikacji	0011_merge_20260601_0632	2000-01-01 00:00:00+00
+927	importer_publikacji	0012_importsession_uczelnia	2000-01-01 00:00:00+00
+928	importer_publikacji	0012_alter_importedauthor_session	2000-01-01 00:00:00+00
+929	importer_publikacji	0013_merge_20260604_1952	2000-01-01 00:00:00+00
+930	importer_publikacji	0014_importedauthor_typ_ogolny	2000-01-01 00:00:00+00
+931	importer_publikacji	0015_alter_importsession_status	2000-01-01 00:00:00+00
+932	importer_publikacji	0016_alter_importsession_status	2000-01-01 00:00:00+00
+933	importer_publikacji	0017_multiple_works_import	2000-01-01 00:00:00+00
+934	importer_publikacji	0018_importsession_rodzaj_rekordu	2000-01-01 00:00:00+00
+935	importer_publikacji	0019_multipleworksimport_uczelnia	2000-01-01 00:00:00+00
+936	importer_publikacji	0020_importsession_zgloszenie	2000-01-01 00:00:00+00
+937	integrator2	0001_initial	2000-01-01 00:00:00+00
+938	integrator2	0002_auto_20160124_1336	2000-01-01 00:00:00+00
+939	integrator2	0003_django110_py3k	2000-01-01 00:00:00+00
+940	integrator2	0004_django32	2000-01-01 00:00:00+00
+941	integrator2	0005_nullbooleanfield	2000-01-01 00:00:00+00
+942	integrator2	0006_move_files_to_protected	2000-01-01 00:00:00+00
+943	komparator_pbn	0001_initial	2000-01-01 00:00:00+00
+944	komparator_pbn	0002_pbndownloadtask_current_step_and_more	2000-01-01 00:00:00+00
+945	komparator_pbn	0003_delete_pbndownloadtask	2000-01-01 00:00:00+00
+946	pbn_api	0069_sentdata_api_url	2000-01-01 00:00:00+00
+947	pbn_api	0070_drop_unused_indexes	2000-01-01 00:00:00+00
+948	pbn_api	0071_alter_institution_addresspostalcode_and_more	2000-01-01 00:00:00+00
+949	pbn_api	0072_pbn_search_gin_indexes	2000-01-01 00:00:00+00
+950	komparator_pbn_udzialy	0001_initial	2000-01-01 00:00:00+00
+951	komparator_pbn_udzialy	0002_add_brakautora_model	2000-01-01 00:00:00+00
+952	komparator_pbn_udzialy	0003_remove_brakautorawpublikacji_komparator__autor_i_e007d7_idx_and_more	2000-01-01 00:00:00+00
+953	menu	0001_initial	2000-01-01 00:00:00+00
+954	messages_extends	0001_initial	2000-01-01 00:00:00+00
+955	siteblog	0001_initial	2000-01-01 00:00:00+00
+956	miniblog	0001_initial	2000-01-01 00:00:00+00
+957	miniblog	0002_auto_20180101_2017	2000-01-01 00:00:00+00
+958	miniblog	0003_alter_article_article_body	2000-01-01 00:00:00+00
+959	miniblog	0004_migrate_to_siteblog_and_delete	2000-01-01 00:00:00+00
+960	nowe_raporty	0001_initial	2000-01-01 00:00:00+00
+961	oauth2_provider	0001_initial	2000-01-01 00:00:00+00
+962	oauth2_provider	0002_auto_20190406_1805	2000-01-01 00:00:00+00
+963	oauth2_provider	0003_auto_20201211_1314	2000-01-01 00:00:00+00
+964	oauth2_provider	0004_auto_20200902_2022	2000-01-01 00:00:00+00
+965	oauth2_provider	0005_auto_20211222_2352	2000-01-01 00:00:00+00
+966	oauth2_provider	0006_alter_application_client_secret	2000-01-01 00:00:00+00
+967	oauth2_provider	0007_application_post_logout_redirect_uris	2000-01-01 00:00:00+00
+968	oauth2_provider	0008_alter_accesstoken_token	2000-01-01 00:00:00+00
+969	oauth2_provider	0009_add_hash_client_secret	2000-01-01 00:00:00+00
+970	oauth2_provider	0010_application_allowed_origins	2000-01-01 00:00:00+00
+971	oauth2_provider	0011_refreshtoken_token_family	2000-01-01 00:00:00+00
+972	oauth2_provider	0012_add_token_checksum	2000-01-01 00:00:00+00
+973	oauth2_provider	0013_alter_application_authorization_grant_type_device	2000-01-01 00:00:00+00
+974	oauth2_provider	0014_alter_help_text	2000-01-01 00:00:00+00
+975	oidc_integration	0001_initial	2000-01-01 00:00:00+00
+976	orcid_integration	0001_initial	2000-01-01 00:00:00+00
+977	oswiadczenia	0001_add_export_task_model	2000-01-01 00:00:00+00
+978	oswiadczenia	0002_add_offset_limit	2000-01-01 00:00:00+00
+979	oswiadczenia	0003_fix_export_format_max_length	2000-01-01 00:00:00+00
+980	oswiadczenia	0004_add_przypieta_filter	2000-01-01 00:00:00+00
+981	oswiadczenia	0005_migrate_template_to_dbtemplate	2000-01-01 00:00:00+00
+982	password_policies	0001_initial	2000-01-01 00:00:00+00
+983	password_policies	0002_passwordprofile	2000-01-01 00:00:00+00
+984	password_policies	0003_update_passwordprofile	2000-01-01 00:00:00+00
+985	pbn_api	0069_add_uczelnia_fk	2000-01-01 00:00:00+00
+986	pbn_api	0070_link_pbn_to_uczelnia	2000-01-01 00:00:00+00
+987	pbn_api	0071_merge_0069_sentdata_api_url_0070_link_pbn_to_uczelnia	2000-01-01 00:00:00+00
+988	pbn_api	0072_backfill_sentdata_uczelnia	2000-01-01 00:00:00+00
+989	pbn_api	0073_backfill_publikacjainstytucji_v2_uczelnia	2000-01-01 00:00:00+00
+990	pbn_api	0074_merge_20260604_1952	2000-01-01 00:00:00+00
+991	pbn_api	0075_sentdata_fee_sent_sentdata_fee_uploaded_okay	2000-01-01 00:00:00+00
+992	pbn_api	0076_unikalne_uuid_dyscyplin	2000-01-01 00:00:00+00
+993	pbn_api	0077_constrainty_uuid_dyscyplin	2000-01-01 00:00:00+00
+994	pbn_api	0078_deduplikacja_publikacji_instytucji	2000-01-01 00:00:00+00
+995	pbn_api	0079_constraint_publikacja_instytucji	2000-01-01 00:00:00+00
+996	pbn_downloader_app	0001_initial	2000-01-01 00:00:00+00
+997	pbn_downloader_app	0002_pbninstitutionpeopletask	2000-01-01 00:00:00+00
+998	pbn_downloader_app	0003_pbnjournalsdownloadtask	2000-01-01 00:00:00+00
+999	pbn_downloader_app	0004_alter_error_message_fields	2000-01-01 00:00:00+00
+1000	pbn_export_queue	0001_rename_table	2000-01-01 00:00:00+00
+1001	pbn_export_queue	0002_initial	2000-01-01 00:00:00+00
+1002	pbn_export_queue	0003_add_rodzaj_bledu	2000-01-01 00:00:00+00
+1003	pbn_export_queue	0004_add_wykluczone_field	2000-01-01 00:00:00+00
+1004	pbn_export_queue	0005_reclassify_old_validation_errors	2000-01-01 00:00:00+00
+1005	pbn_export_queue	0006_reclassify_list_format_validation_errors	2000-01-01 00:00:00+00
+1006	pbn_export_queue	0007_reclassify_doiorwwwmissing_errors	2000-01-01 00:00:00+00
+1007	pbn_export_queue	0008_add_uczelnia_fk	2000-01-01 00:00:00+00
+1008	pbn_export_queue	0009_link_queue_to_uczelnia	2000-01-01 00:00:00+00
+1009	pbn_export_queue	0010_atomowa_kolejka_pbn	2000-01-01 00:00:00+00
+1010	pbn_import	0001_initial	2000-01-01 00:00:00+00
+1011	pbn_import	0002_add_task_id_field	2000-01-01 00:00:00+00
+1012	pbn_import	0003_add_import_inconsistency	2000-01-01 00:00:00+00
+1013	pbn_import	0004_add_bpp_publication_content_type	2000-01-01 00:00:00+00
+1014	pbn_import	0005_remove_importstatistics	2000-01-01 00:00:00+00
+1015	pbn_import	0006_remove_importstep	2000-01-01 00:00:00+00
+1016	pbn_import	0007_add_last_updated_field	2000-01-01 00:00:00+00
+1017	pbn_import	0008_add_importsession_indexes	2000-01-01 00:00:00+00
+1018	pbn_import	0009_fix_error_fields_default	2000-01-01 00:00:00+00
+1019	pbn_import	0010_alter_importinconsistency_inconsistency_type	2000-01-01 00:00:00+00
+1020	pbn_import	0011_alter_importinconsistency_session_and_more	2000-01-01 00:00:00+00
+1021	pbn_import	0012_alter_importinconsistency_inconsistency_type	2000-01-01 00:00:00+00
+1022	pbn_komparator_zrodel	0001_initial	2000-01-01 00:00:00+00
+1023	pbn_komparator_zrodel	0002_add_brakujaca_dyscyplina_pbn	2000-01-01 00:00:00+00
+1024	pbn_komparator_zrodel	0003_remove_rozbieznosczrodlapbn_pbn_kompara_zrodlo__8665da_idx_and_more	2000-01-01 00:00:00+00
+1025	pbn_wysylka_oswiadczen	0001_initial	2000-01-01 00:00:00+00
+1026	pbn_wysylka_oswiadczen	0002_add_tytul_field	2000-01-01 00:00:00+00
+1027	pbn_wysylka_oswiadczen	0003_add_synchronized_count	2000-01-01 00:00:00+00
+1028	pbn_wysylka_oswiadczen	0004_alter_pbnwysylkalog_content_type_and_more	2000-01-01 00:00:00+00
+1029	powiazania_autorow	0001_initial	2000-01-01 00:00:00+00
+1030	powiazania_autorow	0002_alter_authorconnection_primary_author_and_more	2000-01-01 00:00:00+00
+1031	powiazania_autorow	0003_backfill_powiazania_istniejace	2000-01-01 00:00:00+00
+1032	powiazania_autorow	0004_alter_authorconnection_primary_author	2000-01-01 00:00:00+00
+1033	przemapuj_prace_autora	0001_initial	2000-01-01 00:00:00+00
+1034	przemapuj_prace_autora	0002_przemapoaniepracautora_prace_ciagle_historia_and_more	2000-01-01 00:00:00+00
+1035	przemapuj_prace_autora	0003_przemapoaniepracautora_zrodlowy_import	2000-01-01 00:00:00+00
+1036	przemapuj_zrodla_pbn	0001_initial	2000-01-01 00:00:00+00
+1037	przemapuj_zrodla_pbn	0002_przemapowaniezrodla_typ_operacji_and_more	2000-01-01 00:00:00+00
+1038	przemapuj_zrodla_pbn	0003_alter_przemapowaniezrodla_zrodlo_nowe_and_more	2000-01-01 00:00:00+00
+1039	przemapuj_zrodlo	0001_initial	2000-01-01 00:00:00+00
+1040	przemapuj_zrodlo	0002_remove_przemapowazrodla_przemapuj_z_zrodlo__8d9224_idx_and_more	2000-01-01 00:00:00+00
+1041	raport_slotow	0001_initial	2000-01-01 00:00:00+00
+1042	raport_slotow	0002_auto_20200316_2027	2000-01-01 00:00:00+00
+1043	raport_slotow	0003_auto_20200329_1719	2000-01-01 00:00:00+00
+1044	raport_slotow	0004_raportslotowuczelnia_raportslotowuczelniawiersz	2000-01-01 00:00:00+00
+1045	raport_slotow	0005_auto_20210125_0256	2000-01-01 00:00:00+00
+1046	raport_slotow	0006_auto_20210125_2330	2000-01-01 00:00:00+00
+1047	raport_slotow	0007_auto_20210130_1407	2000-01-01 00:00:00+00
+1048	raport_slotow	0008_auto_20210308_0839	2000-01-01 00:00:00+00
+1049	raport_slotow	0009_auto_20210308_0846	2000-01-01 00:00:00+00
+1050	raport_slotow	0010_auto_20210314_2204	2000-01-01 00:00:00+00
+1051	raport_slotow	0011_auto_20210315_0141	2000-01-01 00:00:00+00
+1052	raport_slotow	0012_django32	2000-01-01 00:00:00+00
+1053	raport_slotow	0013_nullbooleanfield	2000-01-01 00:00:00+00
+1054	raport_slotow	0014_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+1055	raport_slotow	0015_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+1056	raport_slotow	0016_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+1057	raport_slotow	0017_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+1058	raport_slotow	0018_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+1059	raport_slotow	0019_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+1060	raport_slotow	0020_raportslotowuczelnia_uczelnia	2000-01-01 00:00:00+00
+1061	raport_slotow	0020_fix_do_roku_default_modulowa_funkcja	2000-01-01 00:00:00+00
+1062	raport_slotow	0021_merge_20260604_1952	2000-01-01 00:00:00+00
+1063	raport_slotow	0022_liveops	2000-01-01 00:00:00+00
+1064	reversion	0001_squashed_0004_auto_20160611_1202	2000-01-01 00:00:00+00
+1065	reversion	0002_add_index_on_version_for_content_type_and_db	2000-01-01 00:00:00+00
+1066	rozbieznosci	0001_initial	2000-01-01 00:00:00+00
+1067	rozbieznosci	0002_usun_stare_rozbieznosci	2000-01-01 00:00:00+00
+1068	rozbieznosci_dyscyplin	0001_widok_rozbieznosci	2000-01-01 00:00:00+00
+1069	rozbieznosci_dyscyplin	0002_rok_2017_i_wyzej	2000-01-01 00:00:00+00
+1070	rozbieznosci_dyscyplin	0003_brakprzypisaniaview_rozbiezneprzypisaniaview_rozbieznosciview	2000-01-01 00:00:00+00
+1071	rozbieznosci_dyscyplin	0004_recreate	2000-01-01 00:00:00+00
+1072	rozbieznosci_dyscyplin	0005_recreate	2000-01-01 00:00:00+00
+1073	rozbieznosci_dyscyplin	0006_recreate	2000-01-01 00:00:00+00
+1074	rozbieznosci_dyscyplin	0007_recreate	2000-01-01 00:00:00+00
+1075	rozbieznosci_dyscyplin	0008_recreate	2000-01-01 00:00:00+00
+1076	rozbieznosci_dyscyplin	0009_recreate	2000-01-01 00:00:00+00
+1077	rozbieznosci_dyscyplin	0010_recreate	2000-01-01 00:00:00+00
+1078	rozbieznosci_dyscyplin	0011_null_is_wrong	2000-01-01 00:00:00+00
+1079	rozbieznosci_dyscyplin	0012_rozbieznosci_dyscyplin_zrodel	2000-01-01 00:00:00+00
+1080	rozbieznosci_dyscyplin	0013_rozbieznoscizrodelview	2000-01-01 00:00:00+00
+1081	rozbieznosci_dyscyplin	0014_recreate	2000-01-01 00:00:00+00
+1082	rozbieznosci_dyscyplin	0015_recreate	2000-01-01 00:00:00+00
+1083	rozbieznosci_dyscyplin	0016_rozbieznosci_dyscyplin_zrodel_v2	2000-01-01 00:00:00+00
+1084	rozbieznosci_dyscyplin	0017_add_punkty_kbn_and_charakter_formalny	2000-01-01 00:00:00+00
+1085	rozbieznosci_dyscyplin	0018_recreate	2000-01-01 00:00:00+00
+1086	rozbieznosci_dyscyplin	0019_recreate	2000-01-01 00:00:00+00
+1087	rozbieznosci_dyscyplin	0020_recreate	2000-01-01 00:00:00+00
+1088	rozbieznosci_dyscyplin	0021_alter_rozbieznosciview_options	2000-01-01 00:00:00+00
+1089	sessions	0001_initial	2000-01-01 00:00:00+00
+1090	snapshot_odpiec	0001_initial	2000-01-01 00:00:00+00
+1091	snapshot_odpiec	0002_alter_snapshotodpiec_owner	2000-01-01 00:00:00+00
+1092	taggit	0006_rename_taggeditem_content_type_object_id_taggit_tagg_content_8fc721_idx	2000-01-01 00:00:00+00
+1093	test_bpp	0001_initial	2000-01-01 00:00:00+00
+1094	test_bpp	0002_testobjectthatdoesnotexist	2000-01-01 00:00:00+00
+1095	test_bpp	0003_testreport	2000-01-01 00:00:00+00
+1096	denorm	0001_squashed_0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+1097	bpp	0165_cache_punktacja_autora_cache_punktacja_dyscypliny_squashed_0167_auto_20190707_2029	2000-01-01 00:00:00+00
+1098	easyaudit	0004_auto_20170620_1354_squashed_0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
 \.
 
 
@@ -17249,8 +17104,8 @@ COPY public.django_site (id, domain, name) FROM stdin;
 --
 
 COPY public.django_template (id, name, content, creation_date, last_changed) FROM stdin;
-1	opis_bibliograficzny.html	{% load prace %}\n\n{# *********** #}\n{# TYTUŁ PRACY #}\n{# *********** #}\n\n{% if praca.tytul %}\n    <b>{{ praca.tytul_oryginalny|safe }} ({{ praca.tytul|safe }}).</b>\n{% else %}\n    <b>{{ praca.tytul_oryginalny|znak_na_koncu:"."|safe }}</b>\n{% endif %}\n{% if praca.charakter_formalny.charakter_ogolny != 'roz' %}\n    {{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}\n{% endif %}\n\n{# ******* #}\n{# AUTORZY #}\n{# ******* #}\n\n    {{ praca.tekst_przed_pierwszym_autorem|default:"" }}\n    {% for autor in praca.autorzy_dla_opisu %}{% ifchanged autor.typ_odpowiedzialnosci %}[{{ autor.typ_odpowiedzialnosci.skrot|upper }}] {% endifchanged %}{% if links == "admin" %}<a href="{% url "admin:bpp_autor_change" autor.autor.pk %}">{% else %}{% if links == "normal" %}<a href="{% url "bpp:browse_autor" autor.autor.slug %}">{% else %}{% endif %}{% endif %}{% if links %}{{ autor.zapisany_jako }}{% else %}{{ autor.zapisany_jako|upper }}{% endif %}{% if links == "admin" or links == "normal" %}</a>{% endif %}{% if not forloop.last %}, {% else %}{{ praca.tekst_po_ostatnim_autorze|default:"" }}. {% endif %}{% endfor %}\n\n{# ****** #}\n{# ZRÓDŁO #}\n{# ****** #}\n\n{% if praca.zrodlo %}\n    <i>{{ praca.zrodlo.skrot }}</i> {{ praca.informacje|default:""|safe }}\n{% else %}\n    {% if praca.informacje %}\n        {{ praca.informacje|default:""|znak_na_poczatku:" W: "|safe }}\n    {% else %}\n        {% if praca.wydawnictwo_nadrzedne.tytul_oryginalny %}\n            W: {{ praca.wydawnictwo_nadrzedne.tytul_oryginalny }}.\n        {% elif praca.wydawnictwo_nadrzedne_w_pbn.title %}\n            W: {{ praca.wydawnictwo_nadrzedne_w_pbn.title }}.\n        {% endif %}\n    {% endif %}\n{% endif %}\n\n{# ***************** #}\n{# EKSTRA INFORMACJE #}\n{# ***************** #}\n\n{% if praca.charakter_formalny.charakter_ogolny == 'roz' or praca.charakter_formalny.charakter_ogolny == 'ksi' %}\n    {# rozdział lub książka #}\n    {# szczególy i uwagi na końcu #}\n    {{ praca.miejsce_i_rok|default:"" }}\n    {{ praca.wydawnictwo|default:""|znak_na_poczatku:"," }}\n    {{ praca.szczegoly|default:""|znak_na_poczatku:","|safe }}\n    {% if praca.charakter_formalny.charakter_ogolny == 'roz' %}{{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}{% endif %}\n    {{ praca.uwagi|default:""|znak_na_poczatku:","|safe }}\n    {{ praca.isbn|default:""|znak_na_poczatku:"," }}\n    {{ praca.doi|default:""|znak_na_poczatku:". DOI: "|default:". " }}\n{% else %}\n    {# szczegóły i uwagi na poczatku #}\n    {{ praca.szczegoly|default:""|znak_na_poczatku:" "|safe }}\n    {{ praca.uwagi|default:""|znak_na_poczatku:","|safe }}\n    {{ praca.miejsce_i_rok|default:""|znak_na_poczatku:"." }}\n    {{ praca.wydawnictwo|default:""|znak_na_poczatku:"," }}\n    {{ praca.isbn|default:""|znak_na_poczatku:"," }}\n    {{ praca.doi|default:""|znak_na_poczatku:". DOI: "|default:". " }}\n{% endif %}\n\n{# XXX: DO ZROBIENIA: seria wydawnicza -- czy jest w ogóle wyświetlana? #}\n	2000-01-01 00:00:00+00	2000-01-01 00:00:00+00
-2	browse/praca_tabela.html	{% load prace user_in_group %}\n<table width="{{ width|default:"100%" }}"\n       class="szczegolyRekordu {{ htmlclass|default:"naglowki_z_lewej" }}">\n    <tr>\n        <th width="20%">Tytuł:</th>\n        <td>\n            {% if praca.tytul %}\n                <b>{{ praca.tytul_oryginalny|safe }} ({{ praca.tytul|safe }}).</b>\n            {% else %}\n                <b>{{ praca.tytul_oryginalny|znak_na_koncu:"."|safe }}</b>\n            {% endif %}\n            {% if praca.charakter_formalny.charakter_ogolny != 'roz' %}\n                {{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}\n            {% endif %}\n        </td>\n    </tr>\n    <tr>\n        <th>\n            Autorzy:\n        </th>\n        <td>\n            {{ praca.tekst_przed_pierwszym_autorem|default:"" }}\n            {% for autor in praca.autorzy_dla_opisu %}{% ifchanged autor.typ_odpowiedzialnosci %}\n                [{{ autor.typ_odpowiedzialnosci.skrot|upper }}] {% endifchanged %}{% if links == "admin" %}\n                <a href="{% url "admin:bpp_autor_change" autor.autor.pk %}">\n                {% else %}{% if links == "normal" %}<a href="{% url "bpp:browse_autor" autor.autor.slug %}">{% else %}\n                {% endif %}{% endif %}{% if links %}{{ autor.zapisany_jako }}{% else %}\n                {{ autor.zapisany_jako|upper }}{% endif %}{% if links == "admin" or links == "normal" %}</a>{% endif %}\n                {% if not forloop.last %}, {% else %}{{ praca.tekst_po_ostatnim_autorze|default:"" }}.\n                {% endif %}{% endfor %}\n        </td>\n    </tr>\n    {% if praca.zrodlo or praca.wydawnictwo_nadrzedne or praca.informacje or praca.szczegoly %}\n        <tr>\n            <th>\n                Szczegóły:\n            </th>\n            <td>\n                {% if praca.zrodlo %}\n                    {% if links == "admin" %}\n                        <a href="{% url "admin:bpp_zrodlo_change" praca.zrodlo.pk %}">{{ praca.zrodlo }}</a>\n                    {% else %}\n                        <a href="{% url "bpp:browse_zrodlo" praca.zrodlo.slug %}">{{ praca.zrodlo }}</a>\n                    {% endif %}\n                {% endif %}\n                {% if praca.wydawnictwo_nadrzedne %}\n                    <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" praca.wydawnictwo_nadrzedne.pk %}">\n                {% endif %}\n                {% if not praca.informacje and not praca.szczegoly %}\n                    {% if praca.wydawnictwo_nadrzedne.opis_bibliograficzny %}\n                        W: {{ praca.wydawnictwo_nadrzedne.opis_bibliograficzny|safe }}\n                    {% endif %}\n                {% endif %}\n                {{ praca.informacje|default:""|znak_na_koncu:", "|safe }}\n                {{ praca.szczegoly|default:""|safe }}\n                {% if praca.wydawnictwo_nadrzedne %}\n                    </a>\n                {% endif %}\n            </td>\n        </tr>\n    {% endif %}\n\n    {% if praca.wydawca or praca.wydawca_opis %}\n        <tr>\n            <th>Wydawca:</th>\n            <td>{{ praca.wydawca|default:"" }} {{ praca.wydawca_opis|default:"" }}</td>\n        </tr>\n    {% endif %}\n\n    {% if praca.streszczenia.exists %}\n        <tr>\n            <th>Streszczenie:</th>\n            <td>{% for streszczenie in praca.streszczenia.all %}\n                <!-- <strong>{{streszczenie.jezyk_streszczenia.nazwa}}</strong> -->\n                <p>{{ streszczenie.streszczenie|safe_streszczenie }}</p>\n            {% endfor %}\n            </td>\n        </tr>\n    {% endif %}\n\n    {% if praca.isbn %}\n        <tr>\n            <th>ISBN:</th>\n            <td>{{ praca.isbn }}</td>\n        </tr>\n    {% endif %}\n    {% if praca.e_isbn %}\n        <tr>\n            <th>e-ISBN:</th>\n            <td>{{ praca.e_isbn }}</td>\n        </tr>\n    {% endif %}\n\n    {% if praca.issn %}\n        <tr>\n            <th>ISSN:</th>\n            <td>{{ praca.issn }}</td>\n        </tr>\n    {% endif %}\n    {% if praca.e_issn %}\n        <tr>\n            <th>e-ISSN:</th>\n            <td>{{ praca.e_issn }}</td>\n        </tr>\n    {% endif %}\n\n    {% if praca.charakter_formalny.skrot == "PAT" %}\n        <tr>\n            <th>Patent:</th>\n            <td>\n                <b>- numer zgłoszenia:</b> {{ praca.numer_zgloszenia|default:"brak" }}. <br/>\n                <b>- wydział:</b> {{ praca.wydzial|default:"brak" }}<br/>\n                <b>- rodzaj prawa:</b> {{ praca.rodzaj_prawa|default:"brak" }}<br/>\n                <b>- data zgłoszenia:</b> {{ praca.data_zgloszenia|default:"brak" }}<br/>\n                <b>- numer zgłoszenia:</b> {{ praca.numer_zgloszenia|default:"brak" }}<br/>\n                <b>- data decyzji:</b> {{ praca.data_decyzji|default:"brak" }}<br/>\n                <b>- numer prawa wyłącznego:</b> {{ praca.numer_prawa_wylacznego|default:"brak" }}<br/>\n                <b>- wdrożenie:</b> {% if praca.wdrozenie %}tak{% else %}nie{% endif %}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.public_www or praca.www %}\n        <tr>\n            <th>\n                Strona WWW:\n            </th>\n            <td>\n                {% if praca.public_www %}\n                    <a href="{{ praca.public_www }}">\n                        {{ praca.public_www|truncatechars:120 }}</a>\n                {% elif praca.www %}\n                    <a href="{{ praca.www }}">{{ praca.www|truncatechars:120 }}</a>\n                {% else %}\n                    Brak danych\n                {% endif %}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.doi %}\n        <tr>\n            <th>DOI</th>\n            <td><a target="_blank" href="http://doi.org/{{ praca.doi }}">{{ praca.doi }}</a></td>\n        </tr>\n    {% endif %}\n\n    {% if praca.pubmed_id %}\n        <tr>\n            <th>PubMed ID:</th>\n            <td><a target="_blank"\n                   href="https://www.ncbi.nlm.nih.gov/pubmed/{{ praca.pubmed_id }}">{{ praca.pubmed_id }}</a></td>\n        </tr>\n    {% endif %}\n\n    {% if praca.pmc_id %}\n        <tr>\n            <th>PMC ID:</th>\n            <td><a href="https://www.ncbi.nlm.nih.gov/pmc/{{ praca.pmc_id }}">{{ praca.pmc_id }}</a></td>\n        </tr>\n    {% endif %}\n\n    <tr>\n        <th>\n            BPP ID:\n        </th>\n        <td>\n            {{ rekord.pk }} <small>czyli {{ rekord.describe_content_type }} o ID = {{ praca.pk }}</small>\n        </td>\n    </tr>\n    <tr>\n        <th>\n            BibTeX:\n        </th>\n        <td>\n            <button id="bibtex-toggle-btn" class="button secondary" type="button">\n                📋 Pokaż BibTeX\n            </button>\n            <button id="bibtex-copy-btn" class="button success" type="button" style="margin-left: 10px; display: none;">\n                📄 Skopiuj do schowka\n            </button>\n            <span id="bibtex-copy-feedback" style="margin-left: 10px;">\n                ✓ Skopiowane!\n            </span>\n            <div id="bibtex-container" style="display: none;">\n                <textarea id="bibtex-content" readonly></textarea>\n            </div>\n        </td>\n    </tr>\n    {% if praca.pbn_uid_id %}\n        <tr>\n            <th>PBN UID:</th>\n            <td>\n                <button class="button secondary"\n                        type="button"\n                        data-open-url="{{ praca.link_do_pbn }}" data-target="_blank">\n                    🔗 {{ praca.pbn_uid_id }}\n                </button>\n                {% if not request.user.is_anonymous and praca.link_do_pi %}\n                    <button class="button secondary"\n                            type="button"\n                            data-open-url="{{ praca.link_do_pi }}" data-target="_blank"\n                            style="margin-left: 10px;">\n                        🏢 Profil instytucji\n                    </button>\n                {% endif %}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.pbn_id %}\n        <tr>\n            <th>\n                PBN ID (historyczne):\n            </th>\n            <td>\n                {{ praca.pbn_id }}\n            </td>\n        </tr>\n    {% endif %}\n\n    <tr>\n        <th>\n            Rok:\n        </th>\n        <td>\n            {{ praca.rok }}\n        </td>\n    </tr>\n    <tr>\n        <th>\n            Charakter formalny:\n        </th>\n        <td>\n            {{ praca.charakter_formalny }}\n        </td>\n    </tr>\n\n    <tr>\n        <th>\n            Język:\n        </th>\n        <td>\n            {{ praca.jezyk }}\n        </td>\n    </tr>\n    {% if praca.typ_kbn %}\n        <tr>\n            <th>\n                Typ MNiSW/MEiN:\n            </th>\n            <td>\n                {{ praca.typ_kbn }}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.openaccess_tryb_dostepu or praca.openaccess_wersja_tekstu or praca.openaccess_licencja or praca.openaccess_czas_publikacji or praca.openaccess_ilosc_miesiecy %}\n        <tr>\n            <th style="vertical-align: top;">OpenAccess:</th>\n            <td>\n                {% if praca.openaccess_tryb_dostepu %}\n                    <b>- tryb dostępu: </b>\n                    {{ praca.openaccess_tryb_dostepu|lower }}\n                    <br/>\n                {% endif %}\n\n                {% if praca.openaccess_wersja_tekstu %}\n\n                    <b> - wersja tekstu: </b>\n                    {{ praca.openaccess_wersja_tekstu|lower }}<br/>\n\n                {% endif %}\n                {% if praca.openaccess_licencja %}\n\n                    <b> - licencja: </b>\n                    {% if praca.openaccess_licencja.webname %}\n                        <a target="_blank"\n                           href="https://creativecommons.org/licenses/{{ praca.openaccess_licencja.webname }}/3.0/pl/#content">\n                    {% endif %}\n                {{ praca.openaccess_licencja }}\n                {% if praca.openaccess_licencja.webname %}\n                    </a>\n                {% endif %}\n                    <br/>\n\n                {% endif %}\n                {% if praca.openaccess_czas_publikacji %}\n\n                    <b> - czas udostępnienia: </b>\n                    {{ praca.openaccess_czas_publikacji|lower }}<br/>\n\n                {% endif %}\n                {% if praca.openaccess_ilosc_miesiecy %}\n\n                    <b> - ilość miesięcy: </b>\n                    {{ praca.openaccess_ilosc_miesiecy }}\n                    <small>ilość miesięcy które upłynęły od momentu opublikowania do momentu udostępnienia\n                    </small>\n                    <br/>\n\n                {% endif %}\n            </td>\n            </td>\n        </tr>\n    {% endif %}\n    <tr>\n        <th>\n            Punkty MNiSW/MEiN:\n        </th>\n        <td>\n            {{ praca.punkty_kbn }}\n        </td>\n    </tr>\n\n    <tr>\n        <th>\n            Impact factor:\n        </th>\n        <td>\n            {{ praca.impact_factor }}\n        </td>\n    </tr>\n    {% if praca.kwartyl_w_scopus %}\n        <tr>\n            <th>\n                Kwartyl w SCOPUS:\n            </th>\n            <td>\n                Q{{ praca.kwartyl_w_scopus }}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.kwartyl_w_wos %}\n        <tr>\n            <th>\n                Kwartyl w WoS:\n            </th>\n            <td>\n                Q{{ praca.kwartyl_w_wos }}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.liczba_cytowan %}\n        <tr>\n            <th>Liczba cytowań:</th>\n            <td>{{ praca.liczba_cytowan }}</td>\n        </tr>\n    {% endif %}\n    {% if praca.liczba_znakow_wydawniczych %}\n        <tr>\n            <th>Liczba arkuszy wydawniczych:</th>\n            <td>{{ praca.wymiar_wydawniczy_w_arkuszach }}</td>\n        </tr>\n    {% endif %}\n    {% if uczelnia.pokazuj_punktacja_snip %}\n        <tr>\n            <th>Punktacja SNIP:</th>\n            <td>{{ praca.punktacja_snip }}</td>\n        </tr>\n    {% endif %}\n    {% if uczelnia.pokazuj_index_copernicus %}\n        <tr>\n            <th>\n                Index Copernicus:\n            </th>\n            <td>\n                {{ praca.index_copernicus }}\n            </td>\n        </tr>\n    {% endif %}\n\n    {% if uczelnia.pokazuj_punktacje_wewnetrzna %}\n        <tr>\n            <th>\n                Punktacja wewnętrzna:\n            </th>\n            <td>\n                {{ praca.punktacja_wewnetrzna }}\n            </td>\n        </tr>\n    {% endif %}\n    {% if uczelnia.pokazuj_status_korekty == "always" or uczelnia.pokazuj_status_korekty == "logged-in" and not request.user.is_anonymous %}\n        <tr>\n            <th>\n                Status:\n            </th>\n            <td>\n                {{ praca.status_korekty }}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.wydawnictwa_powiazane_set.exists %}\n        <tr>\n            <th>Rekordy powiązane</th>\n            <td>\n                <ol>\n                    {% for elem in praca.wydawnictwa_powiazane_posortowane.all %}\n                        <li>\n                            <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" elem.pk %}">{{ elem.opis_bibliograficzny_cache|safe }}</a>\n                        </li>\n                    {% endfor %}\n                </ol>\n            </td>\n        </tr>\n    {% endif %}\n    {% if uczelnia.pokazuj_praca_recenzowana == "always" or uczelnia.pokazuj_praca_recenzowana == "logged-in" and not request.user.is_anonymous %}\n        <tr>\n            <th>\n                Praca recenzowana:\n            </th>\n            <td>\n                {{ praca.recenzowana|yesno }}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.ma_procenty %}\n        <tr>\n            <th>Odpowiedzialność za powstanie pracy</th>\n            <td>\n                {% for autor in praca.autorzy_set.all %}\n                    {% if autor.procent %}\n                        {{ autor.procent }}% {{ autor.zapisany_jako }}<br/>\n                    {% endif %}\n                {% endfor %}\n\n            </td>\n        </tr>\n    {% endif %}\n\n    <tr>\n        <th>\n            Rekord utworzony:\n        </th>\n        <td>\n            {{ praca.utworzono }}\n        </td>\n    </tr>\n\n    <tr>\n        <th>\n            Rekord zaktualizowany:\n        </th>\n        <td>\n            {{ praca.ostatnio_zmieniony }}\n        </td>\n    </tr>\n    {% if praca.zewnetrzna_baza_danych.exists %}\n        <tr>\n            <th>Zewnętrzna<br/>baza danych:</th>\n            <td>\n                <ul>{% for db in praca.zewnetrzna_baza_danych.all %}\n                    <li>{{ db.baza.nazwa }}</li>\n                {% endfor %}\n                </ul>\n            </td>\n        </tr>\n    {% endif %}\n</table>\n\n{% if rekord.ma_punktacje_sloty %}\n    {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}\n        <h4>Punkty i sloty autorów\n            {% if uczelnia.drukuj_oswiadczenia %}\n                {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}\n                    <a target="_blank" href="{% url "oswiadczenia:wiele-oswiadczen" rekord.id.0 rekord.id.1 %}">\n                        <span class="fi-print"></span>\n                    </a>\n                {% endif %}\n            {% endif %}\n\n        </h4>\n        <table>\n            <tr>\n                <th>Autor</th>\n                <th>Dyscyplina</th>\n                <th>PkD / PkDAut</th>\n                <th>Slot</th>\n                {% if uczelnia.drukuj_oswiadczenia %}\n                    {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}\n                        <th>Oświadczenia</th>\n                    {% endif %}\n                {% endif %}\n            </tr>\n\n            {% for pa in rekord.punktacja_autora.select_related %}\n                <tr>\n                    <td>{{ pa.autor }}</td>\n                    <td>{{ pa.dyscyplina.nazwa }}</td>\n                    <td>{{ pa.pkdaut }}</td>\n                    <td>{{ pa.slot }}</td>\n                    {% if uczelnia.drukuj_oswiadczenia %}\n                        {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}\n                            <td>\n                                <!-- wydruk oswiadczenia -->\n                                <a target="_blank"\n                                   title="Wydruk dyscypliny zgłoszonej dla publikacji"\n                                   href="{% url "oswiadczenia:jedno-oswiadczenie" rekord.id.0 rekord.id.1 pa.autor.id pa.dyscyplina.id %}">\n                                    <span class="fi-print"></span>\n                                </a>\n                                <!-- wydruk drugiego oswiadczenia jezeli ma subdyscypline -->\n                                {% if pa.czy_autor_ma_alternatywna_dyscypline and uczelnia.drukuj_alternatywne_oswiadczenia %}\n                                    &nbsp;\n                                    <a target="_blank"\n                                       title="Wydruk alternatywnej dyscypliny autora (innej, niż zgłoszona dla publikacji)"\n                                       href="{% url "oswiadczenia:jedno-oswiadczenie-druga-dyscyplina" rekord.id.0 rekord.id.1 pa.autor.id pa.dyscyplina.id %}">\n                                        <span class="fi-print" style="color: palevioletred;"></span>\n                                    </a>\n                                {% endif %}\n                            </td>\n                        {% endif %}\n                    {% endif %}\n                </tr>\n            {% endfor %}\n        </table>\n        <h4>Punkty i sloty dyscyplin</h4>\n        <table>\n            <tr>\n                <th>Dyscyplina</th>\n                <th>PkD / PkDAut</th>\n                <th>Slot</th>\n            </tr>\n            {% for pd in rekord.punktacja_dyscypliny.select_related %}\n                <tr>\n                    <td>{{ pd.dyscyplina.nazwa }}</td>\n                    <td>{{ pd.pkd }}</td>\n                    <td>{{ pd.slot }}</td>\n                    {% load user_in_group %}\n                </tr>\n            {% endfor %}\n        </table>\n\n    {% endif %}\n{% endif %}\n\n<style type="text/css">\n/* BibTeX specific styles */\n#bibtex-container {\n    margin-top: 10px;\n}\n\n#bibtex-content {\n    width: 100%;\n    min-height: 200px;\n    font-family: 'Courier New', Consolas, Monaco, monospace;\n    font-size: 12px;\n    background-color: #f8f8f8;\n    border: 1px solid #ccc;\n    border-radius: 3px;\n    padding: 10px;\n    resize: vertical;\n    line-height: 1.4;\n}\n\n#bibtex-toggle-btn,\n#bibtex-copy-btn {\n    margin: 0;\n    vertical-align: top;\n}\n\n#bibtex-copy-btn {\n    margin-left: 10px;\n}\n\n#bibtex-copy-feedback {\n    margin-left: 10px;\n    color: #28a745;\n    font-weight: bold;\n    display: none;\n    vertical-align: top;\n}\n\n/* Responsive adjustments */\n@media screen and (max-width: 640px) {\n    #bibtex-content {\n        font-size: 10px;\n        min-height: 150px;\n    }\n\n    #bibtex-toggle-btn,\n    #bibtex-copy-btn {\n        font-size: 0.8rem;\n        padding: 0.5rem 1rem;\n    }\n}\n\n/* Better button styling for loading state */\n#bibtex-toggle-btn:disabled {\n    opacity: 0.6;\n    cursor: not-allowed;\n}\n</style>\n\n<script type="text/javascript">\n(function($) {\n    $(document).ready(function() {\n        var bibtexToggleBtn = $('#bibtex-toggle-btn');\n        var bibtexContainer = $('#bibtex-container');\n        var bibtexContent = $('#bibtex-content');\n        var bibtexCopyBtn = $('#bibtex-copy-btn');\n        var bibtexCopyFeedback = $('#bibtex-copy-feedback');\n        var bibtexLoaded = false;\n\n        // Toggle BibTeX display\n        bibtexToggleBtn.click(function() {\n            if (bibtexContainer.is(':visible')) {\n                bibtexContainer.hide();\n                bibtexToggleBtn.text('📋 Pokaż BibTeX');\n            } else {\n                if (!bibtexLoaded) {\n                    // Load BibTeX via AJAX\n                    loadBibTeX();\n                } else {\n                    bibtexContainer.show();\n                    bibtexToggleBtn.text('📋 Ukryj BibTeX');\n                }\n            }\n        });\n\n        // Copy to clipboard functionality\n        bibtexCopyBtn.click(function() {\n            copyToClipboard();\n        });\n\n        function loadBibTeX() {\n            bibtexToggleBtn.prop('disabled', true).text('⏳ Ładowanie...');\n\n            // Extract model and pk from the current page\n            var modelName = '{{ rekord.content_type.model }}';\n            var pk = '{{ praca.pk }}';\n\n            var url = '/bpp/api/bibtex/' + modelName + '/' + pk + '/';\n\n            $.ajax({\n                url: url,\n                type: 'GET',\n                dataType: 'json',\n                success: function(data) {\n                    bibtexContent.val(data.bibtex);\n                    bibtexContainer.show();\n                    bibtexToggleBtn.text('📋 Ukryj BibTeX');\n                    bibtexCopyBtn.show();\n                    bibtexLoaded = true;\n\n                    // Auto-resize textarea to content\n                    autoResizeTextarea();\n                },\n                error: function(xhr, status, error) {\n                    var errorMsg = 'Błąd podczas pobierania BibTeX';\n                    if (xhr.responseJSON && xhr.responseJSON.error) {\n                        errorMsg += ': ' + xhr.responseJSON.error;\n                    }\n                    bibtexContent.val(errorMsg);\n                    bibtexContainer.show();\n                    bibtexToggleBtn.text('📋 Ukryj BibTeX (błąd)');\n                },\n                complete: function() {\n                    bibtexToggleBtn.prop('disabled', false);\n                }\n            });\n        }\n\n        function autoResizeTextarea() {\n            var lines = bibtexContent.val().split('\\n').length;\n            var minHeight = 200;\n            var lineHeight = 16;\n            var newHeight = Math.max(minHeight, (lines + 1) * lineHeight);\n            bibtexContent.css('height', newHeight + 'px');\n        }\n\n        function copyToClipboard() {\n            // Modern Clipboard API\n            if (navigator.clipboard && window.isSecureContext) {\n                navigator.clipboard.writeText(bibtexContent.val()).then(function() {\n                    showCopyFeedback();\n                }, function(err) {\n                    fallbackCopy();\n                });\n            } else {\n                fallbackCopy();\n            }\n        }\n\n        function fallbackCopy() {\n            // Fallback for older browsers\n            bibtexContent.select();\n            bibtexContent[0].setSelectionRange(0, 99999); // For mobile devices\n\n            try {\n                document.execCommand('copy');\n                showCopyFeedback();\n            } catch (err) {\n                alert('Nie można skopiować do schowka. Proszę zaznacz tekst i skopiuj ręcznie (Ctrl+C).');\n            }\n        }\n\n        function showCopyFeedback() {\n            bibtexCopyFeedback.show();\n            setTimeout(function() {\n                bibtexCopyFeedback.fadeOut();\n            }, 2000);\n        }\n    });\n})(jQuery || django.jQuery || $);\n</script>\n\n{% if rekord.ma_odpiete_dyscypliny %}\n    {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}\n        <h4>"Odpięte" dyscypliny:</h4>\n        <table>\n            <tr>\n                <th>Autor</th>\n                <th>Dyscyplina</th>\n            </tr>\n            {% for pa in praca.odpiete_dyscypliny.select_related %}\n                <tr>\n                    <td>{{ pa.autor }}</td>\n                    <td>{{ pa.dyscyplina_naukowa.nazwa }}</td>\n                </tr>\n            {% endfor %}\n        </table>\n    {% endif %}\n{% endif %}\n	2000-01-01 00:00:00+00	2000-01-01 00:00:00+00
+1	opis_bibliograficzny.html	{% load prace %}\n\n{# *********** #}\n{# TYTUŁ PRACY #}\n{# *********** #}\n\n{% if praca.tytul %}\n    <b>{{ praca.tytul_oryginalny|safe }} ({{ praca.tytul|safe }}).</b>\n{% else %}\n    <b>{{ praca.tytul_oryginalny|znak_na_koncu:"."|safe }}</b>\n{% endif %}\n{% if praca.charakter_formalny.charakter_ogolny != 'roz' %}\n    {{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}\n{% endif %}\n\n{# ******* #}\n{# AUTORZY #}\n{# ******* #}\n\n    {{ praca.tekst_przed_pierwszym_autorem|default:"" }}\n    {% for autor in praca.autorzy_dla_opisu %}{% ifchanged autor.typ_odpowiedzialnosci %}[{{ autor.typ_odpowiedzialnosci.skrot|upper }}] {% endifchanged %}{% if links == "admin" %}<a href="{% url "admin:bpp_autor_change" autor.autor.pk %}">{% else %}{% if links == "normal" %}<a href="{% url "bpp:browse_autor" autor.autor.slug %}">{% else %}{% endif %}{% endif %}{% if links %}{{ autor.zapisany_jako }}{% else %}{{ autor.zapisany_jako|upper }}{% endif %}{% if links == "admin" or links == "normal" %}</a>{% endif %}{% if not forloop.last %}, {% else %}{{ praca.tekst_po_ostatnim_autorze|default:"" }}. {% endif %}{% endfor %}\n\n{# ****** #}\n{# ZRÓDŁO #}\n{# ****** #}\n\n{% if praca.zrodlo %}\n    <i>{{ praca.zrodlo.skrot }}</i> {{ praca.informacje|default:""|safe }}\n{% else %}\n    {% if praca.informacje %}\n        {{ praca.informacje|default:""|znak_na_poczatku:" W: "|safe }}\n    {% else %}\n        {% if praca.wydawnictwo_nadrzedne.tytul_oryginalny %}\n            W: {{ praca.wydawnictwo_nadrzedne.tytul_oryginalny }}.\n        {% elif praca.wydawnictwo_nadrzedne_w_pbn.title %}\n            W: {{ praca.wydawnictwo_nadrzedne_w_pbn.title }}.\n        {% elif praca.pbn_uid.book_title %}\n            W: {{ praca.pbn_uid.book_title }}.\n        {% endif %}\n    {% endif %}\n{% endif %}\n\n{# ***************** #}\n{# EKSTRA INFORMACJE #}\n{# ***************** #}\n\n{% if praca.charakter_formalny.charakter_ogolny == 'roz' or praca.charakter_formalny.charakter_ogolny == 'ksi' %}\n    {# rozdział lub książka #}\n    {# szczególy i uwagi na końcu #}\n    {{ praca.miejsce_i_rok|default:"" }}\n    {{ praca.wydawnictwo|default:""|znak_na_poczatku:"," }}\n    {{ praca.szczegoly|default:""|znak_na_poczatku:","|safe }}\n    {% if praca.charakter_formalny.charakter_ogolny == 'roz' %}{{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}{% endif %}\n    {{ praca.uwagi|default:""|znak_na_poczatku:","|safe }}\n    {{ praca.isbn|default:""|znak_na_poczatku:"," }}\n    {{ praca.doi|default:""|znak_na_poczatku:". DOI: "|default:". " }}\n{% else %}\n    {# szczegóły i uwagi na poczatku #}\n    {{ praca.szczegoly|default:""|znak_na_poczatku:" "|safe }}\n    {{ praca.uwagi|default:""|znak_na_poczatku:","|safe }}\n    {{ praca.miejsce_i_rok|default:""|znak_na_poczatku:"." }}\n    {{ praca.wydawnictwo|default:""|znak_na_poczatku:"," }}\n    {{ praca.isbn|default:""|znak_na_poczatku:"," }}\n    {{ praca.doi|default:""|znak_na_poczatku:". DOI: "|default:". " }}\n{% endif %}\n\n{# XXX: DO ZROBIENIA: seria wydawnicza -- czy jest w ogóle wyświetlana? #}\n	2000-01-01 00:00:00+00	2000-01-01 00:00:00+00
+2	browse/praca_tabela.html	{% load prace user_in_group %}\n<table width="{{ width|default:"100%" }}"\n       class="szczegolyRekordu {{ htmlclass|default:"naglowki_z_lewej" }}">\n    <tr>\n        <th width="20%">Tytuł:</th>\n        <td>\n            {% if praca.tytul %}\n                <b>{{ praca.tytul_oryginalny|safe }} ({{ praca.tytul|safe }}).</b>\n            {% else %}\n                <b>{{ praca.tytul_oryginalny|znak_na_koncu:"."|safe }}</b>\n            {% endif %}\n            {% if praca.charakter_formalny.charakter_ogolny != 'roz' %}\n                {{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}\n            {% endif %}\n        </td>\n    </tr>\n    <tr>\n        <th>\n            Autorzy:\n        </th>\n        <td>\n            {{ praca.tekst_przed_pierwszym_autorem|default:"" }}\n            {% for autor in praca.autorzy_dla_opisu %}{% ifchanged autor.typ_odpowiedzialnosci %}\n                [{{ autor.typ_odpowiedzialnosci.skrot|upper }}] {% endifchanged %}{% if links == "admin" %}\n                <a href="{% url "admin:bpp_autor_change" autor.autor.pk %}">\n                {% else %}{% if links == "normal" %}<a href="{% url "bpp:browse_autor" autor.autor.slug %}">{% else %}\n                {% endif %}{% endif %}{% if links %}{{ autor.zapisany_jako }}{% else %}\n                {{ autor.zapisany_jako|upper }}{% endif %}{% if links == "admin" or links == "normal" %}</a>{% endif %}\n                {% if not forloop.last %}, {% else %}{{ praca.tekst_po_ostatnim_autorze|default:"" }}.\n                {% endif %}{% endfor %}\n        </td>\n    </tr>\n    {% if praca.zrodlo or praca.wydawnictwo_nadrzedne or praca.informacje or praca.szczegoly %}\n        <tr>\n            <th>\n                Szczegóły:\n            </th>\n            <td>\n                {% if praca.zrodlo %}\n                    {% if links == "admin" %}\n                        <a href="{% url "admin:bpp_zrodlo_change" praca.zrodlo.pk %}">{{ praca.zrodlo }}</a>\n                    {% else %}\n                        <a href="{% url "bpp:browse_zrodlo" praca.zrodlo.slug %}">{{ praca.zrodlo }}</a>\n                    {% endif %}\n                {% endif %}\n                {% if praca.wydawnictwo_nadrzedne %}\n                    <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" praca.wydawnictwo_nadrzedne.pk %}">\n                {% endif %}\n                {% if not praca.informacje and not praca.szczegoly %}\n                    {% if praca.wydawnictwo_nadrzedne.opis_bibliograficzny %}\n                        W: {{ praca.wydawnictwo_nadrzedne.opis_bibliograficzny|safe }}\n                    {% endif %}\n                {% endif %}\n                {{ praca.informacje|default:""|znak_na_koncu:", "|safe }}\n                {{ praca.szczegoly|default:""|safe }}\n                {% if praca.wydawnictwo_nadrzedne %}\n                    </a>\n                {% endif %}\n            </td>\n        </tr>\n    {% endif %}\n\n    {% if praca.wydawca or praca.wydawca_opis %}\n        <tr>\n            <th>Wydawca:</th>\n            <td>{{ praca.wydawca|default:"" }} {{ praca.wydawca_opis|default:"" }}</td>\n        </tr>\n    {% endif %}\n\n    {% if praca.streszczenia.exists %}\n        <tr>\n            <th>Streszczenie:</th>\n            <td>{% for streszczenie in praca.streszczenia.all %}\n                <!-- <strong>{{streszczenie.jezyk_streszczenia.nazwa}}</strong> -->\n                <p>{{ streszczenie.streszczenie|safe_streszczenie }}</p>\n            {% endfor %}\n            </td>\n        </tr>\n    {% endif %}\n\n    {% if praca.isbn %}\n        <tr>\n            <th>ISBN:</th>\n            <td>{{ praca.isbn }}</td>\n        </tr>\n    {% endif %}\n    {% if praca.e_isbn %}\n        <tr>\n            <th>e-ISBN:</th>\n            <td>{{ praca.e_isbn }}</td>\n        </tr>\n    {% endif %}\n\n    {% if praca.issn %}\n        <tr>\n            <th>ISSN:</th>\n            <td>{{ praca.issn }}</td>\n        </tr>\n    {% endif %}\n    {% if praca.e_issn %}\n        <tr>\n            <th>e-ISSN:</th>\n            <td>{{ praca.e_issn }}</td>\n        </tr>\n    {% endif %}\n\n    {% if praca.charakter_formalny.skrot == "PAT" %}\n        <tr>\n            <th>Patent:</th>\n            <td>\n                <b>- numer zgłoszenia:</b> {{ praca.numer_zgloszenia|default:"brak" }}. <br/>\n                <b>- wydział:</b> {{ praca.wydzial|default:"brak" }}<br/>\n                <b>- rodzaj prawa:</b> {{ praca.rodzaj_prawa|default:"brak" }}<br/>\n                <b>- data zgłoszenia:</b> {{ praca.data_zgloszenia|default:"brak" }}<br/>\n                <b>- numer zgłoszenia:</b> {{ praca.numer_zgloszenia|default:"brak" }}<br/>\n                <b>- data decyzji:</b> {{ praca.data_decyzji|default:"brak" }}<br/>\n                <b>- numer prawa wyłącznego:</b> {{ praca.numer_prawa_wylacznego|default:"brak" }}<br/>\n                <b>- wdrożenie:</b> {% if praca.wdrozenie %}tak{% else %}nie{% endif %}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.public_www or praca.www %}\n        <tr>\n            <th>\n                Strona WWW:\n            </th>\n            <td>\n                {% if praca.public_www %}\n                    <a href="{{ praca.public_www }}">\n                        {{ praca.public_www|truncatechars:120 }}</a>\n                {% elif praca.www %}\n                    <a href="{{ praca.www }}">{{ praca.www|truncatechars:120 }}</a>\n                {% else %}\n                    Brak danych\n                {% endif %}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.doi %}\n        <tr>\n            <th>DOI</th>\n            <td><a target="_blank" href="http://doi.org/{{ praca.doi }}">{{ praca.doi }}</a></td>\n        </tr>\n    {% endif %}\n\n    {% if praca.pubmed_id %}\n        <tr>\n            <th>PubMed ID:</th>\n            <td><a target="_blank"\n                   href="https://www.ncbi.nlm.nih.gov/pubmed/{{ praca.pubmed_id }}">{{ praca.pubmed_id }}</a></td>\n        </tr>\n    {% endif %}\n\n    {% if praca.pmc_id %}\n        <tr>\n            <th>PMC ID:</th>\n            <td><a href="https://www.ncbi.nlm.nih.gov/pmc/{{ praca.pmc_id }}">{{ praca.pmc_id }}</a></td>\n        </tr>\n    {% endif %}\n\n    <tr>\n        <th>\n            BPP ID:\n        </th>\n        <td>\n            {{ rekord.pk }} <small>czyli {{ rekord.describe_content_type }} o ID = {{ praca.pk }}</small>\n        </td>\n    </tr>\n    <tr>\n        <th>\n            BibTeX:\n        </th>\n        <td>\n            <button id="bibtex-toggle-btn" class="button secondary" type="button">\n                📋 Pokaż BibTeX\n            </button>\n            <button id="bibtex-copy-btn" class="button success" type="button" style="margin-left: 10px; display: none;">\n                📄 Skopiuj do schowka\n            </button>\n            <span id="bibtex-copy-feedback" style="margin-left: 10px;">\n                ✓ Skopiowane!\n            </span>\n            <div id="bibtex-container" style="display: none;">\n                <textarea id="bibtex-content" readonly></textarea>\n            </div>\n        </td>\n    </tr>\n    {% if praca.pbn_uid_id %}\n        <tr>\n            <th>PBN UID:</th>\n            <td>\n                <button class="button secondary"\n                        type="button"\n                        data-open-url="{{ praca.link_do_pbn }}" data-target="_blank">\n                    🔗 {{ praca.pbn_uid_id }}\n                </button>\n                {% if not request.user.is_anonymous and praca|link_do_pi:uczelnia %}\n                    <button class="button secondary"\n                            type="button"\n                            data-open-url="{{ praca|link_do_pi:uczelnia }}" data-target="_blank"\n                            style="margin-left: 10px;">\n                        🏢 Profil instytucji\n                    </button>\n                {% endif %}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.pbn_id %}\n        <tr>\n            <th>\n                PBN ID (historyczne):\n            </th>\n            <td>\n                {{ praca.pbn_id }}\n            </td>\n        </tr>\n    {% endif %}\n\n    <tr>\n        <th>\n            Rok:\n        </th>\n        <td>\n            {{ praca.rok }}\n        </td>\n    </tr>\n    <tr>\n        <th>\n            Charakter formalny:\n        </th>\n        <td>\n            {{ praca.charakter_formalny }}\n        </td>\n    </tr>\n\n    <tr>\n        <th>\n            Język:\n        </th>\n        <td>\n            {{ praca.jezyk }}\n        </td>\n    </tr>\n    {% if praca.typ_kbn %}\n        <tr>\n            <th>\n                Typ MNiSW/MEiN:\n            </th>\n            <td>\n                {{ praca.typ_kbn }}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.openaccess_tryb_dostepu or praca.openaccess_wersja_tekstu or praca.openaccess_licencja or praca.openaccess_czas_publikacji or praca.openaccess_ilosc_miesiecy %}\n        <tr>\n            <th style="vertical-align: top;">OpenAccess:</th>\n            <td>\n                {% if praca.openaccess_tryb_dostepu %}\n                    <b>- tryb dostępu: </b>\n                    {{ praca.openaccess_tryb_dostepu|lower }}\n                    <br/>\n                {% endif %}\n\n                {% if praca.openaccess_wersja_tekstu %}\n\n                    <b> - wersja tekstu: </b>\n                    {{ praca.openaccess_wersja_tekstu|lower }}<br/>\n\n                {% endif %}\n                {% if praca.openaccess_licencja %}\n\n                    <b> - licencja: </b>\n                    {% if praca.openaccess_licencja.webname %}\n                        <a target="_blank"\n                           href="https://creativecommons.org/licenses/{{ praca.openaccess_licencja.webname }}/3.0/pl/#content">\n                    {% endif %}\n                {{ praca.openaccess_licencja }}\n                {% if praca.openaccess_licencja.webname %}\n                    </a>\n                {% endif %}\n                    <br/>\n\n                {% endif %}\n                {% if praca.openaccess_czas_publikacji %}\n\n                    <b> - czas udostępnienia: </b>\n                    {{ praca.openaccess_czas_publikacji|lower }}<br/>\n\n                {% endif %}\n                {% if praca.openaccess_ilosc_miesiecy %}\n\n                    <b> - ilość miesięcy: </b>\n                    {{ praca.openaccess_ilosc_miesiecy }}\n                    <small>ilość miesięcy które upłynęły od momentu opublikowania do momentu udostępnienia\n                    </small>\n                    <br/>\n\n                {% endif %}\n            </td>\n            </td>\n        </tr>\n    {% endif %}\n    <tr>\n        <th>\n            Punkty MNiSW/MEiN:\n        </th>\n        <td>\n            {{ praca.punkty_kbn }}\n        </td>\n    </tr>\n\n    <tr>\n        <th>\n            Impact factor:\n        </th>\n        <td>\n            {{ praca.impact_factor }}\n        </td>\n    </tr>\n    {% if praca.kwartyl_w_scopus %}\n        <tr>\n            <th>\n                Kwartyl w SCOPUS:\n            </th>\n            <td>\n                Q{{ praca.kwartyl_w_scopus }}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.kwartyl_w_wos %}\n        <tr>\n            <th>\n                Kwartyl w WoS:\n            </th>\n            <td>\n                Q{{ praca.kwartyl_w_wos }}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.liczba_cytowan %}\n        <tr>\n            <th>Liczba cytowań:</th>\n            <td>{{ praca.liczba_cytowan }}</td>\n        </tr>\n    {% endif %}\n    {% if praca.liczba_znakow_wydawniczych %}\n        <tr>\n            <th>Liczba arkuszy wydawniczych:</th>\n            <td>{{ praca.wymiar_wydawniczy_w_arkuszach }}</td>\n        </tr>\n    {% endif %}\n    {% if uczelnia.pokazuj_punktacja_snip %}\n        <tr>\n            <th>Punktacja SNIP:</th>\n            <td>{{ praca.punktacja_snip }}</td>\n        </tr>\n    {% endif %}\n    {% if uczelnia.pokazuj_index_copernicus %}\n        <tr>\n            <th>\n                Index Copernicus:\n            </th>\n            <td>\n                {{ praca.index_copernicus }}\n            </td>\n        </tr>\n    {% endif %}\n\n    {% if uczelnia.pokazuj_punktacje_wewnetrzna %}\n        <tr>\n            <th>\n                Punktacja wewnętrzna:\n            </th>\n            <td>\n                {{ praca.punktacja_wewnetrzna }}\n            </td>\n        </tr>\n    {% endif %}\n    {% if uczelnia.pokazuj_status_korekty == "always" or uczelnia.pokazuj_status_korekty == "logged-in" and not request.user.is_anonymous %}\n        <tr>\n            <th>\n                Status:\n            </th>\n            <td>\n                {{ praca.status_korekty }}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.wydawnictwa_powiazane_set.exists %}\n        <tr>\n            <th>Rekordy powiązane</th>\n            <td>\n                <ol>\n                    {% for elem in praca.wydawnictwa_powiazane_posortowane.all %}\n                        <li>\n                            <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" elem.pk %}">{{ elem.opis_bibliograficzny_cache|safe }}</a>\n                        </li>\n                    {% endfor %}\n                </ol>\n            </td>\n        </tr>\n    {% endif %}\n    {% if uczelnia.pokazuj_praca_recenzowana == "always" or uczelnia.pokazuj_praca_recenzowana == "logged-in" and not request.user.is_anonymous %}\n        <tr>\n            <th>\n                Praca recenzowana:\n            </th>\n            <td>\n                {{ praca.recenzowana|yesno }}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.ma_procenty %}\n        <tr>\n            <th>Odpowiedzialność za powstanie pracy</th>\n            <td>\n                {% for autor in praca.autorzy_set.all %}\n                    {% if autor.procent %}\n                        {{ autor.procent }}% {{ autor.zapisany_jako }}<br/>\n                    {% endif %}\n                {% endfor %}\n\n            </td>\n        </tr>\n    {% endif %}\n\n    <tr>\n        <th>\n            Rekord utworzony:\n        </th>\n        <td>\n            {{ praca.utworzono }}\n        </td>\n    </tr>\n\n    <tr>\n        <th>\n            Rekord zaktualizowany:\n        </th>\n        <td>\n            {{ praca.ostatnio_zmieniony }}\n        </td>\n    </tr>\n    {% if praca.zewnetrzna_baza_danych.exists %}\n        <tr>\n            <th>Zewnętrzna<br/>baza danych:</th>\n            <td>\n                <ul>{% for db in praca.zewnetrzna_baza_danych.all %}\n                    <li>{{ db.baza.nazwa }}</li>\n                {% endfor %}\n                </ul>\n            </td>\n        </tr>\n    {% endif %}\n</table>\n\n{% if rekord.ma_punktacje_sloty %}\n    {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}\n        <h4>Punkty i sloty autorów\n            {% if uczelnia.drukuj_oswiadczenia %}\n                {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}\n                    <a target="_blank" href="{% url "oswiadczenia:wiele-oswiadczen" rekord.id.0 rekord.id.1 %}">\n                        <span class="fi-print"></span>\n                    </a>\n                {% endif %}\n            {% endif %}\n\n        </h4>\n        <table>\n            <tr>\n                <th>Autor</th>\n                <th>Dyscyplina</th>\n                <th>PkD / PkDAut</th>\n                <th>Slot</th>\n                {% if uczelnia.drukuj_oswiadczenia %}\n                    {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}\n                        <th>Oświadczenia</th>\n                    {% endif %}\n                {% endif %}\n            </tr>\n\n            {% for pa in rekord.punktacja_autora.select_related %}\n                <tr>\n                    <td>{{ pa.autor }}</td>\n                    <td>{{ pa.dyscyplina.nazwa }}</td>\n                    <td>{{ pa.pkdaut }}</td>\n                    <td>{{ pa.slot }}</td>\n                    {% if uczelnia.drukuj_oswiadczenia %}\n                        {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}\n                            <td>\n                                <!-- wydruk oswiadczenia -->\n                                <a target="_blank"\n                                   title="Wydruk dyscypliny zgłoszonej dla publikacji"\n                                   href="{% url "oswiadczenia:jedno-oswiadczenie" rekord.id.0 rekord.id.1 pa.autor.id pa.dyscyplina.id %}">\n                                    <span class="fi-print"></span>\n                                </a>\n                                <!-- wydruk drugiego oswiadczenia jezeli ma subdyscypline -->\n                                {% if pa.czy_autor_ma_alternatywna_dyscypline and uczelnia.drukuj_alternatywne_oswiadczenia %}\n                                    &nbsp;\n                                    <a target="_blank"\n                                       title="Wydruk alternatywnej dyscypliny autora (innej, niż zgłoszona dla publikacji)"\n                                       href="{% url "oswiadczenia:jedno-oswiadczenie-druga-dyscyplina" rekord.id.0 rekord.id.1 pa.autor.id pa.dyscyplina.id %}">\n                                        <span class="fi-print" style="color: palevioletred;"></span>\n                                    </a>\n                                {% endif %}\n                            </td>\n                        {% endif %}\n                    {% endif %}\n                </tr>\n            {% endfor %}\n        </table>\n        <h4>Punkty i sloty dyscyplin</h4>\n        <table>\n            <tr>\n                <th>Dyscyplina</th>\n                <th>PkD / PkDAut</th>\n                <th>Slot</th>\n            </tr>\n            {% for pd in rekord.punktacja_dyscypliny.select_related %}\n                <tr>\n                    <td>{{ pd.dyscyplina.nazwa }}</td>\n                    <td>{{ pd.pkd }}</td>\n                    <td>{{ pd.slot }}</td>\n                    {% load user_in_group %}\n                </tr>\n            {% endfor %}\n        </table>\n\n    {% endif %}\n{% endif %}\n\n<style type="text/css">\n/* BibTeX specific styles */\n#bibtex-container {\n    margin-top: 10px;\n}\n\n#bibtex-content {\n    width: 100%;\n    min-height: 200px;\n    font-family: 'Courier New', Consolas, Monaco, monospace;\n    font-size: 12px;\n    background-color: #f8f8f8;\n    border: 1px solid #ccc;\n    border-radius: 3px;\n    padding: 10px;\n    resize: vertical;\n    line-height: 1.4;\n}\n\n#bibtex-toggle-btn,\n#bibtex-copy-btn {\n    margin: 0;\n    vertical-align: top;\n}\n\n#bibtex-copy-btn {\n    margin-left: 10px;\n}\n\n#bibtex-copy-feedback {\n    margin-left: 10px;\n    color: #28a745;\n    font-weight: bold;\n    display: none;\n    vertical-align: top;\n}\n\n/* Responsive adjustments */\n@media screen and (max-width: 640px) {\n    #bibtex-content {\n        font-size: 10px;\n        min-height: 150px;\n    }\n\n    #bibtex-toggle-btn,\n    #bibtex-copy-btn {\n        font-size: 0.8rem;\n        padding: 0.5rem 1rem;\n    }\n}\n\n/* Better button styling for loading state */\n#bibtex-toggle-btn:disabled {\n    opacity: 0.6;\n    cursor: not-allowed;\n}\n</style>\n\n<script type="text/javascript">\n(function($) {\n    $(document).ready(function() {\n        var bibtexToggleBtn = $('#bibtex-toggle-btn');\n        var bibtexContainer = $('#bibtex-container');\n        var bibtexContent = $('#bibtex-content');\n        var bibtexCopyBtn = $('#bibtex-copy-btn');\n        var bibtexCopyFeedback = $('#bibtex-copy-feedback');\n        var bibtexLoaded = false;\n\n        // Toggle BibTeX display\n        bibtexToggleBtn.click(function() {\n            if (bibtexContainer.is(':visible')) {\n                bibtexContainer.hide();\n                bibtexToggleBtn.text('📋 Pokaż BibTeX');\n            } else {\n                if (!bibtexLoaded) {\n                    // Load BibTeX via AJAX\n                    loadBibTeX();\n                } else {\n                    bibtexContainer.show();\n                    bibtexToggleBtn.text('📋 Ukryj BibTeX');\n                }\n            }\n        });\n\n        // Copy to clipboard functionality\n        bibtexCopyBtn.click(function() {\n            copyToClipboard();\n        });\n\n        function loadBibTeX() {\n            bibtexToggleBtn.prop('disabled', true).text('⏳ Ładowanie...');\n\n            // Extract model and pk from the current page\n            var modelName = '{{ rekord.content_type.model }}';\n            var pk = '{{ praca.pk }}';\n\n            var url = '/bpp/api/bibtex/' + modelName + '/' + pk + '/';\n\n            $.ajax({\n                url: url,\n                type: 'GET',\n                dataType: 'json',\n                success: function(data) {\n                    bibtexContent.val(data.bibtex);\n                    bibtexContainer.show();\n                    bibtexToggleBtn.text('📋 Ukryj BibTeX');\n                    bibtexCopyBtn.show();\n                    bibtexLoaded = true;\n\n                    // Auto-resize textarea to content\n                    autoResizeTextarea();\n                },\n                error: function(xhr, status, error) {\n                    var errorMsg = 'Błąd podczas pobierania BibTeX';\n                    if (xhr.responseJSON && xhr.responseJSON.error) {\n                        errorMsg += ': ' + xhr.responseJSON.error;\n                    }\n                    bibtexContent.val(errorMsg);\n                    bibtexContainer.show();\n                    bibtexToggleBtn.text('📋 Ukryj BibTeX (błąd)');\n                },\n                complete: function() {\n                    bibtexToggleBtn.prop('disabled', false);\n                }\n            });\n        }\n\n        function autoResizeTextarea() {\n            var lines = bibtexContent.val().split('\\n').length;\n            var minHeight = 200;\n            var lineHeight = 16;\n            var newHeight = Math.max(minHeight, (lines + 1) * lineHeight);\n            bibtexContent.css('height', newHeight + 'px');\n        }\n\n        function copyToClipboard() {\n            // Modern Clipboard API\n            if (navigator.clipboard && window.isSecureContext) {\n                navigator.clipboard.writeText(bibtexContent.val()).then(function() {\n                    showCopyFeedback();\n                }, function(err) {\n                    fallbackCopy();\n                });\n            } else {\n                fallbackCopy();\n            }\n        }\n\n        function fallbackCopy() {\n            // Fallback for older browsers\n            bibtexContent.select();\n            bibtexContent[0].setSelectionRange(0, 99999); // For mobile devices\n\n            try {\n                document.execCommand('copy');\n                showCopyFeedback();\n            } catch (err) {\n                alert('Nie można skopiować do schowka. Proszę zaznacz tekst i skopiuj ręcznie (Ctrl+C).');\n            }\n        }\n\n        function showCopyFeedback() {\n            bibtexCopyFeedback.show();\n            setTimeout(function() {\n                bibtexCopyFeedback.fadeOut();\n            }, 2000);\n        }\n    });\n})(jQuery || django.jQuery || $);\n</script>\n\n{% if rekord.ma_odpiete_dyscypliny %}\n    {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}\n        <h4>"Odpięte" dyscypliny:</h4>\n        <table>\n            <tr>\n                <th>Autor</th>\n                <th>Dyscyplina</th>\n            </tr>\n            {% for pa in praca.odpiete_dyscypliny.select_related %}\n                <tr>\n                    <td>{{ pa.autor }}</td>\n                    <td>{{ pa.dyscyplina_naukowa.nazwa }}</td>\n                </tr>\n            {% endfor %}\n        </table>\n    {% endif %}\n{% endif %}\n	2000-01-01 00:00:00+00	2000-01-01 00:00:00+00
 3	oswiadczenia/tresc_jednego_oswiadczenia.html	<h1>Oświadczenie upoważaniające podmiot do wykazania osiągnięć w ewaluacji jakości działalności naukowej</h1>\n<hr>\n<h2>{{ autor.nazwisko }} {{ autor.imiona }}</h2>\n<p>ORCID: <strong>{{ autor.orcid }}</strong></p>\n<p>Dyscypliny:</p>\n<ul>\n    <li>{{ dyscyplina_naukowa }}</li>\n    {% if subdyscyplina_naukowa %}\n        <li>{{ subdyscyplina_naukowa }}</li>\n    {% endif %}\n</ul>\n<p>\n    Ja, <strong>{{ autor.nazwisko }} {{ autor.imiona }}</strong>, zgodnie z art. 265 ust. 13 ustawy z dnia\n    20 lipca 2018 r. – Prawo  o szkolnictwie\n    wyższym i nauce (Dz. U. z 2021 r. poz. 478, z późn. zm.) upoważniam do wykazania na potrzeby\n    ewaluacji jakości działalności naukowej za lata <strong>2022-2025</strong> moich, wymienionych w niniejszym\n    oświadczeniu osiągnięć przez <strong>{{ uczelnia.nazwa }}</strong> w dyscyplinie:\n    <strong>{{ dyscyplina_pracy }}</strong>.\n</p>\n<p>\n    Oświadczam, że osiągnięcia te powstały w związku z prowadzeniem przeze mnie działalności naukowej\n    w tym podmiocie (nie dotyczy osiągnięć artystycznych).\n</p>\n<div width="10%" style="text-align: center; width:50%; float: right;">\n    <p>{{ data_oswiadczenia|default:"" }}...........................................................</p>\n    <p>(data i podpis)</p>\n</div>\n<div style="clear:both;"></div>\n<strong>Dotyczy:</strong><br/>\n{{ object.opis_bibliograficzny_cache|safe }}\n	2000-01-01 00:00:00+00	2000-01-01 00:00:00+00
 \.
 
@@ -17556,16 +17411,25 @@ COPY public.formdefaults_formfielddefaultvalue (id, value, field_id, parent_id, 
 
 COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order", parent_id) FROM stdin;
 1	obiekt	Autor	django.forms.models.ModelChoiceField	0	raport_slotow.forms.autor.AutorRaportSlotowForm
+2	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+3	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
 4	minimalny_pk	Minimalna wartość PK pracy	django.forms.fields.IntegerField	3	raport_slotow.forms.autor.AutorRaportSlotowForm
 5	dzialanie	Wygeneruj	django.forms.fields.ChoiceField	4	raport_slotow.forms.autor.AutorRaportSlotowForm
 6	slot	Zadana wielkość slotu	django.forms.fields.DecimalField	5	raport_slotow.forms.autor.AutorRaportSlotowForm
 7	_export	Format wyjściowy	django.forms.fields.ChoiceField	6	raport_slotow.forms.autor.AutorRaportSlotowForm
+8	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+9	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
 10	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
 11	upowaznienie_pbn	Upowaznienie pbn	django.forms.fields.NullBooleanField	3	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+12	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+13	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
 14	akcja	Akcja	django.forms.fields.TypedChoiceField	2	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+15	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
 16	minimalny_pk	Minimalny pk	django.forms.fields.DecimalField	4	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
 17	dziel_na_jednostki_i_wydzialy	Dziel na jednostki i wydziały	django.forms.fields.BooleanField	5	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
 18	pokazuj_zerowych	Dołączaj autorów z zerowymi slotami	django.forms.fields.BooleanField	6	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+19	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+20	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
 21	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
 22	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
 23	punkty_mnisw_od	od	django.forms.fields.FloatField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
@@ -17573,6 +17437,8 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 25	if_od	od	django.forms.fields.FloatField	6	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
 26	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
 27	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+28	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+29	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 30	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 31	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 32	punkty_mnisw_od	od	django.forms.fields.FloatField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
@@ -17581,6 +17447,8 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 35	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 36	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 37	obiekt	Wydział	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+38	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+39	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 40	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 41	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 42	punkty_mnisw_od	od	django.forms.fields.FloatField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
@@ -17589,6 +17457,8 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 45	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 46	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 47	obiekt	Jednostka	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+48	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+49	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 50	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 51	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 52	punkty_mnisw_od	od	django.forms.fields.FloatField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
@@ -17651,7 +17521,7 @@ COPY public.import_dyscyplin_kolumna (id, nazwa_w_pliku, rodzaj_pola, parent_id,
 -- Data for Name: import_list_if_importlistif; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.import_list_if_importlistif (id, created_on, last_updated_on, started_on, finished_on, finished_successfully, traceback, plik_xls, rok, owner_id) FROM stdin;
+COPY public.import_list_if_importlistif (id, created_on, started_on, finished_on, finished_successfully, traceback, plik_xls, rok, owner_id, cancel_requested, cancelled, current_stage, language, log, log_seq, percent, result_context, stage_states, status_text) FROM stdin;
 \.
 
 
@@ -17683,7 +17553,7 @@ COPY public.import_list_ministerialnych_wierszimportulistyministerialnej (id, da
 -- Data for Name: import_polon_importplikuabsencji; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.import_polon_importplikuabsencji (id, created_on, last_updated_on, started_on, finished_on, finished_successfully, traceback, plik, owner_id, zapisz_zmiany_do_bazy) FROM stdin;
+COPY public.import_polon_importplikuabsencji (id, created_on, started_on, finished_on, finished_successfully, traceback, plik, owner_id, zapisz_zmiany_do_bazy, cancel_requested, cancelled, current_stage, language, log, log_seq, percent, result_context, stage_states, status_text) FROM stdin;
 \.
 
 
@@ -17691,7 +17561,7 @@ COPY public.import_polon_importplikuabsencji (id, created_on, last_updated_on, s
 -- Data for Name: import_polon_importplikupolon; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.import_polon_importplikupolon (id, created_on, last_updated_on, started_on, finished_on, finished_successfully, traceback, plik, owner_id, rok, zapisz_zmiany_do_bazy, ukryj_niezmatchowanych_autorow, ignoruj_miejsce_pracy, uczelnia_id) FROM stdin;
+COPY public.import_polon_importplikupolon (id, created_on, started_on, finished_on, finished_successfully, traceback, plik, owner_id, rok, zapisz_zmiany_do_bazy, ukryj_niezmatchowanych_autorow, ignoruj_miejsce_pracy, uczelnia_id, cancel_requested, cancelled, current_stage, language, log, log_seq, percent, result_context, stage_states, status_text) FROM stdin;
 \.
 
 
@@ -17851,7 +17721,7 @@ COPY public.importer_publikacji_importedauthor_candidate (id, pewnosc, powod, pu
 -- Data for Name: importer_publikacji_importsession; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.importer_publikacji_importsession (id, provider_name, identifier, status, raw_data, normalized_data, matched_data, jest_wydawnictwem_zwartym, created_record_id, created, modified, charakter_formalny_id, created_record_content_type_id, jezyk_id, typ_kbn_id, created_by_id, wydawca_id, zrodlo_id, modified_by_id, wydawnictwo_nadrzedne_id, wydawnictwo_nadrzedne_w_pbn_id, celery_task_id, last_error_message, last_error_traceback, last_failed_stage, uczelnia_id, rodzaj_rekordu) FROM stdin;
+COPY public.importer_publikacji_importsession (id, provider_name, identifier, status, raw_data, normalized_data, matched_data, jest_wydawnictwem_zwartym, created_record_id, created, modified, charakter_formalny_id, created_record_content_type_id, jezyk_id, typ_kbn_id, created_by_id, wydawca_id, zrodlo_id, modified_by_id, wydawnictwo_nadrzedne_id, wydawnictwo_nadrzedne_w_pbn_id, celery_task_id, last_error_message, last_error_traceback, last_failed_stage, uczelnia_id, rodzaj_rekordu, zgloszenie_id, zgloszenie_odrzucone_przez_operatora) FROM stdin;
 \.
 
 
@@ -18291,7 +18161,7 @@ COPY public.przemapuj_zrodlo_przemapowazrodla (id, liczba_publikacji, publikacje
 -- Data for Name: raport_slotow_raportslotowuczelnia; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.raport_slotow_raportslotowuczelnia (id, created_on, last_updated_on, started_on, finished_on, finished_successfully, traceback, od_roku, do_roku, slot, minimalny_pk, dziel_na_jednostki_i_wydzialy, owner_id, pokazuj_zerowych, akcja, uczelnia_id) FROM stdin;
+COPY public.raport_slotow_raportslotowuczelnia (id, created_on, started_on, finished_on, finished_successfully, traceback, od_roku, do_roku, slot, minimalny_pk, dziel_na_jednostki_i_wydzialy, owner_id, pokazuj_zerowych, akcja, uczelnia_id, cancel_requested, cancelled, current_stage, language, log, log_seq, percent, result_context, stage_states, status_text) FROM stdin;
 \.
 
 
@@ -18419,7 +18289,7 @@ COPY public.zglos_publikacje_obslugujacy_zgloszenia_wydzialow (id, user_id, wydz
 -- Data for Name: zglos_publikacje_zgloszenie_publikacji; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.zglos_publikacje_zgloszenie_publikacji (id, tytul_oryginalny, tytul, doi, opl_pub_cost_free, opl_pub_research_potential, opl_pub_research_or_development_projects, opl_pub_other, opl_pub_amount, content_type_id, email, object_id, status, utworzono, rok, plik, strona_www, kod_do_edycji, ostatnio_zmieniony, przyczyna_zwrotu, rodzaj_zglaszanej_publikacji, utworzyl_id, deleted_at, restored_at, transaction_id, zgoda_na_publikacje_pelnego_tekstu, oryginalna_nazwa_pliku, forma_dostepu, wydawca_bpp_id, wydawca_pbn_id, wydawca_zgloszenia, wydawnictwo_nadrzedne_bpp_id, wydawnictwo_nadrzedne_pbn_id, wydawnictwo_nadrzedne_tekst) FROM stdin;
+COPY public.zglos_publikacje_zgloszenie_publikacji (id, tytul_oryginalny, tytul, doi, opl_pub_cost_free, opl_pub_research_potential, opl_pub_research_or_development_projects, opl_pub_other, opl_pub_amount, content_type_id, email, object_id, status, utworzono, rok, plik, strona_www, kod_do_edycji, ostatnio_zmieniony, przyczyna_zwrotu, rodzaj_zglaszanej_publikacji, utworzyl_id, deleted_at, restored_at, transaction_id, zgoda_na_publikacje_pelnego_tekstu, oryginalna_nazwa_pliku, forma_dostepu, wydawca_bpp_id, wydawca_pbn_id, wydawca_zgloszenia, wydawnictwo_nadrzedne_bpp_id, wydawnictwo_nadrzedne_pbn_id, wydawnictwo_nadrzedne_tekst, zaimportowano, zaimportowal_id) FROM stdin;
 \.
 
 
@@ -18471,14 +18341,14 @@ SELECT pg_catalog.setval('public.auth_group_id_seq', 9, true);
 -- Name: auth_group_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 404, true);
+SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 300, true);
 
 
 --
 -- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_permission_id_seq', 1094, true);
+SELECT pg_catalog.setval('public.auth_permission_id_seq', 1074, true);
 
 
 --
@@ -19171,7 +19041,7 @@ SELECT pg_catalog.setval('public.django_celery_results_taskresult_id_seq', 1, fa
 -- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_content_type_id_seq', 272, true);
+SELECT pg_catalog.setval('public.django_content_type_id_seq', 268, true);
 
 
 --
@@ -19185,7 +19055,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1092, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1098, true);
 
 
 --
@@ -19416,7 +19286,7 @@ SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 42,
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 147, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 57, true);
 
 
 --
@@ -23209,6 +23079,14 @@ ALTER TABLE ONLY public.pbn_api_publikacjainstytucji
 
 
 --
+-- Name: pbn_api_publikacjainstytucji pbn_api_publikacjainstytucji_trojka_unikalna; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pbn_api_publikacjainstytucji
+    ADD CONSTRAINT pbn_api_publikacjainstytucji_trojka_unikalna UNIQUE ("institutionId_id", "publicationId_id", "insPersonId_id");
+
+
+--
 -- Name: pbn_api_publikacjainstytucji_v2 pbn_api_publikacjainstytucji_v2_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -23983,6 +23861,13 @@ CREATE INDEX bpp_autor_imiona_1c510554 ON public.bpp_autor USING btree (imiona);
 --
 
 CREATE INDEX bpp_autor_imiona_1c510554_like ON public.bpp_autor USING btree (imiona varchar_pattern_ops);
+
+
+--
+-- Name: bpp_autor_jednostka_bez_daty_unikalne; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX bpp_autor_jednostka_bez_daty_unikalne ON public.bpp_autor_jednostka USING btree (autor_id, jednostka_id) WHERE (rozpoczal_prace IS NULL);
 
 
 --
@@ -28060,6 +27945,13 @@ CREATE INDEX ewaluacja_metryki_metrykaautora_uczelnia_id_f2a91bd0 ON public.ewal
 
 
 --
+-- Name: ewaluacja_metryki_status_jeden_wiersz_bez_uczelni; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ewaluacja_metryki_status_jeden_wiersz_bez_uczelni ON public.ewaluacja_metryki_statusgenerowania USING btree (((uczelnia_id IS NULL))) WHERE (uczelnia_id IS NULL);
+
+
+--
 -- Name: ewaluacja_o_created_0a9788_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -29191,6 +29083,13 @@ CREATE INDEX importer_publikacji_importsession_user_id_3012e946 ON public.import
 --
 
 CREATE INDEX importer_publikacji_importsession_wydawca_id_3cd83f21 ON public.importer_publikacji_importsession USING btree (wydawca_id);
+
+
+--
+-- Name: importer_publikacji_importsession_zgloszenie_id_ae3fcc4b; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX importer_publikacji_importsession_zgloszenie_id_ae3fcc4b ON public.importer_publikacji_importsession USING btree (zgloszenie_id);
 
 
 --
@@ -31186,6 +31085,20 @@ CREATE INDEX zglos_publikacje_zgloszenie_publikacji_wydawca_bpp_id_8d005aae ON p
 --
 
 CREATE INDEX zglos_publikacje_zgloszenie_publikacji_wydawca_pbn_id_6cd08d84 ON public.zglos_publikacje_zgloszenie_publikacji USING btree (wydawca_pbn_id);
+
+
+--
+-- Name: zglos_publikacje_zgloszenie_publikacji_zaimportowal_id_72fa0947; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX zglos_publikacje_zgloszenie_publikacji_zaimportowal_id_72fa0947 ON public.zglos_publikacje_zgloszenie_publikacji USING btree (zaimportowal_id);
+
+
+--
+-- Name: zglos_publikacje_zgloszenie_publikacji_zaimportowano_df54ec15; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX zglos_publikacje_zgloszenie_publikacji_zaimportowano_df54ec15 ON public.zglos_publikacje_zgloszenie_publikacji USING btree (zaimportowano);
 
 
 --
@@ -35666,6 +35579,14 @@ ALTER TABLE ONLY public.importer_publikacji_importsession
 
 
 --
+-- Name: importer_publikacji_importsession importer_publikacji__zgloszenie_id_ae3fcc4b_fk_zglos_pub; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.importer_publikacji_importsession
+    ADD CONSTRAINT importer_publikacji__zgloszenie_id_ae3fcc4b_fk_zglos_pub FOREIGN KEY (zgloszenie_id) REFERENCES public.zglos_publikacje_zgloszenie_publikacji(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: importer_publikacji_importsession importer_publikacji__zrodlo_id_1648d1be_fk_bpp_zrodl; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -36775,6 +36696,14 @@ ALTER TABLE ONLY public.zglos_publikacje_zgloszenie_publikacji
 
 ALTER TABLE ONLY public.zglos_publikacje_zgloszenie_publikacji
     ADD CONSTRAINT zglos_publikacje_zgl_wydawnictwo_nadrzedn_d0561b20_fk_bpp_wydaw FOREIGN KEY (wydawnictwo_nadrzedne_bpp_id) REFERENCES public.bpp_wydawnictwo_zwarte(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: zglos_publikacje_zgloszenie_publikacji zglos_publikacje_zgl_zaimportowal_id_72fa0947_fk_bpp_bppus; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.zglos_publikacje_zgloszenie_publikacji
+    ADD CONSTRAINT zglos_publikacje_zgl_zaimportowal_id_72fa0947_fk_bpp_bppus FOREIGN KEY (zaimportowal_id) REFERENCES public.bpp_bppuser(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
