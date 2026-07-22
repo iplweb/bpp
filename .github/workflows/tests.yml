@@ -58,6 +58,9 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
+          # Patrz komentarz przy jobie `lock-check` — bez `version` setup-uv
+          # bierze "latest", co czyni CI niedeterministycznym.
+          version: "0.11.29"
           enable-cache: true
 
       - name: Determine diff base
@@ -131,6 +134,15 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
+          # PIN OBOWIAZKOWY. Bez `version` setup-uv loguje "Could not
+          # determine uv version from uv.toml or pyproject.toml. Falling back
+          # to latest" i bierze najnowsze uv z releases.astral.sh. `uv lock
+          # --check` zaczyna wtedy zalezec od DATY przebiegu, nie od tresci
+          # repo: ten sam, bit-w-bit identyczny uv.lock przechodzil na uv
+          # 0.11.29 i padal na 0.11.31 ("lockfile needs to be updated"),
+          # wywracajac gate na branchach, ktore deps w ogole nie ruszaly.
+          # Wersje podnosimy SWIADOMIE, razem z przegenerowanym uv.lock.
+          version: "0.11.29"
           enable-cache: true
       - name: Assert uv.lock matches pyproject.toml
         run: uv lock --check
@@ -164,6 +176,10 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
       with:
+        # Patrz komentarz przy jobie `lock-check`. Tu dochodzi drugi powod:
+        # `uv sync --frozen` czyta uv.lock, wiec plywajaca wersja uv czyni
+        # srodowisko testowe niereprodukowalnym miedzy przebiegami.
+        version: "0.11.29"
         enable-cache: false
 
     - name: Install project deps

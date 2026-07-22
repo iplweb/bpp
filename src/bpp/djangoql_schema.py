@@ -273,9 +273,9 @@ _SEARCH_ALLOWLIST_LABELS = (
     "bpp.Funkcja_Autora",
     "bpp.Tytul",
     "bpp.Plec",
-    # struktura organizacyjna
+    # struktura organizacyjna (Faza C #438: „wydział" = Jednostka top-level,
+    # osobny model Wydzial nie istnieje)
     "bpp.Jednostka",
-    "bpp.Wydzial",
     "bpp.Uczelnia",
     "bpp.RodzajJednostki",
     # źródło / miejsce wydania / wydawca
@@ -563,5 +563,6 @@ class RekordLLMSchema(DeprecatedAndRestrictedFieldsMixin, ExtrasSchema):
     #: niezależnie od fk_options i --max-fk-options (wymaga djangoql-iplweb
     #: >= 0.30.3). Nazwy jednostek, wydziałów i uczelni to dane instytucji,
     #: nie standardowe słowniki — nie mają prawa wyciec nawet przy regeneracji
-    #: z --max-fk-options > 0.
-    no_value_targets = ("bpp.Jednostka", "bpp.Wydzial", "bpp.Uczelnia")
+    #: z --max-fk-options > 0. Faza C (#438): wydziały to jednostki top-level,
+    #: więc ``bpp.Jednostka`` zakrywa też ich nazwy.
+    no_value_targets = ("bpp.Jednostka", "bpp.Uczelnia")

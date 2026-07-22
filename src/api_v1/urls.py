@@ -20,7 +20,7 @@ from api_v1.viewsets.raport_slotow_uczelnia import (
 )
 from api_v1.viewsets.recent_author_publications import RecentAuthorPublicationsViewSet
 from api_v1.viewsets.recent_unit_publications import RecentUnitPublicationsViewSet
-from api_v1.viewsets.struktura import JednostkaViewSet, UczelniaViewSet, WydzialViewSet
+from api_v1.viewsets.struktura import JednostkaViewSet, UczelniaViewSet
 from api_v1.viewsets.system import (
     Charakter_FormalnyViewSet,
     Dyscyplina_NaukowaViewSet,
@@ -104,7 +104,6 @@ router.register(r"rodzaj_zrodla", Rodzaj_ZrodlaViewSet)
 router.register(r"zrodlo", ZrodloViewSet)
 
 router.register(r"jednostka", JednostkaViewSet)
-router.register(r"wydzial", WydzialViewSet)
 router.register(r"uczelnia", UczelniaViewSet)
 
 router.register(r"szukaj", SzukajViewSet, basename="szukaj")

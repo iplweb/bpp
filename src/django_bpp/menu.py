@@ -113,8 +113,8 @@ WEB_MENU = [
 
 STRUKTURA_MENU = [
     (_tytul_lazy("UCZELNIA"), "/admin/bpp/uczelnia/"),
-    # Faza B (#438), III-3: WydzialAdmin usunięty razem z inline/resource
-    # (Wydzial jako MODEL żyje do Fazy C, ale nie ma już własnego admina).
+    # Faza B (#438), III-3: WydzialAdmin usunięty razem z inline/resource.
+    # Faza C: model Wydzial usunięty w całości (migracja 0467).
     # Zarządzanie „wydziałami" przeszło na korzenie drzewa MPTT w
     # JednostkaAdmin (ta sama konsolidacja co strona publiczna w III-2) —
     # link filtruje listę do węzłów bez rodzica, czyli odpowiedników dawnych

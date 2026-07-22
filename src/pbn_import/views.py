@@ -13,7 +13,7 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import DetailView, ListView, TemplateView
 
-from bpp.models import Jednostka, Jezyk, Uczelnia, Wydzial
+from bpp.models import Jednostka, Jezyk, Uczelnia
 from bpp.util import zaloguj_polkniety_wyjatek
 
 from .models import (
@@ -116,33 +116,32 @@ class ImportDashboardView(LoginRequiredMixin, ImportPermissionMixin, TemplateVie
         # uczelni, co prowadziło do startu importu z domyślną jednostką spoza
         # właściwej uczelni. Bez uczelni (brak kontekstu) nie ma czego importować.
         if uczelnia:
-            wydzialy = Wydzial.objects.filter(uczelnia=uczelnia)
+            wydzialy = Jednostka.objects.filter(uczelnia=uczelnia, parent__isnull=True)
             jednostki = Jednostka.objects.filter(
                 skupia_pracownikow=True, uczelnia=uczelnia
             )
         else:
-            wydzialy = Wydzial.objects.none()
+            wydzialy = Jednostka.objects.none()
             jednostki = Jednostka.objects.none()
 
         # Jeśli brak wydziałów I brak jednostek - utwórz domyślne
         if not wydzialy.exists() and not jednostki.exists() and uczelnia:
             wydzial_domyslny, _ = znajdz_lub_utworz_wydzial_domyslny(uczelnia)
             jednostka_domyslna, _ = znajdz_lub_utworz_jednostke_domyslna(uczelnia)
-            # Faza B (#438): ``Jednostka.wydzial`` to zdenormalizowany self-FK
-            # do korzenia — nie przypisujemy Wydzialu. Podpinamy jednostkę pod
-            # węzeł-lustro wydziału domyślnego (MPTT ``parent``); denorm wyliczy
-            # ``wydzial`` przy zapisie.
+            # Faza C (#438): „wydział domyślny" to root-Jednostka (parent IS
+            # NULL) — jednostkę domyślną podpinamy wprost pod niego (MPTT
+            # ``parent``); denorm ``wydzial`` (korzeń) wyliczy się przy zapisie.
             if jednostka_domyslna.parent is None:
-                from bpp.models.struktura_konwersja import (
-                    znajdz_lub_utworz_wezel_wydzialu,
-                )
-
-                wezel, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial_domyslny)
-                jednostka_domyslna.parent = wezel
+                # MPTT: ``wydzial_domyslny`` utworzono PRZED ``jednostka_domyslna``
+                # (nowy root), więc jego in-memory lft/rght/tree_id mogą być
+                # nieaktualne — odśwież przed move, inaczej MPTT błędnie widzi
+                # cel jako potomka i rzuca InvalidMove.
+                wydzial_domyslny.refresh_from_db()
+                jednostka_domyslna.parent = wydzial_domyslny
                 jednostka_domyslna.skupia_pracownikow = True
                 jednostka_domyslna.save()
             # Odśwież querysets (wciąż zawężone do uczelni kontekstu)
-            wydzialy = Wydzial.objects.filter(uczelnia=uczelnia)
+            wydzialy = Jednostka.objects.filter(uczelnia=uczelnia, parent__isnull=True)
             jednostki = Jednostka.objects.filter(
                 skupia_pracownikow=True, uczelnia=uczelnia
             )
@@ -232,7 +231,11 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
         wydzial_id = request.POST.get("wydzial_domyslny_id")
         jednostka_id = request.POST.get("jednostka_domyslna_id")
 
-        wydzial = Wydzial.objects.filter(pk=wydzial_id).first() if wydzial_id else None
+        wydzial = (
+            Jednostka.objects.filter(pk=wydzial_id, parent__isnull=True).first()
+            if wydzial_id
+            else None
+        )
         jednostka = (
             Jednostka.objects.filter(pk=jednostka_id).first() if jednostka_id else None
         )

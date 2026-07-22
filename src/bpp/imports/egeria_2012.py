@@ -8,7 +8,6 @@ from bpp.models import (
     Funkcja_Autora,
     Jednostka,
     Opi_2012_Afiliacja_Do_Wydzialu,
-    Wydzial,
 )
 
 ignored_seen, wiecej_niz_jeden, brak_takiego, unseen_jed = set(), set(), set(), set()
@@ -195,21 +194,16 @@ def importuj_sheet_osoby_nie_ujete(sheet, text_mangle):
 
             wn = dct[wydzial].value
             try:
-                wydzial_rok = Wydzial.objects.get(nazwa=wn)
-            except Wydzial.DoesNotExist:
+                # Faza C (#438): „wydział" = jednostka top-level (parent IS NULL).
+                jednostka_wydzialu = Jednostka.objects.get(
+                    nazwa=wn, parent__isnull=True
+                )
+            except Jednostka.DoesNotExist:
                 print(
                     "BRAK TAKIEGO WYDZIALU:",
                     [str(x).encode("utf-8") for x in (wn, autor, jednostka, rok)],
                 )
                 continue
-
-            # Faza B (#438) II-2: ``wydzial`` FK->Jednostka (korzeń drzewa,
-            # mirror dawnego Wydzial) — potrzebny węzeł-lustro dla wydzial_rok.
-            from bpp.models.struktura_konwersja import (
-                znajdz_lub_utworz_wezel_wydzialu,
-            )
-
-            jednostka_wydzialu, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial_rok)
 
             Opi_2012_Afiliacja_Do_Wydzialu.objects.get_or_create(
                 autor=autor, wydzial=jednostka_wydzialu, rok=rok
@@ -249,14 +243,10 @@ def importuj_afiliacje(plik_xls, text_mangle):
 def importuj_imiona_sheet(sheet, wydzial):
     labels = ["_id", "tytul", "imiona", "nazwisko", "afiliacja"]
 
-    # Faza B (#438): ``afiliacja_na_rok`` filtruje po ``jednostka__wydzial``,
-    # które jest teraz self-FK do jednostki-korzenia. Mapujemy Wydzial na jego
-    # węzeł-lustro (root Jednostka), żeby dopasowanie działało po retargecie.
-    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
-
-    wezel_wydzialu = (
-        znajdz_lub_utworz_wezel_wydzialu(wydzial)[0] if wydzial is not None else None
-    )
+    # Faza C (#438): ``afiliacja_na_rok`` filtruje po ``jednostka__wydzial``
+    # (self-FK do jednostki-korzenia). ``wydzial`` jest już tym korzeniem
+    # (jednostka top-level), więc podajemy go wprost.
+    wezel_wydzialu = wydzial
 
     def zmien_imiona(a, dct):
         i = dct["imiona"].value
@@ -310,5 +300,8 @@ def importuj_imiona_sheet(sheet, wydzial):
 def importuj_imiona(plik_xls):
     book = xlrd.open_workbook(plik_xls)
     sheet = book.sheet_by_index(0)
-    wydzial = Wydzial.objects.get(skrot=os.path.basename(plik_xls).split("-")[0])
+    # Faza C (#438): „wydział" = jednostka top-level (parent IS NULL).
+    wydzial = Jednostka.objects.get(
+        skrot=os.path.basename(plik_xls).split("-")[0], parent__isnull=True
+    )
     importuj_imiona_sheet(sheet, wydzial)

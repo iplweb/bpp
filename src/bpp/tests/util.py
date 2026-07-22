@@ -26,7 +26,6 @@ from bpp.models import (
     Uczelnia,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
-    Wydzial,
     Zrodlo,
 )
 from bpp.models.system import Status_Korekty
@@ -64,6 +63,7 @@ wydzial_cnt = 0
 
 
 def any_wydzial(nazwa=None, skrot=None, uczelnia_skrot="UCL", **kw):
+    """Faza C (#438): „wydział" = jednostka top-level (``parent IS NULL``)."""
     global wydzial_cnt
     try:
         uczelnia = Uczelnia.objects.get(skrot=uczelnia_skrot)
@@ -79,7 +79,8 @@ def any_wydzial(nazwa=None, skrot=None, uczelnia_skrot="UCL", **kw):
     wydzial_cnt += 1
 
     set_default("uczelnia", uczelnia, kw)
-    return Wydzial.objects.create(nazwa=nazwa, skrot=skrot, **kw)
+    kw.setdefault("parent", None)
+    return Jednostka.objects.create(nazwa=nazwa, skrot=skrot, **kw)
 
 
 def any_jednostka(nazwa=None, skrot=None, wydzial_skrot="WDZ", **kw):
@@ -99,10 +100,9 @@ def any_jednostka(nazwa=None, skrot=None, wydzial_skrot="WDZ", **kw):
         if uczelnia is None:
             uczelnia = baker.make(Uczelnia)
 
-    # Faza B (#438): ``Jednostka.wydzial`` to zdenormalizowany self-FK do
-    # KORZENIA drzewa. Żeby jednostka miała „wydział", musi wisieć pod
-    # węzłem-lustrem tego Wydzialu (root Jednostka). Denorm wyliczy ``wydzial``
-    # przy zapisie. ``wydzial=`` NIE jest już przekazywane do ``create()``.
+    # Faza C (#438): „wydział" to jednostka top-level; jednostka „w wydziale"
+    # wisi pod nim (MPTT ``parent``), a denorm ``wydzial`` (korzeń) wyliczy się
+    # przy zapisie. Argument ``wydzial=`` przyjmuje teraz root-Jednostkę.
     parent = kw.pop("parent", None)
     try:
         wydzial = kw.pop("wydzial")
@@ -110,14 +110,14 @@ def any_jednostka(nazwa=None, skrot=None, wydzial_skrot="WDZ", **kw):
         wydzial = None
         if parent is None:
             try:
-                wydzial = Wydzial.objects.get(skrot=wydzial_skrot)
-            except Wydzial.DoesNotExist:
-                wydzial = baker.make(Wydzial, uczelnia=uczelnia)
+                wydzial = Jednostka.objects.get(
+                    skrot=wydzial_skrot, parent__isnull=True
+                )
+            except Jednostka.DoesNotExist:
+                wydzial = baker.make(Jednostka, uczelnia=uczelnia, parent=None)
 
     if parent is None and wydzial is not None:
-        from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
-
-        parent, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
+        parent = wydzial
 
     ret = Jednostka.objects.create(
         nazwa=nazwa, skrot=skrot, parent=parent, uczelnia=uczelnia, **kw

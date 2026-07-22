@@ -578,16 +578,15 @@ def _rozstrzygnij_jednostki(parent, p):
 
     def pobierz_parent_domyslny():
         if "wezel" not in _cache:
-            from bpp.models.struktura_konwersja import (
-                znajdz_lub_utworz_wezel_wydzialu,
-            )
             from pbn_import.utils.institution_import import (
                 znajdz_lub_utworz_wydzial_domyslny,
             )
 
+            # Faza C (#438): helper zwraca już jednostkę TOP-LEVEL (rola
+            # wydziału) — nie ma osobnego modelu Wydzial ani węzła-lustra,
+            # więc nowe jednostki wiszą wprost pod tym rootem.
             wydzial, _ = znajdz_lub_utworz_wydzial_domyslny(uczelnia)
-            wezel, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
-            _cache["wezel"] = wezel
+            _cache["wezel"] = wydzial
         return _cache["wezel"]
 
     for dec in parent.jednostki_do_decyzji.all():

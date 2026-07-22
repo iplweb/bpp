@@ -197,15 +197,15 @@ class TestImportDashboardView:
 
     def test_dashboard_default_faculty_prefers_domyslny_name(self, django_user_model):
         """Default faculty must be the one whose nazwa contains 'Domyśln…'."""
-        from bpp.models import Wydzial
+        from bpp.models import Jednostka
 
         client = Client()
         user = baker.make(django_user_model, is_superuser=True)
         client.force_login(user)
         uczelnia = baker.make(Uczelnia, pbn_integracja=True)
 
-        baker.make(Wydzial, nazwa="AAA Wydział Prawdziwy", uczelnia=uczelnia)
-        domyslny = baker.make(Wydzial, nazwa="Wydział Domyślny", uczelnia=uczelnia)
+        baker.make(Jednostka, nazwa="AAA Wydział Prawdziwy", uczelnia=uczelnia)
+        domyslny = baker.make(Jednostka, nazwa="Wydział Domyślny", uczelnia=uczelnia)
 
         response = client.get(reverse("pbn_import:dashboard"))
 
@@ -213,15 +213,15 @@ class TestImportDashboardView:
 
     def test_dashboard_default_faculty_empty_without_domyslny(self, django_user_model):
         """No 'Domyśln…' faculty → no pre-selected faculty (user must choose)."""
-        from bpp.models import Wydzial
+        from bpp.models import Jednostka
 
         client = Client()
         user = baker.make(django_user_model, is_superuser=True)
         client.force_login(user)
         uczelnia = baker.make(Uczelnia, pbn_integracja=True)
 
-        baker.make(Wydzial, nazwa="Wydział Lekarski", uczelnia=uczelnia)
-        baker.make(Wydzial, nazwa="Wydział Farmaceutyczny", uczelnia=uczelnia)
+        baker.make(Jednostka, nazwa="Wydział Lekarski", uczelnia=uczelnia)
+        baker.make(Jednostka, nazwa="Wydział Farmaceutyczny", uczelnia=uczelnia)
 
         response = client.get(reverse("pbn_import:dashboard"))
 
@@ -229,7 +229,7 @@ class TestImportDashboardView:
 
     def test_dashboard_lists_only_request_uczelnia_units(self, django_user_model):
         """Multi-hosted: formularz pokazuje jednostki/wydziały TYLKO tej uczelni."""
-        from bpp.models import Jednostka, Wydzial
+        from bpp.models import Jednostka
 
         client = Client()
         user = baker.make(django_user_model, is_superuser=True)
@@ -241,8 +241,8 @@ class TestImportDashboardView:
         foreign = baker.make(
             Jednostka, skupia_pracownikow=True, uczelnia=foreign_uczelnia
         )
-        my_wydzial = baker.make(Wydzial, uczelnia=request_uczelnia)
-        foreign_wydzial = baker.make(Wydzial, uczelnia=foreign_uczelnia)
+        my_wydzial = baker.make(Jednostka, uczelnia=request_uczelnia)
+        foreign_wydzial = baker.make(Jednostka, uczelnia=foreign_uczelnia)
 
         with patch.object(
             Uczelnia.objects, "get_for_request", return_value=request_uczelnia
@@ -358,12 +358,12 @@ class TestStartImportView:
 
     def test_start_import_stores_config(self, django_user_model):
         """Test start import stores configuration from POST data"""
-        from bpp.models import Jednostka, Wydzial
+        from bpp.models import Jednostka
 
         client = Client()
         user = baker.make(django_user_model, is_superuser=True)
         uczelnia = baker.make(Uczelnia, pbn_integracja=True)
-        wydzial = baker.make(Wydzial, nazwa="IT Department", uczelnia=uczelnia)
+        wydzial = baker.make(Jednostka, nazwa="IT Department", uczelnia=uczelnia)
         jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
         znajdz_lub_utworz_obca_jednostke(uczelnia)
         client.force_login(user)
@@ -525,12 +525,12 @@ class TestStartImportView:
         klucz — inaczej import od źródeł (bez kroku institution_setup) nie zna
         domyślnej jednostki i rzuca ValueError.
         """
-        from bpp.models import Jednostka, Wydzial
+        from bpp.models import Jednostka
 
         client = Client()
         user = baker.make(django_user_model, is_superuser=True)
         uczelnia = baker.make(Uczelnia, pbn_integracja=True, uzywaj_wydzialow=True)
-        wydzial = baker.make(Wydzial, uczelnia=uczelnia)
+        wydzial = baker.make(Jednostka, uczelnia=uczelnia)
         jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
         znajdz_lub_utworz_obca_jednostke(uczelnia)
         client.force_login(user)
@@ -607,7 +607,7 @@ class TestStartImportView:
 
     def test_start_import_rejects_foreign_uczelnia_wydzial(self, django_user_model):
         """Gate-check: wydział z innej uczelni niż request → blokada startu."""
-        from bpp.models import Jednostka, Wydzial
+        from bpp.models import Jednostka
 
         client = Client()
         user = baker.make(django_user_model, is_superuser=True)
@@ -618,7 +618,7 @@ class TestStartImportView:
         jednostka = baker.make(
             Jednostka, skupia_pracownikow=True, uczelnia=request_uczelnia
         )
-        foreign_wydzial = baker.make(Wydzial, uczelnia=foreign_uczelnia)
+        foreign_wydzial = baker.make(Jednostka, uczelnia=foreign_uczelnia)
         client.force_login(user)
 
         with (

@@ -55,9 +55,10 @@ class BppConfig(AppConfig):
         "Praca_Doktorska",
         "Praca_Habilitacyjna",
         "Autor",
+        # Faza C (#438): „wydział" to jednostka top-level, więc `Jednostka`
+        # wyżej pokrywa też zapisy wydziałów — osobny wpis odpadł z modelem.
         "Jednostka",
         "Zrodlo",
-        "Wydzial",
         "Uczelnia",
         # Słowniki — ich nazwy trafiają do opisów bibliograficznych, więc
         # zmiana nazwy zmienia treść publicznych stron. Bez nich obietnica

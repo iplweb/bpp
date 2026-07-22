@@ -28,7 +28,6 @@ from bpp.models import (
     Autorzy,
     BppMultiseekVisibility,
     Jednostka,
-    Wydzial,
 )
 
 
@@ -229,8 +228,8 @@ class TestRebuildJednostkCommand:
         """Test rebuild with unit hierarchy."""
         call_command("rebuild_jednostka")
 
-        # Verify both exist
-        assert Wydzial.objects.filter(pk=wydzial.pk).exists()
+        # Verify both exist (dawny „wydział" = jednostka top-level)
+        assert Jednostka.objects.filter(pk=wydzial.pk, parent__isnull=True).exists()
         assert Jednostka.objects.filter(pk=jednostka.pk).exists()
 
 

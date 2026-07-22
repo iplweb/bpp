@@ -106,7 +106,6 @@ CACHEOPS = {
     "bpp.rzeczownik": {"ops": ("fetch", "get", "count", "exists")},
     "django_countdown.SiteCountdown": {"ops": ("fetch", "get", "count", "exists")},
     "bpp.uczelnia": {"ops": ("get", "fetch", "count", "exists")},
-    "bpp.wydzial": {"ops": ("get", "fetch", "count", "exists")},
     "bpp.jednostka": {"ops": ("get", "fetch", "count", "exists")},
     "bpp.wydawnictwo_ciagle_streszczenie": {"ops": ("get", "fetch", "count", "exists")},
     # `SiteResolutionMiddleware` rozstrzyga domenę → Site przy KAŻDYM

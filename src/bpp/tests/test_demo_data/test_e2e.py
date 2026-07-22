@@ -15,7 +15,6 @@ from bpp.models import (
     Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Autor,
-    Wydzial,
 )
 
 
@@ -54,11 +53,9 @@ def test_e2e_medium_scale(fixtures_loaded, tmp_path):
         "--yes-i-am-sure",
         f"--confirm-db={db_name}",
     )
-    assert Wydzial.objects.count() == 2
-    # Faza B (#438): jednostki wiszą pod węzłami-lustrami wydziałów (1 lustro
-    # na wydział) → 6 realnych + 2 węzły-lustra.
+    # Faza C (#438): 2 wydziały-rooty (top-level) + 6 jednostek-dzieci = 8.
     assert Jednostka.objects.count() == 8
-    assert Jednostka.objects.filter(legacy_wydzial_id__isnull=True).count() == 6
+    assert Jednostka.objects.filter(parent__isnull=True).count() == 2
     assert Autor.objects.count() == 20
     # 100% z dyscyplina, 3 lata, 20 autorow → 60 rekordow dyscyplin
     assert Autor_Dyscyplina.objects.count() == 60
@@ -104,11 +101,13 @@ def test_e2e_maly_motyw_wymusza_cyklowanie_nazw(fixtures_loaded, tmp_path):
         "--yes-i-am-sure",
         f"--confirm-db={db_name}",
     )
-    assert Wydzial.objects.count() == 8
-    # 8 wydz × 8 jedn = 64 realne jednostki + 8 węzłów-luster wydziałów.
-    assert Jednostka.objects.filter(legacy_wydzial_id__isnull=True).count() == 64
+    # Faza C (#438): „wydział" to jednostka TOP-LEVEL (parent IS NULL); nie ma
+    # osobnego modelu ani węzłów-luster. 8 rootów + 8 wydz × 8 jedn = 64 dzieci.
+    wydzialy = Jednostka.objects.filter(parent__isnull=True)
+    realne = Jednostka.objects.filter(parent__isnull=False)
+    assert wydzialy.count() == 8
+    assert realne.count() == 64
     # Nazwy globalnie unikalne — inaczej bulk_create by nie przeszedł.
-    assert Wydzial.objects.values("nazwa").distinct().count() == 8
-    realne = Jednostka.objects.filter(legacy_wydzial_id__isnull=True)
+    assert wydzialy.values("nazwa").distinct().count() == 8
     assert realne.values("nazwa").distinct().count() == 64
     assert Autor.objects.count() == 15

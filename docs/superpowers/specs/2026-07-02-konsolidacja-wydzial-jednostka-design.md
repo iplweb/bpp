@@ -291,10 +291,14 @@ Grupy uprawnień: usuń `Wydzial`/`Jednostka_Wydzial`, dodaj `Jednostka_Rodzic`;
   usunięcie `rodzaj_jednostki`, przepięcie konsumentów, recompute `aktualna` +
   odkrycie (`widoczna=True`) skonwertowanych w Fazie A ukrytych węzłów, migracja
   wartości multiseek.
-- **Faza C (później):** drop `Wydzial`, drop `legacy_wydzial_id` (po końcu
-  deprecation API), usunięcie `uzywaj_wydzialow` + audit labela top-level, rename
-  `wydzial`→`jednostka_toplevel`, czyszczenie ContentType/Permission, rebuild
-  cache, `baseline-update`.
+- **Faza C (zrealizowana, PR #465):** drop `Wydzial` (0467), drop markerów
+  `legacy_wydzial_id`/`jest_lustrem` (0468), backfill nazw do `poprzednie_nazwy`
+  (0466), czyszczenie ContentType/Permission (0469), audit labela top-level,
+  rebuild cache, `baseline-update` (przy scalaniu).
+  **KOREKTA vs pierwotny szkic (audit T14):** flaga `uzywaj_wydzialow`
+  ZOSTAJE — steruje ekspozycją labela „Wydział" i jest niezależna od modelu
+  (spójnie z Kryterium sukcesu #15). Rename `wydzial`→`jednostka_toplevel`
+  (D2) oraz `Jednostka`→`JednostkaOrganizacyjna` (D3) ODŁOŻONE.
 
 ---
 
@@ -330,11 +334,13 @@ Grupy uprawnień: usuń `Wydzial`/`Jednostka_Wydzial`, dodaj `Jednostka_Rodzic`;
 
 ## Świadomie odłożone (YAGNI / Faza C)
 
-- Rename `Jednostka.wydzial` → `jednostka_toplevel` (kosmetyka nazwy).
-- Konfigurowalny label poziomu top-level (audit).
-- Twarde usunięcie `/api/v1/wydzial/` (po deprecation).
-- Usunięcie flagi `uzywaj_wydzialow`.
-- Rename modelu `Jednostka` → `JednostkaOrganizacyjna`.
+- Rename `Jednostka.wydzial` → `jednostka_toplevel` (kosmetyka nazwy) —
+  ODŁOŻONE poza Fazę C (D2).
+- Konfigurowalny label poziomu top-level (audit) — zrobione w Fazie C (T14).
+- Twarde usunięcie `/api/v1/wydzial/` (po deprecation) — zrobione w Fazie C.
+- Flaga `uzywaj_wydzialow` — **NIE usuwana** (audit T14: zostaje na stałe,
+  steruje ekspozycją labela; niezależna od usuniętego modelu).
+- Rename modelu `Jednostka` → `JednostkaOrganizacyjna` — ODŁOŻONE (D3).
 
 ---
 

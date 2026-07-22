@@ -44,26 +44,18 @@ def wytnij_skrot(jednostka):
 
 
 def _wydzial_filtr(wydzial):
-    """``Q`` zawężające jednostki do wydziału podanego NAZWĄ (import legacy).
+    """``Q`` zawężające jednostki do dawnego wydziału podanego NAZWĄ.
 
-    Faza B (#438): „wydział" jednostki to zdenormalizowany korzeń
-    (``jednostka.wydzial``), a tożsamość dawnego wydziału niesie
-    ``root.legacy_wydzial_id``. Dopasowanie po ``wydzial__nazwa`` jest zawodne:
-    promowany 1-jednostkowy wydział (0457) ma root == realna jednostka (jej
-    własna nazwa ≠ nazwa wydziału), a syntetyczne lustro może mieć suffix
-    ``[W<id>]`` na kolizji (F6). Rozwiązujemy więc nazwę → ``Wydzial`` → korzeń
-    po ``legacy_wydzial_id``. Fallback na nazwę korzenia, gdy nie ma już wiersza
-    ``Wydzial`` o tej nazwie (zachowanie sprzed fixu)."""
+    Faza C (#438): „wydział" = jednostka top-level. ``matchuj_wydzial`` zwraca
+    root-Jednostkę (po nazwie lub ``poprzednie_nazwy``); zawężamy do jednostek
+    POD nim (denorm ``wydzial`` → root) ORAZ do SAMEGO roota (który ma denorm
+    ``wydzial=None``, więc pierwsza gałąź by go wykluczyła). Fallback na nazwę
+    korzenia, gdy żaden root nie pasuje."""
     from .tytul_funkcja import matchuj_wydzial
 
-    w = matchuj_wydzial(wydzial)
-    if w is not None:
-        # Jednostki POD korzeniem (denorm wydzial → root) ORAZ sam KORZEŃ:
-        # promowana jednostka-root ma denorm ``wydzial=None``, więc pierwsza
-        # gałąź by ją wykluczyła — trzeba dołączyć root po legacy_wydzial_id.
-        return Q(wydzial__legacy_wydzial_id=w.id) | Q(
-            parent__isnull=True, legacy_wydzial_id=w.id
-        )
+    root = matchuj_wydzial(wydzial)
+    if root is not None:
+        return Q(wydzial=root) | Q(pk=root.pk)
     return Q(wydzial__nazwa__iexact=wydzial)
 
 
@@ -114,14 +106,15 @@ def _pula_afiliacyjna():
     """Queryset jednostek dopuszczalnych jako AUTO-dopasowanie (``zgadywanie``):
     tylko przyjmujące afiliacje i widoczne. Odzwierciedla warunki
     ``Jednostka.przyjmuje_afiliacje()`` — wyklucza jednostki obce
-    (``skupia_pracownikow=False``), węzły-lustra „Wydział" (``jest_lustrem`` /
-    ``rodzaj.autor_moze_afiliowac=False``) i jednostki ukryte. Dopasowanie
-    DOKŁADNE (``matchuj_jednostke``) tej puli NIE używa — jeśli plik wprost
-    nazywa jednostkę obcą, honorujemy to."""
-    return (
-        Jednostka.objects.filter(widoczna=True, skupia_pracownikow=True)
-        .filter(Q(rodzaj__isnull=True) | Q(rodzaj__autor_moze_afiliowac=True))
-        .exclude(jest_lustrem=True)
+    (``skupia_pracownikow=False``), jednostki o rodzaju „Wydział"
+    (``rodzaj.autor_moze_afiliowac=False`` — migracja 0464) i jednostki
+    ukryte. Dopasowanie DOKŁADNE (``matchuj_jednostke``) tej puli NIE używa —
+    jeśli plik wprost nazywa jednostkę obcą, honorujemy to.
+
+    Faza C (#438): marker ``jest_lustrem`` zniknął wraz z węzłami-lustrami
+    (migracja 0468); wykluczenie rootów-wydziałów niesie sam ``rodzaj``."""
+    return Jednostka.objects.filter(widoczna=True, skupia_pracownikow=True).filter(
+        Q(rodzaj__isnull=True) | Q(rodzaj__autor_moze_afiliowac=True)
     )
 
 

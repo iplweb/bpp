@@ -10,9 +10,7 @@ from bpp.models import (
     Jednostka,
     Rekord,
     Uczelnia,
-    Wydzial,
 )
-from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 from raport_slotow.models.uczelnia import RaportSlotowUczelnia
 
 
@@ -72,13 +70,13 @@ def druga_uczelnia(db):
 
 @pytest.fixture
 def jednostka_drugiej_uczelni(druga_uczelnia, db):
-    wydzial = Wydzial.objects.create(
-        uczelnia=druga_uczelnia, skrot="W2", nazwa="Wydział II"
+    wydzial = Jednostka.objects.create(
+        uczelnia=druga_uczelnia, skrot="W2", nazwa="Wydział II", parent=None
     )
     return Jednostka.objects.create(
         nazwa="Jedn. Drugiej Ucz.",
         skrot="JDU",
-        parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
+        parent=wydzial,
         uczelnia=druga_uczelnia,
     )
 

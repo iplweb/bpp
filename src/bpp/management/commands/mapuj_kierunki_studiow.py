@@ -3,8 +3,7 @@ import sys
 from django.core.management import BaseCommand, CommandError, CommandParser
 from django.db import transaction
 
-from bpp.models import Autorzy, AutorzyView, Jednostka, Kierunek_Studiow, Wydzial
-from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+from bpp.models import Autorzy, AutorzyView, Jednostka, Kierunek_Studiow
 
 
 class Command(BaseCommand):
@@ -28,23 +27,24 @@ class Command(BaseCommand):
                 f"Uzyj parametru --jednostka i podaj inną nazwę"
             ) from None
 
-        for wydzialokierunek in Wydzial.objects.filter(nazwa__startswith="Studenci - "):
+        # Faza C (#438): „wydział" = jednostka top-level (parent IS NULL).
+        toplevel = Jednostka.objects.filter(parent__isnull=True)
+        for wydzialokierunek in toplevel.filter(nazwa__startswith="Studenci - "):
             wnazwa = wydzialokierunek.nazwa.replace("Studenci - ", "").strip()
             try:
-                wydzial = Wydzial.objects.get(nazwa=wnazwa)
-            except Wydzial.DoesNotExist:
+                wydzial = toplevel.get(nazwa=wnazwa)
+            except Jednostka.DoesNotExist:
                 print(f"Brak wydziału {wnazwa} -- {wydzialokierunek}")
                 sys.exit(1)
 
-            for jednostka in Jednostka.objects.filter(wydzial__nazwa=wydzialokierunek):
+            for jednostka in Jednostka.objects.filter(wydzial=wydzialokierunek):
                 nazwa = jednostka.nazwa.lower()
                 skrot = jednostka.skrot.lower()
 
-                # Faza B (#438) II-2: ``Kierunek_Studiow.wydzial`` FK->Jednostka
-                # (korzeń drzewa) — potrzebny węzeł-lustro dla ``wydzial``.
-                jednostka_wydzialu, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
+                # ``Kierunek_Studiow.wydzial`` to FK->Jednostka (korzeń) — teraz
+                # ``wydzial`` jest już tym korzeniem, więc podajemy go wprost.
                 kierunek_studiow = Kierunek_Studiow.objects.get_or_create(
-                    nazwa=nazwa, skrot=skrot, wydzial=jednostka_wydzialu
+                    nazwa=nazwa, skrot=skrot, wydzial=wydzial
                 )[0]
 
                 for wa in [

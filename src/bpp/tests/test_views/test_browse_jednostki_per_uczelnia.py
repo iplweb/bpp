@@ -12,7 +12,6 @@ Wzorzec: `bpp/tests/test_views/test_autocomplete_per_uczelnia.py`.
 import pytest
 
 from bpp.models import Jednostka
-from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 from fixtures.conftest_multisite import make_request_for_site
 
 
@@ -51,13 +50,13 @@ def test_jednostki_view_pasek_liter_zawezony_do_uczelni(
 
     Jednostka.objects.create(
         uczelnia=uczelnia1,
-        parent=znajdz_lub_utworz_wezel_wydzialu(wydzial_uczelnia1)[0],
+        parent=wydzial_uczelnia1,
         skrot="ALFA-U1",
         nazwa="Alfa Jednostka U1",
     )
     Jednostka.objects.create(
         uczelnia=uczelnia2,
-        parent=znajdz_lub_utworz_wezel_wydzialu(wydzial_uczelnia2)[0],
+        parent=wydzial_uczelnia2,
         skrot="BETA-U2",
         nazwa="Beta Jednostka U2",
     )
@@ -86,7 +85,7 @@ def test_jednostki_view_single_install_pokazuje_wszystkie(
 
     jedn = Jednostka.objects.create(
         uczelnia=uczelnia1,
-        parent=znajdz_lub_utworz_wezel_wydzialu(wydzial_uczelnia1)[0],
+        parent=wydzial_uczelnia1,
         skrot="J-SINGLE",
         nazwa="Jednostka Single",
     )

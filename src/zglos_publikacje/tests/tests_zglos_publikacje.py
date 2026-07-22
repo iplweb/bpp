@@ -48,9 +48,7 @@ def _krok2_dane(
     return page
 
 
-def _przejdz_do_kroku_danych(
-    webtest_app, rodzaj="ARTYKUL", forma="OTWARTY"
-):
+def _przejdz_do_kroku_danych(webtest_app, rodzaj="ARTYKUL", forma="OTWARTY"):
     """Przejdź przez kroki 0 i 1 do kroku 2 (dane)."""
     url = reverse("zglos_publikacje:nowe_zgloszenie")
     page = webtest_app.get(url)
@@ -79,13 +77,9 @@ def test_krok1_wybor_formy_dostepu(webtest_app, uczelnia):
 
 
 @pytest.mark.django_db
-def test_krok2_otwarty_dostep_wymaga_url(
-    webtest_app, uczelnia
-):
+def test_krok2_otwarty_dostep_wymaga_url(webtest_app, uczelnia):
     """Otwarty dostęp: strona_www wymagana."""
-    page = _przejdz_do_kroku_danych(
-        webtest_app, forma="OTWARTY"
-    )
+    page = _przejdz_do_kroku_danych(webtest_app, forma="OTWARTY")
     page = _krok2_dane(page, strona_www="")
     page2 = page.forms[0].submit()
     # Powinien zostać na kroku 2 z błędem walidacji
@@ -94,16 +88,10 @@ def test_krok2_otwarty_dostep_wymaga_url(
 
 
 @pytest.mark.django_db
-def test_krok2_otwarty_dostep_przechodzi_dalej(
-    webtest_app, uczelnia
-):
+def test_krok2_otwarty_dostep_przechodzi_dalej(webtest_app, uczelnia):
     """Otwarty dostęp z URL: przechodzi do kroku autorów."""
-    page = _przejdz_do_kroku_danych(
-        webtest_app, forma="OTWARTY"
-    )
-    page = _krok2_dane(
-        page, strona_www="https://example.com/"
-    )
+    page = _przejdz_do_kroku_danych(webtest_app, forma="OTWARTY")
+    page = _krok2_dane(page, strona_www="https://example.com/")
     page2 = page.forms[0].submit()
     assert page2.status_code == 200
     # Krok 3 = autorzy
@@ -111,48 +99,32 @@ def test_krok2_otwarty_dostep_przechodzi_dalej(
 
 
 @pytest.mark.django_db
-def test_krok2_ograniczony_dostep_bez_pliku(
-    webtest_app, uczelnia
-):
+def test_krok2_ograniczony_dostep_bez_pliku(webtest_app, uczelnia):
     """Ograniczony dostęp bez pliku: zostaje na kroku 2."""
-    page = _przejdz_do_kroku_danych(
-        webtest_app, forma="OGRANICZONY"
-    )
+    page = _przejdz_do_kroku_danych(webtest_app, forma="OGRANICZONY")
     page = _krok2_dane(page)
     page2 = page.forms[0].submit()
     assert page2.status_code == 200
 
 
 @pytest.mark.django_db
-def test_krok2_zgoda_na_publikacje_widoczna(
-    webtest_app, uczelnia
-):
+def test_krok2_zgoda_na_publikacje_widoczna(webtest_app, uczelnia):
     """Zgoda na publikację widoczna gdy uczelnia wymaga."""
     uczelnia.pytaj_o_zgode_na_publikacje_pelnego_tekstu = True
     uczelnia.save()
 
     page = _przejdz_do_kroku_danych(webtest_app)
-    assert (
-        b"zgoda_na_publikacje_pelnego_tekstu"
-        in page.content
-    )
+    assert b"zgoda_na_publikacje_pelnego_tekstu" in page.content
 
 
 @pytest.mark.django_db
-def test_krok2_zgoda_na_publikacje_ukryta(
-    webtest_app, uczelnia
-):
+def test_krok2_zgoda_na_publikacje_ukryta(webtest_app, uczelnia):
     """Zgoda na publikację ukryta domyślnie."""
-    uczelnia.pytaj_o_zgode_na_publikacje_pelnego_tekstu = (
-        False
-    )
+    uczelnia.pytaj_o_zgode_na_publikacje_pelnego_tekstu = False
     uczelnia.save()
 
     page = _przejdz_do_kroku_danych(webtest_app)
-    assert (
-        b"zgoda_na_publikacje_pelnego_tekstu"
-        not in page.content
-    )
+    assert b"zgoda_na_publikacje_pelnego_tekstu" not in page.content
 
 
 def _zrob_submit_calego_formularza(
@@ -166,9 +138,7 @@ def _zrob_submit_calego_formularza(
     oczekuj_platnosci=True,
 ):
     """Helper: przejdź przez cały wizard."""
-    page = _przejdz_do_kroku_danych(
-        webtest_app, rodzaj=rodzaj, forma=forma
-    )
+    page = _przejdz_do_kroku_danych(webtest_app, rodzaj=rodzaj, forma=forma)
     page = _krok2_dane(
         page,
         tytul=tytul_oryginalny,
@@ -179,9 +149,7 @@ def _zrob_submit_calego_formularza(
     # Krok 3: autorzy
     if autor is not None:
         page2.forms[0]["3-0-autor"].force_value(autor.pk)
-        page2.forms[0]["3-0-jednostka"].force_value(
-            jednostka.pk
-        )
+        page2.forms[0]["3-0-jednostka"].force_value(jednostka.pk)
 
     # Submit kroku 3 (autorzy) albo prowadzi do kroku 4 (opłaty), albo —
     # gdy uczelnia nie wymaga opłat dla danego rodzaju — od razu kończy
@@ -258,10 +226,7 @@ def test_tytul_wielkosc_liter_zachowana(
         tytul_oryginalny=TYTUL,
         oczekuj_platnosci=False,
     )
-    assert (
-        Zgloszenie_Publikacji.objects.first().tytul_oryginalny
-        == TYTUL
-    )
+    assert Zgloszenie_Publikacji.objects.first().tytul_oryginalny == TYTUL
 
 
 def test_email_brak_ludzi_w_bazie(
@@ -272,9 +237,7 @@ def test_email_brak_ludzi_w_bazie(
     wydzial,
     jednostka,
 ):
-    _zrob_submit_calego_formularza(
-        webtest_app, django_capture_on_commit_callbacks
-    )
+    _zrob_submit_calego_formularza(webtest_app, django_capture_on_commit_callbacks)
     assert len(mail.outbox) == 0
 
 
@@ -290,14 +253,10 @@ def test_email_do_grupy_zglaszanie_publikacji(
     normal_django_user.email = EMAIL
     normal_django_user.save()
     normal_django_user.groups.add(
-        Group.objects.get_or_create(
-            name=GR_ZGLOSZENIA_PUBLIKACJI
-        )[0]
+        Group.objects.get_or_create(name=GR_ZGLOSZENIA_PUBLIKACJI)[0]
     )
 
-    _zrob_submit_calego_formularza(
-        webtest_app, django_capture_on_commit_callbacks
-    )
+    _zrob_submit_calego_formularza(webtest_app, django_capture_on_commit_callbacks)
     assert len(mail.outbox) == 1
     assert mail.outbox[0].to == [EMAIL]
 
@@ -314,9 +273,7 @@ def test_email_tytul_z_nowymi_liniami(
     normal_django_user.email = EMAIL
     normal_django_user.save()
     normal_django_user.groups.add(
-        Group.objects.get_or_create(
-            name=GR_ZGLOSZENIA_PUBLIKACJI
-        )[0]
+        Group.objects.get_or_create(name=GR_ZGLOSZENIA_PUBLIKACJI)[0]
     )
 
     _zrob_submit_calego_formularza(
@@ -339,9 +296,8 @@ def test_email_obslugujacym_zgloszenia(
     # Faza B (#438) II-2: ``wydzial`` to FK->Jednostka (korzeń drzewa) —
     # ten sam węzeł-lustro, do którego (via ``aktualna_jednostka`` fixture)
     # podpięta jest jednostka autora; routing dopasowuje po ``get_root()``.
-    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 
-    jednostka_root, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
+    jednostka_root = wydzial
 
     inny_user = baker.make(BppUser, email=EMAIL)
     Obslugujacy_Zgloszenia_Wydzialow.objects.create(
@@ -359,9 +315,7 @@ def test_email_obslugujacym_zgloszenia(
 
 
 @pytest.mark.django_db
-def test_wymagaj_logowania_niezalogowany(
-    webtest_app, uczelnia
-):
+def test_wymagaj_logowania_niezalogowany(webtest_app, uczelnia):
     """Niezalogowany + wymagaj_logowania=True -> redirect."""
     uczelnia.wymagaj_logowania_zglos_publikacje = True
     uczelnia.save()
@@ -373,9 +327,7 @@ def test_wymagaj_logowania_niezalogowany(
 
 
 @pytest.mark.django_db
-def test_wymagaj_logowania_zalogowany(
-    webtest_app, uczelnia, normal_django_user
-):
+def test_wymagaj_logowania_zalogowany(webtest_app, uczelnia, normal_django_user):
     """Zalogowany + wymagaj_logowania=True -> dostęp."""
     uczelnia.wymagaj_logowania_zglos_publikacje = True
     uczelnia.save()
@@ -398,20 +350,14 @@ def test_wymagaj_logowania_false(webtest_app, uczelnia):
 
 
 @pytest.mark.django_db
-def test_konfigurowalne_platnosci_artykul(
-    webtest_app, uczelnia
-):
+def test_konfigurowalne_platnosci_artykul(webtest_app, uczelnia):
     """Sprawdź że opłaty są konfigurowalne per typ."""
     uczelnia.wymagaj_oplatach_artykul = False
     uczelnia.save()
 
     # Artykuł z wyłączonymi opłatami -> brak kroku 4
-    page = _przejdz_do_kroku_danych(
-        webtest_app, rodzaj="ARTYKUL", forma="OTWARTY"
-    )
-    page = _krok2_dane(
-        page, strona_www="https://example.com/"
-    )
+    page = _przejdz_do_kroku_danych(webtest_app, rodzaj="ARTYKUL", forma="OTWARTY")
+    page = _krok2_dane(page, strona_www="https://example.com/")
     page2 = page.forms[0].submit()
     # Krok 3: autorzy
     page3 = page2.forms[0].submit()
@@ -420,9 +366,7 @@ def test_konfigurowalne_platnosci_artykul(
     assert page3.status_code == 200
 
 
-def _krok2_ograniczony_post_z_plikami(
-    webtest_app, page, *, ile_plikow, rok="2020"
-):
+def _krok2_ograniczony_post_z_plikami(webtest_app, page, *, ile_plikow, rok="2020"):
     """Submit step 2 (OGRANICZONY) z N plikami przez webtest_app.post.
 
     `webtest`-owa abstrakcja Form nie obsługuje wieloplikowych pól
@@ -433,9 +377,7 @@ def _krok2_ograniczony_post_z_plikami(
     i pozostałe ukryte pola wizarda doszły bez ręcznego pamiętania.
     """
     form = page.forms[0]
-    fields = [
-        (n, v) for n, v in form.submit_fields() if not (n and n.startswith("2-"))
-    ]
+    fields = [(n, v) for n, v in form.submit_fields() if not (n and n.startswith("2-"))]
     fields.extend(
         [
             ("2-tytul_oryginalny", "Test multifile"),
@@ -466,9 +408,7 @@ def _zlozenie_ograniczony_z_plikami(
 
     Zwraca finalną stronę (sukces).
     """
-    page = _przejdz_do_kroku_danych(
-        webtest_app, rodzaj="ARTYKUL", forma="OGRANICZONY"
-    )
+    page = _przejdz_do_kroku_danych(webtest_app, rodzaj="ARTYKUL", forma="OGRANICZONY")
     # Krok 2: dane + N plików
     page2 = _krok2_ograniczony_post_z_plikami(
         webtest_app, page, ile_plikow=ile_plikow, rok=rok
@@ -500,7 +440,9 @@ def test_pelny_formularz_ograniczony_jeden_plik(
         jednostka=aktualna_jednostka,
         ile_plikow=1,
     )
-    assert b"powiadomiony" in result.content or b"zostanie zaakceptowane" in result.content
+    assert (
+        b"powiadomiony" in result.content or b"zostanie zaakceptowane" in result.content
+    )
     zp = Zgloszenie_Publikacji.objects.order_by("-pk").first()
     assert zp is not None
     assert zp.zalaczniki.count() == 1
@@ -530,7 +472,9 @@ def test_pelny_formularz_ograniczony_wiele_plikow(
         jednostka=aktualna_jednostka,
         ile_plikow=3,
     )
-    assert b"powiadomiony" in result.content or b"zostanie zaakceptowane" in result.content
+    assert (
+        b"powiadomiony" in result.content or b"zostanie zaakceptowane" in result.content
+    )
     zp = Zgloszenie_Publikacji.objects.order_by("-pk").first()
     assert zp is not None
     assert zp.zalaczniki.count() == 3, (
@@ -572,8 +516,7 @@ def test_pelny_formularz_ograniczony_duzy_plik_temporary_upload(
         ile_plikow=1,
     )
     assert (
-        b"powiadomiony" in result.content
-        or b"zostanie zaakceptowane" in result.content
+        b"powiadomiony" in result.content or b"zostanie zaakceptowane" in result.content
     )
     zp = Zgloszenie_Publikacji.objects.order_by("-pk").first()
     assert zp is not None
@@ -601,8 +544,7 @@ def test_pelny_formularz_ograniczony_wiele_duzych_plikow_temporary_upload(
         ile_plikow=3,
     )
     assert (
-        b"powiadomiony" in result.content
-        or b"zostanie zaakceptowane" in result.content
+        b"powiadomiony" in result.content or b"zostanie zaakceptowane" in result.content
     )
     zp = Zgloszenie_Publikacji.objects.order_by("-pk").first()
     assert zp is not None
@@ -626,9 +568,7 @@ def _zlozenie_rozdzialu_z_freetextem_wn(
     (przez `force_value`) — w prawdziwej UI taka wartość pojawia się gdy
     user wpisze coś w autocomplete, ale nie wybierze opcji z dropdowna.
     """
-    page = _przejdz_do_kroku_danych(
-        webtest_app, rodzaj="ROZDZIAL", forma=forma
-    )
+    page = _przejdz_do_kroku_danych(webtest_app, rodzaj="ROZDZIAL", forma=forma)
     form = page.forms[0]
     form["2-tytul_oryginalny"] = "Test rozdziału"
     form["2-rok"] = str(rok)
@@ -684,7 +624,9 @@ def test_pelny_formularz_rozdzial_z_freetextem_wn(
         jednostka=aktualna_jednostka,
         wn_tekst=TEKST,
     )
-    assert b"powiadomiony" in result.content or b"zostanie zaakceptowane" in result.content
+    assert (
+        b"powiadomiony" in result.content or b"zostanie zaakceptowane" in result.content
+    )
     zp = Zgloszenie_Publikacji.objects.order_by("-pk").first()
     assert zp is not None
     assert zp.rodzaj_zglaszanej_publikacji == (
@@ -714,9 +656,7 @@ def test_rozdzial_z_bogus_wn_picker_nie_wybucha_na_re_renderze(
     Test wymusza walidację błędną przez podanie nieprawidłowego e-maila
     + jednoczesne wstrzyknięcie surowej wartości do pola wn.
     """
-    page = _przejdz_do_kroku_danych(
-        webtest_app, rodzaj="ROZDZIAL", forma="OTWARTY"
-    )
+    page = _przejdz_do_kroku_danych(webtest_app, rodzaj="ROZDZIAL", forma="OTWARTY")
     form = page.forms[0]
     form["2-tytul_oryginalny"] = "Test"
     form["2-rok"] = "2020"
@@ -769,7 +709,9 @@ def test_rozdzial_z_picknietym_wydawnictwem_nadrzednym_zapisuje_FK(
         wn_picker_value=qss_value,
         wn_tekst="",
     )
-    assert b"powiadomiony" in result.content or b"zostanie zaakceptowane" in result.content
+    assert (
+        b"powiadomiony" in result.content or b"zostanie zaakceptowane" in result.content
+    )
     zp = Zgloszenie_Publikacji.objects.order_by("-pk").first()
     assert zp is not None
     assert zp.wydawnictwo_nadrzedne_bpp_id == ksiazka.pk, (
@@ -807,7 +749,9 @@ def test_rozdzial_z_typed_text_w_picker_lzdaje_jako_freetext(
         wn_picker_value=TEKST,
         wn_tekst="",
     )
-    assert b"powiadomiony" in result.content or b"zostanie zaakceptowane" in result.content
+    assert (
+        b"powiadomiony" in result.content or b"zostanie zaakceptowane" in result.content
+    )
     zp = Zgloszenie_Publikacji.objects.order_by("-pk").first()
     assert zp is not None
     assert zp.wydawnictwo_nadrzedne_tekst == TEKST
@@ -823,9 +767,7 @@ def _zlozenie_monografii(
     forma="OTWARTY",
 ):
     """Pełny przelot wizarda dla MONOGRAFII (książka)."""
-    page = _przejdz_do_kroku_danych(
-        webtest_app, rodzaj="MONOGRAFIA", forma=forma
-    )
+    page = _przejdz_do_kroku_danych(webtest_app, rodzaj="MONOGRAFIA", forma=forma)
     form = page.forms[0]
     form["2-tytul_oryginalny"] = "Test monografii"
     form["2-rok"] = str(rok)
@@ -874,13 +816,13 @@ def test_pelny_formularz_monografia_otwarty(
         autor=autor_jan_kowalski,
         jednostka=aktualna_jednostka,
     )
-    assert b"powiadomiony" in result.content or b"zostanie zaakceptowane" in result.content
+    assert (
+        b"powiadomiony" in result.content or b"zostanie zaakceptowane" in result.content
+    )
 
     zp = Zgloszenie_Publikacji.objects.order_by("-pk").first()
     assert zp is not None
-    assert zp.rodzaj_zglaszanej_publikacji == (
-        Zgloszenie_Publikacji.Rodzaje.MONOGRAFIA
-    )
+    assert zp.rodzaj_zglaszanej_publikacji == (Zgloszenie_Publikacji.Rodzaje.MONOGRAFIA)
     assert zp.forma_dostepu == Zgloszenie_Publikacji.FormyDostepu.OTWARTY
     assert zp.tytul_oryginalny == "Test monografii"
     assert zp.strona_www == "https://example.com/monografia"
@@ -917,9 +859,5 @@ def test_rodzaj_zapisywany_prawidlowo(
         rodzaj="MONOGRAFIA",
     )
     zp = Zgloszenie_Publikacji.objects.first()
-    assert zp.rodzaj_zglaszanej_publikacji == (
-        Zgloszenie_Publikacji.Rodzaje.MONOGRAFIA
-    )
-    assert zp.forma_dostepu == (
-        Zgloszenie_Publikacji.FormyDostepu.OTWARTY
-    )
+    assert zp.rodzaj_zglaszanej_publikacji == (Zgloszenie_Publikacji.Rodzaje.MONOGRAFIA)
+    assert zp.forma_dostepu == (Zgloszenie_Publikacji.FormyDostepu.OTWARTY)

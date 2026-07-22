@@ -218,9 +218,10 @@ def test_llm_schema_declares_org_names_as_no_value_targets():
     Test niezależny od bazy i od wersji djangoql-iplweb."""
     from bpp.djangoql_schema import RekordLLMSchema
 
+    # Faza C (#438): wydział to jednostka top-level, więc „bpp.Jednostka"
+    # pokrywa też nazwy wydziałów — osobnego celu bpp.Wydzial już nie ma.
     assert set(RekordLLMSchema.no_value_targets) >= {
         "bpp.Jednostka",
-        "bpp.Wydzial",
         "bpp.Uczelnia",
     }
 

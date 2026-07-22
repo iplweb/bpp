@@ -95,7 +95,6 @@ Knowledge finds its home.
                     "tytul",
                     "recent_author_publications",
                     "jednostka",
-                    "wydzial",
                     "uczelnia",
                 ],
                 "sources_and_publishers": [

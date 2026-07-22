@@ -8,7 +8,6 @@ from bpp.models import (
     Jednostka,
     Typ_KBN,
     Wydawnictwo_Ciagle,
-    Wydzial,
 )
 from bpp.models.profile import BppUser
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
@@ -30,9 +29,8 @@ def _wydzial_root(wydzial):
     """Faza B (#438): węzeł-lustro (root Jednostka) dla wydziału, z włączonym
     rankingiem autorów — pełni w rankingu rolę „wydziału" (jednostki wiszą pod
     nim, a denorm ``wydzial`` wskazuje ten korzeń)."""
-    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 
-    root, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
+    root = wydzial
     if not root.zezwalaj_na_ranking_autorow:
         root.zezwalaj_na_ranking_autorow = True
         root.save()
@@ -378,10 +376,11 @@ def test_ranking_autorow_form_both_fields_when_using_wydzialy(uczelnia, wydzial)
 
     # Create second wydzial to have more than one
     baker.make(  # noqa: F841 - needed to create multiple wydzialy for test
-        Wydzial,
+        Jednostka,
         uczelnia=uczelnia,
+        parent=None,
         nazwa="Drugi Wydzial Test",
-        widoczny=True,
+        widoczna=True,
         zezwalaj_na_ranking_autorow=True,
     )
 

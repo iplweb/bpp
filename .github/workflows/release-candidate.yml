@@ -101,6 +101,10 @@ jobs:
           # znikomy zysk, a w JEDNYM jobie z docker/build-push-action
           # (push obrazu) tworzył wektor cache-poisoning (zizmor). Brak
           # cache'u = brak wektora, kosztem paru sekund re-downloadu bumpver.
+          #
+          # Pin wersji jak w tests.yml (job `lock-check`): bez `version`
+          # setup-uv bierze "latest", czyniac przebieg funkcja daty.
+          version: "0.11.29"
           enable-cache: false
 
       - name: Bump RC (nowy cykl lub kolejne -rcN)

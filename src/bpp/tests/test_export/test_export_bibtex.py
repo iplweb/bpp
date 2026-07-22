@@ -27,7 +27,6 @@ from bpp.models import (
     Wydawnictwo_Zwarte,
     Zrodlo,
 )
-from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 
 
 @pytest.mark.django_db
@@ -249,10 +248,11 @@ class TestBibTeXExport:
         """Test BibTeX export for Patent."""
         # Create test data
         autor = baker.make(Autor, nazwisko="Tesla", imiona="Nikola")
-        wydzial = baker.make("bpp.Wydzial", nazwa="Faculty of Engineering")
-        # Faza B (#438) II-2: ``Patent.wydzial`` to FK->Jednostka (korzeń
-        # drzewa, węzeł-lustro dawnego Wydzialu).
-        jednostka_wydzialu, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
+        # Faza C (#438): „wydział" to jednostka top-level; ``Patent.wydzial``
+        # to FK->Jednostka wskazujący na taki korzeń.
+        jednostka_wydzialu = baker.make(
+            "bpp.Jednostka", nazwa="Faculty of Engineering", parent=None
+        )
 
         patent = baker.make(
             Patent,
@@ -293,12 +293,15 @@ class TestBibTeXExport:
         autor = baker.make(Autor, nazwisko="Smith", imiona="John")
         uczelnia = baker.make("bpp.Uczelnia", nazwa="University")
         wydzial = baker.make(
-            "bpp.Wydzial", nazwa="Faculty of Science", uczelnia=uczelnia
+            "bpp.Jednostka",
+            nazwa="Faculty of Science",
+            uczelnia=uczelnia,
+            parent=None,
         )
         jednostka = baker.make(
             "bpp.Jednostka",
             nazwa="Department",
-            parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
+            parent=wydzial,
             uczelnia=uczelnia,
         )
 
@@ -331,12 +334,15 @@ class TestBibTeXExport:
         autor = baker.make(Autor, nazwisko="Johnson", imiona="Jane")
         uczelnia = baker.make("bpp.Uczelnia", nazwa="University")
         wydzial = baker.make(
-            "bpp.Wydzial", nazwa="Faculty of Medicine", uczelnia=uczelnia
+            "bpp.Jednostka",
+            nazwa="Faculty of Medicine",
+            uczelnia=uczelnia,
+            parent=None,
         )
         jednostka = baker.make(
             "bpp.Jednostka",
             nazwa="Department",
-            parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
+            parent=wydzial,
             uczelnia=uczelnia,
         )
 
@@ -372,11 +378,13 @@ class TestBibTeXExport:
         zrodlo = baker.make(Zrodlo, nazwa="Journal")
         wydawca = baker.make("bpp.Wydawca", nazwa="Publisher")
         uczelnia = baker.make("bpp.Uczelnia", nazwa="University")
-        wydzial = baker.make("bpp.Wydzial", nazwa="Faculty", uczelnia=uczelnia)
+        wydzial = baker.make(
+            "bpp.Jednostka", nazwa="Faculty", uczelnia=uczelnia, parent=None
+        )
         jednostka = baker.make(
             "bpp.Jednostka",
             nazwa="Department",
-            parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
+            parent=wydzial,
             uczelnia=uczelnia,
         )
 
@@ -457,11 +465,13 @@ class TestBibTeXExport:
         # Create minimal test data
         autor = baker.make(Autor, nazwisko="Test", imiona="Author")
         uczelnia = baker.make("bpp.Uczelnia", nazwa="University")
-        wydzial = baker.make("bpp.Wydzial", nazwa="Faculty", uczelnia=uczelnia)
+        wydzial = baker.make(
+            "bpp.Jednostka", nazwa="Faculty", uczelnia=uczelnia, parent=None
+        )
         jednostka = baker.make(
             "bpp.Jednostka",
             nazwa="Department",
-            parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
+            parent=wydzial,
             uczelnia=uczelnia,
         )
 
