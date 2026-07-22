@@ -46,7 +46,7 @@ To **3 zapytania na każdy wiersz importu**, namierzone stack-trace'em:
    cacheops (`bpp.uczelnia` jest w `CACHEOPS`) zamienia to na trafienia do Redisa —
    tańsze, ale nadal 2×N round-tripów.
 2. **1× `bpp_autor_jednostka` na wiersz** — `ImportPracownikowRow._aj_lista()`
-   (`models.py:995`), wołane przez `porownaj_z_baza()` → `stany_pol()`.
+   (`models.py:985`), wołane przez `porownaj_z_baza()` → `stany_pol()`.
    `bpp.autor_jednostka` **nie jest** w `CACHEOPS`, więc to prawdziwe uderzenie
    w PostgreSQL, N razy.
 
@@ -150,15 +150,37 @@ przeklikać ręcznie (lista w „Testowanie" niżej).
 ### Test regresyjny — brak zewnętrznych assetów
 
 Nowy test (`src/django_bpp/tests/test_brak_zewnetrznych_assetow.py`) skanuje
-wszystkie szablony w `src/**/templates/**` oraz wszystkie klasy `Media` w plikach
-`admin.py` i szuka `<script src>` / `<link href>` wskazujących na `http://`
-lub `https://`.
+wszystkie szablony w `src/**/templates/**` oraz wszystkie pliki `*.py` w `src/`
+(klasy `Media` mogą żyć nie tylko w `admin.py`, ale też w `forms.py`/`widgets.py`;
+dziś ich tam nie ma, ale szerszy skan jest odporniejszy na przyszłość) i szuka
+`<script src>` / `<link href>` wskazujących na `http://` lub `https://`.
 
-Allow-lista (jawna, z uzasadnieniem w komentarzu):
+Test naśladuje istniejący precedens `src/bpp/tests/test_admin_fonts_selfhosted.py`
+(strażnik self-hostowania fontów admina) — łącznie z dwiema jego nieoczywistymi
+decyzjami, które trzeba powtórzyć:
 
-- `euc-widget.freshworks.com` — widget zgłoszeń, usługa SaaS, `async defer`
-- `www.googletagmanager.com` — Google Analytics, usługa SaaS, `async`
-- `cdn.userway.org` — widget dostępności WCAG, wstrzykiwany dynamicznie
+1. **Dopasowanie regexem, nie `"host" in text`.** Substringowe sprawdzanie
+   literału-hosta odpala fałszywy alarm CodeQL
+   `py/incomplete-url-substring-sanitization` (heurystyka bierze je za
+   obejściopodatną sanityzację URL-a).
+2. **Lokalizowanie plików względem pliku testu** (`Path(__file__).resolve().parents[…]`),
+   nie przez `import django_bpp`. Przy editable-install `__file__` pakietu
+   wskazuje główny checkout, nie worktree — test sprawdzałby wtedy cudzy kod.
+   Przy tej pracy (worktree obok repo) to nie jest teoretyczne.
+
+Allow-lista (jawna, z uzasadnieniem w komentarzu) — usługi SaaS, których nie da
+się self-hostować:
+
+- `euc-widget.freshworks.com` — widget zgłoszeń; realny tag `<script src>`
+  (`base.html:111`, `admin/base_site.html:157`), `async defer`
+- `www.googletagmanager.com` — Google Analytics; realny tag (`google_analytics.html:1`), `async`
+
+`cdn.userway.org` (widget dostępności WCAG) **nie trafia do allow-listy**, bo skan
+tagów by go i tak nie zobaczył: jest wstrzykiwany inline'owym JS-em przez
+`s.setAttribute("src", …)` (`base.html:368`). Wpis byłby martwy i mylący.
+Zamiast tego docstring testu wymienia go jako znany, świadomie tolerowany
+zewnętrzny zasób poza zasięgiem skanu — żeby nikt nie uznał zielonego testu za
+dowód, że zewnętrznych requestów nie ma w ogóle.
 
 Wszystko poza allow-listą to błąd testu. Komunikat błędu ma wprost mówić, co
 zrobić: „zvendoruj do `package.json` i użyj `{% static %}`, albo dopisz do
@@ -211,9 +233,15 @@ na stronie i przypisuje listy do `row._aj_lista_cache`. **Logika modelu pozostaj
 nietknięta** — korzystamy z istniejącego kontraktu memo, ten sam, którego używa
 `_okres()`. Wiersze bez pary dostają `[]`, żeby `hasattr` nie odpalił zapytania.
 
-Uwaga na kolejność: funkcja musi być wołana **przed** `oznacz_przepiecie_prac()`
-i przed renderem, na tej samej liście instancji (`list(ctx["object_list"])`),
-inaczej memo trafi w inne obiekty niż te renderowane.
+Wymóg jest jeden: funkcja musi dostać **tę samą listę instancji**, która pójdzie
+do renderu (`rows = list(ctx["object_list"])`), inaczej memo trafi w inne obiekty
+niż renderowane. Kolejność względem `oznacz_przepiecie_prac()` jest obojętna —
+ta funkcja (`views.py:107-153`) nie dotyka `_aj_lista` ani `_okres`.
+
+Zmiana pozostaje potrzebna **także po** Zmianie 4: szablon woła
+`row.porownaj_z_baza` bezpośrednio, przy renderze bloku porównań
+(`_wiersz_preview_kom.html:263`), niezależnie od tego, skąd biorą się
+`data-diff-*`. Materializacja stanów pól usuwa jedno wołanie, nie wszystkie.
 
 ### Zmiana 3 — zdublowany `<script>`
 
@@ -252,9 +280,11 @@ Zamiast tego materializujemy wynik.
   odświeżać. Po integracji nic wiersza nie mutuje (wszystkie ścieżki mutujące są
   za bramką `edytowalny_podglad`), więc pole zamarza samo.
 
-`stany_pol()` upraszcza się do: zwróć `stany_pol_snapshot` (dopełniony neutralnym
-`"brak"` dla kluczy dodanych po zapisaniu snapshotu), a gdy `None` — policz na
-żywo (ścieżka awaryjna, patrz backfill).
+**`stany_pol()` nie wymaga zmian.** Obecna implementacja (`models.py:1127-1142`)
+już robi dokładnie to, czego potrzebujemy: zwraca snapshot dopełniony neutralnym
+`"brak"` dla kluczy dodanych po jego zapisaniu, a gdy `None` — liczy na żywo.
+Zmienia się nie ta metoda, tylko fakt, że pole jest **zawsze wypełnione** także
+przed integracją.
 
 Świadomie **nie dodajemy** drugiej kolumny. Rozważona alternatywa (osobne
 `stany_pol_cache` obok `stany_pol_snapshot`) daje czytelniejszy rozdział ról, ale
@@ -263,45 +293,94 @@ Ponieważ post-integracyjne zamrożenie wynika z bramki `edytowalny_podglad`
 (a nie z osobnego pola), jedna kolumna wystarcza.
 
 **Punkty odświeżania.** Metoda `ImportPracownikowRow.odswiez_stany_pol()`
-przelicza i zapisuje pole (`update_fields=["stany_pol_snapshot"]`). Wołana z:
+przelicza i zapisuje pole (`update_fields=["stany_pol_snapshot"]`).
 
-| miejsce | dlaczego |
-|---------|----------|
-| koniec analizy (`pipeline/analyze.py`) | pierwsze wypełnienie, batch |
-| `WybierzKandydataView` | zmienia `autor` |
-| `DopasujAutoraView` | zmienia `autor` |
-| `PrzelaczUtworzNowegoView` | zmienia `utworz_nowego` (wpływa na `do_pominiecia`) |
-| `PrzepnijPraceView` | zmienia `przepnij_prace` |
-| `ZaznaczWszystkiePrzepieciaView` | akcja zbiorcza, batch |
-| `WeryfikacjaJednostekView` | przypisuje `jednostka` wierszom |
-| `WeryfikacjaTytulowView` | przypisuje `tytul` |
-| `WeryfikacjaStopniView` | przypisuje `stopien` |
-| `WeryfikacjaStanowiskView` | przypisuje `stanowisko_dydaktyczne` |
+Ustalenie miejsc odświeżania wymagało prześledzenia, co **naprawdę** mutuje pola
+czytane przez ekstraktory `POLA_ROZNIC`. Pierwsza wersja tej specyfikacji
+wskazywała tu widoki `Weryfikacja{Jednostek,Tytulow,Stopni,Stanowisk}View` — **to
+było błędne**. Te widoki zapisują wyłącznie obiekty decyzji
+(`dec.save(update_fields=["decyzja", "wybrany_parent", "wybrana_jednostka"])`,
+`views.py:1125`); wierszy nie dotykają. Faktyczne przypisanie pól wierszom dzieje
+się w `pipeline/integrate.py` przy „Zapisz strukturę": `row.jednostka` (:546),
+`row.tytul` (:742), `row.stopien` (:817), `row.stanowisko_dydaktyczne` (:883).
 
-`RestartAnalizaView` czyści wiersze i uruchamia analizę od nowa, więc pokrywa go
-punkt „koniec analizy". `PrzelaczOdpiecieView` i `ZaznaczOdpieciaView` mutują
-`Odpiecie`, nie wiersze — bez wpływu.
+| miejsce | co mutuje |
+|---------|-----------|
+| koniec analizy (`pipeline/analyze.py`) | pierwsze wypełnienie, batch po całym imporcie |
+| koniec integracji **strukturalnej** (`pipeline/integrate.py`) | `jednostka`, `tytul`, `stopien`, `stanowisko_dydaktyczne` — batch po całym imporcie |
+| `WybierzKandydataView` | `autor` |
+| `DopasujAutoraView` | `autor` |
 
-**Backfill (samonaprawianie).** Importy sprzed tej zmiany mają `NULL` i filtr
-SQL by ich nie znalazł. Zamiast migracji danych (która musiałaby wykonać zapytania
-per wiersz na całej historii) robimy **leniwy backfill**: w `get_queryset()`, gdy
+**Dlaczego integracja strukturalna jest punktem krytycznym.** Kończy się ona
+stanem `STAN_STRUKTURA_ZINTEGROWANA`, który **nadal jest** `edytowalny_podglad`
+(`models.py:214-222`) — to jest Krok 2, faza osób, dokładnie ta, w której operator
+pracuje na widoku rezultatów. Bez odświeżenia w tym miejscu filtr `jednostka`
+(a także `data_od`, `data_do`, `funkcja`, `stanowisko`, których ekstraktory
+bramkują po `jednostka_id` — `roznice.py:56,69,80`) pokazywałby stan sprzed
+przypisania jednostek. Zakres strukturalny bywa uruchamiany **drugi raz** z fazy
+osób (dotworzenie słowników, `views.py:1480-1489`), więc odświeżenie musi być
+idempotentne i wołane przy każdym przebiegu, nie tylko pierwszym.
+
+**Czego świadomie NIE odświeżamy.** `PrzelaczUtworzNowegoView`,
+`PrzepnijPraceView` i `ZaznaczWszystkiePrzepieciaView` mutują `utworz_nowego`
+i `przepnij_prace`. Żaden ekstraktor `POLA_ROZNIC` ani `porownaj_z_baza()` tych
+pól nie czyta (zweryfikowane gerepem po `roznice.py` i `models.py:1029-1125` —
+zero trafień), więc odświeżanie byłoby no-opem. Filtr `?rodzaj=do-pominiecia`
+czyta `utworz_nowego` **bezpośrednio w SQL** (`autor__isnull=True,
+utworz_nowego=False`), a nie ze snapshotu, więc pozostaje świeży bez żadnych
+zabiegów.
+
+`RestartAnalizaView` kasuje wiersze i uruchamia analizę od nowa → pokrywa go punkt
+„koniec analizy". `PrzelaczOdpiecieView` i `ZaznaczOdpieciaView` mutują
+`Odpiecie.zaznaczone`, nie wiersze — bez wpływu.
+
+**Zachowanie zamrożonego snapshotu audytu — bez zmian.** Dziś snapshot dla wiersza
+„utwórz nowego" liczy się **po** tym, jak `_przygotuj_nowego_autora` (`integrate.py:983`,
+przed pętlą worklisty w :986) ustawił świeżo utworzonego autora — zamrożone stany
+porównują więc plik z nowym autorem. Gdybyśmy zostawili istniejące guardy
+`if stany_pol_snapshot is None` (`integrate.py:193`, `models.py:1366`), stałyby się
+one martwe (pole byłoby już wypełnione przez odświeżanie przedintegracyjne),
+a audyt pokazałby stan sprzed utworzenia autora (`autor=None` → wszędzie „brak").
+To byłaby cicha zmiana danych audytowych. Dlatego **oba guardy zamieniamy na
+bezwarunkowe przypisanie** w tym samym miejscu potoku: wartość audytowa pozostaje
+bit w bit taka jak dziś. Test asertuje snapshot wiersza „utwórz nowego" po pełnej
+integracji.
+
+**Backfill (samonaprawianie).** Importy sprzed tej zmiany mają `NULL` i filtr SQL
+by ich nie znalazł. Zamiast migracji danych (musiałaby wykonać zapytania per wiersz
+na całej historii) robimy **leniwy backfill**: w `get_queryset()`, gdy
 `parent.importpracownikowrow_set.filter(stany_pol_snapshot__isnull=True).exists()`,
-przeliczamy cały import jednym batchem (z hurtowym prefetchem `Autor_Jednostka`,
-jak w Zmianie 2) i zapisujemy przez `bulk_update`. Dzieje się to **raz na import**,
-przy pierwszym wejściu na stronę po wdrożeniu.
+przeliczamy **wyłącznie wiersze z `NULL`** (z hurtowym prefetchem `Autor_Jednostka`,
+jak w Zmianie 2) i zapisujemy przez `bulk_update`. Raz na import, przy pierwszym
+wejściu na stronę po wdrożeniu.
 
-Backfill jest opakowany w `transaction.atomic()` i **nie zmienia stanu importu** —
-to czysta materializacja tego, co i tak liczyło się na żywo. Dla importu już
-zintegrowanego backfill też jest bezpieczny: `integrate.py` zapisuje snapshot
-przy integracji, więc importy zintegrowane po migracji `0024` mają go wypełnione;
-starsze dostaną wartość policzoną na żywo, czyli dokładnie to, co widok pokazuje
-dziś (`stany_pol()` z gałęzią live).
+Zawężenie do `isnull=True` jest **warunkiem poprawności, nie optymalizacją**.
+Snapshot dostają dziś tylko wiersze przechodzące przez worklistę integracji
+(`parent.zmiany_potrzebne_set.all()`, `integrate.py:986`) — wiersze bez zmian,
+pominięte i bez autora mają `NULL` **także w importach zintegrowanych po migracji
+`0024`**. Warunek wejścia backfillu będzie więc prawdziwy dla większości
+historycznych zintegrowanych importów, a przeliczenie „całego importu" nadpisałoby
+zamrożone wartości audytowe („zmienione") wartościami policzonymi po integracji
+(„zgodne"). Backfill jest opakowany w `transaction.atomic()`.
 
-**Ryzyko i jego kontrola.** Jeśli przegapimy ścieżkę mutującą, filtr skłamie po
-cichu. Kontrola: test parametryzowany po wszystkich endpointach mutujących, który
-dla każdego wykonuje akcję zmieniającą stan pola i asertuje, że
-`row.refresh_from_db().stany_pol_snapshot` odpowiada świeżo policzonemu
-`stany_pol()`. Nowy endpoint mutujący bez odświeżenia = czerwony test.
+**Ryzyko rezydualne: mutacje spoza importu.** Ekstraktory zależą od stanu `Autor`
+i `Autor_Jednostka` w bazie. Edycja autora w adminie BPP albo integracja *innego*
+importu między analizą a integracją tego importu unieważnia snapshot po cichu —
+filtr będzie kłamał do najbliższej mutacji wiersza. Dziś, przy liczeniu na żywo,
+tego problemu nie ma; to jest cena, którą płacimy za filtrowanie w SQL.
+Akceptujemy ją świadomie: okno jest wąskie (jedna sesja pracy operatora nad
+importem), skutek jest kosmetyczny (filtr, nie decyzja importu), a operator ma
+przycisk „Restart analizy", który przelicza wszystko od nowa. Alternatywa —
+inwalidacja snapshotów sygnałami z `Autor`/`Autor_Jednostka` — kosztowałaby
+przy każdym zapisie autora w całym systemie, dla korzyści w jednym widoku.
+
+**Kontrola ryzyka głównego.** Jeśli przegapimy ścieżkę mutującą, filtr skłamie po
+cichu. Test parametryzowany po endpointach HTMX tej dziury by **nie** złapał
+(dla widoków Weryfikacja* snapshot trywialnie równa się live, bo nic nie mutują).
+Dlatego test musi obejmować **przebieg integracji strukturalnej**: uruchom
+`integruj()` w zakresie struktury i asertuj, że dla każdego wiersza
+`stany_pol_snapshot == stany_pol()` policzone na żywo. Do tego test per endpoint
+mutujący `autor` (`wybierz-kandydata`, `dopasuj-autora`).
 
 ### Zmiana 5 — paginacja i filtry po stronie serwera
 
@@ -315,8 +394,43 @@ serwerowej byłaby jednoklikowym powrotem do problemu, który naprawiamy.
 | filtr | parametr GET | realizacja |
 |-------|--------------|------------|
 | rodzaj dopasowania | `?rodzaj=` | `confidence=` lub predykat `do-pominiecia` (`autor__isnull=True, utworz_nowego=False`) |
-| szukaj | `?q=` | `Q(dane_znormalizowane__nazwisko__icontains=…) \| Q(dane_znormalizowane__imię__icontains=…) \| Q(autor__nazwisko__icontains=…) \| Q(jednostka__nazwa__icontains=…)` |
-| stan pola (8×) | `?stan_<klucz>=` | `stany_pol_snapshot__<klucz>=` (JSONB) |
+| szukaj | `?q=` | suma `Q(...__icontains=…)` po sześciu polach (niżej) |
+| stan pola (8×) | `?stan_<klucz>=` | `stany_pol_snapshot__<klucz>=` (JSONB), ze specjalnym traktowaniem `"brak"` (niżej) |
+
+**Zakres `?q=`.** Musi pokryć to, co dziś pokrywa kliencki filtr tekstowy —
+a ten przeszukuje wszystkie elementy `[data-szukaj]`, czyli **więcej** niż
+oczywiste nazwisko z pliku. Z `_wiersz_preview_kom.html:16-23,33-35,235-241`
+wynika sześć pól:
+
+```python
+Q(dane_znormalizowane__nazwisko__icontains=q)
+| Q(**{"dane_znormalizowane__imię__icontains": q})
+| Q(**{"dane_znormalizowane__tytuł_stopień__icontains": q})
+| Q(autor__nazwisko__icontains=q) | Q(autor__imiona__icontains=q)
+| Q(jednostka__nazwa__icontains=q)
+| Q(autor__aktualna_jednostka__nazwa__icontains=q)
+```
+
+Klucze `imię` i `tytuł_stopień` mają polskie znaki; `imię` jest poprawnym
+identyfikatorem Pythona, ale `tytuł_stopień` w zapisie `Q(a__tytuł_stopień=…)`
+byłby kruchy — dlatego oba przekazujemy przez `Q(**{...})`, jednolicie.
+Pominięcie `autor__imiona` i `autor__aktualna_jednostka__nazwa` byłoby cichym
+zawężeniem wyszukiwania względem stanu dzisiejszego.
+
+**Stan `"brak"` wymaga osobnego lookupu.** Istnieją zamrożone snapshoty **bez**
+kluczy `data_od`/`data_do` — pochodzą sprzed dodania tych pól i dlatego
+`stany_pol()` dopełnia je w Pythonie (`models.py:1133-1135`). Zapytanie
+`stany_pol_snapshot__data_od="brak"` takich wierszy **nie znajdzie**, bo w JSONB
+klucza po prostu nie ma. Filtr stanu `"brak"` realizujemy więc jako:
+
+```python
+Q(**{f"stany_pol_snapshot__{klucz}": "brak"})
+| ~Q(**{"stany_pol_snapshot__has_key": klucz})
+```
+
+Pozostałe stany (`zmienione`, `zgodne`) to zwykła równość. Nie „naprawiamy" tych
+snapshotów backfillem — są zamrożonym zapisem audytowym i backfill ich nie dotyka
+(patrz Zmiana 4).
 
 `?rodzaj=` zachowuje dzisiejszą walidację i dzisiejszą semantykę deep-linku
 `?rodzaj=do-pominiecia` z ostrzeżenia finalizacji — z tą różnicą, że teraz filtruje
@@ -359,9 +473,24 @@ operatorowi spod kursora zaraz po tym, jak go zmienił.
   filtr zawęża wynik na **całym** imporcie, także gdy pasujący wiersz leży poza
   pierwszą stroną (to jest istota zmiany, więc test musi to sprawdzać jawnie).
 - Test zachowania filtrów w linkach pagera.
-- Test świeżości snapshotu, parametryzowany po endpointach mutujących (opis wyżej).
-- Test leniwego backfillu: import z `NULL` w `stany_pol_snapshot` po wejściu na
-  stronę ma pole wypełnione, a wartości zgadzają się z liczonymi na żywo.
+- Test świeżości snapshotu po **integracji strukturalnej**: po `integruj()`
+  w zakresie struktury każdy wiersz ma `stany_pol_snapshot` równy świeżo
+  policzonemu `stany_pol()`. To jest test, który łapie klasę błędu opisaną
+  w Zmianie 4 — parametryzacja po endpointach HTMX by jej nie złapała.
+- Test świeżości po endpointach mutujących `autor` (`wybierz-kandydata`,
+  `dopasuj-autora`).
+- Test leniwego backfillu, dwa warianty:
+  (a) wiersz z `NULL` po wejściu na stronę ma pole wypełnione wartością zgodną
+  z liczoną na żywo; (b) wiersz z **niepustym** snapshotem, w tym samym imporcie,
+  pozostaje **nietknięty** — to zabezpiecza zamrożony zapis audytowy.
+- Test niezmienności audytu: wiersz „utwórz nowego" po pełnej integracji ma
+  snapshot policzony względem świeżo utworzonego autora (zachowanie identyczne
+  jak przed zmianą).
+- Test filtra stanu `"brak"` na snapshocie **bez** klucza `data_od`/`data_do`
+  (symulacja starego zapisu) — wiersz musi zostać znaleziony.
+- Test zakresu `?q=`: dopasowanie po `autor__imiona` oraz po nazwie aktualnej
+  jednostki autora (pola, które kliencki filtr obejmował, a naiwna wersja
+  serwerowa by pominęła).
 - Pełne `make tests` lokalnie (nie tylko na CI), zgodnie z regułą projektu.
 
 **Ręczne (warunek merge'a PR #1 — zejście htmx o major).**
