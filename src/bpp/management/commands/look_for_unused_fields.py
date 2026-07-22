@@ -21,8 +21,11 @@ class Command(BaseCommand):
 
             total = model.objects.all().count()
             for field in model._meta.fields:
+                # Porównanie DOKŁADNEGO typu (nie isinstance) jest celowe:
+                # podklasy CharField (SlugField, EmailField, URLField) mają
+                # własną semantykę „pustości" i nie chcemy ich tu raportować.
                 if (
-                    type(field) != CharField and type(field) != TextField
+                    type(field) is not CharField and type(field) is not TextField
                 ) or field.name in ["adnotacje", "slowa_kluczowe"]:
                     continue
 
