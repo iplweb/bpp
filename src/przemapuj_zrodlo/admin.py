@@ -104,8 +104,8 @@ class PrzemapowaZrodlaAdmin(admin.ModelAdmin):
     akcje.allow_tags = True
 
     class Media:
-        css = {
-            "all": (
-                "https://cdnjs.cloudflare.com/ajax/libs/foundicons/3.0.0/foundation-icons.min.css",
-            )
-        }
+        # Foundation-Icons z lokalnych statików (pakiet npm foundation-datepicker
+        # dostarcza CSS razem z fontami) — ten sam plik, którego używa `bare.html`
+        # i szablony admina. Wcześniej był tu URL do cdnjs: zewnętrzna zależność
+        # sieciowa przy każdym otwarciu ekranu.
+        css = {"all": ("foundation-datepicker/foundation/fonts/foundation-icons.css",)}
