@@ -98,7 +98,10 @@ class Zgloszenie_PublikacjiAdmin(
     list_filter = [
         StanObslugiFilter,
         "status",
-        "zaimportowal",
+        # ``RelatedOnlyFieldListFilter``, nie gołe pole: inaczej sidebar
+        # dostaje ``<li>`` dla KAŻDEGO użytkownika w bazie (plus HTMX-owy
+        # licznik z ``DynamicAdminFilterMixin`` do każdej pozycji).
+        ("zaimportowal", admin.RelatedOnlyFieldListFilter),
         WydzialJednostkiPierwszegoAutora,
         DzienTygodniaFilter,
         "rodzaj_zglaszanej_publikacji",
@@ -135,22 +138,13 @@ class Zgloszenie_PublikacjiAdmin(
         )
     )
 
-    # Audyt domknięcia zgłoszenia importerem prac (FD#443). Pola dokładane
-    # do formularza wyłącznie dla zgłoszeń faktycznie zaimportowanych — patrz
-    # ``get_fields`` — żeby nie zaśmiecać czterema pustymi wierszami reszty.
-    POLA_AUDYTU_IMPORTU = (
-        "zaimportowano",
-        "zaimportowal",
-        "zaimportowany_rekord",
-        "sesje_importu_linki",
-    )
-
+    # Audyt domknięcia zgłoszenia importerem prac (FD#443) NIE jest polami
+    # formularza — całość pokazuje panel „📥 Zaimportowane …" nad formularzem
+    # (patrz ``change_view`` + ``change_form.html``). Jedno źródło prawdy:
+    # dublowanie tego w ``readonly_fields`` dawało dwa linki do tego samego
+    # rekordu i dwa komplety zapytań na każdy render strony.
     readonly_fields = [
         "pliki_do_pobrania",
-        "zaimportowano",
-        "zaimportowal",
-        "zaimportowany_rekord",
-        "sesje_importu_linki",
     ]
 
     inlines = [
@@ -158,11 +152,11 @@ class Zgloszenie_PublikacjiAdmin(
         Zgloszenie_Publikacji_ZalacznikInline,
     ]
 
-    def get_fields(self, request, obj=None):
-        fields = list(super().get_fields(request, obj))
-        if obj is not None and obj.czy_zaimportowane:
-            fields += [f for f in self.POLA_AUDYTU_IMPORTU if f not in fields]
-        return fields
+    def get_queryset(self, request):
+        # ``zaimportowal`` czyta panel audytu (strona zgłoszenia) — bez
+        # ``select_related`` to dodatkowy SELECT na użytkownika przy każdym
+        # renderze; na liście oszczędza zapytanie na wiersz przy filtrze.
+        return super().get_queryset(request).select_related("zaimportowal")
 
     def has_add_permission(self, request):
         return False
@@ -216,9 +210,9 @@ class Zgloszenie_PublikacjiAdmin(
                 url, nazwa = self._rekord_url_i_nazwa(obj)
                 extra_context["zaimportowany_rekord_url"] = url
                 extra_context["zaimportowany_rekord_nazwa"] = nazwa
-                sesje = self._sesje_importu(obj)
+                sesja = self._ostatnia_sesja_importu(obj)
                 extra_context["sesja_importu_url"] = (
-                    self._sesja_importu_url(sesje[0]) if sesje else None
+                    self._sesja_importu_url(sesja) if sesja is not None else None
                 )
         return super().change_view(request, object_id, form_url, extra_context)
 
@@ -262,8 +256,12 @@ class Zgloszenie_PublikacjiAdmin(
         )
 
     @staticmethod
-    def _sesje_importu(obj) -> list:
-        """Sesje importu związane ze zgłoszeniem.
+    def _ostatnia_sesja_importu(obj):
+        """Najnowsza sesja importu związana ze zgłoszeniem albo ``None``.
+
+        ``ImportSession.Meta.ordering`` to ``["-created"]``, więc ``first()``
+        zwraca **najnowszą** sesję — i o to chodzi: gdy import był ponawiany,
+        operatora interesuje ostatnie podejście, nie pierwsze.
 
         ``sesje_importu`` to relacja odwrotna z ``importer_publikacji``.
         ``getattr`` z wartością domyślną — relacja jest dokładana osobną
@@ -272,27 +270,8 @@ class Zgloszenie_PublikacjiAdmin(
         """
         manager = getattr(obj, "sesje_importu", None)
         if manager is None:
-            return []
-        return list(manager.all())
-
-    @admin.display(description="Utworzony rekord")
-    def zaimportowany_rekord(self, obj):
-        url, nazwa = self._rekord_url_i_nazwa(obj)
-        if url is None:
-            return "-"
-        return format_html('<a href="{}">📗 {}</a>', url, nazwa)
-
-    @admin.display(description="Sesje importu")
-    def sesje_importu_linki(self, obj):
-        sesje = self._sesje_importu(obj)
-        if not sesje:
-            return "-"
-
-        return format_html_join(
-            "<br/>",
-            '<a href="{}">📥 sesja importu #{}</a>',
-            ((self._sesja_importu_url(sesja), sesja.pk) for sesja in sesje),
-        )
+            return None
+        return manager.first()
 
     zwroc_view_template = (
         "admin/zglos_publikacje/zgloszenie_publikacji/zwroc_zgloszenie.html"

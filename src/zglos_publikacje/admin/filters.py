@@ -2,6 +2,7 @@
 from django.contrib.admin import SimpleListFilter
 from django.db.models import Q, Window
 from django.db.models.functions import ExtractWeekDay, FirstValue
+from djangoql.admin import DJANGOQL_SEARCH_MARKER
 
 from bpp.models import Jednostka
 from zglos_publikacje.models import Zgloszenie_Publikacji, Zgloszenie_Publikacji_Autor
@@ -75,16 +76,28 @@ class StanObslugiFilter(SimpleListFilter):
     """Filtr „Do obsługi / Załatwione / Wszystkie" (FD#443).
 
     Domyślnie (brak parametru w URL-u) lista pokazuje wyłącznie zgłoszenia
-    wymagające reakcji operatora — bez odrzuconych, spamu i tych domkniętych
-    importerem. „Wszystkie" trzeba wybrać jawnie.
+    będące w toku — bez zaakceptowanych, odrzuconych, spamu i tych
+    domkniętych importerem. „Wszystkie" trzeba wybrać jawnie.
 
-    ``WYMAGA_ZMIAN`` świadomie nie należy do żadnej z dwóch grup: zgłoszenie
-    jest wtedy w rękach autora (aktywny ``kod_do_edycji``), więc ani nie
-    czeka na operatora, ani nie jest załatwione.
+    ``WYMAGA_ZMIAN`` należy do „Do obsługi": zgłoszenie siedzi wprawdzie u
+    autora (aktywny ``kod_do_edycji``), ale wciąż jest na biurku operatora —
+    trzeba je pilnować, przypomnieć, po czasie odrzucić. Do „Załatwionych"
+    nie należy na pewno, a wyrzucenie go poza obie grupy chowało zgłoszenia
+    czekające na autora wszędzie poza „Wszystkie" — regres widoczności
+    danych wobec stanu sprzed FD#443.
+
+    Filtr jest **przezroczysty**, gdy stan obsługi nie został wybrany
+    ręcznie, a w URL-u siedzi jawny wybór z sąsiedniego filtra „status"
+    (``status__exact`` itp.). Bez tego oba filtry składałyby się koniunkcją
+    i kliknięcie „status → spam" dawało pustą listę bez wyjaśnienia.
     """
 
     title = "stan obsługi"
     parameter_name = "stan_obslugi"
+
+    #: Nazwa pola, po którym filtruje sąsiedni filtr ``"status"`` z
+    #: ``list_filter``. Parametry w URL-u to ``status`` / ``status__<lookup>``.
+    POLE_STATUSU = "status"
 
     DO_OBSLUGI = "do_obslugi"
     ZALATWIONE = "zalatwione"
@@ -92,6 +105,7 @@ class StanObslugiFilter(SimpleListFilter):
 
     STATUSY_DO_OBSLUGI = (
         Zgloszenie_Publikacji.Statusy.NOWY,
+        Zgloszenie_Publikacji.Statusy.WYMAGA_ZMIAN,
         Zgloszenie_Publikacji.Statusy.PO_ZMIANACH,
     )
     STATUSY_ZALATWIONE = (
@@ -101,6 +115,30 @@ class StanObslugiFilter(SimpleListFilter):
         Zgloszenie_Publikacji.Statusy.SPAM,
     )
 
+    def __init__(self, request, params, model, model_admin):
+        super().__init__(request, params, model, model_admin)
+        # ``request.GET``, nie ``params``: Django zdejmuje z ``params`` klucze
+        # skonsumowane przez kolejne filtry, a nas interesuje surowy URL.
+        self.status_wybrany_recznie = any(
+            klucz == self.POLE_STATUSU or klucz.startswith(f"{self.POLE_STATUSU}__")
+            for klucz in request.GET
+        ) or self._djangoql_aktywne(request)
+
+    @staticmethod
+    def _djangoql_aktywne(request) -> bool:
+        """Czy operator pisze własne zapytanie DjangoQL?
+
+        Ten admin ma ``DjangoQLSearchMixin``, a zapytanie ląduje w ``q``
+        (marker trybu to ``q-l=on``) — czyli poza polem ``status``, którego
+        pilnuje detekcja wyżej. Bez tego ``status = 5`` wpisane w DjangoQL
+        wpadałoby w koniunkcję z domyślnym ``status__in=(0, 2, 3)`` i zawsze
+        zwracało pustą listę: operator szukający spamu dostawał zero wyników.
+
+        Skoro operator pisze zapytanie ręcznie, domyślne zawężenie ma zejść
+        mu z drogi — tak samo jak przy jawnym wyborze w filtrze „status".
+        """
+        return request.GET.get(DJANGOQL_SEARCH_MARKER) == "on"
+
     def lookups(self, request, model_admin):
         return [
             (self.DO_OBSLUGI, "Do obsługi"),
@@ -108,16 +146,24 @@ class StanObslugiFilter(SimpleListFilter):
             (self.WSZYSTKIE, "Wszystkie"),
         ]
 
+    def czy_domyslne_zawezenie(self) -> bool:
+        """Czy filtr działa „z automatu" (brak wyboru użytkownika)?"""
+        return self.value() is None and not self.status_wybrany_recznie
+
     def choices(self, changelist):
         # Nadpisujemy domyślne zachowanie ``SimpleListFilter``: tam brak
         # parametru = „Wszystkie" i dodatkowa pozycja z ``value=None``. U nas
         # brak parametru = „Do obsługi", a „Wszystkie" jest jawną wartością —
         # inaczej nie dałoby się jej wybrać z poziomu interfejsu.
+        #
+        # Gdy filtr jest przezroczysty (wybór w filtrze „status"), nie
+        # zaznaczamy nic — inaczej podświetlone „Do obsługi" kłamałoby o tym,
+        # co realnie zawęża listę.
         value = self.value()
+        domyslne = self.czy_domyslne_zawezenie()
         for lookup, title in self.lookup_choices:
             yield {
-                "selected": value == lookup
-                or (value is None and lookup == self.DO_OBSLUGI),
+                "selected": value == lookup or (domyslne and lookup == self.DO_OBSLUGI),
                 "query_string": changelist.get_query_string(
                     {self.parameter_name: lookup}
                 ),
@@ -132,6 +178,11 @@ class StanObslugiFilter(SimpleListFilter):
 
         if value == self.ZALATWIONE:
             return queryset.filter(status__in=self.STATUSY_ZALATWIONE)
+
+        if value is None and self.status_wybrany_recznie:
+            # Jawny wybór w filtrze „status" wygrywa z domyślnym zawężeniem —
+            # inaczej „status → spam" dawałoby pustą listę bez wyjaśnienia.
+            return queryset
 
         # Domyślnie (brak parametru) oraz jawne „Do obsługi".
         return queryset.filter(status__in=self.STATUSY_DO_OBSLUGI)

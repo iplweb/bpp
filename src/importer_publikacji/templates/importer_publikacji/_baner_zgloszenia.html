@@ -72,12 +72,15 @@
                                 <span class="fi-check"></span>
                                 #{{ zgl.pk }}
                                 &mdash;
+                                {# BEZ e-maila zgłaszającego: zgłoszenie ze #}
+                                {# współautorami z dwóch uczelni jest kandydatem #}
+                                {# dla OBU (semantyka OR po jednostkach autorów), #}
+                                {# więc operator obcej uczelni zobaczyłby cudzy #}
+                                {# adres. Numer zgłoszenia, pierwszy autor, #}
+                                {# tytuł i rok w zupełności wystarczą, żeby #}
+                                {# rozpoznać właściwego kandydata. #}
                                 {% with autor=zgl.zgloszenie_publikacji_autor_set.first %}
-                                    {% if autor %}
-                                        {{ autor.zapisany_jako }},
-                                    {% else %}
-                                        {{ zgl.email }},
-                                    {% endif %}
+                                    {% if autor %}{{ autor.zapisany_jako }},{% endif %}
                                 {% endwith %}
                                 „{{ zgl.tytul_oryginalny|truncatechars:80 }}"
                                 {% if zgl.rok %}, {{ zgl.rok }}{% endif %}

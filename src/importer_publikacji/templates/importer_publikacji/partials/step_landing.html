@@ -17,20 +17,26 @@
         Wybierz źródło danych, z którego chcesz zaimportować publikację.
     </p>
 
-    <div class="tile-grid tile-grid--providers" id="provider-tile-grid">
-        {% for p in providers %}
-            <a class="tile-card"
-               data-provider="{{ p.name }}"
-               href="{% url 'importer_publikacji:index' %}?provider={{ p.name|urlencode }}"
-               hx-get="{% url 'importer_publikacji:index' %}?provider={{ p.name|urlencode }}"
-               hx-target="#importer-wizard"
-               hx-push-url="true">
-                <span class="tile-icon {{ p.icon }}"></span>
-                <span class="tile-title">{{ p.choice_label }}</span>
-                <span class="tile-desc">{{ p.landing_caption }}</span>
-            </a>
-        {% endfor %}
-    </div>
+    {# Kafelki przekazują dalej kontekst, z którym operator tu przyszedł: #}
+    {# ?zgloszenie= (wiązanie ze zgłoszeniem publikacji, FD#443) oraz #}
+    {# ?identifier=. Wprost z request.GET, bo ta strona to czysty przelot #}
+    {# — sesji importu jeszcze nie ma, tworzy ją dopiero FetchView.post. #}
+    {% with zgl=request.GET.zgloszenie ident=request.GET.identifier %}
+        <div class="tile-grid tile-grid--providers" id="provider-tile-grid">
+            {% for p in providers %}
+                <a class="tile-card"
+                   data-provider="{{ p.name }}"
+                   href="{% url 'importer_publikacji:index' %}?provider={{ p.name|urlencode }}{% if zgl %}&amp;zgloszenie={{ zgl|urlencode }}{% endif %}{% if ident %}&amp;identifier={{ ident|urlencode }}{% endif %}"
+                   hx-get="{% url 'importer_publikacji:index' %}?provider={{ p.name|urlencode }}{% if zgl %}&amp;zgloszenie={{ zgl|urlencode }}{% endif %}{% if ident %}&amp;identifier={{ ident|urlencode }}{% endif %}"
+                   hx-target="#importer-wizard"
+                   hx-push-url="true">
+                    <span class="tile-icon {{ p.icon }}"></span>
+                    <span class="tile-title">{{ p.choice_label }}</span>
+                    <span class="tile-desc">{{ p.landing_caption }}</span>
+                </a>
+            {% endfor %}
+        </div>
+    {% endwith %}
 </div>
 
 <div class="callout secondary" id="import-progress-bar">

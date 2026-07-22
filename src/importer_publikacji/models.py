@@ -252,12 +252,22 @@ class ImportSession(models.Model):
 
         Wyliczane przy każdym odczycie (nie cache'owane w polu) — DOI jest
         stabilne, a dzięki temu lista nie starzeje się względem stanu bazy.
-        Pusta, gdy operator odrzucił propozycje („żadne z nich”).
+
+        Pusty queryset (nigdy ``None``) w dwóch przypadkach, w których i tak
+        nie ma czego wybierać, a zbudowanie właściwego zapytania kosztowałoby
+        ``Uczelnia.objects.count()`` przy KAŻDYM renderze kroku Verify
+        (``kandydaci_dla_sesji`` → ``tylko_jedna_uczelnia``, wywoływane
+        natychmiast, nie leniwie):
+
+        * operator odrzucił propozycje („żadne z nich”),
+        * sesja ma już wiązanie — baner pokazuje wtedy wersję potwierdzającą
+          (gałąź ``session.zgloszenie_id`` w ``_baner_zgloszenia.html``),
+          a listy kandydatów nawet nie dotyka.
 
         Importy lokalne: ``zgloszenia`` importuje modele, więc import na
         poziomie modułu zamknąłby cykl.
         """
-        if self.zgloszenie_odrzucone_przez_operatora:
+        if self.zgloszenie_odrzucone_przez_operatora or self.zgloszenie_id:
             from zglos_publikacje.models import Zgloszenie_Publikacji
 
             return Zgloszenie_Publikacji.objects.none()

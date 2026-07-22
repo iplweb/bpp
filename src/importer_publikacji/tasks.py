@@ -3,10 +3,19 @@
 Globalny @task_failure.connect w src/django_bpp/celery_tasks.py:40-42
 automatycznie raportuje wyjątki do Rollbar — task body wystarczy raise
 po zapisaniu user-safe message w sesji.
+
+**Wszystkie zapisy sesji idą przez ``update_fields``** (z ``modified``,
+żeby ``auto_now`` zadziałał i watchdog ``ImportSession.is_stalled()`` nie
+uznał sesji za martwą). Pełne ``session.save()`` z instancji wczytanej na
+starcie taska nadpisywało kolumny zmienione W MIĘDZYCZASIE przez widok —
+konkretnie ``zgloszenie`` dopisywane gałęzią idempotency w ``FetchView``
+(lost update: FK wracał do NULL, wiązanie ze zgłoszeniem przepadało).
 """
 
+import logging
 import traceback
 
+import rollbar
 from celery import shared_task
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
@@ -20,6 +29,20 @@ from .progress import (
     user_safe_message,
 )
 from .providers import get_provider
+
+logger = logging.getLogger(__name__)
+
+# Kolumny zapisywane przez terminalne ścieżki błędu (obie gałęzie ``except``
+# oraz „dostawca nic nie zwrócił"). ``modified`` jest tu jawnie, bo
+# ``auto_now`` odpala się WYŁĄCZNIE dla pól wymienionych w ``update_fields``.
+_POLA_BLEDU = [
+    "status",
+    "last_failed_stage",
+    "last_error_message",
+    "last_error_traceback",
+    "celery_task_id",
+    "modified",
+]
 
 
 @shared_task(bind=True)
@@ -55,16 +78,24 @@ def fetch_session_task(self, session_id, request_user_id):
                 ProviderReturnedNothing(), task_kind="fetch"
             )[:255]
             session.celery_task_id = ""
-            session.save()
+            session.save(update_fields=_POLA_BLEDU)
             return
 
         report_progress(self, "create_session", stages=FETCH_STAGES)
         _store_normalized_data(session, result)
-        session.save()
+        session.save(update_fields=["raw_data", "normalized_data", "modified"])
 
         report_progress(self, "match_type_lang", stages=FETCH_STAGES)
         _auto_match_type_and_language(session, result)
-        session.save()
+        session.save(
+            update_fields=[
+                "rodzaj_rekordu",
+                "charakter_formalny",
+                "jest_wydawnictwem_zwartym",
+                "jezyk",
+                "modified",
+            ]
+        )
 
         report_progress(
             self,
@@ -96,6 +127,13 @@ def fetch_session_task(self, session_id, request_user_id):
         # Kolejność: najpierw wiązanie, potem prefill — dzięki temu
         # prefill dyscyplin korzysta z jawnie związanego zgłoszenia,
         # zamiast z heurystyki po tytule.
+        #
+        # ``zgloszenie`` czytamy ŚWIEŻO z bazy: jawne wiązanie (ścieżka A)
+        # mógł dopisać widok JUŻ PO wczytaniu sesji przez ten task —
+        # ``FetchView`` robi to gałęzią idempotency (double-click), nie
+        # startując nowej sesji. Bez tego odczytu auto-wiązanie po DOI
+        # przestemplowałoby jawny wybór operatora.
+        session.refresh_from_db(fields=["zgloszenie"])
         if not session.zgloszenie_id:
             zwiaz_automatycznie(session)
 
@@ -103,14 +141,14 @@ def fetch_session_task(self, session_id, request_user_id):
 
         session.status = ImportSession.Status.FETCHED
         session.celery_task_id = ""
-        session.save()
+        session.save(update_fields=["status", "celery_task_id", "modified"])
     except Exception as exc:
         session.status = ImportSession.Status.IMPORT_FAILED
         session.last_failed_stage = "fetch"
         session.last_error_message = user_safe_message(exc, task_kind="fetch")[:255]
         session.last_error_traceback = traceback.format_exc()
         session.celery_task_id = ""
-        session.save()
+        session.save(update_fields=_POLA_BLEDU)
         raise
 
 
@@ -235,13 +273,6 @@ def create_publication_task(self, session_id, request_user_id, also_pbn):
             report_progress(self, "link_pbn", stages=CREATE_STAGES)
             _enqueue_pbn_export(request_user, record, session.uczelnia)
 
-        # Zapis zwrotny na zgłoszeniu (FD#443, D10) idzie w TYM SAMYM
-        # bloku, co przejście sesji w COMPLETED — nie w
-        # ``_create_publication``, którego własna transakcja już się
-        # zamknęła. Blok siedzi w gałęzi sukcesu, PRZED ``except``, więc
-        # nieudany import nie zmienia statusu zgłoszenia.
-        from .zgloszenia import oznacz_jako_zaimportowane
-
         with transaction.atomic():
             session.status = ImportSession.Status.COMPLETED
             session.created_record_content_type = ContentType.objects.get_for_model(
@@ -250,17 +281,66 @@ def create_publication_task(self, session_id, request_user_id, also_pbn):
             session.created_record_id = record.pk
             session.modified_by = request_user
             session.celery_task_id = ""
-            session.save()
+            session.save(
+                update_fields=[
+                    "status",
+                    "created_record_content_type",
+                    "created_record_id",
+                    "modified_by",
+                    "celery_task_id",
+                    "modified",
+                ]
+            )
 
-            oznacz_jako_zaimportowane(session, record)
+        # Zapis zwrotny na zgłoszeniu (FD#443, D10) idzie PO domknięciu
+        # transakcji sesji i w gałęzi sukcesu, PRZED ``except`` — nieudany
+        # import nie zmienia statusu zgłoszenia. Poza ``atomic`` dlatego, że
+        # błąd bazy WEWNĄTRZ bloku psuje całą transakcję: nie dałoby się go
+        # połknąć bez wywrócenia COMPLETED (patrz helper niżej).
+        _oznacz_zgloszenie_nie_wywracajac_importu(session, record)
     except Exception as exc:
         session.status = ImportSession.Status.IMPORT_FAILED
         session.last_failed_stage = "create"
         session.last_error_message = user_safe_message(exc, task_kind="create")[:255]
         session.last_error_traceback = traceback.format_exc()
         session.celery_task_id = ""
-        session.save()
+        session.save(update_fields=_POLA_BLEDU)
         raise
+
+
+def _oznacz_zgloszenie_nie_wywracajac_importu(session, record):
+    """Zapis zwrotny na zgłoszeniu, który NIGDY nie wywraca importu.
+
+    W chwili wywołania rekord publikacji już istnieje, a sesja jest
+    ``COMPLETED``. Gdyby wyjątek stąd poleciał wyżej, ``except`` w
+    :func:`create_publication_task` cofnąłby sesję do ``IMPORT_FAILED``,
+    operator kliknąłby „Ponów" i powstałby DRUGI rekord tej samej pracy.
+    Dlatego łapiemy szeroko, ale **nie po cichu**: pełny traceback do logu
+    + zgłoszenie do Rollbara (globalny ``@task_failure.connect`` już go tu
+    nie zobaczy, bo nie ma re-raise'a).
+
+    Gorszym scenariuszem jest zgłoszenie nieoznaczone (do ręcznego
+    domknięcia przez operatora), nie duplikat rekordu w bazie.
+
+    ``zgloszenie`` odczytujemy świeżo: operator mógł w trakcie tworzenia
+    rekordu zmienić wiązanie albo je odpiąć („Odepnij" / „Żadne z nich")
+    — jego decyzja jest nowsza niż stan wczytany na starcie taska.
+    """
+    from .zgloszenia import oznacz_jako_zaimportowane
+
+    try:
+        session.refresh_from_db(fields=["zgloszenie"])
+        oznacz_jako_zaimportowane(session, record)
+    except Exception:
+        logger.exception(
+            "Nie udało się oznaczyć zgłoszenia %s jako zaimportowanego "
+            "(sesja importu %s, rekord %s). Rekord publikacji POWSTAŁ, sesja "
+            "zostaje COMPLETED — zgłoszenie wymaga ręcznego domknięcia.",
+            session.zgloszenie_id,
+            session.pk,
+            record.pk,
+        )
+        rollbar.report_exc_info()
 
 
 def _create_publication(session):

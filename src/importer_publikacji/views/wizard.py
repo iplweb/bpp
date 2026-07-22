@@ -5,7 +5,6 @@ Authors → Review → Create → Done) plus boczne akcje na autorach i
 anulowanie sesji.
 """
 
-from django.contrib import messages
 from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
@@ -189,20 +188,30 @@ def _create_batch(request, provider_name, normalized, records):
     return batch
 
 
-def _zgloszenie_z_pola(value):
+def _zgloszenie_z_pola(request, value):
     """Zwaliduj wartość ukrytego pola ``zgloszenie`` z ``FetchForm``.
 
-    Zwraca instancję ``Zgloszenie_Publikacji`` albo ``None``. ``objects`` to
-    ``SoftDeleteManager``, więc zgłoszenia soft-usunięte wypadają tą samą
-    gałęzią co nieistniejące. Wartość niepoprawna jest ignorowana po cichu —
-    import startuje bez wiązania i operator nie dostaje błędu.
+    Zwraca instancję ``Zgloszenie_Publikacji`` albo ``None``.
+
+    Ukryte pole to zwykły ``<input type=hidden>`` — jego wartość jest w pełni
+    pod kontrolą klienta (wystarczy jeden POST z podmienionym pk). Dlatego
+    ścieżka jawna („Użyj importera") MUSI przejść przez tę samą bramkę, co
+    ścieżki automatyczna i operatorska: :func:`zgloszenia.zgloszenie_dozwolone`
+    egzekwuje granicę uczelni (D8) i wykluczone statusy (D9), a
+    ``SoftDeleteManager`` odsiewa zgłoszenia soft-usunięte. Bez tego redaktor
+    jednej uczelni mógłby przestemplować zgłoszenie innej (albo zgłoszenie
+    w statusie SPAM/ODRZUCONO/WYMAGA_ZMIAN) na ZAIMPORTOWANY.
+
+    Wartość niepoprawna (nieistniejąca, spoza uczelni, w wykluczonym statusie)
+    jest ignorowana po cichu — import startuje bez wiązania i operator nie
+    dostaje błędu.
     """
     if not value:
         return None
 
-    from zglos_publikacje.models import Zgloszenie_Publikacji
+    from ..zgloszenia import zgloszenie_dozwolone
 
-    return Zgloszenie_Publikacji.objects.filter(pk=value).first()
+    return zgloszenie_dozwolone(value, Uczelnia.objects.get_for_request(request))
 
 
 def _start_import_session(request, provider_name, identifier, zgloszenie=None):
@@ -247,7 +256,7 @@ class FetchView(ImporterPermissionMixin, View):
         provider_name = form.cleaned_data["provider"]
         request.session["importer_last_provider"] = provider_name
         provider = get_provider(provider_name)
-        zgloszenie = _zgloszenie_z_pola(form.cleaned_data.get("zgloszenie"))
+        zgloszenie = _zgloszenie_z_pola(request, form.cleaned_data.get("zgloszenie"))
 
         if provider.input_mode == InputMode.TEXT:
             raw_input = form.cleaned_data["text_input"]
@@ -306,9 +315,17 @@ class FetchView(ImporterPermissionMixin, View):
             # żadnego nie ma; NIE nadpisuj, gdy ma już inne — pierwsze
             # wiązanie wygrywa, inaczej przypadkowy re-submit przestemplowałby
             # sesję na cudze zgłoszenie.
-            if zgloszenie is not None and recent_in_flight.zgloszenie_id is None:
-                recent_in_flight.zgloszenie = zgloszenie
-                recent_in_flight.save(update_fields=["zgloszenie"])
+            #
+            # Warunkowy UPDATE, nie load-modify-save: sesja jest z definicji
+            # in-flight, więc ``fetch_session_task`` trzyma RÓWNOLEGLE własną,
+            # starszą instancję tego wiersza. Zapis przez ``.save()`` przegrałby
+            # z pełnym ``session.save()`` workera (lost update — worker wpisałby
+            # z powrotem ``zgloszenie_id = NULL``). „Dopisz gdy puste" siedzi tu
+            # w klauzuli WHERE, więc rozstrzyga baza, nie kolejność zapisów.
+            if zgloszenie is not None:
+                ImportSession.objects.filter(
+                    pk=recent_in_flight.pk, zgloszenie__isnull=True
+                ).update(zgloszenie=zgloszenie)
             return _hx_or_redirect(request, recent_in_flight.get_continue_url())
 
         session = _start_import_session(
@@ -1107,17 +1124,6 @@ class CreateView(ImporterPermissionMixin, View):
         return HttpResponseRedirect(url)
 
 
-# Klucz w sesji HTTP: lista id sesji importu, dla których flash o domknięciu
-# zgłoszenia już poszedł. ``DoneView.get`` jest odświeżalny (F5), a wiadomość
-# ma się pokazać dokładnie raz.
-FLASH_ZGLOSZENIA_KEY = "importer_zgloszenie_flash"
-
-# Ile ostatnich id trzymać. Bez limitu lista rosłaby przez całe życie sesji
-# HTTP operatora; przy przekroczeniu wypadają najstarsze — a ich strony Done
-# i tak dawno nie są odświeżane.
-FLASH_ZGLOSZENIA_LIMIT = 50
-
-
 def _domkniete_zgloszenie(session):
     """Zgłoszenie faktycznie domknięte przez tę sesję albo ``None``.
 
@@ -1135,30 +1141,17 @@ def _domkniete_zgloszenie(session):
     return zgloszenie
 
 
-def _flash_domkniete_zgloszenie(request, session, zgloszenie):
-    """Postaw flash o domknięciu zgłoszenia — dokładnie raz na sesję importu.
-
-    Wiadomość MUSI powstawać tutaj, w cyklu żądania: worker Celery wyrzuca
-    wiadomości do kosza (``_NoopMessageStorage`` w ``tasks.py``), więc flash
-    postawiony w zadaniu przepadłby bez śladu.
-    """
-    pokazane = request.session.setdefault(FLASH_ZGLOSZENIA_KEY, [])
-    if session.pk in pokazane:
-        return
-    messages.success(
-        request,
-        f"Domknięto zgłoszenie publikacji #{zgloszenie.pk} — "
-        "jest teraz oznaczone jako zaimportowane.",
-    )
-    pokazane.append(session.pk)
-    # Przypisanie (nie mutacja w miejscu) — SessionBase wykrywa modyfikację
-    # przez __setitem__; sama .append() nie ustawiłaby flagi ``modified``,
-    # sesja nie zostałaby zapisana i flash wróciłby po F5.
-    request.session[FLASH_ZGLOSZENIA_KEY] = pokazane[-FLASH_ZGLOSZENIA_LIMIT:]
-
-
 class DoneView(ImporterPermissionMixin, View):
-    """Strona potwierdzenia utworzenia rekordu (GET)."""
+    """Strona potwierdzenia utworzenia rekordu (GET).
+
+    O domknięciu zgłoszenia informuje callout w ``partials/step_done.html``
+    (kontekst ``domkniete_zgloszenie``) — NIE flash z ``django.contrib
+    .messages``. Ramka komunikatów renderuje się w ``base.html`` dwukrotnie,
+    a partial dokładał trzecie wystąpienie tej samej treści. Callout jest
+    z natury idempotentny (stan wyliczony z bazy przy każdym GET), więc nie
+    potrzebuje buchalterii „pokaż dokładnie raz" i — inaczej niż flash —
+    nie znika po F5.
+    """
 
     def get(self, request, session_id):
         session = self.get_scoped_or_404(
@@ -1179,7 +1172,6 @@ class DoneView(ImporterPermissionMixin, View):
                 "admin:zglos_publikacje_zgloszenie_publikacji_change",
                 args=[zgloszenie.pk],
             )
-            _flash_domkniete_zgloszenie(request, session, zgloszenie)
 
         return _render_full_page(request, STEP_DONE, ctx)
 
