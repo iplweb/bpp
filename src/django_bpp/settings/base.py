@@ -1861,6 +1861,25 @@ LOGGING = {
             # pytestowemu `caplog` (łapie na rootcie) widzieć zrzut claimów.
             "propagate": True,
         },
+        # WeasyPrint. Loguje na INFO postęp renderowania („Step 1..7") przez
+        # logger-dziecko `weasyprint.progress`. Problem: `weasyprint/html.py`
+        # buduje trzy wbudowane arkusze user-agent (html5_ua, html5_ua_form,
+        # html5_ph) przez `CSS(string=...)` na poziomie MODUŁU, więc sam import
+        # — bez generowania jakiegokolwiek PDF-a — sypie 3× „Step 2 - Fetching
+        # and parsing CSS - CSS string" („CSS string" to fallback `%s`, gdy
+        # arkusz nie ma ani pliku, ani URL-a). Razy każdy proces importujący
+        # weasyprint (worker gunicorna, celery, beat, denorm-queue, a przy
+        # runserverze jeszcze ×2 przez autoreload) daje to spam przy starcie.
+        # `weasyprint/logger.py` wiesza NullHandler tylko na `weasyprint`, NIE
+        # na `weasyprint.progress`, więc rekordy szły dotąd do roota (handler
+        # na INFO ustawiany przez Celery/gunicorna).
+        # WARNING na rodzicu wycisza też `.progress`, a zostawia to, co realnie
+        # przydatne: nieosiągalne obrazki/fonty i błędy składni CSS.
+        "weasyprint": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
     },
 }
 
