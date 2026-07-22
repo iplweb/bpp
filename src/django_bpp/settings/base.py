@@ -1022,6 +1022,8 @@ YARN_FILE_PATTERNS = {
     "select2-foundation-theme": ["dist/select2-foundation-theme.css"],
     "plotly.js": ["dist/plotly.min.js", "dist/plotly-locale-pl.js"],
     "htmx.org": ["dist/htmx.js"],
+    # Wykresy w ewaluacja_optymalizacja (dawniej ładowane z cdn.jsdelivr.net).
+    "chart.js": ["dist/chart.umd.min.js"],
     "tone": ["build/Tone.js", "build/Tone.js.map"],
     # Do developerki:
     "qunit": ["qunit/qunit.js", "qunit/qunit.css"],

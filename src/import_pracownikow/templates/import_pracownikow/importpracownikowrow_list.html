@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load render_table from django_tables2 %}
+{% extends "base.html" %}{% load render_table from django_tables2 %}{% load static %}
 
 {% block extratitle %}
     Import pracowników i jednostek - szczegóły {{ parent_object.plik_xls.name }}
@@ -49,8 +49,10 @@
     {% endif %}
 
     {# HTMX dla akcji per-wiersz (wybór kandydata / edycja inline) — patrz #}
-    {# wzorzec importer_publikacji/index.html. #}
-    <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous"></script>
+    {# wzorzec importer_publikacji/index.html. Self-hostowany: skrypt z CDN-a #}
+    {# w tym miejscu blokował parser (leży PRZED tabelą), więc w sieci bez #}
+    {# dostępu do unpkg.com strona wisiała do timeoutu DNS/TCP. #}
+    <script src="{% static 'liveops/vendor/htmx.min.js' %}"></script>
 
     {% if parent_object.edytowalny_podglad and parent_object.przepnij_wszystkie_prace %}
         {# akcja zbiorcza: zaznacz przepięcie prac dla wierszy z różnicą jednostki #}
