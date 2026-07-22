@@ -17,6 +17,8 @@ działać globalnie.
 
 import os
 
+import pytest
+
 from bpp.tests.util import setup_model_bakery
 
 # Note: pytest_plugins moved to top-level conftest.py as required by pytest

@@ -200,7 +200,12 @@ def test_rest_api_wydawnictwo_ciagle_streszczenie_ukrywa_nieeksportowane(
 
 @pytest.mark.django_db
 def test_rest_api_wydawnictwo_ciagle_autor_ukrywa_ukryty_status(
-    api_client, wydawnictwo_ciagle, autor_jan_kowalski, jednostka, uczelnia, przed_korekta
+    api_client,
+    wydawnictwo_ciagle,
+    autor_jan_kowalski,
+    jednostka,
+    uczelnia,
+    przed_korekta,
 ):
     # Pod-zasób respektuje ukryte statusy korekty (jak rekord-rodzic).
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
