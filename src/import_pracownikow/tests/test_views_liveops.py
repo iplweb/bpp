@@ -458,10 +458,12 @@ def test_importpracownikow_results_ma_pasek_filtrow(admin_client, admin_user):
 def test_importpracownikow_results_ma_selektor_rozmiaru_strony(
     admin_client, admin_user
 ):
-    """Tabela autorów (bez serwerowej paginacji, setki wierszy) ma client-side
-    selektor „na stronę" + pager, żeby nie renderować całego DOM naraz — duży
-    DOM wymusza reflow i muli Select2 przy pisaniu. Default 25; „wszystkie"
-    (value=0) świadomie pokazuje komplet."""
+    """Tabela autorów ma selektor „na stronę" sterujący paginacją SERWEROWĄ.
+
+    Rozmiar idzie przez ``?per_page=``, więc serwer renderuje tylko okno strony
+    (dawniej: cały import w DOM-ie i chowanie nadmiaru w JS). Opcji „wszystkie"
+    (dawne ``value="0"``) świadomie NIE MA — byłaby jednoklikowym powrotem do
+    renderowania kompletu, czyli do problemu, który paginacja usuwa."""
     imp = baker.make(
         ImportPracownikow,
         owner=admin_user,
@@ -480,20 +482,20 @@ def test_importpracownikow_results_ma_selektor_rozmiaru_strony(
     url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
     content = admin_client.get(url).content.decode()
 
-    # selektor rozmiaru strony z opcjami 10/25/50/100/wszystkie, default 25
-    assert 'id="filtr-strona-rozmiar"' in content
+    # selektor rozmiaru strony: 10/25/50/100, default 25, BEZ „wszystkie"
+    assert 'name="per_page"' in content
     assert 'value="10"' in content
     assert 'value="25" selected' in content
     assert 'value="50"' in content
     assert 'value="100"' in content
-    assert 'value="0"' in content  # „wszystkie"
-    # pager (prev/next + info) — sterowanie client-side
-    assert 'id="filtr-pager"' in content
-    assert 'id="filtr-pager-prev"' in content
-    assert 'id="filtr-pager-next"' in content
-    # JS faktycznie wpina paginację (nie sam martwy markup)
-    assert "filtr-strona-rozmiar" in content
-    assert "strona" in content
+    assert 'value="0"' not in content, "opcja „wszystkie” miała zniknąć"
+
+    # `?per_page=` faktycznie steruje paginatorem, a nie jest samym markupem
+    odpowiedz = admin_client.get(url, {"per_page": "10"})
+    assert odpowiedz.context["paginator"].per_page == 10
+    # śmieciowa wartość degraduje do domyślnej (jak walidacja `?rodzaj=`)
+    odpowiedz = admin_client.get(url, {"per_page": "9999"})
+    assert odpowiedz.context["paginator"].per_page == 25
 
 
 def test_importpracownikow_results_bez_pagination_include():

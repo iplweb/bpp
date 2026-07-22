@@ -72,20 +72,19 @@
         {# Nagłówek audytu — asertowany przez test_views_liveops.py; NIE usuwać. #}
         <p>Lista modyfikacji do bazy danych, przeprowadzonych na podstawie
             pliku XLS poniżej:</p>
-        {# Filtr rekordów po stanie pól — radia per pole (POLA_ROZNIC), AND. #}
-        {# Widoczne (główne) + zwijane (dodatkowe) w <details> — oba w tym #}
-        {# samym <form>, więc JS querySelectorAll łapie radia niezależnie od #}
-        {# stanu open/closed. #}
-        <form id="filtr-roznic" class="import-filtr-roznic">
+        {# Filtr rekordów — ZWYKŁY formularz GET. Filtruje w SQL, więc działa na #}
+        {# CAŁYM imporcie, a nie na tym, co akurat jest w DOM-ie (dawny filtr #}
+        {# kliencki widziałby po stronicowaniu tylko bieżącą stronę, więc #}
+        {# deep-link „pokaż wiersze do pominięcia" trafiałby w pustkę). #}
+        <form method="get" id="filtr-roznic" class="import-filtr-roznic">
             {# Filtr „Rodzaj dopasowania" (kolumna „Pewność") — <select>, bo 8 #}
             {# opcji z długimi etykietami rozjechałoby pasek jak radia. „do #}
             {# pominięcia" = syntetyczny predykat (autor NULL + brak „Utwórz #}
-            {# nowego"), celuje w zbiór z ostrzeżenia finalizacji. Pre-selekcja #}
-            {# z ?rodzaj= (wybrany_rodzaj) — działa też przed JS. #}
+            {# nowego"), celuje w zbiór z ostrzeżenia finalizacji. #}
             <label class="import-filtr-rodzaj">
                 Rodzaj dopasowania:
-                <select id="filtr-rodzaj" name="filtr-rodzaj">
-                    <option value="wszystkie"{% if not wybrany_rodzaj %} selected{% endif %}>wszystkie</option>
+                <select name="rodzaj">
+                    <option value=""{% if not wybrany_rodzaj %} selected{% endif %}>wszystkie</option>
                     <option value="do-pominiecia"{% if wybrany_rodzaj == "do-pominiecia" %} selected{% endif %}>⚠ do pominięcia (bez decyzji)</option>
                     <option disabled>──────────</option>
                     {% for wartosc, etykieta in rodzaje_confidence %}
@@ -95,53 +94,52 @@
             </label>
             <label class="import-filtr-tekst">
                 Szukaj:
-                <input type="search" id="filtr-tekst"
-                       placeholder="nazwisko / jednostka…">
+                <input type="search" name="q" value="{{ szukany_tekst }}"
+                       placeholder="nazwisko / ORCID / jednostka…">
             </label>
-            {# Rozmiar „na stronę" — client-side paginacja. Tabela renderuje #}
-            {# WSZYSTKIE wiersze w DOM (setki), a wielki DOM wymusza reflow → #}
-            {# Select2 muli przy pisaniu. Pokazujemy tylko okno strony, resztę #}
-            {# chowamy (display:none wypada z layoutu). „wszystkie" (value=0) = #}
-            {# opt-in na komplet (i związany z tym jank). Default 25. #}
+            {# Rozmiar strony — paginacja jest SERWEROWA, więc opcji #}
+            {# „wszystkie" nie ma: byłaby powrotem do renderowania całego #}
+            {# importu, czyli do problemu, który ta zmiana usuwa. #}
             <label class="import-filtr-rozmiar">
                 Na stronę:
-                <select id="filtr-strona-rozmiar" name="filtr-strona-rozmiar">
-                    <option value="10">10</option>
-                    <option value="25" selected>25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                    <option value="0">wszystkie</option>
+                <select name="per_page">
+                    {% for rozmiar in rozmiary_strony %}
+                        <option value="{{ rozmiar }}"{% if wybrany_rozmiar == rozmiar %} selected{% endif %}>{{ rozmiar }}</option>
+                    {% endfor %}
                 </select>
             </label>
             <div class="import-filtr-glowne">
-                {% for klucz, etykieta in pola_glowne %}
+                {% for klucz, etykieta, wybrany in pola_glowne %}
                     {% include "import_pracownikow/partials/_filtr_pole.html" %}
                 {% endfor %}
             </div>
             {% if pola_dodatkowe %}
-                <details class="import-filtr-wiecej">
+                <details class="import-filtr-wiecej"{% if ma_aktywny_filtr_dodatkowy %} open{% endif %}>
                     <summary>Więcej filtrów…</summary>
                     <div class="import-filtr-dodatkowe">
-                        {% for klucz, etykieta in pola_dodatkowe %}
+                        {% for klucz, etykieta, wybrany in pola_dodatkowe %}
                             {% include "import_pracownikow/partials/_filtr_pole.html" %}
                         {% endfor %}
                     </div>
                 </details>
             {% endif %}
+            <div class="import-filtr-akcje">
+                <button type="submit" class="button">
+                    <span class="fi-filter"></span> Filtruj
+                </button>
+                <a href="{% url "import_pracownikow:importpracownikow-results" pk=parent_object.pk %}"
+                   class="button secondary">Wyczyść</a>
+            </div>
         </form>
-        {# Licznik przefiltrowanych rekordów (aktualizowany w JS filtruj()). #}
-        <p id="filtr-licznik" class="import-filtr-licznik"></p>
-        {# Pager client-side (JS steruje widocznością i disabled). Ukryty przy #}
-        {# jednej stronie / „wszystkie". type="button" — NIE submituje formularza. #}
-        <nav id="filtr-pager" class="import-filtr-pager" hidden aria-label="Stronicowanie">
-            <button type="button" id="filtr-pager-prev" class="button secondary import-filtr-pager-btn">
-                <span class="fi-arrow-left"></span> poprzednia
-            </button>
-            <span id="filtr-pager-info" class="import-filtr-pager-info"></span>
-            <button type="button" id="filtr-pager-next" class="button secondary import-filtr-pager-btn">
-                następna <span class="fi-arrow-right"></span>
-            </button>
-        </nav>
+        <p class="import-filtr-licznik">
+            {% if page_obj %}
+                Pokazano {{ page_obj.start_index }}–{{ page_obj.end_index }}
+                z {{ paginator.count }} rekordów
+                {% if querystring_filtrow %}(po odfiltrowaniu){% endif %}
+            {% else %}
+                Nie znaleziono rekordów
+            {% endif %}
+        </p>
         <div style="overflow-x: auto;">
             <table id="tabela-autorow">
                 <thead>
@@ -248,155 +246,28 @@
         })();
         </script>
 
-        {# Filtr rekordów po stanie pól (data-diff-* na 1. <tr> rekordu) + tekst. #}
-        {# Zastępuje DataTables (usunięte): karta = 2×<tr> w <tbody data-rekord>, #}
-        {# sort zbędny; HTMX swapuje innerHTML <tbody>, więc data-diff-* są zawsze #}
-        {# świeże, a po afterSettle wystarczy ponowić filtr. Tekst szukamy tylko #}
-        {# w elementach [data-szukaj] (nazwisko / autor / jednostka) — kontrolki #}
-        {# dopasowania autora i Select2 są POZA nimi, więc nie zaśmiecają. #}
-        <script>
-        (function () {
-            var form = document.getElementById('filtr-roznic');
-            var tabela = document.getElementById('tabela-autorow');
-            if (!form || !tabela) return;
+        {# Pager serwerowy. `querystring_filtrow` niesie aktywne filtry (bez #}
+        {# `page`), żeby przejście na kolejną stronę ich nie gubiło. #}
+        {% if page_obj.has_other_pages %}
+            <nav class="import-filtr-pager" aria-label="Stronicowanie">
+                {% if page_obj.has_previous %}
+                    <a class="button secondary import-filtr-pager-btn"
+                       href="?page={{ page_obj.previous_page_number }}{% if querystring_filtrow %}&amp;{{ querystring_filtrow }}{% endif %}">
+                        <span class="fi-arrow-left"></span> poprzednia
+                    </a>
+                {% endif %}
+                <span class="import-filtr-pager-info">
+                    strona {{ page_obj.number }} / {{ paginator.num_pages }}
+                </span>
+                {% if page_obj.has_next %}
+                    <a class="button secondary import-filtr-pager-btn"
+                       href="?page={{ page_obj.next_page_number }}{% if querystring_filtrow %}&amp;{{ querystring_filtrow }}{% endif %}">
+                        następna <span class="fi-arrow-right"></span>
+                    </a>
+                {% endif %}
+            </nav>
+        {% endif %}
 
-            function klucze() {
-                var s = new Set();
-                form.querySelectorAll('input[type=radio]').forEach(function (r) {
-                    s.add(r.name.replace(/^filtr-/, ''));
-                });
-                return Array.from(s);
-            }
-            function wybor(klucz) {
-                var el = form.querySelector(
-                    'input[name="filtr-' + klucz + '"]:checked');
-                return el ? el.value : 'wszystkie';
-            }
-            function stanPola(tbody, klucz) {
-                var tr = tbody.querySelector(':scope > tr[data-diff-' + klucz + ']');
-                return tr ? tr.getAttribute('data-diff-' + klucz) : null;
-            }
-            function tekst() {
-                var el = document.getElementById('filtr-tekst');
-                return (el ? el.value : '').trim().toLowerCase();
-            }
-            function tekstRekordu(tbody) {
-                var buf = '';
-                tbody.querySelectorAll('[data-szukaj]').forEach(function (el) {
-                    buf += ' ' + el.textContent;
-                });
-                return buf.toLowerCase();
-            }
-            function wyborRodzaj() {
-                var el = document.getElementById('filtr-rodzaj');
-                return el ? el.value : 'wszystkie';
-            }
-            function okRodzaj(tbody) {
-                // Filtr rodzaju dopasowania (data-confidence na 1. <tr>).
-                // „do-pominiecia" czyta osobny warunkowy atrybut (autor NULL +
-                // brak „Utwórz nowego"), inne wartości → równość statusu.
-                var w = wyborRodzaj();
-                if (w === 'wszystkie') return true;
-                var tr = tbody.querySelector(':scope > tr[data-confidence]');
-                if (!tr) return false;
-                if (w === 'do-pominiecia')
-                    return tr.getAttribute('data-do-pominiecia') === '1';
-                return tr.getAttribute('data-confidence') === w;
-            }
-            // Numer bieżącej strony (0-based). Reset do 0 tylko przy zmianie
-            // filtra/rozmiaru — NIE przy htmx:afterSettle (edytowany wiersz
-            // zostaje na swojej stronie).
-            var strona = 0;
-            function rozmiarStrony() {
-                var el = document.getElementById('filtr-strona-rozmiar');
-                var v = el ? parseInt(el.value, 10) : 25;
-                // 0 / puste / błędne → „wszystkie" (brak limitu).
-                return (isNaN(v) || v <= 0) ? Infinity : v;
-            }
-            function filtruj() {
-                var ks = klucze();
-                var q = tekst();
-                // 1) Zbierz rekordy przechodzące filtr (w kolejności DOM);
-                //    niepasujące od razu chowamy.
-                var pasujace = [];
-                var wszystkich = 0;
-                tabela.querySelectorAll(':scope > tbody[data-rekord]').forEach(
-                    function (tbody) {
-                        wszystkich++;
-                        var okStany = ks.every(function (klucz) {
-                            var w = wybor(klucz);
-                            return w === 'wszystkie'
-                                || stanPola(tbody, klucz) === w;
-                        });
-                        var okTekst = !q
-                            || tekstRekordu(tbody).indexOf(q) !== -1;
-                        if (okStany && okTekst && okRodzaj(tbody)) {
-                            pasujace.push(tbody);
-                        } else {
-                            tbody.hidden = true;
-                        }
-                    });
-                // 2) Okno strony nad przefiltrowanym zbiorem. Chowamy rekordy
-                //    spoza okna, żeby DOM w layoucie był mały (Select2 nie muli).
-                var N = pasujace.length;
-                var r = rozmiarStrony();
-                var stronMax = (r === Infinity || N === 0)
-                    ? 1 : Math.ceil(N / r);
-                if (strona > stronMax - 1) strona = stronMax - 1;
-                if (strona < 0) strona = 0;
-                var start = (r === Infinity) ? 0 : strona * r;
-                var end = (r === Infinity) ? N : Math.min(start + r, N);
-                pasujace.forEach(function (tbody, i) {
-                    tbody.hidden = !(i >= start && i < end);
-                });
-                // 3) Licznik + pager.
-                var licznik = document.getElementById('filtr-licznik');
-                if (licznik) {
-                    if (!wszystkich) {
-                        licznik.textContent = '';
-                    } else if (!N) {
-                        licznik.textContent =
-                            'Nie znaleziono rekordów (0 z ' + wszystkich + ')';
-                    } else {
-                        licznik.textContent =
-                            'Pokazano ' + (start + 1) + '–' + end
-                            + ' z ' + N + ' rekordów'
-                            + (N !== wszystkich
-                                ? ' (odfiltrowano z ' + wszystkich + ')' : '');
-                    }
-                }
-                var pager = document.getElementById('filtr-pager');
-                if (pager) {
-                    pager.hidden = !(r !== Infinity && stronMax > 1);
-                    var info = document.getElementById('filtr-pager-info');
-                    if (info) {
-                        info.textContent =
-                            'strona ' + (strona + 1) + ' / ' + stronMax;
-                    }
-                    var prev = document.getElementById('filtr-pager-prev');
-                    var next = document.getElementById('filtr-pager-next');
-                    if (prev) prev.disabled = strona <= 0;
-                    if (next) next.disabled = strona >= stronMax - 1;
-                }
-            }
-            // Zmiana filtra/rozmiaru → wróć na stronę 1 (inaczej można wylądować
-            // na pustej stronie za końcem nowego, węższego zbioru).
-            function przefiltrujOdNowa() { strona = 0; filtruj(); }
-            form.addEventListener('change', przefiltrujOdNowa);
-            form.addEventListener('input', przefiltrujOdNowa);
-            var prevBtn = document.getElementById('filtr-pager-prev');
-            var nextBtn = document.getElementById('filtr-pager-next');
-            if (prevBtn) prevBtn.addEventListener('click', function () {
-                strona -= 1; filtruj();
-            });
-            if (nextBtn) nextBtn.addEventListener('click', function () {
-                strona += 1; filtruj();
-            });
-            // Po swapie HTMX zachowaj bieżącą stronę (filtruj sam się klampuje).
-            document.body.addEventListener('htmx:afterSettle', filtruj);
-            filtruj();
-        })();
-        </script>
     {% endif %}
 
 {% endblock %}

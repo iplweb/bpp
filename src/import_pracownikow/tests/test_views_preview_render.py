@@ -1,4 +1,5 @@
 import pytest
+from django.http import QueryDict
 from django.urls import reverse
 from model_bakery import baker
 
@@ -88,7 +89,9 @@ def test_podglad_sortuje_nie_twardy_na_gore(admin_client, admin_user):
 
     view = ImportPracownikowResultsView()
     view.kwargs = {"pk": imp.pk}
-    view.request = type("R", (), {"user": admin_user})()
+    # Widok filtruje w querysecie po parametrach GET, więc atrapa requestu
+    # musi mieć QueryDict (pusty = brak filtrów).
+    view.request = type("R", (), {"user": admin_user, "GET": QueryDict()})()
     lista = list(view.get_queryset())
     # non-twardy (wielu) mimo wyższego nr wiersza jest PRZED twardym
     assert lista[0].pk == wielu.pk
@@ -217,7 +220,8 @@ def test_podglad_ma_pasek_filtrow_radia(admin_client, admin_user):
         "data_od",
         "data_do",
     ):
-        assert f'name="filtr-{klucz}"' in tresc
+        # Filtry idą teraz przez GET do querysetu (SQL), nie przez JS po DOM-ie.
+        assert f'name="stan_{klucz}"' in tresc
     assert 'value="zmienione"' in tresc
     assert 'value="brak"' in tresc
 
@@ -239,13 +243,13 @@ def test_results_context_dzieli_pola_glowne_dodatkowe(admin_client, admin_user):
     )
     url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
     ctx = admin_client.get(url).context
-    assert [k for k, _ in ctx["pola_glowne"]] == [
+    assert [k for k, _, _ in ctx["pola_glowne"]] == [
         "jednostka",
         "tytul",
         "data_od",
         "data_do",
     ]
-    assert [k for k, _ in ctx["pola_dodatkowe"]] == [
+    assert [k for k, _, _ in ctx["pola_dodatkowe"]] == [
         "email",
         "stopien",
         "funkcja",
@@ -266,8 +270,8 @@ def test_results_context_ukrywa_stopien_stanowisko_bez_kolumn(admin_client, admi
     )
     url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
     ctx = admin_client.get(url).context
-    assert [k for k, _ in ctx["pola_dodatkowe"]] == ["email", "funkcja"]
-    assert [k for k, _ in ctx["pola_glowne"]] == [
+    assert [k for k, _, _ in ctx["pola_dodatkowe"]] == ["email", "funkcja"]
+    assert [k for k, _, _ in ctx["pola_glowne"]] == [
         "jednostka",
         "tytul",
         "data_od",
