@@ -246,9 +246,12 @@ environments = ["python_version >= '3.10' and python_version < '3.15' and platfo
 #   pypdf   >=6.13.3 (via xhtml2pdf)                 - CVE-2026-48735,
 #                     CVE-2026-49460, CVE-2026-49461, CVE-2026-54530,
 #                     CVE-2026-54531, GHSA-jm82-fx9c-mx94
+#   pyasn1  >=0.6.4  (via pyasn1-modules/python-ldap) - PYSEC-2026-3455,
+#                     PYSEC-2026-3456, PYSEC-2026-3457 (audyt: lipiec 2026)
 constraint-dependencies = [
     "bleach>=6.4.0",
     "daphne>=4.2.2",
+    "pyasn1>=0.6.4",
     "pypdf>=6.13.3",
 ]
 
