@@ -2,6 +2,864 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202607.1398 (2026-07-22)
+
+### Naprawione
+
+- Naprawiono endpoint ``/api/v1/autor/`` (regresja #568): pole ``email`` było
+  zadeklarowane w serializerze, ale pominięte w ``Meta.fields`` — każde żądanie
+  kończyło się błędem 500. E-mail jest teraz usuwany z odpowiedzi dla anonimów
+  (klucz nieobecny, nie pusty), a zalogowani redaktorzy widzą także autorów
+  ukrytych (``pokazuj=False``). ([#api-autor-email-widocznosc](https://github.com/iplweb/bpp/issues/api-autor-email-widocznosc))
+- Publiczne API autorów (``/api/v1/autor/``) nie ujawnia już danych osobowych
+  (e-mail, pełna data urodzenia, poprzednie nazwiska) ani autorów oznaczonych
+  jako ukryci (``pokazuj=False``) użytkownikom niezalogowanym. ([#api-autor-pii-anon](https://github.com/iplweb/bpp/issues/api-autor-pii-anon))
+- Podrzędne endpointy API (streszczenia, autorstwa, identyfikatory zewnętrznych baz danych) respektują flagę ``nie_eksportuj_przez_api`` rekordu nadrzędnego — anonimowy użytkownik nie może już enumerować ich kluczy i wyciągać danych rekordu wyłączonego z eksportu. ([#api-child-nie-eksportuj](https://github.com/iplweb/bpp/issues/api-child-nie-eksportuj))
+- Skanery CVE w pipeline wydań (osv-scanner, grype, trivy) są przypięte do
+  konkretnych wersji i weryfikowane po sumie kontrolnej SHA256 — koniec z
+  pobieraniem nieprzypiętego kodu z gałęzi ``main`` i ruchomego ``latest``
+  (zamknięty wektor supply-chain w jobie z uprawnieniami do zapisu). ([#ci-pin-cve-scanners](https://github.com/iplweb/bpp/issues/ci-pin-cve-scanners))
+- Naprawiono samowystarczalność testów na gałęzi ``dev`` oraz kompletność obrazu
+  test-runnera CI, usuwając przy tym nieużywany dostęp do demona Dockera. ([#dev-ci-test-runner](https://github.com/iplweb/bpp/issues/dev-ci-test-runner))
+- Naprawiono zawieszanie się przeładowania serwera deweloperskiego
+  (``runserver`` na Daphne/ASGI) po zmianie kodu. Endpoint live-reload z
+  ``django-dev-helpers`` serwuje teraz asynchroniczny strumień SSE pod ASGI, więc
+  otwarte połączenia ``/__dev_reload__/`` są anulowane od razu przy rozłączeniu
+  lub autoreloadzie zamiast blokować restart do wygaśnięcia
+  ``application_close_timeout`` (bump do ``django-dev-helpers`` 0.1.13). ([#dev-reload-asgi](https://github.com/iplweb/bpp/issues/dev-reload-asgi))
+- Workflow oficjalnych obrazów Docker nie uruchamia już pustego przebiegu dla każdego PR-a; obrazy powstają wyłącznie w release candidate albo po ręcznym wywołaniu. ([#docker-workflow-manual-only](https://github.com/iplweb/bpp/issues/docker-workflow-manual-only))
+- Kreator pierwszego uruchomienia: dwa równoległe żądania tworzące pierwsze
+  konto administratora nie mogą już utworzyć dwóch superużytkowników
+  (blokada transakcyjna zamiast sprawdzenia podatnego na wyścig). Ukończony
+  kreator nie wykonuje już zapytań do bazy przy każdym żądaniu — po
+  zakończeniu konfiguracji middleware sam się wyłącza, a widoki ``/setup/``
+  zwracają 404 (usunięcie uczelni lub użytkownika nie otwiera ponownie
+  kreatora). Wymaga ``django-first-run-wizard>=0.2.0``. ([#first-run-wizard-state](https://github.com/iplweb/bpp/issues/first-run-wizard-state))
+- Naprawiono flaky testy zależne od danych słownikowych: ``post_migrate`` odtwarza
+  teraz ``RodzajJednostki`` po transakcyjnym flushu testów (``TRUNCATE`` zmiatał
+  słowniki zaseedowane migracjami danych, których żaden receiver nie odtwarzał).
+  Seed reużywa oryginalnych funkcji migracji (0449/0454/0464) — bez duplikacji
+  wartości. ([#flaky-slowniki-post-migrate](https://github.com/iplweb/bpp/issues/flaky-slowniki-post-migrate))
+- Import pracowników: pojedynczy wiersz z błędnymi danymi dat zatrudnienia
+  (np. data rozpoczęcia późniejsza niż zakończenia) nie przerywa już całego
+  zatwierdzania. Błędny wiersz jest wycofywany i oznaczany w logu zmian, a
+  pozostałe wiersze integrują się normalnie; liczba pominiętych błędnych
+  wierszy trafia do podsumowania. ([#import-daty-izolacja-blednych-wierszy](https://github.com/iplweb/bpp/issues/import-daty-izolacja-blednych-wierszy))
+- Usuwanie importu dyscyplin oraz uruchamianie zadań przetwarzania są teraz dostępne wyłącznie przez POST z tokenem CSRF (wcześniej mutowały stan przez GET). ([#import-dyscyplin-get-mutation](https://github.com/iplweb/bpp/issues/import-dyscyplin-get-mutation))
+- Import pracowników: nowy okres zatrudnienia, którego data rozpoczęcia
+  przypada dzień po zakończeniu poprzedniego (i zostaje scalony z nim w jeden
+  ciągły okres), nie jest już błędnie liczony w podsumowaniu jako „utworzono
+  nowy okres". ([#import-licznik-scalonych-okresow](https://github.com/iplweb/bpp/issues/import-licznik-scalonych-okresow))
+- Przywrócono aktualizacje na żywo pasków postępu operacji długotrwałych
+  (import POLON, absencje, raporty). Brakowało autoryzatora subskrypcji
+  kanałów WWW (``CHANNELS_BROADCAST_SUBSCRIPTION_AUTHORIZER``), przez co
+  przeglądarka nie mogła zasubskrybować kanału operacji — dane importowały
+  się, ale pasek postępu stał, a strona nie przekierowywała po zakończeniu
+  (trzeba było odświeżać ręcznie). Kanał-strona operacji jest teraz
+  dostępny wyłącznie jej właścicielowi. ([#import-polon-live-updates](https://github.com/iplweb/bpp/issues/import-polon-live-updates))
+- Import pracowników i jednostek: pliki wieloarkuszowe (kilka arkuszy z danymi
+  w jednym skoroszycie, np. dwie uczelnie) są teraz odrzucane z czytelnym
+  komunikatem zamiast wywalać się w trakcie przetwarzania. Obowiązuje zasada
+  „jeden arkusz = jeden import" — plik należy podzielić na osobne pliki
+  (po jednym arkuszu) i zaimportować każdy osobno. ([#import-pracownikow-jeden-arkusz](https://github.com/iplweb/bpp/issues/import-pracownikow-jeden-arkusz))
+- Import pracowników i jednostek: pusty wiersz w pliku XLSX (np. na końcu
+  arkusza) nie przerywa już całego importu — puste wiersze są pomijane tak
+  samo jak w plikach CSV. Błędy przetwarzania trafiają teraz na konsolę oraz
+  do Rollbara, a same operacje importu (wraz z pełnym tracebackiem błędu) i ich
+  wyniki są widoczne w panelu administracyjnym. ([#import-pracownikow-obsluga-bledow](https://github.com/iplweb/bpp/issues/import-pracownikow-obsluga-bledow))
+- Import punktacji źródeł: gdy w bazie są dwa źródła o tym samym tytule,
+  dopasowanie rozstrzyga teraz po ISSN/e-ISSN zamiast rezygnować z wiersza.
+  Numer ISSN z pliku jest przy tym porównywany krzyżowo z oboma polami
+  źródła (issn oraz e_issn), bo JCR bywa niespójny w kolumnach ISSN/eISSN. ([#import-punktacji-zrodel-issn-disambiguacja](https://github.com/iplweb/bpp/issues/import-punktacji-zrodel-issn-disambiguacja))
+- Import pracowników i jednostek: naprawiono zebrę tabeli rezultatów — obie
+  linie karty rekordu mają teraz jedno wspólne tło (Foundation cieniował
+  osobno drugi wiersz każdej karty). Wiersz szczegółów jest dodatkowo wcięty
+  o kolumnę „Poz", żeby wyrównywał się do kolumny „Osoba". ([#import-rezultaty-kolory-wierszy](https://github.com/iplweb/bpp/issues/import-rezultaty-kolory-wierszy))
+- Import pracowników dopasowuje jednostki także wtedy, gdy nazwa w pliku jest
+  skrócona słowo-po-słowie (np. „Zakład Piel. Anestezjol. i Intens. Opieki
+  Medycznej" → „Zakład Pielęgniarstwa Anestezjologicznego i Intensywnej Opieki
+  Medycznej"). Dopasowanie po skrócie trafia zawsze do weryfikacji. ([#import-skroty-jednostek](https://github.com/iplweb/bpp/issues/import-skroty-jednostek))
+- Import pracowników w instalacji z wieloma uczelniami: jednostki oznaczone „do
+  utworzenia" nie były tworzone (a powiązani z nimi pracownicy po cichu pomijani),
+  bo pipeline w tle ustalał uczelnię przez „jedyną w systemie" — przy >1 uczelni
+  degradowało to do braku uczelni. Import zapamiętuje teraz uczelnię z requestu
+  (host → Site → Uczelnia) i używa jej przy tworzeniu jednostek. Gdy uczelni nie da
+  się ustalić jednoznacznie, ekran weryfikacji jednostek wyświetla widoczne
+  ostrzeżenie zamiast po cichu pomijać import. ([#import-uczelnia-multi-hosted](https://github.com/iplweb/bpp/issues/import-uczelnia-multi-hosted))
+- Import pracowników i jednostek na instalacjach multi-hosted działa teraz
+  ściśle w zakresie uczelni bieżącej domeny: lista importów, ekrany
+  poszczególnych importów i profile mapowania kolumn są ograniczone do uczelni
+  z requestu (import innej uczelni jest niewidoczny — także dla superusera),
+  a wejście pod domeną bez ustalonej uczelni przekierowuje na stronę główną. ([#import-uczelnia-scoping](https://github.com/iplweb/bpp/issues/import-uczelnia-scoping))
+- Importer publikacji: przyciski wstecz/naprzód w przeglądarce nie rozbijają już
+  kroku wizarda ani nie dublują pól wyboru (select2). Przy przywracaniu historii
+  HTMX serwer zwraca teraz pełną, świeżo wyrenderowaną stronę zamiast fragmentu,
+  więc np. krok „Dopasowanie źródła" ponownie podpowiada dopasowanego wydawcę. ([#importer-htmx-history-restore](https://github.com/iplweb/bpp/issues/importer-htmx-history-restore))
+- Importer publikacji: naprawiono zawieszanie się listy „Importy w toku /
+  ostatnie" w Safari po nawigacji HTMX i cofnięciu (Wstecz) — ponowna
+  inicjalizacja tabeli/filtrów jest teraz idempotentna, więc strona nie staje
+  się nieklikalna. ([#importer-safari-lista-sesji](https://github.com/iplweb/bpp/issues/importer-safari-lista-sesji))
+- Importer publikacji: pobieranie URL od użytkownika (WWW/DSpace/Omega-PSIR) pinuje połączenie do zweryfikowanego adresu IP (zamknięcie okna na DNS rebinding), nakłada twardy limit rozmiaru pobieranego ciała oraz całkowity budżet czasu na wszystkie przekierowania — utwardzenie przeciw SSRF i wyczerpaniu pamięci. ([#importer-ssrf-dns-rebinding](https://github.com/iplweb/bpp/issues/importer-ssrf-dns-rebinding))
+- Załatano lukę path-traversal w serwowaniu mediów: ścieżka jest teraz normalizowana przed sprawdzeniem guardu, więc obejścia typu ``public/../protected/plik.pdf`` nie omijają już ochrony katalogu ``protected/``. ([#media-protected-traversal](https://github.com/iplweb/bpp/issues/media-protected-traversal))
+- Hardening bezpieczeństwa integracji OAuth/MCP i klienta PBN po przeglądzie:
+  walidacja hosta w przekierowaniu logowania Microsoft (blokada open-redirect),
+  maskowanie sekretów OAuth w Rollbarze (``refresh_token``, ``code``,
+  ``code_verifier``, ``token``), egzekwowanie zakresu ``read`` na tokenach
+  bearer, liczenie rejestracji DCR po realnym IP klienta (proxy-aware), oraz
+  zaprzestanie wypisywania tokenów PBN do stdout i wysyłania surowego body
+  odpowiedzi PBN wraz z sekretnymi nagłówkami do Rollbara. ([#oauth-mcp-security](https://github.com/iplweb/bpp/issues/oauth-mcp-security))
+- Odpięcie pracownika przy ponownym imporcie nie kasuje już zaplanowanej
+  przyszłej daty zakończenia zatrudnienia. Każda ustawiona data końca (przeszła
+  lub przyszła) jest traktowana jako świadoma decyzja i nie jest nadpisywana
+  datą wczorajszą; osoba bez ustawionej daty końca nadal jest odpinana normalnie. ([#odpiecia-przyszla-data](https://github.com/iplweb/bpp/issues/odpiecia-przyszla-data))
+- Naprawiono przejęcie konta przez logowanie OIDC: tożsamość jest teraz
+  trwale wiązana z parą ``(issuer, sub)`` zamiast dopasowywana po adresie
+  e-mail. Istniejące konta łączy się z SSO świadomie (re-auth hasłem w
+  profilu), a ``email_verified`` jest wymagane przy zakładaniu konta. ([#oidc-sub-binding](https://github.com/iplweb/bpp/issues/oidc-sub-binding))
+- Logowanie przez ORCID wiąże konto po zweryfikowanej tożsamości ORCID
+  (``ORCIDIdentity``, powiązanej świadomie z poziomu „Mój profil" po
+  potwierdzeniu hasłem), a nie po edytowalnym ``Autor.email``. Zamyka to
+  możliwość przejęcia cudzego konta przez redaktora z uprawnieniem do zmiany
+  autorów. ([#orcid-account-identity](https://github.com/iplweb/bpp/issues/orcid-account-identity))
+- Usunięto podwójne pobieranie słownika dyscyplin z PBN podczas integracji i
+  initial-setupu — ``sync_disciplines()`` samo pobiera słownik, więc dodatkowe
+  ``download_disciplines()`` tuż przed nim tylko dublowało zapytanie do PBN. ([#pbn-double-download-disciplines](https://github.com/iplweb/bpp/issues/pbn-double-download-disciplines))
+- Naprawiono podatność stored-XSS przy wyświetlaniu błędów kolejki eksportu do
+  PBN. Treść błędu pochodząca z PBN (niezaufana) była wstawiana do HTML bez
+  escapowania — w filtrze ``format_pbn_error``, w widgecie panelu admina oraz
+  przez ``|safe`` w szablonie szczegółów. Wszystkie te miejsca escapują teraz
+  dane PBN przed wyrenderowaniem. ([#pbn-queue-stored-xss](https://github.com/iplweb/bpp/issues/pbn-queue-stored-xss))
+- Załatano podatności bezpieczeństwa w zależnościach: ``click`` (8.4.2) i
+  ``pillow`` (12.3.0) podniesione do wersji z poprawkami. Podatność
+  ``setuptools`` (PYSEC-2026-3447) jest świadomie whitelistowana w skanie
+  pip-audit — jej fix (setuptools 83) usuwa moduł ``pkg_resources`` wymagany
+  przez bibliotekę OAI-PMH (``pyoai``), więc bump wywalałby start aplikacji. ([#pip-audit-vulns](https://github.com/iplweb/bpp/issues/pip-audit-vulns))
+- Polecenie ``make release-candidate`` przerywa się po nieudanym dispatchu i
+  obserwuje wyłącznie run utworzony po bieżącym wywołaniu workflow. ([#release-candidate-run-selection](https://github.com/iplweb/bpp/issues/release-candidate-run-selection))
+- Naprawiono zawieszanie ``run-site`` przy ``Ctrl+C`` (dev stack) — bump
+  ``django-run-site`` 0.20.1 (ograniczona, ponawiana eskalacja SIGKILL: shutdown
+  zawsze się kończy zamiast blokować w nieskończoność, gdy grupowy kill trafiał
+  na zombie autoreloadera i gubił sygnał, zostawiając osierocony runserver +
+  celery) oraz ``django-dev-helpers`` 0.1.14 (sprzątanie plików ``.dev_helpers_*``
+  rejestrowane w procesie-rodzicu autoreloadu, żeby nie wyciekały przy każdym
+  zamknięciu). ([#run-site-ctrl-c-hang](https://github.com/iplweb/bpp/issues/run-site-ctrl-c-hang))
+- Schemat DjangoQL dla API/MCP (agent-facing) nie pozwala już filtrować po
+  dacie urodzenia autora (``urodzony``) — pole było wyrocznią PII przy
+  zautomatyzowanym dostępie przez ``/api/v1/zapytanie/``. ([#sec-djangoql-urodzony-blocklist](https://github.com/iplweb/bpp/issues/sec-djangoql-urodzony-blocklist))
+- Importer publikacji izoluje teraz sesje i paczki między uczelniami w trybie
+  multi-host: redaktor jednej uczelni nie odczyta ani nie zmodyfikuje sesji,
+  paczki BibTeX ani jej wpisu należących do innej uczelni (dotąd obiekty
+  pobierano po samym identyfikatorze — podatność IDOR). W obrębie jednej
+  uczelni warsztat pozostaje współdzielony; superuser widzi wszystko. ([#sec-importer-izolacja-uczelni](https://github.com/iplweb/bpp/issues/sec-importer-izolacja-uczelni))
+- Importer publikacji (provider „Pozostałe strony WWW") waliduje teraz adres
+  docelowy przez rozwiązanie DNS przed każdym żądaniem i po każdym
+  przekierowaniu — blokuje pobieranie z adresów loopback, prywatnych,
+  link-local oraz endpointów metadanych chmury (ochrona przed SSRF). ([#sec-www-importer-ssrf](https://github.com/iplweb/bpp/issues/sec-www-importer-ssrf))
+- Endpoint ``/api/v1/zapytanie/`` (rekord/autor/autorzy) respektuje teraz tę
+  samą politykę widoczności co ``/api/v1/szukaj/``: izolację uczelni w trybie
+  multi-host, ukryte statusy korekty oraz rekordy oznaczone
+  ``nie_eksportuj_przez_api``. Wcześniej autoryzowane zapytanie DjangoQL mogło
+  zwrócić rekordy i autorów spoza uczelni oglądającego. ([#sec-zapytanie-scope-uczelni](https://github.com/iplweb/bpp/issues/sec-zapytanie-scope-uczelni))
+- Bezpieczeństwo: publiczne API ``/api/v1/autor/`` nie ujawnia już adresu
+  e-mail autorów (RODO) i pomija autorów oznaczonych jako niewidoczni
+  (``pokazuj=False``). ([#security-api-autor-email](https://github.com/iplweb/bpp/issues/security-api-autor-email))
+- Bezpieczeństwo: pod-zasoby API (``/wydawnictwo_ciagle_autor/``,
+  ``/wydawnictwo_ciagle_streszczenie/``, ``/wydawnictwo_ciagle_zewnetrzna_baza_danych/``
+  oraz odpowiedniki dla wydawnictw zwartych) ukrywają teraz również rekordy
+  o statusie korekty ukrytym dla API — uzupełnia to wcześniejsze ukrywanie
+  rekordów oznaczonych ``nie_eksportuj_przez_api``, dając na pod-zasobie tę
+  samą widoczność co na rekordzie-rodzicu. ([#security-api-podzasoby-widocznosc](https://github.com/iplweb/bpp/issues/security-api-podzasoby-widocznosc))
+- Naprawiono lukę autoryzacji: operacje redaktorskie — klonowanie rekordów
+  („Toż"), nadpisywanie punktacji źródeł, przemapowywanie i usuwanie źródeł,
+  dodawanie do kolejki PBN oraz cały moduł analizy/optymalizacji ewaluacji
+  (w tym masowe odpinanie prac i kasowanie metryk) — wymagają teraz uprawnień
+  „wprowadzanie danych" (lub superusera), a nie samego zalogowania. Dodatkowo
+  klonowanie „Toż" wykonuje się wyłącznie przez POST z tokenem CSRF (wcześniej
+  mutowało dane już na GET). ([#security-authz-redaktorskie-endpointy](https://github.com/iplweb/bpp/issues/security-authz-redaktorskie-endpointy))
+- Bezpieczeństwo: publiczne endpointy embedu ostatnich publikacji autora i
+  jednostki (``recent_author_publications`` / ``recent_unit_publications``)
+  stosują teraz pełną politykę widoczności API — honorują flagę „nie eksportuj
+  przez API" oraz izolację między uczelniami (jak ``/api/v1/szukaj/``), a nie
+  tylko ukryte statusy korekty. ([#security-embed-recent-scope](https://github.com/iplweb/bpp/issues/security-embed-recent-scope))
+- Bezpieczeństwo: rekordy o statusie korekty ukrytym na poziomie „podgląd"
+  nie są już odnajdywane w globalnej wyszukiwarce ani otwierane na stronie
+  szczegółów przez zwykłe zalogowane konto — dostęp mają wyłącznie
+  użytkownicy z uprawnieniami redaktorskimi (wprowadzanie danych). Dotąd
+  ograniczenie obejmowało tylko użytkowników anonimowych. ([#security-podglad-zalogowany](https://github.com/iplweb/bpp/issues/security-podglad-zalogowany))
+- Bezpieczeństwo: importer publikacji z repozytorium DSpace nie pobiera już
+  danych z adresów wewnętrznych (loopback, sieci prywatne, endpointy metadata
+  chmury) — provider DSpace korzysta teraz z tej samej ochrony przed SSRF co
+  provider WWW (walidacja hosta i bezpieczne śledzenie przekierowań). ([#security-ssrf-dspace](https://github.com/iplweb/bpp/issues/security-ssrf-dspace))
+- Bezpieczeństwo: import publikacji z systemu Omega-PSIR korzysta teraz z tej
+  samej ochrony przed SSRF co pozostałe providery (walidacja hosta przy każdym
+  przekierowaniu) — publiczny adres repozytorium nie może już przekierować
+  importera na usługę wewnętrzną. ([#security-ssrf-omega-psir](https://github.com/iplweb/bpp/issues/security-ssrf-omega-psir))
+- Bezpieczeństwo: tytuły publikacji importowane z PBN są sanityzowane
+  (``safe_tytul_html``) — złośliwy rekord upstream nie może już wstrzyknąć
+  kodu HTML/JavaScript renderowanego na publicznych stronach (stored XSS).
+  Zachowana zostaje naukowa notacja inline (kursywa, indeksy dolne/górne);
+  tytuły bez znaczników pozostają nietknięte (bez podwójnego kodowania). ([#security-tytul-xss-import](https://github.com/iplweb/bpp/issues/security-tytul-xss-import))
+- Bezpieczeństwo: importery plików XLSX odrzucają teraz bomby dekompresyjne
+  (zip-bomb) — plik, który po rozpakowaniu przekracza bezpieczny limit
+  rozmiaru, jest odrzucany przed załadowaniem do pamięci, co chroni workera
+  importu przed wyczerpaniem pamięci (OOM). Dotyczy import_common,
+  import_dyscyplin, integrator2, ewaluacja2021 oraz import_polon. ([#security-xlsx-decompression-bomb](https://github.com/iplweb/bpp/issues/security-xlsx-decompression-bomb))
+- Bezpieczeństwo: etykiety wyszukiwarki w panelu administracyjnym (nazwiska
+  autorów, nazwy jednostek, źródeł, konferencji, użytkowników) są teraz
+  escapowane — domyka to sanityzację globalnej wyszukiwarki także dla widoku
+  staff/superusera. ([#security-xss-admin-autocomplete](https://github.com/iplweb/bpp/issues/security-xss-admin-autocomplete))
+- Bezpieczeństwo: usunięto podatność stored XSS. Pola ``informacje``,
+  ``szczegoly`` i ``uwagi`` rekordu (renderowane w opisie bibliograficznym)
+  są teraz sanityzowane przy zapisie tak jak tytuły, a etykiety globalnej
+  wyszukiwarki (nazwiska autorów, nazwy jednostek i źródeł) są escapowane —
+  nie da się już wstrzyknąć skryptu przez te pola. ([#security-xss-szczegoly](https://github.com/iplweb/bpp/issues/security-xss-szczegoly))
+- Bezpieczeństwo: zamknięto obejście proof-of-work CAPTCHA w kreatorze
+  zgłoszeń publikacji. Bot mógł, ustawiając wprost ``current_step`` formularza
+  wieloetapowego, przeskoczyć krok z captchą i utrwalić pliki na dysku bez
+  rozwiązania PoW (wektor disk-exhaustion). Pliki są teraz zapisywane
+  wyłącznie po realnym zaliczeniu kroku z captchą (serwerowy marker w sesji). ([#security-zglos-captcha-bypass](https://github.com/iplweb/bpp/issues/security-zglos-captcha-bypass))
+- Stopka serwisu (oraz panel admina i Rollbar ``code_version``) na produkcji
+  pokazuje teraz finalną wersję wydania bez sufiksu ``rcN``. Promocja RC →
+  produkcja nakłada cienki patch-layer na przetestowany obraz RC, podmieniając
+  zapieczoną wersję kandydata na finalną; deployment ``:staging`` nadal pokazuje
+  wersję ``rcN`` wraz z git SHA. ([#stopka-wersja-bez-rc-na-produkcji](https://github.com/iplweb/bpp/issues/stopka-wersja-bez-rc-na-produkcji))
+- Testy ``import_pracownikow`` nie zakładają już danych referencyjnych w bazie
+  (``Tytul`` „dr", ``Funkcja_Autora`` „asystent") — same je zapewniają przez
+  fixtury/``get_or_create``, więc nie padają zależnie od kolejności wykonania. ([#testy-import-pracownikow-samowystarczalne](https://github.com/iplweb/bpp/issues/testy-import-pracownikow-samowystarczalne))
+- Uodporniono dwa testy na wymiecenie danych referencyjnych przez
+  transakcyjnego sąsiada (flaky na CI): test CrossRef API wylicza teraz
+  oczekiwany PK języka z klucza naturalnego zamiast go hardkodować, a test
+  kreatora pierwszego uruchomienia dostaje fixturą wiersz-singleton stanu
+  (``FirstRunWizardState``), bez którego middleware zwracał 302 zamiast 404. ([#testy-samowystarczalne-crossref-wizard](https://github.com/iplweb/bpp/issues/testy-samowystarczalne-crossref-wizard))
+- Kolejne testy nie zakładają już danych słownikowych w bazie (Jezyk „polski",
+  Typ_Odpowiedzialnosci, Rzeczownik, Crossref_Mapper) — same je zapewniają przez
+  fixtury (`jezyki`, `typy_odpowiedzialnosci`, nowe `rzeczowniki`/`crossref_mappery`)
+  lub `get_or_create`, więc nie padają zależnie od kolejności wykonania. ([#testy-samowystarczalne-slowniki](https://github.com/iplweb/bpp/issues/testy-samowystarczalne-slowniki))
+- Tytuły publikacji i opisy bibliograficzne są sanityzowane wąską allowlistą
+  (kursywa, indeksy dolne/górne, pogrubienie) — u źródła przy zapisie oraz przy
+  renderowaniu (``|safe_tytul``) — co zamyka trwały XSS z tytułów pochodzących
+  z importu i anonimowych zgłoszeń. Przy okazji pseudo-znaczniki liter greckich
+  (``<beta>``, ``<Delta>``) są zamieniane na właściwe znaki Unicode zamiast być
+  usuwane. Nowa komenda ``sanityzuj_tytuly`` czyści istniejące dane. ([#xss-tytul-opis](https://github.com/iplweb/bpp/issues/xss-tytul-opis))
+- Domknięto lukę stored-XSS w tytułach publikacji w pozostałych językach
+  (``Wydawnictwo_*_Tytul``): są teraz sanityzowane przy każdym zapisie
+  (``save()``), tak jak tytuł oryginalny i przetłumaczony, a komenda
+  ``sanityzuj_tytuly`` czyści również istniejące, brudne dane w tych polach.
+  Dodatkowo w metrykach ewaluacji filtr ``safe_tytul`` stosowany jest po
+  skróceniu tekstu (``truncatewords_html``), żeby nie rozcinać znaczników. ([#xss-tytuly-dodatkowe-jezyki](https://github.com/iplweb/bpp/issues/xss-tytuly-dodatkowe-jezyki))
+- Formularz zgłaszania publikacji: ograniczono anonimowe uploady (maks. 20 MB
+  na plik, maks. 5 plików na krok) i rozdzielono pliki tymczasowe kreatora od
+  plików trwałych zgłoszeń. Dodano komendę ``wyczysc_zglos_tmp`` czyszczącą
+  porzucone pliki tymczasowe (domyślnie starsze niż 24 h) — do wpięcia w cron.
+  Zapobiega to zapełnieniu dysku przez porzucone sesje kreatora, bez ryzyka
+  skasowania plików ukończonych zgłoszeń. Dodatkowo obniżono globalny limit
+  ``DATA_UPLOAD_MAX_NUMBER_FILES`` (100 → 10), by Django odrzucał masowe uploady
+  już przy parsowaniu żądania. ([#zglos-upload-limits](https://github.com/iplweb/bpp/issues/zglos-upload-limits))
+- Zaktualizowano Django do 5.2.16 (poprawki bezpieczeństwa serii 5.2 LTS). ([#django-5.2.16](https://github.com/iplweb/bpp/issues/django-5.2.16))
+- Import punktacji źródeł: strona postępu/wyników odświeża status
+  automatycznie po zakończeniu importu. Moduł przeniesiono ze starego
+  mechanizmu ``long_running`` (jednorazowy push przez WebSocket, który mógł
+  przepaść) na ``django-liveops`` — stan jest stanowy i renderowany przy
+  każdym wczytaniu strony, więc odświeżenie lub deep-link zawsze pokazuje
+  aktualny wynik. ([#fd431-import-punktacji-zrodel-liveops](https://github.com/iplweb/bpp/issues/fd431-import-punktacji-zrodel-liveops))
+- Naprawiono błąd, przez który pobranie z PBN pracy nieistniejącej po stronie
+  PBN (odpowiedź HTTP 422) kończyło się ``TypeError`` zamiast poprawnego
+  rozpoznania braku pracy. Obsłużono też przypadek, gdy treść odpowiedzi PBN
+  przychodzi jako bajty. ([#pbn-422-typeerror](https://github.com/iplweb/bpp/issues/pbn-422-typeerror))
+- Decyzja o dodaniu ``DISTINCT`` w wyszukiwarce multiseek nie opiera się już na
+  przeszukiwaniu tekstu wygenerowanego SQL-a (kruche — zależne od aliasów i
+  formatowania zapytania). Zamiast tego złączenia mnożące rekordy (autorzy, bazy
+  zewnętrzne) wykrywane są po realnych nazwach tabel w zapytaniu
+  (``query.alias_map``), co jest odporne na aliasy i szczegóły generowania SQL-a. ([#sec-r3-multiseek-distinct](https://github.com/iplweb/bpp/issues/sec-r3-multiseek-distinct))
+- Naprawiono komendę ``oai_all`` (harvester OAI-PMH), która była niesprawna:
+  używała usuniętego w Pythonie 3.9 ``Element.getchildren()`` (crash), miała
+  zaszyty adres HTTP i zakres dat kończący się w 2020, nie ustawiała timeoutu
+  ani nie sprawdzała statusu odpowiedzi, a błędny ``resumptionToken`` mógł
+  zapętlić ją w nieskończoność. Teraz URL i zakres dat są parametrami, żądania
+  mają timeout i ``raise_for_status``, XML jest parsowany świadomie przestrzeni
+  nazw, a bezpieczniki (limit żądań + wykrywanie powtórzonego tokenu) chronią
+  przed pętlą. ([#sec-r3-oai-all](https://github.com/iplweb/bpp/issues/sec-r3-oai-all))
+- Logowanie diagnostyczne OIDC (Keycloak) nie zrzuca już domyślnie surowych
+  wartości claimów. Poziom DEBUG loguje teraz wyłącznie nazwy claimów i
+  zredagowany kształt wartości (typ, długość, klucze), bez danych osobowych
+  (adresy e-mail, nazwy grup/ról, identyfikatory). Surowe wartości można
+  tymczasowo odblokować osobnym opt-inem ``DJANGO_BPP_OIDC_DEBUG_CLAIM_VALUES=1``. ([#sec-r3-oidc-claim-redaction](https://github.com/iplweb/bpp/issues/sec-r3-oidc-claim-redaction))
+- Import PBN: naprawiono obsługę błędu zapisu statusu sesji — wcześniej ``except
+  BaseException`` połykał przerwania workera (KeyboardInterrupt/SystemExit), a
+  następujący po nim ``except Exception`` był martwym, nieosiągalnym kodem. Teraz
+  łapany jest wyłącznie ``Exception`` (przerwania się propagują), a nieudany
+  zapis błędu jest logowany z tracebackiem i zgłaszany do Rollbara. ([#sec-r3-pbn-import-except](https://github.com/iplweb/bpp/issues/sec-r3-pbn-import-except))
+- Kolejka eksportu do PBN: usunięto wyścigi (race conditions) przy zlecaniu i
+  podejmowaniu wysyłki. Dodano częściowy unikat gwarantujący co najwyżej jeden
+  aktywny wpis na rekord (duplikaty enqueue zamieniają się w idempotentne
+  ``AlreadyEnqueuedError`` zamiast tworzyć zdublowane wpisy), a podejmowanie
+  pracy przez workera odbywa się teraz atomowo (``select_for_update`` z
+  pomijaniem zablokowanych wierszy), więc dwa procesy nie wyślą tego samego
+  rekordu równolegle. ([#sec-r3-pbn-queue-atomic](https://github.com/iplweb/bpp/issues/sec-r3-pbn-queue-atomic))
+- Utwardzono zadanie ``remove_file`` (kasowanie plików raportów). Poprzednie
+  sprawdzenie ``startswith(MEDIA_ROOT/report)`` przepuszczało ścieżki rodzeństwa
+  o wspólnym prefiksie (``…/report-evil/…``) oraz traversal (``…/report/../…``).
+  Teraz ścieżka jest rozwiązywana (``Path.resolve()`` — łamie ``..`` i symlinki)
+  i musi leżeć wewnątrz katalogu raportów; brak pliku traktowany jest
+  idempotentnie (nie jest błędem). ([#sec-r3-remove-file](https://github.com/iplweb/bpp/issues/sec-r3-remove-file))
+- Reset przypięć dyscypliny nie blokuje już żądania HTTP. Wcześniej widok
+  mógł wisieć do 10 minut, śpiąc w pętli i odpytując globalny licznik
+  denormalizacji (czekając także na cudzą pracę). Teraz reset, oczekiwanie na
+  denormalizację i optymalizacja biegną w zadaniu Celery, a użytkownik jest
+  przekierowywany na stronę statusu z podglądem postępu. ([#sec-r3-reset-pins-async](https://github.com/iplweb/bpp/issues/sec-r3-reset-pins-async))
+- Aktualizacja liczby cytowań z Web of Science działa teraz hurtowo. Wcześniej
+  dla każdej uczelni ponownie przechodzono cały korpus, a każdy zmieniony rekord
+  był doczytywany (``get()``) i zapisywany (``save()``) osobno. Teraz korpus jest
+  odpytywany raz na typ publikacji, wyniki wszystkich klientów WoS są scalane,
+  rekordy doczytywane jednym zapytaniem, a zapis idzie jednym ``bulk_update`` —
+  znacznie mniej zapytań do bazy przy dużym korpusie. ([#sec-r3-wos-bulk-update](https://github.com/iplweb/bpp/issues/sec-r3-wos-bulk-update))
+- Bezpieczeństwo: domknięto kilka wektorów XSS — komunikaty systemowe wstrzykiwane
+  do skryptu na stronie są escapowane dla kontekstu JavaScript, tytuł raportu
+  wyszukiwania („suggested-title") jest sanityzowany przy zapisie tak samo jak w
+  edytorze tytułu, a linki w panelach administracyjnych (m.in. deduplikator
+  autorów) budują etykiety przez ``format_html`` zamiast surowego ``mark_safe``. ([#security-xss-hardening-l234](https://github.com/iplweb/bpp/issues/security-xss-hardening-l234))
+- Bezpieczeństwo: eksport XLSX rozbieżności punktacji sanityzuje tytuły i nazwy
+  źródeł zaczynające się od znaku formuły (``=``, ``+``, ``-``, ``@``) — chroni
+  przed CSV/Formula Injection przy otwarciu pliku w Excelu/LibreOffice.
+- Bezpieczeństwo: importer punktacji JCR (Clarivate) odrzuca pliki XLSX będące
+  bombami dekompresyjnymi (zip-bomb) PRZED wczytaniem do pamięci — chroni workera
+  importu przed wyczerpaniem pamięci (OOM).
+- Bezpieczeństwo: nazwiska autorów pochodzące z importu (np. BibTeX) są teraz
+  escapowane przy wyświetlaniu w rankingu autorów oraz w panelu admina importera
+  publikacji — usunięto podatność stored XSS (surowa interpolacja do
+  ``mark_safe()``/``safe()`` zastąpiona przez ``format_html``).
+- Dopasowywanie autorów przy imporcie prac (CrossRef, PBN, POL-on, import
+  kadr) oraz w deduplikatorze autorów uwzględnia teraz pole "poprzednie
+  nazwiska". Dzięki temu osoba, która zmieniła nazwisko (np. z dwuczłonowego
+  "Gawlik-Dziki" na jednoczłonowe "Gawlik" albo z panieńskiego na nazwisko po
+  mężu), jest poprawnie kojarzona z istniejącym rekordem zamiast tworzyć
+  duplikat. Poprzednie nazwisko dopasowywane jest jako dokładny człon listy
+  (rozdzielanej przecinkami), więc częste nazwiska nie generują fałszywych
+  dopasowań (FD#407).
+- Ekran „Import pracowników — przetwarzanie” znów pokazuje postęp na żywo
+  (etapy, log oraz panel wyniku) bez ręcznego przeładowywania strony.
+  Wcześniej, gdy serwis korzystał równocześnie z powiadomień WebSocket w
+  innym miejscu, subskrypcja operacji była nadpisywana i strona pozostawała
+  pusta aż do odświeżenia. Dodatkowo przycisk „Zapisz zmiany do bazy” na
+  panelu wyniku działa teraz także wtedy, gdy panel pojawił się przez
+  WebSocket (bez pełnego przeładowania). Wymaga ``django-channels-broadcast``
+  w wersji 0.2.2 lub nowszej.
+- Fallback konwersji DOCX (html2docx) działa teraz przez usługę HTTP zamiast
+  uruchamiania kontenera przez ``docker.sock``. Appserver nie potrzebuje już
+  dostępu do demona Dockera hosta ani Docker CLI w obrazie — usuwa to ryzyko,
+  w którym błąd w aplikacji dawałby kontrolę nad całym hostem. Adres usługi
+  podaje zmienna środowiskowa ``DJANGO_BPP_HTML2DOCX_URL`` (brak = fallback
+  wyłączony, degradacja miękka).
+- Hardening pipeline'u wydań: przypięto do konkretnych wersji (i digestów)
+  narzędzia dotąd ściągane z ruchomych tagów w jobach z sekretami —
+  obraz ``aquasec/trivy`` (skan CVE), binarkę buildx ``lab`` (build obrazów)
+  oraz ``uvx bumpver``/``uvx towncrier`` (bump wersji i changelog). Zamyka to
+  wektor supply-chain, w którym podmiana ``:latest``/``lab:latest``/najnowszego
+  pakietu z PyPI mogłaby wykonać nieprzypięty kod obok ``DOCKER_PAT`` /
+  ``contents: write``. Dodatkowo skan CVE (Trivy) wydzielono do osobnego joba
+  bez ``DOCKER_PAT`` — narzędzie skanujące nie ma już w zasięgu sekretu do
+  push-a obrazów (build → scan → promote).
+- Import pracowników nie proponuje już odpięcia powiązań wskazujących na
+  „Obcą jednostkę”. Dotychczas osoba przypisana do obcej jednostki (np.
+  z zagranicznej współafiliacji publikacji), której nie było w pliku
+  importu, trafiała na listę powiązań do odpięcia. Teraz takie afiliacje
+  są pomijane niezależnie od tego, czy autor figuruje w pliku.
+- Import pracowników: POST decyzji o jednostkach honoruje teraz te same ograniczenia
+  co interfejs (parent tylko z korzeni, „mapuj" tylko na widoczne jednostki
+  skupiające pracowników), a nienumeryczny identyfikator jednostki/tytułu nie
+  wywraca już widoku błędem 500.
+- Import pracowników: akcje w tabelach podglądu i odpięć (wybór autora, przepięcie,
+  odpięcie) podmieniają teraz zawartość wiersza przez HTMX ``innerHTML`` zamiast
+  ``outerHTML``, dzięki czemu węzeł wiersza zostaje stały i DataTables poprawnie
+  odświeża go po zmianie — wcześniej filtrowanie/sortowanie po edycji potrafiło
+  przywrócić starą treść wiersza z pamięci podręcznej.
+- Import pracowników: gdy integracja pominie część wierszy (osoby bez
+  rozstrzygniętego dopasowania albo bez przypisanej jednostki), panel wyniku
+  pokazuje teraz żółty status „Import zakończony częściowo" z licznikami
+  pominiętych, zamiast zielonego „Import zakończony". Dodano też brakujący
+  licznik osób ze znanym autorem, ale bez jednostki (dotąd znikały z podsumowania).
+- Import pracowników: hub Kroku 1 wyjaśnia teraz wprost, że wybór „Zapisz tylko
+  jednostki" odkłada tytuły (utworzą się automatycznie przy imporcie osób w
+  Kroku 2), więc świadomy wybór zakresu struktury nie zaskakuje operatora.
+- Import pracowników: integracja odrzuca teraz odwrócony zakres dat zatrudnienia
+  (data rozpoczęcia późniejsza lub równa dacie zakończenia) zamiast po cichu
+  zapisywać go do bazy — ``Autor_Jednostka.clean()`` nie było wołane przy
+  ``save()`` na ścieżce commitu.
+- Import pracowników: na ekranie zakończonego importu przyciski „Zobacz
+  szczegóły" i „Log zmian" są teraz w jednej linii (button-group), zamiast
+  zawijać się jeden pod drugi.
+- Import pracowników: zatwierdzenie importu używa teraz atomowego compare-and-set
+  na stanie, więc dwa równoległe zatwierdzenia (np. podwójne kliknięcie przy
+  wielu workerach) nie mogą już uruchomić integracji dwa razy i zduplikować
+  utworzonych autorów, jednostek czy przepięć prac.
+- Import z CrossRef: autor podany samym inicjałem imienia (np. "Lech-Maranda
+  E.") jest teraz dopasowywany do pełnego imienia w BPP ("Lech-Marańda Ewa").
+  Inicjał + nazwisko (z pominięciem polskich znaków diakrytycznych) trafia na
+  listę kandydatów z niską pewnością — importer pokazuje go jako sugestię do
+  potwierdzenia, nie wiąże automatycznie.
+- Importer CrossRef: przy imporcie rozdziałów i innych publikacji książkowych
+  (``book-chapter``, ``book``, ``monograph`` itd.) automatycznie zaznaczany jest
+  ptaszek „jest wydawnictwem zwartym". Wcześniej nowo utworzone mapowania typów
+  CrossRef dostawały domyślnie wartość „nie", przez co rozdziały trafiały do
+  formularza jako wydawnictwa ciągłe.
+- Importer publikacji: prace na liście „Potencjalne duplikaty w BPP" (krok
+  weryfikacji) są teraz klikalnymi linkami — do publicznej strony rekordu oraz
+  do modułu redagowania — dzięki czemu można sprawdzić potencjalny duplikat.
+- Integracja źródeł z PBN (``integruj_zrodla``, Faza 2 pobierania źródeł)
+  iteruje teraz strumieniowo po źródłach bez dopasowania PBN (server-side
+  cursor) zamiast ładować wszystkie naraz do pamięci — mniejszy i stały ślad
+  pamięciowy przy pełnym imporcie.
+- Na ekranie weryfikacji jednostek przycisk „Zapisz decyzje” nie gubi już
+  ustawionych wyborów, gdy któryś wiersz ma „mapuj na istniejącą” bez wskazanej
+  jednostki docelowej. Wcześniej błąd walidacji robił przekierowanie i
+  resetował **wszystkie** decyzje; teraz formularz przeładowuje się z zachowanymi
+  wartościami i podświetla tylko wiersz, który wymaga uzupełnienia.
+- Na ekranie „Import pracowników — przetwarzanie” przyciski „Anuluj” i „Ponów”
+  działają ponownie i wyglądają jak przyciski. Wcześniej kliknięcie „Anuluj”
+  kończyło się cichym błędem 403 (brak tokenu CSRF), ponieważ token nie był
+  przekazywany w żądaniu htmx przy włączonym ``CSRF_COOKIE_HTTPONLY``; teraz
+  token jedzie nagłówkiem ``X-CSRFToken``. Dołożono też brakujące style
+  przycisków sterujących oraz listy etapów operacji.
+- Na podstronie „Ludzie spoza XLS” (odpięcia) kolumna „Odepnij?” pojawia się
+  tylko w podglądzie. Po zapisaniu (integracji) importu znika w całości —
+  decyzje są już wykonane, więc pusty, nieklikalny checkbox tylko mylił.
+- Naprawiono ``Autorzy.objects.filter_rekord()`` wywoływane z rekordem
+  pobranym z bazy: klucz główny z ``TupleField`` (tuple) trafiał w ścieżkę
+  lookupów wielokolumnowych FK i kończył się błędem PostgreSQL „operator
+  nie istnieje: integer[] = integer". Manager normalizuje teraz tuple do
+  listy.
+- Naprawiono błąd w ``PatentSerializer`` API: pole ``autorzy_set`` linkowało do
+  ``wydawnictwo_zwarte_autor-detail`` zamiast do ``patent_autor-detail``, przez co
+  odnośniki do autorów patentu prowadziły pod niewłaściwy adres. Teraz wskazują na
+  właściwy endpoint autorów patentu.
+- Naprawiono niestabilne (zależne od ziarna RNG, pod pytest-xdist)
+  testy sortowania listy kolejki eksportu PBN
+  (``test_pbnexportqueuelistview_sort_by_pk`` /
+  ``...sort_by_reverse_pk``). Drugi rekord tworzony był przez bare
+  ``baker.make(Wydawnictwo_Ciagle)``, które losowało pole ``rok`` (często
+  ujemne), przez co wypadał z domyślnego filtra roku widoku
+  (``rok_od=2022``) i asercja robiła ``IndexError``. Testy nadają teraz
+  ``rok=current_rok()`` i zawężają asercję do własnych wierszy.
+- Po zakończeniu analizy pliku (import pracowników i jednostek) ekran nie pokazuje
+  już żółtego komunikatu „To był podgląd…" — od razu przechodzi na stronę
+  szczegółów importu, gdzie prowadzi przez kolejne kroki zapisu.
+- Pobieranie źródeł z PBN nie zawiesza się już na 90% (krok „Aktualizacja
+  brakujących dyscyplin..."). Skan dyscyplin iteruje teraz strumieniowo po
+  źródłach PBN (server-side cursor, tylko potrzebne kolumny) zamiast ładować
+  całą tabelę do pamięci — poprzednio worker Celery bywał ubijany przez OOM.
+- Podgląd importu pracowników pokazuje teraz w osobnej kolumnie jednostkę,
+  do której autor jest przypisany **obecnie**, oraz tę **z pliku** (w formie
+  „obecna → docelowa”). Etykieta opcji „przepnij prace” podaje pełne nazwy
+  jednostek zamiast samych skrótów (które bywały puste), więc widać skąd i
+  dokąd trafiają prace autora.
+- Poprawiona stabilność testów ``import_pracownikow`` przy uruchamianiu
+  współbieżnym (pytest-xdist, sharding CI): testy Playwright (sync-API na
+  greenletach) potrafiły zostawić w wątku workera ustawiony ``asyncio``
+  running-loop marker, przez co kolejny test analizy importu na tym samym
+  workerze wywalał ``async_to_sync`` (eager-runner liveops →
+  ``WebProgress`` → ``channel_layer.group_send``) na „You cannot use
+  AsyncToSync in the same thread as an async event loop". Wyjątek był
+  połykany przez runner, a stan importu utykał na ``zmapowany`` — flake
+  zależny od kolejności shardowania. Fixture izoluje teraz test od
+  wyciekłej pętli (zeruje marker na czas testu i przywraca go po nim).
+- Poprawiona stabilność testów przy uruchamianiu współbieżnym (pytest-xdist,
+  sharding CI): izolowany per-worker ``MEDIA_ROOT`` w tempdirze (zamiast
+  współdzielonego ``src/media``), poprawna kolejność teardownu fixture'ów
+  Playwright (TRUNCATE bazy dopiero po zamknięciu przeglądarki), reruny
+  ``@flaky`` działające także dla ``AssertionError``, jednoznaczne flagi
+  eager Celery, przywrócony per-worker ``KEY_PREFIX`` cache'a constance
+  oraz czyszczenie cache ``Site`` w testowym serwerze Daphne.
+- Publikacja oznaczona jako bezkosztowa jest teraz zawsze wysyłana do PBN jako
+  bezkosztowa, nawet gdyby w danych pozostała niewyczyszczona kwota opłaty. Wcześniej
+  taki sprzeczny stan danych (możliwy przy imporcie lub bezpośrednim zapisie, poza
+  formularzem) mógł wygenerować pakiet danych odwracający intencję operatora.
+- Strona rekordu: gdy praca nie ma autorów, sekcja autorów (szary pasek pod
+  tytułem) nie jest już renderowana.
+- Tabele DataTables znów mają polskie etykiety (np. „Szukaj" zamiast „Search").
+  Domyślny język ustawiany był w ``$(document).ready`` na końcu strony, co
+  przegrywało wyścig z inicjalizacją tabel w blokach treści — teraz konfiguracja
+  jest ustawiana synchronicznie, zaraz po załadowaniu bundla, więc każda tabela ją
+  widzi.
+- Ustabilizowano flaky testy pod shardingiem (pytest-split + xdist). Pod
+  obciążeniem CI test commitujący dane poza rollback zostawiał w bazie workera
+  ambient autorów/jednostek/stopni/stanowisk, przez co kolejne testy pękały na
+  unikalnym constraincie (``bpp_jednostka_nazwa_key`` itp.) albo na asercjach
+  „pusta baza". Dodano defensywny guard izolacji w ``src/conftest.py``, który
+  przed każdym testem czyści wyciekłe dane domenowe (TRUNCATE tabel pustych w
+  baseline, bez ruszania danych referencyjnych). Dodatkowo testy
+  ``import_pracownikow`` używają globalnie unikalnych nazw jednostek, a test
+  wykrywania duplikatów autorów asertuje inwariantę klastra zamiast globalnej
+  liczby kandydatów.
+- Ustabilizowano test fazy general deduplikatora autorów
+  (``test_general_finds_pair_with_unicode_hyphen_variant``), który flakował
+  pod ``pytest-xdist``/shardingiem. Faza general skanuje całą tabelę autorów,
+  więc ambient rekordy scommitowane przez sąsiednie testy (o pospolitych
+  nazwiskach jak „Nowak"/„Kowalski") doczepiały się do klastra i przejmowały
+  rolę rekordu głównego, psując asercję na dokładnej liczbie i tożsamości pary.
+  Test sprawdza teraz wyłącznie własną inwariantę: po normalizacji myślnika
+  Unicode obaj autorzy trafiają do tego samego klastra duplikatów.
+- Usunięto niestabilność testów integracji jednostek importu pracowników przy
+  uruchamianiu współbieżnym (pytest-xdist, sharding CI): sąsiedni test mógł
+  zostawić w bazie zacommitowaną drugą uczelnię (ambient-data), przez co
+  ``Uczelnia.objects.get_single_uczelnia_or_none()`` degradował do ``None`` i
+  tryb „brak" nie tworzył jednostki. Testy utwardzono, gwarantując dokładnie
+  jedną uczelnię (zielone w izolacji, wcześniej czerwone w niektórych układach
+  shardów).
+- W podglądzie importu pracowników zmiana autora przez wyszukiwarkę Select2
+  („dopasuj do istniejącego autora” / „inny autor”) znów się zapisuje.
+  Wcześniej wybór nie zapisywał się nigdzie — Select2 emituje zdarzenie
+  ``change`` przez jQuery, którego natywny listener htmx nie łapał, więc żądanie
+  zapisu nie wychodziło. Dodano mostek zdarzenia (``select2:select`` →
+  natywny ``change``).
+- Walidacyjne odrzucenia publikacji przez PBN (np. brak daty udostępnienia w
+  otwartym dostępie) pokazują teraz czytelny komunikat dla redaktora zamiast
+  surowego JSON-a, i nie zaśmiecają Rollbara (to błąd danych, nie kodu).
+- Zmiana samej opłaty za publikację (np. oznaczenie pracy jako bezkosztowej) jest
+  teraz wysyłana do PBN po kliknięciu „wyślij do PBN", nawet gdy pozostałe dane
+  rekordu się nie zmieniły. Wcześniej dla uczelni wysyłających prace bez oświadczeń
+  system pokazywał „Identyczne dane rekordu… Nie aktualizuję" i pomijał aktualizację
+  opłaty, bo opłaty nie były częścią porównywanego pakietu danych (FD#301).
+
+### Usprawnienie
+
+- Plik „po imporcie" (skorygowany) importu pracowników zawiera teraz ZAWSZE
+  cały blok danych zatrudnienia — czas pracy od-do, funkcję w jednostce,
+  stanowisko dydaktyczne, grupę pracowniczą, wymiar etatu i podstawowe
+  miejsce pracy — niezależnie od tego, czy plik wejściowy te kolumny
+  zawierał. Puste komórki dają miejsce na ręczne uzupełnienie danych przed
+  re-importem. ([#eksport-blok-zatrudnienia-always](https://github.com/iplweb/bpp/issues/eksport-blok-zatrudnienia-always))
+- Import pracowników: gdy wartość w pliku przekracza dopuszczalną długość pola
+  (np. nazwisko czy tytuł powyżej 200 znaków), analiza pokazuje teraz czytelny
+  komunikat po polsku wskazujący arkusz, wiersz, pole oraz limit (zamiast
+  surowego angielskiego komunikatu formularza). ([#import-czytelny-blad-dlugosci](https://github.com/iplweb/bpp/issues/import-czytelny-blad-dlugosci))
+- Import pracowników: na stronie wyników (``/rezultaty/``) doszedł filtr
+  „Rodzaj dopasowania" (twardy / zgadywanie / wielu / brak / ręczny / rekord
+  główny) oraz skrót „do pominięcia (bez decyzji)". Ostrzeżenie finalizacji o
+  wierszach do pominięcia prowadzi teraz jednym kliknięciem wprost do tabeli
+  odfiltrowanej do tych wierszy. ([#import-filtr-rodzaj-dopasowania](https://github.com/iplweb/bpp/issues/import-filtr-rodzaj-dopasowania))
+- Weryfikacja jednostek (import pracowników): auto-dopasowana jednostka jest
+  teraz linkiem do swojej publicznej strony oraz ma odnośnik „admin" do edycji
+  w panelu administracyjnym. ([#import-jednostki-linki-dopasowania](https://github.com/iplweb/bpp/issues/import-jednostki-linki-dopasowania))
+- Import pracowników rozpoznaje teraz kolumny „Data od"/„Data do" (daty
+  zatrudnienia), „Gł. zakład pracy" (podstawowe miejsce pracy) oraz podwójną
+  kolumnę „Wymiar etatu" (tekst + ułamek), sprowadzając wymiar do jednej
+  kanonicznej postaci i odrzucając wiersz, gdy obie wersje wymiaru się różnią. ([#import-kolumny-wykaz](https://github.com/iplweb/bpp/issues/import-kolumny-wykaz))
+- Na stronie wyników importu pracowników można pobrać oryginalny plik XLSX oraz
+  kanoniczny, skorygowany plik „po imporcie" (z identyfikatorami BPP i poprawnymi
+  wartościami z bazy), gotowy do ponownego, bezobsługowego wczytania. ([#import-pobieranie-plikow](https://github.com/iplweb/bpp/issues/import-pobieranie-plikow))
+- Import POLON: lista importów pokazuje uczelnię, z której import został
+  zaczęty, i jest zawężona do bieżącej uczelni (multi-hosted) — importy
+  jednej uczelni nie pojawiają się na stronie innej. Stare importy sprzed
+  wprowadzenia pola (bez uczelni) pozostają widoczne wszędzie. ([#import-polon-uczelnia-lista](https://github.com/iplweb/bpp/issues/import-polon-uczelnia-lista))
+- Import pracowników przyjmuje teraz pliki **CSV** (obok XLSX) — z automatycznym
+  wykrywaniem formatu, kodowania (UTF-8/CP1250) i separatora (``;``/``,``/tab). ([#import-pracownikow-csv-zrodla](https://github.com/iplweb/bpp/issues/import-pracownikow-csv-zrodla))
+- Import pracowników: gdy dopasowanie po nazwisku trafi na rekord-duplikat, operacje zatrudnienia (przypisanie do jednostki, zmiana miejsca pracy, przepięcia) kierowane są teraz do rekordu głównego autora — oryginału z ORCID, tytułem i odpowiednikiem w API instytucjonalnym PBN — bez scalania rekordów. Widoki rezultatów, odpięć i audytu wzbogacono o ORCID, linki do profilu autora i panelu admina oraz wskaźnik pochodzenia z API instytucjonalnego PBN; dodano zbiorcze zaznaczanie odpięć z bieżącego filtra tabeli oraz aktywne wyszukiwanie i stronicowanie (DataTables) na ekranie audytu. Przekolorowano plakietki statusów dopasowania autora (m.in. „wielu kandydatów" na czerwono, osobny kolor dla wyboru operatora). ([#import-pracownikow-dedup-ui](https://github.com/iplweb/bpp/issues/import-pracownikow-dedup-ui))
+- Import pracowników ma teraz ekran **mapowania kolumn**: pliki z inaczej
+  nazwanymi lub brakującymi kolumnami można dopasować do pól systemowego importu
+  (z auto-propozycją i zapisywalnymi profilami dla powtarzalnych plików). ([#import-pracownikow-mapowanie-kolumn](https://github.com/iplweb/bpp/issues/import-pracownikow-mapowanie-kolumn))
+- Import pracowników potrafi teraz w podglądzie utworzyć nowego autora dla wierszy
+  bez dopasowania (checkbox „utwórz nowego autora" — tworzenie następuje dopiero
+  przy zapisie do bazy). Odpięcia autorów spoza pliku pokazywane są jako lista
+  per-autor z checkboxami (domyślnie odznaczone); zakończenie zatrudnienia
+  wykonuje się tylko dla zaznaczonych, dopiero w fazie zapisu, ze świeżą weryfikacją
+  stanu bazy. ([#import-pracownikow-nowy-autor-odpiecia](https://github.com/iplweb/bpp/issues/import-pracownikow-nowy-autor-odpiecia))
+- Import pracowników rozbija teraz sklejoną komórkę „tytuł/imię/nazwisko" na
+  składniki i pokazuje **pewność dopasowania** każdego autora (twardy match /
+  zgadywanie / wielu kandydatów / brak). Niepewne wiersze można poprawić w
+  podglądzie: skorygować rozbicie nazwiska albo wybrać właściwego kandydata z
+  listy — bez ponownego wgrywania pliku. ([#import-pracownikow-parser-pewnosc](https://github.com/iplweb/bpp/issues/import-pracownikow-parser-pewnosc))
+- Import pracowników potrafi teraz przepiąć prace autora ze starej jednostki na
+  jednostkę z pliku: w podglądzie pojawia się kolumna „Przepnij prace” z checkboxem
+  (oraz akcja zbiorcza dla wszystkich wierszy z różnicą jednostki), a samo
+  przepięcie wykonuje się dopiero w fazie zapisu do bazy. Każde przepięcie jest
+  rejestrowane jako powiązane z importem i można je cofnąć z widoku „Przemapowanie
+  prac autora” — z raportem, ile przypisań przywrócono, a ile pominięto z powodu
+  późniejszych zmian afiliacji. ([#import-pracownikow-przepiecie-prac](https://github.com/iplweb/bpp/issues/import-pracownikow-przepiecie-prac))
+- Import pracowników: gdy na starcie nie wybrano masowego przepięcia prac,
+  krok z autorami w ogóle nie pokazuje kontrolek przepinania — ani
+  per-wierszowych checkboxów, ani przycisku „Zaznacz przepięcie prac dla
+  wszystkich z różnicą jednostki”. ([#import-przepinanie-gate](https://github.com/iplweb/bpp/issues/import-przepinanie-gate))
+- Uczytelniono stronę wyników importu pracowników. Pasek filtrów podzielono na
+  zawsze widoczne (jednostka, tytuł naukowy, data od/do — radia w poziomie)
+  i zwijane („Więcej filtrów…"), dodano licznik „Pokazano X z Y rekordów".
+  Kartę rekordu przebudowano: przycisk „zmień autora" trafił pod dopasowanego
+  autora, porównania plik→baza układają się w siatkę, a pola stopnia służbowego
+  i stanowiska dydaktycznego są ukrywane, gdy plik ich nie zawiera. Etykietę
+  „baza:" zmieniono na czytelniejsze „obecnie:". ([#import-rezultaty-filtry](https://github.com/iplweb/bpp/issues/import-rezultaty-filtry))
+- Na ekranie „Rezultaty” importu pracowników dodano selektor liczby
+  wierszy na stronę (10 / 25 / 50 / 100 / wszystkie, domyślnie 25) wraz
+  z pagerem. Paginacja działa po stronie klienta i współgra z istniejącym
+  paskiem filtrów. Ogranicza rozmiar renderowanego drzewa DOM, dzięki
+  czemu edycja dopasowanego autora przez Select2 nie spowalnia się przy
+  importach z dużą liczbą wierszy. ([#import-rezultaty-paginacja](https://github.com/iplweb/bpp/issues/import-rezultaty-paginacja))
+- Import pracowników rozpoznaje i weryfikuje stopnie służbowe oraz stanowiska
+  dydaktyczne (pełne ekrany weryfikacji, jak tytuły), a także rozbija kolumnę
+  „nazwisko imię", parsuje złożoną nazwę komórki i importuje adres e-mail. ([#import-slowniki-pipeline](https://github.com/iplweb/bpp/issues/import-slowniki-pipeline))
+- Dodano słowniki „stopień służbowy" (na autorze) oraz „stanowisko dydaktyczne"
+  (na powiązaniu autor-jednostka), dostępne w panelu „Dane systemowe". Tabela
+  podglądu importu pracowników porównuje e-mail, stopień służbowy i stanowisko
+  dydaktyczne z danymi w bazie i podświetla różnice; e-mail ustawiany jest tylko
+  dla nowo tworzonych autorów (istniejących nie nadpisuje), a niepoprawny lub zbyt
+  długi adres jest pomijany z ostrzeżeniem, bez przerywania analizy. ([#import-slowniki-stopnie-stanowiska](https://github.com/iplweb/bpp/issues/import-slowniki-stopnie-stanowiska))
+- Nowa aplikacja ``import_sqlite``: import danych z plików SQLite generowanych
+  przez zewnętrzne harvestery bibliograficzne (pierwszy obsługiwany typ rekordu:
+  patenty). Polecenie ``import_sqlite_scan`` skanuje plik i wypisuje CSV-e do
+  przeglądu (unikalni twórcy z kandydatami dopasowania oraz lista rekordów),
+  a ``import_sqlite_apply`` — po ręcznym uzgodnieniu twórców w kolumnie
+  ``decyzja`` — tworzy lub aktualizuje rekordy (idempotentnie po numerze prawa
+  wyłącznego). Dopasowanie twórców reużywa komparatora autorów BPP. ([#import-sqlite-patenty](https://github.com/iplweb/bpp/issues/import-sqlite-patenty))
+- Import pracowników synchronizuje teraz daty zatrudnienia (data od / data do)
+  wokół pojęcia okresu identyfikowanego przez „datę od": ta sama data od
+  uzupełnia „datę do" istniejącego okresu, a inna data od tworzy nowy okres
+  zatrudnienia (nowy rekord powiązania autor-jednostka). Obie daty są widoczne w
+  porównywarce „plik vs baza" w podglądzie, a „data do" jest wstawiana tylko gdy
+  w bazie jest pusta (różnicę pokazujemy, nie nadpisujemy). ([#import-sync-daty-zatrudnienia](https://github.com/iplweb/bpp/issues/import-sync-daty-zatrudnienia))
+- Tabela autorów w imporcie pracowników jest teraz dwuwierszową „kartą"
+  (mieści się w interfejsie, akcje dopasowania autora i przepięcia prac mają
+  miejsce), a nad nią pasek filtrów pozwala pokazać osoby, u których dane pole
+  (jednostka, e-mail, tytuł naukowy, stopień służbowy, funkcja w jednostce,
+  stanowisko dydaktyczne) jest zmienione, zgodne albo puste w pliku (łączenie
+  pól przez „i"). Doszły kolumny porównania „plik → baza" dla tytułu naukowego
+  i funkcji w jednostce, a etykiety pól mapowania doprecyzowano („Tytuł /
+  stopień naukowy (np. dr, dr hab, prof)", „Stopień służbowy (np. major,
+  kapitan)"). ([#import-tabela-dwuwierszowa](https://github.com/iplweb/bpp/issues/import-tabela-dwuwierszowa))
+- Podgląd importu pracowników pokazuje teraz zmiany wymiaru etatu, grupy
+  pracowniczej i podstawowego miejsca pracy (gdy kolumny są zmapowane), a wiersze
+  bez dopasowania mają jawny wybór „Pomiń / Utwórz nowego / Dopasuj". Przed
+  zapisem osób hub ostrzega, ile wierszy bez dopasowania zostanie pominiętych. ([#import-widocznosc-zatrudnienia](https://github.com/iplweb/bpp/issues/import-widocznosc-zatrudnienia))
+- Importer publikacji: wklejony BibTeX ``@patent{...}`` jest teraz rozpoznawany
+  i parsowany (numer zgłoszenia, uprawniony, jurysdykcja, rodzaj prawa, data
+  zgłoszenia) zamiast lądować z pustym typem publikacji. Dodano
+  ``_create_patent`` tworzące prawdziwy rekord ``bpp.Patent`` (z odfiltrowaniem
+  pól ``typ_kbn``/``charakter_formalny``, których ten model nie ma) oraz pole
+  ``ImportSession.rodzaj_rekordu`` sterujące trójstronnym dispatchem
+  (ciągłe/zwarte/patent) — na razie dostępne programistycznie, wizard nie ma
+  jeszcze UI do wyboru "Patent" jako rodzaju rekordu ani kroku edycji pól
+  patentowych (osobna praca).
+
+  Przy okazji: formularz weryfikacji nie pozwala już wybrać "Patent" (ani
+  "Praca doktorska"/"Praca habilitacyjna") jako charakteru formalnego dla
+  wydawnictwa ciągłego/zwartego — wcześniej taki wybór tworzył zmieszany,
+  utykający w adminie rekord (importer omija ``full_clean()``, więc guard
+  ``ZapobiegajNiewlasciwymCharakterom`` nigdy się nie odpalał). ([#importer-bibtex-patenty](https://github.com/iplweb/bpp/issues/importer-bibtex-patenty))
+- Importer publikacji: wklejenie wielu wpisów BibTeX naraz tworzy teraz
+  "paczkę" prac (``MultipleWorksImport``), którą można zaimportować po jednej
+  z listy — z osobnym statusem każdego wpisu (oczekuje / zaimportowany / błąd /
+  pominięty / uszkodzony), pomijaniem i ponawianiem. Wcześniej z wielu wklejonych
+  wpisów po cichu importowany był tylko pierwszy; teraz żaden wpis (w tym
+  uszkodzony) nie ginie bez śladu. ([#importer-bibtex-wiele-prac](https://github.com/iplweb/bpp/issues/importer-bibtex-wiele-prac))
+- Strona główna importera publikacji pokazuje teraz kafle źródeł danych
+  (BibTeX, CrossRef, PBN, DSpace, pozostałe strony WWW) z ikoną i krótkim
+  opisem „co i skąd", zamiast od razu pełnego formularza. Kliknięcie kafla
+  przechodzi (przez HTMX, z prawdziwą zmianą adresu i historią przeglądarki —
+  Wstecz/Naprzód oraz odświeżenie działają poprawnie) do formularza pobrania
+  danych wybranego źródła. Pod kaflami pojawił się też slim-bar z liczbą
+  importów w toku, linkujący do pełnej listy sesji. ([#importer-kafelki-landing](https://github.com/iplweb/bpp/issues/importer-kafelki-landing))
+- Importer publikacji: kreator ma teraz pełne UI dla patentów. Wklejenie
+  BibTeX ``@patent{...}`` automatycznie oznacza rekord jako patent, a krok
+  „Weryfikacja" pokazuje trój-drożny wybór rodzaju (ciągłe/zwarte/patent) i —
+  dla patentu — edytowalne pola patentowe (numer zgłoszenia, data zgłoszenia,
+  numer prawa wyłącznego, data decyzji, rodzaj prawa, uprawniony, wdrożenie,
+  wydział) zamiast bezsensownych dla patentu charakteru formalnego/typu MNiSW.
+  Ścieżka patentu pomija kroki „Źródło" i „Sprawdź w PBN" (patent nie ma
+  czasopisma/wydawcy i nie jest wysyłany do PBN), prowadząc: Weryfikacja →
+  Autorzy → Punktacja (ręczna) → Przegląd → Utwórz. Operator może też ręcznie
+  przełączyć rekord na/z patentu w kroku Weryfikacji. ([#importer-patenty-ui](https://github.com/iplweb/bpp/issues/importer-patenty-ui))
+- Importer publikacji: po wybraniu kafla źródła krok 1 pokazuje teraz wyłącznie
+  pole na dane wybranego dostawcy (textarea dla BibTeX, jedno pole na adres/DOI
+  dla pozostałych), bez powtórnego wyboru źródła i bez listy sesji pod spodem.
+  Kafle źródeł układają się w 3 kolumny (3 + 2), przyciski nawigacyjne mają
+  normalny rozmiar zamiast pomniejszonego, a etykiety statusów na liście sesji
+  są zielone tylko dla importów zakończonych (w toku — szare/pomarańczowe,
+  błędy — czerwone). ([#importer-uproszczenie-kafelki](https://github.com/iplweb/bpp/issues/importer-uproszczenie-kafelki))
+- Panel administracyjny jednostek: przy instalacji z wieloma uczelniami (>1)
+  lista jednostek dostaje filtr „uczelnia", którym superuser może zawęzić widok
+  do jednej uczelni. Na instalacji z jedną uczelnią filtr się nie pokazuje. ([#jednostka-admin-filtr-uczelnia](https://github.com/iplweb/bpp/issues/jednostka-admin-filtr-uczelnia))
+- Warstwa autoryzacji OAuth 2.1 dla serwera MCP: BPP działa jako Authorization
+  Server (`django-oauth-toolkit`) z endpointami `/o/authorize`, `/o/token`,
+  `/o/revoke_token`, własnym Dynamic Client Registration `/o/register/` (RFC 7591)
+  i metadanymi `/.well-known/oauth-authorization-server` (RFC 8414). API `/api/v1/`
+  przyjmuje token `Bearer` z uprawnieniami zalogowanego użytkownika (odczyt),
+  udostępnia endpoint `/api/v1/whoami/` do weryfikacji tożsamości i jest twardo
+  read-only dla tokenów. Logowanie w kroku zgody korzysta ze wszystkich metod BPP
+  (hasło/LDAP/Microsoft/ORCID/Keycloak). Tokeny są krótkotrwałe, z rotacją refresh
+  i unieważnieniem przy zmianie hasła lub dezaktywacji konta. ([#mcp-oauth-authorization](https://github.com/iplweb/bpp/issues/mcp-oauth-authorization))
+- Eksport wyników Multiseek do formatów dokumentu: **HTML** i **DOCX (Word)** —
+  odwzorowują aktualny widok (lista opisów lub tabela punktacyjna). W widoku
+  BibTeX dostępny jest eksport do pliku **.bib**. Formaty pojawiają się w
+  rozwijanym menu „Eksport" obok istniejących CSV/XLSX. ([#multiseek-eksport-html-docx-bibtex](https://github.com/iplweb/bpp/issues/multiseek-eksport-html-docx-bibtex))
+- Zezwolono na planowanie przyszłych dat zakończenia zatrudnienia w powiązaniach
+  autor–jednostka (np. z góry ustalony koniec umowy). Import listy pracowników
+  z datą końca w przyszłości nie przerywa się już na ograniczeniu bazy danych;
+  w miejsce dawnego zakazu wprowadzono odporny na czas warunek „początek pracy
+  wcześniejszy niż koniec". ([#przyszle-daty-zatrudnienia](https://github.com/iplweb/bpp/issues/przyszle-daty-zatrudnienia))
+- Bezpieczeństwo: w konfiguracji produkcyjnej włączono nagłówki transportu —
+  ``SECURE_CONTENT_TYPE_NOSNIFF``, ``SECURE_SSL_REDIRECT`` oraz HSTS
+  (``SECURE_HSTS_SECONDS`` = 1 rok, z ``INCLUDE_SUBDOMAINS``) jako
+  defense-in-depth wobec ataków typu SSL-strip/MITM i MIME-sniffing. ([#security-hsts-nosniff](https://github.com/iplweb/bpp/issues/security-hsts-nosniff))
+- Bezpieczeństwo: formularz resetu hasła jest ograniczany liczbą żądań
+  per adres IP (domyślnie 5 na godzinę) — chroni przed zalewaniem skrzynek
+  mailami resetu (email-bombing) wzmacnianym przez kolejkę Celery. ([#security-password-reset-ratelimit](https://github.com/iplweb/bpp/issues/security-password-reset-ratelimit))
+- Formularz zgłaszania publikacji może teraz wymagać od niezalogowanych
+  użytkowników weryfikacji proof-of-work ALTCHA (self-hosted, bez usług
+  zewnętrznych, zgodny z RODO) — jako ochrona przed automatycznym spamem.
+  Funkcja jest domyślnie **wyłączona** (opt-in: ``ZGLOS_CAPTCHA_ENABLED``);
+  klucz ``ALTCHA_HMAC_KEY`` jest generowany automatycznie po stronie wdrożenia.
+  Obok weryfikacji pojawia się informacja, że zalogowanie się ją pomija.
+  Dodatkowo: zalogowany użytkownik z ustawionym adresem e-mail ma to pole
+  zablokowane do edycji (wypełniane adresem z konta). ([#zglos-captcha-altcha](https://github.com/iplweb/bpp/issues/zglos-captcha-altcha))
+- Retencja porzuconych plików tymczasowych kreatora zgłaszania publikacji jest
+  teraz uruchamiana automatycznie jako cykliczne zadanie Celery beat (co 6 h),
+  obok pozostałych zadań czyszczących. Rdzeń czyszczenia jest współdzielony z
+  management-commandą ``wyczysc_zglos_tmp`` (do ręcznych/ops uruchomień). Dzięki
+  temu retencja jedzie razem z kodem aplikacji — nie wymaga osobnej konfiguracji
+  crona po stronie wdrożenia. ([#zglos-tmp-celerybeat](https://github.com/iplweb/bpp/issues/zglos-tmp-celerybeat))
+- Eksport wyników wyszukiwania (multiseek) do XLSX zyskał kolumny „Źródło" oraz
+  „Typ MNiSW/MEiN", a także drugi wariant, w którym cały opis bibliograficzny
+  jest w jednej kolumnie (obok IF, PK, Charakter, Typ MNiSW/MEiN). Wybór wariantu
+  odbywa się z rozwijanego przycisku „Eksport" nad listą wyników (FD#373). ([#fd373](https://github.com/iplweb/bpp/issues/fd373))
+- Import pracowników — ekran weryfikacji jednostek: pole „Mapuj na" jest teraz
+  przeszukiwalną listą (Select2), a widoczne pole-cel zależy od decyzji: „Mapuj"
+  pokazuje listę jednostek, „Utwórz nową" — wybór wydziału (z opcją utworzenia
+  w korzeniu). Wybór wydziału nie ogranicza już listy w „Mapuj na". ([#import-jednostki-mapuj-select2](https://github.com/iplweb/bpp/issues/import-jednostki-mapuj-select2))
+- Utwardzenia bezpieczeństwa logowania SSO (OIDC): tożsamość i decyzja
+  o zaufaniu kotwiczone na podpisanym id_token (``sub``/``iss``/
+  ``email_verified`` autorytatywne, kontrola zgodności ``sub`` z userinfo
+  wg OIDC Core §5.3.2), walidacja ``aud``/``azp`` tokenu względem
+  ``client_id``, czyszczenie nieaktualnych flag trybu linkowania konta,
+  pomijanie kont zdezaktywowanych przy dopasowaniu po ``(issuer, sub)``
+  oraz stały dostęp do „Połącz konto z SSO" w profilu (multi-realm). ([#oidc-hardening-p2](https://github.com/iplweb/bpp/issues/oidc-hardening-p2))
+- Kosztowne endpointy wyszukiwania API (``/api/v1/szukaj/`` pełnotekstowe oraz
+  ``/api/v1/autor/`` z filtrem ``nazwisko__icontains``) mają teraz limity liczby
+  żądań (osobne dla anonimowych i zalogowanych), chroniące przed nadużyciami.
+  Globalny throttling reszty API pozostaje wyłączony bez zmian. ([#sec-r3-api-search-throttle](https://github.com/iplweb/bpp/issues/sec-r3-api-search-throttle))
+- API ``/api/v1/`` zyskało wyszukiwanie: nowy endpoint ``GET /api/v1/szukaj/``
+  (rankowane wyszukiwanie pełnotekstowe po wszystkich typach publikacji, parametry
+  ``q``, ``rok_od``, ``rok_do``, paginacja LimitOffset), filtr ``autor/?nazwisko=``
+  (dopasowanie częściowe, bez rozróżniania wielkości liter) oraz filtr ``?autor=``
+  na endpointach ``wydawnictwo_ciagle_autor`` / ``wydawnictwo_zwarte_autor`` /
+  ``patent_autor`` (pełny harvest prac autora). Endpoint ``/szukaj/`` respektuje ukrywanie rekordów
+  (``nie_eksportuj_przez_api``, ukryte statusy korekty) oraz zawężenie
+  multi-uczelnia.
+- Ekran szczegółów importu pracowników pozwala teraz **dopasować wiersz z
+  pliku do istniejącego już w bazie autora**, zamiast edytować dane wejściowe
+  zaczytane z pliku. Dla wierszy bez dopasowania lub z wieloma kandydatami
+  dostępna jest wyszukiwarka autorów uczelni (obejmująca również osoby bez
+  bieżącego zatrudnienia — np. przeniesione lub dopiero zatrudniane), a
+  dopasowania pewne i luźne można w każdej chwili podmienić przyciskiem
+  „zmień autora". Usunięto możliwość ręcznej edycji imion, nazwiska i tytułu
+  odczytanych z pliku — tych danych już się nie nadpisuje z poziomu podglądu.
+- Eksport schematu DjangoQL dla LLM obejmuje teraz trzy kanoniczne korzenie
+  (``bpp.Rekord``, ``bpp.Autor``, ``bpp.Autorzy``) — pełny round-trip dla
+  endpointów ``/api/v1/zapytanie/{rekord,autor,autorzy}/``. Komenda
+  ``opisz_schemat_djangoql_dla_llm`` zyskała tryb ``--wszystkie-korzenie``
+  (generuje wszystkie trzy naraz) oraz wyprowadzanie ścieżki wyjścia z ``--model``.
+  Wszystkie korzenie używają tego samego bezpiecznego ``RekordLLMSchema``
+  (blocklist PII + brak nazw instytucji + wartości tylko bezpiecznych słowników).
+- Import pracowników i jednostek jest teraz **dwustopniowy: najpierw struktura,
+  potem osoby**. Po analizie hub prowadzi przez Krok 1 (rozstrzygnij i zapisz
+  jednostki, ewentualnie tytuły) i dopiero potem odblokowuje Krok 2 (import osób).
+
+  - „Zapisz tylko jednostki" / „Zapisz jednostki + tytuły" (przyciski obok siebie,
+    normalny rozmiar) **nie ustawiają już całego importu na „zintegrowany"** —
+    import dostaje osobny stan **„struktura zapisana (osoby czekają)"**, z którego
+    dokańcza się import osób przyciskiem „Zapisz osoby do bazy".
+  - Import osób jest **zablokowany**, a szczegóły autorów (kafelki „Ludzie z XLS"
+    / „Ludzie spoza XLS") **ukryte**, dopóki jednostki nie zostaną zapisane —
+    przypisywanie autorów bez kompletnej listy jednostek nie ma sensu.
+- Import pracowników i struktury pozwala teraz utworzyć z przeanalizowanego
+  pliku **samą strukturę — bez importu osób**. Na ekranie przeglądu, obok
+  przycisku „Zapisz do bazy" (pełny import: struktura + osoby), dostępne są
+  dwie dodatkowe akcje: „Utwórz tylko jednostki" (same jednostki) oraz
+  „Utwórz jednostki + tytuły" (jednostki i tytuły naukowe). Oba warianty
+  tworzą wyłącznie strukturę i **nie dotykają autorów ani ich zatrudnień**.
+  Po takim imporcie ponowna analiza pliku wraca do pełnego zakresu.
+- Import pracowników nie przerywa się już, gdy jednostka wskazana w pliku
+  nie istnieje w bazie. Analiza klasyfikuje każdą jednostkę: dokładne
+  dopasowanie, dopasowanie automatyczne po bardzo zbliżonej nazwie
+  (z widocznym oznaczeniem) albo brak dopasowania. Jednostki bez
+  dopasowania trafiają na nowy ekran „Weryfikacja jednostek", gdzie można
+  je utworzyć, zmapować na istniejącą lub pominąć — a właściwe utworzenie
+  odbywa się dopiero przy zapisie importu. Nowe jednostki są zakładane pod
+  wybranym wydziałem (albo pod „Wydziałem Domyślnym" / w korzeniu, zależnie
+  od ustawienia uczelni ``Używaj wydziałów``). Zachowanie można wyłączyć
+  przełącznikiem ``Twórz brakujące jednostki`` na ekranie mapowania kolumn.
+- Import pracowników rozpoznaje teraz osobną kolumnę ``Drugie imię``.
+  Na ekranie mapowania kolumn można wskazać ją jako oddzielne pole; przy
+  integracji drugie imię jest doklejane do pierwszego w jednym polu imion
+  autora (np. ``Jan`` + ``Paweł`` → ``Jan Paweł``). Pliki kadrowe rozbijające
+  imiona na dwie kolumny nie tracą już drugiego imienia.
+- Import pracowników: gdy wszystkie jednostki i tytuły z pliku są już w bazie,
+  kreator pomija Krok 1 (zapis struktury) i pokazuje od razu Krok 2 (import osób).
+  W Kroku 1 przyciski „Zobacz tytuły" i „Zapisz jednostki + tytuły" chowają się,
+  gdy nie ma żadnego tytułu do utworzenia. Opcja „przepnij wszystkie prace" ma
+  wyraźniejszy, wieloliniowy opis (jest groźna na dojrzałej bazie) i przy
+  zaznaczaniu wymaga świadomego potwierdzenia.
+- Import pracowników: gdy zapis struktury (Krok 1) nie utworzy niczego nowego —
+  wszystkie jednostki i słowniki są już w bazie — przycisk zmienia się na
+  „Przejdź do kolejnego kroku", a klik przenosi od razu do Kroku 2 (import osób)
+  z pominięciem ekranu „Struktura zapisana" (nic nie zapisano, więc celebracja
+  byłaby myląca). Przycisk potwierdzania kandydata przy „Wielu kandydatach" na
+  ekranie rezultatów jest teraz normalnej wielkości i ma etykietę „potwierdź".
+- Importer publikacji: dla źródeł spoza PBN dodano przed krokiem „Przegląd"
+  nowy krok „Sprawdź w PBN". Zalogowany do PBN operator wyszukuje odpowiednik
+  pracy po DOI, tytule i stronie WWW (do 10 pozycji na oś), może obejrzeć
+  rekordy w PBN i wybrać jeden z nich jako odpowiednik PBN importowanej pracy.
+  Niezalogowanemu operatorowi proponujemy zalogowanie się do PBN lub pominięcie
+  kroku (weryfikacja jest opcjonalna). Zastąpiono dotychczasowe ciche
+  dopasowywanie odpowiednika po DOI jawnym wyborem operatora.
+- Importer publikacji: rok publikacji można wpisać lub poprawić ręcznie na
+  kroku weryfikacji. Gdy źródło (np. rekord CrossRef) nie zawiera roku wydania,
+  operator uzupełnia go sam, dzięki czemu importer może zaproponować punktację i
+  utworzyć rekord zamiast zatrzymywać się na komunikacie „brak roku publikacji".
+- Listy „ludzie spoza XLS" (odpięcia) oraz autorów w imporcie pracowników mają
+  teraz filtrowanie i sortowanie po stronie przeglądarki (DataTables), zgodne z
+  htmx (podmiana wierszy) i leniwym pickerem autora (Select2).
+- Moduł nazywa się teraz w interfejsie „import pracowników i jednostek”
+  (menu, tytuły, okruszki) — zamiast samego „import pracowników”.
+- Na stronie edycji zgłoszenia publikacji w adminie przycisk „Użyj importera"
+  znajduje się teraz w pasku akcji nad tabelą (obok „Zwróć do autora"), a nie
+  w wierszu tabeli. Gdy zgłoszenie ma rozpoznany numer DOI, importer otwiera się
+  z wypełnionym providerem CrossRef; gdy jest tylko adres strony — z importem
+  z ogólnej strony WWW; gdy zgłoszenie nie ma żadnego adresu, przycisk się nie
+  pojawia (FD#430).
+- Plik „po imporcie” (do pobrania po zakończeniu importu pracowników) jest
+  teraz zamrażany przy finalizacji — zapisywany raz, jako trwały rekord tego,
+  co faktycznie trafiło do BPP. Późniejsze zmiany danych autorów nie mają już
+  wpływu na wcześniej pobrany plik. Dla importów zakończonych przed tą zmianą
+  plik jest nadal budowany na bieżąco z aktualnego stanu bazy.
+- Szczegóły importu pracowników prezentowane są teraz jako **przegląd z
+  kafelkami**: „Jednostki", „Ludzie z XLS", „Ludzie spoza XLS" oraz „Tytuły".
+  Każdy kafelek pokazuje liczby do rozstrzygnięcia (m.in. dopasowania pewne,
+  luźne i do zaakceptowania) i prowadzi do dedykowanej podstrony z tabelą,
+  formularzem i szczegółami. Kafelki „Jednostki" i „Tytuły" pojawiają się
+  tylko wtedy, gdy jest co weryfikować. Listę powiązań autor–jednostka spoza
+  importowanego pliku (odpięcia) wydzielono na osobną stronę.
+- Tytuły naukowe z importowanego pliku są teraz dopasowywane do słownika, a
+  brakujące można **utworzyć podczas importu** — analogicznie do jednostek.
+  Nazwy nierozpoznane trafiają na ekran weryfikacji, gdzie można je utworzyć,
+  zmapować na istniejący tytuł albo pominąć; nazwę i skrót nowego tytułu można
+  poprawić przed zapisem. Wcześniej tytuł spoza słownika był po cichu
+  pomijany, przez co autor pozostawał bez tytułu. Automatyczne tworzenie
+  brakujących tytułów można wyłączyć na ekranie mapowania kolumn.
+- Widok „Szukaj zapytaniem" korzysta teraz z ograniczonego schematu DjangoQL
+  (allow-lista rdzenia bibliograficznego): podpowiedzi i zapytania obejmują tylko
+  modele publikacji, autorów, jednostek, źródeł i słowniki, bez szumu z
+  wewnętrznych tabel PBN / importu / deduplikacji / ewaluacji. Wyszukiwanie
+  DjangoQL w panelu administracyjnym pozostaje pełne. Dodano też komendę
+  ``manage.py opisz_schemat_djangoql_dla_llm`` generującą zwięzły, ostemplowany
+  wersją opis tej przestrzeni wyszukiwania dla modeli językowych (LLM).
+
+### Usunięto
+
+- Usunięto martwy kod integracji słownika dyscyplin (``integruj_dyscypliny``
+  i pomocnicze funkcje w ``pbn_integrator/utils/dictionaries.py``). Kod ten
+  wywoływał nieistniejącą metodę klienta ``get_discipline_groups()`` i zakładał
+  nieaktualny kształt odpowiedzi PBN — nie miał żadnego produkcyjnego wywołania,
+  a jedynie testy charakteryzujące zepsuty kontrakt. Właściwa synchronizacja
+  dyscyplin odbywa się przez ``download_disciplines()``/``sync_disciplines()``. ([#pbn-remove-dead-disciplines-legacy](https://github.com/iplweb/bpp/issues/pbn-remove-dead-disciplines-legacy))
+
+
 ## bpp 202607.1397 (2026-07-08)
 
 ### Naprawione

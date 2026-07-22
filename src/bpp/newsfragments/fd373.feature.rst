@@ -1,4 +1,0 @@
-Eksport wyników wyszukiwania (multiseek) do XLSX zyskał kolumny „Źródło" oraz
-„Typ MNiSW/MEiN", a także drugi wariant, w którym cały opis bibliograficzny
-jest w jednej kolumnie (obok IF, PK, Charakter, Typ MNiSW/MEiN). Wybór wariantu
-odbywa się z rozwijanego przycisku „Eksport" nad listą wyników (FD#373).
