@@ -562,6 +562,42 @@ def test_fd443_zwykle_wyszukiwanie_nie_wylacza_zawezenia(rf):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("puste_q", ["", " ", "   \t  ", "\n"], ids=repr)
+def test_fd443_djangoql_bez_tresci_zapytania_nie_wylacza_zawezenia(rf, puste_q):
+    """Sam przełączony tryb DjangoQL to jeszcze nie jest wybór operatora.
+
+    Regresja: detekcja patrzyła WYŁĄCZNIE na marker ``q-l=on``, a ten siedzi
+    w URL-u także wtedy, gdy operator tylko przełączył tryb i nic nie napisał
+    (formularz wyszukiwania wysyła marker razem z pustym ``q``). Domyślny
+    widok „Do obsługi" gasł wtedy sam z siebie i lista bez ostrzeżenia
+    pokazywała komplet zgłoszeń — łącznie ze spamem i odrzuconymi.
+    """
+    _zgloszenia_wszystkich_statusow()
+
+    request = rf.get("/", {"q": puste_q, "q-l": "on"})
+    filtr = StanObslugiFilter(request, {}, Zgloszenie_Publikacji, _admin())
+
+    assert filtr.czy_domyslne_zawezenie() is True
+
+    qs = filtr.queryset(request, Zgloszenie_Publikacji.objects.all())
+    assert set(qs.values_list("status", flat=True)) == STATUSY_DO_OBSLUGI
+
+
+@pytest.mark.django_db
+def test_fd443_djangoql_bez_parametru_q_nie_wylacza_zawezenia(rf):
+    """Marker bez pola ``q`` w ogóle (ręcznie sklejony adres) — tak samo."""
+    _zgloszenia_wszystkich_statusow()
+
+    request = rf.get("/", {"q-l": "on"})
+    filtr = StanObslugiFilter(request, {}, Zgloszenie_Publikacji, _admin())
+
+    assert filtr.czy_domyslne_zawezenie() is True
+
+    qs = filtr.queryset(request, Zgloszenie_Publikacji.objects.all())
+    assert set(qs.values_list("status", flat=True)) == STATUSY_DO_OBSLUGI
+
+
+@pytest.mark.django_db
 def test_fd443_parametr_tylko_podobny_do_statusu_nie_wylacza_zawezenia(rf):
     """``status_wewnetrzny=…`` to nie jest lookup po ``status`` — filtr działa."""
     _zgloszenia_wszystkich_statusow()
@@ -597,6 +633,161 @@ def test_fd443_filtr_zaimportowal_listuje_tylko_uzytkownikow_z_danych(admin_clie
 
     assert isinstance(spec, django_admin.RelatedOnlyFieldListFilter)
     assert {pk for pk, _etykieta in spec.lookup_choices} == {importujacy.pk}
+
+
+def _lookup_zaimportowal(admin_client):
+    """Nazwa parametru URL-a, którą admin generuje dla filtra „zaimportował".
+
+    Czytana z samego ``FieldListFilter``, a nie wpisana literałem — gdyby
+    Django zmieniło kształt parametru dla ``ForeignKey``, test detekcji
+    w ``StanObslugiFilter`` ma się posypać, a nie zzielenieć na parametrze,
+    którego interfejs już nie produkuje.
+    """
+    lookup = _spec_zaimportowal(_changelist(admin_client)).lookup_kwarg
+    assert lookup == "zaimportowal__id__exact"
+    return lookup
+
+
+@pytest.mark.django_db
+def test_fd443_wybor_zaimportowal_pokazuje_zgloszenia_tej_osoby(admin_client):
+    """NAJWAŻNIEJSZY test tej grupy: kliknięcie osoby w filtrze COŚ pokazuje.
+
+    Regresja: ``zaimportowal`` jest niepuste WYŁĄCZNIE na zgłoszeniach
+    o statusie ZAIMPORTOWANY, czyli spoza grupy „Do obsługi". Dopóki
+    przezroczystość ``StanObslugiFilter`` obejmowała tylko pole ``status``,
+    domyślne ``status__in=(NOWY, WYMAGA_ZMIAN, PO_ZMIANACH)`` składało się
+    koniunkcją z wyborem osoby — sprzecznie z definicji. Kliknięcie
+    DOWOLNEJ pozycji filtra „zaimportował" dawało ZERO wyników, zawsze.
+
+    Poprzedni test tej grupy sprawdzał wyłącznie LISTĘ pozycji filtra, więc
+    tego nie łapał — trzeba było sprawdzić WYNIK kliknięcia.
+    """
+    importujacy = baker.make("bpp.BppUser", username="fd443_klikany")
+    inny = baker.make("bpp.BppUser", username="fd443_inny_operator")
+
+    moje = _zaimportowane_zgloszenie(zaimportowal=importujacy)
+    _zaimportowane_zgloszenie(
+        tytul_oryginalny="Praca zaimportowana przez kogoś innego",
+        zaimportowal=inny,
+    )
+    _zgloszenia_wszystkich_statusow()
+
+    response = _changelist(
+        admin_client, **{_lookup_zaimportowal(admin_client): importujacy.pk}
+    )
+
+    widoczne = {obj.pk for obj in response.context["cl"].result_list}
+    assert widoczne == {moje.pk}
+
+
+@pytest.mark.django_db
+def test_fd443_wybor_zaimportowal_nie_zaznacza_stanu_obslugi(admin_client):
+    """Skoro „Do obsługi" nie zawęża listy, to nie może być podświetlone."""
+    importujacy = baker.make("bpp.BppUser", username="fd443_klikany_2")
+    _zaimportowane_zgloszenie(zaimportowal=importujacy)
+
+    response = _changelist(
+        admin_client, **{_lookup_zaimportowal(admin_client): importujacy.pk}
+    )
+    changelist = response.context["cl"]
+
+    assert _zaznaczone(_spec_stanu_obslugi(response), changelist) == []
+
+
+@pytest.mark.django_db
+def test_fd443_jawny_stan_obslugi_i_zaimportowal_daja_koniunkcje(admin_client):
+    """Gdy OBA filtry wybrano ręcznie, zawężenia się składają — i widać to.
+
+    Wynik jest pusty z definicji (``zaimportowal`` niepuste tylko poza „Do
+    obsługi"), ale operator widzi w sidebarze obie zaznaczone pozycje, więc
+    wie, dlaczego nic nie ma. To jest różnica między pustką wyjaśnioną
+    a pustką bez powodu.
+    """
+    importujacy = baker.make("bpp.BppUser", username="fd443_klikany_3")
+    _zaimportowane_zgloszenie(zaimportowal=importujacy)
+
+    response = _changelist(
+        admin_client,
+        **{
+            StanObslugiFilter.parameter_name: StanObslugiFilter.DO_OBSLUGI,
+            _lookup_zaimportowal(admin_client): importujacy.pk,
+        },
+    )
+    changelist = response.context["cl"]
+
+    assert list(changelist.result_list) == []
+    assert _zaznaczone(_spec_stanu_obslugi(response), changelist) == ["Do obsługi"]
+    assert _zaznaczone(_spec_zaimportowal(response), changelist) == [str(importujacy)]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "parametr",
+    [
+        "zaimportowal",
+        "zaimportowal__id__exact",
+        "zaimportowal__isnull",
+        "zaimportowano",
+        "zaimportowano__gte",
+        "zaimportowano__year",
+        "zaimportowano__isnull",
+    ],
+)
+def test_fd443_lookupy_pol_importu_wylaczaja_domyslne_zawezenie(rf, parametr):
+    """Detekcja obejmuje oba pola audytu importu i KAŻDY ich lookup.
+
+    ``zaimportowano`` nie siedzi dziś w ``list_filter`` (patrz asercja
+    niżej), więc adres z takim parametrem powstaje ręcznie albo z linku
+    w panelu — ale klasa błędu jest ta sama co przy ``zaimportowal``:
+    pole jest niepuste wyłącznie poza grupą „Do obsługi", więc koniunkcja
+    z domyślnym zawężeniem daje pustkę z definicji. Detekcja pilnuje tego
+    z wyprzedzeniem, żeby dołożenie pola do ``list_filter`` nie wróciło
+    z tym samym błędem.
+    """
+    _zgloszenia_wszystkich_statusow()
+
+    request = rf.get("/", {parametr: "1"})
+    filtr = StanObslugiFilter(request, {}, Zgloszenie_Publikacji, _admin())
+
+    assert filtr.czy_domyslne_zawezenie() is False
+
+    qs = filtr.queryset(request, Zgloszenie_Publikacji.objects.all())
+    assert set(qs.values_list("status", flat=True)) == {
+        status.value for status in Statusy
+    }
+
+
+def test_fd443_zaimportowano_nie_jest_dzis_w_list_filter():
+    """Charakteryzacja: test wyżej testuje samą detekcję, nie klikalny filtr.
+
+    Gdyby ``zaimportowano`` trafiło do ``list_filter``, ten test zapali się
+    na czerwono — i będzie sygnałem, żeby dorobić do niego test end-to-end
+    przez changelistę (tak jak dla ``zaimportowal``).
+    """
+    assert "zaimportowano" not in _admin().list_filter
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "parametr", ["zaimportowal_kiedys", "zaimportowano_recznie", "zaimportowalem"]
+)
+def test_fd443_parametr_tylko_podobny_do_pol_importu_nie_wylacza_zawezenia(
+    rf, parametr
+):
+    """Detekcja idzie po pełnej nazwie pola albo po prefiksie ``<pole>__``.
+
+    ``startswith(pole)`` bez separatora wpuściłoby dowolny parametr
+    zaczynający się od tych liter i cicho gasiło domyślny widok.
+    """
+    _zgloszenia_wszystkich_statusow()
+
+    request = rf.get("/", {parametr: "1"})
+    filtr = StanObslugiFilter(request, {}, Zgloszenie_Publikacji, _admin())
+
+    assert filtr.czy_domyslne_zawezenie() is True
+
+    qs = filtr.queryset(request, Zgloszenie_Publikacji.objects.all())
+    assert set(qs.values_list("status", flat=True)) == STATUSY_DO_OBSLUGI
 
 
 # --------------------------------------------------------------------------

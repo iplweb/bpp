@@ -107,6 +107,18 @@ zastępują.
 | **D17** | **Filtr „Stan obsługi" przepuszcza queryset, gdy jawnie wybrano `status`** | oba filtry składały się koniunkcją, więc kliknięcie „status → spam" dawało pustą listę bez wyjaśnienia. `choices()` nie zaznacza wtedy „Do obsługi", żeby UI nie kłamał o zawężeniu |
 | **D18** | **Informację zwrotną niesie callout, nie flash** | `base.html` renderuje ramkę komunikatów **dwukrotnie** (`:184`, `:210`), więc flash pokazywałby się 2×, a z calloutem 3×. Callout jest idempotentny i trwały (przeżywa F5); znika ~25 linii maszynerii „pokaż dokładnie raz" |
 
+### Decyzje z drugiej rundy recenzji
+
+Druga runda potwierdziła D11–D18 jako poprawnie wdrożone, ale wykazała, że
+**naprawa D17 wyhodowała swoje rodzeństwo**.
+
+| # | Decyzja | Uzasadnienie |
+|---|---|---|
+| **D19** | **Przezroczystość filtra obejmuje `status`, `zaimportowal` i `zaimportowano`** — nie samo `status` | `zaimportowal` jest niepuste **wyłącznie** na zgłoszeniach `ZAIMPORTOWANY`, czyli spoza grupy „Do obsługi". Koniunkcja z domyślnym zawężeniem była więc **sprzeczna z definicji**: kliknięcie dowolnej osoby w filtrze „zaimportował" zawsze dawało zero wyników. Lista pól zamiast pojedynczej stałej, żeby kolejny filtr skorelowany ze statusem nie powtórzył tego błędu |
+| **D20** | **Tryb DjangoQL liczy się dopiero z niepustym `q`** | samo przełączenie trybu bez wpisanego zapytania nie jest wyborem operatora — domyślny widok „Do obsługi" ma zostać |
+| **D21** | **`zwiaz_automatycznie` też przez warunkowy `UPDATE`** | sprawdzenie `zgloszenie_id` na obiekcie w pamięci + bezwarunkowy zapis zostawiało okno: gałąź idempotency `FetchView` zapisuje **równolegle**, więc auto-match po DOI mógł przestemplować jawny wybór operatora i oznaczyć inne zgłoszenie. Reguła „tylko gdy puste" należy do klauzuli `WHERE`, nie do kodu Pythona — symetrycznie do widoku |
+| **D22** | **Zapis zwrotny ustawia `ostatnio_zmieniony` jawnie** | `.update()` omija `auto_now`, a `Meta.ordering` sortuje po tym polu — bez tego świeżo zaimportowane zgłoszenie zostawałoby ze starą datą na dole listy |
+
 ## 4. Zmiany w modelach
 
 ### 4.1 `zglos_publikacje` — migracja `0027` (ostatnia istniejąca: `0026`)
@@ -525,7 +537,9 @@ klas, `@pytest.mark.django_db`, `model_bakery.baker.make`.
 | Podwójny import tego samego zgłoszenia | ukrycie przycisku „Użyj importera" dla `ZAIMPORTOWANY` (§7) + D15 |
 | Wyjątek w zapisie zwrotnym → duplikat po „Ponów" | zapis zwrotny poza `atomic`, w wąskim `try/except` z `logger.exception` + Rollbar, bez re-raise: sesja zostaje `COMPLETED` |
 | Watchdog uzna żywe sesje za martwe | `update_fields` w zadaniach **zawsze** zawiera `modified` — `auto_now` odpala się tylko dla pól z listy, a `is_stalled()` czyta to pole |
-| Dane nieosiągalne z UI po dodaniu filtra | przezroczystość filtra przy jawnym wyborze statusu (D17) + `WYMAGA_ZMIAN` w „Do obsługi" (D16) |
+| Dane nieosiągalne z UI po dodaniu filtra | przezroczystość przy jawnym wyborze statusu (D17), przy `zaimportowal`/`zaimportowano` (D19) i przy zapytaniu DjangoQL (D20) + `WYMAGA_ZMIAN` w „Do obsługi" (D16). Grupy **partycjonują** wszystkie statusy, więc żaden nie może wypaść niezauważony |
+| Auto-match przestemplowuje jawny wybór operatora | `zwiaz_automatycznie` przez warunkowy `UPDATE … WHERE zgloszenie IS NULL` (D21) |
+| Zaimportowane zgłoszenie ginie na dole listy | `ostatnio_zmieniony` ustawiany jawnie, bo `.update()` omija `auto_now` (D22) |
 | Rozjazd paska postępu | reużycie etapu `prefill_zgl`, zero nowych nazw (§6B) |
 | Kolizja numerów migracji importera | numer `0020` podany jawnie (§4.2) |
 | Dwie migracje w jednej gałęzi | `make baseline-update` raz, przy scalaniu — nie w gałęzi |

@@ -244,8 +244,14 @@ def zwiaz_automatycznie(session):
     (ścieżka C, ``views.zgloszenie.ZgloszenieWyborView``).
 
     Nie nadpisuje istniejącego wiązania — jawny wybór (ścieżka A) jest
-    zawsze mocniejszy od heurystyki po DOI.
+    zawsze mocniejszy od heurystyki po DOI. Reguła „tylko gdy puste" siedzi
+    w klauzuli ``WHERE``, nie w sprawdzeniu na obiekcie w pamięci: gałąź
+    idempotency ``FetchView`` zapisuje wiązanie **równolegle**, więc między
+    odczytem a zapisem jest okno, w którym auto-match po DOI przestemplowałby
+    jawny wybór operatora — i oznaczone zostałoby inne zgłoszenie.
     """
+    from .models import ImportSession
+
     if session.zgloszenie_id:
         return False
 
@@ -254,8 +260,21 @@ def zwiaz_automatycznie(session):
     if len(kandydaci) != 1:
         return False
 
+    zwiazane = ImportSession.objects.filter(
+        pk=session.pk, zgloszenie__isnull=True
+    ).update(zgloszenie=kandydaci[0])
+
+    if not zwiazane:
+        # Ktoś (ścieżka A) zdążył w międzyczasie — jego wybór wygrywa.
+        session.refresh_from_db(fields=["zgloszenie"])
+        logger.info(
+            "Sesja importu %s została w międzyczasie związana jawnie — "
+            "pomijam auto-wiązanie po DOI.",
+            session.pk,
+        )
+        return False
+
     session.zgloszenie = kandydaci[0]
-    session.save(update_fields=["zgloszenie"])
     return True
 
 
@@ -316,16 +335,21 @@ def oznacz_jako_zaimportowane(session, record):
         )
         return False
 
+    teraz = timezone.now()
     zaktualizowane = (
         Zgloszenie_Publikacji.objects.filter(pk=session.zgloszenie_id)
         .exclude(status__in=_wykluczone_statusy())
         .update(
             status=Zgloszenie_Publikacji.Statusy.ZAIMPORTOWANY,
-            zaimportowano=timezone.now(),
+            zaimportowano=teraz,
             zaimportowal_id=session.created_by_id,
             content_type=ContentType.objects.get_for_model(record),
             object_id=record.pk,
             kod_do_edycji=None,
+            # ``.update()`` omija ``auto_now``, a ``Meta.ordering`` sortuje po
+            # tym polu — bez jawnego ustawienia świeżo zaimportowane
+            # zgłoszenie zostawałoby ze starą datą na dole listy.
+            ostatnio_zmieniony=teraz,
         )
     )
 

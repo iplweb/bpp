@@ -625,6 +625,66 @@ def test_zapis_zwrotny_przy_zero_zaktualizowanych_wierszy_loguje(importer_user, 
     assert any(str(int(STATUSY.SPAM)) in m for m in komunikaty), komunikaty
 
 
+@pytest.mark.django_db
+def test_zapis_zwrotny_odswieza_ostatnio_zmieniony(importer_user):
+    """``.update()`` omija ``auto_now`` — datę trzeba wpisać jawnie.
+
+    ``ostatnio_zmieniony`` ma ``auto_now=True``, ale bulk ``UPDATE`` nie
+    woła ``Model.save()``, więc pole zostawało z datą sprzed importu.
+    Zapis zwrotny jest realną zmianą zgłoszenia (status, rekord, kod do
+    edycji) — musi być po niej widoczny w polu „ostatnio zmieniony".
+    """
+    zgl = _zgl()
+    session = _sesja(importer_user, zgloszenie=zgl)
+
+    stara_data = timezone.now() - datetime.timedelta(days=3)
+    Zgloszenie_Publikacji.objects.filter(pk=zgl.pk).update(
+        ostatnio_zmieniony=stara_data
+    )
+    przed = Zgloszenie_Publikacji.objects.values_list(
+        "ostatnio_zmieniony", flat=True
+    ).get(pk=zgl.pk)
+    assert przed == stara_data
+
+    assert oznacz_jako_zaimportowane(session, _rekord()) is True
+
+    po, zaimportowano = Zgloszenie_Publikacji.objects.values_list(
+        "ostatnio_zmieniony", "zaimportowano"
+    ).get(pk=zgl.pk)
+
+    assert po > przed, "``ostatnio_zmieniony`` zamarło na dacie sprzed importu"
+    # Jeden ``timezone.now()`` na cały UPDATE — obie kolumny opisują to samo
+    # zdarzenie, więc rozjazd znaczyłby dwa niezależne odczyty zegara.
+    assert po == zaimportowano
+
+
+@pytest.mark.django_db
+def test_zaimportowane_zgloszenie_laduje_na_gorze_domyslnej_listy(importer_user):
+    """``Meta.ordering = ("-ostatnio_zmieniony", …)`` — to nie jest kosmetyka.
+
+    Zamrożona data spychała świeżo domknięte zgłoszenie na DÓŁ listy
+    w module redagowania: operator kończył import i nie widział efektu
+    tam, gdzie go szukał.
+    """
+    assert Zgloszenie_Publikacji._meta.ordering[0] == "-ostatnio_zmieniony"
+
+    zgl = _zgl(tytul="Zgłoszenie domykane importem")
+    Zgloszenie_Publikacji.objects.filter(pk=zgl.pk).update(
+        ostatnio_zmieniony=timezone.now() - datetime.timedelta(days=7)
+    )
+    for numer in range(3):
+        _zgl(tytul=f"Inne zgłoszenie {numer}")
+
+    kolejnosc = list(Zgloszenie_Publikacji.objects.values_list("pk", flat=True))
+    assert kolejnosc[-1] == zgl.pk, "stan wyjściowy: zgłoszenie jest na dole"
+
+    session = _sesja(importer_user, zgloszenie=zgl)
+    assert oznacz_jako_zaimportowane(session, _rekord()) is True
+
+    kolejnosc = list(Zgloszenie_Publikacji.objects.values_list("pk", flat=True))
+    assert kolejnosc[0] == zgl.pk
+
+
 # ==========================================================================
 # D. Lost update + ``modified`` w ``update_fields``
 # ==========================================================================
@@ -687,6 +747,77 @@ def test_task_fetch_nie_przestemplowuje_jawnego_wiazania_auto_matchem(importer_u
     assert session.zgloszenie_id == jawne.pk
     po_doi.refresh_from_db()
     assert po_doi.status == STATUSY.NOWY
+
+
+@pytest.mark.django_db
+def test_zwiaz_automatycznie_nie_przestemplowuje_wiazania_zapisanego_po_odczycie(
+    importer_user, caplog
+):
+    """Okno wyścigu PO ``refresh_from_db`` w zadaniu.
+
+    ``test_task_fetch_nie_przestemplowuje_jawnego_wiazania_auto_matchem``
+    pokrywa zapis widoku, który zdążył PRZED odświeżeniem instancji w tasku.
+    Tu symulujemy drugą połowę okna: instancja w pamięci ma
+    ``zgloszenie_id = None``, ale w bazie jawne wiązanie JUŻ jest.
+
+    Dopóki reguła „tylko gdy puste" siedziała w sprawdzeniu na obiekcie
+    w pamięci, a zapis był bezwarunkowym ``save(update_fields=…)``,
+    auto-match po DOI przestemplowywał jawny wybór operatora — i domknięte
+    zostawało INNE zgłoszenie niż to, które operator wskazał.
+    """
+    session = _sesja(importer_user, doi=DOI)
+    jawne = _zgl(strona_www="https://doi.org/10.9999/jawne")
+    po_doi = _zgl(strona_www=f"https://doi.org/{DOI}", tytul="Kandydat po DOI")
+
+    # Ścieżka A (widok) zapisuje wiązanie już po tym, jak zadanie wczytało
+    # swój wiersz — instancja w pamięci nadal go nie widzi.
+    ImportSession.objects.filter(pk=session.pk).update(zgloszenie=jawne)
+    assert session.zgloszenie_id is None, "obiekt w pamięci nie widzi zapisu"
+
+    # Kontrola pozytywna założeń: auto-match MA jednego kandydata, więc
+    # gdyby nie warunek w ``WHERE``, zapis by się wykonał.
+    assert list(kandydaci_dla_sesji(session)) == [po_doi]
+
+    with caplog.at_level(logging.INFO, logger="importer_publikacji.zgloszenia"):
+        assert zwiaz_automatycznie(session) is False
+
+    w_bazie = ImportSession.objects.values_list("zgloszenie", flat=True).get(
+        pk=session.pk
+    )
+    assert w_bazie == jawne.pk, "auto-match przestemplował jawny wybór"
+
+    # ``refresh_from_db`` w gałęzi przegranej: instancja w pamięci przestaje
+    # kłamać, więc dalszy ciąg zadania (zapis zwrotny) oznacza właściwe
+    # zgłoszenie, a nie żadne.
+    assert session.zgloszenie_id == jawne.pk
+
+    assert any("w międzyczasie" in r.getMessage() for r in caplog.records), [
+        r.getMessage() for r in caplog.records
+    ]
+
+
+@pytest.mark.django_db
+def test_zwiaz_automatycznie_wiaze_gdy_w_bazie_nadal_pusto(importer_user):
+    """Kontrola pozytywna do testu wyżej: bez wyścigu wiązanie powstaje.
+
+    Bez tego warunkowy ``UPDATE`` mógłby nie wiązać NIGDY i test wyścigu
+    i tak byłby zielony.
+    """
+    session = _sesja(importer_user, doi=DOI)
+    kandydat = _zgl(strona_www=f"https://doi.org/{DOI}")
+
+    assert (
+        ImportSession.objects.values_list("zgloszenie", flat=True).get(pk=session.pk)
+        is None
+    )
+
+    assert zwiaz_automatycznie(session) is True
+
+    assert (
+        ImportSession.objects.values_list("zgloszenie", flat=True).get(pk=session.pk)
+        == kandydat.pk
+    )
+    assert session.zgloszenie_id == kandydat.pk
 
 
 @pytest.mark.django_db

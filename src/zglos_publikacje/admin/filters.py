@@ -95,9 +95,19 @@ class StanObslugiFilter(SimpleListFilter):
     title = "stan obsługi"
     parameter_name = "stan_obslugi"
 
-    #: Nazwa pola, po którym filtruje sąsiedni filtr ``"status"`` z
-    #: ``list_filter``. Parametry w URL-u to ``status`` / ``status__<lookup>``.
-    POLE_STATUSU = "status"
+    #: Pola sąsiednich filtrów z ``list_filter``, których jawny wybór ma
+    #: wyłączyć domyślne zawężenie. Parametry w URL-u to ``<pole>`` albo
+    #: ``<pole>__<lookup>``.
+    #:
+    #: ``status`` — bo inaczej „status → spam" wpadałby w koniunkcję
+    #: z ``status__in=(0, 2, 3)`` i dawał pustą listę.
+    #:
+    #: ``zaimportowal``/``zaimportowano`` — bo te pola są niepuste
+    #: **wyłącznie** na zgłoszeniach ZAIMPORTOWANYCH, czyli spoza grupy
+    #: „Do obsługi". Bez nich koniunkcja jest sprzeczna z definicji
+    #: i kliknięcie osoby w filtrze „zaimportował" ZAWSZE dawało zero
+    #: wyników — dokładnie ta klasa błędu, którą naprawia ``status``.
+    POLA_WYLACZAJACE_ZAWEZENIE = ("status", "zaimportowal", "zaimportowano")
 
     DO_OBSLUGI = "do_obslugi"
     ZALATWIONE = "zalatwione"
@@ -119,10 +129,18 @@ class StanObslugiFilter(SimpleListFilter):
         super().__init__(request, params, model, model_admin)
         # ``request.GET``, nie ``params``: Django zdejmuje z ``params`` klucze
         # skonsumowane przez kolejne filtry, a nas interesuje surowy URL.
-        self.status_wybrany_recznie = any(
-            klucz == self.POLE_STATUSU or klucz.startswith(f"{self.POLE_STATUSU}__")
-            for klucz in request.GET
+        self.status_wybrany_recznie = self._inny_filtr_wybrany(
+            request
         ) or self._djangoql_aktywne(request)
+
+    @classmethod
+    def _inny_filtr_wybrany(cls, request) -> bool:
+        """Czy operator wybrał ręcznie któryś z sąsiednich filtrów?"""
+        return any(
+            klucz == pole or klucz.startswith(f"{pole}__")
+            for klucz in request.GET
+            for pole in cls.POLA_WYLACZAJACE_ZAWEZENIE
+        )
 
     @staticmethod
     def _djangoql_aktywne(request) -> bool:
@@ -136,8 +154,14 @@ class StanObslugiFilter(SimpleListFilter):
 
         Skoro operator pisze zapytanie ręcznie, domyślne zawężenie ma zejść
         mu z drogi — tak samo jak przy jawnym wyborze w filtrze „status".
+
+        Sam przełączony tryb bez treści zapytania (``q`` puste) nie liczy się
+        jako wybór: operator jeszcze nic nie napisał, więc domyślny widok
+        „Do obsługi" ma zostać.
         """
-        return request.GET.get(DJANGOQL_SEARCH_MARKER) == "on"
+        return request.GET.get(DJANGOQL_SEARCH_MARKER) == "on" and bool(
+            request.GET.get("q", "").strip()
+        )
 
     def lookups(self, request, model_admin):
         return [
