@@ -838,6 +838,17 @@ CELERYBEAT_SCHEDULE = {
         "task": "import_pracownikow.tasks.usun_stare_pliki_importu_pracownikow",
         "schedule": crontab(hour=1, minute=15),  # Daily at 1:15 AM
     },
+    # Retencja osieroconych rejestracji DCR (bpp #656). Otwarta rejestracja
+    # klientów MCP (RFC 7591, POST /o/register/) tworzy Application przy każdym
+    # udanym żądaniu i nic tego nigdy nie usuwało — tabela rosła monotonicznie.
+    # Kasuje wyłącznie rejestracje oznaczone prefiksem `dcr-`, które nie mają
+    # ŻADNEGO tokenu ani grantu (czyli nigdy nie dokończyły flow) i są starsze
+    # niż 7 dni. Aplikacje w użyciu są nietykalne — skasowanie kaskadowałoby na
+    # tokeny i wylogowało użytkownika.
+    "oauth-mcp-usun-osierocone-rejestracje-dcr": {
+        "task": "oauth_mcp.tasks.usun_osierocone_aplikacje_oauth",
+        "schedule": crontab(hour=1, minute=45),  # Daily at 1:45 AM
+    },
 }
 
 
