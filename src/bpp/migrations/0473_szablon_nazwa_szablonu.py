@@ -39,7 +39,7 @@ class Migration(migrations.Migration):
     atomic = False
 
     dependencies = [
-        ("bpp", "0467_seed_crossref_mapper_rows"),
+        ("bpp", "0472_constraint_autor_jednostka_bez_daty"),
         ("dbtemplates", "0002_alter_template_creation_date_and_more"),
     ]
 

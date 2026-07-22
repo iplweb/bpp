@@ -345,7 +345,7 @@ git commit -m "feat(dbtemplates): usun_dbtemplate_i_przebuduj — guard + rebuil
 
 **Files:**
 - Modify: `src/bpp/models/szablondlaopisubibliograficznego.py` (całość — pola, manager, render, `__str__`, `clean`)
-- Create: `src/bpp/migrations/0468_szablon_nazwa_szablonu.py`
+- Create: `src/bpp/migrations/0473_szablon_nazwa_szablonu.py`
 - Modify: `src/bpp/tests/test_opis_bibliograficzny.py` (usuń `_sync`; `template=`→`nazwa_szablonu=`)
 
 **Interfaces:**
@@ -522,7 +522,7 @@ class SzablonDlaOpisuBibliograficznego(models.Model):
         )
 ```
 
-- [ ] **Step 4: Utwórz migrację** `src/bpp/migrations/0468_szablon_nazwa_szablonu.py`
+- [ ] **Step 4: Utwórz migrację** `src/bpp/migrations/0473_szablon_nazwa_szablonu.py`
 
 ```python
 from django.db import migrations, models
@@ -601,7 +601,7 @@ Expected: PASS (render #329 bez `_sync`; `clean()`; rozne_opisy; nulltest).
 
 ```bash
 git add src/bpp/models/szablondlaopisubibliograficznego.py \
-  src/bpp/migrations/0468_szablon_nazwa_szablonu.py \
+  src/bpp/migrations/0473_szablon_nazwa_szablonu.py \
   src/bpp/tests/test_opis_bibliograficzny.py
 git commit -m "feat(opis): SzablonDlaOpisu FK->nazwa_szablonu + migracja kasująca wiersz (#329)"
 ```
