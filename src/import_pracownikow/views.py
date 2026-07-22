@@ -1,6 +1,7 @@
 # Create your views here.
 
 import os
+from collections import defaultdict
 
 from braces.views import GroupRequiredMixin
 from django.contrib import messages
@@ -30,6 +31,7 @@ from liveops.views import CreateLiveOperationView, RestartView
 
 from bpp.models import (
     Autor,
+    Autor_Jednostka,
     Jednostka,
     StanowiskoDydaktyczne,
     StopienSluzbowy,
@@ -102,6 +104,32 @@ class WymagajUczelniZRequestuMixin:
         u = obj.uczelnia_do_integracji()
         if u is not None and u != self.uczelnia_biezaca:
             raise Http404
+
+
+def wstepnie_zaladuj_okresy(rows):
+    """Zasila memo ``_aj_lista_cache`` wszystkich wierszy JEDNYM zapytaniem.
+
+    ``ImportPracownikowRow._aj_lista()`` memoizuje listę okresów
+    ``Autor_Jednostka`` na instancji, ale memo jest per-wiersz — na liście setek
+    wierszy dawało to jedno zapytanie NA WIERSZ (``bpp.autor_jednostka`` nie jest
+    w ``CACHEOPS``, więc każde szło do PostgreSQL). Wypełniamy to samo memo
+    hurtowo; logika modelu pozostaje nietknięta, korzystamy z jej kontraktu.
+
+    Wiersze bez pary ``(autor, jednostka)`` też dostają wpis (pustą listę), żeby
+    ``hasattr`` w ``_aj_lista`` nie odpalił zapytania. ``rows`` MUSI być tą samą
+    listą instancji, która pójdzie do renderu — inaczej memo trafi w inne obiekty.
+    """
+    pary = {(r.autor_id, r.jednostka_id) for r in rows if r.autor_id and r.jednostka_id}
+    mapa = defaultdict(list)
+    if pary:
+        for aj in Autor_Jednostka.objects.filter(
+            autor_id__in={a for a, _ in pary},
+            jednostka_id__in={j for _, j in pary},
+        ):
+            mapa[(aj.autor_id, aj.jednostka_id)].append(aj)
+    for row in rows:
+        row._aj_lista_cache = mapa.get((row.autor_id, row.jednostka_id), [])
+    return rows
 
 
 def oznacz_przepiecie_prac(rows, parent):
@@ -734,6 +762,20 @@ class ImportPracownikowResultsView(
                     output_field=IntegerField(),
                 )
             )
+            .select_related(
+                # `Jednostka.__str__` czyta `self.uczelnia.uzywaj_wydzialow`, a
+                # szablon renderuje DWIE jednostki na wiersz (`row.jednostka`
+                # i `row.autor.aktualna_jednostka`). `select_related` tworzy
+                # osobną instancję `Jednostka` per wiersz, więc cache FK na
+                # instancji nie pomaga — bez tego 2 zapytania na wiersz.
+                "jednostka__uczelnia",
+                "autor__aktualna_jednostka__uczelnia",
+                # Gdy `uzywaj_wydzialow` jest włączone, `__str__` sięga dalej po
+                # `self.wydzial`. `jednostka__wydzial` jest już w
+                # `get_details_set()`; tu brakowało odpowiednika dla jednostki
+                # aktualnej autora.
+                "autor__aktualna_jednostka__wydzial",
+            )
             .prefetch_related(
                 Prefetch(
                     "kandydaci",
@@ -753,8 +795,13 @@ class ImportPracownikowResultsView(
             parent_object=parent,
             **kwargs,
         )
+        # Jedna lista instancji dla wszystkich adnotacji i dla renderu — memo
+        # `_aj_lista_cache` musi trafić w te same obiekty, które pójdą do
+        # szablonu.
+        rows = list(ctx["object_list"])
+        wstepnie_zaladuj_okresy(rows)
         if parent.edytowalny_podglad:
-            oznacz_przepiecie_prac(list(ctx["object_list"]), parent)
+            oznacz_przepiecie_prac(rows, parent)
         # Pasek filtrów stanu pól — etykiety z rejestru POLA_ROZNIC (jedno źródło
         # prawdy z modelem/szablonem). Dzielimy na ZAWSZE WIDOCZNE (główne) i
         # ZWIJANE (dodatkowe, w <details>). Stopień/stanowisko wypadają całkiem,

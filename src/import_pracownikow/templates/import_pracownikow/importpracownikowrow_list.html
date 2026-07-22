@@ -167,6 +167,87 @@
             </table>
         </div>
 
+        {# Leniwy Select2 na autocomplete importu — RAZ NA STRONĘ. #}
+        {# Wcześniej ten sam blok (3,8 KB) był w partialu wiersza, więc lądował #}
+        {# w HTML-u tyle razy, ile wierszy — przy 1000 wierszy 3,8 MB duplikatu. #}
+        {# Kod od początku był delegacją zdarzeń na `document`, więc jedna #}
+        {# rejestracja obsługuje też wiersze wstrzykiwane później przez HTMX #}
+        {# (listener `htmx:afterSettle` inicjalizuje odsłonięte pickery). #}
+        {# Guard `__bppImportAutorPicker` ZOSTAJE — chroni przed podwójną #}
+        {# rejestracją, gdyby blok trafił kiedyś na stronę drugi raz. #}
+        <script>
+        (function () {
+            if (window.__bppImportAutorPicker) return;
+            window.__bppImportAutorPicker = true;
+
+            function initPicker(wrap) {
+                var sel = wrap.querySelector("select[data-autocomplete-url]");
+                if (!sel || sel.dataset.select2Init || !window.jQuery) return;
+                sel.dataset.select2Init = "1";
+                window.jQuery(sel).select2({
+                    width: "220px",
+                    ajax: {
+                        url: sel.dataset.autocompleteUrl,
+                        dataType: "json",
+                        delay: 250,
+                        data: function (params) { return {q: params.term}; },
+                        processResults: function (data) { return data; }
+                    },
+                    minimumInputLength: 2,
+                    placeholder: "Szukaj autora…",
+                    allowClear: true,
+                    language: "pl"
+                });
+                // htmx słucha natywnego "change" (addEventListener); Select2
+                // emituje "change" przez system zdarzeń jQuery, którego natywny
+                // listener NIE łapie → POST dopasuj-autora nigdy nie leciał, a
+                // wybór autora „nie zapisywał się". Mostek: na select2:select /
+                // select2:unselect wystrzel natywny "change", który htmx podłapie
+                // i wykona hx-post (bubbles, bo formularz jest rodzicem selecta).
+                window.jQuery(sel).on(
+                    "select2:select select2:unselect",
+                    function () {
+                        sel.dispatchEvent(
+                            new Event("change", { bubbles: true })
+                        );
+                    }
+                );
+            }
+
+            document.addEventListener("click", function (e) {
+                var toggle = e.target.closest(".js-zmien-autora");
+                if (!toggle) return;
+                e.preventDefault();
+                var wrap = toggle.parentElement.querySelector(".js-autor-picker");
+                if (!wrap) return;
+                wrap.hidden = false;
+                toggle.style.display = "none";
+                initPicker(wrap);
+            });
+
+            // Radio „Dopasuj do istniejącego" (wiersz brak) odsłania
+            // leniwy Select2. Picker jest rodzeństwem formularza-radia w
+            // .import-autor-akcje, więc szukamy go w tym kontenerze.
+            document.addEventListener("change", function (e) {
+                var radio = e.target.closest(".js-brak-radio-dopasuj");
+                if (!radio || !radio.checked) return;
+                var akcje = radio.closest(".import-autor-akcje");
+                var wrap = akcje &&
+                    akcje.querySelector(".js-autor-picker");
+                if (!wrap) return;
+                wrap.hidden = false;
+                initPicker(wrap);
+            });
+
+            document.body.addEventListener("htmx:afterSettle", function (e) {
+                var scope = (e.detail && e.detail.target) || document;
+                scope
+                    .querySelectorAll(".js-autor-picker:not([hidden])")
+                    .forEach(initPicker);
+            });
+        })();
+        </script>
+
         {# Filtr rekordów po stanie pól (data-diff-* na 1. <tr> rekordu) + tekst. #}
         {# Zastępuje DataTables (usunięte): karta = 2×<tr> w <tbody data-rekord>, #}
         {# sort zbędny; HTMX swapuje innerHTML <tbody>, więc data-diff-* są zawsze #}
