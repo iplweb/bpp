@@ -378,3 +378,32 @@ class TestZapiszMongodb:
 
         # Clean up
         result.delete()
+
+
+def test_ensure_institution_uses_institution_client_endpoint():
+    from pbn_api.models import Institution
+    from pbn_integrator.utils.mongodb_ops import ensure_institution_exists
+
+    client = MagicMock()
+    payload = {
+        "mongoId": "institution-123",
+        "status": "ACTIVE",
+        "verificationLevel": "VERIFIED",
+        "verified": True,
+        "versions": [],
+    }
+    client.get_institution_by_id.return_value = payload
+
+    with (
+        patch.object(
+            Institution.objects,
+            "get",
+            side_effect=Institution.DoesNotExist,
+        ),
+        patch("pbn_integrator.utils.mongodb_ops.zapisz_mongodb") as save,
+    ):
+        ensure_institution_exists(client, "institution-123")
+
+    client.get_institution_by_id.assert_called_once_with("institution-123")
+    client.get_publication_by_id.assert_not_called()
+    save.assert_called_once_with(payload, Institution, client=client)

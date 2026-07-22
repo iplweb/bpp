@@ -56,6 +56,7 @@ Thumbs.db
 htmlcov/
 .tox/
 .pytest_cache/
+.ruff_cache/
 .mypy_cache/
 .hypothesis/
 nosetests.xml
@@ -70,6 +71,7 @@ CHANGELOG*
 AUTHORS
 CONTRIBUTORS
 TODO
+
 
 # Build artifacts
 build/

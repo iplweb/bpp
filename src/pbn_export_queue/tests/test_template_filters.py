@@ -44,6 +44,20 @@ pbn_api.exceptions.HttpException: (500, '/api/v1/publications', '{"code":500,"me
 
 
 @pytest.mark.django_db
+def test_format_pbn_error_accepts_extracted_exception_path():
+    komunikat = """Traceback (most recent call last):
+pbn_client.exceptions.PBNValidationError: (400, '/api/v1/publications', '{"details":{"doi":"Duplicate"}}')
+"""
+
+    result = format_pbn_error(komunikat, "MERYT")
+
+    assert "Szczegóły:" in result
+    assert "doi" in result
+    assert "Duplicate" in result
+    assert "Endpoint: /api/v1/publications" in result
+
+
+@pytest.mark.django_db
 def test_format_pbn_error_no_rodzaj_bledu_shows_full_header():
     """When rodzaj_bledu is not provided, show full header (backward compatibility)"""
     komunikat = """Traceback (most recent call last):

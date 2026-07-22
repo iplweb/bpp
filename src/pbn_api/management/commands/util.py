@@ -1,11 +1,13 @@
 import warnings
 
+from django.conf import settings
 from django.core.management import BaseCommand, CommandError
+from pbn_client.conf import settings as pbn_defaults
+from pbn_client.utils import mask_secret
 
 from bpp.models import BppUser, Uczelnia
 from pbn_api.client import BppPBNClient, RequestsTransport
-from pbn_client.conf import settings
-from pbn_client.utils import mask_secret
+from pbn_api.reporting import rollbar_reporter
 
 
 def komunikat_bledu(exc):
@@ -96,19 +98,31 @@ class PBNBaseCommand(BaseCommand):
             options["app_id"] = (
                 uczelnia.pbn_app_name
                 if uczelnia and uczelnia.pbn_app_name
-                else settings.PBN_CLIENT_APP_ID
+                else getattr(
+                    settings,
+                    "PBN_CLIENT_APP_ID",
+                    pbn_defaults.PBN_CLIENT_APP_ID,
+                )
             )
         if options.get("app_token") is None:
             options["app_token"] = (
                 uczelnia.pbn_app_token
                 if uczelnia and uczelnia.pbn_app_token
-                else settings.PBN_CLIENT_APP_TOKEN
+                else getattr(
+                    settings,
+                    "PBN_CLIENT_APP_TOKEN",
+                    pbn_defaults.PBN_CLIENT_APP_TOKEN,
+                )
             )
         if options.get("base_url") is None:
             options["base_url"] = (
                 uczelnia.pbn_api_root
                 if uczelnia and uczelnia.pbn_api_root
-                else settings.PBN_CLIENT_BASE_URL
+                else getattr(
+                    settings,
+                    "PBN_CLIENT_BASE_URL",
+                    pbn_defaults.PBN_CLIENT_BASE_URL,
+                )
             )
         if options.get("user_token") is None:
             if uczelnia is not None and uczelnia.pbn_api_user_id is not None:
@@ -143,7 +157,18 @@ class PBNBaseCommand(BaseCommand):
                 "user_token not set, expect authorisation problems", stacklevel=2
             )
 
-        transport = RequestsTransport(app_id, app_token, base_url, user_token)
+        transport = RequestsTransport(
+            app_id,
+            app_token,
+            base_url,
+            user_token,
+            timeout=getattr(
+                settings,
+                "PBN_CLIENT_HTTP_TIMEOUT",
+                pbn_defaults.PBN_CLIENT_HTTP_TIMEOUT,
+            ),
+            reporter=rollbar_reporter,
+        )
         if verbose:
             # Tokeny maskowane (uwaga #4) — verbose zostaje w CI/logach.
             print("App ID\t\t", app_id)

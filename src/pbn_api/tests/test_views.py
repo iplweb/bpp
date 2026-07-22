@@ -1,11 +1,11 @@
 import base64
 import json
+from unittest.mock import MagicMock, patch
 
 import pytest
-from django.test import RequestFactory
+from django.test import RequestFactory, override_settings
 from django.urls import reverse
 from model_bakery import baker
-from unittest.mock import patch, MagicMock
 
 from bpp.models import Uczelnia
 from bpp.models.profile import BppUser
@@ -13,7 +13,7 @@ from pbn_api.exceptions import (
     AuthenticationConfigurationError,
     AuthenticationResponseError,
 )
-from pbn_api.views import TokenRedirectPage, TokenLandingPage
+from pbn_api.views import TokenLandingPage, TokenRedirectPage
 
 
 @pytest.fixture
@@ -80,7 +80,7 @@ def test_token_redirect_page_with_next_parameter(rf, user, uczelnia):
     with patch("pbn_api.views.OAuthMixin.get_auth_url") as mock_get_auth:
         mock_get_auth.return_value = "https://oauth.example.com/auth"
 
-        url = view.get_redirect_url()
+        view.get_redirect_url()
 
         # Check that state is included
         mock_get_auth.assert_called_once()
@@ -101,7 +101,7 @@ def test_token_redirect_page_with_referer(rf, user, uczelnia):
     with patch("pbn_api.views.OAuthMixin.get_auth_url") as mock_get_auth:
         mock_get_auth.return_value = "https://oauth.example.com/auth"
 
-        url = view.get_redirect_url()
+        view.get_redirect_url()
 
         mock_get_auth.assert_called_once()
 
@@ -118,7 +118,7 @@ def test_token_redirect_page_state_encoding(rf, user, uczelnia):
     with patch("pbn_api.views.OAuthMixin.get_auth_url") as mock_get_auth:
         mock_get_auth.return_value = "https://oauth.example.com/auth"
 
-        url = view.get_redirect_url()
+        view.get_redirect_url()
 
         mock_get_auth.assert_called_once()
         call_kwargs = mock_get_auth.call_args[1]
@@ -155,11 +155,12 @@ def test_token_landing_page_missing_ott_parameter(rf, user, uczelnia):
     view = TokenLandingPage()
     view.request = request
 
-    with pytest.raises(Exception):
+    with pytest.raises(TypeError):
         view.get_redirect_url()
 
 
 @pytest.mark.django_db
+@override_settings(PBN_CLIENT_HTTP_TIMEOUT="4,10")
 def test_token_landing_page_with_valid_ott(rf, user, uczelnia):
     """Test TokenLandingPage processes valid OTT token"""
     request = rf.get(reverse("pbn_api:callback") + "?ott=validtoken123")
@@ -179,6 +180,7 @@ def test_token_landing_page_with_valid_ott(rf, user, uczelnia):
                 url = view.get_redirect_url()
 
         assert url == "/"
+        assert mock_get_token.call_args.kwargs["timeout"] == "4,10"
 
 
 @pytest.mark.django_db
@@ -197,7 +199,7 @@ def test_token_landing_page_saves_pbn_token(rf, user, uczelnia):
             with patch(
                 "pbn_export_queue.tasks.kolejka_ponow_wysylke_prac_po_zalogowaniu.delay"
             ):
-                url = view.get_redirect_url()
+                view.get_redirect_url()
 
         # Refresh user from DB
         user.refresh_from_db()
@@ -293,7 +295,6 @@ def test_token_landing_page_authentication_response_error(rf, user, uczelnia):
 @pytest.mark.django_db
 def test_token_landing_page_sends_signal_on_success(rf, user, uczelnia):
     """Test TokenLandingPage sends signal when token is set successfully"""
-    from django.test.utils import override_settings
     from django.dispatch import receiver
 
     request = rf.get(reverse("pbn_api:callback") + "?ott=token123")
@@ -317,7 +318,7 @@ def test_token_landing_page_sends_signal_on_success(rf, user, uczelnia):
             with patch(
                 "pbn_export_queue.tasks.kolejka_ponow_wysylke_prac_po_zalogowaniu.delay"
             ):
-                url = view.get_redirect_url()
+                view.get_redirect_url()
 
 
 @pytest.mark.django_db
