@@ -1,7 +1,6 @@
 # Create your views here.
 
 import os
-from collections import defaultdict
 
 from braces.views import GroupRequiredMixin
 from django.contrib import messages
@@ -31,7 +30,6 @@ from liveops.views import CreateLiveOperationView, RestartView
 
 from bpp.models import (
     Autor,
-    Autor_Jednostka,
     Jednostka,
     StanowiskoDydaktyczne,
     StopienSluzbowy,
@@ -55,6 +53,7 @@ from import_pracownikow.models import (
     ProfilMapowania,
     wiersz_kwalifikuje_do_przepiecia,
 )
+from import_pracownikow.okresy import wstepnie_zaladuj_okresy
 from import_pracownikow.pbn import adnotuj_pbn_instytucjonalny
 from import_pracownikow.pewnosc import (
     CONFIDENCE_CHOICES,
@@ -104,32 +103,6 @@ class WymagajUczelniZRequestuMixin:
         u = obj.uczelnia_do_integracji()
         if u is not None and u != self.uczelnia_biezaca:
             raise Http404
-
-
-def wstepnie_zaladuj_okresy(rows):
-    """Zasila memo ``_aj_lista_cache`` wszystkich wierszy JEDNYM zapytaniem.
-
-    ``ImportPracownikowRow._aj_lista()`` memoizuje listę okresów
-    ``Autor_Jednostka`` na instancji, ale memo jest per-wiersz — na liście setek
-    wierszy dawało to jedno zapytanie NA WIERSZ (``bpp.autor_jednostka`` nie jest
-    w ``CACHEOPS``, więc każde szło do PostgreSQL). Wypełniamy to samo memo
-    hurtowo; logika modelu pozostaje nietknięta, korzystamy z jej kontraktu.
-
-    Wiersze bez pary ``(autor, jednostka)`` też dostają wpis (pustą listę), żeby
-    ``hasattr`` w ``_aj_lista`` nie odpalił zapytania. ``rows`` MUSI być tą samą
-    listą instancji, która pójdzie do renderu — inaczej memo trafi w inne obiekty.
-    """
-    pary = {(r.autor_id, r.jednostka_id) for r in rows if r.autor_id and r.jednostka_id}
-    mapa = defaultdict(list)
-    if pary:
-        for aj in Autor_Jednostka.objects.filter(
-            autor_id__in={a for a, _ in pary},
-            jednostka_id__in={j for _, j in pary},
-        ):
-            mapa[(aj.autor_id, aj.jednostka_id)].append(aj)
-    for row in rows:
-        row._aj_lista_cache = mapa.get((row.autor_id, row.jednostka_id), [])
-    return rows
 
 
 def oznacz_przepiecie_prac(rows, parent):
@@ -489,6 +462,12 @@ def _zwiaz_autora_z_wierszem(row, autor):
     row.utworz_nowego = False
     row.przepnij_prace = False
     row.wybrany_kandydat = None
+    # Zmiana autora przestawia praktycznie każdy stan pola (ekstraktory czytają
+    # autora i jego powiązanie), a filtr listy wyników działa na zmaterializowanym
+    # `stany_pol_snapshot` w SQL — bez przeliczenia tutaj filtr kłamałby po cichu
+    # aż do końca fazy osób. Liczymy przez `stany_pol_live()`, bo `stany_pol()`
+    # przy niepustym snapshocie zwróciłoby po prostu starą wartość.
+    row.stany_pol_snapshot = row.stany_pol_live()
     row.save(
         update_fields=[
             "autor",
@@ -499,6 +478,7 @@ def _zwiaz_autora_z_wierszem(row, autor):
             "utworz_nowego",
             "przepnij_prace",
             "wybrany_kandydat",
+            "stany_pol_snapshot",
         ]
     )
 
@@ -745,6 +725,18 @@ class ImportPracownikowResultsView(
         return obj
 
     def get_queryset(self):
+        # Backfill importów sprzed materializacji stanów pól. Filtr stanu pola
+        # działa w SQL na `stany_pol_snapshot`, więc wiersze z NULL-em byłyby
+        # dla niego niewidoczne. Robimy to RAZ na import (przy pierwszym wejściu
+        # po wdrożeniu) i wyłącznie dla wierszy pustych — niepusty snapshot bywa
+        # zamrożonym zapisem audytowym, którego nadpisanie skasowałoby ślad
+        # „co import zmienił". MUSI wykonać się PRZED filtrowaniem: warunek
+        # stanu „brak" używa `~Q(has_key)`, który dopasowałby także NULL-e.
+        if self.parent_object.importpracownikowrow_set.filter(
+            stany_pol_snapshot__isnull=True
+        ).exists():
+            self.parent_object.odswiez_stany_pol_wierszy(tylko_puste=True)
+
         # Rozstrzygnięte (twardy match + ręczny wybór operatora) na dół, wiersze
         # do rozstrzygnięcia (brak/wielu/zgadywanie) na górę, potem kolejność z
         # pliku. G5: prefetch kandydatów Z AUTOREM — partial dla wierszy `wielu`
