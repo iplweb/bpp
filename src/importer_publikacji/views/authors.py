@@ -188,16 +188,34 @@ def _find_matching_zgloszenie(session):
     return None
 
 
+def _zgloszenie_dla_prefilla(session):
+    """Zgłoszenie, z którego prefill ma brać dyscypliny.
+
+    Gdy sesja jest **związana** ze zgłoszeniem (FD#443: jawny wybór
+    operatora albo auto-wiązanie po DOI), prefill używa go wprost —
+    inaczej dyscypliny mogłyby przyjść z innego zgłoszenia niż to, które
+    import domknie (heurystyka ``_find_matching_zgloszenie`` dopasowuje
+    też po tytule).
+
+    Heurystyka zostaje wyłącznie jako fallback dla sesji niezwiązanych —
+    ich zachowanie jest bez zmian.
+    """
+    if session.zgloszenie_id:
+        return session.zgloszenie
+    return _find_matching_zgloszenie(session)
+
+
 def _prefill_dyscypliny_z_zgloszen(session):
     """Uzupełnij brakujące dyscypliny z danych zgłoszeń publikacji.
 
-    Szuka pasującego Zgloszenie_Publikacji (po DOI/tytule)
-    i kopiuje dyscypliny dla autorów, którym brakuje.
-    Nigdy nie nadpisuje istniejących wartości.
+    Bierze zgłoszenie związane z sesją, a gdy takiego nie ma — szuka
+    pasującego ``Zgloszenie_Publikacji`` heurystycznie (po DOI/tytule).
+    Kopiuje dyscypliny dla autorów, którym brakuje. Nigdy nie nadpisuje
+    istniejących wartości.
     """
     from zglos_publikacje.models import Zgloszenie_Publikacji_Autor
 
-    zgloszenie = _find_matching_zgloszenie(session)
+    zgloszenie = _zgloszenie_dla_prefilla(session)
     if not zgloszenie:
         return
 

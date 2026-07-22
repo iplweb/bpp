@@ -5,6 +5,13 @@
         Weryfikacja danych publikacji
     </h4>
 
+    {# Pierwszy ekran po pobraniu danych — tu operator decyduje, które #}
+    {# zgłoszenie publikacji ten import domknie (albo widzi potwierdzenie #}
+    {# wiązania jawnego z przycisku „Użyj importera”). Kandydaci wyliczani #}
+    {# przy renderowaniu, nie cache'owani w polu — lista nie starzeje się #}
+    {# względem stanu bazy. #}
+    {% include "importer_publikacji/_baner_zgloszenia.html" with kandydaci=session.kandydaci_zgloszen %}
+
     {% if existing %}
         <div class="callout alert">
             <span class="fi-alert"></span>

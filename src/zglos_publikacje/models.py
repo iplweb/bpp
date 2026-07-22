@@ -95,9 +95,26 @@ class Zgloszenie_Publikacji(
         PO_ZMIANACH = 3, "zmiany naniesione przez zgłaszającego"
         ODRZUCONO = 4, "odrzucono w całości"
         SPAM = 5, "spam"
+        ZAIMPORTOWANY = 6, "zaimportowany przez importer prac"
 
     status = models.PositiveSmallIntegerField(
         default=Statusy.NOWY, choices=Statusy.choices
+    )
+
+    # Audyt domknięcia zgłoszenia importerem prac (FD#443). Denormalizowany
+    # na zgłoszeniu — filtrowalny i sortowalny na liście, przeżywa skasowanie
+    # sesji importu. Jawne pole czasu, nie ``auto_now``: ``ostatnio_zmieniony``
+    # przesuwa każda edycja i nie jest wiarygodnym znacznikiem importu.
+    zaimportowano = models.DateTimeField(
+        "Zaimportowano", null=True, blank=True, db_index=True
+    )
+    zaimportowal = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="Zaimportował",
     )
 
     class Rodzaje(models.IntegerChoices):
@@ -288,6 +305,11 @@ class Zgloszenie_Publikacji(
     @property
     def pokazuj_przycisk_wydawnictwo_ciagle(self) -> bool:
         return self.rodzaj_zglaszanej_publikacji == self.Rodzaje.ARTYKUL
+
+    @property
+    def czy_zaimportowane(self) -> bool:
+        """Czy zgłoszenie zostało domknięte przez importer prac (FD#443)."""
+        return self.status == Zgloszenie_Publikacji.Statusy.ZAIMPORTOWANY
 
 
 class Zgloszenie_Publikacji_Autor(BazaModeluOdpowiedzialnosciAutorow):
