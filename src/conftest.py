@@ -1,6 +1,7 @@
+import os
 import random
 import time
-from datetime import timedelta
+from datetime import date
 from uuid import uuid4
 
 import pytest
@@ -12,7 +13,6 @@ from django.db import connections
 from django.db.utils import OperationalError
 from django.test import TransactionTestCase
 from django.test.client import Client, RequestFactory
-from django.utils import timezone
 from model_bakery import baker
 
 from bpp.tests.helpers import (  # noqa: F401 - re-export helpers
@@ -142,6 +142,210 @@ def _fixture_teardown(self):
 
 
 TransactionTestCase._fixture_teardown = _fixture_teardown
+
+
+# =============================================================================
+# Izolacja pod xdist: neutralizacja WYCIEKŁYCH scommitowanych danych domenowych.
+#
+# Problem (CI, sharding pytest-split + xdist -n auto): pod obciążeniem CI test,
+# który commituje dane poza rollback (transakcyjny / live-server / komenda z
+# własnym commitem), potrafi zostawić w bazie workera scommitowane wiersze
+# autorów/jednostek/stopni/stanowisk. Kolejne testy na tym samym workerze widzą
+# ambient dane → ``IntegrityError: bpp_jednostka_nazwa_key``,
+# ``bpp_stopiensluzbowy_nazwa_key``, albo asercje typu „pusta baza zwraca []"
+# pękają. Flake jest niezawodny na CI, ale niereprodukowalny lokalnie
+# (testcontainers, nawet -n 8) — dlatego bronimy się defensywnie, a nie przez
+# szukanie pojedynczego winowajcy.
+#
+# Baseline testowy ma 0 wierszy w tych tabelach (zweryfikowane), więc TRUNCATE
+# przed testem = przywrócenie stanu baseline (NIE rusza danych referencyjnych —
+# ``bpp_tytul``/``bpp_funkcja_autora``/… mają dane i NIE są tu wymienione).
+# CASCADE jest bezpieczny: żadna NIEPUSTA (referencyjna) tabela nie ma FK DO
+# tych tabel (zweryfikowane zapytaniem po information_schema), więc kaskada
+# zostaje w obrębie danych domenowych. Osobne autocommit-połączenie czyści
+# COMMITTED wiersze (poza transakcją testu). Leak-triggered: TRUNCATE odpala
+# się tylko gdy wykryty wyciek, więc w normalnym przypadku to 1 tani probe.
+#
+# DIAGNOSTYKA: przy wykryciu wycieku guard wypisuje do stderr (widoczne w
+# logach CI) które tabele wyciekły oraz najprawdopodobniejszego SPRAWCĘ —
+# poprzedni test DB na tym workerze. Bo guard sprawdza każdy test DB i czyści
+# przy każdym wykryciu, więc wyciek widziany na setupie testu X powstał po
+# ostatnim czystym stanie = w poprzednim teście DB. To ścieżka do docelowego
+# root-cause fixa (namierzyć i naprawić test commitujący poza rollback).
+# =============================================================================
+
+_LEAK_GUARD = {
+    "conn": None,
+    "poprzedni": "<start sesji>",
+    # Raporty zbieramy i drukujemy w pytest_sessionfinish (POZA per-test
+    # capture pytest-a) — inaczej print z fixture'a jest łykany i NIEwidoczny
+    # w logach CI (właśnie po to jest ta diagnostyka).
+    "raporty": [],
+}
+_LEAK_GUARD_TABLES = (
+    "bpp_autor",
+    "bpp_jednostka",
+    "bpp_stopiensluzbowy",
+    "bpp_stanowiskodydaktyczne",
+    "bpp_grupa_pracownicza",
+)
+
+
+def _leak_guard_conn(settings_dict):
+    import psycopg2
+
+    conn = _LEAK_GUARD["conn"]
+    if conn is not None and not conn.closed:
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+            return conn
+        except psycopg2.Error:
+            try:
+                conn.close()
+            except psycopg2.Error:
+                pass
+            _LEAK_GUARD["conn"] = None
+    conn = psycopg2.connect(
+        dbname=settings_dict["NAME"],
+        user=settings_dict.get("USER") or None,
+        password=settings_dict.get("PASSWORD") or None,
+        host=settings_dict.get("HOST") or None,
+        port=settings_dict.get("PORT") or None,
+    )
+    conn.autocommit = True
+    _LEAK_GUARD["conn"] = conn
+    return conn
+
+
+@pytest.fixture(autouse=True)
+def _neutralizuj_wyciekle_dane(request):
+    """Przed testem DB czyści ambient (scommitowane poza rollback) dane domenowe.
+
+    Patrz komentarz nad definicją ``_LEAK_GUARD_TABLES``. No-op dla testów bez
+    bazy i gdy nic nie wyciekło.
+    """
+    uzywa_db = (
+        request.node.get_closest_marker("django_db") is not None
+        or "db" in request.fixturenames
+        or "transactional_db" in request.fixturenames
+    )
+    if uzywa_db:
+        import psycopg2
+        from django.db import connection
+
+        # Per-tabela (nie jeden OR) — żeby w raporcie nazwać CO wyciekło.
+        probe = ", ".join(f"EXISTS(SELECT 1 FROM {t})" for t in _LEAK_GUARD_TABLES)
+        try:
+            conn = _leak_guard_conn(connection.settings_dict)
+            with conn.cursor() as cur:
+                cur.execute(f"SELECT {probe}")
+                obecne = cur.fetchone()
+                wyciekle = [
+                    t
+                    for t, jest in zip(_LEAK_GUARD_TABLES, obecne, strict=False)
+                    if jest
+                ]
+                if wyciekle:
+                    # Guard sprawdza KAŻDY test DB i czyści przy każdym wykryciu,
+                    # więc wyciek widziany na setupie tego testu powstał po
+                    # ostatnim czystym stanie — sprawcą jest poprzedni test DB
+                    # na tym workerze (xdist → proces = worker, stan per-proces).
+                    _LEAK_GUARD["raporty"].append(
+                        f"[LEAK-GUARD/V1] wyciek scommitowanych danych na setupie "
+                        f"{request.node.nodeid}: {', '.join(wyciekle)}. "
+                        f"Najprawdopodobniejszy sprawca (poprzedni test DB na tym "
+                        f"workerze): {_LEAK_GUARD['poprzedni']}"
+                    )
+                    # Bez RESTART IDENTITY — jak flush (_fixture_teardown używa
+                    # reset_sequences=False); sekwencje rosną dalej, brak
+                    # niespodzianek z pk=1.
+                    cur.execute(
+                        "TRUNCATE " + ", ".join(_LEAK_GUARD_TABLES) + " CASCADE"
+                    )
+            _LEAK_GUARD["poprzedni"] = request.node.nodeid
+        except psycopg2.Error:
+            # Guard jest best-effort: brak połączenia / brak tabel (np. test
+            # bez pełnej migracji) nie może wywalić samego testu.
+            pass
+    yield
+
+
+# =============================================================================
+# AUDYT SAMOWYSTARCZALNOŚCI (program B) — NARZĘDZIE DIAGNOSTYCZNE, env-gated.
+# AUDIT_WIPE_REFERENCE=1: przed każdym testem DB wymiata WSZYSTKIE niepuste
+# tabele referencyjne POZA odtwarzanymi przez post_migrate (django/auth/social,
+# raporty, oraz bpp_rodzajjednostki — pokryte fixem A). Symuluje stan CI po
+# transakcyjnym flushu z A. Lista FAILED/ERROR = testy zakładające niedeklarowany
+# słownik (reszta programu B). NIE zostaje w repo — odpalane na żądanie.
+# =============================================================================
+_AUDIT_EXCLUDE_PREFIXES = (
+    "django_",
+    "auth_",
+    "social_",
+    "silk_",
+    "nowe_raporty",  # post_migrate: seed_reports / create_entries
+    "raport_slotow",  # post_migrate: create_entries
+)
+_AUDIT_EXCLUDE_TABLES = frozenset({"bpp_rodzajjednostki"})  # post_migrate: fix A
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _audit_wipe_once(django_db_setup, django_db_blocker):
+    """AUDIT_WIPE_REFERENCE=1: JEDNORAZOWO po załadowaniu baseline wymiata
+    słowniki referencyjne (poza odtwarzanymi przez post_migrate — django/auth/
+    social/raporty + RodzajJednostki [fix A]). Potem testy lecą na tak
+    opróżnionej bazie; rollback (testy `db`) i flush (`transactional_db`)
+    utrzymują pustkę. FAILED/ERROR = test zakłada niedeklarowany słownik.
+
+    Odpalać JEDNOWĄTKOWO (bez xdist) — jeden TRUNCATE, jedna baza. Osobne
+    autocommit-połączenie (jak guard V1), więc TRUNCATE jest scommitowany
+    zanim ruszą testy.
+    """
+    if os.environ.get("AUDIT_WIPE_REFERENCE"):
+        import sys
+
+        from django.db import connection
+
+        with django_db_blocker.unblock():
+            conn = _leak_guard_conn(connection.settings_dict)
+            with conn.cursor() as cur:
+                cur.execute("SELECT tablename FROM pg_tables WHERE schemaname='public'")
+                niepuste = []
+                for (t,) in list(cur.fetchall()):
+                    if t.startswith(_AUDIT_EXCLUDE_PREFIXES) or (
+                        t in _AUDIT_EXCLUDE_TABLES
+                    ):
+                        continue
+                    cur.execute(f'SELECT EXISTS(SELECT 1 FROM "{t}")')
+                    if cur.fetchone()[0]:
+                        niepuste.append(t)
+                if niepuste:
+                    cur.execute("SET session_replication_role = replica")
+                    cur.execute(
+                        "TRUNCATE " + ", ".join(f'"{t}"' for t in niepuste) + " CASCADE"
+                    )
+                    cur.execute("SET session_replication_role = DEFAULT")
+        print(
+            f"\n[AUDIT] baseline wymieciony JEDNORAZOWO: {len(niepuste)} tabel "
+            f"{sorted(niepuste)}",
+            file=sys.stderr,
+        )
+    yield
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Drukuje raporty guarda (V1/V2) na KONIEC sesji — poza per-test capture
+    pytest-a, więc widoczne w logach CI (per worker xdist)."""
+    import sys
+
+    raporty = _LEAK_GUARD.get("raporty") or []
+    if raporty:
+        worker = os.environ.get("PYTEST_XDIST_WORKER", "master")
+        print(f"\n=== LEAK-GUARD raporty (worker {worker}) ===", file=sys.stderr)
+        for r in raporty:
+            print(r, file=sys.stderr)
+
 
 # =============================================================================
 # Fixtures użytkowników i klientów (przeniesione z tests_legacy/conftest.py)
@@ -392,10 +596,10 @@ def pbn_dyscyplina2(db, pbn_discipline_group):
 
     return Discipline.objects.get_or_create(
         parent_group=pbn_discipline_group,
-        uuid=uuid4(),
         code="202",
         name="druga dyscyplina",
         scientificFieldName="Dziedzina drugich dyscyplin",
+        defaults=dict(uuid=uuid4()),
     )[0]
 
 
@@ -403,18 +607,27 @@ def pbn_dyscyplina2(db, pbn_discipline_group):
 def pbn_discipline_group(db):
     from pbn_api.models import DisciplineGroup
 
-    n = timezone.now().date()
+    # Stały klucz naturalny (nie data bieżąca): leftover z sesji rozpoczętej
+    # wczoraj (reuse-db + crash teardown) nadal matchuje, więc nie powstaje
+    # drugi słownik. Data w przeszłości + validityDateTo=None => słownik jest
+    # ciągle „aktualny" wg DisciplineGroupManager.get_current (validityDateFrom
+    # <= dziś oraz validityDateTo IS NULL).
+    stala_data_od = date(2020, 1, 1)
     try:
         return DisciplineGroup.objects.get_or_create(
             validityDateTo=None,
-            validityDateFrom=n - timedelta(days=7),
+            validityDateFrom=stala_data_od,
             defaults=dict(uuid=uuid4()),
         )[0]
     except DisciplineGroup.MultipleObjectsReturned:
-        return DisciplineGroup.objects.filter(
-            validityDateTo=None,
-            validityDateFrom=n - timedelta(days=7),
-        ).first()
+        return (
+            DisciplineGroup.objects.filter(
+                validityDateTo=None,
+                validityDateFrom=stala_data_od,
+            )
+            .order_by("pk")
+            .first()
+        )
 
 
 @pytest.fixture

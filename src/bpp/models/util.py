@@ -111,7 +111,7 @@ class ModelZOpisemBibliograficznym(models.Model):
         while ret.find("  ") != -1:
             ret = ret.replace("  ", " ")
 
-        return (
+        ret = (
             ret.replace(" , ", ", ")
             .replace(" . ", ". ")
             .replace(". . ", ". ")
@@ -119,6 +119,15 @@ class ModelZOpisemBibliograficznym(models.Model):
             .replace(" .", ".")
             .replace(".</b>[", ".</b> [")
         )
+
+        # Opis powstaje m.in. z (niezaufanego) tytułu i jest renderowany |safe
+        # oraz cache'owany w opis_bibliograficzny_cache. Sanityzujemy złożenie,
+        # żeby żaden <script> z tytułu nie przeżył (obrona w głębi obok
+        # sanityzacji tytułu u źródła), zachowując kursywę, sub/sup i linki
+        # autorów.
+        from bpp.util import safe_opis_bibliograficzny_html
+
+        return safe_opis_bibliograficzny_html(ret)
 
     def autorzy_dla_opisu(self):
         # Takie 'autorzy_set.all()' ale na potrzeby opisu bibliograficznego -- zaciąga

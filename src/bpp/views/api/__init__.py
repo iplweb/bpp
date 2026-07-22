@@ -1,6 +1,5 @@
 from decimal import Decimal, InvalidOperation
 
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import models, transaction
 from django.http import JsonResponse
 from django.http.response import HttpResponseNotFound
@@ -10,6 +9,7 @@ from bpp.models import Autor, Autor_Dyscyplina, Uczelnia, Zrodlo
 from bpp.models.abstract import POLA_PUNKTACJI
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
 from bpp.models.zrodlo import Punktacja_Zrodla
+from bpp.permissions import WprowadzanieDanychRequiredMixin
 
 # Pola punktacji będące liczbami dziesiętnymi (DecimalField). Bibliotekarze
 # w Polsce naturalnie wpisują je z przecinkiem dziesiętnym ("3,2"), a
@@ -23,7 +23,7 @@ POLA_DZIESIETNE = frozenset(
 )
 
 
-class RokHabilitacjiView(LoginRequiredMixin, View):
+class RokHabilitacjiView(WprowadzanieDanychRequiredMixin, View):
     def post(self, request, *args, **kw):
         try:
             autor = Autor.objects.get(pk=int(request.POST.get("autor_pk")))
@@ -38,7 +38,7 @@ class RokHabilitacjiView(LoginRequiredMixin, View):
         return JsonResponse({"rok": habilitacja.rok})
 
 
-class PunktacjaZrodlaView(LoginRequiredMixin, View):
+class PunktacjaZrodlaView(WprowadzanieDanychRequiredMixin, View):
     def post(self, request, zrodlo_id, rok, *args, **kw):
         try:
             z = Zrodlo.objects.get(pk=zrodlo_id)
@@ -55,7 +55,7 @@ class PunktacjaZrodlaView(LoginRequiredMixin, View):
         return JsonResponse(d)
 
 
-class UploadPunktacjaZrodlaView(LoginRequiredMixin, View):
+class UploadPunktacjaZrodlaView(WprowadzanieDanychRequiredMixin, View):
     def ok(self):
         return JsonResponse({"result": "ok"})
 
@@ -154,7 +154,7 @@ def ostatnia_dyscyplina(request, a, rok):
             return ad.dyscyplina_naukowa or ad.subdyscyplina_naukowa
 
 
-class OstatniaJednostkaIDyscyplinaView(LoginRequiredMixin, View):
+class OstatniaJednostkaIDyscyplinaView(WprowadzanieDanychRequiredMixin, View):
     """Zwraca jako JSON ostatnią jednostkę danego autora oraz ewentualnie jego
     dyscyplinę naukową, w sytuacji gdy jest ona jedna i określona na dany rok.
     """

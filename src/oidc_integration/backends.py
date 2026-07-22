@@ -1,11 +1,14 @@
 import logging
+import os
 import re
 
 from django.conf import settings
 from django.core.exceptions import SuspiciousOperation
+from django.db import IntegrityError, transaction
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 
 from oidc_integration.conf import DEFAULT_EMAIL_CLAIMS, DEFAULT_USERNAME_CLAIMS
+from oidc_integration.models import OIDCIdentity
 
 logger = logging.getLogger(__name__)
 
@@ -40,20 +43,48 @@ def _first_claim(claims, keys):
     return None
 
 
-def _log_claims_debug(claims):
-    """Zaloguj klucze i wartości claimów z Keycloaka na poziomie DEBUG.
+def _redact_claim_value(value):
+    """Zredagowana reprezentacja wartości claimu — BEZ danych osobowych.
 
-    Po fazie discovery nie zaśmiecamy już stderr bannerem — podgląd claimów
-    zostaje dostępny przez ``logging`` na DEBUG (np. do diagnostyki realmu),
-    ale domyślnie milczy. Guard na ``isEnabledFor`` unika składania stringów,
-    gdy DEBUG i tak jest wyłączony.
+    Diagnostyka realmu potrzebuje *kształtu* claimu (typ, długość, klucze
+    zagnieżdżonych obiektów), a nie treści: wartości niosą PII (adresy
+    e-mail, nazwy grup/ról, identyfikatory osoby). Dla ``dict`` pokazujemy
+    same klucze (strukturalne, nie PII); dla ``list``/``str`` — typ i długość.
+    """
+    if isinstance(value, dict):
+        return f"<dict keys={sorted(value.keys())}>"
+    if isinstance(value, (list, tuple)):
+        return f"<{type(value).__name__} len={len(value)}>"
+    if isinstance(value, str):
+        return f"<str len={len(value)}>"
+    return f"<{type(value).__name__}>"
+
+
+def _log_claims_debug(claims):
+    """Zaloguj claimy z Keycloaka na poziomie DEBUG — domyślnie ZREDAGOWANE.
+
+    Po fazie discovery nie zaśmiecamy stderr bannerem — podgląd claimów jest
+    dostępny przez ``logging`` na DEBUG (diagnostyka realmu), ale domyślnie
+    milczy. Guard ``isEnabledFor`` unika składania stringów, gdy DEBUG jest
+    wyłączony.
+
+    RODO/PII: domyślnie logujemy WYŁĄCZNIE nazwy claimów i zredagowany
+    kształt wartości (``_redact_claim_value``) — bez adresów, grup ani
+    identyfikatorów. Surowe wartości (``%r``) odblokowuje osobny, wyraźny
+    opt-in ``DJANGO_BPP_OIDC_DEBUG_CLAIM_VALUES=1`` — tylko do krótkotrwałej
+    diagnostyki, nigdy na stałe na produkcji.
     """
     if not logger.isEnabledFor(logging.DEBUG):
         return
     keys = sorted(claims.keys())
     logger.debug("OIDC: otrzymane claimy (%d): %s", len(keys), ", ".join(keys))
+
+    dump_values = os.getenv("DJANGO_BPP_OIDC_DEBUG_CLAIM_VALUES") == "1"
     for key in keys:
-        logger.debug("OIDC:   %s = %r", key, claims[key])
+        if dump_values:
+            logger.debug("OIDC:   %s = %r", key, claims[key])
+        else:
+            logger.debug("OIDC:   %s = %s", key, _redact_claim_value(claims[key]))
 
 
 class BppOIDCBackend(OIDCAuthenticationBackend):
@@ -104,14 +135,19 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
     """
 
     @staticmethod
-    def _resolve_email(claims):
-        """Ustal adres e-mail z claimów wg konfigurowalnej kolejności.
+    def _resolve_email_with_source(claims):
+        """Ustal adres e-mail z claimów oraz czy padł na fallback username.
 
         Kolejność z ``_email_claim_keys()`` (default mail-first:
         ``mail`` → ``email`` → ``e-mail`` → ``e_mail``; pierwszy niepusty
         wygrywa). Gdy żaden nie niesie wartości, spada na
         ``preferred_username`` — ale tylko jeśli ten wygląda jak adres
         (zawiera domenę, np. UPN ``99999@student-afm.edu.pl``).
+
+        Zwraca krotkę ``(email, from_fallback)``, gdzie ``from_fallback`` jest
+        ``True``, gdy adres pochodzi z ``preferred_username`` (a nie z
+        właściwego claimu e-mail) — taki adres NIGDY nie jest „zaufany"
+        (``email_verified`` nie dotyczy loginu), więc anotacja trust go odsiewa.
 
         Gdy nie da się ustalić adresu (brak claimów e-mail, a
         ``preferred_username`` bez domeny), podnosi ``SuspiciousOperation``.
@@ -123,11 +159,11 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         keys = _email_claim_keys()
         value = _first_claim(claims, keys)
         if value:
-            return value
+            return value, False
 
         username = claims.get("preferred_username") or ""
         if _EMAIL_SHAPE_RE.match(username):
-            return username
+            return username, True
 
         raise SuspiciousOperation(
             "OIDC: nie znaleziono adresu e-mail w claimach "
@@ -136,30 +172,194 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         )
 
     @classmethod
+    def _resolve_email(cls, claims):
+        """Cienki wrapper (wsteczna zgodność) — sam adres, bez źródła."""
+        return cls._resolve_email_with_source(claims)[0]
+
+    @classmethod
     def _normalized(cls, claims):
-        """Zwróć claimy z kanonicznym kluczem ``email`` (patrz ``_resolve_email``).
+        """Zwróć claimy z kanonicznym ``email`` + anotacją zaufania i ``iss``.
 
         ``mozilla-django-oidc`` (``verify_claims``/``filter_users_by_claims``/
         ``create_user``) czyta wyłącznie ``email``; realm bywa wystawia adres
         pod ``mail``/``e-mail``/``e_mail`` albo wcale (wtedy fallback na
-        ``preferred_username`` z domeną). Gdy ``email`` już niesie docelowy
-        adres — zwraca wejście bez kopii; inaczej **kopię** z ustawionym
-        ``email`` (oryginalne klucze źródłowe zostają zachowane).
+        ``preferred_username`` z domeną). Zwraca **kopię** claimów z:
+
+        * ``email`` — kanoniczny adres (patrz ``_resolve_email_with_source``),
+        * ``email_verified`` — znormalizowany bool z payloadu/userinfo,
+        * ``_bpp_email_trusted`` — czy adresowi wolno ufać przy fail-closed:
+          ``email_verified is True`` ORAZ adres pochodzi z właściwego claimu
+          (nie z fallbacku ``preferred_username``) ORAZ równa się poświadczonemu
+          claimowi ``email`` (``email_verified`` dotyczy tego właśnie claimu),
+        * ``iss`` — issuer bez końcowego ``/`` (do dopasowania po ``(iss, sub)``).
         """
-        email = cls._resolve_email(claims)
-        if claims.get("email") == email:
-            return claims
-        return {**claims, "email": email}
+        email, from_fallback = cls._resolve_email_with_source(claims)
+        verified = bool(claims.get("email_verified") is True)
+        payload_email = (claims.get("email") or "").lower()
+        trusted = verified and not from_fallback and email.lower() == payload_email
+        iss = (claims.get("iss") or "").rstrip("/")
+        out = dict(claims)
+        out["email"] = email
+        out["email_verified"] = verified
+        out["_bpp_email_trusted"] = trusted
+        out["iss"] = iss
+        return out
+
+    def verify_token(self, token, **kwargs):
+        """Waliduj podpis (bazowo) i dodatkowo issuer (``iss``) tokenu.
+
+        Bazowy ``verify_token`` sprawdza podpis/nonce. Dokładamy twardą
+        kontrolę ``iss`` względem ``OIDC_OP_ISSUER`` — token z innego realmu
+        (nawet poprawnie podpisany przez ten sam serwer wielorealmowy) nie może
+        zalogować do tej instancji. Bez skonfigurowanego issuera (instalacja
+        bez OIDC) kontrola jest no-op.
+        """
+        payload = super().verify_token(token, **kwargs)
+        expected = (getattr(settings, "OIDC_OP_ISSUER", "") or "").rstrip("/")
+        got = (payload.get("iss") or "").rstrip("/")
+        if expected and got != expected:
+            raise SuspiciousOperation(f"OIDC: iss={got!r} != oczekiwany {expected!r}")
+
+        # Walidacja audience: token wystawiony dla innego klienta (nawet z tego
+        # samego IdP) nie może zalogować do naszej instancji. ``aud`` bywa
+        # stringiem albo listą — akceptujemy oba; dopuszczamy też przypadek,
+        # gdy ``aud`` wskazuje inny resource, ale ``azp`` (authorized party) to
+        # nasz client_id. Bez skonfigurowanego client_id (instalacja bez OIDC)
+        # kontrola jest no-op — analogicznie do ``iss``.
+        client_id = getattr(settings, "OIDC_RP_CLIENT_ID", "") or ""
+        if client_id:
+            aud = payload.get("aud")
+            auds = [aud] if isinstance(aud, str) else list(aud or [])
+            azp = payload.get("azp")
+            if client_id not in auds and azp != client_id:
+                raise SuspiciousOperation(
+                    f"OIDC: aud={aud!r}/azp={azp!r} nie zawiera client_id {client_id!r}"
+                )
+        return payload
 
     def get_userinfo(self, access_token, id_token, payload):
         # Jedyny chokepoint: znormalizuj claimy z userinfo, zanim trafią do
         # verify_claims / filter_users_by_claims / create_user.
-        claims = super().get_userinfo(access_token, id_token, payload)
-        return self._normalized(claims)
+        #
+        # Kotwica na PODPISANYM id_token: userinfo endpoint zwraca odpowiedź,
+        # która NIE jest podpisana (zwykły JSON po Bearerze), więc dla claimów
+        # niosących tożsamość i decyzję o zaufaniu (``sub``, ``iss``,
+        # ``email_verified``) autorytatywny jest ``payload`` (zdekodowany,
+        # zweryfikowany id_token). userinfo służy tu tylko jako fallback, gdy
+        # payload danego klucza nie niesie. ``email`` (i inne dane opisowe)
+        # bierzemy z userinfo, z payloadem jako fallback.
+        userinfo = super().get_userinfo(access_token, id_token, payload)
+        merged = dict(userinfo)
+
+        # OIDC Core §5.3.2: sub z userinfo MUSI zgadzać się z sub z id_token —
+        # rozjazd to sygnał podstawionej odpowiedzi userinfo (token substitution).
+        payload_sub = payload.get("sub")
+        userinfo_sub = userinfo.get("sub")
+        if payload_sub and userinfo_sub and userinfo_sub != payload_sub:
+            raise SuspiciousOperation(
+                f"OIDC: userinfo sub={userinfo_sub!r} != id_token "
+                f"sub={payload_sub!r} (OIDC Core §5.3.2)"
+            )
+
+        # Autorytatywne z podpisanego payloadu (userinfo tylko fallback).
+        for key in ("sub", "iss", "email_verified"):
+            if payload.get(key) is not None:
+                merged[key] = payload.get(key)
+
+        # E-mail: userinfo preferowane, payload jako fallback.
+        if merged.get("email") is None and payload.get("email") is not None:
+            merged["email"] = payload.get("email")
+
+        return self._normalized(merged)
+
+    @staticmethod
+    def _clear_link_session(session):
+        session.pop("oidc_link_mode", None)
+        session.pop("oidc_link_target", None)
+        session.save()
+
+    def get_or_create_user(self, access_token, id_token, payload):
+        """W trybie link (sesja) zwiąż ``sub`` z zalogowanym kontem i zwróć je.
+
+        Standardowy callback ``/oidc/callback/`` jest reużyty do linkowania:
+        widok ``SSOLinkInitView`` po re-auth hasłem ustawia w sesji
+        ``oidc_link_mode``/``oidc_link_target`` i kieruje na init OIDC. Po
+        powrocie z IdP jesteśmy tutaj z aktywną sesją zalogowanego usera —
+        wiążemy jego konto z ``(issuer, sub)`` z tokenu i **pomijamy** zwykły
+        tor filter/create (a więc i fail-closed po e-mailu: własny adres
+        kolidowałby z samym sobą). Poza trybem link — bez zmian (``super``).
+        """
+        session = getattr(getattr(self, "request", None), "session", None)
+        if session is not None and session.get("oidc_link_mode"):
+            # ``try/finally`` gwarantuje wyczyszczenie flag trybu link we
+            # WSZYSTKICH gałęziach wyjścia — sukces, ``SuspiciousOperation``
+            # (przez ``_fail``) czy nieoczekiwany wyjątek — żeby przerwany link
+            # nie „przeciekł" na następne, zwykłe logowanie OIDC. ``_fail`` sam
+            # zapisuje ``oidc_error_message`` przed rzuceniem, a ``finally``
+            # jedynie usuwa flagi link (nie rusza komunikatu).
+            try:
+                user_info = self.get_userinfo(access_token, id_token, payload)
+                target_pk = session.get("oidc_link_target")
+                request_user = getattr(self.request, "user", None)
+                if (
+                    not target_pk
+                    or request_user is None
+                    or request_user.pk != target_pk
+                ):
+                    self._fail("OIDC: cel linkowania niezgodny")
+                issuer = user_info.get("iss") or ""
+                sub = user_info.get("sub") or ""
+                if not issuer or not sub:
+                    self._fail("OIDC: brak (issuer, sub) do związania")
+                try:
+                    with transaction.atomic():
+                        identity, created = OIDCIdentity.objects.get_or_create(
+                            issuer=issuer,
+                            sub=sub,
+                            defaults={"user": request_user},
+                        )
+                except IntegrityError:
+                    # (user, issuer) już zajęte innym sub — konto ma już
+                    # tożsamość z tego realmu (jeden realm = jedno konto).
+                    self._fail(
+                        "OIDC: to konto ma już powiązaną tożsamość z tego realmu"
+                    )
+                if not created and identity.user_id != request_user.pk:
+                    # Ta (issuer, sub) należy do innego konta — NIE przejmujemy.
+                    self._fail(
+                        "OIDC: ta tożsamość SSO jest już powiązana z innym kontem"
+                    )
+                return request_user
+            finally:
+                self._clear_link_session(session)
+        return super().get_or_create_user(access_token, id_token, payload)
 
     def verify_claims(self, claims):
         _log_claims_debug(claims)
         return super().verify_claims(claims)
+
+    def filter_users_by_claims(self, claims):
+        """Dopasuj konto WYŁĄCZNIE po powiązanym ``(issuer, sub)``.
+
+        Bazowa implementacja dopasowuje po e-mailu — co pozwala przejąć konto
+        przez wpisanie cudzego adresu w realmie. Tu wiążemy tożsamość po
+        niezmiennym ``sub`` w obrębie danego ``issuer``: brak wpisu
+        ``OIDCIdentity`` → brak dopasowania (konto powstanie lub trzeba je
+        świadomie połączyć). Brak ``sub``/``iss`` → pusty queryset.
+        """
+        sub = claims.get("sub")
+        issuer = claims.get("iss")
+        if not sub or not issuer:
+            return self.UserModel.objects.none()
+        # Defensywne ``is_active=True``: konto zdezaktywowane z powiązaną
+        # tożsamością nie może się zalogować, niezależnie od gate'u callbacku
+        # biblioteki (mozilla-django-oidc filtruje aktywnych osobno, ale nie
+        # polegamy na tym — dopasowanie od razu je pomija).
+        return self.UserModel.objects.filter(
+            is_active=True,
+            oidc_identities__issuer=issuer,
+            oidc_identities__sub=sub,
+        )
 
     def _assign_uczelnia(self, user):
         """Przypisz uczelnię docelową (``accessible_uczelnie``) wg skrótu OIDC.
@@ -193,9 +393,28 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         # logowaniu (idempotentnie) — np. założonym przed wprowadzeniem tej logiki.
         self._assign_uczelnia(user)
         # Spróbuj powiązać autora (no-op jeśli już powiązany) — self-healing
-        # dla kont założonych zanim doszło dopasowanie.
-        user.sprobuj_dopasowac_autora()
+        # dla kont założonych zanim doszło dopasowanie. Dopasowanie po e-mailu/
+        # nazwiskach TYLKO gdy claim jest zaufany (``email_verified`` + zgodny
+        # adres), inaczej ktoś mógłby przez niezweryfikowany claim „podpiąć się"
+        # pod cudzego Autora.
+        trusted = bool(claims.get("_bpp_email_trusted"))
+        user.sprobuj_dopasowac_autora(match_email=trusted, match_names=trusted)
         return user
+
+    def _fail(self, message):
+        """Zapisz komunikat odmowy do sesji (jeśli jest) i podnieś wyjątek.
+
+        ``mozilla_django_oidc.authenticate`` łapie ``SuspiciousOperation`` i
+        degraduje do *login failure* — użytkownik ląduje z powrotem na stronie
+        logowania bez żadnej wskazówki, DLACZEGO się nie udało. Zapisujemy
+        powód w sesji (``oidc_error_message``, flash-once), a context processor
+        ``oidc_auth_status`` go POP-uje i pokazuje na stronie logowania.
+        """
+        session = getattr(getattr(self, "request", None), "session", None)
+        if session is not None:
+            session["oidc_error_message"] = message
+            session.save()
+        raise SuspiciousOperation(message)
 
     def _unique_username(self, base):
         """Zwróć ``base`` albo ``base-2``/``base-3``… jeśli zajęty.
@@ -212,36 +431,130 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
             i += 1
         return f"{base}-{i}"
 
-    def create_user(self, claims):
-        """Załóż zwykłe konto (bez is_staff) na podstawie claimów.
+    def _try_grace_bind(self, claims):
+        """Opt-in związanie starego konta czysto-OIDC po zaufanym e-mailu.
 
-        ``username`` z ``_username_claim_keys()`` (default
-        ``preferred_username`` → ``email`` → ``sub``; pierwszy niepusty).
-        Hasło ustawiane na nieużywalne — logowanie wyłącznie przez OIDC.
-        Wywoływane tylko, gdy ``filter_users_by_claims`` (domyślnie po
-        e-mailu) nie znajdzie istniejącego konta.
+        Migracja istniejących kont sprzed wiązania po ``(issuer, sub)``: jeśli
+        instalacja włączy ``OIDC_GRACE_BIND_ENABLED``, konto dopasowane po
+        adresie może zostać JEDNORAZOWO związane z ``sub`` — ale tylko gdy jest
+        „czysto-OIDC" i niskiego ryzyka:
+
+        * ``_bpp_email_trusted`` (email_verified + zgodny adres),
+        * dokładnie jedno konto z tym adresem,
+        * bez ``is_staff``/``is_superuser``, aktywne,
+        * bez używalnego hasła lokalnego (logowanie tylko przez OIDC),
+        * bez grup, uprawnień indywidualnych, tokenu PBN,
+        * bez żadnej istniejącej tożsamości OIDC (także z innego realmu).
+
+        Każdy z tych warunków chroni przed przejęciem konta o realnych
+        uprawnieniach. Zwraca związane konto albo ``None`` (→ normalny tor
+        create_user / fail-closed). Domyślnie wyłączone.
         """
-        base_username = _first_claim(claims, _username_claim_keys())
-        username = self._unique_username(base_username)
+        if not getattr(settings, "OIDC_GRACE_BIND_ENABLED", False):
+            return None
+        if not claims.get("_bpp_email_trusted"):
+            return None
         email = claims.get("email") or ""
+        issuer = claims.get("iss") or ""
+        sub = claims.get("sub") or ""
+        if not email:
+            return None
+        qs = self.UserModel.objects.filter(email__iexact=email)
+        if qs.count() != 1:
+            return None
+        user = qs.first()
+        eligible = (
+            not user.is_staff
+            and not user.is_superuser
+            and user.is_active
+            and not user.has_usable_password()
+            and not user.groups.exists()
+            and not user.user_permissions.exists()
+            and not (user.pbn_token or "")
+            and not user.oidc_identities.exists()
+        )
+        if not eligible:
+            return None
+        try:
+            with transaction.atomic():
+                OIDCIdentity.objects.create(user=user, issuer=issuer, sub=sub)
+        except IntegrityError:
+            # Równoległe logowanie zdążyło związać ten (issuer, sub).
+            existing = OIDCIdentity.objects.filter(issuer=issuer, sub=sub).first()
+            return existing.user if existing else None
+        logger.info("OIDC: grace-bind sub dla konta %s", user.username)
+        return user
 
-        user = self.UserModel.objects.create_user(username=username, email=email)
-        user.first_name = claims.get("given_name") or ""
-        user.last_name = claims.get("family_name") or ""
-        user.is_staff = False
-        user.is_superuser = False
-        user.is_active = True
-        user.set_unusable_password()
-        user.save()
+    def create_user(self, claims):
+        """Załóż zwykłe konto (bez is_staff) i zwiąż je z ``(issuer, sub)``.
+
+        Fail-closed: gdy istnieje już konto z tym adresem e-mail, NIE zakładamy
+        drugiego (i nie „przejmujemy" istniejącego) — trzeba je świadomie
+        połączyć z SSO przez profil (re-auth hasłem). Gdy
+        ``OIDC_REQUIRE_EMAIL_VERIFIED``, wymagamy zaufanego adresu
+        (``_bpp_email_trusted``). Tworzenie konta i wpisu ``OIDCIdentity`` jest
+        atomowe; kolizja ``(issuer, sub)`` (wyścig równoległych logowań) zwraca
+        wcześniej związane konto zamiast błędu.
+        """
+        email = claims.get("email") or ""
+        issuer = claims.get("iss") or ""
+        sub = claims.get("sub") or ""
+
+        graced = self._try_grace_bind(claims)
+        if graced is not None:
+            return graced
+
+        if email and self.UserModel.objects.filter(email__iexact=email).exists():
+            self._fail(
+                "OIDC: konto z tym adresem już istnieje — połącz je z SSO "
+                "przez profil (re-auth hasłem), nie tworzę konta."
+            )
+
+        require = getattr(settings, "OIDC_REQUIRE_EMAIL_VERIFIED", True)
+        if require and not claims.get("_bpp_email_trusted"):
+            self._fail(
+                "OIDC: e-mail niezweryfikowany (email_verified) — "
+                "odrzucam założenie konta."
+            )
+
+        base_username = _first_claim(claims, _username_claim_keys())
+        trusted = bool(claims.get("_bpp_email_trusted"))
+
+        for _ in range(5):  # retry na wyścig o username
+            username = self._unique_username(base_username)
+            try:
+                with transaction.atomic():
+                    user = self.UserModel.objects.create_user(
+                        username=username, email=email
+                    )
+                    user.first_name = claims.get("given_name") or ""
+                    user.last_name = claims.get("family_name") or ""
+                    user.is_staff = False
+                    user.is_superuser = False
+                    user.is_active = True
+                    user.set_unusable_password()
+                    user.save()
+                    with transaction.atomic():  # savepoint na wpis tożsamości
+                        OIDCIdentity.objects.create(user=user, issuer=issuer, sub=sub)
+                break
+            except IntegrityError:
+                # albo username zajęty (retry), albo (issuer, sub) zajęte przez
+                # równoległe logowanie tego samego usera → zwróć jego konto.
+                existing = OIDCIdentity.objects.filter(issuer=issuer, sub=sub).first()
+                if existing is not None:
+                    return existing.user
+                continue
+        else:
+            raise SuspiciousOperation("OIDC: nie udało się utworzyć konta")
 
         self._assign_uczelnia(user)
         # Powiąż autora po przypisaniu uczelni — dopasowanie jest scope'owane
-        # do accessible_uczelnie, więc kolejność ma znaczenie.
-        user.sprobuj_dopasowac_autora()
+        # do accessible_uczelnie. Po e-mailu/nazwiskach tylko dla zaufanego
+        # claimu (inaczej niezweryfikowany adres mógłby podpiąć cudzego Autora).
+        user.sprobuj_dopasowac_autora(match_email=trusted, match_names=trusted)
 
         logger.info(
-            "OIDC: utworzono konto username=%s email=%s (zwykłe, bez is_staff)",
+            "OIDC: utworzono konto username=%s (bez is_staff), sub związany",
             username,
-            email,
         )
         return user

@@ -194,6 +194,11 @@ TODO-*.md
 # kasowany na exit.
 .run-site-config
 
+# Sidecar shellowy zapisywany przez `run-site` (source .run-site-env.sh):
+# DATABASE_URL, DJANGO_SECRET_KEY, PGPASSWORD itd. — ZAWIERA SEKRETY.
+# Ulotny (kasowany na czystym exit), NIE wolno commitowac.
+.run-site-env.sh
+
 # Runtime state dir run-site: dev secret_key i inne ephemeralne dotfiles.
 # Tworzone na uruchomieniu, NIE wolno commitowac (secret_key to dev key
 # generowany per maszyne; commit byly faktycznym wyciekiem klucza).
@@ -222,3 +227,7 @@ src/bpp/static/rollbar/
 
 # SDD workflow scratch (briefs, reports, ledger, diffs)
 .superpowers/
+
+# pytest-playwright: katalog na trace/screenshot/video z --tracing itp.
+test-results/
+.rtk/

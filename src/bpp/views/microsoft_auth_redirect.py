@@ -3,9 +3,28 @@ import logging
 from django.core.signing import dumps
 from django.http import HttpResponseRedirect, JsonResponse
 from django.middleware.csrf import get_token
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_next(request, next_url):
+    """Zwróć ``next_url`` tylko gdy wskazuje na TEN host (albo jest względny).
+
+    Podpisanie stanu (``dumps(..., salt="microsoft_auth")``) dowodzi jedynie,
+    że to BPP podpisało wartość — NIE że cel przekierowania jest bezpieczny.
+    Bez tej walidacji ``?next=https://evil.example/`` przechodzi przez podpis,
+    a callback biblioteki ``microsoft_auth`` przekierowuje tam po zalogowaniu
+    (open redirect / phishing z zaufanej domeny — uwaga reviewera #2).
+    """
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return next_url
+    return None
 
 
 class MicrosoftAuthRedirectView(View):
@@ -35,9 +54,11 @@ class MicrosoftAuthRedirectView(View):
                     {"error": "Microsoft authentication is not enabled"}, status=400
                 )
 
-            # Initialize state with CSRF token and optional next path
+            # Initialize state with CSRF token and optional next path.
+            # `next` jest walidowane pod kątem hosta ZANIM trafi do podpisanego
+            # stanu — inaczej podpis „uwiarygodnia" obcy cel (uwaga #2).
             state = {"token": get_token(request)}
-            next_url = request.GET.get("next")
+            next_url = _safe_next(request, request.GET.get("next"))
             if next_url:
                 state["next"] = next_url
 

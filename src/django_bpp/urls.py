@@ -1,3 +1,5 @@
+import posixpath
+
 from django.apps import apps
 from django.conf import settings
 from django.conf.urls.static import static
@@ -45,8 +47,15 @@ def protected_media_serve(request, path, document_root=None):
 
     Files in protected/ directory should only be accessible through authenticated
     views that use django-sendfile.
+
+    Ścieżkę normalizujemy PRZED sprawdzeniem guardu — inaczej traversal typu
+    ``public/../protected/tajne.pdf`` przechodzi (surowe ``startswith`` widzi
+    ``public/``), a ``static_serve`` zwija ``..`` dopiero wewnątrz i serwuje
+    plik z ``protected/``. ``normpath`` na pustej ścieżce daje ``"."``, więc
+    dodatkowe ``lstrip("/")`` i porównanie do ``"protected"`` są bezpieczne.
     """
-    if path.startswith("protected/"):
+    norm = posixpath.normpath(path).lstrip("/")
+    if norm == "protected" or norm.startswith("protected/"):
         raise Http404("Use the download endpoint")
     return static_serve(request, path, document_root)
 
@@ -58,24 +67,27 @@ urlpatterns = (
             include("first_run_wizard.urls", namespace="first_run_wizard"),
         ),
         path("formdefaults/", include("formdefaults.urls")),
+        path("", include("oauth_mcp.urls")),
         url(r"^favicon\.ico$", cache_page(60 * 60)(favicon)),
         path("test_403/", login_required(test_403_view)),
         path("test_500/", login_required(test_500_view)),
         path("test_exception/", login_required(test_exception_view)),
         path("tinymce/", include("tinymce.urls")),
         url(
+            # Auth (redaktor + POST/CSRF) egzekwuje WprowadzanieDanychRequiredMixin
+            # w samym TozView — bez owijki login_required (dawniej GET-mutacja).
             r"^admin/bpp/wydawnictwo_ciagle/toz/(?P<pk>[\d]+)/$",
-            login_required(WydawnictwoCiagleTozView.as_view()),
+            WydawnictwoCiagleTozView.as_view(),
             name="admin_bpp_wydawnictwo_ciagle_toz",
         ),
         url(
             r"^admin/bpp/wydawnictwo_zwarte/toz/(?P<pk>[\d]+)/$",
-            login_required(WydawnictwoZwarteTozView.as_view()),
+            WydawnictwoZwarteTozView.as_view(),
             name="admin_bpp_wydawnictwo_zwarte_toz",
         ),
         url(
             r"^admin/bpp/patent/toz/(?P<pk>[\d]+)/$",
-            login_required(PatentTozView.as_view()),
+            PatentTozView.as_view(),
             name="admin_bpp_patent_toz",
         ),
         # url(r'^admin/', include(admin.site.urls)),
@@ -404,9 +416,13 @@ if "microsoft_auth" in getattr(settings, "INSTALLED_APPS", []):
 # Logowanie OpenID Connect — addytywne, montowane tylko gdy apka aktywna.
 # Trasy mozilla-django-oidc: oidc/authenticate/ (start), oidc/callback/ (powrót).
 # Redirect URI do zarejestrowania w Keycloaku: https://<host>/oidc/callback/
-if apps.is_installed("oidc_integration"):
+if settings.OIDC_LOGIN_ENABLED:
     urlpatterns += [
         path("oidc/", include("mozilla_django_oidc.urls")),
+        path(
+            "oidc/",
+            include(("oidc_integration.urls", "oidc_integration")),
+        ),
     ]
 
 
@@ -422,11 +438,12 @@ if settings.DEBUG and settings.DEBUG_TOOLBAR:
     urlpatterns += debug_toolbar_urls()
 
 
-if apps.is_installed("oidc_integration"):
+if settings.OIDC_LOGIN_ENABLED:
     #
-    # Logowanie instytucjonalne przez OIDC (Keycloak). apps.is_installed(
-    # "oidc_integration") jest prawdą tylko gdy OIDC jest skonfigurowane (apka
-    # dokładana warunkowo w settings). OIDC to jeden realm na proces, więc
+    # Logowanie instytucjonalne przez OIDC (Keycloak). settings.OIDC_LOGIN_ENABLED
+    # jest prawdą tylko gdy OIDC jest skonfigurowane (app instalowany zawsze, ale
+    # routing/backend gateowane po wykryciu configu). OIDC to jeden realm na
+    # proces, więc
     # logowanie jest wybierane PER-UCZELNIA: InstitutionalLoginView odbija na
     # Keycloaka tylko dla domeny uczelni o skrócie == OIDC_LOGIN_SKROT, dla
     # pozostałych domen używa Microsoftu (jeśli włączony, globalnie) albo
@@ -470,7 +487,10 @@ elif apps.is_installed("microsoft_auth"):
         # Default login redirects to Microsoft
         url(
             r"^accounts/login/$",
-            RedirectView.as_view(pattern_name="microsoft_auth:to-auth-redirect"),
+            RedirectView.as_view(
+                pattern_name="microsoft_auth:to-auth-redirect",
+                query_string=True,
+            ),
             name="login_form",
         ),
         url(
@@ -498,10 +518,12 @@ if apps.is_installed("password_policies"):
         PasswordResetCompleteView,
         PasswordResetConfirmView,
         PasswordResetDoneView,
-        PasswordResetFormView,
     )
 
-    from django_bpp.views import SmartPasswordChangeView
+    from django_bpp.views import (
+        RateLimitedPasswordResetFormView,
+        SmartPasswordChangeView,
+    )
 
     urlpatterns += [
         url(
@@ -515,7 +537,9 @@ if apps.is_installed("password_policies"):
             name="password_change",
         ),
         url(
-            r"^password_reset/$", PasswordResetFormView.as_view(), name="password_reset"
+            r"^password_reset/$",
+            RateLimitedPasswordResetFormView.as_view(),
+            name="password_reset",
         ),
         url(
             r"^password_reset_confirm/"

@@ -114,11 +114,14 @@ class UruchomZadaniePrzetwarzania(
     model = Import_Dyscyplin
     task = None
     stan = None
+    # Uruchomienie zadania Celery mutuje stan (skutek uboczny) — tylko POST,
+    # nigdy GET (prefetch przeglądarki / skanery / brak ochrony CSRF).
+    http_method_names = ["post", "options"]
 
     def get_queryset(self):
         return super(TylkoMojeMixin, self).get_queryset().filter(stan=self.stan)
 
-    def get(self, *args, **kw):
+    def post(self, *args, **kw):
         self.object = self.get_object()
 
         start_task = False
@@ -166,19 +169,20 @@ class UsunImport_Dyscyplin(
     WprowadzanieDanychRequiredMixin, TylkoMojeMixin, BaseDeleteView
 ):
     success_url = reverse_lazy("import_dyscyplin:index")
+    # Usuwanie jest nieodwracalne — tylko POST + CSRF, nigdy GET.
+    http_method_names = ["post", "options"]
 
-    def delete(self, request, *args, **kwargs):
-        self.object = self.get_object()
+    def form_valid(self, form):
+        # Nazwę pliku zapamiętujemy PRZED usunięciem obiektu z bazy.
+        plik_name = self.object.plik.name
         transaction.on_commit(
             lambda: messages.add_message(
                 self.request,
                 messages.INFO,
-                f'Plik importu dyscyplin "{self.object.plik.name}" został usunięty.',
+                f'Plik importu dyscyplin "{plik_name}" został usunięty.',
             )
         )
-        return super().delete(request, *args, **kwargs)
-
-    get = delete
+        return super().form_valid(form)
 
 
 class API_Do_IntegracjiView(

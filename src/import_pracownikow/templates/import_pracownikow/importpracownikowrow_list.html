@@ -1,76 +1,319 @@
 {% extends "base.html" %}{% load render_table from django_tables2 %}
 
 {% block extratitle %}
-    Import pracowników - szczegóły {{ object.plik_xls.name }}
+    Import pracowników i jednostek - szczegóły {{ parent_object.plik_xls.name }}
 {% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li><a href="{% url "import_pracownikow:index" %}">import pracowników</a></li>
-    <li class="current">import {{ object.plik_xls.name }}</li>
+    <li><a href="{% url "import_pracownikow:index" %}">import pracowników i jednostek</a></li>
+    <li class="current">import {{ parent_object.plik_xls.name }}</li>
 {% endblock %}
 
 
 {% block content %}
-    <h1>Import danych {{ object.plik_xls.name }}</h1>
+    <p>
+        <a href="{% url "import_pracownikow:przeglad" pk=parent_object.pk %}">&larr; wróć do przeglądu</a>
+    </p>
+    <h1>Import danych {{ parent_object.plik_xls.name }}</h1>
 
-    {% include "long_running/operation_details.html" %}
+    <div class="button-group">
+        {# Pobranie oryginalnego, wgranego pliku XLSX (chroniony). #}
+        <a class="button"
+           href="{% url "import_pracownikow:pobierz-oryginal" pk=parent_object.pk %}">
+            <span class="fi-download"></span> Pobierz oryginał
+        </a>
+        {# Skorygowany plik „po imporcie" — tylko po finalizacji. #}
+        {% if parent_object.stan == "zintegrowany" %}
+            <a class="button secondary"
+               href="{% url "import_pracownikow:pobierz-po-imporcie" pk=parent_object.pk %}">
+                <span class="fi-download"></span> Pobierz plik po imporcie
+            </a>
+        {% endif %}
+    </div>
 
-    {% if object.finished_successfully %}
-        Lista modyfikacji do bazy danych, przeprowadzonych na podstawie pliku XLS poniżej:
-        <table>
-            <tr>
-                <th>Arkusz nr</th>
-                <th>Wiersz nr</th>
-                <th>Autor</th>
-                <th>Jednostka</th>
-                <th>Zmiany potrzebne?</th>
-                <th>Zmienione dane</th>
-            </tr>
-            {% include "pagination.html" %}
-            {% for row in object_list %}
-                <tr>
-                    <td>{{ row.nr_arkusza }}</td>
-                    <td>{{ row.nr_wiersza }}</td>
-                    <td><a href="{% url "bpp:browse_autor" row.autor.pk %}">{{ row.autor }}</a></td>
-                    <td><a href="{% url "bpp:browse_jednostka" row.jednostka.pk %}">{{ row.jednostka }}</a></td>
-                    <td>{{ row.zmiany_potrzebne }}</td>
-                    <td>{% for elem in row.sformatowany_log_zmian %}
-                        <p>{{ elem }}</p>
-                    {% endfor %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="5" class="text-center"><strong>Żadnych zmian nie naniesiono. Stan bazy danych w
-                        momencie importu pliku zgodny z
-                        zawartością pliku XLS
-                    </strong></td>
-                </tr>
-            {% endfor %}
-        </table>
+    {# Ostrzeżenie #4 na stronie autorów+jednostek — tylko przed zapisem osób. #}
+    {% if parent_object.edytowalny_podglad %}
+        {% include "import_pracownikow/partials/_ostrzezenie_podstawowe_miejsce.html" %}
     {% endif %}
 
+    {% if parent_object.stan == "przeanalizowany" and parent_object.jednostki_do_decyzji.exists %}
+        <div class="callout primary">
+            {# link do ekranu weryfikacji jednostek do utworzenia / auto-dopasowanych #}
+            <span class="fi-info"></span>
+            {{ parent_object.jednostki_do_decyzji.count }} jednostek z pliku wymaga
+            weryfikacji (do utworzenia lub auto-dopasowane).
+            <a href="{% url "import_pracownikow:jednostki" pk=parent_object.pk %}"
+               class="button primary">Zweryfikuj jednostki</a>
+        </div>
+    {% endif %}
 
-    {% if autorzy_spoza_pliku.exists %}
-        <h4>Na podstawie tego pliku importu należałoby odpiąć
-            {{ autorzy_spoza_pliku.count }} powiązań autor+jednostka, oto one ponizej: </h4>
-        <a data-confirm="Czy na pewno?" href="../resetuj-podstawowe-miejsce-pracy/">Kliknij tutaj, żeby przypisać. Uwaga, to zmieni bazę dancyh. </a>
-        <table>
-            <tr>
-                <th>Autor</th>
-                <th>Jednostka</th>
-            </tr>
-            {% for elem in autorzy_spoza_pliku %}
-                <tr>
-                    <td>{{ elem.autor }}</td>
-                    <td>{{ elem.jednostka }}</td>
-                </tr>
-            {% endfor %}
-        </table>
-    {% else %}
-        <h4>Zawartość tego pliku nie powoduje konieczności "likwidowania" podstawowych miejsc
-            pracy dla autorów w bazie. </h4>
+    {# HTMX dla akcji per-wiersz (wybór kandydata / edycja inline) — patrz #}
+    {# wzorzec importer_publikacji/index.html. #}
+    <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous"></script>
+
+    {% if parent_object.edytowalny_podglad and parent_object.przepnij_wszystkie_prace %}
+        {# akcja zbiorcza: zaznacz przepięcie prac dla wierszy z różnicą jednostki #}
+        {# tylko gdy import startował z masowym przepięciem — inaczej cały UI #}
+        {# przepinania jest ukryty (operator świadomie NIE rusza dorobku). #}
+        <form method="post"
+              action="{% url "import_pracownikow:zaznacz-przepiecia" pk=parent_object.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="button secondary">
+                <span class="fi-shuffle"></span>
+                Zaznacz przepięcie prac dla wszystkich z różnicą jednostki
+            </button>
+        </form>
+    {% endif %}
+
+    {% if parent_object.finished_successfully %}
+        {# Nagłówek audytu — asertowany przez test_views_liveops.py; NIE usuwać. #}
+        <p>Lista modyfikacji do bazy danych, przeprowadzonych na podstawie
+            pliku XLS poniżej:</p>
+        {# Filtr rekordów po stanie pól — radia per pole (POLA_ROZNIC), AND. #}
+        {# Widoczne (główne) + zwijane (dodatkowe) w <details> — oba w tym #}
+        {# samym <form>, więc JS querySelectorAll łapie radia niezależnie od #}
+        {# stanu open/closed. #}
+        <form id="filtr-roznic" class="import-filtr-roznic">
+            {# Filtr „Rodzaj dopasowania" (kolumna „Pewność") — <select>, bo 8 #}
+            {# opcji z długimi etykietami rozjechałoby pasek jak radia. „do #}
+            {# pominięcia" = syntetyczny predykat (autor NULL + brak „Utwórz #}
+            {# nowego"), celuje w zbiór z ostrzeżenia finalizacji. Pre-selekcja #}
+            {# z ?rodzaj= (wybrany_rodzaj) — działa też przed JS. #}
+            <label class="import-filtr-rodzaj">
+                Rodzaj dopasowania:
+                <select id="filtr-rodzaj" name="filtr-rodzaj">
+                    <option value="wszystkie"{% if not wybrany_rodzaj %} selected{% endif %}>wszystkie</option>
+                    <option value="do-pominiecia"{% if wybrany_rodzaj == "do-pominiecia" %} selected{% endif %}>⚠ do pominięcia (bez decyzji)</option>
+                    <option disabled>──────────</option>
+                    {% for wartosc, etykieta in rodzaje_confidence %}
+                        <option value="{{ wartosc }}"{% if wybrany_rodzaj == wartosc %} selected{% endif %}>{{ etykieta }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="import-filtr-tekst">
+                Szukaj:
+                <input type="search" id="filtr-tekst"
+                       placeholder="nazwisko / jednostka…">
+            </label>
+            {# Rozmiar „na stronę" — client-side paginacja. Tabela renderuje #}
+            {# WSZYSTKIE wiersze w DOM (setki), a wielki DOM wymusza reflow → #}
+            {# Select2 muli przy pisaniu. Pokazujemy tylko okno strony, resztę #}
+            {# chowamy (display:none wypada z layoutu). „wszystkie" (value=0) = #}
+            {# opt-in na komplet (i związany z tym jank). Default 25. #}
+            <label class="import-filtr-rozmiar">
+                Na stronę:
+                <select id="filtr-strona-rozmiar" name="filtr-strona-rozmiar">
+                    <option value="10">10</option>
+                    <option value="25" selected>25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="0">wszystkie</option>
+                </select>
+            </label>
+            <div class="import-filtr-glowne">
+                {% for klucz, etykieta in pola_glowne %}
+                    {% include "import_pracownikow/partials/_filtr_pole.html" %}
+                {% endfor %}
+            </div>
+            {% if pola_dodatkowe %}
+                <details class="import-filtr-wiecej">
+                    <summary>Więcej filtrów…</summary>
+                    <div class="import-filtr-dodatkowe">
+                        {% for klucz, etykieta in pola_dodatkowe %}
+                            {% include "import_pracownikow/partials/_filtr_pole.html" %}
+                        {% endfor %}
+                    </div>
+                </details>
+            {% endif %}
+        </form>
+        {# Licznik przefiltrowanych rekordów (aktualizowany w JS filtruj()). #}
+        <p id="filtr-licznik" class="import-filtr-licznik"></p>
+        {# Pager client-side (JS steruje widocznością i disabled). Ukryty przy #}
+        {# jednej stronie / „wszystkie". type="button" — NIE submituje formularza. #}
+        <nav id="filtr-pager" class="import-filtr-pager" hidden aria-label="Stronicowanie">
+            <button type="button" id="filtr-pager-prev" class="button secondary import-filtr-pager-btn">
+                <span class="fi-arrow-left"></span> poprzednia
+            </button>
+            <span id="filtr-pager-info" class="import-filtr-pager-info"></span>
+            <button type="button" id="filtr-pager-next" class="button secondary import-filtr-pager-btn">
+                następna <span class="fi-arrow-right"></span>
+            </button>
+        </nav>
+        <div style="overflow-x: auto;">
+            <table id="tabela-autorow">
+                <thead>
+                    <tr>
+                        <th>Poz</th>
+                        <th>Osoba (z pliku)</th>
+                        <th>Pewność</th>
+                        <th>Autor (BPP)</th>
+                        <th>Jednostka (obecna → z pliku)</th>
+                    </tr>
+                </thead>
+                {% for row in object_list %}
+                    {% include "import_pracownikow/partials/_wiersz_preview.html" %}
+                {% empty %}
+                    <tbody>
+                        <tr>
+                            <td colspan="5" class="text-center"><strong>
+                                Żadnych wierszy do pokazania.
+                            </strong></td>
+                        </tr>
+                    </tbody>
+                {% endfor %}
+            </table>
+        </div>
+
+        {# Filtr rekordów po stanie pól (data-diff-* na 1. <tr> rekordu) + tekst. #}
+        {# Zastępuje DataTables (usunięte): karta = 2×<tr> w <tbody data-rekord>, #}
+        {# sort zbędny; HTMX swapuje innerHTML <tbody>, więc data-diff-* są zawsze #}
+        {# świeże, a po afterSettle wystarczy ponowić filtr. Tekst szukamy tylko #}
+        {# w elementach [data-szukaj] (nazwisko / autor / jednostka) — kontrolki #}
+        {# dopasowania autora i Select2 są POZA nimi, więc nie zaśmiecają. #}
+        <script>
+        (function () {
+            var form = document.getElementById('filtr-roznic');
+            var tabela = document.getElementById('tabela-autorow');
+            if (!form || !tabela) return;
+
+            function klucze() {
+                var s = new Set();
+                form.querySelectorAll('input[type=radio]').forEach(function (r) {
+                    s.add(r.name.replace(/^filtr-/, ''));
+                });
+                return Array.from(s);
+            }
+            function wybor(klucz) {
+                var el = form.querySelector(
+                    'input[name="filtr-' + klucz + '"]:checked');
+                return el ? el.value : 'wszystkie';
+            }
+            function stanPola(tbody, klucz) {
+                var tr = tbody.querySelector(':scope > tr[data-diff-' + klucz + ']');
+                return tr ? tr.getAttribute('data-diff-' + klucz) : null;
+            }
+            function tekst() {
+                var el = document.getElementById('filtr-tekst');
+                return (el ? el.value : '').trim().toLowerCase();
+            }
+            function tekstRekordu(tbody) {
+                var buf = '';
+                tbody.querySelectorAll('[data-szukaj]').forEach(function (el) {
+                    buf += ' ' + el.textContent;
+                });
+                return buf.toLowerCase();
+            }
+            function wyborRodzaj() {
+                var el = document.getElementById('filtr-rodzaj');
+                return el ? el.value : 'wszystkie';
+            }
+            function okRodzaj(tbody) {
+                // Filtr rodzaju dopasowania (data-confidence na 1. <tr>).
+                // „do-pominiecia" czyta osobny warunkowy atrybut (autor NULL +
+                // brak „Utwórz nowego"), inne wartości → równość statusu.
+                var w = wyborRodzaj();
+                if (w === 'wszystkie') return true;
+                var tr = tbody.querySelector(':scope > tr[data-confidence]');
+                if (!tr) return false;
+                if (w === 'do-pominiecia')
+                    return tr.getAttribute('data-do-pominiecia') === '1';
+                return tr.getAttribute('data-confidence') === w;
+            }
+            // Numer bieżącej strony (0-based). Reset do 0 tylko przy zmianie
+            // filtra/rozmiaru — NIE przy htmx:afterSettle (edytowany wiersz
+            // zostaje na swojej stronie).
+            var strona = 0;
+            function rozmiarStrony() {
+                var el = document.getElementById('filtr-strona-rozmiar');
+                var v = el ? parseInt(el.value, 10) : 25;
+                // 0 / puste / błędne → „wszystkie" (brak limitu).
+                return (isNaN(v) || v <= 0) ? Infinity : v;
+            }
+            function filtruj() {
+                var ks = klucze();
+                var q = tekst();
+                // 1) Zbierz rekordy przechodzące filtr (w kolejności DOM);
+                //    niepasujące od razu chowamy.
+                var pasujace = [];
+                var wszystkich = 0;
+                tabela.querySelectorAll(':scope > tbody[data-rekord]').forEach(
+                    function (tbody) {
+                        wszystkich++;
+                        var okStany = ks.every(function (klucz) {
+                            var w = wybor(klucz);
+                            return w === 'wszystkie'
+                                || stanPola(tbody, klucz) === w;
+                        });
+                        var okTekst = !q
+                            || tekstRekordu(tbody).indexOf(q) !== -1;
+                        if (okStany && okTekst && okRodzaj(tbody)) {
+                            pasujace.push(tbody);
+                        } else {
+                            tbody.hidden = true;
+                        }
+                    });
+                // 2) Okno strony nad przefiltrowanym zbiorem. Chowamy rekordy
+                //    spoza okna, żeby DOM w layoucie był mały (Select2 nie muli).
+                var N = pasujace.length;
+                var r = rozmiarStrony();
+                var stronMax = (r === Infinity || N === 0)
+                    ? 1 : Math.ceil(N / r);
+                if (strona > stronMax - 1) strona = stronMax - 1;
+                if (strona < 0) strona = 0;
+                var start = (r === Infinity) ? 0 : strona * r;
+                var end = (r === Infinity) ? N : Math.min(start + r, N);
+                pasujace.forEach(function (tbody, i) {
+                    tbody.hidden = !(i >= start && i < end);
+                });
+                // 3) Licznik + pager.
+                var licznik = document.getElementById('filtr-licznik');
+                if (licznik) {
+                    if (!wszystkich) {
+                        licznik.textContent = '';
+                    } else if (!N) {
+                        licznik.textContent =
+                            'Nie znaleziono rekordów (0 z ' + wszystkich + ')';
+                    } else {
+                        licznik.textContent =
+                            'Pokazano ' + (start + 1) + '–' + end
+                            + ' z ' + N + ' rekordów'
+                            + (N !== wszystkich
+                                ? ' (odfiltrowano z ' + wszystkich + ')' : '');
+                    }
+                }
+                var pager = document.getElementById('filtr-pager');
+                if (pager) {
+                    pager.hidden = !(r !== Infinity && stronMax > 1);
+                    var info = document.getElementById('filtr-pager-info');
+                    if (info) {
+                        info.textContent =
+                            'strona ' + (strona + 1) + ' / ' + stronMax;
+                    }
+                    var prev = document.getElementById('filtr-pager-prev');
+                    var next = document.getElementById('filtr-pager-next');
+                    if (prev) prev.disabled = strona <= 0;
+                    if (next) next.disabled = strona >= stronMax - 1;
+                }
+            }
+            // Zmiana filtra/rozmiaru → wróć na stronę 1 (inaczej można wylądować
+            // na pustej stronie za końcem nowego, węższego zbioru).
+            function przefiltrujOdNowa() { strona = 0; filtruj(); }
+            form.addEventListener('change', przefiltrujOdNowa);
+            form.addEventListener('input', przefiltrujOdNowa);
+            var prevBtn = document.getElementById('filtr-pager-prev');
+            var nextBtn = document.getElementById('filtr-pager-next');
+            if (prevBtn) prevBtn.addEventListener('click', function () {
+                strona -= 1; filtruj();
+            });
+            if (nextBtn) nextBtn.addEventListener('click', function () {
+                strona += 1; filtruj();
+            });
+            // Po swapie HTMX zachowaj bieżącą stronę (filtruj sam się klampuje).
+            document.body.addEventListener('htmx:afterSettle', filtruj);
+            filtruj();
+        })();
+        </script>
     {% endif %}
 
 {% endblock %}

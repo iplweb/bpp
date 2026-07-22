@@ -35,6 +35,11 @@ class OplataZaWydawnictwoPBNAdapter:
         if hasattr(self.original, "opl_pub_amount") and hasattr(
             self.original, "opl_pub_cost_free"
         ):
+            # Flaga „bezkosztowa" ma pierwszeństwo: gdy jest ustawiona, nie
+            # pozwalamy zaległej (niewyczyszczonej) kwocie odwrócić intencji
+            # operatora na payload „płatny". ``clean()`` modelu blokuje taki
+            # sprzeczny stan przez formularz, ale bezpośredni zapis ORM /
+            # import / migracja danych mógłby go wprowadzić (elif zamiast if).
             if self.original.opl_pub_cost_free is True:
                 fee["amount"] = 0
                 fee["costFreePublication"] = True
@@ -42,7 +47,7 @@ class OplataZaWydawnictwoPBNAdapter:
                 fee["researchOrDevelopmentProjectsFinancialResources"] = False
                 fee["researchPotentialFinancialResources"] = False
 
-            if (
+            elif (
                 self.original.opl_pub_amount is not None
                 and self.original.opl_pub_amount > 0
             ):

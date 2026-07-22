@@ -1,7 +1,5 @@
 """Logika importu punktacji źródeł z pliku JCR do Punktacja_Zrodla."""
 
-from django.contrib.messages import constants
-
 from import_common.core import matchuj_zrodlo
 from import_punktacji_zrodel.parser import wczytaj_plik_jcr
 
@@ -132,7 +130,7 @@ def _process_one_journal(i, cz, rok, parent, dry_run, is_dup, dup_of, dup_reason
     )
 
 
-def analyze_jcr_file(path, parent):
+def analyze_jcr_file(path, parent, p):
     parsed = wczytaj_plik_jcr(path)
 
     rok = parent.rok or parsed.rok
@@ -141,7 +139,9 @@ def analyze_jcr_file(path, parent):
         parent.wierszimportupunktacjizrodel_set.create(
             nr_wiersza=0, dane_z_xls={}, rezultat=msg
         )
-        parent.send_notification(msg, level=constants.ERROR)
+        p.log(msg)
+        # Podnosimy wyjątek — runner liveops złapie go i oznaczy operację jako
+        # zakończoną błędem (dawniej robił to task_perform w long_running).
         raise ValueError(msg)
     if parent.rok is None:
         parent.rok = rok
@@ -149,10 +149,15 @@ def analyze_jcr_file(path, parent):
 
     dry_run = not parent.zapisz_zmiany_do_bazy
     dups = _detect_duplicates(parsed.czasopisma)
-    total = len(parsed.czasopisma) or 1
 
-    for i, cz in enumerate(parsed.czasopisma):
-        parent.send_progress((i + 1) * 100.0 / total)
+    # p.track: aktualizuje pasek postępu (throttlowany) i sprawdza anulowanie
+    # (cancel_requested) przed każdym wierszem — zastępuje ręczny
+    # parent.send_progress(...).
+    for i, cz in p.track(
+        list(enumerate(parsed.czasopisma)),
+        total=len(parsed.czasopisma),
+        label="Import punktacji źródeł",
+    ):
         is_dup = i in dups
         dup_of, dup_reason = dups.get(i, (None, ""))
         _process_one_journal(i, cz, rok, parent, dry_run, is_dup, dup_of, dup_reason)

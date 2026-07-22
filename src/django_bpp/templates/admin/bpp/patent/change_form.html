@@ -42,7 +42,27 @@
 
                 $("#toz").click(function () {
                     if (confirm('Utworzysz kopię tego rekordu. Czy kontynuować?')) {
-                        location.href = "../../toz/" + pub_id;
+                        // Klonowanie to mutacja — POST + token CSRF (dawniej
+                        // GET-nawigacja). Formularz budujemy natywnym DOM (nie
+                        // jQuery-z-HTML-stringa), a submit nawiguje jak
+                        // location.href; serwer zwraca redirect na świeżą kopię.
+                        // Ten sam UX, zero dodatkowych kliknięć.
+                        // Ukośnik na końcu wymagany: wzorzec to toz/<pk>/, a
+                        // APPEND_SLASH nie przekieruje POST-a (zgubiłby ciało).
+                        var tozForm = document.createElement("form");
+                        tozForm.method = "post";
+                        // pub_id to PK (liczba). parseInt sanitizuje wartość
+                        // czytaną z DOM (.val()), żeby nie przenosiła meta-znaków
+                        // do URL-a — usuwa CodeQL js/xss-through-dom u źródła.
+                        tozForm.action = "../../toz/" + parseInt(pub_id, 10) + "/";
+                        var tozCsrf = document.createElement("input");
+                        tozCsrf.type = "hidden";
+                        tozCsrf.name = "csrfmiddlewaretoken";
+                        tozCsrf.value = document.querySelector(
+                            "input[name=csrfmiddlewaretoken]").value;
+                        tozForm.appendChild(tozCsrf);
+                        document.body.appendChild(tozForm);
+                        tozForm.submit();
                     }
                 });
             }

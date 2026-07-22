@@ -1,7 +1,11 @@
 name: Promote (RC → produkcja)
 
-# Druga komenda wydania. Finalizuje otwarte wydanie i przepina :latest na
-# zatwierdzony obraz RC — BEZ rebuildu (imagetools). Wywołanie:
+# Druga komenda wydania. Finalizuje otwarte wydanie i publikuje produkcyjny
+# obraz przez cienki patch-layer na zatwierdzonym RC: podmienia version.py na
+# finalny (bez rc) i ustawia BPP_BUILD_FLAVOR=release (patrz
+# docker/promote-patch/Dockerfile). NIE imagetools — bo kopia manifestu
+# odziedziczyłaby zapieczoną w RC wersję rcN (stopka/Rollbar). Warstwy bazowe
+# = te same przetestowane warstwy RC (dedup w rejestrze). Wywołanie:
 #   gh workflow run promote.yml
 # Gdy otwartych jest >1 gałęzi release/* — podaj którą:
 #   gh workflow run promote.yml -f version=v202606.1392
@@ -43,7 +47,7 @@ jobs:
           git fetch --tags origin master dev '+refs/heads/release/*:refs/remotes/origin/release/*'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
           enable-cache: true
 
@@ -114,9 +118,22 @@ jobs:
           set -euo pipefail
           # --set-version (NIE --tag final): --tag final dodatkowo bumpnąłby
           # BUILD (1394→1395), rozjeżdżając wersję finalną z testowanym RC.
-          uv run bumpver update --no-fetch --commit --no-push \
+          #
+          # UWAGA: `uvx` (izolowany tool env), a NIE `uv run`. `uv run` na
+          # gołym hoście runnera synchronizowałby CAŁY projekt bpp (300+
+          # pakietów) tylko po to, by odpalić utility do wersjonowania — a to
+          # buduje natywne rozszerzenia ze źródeł (pycairo przez
+          # xhtml2pdf→svglib→rlpycairo) i wywala się na runnerze bez nagłówków
+          # cairo. bumpver/towncrier czytają tylko ./pyproject.toml i edytują
+          # pliki — nie potrzebują env projektu. (Ten sam wzorzec i uzasadnienie
+          # co w release-candidate.yml.)
+          # WERSJE PRZYPIETE (bumpver@2026.1132, towncrier@25.8.0 = spojne z
+          # uv.lock): ten job ma contents: write i commituje finalny bump +
+          # changelog, wiec `uvx` bez pinu ciagnalby najnowszy kod z PyPI do
+          # joba z write-em. BUMP: podnos razem z pyproject.toml/uv.lock.
+          uvx bumpver@2026.1132 update --no-fetch --commit --no-push \
             --set-version "v${BASE}"
-          uv run towncrier build --yes || echo "towncrier: brak newsfragmentów."
+          uvx towncrier@25.8.0 build --yes || echo "towncrier: brak newsfragmentów."
           git add -A
           git commit -m "Changelog dla v${BASE}" || echo "Brak zmian changelogu."
 
@@ -147,10 +164,18 @@ jobs:
             "refs/tags/v${BASE}" \
             ":refs/heads/${RELEASE_REF}"
 
-      - name: Promote obrazów :rc → :wersja + :latest (imagetools)
+      - name: Promote obrazów :rc → :wersja + :latest (patch version.py + flavor)
         env:
           BASE: ${{ steps.detect.outputs.base }}
           RC_TAG: ${{ steps.detect.outputs.rc_tag }}
+        # NIE imagetools: obraz RC ma zapieczoną wersję rcN + BPP_BUILD_FLAVOR=
+        # staging (żeby stopka na :staging pokazywała rcN + git SHA). Promote
+        # nakłada cienki patch-layer na przetestowany RC — podmienia
+        # src/django_bpp/version.py na finalny (sfinalizowany krokiem "Finalizuj
+        # wersję", więc jest już w drzewie roboczym _dev) i ustawia
+        # BPP_BUILD_FLAVOR=release. Warstwy bazowe = te same przetestowane
+        # warstwy RC (dedup w rejestrze; push dokłada tylko 2 malutkie).
+        # Patrz docker/promote-patch/Dockerfile.
         run: |
           set -euo pipefail
           images=(
@@ -162,17 +187,26 @@ jobs:
             iplweb/bpp_denorm_queue
           )
           for img in "${images[@]}"; do
-            echo "::group::Promote ${img}: ${RC_TAG} → ${BASE} + latest"
-            docker buildx imagetools create \
-              -t "${img}:${BASE}" \
-              -t "${img}:latest" \
-              "${img}:${RC_TAG}"
+            echo "::group::Patch+promote ${img}: ${RC_TAG} → ${BASE} + latest"
+            # --provenance=false: bez tego buildx (driver docker-container)
+            # dokleja atestację provenance i single-platform build staje się
+            # image-indexem z wpisem "unknown/unknown" — niepotrzebna zmiana
+            # względem płaskiego manifestu, który dawał imagetools.
+            docker buildx build \
+              --platform linux/amd64 \
+              --provenance=false \
+              --build-arg "RC_IMAGE=${img}:${RC_TAG}" \
+              --file docker/promote-patch/Dockerfile \
+              --tag "${img}:${BASE}" \
+              --tag "${img}:latest" \
+              --push \
+              .
             echo "::endgroup::"
           done
           {
             echo "## ✅ Promoted v${BASE}"
             echo ""
-            echo "Źródło RC: \`:${RC_TAG}\` → \`:${BASE}\` + \`:latest\` (bez rebuildu)"
+            echo "Źródło RC: \`:${RC_TAG}\` → patch (finalny version.py + flavor=release) → \`:${BASE}\` + \`:latest\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Push master/dev/tag i usuń release branch

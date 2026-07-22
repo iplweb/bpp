@@ -17,6 +17,14 @@ src/django_bpp/staticroot/
 .gitattributes
 .github/
 
+# Test-runner contract tests inspect this workflow. Keep every other GitHub
+# metadata file outside the Docker context.
+!.github/
+.github/*
+!.github/workflows/
+.github/workflows/*
+!.github/workflows/build-docker-images.yml
+
 # Python cache files
 __pycache__/
 *.py[cod]

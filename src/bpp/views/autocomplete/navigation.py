@@ -7,11 +7,13 @@ from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db.models import IntegerField
 from django.db.models.expressions import RawSQL
 from django.db.models.query_utils import Q
+from django.utils.html import escape, format_html
 from django.utils.text import capfirst
 from queryset_sequence import QuerySetSequence
 
 from bpp.models import Uczelnia
 from bpp.models.autor import Autor
+from bpp.permissions import moze_wprowadzac_dane
 from bpp.models.cache import Rekord
 from bpp.models.konferencja import Konferencja
 from bpp.models.patent import Patent
@@ -94,12 +96,20 @@ class GlobalNavigationAutocomplete(
     paginate_by = 40
 
     def get_result_label(self, result):
+        # Etykieta renderuje się jako HTML (widget DAL z data-html: True robi
+        # $result.html(text)). Nazwiska autorów oraz nazwy jednostek/źródeł to
+        # zwykłe pola tekstowe bez sanityzacji — MUSZĄ być zescapowane, inaczej
+        # <script> w nazwisku wykonuje się u każdego, kto wpisze frazę.
         if isinstance(result, Autor):
             if result.aktualna_funkcja_id is not None:
-                return str(result) + ", " + str(result.aktualna_funkcja.nazwa)
+                return format_html("{}, {}", str(result), result.aktualna_funkcja.nazwa)
+            return escape(str(result))
         elif isinstance(result, Rekord):
+            # opis_bibliograficzny_cache jest budowany z pól sanityzowanych
+            # (tytuły + informacje/szczegoly/uwagi czyszczone w clean()), więc
+            # renderujemy jako HTML — zawiera zamierzone <i>/<sub> itp.
             return result.opis_bibliograficzny_cache
-        return str(result)
+        return escape(str(result))
 
     def get_results(self, context):
         """Return a list of results usable by Select2.
@@ -154,7 +164,11 @@ class GlobalNavigationAutocomplete(
             Rekord.objects.filter(qry).only("tytul_oryginalny"), uczelnia
         )
 
-        if hasattr(self, "request") and self.request.user.is_anonymous:
+        # Rekordy o statusie ukrytym na poziomie "podglad" są niedostępne dla
+        # wszystkich POZA użytkownikami z uprawnieniami redaktorskimi
+        # (moze_wprowadzac_dane) — zwykłe zalogowane konto ich nie znajdzie,
+        # spójnie z gate'em na stronie szczegółów rekordu (PracaView).
+        if hasattr(self, "request") and not moze_wprowadzac_dane(self.request.user):
             uczelnia_status = Uczelnia.objects.get_for_request(self.request)
             if uczelnia_status is not None:
                 ukryte = uczelnia_status.ukryte_statusy("podglad")
@@ -236,10 +250,13 @@ class AdminNavigationAutocomplete(
                 Praca_Habilitacyjna,
             ),
         ):
-            return result.opis_bibliograficzny_cache or str(result)
+            # cache jest sanityzowany (safe_html w clean); fallback str()
+            # (nazwiska/nazwy) escapujemy — etykieta renderuje się jako HTML.
+            return result.opis_bibliograficzny_cache or escape(str(result))
 
-        # Default handling for other types
-        return super().get_result_label(result)
+        # Default (autorzy, jednostki, źródła, konferencje, użytkownicy) —
+        # etykieta renderuje się jako HTML, więc escapujemy nazwy.
+        return escape(str(result))
 
     def get_model_name(self, model):
         """Return the display name for grouping results."""

@@ -15,7 +15,10 @@ def test_zakladki_renderowane(client_with_group):
 
 
 @pytest.mark.django_db
-def test_formularz_ma_3_tryby_i_kasuj_checkbox(client_with_group):
+def test_formularz_ma_3_tryby_i_kasuj_checkbox(client_with_group, charaktery_formalne):
+    # ``charaktery_formalne``: pole „charaktery_formalne" renderuje się tylko
+    # gdy są jakieś Charakter_Formalny; baseline bywa zmieciony przez
+    # transakcyjny flush sąsiada — zapewniamy je fixture'em zamiast zakładać.
     url = reverse("rozbieznosci:index", kwargs={"metryka": "if"})
     html = client_with_group.get(url).content.decode()
     # 3-opcyjny wybór trybu źródła

@@ -1,4 +1,5 @@
 import datetime
+from fractions import Fraction
 
 import pytest
 
@@ -6,6 +7,7 @@ from import_common.core import normalize_date
 from import_common.normalization import (
     extract_doi_from_url,
     extract_part_number,
+    kanonizuj_wymiar_etatu,
     normalize_doi,
     normalize_kod_dyscypliny,
     normalize_nazwa_dyscypliny,
@@ -13,6 +15,7 @@ from import_common.normalization import (
     normalize_orcid,
     normalize_part_number,
     normalize_tytul_publikacji,
+    parsuj_wymiar_etatu,
     remove_polish_diacritics,
 )
 
@@ -328,3 +331,45 @@ def test_extract_doi_from_url(i, o):
 def test_extract_doi_from_url_never_raises_on_non_doi():
     """Wymóg z Freshdesk #380: adres niebędący DOI ma zwrócić None bez wyjątku."""
     assert extract_doi_from_url("totalnie losowy ciąg !@#$ http://x.pl") is None
+
+
+@pytest.mark.parametrize(
+    "wejscie,oczekiwane",
+    [
+        (None, None),
+        ("", None),
+        ("   ", None),
+        ("Pełny etat", Fraction(1)),
+        ("pełen etat", Fraction(1)),
+        ("cały etat", Fraction(1)),
+        ("1/2 etatu", Fraction(1, 2)),
+        ("3/4", Fraction(3, 4)),
+        ("1/4 etatu", Fraction(1, 4)),
+        ("0,5", Fraction(1, 2)),
+        ("0.5", Fraction(1, 2)),
+        ("1", Fraction(1)),
+        ("0,75", Fraction(3, 4)),
+    ],
+)
+def test_parsuj_wymiar_etatu(wejscie, oczekiwane):
+    assert parsuj_wymiar_etatu(wejscie) == oczekiwane
+
+
+@pytest.mark.parametrize("smiec", ["abc", "1/0", "2/3/4", "pół"])
+def test_parsuj_wymiar_etatu_smiec(smiec):
+    with pytest.raises(ValueError):
+        parsuj_wymiar_etatu(smiec)
+
+
+@pytest.mark.parametrize(
+    "frac,oczekiwane",
+    [
+        (Fraction(1), "1"),
+        (Fraction(1, 2), "0,5"),
+        (Fraction(3, 4), "0,75"),
+        (Fraction(1, 4), "0,25"),
+        (Fraction(2, 3), "0,67"),
+    ],
+)
+def test_kanonizuj_wymiar_etatu(frac, oczekiwane):
+    assert kanonizuj_wymiar_etatu(frac) == oczekiwane

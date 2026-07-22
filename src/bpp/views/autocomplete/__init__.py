@@ -21,6 +21,7 @@ from .authors import (  # noqa: F401
     AutorAutocomplete,
     AutorAutocompleteBase,
     Dyscyplina_Naukowa_PrzypisanieAutocomplete,
+    ImportAutorAutocomplete,
     PodrzednaPublikacjaHabilitacyjnaAutocomplete,
     PublicAutorAutocomplete,
     ZapisanyJakoAutocomplete,

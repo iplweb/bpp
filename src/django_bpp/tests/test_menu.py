@@ -200,3 +200,14 @@ def test_profil_bez_uzywalnego_hasla_nie_ma_zmiany_hasla():
     profil = _child(m, "Mój profil")
     labels = [str(c.title) for c in profil.children]
     assert "Change password" not in labels
+
+
+def test_menu_dane_systemowe_ma_nowe_slowniki():
+    from django_bpp.menu import SYSTEM_MENU_2
+
+    labels = [item[0] for item in SYSTEM_MENU_2]
+    urls = [item[1] for item in SYSTEM_MENU_2]
+    assert "Stopnie służbowe" in labels
+    assert "Stanowiska dydaktyczne" in labels
+    assert "/admin/bpp/stopiensluzbowy/" in urls
+    assert "/admin/bpp/stanowiskodydaktyczne/" in urls

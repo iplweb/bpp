@@ -54,7 +54,28 @@ class BaseImportPlikuPolonMixin(GroupRequiredMixin):
 
 
 class PokazImporty(BaseImportPlikuPolonMixin, LongRunningOperationsView):
-    pass
+    def get_queryset(self):
+        # Multi-hosted: importy pokazuj tylko na stronie uczelni, z której
+        # zostały zaczęte (uczelnia z requestu: domena→Site→Uczelnia). Stare
+        # importy (uczelnia=None, sprzed pola) pokazuj wszędzie — wstecz-kompat.
+        # Gdy uczelni nie da się rozstrzygnąć (single-host bez domeny / pusta
+        # baza) → brak zawężenia (zachowanie wsteczne).
+        #
+        # Kasowanie starych operacji (max_previous_ops) robimy PO zawężeniu,
+        # per-uczelnia — inaczej wejście na stronę uczelni X kasowałoby stare
+        # importy uczelni Y właściciela.
+        from bpp.models import Uczelnia
+
+        qset = RestrictToOwnerMixin.get_queryset(self).order_by("-last_updated_on")
+
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        if uczelnia is not None:
+            qset = qset.filter(Q(uczelnia=uczelnia) | Q(uczelnia__isnull=True))
+
+        for elem in qset[self.max_previous_ops :]:
+            elem.delete()
+
+        return qset
 
 
 class UtworzImportPlikuPolon(BaseImportPlikuPolonMixin, CreateLongRunningOperationView):

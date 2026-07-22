@@ -18,6 +18,14 @@ class CrossRefProvider(DataProvider):
     def identifier_label(self) -> str:
         return "Identyfikator DOI"
 
+    @property
+    def icon(self) -> str:
+        return "fi-link"
+
+    @property
+    def landing_caption(self) -> str:
+        return "Pobierz metadane po numerze DOI z bazy CrossRef."
+
     def validate_identifier(self, identifier: str) -> str | None:
         return normalize_doi(identifier)
 

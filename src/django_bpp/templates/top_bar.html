@@ -182,7 +182,7 @@
                             {% if request.user|has_group:"wprowadzanie danych" or request.user.is_superuser %}
                                 <ul class="menu vertical column-1">
                                     <li><a href="{% url "integrator2:main" %}"><i class="fi-upload"></i> import danych</a></li>
-                                    <li><a href="{% url "import_pracownikow:index" %}"><i class="fi-torsos"></i> import pracowników</a></li>
+                                    <li><a href="{% url "import_pracownikow:index" %}"><i class="fi-torsos"></i> import pracowników i jednostek</a></li>
                                     <li><a href="{% url "import_polon:index" %}"><i class="fi-database"></i> import z POLON</a></li>
                                     <li><a href="{% url "import_polon:index-absencji" %}"><i class="fi-calendar"></i> import absencji</a></li>
                                     <li><a href="{% url "import_list_ministerialnych:index" %}"><i class="fi-clipboard-notes"></i> import list

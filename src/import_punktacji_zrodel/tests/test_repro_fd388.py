@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import pytest
+from liveops.testing import MockProgress
 from model_bakery import baker
 
 from import_punktacji_zrodel.core import analyze_jcr_file
@@ -25,7 +26,7 @@ def test_repro_fd388_pelny_przebieg(admin_user, jcr_xlsx_path):
         ignoruj_zrodla_bez_odpowiednika=False,
         nie_porownuj_po_tytulach=False,
     )
-    analyze_jcr_file(jcr_xlsx_path, imp)
+    analyze_jcr_file(jcr_xlsx_path, imp, MockProgress(imp))
 
     # raport pokrywa cały plik (136 czasopism)
     assert imp.get_details_set().count() == 136
@@ -37,3 +38,37 @@ def test_repro_fd388_pelny_przebieg(admin_user, jcr_xlsx_path):
     assert pz_blood.impact_factor == Decimal("23.900")
     # są też niedopasowane (większość pliku nie ma odpowiednika)
     assert imp.get_details_set().filter(zrodlo__isnull=True).exists()
+
+
+@pytest.mark.django_db
+def test_dwa_zrodla_o_tym_samym_tytule_rozstrzyga_issn(admin_user, jcr_xlsx_path):
+    """Dwa źródła 'LANCET' → import wybiera to wskazane przez ISSN z pliku.
+
+    Poprawny duplikat trzyma ISSN z pliku (0140-6736) w polu e_issn (JCR
+    miesza kolumny ISSN/eISSN), więc dopasowanie po tytule jest niejednoznaczne
+    i musi je rozstrzygnąć ISSN — inaczej wiersz zostałby oznaczony jako
+    'Brak źródła w BPP'.
+    """
+    from bpp.models import Punktacja_Zrodla, Zrodlo
+    from import_punktacji_zrodel.models import ImportPunktacjiZrodel
+
+    wlasciwy = baker.make(Zrodlo, nazwa="LANCET", issn="", e_issn="0140-6736")
+    decoy = baker.make(Zrodlo, nazwa="LANCET", issn="9999-9999")
+
+    imp = baker.make(
+        ImportPunktacjiZrodel,
+        owner=admin_user,
+        rok=2025,
+        zapisz_zmiany_do_bazy=True,
+        importuj_impact_factor=True,
+        importuj_kwartyl_wos=True,
+        ignoruj_zrodla_bez_odpowiednika=False,
+        nie_porownuj_po_tytulach=False,
+    )
+    analyze_jcr_file(jcr_xlsx_path, imp, MockProgress(imp))
+
+    pz = Punktacja_Zrodla.objects.get(zrodlo=wlasciwy, rok=2025)
+    assert pz.impact_factor == Decimal("109.000")
+    assert pz.kwartyl_w_wos == 1
+    # źródło-wabik nie dostało punktacji
+    assert not Punktacja_Zrodla.objects.filter(zrodlo=decoy, rok=2025).exists()

@@ -1,24 +1,24 @@
 import pytest
 from django.urls import reverse
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 from bpp.tests import normalize_html
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("klass", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
-def test_changelist_no_argument(klass, live_server, admin_page: Page):
+def test_changelist_no_argument(klass, channels_live_server, admin_page: Page):
     url = f"admin:bpp_{klass}_autor_changelist"
-    admin_page.goto(live_server.url + reverse(url))
+    admin_page.goto(channels_live_server.url + reverse(url))
     assert "Musisz wejść w edycję" in normalize_html(admin_page.content())
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("klass", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
-def test_edit_btn_invisible(klass, live_server, admin_page: Page):
+def test_edit_btn_invisible(klass, channels_live_server, admin_page: Page):
     # Przy dodawaniu publikacji -- brak przycisku "edytuj autorów"
     url = f"admin:bpp_{klass}_add"
-    admin_page.goto(live_server.url + reverse(url))
+    admin_page.goto(channels_live_server.url + reverse(url))
     assert "Edytuj autorów" not in normalize_html(admin_page.content())
 
 
@@ -29,17 +29,19 @@ def test_edit_btn_invisible(klass, live_server, admin_page: Page):
         ("wydawnictwo_zwarte", "Wydawnictwo_Zwarte"),
     ],
 )
-def test_edit_btn_appears(klass, model, live_server, admin_page: Page):
+def test_edit_btn_appears(klass, model, channels_live_server, admin_page: Page):
     # Przy edytowaniu publikacji -- przycisk "edytuj autorów" jest
     from model_bakery import baker
 
     from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 
-    model_class = Wydawnictwo_Ciagle if model == "Wydawnictwo_Ciagle" else Wydawnictwo_Zwarte
+    model_class = (
+        Wydawnictwo_Ciagle if model == "Wydawnictwo_Ciagle" else Wydawnictwo_Zwarte
+    )
     res = baker.make(model_class)
 
     url = f"admin:bpp_{klass}_change"
-    admin_page.goto(live_server.url + reverse(url, args=(res.pk,)))
+    admin_page.goto(channels_live_server.url + reverse(url, args=(res.pk,)))
 
     baker.make(model_class)
 
@@ -53,25 +55,29 @@ def test_edit_btn_appears(klass, model, live_server, admin_page: Page):
         ("wydawnictwo_zwarte", "Wydawnictwo_Zwarte"),
     ],
 )
-def test_changeform_save(klass, model, admin_page: Page, live_server):
+def test_changeform_save(klass, model, admin_page: Page, channels_live_server):
     from model_bakery import baker
 
     from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 
-    model_class = Wydawnictwo_Ciagle if model == "Wydawnictwo_Ciagle" else Wydawnictwo_Zwarte
+    model_class = (
+        Wydawnictwo_Ciagle if model == "Wydawnictwo_Ciagle" else Wydawnictwo_Zwarte
+    )
     rec = baker.make(model_class)
     wa = baker.make(model_class.autorzy.through, rekord=rec)
 
     url = f"admin:bpp_{klass}_autor_change"
-    admin_page.goto(live_server.url + reverse(url, args=(wa.pk,)))
+    admin_page.goto(channels_live_server.url + reverse(url, args=(wa.pk,)))
 
     admin_page.wait_for_selector('input[name="_save"]', state="visible")
 
-    # wchodzimy z okreslonym ID na okreslony rekord, zapisujmey, czy jest OK ?
-    admin_page.click('input[name="_save"]')
-    admin_page.wait_for_load_state("domcontentloaded")
+    # wchodzimy z okreslonym ID na okreslony rekord, zapisujemy, czy jest OK ?
+    # Zapis inline'u przekierowuje na changelist; blokujemy do zakończenia
+    # nawigacji, żeby wait nie wracał od razu na STAREJ stronie (race).
+    with admin_page.expect_navigation(wait_until="domcontentloaded"):
+        admin_page.click('input[name="_save"]')
 
-    assert "Dodaj powiązanie" in normalize_html(admin_page.content())
+    expect(admin_page.locator("body")).to_contain_text("Dodaj powiązanie")
 
 
 @pytest.mark.parametrize(
@@ -81,15 +87,19 @@ def test_changeform_save(klass, model, admin_page: Page, live_server):
         ("wydawnictwo_zwarte", "Wydawnictwo_Zwarte"),
     ],
 )
-def test_changelist_with_argument(klass, model, admin_page: Page, live_server):
+def test_changelist_with_argument(klass, model, admin_page: Page, channels_live_server):
     from model_bakery import baker
 
     from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 
-    model_class = Wydawnictwo_Ciagle if model == "Wydawnictwo_Ciagle" else Wydawnictwo_Zwarte
+    model_class = (
+        Wydawnictwo_Ciagle if model == "Wydawnictwo_Ciagle" else Wydawnictwo_Zwarte
+    )
     rec = baker.make(model_class)
     url = f"admin:bpp_{klass}_autor_changelist"
-    admin_page.goto(live_server.url + reverse(url) + f"?rekord__id__exact={rec.pk}")
+    admin_page.goto(
+        channels_live_server.url + reverse(url) + f"?rekord__id__exact={rec.pk}"
+    )
 
     assert "Dodaj powiązanie" in normalize_html(admin_page.content())
 
@@ -111,7 +121,7 @@ def test_changelist_with_argument(klass, model, admin_page: Page, live_server):
 def test_changeform_add_form_renders(
     klass,
     model,
-    live_server,
+    channels_live_server,
     admin_page: Page,
 ):
     from model_bakery import baker
@@ -124,7 +134,7 @@ def test_changeform_add_form_renders(
     rec = baker.make(model_class)
     url = f"admin:bpp_{klass}_autor_changelist"
     admin_page.goto(
-        live_server.url + reverse(url) + f"?rekord__id__exact={rec.pk}"
+        channels_live_server.url + reverse(url) + f"?rekord__id__exact={rec.pk}"
     )
 
     admin_page.wait_for_selector('a[name="_add_wa"]', state="visible")
@@ -148,7 +158,7 @@ def test_changeform_add_form_renders(
 def test_changeform_add_full_flow(
     klass,
     model,
-    live_server,
+    channels_live_server,
     admin_page: Page,
     autor_jan_nowak,
     jednostka,
@@ -167,7 +177,7 @@ def test_changeform_add_full_flow(
     rec = baker.make(model_class)
     url = f"admin:bpp_{klass}_autor_changelist"
     admin_page.goto(
-        live_server.url + reverse(url) + f"?rekord__id__exact={rec.pk}"
+        channels_live_server.url + reverse(url) + f"?rekord__id__exact={rec.pk}"
     )
 
     admin_page.wait_for_selector('a[name="_add_wa"]', state="visible")

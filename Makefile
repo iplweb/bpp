@@ -640,16 +640,47 @@ release: check-clean-tree full-tests new-release ## Pełny release (tree clean +
 
 .PHONY: release-candidate release-promote
 release-candidate: ## Faza 1: utnij kandydata (RC → :staging) i obserwuj run [SKIP_TESTS=1 SKIP_SCAN=1 WEB=1]
-	@FLAGS=""; \
+	@BRANCH=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null); \
+	if [ "$$BRANCH" != "dev" ]; then \
+		echo "BŁĄD: RC tnie kandydata z 'dev' (--ref dev), a lokalnie jesteś na '$$BRANCH'."; \
+		echo "      Przełącz się:  git switch dev && git pull  — potem ponów."; \
+		exit 1; \
+	fi; \
+	if [ -z "$$SKIP_SCAN" ]; then \
+		echo "==> Lokalny gate CVE (./bin/scan-deps.sh) — HIGH/CRITICAL zatrzyma RC przed CI..."; \
+		./bin/scan-deps.sh || { echo "BŁĄD: lokalny skan CVE znalazł HIGH/CRITICAL — przerywam przed RC (SKIP_SCAN=1 by pominąć awaryjnie)."; exit 1; }; \
+	else \
+		echo "==> SKIP_SCAN=1 — pomijam lokalny skan CVE (awaryjnie)."; \
+	fi; \
+	FLAGS=""; \
 	if [ -n "$$SKIP_TESTS" ]; then FLAGS="$$FLAGS -f skip_tests=true"; fi; \
 	if [ -n "$$SKIP_SCAN" ]; then FLAGS="$$FLAGS -f skip_scan=true"; fi; \
+	DISPATCHED_AT=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
 	echo "Odpalam release-candidate.yml (--ref dev)$$FLAGS ..."; \
-	gh workflow run release-candidate.yml --ref dev $$FLAGS; \
-	echo "Czekam na pojawienie się runu..."; \
-	sleep 3; \
-	RUN_ID=$$(gh run list --workflow=release-candidate.yml --limit=1 --json databaseId --jq '.[0].databaseId'); \
+	if ! gh workflow run release-candidate.yml --ref dev $$FLAGS; then \
+		echo "BŁĄD: Nie udało się uruchomić workflow. Nie szukam runu."; \
+		exit 1; \
+	fi; \
+	echo "Czekam na run utworzony po $$DISPATCHED_AT..."; \
+	RUN_ID=""; \
+	RUN_JQ="[.[] | select(.createdAt >= \"$$DISPATCHED_AT\")]"; \
+	ATTEMPT=0; \
+	while [ "$$ATTEMPT" -lt 30 ] && [ -z "$$RUN_ID" ]; do \
+		if ! RUN_ID=$$(gh run list \
+			--workflow=release-candidate.yml \
+			--branch=dev \
+			--event=workflow_dispatch \
+			--limit=20 \
+			--json databaseId,createdAt \
+			--jq "$$RUN_JQ | first | .databaseId // empty"); then \
+			echo "BŁĄD: Nie udało się pobrać listy runów workflow."; \
+			exit 1; \
+		fi; \
+		if [ -z "$$RUN_ID" ]; then sleep 2; fi; \
+		ATTEMPT=$$((ATTEMPT + 1)); \
+	done; \
 	if [ -z "$$RUN_ID" ]; then \
-		echo "BŁĄD: Nie udało się znaleźć nowego runu workflow."; \
+		echo "BŁĄD: Przez 60 s nie pojawił się run utworzony przez ten dispatch."; \
 		exit 1; \
 	fi; \
 	echo "Obserwuję run ID: $$RUN_ID"; \
@@ -709,7 +740,7 @@ loc: clean ## Pokaż statystyki liczby linii (pygount)
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202607.1397
+DOCKER_VERSION=202607.1398
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)

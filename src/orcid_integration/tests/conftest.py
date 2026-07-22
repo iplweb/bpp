@@ -73,6 +73,19 @@ def bpp_staff_user_matching_autor(db):
 
 
 @pytest.fixture
+def linked_identity(db, bpp_user_matching_autor):
+    """Tożsamość ORCID powiązana z ``bpp_user_matching_autor`` w środowisku
+    sandbox (``uczelnia_with_orcid`` ma ``orcid_sandbox=True``)."""
+    from orcid_integration.models import ORCIDIdentity
+
+    return ORCIDIdentity.objects.create(
+        user=bpp_user_matching_autor,
+        issuer="https://sandbox.orcid.org",
+        sub=ORCID_TEST_ID,
+    )
+
+
+@pytest.fixture
 def uczelnia_with_orcid_staff_only(db):
     return baker.make(
         Uczelnia,

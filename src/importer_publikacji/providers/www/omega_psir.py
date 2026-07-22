@@ -3,8 +3,7 @@
 import re
 from urllib.parse import urlparse
 
-import requests
-
+from .network import safe_get
 from .parsers import _clean_doi, _parse_year
 
 FETCH_TIMEOUT = 15
@@ -29,12 +28,15 @@ def _detect_omega_psir(
 
 
 def _fetch_omega_psir_jsonld(base_url: str, identifier: str) -> list | None:
-    """Pobierz JSON-LD z Omega-PSIR REST API."""
+    """Pobierz JSON-LD z Omega-PSIR REST API.
+
+    SSRF-guard: base_url pochodzi z URL-a użytkownika, a REST API może
+    przekierować — safe_get waliduje host przy każdym hopie (bez tego publiczny
+    host mógłby przekierować importer na adres wewnętrzny).
+    """
     api_url = f"{base_url}/seam/resource/rest/accesspoint/rdf/jsonld/{identifier}"
-    try:
-        resp = requests.get(api_url, timeout=FETCH_TIMEOUT)
-        resp.raise_for_status()
-    except requests.RequestException:
+    resp = safe_get(api_url, timeout=FETCH_TIMEOUT)
+    if resp is None:
         return None
     try:
         return resp.json()

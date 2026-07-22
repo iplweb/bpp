@@ -11,10 +11,10 @@
     <div class="praca-mono__title-section">
         <h2 class="praca-mono__title">
             {% if praca.tytul %}
-                {{ praca.tytul_oryginalny|safe }}
-                <span class="praca-mono__title-translation">({{ praca.tytul|safe }})</span>
+                {{ praca.tytul_oryginalny|safe_tytul }}
+                <span class="praca-mono__title-translation">({{ praca.tytul|safe_tytul }})</span>
             {% else %}
-                {{ praca.tytul_oryginalny|znak_na_koncu:"."|safe }}
+                {{ praca.tytul_oryginalny|znak_na_koncu:"."|safe_tytul }}
             {% endif %}
             {% if praca.charakter_formalny.charakter_ogolny != 'roz' %}
                 <span class="praca-mono__edition-mark">{{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}</span>
@@ -25,6 +25,7 @@
 
         <!-- Authors Section -->
         {% autorzy_skrocony praca uczelnia as box %}
+        {% if box.liczba %}
         <div class="praca-mono__authors-section{% if box.skrocony %} praca-mono__authors-section--collapsible{% endif %}">
 
             {% if box.skrocony %}
@@ -56,6 +57,7 @@
                 {% endif %}
             </div>
         </div>
+        {% endif %}
     </div>
 
     <!-- Main content in two columns -->

@@ -15,7 +15,7 @@ Ten moduł zawiera testy dla podstawowych QueryObject:
 - JezykQueryObject - wyszukiwanie po języku
 """
 
-from datetime import datetime
+from datetime import date
 
 import pytest
 from model_bakery import baker
@@ -136,7 +136,11 @@ def test_multiseek_charakter_formalny_ogolny(wydawnictwo_zwarte, ksiazka_polska)
 
 def test_DataUtworzeniaQueryObject():
     d = DataUtworzeniaQueryObject()
-    assert d.value_for_description('[""]') == str(datetime.now().date())
+    # Odporne na przeskok o polnocy: akceptuj date sprzed i po wywolaniu.
+    before = date.today()
+    rendered = d.value_for_description('[""]')
+    after = date.today()
+    assert rendered in {str(before), str(after)}
     assert d.value_for_description('["2018-01-01 12:00:00"]') == "2018-01-01"
     assert (
         d.value_for_description('["2018-01-01 12:00:00", "2018-01-01 12:00:00"]')

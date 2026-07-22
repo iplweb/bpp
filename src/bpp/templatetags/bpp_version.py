@@ -42,11 +42,11 @@ def bpp_git_sha_short():
 
 @register.simple_tag
 def bpp_image_tag():
-    """Tag obrazu Docker (np. "119-merge") dla obrazów dev.
+    """Tag obrazu Docker (np. nazwa feature brancha) dla obrazów dev.
 
-    Master release zwraca pusty string. Wartość ustawia workflow
-    build-docker-images.yml na podstawie `final_tag` (PR# dla pull_request,
-    nazwa brancha dla feature/fix/hotfix, BASE_VERSION dla mastera).
+    Release zwraca pusty string. Ręczny build CI ustawia sanityzowaną nazwę
+    refa, a release candidate pozostawia tag pusty, bo wersja RC jest już
+    wyświetlana osobno.
     """
     if _is_release():
         return ""
@@ -58,12 +58,11 @@ def bpp_image_tag():
 
 @register.simple_tag
 def bpp_branch_tag():
-    """Alias = sanityzowana nazwa source brancha PR-a (np.
-    "feature-nowe-zglos-publikacje").
+    """Opcjonalny alias brancha dla starszych obrazów PR.
 
-    Workflow ustawia tylko dla pull_request eventów; dla master/feature
-    push bez PR pozostaje pusty (final_tag = nazwa brancha, więc
-    duplikacja byłaby zbędna). Master release zwraca pusty string.
+    Bieżący workflow CI pozostawia go pusty, ale tag nadal obsługuje starsze
+    obrazy i jawnie skonfigurowane buildy lokalne. Release zawsze zwraca pusty
+    string.
     """
     if _is_release():
         return ""

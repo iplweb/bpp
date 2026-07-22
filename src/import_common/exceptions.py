@@ -17,6 +17,13 @@ class InputDataError(Exception):
     pass
 
 
+class DecompressionBombException(Exception):
+    """Plik XLSX (archiwum ZIP) rozpakowuje się do rozmiaru przekraczającego
+    bezpieczny limit — potencjalna bomba dekompresyjna (DoS przez OOM)."""
+
+    pass
+
+
 class XLSParseError(Exception):
     def __init__(self, elem, form, reason):
         self.elem = elem

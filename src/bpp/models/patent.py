@@ -26,7 +26,7 @@ from bpp.models.abstract import (
 )
 from bpp.models.autor import Autor
 from bpp.models.system import Charakter_Formalny, Jezyk
-from bpp.util import safe_html
+from bpp.util import safe_tytul_html
 
 
 class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
@@ -134,7 +134,14 @@ class Patent(
 
     def clean(self):
         # DwaTytuly.clean() w wydaniu jedno-tytułowym...
-        self.tytul_oryginalny = safe_html(self.tytul_oryginalny)
+        self.tytul_oryginalny = safe_tytul_html(self.tytul_oryginalny)
+        ModelZeSzczegolami.clean(self)
+
+    def save(self, *args, **kwargs):
+        # Egzekwuj sanityzację tytułu także na ścieżce objects.create()/import,
+        # która nie woła full_clean().
+        self.tytul_oryginalny = safe_tytul_html(self.tytul_oryginalny)
+        return super().save(*args, **kwargs)
 
     #
     # Cache framework by django-denorm-iplweb

@@ -30,10 +30,11 @@ from import_common.normalization import normalize_doi
 from ..crossref_fields import categorize_crossref_fields
 from ..dspace_fields import categorize_dspace_fields
 from ..forms import PunktacjaForm, SourceForm, VerifyForm
-from ..models import ImportedAuthor
+from ..models import ImportedAuthor, ImportSession
 from .authors import _orcid_settable_qs
 from .helpers import (
     STEP_AUTHORS,
+    STEP_PBN,
     STEP_PUNKTACJA,
     STEP_REVIEW,
     STEP_SOURCE,
@@ -43,7 +44,6 @@ from .helpers import (
     _render_full_page,
     _with_breadcrumbs_oob,
 )
-from .pbn_check import _check_pbn_by_doi
 
 
 def _find_duplicates(session):
@@ -69,7 +69,10 @@ def _find_duplicates(session):
 
     title = session.normalized_data.get("title", "")
     if title and len(title) >= 10:
-        for model in (Wydawnictwo_Ciagle, Wydawnictwo_Zwarte):
+        # Patent nie ma DOI — dopasowanie tylko po tytule (tytul_oryginalny).
+        from bpp.models import Patent
+
+        for model in (Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Patent):
             for pub in model.objects.filter(tytul_oryginalny__iexact=title)[:5]:
                 key = (type(pub).__name__, pub.pk)
                 if key not in seen_pks:
@@ -97,27 +100,70 @@ def _is_chapter(session):
 # --- Verify step --------------------------------------------------------------
 
 
+def _patent_verify_initial(session):
+    """Round-trip-safe initial dla pól patentowych w kroku Verify.
+
+    Czyta najpierw jawne klucze zapisane przez poprzedni submit; best-effort
+    z BibTeX (dopasowanie ``rodzaj_prawa`` po nazwie ``patent_type``) stosuje
+    się TYLKO gdy klucz nieobecny (pierwsze wejście). Rozróżnienie „klucz
+    obecny = None" (operator wyczyścił pole) vs „klucz nieobecny" (pierwszy
+    raz) chroni przed nadpisaniem wyborów operatora przy powrocie do kroku.
+    """
+    from .publikacja import _resolve_rodzaj_prawa
+
+    nd = session.normalized_data
+    initial = {
+        "numer_zgloszenia": nd.get("patent_number"),
+        "data_zgloszenia": nd.get("filing_date"),
+        "numer_prawa_wylacznego": nd.get("patent_grant_number"),
+        "data_decyzji": nd.get("grant_date"),
+        "uprawniony": nd.get("patent_holder"),
+    }
+    if "rodzaj_prawa_id" in nd:
+        # Jawny wybór operatora (nawet None = świadomie wyczyszczone).
+        initial["rodzaj_prawa"] = nd.get("rodzaj_prawa_id")
+    else:
+        rp = _resolve_rodzaj_prawa(nd.get("patent_type"))
+        initial["rodzaj_prawa"] = rp.pk if rp else None
+    if "wdrozenie" in nd:
+        initial["wdrozenie"] = nd.get("wdrozenie")
+    if "wydzial_id" in nd:
+        initial["wydzial"] = nd.get("wydzial_id")
+    return initial
+
+
 def _verify_context(request, session, form=None):
     """Przygotuj kontekst dla kroku weryfikacji."""
     pub_type = session.normalized_data.get("publication_type")
     mapper = _get_crossref_mapper(pub_type)
+    is_patent = session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT
 
     if form is None:
-        initial = {
-            "typ_kbn": session.typ_kbn_id,
-            "jezyk": session.jezyk_id,
-        }
-        # Użyj wartości sesji gdy istnieją (user już submitował)
-        if session.charakter_formalny_id:
-            initial["charakter_formalny"] = session.charakter_formalny_id
-            initial["jest_wydawnictwem_zwartym"] = session.jest_wydawnictwem_zwartym
-        elif mapper and mapper.charakter_formalny_bpp_id:
-            initial["charakter_formalny"] = mapper.charakter_formalny_bpp_id
-            initial["jest_wydawnictwem_zwartym"] = mapper.jest_wydawnictwem_zwartym
+        initial = {"rok": session.normalized_data.get("year")}
+        if is_patent:
+            initial["rodzaj_rekordu"] = ImportSession.RodzajRekordu.PATENT
+            initial.update(_patent_verify_initial(session))
+        else:
+            initial["typ_kbn"] = session.typ_kbn_id
+            initial["jezyk"] = session.jezyk_id
+            # Użyj wartości sesji gdy istnieją (user już submitował), inaczej
+            # auto-podpowiedź z mappera CrossRef. rodzaj_rekordu (radio)
+            # zastępuje dawny boolean jest_wydawnictwem_zwartym.
+            zwarte = None
+            if session.charakter_formalny_id:
+                initial["charakter_formalny"] = session.charakter_formalny_id
+                zwarte = session.jest_wydawnictwem_zwartym
+            elif mapper and mapper.charakter_formalny_bpp_id:
+                initial["charakter_formalny"] = mapper.charakter_formalny_bpp_id
+                zwarte = mapper.jest_wydawnictwem_zwartym
+            initial["rodzaj_rekordu"] = (
+                ImportSession.RodzajRekordu.ZWARTE
+                if zwarte
+                else ImportSession.RodzajRekordu.CIAGLE
+            )
         form = VerifyForm(initial=initial)
 
     existing = _find_duplicates(session)
-    pbn_result = _check_pbn_by_doi(session)
 
     doi = session.normalized_data.get("doi")
     suggest_crossref = bool(doi and session.provider_name != "CrossRef")
@@ -141,6 +187,7 @@ def _verify_context(request, session, form=None):
     return {
         "session": session,
         "form": form,
+        "is_patent": is_patent,
         "existing": existing,
         "auto_charakter": (
             mapper.charakter_formalny_bpp
@@ -150,7 +197,6 @@ def _verify_context(request, session, form=None):
         "auto_zwarte": (mapper.jest_wydawnictwem_zwartym if mapper else None),
         "suggest_crossref": suggest_crossref,
         "crossref_doi": doi if suggest_crossref else None,
-        "pbn_result": pbn_result,
         "field_categories": field_categories,
         "raw_json_pretty": raw_json_pretty,
     }
@@ -312,6 +358,8 @@ def _authors_context(request, session):
         "authors": all_authors,
         "stats": stats,
         "orcid_settable_count": orcid_settable_count,
+        # „Wstecz" z Autorów: patent pomija Source → cofa do Verify.
+        "is_patent": session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT,
     }
 
 
@@ -348,15 +396,47 @@ def _review_context(request, session):
         "matched_dyscyplina",
     ).exclude(matched_autor=None)
 
+    is_patent = session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT
+
+    # Krok wstecz z przeglądu: patent pomija PBN → cofa do punktacji; dla
+    # źródeł NIE-PBN prowadzi do kroku „Sprawdź w PBN", dla źródła PBN —
+    # bezpośrednio do punktacji (krok PBN pominięty).
+    if is_patent or session.provider_name == "PBN":
+        back_step = "punktacja"
+    else:
+        back_step = "pbn"
+    back_step_url = reverse(
+        f"importer_publikacji:{back_step}",
+        kwargs={"session_id": session.pk},
+    )
+
     ctx = {
         "session": session,
         "authors": authors,
         "data": session.normalized_data,
+        "back_step_url": back_step_url,
+        "is_patent": is_patent,
     }
 
+    if is_patent:
+        # Rozwiąż FK (id → obiekt) do wyświetlenia nazw na przeglądzie.
+        from bpp.models import Jednostka, Rodzaj_Prawa_Patentowego
+
+        nd = session.normalized_data
+        rp_id = nd.get("rodzaj_prawa_id")
+        ctx["patent_rodzaj_prawa"] = (
+            Rodzaj_Prawa_Patentowego.objects.filter(pk=rp_id).first() if rp_id else None
+        )
+        w_id = nd.get("wydzial_id")
+        ctx["patent_wydzial"] = (
+            Jednostka.objects.filter(pk=w_id).first() if w_id else None
+        )
+
     uczelnia = Uczelnia.objects.get_for_request(request)
+    # Patent nie idzie do PBN — nigdy nie pokazuj „Zapisz i wyślij do PBN".
     if (
-        uczelnia is not None
+        not is_patent
+        and uczelnia is not None
         and uczelnia.pbn_integracja
         and uczelnia.pbn_aktualizuj_na_biezaco
     ):
@@ -394,6 +474,18 @@ def _oblicz_sugestie(session):
     klasyfikacja z danych sesji (F2).
     """
     rok = session.normalized_data.get("year")
+
+    # Patent nie ma źródła (zrodlo/wydawca) — brak podstawy do sugestii;
+    # operator wpisuje punkty_kbn ręcznie.
+    if session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT:
+        return (
+            SugestiaPunktacji(
+                None,
+                rodzaj_braku=RodzajBraku.BRAK_DANYCH_ZRODLA,
+                powod_braku="Patent nie ma źródła — brak sugestii punktacji.",
+            ),
+            None,
+        )
 
     if not session.jest_wydawnictwem_zwartym:
         return zaproponuj_punkty_ciagle(session.zrodlo, rok), None
@@ -477,3 +569,67 @@ def _render_punktacja_step(request, session, form=None):
 def _render_punktacja_full(request, session, form=None):
     ctx = _punktacja_context(request, session, form)
     return _render_full_page(request, STEP_PUNKTACJA, ctx)
+
+
+# --- PBN check step -----------------------------------------------------------
+
+
+def _pbn_context(request, session, *, do_search=True):
+    """Zbuduj kontekst kroku „Sprawdź w PBN".
+
+    Dla źródeł NIE-PBN sprawdza czy operator jest zalogowany do PBN i — jeśli
+    tak — wyszukuje odpowiednik po DOI / tytule / stronie WWW. Zawsze pokazuje
+    aktualnie wybrany odpowiednik (jeśli jest), niezależnie od wyszukiwania.
+    """
+    from urllib.parse import quote
+
+    from .pbn_search import (
+        _operator_pbn_logged_in,
+        _pbn_url,
+        _search_pbn_equivalents,
+        _selected_pbn_publication,
+    )
+
+    logged_in = _operator_pbn_logged_in(request.user)
+    selected = _selected_pbn_publication(session)
+    selected_pbn_url = _pbn_url(session.uczelnia, selected.pk) if selected else None
+
+    search = None
+    if do_search and logged_in:
+        search = _search_pbn_equivalents(session, request.user)
+        # needs_auth w trakcie wyszukiwania = token nieważny po stronie PBN
+        if search.get("needs_auth"):
+            logged_in = False
+
+    step_url = reverse("importer_publikacji:pbn", kwargs={"session_id": session.pk})
+    authorize_url = f"{reverse('pbn_api:authorize')}?next={quote(step_url)}"
+
+    return {
+        "session": session,
+        "logged_in": logged_in,
+        "search": search,
+        "selected": selected,
+        "selected_pbn_url": selected_pbn_url,
+        "authorize_url": authorize_url,
+        "punktacja_url": reverse(
+            "importer_publikacji:punktacja", kwargs={"session_id": session.pk}
+        ),
+        "review_url": reverse(
+            "importer_publikacji:review", kwargs={"session_id": session.pk}
+        ),
+    }
+
+
+def _render_pbn_step(request, session, *, do_search=True):
+    """Renderuj partial kroku PBN z HX-Push-Url."""
+    ctx = _pbn_context(request, session, do_search=do_search)
+    url = reverse("importer_publikacji:pbn", kwargs={"session_id": session.pk})
+    response = render(request, STEP_PBN, ctx)
+    response = _with_breadcrumbs_oob(response, request, session)
+    return _push_url(response, url)
+
+
+def _render_pbn_full(request, session, *, do_search=True):
+    """Renderuj pełną stronę z krokiem PBN."""
+    ctx = _pbn_context(request, session, do_search=do_search)
+    return _render_full_page(request, STEP_PBN, ctx)

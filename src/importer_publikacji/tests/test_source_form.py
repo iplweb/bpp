@@ -134,7 +134,7 @@ def test_source_step_renders_autocomplete(
     """Krok 3 powinien renderować widgety autocomplete."""
     from django.urls import reverse
 
-    from bpp.models import Charakter_Formalny, Jezyk, Typ_KBN
+    from bpp.models import Typ_KBN
 
     session = ImportSession.objects.create(
         created_by=importer_user,
@@ -148,9 +148,9 @@ def test_source_step_renders_autocomplete(
             "source_abbreviation": None,
             "publisher": None,
         },
-        charakter_formalny=Charakter_Formalny.objects.first(),
-        typ_kbn=Typ_KBN.objects.first(),
-        jezyk=Jezyk.objects.filter(widoczny=True).first(),
+        charakter_formalny=charaktery_formalne["AC"],
+        typ_kbn=Typ_KBN.objects.get(skrot="PO"),
+        jezyk=jezyki["pol."],
         status=ImportSession.Status.VERIFIED,
     )
     url = reverse(
@@ -174,7 +174,7 @@ def test_source_step_post_with_zrodlo(
     """POST z wybranym źródłem powinien przejść dalej."""
     from django.urls import reverse
 
-    from bpp.models import Charakter_Formalny, Jezyk, Typ_KBN
+    from bpp.models import Typ_KBN
 
     zrodlo = baker.make(Zrodlo)
     session = ImportSession.objects.create(
@@ -191,9 +191,9 @@ def test_source_step_post_with_zrodlo(
             "publisher": None,
             "year": 2024,
         },
-        charakter_formalny=Charakter_Formalny.objects.first(),
-        typ_kbn=Typ_KBN.objects.first(),
-        jezyk=Jezyk.objects.filter(widoczny=True).first(),
+        charakter_formalny=charaktery_formalne["AC"],
+        typ_kbn=Typ_KBN.objects.get(skrot="PO"),
+        jezyk=jezyki["pol."],
         status=ImportSession.Status.VERIFIED,
         jest_wydawnictwem_zwartym=False,
     )
@@ -222,7 +222,7 @@ def test_source_step_post_with_wydawca(
     """POST z wydawcą dla wydawnictwa zwartego."""
     from django.urls import reverse
 
-    from bpp.models import Charakter_Formalny, Jezyk, Typ_KBN
+    from bpp.models import Typ_KBN
 
     wydawca = baker.make(Wydawca)
     session = ImportSession.objects.create(
@@ -239,9 +239,9 @@ def test_source_step_post_with_wydawca(
             "publisher": "Some Publisher",
             "year": 2024,
         },
-        charakter_formalny=Charakter_Formalny.objects.first(),
-        typ_kbn=Typ_KBN.objects.first(),
-        jezyk=Jezyk.objects.filter(widoczny=True).first(),
+        charakter_formalny=charaktery_formalne["AC"],
+        typ_kbn=Typ_KBN.objects.get(skrot="PO"),
+        jezyk=jezyki["pol."],
         status=ImportSession.Status.VERIFIED,
         jest_wydawnictwem_zwartym=True,
     )

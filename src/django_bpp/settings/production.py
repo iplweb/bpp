@@ -122,6 +122,18 @@ ALLOWED_HOSTS = [
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
+# Nagłówki bezpieczeństwa transportu (defense-in-depth). nginx wymusza HTTPS
+# na wszystkich vhostach — poniższe chronią na wypadek pojedynczego żądania,
+# które trafiłoby do Django plaintextem (SSL-strip/MITM). SECURE_SSL_REDIRECT
+# rozpoznaje HTTPS poprawnie dzięki SECURE_PROXY_SSL_HEADER powyżej.
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_SSL_REDIRECT = True
+SECURE_HSTS_SECONDS = 31536000  # 1 rok
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+# preload wymaga ręcznego zgłoszenia domeny do list przeglądarek i jest
+# trudno odwracalny — świadomie zostawiony do decyzji wdrożeniowej.
+SECURE_HSTS_PRELOAD = False
+
 
 if (
     ".console." not in EMAIL_BACKEND  # noqa

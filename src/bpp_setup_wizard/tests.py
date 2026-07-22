@@ -133,15 +133,22 @@ def test_uczelnia_setup_creates_uczelnia(admin_user):
 
 
 @pytest.mark.django_db
-def test_uczelnia_setup_not_accessible_when_exists(admin_user, uczelnia):
+def test_uczelnia_setup_not_accessible_when_exists(
+    admin_user, uczelnia, first_run_wizard_state
+):
     client = Client()
     client.force_login(admin_user)
 
     response = client.get(reverse("first_run_wizard:step", kwargs={"name": "uczelnia"}))
 
-    # Step is_complete()==True → WizardStepView redirects to '/'.
-    assert response.status_code == 302
-    assert response.url == "/"
+    # Admin + uczelnia both exist → every step is complete → the wizard is
+    # done. With django-first-run-wizard>=0.2.0 the middleware records
+    # completion (on construction) and the /setup/ views return 404 — setup
+    # is closed for good; deleting the uczelnia no longer re-opens it.
+    # ``first_run_wizard_state`` gwarantuje wiersz-singleton stanu (pk=1),
+    # normalnie z migracji, a wymiatany przez transakcyjnego sąsiada na CI —
+    # bez niego middleware nie backfilluje completed_at i widok zwraca 302.
+    assert response.status_code == 404
 
 
 @pytest.mark.django_db

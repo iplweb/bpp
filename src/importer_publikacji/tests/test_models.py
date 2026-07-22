@@ -252,5 +252,16 @@ def test_get_continue_url_punktacja_po_autorach():
     s = baker.make(ImportSession, status=ImportSession.Status.AUTHORS_MATCHED)
     assert s.get_continue_url().endswith(f"/{s.pk}/punktacja/")
 
+    # Po punktacji dla źródła NIE-PBN wchodzimy w krok „Sprawdź w PBN".
     s.status = ImportSession.Status.PUNKTACJA
+    s.provider_name = "CrossRef"
+    assert s.get_continue_url().endswith(f"/{s.pk}/pbn/")
+
+    # Dla źródła PBN krok jest pominięty — prosto do przeglądu.
+    s.provider_name = "PBN"
+    assert s.get_continue_url().endswith(f"/{s.pk}/review/")
+
+    # Po kroku PBN — przegląd.
+    s.status = ImportSession.Status.PBN_CHECK
+    s.provider_name = "CrossRef"
     assert s.get_continue_url().endswith(f"/{s.pk}/review/")

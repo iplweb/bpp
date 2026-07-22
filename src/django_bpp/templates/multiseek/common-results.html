@@ -7,7 +7,7 @@
 {% include "multiseek/print-logo.html" %}
 {% include "multiseek/title.html" %}
 <div class="multiseek-report-container">
-    {%  if paginator_count > 25000 %}
+    {% if paginator_count > 25000 %}
         <div style="padding-left: 4em; padding-right: 4em;">
         <p>Wynik obecnego zapytania do bazy dałby w rezultacie {{ paginator_count }} rekordów. Jest to dość duża ilość
             i szczerze mówiąc pobieranie ich wszystkich przez tą stronę WWW będzie dla Ciebie dość karkołomne. Stąd też
@@ -17,7 +17,7 @@
             Prosimy, postaraj się ograniczyć zapytanie do bazy danych w taki sposób, aby dawało w rezultacie maksymalnie
                 do 25 tysięcy rekordów - wówczas zostaną one wyświetlone w wybranym przez Ciebie formacie w tym miejscu.</p>
         <p>Jeżeli potrzebujesz pobrać wszystkie rekordy z systemu BPP, skorzystaj z dostępu przez API. Obsługiwane
-            API to <a target="_blank" class="external-arrow-box" href="/api/v1/">JSON-REST</a> oraz <a target="_blank" class="external-arrow-box" href="/bpp/oai/?verb=ListSets">protokół OAI-PMH</a>.
+            API to <a target="_blank" class="external-arrow-box" href="/api/v1/">JSON-REST</a> oraz <a target="_blank" class="external-arrow-box" href="/bpp/oai/?verb=ListSets">protokół OAI-PMH</a>.</p>
         </div>
     {% else %}
 
@@ -101,153 +101,11 @@
     {% endif %}
 
     {% if report_type == "bibtex" %}
-        <div class="multiseek-bibtex-container">
-            {% if object_list %}
-                <div class="bibtex-actions bibtex-actions-top">
-                    <button data-action="copy-bibtex" type="button">
-                        📋 Skopiuj wszystko do schowka
-                    </button>
-                    <span id="bibtex-copy-feedback" class="copy-feedback" style="display: none;">
-                        ✓ Skopiowane!
-                    </span>
-                </div>
-            {% endif %}
-            <pre>{% for element in object_list %}{{ element.original.to_bibtex }}{% if not forloop.last %}
-
-{% endif %}{% endfor %}</pre>
-        </div>
+        {% include "multiseek/report-body-bibtex.html" %}
     {% elif report_type == "list" or report_type == "numer_list" or report_type == None %}
-        <div class="multiseek-list-report">
-            <ol style="counter-reset: list-counter {{ page_obj.start_index|add:-1 }}">
-                {% for element in object_list %}
-
-                <li class="multiseek-row" id="multiseek-row-{{ element.js_safe_pk }}">
-                    <span class="multiseek-element">
-                        <a href="{% url "bpp:browse_praca" element.id.0 element.id.1 %}"
-                           target="_top">
-                            {{ element.opis_bibliograficzny_cache|safe }}
-
-                        </a>
-
-                        {% if report_type == "numer_list" %}
-                            <span style="color: red;">
-                    {{ element.uwagi }}
-                    </span>
-                        {% endif %}
-
-                    </span>
-                {% if not print_removed %}
-                    <span class="multiseek-remove-from-results">
-                        <a data-remove-result="{{ element.js_safe_pk }}" style="font-size: 8pt;">
-                            ❌
-                        </a>
-                    </span>
-                {% endif %}
-                </li>
-                {% empty %}
-                    <li style="text-align: center; color: #6c757d; padding: 20px;">{% trans "No elements" %}</li>
-                {% endfor %}
-            </ol>
-        </div>
+        {% include "multiseek/report-body-list.html" with export_mode=False start_index=page_obj.start_index|add:-1 %}
     {% else %}
-        <div class="multiseek-table-report">
-            <table>
-            <tr>
-                <th>Lp.</th>
-                <th>Tytuł, autorzy, źródło</th>
-                <th>IF</th>
-
-                {% if report_type == "table_cytowania" or report_type == "pkt_wewn_cytowania" or report_type == "pkt_wewn_bez_cytowania" %}
-                    <th>Liczba cytowań</th>
-                {% endif %}
-
-                <th>PK</th>
-
-                {% if report_type == "pkt_wewn" or report_type == "pkt_wewn_cytowania" %}
-                    <th>pkt. wewn.</th>
-                {% endif %}
-
-                {% if report_type != "pkt_wewn" and report_type != "pkt_wewn_bez" and report_type != "pkt_wewn_cytowania" and report_type != "pkt_wewn_bez_cytowania" %}
-                    <th>Charakter</th>
-                {% endif %}
-
-                <th>Typ MNiSW/MEiN</th>
-            </tr>
-            {% for element in object_list %}
-                <tr>
-                    <td valign="top">
-                        {{ page_obj.start_index|add:forloop.counter|add:-1 }}.
-                    </td>
-                    <td class="multiseek-row"
-                          id="multiseek-row-{{ element.js_safe_pk }}">
-                    <span class="multiseek-element">
-                    <a href="{% url "bpp:browse_praca" element.id.0 element.id.1 %}"
-                       target="_top">
-                        {{ element.opis_bibliograficzny_cache|safe }}
-
-                    </a>
-                    </span>
-                        {% if not print_removed %}
-                    <span class="multiseek-remove-from-results">
-                        <a data-remove-result="{{ element.js_safe_pk }}" style="font-size: 8pt;">
-                            ❌
-                        </a>
-                    </span>
-                        {% endif %}
-                    </td>
-                    <td>{{ element.impact_factor }}</td>
-                    {% if report_type == "table_cytowania" or report_type == "pkt_wewn_cytowania" or report_type == "pkt_wewn_bez_cytowania" %}
-                        <td>{{ element.liczba_cytowan }}</td>
-                    {% endif %}
-
-                    <td>{{ element.punkty_kbn }}</td>
-
-                    {% if report_type == "pkt_wewn" or report_type == "pkt_wewn_cytowania" %}
-                        <td>{{ element.punktacja_wewnetrzna }}</td>
-                    {% endif %}
-
-                {% if report_type != "pkt_wewn" and report_type != "pkt_wewn_bez" and report_type != "pkt_wewn_cytowania" and report_type != "pkt_wewn_bez_cytowania" %}
-                    <td>{{ element.charakter_formalny }}</td>
-                {% endif %}
-                    <td>{{ element.typ_kbn }}</td>
-                </tr>
-            {% empty %}
-                <tr>
-                    <td colspan="10" style="text-align: center;">{% trans "No elements" %}
-                    </td>
-                </tr>
-            {% endfor %}
-
-            {% if page_obj.number == page_obj.paginator.num_pages %}
-                <tfoot>
-                <tr>
-                    <td colspan="2">
-                        Suma:
-                    </td>
-                    <td>
-                        {{ sumy.impact_factor__sum|default_if_none:"0.00" }}
-                    </td>
-                    {% if report_type == "table_cytowania" or report_type == "pkt_wewn_cytowania" or report_type == "pkt_wewn_bez_cytowania" %}
-                        <td>
-                            {{ sumy.liczba_cytowan__sum|default_if_none:"0.00" }}
-                        </td>
-                    {% endif %}
-                    <td>
-                        {{ sumy.punkty_kbn__sum|default_if_none:"0.00" }}
-                    </td>
-                    {% if report_type == "pkt_wewn" or report_type == "pkt_wewn_cytowania" %}
-                        <td>
-                            {{ sumy.punktacja_wewnetrzna__sum|default_if_none:"0.00" }}
-                        </td>
-                    {% endif %}
-                    <td>&nbsp;</td>
-                    <td>&nbsp;</td>
-                </tr>
-                </tfoot>
-            {% endif %}
-
-            </table>
-        </div>
+        {% include "multiseek/report-body-table.html" with export_mode=False start_index=page_obj.start_index|add:-1 %}
     {% endif %}
 
 </div>

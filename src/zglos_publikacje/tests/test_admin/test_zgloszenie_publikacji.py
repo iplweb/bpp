@@ -106,7 +106,7 @@ def test_zgloszenie_publikacji_admin_przycisk_uzyj_importera_z_doi(admin_client)
 
 @pytest.mark.django_db
 def test_zgloszenie_publikacji_admin_przycisk_uzyj_importera_bez_doi(admin_client):
-    """Freshdesk #380: adres niebędący DOI -> importer bez identyfikatora, bez błędu."""
+    """Freshdesk #380/#430: adres niebędący DOI -> importer z providerem WWW."""
     zgloszenie = baker.make(
         Zgloszenie_Publikacji,
         tytul_oryginalny="Praca bez DOI",
@@ -122,5 +122,7 @@ def test_zgloszenie_publikacji_admin_przycisk_uzyj_importera_bez_doi(admin_clien
     assert response.status_code == 200
     html = response.content.decode()
     assert "Użyj importera" in html
-    assert "provider=CrossRef" in html
-    assert "identifier=" not in html
+    # FD#430: import z ogólnej strony WWW, nie CrossRef.
+    assert "provider=CrossRef" not in html
+    assert "provider=Pozosta%C5%82e+strony+WWW" in html
+    assert "identifier=https%3A%2F%2Fexample.com%2Fpapers%2F123" in html
