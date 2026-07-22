@@ -21,23 +21,21 @@ from pbn_api.models import Publication
 
 
 @pytest.mark.django_db
-def test_drop_dbtemplate_usuwa_wiersz_i_chroniacy_szablon():
-    """Usuwa Template oraz PROTECT-ujący go Szablon(model=None)."""
-    tpl, _ = Template.objects.get_or_create(
+def test_drop_dbtemplate_usuwa_wiersz_zostawia_mapowanie():
+    """Po odsprzęgnięciu: kasujemy wiersz dbtemplate, ale wpis SzablonDlaOpisu
+    (mapowanie po nazwie) ZOSTAJE — jego nazwa_szablonu rozwiązuje się z dysku."""
+    Template.objects.update_or_create(
         name="opis_bibliograficzny.html", defaults={"content": "stara treść"}
     )
     SzablonDlaOpisuBibliograficznego.objects.get_or_create(
-        model=None, defaults={"template": tpl}
+        model=None, defaults={"nazwa_szablonu": "opis_bibliograficzny.html"}
     )
-    assert SzablonDlaOpisuBibliograficznego.objects.filter(
-        template__name="opis_bibliograficzny.html"
-    ).exists()
 
     call_command("drop_dbtemplate", "opis_bibliograficzny.html", "--skip-rebuild")
 
     assert not Template.objects.filter(name="opis_bibliograficzny.html").exists()
-    assert not SzablonDlaOpisuBibliograficznego.objects.filter(
-        template__name="opis_bibliograficzny.html"
+    assert SzablonDlaOpisuBibliograficznego.objects.filter(
+        nazwa_szablonu="opis_bibliograficzny.html"
     ).exists()
 
 
@@ -65,12 +63,12 @@ def test_drop_dbtemplate_przebudowuje_cache_z_dysku(wydawnictwo_zwarte):
 
     # Stary dbtemplate w bazie zasłaniający dysk (sentinel zamiast prawdziwego
     # opisu — udaje przestarzałą treść z #329).
-    tpl, _ = Template.objects.update_or_create(
+    Template.objects.update_or_create(
         name="opis_bibliograficzny.html",
         defaults={"content": "STARY-SZABLON-MARKER"},
     )
     SzablonDlaOpisuBibliograficznego.objects.get_or_create(
-        model=None, defaults={"template": tpl}
+        model=None, defaults={"nazwa_szablonu": "opis_bibliograficzny.html"}
     )
     # dbtemplates cache (LocMem) nie jest rollbackowany między testami; wymuś,
     # by loader przeczytał świeżo wstawiony marker z bazy.

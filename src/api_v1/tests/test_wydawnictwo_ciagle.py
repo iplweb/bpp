@@ -96,7 +96,12 @@ def wiele_wydawnictw_ciaglych(db):
 def test_rest_api_wydawnictwo_ciagle_no_queries(
     wiele_wydawnictw_ciaglych, django_assert_max_num_queries, api_client
 ):
-    with django_assert_max_num_queries(11):
+    # 12 (było 11): wyrwanie opis_bibliograficzny.html z dbtemplates (#329)
+    # dokłada jedno Site.objects.get_current() (ścieżka loadera dbtemplates po
+    # skasowaniu wiersza). Stałe O(1), indeksowane po PK; w produkcji
+    # amortyzowane przez SITE_CACHE (pytest-django czyści go per-test — stąd
+    # widać to zapytanie tutaj, a nie na produkcji).
+    with django_assert_max_num_queries(12):
         api_client.get(reverse("api_v1:wydawnictwo_ciagle-list"))
 
 
@@ -195,7 +200,12 @@ def test_rest_api_wydawnictwo_ciagle_streszczenie_ukrywa_nieeksportowane(
 
 @pytest.mark.django_db
 def test_rest_api_wydawnictwo_ciagle_autor_ukrywa_ukryty_status(
-    api_client, wydawnictwo_ciagle, autor_jan_kowalski, jednostka, uczelnia, przed_korekta
+    api_client,
+    wydawnictwo_ciagle,
+    autor_jan_kowalski,
+    jednostka,
+    uczelnia,
+    przed_korekta,
 ):
     # Pod-zasób respektuje ukryte statusy korekty (jak rekord-rodzic).
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)

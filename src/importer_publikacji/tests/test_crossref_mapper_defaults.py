@@ -80,9 +80,15 @@ def test_lazy_mapper_nie_nadpisuje_istniejacego(crossref_mappery):
 
     # Admin ręcznie odznaczył ptaszek dla book-chapter — get_or_create
     # z defaults= NIE może tego nadpisać.
-    Crossref_Mapper.objects.filter(
-        charakter_crossref=Crossref_Mapper.CHARAKTER_CROSSREF.BOOK_CHAPTER
-    ).update(jest_wydawnictwem_zwartym=False)
+    # update_or_create (nie .update()) gwarantuje warunek wstępny „istnieje
+    # wiersz = False" niezależnie od tego, czy seed migracji przetrwał — w
+    # jednym shardzie z testem transactional_db (własne DB per-worker) tabela
+    # bywa wyczyszczona, wtedy .update() trafiłby 0 wierszy i lazy-create dałby
+    # domyślne True (flaky zależny od kolejności shardowania).
+    Crossref_Mapper.objects.update_or_create(
+        charakter_crossref=Crossref_Mapper.CHARAKTER_CROSSREF.BOOK_CHAPTER,
+        defaults={"jest_wydawnictwem_zwartym": False},
+    )
 
     mapper = _get_crossref_mapper("book-chapter")
 
