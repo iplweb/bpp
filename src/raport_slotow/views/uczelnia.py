@@ -150,6 +150,12 @@ class SzczegolyRaportSlotowUczelniaListaRekordow(
     template_name = "raport_slotow/raport_slotow_uczelnia.html"
     uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
     export_formats = ["html", "xlsx"]
+    # Raport uczelniany generuje się asynchronicznie (liveops/celery), a jego
+    # szczegóły to widok pochodny — NIE nakładamy tu bramki wierszy, żeby nie
+    # zmieniać zachowania dużych, legalnych eksportów uczelnianych. Widok i tak
+    # korzysta z odchudzonego (strumieniowego) budowania XLSX. Docelowo warto
+    # przenieść i ten eksport na tło — patrz follow-up.
+    export_max_rows = None
     filterset_class = RaportSlotowUczelniaFilter
     model = RaportSlotowUczelnia
     paginate_by = 25
