@@ -208,10 +208,10 @@ def _build_matrix(triples, row_dim, col_dim, metric, has_autorzy):
     for rk, ck, val in triples:
         cells[(rk, ck)] = cells.get((rk, ck), 0) + val
         row_totals[rk] = row_totals.get(rk, 0) + val
-        col_totals[ck] = col_totals.get(ck, 0) + val
         grand += val
         row_keys.add(rk)
         if col_dim:
+            col_totals[ck] = col_totals.get(ck, 0) + val
             col_keys.add(ck)
     rows = _labels(row_keys, row_dim)
     cols = _labels(col_keys, col_dim) if col_dim else []

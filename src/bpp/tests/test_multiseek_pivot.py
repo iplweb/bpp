@@ -2,7 +2,7 @@ import pytest
 from model_bakery import baker
 
 from bpp.const import CHARAKTER_OGOLNY_ARTYKUL, CHARAKTER_OGOLNY_ROZDZIAL
-from bpp.models import Charakter_Formalny, Wydawnictwo_Ciagle
+from bpp.models import Charakter_Formalny, Jednostka, Wydawnictwo_Ciagle
 from bpp.multiseek_registry import pivot
 
 
@@ -201,3 +201,144 @@ def test_zbuduj_pivot_null_bucket_i_koszyk_pk(
     koszyk_labels = dict(res_koszyk.rows)
     assert "0" in koszyk_labels.values()
     assert "40" in koszyk_labels.values()
+
+
+@pytest.mark.django_db
+def test_zbuduj_pivot_b_k2_dwie_rozne_jednostki(
+    db,
+    denorms,
+    jednostka,
+    autor_jan_kowalski,
+    autor_jan_nowak,
+    jezyki,
+    charaktery_formalne,
+    typy_kbn,
+    statusy_korekt,
+    typy_odpowiedzialnosci,
+):
+    """K2 (spec §11.3, druga połowa): rekord z autorami z DWÓCH różnych
+    jednostek -> liczony RAZ w komórce KAŻDEJ z jednostek (duplikacja
+    MIĘDZY różnymi wartościami wymiaru jest zamierzona, w przeciwieństwie
+    do duplikacji WEWNĄTRZ tej samej wartości — patrz test k2 wyżej)."""
+    from bpp.models.cache import Rekord
+
+    j2 = baker.make(Jednostka, uczelnia=jednostka.uczelnia, parent=None)
+    w = _wyd(rok=2020, punkty_kbn=40)
+    w.dodaj_autora(autor_jan_kowalski, jednostka)
+    w.dodaj_autora(autor_jan_nowak, j2)
+    denorms.flush()
+
+    base_qs = Rekord.objects.all()
+
+    res_liczba = pivot.zbuduj_pivot(
+        base_qs, pivot.DIMENSIONS["jednostka"], None, pivot.METRICS["liczba"]
+    )
+    assert res_liczba.cells[(jednostka.pk, None)] == 1
+    assert res_liczba.cells[(j2.pk, None)] == 1
+    assert res_liczba.grand_total == 2
+    assert res_liczba.has_autorzy_dim is True
+
+    res_pk = pivot.zbuduj_pivot(
+        base_qs, pivot.DIMENSIONS["jednostka"], None, pivot.METRICS["punkty_kbn"]
+    )
+    assert res_pk.cells[(jednostka.pk, None)] == 40
+    assert res_pk.cells[(j2.pk, None)] == 40
+
+
+@pytest.mark.django_db
+def test_zbuduj_pivot_join_reuse_prace_autora(
+    db,
+    denorms,
+    jednostka,
+    autor_jan_kowalski,
+    autor_jan_nowak,
+    jezyki,
+    charaktery_formalne,
+    typy_kbn,
+    statusy_korekt,
+    typy_odpowiedzialnosci,
+):
+    """base_qs przefiltrowany po autorze (autorzy__autor=X) i wymiar
+    'jednostka' (autorzy__jednostka_id) współdzielą ten sam JOIN do
+    'autorzy' — Django REUŻYWA filtrowany JOIN zamiast dodawać nowy, więc
+    w wyniku widoczna jest TYLKO jednostka X, nigdy jednostka współautora
+    Y (mimo że oboje są przypisani do tego samego rekordu)."""
+    from bpp.models.cache import Rekord
+
+    j2 = baker.make(Jednostka, uczelnia=jednostka.uczelnia, parent=None)
+    w = _wyd(rok=2020, punkty_kbn=10)
+    w.dodaj_autora(autor_jan_kowalski, jednostka)
+    w.dodaj_autora(autor_jan_nowak, j2)
+    denorms.flush()
+
+    base_qs = Rekord.objects.filter(autorzy__autor=autor_jan_kowalski)
+
+    res = pivot.zbuduj_pivot(
+        base_qs, pivot.DIMENSIONS["jednostka"], None, pivot.METRICS["liczba"]
+    )
+    rows = dict(res.rows)
+    assert res.cells[(jednostka.pk, None)] == 1
+    assert j2.pk not in rows
+    assert (j2.pk, None) not in res.cells
+
+
+@pytest.mark.django_db
+def test_zbuduj_pivot_etykieta_fk_resolve_model(
+    db,
+    denorms,
+    jednostka,
+    autor_jan_kowalski,
+    jezyki,
+    charaktery_formalne,
+    typy_kbn,
+    statusy_korekt,
+    typy_odpowiedzialnosci,
+):
+    """Etykieta wymiaru FK (jednostka) idzie przez
+    resolve_model().objects.in_bulk() + str(obj) — sanity check na
+    PRAWDZIWYM id (nie na braku/None/BRAK), żeby złapać regresję w
+    fk_model / resolve_model()."""
+    from bpp.models.cache import Rekord
+
+    jednostka.nazwa = "Klinika Bardzo Charakterystyczna Testowa"
+    jednostka.save()
+
+    w = _wyd(rok=2020, punkty_kbn=1)
+    w.dodaj_autora(autor_jan_kowalski, jednostka)
+    denorms.flush()
+
+    base_qs = Rekord.objects.all()
+    res = pivot.zbuduj_pivot(
+        base_qs, pivot.DIMENSIONS["jednostka"], None, pivot.METRICS["liczba"]
+    )
+    rows = dict(res.rows)
+    assert rows[jednostka.pk] == str(jednostka)
+    assert "Klinika Bardzo Charakterystyczna Testowa" in rows[jednostka.pk]
+
+
+@pytest.mark.django_db
+def test_zbuduj_pivot_sumy_brzegowe_i_col_totals_bez_kolumny(rekordy_pivot):
+    """Sumy brzegowe (row_totals/col_totals/grand_total) wyliczone ręcznie
+    z danych `rekordy_pivot` (2024/art: 40+20=60, 2024/roz: 10, 2023/art:
+    5 -> wiersz 2024=70, wiersz 2023=5, kolumna art=65, kolumna roz=10,
+    total=75). Dodatkowo (naprawa A): bez wymiaru kolumnowego col_totals
+    MUSI pozostać puste — wcześniej zbierało {None: grand_total}."""
+    res = pivot.zbuduj_pivot(
+        rekordy_pivot,
+        pivot.DIMENSIONS["rok"],
+        pivot.DIMENSIONS["charakter_ogolny"],
+        pivot.METRICS["punkty_kbn"],
+    )
+    assert res.row_totals == {2024: 70, 2023: 5}
+    assert res.col_totals == {
+        CHARAKTER_OGOLNY_ARTYKUL: 65,
+        CHARAKTER_OGOLNY_ROZDZIAL: 10,
+    }
+    assert res.grand_total == 75
+
+    res_no_col = pivot.zbuduj_pivot(
+        rekordy_pivot, pivot.DIMENSIONS["rok"], None, pivot.METRICS["punkty_kbn"]
+    )
+    assert res_no_col.col_totals == {}
+    assert res_no_col.row_totals == {2024: 70, 2023: 5}
+    assert res_no_col.grand_total == 75
