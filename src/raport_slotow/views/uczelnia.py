@@ -25,7 +25,10 @@ from raport_slotow.tables import (
     RaportSlotowUczelniaTable,
 )
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
-from raport_slotow.util import MyExportMixin
+from raport_slotow.util import (
+    RAPORT_SLOTOW_UCZELNIA_EXPORT_MAX_ROWS,
+    MyExportMixin,
+)
 
 # Stany terminalne liveops — restart/regen dozwolony TYLKO w nich (guard §8.4).
 _STANY_TERMINALNE = ("FINISHED_OK", "FINISHED_ERROR", "CANCELLED")
@@ -150,12 +153,19 @@ class SzczegolyRaportSlotowUczelniaListaRekordow(
     template_name = "raport_slotow/raport_slotow_uczelnia.html"
     uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
     export_formats = ["html", "xlsx"]
-    # Raport uczelniany generuje się asynchronicznie (liveops/celery), a jego
-    # szczegóły to widok pochodny — NIE nakładamy tu bramki wierszy, żeby nie
-    # zmieniać zachowania dużych, legalnych eksportów uczelnianych. Widok i tak
-    # korzysta z odchudzonego (strumieniowego) budowania XLSX. Docelowo warto
-    # przenieść i ten eksport na tło — patrz follow-up.
-    export_max_rows = None
+    # Uwaga: przez liveops/celery idzie GENERACJA wierszy raportu, ale sam
+    # eksport XLSX szczegółów biegnie SYNCHRONICZNIE w cyklu request/response i
+    # openpyxl trzyma cały arkusz w RAM — bez bramki największy eksport w
+    # systemie (cała uczelnia) może wyczerpać pamięć procesu web. Nakładamy więc
+    # limit tym samym mechanizmem co reszta raportów (COUNT PRZED materializacją
+    # → ExportRowLimitExceeded → HTTP 400, bez cichego ucięcia), ale z wyższym,
+    # uczelnia-specyficznym progiem (patrz RAPORT_SLOTOW_UCZELNIA_EXPORT_MAX_ROWS).
+    #
+    # Bramka `len(table.rows)` daje tani COUNT (bez materializacji) TYLKO gdy
+    # tabela jest paginowana — tu jest (paginate_by = 25, a `get_table`
+    # bezwarunkowo woła RequestConfig z paginacją), więc `hasattr(table,
+    # "paginator")` jest prawdą i django_tables2 liczy `queryset.count()`.
+    export_max_rows = RAPORT_SLOTOW_UCZELNIA_EXPORT_MAX_ROWS
     filterset_class = RaportSlotowUczelniaFilter
     model = RaportSlotowUczelnia
     paginate_by = 25

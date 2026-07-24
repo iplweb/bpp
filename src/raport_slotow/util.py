@@ -18,6 +18,18 @@ from openpyxl.worksheet.table import Table, TableColumn, TableStyleInfo
 # ale nadal ograniczona. Przekroczenie → jasny komunikat (bez cichego ucięcia).
 RAPORT_SLOTOW_EXPORT_MAX_ROWS = 10000
 
+# Osobny, wyższy limit dla synchronicznego eksportu SZCZEGÓŁÓW raportu
+# uczelnianego (SzczegolyRaportSlotowUczelniaListaRekordow). To najszerszy
+# legalny eksport w systemie: jeden wiersz na (autor, dyscyplina), a w trybie
+# „dziel na jednostki i wydziały" na (autor, jednostka, dyscyplina) — dla dużej
+# uczelni realnie kilkanaście–kilkadziesiąt tysięcy wierszy. Limit 10000 z
+# reszty raportów (autor/ewaluacja/zerowy) uciąłby prawdziwe uczelnie, dlatego
+# tu jest wyższy. Nadal ograniczony (openpyxl trzyma cały arkusz w RAM), więc
+# chroni przed patologicznym/DoS-owym wolumenem, a przekroczenie daje czytelny
+# komunikat zamiast cichego OOM. Docelowo ten eksport powinien pójść w tło
+# (jak generacja raportu przez liveops/celery) — patrz follow-up.
+RAPORT_SLOTOW_UCZELNIA_EXPORT_MAX_ROWS = 50000
+
 
 class ExportRowLimitExceeded(Exception):
     """Eksport przekracza limit wierszy (RAPORT_SLOTOW_EXPORT_MAX_ROWS).
