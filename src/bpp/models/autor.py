@@ -828,11 +828,23 @@ class Autor_Jednostka(models.Model):
                 buf = f"{autor_str} ↔ {self.funkcja.nazwa}, {jednostka_str}"
             return buf
         except ObjectDoesNotExist:
-            # SPODZIEWANE, nie błąd aplikacji: podczas kaskadowego kasowania
-            # Django buduje str() obiektu, który wciąż żyje w pamięci, choć
-            # jego wiersz — i wiersz po drugiej stronie FK — już zniknął.
-            # Log zostaje (diagnostyka), ale do Rollbara tego nie wysyłamy,
-            # bo zaśmiecało to strumień błędów produkcyjnych.
+            # SPODZIEWANE, nie błąd aplikacji: str() bywa wołany na obiekcie,
+            # który wciąż żyje w pamięci, choć jego wiersz — i wiersz po
+            # drugiej stronie FK — już zniknął. Najpewniejszy znany nam
+            # wywołujący to audyt easyaudit, liczący ``object_repr`` w
+            # ``transaction.on_commit`` (ten sam mechanizm opisuje komentarz
+            # przy ``Jednostka.__str__``); traceback z Rollbara nie zawiera
+            # ramek wywołującego, więc nie zgadujemy dalej.
+            #
+            # Nie raportujemy tego do Rollbara: hash itemu obejmuje numer
+            # linii, więc KAŻDY deploy zakładał nowy item i alert szedł od
+            # nowa, mimo że aplikacja zachowywała się poprawnie.
+            #
+            # Uwaga: logger ``bpp.*`` nie ma dziś własnego handlera w
+            # ustawieniach, więc ten ślad ląduje na stderr przez
+            # ``logging.lastResort``. Diagnostyka jest zatem słaba — ale to
+            # osobny temat (konfiguracja LOGGING), nie powód, by zostawiać
+            # fałszywy alarm w Rollbarze.
             zaloguj_polkniety_wyjatek(komunikat, logger=logger, do_rollbar=False)
             return fallback
         except Exception:
