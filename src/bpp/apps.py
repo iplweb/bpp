@@ -40,10 +40,53 @@ class BppConfig(AppConfig):
         # Ensure BppUserAdmin takes precedence over microsoft_auth's UserAdmin
         self._register_bpp_user_admin()
 
+        # Naprawa clobberingu faviconów między tenantami (multi-host).
+        self._patch_favicon_save_per_site()
+
         # Initialize Rollbar with global hostname handler
         from bpp.rollbar_config import configure_rollbar
 
         configure_rollbar()
+
+    def _patch_favicon_save_per_site(self):
+        """Zawęź „gaszenie pozostałych faviconów" w ``Favicon.save`` do site'u.
+
+        Ograniczenie third-party (``django-favicon-plus-reloaded``):
+        ``Favicon.save()`` robi ``Favicon.on_site.exclude(pk=self.pk).update(
+        isFavicon=False)``, a ``on_site`` to ``CurrentSiteManager`` filtrujący
+        po LITERALNYM ``settings.SITE_ID``. W multi-host BPP zapis favicona
+        DOWOLNEGO tenanta gasi więc ``isFavicon`` faviconom site'u o ``SITE_ID``
+        (realnej uczelni) — niezależnie od tego, czyj favicon zapisujemy.
+        Efekt: utworzenie favicona tenanta B kasuje favicon tenanta A spod
+        ``SITE_ID``.
+
+        Podmieniamy ``Favicon.save`` na wariant resetujący ``isFavicon`` TYLKO
+        w obrębie ``self.site`` (``Favicon.objects.filter(site=self.site)``),
+        nie globalnie po ``SITE_ID``. Patch obejmuje WSZYSTKIE ścieżki zapisu,
+        w tym admin biblioteki (używa modelu ``Favicon`` wprost). Nie forkujemy
+        biblioteki — to osobne przedsięwzięcie.
+        """
+        from favicon.models import Favicon
+
+        if getattr(Favicon.save, "_bpp_per_site_patched", False):
+            return
+
+        def save(self, *args, **kwargs):
+            # Odwzorowanie ``Favicon.save`` z biblioteki, z jedną różnicą:
+            # reset ``isFavicon`` jest per ``self.site`` zamiast globalnego
+            # ``on_site`` (po ``SITE_ID``) — patrz docstring metody.
+            if self.isFavicon:
+                Favicon.objects.filter(site=self.site).exclude(pk=self.pk).update(
+                    isFavicon=False
+                )
+
+            super(Favicon, self).save(*args, **kwargs)
+
+            if self.faviconImage:
+                self.get_favicons(update=True)
+
+        save._bpp_per_site_patched = True
+        Favicon.save = save
 
     #: Modele, których zapis zmienia treść publicznych stron przeglądania
     #: objętych ``bpp.views.cache_publiczny.cache_publiczny``.
