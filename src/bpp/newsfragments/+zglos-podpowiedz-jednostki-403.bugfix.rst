@@ -1,6 +1,7 @@
-Formularz „Zgłoś publikację" znów podpowiada jednostkę i dyscyplinę autora.
-Endpoint ``/bpp/api/ostatnia-jednostka-i-dyscyplina/`` — który tylko czyta dane
-i niczego nie zapisuje — trafił przez pomyłkę pod bramkę uprawnień
-redaktorskich, więc każdy zgłaszający bez roli redaktora dostawał w tle błąd
-403 i tracił podpowiedź (po cichu, bo to zapytanie AJAX). Wymagane pozostaje
-samo zalogowanie.
+Formularz „Zgłoś publikację" znów podpowiada jednostkę i dyscyplinę autora
+zalogowanym użytkownikom bez uprawnień redaktorskich. Endpoint, z którego
+korzysta ta podpowiedź — tylko czytający dane, niczego nie zapisujący —
+trafił przez pomyłkę pod bramkę uprawnień redaktorskich, więc taki
+użytkownik dostawał w tle błąd i tracił podpowiedź (po cichu, bo to
+zapytanie w tle). Dla niezalogowanych podpowiedź nadal nie działa — tak jak
+wcześniej.

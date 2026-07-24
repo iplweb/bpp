@@ -449,6 +449,41 @@ def test_ostatnia_jednostka_dostepna_bez_uprawnien_redaktorskich(
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    "url_name,url_kwargs,post_data",
+    [
+        ("bpp:api_rok_habilitacji", {}, {"autor_pk": 1}),
+        ("bpp:api_punktacja_zrodla", {"zrodlo_id": 1, "rok": CURRENT_YEAR}, {}),
+        (
+            "bpp:api_upload_punktacja_zrodla",
+            {"zrodlo_id": 1, "rok": CURRENT_YEAR},
+            {"impact_factor": "50.0"},
+        ),
+    ],
+)
+def test_pozostale_api_nadal_wymagaja_uprawnien_redaktorskich(
+    client, url_name, url_kwargs, post_data
+):
+    """Lustro poprzedniego testu: poluzowanie dotyczy JEDNEGO widoku.
+
+    Bez tego nic nie broni przed przyszłym „skoro tamten odblokowaliśmy, to
+    odblokujmy wszystkie" — a te trzy albo mutują dane
+    (``UploadPunktacjaZrodlaView``), albo wystawiają dane redakcyjne
+    konsumowane wyłącznie przez JS admina.
+    """
+    user = baker.make("bpp.BppUser", is_staff=False, is_superuser=False)
+    assert not moze_wprowadzac_dane(user)
+    client.force_login(user)
+
+    response = client.post(reverse(url_name, kwargs=url_kwargs), data=post_data)
+
+    assert response.status_code == 403, (
+        f"{url_name} przepuszcza zalogowanego bez uprawnień redaktorskich "
+        f"(status={response.status_code})"
+    )
+
+
+@pytest.mark.django_db
 def test_upload_punktacja_zrodla_anon_does_not_write(client):
     """Najtwardszy regression test: anonim NIE może utworzyć Punktacja_Zrodla."""
     z = any_zrodlo()

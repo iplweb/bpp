@@ -166,6 +166,11 @@ class OstatniaJednostkaIDyscyplinaView(LoginRequiredMixin, View):
     ``zglos_publikacje`` (patrz ``zglos_publikacje.forms``), więc bramka
     redaktorska odcinała zwykłych zgłaszających od podpowiedzi jednostki
     i dyscypliny — po cichu, bo to AJAX.
+
+    Anonim NADAL dostaje 302 na login (kontrakt ``LoginRequiredMixin``), więc
+    dla niezalogowanych zgłaszających podpowiedź nie działa — tak samo jak
+    przed ``e892142ff``. Poluzowanie tego to osobna decyzja: endpoint jest
+    oraklem istnienia autora dla całej przestrzeni PK i nie ma rate-limitu.
     """
 
     def post(self, request, *args, **kw):
