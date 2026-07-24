@@ -298,7 +298,79 @@ _LEAK_GUARD = {
     # capture pytest-a) — inaczej print z fixture'a jest łykany i NIEwidoczny
     # w logach CI (właśnie po to jest ta diagnostyka).
     "raporty": [],
+    # Zdarzenia na połączeniu w trakcie BIEŻĄCEGO testu (czyszczone na setupie).
+    # Patrz _zainstaluj_tracer_polaczen.
+    "zdarzenia": [],
 }
+
+
+# =============================================================================
+# TRACER POŁĄCZEŃ — odpowiada na pytanie „CZEMU to wycieka".
+#
+# Ustalone pomiarem: wyciekające testy to zwykłe ``django_db`` (tx=False), a
+# wyciekłe wiersze to ICH WŁASNE dane (próbki etykiet: „Nowak", „Kat.",
+# „brygadier"). Osobne połączenie sondy je widzi, więc są SCOMMITOWANE —
+# sesja PG na READ COMMITTED nie zobaczy cudzych danych niescommitowanych.
+#
+# Rollback pytest-django jest niemal na pewno sprawny. Zostają dwa sposoby,
+# żeby zapis ominął transakcję testu — i tracer rozróżnia je wprost:
+#
+#   A. ZAPIS Z INNEGO WĄTKU. ``connections`` jest thread-local, więc wątek
+#      spoza głównego dostaje WŁASNE połączenie, w autocommit, poza atomic
+#      blokiem. Tracer notuje każde ``connect()`` spoza MainThread + stos.
+#
+#   B. PODMIANA POŁĄCZENIA W TRAKCIE TESTU. Gdy coś zamknie połączenie,
+#      Django otworzy nowe — atomic block przepada, dalsze zapisy lecą
+#      w autocommit, a rollback na teardownie działa na nowym obiekcie,
+#      który nie ma czego cofać. UWAGA: mierzone wcześniej
+#      ``closed_in_tx=False`` tego NIE wyklucza — flaga siedzi na obiekcie
+#      połączenia, a po podmianie nowy obiekt ma ją czystą. Tracer notuje
+#      ``close()`` wołane wewnątrz atomic bloku + stos.
+#
+# Włączany przez BPP_LEAK_GUARD_TRACE=1 lub BPP_LEAK_GUARD_STRICT=1 (gałąź
+# obserwacyjna). Domyślnie NIEAKTYWNY — monkey-patch na warstwie połączeń
+# nie ma prawa działać w zwykłym przebiegu.
+# =============================================================================
+
+
+def _zainstaluj_tracer_polaczen():
+    import threading
+    import traceback
+
+    from django.db.backends.base.base import BaseDatabaseWrapper
+
+    if getattr(BaseDatabaseWrapper, "_bpp_tracer", False):
+        return
+    BaseDatabaseWrapper._bpp_tracer = True
+
+    def _stos():
+        # Pomijamy ramki samego tracera; 7 ostatnich wystarcza, żeby zobaczyć
+        # KTO zawołał, a nie zalewa logu CI.
+        return " <- ".join(
+            f"{f.filename.rsplit('/', 1)[-1]}:{f.lineno}:{f.name}"
+            for f in traceback.extract_stack()[-9:-2]
+        )
+
+    orig_connect = BaseDatabaseWrapper.connect
+    orig_close = BaseDatabaseWrapper.close
+
+    def connect(self):
+        watek = threading.current_thread()
+        if watek is not threading.main_thread():
+            _LEAK_GUARD["zdarzenia"].append(f"CONNECT w wątku {watek.name}: {_stos()}")
+        return orig_connect(self)
+
+    def close(self):
+        if getattr(self, "in_atomic_block", False):
+            _LEAK_GUARD["zdarzenia"].append(f"CLOSE w atomic bloku: {_stos()}")
+        return orig_close(self)
+
+    BaseDatabaseWrapper.connect = connect
+    BaseDatabaseWrapper.close = close
+
+
+if os.environ.get("BPP_LEAK_GUARD_TRACE") or os.environ.get("BPP_LEAK_GUARD_STRICT"):
+    _zainstaluj_tracer_polaczen()
 _LEAK_GUARD_TABLES = (
     "bpp_autor",
     "bpp_jednostka",
@@ -469,6 +541,7 @@ def _neutralizuj_wyciekle_dane(request):
             f"{', '.join(wyciekle)}. Najprawdopodobniejszy sprawca (poprzedni "
             f"test DB na tym workerze): {_LEAK_GUARD['poprzedni']}"
         )
+    _LEAK_GUARD["zdarzenia"] = []
     _LEAK_GUARD["poprzedni_przed"] = _LEAK_GUARD["poprzedni"]
     _LEAK_GUARD["poprzedni"] = request.node.nodeid
 
@@ -571,6 +644,11 @@ def _stan_izolacji(item):
         f"needs_rollback={getattr(connection, 'needs_rollback', '?')} "
         f"autocommit={autocommit} "
         f"poprzedni={_LEAK_GUARD['poprzedni_przed']}"
+        + (
+            " || ZDARZENIA NA POŁĄCZENIU: " + " ;; ".join(_LEAK_GUARD["zdarzenia"])
+            if _LEAK_GUARD["zdarzenia"]
+            else " || zdarzenia na połączeniu: BRAK"
+        )
     )
 
 
