@@ -525,8 +525,16 @@ Konfiguracja jest w `[tool.pytest-testcontainers-django]` w `pyproject.toml`.
   plugin jawnie je zatrzymuje w `pytest_unconfigure` (+ `atexit`
   jako safety net), Ryuk to ostatnia linia obrony. Przy restarcie
   Docker Desktop albo `SIGKILL` na pytest cleanup może zawieść;
-  wtedy `make clean-testcontainers` usuwa wszystkie osierocone
-  kontenery.
+  wtedy `make clean-testcontainers` usuwa osierocone kontenery.
+  **UWAGA (host współdzielony):** `make clean-testcontainers` usuwa
+  **wszystkie** kontenery pasujące do wzorca — także **cudze,
+  wciąż działające** (równoległy przebieg pytest z innego worktree,
+  aktywne stacki `run-site`). Na maszynie, gdzie biegnie kilka rzeczy
+  naraz, **nie odpalaj go w ciemno** — najpierw `docker ps` i usuń
+  po nazwie/ID tylko własne osierocone kontenery. To ta sama zasada,
+  co „celuj po PID / po ścieżce worktree, nie `pkill`": komenda
+  zbiorcza jest wygodna, ale na współdzielonym hoście ubija cudzą
+  pracę.
 - CI (`docker-compose.test.yml`) ma `PYTEST_TESTCONTAINERS_DISABLE=1` —
   usługi dostarcza tam docker-compose.
 
