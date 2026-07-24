@@ -148,6 +148,25 @@ def test_pivot_export_csv(logged_in_client, test_user, standard_data, denorms):
     assert "RAZEM" in resp.content.decode()
 
 
+@pytest.mark.django_db
+def test_pivot_export_ukryty_dla_anonima(client, standard_data, denorms):
+    """Anonim widzi tabelę krzyżową, ale NIE linki eksportu (eksport jest
+    LoginRequired — link i tak dałby redirect do logowania)."""
+    from django.contrib.auth.models import AnonymousUser
+
+    any_ciagle(tytul_oryginalny=f"{PIVOT_TITLE_PREFIX} - zeta", rok=2024)
+    denorms.flush()
+    _set_multiseek_pivot_filter(client, AnonymousUser())
+
+    resp = client.get(
+        reverse("multiseek:results") + "?pivot_row=rok&pivot_val=liczba"
+    )
+    html = resp.content.decode()
+
+    assert 'class="multiseek-pivot"' in html
+    assert "export/xlsx" not in html
+
+
 def test_pivot_report_type_na_koncu_listy():
     """report_type jest indeksem pozycyjnym — "pivot" MUSI być ostatnim
     elementem, inaczej zapisane formularze przesuną się na inny typ."""
