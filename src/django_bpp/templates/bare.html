@@ -136,8 +136,11 @@
     {% block extrahead %}
     {% endblock %}
     {% load cache %}
-    {% cache 3600 favicon %}
-        {% load favtags %}
+    {# vary_on host: favicon podąża za Site (multi-tenant), więc fragment #}
+    {# MUSI być kluczowany per host — inaczej cache podałby favicon jednej #}
+    {# uczelni pod domeną innej. Patrz favicon_bpp.place_favicon. #}
+    {% cache 3600 favicon request.get_host %}
+        {% load favicon_bpp %}
         {% place_favicon %}
     {% endcache %}
 </head>
