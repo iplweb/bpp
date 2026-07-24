@@ -1,3 +1,4 @@
+import logging
 import ssl
 from copy import copy
 
@@ -27,6 +28,8 @@ from raport_slotow.util import (
 )
 
 from .. import const
+
+logger = logging.getLogger(__name__)
 
 SESSION_KEY = "raport_slotow_data"
 
@@ -103,8 +106,11 @@ class RaportSlotow(BaseRaportAuthMixin, MyExportMixin, MultiTableMixin, Template
             return exporter.response(
                 filename=self.get_export_filename(export_format, n)
             )
-        except ExportRowLimitExceeded as e:
-            return HttpResponseBadRequest(str(e))
+        except ExportRowLimitExceeded:
+            logger.exception("Export autora odrzucony z powodu przekroczenia limitu wierszy.")
+            return HttpResponseBadRequest(
+                "Nie można wygenerować eksportu: przekroczono dopuszczalny limit wierszy."
+            )
 
     def get_tables(self):
         ret = []
