@@ -197,6 +197,42 @@ def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
 
 
 @pytest.mark.django_db(transaction=True)
+def test_zrodlo_select2_autocomplete_dziala(admin_page: Page, channels_live_server):
+    """Prawdziwy autocomplete pola „Źródło" — okablowanie widget → endpoint.
+
+    NIE ZASTĘPOWAĆ przez set_select2_value: to JEDYNY test przeglądarkowy
+    przechodzący przez autocomplete `id_zrodlo`. Pozostałe testy ustawiają to
+    pole przez DOM, bo Select2 jest tam poboczny — ale gdyby nikt nie wpisywał
+    tu nic naprawdę, zerwanie połączenia widgetu z `bpp:admin-zrodlo-autocomplete`
+    (zmiana `url=` w formularzu, forward, uprawnienia, format odpowiedzi)
+    przeszłoby przez CI niezauważone.
+
+    Dowód jest mocny, bo `<select id_zrodlo>` startuje BEZ opcji: jedyną drogą,
+    żeby opcja o właściwym PK w ogóle powstała, jest odpowiedź AJAX-a. Sama
+    logika filtrowania queryset-u `ZrodloAutocomplete` ma osobne, tańsze testy
+    w `src/bpp/tests/test_autocomplete/` — tutaj sprawdzamy warstwę przeglądarki.
+    """
+    szukane = any_zrodlo(nazwa="Kwartalnik Ortopedyczny", skrot="Kwart. Ortop.")
+    # Wabik: w bazie jest więcej niż jedno źródło, więc trafienie we właściwe
+    # PK nie może być dziełem przypadku „jedyny wiersz w tabeli".
+    any_zrodlo(nazwa="Rocznik Kardiologiczny", skrot="Rocz. Kardiol.")
+
+    url = reverse("admin:bpp_wydawnictwo_ciagle_add")
+    admin_page.goto(channels_live_server.url + url)
+    admin_page.wait_for_selector("#id_zrodlo", state="attached")
+
+    select_select2_autocomplete(
+        admin_page,
+        "id_zrodlo",
+        "Kwartalnik Ortopedyczny",
+        wait_for_new_value=True,
+        timeout=30000,
+    )
+
+    assert admin_page.locator("#id_zrodlo").input_value() == str(szukane.pk)
+
+
+@pytest.mark.django_db(transaction=True)
 def test_upload_punkty(admin_page: Page, channels_live_server):
     """Test uploading points to source scoring data."""
     zrodlo = any_zrodlo(nazwa="WTF LOL")
