@@ -21,7 +21,12 @@ from pbn_api.client import (
     PBN_GET_INSTITUTION_STATEMENTS,
     PBN_GET_PUBLICATION_BY_ID_URL,
 )
-from pbn_api.exceptions import AccessDeniedException, PBNValidationError
+from pbn_api.exceptions import (
+    AccessDeniedException,
+    DOIorWWWMissing,
+    LanguageMissingPBNUID,
+    PBNValidationError,
+)
 from pbn_api.models import Publication, SentData
 from pbn_api.tests.utils import middleware
 
@@ -511,3 +516,47 @@ def test_sprobuj_wyslac_do_pbn_przychodzi_inny_pbn_uid_dla_starego_rekordu(
 
     msg = get_messages(req)
     assert "Wg danych z PBN zmodyfikowano PBN UID tego rekordu " in list(msg)[0].message
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "wyjatek,fragment_komunikatu",
+    [
+        (DOIorWWWMissing("Musi być DOI lub adres WWW"), "Musi być DOI lub adres WWW"),
+        (LanguageMissingPBNUID("Brak odpowiednika języka"), "Brak odpowiednika języka"),
+    ],
+)
+def test_sprobuj_wyslac_do_pbn_will_not_export_czytelny_komunikat_bez_rollbar(
+    pbn_wydawnictwo_zwarte_z_charakterem,
+    pbn_client,
+    rf,
+    pbn_uczelnia,
+    mocker,
+    wyjatek,
+    fragment_komunikatu,
+):
+    """``WillNotExportError`` to brak danych w rekordzie, nie awaria kodu.
+
+    Regresja (Rollbar #1475, #1473): te wyjątki wpadały do gałęzi
+    ``except Exception``, opatrzonej komentarzem „nie wiadomo, co to za
+    problem" — redaktor dostawał generyczne „Kod błędu: …", a Rollbar item
+    per wystąpienie. Tymczasem to zwykły komunikat walidacyjny: brakuje DOI,
+    brakuje odpowiednika języka w PBN. Sąsiednie gałęzie (``PKZeroExportDisabled``,
+    ``PBNValidationError``) od dawna robią to poprawnie.
+    """
+    req = rf.get("/")
+
+    report = mocker.patch("bpp.admin.helpers.pbn_api.common.rollbar.report_exc_info")
+    mocker.patch.object(pbn_client, "sync_publication", side_effect=wyjatek)
+
+    with middleware(req):
+        sprobuj_wyslac_do_pbn_gui(
+            req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
+        )
+
+    text = list(get_messages(req))[0].message
+    assert fragment_komunikatu in text, (
+        "Redaktor musi zobaczyć KONKRETNY powód, nie 'Kod błędu: ...'"
+    )
+    assert "Kod błędu" not in text
+    report.assert_not_called()  # brak danych w rekordzie to NIE błąd kodu
