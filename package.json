@@ -28,7 +28,7 @@
         "foundation-sites": "^6.9.0",
         "graphology": "^0.26.0",
         "htmx.org": "^1.9.12",
-        "immutable": "5.1.5",
+        "immutable": "5.1.8",
         "jinplace": "1.0.1",
         "jquery": "^3.4.0",
         "jquery-circle-progress": "^1.2.2",
