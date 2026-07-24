@@ -386,3 +386,18 @@ def test_as_table_z_kolumnami():
     assert t["col_headers"] == ["Artykuł", "Rozdział"]
     assert t["rows"][0]["cells"] == [9, None]
     assert t["col_totals"] == [9, 0]
+
+
+@pytest.mark.django_db
+def test_zbuduj_pivot_gate_cells(rekordy_pivot, monkeypatch):
+    """Przekroczony limit komórek → PivotTooLargeError(kind="cells")."""
+    monkeypatch.setattr(pivot, "PIVOT_MAX_CELLS", 0)
+    with pytest.raises(pivot.PivotTooLargeError) as exc:
+        pivot.zbuduj_pivot(
+            rekordy_pivot,
+            pivot.DIMENSIONS["rok"],
+            None,
+            pivot.METRICS["liczba"],
+        )
+    assert exc.value.kind == "cells"
+    assert exc.value.limit == 0

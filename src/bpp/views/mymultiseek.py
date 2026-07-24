@@ -178,18 +178,38 @@ class MyMultiseekResults(MultiseekResults):
         )
         return "multiseek_agregaty:" + hashlib.sha256(payload.encode()).hexdigest()
 
+    def _ensure_default_title(self):
+        """Domyślny tytuł wyniku, jeśli sesja go nie ma (albo jest pusty).
+        Wspólne dla ścieżki listy i pivota — inaczej świeża sesja lądująca
+        od razu na pivocie nie miałaby bloku tytułu."""
+        title = self.request.session.get("MULTISEEK_TITLE")
+        if not title:
+            self.request.session["MULTISEEK_TITLE"] = "Rezultat wyszukiwania"
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data()
 
         if ctx.get("report_type") == "pivot":
             from bpp.multiseek_registry import pivot as pivot_mod
 
+            self._ensure_default_title()
             base_qs = self.get_queryset_for_current_mode()
             row_dim, col_dim, metric = pivot_mod.parse_pivot_params(self.request.GET)
-            ctx["pivot"] = pivot_mod.zbuduj_pivot(base_qs, row_dim, col_dim, metric)
             ctx["pivot_dimensions"] = pivot_mod.DIMENSIONS
             ctx["pivot_metrics"] = pivot_mod.METRICS
-            ctx["paginator_count"] = 0
+            # Wymiary/metryka jawnie w kontekście — pasek selektorów renderuje
+            # się też, gdy macierz jest zbyt duża i pivot=None.
+            ctx["pivot_row_dim"] = row_dim
+            ctx["pivot_col_dim"] = col_dim
+            ctx["pivot_metric"] = metric
+            # Uczciwy licznik dla breadcrumbu: liczba rekordów, które pivot
+            # podsumowuje (nie 0).
+            ctx["paginator_count"] = base_qs.values("pk").distinct().count()
+            try:
+                ctx["pivot"] = pivot_mod.zbuduj_pivot(base_qs, row_dim, col_dim, metric)
+            except pivot_mod.PivotTooLargeError as exc:
+                ctx["pivot"] = None
+                ctx["pivot_error"] = exc
             return ctx
 
         qset = self.get_queryset_for_current_mode()
@@ -228,12 +248,7 @@ class MyMultiseekResults(MultiseekResults):
         object_list = ctx["object_list"]
         object_list.count = lambda *args, **kw: ctx["paginator_count"]
 
-        keys = list(self.request.session.keys())
-        if "MULTISEEK_TITLE" not in keys:
-            self.request.session["MULTISEEK_TITLE"] = "Rezultat wyszukiwania"
-        else:
-            if self.request.session["MULTISEEK_TITLE"] == "":
-                self.request.session["MULTISEEK_TITLE"] = "Rezultat wyszukiwania"
+        self._ensure_default_title()
 
         return ctx
 
@@ -294,7 +309,13 @@ class MyMultiseekExport(LoginRequiredMixin, MyMultiseekResults):
             )
         base_qs = self.get_queryset_for_current_mode()
         row_dim, col_dim, metric = pivot_mod.parse_pivot_params(request.GET)
-        pivot_result = pivot_mod.zbuduj_pivot(base_qs, row_dim, col_dim, metric)
+        try:
+            pivot_result = pivot_mod.zbuduj_pivot(base_qs, row_dim, col_dim, metric)
+        except pivot_mod.PivotTooLargeError:
+            return HttpResponseBadRequest(
+                "Tabela krzyżowa jest zbyt duża do wyeksportowania — "
+                "zawęź zapytanie lub wybierz mniej liczny wymiar."
+            )
         report_title = _multiseek_report_title(request)
         if export_format == "csv":
             return pivot_csv_export_response(pivot_result, request, report_title)

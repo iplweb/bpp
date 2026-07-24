@@ -1,14 +1,15 @@
 {% comment %}
-Tabela krzyżowa (pivot). Kontekst: pivot (PivotResult), pivot_dimensions,
-pivot_metrics. Konfiguracja wierszy/kolumn/metryki idzie parametrami GET
-(pivot_row / pivot_col / pivot_val) — pasek selektorów niżej.
+Tabela krzyżowa (pivot). Kontekst: pivot (PivotResult lub None gdy za duża),
+pivot_error (PivotTooLargeError lub brak), pivot_row_dim / pivot_col_dim /
+pivot_metric (aktualny wybór — dostępne też przy błędzie), pivot_dimensions,
+pivot_metrics. Konfiguracja idzie parametrami GET (pivot_row/col/val).
 {% endcomment %}
 <div class="multiseek-pivot-wrap">
     <form method="get" action="." class="multiseek-pivot-controls">
         <label>Wiersze
             <select name="pivot_row" onchange="this.form.submit()">
                 {% for key, dim in pivot_dimensions.items %}
-                    <option value="{{ key }}"{% if key == pivot.row_dim.key %} selected{% endif %}>{{ dim.label }}</option>
+                    <option value="{{ key }}"{% if key == pivot_row_dim.key %} selected{% endif %}>{{ dim.label }}</option>
                 {% endfor %}
             </select>
         </label>
@@ -17,7 +18,7 @@ pivot_metrics. Konfiguracja wierszy/kolumn/metryki idzie parametrami GET
                 <option value="">(brak)</option>
                 {% for key, dim in pivot_dimensions.items %}
                     {% if dim.allow_column %}
-                        <option value="{{ key }}"{% if pivot.col_dim and key == pivot.col_dim.key %} selected{% endif %}>{{ dim.label }}</option>
+                        <option value="{{ key }}"{% if pivot_col_dim and key == pivot_col_dim.key %} selected{% endif %}>{{ dim.label }}</option>
                     {% endif %}
                 {% endfor %}
             </select>
@@ -25,13 +26,14 @@ pivot_metrics. Konfiguracja wierszy/kolumn/metryki idzie parametrami GET
         <label>W komórce
             <select name="pivot_val" onchange="this.form.submit()">
                 {% for key, m in pivot_metrics.items %}
-                    <option value="{{ key }}"{% if key == pivot.metric.key %} selected{% endif %}>{{ m.label }}</option>
+                    <option value="{{ key }}"{% if key == pivot_metric.key %} selected{% endif %}>{{ m.label }}</option>
                 {% endfor %}
             </select>
         </label>
         <noscript><button type="submit" class="button">Odśwież</button></noscript>
     </form>
 
+    {% if pivot %}
     {% with t=pivot.as_table %}
     <div class="multiseek-pivot-scroll">
         <table class="multiseek-pivot">
@@ -78,5 +80,14 @@ pivot_metrics. Konfiguracja wierszy/kolumn/metryki idzie parametrami GET
         <a href="../export/xlsx/?{{ request.GET.urlencode }}">XLSX</a>
         <a href="../export/csv/?{{ request.GET.urlencode }}">CSV</a>
     </div>
+    {% endif %}
+
+    {% elif pivot_error %}
+    <p class="multiseek-pivot-note multiseek-pivot-toobig">
+        Wynik dałby zbyt dużą tabelę krzyżową do wyświetlenia
+        (liczba {% if pivot_error.kind == "cells" %}komórek{% else %}powiązań{% endif %}:
+        {{ pivot_error.count }}, limit: {{ pivot_error.limit }}). Zawęź zapytanie
+        albo wybierz mniej liczny wymiar wierszy/kolumn.
+    </p>
     {% endif %}
 </div>

@@ -79,8 +79,9 @@ def test_pivot_results_view_zwraca_pivot(
 def test_pivot_results_view_pomija_agregaty_listy(
     logged_in_client, test_user, standard_data, denorms
 ):
-    """Gałąź pivota omija cache agregatów/sumy stopki (spec §8) —
-    paginator_count jest wyzerowany, a klucz "sumy" nie jest ustawiany."""
+    """Gałąź pivota omija cache agregatów/sumy stopki listy (spec §8) —
+    klucz "sumy" nie jest ustawiany, a paginator_count to uczciwa liczba
+    podsumowanych rekordów (nie 0)."""
     any_ciagle(tytul_oryginalny=f"{PIVOT_TITLE_PREFIX} - beta", rok=2023)
     denorms.flush()
     _set_multiseek_pivot_filter(logged_in_client, test_user)
@@ -90,8 +91,31 @@ def test_pivot_results_view_pomija_agregaty_listy(
     )
 
     assert resp.status_code == 200
-    assert resp.context["paginator_count"] == 0
+    assert resp.context["paginator_count"] == 1
     assert "sumy" not in resp.context
+
+
+@pytest.mark.django_db
+def test_pivot_zbyt_duza_pokazuje_komunikat(
+    logged_in_client, test_user, standard_data, denorms, monkeypatch
+):
+    """Gdy macierz przekracza limit, widok nie wysypuje się — pivot=None,
+    ustawiony pivot_error, a szablon pokazuje komunikat "zawęź zapytanie"."""
+    any_ciagle(tytul_oryginalny=f"{PIVOT_TITLE_PREFIX} - duza", rok=2024)
+    denorms.flush()
+    monkeypatch.setattr("bpp.multiseek_registry.pivot.PIVOT_MAX_CELLS", 0)
+    _set_multiseek_pivot_filter(logged_in_client, test_user)
+
+    resp = logged_in_client.get(
+        reverse("multiseek:results") + "?pivot_row=rok&pivot_val=liczba"
+    )
+
+    assert resp.status_code == 200
+    assert resp.context["pivot"] is None
+    assert resp.context["pivot_error"] is not None
+    assert "zbyt dużą tabelę" in resp.content.decode()
+    # pasek selektorów renderuje się mimo błędu
+    assert 'name="pivot_row"' in resp.content.decode()
 
 
 @pytest.mark.django_db
@@ -158,9 +182,7 @@ def test_pivot_export_ukryty_dla_anonima(client, standard_data, denorms):
     denorms.flush()
     _set_multiseek_pivot_filter(client, AnonymousUser())
 
-    resp = client.get(
-        reverse("multiseek:results") + "?pivot_row=rok&pivot_val=liczba"
-    )
+    resp = client.get(reverse("multiseek:results") + "?pivot_row=rok&pivot_val=liczba")
     html = resp.content.decode()
 
     assert 'class="multiseek-pivot"' in html

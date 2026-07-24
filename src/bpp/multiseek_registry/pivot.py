@@ -13,9 +13,8 @@ class PivotDimension:
     expr: str
     allow_column: bool = True
     autorzy: bool = False
-    label_kind: str = "raw"  # raw|fk|choices_charakter_ogolny|pk_bucket|autor
+    label_kind: str = "raw"  # raw | fk | choices_charakter_ogolny | pk_bucket
     fk_model: str | None = None
-    fk_label_field: str = "nazwa"
 
     def resolve_model(self):
         from django.apps import apps
@@ -101,7 +100,7 @@ DIMENSIONS: dict[str, PivotDimension] = {
         "autorzy__autor_id",
         allow_column=False,
         autorzy=True,
-        label_kind="autor",
+        label_kind="fk",
         fk_model="bpp.Autor",
     ),
 }
@@ -168,6 +167,24 @@ class PivotResult:
         }
 
 
+# Bezpieczniki rozmiaru — pivot jest publiczny i celowo omija bramkę 25000
+# oraz cap eksportu 5000. Bez tych limitów anonim z np. ?pivot_row=autor na
+# pustym filtrze zbudowałby macierz z dziesiątkami tysięcy wierszy i (w
+# strategii B) wciągnął miliony par autorstw do RAM-u.
+PIVOT_MAX_CELLS = 10000  # maks. liczba niepustych komórek (rozmiar macierzy/HTML)
+PIVOT_MAX_PAIRS = 200000  # maks. par (wymiar, rekord) w strategii B (pamięć)
+
+
+class PivotTooLargeError(Exception):
+    """Pivot dałby zbyt dużą macierz / zbiór par — trzeba zawęzić zapytanie."""
+
+    def __init__(self, count, limit, kind):
+        self.count = count
+        self.limit = limit
+        self.kind = kind  # "cells" | "pairs"
+        super().__init__(f"Pivot przekroczył limit ({kind}): {count} > {limit}.")
+
+
 def _annotate(metric):
     return Count("id") if metric.field is None else Sum(metric.field)
 
@@ -177,6 +194,22 @@ def zbuduj_pivot(base_qs, row_dim, col_dim, metric):
     # order_by() wchodzi do GROUP BY i rozbija grupy na mikro-grupy (K3).
     base_qs = base_qs.order_by()
     has_autorzy = row_dim.autorzy or bool(col_dim and col_dim.autorzy)
+    group = [row_dim.expr] + ([col_dim.expr] if col_dim else [])
+
+    # Bramka rozmiaru macierzy (tanie COUNT DISTINCT po stronie DB): liczba
+    # niepustych komórek = liczba unikatowych kombinacji (wiersz, kolumna).
+    n_cells = base_qs.values(*group).distinct().count()
+    if n_cells > PIVOT_MAX_CELLS:
+        raise PivotTooLargeError(n_cells, PIVOT_MAX_CELLS, "cells")
+
+    # Strategia B agreguje w Pythonie po unikatowych parach (wymiar, rekord) —
+    # ogranicz też ich liczbę, bo mało liczny wymiar wierszy (np. jednostka)
+    # przy ogromnym zbiorze źródłowym i tak wciągnąłby wszystkie pary.
+    if has_autorzy:
+        n_pairs = base_qs.values(*group, "id").distinct().count()
+        if n_pairs > PIVOT_MAX_PAIRS:
+            raise PivotTooLargeError(n_pairs, PIVOT_MAX_PAIRS, "pairs")
+
     triples = (
         _pairs_strategy(base_qs, row_dim, col_dim, metric)
         if has_autorzy
@@ -211,7 +244,9 @@ def _pairs_strategy(base_qs, row_dim, col_dim, metric):
     pairs = base_qs.values(*fields).distinct()
     seen = {}  # (rk, ck) -> set(rekord id) dla liczby
     sums = {}  # (rk, ck) -> Σ metryki po unikatowych rekordach
-    for p in pairs:
+    # .iterator(): nie buduj _result_cache — liczbę par i tak ogranicza
+    # bramka PIVOT_MAX_PAIRS w zbuduj_pivot().
+    for p in pairs.iterator(chunk_size=2000):
         rk = p[row_dim.expr]
         ck = p[col_dim.expr] if col_dim else None
         rid = tuple(p["id"]) if isinstance(p["id"], list) else p["id"]
@@ -287,7 +322,7 @@ def _label_mapping(keys, dim):
 
         d = dict(CHARAKTER_OGOLNY_CHOICES)
         return {k: (BRAK if k is None else d.get(k, str(k))) for k in keys}
-    if dim.label_kind in ("fk", "autor"):
+    if dim.label_kind == "fk":
         ids = [k for k in keys if k is not None]
         model = dim.resolve_model()
         objs = model.objects.in_bulk(ids)
