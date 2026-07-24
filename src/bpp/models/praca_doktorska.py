@@ -37,6 +37,13 @@ class Praca_Doktorska_Baza(
             def all(self):
                 return self
 
+            def first(self):
+                # Doktorat/habilitacja ma dokładnie jednego autora (pole
+                # `autor`, nie relacja M2M), ale kod wołający traktuje wynik
+                # jak queryset. Bez `first()` leciał AttributeError — m.in.
+                # w bpp.export.bibtex.generate_bibtex_key.
+                return self[0] if self else None
+
             def select_related(self, *args, **kw):
                 return self
 
