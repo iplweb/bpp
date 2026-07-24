@@ -337,7 +337,10 @@ disable-microsoft-auth: ## Wyłącz django_microsoft_auth
 # (`make tests-without-playwright`) nie brudzi pliku. `make tests` i
 # `make test-durations` wlaczaja zapis przez target-specific STORE_DURATIONS.
 STORE_DURATIONS ?=
-PLAYWRIGHT_WORKERS ?= 12
+# Liczba workerow xdist dla suity Playwright — patrz komentarz przy
+# `tests-only-playwright`. Kolejnosc fallbackow: rdzenie wydajnosciowe
+# (Apple Silicon) -> nproc (Linux) -> hw.ncpu (Intel Mac) -> 4.
+PLAYWRIGHT_WORKERS ?= $(shell sysctl -n hw.perflevel0.logicalcpu 2>/dev/null || nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 _store_durations = $(if $(STORE_DURATIONS),--store-durations --durations-path .test_durations,)
 # Po zapisie zaokraglij+posortuj plik (maly, stabilny diff). `&&` —
 # normalizujemy tylko po udanym przebiegu; przy STORE_DURATIONS pustym
@@ -352,9 +355,13 @@ tests-without-playwright-with-microsoft-auth: ## tests-without-playwright z akty
 
 tests-with-microsoft-auth: enable-microsoft-auth tests-without-playwright-with-microsoft-auth disable-microsoft-auth ## Włącz MS Auth, uruchom testy, wyłącz
 
-# Chromium i Daphne konkuruja o zasoby przy `-n auto` (16 workerow na
-# typowej maszynie deweloperskiej). Limit mozna nadpisac, np.
-# `make tests-only-playwright PLAYWRIGHT_WORKERS=8`.
+# Chromium i Daphne konkuruja o zasoby przy `-n auto`, ktore bierze WSZYSTKIE
+# rdzenie logiczne. Na Apple Silicon oznacza to doliczenie rdzeni
+# energooszczednych (E-cores) — a te sa za wolne, zeby uciagnac wlasna
+# instancje Chromium + Daphne, wiec dokladaja tylko rywalizacje o pamiec i I/O.
+# Zmierzone na 12P+4E (154 testy): -n auto/16 ~94 s, -n 10 ~94 s, -n 8 ~89 s,
+# -n 12 ~87 s. Stad domyslnie tyle workerow, ile rdzeni WYDAJNOSCIOWYCH.
+# Nadpisanie: `make tests-only-playwright PLAYWRIGHT_WORKERS=8`.
 tests-only-playwright: playwright-install ## Tylko testy Playwright (wolne)
 	uv run pytest -n $(PLAYWRIGHT_WORKERS) -m "playwright" $(_store_durations) $(_normalize_durations)
 
