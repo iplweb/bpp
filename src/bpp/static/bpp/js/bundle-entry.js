@@ -53,7 +53,14 @@ import '../../../../../.venv/lib/python/site-packages/cookielaw/static/cookielaw
 // It's loaded in multiseek/index.html template.
 import '../../../../../.venv/lib/python/site-packages/session_security/static/session_security/script.js';
 import '../../../../../.venv/lib/python/site-packages/dal/static/autocomplete_light/autocomplete_light.js';
-import '../../../../../.venv/lib/python/site-packages/dal/static/autocomplete_light/i18n/pl.js';
+// UWAGA: NIE importujemy vendored `dal/.../i18n/pl.js` — jego globalna
+// deklaracja `var dalLoadLanguage` jest tree-shakowana przez esbuild (martwy,
+// side-effect-free binding), przez co `autocomplete_light.js` rzuca cichy
+// ReferenceError i DAL select2 traci polskie i18n. Zamiast tego lokalny
+// wrapper eksportuje `dalLoadLanguage` na `window` (odporny na tree-shaking)
+// i odtwarza ten sam side-effect (rejestracja `select2/i18n/pl` + event
+// `dal-language-loaded`).
+import './dal-i18n-pl.js';
 import '../../../../../.venv/lib/python/site-packages/dal_select2/static/autocomplete_light/select2.js';
 
 // ===== 9. DJANGO I18N (static file) =====
