@@ -224,20 +224,68 @@ def select_select2_autocomplete(
         page.wait_for_timeout(0)
 
 
-def close_all_select2_dropdowns(page: Page):
-    """Close any open Select2 dropdowns to ensure clean DOM state.
+def set_select2_value(
+    page: Page,
+    element_id: str,
+    value: str | int,
+    label: str | None = None,
+    timeout: int = 10000,
+):
+    """Set a Select2-backed field without exercising its autocomplete.
 
-    Args:
-        page: Playwright Page object
+    Use this only when Select2 is incidental to the behaviour under test. The
+    helper adds the option that an AJAX lookup would normally create, selects it,
+    emits the same jQuery ``change`` event, and waits for dependent AJAX handlers.
+    Tests whose purpose is autocomplete or queryset forwarding must keep using
+    :func:`select_select2_autocomplete`.
+
+    Czekamy na klasę ``select2-hidden-accessible``, a NIE tylko na
+    ``state="attached"``. Dla wierszy formsetu dodanych dynamicznie (przycisk
+    „dodaj autora" / ``#add-form``) django-autocomplete-light inicjalizuje
+    widget dopiero w callbacku ``MutationObserver``
+    (``autocomplete_light.js``) — czyli asynchronicznie PO wstawieniu
+    ``<select>`` do DOM. Sam ``attached`` przepuszcza więc okno, w którym
+    ``autorform_dependant.js`` nie zdążył podpiąć handlera ``change``: nasz
+    ``trigger('change')`` nie odpala wtedy żadnego AJAX-a, ``jQuery.active``
+    od razu wynosi 0 i helper wraca „zielony", mimo że zależne pola
+    (jednostka / dyscyplina) nigdy się nie wypełniły. Testy z asercją
+    POZYTYWNĄ złapałyby to jako flake, ale testy z asercją NEGATYWNĄ
+    (``test_podpowiedzi_dyscyplin_autor_ma_dwie``) przeszłyby wtedy nie
+    sprawdziwszy niczego. ``select2`` nadaje tę klasę oryginalnemu
+    ``<select>`` przy inicjalizacji, więc jej obecność dowodzi, że widget
+    (a z nim handlery ``autocompleteLightInitialize``) jest już gotowy.
     """
-    page.evaluate(
-        """() => {
-        if (typeof django !== 'undefined' && django.jQuery) {
-            django.jQuery('.select2-hidden-accessible').select2('close');
-        }
-    }"""
+    option_value = str(value)
+    select = page.locator(f"#{element_id}")
+    select.wait_for(state="attached", timeout=timeout)
+    page.wait_for_function(
+        """(id) => {
+            const element = document.getElementById(id);
+            return !!element
+                && element.classList.contains('select2-hidden-accessible');
+        }""",
+        arg=element_id,
+        timeout=timeout,
     )
-    page.wait_for_timeout(0)
+    select.evaluate(
+        """(element, option) => {
+            const existing = Array.from(element.options).find(
+                item => item.value === option.value
+            );
+            const selected = existing || new Option(
+                option.label, option.value, true, true
+            );
+            if (!existing) element.add(selected);
+            element.value = option.value;
+            django.jQuery(element).trigger('change');
+        }""",
+        {"value": option_value, "label": label or option_value},
+    )
+    page.wait_for_function(
+        "() => !window.django || !django.jQuery || django.jQuery.active === 0",
+        timeout=timeout,
+    )
+    assert select.input_value() == option_value
 
 
 def proper_click_element(page: Page, selector: str):

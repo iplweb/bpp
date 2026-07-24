@@ -44,6 +44,8 @@ def test_Wydawnictwo_Zwarte_Autor_Admin_forwarding_works(
     # Wait for rok field to exist (it's a hidden input, so we don't check visibility)
     admin_page.wait_for_selector("[name='rok']", state="attached")
 
+    # NIE ZASTĘPOWAĆ przez set_select2_value: ten test sprawdza prawdziwe
+    # wpisywanie w Select2 oraz przekazanie pól autor/rok do endpointu.
     select_select2_autocomplete(
         admin_page, "id_dyscyplina_naukowa", dyscyplina1.nazwa, timeout=30000
     )
