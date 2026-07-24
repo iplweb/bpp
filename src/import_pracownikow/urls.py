@@ -97,4 +97,14 @@ urlpatterns = [
         views.ZaznaczWszystkiePrzepieciaView.as_view(),
         name="zaznacz-przepiecia",
     ),
+    path(
+        "<uuid:pk>/pobierz-oryginal/",
+        views.PobierzOryginalView.as_view(),
+        name="pobierz-oryginal",
+    ),
+    path(
+        "<uuid:pk>/pobierz-po-imporcie/",
+        views.PobierzPoImporcieView.as_view(),
+        name="pobierz-po-imporcie",
+    ),
 ]

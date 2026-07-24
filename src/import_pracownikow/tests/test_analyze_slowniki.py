@@ -56,12 +56,13 @@ def test_reconciler_jednostek_skrot_hint_nadpisuje_zawsze():
 
 @pytest.mark.django_db
 def test_zrodlo_jednostki_z_komorki_parsuje_i_daje_skrot_hint():
-    baker.make("bpp.Wydzial", nazwa="WIBiOL — pełna", skrot="WIBiOL")
+    # Faza C (#438): „wydział" to jednostka TOP-LEVEL (parent IS NULL).
+    baker.make("bpp.Jednostka", nazwa="WIBiOL — pełna", skrot="WIBiOL", parent=None)
     dane = {"komórka_złożona": "RW-6/3 Zakład Nauk Społecznych WIBiOL"}
     nazwa, wydzial, _jed, _st, _sim, skrot_hint = _zrodlo_jednostki_wiersza(dane)
     assert nazwa == "Zakład Nauk Społecznych"
     assert skrot_hint == "RW-6/3"
-    assert wydzial == "WIBiOL — pełna"  # oddział→Wydzial.skrot→nazwa
+    assert wydzial == "WIBiOL — pełna"  # oddział→skrót roota→nazwa
 
 
 @pytest.mark.django_db

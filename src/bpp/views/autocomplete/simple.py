@@ -20,17 +20,15 @@ from bpp.models.cache import Rekord
 from bpp.models.konferencja import Konferencja
 from bpp.models.nagroda import OrganPrzyznajacyNagrody
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
-from bpp.models.struktura import Wydzial
 from bpp.models.zrodlo import Rodzaj_Zrodla, Zrodlo
 from pbn_api.models import Publisher
 
 from .base import (
-    NazwaLubSkrotMixin,
     NazwaMixin,
     NazwaTrigramMixin,
     autocomplete_create_error,
 )
-from .mixins import SanitizedAutocompleteMixin, UczelniaScopedAutocompleteMixin
+from .mixins import SanitizedAutocompleteMixin
 
 
 class _OrderedSlicedQuerySetSequence(QuerySetSequence):
@@ -196,25 +194,6 @@ class Seria_WydawniczaAutocomplete(
 
     create_field = "nazwa"
     qset = Seria_Wydawnicza.objects.all()
-
-
-class WydzialAutocomplete(
-    SanitizedAutocompleteMixin, NazwaLubSkrotMixin, autocomplete.Select2QuerySetView
-):
-    """Autocomplete for departments (wydzialy)."""
-
-    qset = Wydzial.objects.all()
-
-
-class PublicWydzialAutocomplete(
-    UczelniaScopedAutocompleteMixin,
-    SanitizedAutocompleteMixin,
-    NazwaLubSkrotMixin,
-    autocomplete.Select2QuerySetView,
-):
-    """Public autocomplete for visible departments (per-uczelnia, multi-hosted)."""
-
-    qset = Wydzial.objects.filter(widoczny=True)
 
 
 class OrganPrzyznajacyNagrodyAutocomplete(

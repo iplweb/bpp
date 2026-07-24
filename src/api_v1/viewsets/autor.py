@@ -24,7 +24,10 @@ class AutorViewSet(viewsets.ReadOnlyModelViewSet):
     # Bazowy queryset BEZ filtra widoczności — zawężenie do pokazuj=True robi
     # get_queryset() TYLKO dla anonima. Autor z pokazuj=False jest świadomie
     # ukryty ze stron publicznych, ale zalogowany (redaktor) musi go widzieć.
-    queryset = Autor.objects.all()
+    # ``jednostki`` to M2M serializowane many=True — bez prefetcha jedno
+    # zapytanie NA AUTORA. Pozostałe relacje serializera są hyperlinkowane
+    # (DRF czyta samo FK id z wiersza, ``use_pk_only_optimization``).
+    queryset = Autor.objects.all().prefetch_related("jednostki")
     serializer_class = AutorSerializer
     filterset_class = AutorFilterSet
     # Filtr nazwisko__icontains skanuje bez indeksu prefiksu — opt-in
@@ -47,8 +50,20 @@ class Funkcja_AutoraViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class Autor_JednostkaViewSet(viewsets.ReadOnlyModelViewSet):
+    # Bazowy queryset BEZ filtra widoczności — zawężenie robi get_queryset()
+    # TYLKO dla anonima (analogicznie do AutorViewSet).
     queryset = Autor_Jednostka.objects.all()
     serializer_class = Autor_JednostkaSerializer
+
+    def get_queryset(self):
+        # Anonim nie może zobaczyć powiązań zatrudnienia autora ukrytego
+        # (autor.pokazuj=False) — inaczej jednostka, daty pracy oraz PK autora
+        # wyciekają mimo że AutorViewSet ukrywa samego autora. Zalogowany
+        # (redaktor) widzi wszystkich.
+        qs = super().get_queryset()
+        if self.request.user.is_authenticated:
+            return qs
+        return qs.filter(autor__pokazuj=True)
 
 
 class TytulViewSet(viewsets.ReadOnlyModelViewSet):

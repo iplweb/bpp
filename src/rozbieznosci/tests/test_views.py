@@ -1,8 +1,38 @@
+from io import BytesIO
+
 import pytest
 from django.urls import reverse
 from model_bakery import baker
+from openpyxl import load_workbook
 
 from rozbieznosci.models import IgnorowanaRozbieznosc
+
+
+@pytest.mark.django_db
+def test_export_sanityzuje_formula_injection(client_with_group):
+    """Eksport XLSX nie może zapisać tytułu/nazwy źródła zaczynających się od
+    znaku formuły (``=``) jako aktywnej formuły (CSV/Formula Injection) — muszą
+    zostać poprzedzone apostrofem przez ``sanitize_xlsx_row``.
+    """
+    zrodlo = baker.make("bpp.Zrodlo", nazwa="=cmd|'/c calc'!A1")
+    baker.make("bpp.Punktacja_Zrodla", zrodlo=zrodlo, rok=2023, impact_factor="2.500")
+    baker.make(
+        "bpp.Wydawnictwo_Ciagle",
+        zrodlo=zrodlo,
+        rok=2023,
+        impact_factor="1.500",
+        tytul_oryginalny='=HYPERLINK("http://evil.example","kliknij")',
+    )
+    url = reverse("rozbieznosci:export", kwargs={"metryka": "if"})
+    resp = client_with_group.get(url)
+    assert resp.status_code == 200
+
+    ws = load_workbook(BytesIO(resp.content)).active
+    tytul, _rok, _wart_pracy, zrodlo_nazwa, _wart_zrodla = next(
+        ws.iter_rows(min_row=2, values_only=True)
+    )
+    assert tytul.startswith("'=")
+    assert zrodlo_nazwa.startswith("'=")
 
 
 @pytest.mark.django_db

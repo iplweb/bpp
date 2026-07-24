@@ -10,6 +10,7 @@ import pytest
 from django.urls import reverse
 from model_bakery import baker
 
+from bpp import views as bpp_views
 from bpp.models import Autor, Jednostka
 from bpp.models.cache import Rekord
 from bpp.models.system import Charakter_Formalny, Typ_Odpowiedzialnosci
@@ -155,18 +156,60 @@ def test_robots_txt_wskazuje_sitemap(client):
     assert "Disallow:" in body
 
 
+# ``robots_txt`` jest owinięty w ``cache_page(24h)`` (django_bpp/urls.py).
+# W ``settings/test.py`` CACHES["default"] to DummyCache — nic nie
+# zapamiętuje, więc bez podmiany na LocMem cache_page renderowałby wszystko
+# od nowa i test rozdzielności hostów przechodziłby trywialnie, nie dowodząc,
+# że cache NIE przecieka między domenami multi-hosted.
+LOCMEM_ROBOTS = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "test-robots-vary-host",
+    }
+}
+
+
 @pytest.mark.django_db
-def test_robots_txt_sitemap_zalezna_od_hosta(client, settings):
-    """Sitemap musi wskazywać host requestu, a odpowiedź mieć Vary: Host.
+def test_robots_txt_sitemap_zalezna_od_hosta(client, settings, mocker):
+    """Sitemap wskazuje host requestu, a cache_page rozdziela wpisy per-host.
 
-    Bez Vary: Host owijający cache_page zaserwowałby pierwszemu hostowi
-    cache współdzielony z innymi domenami multi-hosted.
+    ``LocMemCache`` jest tu WARUNKIEM SENSOWNOŚCI testu, nie ozdobą (wzorzec
+    z ``test_cache_publiczny.py`` i ``admin_dashboard/test_cache_vary_host``):
+    pod domyślnym DummyCache cache_page niczego nie zapisuje, więc drugi host
+    zawsze renderuje świeżo i nie da się wykryć, że dostał cache pierwszego.
+    Na realnym backendzie — gdyby cache_page przestał kluczować po hoście —
+    drugi host dostałby sitemapę pierwszego i asercje niżej padną.
     """
-    settings.ALLOWED_HOSTS = ["bpp.uczelnia-a.pl", "bpp.uczelnia-b.pl"]
+    from django.core.cache import cache
 
-    res_a = client.get(reverse("robots_txt"), HTTP_HOST="bpp.uczelnia-a.pl")
-    res_b = client.get(reverse("robots_txt"), HTTP_HOST="bpp.uczelnia-b.pl")
+    settings.ALLOWED_HOSTS = ["bpp.uczelnia-a.pl", "bpp.uczelnia-b.pl"]
+    settings.CACHES = {**settings.CACHES, **LOCMEM_ROBOTS}
+    cache.clear()
+
+    # Liczymy realne renderowania widoku: trafienie w cache_page NIE woła
+    # ``_read_static_robots`` po raz kolejny.
+    licznik = mocker.spy(bpp_views, "_read_static_robots")
+    url = reverse("robots_txt")
+
+    res_a = client.get(url, HTTP_HOST="bpp.uczelnia-a.pl")
+    assert licznik.call_count == 1, "pierwsze żądanie musi wyrenderować widok"
+
+    res_b = client.get(url, HTTP_HOST="bpp.uczelnia-b.pl")
+    assert licznik.call_count == 2, (
+        "drugi host dostał sitemapę zapamiętaną dla pierwszego — cache_page "
+        "przestał kluczować po hoście, wielo-uczelnianość przecieka między "
+        "domenami"
+    )
 
     assert "Sitemap: http://bpp.uczelnia-a.pl/sitemap.xml" in res_a.content.decode()
     assert "Sitemap: http://bpp.uczelnia-b.pl/sitemap.xml" in res_b.content.decode()
     assert "Host" in res_a.get("Vary", "")
+
+    # Warunek kontrolny: ten sam host drugi raz MUSI trafić w cache (inaczej
+    # asercja rozdzielności przechodziłaby dlatego, że cache w ogóle nie działa).
+    res_a2 = client.get(url, HTTP_HOST="bpp.uczelnia-a.pl")
+    assert licznik.call_count == 2, (
+        "powtórzone żądanie na ten sam host nie trafiło w cache — cache_page "
+        "nie działa, więc test rozdzielności hostów niczego nie dowodzi"
+    )
+    assert res_a2.content == res_a.content

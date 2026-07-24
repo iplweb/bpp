@@ -43,7 +43,6 @@ class CustomIndexDashboard(Dashboard):
                     "Struktura",
                     [
                         "bpp.models.uczelnia",
-                        "bpp.models.wydzial",
                         "bpp.models.jednostka",
                     ],
                 )

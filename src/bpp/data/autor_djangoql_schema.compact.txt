@@ -85,7 +85,6 @@ bpp.jednostka:
   cache_punktacja_autora       -> bpp.cache_punktacja_autora?
   children                     -> bpp.jednostka?
   id                           int
-  jest_lustrem                 bool  "Syntetyczny węzeł-lustro wydziału"
   kierunek_studiow             -> bpp.kierunek_studiow?
   kolejnosc                    int
   level                        int

@@ -105,6 +105,14 @@ class ImportPracownikow(LiveOperation):
     ]
 
     plik_xls = models.FileField(upload_to="protected/import_pracownikow/")
+    plik_po_imporcie = models.FileField(
+        upload_to="protected/import_pracownikow/",
+        null=True,
+        blank=True,
+        help_text="Zamrożony, skorygowany plik „po imporcie” wygenerowany przy "
+        "finalizacji — trwały rekord tego, co trafiło do BPP (niezależny od "
+        "późniejszych edycji). Housekeeping go NIE kasuje.",
+    )
     stan = models.CharField(max_length=32, choices=STAN_CHOICES, default=STAN_UTWORZONY)
     mapowanie_kolumn = models.JSONField(default=dict, blank=True)
     tworz_brakujace_jednostki = models.BooleanField(
@@ -170,6 +178,21 @@ class ImportPracownikow(LiveOperation):
         "(struktura + osoby), same jednostki, albo jednostki + tytuły + stopnie "
         "+ stanowiska (bez osób). Ustawiane przez przycisk zatwierdzenia na "
         "hubie.",
+    )
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="uczelnia",
+        help_text="Uczelnia, do której należy ten import — ustalana z requestu "
+        "(host → Site → Uczelnia) w chwili utworzenia importu. Integracja biegnie "
+        "w tle (bez requestu), więc uczelnię trzeba złapać w widoku i tu utrwalić. "
+        "W instalacji multi-hosted (>1 uczelnia) to JEDYNE wiarygodne źródło "
+        "uczelni do tworzenia jednostek — bez tego "
+        "``get_single_uczelnia_or_none()`` zwróciłoby ``None`` i nowe jednostki "
+        "nie powstałyby. ``NULL`` dla starych importów i instalacji "
+        "single-tenant (fallback: jedyna uczelnia w systemie).",
     )
 
     stages = ["Wczytywanie", "Integracja"]
@@ -444,6 +467,56 @@ class ImportPracownikow(LiveOperation):
 
         return qry
 
+    def odswiez_stany_pol_wierszy(self, tylko_puste=False):
+        """Przelicza ``stany_pol_snapshot`` wierszy importu jednym przebiegiem.
+
+        Filtr stanu pól na liście wyników działa na tym polu w SQL, więc musi być
+        świeże wszędzie tam, gdzie zmieniły się pola czytane przez ekstraktory:
+        po analizie oraz po integracji strukturalnej (przypisanie
+        ``jednostka``/``tytul``/``stopien``/``stanowisko_dydaktyczne`` wierszom).
+
+        ``tylko_puste=True`` — tryb backfillu dla importów sprzed materializacji.
+        Zawężenie do wierszy z ``NULL`` jest tam WARUNKIEM POPRAWNOŚCI, nie
+        optymalizacją: snapshot niepusty bywa zamrożonym zapisem audytowym
+        (stan sprzed integracji), a przeliczenie nadpisałoby go stanem po
+        integracji, czyli „zgodne" zamiast „zmienione". Snapshot dostają dziś
+        tylko wiersze z worklisty integracji, więc importy zintegrowane mają
+        mieszankę wypełnionych i pustych — sam fakt istnienia ``NULL``-i nie
+        znaczy, że import jest sprzed zmiany.
+
+        Zwraca liczbę zaktualizowanych wierszy.
+        """
+        from import_pracownikow.okresy import wstepnie_zaladuj_okresy
+
+        qs = self.importpracownikowrow_set.all()
+        if tylko_puste:
+            qs = qs.filter(stany_pol_snapshot__isnull=True)
+        # Te same ścieżki, których potrzebują ekstraktory (`porownaj_z_baza`
+        # czyta FK autora i powiązania) — bez tego przeliczenie samo byłoby N+1.
+        rows = list(
+            qs.select_related(
+                "autor",
+                "autor__aktualna_jednostka",
+                "autor__tytul",
+                "autor__stopien_sluzbowy",
+                "jednostka",
+                "autor_jednostka__stanowisko",
+                "autor_jednostka__funkcja",
+                "autor_jednostka__wymiar_etatu",
+                "autor_jednostka__grupa_pracownicza",
+            )
+        )
+        if not rows:
+            return 0
+        wstepnie_zaladuj_okresy(rows)
+        for row in rows:
+            row.stany_pol_snapshot = row.stany_pol_live()
+        with transaction.atomic():
+            ImportPracownikowRow.objects.bulk_update(
+                rows, ["stany_pol_snapshot"], batch_size=500
+            )
+        return len(rows)
+
     def pary_z_pliku(self):
         """Zbiór par ``(autor_id, jednostka_id)`` OBECNYCH w wierszach importu
         (autor i jednostka ustawione) — „para z pliku”, tj. potwierdzony etat.
@@ -657,6 +730,52 @@ class ImportPracownikow(LiveOperation):
                 utworzone__isnull=True, tryb=ImportPracownikowStanowisko.TRYB_BRAK
             ).exists()
         )
+
+    def uczelnia_do_integracji(self):
+        """Uczelnia użyta przez pipeline w tle (analiza + integracja) — JEDNO
+        źródło prawdy dla tworzenia jednostek i wykluczeń „obcej jednostki".
+
+        Kolejność: (1) ``self.uczelnia`` złapana z requestu przy tworzeniu
+        importu — jedyne wiarygodne źródło w multi-hosted (>1 uczelnia);
+        (2) fallback ``get_single_uczelnia_or_none()`` dla instalacji
+        single-tenant i starych importów sprzed pola ``uczelnia`` (przy 0 lub
+        >1 uczelni bez ustawionego ``self.uczelnia`` → ``None`` i łagodna
+        degradacja jak dotąd, BEZ zgadywania pierwszej-z-brzegu). Świadomie NIE
+        woła ``get_for_request`` — tło nie ma requestu; uczelnię ustala widok."""
+        from bpp.models import Uczelnia
+
+        if self.uczelnia_id is not None:
+            return self.uczelnia
+        return Uczelnia.objects.get_single_uczelnia_or_none()
+
+    @classmethod
+    def widoczne_dla_uczelni(cls, uczelnia):
+        """Importy należące do danej uczelni — ORM-owy odpowiednik
+        ``uczelnia_do_integracji``. Multi-tenant: ściśle ``uczelnia=U``.
+        Single-tenant: także legacy ``NULL`` (należy do jedynej uczelni)."""
+        from bpp.models import Uczelnia
+
+        if Uczelnia.objects.exclude(pk=uczelnia.pk).exists():
+            return cls.objects.filter(uczelnia=uczelnia)
+        return cls.objects.filter(Q(uczelnia=uczelnia) | Q(uczelnia__isnull=True))
+
+    @property
+    def uczelnia_nieokreslona_a_potrzebna(self):
+        """True gdy są jednostki „do utworzenia" (nierozstrzygnięty ``BRAK``),
+        ale uczelni NIE da się ustalić jednoznacznie (``uczelnia_do_integracji``
+        = ``None``) — wtedy integracja NIE utworzy tych jednostek.
+
+        Steruje WIDOCZNYM ostrzeżeniem nad listą jednostek (ekran ``/jednostki/``
+        + hub) zamiast cichego pominięcia: operator ma wiedzieć, że jednostki nie
+        powstaną i dlaczego (domena → Site → Uczelnia nierozstrzygnięta lub >1
+        uczelnia bez ustalonej uczelni importu), ZANIM kliknie import. Gdy uczelnia
+        jest ustalona (typowy multi-hosted po złapaniu z requestu) → ``False``,
+        ostrzeżenie się nie pokazuje."""
+        if self.uczelnia_do_integracji() is not None:
+            return False
+        return self.jednostki_do_decyzji.filter(
+            utworzona__isnull=True, tryb=ImportPracownikowJednostka.TRYB_BRAK
+        ).exists()
 
 
 class ImportPracownikowRow(ImportRowMixin, models.Model):
@@ -1055,6 +1174,33 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             ),
         }
 
+    def stany_pol_live(self):
+        """Stan każdego pola policzony ekstraktorami ``POLA_ROZNIC`` — ZAWSZE
+        świeżo, z pominięciem ``stany_pol_snapshot``.
+
+        To jest metoda LICZĄCA; ``stany_pol()`` niżej jest metodą CZYTAJĄCĄ.
+        Rozdział jest konieczny, odkąd snapshot bywa wypełniony także przed
+        integracją: ``self.stany_pol_snapshot = self.stany_pol()`` byłoby wtedy
+        kopiowaniem pola w samo siebie, czyli cichym no-opem. Każde
+        „przelicz i zapisz" (odświeżanie, backfill, zamrożenie w potoku
+        integracji) MUSI iść przez tę metodę.
+        """
+        from import_pracownikow.roznice import POLA_ROZNIC
+
+        return {klucz: ekstraktor(self) for klucz, _et, ekstraktor in POLA_ROZNIC}
+
+    def odswiez_stany_pol(self):
+        """Przelicza i zapisuje ``stany_pol_snapshot``.
+
+        Wołane wszędzie tam, gdzie zmieniło się pole czytane przez ekstraktory
+        (``autor`` w widokach dopasowania, ``jednostka``/``tytul``/``stopien``/
+        ``stanowisko_dydaktyczne`` w potoku integracji strukturalnej) — filtr
+        stanu pól działa na tym polu w SQL, więc nieświeża wartość oznacza
+        po cichu kłamiący filtr.
+        """
+        self.stany_pol_snapshot = self.stany_pol_live()
+        self.save(update_fields=["stany_pol_snapshot"])
+
     def stany_pol(self):
         """Stan każdego pola różnic: ``{klucz: "zmienione"|"zgodne"|"brak"}``.
         Zwraca zamrożony ``stany_pol_snapshot`` gdy istnieje (po integracji baza
@@ -1070,7 +1216,7 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             baza = {klucz: "brak" for klucz, _et, _ekstraktor in POLA_ROZNIC}
             return {**baza, **self.stany_pol_snapshot}
 
-        return {klucz: ekstraktor(self) for klucz, _et, ekstraktor in POLA_ROZNIC}
+        return self.stany_pol_live()
 
     @property
     def ostrzezenie_email(self):
@@ -1379,12 +1525,41 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         return list(self.sformatowany_log_zmian())
 
 
+class ProfilMapowaniaManager(models.Manager):
+    def dla_uczelni(self, uczelnia):
+        """Profile widoczne dla danej uczelni. Multi-tenant: ściśle
+        ``uczelnia=U``. Single-tenant: także legacy ``NULL`` (jak
+        ``ImportPracownikow.uczelnia_do_integracji`` — NULL należy do jedynej
+        uczelni). Bez ``uczelnia`` (None) → pusty zbiór (bramka i tak blokuje)."""
+        from bpp.models import Uczelnia
+
+        if uczelnia is None:
+            return self.none()
+        if Uczelnia.objects.exclude(pk=uczelnia.pk).exists():
+            return self.filter(uczelnia=uczelnia)
+        return self.filter(Q(uczelnia=uczelnia) | Q(uczelnia__isnull=True))
+
+
 class ProfilMapowania(models.Model):
     """Zapisywalne mapowanie nagłówków pliku → pola systemowe, do reużycia
-    przy powtarzalnych plikach (ta sama uczelnia co kwartał). BPP jest
-    single-tenant per instalacja, więc profile są globalne dla instancji."""
+    przy powtarzalnych plikach (ta sama uczelnia co kwartał).
 
-    nazwa = models.CharField(max_length=200, unique=True)
+    Multi-hosted: profil należy do KONKRETNEJ uczelni (FK ``uczelnia``) —
+    auto-dopasowanie i „ostatnio użyty" (``mapping.dopasuj_profil`` /
+    ``wybierz_profil_fallback``) widzą wyłącznie profile bieżącej uczelni
+    (zero przecieku między uczelniami). ``NULL`` = legacy (sprzed migracji
+    0027) / single-tenant."""
+
+    nazwa = models.CharField(max_length=200)
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name="uczelnia",
+        help_text="Uczelnia, do której należy profil (multi-hosted). NULL dla "
+        "profili sprzed migracji 0027 / instalacji single-tenant.",
+    )
     mapowanie = models.JSONField(default=dict)
     ostatnio_uzyty = models.DateTimeField(null=True, blank=True)
     utworzony_przez = models.ForeignKey(
@@ -1394,10 +1569,13 @@ class ProfilMapowania(models.Model):
         on_delete=models.SET_NULL,
     )
 
+    objects = ProfilMapowaniaManager()
+
     class Meta:
         verbose_name = "profil mapowania importu pracowników"
         verbose_name_plural = "profile mapowania importu pracowników"
         ordering = ["nazwa"]
+        unique_together = (("uczelnia", "nazwa"),)
 
     def __str__(self):
         return self.nazwa

@@ -6,6 +6,7 @@ import random
 from collections.abc import Iterable
 from dataclasses import dataclass
 
+from bpp.demo_data.db import bulk_create_retry
 from bpp.demo_data.generators._publikacje_common import (
     apply_denorm_pre_save_cache,
     autor_jednostka_mapping,
@@ -195,7 +196,7 @@ def create_wc(
     created: list[Wydawnictwo_Ciagle] = []
     for start in pbar:
         chunk = prace[start : start + batch_size]
-        Wydawnictwo_Ciagle.objects.bulk_create(chunk)
+        bulk_create_retry(Wydawnictwo_Ciagle.objects, chunk)
         created.extend(chunk)
         manifest.append("bpp.Wydawnictwo_Ciagle", [p.pk for p in chunk])
         manifest.save()
@@ -216,7 +217,7 @@ def create_wc(
     )
     for start in pbar2:
         chunk = powiazania[start : start + batch_size]
-        Wydawnictwo_Ciagle_Autor.objects.bulk_create(chunk)
+        bulk_create_retry(Wydawnictwo_Ciagle_Autor.objects, chunk)
         manifest.append("bpp.Wydawnictwo_Ciagle_Autor", [c.pk for c in chunk])
         manifest.save()
 

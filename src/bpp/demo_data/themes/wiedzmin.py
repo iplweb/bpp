@@ -31,6 +31,7 @@ WIEDZMIN = Theme(
         "Szermierki",
     ),
     autor_imiona=(
+        # Bohaterowie i sojusznicy:
         "Geralt",
         "Yennefer",
         "Ciri",
@@ -43,8 +44,18 @@ WIEDZMIN = Theme(
         "Filippa",
         "Cahir",
         "Milva",
+        # Czarne charaktery (wrogowie wiedźmina):
+        "Vilgefortz",
+        "Emhyr",
+        "Rience",
+        "Leo",
+        "Renfri",
+        "Eredin",
+        "Dettlaff",
+        "Gaunter",
     ),
     autor_nazwiska=(
+        # Przydomki bohaterów:
         "z Rivii",
         "z Vengerbergu",
         "z Cintry",
@@ -53,6 +64,13 @@ WIEDZMIN = Theme(
         "z Oxenfurtu",
         "z Aretuzy",
         "z Novigradu",
+        # Przydomki czarnych charakterów:
+        "z Roggeveen",
+        "var Emreis",
+        "Bonhart",
+        "van der Eretein",
+        "O'Dimm",
+        "ze Stygga",
     ),
     zrodlo_human=(
         "Kaedwenica",

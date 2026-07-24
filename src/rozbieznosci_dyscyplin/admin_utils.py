@@ -1,3 +1,4 @@
+import hashlib
 import logging
 
 from django.contrib.admin import SimpleListFilter
@@ -11,6 +12,28 @@ from bpp.models import Uczelnia
 from bpp.util import zaloguj_polkniety_wyjatek
 
 logger = logging.getLogger(__name__)
+
+
+def klucz_cache_licznika(sql: str) -> str:
+    """
+    Zwróć klucz cache dla licznika wierszy danego zapytania.
+
+    Skrót MUSI być deterministyczny między procesami. Wcześniej było tu
+    `hash(sql)`, a wbudowany `hash()` dla str jest solony PYTHONHASHSEED-em
+    (losowanym per proces od Pythona 3.3) — więc każdy worker gunicorna miał
+    WŁASNĄ przestrzeń kluczy. Wpis zapisany przez workera A nigdy nie był
+    odczytany przez B (trafialność spadała ~N-krotnie przy N workerach), a po
+    restarcie procesu wszystkie klucze się zmieniały i stare wpisy zostawały
+    w Redisie jako śmieci do wygaśnięcia TTL. Cały ten paginator istnieje po
+    to, żeby unikać `COUNT(*)` na dużych listach admina — a w produkcji
+    wielo-procesowej był przez to w dużej mierze bezczynny.
+
+    `blake2s` z 8-bajtowym digestem daje 16 znaków hex — krótki klucz
+    (Redis go trzyma) o entropii aż nadto wystarczającej na liczbę
+    równocześnie cache'owanych zapytań admina.
+    """
+    skrot = hashlib.blake2s(sql.encode("utf-8"), digest_size=8).hexdigest()
+    return f"adm:{skrot}:count"
 
 
 class CachingPaginator(Paginator):
@@ -30,7 +53,7 @@ class CachingPaginator(Paginator):
 
         if self._count is None:
             try:
-                key = f"adm:{hash(self.object_list.query.__str__())}:count"
+                key = klucz_cache_licznika(str(self.object_list.query))
                 self._count = cache.get(key, -1)
                 if self._count == -1:
                     # jezeli model._meta.managed = False, to zapewne jest to widok, stąd pytaj o reltuples jedynie

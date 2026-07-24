@@ -1,4 +1,21 @@
-"""Time series statistics views for admin dashboard."""
+"""Time series statistics views for admin dashboard.
+
+Widoki cache'owane przez `cache_page` deklarują `vary_on_headers("Host")`.
+
+UWAGA — to defense-in-depth, NIE naprawa wycieku. Wbrew temu, co łatwo
+założyć, `cache_page` SAM różnicuje po hoście: `_generate_cache_key` oraz
+`_generate_cache_header_key` hashują `request.build_absolute_uri()`, w którym
+host siedzi. Sprawdzone empirycznie — `learn_cache_key` BEZ żadnego `Vary`
+daje różne klucze dla dwóch domen. Wewnętrzny cache Django nigdy nie
+przeciekał między uczelniami.
+
+Nagłówek `Vary: Host` jest tu po to, żeby POŚREDNICZĄCE cache'y HTTP (proxy,
+CDN) też wiedziały, że odpowiedź zależy od domeny — one nie znają
+wewnętrznego klucza Django. BPP jest wielo-uczelniany
+(`SiteResolutionMiddleware`: domena → Site → Uczelnia), więc uczciwa
+deklaracja `Vary` jest tanim zabezpieczeniem. Wzorzec jak w
+`bpp.views.robots_txt`.
+"""
 
 from datetime import timedelta
 
@@ -9,6 +26,7 @@ from django.db.models.functions import TruncMonth
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.cache import cache_page
+from django.views.decorators.vary import vary_on_headers
 
 from bpp.models import (
     Wydawnictwo_Ciagle,
@@ -18,6 +36,7 @@ from bpp.models import (
 
 @staff_member_required
 @cache_page(60 * 60 * 24)  # Cache for 24 hours
+@vary_on_headers("Host")
 def weekday_stats(request):
     """JSON endpoint dla statystyk edycji według dni tygodnia (ostatni miesiąc, Pon-Czw)"""
     from django.db.models.functions import ExtractWeekDay
@@ -82,6 +101,7 @@ def weekday_stats(request):
 
 @staff_member_required
 @cache_page(60 * 60 * 24)  # Cache for 24 hours
+@vary_on_headers("Host")
 def day_of_month_activity_stats(request):
     """
     JSON endpoint dla aktywności w dniach miesiąca (ostatnie 6 miesięcy).
@@ -137,6 +157,7 @@ def day_of_month_activity_stats(request):
 
 @staff_member_required
 @cache_page(60 * 60 * 24)  # Cache for 24 hours
+@vary_on_headers("Host")
 def new_publications_stats(request):
     """JSON endpoint dla nowo dodanych prac - trend w czasie (ostatnie 5 lat)"""
 
@@ -214,6 +235,7 @@ def new_publications_stats(request):
 
 @staff_member_required
 @cache_page(60 * 60 * 24)  # Cache for 24 hours
+@vary_on_headers("Host")
 def cumulative_publications_stats(request):
     """JSON endpoint dla cumulative wykresu prac w bazie (od 1980)"""
 
@@ -293,6 +315,7 @@ def cumulative_publications_stats(request):
 
 @staff_member_required
 @cache_page(60 * 60 * 24)  # Cache for 24 hours
+@vary_on_headers("Host")
 def cumulative_impact_factor_stats(request):
     """JSON endpoint dla łącznego impact factor (od 2010)"""
     from django.db.models import Sum
@@ -373,6 +396,7 @@ def cumulative_impact_factor_stats(request):
 
 @staff_member_required
 @cache_page(60 * 60 * 24)  # Cache for 24 hours
+@vary_on_headers("Host")
 def cumulative_points_kbn_stats(request):
     """JSON endpoint dla łącznych punktów MNiSW (od 2010)"""
     from django.db.models import Sum

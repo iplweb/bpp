@@ -452,6 +452,9 @@ INSTALLED_APPS = [
     "compressor",
     "session_security",
     "channels_broadcast",
+    # django-liveops — nastepca `long_running`. Routing live/cancel/restart
+    # jest generyczny (op_type) i mieszka w samym pakiecie (liveops.urls),
+    # wiec nie potrzebujemy juz zadnej warstwy posredniej po stronie BPP.
     "liveops",
     "integrator2",
     "nowe_raporty",
@@ -569,13 +572,6 @@ LOGOUT_REDIRECT_URL = LOGIN_REDIRECT_URL
 MEDIA_URL = "/media/"
 
 INTERNAL_IPS = ("127.0.0.1",)
-
-# djorm-pool
-DJORM_POOL_OPTIONS = {
-    "pool_size": 30,
-    "max_overflow": 0,
-    "recycle": 3600,  # the default value
-}
 
 TEST_RUNNER = "django.test.runner.DiscoverRunner"
 
@@ -771,7 +767,12 @@ CELERYBEAT_SCHEDULE = {
         "schedule": timedelta(days=5),
     },
     "pbn-api-kolejka-wyczysc-wpisy-bez-rekordow": {
-        "task": "pbn_api.tasks.kolejka_wyczysc_wpisy_bez_rekordow",
+        # Zadanie żyje w pbn_export_queue.tasks, NIE w pbn_api.tasks — wpis
+        # wskazywał na nieistniejącą nazwę, więc beat co tydzień wysyłał
+        # zadanie, którego żaden worker nie potrafił rozwiązać (czyli kolejka
+        # nigdy nie była czyszczona). Ta sama klasa błędu co brak wpisu dla
+        # retencji plików importu pracowników.
+        "task": "pbn_export_queue.tasks.kolejka_wyczysc_wpisy_bez_rekordow",
         "schedule": timedelta(days=7),
     },
     "scan-for-duplicates-daily": {
@@ -791,9 +792,17 @@ CELERYBEAT_SCHEDULE = {
         "task": "zglos_publikacje.tasks.wyczysc_zglos_tmp_pliki",
         "schedule": timedelta(hours=6),
     },
+    # UWAGA na kolizję harmonogramów: o 3:30 startuje `rebuild_kolejnosc`
+    # zaplanowany przez OFELIĘ (repozytorium bpp-deploy,
+    # docker-compose.application.yml) — całkowicie niezależny scheduler, który
+    # nic nie wie o Celery beat i nie ma jak się z nim zsynchronizować. Dwa
+    # ciężkie zadania startujące w tej samej minucie biły się o CPU bazy.
+    # Przesuwamy stronę, którą kontrolujemy z TEGO repo (beat), na 4:30:
+    # godzina po Ofelii i pół godziny po `powiazania-autorow-przelicz-codziennie`
+    # (4:00), które jest krótkie (czysty SQL, minuty).
     "rebuild-pbn-author-match-cache": {
         "task": "importer_autorow_pbn.tasks.auto_rebuild_match_cache_task",
-        "schedule": crontab(hour=3, minute=30),  # Daily at 3:30 AM
+        "schedule": crontab(hour=4, minute=30),  # Daily at 4:30 AM
     },
     "pbn-export-queue-watchdog": {
         "task": "pbn_export_queue.tasks.queue_watchdog",
@@ -813,6 +822,35 @@ CELERYBEAT_SCHEDULE = {
     "easyaudit-purge-stare-logi-logowania": {
         "task": "bpp.tasks.usun_stare_logi_logowania_easyaudit",
         "schedule": crontab(hour=2, minute=0, day_of_month=1),
+    },
+    # Retencja nieudanych prób logowania (django-axes): kasuj AccessAttempt
+    # starsze niż 90 dni. AXES_RESET_ON_SUCCESS czyści tylko po udanym
+    # logowaniu tej samej pary (login, IP) — wpisy od botów skanujących
+    # /admin/login/ nie mają „swojego" udanego logowania i rosłyby bez końca.
+    # Raz w tygodniu (niedziela 2:30), tabela rośnie powoli.
+    "axes-purge-stare-proby-logowania": {
+        "task": "bpp.tasks.usun_stare_proby_logowania_axes",
+        "schedule": crontab(hour=2, minute=30, day_of_week=0),
+    },
+    # Retencja plików XLS importu pracowników (IMPORT_PRACOWNIKOW_RETENCJA_DNI,
+    # domyślnie 90 dni). Kasuje sam blob, zostawiając rekord importu i wiersze.
+    # Komenda zarządzająca istniała od dawna, ale NIKT jej nie wołał (ani beat,
+    # ani Ofelia) — bloby nie były kasowane nigdy. Trzymamy wpis w kodzie, a
+    # nie w labelu Ofelii, żeby harmonogram był wersjonowany razem z aplikacją.
+    "import-pracownikow-usun-stare-pliki": {
+        "task": "import_pracownikow.tasks.usun_stare_pliki_importu_pracownikow",
+        "schedule": crontab(hour=1, minute=15),  # Daily at 1:15 AM
+    },
+    # Retencja osieroconych rejestracji DCR (bpp #656). Otwarta rejestracja
+    # klientów MCP (RFC 7591, POST /o/register/) tworzy Application przy każdym
+    # udanym żądaniu i nic tego nigdy nie usuwało — tabela rosła monotonicznie.
+    # Kasuje wyłącznie rejestracje oznaczone prefiksem `dcr-`, które nie mają
+    # ŻADNEGO tokenu ani grantu (czyli nigdy nie dokończyły flow) i są starsze
+    # niż 7 dni. Aplikacje w użyciu są nietykalne — skasowanie kaskadowałoby na
+    # tokeny i wylogowało użytkownika.
+    "oauth-mcp-usun-osierocone-rejestracje-dcr": {
+        "task": "oauth_mcp.tasks.usun_osierocone_aplikacje_oauth",
+        "schedule": crontab(hour=1, minute=45),  # Daily at 1:45 AM
     },
 }
 
@@ -987,6 +1025,8 @@ YARN_FILE_PATTERNS = {
     "select2-foundation-theme": ["dist/select2-foundation-theme.css"],
     "plotly.js": ["dist/plotly.min.js", "dist/plotly-locale-pl.js"],
     "htmx.org": ["dist/htmx.js"],
+    # Wykresy w ewaluacja_optymalizacja (dawniej ładowane z cdn.jsdelivr.net).
+    "chart.js": ["dist/chart.umd.min.js"],
     "tone": ["build/Tone.js", "build/Tone.js.map"],
     # Do developerki:
     "qunit": ["qunit/qunit.js", "qunit/qunit.css"],
@@ -999,7 +1039,9 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly"
     ],
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
+    # Własna podklasa LimitOffsetPagination z twardym ``max_limit`` — patrz
+    # api_v1.pagination (goły LimitOffsetPagination nie ma żadnego cap-a).
+    "DEFAULT_PAGINATION_CLASS": "api_v1.pagination.BppLimitOffsetPagination",
     "PAGE_SIZE": 10,
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -1040,16 +1082,20 @@ CHANNEL_LAYERS = {
     },
 }
 
-# django-liveops: długo-działające operacje (np. skan duplikatów źródeł) z
-# live-progressem przez WebSocket + HTMX. RUNNER="celery" dispatchuje run()
-# jako shared_task na tym samym workerze co reszta BPP (autodiscover). Live
-# push wymaga Redis channel-layer (skonfigurowany wyżej). W testach RUNNER
-# jest nadpisywany na "eager" (settings/test.py) — skan biegnie synchronicznie
-# bez Redis/workera.
+# django-liveops: długo-działające operacje (np. skan duplikatów źródeł,
+# import list ministerialnych) z live-progressem przez WebSocket + HTMX.
+# RUNNER="celery" dispatchuje run() jako shared_task na tym samym workerze co
+# reszta BPP (autodiscover). Live push wymaga Redis channel-layer
+# (skonfigurowany wyżej). W testach RUNNER jest nadpisywany na "eager"
+# (settings/test.py) — operacja biegnie synchronicznie bez Redis/workera.
+# THROTTLE_HZ — max liczba pushy % na sekunde. REQUIRED_GROUP bramkuje
+# wszystkie operacje live; od 0.2.0 liveops ZWALNIA superuserów z tej bramki
+# (parytet z braces/adminem), wiec mozna jej uzyc bez regresji.
 LIVEOPS = {
     "BASE_TEMPLATE": "base.html",
     "RUNNER": "celery",
     "THROTTLE_HZ": 10,
+    "REQUIRED_GROUP": "wprowadzanie danych",
 }
 
 # Pozwól anonimowym użytkownikom łączyć się z WebSocketem notyfikacji
@@ -1065,11 +1111,34 @@ LIVEOPS = {
 # nie publikuj na nim danych wrażliwych.
 CHANNELS_BROADCAST_ENABLE_ANONYMOUS = True
 
+# Autoryzator subskrypcji kanałów-stron (?extraChannels=). Bez niego
+# channels_broadcast używa domyślnego _deny_all, który ODRZUCA każdą
+# subskrypcję extraChannels — a paski postępu operacji long_running
+# (import POLON, absencje, raporty…) subskrybują właśnie tak
+# (extraChannels=[operation.pk]). Skutkiem braku było: dane importują się,
+# ale pasek postępu stoi i strona nie przekierowuje po zakończeniu —
+# użytkownik musiał ręcznie odświeżać. Autoryzator przepuszcza kanał-stronę
+# operacji wyłącznie jej właścicielowi. Kanały liveop.* jadą tokenem
+# (subscription_token) i omijają ten autoryzator.
+CHANNELS_BROADCAST_SUBSCRIPTION_AUTHORIZER = (
+    "long_running.authorizers.authorize_operation_channel"
+)
 
-# django-compressor dla każdej wersji będzie miał swoją nazwę katalogu
-# wyjściowego, z tej prostej przyczyny, że nie wszystkie przeglądarki
-# pamiętają, żeby odświeżyć cache:
-COMPRESS_OUTPUT_DIR = f"CACHE-{VERSION}"
+
+# django-compressor nazywa każdy plik wyjściowy 12-znakowym hashem jego
+# TREŚCI (compressor.base.Compressor.get_filepath →
+# get_hexdigest(content, 12)): np. "CACHE/js/58a8c0714e59.js". Nazwa pliku
+# zmienia się WTEDY I TYLKO WTEDY, gdy zmienia się treść — to wystarczający,
+# poprawny cache-busting współgrający z nagłówkiem `immutable`.
+#
+# Katalog był wcześniej wersjonowany (`CACHE-{VERSION}`) w intencji wymuszenia
+# odświeżenia cache na deploy. Był to jednak DRUGI, zbędny mechanizm bustujący
+# HURTEM: każde wydanie zmieniało ścieżkę WSZYSTKICH statyków (nowy katalog),
+# więc `immutable` + zmiana ścieżki kazały przeglądarkom pobrać ~305 KB gzip
+# JS/CSS ponownie po każdym deployu, nawet gdy ani bajt JS/CSS się nie zmienił.
+# Content-hash w nazwie pliku już gwarantuje bust dokładnie zmienionych plików,
+# więc katalog jest statyczny:
+COMPRESS_OUTPUT_DIR = "CACHE"
 
 # django-tabular-permissions
 
@@ -1468,7 +1537,6 @@ DJANGO_EASY_AUDIT_REGISTERED_CLASSES = [
     "bpp.Autor_Dyscyplina",
     "bpp.Jednostka",
     "bpp.Uczelnia",
-    "bpp.Wydzial",
     "bpp.Zrodlo",
     "bpp.Jezyk",
     "bpp.Charakter_Formalny",
@@ -1812,6 +1880,25 @@ LOGGING = {
             # własnego handlera, więc propagacja nie dubluje wyjścia, a pozwala
             # pytestowemu `caplog` (łapie na rootcie) widzieć zrzut claimów.
             "propagate": True,
+        },
+        # WeasyPrint. Loguje na INFO postęp renderowania („Step 1..7") przez
+        # logger-dziecko `weasyprint.progress`. Problem: `weasyprint/html.py`
+        # buduje trzy wbudowane arkusze user-agent (html5_ua, html5_ua_form,
+        # html5_ph) przez `CSS(string=...)` na poziomie MODUŁU, więc sam import
+        # — bez generowania jakiegokolwiek PDF-a — sypie 3× „Step 2 - Fetching
+        # and parsing CSS - CSS string" („CSS string" to fallback `%s`, gdy
+        # arkusz nie ma ani pliku, ani URL-a). Razy każdy proces importujący
+        # weasyprint (worker gunicorna, celery, beat, denorm-queue, a przy
+        # runserverze jeszcze ×2 przez autoreload) daje to spam przy starcie.
+        # `weasyprint/logger.py` wiesza NullHandler tylko na `weasyprint`, NIE
+        # na `weasyprint.progress`, więc rekordy szły dotąd do roota (handler
+        # na INFO ustawiany przez Celery/gunicorna).
+        # WARNING na rodzicu wycisza też `.progress`, a zostawia to, co realnie
+        # przydatne: nieosiągalne obrazki/fonty i błędy składni CSS.
+        "weasyprint": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
         },
     },
 }

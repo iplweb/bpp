@@ -381,6 +381,12 @@ przepina manifest pod kanoniczny tag podany przez wywolujacego. Produkcyjny
 `:latest` nie powstaje juz na pushu do `master` — robi to wylacznie
 `.github/workflows/promote.yml` z gotowego RC.
 
+Workflow nie uruchamia sie automatycznie na pushach ani PR-ach. Ma tylko dwa
+wejscia: `workflow_call` z `release-candidate.yml` oraz reczny
+`workflow_dispatch` (najwygodniej `make docker-images-on-ci` na wypchnietym,
+czystym branchu). Kazde uruchomienie przechodzi bezposrednio do jobu `docker` —
+nie ma juz guardu konczacego sie zielonym `docker: skipped`.
+
 **Dlaczego nie prosty „build → push → scan"?**
 Docker Hub nie ma mechanizmu „un-push". Jesli Trivy znajdzie CRITICAL
 CVE dopiero po pushu, obraz juz jest publicznie dostepny pod tagiem
@@ -519,8 +525,16 @@ Konfiguracja jest w `[tool.pytest-testcontainers-django]` w `pyproject.toml`.
   plugin jawnie je zatrzymuje w `pytest_unconfigure` (+ `atexit`
   jako safety net), Ryuk to ostatnia linia obrony. Przy restarcie
   Docker Desktop albo `SIGKILL` na pytest cleanup może zawieść;
-  wtedy `make clean-testcontainers` usuwa wszystkie osierocone
-  kontenery.
+  wtedy `make clean-testcontainers` usuwa osierocone kontenery.
+  **UWAGA (host współdzielony):** `make clean-testcontainers` usuwa
+  **wszystkie** kontenery pasujące do wzorca — także **cudze,
+  wciąż działające** (równoległy przebieg pytest z innego worktree,
+  aktywne stacki `run-site`). Na maszynie, gdzie biegnie kilka rzeczy
+  naraz, **nie odpalaj go w ciemno** — najpierw `docker ps` i usuń
+  po nazwie/ID tylko własne osierocone kontenery. To ta sama zasada,
+  co „celuj po PID / po ścieżce worktree, nie `pkill`": komenda
+  zbiorcza jest wygodna, ale na współdzielonym hoście ubija cudzą
+  pracę.
 - CI (`docker-compose.test.yml`) ma `PYTEST_TESTCONTAINERS_DISABLE=1` —
   usługi dostarcza tam docker-compose.
 
@@ -559,11 +573,12 @@ nie przetestowany — to NIE jest dowód, że cokolwiek działa. Zanim powiesz
 „zielono / działa", sprawdź że gejty niżej mają `conclusion: success`;
 inaczej milcz i czekaj.
 
-- **Dekoracyjne / skipowane (NIE walidują kodu):** `Docker - oficjalne
-  obrazy` (<1 min „success" = job `docker` jest `skipped`; dedupe: push na
-  branchu z otwartym PR-em = duplikat, realny build leci dopiero na
-  `master`), `Docs`, `Lint changed files`, `Check baseline freshness`,
-  CodeQL/GitGuardian. Szybkie, pomocnicze — nie są dowodem poprawności.
+- **Dekoracyjne / pomocnicze (NIE walidują całego kodu):** `Docs`,
+  `Lint changed files`, `Check baseline freshness`, CodeQL/GitGuardian.
+  Szybkie, pomocnicze — nie są dowodem poprawności.
+- `Docker - oficjalne obrazy` nie jest checkiem PR-a. Uruchamia się tylko
+  ręcznie albo jako część `release-candidate.yml`; zielony wynik oznacza, że
+  obrazy rzeczywiście zostały zbudowane i opublikowane.
 - **REALNE gejty PR-a (czekaj na ZIELEŃ tych dwóch):**
   - **`Build test-runner image`** — buduje obraz testowy; tu wychodzą błędy
     assetów / grunt / esbuild (np. „Could not resolve <entry>"), Dockerfile,

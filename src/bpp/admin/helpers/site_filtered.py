@@ -41,11 +41,10 @@ class SiteFilteredAdminMixin:
         """Filtruje dropdown FK do obiektów z aktualnej uczelni."""
         if not request.user.is_superuser:
             uczelnia = getattr(request, "_uczelnia", None)
-            if uczelnia and db_field.name == "wydzial":
-                from bpp.models import Wydzial
-
-                kwargs["queryset"] = Wydzial.objects.filter(uczelnia=uczelnia)
-            elif uczelnia and db_field.name == "jednostka":
+            # Faza C (#438): pola FK ``wydzial`` (Patent, Kierunek_Studiow itd.)
+            # celują już w ``Jednostka`` (root top-level), więc scope-ujemy je
+            # tak samo jak pole ``jednostka`` — po uczelni.
+            if uczelnia and db_field.name in ("wydzial", "jednostka"):
                 from bpp.models import Jednostka
 
                 kwargs["queryset"] = Jednostka.objects.filter(uczelnia=uczelnia)

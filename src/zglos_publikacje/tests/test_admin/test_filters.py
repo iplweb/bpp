@@ -80,9 +80,8 @@ def test_WydzialJednostkiPierwszegoAutora_queryset(
     assert qs.count() == 1
 
     # Wydział, w którym 1-szy autor NIE jest → 0 (węzeł-lustro pustego wydziału).
-    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 
-    drugi_root = znajdz_lub_utworz_wezel_wydzialu(drugi_wydzial)[0]
+    drugi_root = drugi_wydzial
     params = {"wydz1a": [str(drugi_root.pk)]}
     req = rf.get("/", {"wydz1a": str(drugi_root.pk)})
     filtr = WydzialJednostkiPierwszegoAutora(req, params, Zgloszenie_Publikacji, None)

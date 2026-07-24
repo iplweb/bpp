@@ -16,7 +16,6 @@ from bpp.models import (
     Jednostka,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
-    Wydzial,
 )
 
 
@@ -55,7 +54,7 @@ def test_roundtrip_create_then_cleanup(fixtures_loaded, tmp_path):
         f"--confirm-db={db_name}",
     )
 
-    assert Wydzial.objects.count() == 1
+    assert Jednostka.objects.filter(parent__isnull=True).count() == 1
     # Autor count = swiadek + 3 demo
     assert Autor.objects.count() == 4
 
@@ -67,7 +66,6 @@ def test_roundtrip_create_then_cleanup(fixtures_loaded, tmp_path):
     )
 
     # Demo zniknelo:
-    assert Wydzial.objects.count() == 0
     assert Jednostka.objects.count() == 0
     assert Wydawnictwo_Ciagle.objects.count() == 0
     assert Wydawnictwo_Zwarte.objects.count() == 0
@@ -94,7 +92,7 @@ def test_cleanup_aborts_when_manifest_database_mismatch(fixtures_loaded, tmp_pat
         database="zupelnie_inna_baza",
         command_args={},
     )
-    fake_manifest.append("bpp.Wydzial", [1, 2, 3])
+    fake_manifest.append("bpp.Jednostka", [1, 2, 3])
     fake_manifest.save()
 
     swiadek = Autor.objects.create(imiona="Swiadek", nazwisko="Test")
@@ -140,5 +138,5 @@ def test_cleanup_aborts_wrong_db(fixtures_loaded, tmp_path):
             "--yes-i-am-sure",
             "--confirm-db=zla",
         )
-    assert Wydzial.objects.count() == 1
+    assert Jednostka.objects.filter(parent__isnull=True).count() == 1
     assert manifest.exists()  # NIE renamowany

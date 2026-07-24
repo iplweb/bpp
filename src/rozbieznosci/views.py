@@ -13,7 +13,11 @@ from django.views.generic import ListView
 from openpyxl import Workbook
 
 from bpp.models import Charakter_Formalny, Uczelnia, Wydawnictwo_Ciagle
-from bpp.util import worksheet_columns_autosize, worksheet_create_table
+from bpp.util import (
+    sanitize_xlsx_row,
+    worksheet_columns_autosize,
+    worksheet_create_table,
+)
 from bpp.util.uczelnia_scope import tylko_jedna_uczelnia
 from rozbieznosci.core import (
     DEFAULT_SORT,
@@ -260,13 +264,15 @@ class RozbieznosciExportView(MetrykaMixin, GroupRequiredMixin, View):
             else:
                 wartosc_zrodla = f"brak wpisu za {elem.rok}"
             ws.append(
-                [
-                    elem.tytul_oryginalny,
-                    elem.rok,
-                    float(v) if v else 0,
-                    elem.zrodlo.nazwa if elem.zrodlo else "",
-                    wartosc_zrodla,
-                ]
+                sanitize_xlsx_row(
+                    [
+                        elem.tytul_oryginalny,
+                        elem.rok,
+                        float(v) if v else 0,
+                        elem.zrodlo.nazwa if elem.zrodlo else "",
+                        wartosc_zrodla,
+                    ]
+                )
             )
 
         worksheet_columns_autosize(ws)

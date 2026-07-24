@@ -43,8 +43,8 @@ variable "BPP_IMAGE_TAG" {
   default = "unknown"
 }
 
-# Alias = nazwa source brancha PR-a (sanityzowana). Empty dla master/non-PR
-# pushy. Workflow przekazuje z steps.tag.outputs.branch_tag.
+# Opcjonalny alias nazwy brancha dla starszych obrazow PR lub buildow lokalnych.
+# Biezacy workflow CI pozostawia go pusty.
 variable "BPP_BRANCH_TAG" {
   default = ""
 }
