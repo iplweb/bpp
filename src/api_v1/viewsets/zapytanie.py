@@ -21,6 +21,7 @@ from api_v1.serializers.zapytanie import (
     AutorKompaktSerializer,
     AutorzyKompaktSerializer,
 )
+from api_v1.throttling import SearchUserThrottle
 from api_v1.viewsets.szukaj import MODELE_DETAIL_VIEWNAME, POLA_REKORDU_DLA_SZUKAJ
 from bpp.djangoql_errors import error_payload
 from bpp.djangoql_schema import RekordLLMSchema
@@ -48,6 +49,11 @@ class ZapytanieAPIBaseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     ``model`` i ``serializer_class``."""
 
     permission_classes = [MoznaUzywacZapytania]
+    # DjangoQL to ciężki multi-join .distinct() po mat-view Rekord — cięższy niż
+    # /szukaj/. Timeout 8s ogranicza pojedyncze zapytanie, ale nie liczbę
+    # równoległych; endpointy wymagają logowania, więc throttle po użytkowniku
+    # (globalny throttling API świadomie wyłączony — patrz throttling.py).
+    throttle_classes = [SearchUserThrottle]
     pagination_class = _ZapytaniePagination
     model = None
 

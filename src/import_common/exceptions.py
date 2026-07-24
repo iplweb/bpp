@@ -24,6 +24,14 @@ class DecompressionBombException(Exception):
     pass
 
 
+class PlikZaDuzyException(Exception):
+    """Wgrany plik przekracza dopuszczalny rozmiar na dysku — odrzucany PRZED
+    załadowaniem do pamięci (obrona przed OOM workera importu na „grubym",
+    formalnie legalnym pliku, który przechodzi bomb-check dekompresji)."""
+
+    pass
+
+
 class XLSParseError(Exception):
     def __init__(self, elem, form, reason):
         self.elem = elem

@@ -17,6 +17,8 @@ True, ``disabled``/``ukryty``… = False). FK do modeli bez pola-etykiety
 pomijane.
 """
 
+from functools import lru_cache
+
 from django.core.exceptions import FieldDoesNotExist
 from django.db import models
 from django.db.models import Q
@@ -24,6 +26,18 @@ from django.utils.html import strip_tags
 from djangoql.extras import AutocompleteField, ExtrasSchema
 
 from bpp.models import Charakter_Formalny, Jednostka
+
+
+@lru_cache(maxsize=1)
+def _modele_wykluczone_z_schematu():
+    """Modele auth/credential twardo niedostępne w DjangoQL (lazy — bez
+    top-level importu ``get_user_model``, który przy ładowaniu modeli bywa
+    przedwczesny). ``BppUser`` niesie ``pbn_token`` (żywy credential PBN),
+    ``email``, ``is_superuser`` — nie mogą być filtrowalne."""
+    from django.contrib.auth import get_user_model
+
+    return frozenset({get_user_model()})
+
 
 #: Pola-etykiety wg priorytetu — czym opisać i po czym szukać obiekt w pickerze.
 #: Opis bibliograficzny jako pierwszy: dla publikacji jest najczytelniejszy.
@@ -237,6 +251,20 @@ class BppQLSchema(RelPickerSchemaMixin, ExtrasSchema):
     schemat obsługuje dowolny model (Rekord, Autor, Wydawnictwo_*, Patent,
     Praca_Doktorska/Habilitacyjna, …).
     """
+
+    def excluded(self, model):
+        # Twarde odcięcie modelu użytkownika (BppUser) od CAŁEGO schematu.
+        # Bez tego reverse-relacja Autor.user wystawiała pbn_token/email/
+        # is_superuser jako pola filtrowalne — blind oracle pozwalający
+        # zalogowanemu redaktorowi wyeksfiltrować cudzy (nawet superusera)
+        # token PBN znak-po-znaku (``user.pbn_token startswith "…"``).
+        # Robimy to w excluded(), a NIE przez atrybut klasy ``exclude``, bo
+        # podklasa BppQLSchemaOgraniczony ustawia ``include`` — a djangoql
+        # zabrania include i exclude naraz. Cięcie na poziomie modelu łapie
+        # KAŻDĄ ścieżkę do BppUser (nie tylko Autor.user) oraz przyszłe pola.
+        if model in _modele_wykluczone_z_schematu():
+            return True
+        return super().excluded(model)
 
 
 # ---------------------------------------------------------------------------
