@@ -37,12 +37,16 @@ BEZPIECZNIKI
 * nie zapisujemy odpowiedzi ustawiającej ciasteczka — zamrożony w
   cache'u ``Set-Cookie`` byłby współdzielony przez wszystkich,
 * nie zapisujemy treści zawierającej token CSRF (``_ZAWIERA_CSRF``);
-  współdzielony token to realna dziura, a szablony ``browse/autor.html``,
+  współdzielony token to realna dziura. Strony ``browse/autor.html``,
   ``browse/jednostka.html``, ``browse/zrodlo.html`` i
-  ``browse/uczelnia.html`` renderują bezwarunkowy ``{% csrf_token %}``
-  w formularzu „szukaj publikacji" — dlatego te widoki celowo NIE są
-  objęte cache'em, a bezpiecznik pilnuje, żeby nie wśliznęły się tam
-  przez przypadek przy przyszłej zmianie szablonu,
+  ``browse/uczelnia.html`` SĄ objęte cache'em — ich formularz „szukaj
+  publikacji" celuje w ``BuildSearch``, który jest ``@csrf_exempt``
+  (zapisuje tylko do własnej sesji requestującego — patrz jego
+  docstring), więc szablony nie renderują już ``{% csrf_token %}`` i nie
+  niosą sekretu. Bezpiecznik zostaje jako defense-in-depth: gdyby ktoś
+  dodał do któregoś cache'owanego szablonu formularz stanowego widoku z
+  tokenem, ta strona po cichu wypadnie z cache'a zamiast współdzielić
+  cudzy sekret,
 * ``Cache-Control: private, no-cache`` na wyjściu, żeby nginx/CDN nie
   zrobiły drugiej, niebramkowanej kopii.
 

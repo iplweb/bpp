@@ -45,7 +45,9 @@
     <form method="post"
           action="{% url "bpp:browse_build_search" %}"
           class="autor-page__quick-actions-form">
-        {% csrf_token %}
+        {# Brak {% csrf_token %} celowo: BuildSearch jest @csrf_exempt (zapis #}
+        {# tylko do własnej sesji), dzięki czemu ta strona wchodzi do #}
+        {# cache_publiczny. Patrz docstring BuildSearch w views/browse.py. #}
         <input type="hidden" name="autor" value="{{ autor.pk }}"/>
         <input type="hidden" name="suggested-title" value="{{ autor }}"/>
         <button type="submit"
@@ -265,7 +267,7 @@
     <form method="post"
           action="{% url "bpp:browse_build_search" %}"
           class="browserForm">
-        {% csrf_token %}
+        {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt. #}
         <input type="hidden" name="suggested-title" value="{{ autor }}"/>
         <input type="hidden" name="autor" value="{{ autor.pk }}"/>
 
