@@ -17,13 +17,16 @@ src/django_bpp/staticroot/
 .gitattributes
 .github/
 
-# Test-runner contract tests inspect this workflow. Keep every other GitHub
-# metadata file outside the Docker context.
+# Test-runner contract tests inspect the CI/release workflows below. Keep every
+# other GitHub metadata file outside the Docker context.
 !.github/
 .github/*
 !.github/workflows/
 .github/workflows/*
 !.github/workflows/build-docker-images.yml
+!.github/workflows/refresh-baseline.yml
+!.github/workflows/release-candidate.yml
+!.github/workflows/tests.yml
 
 # Python cache files
 __pycache__/
@@ -112,6 +115,7 @@ azure-pipelines.yml
 docker-compose*.yml
 Dockerfile*
 .dockerignore
+!docker/bpp_base/Dockerfile
 
 # Node modules if rebuilt during Docker build
 node_modules/
