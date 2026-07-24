@@ -1713,12 +1713,25 @@ DJANGO_BPP_ENABLE_TEST_CONFIGURATION = env("DJANGO_BPP_ENABLE_TEST_CONFIGURATION
 # ROLLBAR settings
 #
 
-# pyrollbar dopasowuje pola do scrubu po DOKŁADNEJ nazwie klucza (case-insensitive,
-# NIE po sufiksie) i PODMIENIA swoją domyślną listę, gdy podamy własną. Dlatego
-# odtwarzamy tu domyślny zestaw pyrollbara i DOKŁADAMY sekrety OAuth/MCP i PBN
-# (uwaga reviewera #3/#5): DOT oznacza jako wrażliwe tylko password/client_secret,
-# a Rollbar bez tej listy wysłałby aktywny refresh_token / code / code_verifier /
-# token przy nieoczekiwanym 500 na /o/token/ czy /o/revoke_token/.
+# pyrollbar dopasowuje pola po nazwie klucza (case-insensitive) NA DOWOLNYM
+# POZIOMIE ZAGNIEŻDŻENIA: matcher jest budowany jako `type="suffix"` nad
+# ŚCIEŻKĄ klucza, więc wpis trafia w każdy klucz o tej nazwie, gdziekolwiek
+# w payloadzie. (Poprzedni komentarz twierdził tu „NIE po sufiksie" — to była
+# nieprawda i to ona doprowadziła do zamazywania CAŁYCH tracebacków przez
+# niewinnie wyglądający wpis "code"; patrz bpp.rollbar_config.)
+#
+# Podana lista PODMIENIA domyślną listę pyrollbara, więc odtwarzamy tu jego
+# domyślny zestaw i DOKŁADAMY sekrety OAuth/MCP i PBN: DOT oznacza jako
+# wrażliwe tylko password/client_secret, a Rollbar bez tej listy wysłałby
+# aktywny refresh_token / code / code_verifier / token przy nieoczekiwanym 500
+# na /o/token/ czy /o/revoke_token/.
+#
+# UWAGA: ta lista zasila TAKŻE `ScrubUrlTransform`
+# (`params_to_scrub=SETTINGS["scrub_fields"]`), czyszczący parametry w query
+# stringach. Zdjęcie czegoś stąd rozbraja — dla tego pola — również czyszczenie
+# URL-i, i to WSZĘDZIE (ten transform skanuje każdy string, nie tylko klucz
+# "url"). Dlatego usunięcie "code" wymagało dołożenia własnego
+# `ScrubUrlTransform` w bpp.rollbar_config.
 ROLLBAR_SCRUB_FIELDS = [
     # domyślne pyrollbara (zachowujemy — nasza lista je nadpisuje):
     "pw",

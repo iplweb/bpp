@@ -1,10 +1,9 @@
 """Testy payload-handlerów Rollbara (src/bpp/rollbar_config.py)."""
 
-from bpp.rollbar_config import (
-    ScrubKoduAutoryzacyjnego,
-    collapse_noisy_fingerprints,
-    ustawienia_rollbara,
-)
+import pytest
+from rollbar.lib.transforms.scruburl import ScrubUrlTransform
+
+from bpp.rollbar_config import collapse_noisy_fingerprints
 
 
 def _docx_payload(host="publikacje.up.lublin.pl"):
@@ -98,97 +97,179 @@ def test_payload_bez_body_nie_wybucha():
 
 
 # --- Scrub pola `code`: sekret OAuth TAK, linia kodu w tracebacku NIE -------
+#
+# UWAGA METODOLOGICZNA: te testy jadą PRAWDZIWYM łańcuchem transformów
+# pyrollbara (`rollbar.init` + `rollbar._build_payload`), a nie jego
+# rekonstrukcją. Wcześniejsza wersja składała listę transformów ręcznie
+# i przez to POMIJAŁA `ScrubUrlTransform` — a właśnie tam siedział najgroźniejszy
+# wyciek (`?code=` w URL-u). Testy świeciły na zielono przy dziurawym kodzie.
 
 
-def _przepusc_przez_scrub(fragment, klucz_startowy):
-    """Uruchamia łańcuch scrubujący dokładnie tak, jak robi to pyrollbar.
+@pytest.fixture
+def zbuduj_payload(monkeypatch):
+    """Zwraca funkcję ``data -> payload`` przepuszczony przez pełny pyrollbar."""
+    import rollbar
 
-    ``rollbar._build_payload`` woła ``_transform`` osobno dla każdego klucza
-    najwyższego poziomu, zasiewając ścieżkę jako ``(klucz,)`` — dlatego ramki
-    stosu widzi jako ``("body", "trace", "frames", 0, "code")``, a parametry
-    żądania jako ``("request", "POST", "code")``.
-    """
-    from rollbar.lib import transforms
-    from rollbar.lib.transforms.scrub_redact import ScrubRedactTransform
+    from bpp.rollbar_config import ustawienia_rollbara
 
-    from django_bpp.settings.base import ROLLBAR_SCRUB_FIELDS
+    monkeypatch.setattr(rollbar, "_initialized", False)
+    monkeypatch.setattr(rollbar, "send_payload", lambda p, t: None)
 
-    lancuch = [
-        ScrubRedactTransform(
-            suffixes=[(pole,) for pole in ROLLBAR_SCRUB_FIELDS], redact_char="*"
-        )
-    ] + list(ustawienia_rollbara()["custom_transforms"])
+    ustawienia = ustawienia_rollbara()
+    ustawienia["access_token"] = "atrapa"
+    ustawienia["environment"] = "test"
+    ustawienia["handler"] = "blocking"
+    ustawienia["suppress_reinit_warning"] = True
+    rollbar.init(**ustawienia)
 
-    return transforms.transform(fragment, lancuch, key=(klucz_startowy,))
+    return lambda data: rollbar._build_payload(data)["data"]
 
 
-def test_linia_kodu_w_tracebacku_nie_jest_zamazywana():
-    """Regresja: od pyrollbara 1.4.0 KAŻDY traceback miał `code: "****"`.
+SEKRET = "AUTHCODE_SUPERSECRET_XYZ"
+LINIA_KODU = "autor_str = str(self.autor) if self.autor_id else '???'"
+
+
+def test_linia_kodu_w_tracebacku_nie_jest_zamazywana(zbuduj_payload):
+    """Regresja: całe tracebacki w Rollbarze miały `code: "****"`.
 
     ``ROLLBAR_SCRUB_FIELDS`` zawierało ``"code"`` (dla parametru OAuth), a
     ``ScrubRedactTransform`` dopasowuje ścieżkę klucza po SUFIKSIE — więc
     trafiało też w ``body.trace.frames[*].code``, czyli linie kodu źródłowego.
-    Efekt: każde śledztwo w Rollbarze zaczynało się bez kodu.
     """
-    body = {
-        "trace": {
-            "frames": [
-                {
-                    "filename": "/app/src/bpp/models/autor.py",
-                    "lineno": 690,
-                    "code": "autor_str = str(self.autor) if self.autor_id else '???'",
-                }
-            ]
-        }
-    }
-
-    out = _przepusc_przez_scrub(body, "body")
-
-    assert out["trace"]["frames"][0]["code"] == (
-        "autor_str = str(self.autor) if self.autor_id else '???'"
+    out = zbuduj_payload(
+        {"body": {"trace": {"frames": [{"filename": "a.py", "code": LINIA_KODU}]}}}
     )
 
+    assert out["body"]["trace"]["frames"][0]["code"] == LINIA_KODU
 
-def test_kod_autoryzacyjny_oauth_w_zadaniu_nadal_jest_zamazywany():
-    """Druga strona kontraktu — bez niej poprawka byłaby regresją bezpieczeństwa.
 
-    ``/o/token/`` przyjmuje ``code`` (kod autoryzacyjny OAuth) w POST. Gdyby
-    ten endpoint zwrócił 500, Rollbar wysłałby aktywny kod w czystej postaci.
-    """
-    request = {
-        "POST": {
-            "code": "AKTYWNY_KOD_AUTORYZACYJNY",
-            "code_verifier": "TAJNY_VERIFIER",
-            "grant_type": "authorization_code",
+def test_linia_kodu_w_trace_chain_tez_nie_jest_zamazywana(zbuduj_payload):
+    """Wyjątki łańcuchowe mają inną ścieżkę klucza — też musi być pokryta."""
+    out = zbuduj_payload(
+        {
+            "body": {
+                "trace_chain": [{"frames": [{"filename": "a.py", "code": LINIA_KODU}]}]
+            }
         }
-    }
+    )
 
-    out = _przepusc_przez_scrub(request, "request")
-
-    assert "AKTYWNY_KOD" not in out["POST"]["code"]
-    assert "TAJNY_VERIFIER" not in out["POST"]["code_verifier"]
-    # Wartość niewrażliwa zostaje nietknięta — scrub nie może być zbyt szeroki.
-    assert out["POST"]["grant_type"] == "authorization_code"
+    assert out["body"]["trace_chain"][0]["frames"][0]["code"] == LINIA_KODU
 
 
-def test_pozostale_pola_wrazliwe_nadal_zamazywane_takze_w_ramkach():
+@pytest.mark.parametrize(
+    "opis,data,sciezka",
+    [
+        (
+            "POST /o/token/",
+            {"request": {"POST": {"code": SEKRET}}},
+            ("request", "POST", "code"),
+        ),
+        (
+            "GET /orcid/callback/",
+            {"request": {"GET": {"code": SEKRET}}},
+            ("request", "GET", "code"),
+        ),
+        (
+            "inna wielkosc liter",
+            {"request": {"POST": {"Code": SEKRET}}},
+            ("request", "POST", "Code"),
+        ),
+        (
+            "kolizja klucza `frames` poza tracebackiem",
+            {"request": {"POST": {"frames": {"code": SEKRET}}}},
+            ("request", "POST", "frames", "code"),
+        ),
+        (
+            "zmienna lokalna ramki (django-oauth-toolkit: validate_code)",
+            {"body": {"trace": {"frames": [{"locals": {"code": SEKRET}}]}}},
+            ("body", "trace", "frames", 0, "locals", "code"),
+        ),
+        (
+            "argument nazwany ramki",
+            {"body": {"trace": {"frames": [{"kwargs": {"code": SEKRET}}]}}},
+            ("body", "trace", "frames", 0, "kwargs", "code"),
+        ),
+    ],
+)
+def test_kod_autoryzacyjny_jest_zamazywany(zbuduj_payload, opis, data, sciezka):
+    """Druga strona kontraktu — bez niej poprawka byłaby regresją bezpieczeństwa."""
+    out = zbuduj_payload(data)
+
+    biezacy = out
+    for element in sciezka:
+        biezacy = biezacy[element]
+
+    assert SEKRET not in str(biezacy), f"WYCIEK sekretu: {opis}"
+
+
+@pytest.mark.parametrize(
+    "opis,data,sciezka",
+    [
+        (
+            "request.url",
+            {
+                "request": {
+                    "url": f"https://bpp.example.pl/orcid/callback/?code={SEKRET}"
+                }
+            },
+            ("request", "url"),
+        ),
+        (
+            "naglowek Referer",
+            {
+                "request": {
+                    "headers": {"Referer": f"https://bpp.example.pl/cb?code={SEKRET}"}
+                }
+            },
+            ("request", "headers", "Referer"),
+        ),
+        (
+            "URL w zmiennej lokalnej ramki",
+            {
+                "body": {
+                    "trace": {
+                        "frames": [{"locals": {"url": f"https://x/cb?code={SEKRET}"}}]
+                    }
+                }
+            },
+            ("body", "trace", "frames", 0, "locals", "url"),
+        ),
+    ],
+)
+def test_kod_autoryzacyjny_w_URL_tez_jest_zamazywany(
+    zbuduj_payload, opis, data, sciezka
+):
+    """Najgroźniejszy wyciek, jaki wyszedł w self-review.
+
+    Wbudowany ``ScrubUrlTransform`` czyści parametry URL na podstawie
+    ``scrub_fields`` — zdjęcie stamtąd ``"code"`` rozbroiłoby go dla tego
+    parametru. ``/orcid/callback/`` dostaje kod autoryzacyjny w query stringu,
+    a pyrollbar zapisuje pełny ``request.build_absolute_uri()``.
+    """
+    out = zbuduj_payload(data)
+
+    biezacy = out
+    for element in sciezka:
+        biezacy = biezacy[element]
+
+    assert SEKRET not in str(biezacy), f"WYCIEK sekretu w URL: {opis}"
+
+
+def test_pozostale_pola_wrazliwe_nadal_zamazywane_takze_w_ramkach(zbuduj_payload):
     """`password` w zmiennych lokalnych ramki MUSI zniknąć — inaczej niż `code`."""
-    body = {
-        "trace": {"frames": [{"filename": "a.py", "locals": {"password": "tajne123"}}]}
-    }
+    out = zbuduj_payload(
+        {"body": {"trace": {"frames": [{"locals": {"password": "tajne123"}}]}}}
+    )
 
-    out = _przepusc_przez_scrub(body, "body")
-
-    assert out["trace"]["frames"][0]["locals"]["password"] != "tajne123"
+    assert "tajne123" not in str(out["body"]["trace"]["frames"][0]["locals"])
 
 
-def test_configure_rollbar_przekazuje_nasz_transform_do_inicjalizacji(mocker):
+def test_configure_rollbar_przekazuje_nasze_transformy_do_inicjalizacji(mocker):
     """Sam transform nic nie da, jeśli nie trafi do ``rollbar.init``.
 
     Kolejność ma znaczenie: ``rollbar.init`` buduje łańcuch transformów tylko
     przy PIERWSZYM wywołaniu. ``configure_rollbar`` biegnie z
-    ``AppConfig.ready()``, czyli przed middlewarem django-rollbar — gdyby było
-    odwrotnie, nasz transform nigdy by nie wszedł.
+    ``AppConfig.ready()``, czyli przed middlewarem django-rollbar.
     """
     import bpp.rollbar_config as rc
 
@@ -198,6 +279,6 @@ def test_configure_rollbar_przekazuje_nasz_transform_do_inicjalizacji(mocker):
 
     rc.configure_rollbar()
 
-    assert init.called
     transformy = init.call_args.kwargs["custom_transforms"]
-    assert any(isinstance(t, ScrubKoduAutoryzacyjnego) for t in transformy)
+    assert any(isinstance(t, rc.ScrubKoduAutoryzacyjnego) for t in transformy)
+    assert any(isinstance(t, ScrubUrlTransform) for t in transformy)
