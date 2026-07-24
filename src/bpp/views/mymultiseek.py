@@ -181,6 +181,17 @@ class MyMultiseekResults(MultiseekResults):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data()
 
+        if ctx.get("report_type") == "pivot":
+            from bpp.multiseek_registry import pivot as pivot_mod
+
+            base_qs = self.get_queryset_for_current_mode()
+            row_dim, col_dim, metric = pivot_mod.parse_pivot_params(self.request.GET)
+            ctx["pivot"] = pivot_mod.zbuduj_pivot(base_qs, row_dim, col_dim, metric)
+            ctx["pivot_dimensions"] = pivot_mod.DIMENSIONS
+            ctx["pivot_metrics"] = pivot_mod.METRICS
+            ctx["paginator_count"] = 0
+            return ctx
+
         qset = self.get_queryset_for_current_mode()
         if self.request.GET.get("print-removed", False):
             ctx["object_list"] = qset
