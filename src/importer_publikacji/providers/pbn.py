@@ -41,9 +41,9 @@ def _get_pbn_client(uczelnia):
     """
     from django.conf import settings
     from pbn_client.conf import settings as pbn_defaults
+    from pbn_client.transport import RequestsTransport
 
     from pbn_api.client import PBNClient
-    from pbn_api.client.transport import RequestsTransport
     from pbn_api.reporting import rollbar_reporter
 
     if not uczelnia or not all(

@@ -4,10 +4,10 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.db.models import JSONField
 from django.utils import timezone
+from pbn_client.dict_utils import compare_dicts
 
 from bpp import const
 from bpp.models import LinkDoPBNMixin
-from pbn_api.utils import compare_dicts
 
 
 class SentDataManager(models.Manager):
