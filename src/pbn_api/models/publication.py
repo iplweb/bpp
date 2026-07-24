@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils.functional import cached_property
+from pbn_client import normalize_author_name
 
 from bpp import const
 from bpp.models.abstract import LinkDoPBNMixin
@@ -104,22 +105,15 @@ class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
     def _normalizuj_autora(autor):
         """Sprowadza pojedynczego autora z PBN do ``{lastName, firstName}``.
 
-        PBN podaje imię raz jako ``firstName``, raz jako ``givenNames``,
-        a w danych zaciągniętych z API instytucji jako ``name``. Czasem
-        zamiast słownika dostajemy goły UID (string) — wtedy nie mamy
-        danych osobowych i zwracamy puste pola (zamiast wysadzać szablon).
+        Deleguje wybór pól do ``pbn_client.normalize_author_name`` (jedno
+        źródło prawdy dla niespójnych kształtów PBN: ``lastName``/``familyName``
+        dla nazwiska, ``firstName``/``givenNames``/``name`` dla imienia; goły
+        UID lub inny nie-dict → brak danych). Paczka używa ``None`` jako
+        sentinela pustki — tu koerujemy go do ``""``, bo szablon rekordu i
+        ``str(autorzy)`` (logi) zakładają puste stringi, nie ``None``.
         """
-        if not isinstance(autor, dict):
-            return {"lastName": "", "firstName": ""}
-        return {
-            "lastName": autor.get("lastName") or "",
-            "firstName": (
-                autor.get("firstName")
-                or autor.get("givenNames")
-                or autor.get("name")
-                or ""
-            ),
-        }
+        normalized = normalize_author_name(autor)
+        return {klucz: (wartosc or "") for klucz, wartosc in normalized.items()}
 
     @cached_property
     def autorzy(self):
