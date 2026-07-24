@@ -1,0 +1,124 @@
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class PivotDimension:
+    key: str
+    label: str
+    expr: str
+    allow_column: bool = True
+    autorzy: bool = False
+    label_kind: str = "raw"  # raw|fk|choices_charakter_ogolny|pk_bucket|autor
+    fk_model: str | None = None
+    fk_label_field: str = "nazwa"
+
+    def resolve_model(self):
+        from django.apps import apps
+
+        return apps.get_model(*self.fk_model.split(".")) if self.fk_model else None
+
+
+@dataclass(frozen=True)
+class PivotMetric:
+    key: str
+    label: str
+    field: str | None  # None → Count("id"); inaczej Sum(field)
+
+
+DEFAULT_ROW = "rok"
+DEFAULT_METRIC = "liczba"
+
+# UWAGA: expr dla wymiarów FK to "<pole>_id" — values() zwraca surowe id,
+# etykiety dociągamy hurtowo w zbuduj_pivot (label_kind="fk").
+DIMENSIONS: dict[str, PivotDimension] = {
+    "rok": PivotDimension("rok", "Rok", "rok"),
+    "charakter_formalny": PivotDimension(
+        "charakter_formalny",
+        "Charakter formalny",
+        "charakter_formalny_id",
+        label_kind="fk",
+        fk_model="bpp.Charakter_Formalny",
+    ),
+    "charakter_ogolny": PivotDimension(
+        "charakter_ogolny",
+        "Charakter ogólny (rodzaj)",
+        "charakter_formalny__charakter_ogolny",
+        label_kind="choices_charakter_ogolny",
+    ),
+    "typ_kbn": PivotDimension(
+        "typ_kbn",
+        "Typ MNiSW/MEiN",
+        "typ_kbn_id",
+        label_kind="fk",
+        fk_model="bpp.Typ_KBN",
+    ),
+    "koszyk_pk": PivotDimension(
+        "koszyk_pk",
+        "Koszyk punktów PK",
+        "punkty_kbn",
+        label_kind="pk_bucket",
+    ),
+    "jezyk": PivotDimension(
+        "jezyk",
+        "Język",
+        "jezyk_id",
+        label_kind="fk",
+        fk_model="bpp.Jezyk",
+    ),
+    "zrodlo": PivotDimension(
+        "zrodlo",
+        "Źródło",
+        "zrodlo_id",
+        allow_column=False,
+        label_kind="fk",
+        fk_model="bpp.Zrodlo",
+    ),
+    "jednostka": PivotDimension(
+        "jednostka",
+        "Jednostka",
+        "autorzy__jednostka_id",
+        allow_column=False,
+        autorzy=True,
+        label_kind="fk",
+        fk_model="bpp.Jednostka",
+    ),
+    "dyscyplina": PivotDimension(
+        "dyscyplina",
+        "Dyscyplina naukowa",
+        "autorzy__dyscyplina_naukowa_id",
+        autorzy=True,
+        label_kind="fk",
+        fk_model="bpp.Dyscyplina_Naukowa",
+    ),
+    "autor": PivotDimension(
+        "autor",
+        "Autor",
+        "autorzy__autor_id",
+        allow_column=False,
+        autorzy=True,
+        label_kind="autor",
+        fk_model="bpp.Autor",
+    ),
+}
+
+METRICS: dict[str, PivotMetric] = {
+    "liczba": PivotMetric("liczba", "Liczba prac", None),
+    "punkty_kbn": PivotMetric("punkty_kbn", "Σ punkty PK", "punkty_kbn"),
+    "impact_factor": PivotMetric("impact_factor", "Σ Impact Factor", "impact_factor"),
+    "liczba_cytowan": PivotMetric(
+        "liczba_cytowan", "Σ liczba cytowań", "liczba_cytowan"
+    ),
+    "punktacja_wewnetrzna": PivotMetric(
+        "punktacja_wewnetrzna", "Σ punktacja wewnętrzna", "punktacja_wewnetrzna"
+    ),
+}
+
+
+def parse_pivot_params(GET):
+    row = DIMENSIONS.get(GET.get("pivot_row") or "", DIMENSIONS[DEFAULT_ROW])
+    metric = METRICS.get(GET.get("pivot_val") or "", METRICS[DEFAULT_METRIC])
+    col_key = GET.get("pivot_col") or ""
+    col = DIMENSIONS.get(col_key)
+    if col is not None and (not col.allow_column or col.key == row.key):
+        col = None
+    return row, col, metric
