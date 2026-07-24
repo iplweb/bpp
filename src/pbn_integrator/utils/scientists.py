@@ -85,13 +85,23 @@ def _zapisz_osobe_z_instytucji(person):
         person: Person data dictionary from PBN API.
 
     Returns:
-        True if saved successfully, False if skipped due to an unresolvable
-        identity conflict (reported to Rollbar).
+        True if saved successfully, False if the person was skipped — brak
+        ``polonUuid`` (tylko log) albo błąd integralności, np. kolizja
+        ``personId`` (log + Rollbar). Import całej kadry leci dalej.
     """
     from pbn_api.models.institution import Institution
     from pbn_api.models.osoba_z_instytucji import OsobaZInstytucji
 
     polon_uuid = person.get("polonUuid")
+    if not polon_uuid:
+        # ``polonUuid`` jest NOT NULL, więc bez niego i tak nie ma czego
+        # zapisać. Mówimy to wprost, zamiast dowiadywać się tego okrężnie
+        # przez IntegrityError i raportować jako "konflikt tożsamości".
+        logger.info(
+            f"Pomijam osobę {person.get('personId')} — PBN nie podał polonUuid."
+        )
+        return False
+
     dane = {
         "firstName": person.get("firstName", ""),
         "lastName": person.get("lastName", ""),
@@ -107,11 +117,7 @@ def _zapisz_osobe_z_instytucji(person):
             scientist = Scientist.objects.get(pk=person["personId"])
             instytucja = Institution.objects.get(pk=person["institutionId"])
 
-            osoba = (
-                OsobaZInstytucji.objects.filter(polonUuid=polon_uuid).first()
-                if polon_uuid
-                else None
-            )
+            osoba = OsobaZInstytucji.objects.filter(polonUuid=polon_uuid).first()
 
             if osoba is not None:
                 # Ta sama osoba z POL-onu — przepnij wiersz na (być może
@@ -131,11 +137,16 @@ def _zapisz_osobe_z_instytucji(person):
                     },
                 )
         return True
-    except IntegrityError:
-        # Zostaje przypadek naprawdę niejednoznaczny: nowy personId ma JUŻ
-        # swój wiersz z innym polonUuid, więc przepięcie zderza się z
-        # unikalnością personId. Scalenie dwóch tożsamości PBN to decyzja o
-        # danych, nie poprawka techniczna — raportujemy i pomijamy.
+    except IntegrityError as e:
+        # Świadomie SZEROKO: import całej kadry uczelni nie ma padać przez
+        # jedną wadliwą osobę. Trafia tu m.in.:
+        #  - kolizja personId (nowy personId ma już swój wiersz z innym
+        #    polonUuid — scalenie dwóch tożsamości PBN to decyzja o danych,
+        #    nie poprawka techniczna),
+        #  - NOT NULL na polach, które PBN przysłał jako null,
+        #  - każdy inny błąd integralności.
+        # Dlatego do Rollbara idzie treść naruszonego ograniczenia — bez niej
+        # wszystkie te przypadki wyglądają w raporcie identycznie.
         rollbar.report_exc_info(
             sys.exc_info(),
             extra_data={
@@ -143,11 +154,12 @@ def _zapisz_osobe_z_instytucji(person):
                 "polonUuid": polon_uuid,
                 "firstName": person.get("firstName"),
                 "lastName": person.get("lastName"),
+                "constraint": str(e),
             },
         )
         logger.info(
-            f"UWAGA: Niejednoznaczna tożsamość osoby {person.get('personId')} "
-            f"(polonUuid {polon_uuid}). Pomijam wpis (zalogowano do Rollbar)."
+            f"UWAGA: Błąd integralności dla osoby {person.get('personId')} "
+            f"(polonUuid {polon_uuid}): {e}. Pomijam wpis (zalogowano do Rollbar)."
         )
         return False
 
