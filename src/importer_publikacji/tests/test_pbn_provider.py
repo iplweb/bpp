@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from django.test import override_settings
 
 from importer_publikacji.providers import (
     get_available_providers,
@@ -17,14 +18,31 @@ from importer_publikacji.providers.pbn import (
     _extract_license_url,
     _extract_year,
     _get_current_version_object,
+    _get_pbn_client,
 )
 from pbn_api.exceptions import (
     AccessDeniedException,
     HttpException,
     PraceSerwisoweException,
 )
+from pbn_api.reporting import rollbar_reporter
 
 SAMPLE_PBN_UID = "5e709189878c28a04737dc6f"
+
+
+@override_settings(PBN_CLIENT_HTTP_TIMEOUT="3,7")
+def test_get_pbn_client_injects_django_timeout_and_bpp_reporter():
+    uczelnia = MagicMock(
+        pbn_app_name="app",
+        pbn_app_token="token",
+        pbn_api_root="https://pbn.example",
+    )
+
+    client = _get_pbn_client(uczelnia)
+
+    assert client.transport.timeout == (3.0, 7.0)
+    assert client.transport.reporter is rollbar_reporter
+
 
 SAMPLE_PBN_ARTICLE = {
     "mongoId": SAMPLE_PBN_UID,

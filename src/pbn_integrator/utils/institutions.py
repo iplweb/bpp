@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 class InstitutionGetter(ThreadedMongoDBSaver):
     """Threaded getter for institutions."""
 
-    pbn_api_klass = Institution
+    model_class = Institution
 
 
 def pobierz_instytucje(client: PBNClient, callback=None):

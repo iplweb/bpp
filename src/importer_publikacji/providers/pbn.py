@@ -39,8 +39,12 @@ def _get_pbn_client(uczelnia):
     Wymaga JAWNEJ uczelni (multi-hosted) — bez zgadywania ``get_default()``.
     Caller (provider/widok) ma uczelnię z requestu lub z ``ImportSession``.
     """
+    from django.conf import settings
+    from pbn_client.conf import settings as pbn_defaults
+
     from pbn_api.client import PBNClient
     from pbn_api.client.transport import RequestsTransport
+    from pbn_api.reporting import rollbar_reporter
 
     if not uczelnia or not all(
         [
@@ -54,6 +58,12 @@ def _get_pbn_client(uczelnia):
         uczelnia.pbn_app_name,
         uczelnia.pbn_app_token,
         uczelnia.pbn_api_root,
+        timeout=getattr(
+            settings,
+            "PBN_CLIENT_HTTP_TIMEOUT",
+            pbn_defaults.PBN_CLIENT_HTTP_TIMEOUT,
+        ),
+        reporter=rollbar_reporter,
     )
     return PBNClient(transport)
 

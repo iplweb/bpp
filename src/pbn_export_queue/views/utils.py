@@ -4,6 +4,12 @@ import json
 
 from django.utils.text import slugify
 
+_PBN_EXCEPTION_MODULES = ("pbn_api.exceptions", "pbn_client.exceptions")
+
+
+def _contains_pbn_exception(value):
+    return any(module in value for module in _PBN_EXCEPTION_MODULES)
+
 
 def sanitize_filename(text, max_length=100):
     """
@@ -148,7 +154,7 @@ def parse_pbn_api_error(exception_text):
         return result
 
     # Check if this looks like a PBN error (either with prefix or just a tuple)
-    has_pbn_prefix = "pbn_api.exceptions" in exception_text
+    has_pbn_prefix = _contains_pbn_exception(exception_text)
     looks_like_tuple = exception_text.strip().startswith("(") and "," in exception_text
 
     if not has_pbn_prefix and not looks_like_tuple:
@@ -184,7 +190,7 @@ def parse_pbn_api_error(exception_text):
 def extract_pbn_error_from_komunikat(komunikat):
     """
     Extract PBN API error from komunikat field (traceback).
-    Looks for the last line containing 'pbn_api.exceptions'.
+    Looks for the last line containing a legacy or extracted PBN exception.
 
     Returns the exception line or None if not found.
     """
@@ -193,9 +199,9 @@ def extract_pbn_error_from_komunikat(komunikat):
 
     lines = komunikat.strip().split("\n")
 
-    # Search from the end for a line with pbn_api.exceptions
+    # Search from the end for a PBN exception from either import path.
     for line in reversed(lines):
-        if "pbn_api.exceptions" in line:
+        if _contains_pbn_exception(line):
             return line.strip()
 
     return None

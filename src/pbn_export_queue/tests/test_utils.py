@@ -12,6 +12,7 @@ from pbn_export_queue.views import (
     _get_record_title,
     _get_user_info,
     _parse_error_details,
+    extract_pbn_error_from_komunikat,
     parse_pbn_api_error,
 )
 
@@ -40,6 +41,32 @@ def test_parse_pbn_api_error_with_dict_response():
     assert result["error_message"] == "Validation failed"
     assert result["error_description"] == "Invalid data"
     assert "field" in result["error_details_json"]
+
+
+def test_parse_pbn_api_error_accepts_extracted_exception_path():
+    exception_text = (
+        "pbn_client.exceptions.PBNValidationError: "
+        "(400, '/api/v1/publications', "
+        '\'{"details": {"doi": "Duplicate"}}\')'
+    )
+
+    result = parse_pbn_api_error(exception_text)
+
+    assert result["is_pbn_api_error"] is True
+    assert result["exception_type"] == "PBNValidationError"
+    assert result["error_code"] == 400
+    assert "Duplicate" in result["error_details_json"]
+
+
+def test_extract_pbn_error_accepts_extracted_exception_path():
+    komunikat = (
+        "Traceback (most recent call last):\n"
+        "pbn_client.exceptions.PBNValidationError: validation failed"
+    )
+
+    assert extract_pbn_error_from_komunikat(komunikat) == (
+        "pbn_client.exceptions.PBNValidationError: validation failed"
+    )
 
 
 def test_parse_pbn_api_error_with_list_response():

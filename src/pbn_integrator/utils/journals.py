@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 class ZrodlaGetter(ThreadedMongoDBSaver):
     """Threaded getter for journals."""
 
-    pbn_api_klass = Journal
+    model_class = Journal
 
 
 def pobierz_zrodla(client: PBNClient):
