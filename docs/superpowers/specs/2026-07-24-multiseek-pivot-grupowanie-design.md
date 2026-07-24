@@ -92,6 +92,10 @@ Wiersze:[ Rok ▾ ]   Kolumny:[ Charakter ogólny ▾ | (brak) ]   W komórce:[ 
 - Wiersz i kolumna **RAZEM** = sumy brzegowe; przecięcie = suma całkowita.
 - Sortowanie wierszy: wg wartości wymiaru (rok malejąco jak dziś dla
   Rok; alfabetycznie dla słowników). Kolumny analogicznie.
+- **Adnotacja o dublowaniu** (gdy wybrany wymiar z tabeli `Autorzy` —
+  Jednostka/Dyscyplina/Autor) renderowana **bezpośrednio pod tabelą
+  krzyżową** (pod pivotem, nie nad nim), stonowana wizualnie (mały,
+  szary tekst / `<figcaption>`-style), by nie odciągała od danych.
 
 ## 6. Menu wymiarów i metryk
 
@@ -140,7 +144,8 @@ jednostek/dyscyplin. Grupując po nich:
 
 Zachowanie v1:
 - **Wspieramy** te wymiary od razu (user wprost chce „po klinice").
-- Przy ich wyborze pokazujemy **widoczną adnotację** nad/pod tabelą, np.:
+- Przy ich wyborze pokazujemy **widoczną adnotację bezpośrednio pod
+  tabelą krzyżową** (pod pivotem), np.:
   *„Grupowanie po jednostce/dyscyplinie/autorze liczy powiązania, nie
   unikatowe prace — praca powiązana z wieloma jednostkami liczona jest
   w każdej z nich; sumy mogą przewyższać wartości całkowite."*
