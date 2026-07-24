@@ -70,24 +70,28 @@ describe("obce skrypty — pomijamy", () => {
     });
 });
 
-describe("zgłoszenia bez użytecznego stack trace'u — pomijamy", () => {
-    test("brak ramek w ogóle (Rollbar #444: błąd ładowania <link>, '{}')", () => {
+describe("zgłoszenia bez lokalizacji I bez treści — pomijamy", () => {
+    test("Rollbar #444: błąd ładowania <link>, class '(unknown)', message '{}'", () => {
         const p = {
             body: { trace: { exception: { class: "(unknown)", message: "{}" }, frames: [] } },
         };
         expect(czyPominac(p, ORIGIN)).toBe(true);
     });
 
-    test("filename '(unknown)' nie jest ścieżką", () => {
-        expect(czyPominac(payloadZRamkami(["(unknown)"]), ORIGIN)).toBe(true);
+    test("filename '(unknown)' przy pustym opisie też pomijamy", () => {
+        const p = payloadZRamkami(["(unknown)"], { class: "(unknown)", message: "" });
+        expect(czyPominac(p, ORIGIN)).toBe(true);
     });
 
-    test("filename będący komunikatem błędu (Rollbar #502: Chrome 64)", () => {
-        const p = payloadZRamkami(["SyntaxError: Unexpected token ="], {
-            class: "SyntaxError",
-            message: "Unexpected token =",
+    test("ALE filename '(unknown)' z konkretnym wyjątkiem → raportuj", () => {
+        // Brak lokalizacji nie znaczy brak informacji: klasa i komunikat
+        // wystarczą, żeby zacząć szukać. Za szeroka reguła zjadałaby nasze
+        // błędy — patrz sekcja niżej.
+        const p = payloadZRamkami(["(unknown)"], {
+            class: "TypeError",
+            message: "x is not a function",
         });
-        expect(czyPominac(p, ORIGIN)).toBe(true);
+        expect(czyPominac(p, ORIGIN)).toBe(false);
     });
 });
 
@@ -116,6 +120,67 @@ describe("bezpieczeństwo filtra — w razie wątpliwości raportuj", () => {
                 trace_chain: [{ frames: [{ filename: "https://cdn.userway.org/w.js" }] }],
             },
         };
+        expect(czyPominac(p, ORIGIN)).toBe(true);
+    });
+});
+
+// Kształty payloadów zmierzone na rollbar.js 3.1.0 (nie wymyślone):
+// ręczny log daje `body.message` BEZ `trace`/`frames`, a odrzucona obietnica
+// z reason innym niż Error daje ramkę z filename "(unknown)".
+describe("nasze błędy, które wcześniej filtr zjadał", () => {
+    test("ręczny Rollbar.error('...') — body.message, zero ramek", () => {
+        const p = { body: { message: { body: "coś poszło nie tak" }, telemetry: [] } };
+        expect(czyPominac(p, ORIGIN)).toBe(false);
+    });
+
+    test("ostrzeżenie samego Rollbara o rate-limicie (też body.message)", () => {
+        const p = {
+            body: { message: { body: "maxItems has been hit. Ignoring errors..." } },
+        };
+        expect(czyPominac(p, ORIGIN)).toBe(false);
+    });
+
+    test("odrzucona obietnica z reason innym niż Error", () => {
+        const p = {
+            body: {
+                trace: {
+                    exception: { class: "UnhandledRejection", message: "{...}" },
+                    frames: [{ filename: "(unknown)" }],
+                },
+            },
+        };
+        expect(czyPominac(p, ORIGIN)).toBe(false);
+    });
+
+    test("SyntaxError bez ścieżki NIE jest wyciszany — to może być nasz bundle", () => {
+        // Rollbar #502. Przeglądarka ujawnia treść błędu parsowania tylko dla
+        // skryptów same-origin (obce bez CORS dają "Script error."), więc
+        // konkretny komunikat sugeruje, że któryś NASZ statyk się nie parsuje.
+        const p = payloadZRamkami(["SyntaxError: Unexpected token ="], {
+            class: "SyntaxError",
+            message: "Unexpected token =",
+        });
+        expect(czyPominac(p, ORIGIN)).toBe(false);
+    });
+
+    test("ale SyntaxError z obcego skryptu nadal wyciszamy (#1477)", () => {
+        const p = payloadZRamkami(["https://cdn.userway.org/widgetapp/w.js"], {
+            class: "SyntaxError",
+            message: "invalid group specifier name",
+        });
+        expect(czyPominac(p, ORIGIN)).toBe(true);
+    });
+});
+
+describe("odporność filtra", () => {
+    test("brak origin (stara przeglądarka bez location.origin) → raportuj", () => {
+        expect(czyPominac(payloadZRamkami(["https://cdn.userway.org/w.js"]), undefined)).toBe(
+            false,
+        );
+    });
+
+    test("host podszywający się pod nasz nie uchodzi za nasz", () => {
+        const p = payloadZRamkami([`${ORIGIN}.evil.example/x.js`]);
         expect(czyPominac(p, ORIGIN)).toBe(true);
     });
 });

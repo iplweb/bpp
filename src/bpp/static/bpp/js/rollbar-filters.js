@@ -8,12 +8,16 @@
 //    przez Safari < 16.4). To ich bundle, ich wydanie — nie mamy jak tego
 //    naprawić ani nawet zdiagnozować.
 //
-// 2. Zgłoszenia bez użytecznego stack trace'u — brak ramek, filename
-//    "(unknown)" albo filename będący komunikatem błędu. Powstają m.in. gdy
-//    window.onerror dostaje zdarzenie zamiast Errora (nieudane ładowanie
-//    <link>, serializowane przez Rollbara do "{}") albo gdy przeglądarka jest
-//    tak stara, że nie podaje lokalizacji (Chrome 64 na Androidzie 8).
-//    Bez pliku i linii nie ma czego szukać.
+// 2. Zgłoszenia, które nie mają ANI lokalizacji, ANI treści — czyli klasa
+//    "(unknown)" z komunikatem "{}". Powstają, gdy window.onerror dostaje
+//    zdarzenie zamiast Errora (nieudane ładowanie <link>).
+//
+//    UWAGA: sam brak lokalizacji NIE wystarcza do wyciszenia. Wcześniejsza,
+//    szersza wersja tej reguły zjadała nasze własne błędy: ręczne
+//    `Rollbar.error("...")` (buduje `body.message`, zero ramek), odrzucone
+//    obietnice z reason innym niż Error (ramka "(unknown)") oraz SyntaxError
+//    z Rollbar #502 — a ten ostatni jest najpewniej sygnałem, że któryś nasz
+//    statyk nie parsuje się na starszej przeglądarce.
 //
 // ZASADA: w razie wątpliwości RAPORTUJ. Filtr, który przez własny błąd
 // wycisza prawdziwe awarie, jest gorszy niż brak filtra — dlatego każda
@@ -62,8 +66,41 @@
         return ramki;
     }
 
+    // Opis wyjątku z `body.trace` albo z pierwszego ogniwa `body.trace_chain`.
+    function opisWyjatku(body) {
+        if (body.trace && body.trace.exception) {
+            return body.trace.exception;
+        }
+        if (Array.isArray(body.trace_chain) && body.trace_chain.length) {
+            return body.trace_chain[0].exception || {};
+        }
+        return {};
+    }
+
+    // Czy zgłoszenie bez lokalizacji niesie JAKĄKOLWIEK treść, na której da
+    // się pracować. Rollbar #444 to `class: "(unknown)"`, `message: "{}"` —
+    // powstaje, gdy window.onerror dostaje zdarzenie zamiast Errora (nieudane
+    // ładowanie <link>). Tam faktycznie nie ma czego szukać.
+    function czyPustyOpis(wyjatek) {
+        var klasa = wyjatek.class;
+        var komunikat = wyjatek.message;
+        var bezKlasy = !klasa || klasa === "(unknown)";
+        var bezKomunikatu = !komunikat || komunikat === "{}";
+        return bezKlasy && bezKomunikatu;
+    }
+
     function czyPominac(payload, origin) {
         if (!payload || !payload.body || !origin) {
+            return false;
+        }
+
+        var body = payload.body;
+
+        // Brak `trace`/`trace_chain` → to nie jest raport o wyjątku, tylko
+        // ręczny log (`Rollbar.error("...")` buduje `body.message`) albo
+        // komunikat samego Rollbara o przekroczeniu rate-limitu. Nigdy nie
+        // wyciszamy — to są zgłoszenia, które ktoś wysłał świadomie.
+        if (!body.trace && !Array.isArray(body.trace_chain)) {
             return false;
         }
 
@@ -73,17 +110,23 @@
             })
             .filter(czyUzytecznaSciezka);
 
-        if (!sciezki.length) {
-            // Nic, co dałoby się zlokalizować w kodzie.
-            return true;
+        if (sciezki.length) {
+            var mamyNaszaRamke = sciezki.some(function (sciezka) {
+                return czyNaszaSciezka(sciezka, origin);
+            });
+            // Choć jedna ramka z naszego kodu → to może być nasz błąd.
+            return !mamyNaszaRamke;
         }
 
-        var mamyNaszaRamke = sciezki.some(function (sciezka) {
-            return czyNaszaSciezka(sciezka, origin);
-        });
-
-        // Choć jedna ramka z naszego kodu → to może być nasz błąd, raportuj.
-        return !mamyNaszaRamke;
+        // Brak jakiejkolwiek lokalizacji. Wyciszamy TYLKO wtedy, gdy nie ma
+        // też treści — inaczej wyrzucilibyśmy m.in. odrzucone obietnice
+        // z reason innym niż Error (ramka "(unknown)") oraz SyntaxError
+        // z Rollbar #502. Ten ostatni jest szczególnie ważny: przeglądarka
+        // ujawnia treść błędu parsowania wyłącznie dla skryptów same-origin
+        // (obce bez CORS dostają gołe "Script error."), więc konkretny
+        // komunikat sugeruje, że któryś z NASZYCH statyków się nie parsuje —
+        // czyli realną regresję kompatybilności, a nie szum.
+        return czyPustyOpis(opisWyjatku(body));
     }
 
     root.bppRollbarFilters = {
