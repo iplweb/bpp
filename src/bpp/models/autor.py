@@ -15,7 +15,7 @@ from django.contrib.postgres.fields import (
     RangeOperators,
 )
 from django.contrib.postgres.search import SearchVectorField as VectorField
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import RegexValidator
 from django.db import IntegrityError, models, transaction
 from django.db.models import CASCADE, SET_NULL, Count, Func, Q, Sum
@@ -816,6 +816,9 @@ class Autor_Jednostka(models.Model):
         # patrz migracja 0444_deferred_podstawowe_miejsce_pracy.
 
     def __str__(self):
+        komunikat = f"Budowanie reprezentacji tekstowej Autor_Jednostka (pk={self.pk})"
+        fallback = f"Autor_Jednostka #{self.pk if self.pk else 'nowy'}"
+
         try:
             autor_str = str(self.autor) if self.autor_id else "???"
             jednostka_str = self.jednostka.skrot if self.jednostka_id else "???"
@@ -824,13 +827,18 @@ class Autor_Jednostka(models.Model):
             if self.funkcja_id and self.funkcja:
                 buf = f"{autor_str} ↔ {self.funkcja.nazwa}, {jednostka_str}"
             return buf
+        except ObjectDoesNotExist:
+            # SPODZIEWANE, nie błąd aplikacji: podczas kaskadowego kasowania
+            # Django buduje str() obiektu, który wciąż żyje w pamięci, choć
+            # jego wiersz — i wiersz po drugiej stronie FK — już zniknął.
+            # Log zostaje (diagnostyka), ale do Rollbara tego nie wysyłamy,
+            # bo zaśmiecało to strumień błędów produkcyjnych.
+            zaloguj_polkniety_wyjatek(komunikat, logger=logger, do_rollbar=False)
+            return fallback
         except Exception:
-            zaloguj_polkniety_wyjatek(
-                f"Budowanie reprezentacji tekstowej Autor_Jednostka (pk={self.pk})",
-                logger=logger,
-            )
-            # Fallback w przypadku jakichkolwiek błędów podczas usuwania
-            return f"Autor_Jednostka #{self.pk if self.pk else 'nowy'}"
+            # Cokolwiek innego jest naprawdę nieoczekiwane — raportuj.
+            zaloguj_polkniety_wyjatek(komunikat, logger=logger)
+            return fallback
 
     def clean(self, exclude=None):
         if self.rozpoczal_prace is not None and self.zakonczyl_prace is not None:
