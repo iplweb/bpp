@@ -19,26 +19,15 @@ KATALOG_ZRODEL = Path(__file__).resolve().parents[3]
 #: Fragmenty cache'owane pod globalnym kluczem, dla których udowodniono,
 #: że ich treść NIE zależy od hosta/uczelni/użytkownika.
 #:
-#: * ``favicon`` (``django_bpp/templates/bare.html``) — renderuje
-#:   ``{% place_favicon %}`` z ``django-favicon-plus-reloaded``, który pyta
-#:   ``Favicon.on_site``, czyli ``CurrentSiteManager``. Jego
-#:   ``get_queryset()`` (``django/contrib/sites/managers.py``) filtruje
-#:   ``.filter(site__id=settings.SITE_ID)`` — BEZPOŚREDNIO po literalnym
-#:   ``settings.SITE_ID``, a nie przez ``Site.objects.get_current()``
-#:   (``get_current()`` siedzi w ``Favicon.save()``, czyli w ścieżce
-#:   ZAPISU, nie odczytu). ``SiteResolutionMiddleware`` nie podmienia
-#:   ``SITE_ID`` per request (ustawia tylko ``request.site`` i
-#:   ``request._uczelnia``), więc odczyt daje ten sam wiersz pod każdą
-#:   domeną i globalny klucz cache'a jest poprawny.
-#:
-#:   UWAGA dla czytającego tę listę: to NIE jest zamierzone zachowanie
-#:   multi-tenant. Favicon w ogóle nie podąża za hostem — wszystkie
-#:   uczelnie dostają favicon site'u o ``SITE_ID``. To pre-existing
-#:   ograniczenie ``django-favicon-plus-reloaded`` (poza zakresem tego
-#:   testu), a nie skutek cache'owania. Gdyby ktoś kiedyś naprawił
-#:   rozdzielczość faviconu per-host, ten wpis MUSI zniknąć z listy, a
-#:   fragment dostać ``vary_on``.
-DOZWOLONE_BEZ_VARY_ON = {"favicon"}
+#: Aktualnie PUSTE. Favicon (``django_bpp/templates/bare.html``) był tu
+#: kiedyś z alibi, że favicon i tak nie podąża za hostem (bug
+#: ``django-favicon-plus-reloaded``: ``Favicon.on_site`` filtruje po
+#: literalnym ``settings.SITE_ID``). Ten bug został naprawiony —
+#: ``bpp.templatetags.favicon_bpp.place_favicon`` pyta ``Favicon.objects``
+#: po ``request.site`` (Host → Site), więc favicon podąża za hostem, a
+#: fragment ``{% cache 3600 favicon request.get_host %}`` dostał
+#: ``vary_on`` na hoście. Alibi przestało obowiązywać, wpis zniknął.
+DOZWOLONE_BEZ_VARY_ON: set[str] = set()
 
 TAG_CACHE = re.compile(r"{%\s*cache\s+(?P<argumenty>[^%]*?)\s*%}")
 

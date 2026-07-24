@@ -10,7 +10,7 @@ from django.contrib.sites.models import Site
 from django.test import RequestFactory
 from model_bakery import baker
 
-from bpp.models import BppUser, Jednostka, Uczelnia, Wydzial
+from bpp.models import BppUser, Jednostka, Uczelnia
 
 
 @pytest.fixture
@@ -50,17 +50,17 @@ def uczelnia2(site2):
 
 @pytest.fixture
 def wydzial_uczelnia1(uczelnia1):
-    """Faculty belonging to uczelnia1."""
-    return Wydzial.objects.create(
-        uczelnia=uczelnia1, skrot="W1-U1", nazwa="Wydział Pierwszy U1"
+    """Faculty belonging to uczelnia1 (Faza C #438: jednostka top-level)."""
+    return Jednostka.objects.create(
+        uczelnia=uczelnia1, parent=None, skrot="W1-U1", nazwa="Wydział Pierwszy U1"
     )
 
 
 @pytest.fixture
 def wydzial_uczelnia2(uczelnia2):
-    """Faculty belonging to uczelnia2."""
-    return Wydzial.objects.create(
-        uczelnia=uczelnia2, skrot="W1-U2", nazwa="Wydział Pierwszy U2"
+    """Faculty belonging to uczelnia2 (Faza C #438: jednostka top-level)."""
+    return Jednostka.objects.create(
+        uczelnia=uczelnia2, parent=None, skrot="W1-U2", nazwa="Wydział Pierwszy U2"
     )
 
 
@@ -68,15 +68,12 @@ def wydzial_uczelnia2(uczelnia2):
 def jednostka_uczelnia1(wydzial_uczelnia1):
     """Unit belonging to uczelnia1.
 
-    Faza B (#438): jednostka wisi pod węzłem-lustrem wydziału (root Jednostka);
+    Faza C (#438): jednostka wisi wprost pod root-wydziałem (MPTT ``parent``);
     denorm ``wydzial`` (korzeń) wyliczy się przy zapisie.
     """
-    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
-
-    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial_uczelnia1)
     return Jednostka.objects.create(
         uczelnia=wydzial_uczelnia1.uczelnia,
-        parent=wezel,
+        parent=wydzial_uczelnia1,
         skrot="J1-U1",
         nazwa="Jednostka Pierwsza U1",
     )
@@ -84,13 +81,10 @@ def jednostka_uczelnia1(wydzial_uczelnia1):
 
 @pytest.fixture
 def jednostka_uczelnia2(wydzial_uczelnia2):
-    """Unit belonging to uczelnia2 (Faza B #438: pod węzłem-lustrem)."""
-    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
-
-    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial_uczelnia2)
+    """Unit belonging to uczelnia2 (Faza C #438: wprost pod root-wydziałem)."""
     return Jednostka.objects.create(
         uczelnia=wydzial_uczelnia2.uczelnia,
-        parent=wezel,
+        parent=wydzial_uczelnia2,
         skrot="J1-U2",
         nazwa="Jednostka Pierwsza U2",
     )

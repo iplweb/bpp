@@ -211,7 +211,7 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
 
         if context["uzywa_wydzialow"]:
             # Faza B (#438): „wydziały" = jednostki-korzenie. Dawny
-            # ``Wydzial.objects.filter(jednostka__in=…)`` (reverse-rel po FK→
+            # dawne ``filter(jednostka__in=…)`` na wydziale (reverse-rel po FK→
             # Wydzial) po retargecie znika (FieldError). Budujemy listę
             # korzeni z pola ``wydzial`` (self-FK) aktualnych jednostek autorów.
             aktualne_jednostki_ids = (

@@ -467,6 +467,56 @@ class ImportPracownikow(LiveOperation):
 
         return qry
 
+    def odswiez_stany_pol_wierszy(self, tylko_puste=False):
+        """Przelicza ``stany_pol_snapshot`` wierszy importu jednym przebiegiem.
+
+        Filtr stanu pól na liście wyników działa na tym polu w SQL, więc musi być
+        świeże wszędzie tam, gdzie zmieniły się pola czytane przez ekstraktory:
+        po analizie oraz po integracji strukturalnej (przypisanie
+        ``jednostka``/``tytul``/``stopien``/``stanowisko_dydaktyczne`` wierszom).
+
+        ``tylko_puste=True`` — tryb backfillu dla importów sprzed materializacji.
+        Zawężenie do wierszy z ``NULL`` jest tam WARUNKIEM POPRAWNOŚCI, nie
+        optymalizacją: snapshot niepusty bywa zamrożonym zapisem audytowym
+        (stan sprzed integracji), a przeliczenie nadpisałoby go stanem po
+        integracji, czyli „zgodne" zamiast „zmienione". Snapshot dostają dziś
+        tylko wiersze z worklisty integracji, więc importy zintegrowane mają
+        mieszankę wypełnionych i pustych — sam fakt istnienia ``NULL``-i nie
+        znaczy, że import jest sprzed zmiany.
+
+        Zwraca liczbę zaktualizowanych wierszy.
+        """
+        from import_pracownikow.okresy import wstepnie_zaladuj_okresy
+
+        qs = self.importpracownikowrow_set.all()
+        if tylko_puste:
+            qs = qs.filter(stany_pol_snapshot__isnull=True)
+        # Te same ścieżki, których potrzebują ekstraktory (`porownaj_z_baza`
+        # czyta FK autora i powiązania) — bez tego przeliczenie samo byłoby N+1.
+        rows = list(
+            qs.select_related(
+                "autor",
+                "autor__aktualna_jednostka",
+                "autor__tytul",
+                "autor__stopien_sluzbowy",
+                "jednostka",
+                "autor_jednostka__stanowisko",
+                "autor_jednostka__funkcja",
+                "autor_jednostka__wymiar_etatu",
+                "autor_jednostka__grupa_pracownicza",
+            )
+        )
+        if not rows:
+            return 0
+        wstepnie_zaladuj_okresy(rows)
+        for row in rows:
+            row.stany_pol_snapshot = row.stany_pol_live()
+        with transaction.atomic():
+            ImportPracownikowRow.objects.bulk_update(
+                rows, ["stany_pol_snapshot"], batch_size=500
+            )
+        return len(rows)
+
     def pary_z_pliku(self):
         """Zbiór par ``(autor_id, jednostka_id)`` OBECNYCH w wierszach importu
         (autor i jednostka ustawione) — „para z pliku”, tj. potwierdzony etat.
@@ -1124,6 +1174,33 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             ),
         }
 
+    def stany_pol_live(self):
+        """Stan każdego pola policzony ekstraktorami ``POLA_ROZNIC`` — ZAWSZE
+        świeżo, z pominięciem ``stany_pol_snapshot``.
+
+        To jest metoda LICZĄCA; ``stany_pol()`` niżej jest metodą CZYTAJĄCĄ.
+        Rozdział jest konieczny, odkąd snapshot bywa wypełniony także przed
+        integracją: ``self.stany_pol_snapshot = self.stany_pol()`` byłoby wtedy
+        kopiowaniem pola w samo siebie, czyli cichym no-opem. Każde
+        „przelicz i zapisz" (odświeżanie, backfill, zamrożenie w potoku
+        integracji) MUSI iść przez tę metodę.
+        """
+        from import_pracownikow.roznice import POLA_ROZNIC
+
+        return {klucz: ekstraktor(self) for klucz, _et, ekstraktor in POLA_ROZNIC}
+
+    def odswiez_stany_pol(self):
+        """Przelicza i zapisuje ``stany_pol_snapshot``.
+
+        Wołane wszędzie tam, gdzie zmieniło się pole czytane przez ekstraktory
+        (``autor`` w widokach dopasowania, ``jednostka``/``tytul``/``stopien``/
+        ``stanowisko_dydaktyczne`` w potoku integracji strukturalnej) — filtr
+        stanu pól działa na tym polu w SQL, więc nieświeża wartość oznacza
+        po cichu kłamiący filtr.
+        """
+        self.stany_pol_snapshot = self.stany_pol_live()
+        self.save(update_fields=["stany_pol_snapshot"])
+
     def stany_pol(self):
         """Stan każdego pola różnic: ``{klucz: "zmienione"|"zgodne"|"brak"}``.
         Zwraca zamrożony ``stany_pol_snapshot`` gdy istnieje (po integracji baza
@@ -1139,7 +1216,7 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             baza = {klucz: "brak" for klucz, _et, _ekstraktor in POLA_ROZNIC}
             return {**baza, **self.stany_pol_snapshot}
 
-        return {klucz: ekstraktor(self) for klucz, _et, ekstraktor in POLA_ROZNIC}
+        return self.stany_pol_live()
 
     @property
     def ostrzezenie_email(self):

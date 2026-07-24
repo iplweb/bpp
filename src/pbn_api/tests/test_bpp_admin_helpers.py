@@ -1,6 +1,12 @@
 import pytest
 from django.contrib.messages import get_messages
 from model_bakery import baker
+from pbn_client.const import (
+    PBN_GET_INSTITUTION_PUBLICATIONS_V2,
+    PBN_POST_INSTITUTION_STATEMENTS_URL,
+    PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
+    PBN_POST_PUBLICATIONS_URL,
+)
 
 from bpp.admin.helpers.pbn_api.gui import sprobuj_wyslac_do_pbn_gui
 from bpp.models import Charakter_Formalny, Wydawnictwo_Ciagle
@@ -14,12 +20,6 @@ from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.client import (
     PBN_GET_INSTITUTION_STATEMENTS,
     PBN_GET_PUBLICATION_BY_ID_URL,
-)
-from pbn_api.const import (
-    PBN_GET_INSTITUTION_PUBLICATIONS_V2,
-    PBN_POST_INSTITUTION_STATEMENTS_URL,
-    PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
-    PBN_POST_PUBLICATIONS_URL,
 )
 from pbn_api.exceptions import AccessDeniedException, PBNValidationError
 from pbn_api.models import Publication, SentData

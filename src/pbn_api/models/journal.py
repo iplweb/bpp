@@ -27,7 +27,7 @@ class Journal(LinkDoPBNMixin, BasePBNMongoDBModel):
             f"{self.title}, ISSN: {self.issn or '-'}, "
             f"EISSN: {self.eissn or '-'}, MNISW ID: {self.mniswId or '-'}"
         )
-        if self.status == "DELETED":
+        if self.is_deleted:
             ret = f"[❌ USUNIĘTY] {ret}"
         return ret
 

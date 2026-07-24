@@ -117,6 +117,14 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("bpp", "0469_przyszle_daty_zakonczenia_zatrudnienia"),
+        # Ostatnia operacja zakłada indeks na `easyaudit_crudevent` (tabela
+        # aplikacji django-easy-audit, model CRUDEvent tworzony w
+        # easyaudit.0001_initial). Bez tej krawędzi sortowanie topologiczne
+        # przy rebuildzie-od-zera mogło ustawić migracje easyaudit PO 0470 i
+        # `CREATE INDEX ... ON easyaudit_crudevent` wywalał się na
+        # nieistniejącej tabeli. Na istniejących bazach zależność jest już
+        # dawno spełniona → no-op dla prod, zmienia tylko kolejność rebuildu.
+        ("easyaudit", "0001_initial"),
     ]
 
     operations = (

@@ -5,7 +5,7 @@ import pytest
 from liveops.testing import MockProgress
 from model_bakery import baker
 
-from bpp.models import Jednostka, Uczelnia, Wydzial
+from bpp.models import Jednostka, Uczelnia
 from import_pracownikow.models import (
     ImportPracownikow,
     ImportPracownikowJednostka,
@@ -137,8 +137,11 @@ def test_uzywaj_wydzialow_tworzy_wydzial_domyslny_i_podpina(uczelnia):
     integruj(imp, MockProgress(imp))
 
     dec.refresh_from_db()
-    assert dec.utworzona.parent_id is not None  # pod węzłem-wydziałem, nie root
-    assert Wydzial.objects.filter(nazwa__istartswith="Wydział Domyślny").exists()
+    assert dec.utworzona.parent_id is not None  # pod wydziałem, nie root
+    # Faza C (#438): wydział domyślny to jednostka TOP-LEVEL (parent IS NULL).
+    assert Jednostka.objects.filter(
+        nazwa__istartswith="Wydział Domyślny", parent__isnull=True
+    ).exists()
 
 
 @pytest.mark.django_db

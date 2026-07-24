@@ -68,7 +68,7 @@ COPY pyproject.toml uv.lock yarn.lock package.json ./
 # realnie potrzebne extras produkcji (ldap, office365).
 RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
     uv sync --frozen --no-dev --no-install-project \
-        --extra ldap --extra office365
+        --no-editable --extra ldap --extra office365
 
 # R6: pygad deklaruje matplotlib jako twardą dep dla funkcji rysowania
 # zbieżności algorytmu genetycznego (plot_fitness), których BPP nie używa.
@@ -240,7 +240,7 @@ WORKDIR /build
 COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
     uv sync --frozen --all-extras \
-        --all-groups --no-install-project
+        --all-groups --no-install-project --no-editable
 
 # Przegladarki Playwright raz, do /opt/playwright (kopiowane do slim nizej).
 RUN PLAYWRIGHT_BROWSERS_PATH=/opt/playwright \
@@ -437,7 +437,8 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
-    uv sync --frozen --all-extras --all-groups --no-install-project
+    uv sync --frozen --all-extras --all-groups \
+        --no-install-project --no-editable
 
 # Yarn + grunt + collectstatic — mirror production builder, zeby:
 # 1. /app/staticroot.baked istnial → entrypoint-appserver.sh przy starcie wybiera

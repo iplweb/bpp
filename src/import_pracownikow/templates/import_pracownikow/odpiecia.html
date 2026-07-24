@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% load static %}
 
 {% block extratitle %}Import pracowników i jednostek — ludzie spoza XLS{% endblock %}
 
@@ -22,7 +22,8 @@
     </p>
 
     {# HTMX dla toggla checkboxa odpięcia (partial _odpiecie_row.html). #}
-    <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous"></script>
+    {# Self-hostowany — bez zależności od zewnętrznego CDN-a. #}
+    <script src="{% static 'liveops/vendor/htmx.min.js' %}"></script>
 
     {% if odpiecia %}
         {% if parent_object.edytowalny_podglad %}

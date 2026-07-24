@@ -29,7 +29,6 @@ from bpp.models.autor import Autor, Autor_Jednostka
 from bpp.util import FulltextSearchMixin
 
 from .uczelnia import Uczelnia
-from .wydzial import Wydzial
 
 SORTUJ_RECZNIE = ("kolejnosc", "nazwa")
 SORTUJ_ALFABETYCZNIE = ("nazwa",)
@@ -195,19 +194,11 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
     skrot_nazwy = models.CharField(  # noqa: DJ001
         max_length=250, blank=True, null=True
     )
-    legacy_wydzial_id = models.IntegerField(null=True, blank=True, db_index=True)
-    # Faza B (#438): stabilny marker TOŻSAMOŚCI KONWERSJI. Rozdziela trzy
-    # niezależne pojęcia, dotąd sklejone w nazwie rodzaju "Wydział":
-    #  - ``legacy_wydzial_id`` — KTÓRY stary Wydzial reprezentuje ten węzeł
-    #    (mają OBA: syntetyczne lustro I promowana 1-jednostkowa) → mapowanie FK,
-    #  - ``jest_lustrem`` — czy to SYNTETYCZNY węzeł-lustro (True), czy REALNA
-    #    jednostka promowana do roota (False) → logika kasowania/widoczności/
-    #    historii lustra filtruje PO TYM (nie po edytowalnej nazwie rodzaju),
-    #  - ``rodzaj.pokazuj_strukture_podjednostek`` — czy wyświetlać stronę w
-    #    stylu wydziału (edytowalna preferencja UI, osobna sprawa).
-    jest_lustrem = models.BooleanField(
-        "Syntetyczny węzeł-lustro wydziału", default=False
-    )
+    # Faza C (#438): „wydział" to jednostka top-level (``parent IS NULL``);
+    # stronę w stylu wydziału włącza edytowalna flaga
+    # ``rodzaj.pokazuj_strukture_podjednostek``. Markery TOŻSAMOŚCI KONWERSJI
+    # (``legacy_wydzial_id``, ``jest_lustrem``) — potrzebne tylko w trakcie
+    # Fazy B — usunięto migracją 0468 po dropie modelu Wydzial.
 
     search = VectorField(blank=True, null=True)
 
@@ -256,7 +247,7 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         except (ValueError, TypeError, Jednostka.DoesNotExist):
             # Faza B (#438): ``wydzial`` to teraz self-FK -> Jednostka, więc
             # dangling/deferred dostęp rzuca Jednostka.DoesNotExist (dawny
-            # guard na Wydzial.DoesNotExist był martwy po retargecie).
+            # guard na DoesNotExist dawnego wydziału był martwy po retargecie).
             wydzial = None
 
         if wydzial is not None:
@@ -473,14 +464,13 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         return self.przypisania_dla_czasokresu(data, data).first()
 
     def wydzial_dnia(self, data):
-        # Faza B (#438): metryczka historyczna trzyma teraz węzeł-rodzic
-        # (Jednostka), a nie Wydzial. Stary Wydzial odzyskujemy przez
-        # legacy_wydzial_id węzła — utrzymuje kontrakt (zwraca Wydzial lub None)
-        # do czasu usunięcia strony wydziału (B-III).
+        # Faza C (#438): „wydział" to węzeł-rodzic (Jednostka top-level).
+        # Metryczka historyczna trzyma ten węzeł wprost — zwracamy go (lub
+        # None, gdy jednostka nie miała rodzica w danym dniu).
         przypisanie = self.przypisanie_dla_dnia(data)
         if przypisanie is None or przypisanie.parent_id is None:
             return None
-        return Wydzial.objects.filter(id=przypisanie.parent.legacy_wydzial_id).first()
+        return przypisanie.parent
 
     #
     # Metody węzła dla strukturalnego stylu browse (Faza B, III-2, #438).
@@ -493,7 +483,7 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
     #
     # SEMANTYKA PODDRZEWA (regresja III-2 naprawiona): dawne metody ``Wydzial``
     # pokazywały CAŁE poddrzewo wydziału przez denorm FK
-    # (``wydzial__legacy_wydzial_id=<wydzial.pk>``). III-2 zwęził to omyłkowo do
+    # (całe poddrzewo przez zdenorm. ``wydzial``). III-2 zwęził to omyłkowo do
     # ``self.get_children()`` (TYLKO bezpośrednie dzieci MPTT) -> strona
     # wydziału stawała się pusta, gdy jednostki wisiały głębiej (wydział ->
     # instytut -> katedra). Przywracamy poddrzewo przez MPTT
@@ -507,8 +497,8 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
     # zdenorm. ``wydzial`` (pk-owe, odporne na nieaktualne lft/rght instancji --
     # jak w dawnych metodach), dla węzła nie-korzenia MPTT ``get_descendants``
     # (w widoku ``self`` jest świeżo wczytany, więc lft/rght aktualne).
-    # Odwzorowanie: ``wydzial__legacy_wydzial_id=self.pk`` -> poddrzewo jednostek;
-    # ``parent__legacy_wydzial_id=self.pk`` -> rodzic metryczki w poddrzewie.
+    # Odwzorowanie: poddrzewo jednostek (``wydzial=self`` dla korzenia /
+    # ``get_descendants`` dla węzła) i rodzic metryczki w tym poddrzewie.
     #
 
     def _poddrzewo_jednostki(self):
@@ -562,8 +552,8 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         (helper ``_poddrzewo_jednostki``), historyczne (odłączone od drzewa,
         ``wydzial=None``) przez wciąż-ważną metryczkę ``Jednostka_Rodzic`` z
         rodzicem w poddrzewie. ``rodzaj__nazwa="Koło naukowe"`` -> flaga
-        ``pokazuj_jako_odrebna_sekcje``; ``parent__legacy_wydzial_id`` ->
-        rodzic w poddrzewie (helper ``_poddrzewo_jednostki_z_soba``)."""
+        ``pokazuj_jako_odrebna_sekcje``; rodzic metryczki w poddrzewie ->
+        helper ``_poddrzewo_jednostki_z_soba``."""
         today = timezone.now().date()
 
         return (
@@ -589,7 +579,7 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         przeszłości), a obecnie już nie (``aktualna`` != True).
 
         Wierny port dawnej ``Wydzial.historyczne_jednostki``:
-        ``parent__legacy_wydzial_id=self.pk`` -> rodzic w poddrzewie (helper
+        rodzic metryczki w poddrzewie (helper
         ``_poddrzewo_jednostki_z_soba``) -- obejmuje historię z całego
         poddrzewa, nie tylko bezpośrednich dzieci, i działa też dla węzła
         nie-korzenia."""

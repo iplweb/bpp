@@ -67,7 +67,13 @@ class StatusOptymalizacjiZOdpinaniem(models.Model):
 
     @classmethod
     def get_or_create(cls):
-        """Pobierz lub utwórz instancję singleton."""
+        """Pobierz lub utwórz instancję singleton.
+
+        Każdy caller wchodzi na wiersz pk=1 przez tę metodę, a żadna ścieżka
+        go nie kasuje — dlatego atomowe `filter(pk=1).update(...)` w
+        `rozpocznij`/`zakoncz` nigdy nie trafia na pusty zbiór (który byłby
+        cichym no-op zamiast INSERT-a robionego dawniej przez `save()`).
+        """
         obj, created = cls.objects.get_or_create(pk=1)
         return obj
 
@@ -78,14 +84,28 @@ class StatusOptymalizacjiZOdpinaniem(models.Model):
         self.data_rozpoczecia = timezone.now()
         self.data_zakonczenia = None
         self.ostatni_komunikat = "Rozpoczęto optymalizację z odpinaniem"
-        self.save()
+        # Zapisz TYLKO pola tej operacji (atomowo), nie cały wiersz —
+        # inaczej gubilibyśmy współbieżne zmiany innych pól (lost update).
+        type(self).objects.filter(pk=1).update(
+            w_trakcie=self.w_trakcie,
+            task_id=self.task_id,
+            data_rozpoczecia=self.data_rozpoczecia,
+            data_zakonczenia=self.data_zakonczenia,
+            ostatni_komunikat=self.ostatni_komunikat,
+        )
 
     def zakoncz(self, komunikat=""):
         """Oznacz zakończenie zadania optymalizacji z odpinaniem."""
         self.w_trakcie = False
         self.data_zakonczenia = timezone.now()
         self.ostatni_komunikat = komunikat or "Zakończono"
-        self.save()
+        # Zapisz TYLKO pola tej operacji — task_id/data_rozpoczecia
+        # ustawione przez współbieżne rozpoczęcie muszą przetrwać.
+        type(self).objects.filter(pk=1).update(
+            w_trakcie=self.w_trakcie,
+            data_zakonczenia=self.data_zakonczenia,
+            ostatni_komunikat=self.ostatni_komunikat,
+        )
 
     # Bariera bazodanowa (patrz models/bariera.py) — druga, niezależna od
     # Redisa warstwa ochrony przed równoległym optimize_and_unpin_task po
@@ -188,14 +208,31 @@ class StatusOptymalizacjiBulk(models.Model):
         self.data_rozpoczecia = timezone.now()
         self.data_zakonczenia = None
         self.ostatni_komunikat = "Rozpoczęto optymalizację całej ewaluacji"
-        self.save()
+        # Zapisz TYLKO pola tej operacji (atomowo), nie cały wiersz.
+        # ``delete(save=False)`` wyżej wyczyścił atrybut pliku na instancji —
+        # utrwalamy to również w bazie (plik_zip_wszystkie_xls=None).
+        type(self).objects.filter(pk=1).update(
+            w_trakcie=self.w_trakcie,
+            task_id=self.task_id,
+            uczelnia=self.uczelnia,
+            data_rozpoczecia=self.data_rozpoczecia,
+            data_zakonczenia=self.data_zakonczenia,
+            ostatni_komunikat=self.ostatni_komunikat,
+            plik_zip_wszystkie_xls=self.plik_zip_wszystkie_xls.name or "",
+        )
 
     def zakoncz(self, komunikat=""):
         """Oznacz zakończenie zadania bulk optimization."""
         self.w_trakcie = False
         self.data_zakonczenia = timezone.now()
         self.ostatni_komunikat = komunikat or "Zakończono"
-        self.save()
+        # Zapisz TYLKO pola tej operacji — task_id/uczelnia/data_rozpoczecia
+        # ustawione przez współbieżne rozpoczęcie muszą przetrwać.
+        type(self).objects.filter(pk=1).update(
+            w_trakcie=self.w_trakcie,
+            data_zakonczenia=self.data_zakonczenia,
+            ostatni_komunikat=self.ostatni_komunikat,
+        )
 
 
 class StatusUnpinningAnalyzy(models.Model):
@@ -265,14 +302,27 @@ class StatusUnpinningAnalyzy(models.Model):
         self.data_rozpoczecia = timezone.now()
         self.data_zakonczenia = None
         self.ostatni_komunikat = "Rozpoczęto analizę możliwości odpinania"
-        self.save()
+        # Zapisz TYLKO pola tej operacji (atomowo), nie cały wiersz.
+        type(self).objects.filter(pk=1).update(
+            w_trakcie=self.w_trakcie,
+            task_id=self.task_id,
+            data_rozpoczecia=self.data_rozpoczecia,
+            data_zakonczenia=self.data_zakonczenia,
+            ostatni_komunikat=self.ostatni_komunikat,
+        )
 
     def zakoncz(self, komunikat=""):
         """Oznacz zakończenie zadania analizy unpinning."""
         self.w_trakcie = False
         self.data_zakonczenia = timezone.now()
         self.ostatni_komunikat = komunikat or "Zakończono"
-        self.save()
+        # Zapisz TYLKO pola tej operacji — task_id/data_rozpoczecia
+        # ustawione przez współbieżne rozpoczęcie muszą przetrwać.
+        type(self).objects.filter(pk=1).update(
+            w_trakcie=self.w_trakcie,
+            data_zakonczenia=self.data_zakonczenia,
+            ostatni_komunikat=self.ostatni_komunikat,
+        )
 
 
 class StatusDisciplineSwapAnalysis(models.Model):
@@ -339,14 +389,27 @@ class StatusDisciplineSwapAnalysis(models.Model):
         self.data_rozpoczecia = timezone.now()
         self.data_zakonczenia = None
         self.ostatni_komunikat = "Rozpoczęto analizę możliwości zamiany dyscyplin"
-        self.save()
+        # Zapisz TYLKO pola tej operacji (atomowo), nie cały wiersz.
+        type(self).objects.filter(pk=1).update(
+            w_trakcie=self.w_trakcie,
+            task_id=self.task_id,
+            data_rozpoczecia=self.data_rozpoczecia,
+            data_zakonczenia=self.data_zakonczenia,
+            ostatni_komunikat=self.ostatni_komunikat,
+        )
 
     def zakoncz(self, komunikat=""):
         """Oznacz zakończenie zadania analizy zamiany dyscyplin."""
         self.w_trakcie = False
         self.data_zakonczenia = timezone.now()
         self.ostatni_komunikat = komunikat or "Zakończono"
-        self.save()
+        # Zapisz TYLKO pola tej operacji — task_id/data_rozpoczecia
+        # ustawione przez współbieżne rozpoczęcie muszą przetrwać.
+        type(self).objects.filter(pk=1).update(
+            w_trakcie=self.w_trakcie,
+            data_zakonczenia=self.data_zakonczenia,
+            ostatni_komunikat=self.ostatni_komunikat,
+        )
 
 
 class StatusPrzegladarkaRecalc(models.Model):
@@ -427,14 +490,29 @@ class StatusPrzegladarkaRecalc(models.Model):
         self.data_zakonczenia = None
         self.punkty_przed = punkty_przed
         self.ostatni_komunikat = "Rozpoczęto przeliczanie ewaluacji"
-        self.save()
+        # Zapisz TYLKO pola tej operacji (atomowo), nie cały wiersz.
+        type(self).objects.filter(pk=1).update(
+            w_trakcie=self.w_trakcie,
+            task_id=self.task_id,
+            uczelnia=self.uczelnia,
+            data_rozpoczecia=self.data_rozpoczecia,
+            data_zakonczenia=self.data_zakonczenia,
+            punkty_przed=self.punkty_przed,
+            ostatni_komunikat=self.ostatni_komunikat,
+        )
 
     def zakoncz(self, komunikat=""):
         """Oznacz zakończenie przeliczania."""
         self.w_trakcie = False
         self.data_zakonczenia = timezone.now()
         self.ostatni_komunikat = komunikat or "Zakończono"
-        self.save()
+        # Zapisz TYLKO pola tej operacji — task_id/uczelnia/data_rozpoczecia/
+        # punkty_przed ustawione przez współbieżne rozpoczęcie muszą przetrwać.
+        type(self).objects.filter(pk=1).update(
+            w_trakcie=self.w_trakcie,
+            data_zakonczenia=self.data_zakonczenia,
+            ostatni_komunikat=self.ostatni_komunikat,
+        )
 
 
 class StatusOdpinaniaWszystkich(models.Model):

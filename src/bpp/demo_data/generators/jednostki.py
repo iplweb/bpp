@@ -10,14 +10,13 @@ from bpp.demo_data.manifest import Manifest
 from bpp.demo_data.progress import make_progress
 from bpp.demo_data.themes.base import Theme
 from bpp.demo_data.themes.compose import apply_prefix, jednostka_nazwy
-from bpp.models import Jednostka, RodzajJednostki, Uczelnia, Wydzial
-from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+from bpp.models import Jednostka, RodzajJednostki, Uczelnia
 
 
 def create_jednostki(
     *,
     per_wydzial: int,
-    wydzialy: Iterable[Wydzial],
+    wydzialy: Iterable[Jednostka],
     uczelnia: Uczelnia,
     theme: Theme,
     manifest: Manifest,
@@ -41,16 +40,16 @@ def create_jednostki(
     # migracji danych bez ich odtwarzania).
     rodzaj_standard, _ = RodzajJednostki.objects.get_or_create(nazwa="Standard")
     for w_idx, wydzial in enumerate(wydzialy, start=1):
-        # Faza B (#438): jednostki wiszą pod węzłem-lustrem wydziału (root
-        # MPTT). ``wydzial`` (self-FK) = ten węzeł (dziecko roota → korzeń =
-        # root). Ustawiamy wprost, bo bulk_create omija denorm pre_save.
-        wezel, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
+        # Faza C (#438): ``wydzial`` to już root-Jednostka (top-level). Dziecko
+        # wisi pod nim (``parent`` = root), a denorm ``wydzial`` (self-FK do
+        # korzenia) = ten sam root. Ustawiamy wprost, bo bulk_create omija
+        # denorm pre_save.
         for j_idx in range(1, per_wydzial + 1):
             objs.append(
                 Jednostka(
                     uczelnia=uczelnia,
-                    parent=wezel,
-                    wydzial=wezel,
+                    parent=wydzial,
+                    wydzial=wydzial,
                     nazwa=apply_prefix(nazwy[nazwa_idx], prefix),
                     skrot=f"DJ{w_idx}-{j_idx}",
                     rodzaj=rodzaj_standard,

@@ -211,7 +211,6 @@ def test_autocomplete_normal_queries_unchanged():
         "bpp:jednostka-widoczna-autocomplete",
         "bpp:dyscyplina-autocomplete",
         "bpp:public-konferencja-autocomplete",
-        "bpp:public-wydzial-autocomplete",
         "bpp:zrodlo-autocomplete",
     ],
 )

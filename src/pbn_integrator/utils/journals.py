@@ -7,10 +7,10 @@ from functools import reduce
 from typing import TYPE_CHECKING
 
 from django.db.models import F, Func, IntegerField, Q
+from pbn_client.const import ACTIVE, DELETED
 
 from bpp.models import Zrodlo
 from bpp.util import pbar
-from pbn_api.const import ACTIVE, DELETED
 from pbn_api.models import Journal
 from pbn_integrator.utils.threaded_page_getter import (
     ThreadedMongoDBSaver,
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 class ZrodlaGetter(ThreadedMongoDBSaver):
     """Threaded getter for journals."""
 
-    pbn_api_klass = Journal
+    model_class = Journal
 
 
 def pobierz_zrodla(client: PBNClient):

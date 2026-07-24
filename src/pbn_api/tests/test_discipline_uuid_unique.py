@@ -17,7 +17,7 @@ from django.db import IntegrityError, connection, transaction
 
 from bpp.decorators import json
 from bpp.models import Dyscyplina_Naukowa
-from pbn_api.const import PBN_GET_DISCIPLINES_URL
+from pbn_client.const import PBN_GET_DISCIPLINES_URL
 from pbn_api.models import TlumaczDyscyplin
 from pbn_api.models.discipline import Discipline, DisciplineGroup
 

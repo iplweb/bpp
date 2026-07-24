@@ -23,6 +23,7 @@ supported-markers = [
 constraints = [
     { name = "bleach", specifier = ">=6.4.0" },
     { name = "daphne", specifier = ">=4.2.2" },
+    { name = "pyasn1", specifier = ">=0.6.4" },
     { name = "pypdf", specifier = ">=6.13.3" },
 ]
 
@@ -362,7 +363,7 @@ wheels = [
 
 [[package]]
 name = "bpp-iplweb"
-version = "202607.1397"
+version = "202607.1398"
 source = { editable = "." }
 dependencies = [
     { name = "arrow", marker = "platform_python_implementation != 'PyPy'" },
@@ -428,6 +429,7 @@ dependencies = [
     { name = "django-multiseek", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-oauth-toolkit", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-password-policies-iplweb", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-pbn-client", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-pg-baseline", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-polish-inflection", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-prometheus", marker = "platform_python_implementation != 'PyPy'" },
@@ -462,6 +464,7 @@ dependencies = [
     { name = "ortools", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pandas", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pathspec", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pbn-client", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pillow", marker = "platform_python_implementation != 'PyPy'" },
     { name = "psycopg2-binary", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pygad", marker = "platform_python_implementation != 'PyPy'" },
@@ -613,6 +616,7 @@ requires-dist = [
     { name = "django-multiseek", specifier = "==0.10.2" },
     { name = "django-oauth-toolkit", specifier = "==3.3.0" },
     { name = "django-password-policies-iplweb", specifier = "==0.9.0" },
+    { name = "django-pbn-client", git = "https://github.com/iplweb/django-pbn-client.git?rev=9b2164f889861db9292b91508debf0732211bb39" },
     { name = "django-pg-baseline", specifier = ">=0.3.0" },
     { name = "django-polish-inflection", specifier = ">=0.1,<0.2" },
     { name = "django-prometheus", specifier = ">=2.5.0" },
@@ -647,6 +651,7 @@ requires-dist = [
     { name = "ortools", specifier = ">=9.15.6755" },
     { name = "pandas", specifier = ">=3.0.3" },
     { name = "pathspec", specifier = ">=1.1.1" },
+    { name = "pbn-client", git = "https://github.com/iplweb/pbn-client.git?rev=84503cf41b308bc86edc6f8709b71383a8676cac" },
     { name = "pillow", specifier = ">=12.2,<14" },
     { name = "psycopg2-binary", specifier = ">=2.9.12" },
     { name = "pygad", specifier = ">=3.7.0" },
@@ -2096,6 +2101,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f3/df/7b934230c45c74b0c8baa419d99aeb18edb5dbc8526ab79a77a4b7fe0a07/django_password_policies_iplweb-0.9.0.tar.gz", hash = "sha256:4ea38dd5d261e7e7c8694fd8447ca9ce7bceb51a6efac5a609870d81bcadfd43", size = 91109, upload-time = "2026-04-07T13:18:01.688Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f8/36/53dd874280b1223015e1eaa79c21c0131b4d2f6512686e6f8723cdd3c6c5/django_password_policies_iplweb-0.9.0-py3-none-any.whl", hash = "sha256:2b702e17dd80b83e06c7247f6949c5f2c3297b49ac2996be4388049cc49016ab", size = 185463, upload-time = "2026-04-07T13:18:00.447Z" },
+]
+
+[[package]]
+name = "django-pbn-client"
+version = "0.2.1"
+source = { git = "https://github.com/iplweb/django-pbn-client.git?rev=9b2164f889861db9292b91508debf0732211bb39#9b2164f889861db9292b91508debf0732211bb39" }
+dependencies = [
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pbn-client", marker = "platform_python_implementation != 'PyPy'" },
 ]
 
 [[package]]
@@ -3991,6 +4005,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pbn-client"
+version = "0.2.1"
+source = { git = "https://github.com/iplweb/pbn-client.git?rev=84503cf41b308bc86edc6f8709b71383a8676cac#84503cf41b308bc86edc6f8709b71383a8676cac" }
+dependencies = [
+    { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "simplejson", marker = "platform_python_implementation != 'PyPy'" },
+]
+
+[[package]]
 name = "pexpect"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
@@ -4307,11 +4330,11 @@ wheels = [
 
 [[package]]
 name = "pyasn1"
-version = "0.6.3"
+version = "0.6.4"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/5c/5f/6583902b6f79b399c9c40674ac384fd9cd77805f9e6205075f828ef11fb2/pyasn1-0.6.3.tar.gz", hash = "sha256:697a8ecd6d98891189184ca1fa05d1bb00e2f84b5977c481452050549c8a72cf", size = 148685, upload-time = "2026-03-17T01:06:53.382Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a4/9a/23310166d960def5897e91fe20e5b724601b02a22e84ba1f94232c0b7f67/pyasn1-0.6.4.tar.gz", hash = "sha256:9c447d8431c947fe4c8febc4ed9e760bc29011a5b01e5c74b67025bd9fb8ce81", size = 151262, upload-time = "2026-07-09T01:12:33.988Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5d/a0/7d793dce3fa811fe047d6ae2431c672364b462850c6235ae306c0efd025f/pyasn1-0.6.3-py3-none-any.whl", hash = "sha256:a80184d120f0864a52a073acc6fc642847d0be408e7c7252f31390c0f4eadcde", size = 83997, upload-time = "2026-03-17T01:06:52.036Z" },
+    { url = "https://files.pythonhosted.org/packages/9a/3b/6163796d69c3977d1e4287bea4a6979161cbbdd170ebb430511e8e1999ce/pyasn1-0.6.4-py3-none-any.whl", hash = "sha256:deda9277cfd454080ec40b207fb6df82206a3a2688735233cdcd8d3d565f088b", size = 84410, upload-time = "2026-07-09T01:12:32.92Z" },
 ]
 
 [[package]]
@@ -4544,11 +4567,11 @@ wheels = [
 
 [[package]]
 name = "pypdf"
-version = "6.13.3"
+version = "6.14.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/17/18/9947cc201af9ccf76720fd3347bf4f70eb882ce3fcf4cb05f7443e4cf871/pypdf-6.13.3.tar.gz", hash = "sha256:f3cb822769725f1bac658c406cfc9460399043f3750c2d3e4650e0a85eacabd7", size = 6484063, upload-time = "2026-06-17T15:22:00.898Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/03/72/7dfd5ff1c9c37de97a731701f51af091325f123d9d4270361c9c69e4431f/pypdf-6.14.2.tar.gz", hash = "sha256:7873f502fe4385e79539b21d872392dc0c4e3714327c15881cbc7fbfd1f95b25", size = 6491182, upload-time = "2026-06-23T14:18:30.859Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/94/56/2967e621598987905fb8cdfadd8f8de6b5c68c9351f0523c4df8409f28f1/pypdf-6.13.3-py3-none-any.whl", hash = "sha256:c6e3f86afb625791510b02ad5480e94b63970bb957df75d44657c282ecc52224", size = 347288, upload-time = "2026-06-17T15:21:59.512Z" },
+    { url = "https://files.pythonhosted.org/packages/49/e6/136aa8993a2ae7214e0b0ef2edaa0d2e08d1d4e4982635b08a835ff31ec8/pypdf-6.14.2-py3-none-any.whl", hash = "sha256:3f07891af76dc002657e04993ab9b4de81de29f9013b9761d0b7968bff12e946", size = 349514, upload-time = "2026-06-23T14:18:28.867Z" },
 ]
 
 [[package]]

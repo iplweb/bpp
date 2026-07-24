@@ -1,6 +1,6 @@
 [project]
 name = "bpp_iplweb"
-version = "202607.1397"
+version = "202607.1398"
 description = ""
 authors = [
     { name = "Michał Pasternak", email = "michal.dtz@gmail.com" }
@@ -31,6 +31,9 @@ classifiers = [
 requires-python = ">=3.11,<3.15"
 dependencies = [
     "Django>=5.2.16,<5.3",
+    # Reużywalne pakiety PBN wydzielone na PyPI (github.com/iplweb/*).
+    "django-pbn-client>=0.2,<0.3",
+    "pbn-client>=0.2.1,<0.3",
     "django-polish-inflection>=0.1,<0.2",
     "django-axes>=7.0,<9",
     "arrow>=1.3,<2",
@@ -157,6 +160,8 @@ dependencies = [
     "uvicorn-worker>=0.4.0",
     "mozilla-django-oidc>=5.0.2,<6",
     "babel>=2.17",
+    # django-liveops: framework dla dlugo-dzialajacych operacji z live UI
+    # (WebSocket + HTMX). Nastepca wewnetrznego `src/long_running`.
     "django-liveops[celery]>=0.4.0,<0.5",
     "django-oauth-toolkit==3.3.0",
     "django-altcha>=1.0.0",
@@ -224,7 +229,7 @@ include = [
 ]
 
 [tool.bumpver]
-current_version = "v202607.1397"
+current_version = "v202607.1398"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -246,9 +251,12 @@ environments = ["python_version >= '3.10' and python_version < '3.15' and platfo
 #   pypdf   >=6.13.3 (via xhtml2pdf)                 - CVE-2026-48735,
 #                     CVE-2026-49460, CVE-2026-49461, CVE-2026-54530,
 #                     CVE-2026-54531, GHSA-jm82-fx9c-mx94
+#   pyasn1  >=0.6.4  (via pyasn1-modules/python-ldap) - PYSEC-2026-3455,
+#                     PYSEC-2026-3456, PYSEC-2026-3457 (audyt: lipiec 2026)
 constraint-dependencies = [
     "bleach>=6.4.0",
     "daphne>=4.2.2",
+    "pyasn1>=0.6.4",
     "pypdf>=6.13.3",
 ]
 
@@ -308,6 +316,13 @@ default = true
 # WYCOFAĆ gdy upstream wyda release z #2156 → wróć na PyPI `>=4.5`. Tracking: #280.
 [tool.uv.sources]
 django-import-export = { git = "https://github.com/mpasternak/django-import-export.git", rev = "d6ee0d39194fee31437affbdc6fee5ce549b4b8f" }
+# TYMCZASOWO: pbn-client 0.2.1 (ErrorRecord) nie jest jeszcze na PyPI. Pin do
+# commita gałęzi feat/error-record, żeby CI/lokalnie rozwiązać zależność.
+# USUŃ po wydaniu pbn-client 0.2.1 na PyPI (wtedy sam pin >=0.2.1,<0.3 wystarczy).
+pbn-client = { git = "https://github.com/iplweb/pbn-client.git", rev = "84503cf41b308bc86edc6f8709b71383a8676cac" }
+# TYMCZASOWO: django-pbn-client 0.2.1 (sync_dictionary, D3) nie jest jeszcze na
+# PyPI. Pin do commita gałęzi feat/sync-dictionary. USUŃ po wydaniu 0.2.1.
+django-pbn-client = { git = "https://github.com/iplweb/django-pbn-client.git", rev = "9b2164f889861db9292b91508debf0732211bb39" }
 
 # Konfiguracja `pytest-testcontainers-django` — pluginu pytest, ktory
 # startuje kontenery PG/Redis przed importem Django settings i wstrzykuje
@@ -525,7 +540,7 @@ dev = [
 
 [tool.towncrier]
 package = "bpp"
-version = "202607.1397"
+version = "202607.1398"
 package_dir = "src"
 filename = "HISTORY.md"
 start_string = "<!-- towncrier release notes start -->\n"

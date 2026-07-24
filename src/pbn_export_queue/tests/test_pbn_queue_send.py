@@ -111,7 +111,7 @@ class TestSendToPbn:
             "bpp.admin.helpers.pbn_api.cli.sprobuj_wyslac_do_pbn_celery"
         ) as mock_send:
             mock_send.side_effect = StatementsResendFailedException(
-                publication_pk=wydawnictwo_ciagle.pk,
+                correlation_id=wydawnictwo_ciagle.pk,
                 pbn_uid="abc-123",
                 last_error="HTTP 500: Server Error",
             )

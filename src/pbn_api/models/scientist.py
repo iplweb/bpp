@@ -63,7 +63,7 @@ class Scientist(LinkDoPBNMixin, BasePBNMongoDBModel):
         ret = ret.replace(" ,", ",")
         ret = ret.replace("-, ", "")
         ret = ret.replace(", (", " (")
-        if self.status == "DELETED":
+        if self.is_deleted:
             ret = f"[❌ USUNIĘTY] {ret}"
         return ret
 

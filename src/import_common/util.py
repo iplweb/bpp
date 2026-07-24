@@ -12,6 +12,7 @@ from .exceptions import (
     DecompressionBombException,
     HeaderNotFoundException,
     ImproperFileException,
+    PlikZaDuzyException,
 )
 
 # Limit rozmiaru pliku XLSX PO dekompresji. Realne pliki importowe (nawet
@@ -19,6 +20,27 @@ from .exceptions import (
 # 500 MB daje spory zapas, a bomba zip (KB → GB) go przekracza i jest
 # odrzucana przed załadowaniem do pamięci (obrona przed OOM workera importu).
 MAX_ROZMIAR_PO_DEKOMPRESJI = 500 * 1024 * 1024
+
+# Limit rozmiaru samego pliku NA DYSKU. Bomb-check pilnuje rozmiaru po
+# dekompresji, ale „gruby" formalnie-legalny XLSX (~setki MB), który po
+# dekompresji mieści się pod progiem, i tak wciągnąłby cały skoroszyt do RAM.
+# 100 MB z zapasem pokrywa realne importy, a odcina wektor OOM przed load.
+MAX_ROZMIAR_PLIKU = 100 * 1024 * 1024
+
+
+def sprawdz_rozmiar_pliku(sciezka, max_bajtow=MAX_ROZMIAR_PLIKU):
+    """Odrzuca plik większy niż ``max_bajtow`` PRZED załadowaniem do pamięci."""
+    import os
+
+    try:
+        rozmiar = os.path.getsize(sciezka)
+    except OSError:
+        return  # nie ma pliku / nie-ścieżka — nie ten wektor, niech padnie dalej
+    if rozmiar > max_bajtow:
+        raise PlikZaDuzyException(
+            f"Rozmiar pliku ({rozmiar} B) przekracza bezpieczny limit "
+            f"({max_bajtow} B) — plik odrzucony przed przetwarzaniem."
+        )
 
 
 def sprawdz_bombe_dekompresji(sciezka, max_rozpakowany=MAX_ROZMIAR_PO_DEKOMPRESJI):
@@ -133,9 +155,14 @@ def znajdz_naglowek(
     import openpyxl
     from openpyxl.utils.exceptions import InvalidFileException
 
+    sprawdz_rozmiar_pliku(sciezka)
     sprawdz_bombe_dekompresji(sciezka)
     try:
-        f: openpyxl.workbook.workbook.Workbook = openpyxl.load_workbook(sciezka)
+        # read_only: czytamy strumieniowo (tylko cell.value + iteracja rows),
+        # bez wciągania całego skoroszytu do RAM — obrona przed OOM workera.
+        f: openpyxl.workbook.workbook.Workbook = openpyxl.load_workbook(
+            sciezka, read_only=True
+        )
     except InvalidFileException as e:
         raise ImproperFileException(e) from e
 
@@ -186,8 +213,11 @@ class XLSImportFile:
     def xl_workbook(self) -> openpyxl.workbook.workbook.Workbook:
         import openpyxl
 
+        sprawdz_rozmiar_pliku(self.xls_path)
         sprawdz_bombe_dekompresji(self.xls_path)
-        return openpyxl.load_workbook(self.xls_path)
+        # read_only: strumieniowy odczyt (iteracja rows + cell.value) bez
+        # ładowania całego skoroszytu do RAM — obrona przed OOM workera.
+        return openpyxl.load_workbook(self.xls_path, read_only=True)
 
     @cached_property
     def sheet_limit_range_end(self):

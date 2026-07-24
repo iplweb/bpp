@@ -562,10 +562,11 @@ def test_dowolna_wartosc_ciasteczka_nie_zalewa_cache(cache_locmem, site1, uczeln
 def test_nie_cachujemy_odpowiedzi_z_tokenem_csrf():
     """Współdzielony token CSRF to dziura — taka treść nie może wejść do cache'a.
 
-    Szablony ``browse/autor.html``, ``jednostka.html``, ``zrodlo.html``
-    i ``uczelnia.html`` mają bezwarunkowy ``{% csrf_token %}``, dlatego
-    te widoki celowo NIE są objęte dekoratorem. To bezpiecznik na wypadek,
-    gdyby ktoś dodał formularz do szablonu, który cache'ujemy.
+    Bezpiecznik działa jako defense-in-depth: strony browse (autor,
+    jednostka, zrodlo, uczelnia) NIE renderują już ``{% csrf_token %}``
+    (formularz celuje w ``@csrf_exempt`` ``BuildSearch``), więc wchodzą do
+    cache'a. Gdyby jednak ktoś dodał do cache'owanego szablonu formularz
+    stanowego widoku z tokenem, ten bezpiecznik nie pozwoli go współdzielić.
     """
     from django.http import HttpResponse
 
@@ -678,17 +679,139 @@ def test_post_nie_jest_cachowany(cache_locmem, site1, uczelnia1):
 
 
 @pytest.mark.django_db
-def test_widoki_z_formularzem_csrf_nie_sa_cachowane(
+def test_strona_autora_jest_cachowana(
     client, cache_locmem, site1, uczelnia1, autor_uczelnia1
 ):
-    """Strona autora ma formularz POST — nie wolno jej współdzielić."""
-    url = reverse("bpp:browse_autor", args=(autor_uczelnia1.pk,))
-    odp = client.get(url, HTTP_HOST=site1.domain)
+    """Strona autora (wysoki ruch) trafia teraz do cache'a.
 
-    assert odp.status_code == 200
-    assert not odp.has_header("X-BPP-Cache"), (
-        "Widok autora został objęty cache'em, a zawiera token CSRF."
+    Formularz „szukaj publikacji" celuje w ``@csrf_exempt`` ``BuildSearch``,
+    więc szablon nie renderuje już ``{% csrf_token %}`` i bezpiecznik
+    ``_ZAWIERA_CSRF`` go przepuszcza. Wcześniej ten sam URL był świadomie
+    wykluczony z cache'a — patrz historia tego testu.
+    """
+    url = reverse("bpp:browse_autor", args=(autor_uczelnia1.pk,))
+
+    pierwsza = client.get(url, HTTP_HOST=site1.domain)
+    assert pierwsza.status_code == 200
+    assert pierwsza["X-BPP-Cache"] == "MISS"
+    assert b"csrf" not in pierwsza.content.lower(), (
+        "Strona autora nadal zawiera 'csrf' w treści — bezpiecznik ją "
+        "odrzuci i cache nie zadziała."
     )
+
+    druga = client.get(url, HTTP_HOST=site1.domain)
+    assert druga["X-BPP-Cache"] == "HIT", (
+        "Strona autora nie trafiła do cache'a — najpewniej token CSRF "
+        "przetrwał w treści."
+    )
+    assert druga.content == pierwsza.content
+
+
+@pytest.mark.django_db
+def test_strona_jednostki_jest_cachowana(
+    client, cache_locmem, site1, uczelnia1, jednostka_uczelnia1
+):
+    """Strona jednostki wchodzi do cache'a po usunięciu tokenu CSRF."""
+    url = reverse("bpp:browse_jednostka", args=(jednostka_uczelnia1.slug,))
+
+    pierwsza = client.get(url, HTTP_HOST=site1.domain)
+    assert pierwsza.status_code == 200
+    assert pierwsza["X-BPP-Cache"] == "MISS"
+    assert b"csrf" not in pierwsza.content.lower()
+
+    assert client.get(url, HTTP_HOST=site1.domain)["X-BPP-Cache"] == "HIT"
+
+
+@pytest.mark.django_db
+def test_strona_zrodla_jest_cachowana(client, cache_locmem, site1, uczelnia1, zrodlo):
+    """Strona źródła wchodzi do cache'a po usunięciu tokenu CSRF."""
+    url = reverse("bpp:browse_zrodlo", args=(zrodlo.slug,))
+
+    pierwsza = client.get(url, HTTP_HOST=site1.domain)
+    assert pierwsza.status_code == 200
+    assert pierwsza["X-BPP-Cache"] == "MISS"
+    assert b"csrf" not in pierwsza.content.lower()
+
+    assert client.get(url, HTTP_HOST=site1.domain)["X-BPP-Cache"] == "HIT"
+
+
+@pytest.mark.django_db
+def test_strona_uczelni_jest_cachowana(client, cache_locmem, site1, uczelnia1):
+    """Strona uczelni wchodzi do cache'a po usunięciu tokenu CSRF."""
+    url = reverse("bpp:browse_uczelnia", args=(uczelnia1.slug,))
+
+    pierwsza = client.get(url, HTTP_HOST=site1.domain)
+    assert pierwsza.status_code == 200
+    assert pierwsza["X-BPP-Cache"] == "MISS"
+    assert b"csrf" not in pierwsza.content.lower()
+
+    assert client.get(url, HTTP_HOST=site1.domain)["X-BPP-Cache"] == "HIT"
+
+
+@pytest.mark.django_db
+def test_izolacja_multi_host_strona_autora(
+    client,
+    cache_locmem,
+    site1,
+    site2,
+    uczelnia1,
+    uczelnia2,
+    autor_uczelnia1,
+    autor_uczelnia2,
+):
+    """Cache strony autora respektuje separację hostów (multi-tenant).
+
+    Autor uczelni 1 pod domeną 1 i autor uczelni 2 pod domeną 2 to różne
+    ścieżki, ale dla pewności rozgrzewamy oba i sprawdzamy, że treść z
+    jednej domeny nie wycieka pod drugą — klucz cache'a zawiera hosta.
+    """
+    url1 = reverse("bpp:browse_autor", args=(autor_uczelnia1.pk,))
+    url2 = reverse("bpp:browse_autor", args=(autor_uczelnia2.pk,))
+
+    odp1 = client.get(url1, HTTP_HOST=site1.domain)
+    assert odp1.status_code == 200
+    assert autor_uczelnia1.nazwisko in odp1.content.decode()
+
+    # Ten sam URL autora 1, ale pod OBCĄ domeną (uczelnia 2) — nie może
+    # dostać zapamiętanej treści spod domeny 1.
+    odp_obca = client.get(url1, HTTP_HOST=site2.domain)
+    assert odp_obca["X-BPP-Cache"] == "MISS", (
+        "WYCIEK MIĘDZY UCZELNIAMI: strona autora rozgrzana pod domeną 1 "
+        "została zaserwowana pod domeną 2 — klucz cache'a nie zawiera hosta."
+    )
+
+    # Drugie żądanie pod domeną 1 nadal HIT (własny wpis nietknięty).
+    assert client.get(url1, HTTP_HOST=site1.domain)["X-BPP-Cache"] == "HIT"
+
+
+@pytest.mark.django_db
+def test_build_search_dziala_bez_tokenu_csrf(
+    client, site1, uczelnia1, autor_uczelnia1
+):
+    """POST na ``browse_build_search`` bez tokenu CSRF nie zwraca 403.
+
+    ``@csrf_exempt`` na ``BuildSearch`` sprawia, że formularz bez
+    ``{% csrf_token %}`` przechodzi. Wynik to przekierowanie (302) na
+    ``multiseek:index`` po zapisaniu wyszukiwania do sesji.
+    """
+    from django.test import Client
+
+    # ``enforce_csrf_checks=True`` — bez wyłączenia byłby fałszywie zielony,
+    # bo domyślny klient testowy w ogóle nie sprawdza CSRF.
+    surowy_klient = Client(enforce_csrf_checks=True)
+    url = reverse("bpp:browse_build_search")
+
+    odp = surowy_klient.post(
+        url,
+        data={"autor": str(autor_uczelnia1.pk), "suggested-title": "Test"},
+        HTTP_HOST=site1.domain,
+    )
+
+    assert odp.status_code != 403, (
+        "POST bez tokenu CSRF dostał 403 — @csrf_exempt na BuildSearch nie "
+        "zadziałał."
+    )
+    assert odp.status_code == 302
 
 
 @pytest.mark.django_db

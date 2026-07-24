@@ -5,10 +5,10 @@ from django.contrib.admin.models import ADDITION, CHANGE, LogEntry
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count, F, IntegerField, Max, Q
 from django.db.models.functions import Cast
+from pbn_client.const import ACTIVE, DELETED
 
 from bpp.models import BppUser, Uczelnia, Wydawnictwo_Zwarte
 from bpp.models.struktura import Jednostka
-from pbn_api.const import ACTIVE, DELETED
 
 
 class SimpleIntegerFilter(SimpleListFilter):
