@@ -18,6 +18,9 @@
 {% endblock %}
 
 {% block content %}
+    {# Potomkowie w drzewie: formularze wstawiają ich pk jako pola #}
+    {# ukryte. Bez {% with %} każdy formularz robił własne zapytanie. #}
+    {% with descendants=jednostka.get_descendants %}
     {% if jednostka.rodzaj.pokazuj_strukture_podjednostek %}
         {# Styl wydziałowy (dawna strona wydziału, Faza B / #438, III-2): #}
         {# węzeł tego rodzaju (np. "Wydział") nie pokazuje własnych prac ani #}
@@ -40,8 +43,12 @@
                         </div>
                     {% endif %}
 
+                    {# aktualne_podjednostki / kola_naukowe / historyczne_podjednostki #}
+                    {# przychodzą z kontekstu (JednostkaView i tak je liczy, żeby #}
+                    {# zdecydować o przekierowaniu) — szablon nie woła metod modelu, #}
+                    {# bo każde wywołanie to osobne zapytanie. #}
                     {% cache 3600 jednostka_struktura_stats jednostka.pk %}
-                        {% with total_jednostki=jednostka.aktualne_podjednostki.count kola_count=jednostka.kola_naukowe.count hist_count=jednostka.historyczne_podjednostki.count %}
+                        {% with total_jednostki=aktualne_podjednostki|length kola_count=kola_naukowe|length hist_count=historyczne_podjednostki|length %}
                             <div class="wydzial-stats">
                                 {% if total_jednostki > 0 %}
                                     <div class="stat-item stat-jednostki">
@@ -91,7 +98,7 @@
                     {% endif %}
                 {% else %}
                     <input type="hidden" name="jednostka" value="{{ jednostka.pk }}"/>
-                    {% for descendant in jednostka.get_descendants %}
+                    {% for descendant in descendants %}
                         <input type="hidden" name="jednostka" value="{{ descendant.pk }}"/>
                     {% endfor %}
                 {% endif %}
@@ -103,23 +110,26 @@
         </div>
 
         <!-- Modern Navigation -->
-        {% if jednostka.wymaga_nawigacji %}
+        {# Nawigacja gdy niepuste są >= 2 z 3 kategorii. Liczymy to na już #}
+        {# zmaterializowanych listach zamiast wołać jednostka.wymaga_nawigacji, #}
+        {# które robiło trzy dodatkowe EXISTS-y. #}
+        {% if aktualne_podjednostki and kola_naukowe or aktualne_podjednostki and historyczne_podjednostki or kola_naukowe and historyczne_podjednostki %}
             <div data-sticky-container id="navStickyContainer" class="wydzial-nav">
                 <div data-sticky class="sticky"
                      data-anchor="listyJednostek" data-margin-top="4">
                     <nav class="sticky-container">
                         <ul class="menu expanded" data-magellan>
-                            {% if jednostka.aktualne_podjednostki.exists %}
+                            {% if aktualne_podjednostki %}
                                 <li><a href="#aktualne">
                                     <i class="fi-home"></i>Jednostki aktualne
                                 </a></li>
                             {% endif %}
-                            {% if jednostka.kola_naukowe.exists %}
+                            {% if kola_naukowe %}
                                 <li><a href="#kola_naukowe">
                                     <i class="fi-torsos-all"></i>Koła naukowe
                                 </a></li>
                             {% endif %}
-                            {% if jednostka.historyczne_podjednostki.exists %}
+                            {% if historyczne_podjednostki %}
                                 <li><a href="#historyczne">
                                     <i class="fi-clock"></i>Jednostki historyczne
                                 </a></li>
@@ -131,16 +141,16 @@
         {% endif %}
 
         <div class="sections" id="listyJednostek">
-            {% if jednostka.aktualne_podjednostki.exists %}
+            {% if aktualne_podjednostki %}
                 <section id="aktualne" data-magellan-target="aktualne" style="margin-bottom: 40px;">
                     <div class="section-header">
                         <h2>
                             <i class="fi-home"></i>Jednostki aktualne
-                            <span>({{ jednostka.aktualne_podjednostki.count }})</span>
+                            <span>({{ aktualne_podjednostki|length }})</span>
                         </h2>
                     </div>
                     <div class="grid-x grid-margin-x">
-                        {% for col in jednostka.aktualne_podjednostki|columns:3 %}
+                        {% for col in aktualne_podjednostki|columns:3 %}
                             <div class="large-4 medium-6 small-12 cell">
                                 {% for podjednostka in col %}
                                     <div class="jednostka-card card-aktualne">
@@ -168,16 +178,16 @@
                 </section>
             {% endif %}
 
-            {% if jednostka.kola_naukowe.exists %}
+            {% if kola_naukowe %}
                 <section id="kola_naukowe" data-magellan-target="kola_naukowe" style="margin-bottom: 40px;">
                     <div class="section-header">
                         <h2>
                             <i class="fi-torsos-all"></i>Koła naukowe
-                            <span>({{ jednostka.kola_naukowe.count }})</span>
+                            <span>({{ kola_naukowe|length }})</span>
                         </h2>
                     </div>
                     <div class="grid-x grid-margin-x">
-                        {% for col in jednostka.kola_naukowe|columns:3 %}
+                        {% for col in kola_naukowe|columns:3 %}
                             <div class="large-4 medium-6 small-12 cell">
                                 {% for podjednostka in col %}
                                     <div class="jednostka-card card-kola">
@@ -205,16 +215,16 @@
                 </section>
             {% endif %}
 
-            {% if jednostka.historyczne_podjednostki.exists %}
+            {% if historyczne_podjednostki %}
                 <section id="historyczne" data-magellan-target="historyczne" style="margin-bottom: 40px;">
                     <div class="section-header">
                         <h2>
                             <i class="fi-clock"></i>Jednostki historyczne
-                            <span>({{ jednostka.historyczne_podjednostki.count }})</span>
+                            <span>({{ historyczne_podjednostki|length }})</span>
                         </h2>
                     </div>
                     <div class="grid-x grid-margin-x">
-                        {% for col in jednostka.historyczne_podjednostki|columns:3 %}
+                        {% for col in historyczne_podjednostki|columns:3 %}
                             <div class="large-4 medium-6 small-12 cell">
                                 {% for podjednostka in col %}
                                     <div class="jednostka-card card-historyczne">
@@ -332,7 +342,7 @@
         <form method="post" action="{% url "bpp:browse_build_search" %}" class="jednostka__quick-actions-form">
             {% csrf_token %}
             <input type="hidden" name="jednostka" value="{{ jednostka.pk }}"/>
-            {% for descendant in jednostka.get_descendants %}
+            {% for descendant in descendants %}
                 <input type="hidden" name="jednostka" value="{{ descendant.pk }}"/>
             {% endfor %}
             <input type="hidden" name="suggested-title" value="{{ jednostka }}"/>
@@ -359,7 +369,7 @@
               class="browserForm">
             {% csrf_token %}
             <input type="hidden" name="jednostka" value="{{ jednostka.pk }}"/>
-            {% for descendant in jednostka.get_descendants %}
+            {% for descendant in descendants %}
                 <input type="hidden" name="jednostka" value="{{ descendant.pk }}"/>
             {% endfor %}
             <input type="hidden" name="suggested-title" value="{{ jednostka }}"/>
@@ -373,14 +383,17 @@
                 </div>
             </div>
 
-            {% if jednostka.pracownicy.exists and jednostka.pracownicy.count < MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE %}
+            {# Listy autorów pobierane RAZ — bez tego każdy z warunków #}
+            {# (.exists, .count) i każda pętla robiły osobne zapytanie. #}
+            {% with pracownicy=jednostka.pracownicy wspolpracowali=jednostka.wspolpracowali autorzy_publikacji=jednostka.autorzy_na_strone_jednostki %}
+            {% if pracownicy and pracownicy|length < MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE %}
                 <div class="card jednostka__card">
                     <div class="card-section">
                         <h6 class="jednostka__card-title">
                             <i class="fi-torsos-all jednostka__icon--mr-xs"></i>Obecni pracownicy:
                         </h6>
                         <div class="grid-x grid-margin-x">
-                            {% for col in jednostka.pracownicy|columns:2 %}
+                            {% for col in pracownicy|columns:2 %}
                                 <div class="cell medium-6">
                                     {% for autor in col %}
                                         <div class="jednostka__checkbox-item">
@@ -405,7 +418,7 @@
                     </div>
                 </div>
 
-                {% if jednostka.wspolpracowali.exists and jednostka.wspolpracowali.count < MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE %}
+                {% if wspolpracowali and wspolpracowali|length < MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE %}
                     <div class="card jednostka__card">
                         <div class="card-section">
                             <h6 class="jednostka__card-title">
@@ -418,7 +431,7 @@
                                     </a>
                                     <div class="accordion-content jednostka__accordion-content" data-tab-content>
                                         <div class="grid-x grid-margin-x">
-                                            {% for col in jednostka.wspolpracowali|columns:2 %}
+                                            {% for col in wspolpracowali|columns:2 %}
                                                 <div class="cell medium-6">
                                                     {% for autor in col %}
                                                         <div class="jednostka__checkbox-item">
@@ -445,14 +458,14 @@
                     </div>
                 {% endif %}
             {% else %}
-                {% if jednostka.autorzy_na_strone_jednostki.exists and jednostka.autorzy_na_strone_jednostki.count < MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE %}
+                {% if autorzy_publikacji and autorzy_publikacji|length < MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE %}
                     <div class="card jednostka__card">
                         <div class="card-section">
                             <h6 class="jednostka__card-title">
                                 <i class="fi-torsos-all jednostka__icon--mr-xs"></i>Autorzy publikacji:
                             </h6>
                             <div class="grid-x grid-margin-x">
-                                {% for col in jednostka.autorzy_na_strone_jednostki|columns:2 %}
+                                {% for col in autorzy_publikacji|columns:2 %}
                                     <div class="cell medium-6">
                                         {% for autor in col %}
                                             <div class="jednostka__checkbox-item">
@@ -476,6 +489,7 @@
                     </div>
                 {% endif %}
             {% endif %}
+            {% endwith %}
 
             <!-- Years Selection Card -->
             <div class="card jednostka__card">
@@ -541,4 +555,5 @@
     </div>
     {% endif %}
 
+    {% endwith %}
 {% endblock %}

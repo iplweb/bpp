@@ -32,7 +32,12 @@ class Wydawnictwo_Ciagle_AutorViewSet(
     UkryjStatusyKorektyRekorduMixin,
     viewsets.ReadOnlyModelViewSet,
 ):
-    queryset = Wydawnictwo_Ciagle_Autor.objects.all()
+    # typ_odpowiedzialnosci to StringRelatedField (Wydawnictwo_AutorSerializerMixin)
+    # — bez select_related jedno zapytanie NA WIERSZ. Pozostałe relacje
+    # serializera są hyperlinkowane (DRF czyta same FK id z wiersza).
+    queryset = Wydawnictwo_Ciagle_Autor.objects.all().select_related(
+        "typ_odpowiedzialnosci"
+    )
     serializer_class = Wydawnictwo_Ciagle_AutorSerializer
     filterset_class = Wydawnictwo_Ciagle_AutorFilterSet
 
@@ -53,7 +58,14 @@ class Wydawnictwo_CiagleViewSet(
     queryset = (
         Wydawnictwo_Ciagle.objects.exclude(nie_eksportuj_przez_api=True)
         .order_by("pk")
-        .select_related("status_korekty")
+        # Wszystkie StringRelatedField serializera (status_korekty + trójka
+        # openaccess) — każde pominięte pole to jedno zapytanie na wiersz.
+        .select_related(
+            "status_korekty",
+            "openaccess_tryb_dostepu",
+            "openaccess_wersja_tekstu",
+            "openaccess_licencja",
+        )
         .prefetch_related(
             "autorzy_set",
             "zewnetrzna_baza_danych",

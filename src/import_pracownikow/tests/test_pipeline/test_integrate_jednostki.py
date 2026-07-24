@@ -5,7 +5,7 @@ import pytest
 from liveops.testing import MockProgress
 from model_bakery import baker
 
-from bpp.models import Jednostka, Uczelnia, Wydzial
+from bpp.models import Jednostka, Uczelnia
 from import_pracownikow.models import (
     ImportPracownikow,
     ImportPracownikowJednostka,
@@ -137,8 +137,11 @@ def test_uzywaj_wydzialow_tworzy_wydzial_domyslny_i_podpina(uczelnia):
     integruj(imp, MockProgress(imp))
 
     dec.refresh_from_db()
-    assert dec.utworzona.parent_id is not None  # pod węzłem-wydziałem, nie root
-    assert Wydzial.objects.filter(nazwa__istartswith="Wydział Domyślny").exists()
+    assert dec.utworzona.parent_id is not None  # pod wydziałem, nie root
+    # Faza C (#438): wydział domyślny to jednostka TOP-LEVEL (parent IS NULL).
+    assert Jednostka.objects.filter(
+        nazwa__istartswith="Wydział Domyślny", parent__isnull=True
+    ).exists()
 
 
 @pytest.mark.django_db
@@ -199,8 +202,8 @@ def test_pomin_plus_utworz_nowego_autora_nie_crashuje(uczelnia):
 @pytest.mark.django_db
 def test_bez_jednoznacznej_uczelni_degraduje_bez_crasha():
     baker.make(Uczelnia)
-    baker.make(Uczelnia)  # >1 → get_single_uczelnia_or_none() = None
-    imp = _imp()
+    baker.make(Uczelnia)  # >1 i import BEZ uczelni → uczelnia_do_integracji() = None
+    imp = _imp()  # baker: uczelnia=None (pole nullable)
     dec = _decyzja(imp, "Zaklad Bez Uczelni", skrot="ZBU")
     r = _wiersz(imp, dec)
 
@@ -209,3 +212,29 @@ def test_bez_jednoznacznej_uczelni_degraduje_bez_crasha():
     r.refresh_from_db()
     assert r.jednostka_id is None
     assert not Jednostka.objects.filter(nazwa="Zaklad Bez Uczelni").exists()
+
+
+@pytest.mark.django_db
+def test_multi_hosted_uzywa_uczelni_z_importu():
+    """Multi-hosted (>1 uczelnia): import zna swoją uczelnię (złapaną z requestu
+    przy tworzeniu → utrwaloną w ``ImportPracownikow.uczelnia``). FAZA 0 tworzy
+    jednostkę pod TĄ uczelnią, zamiast cicho pomijać przez
+    ``get_single_uczelnia_or_none() = None``. To regresja z pierwotnego zgłoszenia:
+    „zaznaczyłem 4 jednostki do utworzenia, jednostki NIE zostały utworzone"."""
+    u_inna = baker.make(Uczelnia)  # noqa: F841 — druga uczelnia w systemie
+    u_importu = baker.make(Uczelnia)
+    imp = baker.make(
+        ImportPracownikow,
+        stan=ImportPracownikow.STAN_ZATWIERDZONY,
+        uczelnia=u_importu,
+    )
+    dec = _decyzja(imp, "Zakład Wieloculezniany", skrot="ZW")
+    r = _wiersz(imp, dec)
+
+    integruj(imp, MockProgress(imp))
+
+    dec.refresh_from_db()
+    assert dec.utworzona is not None, "jednostka NIE powstała mimo znanej uczelni"
+    assert dec.utworzona.uczelnia_id == u_importu.pk
+    r.refresh_from_db()
+    assert r.jednostka_id == dec.utworzona_id

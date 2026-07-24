@@ -1,4 +1,3 @@
-import asyncio
 import os
 
 import pytest
@@ -13,34 +12,66 @@ from import_pracownikow.tests._helpers import unikalna_nazwa
 __all__ = ["unikalna_nazwa"]
 
 
+# USUNIĘTY fixture ``_bez_wycieklej_petli_zdarzen``.
+#
+# Zerował marker running-loop na czas testu i PRZYWRACAŁ go w ``finally``,
+# żeby obejść wyciek markera z sync-API Playwrighta (flake „You cannot use
+# AsyncToSync in the same thread as an async event loop" w eager-runnerze
+# liveops).
+#
+# Okazał się przyczyną GORSZEGO problemu: Django trzyma połączenia w
+# ``asgiref.local.Local(thread_critical=True)``, którego magazyn zależy od
+# ``asyncio.get_running_loop()``. Przestawianie markera przy żywych
+# połączeniach przerzucało zapisy testu na INNE połączenie — bez atomic bloku,
+# w autocommit — więc dane commitowały się mimo ``django_db`` i wyciekały do
+# kolejnych testów na tym workerze. Na CI: 79 wykryć, wszystkie w tym appie,
+# bo ten autouse obejmował WSZYSTKIE jego testy.
+#
+# Marker jest teraz kasowany U ŹRÓDŁA — po KAŻDYM teście, w
+# ``_sprzatnij_marker_petli`` (``src/conftest.py``), zanim wstanie ``db``
+# następnego testu. To usuwa oba problemy naraz: nieświeży marker nie dożywa
+# kolejnego testu, więc ani ``AsyncToSync`` nie ma się o co wywrócić, ani
+# magazyn połączeń nie przełącza się w trakcie testu.
+
+
 @pytest.fixture(autouse=True)
-def _bez_wycieklej_petli_zdarzen():
-    """Izoluje test od wyciekłej „bieżącej pętli zdarzeń" w wątku workera.
+def _biezaca_uczelnia_importu(request, settings):
+    """Zapewnia bieżącą uczelnię dla testów WIDOKÓW importu (tych z klientem).
 
-    Testy Playwright (sync-API na greenletach) potrafią zostawić w wątku
-    ustawiony ``asyncio`` running-loop marker, który już się nie czyści. Gdy
-    taki test wypadnie na tym samym workerze xdist PRZED testem
-    ``import_pracownikow``, każde wywołanie ``asgiref.sync.async_to_sync``
-    w analizie (eager-runner liveops → ``WebProgress._push`` →
-    ``channel_layer.group_send``) wywala się na „You cannot use AsyncToSync in
-    the same thread as an async event loop"; wyjątek jest połknięty przez
-    runner, a stan importu utyka na ``zmapowany`` zamiast przejść dalej. Efekt:
-    flake zależny od kolejności shardowania (zielono w izolacji, czerwono po
-    teście Playwright na tym samym workerze).
+    Bramka ``WymagajUczelniZRequestuMixin`` redirectuje na home, gdy
+    ``get_for_request`` nie ustali uczelni (0 uczelni → None). Większość testów
+    widoków tworzy import bez tworzenia uczelni — bez rozstrzygalnej uczelni
+    każdy widok dawał 302 zamiast 200. Tworzymy JEDNĄ uczelnię zmapowaną na host
+    klienta (``testserver``), więc ``get_for_request`` ją rozstrzyga (dopasowanie
+    domeny), a importy bez własnej uczelni (``uczelnia=None``) przechodzą
+    ``sprawdz_uczelnie`` przez single-tenant fallback ``uczelnia_do_integracji``.
 
-    Zerujemy marker NA CZAS testu (nasze testy są synchroniczne — nie potrzebują
-    działającej pętli), a po teście PRZYWRACAMY go w niezmienionej postaci, żeby
-    ewentualny kolejny test Playwright na tym workerze zastał swój współdzielony
-    stan pętli nietknięty. Prywatne ``asyncio.events._{get,set}_running_loop``
-    to jedyny sposób na ten marker — dopuszczalne w kodzie wyłącznie testowym.
-    """
-    zapisany = asyncio.events._get_running_loop()
-    if zapisany is not None:
-        asyncio.events._set_running_loop(None)
-    try:
-        yield
-    finally:
-        asyncio.events._set_running_loop(zapisany)
+    Uruchamiane TYLKO gdy test używa klienta HTTP (``admin_client``/``client``)
+    — testy modelowe/pipelinowe (bez klienta, często wrażliwe na liczbę uczelni)
+    są nietknięte. Testy multi-hosted zarządzają uczelniami jawnie
+    (``ustaw_biezaca_uczelnie`` zwalnia host od tej autouse-uczelni; test
+    „brak uczelni" kasuje uczelnie na starcie)."""
+    uzywa_klienta = any(
+        f in request.fixturenames
+        for f in ("client", "admin_client", "client_class", "async_client")
+    )
+    if not uzywa_klienta:
+        return None
+
+    from import_pracownikow.tests._helpers import ustaw_biezaca_uczelnie
+
+    request.getfixturevalue("db")
+    # Gdy test sam żąda fixture'a ``uczelnia`` (bezpośrednio lub tranzytywnie) —
+    # użyj JEJ jako bieżącej, nie twórz drugiej (``bpp_uczelnia_site_id_key``
+    # dopuszcza jedną Uczelnię na Site → druga = IntegrityError).
+    if "uczelnia" in request.fixturenames:
+        u = request.getfixturevalue("uczelnia")
+    else:
+        from bpp.models import Uczelnia
+
+        u = baker.make(Uczelnia)
+    ustaw_biezaca_uczelnie(u, settings)
+    return u
 
 
 def xls_path_factory(suffix=""):

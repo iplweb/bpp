@@ -21,7 +21,7 @@ from api_v1.serializers.zapytanie import (
     AutorKompaktSerializer,
     AutorzyKompaktSerializer,
 )
-from api_v1.viewsets.szukaj import MODELE_DETAIL_VIEWNAME
+from api_v1.viewsets.szukaj import MODELE_DETAIL_VIEWNAME, POLA_REKORDU_DLA_SZUKAJ
 from bpp.djangoql_errors import error_payload
 from bpp.djangoql_schema import RekordLLMSchema
 from bpp.models import Autor, Uczelnia
@@ -103,6 +103,13 @@ class ZapytanieRekordViewSet(ZapytanieAPIBaseViewSet):
     def _scope_queryset(self, qs):
         # Ta sama polityka co /api/v1/szukaj/ (wspólny helper).
         return scope_rekord_api(qs, self._uczelnia(), MODELE_DETAIL_VIEWNAME)
+
+    def get_queryset(self):
+        # Ten sam wąski zestaw kolumn co /api/v1/szukaj/ — oba endpointy
+        # serializują Rekord tym samym SzukajSerializer-em, więc bez only()
+        # /zapytanie/rekord/ ciągnął tsvector search_index i ~40 zbędnych
+        # kolumn mat-view na każdy wiersz strony.
+        return super().get_queryset().only(*POLA_REKORDU_DLA_SZUKAJ)
 
 
 class ZapytanieAutorViewSet(ZapytanieAPIBaseViewSet):

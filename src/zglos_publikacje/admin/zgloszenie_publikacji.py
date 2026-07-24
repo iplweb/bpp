@@ -32,6 +32,7 @@ from .filters import (
     DzienTygodniaFilter,
     MaPlikFilter,
     MaPrzyczyneZwrotuFilter,
+    StanObslugiFilter,
     WydzialJednostkiPierwszegoAutora,
 )
 from .forms import ZwrocEmailForm
@@ -91,10 +92,16 @@ class Zgloszenie_PublikacjiAdmin(
         "wydzial_pierwszego_autora",
         "email",
         "status",
+        "zaimportowano",
         "zgoda_na_publikacje_pelnego_tekstu",
     ]
     list_filter = [
+        StanObslugiFilter,
         "status",
+        # ``RelatedOnlyFieldListFilter``, nie gołe pole: inaczej sidebar
+        # dostaje ``<li>`` dla KAŻDEGO użytkownika w bazie (plus HTMX-owy
+        # licznik z ``DynamicAdminFilterMixin`` do każdej pozycji).
+        ("zaimportowal", admin.RelatedOnlyFieldListFilter),
         WydzialJednostkiPierwszegoAutora,
         DzienTygodniaFilter,
         "rodzaj_zglaszanej_publikacji",
@@ -131,12 +138,25 @@ class Zgloszenie_PublikacjiAdmin(
         )
     )
 
-    readonly_fields = ["pliki_do_pobrania"]
+    # Audyt domknięcia zgłoszenia importerem prac (FD#443) NIE jest polami
+    # formularza — całość pokazuje panel „📥 Zaimportowane …" nad formularzem
+    # (patrz ``change_view`` + ``change_form.html``). Jedno źródło prawdy:
+    # dublowanie tego w ``readonly_fields`` dawało dwa linki do tego samego
+    # rekordu i dwa komplety zapytań na każdy render strony.
+    readonly_fields = [
+        "pliki_do_pobrania",
+    ]
 
     inlines = [
         Zgloszenie_Publikacji_AutorInline,
         Zgloszenie_Publikacji_ZalacznikInline,
     ]
+
+    def get_queryset(self, request):
+        # ``zaimportowal`` czyta panel audytu (strona zgłoszenia) — bez
+        # ``select_related`` to dodatkowy SELECT na użytkownika przy każdym
+        # renderze; na liście oszczędza zapytanie na wiersz przy filtrze.
+        return super().get_queryset(request).select_related("zaimportowal")
 
     def has_add_permission(self, request):
         return False
@@ -185,7 +205,73 @@ class Zgloszenie_PublikacjiAdmin(
         obj = self.get_object(request, object_id)
         if obj is not None:
             extra_context["importer_url"] = self.importer_url(obj)
+            if obj.czy_zaimportowane:
+                # Panel „📥 Zaimportowane …" nad formularzem (FD#443, §8).
+                url, nazwa = self._rekord_url_i_nazwa(obj)
+                extra_context["zaimportowany_rekord_url"] = url
+                extra_context["zaimportowany_rekord_nazwa"] = nazwa
+                sesja = self._ostatnia_sesja_importu(obj)
+                extra_context["sesja_importu_url"] = (
+                    self._sesja_importu_url(sesja) if sesja is not None else None
+                )
         return super().change_view(request, object_id, form_url, extra_context)
+
+    def _rekord_url_i_nazwa(self, obj):
+        """``(url_admina, etykieta)`` rekordu powstałego ze zgłoszenia.
+
+        Zwraca ``(None, None)``, gdy ``odpowiednik_w_bpp`` nie jest ustawiony
+        albo wskazuje na rekord, którego nie da się już załadować (skasowany
+        model / nieistniejący wiersz — GenericFK nie ma integralności).
+        """
+        if obj is None or obj.content_type_id is None or not obj.object_id:
+            return None, None
+
+        try:
+            rekord = obj.odpowiednik_w_bpp
+            if rekord is None:
+                return None, None
+
+            opts = rekord._meta
+            return (
+                reverse(
+                    f"admin:{opts.app_label}_{opts.model_name}_change",
+                    args=[rekord.pk],
+                ),
+                str(rekord),
+            )
+        except Exception:
+            # Zerwany GenericFK to w adminie brak danych do pokazania, nie
+            # awaria — logujemy traceback, bez alarmu Rollbara.
+            zaloguj_polkniety_wyjatek(
+                f"Budowanie linku do odpowiednika w BPP (zgłoszenie pk={obj.pk})",
+                logger=logger,
+                do_rollbar=False,
+            )
+            return None, None
+
+    @staticmethod
+    def _sesja_importu_url(sesja) -> str:
+        return reverse(
+            "admin:importer_publikacji_importsession_change", args=[sesja.pk]
+        )
+
+    @staticmethod
+    def _ostatnia_sesja_importu(obj):
+        """Najnowsza sesja importu związana ze zgłoszeniem albo ``None``.
+
+        ``ImportSession.Meta.ordering`` to ``["-created"]``, więc ``first()``
+        zwraca **najnowszą** sesję — i o to chodzi: gdy import był ponawiany,
+        operatora interesuje ostatnie podejście, nie pierwsze.
+
+        ``sesje_importu`` to relacja odwrotna z ``importer_publikacji``.
+        ``getattr`` z wartością domyślną — relacja jest dokładana osobną
+        migracją tej samej gałęzi, a admin zgłoszeń nie może się wywalić,
+        gdy jej jeszcze nie ma.
+        """
+        manager = getattr(obj, "sesje_importu", None)
+        if manager is None:
+            return None
+        return manager.first()
 
     zwroc_view_template = (
         "admin/zglos_publikacje/zgloszenie_publikacji/zwroc_zgloszenie.html"
@@ -395,7 +481,14 @@ class Zgloszenie_PublikacjiAdmin(
         ogóle jest — importer z providerem „Pozostałe strony WWW" (import z
         ogólnej strony), z adresem w polu identyfikatora. Gdy adresu nie ma
         — ``None`` (przycisku importera nie pokazujemy).
+
+        Zgłoszenie już domknięte importerem także zwraca ``None``: przycisk
+        znika, żeby operator nie zaimportował tej samej pracy drugi raz
+        (FD#443, §7 specyfikacji).
         """
+        if obj.status == Zgloszenie_Publikacji.Statusy.ZAIMPORTOWANY:
+            return None
+
         doi = extract_doi_from_url(obj.strona_www) or extract_doi_from_url(
             getattr(obj, "doi", None)
         )
@@ -410,6 +503,10 @@ class Zgloszenie_PublikacjiAdmin(
             }
         else:
             return None
+
+        # Kontekst zgłoszenia musi przeżyć skok do importera — bez niego
+        # sesja importu nie ma jak domknąć zgłoszenia (FD#443, §6 ścieżka A).
+        params["zgloszenie"] = obj.pk
 
         return "{}?{}".format(
             reverse("importer_publikacji:index"),

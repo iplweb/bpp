@@ -13,7 +13,7 @@ from copy import copy
 
 from django.core.exceptions import ObjectDoesNotExist
 
-from bpp.models import Autor_Jednostka, Uczelnia, Wydzial
+from bpp.models import Autor_Jednostka, Jednostka
 from import_common.core import (
     matchuj_autora,
     matchuj_funkcja_autora,
@@ -385,6 +385,34 @@ def _lagodna_walidacja_wiersza(dane_form):
     return ostrzezenia
 
 
+def _waliduj_dlugosci_pol(elem, dane_form):
+    """Czytelny (PL) błąd PRZED ``AutorForm.is_valid`` gdy któraś wartość
+    przekracza ``max_length`` pola formularza — zamiast surowego angielskiego
+    komunikatu Django („Ensure this value has at most 200 characters"). Limity
+    czytane wprost z ``AutorForm`` (jedno źródło prawdy), etykiety z
+    ``POLA_DOCELOWE``. Fail-fast (odrzucamy plik — spójne z resztą walidacji
+    analizy); ``elem`` niesie kontekst arkusza/wiersza do komunikatu. Inne błędy
+    walidacji (nie-długościowe) lecą dalej normalnie przez ``AutorForm``."""
+    from import_pracownikow.mapping import POLA_DOCELOWE
+
+    etykiety = dict(POLA_DOCELOWE)
+    for nazwa, pole in AutorForm.base_fields.items():
+        limit = getattr(pole, "max_length", None)
+        if not limit:
+            continue
+        wartosc = dane_form.get(nazwa)
+        if wartosc in (None, ""):
+            continue
+        dlugosc = len(str(wartosc))
+        if dlugosc > limit:
+            raise XLSMatchError(
+                elem,
+                etykiety.get(nazwa, nazwa),
+                f"wartość ma {dlugosc} znaków, przekracza maksimum {limit} "
+                f"znaków — skróć wartość w pliku XLS",
+            )
+
+
 def _dane_znormalizowane_z_parserem(cleaned_data, rozbicie, ostrzezenia=None):
     """Kopia cleaned_data wzbogacona o pewność rozbicia parsera (§7): confidence
     rozbicia (high/medium/low) i alternatywy trzymamy WEWNĄTRZ JSON, nie w
@@ -496,7 +524,7 @@ def _zrodlo_jednostki_wiersza(dane_form):
 
     1. ``komórka_złożona`` → ``parsuj_komorke``: nazwa = czysta nazwa z parsera,
        ``skrot_hint`` = skrót z pliku (zasili ``Jednostka.skrot`` przy tworzeniu),
-       oddział rozwiązany przez ``Wydzial.skrot`` → jego NAZWA jako wydzial-hint
+       oddział rozwiązany przez skrót jednostki top-level → jej NAZWA jako hint
        (``matchuj_wydzial`` robi tylko ``nazwa__iexact``; §7 finding #6).
        Klasyfikacja zwykłym ``sklasyfikuj_jednostke`` po skrócie/nazwie.
     2. ``nazwa_jednostki_niepelna`` (i brak ``nazwa_jednostki``) →
@@ -519,7 +547,8 @@ def _zrodlo_jednostki_wiersza(dane_form):
         skrot_hint = wynik["skrot"]
         oddzial = wynik["oddzial"]
         if oddzial:
-            w = Wydzial.objects.filter(skrot=oddzial).first()
+            # Faza C (#438): „wydział" to jednostka TOP-LEVEL (parent IS NULL).
+            w = Jednostka.objects.filter(skrot=oddzial, parent__isnull=True).first()
             if w is not None:
                 wydzial = w.nazwa
         nazwa_do_klas = nazwa if 0 < len(nazwa) <= 512 else ""
@@ -577,6 +606,10 @@ def _przetworz_wiersz(
         skrot_hint,
     ) = _zrodlo_jednostki_wiersza(dane_form)
     jednostka_odroczona = jed_status != STATUS_JEDNOSTKA_TWARDY
+
+    # Czytelny (PL) błąd długości przed AutorForm — zamiast surowego angielskiego
+    # max_length Django. Operator dostaje arkusz/wiersz/pole/limit.
+    _waliduj_dlugosci_pol(elem, dane_form)
 
     autor_form = AutorForm(data=dane_form)
     autor_form.full_clean()
@@ -742,10 +775,11 @@ def _przetworz_wiersz(
 def _materializuj_odpiecia(parent):
     """Tworzy wiersze ``ImportPracownikowOdpiecie`` (zaznaczone=False) dla
     powiązań spoza pliku (§9). Delete-first → idempotentne względem re-analizy
-    (``on_restart`` też je kasuje). Uczelnię ustala
-    ``get_single_uczelnia_or_none`` (brak requestu w tle) — ``None`` pomija
-    wykluczenie obcej jednostki. Zwraca liczbę utworzonych odpięć."""
-    uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
+    (``on_restart`` też je kasuje). Uczelnię ustala ``uczelnia_do_integracji``
+    (uczelnia importu z requestu; fallback: jedyna w systemie) — w multi-hosted
+    (>1 uczelnia) inaczej byłoby ``None`` i wykluczenie obcej jednostki nie
+    działałoby. ``None`` (nieustalona) pomija wykluczenie. Zwraca liczbę odpięć."""
+    uczelnia = parent.uczelnia_do_integracji()
     parent.odpiecia.all().delete()
     ImportPracownikowOdpiecie.objects.bulk_create(
         [
@@ -811,6 +845,11 @@ def analizuj(parent, p):
         else ImportPracownikow.STAN_PRZEANALIZOWANY
     )
     parent.save(update_fields=["stan"])
+
+    # Materializacja stanów pól dla filtra listy wyników — filtr działa na
+    # `stany_pol_snapshot` w SQL, więc pole musi być wypełnione od razu po
+    # analizie (inaczej filtr nie znalazłby świeżo przeanalizowanego importu).
+    parent.odswiez_stany_pol_wierszy()
 
     wiersze = parent.get_details_set()
     p.result(

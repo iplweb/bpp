@@ -8,8 +8,6 @@ from raport_slotow.views import (
     RaportSlotowEwaluacja,
     RaportSlotowZerowyParametry,
     RaportSlotowZerowyWyniki,
-    RouterRaportuSlotowUczelnia,
-    SzczegolyRaportSlotowUczelnia,
     SzczegolyRaportSlotowUczelniaListaRekordow,
     UtworzRaportSlotowUczelnia,
     WyborOsoby,
@@ -40,16 +38,6 @@ urlpatterns = [
         "raport-slotow-uczelnia/new/",
         UtworzRaportSlotowUczelnia.as_view(),
         name="utworz-raport-slotow-uczelnia",
-    ),
-    path(
-        "raport-slotow-uczelnia/<uuid:pk>/",
-        RouterRaportuSlotowUczelnia.as_view(),
-        name="raportslotowuczelnia-router",
-    ),
-    path(
-        "raport-slotow-uczelnia/<uuid:pk>/details/",
-        SzczegolyRaportSlotowUczelnia.as_view(),
-        name="raportslotowuczelnia-details",
     ),
     path(
         "raport-slotow-uczelnia/<uuid:pk>/regen/",

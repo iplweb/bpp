@@ -214,8 +214,15 @@ module.exports = function (grunt) {
                          'ln -sf "$(cd "$PY_DIR" && pwd)" .venv/lib/python'
             },
             esbuild: {
+                // --minify = --minify-syntax + --minify-whitespace +
+                // --minify-identifiers. Ten ostatni byl wczesniej pominiety,
+                // przez co bundle wozil pelne nazwy zmiennych (~136 KB raw /
+                // ~21 KB gzip nadmiarowo). Mangling identyfikatorow jest
+                // bezpieczny: kod wchodzacy do bundla siega do globali przez
+                // window.* (patrz jquery-shim.js + sekcja GLOBAL EXPORTS
+                // w bundle-entry.js), a esbuild nie zmienia nazw wlasciwosci.
                 command: 'npx esbuild src/bpp/static/bpp/js/bundle-entry.js ' +
-                         '--bundle --minify-syntax --minify-whitespace --sourcemap ' +
+                         '--bundle --minify --sourcemap ' +
                          '--outfile=src/bpp/static/bpp/js/dist/bundle.js ' +
                          '--format=iife --target=es2018 ' +
                          '--inject:src/bpp/static/bpp/js/jquery-shim.js ' +
@@ -239,12 +246,41 @@ module.exports = function (grunt) {
                          '--outfile=src/powiazania_autorow/static/powiazania_autorow/js/dist/three-bundle.js ' +
                          '--format=iife --target=es2018'
             },
-            // Post-process bundle to fix IIFE scope issues
-            // django-autocomplete-light: yl namespace (esbuild renames to yl2)
+            // Post-process bundle to fix IIFE scope issues.
+            //
+            // django-autocomplete-light: `autocomplete_light.js` deklaruje
+            // `var yl = yl || {}` (u siebie w module), ale `dal_select2/
+            // select2.js` odwoluje sie do `yl` jako do GLOBALA (nigdzie go
+            // nie deklaruje). Po zbundlowaniu kazdy plik ma wlasny scope,
+            // wiec bez tej laty `yl.registerFunction("select2", ...)` leci
+            // ReferenceError i WSZYSTKIE autocomplete'y DAL (admin + zgloszenia)
+            // przestaja dzialac. Lata aliasuje modulowy `yl` na `window.yl`.
+            //
+            // Wzorzec jest odporny na `--minify-identifiers`: NIE zaklada
+            // konkretnej nazwy (esbuild mangluje `yl` do czegos w rodzaju
+            // `Bs`), tylko dopasowuje ksztalt deklaracji zakotwiczony na
+            // dal-owym `.functions`. Na koncu twardy guard: jesli lata sie
+            // nie zaaplikowala, build MUSI paść, zamiast po cichu wypuscic
+            // zepsuty bundle (dokladnie tak zachowywala sie poprzednia,
+            // sztywno wpisana wersja `var yl2=yl2||{}`).
+            //
+            // Celowo BRE (bez `-E`): BSD sed nie obsluguje wstecznych
+            // referencji `\1` we wzorcu ERE, a potrzebujemy ich, zeby
+            // zlapac te sama zmangowana nazwe trzy razy. BRE z `\(...\)`
+            // + `\{1,\}` dziala tak samo na macOS (BSD) i w obrazie
+            // testowym (GNU).
             patchBundle: {
-                command: "sed -i.bak 's/var yl2=yl2||{}/window.yl=window.yl||{};var yl2=window.yl/g' " +
-                    "src/bpp/static/bpp/js/dist/bundle.js && " +
-                    "rm -f src/bpp/static/bpp/js/dist/bundle.js.bak"
+                command:
+                    "F=src/bpp/static/bpp/js/dist/bundle.js && " +
+                    "sed -i.bak 's/var \\([A-Za-z0-9_$]\\{1,\\}\\)=\\1||{};" +
+                    "\\1\\.functions=\\1\\.functions||{}/" +
+                    "window.yl=window.yl||{};var \\1=window.yl;" +
+                    "\\1.functions=\\1.functions||{}/g' \"$F\" && " +
+                    "rm -f \"$F.bak\" && " +
+                    "{ grep -q 'window.yl=window.yl||{}' \"$F\" || " +
+                    "{ echo 'BLAD: lata yl NIE zaaplikowala sie - " +
+                    "autocomplete DAL bylby zepsuty. Sprawdz wzorzec sed " +
+                    "w Gruntfile (patchBundle).' >&2; exit 1; }; }"
             },
             copyRollbar: {
                 command: 'mkdir -p src/bpp/static/rollbar && ' +

@@ -33,8 +33,12 @@ def restore_triggers(apps, schema_editor):
     # Recreate cache triggers
     load_custom_sql("0400_restore_cache_triggers")
 
-    # Reinstall denorm triggers
-    call_command("denorm_init")
+    # UWAGA: świadomie usunięto tu `call_command("denorm_init")`.
+    # Triggery denorm odtwarza teraz sygnał `post_migrate`
+    # (`denorm.apps` → `denorm_install_triggers_after_migrate`) na
+    # KOMPLETNYM schemacie, po wszystkich migracjach. Wołanie `denorm_init`
+    # w środku historii budowało triggery z DZISIEJSZYCH modeli na cofniętym
+    # schemacie i rebuild-od-zera padał na kolumnie z przyszłości.
 
 
 def populate_ostatnio_zmieniony(apps, schema_editor):
