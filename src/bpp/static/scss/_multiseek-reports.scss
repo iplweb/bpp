@@ -116,3 +116,67 @@
     }
   }
 }
+
+// Tabela krzyżowa (pivot) — patrz report-body-pivot.html.
+.multiseek-pivot-controls {
+  display: flex;
+  gap: 1em;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 1em;
+
+  label {
+    display: flex;
+    flex-direction: column;
+    font-weight: bold;
+    font-size: 0.85em;
+  }
+
+  select {
+    margin: 0;
+  }
+}
+
+.multiseek-pivot-scroll {
+  overflow-x: auto;
+}
+
+table.multiseek-pivot {
+  border-collapse: collapse;
+  margin: 0;
+  width: auto;
+
+  th,
+  td {
+    border: 1px solid #ccc;
+    padding: 4px 10px;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  thead th,
+  tbody th {
+    text-align: left;
+    background: #f4f4f4;
+  }
+
+  .pivot-total {
+    font-weight: bold;
+    background: #eee;
+  }
+}
+
+.multiseek-pivot-note {
+  color: #666;
+  font-size: 0.85em;
+  margin-top: 0.5em;
+}
+
+.multiseek-pivot-export {
+  margin-top: 0.75em;
+  font-size: 0.9em;
+
+  a {
+    margin-right: 0.75em;
+  }
+}

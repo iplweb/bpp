@@ -142,6 +142,31 @@ class PivotResult:
     metric: PivotMetric
     has_autorzy_dim: bool
 
+    def as_table(self):
+        """Zwraca strukturę gotową do iteracji w szablonie (bez indeksowania
+        słownika po zmiennym kluczu). Puste komórki → ``None`` (szablon
+        renderuje pustkę)."""
+        col_keys = [ck for ck, _ in self.cols]
+        return {
+            "row_header": self.row_dim.label,
+            "col_headers": [label for _, label in self.cols],
+            "has_cols": bool(self.cols),
+            "rows": [
+                {
+                    "label": rlabel,
+                    "cells": (
+                        [self.cells.get((rk, ck)) for ck in col_keys]
+                        if col_keys
+                        else [self.cells.get((rk, None))]
+                    ),
+                    "total": self.row_totals.get(rk),
+                }
+                for rk, rlabel in self.rows
+            ],
+            "col_totals": [self.col_totals.get(ck) for ck in col_keys],
+            "grand_total": self.grand_total,
+        }
+
 
 def _annotate(metric):
     return Count("id") if metric.field is None else Sum(metric.field)

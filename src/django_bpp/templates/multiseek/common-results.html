@@ -7,6 +7,9 @@
 {% include "multiseek/print-logo.html" %}
 {% include "multiseek/title.html" %}
 <div class="multiseek-report-container">
+    {% if report_type == "pivot" %}
+        {% include "multiseek/report-body-pivot.html" %}
+    {% else %}
     {% if paginator_count > 25000 %}
         <div style="padding-left: 4em; padding-right: 4em;">
         <p>Wynik obecnego zapytania do bazy dałby w rezultacie {{ paginator_count }} rekordów. Jest to dość duża ilość
@@ -118,6 +121,7 @@
     {% endif %}
 {% endif %}
 
+    {% endif %}
     {% endif %}
 </div>
 

@@ -94,6 +94,29 @@ def test_pivot_results_view_pomija_agregaty_listy(
     assert "sumy" not in resp.context
 
 
+@pytest.mark.django_db
+def test_pivot_renderuje_macierz_html(
+    logged_in_client, test_user, standard_data, denorms
+):
+    """Gałąź pivota renderuje tabelę krzyżową (klasa + RAZEM) i pasek
+    selektorów; zalogowany widzi linki eksportu."""
+    any_ciagle(tytul_oryginalny=f"{PIVOT_TITLE_PREFIX} - gamma", rok=2024)
+    denorms.flush()
+    _set_multiseek_pivot_filter(logged_in_client, test_user)
+
+    resp = logged_in_client.get(
+        reverse("multiseek:results") + "?pivot_row=rok&pivot_val=liczba"
+    )
+    html = resp.content.decode()
+
+    assert 'class="multiseek-pivot"' in html
+    assert "RAZEM" in html
+    assert 'name="pivot_row"' in html
+    assert 'name="pivot_col"' in html
+    assert 'name="pivot_val"' in html
+    assert "export/xlsx" in html
+
+
 def test_pivot_report_type_na_koncu_listy():
     """report_type jest indeksem pozycyjnym — "pivot" MUSI być ostatnim
     elementem, inaczej zapisane formularze przesuną się na inny typ."""

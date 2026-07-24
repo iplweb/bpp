@@ -342,3 +342,47 @@ def test_zbuduj_pivot_sumy_brzegowe_i_col_totals_bez_kolumny(rekordy_pivot):
     assert res_no_col.col_totals == {}
     assert res_no_col.row_totals == {2024: 70, 2023: 5}
     assert res_no_col.grand_total == 75
+
+
+def test_as_table_bez_kolumn():
+    """as_table() dla degeneracji (kolumny=(brak)) — płaska lista."""
+    pr = pivot.PivotResult(
+        rows=[(2024, "2024"), (2023, "2023")],
+        cols=[],
+        cells={(2024, None): 5, (2023, None): 3},
+        row_totals={2024: 5, 2023: 3},
+        col_totals={},
+        grand_total=8,
+        row_dim=pivot.DIMENSIONS["rok"],
+        col_dim=None,
+        metric=pivot.METRICS["liczba"],
+        has_autorzy_dim=False,
+    )
+    t = pr.as_table()
+    assert t["has_cols"] is False
+    assert t["col_headers"] == []
+    assert t["rows"][0] == {"label": "2024", "cells": [5], "total": 5}
+    assert t["col_totals"] == []
+    assert t["grand_total"] == 8
+
+
+def test_as_table_z_kolumnami():
+    """as_table() dla cross-tabu — komórki i sumy brzegowe w kolejności
+    kolumn; brakująca komórka → None (szablon renderuje pustkę)."""
+    pr = pivot.PivotResult(
+        rows=[(2024, "2024")],
+        cols=[("art", "Artykuł"), ("roz", "Rozdział")],
+        cells={(2024, "art"): 9},  # brak (2024, "roz") → None
+        row_totals={2024: 9},
+        col_totals={"art": 9, "roz": 0},
+        grand_total=9,
+        row_dim=pivot.DIMENSIONS["rok"],
+        col_dim=pivot.DIMENSIONS["charakter_ogolny"],
+        metric=pivot.METRICS["liczba"],
+        has_autorzy_dim=False,
+    )
+    t = pr.as_table()
+    assert t["has_cols"] is True
+    assert t["col_headers"] == ["Artykuł", "Rozdział"]
+    assert t["rows"][0]["cells"] == [9, None]
+    assert t["col_totals"] == [9, 0]
