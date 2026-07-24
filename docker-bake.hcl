@@ -28,6 +28,13 @@ variable "GIT_SHA" {
   default = "unknown"
 }
 
+# Kontrolowany salt cache dla pakietów systemowych i zależności. Oficjalny
+# workflow ustawia tydzień ISO, więc cache pozostaje szybki między buildami,
+# ale co najmniej raz w tygodniu pobieramy świeże pakiety z repozytoriów.
+variable "BUILD_CACHE_EPOCH" {
+  default = "manual"
+}
+
 # Rozróżnienie release vs developer build. Master release -> "release"
 # (stopka pokazuje tylko numer wersji); PR/feature/lokalne -> "dev"
 # (stopka dokleja `(<image_tag>, commit XXXXXXX)` po wersji, dla łatwego
@@ -87,10 +94,11 @@ target "base" {
   dockerfile = "docker/bpp_base/Dockerfile"
   context    = "."
   args = {
-    GIT_SHA          = GIT_SHA
-    BPP_BUILD_FLAVOR = BPP_BUILD_FLAVOR
-    BPP_IMAGE_TAG    = BPP_IMAGE_TAG
-    BPP_BRANCH_TAG   = BPP_BRANCH_TAG
+    GIT_SHA           = GIT_SHA
+    BUILD_CACHE_EPOCH = BUILD_CACHE_EPOCH
+    BPP_BUILD_FLAVOR  = BPP_BUILD_FLAVOR
+    BPP_IMAGE_TAG     = BPP_IMAGE_TAG
+    BPP_BRANCH_TAG    = BPP_BRANCH_TAG
   }
   tags = TAG_LATEST == "true" ? [
     "iplweb/bpp_base:${DOCKER_VERSION}",
@@ -98,12 +106,8 @@ target "base" {
   ] : [
     "iplweb/bpp_base:${DOCKER_VERSION}"
   ]
-  # Always rebuild base from scratch — Docker Build Cloud's layer cache has
-  # produced stale bpp_base images (missing files added in fresh COPY lines).
-  # Package downloads remain fast thanks to cache mounts inside
-  # docker/bpp_base/Dockerfile (apt-cache, apt-lists, uv-cache, npm-cache,
-  # yarn-cache) which persist across --no-cache builds.
-  no-cache  = true
+  # Cache jest celowo włączony. GIT_SHA unieważnia snapshot kodu na każdy
+  # commit, a BUILD_CACHE_EPOCH okresowo odświeża wcześniejsze warstwy pakietów.
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry,compression=${COMPRESSION},compression-level=${COMPRESSION_LEVEL},force-compression=true"] : ["type=docker"]
 }
