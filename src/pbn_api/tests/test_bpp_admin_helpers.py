@@ -26,6 +26,7 @@ from pbn_api.exceptions import (
     DOIorWWWMissing,
     LanguageMissingPBNUID,
     PBNValidationError,
+    PKZeroExportDisabled,
 )
 from pbn_api.models import Publication, SentData
 from pbn_api.tests.utils import middleware
@@ -524,6 +525,14 @@ def test_sprobuj_wyslac_do_pbn_przychodzi_inny_pbn_uid_dla_starego_rekordu(
     [
         (DOIorWWWMissing("Musi być DOI lub adres WWW"), "Musi być DOI lub adres WWW"),
         (LanguageMissingPBNUID("Brak odpowiednika języka"), "Brak odpowiednika języka"),
+        # PKZeroExportDisabled JEST podklasą WillNotExportError, ale ma własną
+        # gałąź WYŻEJ. Ten przypadek pilnuje kolejności gałęzi — bez niego
+        # przestawienie ich nie wywaliłoby żadnego testu, a redaktor
+        # dostawałby zły komunikat.
+        (
+            PKZeroExportDisabled("nieużywane, liczy się komunikat z gałęzi"),
+            "Eksport prac z PK=0 jest wyłączony",
+        ),
     ],
 )
 def test_sprobuj_wyslac_do_pbn_will_not_export_czytelny_komunikat_bez_rollbar(
@@ -560,3 +569,35 @@ def test_sprobuj_wyslac_do_pbn_will_not_export_czytelny_komunikat_bez_rollbar(
     )
     assert "Kod błędu" not in text
     report.assert_not_called()  # brak danych w rekordzie to NIE błąd kodu
+
+
+@pytest.mark.django_db
+def test_sprobuj_wyslac_do_pbn_will_not_export_escapuje_html(
+    pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia, mocker
+):
+    """Komunikat wyjątku trafia do `{{ message|safe }}` — musi być escape'owany.
+
+    Treść NIE jest w pełni nasza: ``LanguageMissingPBNUID`` wstrzykuje nazwę
+    języka, a ``CharakterFormalnyMissingPBNUID`` nazwę charakteru formalnego —
+    oba ze słowników edytowalnych w adminie. Lustro istniejącego
+    ``..._validation_error_escapuje_html``.
+    """
+    req = rf.get("/")
+
+    mocker.patch("bpp.admin.helpers.pbn_api.common.rollbar.report_exc_info")
+    mocker.patch.object(
+        pbn_client,
+        "sync_publication",
+        side_effect=LanguageMissingPBNUID(
+            'Język "<script>alert(1)</script>" nie ma odpowiednika w PBN'
+        ),
+    )
+
+    with middleware(req):
+        sprobuj_wyslac_do_pbn_gui(
+            req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
+        )
+
+    text = list(get_messages(req))[0].message
+    assert "<script>" not in text
+    assert "&lt;script&gt;" in text

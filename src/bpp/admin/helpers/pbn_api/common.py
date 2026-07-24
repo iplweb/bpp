@@ -248,22 +248,28 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
         return
 
     except WillNotExportError as e:
-        # Brak danych w rekordzie (DOI/WWW, odpowiednik języka w PBN,
-        # oświadczenia...), a NIE awaria kodu. Komunikat wyjątku jest już
-        # napisany po polsku i wprost mówi, czego brakuje — podajemy go
-        # redaktorowi zamiast generycznego „Kod błędu: …" z gałęzi niżej.
+        # Rekordu nie da się wysłać, dopóki ktoś czegoś nie uzupełni — a NIE
+        # awaria kodu. Komunikat wyjątku jest już napisany po polsku i wprost
+        # mówi, czego brakuje, więc podajemy go redaktorowi zamiast
+        # generycznego „Kod błędu: …" z gałęzi niżej.
         #
         # Bez tej gałęzi wpadało to do `except Exception`, opatrzonego
-        # komentarzem „nie wiadomo, co to za problem" — i zakładało w
-        # Rollbarze item na każde wystąpienie (#1475, #1473), mimo że system
-        # działał poprawnie, a poprawka leży po stronie danych.
+        # komentarzem „nie wiadomo, co to za problem" — i szło do Rollbara
+        # (itemy Rollbar #1475, #1473), mimo że system działał poprawnie.
         #
-        # UWAGA: `PKZeroExportDisabled` (też podklasa WillNotExportError) ma
-        # własną gałąź WYŻEJ i musi tam zostać — ma inny, konfiguracyjny
-        # komunikat.
+        # „lub konfigurację" w komunikacie jest celowe: ta gałąź łapie też
+        # przypadki, w których poprawka NIE leży w rekordzie —
+        # `CharakterFormalnyMissingPBNUID` (słownik charakterów formalnych)
+        # oraz gołe `WillNotExportError` podnoszone przez
+        # `Uczelnia.pbn_client()` przy braku autoryzacji w PBN.
+        #
+        # UWAGA NA KOLEJNOŚĆ: `PKZeroExportDisabled` (też podklasa
+        # WillNotExportError) ma własną gałąź WYŻEJ i musi tam zostać — ma
+        # inny, konfiguracyjny komunikat. Pilnuje tego parametryzacja
+        # testu `..._will_not_export_czytelny_komunikat_bez_rollbar`.
         notificator.warning(
             f'Rekord "{link_do_obiektu(obj)}" nie zostanie wysłany do PBN: {escape(e)}. '
-            f"Uzupełnij dane rekordu i spróbuj ponownie. "
+            f"Popraw dane rekordu lub konfigurację i spróbuj ponownie. "
             f"{open_in_pbn_link}{open_in_pi_link}"
         )
         if raise_exceptions:
