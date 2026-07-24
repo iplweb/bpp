@@ -1,13 +1,11 @@
 import json
-import re
 
 from django import template
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
+from pbn_client.error_record import parse
 
 register = template.Library()
-
-_PBN_EXCEPTION_MODULES = ("pbn_api.exceptions", "pbn_client.exceptions")
 
 
 @register.filter(name="format_json")
@@ -31,38 +29,6 @@ def last_line(value):
         return ""
     lines = [line.strip() for line in value.strip().split("\n") if line.strip()]
     return lines[-1] if lines else ""
-
-
-def _extract_exception_line(value: str) -> str | None:
-    """Extract the last legacy or extracted PBN exception from a traceback."""
-    lines = [line for line in value.strip().split("\n") if line.strip()]
-    for line in reversed(lines):
-        if any(module in line for module in _PBN_EXCEPTION_MODULES):
-            return line.strip()
-    return None
-
-
-def _get_fallback_line(value: str) -> str:
-    """Get the last non-empty line from value."""
-    lines = [line for line in value.strip().split("\n") if line.strip()]
-    return lines[-1] if lines else ""
-
-
-def _parse_exception_parts(exception_line: str) -> tuple[str, str] | None:
-    """Parse exception line into (exception_type, message_part)."""
-    if ":" not in exception_line:
-        return None
-
-    parts = exception_line.split(":", 1)
-    exception_class = parts[0].strip()
-    message_part = parts[1].strip()
-
-    if "." in exception_class:
-        exception_type = exception_class.split(".")[-1]
-    else:
-        exception_type = exception_class
-
-    return exception_type, message_part
 
 
 # UWAGA bezpieczeństwo: treść błędu pochodzi z PBN (niezaufana) i trafia do
@@ -135,10 +101,17 @@ def _format_error_object(
     exception_type: str,
     error_code: str,
     endpoint: str,
-    error: dict,
+    error,
     rodzaj_bledu: str | None = None,
 ) -> str:
-    """Format a single error object into HTML."""
+    """Format a single error payload into HTML.
+
+    ``error`` bywa dict-em (typowo), ale też pustą listą, stringiem albo
+    liczbą (zdegenerowany payload PBN). Membership (``"message" in error``)
+    jest bezpieczne tylko dla dict-a — dla int-a rzucało ``TypeError``
+    (naprawione guardem ``isinstance``). Dla nie-dict-ów pokazujemy sam
+    nagłówek + endpoint (jak dla pustej listy/stringa wcześniej).
+    """
     html_parts = []
 
     # For MERYTORYCZNY errors, skip redundant header/message/description
@@ -149,20 +122,20 @@ def _format_error_object(
             f"{escape(exception_type)}: HTTP {escape(error_code)}</div>"
         )
 
-        if "message" in error:
+        if isinstance(error, dict) and "message" in error:
             html_parts.append(
                 f'<div class="pbn-error-detail">'
                 f"<strong>Wiadomość:</strong> {escape(error['message'])}</div>"
             )
 
-        if "description" in error:
+        if isinstance(error, dict) and "description" in error:
             html_parts.append(
                 f'<div class="pbn-error-detail">'
                 f"<strong>Opis:</strong> {escape(error['description'])}</div>"
             )
 
     # Always show details (this is what users need for MERYTORYCZNY errors)
-    if "details" in error:
+    if isinstance(error, dict) and "details" in error:
         html_parts.extend(_format_details(error["details"]))
 
     # Always show endpoint for technical debugging
@@ -172,46 +145,31 @@ def _format_error_object(
     return "\n".join(html_parts)
 
 
-def _format_http_exception(
-    exception_type: str,
-    error_code: str,
-    endpoint: str,
-    json_str: str,
-    rodzaj_bledu: str | None = None,
-) -> str | None:
-    """Format HTTP exception with JSON payload. Returns None if JSON parsing fails."""
-    # Unescape the JSON string
-    json_str = json_str.replace('\\"', '"').replace("\\\\", "\\")
-
-    try:
-        error_json = json.loads(json_str)
-    except (json.JSONDecodeError, TypeError):
+def _render_http_error(rec, rodzaj_bledu: str | None) -> str | None:
+    """Zrenderuj HTML dla błędu HTTP z ``ErrorRecord``. ``None`` gdy body PBN
+    nie jest poprawnym JSON-em (caller pokazuje wtedy surowy tekst)."""
+    content_json = rec.content_json
+    if content_json is None:
         return None
-
-    if isinstance(error_json, list) and error_json:
+    error_code = str(rec.status_code)
+    if isinstance(content_json, list) and content_json:
         return _format_error_list(
-            exception_type, error_code, endpoint, error_json, rodzaj_bledu
+            rec.exception_type, error_code, rec.url, content_json, rodzaj_bledu
         )
-
     return _format_error_object(
-        exception_type, error_code, endpoint, error_json, rodzaj_bledu
+        rec.exception_type, error_code, rec.url, content_json, rodzaj_bledu
     )
-
-
-# Regex pattern for HttpException tuple format
-_HTTP_EXCEPTION_PATTERN = re.compile(
-    r'\((\d+),\s*["\']([^"\']+)["\']\s*,\s*["\'](.+)["\']\s*\)\s*$',
-    re.DOTALL,
-)
 
 
 @register.filter(name="format_pbn_error")
 def format_pbn_error(value, rodzaj_bledu=None):
     """
     Format PBN API error in a readable way.
-    Extracts the last PBN exception line from a traceback and formats it.
-    Handles both the legacy ``pbn_api.exceptions`` and the extracted
-    ``pbn_client.exceptions`` import paths.
+
+    Parsowanie surowego stringa błędu jest scentralizowane w
+    ``pbn_client.error_record.parse`` (rozpoznaje legacy tuple-repr, traceback z
+    prefiksem ``pbn_api``/``pbn_client`` oraz nowy format v1). Ta funkcja jest
+    już tylko rendererem HTML nad ``ErrorRecord``.
 
     Args:
         value: The error message/traceback string
@@ -220,44 +178,47 @@ def format_pbn_error(value, rodzaj_bledu=None):
     if not value:
         return ""
 
-    exception_line = _extract_exception_line(value)
-    if not exception_line:
-        return mark_safe(
-            f'<div class="pbn-error-text">{escape(_get_fallback_line(value))}</div>'
-        )
+    rec = parse(value)
 
-    try:
-        parsed = _parse_exception_parts(exception_line)
-        if not parsed:
-            return mark_safe(
-                f'<div class="pbn-error-text">{escape(exception_line)}</div>'
-            )
-
-        exception_type, message_part = parsed
-
-        # Try to match HttpException tuple format
-        tuple_match = _HTTP_EXCEPTION_PATTERN.match(message_part)
-        if tuple_match:
-            error_code, endpoint, json_str = tuple_match.groups()
-            result = _format_http_exception(
-                exception_type, error_code, endpoint, json_str, rodzaj_bledu
-            )
-            if result:
-                return mark_safe(result)
-            # JSON parsing failed, return raw error
-            return mark_safe(
-                f'<div class="pbn-error-text">'
-                f"{escape(exception_type)}: HTTP {escape(error_code)} "
-                f"- {escape(json_str)}</div>"
-            )
-
-        # Simple exception format (e.g., StatementsMissing)
+    # Format v1 (reader-first): blob nie ma ``exception_line`` ani surowej
+    # krotki, więc renderujemy WPROST ze strukturalnych pól — inaczej
+    # pokazalibyśmy surowy JSON zamiast czytelnego błędu.
+    if rec.wire == "v1":
+        if rec.kind == "http" and rec.status_code is not None:
+            rendered = _render_http_error(rec, rodzaj_bledu)
+            if rendered is not None:
+                return mark_safe(rendered)
         return mark_safe(
             f'<div class="pbn-error-text">'
-            f"{escape(exception_type)}: {escape(message_part)}</div>"
+            f"{escape(rec.message or rec.fallback_line)}</div>"
         )
 
-    except (ValueError, AttributeError, IndexError):
-        pass
+    # Brak linii wyjątku PBN (goła krotka / plaintext) → surowa ostatnia linia.
+    if rec.exception_line is None:
+        return mark_safe(
+            f'<div class="pbn-error-text">{escape(rec.fallback_line)}</div>'
+        )
 
-    return mark_safe(f'<div class="pbn-error-text">{escape(exception_line)}</div>')
+    # Linia z modułem PBN, ale bez rozpoznanej klasy (brak ``:``).
+    if rec.exception_type is None:
+        return mark_safe(
+            f'<div class="pbn-error-text">{escape(rec.exception_line)}</div>'
+        )
+
+    # HTTP tuple-repr → strukturalny HTML.
+    if rec.kind == "http" and rec.status_code is not None:
+        rendered = _render_http_error(rec, rodzaj_bledu)
+        if rendered is not None:
+            return mark_safe(rendered)
+        # Body nie jest poprawnym JSON-em — pokaż surowo.
+        return mark_safe(
+            f'<div class="pbn-error-text">'
+            f"{escape(rec.exception_type)}: HTTP {escape(str(rec.status_code))} "
+            f"- {escape(rec.content or '')}</div>"
+        )
+
+    # Prosty wyjątek (np. StatementsMissing).
+    return mark_safe(
+        f'<div class="pbn-error-text">'
+        f"{escape(rec.exception_type)}: {escape(rec.message or '')}</div>"
+    )

@@ -1,14 +1,15 @@
-"""Utility functions for PBN export queue views."""
+"""Utility functions for PBN export queue views.
+
+Parsowanie surowych stringów błędów PBN jest scentralizowane w
+``pbn_client.error_record.parse``. Funkcje ``parse_pbn_api_error`` /
+``parse_error_details`` / ``extract_pbn_error_from_komunikat`` są już tylko
+adapterami mapującymi ``ErrorRecord`` na kształty oczekiwane przez widoki.
+"""
 
 import json
 
 from django.utils.text import slugify
-
-_PBN_EXCEPTION_MODULES = ("pbn_api.exceptions", "pbn_client.exceptions")
-
-
-def _contains_pbn_exception(value):
-    return any(module in value for module in _PBN_EXCEPTION_MODULES)
+from pbn_client.error_record import parse
 
 
 def sanitize_filename(text, max_length=100):
@@ -39,96 +40,65 @@ def get_filename_from_record(rekord):
         return "export"
 
 
-def _extract_exception_type(exception_text, has_pbn_prefix):
-    """Extract exception type and message part from exception text."""
-    exception_type = "HttpException"  # Default for tuple format
-    message_part = exception_text.strip()
-
-    if has_pbn_prefix and ":" in exception_text:
-        parts = exception_text.split(":", 1)
-        exception_class = parts[0].strip()
-        message_part = parts[1].strip()
-
-        # Extract exception type (e.g., "HttpException", "StatementsMissing")
-        if "." in exception_class:
-            exception_type = exception_class.split(".")[-1]
-        else:
-            exception_type = exception_class
-
-    return exception_type, message_part
-
-
-def _parse_json_error(error_json):
-    """Parse JSON error response from PBN API."""
-    # Handle both dict and list responses from PBN API
+def _summarize_json_error(error_json):
+    """Zwróć ``(error_message, error_description, error_details_json)`` z body
+    odpowiedzi PBN — reprodukuje semantykę legacy ``_parse_json_error``."""
     if isinstance(error_json, dict):
         error_message = error_json.get("message", "")
         error_description = error_json.get("description", "")
-
-        # Format details as pretty JSON
         if "details" in error_json:
             error_details_json = json.dumps(
                 error_json["details"], indent=2, ensure_ascii=False
             )
         else:
-            # If no details, show the whole error JSON
             error_details_json = json.dumps(error_json, indent=2, ensure_ascii=False)
-
         return error_message, error_description, error_details_json
 
-    elif isinstance(error_json, list):
-        # PBN API returned a list instead of dict
-        error_message = "PBN API zwróciło listę błędów"
-        error_details_json = json.dumps(error_json, indent=2, ensure_ascii=False)
-        return error_message, None, error_details_json
+    if isinstance(error_json, list):
+        return (
+            "PBN API zwróciło listę błędów",
+            None,
+            json.dumps(error_json, indent=2, ensure_ascii=False),
+        )
 
-    else:
-        # Unexpected JSON type
-        error_message = "Nieoczekiwany typ odpowiedzi PBN API"
-        error_details_json = json.dumps(error_json, indent=2, ensure_ascii=False)
-        return error_message, None, error_details_json
+    return (
+        "Nieoczekiwany typ odpowiedzi PBN API",
+        None,
+        json.dumps(error_json, indent=2, ensure_ascii=False),
+    )
 
 
-def _parse_error_tuple(message_part, exception_type):
-    """Parse error tuple format: (code, endpoint, json_str)."""
-    import ast
-
-    try:
-        exception_tuple = ast.literal_eval(message_part.strip())
-        if not (isinstance(exception_tuple, tuple) and len(exception_tuple) >= 3):
-            return None
-
-        error_code = int(exception_tuple[0])
-        error_endpoint = exception_tuple[1]
-        error_json_str = exception_tuple[2]
-
-        result = {
-            "is_pbn_api_error": True,
-            "exception_type": exception_type,
-            "error_code": error_code,
-            "error_endpoint": error_endpoint,
-        }
-
-        # Try to parse the JSON error response
-        try:
-            error_json = json.loads(error_json_str)
-            error_message, error_description, error_details_json = _parse_json_error(
-                error_json
-            )
-
-            result["error_message"] = error_message
-            if error_description:
-                result["error_description"] = error_description
-            result["error_details_json"] = error_details_json
-
-        except (json.JSONDecodeError, TypeError, KeyError):
-            # JSON parsing failed, but we still have the code and endpoint
-            result["error_details_json"] = error_json_str
-
+def _render_pbn_dict(rec, exception_type):
+    """Zbuduj dict błędu HTTP z ``ErrorRecord`` (kształt jak legacy)."""
+    result = {
+        "is_pbn_api_error": True,
+        "exception_type": exception_type,
+        "error_code": rec.status_code,
+        "error_endpoint": rec.url,
+    }
+    if not rec.content_json_valid:
+        # Body nie jest poprawnym JSON-em — zachowaj kod/endpoint, surowy body.
+        # (``content_json_valid`` odróżnia to od poprawnego JSON ``null``, który
+        # legacy renderował jako „Nieoczekiwany typ odpowiedzi PBN API".)
+        result["error_details_json"] = rec.content
         return result
 
-    except (ValueError, SyntaxError):
-        return None
+    error_message, error_description, error_details_json = _summarize_json_error(
+        rec.content_json
+    )
+    result["error_message"] = error_message
+    if error_description:
+        result["error_description"] = error_description
+    result["error_details_json"] = error_details_json
+    return result
+
+
+def _message_part(rec, exception_text):
+    """Część-komunikat po prefiksie ``moduł.Klasa:`` (lub całość dla gołej
+    krotki) — do legacy guardu długości (>512)."""
+    if rec.exception_line is not None and ":" in rec.exception_line:
+        return rec.exception_line.split(":", 1)[1].strip()
+    return exception_text.strip()
 
 
 def parse_pbn_api_error(exception_text):
@@ -153,37 +123,44 @@ def parse_pbn_api_error(exception_text):
     if not exception_text:
         return result
 
-    # Check if this looks like a PBN error (either with prefix or just a tuple)
-    has_pbn_prefix = _contains_pbn_exception(exception_text)
-    looks_like_tuple = exception_text.strip().startswith("(") and "," in exception_text
+    rec = parse(exception_text)
 
-    if not has_pbn_prefix and not looks_like_tuple:
+    # Format v1 (reader-first): rekord jest już strukturalny; NIE stosujemy
+    # legacy guardu >512 (mierzyłby cały blob v1 i błędnie uznał go za „nie-PBN
+    # error", psując odczyt v1). Content v1 jest przycięty przy serializacji.
+    if rec.wire == "v1":
+        if rec.kind == "http" and rec.status_code is not None:
+            return _render_pbn_dict(rec, rec.exception_type or "HttpException")
+        if rec.is_pbn_api_error:
+            result["is_pbn_api_error"] = True
+            result["exception_type"] = rec.exception_type or "HttpException"
+            result["error_message"] = rec.message or ""
         return result
 
-    # Extract exception type and message part
-    exception_type, message_part = _extract_exception_type(
-        exception_text, has_pbn_prefix
-    )
+    has_pbn_prefix = rec.exception_line is not None
+    is_tuple_http = rec.kind == "http" and rec.status_code is not None
 
-    # Security: limit string length to prevent DoS
-    if len(message_part.strip()) > 512:
+    # Ani prefiks PBN, ani goła krotka HTTP → to nie jest błąd PBN.
+    if not has_pbn_prefix and not is_tuple_http:
+        return result
+
+    exception_type = rec.exception_type or "HttpException"
+
+    # Security: limit string length to prevent DoS (jak w legacy).
+    if len(_message_part(rec, exception_text)) > 512:
         if has_pbn_prefix:
             result["is_pbn_api_error"] = True
             result["exception_type"] = exception_type
             result["error_message"] = "Error message too long (>512 chars)"
         return result
 
-    # Try to parse as tuple (HttpException format)
-    tuple_result = _parse_error_tuple(message_part, exception_type)
-    if tuple_result:
-        return tuple_result
+    if is_tuple_http:
+        return _render_pbn_dict(rec, exception_type)
 
-    # If not a tuple, it's a simple exception like StatementsMissing (only if has pbn_prefix)
-    if has_pbn_prefix:
-        result["is_pbn_api_error"] = True
-        result["exception_type"] = exception_type
-        result["error_message"] = message_part.strip()
-
+    # Prosty wyjątek z prefiksem PBN, bez krotki HTTP (np. StatementsMissing).
+    result["is_pbn_api_error"] = True
+    result["exception_type"] = exception_type
+    result["error_message"] = (rec.message or "").strip()
     return result
 
 
@@ -196,15 +173,12 @@ def extract_pbn_error_from_komunikat(komunikat):
     """
     if not komunikat:
         return None
-
-    lines = komunikat.strip().split("\n")
-
-    # Search from the end for a PBN exception from either import path.
-    for line in reversed(lines):
-        if _contains_pbn_exception(line):
-            return line.strip()
-
-    return None
+    rec = parse(komunikat)
+    # Blob v1 nie ma „linii wyjątku"; zwracamy cały blob, żeby downstream
+    # ``parse_pbn_api_error`` (znający v1) mógł go zinterpretować (reader-first).
+    if rec.wire == "v1":
+        return komunikat
+    return rec.exception_line
 
 
 def get_record_title(rekord):
@@ -237,29 +211,31 @@ def parse_error_details(sent_data):
     - error_endpoint: API endpoint where error occurred
     - error_details: Formatted error details (JSON or string)
     """
-    import ast
-
     error_code = "Brak kodu błędu"
     error_endpoint = "Nieznany endpoint"
     error_details = "Brak szczegółów błędu"
 
     if sent_data.exception:
-        try:
-            # Try to parse tuple format: (code, endpoint, json_str)
-            exception_tuple = ast.literal_eval(sent_data.exception)
-            if isinstance(exception_tuple, tuple) and len(exception_tuple) >= 3:
-                error_code = exception_tuple[0]
-                error_endpoint = exception_tuple[1]
-                error_json_str = exception_tuple[2]
-                try:
-                    error_json = json.loads(error_json_str)
-                    error_details = json.dumps(error_json, indent=2, ensure_ascii=False)
-                except (json.JSONDecodeError, TypeError):
-                    error_details = error_json_str
+        rec = parse(sent_data.exception)
+        # Realistyczny ``SentData.exception`` to goła krotka HTTP (``str(e)``),
+        # bez prefiksu ``moduł.Klasa:``. Tylko wtedy wyłuskujemy kod/endpoint.
+        # Goła krotka HTTP (legacy ``str(e)``) LUB blob v1 — oba mają
+        # ``exception_line is None``. Prefiksowane linie (traceback) idą do
+        # surowego fallbacku, jak w legacy.
+        if (
+            rec.kind == "http"
+            and rec.status_code is not None
+            and rec.exception_line is None
+        ):
+            error_code = rec.status_code
+            error_endpoint = rec.url
+            if rec.content_json_valid:
+                error_details = json.dumps(
+                    rec.content_json, indent=2, ensure_ascii=False
+                )
             else:
-                error_details = sent_data.exception
-        except (ValueError, SyntaxError):
-            # If parsing fails, use the raw exception
+                error_details = rec.content
+        else:
             error_details = sent_data.exception
 
     # Use api_response_status as fallback for error code
