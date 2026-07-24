@@ -1,53 +1,90 @@
-"""Wyciszanie błędów poczty w Rollbarze jest opt-in per instalacja.
+"""Wyciszanie błędów uwierzytelniania SMTP w Rollbarze — opt-in per instalacja.
 
-Kontekst (Rollbar #1554, #379 — bpp.umlub.pl): serwer SMTP uczelni odrzuca
-poświadczenia (``535 5.7.3 Authentication unsuccessful``). To awaria po
-stronie administratorów poczty klienta, której nie naprawimy kodem, a każde
-wystąpienie zakłada w Rollbarze osobny item. Wyciszamy — ale WYŁĄCZNIE na tej
-instalacji, bo na pozostałych niedziałająca poczta to realny problem.
+Kontekst (Rollbar #379 i #1554 — bpp.umlub.pl): serwer SMTP uczelni odrzuca
+poświadczenia (``535 5.7.3 Authentication unsuccessful``). To awaria po stronie
+administratorów poczty klienta, której nie naprawimy kodem. Wyciszamy — ale
+WYŁĄCZNIE na tej instalacji i WYŁĄCZNIE ten jeden wyjątek.
 """
 
 import smtplib
+import sys
 
 import rollbar
 
 from django_bpp.rollbar_filters import zbuduj_exception_level_filters
 
 
-def _poziom(filters, wyjatek):
-    """Odpytuje filtry tak, jak zrobi to pyrollbar przy raportowaniu."""
-    for cls, poziom in filters:
-        if isinstance(wyjatek, cls):
-            return poziom
-    return None
+def _wyslane_payloady(monkeypatch, filters, wyjatek):
+    """Przepuszcza ``wyjatek`` przez PRAWDZIWĄ ścieżkę raportowania pyrollbara.
+
+    Świadomie NIE odpytujemy ``rollbar._is_ignored`` — ta funkcja nie jest
+    w pyrollbar 1.4.0 nigdzie wywoływana (jedyne wystąpienie to jej własna
+    definicja). Realne tłumienie idzie przez ``_filtered_level`` →
+    ``events.on_exception_info(level=...)`` → ``filters.basic.filter_by_level``.
+    Test odpytujący martwy kod dawałby fałszywą pewność dokładnie tam, gdzie
+    ma jej dostarczać.
+    """
+    wyslane = []
+    # `report_exc_info` nic nie robi, dopóki pyrollbar nie przejdzie `init()`
+    # — a w testach nie przechodzi (brak tokena). Inicjujemy więc jawnie,
+    # tokenem-atrapą, i przechwytujemy wysyłkę zamiast jej blokować.
+    monkeypatch.setattr(rollbar, "_initialized", True)
+    monkeypatch.setattr(rollbar, "send_payload", lambda p, t: wyslane.append(p))
+    monkeypatch.setitem(rollbar.SETTINGS, "access_token", "atrapa")
+    monkeypatch.setitem(rollbar.SETTINGS, "exception_level_filters", filters)
+    monkeypatch.setitem(rollbar.SETTINGS, "handler", "blocking")
+    monkeypatch.setitem(rollbar.SETTINGS, "enabled", True)
+
+    try:
+        raise wyjatek
+    except BaseException:
+        rollbar.report_exc_info(sys.exc_info())
+
+    return wyslane
 
 
-def test_domyslnie_bledy_poczty_sa_raportowane():
-    filters = zbuduj_exception_level_filters()
+def test_domyslnie_bledy_smtp_sa_raportowane(monkeypatch):
+    wyslane = _wyslane_payloady(
+        monkeypatch,
+        zbuduj_exception_level_filters(),
+        smtplib.SMTPAuthenticationError(535, b"nope"),
+    )
 
-    assert _poziom(filters, smtplib.SMTPAuthenticationError(535, b"nope")) is None
-
-
-def test_wlaczona_flaga_wycisza_bledy_uwierzytelniania_smtp():
-    filters = zbuduj_exception_level_filters(ignoruj_bledy_poczty=True)
-
-    assert _poziom(filters, smtplib.SMTPAuthenticationError(535, b"nope")) == "ignored"
+    assert len(wyslane) == 1
 
 
-def test_wlaczona_flaga_wycisza_cala_rodzine_bledow_smtp():
-    """Awaria „poczta nie działa" ma wiele wcieleń, nie tylko 535."""
-    filters = zbuduj_exception_level_filters(ignoruj_bledy_poczty=True)
+def test_wlaczona_flaga_naprawde_nie_wysyla_bledu_uwierzytelniania(monkeypatch):
+    """Realna ścieżka wysyłki, nie sam kształt listy filtrów."""
+    wyslane = _wyslane_payloady(
+        monkeypatch,
+        zbuduj_exception_level_filters(ignoruj_bledy_uwierzytelniania_smtp=True),
+        smtplib.SMTPAuthenticationError(535, b"nope"),
+    )
 
-    assert _poziom(filters, smtplib.SMTPConnectError(421, b"busy")) == "ignored"
-    assert _poziom(filters, smtplib.SMTPServerDisconnected("bye")) == "ignored"
+    assert wyslane == []
 
 
-def test_flaga_nie_wycisza_bledow_spoza_poczty():
-    """Wyciszenie ma być chirurgiczne — nie zasłaniać niczego innego."""
-    filters = zbuduj_exception_level_filters(ignoruj_bledy_poczty=True)
+def test_flaga_nie_wycisza_bledow_poczty_wynikajacych_z_NASZYCH_danych(monkeypatch):
+    """``SMTPRecipientsRefused`` to zły adres w naszej bazie — chcemy wiedzieć.
 
-    assert _poziom(filters, ConnectionRefusedError("redis")) is None
-    assert _poziom(filters, ValueError("cokolwiek")) is None
+    Zakres wyciszenia jest celowo wąski: awaria po stronie klienta to problem
+    uwierzytelniania, a nie każdy błąd poczty. Odrzucony odbiorca i odrzucony
+    nadawca wskazują na nasze dane/konfigurację i muszą być widoczne także na
+    instalacji z wyciszeniem.
+    """
+    filters = zbuduj_exception_level_filters(ignoruj_bledy_uwierzytelniania_smtp=True)
+
+    for wyjatek in (
+        smtplib.SMTPRecipientsRefused({"zly@adres": (550, b"no such user")}),
+        smtplib.SMTPSenderRefused(553, b"bad sender", "bpp@example.com"),
+    ):
+        assert len(_wyslane_payloady(monkeypatch, filters, wyjatek)) == 1
+
+
+def test_flaga_nie_wycisza_niczego_spoza_poczty(monkeypatch):
+    filters = zbuduj_exception_level_filters(ignoruj_bledy_uwierzytelniania_smtp=True)
+
+    assert len(_wyslane_payloady(monkeypatch, filters, ValueError("cokolwiek"))) == 1
 
 
 def test_ustawienia_faktycznie_wpinaja_filtry_do_rollbara():
@@ -58,16 +95,3 @@ def test_ustawienia_faktycznie_wpinaja_filtry_do_rollbara():
     # W testach flaga jest wyłączona → żadnych wyciszeń. To jest też asercja
     # bezpieczeństwa: domyślna instalacja NIE gubi błędów.
     assert settings.ROLLBAR["exception_level_filters"] == []
-
-
-def test_pyrollbar_faktycznie_honoruje_nasz_format_filtrow(monkeypatch):
-    """Kontrakt z pyrollbarem: nasze krotki muszą działać w ``_is_ignored``.
-
-    Bez tego testu literówka w formacie (np. ``"ignore"`` zamiast
-    ``"ignored"``) przeszłaby niezauważona — filtry są danymi, nie kodem.
-    """
-    filters = zbuduj_exception_level_filters(ignoruj_bledy_poczty=True)
-    monkeypatch.setitem(rollbar.SETTINGS, "exception_level_filters", filters)
-
-    assert rollbar._is_ignored(smtplib.SMTPAuthenticationError(535, b"nope"))
-    assert not rollbar._is_ignored(ValueError("cokolwiek"))

@@ -161,11 +161,12 @@ env = environ.Env(
     ROLLBAR_ACCESS_TOKEN=(str, None),
     # Publiczny token klienta (post_client_item) do frontendowego Rollbara.
     ROLLBAR_CLIENT_ACCESS_TOKEN=(str, ""),
-    # Wycisza w Rollbarze CAŁĄ rodzinę smtplib.SMTPException. Ustawiane PER
-    # INSTALACJA, domyślnie WYŁĄCZONE — szczegóły w django_bpp.rollbar_filters.
-    # Włączać wyłącznie tam, gdzie administratorzy poczty klienta mają znaną
-    # awarię po swojej stronie, której nie naprawimy kodem.
-    DJANGO_BPP_ROLLBAR_IGNORE_SMTP_ERRORS=(bool, False),
+    # Wycisza w Rollbarze smtplib.SMTPAuthenticationError (i tylko ją).
+    # Ustawiane PER INSTALACJA, domyślnie WYŁĄCZONE — szczegóły i uzasadnienie
+    # zakresu w django_bpp.rollbar_filters. Włączać wyłącznie tam, gdzie
+    # administratorzy poczty klienta mają znaną, zgłoszoną awarię po swojej
+    # stronie, której nie naprawimy kodem.
+    DJANGO_BPP_ROLLBAR_IGNORE_SMTP_AUTH_ERRORS=(bool, False),
     #
     # Prometheus
     #
@@ -1771,7 +1772,9 @@ ROLLBAR = {
         re.compile(r".*\{\{\s*clickURL\s*\}\}$"),
     ),
     "exception_level_filters": zbuduj_exception_level_filters(
-        ignoruj_bledy_poczty=env("DJANGO_BPP_ROLLBAR_IGNORE_SMTP_ERRORS"),
+        ignoruj_bledy_uwierzytelniania_smtp=env(
+            "DJANGO_BPP_ROLLBAR_IGNORE_SMTP_AUTH_ERRORS"
+        ),
     ),
 }
 
