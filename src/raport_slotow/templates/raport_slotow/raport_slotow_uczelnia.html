@@ -24,9 +24,16 @@
         momencie {{ object.started_on }}, czyli {{ object.started_on|naturaltime }}.
         <br/><a href="?_export=xlsx"><i class="fi-page-export"></i> Pobierz w formacie XLSX</a> |
 
-        <a title="Generuje raport od zera na podstawie aktualnych danych" href="../regen">
-            <i class="fi-refresh"></i> Wygeneruj
-            ponownie</a>
+        {# Regen jest akcją mutującą (POST-only liveops RestartView) — formularz #}
+        {# z tokenem CSRF zamiast linku GET. #}
+        <form method="post" action="../regen/" style="display:inline">
+            {% csrf_token %}
+            <button type="submit" class="link-button"
+                    title="Generuje raport od zera na podstawie aktualnych danych"
+                    style="background:none;border:none;padding:0;color:inherit;cursor:pointer">
+                <i class="fi-refresh"></i> Wygeneruj ponownie
+            </button>
+        </form>
     </div>
 
     <style>

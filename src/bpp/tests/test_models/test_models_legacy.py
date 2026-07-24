@@ -157,7 +157,6 @@ def test_afiliacja_na_rok():
     # które jest teraz self-FK do jednostki-korzenia. Przekazujemy węzły-
     # korzenie (``j.wydzial`` = węzeł-lustro wydziału ``w``), nie obiekty
     # Wydzial.
-    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 
     w = any_wydzial()
     n = any_wydzial(skrot="w2", nazwa="w2")
@@ -165,7 +164,7 @@ def test_afiliacja_na_rok():
     a = baker.make(Autor)
 
     w_node = j.wydzial
-    n_node, _ = znajdz_lub_utworz_wezel_wydzialu(n)
+    n_node = n
 
     aj = Autor_Jednostka.objects.create(
         autor=a, jednostka=j, funkcja=baker.make(Funkcja_Autora)
@@ -294,7 +293,10 @@ def test_autor_jednostka(autor_jednostka_setup):
     aj = Autor_Jednostka.objects.create(autor=a, jednostka=j, funkcja=f)
     assert str(aj) == "Lol Omg ↔ kierownik, L."
 
-    aj = Autor_Jednostka.objects.create(autor=a, jednostka=j, funkcja=None)
+    # Drugie powiazanie tej samej pary z pusta data rozpoczecia jest zabronione
+    # przez ``bpp_autor_jednostka_bez_daty_unikalne``, a i tak nie bylo tu
+    # potrzebne — sprawdzamy tylko ``__str__`` bez funkcji.
+    aj.funkcja = None
     assert str(aj) == "Lol Omg ↔ L."
 
     aj.rozpoczal_prace = datetime(2012, 1, 1)

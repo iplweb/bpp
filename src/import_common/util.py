@@ -45,9 +45,11 @@ def sprawdz_bombe_dekompresji(sciezka, max_rozpakowany=MAX_ROZMIAR_PO_DEKOMPRESJ
             f"potencjalna bomba dekompresyjna."
         )
 
+
 # openpyxl importujemy LOKALNIE (nie na poziomie modułu): ten moduł jest
-# importowany eager przez import_common.models (XLSImportFile) już przy
-# django.setup(), a openpyxl przez compat/numbers.py ciągnie całe numpy
+# importowany eager przez modele importerów (np. import_list_if.models →
+# XLSImportFile) już przy django.setup(), a openpyxl przez compat/numbers.py
+# ciągnie całe numpy
 # (~tens MB RSS) do KAŻDEGO procesu — także web/ASGI, który nigdy nie czyta
 # xlsx. Dzięki PEP 563 (future annotations) adnotacje typu ``openpyxl.*``
 # w sygnaturach poniżej są tylko łańcuchami i nie wymagają openpyxl w

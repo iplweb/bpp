@@ -1,3 +1,4 @@
+from datetime import timedelta
 from pathlib import Path
 
 from celery.utils.log import get_task_logger
@@ -82,6 +83,75 @@ def usun_stare_logi_logowania_easyaudit(
         "easyaudit LoginEvent: usunięto %d wpisów starszych niż %d mies. (cutoff=%s)",
         deleted,
         months,
+        cutoff.date(),
+    )
+    return deleted
+
+
+# Domyślna retencja nieudanych prób logowania (django-axes AccessAttempt) w
+# dniach. AXES_RESET_ON_SUCCESS kasuje wpisy TYLKO po udanym logowaniu tego
+# samego (login, IP) — wpisy generowane przez boty skanujące /admin/login/
+# nigdy nie doczekają się „swojego" udanego logowania i zostawałyby w bazie
+# bezterminowo. 90 dni: wielokrotnie powyżej AXES_COOLOFF_TIME (30 min), więc
+# retencja nigdy nie skasuje wpisu wciąż uczestniczącego w lockoucie, a
+# jednocześnie zostawia okno na forensykę kampanii brute-force.
+AXES_ACCESSATTEMPT_RETENTION_DAYS = 90
+
+# Ile wierszy kasujemy w jednej porcji. `.delete()` po całym queryssecie
+# ściąga do pamięci Pythona PK WSZYSTKICH pasujących wierszy (Django rozwija
+# kaskady po stronie ORM-a) — na instancji z wieloletnim backlogiem prób
+# logowania pierwszy przebieg zjadłby sporo RAM-u i trzymał jedną długą
+# transakcję. Partiami: stałe zużycie pamięci, krótkie transakcje.
+AXES_ACCESSATTEMPT_DELETE_BATCH = 5000
+
+# Limit czasu retencji axes — jako jedyne z zadań retencyjnych nie miało go
+# wcześniej. Kasowanie partiami czyni zadanie przerywalnym bez szkody: każda
+# partia to osobna transakcja, więc ubicie w połowie zostawia bazę spójną, a
+# resztę dokasuje kolejny tygodniowy przebieg.
+AXES_RETENCJA_TIME_LIMIT = 30 * 60
+
+
+@app.task(
+    ignore_result=True,
+    time_limit=AXES_RETENCJA_TIME_LIMIT,
+    soft_time_limit=int(0.95 * AXES_RETENCJA_TIME_LIMIT),
+)
+def usun_stare_proby_logowania_axes(days=AXES_ACCESSATTEMPT_RETENTION_DAYS):
+    """Usuwa wpisy axes AccessAttempt starsze niż `days` dni.
+
+    Dotyczy wyłącznie AccessAttempt (nieudane próby logowania — to ta tabela
+    puchnie od skanerów). AccessLog (udane logowania/wylogowania) NIE jest
+    ruszany.
+
+    Kasuje partiami po AXES_ACCESSATTEMPT_DELETE_BATCH wierszy, żeby pierwszy
+    przebieg na instancji z wieloletnim backlogiem nie materializował w
+    pamięci PK całej tabeli.
+    """
+    from axes.models import AccessAttempt
+    from django.utils import timezone
+
+    cutoff = timezone.now() - timedelta(days=days)
+
+    deleted = 0
+    while True:
+        # Partia PK — LIMIT po stronie bazy, bez ściągania całości.
+        batch = list(
+            AccessAttempt.objects.filter(attempt_time__lt=cutoff).values_list(
+                "pk", flat=True
+            )[:AXES_ACCESSATTEMPT_DELETE_BATCH]
+        )
+        if not batch:
+            break
+        usuniete, _ = AccessAttempt.objects.filter(pk__in=batch).delete()
+        deleted += usuniete
+        # Partia krótsza niż limit = to była ostatnia porcja.
+        if len(batch) < AXES_ACCESSATTEMPT_DELETE_BATCH:
+            break
+
+    logger.info(
+        "axes AccessAttempt: usunięto %d wpisów starszych niż %d dni (cutoff=%s)",
+        deleted,
+        days,
         cutoff.date(),
     )
     return deleted

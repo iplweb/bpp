@@ -1,17 +1,13 @@
 """Testy migracji 0463 (Faza B / #438, IV-2): remap wartości zapisanych
 wyszukiwań multiseek po konsolidacji Wydział→Jednostka.
 
-Część testów działa na czystych funkcjach-helperach migracji (bez DB) —
-weryfikują rekurencyjny walker, remap A/B, drop i idempotencję. Osobny test
-integracyjny puszcza pełne ``remap_saved_searches`` na realnych modelach.
+Testy działają na czystych funkcjach-helperach migracji (bez DB) — weryfikują
+rekurencyjny walker, remap A/B, drop i idempotencję. Testy end-to-end na
+żywych modelach usunięto w Fazie C wraz z polem ``legacy_wydzial_id`` (patrz
+nota niżej).
 """
 
 import importlib
-import json
-
-import pytest
-from django.apps import apps as global_apps
-from model_bakery import baker
 
 mod = importlib.import_module("bpp.migrations.0463_faza_b_iv2_multiseek_values")
 
@@ -226,128 +222,10 @@ def test_search_without_relevant_fields_untouched():
 
 
 # --- Integracja z DB --------------------------------------------------------
-
-
-@pytest.mark.django_db
-def test_remap_saved_searches_end_to_end():
-    from multiseek.models import SearchForm
-
-    from bpp.models import Jednostka, RodzajJednostki, Uczelnia
-
-    uczelnia = baker.make(Uczelnia)
-    node = baker.make(
-        Jednostka, uczelnia=uczelnia, parent=None, wydzial=None, legacy_wydzial_id=4242
-    )
-    RodzajJednostki.objects.get_or_create(nazwa="Standard")
-    owner = baker.make("bpp.BppUser")
-
-    data = {
-        "form_data": [
-            None,
-            {
-                "field": "Wydział",
-                "operator": "equals",
-                "value": "4242",
-                "prev_op": None,
-            },
-            {
-                "field": "Rodzaj jednostki",
-                "operator": "equals",
-                "value": "koło naukowe",
-                "prev_op": "and",
-            },
-            {
-                "field": "Wydział",
-                "operator": "equals",
-                "value": "999999",  # niemapowalny → drop
-                "prev_op": "and",
-            },
-        ]
-    }
-    sf = SearchForm.objects.create(
-        name="test-0463", owner=owner, public=False, data=json.dumps(data)
-    )
-
-    mod.remap_saved_searches(global_apps, None)
-
-    sf.refresh_from_db()
-    out = json.loads(sf.data)["form_data"]
-    # niemapowalny wydział usunięty → zostają 2 wpisy (+ leading prev_op)
-    assert len(out) == 3
-    assert out[1] == {
-        "field": "Wydział",
-        "operator": "equals",
-        "value": str(node.pk),
-        "prev_op": None,
-    }
-    assert out[2]["field"] == "Rodzaj jednostki"
-    assert out[2]["value"] == "Koło naukowe"
-
-    # Idempotencja: drugi przebieg nic nie zmienia.
-    before = sf.data
-    mod.remap_saved_searches(global_apps, None)
-    sf.refresh_from_db()
-    assert sf.data == before
-
-
-@pytest.mark.django_db
-def test_remap_saved_searches_obejmuje_promowany_wydzial():
-    """#438: zapisany search po PROMOWANYM 1-jednostkowym wydziale (I-4/0457)
-    remapuje się na promowaną jednostkę, NIE jest dropowany.
-
-    Promowana jednostka to REALNA jednostka (``rodzaj="Standard"``) z
-    ``legacy_wydzial_id`` zastąpionego wydziału — a ``wydzial_mapa`` w
-    ``remap_saved_searches`` buduje się z ``legacy_wydzial_id`` NIEZALEŻNIE od
-    rodzaju, więc obejmuje ją tak samo jak syntetyczne lustro."""
-    from multiseek.models import SearchForm
-
-    from bpp.models import Jednostka, RodzajJednostki, Uczelnia
-
-    uczelnia = baker.make(Uczelnia)
-    rodzaj_std, _ = RodzajJednostki.objects.get_or_create(nazwa="Standard")
-    # Promowana realna jednostka: root, rodzaj Standard, legacy starego wydziału.
-    promowana = baker.make(
-        Jednostka,
-        uczelnia=uczelnia,
-        parent=None,
-        wydzial=None,
-        rodzaj=rodzaj_std,
-        legacy_wydzial_id=321,
-    )
-    owner = baker.make("bpp.BppUser")
-
-    data = {
-        "form_data": [
-            None,
-            {"field": "Wydział", "operator": "equals", "value": "321", "prev_op": None},
-        ]
-    }
-    sf = SearchForm.objects.create(
-        name="promowany-0463", owner=owner, public=False, data=json.dumps(data)
-    )
-
-    mod.remap_saved_searches(global_apps, None)
-
-    sf.refresh_from_db()
-    out = json.loads(sf.data)["form_data"]
-    # Wpis NIE zdropowany — przemapowany na pk promowanej jednostki.
-    assert out[1] == {
-        "field": "Wydział",
-        "operator": "equals",
-        "value": str(promowana.pk),
-        "prev_op": None,
-    }
-
-
-@pytest.mark.django_db
-def test_remap_saved_searches_ignores_broken_json():
-    from multiseek.models import SearchForm
-
-    owner = baker.make("bpp.BppUser")
-    sf = SearchForm.objects.create(
-        name="broken-0463", owner=owner, public=False, data="{not json"
-    )
-    # Nie może rzucić — tylko log + skip.
-    mod.remap_saved_searches(global_apps, None)
-    sf.refresh_from_db()
-    assert sf.data == "{not json"
+#
+# Faza C (#438): testy end-to-end ``remap_saved_searches`` usunięto wraz z
+# polem ``legacy_wydzial_id`` (migracja 0468). Funkcja migracji 0463 mapowała
+# stare pk wydziału PO TYM polu, więc nie da się jej już wykonać na żywych
+# modelach (w realnym łańcuchu migracji 0463 działa dalej — używa zamrożonego
+# stanu ``apps``, w którym pole jeszcze istnieje). Logikę remapu wartości
+# pokrywają czyste testy słownikowe powyżej.

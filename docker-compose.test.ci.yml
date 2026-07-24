@@ -12,8 +12,8 @@
 #     write `cov.xml` somewhere the runner can pick up after
 #     `compose run --rm` discards the container.
 #
-# Dropping the docker.sock mount too — CI tests don't use Docker
-# from inside the test-runner (PYTEST_TESTCONTAINERS_DISABLE=1).
+# Test-runner nie dostaje docker.sock ani lokalnie, ani w CI. Docker na hoście
+# uruchamia tylko usługi Compose; pytest używa ich przez sieć.
 
 services:
   test-runner:

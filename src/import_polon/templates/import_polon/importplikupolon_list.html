@@ -19,7 +19,7 @@
     <ul>
         {% for object in object_list %}
             <li>
-                <a href="{% url "import_polon:importplikupolon-router" object.pk %}">plik {{ object.plik.name }}</a>:
+                <a href="{{ object.get_absolute_url }}">plik {{ object.plik.name }}</a>{% if object.uczelnia %} <span class="label secondary">{{ object.uczelnia }}</span>{% endif %}:
                 import utworzono {{ object.created_on }}{% if object.finished_on %}, ukończono {{ object.finished_on }}
                 {% if object.finished_successfully %}, zakończono pomyślnie{% else %}, zakończono z błędem{% endif %}
             {% endif %}

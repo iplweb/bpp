@@ -105,7 +105,7 @@
 
     {# JavaScript bundle - built with esbuild, includes jQuery and all JS deps. #}
     {# Owinięte w {% compress js %}, żeby django-compressor wyemitował plik z #}
-    {# content-hashem (CACHE-<VERSION>/js/output.<hash>.js) — cache-busted tak #}
+    {# content-hashem (CACHE/js/output.<hash>.js) — cache-busted tak #}
     {# samo jak output.<hash>.css. Bez tego nginx serwuje wieczny stary #}
     {# bundle.js spod stałej nazwy (brak hasha => agresywny cache). #}
     {% compress js %}

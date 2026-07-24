@@ -2,10 +2,15 @@
 Celery tasks for author duplicate scanning.
 """
 
+from datetime import timedelta
+
 from celery import shared_task
 from celery.utils.log import get_task_logger
-from django.db import transaction
+from django.db import connection, transaction
 from django.utils import timezone
+
+from django_bpp.celery_tasks import GlobalSingleton
+from django_bpp.db_locks import advisory_lock_id
 
 from .utils.constants import MAX_PEWNOSC, MIN_PEWNOSC
 
@@ -16,6 +21,50 @@ MIN_CONFIDENCE_TO_STORE = 50
 
 # How often to update progress (every N authors)
 PROGRESS_UPDATE_INTERVAL = 100
+
+# Budżet czasu pełnego skanu duplikatów autorów.
+#
+# To najcięższe z zadań cyklicznych: dwie fazy (PBN + general) przechodzą
+# przez wszystkich autorów, budują bucket-y i generują pary kandydatów z
+# fuzzy-scoringiem. Bucketowanie ratuje przed pełnym O(n^2), ale przy dużym
+# korpusie to i tak dziesiątki minut.
+#
+# 3 h to zapas na najgorszy realny przypadek, z dwoma twardymi sufitami:
+#  * `visibility_timeout` brokera = 6 h — limit MUSI być wyraźnie niższy,
+#    inaczej Redis re-dostarczy zadanie jeszcze w trakcie jego wykonywania
+#    i dostaniemy dwa przebiegi „replace mode" naraz,
+#  * start o 3:00 (crontab) — 3 h kończy przebieg przed 6:00, czyli przed
+#    porannym ruchem użytkowników.
+SCAN_TIME_LIMIT = 3 * 60 * 60
+
+# Po tylu sekundach wpis DuplicateScanRun w statusie RUNNING uznajemy za
+# osierocony (zombie). Worker ubija zadanie twardo po SCAN_TIME_LIMIT, więc
+# przebieg starszy niż limit + margines NIE MOŻE już legalnie trwać — został
+# po SIGKILL-u workera / OOM-ie, gdzie blok `except` nie miał szans się
+# wykonać i przestawić statusu na FAILED.
+#
+# Margines jest po to, żeby nie ubić przebiegu, który właśnie dostaje
+# SIGKILL-a i za moment sam się posprząta. Bez przeterminowania osierocony
+# RUNNING zakleszczyłby skanowanie NA ZAWSZE — a to gorsze niż ryzyko, przed
+# którym się bronimy.
+SCAN_STALE_AFTER = SCAN_TIME_LIMIT + 15 * 60
+
+# Klucz Postgresowego advisory locka chroniącego „slot" skanu duplikatów.
+# Patrz `_przejmij_slot_skanu` — to on, a nie `select_for_update`, zapewnia
+# wzajemne wykluczanie (na pustej tabeli nie ma wierszy do zablokowania).
+#
+# Wartość wyprowadzona deterministycznie (blake2s — patrz
+# `django_bpp.db_locks`), żeby dało się ją odtworzyć i żeby nikt nie użył
+# przypadkiem tej samej gdzie indziej.
+#
+# CELOWO nie `abs(hash(...))` — wbudowany `hash()` dla str jest solony
+# PYTHONHASHSEED-em, więc daje INNĄ wartość w każdym procesie Pythona, a
+# klucz liczony w ten sposób nie wyklucza niczego między workerami (każdy
+# zakłada lock na własnym numerze).
+#
+# Wynik jest bit-w-bit tą samą liczbą (8081800802642310148) co wcześniejsza
+# stała literalna — pilnuje tego test w `tests/test_advisory_lock_id.py`.
+SCAN_SLOT_LOCK_ID = advisory_lock_id("deduplikator_autorow.scan_for_duplicates.slot")
 
 
 def normalize_confidence(raw_score: int) -> float:
@@ -429,7 +478,104 @@ def _run_pbn_phase(scan_run, min_confidence=MIN_CONFIDENCE_TO_STORE):
     )
 
 
-@shared_task(bind=True, name="deduplikator_autorow.scan_for_duplicates")
+def _przejmij_slot_skanu(user, celery_task_id):
+    """Atomowo zajmij „slot" skanu: zwróć nowy DuplicateScanRun albo None.
+
+    Druga — NIEZALEŻNA OD REDISA — warstwa ochrony przed równoległymi
+    przebiegami. Lock `GlobalSingleton` sam nie wystarcza, bo
+    `unlock_all`/`clear_locks` na sygnale `worker_ready`
+    (django_bpp/celery_tasks.py) kasuje WSZYSTKIE locki globalnie: przy
+    wielu kontenerach workera rolling restart któregokolwiek z nich zwalnia
+    w środku 3-godzinnego skanu lock chroniący przebieg trwający na INNYM
+    workerze. Bez tej bariery drugi przebieg wszedłby w
+    `DuplicateCandidate.objects.all().delete()` i skasował wyniki pierwszego.
+
+    Zwraca None, gdy trwa już świeży skan (wołający ma się wycofać).
+
+    Wpisy RUNNING starsze niż SCAN_STALE_AFTER są przeterminowywane na FAILED
+    — inaczej jeden SIGKILL workera zakleszczyłby skanowanie na zawsze.
+
+    Wzajemne wykluczanie stoi na `pg_advisory_xact_lock`, NIE na
+    `select_for_update`. To istotne: `SELECT ... FOR UPDATE` blokuje
+    ZNALEZIONE wiersze, a gdy żaden skan nie trwa, zbiór wynikowy jest PUSTY —
+    nie ma czego zablokować i wszystkie równoległe transakcje przechodzą dalej,
+    każda tworząc własny wpis RUNNING (phantom read). Czyli dokładnie w
+    jedynym momencie, w którym bariera ma coś robić, `select_for_update` jest
+    dekoracją. Advisory lock jest zakładany na UMOWNYM obiekcie, który istnieje
+    niezależnie od wierszy, więc działa też przy pustej tabeli. Wariant
+    `_xact_` zwalnia się sam na COMMIT/ROLLBACK i przy zerwaniu połączenia,
+    więc nie wprowadza nowej klasy zombie.
+    """
+    from .models import DuplicateScanRun
+
+    stale_cutoff = timezone.now() - timedelta(seconds=SCAN_STALE_AFTER)
+
+    with transaction.atomic():
+        # MUSI być pierwszą instrukcją w transakcji — cała sekcja krytyczna
+        # (odczyt RUNNING + decyzja + INSERT) ma być pod tym lockiem.
+        with connection.cursor() as cur:
+            cur.execute("SELECT pg_advisory_xact_lock(%s)", [SCAN_SLOT_LOCK_ID])
+
+        running = list(
+            DuplicateScanRun.objects.filter(
+                status=DuplicateScanRun.Status.RUNNING
+            ).order_by("pk")
+        )
+
+        zywe = [r for r in running if r.started_at > stale_cutoff]
+        osierocone = [r for r in running if r.started_at <= stale_cutoff]
+
+        for zombie in osierocone:
+            zombie.status = DuplicateScanRun.Status.FAILED
+            zombie.finished_at = timezone.now()
+            zombie.error_message = (
+                f"Przebieg porzucony: status RUNNING utrzymywał się dłużej niż "
+                f"{SCAN_STALE_AFTER}s (prawdopodobnie ubity worker). "
+                f"Przeterminowany automatycznie przy starcie kolejnego skanu."
+            )
+            zombie.save(update_fields=["status", "finished_at", "error_message"])
+            logger.warning(
+                "Przeterminowano osierocony DuplicateScanRun pk=%s (started_at=%s)",
+                zombie.pk,
+                zombie.started_at,
+            )
+
+        if zywe:
+            logger.warning(
+                "Skan duplikatów już trwa (DuplicateScanRun pk=%s, "
+                "started_at=%s) — pomijam to uruchomienie.",
+                zywe[0].pk,
+                zywe[0].started_at,
+            )
+            return None
+
+        return DuplicateScanRun.objects.create(
+            status=DuplicateScanRun.Status.RUNNING,
+            created_by=user,
+            celery_task_id=celery_task_id,
+        )
+
+
+@shared_task(
+    bind=True,
+    name="deduplikator_autorow.scan_for_duplicates",
+    # GlobalSingleton, nie Singleton: zadanie bierze `user_id`, a zwykły
+    # Singleton kluczuje lock po argumentach — dwóch użytkowników klikających
+    # „skanuj" dostałoby dwa równoległe przebiegi, a każdy zaczyna od
+    # `DuplicateCandidate.objects.all().delete()`. Lock musi być globalny.
+    #
+    # Lock w Redisie to jednak TYLKO pierwsza warstwa — `clear_locks` na
+    # `worker_ready` kasuje go przy restarcie dowolnego workera. Druga,
+    # niezależna warstwa siedzi w `_przejmij_slot_skanu` (bariera w bazie).
+    base=GlobalSingleton,
+    # lock_expiry > time_limit: lock jest brany przy PUBLIKACJI zadania, a
+    # twardy kill dopiero w `start + time_limit`. Gdy zadanie poczeka w
+    # kolejce, lock wygasłby PRZED ubiciem — i otworzył okno na duplikat.
+    # +5 min pokrywa realistyczny czas oczekiwania w kolejce.
+    lock_expiry=SCAN_TIME_LIMIT + 300,
+    time_limit=SCAN_TIME_LIMIT,
+    soft_time_limit=int(0.95 * SCAN_TIME_LIMIT),
+)
 def scan_for_duplicates(self, user_id=None, min_confidence=MIN_CONFIDENCE_TO_STORE):
     """Combined task: faza PBN + faza general w jednym przebiegu.
 
@@ -445,11 +591,10 @@ def scan_for_duplicates(self, user_id=None, min_confidence=MIN_CONFIDENCE_TO_STO
     logger.info("Starting duplicate scan task (combined PBN + general)...")
 
     user = _get_user_by_id(user_id)
-    scan_run = DuplicateScanRun.objects.create(
-        status=DuplicateScanRun.Status.RUNNING,
-        created_by=user,
-        celery_task_id=self.request.id or "",
-    )
+    scan_run = _przejmij_slot_skanu(user, self.request.id or "")
+    if scan_run is None:
+        # Inny przebieg trwa — wycofujemy się PRZED skasowaniem kandydatów.
+        return {"status": "already_running"}
 
     try:
         # Replace mode: clear all previous candidates

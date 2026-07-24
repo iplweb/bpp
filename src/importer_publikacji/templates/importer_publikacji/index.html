@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% load static %}
 
 {% block extratitle %}Importer publikacji{% endblock %}
 
@@ -49,10 +49,8 @@
         animation: wizardFadeIn 0.3s ease-out;
     }
     </style>
-    <script
-      src="https://unpkg.com/htmx.org@2.0.4"
-      crossorigin="anonymous"
-    ></script>
+    {# HTMX self-hostowany — bez zależności od zewnętrznego CDN-a. #}
+    <script src="{% static 'liveops/vendor/htmx.min.js' %}"></script>
     <script>
     function showWizardError(msg) {
         var wizard = document.getElementById(

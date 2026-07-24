@@ -1,34 +1,13 @@
-import os
-
 import pytest
 from dbtemplates.models import Template
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError
 
-import bpp
 from bpp.models import Wydawnictwo_Zwarte
 from bpp.models.szablondlaopisubibliograficznego import (
     SzablonDlaOpisuBibliograficznego,
 )
 from pbn_api.models import Publication
-
-
-def _sync_opis_template_z_dysku():
-    """Wymuś, by dbtemplate ``opis_bibliograficzny.html`` w bazie testowej miał
-    aktualną treść z dysku.
-
-    Baza testowa ładuje baseline, w którym wiersz dbtemplate bywa starszy niż
-    plik na dysku (to dokładnie problem #329 — loader dbtemplates zasłania
-    dysk). Aby przetestować *logikę* szablonu niezależnie od mechanizmu
-    dystrybucji, synchronizujemy wiersz z dyskiem."""
-    sciezka = os.path.join(
-        os.path.dirname(bpp.__file__), "templates", "opis_bibliograficzny.html"
-    )
-    with open(sciezka, encoding="utf-8") as f:
-        tresc = f.read()
-    Template.objects.update_or_create(
-        name="opis_bibliograficzny.html", defaults={"content": tresc}
-    )
 
 
 @pytest.mark.django_db
@@ -44,10 +23,14 @@ def test_nulltest_idx():
 
     if not SzablonDlaOpisuBibliograficznego.objects.filter(model=None).exists():
         # przy ponownym uruchamianiu testow moze byc taka sytuacja
-        SzablonDlaOpisuBibliograficznego.objects.create(template=test_template)
+        SzablonDlaOpisuBibliograficznego.objects.create(
+            nazwa_szablonu=test_template.name
+        )
 
     with pytest.raises(IntegrityError):
-        SzablonDlaOpisuBibliograficznego.objects.create(template=test_template)
+        SzablonDlaOpisuBibliograficznego.objects.create(
+            nazwa_szablonu=test_template.name
+        )
 
 
 @pytest.mark.django_db
@@ -60,10 +43,12 @@ def test_rozne_opisy_rozne_klasy(wydawnictwo_ciagle, wydawnictwo_zwarte):
     # Szablon dla każdej klasy
     try:
         sz = SzablonDlaOpisuBibliograficznego.objects.get(model=None)
-        sz.template = test_template
+        sz.nazwa_szablonu = test_template.name
         sz.save()
     except SzablonDlaOpisuBibliograficznego.DoesNotExist:
-        SzablonDlaOpisuBibliograficznego.objects.create(template=test_template)
+        SzablonDlaOpisuBibliograficznego.objects.create(
+            nazwa_szablonu=test_template.name
+        )
 
     assert wydawnictwo_ciagle.opis_bibliograficzny() == test_template.content
     assert wydawnictwo_zwarte.opis_bibliograficzny() == test_template.content
@@ -71,7 +56,7 @@ def test_rozne_opisy_rozne_klasy(wydawnictwo_ciagle, wydawnictwo_zwarte):
     # Szablon tylko dla zwartych
     SzablonDlaOpisuBibliograficznego.objects.create(
         model=ContentType.objects.get_for_model(Wydawnictwo_Zwarte),
-        template=second_template,
+        nazwa_szablonu=second_template.name,
     )
 
     assert wydawnictwo_ciagle.opis_bibliograficzny() == test_template.content
@@ -142,7 +127,6 @@ def test_opis_bibliograficzny_wydawnictwo_nadrzedne_z_pbn_object_book(
     wydawnictwo_zwarte.zrodlo = None
     wydawnictwo_zwarte.save()
 
-    _sync_opis_template_z_dysku()
     opis = wydawnictwo_zwarte.opis_bibliograficzny()
     assert "W: Rodzic z surowego PBN." in opis
 
@@ -189,3 +173,18 @@ def test_opis_bibliograficzny_bez_wydawnictwa_nadrzednego(
 
     opis = wydawnictwo_zwarte.opis_bibliograficzny()
     assert "W:" not in opis
+
+
+@pytest.mark.django_db
+def test_clean_odrzuca_nieistniejacy_szablon():
+    from django.core.exceptions import ValidationError
+
+    sz = SzablonDlaOpisuBibliograficznego(nazwa_szablonu="nie-istnieje-xyz.html")
+    with pytest.raises(ValidationError):
+        sz.clean()
+
+
+@pytest.mark.django_db
+def test_clean_przepuszcza_szablon_z_dysku():
+    sz = SzablonDlaOpisuBibliograficznego(nazwa_szablonu="opis_bibliograficzny.html")
+    sz.clean()  # nie rzuca

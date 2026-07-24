@@ -1,6 +1,6 @@
 {
     "name": "bpp-iplweb",
-    "version": "v202607.1397",
+    "version": "v202607.1398",
     "license": "MIT",
     "devDependencies": {
         "esbuild": "^0.28.1",
@@ -17,6 +17,7 @@
     "dependencies": {
         "3d-force-graph": "^1.80.0",
         "basic-ftp": "5.3.1",
+        "chart.js": "^4.4.0",
         "cytoscape": "^3.34.0",
         "cytoscape-fcose": "^2.2.0",
         "cytoscape-svg": "^0.4.0",

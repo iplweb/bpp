@@ -282,15 +282,14 @@ def test_szukaj_scope_dwie_uczelnie(
     # powinien wyjść przy oglądaniu jako A.
     from django.contrib.sites.models import Site
 
-    from bpp.models import Uczelnia, Wydzial
-    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+    from bpp.models import Jednostka, Uczelnia
 
     site_b = Site.objects.create(domain="uczelnia-b.example.com", name="B")
     uczelnia_b = Uczelnia.objects.create(nazwa="Uczelnia B", skrot="BB", site=site_b)
-    wydzial_b = Wydzial.objects.create(uczelnia=uczelnia_b, nazwa="WB", skrot="WB")
-    from bpp.models import Jednostka
-
-    parent_b, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial_b)
+    # Faza C (#438): „wydział" to jednostka TOP-LEVEL (parent IS NULL).
+    parent_b = Jednostka.objects.create(
+        uczelnia=uczelnia_b, nazwa="WB", skrot="WB", parent=None
+    )
     jednostka_b = Jednostka.objects.create(
         nazwa="Jedn. B", skrot="JB", parent=parent_b, uczelnia=uczelnia_b
     )

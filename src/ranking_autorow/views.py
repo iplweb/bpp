@@ -4,9 +4,9 @@ from urllib.parse import urlencode
 from django.db.models import Q
 from django.db.models.aggregates import Sum
 from django.http.response import HttpResponseRedirect
-from django.template.defaultfilters import safe
 from django.urls import reverse
 from django.utils.functional import cached_property
+from django.utils.html import format_html
 from django.views.generic.edit import FormView
 from django_tables2 import Column
 from django_tables2.export.views import ExportMixin
@@ -133,7 +133,10 @@ class RankingAutorowTable(Table):
 
     def render_autor(self, record):
         url = reverse("bpp:browse_autor", args=(record.autor.slug,))
-        return safe(f'<a href="{url}">{record.autor}</a>')
+        # format_html escapuje {record.autor} — nazwisko autora (potencjalnie
+        # z importu bez sanityzacji) nie może wstrzyknąć markupu na publiczną,
+        # anonimową stronę rankingu (stored XSS).
+        return format_html('<a href="{}">{}</a>', url, record.autor)
 
     def value_autor(self, record):
         return str(record.autor)
