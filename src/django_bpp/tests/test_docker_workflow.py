@@ -96,6 +96,8 @@ def test_ci_test_runner_jest_pushowany_z_kompresja_zstd():
 def test_oficjalny_build_uzywa_kontrolowanego_cache_warstw():
     workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
     dockerfile = DOCKERFILE_PATH.read_text(encoding="utf-8")
+    assert "uv.lock docker-bake.hcl /src/" in dockerfile
+
     bake = BAKE_PATH.read_text(encoding="utf-8")
     base_target = bake.split('target "base" {', maxsplit=1)[1].split(
         'target "appserver" {', maxsplit=1

@@ -372,7 +372,7 @@ WORKDIR /src
 COPY src/ /src/src/
 COPY --from=test-assets-builder /src/src/ /src/src/
 COPY baseline-sql/ /src/baseline-sql/
-COPY conftest.py pytest.ini Makefile pyproject.toml uv.lock /src/
+COPY conftest.py pytest.ini Makefile pyproject.toml uv.lock docker-bake.hcl /src/
 COPY docker/bpp_base/Dockerfile /src/docker/bpp_base/Dockerfile
 COPY .github/workflows/build-docker-images.yml \
      .github/workflows/refresh-baseline.yml \
