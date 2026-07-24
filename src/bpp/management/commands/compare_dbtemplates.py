@@ -6,22 +6,14 @@ showing differences using a unified diff format similar to the Unix diff(1) comm
 """
 
 import difflib
-import logging
 import sys
-from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
-from django.template import TemplateDoesNotExist
-from django.template.loader import get_template
-
-from bpp.util import zaloguj_polkniety_wyjatek
 
 try:
     from dbtemplates.models import Template
 except ImportError:
     Template = None
-
-logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -320,58 +312,11 @@ class Command(BaseCommand):
         return colored_lines
 
     def get_filesystem_template_content(self, template_name):
-        """Get template content from filesystem"""
-        try:
-            # Get the template object to access its origin
-            django_template = get_template(template_name)
+        """Źródło szablonu z DYSKU (z pominięciem loadera dbtemplates).
 
-            # Try to get the template source
-            if hasattr(django_template, "template") and hasattr(
-                django_template.template, "source"
-            ):
-                return django_template.template.source
+        Dawniej używała ``get_template()``, który idzie łańcuchem loaderów z
+        dbtemplates na pierwszym miejscu — więc dla nazwy istniejącej w bazie
+        zwracała treść z DB i porównanie było DB-vs-DB (zawsze 'match')."""
+        from bpp.util.dbtemplates_disk import disk_template_source
 
-            # Alternative approach: try to find and read the template file directly
-            from django.template.loader import find_template
-
-            try:
-                template_obj, origin = find_template(template_name)
-                if hasattr(origin, "name") and origin.name:
-                    # Try to read the file directly
-                    template_path = Path(origin.name)
-                    if template_path.exists():
-                        return template_path.read_text(encoding="utf-8")
-            except (TemplateDoesNotExist, AttributeError):
-                pass
-
-            # Fallback: render template to get content (might not be exact source)
-            # This won't work for templates with context variables, but it's a fallback
-            try:
-                from django.template import Context
-
-                rendered = django_template.render(Context({}))
-                return rendered
-            except Exception:
-                zaloguj_polkniety_wyjatek(
-                    f"Renderowanie szablonu jako fallback do odczytu źródła "
-                    f"(template_name={template_name})",
-                    logger=logger,
-                    do_rollbar=False,
-                )
-
-        except TemplateDoesNotExist:
-            pass
-        except Exception as e:
-            zaloguj_polkniety_wyjatek(
-                f"Wczytywanie źródła szablonu do porównania "
-                f"(template_name={template_name})",
-                logger=logger,
-                do_rollbar=False,
-            )
-            # Log the error but continue
-            if hasattr(self, "stderr"):
-                self.stderr.write(
-                    f"Warning: Could not load template {template_name}: {e}"
-                )
-
-        return None
+        return disk_template_source(template_name)
