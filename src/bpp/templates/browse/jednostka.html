@@ -89,7 +89,8 @@
         {# poddrzewa byłby wtedy pusty/zignorowany albo dał pusty raport. #}
         <div class="jednostka__quick-actions">
             <form method="post" action="{% url "bpp:browse_build_search" %}" class="jednostka__quick-actions-form">
-                {% csrf_token %}
+                {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt #}
+                {# (zapis tylko do własnej sesji), by strona weszła do cache. #}
                 {% if not jednostka.parent_id and jednostka.ma_poddrzewo %}
                     {% if uczelnia.uzywaj_wydzialow %}
                         <input type="hidden" name="wydzial" value="{{ jednostka.pk }}"/>
@@ -340,7 +341,7 @@
     <!-- Quick Actions -->
     <div class="jednostka__quick-actions">
         <form method="post" action="{% url "bpp:browse_build_search" %}" class="jednostka__quick-actions-form">
-            {% csrf_token %}
+            {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt. #}
             <input type="hidden" name="jednostka" value="{{ jednostka.pk }}"/>
             {% for descendant in descendants %}
                 <input type="hidden" name="jednostka" value="{{ descendant.pk }}"/>
@@ -367,7 +368,7 @@
         <form method="post"
               action="{% url "bpp:browse_build_search" %}"
               class="browserForm">
-            {% csrf_token %}
+            {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt. #}
             <input type="hidden" name="jednostka" value="{{ jednostka.pk }}"/>
             {% for descendant in descendants %}
                 <input type="hidden" name="jednostka" value="{{ descendant.pk }}"/>

@@ -15,6 +15,7 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.utils.functional import cached_property
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.csrf import csrf_exempt
 
 try:
     from django.core.urlresolvers import reverse
@@ -150,6 +151,7 @@ def conditional(**kwargs):
     return method_decorator(condition(**kwargs))
 
 
+@method_decorator(cache_publiczny(), name="dispatch")
 class UczelniaView(DetailView):
     model = Uczelnia
     template_name = "browse/uczelnia.html"
@@ -190,6 +192,7 @@ def browse_wydzial_redirect(request, slug):
     return redirect("bpp:browse_jednostka", slug=slug, permanent=True)
 
 
+@method_decorator(cache_publiczny(), name="dispatch")
 class JednostkaView(DetailView):
     template_name = "browse/jednostka.html"
     model = Jednostka
@@ -236,6 +239,7 @@ class JednostkaView(DetailView):
         )
 
 
+@method_decorator(cache_publiczny(), name="dispatch")
 class AutorView(DetailView):
     template_name = "browse/autor.html"
     model = Autor
@@ -766,6 +770,7 @@ class JednostkiView(Browser):
         return context
 
 
+@method_decorator(cache_publiczny(), name="dispatch")
 class ZrodloView(DetailView):
     model = Zrodlo
     template_name = "browse/zrodlo.html"
@@ -915,9 +920,34 @@ def zrob_formularz(*args):
     return json.dumps({"form_data": ret})
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class BuildSearch(RedirectView):
-    """Widok przyjmuje zmienne w request.GET i buduje w sesji formularz wyszukiwawczy
-    dla multiseek."""
+    """Widok przyjmuje zmienne w request.POST i buduje w sesji formularz
+    wyszukiwawczy dla multiseek.
+
+    DLACZEGO ``@csrf_exempt`` JEST TU BEZPIECZNY
+    ============================================
+
+    Jedynym efektem ubocznym ``post()`` jest zapis zbudowanego zapytania
+    wyszukiwawczego do WŁASNEJ sesji requestującego
+    (``request.session[MULTISEEK_SESSION_KEY]`` + tytuł + wyczyszczenie
+    listy ręcznie wyrzuconych rekordów) i przekierowanie na
+    ``multiseek:index``. Nie ma tu żadnej uprzywilejowanej akcji, mutacji
+    danych współdzielonych, ujawnienia sekretu ani zmiany stanu poza sesją
+    ofiary. Najgorsze, co atak CSRF może osiągnąć, to podsunięcie ofierze
+    wyszukiwania, którego sama nie wpisała — zero szkody. Ta sama
+    funkcjonalność jest zresztą publiczna (parametry POST bez uwierzytelniania).
+
+    Powód wyłączenia CSRF: bez tokenu w formularzu (``{% csrf_token %}``
+    usunięte z szablonów ``browse/autor.html``, ``jednostka.html``,
+    ``zrodlo.html``, ``uczelnia.html``) wyrenderowana treść tych stron nie
+    zawiera już sekretu związanego z jednym odwiedzającym, dzięki czemu
+    ``cache_publiczny`` może je współdzielić między anonimami (strona autora
+    ma wysoki ruch). Token w formularzu blokował cache przez bezpiecznik
+    ``_ZAWIERA_CSRF``. UWAGA dla przyszłego ``/security-review``: to celowa,
+    przemyślana decyzja — NIE regresja. Jeśli kiedyś ``post()`` zacznie robić
+    cokolwiek poza zapisem do własnej sesji, ``@csrf_exempt`` trzeba cofnąć.
+    """
 
     def get_redirect_url(self, **kwargs):
         url = self.request.build_absolute_uri(reverse("multiseek:index"))
