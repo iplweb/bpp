@@ -68,7 +68,9 @@ class BppTemplateAdmin(TemplateAdmin):
             SzablonDlaOpisuBibliograficznego,
         )
 
-        modele = SzablonDlaOpisuBibliograficznego.objects.get_models_for_template(obj)
+        modele = SzablonDlaOpisuBibliograficznego.objects.get_models_for_szablon(
+            obj.name
+        )
 
         if not modele:
             messages.info(

@@ -26,6 +26,17 @@ class PublikacjaInstytucji(models.Model):
     class Meta:
         verbose_name = "Publikacja instytucji"
         verbose_name_plural = "Publikacje instytucji"
+        # Import PBN robi ``get_or_create`` po tej trójce, w wielu wątkach.
+        # Bez constraintu dwa wątki cicho tworzyły dwa wiersze. Wszystkie
+        # trzy FK są NOT NULL, więc zwykły UniqueConstraint wystarcza — nie
+        # ma NULL-i, które byłyby w indeksie unikalnym wzajemnie
+        # rozróżnialne i wymagałyby dodatkowego indeksu częściowego.
+        constraints = [
+            models.UniqueConstraint(
+                fields=("institutionId", "publicationId", "insPersonId"),
+                name="pbn_api_publikacjainstytucji_trojka_unikalna",
+            )
+        ]
 
 
 class PublikacjaInstytucji_V2(models.Model):

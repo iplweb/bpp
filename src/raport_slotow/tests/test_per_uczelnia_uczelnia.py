@@ -1,4 +1,5 @@
 import pytest
+from liveops.testing import MockProgress
 from model_bakery import baker
 
 
@@ -17,7 +18,7 @@ def test_create_report_zawezony_po_uczelni(
         uczelnia=jednostka.uczelnia,
         akcja=RaportSlotowUczelnia.Akcje.WSZYSTKO,
     )
-    raport.create_report()
+    raport.run(MockProgress(raport))
 
     jednostki_w_raporcie = set(
         raport.raportslotowuczelniawiersz_set.values_list(

@@ -91,6 +91,25 @@ repos:
 
     - repo: local
       hooks:
+        # Django tokenizuje `{#.*?#}` bez re.DOTALL, więc `{#` bez `#}` w
+        # tej samej linii NIE jest komentarzem — treść wycieka do HTML-u.
+        # Ten hook flaguje wieloliniowe `{# ... #}` (nie rusza `{{#`
+        # Mustache). Fix: per-linia `{# ... #}` lub `{% comment %}`.
+        # language: python → izolowany, stdlib-only venv (bez uv sync).
+        - id: django-comments-jednoliniowe
+          name: Django {# #} jednoliniowe (inaczej tekst wycieka do HTML)
+          entry: python bin/check-django-template-comments.py
+          language: python
+          files: \.html$
+          exclude: |
+            (?x)^(
+              node_modules/
+              | .*/migrations/
+              | .*/staticroot/
+              | src/django_bpp/static/500\.html$
+              | src/bpp/static/500\.html$
+            )
+
         - id: trufflehog
           name: TruffleHog
           description: Detect secrets in your data.

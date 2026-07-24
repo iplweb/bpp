@@ -5,6 +5,7 @@ from __future__ import annotations
 import random
 from collections.abc import Iterable
 
+from bpp.demo_data.db import bulk_create_retry
 from bpp.demo_data.manifest import Manifest
 from bpp.demo_data.progress import make_progress
 from bpp.models import Autor, Autor_Dyscyplina, Dyscyplina_Naukowa
@@ -75,7 +76,7 @@ def create_autor_dyscypliny(
     created: list[Autor_Dyscyplina] = []
     for start in pbar:
         chunk = objs[start : start + batch_size]
-        Autor_Dyscyplina.objects.bulk_create(chunk)
+        bulk_create_retry(Autor_Dyscyplina.objects, chunk)
         created.extend(chunk)
         manifest.append("bpp.Autor_Dyscyplina", [ad.pk for ad in chunk])
         manifest.save()

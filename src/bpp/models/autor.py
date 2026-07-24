@@ -8,11 +8,17 @@ import logging
 from datetime import date, timedelta
 
 from autoslug import AutoSlugField
+from django.contrib.postgres.constraints import ExclusionConstraint
+from django.contrib.postgres.fields import (
+    DateRangeField,
+    RangeBoundary,
+    RangeOperators,
+)
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import IntegrityError, models, transaction
-from django.db.models import CASCADE, SET_NULL, Count, Q, Sum
+from django.db.models import CASCADE, SET_NULL, Count, Func, Q, Sum
 from django.urls.base import reverse
 from django.utils import timezone
 from tinymce.models import HTMLField
@@ -352,15 +358,69 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
             return czy_juz_istnieje.first()
 
         try:
-            ret = Autor_Jednostka.objects.create(
+            # Wlasny savepoint: ponizszy ``except IntegrityError`` istnial tu
+            # od dawna, ale bez atomic() BYL martwy — w PostgreSQL blad
+            # integralnosci uniewaznia cala otaczajaca transakcje, wiec
+            # "polkniecie" wyjatku zostawialo polamana transakcje. Odkad
+            # (autor, jednostka) z pusta data rozpoczecia jest chronione
+            # czesciowym UniqueConstraintem, ta sciezka realnie potrafi
+            # zlapac wyjatek (wywolanie ``dodaj_jednostke`` bez ``rok``).
+            with transaction.atomic():
+                ret = Autor_Jednostka.objects.create(
+                    autor=self,
+                    jednostka=jednostka,
+                    funkcja=funkcja,
+                    rozpoczal_prace=start_pracy,
+                    zakonczyl_prace=koniec_pracy,
+                )
+        except IntegrityError:
+            # Wyscig: rownolegly zapis utworzyl DOKLADNIE ten sam wiersz
+            # (autor, jednostka, rozpoczal_prace=start_pracy) w okienku miedzy
+            # exists() a create(). Chroni go unique_together (autor, jednostka,
+            # rozpoczal_prace) — dla start_pracy=None dodatkowo czesciowy
+            # UniqueConstraint (rozpoczal_prace IS NULL). Post-check pyta o
+            # dokladnie ta trojke: dla braku roku (start_pracy=None) Django
+            # tlumaczy filter(rozpoczal_prace=None) na IS NULL, a dla podanego
+            # roku porownuje z konkretna data — wiec jedno wyrazenie obsluguje
+            # oba przypadki. Jesli wiersz faktycznie juz istnieje — stan
+            # docelowy jest osiagniety, wiec zachowujemy sie jak dotad
+            # (return None). Jesli jednak nadal go nie ma, IntegrityError mowil
+            # o czyms INNYM (np. zerwany FK) i musi poleciec dalej — inaczej
+            # realny blad danych podczas importu znikalby bez sladu jako cichy
+            # no-op.
+            #
+            # Sciezka PRZEDZIALOWA (datowana): rownolegly zapis mogl utworzyc
+            # okres POKRYWAJACY zadany [start_pracy, koniec_pracy] o INNYM
+            # rozpoczal_prace, lamiac ExclusionConstraint
+            # 'bpp_autor_jednostka_okresy_bez_nakladan' (a nie unique_together,
+            # bo trojka sie rozni). Post-check ponizej pyta o dokladny start,
+            # wiec by go NIE zlapal i bledny re-raise poszedlby jako 500. Tak
+            # jak czy_juz_istnieje na wejsciu: jesli jakis wiersz pokrywa juz
+            # zadany zakres, stan docelowy jest osiagniety — zwracamy go.
+            # NULL-owy start pomijamy (predykat przedzialowy i tak nic nie
+            # zlapie; ten przypadek obsluguje wylacznie post-check nizej).
+            if start_pracy is not None:
+                pokrywajacy = Autor_Jednostka.objects.filter(
+                    autor=self,
+                    jednostka=jednostka,
+                    rozpoczal_prace__lte=start_pracy,
+                    zakonczyl_prace__gte=koniec_pracy,
+                ).first()
+                if pokrywajacy is not None:
+                    return pokrywajacy
+            if not Autor_Jednostka.objects.filter(
                 autor=self,
                 jednostka=jednostka,
-                funkcja=funkcja,
                 rozpoczal_prace=start_pracy,
-                zakonczyl_prace=koniec_pracy,
+            ).exists():
+                raise
+            logger.debug(
+                "Powiazanie autor=%s jednostka=%s utworzone rownolegle "
+                "przez inna transakcje — pomijam.",
+                self.pk,
+                jednostka.pk,
             )
-        except IntegrityError:
-            return
+            return None
         self.defragmentuj_jednostke(jednostka)
 
         return ret
@@ -638,6 +698,28 @@ class Autor_Jednostka_Manager(models.Manager):
             aj.delete()
 
 
+class DateRange(Func):
+    """``daterange(rozpoczal, zakonczyl, '[]')`` jako wyrażenie ORM.
+
+    Granice DOMKNIETE obustronnie (``'[]'``) — spójnie z semantyką domeny:
+    ``dodaj_jednostke`` traktuje obie daty inkluzywnie (``__lte``/``__gte``),
+    a ``zakonczyl_prace`` to OSTATNI dzień pracy (np. rok → 31.12). Dzięki temu
+    dwa okresy dzielące skrajny dzień (…-12-31 i 12-31-…) liczą się jako
+    NAKŁADAJĄCE, a przylegające (…-12-31 i następny 01-01) — już nie. NULL-owy
+    ``zakonczyl_prace`` daje zakres otwarty w prawo ``[rozpoczal, )``.
+    """
+
+    function = "DATERANGE"
+    output_field = DateRangeField()
+
+    def __init__(self, lower, upper):
+        super().__init__(
+            lower,
+            upper,
+            RangeBoundary(inclusive_lower=True, inclusive_upper=True),
+        )
+
+
 class Autor_Jednostka(models.Model):
     """Powiązanie autora z jednostką"""
 
@@ -677,6 +759,42 @@ class Autor_Jednostka(models.Model):
         verbose_name_plural = "powiązania autor-jednostka"
         ordering = ["autor__nazwisko", "rozpoczal_prace", "jednostka__nazwa"]
         unique_together = [("autor", "jednostka", "rozpoczal_prace")]
+        constraints = [
+            # unique_together powyzej deklaruje niezmiennik "jedno powiazanie
+            # na trojke", ale w PostgreSQL NULL-e w indeksie unikalnym sa
+            # wzajemnie rozroznialne — wiersze z rozpoczal_prace IS NULL nie
+            # byly wiec chronione niczym. Tymczasem check-then-create w
+            # bpp.models.abstract.authors (save() KAZDEGO autorstwa) tworzy
+            # dokladnie takie wiersze. Ten czesciowy indeks domyka luke;
+            # dotyczy WYLACZNIE wierszy z NULL-owa data rozpoczecia, wiec
+            # wielokrotne (datowane) okresy zatrudnienia sa nadal legalne.
+            models.UniqueConstraint(
+                fields=("autor", "jednostka"),
+                condition=models.Q(rozpoczal_prace__isnull=True),
+                name="bpp_autor_jednostka_bez_daty_unikalne",
+            ),
+            # Wariant PRZEDZIALOWY (poz. 1.7 audytu). ``dodaj_jednostke`` robi
+            # check-then-create z predykatem przedzialowym — dwa rownolegle
+            # wywolania tworza NAKLADAJACE sie okresy tego samego autora w tej
+            # samej jednostce. Zwykly UniqueConstraint tego nie wyrazi; potrzeba
+            # EXCLUDE z btree_gist (operator ``=`` na FK w GiST) + ``&&`` na
+            # daterange. Warunek ``rozpoczal_prace IS NOT NULL`` sprawia, ze ten
+            # constraint i partial-unique wyzej (IS NULL) IDEALNIE partycjonuja
+            # wiersze: zadnego pokrycia ani luki. Wiersze bez daty startu pilnuje
+            # tamten (jeden na pare), wiersze z data — ten (brak nakladan).
+            ExclusionConstraint(
+                name="bpp_autor_jednostka_okresy_bez_nakladan",
+                expressions=[
+                    ("autor", RangeOperators.EQUAL),
+                    ("jednostka", RangeOperators.EQUAL),
+                    (
+                        DateRange("rozpoczal_prace", "zakonczyl_prace"),
+                        RangeOperators.OVERLAPS,
+                    ),
+                ],
+                condition=models.Q(rozpoczal_prace__isnull=False),
+            ),
+        ]
         app_label = "bpp"
         # Niezmiennik "co najwyzej jedno podstawowe miejsce pracy na autora" NIE
         # jest tu egzekwowany przez UniqueConstraint (partial unique index byl

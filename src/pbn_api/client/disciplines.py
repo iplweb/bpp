@@ -6,7 +6,7 @@ upsert do lokalnych modeli — w świeżym bloku atomic. Wcześniej
 ``@transaction.atomic`` obejmował cały remote-call.
 """
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django_pbn_client import sync_dictionary
 
 from import_common.core import (
@@ -16,6 +16,32 @@ from import_common.core import (
 from import_common.normalization import normalize_kod_dyscypliny
 from pbn_api.models import TlumaczDyscyplin
 from pbn_api.models.discipline import Discipline, DisciplineGroup
+
+
+def _update_or_create_odporne_na_wyscig(manager, defaults, **lookup):
+    """``update_or_create`` odporny na równoległy import.
+
+    Właściwej ochrony przed duplikatem dostarcza unikalny constraint na
+    (``uuid``) słownika i na (``parent_group``, ``uuid``) dyscypliny — bez
+    niego dwa równoległe importy po prostu tworzyły dwa wiersze. Constraint
+    sam w sobie zamienia jednak cichy duplikat w ``IntegrityError``, który
+    wywala cały import. Tutaj przegrany wyścig jest domykany: wiersz utworzony
+    przez równoległy proces zostaje pobrany i zaktualizowany.
+
+    ``transaction.atomic()`` w środku to savepoint — dzięki niemu
+    ``IntegrityError`` nie unieważnia transakcji zewnętrznej
+    (``download_disciplines`` jest ``@transaction.atomic``) i da się po nim
+    dalej odpytywać bazę.
+    """
+    try:
+        with transaction.atomic():
+            return manager.update_or_create(defaults=defaults, **lookup)
+    except IntegrityError:
+        obj = manager.get(**lookup)
+        for key, value in defaults.items():
+            setattr(obj, key, value)
+        obj.save()
+        return obj, False
 
 
 class DisciplinesMixin:
@@ -40,7 +66,8 @@ class DisciplinesMixin:
             validityDateTo = elem.get("validityDateTo", None)
             uuid = elem["uuid"]
 
-            parent_group, created = DisciplineGroup.objects.update_or_create(
+            parent_group, created = _update_or_create_odporne_na_wyscig(
+                DisciplineGroup.objects,
                 uuid=uuid,
                 defaults={
                     "validityDateFrom": validityDateFrom,
@@ -49,7 +76,8 @@ class DisciplinesMixin:
             )
 
             for discipline in elem["disciplines"]:
-                Discipline.objects.update_or_create(
+                _update_or_create_odporne_na_wyscig(
+                    Discipline.objects,
                     parent_group=parent_group,
                     uuid=discipline["uuid"],
                     defaults=dict(

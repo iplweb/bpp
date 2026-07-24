@@ -107,6 +107,13 @@ def wczytaj_plik_jcr(path: str) -> ParsedJCR:
     if path.lower().endswith(".csv"):
         rows = list(_iter_rows_csv(path))
     else:
+        # XLSX to archiwum ZIP — mała bomba dekompresyjna (~KB → GB) rozłożyłaby
+        # workera importu (OOM) już przy materializacji wierszy do listy niżej.
+        # Odrzucamy ją PRZED otwarciem pliku przez openpyxl (wspólny bezpiecznik
+        # z pozostałymi importerami XLSX w BPP).
+        from import_common.util import sprawdz_bombe_dekompresji
+
+        sprawdz_bombe_dekompresji(path)
         rows = list(_iter_rows_xlsx(path))
 
     hidx = _find_header_index(rows)

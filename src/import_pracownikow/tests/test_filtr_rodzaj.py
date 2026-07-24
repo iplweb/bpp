@@ -112,7 +112,9 @@ def test_select_rodzaj_ma_wszystkie_opcje(admin_client, admin_user):
     imp = _imp(admin_user)
     _row(imp)
     tresc = _get(admin_client, imp)
-    assert 'id="filtr-rodzaj"' in tresc
+    # Filtr rodzaju jest polem formularza GET (`?rodzaj=`), filtrującym
+    # w SQL po CAŁYM imporcie — dawniej był to selektor sterujący JS-em.
+    assert 'name="rodzaj"' in tresc
     for val in [
         "do-pominiecia",
         "twardy",

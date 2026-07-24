@@ -121,8 +121,23 @@ def test_istniejacy_pusty_plik_zwraca_aktywny_najswiezszy(para):
     assert rozwiaz_okres_zatrudnienia(autor, jednostka, None) == ("istniejacy", aktywny)
 
 
+@pytest.fixture
+def bez_constraintu_bez_daty(db):
+    """Zdejmuje ``bpp_autor_jednostka_bez_daty_unikalne`` na czas testu.
+
+    Kilka powiazan tej samej pary (autor, jednostka) z pustym
+    ``rozpoczal_prace`` to stan sprzed migracji ``bpp/0472`` — nowe dane juz go
+    nie wytworza, ale resolver ma pozostac deterministyczny na danych
+    zastanych, gdyby jakies umknely dedupowi. Bez teardownu: DDL w PostgreSQL
+    jest transakcyjny, a test biegnie w wycofywanej transakcji.
+    """
+    with connection.cursor() as cur:
+        cur.execute('DROP INDEX IF EXISTS "bpp_autor_jednostka_bez_daty_unikalne"')
+    yield
+
+
 @pytest.mark.django_db
-def test_wiele_null_rozpoczal_deterministyczny_po_pk(para):
+def test_wiele_null_rozpoczal_deterministyczny_po_pk(para, bez_constraintu_bez_daty):
     autor, jednostka = para
     a1 = baker.make(
         Autor_Jednostka, autor=autor, jednostka=jednostka, rozpoczal_prace=None

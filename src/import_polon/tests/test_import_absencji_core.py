@@ -1,4 +1,5 @@
 import pytest
+from liveops.testing import MockProgress
 from model_bakery import baker
 
 from bpp.models import Autor
@@ -19,7 +20,7 @@ def test_analyze_excel_file_import_absencji(fn_test_import_absencji):
     )
     adam_nowak_2: Autor = baker.make(Autor, nazwisko="Nowak", imiona="Adam")
 
-    analyze_file_import_absencji(fn_test_import_absencji, ipa)
+    analyze_file_import_absencji(fn_test_import_absencji, ipa, MockProgress(ipa))
 
     assert jan_kowalski.autor_absencja_set.get(rok=2017).ile_dni == 141
     assert jan_kowalski.autor_absencja_set.get(rok=2018).ile_dni == 352
@@ -32,7 +33,7 @@ def test_analyze_excel_file_import_absencji(fn_test_import_absencji):
 def test_analyze_excel_file_import_absencji_zly_plik(fn_test_import_polon):
     ipa = baker.make(ImportPlikuAbsencji, zapisz_zmiany_do_bazy=True)
 
-    analyze_file_import_absencji(fn_test_import_polon, ipa)
+    analyze_file_import_absencji(fn_test_import_polon, ipa, MockProgress(ipa))
 
 
 @pytest.mark.django_db

@@ -61,39 +61,18 @@ def pytest_collection_modifyitems(items):
         fixtures = getattr(item, "fixturenames", ())
         if "page" in fixtures or "admin_page" in fixtures or "zrodla_page" in fixtures:
             item.add_marker("playwright")
-
-
-@pytest.fixture
-def szablony():
-    dirname = os.path.dirname(__file__)
-
-    def template_n(elem):
-        return f"{dirname}/../bpp/templates/{elem}"
-
-    def create_template(Template, name):
-        from dbtemplates.models import Template
-
-        Template.objects.create(
-            name=name,
-            content=open(template_n(name)).read(),
-        )
-
-    def instaluj_szablony():
-        from dbtemplates.models import Template
-
-        create_template(Template, "opis_bibliograficzny.html")
-        create_template(Template, "browse/praca_tabela.html")
-
-        from bpp.models.szablondlaopisubibliograficznego import (
-            SzablonDlaOpisuBibliograficznego,
-        )
-
-        SzablonDlaOpisuBibliograficznego.objects.create(
-            model=None,
-            template=Template.objects.get(name="opis_bibliograficzny.html"),
-        )
-
-    from dbtemplates.models import Template
-
-    instaluj_szablony()
-    return Template.objects
+            # Ponów raz KAŻDY test przeglądarkowy (Playwright), który padł —
+            # łapie niedeterministyczne flake'i (wait_for_* timeout,
+            # ElementClickIntercepted, expect()→AssertionError), które nie
+            # są regresją kodu. Zawężenie jest REALNE: markera dostają tylko
+            # testy używające fikstur 'page'/'admin_page'/'zrodla_page', a
+            # globalnego `--reruns` w pytest.ini NIE ma, więc testy
+            # jednostkowe NIGDY nie są ponawiane — ich niedeterminizm to bug
+            # do naprawy, nie do maskowania. `--only-rerun` w pytest.ini
+            # dodatkowo ogranicza reruny do konkretnych wyjątków.
+            #
+            # Nie nadpisuj jawnego @pytest.mark.flaky(reruns=N) (np.
+            # test_bpp_with_notifications ma reruns=3) — jego wyższa liczba
+            # ponowień ma pierwszeństwo.
+            if item.get_closest_marker("flaky") is None:
+                item.add_marker(pytest.mark.flaky(reruns=1))

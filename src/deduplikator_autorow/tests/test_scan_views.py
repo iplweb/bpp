@@ -30,13 +30,19 @@ def test_start_scan_warns_but_runs_with_stale_pbn_people_data(client, mocker):
         "deduplikator_autorow.views.scan.is_pbn_people_data_fresh",
         return_value=(False, "Dane autorów PBN nigdy nie były pobrane", None),
     )
-    delay = mocker.patch("deduplikator_autorow.tasks.scan_for_duplicates.delay")
+    # Widok woła apply_async z własnym task_id (żeby wykryć deduplikację
+    # Singletona). Zwracamy AsyncResult o TYM SAMYM id = „realnie
+    # wystartowano".
+    apply_async = mocker.patch(
+        "deduplikator_autorow.tasks.scan_for_duplicates.apply_async",
+        side_effect=lambda **kw: mocker.Mock(id=kw["task_id"]),
+    )
 
     response = client.post(reverse("deduplikator_autorow:start_scan"))
 
     assert response.status_code == 302
     assert response["Location"] == reverse("deduplikator_autorow:duplicate_authors")
-    delay.assert_called_once_with(user_id=user.pk)
+    assert apply_async.call_args.kwargs["kwargs"] == {"user_id": user.pk}
 
     messages = _messages(response)
     assert any(
@@ -49,6 +55,33 @@ def test_start_scan_warns_but_runs_with_stale_pbn_people_data(client, mocker):
         and "Skanowanie duplikatów zostało uruchomione" in str(msg)
         for msg in messages
     )
+
+
+@pytest.mark.django_db
+def test_start_scan_nie_klamie_gdy_singleton_zdeduplikowal_dispatch(client, mocker):
+    """Gdy Singleton zdeduplikował wysyłkę (apply_async zwrócił AsyncResult
+    ISTNIEJĄCEGO zadania, o innym id niż zadane), widok NIE może meldować
+    „uruchomiono" — bo nic się nie uruchomiło."""
+    _login_user_with_group(client)
+    mocker.patch(
+        "deduplikator_autorow.views.scan.is_pbn_people_data_fresh",
+        return_value=(True, None, None),
+    )
+    # Zwracamy id INNE niż zadane = sygnał deduplikacji z celery_singleton.
+    mocker.patch(
+        "deduplikator_autorow.tasks.scan_for_duplicates.apply_async",
+        return_value=mocker.Mock(id="id-juz-trwajacego-zadania"),
+    )
+
+    response = client.post(reverse("deduplikator_autorow:start_scan"))
+
+    assert response.status_code == 302
+    messages = _messages(response)
+    assert any(
+        msg.level == django_messages.WARNING and "już trwa" in str(msg)
+        for msg in messages
+    )
+    assert not any(msg.level == django_messages.SUCCESS for msg in messages)
 
 
 @pytest.mark.django_db

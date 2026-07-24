@@ -20,10 +20,10 @@ def _reimport_scheduled(callbacks):
     """Ile spośród callbacków ``on_commit`` to nasze ponowne uruchomienie importu.
 
     Middleware audytu (django-easy-audit) rejestruje własne callbacki, więc nie
-    można liczyć wszystkich — filtrujemy po tym, który pochodzi z
-    ``LongRunningTaskCallerMixin.task_on_commit``.
+    można liczyć wszystkich — filtrujemy po ``LiveOperation.enqueue``, który
+    ``ZapiszDoBazyMixin.post`` odracza przez ``transaction.on_commit``.
     """
-    return sum("task_on_commit" in cb.__qualname__ for cb in callbacks)
+    return sum("enqueue" in cb.__qualname__ for cb in callbacks)
 
 
 def _finished_dry_run(model, owner, **extra):

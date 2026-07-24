@@ -301,6 +301,16 @@ class JednostkaAdmin(
             return self.list_display[1:]
         return self.list_display
 
+    def get_list_filter(self, request):
+        # Multi-hosted: superuser widzi jednostki WSZYSTKICH uczelni naraz
+        # (SiteFilteredAdminMixin zawęża tylko nie-superuserów), więc bez filtra
+        # nie da się ograniczyć listy do jednej uczelni. Dokładamy filtr
+        # „uczelnia" (pierwszy) TYLKO gdy w systemie jest >1 uczelnia — na
+        # instalacji single-tenant byłby zbędny (jedna wartość do wyboru).
+        if Uczelnia.objects.count() > 1:
+            return ("uczelnia", *self.list_filter)
+        return self.list_filter
+
     def get_list_per_page(self):
         from django.db import DatabaseError, connection
 

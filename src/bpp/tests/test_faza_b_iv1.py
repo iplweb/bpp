@@ -13,9 +13,8 @@ import pytest
 from django.apps import apps as global_apps
 from model_bakery import baker
 
-from bpp.models import Jednostka, Jednostka_Rodzic, Uczelnia, Wydzial
+from bpp.models import Jednostka, Jednostka_Rodzic, Uczelnia
 from bpp.models.jednostka import przelicz_aktualna_wszystkich, wylicz_aktualna
-from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 
 _mig = import_module("bpp.migrations.0462_faza_b_iv1_przelicz_aktualna")
 
@@ -138,51 +137,9 @@ def test_recompute_override_wygrywa(uczelnia):
 
 
 # ---------------------------------------------------------------------------
-# Odkrycie widoczna z Wydzial.widoczny (migracja 0462, krok 2)
-# ---------------------------------------------------------------------------
-@pytest.mark.django_db
-def test_odkrycie_widoczna_z_wydzialu(uczelnia):
-    w_vis = baker.make(Wydzial, uczelnia=uczelnia, widoczny=True)
-    w_hid = baker.make(Wydzial, uczelnia=uczelnia, widoczny=False)
-    wezel_vis, _ = znajdz_lub_utworz_wezel_wydzialu(w_vis)
-    wezel_hid, _ = znajdz_lub_utworz_wezel_wydzialu(w_hid)
-
-    _mig.odkryj_widoczna(global_apps, None)
-
-    wezel_vis.refresh_from_db()
-    wezel_hid.refresh_from_db()
-    assert wezel_vis.widoczna is True
-    assert wezel_hid.widoczna is False
-
-
-@pytest.mark.django_db
-def test_odkrycie_reverse_ukrywa(uczelnia):
-    w_vis = baker.make(Wydzial, uczelnia=uczelnia, widoczny=True)
-    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(w_vis)
-    _mig.odkryj_widoczna(global_apps, None)
-
-    _mig.ukryj_widoczna(global_apps, None)
-
-    wezel.refresh_from_db()
-    assert wezel.widoczna is False
-
-
-# ---------------------------------------------------------------------------
-# Lazy-lustro: helper tworzy widoczna = wydzial.widoczny (pkt 4)
-# ---------------------------------------------------------------------------
-@pytest.mark.django_db
-def test_lazy_lustro_dziedziczy_widocznosc(uczelnia):
-    w_vis = baker.make(Wydzial, uczelnia=uczelnia, widoczny=True)
-    w_hid = baker.make(Wydzial, uczelnia=uczelnia, widoczny=False)
-
-    wezel_vis, created_vis = znajdz_lub_utworz_wezel_wydzialu(w_vis)
-    wezel_hid, created_hid = znajdz_lub_utworz_wezel_wydzialu(w_hid)
-
-    assert created_vis and created_hid
-    assert wezel_vis.widoczna is True
-    assert wezel_hid.widoczna is False
-
-
+# Faza C (#438): testy kroku „odkryj_widoczna" / lazy-lustra (czytały
+# ``Wydzial.widoczny`` przez struktura_konwersja) usunięto wraz z modelem
+# Wydzial i struktura_konwersja.py — to była jednorazowa mechanika Fazy B.
 # ---------------------------------------------------------------------------
 # Spójność: komenda przelicz_aktualna == migracja 0462 (ten sam wynik)
 # ---------------------------------------------------------------------------

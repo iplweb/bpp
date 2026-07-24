@@ -447,7 +447,7 @@ def _update_autor_orcid(autor, orcid, parent_model):
     return ops
 
 
-def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
+def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon, p):
     try:
         data = read_excel_or_csv_dataframe_guess_encoding(fn)
     except ValueError as e:
@@ -463,7 +463,7 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
             nr_wiersza=0,
             rezultat=f"Błąd: {error_msg}",
         )
-        parent_model.send_notification(error_msg, "error")
+        p.log(error_msg)
         raise ValueError(error_msg) from e
     except Exception as e:
         # Handle any other unexpected errors
@@ -478,12 +478,16 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
             nr_wiersza=0,
             rezultat=error_msg,
         )
-        parent_model.send_notification(error_msg, "error")
+        p.log(error_msg)
         raise
 
     records = data.to_dict("records")
     total = len(records)
-    for n_row, row in enumerate(records):
+    # ``p.track`` aktualizuje pasek postępu (throttlowany) i sprawdza anulowanie
+    # przed każdym wierszem — zastępuje ręczne ``send_progress`` z każdej gałęzi.
+    for n_row, row in p.track(
+        list(enumerate(records)), total=total, label="Import POLON"
+    ):
         # Validate employment - skip if invalid (unless ignored)
         if not parent_model.ignoruj_miejsce_pracy:
             zatrudnienie = row.get("ZATRUDNIENIE", "")
@@ -502,7 +506,6 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
                         zatrudnienie, parent_model.uczelnia
                     ),
                 )
-                parent_model.send_progress(n_row * 100.0 / total)
                 continue
 
         # Match author
@@ -539,7 +542,6 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
                     f"modyfikować danych obcej uczelni."
                 ),
             )
-            parent_model.send_progress(n_row * 100.0 / total)
             continue
 
         # Skip unmatched authors if configured
@@ -607,5 +609,3 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
             subdyscyplina_naukowa=subdyscyplina_xlsx,
             rezultat=rezultat,
         )
-
-        parent_model.send_progress(n_row * 100.0 / total)
