@@ -151,9 +151,11 @@ jobs:
           # przy workflow_call budujemy dokładnie gałąź wydania.
           ref: ${{ inputs.ref }}
 
-      - name: Resolve checked-out commit
+      - name: Resolve build inputs
         id: source
-        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "cache_epoch=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
 
       - name: Compute Docker tags (staging + final)
         id: tag
@@ -213,6 +215,7 @@ jobs:
       - name: Build and push to staging tag
         env:
           GIT_SHA: ${{ steps.source.outputs.sha }}
+          BUILD_CACHE_EPOCH: ${{ steps.source.outputs.cache_epoch }}
           DOCKER_VERSION: ${{ steps.tag.outputs.staging_tag }}
           TAG_LATEST: "false"
           PUSH: "true"
@@ -237,6 +240,7 @@ jobs:
             beatserver authserver denorm-queue \
             --file docker-bake.hcl \
             --set "base.args.GIT_SHA=${GIT_SHA}" \
+            --set "base.args.BUILD_CACHE_EPOCH=${BUILD_CACHE_EPOCH}" \
             --set "base.args.BPP_BUILD_FLAVOR=${BPP_BUILD_FLAVOR}" \
             --set "base.args.BPP_IMAGE_TAG=${BPP_IMAGE_TAG}" \
             --set '*.platform=linux/amd64' \

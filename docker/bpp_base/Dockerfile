@@ -22,6 +22,7 @@ FROM pandoc/core:${PANDOC_VERSION}-ubuntu AS pandoc-src
 FROM python:${PYTHON_VERSION}-${DEBIAN_VERSION} AS base
 
 ARG NODEJS_VERSION
+ARG BUILD_CACHE_EPOCH=manual
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -40,7 +41,8 @@ COPY --from=ghcr.io/astral-sh/uv:0.7 /uv /usr/local/bin/uv
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy
 
-RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
+RUN echo "Dependency cache epoch: ${BUILD_CACHE_EPOCH}" && \
+    sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
 
 COPY docker/bpp_base/build.txt /tmp/
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
@@ -370,7 +372,7 @@ WORKDIR /src
 COPY src/ /src/src/
 COPY --from=test-assets-builder /src/src/ /src/src/
 COPY baseline-sql/ /src/baseline-sql/
-COPY conftest.py pytest.ini Makefile pyproject.toml uv.lock /src/
+COPY conftest.py pytest.ini Makefile pyproject.toml uv.lock docker-bake.hcl /src/
 COPY docker/bpp_base/Dockerfile /src/docker/bpp_base/Dockerfile
 COPY .github/workflows/build-docker-images.yml \
      .github/workflows/refresh-baseline.yml \
@@ -498,19 +500,10 @@ ARG PYTHON_VERSION
 ARG DEBIAN_VERSION
 FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} AS runtime
 
-# Bake'a przekazuje GIT_SHA z `--set "base.args.GIT_SHA=..."`. Nadpisanie
-# możliwe dla lokalnych buildów; default `unknown` zostaje, kiedy nikt nie
-# poda wartości. BPP_BUILD_FLAVOR rozróżnia release (master) od dev (PR/feature)
-# — pokazujemy SHA w stopce tylko poza release-em. BPP_IMAGE_TAG to kanoniczny
-# tag obrazu (np. "119-merge"), który workflow promuje po skanie Trivy.
-ARG GIT_SHA=unknown
-ARG BPP_BUILD_FLAVOR=dev
-ARG BPP_IMAGE_TAG=unknown
-# Opcjonalny alias nazwy brancha dla starszych obrazów PR lub buildów lokalnych.
-# Bieżący workflow CI pozostawia go pusty.
-ARG BPP_BRANCH_TAG=
+ARG BUILD_CACHE_EPOCH=manual
 
-RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
+RUN echo "Dependency cache epoch: ${BUILD_CACHE_EPOCH}" && \
+    sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
 
 COPY docker/bpp_base/runtime.txt /tmp/
 
@@ -533,6 +526,17 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
 # oszczednosci + stabilna warstwa cache, niezalezna od rebuildow bpp).
 # Binary linkuje dynamicznie do libgmp10, liblua5.4-0 (w runtime.txt).
 COPY --from=pandoc-src /usr/local/bin/pandoc /usr/local/bin/pandoc
+
+# Argumenty metadanych są celowo deklarowane PO instalacji pakietów. Zmieniają
+# się w każdym buildzie i nie powinny unieważniać cache warstw APT powyżej.
+# Bake przekazuje GIT_SHA z `--set "base.args.GIT_SHA=..."`. BPP_BUILD_FLAVOR
+# rozróżnia release od dev/staging, a BPP_IMAGE_TAG to promowany tag obrazu.
+ARG GIT_SHA=unknown
+ARG BPP_BUILD_FLAVOR=dev
+ARG BPP_IMAGE_TAG=unknown
+# Opcjonalny alias nazwy brancha dla starszych obrazów PR lub buildów lokalnych.
+# Bieżący workflow CI pozostawia go pusty.
+ARG BPP_BRANCH_TAG=
 
 # Uwaga: wcześniej PATH wskazywał na /.venv/bin, a venv jest pod
 # /app/.venv — działało to tylko dlatego, że wszystkie komendy w
