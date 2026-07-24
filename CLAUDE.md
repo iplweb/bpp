@@ -551,7 +551,22 @@ make rebuild-baseline    # OD ZERA: pełny reset, DUŻY diff (churn auth/* itd.)
                          # TYLKO gdy walidujesz schemat od zera / korupcja.
 ```
 
-(pod spodem: `DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py baseline_update`
+**ZAWSZE używaj targetów `make` — NIE gołego `manage.py`.** Target `make`
+robi krok, którego komenda Django NIE robi: post-processing
+`fix-baseline-search-path`, który zamienia w nagłówku dumpu pusty
+`search_path` (`''`, utwardzenie pg_dump po CVE-2018-1058) na `'public'`.
+Bez tego triggery denorm z klauzulą `WHEN` porównującą kolumny `hstore`
+(`IS DISTINCT FROM` → operator `public.hstore = public.hstore`) nie widzą
+operatora przy `CREATE TRIGGER`, a `django-pg-baseline` ładuje baseline pod
+`ON_ERROR_STOP=1` w jednej transakcji → jeden błąd wywala CAŁY load →
+`django_db_setup` pada → kontener testowej bazy nigdy nie wstaje
+(`ContainerStartError`). `django-pg-baseline` NIE utrwala tej poprawki, więc
+KAŻDA regeneracja gołym `manage.py baseline_update`/`baseline_rebuild`
+odtwarza buga. Szczegóły mechanizmu: komentarz nad `rebuild-baseline`
+w `Makefile` + commit `ef40b2b61`.
+
+(Gołe komendy — TYLKO gdy wiesz, że sam dokładasz `fix-baseline-search-path`:
+`DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py baseline_update`
 / `baseline_rebuild`.)
 
 - Reguła: **prawie zawsze `baseline-update`** (delta); `rebuild-baseline` to
