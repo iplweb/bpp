@@ -76,39 +76,3 @@ def pytest_collection_modifyitems(items):
             # ponowień ma pierwszeństwo.
             if item.get_closest_marker("flaky") is None:
                 item.add_marker(pytest.mark.flaky(reruns=1))
-
-
-@pytest.fixture
-def szablony():
-    dirname = os.path.dirname(__file__)
-
-    def template_n(elem):
-        return f"{dirname}/../bpp/templates/{elem}"
-
-    def create_template(Template, name):
-        from dbtemplates.models import Template
-
-        Template.objects.create(
-            name=name,
-            content=open(template_n(name)).read(),
-        )
-
-    def instaluj_szablony():
-        from dbtemplates.models import Template
-
-        create_template(Template, "opis_bibliograficzny.html")
-        create_template(Template, "browse/praca_tabela.html")
-
-        from bpp.models.szablondlaopisubibliograficznego import (
-            SzablonDlaOpisuBibliograficznego,
-        )
-
-        SzablonDlaOpisuBibliograficznego.objects.create(
-            model=None,
-            template=Template.objects.get(name="opis_bibliograficzny.html"),
-        )
-
-    from dbtemplates.models import Template
-
-    instaluj_szablony()
-    return Template.objects
