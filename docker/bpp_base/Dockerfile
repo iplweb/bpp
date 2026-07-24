@@ -224,12 +224,12 @@ RUN find /app/.venv -type d -name __pycache__ -exec rm -rf {} + \
 ##############################################################################
 # TEST-RUNNER: test environment (source mounted at runtime via volume)
 ##############################################################################
-# TEST-VENV-BUILDER: kompiluje testowy venv (--all-extras --all-groups) i
-# pobiera przegladarki Playwright NA PELNYM python:trixie (z toolchainem),
-# bo wheelsy z C-rozszerzeniami wymagajacymi kompilacji ze zrodel
+# TEST-VENV-BUILDER: kompiluje testowy venv (--all-extras --all-groups) NA
+# PELNYM python:trixie (z toolchainem), bo wheelsy z C-rozszerzeniami
+# wymagajacymi kompilacji ze zrodel
 # (python-ldap z extras `ldap`) potrzebuja gcc + naglowkow z build.txt.
-# Artefakty (/opt/venv, /opt/playwright) sa COPY-owane do slim test-runnera
-# nizej — to wzorzec identyczny jak produkcyjny stage `runtime`, dzieki
+# Venv i browser sa COPY-owane z osobnych stage'y do slim test-runnera nizej —
+# to wzorzec identyczny jak produkcyjny stage `runtime`, dzieki
 # ktoremu ~1.1 GB toolchainu (buildpack python:trixie + build.txt) NIE laduje
 # w obrazie testowym.
 FROM base AS test-venv-builder
@@ -242,82 +242,24 @@ RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
     uv sync --frozen --all-extras \
         --all-groups --no-install-project --no-editable
 
-# Przegladarki Playwright raz, do /opt/playwright (kopiowane do slim nizej).
+# Browser i assety sa osobnymi galeziami od venv-buildera, zeby BuildKit mogl
+# pobierac Playwrighta i kompilowac frontend rownolegle.
+FROM test-venv-builder AS test-browser-builder
+
+# Playwright w CI zawsze dziala headless. `--only-shell` nie pobiera pelnego
+# Chromium (~setki MB), tylko Chromium Headless Shell uzywany przez pytest.
 RUN PLAYWRIGHT_BROWSERS_PATH=/opt/playwright \
-    /opt/venv/bin/playwright install chromium chromium-headless-shell
+    /opt/venv/bin/playwright install --only-shell chromium
 
 
 ##############################################################################
-# TEST-RUNNER: srodowisko testowe NA python:slim. Skompilowany venv +
-# przegladarki przychodza gotowe z `test-venv-builder` (COPY --from), wiec slim
-# nie potrzebuje toolchainu. Tnie to obraz o ~1.1 GB build-only deps (buildpack
-# pelnego python:trixie: gcc/g++/dpkg-dev/autoconf + git/mercurial/svn, plus
-# nasz build.txt), ktore byly martwym balastem w obrazie testowym. Wzorzec
-# identyczny jak produkcyjny stage `runtime` (compiled venv na slim + runtime
-# liby). Slim NIE dziedziczy z `base`, wiec ENV/uv/node trzeba odtworzyc.
+# TEST-ASSETS-BUILDER: kompiluje CSS/JS poza finalnym obrazem test-runner.
+# Dziedziczy Node z `base` i venv z `test-venv-builder`, bo Gruntfile tworzy
+# symlink do site-packages dla bundle-entry.js. Do finalnego obrazu kopiujemy
+# tylko gotowe pliki z /src/src — bez Node, Yarn, Grunta i node_modules.
 ##############################################################################
-ARG PYTHON_VERSION
-ARG DEBIAN_VERSION
-FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} AS test-runner
+FROM test-venv-builder AS test-assets-builder
 
-ARG NODEJS_VERSION
-
-ENV DEBIAN_FRONTEND=noninteractive
-# MALLOC_ARENA_MAX: patrz komentarz w stage `base` (slim nie dziedziczy).
-ENV MALLOC_ARENA_MAX=2
-ENV UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy \
-    UV_PROJECT_ENVIRONMENT=/opt/venv \
-    PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
-ENV PATH="/opt/venv/bin:${PATH}"
-
-# uv potrzebne w runtime — CI wola `uv run pytest` (jak na pelnym obrazie).
-COPY --from=ghcr.io/astral-sh/uv:0.7 /uv /usr/local/bin/uv
-
-RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
-
-# Runtime liby wspoldzielone, ktorych potrzebuja skompilowane wheelsy +
-# narzedzia. runtime.txt: pango/cairo (weasyprint), libpq, gmp/lua (pandoc).
-# test.txt: make, redis-tools. Dodatkowo wzgledem `base`/produkcji:
-#  - libldap2/libsasl2-2: python-ldap (z extras `ldap`) linkuje sie z nimi;
-#    na pelnym trixie dawal je libldap2-dev/libsasl2-dev (build.txt), tu nie ma,
-#  - ca-certificates/curl/gnupg: repo NodeSource,
-#  - git: `yarn install` ma zaleznosci po URL-u git (pelny trixie mial git
-#    w buildpacku; slim nie ma) — bez tego `yarn install` pada.
-# UWAGA: `gettext` (msgfmt) NIE jest tu potrzebny — projektowy override
-# `compilemessages` (src/bpp/management/commands/) kompiluje .po→.mo Babelem
-# w czystym Pythonie. xgettext/makemessages to operacja dev-only, nieobecna
-# w buildzie/CI.
-COPY docker/bpp_base/runtime.txt docker/bpp_base/test.txt /tmp/packages/
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
-    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-        ca-certificates curl gnupg git libldap2 libsasl2-2 && \
-    cat /tmp/packages/*.txt | xargs apt-get install -y
-
-# Node (grunt build + yarn install dla `make assets`) + yarn/grunt globalnie.
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
-    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
-    curl -fsSL https://deb.nodesource.com/setup_${NODEJS_VERSION}.x | bash - && \
-    apt-get install -y nodejs && \
-    npm install -g --force yarn grunt-cli
-
-# Skompilowany venv + przegladarki z buildera (bez toolchainu).
-COPY --from=test-venv-builder /opt/venv /opt/venv
-COPY --from=test-venv-builder /opt/playwright /opt/playwright
-
-# Playwright system deps. Na slim — w odroznieniu od pelnego trixie — tych
-# bibliotek nie ma, wiec instalacja jest konieczna (uzywamy playwrighta z venv).
-RUN /opt/venv/bin/playwright install-deps chromium
-
-# Pandoc z oficjalnego obrazu (patrz komentarz R7 przy runtime stage).
-# libgmp10/liblua5.4-0 juz sa w runtime.txt instalowanym wyzej.
-COPY --from=pandoc-src /usr/local/bin/pandoc /usr/local/bin/pandoc
-
-# Yarn deps + grunt CLI (needed for `make assets`). Mirrors the
-# testserver stage so CI gets a pre-built test-runner image with the
-# same toolchain available offline.
 WORKDIR /src
 COPY package.json yarn.lock Gruntfile.js ./
 RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
@@ -325,28 +267,14 @@ RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
     npx yarn install --dev --ignore-optional && \
     npx yarn add grunt
 
-# Snapshot the source tree and bake the frontend assets + .mo
-# translations into the image. CI consumes this through the
-# docker-compose.test.ci.yml override (no bind mount), so each test
-# job pulls a ready-to-run image instead of running `make assets`
-# (~1 min × N jobs) on every invocation. Local dev keeps the bind
-# mount and rebuilds assets on demand.
-#
-# Asset-source COPYs PRZED `grunt build` — dokladnie jak w stage `builder`
-# (patrz komentarz tam) — zeby warstwa grunta (~60s) byla CACHE-HIT, gdy
-# zmienil sie TYLKO kod Pythona, a nie scss/js. Wczesniej test-runner robil
-# `COPY src/` (cale drzewo) przed gruntem, wiec grunt przebudowywal sie na
-# KAZDYM commicie (a wiec i prepare-image gejtujacy wszystkie shardy). Teraz
-# grunt odpala sie tylko gdy faktycznie ruszysz scss/js. Gruntfile.js juz jest
-# w /src (skopiowany z package.json/yarn.lock wyzej). Dodajac nowy task
-# SCSS/JS do Gruntfile.js — dopisz tu COPY (jak w builderze). Pominiecie
-# zrodla taska esbuild = "Could not resolve <entry>" i grunt build pada.
+# Asset-source COPYs przed Gruntem utrzymuja cache-hit, gdy zmienia sie tylko
+# Python. Dodajac nowy task SCSS/JS do Gruntfile.js, dopisz jego zrodla tutaj.
 # Theme and admin SCSS
 COPY src/bpp/static/scss/ src/bpp/static/scss/
 COPY src/bpp/static/bpp/scss/ src/bpp/static/bpp/scss/
 # JS for esbuild bundle
 COPY src/bpp/static/bpp/js/ src/bpp/static/bpp/js/
-# JS for esbuild bundle eksploratora powiązań (cytoscape-entry + moduły ES)
+# JS for esbuild bundle eksploratora powiazan (cytoscape-entry + moduly ES)
 COPY src/powiazania_autorow/static/powiazania_autorow/js/ \
      src/powiazania_autorow/static/powiazania_autorow/js/
 # App-specific SCSS (keep alphabetical, mirror `builder`)
@@ -379,16 +307,96 @@ COPY src/przemapuj_zrodla_pbn/static/przemapuj_zrodla_pbn/scss/ \
 
 RUN npx grunt build-non-interactive
 
-# Reszta zrodla PO gruncie: zmiany w kodzie Pythona nie unieważniaja warstwy
-# grunta powyzej. Skompilowane assety (gitignored, nieobecne w kontekscie
-# build) przezyja ten COPY — COPY nie kasuje plikow, ktorych nie ma w zrodle.
+
+##############################################################################
+# TEST-RUNNER: srodowisko testowe NA python:slim. Skompilowany venv +
+# przegladarki przychodza gotowe z `test-venv-builder` (COPY --from), wiec slim
+# nie potrzebuje toolchainu. Tnie to obraz o ~1.1 GB build-only deps (buildpack
+# pelnego python:trixie: gcc/g++/dpkg-dev/autoconf + git/mercurial/svn, plus
+# nasz build.txt), ktore byly martwym balastem w obrazie testowym. Wzorzec
+# identyczny jak produkcyjny stage `runtime` (compiled venv na slim + runtime
+# liby). Slim NIE dziedziczy z `base`, wiec ENV i uv trzeba odtworzyc.
+##############################################################################
+ARG PYTHON_VERSION
+ARG DEBIAN_VERSION
+FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} AS test-runner
+
+ENV DEBIAN_FRONTEND=noninteractive
+# MALLOC_ARENA_MAX: patrz komentarz w stage `base` (slim nie dziedziczy).
+ENV MALLOC_ARENA_MAX=2
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
+ENV PATH="/opt/venv/bin:${PATH}"
+
+# uv potrzebne w runtime — CI wola `uv run pytest` (jak na pelnym obrazie).
+COPY --from=ghcr.io/astral-sh/uv:0.7 /uv /usr/local/bin/uv
+
+RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
+
+# Runtime liby wspoldzielone, ktorych potrzebuja skompilowane wheelsy +
+# narzedzia. runtime.txt: pango/cairo (weasyprint), libpq, gmp/lua (pandoc).
+# test.txt: make, redis-tools. Dodatkowo wzgledem `base`/produkcji:
+#  - libldap2/libsasl2-2: python-ldap (z extras `ldap`) linkuje sie z nimi;
+#    na pelnym trixie dawal je libldap2-dev/libsasl2-dev (build.txt), tu nie ma,
+#  - git: test_no_deklinacja uruchamia `git grep`.
+# UWAGA: `gettext` (msgfmt) NIE jest tu potrzebny — projektowy override
+# `compilemessages` (src/bpp/management/commands/) kompiluje .po→.mo Babelem
+# w czystym Pythonie. xgettext/makemessages to operacja dev-only, nieobecna
+# w buildzie/CI.
+COPY docker/bpp_base/runtime.txt docker/bpp_base/test.txt /tmp/packages/
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
+    apt-get update && \
+    apt-get install -y --no-install-recommends git libldap2 libsasl2-2 && \
+    cat /tmp/packages/*.txt | xargs apt-get install -y
+
+# Skompilowany venv + przegladarki z buildera (bez toolchainu).
+COPY --from=test-venv-builder /opt/venv /opt/venv
+COPY --from=test-browser-builder /opt/playwright /opt/playwright
+
+# Playwright system deps. Na slim — w odroznieniu od pelnego trixie — tych
+# bibliotek nie ma, wiec instalacja jest konieczna (uzywamy playwrighta z venv).
+RUN /opt/venv/bin/playwright install-deps chromium
+
+# Pandoc z oficjalnego obrazu (patrz komentarz R7 przy runtime stage).
+# libgmp10/liblua5.4-0 juz sa w runtime.txt instalowanym wyzej.
+COPY --from=pandoc-src /usr/local/bin/pandoc /usr/local/bin/pandoc
+
+WORKDIR /src
+# Pelne zrodlo oraz gotowe CSS/JS z osobnego buildera. Drugi COPY nadpisuje
+# tylko poddrzewa assetow i dodaje gitignored wyniki Grunta.
 COPY src/ /src/src/
+COPY --from=test-assets-builder /src/src/ /src/src/
 COPY baseline-sql/ /src/baseline-sql/
 COPY conftest.py pytest.ini Makefile pyproject.toml uv.lock /src/
+COPY docker/bpp_base/Dockerfile /src/docker/bpp_base/Dockerfile
 COPY .github/workflows/build-docker-images.yml \
-     /src/.github/workflows/build-docker-images.yml
+     .github/workflows/refresh-baseline.yml \
+     .github/workflows/release-candidate.yml \
+     .github/workflows/tests.yml \
+     /src/.github/workflows/
 
 RUN /opt/venv/bin/python src/manage.py compilemessages -v0 -l pl --traceback
+
+
+##############################################################################
+# TEST-RUNNER-LOCAL: narzedzia frontendowe tylko dla lokalnego bind-mounta.
+# CI targetuje `test-runner` powyzej. Lokalny docker-compose montuje repo na
+# /src i pozwala conftest.py wykonac `make assets`, wiec potrzebuje Node/Yarn.
+##############################################################################
+FROM test-runner AS test-runner-local
+
+ARG NODEJS_VERSION
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
+    apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates gnupg && \
+    curl -fsSL https://deb.nodesource.com/setup_${NODEJS_VERSION}.x | bash - && \
+    apt-get install -y nodejs && \
+    npm install -g --force yarn grunt-cli
 
 ##############################################################################
 # TESTSERVER: lokalny obraz developerski (NIE jest publikowany do registry)

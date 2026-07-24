@@ -255,7 +255,9 @@ jobs:
         context: .
         file: docker/bpp_base/Dockerfile
         target: test-runner
-        push: true
+        # Zstd zmniejsza transfer obrazu pullowanego rownolegle przez 12
+        # shardow. `outputs: type=registry` jest odpowiednikiem push=true.
+        outputs: type=registry,compression=zstd,compression-level=3,force-compression=true
         # Two tags: immutable sha-pinned (consumed by tests jobs) and
         # the registry-cache helper used to seed `cache-from` next time.
         tags: |

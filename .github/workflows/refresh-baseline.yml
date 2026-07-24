@@ -2,8 +2,9 @@ name: Refresh baseline pg_dump
 
 # Regenerates baseline-sql/baseline.sql + baseline.meta.json after
 # any push to dev that touches a migration file. The workflow uses the
-# django_pg_baseline management commands, which spin up an isolated
-# Postgres via testcontainers (iplweb/bpp_dbserver:psql-16.13).
+# canonical Make target, which loads the existing baseline, applies only
+# pending migrations and spins up an isolated Postgres via testcontainers
+# (iplweb/bpp_dbserver:psql-16.13).
 #
 # Manual trigger via the Actions tab is also enabled.
 
@@ -62,10 +63,10 @@ jobs:
       - name: Pre-pull dbserver image
         run: docker pull iplweb/bpp_dbserver:psql-16.13 || true
 
-      - name: Rebuild baseline
-        env:
-          DJANGO_BPP_SKIP_DOTENV: "1"
-        run: uv run python src/manage.py baseline_rebuild
+      - name: Update baseline in place
+        # The Make target also repairs pg_dump's empty search_path. Calling
+        # the management command directly would omit that required post-step.
+        run: make baseline-update
 
       - name: Commit refreshed baseline
         run: |

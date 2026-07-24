@@ -58,7 +58,9 @@ services:
     build:
       context: .
       dockerfile: docker/bpp_base/Dockerfile
-      target: test-runner
+      # Local bind-mount needs Node/Yarn so conftest.py can rebuild changed
+      # assets. CI pulls the slimmer `test-runner` target instead.
+      target: test-runner-local
       args:
         PYTHON_VERSION: ${PYTHON_VERSION:-3.12}
         DEBIAN_VERSION: ${DEBIAN_VERSION:-trixie}
