@@ -71,54 +71,85 @@ def pobierz_i_zapisz_dane_jednej_osoby(
 def _zapisz_osobe_z_instytucji(person):
     """Save a person from institution to OsobaZInstytucji model.
 
-    Handles IntegrityError for polonUuid conflicts gracefully.
+    ``OsobaZInstytucji`` ma DWA klucze unikalne: ``personId`` (OneToOne na
+    ``Scientist``) i ``polonUuid``. To ``polonUuid`` — identyfikator z POL-onu
+    — jest stabilną tożsamością fizycznej osoby; ``personId`` PBN potrafi
+    zmienić (np. po scaleniu zdublowanych profili). Dlatego dopasowujemy
+    wiersz NAJPIERW po ``polonUuid``, a ``personId`` traktujemy jako zwykłe
+    pole do zaktualizowania. Odwrotna kolejność (match wyłącznie po
+    ``personId``) leciała na INSERT i rozbijała się o unikalność
+    ``polonUuid``, a osoba była pomijana — czyli nowa tożsamość PBN nigdy nie
+    trafiała do bazy i ten sam błąd wracał przy każdym kolejnym imporcie.
 
     Args:
         person: Person data dictionary from PBN API.
 
     Returns:
-        True if saved successfully, False if skipped due to polonUuid conflict.
+        True if saved successfully, False if skipped due to an unresolvable
+        identity conflict (reported to Rollbar).
     """
     from pbn_api.models.institution import Institution
     from pbn_api.models.osoba_z_instytucji import OsobaZInstytucji
 
+    polon_uuid = person.get("polonUuid")
+    dane = {
+        "firstName": person.get("firstName", ""),
+        "lastName": person.get("lastName", ""),
+        "institutionName": person.get("institutionName", ""),
+        "title": person.get("title") or "",
+        "phdStudent": person.get("phdStudent", False),
+        "_from": person.get("from"),
+        "_to": person.get("to"),
+    }
+
     try:
         with transaction.atomic():
-            OsobaZInstytucji.objects.update_or_create(
-                personId=Scientist.objects.get(pk=person["personId"]),
-                defaults={
-                    "firstName": person.get("firstName", ""),
-                    "lastName": person.get("lastName", ""),
-                    "institutionId": Institution.objects.get(
-                        pk=person["institutionId"]
-                    ),
-                    "institutionName": person.get("institutionName", ""),
-                    "title": person.get("title") or "",
-                    "polonUuid": person.get("polonUuid"),
-                    "phdStudent": person.get("phdStudent", False),
-                    "_from": person.get("from"),
-                    "_to": person.get("to"),
-                },
+            scientist = Scientist.objects.get(pk=person["personId"])
+            instytucja = Institution.objects.get(pk=person["institutionId"])
+
+            osoba = (
+                OsobaZInstytucji.objects.filter(polonUuid=polon_uuid).first()
+                if polon_uuid
+                else None
             )
+
+            if osoba is not None:
+                # Ta sama osoba z POL-onu — przepnij wiersz na (być może
+                # nowy) identyfikator PBN i odśwież dane.
+                osoba.personId = scientist
+                osoba.institutionId = instytucja
+                for pole, wartosc in dane.items():
+                    setattr(osoba, pole, wartosc)
+                osoba.save()
+            else:
+                OsobaZInstytucji.objects.update_or_create(
+                    personId=scientist,
+                    defaults={
+                        **dane,
+                        "institutionId": instytucja,
+                        "polonUuid": polon_uuid,
+                    },
+                )
         return True
-    except IntegrityError as e:
-        if "polonUuid" in str(e):
-            # Loguj konflikt polonUuid do Rollbar jako ostrzeżenie
-            rollbar.report_exc_info(
-                sys.exc_info(),
-                extra_data={
-                    "personId": person.get("personId"),
-                    "polonUuid": person.get("polonUuid"),
-                    "firstName": person.get("firstName"),
-                    "lastName": person.get("lastName"),
-                },
-            )
-            logger.info(
-                f"UWAGA: Konflikt polonUuid dla osoby {person.get('personId')}: "
-                f"{person.get('polonUuid')}. Pomijam wpis (zalogowano do Rollbar)."
-            )
-            return False
-        raise  # Inne błędy IntegrityError propaguj
+    except IntegrityError:
+        # Zostaje przypadek naprawdę niejednoznaczny: nowy personId ma JUŻ
+        # swój wiersz z innym polonUuid, więc przepięcie zderza się z
+        # unikalnością personId. Scalenie dwóch tożsamości PBN to decyzja o
+        # danych, nie poprawka techniczna — raportujemy i pomijamy.
+        rollbar.report_exc_info(
+            sys.exc_info(),
+            extra_data={
+                "personId": person.get("personId"),
+                "polonUuid": polon_uuid,
+                "firstName": person.get("firstName"),
+                "lastName": person.get("lastName"),
+            },
+        )
+        logger.info(
+            f"UWAGA: Niejednoznaczna tożsamość osoby {person.get('personId')} "
+            f"(polonUuid {polon_uuid}). Pomijam wpis (zalogowano do Rollbar)."
+        )
+        return False
 
 
 def _get_max_workers():
