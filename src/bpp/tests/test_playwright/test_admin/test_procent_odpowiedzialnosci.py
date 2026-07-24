@@ -14,10 +14,37 @@ from bpp.models.system import (
     Typ_KBN,
     Typ_Odpowiedzialnosci,
 )
-from django_bpp.playwright_util import (
-    close_all_select2_dropdowns,
-    select_select2_autocomplete,
-)
+from django_bpp.playwright_util import set_select2_value
+
+
+def set_form_select2_value(
+    page: Page, element_id: str, value: str, timeout: int = 10000
+):
+    """Set an unrelated Select2 field without waiting for its AJAX endpoint.
+
+    These tests exercise responsibility-percentage validation, not autocomplete.
+    Dedicated tests cover the Select2 widgets themselves, so driving every lookup
+    over HTTP here only multiplies runtime and introduces an unrelated timing flake.
+
+    Selecting an author starts ``autorform_dependant.js`` AJAX. Wait for it before
+    filling ``zapisany_jako`` because its completion callback clears that field.
+    """
+    if element_id == "id_zrodlo":
+        option_value = Zrodlo.objects.get(nazwa=value).pk
+    elif element_id.endswith("-autor"):
+        option_value = Autor.objects.get(nazwisko=value).pk
+    elif element_id.endswith("-jednostka"):
+        option_value = Jednostka.objects.get(nazwa=value).pk
+    else:
+        option_value = value
+
+    set_select2_value(
+        page,
+        element_id,
+        option_value,
+        label=value,
+        timeout=timeout,
+    )
 
 
 def force_commit():
@@ -175,9 +202,7 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_jeden_autor(  # noqa: 
     admin_page.fill("#id_tytul_oryginalny", "tytul oryginalny")
 
     if admin_page.query_selector("#id_zrodlo"):
-        select_select2_autocomplete(
-            admin_page, "id_zrodlo", zrodlo_obj.nazwa, timeout=4000
-        )
+        set_form_select2_value(admin_page, "id_zrodlo", zrodlo_obj.nazwa, timeout=4000)
 
     if admin_page.query_selector("#id_jezyk"):
         select_first_option(admin_page, "#id_jezyk")
@@ -203,13 +228,13 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_jeden_autor(  # noqa: 
     )
 
     # Fill admin inline
-    select_select2_autocomplete(
+    set_form_select2_value(
         admin_page, "id_autorzy_set-0-autor", autor.nazwisko, timeout=4000
     )
-    select_select2_autocomplete(
+    set_form_select2_value(
         admin_page, "id_autorzy_set-0-jednostka", jednostka.nazwa, timeout=4000
     )
-    select_select2_autocomplete(
+    set_form_select2_value(
         admin_page, "id_autorzy_set-0-zapisany_jako", "Kopara", timeout=4000
     )
     # Select typ_odpowiedzialnosci (responsibility type)
@@ -258,9 +283,7 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_jeden_autor(  
     admin_page.fill("#id_tytul_oryginalny", "tytul oryginalny")
 
     if admin_page.query_selector("#id_zrodlo"):
-        select_select2_autocomplete(
-            admin_page, "id_zrodlo", zrodlo_obj.nazwa, timeout=4000
-        )
+        set_form_select2_value(admin_page, "id_zrodlo", zrodlo_obj.nazwa, timeout=4000)
 
     if admin_page.query_selector("#id_jezyk"):
         select_first_option(admin_page, "#id_jezyk")
@@ -286,13 +309,13 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_jeden_autor(  
     )
 
     # Fill admin inline with INVALID percentage (100.01 instead of 100.00)
-    select_select2_autocomplete(
+    set_form_select2_value(
         admin_page, "id_autorzy_set-0-autor", autor.nazwisko, timeout=4000
     )
-    select_select2_autocomplete(
+    set_form_select2_value(
         admin_page, "id_autorzy_set-0-jednostka", jednostka.nazwa, timeout=4000
     )
-    select_select2_autocomplete(
+    set_form_select2_value(
         admin_page, "id_autorzy_set-0-zapisany_jako", "Kopara", timeout=4000
     )
     # Select typ_odpowiedzialnosci (responsibility type)
@@ -339,16 +362,11 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dwoch_autorow(  # noqa
     admin_page.goto(url)
     admin_page.wait_for_load_state("domcontentloaded")
 
-    # Clean up any lingering Select2 dropdowns from previous tests
-    close_all_select2_dropdowns(admin_page)
-
     # Fill admin form
     admin_page.fill("#id_tytul_oryginalny", "tytul oryginalny")
 
     if admin_page.query_selector("#id_zrodlo"):
-        select_select2_autocomplete(
-            admin_page, "id_zrodlo", zrodlo_obj.nazwa, timeout=4000
-        )
+        set_form_select2_value(admin_page, "id_zrodlo", zrodlo_obj.nazwa, timeout=4000)
 
     if admin_page.query_selector("#id_jezyk"):
         select_first_option(admin_page, "#id_jezyk")
@@ -374,13 +392,13 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dwoch_autorow(  # noqa
     )
 
     # Fill first author (50%)
-    select_select2_autocomplete(
+    set_form_select2_value(
         admin_page, "id_autorzy_set-0-autor", autor1.nazwisko, timeout=4000
     )
-    select_select2_autocomplete(
+    set_form_select2_value(
         admin_page, "id_autorzy_set-0-jednostka", jednostka.nazwa, timeout=4000
     )
-    select_select2_autocomplete(
+    set_form_select2_value(
         admin_page, "id_autorzy_set-0-zapisany_jako", "Kopara1", timeout=4000
     )
     # Select typ_odpowiedzialnosci (responsibility type)
@@ -402,13 +420,13 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dwoch_autorow(  # noqa
     )
 
     # Fill second author (50%)
-    select_select2_autocomplete(
+    set_form_select2_value(
         admin_page, "id_autorzy_set-1-autor", autor2.nazwisko, timeout=4000
     )
-    select_select2_autocomplete(
+    set_form_select2_value(
         admin_page, "id_autorzy_set-1-jednostka", jednostka.nazwa, timeout=4000
     )
-    select_select2_autocomplete(
+    set_form_select2_value(
         admin_page, "id_autorzy_set-1-zapisany_jako", "Kopara2", timeout=4000
     )
     # Select typ_odpowiedzialnosci (responsibility type)
@@ -453,16 +471,11 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_dwoch_autorow(
     admin_page.goto(url)
     admin_page.wait_for_load_state("domcontentloaded")
 
-    # Clean up any lingering Select2 dropdowns from previous tests
-    close_all_select2_dropdowns(admin_page)
-
     # Fill admin form
     admin_page.fill("#id_tytul_oryginalny", "tytul oryginalny")
 
     if admin_page.query_selector("#id_zrodlo"):
-        select_select2_autocomplete(
-            admin_page, "id_zrodlo", zrodlo_obj.nazwa, timeout=4000
-        )
+        set_form_select2_value(admin_page, "id_zrodlo", zrodlo_obj.nazwa, timeout=4000)
 
     if admin_page.query_selector("#id_jezyk"):
         select_first_option(admin_page, "#id_jezyk")
@@ -488,13 +501,13 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_dwoch_autorow(
     )
 
     # Fill first author (50%)
-    select_select2_autocomplete(
+    set_form_select2_value(
         admin_page, "id_autorzy_set-0-autor", autor1.nazwisko, timeout=4000
     )
-    select_select2_autocomplete(
+    set_form_select2_value(
         admin_page, "id_autorzy_set-0-jednostka", jednostka.nazwa, timeout=4000
     )
-    select_select2_autocomplete(
+    set_form_select2_value(
         admin_page, "id_autorzy_set-0-zapisany_jako", "Kopara1", timeout=4000
     )
     # Select typ_odpowiedzialnosci (responsibility type)
@@ -516,13 +529,13 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_dwoch_autorow(
     )
 
     # Fill second author (50.01% - INVALID)
-    select_select2_autocomplete(
+    set_form_select2_value(
         admin_page, "id_autorzy_set-1-autor", autor2.nazwisko, timeout=4000
     )
-    select_select2_autocomplete(
+    set_form_select2_value(
         admin_page, "id_autorzy_set-1-jednostka", jednostka.nazwa, timeout=4000
     )
-    select_select2_autocomplete(
+    set_form_select2_value(
         admin_page, "id_autorzy_set-1-zapisany_jako", "Kopara2", timeout=4000
     )
     # Select typ_odpowiedzialnosci (responsibility type)
@@ -576,14 +589,11 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dobrze_potem_zle_dwoch
         admin_page.goto(url)
         admin_page.wait_for_load_state("domcontentloaded")
 
-        # Clean up any lingering Select2 dropdowns
-        close_all_select2_dropdowns(admin_page)
-
         # Fill admin form
         admin_page.fill("#id_tytul_oryginalny", "tytul oryginalny")
 
         if admin_page.query_selector("#id_zrodlo"):
-            select_select2_autocomplete(
+            set_form_select2_value(
                 admin_page, "id_zrodlo", zrodlo_obj.nazwa, timeout=4000
             )
 
@@ -610,13 +620,13 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dobrze_potem_zle_dwoch
             "#id_autorzy_set-0-autor", state="visible", timeout=10000
         )
 
-        select_select2_autocomplete(
+        set_form_select2_value(
             admin_page, "id_autorzy_set-0-autor", autor1.nazwisko, timeout=4000
         )
-        select_select2_autocomplete(
+        set_form_select2_value(
             admin_page, "id_autorzy_set-0-jednostka", jednostka.nazwa, timeout=4000
         )
-        select_select2_autocomplete(
+        set_form_select2_value(
             admin_page, "id_autorzy_set-0-zapisany_jako", "Kopara1", timeout=4000
         )
         # Select typ_odpowiedzialnosci (responsibility type)
@@ -637,13 +647,13 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dobrze_potem_zle_dwoch
             "#id_autorzy_set-1-autor", state="visible", timeout=10000
         )
 
-        select_select2_autocomplete(
+        set_form_select2_value(
             admin_page, "id_autorzy_set-1-autor", autor2.nazwisko, timeout=4000
         )
-        select_select2_autocomplete(
+        set_form_select2_value(
             admin_page, "id_autorzy_set-1-jednostka", jednostka.nazwa, timeout=4000
         )
-        select_select2_autocomplete(
+        set_form_select2_value(
             admin_page, "id_autorzy_set-1-zapisany_jako", "Kopara2", timeout=4000
         )
         # Select typ_odpowiedzialnosci (responsibility type)
@@ -664,7 +674,7 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dobrze_potem_zle_dwoch
             autor1_val = admin_page.locator("#id_autorzy_set-1-autor").input_value()
             if autor0 != autor1_val:
                 break
-            select_select2_autocomplete(
+            set_form_select2_value(
                 admin_page, "id_autorzy_set-1-autor", autor2.nazwisko, timeout=4000
             )
         assert (
@@ -723,16 +733,10 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dobrze_potem_zle_dwoch
         try:
             # Delete created publication first (has foreign keys to other objects)
             if created_publication is not None:
-                try:
-                    created_publication.delete()
-                except Exception:
-                    pass  # May already be deleted or not exist
+                created_publication.delete()
 
             # Delete test data objects
             for obj in reversed(created_objects):
-                try:
-                    obj.delete()
-                except Exception:
-                    pass  # May already be deleted or have FK constraints
+                obj.delete()
         finally:
             transaction.set_autocommit(old_autocommit)

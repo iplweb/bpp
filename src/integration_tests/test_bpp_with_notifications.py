@@ -1,5 +1,3 @@
-import time
-
 from django.core.management import call_command
 
 #
@@ -68,8 +66,6 @@ def test_caching_enabled(
     form["typ_kbn"].value = Typ_KBN.objects.all().first().pk
     form["status_korekty"].value = Status_Korekty.objects.all().first().pk
     form.submit()
-
-    time.sleep(1)
 
     denorms.flush()
 
@@ -142,7 +138,6 @@ def test_bpp_notifications(preauth_asgi_page_per_test: Page):
         username=preauth_asgi_page_per_test.authorized_user.username,
         verbosity=0,
     )
-    page.wait_for_timeout(1000)
     expect(page.locator("body")).to_contain_text(s, timeout=15000)
 
 
@@ -165,7 +160,6 @@ def test_bpp_notifications_and_messages(preauth_asgi_page: Page):
     page.wait_for_timeout(2000)  # Pozwol subskrypcji WS sie ustabilizowac
     call_command("send_message", preauth_asgi_page.authorized_user.username, s)
 
-    page.wait_for_timeout(1000)  # Give time for message to be sent
     page.wait_for_function(
         f"() => document.body.textContent.includes('{s}')", timeout=15000
     )

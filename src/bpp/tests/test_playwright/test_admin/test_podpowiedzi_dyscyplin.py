@@ -3,7 +3,7 @@ from django.urls import reverse
 from playwright.sync_api import Page
 
 from bpp.models import Autor_Dyscyplina
-from django_bpp.playwright_util import select_select2_autocomplete
+from django_bpp.playwright_util import set_select2_value
 
 
 @pytest.mark.parametrize("url", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
@@ -21,7 +21,7 @@ def test_podpowiedzi_dyscyplin_autor_ma_dwie(
         dyscyplina_naukowa=dyscyplina1,
         subdyscyplina_naukowa=dyscyplina2,
     )
-    url = reverse("admin:bpp_%s_add" % url)
+    url = reverse(f"admin:bpp_{url}_add")
     admin_page.goto(channels_live_server.url + url)
     admin_page.fill('input[name="rok"]', "2018")
 
@@ -31,9 +31,12 @@ def test_podpowiedzi_dyscyplin_autor_ma_dwie(
     # Wait for the autor field to appear
     admin_page.wait_for_selector("#id_autorzy_set-0-autor", state="visible")
 
-    # Select KOWALSKI in the autor field using select2
-    select_select2_autocomplete(
-        admin_page, "id_autorzy_set-0-autor", "KOWALSKI", timeout=30000
+    set_select2_value(
+        admin_page,
+        "id_autorzy_set-0-autor",
+        autor_jan_kowalski.pk,
+        label=str(autor_jan_kowalski),
+        timeout=30000,
     )
 
     # Give time for the (absent) podpowiedz-dyscyplinę AJAX to fire — this
@@ -64,7 +67,7 @@ def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_nie_podpowiada(
     Autor_Dyscyplina.objects.create(
         rok=2018, autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina1
     )
-    url = reverse("admin:bpp_%s_add" % url)
+    url = reverse(f"admin:bpp_{url}_add")
     admin_page.goto(channels_live_server.url + url)
     admin_page.fill('input[name="rok"]', "2018")
 
@@ -74,9 +77,12 @@ def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_nie_podpowiada(
     # Wait for the autor field to appear
     admin_page.wait_for_selector("#id_autorzy_set-0-autor", state="visible")
 
-    # Select KOWALSKI in the autor field using select2
-    select_select2_autocomplete(
-        admin_page, "id_autorzy_set-0-autor", "KOWALSKI", timeout=30000
+    set_select2_value(
+        admin_page,
+        "id_autorzy_set-0-autor",
+        autor_jan_kowalski.pk,
+        label=str(autor_jan_kowalski),
+        timeout=30000,
     )
 
     # Give time for the (absent) podpowiedz-dyscyplinę AJAX to fire — this
@@ -107,7 +113,7 @@ def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_podpowiada(
     Autor_Dyscyplina.objects.create(
         rok=2018, autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina1
     )
-    url = reverse("admin:bpp_%s_add" % url)
+    url = reverse(f"admin:bpp_{url}_add")
     admin_page.goto(channels_live_server.url + url)
     admin_page.fill('input[name="rok"]', "2018")
 
@@ -117,9 +123,12 @@ def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_podpowiada(
     # Wait for the autor field to appear
     admin_page.wait_for_selector("#id_autorzy_set-0-autor", state="visible")
 
-    # Select KOWALSKI in the autor field using select2
-    select_select2_autocomplete(
-        admin_page, "id_autorzy_set-0-autor", "KOWALSKI", timeout=30000
+    set_select2_value(
+        admin_page,
+        "id_autorzy_set-0-autor",
+        autor_jan_kowalski.pk,
+        label=str(autor_jan_kowalski),
+        timeout=30000,
     )
 
     # Wait for discipline auto-fill to complete

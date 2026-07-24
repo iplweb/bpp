@@ -224,6 +224,45 @@ def select_select2_autocomplete(
         page.wait_for_timeout(0)
 
 
+def set_select2_value(
+    page: Page,
+    element_id: str,
+    value: str | int,
+    label: str | None = None,
+    timeout: int = 10000,
+):
+    """Set a Select2-backed field without exercising its autocomplete.
+
+    Use this only when Select2 is incidental to the behaviour under test. The
+    helper adds the option that an AJAX lookup would normally create, selects it,
+    emits the same jQuery ``change`` event, and waits for dependent AJAX handlers.
+    Tests whose purpose is autocomplete or queryset forwarding must keep using
+    :func:`select_select2_autocomplete`.
+    """
+    option_value = str(value)
+    select = page.locator(f"#{element_id}")
+    select.wait_for(state="attached", timeout=timeout)
+    select.evaluate(
+        """(element, option) => {
+            const existing = Array.from(element.options).find(
+                item => item.value === option.value
+            );
+            const selected = existing || new Option(
+                option.label, option.value, true, true
+            );
+            if (!existing) element.add(selected);
+            element.value = option.value;
+            django.jQuery(element).trigger('change');
+        }""",
+        {"value": option_value, "label": label or option_value},
+    )
+    page.wait_for_function(
+        "() => !window.django || !django.jQuery || django.jQuery.active === 0",
+        timeout=timeout,
+    )
+    assert select.input_value() == option_value
+
+
 def close_all_select2_dropdowns(page: Page):
     """Close any open Select2 dropdowns to ensure clean DOM state.
 

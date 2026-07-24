@@ -337,6 +337,7 @@ disable-microsoft-auth: ## Wyłącz django_microsoft_auth
 # (`make tests-without-playwright`) nie brudzi pliku. `make tests` i
 # `make test-durations` wlaczaja zapis przez target-specific STORE_DURATIONS.
 STORE_DURATIONS ?=
+PLAYWRIGHT_WORKERS ?= 12
 _store_durations = $(if $(STORE_DURATIONS),--store-durations --durations-path .test_durations,)
 # Po zapisie zaokraglij+posortuj plik (maly, stabilny diff). `&&` —
 # normalizujemy tylko po udanym przebiegu; przy STORE_DURATIONS pustym
@@ -351,8 +352,11 @@ tests-without-playwright-with-microsoft-auth: ## tests-without-playwright z akty
 
 tests-with-microsoft-auth: enable-microsoft-auth tests-without-playwright-with-microsoft-auth disable-microsoft-auth ## Włącz MS Auth, uruchom testy, wyłącz
 
+# Chromium i Daphne konkuruja o zasoby przy `-n auto` (16 workerow na
+# typowej maszynie deweloperskiej). Limit mozna nadpisac, np.
+# `make tests-only-playwright PLAYWRIGHT_WORKERS=8`.
 tests-only-playwright: playwright-install ## Tylko testy Playwright (wolne)
-	uv run pytest -n auto -m "playwright" $(_store_durations) $(_normalize_durations)
+	uv run pytest -n $(PLAYWRIGHT_WORKERS) -m "playwright" $(_store_durations) $(_normalize_durations)
 
 uv-sync: ## uv sync --all-extras (synchronizacja zależności Pythona)
 	uv sync --no-install-project --all-extras

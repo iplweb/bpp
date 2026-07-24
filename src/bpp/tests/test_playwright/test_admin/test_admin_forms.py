@@ -8,7 +8,10 @@ from playwright.sync_api import Page
 from bpp.models.zrodlo import Punktacja_Zrodla
 from bpp.tests import any_autor, any_jednostka
 from bpp.tests.util import CURRENT_YEAR, any_zrodlo
-from django_bpp.playwright_util import select_select2_autocomplete
+from django_bpp.playwright_util import (
+    select_select2_autocomplete,
+    set_select2_value,
+)
 
 
 def _wait_until(predicate, page=None, timeout: float = 5.0, interval_ms: int = 50):
@@ -40,7 +43,7 @@ def test_automatycznie_uzupelnij_punkty(admin_page: Page, channels_live_server):
 
     admin_page.goto(channels_live_server.url + url)
 
-    any_zrodlo(nazwa="FOO BAR")
+    zrodlo = any_zrodlo(nazwa="FOO BAR")
 
     # Wait for the button to appear
     admin_page.wait_for_selector("#id_wypelnij_pola_punktacji_button", state="visible")
@@ -63,10 +66,12 @@ def test_automatycznie_uzupelnij_punkty(admin_page: Page, channels_live_server):
     assert len(dialog_messages) > 0
     assert "Najpierw wybierz jakie" in dialog_messages[0]
 
-    # Select source using select2 autocomplete (helper waits for the
-    # underlying select to receive the new value, so no extra sleep needed)
-    select_select2_autocomplete(
-        admin_page, "id_zrodlo", "FOO", wait_for_new_value=True, timeout=30000
+    set_select2_value(
+        admin_page,
+        "id_zrodlo",
+        zrodlo.pk,
+        label=zrodlo.nazwa,
+        timeout=30000,
     )
 
     # Click button again
@@ -165,14 +170,23 @@ def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
     # Wait for the autor field to appear
     admin_page.wait_for_selector("#id_autorzy_set-0-autor", state="visible")
 
-    # Select "Kowalski Jan" in the autor field using select2
-    select_select2_autocomplete(
-        admin_page, "id_autorzy_set-0-autor", "Kowalski Jan", timeout=30000
+    # Author selection only prepares the tested field. Its change handler still
+    # runs and finishes before we type the custom name character by character.
+    set_select2_value(
+        admin_page,
+        "id_autorzy_set-0-autor",
+        autor_jan_kowalski.pk,
+        label=str(autor_jan_kowalski),
+        timeout=30000,
     )
 
-    # Enter "Dowolny tekst" in the zapisany_jako field using select2
+    # NIE ZASTĘPOWAĆ przez set_select2_value: wpisywanie dowolnej wartości
+    # znak po znaku oraz utworzenie jej przez Select2 są przedmiotem testu.
     select_select2_autocomplete(
-        admin_page, "id_autorzy_set-0-zapisany_jako", "Dowolny tekst", timeout=30000
+        admin_page,
+        "id_autorzy_set-0-zapisany_jako",
+        "Dowolny tekst",
+        timeout=30000,
     )
 
     # Verify the value was set correctly
@@ -185,12 +199,18 @@ def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
 @pytest.mark.django_db(transaction=True)
 def test_upload_punkty(admin_page: Page, channels_live_server):
     """Test uploading points to source scoring data."""
-    any_zrodlo(nazwa="WTF LOL")
+    zrodlo = any_zrodlo(nazwa="WTF LOL")
 
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
     admin_page.goto(channels_live_server.url + url)
 
-    select_select2_autocomplete(admin_page, "id_zrodlo", "WTF", timeout=30000)
+    set_select2_value(
+        admin_page,
+        "id_zrodlo",
+        zrodlo.pk,
+        label=zrodlo.nazwa,
+        timeout=30000,
+    )
 
     rok = admin_page.locator("#id_rok")
     rok.scroll_into_view_if_needed()
@@ -319,18 +339,18 @@ def test_admin_uzupelnij_punkty(admin_page: Page, channels_live_server):
 
 
 @pytest.fixture
-def autorform_jednostka(db):
+def autorform_autor_i_jednostka(db):
     """Create an author with a unit for autorform tests."""
     with transaction.atomic():
         a = any_autor(nazwisko="KOWALSKI", imiona="Jan Sebastian")
         j = any_jednostka(nazwa="WTF LOL")
         j.dodaj_autora(a)
-    return j
+    return a, j
 
 
 @pytest.mark.django_db(transaction=True)
 def test_autorform_uzupelnianie_jednostki(
-    admin_page: Page, channels_live_server, autorform_jednostka
+    admin_page: Page, channels_live_server, autorform_autor_i_jednostka
 ):
     """Test automatic unit population when selecting an author."""
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
@@ -346,22 +366,26 @@ def test_autorform_uzupelnianie_jednostki(
     # Wait for the autor field to appear
     admin_page.wait_for_selector("#id_autorzy_set-0-autor", state="visible")
 
-    # Select "KOWALSKI" in the autor field using select2
-    select_select2_autocomplete(
-        admin_page, "id_autorzy_set-0-autor", "KOWALSKI", timeout=30000
+    autor, jednostka = autorform_autor_i_jednostka
+    set_select2_value(
+        admin_page,
+        "id_autorzy_set-0-autor",
+        autor.pk,
+        label=str(autor),
+        timeout=30000,
     )
 
     # Wait for jednostka field to be auto-populated
     admin_page.wait_for_function(
         f"() => document.getElementById('id_autorzy_set-0-jednostka').value === "
-        f"'{autorform_jednostka.pk}'",
+        f"'{jednostka.pk}'",
         timeout=10000,
     )
 
 
 @pytest.mark.django_db(transaction=True)
 def test_autorform_kasowanie_autora(
-    admin_page: Page, channels_live_server, autorform_jednostka
+    admin_page: Page, channels_live_server, autorform_autor_i_jednostka
 ):
     """Test that clearing author also clears unit selection."""
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
@@ -377,15 +401,19 @@ def test_autorform_kasowanie_autora(
     # Wait for the autor field to appear
     admin_page.wait_for_selector("#id_autorzy_set-0-autor", state="visible")
 
-    # Select "KOW" (shortcut for KOWALSKI) in the autor field using select2
-    select_select2_autocomplete(
-        admin_page, "id_autorzy_set-0-autor", "KOW", timeout=30000
+    autor, jednostka = autorform_autor_i_jednostka
+    set_select2_value(
+        admin_page,
+        "id_autorzy_set-0-autor",
+        autor.pk,
+        label=str(autor),
+        timeout=30000,
     )
 
     # Wait for jednostka field to be auto-populated
     admin_page.wait_for_function(
         f"() => document.getElementById('id_autorzy_set-0-jednostka').value === "
-        f"'{autorform_jednostka.pk}'",
+        f"'{jednostka.pk}'",
         timeout=10000,
     )
 
