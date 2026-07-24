@@ -259,6 +259,15 @@ class MyMultiseekExport(LoginRequiredMixin, MyMultiseekResults):
         if export_format not in self.DATA_FORMATS | self.DOCUMENT_FORMATS:
             return HttpResponseBadRequest("Nieznany format eksportu.")
 
+        registry = get_registry(self.registry)
+        report_type = registry.get_report_type(
+            self.get_multiseek_data(), request=request
+        )
+        if report_type == "pivot":
+            # Pivot eksportuje MACIERZ (nie listę rekordów) — cap 5000 na
+            # liczbę rekordów źródłowych nie dotyczy rozmiaru wyjścia.
+            return self._export_pivot(request, export_format)
+
         queryset = self.get_queryset_for_current_mode()
         count = queryset.count()
         if count > MULTISEEK_EXPORT_MAX_ROWS:
@@ -271,6 +280,25 @@ class MyMultiseekExport(LoginRequiredMixin, MyMultiseekResults):
         if export_format in self.DATA_FORMATS:
             return self._export_data(request, export_format, queryset, report_title)
         return self._export_document(request, export_format, queryset, report_title)
+
+    def _export_pivot(self, request, export_format):
+        from bpp.multiseek_registry import pivot as pivot_mod
+        from bpp.views.multiseek_export import (
+            pivot_csv_export_response,
+            pivot_xlsx_export_response,
+        )
+
+        if export_format not in {"csv", "xlsx"}:
+            return HttpResponseBadRequest(
+                "Eksport tabeli krzyżowej dostępny jako XLSX lub CSV."
+            )
+        base_qs = self.get_queryset_for_current_mode()
+        row_dim, col_dim, metric = pivot_mod.parse_pivot_params(request.GET)
+        pivot_result = pivot_mod.zbuduj_pivot(base_qs, row_dim, col_dim, metric)
+        report_title = _multiseek_report_title(request)
+        if export_format == "csv":
+            return pivot_csv_export_response(pivot_result, request, report_title)
+        return pivot_xlsx_export_response(pivot_result, request, report_title)
 
     def _export_data(self, request, export_format, queryset, report_title):
         wariant = request.GET.get("wariant", "dane")

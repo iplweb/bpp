@@ -117,6 +117,37 @@ def test_pivot_renderuje_macierz_html(
     assert "export/xlsx" in html
 
 
+@pytest.mark.django_db
+def test_pivot_export_xlsx(logged_in_client, test_user, standard_data, denorms):
+    """Eksport XLSX pivota działa (macierz, nie lista) — omija cap 5000."""
+    any_ciagle(tytul_oryginalny=f"{PIVOT_TITLE_PREFIX} - delta", rok=2024)
+    denorms.flush()
+    _set_multiseek_pivot_filter(logged_in_client, test_user)
+
+    resp = logged_in_client.get(
+        reverse("multiseek-export", args=["xlsx"]) + "?pivot_row=rok&pivot_val=liczba"
+    )
+    assert resp.status_code == 200
+    assert resp["Content-Type"].startswith(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml"
+    )
+
+
+@pytest.mark.django_db
+def test_pivot_export_csv(logged_in_client, test_user, standard_data, denorms):
+    """Eksport CSV pivota zawiera wiersz RAZEM."""
+    any_ciagle(tytul_oryginalny=f"{PIVOT_TITLE_PREFIX} - epsilon", rok=2024)
+    denorms.flush()
+    _set_multiseek_pivot_filter(logged_in_client, test_user)
+
+    resp = logged_in_client.get(
+        reverse("multiseek-export", args=["csv"]) + "?pivot_row=rok&pivot_val=liczba"
+    )
+    assert resp.status_code == 200
+    assert resp["Content-Type"].startswith("text/csv")
+    assert "RAZEM" in resp.content.decode()
+
+
 def test_pivot_report_type_na_koncu_listy():
     """report_type jest indeksem pozycyjnym — "pivot" MUSI być ostatnim
     elementem, inaczej zapisane formularze przesuną się na inny typ."""

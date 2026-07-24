@@ -402,3 +402,70 @@ def xlsx_export_response(queryset, request, report_title, wariant="dane"):
         filename=_export_filename("xlsx", report_title),
     )
     return response
+
+
+def _pivot_export_rows(pivot_result):
+    """Wiersze eksportu macierzy pivota: nagłówek (etykieta wiersza +
+    etykiety kolumn + RAZEM), wiersze danych, wiersz RAZEM. Puste komórki
+    → "" (pusty string), nie None."""
+    t = pivot_result.as_table()
+    yield [t["row_header"], *t["col_headers"], "RAZEM"]
+    for row in t["rows"]:
+        cells = ["" if c is None else c for c in row["cells"]]
+        yield [row["label"], *cells, row["total"]]
+    col_totals = ["" if c is None else c for c in t["col_totals"]]
+    yield ["RAZEM", *col_totals, t["grand_total"]]
+
+
+def pivot_csv_export_response(pivot_result, request, report_title):
+    """Eksport CSV tabeli krzyżowej (macierz, nie lista rekordów)."""
+    output = io.StringIO()
+    writer = csv.writer(output)
+    for row in _pivot_export_rows(pivot_result):
+        writer.writerow(_sanitize_spreadsheet_row(row))
+
+    response = HttpResponse(output.getvalue(), content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = content_disposition_header(
+        as_attachment=True,
+        filename=_export_filename("csv", report_title),
+    )
+    return response
+
+
+def pivot_xlsx_export_response(pivot_result, request, report_title):
+    """Eksport XLSX tabeli krzyżowej (macierz z sumami brzegowymi)."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    from bpp.util import sanitize_xlsx_row, worksheet_columns_autosize
+
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = _xlsx_worksheet_title(report_title)
+    for row in _pivot_export_rows(pivot_result):
+        worksheet.append(sanitize_xlsx_row(row))
+
+    header_fill = PatternFill("solid", fgColor="1F4E78")
+    header_font = Font(color="FFFFFF", bold=True)
+    for cell in worksheet[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    if worksheet.max_row > 1:
+        worksheet.freeze_panes = "B2"
+    worksheet_columns_autosize(worksheet)
+
+    output = io.BytesIO()
+    workbook.save(output)
+    response = HttpResponse(
+        output.getvalue(),
+        content_type=(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ),
+    )
+    response["Content-Disposition"] = content_disposition_header(
+        as_attachment=True,
+        filename=_export_filename("xlsx", report_title),
+    )
+    return response
