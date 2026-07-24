@@ -8,11 +8,17 @@ import logging
 from datetime import date, timedelta
 
 from autoslug import AutoSlugField
+from django.contrib.postgres.constraints import ExclusionConstraint
+from django.contrib.postgres.fields import (
+    DateRangeField,
+    RangeBoundary,
+    RangeOperators,
+)
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import IntegrityError, models, transaction
-from django.db.models import CASCADE, SET_NULL, Count, Q, Sum
+from django.db.models import CASCADE, SET_NULL, Count, Func, Q, Sum
 from django.urls.base import reverse
 from django.utils import timezone
 from tinymce.models import HTMLField
@@ -382,6 +388,26 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
             # o czyms INNYM (np. zerwany FK) i musi poleciec dalej — inaczej
             # realny blad danych podczas importu znikalby bez sladu jako cichy
             # no-op.
+            #
+            # Sciezka PRZEDZIALOWA (datowana): rownolegly zapis mogl utworzyc
+            # okres POKRYWAJACY zadany [start_pracy, koniec_pracy] o INNYM
+            # rozpoczal_prace, lamiac ExclusionConstraint
+            # 'bpp_autor_jednostka_okresy_bez_nakladan' (a nie unique_together,
+            # bo trojka sie rozni). Post-check ponizej pyta o dokladny start,
+            # wiec by go NIE zlapal i bledny re-raise poszedlby jako 500. Tak
+            # jak czy_juz_istnieje na wejsciu: jesli jakis wiersz pokrywa juz
+            # zadany zakres, stan docelowy jest osiagniety — zwracamy go.
+            # NULL-owy start pomijamy (predykat przedzialowy i tak nic nie
+            # zlapie; ten przypadek obsluguje wylacznie post-check nizej).
+            if start_pracy is not None:
+                pokrywajacy = Autor_Jednostka.objects.filter(
+                    autor=self,
+                    jednostka=jednostka,
+                    rozpoczal_prace__lte=start_pracy,
+                    zakonczyl_prace__gte=koniec_pracy,
+                ).first()
+                if pokrywajacy is not None:
+                    return pokrywajacy
             if not Autor_Jednostka.objects.filter(
                 autor=self,
                 jednostka=jednostka,
@@ -672,6 +698,28 @@ class Autor_Jednostka_Manager(models.Manager):
             aj.delete()
 
 
+class DateRange(Func):
+    """``daterange(rozpoczal, zakonczyl, '[]')`` jako wyrażenie ORM.
+
+    Granice DOMKNIETE obustronnie (``'[]'``) — spójnie z semantyką domeny:
+    ``dodaj_jednostke`` traktuje obie daty inkluzywnie (``__lte``/``__gte``),
+    a ``zakonczyl_prace`` to OSTATNI dzień pracy (np. rok → 31.12). Dzięki temu
+    dwa okresy dzielące skrajny dzień (…-12-31 i 12-31-…) liczą się jako
+    NAKŁADAJĄCE, a przylegające (…-12-31 i następny 01-01) — już nie. NULL-owy
+    ``zakonczyl_prace`` daje zakres otwarty w prawo ``[rozpoczal, )``.
+    """
+
+    function = "DATERANGE"
+    output_field = DateRangeField()
+
+    def __init__(self, lower, upper):
+        super().__init__(
+            lower,
+            upper,
+            RangeBoundary(inclusive_lower=True, inclusive_upper=True),
+        )
+
+
 class Autor_Jednostka(models.Model):
     """Powiązanie autora z jednostką"""
 
@@ -724,6 +772,27 @@ class Autor_Jednostka(models.Model):
                 fields=("autor", "jednostka"),
                 condition=models.Q(rozpoczal_prace__isnull=True),
                 name="bpp_autor_jednostka_bez_daty_unikalne",
+            ),
+            # Wariant PRZEDZIALOWY (poz. 1.7 audytu). ``dodaj_jednostke`` robi
+            # check-then-create z predykatem przedzialowym — dwa rownolegle
+            # wywolania tworza NAKLADAJACE sie okresy tego samego autora w tej
+            # samej jednostce. Zwykly UniqueConstraint tego nie wyrazi; potrzeba
+            # EXCLUDE z btree_gist (operator ``=`` na FK w GiST) + ``&&`` na
+            # daterange. Warunek ``rozpoczal_prace IS NOT NULL`` sprawia, ze ten
+            # constraint i partial-unique wyzej (IS NULL) IDEALNIE partycjonuja
+            # wiersze: zadnego pokrycia ani luki. Wiersze bez daty startu pilnuje
+            # tamten (jeden na pare), wiersze z data — ten (brak nakladan).
+            ExclusionConstraint(
+                name="bpp_autor_jednostka_okresy_bez_nakladan",
+                expressions=[
+                    ("autor", RangeOperators.EQUAL),
+                    ("jednostka", RangeOperators.EQUAL),
+                    (
+                        DateRange("rozpoczal_prace", "zakonczyl_prace"),
+                        RangeOperators.OVERLAPS,
+                    ),
+                ],
+                condition=models.Q(rozpoczal_prace__isnull=False),
             ),
         ]
         app_label = "bpp"
