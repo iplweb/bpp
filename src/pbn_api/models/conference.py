@@ -23,6 +23,4 @@ class Conference(BasePBNMongoDBModel):
 
     def __str__(self):
         ret = f"{self.fullName()}, {self.startDate()}, {self.city()}"
-        if self.is_deleted:
-            ret = f"[❌ USUNIĘTY] {ret}"
-        return ret
+        return self.with_deleted_marker(ret)

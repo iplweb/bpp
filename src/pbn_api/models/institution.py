@@ -53,9 +53,7 @@ class Institution(BasePBNMongoDBModel):
         while ret.find(",,") != -1:
             ret = ret.replace(",,", ",")
         ret = ret.replace(", (", " (")
-        if self.is_deleted:
-            ret = f"[❌ USUNIĘTY] {ret}"
-        return ret
+        return self.with_deleted_marker(ret)
 
     @cached_property
     def rekord_w_bpp(self):
