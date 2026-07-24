@@ -24,7 +24,7 @@ from mptt.models import MPTTModel
 from tinymce.models import HTMLField
 
 from bpp.models import ModelZAdnotacjami, ModelZPBN_UID
-from bpp.models.abstract import ModelZPBN_ID
+from bpp.models.abstract import ModelOpcjonalnieNieEksportowanyDoAPI, ModelZPBN_ID
 from bpp.models.autor import Autor, Autor_Jednostka
 from bpp.util import FulltextSearchMixin
 
@@ -79,7 +79,13 @@ class JednostkaManager(FulltextSearchMixin, TreeManager):
         return self.widoczne().filter(aktualna=True)
 
 
-class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
+class Jednostka(
+    ModelZAdnotacjami,
+    ModelZPBN_ID,
+    ModelZPBN_UID,
+    ModelOpcjonalnieNieEksportowanyDoAPI,
+    MPTTModel,
+):
     parent = TreeForeignKey(
         "self",
         on_delete=models.CASCADE,
