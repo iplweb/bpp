@@ -50,8 +50,20 @@ class Funkcja_AutoraViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class Autor_JednostkaViewSet(viewsets.ReadOnlyModelViewSet):
+    # Bazowy queryset BEZ filtra widoczności — zawężenie robi get_queryset()
+    # TYLKO dla anonima (analogicznie do AutorViewSet).
     queryset = Autor_Jednostka.objects.all()
     serializer_class = Autor_JednostkaSerializer
+
+    def get_queryset(self):
+        # Anonim nie może zobaczyć powiązań zatrudnienia autora ukrytego
+        # (autor.pokazuj=False) — inaczej jednostka, daty pracy oraz PK autora
+        # wyciekają mimo że AutorViewSet ukrywa samego autora. Zalogowany
+        # (redaktor) widzi wszystkich.
+        qs = super().get_queryset()
+        if self.request.user.is_authenticated:
+            return qs
+        return qs.filter(autor__pokazuj=True)
 
 
 class TytulViewSet(viewsets.ReadOnlyModelViewSet):

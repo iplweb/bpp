@@ -1,3 +1,4 @@
+from django.core.exceptions import ImproperlyConfigured
 from django_minify_html.middleware import MinifyHtmlMiddleware
 
 from .base import *  # noqa
@@ -9,8 +10,22 @@ from .base import (  # noqa
     REDIS_HOST,
     REDIS_PORT,
     ROLLBAR,
+    SECRET_KEY,
+    SECRET_KEY_UNSET,
     env,
 )
+from .secret_key_guard import secret_key_niebezpieczny_placeholder
+
+# Fail-closed: produkcja NIE wstaje z placeholderem SECRET_KEY (patrz
+# secret_key_guard). Odpala się przy imporcie ustawień, więc gate'uje web,
+# celery i migrate — nie tylko komendy z system-checkami.
+if secret_key_niebezpieczny_placeholder(SECRET_KEY, unset_sentinel=SECRET_KEY_UNSET):
+    raise ImproperlyConfigured(
+        "DJANGO_BPP_SECRET_KEY nie jest ustawiony lub to placeholder — "
+        "produkcja nie wystartuje z publicznie znanym kluczem (ryzyko "
+        "forgowania sesji i tokenów resetu hasła). Ustaw realny klucz "
+        "(auto-gen w bpp-deploy; ręcznie: `openssl rand -hex 50`)."
+    )
 
 DEBUG = False
 DEBUG_TOOLBAR = False

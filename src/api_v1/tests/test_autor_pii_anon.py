@@ -160,3 +160,43 @@ def test_anon_filtrowanie_po_nazwisku_dziala(autor_jan_kowalski):
     """Fix nie może zepsuć istniejącego filtrowania po nazwisku."""
     res = APIClient().get(reverse("api_v1:autor-list") + "?nazwisko=kowal")
     assert res.json()["count"] == 1
+
+
+@pytest.mark.django_db
+def test_anon_nie_widzi_zatrudnienia_ukrytego_autora():
+    """``/api/v1/autor_jednostka/`` nie może ujawniać powiązań zatrudnienia
+    autora ukrytego (``pokazuj=False``). Inaczej jednostka, daty pracy oraz
+    PK autora wyciekają anonimowi, obchodząc ``pokazuj=False`` egzekwowane
+    przez ``AutorViewSet``."""
+    from bpp.models import Autor_Jednostka, Jednostka
+
+    jednostka = baker.make(Jednostka)
+    widoczny = baker.make(Autor, nazwisko="Widoczny", pokazuj=True)
+    ukryty = baker.make(Autor, nazwisko="Ukryty", pokazuj=False)
+    baker.make(Autor_Jednostka, autor=widoczny, jednostka=jednostka)
+    baker.make(Autor_Jednostka, autor=ukryty, jednostka=jednostka)
+
+    res = APIClient().get(reverse("api_v1:autor_jednostka-list"))
+    autor_urls = {row["autor"] for row in res.json()["results"]}
+    ukryty_url = reverse("api_v1:autor-detail", args=(ukryty.pk,))
+    widoczny_url = reverse("api_v1:autor-detail", args=(widoczny.pk,))
+
+    assert any(widoczny_url in u for u in autor_urls)
+    assert not any(ukryty_url in u for u in autor_urls)
+
+
+@pytest.mark.django_db
+def test_zalogowany_widzi_zatrudnienie_ukrytego_autora():
+    """Regresja w drugą stronę: zalogowany (redaktor) widzi powiązania
+    zatrudnienia także autorów ukrytych."""
+    from bpp.models import Autor_Jednostka, Jednostka
+
+    jednostka = baker.make(Jednostka)
+    ukryty = baker.make(Autor, nazwisko="Ukryty", pokazuj=False)
+    baker.make(Autor_Jednostka, autor=ukryty, jednostka=jednostka)
+
+    res = _staff_client().get(reverse("api_v1:autor_jednostka-list"))
+    autor_urls = {row["autor"] for row in res.json()["results"]}
+    ukryty_url = reverse("api_v1:autor-detail", args=(ukryty.pk,))
+
+    assert any(ukryty_url in u for u in autor_urls)
