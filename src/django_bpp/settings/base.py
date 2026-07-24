@@ -1738,7 +1738,11 @@ ROLLBAR_SCRUB_FIELDS = [
     "token",
     "refresh_token",
     "refreshToken",
-    "code",
+    # UWAGA: "code" celowo NIE jest tutaj. pyrollbar trzyma pod tą nazwą także
+    # LINIĘ KODU ŹRÓDŁOWEGO każdej ramki tracebacku, a dopasowanie idzie po
+    # sufiksie ścieżki klucza — więc wpis na tej liście zamazywał wszystkie
+    # tracebacki na "****". Kod autoryzacyjny OAuth zamazuje zamiast tego
+    # bpp.rollbar_config.ScrubKoduAutoryzacyjnego, który pomija ramki stosu.
     "code_verifier",
     "codeVerifier",
     "client_secret",
