@@ -107,8 +107,7 @@ def _rekord():
 
 def _jednostka_obcej_uczelni(skrot):
     """Jednostka nowo utworzonej uczelni (≠ ta spod hosta ``testserver``)."""
-    from bpp.models import Jednostka, Uczelnia, Wydzial
-    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+    from bpp.models import Jednostka, Uczelnia
 
     site = Site.objects.create(
         domain=f"{skrot.lower()}.example.com", name=f"Site {skrot}"
@@ -116,10 +115,11 @@ def _jednostka_obcej_uczelni(skrot):
     uczelnia = Uczelnia.objects.create(
         nazwa=f"Uczelnia {skrot}", skrot=skrot, site=site
     )
-    wydzial = Wydzial.objects.create(
-        uczelnia=uczelnia, skrot=f"W-{skrot}", nazwa=f"Wydział {skrot}"
+    # Faza C (#438): „wydział" to jednostka TOP-LEVEL (parent IS NULL) —
+    # nie ma już modelu Wydzial ani węzła-lustra (struktura_konwersja).
+    wezel = Jednostka.objects.create(
+        uczelnia=uczelnia, parent=None, skrot=f"W-{skrot}", nazwa=f"Wydział {skrot}"
     )
-    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
     return Jednostka.objects.create(
         uczelnia=uczelnia,
         parent=wezel,

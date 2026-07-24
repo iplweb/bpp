@@ -20,9 +20,8 @@ from django.utils import timezone
 from liveops.testing import MockProgress
 from model_bakery import baker
 
-from bpp.models import Autor, Jednostka, Uczelnia, Wydzial
+from bpp.models import Autor, Jednostka, Uczelnia
 from bpp.models.autor import Autor_Jednostka
-from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 from import_polon.core import analyze_file_import_polon
 from import_polon.models import ImportPlikuPolon
 
@@ -30,11 +29,11 @@ ROK = 2020
 
 
 def _jednostka(uczelnia, skupia_pracownikow=True):
-    wydzial = baker.make(Wydzial, uczelnia=uczelnia)
+    wydzial = baker.make(Jednostka, uczelnia=uczelnia, parent=None)
     return baker.make(
         Jednostka,
         uczelnia=uczelnia,
-        parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
+        parent=wydzial,
         skupia_pracownikow=skupia_pracownikow,
     )
 

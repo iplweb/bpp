@@ -157,7 +157,6 @@ def test_afiliacja_na_rok():
     # które jest teraz self-FK do jednostki-korzenia. Przekazujemy węzły-
     # korzenie (``j.wydzial`` = węzeł-lustro wydziału ``w``), nie obiekty
     # Wydzial.
-    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 
     w = any_wydzial()
     n = any_wydzial(skrot="w2", nazwa="w2")
@@ -165,7 +164,7 @@ def test_afiliacja_na_rok():
     a = baker.make(Autor)
 
     w_node = j.wydzial
-    n_node, _ = znajdz_lub_utworz_wezel_wydzialu(n)
+    n_node = n
 
     aj = Autor_Jednostka.objects.create(
         autor=a, jednostka=j, funkcja=baker.make(Funkcja_Autora)

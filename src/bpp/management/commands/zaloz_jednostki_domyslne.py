@@ -20,7 +20,6 @@ from bpp.models import (
     Uczelnia,
     Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte_Autor,
-    Wydzial,
 )
 
 
@@ -132,22 +131,20 @@ class Command(BaseCommand):
         except Uczelnia.DoesNotExist as err:
             raise CommandError(f"Uczelnia o skrócie '{skrot}' nie istnieje.") from err
 
-        wydzialy = list(Wydzial.objects.filter(uczelnia=uczelnia).order_by("nazwa"))
+        # Faza C (#438): „wydział" = jednostka top-level (root, parent IS NULL).
+        # Jednostki „w wydziale" = poddrzewo (denorm self-FK ``wydzial`` == root).
+        wydzialy = list(
+            Jednostka.objects.filter(uczelnia=uczelnia, parent__isnull=True).order_by(
+                "nazwa"
+            )
+        )
         if not wydzialy:
             raise CommandError(f"Uczelnia '{skrot}' nie ma żadnych wydziałów.")
 
-        # Faza B (#438): „wydział" = węzeł-lustro (root Jednostka). Mapujemy
-        # każdy Wydzial na jego węzeł-korzeń; jednostki „w wydziale" =
-        # poddrzewo (self-FK ``wydzial`` == węzeł).
-        from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
-
-        wezly = {w.pk: znajdz_lub_utworz_wezel_wydzialu(w)[0] for w in wydzialy}
-
         # Jednostki kandydujące do likwidacji: te w poddrzewach wydziałów tej
-        # uczelni. Jednostki bez wydziału (np. obca_jednostka) zostają nietknięte.
-        likwidowane = Jednostka.objects.filter(
-            uczelnia=uczelnia, wydzial__in=list(wezly.values())
-        )
+        # uczelni (denorm ``wydzial`` = któryś root). Rooty (``wydzial=None``) i
+        # jednostki bez wydziału (np. obca_jednostka) zostają nietknięte.
+        likwidowane = Jednostka.objects.filter(uczelnia=uczelnia, wydzial__in=wydzialy)
         if uczelnia.obca_jednostka_id:
             likwidowane = likwidowane.exclude(pk=uczelnia.obca_jednostka_id)
 
@@ -158,15 +155,14 @@ class Command(BaseCommand):
         #    Nazwa BEZ odmiany — nazwy wydziałów już zawierają słowo "Wydział".
         zachowane_pk = []
         for wydzial in wydzialy:
-            wezel = wezly[wydzial.pk]
-            # Jednostka domyślna wisi pod węzłem-lustrem wydziału (denorm
-            # ``wydzial`` = ten węzeł-korzeń).
+            # Jednostka domyślna wisi pod rootem-wydziałem (denorm ``wydzial``
+            # = ten root).
             target, utworzona = Jednostka.objects.get_or_create(
                 uczelnia=uczelnia,
                 nazwa=f"Jednostka Domyślna - {wydzial.nazwa}",
                 defaults=dict(
                     skrot=f"JD-{wydzial.skrot}",
-                    parent=wezel,
+                    parent=wydzial,
                     aktualna=True,
                     widoczna=True,
                     skupia_pracownikow=True,

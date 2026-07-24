@@ -13,7 +13,7 @@ from copy import copy
 
 from django.core.exceptions import ObjectDoesNotExist
 
-from bpp.models import Autor_Jednostka, Wydzial
+from bpp.models import Autor_Jednostka, Jednostka
 from import_common.core import (
     matchuj_autora,
     matchuj_funkcja_autora,
@@ -524,7 +524,7 @@ def _zrodlo_jednostki_wiersza(dane_form):
 
     1. ``komórka_złożona`` → ``parsuj_komorke``: nazwa = czysta nazwa z parsera,
        ``skrot_hint`` = skrót z pliku (zasili ``Jednostka.skrot`` przy tworzeniu),
-       oddział rozwiązany przez ``Wydzial.skrot`` → jego NAZWA jako wydzial-hint
+       oddział rozwiązany przez skrót jednostki top-level → jej NAZWA jako hint
        (``matchuj_wydzial`` robi tylko ``nazwa__iexact``; §7 finding #6).
        Klasyfikacja zwykłym ``sklasyfikuj_jednostke`` po skrócie/nazwie.
     2. ``nazwa_jednostki_niepelna`` (i brak ``nazwa_jednostki``) →
@@ -547,7 +547,8 @@ def _zrodlo_jednostki_wiersza(dane_form):
         skrot_hint = wynik["skrot"]
         oddzial = wynik["oddzial"]
         if oddzial:
-            w = Wydzial.objects.filter(skrot=oddzial).first()
+            # Faza C (#438): „wydział" to jednostka TOP-LEVEL (parent IS NULL).
+            w = Jednostka.objects.filter(skrot=oddzial, parent__isnull=True).first()
             if w is not None:
                 wydzial = w.nazwa
         nazwa_do_klas = nazwa if 0 < len(nazwa) <= 512 else ""
