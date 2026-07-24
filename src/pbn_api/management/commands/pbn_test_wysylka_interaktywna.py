@@ -24,6 +24,7 @@ import time
 from typing import Any
 
 from django.core.management.base import CommandError
+from pbn_client import decode_publication_object_id
 
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from bpp.util import zaloguj_polkniety_wyjatek
@@ -156,7 +157,9 @@ class Command(PBNBaseCommand):
             return
 
         pbn_statements = self._step_get_pbn_statements(pbn_client, object_id)
-        identyczne = self._step_compare_statements(publication, pbn_statements)
+        identyczne = self._step_compare_statements(
+            pbn_client, publication, pbn_statements
+        )
 
         # Zawsze pytamy osobno o DELETE i POST — nawet gdy identyczne.
         # Default zależy od wyniku porównania (False dla identycznych,
@@ -363,7 +366,7 @@ class Command(PBNBaseCommand):
         self._prompt_enter()
         return result
 
-    def _step_compare_statements(self, publication, pbn_statements):
+    def _step_compare_statements(self, pbn_client, publication, pbn_statements):
         self._header("KROK 6/8 — Porównanie: intencja BPP (live) vs PBN")
 
         # Intencja BPP: co wygenerowałby adapter GDYBY teraz wysłać — czyli
@@ -395,33 +398,16 @@ class Command(PBNBaseCommand):
             self._prompt_enter()
             return False  # traktujemy jak "różne"
 
-        def _key(stmt):
-            """Klucz porównania: (person-mongoId, disciplineNumer).
+        # Klucze porównania liczą pakietowe helpery klienta (jedno źródło
+        # prawdy): ``statement_key_pbn`` czyta format PBN GET (``personId``/
+        # ``area``), ``statement_key_intended`` — format adaptera
+        # (``personObjectId``/``disciplineId``). ``diff_statements`` zwraca
+        # (tylko-w-PBN, tylko-w-intencji); część wspólną liczymy tu lokalnie
+        # (paczka jej nie zwraca) na tych samych kluczach.
+        intended_keys = {pbn_client.statement_key_intended(x) for x in intended}
+        pbn_keys = {pbn_client.statement_key_pbn(x) for x in pbn_statements}
 
-            Mapowanie między formatami:
-            - PBN GET response (``/page/statements``): ``personId`` (mongoId),
-              ``area`` (string, numerek dyscypliny MNiSW np. "301").
-            - Adapter ``pbn_get_json_statements()`` (przed konwersją):
-              ``personObjectId`` (mongoId), ``disciplineId`` (int, numerek
-              dyscypliny MNiSW).
-            Oba oznaczają to samo.
-            """
-            if not isinstance(stmt, dict):
-                return (None, None)
-            person = stmt.get("personId") or stmt.get("personObjectId")
-            discipline = stmt.get("area")
-            if discipline is None:
-                discipline = stmt.get("disciplineId")
-            return (
-                str(person) if person else None,
-                str(discipline) if discipline is not None else "",
-            )
-
-        intended_keys = {_key(x) for x in intended}
-        pbn_keys = {_key(x) for x in pbn_statements}
-
-        only_intended = intended_keys - pbn_keys
-        only_pbn = pbn_keys - intended_keys
+        only_pbn, only_intended = pbn_client.diff_statements(pbn_statements, intended)
         common = intended_keys & pbn_keys
 
         self._info(f"Intencja BPP (live):          {len(intended_keys)}")
@@ -536,15 +522,32 @@ class Command(PBNBaseCommand):
     # ------------------------- helpers -------------------------
 
     def _extract_object_id(self, response, endpoint_choice):
-        if endpoint_choice == "publications":
-            if isinstance(response, dict):
-                return response.get("objectId")
-            return None
-        if isinstance(response, list) and len(response) == 1:
-            item = response[0]
-            if isinstance(item, dict):
-                return item.get("id") or item.get("objectId")
-        return None
+        """Dekoduje objectId z odpowiedzi POST-a przez pakietową
+        ``pbn_client.decode_publication_object_id``.
+
+        Mapowanie endpointa na tryb paczki:
+        - ``"publications"`` (all-in-one) → ``bez_oswiadczen=False``
+          (odpowiedź: ``{"objectId": ...}``),
+        - ``"repositorium"`` → ``bez_oswiadczen=True``
+          (odpowiedź: ``[{"id": ...}]``).
+
+        Przy niejednoznacznej odpowiedzi (lista != 1 element, zły typ, brak
+        klucza) paczka **rzuca wyjątkiem** zamiast po cichu zwracać None —
+        w tym rzadko używanym narzędziu diagnostycznym łapiemy to głośno,
+        pokazujemy surową odpowiedź i pytamy usera: wyjść czy jechać dalej
+        z ``objectId=None``.
+        """
+        bez_oswiadczen = endpoint_choice != "publications"
+        try:
+            return decode_publication_object_id(response, bez_oswiadczen=bez_oswiadczen)
+        except Exception as e:  # noqa: BLE001 — narzędzie debug: głośno + pytanie
+            self._err(f"Nie mogę zdekodować objectId z odpowiedzi PBN: {e}")
+            self.stdout.write(_json_truncated(response, max_len=800))
+            if self._prompt_yes_no(
+                "Kontynuować flow mimo to (objectId=None)?", default=False
+            ):
+                return None
+            raise UserAbort() from e
 
     def _print_http_request(self, method, url, body, label=""):
         self._info(f"Wywołanie: {label}" if label else "Żądanie HTTP:")

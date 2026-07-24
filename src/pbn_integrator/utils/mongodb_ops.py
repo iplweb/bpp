@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 import rollbar
 from django_pbn_client.persistence import (
     download_pbn_objects,
+    get_or_download,
     upsert_pbn_object,
 )
 
@@ -50,12 +51,13 @@ def ensure_publication_exists(client, publicationId):
         client: PBN client.
         publicationId: The publication ID.
     """
-    try:
-        publicationId = Publication.objects.get(pk=publicationId)
-    except Publication.DoesNotExist:
-        zapisz_mongodb(
-            client.get_publication_by_id(publicationId), Publication, client=client
-        )
+    get_or_download(
+        Publication,
+        publicationId,
+        fetch=client.get_publication_by_id,
+        save=zapisz_mongodb,
+        client=client,
+    )
 
 
 def ensure_person_exists(client: PBNClient, personId):
@@ -65,10 +67,13 @@ def ensure_person_exists(client: PBNClient, personId):
         client: PBN client.
         personId: The person ID.
     """
-    try:
-        personId = Scientist.objects.get(pk=personId)
-    except Scientist.DoesNotExist:
-        zapisz_mongodb(client.get_person_by_id(personId), Scientist, client=client)
+    get_or_download(
+        Scientist,
+        personId,
+        fetch=client.get_person_by_id,
+        save=zapisz_mongodb,
+        client=client,
+    )
 
 
 def ensure_institution_exists(client: PBNClient, institutionId):
@@ -78,12 +83,13 @@ def ensure_institution_exists(client: PBNClient, institutionId):
         client: PBN client.
         institutionId: The institution ID.
     """
-    try:
-        institutionId = Institution.objects.get(pk=institutionId)
-    except Institution.DoesNotExist:
-        zapisz_mongodb(
-            client.get_institution_by_id(institutionId), Institution, client=client
-        )
+    get_or_download(
+        Institution,
+        institutionId,
+        fetch=client.get_institution_by_id,
+        save=zapisz_mongodb,
+        client=client,
+    )
 
 
 def zapisz_publikacje_instytucji(elem, klass, client=None, **extra):
