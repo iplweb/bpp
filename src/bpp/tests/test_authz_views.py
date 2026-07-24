@@ -64,16 +64,27 @@ def test_toz_anonim_przekierowuje(client):
 
 # --- API punktacji / habilitacji / jednostki -----------------------------
 
-API_ROUTES = [
+# Endpointy REDAKCYJNE: zalogowany bez uprawnień do wprowadzania danych → 403.
+API_ROUTES_REDAKCYJNE = [
     ("bpp:api_rok_habilitacji", {}),
     ("bpp:api_punktacja_zrodla", {"zrodlo_id": 1, "rok": 2020}),
     ("bpp:api_upload_punktacja_zrodla", {"zrodlo_id": 1, "rok": 2020}),
+]
+
+# Wszystkie endpointy API wymagające ZALOGOWANIA (anonim → 302 na login).
+# `api_ostatnia_jednostka_i_dyscyplina` jest tutaj, ale ŚWIADOMIE nie ma go na
+# liście redakcyjnej wyżej: to widok tylko-do-odczytu, konsumowany przez
+# `autorform_dependant.js` w PUBLICZNYM formularzu `zglos_publikacje`, więc
+# zwykły zalogowany użytkownik musi dostać 200, a nie 403. Pilnuje tego
+# `test_ostatnia_jednostka_dostepna_bez_uprawnien_redaktorskich`
+# w `src/bpp/tests/test_views/test_api.py`.
+API_ROUTES = API_ROUTES_REDAKCYJNE + [
     ("bpp:api_ostatnia_jednostka_i_dyscyplina", {}),
 ]
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("name,kwargs", API_ROUTES)
+@pytest.mark.parametrize("name,kwargs", API_ROUTES_REDAKCYJNE)
 def test_api_zwykly_user_403(client, zwykly_user, name, kwargs):
     client.force_login(zwykly_user)
     url = reverse(name, kwargs=kwargs)
