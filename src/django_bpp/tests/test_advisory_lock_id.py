@@ -143,6 +143,8 @@ def test_klucze_nie_koliduja_ze_soba():
     klucze = [
         SCAN_SLOT_LOCK_ID,
         advisory_lock_id("pbn_wysylka_oswiadczen.views.PbnWysylkaOswiadczenTask"),
+        advisory_lock_id("ewaluacja_optymalizacja.optimize_and_unpin_task.slot"),
+        advisory_lock_id("ewaluacja_optymalizacja.unpin_all_sensible_task.slot"),
     ]
     for nazwa_modelu in (
         "PbnDownloadTask",
