@@ -54,6 +54,13 @@ class Praca_Doktorska_Baza(
                 return self
 
             def exists(self):
+                # NIE jest to sprzeczność z `first()` powyżej. `exists()` na
+                # FakeSet jest osiągalne wyłącznie po łańcuchu `exclude(...)`
+                # (patrz Rekord.ma_odpiete_dyscypliny), a `exclude()` tutaj
+                # IGNORUJE warunki i zwraca self. Twarde False znaczy więc
+                # „brak autorów z odpiętą dyscypliną", nie „brak autorów" —
+                # doktorat nie ma czego odpinać. Gdyby zwracało True, strona
+                # rekordu renderowałaby pusty box „odpięte dyscypliny".
                 return False
 
         ret = FakeAutorDoktoratuHabilitacji()
