@@ -305,8 +305,8 @@ class MyExportMixin(ExportMixin):
 
         try:
             return exporter.response(filename=self.get_export_filename(export_format))
-        except ExportRowLimitExceeded as e:
-            return HttpResponseBadRequest(str(e))
+        except ExportRowLimitExceeded:
+            return HttpResponseBadRequest("Nie można wyeksportować danych: przekroczono dopuszczalny limit wierszy.")
 
 
 class InitialValuesFromGETMixin:
