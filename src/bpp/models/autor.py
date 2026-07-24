@@ -651,10 +651,14 @@ class Autor_Jednostka_Manager(models.Manager):
                 previous.save()
             return True
 
-        # Sprawdź czy obecny rekord można włączyć do poprzedniego
+        # Sprawdź czy obecny rekord można włączyć do poprzedniego. Tak jak przy
+        # scalaniu kolejnych dni: kasujemy wchłaniany rekord PRZED domknięciem
+        # otwartego końca poprzedniego, żeby chwilowo nie powstały dwa
+        # nakładające się okresy łamiące ExclusionConstraint (IMMEDIATE).
         if current.rozpoczal_prace >= previous.rozpoczal_prace:
-            to_remove.append(current)
-            previous.zakonczyl_prace = current.zakonczyl_prace
+            nowy_koniec = current.zakonczyl_prace
+            current.delete()
+            previous.zakonczyl_prace = nowy_koniec
             previous.save()
             return True
 
@@ -688,8 +692,16 @@ class Autor_Jednostka_Manager(models.Manager):
 
             # Połącz kolejne dni
             if self._can_merge_consecutive(poprzedni_rekord, rec):
-                usun.append(rec)
-                poprzedni_rekord.zakonczyl_prace = rec.zakonczyl_prace
+                # Wchłaniany rekord kasujemy PRZED rozszerzeniem ocalałego.
+                # ExclusionConstraint 'bpp_autor_jednostka_okresy_bez_nakladan'
+                # jest IMMEDIATE — gdyby poprzedni_rekord urósł o zakres rec
+                # ZANIM rec zniknie, przez moment istniałyby dwa nakładające się
+                # okresy tej samej pary (autor, jednostka) i save() poleciałby
+                # IntegrityError. Obiekt rec żyje dalej w pamięci, więc jego
+                # daty czytamy bez problemu po delete().
+                nowy_koniec = rec.zakonczyl_prace
+                rec.delete()
+                poprzedni_rekord.zakonczyl_prace = nowy_koniec
                 poprzedni_rekord.save()
             else:
                 poprzedni_rekord = rec

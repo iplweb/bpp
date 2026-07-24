@@ -384,13 +384,17 @@ def test_defragmentuj(autor_jednostka_setup):
 
     Autor_Jednostka.objects.all().delete()
 
-    # Ta sytuacja ma miejsce przy powtórnym imporcie XLSa do nowego systemu
+    # Powtórny import XLSa: rozłączne, PRZYLEGAJĄCE fragmenty tej samej pary
+    # (koniec jednego + 1 dzień = start następnego) — defragmentacja scala je w
+    # jeden ciągły okres. Okresy nie mogą się już NAKŁADAĆ (ExclusionConstraint
+    # ``bpp_autor_jednostka_okresy_bez_nakladan``), więc modelujemy realny,
+    # legalny wariant fragmentacji: sąsiadujące przedziały zamknięte.
     Autor_Jednostka.objects.create(autor=a, jednostka=j1)
     Autor_Jednostka.objects.create(
         autor=a,
         jednostka=j1,
         rozpoczal_prace=date(2012, 1, 1),
-        zakonczyl_prace=None,
+        zakonczyl_prace=date(2013, 12, 31),
     )
     Autor_Jednostka.objects.create(
         autor=a,
@@ -400,6 +404,7 @@ def test_defragmentuj(autor_jednostka_setup):
     )
 
     Autor_Jednostka.objects.defragmentuj(a, j1)
+    assert Autor_Jednostka.objects.all().count() == 1
     aj = Autor_Jednostka.objects.all()[0]
     assert aj.rozpoczal_prace == date(2012, 1, 1)
     assert aj.zakonczyl_prace == date(2015, 12, 31)

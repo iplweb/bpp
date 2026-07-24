@@ -97,15 +97,17 @@ def test_kiedykolwiek_zwiazani_zwraca_aktualnie_zatrudnionego(uczelnia, jednostk
 def test_kiedykolwiek_zwiazani_bez_duplikatow(uczelnia, jednostka):
     """Autor aktualny ORAZ z wieloma wpisami historycznymi = jeden wiersz."""
     autor = baker.make(Autor, aktualna_jednostka=jednostka)
-    # Rozne daty rozpoczecia: wpisy sa legalne wobec czesciowego constraintu
-    # ``bpp_autor_jednostka_bez_daty_unikalne`` (obejmuje wylacznie wiersze z
-    # NULL-owym ``rozpoczal_prace``), a test dalej sprawdza dokladnie to, co
-    # sprawdzal — ze zakres nie duplikuje autora przy wielu powiazaniach.
+    # Dwa ROZŁĄCZNE okresy zatrudnienia (2010–2014 zamknięty, 2015→ otwarty):
+    # legalne wobec ExclusionConstraint ``bpp_autor_jednostka_okresy_bez_nakladan``
+    # (okresy się nie nakładają) i partial-unique ``bpp_autor_jednostka_bez_daty_
+    # unikalne`` (oba mają datę startu). Test dalej sprawdza dokładnie to, co
+    # sprawdzał — że wiele powiązań nie duplikuje autora w wyniku.
     baker.make(
         "bpp.Autor_Jednostka",
         autor=autor,
         jednostka=jednostka,
         rozpoczal_prace=date(2010, 1, 1),
+        zakonczyl_prace=date(2014, 12, 31),
     )
     baker.make(
         "bpp.Autor_Jednostka",
