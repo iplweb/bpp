@@ -78,6 +78,17 @@
         {% endif %}
 
         {% if wiersze %}
+            {# Liczba autorów PONAD stroną — bez niej użytkownik nie wie, #}
+            {# czy widzi całość, czy pierwsze 25 z tysiąca. #}
+            <p>
+                Autorów z brakami: <strong>{{ autorow }}</strong>.
+                {% if is_paginated %}
+                    Strona {{ page_obj.number }} z {{ paginator.num_pages }}.
+                {% endif %}
+            </p>
+
+            {% include "pagination/pagination_with_anchor.html" %}
+
             <table class="hover stack">
                 <thead>
                     <tr>
@@ -134,6 +145,8 @@
                 </tbody>
             </table>
 
+            {% include "pagination/pagination_with_anchor.html" %}
+
             <div class="callout secondary">
                 <p>
                     <span class="label alert">Braki wymagane</span>
@@ -156,11 +169,24 @@
             <div class="callout warning">
                 <h4><i class="fi-alert"></i> Nierozpoznany typ osiągnięcia</h4>
                 <p>
-                    Poniższe wydawnictwa zwarte nie mają ustawionego
-                    <strong>charakteru dla slotów</strong>, więc nie wiadomo, czy są
-                    monografią (§ 2 ust. 10 pkt 5), czy rozdziałem (pkt 6) &mdash;
-                    a więc jakich danych od nich wymagać.
+                    Poniżsi autorzy mają rekordy, których <strong>charakter formalny
+                    nie jest sklasyfikowany</strong>: wydawnictwo zwarte bez
+                    <strong>charakteru dla slotów</strong> może być monografią
+                    (§ 2 ust. 10 pkt 5) albo rozdziałem (pkt 6), a wydawnictwo
+                    ciągłe bez <strong>rodzaju dla PBN</strong> &mdash; artykułem
+                    naukowym (pkt 4) albo publikacją, która osiągnięciem nie jest
+                    (streszczenie zjazdowe, list do redakcji, recenzja).
+                    W obu przypadkach nie wiadomo, jakich danych wymagać.
                     <strong>Raport ich nie sprawdził.</strong>
+                </p>
+                <p>
+                    <i class="fi-info"></i>
+                    Obie wartości ustawia się <strong>w słowniku charakterów
+                    formalnych</strong>
+                    (<a href="{% url 'admin:bpp_charakter_formalny_changelist' %}"
+                        target="_blank">Charakter formalny</a>),
+                    a nie w samym rekordzie &mdash; jedna poprawka obejmuje
+                    wszystkie rekordy o danym charakterze.
                 </p>
                 <table class="hover stack">
                     <thead>

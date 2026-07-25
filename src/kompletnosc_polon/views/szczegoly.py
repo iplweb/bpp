@@ -11,6 +11,7 @@ from django.shortcuts import get_object_or_404
 from django.views.generic import TemplateView
 
 from bpp.models import Autor
+from bpp.util.uczelnia_scope import scope_autor_do_uczelni
 from kompletnosc_polon.const import Osiagniecie, Waga
 from kompletnosc_polon.selektory import (
     POLE_BRAKI_WARUNKOWE,
@@ -70,25 +71,35 @@ def zbierz_pozycje(autor, uczelnia, okno) -> tuple[list[dict], int]:
 def zbierz_nierozpoznane_autora(autor, uczelnia, okno) -> list[dict]:
     """Rekordy autora, których typu osiągnięcia nie da się ustalić.
 
-    Brak ``charakter_formalny.charakter_sloty`` znaczy, że nie wiadomo, czy
-    rekord jest monografią (pkt 5), czy rozdziałem (pkt 6) — a więc których
-    wymogów od niego oczekiwać. Raport ich NIE sprawdził i musi to powiedzieć
-    wprost.
+    Wydawnictwo zwarte bez ``charakter_formalny.charakter_sloty`` może być
+    monografią (pkt 5) albo rozdziałem (pkt 6); wydawnictwo ciągłe bez
+    ``charakter_formalny.rodzaj_pbn`` — artykułem naukowym (pkt 4) albo
+    publikacją, która osiągnięciem nie jest. W obu przypadkach nie wiadomo,
+    których wymogów od rekordu oczekiwać: raport go NIE sprawdził i musi to
+    powiedzieć wprost.
+
+    Rekordy obu rodzajów lądują w **jednej** liście — użytkownika interesuje
+    „czego raport nie sprawdził”, a nie z którego modelu to pochodzi. Rodzaj
+    niesiemy per wiersz (``rodzaj``), bo od niego zależy, które pole słownika
+    charakterów trzeba uzupełnić. Sortujemy w Pythonie, bo źródłem są dwa
+    querysety.
     """
-    qs = (
-        powiazania_nierozpoznane(uczelnia, okno)
-        .filter(autor=autor)
-        .select_related("rekord", "rekord__charakter_formalny")
-        .order_by("-rekord__rok")
-    )
-    return [
-        {
-            "rekord": wiersz.rekord,
-            "charakter_formalny": wiersz.rekord.charakter_formalny,
-            "url_admina": url_formularza_admina(wiersz.rekord),
-        }
-        for wiersz in qs
-    ]
+    pozycje = []
+    for qs in powiazania_nierozpoznane(uczelnia, okno):
+        wiersze = qs.filter(autor=autor).select_related(
+            "rekord", "rekord__charakter_formalny"
+        )
+        pozycje.extend(
+            {
+                "rekord": wiersz.rekord,
+                "rodzaj": wiersz.rekord._meta.verbose_name,
+                "charakter_formalny": wiersz.rekord.charakter_formalny,
+                "url_admina": url_formularza_admina(wiersz.rekord),
+            }
+            for wiersz in wiersze
+        )
+    pozycje.sort(key=lambda p: (-p["rekord"].rok, str(p["rekord"].tytul_oryginalny)))
+    return pozycje
 
 
 class SzczegolyKompletnosciView(RaportKompletnosciMixin, TemplateView):
@@ -99,7 +110,17 @@ class SzczegolyKompletnosciView(RaportKompletnosciMixin, TemplateView):
     def get_context_data(self, **kwargs):
         kontekst = super().get_context_data(**kwargs)
 
-        autor = get_object_or_404(Autor, slug=self.kwargs["autor_slug"])
+        # Autora szukamy w zbiorze JUŻ zawężonym do uczelni oglądającego.
+        # Zawężenie samych powiązań nie wystarcza: slug jest przewidywalny
+        # („nazwisko-imie”), więc bez tego superuser z ``?uczelnia=<nasza>``
+        # dostawał HTTP 200 z imieniem i nazwiskiem pracownika OBCEJ uczelni
+        # w tytule strony, okruszkach i nagłówku — czyli enumerację cudzej
+        # kadry. Nieznalezienie autora w swojej uczelni ma być nieodróżnialne
+        # od nieistnienia autora, stąd 404, a nie 200 z pustą listą.
+        autor = get_object_or_404(
+            scope_autor_do_uczelni(Autor.objects.all(), self.uczelnia),
+            slug=self.kwargs["autor_slug"],
+        )
         pozycje, sprawdzonych = zbierz_pozycje(autor, self.uczelnia, self.okno)
 
         kontekst["autor"] = autor

@@ -340,3 +340,69 @@ Wymogi rozporządzenia bez odpowiednika w BPP:
 | Fałszywe braki tam, gdzie dana jest nieobowiązkowa | Pole `waga`; wymogi warunkowe liczone osobno i nieoznaczane jako krytyczne |
 | Trzy zapytania zamiast jednego | Akceptowane — zbiór mały, a alternatywą jest rozszerzanie widoku `bpp_rekord`, co dotyka całego systemu |
 | Instalacje bez ustawionego `charakter_sloty` klasyfikują się nijak | Osobna sekcja „nierozpoznany typ" zamiast cichego pominięcia |
+
+## Errata — zmiany wprowadzone po recenzji adwersarialnej
+
+Recenzja całości przed wystawieniem PR znalazła dwa błędy krytyczne, wyciek
+danych w instalacji wielouczelnianej i pięć luk merytorycznych. Wszystkie
+potwierdzone uruchomieniem kodu, nie domysłem. Rejestr urósł z **40 do 50+
+reguł**. Zmiany względem treści powyżej:
+
+### Wydawnictwa ciągłe wymagają filtra charakteru formalnego
+
+Pierwotny projekt zakładał, że „wydawnictwo ciągłe jest zawsze pkt 4". To
+nieprawda: `Wydawnictwo_Ciagle` obejmuje w BPP także streszczenia zjazdowe
+(PSZ/ZSZ), listy do redakcji (L), recenzje (R) i komunikaty (KOM). Bez filtra
+raport żądał od streszczenia konferencyjnego numeru DOI i informacji, czy jest
+artykułem recenzyjnym.
+
+Ziarno dla artykułów zawężone do
+`rekord__charakter_formalny__rodzaj_pbn = RODZAJ_PBN_ARTYKUL` — idiom, którego
+repo już używa w `pbn_integrator` i `komparator_pbn`.
+
+### Monografia macierzysta rozdziału nie była sprawdzana wcale
+
+Projekt zakładał, że braki monografii pokazujemy przy monografii, więc rozdział
+ich nie duplikuje. Przesłanka była fałszywa: monografia trafia do raportu tylko
+wtedy, gdy sama ma powiązanie autorskie z uczelni. Rozdział w monografii
+zbiorowej pod obcą redakcją ma rodzica bez takich powiązań — więc § 2 ust. 10
+pkt 6 lit. a nie był sprawdzany w najczęstszym przypadku.
+
+Dodane reguły `ROZ_MON_ISBN`, `ROZ_MON_WYDAWCA`, `ROZ_MON_DOI` po ścieżce
+`rekord__wydawnictwo_nadrzedne__…`, bramkowane wskazanym rodzicem. Świadomie
+tylko trio identyfikujące, a nie cały pkt 5 — rodzic z autorami z uczelni jest
+audytowany osobno, a pełne powielenie dawałoby podwójne zgłoszenia.
+
+### Widok szczegółów przeciekał dane między uczelniami
+
+`get_object_or_404(Autor, slug=…)` bez zawężenia zwracał HTTP 200 z imieniem
+i nazwiskiem autora obcej uczelni. Slug jest przewidywalny (`nazwisko-imie`),
+więc pozwalało to enumerować kadrę. Zawężone przez `scope_autor_do_uczelni` —
+teraz 404.
+
+### Reguły dołożone
+
+| Kod | Wymóg | Paragraf |
+|---|---|---|
+| `ART_OA_TRYB`, `MON_OA_TRYB` | sposób udostępnienia OA — brakowało reguły na samą bramkę, więc rekord z datą OA, ale bez trybu, wersji i licencji nie dawał żadnego naruszenia | pkt 4 lit. l / pkt 5 lit. m |
+| `ART_APC_KWOTA`, `MON_APC_KWOTA` | zadeklarowano niebezkosztowość, ale nie podano kwoty — luka między dwiema dotychczasowymi regułami APC | pkt 4 lit. m / pkt 5 lit. n |
+| `ART_KONFERENCJA_NAZWA`, `_DATY`, `_MIEJSCE` | dane konferencji, gdy artykuł jest z materiałów konferencyjnych; wymóg całkiem pominięty, mimo że BPP ma pola | pkt 4 lit. g |
+| `ROZ_MON_ISBN`, `ROZ_MON_WYDAWCA`, `ROZ_MON_DOI` | dane identyfikujące monografii macierzystej | pkt 6 lit. a |
+
+### Pozostałe poprawki
+
+- **Paginacja** widoku listy (25 autorów na stronę). Założenie „zbiór jest mały"
+  nie przeżyje pierwszego roku okna: pola `pbn_czy_*` i `opl_pub_*` mają
+  `default=None`, a `przypieta` `default=True`, więc w realnej instalacji prawie
+  każde powiązanie ma co najmniej jeden brak wymagany.
+- **Sekcja „nierozpoznany typ"** zawężona do rekordów, które naprawdę jadą do
+  PBN — wcześniej ostrzegała o charakterach sklasyfikowanych poprawnie i celowo
+  (fragment, tłumaczenie, skrypt), wysyłając redaktora do edycji słownika bez
+  powodu. Rozszerzona symetrycznie na wydawnictwa ciągłe bez ustawionego
+  `rodzaj_pbn`, żeby artykuły nie znikały po cichu na niedokonfigurowanej
+  instalacji.
+- **Testy**: dotychczasowy wzorzec zerował wszystkie człony koniunkcji naraz,
+  więc dowolny człon poza pierwszym dawało się usunąć z kodu przy zielonej
+  suicie. Dołożone testy „fallback ratuje" na każdy taki człon.
+- `sa_przypiete_dyscypliny()` zawężone do uczelni — zdradzało boolean o stanie
+  danych obcej instytucji.

@@ -135,10 +135,29 @@ BRAK_UPOWAZNIENIA = Q(upowaznienie_pbn=False)
 #: Autor nie ma numeru ORCID. Pole ``Autor.orcid`` jest nullowalne (unique).
 BRAK_ORCID = _puste_lub_null("autor__orcid")
 
-#: Praca jest oznaczona jako Open Access. Wszystkie wymogi OA są warunkowe
-#: względem tego oznaczenia: bez trybu dostępu rozporządzenie nie żąda
-#: danych OA i raport milczy.
+#: Praca jest oznaczona jako Open Access. Wszystkie wymogi OA — poza samym
+#: trybem dostępu — są warunkowe względem tego oznaczenia: bez trybu dostępu
+#: rozporządzenie nie żąda danych OA i raport milczy.
 OZNACZONO_OPEN_ACCESS = Q(rekord__openaccess_tryb_dostepu__isnull=False)
+
+#: Wypełniono JAKIKOLWIEK sygnał otwartego dostępu inny niż sam tryb.
+#: Wszystkie pola są kolumnami samego rekordu (FK „do jednego” albo liczba),
+#: więc warunek nie zwielokrotnia wierszy przy ``annotate()``.
+JAKIS_SYGNAL_OPEN_ACCESS = (
+    Q(rekord__openaccess_wersja_tekstu__isnull=False)
+    | Q(rekord__openaccess_licencja__isnull=False)
+    | Q(rekord__openaccess_data_opublikowania__isnull=False)
+    | Q(rekord__openaccess_czas_publikacji__isnull=False)
+    | Q(rekord__openaccess_ilosc_miesiecy__isnull=False)
+)
+
+#: Dane o otwartym dostępie zaczęte, ale bez trybu dostępu — czyli bez
+#: pierwszego tiretu litery („otwarte czasopismo / otwarte repozytorium /
+#: inny sposób”). Bez żadnego sygnału OA warunek jest fałszywy: praca
+#: po prostu nie jest w otwartym dostępie i nie ma czego wymagać.
+BRAK_TRYBU_OPEN_ACCESS = (
+    Q(rekord__openaccess_tryb_dostepu__isnull=True) & JAKIS_SYGNAL_OPEN_ACCESS
+)
 
 #: Brak kompletu danych o opłacie za publikację (APC): nie wiadomo nawet,
 #: czy publikacja była bezkosztowa.
@@ -148,6 +167,18 @@ BRAK_DANYCH_O_OPLACIE = (
     & Q(rekord__opl_pub_research_potential__isnull=True)
     & Q(rekord__opl_pub_research_or_development_projects__isnull=True)
     & Q(rekord__opl_pub_other__isnull=True)
+)
+
+#: Zadeklarowano, że publikacja NIE była bezkosztowa, ale nie podano kwoty.
+#: Domyka lukę między :data:`BRAK_DANYCH_O_OPLACIE` (żąda, by wszystkie pięć
+#: pól było puste) a :data:`BRAK_ZRODLA_OPLATY` (żąda kwoty dodatniej): bez
+#: tego warunku rekord z samym odznaczonym „bezkosztowa” nie naruszał NICZEGO,
+#: choć redaktor zadeklarował opłatę i nie podał ani jej kwoty, ani źródła.
+#: Kwota zerowa przy odznaczonej bezkosztowości jest wewnętrznie sprzeczna,
+#: więc traktujemy ją tak samo jak brak kwoty — inaczej luka zostałaby otwarta
+#: dla wartości 0.
+BRAK_KWOTY_OPLATY = Q(rekord__opl_pub_cost_free=False) & (
+    Q(rekord__opl_pub_amount__isnull=True) | Q(rekord__opl_pub_amount=0)
 )
 
 #: Wpisano kwotę opłaty, ale nie wskazano źródła jej finansowania.
@@ -164,13 +195,31 @@ def _reguly_open_access(
     dotyczy: Osiagniecie,
     paragraf: str,
 ) -> tuple[Regula, ...]:
-    """Pięć reguł Open Access, identycznych dla artykułu i monografii.
+    """Sześć reguł Open Access, identycznych dla artykułu i monografii.
 
-    Wszystkie poza ``*_OA_MIESIACE`` są warunkowe względem ustawionego trybu
-    dostępu. ``*_OA_MIESIACE`` uruchamia się węziej — tylko dla udostępnienia
-    po opublikowaniu, bo tylko wtedy liczba miesięcy karencji ma sens.
+    Pierwszym tiretem litery jest sam **tryb dostępu** (otwarte czasopismo,
+    otwarte repozytorium albo inny sposób) — stąd ``*_OA_TRYB``. Reguła
+    uruchamia się, gdy wypełniono którykolwiek inny sygnał otwartego dostępu,
+    a trybu nie podano: dana jest wtedy zaczęta i niedokończona. Bez żadnego
+    sygnału raport milczy, bo praca po prostu nie jest w otwartym dostępie.
+
+    Pozostałe pięć reguł bramkuje **ustawiony tryb dostępu** — wszystkie tak
+    samo, ``*_OA_MIESIACE`` włącznie. Wcześniej ta jedna bramkowana była
+    wyłącznie skrótem czasu udostępnienia, więc rekord bez trybu potrafił
+    dostać brak liczby miesięcy i NIE dostać braku wersji tekstu: dwie reguły
+    tej samej litery mówiły co innego o tym samym rekordzie.
+    ``*_OA_MIESIACE`` zawęża się dodatkowo do udostępnienia po opublikowaniu,
+    bo tylko wtedy liczba miesięcy karencji ma sens.
     """
     return (
+        Regula(
+            kod=f"{prefiks_kodu}_OA_TRYB",
+            dotyczy=dotyczy,
+            warunek=BRAK_TRYBU_OPEN_ACCESS,
+            opis="Wypełniono dane o otwartym dostępie, ale nie podano trybu "
+            "dostępu (otwarte czasopismo, otwarte repozytorium, inny sposób).",
+            paragraf=paragraf,
+        ),
         Regula(
             kod=f"{prefiks_kodu}_OA_WERSJA",
             dotyczy=dotyczy,
@@ -209,9 +258,8 @@ def _reguly_open_access(
         Regula(
             kod=f"{prefiks_kodu}_OA_MIESIACE",
             dotyczy=dotyczy,
-            warunek=Q(
-                rekord__openaccess_czas_publikacji__skrot=OA_CZAS_PO_OPUBLIKOWANIU
-            )
+            warunek=OZNACZONO_OPEN_ACCESS
+            & Q(rekord__openaccess_czas_publikacji__skrot=OA_CZAS_PO_OPUBLIKOWANIU)
             & Q(rekord__openaccess_ilosc_miesiecy__isnull=True),
             opis="Pracę udostępniono po opublikowaniu, ale nie podano liczby "
             "miesięcy, jakie upłynęły od publikacji do udostępnienia.",
@@ -225,7 +273,13 @@ def _reguly_oplaty(
     dotyczy: Osiagniecie,
     paragraf: str,
 ) -> tuple[Regula, ...]:
-    """Dwie reguły dotyczące opłaty za publikację (APC)."""
+    """Trzy reguły dotyczące opłaty za publikację (APC).
+
+    Razem pokrywają całą deklarację bez dziur: albo nie wypełniono niczego
+    (``*_APC``), albo zadeklarowano opłatę i nie podano kwoty
+    (``*_APC_KWOTA``), albo podano kwotę i nie wskazano źródła
+    (``*_APC_ZRODLO``).
+    """
     return (
         Regula(
             kod=f"{prefiks_kodu}_APC",
@@ -236,11 +290,74 @@ def _reguly_oplaty(
             paragraf=paragraf,
         ),
         Regula(
+            kod=f"{prefiks_kodu}_APC_KWOTA",
+            dotyczy=dotyczy,
+            warunek=BRAK_KWOTY_OPLATY,
+            opis="Zaznaczono, że publikacja nie była bezkosztowa, ale nie "
+            "podano kwoty opłaty za publikację.",
+            paragraf=paragraf,
+        ),
+        Regula(
             kod=f"{prefiks_kodu}_APC_ZRODLO",
             dotyczy=dotyczy,
             warunek=BRAK_ZRODLA_OPLATY,
             opis="Wpisano kwotę opłaty za publikację, ale nie wskazano "
             "żadnego źródła jej finansowania.",
+            paragraf=paragraf,
+        ),
+    )
+
+
+def _reguly_konferencji(
+    prefiks_kodu: str,
+    dotyczy: Osiagniecie,
+    paragraf: str,
+) -> tuple[Regula, ...]:
+    """Trzy reguły o konferencji — po jednej na tiret litery.
+
+    Wszystkie są bramkowane **wskazaniem konferencji**
+    (``rekord__konferencja__isnull=False``). Rozporządzenie pyta, czy praca
+    została opublikowana w materiałach konferencyjnych — „nie” jest legalną
+    odpowiedzią, więc od rekordu bez konferencji raport nie żąda niczego.
+    Dopiero wskazanie konferencji zobowiązuje do podania jej nazwy, dat
+    i miejsca.
+
+    ``Konferencja.nazwa`` jest ``CharField`` NOT NULL, ale ``miasto``
+    i ``panstwo`` dopuszczają NULL — stąd dwa różne pomocniki pustki.
+    Daty i miejsce traktujemy łącznie: brak którejkolwiek połowy znaczy, że
+    danej z tiretu nie da się sprawozdać w całości.
+    """
+    return (
+        Regula(
+            kod=f"{prefiks_kodu}_KONFERENCJA_NAZWA",
+            dotyczy=dotyczy,
+            warunek=Q(rekord__konferencja__isnull=False)
+            & _puste("rekord__konferencja__nazwa"),
+            opis="Wskazano konferencję, ale nie ma ona wpisanej nazwy.",
+            paragraf=paragraf,
+        ),
+        Regula(
+            kod=f"{prefiks_kodu}_KONFERENCJA_DATY",
+            dotyczy=dotyczy,
+            warunek=Q(rekord__konferencja__isnull=False)
+            & (
+                Q(rekord__konferencja__rozpoczecie__isnull=True)
+                | Q(rekord__konferencja__zakonczenie__isnull=True)
+            ),
+            opis="Wskazano konferencję, ale nie podano pełnego zakresu jej "
+            "trwania — brakuje daty rozpoczęcia albo zakończenia.",
+            paragraf=paragraf,
+        ),
+        Regula(
+            kod=f"{prefiks_kodu}_KONFERENCJA_MIEJSCE",
+            dotyczy=dotyczy,
+            warunek=Q(rekord__konferencja__isnull=False)
+            & (
+                _puste_lub_null("rekord__konferencja__miasto")
+                | _puste_lub_null("rekord__konferencja__panstwo")
+            ),
+            opis="Wskazano konferencję, ale nie podano pełnego miejsca jej "
+            "odbycia — brakuje miasta albo państwa.",
             paragraf=paragraf,
         ),
     )
@@ -288,6 +405,7 @@ REGULY_ARTYKUL: tuple[Regula, ...] = (
         opis="Nie określono, czy artykuł jest artykułem recenzyjnym.",
         paragraf="§ 2 ust. 10 pkt 4 lit. f",
     ),
+    *_reguly_konferencji("ART", Osiagniecie.ARTYKUL, "§ 2 ust. 10 pkt 4 lit. g"),
     Regula(
         kod="ART_ZRODLO",
         dotyczy=Osiagniecie.ARTYKUL,
@@ -363,7 +481,7 @@ REGULY_MONOGRAFIA: tuple[Regula, ...] = (
         kod="MON_WYDAWCA",
         dotyczy=Osiagniecie.MONOGRAFIA,
         warunek=Q(rekord__wydawca__isnull=True) & _puste("rekord__wydawca_opis"),
-        opis="Nie wskazano wydawcy monografii — ani ze słownika wydawców, ani opisowo.",
+        opis="Nie wskazano wydawcy monografii — ani ze słownika, ani opisowo.",
         paragraf="§ 2 ust. 10 pkt 5 lit. e",
     ),
     Regula(
@@ -385,7 +503,7 @@ REGULY_MONOGRAFIA: tuple[Regula, ...] = (
         kod="MON_EDYCJA_NAUKOWA",
         dotyczy=Osiagniecie.MONOGRAFIA,
         warunek=Q(rekord__pbn_czy_edycja_naukowa__isnull=True),
-        opis="Nie określono, czy monografia jest edycją naukową tekstów źródłowych.",
+        opis="Nie określono, czy monografia to edycja naukowa tekstów źródłowych.",
         paragraf="§ 2 ust. 10 pkt 5 lit. j",
     ),
     Regula(
@@ -407,11 +525,36 @@ REGULY_MONOGRAFIA: tuple[Regula, ...] = (
 # --------------------------------------------------------------------------
 # Rozdział w monografii — § 2 ust. 10 pkt 6 — bpp.Wydawnictwo_Zwarte_Autor
 #
-# Rozdział dziedziczy wymogi monografii macierzystej (lit. a odsyła do pkt 5),
-# ale raport ich tu NIE duplikuje — braki monografii pokazuje przy monografii.
-# Inaczej jedna niekompletna książka generowałaby braki przy każdym
-# z kilkunastu rozdziałów, zalewając listę.
+# Litera a odsyła do KOMPLETU wymogów pkt 5, czyli do danych monografii
+# macierzystej. Raport sprawdza z nich wyłącznie **trio identyfikujące**
+# książkę: ISBN/e-ISBN, wydawcę oraz DOI/URL (reguły ``ROZ_MON_*``). Wybór
+# jest świadomy i wynika z dwóch obserwacji:
+#
+# 1. Monografia macierzysta trafia do raportu jako osobne osiągnięcie TYLKO
+#    wtedy, gdy sama ma choć jednego autora z uczelni. Typowy rozdział
+#    w pracy zbiorowej pod obcą redakcją ma rodzica bez takiego autora, więc
+#    rodzic nigdy nie pojawiłby się w raporcie — i lit. a nie byłaby
+#    sprawdzana w ogóle. Dlatego czegoś tu sprawdzać trzeba.
+# 2. Pełne powielenie pkt 5 na rozdziale dawałoby podwójne zgłoszenia dla
+#    rodziców, którzy JUŻ są audytowani jako monografia, i zalewałoby listę:
+#    jedna niekompletna książka generowałaby komplet braków przy każdym
+#    z kilkunastu rozdziałów. Trio identyfikujące to minimum, bez którego
+#    książki nie da się w POL-onie wskazać, a jednocześnie zbiór na tyle
+#    wąski, że duplikat przy rodzicu-z-uczelni jest znośny.
+#
+# Wymogi zależne od autora (dyscyplina, upoważnienie, ORCID) i od redakcji
+# rodzica (OA, APC, projekty) świadomie zostają poza tym zestawem — dotyczą
+# osób i decyzji, których redaktor rozdziału nie ma jak uzupełnić.
+#
+# Wszystkie reguły ``ROZ_MON_*`` bramkuje wskazany rodzic
+# (``rekord__wydawnictwo_nadrzedne__isnull=False``), żeby nie dublowały
+# ``ROZ_NADRZEDNE`` — rozdział bez rodzica ma dostać jedno zgłoszenie, nie
+# cztery. Bramka jest też warunkiem poprawności: bez rodzica LEFT JOIN daje
+# same NULL-e, a porównanie z pustym ciągiem nie zadziała.
 # --------------------------------------------------------------------------
+
+#: Rozdział ma wskazaną monografię macierzystą w BPP.
+WSKAZANO_MONOGRAFIE_MACIERZYSTA = Q(rekord__wydawnictwo_nadrzedne__isnull=False)
 
 REGULY_ROZDZIAL: tuple[Regula, ...] = (
     Regula(
@@ -421,6 +564,36 @@ REGULY_ROZDZIAL: tuple[Regula, ...] = (
         & Q(rekord__wydawnictwo_nadrzedne_w_pbn__isnull=True),
         opis="Nie wskazano monografii, w której rozdział się ukazał — ani "
         "rekordu w BPP, ani publikacji w PBN.",
+        paragraf="§ 2 ust. 10 pkt 6 lit. a",
+    ),
+    Regula(
+        kod="ROZ_MON_ISBN",
+        dotyczy=Osiagniecie.ROZDZIAL,
+        warunek=WSKAZANO_MONOGRAFIE_MACIERZYSTA
+        & _puste("rekord__wydawnictwo_nadrzedne__isbn")
+        & _puste("rekord__wydawnictwo_nadrzedne__e_isbn"),
+        opis="Monografia, w której ukazał się rozdział, nie ma ISBN ani e-ISBN.",
+        paragraf="§ 2 ust. 10 pkt 6 lit. a",
+    ),
+    Regula(
+        kod="ROZ_MON_WYDAWCA",
+        dotyczy=Osiagniecie.ROZDZIAL,
+        warunek=WSKAZANO_MONOGRAFIE_MACIERZYSTA
+        & Q(rekord__wydawnictwo_nadrzedne__wydawca__isnull=True)
+        & _puste("rekord__wydawnictwo_nadrzedne__wydawca_opis"),
+        opis="Monografia, w której ukazał się rozdział, nie ma wskazanego "
+        "wydawcy — ani ze słownika wydawców, ani opisowo.",
+        paragraf="§ 2 ust. 10 pkt 6 lit. a",
+    ),
+    Regula(
+        kod="ROZ_MON_DOI",
+        dotyczy=Osiagniecie.ROZDZIAL,
+        warunek=WSKAZANO_MONOGRAFIE_MACIERZYSTA
+        & _puste_lub_null("rekord__wydawnictwo_nadrzedne__doi")
+        & _puste("rekord__wydawnictwo_nadrzedne__public_www")
+        & _puste("rekord__wydawnictwo_nadrzedne__www"),
+        opis="Monografia, w której ukazał się rozdział, nie ma numeru DOI "
+        "ani adresu strony WWW.",
         paragraf="§ 2 ust. 10 pkt 6 lit. a",
     ),
     Regula(
@@ -452,8 +625,8 @@ REGULY_ROZDZIAL: tuple[Regula, ...] = (
 # --------------------------------------------------------------------------
 # Patent — § 2 ust. 10 pkt 1 — bpp.Patent_Autor
 #
-# Model Patent pokrywa tylko litery a, c, g oraz — przez relacje — k i m.
-# Dla liter b, d, e, f, h, i, j, l BPP nie ma pól (nazwa uprawnionego,
+# Model Patent pokrywa litery a, c, g oraz — przez relacje — k, l i m.
+# Dla liter b, d, e, f, h, i, j BPP nie ma pól (nazwa uprawnionego,
 # urząd udzielający, państwa ochrony, data ogłoszenia w „Wiadomościach Urzędu
 # Patentowego", uprzednie pierwszeństwo, streszczenie opisu, data złożenia
 # tłumaczenia patentu europejskiego). Raport nie może zgłaszać braku danej,

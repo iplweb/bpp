@@ -18,6 +18,7 @@ from decimal import Decimal
 import pytest
 from model_bakery import baker
 
+from bpp.const import RODZAJ_PBN_ARTYKUL
 from kompletnosc_polon.const import OA_CZAS_PO_OPUBLIKOWANIU, Osiagniecie, Waga
 from kompletnosc_polon.reguly import (
     REGULY,
@@ -56,9 +57,38 @@ def _kolejny_orcid() -> str:
     return f"0000-0001-{numer // 10000 % 10000:04d}-{numer % 10000:04d}"
 
 
+_licznik_dyscyplin = itertools.count(1)
+
+
+def _kolejna_dyscyplina():
+    """Dyscyplina naukowa o **deterministycznie** unikalnym kodzie.
+
+    ``Dyscyplina_Naukowa.kod`` jest unikalny w bazie, a domyślny generator
+    ``model_bakery`` losuje go z wąskiego zakresu (``N.MMM``). W teście
+    budującym kilkadziesiąt powiązań naraz kolizja urodzinowa trafiała się na
+    tyle często, że pełny przebieg suity potrafił paść na ``IntegrityError``
+    w losowym miejscu. Licznik zamyka temat u źródła.
+    """
+    numer = next(_licznik_dyscyplin)
+    return baker.make(
+        "bpp.Dyscyplina_Naukowa",
+        kod=f"{numer // 900 + 1}.{numer % 900 + 100}",
+    )
+
+
 # --------------------------------------------------------------------------
 # Budowa obiektów kompletnych — takich, których ŻADNA reguła nie łapie
 # --------------------------------------------------------------------------
+
+
+def charakter_artykulu():
+    """Charakter formalny, który raport uznaje za artykuł naukowy (pkt 4).
+
+    Bez ``rodzaj_pbn = RODZAJ_PBN_ARTYKUL`` selektor :func:`powiazania`
+    w ogóle nie wciągnie rekordu do raportu — tak samo, jak nie wciąga
+    streszczeń zjazdowych, listów do redakcji czy recenzji.
+    """
+    return baker.make("bpp.Charakter_Formalny", rodzaj_pbn=RODZAJ_PBN_ARTYKUL)
 
 
 def _kompletny_artykul():
@@ -66,6 +96,8 @@ def _kompletny_artykul():
     return baker.make(
         "bpp.Wydawnictwo_Ciagle",
         rok=ROK,
+        charakter_formalny=charakter_artykulu(),
+        konferencja=None,
         zrodlo=zrodlo,
         doi="10.1000/kompletny",
         www="",
@@ -91,6 +123,28 @@ def _kompletny_artykul():
     )
 
 
+def _kompletna_monografia_macierzysta():
+    """Monografia macierzysta rozdziału, z kompletem danych identyfikujących.
+
+    Reguły ``ROZ_MON_*`` sprawdzają ISBN/e-ISBN, wydawcę i DOI/URL rodzica,
+    więc „kompletny” rozdział musi mieć rodzica, który je ma. Rodzic
+    zbudowany gołym ``baker.make`` ma te pola puste i wywracałby test
+    „żaden kompletny rekord nie jest łapany”.
+    """
+    return baker.make(
+        "bpp.Wydawnictwo_Zwarte",
+        rok=ROK,
+        doi="10.1000/macierzysta",
+        www="",
+        public_www="",
+        isbn="978-83-01-11111-1",
+        e_isbn="",
+        wydawca=baker.make("bpp.Wydawca"),
+        wydawca_opis="",
+        wydawnictwo_nadrzedne=None,
+    )
+
+
 def _kompletne_zwarte():
     """Wydawnictwo zwarte spełniające wymogi i monografii, i rozdziału."""
     return baker.make(
@@ -103,7 +157,7 @@ def _kompletne_zwarte():
         e_isbn="",
         wydawca=baker.make("bpp.Wydawca"),
         wydawca_opis="",
-        wydawnictwo_nadrzedne=baker.make("bpp.Wydawnictwo_Zwarte", rok=ROK),
+        wydawnictwo_nadrzedne=_kompletna_monografia_macierzysta(),
         wydawnictwo_nadrzedne_w_pbn=None,
         pbn_czy_edycja_naukowa=False,
         pbn_czy_projekt_ncn=False,
@@ -151,7 +205,7 @@ def _zbuduj_kompletne_powiazanie(osiagniecie: Osiagniecie):
     """
     rekord = BUDOWNICZY_REKORDU[osiagniecie]()
     autor = baker.make("bpp.Autor", orcid=_kolejny_orcid())
-    dyscyplina = baker.make("bpp.Dyscyplina_Naukowa")
+    dyscyplina = _kolejna_dyscyplina()
 
     # Powiązanie autor–dyscyplina na dany rok jest wymuszone przez
     # BazaModeluOdpowiedzialnosciAutorow.clean(), wołane z save().
@@ -233,9 +287,70 @@ def _psuj_oa_miesiace(powiazanie):
         defaults={"nazwa": "po opublikowaniu"},
     )
     rekord = powiazanie.rekord
+    # Tryb dostępu ustawiamy, bo reguła jest nim bramkowana tak samo jak
+    # pozostałe reguły litery; bez trybu zadziałałaby ``*_OA_TRYB``.
+    rekord.openaccess_tryb_dostepu = _tryb_open_access(rekord)
+    rekord.openaccess_wersja_tekstu = baker.make("bpp.Wersja_Tekstu_OpenAccess")
+    rekord.openaccess_licencja = baker.make("bpp.Licencja_OpenAccess")
+    rekord.openaccess_data_opublikowania = datetime.date(ROK, 3, 1)
     rekord.openaccess_czas_publikacji = czas
     rekord.openaccess_ilosc_miesiecy = None
     rekord.save()
+
+
+def _psuj_oa_tryb(powiazanie):
+    """Wypełnij sygnał OA (datę udostępnienia), ale NIE podawaj trybu."""
+    rekord = powiazanie.rekord
+    rekord.openaccess_tryb_dostepu = None
+    rekord.openaccess_data_opublikowania = datetime.date(ROK, 3, 1)
+    rekord.save()
+
+
+def _psuj_apc_kwota(powiazanie):
+    """Odznacz „bezkosztowa”, ale nie podaj ani kwoty, ani źródła."""
+    rekord = powiazanie.rekord
+    rekord.opl_pub_cost_free = False
+    rekord.opl_pub_amount = None
+    rekord.opl_pub_research_potential = None
+    rekord.opl_pub_research_or_development_projects = None
+    rekord.opl_pub_other = None
+    rekord.save()
+
+
+def _konferencja(**nadpisz):
+    """Konferencja z kompletem danych z lit. g, poza tym, co nadpisano."""
+    pola = {
+        "nazwa": "Konferencja testowa",
+        "rozpoczecie": datetime.date(ROK, 5, 1),
+        "zakonczenie": datetime.date(ROK, 5, 3),
+        "miasto": "Lublin",
+        "panstwo": "Polska",
+    }
+    pola.update(nadpisz)
+    return baker.make("bpp.Konferencja", **pola)
+
+
+def _psuj_konferencje(**nadpisz):
+    """Zbuduj funkcję wskazującą konferencję z brakiem w podanych polach."""
+
+    def psuj(powiazanie):
+        rekord = powiazanie.rekord
+        rekord.konferencja = _konferencja(**nadpisz)
+        rekord.save()
+
+    return psuj
+
+
+def _psuj_pole_nadrzednego(**nadpisz):
+    """Zbuduj funkcję psującą pola monografii macierzystej rozdziału."""
+
+    def psuj(powiazanie):
+        nadrzedne = powiazanie.rekord.wydawnictwo_nadrzedne
+        for pole, wartosc in nadpisz.items():
+            setattr(nadrzedne, pole, wartosc)
+        nadrzedne.save()
+
+    return psuj
 
 
 def _psuj_apc(powiazanie):
@@ -288,16 +403,21 @@ PSUJ = {
     "ART_UPOWAZNIENIE": _psuj_upowaznienie,
     "ART_ORCID": _psuj_orcid,
     "ART_RECENZYJNY": _psuj_pole_rekordu(pbn_czy_artykul_recenzyjny=None),
+    "ART_KONFERENCJA_NAZWA": _psuj_konferencje(nazwa=""),
+    "ART_KONFERENCJA_DATY": _psuj_konferencje(zakonczenie=None),
+    "ART_KONFERENCJA_MIEJSCE": _psuj_konferencje(panstwo=""),
     "ART_ZRODLO": _psuj_pole_rekordu(zrodlo=None),
     "ART_ISSN": _psuj_issn,
     "ART_TOM": _psuj_pole_rekordu(tom="", informacje=""),
     "ART_STRONY": _psuj_pole_rekordu(strony="", szczegoly=""),
+    "ART_OA_TRYB": _psuj_oa_tryb,
     "ART_OA_WERSJA": _psuj_oa("openaccess_wersja_tekstu"),
     "ART_OA_LICENCJA": _psuj_oa("openaccess_licencja"),
     "ART_OA_DATA": _psuj_oa("openaccess_data_opublikowania"),
     "ART_OA_CZAS": _psuj_oa("openaccess_czas_publikacji"),
     "ART_OA_MIESIACE": _psuj_oa_miesiace,
     "ART_APC": _psuj_apc,
+    "ART_APC_KWOTA": _psuj_apc_kwota,
     "ART_APC_ZRODLO": _psuj_apc_zrodlo,
     # Monografia naukowa — § 2 ust. 10 pkt 5
     "MON_DOI": _psuj_doi,
@@ -313,17 +433,22 @@ PSUJ = {
         pbn_czy_projekt_fnp=None,
         pbn_czy_projekt_ue=None,
     ),
+    "MON_OA_TRYB": _psuj_oa_tryb,
     "MON_OA_WERSJA": _psuj_oa("openaccess_wersja_tekstu"),
     "MON_OA_LICENCJA": _psuj_oa("openaccess_licencja"),
     "MON_OA_DATA": _psuj_oa("openaccess_data_opublikowania"),
     "MON_OA_CZAS": _psuj_oa("openaccess_czas_publikacji"),
     "MON_OA_MIESIACE": _psuj_oa_miesiace,
     "MON_APC": _psuj_apc,
+    "MON_APC_KWOTA": _psuj_apc_kwota,
     "MON_APC_ZRODLO": _psuj_apc_zrodlo,
     # Rozdział w monografii — § 2 ust. 10 pkt 6
     "ROZ_NADRZEDNE": _psuj_pole_rekordu(
         wydawnictwo_nadrzedne=None, wydawnictwo_nadrzedne_w_pbn=None
     ),
+    "ROZ_MON_ISBN": _psuj_pole_nadrzednego(isbn="", e_isbn=""),
+    "ROZ_MON_WYDAWCA": _psuj_pole_nadrzednego(wydawca=None, wydawca_opis=""),
+    "ROZ_MON_DOI": _psuj_pole_nadrzednego(doi=None, www="", public_www=""),
     "ROZ_ORCID": _psuj_orcid,
     "ROZ_DYSCYPLINA": _psuj_dyscypline,
     "ROZ_UPOWAZNIENIE": _psuj_upowaznienie,
@@ -437,3 +562,156 @@ def test_zaden_kompletny_rekord_nie_jest_lapany(regula):
     assert not model.objects.filter(regula.warunek).filter(pk=kompletne.pk).exists(), (
         f"Reguła {regula.kod} ({regula.paragraf}) łapie rekord kompletny."
     )
+
+
+# --------------------------------------------------------------------------
+# Alternatywy w koniunkcjach — „drugie źródło danej ratuje rekord”
+#
+# Testy wyżej psują WSZYSTKIE człony koniunkcji naraz, więc przechodzą także
+# wtedy, gdy z warunku wypadnie dowolny człon poza pierwszym: rekord i tak
+# zostanie złapany. Kod jest poprawny, ale suita tego nie broni. Poniższe
+# testy domykają lukę od drugiej strony: psują człon główny, zostawiają
+# wypełnioną alternatywę i wymagają, żeby reguła MILCZAŁA. Skasowanie
+# któregokolwiek członu z warunku psuje któryś z nich.
+# --------------------------------------------------------------------------
+
+REGULA_PO_KODZIE = {regula.kod: regula for regula in REGULY}
+
+
+def _lapie(kod: str, powiazanie) -> bool:
+    """Czy reguła o podanym kodzie łapie to konkretne powiązanie."""
+    warunek = REGULA_PO_KODZIE[kod].warunek
+    return type(powiazanie).objects.filter(warunek).filter(pk=powiazanie.pk).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("kod", ["ART_DOI", "MON_DOI"])
+def test_publiczny_adres_www_zastepuje_doi(kod):
+    """Lit. a żąda „identyfikatora cyfrowego”, nie konkretnie numeru DOI."""
+    osiagniecie = REGULA_PO_KODZIE[kod].dotyczy
+    powiazanie = _zbuduj_kompletne_powiazanie(osiagniecie)
+    _psuj_pole_rekordu(doi=None, www="", public_www="https://example.org/publikacja")(
+        powiazanie
+    )
+
+    assert not _lapie(kod, powiazanie)
+
+
+@pytest.mark.django_db
+def test_wewnetrzny_adres_www_zastepuje_doi():
+    """Adres `www` (niepubliczny) też jest identyfikatorem cyfrowym."""
+    powiazanie = _zbuduj_kompletne_powiazanie(Osiagniecie.ARTYKUL)
+    _psuj_pole_rekordu(doi=None, public_www="", www="https://intranet/x")(powiazanie)
+
+    assert not _lapie("ART_DOI", powiazanie)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("pole", ["issn", "e_issn"])
+def test_issn_na_samym_rekordzie_ratuje_artykul_bez_issn_zrodla(pole):
+    """Numer wpisany przy rekordzie zastępuje pusty numer w słowniku źródeł."""
+    powiazanie = _zbuduj_kompletne_powiazanie(Osiagniecie.ARTYKUL)
+    rekord = powiazanie.rekord
+    rekord.zrodlo.issn = ""
+    rekord.zrodlo.e_issn = ""
+    rekord.zrodlo.save()
+    setattr(rekord, pole, "1234-5678")
+    rekord.save()
+
+    assert not _lapie("ART_ISSN", powiazanie)
+
+
+@pytest.mark.django_db
+def test_e_issn_zrodla_ratuje_artykul_bez_issn():
+    powiazanie = _zbuduj_kompletne_powiazanie(Osiagniecie.ARTYKUL)
+    rekord = powiazanie.rekord
+    rekord.zrodlo.issn = ""
+    rekord.zrodlo.e_issn = "8765-4321"
+    rekord.zrodlo.save()
+
+    assert not _lapie("ART_ISSN", powiazanie)
+
+
+@pytest.mark.django_db
+def test_pole_informacje_ratuje_pusty_tom():
+    """Tom da się wyekstrahować z pola „Informacje” — to nie jest brak."""
+    powiazanie = _zbuduj_kompletne_powiazanie(Osiagniecie.ARTYKUL)
+    _psuj_pole_rekordu(tom="", informacje="2026, vol. 12, nr 3")(powiazanie)
+
+    assert not _lapie("ART_TOM", powiazanie)
+
+
+@pytest.mark.django_db
+def test_pole_szczegoly_ratuje_puste_strony():
+    """Zakres stron da się wyekstrahować z pola „Szczegóły”."""
+    powiazanie = _zbuduj_kompletne_powiazanie(Osiagniecie.ARTYKUL)
+    _psuj_pole_rekordu(strony="", szczegoly="s. 15-27")(powiazanie)
+
+    assert not _lapie("ART_STRONY", powiazanie)
+
+
+@pytest.mark.django_db
+def test_e_isbn_ratuje_monografie_bez_isbn():
+    powiazanie = _zbuduj_kompletne_powiazanie(Osiagniecie.MONOGRAFIA)
+    _psuj_pole_rekordu(isbn="", e_isbn="978-83-01-99999-9")(powiazanie)
+
+    assert not _lapie("MON_ISBN", powiazanie)
+
+
+@pytest.mark.django_db
+def test_opis_wydawcy_ratuje_monografie_bez_wydawcy_ze_slownika():
+    powiazanie = _zbuduj_kompletne_powiazanie(Osiagniecie.MONOGRAFIA)
+    _psuj_pole_rekordu(wydawca=None, wydawca_opis="Wydawnictwo Własne")(powiazanie)
+
+    assert not _lapie("MON_WYDAWCA", powiazanie)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("kod", ["ART_APC_ZRODLO", "MON_APC_ZRODLO"])
+@pytest.mark.parametrize(
+    "flaga",
+    [
+        "opl_pub_research_potential",
+        "opl_pub_research_or_development_projects",
+        "opl_pub_other",
+    ],
+)
+def test_kazde_zrodlo_finansowania_z_osobna_zamyka_wymog(kod, flaga):
+    """Wystarczy JEDNO wskazane źródło — którekolwiek z trzech."""
+    osiagniecie = REGULA_PO_KODZIE[kod].dotyczy
+    powiazanie = _zbuduj_kompletne_powiazanie(osiagniecie)
+    pola = {
+        "opl_pub_cost_free": False,
+        "opl_pub_amount": Decimal("1500.00"),
+        "opl_pub_research_potential": None,
+        "opl_pub_research_or_development_projects": None,
+        "opl_pub_other": None,
+    }
+    pola[flaga] = True
+    _psuj_pole_rekordu(**pola)(powiazanie)
+
+    assert not _lapie(kod, powiazanie)
+
+
+@pytest.mark.django_db
+def test_brak_numeru_zgloszenia_lapie_patent_mimo_wpisanej_daty():
+    """Drugi człon alternatywy z lit. g: numer, nie tylko data."""
+    powiazanie = _zbuduj_kompletne_powiazanie(Osiagniecie.PATENT)
+    assert powiazanie.rekord.data_zgloszenia is not None
+    _psuj_pole_rekordu(numer_zgloszenia=None)(powiazanie)
+
+    assert _lapie("PAT_ZGLOSZENIE", powiazanie)
+
+
+@pytest.mark.django_db
+def test_wydawnictwo_nadrzedne_w_pbn_ratuje_rozdzial_bez_rekordu_nadrzednego():
+    """Rodzic wskazany w PBN zamyka lit. a tak samo jak rekord w BPP."""
+    from pbn_api.models import Publication
+
+    powiazanie = _zbuduj_kompletne_powiazanie(Osiagniecie.ROZDZIAL)
+    _psuj_pole_rekordu(
+        wydawnictwo_nadrzedne=None,
+        wydawnictwo_nadrzedne_w_pbn=baker.make(Publication),
+    )(powiazanie)
+
+    assert not _lapie("ROZ_NADRZEDNE", powiazanie)

@@ -117,16 +117,29 @@
             <div class="callout warning">
                 <h4><i class="fi-alert"></i> Nierozpoznany typ osiągnięcia</h4>
                 <p>
-                    Poniższe wydawnictwa zwarte nie mają ustawionego
-                    <strong>charakteru dla slotów</strong>, więc nie wiadomo, czy
-                    są monografią (§ 2 ust. 10 pkt 5), czy rozdziałem (pkt 6).
-                    <strong>Raport ich nie sprawdził</strong> &mdash; poprawka
-                    polega na uzupełnieniu charakteru formalnego.
+                    Poniższe rekordy mają <strong>niesklasyfikowany charakter
+                    formalny</strong>: wydawnictwo zwarte bez <strong>charakteru
+                    dla slotów</strong> może być monografią (§ 2 ust. 10 pkt 5)
+                    albo rozdziałem (pkt 6), a wydawnictwo ciągłe bez
+                    <strong>rodzaju dla PBN</strong> &mdash; artykułem naukowym
+                    (pkt 4) albo publikacją, która osiągnięciem nie jest
+                    (streszczenie zjazdowe, list do redakcji, recenzja).
+                    <strong>Raport ich nie sprawdził.</strong>
+                </p>
+                <p>
+                    <i class="fi-info"></i>
+                    Brakującą wartość uzupełnia się <strong>w słowniku charakterów
+                    formalnych</strong>
+                    (<a href="{% url 'admin:bpp_charakter_formalny_changelist' %}"
+                        target="_blank">Charakter formalny</a>),
+                    a nie w samym rekordzie &mdash; jedna poprawka obejmuje
+                    wszystkie rekordy o danym charakterze.
                 </p>
                 <table class="hover stack">
                     <thead>
                         <tr>
                             <th>Rekord</th>
+                            <th>Rodzaj</th>
                             <th>Charakter formalny</th>
                             <th class="text-center">Akcje</th>
                         </tr>
@@ -135,13 +148,10 @@
                         {% for pozycja in nierozpoznane %}
                             <tr>
                                 <td>{{ pozycja.rekord.tytul_oryginalny|safe }}</td>
-                                <td>
-                                    {% if pozycja.charakter_formalny %}
-                                        {{ pozycja.charakter_formalny.nazwa }}
-                                    {% else %}
-                                        <span class="label alert">brak</span>
-                                    {% endif %}
-                                </td>
+                                <td>{{ pozycja.rodzaj|capfirst }}</td>
+                                {# ``charakter_formalny`` to FK NOT NULL — #}
+                                {# gałąź „brak” byłaby martwym kodem. #}
+                                <td>{{ pozycja.charakter_formalny.nazwa }}</td>
                                 <td class="text-center">
                                     <a href="{{ pozycja.url_admina }}" class="button tiny"
                                        target="_blank" title="Otwórz formularz edycji rekordu">

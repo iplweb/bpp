@@ -43,7 +43,11 @@ from django.db.models import (
     When,
 )
 
-from bpp.const import CHARAKTER_SLOTY_KSIAZKA, CHARAKTER_SLOTY_ROZDZIAL
+from bpp.const import (
+    CHARAKTER_SLOTY_KSIAZKA,
+    CHARAKTER_SLOTY_ROZDZIAL,
+    RODZAJ_PBN_ARTYKUL,
+)
 from bpp.util.uczelnia_scope import scope_autorzy_do_uczelni
 from ewaluacja_common.const import OKNO_EWALUACJI
 from kompletnosc_polon.const import Osiagniecie, Waga
@@ -60,7 +64,7 @@ POLE_BRAKI_WARUNKOWE = "braki_warunkowe"
 
 #: Through-model niosący ziarno raportu dla danego typu osiągnięcia.
 #: Monografia i rozdział dzielą jeden model — rozróżnia je dopiero
-#: ``charakter_formalny.charakter_sloty`` (patrz :data:`CHARAKTER_SLOTOW`).
+#: ``charakter_formalny.charakter_sloty`` (patrz :data:`FILTR_CHARAKTERU`).
 MODEL_POWIAZANIA: dict[Osiagniecie, str] = {
     Osiagniecie.ARTYKUL: "bpp.Wydawnictwo_Ciagle_Autor",
     Osiagniecie.MONOGRAFIA: "bpp.Wydawnictwo_Zwarte_Autor",
@@ -68,13 +72,49 @@ MODEL_POWIAZANIA: dict[Osiagniecie, str] = {
     Osiagniecie.PATENT: "bpp.Patent_Autor",
 }
 
-#: Wartość ``Charakter_Formalny.charakter_sloty`` klasyfikująca wydawnictwo
-#: zwarte do danego typu osiągnięcia. Typy spoza tego słownika (artykuł,
-#: patent) nie podlegają klasyfikacji po charakterze formalnym: patent nie ma
-#: takiego pola w ogóle, a wydawnictwo ciągłe jest zawsze pkt 4.
-CHARAKTER_SLOTOW: dict[Osiagniecie, int] = {
-    Osiagniecie.MONOGRAFIA: CHARAKTER_SLOTY_KSIAZKA,
-    Osiagniecie.ROZDZIAL: CHARAKTER_SLOTY_ROZDZIAL,
+#: Zawężenie po charakterze formalnym rekordu — po jednym słowniku ``filter()``
+#: na typ osiągnięcia. Patent nie ma charakteru formalnego w ogóle, więc go tu
+#: nie ma.
+#:
+#: **Wydawnictwo ciągłe NIE jest automatycznie artykułem naukowym.** Ten sam
+#: model niesie streszczenia zjazdowe (PSZ, ZSZ), listy do redakcji (L),
+#: recenzje (R) i komentarze (KOM) — rzeczy, które nie są osiągnięciem z § 2
+#: ust. 10 pkt 4 i nigdy nie jadą do PBN. Bez tego filtra raport żądał od nich
+#: DOI, ISSN i flagi „czy artykuł recenzyjny”, zalewając listę brakami, których
+#: nie ma po co uzupełniać.
+#:
+#: Kryterium jest ``Charakter_Formalny.rodzaj_pbn`` — to samo, którym posługuje
+#: się reszta systemu przy pytaniu „czy ten rekord w ogóle jedzie do PBN”
+#: (``pbn_integrator.utils.synchronization``, ``komparator_pbn.views``). Dla
+#: ciągłych zawężamy je jeszcze mocniej, do :data:`RODZAJ_PBN_ARTYKUL`: pkt 4
+#: mówi wprost o *artykule naukowym*, a wszystkie reguły ``ART_*`` (źródło,
+#: ISSN, tom, strony, artykuł recenzyjny) są wymogami artykułu. Charakter
+#: ciągły oznaczony jako rozdział albo książka byłby audytowany nie tą listą
+#: wymogów, co trzeba.
+#:
+#: Wydawnictwo zwarte zostaje przy ``charakter_sloty``: to jedyne pole, które
+#: rozróżnia monografię (pkt 5) od rozdziału (pkt 6), a ``rodzaj_pbn`` byłby
+#: tu redundantny — w fixture instalacyjnym obie wartości idą w parze
+#: (KS/KSP/KSZ/PA/SKR → książka, frg/ROZ/ROZS → rozdział). Nie dokładamy więc
+#: drugiego warunku, który mógłby tylko po cichu ukryć rekord jawnie
+#: zaklasyfikowany jako książka.
+#:
+#: Uwaga o świeżej instalacji: fixture zostawia ``rodzaj_pbn`` pusty także dla
+#: charakteru „AC — Artykuł w czasopismie”. Dopóki administrator go nie ustawi
+#: (ten sam krok konfiguracji, bez którego nie działa eksport do PBN), raport
+#: nie ma w ciągłych czego sprawdzać — i **nie wolno mu wtedy milczeć**:
+#: powiązania z takim rekordem zbiera :func:`_nierozpoznane_ciagle` i pokazuje
+#: sekcja „nierozpoznany typ osiągnięcia”.
+FILTR_CHARAKTERU: dict[Osiagniecie, dict[str, int]] = {
+    Osiagniecie.ARTYKUL: {
+        "rekord__charakter_formalny__rodzaj_pbn": RODZAJ_PBN_ARTYKUL,
+    },
+    Osiagniecie.MONOGRAFIA: {
+        "rekord__charakter_formalny__charakter_sloty": CHARAKTER_SLOTY_KSIAZKA,
+    },
+    Osiagniecie.ROZDZIAL: {
+        "rekord__charakter_formalny__charakter_sloty": CHARAKTER_SLOTY_ROZDZIAL,
+    },
 }
 
 
@@ -121,39 +161,104 @@ def powiazania(
     """
     qs = _zawez(_model(osiagniecie).objects.all(), okno, uczelnia)
 
-    charakter_slotow = CHARAKTER_SLOTOW.get(osiagniecie)
-    if charakter_slotow is not None:
-        qs = qs.filter(rekord__charakter_formalny__charakter_sloty=charakter_slotow)
+    filtr_charakteru = FILTR_CHARAKTERU.get(osiagniecie)
+    if filtr_charakteru is not None:
+        qs = qs.filter(**filtr_charakteru)
 
     return qs
+
+
+def _nierozpoznane_zwarte(uczelnia, okno: tuple[int, int]) -> QuerySet:
+    """Powiązania z wydawnictwem zwartym, którego nie da się zaklasyfikować.
+
+    Fixture instalacyjny BPP zostawia ``Charakter_Formalny.charakter_sloty``
+    puste, a bez tej wartości nie wiadomo, czy rekord jest monografią (pkt 5),
+    czy rozdziałem (pkt 6) — a więc których wymogów od niego oczekiwać.
+
+    Zakres to iloczyn dwóch warunków:
+
+    * ``charakter_sloty IS NULL`` — czyli *brak klasyfikacji*. Wydawnictwo
+      zwarte oznaczone jako referat (``CHARAKTER_SLOTY_REFERAT``) jest
+      zaklasyfikowane jawnie i po prostu nie należy do żadnego z punktów
+      objętych raportem — to nie jest brak danych;
+    * ``rodzaj_pbn IS NOT NULL`` — czyli rekord, który **naprawdę jedzie do
+      PBN**. Bez tego warunku sekcja zbierała charaktery sklasyfikowane
+      poprawnie i celowo (frg, TŁ, SKR, PZ, BR, IN): migracje ``0173``
+      i ``0225`` ustawiają ``charakter_sloty`` wyłącznie dla KS/KSP/KSZ,
+      ROZ/ROZS i PRZ/ZRZ, więc pusta wartość jest normą, a nie usterką.
+      Sekcja „raport tego nie sprawdził” ma zawierać wyłącznie rekordy, dla
+      których to zdanie jest zarzutem.
+    """
+    return _zawez(
+        apps.get_model("bpp.Wydawnictwo_Zwarte_Autor").objects.filter(
+            rekord__charakter_formalny__charakter_sloty__isnull=True,
+            rekord__charakter_formalny__rodzaj_pbn__isnull=False,
+        ),
+        okno,
+        uczelnia,
+    )
+
+
+def _nierozpoznane_ciagle(uczelnia, okno: tuple[int, int]) -> QuerySet:
+    """Powiązania z wydawnictwem ciągłym o niesklasyfikowanym charakterze.
+
+    :data:`FILTR_CHARAKTERU` zawęża ciągłe do
+    ``rodzaj_pbn = RODZAJ_PBN_ARTYKUL`` i tak ma zostać — pkt 4 mówi wprost
+    o *artykule naukowym*, więc streszczenia zjazdowe i listy do redakcji
+    słusznie z raportu wypadają. Rzecz w tym, że ``rodzaj_pbn`` **nie jest
+    ustawiane przez fixture instalacyjny** (patrz migracja ``0174``: wypełnia
+    je z pól ``artykul_pbn``/``ksiazka_pbn``/``rozdzial_pbn`` istniejącej
+    instalacji, a w słowniku dostarczanym z BPP wszystkie są puste).
+    Dopóki administrator nie ustawi go dla charakteru „AC — Artykuł
+    w czasopismie”, z raportu wypadają **wszystkie artykuły naraz** — a to
+    dokładnie ten tryb awarii, którego być nie może: pusta tabela i licznik
+    sprawdzonych powiązań, który artykułów nie obejmuje, czytają się jak
+    „artykuły są w porządku”.
+
+    Warunkiem jest samo ``rodzaj_pbn IS NULL``, czyli *brak rozstrzygnięcia*
+    — nie da się go tu podeprzeć drugim sygnałem tak, jak przy zwartych
+    (``charakter_sloty``): dla ciągłych żadne inne pole charakteru nie mówi,
+    czy rekord jest artykułem naukowym.
+
+    Świadoma cena: pusta wartość jest zarazem legalnym wyborem „nie
+    eksportuj do PBN” (etykieta ``None`` w ``choices``), więc do sekcji trafią
+    także poprawnie oznaczone PSZ, ZSZ, L, R i KOM. Fałszywy alarm jest tu
+    tańszy niż cisza — mówi „raport tego nie sprawdził” o rekordzie, którego
+    faktycznie nie sprawdził, a zamyka się go jednym ustawieniem w słowniku
+    charakterów formalnych.
+    """
+    return _zawez(
+        apps.get_model("bpp.Wydawnictwo_Ciagle_Autor").objects.filter(
+            rekord__charakter_formalny__rodzaj_pbn__isnull=True,
+        ),
+        okno,
+        uczelnia,
+    )
 
 
 def powiazania_nierozpoznane(
     uczelnia=None,
     okno: tuple[int, int] = OKNO_EWALUACJI,
-) -> QuerySet:
-    """Powiązania z wydawnictwem zwartym, którego nie da się zaklasyfikować.
+) -> list[QuerySet]:
+    """Powiązania z rekordem, którego typu osiągnięcia nie da się ustalić.
 
-    Fixture instalacyjny BPP zostawia ``Charakter_Formalny.charakter_sloty``
-    puste, a bez tej wartości nie wiadomo, czy rekord jest monografią (pkt 5),
-    czy rozdziałem (pkt 6) — a więc których wymogów od niego oczekiwać. Takie
-    powiązania wypadają z obu querysetów :func:`powiazania` i **nie wolno im
-    zniknąć po cichu**, bo użytkownik uznałby, że raport je sprawdził
-    i nie znalazł zastrzeżeń. Widok pokazuje je w osobnej sekcji
-    „nierozpoznany typ osiągnięcia”.
+    Takie powiązania wypadają ze wszystkich querysetów :func:`powiazania`
+    i **nie wolno im zniknąć po cichu**, bo użytkownik uznałby, że raport je
+    sprawdził i nie znalazł zastrzeżeń. Widok pokazuje je w jednej wspólnej
+    sekcji „nierozpoznany typ osiągnięcia”.
 
-    Zakres celowo ograniczony do ``charakter_sloty IS NULL``, czyli do
-    *braku klasyfikacji*. Wydawnictwo zwarte oznaczone jako referat
-    (``CHARAKTER_SLOTY_REFERAT``) jest zaklasyfikowane jawnie i po prostu nie
-    należy do żadnego z punktów objętych raportem — to nie jest brak danych.
+    Zwracamy **listę querysetów**, po jednym na model: nierozpoznane bywają
+    i wydawnictwa zwarte (brak ``charakter_sloty``, patrz
+    :func:`_nierozpoznane_zwarte`), i ciągłe (brak ``rodzaj_pbn``, patrz
+    :func:`_nierozpoznane_ciagle`), a to dwa różne through-modele, których
+    jednym querysetem złączyć się nie da. Materializacji nie robimy tutaj —
+    widok listy potrzebuje agregatu ``GROUP BY autor``, a widok szczegółów
+    zawężenia do jednego autora; oba wykonują to na querysetach.
     """
-    return _zawez(
-        apps.get_model("bpp.Wydawnictwo_Zwarte_Autor").objects.filter(
-            rekord__charakter_formalny__charakter_sloty__isnull=True
-        ),
-        okno,
-        uczelnia,
-    )
+    return [
+        _nierozpoznane_zwarte(uczelnia, okno),
+        _nierozpoznane_ciagle(uczelnia, okno),
+    ]
 
 
 def _czy_brakuje(warunek: Q):

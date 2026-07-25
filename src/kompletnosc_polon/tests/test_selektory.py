@@ -18,11 +18,18 @@ a to gwarancja cichego rozjazdu.
 """
 
 import datetime
+from decimal import Decimal
 
 import pytest
 from model_bakery import baker
 
-from bpp.const import CHARAKTER_SLOTY_KSIAZKA, CHARAKTER_SLOTY_ROZDZIAL
+from bpp.const import (
+    CHARAKTER_SLOTY_KSIAZKA,
+    CHARAKTER_SLOTY_REFERAT,
+    CHARAKTER_SLOTY_ROZDZIAL,
+    RODZAJ_PBN_ARTYKUL,
+    RODZAJ_PBN_KSIAZKA,
+)
 from ewaluacja_common.const import OKNO_EWALUACJI
 from kompletnosc_polon import selektory
 from kompletnosc_polon.const import OA_CZAS_PO_OPUBLIKOWANIU, Osiagniecie, Waga
@@ -30,6 +37,7 @@ from kompletnosc_polon.reguly import reguly_dla
 
 from .test_reguly import (
     ROK,
+    _kolejna_dyscyplina,
     _kolejny_orcid,
     _kompletne_zwarte,
     _kompletny_artykul,
@@ -72,7 +80,7 @@ def _powiazanie(
 
     dyscyplina = None
     if z_dyscyplina:
-        dyscyplina = baker.make("bpp.Dyscyplina_Naukowa")
+        dyscyplina = _kolejna_dyscyplina()
         baker.make(
             "bpp.Autor_Dyscyplina",
             autor=autor,
@@ -94,27 +102,47 @@ def _powiazanie(
     )
 
 
-def _artykul_z_autorem(rok=ROK, **kwargs):
+def _artykul_z_autorem(rok=ROK, rodzaj_pbn=RODZAJ_PBN_ARTYKUL, **kwargs):
+    """Powiązanie autora z artykułem; ``rodzaj_pbn`` zmienia typ rekordu.
+
+    ``rodzaj_pbn=None`` odwzorowuje streszczenie zjazdowe, list do redakcji,
+    recenzję albo komunikat — wydawnictwa ciągłe, które nie są artykułem
+    naukowym z § 2 ust. 10 pkt 4 i nigdy nie jadą do PBN.
+    """
     rekord = _kompletny_artykul()
-    if rok != rekord.rok:
-        rekord.rok = rok
-        rekord.save()
+    rekord.rok = rok
+    if rodzaj_pbn != RODZAJ_PBN_ARTYKUL:
+        rekord.charakter_formalny = baker.make(
+            "bpp.Charakter_Formalny", rodzaj_pbn=rodzaj_pbn
+        )
+    rekord.save()
     return _powiazanie(rekord, "bpp.Wydawnictwo_Ciagle_Autor", **kwargs)
 
 
-def _charakter(charakter_sloty):
+def _charakter(charakter_sloty, rodzaj_pbn=RODZAJ_PBN_KSIAZKA):
     """Charakter formalny o zadanym „charakterze dla slotów”.
 
     ``skrot`` bierzemy losowy (baker), bo słownik charakterów jest częścią
     baseline'u bazy i kolizja unikalności psułaby test.
+
+    ``rodzaj_pbn`` domyślnie ustawiamy na niepusty, bo to on odpowiada na
+    pytanie „czy ten rekord w ogóle jedzie do PBN”. Charakter bez tej wartości
+    (np. TŁ, SKR, PZ, BR, IN) jest sklasyfikowany poprawnie i celowo poza
+    zakresem raportu — do sekcji „nierozpoznane” trafiać NIE ma.
     """
-    return baker.make("bpp.Charakter_Formalny", charakter_sloty=charakter_sloty)
+    return baker.make(
+        "bpp.Charakter_Formalny",
+        charakter_sloty=charakter_sloty,
+        rodzaj_pbn=rodzaj_pbn,
+    )
 
 
-def _zwarte_z_autorem(charakter_sloty, rok=ROK, **kwargs):
+def _zwarte_z_autorem(
+    charakter_sloty, rok=ROK, rodzaj_pbn=RODZAJ_PBN_KSIAZKA, **kwargs
+):
     rekord = _kompletne_zwarte()
     rekord.rok = rok
-    rekord.charakter_formalny = _charakter(charakter_sloty)
+    rekord.charakter_formalny = _charakter(charakter_sloty, rodzaj_pbn)
     rekord.save()
     return _powiazanie(rekord, "bpp.Wydawnictwo_Zwarte_Autor", **kwargs)
 
@@ -129,6 +157,26 @@ def _patent_z_autorem(rok=ROK, **kwargs):
 
 def _pk(qs):
     return set(qs.values_list("pk", flat=True))
+
+
+def _identyfikator(powiazanie):
+    """Para (model, pk) — jednoznaczna także przy mieszaniu dwóch modeli.
+
+    Sekcja „nierozpoznane” łączy powiązania z wydawnictwami zwartymi
+    i ciągłymi, a to dwie tabele o **niezależnych sekwencjach** kluczy
+    głównych: samo ``pk`` potrafiłoby się powtórzyć i asercja na zbiorze
+    byłaby fałszywie zielona.
+    """
+    return (powiazanie._meta.model_name, powiazanie.pk)
+
+
+def _nierozpoznane(**kwargs):
+    """Zbiór identyfikatorów wszystkich nierozpoznanych powiązań."""
+    return {
+        _identyfikator(powiazanie)
+        for qs in selektory.powiazania_nierozpoznane(**kwargs)
+        for powiazanie in qs
+    }
 
 
 # --------------------------------------------------------------------------
@@ -295,9 +343,36 @@ def test_rekord_bez_charakteru_slotow_nie_znika_tylko_trafia_do_nierozpoznanych(
     assert nierozpoznany.pk not in _pk(selektory.powiazania(Osiagniecie.MONOGRAFIA))
     assert nierozpoznany.pk not in _pk(selektory.powiazania(Osiagniecie.ROZDZIAL))
 
-    nierozpoznane = _pk(selektory.powiazania_nierozpoznane())
-    assert nierozpoznane == {nierozpoznany.pk}
-    assert monografia.pk not in nierozpoznane
+    nierozpoznane = _nierozpoznane()
+    assert nierozpoznane == {_identyfikator(nierozpoznany)}
+    assert _identyfikator(monografia) not in nierozpoznane
+
+
+@pytest.mark.django_db
+def test_charakter_spoza_pbn_nie_trafia_do_nierozpoznanych():
+    """Sekcja „raport tego nie sprawdził” to zarzut, nie worek na wszystko.
+
+    Migracje ``0173`` i ``0225`` ustawiają ``charakter_sloty`` wyłącznie dla
+    KS/KSP/KSZ, ROZ/ROZS i PRZ/ZRZ, więc pusta wartość jest normą dla frg, TŁ,
+    SKR, PZ, BR i IN. Te charaktery są sklasyfikowane poprawnie i celowo —
+    po prostu nie jadą do PBN (``rodzaj_pbn`` puste). Zgłoszenie ich jako
+    „niesprawdzonych” byłoby fałszywym alarmem.
+    """
+    spoza_pbn = _zwarte_z_autorem(None, rodzaj_pbn=None)
+    nierozpoznany = _zwarte_z_autorem(None, rodzaj_pbn=RODZAJ_PBN_KSIAZKA)
+
+    nierozpoznane = _nierozpoznane()
+
+    assert nierozpoznane == {_identyfikator(nierozpoznany)}
+    assert _identyfikator(spoza_pbn) not in nierozpoznane
+
+
+@pytest.mark.django_db
+def test_referat_nie_trafia_do_nierozpoznanych():
+    """Referat jest zaklasyfikowany JAWNIE — to nie jest brak danych."""
+    referat = _zwarte_z_autorem(CHARAKTER_SLOTY_REFERAT)
+
+    assert _identyfikator(referat) not in _nierozpoznane()
 
 
 @pytest.mark.django_db
@@ -309,17 +384,102 @@ def test_nierozpoznane_respektuja_okno_i_uczelnie():
     _zwarte_z_autorem(None, uczelnia=obca)
     _zwarte_z_autorem(None, uczelnia=nasza, rok=PIERWSZY_ROK - 1)
 
-    assert _pk(selektory.powiazania_nierozpoznane(uczelnia=nasza)) == {nasz.pk}
+    assert _nierozpoznane(uczelnia=nasza) == {_identyfikator(nasz)}
 
 
 @pytest.mark.django_db
-def test_patenty_i_artykuly_nie_podlegaja_klasyfikacji_po_charakterze():
-    """Patent nie ma pola ``charakter_formalny``; artykuł zawsze jest pkt 4."""
-    patent = _patent_z_autorem()
+def test_ciagle_bez_rodzaju_pbn_nie_znika_tylko_trafia_do_nierozpoznanych():
+    """Nieustawiony ``rodzaj_pbn`` NIE może wyciszyć wszystkich artykułów.
+
+    ``Charakter_Formalny.rodzaj_pbn`` nie jest wypełniane przez fixture
+    instalacyjny — administrator ustawia je per instalacja. Dopóki tego nie
+    zrobi dla charakteru „AC”, każdy artykuł wypada z :func:`powiazania`;
+    gdyby wypadał też z sekcji nierozpoznanych, użytkownik zobaczyłby raport
+    bez ani jednego artykułu i uznałby, że artykuły są w porządku.
+    """
+    nierozpoznany = _artykul_z_autorem(rodzaj_pbn=None)
+
+    assert nierozpoznany.pk not in _pk(selektory.powiazania(Osiagniecie.ARTYKUL))
+    assert _nierozpoznane() == {_identyfikator(nierozpoznany)}
+
+
+@pytest.mark.django_db
+def test_artykul_z_ustawionym_rodzajem_pbn_nie_trafia_do_nierozpoznanych():
+    """Rekord audytowany normalnie nie ma prawa być zarazem „niesprawdzony”."""
     artykul = _artykul_z_autorem()
 
+    assert artykul.pk in _pk(selektory.powiazania(Osiagniecie.ARTYKUL))
+    assert _identyfikator(artykul) not in _nierozpoznane()
+
+
+@pytest.mark.django_db
+def test_ciagle_o_jawnie_innym_rodzaju_pbn_nie_trafia_do_nierozpoznanych():
+    """Ciągłe oznaczone jako książka jest sklasyfikowane — po prostu poza pkt 4.
+
+    Tak samo jak referat wśród zwartych: raport go nie audytuje, ale to nie
+    jest brak danych, więc „raport tego nie sprawdził” byłoby zarzutem
+    postawionym poprawnie wypełnionemu rekordowi.
+    """
+    ksiazkowe = _artykul_z_autorem(rodzaj_pbn=RODZAJ_PBN_KSIAZKA)
+
+    assert _identyfikator(ksiazkowe) not in _nierozpoznane()
+
+
+@pytest.mark.django_db
+def test_nierozpoznane_lacza_zwarte_i_ciagle_w_jeden_zbior():
+    """Sekcja jest JEDNA — obsługuje oba modele naraz."""
+    zwarte = _zwarte_z_autorem(None)
+    ciagle = _artykul_z_autorem(rodzaj_pbn=None)
+
+    assert _nierozpoznane() == {_identyfikator(zwarte), _identyfikator(ciagle)}
+
+
+@pytest.mark.django_db
+def test_nierozpoznane_ciagle_respektuja_okno_i_uczelnie():
+    nasza = baker.make("bpp.Uczelnia")
+    obca = baker.make("bpp.Uczelnia")
+
+    nasz = _artykul_z_autorem(rodzaj_pbn=None, uczelnia=nasza)
+    _artykul_z_autorem(rodzaj_pbn=None, uczelnia=obca)
+    _artykul_z_autorem(rodzaj_pbn=None, uczelnia=nasza, rok=PIERWSZY_ROK - 1)
+
+    assert _nierozpoznane(uczelnia=nasza) == {_identyfikator(nasz)}
+
+
+@pytest.mark.django_db
+def test_patent_nie_podlega_klasyfikacji_po_charakterze_formalnym():
+    """Patent nie ma pola ``charakter_formalny`` w ogóle."""
+    patent = _patent_z_autorem()
+
     assert _pk(selektory.powiazania(Osiagniecie.PATENT)) == {patent.pk}
-    assert _pk(selektory.powiazania(Osiagniecie.ARTYKUL)) == {artykul.pk}
+
+
+@pytest.mark.django_db
+def test_streszczenie_zjazdowe_nie_jest_audytowane_jako_artykul():
+    """Wydawnictwo ciągłe NIE jest automatycznie artykułem naukowym.
+
+    Ten sam model niesie streszczenia zjazdowe (PSZ, ZSZ), listy do redakcji
+    (L), recenzje (R) i komunikaty (KOM). Charakter formalny bez ``rodzaj_pbn``
+    znaczy, że rekord nie jedzie do PBN — a więc nie jest osiągnięciem z § 2
+    ust. 10 pkt 4 i raport nie ma prawa żądać od niego DOI, ISSN ani flagi
+    „czy artykuł recenzyjny”.
+    """
+    artykul = _artykul_z_autorem()
+    streszczenie = _artykul_z_autorem(rodzaj_pbn=None)
+
+    znalezione = _pk(selektory.powiazania(Osiagniecie.ARTYKUL))
+
+    assert znalezione == {artykul.pk}
+    assert streszczenie.pk not in znalezione
+
+
+@pytest.mark.django_db
+def test_ciagle_o_rodzaju_pbn_innym_niz_artykul_nie_jest_audytowane():
+    """Pkt 4 mówi o *artykule naukowym*, a nie o dowolnym rekordzie w PBN."""
+    ksiazkowe = _artykul_z_autorem(rodzaj_pbn=RODZAJ_PBN_KSIAZKA)
+
+    assert _pk(selektory.powiazania(Osiagniecie.ARTYKUL)) == set()
+    assert ksiazkowe.pk not in _pk(selektory.powiazania(Osiagniecie.ARTYKUL))
 
 
 # --------------------------------------------------------------------------
@@ -511,3 +671,169 @@ def test_udostepnienie_inne_niz_po_opublikowaniu_nie_wymaga_liczby_miesiecy():
 
     assert getattr(wiersz, selektory.pole_reguly("ART_OA_MIESIACE")) is False
     assert selektory.naruszone_reguly(wiersz, Osiagniecie.ARTYKUL) == []
+
+
+@pytest.mark.django_db
+def test_dane_oa_bez_trybu_dostepu_daja_brak_zamiast_ciszy():
+    """Regresja: pierwszy tiret lit. l to sam TRYB dostępu.
+
+    Rekord z wypełnioną datą udostępnienia, ale bez trybu, wersji i licencji
+    dawał wcześniej ZERO naruszeń: cztery reguły OA były bramkowane trybem,
+    a piąta (miesiące) czasem udostępnienia — więc brak trybu wyłączał je
+    wszystkie i raport milczał o danej zaczętej i niedokończonej.
+    """
+    powiazanie = _artykul_z_autorem()
+    rekord = powiazanie.rekord
+    rekord.openaccess_tryb_dostepu = None
+    rekord.openaccess_wersja_tekstu = None
+    rekord.openaccess_licencja = None
+    rekord.openaccess_data_opublikowania = datetime.date(ROK, 3, 1)
+    rekord.save()
+
+    wiersz = selektory.z_regulami(
+        selektory.powiazania(Osiagniecie.ARTYKUL), Osiagniecie.ARTYKUL
+    ).get()
+
+    assert getattr(wiersz, selektory.pole_reguly("ART_OA_TRYB")) is True
+    assert "ART_OA_TRYB" in {
+        r.kod for r in selektory.naruszone_reguly(wiersz, Osiagniecie.ARTYKUL)
+    }
+
+
+@pytest.mark.django_db
+def test_liczba_miesiecy_bramkowana_tak_samo_jak_reszta_litery():
+    """Bez trybu dostępu ``*_OA_MIESIACE`` milczy — jak pozostałe reguły OA.
+
+    Wcześniej ta jedna reguła bramkowana była wyłącznie skrótem czasu
+    udostępnienia, więc rekord bez trybu dostawał brak liczby miesięcy
+    i NIE dostawał braku wersji tekstu — dwie reguły tej samej litery mówiły
+    co innego o tym samym rekordzie.
+    """
+    from bpp.models import Czas_Udostepnienia_OpenAccess
+
+    czas, _ = Czas_Udostepnienia_OpenAccess.objects.get_or_create(
+        skrot=OA_CZAS_PO_OPUBLIKOWANIU,
+        defaults={"nazwa": "po opublikowaniu"},
+    )
+
+    powiazanie = _artykul_z_autorem()
+    rekord = powiazanie.rekord
+    rekord.openaccess_tryb_dostepu = None
+    rekord.openaccess_czas_publikacji = czas
+    rekord.openaccess_ilosc_miesiecy = None
+    rekord.save()
+
+    wiersz = selektory.z_regulami(
+        selektory.powiazania(Osiagniecie.ARTYKUL), Osiagniecie.ARTYKUL
+    ).get()
+
+    assert getattr(wiersz, selektory.pole_reguly("ART_OA_MIESIACE")) is False
+    assert getattr(wiersz, selektory.pole_reguly("ART_OA_WERSJA")) is False
+    # …a o samej dziurze mówi reguła od trybu dostępu.
+    assert getattr(wiersz, selektory.pole_reguly("ART_OA_TRYB")) is True
+
+
+# --------------------------------------------------------------------------
+# Opłata za publikację (APC) — pokrycie bez dziur
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_zadeklarowana_oplata_bez_kwoty_jest_brakiem():
+    """Regresja: luka między ``*_APC`` a ``*_APC_ZRODLO``.
+
+    ``*_APC`` żądało, by wszystkie pięć pól było puste, ``*_APC_ZRODLO`` —
+    kwoty dodatniej. Rekord z samym odznaczonym „bezkosztowa” wpadał między
+    nie i nie naruszał NICZEGO, choć redaktor zadeklarował opłatę i nie podał
+    ani jej kwoty, ani źródła.
+    """
+    powiazanie = _artykul_z_autorem()
+    rekord = powiazanie.rekord
+    rekord.opl_pub_cost_free = False
+    rekord.opl_pub_amount = None
+    rekord.opl_pub_research_potential = None
+    rekord.opl_pub_research_or_development_projects = None
+    rekord.opl_pub_other = None
+    rekord.save()
+
+    wiersz = selektory.z_regulami(
+        selektory.powiazania(Osiagniecie.ARTYKUL), Osiagniecie.ARTYKUL
+    ).get()
+
+    assert getattr(wiersz, selektory.pole_reguly("ART_APC_KWOTA")) is True
+    assert getattr(wiersz, selektory.pole_reguly("ART_APC")) is False
+    assert getattr(wiersz, selektory.pole_reguly("ART_APC_ZRODLO")) is False
+
+
+@pytest.mark.django_db
+def test_zadeklarowana_oplata_z_kwota_zerowa_tez_jest_brakiem():
+    """Kwota 0 przy odznaczonej bezkosztowości jest wewnętrznie sprzeczna."""
+    powiazanie = _artykul_z_autorem()
+    rekord = powiazanie.rekord
+    rekord.opl_pub_cost_free = False
+    rekord.opl_pub_amount = Decimal("0")
+    rekord.save()
+
+    wiersz = selektory.z_regulami(
+        selektory.powiazania(Osiagniecie.ARTYKUL), Osiagniecie.ARTYKUL
+    ).get()
+
+    assert getattr(wiersz, selektory.pole_reguly("ART_APC_KWOTA")) is True
+
+
+@pytest.mark.django_db
+def test_publikacja_bezkosztowa_nie_wymaga_kwoty():
+    """Zaznaczona bezkosztowość zamyka temat opłaty — bez żadnych braków."""
+    _artykul_z_autorem()
+
+    wiersz = selektory.z_regulami(
+        selektory.powiazania(Osiagniecie.ARTYKUL), Osiagniecie.ARTYKUL
+    ).get()
+
+    for kod in ("ART_APC", "ART_APC_KWOTA", "ART_APC_ZRODLO"):
+        assert getattr(wiersz, selektory.pole_reguly(kod)) is False
+
+
+# --------------------------------------------------------------------------
+# Konferencja — § 2 ust. 10 pkt 4 lit. g
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_artykul_bez_konferencji_nie_generuje_brakow_konferencji():
+    """„Nie opublikowano w materiałach konferencyjnych” to legalna odpowiedź."""
+    _artykul_z_autorem()
+
+    wiersz = selektory.z_regulami(
+        selektory.powiazania(Osiagniecie.ARTYKUL), Osiagniecie.ARTYKUL
+    ).get()
+
+    for kod in (
+        "ART_KONFERENCJA_NAZWA",
+        "ART_KONFERENCJA_DATY",
+        "ART_KONFERENCJA_MIEJSCE",
+    ):
+        assert getattr(wiersz, selektory.pole_reguly(kod)) is False
+
+
+@pytest.mark.django_db
+def test_wskazana_konferencja_bez_dat_i_miejsca_daje_braki():
+    powiazanie = _artykul_z_autorem()
+    rekord = powiazanie.rekord
+    rekord.konferencja = baker.make(
+        "bpp.Konferencja",
+        nazwa="Konferencja testowa",
+        rozpoczecie=None,
+        zakonczenie=None,
+        miasto="",
+        panstwo="",
+    )
+    rekord.save()
+
+    wiersz = selektory.z_regulami(
+        selektory.powiazania(Osiagniecie.ARTYKUL), Osiagniecie.ARTYKUL
+    ).get()
+
+    assert getattr(wiersz, selektory.pole_reguly("ART_KONFERENCJA_NAZWA")) is False
+    assert getattr(wiersz, selektory.pole_reguly("ART_KONFERENCJA_DATY")) is True
+    assert getattr(wiersz, selektory.pole_reguly("ART_KONFERENCJA_MIEJSCE")) is True

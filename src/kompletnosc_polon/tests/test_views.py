@@ -22,6 +22,7 @@ from model_bakery import baker
 from bpp.const import CHARAKTER_SLOTY_KSIAZKA, GR_WPROWADZANIE_DANYCH
 from bpp.models.profile import BppUser
 from ewaluacja_common.const import OKNO_EWALUACJI
+from kompletnosc_polon.views import ListaKompletnosciView
 
 from .test_selektory import (
     _artykul_z_autorem,
@@ -197,6 +198,46 @@ def test_lista_rozdziela_braki_wymagane_od_warunkowych(admin_client):
 
 
 # --------------------------------------------------------------------------
+# Widok zbiorczy: paginacja
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_lista_stronicuje_autorow(admin_client):
+    """W realnej instalacji prawie każdy pracownik ma jakiś brak wymagany.
+
+    Pola ``pbn_czy_*`` i ``opl_pub_*`` mają ``default=None``, a ``przypieta``
+    domyślnie ``True``, więc bez paginacji tabela urosłaby do wiersza na
+    każdego autora uczelni.
+    """
+    jednostka = _jednostka()
+    ilu = ListaKompletnosciView.autorow_na_stronie + 3
+    for _ in range(ilu):
+        _zepsuj_doi(_artykul_z_autorem(jednostka=jednostka))
+
+    odpowiedz = admin_client.get(reverse("kompletnosc_polon:lista"))
+
+    assert odpowiedz.context["autorow"] == ilu
+    assert odpowiedz.context["is_paginated"] is True
+    assert len(odpowiedz.context["wiersze"]) == ListaKompletnosciView.autorow_na_stronie
+    assert odpowiedz.context["paginator"].num_pages == 2
+
+    druga = admin_client.get(reverse("kompletnosc_polon:lista"), {"page": 2})
+    assert len(druga.context["wiersze"]) == 3
+    assert druga.context["page_obj"].number == 2
+
+
+@pytest.mark.django_db
+def test_jedna_strona_nie_pokazuje_nawigacji(admin_client):
+    _zepsuj_doi(_artykul_z_autorem())
+
+    odpowiedz = admin_client.get(reverse("kompletnosc_polon:lista"))
+
+    assert odpowiedz.context["is_paginated"] is False
+    assert "pagination-next" not in _tresc(odpowiedz)
+
+
+# --------------------------------------------------------------------------
 # Widok zbiorczy: zawężenie do uczelni oglądającego (multi-tenant)
 # --------------------------------------------------------------------------
 
@@ -224,7 +265,15 @@ def test_lista_pokazuje_wylacznie_autorow_uczelni_ogladajacego(admin_client):
 
 
 @pytest.mark.django_db
-def test_szczegoly_nie_pokazuja_rekordow_z_obcej_uczelni(admin_client):
+def test_szczegoly_autora_z_obcej_uczelni_daja_404_a_nie_pusta_liste(admin_client):
+    """Regresja wycieku: sam fakt istnienia pracownika jest daną chronioną.
+
+    Widok zawężał wyłącznie *powiązania*, a autora wyciągał
+    ``get_object_or_404(Autor, slug=…)`` z całej bazy. Slug jest przewidywalny
+    („nazwisko-imie”), więc odpowiedź HTTP 200 z imieniem i nazwiskiem
+    w ``<title>``, okruszkach i ``<h1>`` pozwalała enumerować kadrę OBCEJ
+    uczelni. Pusta lista pozycji tego nie ratowała — nazwisko i tak wyciekało.
+    """
     nasza = baker.make("bpp.Uczelnia")
     obca = baker.make("bpp.Uczelnia")
 
@@ -235,8 +284,34 @@ def test_szczegoly_nie_pokazuja_rekordow_z_obcej_uczelni(admin_client):
         {"uczelnia": nasza.pk},
     )
 
-    assert odpowiedz.context["pozycje"] == []
-    assert "Brak zastrzeżeń" in _tresc(odpowiedz)
+    assert odpowiedz.status_code == 404
+    assert str(obcy.autor) not in _tresc(odpowiedz)
+    assert obcy.autor.nazwisko not in _tresc(odpowiedz)
+
+
+@pytest.mark.django_db
+def test_szczegoly_autora_wlasnej_uczelni_dzialaja_mimo_zawezenia(admin_client):
+    """Zawężenie ma odsiewać obcych, a nie zamykać widok na własnych.
+
+    Atrybucja ``scope_autor_do_uczelni`` idzie przez jednostkę autora
+    (aktualną albo historyczną), więc test nadaje autorowi aktualną jednostkę
+    naszej uczelni — tak jak wygląda to dla realnego pracownika.
+    """
+    nasza = baker.make("bpp.Uczelnia")
+    baker.make("bpp.Uczelnia")
+
+    jednostka = _jednostka(nasza)
+    nasz = _zepsuj_doi(_artykul_z_autorem(jednostka=jednostka))
+    nasz.autor.aktualna_jednostka = jednostka
+    nasz.autor.save()
+
+    odpowiedz = admin_client.get(
+        reverse("kompletnosc_polon:szczegoly", kwargs={"autor_slug": nasz.autor.slug}),
+        {"uczelnia": nasza.pk},
+    )
+
+    assert odpowiedz.status_code == 200
+    assert [p["rekord"].pk for p in odpowiedz.context["pozycje"]] == [nasz.rekord_id]
 
 
 # --------------------------------------------------------------------------
@@ -330,6 +405,28 @@ def test_pusta_baza_tlumaczy_ze_brakuje_przypietych_dyscyplin(admin_client):
 
 
 @pytest.mark.django_db
+def test_komunikat_o_dyscyplinach_patrzy_tylko_na_wlasna_uczelnie(admin_client):
+    """Boolean „są przypięte dyscypliny” nie może mówić o cudzych danych.
+
+    Bez zawężenia redaktor uczelni, w której nikt nie przypiął dyscyplin,
+    nie zobaczyłby wyjaśnienia — bo dyscypliny ma sąsiad. To i wprowadza go
+    w błąd co do własnych danych, i wycieka jednym bitem stan obcej bazy.
+    """
+    nasza = baker.make("bpp.Uczelnia")
+    obca = baker.make("bpp.Uczelnia")
+
+    _artykul_z_autorem(uczelnia=obca)
+
+    odpowiedz = admin_client.get(
+        reverse("kompletnosc_polon:lista"), {"uczelnia": nasza.pk}
+    )
+
+    assert odpowiedz.context["sprawdzonych"] == 0
+    assert odpowiedz.context["brak_przypietych_dyscyplin"] is True
+    assert "Raport nie ma czego sprawdzić" in _tresc(odpowiedz)
+
+
+@pytest.mark.django_db
 def test_zero_brakow_daje_jawny_komunikat_z_liczba_i_zakresem_lat(admin_client):
     _artykul_z_autorem()
 
@@ -390,3 +487,84 @@ def test_szczegoly_wypisuja_nierozpoznane_rekordy_autora(admin_client):
     assert len(odpowiedz.context["nierozpoznane"]) == 1
     assert "Nierozpoznany typ osiągnięcia" in tresc
     assert oczekiwany in tresc
+
+
+@pytest.mark.django_db
+def test_artykul_bez_rodzaju_pbn_nie_znika_z_raportu_po_cichu(admin_client):
+    """Artykuł, którego charakter nie ma ``rodzaj_pbn``, MUSI być widoczny.
+
+    Bez tego użytkownik świeżej instalacji dostawał raport bez ani jednego
+    artykułu i licznik „sprawdzono N powiązań”, który artykułów nie obejmował
+    — czyli komunikat „artykuły są w porządku” o czymś, czego raport nawet
+    nie obejrzał.
+    """
+    ciagle = _artykul_z_autorem(rodzaj_pbn=None)
+
+    odpowiedz = admin_client.get(reverse("kompletnosc_polon:lista"))
+    tresc = _tresc(odpowiedz)
+
+    assert odpowiedz.context["sprawdzonych"] == 0
+    assert [w["autor"].pk for w in odpowiedz.context["nierozpoznane"]] == [
+        ciagle.autor_id
+    ]
+    assert "Nierozpoznany typ osiągnięcia" in tresc
+    assert "Raport ich nie sprawdził" in tresc
+    assert str(ciagle.autor) in tresc
+
+
+@pytest.mark.django_db
+def test_lista_laczy_nierozpoznane_zwarte_i_ciagle_w_jednej_sekcji(admin_client):
+    zwarte = _zwarte_z_autorem(None)
+    ciagle = _artykul_z_autorem(rodzaj_pbn=None)
+
+    odpowiedz = admin_client.get(reverse("kompletnosc_polon:lista"))
+    tresc = _tresc(odpowiedz)
+
+    assert {w["autor"].pk for w in odpowiedz.context["nierozpoznane"]} == {
+        zwarte.autor_id,
+        ciagle.autor_id,
+    }
+    assert tresc.count("Nierozpoznany typ osiągnięcia") == 1, (
+        "Sekcja ma być JEDNA, wspólna dla obu rodzajów wydawnictw"
+    )
+    assert str(zwarte.autor) in tresc
+    assert str(ciagle.autor) in tresc
+
+
+@pytest.mark.django_db
+def test_szczegoly_wypisuja_nierozpoznane_obu_rodzajow(admin_client):
+    """Sekcja szczegółów prowadzi do formularza edycji obu rodzajów rekordów."""
+    przypadki = (
+        (_zwarte_z_autorem(None), "admin:bpp_wydawnictwo_zwarte_change"),
+        (_artykul_z_autorem(rodzaj_pbn=None), "admin:bpp_wydawnictwo_ciagle_change"),
+    )
+
+    for powiazanie, trasa_admina in przypadki:
+        odpowiedz = admin_client.get(
+            reverse(
+                "kompletnosc_polon:szczegoly",
+                kwargs={"autor_slug": powiazanie.autor.slug},
+            )
+        )
+        tresc = _tresc(odpowiedz)
+
+        assert len(odpowiedz.context["nierozpoznane"]) == 1
+        assert "Nierozpoznany typ osiągnięcia" in tresc
+        assert reverse(trasa_admina, args=[powiazanie.rekord_id]) in tresc
+
+
+@pytest.mark.django_db
+def test_komunikat_sekcji_nierozpoznanych_wskazuje_slownik_charakterow(admin_client):
+    """Komunikat ma być prawdziwy dla OBU przypadków i wskazywać miejsce naprawy.
+
+    Poprawka nie polega na edycji rekordu: dla zwartych trzeba ustawić
+    „charakter dla slotów”, dla ciągłych „rodzaj dla PBN” — obie wartości
+    siedzą w słowniku charakterów formalnych.
+    """
+    _artykul_z_autorem(rodzaj_pbn=None)
+
+    tresc = _tresc(admin_client.get(reverse("kompletnosc_polon:lista")))
+
+    assert "charakteru dla slotów" in tresc
+    assert "rodzaju dla PBN" in tresc
+    assert reverse("admin:bpp_charakter_formalny_changelist") in tresc
