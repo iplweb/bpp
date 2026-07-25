@@ -222,7 +222,6 @@ src/kompletnosc_polon/
 ├── const.py                # Osiagniecie, Waga
 ├── reguly.py               # REGULY: tuple[Regula, ...] + pomocnicze selektory
 ├── selektory.py            # budowa querysetów per typ osiągnięcia
-├── uczelnia_scope.py       # scope_kompletnosc(qs, uczelnia)
 ├── urls.py                 # app_name = "kompletnosc_polon"
 ├── views/
 │   ├── __init__.py         # re-eksport + __all__
@@ -255,8 +254,15 @@ autora. Zawężenie do uczelni przez `uczelnia_dla_odczytu(request)`
 ## Przepływ danych
 
 1. Widok ustala okno (`OKNO_EWALUACJI`) i uczelnię (`uczelnia_dla_odczytu`).
-2. `selektory.py` buduje trzy querysety through-modeli, zawężone do: roku
-   w oknie, przypiętej dyscypliny, autora afiliowanego do jednostki tej uczelni.
+2. `selektory.py` buduje querysety through-modeli, zawężone do: roku w oknie,
+   powiązania **przypiętego** (`przypieta=True`) oraz autora afiliowanego do
+   jednostki tej uczelni (przez `scope_autorzy_do_uczelni`).
+
+   Zawężenie celowo **nie** odsiewa powiązań bez dyscypliny. Pierwotna wersja
+   projektu mówiła o „przypiętej dyscyplinie", co czytane dosłownie odsiałoby
+   też `dyscyplina_naukowa IS NULL` — a wtedy reguły `*_DYSCYPLINA` stałyby się
+   martwe i raport przemilczałby dokładnie ten brak, o który pyta. Powiązanie
+   przypięte, ale bez dyscypliny, zostaje w raporcie i jest zgłaszane jako brak.
 3. Dla każdego querysetu `annotate()` dokłada po jednym `BooleanField` na regułę
    pasującą do typu osiągnięcia (`Case/When` z `Regula.warunek`).
 4. Widok zbiorczy agreguje po autorze: liczba rekordów z brakami, liczba braków
