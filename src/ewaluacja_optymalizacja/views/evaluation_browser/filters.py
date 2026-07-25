@@ -5,6 +5,7 @@ from bpp.models import (
     Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte_Autor,
 )
+from ewaluacja_common.const import lata_okresu
 
 
 def _apply_dyscyplina_nieprzypisana_filter(ciagle_qs, zwarte_qs, filters):
@@ -27,7 +28,7 @@ def _apply_dyscyplina_nieprzypisana_filter(ciagle_qs, zwarte_qs, filters):
         return ciagle_qs, zwarte_qs
 
     dyscyplina_nieprzypisana_id = int(dyscyplina_nieprzypisana)
-    lata_filtra = [int(rok)] if rok else [2022, 2023, 2024, 2025]
+    lata_filtra = [int(rok)] if rok else lata_okresu()
 
     # Znajdz DWUDYSCYPLINOWCÓW z dana dyscyplina (glowna lub subdyscyplina)
     # Wymagamy subdyscyplina_naukowa__isnull=False - autor musi mieć dwie dyscypliny
@@ -73,7 +74,7 @@ def _build_base_filter(filters):
     punkty_od = filters.get("punkty_od")
     punkty_do = filters.get("punkty_do")
 
-    base_filter = {"rok__in": [2022, 2023, 2024, 2025]}
+    base_filter = {"rok__in": lata_okresu()}
     if rok:
         base_filter["rok"] = int(rok)
 

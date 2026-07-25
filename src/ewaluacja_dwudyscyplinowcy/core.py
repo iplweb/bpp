@@ -9,6 +9,7 @@ from decimal import Decimal
 
 from bpp.models import Autor_Dyscyplina, Wydawnictwo_Ciagle_Autor
 from bpp.models.sloty.core import CannotAdapt, ISlot
+from ewaluacja_common.const import lata_okresu
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,8 @@ def pobierz_autorow_z_dwiema_dyscyplinami(lata=None):
     Pobiera autorów z dokładnie dwiema dyscyplinami dla podanych lat.
 
     Args:
-        lata: Lista lat do sprawdzenia. Domyślnie 2022-2025.
+        lata: Lista lat do sprawdzenia. Domyślnie lata bieżącego okresu
+            ewaluacji (``OKRES_DOMYSLNY``).
 
     Returns:
         Słownik {autor_id: {
@@ -34,7 +36,7 @@ def pobierz_autorow_z_dwiema_dyscyplinami(lata=None):
         }}
     """
     if lata is None:
-        lata = range(2022, 2026)  # 2022-2025
+        lata = lata_okresu()
 
     autorzy_dict = defaultdict(lambda: {"autor": None, "lata": {}})
 

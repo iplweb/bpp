@@ -6,6 +6,7 @@ from datetime import datetime
 from celery import shared_task
 from celery_singleton import Singleton
 
+from ewaluacja_common.const import OKRES_DOMYSLNY
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 
 from .helpers import _wait_for_denorm
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def _reset_pins_for_authors(autorzy_ids, task, snapshot_pk, logger_func):
-    """Reset pins for all authors in years 2022-2025."""
+    """Reset pins for all authors within the current evaluation period."""
     from django.db.models import Q
 
     from bpp.models import (
@@ -25,7 +26,9 @@ def _reset_pins_for_authors(autorzy_ids, task, snapshot_pk, logger_func):
     )
 
     base_filter = Q(
-        rekord__rok__gte=2022, rekord__rok__lte=2025, autor_id__in=autorzy_ids
+        rekord__rok__gte=OKRES_DOMYSLNY[0],
+        rekord__rok__lte=OKRES_DOMYSLNY[1],
+        autor_id__in=autorzy_ids,
     )
 
     updated_count = 0
@@ -110,7 +113,7 @@ def _reset_pins_for_authors(autorzy_ids, task, snapshot_pk, logger_func):
 def reset_discipline_pins_task(
     self, uczelnia_id, dyscyplina_id, owner_id=None, algorithm_mode="two-phase"
 ):
-    """Reset przypięć JEDNEJ dyscypliny (2022-2025) + optymalizacja — w tle.
+    """Reset przypięć JEDNEJ dyscypliny (okres ewaluacji) + optymalizacja — w tle.
 
     Wydzielone z widoku ``reset_discipline_pins``: wcześniej request wisiał
     do 10 minut, śpiąc w pętli i odpytując globalne ``DirtyInstance.count()``
@@ -148,7 +151,9 @@ def reset_discipline_pins_task(
 
     autorzy_ids = set(
         Autor_Dyscyplina.objects.filter(
-            rok__gte=2022, rok__lte=2025, dyscyplina_naukowa=dyscyplina
+            rok__gte=OKRES_DOMYSLNY[0],
+            rok__lte=OKRES_DOMYSLNY[1],
+            dyscyplina_naukowa=dyscyplina,
         )
         .values_list("autor_id", flat=True)
         .distinct()
@@ -171,8 +176,8 @@ def reset_discipline_pins_task(
     )
 
     base_filter = Q(
-        rekord__rok__gte=2022,
-        rekord__rok__lte=2025,
+        rekord__rok__gte=OKRES_DOMYSLNY[0],
+        rekord__rok__lte=OKRES_DOMYSLNY[1],
         dyscyplina_naukowa=dyscyplina,
         autor_id__in=autorzy_ids,
     )
@@ -252,7 +257,8 @@ def reset_discipline_pins_task(
 )
 def reset_all_pins_task(self, uczelnia_id, algorithm_mode="two-phase"):
     """
-    Resetuje przypięcia dla wszystkich rekordów 2022-2025 gdzie autor ma dyscyplinę,
+    Resetuje przypięcia dla wszystkich rekordów okresu ewaluacji, gdzie autor ma
+    dyscyplinę,
     jest zatrudniony i afiliuje.
 
     Args:
@@ -277,10 +283,12 @@ def reset_all_pins_task(self, uczelnia_id, algorithm_mode="two-phase"):
     # Update task state
     self.update_state(state="PROGRESS", meta={"step": "collecting", "progress": 10})
 
-    # Pobierz wszystkich autorów którzy mają Autor_Dyscyplina w latach 2022-2025
+    # Pobierz wszystkich autorów którzy mają Autor_Dyscyplina w okresie ewaluacji
     # dla dowolnej dyscypliny
     autorzy_ids = set(
-        Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+        Autor_Dyscyplina.objects.filter(
+            rok__gte=OKRES_DOMYSLNY[0], rok__lte=OKRES_DOMYSLNY[1]
+        )
         .values_list("autor_id", flat=True)
         .distinct()
     )

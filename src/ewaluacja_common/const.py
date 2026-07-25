@@ -25,3 +25,22 @@ OKRES_DOMYSLNY = OKRES_2022_2025
 # względem reszty repo (przed refaktorem ``ROK_MAX`` wynosił tu 2026, choć
 # cała reszta kodu ewaluacyjnego liczyła do 2025).
 ROK_MIN, ROK_MAX = OKRES_DOMYSLNY
+
+
+def lata_okresu(okres=None):
+    """Zwraca listę kolejnych lat okresu — dla filtrów ``rok__in`` i list w UI.
+
+    Okres jest przedziałem DOMKNIĘTYM (``(2022, 2025)`` to cztery lata,
+    z rokiem 2025 włącznie), a ``range`` ma prawy koniec wyłączny — stąd
+    ``+ 1``. Ta jedynka mieszka wyłącznie tutaj, żeby nie trzeba jej było
+    powtarzać (i mylić się w niej) w każdym miejscu budującym listę lat.
+
+    Args:
+        okres: krotka ``(rok_min, rok_max)``; domyślnie ``OKRES_DOMYSLNY``
+            odczytywany w momencie WYWOŁANIA (a nie definicji funkcji), żeby
+            testy mogły podmienić okres przez ``mock.patch``.
+    """
+    if okres is None:
+        okres = OKRES_DOMYSLNY
+    rok_min, rok_max = okres
+    return list(range(rok_min, rok_max + 1))
