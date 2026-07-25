@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.shortcuts import redirect
 from django.views.generic import DetailView
 
+from ewaluacja_common.const import lata_okresu
 from ewaluacja_common.models import Rodzaj_Autora
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
@@ -87,7 +88,7 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
             Autor_Dyscyplina.objects.filter(
                 autor=metryka.autor,
                 dyscyplina_naukowa=metryka.dyscyplina_naukowa,
-                rok__in=[2022, 2023, 2024, 2025],
+                rok__in=lata_okresu(),
             )
             .select_related("dyscyplina_naukowa", "subdyscyplina_naukowa")
             .order_by("rok")

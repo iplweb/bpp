@@ -5,6 +5,8 @@ import logging
 from celery import shared_task
 from celery_singleton import Singleton
 
+from ewaluacja_common.const import OKRES_DOMYSLNY
+
 from .analysis import _analyze_discipline_swap_impl
 
 logger = logging.getLogger(__name__)
@@ -20,8 +22,8 @@ logger = logging.getLogger(__name__)
 def analyze_discipline_swap_task(
     self,
     uczelnia_id,
-    rok_min=2022,
-    rok_max=2025,
+    rok_min=OKRES_DOMYSLNY[0],
+    rok_max=OKRES_DOMYSLNY[1],
 ):
     """
     Analizuje publikacje pod kątem możliwości zamiany dyscyplin.
@@ -33,8 +35,8 @@ def analyze_discipline_swap_task(
 
     Args:
         uczelnia_id: ID uczelni
-        rok_min: Minimalny rok analizy (domyślnie 2022)
-        rok_max: Maksymalny rok analizy (domyślnie 2025)
+        rok_min: Minimalny rok analizy (domyślnie początek OKRES_DOMYSLNY)
+        rok_max: Maksymalny rok analizy (domyślnie koniec OKRES_DOMYSLNY)
 
     Returns:
         Dictionary z wynikami analizy

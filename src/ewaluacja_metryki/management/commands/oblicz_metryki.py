@@ -5,8 +5,9 @@ from django.core.management.base import BaseCommand
 
 from bpp.models import Uczelnia
 from bpp.util import zaloguj_polkniety_wyjatek
+from ewaluacja_common.const import OKRES_DOMYSLNY
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
-from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
+from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_okresu
 from ewaluacja_metryki.utils import generuj_metryki
 
 logger = logging.getLogger(__name__)
@@ -28,14 +29,14 @@ class Command(BaseCommand):
         parser.add_argument(
             "--rok-min",
             type=int,
-            default=2022,
-            help="Początkowy rok okresu ewaluacji (domyślnie 2022)",
+            default=OKRES_DOMYSLNY[0],
+            help=f"Początkowy rok okresu ewaluacji (domyślnie {OKRES_DOMYSLNY[0]})",
         )
         parser.add_argument(
             "--rok-max",
             type=int,
-            default=2025,
-            help="Końcowy rok okresu ewaluacji (domyślnie 2025)",
+            default=OKRES_DOMYSLNY[1],
+            help=f"Końcowy rok okresu ewaluacji (domyślnie {OKRES_DOMYSLNY[1]})",
         )
         parser.add_argument(
             "--minimalny-pk",
@@ -95,7 +96,7 @@ class Command(BaseCommand):
                 self.style.WARNING("Krok 1/2: Przeliczanie liczby N dla uczelni...")
             )
             try:
-                oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia=uczelnia)
+                oblicz_liczby_n_dla_okresu(uczelnia=uczelnia)
                 self.stdout.write(
                     self.style.SUCCESS("✓ Przeliczono liczby N pomyślnie")
                 )

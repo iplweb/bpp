@@ -17,6 +17,7 @@ from bpp.models import (
     Wydawnictwo_Zwarte_Autor,
 )
 from bpp.models.sloty.core import IPunktacjaCacher
+from ewaluacja_common.const import OKRES_DOMYSLNY
 
 
 def wersje_dyscyplin(
@@ -294,9 +295,13 @@ class ProcessSafeProgressTracker:
         self.pbar.close()
 
 
-def wszystkie_wersje_rekordow(
-    rok_min=2022,
-    rok_max=2025,
+# noqa C901: złożoność 11 > 10 istniała PRZED tym refaktorem (zmieniono tu
+# wyłącznie wartości domyślne argumentów). Wyciszamy, bo dotknięcie pliku
+# wciąga go do CI-owego "Lint changed files"; rozplątanie tej funkcji to
+# osobna zmiana, nie część refaktoru okresu ewaluacyjnego.
+def wszystkie_wersje_rekordow(  # noqa: C901
+    rok_min=OKRES_DOMYSLNY[0],
+    rok_max=OKRES_DOMYSLNY[1],
     max_workers=None,
     batch_size=50,
     use_multiprocessing=True,
@@ -305,8 +310,8 @@ def wszystkie_wersje_rekordow(
     Process all publication records with optional multiprocessing support.
 
     Args:
-        rok_min: Minimum year to process (default: 2022)
-        rok_max: Maximum year to process (default: 2025)
+        rok_min: Minimum year to process (default: start of OKRES_DOMYSLNY)
+        rok_max: Maximum year to process (default: end of OKRES_DOMYSLNY)
         max_workers: Number of processes to use (default: CPU count)
         batch_size: Number of records per batch (default: 200)
         use_multiprocessing: Whether to use multiprocessing (default: True)

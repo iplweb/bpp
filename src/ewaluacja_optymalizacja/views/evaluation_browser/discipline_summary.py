@@ -1,6 +1,7 @@
 """Helpers do podsumowania dyscyplin i opcji filtrów przeglądarki."""
 
 from bpp.models import Dyscyplina_Naukowa
+from ewaluacja_common.const import lata_okresu
 
 from ...models import OptimizationRun
 
@@ -133,5 +134,5 @@ def _get_filter_options(uczelnia):
 
     return {
         "dyscypliny": dyscypliny,
-        "lata": [2022, 2023, 2024, 2025],
+        "lata": lata_okresu(),
     }

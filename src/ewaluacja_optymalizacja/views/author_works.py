@@ -9,6 +9,7 @@ from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
 from bpp.models.patent import Patent_Autor
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
+from ewaluacja_common.const import OKRES_DOMYSLNY
 from ewaluacja_metryki.models import MetrykaAutora
 
 from ..models import OptimizationRun
@@ -133,11 +134,11 @@ def author_works_detail(request, run_pk, autor_pk):
     inna_dyscyplina = None
     inny_run = None
 
-    # Get author's disciplines in 2022-2025
+    # Get author's disciplines within the current evaluation period
     autor_dyscypliny = Autor_Dyscyplina.objects.filter(
         autor=autor,
-        rok__gte=2022,
-        rok__lte=2025,
+        rok__gte=OKRES_DOMYSLNY[0],
+        rok__lte=OKRES_DOMYSLNY[1],
     ).select_related("dyscyplina_naukowa", "subdyscyplina_naukowa")
 
     # Collect all disciplines for this author

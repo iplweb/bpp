@@ -8,6 +8,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect
 
+from ewaluacja_common.const import OKRES_DOMYSLNY
+
 from ..models import OptimizationRun
 
 logger = logging.getLogger(__name__)
@@ -361,12 +363,12 @@ def export_sedn_report_1(request):
         key = (m["autor_id"], m["dyscyplina_naukowa_id"])
         selected_works[key] = set(tuple(x) for x in (m["prace_nazbierane"] or []))
 
-    # Pobierz wszystkie Cache_Punktacja_Autora_Query dla tych dyscyplin (lata 2022-2025)
+    # Pobierz Cache_Punktacja_Autora_Query dla tych dyscyplin (lata okresu ewaluacji)
     prace = (
         Cache_Punktacja_Autora_Query.objects.filter(
             dyscyplina_id__in=discipline_ids,
-            rekord__rok__gte=2022,
-            rekord__rok__lte=2025,
+            rekord__rok__gte=OKRES_DOMYSLNY[0],
+            rekord__rok__lte=OKRES_DOMYSLNY[1],
         )
         .select_related(
             "rekord",
@@ -487,12 +489,12 @@ def export_sedn_report_2(request):
         }
     )
 
-    # Pobierz prace z lat 2022-2025
+    # Pobierz prace z lat okresu ewaluacji
     prace = (
         Cache_Punktacja_Autora_Query.objects.filter(
             dyscyplina_id__in=discipline_ids,
-            rekord__rok__gte=2022,
-            rekord__rok__lte=2025,
+            rekord__rok__gte=OKRES_DOMYSLNY[0],
+            rekord__rok__lte=OKRES_DOMYSLNY[1],
         )
         .select_related(
             "rekord",

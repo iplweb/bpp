@@ -12,6 +12,7 @@ from bpp.models import (
     Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Autor,
 )
+from ewaluacja_common.const import OKRES_DOMYSLNY
 
 logger = logging.getLogger(__name__)
 
@@ -19,14 +20,16 @@ logger = logging.getLogger(__name__)
 @login_required
 def database_verification_view(request):
     """
-    Wyświetla listę prac z autorami mającymi sloty poniżej 0.1 w latach 2022-2025.
+    Wyświetla prace z autorami mającymi sloty poniżej 0.1 w okresie ewaluacji.
     Takie sloty należy usunąć przed dalszymi krokami optymalizacji.
     """
     from bpp.models import Autor_Dyscyplina, Cache_Punktacja_Autora_Query
 
-    # Pobierz autorów którzy mają przypisane dyscypliny w latach 2022-2025
+    # Pobierz autorów którzy mają przypisane dyscypliny w okresie ewaluacji
     autorzy_z_dyscyplinami = set(
-        Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+        Autor_Dyscyplina.objects.filter(
+            rok__gte=OKRES_DOMYSLNY[0], rok__lte=OKRES_DOMYSLNY[1]
+        )
         .values_list("autor_id", flat=True)
         .distinct()
     )
@@ -35,8 +38,8 @@ def database_verification_view(request):
     problematic_records = (
         Cache_Punktacja_Autora_Query.objects.filter(
             slot__lt=Decimal("0.1"),
-            rekord__rok__gte=2022,
-            rekord__rok__lte=2025,
+            rekord__rok__gte=OKRES_DOMYSLNY[0],
+            rekord__rok__lte=OKRES_DOMYSLNY[1],
             autor_id__in=autorzy_z_dyscyplinami,
         )
         .select_related("rekord", "autor", "dyscyplina")
@@ -59,10 +62,11 @@ def database_verification_view(request):
         przypieta=False,
     ).select_related("rekord", "autor", "dyscyplina_naukowa")
 
-    # Liczba publikacji z rok >= 2022, gdzie autor ma dyscyplinę, ale brak daty oświadczenia
+    # Liczba publikacji od początku okresu ewaluacji, gdzie autor ma dyscyplinę,
+    # ale brak daty oświadczenia
     brak_oswiadczenia_ciagle_count = (
         Wydawnictwo_Ciagle.objects.filter(
-            rok__gte=2022,
+            rok__gte=OKRES_DOMYSLNY[0],
             autorzy_set__dyscyplina_naukowa__isnull=False,
             autorzy_set__data_oswiadczenia__isnull=True,
         )
@@ -72,7 +76,7 @@ def database_verification_view(request):
 
     brak_oswiadczenia_zwarte_count = (
         Wydawnictwo_Zwarte.objects.filter(
-            rok__gte=2022,
+            rok__gte=OKRES_DOMYSLNY[0],
             autorzy_set__dyscyplina_naukowa__isnull=False,
             autorzy_set__data_oswiadczenia__isnull=True,
         )

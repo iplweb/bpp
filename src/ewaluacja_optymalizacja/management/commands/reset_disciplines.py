@@ -7,6 +7,7 @@ from django.db import transaction
 
 from bpp.models import Patent_Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
 from bpp.util import zaloguj_polkniety_wyjatek
+from ewaluacja_common.const import OKRES_DOMYSLNY
 
 logger = logging.getLogger(__name__)
 
@@ -32,10 +33,16 @@ class Command(BaseCommand):
             help="Don't wait for denorm flush after resetting",
         )
         parser.add_argument(
-            "--year-from", type=int, default=2022, help="Starting year (default: 2022)"
+            "--year-from",
+            type=int,
+            default=OKRES_DOMYSLNY[0],
+            help=f"Starting year (default: {OKRES_DOMYSLNY[0]})",
         )
         parser.add_argument(
-            "--year-to", type=int, default=2025, help="Ending year (default: 2025)"
+            "--year-to",
+            type=int,
+            default=OKRES_DOMYSLNY[1],
+            help=f"Ending year (default: {OKRES_DOMYSLNY[1]})",
         )
 
     def get_dirty_count(self):

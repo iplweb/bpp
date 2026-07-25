@@ -5,6 +5,7 @@ from django.shortcuts import redirect
 from django.utils.decorators import method_decorator
 from django.views import View
 
+from ewaluacja_common.const import OKRES_DOMYSLNY
 from ewaluacja_common.models import Rodzaj_Autora
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
@@ -55,8 +56,8 @@ class UruchomGenerowanieView(View):
             return redirect("ewaluacja_metryki:lista")
 
         # Pobierz parametry z formularza (jeśli są)
-        rok_min = int(request.POST.get("rok_min", 2022))
-        rok_max = int(request.POST.get("rok_max", 2025))
+        rok_min = int(request.POST.get("rok_min", OKRES_DOMYSLNY[0]))
+        rok_max = int(request.POST.get("rok_max", OKRES_DOMYSLNY[1]))
         minimalny_pk = float(request.POST.get("minimalny_pk", 0.01))
         nadpisz = request.POST.get("nadpisz", "on") == "on"
 

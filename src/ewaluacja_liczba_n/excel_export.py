@@ -10,7 +10,7 @@ from openpyxl.utils import get_column_letter
 from bpp.models import Uczelnia
 
 from .models import LiczbaNDlaUczelni
-from .utils import oblicz_liczbe_n_na_koniec_2025
+from .utils import oblicz_liczbe_n_na_koniec_okresu
 
 
 class LiczbaNExcelExporter:
@@ -84,7 +84,7 @@ class LiczbaNExcelExporter:
             .select_related("dyscyplina_naukowa")
             .order_by("dyscyplina_naukowa__nazwa")
         )
-        liczby_n_2025 = oblicz_liczbe_n_na_koniec_2025(uczelnia)
+        liczby_n_2025 = oblicz_liczbe_n_na_koniec_okresu(uczelnia)
 
         # Filter only non-reported (N < 12 at end of 2025)
         row_num = 2

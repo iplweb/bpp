@@ -15,8 +15,8 @@ from bpp.models import Autor_Dyscyplina, Uczelnia
 from ..forms import SankcjeFormSet
 from ..models import LiczbaNDlaUczelni
 from ..utils import (
-    oblicz_liczbe_n_na_koniec_2025,
-    oblicz_liczby_n_dla_ewaluacji_2022_2025,
+    oblicz_liczbe_n_na_koniec_okresu,
+    oblicz_liczby_n_dla_okresu,
 )
 
 
@@ -38,7 +38,7 @@ class LiczbaNIndexView(GroupRequiredMixin, TemplateView):
         )
 
         # Oblicz liczby N na koniec 2025 dla każdej dyscypliny
-        liczby_n_2025 = oblicz_liczbe_n_na_koniec_2025(uczelnia)
+        liczby_n_2025 = oblicz_liczbe_n_na_koniec_okresu(uczelnia)
 
         # Dodaj liczby N na koniec 2025 do każdego obiektu i podziel na raportowane/nieraportowane
         liczby_n_raportowane = []
@@ -99,7 +99,7 @@ class ObliczLiczbeNView(GroupRequiredMixin, View):
         uczelnia = Uczelnia.objects.get_for_request(request)
 
         try:
-            oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia)
+            oblicz_liczby_n_dla_okresu(uczelnia)
             messages.success(
                 request, "Pomyślnie obliczono liczbę N dla ewaluacji 2022-2025"
             )

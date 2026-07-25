@@ -6,6 +6,7 @@ from django.views.generic import ListView
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Autor_Dyscyplina, Dyscyplina_Naukowa, Uczelnia
+from ewaluacja_common.const import OKRES_DOMYSLNY
 from ewaluacja_common.models import Rodzaj_Autora
 
 from ..models import IloscUdzialowDlaAutoraZaCalosc, IloscUdzialowDlaAutoraZaRok
@@ -30,8 +31,8 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
         if rok:
             ad_filter["rok"] = rok
         else:
-            ad_filter["rok__gte"] = 2022
-            ad_filter["rok__lte"] = 2025
+            ad_filter["rok__gte"] = OKRES_DOMYSLNY[0]
+            ad_filter["rok__lte"] = OKRES_DOMYSLNY[1]
 
         # Pobierz pary (autor_id, rok) z danym rodzajem autora
         autorzy_z_rodzajem = (
@@ -184,7 +185,7 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
         uczelnia = Uczelnia.objects.get_for_request(self.request)
         # Pobierz wszystkie udziały dla autorów tej uczelni
         queryset = IloscUdzialowDlaAutoraZaRok.objects.filter(
-            uczelnia=uczelnia, rok__gte=2022, rok__lte=2025
+            uczelnia=uczelnia, rok__gte=OKRES_DOMYSLNY[0], rok__lte=OKRES_DOMYSLNY[1]
         ).select_related(
             "autor",
             "dyscyplina_naukowa",
@@ -212,7 +213,9 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
         # Pobierz ID dyscyplin które mają faktyczne dane dla tej uczelni
         dyscypliny_z_danymi = (
             IloscUdzialowDlaAutoraZaRok.objects.filter(
-                uczelnia=uczelnia, rok__gte=2022, rok__lte=2025
+                uczelnia=uczelnia,
+                rok__gte=OKRES_DOMYSLNY[0],
+                rok__lte=OKRES_DOMYSLNY[1],
             )
             .values_list("dyscyplina_naukowa_id", flat=True)
             .distinct()
@@ -226,7 +229,9 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
         # Pobierz tylko lata które faktycznie są w bazie dla tej uczelni
         lata_z_danymi = (
             IloscUdzialowDlaAutoraZaRok.objects.filter(
-                uczelnia=uczelnia, rok__gte=2022, rok__lte=2025
+                uczelnia=uczelnia,
+                rok__gte=OKRES_DOMYSLNY[0],
+                rok__lte=OKRES_DOMYSLNY[1],
             )
             .values_list("rok", flat=True)
             .distinct()

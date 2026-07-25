@@ -15,6 +15,8 @@ from typing import TYPE_CHECKING
 
 from django.db import transaction
 
+from ewaluacja_common.const import OKRES_DOMYSLNY
+
 if TYPE_CHECKING:
     from bpp.models import Dyscyplina_Naukowa
 
@@ -75,8 +77,8 @@ def calculate_author_slot_usage(
     current_slots_agg = Cache_Punktacja_Autora_Query.objects.filter(
         autor_id=author_id,
         dyscyplina=dyscyplina,
-        rekord__rok__gte=2022,
-        rekord__rok__lte=2025,
+        rekord__rok__gte=OKRES_DOMYSLNY[0],
+        rekord__rok__lte=OKRES_DOMYSLNY[1],
     ).aggregate(total=Sum("slot"))
 
     current_slots = (
@@ -130,8 +132,8 @@ def identify_unpinning_candidates(  # noqa: C901
     cache_entries = (
         Cache_Punktacja_Autora_Query.objects.filter(
             dyscyplina=dyscyplina,
-            rekord__rok__gte=2022,
-            rekord__rok__lte=2025,
+            rekord__rok__gte=OKRES_DOMYSLNY[0],
+            rekord__rok__lte=OKRES_DOMYSLNY[1],
         )
         .select_related("autor", "rekord")
         .exclude(pkdaut=0)

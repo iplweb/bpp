@@ -6,6 +6,7 @@ from django.db.models import Q, Sum
 
 from bpp.models import Autor_Dyscyplina
 from bpp.util import zaloguj_polkniety_wyjatek
+from ewaluacja_common.const import OKRES_DOMYSLNY
 
 from .models import MetrykaAutora
 
@@ -34,8 +35,8 @@ def oblicz_metryki_dla_autora(
     autor,
     dyscyplina,
     uczelnia,
-    rok_min=2022,
-    rok_max=2025,
+    rok_min=OKRES_DOMYSLNY[0],
+    rok_max=OKRES_DOMYSLNY[1],
     minimalny_pk=Decimal("0.01"),
     slot_maksymalny=None,
 ):
@@ -203,7 +204,9 @@ def oblicz_metryki_dla_autora(
     return metryka, created
 
 
-def przelicz_metryki_dla_publikacji(publikacja, rok_min=2022, rok_max=2025):
+def przelicz_metryki_dla_publikacji(
+    publikacja, rok_min=OKRES_DOMYSLNY[0], rok_max=OKRES_DOMYSLNY[1]
+):
     """
     Przelicza metryki dla wszystkich autorów danej publikacji z przypisanymi dyscyplinami.
 
@@ -294,7 +297,13 @@ def _get_ilosc_udzialow_queryset(ilosc_udzialow_queryset, uczelnia=None):
     return qs
 
 
-def _should_skip_author(autor, dyscyplina, rodzaje_autora, rok_min=2022, rok_max=2025):
+def _should_skip_author(
+    autor,
+    dyscyplina,
+    rodzaje_autora,
+    rok_min=OKRES_DOMYSLNY[0],
+    rok_max=OKRES_DOMYSLNY[1],
+):
     """
     Sprawdza czy autor powinien być pominięty na podstawie rodzaju_autora.
 
@@ -305,8 +314,8 @@ def _should_skip_author(autor, dyscyplina, rodzaje_autora, rok_min=2022, rok_max
         autor: Obiekt Autor
         dyscyplina: Obiekt Dyscyplina_Naukowa
         rodzaje_autora: Lista akceptowalnych skrótów rodzajów autorów
-        rok_min: Początkowy rok okresu ewaluacji (domyślnie 2022)
-        rok_max: Końcowy rok okresu ewaluacji (domyślnie 2025)
+        rok_min: Początkowy rok okresu ewaluacji (domyślnie z OKRES_DOMYSLNY)
+        rok_max: Końcowy rok okresu ewaluacji (domyślnie z OKRES_DOMYSLNY)
 
     Returns:
         Tuple (bool, Autor_Dyscyplina): (czy_pominąć, najnowszy_rekord_w_okresie)
@@ -547,8 +556,8 @@ def _process_single_author(
 
 
 def generuj_metryki(
-    rok_min=2022,
-    rok_max=2025,
+    rok_min=OKRES_DOMYSLNY[0],
+    rok_max=OKRES_DOMYSLNY[1],
     minimalny_pk=Decimal("0.01"),
     nadpisz=True,
     rodzaje_autora=None,

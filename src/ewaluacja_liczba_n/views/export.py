@@ -8,6 +8,7 @@ from openpyxl.worksheet.table import Table, TableStyleInfo
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Uczelnia
+from ewaluacja_common.const import OKRES_DOMYSLNY
 
 from ..excel_export import LiczbaNExcelExporter
 from ..models import IloscUdzialowDlaAutoraZaCalosc, IloscUdzialowDlaAutoraZaRok
@@ -23,7 +24,7 @@ class AutorzyLiczbaNExporter(LiczbaNExcelExporter):
         """Get filtered queryset based on request parameters."""
         uczelnia = Uczelnia.objects.get_for_request(request)
         udzialy = IloscUdzialowDlaAutoraZaRok.objects.filter(
-            uczelnia=uczelnia, rok__gte=2022, rok__lte=2025
+            uczelnia=uczelnia, rok__gte=OKRES_DOMYSLNY[0], rok__lte=OKRES_DOMYSLNY[1]
         )
 
         # Apply filters from URL

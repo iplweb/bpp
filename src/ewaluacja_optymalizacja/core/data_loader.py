@@ -12,6 +12,7 @@ from tqdm import tqdm
 
 from bpp import const
 from bpp.models import Cache_Punktacja_Autora_Query, Dyscyplina_Naukowa
+from ewaluacja_common.const import OKRES_DOMYSLNY
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
 from .data_structures import Pub
@@ -36,12 +37,12 @@ def generate_pub_data(dyscyplina_nazwa: str, verbose: bool = False) -> list[Pub]
             f"Discipline '{dyscyplina_nazwa}' not found in database"
         ) from e
 
-    # Query cache data for years 2022-2025 and given discipline
+    # Query cache data for the current evaluation period and given discipline
     cache_entries = (
         Cache_Punktacja_Autora_Query.objects.filter(
             dyscyplina=dyscyplina,
-            rekord__rok__gte=2022,
-            rekord__rok__lte=2025,
+            rekord__rok__gte=OKRES_DOMYSLNY[0],
+            rekord__rok__lte=OKRES_DOMYSLNY[1],
         )
         .select_related(
             "autor",

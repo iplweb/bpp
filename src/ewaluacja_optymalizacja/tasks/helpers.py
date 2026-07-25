@@ -2,6 +2,8 @@
 
 import logging
 
+from ewaluacja_common.const import OKRES_DOMYSLNY
+
 logger = logging.getLogger(__name__)
 
 
@@ -70,7 +72,8 @@ def _create_optimization_snapshot(uczelnia, logger_func):
 def _collect_ids_to_unpin(uczelnia, autorzy_z_wynikami, logger_func):
     """Collect IDs of publications to unpin.
 
-    Only considers publications from years 2022-2025 (rok >= 2022 and rok < 2026).
+    Only considers publications from the current evaluation period
+    (``OKRES_DOMYSLNY``, przedział domknięty).
     Unpins publications that are either:
     - Not in optimization results, OR
     - In optimization results but with slot < 1.0
@@ -117,12 +120,12 @@ def _collect_ids_to_unpin(uczelnia, autorzy_z_wynikami, logger_func):
             ).values_list("rekord_id", "slots")
         }
 
-        # Wydawnictwa ciągłe - only years 2022-2025
+        # Wydawnictwa ciągłe - tylko lata okresu ewaluacji
         for udział in Wydawnictwo_Ciagle_Autor.objects.filter(
             autor_id=autor_id,
             przypieta=True,
-            rekord__rok__gte=2022,
-            rekord__rok__lt=2026,
+            rekord__rok__gte=OKRES_DOMYSLNY[0],
+            rekord__rok__lte=OKRES_DOMYSLNY[1],
         ).select_related("rekord"):
             rekord_id = (ct_ciagle.pk, udział.rekord.pk)
 
@@ -135,12 +138,12 @@ def _collect_ids_to_unpin(uczelnia, autorzy_z_wynikami, logger_func):
             ):
                 ids_to_unpin_ciagle.append(udział.pk)
 
-        # Wydawnictwa zwarte - only years 2022-2025
+        # Wydawnictwa zwarte - tylko lata okresu ewaluacji
         for udział in Wydawnictwo_Zwarte_Autor.objects.filter(
             autor_id=autor_id,
             przypieta=True,
-            rekord__rok__gte=2022,
-            rekord__rok__lt=2026,
+            rekord__rok__gte=OKRES_DOMYSLNY[0],
+            rekord__rok__lte=OKRES_DOMYSLNY[1],
         ).select_related("rekord"):
             rekord_id = (ct_zwarte.pk, udział.rekord.pk)
 

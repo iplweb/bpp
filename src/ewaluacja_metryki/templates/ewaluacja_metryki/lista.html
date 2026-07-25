@@ -844,15 +844,18 @@
           hx-trigger="submit">
         {% csrf_token %}
 
+        {# Domyślne lata pochodzą z ewaluacja_common.const.OKRES_DOMYSLNY, #}
+        {# podstawia je MetrykiListView._get_status_context. #}
+        {# NIE zaszywaj tu lat na sztywno. #}
         <div class="row">
             <div class="medium-6 columns">
                 <label>Rok początkowy
-                    <input type="number" name="rok_min" value="2022" min="2000" max="2050">
+                    <input type="number" name="rok_min" value="{{ domyslny_rok_min }}" min="2000" max="2050">
                 </label>
             </div>
             <div class="medium-6 columns">
                 <label>Rok końcowy
-                    <input type="number" name="rok_max" value="2025" min="2000" max="2050">
+                    <input type="number" name="rok_max" value="{{ domyslny_rok_max }}" min="2000" max="2050">
                 </label>
             </div>
         </div>

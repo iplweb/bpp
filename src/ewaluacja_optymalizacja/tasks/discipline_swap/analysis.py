@@ -9,6 +9,8 @@ from time import sleep
 
 import rollbar
 
+from ewaluacja_common.const import OKRES_DOMYSLNY
+
 from .simulation import simulate_discipline_swap
 
 logger = logging.getLogger(__name__)
@@ -119,8 +121,8 @@ def partition_works_into_chunks(rekord_ids, chunk_size=50):
 def _analyze_discipline_swap_impl(  # noqa: C901
     task,
     uczelnia_id,
-    rok_min=2022,
-    rok_max=2025,
+    rok_min=OKRES_DOMYSLNY[0],
+    rok_max=OKRES_DOMYSLNY[1],
 ):
     """
     Implementacja analizy możliwości zamiany dyscyplin.
@@ -137,8 +139,8 @@ def _analyze_discipline_swap_impl(  # noqa: C901
     Args:
         task: Celery task object (self) do aktualizacji statusu
         uczelnia_id: ID uczelni
-        rok_min: Minimalny rok analizy (domyślnie 2022)
-        rok_max: Maksymalny rok analizy (domyślnie 2025)
+        rok_min: Minimalny rok analizy (domyślnie początek OKRES_DOMYSLNY)
+        rok_max: Maksymalny rok analizy (domyślnie koniec OKRES_DOMYSLNY)
 
     Returns:
         Dictionary z wynikami analizy
