@@ -116,7 +116,11 @@ def zbuduj_payload(monkeypatch):
     monkeypatch.setattr(rollbar, "send_payload", lambda p, t: None)
 
     ustawienia = ustawienia_rollbara()
-    ustawienia["access_token"] = "atrapa"
+    # `access_token` NIE jest tu ustawiany: `settings.ROLLBAR` wnosi go
+    # z konfiguracji (w testach = None), a wysyłka i tak jest zaślepiona
+    # przez podmieniony `send_payload`. Wpisanie tu atrapy tokena zapalało
+    # skaner sekretów w CI — słusznie, bo wzorzec jest nieodróżnialny od
+    # prawdziwego przecieku.
     ustawienia["environment"] = "test"
     ustawienia["handler"] = "blocking"
     ustawienia["suppress_reinit_warning"] = True
