@@ -44,7 +44,10 @@ from .test_reguly import (
     _kompletny_patent,
 )
 
-PIERWSZY_ROK, OSTATNI_ROK = OKNO_EWALUACJI
+#: Pierwszy rok okna raportu. Górnej granicy świadomie tu NIE rozpakowujemy:
+#: :data:`OKNO_EWALUACJI` ma ją dziś nieustaloną (``None``) i testy muszą
+#: mówić o oknie otwartym i domkniętym osobno — patrz blok „Zawężenie: okno”.
+PIERWSZY_ROK = OKNO_EWALUACJI[0]
 
 
 # --------------------------------------------------------------------------
@@ -185,18 +188,82 @@ def _nierozpoznane(**kwargs):
 
 
 @pytest.mark.django_db
-def test_selektor_bierze_wylacznie_lata_z_okna():
+def test_selektor_odsiewa_lata_sprzed_okna():
+    """Dolna granica okna gryzie i gryźć musi — to ona wchodzi do raportu.
+
+    Rok wcześniejszy niż pierwszy rok okna należy do POPRZEDNIEJ ewaluacji;
+    jego braki nie są już do uzupełnienia w tym sprawozdaniu.
+    """
     przed = _artykul_z_autorem(rok=PIERWSZY_ROK - 1)
     pierwszy = _artykul_z_autorem(rok=PIERWSZY_ROK)
-    ostatni = _artykul_z_autorem(rok=OSTATNI_ROK)
-    po = _artykul_z_autorem(rok=OSTATNI_ROK + 1)
 
     znalezione = _pk(selektory.powiazania(Osiagniecie.ARTYKUL))
 
-    assert znalezione == {pierwszy.pk, ostatni.pk}, (
-        "Obie granice okna muszą wchodzić do raportu, a lata spoza okna — nie"
+    assert znalezione == {pierwszy.pk}, (
+        "Pierwszy rok okna wchodzi do raportu, rok sprzed okna — nie"
     )
     assert przed.pk not in znalezione
+
+
+@pytest.mark.django_db
+def test_otwarta_gorna_granica_bierze_takze_odlegly_rok():
+    """Sens ``ostatni rok = None``: raport nie przestaje widzieć nowych lat.
+
+    Rok 2035 jest tu umyślnie absurdalnie daleki — chodzi o wykazanie, że
+    przy nieustalonej górnej granicy żadne odcięcie z góry nie działa.
+    """
+    daleki = _artykul_z_autorem(rok=2035)
+    tuz_przed_oknem = _artykul_z_autorem(rok=PIERWSZY_ROK - 1)
+
+    znalezione = _pk(
+        selektory.powiazania(Osiagniecie.ARTYKUL, okno=(PIERWSZY_ROK, None))
+    )
+
+    assert znalezione == {daleki.pk}, (
+        "Otwarte okno bierze rekord z dowolnie odległego roku, ale dolna "
+        "granica nadal obowiązuje"
+    )
+    assert tuz_przed_oknem.pk not in znalezione
+
+
+@pytest.mark.django_db
+def test_domyslne_okno_bierze_rekord_z_odleglego_roku():
+    """To samo, ale na STAŁEJ — bo to ona decyduje o zachowaniu raportu.
+
+    Gdy MEiN ogłosi długość okresu ewaluacyjnego i granica zostanie
+    domknięta, test przestanie mieć zastosowanie (rok „daleki” wypadnie
+    z okna zgodnie z przepisem) — dlatego wtedy się pomija, a nie psuje.
+    """
+    pierwszy_rok, ostatni_rok = OKNO_EWALUACJI
+    if ostatni_rok is not None:
+        pytest.skip(
+            "Górna granica okna została domknięta — otwartego okna nie ma "
+            "już czego sprawdzać na stałej"
+        )
+
+    daleki = _artykul_z_autorem(rok=pierwszy_rok + 9)
+
+    assert daleki.pk in _pk(selektory.powiazania(Osiagniecie.ARTYKUL))
+
+
+@pytest.mark.django_db
+def test_domkniete_okno_odcina_lata_po_gornej_granicy():
+    """Po domknięciu granicy górne odcięcie ma znów działać.
+
+    Okno podajemy jawnie argumentem, więc test opisuje przyszły stan
+    (``OKNO_EWALUACJI = (2026, <rok>)``) bez ruszania stałej.
+    """
+    ostatni_rok = PIERWSZY_ROK + 1
+    ostatni = _artykul_z_autorem(rok=ostatni_rok)
+    po = _artykul_z_autorem(rok=ostatni_rok + 1)
+
+    znalezione = _pk(
+        selektory.powiazania(Osiagniecie.ARTYKUL, okno=(PIERWSZY_ROK, ostatni_rok))
+    )
+
+    assert znalezione == {ostatni.pk}, (
+        "Ostatni rok domkniętego okna wchodzi do raportu, następny — nie"
+    )
     assert po.pk not in znalezione
 
 

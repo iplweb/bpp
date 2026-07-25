@@ -127,10 +127,16 @@ def _model(osiagniecie: Osiagniecie):
     return apps.get_model(MODEL_POWIAZANIA[osiagniecie])
 
 
-def _zawez(qs, okno: tuple[int, int], uczelnia) -> QuerySet:
+def _zawez(qs, okno: tuple[int, int | None], uczelnia) -> QuerySet:
     """Wspólne zawężenie ziarna: okno ewaluacji, przypięcie, uczelnia.
 
-    Okno jest przedziałem **domkniętym** — oba lata graniczne wchodzą.
+    Oba lata graniczne **wchodzą** do wyniku. Górna granica bywa jednak
+    nieustalona: ``ostatni_rok`` równy ``None`` znaczy „od pierwszego roku
+    wzwyż, bez końca” (patrz :data:`ewaluacja_common.const.OKNO_EWALUACJI`)
+    i wtedy górnego odcięcia po prostu nie nakładamy. Odcięcie po zgadniętym
+    roku byłoby gorsze niż jego brak — raport o brakach przestałby po cichu
+    widzieć najnowsze rekordy, a pusta lista czyta się jak „wszystko
+    w porządku”.
 
     Uczelnię odsiewamy przez ``scope_autorzy_do_uczelni``: through-modele
     niosą ``jednostka``, dokładnie tak jak mat-view autorstw, dla którego ten
@@ -139,25 +145,25 @@ def _zawez(qs, okno: tuple[int, int], uczelnia) -> QuerySet:
     tutaj własnym filtrem.
     """
     pierwszy_rok, ostatni_rok = okno
-    qs = qs.filter(
-        rekord__rok__gte=pierwszy_rok,
-        rekord__rok__lte=ostatni_rok,
-        przypieta=True,
-    )
+    qs = qs.filter(rekord__rok__gte=pierwszy_rok, przypieta=True)
+    if ostatni_rok is not None:
+        qs = qs.filter(rekord__rok__lte=ostatni_rok)
     return scope_autorzy_do_uczelni(qs, uczelnia)
 
 
 def powiazania(
     osiagniecie: Osiagniecie,
     uczelnia=None,
-    okno: tuple[int, int] = OKNO_EWALUACJI,
+    okno: tuple[int, int | None] = OKNO_EWALUACJI,
 ) -> QuerySet:
     """Ziarno raportu dla jednego typu osiągnięcia.
 
     :param osiagniecie: typ osiągnięcia w rozumieniu § 2 ust. 10.
     :param uczelnia: uczelnia oglądającego; ``None`` (albo instalacja
         jednouczelniana) oznacza brak zawężenia.
-    :param okno: domknięty przedział lat; domyślnie bieżące okno ewaluacji.
+    :param okno: para ``(pierwszy rok, ostatni rok)``, oba lata wchodzą;
+        ``ostatni rok`` równy ``None`` znaczy „bez górnej granicy”.
+        Domyślnie bieżące okno raportu POL-on.
     """
     qs = _zawez(_model(osiagniecie).objects.all(), okno, uczelnia)
 
@@ -168,7 +174,7 @@ def powiazania(
     return qs
 
 
-def _nierozpoznane_zwarte(uczelnia, okno: tuple[int, int]) -> QuerySet:
+def _nierozpoznane_zwarte(uczelnia, okno: tuple[int, int | None]) -> QuerySet:
     """Powiązania z wydawnictwem zwartym, którego nie da się zaklasyfikować.
 
     Fixture instalacyjny BPP zostawia ``Charakter_Formalny.charakter_sloty``
@@ -199,7 +205,7 @@ def _nierozpoznane_zwarte(uczelnia, okno: tuple[int, int]) -> QuerySet:
     )
 
 
-def _nierozpoznane_ciagle(uczelnia, okno: tuple[int, int]) -> QuerySet:
+def _nierozpoznane_ciagle(uczelnia, okno: tuple[int, int | None]) -> QuerySet:
     """Powiązania z wydawnictwem ciągłym o niesklasyfikowanym charakterze.
 
     :data:`FILTR_CHARAKTERU` zawęża ciągłe do
@@ -238,7 +244,7 @@ def _nierozpoznane_ciagle(uczelnia, okno: tuple[int, int]) -> QuerySet:
 
 def powiazania_nierozpoznane(
     uczelnia=None,
-    okno: tuple[int, int] = OKNO_EWALUACJI,
+    okno: tuple[int, int | None] = OKNO_EWALUACJI,
 ) -> list[QuerySet]:
     """Powiązania z rekordem, którego typu osiągnięcia nie da się ustalić.
 

@@ -23,7 +23,9 @@
             </p>
             <p>
                 <i class="fi-calendar"></i>
-                Zakres: lata <strong>{{ pierwszy_rok }}&ndash;{{ ostatni_rok }}</strong>,
+                {# Zakres lat składa widok (``opis_okna``), bo górna granica #}
+                {# okna bywa nieustalona — patrz OKNO_EWALUACJI. #}
+                Zakres: lata <strong>{{ zakres_lat }}</strong>,
                 powiązania autorów z <strong>przypiętą</strong> dyscypliną.
                 Liczba sprawdzonych powiązań autor&ndash;rekord:
                 <strong>{{ sprawdzonych }}</strong>.
@@ -62,14 +64,14 @@
                 <p>
                     Sprawdzono powiązań autor&ndash;rekord:
                     <strong>{{ sprawdzonych }}</strong>
-                    (lata {{ pierwszy_rok }}&ndash;{{ ostatni_rok }}).
+                    (lata {{ zakres_lat }}).
                     Żadne z nich nie narusza wymogów § 2 ust. 10.
                 </p>
                 {% if sprawdzonych == 0 %}
                     <p>
                         <i class="fi-info"></i>
                         Zero sprawdzonych rekordów znaczy, że w oknie
-                        {{ pierwszy_rok }}&ndash;{{ ostatni_rok }} nie ma jeszcze
+                        {{ zakres_lat }} nie ma jeszcze
                         publikacji z przypiętą dyscypliną &mdash; bieżące okno
                         ewaluacyjne dopiero się otwiera.
                     </p>

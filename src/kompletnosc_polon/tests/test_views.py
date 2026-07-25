@@ -23,6 +23,7 @@ from bpp.const import CHARAKTER_SLOTY_KSIAZKA, GR_WPROWADZANIE_DANYCH
 from bpp.models.profile import BppUser
 from ewaluacja_common.const import OKNO_EWALUACJI
 from kompletnosc_polon.views import ListaKompletnosciView
+from kompletnosc_polon.views.mixins import opis_okna
 
 from .test_selektory import (
     _artykul_z_autorem,
@@ -30,7 +31,11 @@ from .test_selektory import (
     _zwarte_z_autorem,
 )
 
-PIERWSZY_ROK, OSTATNI_ROK = OKNO_EWALUACJI
+#: Opis zakresu lat, który użytkownik ma zobaczyć na stronie: „od 2026” przy
+#: dziś otwartej górnej granicy okna, „2026–<rok>” po jej domknięciu. Bierzemy
+#: go z :func:`opis_okna`, żeby test nie przepisywał ręcznie tej samej reguły;
+#: brzmienie samej funkcji sprawdzają testy jednostkowe na końcu pliku.
+ZAKRES_LAT = opis_okna(OKNO_EWALUACJI)
 
 HASLO = "haslo-do-testow"
 
@@ -437,7 +442,7 @@ def test_zero_brakow_daje_jawny_komunikat_z_liczba_i_zakresem_lat(admin_client):
     assert odpowiedz.context["sprawdzonych"] == 1
     assert odpowiedz.context["brak_przypietych_dyscyplin"] is False
     assert "Brak zastrzeżeń" in tresc
-    assert f"{PIERWSZY_ROK}&ndash;{OSTATNI_ROK}" in tresc
+    assert ZAKRES_LAT in tresc
 
 
 @pytest.mark.django_db
@@ -446,7 +451,51 @@ def test_zakres_lat_jest_podany_takze_gdy_sa_braki(admin_client):
 
     tresc = _tresc(admin_client.get(reverse("kompletnosc_polon:lista")))
 
-    assert f"{PIERWSZY_ROK}&ndash;{OSTATNI_ROK}" in tresc
+    assert ZAKRES_LAT in tresc
+
+
+@pytest.mark.django_db
+def test_nieustalona_gorna_granica_nie_wycieka_do_strony(admin_client):
+    """Otwarte okno wolno pokazać jako „od 2026” — nie jako „2026–None”.
+
+    Sklejenie zakresu z pary liczb w szablonie renderowało dosłowne
+    „None” (albo urwane „2026–”) w zdaniu o zakresie raportu. Test pilnuje,
+    że tekst o latach jest zdaniem po polsku, a nie wyciekiem ``None``.
+    """
+    _zepsuj_doi(_artykul_z_autorem())
+
+    tresc = _tresc(admin_client.get(reverse("kompletnosc_polon:lista")))
+
+    assert "None" not in tresc
+    assert f"lata <strong>{ZAKRES_LAT}</strong>" in tresc
+
+
+@pytest.mark.django_db
+def test_szczegoly_podaja_zakres_lat(admin_client):
+    """Strona autora też mówi, za jakie lata raport sprawdzał dane."""
+    powiazanie = _zepsuj_doi(_artykul_z_autorem())
+
+    tresc = _tresc(
+        admin_client.get(
+            reverse(
+                "kompletnosc_polon:szczegoly",
+                kwargs={"autor_slug": powiazanie.autor.slug},
+            )
+        )
+    )
+
+    assert ZAKRES_LAT in tresc
+    assert "None" not in tresc
+
+
+def test_opis_okna_dla_otwartej_gornej_granicy():
+    """Nieustalona górna granica ma własne zdanie, bez zmyślonego roku."""
+    assert opis_okna((2026, None)) == "od 2026"
+
+
+def test_opis_okna_dla_domknietego_okna():
+    """Po domknięciu granicy wraca zwykły zakres z półpauzą."""
+    assert opis_okna((2026, 2029)) == "2026–2029"
 
 
 # --------------------------------------------------------------------------

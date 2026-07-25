@@ -19,8 +19,10 @@
             <p>
                 <i class="fi-calendar"></i>
                 Braki w danych wymaganych przez § 2 ust. 10 rozporządzenia
+                {# Zakres lat składa widok (``opis_okna``), bo górna granica #}
+                {# okna bywa nieustalona — patrz OKNO_EWALUACJI. #}
                 (Dz. U. 2026 poz. 811), lata
-                <strong>{{ pierwszy_rok }}&ndash;{{ ostatni_rok }}</strong>.
+                <strong>{{ zakres_lat }}</strong>.
                 Liczba sprawdzonych powiązań tego autora:
                 <strong>{{ sprawdzonych }}</strong>.
             </p>
@@ -41,7 +43,7 @@
                 <p>
                     Sprawdzono powiązań autor&ndash;rekord:
                     <strong>{{ sprawdzonych }}</strong>
-                    (lata {{ pierwszy_rok }}&ndash;{{ ostatni_rok }}).
+                    (lata {{ zakres_lat }}).
                     Żadne z nich nie narusza wymogów § 2 ust. 10.
                 </p>
             </div>

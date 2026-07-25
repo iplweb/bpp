@@ -11,6 +11,29 @@ from ewaluacja_metryki.views.mixins import (
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
 
+def opis_okna(okno: tuple[int, int | None]) -> str:
+    """Zakres lat okna raportu tak, jak ma go zobaczyć użytkownik.
+
+    Dwa warianty, bo :data:`ewaluacja_common.const.OKNO_EWALUACJI` ma dziś
+    górną granicę nieustaloną:
+
+    * okno domknięte → ``"2026–2029"`` (półpauza, jak w typografii zakresu);
+    * okno otwarte (``ostatni_rok`` to ``None``) → ``"od 2026"``.
+
+    Wariant otwarty musi mieć własne zdanie, a nie sklejkę z pustym miejscem:
+    „2026–None” byłoby wyciekiem implementacji, a „2026–” — sugestią, że
+    czegoś w szablonie brakuje. „Od 2026” jest po prostu prawdą.
+
+    Zwracamy półpauzę jako znak (U+2013), nie encję ``&ndash;``: encja
+    w automatycznie escape'owanym szablonie wyszłaby jako dosłowne
+    „&amp;ndash;”, a znak renderuje się tak samo i nie wymaga ``mark_safe``.
+    """
+    pierwszy_rok, ostatni_rok = okno
+    if ostatni_rok is None:
+        return f"od {pierwszy_rok}"
+    return f"{pierwszy_rok}–{ostatni_rok}"
+
+
 class PelneUprawnieniaEwaluacjiMixin(EwaluacjaRequiredMixin):
     """Dostęp wyłącznie dla redaktorów danych.
 
@@ -40,7 +63,7 @@ class RaportKompletnosciMixin(PelneUprawnieniaEwaluacjiMixin):
     nadpisania przez superusera parametrem ``?uczelnia=<pk>``).
     """
 
-    okno: tuple[int, int] = OKNO_EWALUACJI
+    okno: tuple[int, int | None] = OKNO_EWALUACJI
 
     @cached_property
     def uczelnia(self):
@@ -48,13 +71,17 @@ class RaportKompletnosciMixin(PelneUprawnieniaEwaluacjiMixin):
 
     def get_context_data(self, **kwargs):
         kontekst = super().get_context_data(**kwargs)
-        pierwszy_rok, ostatni_rok = self.okno
         # Świadomie NIE wystawiamy tu ``uczelnia`` — pod tą nazwą base.html
         # dostaje uczelnię z context processora i nadpisanie jej wartością
         # ``None`` (instalacja bez mapowania Site→Uczelnia) wywala szablon
         # bazowy przy ``uczelnia.skrot``.
-        kontekst["pierwszy_rok"] = pierwszy_rok
-        kontekst["ostatni_rok"] = ostatni_rok
+        #
+        # Do szablonu idzie GOTOWY opis zakresu, a nie para liczb: przy
+        # otwartej górnej granicy ``ostatni_rok`` jest ``None`` i każde
+        # sklejanie „{{ pierwszy_rok }}–{{ ostatni_rok }}” w szablonie
+        # wyrenderowałoby „2026–None”. Jedno miejsce decyduje o brzmieniu
+        # zakresu — patrz :func:`opis_okna`.
+        kontekst["zakres_lat"] = opis_okna(self.okno)
         return kontekst
 
 
