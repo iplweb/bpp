@@ -59,8 +59,15 @@ services:
   # Wszystkie serwisy aplikacyjne (appserver/celerybeat/workerserver*/denorm-queue)
   # uzywaja tego samego, lokalnie budowanego obrazu `bpp_testserver:dev` —
   # stage `testserver` z docker/bpp_base/Dockerfile. Obraz NIE jest publikowany
-  # do registry (brak go w docker-bake.hcl). Zmieniasz pyproject.toml/uv.lock?
-  # `docker compose build` rebuilduje obraz raz dla wszystkich serwisow.
+  # do registry (target w docker-bake.hcl ma output=type=docker i nie nalezy
+  # do zadnej grupy, wiec CI ani `make build-branch` go nie tkna).
+  #
+  # Zmieniasz pyproject.toml/uv.lock? Obraz trzeba PRZEBUDOWAC — `docker compose
+  # up` sam tego nie zrobi, a bind-mount ./src:/app/src podlozy swiezy kod pod
+  # stare zaleznosci w /opt/venv (objaw: ModuleNotFoundError). Przebuduj przez
+  # `make build` (ten cel buduje dokladnie ten obraz), `make build-testserver`
+  # albo `docker compose build` — kazdy wariant rebuilduje obraz raz dla
+  # wszystkich serwisow.
   appserver:
     image: bpp_testserver:dev
     build: &testserver-build

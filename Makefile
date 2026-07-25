@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: help clean distclean tests test-durations release tests-without-playwright tests-only-playwright docker destroy-test-databases cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-app-services build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers docker-images-on-ci check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux prepare-developer-machine-macos playwright-install
+.PHONY: help clean distclean tests test-durations release tests-without-playwright tests-only-playwright docker destroy-test-databases cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-app-services build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-testserver build-production build-production-force build-all check-not-pushing build-servers docker-images-on-ci check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux prepare-developer-machine-macos playwright-install
 
 .DEFAULT_GOAL := help
 
@@ -758,9 +758,11 @@ DOCKER_VERSION=202607.1398
 # - registry: use Docker Hub registry cache (for CI/CD)
 #
 # Usage:
-#   make build                              # parallel build with local cache
-#   DOCKER_CACHE_TYPE=registry make build   # parallel build with registry cache
-#   PUSH_TO_REGISTRY=true make build        # build and push to registry
+#   make build                                    # lokalny obraz dev (compose)
+#   make build-production                         # obrazy produkcyjne
+#   make build-all                                # jedno i drugie
+#   DOCKER_CACHE_TYPE=registry make build-production   # z cache w rejestrze
+#   PUSH_TO_REGISTRY=true make build-production        # build i push do rejestru
 DOCKER_CACHE_TYPE ?= local
 
 # Platform detection: use ARM64 on Apple Silicon, AMD64 otherwise
@@ -790,18 +792,66 @@ endif
 
 ##@ Docker build (buildx bake)
 
-# Main build target - parallel builds using docker buildx bake
-# This builds all images in parallel where possible:
-# - base: builds first
-# - appserver, workerserver, beatserver, authserver, denorm-queue: wait for base
-# Obraz dbservera (iplweb/bpp_dbserver) jest budowany w osobnym repo:
-# https://github.com/iplweb/bpp-dbserver
-build: ## Równoległy build wszystkich obrazów (buildx bake)
+# Podział celów build wynika z prostego rachunku: lokalnie uruchamiamy DOKŁADNIE
+# JEDEN budowany obraz. `docker-compose.yml` stawia wszystkie pięć serwisów
+# aplikacyjnych (appserver/celerybeat/workerserver/workerserver-status/
+# denorm-queue) na `bpp_testserver:dev`. Pozostałe obrazy, które umie zbudować
+# bake — base + appserver + workerserver + beatserver + authserver +
+# denorm-queue — nie są przez compose referowane ani razu; to artefakty pod
+# Docker Hub. Reszta stacka (dbserver, redis, html2docx, monitoring) jest
+# pullowana, nie budowana.
+#
+# Dlatego `make build` = obraz dev i tylko on. Publikowaniem zajmuje się
+# `make build-branch` (Docker Build Cloud) albo CI; do lokalnego sprawdzenia,
+# czy obrazy produkcyjne wciąż się budują, jest `build-production`, a stary
+# sens `make build` (wszystko naraz) siedzi pod `build-all`.
+#
+# Historia, dla potomnych: przez długi czas `bpp_testserver:dev` w ogóle nie
+# miał targetu w docker-bake.hcl. `make build` kończył się wtedy na zielono,
+# nie tknąwszy ani jednego obrazu, który developer faktycznie uruchamia —
+# odświeżał wyłącznie te, których lokalnie nie odpala nikt. Obraz starzał się
+# w nieskończoność, a compose bind-mountuje świeże `./src` na jego stary
+# `/opt/venv`, więc świeży kod spotykał wczorajsze zależności (objaw:
+# ModuleNotFoundError na pakiecie dodanym do pyproject.toml po zbudowaniu
+# obrazu). Cel `build`, który nie buduje tego, co uruchamiasz, jest gorszy niż
+# brak celu — nie zgłasza się, tylko cicho kłamie.
+
+# Push do rejestru dotyczy WYŁĄCZNIE obrazów produkcyjnych. `bpp_testserver:dev`
+# nie ma tagu w rejestrze (docker-bake.hcl wymusza output=type=docker), więc
+# `PUSH_TO_REGISTRY=true make build` nie pushnąłby niczego — cicho zbudowałby
+# obraz lokalny i wyszedł z zerem. Wolimy się wywalić z instrukcją.
+check-not-pushing:
+	@if [ "$(PUSH_TO_REGISTRY)" = "true" ]; then \
+	    echo >&2 "BŁĄD: PUSH_TO_REGISTRY=true nie ma sensu dla tego celu —"; \
+	    echo >&2 "      buduje wyłącznie lokalny obraz bpp_testserver:dev,"; \
+	    echo >&2 "      który nigdy nie trafia do rejestru."; \
+	    echo >&2 "Użyj: PUSH_TO_REGISTRY=true make build-production"; \
+	    exit 1; \
+	fi
+
+# Domyślny cel developerski: obraz, którym compose uruchamia stack lokalnie.
+build: check-not-pushing ## Zbuduj lokalny obraz dev (bpp_testserver:dev) — ten, którego używa docker-compose.yml
+	docker buildx bake $(BAKE_ARGS) testserver
+
+build-force: check-not-pushing ## Rebuild lokalnego obrazu dev, ignorując cache
+	docker buildx bake $(BAKE_ARGS) testserver --no-cache
+
+# Nazwa jawna — do użycia tam, gdzie „build" jest zbyt ogólne (dokumentacja,
+# komentarze w Dockerfile/compose).
+build-testserver: build ## Alias do `build` (jawna nazwa obrazu)
+
+# Obrazy produkcyjne: base + pięć serwisowych (grupa `default` w bake).
+# Lokalnie NIE są uruchamiane przez docker-compose.yml — to materiał na Docker
+# Hub. Sensowne zastosowania: sanity-check, że wciąż się budują, oraz
+# `PUSH_TO_REGISTRY=true make build-production`.
+build-production: ## Zbuduj obrazy produkcyjne (base + 5 serwisów) — lokalnie NIE uruchamiane
 	docker buildx bake $(BAKE_ARGS)
 
-# Force rebuild all images (ignores cache)
-build-force: ## Pełny rebuild ignorujący cache
+build-production-force: ## Rebuild obrazów produkcyjnych, ignorując cache
 	docker buildx bake $(BAKE_ARGS) --no-cache
+
+# Stary sens `make build` — zachowany, żeby nikomu nie zniknął odruch z palców.
+build-all: build build-production ## Wszystko naraz: obraz dev + obrazy produkcyjne (dawne `make build`)
 
 # Build only the base image
 build-base: ## Zbuduj tylko obraz `base`
@@ -830,8 +880,10 @@ build-authserver: ## Zbuduj tylko authserver
 build-denorm-queue: ## Zbuduj tylko denorm-queue
 	docker buildx bake $(BAKE_ARGS) denorm-queue
 
-# Alias for backward compatibility
-build-servers: build ## Alias do `build` (kompatybilność wsteczna)
+# Alias for backward compatibility — celowo wskazuje na `build-all`, nie na
+# `build`: historycznie oznaczał „zbuduj wszystkie serwery", a `build` zawęził
+# się do samego obrazu dev.
+build-servers: build-all ## Alias do `build-all` (kompatybilność wsteczna)
 
 # =============================================================================
 # Budowanie obrazów z brancha na Docker Build Cloud

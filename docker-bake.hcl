@@ -4,7 +4,9 @@
 # https://github.com/iplweb/bpp-dbserver
 #
 # Usage:
-#   make build                    # Local parallel build (default)
+#   make build                    # Tylko lokalny obraz dev (ten z compose)
+#   make build-production         # Obrazy produkcyjne (base + 5 serwisow)
+#   make build-all                # Jedno i drugie
 #   make build-base               # Build only base image
 #   docker buildx bake --print    # Show build plan without executing
 #
@@ -76,6 +78,15 @@ variable "COMPRESSION_LEVEL" {
 }
 
 # Build groups for different scenarios
+#
+# UWAGA: `testserver` celowo NIE nalezy do zadnej grupy. Grupa "default" to
+# obrazy produkcyjne — buduje ja `make build-production` oraz
+# `make build-branch` (bez nazw targetow, z PUSH=true, na Docker Build Cloud
+# pod linux/amd64). `bpp_testserver:dev` jest obrazem wylacznie lokalnym, wiec
+# w takim buildzie bylby czysta strata czasu i zasobow chmury.
+#
+# Lokalny obraz dev buduje sie przez nazwany target: `make build` woła
+# `bake testserver` (patrz Makefile, sekcja "Docker build (buildx bake)").
 group "default" {
   targets = ["appserver", "workerserver",
              "beatserver", "authserver", "denorm-queue"]
@@ -110,6 +121,40 @@ target "base" {
   # commit, a BUILD_CACHE_EPOCH okresowo odświeża wcześniejsze warstwy pakietów.
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry,compression=${COMPRESSION},compression-level=${COMPRESSION_LEVEL},force-compression=true"] : ["type=docker"]
+}
+
+# Lokalny obraz developerski — stage `testserver` z tego samego Dockerfile'a co
+# `base`. To obraz, ktorym docker-compose.yml uruchamia WSZYSTKIE serwisy
+# aplikacyjne (appserver/beatserver/workerserver/denorm-queue), czyli jedyny
+# obraz, ktory developer faktycznie odpala lokalnie.
+#
+# Dlaczego w ogole tu jest (kiedys swiadomie go nie bylo): dopoki target nie
+# istnial, `make build` odswiezal piec obrazow produkcyjnych i ani razu nie
+# dotykal tego jednego, ktory realnie chodzi na maszynie. Obraz cichutko
+# starzal sie w nieskonczonosc, a compose bind-mountuje swieze `./src` na jego
+# stary `/opt/venv` — wiec kod z dzisiaj spotykal zaleznosci sprzed tygodnia
+# (klasyczny objaw: ModuleNotFoundError na paczce dodanej do pyproject.toml
+# juz po zbudowaniu obrazu). `make build` bez tego targetu dawal falszywe
+# poczucie "mam swieze obrazy" — dzis `make build` buduje wlasnie ten obraz
+# i tylko jego, bo tylko jego docker-compose.yml uruchamia.
+#
+# `output` jest zahardkodowany na type=docker i celowo IGNORUJE zmienna PUSH:
+# ten obraz nie ma tagu w rejestrze i nigdy nie ma trafic na Docker Hub.
+target "testserver" {
+  dockerfile = "docker/bpp_base/Dockerfile"
+  target     = "testserver"
+  context    = "."
+  args = {
+    GIT_SHA           = GIT_SHA
+    BUILD_CACHE_EPOCH = BUILD_CACHE_EPOCH
+    BPP_BUILD_FLAVOR  = BPP_BUILD_FLAVOR
+    BPP_IMAGE_TAG     = BPP_IMAGE_TAG
+    BPP_BRANCH_TAG    = BPP_BRANCH_TAG
+  }
+  # Tag musi sie zgadzac z `image:` w docker-compose.yml.
+  tags      = ["bpp_testserver:dev"]
+  platforms = [PLATFORM]
+  output    = ["type=docker"]
 }
 
 # Dependent images - wait for base to complete via contexts dependency

@@ -403,8 +403,19 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
 ##############################################################################
 # TESTSERVER: lokalny obraz developerski (NIE jest publikowany do registry)
 #
-# Buduj: docker compose build (NIGDY przez docker buildx bake — ten target
-# swiadomie nie istnieje w docker-bake.hcl, dzieki czemu CI go nie pushuje).
+# Buduj: `make build` (ten cel buduje wlasnie ten obraz — i tylko jego, bo
+# tylko jego uruchamia docker-compose.yml), `make build-testserver` (alias
+# o jawnej nazwie) albo `docker compose build`. Obrazy produkcyjne stoja pod
+# `make build-production`, a jedno i drugie naraz pod `make build-all`.
+#
+# Target `testserver` istnieje w docker-bake.hcl, ale NIE nalezy do zadnej
+# grupy i ma `output` zahardkodowany na type=docker — wiec ani CI, ani
+# `make build-branch` (bake bez nazw targetow, PUSH=true) go nie zbuduje
+# i nie ma jak go pushnac. Wczesniej targetu nie bylo w ogole i to sie mscilo:
+# `make build` konczyl sie na zielono, nie tykajac jedynego obrazu, ktory
+# developer realnie uruchamia — a compose bind-mountuje swieze ./src na jego
+# stary /opt/venv, wiec swiezy kod spotykal wczorajsze zaleznosci.
+#
 # Cel: dev-friendly obraz dla appserver/celerybeat/worker/denorm-queue
 # uruchamianych przez docker-compose.yml. Source code mountowany przez
 # bind-mount, .venv zyje w /opt/venv (poza /app/src), wiec bind-mount nie
