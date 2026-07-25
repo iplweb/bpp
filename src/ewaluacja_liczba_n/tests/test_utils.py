@@ -9,13 +9,13 @@ from ewaluacja_liczba_n.models import (
     LiczbaNDlaUczelni,
 )
 from ewaluacja_liczba_n.utils import (
-    oblicz_liczby_n_dla_ewaluacji_2022_2025,
+    oblicz_liczby_n_dla_okresu,
     oblicz_srednia_liczbe_n_dla_dyscyplin,
 )
 
 
 @pytest.mark.parametrize("zaokraglaj", [True, False])
-def test_oblicz_liczby_n_dla_ewaluacji_2022_2025_prosty(
+def test_oblicz_liczby_n_dla_okresu_prosty(
     uczelnia,
     jednostka,
     autor_jan_nowak,
@@ -57,7 +57,7 @@ def test_oblicz_liczby_n_dla_ewaluacji_2022_2025_prosty(
     uczelnia.przydzielaj_1_slot_gdy_udzial_mniejszy = zaokraglaj
     uczelnia.save()
 
-    oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia)
+    oblicz_liczby_n_dla_okresu(uczelnia)
 
     assert (
         IloscUdzialowDlaAutoraZaRok.objects.get(autor=autor_jan_nowak).ilosc_udzialow
@@ -351,7 +351,7 @@ def test_autor_typu_z_ma_udzialy_zero(
     )
 
     # Uruchom obliczenia
-    oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia)
+    oblicz_liczby_n_dla_okresu(uczelnia)
 
     # Sprawdź że autor ma wpis w IloscUdzialowDlaAutoraZaRok
     assert IloscUdzialowDlaAutoraZaRok.objects.filter(autor=autor, rok=2025).exists()
@@ -396,15 +396,15 @@ def test_autor_typu_z_nie_wliczany_do_liczby_n(
         )
 
     # Uruchom obliczenia
-    oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia)
+    oblicz_liczby_n_dla_okresu(uczelnia)
 
     # Sprawdź że wszystkie 25 autorów ma wpisy
     assert IloscUdzialowDlaAutoraZaRok.objects.filter(rok=2025).count() == 25
 
     # Sprawdź że liczba N = 15 (tylko autorzy typu N)
-    from ewaluacja_liczba_n.utils import oblicz_liczbe_n_na_koniec_2025
+    from ewaluacja_liczba_n.utils import oblicz_liczbe_n_na_koniec_okresu
 
-    liczby_n_2025 = oblicz_liczbe_n_na_koniec_2025(uczelnia)
+    liczby_n_2025 = oblicz_liczbe_n_na_koniec_okresu(uczelnia)
     assert liczby_n_2025.get(dyscyplina1.id, 0) == Decimal("15.0")
 
 
@@ -440,7 +440,7 @@ def test_autor_zmienia_typ_z_n_na_z(
     )
 
     # Uruchom obliczenia
-    oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia)
+    oblicz_liczby_n_dla_okresu(uczelnia)
 
     # Sprawdź że w 2024 ma udziały > 0
     udzial_2024 = IloscUdzialowDlaAutoraZaRok.objects.get(autor=autor, rok=2024)

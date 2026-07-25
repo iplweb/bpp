@@ -4,6 +4,7 @@ from django.utils import timezone
 from bpp.models.autor import Autor
 from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
 from bpp.models.jednostka import Jednostka
+from ewaluacja_common.const import OKRES_DOMYSLNY
 
 
 class MetrykaAutora(models.Model):
@@ -112,11 +113,11 @@ class MetrykaAutora(models.Model):
     )
 
     rok_min = models.IntegerField(
-        default=2022, help_text="Początkowy rok okresu ewaluacji"
+        default=OKRES_DOMYSLNY[0], help_text="Początkowy rok okresu ewaluacji"
     )
 
     rok_max = models.IntegerField(
-        default=2025, help_text="Końcowy rok okresu ewaluacji"
+        default=OKRES_DOMYSLNY[1], help_text="Końcowy rok okresu ewaluacji"
     )
 
     rodzaj_autora = models.CharField(

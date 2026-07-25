@@ -2,6 +2,7 @@ from django.db.models import Avg, Count, Q
 from django.views.generic import ListView
 
 from bpp.models import Jednostka
+from ewaluacja_common.const import OKRES_DOMYSLNY
 from ewaluacja_common.models import Rodzaj_Autora
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
@@ -280,6 +281,10 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
             "dostepne_rodzaje_autorow": Rodzaj_Autora.objects.filter(
                 licz_sloty=True
             ).order_by("sort"),
+            # Wartości domyślne pól "Rok początkowy"/"Rok końcowy" w modalu
+            # generowania — z jednego źródła prawdy, nie zaszyte w HTML-u.
+            "domyslny_rok_min": OKRES_DOMYSLNY[0],
+            "domyslny_rok_max": OKRES_DOMYSLNY[1],
         }
 
         # Oblicz procent postępu

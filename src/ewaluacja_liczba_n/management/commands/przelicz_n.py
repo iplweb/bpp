@@ -1,7 +1,7 @@
 from django.core.management import BaseCommand
 
 from bpp.models import Uczelnia
-from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
+from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_okresu
 
 
 class Command(BaseCommand):
@@ -24,5 +24,5 @@ class Command(BaseCommand):
             uczelnia = Uczelnia.objects.get()
 
         self.stdout.write("Przeliczam liczby N dla uczelni...")
-        oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia=uczelnia)
+        oblicz_liczby_n_dla_okresu(uczelnia=uczelnia)
         self.stdout.write(self.style.SUCCESS("Przeliczono liczby N pomyślnie!"))

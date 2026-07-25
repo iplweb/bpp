@@ -6,7 +6,8 @@ from celery import chord, group, shared_task
 from django.utils import timezone
 
 from bpp.models import Uczelnia
-from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
+from ewaluacja_common.const import OKRES_DOMYSLNY
+from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_okresu
 
 from .models import StatusGenerowania
 from .utils import generuj_metryki
@@ -34,8 +35,8 @@ def _resolve_uczelnia(uczelnia_id):
 def oblicz_metryki_dla_autora_task(
     self,
     ilosc_udzialow_id,
-    rok_min=2022,
-    rok_max=2025,
+    rok_min=OKRES_DOMYSLNY[0],
+    rok_max=OKRES_DOMYSLNY[1],
     minimalny_pk=0.01,
     rodzaje_autora=None,
     uczelnia_id=None,
@@ -192,8 +193,8 @@ def finalizuj_generowanie_metryk(results, uczelnia_id=None):
 @shared_task(bind=True)
 def generuj_metryki_task_parallel(
     self,
-    rok_min=2022,
-    rok_max=2025,
+    rok_min=OKRES_DOMYSLNY[0],
+    rok_max=OKRES_DOMYSLNY[1],
     minimalny_pk=0.01,
     nadpisz=True,
     przelicz_liczbe_n=True,
@@ -237,7 +238,7 @@ def generuj_metryki_task_parallel(
             status.ostatni_komunikat = "Przeliczanie liczby N..."
             status.save()
 
-            oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia=uczelnia)
+            oblicz_liczby_n_dla_okresu(uczelnia=uczelnia)
             logger.info("Przeliczono liczby N pomyślnie")
 
         # Krok 2: Pobierz wszystkie IDs autorów-dyscyplin do przetworzenia
@@ -328,8 +329,8 @@ def generuj_metryki_task_parallel(
 @shared_task(bind=True)
 def generuj_metryki_task(
     self,
-    rok_min=2022,
-    rok_max=2025,
+    rok_min=OKRES_DOMYSLNY[0],
+    rok_max=OKRES_DOMYSLNY[1],
     minimalny_pk=0.01,
     nadpisz=True,
     przelicz_liczbe_n=True,
@@ -373,7 +374,7 @@ def generuj_metryki_task(
             status.ostatni_komunikat = "Przeliczanie liczby N..."
             status.save()
 
-            oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia=uczelnia)
+            oblicz_liczby_n_dla_okresu(uczelnia=uczelnia)
             logger.info("Przeliczono liczby N pomyślnie")
 
         # Krok 2: Oblicz metryki używając wspólnej funkcji

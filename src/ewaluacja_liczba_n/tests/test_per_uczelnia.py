@@ -75,7 +75,7 @@ def test_pipeline_izolacja_dwie_uczelnie(db):
         IloscUdzialowDlaAutoraZaRok,
         LiczbaNDlaUczelni,
     )
-    from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
+    from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_okresu
 
     u1 = baker.make(Uczelnia, skrot="U1", nazwa="U1")
     u2 = baker.make(Uczelnia, skrot="U2", nazwa="U2")
@@ -88,8 +88,8 @@ def test_pipeline_izolacja_dwie_uczelnie(db):
         for rok in (2022, 2023, 2024, 2025):
             _make_autor_dyscyplina(autor, rok, dyscyplina)
 
-    oblicz_liczby_n_dla_ewaluacji_2022_2025(u1)
-    oblicz_liczby_n_dla_ewaluacji_2022_2025(u2)  # second run must NOT wipe u1
+    oblicz_liczby_n_dla_okresu(u1)
+    oblicz_liczby_n_dla_okresu(u2)  # second run must NOT wipe u1
 
     assert IloscUdzialowDlaAutoraZaRok.objects.filter(uczelnia=u1, autor=a1).exists()
     assert IloscUdzialowDlaAutoraZaRok.objects.filter(uczelnia=u2, autor=a2).exists()
@@ -108,7 +108,7 @@ def test_pipeline_pomija_nieprzypisanych(db):
     from bpp.models import Autor, Jednostka, Uczelnia
     from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
     from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok
-    from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
+    from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_okresu
 
     u1 = baker.make(Uczelnia, skrot="U1", nazwa="U1")
     obca = baker.make(Jednostka, uczelnia=u1, skupia_pracownikow=False)
@@ -118,7 +118,7 @@ def test_pipeline_pomija_nieprzypisanych(db):
     for autor in (a_null, a_obca):
         _make_autor_dyscyplina(autor, 2022, dyscyplina)
 
-    oblicz_liczby_n_dla_ewaluacji_2022_2025(u1)
+    oblicz_liczby_n_dla_okresu(u1)
 
     assert not IloscUdzialowDlaAutoraZaRok.objects.filter(autor=a_null).exists()
     assert not IloscUdzialowDlaAutoraZaRok.objects.filter(autor=a_obca).exists()

@@ -13,11 +13,14 @@ def test_get_lista_prac_zakres_lat(
     denorms,
     typy_odpowiedzialnosci,
     charaktery_formalne,
+    rodzaj_autora_n,
 ):
-    """Sprawdza, czy lista prac odrzuca prace spoza zakresu 2022-2026"""
+    """Sprawdza, czy lista prac odrzuca prace spoza okresu ewaluacji 2022-2025"""
     from bpp.models import Charakter_Formalny
 
-    # Zrob dane testowe od 2015 do 2026
+    # Dane testowe od 2015 do 2026 — z zapasem po OBU stronach okresu
+    # ewaluacji, żeby test wyłapał zjechanie zarówno dolnej, jak i górnej
+    # granicy zakresu.
 
     LiczbaNDlaUczelni.objects.create(
         dyscyplina_naukowa=dyscyplina1, uczelnia=uczelnia, liczba_n=100
@@ -29,8 +32,14 @@ def test_get_lista_prac_zakres_lat(
     ).first()
 
     for ROK in range(2015, 2027):
+        # rodzaj_autora jest OBOWIĄZKOWY: bez rodzaju z ``licz_sloty=True``
+        # ``SlotMixin.autorzy_z_dyscypliny`` pomija autora, przez co rekord
+        # nie trafia do ``Cache_Punktacja_Autora`` i test nie ma czego badać.
         Autor_Dyscyplina.objects.create(
-            autor=autor_jan_nowak, rok=ROK, dyscyplina_naukowa=dyscyplina1
+            autor=autor_jan_nowak,
+            rok=ROK,
+            dyscyplina_naukowa=dyscyplina1,
+            rodzaj_autora=rodzaj_autora_n,
         )
 
         # Create IloscUdzialowDlaAutoraZaRok only for years 2022-2026
@@ -46,6 +55,10 @@ def test_get_lista_prac_zakres_lat(
         wc: Wydawnictwo_Ciagle = baker.make(
             Wydawnictwo_Ciagle,
             rok=ROK,
+            # 5 pkt wpada w próg 3 kalkulatora slotów, ale DOPIERO od 2017 r.
+            # (patrz ``bpp.models.sloty.core._dopasuj_kalkulator``); lata
+            # 2015-2016 nie dają się przeliczyć i cache ich nie zawiera —
+            # to nie szkodzi, bo i tak są poza okresem ewaluacji.
             punkty_kbn=5,
             tytul_oryginalny=f"Test 123 - praca za rok {ROK}",
             charakter_formalny=charakter_formalny,
@@ -54,19 +67,17 @@ def test_get_lista_prac_zakres_lat(
 
     denorms.flush()
 
-    # Debug: Check if cache entries were created
+    # Bez wpisów w cache test nie badałby niczego — sprawdzamy to JAWNIE,
+    # zamiast (jak dawniej) po cichu robić ``pytest.skip``, przez co asercja
+    # niżej nigdy się nie wykonywała.
     from bpp.models import Cache_Punktacja_Autora_Query
 
-    cache_entries = Cache_Punktacja_Autora_Query.objects.filter(
+    assert Cache_Punktacja_Autora_Query.objects.filter(
         dyscyplina__nazwa=dyscyplina1.nazwa, autor=autor_jan_nowak
-    )
-    # If no cache entries, the test cannot pass
-    if cache_entries.count() == 0:
-        # The cache was not properly populated, skip this test for now
-        import pytest
+    ).exists(), "Cache_Punktacja_Autora_Query pusty — test nie ma czego sprawdzać"
 
-        pytest.skip(
-            "Cache_Punktacja_Autora_Query not populated - this appears to be a test infrastructure issue"
-        )
-
-    assert (len(list(get_lista_prac(dyscyplina1.nazwa)))) == 5
+    # Asercja na KONKRETNYCH latach, nie na samej ich liczbie: gdyby zakres
+    # zjechał o rok w którąkolwiek stronę (np. 2023-2026), sama liczba prac
+    # nadal wynosiłaby 4 i test by tego nie zauważył.
+    lata = sorted(praca.rok for praca in get_lista_prac(dyscyplina1.nazwa))
+    assert lata == [2022, 2023, 2024, 2025]
