@@ -125,7 +125,7 @@ def zbuduj_payload(monkeypatch):
     return lambda data: rollbar._build_payload(data)["data"]
 
 
-SEKRET = "AUTHCODE_SUPERSECRET_XYZ"
+SEKRET = "wartosc-ktora-ma-zniknac-z-payloadu"
 LINIA_KODU = "autor_str = str(self.autor) if self.autor_id else '???'"
 
 
