@@ -481,6 +481,7 @@ INSTALLED_APPS = [
     "ewaluacja_optymalizacja",
     "ewaluacja_optymalizuj_publikacje",
     "ewaluacja_dwudyscyplinowcy",
+    "kompletnosc_polon",
     # UWAGA: NIE USUWAĆ aplikacji test_bpp z INSTALLED_APPS!
     #
     # Mimo nazwy sugerującej "tylko do testów", test_bpp dostarcza realnych

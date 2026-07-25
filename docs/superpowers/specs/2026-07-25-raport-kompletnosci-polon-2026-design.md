@@ -118,8 +118,19 @@ krytycznych.
 
 ### 3. Rejestr reguł — treść
 
-Warunki zapisane od strony modelu konkretnego; `a__` oznacza prefiks
-through-modelu (`Wydawnictwo_Ciagle_Autor` itd.).
+**Warunki zapisane są od strony through-modelu** (`Wydawnictwo_Ciagle_Autor`,
+`Wydawnictwo_Zwarte_Autor`, `Patent_Autor`): pola powiązania autora bez prefiksu
+(`dyscyplina_naukowa`, `przypieta`, `upowaznienie_pbn`, `autor__orcid`), pola
+publikacji z prefiksem `rekord__`.
+
+Pierwsza wersja tego projektu zapisywała warunki odwrotnie — od strony modelu
+konkretnego, z `a__` jako skrótem na through-model. Było to **błędne
+semantycznie**: `Q(autorzy_set__upowaznienie_pbn=False)` na querysecie
+`Wydawnictwo_Ciagle` znaczy „istnieje *jakiś* autor bez upoważnienia", a nie
+„*ten* autor go nie ma", a przy `annotate()` zwielokrotniałoby wiersze przez
+JOIN. Ziarno raportu to jedna para (autor, rekord) — czyli dokładnie jeden
+wiersz through-modelu. W tabelach niżej `a__` czytaj jako „pole powiązania
+autora, zapisywane bez prefiksu".
 
 #### Artykuł naukowy (§ 2 ust. 10 pkt 4) — `Wydawnictwo_Ciagle`
 
