@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Kompletność danych POL-on: {{ autor }}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url 'kompletnosc_polon:lista' %}">Kompletność danych POL-on</a></li>
+    <li class="current">{{ autor }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="columns">
+
+        <h1><i class="fi-torso"></i> {{ autor }}</h1>
+
+        <div class="callout secondary">
+            <p>
+                <i class="fi-calendar"></i>
+                Braki w danych wymaganych przez § 2 ust. 10 rozporządzenia
+                (Dz. U. 2026 poz. 811), lata
+                <strong>{{ pierwszy_rok }}&ndash;{{ ostatni_rok }}</strong>.
+                Liczba sprawdzonych powiązań tego autora:
+                <strong>{{ sprawdzonych }}</strong>.
+            </p>
+            <p>
+                <a href="{% url 'kompletnosc_polon:lista' %}" class="button secondary">
+                    <i class="fi-arrow-left"></i> Powrót do zestawienia
+                </a>
+                <a href="{{ autor.get_absolute_url }}" class="button success"
+                   target="_blank">
+                    <i class="fi-torso"></i> Profil autora w BPP
+                </a>
+            </p>
+        </div>
+
+        {% if not pozycje %}
+            <div class="callout success">
+                <h4><i class="fi-check"></i> Brak zastrzeżeń</h4>
+                <p>
+                    Sprawdzono powiązań autor&ndash;rekord:
+                    <strong>{{ sprawdzonych }}</strong>
+                    (lata {{ pierwszy_rok }}&ndash;{{ ostatni_rok }}).
+                    Żadne z nich nie narusza wymogów § 2 ust. 10.
+                </p>
+            </div>
+        {% endif %}
+
+        {% for pozycja in pozycje %}
+            <div class="callout">
+                <h4>
+                    {{ pozycja.rekord.tytul_oryginalny|safe }}
+                </h4>
+                <p>
+                    <span class="label">{{ pozycja.typ }}</span>
+                    <span class="label secondary">rok {{ pozycja.rekord.rok }}</span>
+                    {% if pozycja.dyscyplina %}
+                        <span class="label secondary">{{ pozycja.dyscyplina.nazwa }}</span>
+                    {% else %}
+                        <span class="label alert">bez dyscypliny</span>
+                    {% endif %}
+                    {% if pozycja.jednostka %}
+                        <span class="label secondary">{{ pozycja.jednostka.skrot|default:pozycja.jednostka.nazwa }}</span>
+                    {% endif %}
+                    <a href="{{ pozycja.url_admina }}" class="button tiny"
+                       target="_blank" title="Otwórz formularz edycji rekordu">
+                        <i class="fi-pencil"></i> Popraw rekord
+                    </a>
+                </p>
+
+                {# Braki WYMAGANE — bezwarunkowy wymóg rozporządzenia. #}
+                {% if pozycja.wymagane %}
+                    <h5><i class="fi-alert"></i> Braki wymagane</h5>
+                    <table class="hover stack kompletnosc-polon-braki-wymagane">
+                        <tbody>
+                            {% for regula in pozycja.wymagane %}
+                                <tr>
+                                    <td>
+                                        <span class="label alert">{{ regula.kod }}</span>
+                                    </td>
+                                    <td>{{ regula.opis }}</td>
+                                    <td><em>{{ regula.paragraf }}</em></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+
+                {# Braki WARUNKOWE — „jeżeli posiada”, „jeżeli są znane”. #}
+                {# Wizualnie stonowane: nie wolno im wyglądać na równie pilne. #}
+                {% if pozycja.warunkowe %}
+                    <h5><i class="fi-info"></i> Braki warunkowe (nieobowiązkowe)</h5>
+                    <p class="text-muted">
+                        Rozporządzenie żąda tych danych warunkowo &mdash; „jeżeli
+                        posiada”, „jeżeli są znane”. Brak nie jest błędem.
+                    </p>
+                    <table class="hover stack kompletnosc-polon-braki-warunkowe">
+                        <tbody>
+                            {% for regula in pozycja.warunkowe %}
+                                <tr>
+                                    <td>
+                                        <span class="label secondary">{{ regula.kod }}</span>
+                                    </td>
+                                    <td>{{ regula.opis }}</td>
+                                    <td><em>{{ regula.paragraf }}</em></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+            </div>
+        {% endfor %}
+
+        {# Rekordy, których raport NIE sprawdził — muszą być widoczne. #}
+        {% if nierozpoznane %}
+            <div class="callout warning">
+                <h4><i class="fi-alert"></i> Nierozpoznany typ osiągnięcia</h4>
+                <p>
+                    Poniższe wydawnictwa zwarte nie mają ustawionego
+                    <strong>charakteru dla slotów</strong>, więc nie wiadomo, czy
+                    są monografią (§ 2 ust. 10 pkt 5), czy rozdziałem (pkt 6).
+                    <strong>Raport ich nie sprawdził</strong> &mdash; poprawka
+                    polega na uzupełnieniu charakteru formalnego.
+                </p>
+                <table class="hover stack">
+                    <thead>
+                        <tr>
+                            <th>Rekord</th>
+                            <th>Charakter formalny</th>
+                            <th class="text-center">Akcje</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pozycja in nierozpoznane %}
+                            <tr>
+                                <td>{{ pozycja.rekord.tytul_oryginalny|safe }}</td>
+                                <td>
+                                    {% if pozycja.charakter_formalny %}
+                                        {{ pozycja.charakter_formalny.nazwa }}
+                                    {% else %}
+                                        <span class="label alert">brak</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <a href="{{ pozycja.url_admina }}" class="button tiny"
+                                       target="_blank" title="Otwórz formularz edycji rekordu">
+                                        <i class="fi-pencil"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}

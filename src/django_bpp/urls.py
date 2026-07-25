@@ -113,6 +113,12 @@ urlpatterns = (
             ),
         ),
         path(
+            "kompletnosc_polon/",
+            include(
+                "kompletnosc_polon.urls",
+            ),
+        ),
+        path(
             "ewaluacja_optymalizacja/",
             include(
                 "ewaluacja_optymalizacja.urls",
