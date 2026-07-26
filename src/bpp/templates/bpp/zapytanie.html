@@ -507,9 +507,10 @@
                     {# i eksport zawsze wygladaly identycznie. #}
                     {% include "multiseek/report-body-table.html" with object_list=results report_type=postac sumy=sumy export_mode=False hide_chrome=True pokaz_edycje=request.user.is_staff page_obj=results start_index=results.start_index|add:"-1" %}
                 {% elif postac == "bibtex" %}
-                    {# Wlasny partial multiseeka (<pre> + przycisk kopiowania) — #}
-                    {# nie ma chrome do wygaszenia (brak "hide_chrome"/"pokaz_edycje"). #}
-                    {% include "multiseek/report-body-bibtex.html" with object_list=results %}
+                    {# Wlasny partial multiseeka (<pre> + przycisk kopiowania). #}
+                    {# hide_chrome chowa przycisk "Skopiuj" — jego JS jest tylko #}
+                    {# inline w multiseekowym common-results.html, tu byłby martwy. #}
+                    {% include "multiseek/report-body-bibtex.html" with object_list=results hide_chrome=True %}
                 {% else %}
                     {# tylko "list" dociera tutaj — rekordy/tabela/bibtex maja #}
                     {# wlasne galezie wyzej. #}

@@ -165,6 +165,27 @@ def test_postac_bibtex_renderuje_wlasny_partial(
 
 
 @pytest.mark.django_db
+def test_postac_bibtex_nie_pokazuje_przycisku_kopiowania(
+    zalogowany_redaktor, wydawnictwo_ciagle, denorms
+):
+    """Przycisk "Skopiuj" ma handler JS TYLKO w multiseeku (common-results.html)
+    — na /zapytanie/ byłby martwy (klik bez efektu), więc go chowamy.
+    Tekst BibTeX zostaje w pełni obecny i zaznaczalny/kopiowalny ręcznie.
+    """
+    denorms.flush()
+    res = zalogowany_redaktor.get(
+        reverse("bpp:zapytanie"),
+        {
+            "model": "rekord",
+            "query": f"rok = {wydawnictwo_ciagle.rok}",
+            "postac": "bibtex",
+        },
+    )
+    assert b"multiseek-bibtex-container" in res.content
+    assert b'data-action="copy-bibtex"' not in res.content
+
+
+@pytest.mark.django_db
 def test_multiseek_nadal_pokazuje_widget_usuwania(client, wydawnictwo_ciagle, denorms):
     """Dowód neutralności flagi hide_chrome: multiseek jej nie przekazuje."""
     denorms.flush()
@@ -177,6 +198,24 @@ def test_multiseek_nadal_pokazuje_widget_usuwania(client, wydawnictwo_ciagle, de
         {"object_list": Rekord.objects.all(), "export_mode": False},
     )
     assert "data-remove-result" in html
+
+
+@pytest.mark.django_db
+def test_multiseek_bibtex_nadal_pokazuje_przycisk_kopiowania(
+    client, wydawnictwo_ciagle, denorms
+):
+    """Dowód neutralności flagi hide_chrome dla partiala BibTeX: multiseek
+    jej nie przekazuje, więc przycisk "Skopiuj" mu zostaje."""
+    denorms.flush()
+    from django.template.loader import render_to_string
+
+    from bpp.models import Rekord
+
+    html = render_to_string(
+        "multiseek/report-body-bibtex.html",
+        {"object_list": Rekord.objects.all()},
+    )
+    assert 'data-action="copy-bibtex"' in html
 
 
 @pytest.mark.django_db
