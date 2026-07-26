@@ -22,10 +22,10 @@
     <div class="formdefaults-wrap">{% bpp_formdefaults_button form %}</div>
     {% crispy form %}
 
-    {# „Przepnij wszystkie prace" to opcja groźna na dojrzałej bazie — przy #}
-    {# ZAZNACZANIU wymuszamy świadome potwierdzenie (confirm). Anulowanie #}
-    {# cofa zaznaczenie. Vanilla JS na DOMContentLoaded (nie zależy od #}
-    {# kolejności $(document).ready). #}
+    {# Opcje z szuflady („przepnij wszystkie prace", „nadpisuj daty #}
+    {# zatrudnienia") są groźne — przy ZAZNACZANIU wymuszamy świadome #}
+    {# potwierdzenie (confirm). Anulowanie cofa zaznaczenie. Vanilla JS na #}
+    {# DOMContentLoaded (nie zależy od kolejności $(document).ready). #}
     <script>
     document.addEventListener('DOMContentLoaded', function () {
         var cb = document.getElementById('id_przepnij_wszystkie_prace');
@@ -43,6 +43,24 @@
             );
             if (!ok) { cb.checked = false; }
         });
+        var cbDaty = document.getElementById('id_nadpisuj_daty_zatrudnienia');
+        if (cbDaty) {
+            cbDaty.addEventListener('change', function () {
+                if (!cbDaty.checked) { return; }
+                var ok = confirm(
+                    "UWAGA — NADPISYWANIE DAT ZATRUDNIENIA\n\n" +
+                    "Zaznaczasz opcję, która przy zapisie osób NADPISZE " +
+                    "istniejące daty rozpoczęcia/zakończenia pracy " +
+                    "wartościami z pliku (dla osób obecnych w pliku).\n\n" +
+                    "Ręcznie ustawione daty w bazie zostaną UTRACONE tam, " +
+                    "gdzie plik niesie inną datę.\n\n" +
+                    "Użyj tylko, gdy plik jest źródłem prawdy o datach " +
+                    "(np. korekta po imporcie bez dat).\n\n" +
+                    "Czy na pewno wiesz, co robisz?"
+                );
+                if (!ok) { cbDaty.checked = false; }
+            });
+        }
     });
     </script>
 {% endblock %}

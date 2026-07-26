@@ -1,0 +1,13 @@
+{# Ostrzeżenie finalizacji: flaga „nadpisuj daty zatrudnienia" — zapis #}
+{# osób NADPISZE istniejące daty wartościami z pliku (spec nadpisywania #}
+{# dat §3.5). Liczba = realne nadpisania (obie strony niepuste i różne). #}
+<div class="callout alert">
+    <p>
+        <span class="fi-alert"></span>
+        <strong>Włączono nadpisywanie dat zatrudnienia.</strong>
+        Wiersze z datami różnymi od bazy:
+        <strong>{{ liczba_nadpisan_dat }}</strong> — ich daty rozpoczęcia
+        / zakończenia pracy zostaną <strong>NADPISANE</strong>
+        wartościami z pliku. Ręcznie ustawione daty zostaną utracone.
+    </p>
+</div>
