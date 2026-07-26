@@ -85,6 +85,29 @@ def postacie_dla_modelu(model_key):
     return POSTACIE_AUTOR if model_key == MODEL_AUTOR else POSTACIE_REKORD
 
 
+def eksport_formaty(model_key, postac):
+    """Formaty eksportu sensowne dla danego modelu i postaci wyniku.
+
+    Model "autor" NIE zwraca tu żadnego formatu: ZapytanieExportView dziś
+    odbija KAŻDY format dla model=autor 400-ką ("Eksport autorów zostanie
+    dodany w kolejnym kroku" — patrz zapytanie_export.py), więc pusta lista
+    zamiast pary csv/xlsx chroni pasek przed martwymi linkami. Eksport
+    autorów wraca w kolejnym zadaniu planu razem z tą tuplą.
+    """
+    if model_key == MODEL_AUTOR:
+        return ()
+    formaty = [("csv", "CSV"), ("xlsx", "XLSX")]
+    if postac == POSTAC_PIVOT:
+        # Pivot nie ma jeszcze partiala dokumentu (patrz komentarz przy
+        # POSTAC_PIVOT) — html/docx/bib zostają na później, dane (csv/xlsx)
+        # już mają sens, bo eksport danych nie przechodzi przez partial.
+        return tuple(formaty)
+    formaty += [("html", "HTML"), ("docx", "DOCX")]
+    if postac == "bibtex":
+        formaty.append(("bib", "BibTeX (.bib)"))
+    return tuple(formaty)
+
+
 def parse_postac(GET, model_key):
     """Postać wyniku z GET-a, z cichą degradacją do domyślnej.
 
@@ -520,6 +543,7 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
             postac=postac,
             postacie=postacie_dla_modelu(model_key),
             sumy=sumy,
+            eksport_formaty=eksport_formaty(model_key, postac),
         )
         return self.render_to_response(context)
 

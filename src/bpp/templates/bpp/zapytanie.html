@@ -208,6 +208,10 @@
         }
         .zapytanie-toolbar .button { margin-right: 0.4rem; }
 
+        /* Pasek eksportu wynikow (CSV/XLSX/HTML/DOCX/BibTeX) */
+        .zapytanie-eksport-toolbar { margin-top: 0.5rem; }
+        .zapytanie-eksport-toolbar .button { margin-right: 0.4rem; }
+
         /* Rozbicie na zadanie — drzewo licznosci galezi (djangoql explain) */
         #zapytanie-explain-panel[hidden] { display: none; }
         #zapytanie-explain-panel { margin-top: 1.2rem; }
@@ -460,6 +464,23 @@
                 <p><em>Zapytanie:</em> <code>{{ query }}</code> na modelu <strong>{{ model_key }}</strong></p>
             {% endif %}
             {% if results %}
+                {% if eksport_formaty %}
+                    {# Bez tego "if": model=autor (eksport_formaty puste, patrz #}
+                    {# zapytanie.py) pokazywalby "Eksport:" bez zadnego linku. #}
+                    <p class="zapytanie-eksport-toolbar">
+                        <strong>
+                            <span class="fi-download" aria-hidden="true"></span>
+                            Eksport:
+                        </strong>
+                        {% for fmt, label in eksport_formaty %}
+                            <a class="button tiny secondary"
+                               href="{% url 'bpp:zapytanie_eksport' export_format=fmt %}?model={{ model_key|urlencode }}&amp;query={{ query|urlencode }}&amp;postac={{ postac|urlencode }}">
+                                <span class="fi-download" aria-hidden="true"></span>
+                                {{ label }}
+                            </a>
+                        {% endfor %}
+                    </p>
+                {% endif %}
                 {% include "bpp/_zapytanie_pager.html" %}
                 {% if postac == "rekordy" %}
                     {# dotychczasowa tabela redakcyjna — bez zmian #}

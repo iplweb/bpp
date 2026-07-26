@@ -235,6 +235,120 @@ def test_pager_zachowuje_postac_na_kolejnej_stronie(zalogowany_redaktor, denorms
 
 
 @pytest.mark.django_db
+def test_pasek_eksportu_ma_link_do_csv(
+    zalogowany_redaktor, wydawnictwo_ciagle, denorms
+):
+    denorms.flush()
+    res = zalogowany_redaktor.get(
+        reverse("bpp:zapytanie"),
+        {"model": "rekord", "query": f"rok = {wydawnictwo_ciagle.rok}"},
+    )
+    assert b"/zapytanie/eksport/csv/" in res.content
+
+
+@pytest.mark.django_db
+def test_pasek_eksportu_bez_bibtexa_przy_liscie(
+    zalogowany_redaktor, wydawnictwo_ciagle, denorms
+):
+    denorms.flush()
+    res = zalogowany_redaktor.get(
+        reverse("bpp:zapytanie"),
+        {
+            "model": "rekord",
+            "query": f"rok = {wydawnictwo_ciagle.rok}",
+            "postac": "list",
+        },
+    )
+    assert b"/zapytanie/eksport/bib/" not in res.content
+
+
+@pytest.mark.django_db
+def test_pasek_eksportu_ma_bibtexa_przy_postaci_bibtex(
+    zalogowany_redaktor, wydawnictwo_ciagle, denorms
+):
+    denorms.flush()
+    res = zalogowany_redaktor.get(
+        reverse("bpp:zapytanie"),
+        {
+            "model": "rekord",
+            "query": f"rok = {wydawnictwo_ciagle.rok}",
+            "postac": "bibtex",
+        },
+    )
+    assert b"/zapytanie/eksport/bib/" in res.content
+
+
+@pytest.mark.django_db
+def test_pasek_eksportu_koduje_query_ze_znakami_specjalnymi(
+    zalogowany_redaktor, wydawnictwo_ciagle, denorms
+):
+    """Cudzyslow i spacja w zapytaniu musza przetrwac podroz przez URL —
+    bez |urlencode link eksportu prowadziłby do INNEGO zapytania niz to,
+    ktore user widzi na ekranie (albo do bledu 400 po stronie serwera)."""
+    denorms.flush()
+    # "Wydawnictwo" musi pasowac do tytulu z fixture (inaczej 0 wynikow —
+    # pasek eksportu w ogole by sie nie wyrenderowal, a test nic by nie
+    # dowodzil).
+    query = f'tytul_oryginalny ~ "Wydawnictwo" and rok = {wydawnictwo_ciagle.rok}'
+    res = zalogowany_redaktor.get(
+        reverse("bpp:zapytanie"),
+        {"model": "rekord", "query": query},
+    )
+    from django.template.defaultfilters import urlencode as tpl_urlencode
+
+    oczekiwany_fragment = f"query={tpl_urlencode(query)}".encode()
+    assert oczekiwany_fragment in res.content
+
+
+@pytest.mark.django_db
+def test_pasek_eksportu_przenosi_postac(
+    zalogowany_redaktor, wydawnictwo_ciagle, denorms
+):
+    """Link eksportu MUSI przenosic wybrana postac — inaczej eksport CSV z
+    postaci "table" cichuteczko wyeksportowalby zupelnie inna postac."""
+    denorms.flush()
+    res = zalogowany_redaktor.get(
+        reverse("bpp:zapytanie"),
+        {
+            "model": "rekord",
+            "query": f"rok = {wydawnictwo_ciagle.rok}",
+            "postac": "table",
+        },
+    )
+    assert b"postac=table" in res.content
+    assert b"/zapytanie/eksport/csv/?model=rekord" in res.content
+
+
+@pytest.mark.django_db
+def test_pasek_eksportu_nieobecny_przy_zerowych_wynikach(zalogowany_redaktor, denorms):
+    denorms.flush()
+    res = zalogowany_redaktor.get(
+        reverse("bpp:zapytanie"),
+        {"model": "rekord", "query": "rok = 1900"},
+    )
+    assert res.status_code == 200
+    # Sam string klasy "zapytanie-eksport-toolbar" wystepuje TAKZE w regule
+    # CSS w <style> (renderowanej zawsze) — sprawdzamy wiec konkretny znacznik
+    # otwierajacy <p>, nie samo wystapienie nazwy klasy w tresci strony.
+    assert b'<p class="zapytanie-eksport-toolbar">' not in res.content
+
+
+@pytest.mark.django_db
+def test_pasek_eksportu_nieobecny_dla_autora(
+    zalogowany_redaktor, autor_jan_nowak, denorms
+):
+    """Eksport autorow dziś 400-uje KAŻDY format (patrz zapytanie_export.py)
+    — pasek dla model=autor nie ma prawa proponowac martwych linkow."""
+    denorms.flush()
+    res = zalogowany_redaktor.get(
+        reverse("bpp:zapytanie"),
+        {"model": "autor", "query": 'nazwisko = "Nowak"'},
+    )
+    assert res.status_code == 200
+    assert b'<p class="zapytanie-eksport-toolbar">' not in res.content
+
+
+@pytest.mark.django_db
 def test_tabela_suma_tylko_na_ostatniej_stronie(zalogowany_redaktor, denorms):
     """Regresja na `page_obj=results` w include'u tabeli: bez tego stopka
     "Suma:" renderowałaby się na KAŻDEJ stronie, nie tylko ostatniej."""
