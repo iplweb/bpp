@@ -51,6 +51,25 @@ Aby uruchomić procedure importu danych, wystarczy dodać plik do systemu przy p
     rozpocznie się automatycznie.
 
 
+## Nadpisywanie dat zatrudnienia wartościami z pliku
+
+Domyślnie import **nigdy nie nadpisuje** istniejących dat zatrudnienia —
+wypełnia tylko puste („data od"/„data do" bez wartości w bazie), a
+różnice pokazuje wyłącznie w podglądzie. Jeśli daty w bazie są błędne
+(np. poprzedni import pliku bez dat ostemplował wszystkich datą importu),
+zaznacz w szufladzie „Opcje zaawansowane" opcję **Nadpisuj daty
+zatrudnienia (od/do) wartościami z pliku**:
+
+- nadpisywane są tylko daty osób obecnych w pliku, tam gdzie plik niesie
+  datę różną od bazy;
+- puste komórki pliku niczego nie kasują;
+- przy zaznaczaniu opcji oraz przed końcowym zapisem system prosi o
+  potwierdzenie i pokazuje liczbę wierszy, których daty zostaną
+  nadpisane;
+- nadpisanie, które spowodowałoby nałożenie się dwóch okresów
+  zatrudnienia w tej samej jednostce, jest odrzucane per-wiersz z
+  czytelnym błędem.
+
 ## Odpinanie nieaktualnych miejsc pracy
 
 Po zaimportowaniu listy pracowników system prezentuje raport z dokonanych zmian.
