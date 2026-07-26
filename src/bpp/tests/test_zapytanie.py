@@ -639,6 +639,42 @@ def test_zapytanie_template_loads_query_ux_assets(superuser_client):
     assert 'id="zapytanie-explain-panel"' in html
 
 
+@pytest.mark.django_db
+def test_wykonaj_zapytanie_zwraca_queryset(wydawnictwo_ciagle, denorms):
+    from bpp.views.zapytanie import wykonaj_zapytanie
+
+    denorms.flush()
+    wynik = wykonaj_zapytanie("rekord", f"rok = {wydawnictwo_ciagle.rok}")
+
+    assert wynik.error is None
+    assert wynik.queryset.count() == 1
+
+
+@pytest.mark.django_db
+def test_wykonaj_zapytanie_zwraca_blad_z_lokalizacja():
+    from bpp.views.zapytanie import wykonaj_zapytanie
+
+    wynik = wykonaj_zapytanie("rekord", "rok ===")
+
+    assert wynik.queryset is None
+    assert wynik.error
+    assert wynik.error_location["line"] >= 1
+
+
+@pytest.mark.django_db
+def test_wykonaj_zapytanie_dedupuje_po_relacji_do_wielu(
+    wydawnictwo_ciagle, autor_jan_nowak, jednostka, denorms
+):
+    """Filtr po autorach mnoży wiersze rekordu — distinct() musi je zwinąć."""
+    from bpp.views.zapytanie import wykonaj_zapytanie
+
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka)
+    denorms.flush()
+    wynik = wykonaj_zapytanie("rekord", 'autorzy.autor.nazwisko = "Nowak"')
+
+    assert wynik.queryset.count() == 1
+
+
 def test_admin_djangoql_highlight_loaded():
     """Adminy z BppDjangoQLSearchMixin ładują nakładkę podświetlania + skrypt
     falki błędu (przez własne ``media``, nie wbudowane ``djangoql_highlight``)."""

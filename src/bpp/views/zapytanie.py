@@ -1,4 +1,5 @@
 import json
+from typing import NamedTuple
 
 from django import forms
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -48,6 +49,37 @@ MODELS = {
     MODEL_REKORD: Rekord,
     MODEL_AUTOR: Autor,
 }
+
+
+class WynikZapytania(NamedTuple):
+    """Queryset albo błąd — jedno źródło prawdy dla strony i eksportu."""
+
+    queryset: object | None
+    error: str | None
+    error_location: dict | None
+
+
+def wykonaj_zapytanie(model_key, query):
+    """Zamienia zapytanie DjangoQL na queryset wskazanego modelu.
+
+    Wydzielone z ZapytanieView.render_results, żeby eksport liczył DOKŁADNIE
+    ten sam zbiór co strona — łącznie z .distinct(), bez którego filtr po
+    relacji "do wielu" (np. autorzy.autor.nazwisko) zwielokrotniłby rekord
+    raz na każdy pasujący wiersz powiązany.
+    """
+    model = MODELS[model_key]
+    try:
+        queryset = apply_search(
+            model.objects.all(), query, schema=BppZapytanieSchema
+        ).distinct()
+    except (DjangoQLError, FieldError, ValidationError, ValueError) as exc:
+        line, column, mark = _error_location(exc, query)
+        location = (
+            {"line": line, "column": column, "mark": mark} if line and column else None
+        )
+        return WynikZapytania(None, _format_error_text(exc), location)
+    return WynikZapytania(queryset, None, None)
+
 
 # Przyklady zapytan renderowane w sekcji pomocy. Wszystkie SA testowane na
 # poprawnosc skladniowa przez DjangoQLParser (test_zapytanie_examples_parseable).
@@ -366,29 +398,15 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
     def render_results(self, form):
         model_key = form.cleaned_data["model"]
         query = form.cleaned_data["query"].strip()
-        model = MODELS[model_key]
-        queryset = model.objects.all()
-        error = None
-        error_location = None
+        wynik = wykonaj_zapytanie(model_key, query)
         results_page = None
         count = None
 
-        try:
-            queryset = apply_search(queryset, query, schema=BppZapytanieSchema)
-            # Filtrowanie po relacjach "do wielu" (np. autorzy.autor.nazwisko)
-            # tworzy JOIN, ktory zwielokrotnia ten sam rekord raz na kazdy
-            # pasujacy wiersz powiazany. .distinct() zwija te duplikaty, zeby
-            # liczba wynikow i lista byly zgodne z liczba unikalnych obiektow.
-            queryset = queryset.distinct()
-            count = queryset.count()
-            paginator = Paginator(queryset, self.paginate_by)
+        if wynik.queryset is not None:
+            count = wynik.queryset.count()
+            paginator = Paginator(wynik.queryset, self.paginate_by)
             page_number = self.request.GET.get("page") or 1
             results_page = paginator.get_page(page_number)
-        except (DjangoQLError, FieldError, ValidationError, ValueError) as exc:
-            error = _format_error_text(exc)
-            line, column, mark = _error_location(exc, query)
-            if line and column:
-                error_location = {"line": line, "column": column, "mark": mark}
 
         if results_page is not None and model_key == MODEL_REKORD:
             self._attach_admin_urls(results_page)
@@ -401,8 +419,8 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
             form=form,
             results=results_page,
             count=count,
-            error=error,
-            error_location=error_location,
+            error=wynik.error,
+            error_location=wynik.error_location,
             model_key=model_key,
             query=query,
         )
