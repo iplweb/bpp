@@ -23,4 +23,5 @@ multiseek_report_types = [
         "pkt_wewn_bez_cytowania", "punktacja sumaryczna z liczbą cytowań", public=False
     ),
     BibTeXReportType("bibtex", "BibTeX"),
+    ReportType("pivot", "tabela krzyżowa"),
 ]
