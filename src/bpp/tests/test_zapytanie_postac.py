@@ -95,6 +95,11 @@ def test_postac_niedozwolona_dla_autora_degraduje(
     )
     assert res.status_code == 200
     assert b"multiseek-list-report" not in res.content
+    # Pozytywny dowod degradacji do "rekordy": galaz autorska tabeli
+    # (zapytanie.html, model_key != "rekord") renderuje TEN SAM znacznik
+    # "rekord-id-cell" co galaz rekordowa — patrz
+    # test_postac_pivot_dla_rekordu_degraduje.
+    assert b"rekord-id-cell" in res.content
 
 
 @pytest.mark.django_db
@@ -142,6 +147,9 @@ def test_postac_pivot_dla_autora_degraduje(
     )
     assert res.status_code == 200
     assert b"multiseek-list-report" not in res.content
+    # Pozytywny dowod degradacji do "rekordy" (patrz komentarz w
+    # test_postac_niedozwolona_dla_autora_degraduje wyzej).
+    assert b"rekord-id-cell" in res.content
 
 
 @pytest.mark.django_db

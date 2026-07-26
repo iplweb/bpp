@@ -136,8 +136,13 @@ def test_eksport_bledne_zapytanie_nie_odbija_niewyekranowanego_html(redaktor):
 
 @pytest.mark.django_db
 def test_eksport_anonim_403(client, wydawnictwo_ciagle):
+    # WprowadzanieDanychOrSuperuserMixin ma raise_exception = True.
+    # AccessMixin.handle_no_permission (Django) sprawdza `raise_exception OR
+    # user.is_authenticated` — dla raise_exception=True warunek jest
+    # prawdziwy NIEZALEZNIE od zalogowania, wiec anonim dostaje 403
+    # (PermissionDenied), a nie redirect do loginu.
     res = client.get(url("csv", model="rekord", query="rok+%3D+2024"))
-    assert res.status_code in (302, 403)
+    assert res.status_code == 403
 
 
 @pytest.mark.django_db

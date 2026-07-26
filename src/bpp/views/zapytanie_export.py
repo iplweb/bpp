@@ -18,6 +18,7 @@ from bpp.views.multiseek_export import (
     xlsx_export_response,
 )
 from bpp.views.zapytanie import (
+    MODEL_AUTOR,
     MODEL_REKORD,
     WprowadzanieDanychOrSuperuserMixin,
     parse_postac,
@@ -56,8 +57,10 @@ class ZapytanieExportView(WprowadzanieDanychOrSuperuserMixin, View):
         query = (request.GET.get("query") or "").strip()
         if not query:
             return _blad("Brak zapytania do wyeksportowania.")
-        if model_key != MODEL_REKORD:
+        if model_key == MODEL_AUTOR:
             return _blad("Eksport autorów zostanie dodany w kolejnym kroku.")
+        if model_key != MODEL_REKORD:
+            return _blad("Nieznany model do eksportu.")
 
         wynik = wykonaj_zapytanie(model_key, query)
         if wynik.queryset is None:
