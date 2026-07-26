@@ -2649,6 +2649,15 @@ W `zapytanie_export.py` usuń bramkę `model_key != MODEL_REKORD` i dodaj:
 
 (po sprawdzeniu capa danych i po rozgałęzieniu pivota).
 
+- [ ] **Step 3b: Przywróć pasek eksportu dla autorów**
+
+W `src/bpp/views/zapytanie.py`, w `eksport_formaty`, gałąź dla
+`MODEL_AUTOR` zwraca dziś pustą krotkę — zadanie 5 celowo tak zrobiło, bo
+backend 400-ował każdy format dla autora i pasek pokazywałby martwe linki.
+Po tym zadaniu eksport autorów działa, więc gałąź ma zwracać
+`(("csv", "CSV"), ("xlsx", "XLSX"))`. Dopisz test, że pasek renderuje się
+na `/zapytanie/?model=autor` z linkiem do `/zapytanie/eksport/csv/`.
+
 - [ ] **Step 4: Run tests**
 
 Run: `uv run pytest src/bpp/tests/test_zapytanie_export.py -v`
