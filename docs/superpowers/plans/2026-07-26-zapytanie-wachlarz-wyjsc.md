@@ -620,6 +620,10 @@ W `src/bpp/views/zapytanie.py`:
 POSTAC_REKORDY = "rekordy"
 POSTAC_PIVOT = "pivot"
 
+# UWAGA: `pivot` NIE jest tu wymieniony celowo. Postać widoczna w <select>
+# ma działać — pivot rekordowy dokłada zadanie 6, autorski zadanie 9 i to
+# one dopisują go do tych krotek. Opcja, która renderuje placeholder, jest
+# gorsza niż jej brak.
 POSTACIE_REKORD = (
     (POSTAC_REKORDY, "rekordy (ID + akcje)"),
     ("list", "lista"),
@@ -627,12 +631,8 @@ POSTACIE_REKORD = (
     ("pkt_wewn", "punktacja z wewnętrzną"),
     ("pkt_wewn_bez", "punktacja sumaryczna"),
     ("bibtex", "BibTeX"),
-    (POSTAC_PIVOT, "tabela krzyżowa"),
 )
-POSTACIE_AUTOR = (
-    (POSTAC_REKORDY, "autorzy (ID + akcje)"),
-    (POSTAC_PIVOT, "tabela krzyżowa"),
-)
+POSTACIE_AUTOR = ((POSTAC_REKORDY, "autorzy (ID + akcje)"),)
 
 
 def postacie_dla_modelu(model_key):
@@ -1240,6 +1240,13 @@ def test_pivot_eksport_html_400(redaktor, wydawnictwo_ciagle):
 
 Run: `uv run pytest src/bpp/tests/test_zapytanie_pivot.py -v`
 Expected: FAIL — `res.context["pivot"]` nie istnieje (KeyError)
+
+- [ ] **Step 2b: Dopisz `pivot` do listy postaci rekordowych**
+
+W `src/bpp/views/zapytanie.py` dodaj `(POSTAC_PIVOT, "tabela krzyżowa")` na
+końcu `POSTACIE_REKORD`. Zadanie 3 celowo go stamtąd wyrzuciło, bo bez
+implementacji z tego zadania opcja renderowała placeholder listy. Teraz
+działa, więc wraca do UI.
 
 - [ ] **Step 3: Kontekst pivota w widoku**
 
@@ -2070,6 +2077,13 @@ def test_strona_pokazuje_presety_dla_autora(redaktor):
 
 Run: `uv run pytest src/bpp/tests/test_zapytanie_pivot.py -k autor -v`
 Expected: FAIL
+
+- [ ] **Step 2b: Dopisz `pivot` do listy postaci autorskich**
+
+W `src/bpp/views/zapytanie.py` dodaj `(POSTAC_PIVOT, "tabela krzyżowa")` do
+`POSTACIE_AUTOR`. Zadanie 3 celowo zostawiło tam samą postać `rekordy`, bo
+pivot dla autorów renderował się wtedy przez partial listy na obiektach
+`Autor` (puste wiersze, brak `js_safe_pk`/`opis_bibliograficzny_cache`).
 
 - [ ] **Step 3: Rozgałęź `_pivot_context` po modelu**
 
