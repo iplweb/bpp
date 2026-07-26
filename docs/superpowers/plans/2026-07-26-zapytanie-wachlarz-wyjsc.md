@@ -2227,6 +2227,32 @@ git commit -m "feat(zapytanie): tabela krzyżowa autorów w UI + presety"
 - Modify: `src/bpp/pivot/autor.py` (metryki + wymiary publikacyjne)
 - Test: `src/bpp/tests/test_pivot_autor.py` (dopisz)
 
+**WYMÓG DODANY PO ZADANIU 8 — dwa testy, które MUSZĄ tu powstać, bo w bazie
+K nie dało się ich postawić:**
+
+1. **Test dedupu, który BEZ dedupu pada.** W bazie K dedup przez świeży
+   queryset (`Autor.objects.filter(pk__in=...)` w `zbuduj_pivot_autora`) jest
+   redundantny — metryka to `Count(pk, distinct=True)`, a DISTINCT w agregacie
+   sam zwija wiersze zwielokrotnione JOIN-em. Sprawdzone empirycznie: po
+   usunięciu linii dedupu cała suita `test_pivot_autor.py` (7 testów) nadal
+   przechodziła. Dedup staje się nośny WYŁĄCZNIE dla metryk Σ — `Sum` nie ma
+   jak rozpoznać duplikatu wiersza. Dlatego test bazy U (np. `suma_slotow`)
+   z autorem mającym DWA wiersze `Autor_Jednostka` (dwa nienakładające się
+   okresy — model ma `UniqueConstraint` dla wpisów bez daty i
+   `ExclusionConstraint` dla datowanych) i filtrem po `autor_jednostka__jednostka`
+   MUSI dać poprawną sumę, a po zakomentowaniu dedupu MUSI paść. **Pokaż oba
+   przebiegi w raporcie** — bez tego dedup pozostaje nieudowodniony w całym
+   rejestrze autorskim.
+
+2. **Test odrzucania wymiaru niedostępnego w bieżącej bazie.**
+   `test_parse_params_nieznany_wymiar_wraca_do_domyslnego` sprawdza dziś tylko
+   fallback NIEZNANEGO klucza — bo w bazie K wszystkie 12 wymiarów są dostępne,
+   więc ścieżki `expr_dla(baza) is None` nie da się wywołać. Gdy dołożysz
+   wymiary publikacyjne (`rok`, `dyscyplina`, …) z `expr` jako słownikiem per
+   baza, dopisz test: `pivot_row=rok` przy metryce bazy K (`liczba_autorow`)
+   musi wrócić do `DEFAULT_ROW`, a przy metryce bazy P/U — zostać przyjęty.
+   To jest właściwy test seamu `baza`, obiecany w docstringu tamtego testu.
+
 **Interfaces:**
 - Produces: nowe klucze w `METRICS`: `liczba_prac` (baza P,
   `distinct_field="autorzy__rekord_id"`), `suma_slotow` (baza U,

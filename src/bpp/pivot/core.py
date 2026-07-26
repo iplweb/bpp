@@ -14,16 +14,35 @@ BRAK = "— brak —"
 class PivotDimension:
     key: str
     label: str
-    expr: str
+    expr: str | dict  # str = jedna ścieżka; dict = ścieżka per baza agregacji
     allow_column: bool = True
     autorzy: bool = False
-    label_kind: str = "raw"  # raw | fk | choices_charakter_ogolny | pk_bucket
+    label_kind: str = "raw"  # raw | fk | choices_charakter_ogolny | pk_bucket | bool
     fk_model: str | None = None
+    # Wyrażenie ORM dokładane przez annotate() PRZED grupowaniem. Konieczne
+    # dla wymiarów, które nie są kolumną (np. „ma ORCID": grupowanie po
+    # surowym polu dałoby tysiące grup, po jednej na wartość).
+    annotation: object | None = None
 
     def resolve_model(self):
         from django.apps import apps
 
         return apps.get_model(*self.fk_model.split(".")) if self.fk_model else None
+
+    def expr_dla(self, baza=None):
+        """Ścieżka ORM w danej bazie agregacji; None = niedostępny.
+
+        Rejestr rekordowy (`bpp.pivot.rekord`) przekazuje `expr` jako zwykły
+        `str` i nigdy nie woła z `baza` innym niż None — dla niego ta metoda
+        zawsze zwraca ten sam `expr`, niezależnie od argumentu.
+        """
+        if isinstance(self.expr, dict):
+            return self.expr.get(baza)
+        return self.expr
+
+    def alias(self, baza=None):
+        """Nazwa pola do values()/GROUP BY — alias adnotacji albo ścieżka."""
+        return self.key if self.annotation is not None else self.expr_dla(baza)
 
 
 @dataclass(frozen=True)
@@ -31,6 +50,8 @@ class PivotMetric:
     key: str
     label: str
     field: str | None  # None → Count("id"); inaczej Sum(field)
+    baza: str = "K"  # która baza agregacji (rejestr autorski); rekordowy: "K"
+    distinct_field: str | None = None  # ustawione → Count(field, distinct=True)
 
 
 @dataclass
@@ -239,4 +260,13 @@ def _label_mapping(keys, dim):
             obj = objs.get(k)
             out[k] = str(obj) if obj is not None else BRAK
         return out
+    if dim.label_kind == "bool":
+        return {
+            k: ("TAK" if k is True else "NIE" if k is False else BRAK) for k in keys
+        }
     return {k: str(k) for k in keys}
+
+
+# Alias publiczny: nowy kod (np. bpp.pivot.autor) nie powinien wołać
+# prywatnych nazw silnika.
+buduj_macierz = _build_matrix
