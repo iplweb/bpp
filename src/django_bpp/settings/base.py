@@ -15,6 +15,7 @@ from django.core.exceptions import ImproperlyConfigured
 
 from bpp.util import slugify_function
 from django_bpp.channels_prefix import get_channels_prefix
+from django_bpp.rollbar_filters import zbuduj_exception_level_filters
 from django_bpp.version import VERSION
 
 logger = logging.getLogger(__name__)
@@ -160,6 +161,12 @@ env = environ.Env(
     ROLLBAR_ACCESS_TOKEN=(str, None),
     # Publiczny token klienta (post_client_item) do frontendowego Rollbara.
     ROLLBAR_CLIENT_ACCESS_TOKEN=(str, ""),
+    # Wycisza w Rollbarze smtplib.SMTPAuthenticationError (i tylko ją).
+    # Ustawiane PER INSTALACJA, domyślnie WYŁĄCZONE — szczegóły i uzasadnienie
+    # zakresu w django_bpp.rollbar_filters. Włączać wyłącznie tam, gdzie
+    # administratorzy poczty klienta mają znaną, zgłoszoną awarię po swojej
+    # stronie, której nie naprawimy kodem.
+    DJANGO_BPP_ROLLBAR_IGNORE_SMTP_AUTH_ERRORS=(bool, False),
     #
     # Prometheus
     #
@@ -1763,6 +1770,11 @@ ROLLBAR = {
     "ignorable_404_urls": (
         re.compile(r"/favicon\.ico"),
         re.compile(r".*\{\{\s*clickURL\s*\}\}$"),
+    ),
+    "exception_level_filters": zbuduj_exception_level_filters(
+        ignoruj_bledy_uwierzytelniania_smtp=env(
+            "DJANGO_BPP_ROLLBAR_IGNORE_SMTP_AUTH_ERRORS"
+        ),
     ),
 }
 
