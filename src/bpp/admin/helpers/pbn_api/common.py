@@ -16,6 +16,7 @@ from pbn_api.exceptions import (
     PraceSerwisoweException,
     ResourceLockedException,
     SameDataUploadedRecently,
+    WillNotExportError,
 )
 from pbn_api.models import SentData
 
@@ -239,6 +240,36 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
             f'Rekord "{link_do_obiektu(obj)}" został odrzucony przez PBN '
             f"z powodu błędów walidacji danych: <ul>{komunikaty}</ul>"
             f"Popraw dane rekordu i spróbuj ponownie. "
+            f"{open_in_pbn_link}{open_in_pi_link}"
+        )
+        if raise_exceptions:
+            raise e
+
+        return
+
+    except WillNotExportError as e:
+        # Rekordu nie da się wysłać, dopóki ktoś czegoś nie uzupełni — a NIE
+        # awaria kodu. Komunikat wyjątku jest już napisany po polsku i wprost
+        # mówi, czego brakuje, więc podajemy go redaktorowi zamiast
+        # generycznego „Kod błędu: …" z gałęzi niżej.
+        #
+        # Bez tej gałęzi wpadało to do `except Exception`, opatrzonego
+        # komentarzem „nie wiadomo, co to za problem" — i szło do Rollbara
+        # (itemy Rollbar #1475, #1473), mimo że system działał poprawnie.
+        #
+        # „lub konfigurację" w komunikacie jest celowe: ta gałąź łapie też
+        # przypadki, w których poprawka NIE leży w rekordzie —
+        # `CharakterFormalnyMissingPBNUID` (słownik charakterów formalnych)
+        # oraz gołe `WillNotExportError` podnoszone przez
+        # `Uczelnia.pbn_client()` przy braku autoryzacji w PBN.
+        #
+        # UWAGA NA KOLEJNOŚĆ: `PKZeroExportDisabled` (też podklasa
+        # WillNotExportError) ma własną gałąź WYŻEJ i musi tam zostać — ma
+        # inny, konfiguracyjny komunikat. Pilnuje tego parametryzacja
+        # testu `..._will_not_export_czytelny_komunikat_bez_rollbar`.
+        notificator.warning(
+            f'Rekord "{link_do_obiektu(obj)}" nie zostanie wysłany do PBN: {escape(e)}. '
+            f"Popraw dane rekordu lub konfigurację i spróbuj ponownie. "
             f"{open_in_pbn_link}{open_in_pi_link}"
         )
         if raise_exceptions:
