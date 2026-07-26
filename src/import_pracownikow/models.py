@@ -1360,28 +1360,53 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
     def _integruj_daty_aj(self, aj, dane):
         """Ustawia daty zatrudnienia na powiązaniu z danych wiersza.
 
-        „Data od" (``rozpoczal_prace``) na ISTNIEJĄCYM AJ wypełniamy TYLKO gdy
-        baza ma ``NULL`` a plik NIESIE datę (§3: „wypełnienie NULL") — nie
-        nadpisujemy istniejącej daty. Pusty ``plik_od`` na istniejącym AJ →
-        NIC NIE ZMIENIAJ (§5), nawet gdy ``rozpoczal_prace`` jest ``NULL``.
-        Fallback ``data zmian → dziś`` dla NOWEGO okresu stemplujemy przy
-        MATERIALIZACJI (``integrate._materializuj_diff``), nie tutaj — świeży AJ
-        ma już ``rozpoczal_prace``, więc ta gałąź go nie dotyczy.
+        Bez flagi „nadpisuj daty": „data od"/„data do" na ISTNIEJĄCYM AJ
+        wypełniamy TYLKO gdy baza ma ``NULL`` a plik NIESIE datę (§3:
+        „wypełnienie NULL") — istniejącej daty nie ruszamy; pusty plik →
+        nic nie zmieniaj (§5). Fallback ``data zmian → dziś`` dla NOWEGO
+        okresu stempluje materializacja (``integrate._materializuj_diff``).
 
-        „Data do" (``zakonczyl_prace``) — wstaw-tylko-gdy-pusta (§3): różnicę
-        wobec istniejącej daty POKAZUJEMY w porównywarce, ale NIE nadpisujemy."""
-        if aj.rozpoczal_prace is None and dane.get("data_zatrudnienia"):
-            aj.rozpoczal_prace = dane["data_zatrudnienia"]
-            self.log_zmian["autor_jednostka"].append(
-                f"data rozpoczęcia pracy na {aj.rozpoczal_prace}"
-            )
+        Z flagą ``parent.nadpisuj_daty_zatrudnienia`` (spec §3.3): datę
+        różną od niepustej wartości w bazie NADPISUJEMY wartością z pliku
+        (osobno „od" i „do"); puste komórki nadal niczego nie kasują.
+
+        Zwraca ``True`` TYLKO gdy nadpisano niepustą wartość — sygnał dla
+        pre-checku nakładania okresów; wypełnienia NULL-i zwracają
+        ``False`` (idą dzisiejszą ścieżką, bez pre-checku)."""
+        nadpisywanie = self.parent.nadpisuj_daty_zatrudnienia
+        nadpisano = False
+
+        plik_od = dane.get("data_zatrudnienia")
+        if plik_od:
+            if aj.rozpoczal_prace is None:
+                aj.rozpoczal_prace = plik_od
+                self.log_zmian["autor_jednostka"].append(
+                    f"data rozpoczęcia pracy na {aj.rozpoczal_prace}"
+                )
+            elif nadpisywanie and aj.rozpoczal_prace != plik_od:
+                self.log_zmian["autor_jednostka"].append(
+                    f"data rozpoczęcia pracy: {aj.rozpoczal_prace} → "
+                    f"{plik_od} (nadpisano z pliku)"
+                )
+                aj.rozpoczal_prace = plik_od
+                nadpisano = True
 
         data_konca = dane.get("data_końca_zatrudnienia")
-        if data_konca and aj.zakonczyl_prace is None:
-            aj.zakonczyl_prace = data_konca
-            self.log_zmian["autor_jednostka"].append(
-                f"data końca zatrudnienia na {data_konca}"
-            )
+        if data_konca:
+            if aj.zakonczyl_prace is None:
+                aj.zakonczyl_prace = data_konca
+                self.log_zmian["autor_jednostka"].append(
+                    f"data końca zatrudnienia na {data_konca}"
+                )
+            elif nadpisywanie and aj.zakonczyl_prace != data_konca:
+                self.log_zmian["autor_jednostka"].append(
+                    f"data końca zatrudnienia: {aj.zakonczyl_prace} → "
+                    f"{data_konca} (nadpisano z pliku)"
+                )
+                aj.zakonczyl_prace = data_konca
+                nadpisano = True
+
+        return nadpisano
 
     def _integrate_autor_jednostka(self):
         aj = self.autor_jednostka
@@ -1392,7 +1417,7 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             return
         dane = self.dane_bardziej_znormalizowane
 
-        self._integruj_daty_aj(aj, dane)
+        nadpisano_daty = self._integruj_daty_aj(aj, dane)
 
         # Niezmiennik rozpoczal < zakonczyl walidujemy PRZED jakimkolwiek zapisem.
         # Model.save() nie woła clean(), a ustaw_podstawowe_miejsce_pracy() niżej

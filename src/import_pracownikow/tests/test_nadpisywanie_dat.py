@@ -44,6 +44,10 @@ def _row_z_data(parent, dane, autor, jednostka, aj):
         jednostka=jednostka,
         autor_jednostka=aj,
         dane_znormalizowane=dane,
+        # jawnie: `zmiany_potrzebne` to zwykły BooleanField (bez default),
+        # baker.make losowałby True/False — a `integrate()` niżej asertuje
+        # `self.zmiany_potrzebne` (musi być zdeterminowane, nie flaky).
+        zmiany_potrzebne=True,
     )
 
 
@@ -74,3 +78,63 @@ def test_bramka_roznica_dat_flaga_on():
 def test_bramka_roznica_dat_flaga_off_jak_dzis():
     row, _ = _scenariusz_tytulowy(nadpisuj=False)
     assert row.check_if_integration_needed() is False
+
+
+@pytest.mark.django_db
+def test_integracja_nadpisuje_date_od_flaga_on():
+    row, aj = _scenariusz_tytulowy(nadpisuj=True)
+    row.integrate()
+    aj.refresh_from_db()
+    assert aj.rozpoczal_prace == date(2021, 10, 1)
+    assert any("nadpisano z pliku" in wpis for wpis in row.log_zmian["autor_jednostka"])
+
+
+@pytest.mark.django_db
+def test_integracja_nie_nadpisuje_flaga_off():
+    row, aj = _scenariusz_tytulowy(nadpisuj=False)
+    # OFF: bramka nie przepuści wiersza; wołamy integrate() wprost, żeby
+    # potwierdzić, że nawet wtedy data NIE jest ruszana.
+    row.integrate()
+    aj.refresh_from_db()
+    assert aj.rozpoczal_prace == date(2026, 7, 19)
+
+
+@pytest.mark.django_db
+def test_integracja_nadpisuje_date_do():
+    parent = baker.make(ImportPracownikow, nadpisuj_daty_zatrudnienia=True)
+    autor, jednostka = baker.make(Autor), baker.make(Jednostka)
+    aj = baker.make(
+        Autor_Jednostka,
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2020, 1, 1),
+        zakonczyl_prace=date(2026, 12, 31),
+    )
+    row = _row_z_data(
+        parent,
+        {"data_zatrudnienia": "2020-01-01", "data_końca_zatrudnienia": "2024-06-30"},
+        autor,
+        jednostka,
+        aj,
+    )
+    row.integrate()
+    aj.refresh_from_db()
+    assert aj.zakonczyl_prace == date(2024, 6, 30)
+
+
+@pytest.mark.django_db
+def test_pusta_komorka_nie_kasuje_daty_przy_on():
+    parent = baker.make(ImportPracownikow, nadpisuj_daty_zatrudnienia=True)
+    autor, jednostka = baker.make(Autor), baker.make(Jednostka)
+    aj = baker.make(
+        Autor_Jednostka,
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2020, 1, 1),
+        zakonczyl_prace=date(2024, 6, 30),
+    )
+    row = _row_z_data(parent, {}, autor, jednostka, aj)
+    row.integrate()
+    aj.refresh_from_db()
+    assert aj.rozpoczal_prace == date(2020, 1, 1)
+    assert aj.zakonczyl_prace == date(2024, 6, 30)
