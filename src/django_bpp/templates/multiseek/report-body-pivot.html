@@ -31,6 +31,13 @@ pivot_metrics. Konfiguracja idzie parametrami GET (pivot_row/col/val).
             </select>
         </label>
         <noscript><button type="submit" class="button">Odśwież</button></noscript>
+        {% if pivot and request.user.is_authenticated %}
+        <div class="multiseek-pivot-export hide-for-print">
+            Eksport tabeli:
+            <a href="../export/xlsx/?{{ request.GET.urlencode }}">XLSX</a>
+            <a href="../export/csv/?{{ request.GET.urlencode }}">CSV</a>
+        </div>
+        {% endif %}
     </form>
 
     {% if pivot %}
@@ -72,14 +79,6 @@ pivot_metrics. Konfiguracja idzie parametrami GET (pivot_row/col/val).
         unikatowe prace — praca powiązana z wieloma jednostkami liczona jest
         w każdej z nich; sumy mogą przewyższać wartości całkowite.
     </p>
-    {% endif %}
-
-    {% if request.user.is_authenticated %}
-    <div class="multiseek-pivot-export hide-for-print">
-        Eksport tabeli:
-        <a href="../export/xlsx/?{{ request.GET.urlencode }}">XLSX</a>
-        <a href="../export/csv/?{{ request.GET.urlencode }}">CSV</a>
-    </div>
     {% endif %}
 
     {% elif pivot_error %}
