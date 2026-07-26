@@ -5,6 +5,7 @@ bpp.views.multiseek_export — ta sama warstwa, której używa multiseek.
 """
 
 from django.http import HttpResponseBadRequest
+from django.utils.html import escape
 from django.views.generic import View
 
 from bpp.views.multiseek_export import (
@@ -31,25 +32,41 @@ DATA_FORMATS = {"csv", "xlsx"}
 DOCUMENT_FORMATS = {"html", "docx", "bib"}
 
 
+def _blad(tresc):
+    """400 jako CZYSTY TEKST, nie HTML.
+
+    HttpResponseBadRequest domyślnie ustawia Content-Type: text/html —
+    komunikaty tego widoku bywają zbudowane z fragmentów pochodzących od
+    użytkownika (patrz błąd DjangoQL w get()), więc bez wymuszenia
+    text/plain przeglądarka renderowałaby taki string jako aktywny HTML
+    (reflected XSS). Jedna funkcja dla WSZYSTKICH odpowiedzi błędu w tym
+    pliku, żeby nie było dwóch ścieżek do wyboru.
+    """
+    return HttpResponseBadRequest(tresc, content_type="text/plain; charset=utf-8")
+
+
 class ZapytanieExportView(WprowadzanieDanychOrSuperuserMixin, View):
     http_method_names = ["get"]
 
     def get(self, request, export_format, *args, **kwargs):
         if export_format not in DATA_FORMATS | DOCUMENT_FORMATS:
-            return HttpResponseBadRequest("Nieznany format eksportu.")
+            return _blad("Nieznany format eksportu.")
 
         model_key = request.GET.get("model") or MODEL_REKORD
         query = (request.GET.get("query") or "").strip()
         if not query:
-            return HttpResponseBadRequest("Brak zapytania do wyeksportowania.")
+            return _blad("Brak zapytania do wyeksportowania.")
         if model_key != MODEL_REKORD:
-            return HttpResponseBadRequest(
-                "Eksport autorów zostanie dodany w kolejnym kroku."
-            )
+            return _blad("Eksport autorów zostanie dodany w kolejnym kroku.")
 
         wynik = wykonaj_zapytanie(model_key, query)
         if wynik.queryset is None:
-            return HttpResponseBadRequest(f"Błędne zapytanie: {wynik.error}")
+            # wynik.error to str(exc) z djangoql — odbija SUROWE literały z
+            # zapytania usera (np. rok = "<script>...") w tekście błędu.
+            # escape() jest drugą linią obrony NIEZALEŻNĄ od content_type
+            # ustawionego w _blad(): gdyby ktoś kiedyś zmienił _blad z
+            # powrotem na HTML, ekranowanie i tak chroni.
+            return _blad(f"Błędne zapytanie: {escape(wynik.error)}")
 
         report_title = plain_multiseek_report_title(
             request.GET.get("tytul") or ZAPYTANIE_DEFAULT_REPORT_TITLE
@@ -79,9 +96,7 @@ class ZapytanieExportView(WprowadzanieDanychOrSuperuserMixin, View):
     def _eksport_dokumentu(request, export_format, postac, queryset, report_title):
         if export_format == "bib":
             if postac != "bibtex":
-                return HttpResponseBadRequest(
-                    'BibTeX dostępny tylko przy postaci wyniku „BibTeX".'
-                )
+                return _blad('BibTeX dostępny tylko przy postaci wyniku „BibTeX".')
             return bibtex_export_response(queryset, report_title)
         if postac == "bibtex":
             # Tak samo jak w multiseeku: gdy postać wyniku to BibTeX, html/
@@ -98,7 +113,10 @@ class ZapytanieExportView(WprowadzanieDanychOrSuperuserMixin, View):
 
     @staticmethod
     def _za_duzo(count, limit):
-        return HttpResponseBadRequest(
+        # limit i count to liczby (stała modułu / queryset.count()), nie
+        # tekst od użytkownika — nic tu nie wymaga escape(), ale i tak
+        # idzie przez _blad() (text/plain) razem z resztą komunikatów.
+        return _blad(
             f"Eksport dostępny dla maksymalnie {limit} rekordów "
             f"(zapytanie zwróciło {count}). Zawęź zapytanie."
         )

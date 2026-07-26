@@ -21,8 +21,11 @@ def redaktor(client, admin_user):
 
 @pytest.mark.django_db
 def test_eksport_csv_ma_naglowek_i_wiersz(redaktor, wydawnictwo_ciagle, denorms):
-    # Rekord to zdenormalizowany cache — bez flush() queryset byłby pusty i
-    # test przeszedłby "fałszywie" (patrz sekcja o konwencjach testowych).
+    # denorms.flush() to konwencja tego repo dla testów odpytujących Rekord
+    # (patrz test_zapytanie.py) — pola "rok"/"tytul_oryginalny" są tu
+    # faktycznie synchronizowane triggerem SQL od razu przy .save(), więc
+    # flush nie jest ściśle wymagany, ale zostaje defensywnie na wypadek
+    # przyszłych zmian testu na pola liczone przez django-denorm.
     denorms.flush()
 
     res = redaktor.get(
@@ -105,6 +108,30 @@ def test_eksport_nieznany_format_400(redaktor):
 def test_eksport_bledne_zapytanie_400(redaktor):
     res = redaktor.get(url("csv", model="rekord", query="rok+%3D%3D%3D"))
     assert res.status_code == 400
+
+
+@pytest.mark.django_db
+def test_eksport_bledne_zapytanie_nie_odbija_niewyekranowanego_html(redaktor):
+    """Reflected XSS: błąd DjangoQL odbija SUROWE literały zapytania.
+
+    ``rok = "<script>...</script>"`` jest błędem typu (rok jest int, nie
+    string) — komunikat wyjątku djangoql zawiera dosłowny literał z
+    zapytania. Bez text/plain + escape() ten string wyrenderowałby się w
+    przeglądarce jako aktywny <script> (jeden spreparowany link do
+    zalogowanego redaktora/superusera — dokładnie tych, którzy mają tu
+    dostęp).
+    """
+    res = redaktor.get(
+        reverse("bpp:zapytanie_eksport", kwargs={"export_format": "csv"}),
+        {
+            "model": "rekord",
+            "query": 'rok = "<script>alert(1)</script>"',
+        },
+    )
+
+    assert res.status_code == 400
+    assert res["Content-Type"].startswith("text/plain")
+    assert b"<script>alert(1)</script>" not in res.content
 
 
 @pytest.mark.django_db
