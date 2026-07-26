@@ -20,6 +20,38 @@ from bpp.models import Uczelnia
 MULTISEEK_DEFAULT_REPORT_TITLE = "Rezultat wyszukiwania"
 XLSX_WORKSHEET_TITLE_MAX_LENGTH = 31
 
+PKT_WEWN = "pkt_wewn"
+PKT_WEWN_BEZ = "pkt_wewn_bez"
+TABLE = "table"
+
+EXTRA_TYPES = [
+    PKT_WEWN,
+    PKT_WEWN_BEZ,
+    TABLE,
+    PKT_WEWN + "_cytowania",
+    PKT_WEWN_BEZ + "_cytowania",
+    TABLE + "_cytowania",
+]
+
+# report_type renderowane jako tabela (reszta: lista/numer_list/None).
+TABLE_REPORT_TYPES = frozenset(EXTRA_TYPES)
+
+# Projekcje eksportu DOKUMENTU dostrojone do partiali renderu (nie do CSV/XLSX).
+# Bazowe get_queryset() gubi liczba_cytowan/uwagi → N+1 na całym querysecie.
+MULTISEEK_RENDER_LIST_FIELDS = ("id", "opis_bibliograficzny_cache", "uwagi")
+MULTISEEK_RENDER_TABLE_FIELDS = (
+    "id",
+    "opis_bibliograficzny_cache",
+    "impact_factor",
+    "punkty_kbn",
+    "liczba_cytowan",
+    "punktacja_wewnetrzna",
+    "charakter_formalny",
+    "typ_kbn",
+    "charakter_formalny__nazwa",
+    "typ_kbn__nazwa",
+)
+
 MULTISEEK_EXPORT_HEADERS = (
     "tytul_oryginalny",
     "autorzy",
@@ -469,3 +501,56 @@ def pivot_xlsx_export_response(pivot_result, request, report_title):
         filename=_export_filename("xlsx", report_title),
     )
     return response
+
+
+def document_export_response(
+    queryset, request, report_type, report_title, export_format
+):
+    """Render postaci wyniku (lista/tabela) do HTML-a albo DOCX-a.
+
+    Wydzielone z MyMultiseekExport._export_document: metoda nie używała self
+    do niczego poza odczytem report_type, a strona „Wyszukiwanie zapytaniem"
+    potrzebuje tej samej ścieżki renderu. Jeden zestaw partiali, jedna
+    sanityzacja, jedna konwersja do DOCX.
+    """
+    from django.db.models import Sum
+    from django.template.loader import render_to_string
+
+    if report_type in TABLE_REPORT_TYPES:
+        queryset = queryset.select_related("charakter_formalny", "typ_kbn").only(
+            *MULTISEEK_RENDER_TABLE_FIELDS
+        )
+        sumy = queryset.aggregate(
+            Sum("impact_factor"),
+            Sum("liczba_cytowan"),
+            Sum("punkty_kbn"),
+            Sum("punktacja_wewnetrzna"),
+        )
+        partial = "multiseek/report-body-table.html"
+    else:
+        queryset = queryset.only(*MULTISEEK_RENDER_LIST_FIELDS)
+        sumy = None
+        partial = "multiseek/report-body-list.html"
+
+    body_html = render_to_string(
+        partial,
+        {
+            "object_list": queryset,
+            "report_type": report_type,
+            "sumy": sumy,
+            "export_mode": True,
+            "start_index": 0,
+        },
+        request=request,
+    )
+    document_html = render_to_string(
+        "multiseek/export-document.html",
+        {
+            "body_html": sanitize_export_html(body_html),
+            "report_title": report_title,
+        },
+        request=request,
+    )
+    if export_format == "docx":
+        return docx_export_response(document_html, report_title)
+    return html_export_response(document_html, report_title)
