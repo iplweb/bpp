@@ -561,12 +561,13 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
         przenoszą stanu strony zapytania (model/query/postac żyją w URL-u)
         i nie trafiają pod właściwy prefiks eksportu.
         """
-        from bpp.multiseek_registry import pivot as pivot_mod
+        from bpp.pivot import core as pivot_core
+        from bpp.pivot import rekord as pivot_rekord
 
-        row_dim, col_dim, metric = pivot_mod.parse_pivot_params(self.request.GET)
+        row_dim, col_dim, metric = pivot_rekord.parse_pivot_params(self.request.GET)
         ctx = {
-            "pivot_dimensions": pivot_mod.DIMENSIONS,
-            "pivot_metrics": pivot_mod.METRICS,
+            "pivot_dimensions": pivot_rekord.DIMENSIONS,
+            "pivot_metrics": pivot_rekord.METRICS,
             "pivot_row_dim": row_dim,
             "pivot_col_dim": col_dim,
             "pivot_metric": metric,
@@ -581,8 +582,8 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
             ).rsplit("csv/", 1)[0],
         }
         try:
-            ctx["pivot"] = pivot_mod.zbuduj_pivot(queryset, row_dim, col_dim, metric)
-        except pivot_mod.PivotTooLargeError as exc:
+            ctx["pivot"] = pivot_core.zbuduj_pivot(queryset, row_dim, col_dim, metric)
+        except pivot_core.PivotTooLargeError as exc:
             ctx["pivot"] = None
             ctx["pivot_error"] = exc
         return ctx

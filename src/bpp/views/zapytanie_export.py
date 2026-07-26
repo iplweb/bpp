@@ -105,7 +105,8 @@ class ZapytanieExportView(WprowadzanieDanychOrSuperuserMixin, View):
 
     @staticmethod
     def _eksport_pivota(request, export_format, queryset, report_title):
-        from bpp.multiseek_registry import pivot as pivot_mod
+        from bpp.pivot import core as pivot_core
+        from bpp.pivot import rekord as pivot_rekord
         from bpp.views.multiseek_export import (
             pivot_csv_export_response,
             pivot_xlsx_export_response,
@@ -113,10 +114,10 @@ class ZapytanieExportView(WprowadzanieDanychOrSuperuserMixin, View):
 
         if export_format not in {"csv", "xlsx"}:
             return _blad("Eksport tabeli krzyżowej dostępny jako XLSX lub CSV.")
-        row_dim, col_dim, metric = pivot_mod.parse_pivot_params(request.GET)
+        row_dim, col_dim, metric = pivot_rekord.parse_pivot_params(request.GET)
         try:
-            pivot_result = pivot_mod.zbuduj_pivot(queryset, row_dim, col_dim, metric)
-        except pivot_mod.PivotTooLargeError:
+            pivot_result = pivot_core.zbuduj_pivot(queryset, row_dim, col_dim, metric)
+        except pivot_core.PivotTooLargeError:
             return _blad(
                 "Tabela krzyżowa jest zbyt duża do wyeksportowania — "
                 "zawęź zapytanie lub wybierz mniej liczny wymiar."

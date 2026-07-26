@@ -104,9 +104,11 @@ def test_pivot_zbyt_duza_macierz_pokazuje_komunikat(
 ):
     """Bramka rozmiaru (PIVOT_MAX_CELLS) jest podłączona pod /zapytanie/ —
     zamiast wywalonego 500 user dostaje czytelny komunikat na ekranie."""
-    from bpp.multiseek_registry import pivot as pivot_mod
+    from bpp.pivot import core as pivot_core
 
-    monkeypatch.setattr(pivot_mod, "PIVOT_MAX_CELLS", 0)
+    # Prog czyta zbuduj_pivot jako globalna SWOJEGO modulu, wiec patchujemy go
+    # w bpp.pivot.core, a nie przez zgodnosciowy shim multiseek_registry.pivot.
+    monkeypatch.setattr(pivot_core, "PIVOT_MAX_CELLS", 0)
     denorms.flush()
     res = redaktor.get(
         reverse("bpp:zapytanie"),

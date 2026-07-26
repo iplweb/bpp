@@ -103,7 +103,10 @@ def test_pivot_zbyt_duza_pokazuje_komunikat(
     ustawiony pivot_error, a szablon pokazuje komunikat "zawęź zapytanie"."""
     any_ciagle(tytul_oryginalny=f"{PIVOT_TITLE_PREFIX} - duza", rok=2024)
     denorms.flush()
-    monkeypatch.setattr("bpp.multiseek_registry.pivot.PIVOT_MAX_CELLS", 0)
+    # Progi mieszkaja w bpp.pivot.core (tam je czyta zbuduj_pivot) — patchowanie
+    # ich przez zgodnosciowy shim multiseek_registry.pivot przestawiloby martwa
+    # kopie nazwy, nie bramke.
+    monkeypatch.setattr("bpp.pivot.core.PIVOT_MAX_CELLS", 0)
     _set_multiseek_pivot_filter(logged_in_client, test_user)
 
     resp = logged_in_client.get(
