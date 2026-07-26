@@ -1,5 +1,6 @@
 import json
 from typing import NamedTuple
+from urllib.parse import quote, urlencode
 
 from django import forms
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -61,10 +62,11 @@ MODELS = {
 # "rekordy" to jedyna postać własna tej strony (bez odpowiednika w multiseeku).
 POSTAC_REKORDY = "rekordy"
 # "pivot" — tabela krzyżowa (render przez multiseek/report-body-pivot.html,
-# reużyty bez zmian dla logiki, patrz _pivot_context). Dla autora NIE ma
-# jeszcze implementacji (autorski pivot to kolejne zadanie planu), więc
-# zostaje poza POSTACIE_AUTOR — zasada tego widoku: opcja w UI albo działa,
-# albo jej nie ma.
+# reużyty bez zmian dla logiki, patrz _pivot_context). Rejestr wymiarów/metryk
+# rozgałęzia się po modelu przez bpp.pivot.wybierz_rejestr_pivota: rekord ma
+# swój od Zadania 6, autor (baza kadrowa K) od Zadania 9. Zasada tego widoku
+# zostaje: opcja w <select> albo działa, albo jej nie ma — teraz działa dla
+# obu modeli.
 POSTAC_PIVOT = "pivot"
 
 POSTACIE_REKORD = (
@@ -76,7 +78,10 @@ POSTACIE_REKORD = (
     ("bibtex", "BibTeX"),
     (POSTAC_PIVOT, "tabela krzyżowa"),
 )
-POSTACIE_AUTOR = ((POSTAC_REKORDY, "autorzy (ID + akcje)"),)
+POSTACIE_AUTOR = (
+    (POSTAC_REKORDY, "autorzy (ID + akcje)"),
+    (POSTAC_PIVOT, "tabela krzyżowa"),
+)
 
 
 def postacie_dla_modelu(model_key):
@@ -86,14 +91,17 @@ def postacie_dla_modelu(model_key):
 def eksport_formaty(model_key, postac):
     """Formaty eksportu sensowne dla danego modelu i postaci wyniku.
 
-    Model "autor" NIE zwraca tu żadnego formatu: ZapytanieExportView dziś
-    odbija KAŻDY format dla model=autor 400-ką ("Eksport autorów zostanie
-    dodany w kolejnym kroku" — patrz zapytanie_export.py), więc pusta lista
-    zamiast pary csv/xlsx chroni pasek przed martwymi linkami. Eksport
-    autorów wraca w kolejnym zadaniu planu razem z tą tuplą.
+    Model "autor" zwraca formaty TYLKO dla postac="pivot": eksport macierzy
+    idzie przez ten sam _eksport_pivota co dla rekordów i od Zadania 9
+    naprawdę działa (bpp.pivot.autor + wybierz_rejestr_pivota). Lista
+    autorów (postac="rekordy", domyślna) zostaje pustą krotką —
+    ZapytanieExportView dziś odbija ten wariant 400-ką ("Eksport autorów
+    zostanie dodany w kolejnym kroku" — patrz zapytanie_export.py), więc
+    pusta lista zamiast pary csv/xlsx chroni pasek przed martwym linkiem.
+    Eksport listy autorów wraca w Zadaniu 11.
     """
     if model_key == MODEL_AUTOR:
-        return ()
+        return (("csv", "CSV"), ("xlsx", "XLSX")) if postac == POSTAC_PIVOT else ()
     formaty = [("csv", "CSV"), ("xlsx", "XLSX")]
     if postac == POSTAC_PIVOT:
         # Pivot nie ma jeszcze partiala dokumentu (patrz komentarz przy
@@ -381,6 +389,57 @@ EXAMPLES = [
 ]
 
 
+# Presety pivota autorskiego — skróty do gotowych tabel krzyżowych w sekcji
+# pomocy (Zadanie 9). Wszystkie cztery korzystają WYŁĄCZNIE z bazy kadrowej K
+# (metric="liczba_autorow"), bo to jedyna baza, jaką ma dziś bpp.pivot.autor —
+# presety oparte na bazach P/U (produktywność, ranking slotowy) dochodzą w
+# Zadaniu 10 razem z tamtymi wymiarami/metrykami.
+PIVOT_PRESETY_AUTOR = (
+    ("Struktura kadrowa", "jednostka", "tytul", "liczba_autorow"),
+    ("Audyt kompletności ORCID", "jednostka", "ma_orcid", "liczba_autorow"),
+    ("Gotowość do PBN", "jednostka", "ma_pbn_uid", "liczba_autorow"),
+    ("Struktura płci wg tytułów", "tytul", "plec", "liczba_autorow"),
+)
+
+
+def pivot_presety_dla_modelu(model_key, query):
+    """Linki-skróty do gotowych tabel krzyżowych, renderowane w sekcji
+    pomocy — ten sam wzorzec co EXAMPLES dla zapytań DjangoQL.
+
+    Renderowane NIEZALEŻNIE od tego, czy zapytanie już coś zwróciło (patrz
+    ZapytanieView.get_context_data), żeby user zobaczył je od razu po
+    przełączeniu modelu na "Autor". `query` to bieżąca treść pola DjangoQL
+    z GET-a — presety mają DOŁOŻYĆ wybór wymiarów/metryki do zapytania, jakie
+    user już wpisał, nie zgubić go (klik w preset ma pokazać macierz DLA
+    BIEŻĄCEGO zawężenia, nie dla pustego zapytania).
+
+    `safe="/"` w urlencode() dobrany tak, żeby zakodowana wartość `query`
+    zgadzała się bajt-w-bajt z tym, co produkuje filtr szablonowy
+    `|urlencode` (Django: quote(value, safe='/') gdy `safe` nie podano) —
+    ta sama para znaków bezpiecznych, żeby test na obecność zakodowanego
+    zapytania w linku presetu nie zależał od przypadkowej zgodności dwóch
+    niezależnych implementacji urlencode.
+    """
+    if model_key != MODEL_AUTOR:
+        return ()
+    presety = []
+    for opis, row, col, metric in PIVOT_PRESETY_AUTOR:
+        qs = urlencode(
+            {
+                "model": MODEL_AUTOR,
+                "query": query,
+                "postac": POSTAC_PIVOT,
+                "pivot_row": row,
+                "pivot_col": col,
+                "pivot_val": metric,
+            },
+            quote_via=quote,
+            safe="/",
+        )
+        presety.append({"opis": opis, "query": qs})
+    return tuple(presety)
+
+
 def user_can_use_query_editor(user):
     """Czy user widzi/uzywa edytora zapytan DjangoQL.
 
@@ -465,6 +524,10 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
                 model_key = MODEL_REKORD
         ctx.setdefault("postac", parse_postac(self.request.GET, model_key))
         ctx.setdefault("postacie", postacie_dla_modelu(model_key))
+        ctx.setdefault(
+            "pivot_presety",
+            pivot_presety_dla_modelu(model_key, self.request.GET.get("query", "")),
+        )
         return ctx
 
     def get(self, request, *args, **kwargs):
@@ -560,14 +623,32 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
         domyślne wartości (form action=".", linki "../export/") nie
         przenoszą stanu strony zapytania (model/query/postac żyją w URL-u)
         i nie trafiają pod właściwy prefiks eksportu.
+
+        Rejestr wymiarów/metryk (rekord vs autor) wybiera
+        `wybierz_rejestr_pivota` — JEDYNE miejsce w widoku, które rozgałęzia
+        się po modelu (eksport, `ZapytanieExportView._eksport_pivota`, woła
+        ten sam helper).
+
+        `pivot_dimensions` w kontekście to już PRZEFILTROWANY słownik — tylko
+        wymiary dostępne w bazie agregacji wybranej metryki
+        (`dim.expr_dla(metric.baza) is not None`). Partial iteruje ten
+        słownik ślepo i nic nie wie o bazach K/P/U; dla rejestru rekordowego
+        `expr` jest zwykłym stringiem, więc `expr_dla()` zawsze zwraca
+        ścieżkę i filtr nic nie usuwa (zachowanie multiseeka bez zmian).
         """
         from bpp.pivot import core as pivot_core
-        from bpp.pivot import rekord as pivot_rekord
+        from bpp.pivot import wybierz_rejestr_pivota
 
-        row_dim, col_dim, metric = pivot_rekord.parse_pivot_params(self.request.GET)
+        rejestr = wybierz_rejestr_pivota(model_key)
+        row_dim, col_dim, metric = rejestr.parse_params(self.request.GET)
+        dostepne_wymiary = {
+            key: dim
+            for key, dim in rejestr.DIMENSIONS.items()
+            if dim.expr_dla(metric.baza) is not None
+        }
         ctx = {
-            "pivot_dimensions": pivot_rekord.DIMENSIONS,
-            "pivot_metrics": pivot_rekord.METRICS,
+            "pivot_dimensions": dostepne_wymiary,
+            "pivot_metrics": rejestr.METRICS,
             "pivot_row_dim": row_dim,
             "pivot_col_dim": col_dim,
             "pivot_metric": metric,
@@ -582,7 +663,7 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
             ).rsplit("csv/", 1)[0],
         }
         try:
-            ctx["pivot"] = pivot_core.zbuduj_pivot(queryset, row_dim, col_dim, metric)
+            ctx["pivot"] = rejestr.zbuduj(queryset, row_dim, col_dim, metric)
         except pivot_core.PivotTooLargeError as exc:
             ctx["pivot"] = None
             ctx["pivot_error"] = exc

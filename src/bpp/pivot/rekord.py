@@ -5,6 +5,7 @@ multiseeka i strona „Wyszukiwanie zapytaniem" (`postac=pivot`, model=rekord)
 dzielą ten sam rejestr."""
 
 from bpp.pivot.core import PivotDimension, PivotMetric
+from bpp.pivot.core import zbuduj_pivot as _zbuduj_pivot
 
 DEFAULT_ROW = "rok"
 DEFAULT_METRIC = "liczba"
@@ -103,3 +104,18 @@ def parse_pivot_params(GET):
     if col is not None and (not col.allow_column or col.key == row.key):
         col = None
     return row, col, metric
+
+
+def zbuduj_pivot_rekordu(base_qs, row_dim, col_dim, metric):
+    """Cienki wrapper na `core.zbuduj_pivot` z modelem Rekord — ujednolica
+    sygnaturę z `bpp.pivot.autor.zbuduj_pivot_autora`, żeby widok i eksport
+    mogły wołać oba rejestry przez wspólny alias `zbuduj` (patrz
+    `bpp.pivot.wybierz_rejestr_pivota`)."""
+    from bpp.models.cache import Rekord
+
+    return _zbuduj_pivot(base_qs, row_dim, col_dim, metric, model=Rekord)
+
+
+# Aliasy zgodności interfejsu — patrz docstring wybierz_rejestr_pivota().
+parse_params = parse_pivot_params
+zbuduj = zbuduj_pivot_rekordu

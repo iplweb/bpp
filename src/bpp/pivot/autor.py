@@ -229,3 +229,9 @@ def zbuduj_pivot_autora(base_qs, row_dim, col_dim, metric):
         triples.append((rk, ck, val))
 
     return buduj_macierz(triples, row_dim, col_dim, metric, False)
+
+
+# Aliasy zgodności interfejsu — patrz docstring
+# bpp.pivot.wybierz_rejestr_pivota().
+parse_params = parse_pivot_params_autor
+zbuduj = zbuduj_pivot_autora

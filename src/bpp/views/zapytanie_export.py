@@ -58,10 +58,18 @@ class ZapytanieExportView(WprowadzanieDanychOrSuperuserMixin, View):
         query = (request.GET.get("query") or "").strip()
         if not query:
             return _blad("Brak zapytania do wyeksportowania.")
-        if model_key == MODEL_AUTOR:
-            return _blad("Eksport autorów zostanie dodany w kolejnym kroku.")
-        if model_key != MODEL_REKORD:
+        if model_key not in (MODEL_REKORD, MODEL_AUTOR):
             return _blad("Nieznany model do eksportu.")
+
+        # Eksport modelu "autor" istnieje dziś TYLKO dla postac="pivot" —
+        # macierz idzie przez ten sam _eksport_pivota co dla rekordów i
+        # naprawdę działa (Zadanie 9). Lista autorów (postac domyślna
+        # "rekordy") zostaje zablokowana do Zadania 11 — patrz
+        # eksport_formaty() w zapytanie.py, który z tego samego powodu nie
+        # pokazuje dla niej linków w pasku.
+        postac = parse_postac(request.GET, model_key)
+        if model_key == MODEL_AUTOR and postac != POSTAC_PIVOT:
+            return _blad("Eksport autorów zostanie dodany w kolejnym kroku.")
 
         wynik = wykonaj_zapytanie(model_key, query)
         if wynik.queryset is None:
@@ -77,12 +85,16 @@ class ZapytanieExportView(WprowadzanieDanychOrSuperuserMixin, View):
         )
         queryset = wynik.queryset
 
-        postac = parse_postac(request.GET, model_key)
         if postac == POSTAC_PIVOT:
             # Pivot eksportuje MACIERZ — jej rozmiar nie zależy od liczby
             # rekordów źródłowych, więc capy rekordowe (25000/5000) go nie
-            # dotyczą (dokładnie jak w MyMultiseekExport.get).
-            return self._eksport_pivota(request, export_format, queryset, report_title)
+            # dotyczą (dokładnie jak w MyMultiseekExport.get). Od tego
+            # miejsca w dół (poza tą gałęzią) queryset jest ZAWSZE
+            # model=rekord — model=autor + postac!=pivot już odbił się
+            # wyżej.
+            return self._eksport_pivota(
+                request, export_format, model_key, queryset, report_title
+            )
 
         count = queryset.count()
 
@@ -104,9 +116,9 @@ class ZapytanieExportView(WprowadzanieDanychOrSuperuserMixin, View):
         )
 
     @staticmethod
-    def _eksport_pivota(request, export_format, queryset, report_title):
+    def _eksport_pivota(request, export_format, model_key, queryset, report_title):
         from bpp.pivot import core as pivot_core
-        from bpp.pivot import rekord as pivot_rekord
+        from bpp.pivot import wybierz_rejestr_pivota
         from bpp.views.multiseek_export import (
             pivot_csv_export_response,
             pivot_xlsx_export_response,
@@ -114,9 +126,10 @@ class ZapytanieExportView(WprowadzanieDanychOrSuperuserMixin, View):
 
         if export_format not in {"csv", "xlsx"}:
             return _blad("Eksport tabeli krzyżowej dostępny jako XLSX lub CSV.")
-        row_dim, col_dim, metric = pivot_rekord.parse_pivot_params(request.GET)
+        rejestr = wybierz_rejestr_pivota(model_key)
+        row_dim, col_dim, metric = rejestr.parse_params(request.GET)
         try:
-            pivot_result = pivot_core.zbuduj_pivot(queryset, row_dim, col_dim, metric)
+            pivot_result = rejestr.zbuduj(queryset, row_dim, col_dim, metric)
         except pivot_core.PivotTooLargeError:
             return _blad(
                 "Tabela krzyżowa jest zbyt duża do wyeksportowania — "

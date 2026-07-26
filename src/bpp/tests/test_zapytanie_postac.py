@@ -111,14 +111,15 @@ def test_postac_niedozwolona_dla_autora_degraduje(
 
 
 @pytest.mark.django_db
-def test_postac_pivot_wybieralna_dla_rekordu_nie_dla_autora(
+def test_postac_pivot_wybieralna_dla_obu_modeli(
     zalogowany_redaktor, wydawnictwo_ciagle, autor_jan_nowak, denorms
 ):
     """Zasada tego widoku: opcja w <select> albo dziala, albo jej nie ma.
 
-    Rekordy maja render tabeli krzyzowej, wiec opcja jest. Autorzy jeszcze
-    nie maja (wlasny rejestr wymiarow dokladaja kolejne zadania planu), wiec
-    dla nich opcji byc NIE MOZE — to jest dzisiaj wlasciwy straznik.
+    Rekordy maja render tabeli krzyzowej od Zadania 6. Autorzy dostaja
+    wlasny rejestr wymiarow w Zadaniu 9 (ten test byl straznikiem "jeszcze
+    nie" — teraz odwraca sie w straznika "juz tak", bo pivot dziala dla
+    OBU modeli).
     """
     denorms.flush()
     dla_rekordu = zalogowany_redaktor.get(
@@ -130,7 +131,7 @@ def test_postac_pivot_wybieralna_dla_rekordu_nie_dla_autora(
         {"model": "autor", "query": 'nazwisko = "Nowak"'},
     )
     assert b'value="pivot"' in dla_rekordu.content
-    assert b'value="pivot"' not in dla_autora.content
+    assert b'value="pivot"' in dla_autora.content
 
 
 @pytest.mark.django_db
@@ -159,19 +160,20 @@ def test_postac_pivot_dla_rekordu_zastepuje_tabele_redakcyjna(
 
 
 @pytest.mark.django_db
-def test_postac_pivot_dla_autora_degraduje(
+def test_postac_pivot_dla_autora_renderuje_macierz(
     zalogowany_redaktor, autor_jan_nowak, denorms
 ):
+    """Przeciwienstwo dawnej degradacji: postac=pivot dla autora ma dzis
+    renderowac tabele krzyzowa, NIE tabele redakcyjna (Zadanie 9)."""
     denorms.flush()
     res = zalogowany_redaktor.get(
         reverse("bpp:zapytanie"),
         {"model": "autor", "query": 'nazwisko = "Nowak"', "postac": "pivot"},
     )
     assert res.status_code == 200
+    assert res.context["pivot"] is not None
     assert b"multiseek-list-report" not in res.content
-    # Pozytywny dowod degradacji do "rekordy" (patrz komentarz w
-    # test_postac_niedozwolona_dla_autora_degraduje wyzej).
-    assert TABELA_REDAKCYJNA in res.content
+    assert TABELA_REDAKCYJNA not in res.content
 
 
 @pytest.mark.django_db
@@ -367,8 +369,10 @@ def test_pasek_eksportu_nieobecny_przy_zerowych_wynikach(zalogowany_redaktor, de
 def test_pasek_eksportu_nieobecny_dla_autora(
     zalogowany_redaktor, autor_jan_nowak, denorms
 ):
-    """Eksport autorow dziś 400-uje KAŻDY format (patrz zapytanie_export.py)
-    — pasek dla model=autor nie ma prawa proponowac martwych linkow."""
+    """Eksport LISTY autorow (postac="rekordy", domyslna) dziś 400-uje
+    KAŻDY format (patrz zapytanie_export.py, Zadanie 11 to naprawi) — pasek
+    dla model=autor + postac=rekordy nie ma prawa proponowac martwych
+    linkow. Kontrapunkt: postac=pivot NIŻEJ, gdzie eksport realnie działa."""
     denorms.flush()
     res = zalogowany_redaktor.get(
         reverse("bpp:zapytanie"),
@@ -376,6 +380,25 @@ def test_pasek_eksportu_nieobecny_dla_autora(
     )
     assert res.status_code == 200
     assert b'<p class="zapytanie-eksport-toolbar">' not in res.content
+
+
+@pytest.mark.django_db
+def test_pasek_eksportu_obecny_dla_autora_pivota(
+    zalogowany_redaktor, autor_jan_nowak, denorms
+):
+    """Kontrapunkt testu wyzej (DEFEKT #4 z brief-u Zadania 9): eksport
+    MACIERZY (postac="pivot") dziala naprawde (przez _eksport_pivota), wiec
+    pasek MUSI pokazac linki csv/xlsx — inaczej dzialajaca funkcja nie
+    mialaby zadnego wejscia w UI."""
+    denorms.flush()
+    res = zalogowany_redaktor.get(
+        reverse("bpp:zapytanie"),
+        {"model": "autor", "query": 'nazwisko = "Nowak"', "postac": "pivot"},
+    )
+    assert res.status_code == 200
+    assert b'<p class="zapytanie-eksport-toolbar">' in res.content
+    assert b"/zapytanie/eksport/csv/" in res.content
+    assert b"/zapytanie/eksport/xlsx/" in res.content
 
 
 @pytest.mark.django_db

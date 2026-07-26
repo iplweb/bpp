@@ -374,6 +374,25 @@
                     </ul>
                 </details>
 
+                {% if pivot_presety %}
+                    <details class="zapytanie-help-sublevel">
+                        <summary><strong>Gotowe tabele krzyzowe</strong> &mdash; jeden klik do macierzy</summary>
+                        <p>
+                            Linki dokladaja wiersz/kolumne/metryke tabeli
+                            krzyzowej do BIEZACEGO zapytania powyzej
+                            (postac wyniku przelacza sie na "tabela
+                            krzyzowa").
+                        </p>
+                        <ul class="examples">
+                            {% for preset in pivot_presety %}
+                                <li>
+                                    <a href="{% url 'bpp:zapytanie' %}?{{ preset.query }}">{{ preset.opis }}</a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </details>
+                {% endif %}
+
             </details>
 
             <label for="id_postac" style="margin-top: 0.6rem;">
