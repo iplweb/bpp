@@ -94,10 +94,10 @@ Nowy parametr GET `postac`, mapowany na multiseekowe `report_type`:
 | `postac` | render | uwagi |
 |---|---|---|
 | `rekordy` | dzisiejsza tabela na `bpp/zapytanie.html` | **domyślna**; opis + ID + akcje (Zobacz/Edytuj) |
-| `lista` | `multiseek/report-body-list.html` | numerowana lista opisów |
-| `tabela` | `multiseek/report-body-table.html` | + `sumy` z `aggregate()` |
-| `pkt_wewn` | jak `tabela` | z punktacją wewnętrzną |
-| `pkt_wewn_bez` | jak `tabela` | punktacja sumaryczna |
+| `list` | `multiseek/report-body-list.html` | numerowana lista opisów |
+| `table` | `multiseek/report-body-table.html` | + `sumy` z `aggregate()` |
+| `pkt_wewn` | jak `table` | z punktacją wewnętrzną |
+| `pkt_wewn_bez` | jak `table` | punktacja sumaryczna |
 | `bibtex` | lista opisów | brama dla eksportu `.bib` |
 | `pivot` | `multiseek/report-body-pivot.html` | patrz Część II |
 
@@ -109,6 +109,23 @@ dokładają się obok, nie zastępują.
 
 Stronicowanie bez zmian (25/stronę). Eksport zawsze na **całym** zbiorze
 wyników, nie na widocznej stronie.
+
+**Nazewnictwo `postac`: identyfikatory, nie etykiety.** Wartości `postac`
+odpowiadają **identyfikatorom** multiseekowych `ReportType` z
+`bpp/multiseek_registry/reports.py`, czyli `list`, `table`, `pkt_wewn`,
+`pkt_wewn_bez`, `bibtex`, `pivot` — nie polskim etykietom („lista", „tabela"),
+które są drugim argumentem `ReportType(...)` i służą tylko do wyświetlania.
+Pomyłka jest cicha i złośliwa: `postac=tabela` nie trafiłaby w
+`TABLE_REPORT_TYPES` (`{"table", "pkt_wewn", …}`), więc tabela wyrenderowałaby
+się jako lista, bez żadnego błędu. Do `rekordy` (własna postać strony
+zapytania) nie ma odpowiednika w multiseeku i to jedyna wartość spoza tamtego
+rejestru.
+
+**Asercje w testach eksportu HTML/DOCX nie mogą opierać się na klasach CSS.**
+`sanitize_export_html` (nh3) zdejmuje atrybut `class`, więc
+`multiseek-list-report` istnieje w renderze NA STRONIE (bez sanityzacji), ale
+nie w wyeksportowanym dokumencie. W testach eksportu asertuj na treści
+(np. fragment opisu bibliograficznego) albo na strukturze (`<ol`, `<table`).
 
 ### Adaptacja partiali multiseeka (dwie zmiany, obie neutralne)
 
@@ -161,7 +178,7 @@ Reguła `.bib` tylko przy `postac=bibtex` jest celowo identyczna z
 `mymultiseek.py:359` — dwa różne kontrakty na to samo w dwóch miejscach byłyby
 pułapką.
 
-Eksport dokumentu przy `postac=rekordy` degraduje do `lista` — redakcyjna
+Eksport dokumentu przy `postac=rekordy` degraduje do `list` — redakcyjna
 tabela z ID i linkami do admina nie jest postacią raportu do wydruku. Degradacja
 (nie błąd 400), bo to najmniej zaskakujące zachowanie dla domyślnej postaci.
 
@@ -319,7 +336,7 @@ w sekcji pomocy — ten sam wzorzec co istniejące `EXAMPLES` zapytań.
 ## Część IV — eksport autorów
 
 `postac` dla `model=autor` ogranicza się do `rekordy` (dzisiejsza tabela
-autorów) i `pivot` — BibTeX, `lista`, `tabela` i punktacja nie mają sensu bez
+autorów) i `pivot` — BibTeX, `list`, `table` i punktacja nie mają sensu bez
 opisu bibliograficznego. Formaty eksportu: `csv`, `xlsx`.
 
 Kolumny: nazwisko · imiona · tytuł · stopień służbowy · jednostka · funkcja ·
@@ -371,9 +388,9 @@ Nowe pliki:
   content-type, nazwa pliku, nagłówek/pierwszy wiersz, `.bib` tylko przy
   `postac=bibtex`, capy 25 000/5 000, 403 dla anonima i staff-poza-grupą.
 - `src/bpp/tests/test_zapytanie_postac.py` — render każdej `postac`, sumy przy
-  `tabela`, link edycji tylko dla `is_staff`, **brak** widgetu ❌ na
+  `table`, link edycji tylko dla `is_staff`, **brak** widgetu ❌ na
   `/zapytanie/` (`hide_chrome`) i **obecność** tego widgetu nadal w multiseeku
-  (dowód neutralności zmiany A1), degradacja `postac=rekordy` → `lista` przy
+  (dowód neutralności zmiany A1), degradacja `postac=rekordy` → `list` przy
   eksporcie dokumentu.
 
 Rozszerzenia:

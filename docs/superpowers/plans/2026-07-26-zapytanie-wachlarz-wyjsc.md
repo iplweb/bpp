@@ -80,11 +80,28 @@ tytul = baker.make(Tytul, nazwa="doktor", skrot="dr")
 `client`, `django_user_model`. Definicje: `src/fixtures/conftest_*.py`
 i `src/conftest.py`. Nie wymyślaj nowych, jeśli któryś z tych wystarcza.
 
-**4. Uruchamianie:** `uv run pytest <plik> -v`. Suita ma `--reuse-db`
-i `--timeout 90` (test dłuższy niż 90 s = fail). Testcontainers stawiają PG
-i Redis same — pierwszy przebieg jest wolny, kolejne szybkie.
-**NIE uruchamiaj `make clean-testcontainers`** — na tym hoście biegną
-kontenery innych worktree i skasowałbyś cudzą pracę.
+**4. Uruchamianie testów — TYLKO przez wrapper, nie gołym `uv run pytest`:**
+
+```bash
+bash .superpowers/sdd/2026-07-26-zapytanie-wachlarz-wyjsc/pytest.sh src/bpp/tests/test_zapytanie.py -v
+```
+
+Wrapper przyjmuje te same argumenty co pytest. **Gołe `uv run pytest` na tym
+hoście PADNIE** na `ContainerStartError`: OrbStack nie ma uprawnień macOS do
+wolumenu `/Volumes/SSD`, a plugin testcontainers montuje stamtąd
+`baseline-sql/baseline.sql` do kontenera PG (mount → „Operation not
+permitted" → kontener umiera w initdb). Wrapper omija to, kierując testy na
+ręcznie wystawione kontenery `bpp-wyj-pg` (port 55432) i `bpp-wyj-redis`
+(56379), do których baseline wgrano przez `docker cp`. Szczegóły i procedura
+odtworzenia kontenerów: komentarz w nagłówku `pytest.sh`.
+
+Suita ma `--reuse-db` i `--timeout 90` (test dłuższy niż 90 s = fail).
+Referencyjny czas: `test_zapytanie.py` ≈ 40 s.
+
+**NIE uruchamiaj `make clean-testcontainers`** ani `docker rm` na kontenerach,
+których nie stworzyłeś — na tym hoście biegną kontenery innych worktree
+i skasowałbyś cudzą pracę. Kontenery `bpp-wyj-*` są wspólne dla wszystkich
+zadań tego planu; nie kasuj ich po swoim zadaniu.
 
 ## Struktura plików
 
@@ -153,16 +170,31 @@ def test_wykonaj_zapytanie_zwraca_blad_z_lokalizacja():
 
 @pytest.mark.django_db
 def test_wykonaj_zapytanie_dedupuje_po_relacji_do_wielu(
-    wydawnictwo_ciagle, autor_jan_nowak, jednostka
+    denorms, wydawnictwo_ciagle, autor_jan_nowak, jednostka, jednostka_podrzedna
 ):
-    """Filtr po autorach mnoży wiersze rekordu — distinct() musi je zwinąć."""
+    """Filtr po autorach mnoży wiersze rekordu — distinct() musi je zwinąć.
+
+    KLUCZOWE: ten sam autor musi być przypisany do rekordu DWA razy (dwie
+    jednostki), inaczej w bpp_autorzy_mat jest jeden wiersz, JOIN zwraca
+    jeden wynik i test przechodzi także BEZ distinct() — czyli nie chroni
+    przed niczym. Wzorzec: fixture rekord_z_autorem_w_dwoch_jednostkach
+    w src/bpp/tests/test_views/test_browse/test_browse_distinct.py.
+    """
     from bpp.views.zapytanie import wykonaj_zapytanie
 
     wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka)
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka_podrzedna)
+    denorms.flush()
+
     wynik = wykonaj_zapytanie("rekord", 'autorzy.autor.nazwisko = "Nowak"')
 
     assert wynik.queryset.count() == 1
 ```
+
+**Weryfikacja siły tego testu (wymagana):** usuń tymczasowo `.distinct()`
+z `wykonaj_zapytanie`, uruchom ten test — MUSI paść (`assert 2 == 1`). Test
+regresyjny, który nie pada po usunięciu chronionego zachowania, jest
+tautologią. Potem przywróć `.distinct()`.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -292,7 +324,7 @@ def test_document_export_response_html_zawiera_opis(rf, wydawnictwo_ciagle):
 
     request = rf.get("/")
     response = document_export_response(
-        Rekord.objects.all(), request, "lista", "Tytuł", "html"
+        Rekord.objects.all(), request, "list", "Tytuł", "html"
     )
 
     assert response.status_code == 200
@@ -308,7 +340,7 @@ def test_document_export_response_tabela_ma_sumy(rf, wydawnictwo_ciagle):
     wydawnictwo_ciagle.save()
     request = rf.get("/")
     response = document_export_response(
-        Rekord.objects.all(), request, "tabela", "Tytuł", "html"
+        Rekord.objects.all(), request, "table", "Tytuł", "html"
     )
 
     assert b"multiseek-table-report" in response.content
@@ -320,7 +352,7 @@ def test_document_export_response_docx(rf, wydawnictwo_ciagle):
 
     request = rf.get("/")
     response = document_export_response(
-        Rekord.objects.all(), request, "lista", "Tytuł", "docx"
+        Rekord.objects.all(), request, "list", "Tytuł", "docx"
     )
 
     assert "wordprocessingml" in response["Content-Type"]
@@ -490,7 +522,7 @@ def test_postac_lista_renderuje_partial_multiseeka(
         {
             "model": "rekord",
             "query": f"rok = {wydawnictwo_ciagle.rok}",
-            "postac": "lista",
+            "postac": "list",
         },
     )
     assert b"multiseek-list-report" in res.content
@@ -506,7 +538,7 @@ def test_postac_lista_nie_pokazuje_widgetu_usuwania(
         {
             "model": "rekord",
             "query": f"rok = {wydawnictwo_ciagle.rok}",
-            "postac": "lista",
+            "postac": "list",
         },
     )
     assert b"data-remove-result" not in res.content
@@ -519,7 +551,7 @@ def test_postac_tabela_ma_sumy(zalogowany_redaktor, wydawnictwo_ciagle):
         {
             "model": "rekord",
             "query": f"rok = {wydawnictwo_ciagle.rok}",
-            "postac": "tabela",
+            "postac": "table",
         },
     )
     assert b"multiseek-table-report" in res.content
@@ -552,7 +584,7 @@ def test_multiseek_nadal_pokazuje_widget_usuwania(client, wydawnictwo_ciagle):
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `uv run pytest src/bpp/tests/test_zapytanie_postac.py -v`
-Expected: FAIL — `postac=lista` nie renderuje partiala (brak
+Expected: FAIL — `postac=list` nie renderuje partiala (brak
 `multiseek-list-report`)
 
 - [ ] **Step 3: Zmodyfikuj partiale (flagi `hide_chrome`, `pokaz_edycje`)**
@@ -590,8 +622,8 @@ POSTAC_PIVOT = "pivot"
 
 POSTACIE_REKORD = (
     (POSTAC_REKORDY, "rekordy (ID + akcje)"),
-    ("lista", "lista"),
-    ("tabela", "tabela"),
+    ("list", "lista"),
+    ("table", "tabela"),
     ("pkt_wewn", "punktacja z wewnętrzną"),
     ("pkt_wewn_bez", "punktacja sumaryczna"),
     ("bibtex", "BibTeX"),
@@ -659,7 +691,7 @@ tabelę pod `postac == "rekordy"`:
                     <table class="hover stack">
                     ...
                     </table>
-                {% elif postac == "tabela" or postac == "pkt_wewn" or postac == "pkt_wewn_bez" %}
+                {% elif postac == "table" or postac == "pkt_wewn" or postac == "pkt_wewn_bez" %}
                     {% include "multiseek/report-body-table.html" with object_list=results report_type=postac sumy=sumy export_mode=False hide_chrome=True pokaz_edycje=request.user.is_staff start_index=results.start_index|add:"-1" %}
                 {% else %}
                     {% include "multiseek/report-body-list.html" with object_list=results report_type=postac export_mode=False hide_chrome=True pokaz_edycje=request.user.is_staff start_index=results.start_index|add:"-1" %}
@@ -767,7 +799,7 @@ def test_eksport_xlsx(redaktor, wydawnictwo_ciagle):
 @pytest.mark.django_db
 def test_eksport_html_z_postaci_lista(redaktor, wydawnictwo_ciagle):
     res = redaktor.get(
-        url("html", model="rekord", query=f"rok+%3D+{wydawnictwo_ciagle.rok}", postac="lista")
+        url("html", model="rekord", query=f"rok+%3D+{wydawnictwo_ciagle.rok}", postac="list")
     )
 
     assert res["Content-Type"].startswith("text/html")
@@ -777,7 +809,7 @@ def test_eksport_html_z_postaci_lista(redaktor, wydawnictwo_ciagle):
 @pytest.mark.django_db
 def test_eksport_bib_tylko_przy_postaci_bibtex(redaktor, wydawnictwo_ciagle):
     zle = redaktor.get(
-        url("bib", model="rekord", query=f"rok+%3D+{wydawnictwo_ciagle.rok}", postac="lista")
+        url("bib", model="rekord", query=f"rok+%3D+{wydawnictwo_ciagle.rok}", postac="list")
     )
     assert zle.status_code == 400
 
@@ -851,7 +883,7 @@ def test_eksport_dokumentu_powyzej_capu_400(redaktor, wydawnictwo_ciagle, monkey
 
     monkeypatch.setattr(zapytanie_export, "ZAPYTANIE_EXPORT_MAX_DOKUMENT", 0)
     res = redaktor.get(
-        url("html", model="rekord", query=f"rok+%3D+{wydawnictwo_ciagle.rok}", postac="lista")
+        url("html", model="rekord", query=f"rok+%3D+{wydawnictwo_ciagle.rok}", postac="list")
     )
     assert res.status_code == 400
     # Komunikat czyta limit ze stałej modułu (monkeypatch = 0), więc nie może
@@ -948,7 +980,7 @@ class ZapytanieExportView(WprowadzanieDanychOrSuperuserMixin, View):
 
         # postac=rekordy to tabela redakcyjna z ID i linkami do admina — jako
         # dokument do wydruku nie ma sensu, więc degradujemy do listy.
-        report_type = "lista" if postac == "rekordy" else postac
+        report_type = "list" if postac == "rekordy" else postac
         return document_export_response(
             queryset, request, report_type, report_title, export_format
         )
@@ -1078,7 +1110,7 @@ def test_pasek_eksportu_bez_bibtexa_przy_liscie(
         {
             "model": "rekord",
             "query": f"rok = {wydawnictwo_ciagle.rok}",
-            "postac": "lista",
+            "postac": "list",
         },
     )
     assert b"/zapytanie/eksport/bib/" not in res.content
@@ -2641,10 +2673,10 @@ make playwright-install
 def test_zapytanie_przelaczanie_postaci(page, live_server, admin_user):
     """Wybór postaci wyniku jedzie razem z zapytaniem przez formularz GET."""
     page.goto(f"{live_server.url}/zapytanie/?model=rekord&query=rok+%3E%3D+2000")
-    page.select_option("#id_postac", "lista")
+    page.select_option("#id_postac", "list")
     page.click("button[type=submit]")
     page.wait_for_selector(".multiseek-list-report")
-    assert "postac=lista" in page.url
+    assert "postac=list" in page.url
 ```
 
 (Dostosuj do istniejących fixture'ów w pliku — sprawdź, jak logowany jest user
