@@ -41,6 +41,51 @@ pytest + model_bakery, Foundation CSS.
 - Wszystkie nowe endpointy pod `WprowadzanieDanychOrSuperuserMixin`
   (`raise_exception = True` → 403).
 
+## Konwencje testowe tego repo — PRZECZYTAJ PRZED PISANIEM TESTÓW
+
+Te trzy rzeczy wywalą Ci testy, jeśli ich nie zastosujesz. Snippety w zadaniach
+niżej ich **nie powtarzają** — stosuj je wszędzie, gdzie pasują.
+
+**1. `Rekord` to zdenormalizowany cache — trzeba go zmaterializować.**
+Utworzenie `Wydawnictwo_Ciagle`/`Wydawnictwo_Zwarte` NIE pojawia się od razu
+w `Rekord.objects`. Każdy test, który tworzy publikację i potem odpytuje
+`Rekord` (bezpośrednio albo przez `wykonaj_zapytanie("rekord", …)`, widok,
+eksport czy pivot), **musi** przyjąć fixture `denorms` i po utworzeniu danych
+wywołać `denorms.flush()`:
+
+```python
+@pytest.mark.django_db
+def test_czegos(denorms, wydawnictwo_ciagle):
+    denorms.flush()
+    ...
+```
+
+To samo dotyczy `wydawnictwo_ciagle.dodaj_autora(...)` — po dodaniu autorstwa
+`denorms.flush()`, inaczej `bpp_autorzy_mat` nie zobaczy powiązania. Wzorzec do
+podejrzenia: `src/bpp/tests/test_multiseek_pivot.py` (fixture `rekordy_pivot`).
+
+**2. Fixture `tytul` (pojedynczy) NIE ISTNIEJE.** Jest `tytuly` — ładuje słownik
+tytułów i nic nie zwraca. Gdzie plan pisze „fixture `tytul`", zrób obiekt sam:
+
+```python
+from bpp.models import Tytul
+
+tytul = baker.make(Tytul, nazwa="doktor", skrot="dr")
+```
+
+**3. Fixtures, które istnieją i których masz używać:** `wydawnictwo_ciagle`,
+`wydawnictwo_zwarte`, `autor_jan_nowak`, `autor_jan_kowalski`, `jednostka`,
+`dyscyplina1`, `denorms`, `tytuly`, `charaktery_formalne`, `typy_kbn`,
+`jezyki`, `statusy_korekt`, `typy_odpowiedzialnosci`, `admin_user`, `rf`,
+`client`, `django_user_model`. Definicje: `src/fixtures/conftest_*.py`
+i `src/conftest.py`. Nie wymyślaj nowych, jeśli któryś z tych wystarcza.
+
+**4. Uruchamianie:** `uv run pytest <plik> -v`. Suita ma `--reuse-db`
+i `--timeout 90` (test dłuższy niż 90 s = fail). Testcontainers stawiają PG
+i Redis same — pierwszy przebieg jest wolny, kolejne szybkie.
+**NIE uruchamiaj `make clean-testcontainers`** — na tym hoście biegną
+kontenery innych worktree i skasowałbyś cudzą pracę.
+
 ## Struktura plików
 
 | plik | odpowiedzialność |
@@ -809,7 +854,9 @@ def test_eksport_dokumentu_powyzej_capu_400(redaktor, wydawnictwo_ciagle, monkey
         url("html", model="rekord", query=f"rok+%3D+{wydawnictwo_ciagle.rok}", postac="lista")
     )
     assert res.status_code == 400
-    assert b"5000" not in res.content  # komunikat podaje aktualny limit, nie stały
+    # Komunikat czyta limit ze stałej modułu (monkeypatch = 0), więc nie może
+    # być zaszytego „5000" w tekście.
+    assert b"maksymalnie 0 rekord" in res.content
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -2379,10 +2426,19 @@ def test_eksport_autorow_nie_zawyza_metryk(
         {"model": "autor", "query": 'nazwisko = "Nowak"'},
     )
 
-    wiersz = res.content.decode().splitlines()[1].split(",")
-    # liczba prac = 2 (nie 4), Σ slotów = 1.0 (nie 2.0)
-    assert "2" in wiersz
-    assert "1.0" in ",".join(wiersz) or "1.0000" in ",".join(wiersz)
+    import csv
+    import io
+    from decimal import Decimal
+
+    wiersze = list(csv.reader(io.StringIO(res.content.decode())))
+    naglowek, dane = wiersze[0], wiersze[1]
+    kol = dict(zip(naglowek, dane))
+
+    # Bez rozdzielenia agregatów na dwa zapytania wyszłoby 4 prace i Σ slotów
+    # 2.0 (praca × wpis punktacji), bo oba JOIN-y mnożą się wzajemnie.
+    assert int(kol["liczba_prac"]) == 2
+    assert Decimal(kol["suma_slotow"]) == Decimal("1.0000")
+    assert Decimal(kol["suma_pkdaut"]) == Decimal("20.0000")
 
 
 @pytest.mark.django_db
