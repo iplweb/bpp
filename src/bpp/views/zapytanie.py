@@ -60,14 +60,11 @@ MODELS = {
 # (list/table/pkt_wewn/pkt_wewn_bez/bibtex/pivot) — NIE polskie etykiety.
 # "rekordy" to jedyna postać własna tej strony (bez odpowiednika w multiseeku).
 POSTAC_REKORDY = "rekordy"
-# "pivot" NIE jest (jeszcze) w POSTACIE_REKORD/POSTACIE_AUTOR — bez dedykowanego
-# partiala renderowałby się jako lista (rekordy) albo w ogóle nie działał
-# (autor: Autor nie ma js_safe_pk/opis_bibliograficzny_cache/admin_url, więc
-# report-body-list.html wyszedłby z pustymi wierszami bez żadnego komunikatu).
-# Zasada tego widoku: opcja w UI albo działa, albo jej nie ma. Realny render
-# tabeli krzyżowej dokładają kolejne zadania planu (rekordowy, autorski) —
-# to one dopiszą "pivot" z powrotem do obu tupli. Stała zostaje zdefiniowana
-# (dla przyszłego re-use), ale nieużywana w żadnej z tupli poniżej.
+# "pivot" — tabela krzyżowa (render przez multiseek/report-body-pivot.html,
+# reużyty bez zmian dla logiki, patrz _pivot_context). Dla autora NIE ma
+# jeszcze implementacji (autorski pivot to kolejne zadanie planu), więc
+# zostaje poza POSTACIE_AUTOR — zasada tego widoku: opcja w UI albo działa,
+# albo jej nie ma.
 POSTAC_PIVOT = "pivot"
 
 POSTACIE_REKORD = (
@@ -77,6 +74,7 @@ POSTACIE_REKORD = (
     ("pkt_wewn", "punktacja z wewnętrzną"),
     ("pkt_wewn_bez", "punktacja sumaryczna"),
     ("bibtex", "BibTeX"),
+    (POSTAC_PIVOT, "tabela krzyżowa"),
 )
 POSTACIE_AUTOR = ((POSTAC_REKORDY, "autorzy (ID + akcje)"),)
 
@@ -528,6 +526,10 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
                 Sum("punktacja_wewnetrzna"),
             )
 
+        pivot_ctx = {}
+        if postac == POSTAC_PIVOT and wynik.queryset is not None:
+            pivot_ctx = self._pivot_context(model_key, wynik.queryset)
+
         # Rozbicie „dlaczego 0 wyników" pokazuje (z podświetlaniem składni) panel
         # „Wyjaśnij liczby" w JS — auto-otwierany, gdy count == 0 (patrz
         # autoExplain w szablonie + zapytanie.js). Serwer nie renderuje już
@@ -544,8 +546,46 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
             postacie=postacie_dla_modelu(model_key),
             sumy=sumy,
             eksport_formaty=eksport_formaty(model_key, postac),
+            **pivot_ctx,
         )
         return self.render_to_response(context)
+
+    def _pivot_context(self, model_key, queryset):
+        """Kontekst tabeli krzyżowej — klucze zgodne z multiseekiem, żeby
+        partial report-body-pivot.html renderował się bez zmian.
+
+        Dokłada też trzy klucze, które report-body-pivot.html potrzebuje
+        DODATKOWO na tej stronie (P1-P3 z brief'u): multiseek trzyma filtr
+        w sesji i renderuje partial pod /multiseek/results/, więc jego
+        domyślne wartości (form action=".", linki "../export/") nie
+        przenoszą stanu strony zapytania (model/query/postac żyją w URL-u)
+        i nie trafiają pod właściwy prefiks eksportu.
+        """
+        from bpp.multiseek_registry import pivot as pivot_mod
+
+        row_dim, col_dim, metric = pivot_mod.parse_pivot_params(self.request.GET)
+        ctx = {
+            "pivot_dimensions": pivot_mod.DIMENSIONS,
+            "pivot_metrics": pivot_mod.METRICS,
+            "pivot_row_dim": row_dim,
+            "pivot_col_dim": col_dim,
+            "pivot_metric": metric,
+            "pivot_form_action": reverse("bpp:zapytanie"),
+            "pivot_form_hidden": [
+                ("model", model_key),
+                ("query", self.request.GET.get("query", "")),
+                ("postac", POSTAC_PIVOT),
+            ],
+            "pivot_export_base": reverse(
+                "bpp:zapytanie_eksport", kwargs={"export_format": "csv"}
+            ).rsplit("csv/", 1)[0],
+        }
+        try:
+            ctx["pivot"] = pivot_mod.zbuduj_pivot(queryset, row_dim, col_dim, metric)
+        except pivot_mod.PivotTooLargeError as exc:
+            ctx["pivot"] = None
+            ctx["pivot_error"] = exc
+        return ctx
 
     @staticmethod
     def _attach_admin_urls(results_page):

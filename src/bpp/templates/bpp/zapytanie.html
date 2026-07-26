@@ -481,63 +481,69 @@
                         {% endfor %}
                     </p>
                 {% endif %}
-                {% include "bpp/_zapytanie_pager.html" %}
-                {% if postac == "rekordy" %}
-                    {# dotychczasowa tabela redakcyjna — bez zmian #}
-                    <table class="hover stack">
-                        <thead>
-                            <tr>
-                                <th>Reprezentacja</th>
-                                <th style="width: 6rem;">ID</th>
-                                <th style="width: 9rem;">Akcje</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for obj in results %}
-                                {% if model_key == "rekord" %}
-                                    <tr data-href="{{ obj.get_absolute_url }}">
-                                        <td>{{ obj.opis_bibliograficzny_cache|safe }}</td>
-                                        <td class="rekord-id-cell">{{ obj.pk.0 }}-{{ obj.pk.1 }}</td>
-                                        <td>
-                                            <a href="{{ obj.get_absolute_url }}" target="_blank">Zobacz</a>
-                                            {% if request.user.is_staff and obj.admin_url %}
-                                                <br>
-                                                <a href="{{ obj.admin_url }}" target="_blank">Edytuj</a>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                {% else %}
-                                    <tr data-href="{% url 'bpp:browse_autor' obj.slug %}">
-                                        <td>{{ obj }}</td>
-                                        <td class="rekord-id-cell">{{ obj.pk }}</td>
-                                        <td>
-                                            <a href="{% url 'bpp:browse_autor' obj.slug %}" target="_blank">Zobacz</a>
-                                            {% if request.user.is_staff %}
-                                                <br>
-                                                <a href="{% url 'admin:bpp_autor_change' obj.pk %}" target="_blank">Edytuj</a>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                {% endif %}
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                {% elif postac == "table" or postac == "pkt_wewn" or postac == "pkt_wewn_bez" %}
-                    {# Postać tabelaryczna multiseeka — render tym samym partialem #}
-                    {# co eksport dokumentu (document_export_response), zeby ekran #}
-                    {# i eksport zawsze wygladaly identycznie. #}
-                    {% include "multiseek/report-body-table.html" with object_list=results report_type=postac sumy=sumy export_mode=False hide_chrome=True pokaz_edycje=request.user.is_staff page_obj=results start_index=results.start_index|add:"-1" %}
-                {% elif postac == "bibtex" %}
-                    {# Wlasny partial multiseeka (<pre> + przycisk kopiowania). #}
-                    {# hide_chrome chowa przycisk "Skopiuj" — jego JS jest tylko #}
-                    {# inline w multiseekowym common-results.html, tu byłby martwy. #}
-                    {% include "multiseek/report-body-bibtex.html" with object_list=results hide_chrome=True %}
+                {% if postac == "pivot" %}
+                    {# Tabela krzyżowa — NIE stronicowana (rozmiar macierzy nie #}
+                    {# zalezy od liczby stron rekordow), wiec bez pagera. #}
+                    {% include "multiseek/report-body-pivot.html" %}
                 {% else %}
-                    {# tylko "list" dociera tutaj — rekordy/tabela/bibtex maja #}
-                    {# wlasne galezie wyzej. #}
-                    {% include "multiseek/report-body-list.html" with object_list=results report_type=postac export_mode=False hide_chrome=True pokaz_edycje=request.user.is_staff start_index=results.start_index|add:"-1" %}
+                    {% include "bpp/_zapytanie_pager.html" %}
+                    {% if postac == "rekordy" %}
+                        {# dotychczasowa tabela redakcyjna — bez zmian #}
+                        <table class="hover stack">
+                            <thead>
+                                <tr>
+                                    <th>Reprezentacja</th>
+                                    <th style="width: 6rem;">ID</th>
+                                    <th style="width: 9rem;">Akcje</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for obj in results %}
+                                    {% if model_key == "rekord" %}
+                                        <tr data-href="{{ obj.get_absolute_url }}">
+                                            <td>{{ obj.opis_bibliograficzny_cache|safe }}</td>
+                                            <td class="rekord-id-cell">{{ obj.pk.0 }}-{{ obj.pk.1 }}</td>
+                                            <td>
+                                                <a href="{{ obj.get_absolute_url }}" target="_blank">Zobacz</a>
+                                                {% if request.user.is_staff and obj.admin_url %}
+                                                    <br>
+                                                    <a href="{{ obj.admin_url }}" target="_blank">Edytuj</a>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% else %}
+                                        <tr data-href="{% url 'bpp:browse_autor' obj.slug %}">
+                                            <td>{{ obj }}</td>
+                                            <td class="rekord-id-cell">{{ obj.pk }}</td>
+                                            <td>
+                                                <a href="{% url 'bpp:browse_autor' obj.slug %}" target="_blank">Zobacz</a>
+                                                {% if request.user.is_staff %}
+                                                    <br>
+                                                    <a href="{% url 'admin:bpp_autor_change' obj.pk %}" target="_blank">Edytuj</a>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% elif postac == "table" or postac == "pkt_wewn" or postac == "pkt_wewn_bez" %}
+                        {# Postać tabelaryczna multiseeka — render tym samym partialem #}
+                        {# co eksport dokumentu (document_export_response), zeby ekran #}
+                        {# i eksport zawsze wygladaly identycznie. #}
+                        {% include "multiseek/report-body-table.html" with object_list=results report_type=postac sumy=sumy export_mode=False hide_chrome=True pokaz_edycje=request.user.is_staff page_obj=results start_index=results.start_index|add:"-1" %}
+                    {% elif postac == "bibtex" %}
+                        {# Wlasny partial multiseeka (<pre> + przycisk kopiowania). #}
+                        {# hide_chrome chowa przycisk "Skopiuj" — jego JS jest tylko #}
+                        {# inline w multiseekowym common-results.html, tu byłby martwy. #}
+                        {% include "multiseek/report-body-bibtex.html" with object_list=results hide_chrome=True %}
+                    {% else %}
+                        {# tylko "list" dociera tutaj — rekordy/tabela/bibtex maja #}
+                        {# wlasne galezie wyzej. #}
+                        {% include "multiseek/report-body-list.html" with object_list=results report_type=postac export_mode=False hide_chrome=True pokaz_edycje=request.user.is_staff start_index=results.start_index|add:"-1" %}
+                    {% endif %}
+                    {% include "bpp/_zapytanie_pager.html" %}
                 {% endif %}
-                {% include "bpp/_zapytanie_pager.html" %}
             {% else %}
                 <p><em>Brak rekordow pasujacych do zapytania.</em></p>
                 {# „Dlaczego 0?" pokazuje auto-otwierany panel „Wyjasnij liczby" #}
