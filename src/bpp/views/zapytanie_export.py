@@ -11,6 +11,8 @@ from django.views.generic import View
 from bpp.views.multiseek_export import (
     MULTISEEK_EXPORT_DANE_FIELDS,
     MULTISEEK_EXPORT_OPIS_FIELDS,
+    autor_csv_export_response,
+    autor_xlsx_export_response,
     bibtex_export_response,
     csv_export_response,
     document_export_response,
@@ -61,15 +63,7 @@ class ZapytanieExportView(WprowadzanieDanychOrSuperuserMixin, View):
         if model_key not in (MODEL_REKORD, MODEL_AUTOR):
             return _blad("Nieznany model do eksportu.")
 
-        # Eksport modelu "autor" istnieje dziś TYLKO dla postac="pivot" —
-        # macierz idzie przez ten sam _eksport_pivota co dla rekordów i
-        # naprawdę działa (Zadanie 9). Lista autorów (postac domyślna
-        # "rekordy") zostaje zablokowana do Zadania 11 — patrz
-        # eksport_formaty() w zapytanie.py, który z tego samego powodu nie
-        # pokazuje dla niej linków w pasku.
         postac = parse_postac(request.GET, model_key)
-        if model_key == MODEL_AUTOR and postac != POSTAC_PIVOT:
-            return _blad("Eksport autorów zostanie dodany w kolejnym kroku.")
 
         wynik = wykonaj_zapytanie(model_key, query)
         if wynik.queryset is None:
@@ -89,13 +83,21 @@ class ZapytanieExportView(WprowadzanieDanychOrSuperuserMixin, View):
             # Pivot eksportuje MACIERZ — jej rozmiar nie zależy od liczby
             # rekordów źródłowych, więc capy rekordowe (25000/5000) go nie
             # dotyczą (dokładnie jak w MyMultiseekExport.get). Od tego
-            # miejsca w dół (poza tą gałęzią) queryset jest ZAWSZE
-            # model=rekord — model=autor + postac!=pivot już odbił się
-            # wyżej.
+            # miejsca w dół (poza tą gałęzią) model=autor ma TYLKO
+            # postac="rekordy" (POSTACIE_AUTOR = rekordy/pivot, a pivot już
+            # odbił się wyżej) — gałąź niżej rozróżnia model_key wprost,
+            # zamiast zakładać coś o postac.
             return self._eksport_pivota(
                 request, export_format, model_key, queryset, report_title
             )
 
+        return self._eksport_po_capie(
+            request, export_format, model_key, postac, queryset, report_title
+        )
+
+    def _eksport_po_capie(
+        self, request, export_format, model_key, postac, queryset, report_title
+    ):
         count = queryset.count()
 
         # Limity czytamy ze stałych MODUŁU (nie z domyślnych argumentów ani
@@ -106,7 +108,19 @@ class ZapytanieExportView(WprowadzanieDanychOrSuperuserMixin, View):
         if export_format in DATA_FORMATS:
             if count > ZAPYTANIE_EXPORT_MAX_DANE:
                 return self._za_duzo(count, ZAPYTANIE_EXPORT_MAX_DANE)
+            if model_key == MODEL_AUTOR:
+                # Lista autorów (Zadanie 11) — dokument (html/docx/bib) nie
+                # istnieje dla tego modelu, patrz gałąź niżej; dane (csv/
+                # xlsx) idą przez własny, autorski serializer z metrykami
+                # dorobku (liczba prac, Σ slotów, Σ pkdaut) zamiast
+                # _eksport_danych, który zna tylko pola Rekordu.
+                return self._eksport_danych_autorow(
+                    export_format, queryset, request, report_title
+                )
             return self._eksport_danych(request, export_format, queryset, report_title)
+
+        if model_key == MODEL_AUTOR:
+            return _blad("Eksport autorów dostępny jako CSV albo XLSX.")
 
         if count > ZAPYTANIE_EXPORT_MAX_DOKUMENT:
             return self._za_duzo(count, ZAPYTANIE_EXPORT_MAX_DOKUMENT)
@@ -157,6 +171,12 @@ class ZapytanieExportView(WprowadzanieDanychOrSuperuserMixin, View):
         return document_export_response(
             queryset, request, report_type, report_title, export_format
         )
+
+    @staticmethod
+    def _eksport_danych_autorow(export_format, queryset, request, report_title):
+        if export_format == "csv":
+            return autor_csv_export_response(queryset, request, report_title)
+        return autor_xlsx_export_response(queryset, request, report_title)
 
     @staticmethod
     def _za_duzo(count, limit):

@@ -91,17 +91,16 @@ def postacie_dla_modelu(model_key):
 def eksport_formaty(model_key, postac):
     """Formaty eksportu sensowne dla danego modelu i postaci wyniku.
 
-    Model "autor" zwraca formaty TYLKO dla postac="pivot": eksport macierzy
-    idzie przez ten sam _eksport_pivota co dla rekordów i od Zadania 9
-    naprawdę działa (bpp.pivot.autor + wybierz_rejestr_pivota). Lista
-    autorów (postac="rekordy", domyślna) zostaje pustą krotką —
-    ZapytanieExportView dziś odbija ten wariant 400-ką ("Eksport autorów
-    zostanie dodany w kolejnym kroku" — patrz zapytanie_export.py), więc
-    pusta lista zamiast pary csv/xlsx chroni pasek przed martwym linkiem.
-    Eksport listy autorów wraca w Zadaniu 11.
+    Model "autor" zwraca CSV/XLSX niezależnie od postaci: macierz
+    (postac="pivot") idzie przez _eksport_pivota i naprawdę działa od
+    Zadania 9 (bpp.pivot.autor + wybierz_rejestr_pivota); lista autorów
+    (postac="rekordy", domyślna) idzie przez autor_csv_export_response /
+    autor_xlsx_export_response i naprawdę działa od Zadania 11
+    (zapytanie_export.py) — obie ścieżki realne, więc pasek pokazuje linki
+    dla obu.
     """
     if model_key == MODEL_AUTOR:
-        return (("csv", "CSV"), ("xlsx", "XLSX")) if postac == POSTAC_PIVOT else ()
+        return (("csv", "CSV"), ("xlsx", "XLSX"))
     formaty = [("csv", "CSV"), ("xlsx", "XLSX")]
     if postac == POSTAC_PIVOT:
         # Pivot nie ma jeszcze partiala dokumentu (patrz komentarz przy

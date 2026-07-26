@@ -280,16 +280,21 @@ def test_pivot_autorow_eksport_xlsx(redaktor, jednostka):
 
 
 @pytest.mark.django_db
-def test_pivot_autorow_lista_wciaz_400(redaktor, autor_jan_nowak, denorms):
-    """Eksport LISTY autorów (postac domyślna "rekordy") pozostaje
-    zablokowany — to wciąż Zadanie 11, nie 9. Rozgałęzienie po postaci w
-    ZapytanieExportView.get() nie miało otworzyć wszystkiego, tylko pivot."""
+def test_pivot_autorow_lista_teraz_dziala(redaktor, autor_jan_nowak, denorms):
+    """Kontrapunkt historyczny: do Zadania 11 eksport LISTY autorów (postac
+    domyślna "rekordy") był zablokowany 400-ką — to rozróżnienie chroniło
+    Zadanie 9 (macierz autorska) przed przypadkowym „otwarciem wszystkiego"
+    rozgałęzieniem po postaci w ZapytanieExportView.get(). Od Zadania 11
+    lista też działa naprawdę (autor_csv_export_response), więc 400 by tu był
+    regresją — patrz test_zapytanie_export.py::test_eksport_autorow_csv_ma_
+    kolumny_dorobku dla właściwego pokrycia tej ścieżki."""
     denorms.flush()
     res = redaktor.get(
         reverse("bpp:zapytanie_eksport", kwargs={"export_format": "csv"}),
         {"model": "autor", "query": 'nazwisko = "Nowak"'},
     )
-    assert res.status_code == 400
+    assert res.status_code == 200
+    assert "text/csv" in res["Content-Type"]
 
 
 @pytest.mark.django_db

@@ -366,20 +366,25 @@ def test_pasek_eksportu_nieobecny_przy_zerowych_wynikach(zalogowany_redaktor, de
 
 
 @pytest.mark.django_db
-def test_pasek_eksportu_nieobecny_dla_autora(
+def test_pasek_eksportu_obecny_dla_autora(
     zalogowany_redaktor, autor_jan_nowak, denorms
 ):
-    """Eksport LISTY autorow (postac="rekordy", domyslna) dziś 400-uje
-    KAŻDY format (patrz zapytanie_export.py, Zadanie 11 to naprawi) — pasek
-    dla model=autor + postac=rekordy nie ma prawa proponowac martwych
-    linkow. Kontrapunkt: postac=pivot NIŻEJ, gdzie eksport realnie działa."""
+    """Zadanie 11: eksport LISTY autorów (postac="rekordy", domyślna) działa
+    naprawdę (CSV/XLSX z metrykami dorobku — patrz
+    autor_csv_export_response/autor_xlsx_export_response w
+    multiseek_export.py), więc pasek MUSI pokazywać linki. Wcześniej (do
+    Zadania 11) backend 400-ował każdy format dla tej kombinacji i ten sam
+    test asertował BRAK paska — kontrapunkt: postac=pivot niżej, gdzie
+    eksport macierzy działa od Zadania 9."""
     denorms.flush()
     res = zalogowany_redaktor.get(
         reverse("bpp:zapytanie"),
         {"model": "autor", "query": 'nazwisko = "Nowak"'},
     )
     assert res.status_code == 200
-    assert b'<p class="zapytanie-eksport-toolbar">' not in res.content
+    assert b'<p class="zapytanie-eksport-toolbar">' in res.content
+    assert b"/zapytanie/eksport/csv/" in res.content
+    assert b"/zapytanie/eksport/xlsx/" in res.content
 
 
 @pytest.mark.django_db
