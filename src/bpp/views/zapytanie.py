@@ -60,6 +60,14 @@ MODELS = {
 # (list/table/pkt_wewn/pkt_wewn_bez/bibtex/pivot) — NIE polskie etykiety.
 # "rekordy" to jedyna postać własna tej strony (bez odpowiednika w multiseeku).
 POSTAC_REKORDY = "rekordy"
+# "pivot" NIE jest (jeszcze) w POSTACIE_REKORD/POSTACIE_AUTOR — bez dedykowanego
+# partiala renderowałby się jako lista (rekordy) albo w ogóle nie działał
+# (autor: Autor nie ma js_safe_pk/opis_bibliograficzny_cache/admin_url, więc
+# report-body-list.html wyszedłby z pustymi wierszami bez żadnego komunikatu).
+# Zasada tego widoku: opcja w UI albo działa, albo jej nie ma. Realny render
+# tabeli krzyżowej dokładają kolejne zadania planu (rekordowy, autorski) —
+# to one dopiszą "pivot" z powrotem do obu tupli. Stała zostaje zdefiniowana
+# (dla przyszłego re-use), ale nieużywana w żadnej z tupli poniżej.
 POSTAC_PIVOT = "pivot"
 
 POSTACIE_REKORD = (
@@ -69,12 +77,8 @@ POSTACIE_REKORD = (
     ("pkt_wewn", "punktacja z wewnętrzną"),
     ("pkt_wewn_bez", "punktacja sumaryczna"),
     ("bibtex", "BibTeX"),
-    (POSTAC_PIVOT, "tabela krzyżowa"),
 )
-POSTACIE_AUTOR = (
-    (POSTAC_REKORDY, "autorzy (ID + akcje)"),
-    (POSTAC_PIVOT, "tabela krzyżowa"),
-)
+POSTACIE_AUTOR = ((POSTAC_REKORDY, "autorzy (ID + akcje)"),)
 
 
 def postacie_dla_modelu(model_key):
@@ -473,6 +477,13 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
                 POSTAC_REKORDY,
                 POSTAC_PIVOT,
             ):
+                # Obejmuje "list" (report-body-list.html) i "bibtex"
+                # (report-body-bibtex.html). Ta druga woła
+                # element.original.to_bibtex — "original" dociąga PEŁNY
+                # obiekt publikacji OSOBNYM zapytaniem po polu "id" (tuple
+                # content_type_id+object_id, czyli composite PK Rekordu).
+                # .only() na Rekordzie nie ma na to wpływu: "id" jest PK-iem,
+                # więc Django go dociąga zawsze, niezależnie od projekcji.
                 queryset_do_widoku = queryset_do_widoku.only(
                     *MULTISEEK_RENDER_LIST_FIELDS
                 )

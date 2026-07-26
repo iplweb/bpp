@@ -54,7 +54,9 @@
                 {% if pokaz_edycje and element.admin_url %}
             <span class="zapytanie-edytuj">
                 <a href="{{ element.admin_url }}" target="_blank"
-                   title="Edytuj w panelu administracyjnym">✎</a>
+                   title="Edytuj w panelu administracyjnym">
+                    <span class="fi-page-edit" aria-hidden="true"></span>
+                </a>
             </span>
                 {% endif %}
             </td>
