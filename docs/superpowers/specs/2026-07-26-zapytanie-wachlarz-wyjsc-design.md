@@ -150,6 +150,13 @@ wyeksportowane z `mymultiseek.py`; strona zapytania je reużywa, dokładając
 | `docx` | `document_export_response` wg `postac` | — (400) |
 | `bib` | `bibtex_export_response`, **tylko** gdy `postac=bibtex` | — (400) |
 
+Gdy `postac=pivot`, eksport rozgałęzia się **przed** powyższą tabelą: `csv`
+i `xlsx` idą do `pivot_csv/xlsx_export_response` (macierz, nie lista rekordów),
+a `html`/`docx`/`bib` zwracają 400. Dokładnie ta sama logika co
+`MyMultiseekExport.get` (`mymultiseek.py:281`) — tam też pivot jest sprawdzany
+jako pierwszy, bo rozmiar wyjścia macierzy nie zależy od liczby rekordów
+źródłowych, więc capy rekordowe go nie dotyczą.
+
 Reguła `.bib` tylko przy `postac=bibtex` jest celowo identyczna z
 `mymultiseek.py:359` — dwa różne kontrakty na to samo w dwóch miejscach byłyby
 pułapką.
@@ -171,7 +178,16 @@ nie ma sesyjnego tytułu jak multiseek i nie zamierzamy go dokładać.
 | pivot | `PIVOT_MAX_CELLS=10000`, `PIVOT_MAX_PAIRS=200000` | bez zmian, istniejące bramki |
 
 Przekroczenie → `HttpResponseBadRequest` z komunikatem po polsku podającym
-limit i liczbę trafień (jak multiseek).
+limit i liczbę trafień (jak multiseek). Capy 25 000 / 5 000 **nie dotyczą**
+eksportu pivota — tam obowiązują wyłącznie bramki macierzy.
+
+Tytuł raportu z `?tytul=` jest w pełni kontrolowany przez użytkownika i trafia do
+nazwy pliku (`Content-Disposition`) oraz do nazwy arkusza XLSX. Idzie więc przez
+istniejące `plain_multiseek_report_title` → `_export_filename` /
+`_xlsx_worksheet_title` (strip_tags, usunięcie znaków niedozwolonych,
+sklejenie do jednej linii, limit 31 znaków dla arkusza). Test musi podać tytuł
+z cudzysłowem, znakiem nowej linii i `../` i sprawdzić, że nagłówek odpowiedzi
+zostaje jednoliniowy i bez ścieżki.
 
 ## Część II — tabela krzyżowa na `/zapytanie/`
 
@@ -301,25 +317,30 @@ w sekcji pomocy — ten sam wzorzec co istniejące `EXAMPLES` zapytań.
 
 ## Część IV — eksport autorów
 
-`postac` dla `model=autor` ogranicza się do `lista` i `pivot` (BibTeX, tabela
-i punktacja nie mają sensu bez opisu bibliograficznego). Formaty: `csv`, `xlsx`.
+`postac` dla `model=autor` ogranicza się do `rekordy` (dzisiejsza tabela
+autorów) i `pivot` — BibTeX, `lista`, `tabela` i punktacja nie mają sensu bez
+opisu bibliograficznego. Formaty eksportu: `csv`, `xlsx`.
 
 Kolumny: nazwisko · imiona · tytuł · stopień służbowy · jednostka · funkcja ·
 ORCID · ORCID w PBN · PBN UID · e-mail · ID kadrowy · płeć · **liczba prac** ·
 **Σ slotów** · **Σ pkdaut** · ID · URL.
 
-Trzy metryki dorobku jednym `annotate()`:
-`Count("autorzy__rekord_id", distinct=True)`,
-`Sum("cache_punktacja_autora_query__slot")`,
-`Sum("cache_punktacja_autora_query__pkdaut")`.
+**Metryki dorobku liczone są osobnym zapytaniem agregującym**, nie razem
+z wierszem kartoteki. Powód: `Count("autorzy__rekord_id", distinct=True)` idzie
+przez `bpp_autorzy_mat`, a `Sum("cache_punktacja_autora_query__slot")` przez
+`bpp_cache_punktacja_autora` — dwie różne relacje „do wielu" w jednym
+`annotate()` mnożą wiersze przed agregacją i sumy wychodzą zawyżone (klasyczna
+pułapka Django „dwa agregaty przez dwa JOIN-y"). Zamiast tego:
 
-**Uwaga wydajnościowa:** `Count(distinct)` i dwa `Sum` w jednym `annotate()`
-idą przez dwa różne JOIN-y do relacji „do wielu", co w Postgresie mnoży wiersze
-przed agregacją (klasyczna pułapka „sumy się rozjeżdżają przy dwóch
-annotate"). Dlatego metryki dorobku liczone są **osobnym zapytaniem
-agregującym** na zdedupowanych PK autorów i doklejane do wiersza eksportu przez
-słownik `{autor_id: (liczba_prac, slot, pkdaut)}`. To ta sama zasada, którą już
-stosuje `_dedup_strategy`.
+1. `Count(distinct)` po `autorzy__rekord_id` — jedno zapytanie `values("pk")
+   .annotate(...)`,
+2. `Sum(slot)` + `Sum(pkdaut)` po `cache_punktacja_autora_query` — drugie
+   zapytanie (te dwa są bezpieczne razem, bo idą **tą samą** relacją),
+3. wyniki scalone w słownik `{autor_id: (liczba_prac, slot, pkdaut)}` i doklejane
+   do wierszy eksportu.
+
+Test regresyjny musi tworzyć autora z ≥2 pracami i ≥2 wpisami punktacji, żeby
+zawyżenie było widoczne, gdyby ktoś kiedyś scalił to w jeden `annotate()`.
 
 XLSX dostaje formatowanie liczbowe na kolumnach metryk, hiperlink na kolumnie
 URL (`_apply_xlsx_hyperlinks`), zamrożony nagłówek i auto-szerokości —
