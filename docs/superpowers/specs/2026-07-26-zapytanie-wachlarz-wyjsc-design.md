@@ -280,10 +280,11 @@ Dwie konsekwencje projektowe:
 1. **`expr` jako słownik po bazie.** Ten sam pojęciowy wymiar („rok") ma inną
    ścieżkę ORM w bazie P i U. Wymiary autorskie mają jedną ścieżkę dla
    wszystkich baz (`expr` jako string → normalizowany do słownika przy
-   inicjalizacji rejestru). Wymiar niedostępny w danej bazie (brak klucza) jest
-   w UI **wygaszony**, a przy nieprawidłowej kombinacji z URL-a — pomijany
-   z cichym fallbackiem do wartości domyślnej (jak dziś `parse_pivot_params`
-   robi z `allow_column`).
+   inicjalizacji rejestru). Wymiar niedostępny w danej bazie **nie pojawia się
+   w selektorze** — widok podaje partialowi już przefiltrowany słownik wymiarów,
+   więc szablon nie musi nic wiedzieć o bazach. Przy nieprawidłowej kombinacji
+   przyniesionej z URL-a — cichy fallback do wartości domyślnej (jak dziś
+   `parse_pivot_params` robi z `allow_column`).
 2. **`PivotDimension.annotation`.** Wymiary „ma ORCID / ma e-mail / ma PBN UID /
    ma ID kadrowy" nie mogą grupować po surowym polu (dostalibyśmy tysiące grup,
    po jednej na wartość). Engine dostaje opcjonalne `annotation` — wyrażenie
