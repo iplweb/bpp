@@ -14,6 +14,10 @@ from bpp.models import Autor, Autor_Jednostka, Jednostka
 from import_common.exceptions import BPPDatabaseError
 from import_pracownikow.forms import NowyImportForm
 from import_pracownikow.models import ImportPracownikow, ImportPracownikowRow
+from import_pracownikow.pipeline.integrate import (
+    _integruj_wiersz,
+    _oznacz_wiersz_bledny,
+)
 
 
 @pytest.mark.django_db
@@ -178,6 +182,64 @@ def test_nadpisanie_kolidujace_z_zamknietym_okresem_izolowane():
 
 
 @pytest.mark.django_db
+def test_nakladanie_wspolny_dzien_koliduje():
+    # Granica przedziałów DOMKNIĘTYCH (_sprawdz_nakladanie_okresow lustrzy
+    # DATERANGE(..., '[]') z bpp/models/autor.py): inny okres zamknięty
+    # kończy się DOKŁADNIE w dniu, na który plik nadpisuje początek innego
+    # okresu → [2019-01-01, 2021-10-01] i [2021-10-01, ∞) dzielą wspólny
+    # dzień → kolidują (odwrotnie niż „dzień po końcu" niżej).
+    parent = baker.make(ImportPracownikow, nadpisuj_daty_zatrudnienia=True)
+    autor, jednostka = baker.make(Autor), baker.make(Jednostka)
+    baker.make(
+        Autor_Jednostka,
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2019, 1, 1),
+        zakonczyl_prace=date(2021, 10, 1),
+    )
+    aj = baker.make(
+        Autor_Jednostka,
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2026, 7, 19),
+        zakonczyl_prace=None,
+    )
+    row = _row_z_data(parent, {"data_zatrudnienia": "2021-10-01"}, autor, jednostka, aj)
+    with pytest.raises(BPPDatabaseError) as exc:
+        row.integrate()
+    assert "nakładają się" in str(exc.value)
+    aj.refresh_from_db()
+    assert aj.rozpoczal_prace == date(2026, 7, 19)  # nic nie zapisano
+
+
+@pytest.mark.django_db
+def test_nakladanie_dzien_po_koncu_nie_koliduje():
+    # Dzień PO końcu innego zamkniętego okresu — przedziały domknięte
+    # [2019-01-01, 2021-09-30] i [2021-10-01, ∞) SĄSIADUJĄ, ale się nie
+    # nakładają → brak kolizji, nadpisanie przechodzi.
+    parent = baker.make(ImportPracownikow, nadpisuj_daty_zatrudnienia=True)
+    autor, jednostka = baker.make(Autor), baker.make(Jednostka)
+    baker.make(
+        Autor_Jednostka,
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2019, 1, 1),
+        zakonczyl_prace=date(2021, 9, 30),
+    )
+    aj = baker.make(
+        Autor_Jednostka,
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2026, 7, 19),
+        zakonczyl_prace=None,
+    )
+    row = _row_z_data(parent, {"data_zatrudnienia": "2021-10-01"}, autor, jednostka, aj)
+    row.integrate()
+    aj.refresh_from_db()
+    assert aj.rozpoczal_prace == date(2021, 10, 1)
+
+
+@pytest.mark.django_db
 def test_wypelnienie_null_nie_odpala_precheku():
     # Wypełnienie NULL-a to dzisiejsza ścieżka — bez pre-checku, nawet
     # przy fladze ON (spec §3.4).
@@ -299,3 +361,69 @@ def test_przeglad_bez_calloutu_przy_off(admin_client, admin_user):
     resp = admin_client.get(_przeglad_url(parent))
     html = resp.content.decode("utf-8")
     assert "Włączono nadpisywanie dat zatrudnienia" not in html
+
+
+# Testy e2e przez pipeline'owy `_integruj_wiersz` (pipeline/integrate.py) —
+# w odróżnieniu od testów wyżej, które wołają `row.integrate()` wprost, te
+# przechodzą też przez świeży re-check (integrate.py ~L227), zamrożenie
+# `stany_pol_snapshot` PRZED materializacją i (w scenariuszu kolizji) tę samą
+# izolację per-wiersz co pętla integracji w `integruj()` (~L1005-1013).
+
+
+def _integruj_wiersz_izolowany(row):
+    """Odbicie pętli integracji w ``integruj()`` (pipeline/integrate.py
+    ~L1005-1013): łapie ``BPPDatabaseError`` per-wiersz i oznacza wiersz
+    ``_oznacz_wiersz_bledny`` — DOKŁADNIE tak, jak robi to prawdziwy
+    pipeline, żeby błąd JEDNEGO wiersza nie wywalił całej integracji."""
+    try:
+        return _integruj_wiersz(row)
+    except BPPDatabaseError as e:
+        _oznacz_wiersz_bledny(row, e.reason)
+        return None
+
+
+@pytest.mark.django_db
+def test_integruj_wiersz_scenariusz_tytulowy_nadpisuje_przez_pipeline():
+    """Spec §3.6 pkt 2: pełna ścieżka pipeline'u (nie sam
+    ``row.integrate()``) nadpisuje datę i NIE oznacza wiersza fałszywie
+    ``pominiety_bo_nieaktualny`` (świeży re-check widzi realną potrzebę
+    zmiany, więc bierze normalną gałąź integracji, nie gałąź driftu)."""
+    row, aj = _scenariusz_tytulowy(nadpisuj=True)
+    wynik = _integruj_wiersz(row)
+    assert wynik is False  # to NIE jest nowy okres — istniejący AJ
+    aj.refresh_from_db()
+    row.refresh_from_db()
+    assert aj.rozpoczal_prace == date(2021, 10, 1)
+    assert row.pominiety_bo_nieaktualny is False
+
+
+@pytest.mark.django_db
+def test_integruj_wiersz_kolizja_izolowana_oznacza_wiersz_bledny():
+    """Kolizja z zamkniętym okresem przechodząca przez ``_integruj_wiersz``
+    + izolację pętli integracji (``_integruj_wiersz_izolowany`` wyżej):
+    błąd JEDNEGO wiersza NIE propaguje się na zewnątrz (per-wiersz
+    izolacja), wiersz zostaje oznaczony ``log_zmian["blad"]`` przez
+    ``_oznacz_wiersz_bledny``, a data AJ zostaje nietknięta."""
+    parent = baker.make(ImportPracownikow, nadpisuj_daty_zatrudnienia=True)
+    autor, jednostka = baker.make(Autor), baker.make(Jednostka)
+    baker.make(
+        Autor_Jednostka,
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2019, 1, 1),
+        zakonczyl_prace=date(2022, 12, 31),
+    )
+    aj = baker.make(
+        Autor_Jednostka,
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2026, 7, 19),
+        zakonczyl_prace=None,
+    )
+    row = _row_z_data(parent, {"data_zatrudnienia": "2021-10-01"}, autor, jednostka, aj)
+    wynik = _integruj_wiersz_izolowany(row)  # nie podnosi — izolacja
+    assert wynik is None
+    row.refresh_from_db()
+    assert "nakładają się" in row.log_zmian["blad"][0]
+    aj.refresh_from_db()
+    assert aj.rozpoczal_prace == date(2026, 7, 19)  # nic nie zapisano
