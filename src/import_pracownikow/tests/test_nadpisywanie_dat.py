@@ -3,9 +3,11 @@ flaga modelu, bramka zmian, nadpisywanie w integracji, pre-check
 nakładania okresów, licznik ostrzeżenia finalizacji (spec
 2026-07-26-import-nadpisywanie-dat-zatrudnienia-design.md)."""
 
+import re
 from datetime import date
 
 import pytest
+from django.urls import reverse
 from model_bakery import baker
 
 from bpp.models import Autor, Autor_Jednostka, Jednostka
@@ -208,3 +210,92 @@ def test_od_wieksze_rowne_do_po_nadpisaniu_odrzucone():
     row = _row_z_data(parent, {"data_zatrudnienia": "2022-01-01"}, autor, jednostka, aj)
     with pytest.raises(BPPDatabaseError):
         row.integrate()
+
+
+@pytest.mark.django_db
+def test_liczba_nadpisan_dat_liczy_tylko_realne_nadpisania():
+    parent = baker.make(ImportPracownikow, nadpisuj_daty_zatrudnienia=True)
+    autor1, autor2, autor3 = baker.make(Autor), baker.make(Autor), baker.make(Autor)
+    jednostka = baker.make(Jednostka)
+    # 1) realne nadpisanie: baza 2026, plik 2021 → LICZY SIĘ
+    aj1 = baker.make(
+        Autor_Jednostka,
+        autor=autor1,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2026, 7, 19),
+    )
+    _row_z_data(parent, {"data_zatrudnienia": "2021-10-01"}, autor1, jednostka, aj1)
+    # 2) wypełnienie NULL-a → NIE liczy się
+    aj2 = baker.make(
+        Autor_Jednostka, autor=autor2, jednostka=jednostka, rozpoczal_prace=None
+    )
+    _row_z_data(parent, {"data_zatrudnienia": "2021-10-01"}, autor2, jednostka, aj2)
+    # 3) zgodne daty → NIE liczy się
+    aj3 = baker.make(
+        Autor_Jednostka,
+        autor=autor3,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2021, 10, 1),
+    )
+    _row_z_data(parent, {"data_zatrudnienia": "2021-10-01"}, autor3, jednostka, aj3)
+    assert parent.liczba_nadpisan_dat() == 1
+
+
+@pytest.mark.django_db
+def test_liczba_nadpisan_dat_zero_przy_fladze_off():
+    parent = baker.make(ImportPracownikow, nadpisuj_daty_zatrudnienia=False)
+    autor, jednostka = baker.make(Autor), baker.make(Jednostka)
+    aj = baker.make(
+        Autor_Jednostka,
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2026, 7, 19),
+    )
+    _row_z_data(parent, {"data_zatrudnienia": "2021-10-01"}, autor, jednostka, aj)
+    assert parent.liczba_nadpisan_dat() == 0
+
+
+def _przeglad_url(parent):
+    return reverse("import_pracownikow:przeglad", kwargs={"pk": parent.pk})
+
+
+def _parent_faza_osob_z_nadpisaniem(owner, nadpisuj):
+    """Parent w stanie fazy osób (Krok 2 — struktura już zapisana) + 1
+    wiersz z realnym nadpisaniem (baza 2026-07-19, plik 2021-10-01), jak
+    w ``test_liczba_nadpisan_dat_liczy_tylko_realne_nadpisania``."""
+    parent = baker.make(
+        ImportPracownikow,
+        owner=owner,
+        stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA,
+        nadpisuj_daty_zatrudnienia=nadpisuj,
+    )
+    autor, jednostka = baker.make(Autor), baker.make(Jednostka)
+    aj = baker.make(
+        Autor_Jednostka,
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2026, 7, 19),
+    )
+    _row_z_data(parent, {"data_zatrudnienia": "2021-10-01"}, autor, jednostka, aj)
+    return parent
+
+
+@pytest.mark.django_db
+def test_przeglad_callout_nadpisywania_widoczny_przy_on(admin_client, admin_user):
+    parent = _parent_faza_osob_z_nadpisaniem(admin_user, nadpisuj=True)
+    resp = admin_client.get(_przeglad_url(parent))
+    html = resp.content.decode("utf-8")
+    assert "Włączono nadpisywanie dat zatrudnienia" in html
+    # NADPISANE musi być w confirm-owym onsubmit formularza zapisu osób —
+    # nie wystarczy, że jest gdzieś na stronie (np. sam callout).
+    match = re.search(r'onsubmit="([^"]*)"', html)
+    assert match is not None
+    assert "NADPISANE" in match.group(1)
+
+
+@pytest.mark.django_db
+def test_przeglad_bez_calloutu_przy_off(admin_client, admin_user):
+    parent = _parent_faza_osob_z_nadpisaniem(admin_user, nadpisuj=False)
+    resp = admin_client.get(_przeglad_url(parent))
+    html = resp.content.decode("utf-8")
+    assert "Włączono nadpisywanie dat zatrudnienia" not in html

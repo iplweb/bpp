@@ -583,6 +583,27 @@ class ImportPracownikow(LiveOperation):
             autor__isnull=True, utworz_nowego=False
         ).count()
 
+    def liczba_nadpisan_dat(self):
+        """Ile wierszy przy zapisie osób NADPISZE istniejącą datę
+        zatrudnienia (flaga ``nadpisuj_daty_zatrudnienia``) — do calloutu
+        i confirmu finalizacji. Liczone LIVE (``stany_pol_snapshot`` bywa
+        NULL do backfillu i miesza wypełnienia NULL-i z nadpisaniami);
+        ``wstepnie_zaladuj_okresy`` + przypięcie ``parent`` chronią przed
+        N+1."""
+        if not self.nadpisuj_daty_zatrudnienia:
+            return 0
+        from import_pracownikow.okresy import wstepnie_zaladuj_okresy
+
+        rows = list(
+            self.importpracownikowrow_set.filter(
+                autor__isnull=False, jednostka__isnull=False
+            ).select_related("autor", "jednostka")
+        )
+        for row in rows:
+            row.parent = self
+        wstepnie_zaladuj_okresy(rows)
+        return sum(1 for row in rows if row.nadpisze_daty())
+
     @staticmethod
     def _liczniki_decyzji(queryset, tryb_brak, tryb_zgadywanie):
         """Rozkład NIEROZSTRZYGNIĘTYCH decyzji (jednostek/tytułów) po ``tryb``:
@@ -1045,6 +1066,28 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         if not self.dane_znormalizowane:
             return None
         return self.dane_bardziej_znormalizowane.get("data_końca_zatrudnienia") or None
+
+    def nadpisze_daty(self):
+        """Czy zapis osób NADPISZE niepustą datę tego wiersza (flaga
+        ``nadpisuj_daty_zatrudnienia``). Liczy TYLKO realne nadpisania —
+        obie strony niepuste i różne; wypełnienia NULL-i i nowe okresy to
+        NIE nadpisania (spec §3.5, stan „zmienione" ze ``stany_pol`` byłby
+        zawyżony). Zasila licznik ostrzeżenia finalizacji."""
+        if not self.parent.nadpisuj_daty_zatrudnienia:
+            return False
+        if self.autor_id is None or self.jednostka_id is None:
+            return False
+        from import_pracownikow.okresy import rozwiaz_okres_zatrudnienia
+
+        rodzaj, aj = rozwiaz_okres_zatrudnienia(
+            self.autor, self.jednostka, self._plik_od(), aj_lista=self._aj_lista()
+        )
+        if rodzaj != "istniejacy":
+            return False
+        plik_od, plik_do = self._plik_od(), self._plik_do()
+        return bool(
+            plik_od and aj.rozpoczal_prace and aj.rozpoczal_prace != plik_od
+        ) or bool(plik_do and aj.zakonczyl_prace and aj.zakonczyl_prace != plik_do)
 
     def _aj_lista(self):
         """Lista okresów ``Autor_Jednostka`` dla ``(autor, jednostka)`` wiersza —
