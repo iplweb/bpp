@@ -169,6 +169,20 @@ class ImportPracownikow(LiveOperation):
         "zostaw ODZNACZONE</strong> — przepięłoby to historyczne afiliacje.<br>"
         "Można korygować per wiersz przed zapisem osób.",
     )
+    nadpisuj_daty_zatrudnienia = models.BooleanField(
+        "Nadpisuj daty zatrudnienia (od/do) wartościami z pliku",
+        default=False,
+        # HTML w help_text (crispy renderuje przez |safe) — wzorzec jak w
+        # przepnij_wszystkie_prace. Ten sam string dosłownie w migracji 0028.
+        help_text="Gdy zaznaczone, daty rozpoczęcia i zakończenia pracy "
+        "<strong>ISTNIEJĄCYCH</strong> okresów zatrudnienia zostaną "
+        "<strong>NADPISANE</strong> wartościami z pliku — tam, gdzie plik "
+        "niesie datę różną od bazy.<br>"
+        "Użyj do KOREKTY dat (np. po wcześniejszym imporcie pliku bez "
+        "dat, który ostemplował wszystkich datą importu).<br>"
+        "Puste komórki pliku niczego nie kasują. Dotyczy wyłącznie osób "
+        "obecnych w pliku.",
+    )
     zakres_integracji = models.CharField(
         "Zakres integracji",
         max_length=20,
