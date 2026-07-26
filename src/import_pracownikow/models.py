@@ -589,7 +589,13 @@ class ImportPracownikow(LiveOperation):
         i confirmu finalizacji. Liczone LIVE (``stany_pol_snapshot`` bywa
         NULL do backfillu i miesza wypełnienia NULL-i z nadpisaniami);
         ``wstepnie_zaladuj_okresy`` + przypięcie ``parent`` chronią przed
-        N+1."""
+        N+1.
+
+        Liczba jest orientacyjna i może być zawyżona: ``nadpisze_daty()``
+        porównuje wyłącznie daty, nie woła pre-checku nakładania okresów
+        (``_sprawdz_nakladanie_okresow``) — wiersz policzony tu jako
+        „nadpisanie" może przy faktycznej integracji zostać odrzucony
+        (kolizja z innym okresem) i mimo to zostać wliczony."""
         if not self.nadpisuj_daty_zatrudnienia:
             return 0
         from import_pracownikow.okresy import wstepnie_zaladuj_okresy

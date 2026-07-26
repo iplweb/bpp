@@ -63,9 +63,9 @@ zatrudnienia (od/do) wartościami z pliku**:
 - nadpisywane są tylko daty osób obecnych w pliku, tam gdzie plik niesie
   datę różną od bazy;
 - puste komórki pliku niczego nie kasują;
-- przy zaznaczaniu opcji oraz przed końcowym zapisem system prosi o
-  potwierdzenie i pokazuje liczbę wierszy, których daty zostaną
-  nadpisane;
+- przy zaznaczaniu opcji system prosi o potwierdzenie ryzyka (bez liczby
+  wierszy — ta jeszcze nie jest znana), a dopiero przed końcowym zapisem
+  pokazuje liczbę wierszy, których daty zostaną nadpisane;
 - nadpisanie, które spowodowałoby nałożenie się dwóch okresów
   zatrudnienia w tej samej jednostce, jest odrzucane per-wiersz z
   czytelnym błędem.
