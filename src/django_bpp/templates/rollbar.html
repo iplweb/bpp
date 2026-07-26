@@ -4,12 +4,31 @@
 {# Biblioteka hostowana lokalnie ze static (nie CDN). #}
 {# Bez danych użytkownika (person) i bez gejtowania zgodą cookie. #}
 <script src="{% static 'rollbar/rollbar.umd.min.js' %}"></script>
+{# Filtr szumu (obce skrypty, zgłoszenia bez stack trace'u) — testowany #}
+{# jednostkowo w tests/js/rollbar-filters.test.js. #}
+<script src="{% static 'bpp/js/rollbar-filters.js' %}"></script>
 <script>
     (function () {
         var _rollbarConfig = {
             accessToken: "{{ ROLLBAR_CLIENT.accessToken }}",
             captureUncaught: true,
             captureUnhandledRejections: true,
+            checkIgnore: function (isUncaught, args, payload) {
+                var filtry = window.bppRollbarFilters;
+                if (!filtry) {
+                    // Skrypt filtra się nie załadował — raportujemy wszystko,
+                    // tak jak przed jego wprowadzeniem.
+                    return false;
+                }
+                try {
+                    return filtry.czyPominac(payload, window.location.origin);
+                } catch (e) {
+                    // Błąd w samym filtrze NIE może wyciszyć raportu —
+                    // filtr, który przez własną awarię chowa prawdziwe
+                    // błędy, jest gorszy niż brak filtra.
+                    return false;
+                }
+            },
             payload: {
                 environment: "{{ ROLLBAR_CLIENT.environment }}",
                 client: {
