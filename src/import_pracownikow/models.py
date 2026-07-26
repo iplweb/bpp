@@ -1269,6 +1269,11 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             # pracy. Guard przed dostępem do atrybutów None (checki niżej łapią
             # None dopiero przez short-circuit dane.get(...), a #4 primary nie).
             return False
+        # §3.3a specu nadpisywania dat: przy fladze „nadpisuj daty" różnica
+        # wobec ISTNIEJĄCEJ (niepustej) daty też wymaga integracji — bez
+        # flagi liczy się, jak dotąd, wyłącznie wypełnienie NULL-a.
+        nadpisywanie = self.parent.nadpisuj_daty_zatrudnienia
+        plik_od, plik_do = self._plik_od(), self._plik_do()
         checks = [
             # #4: rozpoczęcie stemplujemy TYLKO gdy puste (data z pliku / importu)
             # — integracja potrzebna, gdy plik niesie datę, a AJ jej nie ma.
@@ -1292,6 +1297,14 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             # Stanowisko dydaktyczne — overwrite-if-different (mirror funkcja).
             self.stanowisko_dydaktyczne_id is not None
             and aj.stanowisko_id != self.stanowisko_dydaktyczne_id,
+            nadpisywanie
+            and plik_od is not None
+            and aj.rozpoczal_prace is not None
+            and aj.rozpoczal_prace != plik_od,
+            nadpisywanie
+            and plik_do is not None
+            and aj.zakonczyl_prace is not None
+            and aj.zakonczyl_prace != plik_do,
         ]
         return any(checks)
 
