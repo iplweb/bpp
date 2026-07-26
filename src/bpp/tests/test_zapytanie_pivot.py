@@ -316,6 +316,51 @@ def test_presety_dla_autora_niosa_biezace_zapytanie(redaktor):
 
 
 @pytest.mark.django_db
+def test_pivot_autorow_baza_udzialow_renderuje_sume(
+    redaktor, zwarte_z_dyscyplinami, autor_jan_nowak, denorms
+):
+    """End-to-end bazy U na stronie: Σ slotów × rok renderuje się i eksportuje.
+
+    `zwarte_z_dyscyplinami` buduje realne wiersze `bpp_cache_punktacja_autora`
+    (dwóch autorów po 0.5 slota), więc macierz ma się z czego wziąć — grand
+    total 1.0 dla obu autorów razem, 0.5 w wierszu Jana Nowaka.
+    """
+    from decimal import Decimal
+
+    denorms.flush()
+    res = redaktor.get(
+        reverse("bpp:zapytanie"),
+        {
+            "model": "autor",
+            "query": 'nazwisko in ("Nowak", "Kowalski")',
+            "postac": "pivot",
+            "pivot_row": "autor",
+            "pivot_col": "rok",
+            "pivot_val": "suma_slotow",
+        },
+    )
+    assert res.status_code == 200
+    pivot = res.context["pivot"]
+    assert pivot.grand_total == Decimal("1.0000")
+    assert pivot.row_totals[autor_jan_nowak.pk] == Decimal("0.5000")
+    assert str(zwarte_z_dyscyplinami.rok).encode() in res.content
+
+    eksport = redaktor.get(
+        reverse("bpp:zapytanie_eksport", kwargs={"export_format": "csv"}),
+        {
+            "model": "autor",
+            "query": 'nazwisko in ("Nowak", "Kowalski")',
+            "postac": "pivot",
+            "pivot_row": "autor",
+            "pivot_col": "rok",
+            "pivot_val": "suma_slotow",
+        },
+    )
+    assert eksport.status_code == 200
+    assert b"RAZEM" in eksport.content
+
+
+@pytest.mark.django_db
 def test_presety_nieobecne_dla_rekordu(redaktor, wydawnictwo_ciagle, denorms):
     """Presety z Zadania 9 dotyczą TYLKO modelu autor (baza K, patrz brief).
     Model rekord ich nie pokazuje — zapobiega martwym linkom z parametrami
@@ -330,16 +375,14 @@ def test_presety_nieobecne_dla_rekordu(redaktor, wydawnictwo_ciagle, denorms):
 
 @pytest.mark.django_db
 def test_metryka_kadrowa_pokazuje_rejestr_autorski(redaktor, autor_jan_nowak):
-    """DEFEKT #3 z brief-u: `"rok" not in pivot_dimensions` byłby zielony
-    NIEZALEŻNIE od tego, czy filtrowanie po bazie metryki (`expr_dla`)
-    naprawdę działa, bo "rok" nie jest dziś w ogóle kluczem w
-    bpp.pivot.autor.DIMENSIONS (dojdzie dopiero w Zadaniu 10 jako wymiar
-    bazy P/U). Sprawdzamy więc to, co JEST dziś falsyfikowalne: strona
-    autorska pokazuje wymiary z WŁAŚCIWEGO rejestru (autorskiego, nie
-    rekordowego) — gdyby _pivot_context pomyłkowo użył rejestru rekordowego,
-    te klucze by się nie zgadzały. Właściwy test „metryka bazy K chowa
-    wymiary publikacyjne bazy P/U" wymaga wymiarów per-bazowych i trafia do
-    Zadania 10 (patrz test_metryka_slotowa_pokazuje_rok niżej, xfail)."""
+    """Metryka bazy K (liczba autorów) chowa wymiary publikacyjne baz P/U.
+
+    Selektor dostaje z widoku PRZEFILTROWANY słownik wymiarów: sam `bpp_autor`
+    nie ma dojścia do rekordu, więc „rok"/„dyscyplina"/… nie mają w bazie K
+    ścieżki ORM (`expr_dla("K") is None`) i muszą zniknąć z selektora. Zostają
+    dokładnie wymiary autorskie — porównanie z jawną listą, a nie z
+    `DIMENSIONS.keys()`, bo od Zadania 10 rejestr jest szerszy niż baza K.
+    """
     from bpp.pivot import autor as autor_rejestr
 
     res = redaktor.get(
@@ -351,14 +394,22 @@ def test_metryka_kadrowa_pokazuje_rejestr_autorski(redaktor, autor_jan_nowak):
             "pivot_val": "liczba_autorow",
         },
     )
-    assert res.context["pivot_dimensions"].keys() == autor_rejestr.DIMENSIONS.keys()
-    assert "jednostka" in res.context["pivot_dimensions"]
-    assert "rok" not in res.context["pivot_dimensions"]
+    widoczne = res.context["pivot_dimensions"]
+    assert set(widoczne) == {
+        klucz
+        for klucz, dim in autor_rejestr.DIMENSIONS.items()
+        if dim.expr_dla(autor_rejestr.BAZA_KADROWA) is not None
+    }
+    assert "jednostka" in widoczne
+    assert "rok" not in widoczne
+    assert "dyscyplina" not in widoczne
 
 
-@pytest.mark.xfail(reason="metryki bazy U dochodzą w Zadaniu 10", strict=True)
 @pytest.mark.django_db
 def test_metryka_slotowa_pokazuje_rok(redaktor, autor_jan_nowak):
+    """Metryka Σ slotów (baza U) odsłania wymiary publikacyjne bazy U — ale
+    tylko te, które `bpp_cache_punktacja_autora` naprawdę zna: typ
+    odpowiedzialności i charakter formalny zostają wyłącznie w bazie P."""
     res = redaktor.get(
         reverse("bpp:zapytanie"),
         {
@@ -368,5 +419,49 @@ def test_metryka_slotowa_pokazuje_rok(redaktor, autor_jan_nowak):
             "pivot_val": "suma_slotow",
         },
     )
-    assert "rok" in res.context["pivot_dimensions"]
-    assert "typ_odpowiedzialnosci" not in res.context["pivot_dimensions"]
+    widoczne = res.context["pivot_dimensions"]
+    assert "rok" in widoczne
+    assert "dyscyplina" in widoczne
+    assert "jednostka_pracy" in widoczne
+    assert "typ_odpowiedzialnosci" not in widoczne
+    assert "charakter_formalny" not in widoczne
+
+
+@pytest.mark.django_db
+def test_metryka_liczby_prac_pokazuje_wymiary_bazy_prac(redaktor, autor_jan_nowak):
+    """Baza P (liczba prac) idzie przez `autorzy` do rekordu, więc widzi
+    WSZYSTKIE wymiary publikacyjne — w odróżnieniu od bazy U."""
+    res = redaktor.get(
+        reverse("bpp:zapytanie"),
+        {
+            "model": "autor",
+            "query": 'nazwisko = "Nowak"',
+            "postac": "pivot",
+            "pivot_val": "liczba_prac",
+        },
+    )
+    widoczne = res.context["pivot_dimensions"]
+    assert {"rok", "dyscyplina", "typ_odpowiedzialnosci", "charakter_formalny"} <= set(
+        widoczne
+    )
+
+
+@pytest.mark.django_db
+def test_presety_autora_sa_wykonalne_w_swojej_bazie():
+    """Każdy preset musi PRZEŻYĆ parse_pivot_params_autor bez podmiany.
+
+    Preset podaje wiersz, kolumnę i metrykę; metryka wybiera bazę, a baza
+    decyduje, które wymiary istnieją. Gdyby preset łączył wymiar publikacyjny
+    (np. „rok") z metryką bazy kadrowej, parser cicho podstawiłby DEFAULT_ROW /
+    wyrzucił kolumnę i user zobaczyłby tabelę inną niż obiecuje etykieta.
+    """
+    from bpp.pivot.autor import parse_pivot_params_autor
+    from bpp.views.zapytanie import PIVOT_PRESETY_AUTOR
+
+    for opis, row_key, col_key, metric_key in PIVOT_PRESETY_AUTOR:
+        row, col, metric = parse_pivot_params_autor(
+            {"pivot_row": row_key, "pivot_col": col_key, "pivot_val": metric_key}
+        )
+        assert metric.key == metric_key, opis
+        assert row.key == row_key, opis
+        assert col is not None and col.key == col_key, opis

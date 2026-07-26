@@ -7,9 +7,21 @@ Trzy bazy agregacji, bo metryka decyduje o ścieżce JOIN-u:
 * U (udziały) — przez `cache_punktacja_autora_query` (ma FK do Rekordu, więc
   widzi rok), metryki Σ slotów i Σ pkdaut.
 
-Ten moduł implementuje TYLKO bazę K — Zadanie 8 planu. Bazy P i U (wraz z
-wymiarami publikacyjnymi o `expr` per-bazowym: rok, dyscyplina, jednostka
-pracy, typ odpowiedzialności, charakter formalny) to Zadanie 10.
+KRYTYCZNE — jedna relacja do-wielu na queryset. Wymiary publikacyjne (rok,
+dyscyplina, jednostka pracy, typ odpowiedzialności, charakter formalny) mają
+`expr` jako słownik per baza WŁAŚNIE dlatego, że muszą iść DOKŁADNIE tą samą
+relacją do-wielu, po której agreguje metryka danej bazy:
+
+* baza P → `autorzy__…`;
+* baza U → `cache_punktacja_autora_query__…`.
+
+Zmieszanie dwóch relacji do-wielu w jednym querysecie daje iloczyn kartezjański
+i `Sum` zwraca wielokrotność prawdy (zmierzone: autor z dwiema pracami i dwoma
+wierszami udziału daje Σ slotów 3.0 zamiast 1.5, gdy wymiar „rok" pójdzie przez
+`autorzy__rekord__rok` przy metryce sumującej po
+`cache_punktacja_autora_query__slot`). `Count(..., distinct=True)` jest na to
+odporny, `Sum` NIE JEST. Dowód nie-zawyżania stoi w
+`test_baza_udzialow_nie_zawyza_sumy_przy_wielu_pracach`.
 
 Świadomie NIE ma Σ IF / Σ PK / Σ cytowań: to wartości rekordowe, które
 sumowane per autor zwielokrotniają się między współautorami. Kto ich chce,
@@ -53,8 +65,27 @@ def _ma_wypelnione(pole):
 
 
 def _autorski(expr):
-    """Wymiar autorski — ta sama ścieżka we wszystkich bazach."""
+    """Wymiar autorski — ta sama ścieżka we wszystkich bazach.
+
+    Pola te leżą wprost na `bpp_autor` (albo są adnotacją po takim polu), więc
+    nie dokładają ŻADNEJ relacji do-wielu i są bezpieczne w każdej bazie.
+    """
     return {baza: expr for baza in WSZYSTKIE_BAZY}
+
+
+def _publikacyjny(baza_prace, baza_udzialy=None):
+    """Wymiar publikacyjny — ścieżka osobna dla bazy P i U, brak w bazie K.
+
+    Argumenty MUSZĄ startować od relacji właściwej dla bazy (`autorzy__` dla P,
+    `cache_punktacja_autora_query__` dla U) — patrz docstring modułu. `None`
+    (albo brak argumentu) = wymiar niedostępny w tej bazie, wtedy
+    `parse_pivot_params_autor` cicho wraca do wymiaru domyślnego, a widok nie
+    pokazuje go w selektorze.
+    """
+    expr = {BAZA_PRACE: baza_prace}
+    if baza_udzialy is not None:
+        expr[BAZA_UDZIALY] = baza_udzialy
+    return expr
 
 
 DIMENSIONS: dict[str, PivotDimension] = {
@@ -143,6 +174,58 @@ DIMENSIONS: dict[str, PivotDimension] = {
         label_kind="fk",
         fk_model="bpp.Autor",
     ),
+    # --- wymiary publikacyjne (bazy P/U; w bazie K niedostępne) ------------
+    "rok": PivotDimension(
+        "rok",
+        "Rok publikacji",
+        _publikacyjny(
+            "autorzy__rekord__rok",
+            "cache_punktacja_autora_query__rekord__rok",
+        ),
+    ),
+    "dyscyplina": PivotDimension(
+        "dyscyplina",
+        "Dyscyplina pracy",
+        _publikacyjny(
+            "autorzy__dyscyplina_naukowa_id",
+            "cache_punktacja_autora_query__dyscyplina_id",
+        ),
+        label_kind="fk",
+        fk_model="bpp.Dyscyplina_Naukowa",
+    ),
+    "jednostka_pracy": PivotDimension(
+        "jednostka_pracy",
+        "Jednostka przy pracy",
+        _publikacyjny(
+            "autorzy__jednostka_id",
+            "cache_punktacja_autora_query__jednostka_id",
+        ),
+        allow_column=False,
+        label_kind="fk",
+        fk_model="bpp.Jednostka",
+    ),
+    "typ_odpowiedzialnosci": PivotDimension(
+        "typ_odpowiedzialnosci",
+        "Typ odpowiedzialności",
+        # Tylko baza P: bpp_cache_punktacja_autora nie zna typu
+        # odpowiedzialności (autorstwo/redakcja) — nie ma jak go podać w U.
+        _publikacyjny("autorzy__typ_odpowiedzialnosci_id"),
+        label_kind="fk",
+        fk_model="bpp.Typ_Odpowiedzialnosci",
+    ),
+    "charakter_formalny": PivotDimension(
+        "charakter_formalny",
+        "Charakter formalny pracy",
+        # Tylko baza P. Rekord jest osiągalny i z bazy U
+        # (`cache_punktacja_autora_query__rekord__charakter_formalny_id`), ale
+        # udziały slotowe istnieją wyłącznie dla charakterów wchodzących do
+        # ewaluacji — przekrój po charakterze w bazie U byłby pół-puszką
+        # sugerującą, że reszta dorobku ma zerowe sloty. W bazie P jest
+        # kompletny, więc tam go dajemy.
+        _publikacyjny("autorzy__rekord__charakter_formalny_id"),
+        label_kind="fk",
+        fk_model="bpp.Charakter_Formalny",
+    ),
 }
 
 METRICS: dict[str, PivotMetric] = {
@@ -152,6 +235,27 @@ METRICS: dict[str, PivotMetric] = {
         None,
         baza=BAZA_KADROWA,
         distinct_field="pk",
+    ),
+    "liczba_prac": PivotMetric(
+        "liczba_prac",
+        "Liczba prac",
+        None,
+        baza=BAZA_PRACE,
+        # `bpp_autorzy_mat.rekord_id` to integer[] (Rekord ma klucz złożony) —
+        # COUNT(DISTINCT …) na tablicy działa, bo PG zna równość tablic.
+        distinct_field="autorzy__rekord_id",
+    ),
+    "suma_slotow": PivotMetric(
+        "suma_slotow",
+        "Σ slotów",
+        "cache_punktacja_autora_query__slot",
+        baza=BAZA_UDZIALY,
+    ),
+    "suma_pkdaut": PivotMetric(
+        "suma_pkdaut",
+        "Σ pkdaut (punkty autora)",
+        "cache_punktacja_autora_query__pkdaut",
+        baza=BAZA_UDZIALY,
     ),
 }
 
@@ -184,13 +288,14 @@ def zbuduj_pivot_autora(base_qs, row_dim, col_dim, metric):
     i zwielokrotniać wiersze autora (ta sama zasada, co _dedup_strategy
     w pivocie rekordowym).
 
-    UWAGA o nośności dedupu: w bazie K (metryka Count(pk, distinct=True))
-    dedup jest jeszcze REDUNDANTNY — DISTINCT w agregacie sam zwija
-    zwielokrotnione wiersze, co sprawdzono empirycznie (po usunięciu tej
-    linii cała suita test_pivot_autor.py nadal przechodzi). Staje się
-    nośny dopiero dla metryk Σ (bazy P/U), bo Sum nie ma jak rozpoznać
-    duplikatu wiersza. Zostaje tu świadomie: jest poprawny, tani (podzapytanie
-    po PK) i jednakowy dla wszystkich baz.
+    NOŚNOŚĆ DEDUPU: w bazie K jest redundantny — `Count(pk, distinct=True)`
+    sam zwija zwielokrotnione wiersze. Dla metryk Σ (bazy P/U) jest KRYTYCZNY:
+    `Sum` nie ma jak rozpoznać duplikatu wiersza, więc bez tej linii filtr po
+    relacji do-wielu (np. `autor_jednostka__jednostka` przy dwóch okresach
+    zatrudnienia) mnoży sumę razy liczbę dopasowanych wierszy. Pilnuje tego
+    `test_dedup_po_zatrudnieniach_nie_zawyza_sumy_slotow` — po zakomentowaniu
+    linii niżej ten test pada (Σ slotów 0.5 → 1.5 przy trzech wierszach
+    zatrudnienia).
     """
     from bpp.models import Autor
 

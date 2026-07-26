@@ -390,15 +390,21 @@ EXAMPLES = [
 
 
 # Presety pivota autorskiego — skróty do gotowych tabel krzyżowych w sekcji
-# pomocy (Zadanie 9). Wszystkie cztery korzystają WYŁĄCZNIE z bazy kadrowej K
-# (metric="liczba_autorow"), bo to jedyna baza, jaką ma dziś bpp.pivot.autor —
-# presety oparte na bazach P/U (produktywność, ranking slotowy) dochodzą w
-# Zadaniu 10 razem z tamtymi wymiarami/metrykami.
+# pomocy. Pierwsze cztery korzystają z bazy kadrowej K (liczba autorów),
+# pozostałe z baz bibliometrycznych: P (liczba prac) i U (Σ slotów, Σ pkdaut).
+# KAŻDA para (wymiar, metryka) musi być poprawna dla bazy tej metryki —
+# wymiar publikacyjny (rok, dyscyplina) NIE istnieje w bazie K i
+# parse_pivot_params_autor cicho zamieniłby go na domyślny, dając preset
+# pokazujący nie to, co obiecuje etykieta.
 PIVOT_PRESETY_AUTOR = (
     ("Struktura kadrowa", "jednostka", "tytul", "liczba_autorow"),
     ("Audyt kompletności ORCID", "jednostka", "ma_orcid", "liczba_autorow"),
     ("Gotowość do PBN", "jednostka", "ma_pbn_uid", "liczba_autorow"),
     ("Struktura płci wg tytułów", "tytul", "plec", "liczba_autorow"),
+    ("Produktywność jednostek", "jednostka", "rok", "liczba_prac"),
+    ("Ranking autorów (slotowy)", "autor", "rok", "suma_slotow"),
+    ("Udziały dyscyplinowe", "dyscyplina", "rok", "suma_slotow"),
+    ("Wkład punktowy jednostek", "jednostka", "rok", "suma_pkdaut"),
 )
 
 
