@@ -20,6 +20,7 @@ from bpp.views.multiseek_export import (
 from bpp.views.zapytanie import (
     MODEL_AUTOR,
     MODEL_REKORD,
+    POSTAC_PIVOT,
     WprowadzanieDanychOrSuperuserMixin,
     parse_postac,
     wykonaj_zapytanie,
@@ -75,6 +76,14 @@ class ZapytanieExportView(WprowadzanieDanychOrSuperuserMixin, View):
             request.GET.get("tytul") or ZAPYTANIE_DEFAULT_REPORT_TITLE
         )
         queryset = wynik.queryset
+
+        postac = parse_postac(request.GET, model_key)
+        if postac == POSTAC_PIVOT:
+            # Pivot eksportuje MACIERZ — jej rozmiar nie zależy od liczby
+            # rekordów źródłowych, więc capy rekordowe (25000/5000) go nie
+            # dotyczą (dokładnie jak w MyMultiseekExport.get).
+            return self._eksport_pivota(request, export_format, queryset, report_title)
+
         count = queryset.count()
 
         # Limity czytamy ze stałych MODUŁU (nie z domyślnych argumentów ani
@@ -90,10 +99,31 @@ class ZapytanieExportView(WprowadzanieDanychOrSuperuserMixin, View):
         if count > ZAPYTANIE_EXPORT_MAX_DOKUMENT:
             return self._za_duzo(count, ZAPYTANIE_EXPORT_MAX_DOKUMENT)
 
-        postac = parse_postac(request.GET, model_key)
         return self._eksport_dokumentu(
             request, export_format, postac, queryset, report_title
         )
+
+    @staticmethod
+    def _eksport_pivota(request, export_format, queryset, report_title):
+        from bpp.multiseek_registry import pivot as pivot_mod
+        from bpp.views.multiseek_export import (
+            pivot_csv_export_response,
+            pivot_xlsx_export_response,
+        )
+
+        if export_format not in {"csv", "xlsx"}:
+            return _blad("Eksport tabeli krzyżowej dostępny jako XLSX lub CSV.")
+        row_dim, col_dim, metric = pivot_mod.parse_pivot_params(request.GET)
+        try:
+            pivot_result = pivot_mod.zbuduj_pivot(queryset, row_dim, col_dim, metric)
+        except pivot_mod.PivotTooLargeError:
+            return _blad(
+                "Tabela krzyżowa jest zbyt duża do wyeksportowania — "
+                "zawęź zapytanie lub wybierz mniej liczny wymiar."
+            )
+        if export_format == "csv":
+            return pivot_csv_export_response(pivot_result, request, report_title)
+        return pivot_xlsx_export_response(pivot_result, request, report_title)
 
     @staticmethod
     def _eksport_dokumentu(request, export_format, postac, queryset, report_title):

@@ -3,9 +3,20 @@ Tabela krzyżowa (pivot). Kontekst: pivot (PivotResult lub None gdy za duża),
 pivot_error (PivotTooLargeError lub brak), pivot_row_dim / pivot_col_dim /
 pivot_metric (aktualny wybór — dostępne też przy błędzie), pivot_dimensions,
 pivot_metrics. Konfiguracja idzie parametrami GET (pivot_row/col/val).
+pivot_form_action / pivot_form_hidden / pivot_export_base to opcjonalne
+haki konsumenta (domyślne wartości = zachowanie multiseeka bez zmian):
+strona zapytania trzyma filtr w URL-u (nie w sesji jak multiseek), więc
+musi je przenosić przez ukryte pola i wskazać własny prefiks eksportu.
 {% endcomment %}
 <div class="multiseek-pivot-wrap">
-    <form method="get" action="." class="multiseek-pivot-controls">
+    <form method="get" action="{{ pivot_form_action|default:'.' }}"
+          class="multiseek-pivot-controls">
+        {# Ukryte pola przenoszą stan konsumenta (na /zapytanie/: model, #}
+        {# query, postac). Multiseek nie przekazuje pivot_form_hidden — #}
+        {# jego filtr żyje w sesji, więc pętla jest pusta. #}
+        {% for name, value in pivot_form_hidden %}
+            <input type="hidden" name="{{ name }}" value="{{ value }}">
+        {% endfor %}
         <label>Wiersze
             <select name="pivot_row" onchange="this.form.submit()">
                 {% for key, dim in pivot_dimensions.items %}
@@ -75,11 +86,13 @@ pivot_metrics. Konfiguracja idzie parametrami GET (pivot_row/col/val).
     {% endif %}
 
     {% if request.user.is_authenticated %}
+    {% with base=pivot_export_base|default:"../export/" %}
     <div class="multiseek-pivot-export hide-for-print">
         Eksport tabeli:
-        <a href="../export/xlsx/?{{ request.GET.urlencode }}">XLSX</a>
-        <a href="../export/csv/?{{ request.GET.urlencode }}">CSV</a>
+        <a href="{{ base }}xlsx/?{{ request.GET.urlencode }}">XLSX</a>
+        <a href="{{ base }}csv/?{{ request.GET.urlencode }}">CSV</a>
     </div>
+    {% endwith %}
     {% endif %}
 
     {% elif pivot_error %}

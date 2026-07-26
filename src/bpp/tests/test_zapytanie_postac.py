@@ -4,6 +4,15 @@ from model_bakery import baker
 
 from bpp.models import Wydawnictwo_Ciagle
 
+# Znacznik tabeli redakcyjnej ("postac=rekordy") w wyrenderowanym HTML-u.
+# MUSI zawierac prefiks '<td class=' — sama nazwa klasy "rekord-id-cell"
+# wystepuje w dokumencie ZAWSZE, bo zapytanie.html definiuje dla niej regule
+# CSS w bloku <style>. Asercja na goley nazwie klasy przechodzi wiec takze
+# dla postaci, ktore tabeli redakcyjnej wcale nie renderuja (zlapane przy
+# odparkowaniu zadania 6: test "pivot degraduje" byl zielony jeszcze wtedy,
+# gdy pivot juz mial wlasny render).
+TABELA_REDAKCYJNA = b'<td class="rekord-id-cell">'
+
 
 @pytest.fixture
 def zalogowany_redaktor(client, admin_user):
@@ -21,7 +30,7 @@ def test_postac_domyslna_to_tabela_redakcyjna(
         {"model": "rekord", "query": f"rok = {wydawnictwo_ciagle.rok}"},
     )
     assert res.status_code == 200
-    assert b"rekord-id-cell" in res.content
+    assert TABELA_REDAKCYJNA in res.content
 
 
 @pytest.mark.django_db
@@ -97,32 +106,42 @@ def test_postac_niedozwolona_dla_autora_degraduje(
     assert b"multiseek-list-report" not in res.content
     # Pozytywny dowod degradacji do "rekordy": galaz autorska tabeli
     # (zapytanie.html, model_key != "rekord") renderuje TEN SAM znacznik
-    # "rekord-id-cell" co galaz rekordowa — patrz
-    # test_postac_pivot_dla_rekordu_degraduje.
-    assert b"rekord-id-cell" in res.content
+    # tabeli redakcyjnej co galaz rekordowa.
+    assert TABELA_REDAKCYJNA in res.content
 
 
 @pytest.mark.django_db
-def test_postac_pivot_niewybieralna_w_selektorze(
-    zalogowany_redaktor, wydawnictwo_ciagle, denorms
+def test_postac_pivot_wybieralna_dla_rekordu_nie_dla_autora(
+    zalogowany_redaktor, wydawnictwo_ciagle, autor_jan_nowak, denorms
 ):
-    """Pivot bez dedykowanego partiala nie ma prawa być opcją w <select>.
+    """Zasada tego widoku: opcja w <select> albo dziala, albo jej nie ma.
 
-    Zasada: opcja w UI albo działa, albo jej nie ma. Realny render tabeli
-    krzyżowej dokładają kolejne zadania planu.
+    Rekordy maja render tabeli krzyzowej, wiec opcja jest. Autorzy jeszcze
+    nie maja (wlasny rejestr wymiarow dokladaja kolejne zadania planu), wiec
+    dla nich opcji byc NIE MOZE — to jest dzisiaj wlasciwy straznik.
     """
     denorms.flush()
-    res = zalogowany_redaktor.get(
+    dla_rekordu = zalogowany_redaktor.get(
         reverse("bpp:zapytanie"),
         {"model": "rekord", "query": f"rok = {wydawnictwo_ciagle.rok}"},
     )
-    assert b'value="pivot"' not in res.content
+    dla_autora = zalogowany_redaktor.get(
+        reverse("bpp:zapytanie"),
+        {"model": "autor", "query": 'nazwisko = "Nowak"'},
+    )
+    assert b'value="pivot"' in dla_rekordu.content
+    assert b'value="pivot"' not in dla_autora.content
 
 
 @pytest.mark.django_db
-def test_postac_pivot_dla_rekordu_degraduje(
+def test_postac_pivot_dla_rekordu_zastepuje_tabele_redakcyjna(
     zalogowany_redaktor, wydawnictwo_ciagle, denorms
 ):
+    """Pivot ma tabele redakcyjna ZASTAPIC, nie stanac obok niej.
+
+    Render macierzy sprawdza test_zapytanie_pivot.py — tu pilnujemy drugiej
+    polowy kontraktu: galaz "rekordy" ma sie nie wykonac.
+    """
     denorms.flush()
     res = zalogowany_redaktor.get(
         reverse("bpp:zapytanie"),
@@ -130,10 +149,13 @@ def test_postac_pivot_dla_rekordu_degraduje(
             "model": "rekord",
             "query": f"rok = {wydawnictwo_ciagle.rok}",
             "postac": "pivot",
+            "pivot_row": "rok",
+            "pivot_val": "liczba",
         },
     )
     assert res.status_code == 200
-    assert b"rekord-id-cell" in res.content
+    assert res.context["pivot"] is not None
+    assert TABELA_REDAKCYJNA not in res.content
 
 
 @pytest.mark.django_db
@@ -149,7 +171,7 @@ def test_postac_pivot_dla_autora_degraduje(
     assert b"multiseek-list-report" not in res.content
     # Pozytywny dowod degradacji do "rekordy" (patrz komentarz w
     # test_postac_niedozwolona_dla_autora_degraduje wyzej).
-    assert b"rekord-id-cell" in res.content
+    assert TABELA_REDAKCYJNA in res.content
 
 
 @pytest.mark.django_db
