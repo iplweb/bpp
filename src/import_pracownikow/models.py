@@ -1408,25 +1408,61 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
 
         return nadpisano
 
-    def _integrate_autor_jednostka(self):
-        aj = self.autor_jednostka
-        if aj is None:
-            # Ochrona: świeży okres mógł zostać scalony przez defragmentację i
-            # bez ocalałego AJ (`_przepnij_aj_po_defragmentacji`). Dane zatrudnienia
-            # niesie już scalony rekord — nie ma czego zapisywać.
+    def _sprawdz_nakladanie_okresow(self, aj):
+        """Pythonowe lustro constraintu
+        ``bpp_autor_jednostka_okresy_bez_nakladan`` (bpp/models/autor.py):
+        przedziały DOMKNIĘTE ``[od, do]``, ``zakonczyl_prace IS NULL`` =
+        otwarty w prawo ``[od, ∞)``. Wołane TYLKO po nadpisaniu niepustej
+        daty (flaga „nadpisuj daty") — naruszenie constraintu w bazie
+        zatruwa transakcję i psuje izolację wiersza, więc kolizję łapiemy
+        PRZED save (jak niezmiennik od<do wyżej)."""
+        from bpp.models import Autor_Jednostka
+
+        if aj.rozpoczal_prace is None:
             return
-        dane = self.dane_bardziej_znormalizowane
+        od = aj.rozpoczal_prace
+        do = aj.zakonczyl_prace or date.max
+        koliduje = (
+            Autor_Jednostka.objects.filter(
+                autor_id=aj.autor_id,
+                jednostka_id=aj.jednostka_id,
+                rozpoczal_prace__isnull=False,
+            )
+            .exclude(pk=aj.pk)
+            .filter(rozpoczal_prace__lte=do)
+        )
+        for inny in koliduje:
+            if od <= (inny.zakonczyl_prace or date.max):
+                raise BPPDatabaseError(
+                    self.dane_z_xls,
+                    self,
+                    f"nadpisane daty ({od} – "
+                    f"{aj.zakonczyl_prace or 'obecnie'}) nakładają się na "
+                    f"inny okres zatrudnienia w tej jednostce "
+                    f"({inny.rozpoczal_prace} – "
+                    f"{inny.zakonczyl_prace or 'obecnie'})",
+                )
 
-        nadpisano_daty = self._integruj_daty_aj(aj, dane)
+    def _waliduj_daty_aj(self, aj, nadpisano_daty):
+        """Walidacja dat AJ PRZED jakimkolwiek zapisem (wydzielona z
+        ``_integrate_autor_jednostka``, żeby nie przekraczać limitu
+        złożoności cyklomatycznej — obie walidacje i tak są ze sobą
+        związane: obie muszą paść przed ``aj.save()`` niżej).
 
-        # Niezmiennik rozpoczal < zakonczyl walidujemy PRZED jakimkolwiek zapisem.
-        # Model.save() nie woła clean(), a ustaw_podstawowe_miejsce_pracy() niżej
-        # już utrwala aj (i zdejmuje flagę „podstawowe" z innych powiązań autora).
-        # Odwrócony zakres z XLS musi zostać odrzucony (BPPDatabaseError → izolacja
-        # wiersza) zanim cokolwiek trafi do bazy — inaczej przedwczesny save
-        # zderza się z DB-owym CHECK `poczatek_przed_koncem` (mig 0469) i daje
-        # nieizolowany CheckViolation. Reguły „koniec < dziś" celowo NIE
-        # egzekwujemy: import może nieść przyszłe (planowane) daty końca.
+        Niezmiennik rozpoczal < zakonczyl walidujemy PRZED jakimkolwiek
+        zapisem. Model.save() nie woła clean(), a
+        ustaw_podstawowe_miejsce_pracy() w wołającej metodzie już utrwala
+        aj (i zdejmuje flagę „podstawowe" z innych powiązań autora).
+        Odwrócony zakres z XLS musi zostać odrzucony (BPPDatabaseError →
+        izolacja wiersza) zanim cokolwiek trafi do bazy — inaczej
+        przedwczesny save zderza się z DB-owym CHECK
+        `poczatek_przed_koncem` (mig 0469) i daje nieizolowany
+        CheckViolation. Reguły „koniec < dziś" celowo NIE egzekwujemy:
+        import może nieść przyszłe (planowane) daty końca.
+
+        Pre-check nakładania okresów (lustro ExclusionConstraint) wołamy
+        TYLKO gdy nadpisano niepustą datę — patrz
+        ``_sprawdz_nakladanie_okresow``."""
         if (
             aj.rozpoczal_prace is not None
             and aj.zakonczyl_prace is not None
@@ -1438,6 +1474,21 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
                 f"data rozpoczęcia pracy ({aj.rozpoczal_prace}) jest późniejsza "
                 f"lub równa dacie zakończenia ({aj.zakonczyl_prace})",
             )
+
+        if nadpisano_daty:
+            self._sprawdz_nakladanie_okresow(aj)
+
+    def _integrate_autor_jednostka(self):
+        aj = self.autor_jednostka
+        if aj is None:
+            # Ochrona: świeży okres mógł zostać scalony przez defragmentację i
+            # bez ocalałego AJ (`_przepnij_aj_po_defragmentacji`). Dane zatrudnienia
+            # niesie już scalony rekord — nie ma czego zapisywać.
+            return
+        dane = self.dane_bardziej_znormalizowane
+
+        nadpisano_daty = self._integruj_daty_aj(aj, dane)
+        self._waliduj_daty_aj(aj, nadpisano_daty)
 
         if self.funkcja_autora is not None and aj.funkcja != self.funkcja_autora:
             aj.funkcja = self.funkcja_autora
