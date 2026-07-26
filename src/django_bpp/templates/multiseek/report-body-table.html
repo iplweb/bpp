@@ -44,11 +44,17 @@
             </a>
             {% endif %}
             </span>
-                {% if not export_mode and not print_removed %}
+                {% if not export_mode and not print_removed and not hide_chrome %}
             <span class="multiseek-remove-from-results">
                 <a data-remove-result="{{ element.js_safe_pk }}" style="font-size: 8pt;">
                     ❌
                 </a>
+            </span>
+                {% endif %}
+                {% if pokaz_edycje and element.admin_url %}
+            <span class="zapytanie-edytuj">
+                <a href="{{ element.admin_url }}" target="_blank"
+                   title="Edytuj w panelu administracyjnym">✎</a>
             </span>
                 {% endif %}
             </td>

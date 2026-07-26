@@ -6,6 +6,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldError, ValidationError
 from django.core.paginator import Paginator
+from django.db.models import Sum
 from django.http import Http404, HttpResponse, JsonResponse
 from django.urls import NoReverseMatch, reverse
 from django.views.generic import FormView, View
@@ -29,6 +30,11 @@ from bpp.djangoql_errors import (
 from bpp.djangoql_schema import BppQLSchemaOgraniczony
 from bpp.models import Autor
 from bpp.models.cache import Rekord
+from bpp.views.multiseek_export import (
+    MULTISEEK_RENDER_LIST_FIELDS,
+    MULTISEEK_RENDER_TABLE_FIELDS,
+    TABLE_REPORT_TYPES,
+)
 
 # Alias zgodności: schemat przeniesiony do bpp.djangoql_schema (wspólny trzon
 # dla widoku i adminów). Widok i testy odwołują się do BppZapytanieSchema.
@@ -49,6 +55,42 @@ MODELS = {
     MODEL_REKORD: Rekord,
     MODEL_AUTOR: Autor,
 }
+
+# Wartości "postac" to identyfikatory ReportType z multiseek_registry.reports
+# (list/table/pkt_wewn/pkt_wewn_bez/bibtex/pivot) — NIE polskie etykiety.
+# "rekordy" to jedyna postać własna tej strony (bez odpowiednika w multiseeku).
+POSTAC_REKORDY = "rekordy"
+POSTAC_PIVOT = "pivot"
+
+POSTACIE_REKORD = (
+    (POSTAC_REKORDY, "rekordy (ID + akcje)"),
+    ("list", "lista"),
+    ("table", "tabela"),
+    ("pkt_wewn", "punktacja z wewnętrzną"),
+    ("pkt_wewn_bez", "punktacja sumaryczna"),
+    ("bibtex", "BibTeX"),
+    (POSTAC_PIVOT, "tabela krzyżowa"),
+)
+POSTACIE_AUTOR = (
+    (POSTAC_REKORDY, "autorzy (ID + akcje)"),
+    (POSTAC_PIVOT, "tabela krzyżowa"),
+)
+
+
+def postacie_dla_modelu(model_key):
+    return POSTACIE_AUTOR if model_key == MODEL_AUTOR else POSTACIE_REKORD
+
+
+def parse_postac(GET, model_key):
+    """Postać wyniku z GET-a, z cichą degradacją do domyślnej.
+
+    Cicha degradacja (nie 400), bo postać przychodzi z linku/zakładki, a
+    zmiana modelu w formularzu może unieważnić wcześniejszy wybór — user nie
+    ma wtedy nic złego na sumieniu.
+    """
+    dozwolone = {key for key, _ in postacie_dla_modelu(model_key)}
+    postac = GET.get("postac") or POSTAC_REKORDY
+    return postac if postac in dozwolone else POSTAC_REKORDY
 
 
 class WynikZapytania(NamedTuple):
@@ -387,6 +429,17 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx.setdefault("examples", EXAMPLES)
+        # model_key nie jest jeszcze w kontekscie przed pierwszym szukaniem
+        # (render_results go dokłada) — spadamy do GET-a/domyślnego modelu,
+        # żeby pasek "Postać wyniku" pokazywał sensowne opcje od pierwszego
+        # wyrenderowania strony, nie tylko po wynikach.
+        model_key = ctx.get("model_key")
+        if model_key not in MODELS:
+            model_key = self.request.GET.get("model", MODEL_REKORD)
+            if model_key not in MODELS:
+                model_key = MODEL_REKORD
+        ctx.setdefault("postac", parse_postac(self.request.GET, model_key))
+        ctx.setdefault("postacie", postacie_dla_modelu(model_key))
         return ctx
 
     def get(self, request, *args, **kwargs):
@@ -398,18 +451,48 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
     def render_results(self, form):
         model_key = form.cleaned_data["model"]
         query = form.cleaned_data["query"].strip()
+        postac = parse_postac(self.request.GET, model_key)
         wynik = wykonaj_zapytanie(model_key, query)
         results_page = None
         count = None
+        sumy = None
 
         if wynik.queryset is not None:
             count = wynik.queryset.count()
-            paginator = Paginator(wynik.queryset, self.paginate_by)
+            # Projekcja dostrojona do partiala renderu (jak w
+            # document_export_response) — bez niej strona ciągnie CAŁY
+            # rekord (N+1 na charakter_formalny/typ_kbn na każdym wierszu).
+            # "rekordy"/"pivot" trzymają dzisiejszą tabelę/placeholder bez
+            # zmian, więc queryset zostaje nietkniety.
+            queryset_do_widoku = wynik.queryset
+            if model_key == MODEL_REKORD and postac in TABLE_REPORT_TYPES:
+                queryset_do_widoku = queryset_do_widoku.select_related(
+                    "charakter_formalny", "typ_kbn"
+                ).only(*MULTISEEK_RENDER_TABLE_FIELDS)
+            elif model_key == MODEL_REKORD and postac not in (
+                POSTAC_REKORDY,
+                POSTAC_PIVOT,
+            ):
+                queryset_do_widoku = queryset_do_widoku.only(
+                    *MULTISEEK_RENDER_LIST_FIELDS
+                )
+            paginator = Paginator(queryset_do_widoku, self.paginate_by)
             page_number = self.request.GET.get("page") or 1
             results_page = paginator.get_page(page_number)
 
         if results_page is not None and model_key == MODEL_REKORD:
             self._attach_admin_urls(results_page)
+
+        if postac in TABLE_REPORT_TYPES and wynik.queryset is not None:
+            # Sumy liczone po CAŁYM zbiorze wyników, nie po stronie —
+            # inaczej "Suma:" w stopce tabeli myłaby redaktora przy
+            # zapytaniach z wieloma stronami.
+            sumy = wynik.queryset.aggregate(
+                Sum("impact_factor"),
+                Sum("liczba_cytowan"),
+                Sum("punkty_kbn"),
+                Sum("punktacja_wewnetrzna"),
+            )
 
         # Rozbicie „dlaczego 0 wyników" pokazuje (z podświetlaniem składni) panel
         # „Wyjaśnij liczby" w JS — auto-otwierany, gdy count == 0 (patrz
@@ -423,6 +506,9 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
             error_location=wynik.error_location,
             model_key=model_key,
             query=query,
+            postac=postac,
+            postacie=postacie_dla_modelu(model_key),
+            sumy=sumy,
         )
         return self.render_to_response(context)
 
