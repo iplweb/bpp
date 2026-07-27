@@ -23,6 +23,15 @@ class PivotDimension:
     # dla wymiarów, które nie są kolumną (np. „ma ORCID": grupowanie po
     # surowym polu dałoby tysiące grup, po jednej na wartość).
     annotation: object | None = None
+    # Czy wartość wymiaru przypisuje PRACĘ do dokładnie jednej grupy (bo jest
+    # atrybutem samego rekordu, np. rok albo charakter formalny). Fałsz =
+    # grupy dzielą populację inaczej niż po pracach (np. po jednostce autora),
+    # więc ta sama praca wpada do kilku grup i sumy komórek przewyższają
+    # liczbę unikatowych prac — wtedy pod tabelą MUSI stanąć adnotacja o
+    # dublowaniu (PivotResult.has_autorzy_dim). Czyta to rejestr autorski
+    # (`bpp.pivot.autor`); w rejestrze rekordowym tę samą rolę pełni flaga
+    # `autorzy`, bo tam grupy dzielą populację prac wprost.
+    atrybut_rekordu: bool = False
 
     def resolve_model(self):
         from django.apps import apps
@@ -33,8 +42,9 @@ class PivotDimension:
         """Ścieżka ORM w danej bazie agregacji; None = niedostępny.
 
         Rejestr rekordowy (`bpp.pivot.rekord`) przekazuje `expr` jako zwykły
-        `str` i nigdy nie woła z `baza` innym niż None — dla niego ta metoda
-        zawsze zwraca ten sam `expr`, niezależnie od argumentu.
+        `str` — dla niego ta metoda zwraca ten sam `expr` niezależnie od
+        argumentu (a widok woła ją z `metric.baza`, czyli domyślnym "K", dla
+        OBU rejestrów — patrz ZapytanieView._pivot_context).
         """
         if isinstance(self.expr, dict):
             return self.expr.get(baza)
@@ -261,10 +271,20 @@ def _label_mapping(keys, dim):
             out[k] = str(obj) if obj is not None else BRAK
         return out
     if dim.label_kind == "bool":
-        return {
-            k: ("TAK" if k is True else "NIE" if k is False else BRAK) for k in keys
-        }
+        return {k: etykieta_bool(k) for k in keys}
     return {k: str(k) for k in keys}
+
+
+def etykieta_bool(value):
+    """Jedyny słownik TAK/NIE/brak dla wartości logicznych w wyjściach
+    zapytania — wspólny dla pivota i dla eksportu listy autorów
+    (`bpp.views.multiseek_export`). Bez niego to samo `orcid_w_pbn` jechało
+    w macierzy jako „TAK", a w CSV-ce z tej samej strony jako „True"."""
+    if value is True:
+        return "TAK"
+    if value is False:
+        return "NIE"
+    return BRAK
 
 
 # Alias publiczny: nowy kod (np. bpp.pivot.autor) nie powinien wołać

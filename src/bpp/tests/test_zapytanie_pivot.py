@@ -6,6 +6,10 @@ podpięcie: kontekst widoku, render partiala i eksport macierzy CSV/XLSX
 z poziomu /zapytanie/.
 """
 
+import csv
+import io
+import re
+
 import pytest
 from django.urls import reverse
 
@@ -14,6 +18,24 @@ from django.urls import reverse
 def redaktor(client, admin_user):
     client.force_login(admin_user)
     return client
+
+
+def _wiersze_csv(response):
+    """CSV eksportu jako lista list — asercje na TREŚĆ macierzy, nie na samo
+    słowo „RAZEM" (które jest w KAŻDEJ macierzy, także w tej domyślnej, więc
+    nie odróżnia poprawnego eksportu od zignorowania pivot_row/col/val)."""
+    return list(csv.reader(io.StringIO(response.content.decode())))
+
+
+def _linki_eksportu(response):
+    """Wszystkie linki eksportu wyrenderowane na stronie (z rozkodowanym
+    &amp;) — górny pasek i pasek pod macierzą razem."""
+    return [
+        href.replace("&amp;", "&")
+        for href in re.findall(
+            r'href="([^"]*/zapytanie/eksport/[^"]*)"', response.content.decode()
+        )
+    ]
 
 
 @pytest.mark.django_db
@@ -126,7 +148,17 @@ def test_pivot_zbyt_duza_macierz_pokazuje_komunikat(
 
 
 @pytest.mark.django_db
-def test_pivot_eksport_csv_zwraca_macierz(redaktor, wydawnictwo_ciagle, denorms):
+def test_pivot_eksport_csv_zwraca_ZAMOWIONA_macierz(
+    redaktor, wydawnictwo_ciagle, denorms
+):
+    """Eksport MUSI zbudować macierz z parametrów GET, nie domyślną.
+
+    Asercja na samo `b"RAZEM"` niczego nie dowodziła: to słowo jest w KAŻDEJ
+    macierzy, także w domyślnej („Rok,RAZEM / 2026,1,1 / RAZEM,1"). Dlatego
+    tutaj sprawdzamy nagłówek zależny od WYBORU (etykieta wymiaru wiersza i
+    kolumny) oraz dokładną wartość komórki, plus kontrapunkt: nagłówka
+    macierzy domyślnej ma NIE być.
+    """
     denorms.flush()
     res = redaktor.get(
         reverse("bpp:zapytanie_eksport", kwargs={"export_format": "csv"}),
@@ -134,16 +166,31 @@ def test_pivot_eksport_csv_zwraca_macierz(redaktor, wydawnictwo_ciagle, denorms)
             "model": "rekord",
             "query": f"rok = {wydawnictwo_ciagle.rok}",
             "postac": "pivot",
-            "pivot_row": "rok",
+            "pivot_row": "charakter_ogolny",
+            "pivot_col": "typ_kbn",
             "pivot_val": "liczba",
         },
     )
     assert res.status_code == 200
-    assert b"RAZEM" in res.content
+
+    wiersze = _wiersze_csv(res)
+    assert wiersze[0] == [
+        "Charakter ogólny (rodzaj)",
+        str(wydawnictwo_ciagle.typ_kbn),
+        "RAZEM",
+    ]
+    assert wiersze[-1] == ["RAZEM", "1", "1"]
+    assert b"Rok,RAZEM" not in res.content
 
 
 @pytest.mark.django_db
-def test_pivot_eksport_xlsx_zwraca_macierz(redaktor, wydawnictwo_ciagle, denorms):
+def test_pivot_eksport_xlsx_zwraca_ZAMOWIONA_macierz(
+    redaktor, wydawnictwo_ciagle, denorms
+):
+    """To samo co wyżej, ale przez openpyxl — sam Content-Type nie mówi nic
+    o tym, KTÓRA macierz wylądowała w skoroszycie."""
+    from openpyxl import load_workbook
+
     denorms.flush()
     res = redaktor.get(
         reverse("bpp:zapytanie_eksport", kwargs={"export_format": "xlsx"}),
@@ -151,12 +198,63 @@ def test_pivot_eksport_xlsx_zwraca_macierz(redaktor, wydawnictwo_ciagle, denorms
             "model": "rekord",
             "query": f"rok = {wydawnictwo_ciagle.rok}",
             "postac": "pivot",
-            "pivot_row": "rok",
+            "pivot_row": "charakter_ogolny",
+            "pivot_col": "typ_kbn",
             "pivot_val": "liczba",
         },
     )
     assert res.status_code == 200
     assert "spreadsheetml" in res["Content-Type"]
+
+    arkusz = load_workbook(io.BytesIO(res.content)).active
+    wiersze = [[c.value for c in row] for row in arkusz.iter_rows()]
+    assert wiersze[0] == [
+        "Charakter ogólny (rodzaj)",
+        str(wydawnictwo_ciagle.typ_kbn),
+        "RAZEM",
+    ]
+    assert wiersze[-1] == ["RAZEM", 1, 1]
+
+
+@pytest.mark.django_db
+def test_kazdy_link_eksportu_na_stronie_pivota_daje_WIDOCZNA_macierz(
+    redaktor, wydawnictwo_ciagle, denorms
+):
+    """Regresja K1: strona pokazywała DWA przyciski CSV dające różne pliki.
+
+    Górny pasek eksportu składał URL z samych `model`/`query`/`postac`, więc
+    przy `postac=pivot` gubił `pivot_row`/`pivot_col`/`pivot_val` i ściągał
+    macierz DOMYŚLNĄ (zmierzone: „Rok,RAZEM / 2026,1,1 / RAZEM,1"), podczas
+    gdy pasek pod macierzą — budowany z `request.GET.urlencode` — ściągał tę
+    właściwą. Test nie zakłada, KTÓRY pasek zostanie: bierze wszystkie linki
+    eksportu obecne na stronie i wymaga, żeby KAŻDY z nich niósł wybór usera
+    i zwracał macierz zgodną z ekranem.
+    """
+    denorms.flush()
+    params = {
+        "model": "rekord",
+        "query": f"rok = {wydawnictwo_ciagle.rok}",
+        "postac": "pivot",
+        "pivot_row": "charakter_ogolny",
+        "pivot_col": "typ_kbn",
+        "pivot_val": "liczba",
+    }
+    strona = redaktor.get(reverse("bpp:zapytanie"), params)
+    assert strona.status_code == 200
+    oczekiwany_naglowek = strona.context["pivot"].as_table()["row_header"]
+    assert oczekiwany_naglowek == "Charakter ogólny (rodzaj)"
+
+    linki = _linki_eksportu(strona)
+    assert linki, "macierz bez ŻADNEGO wejścia do eksportu to też regresja"
+
+    for link in linki:
+        assert "pivot_row=charakter_ogolny" in link, link
+        assert "pivot_col=typ_kbn" in link, link
+        if "/csv/" not in link:
+            continue
+        pobrane = redaktor.get(link)
+        assert pobrane.status_code == 200, link
+        assert _wiersze_csv(pobrane)[0][0] == oczekiwany_naglowek, link
 
 
 @pytest.mark.django_db
@@ -251,7 +349,15 @@ def test_pivot_autorow_eksport_csv(redaktor, jednostka):
     )
 
     assert res.status_code == 200
-    assert b"RAZEM" in res.content
+    # Treść, nie samo "RAZEM": etykieta zamówionego wymiaru + dokładna komórka.
+    # Bez wymiaru kolumn wiersze danych mają jedną kolumnę więcej niż nagłówek
+    # (bezimienna kolumna wartości + RAZEM) — tak renderuje też ekran, patrz
+    # PivotResult.as_table.
+    assert _wiersze_csv(res) == [
+        ["Aktualna jednostka", "RAZEM"],
+        [str(jednostka), "1", "1"],
+        ["RAZEM", "1"],
+    ]
 
 
 @pytest.mark.django_db
@@ -298,9 +404,52 @@ def test_pivot_autorow_lista_teraz_dziala(redaktor, autor_jan_nowak, denorms):
 
 
 @pytest.mark.django_db
-def test_strona_pokazuje_presety_dla_autora(redaktor):
+def test_presety_bez_zapytania_sa_widoczne_ale_NIE_klikalne(redaktor):
+    """Na świeżej stronie preset nie ma czego dokładać — i nie udaje, że ma.
+
+    Do tej poprawki presety renderowały się jako linki z `query=` (pustym).
+    Zmierzone kliknięcie takiego linku: 200, `results = None`, `pivot` w ogóle
+    nieobecny w kontekście, zero `multiseek-pivot` w treści — strona
+    przeładowywała się i NIC się nie działo, mimo że summary obiecuje „jeden
+    klik do macierzy". Puste zapytanie nie przechodzi przez parser DjangoQL
+    („Unexpected end of input"), więc nie da się go uratować po stronie
+    serwera. Oferta zostaje widoczna (discoverability), ale bez linku.
+    """
     res = redaktor.get(reverse("bpp:zapytanie"), {"model": "autor"})
     assert b"Audyt kompletno" in res.content
+    assert b"po wykonaniu zapytania" in res.content
+    assert not [
+        href
+        for href in re.findall(r'href="([^"]*)"', res.content.decode())
+        if "postac=pivot" in href
+    ]
+
+
+@pytest.mark.django_db
+def test_preset_po_wyslanym_zapytaniu_prowadzi_do_MACIERZY(redaktor, jednostka):
+    """Kontrapunkt: gdy zapytanie jest wysłane, preset naprawdę robi to, co
+    obiecuje — jeden klik i na ekranie stoi tabela krzyżowa."""
+    from model_bakery import baker
+
+    from bpp.models import Autor
+
+    baker.make(Autor, nazwisko="Nowak", aktualna_jednostka=jednostka)
+
+    strona = redaktor.get(
+        reverse("bpp:zapytanie"), {"model": "autor", "query": 'nazwisko = "Nowak"'}
+    )
+    linki = [
+        href.replace("&amp;", "&")
+        for href in re.findall(r'href="([^"]*)"', strona.content.decode())
+        if "postac=pivot" in href
+    ]
+    assert linki, "po wysłanym zapytaniu presety MUSZĄ być klikalne"
+
+    wynik = redaktor.get(linki[0])
+    assert wynik.status_code == 200
+    assert wynik.context["pivot"] is not None
+    assert wynik.context["pivot"].grand_total == 1
+    assert b"multiseek-pivot" in wynik.content
 
 
 @pytest.mark.django_db
@@ -362,7 +511,14 @@ def test_pivot_autorow_baza_udzialow_renderuje_sume(
         },
     )
     assert eksport.status_code == 200
-    assert b"RAZEM" in eksport.content
+    wiersze = _wiersze_csv(eksport)
+    # Nagłówek NIESIE wybór: wiersz „Autor" (nie domyślna „Aktualna
+    # jednostka"), kolumna = rok publikacji, komórka = Σ slotów.
+    assert wiersze[0] == ["Autor", str(zwarte_z_dyscyplinami.rok), "RAZEM"]
+    assert wiersze[-1] == ["RAZEM", "1.0000", "1.0000"]
+    assert [w for w in wiersze if w[0] == str(autor_jan_nowak)] == [
+        [str(autor_jan_nowak), "0.5000", "0.5000"]
+    ]
 
 
 @pytest.mark.django_db

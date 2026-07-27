@@ -182,6 +182,9 @@ DIMENSIONS: dict[str, PivotDimension] = {
             "autorzy__rekord__rok",
             "cache_punktacja_autora_query__rekord__rok",
         ),
+        # Atrybut samej pracy — praca ma dokładnie jeden rok, więc grupa nie
+        # może zawierać jej dwóch egzemplarzy (patrz `dubluje` niżej).
+        atrybut_rekordu=True,
     ),
     "dyscyplina": PivotDimension(
         "dyscyplina",
@@ -225,6 +228,8 @@ DIMENSIONS: dict[str, PivotDimension] = {
         _publikacyjny("autorzy__rekord__charakter_formalny_id"),
         label_kind="fk",
         fk_model="bpp.Charakter_Formalny",
+        # Jak „rok" — atrybut samej pracy, jedna praca = jedna grupa.
+        atrybut_rekordu=True,
     ),
 }
 
@@ -333,7 +338,31 @@ def zbuduj_pivot_autora(base_qs, row_dim, col_dim, metric):
             continue
         triples.append((rk, ck, val))
 
-    return buduj_macierz(triples, row_dim, col_dim, metric, False)
+    return buduj_macierz(
+        triples, row_dim, col_dim, metric, _dubluje(row_dim, col_dim, metric)
+    )
+
+
+def _dubluje(row_dim, col_dim, metric):
+    """Czy sumy komórek mogą przewyższyć wartość całkowitą — czyli czy pod
+    tabelą ma stanąć adnotacja o dublowaniu (`PivotResult.has_autorzy_dim`,
+    render w `multiseek/report-body-pivot.html`).
+
+    Dotyczy WYŁĄCZNIE bazy P: metryka „liczba prac" liczy unikatowe prace
+    W GRUPIE, a grupy dzielą populację AUTORÓW. Praca dwóch autorów z różnych
+    jednostek wpada więc do dwóch grup i suma wynosi 2 przy jednej unikatowej
+    pracy (zmierzone). Wyjątkiem są wymiary będące atrybutem samej pracy
+    (`rok`, `charakter_formalny`) — tam grupa nie może zawierać dwóch
+    egzemplarzy tej samej pracy, więc suma jest dokładna.
+
+    Bazy K i U nie dublują z definicji: K liczy `Count(pk, distinct=True)` po
+    autorach (autor należy do jednej grupy), a Σ slotów/pkdaut w bazie U są
+    addytywne po wierszach udziału, z których każdy ma jednego autora (patrz
+    docstring modułu).
+    """
+    return metric.baza == BAZA_PRACE and any(
+        dim is not None and not dim.atrybut_rekordu for dim in (row_dim, col_dim)
+    )
 
 
 # Aliasy zgodności interfejsu — patrz docstring

@@ -201,6 +201,114 @@ def test_baza_prac_autor_x_rok(autor_jan_nowak, jednostka, wydawnictwo_ciagle, d
 
 
 @pytest.mark.django_db
+def test_liczba_prac_nie_liczy_pracy_raz_na_wspolautora(
+    autor_jan_nowak, autor_jan_kowalski, jednostka, wydawnictwo_ciagle, denorms
+):
+    """Test NOŚNOŚCI `distinct=True` w METRICS["liczba_prac"] — bez niego pada.
+
+    Dwóch autorów TEJ SAMEJ jednostki i jedna WSPÓLNA praca. Grupa „jednostka"
+    zbiera więc dwa wiersze relacji `autorzy` z tym samym `rekord_id`.
+    `Count("autorzy__rekord_id", distinct=True)` daje 1 (tyle jest unikatowych
+    prac); bez `distinct=True` wychodzi 2 — zmierzone na tych samych danych:
+    `bez distinct: 2, z distinct: 1`.
+
+    Wszystkie pozostałe testy „liczby prac" grupują po wymiarze `autor`, gdzie
+    DISTINCT jest no-opem (w grupie jest z definicji jeden autor, więc jeden
+    wiersz `autorzy` na pracę — zmierzone: bez=1, z=1). Dlatego ten test
+    grupuje po `jednostka`: to jedyny układ, w którym mutacja „usuń
+    distinct=True" zapala czerwone światło.
+    """
+    from bpp.pivot.autor import DIMENSIONS, METRICS, zbuduj_pivot_autora
+
+    autor_jan_nowak.aktualna_jednostka = jednostka
+    autor_jan_nowak.save()
+    autor_jan_kowalski.aktualna_jednostka = jednostka
+    autor_jan_kowalski.save()
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka)
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+    denorms.flush()
+
+    wynik = zbuduj_pivot_autora(
+        Autor.objects.all(), DIMENSIONS["jednostka"], None, METRICS["liczba_prac"]
+    )
+
+    assert wynik.row_totals[jednostka.pk] == 1, "bez distinct=True wychodzi 2"
+    assert wynik.grand_total == 1
+
+
+@pytest.mark.django_db
+def test_liczba_prac_miedzy_jednostkami_dubluje_i_ostrzega(
+    autor_jan_nowak,
+    autor_jan_kowalski,
+    jednostka,
+    druga_jednostka,
+    wydawnictwo_ciagle,
+    denorms,
+):
+    """Ta sama praca w DWÓCH jednostkach: suma 2 przy jednej unikatowej pracy
+    — i adnotacja o dublowaniu MUSI się pokazać.
+
+    Dublowanie MIĘDZY wartościami wymiaru jest zamierzone (§7 specu: pracę
+    liczymy w każdej jednostce, która ma w niej udział), ale wtedy sumy
+    przewyższają liczbę prac i partial ma o tym uprzedzić
+    (`report-body-pivot.html`, gałąź `pivot.has_autorzy_dim`). Do tej poprawki
+    rejestr autorski podawał tam twarde `False`, więc notka nie pokazywała się
+    NIGDY — mimo że pivot REKORDOWY w identycznym układzie ostrzega. To jest
+    preset „Produktywność jednostek".
+
+    Kontrapunkt w tym samym teście: wymiar `rok` jest atrybutem samej pracy,
+    więc grupa nie może zawierać jej dwóch egzemplarzy — suma jest dokładna
+    (1) i notka ma się NIE pokazać.
+    """
+    from bpp.pivot.autor import DIMENSIONS, METRICS, zbuduj_pivot_autora
+
+    autor_jan_nowak.aktualna_jednostka = jednostka
+    autor_jan_nowak.save()
+    autor_jan_kowalski.aktualna_jednostka = druga_jednostka
+    autor_jan_kowalski.save()
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka)
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, druga_jednostka)
+    denorms.flush()
+
+    po_jednostce = zbuduj_pivot_autora(
+        Autor.objects.all(), DIMENSIONS["jednostka"], None, METRICS["liczba_prac"]
+    )
+    assert po_jednostce.grand_total == 2, "praca liczona w obu jednostkach"
+    assert po_jednostce.has_autorzy_dim is True
+
+    po_roku = zbuduj_pivot_autora(
+        Autor.objects.all(), DIMENSIONS["rok"], None, METRICS["liczba_prac"]
+    )
+    assert po_roku.grand_total == 1
+    assert po_roku.has_autorzy_dim is False
+
+
+@pytest.mark.django_db
+def test_bazy_kadrowa_i_udzialow_nie_ostrzegaja_o_dublowaniu(
+    zwarte_z_dyscyplinami, autor_jan_nowak, jednostka, denorms
+):
+    """Kontrapunkt do testu wyżej: adnotacja jest dla bazy P, nie dla wszystkich.
+
+    Baza K liczy autorów (`Count(pk, distinct=True)`, autor należy do jednej
+    grupy), baza U sumuje wiersze udziału (każdy ma jednego autora) — obie są
+    z definicji addytywne, więc ostrzeżenie byłoby fałszywym alarmem.
+    """
+    from bpp.pivot.autor import DIMENSIONS, METRICS, zbuduj_pivot_autora
+
+    denorms.flush()
+
+    kadrowa = zbuduj_pivot_autora(
+        Autor.objects.all(), DIMENSIONS["jednostka"], None, METRICS["liczba_autorow"]
+    )
+    assert kadrowa.has_autorzy_dim is False
+
+    udzialy = zbuduj_pivot_autora(
+        Autor.objects.all(), DIMENSIONS["autor"], None, METRICS["suma_slotow"]
+    )
+    assert udzialy.has_autorzy_dim is False
+
+
+@pytest.mark.django_db
 def test_autorzy_bez_dorobku_nie_zapychaja_macierzy(jednostka):
     """Autor bez ani jednej pracy wchodzi w bazie P przez LEFT JOIN z NULL-em.
 

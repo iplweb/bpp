@@ -377,19 +377,42 @@
                 {% if pivot_presety %}
                     <details class="zapytanie-help-sublevel">
                         <summary><strong>Gotowe tabele krzyzowe</strong> &mdash; jeden klik do macierzy</summary>
-                        <p>
-                            Linki dokladaja wiersz/kolumne/metryke tabeli
-                            krzyzowej do BIEZACEGO zapytania powyzej
-                            (postac wyniku przelacza sie na "tabela
-                            krzyzowa").
-                        </p>
-                        <ul class="examples">
-                            {% for preset in pivot_presety %}
-                                <li>
-                                    <a href="{% url 'bpp:zapytanie' %}?{{ preset.query }}">{{ preset.opis }}</a>
-                                </li>
-                            {% endfor %}
-                        </ul>
+                        {% if query %}
+                            <p>
+                                Linki dokladaja wiersz/kolumne/metryke tabeli
+                                krzyzowej do WYSLANEGO zapytania
+                                (<code>{{ query }}</code>) i przelaczaja postac
+                                wyniku na "tabela krzyzowa". Zmiany wpisane w
+                                pole powyzej, ale niewyslane, nie sa w nich
+                                uwzglednione &mdash; najpierw kliknij "Szukaj".
+                            </p>
+                            <ul class="examples">
+                                {% for preset in pivot_presety %}
+                                    <li>
+                                        <a href="{% url 'bpp:zapytanie' %}?{{ preset.query }}">{{ preset.opis }}</a>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            {# Bez WYSLANEGO zapytania preset nie ma czego #}
+                            {# doklada: puste zapytanie nie przechodzi przez #}
+                            {# DjangoQL (parser: "Unexpected end of input"), #}
+                            {# wiec taki link przeladowywalby strone i nie #}
+                            {# robil NIC. Pokazujemy wiec, co jest w ofercie, #}
+                            {# ale bez klikalnej obietnicy. #}
+                            <p>
+                                Skroty do gotowych macierzy pojawia sie tutaj
+                                <strong>po wykonaniu zapytania</strong> &mdash;
+                                dokladaja wiersz/kolumne/metryke do wyslanego
+                                zapytania, a puste zapytanie nie zwraca zadnych
+                                wynikow. W ofercie:
+                            </p>
+                            <ul class="examples">
+                                {% for preset in pivot_presety %}
+                                    <li><em>{{ preset.opis }}</em></li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
                     </details>
                 {% endif %}
 
@@ -483,9 +506,14 @@
                 <p><em>Zapytanie:</em> <code>{{ query }}</code> na modelu <strong>{{ model_key }}</strong></p>
             {% endif %}
             {% if results %}
-                {% if eksport_formaty %}
-                    {# Bez tego "if": model=autor (eksport_formaty puste, patrz #}
-                    {# zapytanie.py) pokazywalby "Eksport:" bez zadnego linku. #}
+                {% if postac != "pivot" %}
+                    {# Przy postac=pivot eksportu NIE ma tutaj: macierz ma #}
+                    {# wlasny pasek w report-body-pivot.html, ktory sklada URL #}
+                    {# z {{ request.GET.urlencode }}, wiec niesie pivot_row / #}
+                    {# pivot_col / pivot_val i sciaga DOKLADNIE te macierz, #}
+                    {# ktora widac na ekranie. Ten pasek zna tylko model / #}
+                    {# query / postac — przy pivocie dawalby wiec inny plik #}
+                    {# niz pokazany (dwa przyciski CSV, dwa rozne wyniki). #}
                     <p class="zapytanie-eksport-toolbar">
                         <strong>
                             <span class="fi-download" aria-hidden="true"></span>

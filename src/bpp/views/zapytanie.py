@@ -98,6 +98,12 @@ def eksport_formaty(model_key, postac):
     autor_xlsx_export_response i naprawdę działa od Zadania 11
     (zapytanie_export.py) — obie ścieżki realne, więc pasek pokazuje linki
     dla obu.
+
+    UWAGA: przy postac="pivot" górny pasek eksportu NIE renderuje się wcale
+    (zapytanie.html) — macierz eksportuje własny pasek pod tabelą, bo tylko
+    on niesie pivot_row/pivot_col/pivot_val. Gałąź POSTAC_PIVOT niżej zostaje
+    jako jedno miejsce opisujące, co endpoint eksportu przyjmuje dla tej
+    kombinacji (dane tak, dokument nie).
     """
     if model_key == MODEL_AUTOR:
         return (("csv", "CSV"), ("xlsx", "XLSX"))
@@ -408,15 +414,21 @@ PIVOT_PRESETY_AUTOR = (
 
 
 def pivot_presety_dla_modelu(model_key, query):
-    """Linki-skróty do gotowych tabel krzyżowych, renderowane w sekcji
-    pomocy — ten sam wzorzec co EXAMPLES dla zapytań DjangoQL.
+    """Skróty do gotowych tabel krzyżowych, renderowane w sekcji pomocy —
+    ten sam wzorzec co EXAMPLES dla zapytań DjangoQL.
 
-    Renderowane NIEZALEŻNIE od tego, czy zapytanie już coś zwróciło (patrz
-    ZapytanieView.get_context_data), żeby user zobaczył je od razu po
-    przełączeniu modelu na "Autor". `query` to bieżąca treść pola DjangoQL
-    z GET-a — presety mają DOŁOŻYĆ wybór wymiarów/metryki do zapytania, jakie
-    user już wpisał, nie zgubić go (klik w preset ma pokazać macierz DLA
-    BIEŻĄCEGO zawężenia, nie dla pustego zapytania).
+    `query` to WYSŁANE zapytanie DjangoQL z GET-a — presety mają DOŁOŻYĆ wybór
+    wymiarów/metryki do zapytania, jakie user już wysłał, nie zgubić go (klik
+    w preset ma pokazać macierz DLA BIEŻĄCEGO zawężenia).
+
+    Lista jest zwracana niezależnie od tego, czy zapytanie już poszło —
+    natomiast szablon renderuje ją jako KLIKALNE linki tylko wtedy, gdy
+    `query` jest niepuste. Bez zapytania preset nie ma czego dokładać: puste
+    zapytanie nie przechodzi przez parser DjangoQL („Unexpected end of
+    input"), więc `ZapytanieView.get` w ogóle nie wchodzi w `render_results`
+    i taki link przeładowałby stronę bez żadnego efektu i bez komunikatu.
+    Zamiast martwego linku szablon pokazuje wtedy same nazwy presetów plus
+    zdanie, co trzeba zrobić, żeby ożyły.
 
     `safe="/"` w urlencode() dobrany tak, żeby zakodowana wartość `query`
     zgadzała się bajt-w-bajt z tym, co produkuje filtr szablonowy

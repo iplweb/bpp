@@ -388,20 +388,26 @@ def test_pasek_eksportu_obecny_dla_autora(
 
 
 @pytest.mark.django_db
-def test_pasek_eksportu_obecny_dla_autora_pivota(
+def test_przy_pivocie_eksport_tylko_pod_macierza(
     zalogowany_redaktor, autor_jan_nowak, denorms
 ):
-    """Kontrapunkt testu wyzej (DEFEKT #4 z brief-u Zadania 9): eksport
-    MACIERZY (postac="pivot") dziala naprawde (przez _eksport_pivota), wiec
-    pasek MUSI pokazac linki csv/xlsx — inaczej dzialajaca funkcja nie
-    mialaby zadnego wejscia w UI."""
+    """Kontrapunkt testu wyzej: przy postac="pivot" GORNY pasek znika.
+
+    Eksport MACIERZY dziala naprawde (przez _eksport_pivota) i MUSI miec
+    wejscie w UI — ale dokladnie JEDNO. Gorny pasek sklada URL z samych
+    model/query/postac, wiec przy pivocie sciagal macierz DOMYSLNA zamiast
+    tej z ekranu (regresja K1: dwa przyciski CSV, dwa rozne pliki). Zostaje
+    pasek pod macierza, budowany z request.GET.urlencode, czyli niosacy
+    pivot_row/pivot_col/pivot_val. Tresc plikow pilnuje
+    test_zapytanie_pivot.py::test_kazdy_link_eksportu_na_stronie_pivota_
+    daje_WIDOCZNA_macierz."""
     denorms.flush()
     res = zalogowany_redaktor.get(
         reverse("bpp:zapytanie"),
         {"model": "autor", "query": 'nazwisko = "Nowak"', "postac": "pivot"},
     )
     assert res.status_code == 200
-    assert b'<p class="zapytanie-eksport-toolbar">' in res.content
+    assert b'<p class="zapytanie-eksport-toolbar">' not in res.content
     assert b"/zapytanie/eksport/csv/" in res.content
     assert b"/zapytanie/eksport/xlsx/" in res.content
 

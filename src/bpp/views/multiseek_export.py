@@ -16,6 +16,7 @@ from django.utils.http import content_disposition_header
 
 from bpp import const
 from bpp.models import Uczelnia
+from bpp.pivot.core import etykieta_bool
 
 MULTISEEK_DEFAULT_REPORT_TITLE = "Rezultat wyszukiwania"
 XLSX_WORKSHEET_TITLE_MAX_LENGTH = 31
@@ -547,7 +548,11 @@ def _iter_autor_export_rows(queryset, request):
             _export_value(autor.aktualna_jednostka),
             _export_value(autor.aktualna_funkcja),
             _export_value(autor.orcid),
-            _export_value(autor.orcid_w_pbn),
+            # Bool przez wspólny słownik pivota (TAK/NIE/— brak —), nie przez
+            # _export_value: ten dawał pythonowe „True"/„False", więc ta sama
+            # wartość jechała inaczej w CSV-ce i inaczej w macierzy
+            # eksportowanej z tej samej strony.
+            etykieta_bool(autor.orcid_w_pbn),
             _export_value(autor.pbn_uid_id),
             _export_value(autor.email),
             _export_value(autor.system_kadrowy_id),
