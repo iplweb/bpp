@@ -4971,6 +4971,7 @@ CREATE TABLE public.bpp_jednostka (
     skrot_nazwy character varying(250),
     zezwalaj_na_ranking_autorow boolean NOT NULL,
     aktualna_override boolean,
+    nie_eksportuj_przez_api boolean NOT NULL,
     CONSTRAINT bpp_jednostka_kolejnosc_check CHECK ((kolejnosc >= 0)),
     CONSTRAINT bpp_jednostka_level_check CHECK ((level >= 0)),
     CONSTRAINT bpp_jednostka_lft_check CHECK ((lft >= 0)),
@@ -10526,6 +10527,7 @@ CREATE TABLE public.import_pracownikow_importpracownikow (
     tworz_brakujace_stopnie boolean NOT NULL,
     plik_po_imporcie character varying(100),
     uczelnia_id integer,
+    nadpisuj_daty_zatrudnienia boolean NOT NULL,
     CONSTRAINT import_pracownikow_importpracownikow_log_seq_check CHECK ((log_seq >= 0)),
     CONSTRAINT import_pracownikow_importpracownikow_percent_check CHECK ((percent >= 0))
 );
@@ -15196,7 +15198,7 @@ COPY public.bpp_grupa_pracownicza (id, nazwa) FROM stdin;
 -- Data for Name: bpp_jednostka; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_jednostka (id, ostatnio_zmieniony, adnotacje, nazwa, skrot, opis, slug, widoczna, wchodzi_do_rankingu_autorow, email, www, search, wydzial_id, pbn_id, skupia_pracownikow, zarzadzaj_automatycznie, uczelnia_id, aktualna, kolejnosc, pbn_uid_id, level, lft, rght, tree_id, parent_id, pokazuj_opis, rodzaj_id, poprzednie_nazwy, skrot_nazwy, zezwalaj_na_ranking_autorow, aktualna_override) FROM stdin;
+COPY public.bpp_jednostka (id, ostatnio_zmieniony, adnotacje, nazwa, skrot, opis, slug, widoczna, wchodzi_do_rankingu_autorow, email, www, search, wydzial_id, pbn_id, skupia_pracownikow, zarzadzaj_automatycznie, uczelnia_id, aktualna, kolejnosc, pbn_uid_id, level, lft, rght, tree_id, parent_id, pokazuj_opis, rodzaj_id, poprzednie_nazwy, skrot_nazwy, zezwalaj_na_ranking_autorow, aktualna_override, nie_eksportuj_przez_api) FROM stdin;
 \.
 
 
@@ -16182,6 +16184,65 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+20	axes	0001_initial	2000-01-01 00:00:00+00
+831	nowe_raporty	0001_initial	2000-01-01 00:00:00+00
+1025	importer_publikacji	0012_importsession_uczelnia	2000-01-01 00:00:00+00
+1026	importer_publikacji	0013_merge_20260604_1952	2000-01-01 00:00:00+00
+1027	pbn_api	0069_add_uczelnia_fk	2000-01-01 00:00:00+00
+1028	pbn_api	0070_link_pbn_to_uczelnia	2000-01-01 00:00:00+00
+1029	pbn_api	0071_merge_0069_sentdata_api_url_0070_link_pbn_to_uczelnia	2000-01-01 00:00:00+00
+1030	pbn_api	0072_backfill_sentdata_uczelnia	2000-01-01 00:00:00+00
+1031	pbn_api	0073_backfill_publikacjainstytucji_v2_uczelnia	2000-01-01 00:00:00+00
+1032	pbn_api	0074_merge_20260604_1952	2000-01-01 00:00:00+00
+1033	pbn_export_queue	0008_add_uczelnia_fk	2000-01-01 00:00:00+00
+1034	pbn_export_queue	0009_link_queue_to_uczelnia	2000-01-01 00:00:00+00
+1035	pbn_import	0012_alter_importinconsistency_inconsistency_type	2000-01-01 00:00:00+00
+1036	raport_slotow	0020_raportslotowuczelnia_uczelnia	2000-01-01 00:00:00+00
+1037	raport_slotow	0021_merge_20260604_1952	2000-01-01 00:00:00+00
+1038	rozbieznosci	0001_initial	2000-01-01 00:00:00+00
+1039	rozbieznosci	0002_usun_stare_rozbieznosci	2000-01-01 00:00:00+00
+1040	zglos_publikacje	0026_faza_b_ii2_repoint_wydzial	2000-01-01 00:00:00+00
+1041	bpp	0466_bppuser_zwijaj_dlugie_listy_autorow_and_more	2000-01-01 00:00:00+00
+1042	bpp	0467_seed_crossref_mapper_rows	2000-01-01 00:00:00+00
+1043	import_pracownikow	0010_liveops	2000-01-01 00:00:00+00
+1044	import_pracownikow	0011_row_nullable_diff	2000-01-01 00:00:00+00
+1045	import_pracownikow	0012_mapowanie_profile	2000-01-01 00:00:00+00
+1046	import_pracownikow	0013_confidence_kandydaci	2000-01-01 00:00:00+00
+1047	import_pracownikow	0014_utworz_nowego_odpiecie	2000-01-01 00:00:00+00
+1048	import_pracownikow	0015_przepnij_prace	2000-01-01 00:00:00+00
+1049	import_punktacji_zrodel	0002_alter_importpunktacjizrodel_options_and_more	2000-01-01 00:00:00+00
+1050	importer_publikacji	0014_importedauthor_typ_ogolny	2000-01-01 00:00:00+00
+1051	importer_publikacji	0015_alter_importsession_status	2000-01-01 00:00:00+00
+1117	bpp	0476_jednostka_nie_eksportuj_przez_api	2000-01-01 00:00:00+00
+1118	import_pracownikow	0028_nadpisuj_daty_zatrudnienia	2000-01-01 00:00:00+00
+269	bpp	0182_auto_20191013_2324	2000-01-01 00:00:00+00
+388	bpp	0295_instaluj_szablony	2000-01-01 00:00:00+00
+997	bpp	0454_faza_b_i1	2000-01-01 00:00:00+00
+1052	importer_publikacji	0016_alter_importsession_status	2000-01-01 00:00:00+00
+1053	pbn_api	0075_sentdata_fee_sent_sentdata_fee_uploaded_okay	2000-01-01 00:00:00+00
+1054	przemapuj_prace_autora	0003_przemapoaniepracautora_zrodlowy_import	2000-01-01 00:00:00+00
+1055	import_pracownikow	0016_importpracownikow_tworz_brakujace_jednostki_and_more	2000-01-01 00:00:00+00
+1056	import_pracownikow	0017_importpracownikow_tworz_brakujace_tytuly_and_more	2000-01-01 00:00:00+00
+1057	import_pracownikow	0018_importpracownikow_zakres_integracji	2000-01-01 00:00:00+00
+1058	import_pracownikow	0019_alter_importpracownikow_stan	2000-01-01 00:00:00+00
+1059	importer_publikacji	0017_multiple_works_import	2000-01-01 00:00:00+00
+1060	importer_publikacji	0018_importsession_rodzaj_rekordu	2000-01-01 00:00:00+00
+1061	oauth2_provider	0001_initial	2000-01-01 00:00:00+00
+1062	oauth2_provider	0002_auto_20190406_1805	2000-01-01 00:00:00+00
+1063	oauth2_provider	0003_auto_20201211_1314	2000-01-01 00:00:00+00
+1064	oauth2_provider	0004_auto_20200902_2022	2000-01-01 00:00:00+00
+1065	oauth2_provider	0005_auto_20211222_2352	2000-01-01 00:00:00+00
+1066	oauth2_provider	0006_alter_application_client_secret	2000-01-01 00:00:00+00
+1067	oauth2_provider	0007_application_post_logout_redirect_uris	2000-01-01 00:00:00+00
+1068	oauth2_provider	0008_alter_accesstoken_token	2000-01-01 00:00:00+00
+1069	oauth2_provider	0009_add_hash_client_secret	2000-01-01 00:00:00+00
+1070	oauth2_provider	0010_application_allowed_origins	2000-01-01 00:00:00+00
+1071	oauth2_provider	0011_refreshtoken_token_family	2000-01-01 00:00:00+00
+1112	bpp	0473_guard_autor_jednostka_okresy_bez_nakladan	2000-01-01 00:00:00+00
+1113	bpp	0474_constraint_autor_jednostka_okresy_bez_nakladan	2000-01-01 00:00:00+00
+1114	bpp	0475_merge_20260724_1726	2000-01-01 00:00:00+00
+1115	ewaluacja_optymalizacja	0016_statusodpinaniawszystkich	2000-01-01 00:00:00+00
+1116	import_list_ministerialnych	0009_alter_importlistministerialnych_options_and_more	2000-01-01 00:00:00+00
 69	pbn_api	0035_django32	2000-01-01 00:00:00+00
 418	bpp	0324_django32	2000-01-01 00:00:00+00
 786	import_pracownikow	0007_django32	2000-01-01 00:00:00+00
@@ -16263,7 +16324,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 17	auth	0010_alter_group_name_max_length	2000-01-01 00:00:00+00
 18	auth	0011_update_proxy_permissions	2000-01-01 00:00:00+00
 19	auth	0012_alter_user_first_name_max_length	2000-01-01 00:00:00+00
-20	axes	0001_initial	2000-01-01 00:00:00+00
 21	axes	0002_auto_20151217_2044	2000-01-01 00:00:00+00
 22	axes	0003_auto_20160322_0929	2000-01-01 00:00:00+00
 23	axes	0004_auto_20181024_1538	2000-01-01 00:00:00+00
@@ -16280,6 +16340,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 34	ewaluacja_common	0004_alter_rodzaj_autora_options	2000-01-01 00:00:00+00
 37	pbn_api	0003_conference	2000-01-01 00:00:00+00
 38	pbn_api	0004_journal	2000-01-01 00:00:00+00
+264	bpp	0178_auto_20190905_2020	2000-01-01 00:00:00+00
 39	pbn_api	0005_auto_20210406_0436	2000-01-01 00:00:00+00
 40	pbn_api	0006_sciencist	2000-01-01 00:00:00+00
 41	pbn_api	0007_publication	2000-01-01 00:00:00+00
@@ -16504,12 +16565,10 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 261	bpp	0175_merge_20190824_0948	2000-01-01 00:00:00+00
 262	bpp	0176_auto_20190903_0108	2000-01-01 00:00:00+00
 263	bpp	0177_cache_punktacja_autora_query	2000-01-01 00:00:00+00
-264	bpp	0178_auto_20190905_2020	2000-01-01 00:00:00+00
 265	bpp	0179_auto_20190910_2147	2000-01-01 00:00:00+00
 266	bpp	0179_auto_20190910_1416	2000-01-01 00:00:00+00
 267	bpp	0180_merge_20190910_2236	2000-01-01 00:00:00+00
 268	bpp	0181_cache_punktacja_autora_sum_cache_punktacja_autora_sum_gruop	2000-01-01 00:00:00+00
-269	bpp	0182_auto_20191013_2324	2000-01-01 00:00:00+00
 270	bpp	0183_auto_20191020_1535	2000-01-01 00:00:00+00
 271	bpp	0184_autor_expertus_id	2000-01-01 00:00:00+00
 272	bpp	0185_auto_20191021_2008	2000-01-01 00:00:00+00
@@ -16626,7 +16685,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 385	bpp	0292_przypinanie_dyscyplin	2000-01-01 00:00:00+00
 386	bpp	0293_pbn_api_kasowanie_przed_nie_eksp_zero	2000-01-01 00:00:00+00
 387	bpp	0294_szablony_opisu_stron	2000-01-01 00:00:00+00
-388	bpp	0295_instaluj_szablony	2000-01-01 00:00:00+00
 389	bpp	0296_nulltest_szablonopisu	2000-01-01 00:00:00+00
 390	bpp	0297_wydawca_denorm	2000-01-01 00:00:00+00
 391	bpp	0298_wydawnictwo_zwarte_denorm	2000-01-01 00:00:00+00
@@ -17058,7 +17116,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 828	miniblog	0002_auto_20180101_2017	2000-01-01 00:00:00+00
 829	miniblog	0003_alter_article_article_body	2000-01-01 00:00:00+00
 830	miniblog	0004_migrate_to_siteblog_and_delete	2000-01-01 00:00:00+00
-831	nowe_raporty	0001_initial	2000-01-01 00:00:00+00
 832	oswiadczenia	0001_add_export_task_model	2000-01-01 00:00:00+00
 833	oswiadczenia	0002_add_offset_limit	2000-01-01 00:00:00+00
 834	oswiadczenia	0003_fix_export_format_max_length	2000-01-01 00:00:00+00
@@ -17216,7 +17273,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 994	bpp	0451_backfill_jednostka_rodzaj	2000-01-01 00:00:00+00
 995	bpp	0452_jednostka_pola_faza_a	2000-01-01 00:00:00+00
 996	bpp	0453_zrodlo_trigram_indexes	2000-01-01 00:00:00+00
-997	bpp	0454_faza_b_i1	2000-01-01 00:00:00+00
 999	bpp	0456_faza_b_i3	2000-01-01 00:00:00+00
 1000	bpp	0457_faza_b_i4	2000-01-01 00:00:00+00
 1002	bpp	0444_charakter_formalny_ukryty_charakter_pbn_ukryty_and_more	2000-01-01 00:00:00+00
@@ -17241,58 +17297,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1022	import_dyscyplin	0024_faza_b_ii2_repoint_wydzial	2000-01-01 00:00:00+00
 1023	import_polon	0016_importplikupolon_uczelnia	2000-01-01 00:00:00+00
 1024	import_punktacji_zrodel	0001_initial	2000-01-01 00:00:00+00
-1025	importer_publikacji	0012_importsession_uczelnia	2000-01-01 00:00:00+00
-1026	importer_publikacji	0013_merge_20260604_1952	2000-01-01 00:00:00+00
-1027	pbn_api	0069_add_uczelnia_fk	2000-01-01 00:00:00+00
-1028	pbn_api	0070_link_pbn_to_uczelnia	2000-01-01 00:00:00+00
-1029	pbn_api	0071_merge_0069_sentdata_api_url_0070_link_pbn_to_uczelnia	2000-01-01 00:00:00+00
-1030	pbn_api	0072_backfill_sentdata_uczelnia	2000-01-01 00:00:00+00
-1031	pbn_api	0073_backfill_publikacjainstytucji_v2_uczelnia	2000-01-01 00:00:00+00
-1032	pbn_api	0074_merge_20260604_1952	2000-01-01 00:00:00+00
-1033	pbn_export_queue	0008_add_uczelnia_fk	2000-01-01 00:00:00+00
-1034	pbn_export_queue	0009_link_queue_to_uczelnia	2000-01-01 00:00:00+00
-1035	pbn_import	0012_alter_importinconsistency_inconsistency_type	2000-01-01 00:00:00+00
-1036	raport_slotow	0020_raportslotowuczelnia_uczelnia	2000-01-01 00:00:00+00
-1037	raport_slotow	0021_merge_20260604_1952	2000-01-01 00:00:00+00
-1038	rozbieznosci	0001_initial	2000-01-01 00:00:00+00
-1039	rozbieznosci	0002_usun_stare_rozbieznosci	2000-01-01 00:00:00+00
-1040	zglos_publikacje	0026_faza_b_ii2_repoint_wydzial	2000-01-01 00:00:00+00
-1041	bpp	0466_bppuser_zwijaj_dlugie_listy_autorow_and_more	2000-01-01 00:00:00+00
-1042	bpp	0467_seed_crossref_mapper_rows	2000-01-01 00:00:00+00
-1043	import_pracownikow	0010_liveops	2000-01-01 00:00:00+00
-1044	import_pracownikow	0011_row_nullable_diff	2000-01-01 00:00:00+00
-1045	import_pracownikow	0012_mapowanie_profile	2000-01-01 00:00:00+00
-1046	import_pracownikow	0013_confidence_kandydaci	2000-01-01 00:00:00+00
-1047	import_pracownikow	0014_utworz_nowego_odpiecie	2000-01-01 00:00:00+00
-1048	import_pracownikow	0015_przepnij_prace	2000-01-01 00:00:00+00
-1049	import_punktacji_zrodel	0002_alter_importpunktacjizrodel_options_and_more	2000-01-01 00:00:00+00
-1050	importer_publikacji	0014_importedauthor_typ_ogolny	2000-01-01 00:00:00+00
-1051	importer_publikacji	0015_alter_importsession_status	2000-01-01 00:00:00+00
-1052	importer_publikacji	0016_alter_importsession_status	2000-01-01 00:00:00+00
-1053	pbn_api	0075_sentdata_fee_sent_sentdata_fee_uploaded_okay	2000-01-01 00:00:00+00
-1054	przemapuj_prace_autora	0003_przemapoaniepracautora_zrodlowy_import	2000-01-01 00:00:00+00
-1055	import_pracownikow	0016_importpracownikow_tworz_brakujace_jednostki_and_more	2000-01-01 00:00:00+00
-1056	import_pracownikow	0017_importpracownikow_tworz_brakujace_tytuly_and_more	2000-01-01 00:00:00+00
-1057	import_pracownikow	0018_importpracownikow_zakres_integracji	2000-01-01 00:00:00+00
-1058	import_pracownikow	0019_alter_importpracownikow_stan	2000-01-01 00:00:00+00
-1059	importer_publikacji	0017_multiple_works_import	2000-01-01 00:00:00+00
-1060	importer_publikacji	0018_importsession_rodzaj_rekordu	2000-01-01 00:00:00+00
-1061	oauth2_provider	0001_initial	2000-01-01 00:00:00+00
-1062	oauth2_provider	0002_auto_20190406_1805	2000-01-01 00:00:00+00
-1063	oauth2_provider	0003_auto_20201211_1314	2000-01-01 00:00:00+00
-1064	oauth2_provider	0004_auto_20200902_2022	2000-01-01 00:00:00+00
-1065	oauth2_provider	0005_auto_20211222_2352	2000-01-01 00:00:00+00
-1066	oauth2_provider	0006_alter_application_client_secret	2000-01-01 00:00:00+00
-1067	oauth2_provider	0007_application_post_logout_redirect_uris	2000-01-01 00:00:00+00
-1068	oauth2_provider	0008_alter_accesstoken_token	2000-01-01 00:00:00+00
-1069	oauth2_provider	0009_add_hash_client_secret	2000-01-01 00:00:00+00
-1070	oauth2_provider	0010_application_allowed_origins	2000-01-01 00:00:00+00
-1071	oauth2_provider	0011_refreshtoken_token_family	2000-01-01 00:00:00+00
-1112	bpp	0473_guard_autor_jednostka_okresy_bez_nakladan	2000-01-01 00:00:00+00
-1113	bpp	0474_constraint_autor_jednostka_okresy_bez_nakladan	2000-01-01 00:00:00+00
-1114	bpp	0475_merge_20260724_1726	2000-01-01 00:00:00+00
-1115	ewaluacja_optymalizacja	0016_statusodpinaniawszystkich	2000-01-01 00:00:00+00
-1116	import_list_ministerialnych	0009_alter_importlistministerialnych_options_and_more	2000-01-01 00:00:00+00
 \.
 
 
@@ -17665,21 +17669,21 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-163	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
-164	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
-165	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-166	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-167	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-168	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-169	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-170	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-171	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-172	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-173	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-174	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-175	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-176	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-177	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+178	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+179	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
+180	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+181	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+182	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+183	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+184	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+185	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+186	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+187	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+188	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+189	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+190	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+191	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+192	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -17806,7 +17810,7 @@ COPY public.import_polon_wierszimportuplikupolon (id, autor_id, parent_id, dane_
 -- Data for Name: import_pracownikow_importpracownikow; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.import_pracownikow_importpracownikow (id, created_on, started_on, finished_on, finished_successfully, traceback, plik_xls, owner_id, cancel_requested, cancelled, current_stage, language, log, log_seq, percent, result_context, stage_states, stan, status_text, mapowanie_kolumn, tworz_brakujace_jednostki, tworz_brakujace_tytuly, zakres_integracji, data_zmian_personalnych, przepnij_wszystkie_prace, tworz_brakujace_stanowiska, tworz_brakujace_stopnie, plik_po_imporcie, uczelnia_id) FROM stdin;
+COPY public.import_pracownikow_importpracownikow (id, created_on, started_on, finished_on, finished_successfully, traceback, plik_xls, owner_id, cancel_requested, cancelled, current_stage, language, log, log_seq, percent, result_context, stage_states, stan, status_text, mapowanie_kolumn, tworz_brakujace_jednostki, tworz_brakujace_tytuly, zakres_integracji, data_zmian_personalnych, przepnij_wszystkie_prace, tworz_brakujace_stanowiska, tworz_brakujace_stopnie, plik_po_imporcie, uczelnia_id, nadpisuj_daty_zatrudnienia) FROM stdin;
 \.
 
 
@@ -19261,7 +19265,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1116, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1118, true);
 
 
 --
@@ -19499,7 +19503,7 @@ SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 42,
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 177, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 192, true);
 
 
 --
@@ -24560,6 +24564,13 @@ CREATE INDEX bpp_jednostka_nazwa_20b50aeb_like ON public.bpp_jednostka USING btr
 --
 
 CREATE INDEX bpp_jednostka_nazwa_upper_like ON public.bpp_jednostka USING btree (upper((nazwa)::text) text_pattern_ops);
+
+
+--
+-- Name: bpp_jednostka_nie_eksportuj_przez_api_440c9618; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_jednostka_nie_eksportuj_przez_api_440c9618 ON public.bpp_jednostka USING btree (nie_eksportuj_przez_api);
 
 
 --

@@ -1034,6 +1034,13 @@ class PodgladImportuView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, Detai
                 # Item 6: ekran audytu (log zmian) ma sens po pełnej integracji
                 # osób — wtedy wiersze mają zapisany log_zmian.
                 "pokaz_audyt": parent.stan == ImportPracownikow.STAN_ZINTEGROWANY,
+                # Ostrzeżenie finalizacji (spec nadpisywania dat §3.5):
+                # licznik liczony tylko w fazie osób — w Kroku 1 formularz
+                # zapisu osób i tak się nie renderuje.
+                "nadpisywanie_dat_wlaczone": parent.nadpisuj_daty_zatrudnienia,
+                "liczba_nadpisan_dat": (
+                    parent.liczba_nadpisan_dat() if parent.faza_osob else 0
+                ),
             }
         )
         return ctx

@@ -42,6 +42,19 @@ musi je przenosić przez ukryte pola i wskazać własny prefiks eksportu.
             </select>
         </label>
         <noscript><button type="submit" class="button">Odśwież</button></noscript>
+        {% if pivot and request.user.is_authenticated %}
+        {# Prefiks eksportu jest parametrem konsumenta: "../export/" dziala #}
+        {# tylko pod /multiseek/results/ (dwa segmenty sciezki). Na stronie #}
+        {# zapytania URL ma jeden segment, wiec wzglednosc trafialaby w /export/ #}
+        {# i dawala 404 — dlatego widok podaje wlasny pivot_export_base. #}
+        {% with base=pivot_export_base|default:"../export/" %}
+        <div class="multiseek-pivot-export hide-for-print">
+            Eksport tabeli:
+            <a href="{{ base }}xlsx/?{{ request.GET.urlencode }}">XLSX</a>
+            <a href="{{ base }}csv/?{{ request.GET.urlencode }}">CSV</a>
+        </div>
+        {% endwith %}
+        {% endif %}
     </form>
 
     {% if pivot %}
@@ -84,16 +97,6 @@ musi je przenosić przez ukryte pola i wskazać własny prefiks eksportu.
         liczona jest w każdej z nich; sumy mogą przewyższać wartości
         całkowite.
     </p>
-    {% endif %}
-
-    {% if request.user.is_authenticated %}
-    {% with base=pivot_export_base|default:"../export/" %}
-    <div class="multiseek-pivot-export hide-for-print">
-        Eksport tabeli:
-        <a href="{{ base }}xlsx/?{{ request.GET.urlencode }}">XLSX</a>
-        <a href="{{ base }}csv/?{{ request.GET.urlencode }}">CSV</a>
-    </div>
-    {% endwith %}
     {% endif %}
 
     {% elif pivot_error %}
