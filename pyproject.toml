@@ -47,7 +47,7 @@ dependencies = [
     "channels[daphne]>=4.3.2,<5",
     "uvicorn[standard]>=0.51.0",
     "channels-redis>=4,<5",
-    "django-flexible-reports>=0.3.2",
+    "django-flexible-reports>=0.4.1",
     "django-dsl>=0.1.14",
     "django-group-by==0.3.1",
     "django-columns==0.1.0",
@@ -120,14 +120,14 @@ dependencies = [
     "django-easy-audit>=1.3.9,<2",
     "crossrefapi>=1.7.0",
     "urllib3>=2.7.0,<3.0.0",
-    "pandas>=3.0.3",
+    "pandas>=3.0.5",
     "django-tinymce>=5.0.0",
     "crispy-bootstrap5>=2026.3",
     "crispy-bootstrap3>=2022.1",
     "twisted[http2,tls]>=26.4.0",
     "django-dbtemplates-iplweb>=4.4.0",
     "django-soft-delete>=1.0.23",
-    "tqdm>=4.69.0",
+    "tqdm>=4.69.1",
     "xhtml2pdf>=0.2.16",
     "isbnlib>=3.10.14",
     "chardet>=7.4.3",
@@ -163,7 +163,7 @@ dependencies = [
     # django-liveops: framework dla dlugo-dzialajacych operacji z live UI
     # (WebSocket + HTMX). Nastepca wewnetrznego `src/long_running`.
     "django-liveops[celery]>=0.4.0,<0.5",
-    "django-oauth-toolkit==3.3.0",
+    "django-oauth-toolkit==3.4.0",
     "django-altcha>=1.0.0",
 ]
 
@@ -507,9 +507,9 @@ dev = [
     # .pre-commit-config.yaml. CI lints via pre-commit (that rev is the
     # source of truth); this `==` pin only keeps ad-hoc `uv run ruff`
     # producing identical output. Bump both together, never one alone.
-    "ruff==0.15.22",
-    "djlint>=1.41.0,<2",
-    "pre-commit>=4.6.0",
+    "ruff==0.16.0",
+    "djlint>=1.42.3,<2",
+    "pre-commit>=4.6.1",
     "twine>=5.1.0",
     "ipdb>=0.13.9",
     "ipython>=8.2.0",
@@ -517,7 +517,7 @@ dev = [
     "pytest-playwright>=0.8.0",
     # pytest-env 1.3.0+ wymaga pytest>=9.0.2 — spelnione, bo jestesmy na
     # pytest 9.x. Usage bez zmian (env=DJANGO_ALLOW_ASYNC_UNSAFE=1 etc.).
-    "pytest-env>=1.3",
+    "pytest-env>=1.7.0",
     "nest-asyncio>=1.6.0",
     "testcontainers[postgres]>=4.14.2",
     # pytest-testcontainers + bridge: dawniej wewnetrzny `src/testcontainers_bpp/`.
