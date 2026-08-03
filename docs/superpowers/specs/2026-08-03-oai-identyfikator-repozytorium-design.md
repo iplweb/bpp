@@ -28,6 +28,27 @@ warunek przejścia walidatora OpenAIRE.
 Namespace pochodzi z `Uczelnia` rozstrzygniętej przez
 `Uczelnia.objects.get_for_request`.
 
+### Dostępność endpointu
+
+Endpoint `/oai/` obsługuje wyłącznie żądania, dla których da się ustalić
+uczelnię. Nowe pole `Uczelnia.oai_pmh_aktywny` (domyślnie włączone, żeby
+istniejące wdrożenia nic nie traciły) pozwala go wyłączyć per uczelnia.
+
+```python
+uczelnia = Uczelnia.objects.get_for_request(request)
+if uczelnia is None or not uczelnia.oai_pmh_aktywny:
+    raise Http404(...)
+```
+
+Brak uczelni oznacza pustą bazę (przed konfiguracją) albo kilka uczelni bez
+dopasowania domeny (błąd konfiguracji). Przy dokładnie jednej uczelni
+`get_for_request` zawsze ją zwraca, więc żadne realne wdrożenie nie traci
+endpointu. Wcześniej rozważany fallback na host requestu odpada — skoro nie
+wiadomo, czyje to repozytorium, nie wystawiamy żadnego.
+
+Dzięki temu `BPPOAIDatabase` dostaje uczelnię (a nie request) i nie musi
+rozstrzygać jej po raz drugi ani obsługiwać `None`.
+
 ### Model
 
 Nowe opcjonalne pole na `Uczelnia`:
@@ -67,24 +88,12 @@ Pole widoczne w `UczelniaAdmin`.
 
 `get_dc_ident(model, obj_pk)` → `get_dc_ident(namespace, model, obj_pk)`.
 
-Namespace rozstrzygany **raz na request**, w `BPPOAIDatabase`:
+Namespace rozstrzygany **raz na odpowiedź** (a nie per wiersz), co gwarantuje
+jego spójność w całym wyniku:
 
 ```python
-def _repository_identifier(self):
-    uczelnia = Uczelnia.objects.get_for_request(self.request)
-    if uczelnia is not None:
-        return uczelnia.oai_repository_identifier()
-    return self.request.get_host().split(":")[0]
+repository_identifier = self.uczelnia.oai_repository_identifier()
 ```
-
-Rozstrzygnięcie raz per request (a nie per wiersz) gwarantuje spójny
-namespace w całej odpowiedzi.
-
-Gałąź `uczelnia is None` jest osiągalna i musi zwracać sensowną wartość:
-`scope_rekord_do_uczelni(qs, None)` to świadomy no-op
-(`src/bpp/util/uczelnia_scope.py:29`), więc bez ustalonej uczelni rekordy
-nadal są wydawane. Host requestu jest wtedy najbliższym sensownym
-przybliżeniem.
 
 ### Parsowanie identyfikatora (`GetRecord`)
 
@@ -111,7 +120,9 @@ Jako „brak rekordu" (a nie wyjątek) traktujemy:
 - `GetRecord` z własnym identyfikatorem → 200 + rekord.
 - `GetRecord` z identyfikatorem obcego repozytorium → `idDoesNotExist`.
 - `GetRecord` z identyfikatorem o złej strukturze → `idDoesNotExist`.
-- Brak uczelni z requestu → namespace = host requestu.
+- `oai_pmh_aktywny` domyślnie włączone.
+- Brak uczelni z requestu → 404.
+- `oai_pmh_aktywny=False` → 404, i tylko dla tej uczelni (druga nadal działa).
 
 ## Poza zakresem
 

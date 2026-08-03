@@ -8,6 +8,7 @@ except ImportError:
     from django.urls import reverse
 
 from django.db.models.aggregates import Min
+from django.http import Http404
 from django.http.response import HttpResponse, HttpResponseServerError
 from django.utils import timezone
 from django.utils.timezone import make_naive
@@ -116,24 +117,12 @@ def parse_dc_ident(repository_identifier, identifier):
 
 
 class BPPOAIDatabase:
-    def __init__(self, original, request=None):
+    def __init__(self, original, uczelnia):
+        # ``uczelnia`` jest wymagana i nigdy nie jest ``None``: to z niej
+        # wynika identyfikator repozytorium wystawiany przy każdym rekordzie,
+        # a bez niej ``OAIView`` w ogóle nie dopuszcza do tego miejsca.
         self.original = original
-        self.request = request
-
-    def repository_identifier(self):
-        """Środkowy człon identyfikatorów OAI-PMH dla tego requestu.
-
-        Rozstrzygany raz na request (nie per wiersz), żeby cała odpowiedź
-        miała spójny namespace.
-        """
-        uczelnia = Uczelnia.objects.get_for_request(self.request)
-        if uczelnia is not None:
-            return uczelnia.oai_repository_identifier()
-        # Brak mapowania domena → Site → Uczelnia (pusta baza, kilka uczelni
-        # bez dopasowania). ``scope_rekord_do_uczelni`` jest wtedy no-opem,
-        # więc rekordy nadal wychodzą i potrzebują identyfikatora — host
-        # requestu jest najbliższym sensownym przybliżeniem.
-        return self.request.get_host().split(":")[0]
+        self.uczelnia = uczelnia
 
     def get_set(self, oai_id):
         if oai_id == 1:
@@ -214,7 +203,9 @@ class BPPOAIDatabase:
         # filter dates
         query = query.filter(ostatnio_zmieniony__lte=until_date)
 
-        repository_identifier = self.repository_identifier()
+        # Rozstrzygane raz na odpowiedź (nie per wiersz), żeby wszystkie
+        # rekordy w niej miały spójny identyfikator repozytorium.
+        repository_identifier = self.uczelnia.oai_repository_identifier()
 
         if identifier is not None:
             rozlozony = parse_dc_ident(repository_identifier, identifier)
@@ -225,11 +216,9 @@ class BPPOAIDatabase:
         if from_date is not None:
             query = query.filter(ostatnio_zmieniony__gte=from_date)
 
-        uczelnia = Uczelnia.objects.get_for_request(self.request)
-        if uczelnia:
-            ukryte_statusy = uczelnia.ukryte_statusy("api")
-            if ukryte_statusy:
-                query = query.exclude(status_korekty_id__in=ukryte_statusy)
+        ukryte_statusy = self.uczelnia.ukryte_statusy("api")
+        if ukryte_statusy:
+            query = query.exclude(status_korekty_id__in=ukryte_statusy)
 
         for row in (
             query.only(
@@ -284,11 +273,17 @@ class OAIView(View):
         url = "/".join(urlparts)
 
         uczelnia = Uczelnia.objects.get_for_request(request)
+        # Bez uczelni nie wiadomo, czyje to repozytorium ani jaki identyfikator
+        # nadawać rekordom — nie wystawiamy wtedy endpointu. Tak samo, gdy
+        # uczelnia świadomie go wyłączyła.
+        if uczelnia is None or not uczelnia.oai_pmh_aktywny:
+            raise Http404("Ta instalacja nie udostępnia endpointu OAI-PMH.")
+
         base_qs = scope_rekord_do_uczelni(
             Rekord.objects.all().exclude(charakter_formalny__nazwa_w_primo=""),
             uczelnia,
         )
-        db = BPPOAIDatabase(base_qs, request=request)
+        db = BPPOAIDatabase(base_qs, uczelnia)
         oai_server = OAIServerFactory(db, FeedConfig("bpp", base_url))
         return HttpResponse(
             content=oai_server.handleRequest(request.GET),

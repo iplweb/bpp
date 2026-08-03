@@ -210,6 +210,13 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         help_text="Powiązanie z obiektem Site (domena internetowa tej uczelni).",
     )
 
+    oai_pmh_aktywny = models.BooleanField(
+        "Udostępniaj endpoint OAI-PMH",
+        default=True,
+        help_text="Gdy wyłączone, adres /oai/ tej uczelni odpowiada błędem "
+        "404. Nie wpływa na pozostałe uczelnie w tej instalacji.",
+    )
+
     oai_identyfikator_repozytorium = models.CharField(
         "Identyfikator repozytorium OAI-PMH",
         max_length=255,

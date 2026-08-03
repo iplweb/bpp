@@ -316,6 +316,12 @@ def oai_data(db, logged_in_client):
     """Fixture przygotowujący dane dla testów OAI."""
     rebuild_contenttypes()
 
+    # Endpoint OAI wymaga uczelni (to z niej wynika identyfikator
+    # repozytorium). ``any_uczelnia`` wiąże ją z domeną ``testserver``, czyli
+    # tą, której używa klient testowy — dzięki temu identyfikatory są
+    # przewidywalne, zamiast zależeć od losowego Site z ``baker.make``.
+    any_uczelnia()
+
     aut, ign = Typ_Odpowiedzialnosci.objects.get_or_create(skrot="aut.", nazwa="autor")
 
     ch, ign = Charakter_Formalny.objects.get_or_create(
