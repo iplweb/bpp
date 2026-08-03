@@ -105,9 +105,12 @@ def _fikcyjny_serializer(obiekt, ctx):
     return element
 
 
-def _fikcyjny_service(uczelnia, ctx):
+def _fikcyjny_service(uczelnia, ctx, base_url=None, www_url=None):
     element = etree.Element(f"{{{const.NS_CERIF}}}Service")
     element.set("id", identyfikatory.zbuduj(ctx.namespace, uczelnia))
+    # Sygnatura musi nadążać za prawdziwym serializerem: `_bezpiecznie`
+    # połyka TypeError i rekord Service po prostu znika z odpowiedzi.
+    element.set("base-url", base_url or "")
     return element
 
 

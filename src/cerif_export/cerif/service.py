@@ -21,6 +21,14 @@ from cerif_export.cerif.wspolne import dodaj, dodaj_kontener, element, tekst
 # `ctx.id_dla` nie ma czego sprawdzić i identyfikator budujemy wprost.
 ID_SERWISU = "Services/cris"
 
+#: Deklarowana wersja profilu, z którym endpoint jest zgodny. W XSD element
+#: jest opcjonalny, więc walidator go nie wymusza — ale to po nim OpenAIRE
+#: i DRIS rozpoznają, którą wersję wytycznych obsługujemy.
+NS_KOMPATYBILNOSC = (
+    "https://www.openaire.eu/cerif-profile/vocab/OpenAIRE_Service_Compatibility"
+)
+KOMPATYBILNOSC_1_2 = f"{NS_KOMPATYBILNOSC}#1.2"
+
 
 def serializuj(uczelnia, ctx, base_url=None, www_url=None):
     """``bpp.Uczelnia`` → element ``Service``.
@@ -32,6 +40,9 @@ def serializuj(uczelnia, ctx, base_url=None, www_url=None):
     el = element("Service", nsmap=wspolne.NSMAP_REKORDU)
     el.set("id", ID_SERWISU)
 
+    # `Compatibility` żyje we WŁASNEJ przestrzeni nazw (tak jak typy COAR),
+    # nie w domyślnej przestrzeni profilu — inaczej XSD odrzuca cały element.
+    dodaj(el, "Compatibility", KOMPATYBILNOSC_1_2, ns=NS_KOMPATYBILNOSC)
     dodaj(el, "Acronym", ctx.namespace)
     dodaj(el, "Name", tekst(getattr(uczelnia, "nazwa", None)))
     dodaj(el, "WebsiteURL", tekst(www_url))

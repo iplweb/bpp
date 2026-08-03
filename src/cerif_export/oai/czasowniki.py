@@ -201,11 +201,29 @@ def _identify(zadanie, argumenty):
     # OpenAIRE CRIS.
     serializuj = serializer_service()
     kontekst = _kontekst(zadanie, _puste_zbiory())
-    element = _bezpiecznie(lambda: serializuj(uczelnia, kontekst), "Service")
+    # `base_url` i adres serwisu zna tylko warstwa HTTP. Bez ich przekazania
+    # `OAIPMHBaseURL` i `WebsiteURL` w ogóle nie powstawały — a to po nich
+    # OpenAIRE i DRIS rozpoznają, gdzie ten CRIS właściwie stoi.
+    element = _bezpiecznie(
+        lambda: serializuj(
+            uczelnia,
+            kontekst,
+            base_url=zadanie.base_url,
+            www_url=_adres_serwisu(uczelnia),
+        ),
+        "Service",
+    )
     if element is not None:
         _pod(identify, "description").append(element)
 
     return identify
+
+
+def _adres_serwisu(uczelnia):
+    """Publiczny adres serwisu uczelni (``WebsiteURL`` w ``Service``)."""
+    site = getattr(uczelnia, "site", None)
+    domena = getattr(site, "domain", None)
+    return f"https://{domena}/" if domena else None
 
 
 def _oai_identifier(zadanie):

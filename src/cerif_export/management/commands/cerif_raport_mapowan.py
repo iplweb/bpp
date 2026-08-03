@@ -23,7 +23,7 @@ from bpp.models import (
 )
 from cerif_export.slowniki import coar, dostep
 
-# Reguły przepisane z migracji danych `bpp/migrations/0477_cerif_export_pola.py`
+# Reguły przepisane z migracji danych `bpp/migrations/0479_cerif_export_pola.py`
 # (funkcja `wypelnij_uri_licencji`). Dublujemy je świadomie: migracji nie wolno
 # importować z kodu aplikacji (zamarza w czasie), a raport musi umieć odtworzyć
 # wartość, którą tamta wyprodukowała, żeby odróżnić ją od decyzji redakcji.

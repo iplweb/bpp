@@ -152,3 +152,55 @@ zombie w indeksie.
    ~10–13 osobodni, wymaga decyzji produktowej o rozbudowie modelu grantów.
 5. **A3, A4 (Product, Equipment)** — gdy uczelnia zacznie je rejestrować.
 6. **E** — przy okazji, pojedynczo.
+
+---
+
+## F. Znane ograniczenia wdrożenia (z self-review PR #699)
+
+Rzeczy świadomie zostawione, żeby nie były zaskoczeniem po wdrożeniu.
+
+### F1. `FileLocations` nigdy nie powstaje — kod jest martwy
+
+`wspolne.ATRYBUT_PLIKI` jest odczytywany, ale **nikt go nie ustawia**.
+Powód: `Element_Repozytorium` wiąże się z publikacją przez
+`GenericForeignKey` bez odwrotnej `GenericRelation`, więc provider nie ma
+czego prefetchować, a serializerowi nie wolno odpytywać bazy.
+
+Skutek: eksport **nie podaje lokalizacji pełnych tekstów** — a to jest
+główna rzecz, po którą OpenAIRE przychodzi. Domknięcie wymaga dodania
+`GenericRelation` w `src/bpp/models/`, czyli zmiany poza `cerif_export`.
+
+### F2. Ukryty autor nie zostanie wycofany z OpenAIRE
+
+`deletedRecord=no` (brak nagrobków, patrz sekcja C) znaczy, że gdy autor
+poprosi o `pokazuj=False`, harvest przyrostowy po prostu przestanie go
+widzieć — a agregator zachowa poprzedni rekord. W praktyce: **wpis
+w OpenAIRE zostanie na zawsze**.
+
+Przy zestawie danych obejmującym ORCID nie jest to neutralna decyzja
+techniczna. Do rozważenia: `deletedRecord=persistent` przynajmniej dla setu
+`persons`.
+
+### F3. `PresentedAt/Event` dostaje identyfikator bezwarunkowo
+
+Osadzone `Event` reużywa serializera rekordowego, który celowo pomija zbiory
+widoczności. Dziś nieszkodliwe, bo widoczność konferencji jest pochodną
+widoczności publikacji. Ale gdy `Konferencja` dostanie kiedyś opt-out
+(analogicznie do `Jednostka.nie_eksportuj_przez_api`), zaczną powstawać
+wiszące referencje i kontrola 5a walidatora zacznie padać — po cichu, bo
+żaden dzisiejszy test tego nie pokrywa.
+
+### F4. `adminEmail` w `Identify` pochodzi z globalnego `settings.ADMINS`
+
+Czyli w każdej odpowiedzi `Identify` widnieje adres administratora
+instalacji, a nie osoby odpowiedzialnej za CRIS w danej uczelni. Przy
+wdrożeniu multi-hosted warto dodać pole na `Uczelnia` albo osobne
+ustawienie.
+
+### F5. Drobiazgi protokołu
+
+- Powtórzony argument `verb` daje `badArgument` zamiast `badVerb`.
+- Nieznany `setSpec` przekazany w resumption tokenie daje `noRecordsMatch`
+  zamiast `badResumptionToken`.
+
+Oba są odstępstwami od litery OAI-PMH, których walidator nie sprawdza.
