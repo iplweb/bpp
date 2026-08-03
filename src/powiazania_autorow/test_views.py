@@ -467,6 +467,26 @@ def test_strona_grafu_3d_renderuje_kontener(client):
 
 
 @pytest.mark.django_db
+def test_strona_grafu_3d_podaje_link_awaryjny_do_2d(client):
+    """Kontener 3D musi nieść adres widoku 2D — to wyjście awaryjne, którym
+    JS ratuje użytkownika bez WebGL-a (Rollbar #4006).
+
+    Nazwa atrybutu jest tu istotna: ``data-url-2d`` NIE mapuje się na
+    ``dataset.url2d``. Konwersja atrybut→dataset skleja ``-x`` w ``X``
+    tylko wtedy, gdy ``x`` jest małą literą — a po myślniku stoi cyfra
+    ``2``, więc klucz wyszedłby ``dataset["url-2d"]`` i JS by go nie
+    znalazł. Test pilnuje obu stron tej pułapki.
+    """
+    autor = baker.make(Autor, imiona="Jan", nazwisko="Kowalski", pokazuj=True)
+    resp = client.get(reverse("bpp:browse_autor_powiazania_3d", args=[autor.pk]))
+    tresc = resp.content.decode("utf-8")
+
+    url_2d = reverse("bpp:browse_autor_powiazania", args=[autor.pk])
+    assert f'data-url2d="{url_2d}"' in tresc
+    assert "data-url-2d=" not in tresc
+
+
+@pytest.mark.django_db
 def test_strona_grafu_3d_404_gdy_siec_wylaczona(client, uczelnia):
     uczelnia.pokazuj_siec_powiazan = False
     uczelnia.save()
