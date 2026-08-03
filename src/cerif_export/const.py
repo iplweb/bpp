@@ -79,6 +79,17 @@ EPOKA_DT = datetime.datetime(1970, 1, 1, tzinfo=datetime.UTC)
 
 ROZMIAR_STRONY = 100
 
+# Nazwa atrybutu, pod którym provider podaje serializerowi gotowy URI COAR
+# dla prac doktorskich i habilitacyjnych (patrz ``coar_pracy``).
+#
+# Mieszka tutaj, a nie po jednej ze stron, bo jest to KONTRAKT między warstwą
+# providerów a warstwą serializerów. Gdy każda strona trzymała własną stałą,
+# nazwy się rozjechały (``_cerif_coar`` kontra ``cerif_typ_coar``) i typ nigdy
+# nie docierał do XML-a — wszystkie prace dyplomowe wychodziły jako ogólny
+# ``text`` zamiast ``doctoral thesis``/``thesis``. Nic tego nie wykrywało, bo
+# obie warstwy z osobna działały poprawnie.
+ATRYBUT_TYP_COAR = "cerif_typ_coar"
+
 # Czas życia resumption tokenu (sekundy).
 TOKEN_TTL = 24 * 60 * 60
 TOKEN_SALT = "cerif_export.resumption"

@@ -11,6 +11,7 @@ w publikacji.
 
 import pytest
 from django.contrib.sites.models import Site
+from lxml import etree
 from model_bakery import baker
 
 from bpp.models import Jednostka, Uczelnia
@@ -23,6 +24,7 @@ from cerif_export import const
 from cerif_export.cerif import publication
 from cerif_export.kontekst import KontekstSerializacji
 from cerif_export.providers import provider_dla_setu
+from cerif_export.slowniki import coar
 
 NAMESPACE = "cerif.example.org"
 
@@ -250,3 +252,146 @@ def test_konferencja_wychodzi_tylko_gdy_uzywana(
 
     assert uzywana.pk in obecne
     assert nieuzywana.pk not in obecne
+
+
+# -- typ COAR prac dyplomowych -------------------------------------------
+
+
+@pytest.mark.django_db
+def test_typ_coar_pracy_dociera_do_xml(uczelnia, jednostka, fabryka_autorow, status_ok):
+    """URI COAR ze słownika musi trafić do ``Publication/Type``.
+
+    Regresja: provider anotował wynik pod nazwą ``_cerif_coar``, a serializer
+    czytał ``cerif_typ_coar``. Obie warstwy z osobna działały poprawnie, więc
+    nic tego nie wykrywało — a wszystkie prace dyplomowe wychodziły jako
+    ogólny ``text`` zamiast ``doctoral thesis``.
+    """
+    from bpp.models import Charakter_Formalny
+    from cerif_export.cerif import publication
+
+    Charakter_Formalny.objects.filter(skrot="D").delete()
+    baker.make(
+        Charakter_Formalny,
+        nazwa="Praca doktorska",
+        skrot="D",
+        coar_type=coar.DOCTORAL_THESIS,
+    )
+    praca = baker.make(
+        Praca_Doktorska,
+        tytul_oryginalny="Rozprawa",
+        jednostka=jednostka,
+        autor=fabryka_autorow("Doktorant"),
+        status_korekty=status_ok,
+        rok=2020,
+        nie_eksportuj_przez_api=False,
+    )
+
+    provider = provider_dla_setu(const.SET_PUBLICATIONS)
+    obiekty, _ = provider.strona(uczelnia, rozmiar=100)
+    kontekst = KontekstSerializacji(
+        namespace=NAMESPACE,
+        uczelnia=uczelnia,
+        widoczne=provider.zbiory_widocznosci(uczelnia, obiekty),
+    )
+    swiezy = next(o for o in obiekty if o.pk == praca.pk and type(o) is Praca_Doktorska)
+
+    xml = etree.tostring(publication.serializuj(swiezy, kontekst)).decode()
+
+    assert coar.DOCTORAL_THESIS in xml
+    assert coar.TEKST_ROOT not in xml, "typ spadł na ogólny fallback"
+
+
+# -- wycieki wykryte w self-review PR-a ----------------------------------
+
+
+@pytest.mark.django_db
+def test_email_autora_nie_jest_eksportowany(uczelnia, fabryka_autorow):
+    """``Autor.email`` to PII — ``api_v1`` usuwa je dla anonima.
+
+    Eksport CERIF jest publiczny i nieodwracalny, więc nie może obchodzić
+    tamtej decyzji tylnymi drzwiami.
+    """
+    from cerif_export.cerif import person as person_cerif
+
+    autor = fabryka_autorow("Mailowy")
+    autor.email = "jan.kowalski@example.org"
+    autor.www = "https://example.org/~jk"
+    autor.save()
+
+    obiekty, kontekst = _kontekst(uczelnia, const.SET_PERSONS)
+    xml = etree.tostring(person_cerif.serializuj(obiekty[0], kontekst)).decode()
+
+    assert "jan.kowalski@example.org" not in xml
+    assert "mailto:" not in xml
+    assert "https://example.org/~jk" in xml, "adres WWW ma zostać"
+
+
+@pytest.mark.django_db
+def test_jednostka_obcej_uczelni_nie_wycieka_w_afiliacji(uczelnia, fabryka_autorow):
+    """Autor zatrudniony w dwóch uczelniach — pokazujemy tylko naszą.
+
+    ``autor_jednostka_set`` nie jest filtrowany po tenancie, a bramkowanie
+    samego ``@id`` nie wystarczało: ``Name`` wychodził bezwarunkowo.
+    """
+    from bpp.models import Autor_Jednostka
+    from cerif_export.cerif import person as person_cerif
+
+    autor = fabryka_autorow("Dwuetatowy")
+
+    obce_site = Site.objects.create(domain="obca.example.org", name="obca")
+    obca = Uczelnia.objects.create(nazwa="Obca", skrot="OBC", site=obce_site)
+    obca_jednostka = Jednostka.objects.create(
+        nazwa="TAJNA JEDNOSTKA OBCEJ UCZELNI", skrot="TJ", uczelnia=obca
+    )
+    Autor_Jednostka.objects.create(autor=autor, jednostka=obca_jednostka)
+
+    obiekty, kontekst = _kontekst(uczelnia, const.SET_PERSONS)
+    xml = etree.tostring(person_cerif.serializuj(obiekty[0], kontekst)).decode()
+
+    assert "TAJNA JEDNOSTKA OBCEJ UCZELNI" not in xml
+    assert "Jednostka CERIF" in xml, "własna jednostka ma zostać"
+
+
+@pytest.mark.django_db
+def test_ukryta_jednostka_nie_wycieka_w_afiliacji(uczelnia, jednostka, fabryka_autorow):
+    from bpp.models import Autor_Jednostka
+    from cerif_export.cerif import person as person_cerif
+
+    autor = fabryka_autorow("Zatrudniony")
+    ukryta = Jednostka.objects.create(
+        nazwa="UKRYTA KATEDRA", skrot="UK", uczelnia=uczelnia, widoczna=False
+    )
+    Autor_Jednostka.objects.create(autor=autor, jednostka=ukryta)
+
+    obiekty, kontekst = _kontekst(uczelnia, const.SET_PERSONS)
+    xml = etree.tostring(person_cerif.serializuj(obiekty[0], kontekst)).decode()
+
+    assert "UKRYTA KATEDRA" not in xml
+
+
+@pytest.mark.django_db
+def test_orcid_ukrytego_autora_nie_wycieka(
+    uczelnia, fabryka_autorow, fabryka_wydawnictw
+):
+    """Nazwisko zostaje (opis bibliograficzny), ORCID nie.
+
+    ORCID to trwały globalny identyfikator osoby — jego publikacja wiąże
+    ukrytego autora z profilem w całym ekosystemie OpenAIRE.
+    """
+    ukryty = fabryka_autorow("Ukryty", pokazuj=False, orcid="0000-0002-1825-0097")
+    rekord = fabryka_wydawnictw(Wydawnictwo_Ciagle, autor=ukryty)
+
+    xml = etree.tostring(zserializuj(uczelnia, rekord)).decode()
+
+    assert "0000-0002-1825-0097" not in xml
+    assert "Ukryty" in xml, "nazwisko ma zostać — inaczej lista autorów kłamie"
+
+
+def _kontekst(uczelnia, set_spec):
+    provider = provider_dla_setu(set_spec)
+    obiekty, _ = provider.strona(uczelnia, rozmiar=100)
+    return obiekty, KontekstSerializacji(
+        namespace=NAMESPACE,
+        uczelnia=uczelnia,
+        widoczne=provider.zbiory_widocznosci(uczelnia, obiekty),
+    )

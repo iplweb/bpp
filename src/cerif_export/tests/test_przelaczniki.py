@@ -134,3 +134,26 @@ def test_cerif_wylaczony_daje_404(client, uczelnia):
 
     res = client.get(URL_CERIF, {"verb": "Identify"})
     assert res.status_code == 404
+
+
+@pytest.mark.django_db
+def test_endpoint_cerif_przyjmuje_post(uczelnia, settings):
+    """OAI-PMH 2.0 wymaga POST — harvester nie ma tokenu CSRF.
+
+    Regresja: bez ``csrf_exempt`` na widoku POST kończył się odpowiedzią
+    403. Domyślny klient testowy Django nie wychwyciłby tego, bo omija
+    sprawdzanie CSRF — stąd jawne ``enforce_csrf_checks``.
+    """
+    from django.test import Client
+
+    settings.ALLOWED_HOSTS = ["*"]
+    klient = Client(enforce_csrf_checks=True)
+
+    odpowiedz = klient.post(
+        reverse("cerif_export:oai"),
+        {"verb": "Identify"},
+        HTTP_HOST=uczelnia.site.domain,
+    )
+
+    assert odpowiedz.status_code == 200
+    assert b"<Identify" in odpowiedz.content

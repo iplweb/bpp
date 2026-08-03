@@ -58,7 +58,9 @@ MODELE_WYDAWNICTW = (Wydawnictwo_Ciagle, Wydawnictwo_Zwarte)
 MODELE_PRAC = (Praca_Doktorska, Praca_Habilitacyjna)
 
 # Adnotacja z gotowym URI COAR dla prac dyplomowych — patrz ``coar_pracy``.
-ADNOTACJA_COAR = "_cerif_coar"
+# Nazwa pochodzi z ``const``, bo jest to kontrakt z warstwą serializerów;
+# trzymana osobno po obu stronach rozjechała się i typ nie docierał do XML-a.
+ADNOTACJA_COAR = const.ATRYBUT_TYP_COAR
 
 # model pracy -> (skrót charakteru formalnego, URI awaryjny)
 _COAR_PRAC = {
@@ -293,9 +295,23 @@ class ProviderPublikacji(ProviderEncji):
                     *_SELECT_WYDAWNICTWA,
                     "wydawca",
                     "wydawnictwo_nadrzedne",
+                    # `PartOf` osadza skrócone wydawnictwo nadrzędne, a to
+                    # czyta typ i język rodzica. Bez tych dwóch pozycji
+                    # rozdział kosztował dodatkowe zapytania na każdy rekord
+                    # — niewidoczne w testach z jednym rozdziałem.
+                    "wydawnictwo_nadrzedne__charakter_formalny",
+                    "wydawnictwo_nadrzedne__jezyk",
                     "seria_wydawnicza",
                 )
-                .prefetch_related(*_prefetche_wydawnictwa(model))
+                .prefetch_related(
+                    *_prefetche_wydawnictwa(model),
+                    Prefetch(
+                        "wydawnictwo_nadrzedne__dodatkowe_tytuly",
+                        queryset=Wydawnictwo_Zwarte_Tytul.objects.select_related(
+                            "jezyk"
+                        ),
+                    ),
+                )
             )
 
         if model in MODELE_PRAC:

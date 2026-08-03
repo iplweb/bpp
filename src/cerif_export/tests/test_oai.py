@@ -867,3 +867,33 @@ def test_na_xml_zwraca_dokument_z_deklaracja(uczelnia, rejestr):
 
     assert dokument.startswith(b"<?xml version='1.0' encoding='UTF-8'?>")
     assert b"openaire_cris_publications" in dokument
+
+
+def test_brak_tokenu_gdy_strona_domyka_sie_co_do_rekordu(
+    monkeypatch, uczelnia, rejestr
+):
+    """Strona zapełniona dokładnie, a dalej same puste sety → brak tokenu.
+
+    Regresja: warstwa OAI wydawała wtedy token, po którym kolejne żądanie
+    kończyło się błędem ``noRecordsMatch``. Z punktu widzenia harvestera to
+    zerwanie sesji — resumption token ma prowadzić do poprawnej kontynuacji
+    albo nie zostać wydany wcale.
+
+    Atrapa ma 7 rekordów, a ostatnim setem jest pusty ``equipments``.
+    """
+    monkeypatch.setattr(const, "ROZMIAR_STRONY", 7)
+
+    korzen = wykonaj(
+        uczelnia, verb="ListIdentifiers", metadataPrefix=const.METADATA_PREFIX
+    )
+    assert len(znajdz(korzen, "ListIdentifiers", "header")) == 7
+
+    tokeny = znajdz(korzen, "ListIdentifiers", "resumptionToken")
+    token = tokeny[0].text if tokeny else None
+    if not token:
+        return
+
+    drugi = wykonaj(uczelnia, verb="ListIdentifiers", resumptionToken=token)
+    assert kod_bledu(drugi) is None, (
+        f"token poprowadził do błędu protokołu: {kod_bledu(drugi)}"
+    )

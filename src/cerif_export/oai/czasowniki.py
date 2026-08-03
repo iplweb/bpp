@@ -111,28 +111,18 @@ class Zadanie:
 def rejestr_providerow() -> dict:
     """Mapa ``setSpec`` -> instancja providera.
 
-    Import leniwy: moduły providerów powstają równolegle, a poza tym import
-    modeli Django na poziomie modułu ``oai`` wiązałby warstwę protokołu
-    z gotowością rejestru aplikacji.
-    """
-    from cerif_export.providers.base import ProviderPusty
-    from cerif_export.providers.jednostki import ProviderJednostek
-    from cerif_export.providers.konferencje import ProviderKonferencji
-    from cerif_export.providers.osoby import ProviderOsob
-    from cerif_export.providers.patenty import ProviderPatentow
-    from cerif_export.providers.publikacje import ProviderPublikacji
+    Zwraca **ten sam** rejestr, którego używa ``providers.provider_dla_setu``.
+    Wcześniej warstwa OAI budowała własny słownik: testy widoczności chodziły
+    wtedy przez jeden rejestr, a HTTP przez drugi, więc sprawdzały inny
+    obiekt, niż serwowała produkcja. Dodanie providera wymagało też edycji
+    dwóch miejsc.
 
-    return {
-        const.SET_PUBLICATIONS: ProviderPublikacji(),
-        const.SET_PRODUCTS: ProviderPusty(),
-        const.SET_PATENTS: ProviderPatentow(),
-        const.SET_PERSONS: ProviderOsob(),
-        const.SET_ORGUNITS: ProviderJednostek(),
-        const.SET_PROJECTS: ProviderPusty(),
-        const.SET_FUNDING: ProviderPusty(),
-        const.SET_EVENTS: ProviderKonferencji(),
-        const.SET_EQUIPMENTS: ProviderPusty(),
-    }
+    Import leniwy, bo import modeli Django na poziomie modułu ``oai``
+    wiązałby warstwę protokołu z gotowością rejestru aplikacji.
+    """
+    from cerif_export.providers import PROVIDERY_WG_SETU
+
+    return dict(PROVIDERY_WG_SETU)
 
 
 def serializer_dla(slug: str):
@@ -404,11 +394,16 @@ def _zbierz_strone(uczelnia, rejestr, set_spec, od, do, kursor, rozmiar=None):
         brakuje = rozmiar - len(zebrane)
 
         if brakuje == 0:
-            # Strona zapełniła się dokładnie na granicy setu. Zostało coś
-            # do pokazania, więc wydajemy token wskazujący ostatni wydany
-            # rekord. Bez tego warunku sonda niżej dostawała rozmiar=1,
-            # przycinała wynik do zera i wywalała się na obiekty[-1].
-            return zebrane, _kursor_dla(zebrane[-1][1])
+            # Strona zapełniła się dokładnie na granicy setu. Token wydajemy
+            # TYLKO wtedy, gdy w kolejnych setach coś jeszcze jest — inaczej
+            # harvester dostawał token, po którym następne żądanie kończyło
+            # się błędem `noRecordsMatch` zamiast pustą ostatnią stroną.
+            # (Bez warunku `brakuje == 0` sonda niżej dostawała z kolei
+            # rozmiar=1, przycinała wynik do zera i wywalała się na
+            # `obiekty[-1]`.)
+            if _cos_zostalo(uczelnia, rejestr, kolejnosc, pozycja, od, do):
+                return zebrane, _kursor_dla(zebrane[-1][1])
+            return zebrane, None
 
         biezacy_set = kolejnosc[pozycja]
         provider = rejestr[biezacy_set]
@@ -429,6 +424,20 @@ def _zbierz_strone(uczelnia, rejestr, set_spec, od, do, kursor, rozmiar=None):
         zebrane.extend((biezacy_set, obiekt) for obiekt in obiekty)
 
     return zebrane, None
+
+
+def _cos_zostalo(uczelnia, rejestr, kolejnosc, pozycja, od, do):
+    """Czy w setach od ``pozycja`` w górę został jakikolwiek rekord?
+
+    Sety przed ``pozycja`` są w tym miejscu z definicji wyczerpane: każdy
+    z nich był pobierany z zapasem jednego rekordu i oddał mniej, niż ten
+    zapas — inaczej pętla wyszłaby wcześniej z tokenem.
+    """
+    for set_spec in kolejnosc[pozycja:]:
+        obiekty, _ = rejestr[set_spec].strona(uczelnia, od=od, do=do, rozmiar=1)
+        if list(obiekty):
+            return True
+    return False
 
 
 def _indeks_setu(kolejnosc, rejestr, kursor):

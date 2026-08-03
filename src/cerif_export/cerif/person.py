@@ -67,10 +67,17 @@ def dodaj_identyfikator_pbn(el, autor):
 
 
 def dodaj_adresy(el, autor):
-    """Dopisz ``ElectronicAddress`` — e-mail jako ``mailto:``, WWW jako URL."""
-    email = tekst(getattr(autor, "email", None))
-    if email:
-        dodaj(el, "ElectronicAddress", f"mailto:{email}")
+    """Dopisz ``ElectronicAddress`` — wyłącznie adres WWW.
+
+    **E-mail celowo NIE jest eksportowany.** ``AutorSerializer``
+    (``src/api_v1/serializers/autor.py``) traktuje ``Autor.email`` jako dane
+    osobowe i usuwa je z odpowiedzi dla niezalogowanych. Eksport CERIF jest
+    kanałem publicznym i nieodwracalnym — raz zebrany przez OpenAIRE adres
+    zostaje poza kontrolą uczelni — więc wystawianie go tutaj obchodziłoby
+    tamtą decyzję tylnymi drzwiami.
+
+    ``www`` zostaje: to adres zawodowej strony, nie dana kontaktowa osoby.
+    """
     dodaj(el, "ElectronicAddress", tekst(getattr(autor, "www", None)))
 
 
@@ -88,6 +95,11 @@ def dodaj_afiliacje(el, autor, ctx):
     for powiazanie in powiazania.all():
         jednostka = powiazanie.jednostka
         if jednostka is None or jednostka.pk in widziane:
+            continue
+        # Autor bywa zatrudniony w kilku uczelniach, a `autor_jednostka_set`
+        # nie jest filtrowany po tenancie — bez tego warunku eksport uczelni
+        # A ujawniałby nazwy jednostek uczelni B.
+        if not wspolne.jednostka_ujawnialna(jednostka, ctx):
             continue
         widziane.add(jednostka.pk)
         afiliacja = dodaj_kontener(el, "Affiliation")

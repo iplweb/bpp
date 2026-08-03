@@ -19,7 +19,15 @@ from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Zrodlo
 from cerif_export import const
-from cerif_export.cerif import event, orgunit, patent, person, publication, service
+from cerif_export.cerif import (
+    event,
+    orgunit,
+    patent,
+    person,
+    publication,
+    service,
+    wspolne,
+)
 from cerif_export.kontekst import KontekstSerializacji
 from cerif_export.providers import provider_dla_setu
 
@@ -213,3 +221,30 @@ def test_niewidoczna_encja_osadzona_bez_identyfikatora(
     sprawdz(schemat, element)
     osoby = [el for el in element.iter() if el.tag.endswith("Person")]
     assert osoby and all(el.get("id") is None for el in osoby)
+
+
+# -- schemat licencji ----------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "uri,oczekiwany",
+    [
+        ("https://creativecommons.org/licenses/by/4.0/", wspolne.SCHEMAT_LICENCJI_CC),
+        (
+            "https://creativecommons.org/publicdomain/zero/1.0/",
+            wspolne.SCHEMAT_LICENCJI_CC,
+        ),
+        ("https://spdx.org/licenses/MIT.html", wspolne.SCHEMAT_LICENCJI_SPDX),
+        ("", wspolne.SCHEMAT_LICENCJI_SPDX),
+        (None, wspolne.SCHEMAT_LICENCJI_SPDX),
+        # Regresja (CodeQL py/incomplete-url-substring-sanitization): domena
+        # w query stringu nie może przebrać obcego adresu za Creative Commons.
+        (
+            "https://example.invalid/?x=creativecommons.org",
+            wspolne.SCHEMAT_LICENCJI_SPDX,
+        ),
+        ("https://creativecommons.org.example.invalid/", wspolne.SCHEMAT_LICENCJI_SPDX),
+    ],
+)
+def test_schemat_licencji_porownuje_host_nie_podciag(uri, oczekiwany):
+    assert wspolne.schemat_licencji(uri) == oczekiwany

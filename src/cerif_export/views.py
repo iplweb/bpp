@@ -6,12 +6,15 @@ siedzi tam.
 """
 
 from django.http import Http404, HttpResponse
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from django.views.generic.base import View
 
 from bpp.models import Uczelnia
 from cerif_export.oai import czasowniki
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class OAICerifView(View):
     """Endpoint OAI-PMH wystawiający CERIF-XML.
 
@@ -19,6 +22,13 @@ class OAICerifView(View):
     poprawny dokument ``<OAI-PMH>`` ze statusem **200** — tak wymaga
     OAI-PMH 2.0 i tak sprawdza to walidator. Jedyne 404 to wyłączony
     eksport, czyli sytuacja "tu nie ma żadnego repozytorium".
+
+    ``csrf_exempt`` jest konieczny, nie wygodny: OAI-PMH 2.0 wymaga obsługi
+    **POST** (harvestery sięgają po niego, gdy resumption token nie mieści
+    się w limicie długości URL-a), a harvester z definicji nie ma ciastka
+    ani tokenu CSRF. Bez tego dekoratora POST kończył się odpowiedzią 403.
+    Endpoint jest w całości tylko-do-odczytu i publiczny, więc CSRF nie ma
+    tu czego chronić.
     """
 
     def get(self, request, *args, **kwargs):

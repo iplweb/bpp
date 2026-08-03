@@ -26,6 +26,7 @@ Wstawienie pełnego identyfikatora OAI w ``@id`` dałoby po sklejeniu
 import datetime
 import html
 import re
+from urllib.parse import urlsplit
 
 from lxml import etree
 
@@ -49,8 +50,21 @@ SCHEMAT_LICENCJI_SPDX = "https://spdx.org/licenses"
 
 
 def schemat_licencji(uri):
-    """Dobierz wartość atrybutu ``scheme`` do URI licencji."""
-    if uri and "creativecommons.org" in uri:
+    """Dobierz wartość atrybutu ``scheme`` do URI licencji.
+
+    Porównujemy **host**, nie podciąg. ``Licencja_OpenAccess.uri`` jest polem
+    edytowalnym w adminie, więc adres w rodzaju
+    ``https://example.invalid/?x=creativecommons.org`` przechodziłby test
+    ``"creativecommons.org" in uri`` i dostawał etykietę schematu CC.
+    Skutek byłby łagodny (mylący atrybut ``scheme`` w XML-u), ale samo
+    sprawdzenie jest po prostu niepoprawne — CodeQL zgłasza to jako
+    ``py/incomplete-url-substring-sanitization``.
+    """
+    if not uri:
+        return SCHEMAT_LICENCJI_SPDX
+
+    host = (urlsplit(uri).hostname or "").lower()
+    if host == "creativecommons.org" or host.endswith(".creativecommons.org"):
         return SCHEMAT_LICENCJI_CC
     return SCHEMAT_LICENCJI_SPDX
 
@@ -71,7 +85,7 @@ ATRYBUT_PLIKI = "cerif_pliki"
 # ``cached_property`` robiącym ``Charakter_Formalny.objects.get(skrot="D")``,
 # czyli lazy DB hit wyzwalany z serializera (plus ``DoesNotExist``, gdy słownik
 # przemianowano) — dlatego typ rozstrzyga provider, a nie my.
-ATRYBUT_TYP_COAR = "cerif_typ_coar"
+ATRYBUT_TYP_COAR = const.ATRYBUT_TYP_COAR
 
 _WZORZEC_STRON = re.compile(r"^\s*(\d+)\s*[-–]\s*(\d+)\s*$")
 _ZNACZNIK_HTML = re.compile(r"<[^>]*>")
@@ -265,14 +279,29 @@ def ustaw_id_rekordu(el, obj, ctx):
 # -- osadzone encje ------------------------------------------------------
 
 
+def jednostka_ujawnialna(jednostka, ctx) -> bool:
+    """Czy wolno w ogóle pokazać tę jednostkę w osadzonej encji?
+
+    Samo pominięcie ``@id`` NIE wystarcza. ``Autor`` bywa zatrudniony
+    w kilku uczelniach, a ``autor_jednostka_set`` nie jest filtrowany po
+    tenancie — bez tego sprawdzenia eksport uczelni A ujawniał ``Name``
+    jednostki uczelni B (i tak samo nazwy własnych jednostek z
+    ``widoczna=False`` albo ``nie_eksportuj_przez_api=True``).
+    """
+    return jednostka is not None and ctx.widoczne.zawiera(jednostka)
+
+
 def osadz_orgunit(rodzic, jednostka, ctx):
     """Dopisz skrócony ``OrgUnit`` (``Acronym`` + ``Name``).
 
     Kontrola 5b walidatora wymaga, żeby osadzona encja była **podzbiorem**
     swojego pełnego rekordu, więc oba elementy budujemy dokładnie tak samo
     jak :func:`cerif_export.cerif.orgunit.serializuj`.
+
+    Jednostka spoza zbioru widoczności nie jest osadzana wcale — patrz
+    :func:`jednostka_ujawnialna`.
     """
-    if jednostka is None:
+    if not jednostka_ujawnialna(jednostka, ctx):
         return None
     el = element("OrgUnit")
     ustaw_id(el, jednostka, ctx)
@@ -283,13 +312,23 @@ def osadz_orgunit(rodzic, jednostka, ctx):
 
 
 def osadz_osobe(rodzic, autor, ctx):
-    """Dopisz skrócony ``Person`` (``PersonName`` + ``ORCID``)."""
+    """Dopisz skrócony ``Person`` (``PersonName`` + ``ORCID``).
+
+    Nazwisko autora z ``pokazuj=False`` pozostaje — bez niego lista autorów
+    publikacji byłaby po prostu nieprawdziwa, a to opis bibliograficzny,
+    który i tak widnieje na okładce czasopisma.
+
+    **ORCID już nie.** To trwały, globalny identyfikator osoby, a nie
+    element opisu bibliograficznego: wystawienie go wiąże ukrytego autora
+    z jego profilem w całym ekosystemie OpenAIRE i jest nieodwracalne.
+    """
     from cerif_export.cerif import person
 
     el = element("Person")
-    ustaw_id(el, autor, ctx)
+    widoczny = ustaw_id(el, autor, ctx) is not None
     person.dodaj_person_name(el, autor)
-    person.dodaj_orcid(el, autor)
+    if widoczny:
+        person.dodaj_orcid(el, autor)
     rodzic.append(el)
     return el
 
@@ -308,7 +347,10 @@ def dodaj_wklad_osoby(
     el = dodaj_kontener(rodzic, nazwa)
     dodaj(el, "DisplayName", tekst(nazwa_wyswietlana), ns=NS)
     osadz_osobe(el, autor, ctx)
-    if jednostka is not None:
+    # Kontener `Affiliation` tworzymy dopiero, gdy jednostkę wolno pokazać —
+    # inaczej zostawiłby po sobie pusty element i ujawniał sam fakt
+    # afiliacji do jednostki spoza eksportu.
+    if jednostka_ujawnialna(jednostka, ctx):
         afiliacja = dodaj_kontener(el, "Affiliation")
         osadz_orgunit(afiliacja, jednostka, ctx)
     return el
