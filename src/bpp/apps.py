@@ -41,7 +41,10 @@ class BppConfig(AppConfig):
         self._register_bpp_user_admin()
 
         # Naprawa clobberingu faviconów między tenantami (multi-host).
-        self._patch_favicon_save_per_site()
+        # Tylko gdy biblioteka jest zainstalowana — authserver ma minimalne
+        # INSTALLED_APPS bez "favicon" (patrz django_bpp.settings.auth_server).
+        if apps.is_installed("favicon"):
+            self._patch_favicon_save_per_site()
 
         # Initialize Rollbar with global hostname handler
         from bpp.rollbar_config import configure_rollbar

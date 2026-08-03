@@ -223,6 +223,75 @@ def test_auth_server_renders_login_template():
     assert template.render({}) is not None
 
 
+def test_auth_server_startuje_i_renderuje_login_w_osobnym_procesie():
+    """``django.setup()`` + render loginu pod PRAWDZIWYMI settingsami authservera.
+
+    Testy jednostkowe biegną pod ``settings.test``, gdzie INSTALLED_APPS jest
+    pełne — więc żaden z nich nie wykryje, że ``bpp`` przestało się ładować w
+    minimalnym środowisku authservera. Ten test odpala Django w OSOBNYM
+    procesie z ``DJANGO_SETTINGS_MODULE=django_bpp.settings.auth_server``,
+    czyli dokładnie tak, jak robi to gunicorn przez ``wsgi_auth_server.py``.
+
+    Pokrywa dwie klasy regresji, które już wystąpiły w produkcji:
+
+    1. ``BppConfig.ready()`` importujący model aplikacji spoza minimalnych
+       INSTALLED_APPS (``favicon`` — worker gunicorna nie wstawał w ogóle).
+    2. Top-levelowy import modelu w ``bpp/templatetags/*.py`` — Django przy
+       inicjalizacji silnika szablonów ładuje ZACHŁANNIE wszystkie moduły
+       templatetagów aplikacji z INSTALLED_APPS, więc taki import wywala
+       render formularza logowania (``formdefaults``, ``favicon``).
+
+    Obie objawiają się tym samym: ``RuntimeError: Model class X doesn't
+    declare an explicit app_label and isn't in an application in
+    INSTALLED_APPS``.
+
+    Nie dotyka bazy ani Redisa — ``django.setup()`` i ``get_template()`` są
+    czysto in-process, więc test nie potrzebuje testcontainerów.
+    """
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parents[3]
+
+    skrypt = (
+        "import django; django.setup();"
+        "from django.template.loader import get_template;"
+        "get_template('auth_server/login.html').render({});"
+        "print('AUTHSERVER OK')"
+    )
+
+    env = {
+        **os.environ,
+        "DJANGO_SETTINGS_MODULE": "django_bpp.settings.auth_server",
+        # `production.py` odmawia startu na placeholderze; wartość jest
+        # nieistotna, bo nic nie podpisujemy — ważne, żeby nie była pusta.
+        "DJANGO_BPP_SECRET_KEY": "x" * 64,
+        "DJANGO_BPP_REDIS_DB_CACHE": "1",
+        # Bez tego `.env` dewelopera nadpisałby powyższe.
+        "DJANGO_BPP_SKIP_DOTENV": "1",
+    }
+
+    wynik = subprocess.run(
+        [sys.executable, "-c", skrypt],
+        cwd=repo_root,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+
+    assert wynik.returncode == 0, (
+        "Authserver nie wstaje pod własnymi (minimalnymi) settingsami.\n"
+        "Najczęstsza przyczyna: kod 'bpp' importuje model aplikacji, której "
+        "nie ma w auth_server.INSTALLED_APPS — w ready() albo na top-levelu "
+        "modułu templatetagów.\n\n"
+        f"STDOUT:\n{wynik.stdout}\n\nSTDERR:\n{wynik.stderr}"
+    )
+    assert "AUTHSERVER OK" in wynik.stdout
+
+
 def test_auth_server_has_rollbar_config():
     """
     Verify auth server settings include ROLLBAR configuration.

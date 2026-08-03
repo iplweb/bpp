@@ -147,6 +147,16 @@ class UczelniaAdmin(
             },
         ),
         (
+            "OAI-PMH",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "oai_pmh_aktywny",
+                    "oai_identyfikator_repozytorium",
+                ),
+            },
+        ),
+        (
             "Strona wizualna",
             {
                 "classes": ("grp-collapse grp-closed",),

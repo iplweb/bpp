@@ -8,6 +8,7 @@ from django.utils.functional import cached_property
 from django.views.generic import DetailView, ListView
 from liveops.views import CreateLiveOperationView, RestartView
 
+from import_polon.core.import_polon import KOMUNIKATY_BEZ_ZMIAN
 from import_polon.forms import NowyImportForm, WierszImportuPlikuPolonFilterForm
 from import_polon.models import ImportPlikuPolon
 
@@ -83,8 +84,12 @@ class PokazImporty(BaseImportPlikuPolonMixin, ListView):
         # importy uczelni Y właściciela.
         from bpp.models import Uczelnia
 
-        qset = self.model.objects.filter(owner=self.request.user).order_by(
-            "-created_on"
+        # select_related: szablon pokazuje badge uczelni przy KAŻDYM wierszu
+        # tabeli, więc bez tego wychodzi N+1 (do max_previous_ops zapytań).
+        qset = (
+            self.model.objects.filter(owner=self.request.user)
+            .select_related("uczelnia")
+            .order_by("-created_on")
         )
 
         uczelnia = Uczelnia.objects.get_for_request(self.request)
@@ -194,9 +199,13 @@ class ImportPolonResultsView(BaseImportPlikuPolonMixin, ListView):
 
         # Apply "show only differences" filter
         if pokaz_tylko_roznice:
-            queryset = queryset.exclude(
-                rezultat__startswith="W BPP jest identycznie jak w XLSX"
-            )
+            # DOKŁADNE dopasowanie do zbioru komunikatów „bez zmian", nie prefiks.
+            # Prefiks (poprzednia wersja) ukrywał wiersz, któremu import ustawił
+            # WYŁĄCZNIE ORCID: operacja ORCID doklejana jest PO sentinelu, więc
+            # rezultat zaczyna się od „W BPP jest identycznie…", choć jest zmianą.
+            # Licznik „zmian" na liście importów liczy taki wiersz jako zmianę —
+            # bez tej poprawki obie strony przeczyłyby sobie nawzajem.
+            queryset = queryset.exclude(rezultat__in=KOMUNIKATY_BEZ_ZMIAN)
 
         return queryset
 

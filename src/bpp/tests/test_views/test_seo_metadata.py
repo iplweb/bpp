@@ -156,6 +156,29 @@ def test_robots_txt_wskazuje_sitemap(client):
     assert "Disallow:" in body
 
 
+@pytest.mark.django_db
+def test_robots_txt_blokuje_widoki_sieci_powiazan(client, settings, tmp_path):
+    """Sieci powiązań autorów muszą być wyłączone spod indeksowania.
+
+    Cała treść tych stron to canvas rysowany JS-em — crawler nie wyciąga
+    z nich ani znaku tekstu, a każde wejście odpala ``siec.json``, czyli
+    BFS po współautorstwach z sumowaniem IF/PK. Rollbar #4006: crawler
+    ``meta-externalagent`` przemiatał ``/powiazania/3d/`` autor po autorze,
+    generując wyłącznie koszt bazy i błędy WebGL-a.
+
+    ``STATIC_ROOT`` celuje w pusty katalog, żeby ``_read_static_robots``
+    poszło ścieżką staticfiles finders do ``src/bpp/static/robots.txt``.
+    Bez tego test czytałby to, co akurat zostało po ostatnim
+    ``collectstatic`` — a `staticroot/` jest gitignorowanym artefaktem
+    builda i lokalnie bywa nieaktualny.
+    """
+    settings.STATIC_ROOT = str(tmp_path)
+
+    res = client.get(reverse("robots_txt"))
+    body = res.content.decode("utf-8")
+    assert "Disallow: /bpp/autor/*/powiazania/" in body
+
+
 # ``robots_txt`` jest owinięty w ``cache_page(24h)`` (django_bpp/urls.py).
 # W ``settings/test.py`` CACHES["default"] to DummyCache — nic nie
 # zapamiętuje, więc bez podmiany na LocMem cache_page renderowałby wszystko

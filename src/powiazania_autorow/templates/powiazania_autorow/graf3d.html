@@ -130,6 +130,10 @@
              data-autor-id="{{ autor.pk }}"
              data-siec-url-template="{% url 'bpp:browse_autor_powiazania_siec' 0 %}"
              data-graf3d-url-template="{% url 'bpp:browse_autor_powiazania_3d' 0 %}"
+             {# wyjście awaryjne, gdy przeglądarka nie ma WebGL-a #}
+             {# UWAGA: bez myślnika przed "2d" — `data-url-2d` mapowałoby się #}
+             {# na dataset["url-2d"], bo po myślniku stoi cyfra, nie litera. #}
+             data-url2d="{% url 'bpp:browse_autor_powiazania' autor.pk %}"
              style="width: 100%; height: 78vh; border: 1px solid #ccc;
                     background: #0b1020;"></div>
         <div id="siec3d-info"
