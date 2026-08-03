@@ -44,6 +44,7 @@ class Ukryj_Status_KorektyInline(admin.StackedInline):
         "rankingi",
         "sloty",
         "api",
+        "cerif",
     ]
     extra = 0
 
@@ -280,6 +281,18 @@ class UczelniaAdmin(
                     "dspace_api_username",
                     "dspace_api_password",
                     "dspace_domyslny_jezyk_dc",
+                ),
+            },
+        ),
+        (
+            "Interfejsy maszynowe (API, OAI-PMH, CERIF)",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "api_v1_wlaczone",
+                    "eksport_cerif_wlaczony",
+                    "oai_identyfikator_repozytorium",
+                    "ror_id",
                 ),
             },
         ),

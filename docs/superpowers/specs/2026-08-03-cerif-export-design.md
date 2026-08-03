@@ -131,7 +131,11 @@ modelach) — po ich dodaniu wymagany `make baseline-update`.
 Migracje danych:
 
 - `Jezyk.kod_bcp47` — z `skrot_crossref` (`en`/`es`/`pl`); gdzie puste,
-  z `skrot` jeśli pasuje do `^[a-z]{2,3}$`.
+  z `skrot` jeśli pasuje do `^[a-z]{2,3}$`. W praktyce wypełni to niemal
+  nic: skróty w baseline to `ang.`, `fr.`, `hiszp.`, `niem.`, `ros.`, `wł.`,
+  `b/d`, `in.` — z kropkami i polskimi znakami, więc nie pasują. Jedyny
+  automatyczny wynik to `pol.` → `pl`. Pozostałe ~8 języków uzupełnia
+  redakcja; `cerif_raport_mapowan` musi je raportować.
 - `Licencja_OpenAccess.uri` — patrz reguły niżej.
 
 ### Reguły migracji `Licencja_OpenAccess.uri`
@@ -140,8 +144,13 @@ Skróty w bazie są **wielkimi literami** (np. `CC-BY-ND`), a ścieżka
 Creative Commons jest małymi. Reguły:
 
 - `skrot == "OTHER"` → pozostaje `""`;
-- `skrot in ("CC0", "CC-0")` → `https://creativecommons.org/publicdomain/zero/1.0/`
-  (CC0 ma inny schemat URL niż pozostałe licencje);
+- `skrot in ("CC-ZERO", "CC0", "CC-0")` →
+  `https://creativecommons.org/publicdomain/zero/1.0/` (CC0 ma inny schemat
+  URL niż pozostałe licencje). **Kanoniczny skrót w BPP to `CC-ZERO`** —
+  seedowany migracją `src/bpp/migrations/0195_cc0.py`. Warunek musi być
+  sprawdzany **przed** wzorcem ogólnym `^CC-(...)$`, bo inaczej `CC-ZERO`
+  wpadnie w niego i wyprodukuje nieistniejący adres
+  `https://creativecommons.org/licenses/zero/4.0/`;
 - `skrot` pasujący do `^CC-([A-Z-]+)$` →
   `https://creativecommons.org/licenses/{grupa.lower()}/4.0/`;
 - pozostałe → `""`.

@@ -183,6 +183,7 @@ class JednostkaAdmin(
                     "zarzadzaj_automatycznie",
                     "email",
                     "www",
+                    "ror_id",
                 ),
             },
         ),

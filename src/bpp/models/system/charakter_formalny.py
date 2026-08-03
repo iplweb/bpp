@@ -171,6 +171,17 @@ class Charakter_Formalny(NazwaISkrot, MPTTModel):
         Istniejące rekordy korzystające z tej wartości pozostają bez zmian.""",
     )
 
+    coar_type = models.CharField(
+        "Typ COAR",
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Pełny identyfikator typu zasobu ze słownika COAR Resource "
+        "Types, np. http://purl.org/coar/resource_type/c_6501 dla artykułu "
+        "naukowego. Używany w eksporcie CERIF/OpenAIRE; gdy pusty, prace o "
+        "tym charakterze formalnym zostaną wyeksportowane bez typu zasobu.",
+    )
+
     class Meta:
         ordering = ["nazwa"]
         app_label = "bpp"
