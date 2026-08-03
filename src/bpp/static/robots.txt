@@ -11,3 +11,7 @@ Disallow: /logout/
 Disallow: /admin/
 Disallow: /integrator2/
 Disallow: /password_change/
+# Sieci powiazan autorow (2D, 3D oraz zasilajace je *.json): cala tresc to
+# canvas rysowany JS-em, wiec crawler nie wyciaga stad ani znaku tekstu,
+# a kazde wejscie odpala BFS po wspolautorstwach z sumowaniem IF/PK.
+Disallow: /bpp/autor/*/powiazania/
