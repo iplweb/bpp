@@ -83,14 +83,57 @@ class CacheMetadata:
         return default
 
 
-def get_dc_ident(model, obj_pk):
-    return f"oai:bpp.umlub.pl:{model}/{obj_pk}"
+def get_dc_ident(repository_identifier, model, obj_pk):
+    """Identyfikator OAI-PMH rekordu: ``oai:<repozytorium>:<model>/<pk>``."""
+    return f"oai:{repository_identifier}:{model}/{obj_pk}"
+
+
+def parse_dc_ident(repository_identifier, identifier):
+    """Rozłóż identyfikator OAI-PMH na ``(content_type_id, pk)``.
+
+    Zwraca ``None``, gdy identyfikator nie należy do tego repozytorium albo
+    nie da się go rozłożyć. Wołający zwraca wtedy pusty wynik, a moai emituje
+    przewidziany protokołem ``idDoesNotExist`` (patrz ``moai.oai.getRecord``)
+    — dane z zewnątrz nie mają prawa wysadzić widoku.
+    """
+    schemat, _, reszta = identifier.partition(":")
+    repozytorium, _, lokalny = reszta.partition(":")
+    if schemat != "oai" or repozytorium != repository_identifier:
+        return None
+
+    model, ukosnik, obj_pk = lokalny.partition("/")
+    if not ukosnik or not obj_pk.isdigit():
+        return None
+
+    try:
+        content_type_id = ContentType.objects.get(
+            app_label="bpp", model=model.lower()
+        ).pk
+    except ContentType.DoesNotExist:
+        return None
+
+    return content_type_id, int(obj_pk)
 
 
 class BPPOAIDatabase:
     def __init__(self, original, request=None):
         self.original = original
         self.request = request
+
+    def repository_identifier(self):
+        """Środkowy człon identyfikatorów OAI-PMH dla tego requestu.
+
+        Rozstrzygany raz na request (nie per wiersz), żeby cała odpowiedź
+        miała spójny namespace.
+        """
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        if uczelnia is not None:
+            return uczelnia.oai_repository_identifier()
+        # Brak mapowania domena → Site → Uczelnia (pusta baza, kilka uczelni
+        # bez dopasowania). ``scope_rekord_do_uczelni`` jest wtedy no-opem,
+        # więc rekordy nadal wychodzą i potrzebują identyfikatora — host
+        # requestu jest najbliższym sensownym przybliżeniem.
+        return self.request.get_host().split(":")[0]
 
     def get_set(self, oai_id):
         if oai_id == 1:
@@ -171,16 +214,13 @@ class BPPOAIDatabase:
         # filter dates
         query = query.filter(ostatnio_zmieniony__lte=until_date)
 
+        repository_identifier = self.repository_identifier()
+
         if identifier is not None:
-            ident = identifier.split(":")
-            assert ident[0] == "oai"
-            assert ident[1] == "bpp.umlub.pl"
-
-            ident = ident[2].split("/")
-            klass = ident[0].lower()
-
-            content_type_id = ContentType.objects.get(app_label="bpp", model=klass).pk
-            query = query.filter(id=[content_type_id, ident[1]])
+            rozlozony = parse_dc_ident(repository_identifier, identifier)
+            if rozlozony is None:
+                return
+            query = query.filter(id=list(rozlozony))
 
         if from_date is not None:
             query = query.filter(ostatnio_zmieniony__gte=from_date)
@@ -210,7 +250,9 @@ class BPPOAIDatabase:
             .prefetch_related("zrodlo", "slowa_kluczowe")[offset : offset + batch_size]
         ):
             yield {
-                "id": get_dc_ident(row.content_type.model, row.object_id),
+                "id": get_dc_ident(
+                    repository_identifier, row.content_type.model, row.object_id
+                ),
                 "deleted": False,
                 "modified": make_naive(
                     row.ostatnio_zmieniony, row.ostatnio_zmieniony.tzinfo
