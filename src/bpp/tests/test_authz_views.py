@@ -72,15 +72,15 @@ API_ROUTES_REDAKCYJNE = [
 ]
 
 # Wszystkie endpointy API wymagające ZALOGOWANIA (anonim → 302 na login).
-# `api_ostatnia_jednostka_i_dyscyplina` jest tutaj, ale ŚWIADOMIE nie ma go na
-# liście redakcyjnej wyżej: to widok tylko-do-odczytu, konsumowany przez
-# `autorform_dependant.js` w PUBLICZNYM formularzu `zglos_publikacje`, więc
-# zwykły zalogowany użytkownik musi dostać 200, a nie 403. Pilnuje tego
+#
+# `api_ostatnia_jednostka_i_dyscyplina` ŚWIADOMIE tu NIE występuje: to widok
+# tylko-do-odczytu, konsumowany przez `autorform_dependant.js` w PUBLICZNYM
+# formularzu `zglos_publikacje`, który anonimów wpuszcza. Musi więc odpowiadać
+# 200 zarówno anonimowi, jak i zalogowanemu bez uprawnień redaktorskich —
+# pilnują tego `test_ostatnia_jednostka_dostepna_dla_anonima` oraz
 # `test_ostatnia_jednostka_dostepna_bez_uprawnien_redaktorskich`
 # w `src/bpp/tests/test_views/test_api.py`.
-API_ROUTES = API_ROUTES_REDAKCYJNE + [
-    ("bpp:api_ostatnia_jednostka_i_dyscyplina", {}),
-]
+API_ROUTES = API_ROUTES_REDAKCYJNE
 
 
 @pytest.mark.django_db

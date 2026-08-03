@@ -2,6 +2,7 @@ import json
 from collections import namedtuple
 
 import pytest
+from django.test import Client
 from django.urls import reverse
 from model_bakery import baker
 
@@ -405,7 +406,6 @@ def test_upload_punktacja_zrodla_niepoprawna_liczba():
             {"zrodlo_id": 1, "rok": CURRENT_YEAR},
             {"impact_factor": "50.0"},
         ),
-        ("bpp:api_ostatnia_jednostka_i_dyscyplina", {}, {"autor_id": 1}),
         ("bpp:api_pubmed_id", {}, {"t": "test"}),
     ],
 )
@@ -441,6 +441,43 @@ def test_ostatnia_jednostka_dostepna_bez_uprawnien_redaktorskich(
     assert not moze_wprowadzac_dane(user)
     client.force_login(user)
 
+    url = reverse("bpp:api_ostatnia_jednostka_i_dyscyplina")
+    response = client.post(url, data={"autor_id": autor.pk, "rok": CURRENT_YEAR})
+
+    assert response.status_code == 200
+    assert json.loads(response.content)["jednostka_id"] == jednostka.pk
+
+
+@pytest.mark.django_db
+def test_ostatnia_jednostka_dostepna_dla_anonima(client, autor, jednostka):
+    """Podpowiadanie jednostki działa dla NIEZALOGOWANEGO zgłaszającego.
+
+    Formularz ``zglos_publikacje`` jest publiczny (``Zgloszenie_PublikacjiWizard``
+    nie ma żadnej bramki logowania), więc najliczniejsza grupa jego użytkowników
+    to anonimy. ``LoginRequiredMixin`` odpowiadał im 302 na login — a że to AJAX,
+    ``autorform_dependant.js`` po cichu gubił podpowiedź jednostki i dyscypliny.
+    """
+    jednostka.dodaj_autora(autor)
+
+    url = reverse("bpp:api_ostatnia_jednostka_i_dyscyplina")
+    response = client.post(url, data={"autor_id": autor.pk, "rok": CURRENT_YEAR})
+
+    assert response.status_code == 200
+    assert json.loads(response.content)["jednostka_id"] == jednostka.pk
+
+
+@pytest.mark.django_db
+def test_ostatnia_jednostka_nie_wymaga_tokenu_csrf(autor, jednostka):
+    """POST bez ``csrfmiddlewaretoken`` przechodzi — widok jest ``csrf_exempt``.
+
+    CSRF chroni przed wymuszoną ZMIANĄ STANU; ten widok wyłącznie czyta i zwraca
+    JSON, więc token nie wnosi ochrony, a wymaga od konsumenta dostępu do
+    formularza z tokenem. Anonim na stronie serwowanej z cache'u publicznego
+    świeżego tokenu mieć nie musi.
+    """
+    jednostka.dodaj_autora(autor)
+
+    client = Client(enforce_csrf_checks=True)
     url = reverse("bpp:api_ostatnia_jednostka_i_dyscyplina")
     response = client.post(url, data={"autor_id": autor.pk, "rok": CURRENT_YEAR})
 
