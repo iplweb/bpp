@@ -148,6 +148,18 @@ class UczelniaAdmin(
             },
         ),
         (
+            "OAI-PMH i eksport CERIF/OpenAIRE",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "oai_pmh_aktywny",
+                    "oai_identyfikator_repozytorium",
+                    "eksport_cerif_wlaczony",
+                    "ror_id",
+                ),
+            },
+        ),
+        (
             "Strona wizualna",
             {
                 "classes": ("grp-collapse grp-closed",),
@@ -285,15 +297,10 @@ class UczelniaAdmin(
             },
         ),
         (
-            "Interfejsy maszynowe (API, OAI-PMH, CERIF)",
+            "REST API",
             {
                 "classes": ("grp-collapse grp-closed",),
-                "fields": (
-                    "api_v1_wlaczone",
-                    "eksport_cerif_wlaczony",
-                    "oai_identyfikator_repozytorium",
-                    "ror_id",
-                ),
+                "fields": ("api_v1_wlaczone",),
             },
         ),
         (

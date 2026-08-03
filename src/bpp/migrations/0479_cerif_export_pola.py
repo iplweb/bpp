@@ -80,7 +80,7 @@ def wypelnij_uri_licencji(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0476_jednostka_nie_eksportuj_przez_api"),
+        ("bpp", "0478_uczelnia_oai_pmh_aktywny"),
     ]
 
     operations = [
@@ -177,17 +177,6 @@ class Migration(migrations.Migration):
                 default=True,
                 help_text="Gdy odznaczone, endpoint OAI-PMH z danymi w formacie CERIF-XML (OpenAIRE CRIS Guidelines) przestaje odpowiadać dla tej uczelni.",
                 verbose_name="Włącz eksport CERIF/OpenAIRE",
-            ),
-        ),
-        migrations.AddField(
-            model_name="uczelnia",
-            name="oai_identyfikator_repozytorium",
-            field=models.CharField(
-                blank=True,
-                default="",
-                help_text="Człon namespace w identyfikatorach OAI-PMH tej uczelni (fragment „oai:TU:…”). Gdy pusty, używana jest domena z pola „Strona (domena)”. Wypełnij, gdy domena serwisu może się zmienić — identyfikatory OAI-PMH muszą być trwałe.",
-                max_length=255,
-                verbose_name="Identyfikator repozytorium OAI-PMH",
             ),
         ),
         migrations.AddField(

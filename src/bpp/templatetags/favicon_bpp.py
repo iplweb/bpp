@@ -17,7 +17,6 @@ tylko ``<link>`` po URL-ach obrazów), więc korzystamy z nich wprost.
 
 from django import template
 from django.utils.safestring import mark_safe
-from favicon.models import Favicon
 
 register = template.Library()
 
@@ -31,6 +30,15 @@ def place_favicon(context):
     biblioteki (``Favicon.on_site`` po ``settings.SITE_ID``) — single-host
     działa jak wcześniej.
     """
+    # Import w ciele tagu, NIE na top-levelu modułu: Django przy inicjalizacji
+    # silnika szablonów ładuje ZACHŁANNIE wszystkie moduły templatetagów
+    # aplikacji z INSTALLED_APPS. Na authserverze (minimalne INSTALLED_APPS bez
+    # "favicon") top-levelowy import wywalał render formularza logowania na
+    # ``RuntimeError: Model class favicon.models.Favicon doesn't declare an
+    # explicit app_label``. Sam tag jest wołany wyłącznie z szablonów głównej
+    # aplikacji, gdzie "favicon" jest zainstalowany.
+    from favicon.models import Favicon
+
     request = context.get("request")
     site = getattr(request, "site", None) if request is not None else None
 

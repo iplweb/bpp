@@ -1,3 +1,10 @@
+"""Endpoint OAI-PMH.
+
+Wszystkie testy biorą fixture ``uczelnia``: to z uczelni wynika identyfikator
+repozytorium i to ona decyduje, czy endpoint jest w ogóle udostępniany —
+bez niej ``/oai/`` odpowiada 404 (patrz ``test_oai_identyfikator.py``).
+"""
+
 import xml.etree.ElementTree as ET
 
 import pytest
@@ -5,7 +12,7 @@ from django.urls.base import reverse
 
 
 @pytest.mark.django_db
-def test_proper_content_type(client):
+def test_proper_content_type(uczelnia, client):
     url = reverse("bpp:oai")
     url += "/oai-pmh-repository.xml?verb=Identify"
     res = client.get(url)
@@ -13,7 +20,7 @@ def test_proper_content_type(client):
 
 
 @pytest.mark.django_db
-def test_identify(wydawnictwo_ciagle, client):
+def test_identify(uczelnia, wydawnictwo_ciagle, client):
     identify = reverse("bpp:oai") + "?verb=Identify"
     res = client.get(identify)
     assert res.status_code == 200
@@ -24,7 +31,7 @@ def toXML(response):
 
 
 @pytest.mark.django_db
-def test_listRecords(ksiazka, client):
+def test_listRecords(uczelnia, ksiazka, client):
     listRecords = reverse("bpp:oai") + "?verb=ListRecords&metadataPrefix=oai_dc"
     res = client.get(listRecords)
 
@@ -56,7 +63,9 @@ def test_listRecords_status_korekty(
 
 
 @pytest.mark.django_db
-def test_listRecords_no_queries_zwarte(ksiazka, client, django_assert_max_num_queries):
+def test_listRecords_no_queries_zwarte(
+    uczelnia, ksiazka, client, django_assert_max_num_queries
+):
     listRecords = reverse("bpp:oai") + "?verb=ListRecords&metadataPrefix=oai_dc"
     with django_assert_max_num_queries(9):
         res = client.get(listRecords)
@@ -64,7 +73,9 @@ def test_listRecords_no_queries_zwarte(ksiazka, client, django_assert_max_num_qu
 
 
 @pytest.mark.django_db
-def test_listRecords_no_queries_ciagle(artykul, client, django_assert_max_num_queries):
+def test_listRecords_no_queries_ciagle(
+    uczelnia, artykul, client, django_assert_max_num_queries
+):
     listRecords = reverse("bpp:oai") + "?verb=ListRecords&metadataPrefix=oai_dc"
     with django_assert_max_num_queries(10):
         res = client.get(listRecords)
