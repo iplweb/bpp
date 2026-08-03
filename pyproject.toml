@@ -1,6 +1,6 @@
 [project]
 name = "bpp_iplweb"
-version = "202607.1398"
+version = "202608.1399rc1"
 description = ""
 authors = [
     { name = "Michał Pasternak", email = "michal.dtz@gmail.com" }
@@ -229,7 +229,7 @@ include = [
 ]
 
 [tool.bumpver]
-current_version = "v202607.1398"
+current_version = "v202608.1399-rc1"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -541,7 +541,7 @@ dev = [
 
 [tool.towncrier]
 package = "bpp"
-version = "202607.1398"
+version = "202608.1399rc1"
 package_dir = "src"
 filename = "HISTORY.md"
 start_string = "<!-- towncrier release notes start -->\n"
