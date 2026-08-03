@@ -16186,6 +16186,35 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+593	denorm	0001_initial	2000-01-01 00:00:00+00
+933	test_bpp	0002_testobjectthatdoesnotexist	2000-01-01 00:00:00+00
+935	zglos_publikacje	0001_initial	2000-01-01 00:00:00+00
+936	zglos_publikacje	0002_auto_20220710_2331	2000-01-01 00:00:00+00
+937	zglos_publikacje	0003_auto_20220801_2045	2000-01-01 00:00:00+00
+938	zglos_publikacje	0004_auto_20220801_2128	2000-01-01 00:00:00+00
+939	zglos_publikacje	0005_auto_20220807_2329	2000-01-01 00:00:00+00
+940	zglos_publikacje	0006_auto_20220815_1752	2000-01-01 00:00:00+00
+941	zglos_publikacje	0007_auto_20220816_1019	2000-01-01 00:00:00+00
+942	zglos_publikacje	0008_auto_20220816_1255	2000-01-01 00:00:00+00
+943	zglos_publikacje	0009_alter_zgloszenie_publikacji_status	2000-01-01 00:00:00+00
+944	zglos_publikacje	0010_auto_20220818_0012	2000-01-01 00:00:00+00
+945	zglos_publikacje	0011_auto_20220910_1646	2000-01-01 00:00:00+00
+946	zglos_publikacje	0012_auto_20220910_1654	2000-01-01 00:00:00+00
+947	zglos_publikacje	0013_auto_20220910_2114	2000-01-01 00:00:00+00
+948	zglos_publikacje	0014_zgloszenie_publikacji_autor_kierunek_studiow	2000-01-01 00:00:00+00
+949	zglos_publikacje	0015_zgloszenie_publikacji_autor_oswiadczenie_ken	2000-01-01 00:00:00+00
+950	zglos_publikacje	0016_zgloszenie_publikacji_deleted_at_and_more	2000-01-01 00:00:00+00
+951	zglos_publikacje	0017_zgloszenie_publikacji_zgoda_na_publikacje_pelnego_tekstu	2000-01-01 00:00:00+00
+952	zglos_publikacje	0018_alter_zgloszenie_publikacji_rodzaj_zglaszanej_publikacji	2000-01-01 00:00:00+00
+953	zglos_publikacje	0019_zgloszenie_publikacji_autor_ostatnio_zmieniony	2000-01-01 00:00:00+00
+954	zglos_publikacje	0020_move_files_to_protected	2000-01-01 00:00:00+00
+955	zglos_publikacje	0021_fix_file_paths	2000-01-01 00:00:00+00
+956	zglos_publikacje	0022_uuid_filenames	2000-01-01 00:00:00+00
+957	zglos_publikacje	0023_nowy_formularz_zgloszenia	2000-01-01 00:00:00+00
+958	zglos_publikacje	0024_migracja_danych_nowy_formularz	2000-01-01 00:00:00+00
+959	zglos_publikacje	0025_alter_obslugujacy_zgloszenia_wydzialow_user	2000-01-01 00:00:00+00
+960	denorm	0001_squashed_0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+1120	bpp	0478_uczelnia_oai_pmh_aktywny	2000-01-01 00:00:00+00
 94	bpp	0017_typy_pbn	2000-01-01 00:00:00+00
 282	bpp	0195_cc0	2000-01-01 00:00:00+00
 406	bpp	0312_przypieta	2000-01-01 00:00:00+00
@@ -16943,7 +16972,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 590	deduplikator_publikacji	0001_initial	2000-01-01 00:00:00+00
 591	deduplikator_publikacji	0002_remove_publicationduplicatecandidate_deduplikato_similar_17e420_idx_and_more	2000-01-01 00:00:00+00
 592	deduplikator_zrodel	0001_initial	2000-01-01 00:00:00+00
-593	denorm	0001_initial	2000-01-01 00:00:00+00
 594	denorm	0002_dirtyinstance_func_name	2000-01-01 00:00:00+00
 595	denorm	0003_auto_20211002_1955	2000-01-01 00:00:00+00
 596	denorm	0004_alter_dirtyinstance_success	2000-01-01 00:00:00+00
@@ -17273,34 +17301,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 930	snapshot_odpiec	0002_alter_snapshotodpiec_owner	2000-01-01 00:00:00+00
 931	taggit	0006_rename_taggeditem_content_type_object_id_taggit_tagg_content_8fc721_idx	2000-01-01 00:00:00+00
 932	test_bpp	0001_initial	2000-01-01 00:00:00+00
-933	test_bpp	0002_testobjectthatdoesnotexist	2000-01-01 00:00:00+00
-935	zglos_publikacje	0001_initial	2000-01-01 00:00:00+00
-936	zglos_publikacje	0002_auto_20220710_2331	2000-01-01 00:00:00+00
-937	zglos_publikacje	0003_auto_20220801_2045	2000-01-01 00:00:00+00
-938	zglos_publikacje	0004_auto_20220801_2128	2000-01-01 00:00:00+00
-939	zglos_publikacje	0005_auto_20220807_2329	2000-01-01 00:00:00+00
-940	zglos_publikacje	0006_auto_20220815_1752	2000-01-01 00:00:00+00
-941	zglos_publikacje	0007_auto_20220816_1019	2000-01-01 00:00:00+00
-942	zglos_publikacje	0008_auto_20220816_1255	2000-01-01 00:00:00+00
-943	zglos_publikacje	0009_alter_zgloszenie_publikacji_status	2000-01-01 00:00:00+00
-944	zglos_publikacje	0010_auto_20220818_0012	2000-01-01 00:00:00+00
-945	zglos_publikacje	0011_auto_20220910_1646	2000-01-01 00:00:00+00
-946	zglos_publikacje	0012_auto_20220910_1654	2000-01-01 00:00:00+00
-947	zglos_publikacje	0013_auto_20220910_2114	2000-01-01 00:00:00+00
-948	zglos_publikacje	0014_zgloszenie_publikacji_autor_kierunek_studiow	2000-01-01 00:00:00+00
-949	zglos_publikacje	0015_zgloszenie_publikacji_autor_oswiadczenie_ken	2000-01-01 00:00:00+00
-950	zglos_publikacje	0016_zgloszenie_publikacji_deleted_at_and_more	2000-01-01 00:00:00+00
-951	zglos_publikacje	0017_zgloszenie_publikacji_zgoda_na_publikacje_pelnego_tekstu	2000-01-01 00:00:00+00
-952	zglos_publikacje	0018_alter_zgloszenie_publikacji_rodzaj_zglaszanej_publikacji	2000-01-01 00:00:00+00
-953	zglos_publikacje	0019_zgloszenie_publikacji_autor_ostatnio_zmieniony	2000-01-01 00:00:00+00
-954	zglos_publikacje	0020_move_files_to_protected	2000-01-01 00:00:00+00
-955	zglos_publikacje	0021_fix_file_paths	2000-01-01 00:00:00+00
-956	zglos_publikacje	0022_uuid_filenames	2000-01-01 00:00:00+00
-957	zglos_publikacje	0023_nowy_formularz_zgloszenia	2000-01-01 00:00:00+00
-958	zglos_publikacje	0024_migracja_danych_nowy_formularz	2000-01-01 00:00:00+00
-959	zglos_publikacje	0025_alter_obslugujacy_zgloszenia_wydzialow_user	2000-01-01 00:00:00+00
-960	denorm	0001_squashed_0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-1120	bpp	0478_uczelnia_oai_pmh_aktywny	2000-01-01 00:00:00+00
 \.
 
 
@@ -17673,21 +17673,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-193	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
-194	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
-195	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-196	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-197	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-198	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-199	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-200	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-201	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-202	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-203	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-204	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-205	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-206	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-207	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
