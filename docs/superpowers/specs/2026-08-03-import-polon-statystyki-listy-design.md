@@ -124,6 +124,23 @@ poprawny — oba komunikaty zaczynają się od bazowego).
 To celowana poprawka w obrębie zmienianego obszaru, nie refaktor przy okazji:
 bez niej statystyki dołożyłyby czwartą kopię tego samego napisu.
 
+### 1a. Ujednolicenie filtru „pokaż tylko różnice" (wynik self-review PR-a)
+
+Filtr w `views/plik_polon.py` wycinał wiersze przez
+`exclude(rezultat__startswith=KOMUNIKAT_BEZ_ZMIAN)`. Po dołożeniu licznika
+„zmian" obie strony zaczęłyby sobie przeczyć: wiersz ustawiający wyłącznie
+ORCID jest liczony jako zmiana (bo `ops` zawiera operację ORCID), ale jego
+`rezultat` zaczyna się od sentinela — więc filtr by go **ukrył**. Import
+ustawiający ORCID trzem autorom pokazywałby na liście „zmian: 3", a po
+wejściu w szczegóły i włączeniu filtru — zero wierszy.
+
+Filtr przechodzi więc na dokładne dopasowanie
+`exclude(rezultat__in=KOMUNIKATY_BEZ_ZMIAN)`, czyli tę samą semantykę, co
+licznik. Skutek uboczny: to naprawia istniejącą wadę — zmiany samego ORCID-a
+były dotąd niewidoczne w „pokaż tylko różnice". Filtr nie miał żadnego
+pokrycia testowego; dostaje dwa testy (wiersz ORCID-owy widoczny, wiersz bez
+zmian nadal ukryty).
+
 ### 2. Statystyki jako podział zupełny i rozłączny
 
 `analyze_file_import_polon()` prowadzi licznik inkrementowany w tych samych
@@ -241,6 +258,9 @@ def skroc_nazwe_pliku(sciezka, limit=36):
   czyli jedyną część odróżniającą kolejne raporty POLON.
 - Nazwa nie dłuższa niż `limit` wraca bez zmian (brak `…`).
 - Pusta nazwa (`plik` niewypełniony) wraca jako pusty napis.
+- Ogon składany jawnym warunkiem, nie ujemnym indeksem: `nazwa[-0:]` zwraca
+  w Pythonie **cały** napis, więc przy bardzo małym limicie naiwna wersja
+  oddawała wynik dłuższy od wejścia (złapane w self-review PR-a).
 - Funkcja czysta, bez Django — testowalna bez bazy.
 
 Model `ImportPlikuPolon` dostaje dwie właściwości:

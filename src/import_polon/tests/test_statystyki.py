@@ -23,6 +23,7 @@ from import_polon.core.import_polon import (
     analyze_file_import_polon,
 )
 from import_polon.models import ImportPlikuPolon, WierszImportuPlikuPolon
+from import_polon.utils import skroc_nazwe_pliku
 
 
 def _wiersz(uczelnia, **nadpisania):
@@ -60,20 +61,54 @@ def _uruchom(tmp_path, wiersze, **kwargs_importu):
 
 @pytest.mark.django_db
 def test_partycja_sie_domyka(tmp_path, uczelnia):
-    """Suma sześciu koszyków == liczba wierszy pliku.
+    """Suma koszyków == liczba wierszy pliku, przy KAŻDYM koszyku niepustym.
 
-    To asercja strukturalna, nie kosmetyczna: gdy ktoś doda w pętli kolejną
-    gałąź ``continue`` bez inkrementacji licznika, wiersze przestaną się
-    bilansować i ten test zapali się na czerwono.
+    Asercja strukturalna, nie kosmetyczna: gdy ktoś doda w pętli kolejną gałąź
+    ``continue`` bez inkrementacji licznika, wiersze przestaną się bilansować.
+    Scenariusz celowo aktywuje wszystkie gałęzie naraz — test na dwóch
+    koszykach dawałby fałszywe poczucie pokrycia.
     """
+    baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
+    baker.make(Autor, imiona="Maria", nazwisko="Zmieniona", orcid=None)
+    baker.make(Autor, imiona="Piotr", nazwisko="Bledny")
+
     wiersze = [
-        _wiersz(uczelnia),  # autor niedopasowany → ukryty
-        _wiersz(uczelnia, ZATRUDNIENIE="Zupełnie Inna Uczelnia"),  # odrzucony
+        # → odrzuconych_zatrudnienie
+        _wiersz(uczelnia, ZATRUDNIENIE="Zupełnie Inna Uczelnia"),
+        # → ukrytych_niedopasowanych (autora nie ma w bazie)
+        _wiersz(uczelnia, NAZWISKO="Nieistniejacy"),
+        # → bez_zmian (dopasowany, brak dyscyplin w pliku)
+        _wiersz(uczelnia),
+        # → ze_zmianami (dopasowany, ustawiany ORCID)
+        _wiersz(
+            uczelnia, NAZWISKO="Zmieniona", IMIE="Maria", ORCID="0000-0002-1825-0097"
+        ),
+        # → z_bledem (dopasowany, brak wymiaru etatu)
+        _wiersz(
+            uczelnia,
+            NAZWISKO="Bledny",
+            IMIE="Piotr",
+            WIELKOSC_ETATU_PREZENTACJA_DZIESIETNA=None,
+        ),
     ]
+    # ``ukryj_niezmatchowanych_autorow`` domyślnie włączone — dzięki temu wiersz
+    # z nieistniejącym autorem trafia do ``ukrytych_niedopasowanych``, a nie do
+    # ``z_bledem``. Wiersze z dopasowanym autorem przechodzą normalnie.
     _, statystyki = _uruchom(tmp_path, wiersze)
 
-    assert statystyki["wierszy_w_pliku"] == 2
-    assert sum(statystyki[k] or 0 for k in KLUCZE_PARTYCJI) == 2
+    assert statystyki["wierszy_w_pliku"] == 5
+    assert sum(statystyki[k] or 0 for k in KLUCZE_PARTYCJI) == 5
+
+    # Każdy z aktywowanych koszyków musi być niepusty — inaczej test bilansuje
+    # sumę zer i nie pilnuje niczego.
+    for koszyk in (
+        "odrzuconych_zatrudnienie",
+        "ukrytych_niedopasowanych",
+        "z_bledem",
+        "ze_zmianami",
+        "bez_zmian",
+    ):
+        assert statystyki[koszyk] > 0, f"scenariusz nie aktywował koszyka {koszyk}"
 
 
 @pytest.mark.django_db
@@ -237,6 +272,8 @@ def _import_na_liscie(owner, statystyki=None, **nadpisania):
 @pytest.mark.django_db
 def test_lista_pokazuje_statystyki(klient_wprowadzajacy):
     client, user = klient_wprowadzajacy
+    # Każda metryka MUSI mieć inną wartość — gdy dwie się pokrywają, asercja
+    # podłańcuchowa trafia w pierwszą z brzegu i nie odróżnia ich od siebie.
     _import_na_liscie(
         user,
         {
@@ -247,19 +284,19 @@ def test_lista_pokazuje_statystyki(klient_wprowadzajacy):
             "z_bledem": 7,
             "ze_zmianami": 13,
             "bez_zmian": 17,
-            "dopasowanych": 37,
+            "dopasowanych": 30,
             "do_odpiecia": 5,
         },
     )
 
     tresc = client.get(reverse("import_polon:index")).content.decode()
 
-    assert ">41<" in tresc, "liczba wierszy w pliku"
-    assert ">37<" in tresc, "dopasowanych"
+    assert ">41<" in tresc, "wierszy w pliku"
+    assert ">37<" in tresc, "z uczelni — pochodna: 41 − 4"
+    assert ">30<" in tresc, "dopasowanych"
     assert ">13<" in tresc, "ze zmianami"
+    assert ">7<" in tresc, "z błędem"
     assert ">5<" in tresc, "do odpięcia"
-    # z_uczelni jest pochodną: 41 − 4
-    assert ">37<" in tresc
 
 
 @pytest.mark.django_db
@@ -281,9 +318,12 @@ def test_lista_skraca_nazwe_pliku_zachowujac_pelna_w_tytule(klient_wprowadzajacy
 
     tresc = client.get(reverse("import_polon:index")).content.decode()
 
-    assert "protected/import_polon" not in tresc.split('title="')[0]
+    # Asercja na TREŚĆ LINKU, nie na „tekst przed pierwszym title=" — pierwszy
+    # title= jest w <thead> (tooltipy nagłówków), więc taki prefiks nigdy nie
+    # obejmowałby wiersza tabeli i nie sprawdzałby niczego.
+    assert f">{skroc_nazwe_pliku(NAZWA_POLON)}</a>" in tresc
+    assert "protected/import_polon" not in skroc_nazwe_pliku(NAZWA_POLON)
     assert f'title="{NAZWA_POLON}"' in tresc, "pełna ścieżka zostaje w tooltipie"
-    assert "…" in tresc, "nazwa skrócona wielokropkiem"
 
 
 @pytest.mark.django_db
@@ -369,3 +409,89 @@ def test_lista_pokazuje_tryb_importu(klient_wprowadzajacy, zapisz, oczekiwany_tr
     _import_na_liscie(user, statystyki=None, zapisz_zmiany_do_bazy=zapisz)
 
     assert oczekiwany_tryb in client.get(reverse("import_polon:index")).content.decode()
+
+
+# --- property ImportPlikuPolon.statystyki ------------------------------------
+
+
+def _z_kontekstem(statystyki):
+    """Instancja bez zapisu do bazy — property jest czysta, baza niepotrzebna."""
+    return ImportPlikuPolon(result_context={"statystyki": statystyki})
+
+
+def test_property_statystyki_liczy_z_uczelni():
+    """Wprost na property — test przez HTML nie odróżniał odejmowania od dodawania."""
+    imp = _z_kontekstem({"wierszy_w_pliku": 41, "odrzuconych_zatrudnienie": 4})
+
+    assert imp.statystyki["z_uczelni"] == 37
+
+
+def test_property_statystyki_z_uczelni_none_gdy_nie_mierzono():
+    imp = _z_kontekstem({"wierszy_w_pliku": 41, "odrzuconych_zatrudnienie": None})
+
+    assert imp.statystyki["z_uczelni"] is None
+
+
+def test_property_statystyki_znosi_niekompletny_json():
+    """Dane z bazy, nie inwariant kodu — brak klucza nie może wywalić listy."""
+    imp = _z_kontekstem({"odrzuconych_zatrudnienie": 4})
+
+    assert imp.statystyki["z_uczelni"] is None
+
+
+def test_property_statystyki_bez_kontekstu():
+    assert ImportPlikuPolon(result_context=None).statystyki is None
+    assert ImportPlikuPolon(result_context={"total": 5}).statystyki is None
+
+
+# --- spójność licznika „zmian" z filtrem „pokaż tylko różnice" ---------------
+
+
+@pytest.mark.django_db
+def test_filtr_roznic_pokazuje_wiersz_zmieniajacy_sam_orcid(
+    tmp_path, uczelnia, klient_wprowadzajacy
+):
+    """REGRESJA: filtr i licznik muszą mówić to samo.
+
+    Wiersz ustawiający wyłącznie ORCID jest zmianą (liczy go ``ze_zmianami``),
+    ale jego ``rezultat`` zaczyna się od sentinela. Dawny filtr prefiksowy
+    ukrywał go — lista pokazywałaby „zmian: 1", a strona wyników po włączeniu
+    „pokaż tylko różnice" świeciłaby pustką.
+    """
+    client, user = klient_wprowadzajacy
+    baker.make(Autor, imiona="Jan", nazwisko="Kowalski", orcid=None)
+
+    imp, statystyki = _uruchom(
+        tmp_path,
+        [_wiersz(uczelnia, ORCID="0000-0002-1825-0097")],
+        owner=user,
+        ukryj_niezmatchowanych_autorow=False,
+        finished_successfully=True,
+    )
+    assert statystyki["ze_zmianami"] == 1, "warunek wstępny testu"
+
+    url = reverse("import_polon:importplikupolon-results", kwargs={"pk": imp.pk})
+    response = client.get(url, {"pokaz_tylko_roznice": "1"})
+
+    assert len(response.context["object_list"]) == 1
+
+
+@pytest.mark.django_db
+def test_filtr_roznic_ukrywa_wiersz_bez_zmian(tmp_path, uczelnia, klient_wprowadzajacy):
+    """Druga strona medalu: oba warianty komunikatu „bez zmian" nadal znikają."""
+    client, user = klient_wprowadzajacy
+    baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
+
+    imp, statystyki = _uruchom(
+        tmp_path,
+        [_wiersz(uczelnia)],
+        owner=user,
+        ukryj_niezmatchowanych_autorow=False,
+        finished_successfully=True,
+    )
+    assert statystyki["bez_zmian"] == 1, "warunek wstępny testu"
+
+    url = reverse("import_polon:importplikupolon-results", kwargs={"pk": imp.pk})
+    response = client.get(url, {"pokaz_tylko_roznice": "1"})
+
+    assert len(response.context["object_list"]) == 0

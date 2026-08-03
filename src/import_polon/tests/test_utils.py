@@ -65,3 +65,18 @@ def test_skroc_nazwe_pliku_pusta():
     """``plik`` niewypełniony (FileField bez pliku) → pusty napis, nie wyjątek."""
     assert skroc_nazwe_pliku("") == ""
     assert skroc_nazwe_pliku(None) == ""
+
+
+@pytest.mark.parametrize("limit", [0, 1, 2, 3, 4, 10, 36])
+def test_skroc_nazwe_pliku_nigdy_nie_wydluza(limit):
+    """REGRESJA: ``nazwa[-0:]`` zwraca CAŁY napis, nie pusty.
+
+    Przy limicie 1 i 2 długość ogona wychodziła zerowa, a ujemny indeks
+    ``nazwa[-0:]`` wklejał z powrotem całą nazwę — wynik był DŁUŻSZY niż
+    wejście, czyli skracanie działało odwrotnie do zamierzenia.
+    """
+    wynik = skroc_nazwe_pliku(NAZWA_POLON, limit=limit)
+
+    assert len(wynik) <= len(NAZWA_POLON)
+    # Wielokropka nie da się zmieścić poniżej jednego znaku — poza tym limit trzyma.
+    assert len(wynik) <= max(limit, 1)

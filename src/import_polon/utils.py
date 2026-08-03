@@ -34,11 +34,15 @@ def skroc_nazwe_pliku(sciezka, limit=36):
     # Budżet znaków po odjęciu wielokropka, dzielony między początek i koniec.
     # Reszta z dzielenia idzie do początku — koniec ma zmieścić datę i
     # rozszerzenie, więc lepiej mu dać stabilną, przewidywalną długość.
-    budzet = limit - len(WIELOKROPEK)
+    budzet = max(limit - len(WIELOKROPEK), 0)
     dlugosc_ogona = budzet // 2
     dlugosc_glowy = budzet - dlugosc_ogona
 
-    return f"{nazwa[:dlugosc_glowy]}{WIELOKROPEK}{nazwa[-dlugosc_ogona:]}"
+    # ``nazwa[-0:]`` zwraca CAŁY napis, nie pusty — bez tego warunku skracanie
+    # do bardzo małego limitu dawało wynik DŁUŻSZY od wejścia.
+    ogon = nazwa[len(nazwa) - dlugosc_ogona :] if dlugosc_ogona else ""
+
+    return f"{nazwa[:dlugosc_glowy]}{WIELOKROPEK}{ogon}"
 
 
 def read_excel_or_csv_dataframe_guess_encoding(fn, header=0, nrows=None):

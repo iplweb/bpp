@@ -166,12 +166,18 @@ class ImportPlikuPolon(_LiveopsResetMixin, LiveOperation):
             return None
 
         odrzuconych = dane.get("odrzuconych_zatrudnienie")
+        # ``.get``, nie ``[...]``: to dane z bazy, nie inwariant kodu. Niekompletny
+        # JSON (ręczna edycja, import z przyszłej wersji rdzenia) nie może wywalić
+        # 500 na CAŁEJ liście — property nie jest wyciszane przez resolver szablonu.
+        wierszy = dane.get("wierszy_w_pliku")
         return {
             **dane,
             # ``None`` (walidacja ZATRUDNIENIE wyłączona) propaguje się dalej —
             # szablon pokaże „n/d", a nie zmyśloną liczbę.
             "z_uczelni": (
-                None if odrzuconych is None else dane["wierszy_w_pliku"] - odrzuconych
+                None
+                if odrzuconych is None or wierszy is None
+                else wierszy - odrzuconych
             ),
         }
 
