@@ -28,7 +28,8 @@ Poza zakresem (świadomie, do osobnych specyfikacji):
   pozostaje pusty;
 - encja `Funding` — set `openaire_cris_funding` pozostaje pusty;
 - encje `Product` i `Equipment` — sety puste;
-- nagrobki dla skasowanych rekordów (`deletedRecord=no`);
+- nagrobki dla skasowanych rekordów; `Identify` deklaruje
+  `deletedRecord=no`;
 - modyfikacje `src/bpp/views/oai.py` i feedu `oai_dc` do Primo.
 
 Puste sety są zgodne z profilem — wytyczne wymagają, by dziewięć setów
@@ -64,8 +65,9 @@ Nowa aplikacja `src/cerif_export/`, rejestrowana w `INSTALLED_APPS` obok
 
 ```
 src/cerif_export/
-    const.py              namespace 1.2, nazwy setów, metadataPrefix
+    const.py              namespace 1.2, nazwy setów, metadataPrefix, epoka
     identyfikatory.py     oai:{namespace}:{Typ}/{slug}-{pk} ↔ (model, pk)
+    kontekst.py           KontekstSerializacji, Kursor
     providers/
         base.py           ProviderEncji
         publikacje.py osoby.py jednostki.py patenty.py konferencje.py puste.py
@@ -78,7 +80,7 @@ src/cerif_export/
         czasowniki.py tokeny.py bledy.py
     views.py urls.py
     management/commands/cerif_raport_mapowan.py
-    migrations/ tests/
+    migrations/ tests/ tests/xsd/
 ```
 
 Nazewnictwo jest celowo mieszane: `providers/` po polsku (dotyka domeny BPP),
@@ -89,7 +91,7 @@ od komunikatu walidatora do pliku jest bezpośrednia).
 
 | Komponent | Odpowiedzialność | Czego nie wolno mu znać |
 |---|---|---|
-| `providers/` | strony obiektów ORM, scope do uczelni, pełny `prefetch_related`, predykat bramkowania | XML, OAI, HTTP |
+| `providers/` | strony obiektów ORM, scope do uczelni, pełny `prefetch_related`, wyliczenie zbiorów widoczności | XML, OAI, HTTP |
 | `cerif/` | obiekt → `lxml.etree.Element`; funkcje czyste | baza (żaden lazy-load), request |
 | `slowniki/` | mapowania na słowniki kontrolowane | wszystko inne |
 | `oai/` | czasowniki, sety, tokeny, błędy protokołu | semantyka CERIF |
@@ -128,12 +130,43 @@ modelach) — po ich dodaniu wymagany `make baseline-update`.
 
 Migracje danych:
 
-- `Jezyk.kod_bcp47` — z `skrot_crossref` (`en`/`es`/`pl`), gdzie puste,
+- `Jezyk.kod_bcp47` — z `skrot_crossref` (`en`/`es`/`pl`); gdzie puste,
   z `skrot` jeśli pasuje do `^[a-z]{2,3}$`.
-- `Licencja_OpenAccess.uri` — dla `skrot` zaczynającego się od `CC-`
-  złożyć `https://creativecommons.org/licenses/{reszta}/4.0/`; reszta pusta.
+- `Licencja_OpenAccess.uri` — patrz reguły niżej.
 
-Wszystkie pola trafiają do odpowiednich klas admina.
+### Reguły migracji `Licencja_OpenAccess.uri`
+
+Skróty w bazie są **wielkimi literami** (np. `CC-BY-ND`), a ścieżka
+Creative Commons jest małymi. Reguły:
+
+- `skrot == "OTHER"` → pozostaje `""`;
+- `skrot in ("CC0", "CC-0")` → `https://creativecommons.org/publicdomain/zero/1.0/`
+  (CC0 ma inny schemat URL niż pozostałe licencje);
+- `skrot` pasujący do `^CC-([A-Z-]+)$` →
+  `https://creativecommons.org/licenses/{grupa.lower()}/4.0/`;
+- pozostałe → `""`.
+
+**Wersja `4.0` jest świadomym przybliżeniem** — skrót nie niesie wersji
+licencji. Wartości wymagają ręcznego przeglądu przez redakcję; komenda
+`cerif_raport_mapowan` listuje je jako wymagające potwierdzenia.
+
+### Zmiany opisów w `Ukryj_Status_Korekty`
+
+Pole `api` ma dziś `help_text` „Dotyczy ukrywania prac w API JSON-REST
+**oraz OAI-PMH**" (`src/bpp/models/uczelnia.py:958`). Nowy endpoint CERIF też
+jest OAI-PMH, więc bez korekty admin pokaże dwie sprzeczne etykiety. Wymagane:
+
+- `api.help_text` → „Dotyczy ukrywania prac w API JSON-REST oraz OAI-PMH
+  dla Primo";
+- `cerif.help_text` → „Dotyczy ukrywania prac w eksporcie CERIF/OpenAIRE";
+- `Ukryj_Status_Korekty.__str__` — dopisać `api` i `cerif` (dziś pomija
+  nawet `api`);
+- docstring `Uczelnia.ukryte_statusy` — uzupełnić listę kanałów.
+
+Wszystkie nowe pola trafiają do odpowiednich klas w `src/bpp/admin/`.
+`Rodzaj_Prawa_Patentowego` dziedziczy `ModelZNazwa` i **nie ma `skrot`** —
+admin i raport mapowań identyfikują wiersze po `nazwa`. Jeśli model nie jest
+zarejestrowany w adminie, należy go zarejestrować.
 
 ## Identyfikatory
 
@@ -162,50 +195,155 @@ OpenAIRE zobaczy duplikat całego korpusu jako „nowe" rekordy.
 
 ```python
 SLUGI: dict[type[models.Model], tuple[str, str]]   # model → (typ_cerif, slug)
+MODELE_WG_SLUGU: dict[str, type[models.Model]]     # odwrotność SLUGI
 
-def zbuduj(namespace: str, obj) -> str
-def rozbierz(oai_id: str) -> tuple[str, type[models.Model], int]
-    # zwraca (namespace, model, pk); podnosi BledneIdentyfikatory
+class BlednyIdentyfikator(ValueError): ...
+
+def zbuduj(namespace: str, obj) -> str: ...
+def rozbierz(oai_id: str) -> tuple[str, type[models.Model], int]: ...
+    # (namespace, model, pk); podnosi BlednyIdentyfikator
 ```
 
 `rozbierz` **nie używa `assert`** — pod `python -O` asserty znikają.
-Niepoprawny identyfikator daje wyjątek mapowany na `idDoesNotExist`.
+Niepoprawny identyfikator daje `BlednyIdentyfikator`, mapowany przez warstwę
+OAI na `idDoesNotExist`.
 
-## Sety i providery
+## Sety, providery, porządek keyset
 
-`providers/base.py`:
+### Providery NIE używają `Rekord`
+
+Enumeracja idzie po **pięciu konkretnych modelach**, nie po widoku
+`bpp_rekord`. Dwa powody:
+
+1. `Rekord` zeruje `tom`, `nr_zeszytu` i `strony`
+   (`src/bpp/models/cache/rekord.py:258-260`), a to są `Volume`, `Issue`
+   i `StartPage`/`EndPage` w CERIF.
+2. Widok `bpp_rekord` unionuje także `bpp_patent_view`
+   (`src/bpp/migrations/0001_widoki_rekord.sql:320`) — patenty są w CERIF
+   osobną encją w osobnym secie, więc użycie `Rekord` wymagałoby ich
+   wykluczania.
+
+Widok jest tu wyłącznie kontekstem wyjaśniającym, dlaczego go nie używamy.
+
+### Interfejs providera
 
 ```python
+@dataclass(frozen=True)
+class Kursor:
+    slug: str        # który model w obrębie setu
+    ts: str          # ISO 8601 UTC
+    pk: int
+
+
 class ProviderEncji:
     set_spec: str
     typ_cerif: str
+    modele: list[type[models.Model]]   # w porządku wyczerpywania
 
-    def queryset(self, uczelnia) -> QuerySet: ...
+    def queryset(self, uczelnia, model): ...
     def strona(self, uczelnia, od=None, do=None, kursor=None, rozmiar=100)
         -> tuple[list, Kursor | None]: ...
-    def pojedynczy(self, uczelnia, pk): ...
-    def najstarszy_datestamp(self, uczelnia): ...
-    def widoczny(self, uczelnia, obj) -> bool: ...
+    def pojedynczy(self, uczelnia, model, pk): ...
+    def najstarszy_datestamp(self, uczelnia) -> str: ...
+    def zbiory_widocznosci(self, uczelnia, obiekty) -> ZbioryWidocznosci: ...
 ```
 
-**`widoczny()` jest jedynym źródłem prawdy o bramkowaniu.** Serializery
-i sprawdzanie integralności referencyjnej wołają tę samą metodę. Kopiowanie
-predykatu jest zabronione — rozjazd między providerem a serializerem
-produkuje dokładnie te błędy walidatora, których nie widać w testach
-jednostkowych.
+### Porządek keyset
 
-Provider publikacji **musi wykluczyć patenty**. Widok `bpp_rekord`
-(`src/bpp/migrations/0001_widoki_rekord.sql:320`) unionuje
-`wydawnictwo_ciagle`, `wydawnictwo_zwarte`, **`patent`**, `praca_doktorska`
-i `praca_habilitacyjna`. Bez wykluczenia ten sam obiekt trafiłby do dwóch
-setów pod dwoma identyfikatorami.
+Set `openaire_cris_publications` łączy pięć modeli, a `pk` między nimi
+kolidują — para `(ts, pk)` nie jest unikalna. Dlatego:
 
-Sortowanie keyset po `(COALESCE(ostatnio_zmieniony, epoka), pk)`.
-`ostatnio_zmieniony` jest `null=True` (`ModelZAdnotacjami`), więc bez
+- modele wyczerpywane są **sekwencyjnie**, w kolejności zadeklarowanej
+  w `ProviderEncji.modele` (dla publikacji: `wc`, `wz`, `pd`, `ph`, `zr`);
+- w obrębie modelu porządek to `(COALESCE(ostatnio_zmieniony, EPOKA), pk)`;
+- `Kursor.slug` mówi, na którym modelu stanęliśmy; wyczerpanie modelu
+  przesuwa kursor na kolejny slug z zerowym kursorem wewnętrznym.
+
+`EPOKA = "1970-01-01T00:00:00Z"`. `ostatnio_zmieniony` jest `null=True`
+(`ModelZAdnotacjami`, `src/bpp/models/abstract/metadata.py:16`), więc bez
 `COALESCE` rekordy z NULL-em wypadłyby z paginacji i nie trafiły do harvestu.
+Ta sama wartość idzie w `<datestamp>` nagłówka rekordu.
 
-`providers/puste.py` dostarcza providera zwracającego zawsze zero rekordów —
+`providers/puste.py` dostarcza providera zwracającego zero rekordów —
 obsługuje sety `products`, `equipment`, `projects`, `funding`.
+
+## Widoczność i bramkowanie
+
+### Przełączniki
+
+| Warstwa | Mechanizm | Default |
+|---|---|---|
+| Endpoint CERIF | `Uczelnia.eksport_cerif_wlaczony` → 404 gdy `False` | włączony |
+| Endpoint `/api/v1/` | `Uczelnia.api_v1_wlaczone` → 404 gdy `False` | włączony |
+| Status korekty | `uczelnia.ukryte_statusy("cerif")` | — |
+
+Oba przełączniki są **domyślnie włączone** — istniejące wdrożenia nie
+zmieniają zachowania `/api/v1/`, a CERIF startuje aktywny.
+
+### Widoczność per encja
+
+`nie_eksportuj_przez_api` istnieje **tylko** na `Wydawnictwo_Ciagle`,
+`Wydawnictwo_Zwarte`, `Patent` i `Jednostka`
+(`ModelOpcjonalnieNieEksportowanyDoAPI`). Filtrowanie po nim na pozostałych
+modelach dałoby `FieldError`. **Nie dokładamy tego pola do PD/PH** — to
+osobna zmiana produktowa poza zakresem. Reguły są więc per encja:
+
+| Encja | Warunek eksportu |
+|---|---|
+| `Wydawnictwo_Ciagle`, `Wydawnictwo_Zwarte` | status korekty niewykluczony kanałem `cerif`; `nie_eksportuj_przez_api=False`; w scope uczelni |
+| `Praca_Doktorska`, `Praca_Habilitacyjna` | status korekty niewykluczony; w scope uczelni (brak pola opt-out) |
+| `Patent` | jw. + `nie_eksportuj_przez_api=False` |
+| `Autor` | `pokazuj=True` **oraz** istnieje `Autor_Jednostka` do `Jednostka` z `uczelnia=<ta uczelnia>` |
+| `Jednostka` | `widoczna=True`, `uczelnia=<ta uczelnia>`, `nie_eksportuj_przez_api=False` |
+| `Uczelnia` | zawsze (jedna, bieżąca) |
+| `Zrodlo` | istnieje co najmniej jedna eksportowana publikacja tego tenanta wskazująca to źródło |
+| `Konferencja` | jw. — istnieje eksportowana publikacja wskazująca tę konferencję |
+
+`Zrodlo` i `Konferencja` nie mają FK do uczelni ani pola opt-out, więc bez
+warunku „użyte przez widoczną publikację" każdy tenant wyeksportowałby cały
+współdzielony słownik jako własny.
+
+### Integralność referencyjna
+
+Serializer emituje `id` osadzonej encji sąsiadującej **tylko wtedy, gdy ta
+encja wyjdzie w swoim secie** — czyli gdy należy do prekomputowanego zbioru
+widoczności w kontekście. W przeciwnym razie osadza ją bez `id`; profil
+pozwala na to wprost („embedded entities without internal identifiers are
+permitted").
+
+Przypadek referencyjny: autor z `pokazuj=False` afiliowany przy publikacji —
+publikacja wychodzi, ale `Person/@id` pojawić się nie może, bo wskazywałby na
+nieistniejący rekord.
+
+## Kontekst serializacji
+
+Widoczność jest **prekomputowana przez provider** i wstrzykiwana do
+serializera jako zbiory kluczy głównych. Serializer wykonuje wyłącznie
+sprawdzenie przynależności do zbioru — żadnych zapytań.
+
+```python
+@dataclass(frozen=True)
+class ZbioryWidocznosci:
+    autorzy: frozenset[int]
+    jednostki: frozenset[int]
+    zrodla: frozenset[int]
+    konferencje: frozenset[int]
+    publikacje: frozenset[tuple[str, int]]   # (slug, pk)
+
+
+@dataclass(frozen=True)
+class KontekstSerializacji:
+    namespace: str
+    uczelnia: "Uczelnia"
+    widoczne: ZbioryWidocznosci
+
+    def id_dla(self, obj) -> str | None:
+        """Identyfikator OAI albo None, gdy encja nie wychodzi w swoim
+        secie. Czyste sprawdzenie przynależności do zbioru."""
+```
+
+Test liczby zapytań obejmuje **także serializację encji osadzonych** — to
+jedyny sposób, żeby wyłapać przypadkowy lazy-load w `cerif/`.
 
 ## Serializery CERIF
 
@@ -215,12 +353,8 @@ Sygnatura jednolita:
 def serializuj(obj, ctx: KontekstSerializacji) -> lxml.etree.Element
 ```
 
-`KontekstSerializacji` niesie `namespace`, `uczelnia` i callback
-`czy_widoczny(obj) -> bool`. Nic poza tym — w szczególności nie request.
+### Publication — wydawnictwa ciągłe i zwarte
 
-### Publication
-
-Pola wg profilu; `Type` jest **obowiązkowe**. Mapowanie z audytu:
 `tytul_oryginalny` + `Wydawnictwo_*_Tytul` → `Title` (wielojęzyczny),
 `wydawnictwo_nadrzedne` → `PartOf`, `zrodlo` → `PublishedIn`,
 `rok` → `PublicationDate`, `doi`/`pmc_id`/`issn`/`isbn`/`www` →
@@ -230,22 +364,43 @@ odpowiednie `FederatedIdentifier`, `BazaModeluOdpowiedzialnosciAutorow` →
 `slowa_kluczowe` → `Keyword`, `streszczenia` → `Abstract`,
 `konferencja` → `PresentedAt`, `Element_Repozytorium` → `FileLocations`.
 
-`Volume`, `Issue`, `StartPage`/`EndPage`: **`Rekord` zeruje `tom`,
-`nr_zeszytu` i `strony`** (`src/bpp/models/cache/rekord.py:258-260`),
-więc provider musi dostarczyć obiekt konkretny, nie wiersz cache'u.
-`strony` to jedno pole tekstowe — rozbicie na `StartPage`/`EndPage`
-przez wyrażenie `^\s*(\d+)\s*[-–]\s*(\d+)\s*$`; gdy nie pasuje, oba
-elementy są pomijane (nie zgadujemy).
+`strony` to jedno pole tekstowe — rozbicie na `StartPage`/`EndPage` przez
+`^\s*(\d+)\s*[-–]\s*(\d+)\s*$`; gdy nie pasuje, oba elementy są pomijane
+(nie zgadujemy).
 
-`Zrodlo` serializowane jako `Publication` typu *journal*
-(`http://purl.org/coar/resource_type/c_0640`) — to jest kanał wydawniczy
-wskazywany przez `PublishedIn`.
+### Publication — prace doktorskie i habilitacyjne
+
+PD/PH mają **inną strukturę autorstwa**: pojedyncze FK `autor` i `promotor`
+(`src/bpp/models/praca_doktorska.py:153-157`), nie
+`BazaModeluOdpowiedzialnosciAutorow`. Mapowanie:
+
+- `autor` → jedyny `Authors/Author`;
+- `promotor` → **pomijany** (COAR/CERIF nie ma roli promotora, a wpisanie go
+  jako współautora byłoby nieprawdą).
+
+`charakter_formalny` na PD/PH to `cached_property` wołające
+`Charakter_Formalny.objects.get(skrot="D")` przez singleton modułowy
+(`praca_doktorska.py:141`). To jedno zapytanie na proces, nie N+1 — ale nadal
+lazy DB hit wyzwalany z serializera i `DoesNotExist`, gdy słownik
+przemianowano. Dlatego **typ dla PD/PH rozstrzyga provider**, nie serializer:
+provider podaje gotowy URI COAR w kontekście, biorąc go z `coar_type` wiersza
+o `skrot="D"`/`"H"`, a przy braku wiersza — ze stałej w `slowniki/coar.py`
+(`doctoral thesis` dla PD, `thesis` dla PH).
+
+### Zrodlo jako kanał wydawniczy
+
+Serializowane jako `Publication` typu *journal*
+(`http://purl.org/coar/resource_type/c_0640`) — to obiekt wskazywany przez
+`PublishedIn`.
 
 ### Person
 
-`nazwisko`/`imiona` → `PersonName`, `plec` → `Gender` (`m`/`f`),
-`orcid` → `ORCID`, `pbn_uid` → `Identifier`, `email`/`www` →
-`ElectronicAddress`, `Autor_Jednostka` → `Affiliation`.
+`nazwisko`/`imiona` → `PersonName`, `orcid` → `ORCID`, `pbn_uid` →
+`Identifier`, `email`/`www` → `ElectronicAddress`, `Autor_Jednostka` →
+`Affiliation`.
+
+`Gender`: `Plec` to słownik ze `skrot`. Reguła: `"M"` → `m`, `"K"` → `f`,
+każda inna wartość oraz `None` → element `Gender` pominięty.
 
 ### OrgUnit
 
@@ -256,8 +411,11 @@ wskazywany przez `PublishedIn`.
 
 `rodzaj_prawa.coar_type` → `Type` (obowiązkowe),
 `tytul_oryginalny` → `Title`, `data_zgloszenia` → `RegistrationDate`,
-`data_decyzji` → `ApprovalDate`, `numer_prawa_wylacznego` →
-`PatentNumber`, `Patent_Autor` → `Inventors/Inventor`.
+`data_decyzji` → `ApprovalDate`, `numer_prawa_wylacznego` → `PatentNumber`,
+`Patent_Autor` → `Inventors/Inventor`.
+
+`Patent.rodzaj_prawa` jest `null=True` (`src/bpp/models/patent.py:108`) —
+`None` traktowany jak niezmapowany, czyli fallback `c_15cd`.
 
 ### Event
 
@@ -266,30 +424,37 @@ wskazywany przez `PublishedIn`.
 
 ### Service
 
-Jeden rekord opisujący CRIS, składany z `Uczelnia` i `Site`:
-`Acronym`, `Name`, `WebsiteURL`, `OAIPMHBaseURL`, `Owner` (→ `OrgUnit`
-uczelni). Zwracany w `<description>` odpowiedzi `Identify`.
+Jeden rekord opisujący CRIS, składany z `Uczelnia` i `Site`: `Acronym`,
+`Name`, `WebsiteURL`, `OAIPMHBaseURL`, `Owner` (→ `OrgUnit` uczelni).
+Zwracany w `<description>` odpowiedzi `Identify`.
 
 ## Słowniki
 
-`slowniki/coar.py` — stałe URI dla całego poddrzewa COAR `text` oraz
-`patent`, plus walidacja, że wartość z `coar_type` należy do słownika.
+`slowniki/coar.py` — stałe URI dla poddrzewa COAR `text` oraz `patent`, plus
+walidacja przynależności wartości `coar_type` do słownika. Interfejs
+(ustalany w Fazie 0, bo koduje przeciw niemu agent serializerów):
 
-**Fallback dla niezmapowanego typu:** korzeń hierarchii —
-`http://purl.org/coar/resource_type/c_18cf` (`text`) dla publikacji,
-`.../c_15cd` (`patent`) dla patentów. Oba są legalne, więc walidator
-przechodzi, a rekord nie znika po cichu z eksportu. Alternatywa (pomijanie)
-cicho gubiłaby publikacje z bibliografii.
+```python
+TEKST_ROOT = "http://purl.org/coar/resource_type/c_18cf"
+PATENT_ROOT = "http://purl.org/coar/resource_type/c_15cd"
+JOURNAL = "http://purl.org/coar/resource_type/c_0640"
+DOCTORAL_THESIS = "http://purl.org/coar/resource_type/c_db06"
+THESIS = "http://purl.org/coar/resource_type/c_46ec"
+
+def typ_publikacji(coar_type: str | None) -> str: ...   # fallback TEKST_ROOT
+def typ_patentu(coar_type: str | None) -> str: ...      # fallback PATENT_ROOT
+def znany(uri: str) -> bool: ...
+```
 
 **Praca habilitacyjna** → `thesis` (`c_46ec`). COAR nie zna habilitacji;
 `doctoral thesis` byłoby bliższe praktyce, ale formalnie nieprawdziwe.
 
-`slowniki/dostep.py` — cztery COAR Access Rights.
-`slowniki/licencje.py` — odczyt `Licencja_OpenAccess.uri`.
-`slowniki/jezyki.py` — odczyt `Jezyk.kod_bcp47`.
+`slowniki/dostep.py` — cztery COAR Access Rights; `slowniki/licencje.py` —
+odczyt `Licencja_OpenAccess.uri`; `slowniki/jezyki.py` — odczyt
+`Jezyk.kod_bcp47`. Wszystkie z sygnaturami `(obj) -> str | None`.
 
-Komenda `cerif_raport_mapowan` listuje wartości słownikowe bez mapowania,
-żeby redakcja miała co uzupełniać.
+Komenda `cerif_raport_mapowan` listuje wartości słownikowe bez mapowania
+oraz URI licencji wygenerowane automatycznie (wymagające potwierdzenia).
 
 ## Warstwa OAI-PMH
 
@@ -299,6 +464,10 @@ Sześć czasowników: `Identify` (z rekordem `Service`),
 
 `metadataPrefix`: `oai_cerif_openaire`.
 Namespace ładunku: `https://www.openaire.eu/cerif-profile/1.2/`.
+
+`Identify` deklaruje `granularity=YYYY-MM-DDThh:mm:ssZ`, `deletedRecord=no`,
+`earliestDatestamp` z najstarszego rekordu wszystkich setów. Wszystkie
+datestampy są w **UTC**, w tym formacie.
 
 Sety: `openaire_cris_publications`, `openaire_cris_products`,
 `openaire_cris_patents`, `openaire_cris_persons`, `openaire_cris_orgunits`,
@@ -310,55 +479,34 @@ Sety: `openaire_cris_publications`, `openaire_cris_products`,
 Keyset, nie offset. Ładunek podpisany `django.core.signing` z TTL:
 
 ```python
-{"set": str, "prefix": str, "od": str|None, "do": str|None,
- "ts": str, "pk": int}
+{"set": str, "prefix": str, "od": str | None, "do": str | None,
+ "slug": str, "ts": str, "pk": int}
 ```
 
-Podpis jest wymagany — bez niego token jest wektorem wstrzykiwania
-parametrów zapytania. Keyset zamiast `[offset:offset+n]` daje stały koszt
-strony i stabilność przy zapisach w trakcie harvestu; przy offsecie edycja
-rekordu w połowie przebiegu przesuwa okno i gubi albo dubluje pozycje.
+`slug` jest obowiązkowy — bez niego kursor w secie łączącym pięć modeli jest
+wieloznaczny i produkuje duplikaty albo gubi rekordy.
+
+Podpis jest wymagany — bez niego token jest wektorem wstrzykiwania parametrów
+zapytania. Keyset zamiast `[offset:offset+n]` daje stały koszt strony
+i stabilność przy zapisach w trakcie harvestu; przy offsecie edycja rekordu
+w połowie przebiegu przesuwa okno i gubi albo dubluje pozycje.
 
 Rozmiar strony: 100. Token wygasły lub z niepoprawnym podpisem →
 `badResumptionToken`.
 
-### Integralność referencyjna
+## Wyłączanie `/api/v1/`
 
-Serializer emituje `id` osadzonej encji sąsiadującej **tylko wtedy, gdy ta
-encja wyjdzie w swoim secie przy tej samej konfiguracji bramek** — czyli gdy
-`ctx.czy_widoczny(obj)` zwraca prawdę. W przeciwnym razie osadza ją bez `id`;
-profil pozwala na to wprost („embedded entities without internal identifiers
-are permitted").
+Realizowane w aplikacji `api_v1`. **Nie przez zwrócenie `False` z klasy
+uprawnień** — DRF zamienia to na 403/401, a wymagane jest 404 (endpoint ma
+wyglądać na nieistniejący). Klasa uprawnień rozstrzyga tenanta przez
+`Uczelnia.objects.get_for_request(request)` — wzorzec z
+`src/api_v1/viewsets/common.py` i `src/api_v1/scoping.py`, nie z
+`src/api_v1/permissions.py` (tamtejsze klasy są per-user i nie dotykają
+tenanta) — i przy wyłączonej fladze podnosi
+`rest_framework.exceptions.NotFound`.
 
-Przypadek referencyjny: autor z `pokazuj=False` afiliowany przy publikacji —
-publikacja wychodzi, ale `Person/@id` pojawić się nie może, bo wskazywałby na
-nieistniejący rekord.
-
-## Bramkowanie i przełączniki
-
-| Warstwa | Mechanizm | Default |
-|---|---|---|
-| Endpoint CERIF | `Uczelnia.eksport_cerif_wlaczony` → 404 gdy `False` | włączony |
-| Endpoint `/api/v1/` | `Uczelnia.api_v1_wlaczone` → 404 gdy `False` | włączony |
-| Status korekty | `uczelnia.ukryte_statusy("cerif")` — kanał niezależny od `api` | — |
-| Per rekord | `nie_eksportuj_przez_api` | respektowany |
-| Osoby | `Autor.pokazuj` | respektowany |
-| Tenant | `scope_rekord_do_uczelni` | — |
-
-Oba przełączniki są **domyślnie włączone** — istniejące wdrożenia nie zmieniają
-zachowania `/api/v1/`, a CERIF startuje aktywny.
-
-Ponieważ set `openaire_cris_persons` jest domyślnie aktywny, jedynym
-zabezpieczeniem danych osobowych pozostaje `Autor.pokazuj`. Ten predykat musi
-działać bezbłędnie i ma dedykowany test wycieku (patrz niżej).
-
-Respektowanie `nie_eksportuj_przez_api` jest interpretacją: jego `help_text`
-mówi o „JSON REST API", ale intencja czytana jest jako „ten rekord nie
-wychodzi na zewnątrz".
-
-Wyłączenie `/api/v1/` realizowane jest w `api_v1` przez klasę uprawnień
-sprawdzającą flagę na `Uczelnia` rozstrzygniętej z requestu, spójnie
-z istniejącym `src/api_v1/permissions.py`.
+Analogicznie endpoint CERIF przy `eksport_cerif_wlaczony=False` zwraca
+`Http404`.
 
 ## Obsługa błędów
 
@@ -367,45 +515,65 @@ Błędy protokołu (`badVerb`, `badArgument`, `cannotDisseminateFormat`,
 z HTTP 200 — tak wymaga OAI-PMH.
 
 Wyjątek przy serializacji pojedynczego rekordu: `rollbar.report_exc_info()`,
-rekord pominięty, licznik pominięć w logu. Nigdy `except: pass`, nigdy
-wywalenie całego harvestu przez jeden zepsuty wiersz. W testach ten sam kod
-ma podnosić wyjątek — przełącznik przez ustawienie
+rekord pominięty, licznik pominięć w logu. To **świadome odstępstwo** od
+domyślnego wzorca z `CLAUDE.md` („report + raise") — harvest całego korpusu
+nie może umierać na jednym zepsutym wierszu. Nigdy `except: pass`.
+W testach ten sam kod ma podnosić wyjątek: ustawienie
 `CERIF_EXPORT_PRZERYWAJ_NA_BLEDZIE`, domyślnie `False`, w testach `True`.
 
 ## Testy
 
-| Poziom | Zakres |
-|---|---|
-| Serializery | snapshoty XML per encja; walidacja względem XSD profilu 1.2 |
-| Providery | `django_assert_max_num_queries` (wzorzec z `test_oai.py`) |
-| Identyfikatory | round-trip `zbuduj`/`rozbierz`; błędne wejścia → wyjątek, nie `assert` |
-| Tokeny | round-trip, wygaśnięcie, zerwany podpis |
-| Bramkowanie | test per warstwa |
-| **Wyciek osób** | autor z `pokazuj=False` nie pojawia się w secie persons **ani** jako `Person/@id` w publikacji |
-| Integralność | harvest wszystkich setów → zebrać `id` z powiązań → każde musi mieć rekord |
-| Regresja Primo | `/oai/` z `oai_dc` odpowiada identycznie jak przed zmianą |
-| E2E | `openaire-cris-validator` jako `make cerif-validate`, poza domyślną suitą (wymaga JVM) |
+Pliki testowe są przypisane do agentów, żeby równoległa praca nie kolidowała:
+
+| Plik | Zakres | Agent |
+|---|---|---|
+| `tests/test_slowniki.py` | mapowania, fallbacki, raport mapowań | A |
+| `tests/test_providery.py` | strony, keyset, `django_assert_max_num_queries` | B |
+| `tests/test_widocznosc.py` | reguły per encja; **wyciek osób** | B |
+| `tests/test_serializery.py` | snapshoty XML, walidacja XSD | C |
+| `tests/test_identyfikatory.py` | round-trip, błędne wejścia → wyjątek, nie `assert` | Faza 0 |
+| `tests/test_oai.py` | czasowniki, tokeny, błędy protokołu | D |
+| `tests/test_przelaczniki.py` | `api_v1_wlaczone`, `eksport_cerif_wlaczony` | E |
+| `tests/test_integralnosc.py` | harvest wszystkich setów → każde `id` ma rekord | Faza 2 |
+
+Test wycieku osób jest obowiązkowy i ma dwie asercje: autor
+z `pokazuj=False` nie pojawia się w secie `persons` **ani** jako
+`Person/@id` w żadnej publikacji.
+
+Regresja Primo: `/oai/` z `oai_dc` odpowiada identycznie jak przed zmianą.
+
+### XSD
+
+Schematy profilu 1.2 są **vendorowane** do `src/cerif_export/tests/xsd/`
+wraz z zależnościami importowanymi przez `xsd:import` — testy muszą działać
+offline. Źródło: repozytorium `EuroCRIS/openaire-cris-validator`
+(katalog schematów). W `tests/xsd/README.md` zapisać URL i commit, z którego
+pobrano pliki. lxml dostaje lokalny resolver, żeby nie sięgał po sieć.
+
+E2E: `openaire-cris-validator` jako `make cerif-validate`, poza domyślną
+suitą (wymaga JVM).
 
 Konwencja pytest wg `CLAUDE.md`: funkcje bez klas, `@pytest.mark.django_db`,
 `model_bakery.baker.make`.
 
 ## Podział na równoległe zadania
 
-Faza 0 (szeregowo): scaffold aplikacji, `const.py`, `identyfikatory.py`,
-`providers/base.py` (sygnatury), migracje modeli. Ustala kontrakty, przeciw
-którym kodują pozostali.
+**Faza 0 (szeregowo)** — ustala wszystkie kontrakty, przeciw którym kodują
+pozostali: scaffold aplikacji, `const.py`, `identyfikatory.py` (+ testy),
+`kontekst.py` (`Kursor`, `ZbioryWidocznosci`, `KontekstSerializacji`),
+`providers/base.py` (sygnatury), **sygnatury `slowniki/*`**, migracje modeli.
 
-Faza 1 (równolegle, rozłączne katalogi):
+**Faza 1 (równolegle, rozłączne katalogi i pliki testowe):**
 
-| Agent | Katalog | Zależy od |
+| Agent | Zakres | Zależy od |
 |---|---|---|
-| A | `slowniki/` + `management/commands/` | const |
-| B | `providers/` | base, identyfikatory |
-| C | `cerif/` | const, słowniki (interfejs) |
-| D | `oai/` | const, providers (interfejs) |
-| E | przełączniki `/api/v1/` + `Uczelnia` (aplikacja `api_v1`) | migracje |
+| A | `slowniki/` + `management/commands/cerif_raport_mapowan.py` | const, sygnatury słowników |
+| B | `providers/` | base, identyfikatory, kontekst |
+| C | `cerif/` | const, kontekst, sygnatury słowników |
+| D | `oai/` | const, sygnatury providerów |
+| E | przełączniki `/api/v1/` + `Uczelnia`; **rejestracja wszystkich nowych pól w `src/bpp/admin/`** | migracje |
 
-Faza 2 (szeregowo): `views.py`/`urls.py`, testy integracyjne,
+**Faza 2 (szeregowo):** `views.py`/`urls.py`, test integralności,
 `make baseline-update`, newsfragment towncriera.
 
 ## Newsfragment
