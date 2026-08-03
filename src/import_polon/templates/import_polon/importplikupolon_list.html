@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load render_table from django_tables2 %}
+{% extends "base.html" %}
 
 {% block extratitle %}
     Import z POLON
@@ -9,27 +9,152 @@
     <li><a href="{% url "import_polon:index" %}">import POLON</a></li>
 {% endblock %}
 
-{% block content %}{% load static %}
+{% block content %}
+    <style>
+        /* Konwencja tego appu: styl inline przy szablonie, jak w */
+        /* wierszimportuplikupolon_list.html — bez dotykania SCSS-a. */
+        .importy-table {
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+            width: 100%;
+        }
+        .importy-table th,
+        .importy-table td {
+            padding: 0.4rem 0.5rem !important;
+            line-height: 1.3;
+            vertical-align: top;
+        }
+        .importy-table th {
+            font-weight: 600;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+        .importy-table .liczba {
+            text-align: right;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+        .importy-table .grupa-lewa {
+            border-left: 1px solid #ddd !important;
+        }
+        .importy-table .meta {
+            font-size: 0.75rem;
+            color: #6c757d;
+            display: block;
+            margin-top: 0.15rem;
+        }
+        .importy-table .brak {
+            color: #6c757d;
+            font-style: italic;
+        }
+        .importy-table .label {
+            margin-bottom: 0.1rem;
+        }
+        /* Dziewięć kolumn nie mieści się na wąskim ekranie. Przewijamy sam */
+        /* kontener tabeli — klas gridu Foundation NIE nadpisujemy. */
+        .importy-scroll {
+            overflow-x: auto;
+        }
+        .importy-legenda {
+            font-size: 0.75rem;
+            color: #6c757d;
+            margin-bottom: 1.5rem;
+        }
+    </style>
+
     <h1>Ostatnio importowane dane:
-    <a class="button success" id="add-new-file" href="./nowy">
+        <a class="button success" id="add-new-file" href="{% url "import_polon:utworz-import" %}">
             <i class="fi-page-add"></i>
             utwórz nowy import
         </a>
     </h1>
-    <ul>
-        {% for object in object_list %}
-            <li>
-                <a href="{{ object.get_absolute_url }}">plik {{ object.plik.name }}</a>{% if object.uczelnia %} <span class="label secondary">{{ object.uczelnia }}</span>{% endif %}:
-                import utworzono {{ object.created_on }}{% if object.finished_on %}, ukończono {{ object.finished_on }}
-                {% if object.finished_successfully %}, zakończono pomyślnie{% else %}, zakończono z błędem{% endif %}
-            {% endif %}
-            </li>
-        {% endfor %}
-    </ul>
+
+    <div class="importy-scroll">
+        <table class="importy-table">
+            <thead>
+                <tr>
+                    <th rowspan="2">Plik</th>
+                    <th rowspan="2">Rok</th>
+                    <th rowspan="2">Status</th>
+                    <th colspan="3" class="grupa-lewa">z pliku POLON</th>
+                    <th colspan="3" class="grupa-lewa">wynik importu</th>
+                </tr>
+                <tr>
+                    <th class="liczba grupa-lewa"
+                        title="Liczba wierszy danych w pliku POLON">w pliku</th>
+                    <th class="liczba"
+                        title="Wiersze, których pole ZATRUDNIENIE zaczyna się od nazwy uczelni. „n/d" gdy walidacja miejsca pracy była wyłączona.">z uczelni</th>
+                    <th class="liczba"
+                        title="Wiersze, dla których udało się wskazać autora w bazie BPP">dopasowanych</th>
+                    <th class="liczba grupa-lewa"
+                        title="Wiersze, dla których import coś zmienił. Przy imporcie w trybie podglądu: ile zmian zostałoby wprowadzonych.">zmian</th>
+                    <th class="liczba"
+                        title="Wiersze pominięte z powodu błędu — np. nierozpoznana dyscyplina, brak wymiaru etatu, niedopasowany autor">błędów</th>
+                    <th class="liczba"
+                        title="Autorzy z przypisaną dyscypliną na rok importu, których nie było w pliku. Stan z chwili importu.">do odpięcia</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for object in object_list %}
+                    <tr>
+                        <td>
+                            <a href="{{ object.get_absolute_url }}"
+                               title="{{ object.plik.name }}">{{ object.nazwa_pliku_skrocona }}</a>
+                            {% if object.uczelnia %}
+                                <span class="label secondary">{{ object.uczelnia }}</span>
+                            {% endif %}
+                            <span class="meta">
+                                utworzono {{ object.created_on }}{% if object.finished_on %}, ukończono {{ object.finished_on }}{% endif %}
+                            </span>
+                        </td>
+
+                        <td>{{ object.rok }}</td>
+
+                        <td>
+                            {% if not object.finished_on %}
+                                <span class="label secondary"><i class="fi-clock"></i> w trakcie</span>
+                            {% elif object.finished_successfully %}
+                                <span class="label success"><i class="fi-check"></i> pomyślnie</span>
+                            {% else %}
+                                <span class="label alert"><i class="fi-x"></i> błąd</span>
+                            {% endif %}
+                            <span class="meta">
+                                {% if object.zapisz_zmiany_do_bazy %}zapisany do bazy{% else %}podgląd{% endif %}
+                            </span>
+                        </td>
+
+                        {% with s=object.statystyki %}
+                            {% if s %}
+                                <td class="liczba grupa-lewa">{{ s.wierszy_w_pliku }}</td>
+                                {# default_if_none, NIE default — „0" to prawdziwy pomiar, nie brak danych #}
+                                <td class="liczba">{{ s.z_uczelni|default_if_none:"n/d" }}</td>
+                                <td class="liczba">{{ s.dopasowanych }}</td>
+                                <td class="liczba grupa-lewa">{{ s.ze_zmianami }}</td>
+                                <td class="liczba">{{ s.z_bledem }}</td>
+                                <td class="liczba">{{ s.do_odpiecia }}</td>
+                            {% else %}
+                                <td colspan="6" class="brak grupa-lewa"
+                                    title="Import sprzed wprowadzenia statystyk albo niezakończony (w trakcie, anulowany, zakończony błędem)">
+                                    brak statystyk
+                                </td>
+                            {% endif %}
+                        {% endwith %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <p class="importy-legenda">
+        Liczby w kolumnach opisują różne przekroje i <strong>nie sumują się</strong>:
+        wiersz z dopasowanym autorem może jednocześnie zakończyć się błędem, a wiersze
+        z niedopasowanym autorem nie są zapisywane i widać je tylko jako różnicę między
+        kolumnami. Najedź na nagłówek kolumny, żeby zobaczyć jej definicję.
+    </p>
 
     {% if object_list.count == 0 %}
         <script>
-            location.href = "./nowy";
+            location.href = "{% url "import_polon:utworz-import" %}";
         </script>
     {% endif %}
 

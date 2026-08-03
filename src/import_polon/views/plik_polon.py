@@ -8,6 +8,7 @@ from django.utils.functional import cached_property
 from django.views.generic import DetailView, ListView
 from liveops.views import CreateLiveOperationView, RestartView
 
+from import_polon.core.import_polon import KOMUNIKAT_BEZ_ZMIAN
 from import_polon.forms import NowyImportForm, WierszImportuPlikuPolonFilterForm
 from import_polon.models import ImportPlikuPolon
 
@@ -194,9 +195,10 @@ class ImportPolonResultsView(BaseImportPlikuPolonMixin, ListView):
 
         # Apply "show only differences" filter
         if pokaz_tylko_roznice:
-            queryset = queryset.exclude(
-                rezultat__startswith="W BPP jest identycznie jak w XLSX"
-            )
+            # Prefiks, nie równość: sentinel ma wariant z sufiksem
+            # (KOMUNIKAT_BEZ_ZMIAN_BRAK_DYSCYPLIN), a do wiersza bywa doklejana
+            # operacja ORCID. Oba warianty zaczynają się od tej stałej.
+            queryset = queryset.exclude(rezultat__startswith=KOMUNIKAT_BEZ_ZMIAN)
 
         return queryset
 

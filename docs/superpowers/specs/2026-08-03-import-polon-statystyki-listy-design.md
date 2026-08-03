@@ -158,8 +158,11 @@ koszyki, więc nie sumujące się z nimi):
 
 ### 3. Wartości pochodne i świadome ustalenia
 
-- **`z_uczelni`** nie jest przechowywane — liczone w szablonie jako
-  `wierszy_w_pliku − odrzuconych_zatrudnienie`.
+- **`z_uczelni`** nie jest przechowywane — liczone jako
+  `wierszy_w_pliku − odrzuconych_zatrudnienie` we właściwości
+  `ImportPlikuPolon.statystyki` (nie w szablonie: szablon Django nie ma
+  arytmetyki, a wartość pochodna utrwalona obok składników by się z nimi
+  rozjechała).
 - **Przy `ignoruj_miejsce_pracy=True`** `odrzuconych_zatrudnienie` wynosi
   `None`, a kolumna „z uczelni" pokazuje **„n/d"**. Walidacja `ZATRUDNIENIE`
   była wtedy wyłączona (`core/import_polon.py:492`), więc każda liczba w tej
