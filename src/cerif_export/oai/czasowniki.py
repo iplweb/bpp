@@ -296,9 +296,7 @@ def _lista(zadanie, argumenty, nazwa, z_metadanymi):
     if set_spec is not None and set_spec not in rejestr:
         raise BrakPasujacychRekordow(f"Nieznany set: {set_spec}")
 
-    pary, kolejny = _zbierz_strone(
-        zadanie.uczelnia, rejestr, set_spec, od, do, kursor
-    )
+    pary, kolejny = _zbierz_strone(zadanie.uczelnia, rejestr, set_spec, od, do, kursor)
     if not pary:
         raise BrakPasujacychRekordow()
 
@@ -321,8 +319,7 @@ def _parametry_listy(argumenty):
         if len(argumenty) > 1:
             pozostale = sorted(set(argumenty) - {"resumptionToken"})
             raise BlednyArgument(
-                "resumptionToken wyklucza pozostałe argumenty: "
-                + ", ".join(pozostale)
+                "resumptionToken wyklucza pozostałe argumenty: " + ", ".join(pozostale)
             )
         dane = tokeny.odkoduj(argumenty["resumptionToken"])
         _sprawdz_prefix(dane["prefix"], z_tokenu=True)
@@ -338,8 +335,7 @@ def _parametry_listy(argumenty):
     prefix = argumenty.get("metadataPrefix")
     if prefix is None:
         raise BlednyArgument(
-            "Argument metadataPrefix jest wymagany, gdy nie podano "
-            "resumptionToken"
+            "Argument metadataPrefix jest wymagany, gdy nie podano resumptionToken"
         )
     _sprawdz_prefix(prefix)
 
@@ -525,9 +521,7 @@ def _bezpiecznie(wywolanie, opis, pomijaj=True):
     except Exception:
         rollbar.report_exc_info()
         logger.exception("Eksport CERIF: błąd serializacji rekordu %s", opis)
-        if not pomijaj or getattr(
-            settings, "CERIF_EXPORT_PRZERYWAJ_NA_BLEDZIE", False
-        ):
+        if not pomijaj or getattr(settings, "CERIF_EXPORT_PRZERYWAJ_NA_BLEDZIE", False):
             raise
         return None
 
@@ -536,9 +530,7 @@ def _bezpiecznie(wywolanie, opis, pomijaj=True):
 
 
 def _koperta():
-    korzen = etree.Element(
-        f"{{{NS_PMH}}}OAI-PMH", nsmap={None: NS_PMH, "xsi": NS_XSI}
-    )
+    korzen = etree.Element(f"{{{NS_PMH}}}OAI-PMH", nsmap={None: NS_PMH, "xsi": NS_XSI})
     korzen.set(f"{{{NS_XSI}}}schemaLocation", SCHEMA_LOCATION_PMH)
     _pod(korzen, "responseDate", _teraz())
     return korzen
@@ -629,9 +621,7 @@ def _parsuj_date(wartosc, nazwa, koniec_dnia=False):
             moment = moment.replace(hour=23, minute=59, second=59)
         return moment.replace(tzinfo=datetime.UTC), dzienna
 
-    raise BlednyArgument(
-        f"Argument {nazwa} ma niepoprawny format daty: {wartosc}"
-    )
+    raise BlednyArgument(f"Argument {nazwa} ma niepoprawny format daty: {wartosc}")
 
 
 # -- drobiazgi -----------------------------------------------------------

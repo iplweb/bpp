@@ -221,9 +221,7 @@ def test_strona_zeruje_kursor_na_starcie_kolejnego_modelu(
     obiekty, kursor = provider_publikacji.strona(uczelnia_cerif, rozmiar=2)
 
     assert {slug_dla(o) for o in obiekty} == {slug_dla(Wydawnictwo_Ciagle)}
-    assert kursor == Kursor(
-        slug=slug_dla(Wydawnictwo_Zwarte), ts=const.EPOKA, pk=0
-    )
+    assert kursor == Kursor(slug=slug_dla(Wydawnictwo_Zwarte), ts=const.EPOKA, pk=0)
 
     reszta, kolejny = provider_publikacji.strona(
         uczelnia_cerif, kursor=kursor, rozmiar=2
@@ -319,9 +317,7 @@ def test_rekord_z_nullowym_datestampem_lapie_sie_w_zakres(
     ustaw_datestamp(Wydawnictwo_Ciagle, z_nullem.pk, None)
 
     obiekty, _ = provider_publikacji.strona(uczelnia_cerif, do=dt(1))
-    assert [o.pk for o in obiekty if isinstance(o, Wydawnictwo_Ciagle)] == [
-        z_nullem.pk
-    ]
+    assert [o.pk for o in obiekty if isinstance(o, Wydawnictwo_Ciagle)] == [z_nullem.pk]
 
 
 @pytest.mark.django_db
@@ -361,9 +357,7 @@ def test_najstarszy_datestamp_bierze_minimum_ze_wszystkich_modeli(
 
 
 @pytest.mark.django_db
-def test_najstarszy_datestamp_pustego_setu_to_none(
-    uczelnia_cerif, provider_publikacji
-):
+def test_najstarszy_datestamp_pustego_setu_to_none(uczelnia_cerif, provider_publikacji):
     assert provider_publikacji.najstarszy_datestamp(uczelnia_cerif) is None
 
 
@@ -400,9 +394,7 @@ def test_coar_pracy_bierze_wartosc_ze_slownika(db):
         skrot="D",
         coar_type="http://purl.org/coar/resource_type/wlasny",
     )
-    assert coar_pracy(Praca_Doktorska) == (
-        "http://purl.org/coar/resource_type/wlasny"
-    )
+    assert coar_pracy(Praca_Doktorska) == ("http://purl.org/coar/resource_type/wlasny")
 
 
 @pytest.mark.django_db
@@ -510,9 +502,7 @@ def test_zbiory_widocznosci_to_stala_liczba_zapytan(
     zrodlo = baker.make(Zrodlo, nazwa="Czasopismo W", skrot="Cz. W")
     konferencja = baker.make(Konferencja, nazwa="Konferencja W")
     for _ in range(ile):
-        fabryka_wydawnictw(
-            Wydawnictwo_Ciagle, zrodlo=zrodlo, konferencja=konferencja
-        )
+        fabryka_wydawnictw(Wydawnictwo_Ciagle, zrodlo=zrodlo, konferencja=konferencja)
 
     obiekty, _ = provider_publikacji.strona(uczelnia_cerif, rozmiar=1000)
 

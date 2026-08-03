@@ -32,9 +32,9 @@ def widoczni_autorzy(uczelnia):
     """Autorzy eksportowani dla tej uczelni — bez prefetchy."""
     wymagaj_uczelni(uczelnia)
     return Autor.objects.filter(pokazuj=True).filter(
-        pk__in=Autor_Jednostka.objects.filter(
-            jednostka__uczelnia=uczelnia
-        ).values("autor_id")
+        pk__in=Autor_Jednostka.objects.filter(jednostka__uczelnia=uczelnia).values(
+            "autor_id"
+        )
     )
 
 

@@ -211,9 +211,7 @@ def _prefetche_wydawnictwa(model):
         ),
         Prefetch(
             "streszczenia",
-            queryset=_STRESZCZENIA[model].objects.select_related(
-                "jezyk_streszczenia"
-            ),
+            queryset=_STRESZCZENIA[model].objects.select_related("jezyk_streszczenia"),
         ),
     ]
 
@@ -300,9 +298,7 @@ class ProviderPublikacji(ProviderEncji):
                 "rodzaj", "jezyk", "openaccess_licencja", "pbn_uid"
             )
 
-        raise BlednyIdentyfikator(
-            f"Model {model!r} nie należy do setu {self.set_spec}"
-        )
+        raise BlednyIdentyfikator(f"Model {model!r} nie należy do setu {self.set_spec}")
 
     def zbiory_widocznosci(self, uczelnia, obiekty) -> ZbioryWidocznosci:
         """Prekomputuj widoczność encji osadzanych przy publikacjach.

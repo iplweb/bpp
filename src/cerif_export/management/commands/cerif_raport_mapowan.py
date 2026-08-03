@@ -129,9 +129,7 @@ def _braki_jezykow():
     sekcja = Sekcja(
         tytul="Języki bez kodu BCP 47",
         etykieta_podsumowania="języki",
-        komentarz=(
-            "Bez kodu elementy w tym języku wyjdą bez atrybutu xml:lang."
-        ),
+        komentarz=("Bez kodu elementy w tym języku wyjdą bez atrybutu xml:lang."),
     )
 
     for obj in Jezyk.objects.all():
@@ -147,8 +145,7 @@ def _licencje():
         tytul="Licencje Open Access bez adresu URI",
         etykieta_podsumowania="licencje bez adresu URI",
         komentarz=(
-            "Bez adresu prace na tej licencji wyjdą bez odnośnika do jej "
-            "treści."
+            "Bez adresu prace na tej licencji wyjdą bez odnośnika do jej treści."
         ),
     )
     do_potwierdzenia = Sekcja(
@@ -247,9 +244,7 @@ class Command(BaseCommand):
 
         for sekcja in sekcje:
             etykieta = sekcja.etykieta_podsumowania
-            kropki = "." * max(
-                1, SZEROKOSC_PODSUMOWANIA - len(etykieta) - 2
-            )
+            kropki = "." * max(1, SZEROKOSC_PODSUMOWANIA - len(etykieta) - 2)
             self.stdout.write(f"  {etykieta} {kropki} {len(sekcja.pozycje)}")
 
         razem = sum(len(sekcja.pozycje) for sekcja in sekcje)
@@ -258,9 +253,7 @@ class Command(BaseCommand):
 
         if razem == 0:
             self.stdout.write(
-                self.style.SUCCESS(
-                    "Wszystkie wartości słownikowe są uzupełnione."
-                )
+                self.style.SUCCESS("Wszystkie wartości słownikowe są uzupełnione.")
             )
             return
 

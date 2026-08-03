@@ -252,9 +252,7 @@ def _autorstwo_z_odpowiedzialnosci(el, obj, ctx):
                 powiazanie.autor,
                 ctx,
                 nazwa_wyswietlana=powiazanie.zapisany_jako,
-                jednostka=(
-                    powiazanie.jednostka if powiazanie.jednostka_id else None
-                ),
+                jednostka=(powiazanie.jednostka if powiazanie.jednostka_id else None),
             )
 
 

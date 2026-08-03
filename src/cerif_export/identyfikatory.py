@@ -109,8 +109,6 @@ def rozbierz(oai_id: str):
     model = model_wg_slugu(slug)
 
     if typ_dla(model) != dopasowanie.group("typ"):
-        raise BlednyIdentyfikator(
-            f"Człon typu nie zgadza się ze slugiem w {oai_id!r}"
-        )
+        raise BlednyIdentyfikator(f"Człon typu nie zgadza się ze slugiem w {oai_id!r}")
 
     return dopasowanie.group("namespace"), model, int(dopasowanie.group("pk"))

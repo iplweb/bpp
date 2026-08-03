@@ -54,6 +54,7 @@ def schemat_licencji(uri):
         return SCHEMAT_LICENCJI_CC
     return SCHEMAT_LICENCJI_SPDX
 
+
 # Typy identyfikatorów CERIF dla elementu generycznego ``Identifier``.
 TYP_ID_PBN = "https://pbn.nauka.gov.pl/core/#/scientist"
 TYP_ID_ORCID = "https://w3id.org/cerif/vocab/IdentifierTypes#ORCID"
@@ -274,7 +275,9 @@ def osadz_osobe(rodzic, autor, ctx):
     return el
 
 
-def dodaj_wklad_osoby(rodzic, nazwa, autor, ctx, nazwa_wyswietlana=None, jednostka=None):
+def dodaj_wklad_osoby(
+    rodzic, nazwa, autor, ctx, nazwa_wyswietlana=None, jednostka=None
+):
     """Dopisz ``Author``/``Editor``/``Inventor`` — osobę z afiliacją.
 
     Odpowiada typom ``cfLinkWithDisplayNameToPersonWithAffiliations*`` —

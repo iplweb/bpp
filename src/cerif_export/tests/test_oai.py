@@ -58,9 +58,9 @@ class FikcyjnyProvider:
         return (self._slugi.index(slug), getattr(obiekt, ADNOTACJA_TS), obiekt.pk)
 
     def _klucz_kursora(self, kursor):
-        moment = datetime.datetime.strptime(
-            kursor.ts, const.FORMAT_DATESTAMP
-        ).replace(tzinfo=datetime.UTC)
+        moment = datetime.datetime.strptime(kursor.ts, const.FORMAT_DATESTAMP).replace(
+            tzinfo=datetime.UTC
+        )
         return (self._slugi.index(kursor.slug), moment, kursor.pk)
 
     def strona(self, uczelnia, od=None, do=None, kursor=None, rozmiar=None):
@@ -128,7 +128,9 @@ def uczelnia():
 @pytest.fixture
 def publikacje():
     return [
-        _z_datestampem(Wydawnictwo_Ciagle(pk=numer, tytul_oryginalny=f"Praca {numer}"), numer)
+        _z_datestampem(
+            Wydawnictwo_Ciagle(pk=numer, tytul_oryginalny=f"Praca {numer}"), numer
+        )
         for numer in (1, 2, 3)
     ]
 
@@ -170,9 +172,7 @@ def rejestr(monkeypatch, uczelnia, publikacje):
 
 @pytest.fixture(autouse=True)
 def serializery(monkeypatch):
-    monkeypatch.setattr(
-        czasowniki, "serializer_dla", lambda slug: _fikcyjny_serializer
-    )
+    monkeypatch.setattr(czasowniki, "serializer_dla", lambda slug: _fikcyjny_serializer)
     monkeypatch.setattr(czasowniki, "serializer_service", lambda: _fikcyjny_service)
 
 
@@ -208,9 +208,7 @@ def test_koperta_ma_response_date_i_request(uczelnia, rejestr):
     assert korzen.tag == f"{{{NS_PMH}}}OAI-PMH"
     dzieci = [etree.QName(dziecko).localname for dziecko in korzen]
     assert dzieci[:2] == ["responseDate", "request"]
-    datetime.datetime.strptime(
-        tekst(korzen, "responseDate"), const.FORMAT_DATESTAMP
-    )
+    datetime.datetime.strptime(tekst(korzen, "responseDate"), const.FORMAT_DATESTAMP)
     assert tekst(korzen, "request") == BASE_URL
     assert znajdz(korzen, "request")[0].get("verb") == "Identify"
 
@@ -580,9 +578,7 @@ def test_bad_argument_powtorzony_argument(uczelnia, rejestr):
     from django.http import QueryDict
 
     argumenty = QueryDict("verb=ListRecords&metadataPrefix=a&metadataPrefix=b")
-    korzen = czasowniki.odpowiedz(
-        czasowniki.Zadanie(uczelnia, BASE_URL, argumenty)
-    )
+    korzen = czasowniki.odpowiedz(czasowniki.Zadanie(uczelnia, BASE_URL, argumenty))
     assert kod_bledu(korzen) == "badArgument"
 
 
@@ -761,7 +757,8 @@ def test_zepsuty_rekord_jest_pomijany_a_harvest_leci_dalej(
     )
 
     identyfikatory_ = [
-        el.text for el in znajdz(korzen, "ListRecords", "record", "header", "identifier")
+        el.text
+        for el in znajdz(korzen, "ListRecords", "record", "header", "identifier")
     ]
     assert identyfikatory_ == [
         f"oai:{NAMESPACE}:Publications/wc-1",

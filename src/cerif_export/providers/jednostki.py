@@ -57,9 +57,7 @@ def widoczne_pk(queryset, kandydaci) -> frozenset:
     kandydaci = {pk for pk in kandydaci if pk is not None}
     if not kandydaci:
         return frozenset()
-    return frozenset(
-        queryset.filter(pk__in=kandydaci).values_list("pk", flat=True)
-    )
+    return frozenset(queryset.filter(pk__in=kandydaci).values_list("pk", flat=True))
 
 
 class ProviderJednostek(ProviderEncji):
@@ -86,9 +84,7 @@ class ProviderJednostek(ProviderEncji):
             # instalacji multi-hosted w bazie siedzą też cudze uczelnie.
             return Uczelnia.objects.filter(pk=uczelnia.pk).select_related("site")
 
-        raise BlednyIdentyfikator(
-            f"Model {model!r} nie należy do setu {self.set_spec}"
-        )
+        raise BlednyIdentyfikator(f"Model {model!r} nie należy do setu {self.set_spec}")
 
     def zbiory_widocznosci(self, uczelnia, obiekty) -> ZbioryWidocznosci:
         """Prekomputuj widoczność jednostek nadrzędnych (``PartOf``)."""

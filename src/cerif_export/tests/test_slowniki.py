@@ -187,9 +187,7 @@ def test_slowniki_nie_odpytuja_bazy(django_assert_num_queries):
     licencja = baker.make(
         Licencja_OpenAccess, uri="https://creativecommons.org/licenses/by/4.0/"
     )
-    tryb = baker.make(
-        Tryb_OpenAccess_Wydawnictwo_Ciagle, coar_access_right=dostep.OPEN
-    )
+    tryb = baker.make(Tryb_OpenAccess_Wydawnictwo_Ciagle, coar_access_right=dostep.OPEN)
     charakter = baker.make(Charakter_Formalny, coar_type=JOURNAL_ARTICLE)
 
     with django_assert_num_queries(0):
@@ -252,8 +250,7 @@ def test_raport_mapowan_charakter_formalny_spoza_slownika():
     wynik = _uruchom_raport()
 
     assert (
-        f"Charakter Ze Smieciem [CZS1] — wartość spoza słownika COAR: "
-        f"{SPOZA_SLOWNIKA}"
+        f"Charakter Ze Smieciem [CZS1] — wartość spoza słownika COAR: {SPOZA_SLOWNIKA}"
     ) in wynik
 
 
@@ -378,9 +375,7 @@ def test_raport_mapowan_cc0_nie_wymaga_potwierdzenia():
     ],
 )
 def test_raport_mapowan_tryby_openaccess(model, naglowek):
-    baker.make(
-        model, nazwa="Tryb Bez Mapowania", skrot="TBM1", coar_access_right=""
-    )
+    baker.make(model, nazwa="Tryb Bez Mapowania", skrot="TBM1", coar_access_right="")
 
     wynik = _uruchom_raport()
 

@@ -15,9 +15,7 @@ NS_COAR_ACCESS = "http://purl.org/coar/access_right"
 NS_COAR_PUBLICATION_TYPES = (
     "https://www.openaire.eu/cerif-profile/vocab/COAR_Publication_Types"
 )
-NS_COAR_PATENT_TYPES = (
-    "https://www.openaire.eu/cerif-profile/vocab/COAR_Patent_Types"
-)
+NS_COAR_PATENT_TYPES = "https://www.openaire.eu/cerif-profile/vocab/COAR_Patent_Types"
 
 NSMAP = {
     None: NS_CERIF,

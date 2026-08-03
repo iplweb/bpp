@@ -29,14 +29,12 @@ def widoczne_patenty(uczelnia):
     """
     wymagaj_uczelni(uczelnia)
     return (
-        Patent.objects.exclude(
-            status_korekty_id__in=uczelnia.ukryte_statusy("cerif")
-        )
+        Patent.objects.exclude(status_korekty_id__in=uczelnia.ukryte_statusy("cerif"))
         .filter(nie_eksportuj_przez_api=False)
         .filter(
-            pk__in=Patent_Autor.objects.filter(
-                jednostka__uczelnia=uczelnia
-            ).values("rekord_id")
+            pk__in=Patent_Autor.objects.filter(jednostka__uczelnia=uczelnia).values(
+                "rekord_id"
+            )
         )
     )
 

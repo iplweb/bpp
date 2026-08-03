@@ -92,9 +92,7 @@ def _sprawdz_ladunek(dane):
 
     brakujace = [klucz for klucz in KLUCZE if klucz not in dane]
     if brakujace:
-        raise BlednyResumptionToken(
-            "Resumption token bez pól: " + ", ".join(brakujace)
-        )
+        raise BlednyResumptionToken("Resumption token bez pól: " + ", ".join(brakujace))
 
     nadmiarowe = sorted(set(dane) - set(KLUCZE))
     if nadmiarowe:
