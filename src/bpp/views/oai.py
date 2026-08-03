@@ -8,6 +8,7 @@ except ImportError:
     from django.urls import reverse
 
 from django.db.models.aggregates import Min
+from django.http import Http404
 from django.http.response import HttpResponse, HttpResponseServerError
 from django.utils import timezone
 from django.utils.timezone import make_naive
@@ -83,14 +84,45 @@ class CacheMetadata:
         return default
 
 
-def get_dc_ident(model, obj_pk):
-    return f"oai:bpp.umlub.pl:{model}/{obj_pk}"
+def get_dc_ident(repository_identifier, model, obj_pk):
+    """Identyfikator OAI-PMH rekordu: ``oai:<repozytorium>:<model>/<pk>``."""
+    return f"oai:{repository_identifier}:{model}/{obj_pk}"
+
+
+def parse_dc_ident(repository_identifier, identifier):
+    """Rozłóż identyfikator OAI-PMH na ``(content_type_id, pk)``.
+
+    Zwraca ``None``, gdy identyfikator nie należy do tego repozytorium albo
+    nie da się go rozłożyć. Wołający zwraca wtedy pusty wynik, a moai emituje
+    przewidziany protokołem ``idDoesNotExist`` (patrz ``moai.oai.getRecord``)
+    — dane z zewnątrz nie mają prawa wysadzić widoku.
+    """
+    schemat, _, reszta = identifier.partition(":")
+    repozytorium, _, lokalny = reszta.partition(":")
+    if schemat != "oai" or repozytorium != repository_identifier:
+        return None
+
+    model, ukosnik, obj_pk = lokalny.partition("/")
+    if not ukosnik or not obj_pk.isdigit():
+        return None
+
+    try:
+        content_type_id = ContentType.objects.get(
+            app_label="bpp", model=model.lower()
+        ).pk
+    except ContentType.DoesNotExist:
+        return None
+
+    return content_type_id, int(obj_pk)
 
 
 class BPPOAIDatabase:
-    def __init__(self, original, request=None):
+    def __init__(self, original, uczelnia):
+        # ``uczelnia`` jest wymagana i nigdy nie jest ``None``: to z niej
+        # wynika identyfikator repozytorium wystawiany przy każdym rekordzie,
+        # a bez niej ``OAIView`` w ogóle nie dopuszcza do tego miejsca.
         self.original = original
-        self.request = request
+        self.uczelnia = uczelnia
 
     def get_set(self, oai_id):
         if oai_id == 1:
@@ -171,25 +203,22 @@ class BPPOAIDatabase:
         # filter dates
         query = query.filter(ostatnio_zmieniony__lte=until_date)
 
+        # Rozstrzygane raz na odpowiedź (nie per wiersz), żeby wszystkie
+        # rekordy w niej miały spójny identyfikator repozytorium.
+        repository_identifier = self.uczelnia.oai_repository_identifier()
+
         if identifier is not None:
-            ident = identifier.split(":")
-            assert ident[0] == "oai"
-            assert ident[1] == "bpp.umlub.pl"
-
-            ident = ident[2].split("/")
-            klass = ident[0].lower()
-
-            content_type_id = ContentType.objects.get(app_label="bpp", model=klass).pk
-            query = query.filter(id=[content_type_id, ident[1]])
+            rozlozony = parse_dc_ident(repository_identifier, identifier)
+            if rozlozony is None:
+                return
+            query = query.filter(id=list(rozlozony))
 
         if from_date is not None:
             query = query.filter(ostatnio_zmieniony__gte=from_date)
 
-        uczelnia = Uczelnia.objects.get_for_request(self.request)
-        if uczelnia:
-            ukryte_statusy = uczelnia.ukryte_statusy("api")
-            if ukryte_statusy:
-                query = query.exclude(status_korekty_id__in=ukryte_statusy)
+        ukryte_statusy = self.uczelnia.ukryte_statusy("api")
+        if ukryte_statusy:
+            query = query.exclude(status_korekty_id__in=ukryte_statusy)
 
         for row in (
             query.only(
@@ -210,7 +239,9 @@ class BPPOAIDatabase:
             .prefetch_related("zrodlo", "slowa_kluczowe")[offset : offset + batch_size]
         ):
             yield {
-                "id": get_dc_ident(row.content_type.model, row.object_id),
+                "id": get_dc_ident(
+                    repository_identifier, row.content_type.model, row.object_id
+                ),
                 "deleted": False,
                 "modified": make_naive(
                     row.ostatnio_zmieniony, row.ostatnio_zmieniony.tzinfo
@@ -242,11 +273,17 @@ class OAIView(View):
         url = "/".join(urlparts)
 
         uczelnia = Uczelnia.objects.get_for_request(request)
+        # Bez uczelni nie wiadomo, czyje to repozytorium ani jaki identyfikator
+        # nadawać rekordom — nie wystawiamy wtedy endpointu. Tak samo, gdy
+        # uczelnia świadomie go wyłączyła.
+        if uczelnia is None or not uczelnia.oai_pmh_aktywny:
+            raise Http404("Ta instalacja nie udostępnia endpointu OAI-PMH.")
+
         base_qs = scope_rekord_do_uczelni(
             Rekord.objects.all().exclude(charakter_formalny__nazwa_w_primo=""),
             uczelnia,
         )
-        db = BPPOAIDatabase(base_qs, request=request)
+        db = BPPOAIDatabase(base_qs, uczelnia)
         oai_server = OAIServerFactory(db, FeedConfig("bpp", base_url))
         return HttpResponse(
             content=oai_server.handleRequest(request.GET),

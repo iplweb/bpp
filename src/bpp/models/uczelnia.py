@@ -210,6 +210,25 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         help_text="Powiązanie z obiektem Site (domena internetowa tej uczelni).",
     )
 
+    oai_pmh_aktywny = models.BooleanField(
+        "Udostępniaj endpoint OAI-PMH",
+        default=True,
+        help_text="Gdy wyłączone, adres /oai/ tej uczelni odpowiada błędem "
+        "404. Nie wpływa na pozostałe uczelnie w tej instalacji.",
+    )
+
+    oai_identyfikator_repozytorium = models.CharField(
+        "Identyfikator repozytorium OAI-PMH",
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Środkowy człon identyfikatorów wystawianych przez endpoint "
+        "/oai/ (postać: oai:IDENTYFIKATOR:model/id). Puste = domena z pola "
+        "„Strona (domena)”. Raz opublikowanego identyfikatora nie należy "
+        "zmieniać — harvestery (OpenAIRE, Primo, BASE) używają go jako "
+        "trwałej części klucza rekordu.",
+    )
+
     theme_name = models.CharField(
         "Motyw kolorystyczny",
         max_length=50,
@@ -871,6 +890,16 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     @property
     def orcid_enabled(self):
         return bool(self.orcid_client_id and self.orcid_client_secret)
+
+    def oai_repository_identifier(self) -> str:
+        """Środkowy człon identyfikatorów OAI-PMH tej uczelni.
+
+        Domyślnie domena serwisu, ale jawne ustawienie
+        ``oai_identyfikator_repozytorium`` pozwala zachować dotychczasowe
+        identyfikatory po zmianie domeny (są one trwałym kluczem rekordu po
+        stronie harvesterów).
+        """
+        return self.oai_identyfikator_repozytorium.strip() or self.site.domain
 
     def ukryte_statusy(self, dla_funkcji: str) -> list[int]:
         """
