@@ -79,7 +79,7 @@ def dodaj_part_of(el, jednostka, ctx):
 def serializuj(jednostka, ctx):
     """``bpp.Jednostka`` albo ``bpp.Uczelnia`` → element ``OrgUnit``."""
     el = element("OrgUnit", nsmap=wspolne.NSMAP_REKORDU)
-    wspolne.ustaw_id(el, jednostka, ctx)
+    wspolne.ustaw_id_rekordu(el, jednostka, ctx)
 
     # Acronym + Name budowane tak samo jak w `wspolne.osadz_orgunit` —
     # osadzona encja musi być podzbiorem pełnego rekordu (kontrola 5b

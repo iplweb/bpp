@@ -97,7 +97,7 @@ def dodaj_afiliacje(el, autor, ctx):
 def serializuj(autor, ctx):
     """``bpp.Autor`` → element ``Person``."""
     el = element("Person", nsmap=wspolne.NSMAP_REKORDU)
-    wspolne.ustaw_id(el, autor, ctx)
+    wspolne.ustaw_id_rekordu(el, autor, ctx)
 
     dodaj_person_name(el, autor)
     dodaj_gender(el, autor)

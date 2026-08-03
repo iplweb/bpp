@@ -314,7 +314,7 @@ def serializuj(obj, ctx):
     jezyk = kod_jezyka(obj)
 
     el = element("Publication", nsmap=wspolne.NSMAP_REKORDU)
-    wspolne.ustaw_id(el, obj, ctx)
+    wspolne.ustaw_id_rekordu(el, obj, ctx)
 
     dodaj_typ(el, obj, slug)
     dodaj(el, "Language", jezyk)

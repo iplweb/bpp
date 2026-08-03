@@ -46,17 +46,17 @@ WSZYSTKIE_SETY = (
     SET_EQUIPMENTS,
 )
 
-OPISY_SETOW = {
-    SET_PUBLICATIONS: "Publikacje i kanały wydawnicze",
-    SET_PRODUCTS: "Produkty badawcze (zbiory danych, oprogramowanie)",
-    SET_PATENTS: "Patenty",
-    SET_PERSONS: "Osoby",
-    SET_ORGUNITS: "Jednostki organizacyjne",
-    SET_PROJECTS: "Projekty",
-    SET_FUNDING: "Finansowanie",
-    SET_EVENTS: "Wydarzenia",
-    SET_EQUIPMENTS: "Aparatura",
-}
+# setName jest przez profil USTALONY co do znaku: walidator porównuje go
+# dosłownie z "OpenAIRE_CRIS_<sufiks>" (kontrola check020_Sets). To NIE jest
+# etykieta do tłumaczenia — pierwotnie siedziały tu polskie opisy i walidator
+# odrzucił je komunikatem "Non-matching set name".
+PREFIKS_NAZWY_SETU = "OpenAIRE_CRIS_"
+
+
+def nazwa_setu(set_spec: str) -> str:
+    """Kanoniczna nazwa setu wymagana przez profil."""
+    return PREFIKS_NAZWY_SETU + set_spec.removeprefix("openaire_cris_")
+
 
 # Typy encji CERIF używane jako człon identyfikatora OAI.
 TYP_PUBLICATION = "Publications"

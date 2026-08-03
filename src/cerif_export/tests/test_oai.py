@@ -236,6 +236,9 @@ def test_identify(uczelnia, rejestr):
         "earliestDatestamp",
         "deletedRecord",
         "granularity",
+        # Dwa bloki description: oai-identifier (wymóg OAI-PMH 2.0)
+        # i rekord Service (wymóg profilu OpenAIRE CRIS).
+        "description",
         "description",
     ]
 
@@ -247,10 +250,32 @@ def test_identify_earliest_datestamp_z_najstarszego_setu(uczelnia, rejestr):
     assert tekst(korzen, "Identify", "earliestDatestamp") == "2026-01-01T12:00:00Z"
 
 
+def test_identify_ma_oai_identifier_w_description(uczelnia, rejestr):
+    """Wymóg OAI-PMH 2.0, niezależny od profilu CERIF.
+
+    Walidator euroCRIS odrzucał brak tego bloku komunikatem „the Identify
+    descriptions list (1b) does not contain an 'oai-identifier' element".
+    """
+    from cerif_export.oai.czasowniki import NS_OAI_IDENTIFIER
+
+    opis = znajdz(korzen_identify(uczelnia), "Identify", "description")[0]
+    assert opis[0].tag == f"{{{NS_OAI_IDENTIFIER}}}oai-identifier"
+
+    czlony = {etree.QName(el).localname: el.text for el in opis[0]}
+    assert czlony["scheme"] == "oai"
+    assert czlony["delimiter"] == ":"
+    assert czlony["repositoryIdentifier"] == NAMESPACE
+    assert czlony["sampleIdentifier"].startswith(f"oai:{NAMESPACE}:")
+
+
+def korzen_identify(uczelnia):
+    return wykonaj(uczelnia, verb="Identify")
+
+
 def test_identify_ma_rekord_service_w_description(uczelnia, rejestr):
     korzen = wykonaj(uczelnia, verb="Identify")
 
-    opis = znajdz(korzen, "Identify", "description")[0]
+    opis = znajdz(korzen, "Identify", "description")[1]
     assert len(opis) == 1
     assert opis[0].tag == f"{{{const.NS_CERIF}}}Service"
 
@@ -291,7 +316,10 @@ def test_list_sets_wszystkie_dziewiec(uczelnia, rejestr):
     nazwy = [el.text for el in znajdz(korzen, "ListSets", "set", "setName")]
 
     assert specyfikacje == list(const.WSZYSTKIE_SETY)
-    assert nazwy == [const.OPISY_SETOW[s] for s in const.WSZYSTKIE_SETY]
+    # setName jest ustalony przez profil co do znaku — walidator porównuje
+    # go dosłownie. Polskie opisy, które tu kiedyś były, zostały odrzucone.
+    assert nazwy == [const.nazwa_setu(s) for s in const.WSZYSTKIE_SETY]
+    assert nazwy[0] == "OpenAIRE_CRIS_publications"
 
 
 def test_list_sets_odrzuca_resumption_token(uczelnia, rejestr):

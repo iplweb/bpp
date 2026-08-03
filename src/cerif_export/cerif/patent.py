@@ -52,7 +52,7 @@ def dodaj_wynalazcow(el, patent, ctx):
 def serializuj(patent, ctx):
     """``bpp.Patent`` → element ``Patent``."""
     el = element("Patent", nsmap=wspolne.NSMAP_REKORDU)
-    wspolne.ustaw_id(el, patent, ctx)
+    wspolne.ustaw_id_rekordu(el, patent, ctx)
 
     dodaj(el, "Type", typ_coar(patent), ns=const.NS_COAR_PATENT_TYPES)
     dodaj(el, "Title", tekst(patent.tytul_oryginalny))

@@ -16,7 +16,7 @@ from cerif_export.cerif.wspolne import dodaj, element, tekst
 def serializuj(konferencja, ctx):
     """``bpp.Konferencja`` → element ``Event``."""
     el = element("Event", nsmap=wspolne.NSMAP_REKORDU)
-    wspolne.ustaw_id(el, konferencja, ctx)
+    wspolne.ustaw_id_rekordu(el, konferencja, ctx)
 
     dodaj(el, "Acronym", tekst(getattr(konferencja, "skrocona_nazwa", None)))
     dodaj(el, "Name", tekst(getattr(konferencja, "nazwa", None)))

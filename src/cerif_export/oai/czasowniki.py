@@ -40,6 +40,10 @@ logger = logging.getLogger(__name__)
 #: a nie stała samego profilu CERIF.
 SCHEMA_CERIF = "https://www.openaire.eu/schema/cris/1.2/openaire-cerif-profile.xsd"
 
+#: Namespace bloku ``oai-identifier`` z odpowiedzi ``Identify``. To element
+#: standardu OAI-PMH 2.0, nie profilu CERIF — stąd osobna stała.
+NS_OAI_IDENTIFIER = "http://www.openarchives.org/OAI/2.0/oai-identifier"
+
 CZASOWNIKI = (
     "Identify",
     "ListMetadataFormats",
@@ -198,7 +202,13 @@ def _identify(zadanie, argumenty):
     _pod(identify, "deletedRecord", const.DELETED_RECORD)
     _pod(identify, "granularity", const.GRANULARITY)
 
-    # Rekord Service w <description> — wymóg profilu OpenAIRE CRIS.
+    # Pierwszy <description>: oai-identifier. Wymagany przez OAI-PMH 2.0
+    # (walidator: "the Identify descriptions list (1b) does not contain an
+    # 'oai-identifier' element"), niezależnie od profilu CERIF.
+    _pod(identify, "description").append(_oai_identifier(zadanie))
+
+    # Drugi <description>: rekord Service — to z kolei wymóg profilu
+    # OpenAIRE CRIS.
     serializuj = serializer_service()
     kontekst = _kontekst(zadanie, _puste_zbiory())
     element = _bezpiecznie(lambda: serializuj(uczelnia, kontekst), "Service")
@@ -206,6 +216,29 @@ def _identify(zadanie, argumenty):
         _pod(identify, "description").append(element)
 
     return identify
+
+
+def _oai_identifier(zadanie):
+    """Blok ``oai-identifier`` opisujący schemat identyfikatorów repozytorium."""
+    el = etree.Element(
+        f"{{{NS_OAI_IDENTIFIER}}}oai-identifier",
+        nsmap={None: NS_OAI_IDENTIFIER, "xsi": NS_XSI},
+    )
+    el.set(
+        f"{{{NS_XSI}}}schemaLocation",
+        f"{NS_OAI_IDENTIFIER} {NS_OAI_IDENTIFIER}.xsd",
+    )
+    for nazwa, wartosc in (
+        ("scheme", "oai"),
+        ("repositoryIdentifier", zadanie.namespace),
+        ("delimiter", ":"),
+        (
+            "sampleIdentifier",
+            identyfikatory.zbuduj_z_czesci(zadanie.namespace, "wc", 1),
+        ),
+    ):
+        etree.SubElement(el, f"{{{NS_OAI_IDENTIFIER}}}{nazwa}").text = wartosc
+    return el
 
 
 def _list_metadata_formats(zadanie, argumenty):
@@ -232,7 +265,7 @@ def _list_sets(zadanie, argumenty):
     for set_spec in const.WSZYSTKIE_SETY:
         element = _pod(lista, "set")
         _pod(element, "setSpec", set_spec)
-        _pod(element, "setName", const.OPISY_SETOW[set_spec])
+        _pod(element, "setName", const.nazwa_setu(set_spec))
     return lista
 
 

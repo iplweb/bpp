@@ -29,7 +29,7 @@ import re
 
 from lxml import etree
 
-from cerif_export import const
+from cerif_export import const, identyfikatory
 
 NS = const.NS_CERIF
 NS_XML = "http://www.w3.org/XML/1998/namespace"
@@ -230,16 +230,35 @@ def czlon_lokalny(oai_id):
 
 
 def ustaw_id(el, obj, ctx):
-    """Nadaj ``@id``, o ile encja wyjdzie w swoim secie.
+    """Nadaj ``@id`` encji **osadzonej**, o ile wyjdzie w swoim secie.
 
     Gdy nie wyjdzie — element zostaje bez identyfikatora. Profil pozwala na to
     wprost ("embedded entities without internal identifiers are permitted"),
     a wskazanie na rekord, którego harvester nigdy nie zobaczy, łamałoby
     integralność referencyjną (kontrola 5a walidatora).
+
+    Do encji najwyższego poziomu służy :func:`ustaw_id_rekordu` — tam
+    identyfikator jest obowiązkowy.
     """
     lokalny = czlon_lokalny(ctx.id_dla(obj))
     if lokalny is not None:
         el.set("id", lokalny)
+    return lokalny
+
+
+def ustaw_id_rekordu(el, obj, ctx):
+    """Nadaj ``@id`` encji najwyższego poziomu — zawsze.
+
+    Profil: „Internal Identifier — **mandatory (1) in top level entity**".
+    Rekord jest właśnie wydawany, więc z definicji istnieje; przepuszczanie
+    go przez zbiór widoczności (jak przy encjach osadzonych) produkowało
+    rekordy bez identyfikatora. Walidator zgłaszał to dopiero pośrednio,
+    jako „Record for OrgUnit[@id=...] not found" przy sprawdzaniu
+    integralności referencyjnej — bo skoro rekord nie ma ``@id``, to nie da
+    się go dopasować do odwołania z innej encji.
+    """
+    lokalny = czlon_lokalny(identyfikatory.zbuduj(ctx.namespace, obj))
+    el.set("id", lokalny)
     return lokalny
 
 
