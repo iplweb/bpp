@@ -52,7 +52,12 @@ class _LiveopsResetMixin:
 
 def _uruchom_import(parent, p, analyze):
     """Wspólny ``run`` dla obu importów: woła rdzeń z liveops ``Progress`` i
-    finalizuje wynikiem (``total`` z wierszy-dzieci).
+    finalizuje wynikiem (``total`` z wierszy-dzieci + to, co zwrócił rdzeń).
+
+    Rdzeń może zwrócić dodatkowy kontekst wyniku (import POLON zwraca
+    ``{"statystyki": {...}}``); import absencji nie zwraca nic, stąd ``or {}``.
+    ``p.result`` NADPISUJE ``result_context`` w całości, więc scalamy w jednym
+    wywołaniu.
 
     ``liveops.runner._handle_error`` zapisuje traceback WYŁĄCZNIE do pola
     ``traceback`` (bez śladu na konsoli workera i bez rollbara). Owijamy
@@ -60,7 +65,7 @@ def _uruchom_import(parent, p, analyze):
     (konsola celery/run-site) + rollbar (konwencja bg-tasków), po czym
     re-raise — liveops i tak zapisze traceback do bazy i pokaże błąd w UI."""
     try:
-        analyze(parent.plik.path, parent, p)
+        wynik = analyze(parent.plik.path, parent, p)
     except Exception:
         import sys
         import traceback as _traceback
@@ -70,7 +75,7 @@ def _uruchom_import(parent, p, analyze):
         _traceback.print_exc()
         rollbar.report_exc_info(sys.exc_info())
         raise
-    p.result({"total": parent.get_details_set().count()})
+    p.result({"total": parent.get_details_set().count(), **(wynik or {})})
 
 
 class ImportPlikuAbsencji(_LiveopsResetMixin, LiveOperation):
@@ -135,6 +140,46 @@ class ImportPlikuPolon(_LiveopsResetMixin, LiveOperation):
         from import_polon.core import analyze_file_import_polon
 
         _uruchom_import(self, p, analyze_file_import_polon)
+
+    @property
+    def nazwa_pliku_skrocona(self):
+        """Nazwa pliku bez katalogu i z wyciętym środkiem — do tabeli na liście."""
+        from import_polon.utils import skroc_nazwe_pliku
+
+        return skroc_nazwe_pliku(self.plik.name)
+
+    @property
+    def statystyki(self):
+        """Liczniki zapisane przez rdzeń importu (+ wartość pochodna), albo ``None``.
+
+        ``None`` dla importów sprzed wprowadzenia statystyk oraz dla tych, które
+        nie doszły do ``p.result`` (w trakcie, anulowane, zakończone błędem).
+        Osobna właściwość, bo szablon nie może bezpiecznie łańcuchować po
+        ``result_context``, które bywa ``None``.
+
+        ``z_uczelni`` liczymy TUTAJ, a nie w szablonie, bo szablon Django nie ma
+        arytmetyki; nie zapisujemy jej też do bazy, bo wartość pochodna
+        utrwalona obok składników prędzej czy później się z nimi rozjedzie.
+        """
+        dane = (self.result_context or {}).get("statystyki")
+        if dane is None:
+            return None
+
+        odrzuconych = dane.get("odrzuconych_zatrudnienie")
+        # ``.get``, nie ``[...]``: to dane z bazy, nie inwariant kodu. Niekompletny
+        # JSON (ręczna edycja, import z przyszłej wersji rdzenia) nie może wywalić
+        # 500 na CAŁEJ liście — property nie jest wyciszane przez resolver szablonu.
+        wierszy = dane.get("wierszy_w_pliku")
+        return {
+            **dane,
+            # ``None`` (walidacja ZATRUDNIENIE wyłączona) propaguje się dalej —
+            # szablon pokaże „n/d", a nie zmyśloną liczbę.
+            "z_uczelni": (
+                None
+                if odrzuconych is None or wierszy is None
+                else wierszy - odrzuconych
+            ),
+        }
 
     def get_details_set(self):
         return WierszImportuPlikuPolon.objects.filter(parent=self)

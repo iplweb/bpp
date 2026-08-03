@@ -15,6 +15,40 @@ from import_common.core import matchuj_autora, matchuj_dyscypline, normalize_dat
 from import_polon.models import ImportPlikuPolon, WierszImportuPlikuPolon
 from import_polon.utils import read_excel_or_csv_dataframe_guess_encoding
 
+# Komunikaty oznaczające „w bazie jest już to samo, co w pliku".
+#
+# Zbiór sprawdzamy DOKŁADNYM dopasowaniem, nie ``startswith``. Powód: gdyby
+# ktoś dopisał kiedyś trzeci komunikat zaczynający się tak samo, ale ZNACZĄCY
+# zmianę, prefiksowe dopasowanie po cichu zaliczyłoby go do „bez zmian".
+# Przy dokładnym dopasowaniu nowy tekst spoza zbioru domyślnie liczy się jako
+# zmiana — to bezpieczniejsza strona pomyłki, a dopisanie go do zbioru jest
+# świadomą decyzją.
+#
+# ``views.plik_polon`` filtruje wiersze po PREFIKSIE ``KOMUNIKAT_BEZ_ZMIAN``
+# i pozostaje poprawny, bo oba warianty się od niego zaczynają.
+KOMUNIKAT_BEZ_ZMIAN = "W BPP jest identycznie jak w XLSX"
+KOMUNIKAT_BEZ_ZMIAN_BRAK_DYSCYPLIN = (
+    f"{KOMUNIKAT_BEZ_ZMIAN} (brak danych o dyscyplinach)."
+)
+KOMUNIKATY_BEZ_ZMIAN = frozenset(
+    {KOMUNIKAT_BEZ_ZMIAN, KOMUNIKAT_BEZ_ZMIAN_BRAK_DYSCYPLIN}
+)
+
+# Liczniki tworzące PODZIAŁ ZUPEŁNY I ROZŁĄCZNY wierszy pliku: każdy wiersz
+# wpada do dokładnie jednego koszyka, a ich suma == ``wierszy_w_pliku``.
+# Gwarantuje to kaskada w ``analyze_file_import_polon``: trzy ``continue``,
+# a potem rozłączne ``if bledy: … else: …``. Test pilnuje, że suma się domyka —
+# dzięki temu dołożenie w przyszłości kolejnej gałęzi ``continue`` bez
+# aktualizacji licznika zapali się na czerwono, zamiast po cichu zgubić wiersze.
+KLUCZE_PARTYCJI = (
+    "odrzuconych_zatrudnienie",
+    "odrzuconych_obca_uczelnia",
+    "ukrytych_niedopasowanych",
+    "z_bledem",
+    "ze_zmianami",
+    "bez_zmian",
+)
+
 
 def _normalize_zatrudnienie_date(value):
     dt = normalize_date(value)
@@ -250,7 +284,7 @@ def _create_new_autor_dyscyplina(
             )
         ops.append("Brak wpisu dla tego roku, utworzono zgodnie z XLSX")
     else:
-        ops.append("W BPP jest identycznie jak w XLSX (brak danych o dyscyplinach).")
+        ops.append(KOMUNIKAT_BEZ_ZMIAN_BRAK_DYSCYPLIN)
     return ops
 
 
@@ -428,7 +462,7 @@ def _sync_autor_dyscyplina(
                     autor_id=ad.autor_id, rok=ad.rok
                 )
     else:
-        ops.append("W BPP jest identycznie jak w XLSX")
+        ops.append(KOMUNIKAT_BEZ_ZMIAN)
 
     return ops
 
@@ -445,6 +479,22 @@ def _update_autor_orcid(autor, orcid, parent_model):
         if parent_model.zapisz_zmiany_do_bazy:
             autor.save()
     return ops
+
+
+def _domknij_statystyki(parent_model, statystyki):
+    """Uzupełnia liczniki o to, co da się ustalić dopiero po całej pętli."""
+    if parent_model.ignoruj_miejsce_pracy:
+        # Walidacja ZATRUDNIENIE była wyłączona, więc licznik nie jest „zero" —
+        # jest „nie mierzono". Zero sugerowałoby, że sprawdzono i nikt nie
+        # odpadł. ``None`` przechodzi przez JSON, a szablon pokaże „n/d".
+        statystyki["odrzuconych_zatrudnienie"] = None
+
+    # Jedno ciężkie zapytanie (Autor_Dyscyplina × kiedykolwiek_zatrudnieni ×
+    # Count prac) — raz, tutaj. Liczone przy renderowaniu listy kosztowałoby
+    # tyle zapytań, ile importów na stronie.
+    statystyki["do_odpiecia"] = parent_model.autorzy_niezmatchowani().count()
+
+    return statystyki
 
 
 def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon, p):
@@ -483,6 +533,16 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon, p):
 
     records = data.to_dict("records")
     total = len(records)
+
+    # Liczniki do ``result_context`` — pokazywane na liście importów. Część z
+    # nich (ile wierszy miał plik, ilu autorów przepadło po cichu) NIE JEST
+    # odtwarzalna z bazy po zakończeniu importu, bo wiersze niedopasowane przy
+    # ``ukryj_niezmatchowanych_autorow`` w ogóle nie trafiają do
+    # ``WierszImportuPlikuPolon`` — stąd liczenie w locie, a nie zapytaniem.
+    statystyki = dict.fromkeys(KLUCZE_PARTYCJI, 0)
+    statystyki["wierszy_w_pliku"] = total
+    statystyki["dopasowanych"] = 0
+
     # ``p.track`` aktualizuje pasek postępu (throttlowany) i sprawdza anulowanie
     # przed każdym wierszem — zastępuje ręczne ``send_progress`` z każdej gałęzi.
     for n_row, row in p.track(
@@ -506,6 +566,7 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon, p):
                         zatrudnienie, parent_model.uczelnia
                     ),
                 )
+                statystyki["odrzuconych_zatrudnienie"] += 1
                 continue
 
         # Match author
@@ -542,11 +603,19 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon, p):
                     f"modyfikować danych obcej uczelni."
                 ),
             )
+            statystyki["odrzuconych_obca_uczelnia"] += 1
             continue
 
         # Skip unmatched authors if configured
         if autor is None and parent_model.ukryj_niezmatchowanych_autorow:
+            statystyki["ukrytych_niedopasowanych"] += 1
             continue
+
+        # Licznik ORTOGONALNY do partycji — przecina koszyki ``z_bledem``,
+        # ``ze_zmianami`` i ``bez_zmian``, więc NIE sumuje się z nimi. Liczymy
+        # go dopiero tutaj, po guardzie obcej uczelni: „dopasowany" znaczy
+        # „rozpoznany jako NASZ autor", a nie „gdziekolwiek trafiony".
+        statystyki["dopasowanych"] += int(autor is not None)
 
         # Process disciplines
         bledy = []
@@ -577,6 +646,7 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon, p):
         # Generate result
         if bledy:
             rezultat = ". ".join(bledy)
+            statystyki["z_bledem"] += 1
         else:
             # Sync author discipline data
             ops = _sync_autor_dyscyplina(
@@ -597,6 +667,13 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon, p):
             orcid_ops = _update_autor_orcid(autor, orcid, parent_model)
             ops.extend(orcid_ops)
 
+            # Klasyfikujemy po STRUKTURZE ``ops``, nie po sklejonym ``rezultat``.
+            # Parsowanie tekstu dałoby tu błąd: operacja ORCID doklejana jest PO
+            # sentinelu, więc wiersz zmieniający wyłącznie ORCID ma ``rezultat``
+            # zaczynający się od „W BPP jest identycznie…", choć jest zmianą.
+            zmieniono = any(op not in KOMUNIKATY_BEZ_ZMIAN for op in ops)
+            statystyki["ze_zmianami" if zmieniono else "bez_zmian"] += 1
+
             rezultat = ", ".join(ops)
 
         # Create result record
@@ -609,3 +686,5 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon, p):
             subdyscyplina_naukowa=subdyscyplina_xlsx,
             rezultat=rezultat,
         )
+
+    return {"statystyki": _domknij_statystyki(parent_model, statystyki)}

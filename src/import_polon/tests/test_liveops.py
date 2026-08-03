@@ -37,7 +37,9 @@ def test_run_finalizuje_polon(admin_user, fn_test_import_polon):
     assert imp.finished_successfully is True
     n = imp.get_details_set().count()
     assert n > 0, "run() musi utworzyć wiersze-dzieci"
-    assert imp.result_context == {"total": n}
+    assert imp.result_context["total"] == n
+    # Rdzeń POLON dokłada do wyniku statystyki pokazywane na liście importów.
+    assert imp.statystyki["wierszy_w_pliku"] > 0
 
 
 @pytest.mark.django_db
@@ -52,6 +54,9 @@ def test_run_finalizuje_absencji(admin_user, fn_test_import_absencji):
     assert imp.finished_successfully is True
     n = imp.get_details_set().count()
     assert n > 0
+    # Ścisła równość CELOWO: import absencji nie ma dostać statystyk przypadkiem
+    # (rdzeń absencji nadal nie zwraca nic, więc ``or {}`` w _uruchom_import
+    # musi zadziałać).
     assert imp.result_context == {"total": n}
 
 
