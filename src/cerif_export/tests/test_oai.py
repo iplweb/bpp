@@ -21,7 +21,6 @@ from bpp.models import (
     Uczelnia,
     Wydawnictwo_Ciagle,
 )
-
 from cerif_export import const, identyfikatory
 from cerif_export.kontekst import Kursor, ZbioryWidocznosci
 from cerif_export.oai import bledy, czasowniki, tokeny
@@ -404,21 +403,52 @@ def test_stronicowanie_z_resumption_tokenem(monkeypatch, uczelnia, rejestr):
 
 
 def test_stronicowanie_przechodzi_miedzy_setami(monkeypatch, uczelnia, rejestr):
+    """Pełny harvest bez ``set`` przechodzi sety po kolei, nic nie gubiąc.
+
+    Asercja idzie po całym przejściu, a nie po migawce jednej strony:
+    rozmiar strony jest tu szczegółem implementacyjnym, a kontraktem jest
+    „każdy rekord dokładnie raz, sety w kolejności profilu".
+    """
     monkeypatch.setattr(const, "ROZMIAR_STRONY", 3)
 
-    pierwsza = wykonaj(
-        uczelnia, verb="ListIdentifiers", metadataPrefix=const.METADATA_PREFIX
-    )
-    token = tekst(pierwsza, "ListIdentifiers", "resumptionToken")
-    druga = wykonaj(uczelnia, verb="ListIdentifiers", resumptionToken=token)
+    identyfikatory_stron = []
+    sety = []
+    token = None
 
-    sety = [el.text for el in znajdz(druga, "ListIdentifiers", "header", "setSpec")]
-    assert sety == [
-        const.SET_PATENTS,
-        const.SET_PERSONS,
-        const.SET_ORGUNITS,
-        const.SET_EVENTS,
+    for numer in range(20):
+        if token is None and numer == 0:
+            korzen = wykonaj(
+                uczelnia, verb="ListIdentifiers", metadataPrefix=const.METADATA_PREFIX
+            )
+        else:
+            korzen = wykonaj(uczelnia, verb="ListIdentifiers", resumptionToken=token)
+
+        strona = [el.text for el in znajdz(korzen, "ListIdentifiers", "identifier")]
+        identyfikatory_stron.extend(strona)
+        sety.extend(
+            el.text for el in znajdz(korzen, "ListIdentifiers", "header", "setSpec")
+        )
+
+        assert len(strona) <= 3, "strona nie może przekroczyć ROZMIAR_STRONY"
+
+        tokeny = znajdz(korzen, "ListIdentifiers", "resumptionToken")
+        token = tokeny[0].text if tokeny else None
+        if not token:
+            break
+    else:
+        raise AssertionError("Stronicowanie nie zakończyło się po 20 stronach")
+
+    assert len(identyfikatory_stron) == len(set(identyfikatory_stron)), (
+        "rekord wyszedł na dwóch stronach"
+    )
+
+    # Sety pojawiają się w kolejności z profilu i nie przeplatają się.
+    kolejnosc_wystapien = list(dict.fromkeys(sety))
+    assert kolejnosc_wystapien == [
+        s for s in const.WSZYSTKIE_SETY if s in kolejnosc_wystapien
     ]
+    assert const.SET_PUBLICATIONS in kolejnosc_wystapien
+    assert const.SET_EVENTS in kolejnosc_wystapien
 
 
 def test_no_records_match_dla_pustego_setu(uczelnia, rejestr):

@@ -14,8 +14,6 @@ import pytest
 from django.core.management import call_command
 from model_bakery import baker
 
-from cerif_export.slowniki import coar, dostep, jezyki, licencje
-
 from bpp.models import (
     Charakter_Formalny,
     Jezyk,
@@ -24,6 +22,7 @@ from bpp.models import (
     Tryb_OpenAccess_Wydawnictwo_Ciagle,
     Tryb_OpenAccess_Wydawnictwo_Zwarte,
 )
+from cerif_export.slowniki import coar, dostep, jezyki, licencje
 
 JOURNAL_ARTICLE = coar.BAZA + "c_6501"
 UTILITY_MODEL = coar.BAZA + "9DKX-KSAF"

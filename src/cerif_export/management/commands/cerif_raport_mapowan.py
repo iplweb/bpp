@@ -13,8 +13,6 @@ from dataclasses import dataclass, field
 
 from django.core.management.base import BaseCommand
 
-from cerif_export.slowniki import coar, dostep
-
 from bpp.models import (
     Charakter_Formalny,
     Jezyk,
@@ -23,6 +21,7 @@ from bpp.models import (
     Tryb_OpenAccess_Wydawnictwo_Ciagle,
     Tryb_OpenAccess_Wydawnictwo_Zwarte,
 )
+from cerif_export.slowniki import coar, dostep
 
 # Reguły przepisane z migracji danych `bpp/migrations/0477_cerif_export_pola.py`
 # (funkcja `wypelnij_uri_licencji`). Dublujemy je świadomie: migracji nie wolno

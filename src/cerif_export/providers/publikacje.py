@@ -98,13 +98,20 @@ def widoczne_wydawnictwa(model, uczelnia):
 def widoczne_prace(model, uczelnia):
     """``Praca_Doktorska``/``Habilitacyjna`` eksportowane dla tej uczelni.
 
-    Brak pola opt-out (świadomie — dołożenie go to osobna zmiana produktowa),
-    scope tenanta przez bezpośredni FK ``jednostka``.
+    Scope tenanta idzie przez bezpośredni FK ``jednostka``.
+
+    Oba modele MAJĄ ``nie_eksportuj_przez_api`` (przez
+    ``Praca_Doktorska_Baza``), więc opt-out jest tu respektowany tak samo
+    jak przy wydawnictwach. Wcześniejsza wersja tego nie filtrowała, bo
+    zakładała — błędnie — że pole istnieje tylko na wydawnictwach
+    i patentach; praca oznaczona jako niepubliczna i tak szła do OpenAIRE.
     """
     wymagaj_uczelni(uczelnia)
-    return model.objects.exclude(
-        status_korekty_id__in=_ukryte_statusy(uczelnia)
-    ).filter(jednostka__uczelnia=uczelnia)
+    return (
+        model.objects.exclude(status_korekty_id__in=_ukryte_statusy(uczelnia))
+        .filter(jednostka__uczelnia=uczelnia)
+        .exclude(nie_eksportuj_przez_api=True)
+    )
 
 
 def widoczne_dla_modelu(model, uczelnia):
@@ -202,7 +209,19 @@ def _prefetche_wydawnictwa(model):
         Prefetch(
             "autorzy_set",
             queryset=_AUTORSTWA[model]
-            .objects.select_related("autor", "jednostka", "typ_odpowiedzialnosci")
+            .objects.select_related(
+                "autor",
+                # Gender w encji Person czyta Plec.skrot.
+                "autor__plec",
+                "jednostka",
+                # Bez tego leci jedno zapytanie o Uczelnia NA KAŻDE
+                # autorstwo: Jednostka.__str__ zagląda do uczelni (steruje
+                # tym Uczelnia.skrot_wydzialu_w_nazwie_jednostki). Przy
+                # dwóch rekordach niewidoczne, przy pełnym harveście to
+                # N+1. ``_SELECT_PRACY`` ciągnie to od początku.
+                "jednostka__uczelnia",
+                "typ_odpowiedzialnosci",
+            )
             .order_by("kolejnosc"),
         ),
         Prefetch(

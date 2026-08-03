@@ -4972,6 +4972,7 @@ CREATE TABLE public.bpp_jednostka (
     zezwalaj_na_ranking_autorow boolean NOT NULL,
     aktualna_override boolean,
     nie_eksportuj_przez_api boolean NOT NULL,
+    ror_id character varying(64) NOT NULL,
     CONSTRAINT bpp_jednostka_kolejnosc_check CHECK ((kolejnosc >= 0)),
     CONSTRAINT bpp_jednostka_level_check CHECK ((level >= 0)),
     CONSTRAINT bpp_jednostka_lft_check CHECK ((lft >= 0)),
@@ -5036,6 +5037,7 @@ CREATE TABLE public.bpp_charakter_formalny (
     charakter_ogolny character varying(3) NOT NULL,
     wliczaj_do_rankingu boolean NOT NULL,
     ukryty boolean NOT NULL,
+    coar_type character varying(200) NOT NULL,
     CONSTRAINT bpp_charakter_formalny_charakter_sloty_check CHECK ((charakter_sloty >= 0)),
     CONSTRAINT bpp_charakter_formalny_level_check CHECK ((level >= 0)),
     CONSTRAINT bpp_charakter_formalny_lft_check CHECK ((lft >= 0)),
@@ -5456,7 +5458,8 @@ CREATE TABLE public.bpp_jezyk (
     skrot character varying(128) NOT NULL,
     pbn_uid_id character varying(5),
     skrot_crossref character varying(10),
-    widoczny boolean NOT NULL
+    widoczny boolean NOT NULL,
+    kod_bcp47 character varying(35) NOT NULL
 );
 
 
@@ -6028,7 +6031,8 @@ CREATE VIEW public.bpp_kronika_view AS
 CREATE TABLE public.bpp_licencja_openaccess (
     id integer NOT NULL,
     nazwa character varying(512) NOT NULL,
-    skrot character varying(128) NOT NULL
+    skrot character varying(128) NOT NULL,
+    uri character varying(512) NOT NULL
 );
 
 
@@ -7232,7 +7236,8 @@ UNION ALL
 
 CREATE TABLE public.bpp_rodzaj_prawa_patentowego (
     id integer NOT NULL,
-    nazwa character varying(512) NOT NULL
+    nazwa character varying(512) NOT NULL,
+    coar_type character varying(200) NOT NULL
 );
 
 
@@ -7469,7 +7474,8 @@ ALTER TABLE public.bpp_szablondlaopisubibliograficznego ALTER COLUMN id ADD GENE
 CREATE TABLE public.bpp_tryb_openaccess_wydawnictwo_ciagle (
     id integer NOT NULL,
     nazwa character varying(512) NOT NULL,
-    skrot character varying(128) NOT NULL
+    skrot character varying(128) NOT NULL,
+    coar_access_right character varying(200) NOT NULL
 );
 
 
@@ -7494,7 +7500,8 @@ ALTER TABLE public.bpp_tryb_openaccess_wydawnictwo_ciagle ALTER COLUMN id ADD GE
 CREATE TABLE public.bpp_tryb_openaccess_wydawnictwo_zwarte (
     id integer NOT NULL,
     nazwa character varying(512) NOT NULL,
-    skrot character varying(128) NOT NULL
+    skrot character varying(128) NOT NULL,
+    coar_access_right character varying(200) NOT NULL
 );
 
 
@@ -7663,6 +7670,10 @@ CREATE TABLE public.bpp_uczelnia (
     wydruk_margines_lewo character varying(10) NOT NULL,
     wydruk_margines_prawo character varying(10) NOT NULL,
     zwijaj_dlugie_listy_autorow boolean NOT NULL,
+    api_v1_wlaczone boolean NOT NULL,
+    eksport_cerif_wlaczony boolean NOT NULL,
+    oai_identyfikator_repozytorium character varying(255) NOT NULL,
+    ror_id character varying(64) NOT NULL,
     CONSTRAINT bpp_uczelnia_ilosc_jednostek_na_strone_check CHECK ((ilosc_jednostek_na_strone >= 0)),
     CONSTRAINT bpp_uczelnia_pokazuj_deklaracje_dostepnosci_check CHECK ((pokazuj_deklaracje_dostepnosci >= 0))
 );
@@ -7714,7 +7725,8 @@ CREATE TABLE public.bpp_ukryj_status_korekty (
     raporty boolean NOT NULL,
     sloty boolean NOT NULL,
     api boolean NOT NULL,
-    podglad boolean NOT NULL
+    podglad boolean NOT NULL,
+    cerif boolean NOT NULL
 );
 
 
@@ -15025,34 +15037,34 @@ COPY public.bpp_cache_punktacja_dyscypliny (id, rekord_id, pkd, slot, dyscyplina
 -- Data for Name: bpp_charakter_formalny; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_charakter_formalny (id, nazwa, skrot, publikacja, streszczenie, nazwa_w_primo, charakter_pbn_id, level, lft, parent_id, rght, tree_id, charakter_sloty, rodzaj_pbn, charakter_ogolny, wliczaj_do_rankingu, ukryty) FROM stdin;
-3	Komentarz	KOM	t	f		\N	0	1	\N	2	7	\N	\N	xxx	t	f
-4	List do redakcji	L	t	f		\N	0	1	\N	2	11	\N	\N	xxx	t	f
-5	Publikacja w suplemencie	Supl	t	f	Artykuł	\N	0	1	\N	2	20	\N	\N	xxx	t	f
-6	Czasopismo	CZ	f	f	Czasopismo	\N	0	1	\N	2	3	\N	\N	xxx	t	f
-10	inne	IN	f	f		\N	0	1	\N	2	6	\N	\N	xxx	t	f
-11	Tłumaczenie	TŁ	f	f		\N	0	1	\N	2	27	\N	\N	xxx	t	f
-14	Polskie streszczenie zjazdowe	PSZ	f	t	Materiał konferencyjny	\N	0	1	\N	2	15	\N	\N	xxx	t	f
-15	Poradnik zawodowy	PZ	f	f		\N	0	1	\N	2	16	\N	\N	xxx	t	f
-16	Recenzja	R	f	f		\N	0	1	\N	2	21	\N	\N	xxx	t	f
-20	Streszczenie zjazdowe konferencji międzynarodowej	ZSZ	f	t		\N	0	1	\N	2	26	\N	\N	xxx	t	f
-21	Broszura	BR	f	f		\N	0	1	\N	2	2	\N	\N	xxx	t	f
-22	Projekt wynalazczy	WYN	f	f		\N	0	1	\N	2	19	\N	\N	xxx	t	f
-23	Patent	PAT	f	f		\N	0	1	\N	2	12	\N	\N	xxx	t	f
-24	Praca doktorska	D	t	f		\N	0	1	\N	2	17	\N	\N	xxx	t	f
-25	Praca habilitacyjna	H	t	f		\N	0	1	\N	2	18	\N	\N	xxx	t	f
-27	Dokument elektroniczny	DE	f	f		\N	0	1	\N	2	4	\N	\N	xxx	t	f
-9	Fragment	frg	t	f		\N	0	1	\N	2	5	2	2	xxx	t	f
-26	Podręcznik akademicki	PA	f	f		\N	0	1	\N	2	13	1	3	xxx	t	f
-12	Skrypt	SKR	f	f		\N	0	1	\N	2	25	1	3	xxx	t	f
-1	Artykuł w czasopismie	AC	t	f	Artykuł	\N	0	1	\N	2	1	\N	\N	art	t	f
-2	Książka	KS	t	f	Książka	\N	0	1	\N	2	8	1	3	ksi	t	f
-8	Książka w języku obcym	KSZ	t	f	Książka	\N	0	1	\N	2	9	1	3	ksi	t	f
-7	Książka w języku polskim	KSP	t	f	Książka	\N	0	1	\N	2	10	1	3	ksi	t	f
-17	Rozdział książki	ROZ	t	f	Rozdział	\N	0	1	\N	2	23	2	2	ksi	t	f
-18	Rozdział skryptu	ROZS	f	f	Rozdział	\N	0	1	\N	2	24	2	2	roz	t	f
-13	Polski Referat Zjazdowy	PRZ	t	f	Materiał konferencyjny	\N	0	1	\N	2	14	3	\N	xxx	t	f
-19	Referat zjazdowy konferencji miedzynarodowej	ZRZ	t	f	Materiał konferencyjny	\N	0	1	\N	2	22	3	\N	xxx	t	f
+COPY public.bpp_charakter_formalny (id, nazwa, skrot, publikacja, streszczenie, nazwa_w_primo, charakter_pbn_id, level, lft, parent_id, rght, tree_id, charakter_sloty, rodzaj_pbn, charakter_ogolny, wliczaj_do_rankingu, ukryty, coar_type) FROM stdin;
+3	Komentarz	KOM	t	f		\N	0	1	\N	2	7	\N	\N	xxx	t	f	
+4	List do redakcji	L	t	f		\N	0	1	\N	2	11	\N	\N	xxx	t	f	
+5	Publikacja w suplemencie	Supl	t	f	Artykuł	\N	0	1	\N	2	20	\N	\N	xxx	t	f	
+6	Czasopismo	CZ	f	f	Czasopismo	\N	0	1	\N	2	3	\N	\N	xxx	t	f	
+10	inne	IN	f	f		\N	0	1	\N	2	6	\N	\N	xxx	t	f	
+11	Tłumaczenie	TŁ	f	f		\N	0	1	\N	2	27	\N	\N	xxx	t	f	
+14	Polskie streszczenie zjazdowe	PSZ	f	t	Materiał konferencyjny	\N	0	1	\N	2	15	\N	\N	xxx	t	f	
+15	Poradnik zawodowy	PZ	f	f		\N	0	1	\N	2	16	\N	\N	xxx	t	f	
+16	Recenzja	R	f	f		\N	0	1	\N	2	21	\N	\N	xxx	t	f	
+20	Streszczenie zjazdowe konferencji międzynarodowej	ZSZ	f	t		\N	0	1	\N	2	26	\N	\N	xxx	t	f	
+21	Broszura	BR	f	f		\N	0	1	\N	2	2	\N	\N	xxx	t	f	
+22	Projekt wynalazczy	WYN	f	f		\N	0	1	\N	2	19	\N	\N	xxx	t	f	
+23	Patent	PAT	f	f		\N	0	1	\N	2	12	\N	\N	xxx	t	f	
+24	Praca doktorska	D	t	f		\N	0	1	\N	2	17	\N	\N	xxx	t	f	
+25	Praca habilitacyjna	H	t	f		\N	0	1	\N	2	18	\N	\N	xxx	t	f	
+27	Dokument elektroniczny	DE	f	f		\N	0	1	\N	2	4	\N	\N	xxx	t	f	
+9	Fragment	frg	t	f		\N	0	1	\N	2	5	2	2	xxx	t	f	
+26	Podręcznik akademicki	PA	f	f		\N	0	1	\N	2	13	1	3	xxx	t	f	
+12	Skrypt	SKR	f	f		\N	0	1	\N	2	25	1	3	xxx	t	f	
+1	Artykuł w czasopismie	AC	t	f	Artykuł	\N	0	1	\N	2	1	\N	\N	art	t	f	
+2	Książka	KS	t	f	Książka	\N	0	1	\N	2	8	1	3	ksi	t	f	
+8	Książka w języku obcym	KSZ	t	f	Książka	\N	0	1	\N	2	9	1	3	ksi	t	f	
+7	Książka w języku polskim	KSP	t	f	Książka	\N	0	1	\N	2	10	1	3	ksi	t	f	
+17	Rozdział książki	ROZ	t	f	Rozdział	\N	0	1	\N	2	23	2	2	ksi	t	f	
+18	Rozdział skryptu	ROZS	f	f	Rozdział	\N	0	1	\N	2	24	2	2	roz	t	f	
+13	Polski Referat Zjazdowy	PRZ	t	f	Materiał konferencyjny	\N	0	1	\N	2	14	3	\N	xxx	t	f	
+19	Referat zjazdowy konferencji miedzynarodowej	ZRZ	t	f	Materiał konferencyjny	\N	0	1	\N	2	22	3	\N	xxx	t	f	
 \.
 
 
@@ -15198,7 +15210,7 @@ COPY public.bpp_grupa_pracownicza (id, nazwa) FROM stdin;
 -- Data for Name: bpp_jednostka; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_jednostka (id, ostatnio_zmieniony, adnotacje, nazwa, skrot, opis, slug, widoczna, wchodzi_do_rankingu_autorow, email, www, search, wydzial_id, pbn_id, skupia_pracownikow, zarzadzaj_automatycznie, uczelnia_id, aktualna, kolejnosc, pbn_uid_id, level, lft, rght, tree_id, parent_id, pokazuj_opis, rodzaj_id, poprzednie_nazwy, skrot_nazwy, zezwalaj_na_ranking_autorow, aktualna_override, nie_eksportuj_przez_api) FROM stdin;
+COPY public.bpp_jednostka (id, ostatnio_zmieniony, adnotacje, nazwa, skrot, opis, slug, widoczna, wchodzi_do_rankingu_autorow, email, www, search, wydzial_id, pbn_id, skupia_pracownikow, zarzadzaj_automatycznie, uczelnia_id, aktualna, kolejnosc, pbn_uid_id, level, lft, rght, tree_id, parent_id, pokazuj_opis, rodzaj_id, poprzednie_nazwy, skrot_nazwy, zezwalaj_na_ranking_autorow, aktualna_override, nie_eksportuj_przez_api, ror_id) FROM stdin;
 \.
 
 
@@ -15214,16 +15226,16 @@ COPY public.bpp_jednostka_rodzic (id, od, "do", jednostka_id, parent_id) FROM st
 -- Data for Name: bpp_jezyk; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_jezyk (id, nazwa, skrot, pbn_uid_id, skrot_crossref, widoczny) FROM stdin;
-2	angielski	ang.	\N	\N	t
-3	francuski	fr.	\N	\N	t
-4	brak danych	b/d	\N	\N	t
-5	niemiecki	niem.	\N	\N	t
-6	inny	in.	\N	\N	t
-7	hiszpański	hiszp.	\N	\N	t
-8	rosyjski	ros.	\N	\N	t
-9	włoski	wł.	\N	\N	t
-1	polski	pol.	\N	pl	t
+COPY public.bpp_jezyk (id, nazwa, skrot, pbn_uid_id, skrot_crossref, widoczny, kod_bcp47) FROM stdin;
+2	angielski	ang.	\N	\N	t	
+3	francuski	fr.	\N	\N	t	
+4	brak danych	b/d	\N	\N	t	
+5	niemiecki	niem.	\N	\N	t	
+6	inny	in.	\N	\N	t	
+7	hiszpański	hiszp.	\N	\N	t	
+8	rosyjski	ros.	\N	\N	t	
+9	włoski	wł.	\N	\N	t	
+1	polski	pol.	\N	pl	t	pl
 \.
 
 
@@ -15247,15 +15259,15 @@ COPY public.bpp_konferencja (id, ostatnio_zmieniony, adnotacje, nazwa, skrocona_
 -- Data for Name: bpp_licencja_openaccess; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_licencja_openaccess (id, nazwa, skrot) FROM stdin;
-1	Creative Commons - Uznanie Autorstwa (CC-BY)	CC-BY
-2	Creative Commons - Uznanie Autorstwa - Na Tych Samych Warunkach (CC-BY-SA)	CC-BY-SA
-3	Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne (CC-BY-NC);	CC-BY-NC
-4	Creative Commons - Uznanie Autorstwa - Bez utworów zależnych (CC-BY-ND)	CC-BY-ND
-5	Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne - Na tych samych warunkach (CC-BY-NC-SA)	CC-BY-NC-SA
-6	Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne - Bez utworów zależnych (CC-BY-NC-ND)	CC-BY-NC-ND
-7	inna otwarta licencja	OTHER
-8	Creative Commons - Universal - Przekazanie do Domeny Publicznej (CC0 1.0)	CC-ZERO
+COPY public.bpp_licencja_openaccess (id, nazwa, skrot, uri) FROM stdin;
+7	inna otwarta licencja	OTHER	
+8	Creative Commons - Universal - Przekazanie do Domeny Publicznej (CC0 1.0)	CC-ZERO	https://creativecommons.org/publicdomain/zero/1.0/
+4	Creative Commons - Uznanie Autorstwa - Bez utworów zależnych (CC-BY-ND)	CC-BY-ND	https://creativecommons.org/licenses/by-nd/4.0/
+2	Creative Commons - Uznanie Autorstwa - Na Tych Samych Warunkach (CC-BY-SA)	CC-BY-SA	https://creativecommons.org/licenses/by-sa/4.0/
+6	Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne - Bez utworów zależnych (CC-BY-NC-ND)	CC-BY-NC-ND	https://creativecommons.org/licenses/by-nc-nd/4.0/
+5	Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne - Na tych samych warunkach (CC-BY-NC-SA)	CC-BY-NC-SA	https://creativecommons.org/licenses/by-nc-sa/4.0/
+3	Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne (CC-BY-NC);	CC-BY-NC	https://creativecommons.org/licenses/by-nc/4.0/
+1	Creative Commons - Uznanie Autorstwa (CC-BY)	CC-BY	https://creativecommons.org/licenses/by/4.0/
 \.
 
 
@@ -15392,12 +15404,12 @@ COPY public.bpp_rekord_mat (id, tytul_oryginalny, tytul, search_index, rok, jezy
 -- Data for Name: bpp_rodzaj_prawa_patentowego; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_rodzaj_prawa_patentowego (id, nazwa) FROM stdin;
-1	wynalazek
-2	wzór użytkowy
-3	wzór przemysłowy
-4	znak towarowy
-5	odmiana rośliny
+COPY public.bpp_rodzaj_prawa_patentowego (id, nazwa, coar_type) FROM stdin;
+1	wynalazek	
+2	wzór użytkowy	
+3	wzór przemysłowy	
+4	znak towarowy	
+5	odmiana rośliny	
 \.
 
 
@@ -15482,10 +15494,10 @@ COPY public.bpp_szablondlaopisubibliograficznego (id, model_id, nazwa_szablonu) 
 -- Data for Name: bpp_tryb_openaccess_wydawnictwo_ciagle; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_tryb_openaccess_wydawnictwo_ciagle (id, nazwa, skrot) FROM stdin;
-1	Otwarte czasopismo	OPEN_JOURNAL
-2	Otwarte repositorium	OPEN_REPOSITORY
-3	Inne	OTHER
+COPY public.bpp_tryb_openaccess_wydawnictwo_ciagle (id, nazwa, skrot, coar_access_right) FROM stdin;
+1	Otwarte czasopismo	OPEN_JOURNAL	
+2	Otwarte repositorium	OPEN_REPOSITORY	
+3	Inne	OTHER	
 \.
 
 
@@ -15493,10 +15505,10 @@ COPY public.bpp_tryb_openaccess_wydawnictwo_ciagle (id, nazwa, skrot) FROM stdin
 -- Data for Name: bpp_tryb_openaccess_wydawnictwo_zwarte; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_tryb_openaccess_wydawnictwo_zwarte (id, nazwa, skrot) FROM stdin;
-1	Witryna wydawcy	PUBLISHER_WEBSITE
-2	Otwarte repositorium	OPEN_REPOSITORY
-3	Inne	OTHER
+COPY public.bpp_tryb_openaccess_wydawnictwo_zwarte (id, nazwa, skrot, coar_access_right) FROM stdin;
+1	Witryna wydawcy	PUBLISHER_WEBSITE	
+2	Otwarte repositorium	OPEN_REPOSITORY	
+3	Inne	OTHER	
 \.
 
 
@@ -15577,7 +15589,7 @@ COPY public.bpp_tytul (id, nazwa, skrot) FROM stdin;
 -- Data for Name: bpp_uczelnia; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_uczelnia (id, ostatnio_zmieniony, adnotacje, nazwa, skrot, nazwa_dopelniacz_field, slug, logo_www, logo_svg, favicon_ico, pbn_id, obca_jednostka_id, pokazuj_index_copernicus, pokazuj_punktacje_wewnetrzna, pokazuj_status_korekty, pokazuj_ranking_autorow, pokazuj_praca_recenzowana, clarivate_password, clarivate_username, domyslnie_afiliuje, pokazuj_liczbe_cytowan_w_rankingu, pokazuj_liczbe_cytowan_na_stronie_autora, wydruk_logo, wydruk_parametry_zapytania, wydruk_logo_szerokosc, wyszukiwanie_rekordy_na_strone_anonim, wyszukiwanie_rekordy_na_strone_zalogowany, pokazuj_punktacja_snip, podpowiadaj_dyscypliny, pokazuj_tabele_slotow_na_stronie_rekordu, pokazuj_raport_slotow_autor, pokazuj_raport_slotow_uczelnia, ranking_autorow_rozbij_domyslnie, pokazuj_raport_slotow_zerowy, sortuj_jednostki_alfabetycznie, metoda_do_roku_formularze, pbn_uid_id, pbn_api_root, pbn_app_name, pbn_app_token, pbn_aktualizuj_na_biezaco, pbn_integracja, pbn_api_user_id, pbn_api_nie_wysylaj_prac_bez_pk, ilosc_jednostek_na_strone, pokazuj_tylko_jednostki_nadrzedne, wymagaj_informacji_o_oplatach, pokazuj_formularz_zglaszania_publikacji, pbn_api_afiliacja_zawsze_na_uczelnie, pbn_wysylaj_bez_oswiadczen, deklaracja_dostepnosci_tekst, deklaracja_dostepnosci_url, pokazuj_deklaracje_dostepnosci, ranking_autorow_bez_kol_naukowych, pokazuj_autorow_obcych_w_przegladaniu_danych, pokazuj_autorow_bez_prac_w_przegladaniu_danych, drukuj_alternatywne_oswiadczenia, drukuj_oswiadczenia, pokazuj_zrodla_bez_prac_w_przegladaniu_danych, pokazuj_jednostki_na_pierwszej_stronie, pokazuj_wydzialy_na_pierwszej_stronie, przydzielaj_1_slot_gdy_udzial_mniejszy, pytaj_o_zgode_na_publikacje_pelnego_tekstu, uzywaj_wydzialow, tytul_strony_glownej, wymagaj_logowania_zglos_publikacje, nowy_autor_z_formularza_pokazuj, orcid_client_id, orcid_client_secret, orcid_sandbox, orcid_tylko_dla_pracownikow, wymagaj_oplatach_artykul, wymagaj_oplatach_inne, wymagaj_oplatach_monografia, wymagaj_oplatach_rozdzial, pbn_kasuj_dyscypliny_selektywnie, pokazuj_siec_powiazan, dspace_aktywny, dspace_api_endpoint, dspace_api_password, dspace_api_username, dspace_domyslny_jezyk_dc, site_id, theme_name, google_analytics_property_id, google_verification_code, pokazuj_oswiadczenie_ken, skrot_wydzialu_w_nazwie_jednostki, wydruk_margines_dol, wydruk_margines_gora, wydruk_margines_lewo, wydruk_margines_prawo, zwijaj_dlugie_listy_autorow) FROM stdin;
+COPY public.bpp_uczelnia (id, ostatnio_zmieniony, adnotacje, nazwa, skrot, nazwa_dopelniacz_field, slug, logo_www, logo_svg, favicon_ico, pbn_id, obca_jednostka_id, pokazuj_index_copernicus, pokazuj_punktacje_wewnetrzna, pokazuj_status_korekty, pokazuj_ranking_autorow, pokazuj_praca_recenzowana, clarivate_password, clarivate_username, domyslnie_afiliuje, pokazuj_liczbe_cytowan_w_rankingu, pokazuj_liczbe_cytowan_na_stronie_autora, wydruk_logo, wydruk_parametry_zapytania, wydruk_logo_szerokosc, wyszukiwanie_rekordy_na_strone_anonim, wyszukiwanie_rekordy_na_strone_zalogowany, pokazuj_punktacja_snip, podpowiadaj_dyscypliny, pokazuj_tabele_slotow_na_stronie_rekordu, pokazuj_raport_slotow_autor, pokazuj_raport_slotow_uczelnia, ranking_autorow_rozbij_domyslnie, pokazuj_raport_slotow_zerowy, sortuj_jednostki_alfabetycznie, metoda_do_roku_formularze, pbn_uid_id, pbn_api_root, pbn_app_name, pbn_app_token, pbn_aktualizuj_na_biezaco, pbn_integracja, pbn_api_user_id, pbn_api_nie_wysylaj_prac_bez_pk, ilosc_jednostek_na_strone, pokazuj_tylko_jednostki_nadrzedne, wymagaj_informacji_o_oplatach, pokazuj_formularz_zglaszania_publikacji, pbn_api_afiliacja_zawsze_na_uczelnie, pbn_wysylaj_bez_oswiadczen, deklaracja_dostepnosci_tekst, deklaracja_dostepnosci_url, pokazuj_deklaracje_dostepnosci, ranking_autorow_bez_kol_naukowych, pokazuj_autorow_obcych_w_przegladaniu_danych, pokazuj_autorow_bez_prac_w_przegladaniu_danych, drukuj_alternatywne_oswiadczenia, drukuj_oswiadczenia, pokazuj_zrodla_bez_prac_w_przegladaniu_danych, pokazuj_jednostki_na_pierwszej_stronie, pokazuj_wydzialy_na_pierwszej_stronie, przydzielaj_1_slot_gdy_udzial_mniejszy, pytaj_o_zgode_na_publikacje_pelnego_tekstu, uzywaj_wydzialow, tytul_strony_glownej, wymagaj_logowania_zglos_publikacje, nowy_autor_z_formularza_pokazuj, orcid_client_id, orcid_client_secret, orcid_sandbox, orcid_tylko_dla_pracownikow, wymagaj_oplatach_artykul, wymagaj_oplatach_inne, wymagaj_oplatach_monografia, wymagaj_oplatach_rozdzial, pbn_kasuj_dyscypliny_selektywnie, pokazuj_siec_powiazan, dspace_aktywny, dspace_api_endpoint, dspace_api_password, dspace_api_username, dspace_domyslny_jezyk_dc, site_id, theme_name, google_analytics_property_id, google_verification_code, pokazuj_oswiadczenie_ken, skrot_wydzialu_w_nazwie_jednostki, wydruk_margines_dol, wydruk_margines_gora, wydruk_margines_lewo, wydruk_margines_prawo, zwijaj_dlugie_listy_autorow, api_v1_wlaczone, eksport_cerif_wlaczony, oai_identyfikator_repozytorium, ror_id) FROM stdin;
 \.
 
 
@@ -15585,7 +15597,7 @@ COPY public.bpp_uczelnia (id, ostatnio_zmieniony, adnotacje, nazwa, skrot, nazwa
 -- Data for Name: bpp_ukryj_status_korekty; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_ukryj_status_korekty (id, status_korekty_id, uczelnia_id, multiwyszukiwarka, rankingi, raporty, sloty, api, podglad) FROM stdin;
+COPY public.bpp_ukryj_status_korekty (id, status_korekty_id, uczelnia_id, multiwyszukiwarka, rankingi, raporty, sloty, api, podglad, cerif) FROM stdin;
 \.
 
 
@@ -16184,6 +16196,35 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+992	bpp	0449_seed_rodzajjednostki	2000-01-01 00:00:00+00
+993	bpp	0450_jednostka_rodzaj	2000-01-01 00:00:00+00
+994	bpp	0451_backfill_jednostka_rodzaj	2000-01-01 00:00:00+00
+995	bpp	0452_jednostka_pola_faza_a	2000-01-01 00:00:00+00
+996	bpp	0453_zrodlo_trigram_indexes	2000-01-01 00:00:00+00
+999	bpp	0456_faza_b_i3	2000-01-01 00:00:00+00
+1000	bpp	0457_faza_b_i4	2000-01-01 00:00:00+00
+1002	bpp	0444_charakter_formalny_ukryty_charakter_pbn_ukryty_and_more	2000-01-01 00:00:00+00
+1003	bpp	0459_faza_b_ii1_retarget	2000-01-01 00:00:00+00
+1004	bpp	0460_faza_b_ii2_repoint	2000-01-01 00:00:00+00
+1005	bpp	0461_faza_b_iii1_usun_rodzaj_jednostki	2000-01-01 00:00:00+00
+1006	bpp	0462_faza_b_iv1_przelicz_aktualna	2000-01-01 00:00:00+00
+1007	bpp	0463_faza_b_iv2_multiseek_values	2000-01-01 00:00:00+00
+1008	bpp	0464_rodzajjednostki_autor_moze_afiliowac	2000-01-01 00:00:00+00
+1009	bpp	0454_merge_20260706_0727	2000-01-01 00:00:00+00
+1010	bpp	0444_deferred_podstawowe_miejsce_pracy	2000-01-01 00:00:00+00
+1011	bpp	0445_merge_20260621_0640	2000-01-01 00:00:00+00
+1012	bpp	0465_merge_20260707_0736	2000-01-01 00:00:00+00
+1013	deduplikator_zrodel	0002_scanzrodelforduplicates_sourceduplicatecandidate	2000-01-01 00:00:00+00
+1014	denorm	0018_alter_dirtyinstance_content_type_and_more	2000-01-01 00:00:00+00
+1015	denorm	0019_conditional_notify_during_flush	2000-01-01 00:00:00+00
+1016	ewaluacja_liczba_n	0009_iloscudzialow_uczelnia	2000-01-01 00:00:00+00
+1018	ewaluacja_metryki	0006_metrykaautora_uczelnia	2000-01-01 00:00:00+00
+1019	ewaluacja_metryki	0007_statusgenerowania_uczelnia	2000-01-01 00:00:00+00
+1020	ewaluacja_metryki	0008_metrykaautora_uczelnia_notnull	2000-01-01 00:00:00+00
+1021	ewaluacja_metryki	0009_merge_20260604_1952	2000-01-01 00:00:00+00
+1022	import_dyscyplin	0024_faza_b_ii2_repoint_wydzial	2000-01-01 00:00:00+00
+1023	import_polon	0016_importplikupolon_uczelnia	2000-01-01 00:00:00+00
+1024	import_punktacji_zrodel	0001_initial	2000-01-01 00:00:00+00
 20	axes	0001_initial	2000-01-01 00:00:00+00
 831	nowe_raporty	0001_initial	2000-01-01 00:00:00+00
 1025	importer_publikacji	0012_importsession_uczelnia	2000-01-01 00:00:00+00
@@ -17268,35 +17309,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 989	bpp	0446_rzeczownik_tylko_mianownik	2000-01-01 00:00:00+00
 990	bpp	0447_fd390_aktualna_jednostka_demote_obca	2000-01-01 00:00:00+00
 991	bpp	0448_rodzajjednostki	2000-01-01 00:00:00+00
-992	bpp	0449_seed_rodzajjednostki	2000-01-01 00:00:00+00
-993	bpp	0450_jednostka_rodzaj	2000-01-01 00:00:00+00
-994	bpp	0451_backfill_jednostka_rodzaj	2000-01-01 00:00:00+00
-995	bpp	0452_jednostka_pola_faza_a	2000-01-01 00:00:00+00
-996	bpp	0453_zrodlo_trigram_indexes	2000-01-01 00:00:00+00
-999	bpp	0456_faza_b_i3	2000-01-01 00:00:00+00
-1000	bpp	0457_faza_b_i4	2000-01-01 00:00:00+00
-1002	bpp	0444_charakter_formalny_ukryty_charakter_pbn_ukryty_and_more	2000-01-01 00:00:00+00
-1003	bpp	0459_faza_b_ii1_retarget	2000-01-01 00:00:00+00
-1004	bpp	0460_faza_b_ii2_repoint	2000-01-01 00:00:00+00
-1005	bpp	0461_faza_b_iii1_usun_rodzaj_jednostki	2000-01-01 00:00:00+00
-1006	bpp	0462_faza_b_iv1_przelicz_aktualna	2000-01-01 00:00:00+00
-1007	bpp	0463_faza_b_iv2_multiseek_values	2000-01-01 00:00:00+00
-1008	bpp	0464_rodzajjednostki_autor_moze_afiliowac	2000-01-01 00:00:00+00
-1009	bpp	0454_merge_20260706_0727	2000-01-01 00:00:00+00
-1010	bpp	0444_deferred_podstawowe_miejsce_pracy	2000-01-01 00:00:00+00
-1011	bpp	0445_merge_20260621_0640	2000-01-01 00:00:00+00
-1012	bpp	0465_merge_20260707_0736	2000-01-01 00:00:00+00
-1013	deduplikator_zrodel	0002_scanzrodelforduplicates_sourceduplicatecandidate	2000-01-01 00:00:00+00
-1014	denorm	0018_alter_dirtyinstance_content_type_and_more	2000-01-01 00:00:00+00
-1015	denorm	0019_conditional_notify_during_flush	2000-01-01 00:00:00+00
-1016	ewaluacja_liczba_n	0009_iloscudzialow_uczelnia	2000-01-01 00:00:00+00
-1018	ewaluacja_metryki	0006_metrykaautora_uczelnia	2000-01-01 00:00:00+00
-1019	ewaluacja_metryki	0007_statusgenerowania_uczelnia	2000-01-01 00:00:00+00
-1020	ewaluacja_metryki	0008_metrykaautora_uczelnia_notnull	2000-01-01 00:00:00+00
-1021	ewaluacja_metryki	0009_merge_20260604_1952	2000-01-01 00:00:00+00
-1022	import_dyscyplin	0024_faza_b_ii2_repoint_wydzial	2000-01-01 00:00:00+00
-1023	import_polon	0016_importplikupolon_uczelnia	2000-01-01 00:00:00+00
-1024	import_punktacji_zrodel	0001_initial	2000-01-01 00:00:00+00
+1119	bpp	0477_cerif_export_pola	2000-01-01 00:00:00+00
 \.
 
 
@@ -17669,21 +17682,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-178	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
-179	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
-180	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-181	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-182	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-183	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-184	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-185	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-186	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-187	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-188	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-189	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-190	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-191	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-192	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -19265,7 +19263,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1118, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1119, true);
 
 
 --
@@ -32297,14 +32295,14 @@ CREATE TRIGGER d_aft_row_upd_on_bpp_autor_wydawnictwo_zwarte_slug AFTER UPDATE O
 -- Name: bpp_charakter_formalny d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_cie1b7; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_cie1b7 AFTER UPDATE ON public.bpp_charakter_formalny FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR ((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text) OR ((old.skrot)::text IS DISTINCT FROM (new.skrot)::text) OR (old.parent_id IS DISTINCT FROM new.parent_id) OR ((old.charakter_ogolny)::text IS DISTINCT FROM (new.charakter_ogolny)::text) OR (old.publikacja IS DISTINCT FROM new.publikacja) OR (old.streszczenie IS DISTINCT FROM new.streszczenie) OR ((old.nazwa_w_primo)::text IS DISTINCT FROM (new.nazwa_w_primo)::text) OR (old.charakter_pbn_id IS DISTINCT FROM new.charakter_pbn_id) OR (old.rodzaj_pbn IS DISTINCT FROM new.rodzaj_pbn) OR (old.charakter_sloty IS DISTINCT FROM new.charakter_sloty) OR (old.wliczaj_do_rankingu IS DISTINCT FROM new.wliczaj_do_rankingu) OR (old.ukryty IS DISTINCT FROM new.ukryty))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_cie1b7();
+CREATE TRIGGER d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_cie1b7 AFTER UPDATE ON public.bpp_charakter_formalny FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR ((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text) OR ((old.skrot)::text IS DISTINCT FROM (new.skrot)::text) OR (old.parent_id IS DISTINCT FROM new.parent_id) OR ((old.charakter_ogolny)::text IS DISTINCT FROM (new.charakter_ogolny)::text) OR (old.publikacja IS DISTINCT FROM new.publikacja) OR (old.streszczenie IS DISTINCT FROM new.streszczenie) OR ((old.nazwa_w_primo)::text IS DISTINCT FROM (new.nazwa_w_primo)::text) OR (old.charakter_pbn_id IS DISTINCT FROM new.charakter_pbn_id) OR (old.rodzaj_pbn IS DISTINCT FROM new.rodzaj_pbn) OR (old.charakter_sloty IS DISTINCT FROM new.charakter_sloty) OR (old.wliczaj_do_rankingu IS DISTINCT FROM new.wliczaj_do_rankingu) OR (old.ukryty IS DISTINCT FROM new.ukryty) OR ((old.coar_type)::text IS DISTINCT FROM (new.coar_type)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_cie1b7();
 
 
 --
 -- Name: bpp_charakter_formalny d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_zw04e5; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_zw04e5 AFTER UPDATE ON public.bpp_charakter_formalny FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR ((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text) OR ((old.skrot)::text IS DISTINCT FROM (new.skrot)::text) OR (old.parent_id IS DISTINCT FROM new.parent_id) OR ((old.charakter_ogolny)::text IS DISTINCT FROM (new.charakter_ogolny)::text) OR (old.publikacja IS DISTINCT FROM new.publikacja) OR (old.streszczenie IS DISTINCT FROM new.streszczenie) OR ((old.nazwa_w_primo)::text IS DISTINCT FROM (new.nazwa_w_primo)::text) OR (old.charakter_pbn_id IS DISTINCT FROM new.charakter_pbn_id) OR (old.rodzaj_pbn IS DISTINCT FROM new.rodzaj_pbn) OR (old.charakter_sloty IS DISTINCT FROM new.charakter_sloty) OR (old.wliczaj_do_rankingu IS DISTINCT FROM new.wliczaj_do_rankingu) OR (old.ukryty IS DISTINCT FROM new.ukryty))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_zw04e5();
+CREATE TRIGGER d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_zw04e5 AFTER UPDATE ON public.bpp_charakter_formalny FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR ((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text) OR ((old.skrot)::text IS DISTINCT FROM (new.skrot)::text) OR (old.parent_id IS DISTINCT FROM new.parent_id) OR ((old.charakter_ogolny)::text IS DISTINCT FROM (new.charakter_ogolny)::text) OR (old.publikacja IS DISTINCT FROM new.publikacja) OR (old.streszczenie IS DISTINCT FROM new.streszczenie) OR ((old.nazwa_w_primo)::text IS DISTINCT FROM (new.nazwa_w_primo)::text) OR (old.charakter_pbn_id IS DISTINCT FROM new.charakter_pbn_id) OR (old.rodzaj_pbn IS DISTINCT FROM new.rodzaj_pbn) OR (old.charakter_sloty IS DISTINCT FROM new.charakter_sloty) OR (old.wliczaj_do_rankingu IS DISTINCT FROM new.wliczaj_do_rankingu) OR (old.ukryty IS DISTINCT FROM new.ukryty) OR ((old.coar_type)::text IS DISTINCT FROM (new.coar_type)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_zw04e5();
 
 
 --

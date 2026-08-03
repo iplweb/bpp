@@ -33,7 +33,17 @@ def z_datestampem(queryset, pole="ostatnio_zmieniony"):
     strony. Po obcięciu wartość sortowana, wartość w kursorze i wartość
     w ``<datestamp>`` to dokładnie ta sama liczba; remisy w obrębie sekundy
     rozstrzyga ``pk``.
+
+    ``tzinfo=UTC`` też nie jest kosmetyką. Bez niego ``Trunc`` obcina
+    w strefie bieżącej (``TIME_ZONE``, u nas Europe/Warsaw), więc adnotacja
+    wychodzi przesunięta względem UTC-owego ``Kursor.ts`` o offset strefy —
+    latem o dwie godziny. Skutek jest taki, że rekord jest „większy od
+    siebie samego": ``_cerif_ts = kursor.ts`` nie łapie nic, a
+    ``_cerif_ts > kursor.ts`` łapie z powrotem rekord, na którym strona się
+    skończyła. Każda granica strony dawała wtedy duplikat.
     """
+    import datetime
+
     from django.db.models import DateTimeField
     from django.db.models.functions import Trunc
 
@@ -47,6 +57,7 @@ def z_datestampem(queryset, pole="ostatnio_zmieniony"):
                 ),
                 "second",
                 output_field=DateTimeField(),
+                tzinfo=datetime.UTC,
             )
         }
     )

@@ -355,6 +355,29 @@ tests-without-playwright-with-microsoft-auth: ## tests-without-playwright z akty
 
 tests-with-microsoft-auth: enable-microsoft-auth tests-without-playwright-with-microsoft-auth disable-microsoft-auth ## Włącz MS Auth, uruchom testy, wyłącz
 
+# Walidacja endpointu CERIF względem openaire-cris-validator (euroCRIS).
+#
+# Celowo POZA domyślną suitą: wymaga JVM, Mavena i DZIAŁAJĄCEGO endpointu
+# pod adresem URL. Testy w src/cerif_export/tests/test_serializery.py
+# walidują ładunek względem vendorowanych XSD i biegną offline — ten target
+# jest krokiem dodatkowym, sprawdzającym całość protokołu tak, jak zrobi to
+# zespół agregacji OpenAIRE przy rejestracji.
+#
+# Użycie:  make cerif-validate URL=https://twoja-instancja/cerif-oai/
+CERIF_VALIDATOR_DIR ?= $(HOME)/Programowanie/openaire-cris-validator
+
+cerif-validate: ## Waliduj endpoint CERIF (URL=...) walidatorem euroCRIS
+	@test -n "$(URL)" || { \
+	  echo "Podaj URL, np. make cerif-validate URL=https://host/cerif-oai/"; \
+	  exit 1; }
+	@command -v mvn >/dev/null || { \
+	  echo "Brak mavena. Zainstaluj: brew install maven"; exit 1; }
+	@test -d "$(CERIF_VALIDATOR_DIR)" || git clone \
+	  https://github.com/EuroCRIS/openaire-cris-validator.git \
+	  "$(CERIF_VALIDATOR_DIR)"
+	cd "$(CERIF_VALIDATOR_DIR)" && mvn clean package -DskipTests && \
+	  java -jar target/openaire-cris-validator-*-jar-with-dependencies.jar "$(URL)"
+
 # Chromium i Daphne konkuruja o zasoby przy `-n auto`, ktore bierze WSZYSTKIE
 # rdzenie logiczne. Na Apple Silicon oznacza to doliczenie rdzeni
 # energooszczednych (E-cores) — a te sa za wolne, zeby uciagnac wlasna

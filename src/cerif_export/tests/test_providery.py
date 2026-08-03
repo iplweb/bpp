@@ -209,10 +209,17 @@ def test_strona_przechodzi_granice_miedzy_modelami(
 
 
 @pytest.mark.django_db
-def test_strona_zeruje_kursor_na_starcie_kolejnego_modelu(
+def test_kursor_na_granicy_modelu_wskazuje_ostatni_wydany_rekord(
     uczelnia_cerif, fabryka_wydawnictw, provider_publikacji
 ):
-    """Wyczerpanie modelu przesuwa kursor na kolejny slug z zerowym pk."""
+    """Wyczerpanie modelu NIE produkuje pozycji syntetycznej.
+
+    Kursor zawsze wskazuje ostatni faktycznie wydany rekord. Wcześniejszy
+    wariant zwracał tu ``Kursor(slug=<kolejny model>, ts=EPOKA, pk=0)``,
+    co miało dwie wady: wznowienie od takiej pozycji wymagało osobnej
+    ścieżki w kodzie, a gdy wszystkie kolejne modele były puste, harvester
+    dostawał resumption token prowadzący do pustej strony.
+    """
     for _ in range(2):
         fabryka_wydawnictw(Wydawnictwo_Ciagle)
     for _ in range(2):
@@ -221,13 +228,34 @@ def test_strona_zeruje_kursor_na_starcie_kolejnego_modelu(
     obiekty, kursor = provider_publikacji.strona(uczelnia_cerif, rozmiar=2)
 
     assert {slug_dla(o) for o in obiekty} == {slug_dla(Wydawnictwo_Ciagle)}
-    assert kursor == Kursor(slug=slug_dla(Wydawnictwo_Zwarte), ts=const.EPOKA, pk=0)
+    assert kursor is not None
+    assert kursor.slug == slug_dla(Wydawnictwo_Ciagle)
+    assert kursor.pk == obiekty[-1].pk
 
     reszta, kolejny = provider_publikacji.strona(
         uczelnia_cerif, kursor=kursor, rozmiar=2
     )
     assert {slug_dla(o) for o in reszta} == {slug_dla(Wydawnictwo_Zwarte)}
     assert kolejny is None
+
+
+@pytest.mark.django_db
+def test_brak_tokenu_gdy_kolejne_modele_sa_puste(
+    uczelnia_cerif, fabryka_wydawnictw, provider_publikacji
+):
+    """Strona wypełniona co do rekordu, a dalej pustka → kursor ``None``.
+
+    Regresja: wcześniej sam fakt, że strona wyszła pełna, wystarczał do
+    wydania tokenu — harvester dostawał go nawet wtedy, gdy nie było już
+    czego pobrać.
+    """
+    for _ in range(2):
+        fabryka_wydawnictw(Wydawnictwo_Ciagle)
+
+    obiekty, kursor = provider_publikacji.strona(uczelnia_cerif, rozmiar=2)
+
+    assert len(obiekty) == 2
+    assert kursor is None
 
 
 @pytest.mark.django_db

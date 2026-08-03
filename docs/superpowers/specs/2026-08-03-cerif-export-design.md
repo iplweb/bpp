@@ -291,11 +291,16 @@ zmieniają zachowania `/api/v1/`, a CERIF startuje aktywny.
 
 ### Widoczność per encja
 
-`nie_eksportuj_przez_api` istnieje **tylko** na `Wydawnictwo_Ciagle`,
-`Wydawnictwo_Zwarte`, `Patent` i `Jednostka`
-(`ModelOpcjonalnieNieEksportowanyDoAPI`). Filtrowanie po nim na pozostałych
-modelach dałoby `FieldError`. **Nie dokładamy tego pola do PD/PH** — to
-osobna zmiana produktowa poza zakresem. Reguły są więc per encja:
+`nie_eksportuj_przez_api` istnieje na `Wydawnictwo_Ciagle`,
+`Wydawnictwo_Zwarte`, `Patent`, `Jednostka` **oraz — wbrew wcześniejszej
+wersji tej specyfikacji — na `Praca_Doktorska` i `Praca_Habilitacyjna`**
+(dziedziczą je przez `Praca_Doktorska_Baza`). Sprawdzone empirycznie na
+`_meta.get_fields()`; wcześniejszy zapis opierał się na wyszukaniu nazwy
+miksina w plikach modeli i był błędny. Skutkiem było to, że praca oznaczona
+jako niepubliczna i tak szła do OpenAIRE.
+
+Encje **bez** tego pola to `Autor`, `Zrodlo`, `Konferencja` i `Uczelnia` —
+tam filtrowanie po nim dałoby `FieldError`. Reguły są więc per encja:
 
 | Encja | Warunek eksportu |
 |---|---|
