@@ -44,7 +44,7 @@ def widoczni_autorzy(uczelnia):
     """
     wymagaj_uczelni(uczelnia)
 
-    if not getattr(uczelnia, "eksport_cerif_osoby", True):
+    if not uczelnia.eksport_cerif_osoby:
         return Autor.objects.none()
 
     return Autor.objects.filter(pokazuj=True).filter(

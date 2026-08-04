@@ -29,9 +29,12 @@ NIE_PATENTY = ("znak towarowy",)
 
 
 def wypelnij(apps, schema_editor):
-    apps.get_model("bpp", "Rodzaj_Prawa_Patentowego").objects.filter(
-        nazwa__in=NIE_PATENTY
-    ).update(eksportuj_jako_patent=False)
+    model = apps.get_model("bpp", "Rodzaj_Prawa_Patentowego")
+    # `iexact`, nie `in`: `nazwa` jest edytowalna w adminie, a exact-match
+    # przepuściłby „Znak towarowy" — i znak towarowy dalej wychodziłby jako
+    # patent, czyli dokładnie ten błąd, który ta migracja naprawia.
+    for nazwa in NIE_PATENTY:
+        model.objects.filter(nazwa__iexact=nazwa).update(eksportuj_jako_patent=False)
 
     apps.get_model("bpp", "Charakter_Formalny").objects.filter(skrot="frg").filter(
         coar_type__in=["", None]

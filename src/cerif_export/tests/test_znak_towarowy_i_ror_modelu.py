@@ -82,7 +82,13 @@ def test_patent_bez_rodzaju_prawa_nadal_wychodzi(
 
 @pytest.mark.django_db
 def test_full_clean_odrzuca_bledny_ror_uczelni(uczelnia):
-    """Walidacja musi działać poza adminem — import XLSX, loaddata, shell."""
+    """Walidacja siedzi na polu modelu, nie tylko w formularzu admina.
+
+    Zakres: wszystko, co przechodzi przez ``full_clean()`` — formularze
+    admina, każdy ``ModelForm``, jawne wywołania. ``loaddata`` i gołe
+    ``save()`` walidacji nie wołają; to zachowanie Django, nie luka tego
+    pola.
+    """
     uczelnia.ror_id = "https://ror.org/0111ttp83"  # zła suma kontrolna
 
     with pytest.raises(ValidationError) as wyjatek:

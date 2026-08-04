@@ -7,8 +7,14 @@ z odrzuconego harvestu OpenAIRE albo z cichego braku ``RORID`` w eksporcie.
 Sama walidacja mieszka w ``bpp.util.ror`` — czyli w aplikacji rdzeniowej,
 nie w ``cerif_export``. Dzięki temu można ją wpiąć jako ``validators=[...]``
 na polach modelu (migracje serializują ścieżkę do funkcji i nie mogą
-referencjonować aplikacji nadbudowanej), a ROR jest walidowany na WSZYSTKICH
-ścieżkach zapisu — nie tylko w dwóch formularzach admina.
+referencjonować aplikacji nadbudowanej), a walidator siedzi na polu modelu, nie tylko
+w formularzu admina.
+
+Uwaga na zakres: ``validators`` na polu odpalają się przez
+``full_clean()``, czyli w formularzach (admin, ModelForm) i wszędzie,
+gdzie ktoś zawoła je jawnie. ``loaddata``, ``QuerySet.update()``
+i gołe ``save()`` z shella **omijają** walidację — tak działa Django
+i nie jest to obejście specyficzne dla tego pola.
 """
 
 from bpp.util import ror

@@ -18,9 +18,9 @@ from model_utils import Choices
 from tinymce.models import HTMLField
 
 from bpp.fields import EncryptedTextField
-from bpp.util.ror import waliduj as waliduj_ror
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID, NazwaWDopelniaczu
+from bpp.util.ror import waliduj as waliduj_ror
 from pbn_api.exceptions import WillNotExportError
 
 from .. import const

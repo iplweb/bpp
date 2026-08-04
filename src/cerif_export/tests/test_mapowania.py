@@ -140,3 +140,24 @@ def test_fixtura_json_zgodna_z_migracja():
     for skrot, uri in fixtura.items():
         if uri:
             assert WSZYSTKIE_CHARAKTERY.get(skrot) == uri, skrot
+
+
+@pytest.mark.django_db
+def test_fixtura_jezykow_zgodna_z_migracja():
+    """To samo dla ``jezyk.json`` — ta sama klasa awarii.
+
+    ``jezyki`` (``conftest_system.py``) robi ``get_or_create(**fields)``,
+    więc rozjazd fixtury z migracją objawiłby się kryptycznym błędem na
+    CI, a nie czytelnym komunikatem.
+    """
+    import json
+    import pathlib
+
+    sciezka = pathlib.Path(__file__).parents[2] / "bpp/fixtures/jezyk.json"
+    fixtura = {
+        rek["fields"]["skrot"]: rek["fields"].get("kod_bcp47", "")
+        for rek in json.loads(sciezka.read_text())
+    }
+
+    for skrot, kod in fixtura.items():
+        assert kod == migracja.JEZYKI.get(skrot, ""), skrot

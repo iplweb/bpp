@@ -294,3 +294,28 @@ def test_embargo_nie_jest_raportowane_jako_open_access(
     wynik = dostep.EMBARGOED if pod_embargiem else dostep.OPEN
 
     assert wynik == getattr(dostep, oczekiwane)
+
+
+@pytest.mark.django_db
+def test_embargo_na_granicy_okresu():
+    """Miesiąc 30-dniowy SKRACAŁ embargo o kilka dni.
+
+    Przez to okno rekord raportował ``open access``, będąc jeszcze pod
+    embargiem — czyli błąd dokładnie w tę stronę, którą docstring
+    ``_pod_embargiem`` odrzuca. Stąd ``relativedelta``, nie ``timedelta``.
+    """
+    from types import SimpleNamespace
+
+    from cerif_export.cerif.publication import _pod_embargiem
+
+    obj = SimpleNamespace(
+        openaccess_czas_publikacji=SimpleNamespace(skrot="AFTER_PUBLICATION"),
+        openaccess_ilosc_miesiecy=12,
+        openaccess_data_opublikowania=datetime.date(2025, 1, 15),
+    )
+
+    # 12 miesięcy od 2025-01-15 to 2026-01-15. Przybliżenie 30-dniowe dałoby
+    # koniec 2025-12-11, więc te dwie daty rozstrzygały wtedy błędnie.
+    assert _pod_embargiem(obj, dzisiaj=datetime.date(2025, 12, 20)) is True
+    assert _pod_embargiem(obj, dzisiaj=datetime.date(2026, 1, 14)) is True
+    assert _pod_embargiem(obj, dzisiaj=datetime.date(2026, 1, 15)) is False

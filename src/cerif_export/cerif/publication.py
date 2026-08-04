@@ -26,7 +26,8 @@ Prefetche wymagane od providera
 ``select_related``: ``charakter_formalny``, ``jezyk``, ``zrodlo``
 (+ ``zrodlo__jezyk``), ``wydawnictwo_nadrzedne``
 (+ ``wydawnictwo_nadrzedne__charakter_formalny``), ``konferencja``,
-``openaccess_licencja``, ``openaccess_tryb_dostepu``, a dla prac
+``openaccess_licencja``, ``openaccess_tryb_dostepu``,
+``openaccess_czas_publikacji`` (embargo), a dla prac
 doktorskich/habilitacyjnych ``autor`` i ``jednostka``.
 
 ``prefetch_related``: ``autorzy_set__autor``, ``autorzy_set__jednostka``,
@@ -35,6 +36,8 @@ doktorskich/habilitacyjnych ``autor`` i ``jednostka``.
 """
 
 import datetime
+
+from dateutil.relativedelta import relativedelta
 
 from bpp import const as bpp_const
 from cerif_export import const, identyfikatory
@@ -323,7 +326,11 @@ def _pod_embargiem(obj, dzisiaj=None):
         return True
 
     dzisiaj = dzisiaj or datetime.date.today()
-    koniec = data + datetime.timedelta(days=int(miesiecy) * 30)
+    # `relativedelta`, nie `timedelta(days=30*n)`: miesiąc 30-dniowy
+    # SKRACA embargo (12 mies. = 360 dni), więc przez kilka dni rekord
+    # raportowałby OPEN będąc jeszcze pod embargiem — czyli błąd w tę
+    # stronę, którą docstring wyżej wprost odrzuca.
+    koniec = data + relativedelta(months=int(miesiecy))
     return dzisiaj < koniec
 
 
