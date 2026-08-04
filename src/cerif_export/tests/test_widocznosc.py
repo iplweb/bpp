@@ -395,3 +395,65 @@ def _kontekst(uczelnia, set_spec):
         uczelnia=uczelnia,
         widoczne=provider.zbiory_widocznosci(uczelnia, obiekty),
     )
+
+
+# -- przełącznik eksportu osób -------------------------------------------
+
+
+@pytest.mark.django_db
+def test_wylaczenie_osob_oproznia_set_persons(uczelnia, fabryka_autorow):
+    autor = fabryka_autorow("Kowalski")
+    assert autor.pk in pki(provider_dla_setu(const.SET_PERSONS), uczelnia)
+
+    uczelnia.eksport_cerif_osoby = False
+    uczelnia.save()
+
+    assert pki(provider_dla_setu(const.SET_PERSONS), uczelnia) == set()
+
+
+@pytest.mark.django_db
+def test_wylaczenie_osob_odbiera_orcid_i_identyfikator_w_publikacji(
+    uczelnia, fabryka_autorow, fabryka_wydawnictw
+):
+    """Wyłączenie zestawu osób nie może być pozorne.
+
+    Gdyby działało tylko na własny zestaw, dane osobowe wychodziłyby dalej
+    okrężną drogą — jako encje osadzone w publikacjach.
+
+    Granica przebiega tak: znikają dane **osoby** (własny rekord, ``@id``,
+    ORCID), zostaje **atrybucja instytucjonalna**. Afiliacja przy autorstwie
+    mówi, z której jednostki pochodzi praca — to jest sedno tego eksportu
+    i informacja drukowana zresztą w każdym czasopiśmie. Zdjęcie jej
+    zerwałoby powiązanie dorobku z uczelnią, czyli jedyny powód, dla którego
+    ktokolwiek ten endpoint wystawia.
+    """
+    autor = fabryka_autorow("Kowalski", orcid="0000-0002-1825-0097")
+    rekord = fabryka_wydawnictw(Wydawnictwo_Ciagle, autor=autor)
+
+    uczelnia.eksport_cerif_osoby = False
+    uczelnia.save()
+
+    xml = etree.tostring(zserializuj(uczelnia, rekord)).decode()
+
+    assert "0000-0002-1825-0097" not in xml, "ORCID to trwały identyfikator osoby"
+    assert "Persons/au-" not in xml, "brak rekordu w secie = brak referencji"
+    # Nazwisko zostaje — bez niego opis bibliograficzny byłby nieprawdziwy.
+    assert "Kowalski" in xml
+    # Afiliacja zostaje — to atrybucja pracy do uczelni, nie dana osobowa.
+    assert "Jednostka CERIF" in xml
+
+
+@pytest.mark.django_db
+def test_set_persons_istnieje_mimo_wylaczenia(uczelnia):
+    """Profil wymaga wszystkich dziewięciu zestawów, także pustych."""
+    from cerif_export.oai import czasowniki
+
+    uczelnia.eksport_cerif_osoby = False
+    uczelnia.save()
+
+    korzen = czasowniki.odpowiedz(
+        czasowniki.Zadanie(uczelnia, "https://x/cerif-oai/", {"verb": "ListSets"})
+    )
+    specyfikacje = [el.text for el in korzen.iter() if el.tag.endswith("}setSpec")]
+
+    assert const.SET_PERSONS in specyfikacje

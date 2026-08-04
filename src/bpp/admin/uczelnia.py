@@ -168,6 +168,7 @@ class UczelniaAdmin(
                 "classes": ("grp-collapse grp-closed",),
                 "fields": (
                     "eksport_cerif_wlaczony",
+                    "eksport_cerif_osoby",
                     "ror_id",
                 ),
             },

@@ -596,6 +596,15 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         "CERIF-XML (OpenAIRE CRIS Guidelines) przestaje odpowiadać dla tej "
         "uczelni.",
     )
+    eksport_cerif_osoby = models.BooleanField(
+        "Eksportuj dane osób do CERIF/OpenAIRE",
+        default=True,
+        help_text="Gdy odznaczone, zestaw „openaire_cris_persons” pozostaje "
+        "pusty, a autorzy pojawiają się wyłącznie jako encje osadzone "
+        "w opisie publikacji: samo imię i nazwisko, bez własnych rekordów, "
+        "bez ORCID-ów, bez afiliacji i bez historii zatrudnienia. Zestaw "
+        "musi istnieć nawet pusty — wymagają tego wytyczne OpenAIRE.",
+    )
     pbn_kasuj_dyscypliny_selektywnie = models.BooleanField(
         "Kasuj oświadczenia selektywnie (per osoba)",
         default=True,

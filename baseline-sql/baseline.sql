@@ -7675,6 +7675,7 @@ CREATE TABLE public.bpp_uczelnia (
     api_v1_wlaczone boolean NOT NULL,
     eksport_cerif_wlaczony boolean NOT NULL,
     ror_id character varying(64) NOT NULL,
+    eksport_cerif_osoby boolean NOT NULL,
     CONSTRAINT bpp_uczelnia_ilosc_jednostek_na_strone_check CHECK ((ilosc_jednostek_na_strone >= 0)),
     CONSTRAINT bpp_uczelnia_pokazuj_deklaracje_dostepnosci_check CHECK ((pokazuj_deklaracje_dostepnosci >= 0))
 );
@@ -15039,33 +15040,33 @@ COPY public.bpp_cache_punktacja_dyscypliny (id, rekord_id, pkd, slot, dyscyplina
 --
 
 COPY public.bpp_charakter_formalny (id, nazwa, skrot, publikacja, streszczenie, nazwa_w_primo, charakter_pbn_id, level, lft, parent_id, rght, tree_id, charakter_sloty, rodzaj_pbn, charakter_ogolny, wliczaj_do_rankingu, ukryty, coar_type) FROM stdin;
-3	Komentarz	KOM	t	f		\N	0	1	\N	2	7	\N	\N	xxx	t	f	
-4	List do redakcji	L	t	f		\N	0	1	\N	2	11	\N	\N	xxx	t	f	
 5	Publikacja w suplemencie	Supl	t	f	Artykuł	\N	0	1	\N	2	20	\N	\N	xxx	t	f	
-6	Czasopismo	CZ	f	f	Czasopismo	\N	0	1	\N	2	3	\N	\N	xxx	t	f	
 10	inne	IN	f	f		\N	0	1	\N	2	6	\N	\N	xxx	t	f	
 11	Tłumaczenie	TŁ	f	f		\N	0	1	\N	2	27	\N	\N	xxx	t	f	
-14	Polskie streszczenie zjazdowe	PSZ	f	t	Materiał konferencyjny	\N	0	1	\N	2	15	\N	\N	xxx	t	f	
 15	Poradnik zawodowy	PZ	f	f		\N	0	1	\N	2	16	\N	\N	xxx	t	f	
-16	Recenzja	R	f	f		\N	0	1	\N	2	21	\N	\N	xxx	t	f	
-20	Streszczenie zjazdowe konferencji międzynarodowej	ZSZ	f	t		\N	0	1	\N	2	26	\N	\N	xxx	t	f	
 21	Broszura	BR	f	f		\N	0	1	\N	2	2	\N	\N	xxx	t	f	
 22	Projekt wynalazczy	WYN	f	f		\N	0	1	\N	2	19	\N	\N	xxx	t	f	
 23	Patent	PAT	f	f		\N	0	1	\N	2	12	\N	\N	xxx	t	f	
-24	Praca doktorska	D	t	f		\N	0	1	\N	2	17	\N	\N	xxx	t	f	
-25	Praca habilitacyjna	H	t	f		\N	0	1	\N	2	18	\N	\N	xxx	t	f	
 27	Dokument elektroniczny	DE	f	f		\N	0	1	\N	2	4	\N	\N	xxx	t	f	
 9	Fragment	frg	t	f		\N	0	1	\N	2	5	2	2	xxx	t	f	
-26	Podręcznik akademicki	PA	f	f		\N	0	1	\N	2	13	1	3	xxx	t	f	
-12	Skrypt	SKR	f	f		\N	0	1	\N	2	25	1	3	xxx	t	f	
-1	Artykuł w czasopismie	AC	t	f	Artykuł	\N	0	1	\N	2	1	\N	\N	art	t	f	
-2	Książka	KS	t	f	Książka	\N	0	1	\N	2	8	1	3	ksi	t	f	
-8	Książka w języku obcym	KSZ	t	f	Książka	\N	0	1	\N	2	9	1	3	ksi	t	f	
-7	Książka w języku polskim	KSP	t	f	Książka	\N	0	1	\N	2	10	1	3	ksi	t	f	
-17	Rozdział książki	ROZ	t	f	Rozdział	\N	0	1	\N	2	23	2	2	ksi	t	f	
-18	Rozdział skryptu	ROZS	f	f	Rozdział	\N	0	1	\N	2	24	2	2	roz	t	f	
-13	Polski Referat Zjazdowy	PRZ	t	f	Materiał konferencyjny	\N	0	1	\N	2	14	3	\N	xxx	t	f	
-19	Referat zjazdowy konferencji miedzynarodowej	ZRZ	t	f	Materiał konferencyjny	\N	0	1	\N	2	22	3	\N	xxx	t	f	
+1	Artykuł w czasopismie	AC	t	f	Artykuł	\N	0	1	\N	2	1	\N	\N	art	t	f	http://purl.org/coar/resource_type/c_6501
+6	Czasopismo	CZ	f	f	Czasopismo	\N	0	1	\N	2	3	\N	\N	xxx	t	f	http://purl.org/coar/resource_type/c_0640
+24	Praca doktorska	D	t	f		\N	0	1	\N	2	17	\N	\N	xxx	t	f	http://purl.org/coar/resource_type/c_db06
+25	Praca habilitacyjna	H	t	f		\N	0	1	\N	2	18	\N	\N	xxx	t	f	http://purl.org/coar/resource_type/c_46ec
+3	Komentarz	KOM	t	f		\N	0	1	\N	2	7	\N	\N	xxx	t	f	http://purl.org/coar/resource_type/D97F-VB57
+2	Książka	KS	t	f	Książka	\N	0	1	\N	2	8	1	3	ksi	t	f	http://purl.org/coar/resource_type/c_2f33
+7	Książka w języku polskim	KSP	t	f	Książka	\N	0	1	\N	2	10	1	3	ksi	t	f	http://purl.org/coar/resource_type/c_2f33
+8	Książka w języku obcym	KSZ	t	f	Książka	\N	0	1	\N	2	9	1	3	ksi	t	f	http://purl.org/coar/resource_type/c_2f33
+4	List do redakcji	L	t	f		\N	0	1	\N	2	11	\N	\N	xxx	t	f	http://purl.org/coar/resource_type/c_545b
+26	Podręcznik akademicki	PA	f	f		\N	0	1	\N	2	13	1	3	xxx	t	f	http://purl.org/coar/resource_type/c_2f33
+13	Polski Referat Zjazdowy	PRZ	t	f	Materiał konferencyjny	\N	0	1	\N	2	14	3	\N	xxx	t	f	http://purl.org/coar/resource_type/c_5794
+14	Polskie streszczenie zjazdowe	PSZ	f	t	Materiał konferencyjny	\N	0	1	\N	2	15	\N	\N	xxx	t	f	http://purl.org/coar/resource_type/c_c94f
+16	Recenzja	R	f	f		\N	0	1	\N	2	21	\N	\N	xxx	t	f	http://purl.org/coar/resource_type/c_efa0
+17	Rozdział książki	ROZ	t	f	Rozdział	\N	0	1	\N	2	23	2	2	ksi	t	f	http://purl.org/coar/resource_type/c_3248
+18	Rozdział skryptu	ROZS	f	f	Rozdział	\N	0	1	\N	2	24	2	2	roz	t	f	http://purl.org/coar/resource_type/c_3248
+12	Skrypt	SKR	f	f		\N	0	1	\N	2	25	1	3	xxx	t	f	http://purl.org/coar/resource_type/c_2f33
+19	Referat zjazdowy konferencji miedzynarodowej	ZRZ	t	f	Materiał konferencyjny	\N	0	1	\N	2	22	3	\N	xxx	t	f	http://purl.org/coar/resource_type/c_5794
+20	Streszczenie zjazdowe konferencji międzynarodowej	ZSZ	f	t		\N	0	1	\N	2	26	\N	\N	xxx	t	f	http://purl.org/coar/resource_type/c_c94f
 \.
 
 
@@ -15228,15 +15229,15 @@ COPY public.bpp_jednostka_rodzic (id, od, "do", jednostka_id, parent_id) FROM st
 --
 
 COPY public.bpp_jezyk (id, nazwa, skrot, pbn_uid_id, skrot_crossref, widoczny, kod_bcp47) FROM stdin;
-2	angielski	ang.	\N	\N	t	
-3	francuski	fr.	\N	\N	t	
 4	brak danych	b/d	\N	\N	t	
-5	niemiecki	niem.	\N	\N	t	
 6	inny	in.	\N	\N	t	
-7	hiszpański	hiszp.	\N	\N	t	
-8	rosyjski	ros.	\N	\N	t	
-9	włoski	wł.	\N	\N	t	
 1	polski	pol.	\N	pl	t	pl
+2	angielski	ang.	\N	\N	t	en
+3	francuski	fr.	\N	\N	t	fr
+7	hiszpański	hiszp.	\N	\N	t	es
+5	niemiecki	niem.	\N	\N	t	de
+8	rosyjski	ros.	\N	\N	t	ru
+9	włoski	wł.	\N	\N	t	it
 \.
 
 
@@ -15406,11 +15407,11 @@ COPY public.bpp_rekord_mat (id, tytul_oryginalny, tytul, search_index, rok, jezy
 --
 
 COPY public.bpp_rodzaj_prawa_patentowego (id, nazwa, coar_type) FROM stdin;
-1	wynalazek	
-2	wzór użytkowy	
-3	wzór przemysłowy	
 4	znak towarowy	
-5	odmiana rośliny	
+1	wynalazek	http://purl.org/coar/resource_type/c_15cd
+2	wzór użytkowy	http://purl.org/coar/resource_type/9DKX-KSAF
+3	wzór przemysłowy	http://purl.org/coar/resource_type/C53B-JCY5
+5	odmiana rośliny	http://purl.org/coar/resource_type/GPQ7-G5VE
 \.
 
 
@@ -15496,9 +15497,9 @@ COPY public.bpp_szablondlaopisubibliograficznego (id, model_id, nazwa_szablonu) 
 --
 
 COPY public.bpp_tryb_openaccess_wydawnictwo_ciagle (id, nazwa, skrot, coar_access_right) FROM stdin;
-1	Otwarte czasopismo	OPEN_JOURNAL	
-2	Otwarte repositorium	OPEN_REPOSITORY	
 3	Inne	OTHER	
+1	Otwarte czasopismo	OPEN_JOURNAL	http://purl.org/coar/access_right/c_abf2
+2	Otwarte repositorium	OPEN_REPOSITORY	http://purl.org/coar/access_right/c_abf2
 \.
 
 
@@ -15507,9 +15508,9 @@ COPY public.bpp_tryb_openaccess_wydawnictwo_ciagle (id, nazwa, skrot, coar_acces
 --
 
 COPY public.bpp_tryb_openaccess_wydawnictwo_zwarte (id, nazwa, skrot, coar_access_right) FROM stdin;
-1	Witryna wydawcy	PUBLISHER_WEBSITE	
-2	Otwarte repositorium	OPEN_REPOSITORY	
 3	Inne	OTHER	
+1	Witryna wydawcy	PUBLISHER_WEBSITE	http://purl.org/coar/access_right/c_abf2
+2	Otwarte repositorium	OPEN_REPOSITORY	http://purl.org/coar/access_right/c_abf2
 \.
 
 
@@ -15590,7 +15591,7 @@ COPY public.bpp_tytul (id, nazwa, skrot) FROM stdin;
 -- Data for Name: bpp_uczelnia; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_uczelnia (id, ostatnio_zmieniony, adnotacje, nazwa, skrot, nazwa_dopelniacz_field, slug, logo_www, logo_svg, favicon_ico, pbn_id, obca_jednostka_id, pokazuj_index_copernicus, pokazuj_punktacje_wewnetrzna, pokazuj_status_korekty, pokazuj_ranking_autorow, pokazuj_praca_recenzowana, clarivate_password, clarivate_username, domyslnie_afiliuje, pokazuj_liczbe_cytowan_w_rankingu, pokazuj_liczbe_cytowan_na_stronie_autora, wydruk_logo, wydruk_parametry_zapytania, wydruk_logo_szerokosc, wyszukiwanie_rekordy_na_strone_anonim, wyszukiwanie_rekordy_na_strone_zalogowany, pokazuj_punktacja_snip, podpowiadaj_dyscypliny, pokazuj_tabele_slotow_na_stronie_rekordu, pokazuj_raport_slotow_autor, pokazuj_raport_slotow_uczelnia, ranking_autorow_rozbij_domyslnie, pokazuj_raport_slotow_zerowy, sortuj_jednostki_alfabetycznie, metoda_do_roku_formularze, pbn_uid_id, pbn_api_root, pbn_app_name, pbn_app_token, pbn_aktualizuj_na_biezaco, pbn_integracja, pbn_api_user_id, pbn_api_nie_wysylaj_prac_bez_pk, ilosc_jednostek_na_strone, pokazuj_tylko_jednostki_nadrzedne, wymagaj_informacji_o_oplatach, pokazuj_formularz_zglaszania_publikacji, pbn_api_afiliacja_zawsze_na_uczelnie, pbn_wysylaj_bez_oswiadczen, deklaracja_dostepnosci_tekst, deklaracja_dostepnosci_url, pokazuj_deklaracje_dostepnosci, ranking_autorow_bez_kol_naukowych, pokazuj_autorow_obcych_w_przegladaniu_danych, pokazuj_autorow_bez_prac_w_przegladaniu_danych, drukuj_alternatywne_oswiadczenia, drukuj_oswiadczenia, pokazuj_zrodla_bez_prac_w_przegladaniu_danych, pokazuj_jednostki_na_pierwszej_stronie, pokazuj_wydzialy_na_pierwszej_stronie, przydzielaj_1_slot_gdy_udzial_mniejszy, pytaj_o_zgode_na_publikacje_pelnego_tekstu, uzywaj_wydzialow, tytul_strony_glownej, wymagaj_logowania_zglos_publikacje, nowy_autor_z_formularza_pokazuj, orcid_client_id, orcid_client_secret, orcid_sandbox, orcid_tylko_dla_pracownikow, wymagaj_oplatach_artykul, wymagaj_oplatach_inne, wymagaj_oplatach_monografia, wymagaj_oplatach_rozdzial, pbn_kasuj_dyscypliny_selektywnie, pokazuj_siec_powiazan, dspace_aktywny, dspace_api_endpoint, dspace_api_password, dspace_api_username, dspace_domyslny_jezyk_dc, site_id, theme_name, google_analytics_property_id, google_verification_code, pokazuj_oswiadczenie_ken, skrot_wydzialu_w_nazwie_jednostki, wydruk_margines_dol, wydruk_margines_gora, wydruk_margines_lewo, wydruk_margines_prawo, zwijaj_dlugie_listy_autorow, oai_identyfikator_repozytorium, oai_pmh_aktywny, api_v1_wlaczone, eksport_cerif_wlaczony, ror_id) FROM stdin;
+COPY public.bpp_uczelnia (id, ostatnio_zmieniony, adnotacje, nazwa, skrot, nazwa_dopelniacz_field, slug, logo_www, logo_svg, favicon_ico, pbn_id, obca_jednostka_id, pokazuj_index_copernicus, pokazuj_punktacje_wewnetrzna, pokazuj_status_korekty, pokazuj_ranking_autorow, pokazuj_praca_recenzowana, clarivate_password, clarivate_username, domyslnie_afiliuje, pokazuj_liczbe_cytowan_w_rankingu, pokazuj_liczbe_cytowan_na_stronie_autora, wydruk_logo, wydruk_parametry_zapytania, wydruk_logo_szerokosc, wyszukiwanie_rekordy_na_strone_anonim, wyszukiwanie_rekordy_na_strone_zalogowany, pokazuj_punktacja_snip, podpowiadaj_dyscypliny, pokazuj_tabele_slotow_na_stronie_rekordu, pokazuj_raport_slotow_autor, pokazuj_raport_slotow_uczelnia, ranking_autorow_rozbij_domyslnie, pokazuj_raport_slotow_zerowy, sortuj_jednostki_alfabetycznie, metoda_do_roku_formularze, pbn_uid_id, pbn_api_root, pbn_app_name, pbn_app_token, pbn_aktualizuj_na_biezaco, pbn_integracja, pbn_api_user_id, pbn_api_nie_wysylaj_prac_bez_pk, ilosc_jednostek_na_strone, pokazuj_tylko_jednostki_nadrzedne, wymagaj_informacji_o_oplatach, pokazuj_formularz_zglaszania_publikacji, pbn_api_afiliacja_zawsze_na_uczelnie, pbn_wysylaj_bez_oswiadczen, deklaracja_dostepnosci_tekst, deklaracja_dostepnosci_url, pokazuj_deklaracje_dostepnosci, ranking_autorow_bez_kol_naukowych, pokazuj_autorow_obcych_w_przegladaniu_danych, pokazuj_autorow_bez_prac_w_przegladaniu_danych, drukuj_alternatywne_oswiadczenia, drukuj_oswiadczenia, pokazuj_zrodla_bez_prac_w_przegladaniu_danych, pokazuj_jednostki_na_pierwszej_stronie, pokazuj_wydzialy_na_pierwszej_stronie, przydzielaj_1_slot_gdy_udzial_mniejszy, pytaj_o_zgode_na_publikacje_pelnego_tekstu, uzywaj_wydzialow, tytul_strony_glownej, wymagaj_logowania_zglos_publikacje, nowy_autor_z_formularza_pokazuj, orcid_client_id, orcid_client_secret, orcid_sandbox, orcid_tylko_dla_pracownikow, wymagaj_oplatach_artykul, wymagaj_oplatach_inne, wymagaj_oplatach_monografia, wymagaj_oplatach_rozdzial, pbn_kasuj_dyscypliny_selektywnie, pokazuj_siec_powiazan, dspace_aktywny, dspace_api_endpoint, dspace_api_password, dspace_api_username, dspace_domyslny_jezyk_dc, site_id, theme_name, google_analytics_property_id, google_verification_code, pokazuj_oswiadczenie_ken, skrot_wydzialu_w_nazwie_jednostki, wydruk_margines_dol, wydruk_margines_gora, wydruk_margines_lewo, wydruk_margines_prawo, zwijaj_dlugie_listy_autorow, oai_identyfikator_repozytorium, oai_pmh_aktywny, api_v1_wlaczone, eksport_cerif_wlaczony, ror_id, eksport_cerif_osoby) FROM stdin;
 \.
 
 
@@ -16198,6 +16199,35 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
 233	bpp	0151_snip	2000-01-01 00:00:00+00
+866	pbn_wysylka_oswiadczen	0002_add_tytul_field	2000-01-01 00:00:00+00
+867	pbn_wysylka_oswiadczen	0003_add_synchronized_count	2000-01-01 00:00:00+00
+868	pbn_wysylka_oswiadczen	0004_alter_pbnwysylkalog_content_type_and_more	2000-01-01 00:00:00+00
+869	powiazania_autorow	0001_initial	2000-01-01 00:00:00+00
+870	powiazania_autorow	0002_alter_authorconnection_primary_author_and_more	2000-01-01 00:00:00+00
+871	powiazania_autorow	0003_backfill_powiazania_istniejace	2000-01-01 00:00:00+00
+872	powiazania_autorow	0004_alter_authorconnection_primary_author	2000-01-01 00:00:00+00
+873	przemapuj_prace_autora	0001_initial	2000-01-01 00:00:00+00
+874	przemapuj_prace_autora	0002_przemapoaniepracautora_prace_ciagle_historia_and_more	2000-01-01 00:00:00+00
+875	przemapuj_zrodla_pbn	0001_initial	2000-01-01 00:00:00+00
+876	przemapuj_zrodla_pbn	0002_przemapowaniezrodla_typ_operacji_and_more	2000-01-01 00:00:00+00
+877	przemapuj_zrodla_pbn	0003_alter_przemapowaniezrodla_zrodlo_nowe_and_more	2000-01-01 00:00:00+00
+878	przemapuj_zrodlo	0001_initial	2000-01-01 00:00:00+00
+879	przemapuj_zrodlo	0002_remove_przemapowazrodla_przemapuj_z_zrodlo__8d9224_idx_and_more	2000-01-01 00:00:00+00
+880	raport_slotow	0001_initial	2000-01-01 00:00:00+00
+881	raport_slotow	0002_auto_20200316_2027	2000-01-01 00:00:00+00
+882	raport_slotow	0003_auto_20200329_1719	2000-01-01 00:00:00+00
+883	raport_slotow	0004_raportslotowuczelnia_raportslotowuczelniawiersz	2000-01-01 00:00:00+00
+884	raport_slotow	0005_auto_20210125_0256	2000-01-01 00:00:00+00
+885	raport_slotow	0006_auto_20210125_2330	2000-01-01 00:00:00+00
+886	raport_slotow	0007_auto_20210130_1407	2000-01-01 00:00:00+00
+887	raport_slotow	0008_auto_20210308_0839	2000-01-01 00:00:00+00
+888	raport_slotow	0009_auto_20210308_0846	2000-01-01 00:00:00+00
+889	raport_slotow	0010_auto_20210314_2204	2000-01-01 00:00:00+00
+890	raport_slotow	0011_auto_20210315_0141	2000-01-01 00:00:00+00
+891	raport_slotow	0012_django32	2000-01-01 00:00:00+00
+892	raport_slotow	0013_nullbooleanfield	2000-01-01 00:00:00+00
+893	raport_slotow	0014_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+1121	bpp	0479_cerif_export_pola	2000-01-01 00:00:00+00
 308	bpp	0219_auto_20200727_2308	2000-01-01 00:00:00+00
 552	bpp	0442_drop_plpython3u	2000-01-01 00:00:00+00
 809	integrator2	0002_auto_20160124_1336	2000-01-01 00:00:00+00
@@ -16381,6 +16411,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1070	oauth2_provider	0010_application_allowed_origins	2000-01-01 00:00:00+00
 1071	oauth2_provider	0011_refreshtoken_token_family	2000-01-01 00:00:00+00
 1112	bpp	0473_guard_autor_jednostka_okresy_bez_nakladan	2000-01-01 00:00:00+00
+37	pbn_api	0003_conference	2000-01-01 00:00:00+00
 1113	bpp	0474_constraint_autor_jednostka_okresy_bez_nakladan	2000-01-01 00:00:00+00
 1114	bpp	0475_merge_20260724_1726	2000-01-01 00:00:00+00
 1115	ewaluacja_optymalizacja	0016_statusodpinaniawszystkich	2000-01-01 00:00:00+00
@@ -16480,7 +16511,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 32	ewaluacja_common	0002_populate_rodzaje_autorow	2000-01-01 00:00:00+00
 33	ewaluacja_common	0003_add_sort_field	2000-01-01 00:00:00+00
 34	ewaluacja_common	0004_alter_rodzaj_autora_options	2000-01-01 00:00:00+00
-37	pbn_api	0003_conference	2000-01-01 00:00:00+00
 38	pbn_api	0004_journal	2000-01-01 00:00:00+00
 264	bpp	0178_auto_20190905_2020	2000-01-01 00:00:00+00
 39	pbn_api	0005_auto_20210406_0436	2000-01-01 00:00:00+00
@@ -17284,35 +17314,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 863	pbn_komparator_zrodel	0002_add_brakujaca_dyscyplina_pbn	2000-01-01 00:00:00+00
 864	pbn_komparator_zrodel	0003_remove_rozbieznosczrodlapbn_pbn_kompara_zrodlo__8665da_idx_and_more	2000-01-01 00:00:00+00
 865	pbn_wysylka_oswiadczen	0001_initial	2000-01-01 00:00:00+00
-866	pbn_wysylka_oswiadczen	0002_add_tytul_field	2000-01-01 00:00:00+00
-867	pbn_wysylka_oswiadczen	0003_add_synchronized_count	2000-01-01 00:00:00+00
-868	pbn_wysylka_oswiadczen	0004_alter_pbnwysylkalog_content_type_and_more	2000-01-01 00:00:00+00
-869	powiazania_autorow	0001_initial	2000-01-01 00:00:00+00
-870	powiazania_autorow	0002_alter_authorconnection_primary_author_and_more	2000-01-01 00:00:00+00
-871	powiazania_autorow	0003_backfill_powiazania_istniejace	2000-01-01 00:00:00+00
-872	powiazania_autorow	0004_alter_authorconnection_primary_author	2000-01-01 00:00:00+00
-873	przemapuj_prace_autora	0001_initial	2000-01-01 00:00:00+00
-874	przemapuj_prace_autora	0002_przemapoaniepracautora_prace_ciagle_historia_and_more	2000-01-01 00:00:00+00
-875	przemapuj_zrodla_pbn	0001_initial	2000-01-01 00:00:00+00
-876	przemapuj_zrodla_pbn	0002_przemapowaniezrodla_typ_operacji_and_more	2000-01-01 00:00:00+00
-877	przemapuj_zrodla_pbn	0003_alter_przemapowaniezrodla_zrodlo_nowe_and_more	2000-01-01 00:00:00+00
-878	przemapuj_zrodlo	0001_initial	2000-01-01 00:00:00+00
-879	przemapuj_zrodlo	0002_remove_przemapowazrodla_przemapuj_z_zrodlo__8d9224_idx_and_more	2000-01-01 00:00:00+00
-880	raport_slotow	0001_initial	2000-01-01 00:00:00+00
-881	raport_slotow	0002_auto_20200316_2027	2000-01-01 00:00:00+00
-882	raport_slotow	0003_auto_20200329_1719	2000-01-01 00:00:00+00
-883	raport_slotow	0004_raportslotowuczelnia_raportslotowuczelniawiersz	2000-01-01 00:00:00+00
-884	raport_slotow	0005_auto_20210125_0256	2000-01-01 00:00:00+00
-885	raport_slotow	0006_auto_20210125_2330	2000-01-01 00:00:00+00
-886	raport_slotow	0007_auto_20210130_1407	2000-01-01 00:00:00+00
-887	raport_slotow	0008_auto_20210308_0839	2000-01-01 00:00:00+00
-888	raport_slotow	0009_auto_20210308_0846	2000-01-01 00:00:00+00
-889	raport_slotow	0010_auto_20210314_2204	2000-01-01 00:00:00+00
-890	raport_slotow	0011_auto_20210315_0141	2000-01-01 00:00:00+00
-891	raport_slotow	0012_django32	2000-01-01 00:00:00+00
-892	raport_slotow	0013_nullbooleanfield	2000-01-01 00:00:00+00
-893	raport_slotow	0014_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-1121	bpp	0479_cerif_export_pola	2000-01-01 00:00:00+00
+1122	bpp	0480_cerif_mapowania_slownikow	2000-01-01 00:00:00+00
+1123	bpp	0481_uczelnia_eksport_cerif_osoby	2000-01-01 00:00:00+00
 \.
 
 
@@ -17685,21 +17688,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-208	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
-209	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
-210	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-211	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-212	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-213	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-214	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-215	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-216	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-217	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-218	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-219	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-220	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-221	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-222	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -19281,7 +19269,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1121, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1123, true);
 
 
 --
