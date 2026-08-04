@@ -1,11 +1,11 @@
 {
-  "git_sha": "dea5f62b18bea4ba75d3c04cacdf9c8b9591e76e",
+  "git_sha": "1c4bc98bfdc76b914462b50f6503eacb0bb1873e",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
     "auth": "0012_alter_user_first_name_max_length",
     "axes": "0010_accessattemptexpiration",
-    "bpp": "0482_alter_jednostka_ror_id_alter_uczelnia_ror_id",
+    "bpp": "0479_cerif_export_pola",
     "channels_broadcast": "0001_initial",
     "constance": "0003_drop_pickle",
     "contenttypes": "0002_remove_content_type_name",
@@ -75,5 +75,5 @@
     "zglos_publikacje": "0027_zgloszenie_zaimportowane"
   },
   "meta_version": 1,
-  "postgres_version": "PostgreSQL 16.13 (Debian 16.13-1.pgdg13+1) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit"
+  "postgres_version": "PostgreSQL 16.13 (Debian 16.13-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit"
 }
