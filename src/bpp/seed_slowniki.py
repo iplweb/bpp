@@ -26,7 +26,10 @@ from importlib import import_module
 SEED_RODZAJE_JEDNOSTEK = [
     ("bpp.migrations.0449_seed_rodzajjednostki", "seed"),
     ("bpp.migrations.0454_faza_b_i1", "seed_pokazuj_strukture_podjednostek"),
-    ("bpp.migrations.0464_rodzajjednostki_autor_moze_afiliowac", "wydzial_bez_afiliacji"),
+    (
+        "bpp.migrations.0464_rodzajjednostki_autor_moze_afiliowac",
+        "wydzial_bez_afiliacji",
+    ),
 ]
 
 

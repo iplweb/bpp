@@ -73,7 +73,7 @@ class Command(BaseCommand):
                         if rekord.strony != strony:
                             print(
                                 f"-{rekord.pk}: {rekord.tytul_oryginalny} strony obecnie to {rekord.strony}, "
-                                f"wartosc z pola {pole} to {strony} ({getattr(rekord,pole)}), nie zmieniam"
+                                f"wartosc z pola {pole} to {strony} ({getattr(rekord, pole)}), nie zmieniam"
                             )
                     else:
                         print(

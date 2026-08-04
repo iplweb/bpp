@@ -20,6 +20,12 @@ from bpp.models import (
 from cerif_export.slowniki import coar, dostep
 
 migracja = importlib.import_module("bpp.migrations.0480_cerif_mapowania_slownikow")
+migracja_frg = importlib.import_module("bpp.migrations.0483_cerif_znak_towarowy")
+
+# Mapowania powstają w DWÓCH migracjach: 0480 (główna partia) i 0483
+# (`frg`, doszlifowane po recenzji — 0480 była już zastosowana, więc nie
+# wolno jej modyfikować). Fixtura musi zgadzać się z sumą obu.
+WSZYSTKIE_CHARAKTERY = dict(migracja.CHARAKTERY, frg=migracja_frg.FRAGMENT_BOOK_PART)
 
 
 def _coar(skrot):
@@ -55,7 +61,7 @@ def test_zmapowane_wartosci_naleza_do_slownika_coar(charaktery_formalne):
 @pytest.mark.django_db
 def test_wieloznaczne_charaktery_zostaja_puste(charaktery_formalne):
     """„inne" i „Fragment" mają zostać dla redakcji, nie być zgadnięte."""
-    for skrot in ("IN", "frg", "BR"):
+    for skrot in ("IN", "BR", "Supl"):
         assert _coar(skrot) == "", skrot
 
 
@@ -125,7 +131,7 @@ def test_fixtura_json_zgodna_z_migracja():
         for rek in json.loads(sciezka.read_text())
     }
 
-    for skrot, uri in migracja.CHARAKTERY.items():
+    for skrot, uri in WSZYSTKIE_CHARAKTERY.items():
         assert fixtura.get(skrot) == uri, (
             f"{skrot}: fixtura ma {fixtura.get(skrot)!r}, migracja {uri!r}"
         )
@@ -133,4 +139,4 @@ def test_fixtura_json_zgodna_z_migracja():
     # I odwrotnie: fixtura nie może mieć typów, których migracja nie zna.
     for skrot, uri in fixtura.items():
         if uri:
-            assert migracja.CHARAKTERY.get(skrot) == uri, skrot
+            assert WSZYSTKIE_CHARAKTERY.get(skrot) == uri, skrot

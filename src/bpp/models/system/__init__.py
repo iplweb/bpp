@@ -142,6 +142,16 @@ class Typ_KBN(NazwaISkrot):
 
 
 class Rodzaj_Prawa_Patentowego(ModelZNazwa):
+    eksportuj_jako_patent = models.BooleanField(
+        "Eksportuj do CERIF jako patent",
+        default=True,
+        help_text="Odznacz dla praw, które nie są patentami w rozumieniu "
+        "słownika COAR (np. znak towarowy). Takie rekordy nie trafią do "
+        "eksportu CERIF/OpenAIRE — profil wymaga dla każdego rekordu typu "
+        "z gałęzi „patent”, więc jedyną alternatywą byłoby zadeklarowanie "
+        "ich patentami wbrew prawdzie.",
+    )
+
     coar_type = models.CharField(
         "Typ COAR",
         max_length=200,

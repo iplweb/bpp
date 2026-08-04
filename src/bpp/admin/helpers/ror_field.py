@@ -4,10 +4,14 @@ Identyfikator ROR ma wbudowaną sumę kontrolną (ISO/IEC 7064 MOD 97-10), więc
 literówkę da się wyłapać od razu przy zapisie, zamiast dowiadywać się o niej
 z odrzuconego harvestu OpenAIRE albo z cichego braku ``RORID`` w eksporcie.
 
-Import ``cerif_export`` jest **leniwy**, wewnątrz funkcji. ``bpp`` jest
-aplikacją rdzeniową, a ``cerif_export`` importuje z niej modele — import na
-poziomie modułu odwróciłby tę zależność i groził cyklem przy starcie.
+Sama walidacja mieszka w ``bpp.util.ror`` — czyli w aplikacji rdzeniowej,
+nie w ``cerif_export``. Dzięki temu można ją wpiąć jako ``validators=[...]``
+na polach modelu (migracje serializują ścieżkę do funkcji i nie mogą
+referencjonować aplikacji nadbudowanej), a ROR jest walidowany na WSZYSTKICH
+ścieżkach zapisu — nie tylko w dwóch formularzach admina.
 """
+
+from bpp.util import ror
 
 
 def czysc_ror(wartosc):
@@ -18,8 +22,6 @@ def czysc_ror(wartosc):
     kanonicznej ``https://ror.org/<id>``, żeby w bazie nie leżały obok
     siebie trzy zapisy tego samego identyfikatora.
     """
-    from cerif_export import ror
-
     wartosc = (wartosc or "").strip()
     if not wartosc:
         return ""

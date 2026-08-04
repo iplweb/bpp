@@ -15,7 +15,7 @@ from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 
 from bpp.models import Uczelnia
-from cerif_export import ror
+from bpp.util import ror
 
 SZEROKOSC_PODSUMOWANIA = 42
 

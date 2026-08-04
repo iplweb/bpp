@@ -18,6 +18,7 @@ from model_utils import Choices
 from tinymce.models import HTMLField
 
 from bpp.fields import EncryptedTextField
+from bpp.util.ror import waliduj as waliduj_ror
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID, NazwaWDopelniaczu
 from pbn_api.exceptions import WillNotExportError
@@ -576,8 +577,8 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         max_length=64,
         blank=True,
         default="",
-        help_text="Identyfikator uczelni w Research Organization Registry "
-        "(ROR), np. https://ror.org/016f61126 (identyfikator ma wbudowaną sumę kontrolną, więc literówka zostanie odrzucona). Używany w eksporcie "
+        validators=[waliduj_ror],
+        help_text="Identyfikator w Research Organization Registry (ROR), np. https://ror.org/016f61126 — ma wbudowaną sumę kontrolną, więc literówka zostanie odrzucona. Używany w eksporcie "
         "CERIF/OpenAIRE jako identyfikator zewnętrzny instytucji; gdy pusty, "
         "nie zostanie wyeksportowany.",
     )

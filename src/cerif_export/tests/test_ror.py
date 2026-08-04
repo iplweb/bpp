@@ -18,7 +18,7 @@ from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.core.management.base import CommandError
 
-from cerif_export import ror
+from bpp.util import ror
 
 # Prawdziwe identyfikatory z rejestru ROR.
 ROR_UMLUB = "016f61126"

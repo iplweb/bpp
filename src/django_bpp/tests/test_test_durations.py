@@ -60,8 +60,6 @@ def test_durations_entries_are_well_formed(durations):
     assert not bad_keys, f"Klucze nie wygladaja na node-id pytest: {bad_keys}"
 
     bad_values = [
-        (k, v)
-        for k, v in durations.items()
-        if not isinstance(v, (int, float)) or v < 0
+        (k, v) for k, v in durations.items() if not isinstance(v, (int, float)) or v < 0
     ][:5]
     assert not bad_values, f"Czasy musza byc nieujemnymi liczbami: {bad_values}"

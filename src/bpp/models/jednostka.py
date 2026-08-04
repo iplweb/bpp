@@ -27,6 +27,7 @@ from bpp.models import ModelZAdnotacjami, ModelZPBN_UID
 from bpp.models.abstract import ModelOpcjonalnieNieEksportowanyDoAPI, ModelZPBN_ID
 from bpp.models.autor import Autor, Autor_Jednostka
 from bpp.util import FulltextSearchMixin
+from bpp.util.ror import waliduj as waliduj_ror
 
 from .uczelnia import Uczelnia
 
@@ -162,8 +163,8 @@ class Jednostka(
         max_length=64,
         blank=True,
         default="",
-        help_text="Identyfikator jednostki w Research Organization Registry "
-        "(ROR), np. https://ror.org/016f61126 (identyfikator ma wbudowaną sumę kontrolną, więc literówka zostanie odrzucona). Używany w eksporcie "
+        validators=[waliduj_ror],
+        help_text="Identyfikator w Research Organization Registry (ROR), np. https://ror.org/016f61126 — ma wbudowaną sumę kontrolną, więc literówka zostanie odrzucona. Używany w eksporcie "
         "CERIF/OpenAIRE jako identyfikator zewnętrzny jednostki "
         "organizacyjnej; gdy pusty, nie zostanie wyeksportowany.",
     )
