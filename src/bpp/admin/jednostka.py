@@ -9,6 +9,7 @@ from django.utils.html import format_html
 from django.utils.translation import gettext
 from import_export.admin import ImportMixin
 from mptt.admin import DraggableMPTTAdmin
+from mptt.forms import MPTTAdminForm
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.admin.helpers.ror_field import czysc_ror
@@ -83,11 +84,19 @@ class Autor_JednostkaInline(admin.TabularInline):
     extra = 0
 
 
-class JednostkaAdminForm(forms.ModelForm):
+class JednostkaAdminForm(MPTTAdminForm):
     """Walidacja ROR-a przy zapisie jednostki.
 
     Identyfikator ma sumę kontrolną, więc literówkę widać od razu,
     a nie dopiero po cichym braku ``RORID`` w eksporcie CERIF.
+
+    Dziedziczy z ``MPTTAdminForm``, a NIE z ``forms.ModelForm``. To nie
+    jest kosmetyka: ``MPTTModelAdmin`` ustawia ``form = MPTTAdminForm``,
+    a ta klasa wycina potomków z listy wyboru ``parent`` i w ``clean()``
+    odrzuca rodzica będącego własnym potomkiem. Podmiana na goły
+    ``ModelForm`` kasowała tę walidację po MRO i pozwalała zapisać PĘTLĘ
+    w drzewie jednostek — czyli rozjechane ``lft``/``rght``/``tree_id``
+    i ``get_descendants()`` kręcące się w nieskończoność.
     """
 
     class Meta:

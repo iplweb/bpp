@@ -7,6 +7,7 @@ po cichu pobiera XSD z internetu, przestaje działać w CI bez sieci i zaczyna
 walidować co innego niż myślimy.
 """
 
+import datetime
 import pathlib
 
 import pytest
@@ -248,3 +249,48 @@ def test_niewidoczna_encja_osadzona_bez_identyfikatora(
 )
 def test_schemat_licencji_porownuje_host_nie_podciag(uri, oczekiwany):
     assert wspolne.schemat_licencji(uri) == oczekiwany
+
+
+# -- embargo a prawo dostępu ---------------------------------------------
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "czas_skrot,miesiecy,data,oczekiwane",
+    [
+        # Otwarte od razu — bez embarga.
+        ("AT_PUBLICATION", None, None, "OPEN"),
+        ("BEFORE_PUBLICATION", None, None, "OPEN"),
+        # Embargo trwa.
+        ("AFTER_PUBLICATION", 12, datetime.date(2099, 1, 1), "EMBARGOED"),
+        # „Po opublikowaniu", ale nie wiadomo po ilu miesiącach.
+        ("AFTER_PUBLICATION", None, None, "EMBARGOED"),
+        # Znamy okres, ale nie datę — nadal nie wiemy, czy minęło.
+        ("AFTER_PUBLICATION", 6, None, "EMBARGOED"),
+        # Embargo dawno minęło — praca jest realnie otwarta.
+        ("AFTER_PUBLICATION", 6, datetime.date(2000, 1, 1), "OPEN"),
+    ],
+)
+def test_embargo_nie_jest_raportowane_jako_open_access(
+    czas_skrot, miesiecy, data, oczekiwane
+):
+    """Tryb dostępu mówi GDZIE, nie KIEDY.
+
+    Praca w otwartym czasopiśmie, ale pod embargiem, nie jest w tej chwili
+    dostępna — profil ma na to osobny termin ``embargoed access``.
+    """
+    from types import SimpleNamespace
+
+    from cerif_export.cerif.publication import _pod_embargiem
+    from cerif_export.slowniki import dostep
+
+    obj = SimpleNamespace(
+        openaccess_czas_publikacji=SimpleNamespace(skrot=czas_skrot),
+        openaccess_ilosc_miesiecy=miesiecy,
+        openaccess_data_opublikowania=data,
+    )
+
+    pod_embargiem = _pod_embargiem(obj, dzisiaj=datetime.date(2026, 8, 4))
+    wynik = dostep.EMBARGOED if pod_embargiem else dostep.OPEN
+
+    assert wynik == getattr(dostep, oczekiwane)

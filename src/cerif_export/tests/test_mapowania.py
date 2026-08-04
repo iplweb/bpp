@@ -1,8 +1,13 @@
 """Migracja mapująca słowniki BPP na wartości kontrolowane profilu.
 
-Testy sprawdzają dane załadowane z baseline'u — czyli to, co realnie
-zobaczy wdrożenie, a nie obiekty zbudowane pod tezę.
+Testy czytające słownik z bazy żądają fixtur ``charaktery_formalne`` /
+``jezyki`` JAWNIE, mimo że dane są też w baseline. Bez tego mierzą stan
+zostawiony przez poprzedni test w shardzie: obie fixtury kasują słownik
+i odtwarzają go z JSON-a, a test ``transaction=True`` taki podmieniony
+słownik utrwala. Dokładnie tak padł CI, mimo zieleni lokalnie.
 """
+
+import importlib
 
 import pytest
 
@@ -13,6 +18,8 @@ from bpp.models import (
     Tryb_OpenAccess_Wydawnictwo_Ciagle,
 )
 from cerif_export.slowniki import coar, dostep
+
+migracja = importlib.import_module("bpp.migrations.0480_cerif_mapowania_slownikow")
 
 
 def _coar(skrot):
@@ -31,12 +38,12 @@ def _coar(skrot):
         ("CZ", coar.JOURNAL),
     ],
 )
-def test_charaktery_formalne_zmapowane(skrot, oczekiwany):
+def test_charaktery_formalne_zmapowane(charaktery_formalne, skrot, oczekiwany):
     assert _coar(skrot) == oczekiwany
 
 
 @pytest.mark.django_db
-def test_zmapowane_wartosci_naleza_do_slownika_coar():
+def test_zmapowane_wartosci_naleza_do_slownika_coar(charaktery_formalne):
     """Literówka w URI byłaby niewidoczna aż do odrzucenia przez walidator."""
     for obj in Charakter_Formalny.objects.exclude(coar_type=""):
         assert obj.coar_type in coar.TYPY_TEKSTOWE, obj.skrot
@@ -46,14 +53,14 @@ def test_zmapowane_wartosci_naleza_do_slownika_coar():
 
 
 @pytest.mark.django_db
-def test_wieloznaczne_charaktery_zostaja_puste():
+def test_wieloznaczne_charaktery_zostaja_puste(charaktery_formalne):
     """„inne" i „Fragment" mają zostać dla redakcji, nie być zgadnięte."""
     for skrot in ("IN", "frg", "BR"):
         assert _coar(skrot) == "", skrot
 
 
 @pytest.mark.django_db
-def test_patenty_nie_dostaja_typu_publikacji():
+def test_patenty_nie_dostaja_typu_publikacji(charaktery_formalne):
     """PAT/WYN idą jako encja Patent — typ publikacji byłby tu nieprawdą."""
     for skrot in ("PAT", "WYN"):
         assert _coar(skrot) == "", skrot
@@ -63,12 +70,12 @@ def test_patenty_nie_dostaja_typu_publikacji():
 @pytest.mark.parametrize(
     "skrot,kod", [("ang.", "en"), ("niem.", "de"), ("pol.", "pl"), ("wł.", "it")]
 )
-def test_jezyki_maja_kod_bcp47(skrot, kod):
+def test_jezyki_maja_kod_bcp47(jezyki, skrot, kod):
     assert Jezyk.objects.get(skrot=skrot).kod_bcp47 == kod
 
 
 @pytest.mark.django_db
-def test_jezyki_nieokreslone_zostaja_bez_kodu():
+def test_jezyki_nieokreslone_zostaja_bez_kodu(jezyki):
     """„brak danych" i „inny" znaczą „nie wiemy" — xml:lang ma nie powstać."""
     for skrot in ("b/d", "in."):
         assert Jezyk.objects.get(skrot=skrot).kod_bcp47 == ""
@@ -80,9 +87,12 @@ def test_prawa_patentowe_zmapowane():
         Rodzaj_Prawa_Patentowego.objects.get(nazwa="wynalazek").coar_type
         == coar.PATENT_ROOT
     )
-    assert Rodzaj_Prawa_Patentowego.objects.get(
-        nazwa="wzór użytkowy"
-    ).coar_type.endswith("9DKX-KSAF")
+    # Porównanie pełnego URI, nie sufiksu — literówka w prefiksie
+    # przeszłaby przez `endswith` niezauważona.
+    assert (
+        Rodzaj_Prawa_Patentowego.objects.get(nazwa="wzór użytkowy").coar_type
+        == coar.BAZA + "9DKX-KSAF"
+    )
 
 
 @pytest.mark.django_db
@@ -92,3 +102,35 @@ def test_tryby_otwarte_maja_prawo_dostepu():
 
     inny = Tryb_OpenAccess_Wydawnictwo_Ciagle.objects.get(skrot="OTHER")
     assert inny.coar_access_right == "", "Inne nie znaczy otwarte"
+
+
+@pytest.mark.django_db
+def test_fixtura_json_zgodna_z_migracja():
+    """Strażnik rozjazdu fixtury testowej i migracji danych.
+
+    ``src/fixtures/conftest_system.py`` kasuje cały słownik charakterów
+    i odtwarza go z ``charakter_formalny.json``. Gdy JSON nie ma typów COAR
+    (albo ma inne niż migracja), test korzystający z tej fixtury dostaje
+    słownik niezgodny z produkcją — i wywraca się dopiero na CI, po tym jak
+    wcześniejszy test ``transaction=True`` utrwali podmieniony słownik.
+
+    Dokładnie to się wydarzyło; stąd ten test.
+    """
+    import json
+    import pathlib
+
+    sciezka = pathlib.Path(__file__).parents[2] / "bpp/fixtures/charakter_formalny.json"
+    fixtura = {
+        rek["fields"]["skrot"]: rek["fields"].get("coar_type", "")
+        for rek in json.loads(sciezka.read_text())
+    }
+
+    for skrot, uri in migracja.CHARAKTERY.items():
+        assert fixtura.get(skrot) == uri, (
+            f"{skrot}: fixtura ma {fixtura.get(skrot)!r}, migracja {uri!r}"
+        )
+
+    # I odwrotnie: fixtura nie może mieć typów, których migracja nie zna.
+    for skrot, uri in fixtura.items():
+        if uri:
+            assert migracja.CHARAKTERY.get(skrot) == uri, skrot
