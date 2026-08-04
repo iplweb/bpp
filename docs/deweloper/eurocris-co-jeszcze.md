@@ -1,5 +1,10 @@
 # euroCRIS / OpenAIRE — co jeszcze zostało do zrobienia
 
+> **Śledzenie prac:** issue-parasol [#709](https://github.com/iplweb/bpp/issues/709).
+> Ten dokument opisuje **dlaczego** jest jak jest; issues opisują **co i kto**.
+> Poszczególne sekcje mają odpowiadające im issues: A1 → #701, A2 → #702,
+> A3 → #703, A4 → #704, B → #705 i #706, D → #707, F1 → #708.
+
 Data: 2026-08-04
 Kontekst: po wdrożeniu aplikacji `cerif_export` (wariant A).
 
