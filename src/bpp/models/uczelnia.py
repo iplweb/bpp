@@ -577,7 +577,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         blank=True,
         default="",
         help_text="Identyfikator uczelni w Research Organization Registry "
-        "(ROR), np. https://ror.org/0111ttp83 . Używany w eksporcie "
+        "(ROR), np. https://ror.org/016f61126 (identyfikator ma wbudowaną sumę kontrolną, więc literówka zostanie odrzucona). Używany w eksporcie "
         "CERIF/OpenAIRE jako identyfikator zewnętrzny instytucji; gdy pusty, "
         "nie zostanie wyeksportowany.",
     )

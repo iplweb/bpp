@@ -163,7 +163,7 @@ class Jednostka(
         blank=True,
         default="",
         help_text="Identyfikator jednostki w Research Organization Registry "
-        "(ROR), np. https://ror.org/0111ttp83 . Używany w eksporcie "
+        "(ROR), np. https://ror.org/016f61126 (identyfikator ma wbudowaną sumę kontrolną, więc literówka zostanie odrzucona). Używany w eksporcie "
         "CERIF/OpenAIRE jako identyfikator zewnętrzny jednostki "
         "organizacyjnej; gdy pusty, nie zostanie wyeksportowany.",
     )

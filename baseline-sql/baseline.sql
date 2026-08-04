@@ -16198,6 +16198,40 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+347	bpp	0255_auto_20210407_1138	2000-01-01 00:00:00+00
+836	oswiadczenia	0005_migrate_template_to_dbtemplate	2000-01-01 00:00:00+00
+837	password_policies	0001_initial	2000-01-01 00:00:00+00
+838	password_policies	0002_passwordprofile	2000-01-01 00:00:00+00
+839	password_policies	0003_update_passwordprofile	2000-01-01 00:00:00+00
+840	pbn_downloader_app	0001_initial	2000-01-01 00:00:00+00
+841	pbn_downloader_app	0002_pbninstitutionpeopletask	2000-01-01 00:00:00+00
+842	pbn_downloader_app	0003_pbnjournalsdownloadtask	2000-01-01 00:00:00+00
+843	pbn_downloader_app	0004_alter_error_message_fields	2000-01-01 00:00:00+00
+934	test_bpp	0003_testreport	2000-01-01 00:00:00+00
+844	pbn_export_queue	0001_rename_table	2000-01-01 00:00:00+00
+845	pbn_export_queue	0002_initial	2000-01-01 00:00:00+00
+846	pbn_export_queue	0003_add_rodzaj_bledu	2000-01-01 00:00:00+00
+847	pbn_export_queue	0004_add_wykluczone_field	2000-01-01 00:00:00+00
+848	pbn_export_queue	0005_reclassify_old_validation_errors	2000-01-01 00:00:00+00
+849	pbn_export_queue	0006_reclassify_list_format_validation_errors	2000-01-01 00:00:00+00
+850	pbn_export_queue	0007_reclassify_doiorwwwmissing_errors	2000-01-01 00:00:00+00
+851	pbn_import	0001_initial	2000-01-01 00:00:00+00
+852	pbn_import	0002_add_task_id_field	2000-01-01 00:00:00+00
+853	pbn_import	0003_add_import_inconsistency	2000-01-01 00:00:00+00
+854	pbn_import	0004_add_bpp_publication_content_type	2000-01-01 00:00:00+00
+855	pbn_import	0005_remove_importstatistics	2000-01-01 00:00:00+00
+856	pbn_import	0006_remove_importstep	2000-01-01 00:00:00+00
+857	pbn_import	0007_add_last_updated_field	2000-01-01 00:00:00+00
+858	pbn_import	0008_add_importsession_indexes	2000-01-01 00:00:00+00
+859	pbn_import	0009_fix_error_fields_default	2000-01-01 00:00:00+00
+860	pbn_import	0010_alter_importinconsistency_inconsistency_type	2000-01-01 00:00:00+00
+861	pbn_import	0011_alter_importinconsistency_session_and_more	2000-01-01 00:00:00+00
+862	pbn_komparator_zrodel	0001_initial	2000-01-01 00:00:00+00
+863	pbn_komparator_zrodel	0002_add_brakujaca_dyscyplina_pbn	2000-01-01 00:00:00+00
+864	pbn_komparator_zrodel	0003_remove_rozbieznosczrodlapbn_pbn_kompara_zrodlo__8665da_idx_and_more	2000-01-01 00:00:00+00
+865	pbn_wysylka_oswiadczen	0001_initial	2000-01-01 00:00:00+00
+1122	bpp	0480_cerif_mapowania_slownikow	2000-01-01 00:00:00+00
+1123	bpp	0481_uczelnia_eksport_cerif_osoby	2000-01-01 00:00:00+00
 233	bpp	0151_snip	2000-01-01 00:00:00+00
 866	pbn_wysylka_oswiadczen	0002_add_tytul_field	2000-01-01 00:00:00+00
 867	pbn_wysylka_oswiadczen	0003_add_synchronized_count	2000-01-01 00:00:00+00
@@ -16382,6 +16416,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1046	import_pracownikow	0013_confidence_kandydaci	2000-01-01 00:00:00+00
 1047	import_pracownikow	0014_utworz_nowego_odpiecie	2000-01-01 00:00:00+00
 1048	import_pracownikow	0015_przepnij_prace	2000-01-01 00:00:00+00
+35	pbn_api	0001_initial	2000-01-01 00:00:00+00
 1049	import_punktacji_zrodel	0002_alter_importpunktacjizrodel_options_and_more	2000-01-01 00:00:00+00
 1050	importer_publikacji	0014_importedauthor_typ_ogolny	2000-01-01 00:00:00+00
 1051	importer_publikacji	0015_alter_importsession_status	2000-01-01 00:00:00+00
@@ -16476,7 +16511,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 904	rozbieznosci_dyscyplin	0003_brakprzypisaniaview_rozbiezneprzypisaniaview_rozbieznosciview	2000-01-01 00:00:00+00
 905	rozbieznosci_dyscyplin	0004_recreate	2000-01-01 00:00:00+00
 906	rozbieznosci_dyscyplin	0005_recreate	2000-01-01 00:00:00+00
-35	pbn_api	0001_initial	2000-01-01 00:00:00+00
 36	pbn_api	0002_institution	2000-01-01 00:00:00+00
 1	contenttypes	0001_initial	2000-01-01 00:00:00+00
 2	auth	0001_initial	2000-01-01 00:00:00+00
@@ -16812,7 +16846,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 344	bpp	0252_slug	2000-01-01 00:00:00+00
 345	bpp	0253_rekord_mat_slug	2000-01-01 00:00:00+00
 346	bpp	0254_uczelnia_pbn_uid	2000-01-01 00:00:00+00
-347	bpp	0255_auto_20210407_1138	2000-01-01 00:00:00+00
 348	bpp	0256_auto_20210407_1151	2000-01-01 00:00:00+00
 349	bpp	0257_wydawca_pbn_uid	2000-01-01 00:00:00+00
 350	bpp	0258_auto_20210407_2320	2000-01-01 00:00:00+00
@@ -17283,39 +17316,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 833	oswiadczenia	0002_add_offset_limit	2000-01-01 00:00:00+00
 834	oswiadczenia	0003_fix_export_format_max_length	2000-01-01 00:00:00+00
 835	oswiadczenia	0004_add_przypieta_filter	2000-01-01 00:00:00+00
-836	oswiadczenia	0005_migrate_template_to_dbtemplate	2000-01-01 00:00:00+00
-837	password_policies	0001_initial	2000-01-01 00:00:00+00
-838	password_policies	0002_passwordprofile	2000-01-01 00:00:00+00
-839	password_policies	0003_update_passwordprofile	2000-01-01 00:00:00+00
-840	pbn_downloader_app	0001_initial	2000-01-01 00:00:00+00
-841	pbn_downloader_app	0002_pbninstitutionpeopletask	2000-01-01 00:00:00+00
-842	pbn_downloader_app	0003_pbnjournalsdownloadtask	2000-01-01 00:00:00+00
-843	pbn_downloader_app	0004_alter_error_message_fields	2000-01-01 00:00:00+00
-934	test_bpp	0003_testreport	2000-01-01 00:00:00+00
-844	pbn_export_queue	0001_rename_table	2000-01-01 00:00:00+00
-845	pbn_export_queue	0002_initial	2000-01-01 00:00:00+00
-846	pbn_export_queue	0003_add_rodzaj_bledu	2000-01-01 00:00:00+00
-847	pbn_export_queue	0004_add_wykluczone_field	2000-01-01 00:00:00+00
-848	pbn_export_queue	0005_reclassify_old_validation_errors	2000-01-01 00:00:00+00
-849	pbn_export_queue	0006_reclassify_list_format_validation_errors	2000-01-01 00:00:00+00
-850	pbn_export_queue	0007_reclassify_doiorwwwmissing_errors	2000-01-01 00:00:00+00
-851	pbn_import	0001_initial	2000-01-01 00:00:00+00
-852	pbn_import	0002_add_task_id_field	2000-01-01 00:00:00+00
-853	pbn_import	0003_add_import_inconsistency	2000-01-01 00:00:00+00
-854	pbn_import	0004_add_bpp_publication_content_type	2000-01-01 00:00:00+00
-855	pbn_import	0005_remove_importstatistics	2000-01-01 00:00:00+00
-856	pbn_import	0006_remove_importstep	2000-01-01 00:00:00+00
-857	pbn_import	0007_add_last_updated_field	2000-01-01 00:00:00+00
-858	pbn_import	0008_add_importsession_indexes	2000-01-01 00:00:00+00
-859	pbn_import	0009_fix_error_fields_default	2000-01-01 00:00:00+00
-860	pbn_import	0010_alter_importinconsistency_inconsistency_type	2000-01-01 00:00:00+00
-861	pbn_import	0011_alter_importinconsistency_session_and_more	2000-01-01 00:00:00+00
-862	pbn_komparator_zrodel	0001_initial	2000-01-01 00:00:00+00
-863	pbn_komparator_zrodel	0002_add_brakujaca_dyscyplina_pbn	2000-01-01 00:00:00+00
-864	pbn_komparator_zrodel	0003_remove_rozbieznosczrodlapbn_pbn_kompara_zrodlo__8665da_idx_and_more	2000-01-01 00:00:00+00
-865	pbn_wysylka_oswiadczen	0001_initial	2000-01-01 00:00:00+00
-1122	bpp	0480_cerif_mapowania_slownikow	2000-01-01 00:00:00+00
-1123	bpp	0481_uczelnia_eksport_cerif_osoby	2000-01-01 00:00:00+00
+1124	bpp	0482_alter_jednostka_ror_id_alter_uczelnia_ror_id	2000-01-01 00:00:00+00
 \.
 
 
@@ -17688,6 +17689,21 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+223	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+224	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
+225	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+226	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+227	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+228	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+229	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+230	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+231	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+232	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+233	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+234	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+235	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+236	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+237	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -19269,7 +19285,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1123, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1124, true);
 
 
 --
@@ -19507,7 +19523,7 @@ SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 42,
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 222, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 237, true);
 
 
 --

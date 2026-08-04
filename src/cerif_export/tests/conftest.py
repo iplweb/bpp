@@ -23,7 +23,10 @@ from bpp.models import (
 def uczelnia(db):
     site = Site.objects.create(domain="cerif.example.org", name="cerif.example.org")
     return Uczelnia.objects.create(
-        nazwa="Uczelnia CERIF", skrot="UCE", site=site, ror_id="https://ror.org/01abc23"
+        nazwa="Uczelnia CERIF",
+        skrot="UCE",
+        site=site,
+        ror_id="https://ror.org/016f61126",
     )
 
 

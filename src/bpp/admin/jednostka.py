@@ -11,6 +11,7 @@ from import_export.admin import ImportMixin
 from mptt.admin import DraggableMPTTAdmin
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
+from bpp.admin.helpers.ror_field import czysc_ror
 from bpp.models import Autor_Jednostka, Uczelnia
 
 from ..models.struktura import Jednostka, Jednostka_Rodzic
@@ -82,6 +83,21 @@ class Autor_JednostkaInline(admin.TabularInline):
     extra = 0
 
 
+class JednostkaAdminForm(forms.ModelForm):
+    """Walidacja ROR-a przy zapisie jednostki.
+
+    Identyfikator ma sumę kontrolną, więc literówkę widać od razu,
+    a nie dopiero po cichym braku ``RORID`` w eksporcie CERIF.
+    """
+
+    class Meta:
+        model = Jednostka
+        fields = ["ror_id"]
+
+    def clean_ror_id(self):
+        return czysc_ror(self.cleaned_data.get("ror_id"))
+
+
 class JednostkaAdmin(
     ImportMixin,
     SiteFilteredAdminMixin,
@@ -92,6 +108,7 @@ class JednostkaAdmin(
     BaseBppAdminMixin,
     DraggableMPTTAdmin,
 ):
+    form = JednostkaAdminForm
     uczelnia_field_path = "uczelnia"
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
