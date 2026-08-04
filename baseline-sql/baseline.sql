@@ -16198,6 +16198,35 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
 233	bpp	0151_snip	2000-01-01 00:00:00+00
+866	pbn_wysylka_oswiadczen	0002_add_tytul_field	2000-01-01 00:00:00+00
+867	pbn_wysylka_oswiadczen	0003_add_synchronized_count	2000-01-01 00:00:00+00
+868	pbn_wysylka_oswiadczen	0004_alter_pbnwysylkalog_content_type_and_more	2000-01-01 00:00:00+00
+869	powiazania_autorow	0001_initial	2000-01-01 00:00:00+00
+870	powiazania_autorow	0002_alter_authorconnection_primary_author_and_more	2000-01-01 00:00:00+00
+871	powiazania_autorow	0003_backfill_powiazania_istniejace	2000-01-01 00:00:00+00
+872	powiazania_autorow	0004_alter_authorconnection_primary_author	2000-01-01 00:00:00+00
+873	przemapuj_prace_autora	0001_initial	2000-01-01 00:00:00+00
+874	przemapuj_prace_autora	0002_przemapoaniepracautora_prace_ciagle_historia_and_more	2000-01-01 00:00:00+00
+875	przemapuj_zrodla_pbn	0001_initial	2000-01-01 00:00:00+00
+876	przemapuj_zrodla_pbn	0002_przemapowaniezrodla_typ_operacji_and_more	2000-01-01 00:00:00+00
+877	przemapuj_zrodla_pbn	0003_alter_przemapowaniezrodla_zrodlo_nowe_and_more	2000-01-01 00:00:00+00
+878	przemapuj_zrodlo	0001_initial	2000-01-01 00:00:00+00
+879	przemapuj_zrodlo	0002_remove_przemapowazrodla_przemapuj_z_zrodlo__8d9224_idx_and_more	2000-01-01 00:00:00+00
+880	raport_slotow	0001_initial	2000-01-01 00:00:00+00
+881	raport_slotow	0002_auto_20200316_2027	2000-01-01 00:00:00+00
+882	raport_slotow	0003_auto_20200329_1719	2000-01-01 00:00:00+00
+883	raport_slotow	0004_raportslotowuczelnia_raportslotowuczelniawiersz	2000-01-01 00:00:00+00
+884	raport_slotow	0005_auto_20210125_0256	2000-01-01 00:00:00+00
+885	raport_slotow	0006_auto_20210125_2330	2000-01-01 00:00:00+00
+886	raport_slotow	0007_auto_20210130_1407	2000-01-01 00:00:00+00
+887	raport_slotow	0008_auto_20210308_0839	2000-01-01 00:00:00+00
+888	raport_slotow	0009_auto_20210308_0846	2000-01-01 00:00:00+00
+889	raport_slotow	0010_auto_20210314_2204	2000-01-01 00:00:00+00
+890	raport_slotow	0011_auto_20210315_0141	2000-01-01 00:00:00+00
+891	raport_slotow	0012_django32	2000-01-01 00:00:00+00
+892	raport_slotow	0013_nullbooleanfield	2000-01-01 00:00:00+00
+893	raport_slotow	0014_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+1121	bpp	0479_cerif_export_pola	2000-01-01 00:00:00+00
 308	bpp	0219_auto_20200727_2308	2000-01-01 00:00:00+00
 552	bpp	0442_drop_plpython3u	2000-01-01 00:00:00+00
 809	integrator2	0002_auto_20160124_1336	2000-01-01 00:00:00+00
@@ -16383,6 +16412,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1112	bpp	0473_guard_autor_jednostka_okresy_bez_nakladan	2000-01-01 00:00:00+00
 1113	bpp	0474_constraint_autor_jednostka_okresy_bez_nakladan	2000-01-01 00:00:00+00
 1114	bpp	0475_merge_20260724_1726	2000-01-01 00:00:00+00
+266	bpp	0179_auto_20190910_1416	2000-01-01 00:00:00+00
 1115	ewaluacja_optymalizacja	0016_statusodpinaniawszystkich	2000-01-01 00:00:00+00
 1116	import_list_ministerialnych	0009_alter_importlistministerialnych_options_and_more	2000-01-01 00:00:00+00
 69	pbn_api	0035_django32	2000-01-01 00:00:00+00
@@ -16707,7 +16737,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 262	bpp	0176_auto_20190903_0108	2000-01-01 00:00:00+00
 263	bpp	0177_cache_punktacja_autora_query	2000-01-01 00:00:00+00
 265	bpp	0179_auto_20190910_2147	2000-01-01 00:00:00+00
-266	bpp	0179_auto_20190910_1416	2000-01-01 00:00:00+00
 267	bpp	0180_merge_20190910_2236	2000-01-01 00:00:00+00
 268	bpp	0181_cache_punktacja_autora_sum_cache_punktacja_autora_sum_gruop	2000-01-01 00:00:00+00
 270	bpp	0183_auto_20191020_1535	2000-01-01 00:00:00+00
@@ -17284,35 +17313,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 863	pbn_komparator_zrodel	0002_add_brakujaca_dyscyplina_pbn	2000-01-01 00:00:00+00
 864	pbn_komparator_zrodel	0003_remove_rozbieznosczrodlapbn_pbn_kompara_zrodlo__8665da_idx_and_more	2000-01-01 00:00:00+00
 865	pbn_wysylka_oswiadczen	0001_initial	2000-01-01 00:00:00+00
-866	pbn_wysylka_oswiadczen	0002_add_tytul_field	2000-01-01 00:00:00+00
-867	pbn_wysylka_oswiadczen	0003_add_synchronized_count	2000-01-01 00:00:00+00
-868	pbn_wysylka_oswiadczen	0004_alter_pbnwysylkalog_content_type_and_more	2000-01-01 00:00:00+00
-869	powiazania_autorow	0001_initial	2000-01-01 00:00:00+00
-870	powiazania_autorow	0002_alter_authorconnection_primary_author_and_more	2000-01-01 00:00:00+00
-871	powiazania_autorow	0003_backfill_powiazania_istniejace	2000-01-01 00:00:00+00
-872	powiazania_autorow	0004_alter_authorconnection_primary_author	2000-01-01 00:00:00+00
-873	przemapuj_prace_autora	0001_initial	2000-01-01 00:00:00+00
-874	przemapuj_prace_autora	0002_przemapoaniepracautora_prace_ciagle_historia_and_more	2000-01-01 00:00:00+00
-875	przemapuj_zrodla_pbn	0001_initial	2000-01-01 00:00:00+00
-876	przemapuj_zrodla_pbn	0002_przemapowaniezrodla_typ_operacji_and_more	2000-01-01 00:00:00+00
-877	przemapuj_zrodla_pbn	0003_alter_przemapowaniezrodla_zrodlo_nowe_and_more	2000-01-01 00:00:00+00
-878	przemapuj_zrodlo	0001_initial	2000-01-01 00:00:00+00
-879	przemapuj_zrodlo	0002_remove_przemapowazrodla_przemapuj_z_zrodlo__8d9224_idx_and_more	2000-01-01 00:00:00+00
-880	raport_slotow	0001_initial	2000-01-01 00:00:00+00
-881	raport_slotow	0002_auto_20200316_2027	2000-01-01 00:00:00+00
-882	raport_slotow	0003_auto_20200329_1719	2000-01-01 00:00:00+00
-883	raport_slotow	0004_raportslotowuczelnia_raportslotowuczelniawiersz	2000-01-01 00:00:00+00
-884	raport_slotow	0005_auto_20210125_0256	2000-01-01 00:00:00+00
-885	raport_slotow	0006_auto_20210125_2330	2000-01-01 00:00:00+00
-886	raport_slotow	0007_auto_20210130_1407	2000-01-01 00:00:00+00
-887	raport_slotow	0008_auto_20210308_0839	2000-01-01 00:00:00+00
-888	raport_slotow	0009_auto_20210308_0846	2000-01-01 00:00:00+00
-889	raport_slotow	0010_auto_20210314_2204	2000-01-01 00:00:00+00
-890	raport_slotow	0011_auto_20210315_0141	2000-01-01 00:00:00+00
-891	raport_slotow	0012_django32	2000-01-01 00:00:00+00
-892	raport_slotow	0013_nullbooleanfield	2000-01-01 00:00:00+00
-893	raport_slotow	0014_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-1121	bpp	0479_cerif_export_pola	2000-01-01 00:00:00+00
 \.
 
 
@@ -17685,21 +17685,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-208	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
-209	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
-210	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-211	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-212	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-213	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-214	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-215	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-216	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-217	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-218	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-219	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-220	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-221	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-222	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
