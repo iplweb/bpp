@@ -434,6 +434,7 @@ INSTALLED_APPS = [
     "crossref_bpp",
     "pbn_api",
     "dspace_api",
+    "cerif_export",
     "pbn_export_queue",
     "pbn_komparator_zrodel",
     "dal",

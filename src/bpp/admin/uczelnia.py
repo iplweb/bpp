@@ -44,6 +44,7 @@ class Ukryj_Status_KorektyInline(admin.StackedInline):
         "rankingi",
         "sloty",
         "api",
+        "cerif",
     ]
     extra = 0
 
@@ -146,13 +147,28 @@ class UczelniaAdmin(
                 ),
             },
         ),
+        # DWA osobne fieldsety, mimo że oba dotyczą OAI-PMH. To NIE jest
+        # jeden przełącznik z dodatkami: `oai_pmh_aktywny` bramkuje wyłącznie
+        # /oai/ (feed oai_dc dla Primo), a `eksport_cerif_wlaczony` wyłącznie
+        # /cerif-oai/. Wrzucone do wspólnej sekcji sugerowałyby redaktorowi,
+        # że odznaczenie pierwszego wyłącza też drugi — a tak nie jest.
         (
-            "OAI-PMH",
+            "OAI-PMH dla Primo (/oai/)",
             {
                 "classes": ("grp-collapse grp-closed",),
                 "fields": (
                     "oai_pmh_aktywny",
                     "oai_identyfikator_repozytorium",
+                ),
+            },
+        ),
+        (
+            "Eksport CERIF / OpenAIRE (/cerif-oai/)",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "eksport_cerif_wlaczony",
+                    "ror_id",
                 ),
             },
         ),
@@ -291,6 +307,13 @@ class UczelniaAdmin(
                     "dspace_api_password",
                     "dspace_domyslny_jezyk_dc",
                 ),
+            },
+        ),
+        (
+            "REST API",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": ("api_v1_wlaczone",),
             },
         ),
         (

@@ -570,6 +570,32 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         blank=True,
         default="pl",
     )
+
+    ror_id = models.CharField(
+        "Identyfikator ROR",
+        max_length=64,
+        blank=True,
+        default="",
+        help_text="Identyfikator uczelni w Research Organization Registry "
+        "(ROR), np. https://ror.org/0111ttp83 . Używany w eksporcie "
+        "CERIF/OpenAIRE jako identyfikator zewnętrzny instytucji; gdy pusty, "
+        "nie zostanie wyeksportowany.",
+    )
+
+    api_v1_wlaczone = models.BooleanField(
+        "Włącz REST API (/api/v1/)",
+        default=True,
+        help_text="Gdy odznaczone, publiczne REST API tej uczelni "
+        "(/api/v1/) przestaje odpowiadać.",
+    )
+
+    eksport_cerif_wlaczony = models.BooleanField(
+        "Włącz eksport CERIF/OpenAIRE",
+        default=True,
+        help_text="Gdy odznaczone, endpoint OAI-PMH z danymi w formacie "
+        "CERIF-XML (OpenAIRE CRIS Guidelines) przestaje odpowiadać dla tej "
+        "uczelni.",
+    )
     pbn_kasuj_dyscypliny_selektywnie = models.BooleanField(
         "Kasuj oświadczenia selektywnie (per osoba)",
         default=True,
@@ -898,12 +924,19 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         ``oai_identyfikator_repozytorium`` pozwala zachować dotychczasowe
         identyfikatory po zmianie domeny (są one trwałym kluczem rekordu po
         stronie harvesterów).
+
+        Używane zarówno przez feed ``oai_dc`` dla Primo, jak i przez eksport
+        CERIF — obie warstwy muszą wydawać identyfikatory z tego samego
+        namespace'u.
         """
         return self.oai_identyfikator_repozytorium.strip() or self.site.domain
 
     def ukryte_statusy(self, dla_funkcji: str) -> list[int]:
         """
-        :param dla_funkcji: "sloty", "raporty", "multiwyszukiwarka", "rankingi"
+        :param dla_funkcji: nazwa kanału (pola :class:`Ukryj_Status_Korekty`):
+            "multiwyszukiwarka", "podglad", "raporty", "rankingi", "sloty",
+            "api" (REST API JSON oraz OAI-PMH dla Primo) albo "cerif"
+            (eksport CERIF/OpenAIRE)
         :return: lista numerów PK obiektów :class:`bpp.models.system.Status_Korekty`
         """
         return self.ukryj_status_korekty_set.filter(**{dla_funkcji: True}).values_list(
@@ -984,7 +1017,12 @@ class Ukryj_Status_Korekty(models.Model):
     api = models.BooleanField(
         "API",
         default=True,
-        help_text="Dotyczy ukrywania prac w API JSON-REST oraz OAI-PMH",
+        help_text="Dotyczy ukrywania prac w API JSON-REST oraz OAI-PMH dla Primo",
+    )
+    cerif = models.BooleanField(
+        "Eksport CERIF",
+        default=True,
+        help_text="Dotyczy ukrywania prac w eksporcie CERIF/OpenAIRE",
     )
 
     class Meta:
@@ -998,7 +1036,9 @@ class Ukryj_Status_Korekty(models.Model):
             f"{'multiwyszukiwarki, ' if self.multiwyszukiwarka else ''}"
             f"{'raportów, ' if self.raporty else ''}"
             f"{'rankingów, ' if self.rankingi else ''}"
-            f"{'slotów. ' if self.sloty else ''}"
+            f"{'slotów, ' if self.sloty else ''}"
+            f"{'API, ' if self.api else ''}"
+            f"{'eksportu CERIF, ' if self.cerif else ''}"
         )
 
         if res.endswith(", "):

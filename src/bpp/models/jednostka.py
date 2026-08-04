@@ -157,6 +157,17 @@ class Jednostka(
     email = models.EmailField("E-mail", max_length=128, blank=True, default="")
     www = models.URLField("WWW", max_length=1024, blank=True, default="")
 
+    ror_id = models.CharField(
+        "Identyfikator ROR",
+        max_length=64,
+        blank=True,
+        default="",
+        help_text="Identyfikator jednostki w Research Organization Registry "
+        "(ROR), np. https://ror.org/0111ttp83 . Używany w eksporcie "
+        "CERIF/OpenAIRE jako identyfikator zewnętrzny jednostki "
+        "organizacyjnej; gdy pusty, nie zostanie wyeksportowany.",
+    )
+
     pbn_uid = models.ForeignKey(
         "pbn_api.Institution",
         verbose_name="Odpowiednik w PBN",
