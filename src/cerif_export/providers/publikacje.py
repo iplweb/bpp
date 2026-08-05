@@ -44,9 +44,14 @@ from cerif_export.providers.base import ProviderEncji
 from cerif_export.providers.jednostki import (
     widoczne_jednostki,
     widoczne_pk,
+    widoczni_grantodawcy,
     wymagaj_uczelni,
 )
 from cerif_export.providers.osoby import widoczni_autorzy
+from cerif_export.providers.projekty import (
+    klucze_osadzonych_projektow,
+    prefetche_pochodzenia,
+)
 from cerif_export.slowniki import coar
 
 # Wydawnictwa: mają ``nie_eksportuj_przez_api`` i model autorstwa.
@@ -208,6 +213,8 @@ def _prefetche_wydawnictwa(model):
     """
     return [
         "slowa_kluczowe",
+        # ``OriginatesFrom`` osadza w publikacji pełny ``<Project>``.
+        *prefetche_pochodzenia(),
         Prefetch(
             "autorzy_set",
             queryset=_AUTORSTWA[model]
@@ -318,7 +325,7 @@ class ProviderPublikacji(ProviderEncji):
             return (
                 widoczne_prace(model, uczelnia)
                 .select_related(*_SELECT_PRACY)
-                .prefetch_related("slowa_kluczowe")
+                .prefetch_related("slowa_kluczowe", *prefetche_pochodzenia())
                 .annotate(
                     **{
                         ADNOTACJA_COAR: Value(
@@ -366,9 +373,17 @@ class ProviderPublikacji(ProviderEncji):
                 autorzy.add(autorstwo.autor_id)
                 jednostki.add(autorstwo.jednostka_id)
 
+        # ``OriginatesFrom`` osadza pełny projekt, który referuje SWÓJ zespół,
+        # SWOJĄ jednostkę realizującą i SWOICH grantodawców — żadne z nich
+        # nie musi mieć nic wspólnego z autorami publikacji.
+        z_projektow = klucze_osadzonych_projektow(obiekty)
+        autorzy |= z_projektow[0]
+        jednostki |= z_projektow[1]
+
         return ZbioryWidocznosci(
             autorzy=widoczne_pk(widoczni_autorzy(uczelnia), autorzy),
             jednostki=widoczne_pk(widoczne_jednostki(uczelnia), jednostki),
+            grantodawcy=widoczne_pk(widoczni_grantodawcy(uczelnia), z_projektow[2]),
             zrodla=widoczne_pk(widoczne_zrodla(uczelnia), zrodla),
             konferencje=widoczne_pk(widoczne_konferencje(uczelnia), konferencje),
             publikacje=frozenset(

@@ -7,7 +7,8 @@ identyfikatorów patentu (``URL``), ``Inventors``, ``Keyword``,
 
 Provider musi dostarczyć: ``select_related("rodzaj_prawa")`` oraz
 ``prefetch_related("autorzy_set__autor", "autorzy_set__jednostka",
-"slowa_kluczowe")``.
+"slowa_kluczowe")``, a dla ``OriginatesFrom`` — komplet prefetchy
+projektu (``providers.projekty.prefetche_projektu``).
 """
 
 from cerif_export import const
@@ -62,6 +63,10 @@ def serializuj(patent, ctx):
     dodaj(el, "URL", tekst(getattr(patent, "www", None)))
     dodaj_wynalazcow(el, patent, ctx)
     wspolne.dodaj_slowa_kluczowe(el, patent)
+    # ``xs:sequence``: ... Keyword, OriginatesFrom, Predecessor, References,
+    # FileLocations — projekty wypadają PO słowach kluczowych, a PRZED
+    # lokalizacjami plików.
+    wspolne.dodaj_pochodzenie(el, patent, ctx)
     wspolne.dodaj_pliki(el, patent)
 
     return el

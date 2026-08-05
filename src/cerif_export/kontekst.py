@@ -41,6 +41,13 @@ class ZbioryWidocznosci:
 
     autorzy: frozenset = field(default_factory=frozenset)
     jednostki: frozenset = field(default_factory=frozenset)
+    # Instytucje finansujące wychodzą w secie OrgUnits, ale mają własny
+    # model i własny slug, więc nie da się ich wrzucić do ``jednostki`` —
+    # klucze główne obu tabel kolidują. Bez osobnego zbioru ``zawiera()``
+    # zwracało dla grantodawcy ``False``, czyli ``Funding/Funder``
+    # i ``Project/Funded/By`` osadzały OrgUnit-a BEZ ``@id``: referencję,
+    # której nie da się rozwiązać na żaden rekord harvestu.
+    grantodawcy: frozenset = field(default_factory=frozenset)
     zrodla: frozenset = field(default_factory=frozenset)
     konferencje: frozenset = field(default_factory=frozenset)
     # (slug, pk) — publikacje pochodzą z pięciu różnych modeli
@@ -49,6 +56,7 @@ class ZbioryWidocznosci:
     _POLA_WG_SLUGU = {
         "au": "autorzy",
         "je": "jednostki",
+        "if": "grantodawcy",
         "zr": "zrodla",
         "kf": "konferencje",
     }
@@ -75,6 +83,24 @@ class KontekstSerializacji:
     namespace: str
     uczelnia: object
     widoczne: ZbioryWidocznosci
+
+    @property
+    def kwoty_dozwolone(self) -> bool:
+        """Czy wolno wystawić kwoty finansowania (``Funding/Amount``)?
+
+        Przełącznik ``Uczelnia.eksport_cerif_kwoty`` jest domyślnie
+        **wyłączony** — kwoty grantów bywają danymi wrażliwymi umownie
+        i zostają w bazie do użytku wewnętrznego.
+
+        Decyzja siedzi tutaj, a nie w serializerze sięgającym po pole
+        uczelni na własną rękę, z tego samego powodu, dla którego
+        widoczność encji siedzi w :class:`ZbioryWidocznosci`: to jest
+        kontrakt kontekstu, a nie szczegół implementacyjny jednego
+        buildera. Odczyt pola już załadowanego obiektu ``Uczelnia`` nie
+        jest zapytaniem do bazy, więc reguła „serializer nie dotyka bazy"
+        zostaje nienaruszona.
+        """
+        return bool(getattr(self.uczelnia, "eksport_cerif_kwoty", False))
 
     def id_dla(self, obj):
         """Identyfikator OAI albo ``None``, gdy encja nie wyjdzie w secie.

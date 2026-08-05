@@ -8,6 +8,16 @@ class Grant(models.Model):
     zrodlo_finansowania = models.TextField(blank=True, default="")
     numer_projektu = models.CharField(max_length=200, unique=True)
     rok = models.PositiveSmallIntegerField(null=True, blank=True)
+    # SET_NULL, bo skasowanie projektu nie może kasować historycznych numerów
+    # grantów przypiętych do publikacji.
+    projekt = models.ForeignKey(
+        "bpp.Projekt",
+        models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Projekt",
+        help_text="Projekt badawczy, w ramach którego przyznano ten grant.",
+    )
 
     class Meta:
         verbose_name = "grant"

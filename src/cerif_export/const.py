@@ -59,12 +59,30 @@ def nazwa_setu(set_spec: str) -> str:
 
 
 # Typy encji CERIF używane jako człon identyfikatora OAI.
+#
+# Wartością jest nazwa elementu XSD w LICZBIE MNOGIEJ (``Publication`` →
+# ``Publications``). Tak wymaga ``openaire-cris-validator``: sprawdza, że
+# nagłówkowy ``<identifier>`` równa się ``"oai:" + repoId + ":" + localName
+# + "s/" + @id`` — patrz docstring ``cerif/wspolne.py``. Liczba pojedyncza
+# przechodzi tylko przez drugą, luźniejszą gałąź tej kontroli; nie ma powodu
+# opierać się na niej dla nowych encji.
 TYP_PUBLICATION = "Publications"
 TYP_PERSON = "Persons"
 TYP_ORGUNIT = "OrgUnits"
 TYP_PATENT = "Patents"
 TYP_EVENT = "Events"
 TYP_SERVICE = "Services"
+TYP_PROJECT = "Projects"
+TYP_FUNDING = "Fundings"
+
+# Schematy klasyfikacji własnych. ``cfGenericURIClassification__Type``
+# (cerif-commons.xsd) wymaga atrybutu ``scheme`` (anyURI) i wartości będącej
+# URI, a profil OpenAIRE nie dostarcza słownika ani dla statusu projektu, ani
+# dla polskich dyscyplin naukowych. Własny schemat jawnie nazywa pochodzenie
+# wartości — lepiej niż pominięcie danych i lepiej niż podszywanie się pod
+# cudzy słownik.
+SCHEMAT_STATUSU_PROJEKTU = "https://bpp.iplweb.pl/vocab/StatusProjektu"
+SCHEMAT_DYSCYPLIN = "https://bpp.iplweb.pl/vocab/DyscyplinaNaukowa"
 
 # Format datestampów OAI-PMH deklarowany w Identify. Wszystkie znaczniki
 # czasu wychodzą w UTC w tym formacie.

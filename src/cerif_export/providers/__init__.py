@@ -11,17 +11,14 @@ odpowiada ``const.WSZYSTKIE_SETY``.
 """
 
 from cerif_export.identyfikatory import BlednyIdentyfikator, etykieta_modelu
+from cerif_export.providers.finansowanie import ProviderFinansowania
 from cerif_export.providers.jednostki import ProviderJednostek
 from cerif_export.providers.konferencje import ProviderKonferencji
 from cerif_export.providers.osoby import ProviderOsob
 from cerif_export.providers.patenty import ProviderPatentow
+from cerif_export.providers.projekty import ProviderProjektow
 from cerif_export.providers.publikacje import ProviderPublikacji
-from cerif_export.providers.puste import (
-    ProviderAparatury,
-    ProviderFinansowania,
-    ProviderProduktow,
-    ProviderProjektow,
-)
+from cerif_export.providers.puste import ProviderAparatury, ProviderProduktow
 
 PROVIDERY = (
     ProviderPublikacji(),

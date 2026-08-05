@@ -38,6 +38,12 @@ _REJESTR = {
     "bpp.Uczelnia": (const.TYP_ORGUNIT, "uc"),
     "bpp.Patent": (const.TYP_PATENT, "pt"),
     "bpp.Konferencja": (const.TYP_EVENT, "kf"),
+    "bpp.Projekt": (const.TYP_PROJECT, "pj"),
+    "bpp.Finansowanie": (const.TYP_FUNDING, "fn"),
+    # Instytucja finansująca dostaje typ OrgUnit, nie własny: profil nie ma
+    # osobnej encji grantodawcy, a ``Funding/Funder`` wskazuje na OrgUnit-a.
+    # Wychodzi więc w secie ``openaire_cris_orgunits``.
+    "bpp.Instytucja_Finansujaca": (const.TYP_ORGUNIT, "if"),
 }
 
 SLUGI_WG_ETYKIETY = {etykieta: slug for etykieta, (_, slug) in _REJESTR.items()}
