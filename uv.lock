@@ -651,7 +651,7 @@ requires-dist = [
     { name = "ortools", specifier = ">=9.15.6755" },
     { name = "pandas", specifier = ">=3.0.3" },
     { name = "pathspec", specifier = ">=1.1.1" },
-    { name = "pbn-client", git = "https://github.com/iplweb/pbn-client.git?rev=84503cf41b308bc86edc6f8709b71383a8676cac" },
+    { name = "pbn-client", git = "https://github.com/iplweb/pbn-client.git?rev=787e65c0dcda14ff52e67b7259ab4856ac805f68" },
     { name = "pillow", specifier = ">=12.2,<14" },
     { name = "psycopg2-binary", specifier = ">=2.9.12" },
     { name = "pygad", specifier = ">=3.7.0" },
@@ -4006,8 +4006,8 @@ wheels = [
 
 [[package]]
 name = "pbn-client"
-version = "0.2.1"
-source = { git = "https://github.com/iplweb/pbn-client.git?rev=84503cf41b308bc86edc6f8709b71383a8676cac#84503cf41b308bc86edc6f8709b71383a8676cac" }
+version = "0.2.2"
+source = { git = "https://github.com/iplweb/pbn-client.git?rev=787e65c0dcda14ff52e67b7259ab4856ac805f68#787e65c0dcda14ff52e67b7259ab4856ac805f68" }
 dependencies = [
     { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
     { name = "simplejson", marker = "platform_python_implementation != 'PyPy'" },

@@ -4,6 +4,7 @@ from datetime import timedelta
 import rollbar
 from django.apps import apps
 from django.core.cache import cache
+from django.urls import reverse
 from django.utils import timezone
 
 from django_bpp.celery_tasks import app
@@ -242,30 +243,86 @@ def queue_watchdog():
     return woken
 
 
+#: Ile wpisów wyliczyć imiennie; resztę sygnalizuje ``wpisy_pominieto``.
+LIMIT_WPISOW_W_ALARMIE = 10
+
+
+def _najnowszy_komunikat(komunikat):
+    """Najświeższy powód zatrzymania wpisu, bez daty i separatora.
+
+    ``dopisz_komunikat`` doszywa wpisy na początku pola, w formacie
+    ``<data>\\n===…===\\n<treść>``; bez separatora bierzemy pierwszą
+    niepustą linię.
+    """
+    linie = [linia.strip() for linia in (komunikat or "").splitlines()]
+    po_separatorze = False
+    for linia in linie:
+        if linia.startswith("====="):
+            po_separatorze = True
+            continue
+        if po_separatorze and linia:
+            return linia[:200]
+
+    for linia in linie:
+        if linia:
+            return linia[:200]
+    return ""
+
+
 @app.task
 def report_technical_errors_to_rollbar():
     """
-    Raportuje do Rollbar liczbę błędów technicznych w kolejce PBN.
+    Raportuje do Rollbar błędy techniczne w kolejce PBN.
     Uruchamiane przez Celery Beat raz dziennie.
 
     Raportuje jedynie jeśli liczba błędów jest większa niż 0.
-    """
-    technical_errors_count = PBN_Export_Queue.objects.filter(
-        rodzaj_bledu=RodzajBledu.TECHNICZNY, wysylke_zakonczono__isnull=False
-    ).count()
 
-    if technical_errors_count > 0:
-        rollbar.report_message(
-            (
-                f"PBN Export Queue contains {technical_errors_count} "
-                "TECHNICAL errors that require investigation"
+    Poza licznikiem wysyła listę wpisów (PK, rekord, powód, link do admina) —
+    sam licznik nie pozwala dojść do konkretnego wiersza. ``rodzaj_bledu``
+    czyści wyłącznie ``ponow_wysylke()``, więc wpis alarmuje codziennie, aż
+    ktoś go ręcznie ponowi.
+    """
+    qset = PBN_Export_Queue.objects.filter(
+        rodzaj_bledu=RodzajBledu.TECHNICZNY, wysylke_zakonczono__isnull=False
+    )
+    technical_errors_count = qset.count()
+
+    if not technical_errors_count:
+        return technical_errors_count
+
+    wpisy = [
+        {
+            "pk": wpis.pk,
+            # Rekordu może już nie być; sięganie po GenericFK bez tego
+            # sprawdzenia wywala się na nieistniejącej tabeli (ProgrammingError)
+            # i zabiłoby cały alarm.
+            "rekord": (
+                str(wpis.rekord_do_wysylki)
+                if wpis.check_if_record_still_exists()
+                else "<rekord usunięty>"
             ),
-            level="warning",
-            extra_data={
-                "technical_errors_count": technical_errors_count,
-                "queue_name": "pbn_export_queue",
-                "error_type": "TECHNICZNY",
-            },
-        )
+            "zakonczono": wpis.wysylke_zakonczono.isoformat(),
+            "komunikat": _najnowszy_komunikat(wpis.komunikat),
+            "admin_url": reverse(
+                "admin:pbn_export_queue_pbn_export_queue_change", args=[wpis.pk]
+            ),
+        }
+        for wpis in qset.order_by("-wysylke_zakonczono")[:LIMIT_WPISOW_W_ALARMIE]
+    ]
+
+    rollbar.report_message(
+        (
+            f"PBN Export Queue contains {technical_errors_count} "
+            "TECHNICAL errors that require investigation"
+        ),
+        level="warning",
+        extra_data={
+            "technical_errors_count": technical_errors_count,
+            "queue_name": "pbn_export_queue",
+            "error_type": "TECHNICZNY",
+            "wpisy": wpisy,
+            "wpisy_pominieto": technical_errors_count - len(wpisy),
+        },
+    )
 
     return technical_errors_count

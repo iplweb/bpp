@@ -301,6 +301,16 @@ class PBN_Export_Queue(models.Model):
             self.save()
             return SendStatus.RETRY_LATER
 
+        if isinstance(exc, HttpException) and exc.status_code == 423:
+            # 423 = Locked (RFC 4918), blokada przejściowa — zawsze ponawiamy.
+            # Pas bezpieczeństwa na wypadek, gdy pbn-client nie rozpozna
+            # kształtu odpowiedzi i nie podniesie ResourceLockedException.
+            self.dopisz_komunikat(
+                "Zasób zablokowany w PBN (HTTP 423), ponawiam wysyłkę za kilka minut..."
+            )
+            self.save()
+            return SendStatus.RETRY_LATER
+
         if isinstance(exc, StatementsResendFailedException):
             # Publikacja została wysłana do PBN (POST /repositorium OK),
             # ale synchronizacja oświadczeń (GET/DELETE/POST /v2) wyczerpała
