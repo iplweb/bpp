@@ -23,7 +23,12 @@ NC=$'\033[0m'
 
 SCRIPT_NAME=$(basename "$0")
 WORK_DIR="${TMPDIR:-/tmp}/bpp-sbom"
-SBOM_PATH="${WORK_DIR}/sbom.json"
+# Rozszerzenie .cdx.json NIE jest kosmetyką: OSV-Scanner rozpoznaje format
+# SBOM-u po NAZWIE pliku i odrzuca wszystko, co nie pasuje do specyfikacji
+# ("Invalid SBOM filename", exit 127). Przy nazwie sbom.json krok 2/5 nie
+# skanował niczego. Zmieniając to, sprawdź OBA skanery — Grype i Trivy
+# dostają ścieżkę wprost i są na nazwę obojętne.
+SBOM_PATH="${WORK_DIR}/sbom.cdx.json"
 
 MODE="prod"
 SEVERITY_FILTER="HIGH,CRITICAL"
@@ -152,35 +157,72 @@ if $RUN_OSV; then
     OSV_REPORT="${WORK_DIR}/osv-report.json"
     # NIE tłumimy stderr: OSV-Scanner przy pierwszym uruchomieniu pobiera
     # bazy podatności OSV.dev (per ekosystem) i pokazuje na stderr postęp.
-    # Raport JSON idzie do --output, więc na stderr są tylko postęp/logi.
-    # (exit≠0 = znalazł CVE — i tak czytamy raport niżej, więc widoczność
-    # stderr nie zmienia logiki gate'u.)
+    # Raport JSON idzie do --output, więc na stderr są tylko postęp/logi —
+    # ale to właśnie tam ląduje "Invalid SBOM filename", więc tłumienie
+    # stderr ukryłoby jedyny ślad nieudanego skanu.
     echo -e "  ${BLUE}(pierwszy raz OSV-Scanner pobiera bazy OSV.dev —" \
         "postęp poniżej)${NC}"
     set +e
-    osv-scanner scan source --sbom="$SBOM_PATH" \
+    osv-scanner scan source -L "$SBOM_PATH" \
         --format=json --output="$OSV_REPORT"
     osv_exit=$?
     set -e
 
-    if [[ -s "$OSV_REPORT" ]]; then
-        OSV_VULNS=$(jq '[.results[]?.packages[]?.vulnerabilities[]?] | length' "$OSV_REPORT" 2>/dev/null || echo 0)
+    # Kody wyjścia OSV-Scannera: 0 = czysto, 1 = znaleziono podatności,
+    # cokolwiek innego = błąd narzędzia (np. 127 przy odrzuconej nazwie
+    # SBOM-u). Wcześniej $osv_exit był łapany i NIGDY nie sprawdzany, więc
+    # nieudany skan zostawiał pusty raport, licznik szedł na 0 i gate
+    # wypisywał "✓ Brak znanych CVE" — nieodróżnialnie od czystego wyniku.
+    # Cichy fałszywy zielony w bramce bezpieczeństwa jest gorszy niż jej brak,
+    # bo zwalnia z myślenia.
+    if [[ $osv_exit -ne 0 && $osv_exit -ne 1 ]]; then
+        echo -e "${RED}✗ OSV-Scanner zakończył się błędem (exit ${osv_exit})" \
+            "— skan NIE został wykonany.${NC}" >&2
+        echo -e "${RED}  Nie traktuję tego jako 'brak CVE'. Napraw skan" \
+            "albo pomiń krok jawnie: --no-osv${NC}" >&2
+        exit 5
+    fi
+
+    OSV_ALL=$(jq '[.results[]?.packages[]?.vulnerabilities[]?] | length' \
+        "$OSV_REPORT" 2>/dev/null || echo 0)
+
+    # Ten sam próg, co w Grype i Trivy. Bez tego OSV liczyłby WSZYSTKIE
+    # severity i blokował wydanie na znaleziskach, które dwa pozostałe
+    # skanery świadomie przepuszczają — czyli naprawa nazwy pliku po cichu
+    # zaostrzyłaby politykę gate'u.
+    if [[ -n "$SEVERITY_FILTER" ]]; then
+        OSV_FILTER=$(echo "$SEVERITY_FILTER" | tr ',' '|')
+        OSV_VULNS=$(jq --arg f "$OSV_FILTER" '
+            [ .results[]?.packages[]?.vulnerabilities[]?
+              | select((.database_specific.severity // "") | test($f; "i")) ]
+            | length' "$OSV_REPORT" 2>/dev/null || echo 0)
     else
-        OSV_VULNS=0
+        OSV_VULNS=$OSV_ALL
+    fi
+
+    # Nic nie znika po cichu: jeśli coś odpadło na progu, powiedz ile.
+    if [[ "$OSV_ALL" -gt "$OSV_VULNS" ]]; then
+        echo -e "${BLUE}  ($((OSV_ALL - OSV_VULNS)) znalezisk poniżej progu" \
+            "${SEVERITY_FILTER} — raportowane, nie blokują)${NC}"
     fi
 
     if [[ "$OSV_VULNS" -gt 0 ]]; then
         TOTAL_FINDINGS=$((TOTAL_FINDINGS + OSV_VULNS))
-        echo -e "${YELLOW}⚠ Znaleziono ${OSV_VULNS} CVE${NC}"
-        # Skrótowy widok: package, version, CVE id, severity
+        echo -e "${YELLOW}⚠ Znaleziono ${OSV_VULNS} CVE" \
+            "(filter: ${SEVERITY_FILTER:-wszystkie})${NC}"
+    else
+        echo -e "${GREEN}✓ Brak CVE (filter: ${SEVERITY_FILTER:-wszystkie})${NC}"
+    fi
+
+    # Widok skrótowy WSZYSTKICH znalezisk, także poniżej progu — próg
+    # decyduje o blokowaniu wydania, nie o tym, co wolno zobaczyć.
+    if [[ "$OSV_ALL" -gt 0 ]]; then
         jq -r '
             .results[]? | .packages[]? |
             . as $p |
             .vulnerabilities[]? |
             "\($p.package.name)@\($p.package.version)\t\(.id)\t\((.database_specific.severity // "?"))"
         ' "$OSV_REPORT" | sort -u | column -t -s $'\t'
-    else
-        echo -e "${GREEN}✓ Brak znanych CVE${NC}"
     fi
     echo -e "  raport: ${OSV_REPORT}"
     echo
