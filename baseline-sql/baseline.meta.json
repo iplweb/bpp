@@ -1,11 +1,11 @@
 {
-  "git_sha": "1c4bc98bfdc76b914462b50f6503eacb0bb1873e",
+  "git_sha": "eb4a48a411f1fce569d541cfaaa38a4705024fb8",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
     "auth": "0012_alter_user_first_name_max_length",
     "axes": "0010_accessattemptexpiration",
-    "bpp": "0479_cerif_export_pola",
+    "bpp": "0484_cerif_walidacja_ror",
     "channels_broadcast": "0001_initial",
     "constance": "0003_drop_pickle",
     "contenttypes": "0002_remove_content_type_name",
@@ -47,7 +47,7 @@
     "miniblog": "0004_migrate_to_siteblog_and_delete",
     "multiseek": "0001_initial",
     "nowe_raporty": "0001_initial",
-    "oauth2_provider": "0014_alter_help_text",
+    "oauth2_provider": "0020_cimd_application_fields",
     "oidc_integration": "0001_initial",
     "orcid_integration": "0001_initial",
     "oswiadczenia": "0005_migrate_template_to_dbtemplate",
