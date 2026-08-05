@@ -6,7 +6,6 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.cache import cache
 from django.db.models import Count, Sum
 from django.http import HttpResponseBadRequest, JsonResponse
-from django.template.loader import render_to_string
 from django.views.decorators.cache import never_cache
 from django.views.generic import View
 from multiseek.logic import get_registry
@@ -20,6 +19,7 @@ from bpp.models import Uczelnia
 from bpp.multiseek_registry import registry as multiseek_registry
 from bpp.multiseek_registry.djangoql_export import multiseek_form_to_djangoql
 from bpp.views.multiseek_export import (
+    EXTRA_TYPES,
     MULTISEEK_DEFAULT_REPORT_TITLE,
     MULTISEEK_EXPORT_DANE_FIELDS,
     MULTISEEK_EXPORT_HEADERS,  # noqa: F401 - re-eksport, uzywane w testach
@@ -28,36 +28,19 @@ from bpp.views.multiseek_export import (
     XLSX_WORKSHEET_TITLE_MAX_LENGTH,  # noqa: F401 - re-eksport, uzywane w testach
     bibtex_export_response,
     csv_export_response,
-    docx_export_response,
-    html_export_response,
+    document_export_response,
     plain_multiseek_report_title,
-    sanitize_export_html,
     xlsx_export_response,
 )
 from bpp.views.zapytanie import WprowadzanieDanychOrSuperuserMixin
 
 logger = logging.getLogger(__name__)
 
-PKT_WEWN = "pkt_wewn"
-PKT_WEWN_BEZ = "pkt_wewn_bez"
-TABLE = "table"
 MULTISEEK_EXPORT_MAX_ROWS = 5000
 
 # TTL cache agregatów wyników (count + sumy) — patrz get_context_data.
 MULTISEEK_AGGREGATE_CACHE_TIMEOUT = 30 * 60
 MULTISEEK_REPORT_TITLE_SESSION_KEY = "MULTISEEK_TITLE"
-
-EXTRA_TYPES = [
-    PKT_WEWN,
-    PKT_WEWN_BEZ,
-    TABLE,
-    PKT_WEWN + "_cytowania",
-    PKT_WEWN_BEZ + "_cytowania",
-    TABLE + "_cytowania",
-]
-
-# report_type renderowane jako tabela (reszta: lista/numer_list/None).
-TABLE_REPORT_TYPES = frozenset(EXTRA_TYPES)
 
 # Tabele/widoki złączane przez filtry multiseeka na relacjach "do wielu"
 # (autorzy, bazy zewnętrzne). Ich JOIN może zwielokrotnić wiersze Rekordu
@@ -66,22 +49,6 @@ TABLE_REPORT_TYPES = frozenset(EXTRA_TYPES)
 # substringu w tekście SQL — poprzednie podejście było kruche: zależne od
 # aliasów i formatowania generowanego SQL-a.
 MULTISEEK_MNOZACE_ZLACZENIA = frozenset({"bpp_autorzy_mat", "bpp_zewnetrzne_bazy_view"})
-
-# Projekcje eksportu DOKUMENTU dostrojone do partiali renderu (nie do CSV/XLSX).
-# Bazowe get_queryset() gubi liczba_cytowan/uwagi → N+1 na całym querysecie.
-MULTISEEK_RENDER_LIST_FIELDS = ("id", "opis_bibliograficzny_cache", "uwagi")
-MULTISEEK_RENDER_TABLE_FIELDS = (
-    "id",
-    "opis_bibliograficzny_cache",
-    "impact_factor",
-    "punkty_kbn",
-    "liczba_cytowan",
-    "punktacja_wewnetrzna",
-    "charakter_formalny",
-    "typ_kbn",
-    "charakter_formalny__nazwa",
-    "typ_kbn__nazwa",
-)
 
 
 class MyMultiseekResults(MultiseekResults):
@@ -178,8 +145,39 @@ class MyMultiseekResults(MultiseekResults):
         )
         return "multiseek_agregaty:" + hashlib.sha256(payload.encode()).hexdigest()
 
+    def _ensure_default_title(self):
+        """Domyślny tytuł wyniku, jeśli sesja go nie ma (albo jest pusty).
+        Wspólne dla ścieżki listy i pivota — inaczej świeża sesja lądująca
+        od razu na pivocie nie miałaby bloku tytułu."""
+        title = self.request.session.get("MULTISEEK_TITLE")
+        if not title:
+            self.request.session["MULTISEEK_TITLE"] = "Rezultat wyszukiwania"
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data()
+
+        if ctx.get("report_type") == "pivot":
+            from bpp.multiseek_registry import pivot as pivot_mod
+
+            self._ensure_default_title()
+            base_qs = self.get_queryset_for_current_mode()
+            row_dim, col_dim, metric = pivot_mod.parse_pivot_params(self.request.GET)
+            ctx["pivot_dimensions"] = pivot_mod.DIMENSIONS
+            ctx["pivot_metrics"] = pivot_mod.METRICS
+            # Wymiary/metryka jawnie w kontekście — pasek selektorów renderuje
+            # się też, gdy macierz jest zbyt duża i pivot=None.
+            ctx["pivot_row_dim"] = row_dim
+            ctx["pivot_col_dim"] = col_dim
+            ctx["pivot_metric"] = metric
+            # Uczciwy licznik dla breadcrumbu: liczba rekordów, które pivot
+            # podsumowuje (nie 0).
+            ctx["paginator_count"] = base_qs.values("pk").distinct().count()
+            try:
+                ctx["pivot"] = pivot_mod.zbuduj_pivot(base_qs, row_dim, col_dim, metric)
+            except pivot_mod.PivotTooLargeError as exc:
+                ctx["pivot"] = None
+                ctx["pivot_error"] = exc
+            return ctx
 
         qset = self.get_queryset_for_current_mode()
         if self.request.GET.get("print-removed", False):
@@ -217,12 +215,7 @@ class MyMultiseekResults(MultiseekResults):
         object_list = ctx["object_list"]
         object_list.count = lambda *args, **kw: ctx["paginator_count"]
 
-        keys = list(self.request.session.keys())
-        if "MULTISEEK_TITLE" not in keys:
-            self.request.session["MULTISEEK_TITLE"] = "Rezultat wyszukiwania"
-        else:
-            if self.request.session["MULTISEEK_TITLE"] == "":
-                self.request.session["MULTISEEK_TITLE"] = "Rezultat wyszukiwania"
+        self._ensure_default_title()
 
         return ctx
 
@@ -248,6 +241,15 @@ class MyMultiseekExport(LoginRequiredMixin, MyMultiseekResults):
         if export_format not in self.DATA_FORMATS | self.DOCUMENT_FORMATS:
             return HttpResponseBadRequest("Nieznany format eksportu.")
 
+        registry = get_registry(self.registry)
+        report_type = registry.get_report_type(
+            self.get_multiseek_data(), request=request
+        )
+        if report_type == "pivot":
+            # Pivot eksportuje MACIERZ (nie listę rekordów) — cap 5000 na
+            # liczbę rekordów źródłowych nie dotyczy rozmiaru wyjścia.
+            return self._export_pivot(request, export_format)
+
         queryset = self.get_queryset_for_current_mode()
         count = queryset.count()
         if count > MULTISEEK_EXPORT_MAX_ROWS:
@@ -260,6 +262,31 @@ class MyMultiseekExport(LoginRequiredMixin, MyMultiseekResults):
         if export_format in self.DATA_FORMATS:
             return self._export_data(request, export_format, queryset, report_title)
         return self._export_document(request, export_format, queryset, report_title)
+
+    def _export_pivot(self, request, export_format):
+        from bpp.multiseek_registry import pivot as pivot_mod
+        from bpp.views.multiseek_export import (
+            pivot_csv_export_response,
+            pivot_xlsx_export_response,
+        )
+
+        if export_format not in {"csv", "xlsx"}:
+            return HttpResponseBadRequest(
+                "Eksport tabeli krzyżowej dostępny jako XLSX lub CSV."
+            )
+        base_qs = self.get_queryset_for_current_mode()
+        row_dim, col_dim, metric = pivot_mod.parse_pivot_params(request.GET)
+        try:
+            pivot_result = pivot_mod.zbuduj_pivot(base_qs, row_dim, col_dim, metric)
+        except pivot_mod.PivotTooLargeError:
+            return HttpResponseBadRequest(
+                "Tabela krzyżowa jest zbyt duża do wyeksportowania — "
+                "zawęź zapytanie lub wybierz mniej liczny wymiar."
+            )
+        report_title = _multiseek_report_title(request)
+        if export_format == "csv":
+            return pivot_csv_export_response(pivot_result, request, report_title)
+        return pivot_xlsx_export_response(pivot_result, request, report_title)
 
     def _export_data(self, request, export_format, queryset, report_title):
         wariant = request.GET.get("wariant", "dane")
@@ -291,52 +318,14 @@ class MyMultiseekExport(LoginRequiredMixin, MyMultiseekResults):
         report_type = registry.get_report_type(
             self.get_multiseek_data(), request=request
         )
-
         if report_type == "bibtex":
             # W widoku BibTeX html/docx degradują do .bib (D3).
             return bibtex_export_response(queryset, report_title)
         if export_format == "bib":
             return HttpResponseBadRequest("BibTeX dostępny tylko w widoku BibTeX.")
-
-        if report_type in TABLE_REPORT_TYPES:
-            queryset = queryset.select_related("charakter_formalny", "typ_kbn").only(
-                *MULTISEEK_RENDER_TABLE_FIELDS
-            )
-            sumy = queryset.aggregate(
-                Sum("impact_factor"),
-                Sum("liczba_cytowan"),
-                Sum("punkty_kbn"),
-                Sum("punktacja_wewnetrzna"),
-            )
-            partial = "multiseek/report-body-table.html"
-        else:
-            queryset = queryset.only(*MULTISEEK_RENDER_LIST_FIELDS)
-            sumy = None
-            partial = "multiseek/report-body-list.html"
-
-        body_html = render_to_string(
-            partial,
-            {
-                "object_list": queryset,
-                "report_type": report_type,
-                "sumy": sumy,
-                "export_mode": True,
-                "start_index": 0,
-            },
-            request=request,
+        return document_export_response(
+            queryset, request, report_type, report_title, export_format
         )
-        document_html = render_to_string(
-            "multiseek/export-document.html",
-            {
-                "body_html": sanitize_export_html(body_html),
-                "report_title": report_title,
-            },
-            request=request,
-        )
-
-        if export_format == "docx":
-            return docx_export_response(document_html, report_title)
-        return html_export_response(document_html, report_title)
 
 
 def _normalize_session_removed(request):

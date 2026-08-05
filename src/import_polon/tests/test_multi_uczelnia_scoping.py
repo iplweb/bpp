@@ -17,11 +17,11 @@ from datetime import timedelta
 import pandas as pd
 import pytest
 from django.utils import timezone
+from liveops.testing import MockProgress
 from model_bakery import baker
 
-from bpp.models import Autor, Jednostka, Uczelnia, Wydzial
+from bpp.models import Autor, Jednostka, Uczelnia
 from bpp.models.autor import Autor_Jednostka
-from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 from import_polon.core import analyze_file_import_polon
 from import_polon.models import ImportPlikuPolon
 
@@ -29,11 +29,11 @@ ROK = 2020
 
 
 def _jednostka(uczelnia, skupia_pracownikow=True):
-    wydzial = baker.make(Wydzial, uczelnia=uczelnia)
+    wydzial = baker.make(Jednostka, uczelnia=uczelnia, parent=None)
     return baker.make(
         Jednostka,
         uczelnia=uczelnia,
-        parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
+        parent=wydzial,
         skupia_pracownikow=skupia_pracownikow,
     )
 
@@ -189,7 +189,7 @@ def test_walidacja_zatrudnienia_zawezona_do_uczelni_importu(tmp_path):
         zapisz_zmiany_do_bazy=False,
         ukryj_niezmatchowanych_autorow=False,
     )
-    analyze_file_import_polon(str(test_file), import_model)
+    analyze_file_import_polon(str(test_file), import_model, MockProgress(import_model))
 
     wiersze = {w.dane_z_xls["NAZWISKO"]: w for w in import_model.get_details_set()}
     assert "REKORD ZIGNOROWANY" not in wiersze["Iksinski"].rezultat, (
@@ -236,7 +236,7 @@ def test_import_nie_modyfikuje_autora_innej_uczelni(tmp_path):
         ignoruj_miejsce_pracy=True,
         ukryj_niezmatchowanych_autorow=False,
     )
-    analyze_file_import_polon(str(test_file), import_model)
+    analyze_file_import_polon(str(test_file), import_model, MockProgress(import_model))
 
     wiersze = {w.dane_z_xls["NAZWISKO"]: w for w in import_model.get_details_set()}
     assert "innej uczelni" in wiersze["Igrekowa"].rezultat.lower(), (

@@ -20,6 +20,7 @@ class NowyImportForm(forms.ModelForm):
             "plik_xls",
             "data_zmian_personalnych",
             "przepnij_wszystkie_prace",
+            "nadpisuj_daty_zatrudnienia",
         ]
         widgets = {
             # natywny date-picker przeglądarki (bez JS-owej zależności)
@@ -42,17 +43,20 @@ class NowyImportForm(forms.ModelForm):
                 Row(
                     Column("data_zmian_personalnych", css_class="large-6 small-12"),
                 ),
-                # „Przepnij wszystkie prace" to opcja groźna i rzadko potrzebna —
-                # chowamy ją w domyślnie ZWINIĘTYM <details> (natywny collapsible,
-                # bez JS). Input zwiniętego <details> normalnie się wysyła, a
-                # confirm (po #id_przepnij_wszystkie_prace) dalej działa.
+                # Opcje groźne i rzadko potrzebne — chowamy je w domyślnie
+                # ZWINIĘTYM <details> (natywny collapsible, bez JS). Input
+                # zwiniętego <details> normalnie się wysyła, a confirm-y (po
+                # #id_...) dalej działają.
                 HTML(
                     '<details class="callout secondary">'
                     '<summary><span class="fi-widget"></span> '
-                    "Opcje zaawansowane — masowe przepięcie prac</summary>"
+                    "Opcje zaawansowane</summary>"
                 ),
                 Row(
                     Column("przepnij_wszystkie_prace", css_class="large-12 small-12"),
+                ),
+                Row(
+                    Column("nadpisuj_daty_zatrudnienia", css_class="large-12 small-12"),
                 ),
                 HTML("</details>"),
                 formdefaults_html_after(self),

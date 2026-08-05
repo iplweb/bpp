@@ -10,7 +10,7 @@ Zakresy jako czytelne API managera:
 - WSZYSCY = ``Autor.objects.all()`` (bez metody).
 """
 
-from datetime import timedelta
+from datetime import date, timedelta
 
 import pytest
 from django.utils import timezone
@@ -18,7 +18,6 @@ from model_bakery import baker
 
 from bpp.models import Autor
 from bpp.models.autor import Autor_Jednostka
-from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 
 
 def _wpis_historyczny(autor, jednostka):
@@ -40,7 +39,7 @@ def obca_jednostka_uczelni(uczelnia, wydzial):
     return baker.make(
         "bpp.Jednostka",
         uczelnia=uczelnia,
-        parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
+        parent=wydzial,
         skupia_pracownikow=False,
     )
 
@@ -98,8 +97,24 @@ def test_kiedykolwiek_zwiazani_zwraca_aktualnie_zatrudnionego(uczelnia, jednostk
 def test_kiedykolwiek_zwiazani_bez_duplikatow(uczelnia, jednostka):
     """Autor aktualny ORAZ z wieloma wpisami historycznymi = jeden wiersz."""
     autor = baker.make(Autor, aktualna_jednostka=jednostka)
-    baker.make("bpp.Autor_Jednostka", autor=autor, jednostka=jednostka)
-    baker.make("bpp.Autor_Jednostka", autor=autor, jednostka=jednostka)
+    # Dwa ROZŁĄCZNE okresy zatrudnienia (2010–2014 zamknięty, 2015→ otwarty):
+    # legalne wobec ExclusionConstraint ``bpp_autor_jednostka_okresy_bez_nakladan``
+    # (okresy się nie nakładają) i partial-unique ``bpp_autor_jednostka_bez_daty_
+    # unikalne`` (oba mają datę startu). Test dalej sprawdza dokładnie to, co
+    # sprawdzał — że wiele powiązań nie duplikuje autora w wyniku.
+    baker.make(
+        "bpp.Autor_Jednostka",
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2010, 1, 1),
+        zakonczyl_prace=date(2014, 12, 31),
+    )
+    baker.make(
+        "bpp.Autor_Jednostka",
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2015, 1, 1),
+    )
 
     wynik = list(Autor.objects.kiedykolwiek_zwiazani(uczelnia))
 

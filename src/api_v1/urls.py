@@ -2,6 +2,7 @@ from django.urls import include, path
 from django.urls import re_path as url
 from rest_framework import routers
 
+from api_v1.permissions import z_bramka_api_v1
 from api_v1.views import CustomAPIRootView
 from api_v1.viewsets.autor import (
     Autor_JednostkaViewSet,
@@ -20,7 +21,7 @@ from api_v1.viewsets.raport_slotow_uczelnia import (
 )
 from api_v1.viewsets.recent_author_publications import RecentAuthorPublicationsViewSet
 from api_v1.viewsets.recent_unit_publications import RecentUnitPublicationsViewSet
-from api_v1.viewsets.struktura import JednostkaViewSet, UczelniaViewSet, WydzialViewSet
+from api_v1.viewsets.struktura import JednostkaViewSet, UczelniaViewSet
 from api_v1.viewsets.system import (
     Charakter_FormalnyViewSet,
     Dyscyplina_NaukowaViewSet,
@@ -52,7 +53,28 @@ from oauth_mcp.views_whoami import WhoAmIView
 
 
 class CustomRouter(routers.DefaultRouter):
-    APIRootView = CustomAPIRootView
+    """Router ``/api/v1/`` z bramką ``Uczelnia.api_v1_wlaczone``.
+
+    Każdy rejestrowany viewset trafia do routera jako podklasa objęta
+    :class:`~api_v1.permissions.ApiV1Wlaczone`, dzięki czemu przełącznik
+    obejmuje CAŁE API — łącznie z viewsetami, które mają własne
+    ``permission_classes`` (``/zapytanie/*``, raport slotów,
+    ``recent_*_publications``).
+
+    Dlaczego nie ``DEFAULT_PERMISSION_CLASSES``: to ustawienie *projektu*,
+    nie aplikacji (DRF nie ma per-app settings) — złapałoby też widoki DRF
+    spoza ``/api/v1/``, a i tak ominęłyby je viewsety nadpisujące
+    ``permission_classes``. Dlaczego nie mixin dopisany ręcznie: viewsety nie
+    mają jednej wspólnej klasy bazowej, więc znaczyłoby to edycję ~25 plików
+    i pozostawienie furtki przy każdym nowym viewsecie.
+    """
+
+    APIRootView = z_bramka_api_v1(CustomAPIRootView)
+
+    def register(self, prefix, viewset, basename=None):
+        if basename is None:
+            basename = self.get_default_basename(viewset)
+        super().register(prefix, z_bramka_api_v1(viewset), basename)
 
 
 router = CustomRouter()
@@ -104,7 +126,6 @@ router.register(r"rodzaj_zrodla", Rodzaj_ZrodlaViewSet)
 router.register(r"zrodlo", ZrodloViewSet)
 
 router.register(r"jednostka", JednostkaViewSet)
-router.register(r"wydzial", WydzialViewSet)
 router.register(r"uczelnia", UczelniaViewSet)
 
 router.register(r"szukaj", SzukajViewSet, basename="szukaj")
@@ -152,6 +173,8 @@ router.register(
 #
 
 urlpatterns = [
-    path("whoami/", WhoAmIView.as_view(), name="whoami"),
+    # ``whoami`` nie idzie przez router, więc bramkę dostaje osobno — inaczej
+    # wyłączone API nadal potwierdzałoby tożsamość zalogowanego klienta.
+    path("whoami/", z_bramka_api_v1(WhoAmIView).as_view(), name="whoami"),
     url(r"^", include(router.urls)),
 ]

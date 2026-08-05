@@ -15,6 +15,7 @@ from django.core.exceptions import ImproperlyConfigured
 
 from bpp.util import slugify_function
 from django_bpp.channels_prefix import get_channels_prefix
+from django_bpp.rollbar_filters import zbuduj_exception_level_filters
 from django_bpp.version import VERSION
 
 logger = logging.getLogger(__name__)
@@ -160,6 +161,12 @@ env = environ.Env(
     ROLLBAR_ACCESS_TOKEN=(str, None),
     # Publiczny token klienta (post_client_item) do frontendowego Rollbara.
     ROLLBAR_CLIENT_ACCESS_TOKEN=(str, ""),
+    # Wycisza w Rollbarze smtplib.SMTPAuthenticationError (i tylko ją).
+    # Ustawiane PER INSTALACJA, domyślnie WYŁĄCZONE — szczegóły i uzasadnienie
+    # zakresu w django_bpp.rollbar_filters. Włączać wyłącznie tam, gdzie
+    # administratorzy poczty klienta mają znaną, zgłoszoną awarię po swojej
+    # stronie, której nie naprawimy kodem.
+    DJANGO_BPP_ROLLBAR_IGNORE_SMTP_AUTH_ERRORS=(bool, False),
     #
     # Prometheus
     #
@@ -427,6 +434,7 @@ INSTALLED_APPS = [
     "crossref_bpp",
     "pbn_api",
     "dspace_api",
+    "cerif_export",
     "pbn_export_queue",
     "pbn_komparator_zrodel",
     "dal",
@@ -452,6 +460,9 @@ INSTALLED_APPS = [
     "compressor",
     "session_security",
     "channels_broadcast",
+    # django-liveops — nastepca `long_running`. Routing live/cancel/restart
+    # jest generyczny (op_type) i mieszka w samym pakiecie (liveops.urls),
+    # wiec nie potrzebujemy juz zadnej warstwy posredniej po stronie BPP.
     "liveops",
     "integrator2",
     "nowe_raporty",
@@ -478,6 +489,7 @@ INSTALLED_APPS = [
     "ewaluacja_optymalizacja",
     "ewaluacja_optymalizuj_publikacje",
     "ewaluacja_dwudyscyplinowcy",
+    "kompletnosc_polon",
     # UWAGA: NIE USUWAĆ aplikacji test_bpp z INSTALLED_APPS!
     #
     # Mimo nazwy sugerującej "tylko do testów", test_bpp dostarcza realnych
@@ -569,13 +581,6 @@ LOGOUT_REDIRECT_URL = LOGIN_REDIRECT_URL
 MEDIA_URL = "/media/"
 
 INTERNAL_IPS = ("127.0.0.1",)
-
-# djorm-pool
-DJORM_POOL_OPTIONS = {
-    "pool_size": 30,
-    "max_overflow": 0,
-    "recycle": 3600,  # the default value
-}
 
 TEST_RUNNER = "django.test.runner.DiscoverRunner"
 
@@ -771,7 +776,12 @@ CELERYBEAT_SCHEDULE = {
         "schedule": timedelta(days=5),
     },
     "pbn-api-kolejka-wyczysc-wpisy-bez-rekordow": {
-        "task": "pbn_api.tasks.kolejka_wyczysc_wpisy_bez_rekordow",
+        # Zadanie żyje w pbn_export_queue.tasks, NIE w pbn_api.tasks — wpis
+        # wskazywał na nieistniejącą nazwę, więc beat co tydzień wysyłał
+        # zadanie, którego żaden worker nie potrafił rozwiązać (czyli kolejka
+        # nigdy nie była czyszczona). Ta sama klasa błędu co brak wpisu dla
+        # retencji plików importu pracowników.
+        "task": "pbn_export_queue.tasks.kolejka_wyczysc_wpisy_bez_rekordow",
         "schedule": timedelta(days=7),
     },
     "scan-for-duplicates-daily": {
@@ -791,9 +801,17 @@ CELERYBEAT_SCHEDULE = {
         "task": "zglos_publikacje.tasks.wyczysc_zglos_tmp_pliki",
         "schedule": timedelta(hours=6),
     },
+    # UWAGA na kolizję harmonogramów: o 3:30 startuje `rebuild_kolejnosc`
+    # zaplanowany przez OFELIĘ (repozytorium bpp-deploy,
+    # docker-compose.application.yml) — całkowicie niezależny scheduler, który
+    # nic nie wie o Celery beat i nie ma jak się z nim zsynchronizować. Dwa
+    # ciężkie zadania startujące w tej samej minucie biły się o CPU bazy.
+    # Przesuwamy stronę, którą kontrolujemy z TEGO repo (beat), na 4:30:
+    # godzina po Ofelii i pół godziny po `powiazania-autorow-przelicz-codziennie`
+    # (4:00), które jest krótkie (czysty SQL, minuty).
     "rebuild-pbn-author-match-cache": {
         "task": "importer_autorow_pbn.tasks.auto_rebuild_match_cache_task",
-        "schedule": crontab(hour=3, minute=30),  # Daily at 3:30 AM
+        "schedule": crontab(hour=4, minute=30),  # Daily at 4:30 AM
     },
     "pbn-export-queue-watchdog": {
         "task": "pbn_export_queue.tasks.queue_watchdog",
@@ -813,6 +831,35 @@ CELERYBEAT_SCHEDULE = {
     "easyaudit-purge-stare-logi-logowania": {
         "task": "bpp.tasks.usun_stare_logi_logowania_easyaudit",
         "schedule": crontab(hour=2, minute=0, day_of_month=1),
+    },
+    # Retencja nieudanych prób logowania (django-axes): kasuj AccessAttempt
+    # starsze niż 90 dni. AXES_RESET_ON_SUCCESS czyści tylko po udanym
+    # logowaniu tej samej pary (login, IP) — wpisy od botów skanujących
+    # /admin/login/ nie mają „swojego" udanego logowania i rosłyby bez końca.
+    # Raz w tygodniu (niedziela 2:30), tabela rośnie powoli.
+    "axes-purge-stare-proby-logowania": {
+        "task": "bpp.tasks.usun_stare_proby_logowania_axes",
+        "schedule": crontab(hour=2, minute=30, day_of_week=0),
+    },
+    # Retencja plików XLS importu pracowników (IMPORT_PRACOWNIKOW_RETENCJA_DNI,
+    # domyślnie 90 dni). Kasuje sam blob, zostawiając rekord importu i wiersze.
+    # Komenda zarządzająca istniała od dawna, ale NIKT jej nie wołał (ani beat,
+    # ani Ofelia) — bloby nie były kasowane nigdy. Trzymamy wpis w kodzie, a
+    # nie w labelu Ofelii, żeby harmonogram był wersjonowany razem z aplikacją.
+    "import-pracownikow-usun-stare-pliki": {
+        "task": "import_pracownikow.tasks.usun_stare_pliki_importu_pracownikow",
+        "schedule": crontab(hour=1, minute=15),  # Daily at 1:15 AM
+    },
+    # Retencja osieroconych rejestracji DCR (bpp #656). Otwarta rejestracja
+    # klientów MCP (RFC 7591, POST /o/register/) tworzy Application przy każdym
+    # udanym żądaniu i nic tego nigdy nie usuwało — tabela rosła monotonicznie.
+    # Kasuje wyłącznie rejestracje oznaczone prefiksem `dcr-`, które nie mają
+    # ŻADNEGO tokenu ani grantu (czyli nigdy nie dokończyły flow) i są starsze
+    # niż 7 dni. Aplikacje w użyciu są nietykalne — skasowanie kaskadowałoby na
+    # tokeny i wylogowało użytkownika.
+    "oauth-mcp-usun-osierocone-rejestracje-dcr": {
+        "task": "oauth_mcp.tasks.usun_osierocone_aplikacje_oauth",
+        "schedule": crontab(hour=1, minute=45),  # Daily at 1:45 AM
     },
 }
 
@@ -987,6 +1034,8 @@ YARN_FILE_PATTERNS = {
     "select2-foundation-theme": ["dist/select2-foundation-theme.css"],
     "plotly.js": ["dist/plotly.min.js", "dist/plotly-locale-pl.js"],
     "htmx.org": ["dist/htmx.js"],
+    # Wykresy w ewaluacja_optymalizacja (dawniej ładowane z cdn.jsdelivr.net).
+    "chart.js": ["dist/chart.umd.min.js"],
     "tone": ["build/Tone.js", "build/Tone.js.map"],
     # Do developerki:
     "qunit": ["qunit/qunit.js", "qunit/qunit.css"],
@@ -999,7 +1048,9 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly"
     ],
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
+    # Własna podklasa LimitOffsetPagination z twardym ``max_limit`` — patrz
+    # api_v1.pagination (goły LimitOffsetPagination nie ma żadnego cap-a).
+    "DEFAULT_PAGINATION_CLASS": "api_v1.pagination.BppLimitOffsetPagination",
     "PAGE_SIZE": 10,
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -1040,16 +1091,20 @@ CHANNEL_LAYERS = {
     },
 }
 
-# django-liveops: długo-działające operacje (np. skan duplikatów źródeł) z
-# live-progressem przez WebSocket + HTMX. RUNNER="celery" dispatchuje run()
-# jako shared_task na tym samym workerze co reszta BPP (autodiscover). Live
-# push wymaga Redis channel-layer (skonfigurowany wyżej). W testach RUNNER
-# jest nadpisywany na "eager" (settings/test.py) — skan biegnie synchronicznie
-# bez Redis/workera.
+# django-liveops: długo-działające operacje (np. skan duplikatów źródeł,
+# import list ministerialnych) z live-progressem przez WebSocket + HTMX.
+# RUNNER="celery" dispatchuje run() jako shared_task na tym samym workerze co
+# reszta BPP (autodiscover). Live push wymaga Redis channel-layer
+# (skonfigurowany wyżej). W testach RUNNER jest nadpisywany na "eager"
+# (settings/test.py) — operacja biegnie synchronicznie bez Redis/workera.
+# THROTTLE_HZ — max liczba pushy % na sekunde. REQUIRED_GROUP bramkuje
+# wszystkie operacje live; od 0.2.0 liveops ZWALNIA superuserów z tej bramki
+# (parytet z braces/adminem), wiec mozna jej uzyc bez regresji.
 LIVEOPS = {
     "BASE_TEMPLATE": "base.html",
     "RUNNER": "celery",
     "THROTTLE_HZ": 10,
+    "REQUIRED_GROUP": "wprowadzanie danych",
 }
 
 # Pozwól anonimowym użytkownikom łączyć się z WebSocketem notyfikacji
@@ -1079,10 +1134,20 @@ CHANNELS_BROADCAST_SUBSCRIPTION_AUTHORIZER = (
 )
 
 
-# django-compressor dla każdej wersji będzie miał swoją nazwę katalogu
-# wyjściowego, z tej prostej przyczyny, że nie wszystkie przeglądarki
-# pamiętają, żeby odświeżyć cache:
-COMPRESS_OUTPUT_DIR = f"CACHE-{VERSION}"
+# django-compressor nazywa każdy plik wyjściowy 12-znakowym hashem jego
+# TREŚCI (compressor.base.Compressor.get_filepath →
+# get_hexdigest(content, 12)): np. "CACHE/js/58a8c0714e59.js". Nazwa pliku
+# zmienia się WTEDY I TYLKO WTEDY, gdy zmienia się treść — to wystarczający,
+# poprawny cache-busting współgrający z nagłówkiem `immutable`.
+#
+# Katalog był wcześniej wersjonowany (`CACHE-{VERSION}`) w intencji wymuszenia
+# odświeżenia cache na deploy. Był to jednak DRUGI, zbędny mechanizm bustujący
+# HURTEM: każde wydanie zmieniało ścieżkę WSZYSTKICH statyków (nowy katalog),
+# więc `immutable` + zmiana ścieżki kazały przeglądarkom pobrać ~305 KB gzip
+# JS/CSS ponownie po każdym deployu, nawet gdy ani bajt JS/CSS się nie zmienił.
+# Content-hash w nazwie pliku już gwarantuje bust dokładnie zmienionych plików,
+# więc katalog jest statyczny:
+COMPRESS_OUTPUT_DIR = "CACHE"
 
 # django-tabular-permissions
 
@@ -1481,7 +1546,6 @@ DJANGO_EASY_AUDIT_REGISTERED_CLASSES = [
     "bpp.Autor_Dyscyplina",
     "bpp.Jednostka",
     "bpp.Uczelnia",
-    "bpp.Wydzial",
     "bpp.Zrodlo",
     "bpp.Jezyk",
     "bpp.Charakter_Formalny",
@@ -1658,12 +1722,25 @@ DJANGO_BPP_ENABLE_TEST_CONFIGURATION = env("DJANGO_BPP_ENABLE_TEST_CONFIGURATION
 # ROLLBAR settings
 #
 
-# pyrollbar dopasowuje pola do scrubu po DOKŁADNEJ nazwie klucza (case-insensitive,
-# NIE po sufiksie) i PODMIENIA swoją domyślną listę, gdy podamy własną. Dlatego
-# odtwarzamy tu domyślny zestaw pyrollbara i DOKŁADAMY sekrety OAuth/MCP i PBN
-# (uwaga reviewera #3/#5): DOT oznacza jako wrażliwe tylko password/client_secret,
-# a Rollbar bez tej listy wysłałby aktywny refresh_token / code / code_verifier /
-# token przy nieoczekiwanym 500 na /o/token/ czy /o/revoke_token/.
+# pyrollbar dopasowuje pola po nazwie klucza (case-insensitive) NA DOWOLNYM
+# POZIOMIE ZAGNIEŻDŻENIA: matcher jest budowany jako `type="suffix"` nad
+# ŚCIEŻKĄ klucza, więc wpis trafia w każdy klucz o tej nazwie, gdziekolwiek
+# w payloadzie. (Poprzedni komentarz twierdził tu „NIE po sufiksie" — to była
+# nieprawda i to ona doprowadziła do zamazywania CAŁYCH tracebacków przez
+# niewinnie wyglądający wpis "code"; patrz bpp.rollbar_config.)
+#
+# Podana lista PODMIENIA domyślną listę pyrollbara, więc odtwarzamy tu jego
+# domyślny zestaw i DOKŁADAMY sekrety OAuth/MCP i PBN: DOT oznacza jako
+# wrażliwe tylko password/client_secret, a Rollbar bez tej listy wysłałby
+# aktywny refresh_token / code / code_verifier / token przy nieoczekiwanym 500
+# na /o/token/ czy /o/revoke_token/.
+#
+# UWAGA: ta lista zasila TAKŻE `ScrubUrlTransform`
+# (`params_to_scrub=SETTINGS["scrub_fields"]`), czyszczący parametry w query
+# stringach. Zdjęcie czegoś stąd rozbraja — dla tego pola — również czyszczenie
+# URL-i, i to WSZĘDZIE (ten transform skanuje każdy string, nie tylko klucz
+# "url"). Dlatego usunięcie "code" wymagało dołożenia własnego
+# `ScrubUrlTransform` w bpp.rollbar_config.
 ROLLBAR_SCRUB_FIELDS = [
     # domyślne pyrollbara (zachowujemy — nasza lista je nadpisuje):
     "pw",
@@ -1683,7 +1760,11 @@ ROLLBAR_SCRUB_FIELDS = [
     "token",
     "refresh_token",
     "refreshToken",
-    "code",
+    # UWAGA: "code" celowo NIE jest tutaj. pyrollbar trzyma pod tą nazwą także
+    # LINIĘ KODU ŹRÓDŁOWEGO każdej ramki tracebacku, a dopasowanie idzie po
+    # sufiksie ścieżki klucza — więc wpis na tej liście zamazywał wszystkie
+    # tracebacki na "****". Kod autoryzacyjny OAuth zamazuje zamiast tego
+    # bpp.rollbar_config.ScrubKoduAutoryzacyjnego, który pomija ramki stosu.
     "code_verifier",
     "codeVerifier",
     "client_secret",
@@ -1708,6 +1789,11 @@ ROLLBAR = {
     "ignorable_404_urls": (
         re.compile(r"/favicon\.ico"),
         re.compile(r".*\{\{\s*clickURL\s*\}\}$"),
+    ),
+    "exception_level_filters": zbuduj_exception_level_filters(
+        ignoruj_bledy_uwierzytelniania_smtp=env(
+            "DJANGO_BPP_ROLLBAR_IGNORE_SMTP_AUTH_ERRORS"
+        ),
     ),
 }
 
@@ -1825,6 +1911,25 @@ LOGGING = {
             # własnego handlera, więc propagacja nie dubluje wyjścia, a pozwala
             # pytestowemu `caplog` (łapie na rootcie) widzieć zrzut claimów.
             "propagate": True,
+        },
+        # WeasyPrint. Loguje na INFO postęp renderowania („Step 1..7") przez
+        # logger-dziecko `weasyprint.progress`. Problem: `weasyprint/html.py`
+        # buduje trzy wbudowane arkusze user-agent (html5_ua, html5_ua_form,
+        # html5_ph) przez `CSS(string=...)` na poziomie MODUŁU, więc sam import
+        # — bez generowania jakiegokolwiek PDF-a — sypie 3× „Step 2 - Fetching
+        # and parsing CSS - CSS string" („CSS string" to fallback `%s`, gdy
+        # arkusz nie ma ani pliku, ani URL-a). Razy każdy proces importujący
+        # weasyprint (worker gunicorna, celery, beat, denorm-queue, a przy
+        # runserverze jeszcze ×2 przez autoreload) daje to spam przy starcie.
+        # `weasyprint/logger.py` wiesza NullHandler tylko na `weasyprint`, NIE
+        # na `weasyprint.progress`, więc rekordy szły dotąd do roota (handler
+        # na INFO ustawiany przez Celery/gunicorna).
+        # WARNING na rodzicu wycisza też `.progress`, a zostawia to, co realnie
+        # przydatne: nieosiągalne obrazki/fonty i błędy składni CSS.
+        "weasyprint": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
         },
     },
 }

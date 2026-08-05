@@ -12,10 +12,11 @@ def test_defaulty_nowych_pol():
 
 @pytest.mark.django_db
 def test_pola_nullowalne_domyslnie_puste():
-    j = baker.make(Jednostka, skrot_nazwy=None, legacy_wydzial_id=None)
+    # Faza C (#438): ``legacy_wydzial_id`` usunięty (migracja 0468); zostaje
+    # ``skrot_nazwy`` jako nullowalne pole Fazy A.
+    j = baker.make(Jednostka, skrot_nazwy=None)
     j.refresh_from_db()
     assert j.skrot_nazwy is None
-    assert j.legacy_wydzial_id is None
 
 
 @pytest.mark.django_db

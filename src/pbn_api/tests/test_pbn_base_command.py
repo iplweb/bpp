@@ -10,9 +10,11 @@ Reguła multi-hosted dla komend CLI:
 
 import pytest
 from django.core.management import CommandError, call_command
+from django.test import override_settings
 
 from bpp.models import Uczelnia
 from pbn_api.management.commands.util import PBNBaseCommand
+from pbn_api.reporting import rollbar_reporter
 
 
 def _second_uczelnia(**kwargs):
@@ -107,3 +109,23 @@ def test_get_client_still_requires_uczelnia_id_with_multiple(uczelnia):
     cmd._pbn_uczelnia_id = None
     with pytest.raises(CommandError):
         cmd.get_client()
+
+
+@override_settings(PBN_CLIENT_HTTP_TIMEOUT="2,8")
+def test_get_client_injects_django_timeout_and_bpp_reporter(monkeypatch):
+    command = PBNBaseCommand()
+
+    def fill_credentials(options):
+        options.update(
+            app_id="app",
+            app_token="token",
+            base_url="https://pbn.example",
+            user_token="user-token",
+        )
+
+    monkeypatch.setattr(command, "_fill_pbn_credentials", fill_credentials)
+
+    client = command.get_client()
+
+    assert client.transport.timeout == (2.0, 8.0)
+    assert client.transport.reporter is rollbar_reporter

@@ -34,6 +34,23 @@
         </p>
     </div>
 
+    {# Baner domknięcia zgłoszenia: widoczny tylko gdy sesja była związana #}
+    {# ze zgłoszeniem i zapis zwrotny faktycznie ustawił status. #}
+    {% if domkniete_zgloszenie %}
+        <div class="callout primary">
+            <span class="fi-check"></span>
+            Domknięto zgłoszenie publikacji
+            <strong>#{{ domkniete_zgloszenie.pk }}</strong>
+            &mdash; jest teraz oznaczone jako zaimportowane.
+            <a href="{{ domkniete_zgloszenie_url }}"
+               target="_blank"
+               rel="noopener">
+                <span class="fi-eye"></span>
+                Pokaż zgłoszenie
+            </a>
+        </div>
+    {% endif %}
+
     {% if record %}
         <div class="grid-x grid-margin-x grid-margin-y">
             <div class="cell medium-6 large-3">

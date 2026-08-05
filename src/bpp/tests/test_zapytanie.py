@@ -639,6 +639,54 @@ def test_zapytanie_template_loads_query_ux_assets(superuser_client):
     assert 'id="zapytanie-explain-panel"' in html
 
 
+@pytest.mark.django_db
+def test_wykonaj_zapytanie_zwraca_queryset(wydawnictwo_ciagle, denorms):
+    from bpp.views.zapytanie import wykonaj_zapytanie
+
+    denorms.flush()
+    wynik = wykonaj_zapytanie("rekord", f"rok = {wydawnictwo_ciagle.rok}")
+
+    assert wynik.error is None
+    assert wynik.queryset.count() == 1
+
+
+@pytest.mark.django_db
+def test_wykonaj_zapytanie_zwraca_blad_z_lokalizacja():
+    from bpp.views.zapytanie import wykonaj_zapytanie
+
+    wynik = wykonaj_zapytanie("rekord", "rok ===")
+
+    assert wynik.queryset is None
+    assert wynik.error
+    assert wynik.error_location["line"] >= 1
+
+
+@pytest.mark.django_db
+def test_wykonaj_zapytanie_dedupuje_po_relacji_do_wielu(
+    wydawnictwo_ciagle, autor_jan_nowak, jednostka, jednostka_podrzedna, denorms
+):
+    """Filtr po autorach mnoży wiersze rekordu — distinct() musi je zwinąć.
+
+    Ten sam autor przypisany DWA razy (raz na jednostkę) daje dwa wiersze
+    ``Wydawnictwo_Ciagle_Autor`` dopasowane do filtra — bez tego JOIN po
+    ``autorzy`` zwróciłby jeden wiersz nawet bez ``.distinct()`` i test nie
+    chroniłby przed niczym.
+    """
+    from bpp.views.zapytanie import wykonaj_zapytanie
+
+    # Drugie wpisanie tego samego autora na ten sam rekord wymaga innego
+    # typ_odpowiedzialnosci_skrot — (rekord, autor, typ_odpowiedzialnosci)
+    # jest unique_together (Wydawnictwo_Ciagle.Meta), inaczej IntegrityError.
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka)
+    wydawnictwo_ciagle.dodaj_autora(
+        autor_jan_nowak, jednostka_podrzedna, typ_odpowiedzialnosci_skrot="red."
+    )
+    denorms.flush()
+    wynik = wykonaj_zapytanie("rekord", 'autorzy.autor.nazwisko = "Nowak"')
+
+    assert wynik.queryset.count() == 1
+
+
 def test_admin_djangoql_highlight_loaded():
     """Adminy z BppDjangoQLSearchMixin ładują nakładkę podświetlania + skrypt
     falki błędu (przez własne ``media``, nie wbudowane ``djangoql_highlight``)."""

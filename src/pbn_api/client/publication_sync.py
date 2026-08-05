@@ -9,14 +9,15 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.mail import mail_admins
 from django.db import transaction
 from django.db.models import Model
+from pbn_client.const import (
+    PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
+    PBN_POST_PUBLICATIONS_URL,
+)
+from pbn_client.statements import StatementsMixin
 
 from pbn_api.adapters.wydawnictwo import (
     OplataZaWydawnictwoPBNAdapter,
     WydawnictwoPBNAdapter,
-)
-from pbn_api.const import (
-    PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
-    PBN_POST_PUBLICATIONS_URL,
 )
 from pbn_api.exceptions import (
     CannotDeleteStatementsException,
@@ -35,7 +36,6 @@ from pbn_api.exceptions import (
 )
 from pbn_api.models.pbn_odpowiedzi_niepozadane import PBNOdpowiedziNiepozadane
 from pbn_api.models.sentdata import SentData
-from pbn_client.statements import StatementsMixin
 
 logger = logging.getLogger(__name__)
 

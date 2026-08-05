@@ -2,10 +2,13 @@ import json
 from collections import namedtuple
 
 import pytest
+from django.test import Client
 from django.urls import reverse
+from model_bakery import baker
 
 from bpp.models import Autor_Dyscyplina, Typ_Odpowiedzialnosci
 from bpp.models.zrodlo import Punktacja_Zrodla
+from bpp.permissions import moze_wprowadzac_dane
 from bpp.tests.util import CURRENT_YEAR, any_autor, any_habilitacja, any_zrodlo
 from bpp.views.api import (
     OstatniaJednostkaIDyscyplinaView,
@@ -403,7 +406,6 @@ def test_upload_punktacja_zrodla_niepoprawna_liczba():
             {"zrodlo_id": 1, "rok": CURRENT_YEAR},
             {"impact_factor": "50.0"},
         ),
-        ("bpp:api_ostatnia_jednostka_i_dyscyplina", {}, {"autor_id": 1}),
         ("bpp:api_pubmed_id", {}, {"t": "test"}),
     ],
 )
@@ -418,6 +420,104 @@ def test_api_endpoints_require_login(client, url_name, url_kwargs, post_data):
         assert "/accounts/login/" in response["Location"] or (
             "login" in response["Location"].lower()
         )
+
+
+@pytest.mark.django_db
+def test_ostatnia_jednostka_dostepna_bez_uprawnien_redaktorskich(
+    client, autor, jednostka
+):
+    """Podpowiadanie jednostki działa dla ZALOGOWANEGO usera bez uprawnień
+    redaktorskich.
+
+    Regresja (Rollbar #1532 i ~19 bliźniaczych itemów): endpoint dostał
+    ``WprowadzanieDanychRequiredMixin``, choć niczego nie mutuje — tylko czyta.
+    Konsumuje go ``autorform_dependant.js`` ładowany do PUBLICZNEGO formularza
+    ``zglos_publikacje``, więc każdy zgłaszający bez roli redaktora dostawał
+    403 i tracił podpowiedź jednostki (po cichu — to AJAX).
+    """
+    jednostka.dodaj_autora(autor)
+
+    user = baker.make("bpp.BppUser", is_staff=False, is_superuser=False)
+    assert not moze_wprowadzac_dane(user)
+    client.force_login(user)
+
+    url = reverse("bpp:api_ostatnia_jednostka_i_dyscyplina")
+    response = client.post(url, data={"autor_id": autor.pk, "rok": CURRENT_YEAR})
+
+    assert response.status_code == 200
+    assert json.loads(response.content)["jednostka_id"] == jednostka.pk
+
+
+@pytest.mark.django_db
+def test_ostatnia_jednostka_dostepna_dla_anonima(client, autor, jednostka):
+    """Podpowiadanie jednostki działa dla NIEZALOGOWANEGO zgłaszającego.
+
+    Formularz ``zglos_publikacje`` jest publiczny (``Zgloszenie_PublikacjiWizard``
+    nie ma żadnej bramki logowania), więc najliczniejsza grupa jego użytkowników
+    to anonimy. ``LoginRequiredMixin`` odpowiadał im 302 na login — a że to AJAX,
+    ``autorform_dependant.js`` po cichu gubił podpowiedź jednostki i dyscypliny.
+    """
+    jednostka.dodaj_autora(autor)
+
+    url = reverse("bpp:api_ostatnia_jednostka_i_dyscyplina")
+    response = client.post(url, data={"autor_id": autor.pk, "rok": CURRENT_YEAR})
+
+    assert response.status_code == 200
+    assert json.loads(response.content)["jednostka_id"] == jednostka.pk
+
+
+@pytest.mark.django_db
+def test_ostatnia_jednostka_nie_wymaga_tokenu_csrf(autor, jednostka):
+    """POST bez ``csrfmiddlewaretoken`` przechodzi — widok jest ``csrf_exempt``.
+
+    CSRF chroni przed wymuszoną ZMIANĄ STANU; ten widok wyłącznie czyta i zwraca
+    JSON, więc token nie wnosi ochrony, a wymaga od konsumenta dostępu do
+    formularza z tokenem. Anonim na stronie serwowanej z cache'u publicznego
+    świeżego tokenu mieć nie musi.
+    """
+    jednostka.dodaj_autora(autor)
+
+    client = Client(enforce_csrf_checks=True)
+    url = reverse("bpp:api_ostatnia_jednostka_i_dyscyplina")
+    response = client.post(url, data={"autor_id": autor.pk, "rok": CURRENT_YEAR})
+
+    assert response.status_code == 200
+    assert json.loads(response.content)["jednostka_id"] == jednostka.pk
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "url_name,url_kwargs,post_data",
+    [
+        ("bpp:api_rok_habilitacji", {}, {"autor_pk": 1}),
+        ("bpp:api_punktacja_zrodla", {"zrodlo_id": 1, "rok": CURRENT_YEAR}, {}),
+        (
+            "bpp:api_upload_punktacja_zrodla",
+            {"zrodlo_id": 1, "rok": CURRENT_YEAR},
+            {"impact_factor": "50.0"},
+        ),
+    ],
+)
+def test_pozostale_api_nadal_wymagaja_uprawnien_redaktorskich(
+    client, url_name, url_kwargs, post_data
+):
+    """Lustro poprzedniego testu: poluzowanie dotyczy JEDNEGO widoku.
+
+    Bez tego nic nie broni przed przyszłym „skoro tamten odblokowaliśmy, to
+    odblokujmy wszystkie" — a te trzy albo mutują dane
+    (``UploadPunktacjaZrodlaView``), albo wystawiają dane redakcyjne
+    konsumowane wyłącznie przez JS admina.
+    """
+    user = baker.make("bpp.BppUser", is_staff=False, is_superuser=False)
+    assert not moze_wprowadzac_dane(user)
+    client.force_login(user)
+
+    response = client.post(reverse(url_name, kwargs=url_kwargs), data=post_data)
+
+    assert response.status_code == 403, (
+        f"{url_name} przepuszcza zalogowanego bez uprawnień redaktorskich "
+        f"(status={response.status_code})"
+    )
 
 
 @pytest.mark.django_db

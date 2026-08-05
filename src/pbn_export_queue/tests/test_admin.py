@@ -6,6 +6,7 @@ from django import forms
 from django.contrib import admin
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from django.utils import timezone
 from model_bakery import baker
@@ -277,6 +278,7 @@ def test_pbn_export_queue_admin_save_model(admin_user, rf):
     queue_item = baker.make(
         PBN_Export_Queue,
         zamowil=admin_user,
+        content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
     )
 
     class MockForm(forms.ModelForm):

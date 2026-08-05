@@ -28,7 +28,7 @@ like Zotero, Mendeley, EndNote, etc.
 {% if praca.issn %}
     <meta name="DC.identifier" content="issn:{{ praca.issn }}" />
 {% endif %}
-{% if praca.streszczenia.exists %}
+{% if praca.streszczenia.all %}
     {% for streszczenie in praca.streszczenia.all %}
         {% if forloop.first %}
             <meta name="DC.description" content="{{ streszczenie.streszczenie|striptags|truncatewords:150 }}" />
@@ -131,7 +131,7 @@ tu zostaje tylko citation_pmid, którego tamten szablon nie ma.
     }
   ],
   {% endif %}
-  {% if praca.streszczenia.exists %}
+  {% if praca.streszczenia.all %}
     {% for streszczenie in praca.streszczenia.all %}
       {% if forloop.first %}
   "description": {{ streszczenie.streszczenie|striptags|truncatewords:150|jsonify }},

@@ -32,10 +32,20 @@
                 {% endif %}
 
             </span>
-        {% if not export_mode and not print_removed %}
+        {% if not export_mode and not print_removed and not hide_chrome %}
             <span class="multiseek-remove-from-results">
                 <a data-remove-result="{{ element.js_safe_pk }}" style="font-size: 8pt;">
                     ❌
+                </a>
+            </span>
+        {% endif %}
+        {# pokaz_edycje: flaga strony „Wyszukiwanie zapytaniem"; multiseek jej #}
+        {# nie przekazuje, więc tam blok jest wyłączony (brak zmiennej = falsy). #}
+        {% if pokaz_edycje and element.admin_url %}
+            <span class="zapytanie-edytuj">
+                <a href="{{ element.admin_url }}" target="_blank"
+                   title="Edytuj w panelu administracyjnym">
+                    <span class="fi-page-edit" aria-hidden="true"></span>
                 </a>
             </span>
         {% endif %}

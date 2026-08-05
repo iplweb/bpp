@@ -970,7 +970,16 @@
                             <!-- FILTERS -->
                             {% if cl.has_filters %}
                                 {% block filters %}
-                                    {% cache 300 admin_filters request.GET.items request.path request.user.username %}
+                                    {# vary_on MUSI być wartością, nie metodą. `request.GET.items` #}
+                                    {# szablon WYWOŁUJE, dostając generator — a klucz fragmentu #}
+                                    {# powstaje z `str(...)` argumentu, czyli z ADRESU generatora #}
+                                    {# na stercie. CPython reużywa zwolniony adres, więc różne #}
+                                    {# query stringi dawały TEN SAM klucz (zmierzone: 3 różne #}
+                                    {# filtry -> 1 klucz) i panel filtrów trafiał w CUDZY wpis. #}
+                                    {# Do tego generator nigdy nie był konsumowany, więc klucz #}
+                                    {# i tak nie zależał od faktycznych parametrów GET. #}
+                                    {# `urlencode` daje stabilny łańcuch zależny od parametrów. #}
+                                    {% cache 300 admin_filters request.GET.urlencode request.path request.user.username %}
                                         <div id="grp-filters" class="g-d-6 g-d-l">
                                             <div class="grp-filter">
                                                 <a href="javascript://"

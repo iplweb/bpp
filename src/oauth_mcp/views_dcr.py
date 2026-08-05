@@ -6,9 +6,11 @@ from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
+from oauth2_provider.generators import generate_client_id
 from oauth2_provider.models import get_application_model
 
 from django_bpp.client_ip import get_client_ip
+from oauth_mcp.tasks import DCR_CLIENT_ID_PREFIX
 
 # Allowlista wzorców redirect_uri (spec §5.6): callbacki Claude + lokalne.
 _ALLOWED_REDIRECT_PATTERNS = [
@@ -81,6 +83,15 @@ class DynamicClientRegistrationView(View):
 
         Application = get_application_model()
         app = Application.objects.create(
+            # Znacznik pochodzenia (#656): retencja osieroconych rejestracji
+            # musi odróżnić klienta z DCR od integracji założonej ręcznie w
+            # adminie — tej drugiej nie wolno skasować. Prefiks jest
+            # rozstrzygalny, a nie probabilistyczny: ClientIdGenerator z DOT
+            # losuje z UNICODE_ASCII_CHARACTER_SET (same alfanumeryki, bez
+            # myślnika), więc `dcr-` nie może powstać przypadkiem. Znacznik nie
+            # idzie w `client_name`, bo tamto pole steruje klient i widzi je
+            # ekran zgody.
+            client_id=DCR_CLIENT_ID_PREFIX + generate_client_id(),
             name=client_name[:255],
             client_type=Application.CLIENT_PUBLIC,
             authorization_grant_type=Application.GRANT_AUTHORIZATION_CODE,

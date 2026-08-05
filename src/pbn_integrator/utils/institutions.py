@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from pbn_client.const import ACTIVE, DELETED
+
 from bpp.models import Jednostka, Uczelnia
-from pbn_api.const import ACTIVE, DELETED
 from pbn_api.models import Institution
 from pbn_integrator.utils.mongodb_ops import pobierz_mongodb, zapisz_mongodb
 from pbn_integrator.utils.threaded_page_getter import (
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
 class InstitutionGetter(ThreadedMongoDBSaver):
     """Threaded getter for institutions."""
 
-    pbn_api_klass = Institution
+    model_class = Institution
 
 
 def pobierz_instytucje(client: PBNClient, callback=None):

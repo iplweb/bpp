@@ -1,6 +1,6 @@
 {
     "name": "bpp-iplweb",
-    "version": "v202607.1398",
+    "version": "v202608.1399",
     "license": "MIT",
     "devDependencies": {
         "esbuild": "^0.28.1",
@@ -17,6 +17,7 @@
     "dependencies": {
         "3d-force-graph": "^1.80.0",
         "basic-ftp": "5.3.1",
+        "chart.js": "^4.4.0",
         "cytoscape": "^3.34.0",
         "cytoscape-fcose": "^2.2.0",
         "cytoscape-svg": "^0.4.0",
@@ -27,7 +28,7 @@
         "foundation-sites": "^6.9.0",
         "graphology": "^0.26.0",
         "htmx.org": "^1.9.12",
-        "immutable": "5.1.5",
+        "immutable": "5.1.8",
         "jinplace": "1.0.1",
         "jquery": "^3.4.0",
         "jquery-circle-progress": "^1.2.2",

@@ -14,8 +14,13 @@ repozytorium. Poniższe strony rozwijają wybrane tematy:
   (generowane maszynowo).
 - [Polecenia](polecenia.md) — referencja komend (testy, build, Celery,
   zarządzanie).
+- [Pakiety klienckie PBN](pakiety-pbn.md) — pakiety `pbn-client` /
+  `django-pbn-client` (PyPI), podział odpowiedzialności i aktualizacja wersji.
 - [Budowanie CSS/SCSS](budowanie-css.md) — pipeline frontendu (Grunt,
   Foundation).
+- [euroCRIS — co jeszcze zostało](eurocris-co-jeszcze.md) — stan eksportu
+  CERIF/OpenAIRE i lista braków (encje, mapowania słownikowe, rejestracja
+  w DRIS).
 - [Rozwijanie projektu](rozwijanie-projektu.md) — jak współtworzyć.
 - [WeasyPrint na macOS](weasyprint-macos.md) — konfiguracja PDF lokalnie.
 - [Testy: Channels broadcast (flake)](testy-channels-broadcast.md) —

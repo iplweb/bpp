@@ -184,7 +184,8 @@ def test_changeform_add_full_flow(
     admin_page.click('a[name="_add_wa"]')
     admin_page.wait_for_load_state("domcontentloaded")
 
-    # Fill admin inline form - equivalent to fill_admin_inline
+    # NIE ZASTĘPOWAĆ przez set_select2_value: "full flow" celowo przechodzi
+    # przez rzeczywiste wpisywanie i wybór we wszystkich trzech Select2.
     prefix = "id_"
     select_select2_autocomplete(
         admin_page,

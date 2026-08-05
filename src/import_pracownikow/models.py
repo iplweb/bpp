@@ -169,6 +169,20 @@ class ImportPracownikow(LiveOperation):
         "zostaw ODZNACZONE</strong> — przepięłoby to historyczne afiliacje.<br>"
         "Można korygować per wiersz przed zapisem osób.",
     )
+    nadpisuj_daty_zatrudnienia = models.BooleanField(
+        "Nadpisuj daty zatrudnienia (od/do) wartościami z pliku",
+        default=False,
+        # HTML w help_text (crispy renderuje przez |safe) — wzorzec jak w
+        # przepnij_wszystkie_prace. Ten sam string dosłownie w migracji 0028.
+        help_text="Gdy zaznaczone, daty rozpoczęcia i zakończenia pracy "
+        "<strong>ISTNIEJĄCYCH</strong> okresów zatrudnienia zostaną "
+        "<strong>NADPISANE</strong> wartościami z pliku — tam, gdzie plik "
+        "niesie datę różną od bazy.<br>"
+        "Użyj do KOREKTY dat (np. po wcześniejszym imporcie pliku bez "
+        "dat, który ostemplował wszystkich datą importu).<br>"
+        "Puste komórki pliku niczego nie kasują. Dotyczy wyłącznie osób "
+        "obecnych w pliku.",
+    )
     zakres_integracji = models.CharField(
         "Zakres integracji",
         max_length=20,
@@ -467,6 +481,56 @@ class ImportPracownikow(LiveOperation):
 
         return qry
 
+    def odswiez_stany_pol_wierszy(self, tylko_puste=False):
+        """Przelicza ``stany_pol_snapshot`` wierszy importu jednym przebiegiem.
+
+        Filtr stanu pól na liście wyników działa na tym polu w SQL, więc musi być
+        świeże wszędzie tam, gdzie zmieniły się pola czytane przez ekstraktory:
+        po analizie oraz po integracji strukturalnej (przypisanie
+        ``jednostka``/``tytul``/``stopien``/``stanowisko_dydaktyczne`` wierszom).
+
+        ``tylko_puste=True`` — tryb backfillu dla importów sprzed materializacji.
+        Zawężenie do wierszy z ``NULL`` jest tam WARUNKIEM POPRAWNOŚCI, nie
+        optymalizacją: snapshot niepusty bywa zamrożonym zapisem audytowym
+        (stan sprzed integracji), a przeliczenie nadpisałoby go stanem po
+        integracji, czyli „zgodne" zamiast „zmienione". Snapshot dostają dziś
+        tylko wiersze z worklisty integracji, więc importy zintegrowane mają
+        mieszankę wypełnionych i pustych — sam fakt istnienia ``NULL``-i nie
+        znaczy, że import jest sprzed zmiany.
+
+        Zwraca liczbę zaktualizowanych wierszy.
+        """
+        from import_pracownikow.okresy import wstepnie_zaladuj_okresy
+
+        qs = self.importpracownikowrow_set.all()
+        if tylko_puste:
+            qs = qs.filter(stany_pol_snapshot__isnull=True)
+        # Te same ścieżki, których potrzebują ekstraktory (`porownaj_z_baza`
+        # czyta FK autora i powiązania) — bez tego przeliczenie samo byłoby N+1.
+        rows = list(
+            qs.select_related(
+                "autor",
+                "autor__aktualna_jednostka",
+                "autor__tytul",
+                "autor__stopien_sluzbowy",
+                "jednostka",
+                "autor_jednostka__stanowisko",
+                "autor_jednostka__funkcja",
+                "autor_jednostka__wymiar_etatu",
+                "autor_jednostka__grupa_pracownicza",
+            )
+        )
+        if not rows:
+            return 0
+        wstepnie_zaladuj_okresy(rows)
+        for row in rows:
+            row.stany_pol_snapshot = row.stany_pol_live()
+        with transaction.atomic():
+            ImportPracownikowRow.objects.bulk_update(
+                rows, ["stany_pol_snapshot"], batch_size=500
+            )
+        return len(rows)
+
     def pary_z_pliku(self):
         """Zbiór par ``(autor_id, jednostka_id)`` OBECNYCH w wierszach importu
         (autor i jednostka ustawione) — „para z pliku”, tj. potwierdzony etat.
@@ -518,6 +582,33 @@ class ImportPracownikow(LiveOperation):
         return self.importpracownikowrow_set.filter(
             autor__isnull=True, utworz_nowego=False
         ).count()
+
+    def liczba_nadpisan_dat(self):
+        """Ile wierszy przy zapisie osób NADPISZE istniejącą datę
+        zatrudnienia (flaga ``nadpisuj_daty_zatrudnienia``) — do calloutu
+        i confirmu finalizacji. Liczone LIVE (``stany_pol_snapshot`` bywa
+        NULL do backfillu i miesza wypełnienia NULL-i z nadpisaniami);
+        ``wstepnie_zaladuj_okresy`` + przypięcie ``parent`` chronią przed
+        N+1.
+
+        Liczba jest orientacyjna i może być zawyżona: ``nadpisze_daty()``
+        porównuje wyłącznie daty, nie woła pre-checku nakładania okresów
+        (``_sprawdz_nakladanie_okresow``) — wiersz policzony tu jako
+        „nadpisanie" może przy faktycznej integracji zostać odrzucony
+        (kolizja z innym okresem) i mimo to zostać wliczony."""
+        if not self.nadpisuj_daty_zatrudnienia:
+            return 0
+        from import_pracownikow.okresy import wstepnie_zaladuj_okresy
+
+        rows = list(
+            self.importpracownikowrow_set.filter(
+                autor__isnull=False, jednostka__isnull=False
+            ).select_related("autor", "jednostka")
+        )
+        for row in rows:
+            row.parent = self
+        wstepnie_zaladuj_okresy(rows)
+        return sum(1 for row in rows if row.nadpisze_daty())
 
     @staticmethod
     def _liczniki_decyzji(queryset, tryb_brak, tryb_zgadywanie):
@@ -982,6 +1073,28 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             return None
         return self.dane_bardziej_znormalizowane.get("data_końca_zatrudnienia") or None
 
+    def nadpisze_daty(self):
+        """Czy zapis osób NADPISZE niepustą datę tego wiersza (flaga
+        ``nadpisuj_daty_zatrudnienia``). Liczy TYLKO realne nadpisania —
+        obie strony niepuste i różne; wypełnienia NULL-i i nowe okresy to
+        NIE nadpisania (spec §3.5, stan „zmienione" ze ``stany_pol`` byłby
+        zawyżony). Zasila licznik ostrzeżenia finalizacji."""
+        if not self.parent.nadpisuj_daty_zatrudnienia:
+            return False
+        if self.autor_id is None or self.jednostka_id is None:
+            return False
+        from import_pracownikow.okresy import rozwiaz_okres_zatrudnienia
+
+        rodzaj, aj = rozwiaz_okres_zatrudnienia(
+            self.autor, self.jednostka, self._plik_od(), aj_lista=self._aj_lista()
+        )
+        if rodzaj != "istniejacy":
+            return False
+        plik_od, plik_do = self._plik_od(), self._plik_do()
+        return bool(
+            plik_od and aj.rozpoczal_prace and aj.rozpoczal_prace != plik_od
+        ) or bool(plik_do and aj.zakonczyl_prace and aj.zakonczyl_prace != plik_do)
+
     def _aj_lista(self):
         """Lista okresów ``Autor_Jednostka`` dla ``(autor, jednostka)`` wiersza —
         JEDNO zapytanie (memo na instancji), współdzielone przez resolver
@@ -1124,6 +1237,33 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             ),
         }
 
+    def stany_pol_live(self):
+        """Stan każdego pola policzony ekstraktorami ``POLA_ROZNIC`` — ZAWSZE
+        świeżo, z pominięciem ``stany_pol_snapshot``.
+
+        To jest metoda LICZĄCA; ``stany_pol()`` niżej jest metodą CZYTAJĄCĄ.
+        Rozdział jest konieczny, odkąd snapshot bywa wypełniony także przed
+        integracją: ``self.stany_pol_snapshot = self.stany_pol()`` byłoby wtedy
+        kopiowaniem pola w samo siebie, czyli cichym no-opem. Każde
+        „przelicz i zapisz" (odświeżanie, backfill, zamrożenie w potoku
+        integracji) MUSI iść przez tę metodę.
+        """
+        from import_pracownikow.roznice import POLA_ROZNIC
+
+        return {klucz: ekstraktor(self) for klucz, _et, ekstraktor in POLA_ROZNIC}
+
+    def odswiez_stany_pol(self):
+        """Przelicza i zapisuje ``stany_pol_snapshot``.
+
+        Wołane wszędzie tam, gdzie zmieniło się pole czytane przez ekstraktory
+        (``autor`` w widokach dopasowania, ``jednostka``/``tytul``/``stopien``/
+        ``stanowisko_dydaktyczne`` w potoku integracji strukturalnej) — filtr
+        stanu pól działa na tym polu w SQL, więc nieświeża wartość oznacza
+        po cichu kłamiący filtr.
+        """
+        self.stany_pol_snapshot = self.stany_pol_live()
+        self.save(update_fields=["stany_pol_snapshot"])
+
     def stany_pol(self):
         """Stan każdego pola różnic: ``{klucz: "zmienione"|"zgodne"|"brak"}``.
         Zwraca zamrożony ``stany_pol_snapshot`` gdy istnieje (po integracji baza
@@ -1139,7 +1279,7 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             baza = {klucz: "brak" for klucz, _et, _ekstraktor in POLA_ROZNIC}
             return {**baza, **self.stany_pol_snapshot}
 
-        return {klucz: ekstraktor(self) for klucz, _et, ekstraktor in POLA_ROZNIC}
+        return self.stany_pol_live()
 
     @property
     def ostrzezenie_email(self):
@@ -1178,6 +1318,11 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             # pracy. Guard przed dostępem do atrybutów None (checki niżej łapią
             # None dopiero przez short-circuit dane.get(...), a #4 primary nie).
             return False
+        # §3.3a specu nadpisywania dat: przy fladze „nadpisuj daty" różnica
+        # wobec ISTNIEJĄCEJ (niepustej) daty też wymaga integracji — bez
+        # flagi liczy się, jak dotąd, wyłącznie wypełnienie NULL-a.
+        nadpisywanie = self.parent.nadpisuj_daty_zatrudnienia
+        plik_od, plik_do = self._plik_od(), self._plik_do()
         checks = [
             # #4: rozpoczęcie stemplujemy TYLKO gdy puste (data z pliku / importu)
             # — integracja potrzebna, gdy plik niesie datę, a AJ jej nie ma.
@@ -1201,6 +1346,14 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             # Stanowisko dydaktyczne — overwrite-if-different (mirror funkcja).
             self.stanowisko_dydaktyczne_id is not None
             and aj.stanowisko_id != self.stanowisko_dydaktyczne_id,
+            nadpisywanie
+            and plik_od is not None
+            and aj.rozpoczal_prace is not None
+            and aj.rozpoczal_prace != plik_od,
+            nadpisywanie
+            and plik_do is not None
+            and aj.zakonczyl_prace is not None
+            and aj.zakonczyl_prace != plik_do,
         ]
         return any(checks)
 
@@ -1256,48 +1409,109 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
     def _integruj_daty_aj(self, aj, dane):
         """Ustawia daty zatrudnienia na powiązaniu z danych wiersza.
 
-        „Data od" (``rozpoczal_prace``) na ISTNIEJĄCYM AJ wypełniamy TYLKO gdy
-        baza ma ``NULL`` a plik NIESIE datę (§3: „wypełnienie NULL") — nie
-        nadpisujemy istniejącej daty. Pusty ``plik_od`` na istniejącym AJ →
-        NIC NIE ZMIENIAJ (§5), nawet gdy ``rozpoczal_prace`` jest ``NULL``.
-        Fallback ``data zmian → dziś`` dla NOWEGO okresu stemplujemy przy
-        MATERIALIZACJI (``integrate._materializuj_diff``), nie tutaj — świeży AJ
-        ma już ``rozpoczal_prace``, więc ta gałąź go nie dotyczy.
+        Bez flagi „nadpisuj daty": „data od"/„data do" na ISTNIEJĄCYM AJ
+        wypełniamy TYLKO gdy baza ma ``NULL`` a plik NIESIE datę (§3:
+        „wypełnienie NULL") — istniejącej daty nie ruszamy; pusty plik →
+        nic nie zmieniaj (§5). Fallback ``data zmian → dziś`` dla NOWEGO
+        okresu stempluje materializacja (``integrate._materializuj_diff``).
 
-        „Data do" (``zakonczyl_prace``) — wstaw-tylko-gdy-pusta (§3): różnicę
-        wobec istniejącej daty POKAZUJEMY w porównywarce, ale NIE nadpisujemy."""
-        if aj.rozpoczal_prace is None and dane.get("data_zatrudnienia"):
-            aj.rozpoczal_prace = dane["data_zatrudnienia"]
-            self.log_zmian["autor_jednostka"].append(
-                f"data rozpoczęcia pracy na {aj.rozpoczal_prace}"
-            )
+        Z flagą ``parent.nadpisuj_daty_zatrudnienia`` (spec §3.3): datę
+        różną od niepustej wartości w bazie NADPISUJEMY wartością z pliku
+        (osobno „od" i „do"); puste komórki nadal niczego nie kasują.
+
+        Zwraca ``True`` TYLKO gdy nadpisano niepustą wartość — sygnał dla
+        pre-checku nakładania okresów; wypełnienia NULL-i zwracają
+        ``False`` (idą dzisiejszą ścieżką, bez pre-checku)."""
+        nadpisywanie = self.parent.nadpisuj_daty_zatrudnienia
+        nadpisano = False
+
+        plik_od = dane.get("data_zatrudnienia")
+        if plik_od:
+            if aj.rozpoczal_prace is None:
+                aj.rozpoczal_prace = plik_od
+                self.log_zmian["autor_jednostka"].append(
+                    f"data rozpoczęcia pracy na {aj.rozpoczal_prace}"
+                )
+            elif nadpisywanie and aj.rozpoczal_prace != plik_od:
+                self.log_zmian["autor_jednostka"].append(
+                    f"data rozpoczęcia pracy: {aj.rozpoczal_prace} → "
+                    f"{plik_od} (nadpisano z pliku)"
+                )
+                aj.rozpoczal_prace = plik_od
+                nadpisano = True
 
         data_konca = dane.get("data_końca_zatrudnienia")
-        if data_konca and aj.zakonczyl_prace is None:
-            aj.zakonczyl_prace = data_konca
-            self.log_zmian["autor_jednostka"].append(
-                f"data końca zatrudnienia na {data_konca}"
-            )
+        if data_konca:
+            if aj.zakonczyl_prace is None:
+                aj.zakonczyl_prace = data_konca
+                self.log_zmian["autor_jednostka"].append(
+                    f"data końca zatrudnienia na {data_konca}"
+                )
+            elif nadpisywanie and aj.zakonczyl_prace != data_konca:
+                self.log_zmian["autor_jednostka"].append(
+                    f"data końca zatrudnienia: {aj.zakonczyl_prace} → "
+                    f"{data_konca} (nadpisano z pliku)"
+                )
+                aj.zakonczyl_prace = data_konca
+                nadpisano = True
 
-    def _integrate_autor_jednostka(self):
-        aj = self.autor_jednostka
-        if aj is None:
-            # Ochrona: świeży okres mógł zostać scalony przez defragmentację i
-            # bez ocalałego AJ (`_przepnij_aj_po_defragmentacji`). Dane zatrudnienia
-            # niesie już scalony rekord — nie ma czego zapisywać.
+        return nadpisano
+
+    def _sprawdz_nakladanie_okresow(self, aj):
+        """Pythonowe lustro constraintu
+        ``bpp_autor_jednostka_okresy_bez_nakladan`` (bpp/models/autor.py):
+        przedziały DOMKNIĘTE ``[od, do]``, ``zakonczyl_prace IS NULL`` =
+        otwarty w prawo ``[od, ∞)``. Wołane TYLKO po nadpisaniu niepustej
+        daty (flaga „nadpisuj daty") — naruszenie constraintu w bazie
+        zatruwa transakcję i psuje izolację wiersza, więc kolizję łapiemy
+        PRZED save (jak niezmiennik od<do wyżej)."""
+        from bpp.models import Autor_Jednostka
+
+        if aj.rozpoczal_prace is None:
             return
-        dane = self.dane_bardziej_znormalizowane
+        od = aj.rozpoczal_prace
+        do = aj.zakonczyl_prace or date.max
+        koliduje = (
+            Autor_Jednostka.objects.filter(
+                autor_id=aj.autor_id,
+                jednostka_id=aj.jednostka_id,
+                rozpoczal_prace__isnull=False,
+            )
+            .exclude(pk=aj.pk)
+            .filter(rozpoczal_prace__lte=do)
+        )
+        for inny in koliduje:
+            if od <= (inny.zakonczyl_prace or date.max):
+                raise BPPDatabaseError(
+                    self.dane_z_xls,
+                    self,
+                    f"nadpisane daty ({od} – "
+                    f"{aj.zakonczyl_prace or 'obecnie'}) nakładają się na "
+                    f"inny okres zatrudnienia w tej jednostce "
+                    f"({inny.rozpoczal_prace} – "
+                    f"{inny.zakonczyl_prace or 'obecnie'})",
+                )
 
-        self._integruj_daty_aj(aj, dane)
+    def _waliduj_daty_aj(self, aj, nadpisano_daty):
+        """Walidacja dat AJ PRZED jakimkolwiek zapisem (wydzielona z
+        ``_integrate_autor_jednostka``, żeby nie przekraczać limitu
+        złożoności cyklomatycznej — obie walidacje i tak są ze sobą
+        związane: obie muszą paść przed ``aj.save()`` niżej).
 
-        # Niezmiennik rozpoczal < zakonczyl walidujemy PRZED jakimkolwiek zapisem.
-        # Model.save() nie woła clean(), a ustaw_podstawowe_miejsce_pracy() niżej
-        # już utrwala aj (i zdejmuje flagę „podstawowe" z innych powiązań autora).
-        # Odwrócony zakres z XLS musi zostać odrzucony (BPPDatabaseError → izolacja
-        # wiersza) zanim cokolwiek trafi do bazy — inaczej przedwczesny save
-        # zderza się z DB-owym CHECK `poczatek_przed_koncem` (mig 0469) i daje
-        # nieizolowany CheckViolation. Reguły „koniec < dziś" celowo NIE
-        # egzekwujemy: import może nieść przyszłe (planowane) daty końca.
+        Niezmiennik rozpoczal < zakonczyl walidujemy PRZED jakimkolwiek
+        zapisem. Model.save() nie woła clean(), a
+        ustaw_podstawowe_miejsce_pracy() w wołającej metodzie już utrwala
+        aj (i zdejmuje flagę „podstawowe" z innych powiązań autora).
+        Odwrócony zakres z XLS musi zostać odrzucony (BPPDatabaseError →
+        izolacja wiersza) zanim cokolwiek trafi do bazy — inaczej
+        przedwczesny save zderza się z DB-owym CHECK
+        `poczatek_przed_koncem` (mig 0469) i daje nieizolowany
+        CheckViolation. Reguły „koniec < dziś" celowo NIE egzekwujemy:
+        import może nieść przyszłe (planowane) daty końca.
+
+        Pre-check nakładania okresów (lustro ExclusionConstraint) wołamy
+        TYLKO gdy nadpisano niepustą datę — patrz
+        ``_sprawdz_nakladanie_okresow``."""
         if (
             aj.rozpoczal_prace is not None
             and aj.zakonczyl_prace is not None
@@ -1309,6 +1523,21 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
                 f"data rozpoczęcia pracy ({aj.rozpoczal_prace}) jest późniejsza "
                 f"lub równa dacie zakończenia ({aj.zakonczyl_prace})",
             )
+
+        if nadpisano_daty:
+            self._sprawdz_nakladanie_okresow(aj)
+
+    def _integrate_autor_jednostka(self):
+        aj = self.autor_jednostka
+        if aj is None:
+            # Ochrona: świeży okres mógł zostać scalony przez defragmentację i
+            # bez ocalałego AJ (`_przepnij_aj_po_defragmentacji`). Dane zatrudnienia
+            # niesie już scalony rekord — nie ma czego zapisywać.
+            return
+        dane = self.dane_bardziej_znormalizowane
+
+        nadpisano_daty = self._integruj_daty_aj(aj, dane)
+        self._waliduj_daty_aj(aj, nadpisano_daty)
 
         if self.funkcja_autora is not None and aj.funkcja != self.funkcja_autora:
             aj.funkcja = self.funkcja_autora

@@ -208,6 +208,10 @@
         }
         .zapytanie-toolbar .button { margin-right: 0.4rem; }
 
+        /* Pasek eksportu wynikow (CSV/XLSX/HTML/DOCX/BibTeX) */
+        .zapytanie-eksport-toolbar { margin-top: 0.5rem; }
+        .zapytanie-eksport-toolbar .button { margin-right: 0.4rem; }
+
         /* Rozbicie na zadanie — drzewo licznosci galezi (djangoql explain) */
         #zapytanie-explain-panel[hidden] { display: none; }
         #zapytanie-explain-panel { margin-top: 1.2rem; }
@@ -370,7 +374,59 @@
                     </ul>
                 </details>
 
+                {% if pivot_presety %}
+                    <details class="zapytanie-help-sublevel">
+                        <summary><strong>Gotowe tabele krzyzowe</strong> &mdash; jeden klik do macierzy</summary>
+                        {% if query %}
+                            <p>
+                                Linki dokladaja wiersz/kolumne/metryke tabeli
+                                krzyzowej do WYSLANEGO zapytania
+                                (<code>{{ query }}</code>) i przelaczaja postac
+                                wyniku na "tabela krzyzowa". Zmiany wpisane w
+                                pole powyzej, ale niewyslane, nie sa w nich
+                                uwzglednione &mdash; najpierw kliknij "Szukaj".
+                            </p>
+                            <ul class="examples">
+                                {% for preset in pivot_presety %}
+                                    <li>
+                                        <a href="{% url 'bpp:zapytanie' %}?{{ preset.query }}">{{ preset.opis }}</a>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            {# Bez WYSLANEGO zapytania preset nie ma czego #}
+                            {# doklada: puste zapytanie nie przechodzi przez #}
+                            {# DjangoQL (parser: "Unexpected end of input"), #}
+                            {# wiec taki link przeladowywalby strone i nie #}
+                            {# robil NIC. Pokazujemy wiec, co jest w ofercie, #}
+                            {# ale bez klikalnej obietnicy. #}
+                            <p>
+                                Skroty do gotowych macierzy pojawia sie tutaj
+                                <strong>po wykonaniu zapytania</strong> &mdash;
+                                dokladaja wiersz/kolumne/metryke do wyslanego
+                                zapytania, a puste zapytanie nie zwraca zadnych
+                                wynikow. W ofercie:
+                            </p>
+                            <ul class="examples">
+                                {% for preset in pivot_presety %}
+                                    <li><em>{{ preset.opis }}</em></li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </details>
+                {% endif %}
+
             </details>
+
+            <label for="id_postac" style="margin-top: 0.6rem;">
+                Postać wyniku
+                <select name="postac" id="id_postac">
+                    {% for value, label in postacie %}
+                        <option value="{{ value }}"
+                                {% if postac == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
 
             <p style="margin-top: 1rem;" class="zapytanie-toolbar">
                 <button type="submit" class="button primary">
@@ -450,46 +506,91 @@
                 <p><em>Zapytanie:</em> <code>{{ query }}</code> na modelu <strong>{{ model_key }}</strong></p>
             {% endif %}
             {% if results %}
-                {% include "bpp/_zapytanie_pager.html" %}
-                <table class="hover stack">
-                    <thead>
-                        <tr>
-                            <th>Reprezentacja</th>
-                            <th style="width: 6rem;">ID</th>
-                            <th style="width: 9rem;">Akcje</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for obj in results %}
-                            {% if model_key == "rekord" %}
-                                <tr data-href="{{ obj.get_absolute_url }}">
-                                    <td>{{ obj.opis_bibliograficzny_cache|safe }}</td>
-                                    <td class="rekord-id-cell">{{ obj.pk.0 }}-{{ obj.pk.1 }}</td>
-                                    <td>
-                                        <a href="{{ obj.get_absolute_url }}" target="_blank">Zobacz</a>
-                                        {% if request.user.is_staff and obj.admin_url %}
-                                            <br>
-                                            <a href="{{ obj.admin_url }}" target="_blank">Edytuj</a>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            {% else %}
-                                <tr data-href="{% url 'bpp:browse_autor' obj.slug %}">
-                                    <td>{{ obj }}</td>
-                                    <td class="rekord-id-cell">{{ obj.pk }}</td>
-                                    <td>
-                                        <a href="{% url 'bpp:browse_autor' obj.slug %}" target="_blank">Zobacz</a>
-                                        {% if request.user.is_staff %}
-                                            <br>
-                                            <a href="{% url 'admin:bpp_autor_change' obj.pk %}" target="_blank">Edytuj</a>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            {% endif %}
+                {% if postac != "pivot" %}
+                    {# Przy postac=pivot eksportu NIE ma tutaj: macierz ma #}
+                    {# wlasny pasek w report-body-pivot.html, ktory sklada URL #}
+                    {# z {{ request.GET.urlencode }}, wiec niesie pivot_row / #}
+                    {# pivot_col / pivot_val i sciaga DOKLADNIE te macierz, #}
+                    {# ktora widac na ekranie. Ten pasek zna tylko model / #}
+                    {# query / postac — przy pivocie dawalby wiec inny plik #}
+                    {# niz pokazany (dwa przyciski CSV, dwa rozne wyniki). #}
+                    <p class="zapytanie-eksport-toolbar">
+                        <strong>
+                            <span class="fi-download" aria-hidden="true"></span>
+                            Eksport:
+                        </strong>
+                        {% for fmt, label in eksport_formaty %}
+                            <a class="button tiny secondary"
+                               href="{% url 'bpp:zapytanie_eksport' export_format=fmt %}?model={{ model_key|urlencode }}&amp;query={{ query|urlencode }}&amp;postac={{ postac|urlencode }}">
+                                <span class="fi-download" aria-hidden="true"></span>
+                                {{ label }}
+                            </a>
                         {% endfor %}
-                    </tbody>
-                </table>
-                {% include "bpp/_zapytanie_pager.html" %}
+                    </p>
+                {% endif %}
+                {% if postac == "pivot" %}
+                    {# Tabela krzyżowa — NIE stronicowana (rozmiar macierzy nie #}
+                    {# zalezy od liczby stron rekordow), wiec bez pagera. #}
+                    {% include "multiseek/report-body-pivot.html" %}
+                {% else %}
+                    {% include "bpp/_zapytanie_pager.html" %}
+                    {% if postac == "rekordy" %}
+                        {# dotychczasowa tabela redakcyjna — bez zmian #}
+                        <table class="hover stack">
+                            <thead>
+                                <tr>
+                                    <th>Reprezentacja</th>
+                                    <th style="width: 6rem;">ID</th>
+                                    <th style="width: 9rem;">Akcje</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for obj in results %}
+                                    {% if model_key == "rekord" %}
+                                        <tr data-href="{{ obj.get_absolute_url }}">
+                                            <td>{{ obj.opis_bibliograficzny_cache|safe }}</td>
+                                            <td class="rekord-id-cell">{{ obj.pk.0 }}-{{ obj.pk.1 }}</td>
+                                            <td>
+                                                <a href="{{ obj.get_absolute_url }}" target="_blank">Zobacz</a>
+                                                {% if request.user.is_staff and obj.admin_url %}
+                                                    <br>
+                                                    <a href="{{ obj.admin_url }}" target="_blank">Edytuj</a>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% else %}
+                                        <tr data-href="{% url 'bpp:browse_autor' obj.slug %}">
+                                            <td>{{ obj }}</td>
+                                            <td class="rekord-id-cell">{{ obj.pk }}</td>
+                                            <td>
+                                                <a href="{% url 'bpp:browse_autor' obj.slug %}" target="_blank">Zobacz</a>
+                                                {% if request.user.is_staff %}
+                                                    <br>
+                                                    <a href="{% url 'admin:bpp_autor_change' obj.pk %}" target="_blank">Edytuj</a>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% elif postac == "table" or postac == "pkt_wewn" or postac == "pkt_wewn_bez" %}
+                        {# Postać tabelaryczna multiseeka — render tym samym partialem #}
+                        {# co eksport dokumentu (document_export_response), zeby ekran #}
+                        {# i eksport zawsze wygladaly identycznie. #}
+                        {% include "multiseek/report-body-table.html" with object_list=results report_type=postac sumy=sumy export_mode=False hide_chrome=True pokaz_edycje=request.user.is_staff page_obj=results start_index=results.start_index|add:"-1" %}
+                    {% elif postac == "bibtex" %}
+                        {# Wlasny partial multiseeka (<pre> + przycisk kopiowania). #}
+                        {# hide_chrome chowa przycisk "Skopiuj" — jego JS jest tylko #}
+                        {# inline w multiseekowym common-results.html, tu byłby martwy. #}
+                        {% include "multiseek/report-body-bibtex.html" with object_list=results hide_chrome=True %}
+                    {% else %}
+                        {# tylko "list" dociera tutaj — rekordy/tabela/bibtex maja #}
+                        {# wlasne galezie wyzej. #}
+                        {% include "multiseek/report-body-list.html" with object_list=results report_type=postac export_mode=False hide_chrome=True pokaz_edycje=request.user.is_staff start_index=results.start_index|add:"-1" %}
+                    {% endif %}
+                    {% include "bpp/_zapytanie_pager.html" %}
+                {% endif %}
             {% else %}
                 <p><em>Brak rekordow pasujacych do zapytania.</em></p>
                 {# „Dlaczego 0?" pokazuje auto-otwierany panel „Wyjasnij liczby" #}

@@ -6,6 +6,7 @@ import random
 
 from django.utils.text import slugify
 
+from bpp.demo_data.db import bulk_create_retry
 from bpp.demo_data.manifest import Manifest
 from bpp.demo_data.progress import make_progress
 from bpp.demo_data.themes.base import Theme
@@ -63,7 +64,7 @@ def create_zrodla(
     created: list[Zrodlo] = []
     for start in pbar:
         chunk = objs[start : start + batch_size]
-        Zrodlo.objects.bulk_create(chunk)
+        bulk_create_retry(Zrodlo.objects, chunk)
         created.extend(chunk)
         manifest.append("bpp.Zrodlo", [z.pk for z in chunk])
         manifest.save()

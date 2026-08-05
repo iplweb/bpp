@@ -4,9 +4,11 @@ from unittest.mock import patch
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from model_bakery import baker
 
+from bpp.models import Wydawnictwo_Ciagle
 from pbn_export_queue.models import PBN_Export_Queue
 
 User = get_user_model()
@@ -23,7 +25,10 @@ class TestResendToPbnView:
 
     def test_resend_to_pbn_requires_login(self, client):
         """Test that unauthenticated users are redirected"""
-        queue_item = baker.make(PBN_Export_Queue)
+        queue_item = baker.make(
+            PBN_Export_Queue,
+            content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
+        )
         url = reverse("pbn_export_queue:export-queue-resend", args=[queue_item.pk])
         response = client.post(url)
 
@@ -32,7 +37,10 @@ class TestResendToPbnView:
     def test_resend_to_pbn_requires_permission(self, client):
         """Test that users without permission get error"""
         user = baker.make(User)
-        queue_item = baker.make(PBN_Export_Queue)
+        queue_item = baker.make(
+            PBN_Export_Queue,
+            content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
+        )
 
         client.force_login(user)
         url = reverse("pbn_export_queue:export-queue-resend", args=[queue_item.pk])
@@ -46,6 +54,7 @@ class TestResendToPbnView:
             PBN_Export_Queue,
             zamowil=admin_user,
             wysylke_zakonczono=None,
+            content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
         )
 
         client.force_login(admin_user)
@@ -71,7 +80,10 @@ class TestPrepareForResendView:
     def test_prepare_for_resend_requires_permission(self, client):
         """Test that users without permission get error"""
         user = baker.make(User)
-        queue_item = baker.make(PBN_Export_Queue)
+        queue_item = baker.make(
+            PBN_Export_Queue,
+            content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
+        )
 
         client.force_login(user)
         url = reverse(
@@ -87,6 +99,7 @@ class TestPrepareForResendView:
             PBN_Export_Queue,
             zamowil=admin_user,
             wysylke_zakonczono=None,
+            content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
         )
 
         client.force_login(admin_user)
@@ -110,7 +123,10 @@ class TestTrySendToPbnView:
     def test_try_send_to_pbn_requires_permission(self, client):
         """Test that users without permission get error"""
         user = baker.make(User)
-        queue_item = baker.make(PBN_Export_Queue)
+        queue_item = baker.make(
+            PBN_Export_Queue,
+            content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
+        )
 
         client.force_login(user)
         url = reverse("pbn_export_queue:export-queue-try-send", args=[queue_item.pk])
@@ -120,7 +136,11 @@ class TestTrySendToPbnView:
 
     def test_try_send_to_pbn_success(self, client, admin_user):
         """Test successful try send"""
-        queue_item = baker.make(PBN_Export_Queue, zamowil=admin_user)
+        queue_item = baker.make(
+            PBN_Export_Queue,
+            zamowil=admin_user,
+            content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
+        )
 
         client.force_login(admin_user)
         url = reverse("pbn_export_queue:export-queue-try-send", args=[queue_item.pk])
@@ -165,12 +185,14 @@ class TestResendAllWaitingView:
             zamowil=admin_user,
             retry_after_user_authorised=True,
             wysylke_zakonczono=None,
+            content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
         )
         item2 = baker.make(
             PBN_Export_Queue,
             zamowil=admin_user,
             retry_after_user_authorised=True,
             wysylke_zakonczono=None,
+            content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
         )
 
         client.force_login(admin_user)
@@ -219,11 +241,13 @@ class TestResendAllErrorsView:
             PBN_Export_Queue,
             zamowil=admin_user,
             zakonczono_pomyslnie=False,
+            content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
         )
         item2 = baker.make(
             PBN_Export_Queue,
             zamowil=admin_user,
             zakonczono_pomyslnie=False,
+            content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
         )
 
         client.force_login(admin_user)
@@ -269,16 +293,19 @@ class TestPBNExportQueueCountsView:
             PBN_Export_Queue,
             zamowil=admin_user,
             zakonczono_pomyslnie=True,
+            content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
         )
         baker.make(
             PBN_Export_Queue,
             zamowil=admin_user,
             zakonczono_pomyslnie=False,
+            content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
         )
         baker.make(
             PBN_Export_Queue,
             zamowil=admin_user,
             zakonczono_pomyslnie=None,
+            content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
         )
 
         client.force_login(admin_user)

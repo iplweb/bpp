@@ -163,7 +163,9 @@ def test_task_sprobuj_wyslac_do_pbn_raises(mocker):
 def test_task_sprobuj_wyslac_do_pbn_lock_already_acquired(mocker):
     """Test that task skips processing when lock is already acquired"""
     # Mock cache.add to return False (lock already exists)
-    mock_cache_add = mocker.patch("pbn_export_queue.tasks.cache.add", return_value=False)
+    mock_cache_add = mocker.patch(
+        "pbn_export_queue.tasks.cache.add", return_value=False
+    )
     mock_cache_delete = mocker.patch("pbn_export_queue.tasks.cache.delete")
 
     wait_for_object = mocker.patch("pbn_export_queue.tasks.wait_for_object")
@@ -385,6 +387,7 @@ def test_check_and_send_next_in_queue_with_locks(mocker):
                 PBN_Export_Queue,
                 wysylke_podjeto=None,
                 wysylke_zakonczono=None,
+                content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
             )
         )
 
@@ -394,8 +397,12 @@ def test_check_and_send_next_in_queue_with_locks(mocker):
             return "locked"
         return None
 
-    mock_cache = mocker.patch("pbn_export_queue.tasks.cache.get", side_effect=mock_cache_get)
-    mock_task_delay = mocker.patch("pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn.delay")
+    mock_cache = mocker.patch(
+        "pbn_export_queue.tasks.cache.get", side_effect=mock_cache_get
+    )
+    mock_task_delay = mocker.patch(
+        "pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn.delay"
+    )
 
     result = check_and_send_next_in_queue()
 
@@ -419,6 +426,7 @@ def test_report_technical_errors_to_rollbar_with_errors(mocker, admin_user):
             rodzaj_bledu=RodzajBledu.TECHNICZNY,
             wysylke_zakonczono=timezone.now(),  # Must be finished
             zamowil=admin_user,
+            content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
         )
 
     # Create some MERYTORYCZNY errors (should not be counted)
@@ -427,6 +435,7 @@ def test_report_technical_errors_to_rollbar_with_errors(mocker, admin_user):
         rodzaj_bledu=RodzajBledu.MERYTORYCZNY,
         wysylke_zakonczono=timezone.now(),
         zamowil=admin_user,
+        content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
     )
 
     # Create an unfinished TECHNICZNY error (should not be counted)
@@ -435,6 +444,7 @@ def test_report_technical_errors_to_rollbar_with_errors(mocker, admin_user):
         rodzaj_bledu=RodzajBledu.TECHNICZNY,
         wysylke_zakonczono=None,
         zamowil=admin_user,
+        content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
     )
 
     mock_rollbar = mocker.patch("pbn_export_queue.tasks.rollbar.report_message")
@@ -450,6 +460,60 @@ def test_report_technical_errors_to_rollbar_with_errors(mocker, admin_user):
 
 
 @pytest.mark.django_db
+def test_report_technical_errors_wskazuje_konkretne_wpisy(
+    mocker, admin_user, wydawnictwo_ciagle
+):
+    """Alarm niesie PK, rekord, powód i link do admina — nie sam licznik."""
+    wpis = baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        rodzaj_bledu=RodzajBledu.TECHNICZNY,
+        wysylke_zakonczono=timezone.now(),
+        zamowil=admin_user,
+    )
+    wpis.dopisz_komunikat(
+        "Wystąpił błąd HTTP z PBN, załączam traceback:\n"
+        "Traceback (most recent call last):\n  File ..."
+    )
+    wpis.save()
+
+    mock_rollbar = mocker.patch("pbn_export_queue.tasks.rollbar.report_message")
+
+    report_technical_errors_to_rollbar()
+
+    wpisy = mock_rollbar.call_args[1]["extra_data"]["wpisy"]
+    assert [w["pk"] for w in wpisy] == [wpis.pk]
+    assert wpisy[0]["rekord"] == str(wydawnictwo_ciagle)
+    assert wpisy[0]["komunikat"].startswith("Wystąpił błąd HTTP z PBN")
+    assert str(wpis.pk) in wpisy[0]["admin_url"]
+
+
+@pytest.mark.django_db
+def test_report_technical_errors_mowi_ile_wpisow_pominieto(mocker, admin_user):
+    """Przycięcie listy jest widoczne w payloadzie, nie milczące."""
+    for _ in range(12):
+        baker.make(
+            PBN_Export_Queue,
+            rodzaj_bledu=RodzajBledu.TECHNICZNY,
+            wysylke_zakonczono=timezone.now(),
+            zamowil=admin_user,
+            # bez tego baker losuje content_type — trafia np. w tabelę
+            # tymczasową cache, której nie ma w bazie
+            content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
+            object_id=0xBEEF,
+        )
+
+    mock_rollbar = mocker.patch("pbn_export_queue.tasks.rollbar.report_message")
+
+    report_technical_errors_to_rollbar()
+
+    extra = mock_rollbar.call_args[1]["extra_data"]
+    assert extra["technical_errors_count"] == 12
+    assert len(extra["wpisy"]) == 10
+    assert extra["wpisy_pominieto"] == 2
+
+
+@pytest.mark.django_db
 def test_report_technical_errors_to_rollbar_no_errors(mocker, admin_user):
     """Test that nothing is reported when there are no technical errors."""
     # Create only MERYTORYCZNY errors
@@ -458,6 +522,7 @@ def test_report_technical_errors_to_rollbar_no_errors(mocker, admin_user):
         rodzaj_bledu=RodzajBledu.MERYTORYCZNY,
         wysylke_zakonczono=timezone.now(),
         zamowil=admin_user,
+        content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
     )
 
     mock_rollbar = mocker.patch("pbn_export_queue.tasks.rollbar.report_message")

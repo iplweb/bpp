@@ -26,8 +26,9 @@ CLEANUP_ORDER = (
     "bpp.Autor_Jednostka",
     # Encje bazowe:
     "bpp.Autor",
+    # Faza C (#438): „wydziały" to jednostki top-level — wszystkie (rooty +
+    # dzieci) idą jako bpp.Jednostka; jeden delete() kaskaduje po MPTT parent.
     "bpp.Jednostka",
-    "bpp.Wydzial",
     # Slowniki "Demo —":
     "bpp.Zrodlo",
     "bpp.Wydawca",
