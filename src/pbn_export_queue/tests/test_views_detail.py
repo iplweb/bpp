@@ -7,6 +7,7 @@ from django.test import RequestFactory
 from django.urls import reverse
 from model_bakery import baker
 
+from bpp.models import Wydawnictwo_Ciagle
 from pbn_export_queue.models import PBN_Export_Queue
 from pbn_export_queue.views import PBNExportQueueDetailView
 
@@ -21,7 +22,10 @@ User = get_user_model()
 @pytest.mark.django_db
 def test_pbnexportqueuedetailview_requires_login(client):
     """Test that unauthenticated users are redirected"""
-    queue_item = baker.make(PBN_Export_Queue)
+    queue_item = baker.make(
+        PBN_Export_Queue,
+        content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
+    )
     url = reverse("pbn_export_queue:export-queue-detail", args=[queue_item.pk])
     response = client.get(url)
 
@@ -32,7 +36,10 @@ def test_pbnexportqueuedetailview_requires_login(client):
 def test_pbnexportqueuedetailview_requires_permission(client):
     """Test that users without permission get 403"""
     user = baker.make(User)
-    queue_item = baker.make(PBN_Export_Queue)
+    queue_item = baker.make(
+        PBN_Export_Queue,
+        content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
+    )
 
     client.force_login(user)
     url = reverse("pbn_export_queue:export-queue-detail", args=[queue_item.pk])

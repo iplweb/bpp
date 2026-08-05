@@ -10,9 +10,11 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
+from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from model_bakery import baker
 
+from bpp.models import Wydawnictwo_Ciagle
 from pbn_api.exceptions import (
     CharakterFormalnyMissingPBNUID,
     CharakterFormalnyNieobslugiwanyError,
@@ -38,6 +40,7 @@ class TestSendToPbn:
                     PBN_Export_Queue,
                     zamowil=admin_user,
                     wysylke_zakonczono=None,
+                    content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
                 )
 
                 result = queue_item.send_to_pbn()
