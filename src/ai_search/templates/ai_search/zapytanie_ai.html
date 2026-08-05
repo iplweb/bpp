@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block extratitle %}Szukaj przez AI{% endblock %}
+{% block content %}
+<div class="row">
+  <div class="columns">
+    <h1>
+      <span class="fi-lightbulb" aria-hidden="true"></span>
+      Szukaj przez sztuczną inteligencję
+    </h1>
+    <p>Zadaj pytanie po polsku — zamienimy je na zapytanie i pokażemy wyniki.</p>
+
+    {% if blad %}
+      <div class="callout alert" role="alert">{{ blad }}</div>
+    {% endif %}
+    {% if wygenerowany_query %}
+      <div class="callout secondary">
+        Wygenerowane zapytanie: <code>{{ wygenerowany_query }}</code>
+      </div>
+    {% endif %}
+
+    <form method="post" data-ai-search-form>
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit" class="button" data-ai-submit>
+        <span class="fi-magnifying-glass" aria-hidden="true"></span>
+        Szukaj przez AI
+      </button>
+    </form>
+  </div>
+</div>
+<script>
+{# blokada podwojnego submitu + stan „tlumacze..." (latencja 3-15 s) #}
+document.querySelector('[data-ai-search-form]').addEventListener('submit', function () {
+  var b = this.querySelector('[data-ai-submit]');
+  b.disabled = true;
+  b.textContent = 'Tłumaczę pytanie…';
+});
+</script>
+{% endblock %}
