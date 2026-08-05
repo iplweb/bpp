@@ -4,6 +4,7 @@ from model_bakery import baker
 from bpp.const import CHARAKTER_OGOLNY_ARTYKUL, CHARAKTER_OGOLNY_ROZDZIAL
 from bpp.models import Charakter_Formalny, Jednostka, Wydawnictwo_Ciagle
 from bpp.multiseek_registry import pivot
+from bpp.pivot import core as pivot_core
 
 
 def _wyd(**kw):
@@ -391,7 +392,7 @@ def test_as_table_z_kolumnami():
 @pytest.mark.django_db
 def test_zbuduj_pivot_gate_cells(rekordy_pivot, monkeypatch):
     """Przekroczony limit komórek → PivotTooLargeError(kind="cells")."""
-    monkeypatch.setattr(pivot, "PIVOT_MAX_CELLS", 0)
+    monkeypatch.setattr(pivot_core, "PIVOT_MAX_CELLS", 0)
     with pytest.raises(pivot.PivotTooLargeError) as exc:
         pivot.zbuduj_pivot(
             rekordy_pivot,

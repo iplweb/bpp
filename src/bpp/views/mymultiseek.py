@@ -6,7 +6,6 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.cache import cache
 from django.db.models import Count, Sum
 from django.http import HttpResponseBadRequest, JsonResponse
-from django.template.loader import render_to_string
 from django.views.decorators.cache import never_cache
 from django.views.generic import View
 from multiseek.logic import get_registry
@@ -20,6 +19,7 @@ from bpp.models import Uczelnia
 from bpp.multiseek_registry import registry as multiseek_registry
 from bpp.multiseek_registry.djangoql_export import multiseek_form_to_djangoql
 from bpp.views.multiseek_export import (
+    EXTRA_TYPES,
     MULTISEEK_DEFAULT_REPORT_TITLE,
     MULTISEEK_EXPORT_DANE_FIELDS,
     MULTISEEK_EXPORT_HEADERS,  # noqa: F401 - re-eksport, uzywane w testach
@@ -28,36 +28,19 @@ from bpp.views.multiseek_export import (
     XLSX_WORKSHEET_TITLE_MAX_LENGTH,  # noqa: F401 - re-eksport, uzywane w testach
     bibtex_export_response,
     csv_export_response,
-    docx_export_response,
-    html_export_response,
+    document_export_response,
     plain_multiseek_report_title,
-    sanitize_export_html,
     xlsx_export_response,
 )
 from bpp.views.zapytanie import WprowadzanieDanychOrSuperuserMixin
 
 logger = logging.getLogger(__name__)
 
-PKT_WEWN = "pkt_wewn"
-PKT_WEWN_BEZ = "pkt_wewn_bez"
-TABLE = "table"
 MULTISEEK_EXPORT_MAX_ROWS = 5000
 
 # TTL cache agregatów wyników (count + sumy) — patrz get_context_data.
 MULTISEEK_AGGREGATE_CACHE_TIMEOUT = 30 * 60
 MULTISEEK_REPORT_TITLE_SESSION_KEY = "MULTISEEK_TITLE"
-
-EXTRA_TYPES = [
-    PKT_WEWN,
-    PKT_WEWN_BEZ,
-    TABLE,
-    PKT_WEWN + "_cytowania",
-    PKT_WEWN_BEZ + "_cytowania",
-    TABLE + "_cytowania",
-]
-
-# report_type renderowane jako tabela (reszta: lista/numer_list/None).
-TABLE_REPORT_TYPES = frozenset(EXTRA_TYPES)
 
 # Tabele/widoki złączane przez filtry multiseeka na relacjach "do wielu"
 # (autorzy, bazy zewnętrzne). Ich JOIN może zwielokrotnić wiersze Rekordu
@@ -66,22 +49,6 @@ TABLE_REPORT_TYPES = frozenset(EXTRA_TYPES)
 # substringu w tekście SQL — poprzednie podejście było kruche: zależne od
 # aliasów i formatowania generowanego SQL-a.
 MULTISEEK_MNOZACE_ZLACZENIA = frozenset({"bpp_autorzy_mat", "bpp_zewnetrzne_bazy_view"})
-
-# Projekcje eksportu DOKUMENTU dostrojone do partiali renderu (nie do CSV/XLSX).
-# Bazowe get_queryset() gubi liczba_cytowan/uwagi → N+1 na całym querysecie.
-MULTISEEK_RENDER_LIST_FIELDS = ("id", "opis_bibliograficzny_cache", "uwagi")
-MULTISEEK_RENDER_TABLE_FIELDS = (
-    "id",
-    "opis_bibliograficzny_cache",
-    "impact_factor",
-    "punkty_kbn",
-    "liczba_cytowan",
-    "punktacja_wewnetrzna",
-    "charakter_formalny",
-    "typ_kbn",
-    "charakter_formalny__nazwa",
-    "typ_kbn__nazwa",
-)
 
 
 class MyMultiseekResults(MultiseekResults):
@@ -351,52 +318,14 @@ class MyMultiseekExport(LoginRequiredMixin, MyMultiseekResults):
         report_type = registry.get_report_type(
             self.get_multiseek_data(), request=request
         )
-
         if report_type == "bibtex":
             # W widoku BibTeX html/docx degradują do .bib (D3).
             return bibtex_export_response(queryset, report_title)
         if export_format == "bib":
             return HttpResponseBadRequest("BibTeX dostępny tylko w widoku BibTeX.")
-
-        if report_type in TABLE_REPORT_TYPES:
-            queryset = queryset.select_related("charakter_formalny", "typ_kbn").only(
-                *MULTISEEK_RENDER_TABLE_FIELDS
-            )
-            sumy = queryset.aggregate(
-                Sum("impact_factor"),
-                Sum("liczba_cytowan"),
-                Sum("punkty_kbn"),
-                Sum("punktacja_wewnetrzna"),
-            )
-            partial = "multiseek/report-body-table.html"
-        else:
-            queryset = queryset.only(*MULTISEEK_RENDER_LIST_FIELDS)
-            sumy = None
-            partial = "multiseek/report-body-list.html"
-
-        body_html = render_to_string(
-            partial,
-            {
-                "object_list": queryset,
-                "report_type": report_type,
-                "sumy": sumy,
-                "export_mode": True,
-                "start_index": 0,
-            },
-            request=request,
+        return document_export_response(
+            queryset, request, report_type, report_title, export_format
         )
-        document_html = render_to_string(
-            "multiseek/export-document.html",
-            {
-                "body_html": sanitize_export_html(body_html),
-                "report_title": report_title,
-            },
-            request=request,
-        )
-
-        if export_format == "docx":
-            return docx_export_response(document_html, report_title)
-        return html_export_response(document_html, report_title)
 
 
 def _normalize_session_removed(request):
