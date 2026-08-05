@@ -50,6 +50,34 @@ def _ustaw_cors(resp):
     resp["Vary"] = "Origin"
 
 
+class CorsNaBledachMixin:
+    """Nagłówki CORS na KAŻDEJ odpowiedzi widoku — także zbudowanej z wyjątku.
+
+    ``finalize_response`` wykonuje się w ``APIView.dispatch()`` zawsze, w tym
+    dla odpowiedzi z ``handle_exception()``. Bez tego odpowiedzi odmowne szły
+    bez ``Access-Control-Allow-Origin``: bramka ``/api/v1/`` rzuca wyjątek
+    w ``has_permission``, czyli PRZED wejściem do metody widoku, a
+    :func:`pobierz_encje_lub_404` rzuca ``Http404`` — w obu przypadkach
+    odpowiedź buduje ``exception_handler`` DRF, który o ``_ustaw_cors`` nic
+    nie wie. Projekt nie ma żadnego middleware CORS.
+
+    Widget osadzany na cudzej domenie robi ``fetch`` w trybie ``cors``, więc
+    przeglądarka nie pokazałaby mu takiej odpowiedzi w ogóle — promise
+    odrzuca się ``TypeError``-em bez statusu i bez treści. Widget nie miałby
+    wtedy jak odróżnić decyzji administratora (klucz ``powod``) od literówki
+    w ``data-autor``, a i dziś dostaje mglisty błąd sieciowy zamiast
+    czytelnego 404.
+
+    Zakres celowo wąski: tylko endpointy kafelkowe są projektowane do wołania
+    cross-origin. Reszta ``/api/v1/`` zostaje bez CORS, tak jak dotąd.
+    """
+
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        _ustaw_cors(response)
+        return response
+
+
 def odpowiedz_z_publikacjami(request, base_qs, naglowek):
     """Zbuduj odpowiedź embedu z queryset-u :class:`Rekord` zawężonego do encji.
 
@@ -99,9 +127,9 @@ def odpowiedz_z_publikacjami(request, base_qs, naglowek):
         for pub in publikacje
     ]
 
-    resp = Response({**naglowek, "count": len(wynik), "publications": wynik})
-    _ustaw_cors(resp)
-    return resp
+    # Nagłówki CORS dokłada ``CorsNaBledachMixin.finalize_response`` — jedno
+    # miejsce dla sukcesu i dla odpowiedzi zbudowanych z wyjątku.
+    return Response({**naglowek, "count": len(wynik), "publications": wynik})
 
 
 def pobierz_encje_lub_404(model, lookup, **dodatkowe_filtry):
