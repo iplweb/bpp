@@ -72,9 +72,24 @@ OpenAIRE z pamięci.
 Wydawnictwo_* / Patent → Grant_Rekordu (GenericFK) → Grant → Projekt → Finansowanie → Instytucja_Finansujaca
 ```
 
-`Grant_Rekordu` **nie wymaga zmian** — po dodaniu `Grant.projekt` staje się
-wymaganą przez CERIF relacją publikacja↔projekt. Publikacje, których grant
-nie ma przypisanego projektu, nie wnoszą powiązania i nie łamią eksportu.
+`Grant_Rekordu` **nie wymaga zmian po stronie modelu** — po dodaniu
+`Grant.projekt` niesie już relację publikacja↔projekt. Publikacje, których
+grant nie ma przypisanego projektu, nie wnoszą powiązania i nie łamią
+eksportu.
+
+Po stronie **eksportu** relacja wymaga jednak osobnej roboty, i to ona
+decyduje o wartości całego przedsięwzięcia. Profil łączy publikację
+z projektem elementem **`Publication/OriginatesFrom`** (XSD, linia 698);
+analogiczny element ma `Patent` (linia 871). `OriginatesFrom` **osadza**
+pełny element z grupy podstawień `ProjectFunding__SubstitutionGroupHead`
+(czyli całe `<Project>` albo `<Funding>`), nie samą referencję;
+`minOccurs="0"`, `maxOccurs="unbounded"`.
+
+Dziś `cerif/publication.py` i `cerif/patent.py` nie wiedzą nic o grantach.
+Bez dopisania `OriginatesFrom` sety projektów i finansowania byłyby pełne,
+walidator zielony, a agregator dostałby **dwie rozłączne listy** — osobno
+publikacje, osobno projekty. Czyli dokładnie brak tego, po co powstało
+issue #709.
 
 ## Modele danych (`src/bpp/models/projekt.py`)
 
@@ -293,6 +308,33 @@ podszywanie się pod cudzy słownik.
 - `providers/puste.py` — zostają tylko `ProviderProduktow`
   i `ProviderAparatury`; docstring modułu wymaga poprawienia (dziś twierdzi,
   że BPP „nie prowadzi ewidencji projektów ani finansowania").
+- `cerif/publication.py`, `cerif/patent.py` — element `OriginatesFrom`
+  z osadzonym `<Project>` dla każdego grantu publikacji mającego projekt
+  (z deduplikacją: dwa granty tego samego projektu na jednej publikacji
+  dają jeden element).
+- `providers/publikacje.py`, `providers/patenty.py` — prefetch generycznej
+  relacji `Grant_Rekordu` wraz z `grant__projekt` i tym, czego wymaga
+  serializer projektu. Osadzanie projektu w każdej publikacji to naturalny
+  kandydat na N+1 — bez prefetcha liczba zapytań rośnie z liczbą publikacji
+  na stronie harvestu.
+
+## Znane odstępstwa od intencji euroCRIS
+
+Świadome, odnotowane, możliwe do poprawienia później:
+
+1. **`Subject` z własnym schematem zamiast Fields of Science.** OpenAIRE
+   rozumie taksonomię FOS; dyscypliny MNiSW dałoby się na nią zmapować
+   i byłoby to bliżej intencji profilu. Mapowanie to jednak osobna robota
+   słownikowa, więc na razie eksportujemy własny schemat — dane są jawnie
+   oznaczone pochodzeniem, ale agregator ich nie zinterpretuje.
+2. **`Status` projektu bez słownika kontrolowanego.** Profil żadnego nie
+   dostarcza; własny schemat jest tu jedyną uczciwą opcją poza pominięciem
+   elementu.
+3. **Brak `Partner`/`Contractor`.** Wymagałoby encji instytucji
+   zewnętrznej, której BPP nie ma. Elementy są w profilu opcjonalne.
+4. **`Project/Type` nie jest wypełniany.** `minOccurs="0"`, a BPP nie ma
+   danych pozwalających odróżnić projekt badawczy od wdrożeniowego czy
+   infrastrukturalnego. Zgadywanie byłoby wpisywaniem nieprawdy.
 
 ### Integralność referencyjna a przełącznik osób
 
@@ -376,7 +418,11 @@ Etap 2 (równolegle, po etapie 1):
   buildery `cerif/project.py` i `cerif/funding.py`, providery,
   rozszerzenie `providers/jednostki.py` i `cerif/orgunit.py`.
 
-Etap 3: testy integralności referencyjnej, pełny przebieg testów,
+Etap 3 (po etapie 2): `OriginatesFrom` w `cerif/publication.py`
+i `cerif/patent.py` wraz z prefetchami w ich providerach — ogniwo, dla
+którego całość ma sens.
+
+Etap 4: testy integralności referencyjnej, pełny przebieg testów,
 newsfragmenty `src/bpp/newsfragments/701.feature.rst`
 i `702.feature.rst`.
 
