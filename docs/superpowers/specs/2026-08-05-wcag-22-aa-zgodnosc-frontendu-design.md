@@ -111,7 +111,10 @@ wskazuje na `base.html`/`top_bar.html`.
 
 ### Próbka WCAG-EM
 
-Około 16 widoków badanych także ręcznie:
+Około 20 stron badanych także ręcznie. Liczba jest wyższa niż liczba
+pozycji na liście poniżej, bo „kreator zgłoszenia — wszystkie kroki" to
+jedna pozycja, ale kilka stron: §5.2.3 wymaga zbadania **każdej** strony
+procesu, nie procesu jako całości.
 
 strona główna · lista autorów (paginacja + indeks literowy) · autor ·
 jednostka · praca ciągła (rekord najbogatszy) · patent (rekord najuboższy) ·
@@ -175,24 +178,64 @@ założenie z niniejszej specyfikacji.
 ### Trzy artefakty
 
 **(a) `src/integration_tests/test_a11y_probka.py`** — parametryzowany po
-widokach próbki. Fixture'y muszą być celowo bogate (patrz Ryzyka).
+widokach próbki.
+
+Dwa wymagania, bez których test jest bezwartościowy albo niestabilny:
+
+- **Fixture'y deterministyczne i jawnie zdefiniowane.** Osobny moduł
+  fixture ze specyfikacją danych per widok (ile autorów, które pola
+  wypełnione, jaki charakter formalny), z **wartościami stałymi**.
+  `baker.make` bez jawnych wartości losuje, a baseline liczy wystąpienia
+  per reguła — dane niedeterministyczne dałyby niedeterministyczne
+  liczniki, czyli flakującą bramkę. „Fixture'y celowo bogate" to za mało:
+  potrzebna jest lista.
+- **Zdefiniowany moment pomiaru.** Kryteria z bloku 6 (4.1.3 przede
+  wszystkim) dotyczą treści pojawiającej się **po** interakcji. Test
+  mierzący stronę w spoczynku nie zobaczy nic z tego, co uznaliśmy za
+  najgroźniejsze. Widoki z treścią dynamiczną wymagają scenariusza:
+  `networkidle` → interakcja (otwarcie modala, doładowanie wyników,
+  dodanie wiersza warunku) → ponowny `axe.run`. Wyniki obu pomiarów
+  księgowane osobno w baseline (klucz `<widok>` i `<widok>:po-interakcji`).
 
 **(b) `src/integration_tests/test_a11y_kontrast.py`** — **syntetyczna strona
-wzorników** (nowy widok testowy renderujący komplet komponentów: nagłówki,
+wzorników** (nowy widok renderujący komplet komponentów: nagłówki,
 przyciski, callouty wszystkich poziomów, badge punktacji, tabela
 bibliograficzna, paginator multiseek, pola formularza w stanie normalnym
 i błędu, breadcrumbs, top-bar), iterowana po wszystkich wartościach
-`Uczelnia.theme_name` (`uczelnia.py:233`; motywy blue, green, orange,
-vizja, mwsl, uafm wg `Gruntfile.js`). Reguły: `color-contrast` **oraz**
-`non-text-contrast` (kryterium 1.4.11 — ramki pól, wskaźnik focusa, ikony;
-sam `color-contrast` bada wyłącznie tekst).
+`theme_name`. **Źródłem prawdy dla listy motywów jest
+`settings.BPP_THEMES`** (`settings/base.py:632`), nie `Gruntfile.js` —
+pole `Uczelnia.theme_name` (`uczelnia.py:233`) nie ma `choices` i jest
+walidowane wobec tej listy. Test iteruje po `BPP_THEMES` i dodatkowo
+asertuje, że każdy motyw ma odpowiadający wpis w `Gruntfile.js` — dwa
+źródła listy motywów mogą się rozjechać, a cicha rozbieżność oznaczałaby
+motyw nigdy niezbadany.
+
+Reguły: `color-contrast`. **Tylko ona** — kryterium 1.4.11 Non-text
+Contrast (ramki pól, wskaźnik focusa, ikony) nie ma odpowiednika
+automatycznego w axe-core; Deque klasyfikuje je jako wymagające oceny
+ręcznej. Strona wzorników nadal służy 1.4.11, ale jako **materiał do
+oględzin** we wszystkich sześciu motywach, nie jako wejście do asercji.
 
 Strona wzorników, a nie „jedna strona referencyjna z serwisu": komponent
 nieobecny na wybranej stronie byłby zmierzony tylko w tym motywie, w którym
 akurat biegnie test (a), a w pozostałych pięciu pozostałby niezbadany.
-Parametryzowanie 16 realnych stron × 6 motywów rozwiązałoby to samo za cenę
-96 przebiegów przeglądarki, w większości redundantnych — strona wzorników
-daje pełne pokrycie komponentów przy sześciu przebiegach.
+Parametryzowanie realnych stron × 6 motywów rozwiązałoby to samo za cenę
+ponad stu przebiegów przeglądarki, w większości redundantnych — strona
+wzorników daje pełne pokrycie komponentów przy sześciu.
+
+**Umiejscowienie:** widok rejestrowany wyłącznie w konfiguracji testowej
+(`settings.TESTING`), nie w produkcyjnym URLconf. Inaczej sam wszedłby do
+publicznej powierzchni serwisu, a więc i do zakresu audytu — strona
+narzędziowa musiałaby wtedy spełniać kryteria, które ma tylko pomagać
+mierzyć.
+
+**Ryzyko dryfu, przyjęte świadomie:** komponent dodany do serwisu, ale
+nieodwzorowany we wzornikach, jest po cichu niemierzony w pięciu z sześciu
+motywów — czyli dokładnie ta luka, którą wzorniki miały zamknąć.
+Mitygacja: komentarz-kontrakt w szablonie wzorników („dodajesz komponent
+do serwisu → dodaj go tutaj") oraz odnotowanie ograniczenia w raporcie.
+Rozwiązania szczelnego nie ma bez testów regresji wizualnej, których
+projekt nie ma.
 
 **(c) `manage.py audyt_dostepnosci`** — komenda uruchamiana ręcznie, **poza
 CI**. Czyta URL-e ze sitemapy plus listy stron nawigacyjnych, zrzuca
@@ -210,6 +253,14 @@ serwera wewnątrz komendy zarządzającej dubluje logikę `run-site`,
 a wskazanie URL-a pozwala puścić skan również na środowisku testowym
 uczelni. Skan chodzi wyłącznie po zasobach anonimowych — komenda nie
 uwierzytelnia się i nie używa `.dev_helpers_token`.
+
+**Listę URL-i komenda pobiera po HTTP z `<base-url>/sitemap.xml`, nie
+przez ORM.** Gdyby czytała z bazy, czytałaby bazę wskazaną przez `.env`
+procesu `manage.py` — a `--base-url` wskazuje instancję `run-site`
+z własnym testcontainerowym PostgreSQL załadowanym dumpem. To dwie różne
+bazy; wygenerowane z jednej URL-e mogłyby nie istnieć na drugiej. Pobranie
+sitemapy po HTTP czyni komendę bezstanową i pozwala jej działać przeciwko
+dowolnej instancji.
 
 ### Baseline jako zapadka
 
@@ -244,19 +295,33 @@ asercji.
   i świadome — automatyczne obniżanie zamieniłoby zapadkę w mechanizm
   cichego przepisywania historii).
 
-**Wykrywanie martwych wpisów** wymaga widoku całości, a test jest
-parametryzowany per widok — asercja o wpisie dla widoku X nie ma
-naturalnego miejsca w przebiegu widoku Y. Rozwiązanie: każdy przebieg
-zapisuje swój wynik do wspólnego słownika w `pytest` cache, a **osobny
-test zbiorczy**, uruchamiany po nich (`@pytest.mark.order` albo fixture
-sesyjna z asercją w teardownie), porównuje sumę z baseline i zgłasza wpisy,
-które się nie zmaterializowały. Test zbiorczy musi **rozpoznać niepełny
-przebieg** (uruchomienie pojedynczego widoku, shard xdist) i wtedy się
-pominąć — inaczej `pytest -k browse_autor` wywalałby się na wszystkich
-pozostałych widokach jako „martwych".
+**Wykrywanie martwych wpisów nie wymaga agregacji między przebiegami.**
+Wpis martwy dla widoku obecnego w próbce łapie już asercja per-widok
+(0 < N to spadek licznika, czyli czerwony test tego widoku). Jedyny
+przypadek nieobjęty to **klucz baseline'u dla widoku, którego nie ma już
+w parametryzacji** — a to porównanie czysto statyczne: zbiór kluczy
+`a11y-baseline.json` wobec listy parametryzacji próbki (oraz
+`wzorniki:<motyw>` wobec `BPP_THEMES`).
 
-Ten sam mechanizm obsługuje test motywów (b): widokiem jest tam
-`wzorniki:<motyw>`.
+Realizuje to zwykły test bez przeglądarki i bez bazy — szybki, odporny na
+`pytest-xdist` i na uruchamianie z `-k`.
+
+**Świadomie odrzucone:** wariant z agregacją wyników wszystkich widoków
+w `pytest` cache i osobnym testem zbiorczym. Nie działa w tym projekcie:
+zapis do cache nie jest atomowy, więc pod `-n auto` równoległe
+read-modify-write gubi wpisy; fixture sesyjna jest per-worker, więc widzi
+wyłącznie podzbiór swojego workera; `xdist_group` nie pomaga, bo projekt
+jeździ na `--dist=worksteal` (`pytest.ini:37`), gdzie ten marker nie
+działa. Efekt byłby najgorszy z możliwych — warunek „rozpoznaj niepełny
+przebieg i pomiń się" byłby spełniony **zawsze** na CI, czyli mechanizm
+zdegenerowałby się do cichego skipa dokładnie tam, gdzie miał chronić.
+
+**Aktualizacja baseline'u** odbywa się przez `pytest
+--a11y-update-baseline` (własna opcja w `conftest.py`), która nadpisuje
+plik wynikiem bieżącego przebiegu. Wymaga pełnego przebiegu `-m a11y` bez
+`-k`; przy niepełnym odmawia zapisu. Zmiana pliku jest widoczna w diffie
+PR-a i podlega review na równi z kodem — to jedyny mechanizm kontroli nad
+obniżaniem liczników i musi być tak traktowany przez recenzentów.
 
 ## Warstwa ręczna
 
@@ -331,9 +396,10 @@ Powiększenie 200%, reflow przy 320 px bez przewijania poziomego, wymuszone
 odstępy tekstu, rozmiar celów dotykowych, alternatywy dla przeciągania.
 
 **1.4.11 Non-text Contrast (AA)** — kontrast ramek pól formularza,
-wskaźnika focusa i ikon niosących znaczenie. Pokryty częściowo automatem
-przez `non-text-contrast` w teście (b), ale wskaźnik focusa wymaga oceny
-ręcznej, bo axe nie renderuje stanu `:focus-visible`.
+wskaźnika focusa i ikon niosących znaczenie. **W całości ręcznie** — axe
+nie ma reguły dla tego kryterium. Oględziny prowadzone na stronie
+wzorników, w każdym z sześciu motywów, z osobnym przejściem dla stanu
+`:focus-visible`.
 
 **2.2.2 Pause, Stop, Hide (A)** — baner odliczania `django_countdown`
 (`base.html:246`) jest obecny na stronach publicznych. Jeśli aktualizuje
@@ -352,9 +418,10 @@ czytnikowi ekranu przez `aria-live` lub `role="status"`/`role="alert"`.
 W BPP dotyczy to: doładowywanych wyników multiseek (`live-results.html`),
 komunikatów wstrzykiwanych przez `channelsBroadcast` do
 `#messagesPlaceholder` (`base.html:252`), wyników modala globalnego
-wyszukiwania oraz podmian htmx. W całym `src/` jest 12 wystąpień
+wyszukiwania oraz podmian htmx. W całym `src/` jest kilkanaście wystąpień
 `aria-live`/`role="status"`/`role="alert"`, w większości w adminie —
-czyli na ścieżce publicznej praktycznie zero.
+czyli na ścieżce publicznej praktycznie zero. Dokładny licznik należy
+przeliczyć przy implementacji; rząd wielkości jest tu istotny, nie cyfra.
 
 **1.4.13 Content on Hover or Focus (AA)** — tooltipy Foundation, m.in.
 `src/bpp/templates/browse/autor.html:151` (`data-tooltip`). Kryterium
@@ -374,6 +441,96 @@ użytkowniku wymagają atrybutu `autocomplete` z odpowiednią wartością.
 Dotyczy pola e-mail w kreatorze zgłoszenia
 (`src/zglos_publikacje/forms.py:212`) oraz pól logowania. W obu miejscach
 atrybutów `autocomplete` brak.
+
+## Przypisanie 55 kryteriów do źródeł werdyktu
+
+Raport wymaga werdyktu dla **każdego** z 55 kryteriów A + AA. Poniższa
+tabela mówi, skąd ten werdykt weźmie — bez niej tabela raportu powstaje
+metodą „jakoś się uzupełni", a to dokładnie ten rodzaj luki, który obala
+audyt przy kontroli.
+
+Oznaczenia źródeł: **axe** — asercja automatyczna; **B1**–**B6** — blok
+badania ręcznego; **N-D** — analiza pod kątem „nie dotyczy", wymagająca
+udokumentowanego uzasadnienia, nie samego stwierdzenia.
+
+### Postrzegalność
+
+| Kryterium | Poz. | Źródło werdyktu |
+|---|---|---|
+| 1.1.1 Non-text Content | A | B3 + axe (`image-alt`) |
+| 1.2.1–1.2.5 media | A/AA | **N-D** — przegląd treści publicznych i pól `HTMLField` pod kątem osadzonych audio/wideo |
+| 1.3.1 Info and Relationships | A | B2 + axe |
+| 1.3.2 Meaningful Sequence | A | B2 |
+| 1.3.3 Sensory Characteristics | A | B2 |
+| 1.3.4 Orientation | AA | B5 |
+| 1.3.5 Identify Input Purpose | AA | B6 |
+| 1.4.1 Use of Color | A | **B2** — linki w opisach bibliograficznych i wskaźniki sortowania odróżnialne wyłącznie kolorem to typowe naruszenie w tej klasie serwisów |
+| 1.4.2 Audio Control | A | **N-D** |
+| 1.4.3 Contrast (Minimum) | AA | axe, test (b) |
+| 1.4.4 Resize Text | AA | B5 |
+| 1.4.5 Images of Text | AA | B3 |
+| 1.4.10 Reflow | AA | B5 |
+| 1.4.11 Non-text Contrast | AA | B5 (w całości ręcznie) |
+| 1.4.12 Text Spacing | AA | B5 |
+| 1.4.13 Content on Hover or Focus | AA | B6 |
+
+### Funkcjonalność
+
+| Kryterium | Poz. | Źródło werdyktu |
+|---|---|---|
+| 2.1.1 Keyboard | A | B1 |
+| 2.1.2 No Keyboard Trap | A | B1 |
+| 2.1.4 Character Key Shortcuts | A | naprawa stwierdzona → B1 (weryfikacja po naprawie) |
+| 2.2.1 Timing Adjustable | A | B5 (baner countdown) |
+| 2.2.2 Pause, Stop, Hide | A | B5 |
+| 2.3.1 Three Flashes | A | **N-D** |
+| 2.4.1 Bypass Blocks | A | B2 (skip-link istnieje — zweryfikować działanie) |
+| 2.4.2 Page Titled | A | **B2** — axe bada wyłącznie istnienie `<title>`, nie jego opisowość; przy stronach obiektowych opisowość jest istotą kryterium |
+| 2.4.3 Focus Order | A | B1 |
+| 2.4.4 Link Purpose (In Context) | A | **B2** — setki linków-ikon i linków „więcej" w tabelach |
+| 2.4.5 Multiple Ways | AA | **B2** |
+| 2.4.6 Headings and Labels | AA | B2 |
+| 2.4.7 Focus Visible | AA | B1 |
+| 2.4.11 Focus Not Obscured | AA | B1 |
+| 2.5.1 Pointer Gestures | A | **B5** — graf powiązań obsługuje gesty wielopunktowe i ścieżkowe; to kryterium odrębne od 2.5.7 |
+| 2.5.2 Pointer Cancellation | A | **B5** |
+| 2.5.3 Label in Name | A | B6 |
+| 2.5.4 Motion Actuation | A | **N-D** |
+| 2.5.7 Dragging Movements | AA | naprawa stwierdzona → B5 |
+| 2.5.8 Target Size (Minimum) | AA | B5 + axe (`target-size`, częściowo) |
+
+### Zrozumiałość
+
+| Kryterium | Poz. | Źródło werdyktu |
+|---|---|---|
+| 3.1.1 Language of Page | A | axe (`html-has-lang`) |
+| 3.1.2 Language of Parts | AA | naprawa stwierdzona → B2 |
+| 3.2.1 On Focus | A | **B6** |
+| 3.2.2 On Input | A | **B6** — multiseek zmienia formularz przy zmianie operatora/pola |
+| 3.2.3 Consistent Navigation | AA | **B2** |
+| 3.2.4 Consistent Identification | AA | **B2** |
+| 3.2.6 Consistent Help | A | B4 |
+| 3.3.1 Error Identification | A | B4 |
+| 3.3.2 Labels or Instructions | A | B4 |
+| 3.3.3 Error Suggestion | AA | B4 |
+| 3.3.4 Error Prevention | AA | **B4** — kreator zgłoszenia wysyła dane; prawdopodobnie N-D, ale werdykt wymaga uzasadnienia |
+| 3.3.7 Redundant Entry | A | B4 (hipoteza) |
+| 3.3.8 Accessible Authentication | AA | B4 (hipoteza) |
+
+### Solidność
+
+| Kryterium | Poz. | Źródło werdyktu |
+|---|---|---|
+| 4.1.2 Name, Role, Value | A | axe (częściowo) + **B1/B6** — werdykt dla komponentów własnych (Select2, dynamiczne wiersze multiseek, modal wyszukiwania) wymaga oceny ręcznej |
+| 4.1.3 Status Messages | AA | B6 |
+
+**Kryteria pogrubione** zostały dopisane po drugiej recenzji — pierwotna
+wersja specyfikacji ich nie przypisywała. Bloki badania ręcznego
+rozszerzają się o nie odpowiednio: B2 o 1.4.1, 2.4.2, 2.4.4, 2.4.5, 3.2.3,
+3.2.4; B5 o 2.5.1, 2.5.2; B6 o 3.2.1, 3.2.2; B4 o 3.3.4.
+
+Kryteria oznaczone **N-D** wymagają jednorazowej analizy z zapisem
+uzasadnienia — nie są „darmowe", choć są tanie.
 
 ## Naruszenia stwierdzone na etapie projektowania
 
@@ -605,8 +762,19 @@ deklaracji jako całość i zadeklaruje zgodność rzeczy niezbadanych.
 
    Odnotować też, że tag `wcag22a` w axe-core nie obejmuje żadnych reguł
    (oba kryteria 2.2 poziomu A — 3.2.6 i 3.3.7 — są nieautomatyzowalne).
-   Jego obecność w konfiguracji jest nieszkodliwa, ale w raporcie mogłaby
-   sugerować pokrycie, którego nie ma.
+   W konfiguracji zostaje **celowo**, jako zabezpieczenie na wypadek
+   dodania reguł w przyszłych wersjach axe-core; w raporcie nie może być
+   wymieniany jako dowód pokrycia.
+
+8. **Zastrzeżenie o warunkach pomiaru** — badanie prowadzono na DOM-ie
+   **bez nakładki UserWay** (patrz sekcja o kodzie zewnętrznym). Na
+   produkcji nakładka jest aktywna i modyfikuje atrybuty ARIA oraz dokłada
+   własny element interfejsu. Werdykty raportu opisują zatem serwis, a nie
+   serwis-z-nakładką, i mogą nie odtworzyć się co do joty przy badaniu
+   żywej strony. Zastrzeżenie musi paść **wprost**: kontroler, któremu
+   werdykt nie odtworzy się na produkcji, ma podstawy zakwestionować cały
+   dokument. Jest to zarazem argument za rozważeniem wyłączenia nakładki
+   po zakończeniu napraw.
 
 ### Relacja do WCAG 2.1
 
@@ -629,16 +797,22 @@ Nowy marker `a11y` w `pytest.ini`, testy w `src/integration_tests/`,
 wykonywane w ramach istniejącego `tests-only-playwright`. Nie osobny
 pipeline — BPP ma już 12 shardów, trzynasty kanał to koszt bez zysku.
 
-**Testy muszą nosić oba markery** — `playwright` i `a11y`. `Makefile:517`
+**Testy muszą nosić oba markery** — `playwright` i `a11y`.
+`tests-only-playwright` (`Makefile:518`)
 selekcjonuje `-m "playwright"`, a `tests-without-playwright` selekcjonuje
 `-m "not playwright"`; test oznaczony wyłącznie `a11y` wypadłby z obu
 przebiegów i nigdy by się nie wykonał. Marker `a11y` służy do
 selektywnego uruchamiania podczas prac (`-m "a11y"`), nie do włączania go
 do przebiegu.
 
-Blokuje **wyłącznie warstwa automatyczna**: naruszenia axe spoza baseline'u
-na widokach próbki oraz kontrast w sześciu motywach. Warstwa ręczna z natury
-nie może być bramką — jest procesem, nie asercją.
+Blokuje **wyłącznie warstwa automatyczna**: rozjazd wyniku axe z baseline'em
+(w **obie** strony — patrz zapadka) na widokach próbki oraz kontrast
+w sześciu motywach. Warstwa ręczna z natury nie może być bramką — jest
+procesem, nie asercją.
+
+Zbiór kryteriów, o których bramka cokolwiek orzeka, jest wyliczony
+w tabeli „Przypisanie 55 kryteriów do źródeł werdyktu" — to wiersze
+oznaczone **axe**. Pozostałe bramka pomija i raport musi to mówić wprost.
 
 Funkcja bramki jest węższa, niż się wydaje: **nie chroni użytkownika, tylko
 chroni raport.** Wartość dla użytkownika daje naprawa. Bramka chroni przed
@@ -650,6 +824,64 @@ Zakres bramki jest celowo wąski — pilnuje tego podzbioru kryteriów, o który
 raport twierdzi, że został zweryfikowany maszynowo. Rozszerzanie jej na
 rzeczy mierzone przez axe nierzetelnie dałoby ten sam rodzaj fałszywej
 pewności co widget UserWay, tylko po naszej stronie.
+
+## Kolejność prac i zależności
+
+Specyfikacja nie jest planem, ale rozstrzyga zależności, bez których planu
+nie da się ułożyć:
+
+1. **Infrastruktura testowa + strona wzorników.** Niezależna od
+   wszystkiego; może startować od razu.
+2. **Skan szeroki na dumpie.** Wymaga (1). Jego wynik **zamraża próbkę** —
+   dopóki nie ma skanu, lista widoków jest wstępna.
+3. **Naprawy stwierdzone** (2.1.4, 3.1.2 wektor 1, 1.1.1-alt, 2.5.7).
+   Niezależne od skanu — wynikają z lektury kodu. Mogą iść równolegle z (2).
+4. **Baseline freeze.** Dopiero **po** (3) i po zamrożeniu próbki. Kolejność
+   jest istotna: baseline zakładany przed naprawami zaksięgowałby dług,
+   który zaraz znika, i wymuszałby natychmiastową aktualizację pliku.
+   Baseline zakładany po naprawach jest mniejszy i uczciwszy.
+5. **Bramka CI.** Wymaga (4). Od tego momentu regresje są blokowane.
+6. **Audyt ręczny, bloki 1–6.** Wymaga zamrożonej próbki z (2). Może iść
+   równolegle z (5) — bramka i audyt nie kolidują.
+7. **Raport.** Wymaga (6) i wyników (5).
+
+Wąskim gardłem jest krok (2): wszystko poza naprawami stwierdzonymi na
+niego czeka.
+
+## Otwarte decyzje
+
+Rzeczy, które specyfikacja świadomie zostawia do rozstrzygnięcia przed
+planem — wypisane, żeby nie wypłynęły w trakcie wdrożenia:
+
+**Skrót `/` (2.1.4).** Z trzech dopuszczonych przez kryterium wyjść —
+wyłączenie, przemapowanie, zawężenie do focusa — dwa pierwsze wymagają
+interfejsu ustawień, a ten nie istnieje dla użytkownika **anonimowego**,
+czyli dokładnie dla audytowanego zakresu. **Rekomendacja: zawężenie skrótu
+do sytuacji, gdy focus spoczywa na polu wyszukiwania w top-barze.** Jest to
+jedyna opcja wykonalna bez budowania profilu preferencji dla anonima.
+Decyzja produktowa — skrót przestanie działać globalnie.
+
+**Motywy uczelniane w raporcie silnika.** `vizja`, `mwsl`, `uafm` to
+motywy konkretnych klientów, nie warianty produktu. Jeśli test (b) wykaże
+w nich zły kontrast, naprawa **zmienia branding uczelni** — decyzja nie
+jest po stronie zespołu. Do rozstrzygnięcia: czy raport silnika obejmuje
+wszystkie sześć motywów (i wtedy wymaga uzgodnień z klientami), czy trzy
+motywy produktowe, a uczelniane trafiają do sekcji „co musi zrobić
+uczelnia".
+
+**Zakres 3.1.2.** Rekomendacja: wektor 2 (`opis_bibliograficzny_cache`)
+**domyślnie poza tą iteracją**, ze statusem *zaplanowane* w wykazie
+niezgodności. Przebudowa cache'u to operacja liveops na każdym wdrożeniu
+z osobna, godziny przeliczania na dużych bazach.
+
+**Alternatywy tekstowe dla wizualizacji (B3).** Pięć bibliotek, wymóg
+„równoważnej informacji". Do rozstrzygnięcia, czy w tej iteracji, czy jako
+osobne zadanie — akapit w bloku 3 ukrywa potencjalnie tygodnie pracy.
+
+**Poprawki w pakiecie `multiseek`.** 4.1.3 przy doładowywaniu wyników
+i obsługa klawiaturą dodawania warunków siedzą w JS pakietu. Czy ta
+iteracja obejmuje wydanie nowej wersji `multiseek` i podbicie zależności
+w BPP? To osobny cykl wydawniczy.
 
 ## Ryzyka
 
@@ -665,6 +897,18 @@ produkcyjnym.
 **Źle dobrana próbka unieważnia raport.** Mitygacja: próbka jest doborem
 opartym na skanie szerokim, jest zapisana w raporcie wraz z uzasadnieniem
 i podlega akceptacji przed rozpoczęciem badania ręcznego.
+
+**Skan szeroki mierzy jedno wdrożenie, nie silnik.** Dump produkcyjny to
+jedna uczelnia: jeden motyw, jedna konfiguracja `Uczelnia` (graf powiązań
+może być wyłączony, kreator zgłoszeń może być wyłączony, część widoków
+ukryta). Mapa cieplna z takiego dumpa jest mapą **tego** wdrożenia.
+Mitygacja: skan uzupełniony przebiegiem na bazie testowej z włączonymi
+wszystkimi opcjonalnymi funkcjami — z jawnym odnotowaniem w raporcie,
+które widoki zbadano na danych syntetycznych.
+
+Dodatkowo: dumpy istnieją tylko na maszynie dewelopera. Dla każdego innego
+wykonawcy skan ma niewycenione warunki wstępne (pozyskanie danych, a wraz
+z nimi obowiązki RODO — dumpy zawierają dane osobowe autorów).
 
 **2.5.8 może okazać się kosztowniejsze niż reszta razem wzięta.** Przy 1781
 ikonach zmiana rozmiaru celów dotykowych to ingerencja w gęstość układu
