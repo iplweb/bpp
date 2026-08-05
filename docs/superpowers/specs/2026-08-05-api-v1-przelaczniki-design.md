@@ -159,10 +159,39 @@ i anonim → 403. Root przy włączonym API, ale wszystkich czterech grupach
 odznaczonych, zwraca 200 z samą sekcją `info` — pustą listą zasobów.
 
 Komunikaty przekazujemy jako argument do `NotFound(...)` /
-`PermissionDenied(...)`. DRF zamienia wyjątek na `Response({"detail": ...})`
-i negocjuje typ treści: `curl` dostanie JSON, przeglądarka — stronę błędu
-browsable API. Nie potrzeba własnego widoku ani szablonu. `return False`
-dałby generyczny komunikat bez możliwości wyjaśnienia przyczyny.
+`PermissionDenied(...)`. DRF negocjuje typ treści: `curl` dostanie JSON,
+przeglądarka — stronę błędu browsable API. Nie potrzeba własnego widoku
+ani szablonu. `return False` dałby generyczny komunikat bez możliwości
+wyjaśnienia przyczyny.
+
+### Pole `powod` — odróżnialność maszynowa
+
+Sam `detail` nie wystarczy: klient (widget do osadzania) musi odróżnić
+„administrator to wyłączył" od „nie ma takiego autora", a oba są 404.
+Porównywanie tekstu komunikatu byłoby kruche.
+
+`exception_handler` DRF renderuje `exc.detail` **bezpośrednio**, gdy jest
+listą albo słownikiem, a opakowuje w `{"detail": …}` dopiero gdy nie jest.
+Wystarczy więc podać słownik — bez własnego handlera i bez nagłówków:
+
+```python
+raise NotFound({"detail": KOMUNIKAT_GRUPA,
+                "powod": "grupa_wylaczona",
+                "grupa": grupa.value})
+```
+
+| Sytuacja | Kod | `powod` | Dodatkowo |
+|---|---|---|---|
+| Główny wyłącznik odznaczony | 404 | `api_wylaczone` | — |
+| Grupa odznaczona | 404 | `grupa_wylaczona` | `grupa`: wartość enuma |
+| Tylko zalogowani + anonim | 403 | `wymagane_zalogowanie` | — |
+
+**Kontrakt dla klientów: obecność klucza `powod` znaczy „to decyzja
+konfiguracyjna administratora, nie błąd".** Odpowiedzi 404 spoza bramki
+(`pobierz_encje_lub_404` — nieistniejąca lub ukryta encja) tego klucza nie
+mają i nie będą miały. Dzięki temu widget rozstrzyga jednym testem
+obecności klucza, nie listą znanych wartości — dołożenie w przyszłości
+czwartego powodu niczego nie popsuje.
 
 ## Implementacja bramki
 
@@ -180,16 +209,23 @@ class BramkaApiV1(BasePermission):
 
         if self.grupa is GrupaApiV1.KAFELKI:
             if not uczelnia.api_v1_kafelki:
-                raise NotFound(KOMUNIKAT_GRUPA)
+                raise self._grupa_wylaczona()
             return True
 
         if not uczelnia.api_v1_wlaczone:
-            raise NotFound(KOMUNIKAT_GLOWNY)
+            raise NotFound({"detail": KOMUNIKAT_GLOWNY,
+                            "powod": "api_wylaczone"})
         if self.grupa and not uczelnia.api_v1_grupa_wlaczona(self.grupa):
-            raise NotFound(KOMUNIKAT_GRUPA)
+            raise self._grupa_wylaczona()
         if uczelnia.api_v1_tylko_zalogowani and not request.user.is_authenticated:
-            raise PermissionDenied(KOMUNIKAT_ZALOGOWANI)
+            raise PermissionDenied({"detail": KOMUNIKAT_ZALOGOWANI,
+                                    "powod": "wymagane_zalogowanie"})
         return True
+
+    def _grupa_wylaczona(self) -> NotFound:
+        return NotFound({"detail": KOMUNIKAT_GRUPA,
+                         "powod": "grupa_wylaczona",
+                         "grupa": self.grupa.value})
 ```
 
 Bramka wchodzi przez `get_permissions()` (zwraca **instancje**), a nie przez
@@ -277,25 +313,39 @@ otwarciem i zamknięciem w tej samej linii) — reguła projektu.
 
 ### Widget do osadzania
 
-`src/bpp/static/embed/bpp-publikacje.js`: dziś każdy błąd, w tym 404,
-kończy się `renderBlad()`, czyli ramką z komunikatem o błędzie na cudzej
-stronie WWW. Po zmianie **404 nie renderuje nic**; pozostałe błędy
-zachowują dotychczasowy komunikat. Rozróżnienie po samym kodzie HTTP —
-nie potrzeba markera w treści odpowiedzi.
-
-**404 to nie tylko wyłączone kafelki.** `RecentAuthorPublicationsViewSet`
-i `RecentUnitPublicationsViewSet` wołają `pobierz_encje_lub_404`
+`src/bpp/static/embed/bpp-publikacje.js`: dziś **każdy** błąd, w tym 404,
+kończy się `renderBlad()` — ramką z komunikatem o błędzie na cudzej stronie
+WWW. To jest złe w jedną stronę. Wyciszenie każdego 404 byłoby złe
+w drugą, bo `RecentAuthorPublicationsViewSet` i
+`RecentUnitPublicationsViewSet` wołają `pobierz_encje_lub_404`
 (`viewsets/recent_publications_common.py`), więc 404 zwraca również
-literówka w `data-autor`/`data-jednostka`, autor z `pokazuj=False` oraz
-encja skasowana. Te przypadki też zamilkną — przyjmujemy to celowo, bo
-skasowany autor tym bardziej nie powinien straszyć ramką błędu na cudzej
-stronie.
+literówka w `data-autor`/`data-jednostka`, autor z `pokazuj=False` i encja
+skasowana — czyli zwykłe pomyłki, o których ktoś musi się dowiedzieć.
 
-Żeby cisza nie utrudniła diagnozy osobie wklejającej widget, przy 404
-leci `console.warn` z pełnym URL-em i informacją, że endpoint zwrócił 404
-(kafelki wyłączone albo encja nieosiągalna). Konsola jest właściwym
-miejscem na taki komunikat: widzi go ten, kto debuguje, a nie
-przypadkowy czytelnik strony.
+Rozstrzyga **obecność klucza `powod`** w treści odpowiedzi:
+
+| Odpowiedź | Na stronie | W kontenerze | W konsoli |
+|---|---|---|---|
+| 404 **z** `powod` (decyzja administratora) | nic | komentarz HTML z `detail` | `console.warn` z URL-em i `powod` |
+| 404 **bez** `powod` (encja nieosiągalna) | dotychczasowa ramka błędu | — | `console.warn` z URL-em |
+| Inny błąd (500, sieć) | dotychczasowa ramka błędu | — | `console.warn` z URL-em |
+
+Komentarz HTML wstrzykiwany do kontenera:
+
+```html
+<div id="bpp-publikacje-…">
+  <!-- BPP: kafelki do osadzania zostały wyłączone przez administratora serwisu -->
+</div>
+```
+
+Niewidoczny dla czytelnika strony, widoczny w „pokaż źródło" — czyli
+osoba, która wkleiła widget, dowie się, dlaczego nic nie ma, bez
+otwierania DevToolsów. Treść komentarza bierzemy z `detail`, po
+przepuszczeniu przez `sanitize` (widget już ma tę funkcję) i po usunięciu
+`--`, które przedwcześnie zamknęłoby komentarz.
+
+Podział ról jest tu celowy: strona ma wyglądać normalnie po świadomej
+decyzji administratora, ale nie ma ukrywać cudzej literówki.
 
 Po zmianie pliku w `src/bpp/static/` konieczne jest `grunt build`
 (lub `make assets`).
@@ -312,6 +362,8 @@ Nowy plik `src/api_v1/tests/test_przelaczniki.py`.
 | Kafelki odpowiadają anonimowi przy `tylko_zalogowani=True` | j.w. |
 | `tylko_zalogowani`: 403 dla anonima, 200 dla zalogowanego | rozróżnienie 403/404 |
 | Treść `detail` w każdym z trzech komunikatów | wymaganie jawne; bez testu pierwszy refaktor `NotFound(KOMUNIKAT)` → `NotFound()` przejdzie zielono i zabierze informację |
+| `powod` w każdej z trzech odpowiedzi bramki (+ `grupa` przy `grupa_wylaczona`) | kontrakt maszynowy dla widgetu; łatwo go zgubić refaktorem, bo `detail` sam z siebie wygląda na wystarczający |
+| 404 z `pobierz_encje_lub_404` (nieistniejący autor, `pokazuj=False`) **nie ma** klucza `powod` | druga połowa tego samego kontraktu — bez niej widget wyciszyłby także literówki |
 | Root ukrywa endpointy wyłączonych grup | bez tego filtr w `CustomAPIRootView.get()` można usunąć bez czerwonego testu, a listing pokazywałby linki prowadzące w 404 |
 | Root i `whoami/`: 404 przy wyłączonym API, 403 dla anonima przy `tylko_zalogowani`, obojętność na stan grup | jedyne dwa widoki bez grupy — łatwo je pominąć przy refaktorze bramki |
 | Kontrakt enum↔pola: dla każdej `GrupaApiV1` istnieje `api_v1_<value>` na `Uczelnia` | wiązanie przez `getattr` nie ma kontroli statycznej; literówka wybuchłaby dopiero na produkcji |
@@ -326,11 +378,19 @@ z przyczyn historycznych). Część CERIF-owa zostaje na miejscu.
 Nowy `tests/js/embed-publikacje.test.js` (vitest + jsdom, tak jak
 istniejące `tests/js/*.test.js`): w DOM-ie stawiamy tag
 `<script src="…/embed/bpp-publikacje.js" data-autor="…">`, podmieniamy
-`globalThis.fetch` na stub i sprawdzamy dwa przypadki — odpowiedź 404
-zostawia kontener pusty i woła `console.warn`, odpowiedź 500 renderuje
-dotychczasowy komunikat błędu. Widget jest IIFE odpalanym przy
-załadowaniu i wymaga `document.currentScript`, więc test importuje plik
-dopiero po przygotowaniu DOM-u.
+`globalThis.fetch` na stub i sprawdzamy trzy przypadki:
+
+1. **404 z `powod`** — kontener bez widocznej treści, w środku komentarz
+   HTML zawierający `detail`, `console.warn` zawołany;
+2. **404 bez `powod`** — dotychczasowa ramka błędu, brak komentarza;
+3. **500** — dotychczasowa ramka błędu.
+
+Przypadek 2 jest tu najważniejszy: to on pilnuje, żeby wyciszenie nie
+rozlało się na zwykłe pomyłki w `data-autor`.
+
+Widget jest IIFE odpalanym przy załadowaniu i wymaga
+`document.currentScript`, więc test importuje plik dopiero po
+przygotowaniu DOM-u.
 
 ### Uruchamianie
 
@@ -373,4 +433,5 @@ widzą operatora przy `CREATE TRIGGER`, ładowanie baseline pod
 | Nowy viewset trafia do routera bez grupy | `grupa` jako wymagany kwarg → `TypeError` przy starcie + test |
 | Literówka w `GrupaApiV1.value` rozjeżdża enum z nazwą pola | test kontraktu iterujący po enumie |
 | Wyłączenie API zostawia martwy link w stopce multiseek | warunki w szablonie + akapit znika, gdy nie ma czynnego interfejsu |
+| Refaktor bramki gubi klucz `powod` — widget zaczyna wyciszać zwykłe pomyłki w `data-autor` | testy z obu stron kontraktu: `powod` jest w odpowiedziach bramki i **nie ma** go w 404 z `pobierz_encje_lub_404` |
 | Zmiana bramki psuje istniejące uprawnienia viewsetów (`MoznaUzywacZapytania`, `IsGrupaRaportyWyswietlanie`) | bramka wchodzi przez `get_permissions()` przed istniejącymi, nie zastępując ich — mechanizm już działa i jest testowany |
