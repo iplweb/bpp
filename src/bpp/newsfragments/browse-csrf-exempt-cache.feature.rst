@@ -1,1 +1,0 @@
-Strony przeglądania autora, jednostki, źródła i uczelni są teraz cache'owane dla anonimów (odciążenie ruchu). Formularz „szukaj publikacji" celuje w widok ``BuildSearch`` oznaczony ``@csrf_exempt`` (zapisuje wyłącznie do własnej sesji odwiedzającego), dzięki czemu szablony nie renderują już ``{% csrf_token %}`` i wchodzą do współdzielonego cache'a publicznego.

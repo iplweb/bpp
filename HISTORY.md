@@ -2,6 +2,648 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202608.1399 (2026-08-05)
+
+### Naprawione
+
+- Naprawiono grupę błędów w kluczach blokad i pamięci podręcznej.
+
+  Klucze liczone wbudowaną funkcją ``hash()`` przyjmowały inną wartość w każdym
+  procesie serwera (sól ``PYTHONHASHSEED``). Skutkiem było to, że blokady
+  chroniące przed równoczesnym uruchomieniem zadań w ogóle nie działały między
+  procesami: dwa zgłoszenia wysyłki oświadczeń do PBN złożone w tej samej chwili
+  mogły przejść oba i zakolejkować ZDUPLIKOWANĄ wysyłkę oświadczeń do PBN, a
+  pobierania danych z PBN mogły wystartować równolegle mimo blokady. Z tego
+  samego powodu pamięć podręczna licznika rekordów na listach w panelu
+  administracyjnym była w praktyce nieskuteczna (każdy proces serwera miał
+  własną, rozłączną przestrzeń kluczy), przez co ciężkie zapytania zliczające
+  wykonywały się wielokrotnie zamiast raz.
+
+  Naprawiono też pamięć podręczną panelu filtrów w panelu administracyjnym,
+  która budowała klucz z adresu w pamięci zamiast z parametrów filtrowania.
+  Powodowało to, że po zmianie filtrów przez maksymalnie 5 minut wyświetlał się
+  panel filtrów wyliczony dla innego, wcześniejszego zestawu parametrów (błędnie
+  podświetlone aktywne filtry).
+
+  Statystyki na pulpicie administratora deklarują teraz jawnie, że ich treść
+  zależy od domeny (nagłówek ``Vary: Host``). Wewnętrzna pamięć podręczna
+  rozdzielała je po domenie już wcześniej — to zabezpieczenie na wypadek
+  pośredniczących pamięci podręcznych HTTP (proxy, CDN), które bez tego
+  nagłówka mogłyby współdzielić odpowiedź między domenami. ([#advisory-locki-pythonhashseed](https://github.com/iplweb/bpp/issues/advisory-locki-pythonhashseed))
+- Lekki serwer uwierzytelniania (``authserver``, obsługujący logowanie do
+  Grafany i Dozzle) znów wstaje. Od czasu wprowadzenia faviconów podążających
+  za hostem workery gunicorna wywracały się przy starcie, bo kod ``bpp``
+  sięgał po modele aplikacji, których authserver celowo nie instaluje.
+  Ten sam problem — ujawniający się dopiero przy renderowaniu formularza
+  logowania — dotyczył edytora zapytań DjangoQL. Dochodzi test odpalający
+  authserver w osobnym procesie, żeby kolejna taka regresja nie przeszła
+  niezauważona. ([#authserver-minimalne-installed-apps](https://github.com/iplweb/bpp/issues/authserver-minimalne-installed-apps))
+- Powiązanie autor-jednostka bez daty rozpoczęcia pracy nie może się już
+  zdublować: zapis pracy tworzył je metodą „sprawdź i utwórz", a deklarowana
+  unikalność trójki (autor, jednostka, data rozpoczęcia) nie chroniła wierszy
+  z pustą datą — dwa równoległe zapisy (import, masowa edycja) produkowały
+  duplikat. Dodano częściowy warunek unikalności obejmujący wyłącznie wiersze
+  z pustą datą rozpoczęcia (wielokrotne, datowane okresy zatrudnienia pozostają
+  dozwolone), a migracja scala istniejące duplikaty, przepinając na ocalały
+  wiersz powiązania z importu pracowników. Zapis pracy przy równoległym
+  utworzeniu powiązania nie kończy się już błędem. ([#autor-jednostka-dup](https://github.com/iplweb/bpp/issues/autor-jednostka-dup))
+- Datowane okresy zatrudnienia autora w tej samej jednostce nie mogą się już
+  nakładać: dwa równoległe zapisy (import, masowa edycja) tworzyły metodą
+  „sprawdź i utwórz" częściowo pokrywające się przedziały pracy, których żaden
+  warunek unikalności nie wykrywał. Dodano ograniczenie wykluczające
+  (EXCLUDE / btree_gist) na przedziale ``[rozpoczęcie, zakończenie]`` z granicami
+  domkniętymi obustronnie — okresy przylegające (koniec + 1 dzień = następny
+  początek) i rozłączne pozostają legalne, a otwarty koniec (bez daty
+  zakończenia) traktowany jest jako trwający do teraz. Migracja poprzedzająca
+  odmawia założenia ograniczenia z czytelną listą kolizji, gdy w bazie istniałyby
+  już nakładające się okresy (zamiast je po cichu scalać). Dodawanie jednostki
+  przy równoległym utworzeniu pokrywającego okresu nie kończy się już błędem. ([#autor-jednostka-okresy-bez-nakladan](https://github.com/iplweb/bpp/issues/autor-jednostka-okresy-bez-nakladan))
+- Naprawiono wyciek identyfikatora Google Analytics między uczelniami w
+  instalacjach wielo-uczelnianych. Snippet GA był cache'owany w szablonie pod
+  globalnym kluczem, mimo że ``GOOGLE_ANALYTICS_PROPERTY_ID`` jest ustawiany
+  per-uczelnia — pierwszy odwiedzający jednej uczelni „rozgrzewał" fragment
+  swoim identyfikatorem, a przez kolejną godzinę goście pozostałych uczelni
+  dostawali cudzy snippet, przez co ich ruch raportował się do konta Google
+  innej instytucji. Fragment nie jest już cache'owany. ([#cache-google-analytics-per-uczelnia](https://github.com/iplweb/bpp/issues/cache-google-analytics-per-uczelnia))
+- Naprawiono komendę ``create_demo_data``: nazwy wydziałów i jednostek są teraz
+  globalnie unikalne także dla motywów z małą pulą nazw (dawniej cyklowanie /
+  losowanie zderzało się z unikalnym indeksem ``nazwa`` → ``IntegrityError``),
+  a masowe wstawianie (``bulk_create``) jest odporne na przejściowe deadlocki z
+  równoległym workerem denorm (Celery ``flush_single``) dzięki retry na
+  ``40P01``/``40001``. ([#create_demo_data_denorm](https://github.com/iplweb/bpp/issues/create_demo_data_denorm))
+- Przebudowa bazy od zera (odtworzenie wszystkich migracji na pustej bazie)
+  nie pada już na dwóch latentnych blokerach kolejności. Po pierwsze, usunięto
+  wywołania ``denorm_init`` w środku historii migracji, które budowały triggery
+  z dzisiejszych modeli i odwoływały się do kolumn dochodzących dopiero w
+  późniejszych migracjach — triggery denorm odtwarza teraz sygnał
+  ``post_migrate`` na kompletnym schemacie. Po drugie, migracja indeksów GIN
+  zakładająca indeks na tabeli ``easyaudit_crudevent`` deklaruje teraz zależność
+  od aplikacji ``easyaudit``, więc tabela istnieje, zanim indeks zostanie
+  utworzony. Obie zmiany są no-opem dla istniejących baz. ([#denorm-init-rebuild-od-zera](https://github.com/iplweb/bpp/issues/denorm-init-rebuild-od-zera))
+- Favicon podąża teraz za hostem w instalacji wielo-uczelnianej: każda domena
+  dostaje własny favicon (dotąd wszystkie uczelnie dostawały favicon site'u o
+  ``SITE_ID``). Fragment cache faviconu w ``bare.html`` kluczowany jest per host.
+  Dodatkowo zapis favicona jednej uczelni nie gasi już aktywnego favicona innej
+  uczelni (biblioteczny ``Favicon.save`` resetował flagę globalnie po
+  ``SITE_ID`` — teraz reset jest ograniczony do site'u zapisywanego favicona). ([#favicon-per-host](https://github.com/iplweb/bpp/issues/favicon-per-host))
+- Import list ministerialnych: przyciski „Anuluj"/„Ponów" na stronie live
+  dostają teraz token CSRF nagłówkiem ``X-CSRFToken`` (wrapper
+  ``hx-headers`` wokół regionu live-operacji). Bez tego przy
+  ``CSRF_COOKIE_HTTPONLY=True`` POST-y liveops kończyły się błędem 403. ([#import-list-ministerialnych-liveops-csrf](https://github.com/iplweb/bpp/issues/import-list-ministerialnych-liveops-csrf))
+- Strona „import absencji" pokazuje teraz listę importów absencji zamiast —
+  jak dotąd — listy importów POLON. ([#import-polon-index-absencji](https://github.com/iplweb/bpp/issues/import-polon-index-absencji))
+- Lista wyników importu pracowników wykonywała trzy zapytania do bazy na każdy
+  wiersz importu i powielała ten sam blok skryptu w każdym wierszu HTML-a. Przy
+  tysiącu wierszy dawało to ponad trzy tysiące zapytań i dziewięć megabajtów
+  strony. Teraz liczba zapytań nie zależy od liczby wierszy. ([#import-pracownikow-n-plus-jeden](https://github.com/iplweb/bpp/issues/import-pracownikow-n-plus-jeden))
+- Poprawiono plik wzorcowy importu pracowników (kompletna ramka, przykładowe
+  wiersze, opis kolumn); rozdzielono go od danych testowych. ([#import_pracownikow](https://github.com/iplweb/bpp/issues/import_pracownikow))
+- Naprawiono przyciski „Anuluj"/„Ponów" na stronach postępu importu punktacji
+  źródeł oraz deduplikatora źródeł — zwracały błąd 403 (CSRF token missing).
+  Przy ``CSRF_COOKIE_HTTPONLY=True`` biblioteka liveops nie mogła odczytać
+  tokenu z ciasteczka; token jest teraz wstrzykiwany nagłówkiem ``X-CSRFToken``
+  przez wrapper ``hx-headers`` (jak w imporcie pracowników). ([#liveops-csrf-cancel-restart](https://github.com/iplweb/bpp/issues/liveops-csrf-cancel-restart))
+- Naprawiono gubienie współbieżnych zmian (lost update) na singletonach statusu
+  optymalizacji ewaluacji. Metody ``rozpocznij()``/``zakoncz()`` modeli
+  ``Status*`` zapisują teraz tylko pola, które faktycznie zmieniają (atomowy
+  ``UPDATE`` po ``pk=1``), zamiast nadpisywać cały wiersz — dzięki czemu status
+  „w trakcie" i ``task_id`` ustawione przez współbieżne zadanie nie są już
+  cofane, a przycisk nie odblokowuje się przedwcześnie. ([#lost-update-singletony-statusu](https://github.com/iplweb/bpp/issues/lost-update-singletony-statusu))
+- Przyspieszono testy Playwright przez bezpośrednie ustawianie pobocznych pól
+  Select2, usunięcie zbędnych oczekiwań oraz ograniczenie konkurencji między
+  procesami Chromium, zachowując pełne interakcje w testach autocomplete i
+  wpisywania wartości. ([#playwright-procent-odpowiedzialnosci-speed](https://github.com/iplweb/bpp/issues/playwright-procent-odpowiedzialnosci-speed))
+- Import PBN nie tworzy już zdublowanych powiązań publikacja-instytucja-osoba:
+  trójka (instytucja, publikacja, osoba) w ``PublikacjaInstytucji`` dostała
+  unikalny constraint, a migracja usuwa duplikaty istniejące w bazie
+  (zostawiając z każdej grupy wiersz o najniższym identyfikatorze). ([#publikacja-instytucji-duplikaty](https://github.com/iplweb/bpp/issues/publikacja-instytucji-duplikaty))
+- Rollbar: błędy konwersji DOCX (``DocxConversionError``) są teraz grupowane w jedno
+  zgłoszenie per serwer, zamiast rozbijać się na dziesiątki osobnych itemów (treść
+  raportu z nazwiskiem autora wyciekała do domyślnego fingerprintu Rollbara). ([#rollbar-docx-fingerprint](https://github.com/iplweb/bpp/issues/rollbar-docx-fingerprint))
+- Publiczne API ``/api/v1/autor_jednostka/`` nie ujawnia już powiązań
+  zatrudnienia (jednostka, daty, funkcja, identyfikator) autorów oznaczonych
+  jako ukryci (``pokazuj=False``) użytkownikom niezalogowanym. ([#sec-autor-jednostka-ukryci](https://github.com/iplweb/bpp/issues/sec-autor-jednostka-ukryci))
+- Adminowa wyszukiwarka DjangoQL nie udostępnia już modelu użytkownika
+  (``BppUser``) przez relację ``Autor.user`` — pola ``pbn_token``, ``email`` i
+  ``is_superuser`` przestały być filtrowalne, co eliminowało możliwość
+  odczytania cudzego tokenu PBN metodą blind-oracle. ([#sec-djangoql-admin-bppuser](https://github.com/iplweb/bpp/issues/sec-djangoql-admin-bppuser))
+- Import plików XLSX odrzuca teraz nadmiernie duże pliki przed przetwarzaniem i
+  wczytuje skoroszyt strumieniowo (tryb read-only), co zabezpiecza workera
+  importu przed wyczerpaniem pamięci (OOM) na „grubym" pliku. ([#sec-import-rozmiar-readonly](https://github.com/iplweb/bpp/issues/sec-import-rozmiar-readonly))
+- Naprawiono podatność stored-XSS w panelu administracyjnym „Przemapowanie prac
+  autora": tytuł/źródło/wydawnictwo publikacji są teraz escapowane przy
+  renderowaniu historii przemapowań. ([#sec-przemapuj-xss](https://github.com/iplweb/bpp/issues/sec-przemapuj-xss))
+- Produkcja nie uruchomi się już po cichu z placeholderowym ``SECRET_KEY``
+  (nieustawiona zmienna środowiskowa lub niezmieniony ``.env.docker``) —
+  zamiast startować z publicznie znanym kluczem (ryzyko forgowania sesji i
+  tokenów resetu hasła) proces przerywa start z czytelnym komunikatem. ([#sec-secret-key-guard](https://github.com/iplweb/bpp/issues/sec-secret-key-guard))
+- Endpointy zapytań DjangoQL ``/api/v1/zapytanie/*`` są teraz objęte
+  throttlingiem po użytkowniku, co ogranicza ryzyko przeciążenia bazy przez
+  zalogowanego użytkownika wysyłającego wiele równoległych, kosztownych zapytań. ([#sec-zapytanie-throttling](https://github.com/iplweb/bpp/issues/sec-zapytanie-throttling))
+- Biblioteki JavaScript i CSS są ładowane z serwera uczelni, a nie z zewnętrznych
+  CDN-ów (unpkg.com, jsdelivr, cdnjs). Wcześniej lista wyników importu pracowników,
+  ekran powiązań spoza pliku, importer publikacji, wykresy optymalizacji ewaluacji
+  i ekran przemapowania źródła sięgały po pliki do sieci zewnętrznej — w sieciach
+  bez dostępu do tych serwerów (VPN, firewall) strona potrafiła wisieć kilkadziesiąt
+  sekund, zanim się wyświetliła. ([#self-hosting-assetow](https://github.com/iplweb/bpp/issues/self-hosting-assetow))
+- Dodano barierę bazodanową (advisory lock, niezależną od Redisa) chroniącą
+  dwa najgroźniejsze zadania — optymalizację z odpinaniem oraz odpinanie
+  wszystkich sensownych możliwości — przed równoległym uruchomieniem po tym,
+  jak rolling restart workera skasuje lock ``celery_singleton``. Duplikat
+  przebiegu wycofuje się, zanim wejdzie w masowe odpinanie przypięć uczelni. ([#singleton-bariera-bazodanowa](https://github.com/iplweb/bpp/issues/singleton-bariera-bazodanowa))
+- Status generowania metryk: częściowy indeks unikalny gwarantuje, że istnieje
+  co najwyżej jeden wiersz bez przypisanej uczelni. Wcześniej dwa równoległe
+  żądania mogły utworzyć dwa takie wiersze, po czym analiza odpinania publikacji
+  zwracała błąd 500 aż do ręcznego posprzątania bazy. Migracja usuwa nadmiarowe
+  wiersze, jeśli już powstały. ([#statusgenerowania-null](https://github.com/iplweb/bpp/issues/statusgenerowania-null))
+- Synchroniczny eksport XLSX szczegółów raportu slotów uczelni dostał limit
+  wierszy (jak pozostałe raporty slotów): zamiast ryzykować wyczerpanie pamięci
+  przy bardzo dużym raporcie, przy przekroczeniu progu zwraca czytelny komunikat
+  z prośbą o zawężenie filtrów. Próg jest wyższy niż w pozostałych raportach, bo
+  eksport całej uczelni jest z natury najszerszy. ([#uczelnia-export-limit](https://github.com/iplweb/bpp/issues/uczelnia-export-limit))
+- Naprawiono błąd, przez który import słownika dyscyplin z PBN mógł zablokować
+  się trwale. Brak unikalności UUID-ów powodował, że dwa równoległe importy
+  tworzyły zduplikowany słownik lub dyscyplinę, a od tego momentu każdy kolejny
+  import przerywał się błędem ``MultipleObjectsReturned`` — aż do ręcznego
+  uporządkowania bazy danych. Migracja scala istniejące duplikaty (przepinając
+  powiązania tłumacza dyscyplin) i zakłada brakujące ograniczenia unikalności. ([#unikalne-uuid-dyscyplin-pbn](https://github.com/iplweb/bpp/issues/unikalne-uuid-dyscyplin-pbn))
+- Naprawiono wyciek scommitowanych danych między testami importu pracowników.
+  Autouse fixture zdejmował na czas testu wskaźnik bieżącej pętli zdarzeń
+  i przywracał go po — a ponieważ Django wybiera magazyn połączeń właśnie po
+  tym wskaźniku (``asgiref.local.Local(thread_critical=True)``), zapisy testu
+  trafiały na inne połączenie, poza jego transakcją, i commitowały się mimo
+  ``django_db``. W testach liveops raportuje teraz przez ``MockProgress``,
+  więc ścieżka ASGI (i cały problem) w ogóle się nie uruchamia. ([#wyciek-markera-petli](https://github.com/iplweb/bpp/issues/wyciek-markera-petli))
+- Eksport XLSX raportów slotów (autor, ewaluacja, zerowy, upoważnienie PBN)
+  buduje plik strumieniowo zamiast trzymać trzy kopie danych naraz w pamięci,
+  a przy zbyt dużym raporcie zwraca czytelny komunikat z prośbą o zawężenie
+  filtrów zamiast ryzykować wyczerpanie pamięci procesu. ([#xlsx-export-memory](https://github.com/iplweb/bpp/issues/xlsx-export-memory))
+- Naprawiono błąd, przez który jednostki ukryte (``widoczna=False``, m.in.
+  "Obca jednostka" skupiająca autorów obcych) zwracały 404 przez REST API,
+  psując eksport bibliografii u konsumentów podążających za hiperłączami z
+  autorów. Widoczność nie bramkuje już API — o dostępności jednostki przez API
+  decyduje wyłącznie nowe pole ``nie eksportuj przez API`` (domyślnie wyłączone,
+  czyli wszystkie jednostki są eksportowane). Redaktor może nim jawnie wykluczyć
+  wybraną jednostkę z API. ([#api-jednostka-obca-404](https://github.com/iplweb/bpp/issues/api-jednostka-obca-404))
+- Blokada zasobu po stronie PBN (HTTP 423) jest ponawiana, zamiast kończyć
+  wysyłkę terminalnym błędem technicznym. Dotyczy też odpowiedzi 423 z ciałem
+  w formacie JSON, których poprzednia wersja klienta nie rozpoznawała jako
+  blokady. ([#pbn-423-ponawianie](https://github.com/iplweb/bpp/issues/pbn-423-ponawianie))
+- Synchronizacja słownika dyscyplin z PBN nie trzyma już otwartej transakcji
+  bazodanowej przez cały czas pobierania danych z PBN. Pobranie (remote) wykonuje
+  się teraz przed otwarciem transakcji (wzorzec ``sync_dictionary`` z pakietu
+  ``django-pbn-client``), a zapis leci atomowo — dłuższa niedostępność PBN nie
+  blokuje już połączenia bazodanowego. ([#pbn-d3-sync-dictionary](https://github.com/iplweb/bpp/issues/pbn-d3-sync-dictionary))
+- Widok 3D sieci powiązań autorów nie wywala się już na przeglądarkach bez
+  WebGL-a: zamiast czarnego prostokąta i błędu w konsoli pokazuje komunikat
+  z wyjaśnieniem i odsyłaczem do widoku 2D. Sieci powiązań (2D, 3D oraz
+  zasilające je pliki JSON) zostały dodatkowo wyłączone spod indeksowania
+  w ``robots.txt`` — dla robotów wyszukiwarek to sam koszt zapytań, bez
+  żadnej treści do zaindeksowania. ([#rollbar4006](https://github.com/iplweb/bpp/issues/rollbar4006))
+- Formularz „Zgłoś publikację" znów podpowiada jednostkę i dyscyplinę autora
+  zalogowanym użytkownikom bez uprawnień redaktorskich. Endpoint, z którego
+  korzysta ta podpowiedź — tylko czytający dane, niczego nie zapisujący —
+  trafił przez pomyłkę pod bramkę uprawnień redaktorskich, więc taki
+  użytkownik dostawał w tle błąd i tracił podpowiedź (po cichu, bo to
+  zapytanie w tle). Dla niezalogowanych podpowiedź nadal nie działa — tak jak
+  wcześniej.
+- Import osób z API instytucji PBN radzi sobie z osobami, którym PBN zmienił
+  identyfikator. ``polonUuid`` (identyfikator z POL-onu) jest stabilną
+  tożsamością osoby, a ``personId`` PBN potrafi zmienić — np. po scaleniu
+  zdublowanych profili. Import dopasowywał wpis wyłącznie po ``personId``,
+  więc taka osoba rozbijała się o unikalność ``polonUuid`` i była pomijana;
+  teraz jej wpis jest przepinany na nowy identyfikator. Osoby bez
+  ``polonUuid`` są pomijane z czytelnym komunikatem w logu, zamiast trafiać
+  do monitoringu jako „konflikt tożsamości".
+- Klucz cytowania w eksporcie BibTeX znów zawiera nazwisko pierwszego autora —
+  dotyczyło to prac doktorskich i habilitacyjnych oraz rekordów otwieranych
+  bezpośrednio ze strony rekordu. Wcześniej klucz cichcem gubił nazwisko
+  i zostawało samo ``<rok>_id<numer>``; wyjątek był połykany, więc eksport
+  działał, tylko z gorszym kluczem.
+- Monitoring błędów po stronie przeglądarki przestał zbierać zgłoszenia, na
+  które nie da się zareagować: awarie pochodzące wyłącznie z obcych skryptów
+  (np. widget dostępności ładowany z zewnętrznego serwera) oraz zdarzenia, które
+  nie niosą ani lokalizacji, ani treści błędu. Błędy z kodu BPP są raportowane
+  jak dotąd.
+- Naprawiono cichy ReferenceError w produkcyjnym bundlu JS: funkcja
+  ``dalLoadLanguage`` (polskie tłumaczenia autouzupełniania django-autocomplete-light /
+  select2) była usuwana przez tree-shaking esbuilda, przez co pola autouzupełniania
+  traciły polskie komunikaty. Loader języka jest teraz jawnie eksportowany na
+  ``window`` w lokalnym wrapperze odpornym na tree-shaking.
+- Podniesiono minimalną wersję ``pyasn1`` do 0.6.4 (podatności PYSEC-2026-3455,
+  PYSEC-2026-3456, PYSEC-2026-3457 w zależności tranzytywnej).
+- Przy wysyłce rekordu do PBN z panelu redagowania brakujące dane dają teraz
+  konkretny komunikat („Musi być DOI lub adres WWW", „Brak odpowiednika języka
+  w PBN") zamiast generycznego „Kod błędu: …". Dotyczy sytuacji, w których
+  rekordu po prostu nie da się wysłać, dopóki nie uzupełni się danych —
+  to nie jest awaria systemu i nie jest już jako awaria zgłaszane.
+- Przypięto wersję ``uv`` we wszystkich workflow-ach CI (``setup-uv`` bez
+  ``version`` brał „latest", przez co gate ``uv.lock in sync`` potrafił
+  zaświecić się na czerwono na gałęzi, która nie ruszała zależności —
+  ten sam lockfile przechodził na uv 0.11.29, a padał na 0.11.31).
+- Rollbar: błędy "nie znaleziono strony" (``Http404``) są teraz grupowane w jedno
+  zgłoszenie per serwer i widok, zamiast zakładać osobne zgłoszenie dla każdego
+  nieistniejącego adresu odwiedzonego przez roboty indeksujące. Przy okazji
+  zgłoszenia rozróżniają teraz uczelnie po adresie, pod którym faktycznie
+  wystąpiły — istotne przy instalacjach obsługujących wiele uczelni naraz.
+- Rozdziały z wydawnictwem nadrzędnym pobranym z PBN pokazują teraz to
+  wydawnictwo w opisie bibliograficznym ("W: tytuł"). Opis bibliograficzny
+  przestał być trzymany w bazie (dbtemplates) — jest brany wprost z aktualnego
+  szablonu na dysku, więc poprawki szablonu działają od razu po aktualizacji,
+  bez ręcznej synchronizacji (FD#329).
+- Usunięto fałszywy alarm w monitoringu błędów, zgłaszany przy kasowaniu autora.
+  Zachowanie samego kasowania nie ulega zmianie.
+- W publicznym formularzu zgłaszania publikacji znów działa automatyczne
+  podpowiadanie jednostki i dyscypliny po wybraniu autora. Endpoint
+  ``/bpp/api/ostatnia-jednostka-i-dyscyplina/`` przestał wymagać uprawnień
+  redaktorskich, zalogowania oraz tokenu CSRF — niczego nie zmienia, tylko
+  odczytuje dane dostępne publicznie także na stronie autora, a zgłaszać
+  publikacje mogą również osoby niezalogowane. Wcześniej podpowiedź znikała
+  po cichu (bez komunikatu), bo blokada trafiała w zapytanie AJAX.
+- Zgłoszenia błędów wysyłane do monitoringu znów zawierają linie kodu w miejscu
+  awarii. Reguła maskowania danych wrażliwych obejmowała pole o nazwie ``code``,
+  a pod tą samą nazwą biblioteka monitoringu przechowuje linię kodu źródłowego
+  każdej ramki śladu wywołań — od 11 lipca 2026 skutkowało to zamazywaniem
+  całych śladów wywołań i utrudniało diagnostykę. Kody autoryzacyjne OAuth są
+  nadal maskowane, również w adresach URL i zmiennych lokalnych.
+- ``make build`` buduje teraz lokalny obraz developerski ``bpp_testserver:dev`` —
+  ten, którym ``docker-compose.yml`` uruchamia wszystkie serwisy aplikacyjne,
+  czyli jedyny budowany obraz, jaki cokolwiek lokalnie odpala. Wcześniej nie miał
+  on nawet targetu w ``docker-bake.hcl``, więc ``make build`` kończył się na
+  zielono, odświeżywszy wyłącznie sześć obrazów produkcyjnych, których lokalnie
+  nie uruchamia nic. Obraz starzał się w nieskończoność, a ponieważ compose
+  podkłada bind-mountem świeże ``./src`` pod jego stary ``/opt/venv``, kod
+  z dzisiaj spotykał zależności sprzed tygodnia (objaw: ``ModuleNotFoundError``
+  na pakiecie dodanym do ``pyproject.toml`` już po zbudowaniu obrazu).
+
+  Obrazy produkcyjne przeniesiono pod ``make build-production``, a dawne
+  zachowanie ``make build`` (wszystko naraz) jest dostępne jako ``make
+  build-all``. ``PUSH_TO_REGISTRY=true make build`` nie kończy się już cichym
+  niewypałem, tylko błędem odsyłającym do ``build-production``.
+
+### Dokumentacja
+
+- Test inwalidacji cache'a strony głównej po zapisie Uczelni biegnie teraz
+  na realnym backendzie (``LocMemCache``) i sprawdza SKUTEK zamiast mocka
+  ``cache.delete``. Dowodzi pełnej ścieżki: pierwsze żądanie zapisuje kontekst,
+  zapis Uczelni faktycznie unieważnia klucz, kolejne żądanie dostaje nową
+  nazwę zamiast zapamiętanej starej. Dołożono warunek kontrolny (zmiana z
+  pominięciem sygnału zostawia starą wartość w cache), który pada, gdyby cache
+  przestał działać. Inwalidacja działa poprawnie — bug nie ujawniony. ([#cache-test-inwalidacja-uczelnia-realny-backend](https://github.com/iplweb/bpp/issues/cache-test-inwalidacja-uczelnia-realny-backend))
+- Test rozdzielności cache'a per-host dla ``robots.txt`` biegnie teraz na
+  realnym backendzie (``LocMemCache``) zamiast na wyłączonym ``DummyCache``.
+  Wcześniej przechodził trywialnie — nie dowodził, że ``cache_page`` nie
+  przecieka między domenami multi-hosted. Dołożono warunek kontrolny
+  (trafienie w cache przy powtórzonym żądaniu), który realnie pada, gdy
+  cache przestaje działać. ([#cache-test-robots-realny-backend](https://github.com/iplweb/bpp/issues/cache-test-robots-realny-backend))
+- ``make cerif-validate`` nie wymaga już Mavena ani JDK — pobiera gotowego
+  JAR-a walidatora euroCRIS z wydań https://github.com/iplweb/openaire-cris-validator
+  albo uruchamia go z obrazu ``iplweb/cerif-validator``. Wystarczy JRE 17+
+  lub Docker. ([#cerif-validator-artefakt](https://github.com/iplweb/bpp/issues/cerif-validator-artefakt))
+- Guard izolacji bazy pod xdist dostał drugą sondę — na teardownie testu, po
+  pełnej finalizacji fixture'ów. W przeciwieństwie do dotychczasowej sondy
+  setupowej (która wskazywała sprawcę heurystycznie, jako „poprzedni test DB")
+  ta wskazuje go wprost: brudne tabele na własnym teardownie znaczą, że
+  zostawił je ten właśnie test. ``BPP_LEAK_GUARD_STRICT=1`` zamienia raport
+  w twardy błąd. ([#leak-guard-teardown](https://github.com/iplweb/bpp/issues/leak-guard-teardown))
+- Usunięto trzy zbędne shimy zgodności (``pbn_api.const``, ``pbn_api.utils``,
+  ``pbn_api.client.transport``) — czyste re-eksporty z pakietów PBN. Kod importuje
+  teraz stałe, helpery słownikowe i transport wprost z ``pbn_client`` (spójnie z
+  resztą kodu po ekstrakcji). Warstwa zgodności ``pbn_api.exceptions`` oraz baza
+  modeli ``pbn_api.models.base`` pozostają (mają zawartość BPP-specific / stanowią
+  punkt rozszerzeń). ([#pbn-slim-shims](https://github.com/iplweb/bpp/issues/pbn-slim-shims))
+
+### Usprawnienie
+
+- Publiczne API (``/api/v1/``): usunięto problem N+1 na endpointach listowych.
+  Listy wydawnictw ciągłych i zwartych, patentów, autorów, źródeł, nagród oraz
+  przypisań autorów wykonywały dotąd od jednego do trzech dodatkowych zapytań
+  NA KAŻDY wiersz strony (pola tekstowe relacji: status korekty, tryb dostępu /
+  wersja tekstu / licencja OpenAccess, typ odpowiedzialności, zasięg źródła,
+  obiekt nagrody, jednostki autora). Liczba zapytań nie zależy już od liczby
+  zwróconych rekordów — np. lista wydawnictw ciągłych z czterema rekordami
+  zeszła z 23 do 11 zapytań.
+
+  Dodatkowo parametr ``?limit=`` ma teraz twardy górny limit 500 rekordów na
+  żądanie (wcześniej dowolna wartość, także anonimowo), a autoryzowane
+  ``/api/v1/zapytanie/rekord/`` przestało pobierać indeks wyszukiwania
+  pełnotekstowego i kilkadziesiąt zbędnych kolumn dla każdego wiersza. ([#api-n-plus-jeden](https://github.com/iplweb/bpp/issues/api-n-plus-jeden))
+- Strony przeglądania autora, jednostki, źródła i uczelni są teraz cache'owane dla anonimów (odciążenie ruchu). Formularz „szukaj publikacji" celuje w widok ``BuildSearch`` oznaczony ``@csrf_exempt`` (zapisuje wyłącznie do własnej sesji odwiedzającego), dzięki czemu szablony nie renderują już ``{% csrf_token %}`` i wchodzą do współdzielonego cache'a publicznego. ([#browse-csrf-exempt-cache](https://github.com/iplweb/bpp/issues/browse-csrf-exempt-cache))
+- Publiczne strony przeglądania (lata, rok, listy autorów, źródeł i jednostek
+  oraz strona rekordu) są zapamiętywane w cache'u HTTP dla użytkowników
+  niezalogowanych — ścina to ruch robotów indeksujących z bazy danych. Cache
+  jest izolowany per domena (multi-hosted: treść jednej uczelni nigdy nie
+  trafi pod domenę innej) oraz per stan zgody na ciasteczka (osoba, która
+  odmówiła zgody, nigdy nie dostanie strony z włączoną analityką), omija
+  użytkowników zalogowanych w obie strony, a zapis danych w panelu
+  administracyjnym unieważnia go natychmiast. ([#cache-http-anonim](https://github.com/iplweb/bpp/issues/cache-http-anonim))
+- Zapis konferencji nie unieważnia już cache'u publicznych stron przeglądania.
+  Nazwa konferencji nie jest renderowana na żadnej z tych stron, a integrator
+  PBN zapisuje każdą konferencję bezwarunkowo — w efekcie każdy przebieg
+  integratora zerował cały cache i strony publiczne startowały po nim na zimno. ([#cache-publiczny-bez-konferencji](https://github.com/iplweb/bpp/issues/cache-publiczny-bez-konferencji))
+- Eksport danych w formacie CERIF-XML zgodnym z wytycznymi euroCRIS/OpenAIRE
+  (OpenAIRE Guidelines for CRIS Managers 1.2.0). Nowy endpoint OAI-PMH wystawia
+  publikacje, osoby, jednostki organizacyjne, patenty i konferencje, co pozwala
+  zarejestrować instalację w rejestrze DRIS oraz w infrastrukturze OpenAIRE. ([#cerif-export](https://github.com/iplweb/bpp/issues/cerif-export))
+- Słowniki BPP (charaktery formalne, rodzaje praw patentowych, języki, tryby
+  Open Access) mają uzupełnione odpowiedniki w słownikach kontrolowanych
+  używanych przez eksport CERIF/OpenAIRE. Uzupełnienie obejmuje przypadki
+  jednoznaczne i nie nadpisuje wartości wpisanych wcześniej ręcznie; pozycje
+  wymagające decyzji merytorycznej wypisuje polecenie ``cerif_raport_mapowan``. ([#cerif-mapowania](https://github.com/iplweb/bpp/issues/cerif-mapowania))
+- W ustawieniach Uczelni można wyłączyć eksport danych osób do CERIF/OpenAIRE.
+  Po wyłączeniu zestaw „openaire_cris_persons" pozostaje pusty, a autorzy
+  pojawiają się w opisach publikacji wyłącznie jako imię i nazwisko — bez
+  własnych rekordów, identyfikatorów ORCID i historii zatrudnienia. Powiązanie
+  publikacji z jednostką uczelni pozostaje bez zmian. ([#cerif-osoby-przelacznik](https://github.com/iplweb/bpp/issues/cerif-osoby-przelacznik))
+- Identyfikatory ROR (Research Organization Registry) uczelni i jednostek są
+  sprawdzane przy zapisie — identyfikator ma wbudowaną sumę kontrolną, więc
+  literówka zostaje odrzucona od razu, zamiast objawić się brakiem powiązania
+  w OpenAIRE. Nowe polecenie ``cerif_ustaw_ror`` pokazuje stan identyfikatorów
+  wszystkich uczelni i podpowiada kandydatów z rejestru ROR po nazwie. ([#cerif-ror](https://github.com/iplweb/bpp/issues/cerif-ror))
+- Przyspieszono workflowy GitHub Actions przez odchudzenie obrazu testowego,
+  równoległe skanowanie zależności i aktualizowanie baseline bez pełnego
+  odtwarzania migracji. ([#ci-workflows-speed](https://github.com/iplweb/bpp/issues/ci-workflows-speed))
+- Statyki (JS/CSS) nie są już unieważniane w cache przeglądarki przy każdym
+  wydaniu. Katalog wyjściowy django-compressor przestał zawierać numer wersji
+  (``CACHE-{VERSION}`` → ``CACHE``); pliki i tak są nazywane hashem swojej
+  treści, więc ścieżka zmienia się tylko wtedy, gdy realnie zmieni się JS/CSS —
+  deploy bez zmian we front-endzie oszczędza użytkownikom ~305 KB gzip zbędnego
+  pobierania. ([#compress-output-dir-hash](https://github.com/iplweb/bpp/issues/compress-output-dir-hash))
+- Oficjalne obrazy Docker wykorzystują cache niezmienionych warstw zależności,
+  odświeżany co tydzień, co skraca kolejne buildy bez utrwalania starych pakietów. ([#docker-build-cache](https://github.com/iplweb/bpp/issues/docker-build-cache))
+- Higiena zadań w tle i retencji danych:
+
+  * długo działające zadania cykliczne (przeliczanie powiązań autorów, skan
+    duplikatów autorów, automatyczna przebudowa cache dopasowań PBN) dostały
+    limity czasu i blokadę pojedynczej instancji — zawieszone zadanie nie
+    zablokuje już slotu workera na 6 godzin;
+  * skanowanie duplikatów autorów dostało dodatkowo barierę w bazie danych:
+    przebieg wycofuje się, gdy inny już trwa, i to ZANIM skasuje dotychczasowe
+    wyniki. Sama blokada w Redisie nie wystarczała, bo restart dowolnego
+    workera ją zwalniał. Porzucone przebiegi (po ubitym workerze) są
+    automatycznie przeterminowywane, więc nie blokują skanowania na zawsze;
+  * przeliczanie powiązań autorów buduje wynik w tabeli tymczasowej i dopiero
+    gotowy przepisuje do tabeli docelowej — czas, przez który tabela powiązań
+    jest zablokowana dla zapisów, skrócił się z całego przeliczania do samego
+    przepisania wierszy (na ścieżce zadania cyklicznego);
+  * dobowa przebudowa cache dopasowań PBN przesunięta z 3:30 na 4:30, żeby nie
+    startowała równocześnie z porządkowaniem kolejności rekordów;
+  * nieudane próby logowania (django-axes) są kasowane po 90 dniach — dotąd
+    wpisy generowane przez boty skanujące panel administracyjny zostawały
+    w bazie bezterminowo;
+  * pliki XLS importu pracowników są wreszcie kasowane zgodnie z ustawioną
+    retencją — komenda istniała, ale nic jej nie uruchamiało;
+  * naprawiono wpis harmonogramu czyszczenia kolejki eksportu do PBN, który
+    wskazywał na nieistniejącą nazwę zadania i przez to nigdy się nie wykonywał.
+
+  ([#higiena-zadan-w-tle](https://github.com/iplweb/bpp/issues/higiena-zadan-w-tle))
+- Import list IF przeniesiony z long_running na django-liveops: postęp
+  importu na żywo przez WebSocket, spójny z pozostałymi importerami. ([#import-list-if-liveops](https://github.com/iplweb/bpp/issues/import-list-if-liveops))
+- Import z POLON i import absencji przeniesiono ze starego mechanizmu
+  ``long_running`` na ``django-liveops``: postęp na żywo przez WebSocket +
+  HTMX, anulowanie i ponawianie operacji, wynik renderowany bez odświeżania
+  strony. Zachowano wielohostowe zawężanie importu POLON do uczelni oraz
+  domknięcie podglądu zapisem do bazy. ([#import-polon-liveops](https://github.com/iplweb/bpp/issues/import-polon-liveops))
+- Lista importów POLON pokazuje teraz tabelę ze statystykami każdego importu:
+  ile wierszy miał plik, ilu autorów dotyczyło uczelni, ilu dopasowano do bazy,
+  ile wierszy zmieniono, ile zakończyło się błędem oraz ilu autorów kwalifikuje
+  się do odpięcia. Nazwa pliku jest skracana (pełna widoczna w dymku), a rok
+  importu widoczny wprost na liście. ([#import-polon-statystyki-listy](https://github.com/iplweb/bpp/issues/import-polon-statystyki-listy))
+- Lista wyników importu pracowników jest stronicowana po stronie serwera, a filtry
+  (rodzaj dopasowania, wyszukiwanie tekstowe, stan pola) działają na całym
+  imporcie, a nie tylko na widocznej stronie. Wyszukiwanie obejmuje też imiona,
+  poprzednie nazwiska i ORCID autora oraz nazwę jego aktualnej jednostki. ([#import-pracownikow-paginacja](https://github.com/iplweb/bpp/issues/import-pracownikow-paginacja))
+- Przyspieszono wyszukiwanie i przeglądanie danych dzięki poprawkom indeksów w
+  bazie: indeksy pełnotekstowe autorów, źródeł, jednostek, patentów, prac
+  doktorskich i habilitacyjnych oraz wydawnictw ciągłych i zwartych przeniesiono
+  z GiST na GIN (na zrzucie produkcyjnym analogiczna zmiana dla rekordów dała
+  przyspieszenie od 1,7× do 19,6× zależnie od kształtu zapytania), usunięto
+  zduplikowane indeksy GiST autorów i źródeł, dodano indeksy funkcyjne pod
+  przeglądanie alfabetyczne A–Z (autorzy, źródła, jednostki) oraz brakujący
+  indeks na dacie zdarzeń w dzienniku zmian. ([#indeksy-gin-i-funkcyjne](https://github.com/iplweb/bpp/issues/indeksy-gin-i-funkcyjne))
+- Ścieżkę ASGI liveops (``WebProgress`` → channel layer → odbiór komunikatu)
+  pokrywa teraz test integracyjny na realnym Redisie. Testy jednostkowe
+  raportują postęp przez ``MockProgress``, więc bez tego testu transport
+  nie byłby w ogóle sprawdzany. ([#liveops-asgi-test](https://github.com/iplweb/bpp/issues/liveops-asgi-test))
+- Import list ministerialnych korzysta teraz z pakietu ``django-liveops``
+  (podgląd postępu na żywo przez WebSocket + HTMX) zamiast wewnętrznej
+  aplikacji ``long_running``. Routing live/cancel/restart jest generyczny
+  (``op_type`` = ``<app_label>.<model_name>``) i mieszka w samym pakiecie
+  liveops, więc konwersja kolejnych importów nie wymaga żadnej warstwy
+  pośredniej po stronie BPP. ([#liveops-import-list-ministerialnych](https://github.com/iplweb/bpp/issues/liveops-import-list-ministerialnych))
+- Nowy typ raportu „tabela krzyżowa" w wyszukiwarce Multiseek: grupowanie
+  wyników (oraz prac autora) w formie pivota — wybierany wymiar wierszy
+  i kolumn (rok, charakter, typ, jednostka, dyscyplina, koszyk punktów PK,
+  język, autor, źródło) oraz metryka w komórce (liczba prac, suma punktów
+  PK, Impact Factor, cytowań, punktacji wewnętrznej), z sumami brzegowymi
+  i eksportem tabeli do XLSX/CSV. ([#multiseek-pivot](https://github.com/iplweb/bpp/issues/multiseek-pivot))
+- Import pracowników: nowa opcja „Nadpisuj daty zatrudnienia (od/do)
+  wartościami z pliku" (szuflada „Opcje zaawansowane"). Pozwala skorygować
+  daty istniejących okresów zatrudnienia — np. po wcześniejszym imporcie
+  pliku bez dat, który ostemplował wszystkich datą importu. Puste komórki
+  niczego nie kasują; przed zapisem system pokazuje liczbę nadpisań i prosi
+  o potwierdzenie. ([#nadpisywanie-dat-zatrudnienia](https://github.com/iplweb/bpp/issues/nadpisywanie-dat-zatrudnienia))
+- Identyfikator repozytorium wystawiany przez endpoint OAI-PMH (``/oai/``)
+  wynika teraz z konfiguracji uczelni: domyślnie z jej domeny, a opcjonalnie
+  z nowego pola „Identyfikator repozytorium OAI-PMH" w danych uczelni. Dzięki
+  temu w instalacji obsługującej kilka uczelni każda z nich ma własną,
+  rozłączną przestrzeń identyfikatorów, a identyfikator można zachować mimo
+  zmiany domeny serwisu. Doszedł też przełącznik „Udostępniaj endpoint
+  OAI-PMH" (domyślnie włączony), pozwalający wyłączyć ten adres dla wybranej
+  uczelni. ([#oai-identyfikator-repozytorium](https://github.com/iplweb/bpp/issues/oai-identyfikator-repozytorium))
+- Główny bundle JavaScript jest teraz w pełni minifikowany (esbuild
+  ``--minify``; wcześniej brakowało ``--minify-identifiers``, więc bundle
+  woził pełne nazwy zmiennych). Rozmiar spadł z 921,5 KB do 785,4 KB
+  (-136,2 KB, -14,8%), a po kompresji gzip — z 242,6 KB do 221,5 KB
+  (-21,0 KB, -8,7%). Bundle ładowany jest render-blocking w ``<head>``,
+  więc zysk dotyczy każdego wejścia na stronę.
+
+  Przy okazji uodporniono na minifikację łatę eksportującą globalną
+  przestrzeń nazw ``yl`` z django-autocomplete-light. Dotąd dopasowywała
+  ona sztywną nazwę ``yl2``, którą ``--minify-identifiers`` zmienia — bez
+  poprawki autouzupełnianie (select2) w panelu administracyjnym przestałoby
+  działać. Łata dopasowuje teraz kształt deklaracji zamiast nazwy, a build
+  przerywa się z czytelnym błędem, jeśli nie uda się jej zaaplikować. ([#odchudzenie-bundla-js](https://github.com/iplweb/bpp/issues/odchudzenie-bundla-js))
+- Narzędzie diagnostyczne ``pbn_test_wysylka_interaktywna`` korzysta teraz z
+  pakietowych helperów ``pbn_client`` do dekodowania identyfikatora publikacji
+  (``decode_publication_object_id``) oraz porównywania oświadczeń
+  (``diff_statements`` + ``statement_key_*``). Przy niejednoznacznej odpowiedzi
+  PBN (lista różna od jednego elementu) narzędzie głośno sygnalizuje błąd i pyta
+  o kontynuację zamiast po cichu jechać dalej. ([#pbn-adopt-statement-helpers](https://github.com/iplweb/bpp/issues/pbn-adopt-statement-helpers))
+- Ujednolicono parsowanie błędów wysyłki do PBN. Czysty, wersjonowany kontrakt
+  błędów (``ErrorRecord`` + ``parse``/``serialize``) trafił do pakietu
+  ``pbn-client`` (0.2.1), a wszystkie miejsca wyświetlania w BPP (kolejka
+  eksportu, widoki detalu, panel admina ``SentData``) korzystają teraz z niego
+  jako cienkie adaptery — znika kilka kruchych, rozjeżdżających się parserów.
+  Poprawia to m.in. błąd wyświetlania błędów o payloadzie liczbowym oraz kruchy
+  skrót w panelu admina; readery rozumieją już nowy format v1 (reader-first). ([#pbn-error-record](https://github.com/iplweb/bpp/issues/pbn-error-record))
+- Wydzielono komunikację z PBN i generyczny zapis danych Django do samodzielnych
+  pakietów ``pbn-client`` oraz ``django-pbn-client`` publikowanych na PyPI; BPP
+  zależy od nich jak od każdej innej zależności (bez katalogu ``packages/``). ([#pbn-klienci-workspace](https://github.com/iplweb/bpp/issues/pbn-klienci-workspace))
+- Codzienny alarm o błędach technicznych w kolejce eksportu do PBN wskazuje
+  konkretne wpisy — numer, rekord, powód zatrzymania i link do panelu
+  administracyjnego — zamiast samego licznika. ([#pbn-kolejka-alarm-wpisy](https://github.com/iplweb/bpp/issues/pbn-kolejka-alarm-wpisy))
+- Normalizacja danych osobowych autora z PBN (``lastName``/``familyName`` oraz
+  ``firstName``/``givenNames``/``name``) korzysta teraz z ``pbn_client.normalize_author_name``
+  — jedno źródło prawdy dla niespójnych kształtów PBN, obejmujące także pole
+  ``familyName``, którego wcześniejsza normalizacja rekordu PBN nie rozpoznawała. ([#pbn-normalize-author](https://github.com/iplweb/bpp/issues/pbn-normalize-author))
+- ``pobierz_mongodb`` przyjmuje teraz parametr ``on_error``: ``"raise"`` (domyślne,
+  dotychczasowe fail-fast — błąd zapisu jednego rekordu przerywa cały import) lub
+  ``"skip"`` (deleguje do pakietowego ``download_to_model`` — zły rekord jest
+  logowany i liczony, a import reszty listy kończy się; zwraca
+  ``DownloadResult(processed, errored)``). Przydatne przy masowych synchronizacjach,
+  gdzie pojedynczy zepsuty rekord nie powinien przerywać całego przebiegu.
+  Zachowanie domyślne bez zmian. ([#pbn-pobierz-mongodb-on-error](https://github.com/iplweb/bpp/issues/pbn-pobierz-mongodb-on-error))
+- Rozpoznanie „publikacja nie istnieje w PBN” (HTTP 422 „was not exists!”)
+  odbywa się teraz RAZ w endpoincie pakietu ``pbn_client``
+  (``get_publication_by_id`` rzuca ``PublicationNotFound``), a nie jest
+  duplikowane w BPP. ``BrakIDPracyPoStroniePBN`` jest aliasem
+  ``PublicationNotFound`` (ta sama klasa), więc istniejące handlery działają bez
+  zmian. Zwykły HTTP 404 świadomie NIE jest traktowany jako brak pracy (bywa
+  przejściowy) i nie kasuje lokalnego cache'u publikacji. ([#pbn-publication-not-found](https://github.com/iplweb/bpp/issues/pbn-publication-not-found))
+- Usunięto wielokrotnie powtarzane zapytania do bazy w publicznych szablonach
+  (strona rekordu, jednostki i autora). Szablony odwoływały się po kilka razy do
+  tych samych metod modelu (``autorzy_dla_opisu``, ``pracownicy``,
+  ``wspolpracowali``, ``liczba_cytowan``, ``jednostki_gdzie_ma_publikacje``,
+  podjednostki, streszczenia, metryki ewaluacyjne), a każde odwołanie budowało
+  świeży queryset, czyli osobne odpytanie warstwy danych. Dane są teraz materializowane
+  raz — przez ``prefetch_related`` w widoku, przekazanie gotowych list przez
+  kontekst oraz ``{% with %}`` w szablonach. Lista pracowników jednostki dostała
+  dodatkowo ``select_related("aktualna_funkcja")``.
+
+  Poniższe liczby zmierzono na konfiguracji testowej, czyli przy WYŁĄCZONYM
+  cacheops (``CACHEOPS_ENABLED = False`` w ``settings/test.py``). Na produkcji
+  ``bpp.jednostka`` oraz ``bpp.wydawnictwo_ciagle_streszczenie`` są w ``CACHEOPS``
+  (``get``/``fetch``/``count``/``exists``), więc część usuniętych zapytań trafiała
+  tam do Redisa, a nie do PostgreSQL — realny zysk dla strony strukturalnej
+  jednostki i dla streszczeń będzie odpowiednio mniejszy. Wartości pokazują skalę
+  powtórzeń, a nie gwarantowane przyspieszenie produkcyjne (rekord z 6 autorami;
+  jednostka z 12 pracownikami; jednostka strukturalna z 4 podjednostkami; autor
+  z 3 pracami i 3 metrykami):
+
+  * strona rekordu: 43 → 41 zapytań ogółem; lista autorów opisu 4 → 1,
+    streszczenia 6 → 1;
+  * strona jednostki (lista pracowników): 35 → 27 zapytań ogółem; ``bpp_autor``
+    9 → 4, ``bpp_autor_jednostka`` 4 → 1;
+  * strona jednostki (struktura podjednostek): 53 → 33 zapytania ogółem;
+    ``bpp_jednostka`` 16 → 5;
+  * strona autora: 39 → 33 zapytania ogółem; agregat cytowań 3 → 2, metryki
+    ewaluacyjne 5 → 1, jednostki autora 2 → 1.
+
+  ([#powtarzane-zapytania-szablony-publiczne](https://github.com/iplweb/bpp/issues/powtarzane-zapytania-szablony-publiczne))
+- Strony przeglądania (Autorzy, Źródła, Jednostki) otwierają się znacznie
+  szybciej. Licznik obiektów i rządek dostępnych liter były przeliczane od
+  nowa przy każdym wejściu, skanując całą tabelę — teraz liczą się raz i są
+  zapamiętywane do najbliższej zmiany danych. Na bazie 68 tys. autorów
+  wejście na „Autorzy → wszyscy" skróciło się z 410 ms do 56 ms (7,4×). ([#przegladanie-zliczenia-z-cache](https://github.com/iplweb/bpp/issues/przegladanie-zliczenia-z-cache))
+- W ustawieniach Uczelni można teraz wyłączyć REST API (``/api/v1/``) oraz
+  eksport CERIF/OpenAIRE. Oba interfejsy są domyślnie włączone, więc dotychczasowe
+  wdrożenia nie zmieniają zachowania. Po wyłączeniu endpointy zwracają błąd 404. ([#przelaczniki-api](https://github.com/iplweb/bpp/issues/przelaczniki-api))
+- Raport slotów uczelni (``RaportSlotowUczelnia``) działa teraz na
+  django-liveops: pasek postępu na żywo przez WebSocket/HTMX, możliwość
+  anulowania, a po zakończeniu automatyczne przejście do tabeli wyników.
+  Zachowane zawężenie per-uczelnia oraz owner-scoping listy, wyników i API v1. ([#raport-slotow-liveops](https://github.com/iplweb/bpp/issues/raport-slotow-liveops))
+- Wyszukiwanie zapytaniem (DjangoQL) pozwala teraz wyeksportować listę
+  autorów do CSV/XLSX — obok danych kadrowych (jednostka, tytuł, ORCID, PBN
+  UID i inne) plik zawiera liczbę prac, Σ slotów i Σ pkdaut dla każdego
+  autora. ([#zapytanie-eksport-autorow](https://github.com/iplweb/bpp/issues/zapytanie-eksport-autorow))
+- Wyszukiwanie zapytaniem (DjangoQL) pozwala teraz wybrać postać wyniku
+  (rekordy, lista, tabela, punktacja, BibTeX) i wyeksportować wyniki do CSV,
+  XLSX, HTML, DOCX oraz BibTeX-a — tak jak multiwyszukiwarka. ([#zapytanie-eksporty](https://github.com/iplweb/bpp/issues/zapytanie-eksporty))
+- Tabela krzyżowa dla autorów dostała metryki bibliometryczne — „liczba prac",
+  „Σ slotów" i „Σ pkdaut" — wraz z przekrojami po roku publikacji, dyscyplinie,
+  jednostce przy pracy, typie odpowiedzialności i charakterze formalnym oraz
+  czterema nowymi presetami (produktywność jednostek, ranking slotowy autorów,
+  udziały dyscyplinowe, wkład punktowy jednostek). ([#zapytanie-pivot-autor-metryki-bibliometryczne](https://github.com/iplweb/bpp/issues/zapytanie-pivot-autor-metryki-bibliometryczne))
+- Wyszukiwanie zapytaniem (DjangoQL) pozwala teraz przedstawić wynik jako tabelę
+  krzyżową — z wyborem wymiaru wiersza, kolumny i miary, dokładnie tak jak w
+  wyszukiwaniu formularzowym — oraz wyeksportować samą macierz do CSV i XLSX. ([#zapytanie-tabela-krzyzowa](https://github.com/iplweb/bpp/issues/zapytanie-tabela-krzyzowa))
+- Tabela krzyżowa w wyszukiwaniu zapytaniem (DjangoQL) działa teraz także dla
+  modelu Autor (kartoteka kadrowa: jednostka, tytuł, ORCID, PBN UID i inne),
+  razem z eksportem macierzy do CSV/XLSX i gotowymi presetami w sekcji pomocy. ([#zapytanie-tabela-krzyzowa-autorzy](https://github.com/iplweb/bpp/issues/zapytanie-tabela-krzyzowa-autorzy))
+- Przyspieszenie strony głównej oraz list autorów, źródeł i jednostek: usunięto
+  zbędne ``SELECT DISTINCT`` z zapytań przeglądania. Deduplikacja jest teraz
+  dokładana tylko tam, gdzie filtr faktycznie łączy tabele mogące zwielokrotnić
+  wiersze (tryb wielouczelniany), a nie bezwarunkowo — dzięki temu licznik
+  publikacji i lista ostatnio zmienionych rekordów korzystają z indeksów zamiast
+  przetwarzać całą tabelę.
+
+  Przy okazji poprawiono zawyżone liczby publikacji na stronie „Lata": w
+  instalacjach wielouczelnianych publikacja z kilkoma wpisanymi autorstwami tej
+  samej uczelni była liczona wielokrotnie, więc licznik przy roku pokazywał
+  więcej pozycji, niż faktycznie znajdowało się na liście. ([#zbedny-distinct-przegladanie](https://github.com/iplweb/bpp/issues/zbedny-distinct-przegladanie))
+- Na formularzu zgłaszania publikacji weryfikacja ALTCHA jest teraz na górze,
+  a kafelki wyboru rodzaju publikacji pojawiają się dopiero po jej zakończeniu —
+  usuwa to możliwość kliknięcia zanim weryfikacja się policzy. ([#zglos-captcha-gating](https://github.com/iplweb/bpp/issues/zglos-captcha-gating))
+- Nowy raport „kompletność danych POL-on" (menu *ewaluacja*, dla redaktorów
+  danych): wskazuje, przy którym pracowniku i w którym rekordzie brakuje danych
+  wymaganych przez § 2 ust. 10 rozporządzenia MNiSW z 16 czerwca 2026 r.
+  (Dz. U. 2026 poz. 811). Zestawienie zbiorcze pokazuje autorów posortowanych
+  malejąco po brakach wymaganych, a widok szczegółów wypisuje przy każdym
+  rekordzie naruszone wymogi wraz z podstawą prawną i linkiem prosto do
+  formularza edycji. Raport odróżnia dane wymagane bezwarunkowo od tych, których
+  rozporządzenie żąda tylko „jeżeli posiada" — te drugie liczone są osobno i nie
+  zawyżają pilności. Zakres raportu to lata **od 2026 wzwyż**: górna granica
+  pozostaje otwarta, dopóki MEiN nie ogłosi długości nowego okresu ewaluacyjnego,
+  żeby raport nie przestał po cichu widzieć najnowszych rekordów. ([#fd437](https://github.com/iplweb/bpp/issues/fd437))
+- Marker „[❌ USUNIĘTY]" w reprezentacji tekstowej lustrzanych obiektów PBN
+  (instytucje, publikacje, konferencje, wydawcy, czasopisma, naukowcy) korzysta
+  teraz ze wspólnego helpera ``with_deleted_marker`` z pakietu
+  ``django-pbn-client`` — koniec sześciu zduplikowanych bloków ``if is_deleted``. ([#pbn-a2-deleted-marker](https://github.com/iplweb/bpp/issues/pbn-a2-deleted-marker))
+- BPP adoptuje API paczek PBN w wersji 0.2: property ``is_deleted`` zamiast
+  magic-stringa ``status == "DELETED"`` w modelach PBN, ``is_valid_object_id``
+  z ``pbn_client`` jako implementacja ``check_mongoId`` oraz
+  ``get_or_download`` z ``django_pbn_client`` w funkcjach ``ensure_*``
+  integratora — usuwając zduplikowany kod przy zachowaniu identycznego
+  zachowania. ([#pbn-adopt-api-02](https://github.com/iplweb/bpp/issues/pbn-adopt-api-02))
+- Optymalizacje wydajności warstwy requestu: ``NotificationsMiddleware`` nie
+  wykonuje już pełnoskanowego ``UPDATE`` na tabeli wiadomości przy każdym
+  requeście zalogowanego użytkownika (odsiew tanim zapytaniem po
+  zaindeksowanym ``user_id``), a cache ``cacheops`` objął rozstrzyganie
+  domena→``Site``, grupy uprawnień oraz słowniki (tytuł, język, typ KBN,
+  charakter formalny, funkcja autora, dyscyplina naukowa). Konferencje
+  celowo pozostają poza ``cacheops`` — integrator PBN zapisuje każdy rekord
+  bezwarunkowo, więc cache generowałby tysiące inwalidacji na przebieg. ([#wydajnosc-p0](https://github.com/iplweb/bpp/issues/wydajnosc-p0))
+- Rejestracje klientów MCP, które nigdy nie doszły do skutku (użytkownik zamknął
+  kartę, przerwane logowanie, narzędzie testowe), są odtąd automatycznie
+  sprzątane po tygodniu — tabela aplikacji OAuth nie rośnie już bez ograniczeń.
+  Aplikacje realnie używane, z ważnym tokenem lub trwającym logowaniem, są
+  nietykalne. Ręczne uruchomienie: `usun_osierocone_aplikacje_oauth`
+  (z `--dry-run` do samego policzenia). ([#656](https://github.com/iplweb/bpp/issues/656))
+- Nowa encja "projekt badawczy" wraz z zespołem projektu. Numery grantów
+  można teraz przypiąć do projektu, a projekty wychodzą w eksporcie
+  CERIF-XML w zestawie ``openaire_cris_projects``. ([#701](https://github.com/iplweb/bpp/issues/701))
+- Nowa encja "finansowanie" wraz ze słownikiem instytucji finansujących
+  (z identyfikatorami ROR i Crossref Funder ID). Finansowanie projektów
+  wychodzi w eksporcie CERIF-XML w zestawie ``openaire_cris_funding``.
+  Kwoty są eksportowane wyłącznie po włączeniu opcji w ustawieniach uczelni. ([#702](https://github.com/iplweb/bpp/issues/702))
+- CI: testy przeglądarkowe (Playwright) są ponawiane raz przy porażce
+  (``pytest-rerunfailures``), a pull obrazów Docker (``iplweb/bpp_dbserver``,
+  ``redis``, test-runner) ma retry z backoffem. Redukuje szum CI z flake'ów
+  Playwrighta i timeoutów rejestru, nie maskując przy tym niedeterminizmu w
+  testach jednostkowych — retry jest zawężony wyłącznie do testów z markerem
+  ``playwright``.
+- Motywy demonstracyjne w ``create_demo_data`` wzbogacono o czarne
+  charaktery. Do puli generowanych autorów dołączyli wrogowie: w motywie
+  „Wiedźmin" (m.in. Vilgefortz, Emhyr var Emreis, Leo Bonhart), w motywie
+  „Harry Potter" — śmierciożercy i inni złoczyńcy (m.in. Voldemort,
+  Bellatrix Lestrange, Dolores Umbridge), a w motywie „Disney" — klasyczni
+  złoczyńcy (m.in. Jafar, Skaza, Urszula, Cruella de Mon).
+- Nowa zmienna środowiskowa ``DJANGO_BPP_ROLLBAR_IGNORE_SMTP_AUTH_ERRORS``
+  (domyślnie wyłączona) pozwala wyciszyć w monitoringu błędów zgłoszenia
+  o odrzuconych poświadczeniach serwera poczty na konkretnej instalacji.
+  Do użycia tam, gdzie administratorzy poczty po stronie klienta mają znaną
+  awarię, której nie da się naprawić po naszej stronie. Pozostałe błędy poczty
+  — w tym błędny adres odbiorcy czy nadawcy — są raportowane jak dotąd.
+- Zgłoszenie publikacji domknięte importerem prac oznacza się teraz samo.
+  Po zakończeniu importu uruchomionego przyciskiem „Użyj importera" zgłoszenie
+  dostaje status „zaimportowany przez importer prac", a przy zgłoszeniu widać,
+  kto i o której je zaimportował oraz jaki rekord powstał. Lista zgłoszeń
+  w panelu administracyjnym ma nowy filtr „Stan obsługi", domyślnie pokazujący
+  tylko zgłoszenia wymagające uwagi. Gdy na to samo DOI czeka kilka zgłoszeń,
+  importer pyta operatora, które domknąć, zamiast wybierać samodzielnie (FD#443).
+
+
 ## bpp 202607.1398 (2026-07-22)
 
 ### Naprawione
