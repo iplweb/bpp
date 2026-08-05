@@ -95,7 +95,7 @@ class CustomRouter(routers.DefaultRouter):
         """
         api_root_dict = {}
         list_name = self.routes[0].name
-        for prefix, viewset, basename in self.registry:
+        for prefix, _viewset, basename in self.registry:
             api_root_dict[prefix] = list_name.format(basename=basename)
 
         return z_bramka_api_v1(CustomAPIRootView, grupa=None).as_view(

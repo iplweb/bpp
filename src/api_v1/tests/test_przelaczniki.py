@@ -13,7 +13,6 @@ from api_v1.permissions import (
     KOMUNIKAT_GRUPA,
     KOMUNIKAT_ZALOGOWANI,
 )
-
 from bpp.models import Uczelnia
 from bpp.models.uczelnia import GrupaApiV1
 
@@ -124,9 +123,7 @@ def test_glowny_wylacznik_dziala_takze_na_detail(client, uczelnia, jednostka):
     assert client.get(url).status_code == 404
 
 
-def test_glowny_wylacznik_daje_404_takze_superuserowi(
-    client, admin_client, uczelnia
-):
+def test_glowny_wylacznik_daje_404_takze_superuserowi(client, admin_client, uczelnia):
     """Bramka nie jest kwestią uprawnień użytkownika, tylko istnienia
     endpointu — więc superuser widzi to samo, co anonim."""
     uczelnia.api_v1_wlaczone = False

@@ -14,7 +14,6 @@ import pytest
 from django.urls import NoReverseMatch, reverse
 
 
-
 def _url_cerif():
     """URL endpointu OAI-PMH albo ``None``, gdy jeszcze nie istnieje.
 
