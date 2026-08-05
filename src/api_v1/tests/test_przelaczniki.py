@@ -306,3 +306,50 @@ def test_cors_nadal_na_odpowiedzi_sukcesu(client, uczelnia, autor_jan_nowak):
     res = client.get(url_kafelka_autora(autor_jan_nowak))
     assert res.status_code == 200
     assert res[NAGLOWEK_CORS] == "*"
+
+
+#
+# Przeniesione z src/cerif_export/tests/test_przelaczniki.py — testy
+# przełącznika /api/v1/ powstały razem ze specyfikacją eksportu CERIF
+# i mieszkały w tamtej aplikacji z przyczyn czysto historycznych.
+#
+
+# Endpointy reprezentatywne dla różnych rodzajów widoków pod /api/v1/:
+# korzeń routera, zwykły ModelViewSet, viewset z własnymi
+# ``permission_classes`` oraz widok spoza routera (``whoami``).
+ENDPOINTY_API_V1 = [
+    "api_v1:api-root",
+    "api_v1:jednostka-list",
+    "api_v1:autor-list",
+    "api_v1:zapytanie_rekord-list",
+    "api_v1:whoami",
+]
+
+
+@pytest.mark.parametrize("nazwa_url", ENDPOINTY_API_V1)
+def test_api_v1_domyslnie_odpowiada(client, uczelnia, nazwa_url):
+    """Przy domyślnym ustawieniu bramka nie zmienia niczego: endpointy
+    odpowiadają tak jak dotąd (200 publiczne, 401 wymagające konta) —
+    byle nie 404, bo to sygnatura wyłączonego API."""
+    res = client.get(reverse(nazwa_url))
+    assert res.status_code != 404
+
+
+@pytest.mark.parametrize("nazwa_url", ENDPOINTY_API_V1)
+def test_api_v1_wylaczone_daje_404(client, uczelnia, nazwa_url):
+    """Wyłączony główny przełącznik chowa CAŁE API — każdy endpoint daje 404.
+
+    Kafelki są jedynym wyjątkiem i mają własne testy wyżej.
+    """
+    uczelnia.api_v1_wlaczone = False
+    uczelnia.save()
+
+    assert client.get(reverse(nazwa_url)).status_code == 404
+
+
+@pytest.mark.django_db
+def test_api_v1_bez_uczelni_nie_jest_blokowane(client):
+    """Brak obiektu ``Uczelnia`` (pusta baza, kreator konfiguracji) — nie ma
+    kto podjąć decyzji, więc zachowujemy dotychczasowe zachowanie."""
+    res = client.get(reverse("api_v1:jednostka-list"))
+    assert res.status_code == 200
