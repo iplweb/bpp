@@ -461,3 +461,28 @@ def test_przyklad_z_help_text_jest_poprawnym_ror():
         assert przyklady, f"{model.__name__}: brak przykładu w help_text"
         for przyklad in przyklady:
             assert ror.poprawny(przyklad.rstrip(" .()")), przyklad
+
+
+@pytest.mark.parametrize(
+    "wejscie",
+    [
+        "https://ror.org.evil.example/016f61126",
+        "https://evil.example/?x=ror.org/016f61126",
+        "https://evil.example/ror.org/016f61126",
+    ],
+)
+def test_obcy_host_nie_udaje_ror_a(wejscie):
+    """Regresja (CodeQL py/incomplete-url-substring-sanitization).
+
+    Sprawdzanie podciągu ``ror.org`` przepuszczało adresy, w których ta
+    domena stoi w innym miejscu niż host. Skutku bezpieczeństwa nie było
+    (o poprawności decyduje suma kontrolna), ale samo sprawdzenie było złe.
+
+    Wynik ma być NIEpoprawny, ale NIEpusty — pusty przechodzi walidację
+    jako „nie podano ROR-a" i po cichu czyściłby pole.
+    """
+    znormalizowany = ror.normalizuj(wejscie)
+
+    assert not ror.poprawny(znormalizowany)
+    with pytest.raises(ValidationError):
+        ror.waliduj(znormalizowany)

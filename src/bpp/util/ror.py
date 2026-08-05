@@ -13,6 +13,7 @@ podstawę 32 jako ``0-9a-v``, co daje inne liczby i inną sumę kontrolną.
 """
 
 import re
+from urllib.parse import urlsplit
 
 import requests
 from django.core.exceptions import ValidationError
@@ -38,6 +39,9 @@ class BladWyszukiwania(RuntimeError):
     """Nie udało się odpytać publicznego API ROR (sieć, HTTP, format odpowiedzi)."""
 
 
+HOSTY_ROR = frozenset({"ror.org", "www.ror.org"})
+
+
 def _sufiks(wartosc):
     """Wytnij z dowolnej postaci wejściowej sam identyfikator, małymi literami.
 
@@ -48,20 +52,31 @@ def _sufiks(wartosc):
     if wartosc is None:
         return ""
 
-    tekst = str(wartosc).strip().lower()
+    tekst = str(wartosc).strip()
     if not tekst:
         return ""
 
-    for schemat in ("https://", "http://"):
-        if tekst.startswith(schemat):
-            tekst = tekst[len(schemat) :]
-            break
+    # Adres z jawnym schematem rozbieramy parserem i porównujemy HOST
+    # dokładnie. `startswith("ror.org")` po odcięciu schematu przepuszczał
+    # `https://ror.org.evil.example/x` — CodeQL zgłasza to jako
+    # py/incomplete-url-substring-sanitization i ma rację, nawet jeśli
+    # realnego skutku nie ma (o poprawności decyduje `poprawny`).
+    if "//" in tekst:
+        rozbite = urlsplit(tekst)
+        host = (rozbite.hostname or "").lower()
+        if host not in HOSTY_ROR:
+            # Świadomie NIE zwracamy pustego łańcucha: pusty znaczy „nie
+            # podano ROR-a" i przechodzi walidację. Obcy adres ma zostać
+            # odrzucony głośno, a nie po cichu wyczyścić pole.
+            return tekst.lower()
+        return rozbite.path.strip("/").strip().lower()
 
+    tekst = tekst.lower()
     if tekst.startswith("www."):
         tekst = tekst[len("www.") :]
 
-    # Bez ukośnika we wzorcu, żeby sam adres ``https://ror.org/`` (bez
-    # identyfikatora) zredukował się do pustego łańcucha, a nie do „ror.org”.
+    # Bez ukośnika we wzorcu, żeby samo ``ror.org`` (bez identyfikatora)
+    # zredukowało się do pustego łańcucha.
     if tekst.startswith("ror.org"):
         tekst = tekst[len("ror.org") :]
 
