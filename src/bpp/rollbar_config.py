@@ -9,6 +9,14 @@ from rollbar.lib.transforms.scruburl import ScrubUrlTransform
 # stały fingerprint — patrz collapse_noisy_fingerprints.
 NOISY_FINGERPRINT_EXC = {
     "DocxConversionError",
+    "Http404",
+}
+
+#: Podzbiór NOISY_FINGERPRINT_EXC, dla którego do fingerprintu dokładamy nazwę
+#: widoku. Bez tego 404 z przeglądania nieistniejących slugów zlałoby się z 404
+#: sygnalizującym realny brak danych (np. definicji raportu).
+FINGERPRINT_PO_WIDOKU = {
+    "Http404",
 }
 
 #: Domyślne `url_fields` pyrollbara — klucze, pod którymi spodziewa się URL-i.
@@ -84,11 +92,15 @@ def add_hostname_to_payload(payload, **kw):
 def collapse_noisy_fingerprints(payload, **kw):
     """Narzuć stały fingerprint na zgłośne wyjątki (patrz NOISY_FINGERPRINT_EXC).
 
-    Rollbar domyślnie tworzy osobny item per raport, bo treść HTML z danymi
-    autora trafia do fingerprintu. Jawny ``data["fingerprint"]`` przejmuje
-    grupowanie: jeden serwer z zepsutą konwersją = dokładnie jeden item,
-    niezależnie od liczby autorów. Klucz ``(klasa, host)``, żeby dwa różne
-    serwery pozostały dwoma osobnymi itemami (dwa problemy do naprawy).
+    Rollbar domyślnie tworzy osobny item per zgłoszenie, bo zmienne lokalne
+    ramek (treść raportu, slug z URL-a) trafiają do fingerprintu. Jawny
+    ``data["fingerprint"]`` przejmuje grupowanie: klucz ``(klasa, host)``,
+    a dla klas z ``FINGERPRINT_PO_WIDOKU`` dodatkowo nazwa widoku.
+
+    Host bierzemy per-request (``request_host`` z middleware'u), bo canonical
+    ``DJANGO_BPP_HOSTNAME`` jest wspólny dla wszystkich uczelni w instalacji
+    multi-hosted. Zgłoszenia bez requestu (Celery, komendy) degradują do
+    canonical, potem do ``unknown``.
 
     Musi być zarejestrowany PO add_hostname_to_payload — czyta hosta z
     ``custom`` wypełnionego przez tamten handler.
@@ -102,9 +114,17 @@ def collapse_noisy_fingerprints(payload, **kw):
     if not trace:
         return payload
     exc_class = trace.get("exception", {}).get("class")
-    if exc_class in NOISY_FINGERPRINT_EXC:
-        host = data.get("custom", {}).get("DJANGO_BPP_HOSTNAME", "unknown")
-        data["fingerprint"] = f"{exc_class}:{host}"
+    if exc_class not in NOISY_FINGERPRINT_EXC:
+        return payload
+
+    custom = data.get("custom", {})
+    host = custom.get("request_host") or custom.get("DJANGO_BPP_HOSTNAME") or "unknown"
+    fingerprint = f"{exc_class}:{host}"
+    if exc_class in FINGERPRINT_PO_WIDOKU:
+        # `context` to url_name widoku — ustawia je BASE_DATA_HOOK
+        # django-rollbara, zanim odpalą się payload handlery.
+        fingerprint += f":{data.get('context') or 'unknown'}"
+    data["fingerprint"] = fingerprint
     return payload
 
 
