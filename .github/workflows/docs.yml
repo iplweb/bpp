@@ -27,6 +27,12 @@ on:
       - mkdocs.yml
       - .readthedocs.yaml
       - .github/workflows/docs.yml
+  # Reczne odpalenie — potrzebne, gdy commit dokumentacyjny mial w tytule
+  # `[ci skip]`. GitHub Actions honoruje ten marker globalnie (pomija CALY
+  # run dla push/pull_request, niezaleznie od path-filtrow), wiec Pages
+  # potrafi zostac na starej wersji mimo zmian w `docs/**`. RTD ma wlasny
+  # webhook i `[ci skip]` go nie dotyczy — stad rozjazd obu kanalow.
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -68,10 +74,14 @@ jobs:
 
   deploy:
     name: Deploy to GitHub Pages
-    # Publikujemy tylko z kanonicznego brancha `dev` i tylko na push —
-    # nigdy z PR-a ani z `master` (master sluzy buildowi obrazow Docker,
-    # nie dokumentacji).
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    # Publikujemy tylko z kanonicznego brancha `dev` i tylko na push albo
+    # reczne `workflow_dispatch` — nigdy z PR-a ani z `master` (master sluzy
+    # buildowi obrazow Docker, nie dokumentacji). Bez `workflow_dispatch`
+    # w tym warunku reczne odpalenie tylko budowaloby site, nie publikujac
+    # go — czyli nie naprawialoby przypadku, dla ktorego istnieje.
+    if: >-
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      && github.ref == 'refs/heads/dev'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 5
