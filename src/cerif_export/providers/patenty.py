@@ -26,11 +26,20 @@ def widoczne_patenty(uczelnia):
     Reguła jak dla wydawnictw: status korekty niewykluczony kanałem
     ``cerif``, ``nie_eksportuj_przez_api=False`` i scope tenanta przez model
     autorstwa (``Patent_Autor``).
+
+    Dodatkowo odpadają rekordy o rodzaju prawa oznaczonym
+    ``eksportuj_jako_patent=False`` (np. znak towarowy). ``Patent/Type`` jest
+    w profilu obowiązkowy i ograniczony do gałęzi „patent" słownika COAR —
+    samo pominięcie mapowania NIE dawało tu „braku typu", tylko fallback na
+    ``c_15cd patent``, czyli deklarowanie znaku towarowego patentem.
+    Rekordy z ``rodzaj_prawa=NULL`` zostają: to są prawdziwe patenty bez
+    doprecyzowanego rodzaju, a nie inne prawa własności przemysłowej.
     """
     wymagaj_uczelni(uczelnia)
     return (
         Patent.objects.exclude(status_korekty_id__in=uczelnia.ukryte_statusy("cerif"))
         .filter(nie_eksportuj_przez_api=False)
+        .exclude(rodzaj_prawa__eksportuj_jako_patent=False)
         .filter(
             pk__in=Patent_Autor.objects.filter(jednostka__uczelnia=uczelnia).values(
                 "rekord_id"

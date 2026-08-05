@@ -26,13 +26,18 @@ Prefetche wymagane od providera
 ``select_related``: ``charakter_formalny``, ``jezyk``, ``zrodlo``
 (+ ``zrodlo__jezyk``), ``wydawnictwo_nadrzedne``
 (+ ``wydawnictwo_nadrzedne__charakter_formalny``), ``konferencja``,
-``openaccess_licencja``, ``openaccess_tryb_dostepu``, a dla prac
+``openaccess_licencja``, ``openaccess_tryb_dostepu``,
+``openaccess_czas_publikacji`` (embargo), a dla prac
 doktorskich/habilitacyjnych ``autor`` i ``jednostka``.
 
 ``prefetch_related``: ``autorzy_set__autor``, ``autorzy_set__jednostka``,
 ``autorzy_set__typ_odpowiedzialnosci``, ``dodatkowe_tytuly__jezyk``,
 ``streszczenia__jezyk_streszczenia``, ``slowa_kluczowe``.
 """
+
+import datetime
+
+from dateutil.relativedelta import relativedelta
 
 from bpp import const as bpp_const
 from cerif_export import const, identyfikatory
@@ -290,18 +295,63 @@ def dodaj_konferencje(el, obj, ctx):
     return kontener
 
 
+#: Skrót czasu udostępnienia oznaczający embargo (``Czas_Udostepnienia_OpenAccess``).
+CZAS_PO_OPUBLIKOWANIU = "AFTER_PUBLICATION"
+
+
+def _pod_embargiem(obj, dzisiaj=None):
+    """Czy praca jest jeszcze pod embargiem?
+
+    BPP trzyma embargo OSOBNO od trybu dostępu:
+    ``openaccess_czas_publikacji`` mówi „po opublikowaniu", a
+    ``openaccess_ilosc_miesiecy`` — po ilu. Sam tryb (``OPEN_JOURNAL``,
+    ``OPEN_REPOSITORY``) mówi tylko GDZIE praca będzie otwarta, nie KIEDY.
+
+    Gdy nie da się ustalić, czy embargo minęło, zwracamy ``True``. Lepiej
+    zaniżyć otwartość, niż powiedzieć agregatorowi „open access" o pracy,
+    której nikt nie może pobrać — to drugie kończy się zgłoszeniem od
+    użytkownika OpenAIRE, a nie tylko brakiem punktu w statystyce.
+    """
+    czas = getattr(obj, "openaccess_czas_publikacji", None)
+    if czas is None or getattr(czas, "skrot", None) != CZAS_PO_OPUBLIKOWANIU:
+        return False
+
+    miesiecy = getattr(obj, "openaccess_ilosc_miesiecy", None)
+    if not miesiecy:
+        # „Po opublikowaniu", ale nie wiadomo po ilu miesiącach.
+        return True
+
+    data = getattr(obj, "openaccess_data_opublikowania", None)
+    if data is None:
+        return True
+
+    dzisiaj = dzisiaj or datetime.date.today()
+    # `relativedelta`, nie `timedelta(days=30*n)`: miesiąc 30-dniowy
+    # SKRACA embargo (12 mies. = 360 dni), więc przez kilka dni rekord
+    # raportowałby OPEN będąc jeszcze pod embargiem — czyli błąd w tę
+    # stronę, którą docstring wyżej wprost odrzuca.
+    koniec = data + relativedelta(months=int(miesiecy))
+    return dzisiaj < koniec
+
+
 def dodaj_dostep(el, obj):
     """Dopisz ``Access`` (COAR Access Rights) z trybu dostępu Open Access.
 
     ``Zrodlo.openaccess_tryb_dostepu`` to zwykły ``CharField`` (``FULL`` /
     ``PARTIAL``), a nie FK do słownika — dlatego sprawdzamy pole ``*_id``,
     które istnieje tylko na wydawnictwach.
+
+    Tryb dostępu sam w sobie NIE wystarcza: praca w otwartym czasopiśmie,
+    ale z embargiem, jest w tej chwili niedostępna i profil ma na to osobny
+    termin (``embargoed access``).
     """
     if getattr(obj, "openaccess_tryb_dostepu_id", None) is None:
         return None
     uri = dostep.prawo_dostepu(obj.openaccess_tryb_dostepu)
     if not uri:
         return None
+    if uri == dostep.OPEN and _pod_embargiem(obj):
+        uri = dostep.EMBARGOED
     return dodaj(el, "Access", uri, ns=const.NS_COAR_ACCESS)
 
 

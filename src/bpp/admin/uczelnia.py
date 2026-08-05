@@ -14,6 +14,7 @@ from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers.constance_field_mixin import ConstanceUczelniaFieldsMixin
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
+from .helpers.ror_field import czysc_ror
 from .helpers.site_filtered import SiteFilteredAdminMixin
 
 
@@ -78,6 +79,9 @@ class UczelniaAdminForm(forms.ModelForm):
                 "multi-hosted to powiązanie z domeną wiąże uczelnię z jej "
                 "adresem — nie istnieje „uczelnia domyślna”."
             )
+
+    def clean_ror_id(self):
+        return czysc_ror(self.cleaned_data.get("ror_id"))
 
 
 class UczelniaAdmin(
@@ -168,6 +172,7 @@ class UczelniaAdmin(
                 "classes": ("grp-collapse grp-closed",),
                 "fields": (
                     "eksport_cerif_wlaczony",
+                    "eksport_cerif_osoby",
                     "ror_id",
                 ),
             },

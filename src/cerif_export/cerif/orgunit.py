@@ -10,6 +10,7 @@ Provider musi dostarczyć: ``select_related("parent", "uczelnia")`` dla
 ``Jednostka``.
 """
 
+from bpp.util import ror
 from cerif_export.cerif import wspolne
 from cerif_export.cerif.wspolne import dodaj, dodaj_kontener, element, tekst
 
@@ -28,8 +29,10 @@ def dodaj_ror(el, jednostka):
     surowy = tekst(getattr(jednostka, "ror_id", None))
     if surowy is None:
         return None
-    uri = surowy if surowy.startswith("http") else f"https://ror.org/{surowy}"
-    uri = uri.rstrip("/")
+    # Normalizacja z `bpp.util.ror` — ta sama, której używa walidacja pola.
+    # Ręczne sklejanie prefiksu nie łykało `www.` ani wielkich liter, więc
+    # poprawny ROR wpisany w innej postaci lądował w generycznym Identifier.
+    uri = ror.normalizuj(surowy)
     if wspolne.pasuje(wspolne.WZ_ROR, uri) is not None:
         return dodaj(el, "RORID", uri)
     return dodaj(el, "Identifier", uri, type=TYP_ID_ROR)

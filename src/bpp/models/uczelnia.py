@@ -20,6 +20,7 @@ from tinymce.models import HTMLField
 from bpp.fields import EncryptedTextField
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID, NazwaWDopelniaczu
+from bpp.util.ror import waliduj as waliduj_ror
 from pbn_api.exceptions import WillNotExportError
 
 from .. import const
@@ -576,8 +577,8 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         max_length=64,
         blank=True,
         default="",
-        help_text="Identyfikator uczelni w Research Organization Registry "
-        "(ROR), np. https://ror.org/0111ttp83 . Używany w eksporcie "
+        validators=[waliduj_ror],
+        help_text="Identyfikator w Research Organization Registry (ROR), np. https://ror.org/016f61126 — ma wbudowaną sumę kontrolną, więc literówka zostanie odrzucona. Używany w eksporcie "
         "CERIF/OpenAIRE jako identyfikator zewnętrzny instytucji; gdy pusty, "
         "nie zostanie wyeksportowany.",
     )
@@ -595,6 +596,15 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         help_text="Gdy odznaczone, endpoint OAI-PMH z danymi w formacie "
         "CERIF-XML (OpenAIRE CRIS Guidelines) przestaje odpowiadać dla tej "
         "uczelni.",
+    )
+    eksport_cerif_osoby = models.BooleanField(
+        "Eksportuj dane osób do CERIF/OpenAIRE",
+        default=True,
+        help_text="Gdy odznaczone, zestaw „openaire_cris_persons” pozostaje "
+        "pusty, a autorzy pojawiają się wyłącznie jako encje osadzone "
+        "w opisie publikacji: samo imię i nazwisko, bez własnych rekordów, "
+        "bez ORCID-ów, bez afiliacji i bez historii zatrudnienia. Zestaw "
+        "musi istnieć nawet pusty — wymagają tego wytyczne OpenAIRE.",
     )
     pbn_kasuj_dyscypliny_selektywnie = models.BooleanField(
         "Kasuj oświadczenia selektywnie (per osoba)",

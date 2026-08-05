@@ -29,8 +29,24 @@ from cerif_export.providers.jednostki import (
 
 
 def widoczni_autorzy(uczelnia):
-    """Autorzy eksportowani dla tej uczelni — bez prefetchy."""
+    """Autorzy eksportowani dla tej uczelni — bez prefetchy.
+
+    Wyłączenie ``Uczelnia.eksport_cerif_osoby`` zeruje ten zbiór, co działa
+    w DWÓCH miejscach naraz — i o to chodzi:
+
+    1. zestaw ``openaire_cris_persons`` robi się pusty (istnieć musi nadal,
+       bo profil wymaga wszystkich dziewięciu);
+    2. autorzy osadzeni w publikacjach tracą ``@id``, ORCID i afiliacje, bo
+       serializery pytają o widoczność dokładnie tego zbioru.
+
+    Gdyby punkt 2 nie zadziałał, wyłączenie zestawu byłoby pozorne: dane
+    osobowe wychodziłyby dalej, tyle że okrężną drogą przez publikacje.
+    """
     wymagaj_uczelni(uczelnia)
+
+    if not uczelnia.eksport_cerif_osoby:
+        return Autor.objects.none()
+
     return Autor.objects.filter(pokazuj=True).filter(
         pk__in=Autor_Jednostka.objects.filter(jednostka__uczelnia=uczelnia).values(
             "autor_id"

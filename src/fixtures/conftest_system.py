@@ -69,6 +69,7 @@ def jezyki():
     )
     pl.skrot_dla_pbn = "PL"
     pl.skrot_crossref = "pl"
+    pl.kod_bcp47 = "pl"
     pl.save()
 
     ang, created = Jezyk.objects.get_or_create(
@@ -76,6 +77,7 @@ def jezyki():
     )
     ang.skrot_dla_pbn = "EN"
     ang.skrot_crossref = "en"
+    ang.kod_bcp47 = "en"
     ang.save()
 
     for elem in fixture("jezyk.json"):
