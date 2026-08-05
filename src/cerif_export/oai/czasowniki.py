@@ -77,6 +77,10 @@ MODULY_SERIALIZERA = {
     "au": "person",
     "je": "orgunit",
     "uc": "orgunit",
+    # Instytucja finansująca wychodzi jako OrgUnit — profil nie ma osobnej
+    # encji grantodawcy. Bez tego wpisu ``ListRecords`` dla setu OrgUnits
+    # wywalałby się na pierwszym grantodawcy zwróconym przez provider.
+    "if": "orgunit",
     "pt": "patent",
     "kf": "event",
 }
