@@ -328,20 +328,46 @@ przepływ nie zawiera wcale słowa „localhost" — dokładnie ten przypadek
 umknąłby heurystyce. Target wyciąga host z URL-a i porównuje z:
 `localhost`, `127.0.0.1`, `0.0.0.0`, `::1`, `$(hostname)`, `$(hostname -s)`.
 
-Przy trafieniu: `--add-host=host.docker.internal:host-gateway` i podmiana
-hosta w URL-u, plus ostrzeżenie o dwóch warunkach, bez których i tak nie
-zadziała:
+**Podmiana hosta w URL-u to złe rozwiązanie** — zweryfikowane empirycznie
+na `run-site` z prawdziwą bazą. Pierwotny wariant (przepisz host na
+`host.docker.internal`) padał z dwóch niezależnych powodów naraz:
 
-- **`ALLOWED_HOSTS`** — kontener wyśle `Host: host.docker.internal`, a Django
-  odrzuci to `DisallowedHost` (HTTP 400). Walidator zobaczy 400 zamiast
-  OAI-PMH i wypluje mylący błąd protokołu.
-- **bind na Linuksie** — `host-gateway` mapuje na IP bridge'a (`172.17.0.1`),
-  więc serwer słuchający tylko na `127.0.0.1` odrzuci połączenie mimo
-  poprawnego DNS-u. Na Docker Desktop (macOS) ruch idzie przez VM i działa
-  niezależnie od bindu — stąd klasyczne „u mnie działa".
+1. **`connection refused`** — Daphne słucha na **jednym interfejsie**
+   (`100.107.38.27:51656`), nie na `0.0.0.0`. Brama Dockera trafia w inny
+   adres hosta, na którym nic nie nasłuchuje.
+2. **HTTP 400 `DisallowedHost`** — po podmianie kontener wysyła
+   `Host: host.docker.internal`, którego Django nie zna. Walidator widzi 400
+   zamiast OAI-PMH i zgłasza mylący błąd protokołu. Drugi błąd był maskowany
+   przez pierwszy.
 
-Katalog `data/` z kontenera montowany do cache'u, żeby ścieżka dockerowa
-zostawiała ten sam materiał diagnostyczny, co javowa (patrz §5.4).
+Rozwiązanie odwraca problem: **nie ruszamy URL-a, mapujemy nazwę.**
+`--add-host=<host>:<IP hosta>` sprawia, że TCP idzie na realny adres, a
+nagłówek `Host` zostaje ten, którego Django oczekuje. IP rozwiązujemy na
+hoście: `getent hosts`, `dscacheutil` (macOS), `ping` jako ostatnia deska.
+
+⚠️ Porównanie nazw **musi być case-insensitive**: `hostname -s` zwraca
+`Mac-mini`, a banner `run-site` podaje `mac-mini`. Nazwy hostów są
+case-insensitive, więc naiwne `case` je rozjeżdża i gałąź w ogóle się nie
+odpala — objaw wygląda wtedy jak problem sieciowy, nie jak literówka.
+
+Dla `localhost`/`127.0.0.1`/`::1`/`0.0.0.0` nie ma dobrego mapowania: zostaje
+`host-gateway` plus ostrzeżenie, że serwer musi słuchać na `0.0.0.0`. Tego
+ograniczenia nie da się obejść po stronie klienta.
+
+#### Katalog roboczy: cache, nie repo
+
+Walidator zapisuje pobrane odpowiedzi do **względnego** `data/`. Stary target
+uruchamiał `java` w katalogu klonu walidatora, więc śmieci lądowały tam.
+Naiwne przeniesienie na `java -jar <cache>/…` z korzenia repo zasypuje BPP
+setkami nieśledzonych plików (zmierzone: 157 po jednym przebiegu; `data/`
+nie jest w `.gitignore`). Oba tory dostają więc katalog roboczy w cache'u:
+javowy przez `cd`, dockerowy przez montowanie na `/work/data`.
+
+Efekt uboczny, o którym warto wiedzieć: `data/` przeżywa między przebiegami,
+a walidator czyta stamtąd. Po serii nieudanych przebiegów potrafi to dać
+fałszywe błędy — jeden przebieg pokazał 2 błędy zaraz po serii zepsutych,
+a trzy kolejne czyste `OK (13 tests)`. Przy niewyjaśnionych błędach:
+wyczyścić `data/`.
 
 #### Dokumentacja i newsfragment
 

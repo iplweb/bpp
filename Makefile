@@ -372,6 +372,13 @@ tests-with-microsoft-auth: enable-microsoft-auth tests-without-playwright-with-m
 #
 # Wymagania: JRE 17+ ALBO Docker. Mavena i JDK nie trzeba.
 #
+# Oba tory uruchamiają walidator z katalogiem roboczym ustawionym na cache,
+# NIE na korzeń repo: walidator zapisuje pobrane odpowiedzi OAI-PMH do
+# WZGLĘDNEGO katalogu data/ (CRISValidator:
+# `new FileLoggingConnectionStreamFactory("data")`), więc uruchomiony stąd
+# zasypałby repo setkami nieśledzonych plików. Tor javowy dostaje `cd`,
+# dockerowy — montowanie tej samej ścieżki na /work/data.
+#
 # Użycie:  make cerif-validate URL=https://twoja-instancja/cerif-oai/
 CERIF_VALIDATOR_VERSION ?= v2.1.1-iplweb.1
 # Poza drzewem repo celowo: `make clean` robi `rm -rf .cache` (patrz
@@ -453,23 +460,45 @@ cerif-validate: ## Waliduj endpoint CERIF (URL=...) walidatorem euroCRIS
 	fi; \
 	if [ "$$java_ok" = 1 ]; then \
 	  $(MAKE) --no-print-directory "$(_cerif_jar)" && \
-	  java -jar "$(_cerif_jar)" "$(URL)"; \
+	  ( cd "$(CERIF_VALIDATOR_CACHE)" && java -jar "$(_cerif_jar)" "$(URL)" ); \
 	elif command -v docker >/dev/null 2>&1; then \
 	  echo "Używam obrazu $(CERIF_VALIDATOR_IMAGE):$(_cerif_image_tag)"; \
-	  url="$(URL)"; \
-	  host=$$(printf '%s' "$$url" | sed -E 's#^[a-zA-Z]+://([^/:]+).*#\1#'); \
-	  case "$$host" in \
-	    localhost|127.0.0.1|0.0.0.0|::1|"$$(hostname)"|"$$(hostname -s)") \
-	      url=$$(printf '%s' "$$url" | sed -e "s#//$$host#//host.docker.internal#"); \
-	      echo "UWAGA: kontener nie ma dostępu do '$$host' — podmieniam na $$url"; \
-	      echo "       Django musi mieć host.docker.internal w ALLOWED_HOSTS,"; \
-	      echo "       a na Linuksie serwer musi słuchać na 0.0.0.0, nie 127.0.0.1."; \
+	  host=$$(printf '%s' "$(URL)" | sed -E 's#^[a-zA-Z]+://([^/:]+).*#\1#'); \
+	  addhost=""; \
+	  lc() { printf '%s' "$$1" | tr 'A-Z' 'a-z'; }; \
+	  host_lc=$$(lc "$$host"); \
+	  self_lc=$$(lc "$$(hostname)"); \
+	  self_short_lc=$$(lc "$$(hostname -s)"); \
+	  case "$$host_lc" in \
+	    localhost|127.0.0.1|0.0.0.0|::1) \
+	      addhost="--add-host=$$host:host-gateway"; \
+	      echo "UWAGA: '$$host' w kontenerze wskazuje na sam kontener —"; \
+	      echo "       mapuję na bramę hosta. Serwer MUSI słuchać na 0.0.0.0;"; \
+	      echo "       przy bindzie tylko na 127.0.0.1 połączenie będzie odrzucone."; \
+	      ;; \
+	    "$$self_lc"|"$$self_short_lc") \
+	      ip=$$(getent hosts "$$host" 2>/dev/null | awk '{print $$1; exit}'); \
+	      [ -n "$$ip" ] || ip=$$(dscacheutil -q host -a name "$$host" 2>/dev/null \
+	                             | awk '/^ip_address:/{print $$2; exit}'); \
+	      [ -n "$$ip" ] || ip=$$(ping -c1 -t1 "$$host" 2>/dev/null \
+	                             | sed -n '1s/.*(\([0-9.]*\)).*/\1/p'); \
+	      case "$$ip" in \
+	        ""|127.*) \
+	          addhost="--add-host=$$host:host-gateway"; \
+	          echo "UWAGA: '$$host' nie rozwiązuje się na adres widoczny z kontenera"; \
+	          echo "       — mapuję na bramę hosta."; \
+	          ;; \
+	        *) \
+	          addhost="--add-host=$$host:$$ip"; \
+	          echo "Mapuję '$$host' -> $$ip w kontenerze."; \
+	          ;; \
+	      esac; \
 	      ;; \
 	  esac; \
 	  mkdir -p "$(CERIF_VALIDATOR_CACHE)/data"; \
-	  docker run --rm --add-host=host.docker.internal:host-gateway \
+	  docker run --rm $$addhost \
 	    -v "$(CERIF_VALIDATOR_CACHE)/data:/work/data" \
-	    "$(CERIF_VALIDATOR_IMAGE):$(_cerif_image_tag)" "$$url"; \
+	    "$(CERIF_VALIDATOR_IMAGE):$(_cerif_image_tag)" "$(URL)"; \
 	else \
 	  echo "Potrzebny JRE 17+ albo Docker. Zainstaluj jedno z:"; \
 	  echo "  brew install openjdk@17          # macOS"; \
