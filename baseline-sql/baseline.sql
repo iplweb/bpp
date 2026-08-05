@@ -16449,6 +16449,51 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+991	bpp	0448_rodzajjednostki	2000-01-01 00:00:00+00
+371	bpp	0278_autorzy_profil_orcid	2000-01-01 00:00:00+00
+487	bpp	0380_rekord_wydawca	2000-01-01 00:00:00+00
+592	deduplikator_zrodel	0001_initial	2000-01-01 00:00:00+00
+674	ewaluacja_liczba_n	0002_rename_dyscyplinanieraportowana_2022_2025_dyscyplinanieraportowana_and_more	2000-01-01 00:00:00+00
+675	ewaluacja_liczba_n	0003_add_liczba_n_to_dyscyplina_nieraportowana	2000-01-01 00:00:00+00
+676	ewaluacja_liczba_n	0004_add_ilosc_udzialow_za_calosc	2000-01-01 00:00:00+00
+677	ewaluacja_liczba_n	0005_iloscudzialowdlaautorazarok_autor_dyscyplina	2000-01-01 00:00:00+00
+678	ewaluacja_liczba_n	0006_alter_iloscudzialowdlaautorazacalosc_unique_together_and_more	2000-01-01 00:00:00+00
+679	ewaluacja_liczba_n	0007_alter_iloscudzialowdlaautorazacalosc_komentarz	2000-01-01 00:00:00+00
+680	ewaluacja_liczba_n	0008_add_sankcje	2000-01-01 00:00:00+00
+681	ewaluacja_liczba_n	0009_alter_dyscyplinanieraportowana_uczelnia_and_more	2000-01-01 00:00:00+00
+682	ewaluacja_metryki	0001_initial	2000-01-01 00:00:00+00
+683	ewaluacja_metryki	0002_alter_metrykaautora_jednostka	2000-01-01 00:00:00+00
+684	ewaluacja_metryki	0003_add_liczba_do_przetworzenia	2000-01-01 00:00:00+00
+685	ewaluacja_metryki	0004_metrykaautora_rodzaj_autora	2000-01-01 00:00:00+00
+686	ewaluacja_metryki	0005_alter_metrykaautora_rodzaj_autora_and_more	2000-01-01 00:00:00+00
+687	ewaluacja_metryki	0006_alter_metrykaautora_autor_and_more	2000-01-01 00:00:00+00
+688	ewaluacja_optymalizacja	0001_initial	2000-01-01 00:00:00+00
+689	ewaluacja_optymalizacja	0002_unpinningopportunity	2000-01-01 00:00:00+00
+690	ewaluacja_optymalizacja	0003_unpinningopportunity_punkty_roznica_b_and_more	2000-01-01 00:00:00+00
+691	ewaluacja_optymalizacja	0004_unpinningopportunity_punkty_roznica_a_and_more	2000-01-01 00:00:00+00
+692	ewaluacja_optymalizacja	0005_add_real_unpinning_values	2000-01-01 00:00:00+00
+693	ewaluacja_optymalizacja	0006_add_status_optymalizacji_z_odpinaniem	2000-01-01 00:00:00+00
+694	ewaluacja_optymalizacja	0007_add_status_optymalizacji_bulk	2000-01-01 00:00:00+00
+695	ewaluacja_optymalizacja	0008_add_status_unpinning_analizy	2000-01-01 00:00:00+00
+696	ewaluacja_optymalizacja	0009_add_plik_zip_wszystkie_xls	2000-01-01 00:00:00+00
+697	ewaluacja_optymalizacja	0010_add_is_optimal_to_optimizationrun	2000-01-01 00:00:00+00
+698	ewaluacja_optymalizacja	0011_move_files_to_protected	2000-01-01 00:00:00+00
+699	ewaluacja_optymalizacja	0012_add_discipline_swap_models	2000-01-01 00:00:00+00
+700	ewaluacja_optymalizacja	0013_add_status_przegladarka_recalc	2000-01-01 00:00:00+00
+701	ewaluacja_optymalizacja	0014_add_optimality_gap_to_optimization_run	2000-01-01 00:00:00+00
+702	ewaluacja_optymalizacja	0015_remove_disciplineswapopportunity_ewaluacja_o_uczelni_ed0a90_idx_and_more	2000-01-01 00:00:00+00
+703	ewaluacja_optymalizuj_publikacje	0001_initial	2000-01-01 00:00:00+00
+705	favicon	0002_favicon_site	2000-01-01 00:00:00+00
+706	favicon	0003_site_manager	2000-01-01 00:00:00+00
+707	favicon	0004_faviconimg_favicon_size_rel_unique	2000-01-01 00:00:00+00
+708	favicon	0005_leftover_changes	2000-01-01 00:00:00+00
+709	flexible_reports	0001_initial	2000-01-01 00:00:00+00
+710	flexible_reports	0002_auto_20170823_2225	2000-01-01 00:00:00+00
+711	flexible_reports	0003_table_attrs	2000-01-01 00:00:00+00
+712	flexible_reports	0004_auto_20170823_2342	2000-01-01 00:00:00+00
+714	flexible_reports	0006_default_ordering	2000-01-01 00:00:00+00
+715	flexible_reports	0007_sort_desc	2000-01-01 00:00:00+00
+1135	bpp	0487_api_v1_przelaczniki	2000-01-01 00:00:00+00
 1103	import_list_if	0005_liveops	2000-01-01 00:00:00+00
 554	constance	0001_initial	2000-01-01 00:00:00+00
 808	integrator2	0001_initial	2000-01-01 00:00:00+00
@@ -16744,7 +16789,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 988	bpp	0445_merge_20260622_1134	2000-01-01 00:00:00+00
 989	bpp	0446_rzeczownik_tylko_mianownik	2000-01-01 00:00:00+00
 990	bpp	0447_fd390_aktualna_jednostka_demote_obca	2000-01-01 00:00:00+00
-991	bpp	0448_rodzajjednostki	2000-01-01 00:00:00+00
 1119	bpp	0477_uczelnia_oai_identyfikator_repozytorium	2000-01-01 00:00:00+00
 992	bpp	0449_seed_rodzajjednostki	2000-01-01 00:00:00+00
 993	bpp	0450_jednostka_rodzaj	2000-01-01 00:00:00+00
@@ -17253,7 +17297,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 368	bpp	0275_jednostka_hier	2000-01-01 00:00:00+00
 369	bpp	0276_auto_20210607_0109	2000-01-01 00:00:00+00
 370	bpp	0277_lepsze_global_search	2000-01-01 00:00:00+00
-371	bpp	0278_autorzy_profil_orcid	2000-01-01 00:00:00+00
 372	bpp	0279_usun_ost_akt_pbn	2000-01-01 00:00:00+00
 374	bpp	0281_auto_20210725_2332	2000-01-01 00:00:00+00
 375	bpp	0282_auto_20210808_2334	2000-01-01 00:00:00+00
@@ -17361,7 +17404,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 484	bpp	0377_autor_dyscyplina_zatrudnienie_do_and_more	2000-01-01 00:00:00+00
 485	bpp	0378_alter_praca_doktorska_pbn_uid_and_more	2000-01-01 00:00:00+00
 486	bpp	0379_cache_liczba_n_last_updated_and_more	2000-01-01 00:00:00+00
-487	bpp	0380_rekord_wydawca	2000-01-01 00:00:00+00
 488	bpp	0381_uczelnia_przydzielaj_1_slot_gdy_udzial_mniejszy	2000-01-01 00:00:00+00
 489	bpp	0382_alter_uczelnia_przydzielaj_1_slot_gdy_udzial_mniejszy	2000-01-01 00:00:00+00
 490	bpp	0383_uczelnia_pytaj_o_zgode_na_publikacje_pelnego_tekstu	2000-01-01 00:00:00+00
@@ -17458,7 +17500,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 589	deduplikator_autorow	0012_alter_duplicatecandidate_main_autor_and_more	2000-01-01 00:00:00+00
 590	deduplikator_publikacji	0001_initial	2000-01-01 00:00:00+00
 591	deduplikator_publikacji	0002_remove_publicationduplicatecandidate_deduplikato_similar_17e420_idx_and_more	2000-01-01 00:00:00+00
-592	deduplikator_zrodel	0001_initial	2000-01-01 00:00:00+00
 594	denorm	0002_dirtyinstance_func_name	2000-01-01 00:00:00+00
 595	denorm	0003_auto_20211002_1955	2000-01-01 00:00:00+00
 596	denorm	0004_alter_dirtyinstance_success	2000-01-01 00:00:00+00
@@ -17538,47 +17579,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 671	ewaluacja2021	0019_remove_null_from_string_fields	2000-01-01 00:00:00+00
 672	ewaluacja2021	0020_delete_ewaluacja2021_models	2000-01-01 00:00:00+00
 673	ewaluacja_liczba_n	0001_initial	2000-01-01 00:00:00+00
-674	ewaluacja_liczba_n	0002_rename_dyscyplinanieraportowana_2022_2025_dyscyplinanieraportowana_and_more	2000-01-01 00:00:00+00
-675	ewaluacja_liczba_n	0003_add_liczba_n_to_dyscyplina_nieraportowana	2000-01-01 00:00:00+00
-676	ewaluacja_liczba_n	0004_add_ilosc_udzialow_za_calosc	2000-01-01 00:00:00+00
-677	ewaluacja_liczba_n	0005_iloscudzialowdlaautorazarok_autor_dyscyplina	2000-01-01 00:00:00+00
-678	ewaluacja_liczba_n	0006_alter_iloscudzialowdlaautorazacalosc_unique_together_and_more	2000-01-01 00:00:00+00
-679	ewaluacja_liczba_n	0007_alter_iloscudzialowdlaautorazacalosc_komentarz	2000-01-01 00:00:00+00
-680	ewaluacja_liczba_n	0008_add_sankcje	2000-01-01 00:00:00+00
-681	ewaluacja_liczba_n	0009_alter_dyscyplinanieraportowana_uczelnia_and_more	2000-01-01 00:00:00+00
-682	ewaluacja_metryki	0001_initial	2000-01-01 00:00:00+00
-683	ewaluacja_metryki	0002_alter_metrykaautora_jednostka	2000-01-01 00:00:00+00
-684	ewaluacja_metryki	0003_add_liczba_do_przetworzenia	2000-01-01 00:00:00+00
-685	ewaluacja_metryki	0004_metrykaautora_rodzaj_autora	2000-01-01 00:00:00+00
-686	ewaluacja_metryki	0005_alter_metrykaautora_rodzaj_autora_and_more	2000-01-01 00:00:00+00
-687	ewaluacja_metryki	0006_alter_metrykaautora_autor_and_more	2000-01-01 00:00:00+00
-688	ewaluacja_optymalizacja	0001_initial	2000-01-01 00:00:00+00
-689	ewaluacja_optymalizacja	0002_unpinningopportunity	2000-01-01 00:00:00+00
-690	ewaluacja_optymalizacja	0003_unpinningopportunity_punkty_roznica_b_and_more	2000-01-01 00:00:00+00
-691	ewaluacja_optymalizacja	0004_unpinningopportunity_punkty_roznica_a_and_more	2000-01-01 00:00:00+00
-692	ewaluacja_optymalizacja	0005_add_real_unpinning_values	2000-01-01 00:00:00+00
-693	ewaluacja_optymalizacja	0006_add_status_optymalizacji_z_odpinaniem	2000-01-01 00:00:00+00
-694	ewaluacja_optymalizacja	0007_add_status_optymalizacji_bulk	2000-01-01 00:00:00+00
-695	ewaluacja_optymalizacja	0008_add_status_unpinning_analizy	2000-01-01 00:00:00+00
-696	ewaluacja_optymalizacja	0009_add_plik_zip_wszystkie_xls	2000-01-01 00:00:00+00
-697	ewaluacja_optymalizacja	0010_add_is_optimal_to_optimizationrun	2000-01-01 00:00:00+00
-698	ewaluacja_optymalizacja	0011_move_files_to_protected	2000-01-01 00:00:00+00
-699	ewaluacja_optymalizacja	0012_add_discipline_swap_models	2000-01-01 00:00:00+00
-700	ewaluacja_optymalizacja	0013_add_status_przegladarka_recalc	2000-01-01 00:00:00+00
-701	ewaluacja_optymalizacja	0014_add_optimality_gap_to_optimization_run	2000-01-01 00:00:00+00
-702	ewaluacja_optymalizacja	0015_remove_disciplineswapopportunity_ewaluacja_o_uczelni_ed0a90_idx_and_more	2000-01-01 00:00:00+00
-703	ewaluacja_optymalizuj_publikacje	0001_initial	2000-01-01 00:00:00+00
-705	favicon	0002_favicon_site	2000-01-01 00:00:00+00
-706	favicon	0003_site_manager	2000-01-01 00:00:00+00
-707	favicon	0004_faviconimg_favicon_size_rel_unique	2000-01-01 00:00:00+00
-708	favicon	0005_leftover_changes	2000-01-01 00:00:00+00
-709	flexible_reports	0001_initial	2000-01-01 00:00:00+00
-710	flexible_reports	0002_auto_20170823_2225	2000-01-01 00:00:00+00
-711	flexible_reports	0003_table_attrs	2000-01-01 00:00:00+00
-712	flexible_reports	0004_auto_20170823_2342	2000-01-01 00:00:00+00
-714	flexible_reports	0006_default_ordering	2000-01-01 00:00:00+00
-715	flexible_reports	0007_sort_desc	2000-01-01 00:00:00+00
-1135	bpp	0487_api_v1_przelaczniki	2000-01-01 00:00:00+00
 \.
 
 
@@ -17951,6 +17951,21 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+253	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+254	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
+255	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+256	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+257	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+258	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+259	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+260	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+261	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+262	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+263	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+264	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+265	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+266	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+267	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -19805,7 +19820,7 @@ SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 42,
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 252, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 267, true);
 
 
 --
