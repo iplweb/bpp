@@ -173,6 +173,7 @@ class UczelniaAdmin(
                 "fields": (
                     "eksport_cerif_wlaczony",
                     "eksport_cerif_osoby",
+                    "eksport_cerif_kwoty",
                     "ror_id",
                 ),
             },
