@@ -47,7 +47,7 @@
     {% endif %}
 
     {% if uczelnia.pokazuj_deklaracje_dostepnosci == 2 %}
-        <meta name="deklaracja-dostępności" content="{% url "bpp:browse_deklaracja_dostepnosci" %}}"/>
+        <meta name="deklaracja-dostępności" content="{% url "bpp:browse_deklaracja_dostepnosci" %}"/>
     {% endif %}
 
     {# bare.html - FOUC prevention #}
@@ -144,7 +144,9 @@
         {% place_favicon %}
     {% endcache %}
 </head>
+{# djlint:off H025 #}
 <body class="fouc-hidden">
+{# djlint:on H025 #}
 {% block skip_link %}<a href="#main-content" class="skip-link">Przejdź do głównej zawartości</a>{% endblock %}
 {% block body %}
 {% endblock %}
