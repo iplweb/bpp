@@ -270,6 +270,34 @@
     kontener.appendChild(div);
   }
 
+  function renderWylaczone(kontener, detail) {
+    // Administrator swiadomie wylaczyl kafelki — strona ma wygladac normalnie.
+    // Powod idzie do komentarza HTML: niewidoczny dla czytelnika, widoczny
+    // w "pokaz zrodlo" dla osoby, ktora wkleila widget. `createComment` nie
+    // interpretuje HTML-a, wiec jedynym realnym wektorem jest sekwencja
+    // zamykajaca — stad zwiniecie `--`.
+    kontener.innerHTML = "";
+    var tekst = String(detail || "wyłączone przez administratora").replace(
+      /-{2,}/g,
+      "-"
+    );
+    kontener.appendChild(document.createComment(" BPP: " + tekst + " "));
+  }
+
+  function trescBledu(resp) {
+    // Tresc bledej odpowiedzi jako obiekt albo null, gdy nie da sie jej
+    // sparsowac (proxy, strona bledu HTML). NIGDY nie odrzuca: brak tresci
+    // ma degradowac do ramki bledu, nie do ciszy.
+    return resp.json().then(
+      function (data) {
+        return data;
+      },
+      function () {
+        return null;
+      }
+    );
+  }
+
   // --- Start -------------------------------------------------------------
   function uruchom() {
     var cfg = odczytajKonfiguracje(me);
@@ -282,17 +310,36 @@
       return;
     }
 
-    fetch(urlApi(cfg))
+    var url = urlApi(cfg);
+    fetch(url)
       .then(function (resp) {
-        if (!resp.ok) {
-          throw new Error("HTTP " + resp.status);
+        if (resp.ok) {
+          return resp.json().then(function (data) {
+            render(kontener, data, cfg);
+          });
         }
-        return resp.json();
+        // Klucz `powod` znaczy "decyzja konfiguracyjna administratora, nie
+        // blad". 404 bez niego (literowka w data-autor, autor ukryty, encja
+        // skasowana) to zwykla pomylka — ktos musi sie o niej dowiedziec,
+        // wiec zostaje ramka bledu.
+        return trescBledu(resp).then(function (dane) {
+          var powod = dane && dane.powod;
+          console.warn(
+            "BPP: " +
+              url +
+              " → HTTP " +
+              resp.status +
+              (powod ? " (" + powod + ")" : "")
+          );
+          if (resp.status === 404 && powod) {
+            renderWylaczone(kontener, dane.detail);
+          } else {
+            renderBlad(kontener, cfg);
+          }
+        });
       })
-      .then(function (data) {
-        render(kontener, data, cfg);
-      })
-      .catch(function () {
+      .catch(function (err) {
+        console.warn("BPP: " + url + " → " + err);
         renderBlad(kontener, cfg);
       });
   }
