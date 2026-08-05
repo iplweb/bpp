@@ -170,7 +170,7 @@ dependencies = [
 [project.optional-dependencies]
 ldap = ["django-auth-ldap>=5.3.0"]
 office365 = ["django-microsoft-auth>=3.0.1"]
-baseline-rebuild = ["testcontainers[postgres]>=4.14.2"]
+baseline-rebuild = ["testcontainers[postgres]>=4.15.0"]
 
 # UWAGA: dev-deps siedza w [dependency-groups].dev (PEP 735) na dole pliku.
 # Grupa `dev` jest aktywowana defaultowo przez `uv run` / `uv sync` (opt-out
@@ -515,7 +515,7 @@ dev = [
     # pytest 9.x. Usage bez zmian (env=DJANGO_ALLOW_ASYNC_UNSAFE=1 etc.).
     "pytest-env>=1.7.0",
     "nest-asyncio>=1.6.0",
-    "testcontainers[postgres]>=4.14.2",
+    "testcontainers[postgres]>=4.15.0",
     # pytest-testcontainers + bridge: dawniej wewnetrzny `src/testcontainers_bpp/`.
     # Plugin auto-loaduje sie przez entry-point `pytest11` — `-p ...` w pytest.ini
     # przestaje byc potrzebne. Konfiguracja w [tool.pytest-testcontainers-django].
