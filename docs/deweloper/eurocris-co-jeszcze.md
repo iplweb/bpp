@@ -115,6 +115,8 @@ zombie w indeksie.
 2. **Uruchomić walidator na docelowym, publicznym adresie**:
    `make cerif-validate URL=https://<instancja>/cerif-oai/`.
    Walidacja lokalna nie sprawdzi HTTPS, przekierowań ani nagłówków proxy.
+   Target wymaga JRE 17+ **albo** Dockera — nie wymaga już Mavena ani JDK,
+   bo pobiera gotowego JAR-a z <https://github.com/iplweb/openaire-cris-validator>.
 3. **Zarejestrować CRIS w DRIS** (euroCRIS): <https://dspacecris.eurocris.org/cris/explore/dris>.
 4. **Zarejestrować endpoint w OpenAIRE Provide**:
    <https://provide.openaire.eu/>. Zespół agregacji OpenAIRE robi własną
