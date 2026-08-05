@@ -55,7 +55,9 @@ def test_niewymieniony_wyjatek_bez_fingerprintu():
         "data": {
             "custom": {"DJANGO_BPP_HOSTNAME": "x.pl"},
             "body": {
-                "trace_chain": [{"exception": {"class": "Http404", "message": "..."}}]
+                "trace_chain": [
+                    {"exception": {"class": "IntegrityError", "message": "..."}}
+                ]
             },
         }
     }
@@ -94,6 +96,70 @@ def test_payload_bez_body_nie_wybucha():
     result = collapse_noisy_fingerprints(payload)
 
     assert "fingerprint" not in result["data"]
+
+
+def _http404_payload(host="bpp.example.pl", widok="browse_autor"):
+    """Payload zbliżony do realnego Http404 z widoku publicznego."""
+    payload = {
+        "data": {
+            "custom": {"request_host": host},
+            "body": {"trace": {"exception": {"class": "Http404", "message": "..."}}},
+        }
+    }
+    if widok is not None:
+        payload["data"]["context"] = widok
+    return payload
+
+
+def test_http404_fingerprint_zawiera_widok():
+    """Http404 grupuje się po hoście I widoku, nie po samym haśle w URL-u."""
+    result = collapse_noisy_fingerprints(_http404_payload())
+
+    assert result["data"]["fingerprint"] == "Http404:bpp.example.pl:browse_autor"
+
+
+def test_rozne_widoki_daja_rozne_fingerprinty_http404():
+    """404 z przeglądania slugów nie może zlać się z 404 z raportów."""
+    a = collapse_noisy_fingerprints(_http404_payload(widok="browse_autor"))
+    b = collapse_noisy_fingerprints(_http404_payload(widok="raport_generuj"))
+
+    assert a["data"]["fingerprint"] != b["data"]["fingerprint"]
+
+
+def test_http404_bez_kontekstu_daje_unknown():
+    """Brak nazwy widoku degraduje człon widoku do :unknown."""
+    result = collapse_noisy_fingerprints(_http404_payload(widok=None))
+
+    assert result["data"]["fingerprint"] == "Http404:bpp.example.pl:unknown"
+
+
+def test_widok_nie_trafia_do_fingerprintu_pozostalych_wyjatkow():
+    """Tylko klasy z FINGERPRINT_PO_WIDOKU dostają człon widoku."""
+    payload = _docx_payload()
+    payload["data"]["context"] = "raport_generuj"
+
+    result = collapse_noisy_fingerprints(payload)
+
+    assert (
+        result["data"]["fingerprint"] == "DocxConversionError:publikacje.up.lublin.pl"
+    )
+
+
+def test_request_host_wygrywa_z_canonical_hostname():
+    """Na multi-hosted vhost per-request rozróżnia uczelnie, canonical nie."""
+    payload = _docx_payload()
+    payload["data"]["custom"]["request_host"] = "bpp.innauczelnia.pl"
+
+    result = collapse_noisy_fingerprints(payload)
+
+    assert result["data"]["fingerprint"] == "DocxConversionError:bpp.innauczelnia.pl"
+
+
+def test_brak_request_host_degraduje_do_canonical_hostname():
+    """Zgłoszenia z Celery / management commands nie mają vhosta."""
+    result = collapse_noisy_fingerprints(_docx_payload("celery.example.pl"))
+
+    assert result["data"]["fingerprint"] == "DocxConversionError:celery.example.pl"
 
 
 # --- Scrub pola `code`: sekret OAuth TAK, linia kodu w tracebacku NIE -------
