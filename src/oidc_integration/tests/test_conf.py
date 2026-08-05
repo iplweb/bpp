@@ -3,7 +3,11 @@
 Czysty unit — bez bazy i bez sieci. Przekazujemy własny ``environ``.
 """
 
-from oidc_integration.conf import discover_oidc_config, fetch_well_known_endpoints
+from oidc_integration.conf import (
+    _get_bool,
+    discover_oidc_config,
+    fetch_well_known_endpoints,
+)
 
 ISSUER = "https://auth.uafm.edu.pl/auth/realms/KA"
 
@@ -177,3 +181,15 @@ def test_fetch_well_known_niekompletny_to_none(monkeypatch):
 
     monkeypatch.setattr("requests.get", lambda *a, **k: FakeResp())
     assert fetch_well_known_endpoints(ISSUER) is None
+
+
+def test_get_bool_prefers_skrot_variant():
+    env = {
+        "DJANGO_BPP_OIDC_UAFM_GRACE_BIND": "1",
+        "DJANGO_BPP_OIDC_GRACE_BIND": "0",
+    }
+    assert _get_bool(env, "GRACE_BIND", "UAFM", default=False) is True
+
+
+def test_get_bool_default_when_absent():
+    assert _get_bool({}, "REQUIRE_EMAIL_VERIFIED", None, default=True) is True

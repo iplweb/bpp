@@ -1,0 +1,28 @@
+{# Komórki (zawartość <tr>) pojedynczego odpięcia. Wydzielone z #}
+{# _odpiecie_row.html, żeby toggle HTMX swapował innerHTML zachowując węzeł #}
+{# <tr> — DataTables odczytuje go po swapie (uwaga reviewera #6). Zwracane #}
+{# wprost przez PrzelaczOdpiecieView. #}
+<td>
+    {% include "import_pracownikow/partials/_autor_dane.html" with autor=odp.autor_jednostka.autor pbn_inst=odp.autor_z_pbn_inst %}
+</td>
+<td>{{ odp.autor_jednostka.jednostka }}</td>
+{# Kolumna „Odepnij?” istnieje w fazie edytowalnej (podgląd / faza osób). #}
+{# Po pełnej integracji znika w całości — decyzje wykonane, nie ma czego #}
+{# togglować. Liczba <td> musi zgadzać się z liczbą <th> w odpiecia.html. #}
+{% if parent_object.edytowalny_podglad %}
+    <td>
+        {# checkbox domyślnie ODZNACZONY; zmiana → POST toggluje zaznaczone #}
+        <form method="post"
+              hx-post="{% url 'import_pracownikow:przelacz-odpiecie' parent_object.pk odp.pk %}"
+              hx-target="#odpiecie-{{ odp.pk }}"
+              hx-swap="innerHTML"
+              hx-trigger="change">
+            {% csrf_token %}
+            <label>
+                <input type="checkbox" name="zaznaczone"
+                       {% if odp.zaznaczone %}checked{% endif %}>
+                odepnij
+            </label>
+        </form>
+    </td>
+{% endif %}

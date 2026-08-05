@@ -7,9 +7,11 @@ Ten moduł zawiera testy dla:
 """
 
 import pytest
+from django.contrib.auth.models import Group
 from django.urls import reverse
 from model_bakery import baker
 
+from bpp.const import GR_WPROWADZANIE_DANYCH
 from przemapuj_zrodla_pbn.views import znajdz_podobne_zrodla
 
 
@@ -35,6 +37,7 @@ def test_przemapuj_zrodlo_view_requires_login(client):
 def test_przemapuj_zrodlo_view_get(client, django_user_model):
     """Test czy widok GET przemapowania działa poprawnie"""
     user = baker.make(django_user_model)
+    user.groups.add(Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)[0])
     client.force_login(user)
 
     journal_deleted = baker.make(
@@ -128,6 +131,7 @@ def test_znajdz_podobne_zrodla_function_categorizes_correctly():
 def test_przemapuj_zrodlo_view_post_preview(client, django_user_model):
     """Test czy widok POST z parametrem preview działa"""
     user = baker.make(django_user_model)
+    user.groups.add(Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)[0])
     client.force_login(user)
 
     # Użyj podobnej nazwy i tego samego ISSN aby źródło było znalezione przez algorytm
@@ -174,6 +178,7 @@ def test_przemapuj_zrodlo_view_shows_pbn_links_for_zrodla_bpp(
 ):
     """Test czy widok pokazuje linki 'zobacz w PBN' dla źródeł BPP z pbn_uid"""
     user = baker.make(django_user_model)
+    user.groups.add(Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)[0])
     client.force_login(user)
 
     # Źródło skasowane
@@ -232,6 +237,7 @@ def test_przemapuj_zrodlo_view_shows_pbn_links_for_journale_pbn(
 ):
     """Test czy widok poprawnie wyświetla stronę z sugestiami dla journali z PBN"""
     user = baker.make(django_user_model)
+    user.groups.add(Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)[0])
     client.force_login(user)
 
     # Źródło skasowane

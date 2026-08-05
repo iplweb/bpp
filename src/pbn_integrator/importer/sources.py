@@ -27,6 +27,18 @@ logger = logging.getLogger(__name__)
 MAX_SLUG_RETRIES = 10
 
 
+def _real_issn(value):
+    """Odfiltruj syntetyczny placeholder PBN z pola ISSN.
+
+    PBN dla czasopism bez ISSN podsyła wewnętrzny identyfikator w formie
+    ``xpbn-<uuid>`` (41 znaków), który nie jest ISSN-em, a do tego nie mieści
+    się w ``Zrodlo.issn`` (max_length=32) — dosłowny zapis wywalał
+    ``DataError: value too long``. Traktujemy go z powrotem jako *brak* ISSN.
+    """
+    value = (value or "").strip()
+    return "" if value.startswith("xpbn-") else value
+
+
 def dopisz_jedno_zrodlo(pbn_journal, rodzaj_periodyk, dyscypliny_cache):
     """Process single journal - re-entrant, can be interrupted.
 
@@ -44,8 +56,8 @@ def dopisz_jedno_zrodlo(pbn_journal, rodzaj_periodyk, dyscypliny_cache):
                 zrodlo = Zrodlo.objects.create(
                     nazwa=cv.get("title") or "",
                     skrot=cv.get("title") or "",
-                    issn=cv.get("issn") or "",
-                    e_issn=cv.get("eissn") or "",
+                    issn=_real_issn(cv.get("issn")),
+                    e_issn=_real_issn(cv.get("eissn")),
                     pbn_uid=pbn_journal,
                     rodzaj=rodzaj_periodyk,
                 )

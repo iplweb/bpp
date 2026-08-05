@@ -9,7 +9,6 @@ from django.db.models import Q
 from django.forms import BaseInlineFormSet
 from django.urls import reverse
 from django.utils.html import format_html
-from django.utils.safestring import mark_safe
 
 from bpp import const
 from bpp.models.cache import Rekord
@@ -51,8 +50,10 @@ def link_do_obiektu(obj, friendly_name=None):
         # current_app=self.admin_site.name,
     )
     # Add a link to the object's change form if the user can edit the obj.
+    # str(obj) (np. nazwisko autora) może zawierać HTML — format_html sam go
+    # zescapuje, więc NIE owijamy w mark_safe (to była luka XSS w adminie).
     if friendly_name is None:
-        friendly_name = mark_safe(obj)
+        friendly_name = str(obj)
     return format_html('<a href="{}">{}</a>', urlquote(obj_url), friendly_name)
 
 

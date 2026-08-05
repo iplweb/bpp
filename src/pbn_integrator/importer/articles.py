@@ -12,6 +12,7 @@ from bpp.models import (
     Wydawnictwo_Ciagle_Streszczenie,
     Wydawnictwo_Ciagle_Tytul,
 )
+from bpp.util import safe_tytul_html
 from pbn_api.client import PBNClient
 from pbn_api.models import Publication
 
@@ -22,7 +23,6 @@ from .cache import (
     get_typ_kbn_inne,
 )
 from .helpers import (
-    assert_dictionary_empty,
     importuj_openaccess,
     importuj_streszczenia,
     pbn_keywords_to_slowa_kluczowe,
@@ -32,6 +32,7 @@ from .helpers import (
     przetworz_metadane_konferencji,
     przetworz_slowa_kluczowe,
     przetworz_tytuly,
+    skonsumuj_nieobsluzone_klucze,
     ustaw_jezyk_oryginalny,
 )
 
@@ -82,7 +83,7 @@ def importuj_artykul(
     jezyk = pobierz_jezyk(mainLanguage, pbn_json.get("title"), domyslny_jezyk)
 
     ret = Wydawnictwo_Ciagle(
-        tytul_oryginalny=pbn_json.pop("title"),
+        tytul_oryginalny=safe_tytul_html(pbn_json.pop("title")),
         rok=pbn_json.pop("year"),
         public_www=pbn_json.pop("publicUri", None) or "",
         jezyk=jezyk,
@@ -126,5 +127,5 @@ def importuj_artykul(
 
     przetworz_tytuly(pbn_json, ret, Wydawnictwo_Ciagle_Tytul)
 
-    assert_dictionary_empty(pbn_json)
+    skonsumuj_nieobsluzone_klucze(pbn_json, ret, kontekst="artykuł")
     return ret

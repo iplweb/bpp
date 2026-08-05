@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 class PublisherGetter(ThreadedMongoDBSaver):
     """Threaded getter for publishers."""
 
-    pbn_api_klass = Publisher
+    model_class = Publisher
 
 
 def pobierz_wydawcow_mnisw(client: PBNClient):

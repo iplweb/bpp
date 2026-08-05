@@ -361,6 +361,7 @@ class Wydawnictwo_Zwarte(
 
     def clean(self):
         DwaTytuly.clean(self)
+        ModelZeSzczegolami.clean(self)
         ModelZOplataZaPublikacje.clean(self)
 
         if (

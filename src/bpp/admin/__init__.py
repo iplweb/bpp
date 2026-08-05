@@ -22,7 +22,9 @@ from ..models import (
     Jezyk,
     Rodzaj_Zrodla,
     Rzeczownik,
+    StanowiskoDydaktyczne,
     Status_Korekty,
+    StopienSluzbowy,
     Typ_KBN,
     Typ_Odpowiedzialnosci,
     Tytul,
@@ -48,6 +50,7 @@ from .konferencja import KonferencjaAdmin  # noqa
 from .patent import Patent_Admin  # noqa
 from .praca_doktorska import Praca_DoktorskaAdmin  # noqa
 from .praca_habilitacyjna import Praca_HabilitacyjnaAdmin  # noqa
+from .projekt import Instytucja_FinansujacaAdmin, ProjektAdmin  # noqa
 from .rodzaj_jednostki import RodzajJednostkiAdmin  # noqa
 from .seria_wydawnicza import Seria_WydawniczaAdmin  # noqa
 from .szablondlaopisubibliograficznego import SzablonDlaOpisuBibliograficznego  # noqa
@@ -60,13 +63,19 @@ from .wydawnictwo_zwarte import (  # noqa
     Wydawnictwo_ZwarteAdmin_Baza,
 )
 from .wydawnictwo_zwarte_autor import Wydawnictwo_Zwarte_Autor_Admin  # noqa
-from .wydzial import WydzialAdmin  # noqa
 
 
 class JezykAdmin(RestrictDeletionToAdministracjaGroupAdmin):
-    list_display = ["nazwa", "skrot", "pbn_uid", "skrot_crossref", "widoczny"]
+    list_display = [
+        "nazwa",
+        "skrot",
+        "pbn_uid",
+        "skrot_crossref",
+        "kod_bcp47",
+        "widoczny",
+    ]
     list_filter = ["widoczny"]
-    search_fields = ["nazwa", "skrot", "pbn_uid__pk", "skrot_crossref"]
+    search_fields = ["nazwa", "skrot", "pbn_uid__pk", "skrot_crossref", "kod_bcp47"]
 
 
 class Funkcja_AutoraAdmin(RestrictDeletionToAdministracjaGroupAdmin):
@@ -78,7 +87,15 @@ admin.site.register(Funkcja_Autora, Funkcja_AutoraAdmin)
 admin.site.register(Rodzaj_Zrodla, PreventDeletionAdmin)
 admin.site.register(Status_Korekty, PreventDeletionAdmin)
 admin.site.register(Zrodlo_Informacji, PreventDeletionAdmin)
-admin.site.register(Rodzaj_Prawa_Patentowego, PreventDeletionAdmin)
+
+
+class Rodzaj_Prawa_PatentowegoAdmin(PreventDeletionAdmin):
+    # Model dziedziczy ModelZNazwa -- nie ma pola ``skrot``.
+    list_display = ["nazwa", "coar_type"]
+    search_fields = ["nazwa", "coar_type"]
+
+
+admin.site.register(Rodzaj_Prawa_Patentowego, Rodzaj_Prawa_PatentowegoAdmin)
 
 admin.site.register(OrganPrzyznajacyNagrody, PreventDeletionAdmin)
 
@@ -118,7 +135,10 @@ class Charakter_PBNAdmin(
         "opis",
         "charaktery_formalne",
         "typy_kbn",
+        "ukryty",
     ]
+    list_editable = ["ukryty"]
+    list_filter = ["ukryty"]
     readonly_fields = ["identyfikator", "wlasciwy_dla", "opis", "help_text"]
 
     def charaktery_formalne(self, rec):
@@ -141,12 +161,16 @@ class NazwaISkrotAdmin(
 
 
 admin.site.register(Tytul, NazwaISkrotAdmin)
+admin.site.register(StopienSluzbowy, NazwaISkrotAdmin)
+admin.site.register(StanowiskoDydaktyczne, NazwaISkrotAdmin)
 
 
 class Typ_KBNAdmin(
     RestrictDeletionToAdministracjaGroupAdmin, BaseBppAdminMixin, admin.ModelAdmin
 ):
-    list_display = ["nazwa", "skrot", "artykul_pbn", "charakter_pbn"]
+    list_display = ["nazwa", "skrot", "artykul_pbn", "charakter_pbn", "ukryty"]
+    list_editable = ["ukryty"]
+    list_filter = ["ukryty"]
 
 
 admin.site.register(Typ_KBN, Typ_KBNAdmin)
@@ -161,7 +185,7 @@ class Typ_OdpowiedzialnosciAdmin(
 class Tryb_OpenAccess_Wydawnictwo_CiagleAdmin(
     RestrictDeletionToAdministracjaGroupMixin, BaseBppAdminMixin, admin.ModelAdmin
 ):
-    list_display = ["nazwa", "skrot"]
+    list_display = ["nazwa", "skrot", "coar_access_right"]
 
 
 admin.site.register(
@@ -172,7 +196,7 @@ admin.site.register(
 class Tryb_OpenAccess_Wydawnictwo_ZwarteAdmin(
     RestrictDeletionToAdministracjaGroupMixin, BaseBppAdminMixin, admin.ModelAdmin
 ):
-    list_display = ["nazwa", "skrot"]
+    list_display = ["nazwa", "skrot", "coar_access_right"]
 
 
 admin.site.register(
@@ -192,7 +216,7 @@ admin.site.register(Czas_Udostepnienia_OpenAccess, Czas_Udostepnienia_OpenAccess
 class Licencja_OpenAccessAdmin(
     RestrictDeletionToAdministracjaGroupMixin, BaseBppAdminMixin, admin.ModelAdmin
 ):
-    list_display = ["nazwa", "skrot"]
+    list_display = ["nazwa", "skrot", "uri"]
 
 
 admin.site.register(Licencja_OpenAccess, Licencja_OpenAccessAdmin)
@@ -250,6 +274,10 @@ class BppUserAdmin(UserAdmin):
         (
             "Powiązanie z autorem",
             {"fields": ("autor",)},
+        ),
+        (
+            "Ustawienia wyświetlania",
+            {"fields": ("zwijaj_dlugie_listy_autorow",)},
         ),
         (
             "PBN API",

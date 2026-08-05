@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block extratitle %}Import pracowników i jednostek — weryfikacja jednostek{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "import_pracownikow:index" %}">import pracowników i jednostek</a></li>
+    <li class="current">weryfikacja jednostek</li>
+{% endblock %}
+
+{% block content %}
+    <p>
+        <a href="{% url "import_pracownikow:przeglad" pk=parent_object.pk %}">&larr; wróć do przeglądu</a>
+    </p>
+    <h1>Weryfikacja jednostek</h1>
+    <p>
+        Jednostki wymienione w pliku, których nie dopasowano dokładnie do bazy.
+        Wskaż, co zrobić z każdą, zanim zapiszesz import. Domyślnie każda zostanie
+        utworzona (lub użyte zostanie auto-dopasowanie) — możesz to zmienić.
+    </p>
+
+    {% if uczelnia_nieokreslona %}
+        <div class="callout alert" data-uczelnia-nieokreslona="1">
+            {# Uczelni nie da się ustalić (multi-hosted: >1 uczelnia, nie #}
+            {# rozpoznano jej z adresu importu) → jednostki „do utworzenia" NIE #}
+            {# powstaną. Piszemy o tym GŁOŚNO, zamiast po cichu pomijać import. #}
+            <p style="margin-bottom: 0.5rem;">
+                <span class="fi-alert"></span>
+                <strong>Nie ustalono uczelni dla tego importu.</strong>
+            </p>
+            <p style="margin-bottom: 0;">
+                Jednostki oznaczone „do utworzenia” <strong>nie zostaną
+                utworzone</strong>, dopóki uczelnia pozostaje nieokreślona — ta
+                instalacja obsługuje więcej niż jedną uczelnię, a nie rozpoznano
+                jej z adresu, spod którego wgrano plik. Zaimportuj plik będąc na
+                adresie (domenie) właściwej uczelni, albo poproś administratora
+                o powiązanie domeny z uczelnią.
+            </p>
+        </div>
+    {% endif %}
+
+    {% if not decyzje_brak and not decyzje_zgadywanie %}
+        <div class="callout success">
+            {# brak decyzji = wszystkie jednostki dopasowane dokładnie #}
+            Wszystkie jednostki z pliku zostały dopasowane — nie ma nic do
+            weryfikacji.
+        </div>
+        <a href="{% url "import_pracownikow:przeglad" pk=parent_object.pk %}"
+           class="button secondary">Wróć do przeglądu</a>
+    {% else %}
+    <form method="post">
+        {% csrf_token %}
+
+        {% if decyzje_zgadywanie %}
+            <h2>Dopasowane automatycznie</h2>
+            <p>
+                Nazwa z pliku jest bardzo zbliżona do istniejącej jednostki —
+                zweryfikuj automatyczny wybór.
+            </p>
+            <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nazwa z pliku</th>
+                        <th>Osób</th>
+                        <th>Auto-dopasowanie</th>
+                        <th>Decyzja</th>
+                        <th>Mapuj na</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dec in decyzje_zgadywanie %}
+                        <tr>
+                            <td>{{ dec.nazwa_zrodlowa }}</td>
+                            <td>{{ dec.liczba_osob }}</td>
+                            <td>
+                                {% if dec.auto_jednostka %}
+                                    <a href="{{ dec.auto_jednostka.get_absolute_url }}"
+                                       title="Otwórz stronę jednostki"
+                                       target="_blank" rel="noopener">{{ dec.auto_jednostka.nazwa }}</a>
+                                    <a href="{% url "admin:bpp_jednostka_change" dec.auto_jednostka.pk %}"
+                                       class="import-autor-admin" title="Otwórz w panelu administracyjnym"
+                                       target="_blank" rel="noopener">admin</a>
+                                    {% if dec.auto_similarity %}
+                                        <span class="label secondary">{{ dec.auto_similarity|floatformat:2 }}</span>
+                                    {% endif %}
+                                {% else %}—{% endif %}
+                            </td>
+                            <td>
+                                <select name="dec_{{ dec.pk }}_decyzja" class="js-decyzja"
+                                        {% if not moze_edytowac %}disabled{% endif %}>
+                                    <option value="{{ DECYZJA_AKCEPTUJ }}"
+                                            {% if dec.decyzja == DECYZJA_AKCEPTUJ %}selected{% endif %}>
+                                        Użyj auto-dopasowania
+                                    </option>
+                                    <option value="{{ DECYZJA_MAPUJ }}"
+                                            {% if dec.decyzja == DECYZJA_MAPUJ %}selected{% endif %}>
+                                        Mapuj na inną
+                                    </option>
+                                    <option value="{{ DECYZJA_POMIN }}"
+                                            {% if dec.decyzja == DECYZJA_POMIN %}selected{% endif %}>
+                                        Pomiń
+                                    </option>
+                                </select>
+                            </td>
+                            <td>
+                                <span class="js-wybrana-wrap">
+                                <select name="dec_{{ dec.pk }}_wybrana" class="js-wybrana"
+                                        {% if not moze_edytowac %}disabled{% endif %}>
+                                    <option value="">— wybierz (dla „Mapuj”) —</option>
+                                    {% for j in mapuj_opcje %}
+                                        <option value="{{ j.pk }}"
+                                                {% if dec.wybrana_jednostka_id == j.pk %}selected{% endif %}>
+                                            {{ j.nazwa }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                {% if dec.pk in bledne_pks %}
+                                    <br>
+                                    <span class="label alert">wskaż jednostkę docelową</span>
+                                {% endif %}
+                                </span>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        {% endif %}
+
+        {% if decyzje_brak %}
+            <h2>Do utworzenia</h2>
+            <p>
+                Brak dopasowania w bazie — domyślnie zostaną utworzone jako nowe
+                jednostki.
+            </p>
+            <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nazwa z pliku</th>
+                        <th>Osób</th>
+                        <th>Decyzja</th>
+                        {% if uzywaj_wydzialow %}<th>Wydział (parent)</th>{% endif %}
+                        <th>Mapuj na</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dec in decyzje_brak %}
+                        <tr>
+                            <td>{{ dec.nazwa_zrodlowa }}</td>
+                            <td>{{ dec.liczba_osob }}</td>
+                            <td>
+                                <select name="dec_{{ dec.pk }}_decyzja" class="js-decyzja"
+                                        {% if not moze_edytowac %}disabled{% endif %}>
+                                    <option value="{{ DECYZJA_AKCEPTUJ }}"
+                                            {% if dec.decyzja == DECYZJA_AKCEPTUJ %}selected{% endif %}>
+                                        Utwórz nową
+                                    </option>
+                                    <option value="{{ DECYZJA_MAPUJ }}"
+                                            {% if dec.decyzja == DECYZJA_MAPUJ %}selected{% endif %}>
+                                        Mapuj na istniejącą
+                                    </option>
+                                    <option value="{{ DECYZJA_POMIN }}"
+                                            {% if dec.decyzja == DECYZJA_POMIN %}selected{% endif %}>
+                                        Pomiń
+                                    </option>
+                                </select>
+                            </td>
+                            {% if uzywaj_wydzialow %}
+                                <td>
+                                    <span class="js-wydzial-wrap">
+                                    <select name="dec_{{ dec.pk }}_parent" class="js-wydzial"
+                                            {% if not moze_edytowac %}disabled{% endif %}>
+                                        <option value="">— w korzeniu / wydział domyślny (auto) —</option>
+                                        {% for w in parent_opcje %}
+                                            <option value="{{ w.pk }}"
+                                                    {% if dec.wybrany_parent_id == w.pk %}selected{% endif %}>
+                                                {{ w.nazwa }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    </span>
+                                </td>
+                            {% endif %}
+                            <td>
+                                <span class="js-wybrana-wrap">
+                                <select name="dec_{{ dec.pk }}_wybrana" class="js-wybrana"
+                                        {% if not moze_edytowac %}disabled{% endif %}>
+                                    <option value="">— wybierz (dla „Mapuj”) —</option>
+                                    {% for j in mapuj_opcje %}
+                                        <option value="{{ j.pk }}"
+                                                {% if dec.wybrana_jednostka_id == j.pk %}selected{% endif %}>
+                                            {{ j.nazwa }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                {% if dec.pk in bledne_pks %}
+                                    <br>
+                                    <span class="label alert">wskaż jednostkę docelową</span>
+                                {% endif %}
+                                </span>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        {% endif %}
+
+        <div style="margin-top: 1rem;">
+            {% if moze_edytowac %}
+                <button type="submit" class="button">Zapisz decyzje</button>
+            {% else %}
+                <div class="callout warning">
+                    {# poza podglądem (np. już zintegrowany) decyzje są tylko do wglądu #}
+                    Import nie jest w podglądzie — decyzje są tylko do wglądu.
+                </div>
+            {% endif %}
+            <a href="{% url "import_pracownikow:przeglad" pk=parent_object.pk %}"
+               class="button secondary">Wróć do przeglądu</a>
+        </div>
+    </form>
+
+    <style>
+        {# wrappery pól-celu jako blok: JS chowa je przez display:none, a przy #}
+        {# pokazaniu czyści inline-style → wraca tu do display:block. Blok jest #}
+        {# potrzebny, by Select2 width:100% policzyło się względem kolumny. #}
+        .js-wybrana-wrap, .js-wydzial-wrap { display: block; }
+        .js-wybrana-wrap .select2-container { min-width: 220px; }
+    </style>
+
+    <script>
+    // Weryfikacja jednostek: pole-cel widoczne w wierszu zależnie od „Decyzji".
+    //  - MAPUJ            → widać tylko „Mapuj na" (przeszukiwalna lista jednostek),
+    //  - AKCEPTUJ (utwórz nową / użyj auto-dopasowania) → widać „Wydział (parent)"
+    //    z opcją utworzenia w korzeniu (o ile uczelnia używa wydziałów),
+    //  - POMIŃ            → żadnego pola-celu.
+    // Wybór wydziału znaczy więc „utwórz nową jednostkę w tym wydziale" i NIE
+    // ogranicza listy „Mapuj na" (obie pule są niezależne po stronie serwera).
+    (function () {
+        if (window.__bppWeryfikacjaJednostekInit) return;
+        window.__bppWeryfikacjaJednostekInit = true;
+
+        var D_MAPUJ = "{{ DECYZJA_MAPUJ }}";
+        var D_AKCEPTUJ = "{{ DECYZJA_AKCEPTUJ }}";
+
+        function pokaz(el, widoczny) {
+            if (el) el.style.display = widoczny ? "" : "none";
+        }
+
+        function zastosuj(decyzjaSelect) {
+            var wiersz = decyzjaSelect.closest("tr");
+            if (!wiersz) return;
+            var v = decyzjaSelect.value;
+            pokaz(wiersz.querySelector(".js-wybrana-wrap"), v === D_MAPUJ);
+            pokaz(wiersz.querySelector(".js-wydzial-wrap"), v === D_AKCEPTUJ);
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            // Select2 na „Mapuj na" — płaska lista wszystkich jednostek jest długa,
+            // bez wyszukiwarki trudno trafić we właściwą. Init PRZED ukryciem pól,
+            // żeby szerokość policzyła się na widocznym elemencie.
+            if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+                window.jQuery(".js-wybrana").select2({
+                    width: "100%",
+                    allowClear: true,
+                    placeholder: "— wybierz jednostkę (dla „Mapuj”) —",
+                    language: "pl"
+                });
+            }
+            document.querySelectorAll(".js-decyzja").forEach(function (sel) {
+                zastosuj(sel);
+                sel.addEventListener("change", function () {
+                    zastosuj(sel);
+                });
+            });
+        });
+    })();
+    </script>
+    {% endif %}
+{% endblock %}

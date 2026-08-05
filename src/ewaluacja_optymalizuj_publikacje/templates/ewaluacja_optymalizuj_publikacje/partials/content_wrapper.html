@@ -1,4 +1,5 @@
 {% load bpp_formdefaults %}
+{% load prace %}
 <div id="content-wrapper" class="ewaluacja-optymalizuj__content-wrapper">
     {% if not publikacja %}
         <div class="panel">
@@ -16,7 +17,7 @@
         <div class="ewaluacja-optymalizuj__publication-header publication-header">
             <h3><a href="{% url 'bpp:browse_praca_by_slug' publikacja.slug %}"
                    class="ewaluacja-optymalizuj__publication-link">
-                {{ publikacja.tytul_oryginalny|safe }}</a></h3>
+                {{ publikacja.tytul_oryginalny|safe_tytul }}</a></h3>
             <p>ID: {{ publikacja.pk }} | Typ: {{ publikacja.typ_kbn|default:"" }}</p>
         </div>
 

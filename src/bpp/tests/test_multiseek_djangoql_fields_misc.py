@@ -14,13 +14,12 @@ def test_rodzaj_konferencji_krajowa():
 
 
 def test_rodzaj_jednostki_normalna():
-    from bpp.models import Jednostka
-
+    # Faza B (#438), III-1: wartości to nazwy słownikowe ``RodzajJednostki``
+    # (FK), nie kody starego CharField.
     field = registry.field_by_name["Rodzaj jednostki"]
-    val = Jednostka.RODZAJ_JEDNOSTKI.NORMALNA.label
     assert (
-        field.to_djangoql(val, str(EQUAL))
-        == 'autorzy.jednostka.rodzaj_jednostki = "normalna"'
+        field.to_djangoql("Standard", str(EQUAL))
+        == 'autorzy.jednostka.rodzaj.nazwa = "Standard"'
     )
 
 

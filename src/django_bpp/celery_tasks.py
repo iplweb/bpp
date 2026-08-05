@@ -5,12 +5,40 @@ import platform
 import rollbar
 from celery import Celery
 from celery.signals import task_failure, worker_ready
-from celery_singleton import clear_locks
+from celery_singleton import Singleton, clear_locks
+from celery_singleton import util as singleton_util
 from django.apps import apps
 from django.conf import settings
 
 if platform.system() == "Darwin":
     os.environ.setdefault("OBJC_DISABLE_INITIALIZE_FORK_SAFETY", "YES")
+
+
+class GlobalSingleton(Singleton):
+    """Singleton z lockiem GLOBALNYM dla zadania — niezależnym od argumentów.
+
+    Zwykły ``Singleton`` liczy klucz locka z argumentów wywołania (albo z
+    podzbioru wskazanego przez ``unique_on``), więc dwa wywołania różniące
+    się choćby jednym argumentem biegną RÓWNOLEGLE. Dla zadań, które
+    przebudowują całą tabelę „replace mode" (kasują wszystko i budują od
+    nowa), to jest dokładnie ten przypadek, którego nie wolno dopuścić:
+    ``scan_for_duplicates(user_id=1)`` i ``scan_for_duplicates(user_id=2)``
+    wzajemnie skasowałyby sobie wyniki.
+
+    ``unique_on=[]`` NIE załatwia sprawy — pusta lista jest falsy, więc
+    ``Singleton.generate_lock`` wpada w gałąź „bierz wszystkie argumenty".
+    Stąd jawne nadpisanie: lock zależy WYŁĄCZNIE od nazwy zadania.
+    """
+
+    abstract = True
+
+    def generate_lock(self, task_name, task_args=None, task_kwargs=None):
+        return singleton_util.generate_lock(
+            task_name,
+            [],
+            {},
+            key_prefix=self.singleton_config.key_prefix,
+        )
 
 
 def resolve_worker_config(environ, system, cpu_count):
@@ -88,7 +116,13 @@ def initialize_rollbar(**kwargs):
 
 @task_failure.connect
 def handle_task_failure(**kw):
-    rollbar.report_exc_info(extra_data=kw)
+    # Przekaz JAWNIE exc_info z sygnalu. Bez tego report_exc_info() siega po
+    # sys.exc_info(), ktore Celery potrafi juz wyczyscic w momencie emisji
+    # task_failure -> do Rollbara szedl pusty/smieciowy raport albo nic
+    # (Freshdesk #344: 500 importera nie pojawial sie w Rollbarze).
+    einfo = kw.get("einfo")
+    exc_info = getattr(einfo, "exc_info", None)
+    rollbar.report_exc_info(exc_info=exc_info, extra_data=kw)
 
 
 def celery_base_data_hook(request, data):

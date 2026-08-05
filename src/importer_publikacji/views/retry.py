@@ -1,7 +1,7 @@
 """Endpoint do retry-owania task-a importera publikacji po błędzie."""
 
 from django.http import HttpResponseBadRequest, HttpResponseNotAllowed
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import redirect
 from django.views import View
 
 from ..models import ImportSession
@@ -13,7 +13,7 @@ class ImportTaskRetryView(ImporterPermissionMixin, View):
     """POST — wyczyść state błędu, enqueueuj odpowiedni task ponownie."""
 
     def post(self, request, session_id):
-        session = get_object_or_404(ImportSession, pk=session_id)
+        session = self.get_scoped_or_404(ImportSession, pk=session_id)
 
         if session.status != ImportSession.Status.IMPORT_FAILED:
             return HttpResponseBadRequest(

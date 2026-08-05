@@ -20,6 +20,26 @@ class Crossref_Mapper(models.Model):
         PEER_REVIEW = 15, "peer-review"
         OTHER = 16, "other"
 
+    # Typy CrossRef, które w BPP są wydawnictwami zwartymi (książki,
+    # rozdziały, monografie, dysertacje). Reszta to wydawnictwa ciągłe
+    # (artykuły). Jedno źródło prawdy dla domyślnej wartości pola
+    # ``jest_wydawnictwem_zwartym`` — używane przy leniwym tworzeniu
+    # mapperów (``get_or_create(defaults=...)``) oraz w migracji seedującej.
+    BOOK_TYPES = frozenset(
+        {
+            CHARAKTER_CROSSREF.BOOK,
+            CHARAKTER_CROSSREF.BOOK_CHAPTER,
+            CHARAKTER_CROSSREF.EDITED_BOOK,
+            CHARAKTER_CROSSREF.MONOGRAPH,
+            CHARAKTER_CROSSREF.REFERENCE_BOOK,
+            CHARAKTER_CROSSREF.BOOK_SERIES,
+            CHARAKTER_CROSSREF.BOOK_SET,
+            CHARAKTER_CROSSREF.BOOK_SECTION,
+            CHARAKTER_CROSSREF.BOOK_PART,
+            CHARAKTER_CROSSREF.DISSERTATION,
+        }
+    )
+
     charakter_crossref = models.PositiveSmallIntegerField(
         "Charakter w CrossRef",
         choices=CHARAKTER_CROSSREF.choices,
@@ -48,3 +68,8 @@ class Crossref_Mapper(models.Model):
             v = self.charakter_formalny_bpp.nazwa
 
         return f"{self.CHARAKTER_CROSSREF(self.charakter_crossref).label} -> {v}"
+
+    @staticmethod
+    def default_jest_wydawnictwem_zwartym(charakter_crossref) -> bool:
+        """Czy dany typ CrossRef domyślnie jest wydawnictwem zwartym."""
+        return charakter_crossref in Crossref_Mapper.BOOK_TYPES

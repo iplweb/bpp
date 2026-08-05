@@ -1,16 +1,31 @@
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db import transaction
+from decimal import Decimal, InvalidOperation
+
+from django.db import models, transaction
 from django.http import JsonResponse
 from django.http.response import HttpResponseNotFound
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import View
 
 from bpp.models import Autor, Autor_Dyscyplina, Uczelnia, Zrodlo
 from bpp.models.abstract import POLA_PUNKTACJI
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
 from bpp.models.zrodlo import Punktacja_Zrodla
+from bpp.permissions import WprowadzanieDanychRequiredMixin
+
+# Pola punktacji będące liczbami dziesiętnymi (DecimalField). Bibliotekarze
+# w Polsce naturalnie wpisują je z przecinkiem dziesiętnym ("3,2"), a
+# DecimalField wymaga kropki — bez normalizacji zapis wywala się na
+# ValidationError / decimal.InvalidOperation. Pola całkowite (kwartyle)
+# celowo pomijamy, żeby nie ruszać wartości nie-dziesiętnych.
+POLA_DZIESIETNE = frozenset(
+    pole
+    for pole in POLA_PUNKTACJI
+    if isinstance(Punktacja_Zrodla._meta.get_field(pole), models.DecimalField)
+)
 
 
-class RokHabilitacjiView(LoginRequiredMixin, View):
+class RokHabilitacjiView(WprowadzanieDanychRequiredMixin, View):
     def post(self, request, *args, **kw):
         try:
             autor = Autor.objects.get(pk=int(request.POST.get("autor_pk")))
@@ -25,7 +40,7 @@ class RokHabilitacjiView(LoginRequiredMixin, View):
         return JsonResponse({"rok": habilitacja.rok})
 
 
-class PunktacjaZrodlaView(LoginRequiredMixin, View):
+class PunktacjaZrodlaView(WprowadzanieDanychRequiredMixin, View):
     def post(self, request, zrodlo_id, rok, *args, **kw):
         try:
             z = Zrodlo.objects.get(pk=zrodlo_id)
@@ -42,9 +57,37 @@ class PunktacjaZrodlaView(LoginRequiredMixin, View):
         return JsonResponse(d)
 
 
-class UploadPunktacjaZrodlaView(LoginRequiredMixin, View):
+class UploadPunktacjaZrodlaView(WprowadzanieDanychRequiredMixin, View):
     def ok(self):
         return JsonResponse({"result": "ok"})
+
+    @staticmethod
+    def zbierz_punktacje(post):
+        """Wyciąga z POST pola punktacji, normalizując polski przecinek
+        dziesiętny (``"3,2"``) na kropkę dla pól ``DecimalField``.
+
+        Zwraca ``(kw_punktacji, bledne_pola)`` — słownik wartości gotowych
+        do zapisu oraz listę pól, których po normalizacji nie dało się
+        sparsować jako liczby (zamiast wywalać się gołym 500).
+        """
+        kw_punktacji = {}
+        bledne_pola = []
+        for element in list(post.keys()):
+            if element not in POLA_PUNKTACJI:
+                continue
+            value = post.get(element)
+            if value == "":
+                continue
+            value = value or "0.0"
+            if element in POLA_DZIESIETNE:
+                value = value.replace(",", ".")
+                try:
+                    value = Decimal(value)
+                except InvalidOperation:
+                    bledne_pola.append(element)
+                    continue
+            kw_punktacji[element] = value
+        return kw_punktacji, bledne_pola
 
     @transaction.atomic
     def post(self, request, zrodlo_id, rok, *args, **kw):
@@ -53,11 +96,16 @@ class UploadPunktacjaZrodlaView(LoginRequiredMixin, View):
         except Zrodlo.DoesNotExist:
             return HttpResponseNotFound("Zrodlo")
 
-        kw_punktacji = {}
-        for element in list(request.POST.keys()):
-            if element in POLA_PUNKTACJI:
-                if request.POST.get(element) != "":
-                    kw_punktacji[element] = request.POST.get(element) or "0.0"
+        kw_punktacji, bledne_pola = self.zbierz_punktacje(request.POST)
+        if bledne_pola:
+            return JsonResponse(
+                {
+                    "result": "error",
+                    "reason": "Nieprawidłowa wartość liczbowa w polach: "
+                    + ", ".join(sorted(bledne_pola)),
+                },
+                status=400,
+            )
 
         try:
             pz = Punktacja_Zrodla.objects.get(zrodlo=z, rok=rok)
@@ -108,9 +156,38 @@ def ostatnia_dyscyplina(request, a, rok):
             return ad.dyscyplina_naukowa or ad.subdyscyplina_naukowa
 
 
-class OstatniaJednostkaIDyscyplinaView(LoginRequiredMixin, View):
+@method_decorator(csrf_exempt, name="dispatch")
+class OstatniaJednostkaIDyscyplinaView(View):
     """Zwraca jako JSON ostatnią jednostkę danego autora oraz ewentualnie jego
     dyscyplinę naukową, w sytuacji gdy jest ona jedna i określona na dany rok.
+
+    Widok jest ŚWIADOMIE w pełni publiczny — bez bramki uprawnień, bez bramki
+    logowania i bez CSRF. Każda z nich była tu osobnym błędem:
+
+    - ``WprowadzanieDanychRequiredMixin`` (``e892142ff``) → 403 dla każdego
+      zgłaszającego bez roli redaktora (Rollbar #4283-4294 i ~19 bliźniaczych),
+    - ``LoginRequiredMixin`` (``84673573c``) → 302 na login dla anonimów,
+    - CSRF → wymóg świeżego tokenu z formularza.
+
+    Konsumentem jest ``autorform_dependant.js``, ładowany do PUBLICZNEGO
+    formularza ``zglos_publikacje`` (patrz ``zglos_publikacje.forms``), którego
+    ``Zgloszenie_PublikacjiWizard`` nie ma żadnej bramki logowania. Odcięci
+    użytkownicy tracili podpowiedź jednostki i dyscypliny PO CICHU, bo to AJAX
+    — ``.done()`` po prostu się nie wykonywał.
+
+    Dlaczego poluzowanie jest bezpieczne:
+
+    - widok niczego nie MUTUJE — czyta ``Autor``/``Autor_Dyscyplina`` i zwraca
+      JSON; CSRF chroni wyłącznie przed wymuszoną zmianą stanu, więc na
+      czystym odczycie nie wnosi ochrony, a psuje konsumenta,
+    - nie ujawnia niczego nowego: te same dane (istnienie autora, jego aktualna
+      jednostka) anonim dostaje z publicznej, cache'owanej ``AutorView``
+      pod ``/bpp/autor/<pk>/``,
+    - podpowiadanie dyscypliny i tak pozostaje pod kontrolą wdrożenia przez
+      ``Uczelnia.podpowiadaj_dyscypliny`` (patrz :func:`ostatnia_dyscyplina`).
+
+    Bramki redaktorskie zostają na widokach MUTUJĄCYCH obok — pilnuje tego
+    ``test_pozostale_api_nadal_wymagaja_uprawnien_redaktorskich``.
     """
 
     def post(self, request, *args, **kw):

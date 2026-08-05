@@ -47,7 +47,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -56,8 +56,11 @@ jobs:
       # so the heavy toolchain the test jobs need is unnecessary for
       # linting. uv is only a fast launcher for pre-commit (via uvx).
       - name: Install uv
-        uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
+          # Patrz komentarz przy jobie `lock-check` — bez `version` setup-uv
+          # bierze "latest", co czyni CI niedeterministycznym.
+          version: "0.11.29"
           enable-cache: true
 
       - name: Determine diff base
@@ -111,6 +114,39 @@ jobs:
           uvx pre-commit run ruff-format \
             --from-ref "$DIFF_BASE" --to-ref HEAD --show-diff-on-failure
 
+  lockfile:
+    # Assert uv.lock is resolved against the CURRENT pyproject.toml. The
+    # test image installs deps with `uv sync --frozen`, which applies
+    # uv.lock AS-IS without checking it against pyproject.toml — so a dep
+    # edited without re-running `uv lock` would leave dev CI green while
+    # testing stale deps, and the release pipeline's own `uv lock` step
+    # would then silently re-resolve into deps dev never tested. This
+    # fast standalone gate makes lock consistency a tested invariant on
+    # dev, turning uv.lock into a trustworthy artifact. `uv lock --check`
+    # is read-only: it never writes the lockfile, it only fails on drift.
+    # Mirrors the `lint` job: same pinned uv setup, no project sync.
+    name: uv.lock in sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          # PIN OBOWIAZKOWY. Bez `version` setup-uv loguje "Could not
+          # determine uv version from uv.toml or pyproject.toml. Falling back
+          # to latest" i bierze najnowsze uv z releases.astral.sh. `uv lock
+          # --check` zaczyna wtedy zalezec od DATY przebiegu, nie od tresci
+          # repo: ten sam, bit-w-bit identyczny uv.lock przechodzil na uv
+          # 0.11.29 i padal na 0.11.31 ("lockfile needs to be updated"),
+          # wywracajac gate na branchach, ktore deps w ogole nie ruszaly.
+          # Wersje podnosimy SWIADOMIE, razem z przegenerowanym uv.lock.
+          version: "0.11.29"
+          enable-cache: true
+      - name: Assert uv.lock matches pyproject.toml
+        run: uv lock --check
+
   baseline-check:
     # Guard repo-state-only: czy baseline-sql/baseline.sql nadaza za migracjami
     # (manage.py baseline_check). Wydzielone z prepare-image i puszczone
@@ -130,7 +166,7 @@ jobs:
       contents: read
 
     steps:
-    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: Install system build deps (for uv sync)
       run: |
@@ -138,8 +174,12 @@ jobs:
         xargs -a docker/bpp_base/build.txt sudo apt-get install -y
 
     - name: Install uv
-      uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
+      uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
       with:
+        # Patrz komentarz przy jobie `lock-check`. Tu dochodzi drugi powod:
+        # `uv sync --frozen` czyta uv.lock, wiec plywajaca wersja uv czyni
+        # srodowisko testowe niereprodukowalnym miedzy przebiegami.
+        version: "0.11.29"
         enable-cache: false
 
     - name: Install project deps
@@ -182,7 +222,7 @@ jobs:
       IMAGE_REPO: ghcr.io/iplweb/bpp-test-runner
 
     steps:
-    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     # baseline_check przeniesiony do osobnego joba `baseline-check`, ktory
     # biegnie ROWNOLEGLE z tym buildem (wczesniej jego ~37s apt+uv sync+check
@@ -196,7 +236,7 @@ jobs:
         driver: docker-container
 
     - name: Log in to GHCR
-      uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+      uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
@@ -215,7 +255,9 @@ jobs:
         context: .
         file: docker/bpp_base/Dockerfile
         target: test-runner
-        push: true
+        # Zstd zmniejsza transfer obrazu pullowanego rownolegle przez 12
+        # shardow. `outputs: type=registry` jest odpowiednikiem push=true.
+        outputs: type=registry,compression=zstd,compression-level=3,force-compression=true
         # Two tags: immutable sha-pinned (consumed by tests jobs) and
         # the registry-cache helper used to seed `cache-from` next time.
         tags: |
@@ -302,10 +344,10 @@ jobs:
       NUM_SHARDS: "12"
 
     steps:
-    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: Log in to GHCR
-      uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+      uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
@@ -315,7 +357,37 @@ jobs:
       run: mkdir -p ci-output
 
     - name: Pull test-runner image
-      run: docker compose $COMPOSE_FILES pull test-runner
+      # Retry na transient network/registry error (timeout GHCR/Docker Hub
+      # to najczestszy szum CI — nie regresja kodu). 3 proby, 10s backoff;
+      # dopiero trwala porazka wywala krok.
+      run: |
+        n=0
+        until docker compose $COMPOSE_FILES pull test-runner; do
+          n=$((n + 1))
+          if [ "$n" -ge 3 ]; then
+            echo "docker pull test-runner nie powiodl sie po $n probach" >&2
+            exit 1
+          fi
+          echo "pull test-runner padl (proba $n), ponawiam za 10s..." >&2
+          sleep 10
+        done
+
+    - name: Pull service images (db, redis)
+      # Osobny, retry-owany pull obrazow z Docker Huba (iplweb/bpp_dbserver,
+      # redis) PRZED `up -d`. Wczesniej `up -d` pobieral je implicite bez
+      # retry — timeout Docker Huba na iplweb/bpp_dbserver wywalal caly shard
+      # (poz. 3.3 audytu). Teraz `up -d` widzi obrazy juz lokalnie.
+      run: |
+        n=0
+        until docker compose $COMPOSE_FILES pull db redis; do
+          n=$((n + 1))
+          if [ "$n" -ge 3 ]; then
+            echo "docker pull db/redis nie powiodl sie po $n probach" >&2
+            exit 1
+          fi
+          echo "pull db/redis padl (proba $n), ponawiam za 10s..." >&2
+          sleep 10
+        done
 
     - name: Start services
       run: docker compose $COMPOSE_FILES up -d db redis
@@ -373,10 +445,10 @@ jobs:
       contents: read
 
     steps:
-    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: Set up Node
-      uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
       with:
         node-version: "20"
         cache: yarn

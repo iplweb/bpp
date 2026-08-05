@@ -1,0 +1,129 @@
+"""Faza B / issue #438 — IV-1 (migracja 0462): jednorazowe przeliczenie
+``Jednostka.aktualna`` z historii + ODKRYCIE (un-hide) węzłów-wydziałów +
+zmiana default ``aktualna`` False→True.
+
+Domyka F2 (atomowość releasu): PO tej migracji skonwertowane węzły-wydziały
+stają się widoczne na zmigrowanej produkcji (wg źródłowego ``Wydzial.widoczny``).
+
+Kroki:
+  1. ``przelicz_aktualna`` — FINALNA logika (zduplikowana INLINE, bo migracje
+     operują na modelach historycznych i NIE mogą wołać komendy). Musi dawać
+     identyczny wynik co ``bpp.models.jednostka.przelicz_aktualna_wszystkich``.
+     Idempotentne.
+  2. ``odkryj_widoczna`` — dla węzłów ``legacy_wydzial_id IS NOT NULL`` ustaw
+     ``widoczna = Wydzial.widoczny`` źródłowego wydziału.
+  3. ``AlterField`` ``aktualna`` default False→True (state+schema; model już
+     ma default=True).
+
+Uwaga: NIE inwalidujemy tu cache strony głównej (``get_uczelnia_context_data``).
+Poprzednia wersja wołała ``get_uczelnia_context_data.invalidate()`` bez
+argumentów — to było dwojako złe: (a) cacheops ``@cached`` kluczuje po
+argumentach, więc bezargumentowy ``invalidate()`` kasował nieistniejący klucz
+zerowo-argumentowy i NIE czyścił nic (funkcja jest zawsze wołana z ``uczelnia``);
+(b) przy ``CACHEOPS_DEGRADE_ON_FAILURE=False`` (default, nienadpisany w BPP)
+błąd połączenia z Redisem propaguje z ``_delete`` → RunPython rzuca → ROLLBACK
+całej migracji, łamiąc atomowość releasu. Migracja nie może zależeć od Redisa.
+Kasowany krok był więc no-opem obarczonym ryzykiem — usunięcie jest bezpieczne;
+cache strony głównej odświeża się po TTL (1h). UWAGA: ten sam bezargumentowy
+``.invalidate()`` siedzi w sygnałach runtime (wydzial.py, jednostka.py,
+browse.py, context_processors/uczelnia.py) — one też są no-opami. To latentny
+bug POZA zakresem tej migracji (nie polegamy tu na nim), wart osobnego zgłoszenia.
+"""
+
+from datetime import date
+
+from django.db import migrations, models
+from django.db.models.functions import Coalesce
+
+
+def przelicz_aktualna(apps, schema_editor):
+    """Jednorazowe przeliczenie ``aktualna`` wg finalnej logiki. Logika
+    zduplikowana z ``bpp.models.jednostka.wylicz_aktualna`` /
+    ``przelicz_aktualna_wszystkich`` (modele historyczne → bez importu)."""
+    Jednostka = apps.get_model("bpp", "Jednostka")
+    Jednostka_Rodzic = apps.get_model("bpp", "Jednostka_Rodzic")
+
+    # Najświeższy wpis (max coalesce(od, 0001-01-01)) per jednostka, jednym
+    # DISTINCT ON — brak jednostki w mapie ⇒ brak wpisów.
+    najswiezsze = dict(
+        Jednostka_Rodzic.objects.annotate(_od=Coalesce("od", date(1, 1, 1)))
+        .order_by("jednostka_id", "-_od")
+        .distinct("jednostka_id")
+        .values_list("jednostka_id", "do")
+    )
+    dzis = date.today()
+
+    aktualne, nieaktualne = [], []
+    for pk, override in Jednostka.objects.values_list("pk", "aktualna_override"):
+        if override is not None:
+            val = override
+        elif pk not in najswiezsze:
+            val = True  # brak wpisów → True (finalna logika, RÓŻNI się od interim)
+        else:
+            do = najswiezsze[pk]
+            val = (do if do is not None else date(9999, 12, 31)) > dzis
+        (aktualne if val else nieaktualne).append(pk)
+
+    Jednostka.objects.filter(pk__in=aktualne).exclude(aktualna=True).update(
+        aktualna=True
+    )
+    Jednostka.objects.filter(pk__in=nieaktualne).exclude(aktualna=False).update(
+        aktualna=False
+    )
+
+
+def odkryj_widoczna(apps, schema_editor):
+    """F2: syntetyczne węzły-lustra (``jest_lustrem=True``) dziedziczą
+    widoczność ze źródłowego ``Wydzial.widoczny`` — widoczne wydziały →
+    widoczne węzły, ukryte → ukryte.
+
+    Filtr ``jest_lustrem=True`` WYKLUCZA promowane realne jednostki (I-4/0457:
+    1-elementowy wydział → jego jedyna jednostka jako root też ma
+    ``legacy_wydzial_id``, ale ``jest_lustrem=False``). Takiej jednostce NIE
+    nadpisujemy jej własnej widoczności widocznością martwego wydziału (jej
+    widoczność ustawia krok 0 promocji w 0457)."""
+    Jednostka = apps.get_model("bpp", "Jednostka")
+    Wydzial = apps.get_model("bpp", "Wydzial")
+
+    widoczny = dict(Wydzial.objects.values_list("pk", "widoczny"))
+    widoczne = [pk for pk, w in widoczny.items() if w]
+    ukryte = [pk for pk, w in widoczny.items() if not w]
+
+    Jednostka.objects.filter(legacy_wydzial_id__in=widoczne, jest_lustrem=True).update(
+        widoczna=True
+    )
+    Jednostka.objects.filter(legacy_wydzial_id__in=ukryte, jest_lustrem=True).update(
+        widoczna=False
+    )
+
+
+def ukryj_widoczna(apps, schema_editor):
+    """Reverse: przywróć syntetyczne węzły-lustra do stanu ukrytego (jak przy
+    konwersji — ``struktura_konwersja`` / migracja ``0455`` tworzyły je
+    ``widoczna=False``). Tylko ``jest_lustrem=True`` — promowanej realnej
+    jednostki (I-4) nie ukrywamy."""
+    Jednostka = apps.get_model("bpp", "Jednostka")
+    Jednostka.objects.filter(legacy_wydzial_id__isnull=False, jest_lustrem=True).update(
+        widoczna=False
+    )
+
+
+class Migration(migrations.Migration):
+    dependencies = [
+        ("bpp", "0461_faza_b_iii1_usun_rodzaj_jednostki"),
+    ]
+
+    operations = [
+        migrations.RunPython(przelicz_aktualna, migrations.RunPython.noop),
+        migrations.RunPython(odkryj_widoczna, ukryj_widoczna),
+        migrations.AlterField(
+            model_name="jednostka",
+            name="aktualna",
+            field=models.BooleanField(
+                default=True,
+                help_text="""Jeżeli dana jednostka wchodzi w struktury wydziału
+    (czyli jej obecność w strukturach wydziału nie została zakończona z określoną datą), to pole to będzie miało
+    wartość 'PRAWDA'.""",
+            ),
+        ),
+    ]

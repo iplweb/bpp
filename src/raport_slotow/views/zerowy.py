@@ -71,7 +71,15 @@ class RaportSlotowZerowyWyniki(
         if self.request.GET.get("submit") == "Pobierz XLS":
             return self.create_export("xlsx")
 
-        return super().render_to_response(context, **kwargs)
+        response = super().render_to_response(context, **kwargs)
+        if hasattr(response, "render"):
+            # Wynik czyta z tabeli TYMCZASOWEJ (sesyjnej) PostgreSQL. Render
+            # musi się odbyć jeszcze w ciele widoku — pod ASGI leniwy render
+            # TemplateResponse leci osobnym sync_to_async-chunkiem i inny
+            # request współdzielący wątek może w międzyczasie zamknąć
+            # połączenie (temp table znika → "relacja nie istnieje").
+            response.render()
+        return response
 
     def get_queryset(self):
         od_roku = self.form.cleaned_data["od_roku"]

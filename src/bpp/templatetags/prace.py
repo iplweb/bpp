@@ -117,6 +117,20 @@ def safe_streszczenie(value):
     return mark_safe(safe_streszczenie_html(value))
 
 
+@register.filter(name="safe_tytul")
+def safe_tytul(value):
+    """Wyrenderuj tytuł publikacji bezpiecznie.
+
+    Zamiennik dla ``|safe`` przy ``tytul``/``tytul_oryginalny``: sanityzuje
+    HTML tytułu (wąska allowlista inline — kursywa, pogrubienie, sub/sup),
+    usuwając XSS z tytułów pochodzących z importu/zgłoszeń. Stosować jako
+    OSTATNI filtr (po ``truncatewords_html``/``znak_na_koncu``).
+    """
+    from bpp.util import safe_tytul_html
+
+    return mark_safe(safe_tytul_html(value))
+
+
 @register.filter(name="jsonify")
 def jsonify(value):
     """Convert a value to a JSON literal for use inside a <script> JSON-LD block.
@@ -267,17 +281,41 @@ def generate_coins(praca, autorzy):  # noqa
     return mark_safe(f'<span class="Z3988" title="{coins_string}"></span>')
 
 
-@register.simple_tag
-def autorzy_skrocony(praca, uczelnia=None):
+def czy_zwijac_liste_autorow(request, uczelnia):
+    """Rozstrzyga, czy zwijać długie listy autorów dla danego żądania.
+
+    Kolejność: świadoma preferencja zalogowanego użytkownika (ZAWSZE/NIGDY)
+    → ustawienie oglądanej uczelni → domyślnie ``True``. Użytkownik z
+    preferencją „jak uczelnia" (oraz anonim / brak żądania) dziedziczy
+    ustawienie uczelni.
+    """
+    from bpp.models.profile import ZwijanieAutorow
+
+    user = getattr(request, "user", None)
+    if user is not None and user.is_authenticated:
+        pref = user.zwijaj_dlugie_listy_autorow
+        if pref == ZwijanieAutorow.ZAWSZE:
+            return True
+        if pref == ZwijanieAutorow.NIGDY:
+            return False
+        # DOMYSLNE → dziedziczymy z uczelni (poniżej)
+    return bool(getattr(uczelnia, "zwijaj_dlugie_listy_autorow", True))
+
+
+@register.simple_tag(takes_context=True)
+def autorzy_skrocony(context, praca, uczelnia=None):
     """Skrócony widok listy autorów (``autorzy_dla_opisu_skrocony``) z przekazaną
     oglądającą uczelnią, tak by wyróżnienie "naszego" autora było host-aware.
 
     Metoda modelu nie może dostać argumentu przez ``{% with %}``/``{{ }}``,
     więc owijamy ją w simple_tag wywoływany jako
     ``{% autorzy_skrocony praca uczelnia as box %}``. ``uczelnia`` pochodzi
-    z context processora (``Uczelnia.objects.get_for_request``).
+    z context processora (``Uczelnia.objects.get_for_request``). Zwijanie
+    długiej listy jest rozstrzygane per-żądanie (preferencja zalogowanego
+    użytkownika nadpisuje ustawienie uczelni) — dlatego ``takes_context``.
     """
-    return praca.autorzy_dla_opisu_skrocony(uczelnia=uczelnia)
+    zwijaj = czy_zwijac_liste_autorow(context.get("request"), uczelnia)
+    return praca.autorzy_dla_opisu_skrocony(uczelnia=uczelnia, zwijaj=zwijaj)
 
 
 @register.simple_tag

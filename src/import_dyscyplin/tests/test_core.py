@@ -5,9 +5,9 @@ from import_dyscyplin.core import przeanalizuj_plik_xls
 from import_dyscyplin.models import Import_Dyscyplin_Row
 
 
-def test_przeanalizuj_plik_xls_zly_plik(conftest_py):
+def test_przeanalizuj_plik_xls_zly_plik(zly_plik):
     with pytest.raises(ImproperFileException):
-        przeanalizuj_plik_xls(conftest_py, parent=None)
+        przeanalizuj_plik_xls(zly_plik, parent=None)
 
 
 def test_przeanalizuj_plik_xls_wiele_skoroszytow(test3_multiple_sheets_xlsx):

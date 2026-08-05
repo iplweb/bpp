@@ -10,18 +10,26 @@ from import_common.exceptions import (
     HeaderNotFoundException,
     ImproperFileException,
 )
+from import_common.util import sprawdz_bombe_dekompresji
 from import_dyscyplin.models import Import_Dyscyplin_Row
 
 
 def _matchuj_wydzial_z_cache(wydzial_cache, nazwa_wydzialu):
-    """Matchuje wydział z cache lub z bazy."""
-    wydzial = wydzial_cache.get(nazwa_wydzialu)
-    if not wydzial and nazwa_wydzialu:
+    """Matchuje wydział z cache lub z bazy.
+
+    Faza C (#438): ``Import_Dyscyplin_Row.wydzial`` to FK->Jednostka (korzeń
+    drzewa), a ``matchuj_wydzial`` zwraca już tę jednostkę-korzeń — używamy
+    jej wprost, bez pośrednika węzła-lustra.
+    """
+    jednostka_wydzialu = wydzial_cache.get(nazwa_wydzialu)
+    if not jednostka_wydzialu and nazwa_wydzialu:
         try:
-            wydzial = wydzial_cache[nazwa_wydzialu] = matchuj_wydzial(nazwa_wydzialu)
+            jednostka_wydzialu = matchuj_wydzial(nazwa_wydzialu)
         except KeyError:
-            pass
-    return wydzial
+            jednostka_wydzialu = None
+        if jednostka_wydzialu is not None:
+            wydzial_cache[nazwa_wydzialu] = jednostka_wydzialu
+    return jednostka_wydzialu
 
 
 def _matchuj_jednostke_z_cache(jednostka_cache, nazwa_jednostki):
@@ -100,6 +108,7 @@ def przeanalizuj_plik_xls(sciezka, parent):
     :param sciezka:
     :return: (success:boolean, message)
     """
+    sprawdz_bombe_dekompresji(sciezka)
     try:
         f = openpyxl.load_workbook(sciezka)
     except InvalidFileException as e:

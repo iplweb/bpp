@@ -1,0 +1,237 @@
+{
+  "extract_from_komunikat": {
+    "bare_tuple": null,
+    "empty": null,
+    "empty_list": "pbn_api.exceptions.HttpException: (400, '/api/v1/publications', '[]')",
+    "list_payload": "pbn_api.exceptions.HttpException: (400, '/api/v1/publications', '[{\"error\": \"First error\"}, {\"error\": \"Second error\"}]')",
+    "none": null,
+    "number_payload": "pbn_api.exceptions.HttpException: (400, '/api/v1/publications', '42')",
+    "plaintext": null,
+    "prefix_http": "pbn_api.exceptions.HttpException: (400, '/api/v1/publications', '{\"code\":400,\"message\":\"Bad Request\",\"description\":\"Validation failed.\",\"details\":{\"isbn\":\"Publikacja o identycznym ISBN już istnieje!\"}}')",
+    "prefix_validation": "pbn_client.exceptions.PBNValidationError: (400, '/api/v1/publications', '{\"details\":{\"doi\":\"Duplicate\"}}')",
+    "simple_exc": "pbn_api.exceptions.StatementsMissing: czegoś brakuje",
+    "string_payload": "pbn_api.exceptions.HttpException: (400, '/api/v1/publications', '\"Just a string\"')",
+    "traceback": "pbn_api.exceptions.HttpException: (400, '/api/v1/publications', '{\"code\":400,\"message\":\"Bad Request\",\"description\":\"Validation failed.\",\"details\":{\"isbn\":\"Publikacja o identycznym ISBN już istnieje!\"}}')",
+    "tuple_dict": null,
+    "xss_fallback": null,
+    "xss_payload": "pbn_api.exceptions.HttpException: (400, '/api/v1/publications', '{\"code\":400,\"description\":\"<script>alert(1)</script>\",\"details\":{\"isbn\":\"<img src=x onerror=alert(2)>\"}}')"
+  },
+  "format_meryt": {
+    "bare_tuple": "<div class=\"pbn-error-text\">(400, &quot;/api/v1/publications&quot;, &#x27;{&quot;message&quot;: &quot;Error&quot;, &quot;code&quot;: 400}&#x27;)</div>",
+    "empty": "",
+    "empty_list": "<div class=\"pbn-error-endpoint\"><em>Endpoint: /api/v1/publications</em></div>",
+    "list_payload": "<div class=\"pbn-error-endpoint\"><em>Endpoint: /api/v1/publications</em></div>",
+    "none": "",
+    "plaintext": "<div class=\"pbn-error-text\">Some random error message</div>",
+    "prefix_http": "<div class=\"pbn-error-detail\"><strong>Szczegóły:</strong></div>\n<div class=\"pbn-error-detail-item\">• <em>isbn:</em> Publikacja o identycznym ISBN już istnieje!</div>\n<div class=\"pbn-error-endpoint\"><em>Endpoint: /api/v1/publications</em></div>",
+    "prefix_validation": "<div class=\"pbn-error-detail\"><strong>Szczegóły:</strong></div>\n<div class=\"pbn-error-detail-item\">• <em>doi:</em> Duplicate</div>\n<div class=\"pbn-error-endpoint\"><em>Endpoint: /api/v1/publications</em></div>",
+    "simple_exc": "<div class=\"pbn-error-text\">StatementsMissing: czegoś brakuje</div>",
+    "string_payload": "<div class=\"pbn-error-endpoint\"><em>Endpoint: /api/v1/publications</em></div>",
+    "traceback": "<div class=\"pbn-error-detail\"><strong>Szczegóły:</strong></div>\n<div class=\"pbn-error-detail-item\">• <em>isbn:</em> Publikacja o identycznym ISBN już istnieje!</div>\n<div class=\"pbn-error-endpoint\"><em>Endpoint: /api/v1/publications</em></div>",
+    "tuple_dict": "<div class=\"pbn-error-text\">(400, &#x27;/api/v1/publications&#x27;, &#x27;{&quot;code&quot;:400,&quot;message&quot;:&quot;Bad Request&quot;,&quot;description&quot;:&quot;Validation failed.&quot;,&quot;details&quot;:{&quot;isbn&quot;:&quot;Publikacja o identycznym ISBN już istnieje!&quot;}}&#x27;)</div>",
+    "xss_fallback": "<div class=\"pbn-error-text\">&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;</div>",
+    "xss_payload": "<div class=\"pbn-error-detail\"><strong>Szczegóły:</strong></div>\n<div class=\"pbn-error-detail-item\">• <em>isbn:</em> &lt;img src=x onerror=alert(2)&gt;</div>\n<div class=\"pbn-error-endpoint\"><em>Endpoint: /api/v1/publications</em></div>"
+  },
+  "format_none": {
+    "bare_tuple": "<div class=\"pbn-error-text\">(400, &quot;/api/v1/publications&quot;, &#x27;{&quot;message&quot;: &quot;Error&quot;, &quot;code&quot;: 400}&#x27;)</div>",
+    "empty": "",
+    "empty_list": "<div class=\"pbn-error-header\">HttpException: HTTP 400</div>\n<div class=\"pbn-error-endpoint\"><em>Endpoint: /api/v1/publications</em></div>",
+    "list_payload": "<div class=\"pbn-error-header\">HttpException: HTTP 400</div>\n<div class=\"pbn-error-endpoint\"><em>Endpoint: /api/v1/publications</em></div>",
+    "none": "",
+    "plaintext": "<div class=\"pbn-error-text\">Some random error message</div>",
+    "prefix_http": "<div class=\"pbn-error-header\">HttpException: HTTP 400</div>\n<div class=\"pbn-error-detail\"><strong>Wiadomość:</strong> Bad Request</div>\n<div class=\"pbn-error-detail\"><strong>Opis:</strong> Validation failed.</div>\n<div class=\"pbn-error-detail\"><strong>Szczegóły:</strong></div>\n<div class=\"pbn-error-detail-item\">• <em>isbn:</em> Publikacja o identycznym ISBN już istnieje!</div>\n<div class=\"pbn-error-endpoint\"><em>Endpoint: /api/v1/publications</em></div>",
+    "prefix_validation": "<div class=\"pbn-error-header\">PBNValidationError: HTTP 400</div>\n<div class=\"pbn-error-detail\"><strong>Szczegóły:</strong></div>\n<div class=\"pbn-error-detail-item\">• <em>doi:</em> Duplicate</div>\n<div class=\"pbn-error-endpoint\"><em>Endpoint: /api/v1/publications</em></div>",
+    "simple_exc": "<div class=\"pbn-error-text\">StatementsMissing: czegoś brakuje</div>",
+    "string_payload": "<div class=\"pbn-error-header\">HttpException: HTTP 400</div>\n<div class=\"pbn-error-endpoint\"><em>Endpoint: /api/v1/publications</em></div>",
+    "traceback": "<div class=\"pbn-error-header\">HttpException: HTTP 400</div>\n<div class=\"pbn-error-detail\"><strong>Wiadomość:</strong> Bad Request</div>\n<div class=\"pbn-error-detail\"><strong>Opis:</strong> Validation failed.</div>\n<div class=\"pbn-error-detail\"><strong>Szczegóły:</strong></div>\n<div class=\"pbn-error-detail-item\">• <em>isbn:</em> Publikacja o identycznym ISBN już istnieje!</div>\n<div class=\"pbn-error-endpoint\"><em>Endpoint: /api/v1/publications</em></div>",
+    "tuple_dict": "<div class=\"pbn-error-text\">(400, &#x27;/api/v1/publications&#x27;, &#x27;{&quot;code&quot;:400,&quot;message&quot;:&quot;Bad Request&quot;,&quot;description&quot;:&quot;Validation failed.&quot;,&quot;details&quot;:{&quot;isbn&quot;:&quot;Publikacja o identycznym ISBN już istnieje!&quot;}}&#x27;)</div>",
+    "xss_fallback": "<div class=\"pbn-error-text\">&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;</div>",
+    "xss_payload": "<div class=\"pbn-error-header\">HttpException: HTTP 400</div>\n<div class=\"pbn-error-detail\"><strong>Opis:</strong> &lt;script&gt;alert(1)&lt;/script&gt;</div>\n<div class=\"pbn-error-detail\"><strong>Szczegóły:</strong></div>\n<div class=\"pbn-error-detail-item\">• <em>isbn:</em> &lt;img src=x onerror=alert(2)&gt;</div>\n<div class=\"pbn-error-endpoint\"><em>Endpoint: /api/v1/publications</em></div>"
+  },
+  "format_tech": {
+    "bare_tuple": "<div class=\"pbn-error-text\">(400, &quot;/api/v1/publications&quot;, &#x27;{&quot;message&quot;: &quot;Error&quot;, &quot;code&quot;: 400}&#x27;)</div>",
+    "empty": "",
+    "empty_list": "<div class=\"pbn-error-header\">HttpException: HTTP 400</div>\n<div class=\"pbn-error-endpoint\"><em>Endpoint: /api/v1/publications</em></div>",
+    "list_payload": "<div class=\"pbn-error-header\">HttpException: HTTP 400</div>\n<div class=\"pbn-error-endpoint\"><em>Endpoint: /api/v1/publications</em></div>",
+    "none": "",
+    "plaintext": "<div class=\"pbn-error-text\">Some random error message</div>",
+    "prefix_http": "<div class=\"pbn-error-header\">HttpException: HTTP 400</div>\n<div class=\"pbn-error-detail\"><strong>Wiadomość:</strong> Bad Request</div>\n<div class=\"pbn-error-detail\"><strong>Opis:</strong> Validation failed.</div>\n<div class=\"pbn-error-detail\"><strong>Szczegóły:</strong></div>\n<div class=\"pbn-error-detail-item\">• <em>isbn:</em> Publikacja o identycznym ISBN już istnieje!</div>\n<div class=\"pbn-error-endpoint\"><em>Endpoint: /api/v1/publications</em></div>",
+    "prefix_validation": "<div class=\"pbn-error-header\">PBNValidationError: HTTP 400</div>\n<div class=\"pbn-error-detail\"><strong>Szczegóły:</strong></div>\n<div class=\"pbn-error-detail-item\">• <em>doi:</em> Duplicate</div>\n<div class=\"pbn-error-endpoint\"><em>Endpoint: /api/v1/publications</em></div>",
+    "simple_exc": "<div class=\"pbn-error-text\">StatementsMissing: czegoś brakuje</div>",
+    "string_payload": "<div class=\"pbn-error-header\">HttpException: HTTP 400</div>\n<div class=\"pbn-error-endpoint\"><em>Endpoint: /api/v1/publications</em></div>",
+    "traceback": "<div class=\"pbn-error-header\">HttpException: HTTP 400</div>\n<div class=\"pbn-error-detail\"><strong>Wiadomość:</strong> Bad Request</div>\n<div class=\"pbn-error-detail\"><strong>Opis:</strong> Validation failed.</div>\n<div class=\"pbn-error-detail\"><strong>Szczegóły:</strong></div>\n<div class=\"pbn-error-detail-item\">• <em>isbn:</em> Publikacja o identycznym ISBN już istnieje!</div>\n<div class=\"pbn-error-endpoint\"><em>Endpoint: /api/v1/publications</em></div>",
+    "tuple_dict": "<div class=\"pbn-error-text\">(400, &#x27;/api/v1/publications&#x27;, &#x27;{&quot;code&quot;:400,&quot;message&quot;:&quot;Bad Request&quot;,&quot;description&quot;:&quot;Validation failed.&quot;,&quot;details&quot;:{&quot;isbn&quot;:&quot;Publikacja o identycznym ISBN już istnieje!&quot;}}&#x27;)</div>",
+    "xss_fallback": "<div class=\"pbn-error-text\">&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;</div>",
+    "xss_payload": "<div class=\"pbn-error-header\">HttpException: HTTP 400</div>\n<div class=\"pbn-error-detail\"><strong>Opis:</strong> &lt;script&gt;alert(1)&lt;/script&gt;</div>\n<div class=\"pbn-error-detail\"><strong>Szczegóły:</strong></div>\n<div class=\"pbn-error-detail-item\">• <em>isbn:</em> &lt;img src=x onerror=alert(2)&gt;</div>\n<div class=\"pbn-error-endpoint\"><em>Endpoint: /api/v1/publications</em></div>"
+  },
+  "inputs": {
+    "bare_tuple": "(400, \"/api/v1/publications\", '{\"message\": \"Error\", \"code\": 400}')",
+    "empty": "",
+    "empty_list": "pbn_api.exceptions.HttpException: (400, '/api/v1/publications', '[]')",
+    "list_payload": "pbn_api.exceptions.HttpException: (400, '/api/v1/publications', '[{\"error\": \"First error\"}, {\"error\": \"Second error\"}]')",
+    "none": null,
+    "number_payload": "pbn_api.exceptions.HttpException: (400, '/api/v1/publications', '42')",
+    "plaintext": "Some random error message",
+    "prefix_http": "pbn_api.exceptions.HttpException: (400, '/api/v1/publications', '{\"code\":400,\"message\":\"Bad Request\",\"description\":\"Validation failed.\",\"details\":{\"isbn\":\"Publikacja o identycznym ISBN już istnieje!\"}}')",
+    "prefix_validation": "pbn_client.exceptions.PBNValidationError: (400, '/api/v1/publications', '{\"details\":{\"doi\":\"Duplicate\"}}')",
+    "simple_exc": "pbn_api.exceptions.StatementsMissing: czegoś brakuje",
+    "string_payload": "pbn_api.exceptions.HttpException: (400, '/api/v1/publications', '\"Just a string\"')",
+    "traceback": "Traceback (most recent call last):\n  File \"/app/src/pbn_export_queue/models.py\", line 358, in send_to_pbn\npbn_api.exceptions.HttpException: (400, '/api/v1/publications', '{\"code\":400,\"message\":\"Bad Request\",\"description\":\"Validation failed.\",\"details\":{\"isbn\":\"Publikacja o identycznym ISBN już istnieje!\"}}')\n",
+    "tuple_dict": "(400, '/api/v1/publications', '{\"code\":400,\"message\":\"Bad Request\",\"description\":\"Validation failed.\",\"details\":{\"isbn\":\"Publikacja o identycznym ISBN już istnieje!\"}}')",
+    "xss_fallback": "<script>alert('xss')</script>",
+    "xss_payload": "pbn_api.exceptions.HttpException: (400, '/api/v1/publications', '{\"code\":400,\"description\":\"<script>alert(1)</script>\",\"details\":{\"isbn\":\"<img src=x onerror=alert(2)>\"}}')"
+  },
+  "parse_error_details": {
+    "bare_tuple": {
+      "error_code": 400,
+      "error_details": "{\n  \"message\": \"Error\",\n  \"code\": 400\n}",
+      "error_endpoint": "/api/v1/publications"
+    },
+    "empty": {
+      "error_code": "Brak kodu błędu",
+      "error_details": "Brak szczegółów błędu",
+      "error_endpoint": "Nieznany endpoint"
+    },
+    "none": {
+      "error_code": "Brak kodu błędu",
+      "error_details": "Brak szczegółów błędu",
+      "error_endpoint": "Nieznany endpoint"
+    },
+    "plaintext": {
+      "error_code": "Brak kodu błędu",
+      "error_details": "Some random error message",
+      "error_endpoint": "Nieznany endpoint"
+    },
+    "tuple_dict": {
+      "error_code": 400,
+      "error_details": "{\n  \"code\": 400,\n  \"message\": \"Bad Request\",\n  \"description\": \"Validation failed.\",\n  \"details\": {\n    \"isbn\": \"Publikacja o identycznym ISBN już istnieje!\"\n  }\n}",
+      "error_endpoint": "/api/v1/publications"
+    }
+  },
+  "parse_error_details_with_status": {
+    "bare_tuple": {
+      "error_code": 400,
+      "error_details": "{\n  \"message\": \"Error\",\n  \"code\": 400\n}",
+      "error_endpoint": "/api/v1/publications"
+    },
+    "empty": {
+      "error_code": 404,
+      "error_details": "Brak szczegółów błędu",
+      "error_endpoint": "Nieznany endpoint"
+    },
+    "none": {
+      "error_code": 404,
+      "error_details": "Brak szczegółów błędu",
+      "error_endpoint": "Nieznany endpoint"
+    },
+    "plaintext": {
+      "error_code": 404,
+      "error_details": "Some random error message",
+      "error_endpoint": "Nieznany endpoint"
+    },
+    "tuple_dict": {
+      "error_code": 400,
+      "error_details": "{\n  \"code\": 400,\n  \"message\": \"Bad Request\",\n  \"description\": \"Validation failed.\",\n  \"details\": {\n    \"isbn\": \"Publikacja o identycznym ISBN już istnieje!\"\n  }\n}",
+      "error_endpoint": "/api/v1/publications"
+    }
+  },
+  "parse_pbn_api_error": {
+    "bare_tuple": {
+      "error_code": 400,
+      "error_details_json": "{\n  \"message\": \"Error\",\n  \"code\": 400\n}",
+      "error_endpoint": "/api/v1/publications",
+      "error_message": "Error",
+      "exception_type": "HttpException",
+      "is_pbn_api_error": true
+    },
+    "empty": {
+      "is_pbn_api_error": false,
+      "raw_error": "Brak szczegółów błędu"
+    },
+    "empty_list": {
+      "error_code": 400,
+      "error_details_json": "[]",
+      "error_endpoint": "/api/v1/publications",
+      "error_message": "PBN API zwróciło listę błędów",
+      "exception_type": "HttpException",
+      "is_pbn_api_error": true
+    },
+    "list_payload": {
+      "error_code": 400,
+      "error_details_json": "[\n  {\n    \"error\": \"First error\"\n  },\n  {\n    \"error\": \"Second error\"\n  }\n]",
+      "error_endpoint": "/api/v1/publications",
+      "error_message": "PBN API zwróciło listę błędów",
+      "exception_type": "HttpException",
+      "is_pbn_api_error": true
+    },
+    "none": {
+      "is_pbn_api_error": false,
+      "raw_error": "Brak szczegółów błędu"
+    },
+    "number_payload": {
+      "error_code": 400,
+      "error_details_json": "42",
+      "error_endpoint": "/api/v1/publications",
+      "error_message": "Nieoczekiwany typ odpowiedzi PBN API",
+      "exception_type": "HttpException",
+      "is_pbn_api_error": true
+    },
+    "plaintext": {
+      "is_pbn_api_error": false,
+      "raw_error": "Some random error message"
+    },
+    "prefix_http": {
+      "error_code": 400,
+      "error_description": "Validation failed.",
+      "error_details_json": "{\n  \"isbn\": \"Publikacja o identycznym ISBN już istnieje!\"\n}",
+      "error_endpoint": "/api/v1/publications",
+      "error_message": "Bad Request",
+      "exception_type": "HttpException",
+      "is_pbn_api_error": true
+    },
+    "prefix_validation": {
+      "error_code": 400,
+      "error_details_json": "{\n  \"doi\": \"Duplicate\"\n}",
+      "error_endpoint": "/api/v1/publications",
+      "error_message": "",
+      "exception_type": "PBNValidationError",
+      "is_pbn_api_error": true
+    },
+    "simple_exc": {
+      "error_message": "czegoś brakuje",
+      "exception_type": "StatementsMissing",
+      "is_pbn_api_error": true,
+      "raw_error": "pbn_api.exceptions.StatementsMissing: czegoś brakuje"
+    },
+    "string_payload": {
+      "error_code": 400,
+      "error_details_json": "\"Just a string\"",
+      "error_endpoint": "/api/v1/publications",
+      "error_message": "Nieoczekiwany typ odpowiedzi PBN API",
+      "exception_type": "HttpException",
+      "is_pbn_api_error": true
+    },
+    "tuple_dict": {
+      "error_code": 400,
+      "error_description": "Validation failed.",
+      "error_details_json": "{\n  \"isbn\": \"Publikacja o identycznym ISBN już istnieje!\"\n}",
+      "error_endpoint": "/api/v1/publications",
+      "error_message": "Bad Request",
+      "exception_type": "HttpException",
+      "is_pbn_api_error": true
+    },
+    "xss_fallback": {
+      "is_pbn_api_error": false,
+      "raw_error": "<script>alert('xss')</script>"
+    },
+    "xss_payload": {
+      "error_code": 400,
+      "error_description": "<script>alert(1)</script>",
+      "error_details_json": "{\n  \"isbn\": \"<img src=x onerror=alert(2)>\"\n}",
+      "error_endpoint": "/api/v1/publications",
+      "error_message": "",
+      "exception_type": "HttpException",
+      "is_pbn_api_error": true
+    }
+  }
+}

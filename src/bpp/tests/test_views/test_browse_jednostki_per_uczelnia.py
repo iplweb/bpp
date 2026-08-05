@@ -50,13 +50,13 @@ def test_jednostki_view_pasek_liter_zawezony_do_uczelni(
 
     Jednostka.objects.create(
         uczelnia=uczelnia1,
-        wydzial=wydzial_uczelnia1,
+        parent=wydzial_uczelnia1,
         skrot="ALFA-U1",
         nazwa="Alfa Jednostka U1",
     )
     Jednostka.objects.create(
         uczelnia=uczelnia2,
-        wydzial=wydzial_uczelnia2,
+        parent=wydzial_uczelnia2,
         skrot="BETA-U2",
         nazwa="Beta Jednostka U2",
     )
@@ -85,7 +85,7 @@ def test_jednostki_view_single_install_pokazuje_wszystkie(
 
     jedn = Jednostka.objects.create(
         uczelnia=uczelnia1,
-        wydzial=wydzial_uczelnia1,
+        parent=wydzial_uczelnia1,
         skrot="J-SINGLE",
         nazwa="Jednostka Single",
     )

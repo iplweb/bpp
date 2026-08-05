@@ -1,3 +1,10 @@
+{# Element pollujacy: zastepuje SAM SIEBIE (outerHTML) odpowiedzia. #}
+{# Dopoki zadanie trwa serwer zwraca ten partial (z hx-trigger) -> poll #}
+{# leci dalej. Gdy IMPORT_FAILED serwer zwraca task_error.html (bez #}
+{# triggera) -> poll ustaje. Gdy sukces -> HX-Redirect. (Freshdesk #344) #}
+<div hx-get="{% url 'importer_publikacji:task-status' session_id=session.pk %}"
+     hx-trigger="every 3s"
+     hx-swap="outerHTML">
 {% if info %}
     <div class="callout warning">
         <h4><span class="fi-loop"></span> {{ info.label }}</h4>
@@ -28,3 +35,4 @@
         <p>Trwa rozpoczynanie. Strona odświeży się automatycznie.</p>
     </div>
 {% endif %}
+</div>

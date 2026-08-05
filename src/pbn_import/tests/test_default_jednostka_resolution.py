@@ -93,8 +93,14 @@ def test_stale_id_falls_through_to_uczelnia_default(session, uczelnia):
 @pytest.mark.django_db
 def test_publication_import_setup_resolves_form_choice_without_institution_step(
     django_user_model,
+    jezyki,
 ):
     """Import od źródeł (z pominięciem institution_setup) NIE rzuca ValueError.
+
+    ``jezyki``: ``_setup_uczelnia_and_jednostka`` woła ``resolve_default_jezyk``
+    → ``get_jezyk_polski`` (potrzebuje ``pol.``). Bez własnego seedu test
+    zależałby od baseline, który pod równoległym xdist bywa wyTRUNCATE-owany
+    przez sąsiedni test ``transaction=True`` — stąd fixture zamiast ambientu.
 
     Reprodukuje produkcyjny traceback: sesja ma w configu WYŁĄCZNIE klucz
     formularza ``jednostka_domyslna_id`` (krok ``institution_setup`` — jedyny

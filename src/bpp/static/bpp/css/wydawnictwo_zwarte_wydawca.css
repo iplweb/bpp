@@ -1,0 +1,17 @@
+/*
+ * Freshdesk #385 — podświetlenie wymaganego pola "wydawca" przy rozdziale.
+ * Aktywowane klasą .bpp-wydawca-wymagany dodawaną przez
+ * wydawnictwo_zwarte_wydawca.js, gdy wskazano wydawnictwo nadrzędne,
+ * a pole wydawca jest puste.
+ */
+.bpp-wydawca-wymagany {
+    border-left: 4px solid #e6a700;
+    padding-left: 8px;
+    background-color: rgba(230, 167, 0, 0.08);
+}
+
+.bpp-wydawca-required-marker {
+    color: #b35900;
+    font-weight: bold;
+    font-size: 0.85em;
+}

@@ -79,6 +79,14 @@ def get_selected_filter_value(spec, cl):
     Returns:
         String with selected filter display value, or empty string if none selected
     """
+    # Filtry z własnym widgetem (`spec.custom_widget_template`, np.
+    # `JednostkaNadrzednaFilter`) mają celowo puste `choices()` — wybór idzie
+    # AJAX-em, nie z listy linków. Taki filtr wystawia `selected_display()`
+    # zamiast tego, żeby nagłówek panelu i tak pokazał aktualny wybór.
+    selected_display = getattr(spec, "selected_display", None)
+    if callable(selected_display):
+        return selected_display() or ""
+
     choices = list(spec.choices(cl))
 
     # First choice is typically "All" - if it's selected, return empty

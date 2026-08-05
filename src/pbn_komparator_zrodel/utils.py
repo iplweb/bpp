@@ -20,6 +20,14 @@ from .models import BrakujacaDyscyplinaPBN, KomparatorZrodelMeta, RozbieznoscZro
 
 logger = logging.getLogger(__name__)
 
+# Liczba rekordów Journal ściąganych naraz przy strumieniowym skanie
+# dyscyplin. Tabela pbn_api.Journal potrafi mieć dziesiątki tysięcy wierszy,
+# a każdy trzyma w polu ``versions`` kilkukilobajtowy JSON. ``.iterator()``
+# z tym chunk_size trzyma w pamięci tylko jeden blok naraz (server-side
+# cursor) zamiast całej tabeli — bez tego worker Celery był ubijany przez
+# OOM (Rollbar #151) na kroku „Aktualizacja brakujących dyscyplin...".
+JOURNAL_SCAN_CHUNK_SIZE = 2000
+
 # Re-export for backwards compatibility
 __all__ = [
     "is_pbn_journals_data_fresh",
@@ -46,7 +54,13 @@ def znajdz_brakujace_dyscypliny_pbn():
 
     brakujace = {}
 
-    for journal in Journal.objects.all():
+    # Strumieniowo (server-side cursor) i tylko z potrzebnymi kolumnami:
+    # ``.value("object", "disciplines")`` czyta wyłącznie z pola ``versions``,
+    # więc resztę kolumn (title/issn/eissn/...) nie ma sensu ściągać.
+    journale = Journal.objects.only("mongoId", "versions").iterator(
+        chunk_size=JOURNAL_SCAN_CHUNK_SIZE
+    )
+    for journal in journale:
         disciplines = journal.value("object", "disciplines", return_none=True)
         if not disciplines:
             continue
@@ -77,32 +91,9 @@ def aktualizuj_brakujace_dyscypliny_pbn():
     Returns:
         int: Liczba znalezionych brakujących dyscyplin.
     """
-    from pbn_api.models import Journal
-
-    # Cache dyscyplin BPP
-    bpp_kody = set(Dyscyplina_Naukowa.objects.values_list("kod", flat=True))
-
-    brakujace = {}
-
-    for journal in Journal.objects.all():
-        disciplines = journal.value("object", "disciplines", return_none=True)
-        if not disciplines:
-            continue
-
-        for disc in disciplines:
-            code = disc.get("code")
-            name = disc.get("name", "")
-            if not code:
-                continue
-
-            kod_bpp = normalize_kod_dyscypliny(str(code))
-            if not kod_bpp:
-                continue
-
-            if kod_bpp not in bpp_kody:
-                if code not in brakujace:
-                    brakujace[code] = {"kod_bpp": kod_bpp, "nazwa": name, "count": 0}
-                brakujace[code]["count"] += 1
+    # Jedno źródło prawdy dla skanu — patrz ``znajdz_brakujace_dyscypliny_pbn``
+    # (strumieniowa iteracja po Journal, bez ładowania całej tabeli do RAM).
+    brakujace = znajdz_brakujace_dyscypliny_pbn()
 
     # Zapisz do bazy (usuń stare, dodaj nowe)
     with transaction.atomic():

@@ -2,6 +2,7 @@ import logging
 import re
 
 import bibtexparser
+from bibtexparser.model import Entry, ParsingFailedBlock
 
 from bpp.util import zaloguj_polkniety_wyjatek
 
@@ -9,6 +10,7 @@ from . import (
     DataProvider,
     FetchedPublication,
     InputMode,
+    SplitRecord,
     register_provider,
 )
 
@@ -29,6 +31,13 @@ BIBTEX_TYPE_MAP = {
     "manual": "monograph",
     "misc": "other",
     "unpublished": "other",
+    # "patent" nie jest typem CrossRef — nie ma odpowiednika w
+    # Crossref_Mapper.CHARAKTER_CROSSREF (brak wpisu = _get_crossref_mapper
+    # bezpiecznie zwraca None, bez auto-podpowiedzi charakteru formalnego,
+    # co jest poprawne: patenty tworzą osobny model bpp.Patent, nie
+    # Wydawnictwo_Ciagle/Zwarte). Wartość jest markerem rozpoznawanym w
+    # dalszym potoku importera (normalized_data["publication_type"]).
+    "patent": "patent",
 }
 
 
@@ -41,6 +50,14 @@ class BibTeXProvider(DataProvider):
     @property
     def identifier_label(self) -> str:
         return "Kod BibTeX"
+
+    @property
+    def icon(self) -> str:
+        return "fi-page-multiple"
+
+    @property
+    def landing_caption(self) -> str:
+        return "Wklej kod BibTeX — jedną pracę lub wiele naraz."
 
     @property
     def input_mode(self) -> str:
@@ -60,9 +77,8 @@ class BibTeXProvider(DataProvider):
     @property
     def input_help_text(self) -> str:
         return (
-            "Wklej kod BibTeX publikacji. "
-            "Jeśli podasz wiele wpisów, "
-            "zostanie użyty pierwszy."
+            "Wklej kod BibTeX. Możesz wkleić wiele wpisów naraz — "
+            "każdy trafi do osobnej pozycji na liście do zaimportowania."
         )
 
     def validate_identifier(self, identifier: str) -> str | None:
@@ -80,15 +96,49 @@ class BibTeXProvider(DataProvider):
             return None
         return identifier.strip()
 
+    def peek_title(self, entry) -> str:
+        """Wyciągnij tytuł z wpisu do wyświetlenia (unwrap Field + LaTeX)."""
+        title = _get_field(entry.fields_dict, "title", "")
+        if not title:
+            return ""
+        return _clean_latex(title)
+
+    def split_input(self, text: str) -> list[SplitRecord]:
+        """Rozbij wklejony BibTeX na pojedyncze rekordy.
+
+        Każdy poprawny wpis → jeden ``SplitRecord(ok=True)`` z ``entry.raw``
+        (verbatim). Każdy uszkodzony blok (``failed_blocks``) → jeden
+        ``SplitRecord(ok=False)`` niosący surowy tekst + komunikat — inaczej
+        znikałby po cichu (dokładnie bug, który naprawiamy). Kolejność
+        źródłowa zachowana przez iterację po ``library.blocks``.
+        """
+        library = bibtexparser.parse_string(text)
+        records: list[SplitRecord] = []
+        for block in library.blocks:
+            if isinstance(block, Entry):
+                records.append(
+                    SplitRecord(raw=block.raw, ok=True, title=self.peek_title(block))
+                )
+            elif isinstance(block, ParsingFailedBlock):
+                records.append(
+                    SplitRecord(
+                        raw=block.raw,
+                        ok=False,
+                        error="Nie udało się sparsować wpisu BibTeX.",
+                    )
+                )
+        return records
+
     def fetch(self, identifier: str) -> FetchedPublication | None:
+        # NIE lykamy po cichu: nieoczekiwany blad parsera to bug, ktory ma
+        # trafic do logow + Rollbara (przez @task_failure w celery_tasks),
+        # a nie zniknac jako "dostawca nic nie zwrocil". validate_identifier
+        # juz potwierdzil parsowalnosc synchronicznie przed kolejka.
         try:
             library = bibtexparser.parse_string(identifier)
         except Exception:
-            zaloguj_polkniety_wyjatek(
-                "Parsowanie kodu BibTeX przy pobieraniu publikacji (bibtexparser)",
-                logger=logger,
-            )
-            return None
+            logger.exception("Nieoczekiwany blad parsowania BibTeX w fetch()")
+            raise
         if not library.entries:
             return None
 
@@ -120,6 +170,15 @@ class BibTeXProvider(DataProvider):
             "bibtex_key": entry.key,
         }
 
+        patent_number = patent_holder = jurisdiction = patent_type = None
+        filing_date = None
+        if bibtex_type == "patent":
+            patent_number = _get_field(fields, "number", "") or None
+            patent_holder = _clean_latex(_get_field(fields, "holder", "")) or None
+            jurisdiction = _get_field(fields, "location", "") or None
+            patent_type = _get_field(fields, "type", "") or None
+            filing_date = _parse_bibtex_date(_get_field(fields, "date", ""))
+
         return FetchedPublication(
             raw_data=raw_data,
             title=title,
@@ -143,6 +202,11 @@ class BibTeXProvider(DataProvider):
             url=_get_field(fields, "url", "") or None,
             keywords=keywords,
             extra={"bibtex_key": entry.key},
+            patent_number=patent_number,
+            patent_holder=patent_holder,
+            jurisdiction=jurisdiction,
+            patent_type=patent_type,
+            filing_date=filing_date,
         )
 
 
@@ -160,7 +224,12 @@ def _parse_authors(author_str: str) -> list[dict]:
         return []
 
     authors = []
-    for part in author_str.split(" and "):
+    # Separator autorow w BibTeX to slowo "and" otoczone DOWOLNYM bialym
+    # znakiem — w realnych wpisach (czasopisma, Zotero) lista autorow jest
+    # zwykle lamana na wiele linii ("... and\n   Nastepny, Autor"), wiec
+    # literalne split(" and ") nie trafia i wszyscy autorzy laduja w jednym
+    # rekordzie (regresja Freshdesk #344). Dzielimy po \s+and\s+.
+    for part in re.split(r"\s+and\s+", author_str):
         part = part.strip()
         if not part:
             continue
@@ -224,8 +293,34 @@ def _clean_doi(doi_str: str) -> str:
     return doi_str
 
 
+def _parse_bibtex_date(date_str: str) -> str | None:
+    """Wyciągnij pełną datę ISO (YYYY-MM-DD) z biblatex pola ``date``.
+
+    Biblatex dopuszcza samo ``date = {2024}`` (sam rok) — wtedy nie ma z
+    czego zbudować pełnej daty (``Patent.data_zgloszenia`` to ``DateField``),
+    więc świadomie zwracamy ``None`` zamiast zgadywać miesiąc/dzień;
+    operator uzupełnia datę ręcznie w wizardzie.
+    """
+    if not date_str:
+        return None
+    match = re.match(r"^(\d{4})-(\d{2})-(\d{2})", date_str.strip())
+    if match:
+        return match.group(0)
+    return None
+
+
 def _clean_pages(pages_str: str) -> str:
-    """Zamień '--' na '-' w stronach."""
+    """Znormalizuj separator zakresu stron do ASCII '-'.
+
+    BibTeX zapisuje zakres jako '--' (en-dash) lub '---' (em-dash), ale
+    wklejane wpisy czesto maja prawdziwe znaki unicode: en-dash '–', em-dash
+    '—', minus '−', figure dash '‒', horizontal bar '―'. Wszystko sprowadzamy
+    do '-', zeby ``Wydawnictwo_*.pierwsza_strona``/``ostatnia_strona``
+    (split po '-') poprawnie rozbijaly zakres (Freshdesk #344: 'S180—S180').
+    """
     if not pages_str:
         return ""
-    return pages_str.replace("--", "-")
+    for dash in ("–", "—", "−", "‒", "―"):
+        pages_str = pages_str.replace(dash, "-")
+    # '--' / '---' (LaTeX) oraz powtorzone '-' -> pojedynczy '-'.
+    return re.sub(r"-{2,}", "-", pages_str)

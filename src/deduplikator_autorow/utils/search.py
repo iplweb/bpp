@@ -6,6 +6,7 @@ from django.db.models import Q, QuerySet
 
 from bpp.models import Autor
 from deduplikator_autorow.models import NotADuplicate
+from import_common.normalization import poprzednie_nazwiska_token_regex
 from pbn_api.models import OsobaZInstytucji
 
 
@@ -84,6 +85,27 @@ def _nazwisko_query(nazwisko: str) -> Q:
         q |= Q(nazwisko__istartswith=nazwisko + "-")
         q |= Q(nazwisko__iendswith="-" + nazwisko)
 
+    return q
+
+
+def _poprzednie_nazwiska_query(nazwisko: str, poprzednie_nazwiska: str) -> Q:
+    """Buduje warunek Q dopasowujący kandydatów po poprzednich nazwiskach (FD#407).
+
+    Łączy trzy kierunki (nazwisko dopasowywane jako pełny człon listy CSV
+    ``poprzednie_nazwiska``, nie podłańcuch):
+
+    - kandydat ma ``nazwisko`` głównego autora wśród swoich poprzednich nazwisk,
+    - ``nazwisko`` kandydata równe jednemu z poprzednich nazwisk głównego autora,
+    - kandydat dzieli z głównym autorem poprzednie nazwisko.
+    """
+    q = Q()
+    if nazwisko:
+        q |= Q(poprzednie_nazwiska__iregex=poprzednie_nazwiska_token_regex(nazwisko))
+    for prev in (poprzednie_nazwiska or "").split(","):
+        prev = prev.strip()
+        if prev:
+            q |= Q(nazwisko__iexact=prev)
+            q |= Q(poprzednie_nazwiska__iregex=poprzednie_nazwiska_token_regex(prev))
     return q
 
 
@@ -190,7 +212,9 @@ def szukaj_kopii(osoba_z_instytucji: OsobaZInstytucji) -> QuerySet[Autor]:
         return Autor.objects.none()
 
     # Zbuduj zapytanie na podstawie nazwiska + ewentualnej zamiany imię/nazwisko
+    # + poprzednich nazwisk (FD#407 — zmiana nazwiska, np. panieńskie → po mężu)
     q = _nazwisko_query(nazwisko) | _swap_query(nazwisko, imiona)
+    q |= _poprzednie_nazwiska_query(nazwisko, glowny_autor.poprzednie_nazwiska or "")
 
     # Wyszukaj kandydatów na duplikaty
     kandydaci = Autor.objects.filter(q).exclude(pk=glowny_autor.pk)

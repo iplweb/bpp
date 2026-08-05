@@ -1,6 +1,7 @@
 import pytest
+from django.urls import NoReverseMatch, reverse
 
-from bpp.models import Jednostka, Wydzial
+from bpp.models import Jednostka
 from fixtures.conftest_multisite import make_request_for_site
 
 
@@ -27,26 +28,13 @@ def test_jednostka_autocomplete_zawezony_do_uczelni(
     assert jednostka_uczelnia2.pk not in pks
 
 
-@pytest.mark.django_db
-def test_wydzial_autocomplete_zawezony_do_uczelni(
-    uczelnia1, uczelnia2, site1, wydzial_uczelnia1, wydzial_uczelnia2, settings
-):
-    settings.ALLOWED_HOSTS = ["*"]
-    from bpp.views.autocomplete.simple import PublicWydzialAutocomplete
-
-    # PublicWydzialAutocomplete.qset = Wydzial.objects.filter(widoczny=True).
-    # Pole `widoczny` ma default=True, ale ustawiamy je jawnie na obu
-    # wydziałach, by test mierzył filtr per-uczelnia, a nie widoczność.
-    Wydzial.objects.filter(pk__in=[wydzial_uczelnia1.pk, wydzial_uczelnia2.pk]).update(
-        widoczny=True
-    )
-
-    view = PublicWydzialAutocomplete()
-    view.request = make_request_for_site(site1)
-    view.q = ""
-    pks = set(view.get_queryset().values_list("pk", flat=True))
-    assert wydzial_uczelnia1.pk in pks
-    assert wydzial_uczelnia2.pk not in pks
+def test_wydzial_autocomplete_endpointy_usuniete():
+    # Faza C (#438): autocomplety Wydzialu znikają razem z modelem. „Wydział" =
+    # top-level Jednostka, więc picker „wydziału" to
+    # public-jednostka-toplevel-autocomplete (per-uczelnia — patrz test niżej).
+    for name in ("bpp:wydzial-autocomplete", "bpp:public-wydzial-autocomplete"):
+        with pytest.raises(NoReverseMatch):
+            reverse(name)
 
 
 @pytest.mark.django_db
@@ -107,11 +95,9 @@ def test_admin_autocomplety_nie_sa_zawezone():
     wszystkich uczelni (multi-hosted: tylko publiczne pickery są zawężone)."""
     from bpp.views.autocomplete.authors import AutorAutocomplete
     from bpp.views.autocomplete.mixins import UczelniaScopedAutocompleteMixin
-    from bpp.views.autocomplete.simple import WydzialAutocomplete
     from bpp.views.autocomplete.units import JednostkaAutocomplete
 
     assert not issubclass(JednostkaAutocomplete, UczelniaScopedAutocompleteMixin)
-    assert not issubclass(WydzialAutocomplete, UczelniaScopedAutocompleteMixin)
     assert not issubclass(AutorAutocomplete, UczelniaScopedAutocompleteMixin)
 
 

@@ -72,6 +72,39 @@ def test_rest_api_praca_habilitacyjna_ukryj_status(
     assert res.json()["count"] == 0
 
 
+@pytest.mark.django_db
+def test_rest_api_praca_habilitacyjna_detail_z_wydawca(
+    client, praca_habilitacyjna, wydawca
+):
+    # Regresja: HyperlinkedModelSerializer bez jawnej deklaracji pola `wydawca`
+    # auto-generował HyperlinkedRelatedField z view_name="wydawca-detail" (bez
+    # namespace api_v1:), przez co reverse rzucał NoReverseMatch → 500.
+    praca_habilitacyjna.wydawca = wydawca
+    praca_habilitacyjna.save()
+
+    res = client.get(
+        reverse("api_v1:praca_habilitacyjna-detail", args=(praca_habilitacyjna.pk,))
+    )
+    assert res.status_code == 200
+
+    wydawca_url = reverse("api_v1:wydawca-detail", args=(wydawca.pk,))
+    assert res.json()["wydawca"].endswith(wydawca_url)
+
+
+@pytest.mark.django_db
+def test_rest_api_praca_habilitacyjna_list_z_wydawca(
+    client, praca_habilitacyjna, wydawca
+):
+    praca_habilitacyjna.wydawca = wydawca
+    praca_habilitacyjna.save()
+
+    res = client.get(reverse("api_v1:praca_habilitacyjna-list"))
+    assert res.status_code == 200
+
+    wydawca_url = reverse("api_v1:wydawca-detail", args=(wydawca.pk,))
+    assert res.json()["results"][0]["wydawca"].endswith(wydawca_url)
+
+
 @pytest.fixture
 def wiele_prac_habilitacyjnych(db, typy_odpowiedzialnosci):
     # Create one template object using baker.make to get all required fields with defaults
@@ -111,3 +144,16 @@ def test_rest_api_praca_habilitacyjna_no_queries(
 ):
     with django_assert_max_num_queries(11):
         api_client.get(reverse("api_v1:praca_habilitacyjna-list"))
+
+
+@pytest.mark.django_db
+def test_rest_api_praca_habilitacyjna_bez_pola_publikacja_habilitacyjna(
+    client, praca_habilitacyjna
+):
+    # ``publikacja_habilitacyjna`` (link do prac składowych „habilitacji-składaka")
+    # nie jest wystawiane przez API — pole nie powinno pojawić się w odpowiedzi.
+    res = client.get(
+        reverse("api_v1:praca_habilitacyjna-detail", args=(praca_habilitacyjna.pk,))
+    )
+    assert res.status_code == 200
+    assert "publikacja_habilitacyjna" not in res.json()

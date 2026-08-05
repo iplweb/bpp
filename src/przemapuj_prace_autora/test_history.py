@@ -250,3 +250,33 @@ def test_admin_display_methods():
 
     assert admin_instance.display_prace_ciagle_historia(empty_log) == "Brak danych"
     assert admin_instance.display_prace_zwarte_historia(empty_log) == "Brak danych"
+
+
+@pytest.mark.django_db
+def test_admin_display_methods_escape_html():
+    """Regresja stored-XSS: tytuł/źródło/wydawnictwo publikacji to niezaufany
+    HTML (może pochodzić z importu/zgłoszenia). display_* budują HTML f-stringiem
+    i mark_safe-ują go — muszą escapować wartości, inaczej ``<img onerror>`` w
+    tytule wykona się gdy admin otwiera historię (ta sama klasa co fix PBN)."""
+    from .admin import PrzemapoaniePracAutoraAdmin
+
+    xss = "<img src=x onerror=alert(1)>"
+    log = baker.make(
+        PrzemapoaniePracAutora,
+        prace_ciagle_historia=[
+            {"id": 1, "tytul": xss, "rok": 2023, "zrodlo": xss},
+        ],
+        prace_zwarte_historia=[
+            {"id": 2, "tytul": xss, "rok": 2023, "isbn": xss, "wydawnictwo": xss},
+        ],
+    )
+    admin_instance = PrzemapoaniePracAutoraAdmin(PrzemapoaniePracAutora, None)
+
+    ciagle_html = str(admin_instance.display_prace_ciagle_historia(log))
+    zwarte_html = str(admin_instance.display_prace_zwarte_historia(log))
+
+    # Surowy payload NIE może trafić do HTML-a; ma być zescapowany.
+    assert "<img src=x onerror=" not in ciagle_html
+    assert "&lt;img src=x onerror=" in ciagle_html
+    assert "<img src=x onerror=" not in zwarte_html
+    assert "&lt;img src=x onerror=" in zwarte_html

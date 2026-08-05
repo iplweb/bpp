@@ -13,7 +13,6 @@ from bpp.models import (
     Tytul,
     Uczelnia,
     Wydawnictwo_Zwarte,
-    Wydzial,
     Zrodlo_Informacji,
 )
 from bpp.models.autor import Autor
@@ -154,6 +153,25 @@ def test_deletion_cache(doktorat):
 
     doktorat.delete()
     assert Rekord.objects.all().count() == 0
+
+
+@pytest.mark.django_db
+def test_autorzy_filter_rekord_rekordem_pobranym_z_bazy(
+    wydawnictwo_ciagle_z_dwoma_autorami, denorms
+):
+    """``filter_rekord()`` z Rekordem POBRANYM z bazy (pk = tuple).
+
+    Regresja: ``TupleField.from_db_value`` zwraca TUPLE, a lookup
+    ``rekord_id=<tuple>`` na kolumnie FK przechodzi przez
+    ``RelatedExact.get_normalized_value``, które traktuje tuplę jako
+    wartość WIELOKOLUMNOWĄ (composite FK) i bierze ``pk[0]`` — do SQL
+    idzie pojedynczy integer i PostgreSQL odpowiada „operator nie
+    istnieje: integer[] = integer". Lista przechodzi normalną ścieżką
+    adaptacji ArrayField i działa.
+    """
+    denorms.flush()
+    rekord = Rekord.objects.get_for_model(wydawnictwo_ciagle_z_dwoma_autorami)
+    assert Autorzy.objects.filter_rekord(rekord).count() == 2
 
 
 @pytest.mark.django_db
@@ -327,13 +345,19 @@ def test_caching_kasowanie_charakteru_formalnego(
 def test_caching_kasowanie_wydzialu(
     autor_jan_kowalski, jednostka, wydzial, wydawnictwo_ciagle, typy_odpowiedzialnosci
 ):
-    assert jednostka.wydzial == wydzial
+    # Faza C (#438): ``jednostka.wydzial`` (denorm) to korzeń MPTT = jednostka
+    # top-level pełniąca rolę wydziału (fixture ``wydzial``). Żeby przetestować
+    # inwalidację cache przy usunięciu jednostki, kasujemy ten korzeń — CASCADE
+    # po MPTT ``parent`` usuwa dziecko.
+    korzen = jednostka.wydzial
+    assert korzen == wydzial
 
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
 
     assert Rekord.objects.all().count() == 1
-    assert Jednostka.objects.all().count() == 1
-    wydzial.delete()
+    # wydział (root) + realna jednostka:
+    assert Jednostka.objects.all().count() == 2
+    korzen.delete()
 
     assert Rekord.objects.all().count() == 1
     assert Rekord.objects.all()[0].original.autorzy.all().count() == 0
@@ -350,11 +374,13 @@ def test_caching_kasowanie_uczelni(
     typy_odpowiedzialnosci,
 ):
     assert wydzial.uczelnia == uczelnia
+    # Faza C (#438): ``jednostka.wydzial`` (denorm) to korzeń = wydział fixture.
     assert jednostka.wydzial == wydzial
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
 
     assert Rekord.objects.all().count() == 1
-    assert Jednostka.objects.all().count() == 1
+    # wydział (root) + realna jednostka (obie CASCADE po uczelni):
+    assert Jednostka.objects.all().count() == 2
     uczelnia.delete()
 
     assert Rekord.objects.all().count() == 1
@@ -454,6 +480,11 @@ def test_rebuild_ciagle(
     django_assert_max_num_queries, wydawnictwo_ciagle_z_dwoma_autorami, denorms
 ):
     Wydawnictwo_Ciagle.objects.all().delete()
+    # Faza B (#438): opróżnij kolejkę denorm PRZED pomiarem — fixtury tworzą
+    # jednostki (węzły-lustra), których denorm ``wydzial`` zostawia wpisy
+    # DirtyInstance; globalny flush w rebuildall inaczej doliczyłby je do
+    # budżetu mierzącego rebuild Wydawnictwo_Ciagle.
+    denorms.flush()
     # denorm 1.11+ dokłada jedno zapytanie w rebuild/flush (lock-and-capture
     # dirty PK przez SELECT ... FOR UPDATE — fix wyścigu w flush pipeline).
     with django_assert_max_num_queries(11):
@@ -465,6 +496,11 @@ def test_rebuild_zwarte(
     django_assert_max_num_queries, wydawnictwo_zwarte_z_autorem, denorms
 ):
     Wydawnictwo_Zwarte.objects.all().delete()
+    # Faza B (#438): opróżnij kolejkę denorm PRZED pomiarem — fixtury tworzą
+    # jednostki (węzły-lustra), których denorm ``wydzial`` zostawia wpisy
+    # DirtyInstance; globalny flush w rebuildall inaczej doliczyłby je do
+    # budżetu mierzącego rebuild Wydawnictwo_Zwarte.
+    denorms.flush()
     # denorm 1.11+ dokłada jedno zapytanie w rebuild/flush (lock-and-capture
     # dirty PK przez SELECT ... FOR UPDATE — fix wyścigu w flush pipeline).
     with django_assert_max_num_queries(11):
@@ -512,8 +548,13 @@ def cache_setup(db):
     aut = Typ_Odpowiedzialnosci.objects.get(skrot="aut.")
 
     uczelnia = baker.make(Uczelnia)
-    wydzial = baker.make(Wydzial, uczelnia=uczelnia)
-    j = baker.make(Jednostka, nazwa="Foo Bar", uczelnia=uczelnia, wydzial=wydzial)
+    wydzial = baker.make(Jednostka, uczelnia=uczelnia, parent=None)
+    j = baker.make(
+        Jednostka,
+        nazwa="Foo Bar",
+        uczelnia=uczelnia,
+        parent=wydzial,
+    )
 
     a = autor_publikacji(j)
     a.nazwisko = "Kowalski"

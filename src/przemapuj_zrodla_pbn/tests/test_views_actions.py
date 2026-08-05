@@ -27,10 +27,9 @@ def test_usun_zrodlo_view_requires_login(client):
 
 
 @pytest.mark.django_db
-def test_usun_zrodlo_view_get_shows_confirmation_page(client, django_user_model):
+def test_usun_zrodlo_view_get_shows_confirmation_page(client, redaktor):
     """Test czy widok GET usuwania pokazuje stronę potwierdzenia"""
-    user = baker.make(django_user_model)
-    client.force_login(user)
+    client.force_login(redaktor)
 
     journal_deleted = baker.make(
         "pbn_api.Journal",
@@ -54,12 +53,11 @@ def test_usun_zrodlo_view_get_shows_confirmation_page(client, django_user_model)
 
 
 @pytest.mark.django_db
-def test_usun_zrodlo_view_rejects_non_deleted_source(client, django_user_model):
+def test_usun_zrodlo_view_rejects_non_deleted_source(client, redaktor):
     """Test czy widok odrzuca próbę usunięcia źródła które nie jest DELETED w PBN"""
     from bpp.models import Zrodlo
 
-    user = baker.make(django_user_model)
-    client.force_login(user)
+    client.force_login(redaktor)
 
     journal_active = baker.make(
         "pbn_api.Journal",
@@ -81,12 +79,11 @@ def test_usun_zrodlo_view_rejects_non_deleted_source(client, django_user_model):
 
 
 @pytest.mark.django_db
-def test_usun_zrodlo_view_rejects_source_with_records(client, django_user_model):
+def test_usun_zrodlo_view_rejects_source_with_records(client, redaktor):
     """Test czy widok odrzuca próbę usunięcia źródła które ma rekordy"""
     from bpp.models import Zrodlo
 
-    user = baker.make(django_user_model)
-    client.force_login(user)
+    client.force_login(redaktor)
 
     journal_deleted = baker.make(
         "pbn_api.Journal",
@@ -113,12 +110,11 @@ def test_usun_zrodlo_view_rejects_source_with_records(client, django_user_model)
 
 
 @pytest.mark.django_db
-def test_usun_zrodlo_view_post_deletes_source_successfully(client, django_user_model):
+def test_usun_zrodlo_view_post_deletes_source_successfully(client, redaktor):
     """Test czy widok POST usuwa źródło bez rekordów i zapisuje log"""
     from przemapuj_zrodla_pbn.models import PrzeMapowanieZrodla
 
-    user = baker.make(django_user_model)
-    client.force_login(user)
+    client.force_login(redaktor)
 
     journal_deleted = baker.make(
         "pbn_api.Journal",
@@ -154,4 +150,4 @@ def test_usun_zrodlo_view_post_deletes_source_successfully(client, django_user_m
     assert log.zrodlo_skasowane_pbn_uid == journal_deleted
     assert log.zrodlo_nowe is None
     assert log.liczba_rekordow == 0
-    assert log.utworzono_przez == user
+    assert log.utworzono_przez == redaktor

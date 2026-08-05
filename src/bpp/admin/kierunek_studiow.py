@@ -12,3 +12,10 @@ class Kierunek_StudiowAdmin(
     list_display = ["nazwa", "skrot", "wydzial"]
     search_fields = ["nazwa", "skrot", "wydzial__nazwa"]
     fields = ["nazwa", "skrot", "wydzial", "opis", "adnotacje"]
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "wydzial":
+            from bpp.models import Jednostka
+
+            kwargs["queryset"] = Jednostka.objects.filter(parent__isnull=True)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)

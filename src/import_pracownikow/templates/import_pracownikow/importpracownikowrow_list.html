@@ -1,76 +1,273 @@
-{% extends "base.html" %}{% load render_table from django_tables2 %}
+{% extends "base.html" %}{% load render_table from django_tables2 %}{% load static %}
 
 {% block extratitle %}
-    Import pracowników - szczegóły {{ object.plik_xls.name }}
+    Import pracowników i jednostek - szczegóły {{ parent_object.plik_xls.name }}
 {% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li><a href="{% url "import_pracownikow:index" %}">import pracowników</a></li>
-    <li class="current">import {{ object.plik_xls.name }}</li>
+    <li><a href="{% url "import_pracownikow:index" %}">import pracowników i jednostek</a></li>
+    <li class="current">import {{ parent_object.plik_xls.name }}</li>
 {% endblock %}
 
 
 {% block content %}
-    <h1>Import danych {{ object.plik_xls.name }}</h1>
+    <p>
+        <a href="{% url "import_pracownikow:przeglad" pk=parent_object.pk %}">&larr; wróć do przeglądu</a>
+    </p>
+    <h1>Import danych {{ parent_object.plik_xls.name }}</h1>
 
-    {% include "long_running/operation_details.html" %}
+    <div class="button-group">
+        {# Pobranie oryginalnego, wgranego pliku XLSX (chroniony). #}
+        <a class="button"
+           href="{% url "import_pracownikow:pobierz-oryginal" pk=parent_object.pk %}">
+            <span class="fi-download"></span> Pobierz oryginał
+        </a>
+        {# Skorygowany plik „po imporcie" — tylko po finalizacji. #}
+        {% if parent_object.stan == "zintegrowany" %}
+            <a class="button secondary"
+               href="{% url "import_pracownikow:pobierz-po-imporcie" pk=parent_object.pk %}">
+                <span class="fi-download"></span> Pobierz plik po imporcie
+            </a>
+        {% endif %}
+    </div>
 
-    {% if object.finished_successfully %}
-        Lista modyfikacji do bazy danych, przeprowadzonych na podstawie pliku XLS poniżej:
-        <table>
-            <tr>
-                <th>Arkusz nr</th>
-                <th>Wiersz nr</th>
-                <th>Autor</th>
-                <th>Jednostka</th>
-                <th>Zmiany potrzebne?</th>
-                <th>Zmienione dane</th>
-            </tr>
-            {% include "pagination.html" %}
-            {% for row in object_list %}
-                <tr>
-                    <td>{{ row.nr_arkusza }}</td>
-                    <td>{{ row.nr_wiersza }}</td>
-                    <td><a href="{% url "bpp:browse_autor" row.autor.pk %}">{{ row.autor }}</a></td>
-                    <td><a href="{% url "bpp:browse_jednostka" row.jednostka.pk %}">{{ row.jednostka }}</a></td>
-                    <td>{{ row.zmiany_potrzebne }}</td>
-                    <td>{% for elem in row.sformatowany_log_zmian %}
-                        <p>{{ elem }}</p>
-                    {% endfor %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="5" class="text-center"><strong>Żadnych zmian nie naniesiono. Stan bazy danych w
-                        momencie importu pliku zgodny z
-                        zawartością pliku XLS
-                    </strong></td>
-                </tr>
-            {% endfor %}
-        </table>
+    {# Ostrzeżenie #4 na stronie autorów+jednostek — tylko przed zapisem osób. #}
+    {% if parent_object.edytowalny_podglad %}
+        {% include "import_pracownikow/partials/_ostrzezenie_podstawowe_miejsce.html" %}
     {% endif %}
 
+    {% if parent_object.stan == "przeanalizowany" and parent_object.jednostki_do_decyzji.exists %}
+        <div class="callout primary">
+            {# link do ekranu weryfikacji jednostek do utworzenia / auto-dopasowanych #}
+            <span class="fi-info"></span>
+            {{ parent_object.jednostki_do_decyzji.count }} jednostek z pliku wymaga
+            weryfikacji (do utworzenia lub auto-dopasowane).
+            <a href="{% url "import_pracownikow:jednostki" pk=parent_object.pk %}"
+               class="button primary">Zweryfikuj jednostki</a>
+        </div>
+    {% endif %}
 
-    {% if autorzy_spoza_pliku.exists %}
-        <h4>Na podstawie tego pliku importu należałoby odpiąć
-            {{ autorzy_spoza_pliku.count }} powiązań autor+jednostka, oto one ponizej: </h4>
-        <a data-confirm="Czy na pewno?" href="../resetuj-podstawowe-miejsce-pracy/">Kliknij tutaj, żeby przypisać. Uwaga, to zmieni bazę dancyh. </a>
-        <table>
-            <tr>
-                <th>Autor</th>
-                <th>Jednostka</th>
-            </tr>
-            {% for elem in autorzy_spoza_pliku %}
-                <tr>
-                    <td>{{ elem.autor }}</td>
-                    <td>{{ elem.jednostka }}</td>
-                </tr>
-            {% endfor %}
-        </table>
-    {% else %}
-        <h4>Zawartość tego pliku nie powoduje konieczności "likwidowania" podstawowych miejsc
-            pracy dla autorów w bazie. </h4>
+    {# HTMX dla akcji per-wiersz (wybór kandydata / edycja inline) — patrz #}
+    {# wzorzec importer_publikacji/index.html. Self-hostowany: skrypt z CDN-a #}
+    {# w tym miejscu blokował parser (leży PRZED tabelą), więc w sieci bez #}
+    {# dostępu do unpkg.com strona wisiała do timeoutu DNS/TCP. #}
+    <script src="{% static 'liveops/vendor/htmx.min.js' %}"></script>
+
+    {% if parent_object.edytowalny_podglad and parent_object.przepnij_wszystkie_prace %}
+        {# akcja zbiorcza: zaznacz przepięcie prac dla wierszy z różnicą jednostki #}
+        {# tylko gdy import startował z masowym przepięciem — inaczej cały UI #}
+        {# przepinania jest ukryty (operator świadomie NIE rusza dorobku). #}
+        <form method="post"
+              action="{% url "import_pracownikow:zaznacz-przepiecia" pk=parent_object.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="button secondary">
+                <span class="fi-shuffle"></span>
+                Zaznacz przepięcie prac dla wszystkich z różnicą jednostki
+            </button>
+        </form>
+    {% endif %}
+
+    {% if parent_object.finished_successfully %}
+        {# Nagłówek audytu — asertowany przez test_views_liveops.py; NIE usuwać. #}
+        <p>Lista modyfikacji do bazy danych, przeprowadzonych na podstawie
+            pliku XLS poniżej:</p>
+        {# Filtr rekordów — ZWYKŁY formularz GET. Filtruje w SQL, więc działa na #}
+        {# CAŁYM imporcie, a nie na tym, co akurat jest w DOM-ie (dawny filtr #}
+        {# kliencki widziałby po stronicowaniu tylko bieżącą stronę, więc #}
+        {# deep-link „pokaż wiersze do pominięcia" trafiałby w pustkę). #}
+        <form method="get" id="filtr-roznic" class="import-filtr-roznic">
+            {# Filtr „Rodzaj dopasowania" (kolumna „Pewność") — <select>, bo 8 #}
+            {# opcji z długimi etykietami rozjechałoby pasek jak radia. „do #}
+            {# pominięcia" = syntetyczny predykat (autor NULL + brak „Utwórz #}
+            {# nowego"), celuje w zbiór z ostrzeżenia finalizacji. #}
+            <label class="import-filtr-rodzaj">
+                Rodzaj dopasowania:
+                <select name="rodzaj">
+                    <option value=""{% if not wybrany_rodzaj %} selected{% endif %}>wszystkie</option>
+                    <option value="do-pominiecia"{% if wybrany_rodzaj == "do-pominiecia" %} selected{% endif %}>⚠ do pominięcia (bez decyzji)</option>
+                    <option disabled>──────────</option>
+                    {% for wartosc, etykieta in rodzaje_confidence %}
+                        <option value="{{ wartosc }}"{% if wybrany_rodzaj == wartosc %} selected{% endif %}>{{ etykieta }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="import-filtr-tekst">
+                Szukaj:
+                <input type="search" name="q" value="{{ szukany_tekst }}"
+                       placeholder="nazwisko / ORCID / jednostka…">
+            </label>
+            {# Rozmiar strony — paginacja jest SERWEROWA, więc opcji #}
+            {# „wszystkie" nie ma: byłaby powrotem do renderowania całego #}
+            {# importu, czyli do problemu, który ta zmiana usuwa. #}
+            <label class="import-filtr-rozmiar">
+                Na stronę:
+                <select name="per_page">
+                    {% for rozmiar in rozmiary_strony %}
+                        <option value="{{ rozmiar }}"{% if wybrany_rozmiar == rozmiar %} selected{% endif %}>{{ rozmiar }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <div class="import-filtr-glowne">
+                {% for klucz, etykieta, wybrany in pola_glowne %}
+                    {% include "import_pracownikow/partials/_filtr_pole.html" %}
+                {% endfor %}
+            </div>
+            {% if pola_dodatkowe %}
+                <details class="import-filtr-wiecej"{% if ma_aktywny_filtr_dodatkowy %} open{% endif %}>
+                    <summary>Więcej filtrów…</summary>
+                    <div class="import-filtr-dodatkowe">
+                        {% for klucz, etykieta, wybrany in pola_dodatkowe %}
+                            {% include "import_pracownikow/partials/_filtr_pole.html" %}
+                        {% endfor %}
+                    </div>
+                </details>
+            {% endif %}
+            <div class="import-filtr-akcje">
+                <button type="submit" class="button">
+                    <span class="fi-filter"></span> Filtruj
+                </button>
+                <a href="{% url "import_pracownikow:importpracownikow-results" pk=parent_object.pk %}"
+                   class="button secondary">Wyczyść</a>
+            </div>
+        </form>
+        <p class="import-filtr-licznik">
+            {% if page_obj %}
+                Pokazano {{ page_obj.start_index }}–{{ page_obj.end_index }}
+                z {{ paginator.count }} rekordów
+                {% if querystring_filtrow %}(po odfiltrowaniu){% endif %}
+            {% else %}
+                Nie znaleziono rekordów
+            {% endif %}
+        </p>
+        <div style="overflow-x: auto;">
+            <table id="tabela-autorow">
+                <thead>
+                    <tr>
+                        <th>Poz</th>
+                        <th>Osoba (z pliku)</th>
+                        <th>Pewność</th>
+                        <th>Autor (BPP)</th>
+                        <th>Jednostka (obecna → z pliku)</th>
+                    </tr>
+                </thead>
+                {% for row in object_list %}
+                    {% include "import_pracownikow/partials/_wiersz_preview.html" %}
+                {% empty %}
+                    <tbody>
+                        <tr>
+                            <td colspan="5" class="text-center"><strong>
+                                Żadnych wierszy do pokazania.
+                            </strong></td>
+                        </tr>
+                    </tbody>
+                {% endfor %}
+            </table>
+        </div>
+
+        {# Leniwy Select2 na autocomplete importu — RAZ NA STRONĘ. #}
+        {# Wcześniej ten sam blok (3,8 KB) był w partialu wiersza, więc lądował #}
+        {# w HTML-u tyle razy, ile wierszy — przy 1000 wierszy 3,8 MB duplikatu. #}
+        {# Kod od początku był delegacją zdarzeń na `document`, więc jedna #}
+        {# rejestracja obsługuje też wiersze wstrzykiwane później przez HTMX #}
+        {# (listener `htmx:afterSettle` inicjalizuje odsłonięte pickery). #}
+        {# Guard `__bppImportAutorPicker` ZOSTAJE — chroni przed podwójną #}
+        {# rejestracją, gdyby blok trafił kiedyś na stronę drugi raz. #}
+        <script>
+        (function () {
+            if (window.__bppImportAutorPicker) return;
+            window.__bppImportAutorPicker = true;
+
+            function initPicker(wrap) {
+                var sel = wrap.querySelector("select[data-autocomplete-url]");
+                if (!sel || sel.dataset.select2Init || !window.jQuery) return;
+                sel.dataset.select2Init = "1";
+                window.jQuery(sel).select2({
+                    width: "220px",
+                    ajax: {
+                        url: sel.dataset.autocompleteUrl,
+                        dataType: "json",
+                        delay: 250,
+                        data: function (params) { return {q: params.term}; },
+                        processResults: function (data) { return data; }
+                    },
+                    minimumInputLength: 2,
+                    placeholder: "Szukaj autora…",
+                    allowClear: true,
+                    language: "pl"
+                });
+                // htmx słucha natywnego "change" (addEventListener); Select2
+                // emituje "change" przez system zdarzeń jQuery, którego natywny
+                // listener NIE łapie → POST dopasuj-autora nigdy nie leciał, a
+                // wybór autora „nie zapisywał się". Mostek: na select2:select /
+                // select2:unselect wystrzel natywny "change", który htmx podłapie
+                // i wykona hx-post (bubbles, bo formularz jest rodzicem selecta).
+                window.jQuery(sel).on(
+                    "select2:select select2:unselect",
+                    function () {
+                        sel.dispatchEvent(
+                            new Event("change", { bubbles: true })
+                        );
+                    }
+                );
+            }
+
+            document.addEventListener("click", function (e) {
+                var toggle = e.target.closest(".js-zmien-autora");
+                if (!toggle) return;
+                e.preventDefault();
+                var wrap = toggle.parentElement.querySelector(".js-autor-picker");
+                if (!wrap) return;
+                wrap.hidden = false;
+                toggle.style.display = "none";
+                initPicker(wrap);
+            });
+
+            // Radio „Dopasuj do istniejącego" (wiersz brak) odsłania
+            // leniwy Select2. Picker jest rodzeństwem formularza-radia w
+            // .import-autor-akcje, więc szukamy go w tym kontenerze.
+            document.addEventListener("change", function (e) {
+                var radio = e.target.closest(".js-brak-radio-dopasuj");
+                if (!radio || !radio.checked) return;
+                var akcje = radio.closest(".import-autor-akcje");
+                var wrap = akcje &&
+                    akcje.querySelector(".js-autor-picker");
+                if (!wrap) return;
+                wrap.hidden = false;
+                initPicker(wrap);
+            });
+
+            document.body.addEventListener("htmx:afterSettle", function (e) {
+                var scope = (e.detail && e.detail.target) || document;
+                scope
+                    .querySelectorAll(".js-autor-picker:not([hidden])")
+                    .forEach(initPicker);
+            });
+        })();
+        </script>
+
+        {# Pager serwerowy. `querystring_filtrow` niesie aktywne filtry (bez #}
+        {# `page`), żeby przejście na kolejną stronę ich nie gubiło. #}
+        {% if page_obj.has_other_pages %}
+            <nav class="import-filtr-pager" aria-label="Stronicowanie">
+                {% if page_obj.has_previous %}
+                    <a class="button secondary import-filtr-pager-btn"
+                       href="?page={{ page_obj.previous_page_number }}{% if querystring_filtrow %}&amp;{{ querystring_filtrow }}{% endif %}">
+                        <span class="fi-arrow-left"></span> poprzednia
+                    </a>
+                {% endif %}
+                <span class="import-filtr-pager-info">
+                    strona {{ page_obj.number }} / {{ paginator.num_pages }}
+                </span>
+                {% if page_obj.has_next %}
+                    <a class="button secondary import-filtr-pager-btn"
+                       href="?page={{ page_obj.next_page_number }}{% if querystring_filtrow %}&amp;{{ querystring_filtrow }}{% endif %}">
+                        następna <span class="fi-arrow-right"></span>
+                    </a>
+                {% endif %}
+            </nav>
+        {% endif %}
+
     {% endif %}
 
 {% endblock %}

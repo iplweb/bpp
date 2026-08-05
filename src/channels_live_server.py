@@ -92,13 +92,26 @@ def _wire_per_request_cache_invalidation():
       ``content_type_id=70`` którego już nie ma w bazie (np.
       ``test_Wydawnictwo_Zwarte_Autor_Admin_forwarding_works``).
 
-    Overhead clear_cache to single dict.clear() — pomijalny.
+    ``Site.objects.clear_cache()`` z tej samej klasy problemu — Django
+    trzyma ``SITE_CACHE`` (dict ``id`` → ``Site``) na poziomie modułu
+    ``django.contrib.sites.models`` procesu. Projekt woła
+    ``get_current_site()`` (``bpp/admin/uczelnia.py``,
+    ``bpp_setup_wizard/forms.py``), a po ``transactional_db`` TRUNCATE
+    wiersze w ``django_site`` odtwarzają się na innych ID-ach.
+    Session-scoped Daphne trzymający stary obiekt ``Site`` daje
+    sporadyczne ``Site.DoesNotExist`` / 500-ki zależne od kolejności
+    testów na workerze — dokładnie ten sam wektor co KeyError na
+    ContentType, tylko na innym module-level cache.
+
+    Overhead obu clear_cache to dwa ``dict.clear()`` — pomijalny.
     """
     from django.contrib.contenttypes.models import ContentType
+    from django.contrib.sites.models import Site
     from django.core.signals import request_started
 
     def _clear_caches(sender, **kwargs):
         ContentType.objects.clear_cache()
+        Site.objects.clear_cache()
 
     request_started.connect(_clear_caches, weak=False)
 

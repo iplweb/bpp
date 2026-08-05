@@ -28,6 +28,7 @@ DISNEY = Theme(
         "Pieśni i Tańca",
     ),
     autor_imiona=(
+        # Bohaterowie:
         "Miki",
         "Donald",
         "Sknerus",
@@ -41,9 +42,19 @@ DISNEY = Theme(
         "Mulan",
         "Simba",
         "Aladyn",
+        # Czarne charaktery (złoczyńcy Disneya):
+        "Jafar",
+        "Skaza",
+        "Urszula",
+        "Cruella",
+        "Hades",
+        "Gaston",
+        "Diabolina",
+        "Hak",
     ),
     # nazwiska NIGDY puste — jednoimienne postacie dostają przydomek:
     autor_nazwiska=(
+        # Przydomki bohaterów:
         "Mysz",
         "Kaczor",
         "McKwacz",
@@ -52,6 +63,13 @@ DISNEY = Theme(
         "Lew",
         "z Krainy Lodu",
         "z Agrabah",
+        # Przydomki czarnych charakterów:
+        "de Mon",
+        "Władca Podziemi",
+        "Wielki Wezyr",
+        "z Wyspy Czaszki",
+        "Uzurpator",
+        "Morska Wiedźma",
     ),
     zrodlo_human=(
         "Magicznego Królestwa",

@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: help clean distclean tests test-durations release tests-without-playwright tests-only-playwright docker destroy-test-databases cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-app-services build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers docker-images-on-ci check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux prepare-developer-machine-macos playwright-install
+.PHONY: help clean distclean tests test-durations release tests-without-playwright tests-only-playwright docker destroy-test-databases cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-app-services build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-testserver build-production build-production-force build-all check-not-pushing build-servers docker-images-on-ci check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux prepare-developer-machine-macos playwright-install
 
 .DEFAULT_GOAL := help
 
@@ -337,6 +337,10 @@ disable-microsoft-auth: ## Wyłącz django_microsoft_auth
 # (`make tests-without-playwright`) nie brudzi pliku. `make tests` i
 # `make test-durations` wlaczaja zapis przez target-specific STORE_DURATIONS.
 STORE_DURATIONS ?=
+# Liczba workerow xdist dla suity Playwright — patrz komentarz przy
+# `tests-only-playwright`. Kolejnosc fallbackow: rdzenie wydajnosciowe
+# (Apple Silicon) -> nproc (Linux) -> hw.ncpu (Intel Mac) -> 4.
+PLAYWRIGHT_WORKERS ?= $(shell sysctl -n hw.perflevel0.logicalcpu 2>/dev/null || nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 _store_durations = $(if $(STORE_DURATIONS),--store-durations --durations-path .test_durations,)
 # Po zapisie zaokraglij+posortuj plik (maly, stabilny diff). `&&` —
 # normalizujemy tylko po udanym przebiegu; przy STORE_DURATIONS pustym
@@ -351,8 +355,167 @@ tests-without-playwright-with-microsoft-auth: ## tests-without-playwright z akty
 
 tests-with-microsoft-auth: enable-microsoft-auth tests-without-playwright-with-microsoft-auth disable-microsoft-auth ## Włącz MS Auth, uruchom testy, wyłącz
 
+# Walidacja endpointu CERIF względem openaire-cris-validator (euroCRIS).
+#
+# Celowo POZA domyślną suitą: wymaga DZIAŁAJĄCEGO endpointu pod adresem URL.
+# Testy w src/cerif_export/tests/test_serializery.py walidują ładunek
+# względem vendorowanych XSD i biegną offline — ten target jest krokiem
+# dodatkowym, sprawdzającym całość protokołu tak, jak zrobi to zespół
+# agregacji OpenAIRE przy rejestracji.
+#
+# Wcześniej target budował walidator mavenem przy KAŻDYM wywołaniu: upstream
+# (EuroCRIS) nie publikuje binariów, więc trzeba było mieć u siebie JDK,
+# Mavena, cache ~/.m2 i dwa klony — ~550 MB narzędzi, żeby wyprodukować
+# 4,7 MB JAR-a, a `mvn clean` kasował gotowy artefakt przed każdym buildem.
+# Teraz artefakt pobieramy z forka, który buduje go raz, na CI:
+# https://github.com/iplweb/openaire-cris-validator
+#
+# Wymagania: JRE 17+ ALBO Docker. Mavena i JDK nie trzeba.
+#
+# Oba tory uruchamiają walidator z katalogiem roboczym ustawionym na cache,
+# NIE na korzeń repo: walidator zapisuje pobrane odpowiedzi OAI-PMH do
+# WZGLĘDNEGO katalogu data/ (CRISValidator:
+# `new FileLoggingConnectionStreamFactory("data")`), więc uruchomiony stąd
+# zasypałby repo setkami nieśledzonych plików. Tor javowy dostaje `cd`,
+# dockerowy — montowanie tej samej ścieżki na /work/data.
+#
+# Użycie:  make cerif-validate URL=https://twoja-instancja/cerif-oai/
+CERIF_VALIDATOR_VERSION ?= v2.1.1-iplweb.1
+# Poza drzewem repo celowo: `make clean` robi `rm -rf .cache` (patrz
+# clean-pycache), więc cache w .cache/ znikałby przy każdym sprzątaniu.
+# W $(HOME) przeżywa clean i jest współdzielony między worktree — na tym
+# hoście zwykle biega ich kilka naraz.
+CERIF_VALIDATOR_CACHE ?= $(HOME)/.cache/bpp/cerif-validator
+CERIF_VALIDATOR_IMAGE ?= iplweb/cerif-validator
+# Przypięta suma pobieranego JAR-a. Pusta = weryfikacja spada na .sha256
+# z release'u (słabsza, patrz komentarz przy regule pobierania).
+# Przy podbiciu CERIF_VALIDATOR_VERSION trzeba podbić RÓWNIEŻ to — inaczej
+# pobranie nowej wersji zostanie odrzucone jako niezgodne z sumą.
+CERIF_VALIDATOR_SHA256 ?= e077bb69007b7b45020b652d0d8040a26b5879198adfa2bac74eabe01f13cc28
+
+_cerif_asset = openaire-cris-validator-$(CERIF_VALIDATOR_VERSION)-jar-with-dependencies.jar
+_cerif_jar = $(CERIF_VALIDATOR_CACHE)/$(_cerif_asset)
+_cerif_url = https://github.com/iplweb/openaire-cris-validator/releases/download/$(CERIF_VALIDATOR_VERSION)/$(_cerif_asset)
+# Tag obrazu = tag gita bez wiodącego "v" (Docker nie dopuszcza go w naszej
+# konwencji nazewniczej); v2.1.1-iplweb.1 -> 2.1.1-iplweb.1
+_cerif_image_tag = $(patsubst v%,%,$(CERIF_VALIDATOR_VERSION))
+
+# Pobranie do pliku tymczasowego + mv, żeby przerwany transfer nie zostawił
+# w cache'u obciętego JAR-a, który przy kolejnym wywołaniu wyglądałby na
+# gotowy artefakt i wywalał się dopiero w JVM.
+$(_cerif_jar):
+	@mkdir -p "$(CERIF_VALIDATOR_CACHE)"
+	@echo "Pobieram walidator euroCRIS $(CERIF_VALIDATOR_VERSION)..."
+	@curl -fL --retry 3 --progress-bar --proto '=https' --tlsv1.2 \
+	  -o "$@.tmp" "$(_cerif_url)" || { \
+	  rm -f "$@.tmp"; \
+	  echo ""; \
+	  echo "Nie udało się pobrać walidatora z:"; \
+	  echo "  $(_cerif_url)"; \
+	  echo "Sprawdź, czy release $(CERIF_VALIDATOR_VERSION) istnieje:"; \
+	  echo "  https://github.com/iplweb/openaire-cris-validator/releases"; \
+	  exit 1; }
+	@# Sumę pobieramy z tego samego release'u, więc NIE jest to kotwica
+	@# zaufania — łapie obcięty transfer i przypadkowo podmieniony asset,
+	@# nie skompromitowane wydanie. Realny gate to CERIF_VALIDATOR_SHA256
+	@# (przypięty w gicie, przechodzi przez code review) — jeśli ustawiony,
+	@# ma pierwszeństwo.
+	@expected="$(CERIF_VALIDATOR_SHA256)"; \
+	if [ -z "$$expected" ]; then \
+	  expected=$$(curl -fsL --retry 3 --proto '=https' "$(_cerif_url).sha256" \
+	              2>/dev/null | cut -d' ' -f1); \
+	fi; \
+	if [ -n "$$expected" ]; then \
+	  actual=$$(shasum -a 256 "$@.tmp" 2>/dev/null | cut -d' ' -f1); \
+	  if [ "$$actual" != "$$expected" ]; then \
+	    rm -f "$@.tmp"; \
+	    echo "Suma SHA-256 się nie zgadza — pobrany plik odrzucony."; \
+	    echo "  oczekiwano: $$expected"; \
+	    echo "  otrzymano:  $$actual"; \
+	    exit 1; \
+	  fi; \
+	else \
+	  echo "OSTRZEŻENIE: brak sumy SHA-256 do weryfikacji artefaktu."; \
+	fi
+	@mv "$@.tmp" "$@"
+
+cerif-validate: ## Waliduj endpoint CERIF (URL=...) walidatorem euroCRIS
+	@test -n "$(URL)" || { \
+	  echo "Podaj URL, np. make cerif-validate URL=https://host/cerif-oai/"; \
+	  exit 1; }
+	@# Sama obecność `java` w PATH nie wystarcza: JAR ma target 17, więc na
+	@# JRE 8/11 (wciąż typowe) wywali się UnsupportedClassVersionError —
+	@# komunikatem, którego nikt nie mapuje na "zainstaluj nowszą Javę".
+	@# Za stara java jest traktowana jak jej brak i spada na Dockera.
+	@java_ok=0; \
+	if command -v java >/dev/null 2>&1; then \
+	  v=$$(java -version 2>&1 | sed -n '1s/.*version "\([0-9]*\).*/\1/p'); \
+	  if [ -n "$$v" ] && [ "$$v" -ge 17 ] 2>/dev/null; then \
+	    java_ok=1; \
+	  elif [ -n "$$v" ]; then \
+	    echo "Znaleziono Javę $$v, walidator wymaga 17+ — próbuję Dockera."; \
+	  else \
+	    echo "java jest w PATH, ale nie działa (stub macOS?) — próbuję Dockera."; \
+	  fi; \
+	fi; \
+	if [ "$$java_ok" = 1 ]; then \
+	  $(MAKE) --no-print-directory "$(_cerif_jar)" && \
+	  ( cd "$(CERIF_VALIDATOR_CACHE)" && java -jar "$(_cerif_jar)" "$(URL)" ); \
+	elif command -v docker >/dev/null 2>&1; then \
+	  echo "Używam obrazu $(CERIF_VALIDATOR_IMAGE):$(_cerif_image_tag)"; \
+	  host=$$(printf '%s' "$(URL)" | sed -E 's#^[a-zA-Z]+://([^/:]+).*#\1#'); \
+	  addhost=""; \
+	  lc() { printf '%s' "$$1" | tr 'A-Z' 'a-z'; }; \
+	  host_lc=$$(lc "$$host"); \
+	  self_lc=$$(lc "$$(hostname)"); \
+	  self_short_lc=$$(lc "$$(hostname -s)"); \
+	  case "$$host_lc" in \
+	    localhost|127.0.0.1|0.0.0.0|::1) \
+	      addhost="--add-host=$$host:host-gateway"; \
+	      echo "UWAGA: '$$host' w kontenerze wskazuje na sam kontener —"; \
+	      echo "       mapuję na bramę hosta. Serwer MUSI słuchać na 0.0.0.0;"; \
+	      echo "       przy bindzie tylko na 127.0.0.1 połączenie będzie odrzucone."; \
+	      ;; \
+	    "$$self_lc"|"$$self_short_lc") \
+	      ip=$$(getent hosts "$$host" 2>/dev/null | awk '{print $$1; exit}'); \
+	      [ -n "$$ip" ] || ip=$$(dscacheutil -q host -a name "$$host" 2>/dev/null \
+	                             | awk '/^ip_address:/{print $$2; exit}'); \
+	      [ -n "$$ip" ] || ip=$$(ping -c1 -t1 "$$host" 2>/dev/null \
+	                             | sed -n '1s/.*(\([0-9.]*\)).*/\1/p'); \
+	      case "$$ip" in \
+	        ""|127.*) \
+	          addhost="--add-host=$$host:host-gateway"; \
+	          echo "UWAGA: '$$host' nie rozwiązuje się na adres widoczny z kontenera"; \
+	          echo "       — mapuję na bramę hosta."; \
+	          ;; \
+	        *) \
+	          addhost="--add-host=$$host:$$ip"; \
+	          echo "Mapuję '$$host' -> $$ip w kontenerze."; \
+	          ;; \
+	      esac; \
+	      ;; \
+	  esac; \
+	  mkdir -p "$(CERIF_VALIDATOR_CACHE)/data"; \
+	  docker run --rm $$addhost \
+	    -v "$(CERIF_VALIDATOR_CACHE)/data:/work/data" \
+	    "$(CERIF_VALIDATOR_IMAGE):$(_cerif_image_tag)" "$(URL)"; \
+	else \
+	  echo "Potrzebny JRE 17+ albo Docker. Zainstaluj jedno z:"; \
+	  echo "  brew install openjdk@17          # macOS"; \
+	  echo "  brew install --cask docker       # macOS, wariant kontenerowy"; \
+	  echo "  apt install openjdk-17-jre       # Debian/Ubuntu"; \
+	  exit 1; \
+	fi
+
+# Chromium i Daphne konkuruja o zasoby przy `-n auto`, ktore bierze WSZYSTKIE
+# rdzenie logiczne. Na Apple Silicon oznacza to doliczenie rdzeni
+# energooszczednych (E-cores) — a te sa za wolne, zeby uciagnac wlasna
+# instancje Chromium + Daphne, wiec dokladaja tylko rywalizacje o pamiec i I/O.
+# Zmierzone na 12P+4E (154 testy): -n auto/16 ~94 s, -n 10 ~94 s, -n 8 ~89 s,
+# -n 12 ~87 s. Stad domyslnie tyle workerow, ile rdzeni WYDAJNOSCIOWYCH.
+# Nadpisanie: `make tests-only-playwright PLAYWRIGHT_WORKERS=8`.
 tests-only-playwright: playwright-install ## Tylko testy Playwright (wolne)
-	uv run pytest -n auto -m "playwright" $(_store_durations) $(_normalize_durations)
+	uv run pytest -n $(PLAYWRIGHT_WORKERS) -m "playwright" $(_store_durations) $(_normalize_durations)
 
 uv-sync: ## uv sync --all-extras (synchronizacja zależności Pythona)
 	uv sync --no-install-project --all-extras
@@ -394,11 +557,65 @@ coverage-ai: ## Raport pokrycia dla AI (sortowane ascending, top N najgorszych)
 # you suspect schema corruption or need to validate migrations from zero.
 tests-fresh: destroy-test-databases tests ## Jak `tests`, ale od zera (destroy-test-databases + tests)
 
+# ---------------------------------------------------------------------------
+# baseline.sql: naprawa search_path po dumpie (triggery hstore-w-WHEN)
+# ---------------------------------------------------------------------------
+# pg_dump utwardza naglowek zrzutu linia:
+#     SELECT pg_catalog.set_config('search_path', '', false);
+# czyli ustawia PUSTY search_path na cala sesje restore. To ochrona dodana po
+# CVE-2018-1058 (zeby obiekt w cudzym schemacie nie przeslonil wbudowanego
+# podczas restore). pg_dump kwalifikuje wszystkie obiekty schematem, wiec pusty
+# search_path jest NORMALNIE nieszkodliwy.
+#
+# Przestaje byc nieszkodliwy w momencie, gdy CREATE TRIGGER ma klauzule WHEN
+# porownujaca kolumne typu `hstore` operatorem IS DISTINCT FROM. Nasze triggery
+# denorma robia dokladnie to (np. `WHEN (old.legacy_data IS DISTINCT FROM
+# new.legacy_data)` na kolumnach hstore). IS DISTINCT FROM rozwija sie do
+# operatora `hstore = hstore`, ktory zyje w schemacie `public` (rozszerzenie
+# instalowane przez CREATE EXTENSION hstore WITH SCHEMA public). Klauzula WHEN
+# jest parsowana i rozwiazywana na operatory JUZ przy CREATE TRIGGER (niezaleznie
+# od check_function_bodies), wiec z pustym search_path operator jest niewidoczny
+# i load pada:
+#     ERROR: operator does not exist: public.hstore = public.hstore
+# PostgreSQL 16 to (czasem) przepuszczal, 17/18 juz nie — a i klient psql potrafi
+# to odrzucic na 16. django-pg-baseline laduje baseline.sql przez
+# `psql -f ... -v ON_ERROR_STOP=1` w JEDNEJ transakcji, wiec JEDEN taki blad
+# przerywa caly load -> kazdy django_db_setup pada -> kontener testowej bazy
+# nigdy nie staje sie gotowy (ContainerStartError widoczny pod -n auto to
+# wlasnie to, objawiajace sie jako ubity kontener PG).
+#
+# Upstreamowe komendy baseline_update / baseline_rebuild NIE przepisuja
+# naglowka, wiec latamy to tutaj, zaraz po dumpie: przywracamy `public` do
+# search_path na czas restore. To dokladnie to samo, co bpp-deploy robi przy
+# ladowaniu (scripts/pg-collation-migrate-3-load.sh) — tyle ze tam filtrem
+# strumieniowym, a my zapisujemy poprawke do commitowanego pliku, bo testowy
+# loader (django-pg-baseline) nie ma takiego hooka. Bezpieczne: kazdy obiekt w
+# dumpie jest kwalifikowany schematem, wiec `public` w search_path wplywa tylko
+# na niekwalifikowane lookupy operatorow, jak `hstore =`. Edycja in-place jest
+# przenosna (bez `sed -i`, ktore rozni sie GNU vs BSD): przez plik tymczasowy.
+#
+# UWAGA: to sie NIE utrwala w django-pg-baseline — kazdy kolejny
+# baseline_update/rebuild znowu wyprodukuje pusty search_path, dlatego ten
+# post-krok MUSI zostac w obu targetach ponizej.
+define fix-baseline-search-path
+	@if grep -q "set_config('search_path', '', false)" baseline-sql/baseline.sql; then \
+		sed "s/set_config('search_path', '', false)/set_config('search_path', 'public', false)/" \
+			baseline-sql/baseline.sql > baseline-sql/baseline.sql.tmp \
+			&& mv baseline-sql/baseline.sql.tmp baseline-sql/baseline.sql; \
+		echo ">> search_path naprawiony: '' -> 'public' (triggery hstore-w-WHEN sie wczytaja)"; \
+	else \
+		echo ">> UWAGA: nie znalazlem set_config('search_path','',false) w naglowku dumpu."; \
+		echo ">>        Format pg_dump sie zmienil? Sprawdz baseline-sql/baseline.sql recznie"; \
+		echo ">>        (patrz dlugi komentarz nad rebuild-baseline)."; \
+	fi
+endef
+
 # Regenerate baseline-sql/baseline.sql by spinning up an isolated
 # postgres (via testcontainers), running migrate, dumping, and writing
 # baseline.meta.json. Commit the refreshed files to git.
 rebuild-baseline: ## Regeneruj baseline.sql OD ZERA (pełny reset; duży diff)
 	DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py baseline_rebuild
+	$(fix-baseline-search-path)
 	@echo ""
 	@echo "Baseline regenerated. Files:"
 	@ls -lh baseline-sql/baseline.sql baseline-sql/baseline.meta.json
@@ -415,6 +632,7 @@ rebuild-baseline: ## Regeneruj baseline.sql OD ZERA (pełny reset; duży diff)
 # migrations; reach for `rebuild-baseline` only for a full reset.
 baseline-update: ## Zaktualizuj baseline.sql IN-PLACE (load+migrate+dump; mały diff)
 	DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py baseline_update
+	$(fix-baseline-search-path)
 	@echo ""
 	@echo "Baseline updated in place. Files:"
 	@ls -lh baseline-sql/baseline.sql baseline-sql/baseline.meta.json
@@ -584,23 +802,55 @@ check-clean-tree: ## Zawołaj błąd, jeśli working tree brudne (pre-release gu
 release: check-clean-tree full-tests new-release ## Pełny release (tree clean + full-tests + new-release)
 
 .PHONY: release-candidate release-promote
-release-candidate: ## Faza 1: utnij kandydata (RC → :staging) i obserwuj run [SKIP_TESTS=1 SKIP_SCAN=1]
-	@FLAGS=""; \
+release-candidate: ## Faza 1: utnij kandydata (RC → :staging) i obserwuj run [SKIP_TESTS=1 SKIP_SCAN=1 WEB=1]
+	@BRANCH=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null); \
+	if [ "$$BRANCH" != "dev" ]; then \
+		echo "BŁĄD: RC tnie kandydata z 'dev' (--ref dev), a lokalnie jesteś na '$$BRANCH'."; \
+		echo "      Przełącz się:  git switch dev && git pull  — potem ponów."; \
+		exit 1; \
+	fi; \
+	if [ -z "$$SKIP_SCAN" ]; then \
+		echo "==> Lokalny gate CVE (./bin/scan-deps.sh) — HIGH/CRITICAL zatrzyma RC przed CI..."; \
+		./bin/scan-deps.sh || { echo "BŁĄD: lokalny skan CVE znalazł HIGH/CRITICAL — przerywam przed RC (SKIP_SCAN=1 by pominąć awaryjnie)."; exit 1; }; \
+	else \
+		echo "==> SKIP_SCAN=1 — pomijam lokalny skan CVE (awaryjnie)."; \
+	fi; \
+	FLAGS=""; \
 	if [ -n "$$SKIP_TESTS" ]; then FLAGS="$$FLAGS -f skip_tests=true"; fi; \
 	if [ -n "$$SKIP_SCAN" ]; then FLAGS="$$FLAGS -f skip_scan=true"; fi; \
+	DISPATCHED_AT=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
 	echo "Odpalam release-candidate.yml (--ref dev)$$FLAGS ..."; \
-	gh workflow run release-candidate.yml --ref dev $$FLAGS; \
-	echo "Czekam na pojawienie się runu..."; \
-	sleep 3; \
-	RUN_ID=$$(gh run list --workflow=release-candidate.yml --limit=1 --json databaseId --jq '.[0].databaseId'); \
+	if ! gh workflow run release-candidate.yml --ref dev $$FLAGS; then \
+		echo "BŁĄD: Nie udało się uruchomić workflow. Nie szukam runu."; \
+		exit 1; \
+	fi; \
+	echo "Czekam na run utworzony po $$DISPATCHED_AT..."; \
+	RUN_ID=""; \
+	RUN_JQ="[.[] | select(.createdAt >= \"$$DISPATCHED_AT\")]"; \
+	ATTEMPT=0; \
+	while [ "$$ATTEMPT" -lt 30 ] && [ -z "$$RUN_ID" ]; do \
+		if ! RUN_ID=$$(gh run list \
+			--workflow=release-candidate.yml \
+			--branch=dev \
+			--event=workflow_dispatch \
+			--limit=20 \
+			--json databaseId,createdAt \
+			--jq "$$RUN_JQ | first | .databaseId // empty"); then \
+			echo "BŁĄD: Nie udało się pobrać listy runów workflow."; \
+			exit 1; \
+		fi; \
+		if [ -z "$$RUN_ID" ]; then sleep 2; fi; \
+		ATTEMPT=$$((ATTEMPT + 1)); \
+	done; \
 	if [ -z "$$RUN_ID" ]; then \
-		echo "BŁĄD: Nie udało się znaleźć nowego runu workflow."; \
+		echo "BŁĄD: Przez 60 s nie pojawił się run utworzony przez ten dispatch."; \
 		exit 1; \
 	fi; \
 	echo "Obserwuję run ID: $$RUN_ID"; \
+	if [ -n "$$WEB" ]; then gh run view "$$RUN_ID" --web; fi; \
 	gh run watch "$$RUN_ID"
 
-release-promote: ## Faza 2: promuj kandydata do produkcji (:latest, bez rebuildu) i obserwuj run [VERSION=vXXX]
+release-promote: ## Faza 2: promuj kandydata do produkcji (:latest, bez rebuildu) i obserwuj run [VERSION=vXXX WEB=1]
 	@FLAGS=""; \
 	if [ -n "$$VERSION" ]; then FLAGS="-f version=$$VERSION"; fi; \
 	echo "Odpalam promote.yml$$FLAGS ..."; \
@@ -613,6 +863,7 @@ release-promote: ## Faza 2: promuj kandydata do produkcji (:latest, bez rebuildu
 		exit 1; \
 	fi; \
 	echo "Obserwuję run ID: $$RUN_ID"; \
+	if [ -n "$$WEB" ]; then gh run view "$$RUN_ID" --web; fi; \
 	gh run watch "$$RUN_ID"
 
 set-version-from-vcs: ## Ustaw wersję bumpver na podstawie git describe
@@ -652,16 +903,18 @@ loc: clean ## Pokaż statystyki liczby linii (pygount)
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202607.1395
+DOCKER_VERSION=202607.1398
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)
 # - registry: use Docker Hub registry cache (for CI/CD)
 #
 # Usage:
-#   make build                              # parallel build with local cache
-#   DOCKER_CACHE_TYPE=registry make build   # parallel build with registry cache
-#   PUSH_TO_REGISTRY=true make build        # build and push to registry
+#   make build                                    # lokalny obraz dev (compose)
+#   make build-production                         # obrazy produkcyjne
+#   make build-all                                # jedno i drugie
+#   DOCKER_CACHE_TYPE=registry make build-production   # z cache w rejestrze
+#   PUSH_TO_REGISTRY=true make build-production        # build i push do rejestru
 DOCKER_CACHE_TYPE ?= local
 
 # Platform detection: use ARM64 on Apple Silicon, AMD64 otherwise
@@ -691,18 +944,66 @@ endif
 
 ##@ Docker build (buildx bake)
 
-# Main build target - parallel builds using docker buildx bake
-# This builds all images in parallel where possible:
-# - base: builds first
-# - appserver, workerserver, beatserver, authserver, denorm-queue: wait for base
-# Obraz dbservera (iplweb/bpp_dbserver) jest budowany w osobnym repo:
-# https://github.com/iplweb/bpp-dbserver
-build: ## Równoległy build wszystkich obrazów (buildx bake)
+# Podział celów build wynika z prostego rachunku: lokalnie uruchamiamy DOKŁADNIE
+# JEDEN budowany obraz. `docker-compose.yml` stawia wszystkie pięć serwisów
+# aplikacyjnych (appserver/celerybeat/workerserver/workerserver-status/
+# denorm-queue) na `bpp_testserver:dev`. Pozostałe obrazy, które umie zbudować
+# bake — base + appserver + workerserver + beatserver + authserver +
+# denorm-queue — nie są przez compose referowane ani razu; to artefakty pod
+# Docker Hub. Reszta stacka (dbserver, redis, html2docx, monitoring) jest
+# pullowana, nie budowana.
+#
+# Dlatego `make build` = obraz dev i tylko on. Publikowaniem zajmuje się
+# `make build-branch` (Docker Build Cloud) albo CI; do lokalnego sprawdzenia,
+# czy obrazy produkcyjne wciąż się budują, jest `build-production`, a stary
+# sens `make build` (wszystko naraz) siedzi pod `build-all`.
+#
+# Historia, dla potomnych: przez długi czas `bpp_testserver:dev` w ogóle nie
+# miał targetu w docker-bake.hcl. `make build` kończył się wtedy na zielono,
+# nie tknąwszy ani jednego obrazu, który developer faktycznie uruchamia —
+# odświeżał wyłącznie te, których lokalnie nie odpala nikt. Obraz starzał się
+# w nieskończoność, a compose bind-mountuje świeże `./src` na jego stary
+# `/opt/venv`, więc świeży kod spotykał wczorajsze zależności (objaw:
+# ModuleNotFoundError na pakiecie dodanym do pyproject.toml po zbudowaniu
+# obrazu). Cel `build`, który nie buduje tego, co uruchamiasz, jest gorszy niż
+# brak celu — nie zgłasza się, tylko cicho kłamie.
+
+# Push do rejestru dotyczy WYŁĄCZNIE obrazów produkcyjnych. `bpp_testserver:dev`
+# nie ma tagu w rejestrze (docker-bake.hcl wymusza output=type=docker), więc
+# `PUSH_TO_REGISTRY=true make build` nie pushnąłby niczego — cicho zbudowałby
+# obraz lokalny i wyszedł z zerem. Wolimy się wywalić z instrukcją.
+check-not-pushing:
+	@if [ "$(PUSH_TO_REGISTRY)" = "true" ]; then \
+	    echo >&2 "BŁĄD: PUSH_TO_REGISTRY=true nie ma sensu dla tego celu —"; \
+	    echo >&2 "      buduje wyłącznie lokalny obraz bpp_testserver:dev,"; \
+	    echo >&2 "      który nigdy nie trafia do rejestru."; \
+	    echo >&2 "Użyj: PUSH_TO_REGISTRY=true make build-production"; \
+	    exit 1; \
+	fi
+
+# Domyślny cel developerski: obraz, którym compose uruchamia stack lokalnie.
+build: check-not-pushing ## Zbuduj lokalny obraz dev (bpp_testserver:dev) — ten, którego używa docker-compose.yml
+	docker buildx bake $(BAKE_ARGS) testserver
+
+build-force: check-not-pushing ## Rebuild lokalnego obrazu dev, ignorując cache
+	docker buildx bake $(BAKE_ARGS) testserver --no-cache
+
+# Nazwa jawna — do użycia tam, gdzie „build" jest zbyt ogólne (dokumentacja,
+# komentarze w Dockerfile/compose).
+build-testserver: build ## Alias do `build` (jawna nazwa obrazu)
+
+# Obrazy produkcyjne: base + pięć serwisowych (grupa `default` w bake).
+# Lokalnie NIE są uruchamiane przez docker-compose.yml — to materiał na Docker
+# Hub. Sensowne zastosowania: sanity-check, że wciąż się budują, oraz
+# `PUSH_TO_REGISTRY=true make build-production`.
+build-production: ## Zbuduj obrazy produkcyjne (base + 5 serwisów) — lokalnie NIE uruchamiane
 	docker buildx bake $(BAKE_ARGS)
 
-# Force rebuild all images (ignores cache)
-build-force: ## Pełny rebuild ignorujący cache
+build-production-force: ## Rebuild obrazów produkcyjnych, ignorując cache
 	docker buildx bake $(BAKE_ARGS) --no-cache
+
+# Stary sens `make build` — zachowany, żeby nikomu nie zniknął odruch z palców.
+build-all: build build-production ## Wszystko naraz: obraz dev + obrazy produkcyjne (dawne `make build`)
 
 # Build only the base image
 build-base: ## Zbuduj tylko obraz `base`
@@ -731,8 +1032,10 @@ build-authserver: ## Zbuduj tylko authserver
 build-denorm-queue: ## Zbuduj tylko denorm-queue
 	docker buildx bake $(BAKE_ARGS) denorm-queue
 
-# Alias for backward compatibility
-build-servers: build ## Alias do `build` (kompatybilność wsteczna)
+# Alias for backward compatibility — celowo wskazuje na `build-all`, nie na
+# `build`: historycznie oznaczał „zbuduj wszystkie serwery", a `build` zawęził
+# się do samego obrazu dev.
+build-servers: build-all ## Alias do `build-all` (kompatybilność wsteczna)
 
 # =============================================================================
 # Budowanie obrazów z brancha na Docker Build Cloud

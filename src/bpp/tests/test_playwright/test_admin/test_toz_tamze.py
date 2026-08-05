@@ -11,20 +11,24 @@ from bpp.tests import any_ciagle
 from bpp.tests.util import any_patent, any_zwarte
 
 
-def _wait_for(predicate, timeout: float = 5.0, interval: float = 0.05) -> bool:
-    """Poll ``predicate`` until truthy or timeout elapses."""
+def _wait_for(page, predicate, timeout: float = 5.0, interval_ms: int = 50) -> bool:
+    """Pompuj event-loop Playwrighta, aż ``predicate`` stanie się prawdziwy.
+
+    Do pollingu MUSIMY użyć ``page.wait_for_timeout`` (nie ``time.sleep``) —
+    ``time.sleep`` blokuje wątek testu, więc handlery dialogów/route
+    Playwrighta nie mają szansy odpalić w trakcie pollingu i predykat
+    nigdy nie zmienia stanu. Wzorzec: patrz ``test_clarivate._wait_for_dialog``.
+    """
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if predicate():
             return True
-        time.sleep(interval)
+        page.wait_for_timeout(interval_ms)
     return predicate()
 
 
 @pytest.mark.django_db(transaction=True)
-def test_admin_wydawnictwo_zwarte_tamze(
-    live_server, admin_page: Page, wydawca
-):
+def test_admin_wydawnictwo_zwarte_tamze(live_server, admin_page: Page, wydawca):
     """Test the 'tamze' (ibidem) button for wydawnictwo_zwarte.
 
     The 'tamze' button creates a new publication form pre-populated with
@@ -42,8 +46,7 @@ def test_admin_wydawnictwo_zwarte_tamze(
     )
 
     admin_page.goto(
-        live_server.url
-        + reverse("admin:bpp_wydawnictwo_zwarte_change", args=(c.pk,))
+        live_server.url + reverse("admin:bpp_wydawnictwo_zwarte_change", args=(c.pk,))
     )
     admin_page.wait_for_load_state("domcontentloaded")
 
@@ -80,9 +83,7 @@ def test_admin_patent_tamze(live_server, admin_page: Page):
     """
     c = any_patent(informacje="TO INFORMACJE")
 
-    admin_page.goto(
-        live_server.url + reverse("admin:bpp_patent_change", args=(c.pk,))
-    )
+    admin_page.goto(live_server.url + reverse("admin:bpp_patent_change", args=(c.pk,)))
     admin_page.wait_for_load_state("domcontentloaded")
 
     # Click the "tamze" button
@@ -105,8 +106,7 @@ def test_admin_wydawnictwo_zwarte_toz(live_server, admin_page: Page):
     c = any_zwarte(informacje="TO INFOMRACJE")
 
     admin_page.goto(
-        live_server.url
-        + reverse("admin:bpp_wydawnictwo_zwarte_change", args=(c.pk,))
+        live_server.url + reverse("admin:bpp_wydawnictwo_zwarte_change", args=(c.pk,))
     )
     admin_page.wait_for_load_state("domcontentloaded")
 
@@ -122,22 +122,21 @@ def test_admin_wydawnictwo_zwarte_toz(live_server, admin_page: Page):
 
     admin_page.on("dialog", handle_dialog)
 
-    # Click the "toz" button
-    admin_page.click("#toz")
-
-    # Wait for the copy to be created
-    admin_page.wait_for_function(
-        "() => true",  # Just wait for dialog to be processed
-        timeout=5000,
-    )
+    # #toz: dialog confirm → POST na ../../toz/<pk>/ (ukryty formularz + CSRF)
+    # → widok tworzy kopię (commit) i przekierowuje na change-form kopii.
+    # Blokujemy do zakończenia tej nawigacji, żeby POST/toz + insert + redirect
+    # + finalny GET zdążyły się dokończyć ZANIM czytamy bazę i ZANIM teardown
+    # truncuje.
+    with admin_page.expect_navigation(wait_until="domcontentloaded"):
+        admin_page.click("#toz")
 
     # Verify the dialog contained the expected text
-    assert any(
-        "Utworzysz kopię tego rekordu" in text for text in dialog_text
-    ), f"Expected dialog with 'Utworzysz kopię tego rekordu', got: {dialog_text}"
+    assert any("Utworzysz kopię tego rekordu" in text for text in dialog_text), (
+        f"Expected dialog with 'Utworzysz kopię tego rekordu', got: {dialog_text}"
+    )
 
-    # Wait for the new record to be created
-    _wait_for(lambda: wcc() == 2)
+    # Po zakończonej nawigacji kopia jest już scommitowana.
+    _wait_for(admin_page, lambda: wcc() == 2)
     assert wcc() == 2, f"Expected 2 records, got {wcc()}"
 
 
@@ -147,12 +146,17 @@ def test_admin_wydawnictwo_ciagle_toz(live_server, admin_page: Page):
 
     The 'toz' button creates a copy of the publication record.
     """
+    # Defensywny guard przeciw wyciekowi scommitowanych Wydawnictwo_Ciagle z
+    # innych testów (transaction=True → dane lądują w realnej bazie, a jeśli
+    # TRUNCATE poprzedniego testu zawiódł/wyścignął się — patrz audyt
+    # równoległości — zostawał sierocy rekord). Pod poprawną izolacją to no-op;
+    # ZOSTAWIAMY, bo dopóki izolacja Playwright/Daphne nie jest w 100% pewna,
+    # usunięcie tego przywróciłoby flaka (assert wcc()==1 niżej padał).
     Wydawnictwo_Ciagle.objects.all().delete()
     c = any_ciagle(informacje="TO INFORMACJE")
 
     admin_page.goto(
-        live_server.url
-        + reverse("admin:bpp_wydawnictwo_ciagle_change", args=(c.pk,))
+        live_server.url + reverse("admin:bpp_wydawnictwo_ciagle_change", args=(c.pk,))
     )
     admin_page.wait_for_load_state("domcontentloaded")
 
@@ -168,22 +172,21 @@ def test_admin_wydawnictwo_ciagle_toz(live_server, admin_page: Page):
 
     admin_page.on("dialog", handle_dialog)
 
-    # Click the "toz" button
-    admin_page.click("#toz")
-
-    # Wait for the copy to be created
-    admin_page.wait_for_function(
-        "() => true",  # Just wait for dialog to be processed
-        timeout=5000,
-    )
+    # #toz: dialog confirm → POST na ../../toz/<pk>/ (ukryty formularz + CSRF)
+    # → widok tworzy kopię (commit) i przekierowuje na change-form kopii.
+    # Blokujemy do zakończenia tej nawigacji, żeby POST/toz + insert + redirect
+    # + finalny GET zdążyły się dokończyć ZANIM czytamy bazę i ZANIM teardown
+    # truncuje.
+    with admin_page.expect_navigation(wait_until="domcontentloaded"):
+        admin_page.click("#toz")
 
     # Verify the dialog contained the expected text
-    assert any(
-        "Utworzysz kopię tego rekordu" in text for text in dialog_text
-    ), f"Expected dialog with 'Utworzysz kopię tego rekordu', got: {dialog_text}"
+    assert any("Utworzysz kopię tego rekordu" in text for text in dialog_text), (
+        f"Expected dialog with 'Utworzysz kopię tego rekordu', got: {dialog_text}"
+    )
 
-    # Wait for the new record to be created
-    _wait_for(lambda: wcc() == 2)
+    # Po zakończonej nawigacji kopia jest już scommitowana.
+    _wait_for(admin_page, lambda: wcc() == 2)
     assert wcc() == 2, f"Expected 2 Wydawnictwo_Ciagle records, got {wcc()}"
 
 
@@ -195,9 +198,7 @@ def test_admin_patent_toz(live_server, admin_page: Page):
     """
     c = any_patent(informacje="TO INFORMACJE")
 
-    admin_page.goto(
-        live_server.url + reverse("admin:bpp_patent_change", args=(c.pk,))
-    )
+    admin_page.goto(live_server.url + reverse("admin:bpp_patent_change", args=(c.pk,)))
     admin_page.wait_for_load_state("domcontentloaded")
 
     wcc = Patent.objects.count
@@ -212,25 +213,21 @@ def test_admin_patent_toz(live_server, admin_page: Page):
 
     admin_page.on("dialog", handle_dialog)
 
-    # Click the "toz" button
-    admin_page.click("#toz")
-
-    # Wait for the copy to be created
-    admin_page.wait_for_function(
-        "() => true",  # Just wait for dialog to be processed
-        timeout=5000,
-    )
+    # #toz: dialog confirm → POST na ../../toz/<pk>/ (ukryty formularz + CSRF)
+    # → widok tworzy kopię (commit) i przekierowuje na change-form kopii.
+    # Blokujemy do zakończenia tej nawigacji, żeby POST/toz + insert + redirect
+    # + finalny GET zdążyły się dokończyć ZANIM czytamy bazę i ZANIM teardown
+    # truncuje.
+    with admin_page.expect_navigation(wait_until="domcontentloaded"):
+        admin_page.click("#toz")
 
     # Verify the dialog contained the expected text
-    assert any(
-        "Utworzysz kopię tego rekordu" in text for text in dialog_text
-    ), f"Expected dialog with 'Utworzysz kopię tego rekordu', got: {dialog_text}"
+    assert any("Utworzysz kopię tego rekordu" in text for text in dialog_text), (
+        f"Expected dialog with 'Utworzysz kopię tego rekordu', got: {dialog_text}"
+    )
 
-    # Wait for the navigation to complete
-    admin_page.wait_for_selector("#navigation-menu", timeout=10000)
-
-    # Wait for the new record to be created
-    _wait_for(lambda: wcc() == 2)
+    # Po zakończonej nawigacji kopia jest już scommitowana.
+    _wait_for(admin_page, lambda: wcc() == 2)
     assert wcc() == 2, f"Expected 2 Patent records, got {wcc()}"
 
 
@@ -244,8 +241,7 @@ def test_admin_wydawnictwo_ciagle_tamze(live_server, admin_page: Page):
     c = any_ciagle(informacje="TO INFORMACJE", uwagi="te uwagi", www="te www")
 
     admin_page.goto(
-        live_server.url
-        + reverse("admin:bpp_wydawnictwo_ciagle_change", args=(c.pk,))
+        live_server.url + reverse("admin:bpp_wydawnictwo_ciagle_change", args=(c.pk,))
     )
     admin_page.wait_for_load_state("domcontentloaded")
 

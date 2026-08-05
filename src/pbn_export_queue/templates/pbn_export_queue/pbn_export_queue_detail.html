@@ -469,10 +469,10 @@
                                                 <summary class="pbn-export-queue__traceback-summary">
                                                     Wystapil blad (kliknij aby zobaczyc szczegoly)
                                                 </summary>
-                                                <pre class="pbn-export-queue__traceback-pre">{{ msg.content|safe }}</pre>
+                                                <pre class="pbn-export-queue__traceback-pre">{{ msg.content }}</pre>
                                             </details>
                                         {% else %}
-                                            <div class="pbn-export-queue__message-text">{{ msg.content|safe }}</div>
+                                            <div class="pbn-export-queue__message-text">{{ msg.content }}</div>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -481,7 +481,7 @@
 
                             <!-- Raw text view (hidden by default) -->
                             <div id="raw-messages" class="pbn-export-queue__raw-messages">
-                                <pre class="pbn-export-queue__raw-pre">{{ export_queue_item.komunikat|safe }}</pre>
+                                <pre class="pbn-export-queue__raw-pre">{{ export_queue_item.komunikat }}</pre>
                             </div>
 
                             <script>
@@ -507,7 +507,7 @@
                         {% else %}
                             <!-- Fallback to raw view if parsing fails -->
                             <div class="pbn-export-queue__raw-messages" style="display: block;">
-                                <pre class="pbn-export-queue__raw-pre">{{ export_queue_item.komunikat|safe }}</pre>
+                                <pre class="pbn-export-queue__raw-pre">{{ export_queue_item.komunikat }}</pre>
                             </div>
                         {% endif %}
                         {% endwith %}

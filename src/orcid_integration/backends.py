@@ -1,51 +1,64 @@
 import logging
 
-from bpp.models import Autor, Uczelnia
+from bpp.models import Uczelnia
 from bpp.models.profile import BppUser
+
+from .models import ORCIDIdentity
 
 logger = logging.getLogger(__name__)
 
 
 class OrcidAuthenticationBackend:
-    """Authenticate users by matching an ORCID iD to an existing
-    Autor record, then finding the BppUser with the same email.
+    """Uwierzytelnia po powiązanej tożsamości ORCID (issuer, ORCID iD).
+
+    Konto NIE jest już wybierane po ``Autor.email`` — ten adres jest edytowalny
+    przez redaktorów (grupa „wprowadzanie danych" ma ``change_autor``), więc
+    dawał przejęcie konta: wystarczyło wpisać w rekordzie ``Autor`` swój ORCID
+    i e-mail administratora. Teraz login rozwiązuje się do konta wyłącznie przez
+    ``ORCIDIdentity`` — wiązaną świadomie z poziomu profilu (re-auth hasłem).
     """
 
-    def authenticate(self, request, orcid_id=None, **kwargs):
+    def _issuer_for(self, request, orcid_issuer, uczelnia):
+        """Ustal issuera (środowisko ORCID) — jawny argument albo z uczelni."""
+        if orcid_issuer:
+            return orcid_issuer
+        if uczelnia is not None:
+            return uczelnia.orcid_base_url
+        return None
+
+    def authenticate(
+        self, request, orcid_id=None, orcid_issuer=None, username=None, **kwargs
+    ):
         if orcid_id is None:
             return None
 
-        try:
-            autor = Autor.objects.get(orcid=orcid_id)
-        except Autor.DoesNotExist:
-            logger.info("ORCID login: no Autor with orcid=%s", orcid_id)
-            return None
-
-        if not autor.email:
-            logger.info(
-                "ORCID login: Autor pk=%s has no email, cannot match to BppUser",
-                autor.pk,
-            )
-            return None
-
-        try:
-            user = BppUser.objects.get(email=autor.email)
-        except BppUser.DoesNotExist:
-            logger.info(
-                "ORCID login: no BppUser with email=%s (Autor pk=%s)",
-                autor.email,
-                autor.pk,
-            )
-            return None
-
-        if not user.is_active:
-            logger.info(
-                "ORCID login: user pk=%s is inactive",
-                user.pk,
-            )
-            return None
-
         uczelnia = Uczelnia.objects.get_for_request(request)
+        issuer = self._issuer_for(request, orcid_issuer, uczelnia)
+        if not issuer:
+            logger.info(
+                "ORCID login: brak issuera (uczelni w requeście) — "
+                "nie mogę dopasować tożsamości dla orcid=%s",
+                orcid_id,
+            )
+            return None
+
+        identity = (
+            ORCIDIdentity.objects.filter(
+                issuer=issuer, sub=orcid_id, user__is_active=True
+            )
+            .select_related("user")
+            .first()
+        )
+        if identity is None:
+            logger.info(
+                "ORCID login: brak powiązanej tożsamości (issuer=%s, orcid=%s)",
+                issuer,
+                orcid_id,
+            )
+            return None
+
+        user = identity.user
+
         if uczelnia and uczelnia.orcid_tylko_dla_pracownikow:
             if not (user.is_staff or user.is_superuser):
                 logger.info(

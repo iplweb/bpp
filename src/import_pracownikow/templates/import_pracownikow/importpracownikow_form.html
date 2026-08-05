@@ -1,12 +1,12 @@
 {% extends "base.html" %}{% load render_table from django_tables2 %}
 
 {% block extratitle %}
-    Import pracowników - nowy
+    Import pracowników i jednostek - nowy
 {% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li><a href="{% url "import_pracownikow:index" %}">import pracowników</a></li>
+    <li><a href="{% url "import_pracownikow:index" %}">import pracowników i jednostek</a></li>
 {% endblock %}
 
 {% block content %}{% load static %}
@@ -21,4 +21,46 @@
     {% load crispy_forms_tags bpp_formdefaults %}
     <div class="formdefaults-wrap">{% bpp_formdefaults_button form %}</div>
     {% crispy form %}
+
+    {# Opcje z szuflady („przepnij wszystkie prace", „nadpisuj daty #}
+    {# zatrudnienia") są groźne — przy ZAZNACZANIU wymuszamy świadome #}
+    {# potwierdzenie (confirm). Anulowanie cofa zaznaczenie. Vanilla JS na #}
+    {# DOMContentLoaded (nie zależy od kolejności $(document).ready). #}
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var cb = document.getElementById('id_przepnij_wszystkie_prace');
+        if (!cb) { return; }
+        cb.addEventListener('change', function () {
+            if (!cb.checked) { return; }
+            var ok = confirm(
+                "UWAGA — PRZEPIĘCIE WSZYSTKICH PRAC\n\n" +
+                "Zaznaczasz opcję, która DOMYŚLNIE oznaczy WSZYSTKIE prace " +
+                "autorów do przepięcia na jednostki z pliku.\n\n" +
+                "Na DOJRZAŁEJ bazie produkcyjnej przepnie to HISTORYCZNE " +
+                "afiliacje — to zwykle NIE jest to, czego chcesz. Zaznaczaj " +
+                "tylko przy imporcie do ŚWIEŻEJ bazy.\n\n" +
+                "Czy na pewno wiesz, co robisz?"
+            );
+            if (!ok) { cb.checked = false; }
+        });
+        var cbDaty = document.getElementById('id_nadpisuj_daty_zatrudnienia');
+        if (cbDaty) {
+            cbDaty.addEventListener('change', function () {
+                if (!cbDaty.checked) { return; }
+                var ok = confirm(
+                    "UWAGA — NADPISYWANIE DAT ZATRUDNIENIA\n\n" +
+                    "Zaznaczasz opcję, która przy zapisie osób NADPISZE " +
+                    "istniejące daty rozpoczęcia/zakończenia pracy " +
+                    "wartościami z pliku (dla osób obecnych w pliku).\n\n" +
+                    "Ręcznie ustawione daty w bazie zostaną UTRACONE tam, " +
+                    "gdzie plik niesie inną datę.\n\n" +
+                    "Użyj tylko, gdy plik jest źródłem prawdy o datach " +
+                    "(np. korekta po imporcie bez dat).\n\n" +
+                    "Czy na pewno wiesz, co robisz?"
+                );
+                if (!ok) { cbDaty.checked = false; }
+            });
+        }
+    });
+    </script>
 {% endblock %}

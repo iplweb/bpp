@@ -7,9 +7,14 @@ import sys
 from typing import TYPE_CHECKING
 
 import rollbar
-from django.db import IntegrityError, transaction
+from django_pbn_client.download import download_to_model
+from django_pbn_client.persistence import (
+    download_pbn_objects,
+    get_or_download,
+    upsert_pbn_object,
+)
 
-from bpp.util import pbar, zaloguj_polkniety_wyjatek
+from bpp.util import pbar
 from pbn_api.exceptions import HttpException
 from pbn_api.models import (
     Institution,
@@ -25,7 +30,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@transaction.atomic
 def zapisz_mongodb(elem, klass, client=None, **extra):
     """Save a MongoDB element to the database.
 
@@ -38,43 +42,7 @@ def zapisz_mongodb(elem, klass, client=None, **extra):
     Returns:
         The created or updated model instance.
     """
-    defaults = dict(
-        status=elem["status"],
-        verificationLevel=elem["verificationLevel"],
-        verified=elem["verified"],
-        versions=elem["versions"],
-        **extra,
-    )
-
-    existing = klass.objects.select_for_update().filter(pk=elem["mongoId"])
-
-    created = False
-    try:
-        v = existing.get()
-    except klass.DoesNotExist:
-        try:
-            v = klass.objects.create(pk=elem["mongoId"], **defaults)
-            created = True
-        except IntegrityError:
-            # Another thread created this record - just fetch it
-            v = klass.objects.get(pk=elem["mongoId"])
-
-    if not created:
-        needs_saving = False
-
-        for key in extra:
-            if getattr(v, key) != extra.get(key):
-                setattr(v, key, extra.get(key))
-                needs_saving = True
-
-        if elem["versions"] != v.versions:
-            v.versions = elem["versions"]
-            needs_saving = True
-
-        if needs_saving:
-            v.save()
-
-    return v
+    return upsert_pbn_object(elem, klass, client=client, **extra)
 
 
 def ensure_publication_exists(client, publicationId):
@@ -84,12 +52,13 @@ def ensure_publication_exists(client, publicationId):
         client: PBN client.
         publicationId: The publication ID.
     """
-    try:
-        publicationId = Publication.objects.get(pk=publicationId)
-    except Publication.DoesNotExist:
-        zapisz_mongodb(
-            client.get_publication_by_id(publicationId), Publication, client=client
-        )
+    get_or_download(
+        Publication,
+        publicationId,
+        fetch=client.get_publication_by_id,
+        save=zapisz_mongodb,
+        client=client,
+    )
 
 
 def ensure_person_exists(client: PBNClient, personId):
@@ -99,10 +68,13 @@ def ensure_person_exists(client: PBNClient, personId):
         client: PBN client.
         personId: The person ID.
     """
-    try:
-        personId = Scientist.objects.get(pk=personId)
-    except Scientist.DoesNotExist:
-        zapisz_mongodb(client.get_person_by_id(personId), Scientist, client=client)
+    get_or_download(
+        Scientist,
+        personId,
+        fetch=client.get_person_by_id,
+        save=zapisz_mongodb,
+        client=client,
+    )
 
 
 def ensure_institution_exists(client: PBNClient, institutionId):
@@ -112,12 +84,13 @@ def ensure_institution_exists(client: PBNClient, institutionId):
         client: PBN client.
         institutionId: The institution ID.
     """
-    try:
-        institutionId = Institution.objects.get(pk=institutionId)
-    except Institution.DoesNotExist:
-        zapisz_mongodb(
-            client.get_publication_by_id(institutionId), Institution, client=client
-        )
+    get_or_download(
+        Institution,
+        institutionId,
+        fetch=client.get_institution_by_id,
+        save=zapisz_mongodb,
+        client=client,
+    )
 
 
 def zapisz_publikacje_instytucji(elem, klass, client=None, **extra):
@@ -195,6 +168,15 @@ def zapisz_publikacje_instytucji(elem, klass, client=None, **extra):
         else:
             raise
 
+    # Import biegnie wielowątkowo (``pobierz_mongodb(use_threads=True)``).
+    # Przed dołożeniem unikalnego constraintu na tej trójce (migracje 0078 +
+    # 0079) dwa wątki cicho tworzyły dwa wiersze. Constraint zamienia to
+    # w ``IntegrityError``, ale WŁASNA obsługa wyjątku jest tu zbędna:
+    # ``get_or_create`` sam robi ``create`` w savepoincie
+    # (``transaction.atomic``) i domyka ``IntegrityError`` ponownym ``get``
+    # — czyli dokładnie to, co ``_update_or_create_odporne_na_wyscig``
+    # z ``pbn_api/client/disciplines.py``. Pilnuje tego
+    # ``test_get_or_create_przezywa_przegrany_wyscig``.
     rec, _ign = PublikacjaInstytucji.objects.get_or_create(
         institutionId_id=elem["institutionId"],
         publicationId_id=elem["publicationId"],
@@ -312,6 +294,7 @@ def pobierz_mongodb(
     client=None,
     disable_progress_bar=False,
     callback=None,
+    on_error="raise",
 ):
     """Fetch and save elements from PBN API.
 
@@ -323,39 +306,50 @@ def pobierz_mongodb(
         client: PBN client.
         disable_progress_bar: Whether to disable progress bar.
         callback: Optional callback for progress tracking.
+        on_error: Zachowanie przy błędzie zapisu POJEDYNCZEGO rekordu do
+            lokalnego lustra BPP (``IntegrityError``, zły kształt danych itp.):
+
+            - ``"raise"`` (default) — fail-fast: pierwszy błąd propaguje i
+              przerywa cały batch (zachowanie historyczne). Zwraca ``None``.
+            - ``"skip"`` — skip-and-log-and-continue: zły rekord jest logowany
+              (pełny traceback) i liczony, import reszty listy kończy się.
+              Deleguje do pakietowego ``download_to_model`` i zwraca
+              ``DownloadResult(processed, errored)``. Przydatne przy masowych
+              synchronizacjach (tysiące rekordów), gdzie jeden zepsuty rekord
+              nie powinien wywalać całego przebiegu.
     """
     if fun is None:
         fun = zapisz_mongodb
 
-    # Determine the total count
-    count = None
-    if hasattr(elems, "total_elements"):
-        count = elems.total_elements
-    elif hasattr(elems, "__len__"):
-        count = len(elems)
-    else:
-        # Try to get count from iterator if possible
-        try:
-            count = elems.count() if hasattr(elems, "count") else elems.count
-        except Exception:
-            # Benign: count służy WYŁĄCZNIE do paska postępu. Brak liczby =
-            # pasek bez totalu, nie błąd importu — logujemy (standard:
-            # zaloguj_polkniety_wyjatek), ale bez Rollbara (do_rollbar=False),
-            # nie zaśmiecamy go nieistotnym fallbackiem.
-            zaloguj_polkniety_wyjatek(
-                "Nie udało się ustalić liczby elementów do paska postępu — "
-                "kontynuuję bez znanej liczby",
-                logger=logger,
-                do_rollbar=False,
-            )
-            count = None
+    def progress(elements, total, _label):
+        # Używamy ``pbar_label`` (nie ``_label`` z delegata) — ``download_to_model``
+        # nie forwarduje etykiety, więc trzymamy ją stałą w obu trybach.
+        return pbar(
+            elements,
+            total,
+            pbar_label,
+            disable_progress_bar=disable_progress_bar,
+            callback=callback,
+        )
 
-    # Use pbar with callback support for database progress tracking
-    for elem in pbar(
-        elems,
-        count,
-        pbar_label,
-        disable_progress_bar=disable_progress_bar,
-        callback=callback,
-    ):
-        fun(elem, klass, client=client)
+    if on_error == "raise":
+        return download_pbn_objects(
+            elems,
+            klass,
+            label=pbar_label,
+            save=fun,
+            client=client,
+            progress=progress,
+        )
+    if on_error == "skip":
+        # ``elems`` jest już zbudowanym paginatorem/iteratorem — fasada oczekuje
+        # fabryki (zero-arg), więc oddajemy gotowy zasób. Domyślne
+        # ``concurrency=None`` → ścieżka sekwencyjna (bez ponownego requestu).
+        return download_to_model(
+            lambda: elems,
+            klass,
+            save=fun,
+            client=client,
+            progress=progress,
+        )
+    raise ValueError(f"on_error musi być 'raise' albo 'skip', otrzymano {on_error!r}")

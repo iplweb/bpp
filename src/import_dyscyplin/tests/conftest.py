@@ -65,8 +65,15 @@ def test5_kasowanie_subdyscypliny(parent_path):
 
 
 @pytest.fixture
-def conftest_py(parent_path):
-    return str(parent_path / "conftest.py")
+def zly_plik(tmp_path):
+    # Plik, który NIE jest arkuszem XLSX — testy sprawdzają odrzucenie złego
+    # typu pliku. Wcześniej uploadowano tu prawdziwy conftest.py tego katalogu,
+    # który lądował w MEDIA_ROOT i bywał importowany przez pytest przy kolekcji
+    # (obok powstawał __pycache__) — patrz audyt pkt 1. Śmieciowy .txt w
+    # tmp_path zachowuje semantykę „to nie XLSX", bez ryzyka importu.
+    p = tmp_path / "zly_plik.txt"
+    p.write_bytes(b"To nie jest arkusz XLSX \x00\x01\x02 losowe smieci")
+    return str(p)
 
 
 @pytest.fixture

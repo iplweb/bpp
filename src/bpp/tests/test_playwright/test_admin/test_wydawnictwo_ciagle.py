@@ -12,7 +12,7 @@ def test_Wydawnictwo_Ciagle_Autor_Admin_forwarding_works(
     autor_jan_kowalski,
     dyscyplina1,
     jednostka,
-    live_server,
+    channels_live_server,
 ):
     """Test editing Wydawnictwo_Ciagle_Autor inline with discipline selection."""
     rok = 2022
@@ -36,13 +36,14 @@ def test_Wydawnictwo_Ciagle_Autor_Admin_forwarding_works(
         f"?_changelist_filters=rekord__id__exact%3D{wydawnictwo_ciagle.pk}"
     )
 
-    admin_page.goto(live_server.url + url)
+    admin_page.goto(channels_live_server.url + url)
     admin_page.wait_for_load_state("domcontentloaded")
 
     # Wait for the page to be fully loaded (rok field is hidden type=hidden)
     admin_page.wait_for_selector("#id_rok", state="attached", timeout=10000)
 
-    # Select discipline using Select2 autocomplete
+    # NIE ZASTĘPOWAĆ przez set_select2_value: ten test sprawdza prawdziwe
+    # wpisywanie w Select2 oraz przekazanie pól autor/rok do endpointu.
     select_select2_autocomplete(
         admin_page, "id_dyscyplina_naukowa", dyscyplina1.nazwa, timeout=4000
     )

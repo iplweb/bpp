@@ -200,9 +200,14 @@ def test_char_wydawnictwo_zwarte_chapter_incollection():
 def test_char_praca_doktorska_full():
     autor = baker.make(Autor, nazwisko="Smith", imiona="John")
     uczelnia = baker.make("bpp.Uczelnia", nazwa="University")
-    wydzial = baker.make("bpp.Wydzial", nazwa="Faculty of Science", uczelnia=uczelnia)
+    wydzial = baker.make(
+        "bpp.Jednostka", nazwa="Faculty of Science", uczelnia=uczelnia, parent=None
+    )
     jednostka = baker.make(
-        "bpp.Jednostka", nazwa="Department", wydzial=wydzial, uczelnia=uczelnia
+        "bpp.Jednostka",
+        nazwa="Department",
+        parent=wydzial,
+        uczelnia=uczelnia,
     )
     praca = baker.make(
         Praca_Doktorska,
@@ -233,9 +238,14 @@ def test_char_praca_doktorska_full():
 def test_char_praca_habilitacyjna_full():
     autor = baker.make(Autor, nazwisko="Johnson", imiona="Jane")
     uczelnia = baker.make("bpp.Uczelnia", nazwa="University")
-    wydzial = baker.make("bpp.Wydzial", nazwa="Faculty of Medicine", uczelnia=uczelnia)
+    wydzial = baker.make(
+        "bpp.Jednostka", nazwa="Faculty of Medicine", uczelnia=uczelnia, parent=None
+    )
     jednostka = baker.make(
-        "bpp.Jednostka", nazwa="Department", wydzial=wydzial, uczelnia=uczelnia
+        "bpp.Jednostka",
+        nazwa="Department",
+        parent=wydzial,
+        uczelnia=uczelnia,
     )
     praca = baker.make(
         Praca_Habilitacyjna,

@@ -102,6 +102,149 @@ def _reset_pins_for_authors(autorzy_ids, task, snapshot_pk, logger_func):
 
 @shared_task(
     base=Singleton,
+    unique_on=["uczelnia_id", "dyscyplina_id"],
+    lock_expiry=3600,
+    bind=True,
+    time_limit=1800,
+)
+def reset_discipline_pins_task(
+    self, uczelnia_id, dyscyplina_id, owner_id=None, algorithm_mode="two-phase"
+):
+    """Reset przypięć JEDNEJ dyscypliny (2022-2025) + optymalizacja — w tle.
+
+    Wydzielone z widoku ``reset_discipline_pins``: wcześniej request wisiał
+    do 10 minut, śpiąc w pętli i odpytując globalne ``DirtyInstance.count()``
+    (czekał też na cudzą denormalizację). Teraz widok tylko zleca to zadanie
+    i przekierowuje na stronę statusu; całe czekanie na denorm dzieje się tu,
+    w workerze (``_wait_for_denorm`` raportuje postęp przez ``update_state``).
+    """
+    from datetime import datetime
+
+    from django.contrib.auth import get_user_model
+    from django.db import transaction
+    from django.db.models import Q
+
+    from bpp.models import (
+        Autor_Dyscyplina,
+        Dyscyplina_Naukowa,
+        Patent_Autor,
+        Uczelnia,
+        Wydawnictwo_Ciagle_Autor,
+        Wydawnictwo_Zwarte_Autor,
+    )
+    from snapshot_odpiec.models import SnapshotOdpiec
+
+    from .optimization import solve_single_discipline_task
+
+    uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
+    dyscyplina = Dyscyplina_Naukowa.objects.get(pk=dyscyplina_id)
+    owner = (
+        get_user_model().objects.filter(pk=owner_id).first()
+        if owner_id is not None
+        else None
+    )
+
+    self.update_state(state="PROGRESS", meta={"step": "collecting", "progress": 10})
+
+    autorzy_ids = set(
+        Autor_Dyscyplina.objects.filter(
+            rok__gte=2022, rok__lte=2025, dyscyplina_naukowa=dyscyplina
+        )
+        .values_list("autor_id", flat=True)
+        .distinct()
+    )
+
+    self.update_state(
+        state="PROGRESS",
+        meta={"step": "snapshot", "progress": 20, "total_authors": len(autorzy_ids)},
+    )
+
+    with transaction.atomic():
+        snapshot = SnapshotOdpiec.objects.create(
+            owner=owner,
+            comment=f"przed resetem przypięć - {dyscyplina.nazwa}",
+        )
+
+    self.update_state(
+        state="PROGRESS",
+        meta={"step": "resetting", "progress": 30, "snapshot_id": snapshot.pk},
+    )
+
+    base_filter = Q(
+        rekord__rok__gte=2022,
+        rekord__rok__lte=2025,
+        dyscyplina_naukowa=dyscyplina,
+        autor_id__in=autorzy_ids,
+    )
+    updated_count = 0
+    for model in (Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, Patent_Autor):
+        updated_count += model.objects.filter(base_filter).update(przypieta=True)
+        logger.info(
+            f"Reset pins in {model.__name__} for discipline '{dyscyplina.nazwa}'"
+        )
+
+    # Wyzwól denormalizację jak stary widok — .delay() (async, bez blokady),
+    # żeby DirtyInstance opadło, zanim ruszy optymalizacja. _wait_for_denorm
+    # sam flusha NIE triggeruje (świadomie, przez ryzyko deadlocka przy
+    # synchronicznym flushu), więc trigger musi być tutaj.
+    from denorm.tasks import flush_via_queue
+
+    flush_via_queue.delay()
+    logger.info("Triggered denorm flush via queue (reset dyscypliny)")
+
+    _wait_for_denorm(
+        self,
+        progress_start=40,
+        progress_range=40,
+        meta_extra={"snapshot_id": snapshot.pk, "total_reset": updated_count},
+        logger_func=logger.info,
+    )
+
+    # Optymalizacja tej dyscypliny (jeśli ma zdefiniowaną liczbę N).
+    liczba_n_obj = LiczbaNDlaUczelni.objects.filter(
+        uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina
+    ).first()
+
+    optymalizacja_uruchomiona = False
+    if liczba_n_obj is not None:
+        self.update_state(
+            state="PROGRESS",
+            meta={
+                "step": "optimization_start",
+                "progress": 90,
+                "snapshot_id": snapshot.pk,
+                "total_reset": updated_count,
+            },
+        )
+        # Jesteśmy już w workerze — uruchamiamy optymalizację synchronicznie
+        # (inline), zamiast rozgałęziać kolejne zadanie.
+        solve_single_discipline_task(
+            uczelnia.pk,
+            dyscyplina.pk,
+            float(liczba_n_obj.liczba_n),
+            algorithm_mode=algorithm_mode,
+        )
+        optymalizacja_uruchomiona = True
+    else:
+        logger.warning(
+            f"No LiczbaNDlaUczelni for discipline '{dyscyplina.nazwa}', "
+            "skipping optimization"
+        )
+
+    return {
+        "uczelnia_id": uczelnia_id,
+        "dyscyplina_id": dyscyplina_id,
+        "dyscyplina_nazwa": dyscyplina.nazwa,
+        "snapshot_id": snapshot.pk,
+        "total_authors": len(autorzy_ids),
+        "total_reset": updated_count,
+        "optymalizacja_uruchomiona": optymalizacja_uruchomiona,
+        "completed_at": datetime.now().isoformat(),
+    }
+
+
+@shared_task(
+    base=Singleton,
     unique_on=["uczelnia_id"],
     lock_expiry=3600,
     bind=True,

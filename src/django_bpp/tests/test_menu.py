@@ -15,9 +15,10 @@ multi-host); fixtura snapshotu została jako defense-in-depth.
 
 import pytest
 from django.contrib.auth.models import Group
-from django.test import RequestFactory, override_settings
+from django.test import RequestFactory
 from model_bakery import baker
 
+from bpp.tests.util import any_uczelnia
 from django_bpp import menu as menu_module
 from django_bpp.menu import CustomMenu
 
@@ -136,22 +137,24 @@ def test_struktura_pokazuje_wydzial_domyslnie():
     u = baker.make("bpp.BppUser", is_superuser=True, is_staff=True, first_name="Dan")
     links = _struktura_links(_menu_for(u))
     # Domyślnie (używaj wydziałów) wydział JEST obecny — pełne 4 pozycje.
-    assert "/admin/bpp/wydzial/" in links
+    assert "/admin/bpp/jednostka/?parent__isnull=True" in links
     assert len(links) == 4
 
 
 @pytest.mark.django_db
-@override_settings(DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW=False)
 def test_struktura_bez_wydzialow_usuwa_pozycje():
+    uczelnia = any_uczelnia()
+    uczelnia.uzywaj_wydzialow = False
+    uczelnia.save()
+
     u = baker.make("bpp.BppUser", is_superuser=True, is_staff=True, first_name="Ela")
     links = _struktura_links(_menu_for(u))
     # Render z ukrytym wydziałem NIE zawiera pozycji "wydział".
-    assert "/admin/bpp/wydzial/" not in links
+    assert "/admin/bpp/jednostka/?parent__isnull=True" not in links
     assert len(links) == 3
 
 
 @pytest.mark.django_db
-@override_settings(DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW=False)
 def test_struktura_hide_wydzial_nie_mutuje_globalnego_menu():
     """Ukrycie wydziału NIE mutuje modułowego STRUKTURA_MENU.
 
@@ -160,11 +163,17 @@ def test_struktura_hide_wydzial_nie_mutuje_globalnego_menu():
     pierwszy request ukrywający wydział skasowałby go z listy dla CAŁEGO
     workera — kolejne hosty z uzywaj_wydzialow=True już by go nie zobaczyły.
     """
+    uczelnia = any_uczelnia()
+    uczelnia.uzywaj_wydzialow = False
+    uczelnia.save()
+
     przed = [item[1] for item in menu_module.STRUKTURA_MENU]
 
     u = baker.make("bpp.BppUser", is_superuser=True, is_staff=True, first_name="Zoe")
     links = _struktura_links(_menu_for(u))
-    assert "/admin/bpp/wydzial/" not in links  # render ukrywa wydział...
+    assert (
+        "/admin/bpp/jednostka/?parent__isnull=True" not in links
+    )  # render ukrywa wydział...
 
     po = [item[1] for item in menu_module.STRUKTURA_MENU]
     assert przed == po  # ...ale globalna lista pozostaje NIENARUSZONA
@@ -191,3 +200,14 @@ def test_profil_bez_uzywalnego_hasla_nie_ma_zmiany_hasla():
     profil = _child(m, "Mój profil")
     labels = [str(c.title) for c in profil.children]
     assert "Change password" not in labels
+
+
+def test_menu_dane_systemowe_ma_nowe_slowniki():
+    from django_bpp.menu import SYSTEM_MENU_2
+
+    labels = [item[0] for item in SYSTEM_MENU_2]
+    urls = [item[1] for item in SYSTEM_MENU_2]
+    assert "Stopnie służbowe" in labels
+    assert "Stanowiska dydaktyczne" in labels
+    assert "/admin/bpp/stopiensluzbowy/" in urls
+    assert "/admin/bpp/stanowiskodydaktyczne/" in urls

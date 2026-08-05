@@ -74,10 +74,13 @@ def id_row_2(import_dyscyplin, autor_jan_nowak):
 def test_Import_Dyscyplin_integruj_dyscypliny_pusta_baza(import_dyscyplin, id_row_1):
     import_dyscyplin.integruj_dyscypliny()
 
-    assert Dyscyplina_Naukowa.objects.all().count() == 2
+    # Count skope'owany do dyscyplin importowanych przez ten test — globalny
+    # count na calej tabeli zalezy od czystej bazy (audyt sekcja 4).
+    dyscypliny = Dyscyplina_Naukowa.objects.filter(nazwa__in=["Testowa", "Jakaś"])
+    assert dyscypliny.count() == 2
     Dyscyplina_Naukowa.objects.get(nazwa="Testowa")
 
-    for elem in Dyscyplina_Naukowa.objects.all():
+    for elem in dyscypliny:
         assert elem.widoczna
 
 
@@ -88,7 +91,9 @@ def test_Import_Dyscyplin_integruj_dyscypliny_ta_sama_nazwa_inny_kod(
 
     import_dyscyplin.integruj_dyscypliny()
 
-    assert Dyscyplina_Naukowa.objects.all().count() == 1
+    # Count skope'owany do dyscyplin tego testu (audyt sekcja 4).
+    dyscypliny = Dyscyplina_Naukowa.objects.filter(nazwa__in=["Testowa", "Jakaś"])
+    assert dyscypliny.count() == 1
 
     id_row_1.refresh_from_db()
     assert id_row_1.stan == Import_Dyscyplin_Row.STAN.BLEDNY
@@ -101,7 +106,9 @@ def test_Import_Dyscyplin_integruj_dyscypliny_ta_sama_nazwa_inny_kod_sub(
 
     import_dyscyplin.integruj_dyscypliny()
 
-    assert Dyscyplina_Naukowa.objects.all().count() == 2
+    # Count skope'owany do dyscyplin tego testu (audyt sekcja 4).
+    dyscypliny = Dyscyplina_Naukowa.objects.filter(nazwa__in=["Testowa", "Jakaś"])
+    assert dyscypliny.count() == 2
 
     id_row_1.refresh_from_db()
     assert id_row_1.stan == Import_Dyscyplin_Row.STAN.BLEDNY
@@ -112,32 +119,37 @@ def test_Import_Dyscyplin_integruj_dyscypliny_ukryj_nieuzywane_brak_dyscyplin(
 ):
     import_dyscyplin.integruj_dyscypliny()
     Autor_Dyscyplina.objects.ukryj_nieuzywane()
-    assert Dyscyplina_Naukowa.objects.all().count() == 2
-    for elem in Dyscyplina_Naukowa.objects.all():
+    # Count skope'owany do dyscyplin tego testu (audyt sekcja 4).
+    dyscypliny = Dyscyplina_Naukowa.objects.filter(nazwa__in=["Testowa", "Jakaś"])
+    assert dyscypliny.count() == 2
+    for elem in dyscypliny:
         assert not elem.widoczna
 
 
 def test_Import_Dyscyplin_integruj_dyscypliny_ukryj_nieuzywane_uzywana_nadrzedna(
     import_dyscyplin, id_row_2, autor_jan_nowak, testowe_dyscypliny
 ):
-    assert Autor_Dyscyplina.objects.count() == 0
+    # Count skope'owany do autora tego testu — Autor_Dyscyplina nie jest
+    # danymi baseline, ale osierocone wiersze psuja globalny count (sekcja 4).
+    assert Autor_Dyscyplina.objects.filter(autor=autor_jan_nowak).count() == 0
 
     import_dyscyplin.integruj_dyscypliny()
     import_dyscyplin._integruj_wiersze()
 
-    assert Autor_Dyscyplina.objects.count() == 1
+    assert Autor_Dyscyplina.objects.filter(autor=autor_jan_nowak).count() == 1
     assert Dyscyplina_Naukowa.objects.get(nazwa="Testowa").widoczna
     assert not Dyscyplina_Naukowa.objects.get(nazwa="Jakaś").widoczna
 
 
 def test_Import_Dyscyplin_integruj_dyscypliny_ukryj_nieuzywane_uzywana_podrzedna(
-    import_dyscyplin, id_row_1, testowe_dyscypliny
+    import_dyscyplin, id_row_1, autor_jan_nowak, testowe_dyscypliny
 ):
-    assert Autor_Dyscyplina.objects.count() == 0
+    # Count skope'owany do autora tego testu (audyt sekcja 4).
+    assert Autor_Dyscyplina.objects.filter(autor=autor_jan_nowak).count() == 0
 
     import_dyscyplin.integruj_dyscypliny()
     import_dyscyplin._integruj_wiersze()
-    assert Autor_Dyscyplina.objects.count() == 1
+    assert Autor_Dyscyplina.objects.filter(autor=autor_jan_nowak).count() == 1
 
     assert Dyscyplina_Naukowa.objects.get(nazwa="Testowa").widoczna
     assert Dyscyplina_Naukowa.objects.get(nazwa="Jakaś").widoczna

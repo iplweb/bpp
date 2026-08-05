@@ -4,15 +4,14 @@ import django
 import pytest
 from django.urls import reverse
 
-from raport_slotow.forms.zerowy import RaportSlotowZerowyParametryFormularz
-from raport_slotow.views.zerowy import RaportSlotowZerowyWyniki
-
 from bpp.models import OpcjaWyswietlaniaField, Uczelnia
 from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
 from bpp.models.sloty.core import IPunktacjaCacher
 from bpp.models.system import Charakter_Formalny
 from bpp.models.wydawca import Wydawca
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
+from raport_slotow.forms.zerowy import RaportSlotowZerowyParametryFormularz
+from raport_slotow.views.zerowy import RaportSlotowZerowyWyniki
 
 
 @pytest.fixture
@@ -138,3 +137,41 @@ def test_raport_slotow_zerowy_formularz_zamowienia(
     uczelnia.save()
     res = admin_client.get(reverse("raport_slotow:raport-slotow-zerowy-parametry"))
     assert res.status_code == 200
+
+
+def test_raport_slotow_zerowy_response_wyrenderowany_w_widoku(
+    fikstura_raportu_slotow, admin_user, uczelnia, rf
+):
+    """Widok MUSI zwrócić już wyrenderowaną odpowiedź.
+
+    Wynik raportu czyta z tabeli TYMCZASOWEJ PostgreSQL, która żyje w sesji
+    (połączeniu) DB. Pod ASGI (daphne) leniwy render TemplateResponse
+    wykonuje się w OSOBNYM sync_to_async-chunku niż widok; pomiędzy nimi
+    inny równoległy request współdzielący wątek executora może zamknąć
+    połączenie (close_old_connections przy CONN_MAX_AGE=0) — wtedy render
+    dostaje świeżą sesję bez temp table i wali się ProgrammingError
+    "relacja raport_slotow_raportzerowyentry nie istnieje". Render w ciele
+    widoku (ten sam chunk co CREATE TEMPORARY TABLE) zamyka tę szczelinę.
+    """
+    uczelnia.pokazuj_raport_slotow_zerowy = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
+    uczelnia.save()
+
+    from django.contrib.messages.storage.fallback import FallbackStorage
+    from django.contrib.sessions.backends.db import SessionStore
+
+    request = rf.get(
+        reverse("raport_slotow:raport-slotow-zerowy-wyniki")
+        + "?od_roku=2020&do_roku=2020&min_pk=0&rodzaj_raportu=SL&_export=html"
+    )
+    request.user = admin_user
+    request.session = SessionStore()
+    request._messages = FallbackStorage(request)
+
+    response = RaportSlotowZerowyWyniki.as_view()(request)
+
+    assert getattr(response, "is_rendered", True), (
+        "TemplateResponse opuścił widok niewyrenderowany — SELECT z tabeli "
+        "tymczasowej odbędzie się poza widokiem i pod ASGI może trafić "
+        "w inne połączenie DB (bez temp table)."
+    )
+    assert b"Kowalski" in response.content

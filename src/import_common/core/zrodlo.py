@@ -52,25 +52,53 @@ def _try_match_zrodlo_by_mnisw_id(mnisw_id: int | str | None) -> Zrodlo | None:
     return None
 
 
+def _disambiguate_by_issn(qs, issn: str | None, e_issn: str | None) -> Zrodlo | None:
+    """Zawęża niejednoznaczny zbiór źródeł po ISSN/e-ISSN (cross-field).
+
+    JCR bywa niespójny w kolumnach ISSN/eISSN, więc numer z dowolnego pola
+    pliku dopasowujemy do dowolnego pola źródła (issn ORAZ e_issn). Zwraca
+    źródło tylko wtedy, gdy filtr zawęzi zbiór do dokładnie jednego — przy
+    zerze lub nadal wielu kandydatach zwraca None (nie zgadujemy).
+    """
+    numery = [n for n in (issn, e_issn) if n]
+    if not numery:
+        return None
+    kandydaci = list(qs.filter(Q(issn__in=numery) | Q(e_issn__in=numery))[:2])
+    if len(kandydaci) == 1:
+        return kandydaci[0]
+    return None
+
+
 def _try_match_zrodlo_by_title_single(
-    elem: str, disable_skrot: bool, disable_fuzzy: bool
+    elem: str,
+    disable_skrot: bool,
+    disable_fuzzy: bool,
+    issn: str | None = None,
+    e_issn: str | None = None,
 ) -> Zrodlo | None:
-    """Próbuje dopasować pojedynczy tytuł źródła."""
+    """Próbuje dopasować pojedynczy tytuł źródła.
+
+    Gdy tytuł pasuje do wielu źródeł, próbuje je rozróżnić po ISSN/e-ISSN
+    zamiast od razu rezygnować — bez tego dwa źródła o tym samym tytule
+    nigdy nie zostałyby dopasowane, mimo że ISSN jednoznacznie wskazuje jedno.
+    """
     elem = normalize_tytul_zrodla(elem)
+    filtr = Q(nazwa__iexact=elem)
+    if not disable_skrot:
+        filtr |= Q(skrot__iexact=elem)
     try:
-        if disable_skrot:
-            return Zrodlo.objects.get(nazwa__iexact=elem)
-        return Zrodlo.objects.get(Q(nazwa__iexact=elem) | Q(skrot__iexact=elem))
+        return Zrodlo.objects.get(filtr)
     except Zrodlo.MultipleObjectsReturned:
-        pass
+        return _disambiguate_by_issn(Zrodlo.objects.filter(filtr), issn, e_issn)
     except Zrodlo.DoesNotExist:
         if not disable_fuzzy and elem.endswith("."):
+            fuzzy = Q(nazwa__istartswith=elem[:-1]) | Q(skrot__istartswith=elem[:-1])
             try:
-                return Zrodlo.objects.get(
-                    Q(nazwa__istartswith=elem[:-1]) | Q(skrot__istartswith=elem[:-1])
-                )
-            except (Zrodlo.DoesNotExist, Zrodlo.MultipleObjectsReturned):
+                return Zrodlo.objects.get(fuzzy)
+            except Zrodlo.DoesNotExist:
                 pass
+            except Zrodlo.MultipleObjectsReturned:
+                return _disambiguate_by_issn(Zrodlo.objects.filter(fuzzy), issn, e_issn)
 
     return None
 
@@ -101,7 +129,7 @@ def matchuj_zrodlo(
             if elem is None:
                 continue
             result = _try_match_zrodlo_by_title_single(
-                elem, disable_skrot, disable_fuzzy
+                elem, disable_skrot, disable_fuzzy, issn=issn, e_issn=e_issn
             )
             if result:
                 return result

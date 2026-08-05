@@ -264,6 +264,55 @@ class AutorAktualnieZatrudnionyNaUczelni(AutorAutocomplete):
         return autocomplete.Select2QuerySetView.get_results(self, context)
 
 
+class ImportAutorAutocomplete(GroupRequiredMixin, AutorAutocompleteBase):
+    """Autocomplete autorów dla ekranu dopasowania w imporcie pracowników.
+
+    Zakres: autorzy KIEDYKOLWIEK związani z oglądającą uczelnią — obecnie LUB
+    historycznie (``AutorQuerySet.kiedykolwiek_zwiazani``: dowolne
+    ``Autor_Jednostka`` do jednostki tej uczelni, aktualne LUB zakończone).
+    W odróżnieniu od ``autor-z-uczelni-autocomplete``
+    (``AutorAktualnieZatrudnionyNaUczelni`` — tylko AKTUALNIE zatrudnieni)
+    pokazuje też osoby BEZ bieżącego etatu, bo wiersze „brak dopasowania" w
+    imporcie to typowo osoby obecne w BPP, ale bez aktualnego zatrudnienia
+    (rekordy z PBN, jednostka obca, dopiero zatrudniani). Bez nich operator
+    musiałby tworzyć duplikaty.
+
+    ``create_field = None`` — picker NIE oferuje opcji „Utwórz «…»". Tworzenie
+    ``bpp.Autor`` z autocomplete łamałoby inwariant dry-run importu (obiekt
+    powstałby natychmiast, poza mechanizmem integracji). Brakujących autorów
+    tworzy się osobnym, jawnym krokiem.
+
+    Uczelnia rozstrzygana przez ``get_for_request`` (jak
+    ``PublicAutorAutocomplete``) — host→Site→Uczelnia, z fallbackiem do jedynej
+    uczelni w systemie. Brak ustalonej uczelni → pusto (fail-closed).
+    """
+
+    create_field = None
+    group_required = GR_WPROWADZANIE_DANYCH
+
+    def get_queryset(self):
+        from bpp.models import Uczelnia
+
+        request = getattr(self, "request", None)
+        uczelnia = Uczelnia.objects.get_for_request(request) if request else None
+        return super().get_queryset().kiedykolwiek_zwiazani(uczelnia)
+
+    def get_results(self, context):
+        """Płaska lista wyników — bez optgroupów (jak PublicAutorAutocomplete)."""
+        return autocomplete.Select2QuerySetView.get_results(self, context)
+
+    def get_result_label(self, result):
+        """Czytelna etykieta: nazwisko, imię (tytuł) + jednostka, bez markerów
+        PBN/MNISW."""
+        if not isinstance(result, Autor):
+            return str(result)
+        label = str(result)
+        jednostka = result.aktualna_jednostka
+        if jednostka is not None:
+            label = f"{label} — {jednostka.nazwa}"
+        return label
+
+
 class ZapisanyJakoAutocomplete(
     SanitizedAutocompleteMixin, autocomplete.Select2ListView
 ):

@@ -8,7 +8,6 @@ from bpp.models import (
     Funkcja_Autora,
     Jednostka,
     Opi_2012_Afiliacja_Do_Wydzialu,
-    Wydzial,
 )
 
 ignored_seen, wiecej_niz_jeden, brak_takiego, unseen_jed = set(), set(), set(), set()
@@ -146,8 +145,11 @@ def mangle_labels(labels):
     new_labels = []
     appender = 2008
 
-    fun = lambda element: element
-    new_fun = lambda element: element.strip() + "_" + str(appender)
+    def fun(element):
+        return element
+
+    def new_fun(element):
+        return element.strip() + "_" + str(appender)
 
     for element in labels:
         if element.lower() == "stanowisko":
@@ -183,8 +185,8 @@ def importuj_sheet_osoby_nie_ujete(sheet, text_mangle):
             continue
 
         for rok in range(2009, 2013):
-            stanowisko = "stanowisko_%s" % rok
-            wydzial = "Wydział_%s" % rok
+            stanowisko = f"stanowisko_{rok}"
+            wydzial = f"Wydział_{rok}"
             # jest jeszcze stopień
 
             if dct[stanowisko].value == "#N/D!":
@@ -192,8 +194,11 @@ def importuj_sheet_osoby_nie_ujete(sheet, text_mangle):
 
             wn = dct[wydzial].value
             try:
-                wydzial_rok = Wydzial.objects.get(nazwa=wn)
-            except Wydzial.DoesNotExist:
+                # Faza C (#438): „wydział" = jednostka top-level (parent IS NULL).
+                jednostka_wydzialu = Jednostka.objects.get(
+                    nazwa=wn, parent__isnull=True
+                )
+            except Jednostka.DoesNotExist:
                 print(
                     "BRAK TAKIEGO WYDZIALU:",
                     [str(x).encode("utf-8") for x in (wn, autor, jednostka, rok)],
@@ -201,7 +206,7 @@ def importuj_sheet_osoby_nie_ujete(sheet, text_mangle):
                 continue
 
             Opi_2012_Afiliacja_Do_Wydzialu.objects.get_or_create(
-                autor=autor, wydzial=wydzial_rok, rok=rok
+                autor=autor, wydzial=jednostka_wydzialu, rok=rok
             )
 
         autor.dodaj_jednostke(jednostka, rok, funkcja)
@@ -232,11 +237,16 @@ def importuj_afiliacje(plik_xls, text_mangle):
             pass
 
         else:
-            raise Exception("Nieznany tytuł arkusza: %r" % name)
+            raise Exception(f"Nieznany tytuł arkusza: {name!r}")
 
 
 def importuj_imiona_sheet(sheet, wydzial):
     labels = ["_id", "tytul", "imiona", "nazwisko", "afiliacja"]
+
+    # Faza C (#438): ``afiliacja_na_rok`` filtruje po ``jednostka__wydzial``
+    # (self-FK do jednostki-korzenia). ``wydzial`` jest już tym korzeniem
+    # (jednostka top-level), więc podajemy go wprost.
+    wezel_wydzialu = wydzial
 
     def zmien_imiona(a, dct):
         i = dct["imiona"].value
@@ -246,9 +256,8 @@ def importuj_imiona_sheet(sheet, wydzial):
 
     def poinformuj(ile, dct):
         print(
-            "*** DLA AUTORA %s %s JEST %s DOPASOWAN!!!"
-            % tuple(
-                [
+            "*** DLA AUTORA {} {} JEST {} DOPASOWAN!!!".format(
+                *[
                     str(x).encode("utf-8")
                     for x in [dct["imiona"].value, dct["nazwisko"].value, ile]
                 ]
@@ -278,7 +287,7 @@ def importuj_imiona_sheet(sheet, wydzial):
             # 2 lub więcej -- sprawdź, ilu pasuje pod wydział podany jako parametr
             results = []
             for a in autor:
-                if a.afiliacja_na_rok(2012, wydzial, rozszerzona=True):
+                if a.afiliacja_na_rok(2012, wezel_wydzialu, rozszerzona=True):
                     results.append(a)
 
             if len(results) == 1:
@@ -291,5 +300,8 @@ def importuj_imiona_sheet(sheet, wydzial):
 def importuj_imiona(plik_xls):
     book = xlrd.open_workbook(plik_xls)
     sheet = book.sheet_by_index(0)
-    wydzial = Wydzial.objects.get(skrot=os.path.basename(plik_xls).split("-")[0])
+    # Faza C (#438): „wydział" = jednostka top-level (parent IS NULL).
+    wydzial = Jednostka.objects.get(
+        skrot=os.path.basename(plik_xls).split("-")[0], parent__isnull=True
+    )
     importuj_imiona_sheet(sheet, wydzial)

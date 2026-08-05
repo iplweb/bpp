@@ -1,11 +1,11 @@
 [
-
     {
         "pk": 3,
         "model": "bpp.jezyk",
         "fields": {
             "skrot": "fr.",
-            "nazwa": "francuski"
+            "nazwa": "francuski",
+            "kod_bcp47": "fr"
         }
     },
     {
@@ -13,7 +13,8 @@
         "model": "bpp.jezyk",
         "fields": {
             "skrot": "b/d",
-            "nazwa": "brak danych"
+            "nazwa": "brak danych",
+            "kod_bcp47": ""
         }
     },
     {
@@ -21,16 +22,17 @@
         "model": "bpp.jezyk",
         "fields": {
             "skrot": "niem.",
-            "nazwa": "niemiecki"
+            "nazwa": "niemiecki",
+            "kod_bcp47": "de"
         }
     },
-
     {
         "pk": 6,
         "model": "bpp.jezyk",
         "fields": {
             "skrot": "in.",
-            "nazwa": "inny"
+            "nazwa": "inny",
+            "kod_bcp47": ""
         }
     },
     {
@@ -38,7 +40,8 @@
         "model": "bpp.jezyk",
         "fields": {
             "skrot": "hiszp.",
-            "nazwa": "hiszpański"
+            "nazwa": "hiszpański",
+            "kod_bcp47": "es"
         }
     },
     {
@@ -46,7 +49,8 @@
         "model": "bpp.jezyk",
         "fields": {
             "skrot": "ros.",
-            "nazwa": "rosyjski"
+            "nazwa": "rosyjski",
+            "kod_bcp47": "ru"
         }
     },
     {
@@ -54,9 +58,8 @@
         "model": "bpp.jezyk",
         "fields": {
             "skrot": "wł.",
-            "nazwa": "włoski"
+            "nazwa": "włoski",
+            "kod_bcp47": "it"
         }
     }
-
-
 ]

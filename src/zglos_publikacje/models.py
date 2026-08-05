@@ -95,9 +95,26 @@ class Zgloszenie_Publikacji(
         PO_ZMIANACH = 3, "zmiany naniesione przez zgłaszającego"
         ODRZUCONO = 4, "odrzucono w całości"
         SPAM = 5, "spam"
+        ZAIMPORTOWANY = 6, "zaimportowany przez importer prac"
 
     status = models.PositiveSmallIntegerField(
         default=Statusy.NOWY, choices=Statusy.choices
+    )
+
+    # Audyt domknięcia zgłoszenia importerem prac (FD#443). Denormalizowany
+    # na zgłoszeniu — filtrowalny i sortowalny na liście, przeżywa skasowanie
+    # sesji importu. Jawne pole czasu, nie ``auto_now``: ``ostatnio_zmieniony``
+    # przesuwa każda edycja i nie jest wiarygodnym znacznikiem importu.
+    zaimportowano = models.DateTimeField(
+        "Zaimportowano", null=True, blank=True, db_index=True
+    )
+    zaimportowal = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="Zaimportował",
     )
 
     class Rodzaje(models.IntegerChoices):
@@ -289,6 +306,11 @@ class Zgloszenie_Publikacji(
     def pokazuj_przycisk_wydawnictwo_ciagle(self) -> bool:
         return self.rodzaj_zglaszanej_publikacji == self.Rodzaje.ARTYKUL
 
+    @property
+    def czy_zaimportowane(self) -> bool:
+        """Czy zgłoszenie zostało domknięte przez importer prac (FD#443)."""
+        return self.status == Zgloszenie_Publikacji.Statusy.ZAIMPORTOWANY
+
 
 class Zgloszenie_Publikacji_Autor(BazaModeluOdpowiedzialnosciAutorow):
     rekord = models.ForeignKey(Zgloszenie_Publikacji, on_delete=models.CASCADE)
@@ -366,12 +388,14 @@ class Zgloszenie_Publikacji_Zalacznik(models.Model):
 
 
 class Obslugujacy_Zgloszenia_WydzialowManager(models.Manager):
-    def emaile_dla_wydzialu(self, wydzial):
-        # Jeżeli jest ktokolwiek przypisany do danego wydziału, to zwróć go:
-        if self.filter(wydzial=wydzial).exists():
+    def emaile_dla_obslugujacego(self, jednostka_root):
+        # Faza B (#438) II-2: ``wydzial`` to teraz FK→Jednostka (korzeń
+        # drzewa). Jeżeli jest ktokolwiek przypisany do tego korzenia, zwróć
+        # jego maile.
+        if self.filter(wydzial=jednostka_root).exists():
             ret = []
             for email in (
-                self.filter(wydzial=wydzial)
+                self.filter(wydzial=jednostka_root)
                 .values_list("user__email", flat=True)
                 .distinct()
             ):
@@ -391,7 +415,9 @@ class Obslugujacy_Zgloszenia_Wydzialow(models.Model):
         # [user, wydzial] (user jest kolumną wiodącą).
         db_index=False,
     )
-    wydzial = models.ForeignKey("bpp.Wydzial", models.CASCADE, verbose_name="Wydział")
+    # Faza B (#438) II-2: FK→Jednostka (korzeń drzewa, mirror dawnego
+    # Wydzial). Nazwa pola i ``verbose_name`` zostają — patrz brief II-2.
+    wydzial = models.ForeignKey("bpp.Jednostka", models.CASCADE, verbose_name="Wydział")
 
     objects = Obslugujacy_Zgloszenia_WydzialowManager()
 

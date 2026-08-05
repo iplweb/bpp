@@ -62,6 +62,17 @@ def _get(environ, field, skrot):
     return environ.get(f"{_PREFIX}{field}")
 
 
+def _get_bool(environ, field, skrot, default):
+    """Bool z env wg preferencji (skrot → bare → default).
+
+    „1/true/yes/on" (case-insensitive) = True; „0/false/no/off" = False.
+    """
+    raw = _get(environ, field, skrot)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
 def _get_claim_list(environ, field, skrot, default):
     """Rozwiąż listę claimów (CSV) wg precedencji prefiks-skrót > bare.
 
@@ -139,8 +150,10 @@ def discover_oidc_config(environ=None):
 
     Zwracany słownik: ``client_id``, ``client_secret``, ``issuer``, ``skrot``
     (może być ``None``), ``endpoints`` (dict z 4 adresami), ``email_claims`` i
-    ``username_claims`` (krotki nazw claimów wg preferencji). ``None`` oznacza
-    brak kompletu — aplikacja OIDC ma się wtedy w ogóle nie aktywować.
+    ``username_claims`` (krotki nazw claimów wg preferencji),
+    ``require_email_verified`` (bool, default ``True``) oraz ``grace_bind``
+    (bool, default ``False``). ``None`` oznacza brak kompletu — aplikacja OIDC
+    ma się wtedy w ogóle nie aktywować.
     """
     environ = os.environ if environ is None else environ
     skrot = _detect_skrot(environ)
@@ -158,4 +171,8 @@ def discover_oidc_config(environ=None):
     config["username_claims"] = _get_claim_list(
         environ, "USERNAME_CLAIMS", skrot, DEFAULT_USERNAME_CLAIMS
     )
+    config["require_email_verified"] = _get_bool(
+        environ, "REQUIRE_EMAIL_VERIFIED", skrot, default=True
+    )
+    config["grace_bind"] = _get_bool(environ, "GRACE_BIND", skrot, default=False)
     return config

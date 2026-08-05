@@ -3,17 +3,17 @@ from unittest.mock import patch
 
 import pytest
 from django import forms
-from django.urls import reverse
-from model_bakery import baker
-
-from pbn_api.tests.utils import middleware
-from pbn_export_queue.admin import PBN_Export_QueueAdmin
-from pbn_export_queue.models import PBN_Export_Queue
-
 from django.contrib import admin
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
+from django.urls import reverse
 from django.utils import timezone
+from model_bakery import baker
+
+from bpp.models import Wydawnictwo_Ciagle
+from pbn_api.tests.utils import middleware
+from pbn_export_queue.admin import PBN_Export_QueueAdmin
+from pbn_export_queue.models import PBN_Export_Queue
 
 WYSYLKA_ZAKONCZONA_AT = timezone.make_aware(datetime(2023, 1, 1))
 
@@ -78,9 +78,12 @@ def test_pbn_export_queue_admin_resend_action(wydawnictwo_ciagle, admin_user, rf
         zakonczono_pomyslnie=True,
     )
 
+    # Osobny rekord: bulk-resend dwóch zakończonych wpisów TEGO SAMEGO rekordu
+    # jest teraz blokowany przez częściowy unikat (tylko jeden aktywny wpis na
+    # rekord) — realistyczny przypadek to różne publikacje, więc dajemy drugą.
     queue_item2 = baker.make(
         PBN_Export_Queue,
-        rekord_do_wysylki=wydawnictwo_ciagle,
+        rekord_do_wysylki=baker.make(Wydawnictwo_Ciagle),
         zamowil=admin_user,
         wysylke_zakonczono=WYSYLKA_ZAKONCZONA_AT,
         zakonczono_pomyslnie=False,
@@ -182,9 +185,7 @@ def test_pbn_export_queue_admin_response_change_normal(
         with patch(
             "pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn.delay"
         ) as mock_task:
-            with patch.object(
-                admin.ModelAdmin, "response_change"
-            ) as mock_super:
+            with patch.object(admin.ModelAdmin, "response_change") as mock_super:
                 mock_super.return_value = "super_response"
 
                 response = admin_instance.response_change(request, queue_item)

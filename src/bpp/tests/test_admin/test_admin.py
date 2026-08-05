@@ -69,9 +69,12 @@ def test_safe_html_dwa_tytuly_DwaTytuly(
 
     i.refresh_from_db()
 
-    assert i.tytul_oryginalny == "hi"
+    # nh3 usuwa znaczniki <script>/<style> WRAZ z ich zawartością, więc po
+    # sanityzacji pole jest puste (bleach zostawiał tekst "hi" — to była stara
+    # semantyka). Pusty wynik potwierdza, że sanityzacja się wykonała.
+    assert i.tytul_oryginalny == ""
     if hasattr(i, "tytul"):
-        assert i.tytul == "hi"
+        assert i.tytul == ""
 
 
 @pytest.mark.parametrize(

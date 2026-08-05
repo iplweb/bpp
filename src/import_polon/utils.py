@@ -1,8 +1,48 @@
+import os.path
 import sys
 
 import numpy as np
 import pandas as pd
 import rollbar
+
+# Znak wstawiany w miejsce wyciętego środka nazwy pliku.
+WIELOKROPEK = "…"
+
+
+def skroc_nazwe_pliku(sciezka, limit=36):
+    """Skraca nazwę pliku do wyświetlenia w tabeli, wycinając ŚRODEK.
+
+    Eksporty z POLON-u nazywają się np. ``rozszerzone_zestawienie_pracownikow_
+    podmiotu_na_dzien_wygenerowania_raportu_2026-01-15.xlsx`` — 90 znaków, z
+    czego odróżnia je wyłącznie data na końcu. Obcięcie od końca (``truncatechars``,
+    ``text-overflow: ellipsis``) zjadłoby właśnie tę datę, więc wycinamy środek
+    i zachowujemy oba końce.
+
+    Katalog gubimy przez ``basename``, a nie przez usunięcie zahardkodowanego
+    ``protected/import_polon/`` — dzięki temu funkcja przeżyje zmianę
+    ``upload_to`` w modelu.
+
+    Zwraca pusty napis dla pustej ścieżki (``FileField`` bez pliku).
+    """
+    if not sciezka:
+        return ""
+
+    nazwa = os.path.basename(str(sciezka))
+    if len(nazwa) <= limit:
+        return nazwa
+
+    # Budżet znaków po odjęciu wielokropka, dzielony między początek i koniec.
+    # Reszta z dzielenia idzie do początku — koniec ma zmieścić datę i
+    # rozszerzenie, więc lepiej mu dać stabilną, przewidywalną długość.
+    budzet = max(limit - len(WIELOKROPEK), 0)
+    dlugosc_ogona = budzet // 2
+    dlugosc_glowy = budzet - dlugosc_ogona
+
+    # ``nazwa[-0:]`` zwraca CAŁY napis, nie pusty — bez tego warunku skracanie
+    # do bardzo małego limitu dawało wynik DŁUŻSZY od wejścia.
+    ogon = nazwa[len(nazwa) - dlugosc_ogona :] if dlugosc_ogona else ""
+
+    return f"{nazwa[:dlugosc_glowy]}{WIELOKROPEK}{ogon}"
 
 
 def read_excel_or_csv_dataframe_guess_encoding(fn, header=0, nrows=None):
@@ -10,6 +50,10 @@ def read_excel_or_csv_dataframe_guess_encoding(fn, header=0, nrows=None):
     fnl = fn.lower().strip()
 
     if fnl.endswith(".xlsx") or fnl.endswith(".xls"):
+        from import_common.util import sprawdz_bombe_dekompresji
+
+        # XLSX to ZIP — odrzuć bombę dekompresyjną przed wczytaniem do pandas.
+        sprawdz_bombe_dekompresji(fn)
         try:
             return pd.read_excel(fn, header=0, nrows=nrows).replace({np.nan: None})
         except ValueError as e:

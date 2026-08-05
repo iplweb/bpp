@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import pytest
+from liveops.testing import MockProgress
 from model_bakery import baker
 
 from import_punktacji_zrodel.core import analyze_jcr_file
@@ -42,7 +43,7 @@ def test_dry_run_nic_nie_zapisuje(admin_user, jcr_xlsx_path):
 
     zrodlo = baker.make(Zrodlo, nazwa="LANCET", issn="0140-6736")
     imp = _make_import(admin_user, zapisz_zmiany_do_bazy=False)
-    analyze_jcr_file(jcr_xlsx_path, imp)
+    analyze_jcr_file(jcr_xlsx_path, imp, MockProgress(imp))
 
     # dry-run: brak wpisu Punktacja_Zrodla
     assert not Punktacja_Zrodla.objects.filter(zrodlo=zrodlo, rok=2025).exists()
@@ -57,7 +58,7 @@ def test_commit_zapisuje_if_i_kwartyl(admin_user, jcr_xlsx_path):
 
     zrodlo = baker.make(Zrodlo, nazwa="LANCET", issn="0140-6736")
     imp = _make_import(admin_user, zapisz_zmiany_do_bazy=True)
-    analyze_jcr_file(jcr_xlsx_path, imp)
+    analyze_jcr_file(jcr_xlsx_path, imp, MockProgress(imp))
 
     pz = Punktacja_Zrodla.objects.get(zrodlo=zrodlo, rok=2025)
     assert pz.impact_factor == Decimal("109.000")
@@ -73,7 +74,7 @@ def test_bez_zmian_gdy_wartosci_rowne(admin_user, jcr_xlsx_path):
         rok=2025, impact_factor=Decimal("109.000"), kwartyl_w_wos=1
     )
     imp = _make_import(admin_user, zapisz_zmiany_do_bazy=True)
-    analyze_jcr_file(jcr_xlsx_path, imp)
+    analyze_jcr_file(jcr_xlsx_path, imp, MockProgress(imp))
 
     wiersz = imp.get_details_set().get(zrodlo=zrodlo)
     assert wiersz.wymaga_zmian is False
@@ -84,7 +85,7 @@ def test_bez_zmian_gdy_wartosci_rowne(admin_user, jcr_xlsx_path):
 def test_niedopasowane_zrodlo(admin_user, jcr_xlsx_path):
     # Brak jakichkolwiek Zrodel -> wszystkie wiersze "Brak źródła w BPP"
     imp = _make_import(admin_user, zapisz_zmiany_do_bazy=True)
-    analyze_jcr_file(jcr_xlsx_path, imp)
+    analyze_jcr_file(jcr_xlsx_path, imp, MockProgress(imp))
     assert imp.get_details_set().filter(rezultat__icontains="Brak źródła").exists()
 
 
@@ -96,7 +97,7 @@ def test_toggle_kwartyl_off(admin_user, jcr_xlsx_path):
     imp = _make_import(
         admin_user, zapisz_zmiany_do_bazy=True, importuj_kwartyl_wos=False
     )
-    analyze_jcr_file(jcr_xlsx_path, imp)
+    analyze_jcr_file(jcr_xlsx_path, imp, MockProgress(imp))
 
     pz = Punktacja_Zrodla.objects.get(zrodlo=zrodlo, rok=2025)
     assert pz.impact_factor == Decimal("109.000")
@@ -106,7 +107,7 @@ def test_toggle_kwartyl_off(admin_user, jcr_xlsx_path):
 @pytest.mark.django_db
 def test_autodetekcja_roku_gdy_brak(admin_user, jcr_xlsx_path):
     imp = _make_import(admin_user, rok=None, zapisz_zmiany_do_bazy=False)
-    analyze_jcr_file(jcr_xlsx_path, imp)
+    analyze_jcr_file(jcr_xlsx_path, imp, MockProgress(imp))
     imp.refresh_from_db()
     assert imp.rok == 2025
 
@@ -121,7 +122,7 @@ def test_ignoruj_zrodla_bez_odpowiednika_pomija_niedopasowane(
         zapisz_zmiany_do_bazy=False,
         ignoruj_zrodla_bez_odpowiednika=True,
     )
-    analyze_jcr_file(jcr_xlsx_path, imp)
+    analyze_jcr_file(jcr_xlsx_path, imp, MockProgress(imp))
     assert imp.get_details_set().filter(zrodlo__isnull=True).count() == 0
 
 
@@ -138,5 +139,5 @@ def test_ignoruj_zrodla_bez_odpowiednika_dopasowane_sa_raportowane(
         zapisz_zmiany_do_bazy=False,
         ignoruj_zrodla_bez_odpowiednika=True,
     )
-    analyze_jcr_file(jcr_xlsx_path, imp)
+    analyze_jcr_file(jcr_xlsx_path, imp, MockProgress(imp))
     assert imp.get_details_set().filter(zrodlo__isnull=False).count() >= 1

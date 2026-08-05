@@ -1,0 +1,126 @@
+{% load importer_tags %}
+{# Baner wiązania sesji importu ze zgłoszeniem publikacji (FD#443). #}
+{# Kontekst: #}
+{#   * `session`   — ImportSession, #}
+{#   * `kandydaci` — iterowalne Zgloszenie_Publikacji, zwrócone przez #}
+{#                   zgloszenia.kandydaci_dla_sesji() (np. przez własność #}
+{#                   ImportSession.kandydaci_zgloszen). #}
+{# Operator, który kliknął „Żadne z nich", nie dostaje już nic. #}
+{% if not session.zgloszenie_odrzucone_przez_operatora %}
+    {% if session.zgloszenie_id %}
+        {# Wersja potwierdzająca: wiązanie już istnieje (jawne z modułu #}
+        {# redagowania albo automatyczne po DOI). Operator może #}
+        {# zaprotestować, ZANIM import się wykona. #}
+        <div class="callout primary" id="baner-zgloszenia">
+            <span class="fi-info"></span>
+            Ten import domknie zgłoszenie publikacji
+            <strong>#{{ session.zgloszenie.pk }}</strong>
+            &mdash;
+            „{{ session.zgloszenie.tytul_oryginalny|truncatechars:120 }}"
+            {% if session.zgloszenie.rok %}({{ session.zgloszenie.rok }}){% endif %}
+            .
+            {% with url=session.zgloszenie|admin_change_url %}
+                {% if url %}
+                    <a href="{{ url }}"
+                       target="_blank"
+                       rel="noopener">
+                        <span class="fi-eye"></span>
+                        zobacz
+                    </a>
+                {% endif %}
+            {% endwith %}
+            <form method="post"
+                  action="{% url 'importer_publikacji:zgloszenie-wybierz' session_id=session.pk %}"
+                  style="display:inline; margin:0;">
+                {% csrf_token %}
+                <input type="hidden"
+                       name="odepnij"
+                       value="1">
+                <button type="submit"
+                        class="button small hollow secondary"
+                        style="margin-bottom: 0;">
+                    <span class="fi-x"></span>
+                    Odepnij
+                </button>
+            </form>
+        </div>
+    {% elif kandydaci %}
+        {# Wersja rozstrzygająca: system nie zgaduje, pyta operatora. #}
+        <div class="callout warning" id="baner-zgloszenia">
+            <h5>
+                <span class="fi-info"></span>
+                Zgłoszenia publikacji pasujące do tego DOI
+                {% if session.normalized_data.doi %}
+                    ({{ session.normalized_data.doi }})
+                {% endif %}
+                : {{ kandydaci|length }}
+            </h5>
+            <p>Które z nich domknąć tym importem?</p>
+            <ul class="no-bullet">
+                {% for zgl in kandydaci %}
+                    <li style="margin-bottom: 0.5rem;">
+                        <form method="post"
+                              action="{% url 'importer_publikacji:zgloszenie-wybierz' session_id=session.pk %}"
+                              style="display:inline; margin:0;">
+                            {% csrf_token %}
+                            <input type="hidden"
+                                   name="zgloszenie"
+                                   value="{{ zgl.pk }}">
+                            <button type="submit"
+                                    class="button small"
+                                    style="margin-bottom: 0;">
+                                <span class="fi-check"></span>
+                                #{{ zgl.pk }}
+                                &mdash;
+                                {# BEZ e-maila zgłaszającego: zgłoszenie ze #}
+                                {# współautorami z dwóch uczelni jest kandydatem #}
+                                {# dla OBU (semantyka OR po jednostkach autorów), #}
+                                {# więc operator obcej uczelni zobaczyłby cudzy #}
+                                {# adres. Numer zgłoszenia, pierwszy autor, #}
+                                {# tytuł i rok w zupełności wystarczą, żeby #}
+                                {# rozpoznać właściwego kandydata. #}
+                                {% with autor=zgl.zgloszenie_publikacji_autor_set.first %}
+                                    {% if autor %}{{ autor.zapisany_jako }},{% endif %}
+                                {% endwith %}
+                                „{{ zgl.tytul_oryginalny|truncatechars:80 }}"
+                                {% if zgl.rok %}, {{ zgl.rok }}{% endif %}
+                            </button>
+                        </form>
+                        {% with url=zgl|admin_change_url %}
+                            {% if url %}
+                                <a href="{{ url }}"
+                                   target="_blank"
+                                   rel="noopener">
+                                    <span class="fi-eye"></span>
+                                    zobacz
+                                </a>
+                            {% endif %}
+                        {% endwith %}
+                    </li>
+                {% endfor %}
+            </ul>
+            <a href="{% url 'admin:zglos_publikacje_zgloszenie_publikacji_changelist' %}"
+               class="button small hollow"
+               target="_blank"
+               rel="noopener"
+               style="margin-bottom: 0;">
+                <span class="fi-link"></span>
+                Pokaż wszystkie w module redagowania
+            </a>
+            <form method="post"
+                  action="{% url 'importer_publikacji:zgloszenie-wybierz' session_id=session.pk %}"
+                  style="display:inline; margin:0;">
+                {% csrf_token %}
+                <input type="hidden"
+                       name="zadne"
+                       value="1">
+                <button type="submit"
+                        class="button small hollow secondary"
+                        style="margin-bottom: 0;">
+                    <span class="fi-x"></span>
+                    Żadne z nich
+                </button>
+            </form>
+        </div>
+    {% endif %}
+{% endif %}

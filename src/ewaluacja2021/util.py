@@ -226,6 +226,9 @@ class InputXLSX:
     def workbook(self):
         import openpyxl
 
+        from import_common.util import sprawdz_bombe_dekompresji
+
+        sprawdz_bombe_dekompresji(self.fn)
         return openpyxl.load_workbook(self.fn)
 
     @cached_property

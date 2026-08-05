@@ -1,43 +1,110 @@
 from django.urls import path
 
-from import_pracownikow.views import (
-    ImportPracownikowDetailsView,
-    ImportPracownikowResetujPodstawoweMiejscePracyView,
-    ImportPracownikowResultsView,
-    ImportPracownikowRouterView,
-    ListaImportowView,
-    NowyImportView,
-    RestartImportView,
-)
+from import_pracownikow import views
 
 app_name = "import_pracownikow"
 
 urlpatterns = [
-    path("", ListaImportowView.as_view(), name="index"),
-    path("new/", NowyImportView.as_view(), name="new"),
+    path("", views.ListaImportowView.as_view(), name="index"),
+    path("new/", views.NowyImportView.as_view(), name="new"),
     path(
-        "<uuid:pk>/",
-        ImportPracownikowRouterView.as_view(),
-        name="importpracownikow-router",
+        "<uuid:pk>/mapowanie/",
+        views.MapowanieView.as_view(),
+        name="mapowanie",
     ),
     path(
-        "<uuid:pk>/details/",
-        ImportPracownikowDetailsView.as_view(),
-        name="importpracownikow-details",
+        "<uuid:pk>/przeglad/",
+        views.PodgladImportuView.as_view(),
+        name="przeglad",
     ),
     path(
-        "<uuid:pk>/results/",
-        ImportPracownikowResultsView.as_view(),
+        "<uuid:pk>/rezultaty/",
+        views.ImportPracownikowResultsView.as_view(),
         name="importpracownikow-results",
     ),
     path(
-        "<uuid:pk>/resetuj-podstawowe-miejsce-pracy/",
-        ImportPracownikowResetujPodstawoweMiejscePracyView.as_view(),
-        name="importpracownikow-resetuj-podstawowe-miejsce-pracy",
+        "<uuid:pk>/odpiecia/",
+        views.OdpieciaView.as_view(),
+        name="odpiecia",
     ),
     path(
-        "<uuid:pk>/regen/",
-        RestartImportView.as_view(),
-        name="importpracownikow-restart",
+        "<uuid:pk>/audyt/",
+        views.LogZmianView.as_view(),
+        name="audyt",
+    ),
+    path(
+        "<uuid:pk>/jednostki/",
+        views.WeryfikacjaJednostekView.as_view(),
+        name="jednostki",
+    ),
+    path(
+        "<uuid:pk>/tytuly/",
+        views.WeryfikacjaTytulowView.as_view(),
+        name="tytuly",
+    ),
+    path(
+        "<uuid:pk>/stopnie/",
+        views.WeryfikacjaStopniView.as_view(),
+        name="stopnie",
+    ),
+    path(
+        "<uuid:pk>/stanowiska/",
+        views.WeryfikacjaStanowiskView.as_view(),
+        name="stanowiska",
+    ),
+    path(
+        "<uuid:pk>/zatwierdz/",
+        views.ZatwierdzImportView.as_view(),
+        name="zatwierdz",
+    ),
+    path(
+        "<uuid:pk>/restart-analiza/",
+        views.RestartAnalizaView.as_view(),
+        name="restart-analiza",
+    ),
+    path(
+        "<uuid:pk>/wiersz/<int:row_pk>/wybierz-kandydata/",
+        views.WybierzKandydataView.as_view(),
+        name="wybierz-kandydata",
+    ),
+    path(
+        "<uuid:pk>/wiersz/<int:row_pk>/dopasuj-autora/",
+        views.DopasujAutoraView.as_view(),
+        name="dopasuj-autora",
+    ),
+    path(
+        "<uuid:pk>/odpiecie/<int:odp_pk>/przelacz/",
+        views.PrzelaczOdpiecieView.as_view(),
+        name="przelacz-odpiecie",
+    ),
+    path(
+        "<uuid:pk>/odpiecia/zaznacz/",
+        views.ZaznaczOdpieciaView.as_view(),
+        name="zaznacz-odpiecia",
+    ),
+    path(
+        "<uuid:pk>/wiersz/<int:row_pk>/utworz-nowego/",
+        views.PrzelaczUtworzNowegoView.as_view(),
+        name="utworz-nowego",
+    ),
+    path(
+        "<uuid:pk>/wiersz/<int:row_pk>/przepnij-prace/",
+        views.PrzepnijPraceView.as_view(),
+        name="przepnij-prace",
+    ),
+    path(
+        "<uuid:pk>/przepnij-prace/zaznacz-wszystkie/",
+        views.ZaznaczWszystkiePrzepieciaView.as_view(),
+        name="zaznacz-przepiecia",
+    ),
+    path(
+        "<uuid:pk>/pobierz-oryginal/",
+        views.PobierzOryginalView.as_view(),
+        name="pobierz-oryginal",
+    ),
+    path(
+        "<uuid:pk>/pobierz-po-imporcie/",
+        views.PobierzPoImporcieView.as_view(),
+        name="pobierz-po-imporcie",
     ),
 ]

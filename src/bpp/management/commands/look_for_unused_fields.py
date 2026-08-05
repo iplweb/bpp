@@ -12,7 +12,7 @@ class Command(BaseCommand):
         for model in apps.get_app_config("bpp").get_models():
             if (
                 model._meta.app_label != "bpp"
-                or model._meta.object_name in ["Jednostka", "Wydzial"]
+                or model._meta.object_name in ["Jednostka"]
                 or model._meta.object_name.find("View") >= 0
                 or model._meta.db_table.startswith("bpp_temporary")
                 or model == Sumy
@@ -21,8 +21,11 @@ class Command(BaseCommand):
 
             total = model.objects.all().count()
             for field in model._meta.fields:
+                # Porównanie DOKŁADNEGO typu (nie isinstance) jest celowe:
+                # podklasy CharField (SlugField, EmailField, URLField) mają
+                # własną semantykę „pustości" i nie chcemy ich tu raportować.
                 if (
-                    type(field) != CharField and type(field) != TextField
+                    type(field) is not CharField and type(field) is not TextField
                 ) or field.name in ["adnotacje", "slowa_kluczowe"]:
                     continue
 

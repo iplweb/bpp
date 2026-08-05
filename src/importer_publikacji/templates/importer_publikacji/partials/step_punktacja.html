@@ -1,0 +1,72 @@
+<div class="callout">
+    <h4><span class="fi-graph-bar"></span> Krok: Punktacja</h4>
+
+    {% if session.jest_wydawnictwem_zwartym %}
+        <p><strong>Wydawca:</strong>
+            {{ session.wydawca|default:"— brak —" }}
+            {% if poziom_wydawcy is not None and poziom_wydawcy >= 1 %}
+                (poziom {{ poziom_wydawcy }})
+            {% else %}
+                (brak poziomu za {{ rok }} — spoza wykazu)
+            {% endif %}
+        </p>
+    {% else %}
+        <p><strong>Źródło:</strong> {{ session.zrodlo|default:"— brak —" }}</p>
+        {% if punktacja_zrodla %}
+            <p><strong>Punktacja źródła za {{ rok }}:</strong>
+                {{ punktacja_zrodla.punkty_kbn }} pkt</p>
+        {% else %}
+            <p><em>Brak danych punktacji źródła za {{ rok }}.</em></p>
+        {% endif %}
+    {% endif %}
+
+    {% if sugestia.punkty is not None %}
+        <div class="callout success">
+            Sugerowana punktacja: <strong>{{ sugestia.punkty }} pkt</strong>
+            <br><small>{{ sugestia.podstawa }}</small>
+        </div>
+    {% else %}
+        <div class="callout warning">
+            Nie można zaproponować punktacji: {{ sugestia.powod_braku }}.
+            Wpisz wartość ręcznie lub pozostaw puste.
+        </div>
+    {% endif %}
+
+    {% if ostrzezenie_hst %}
+        <div class="callout alert">
+            Autorzy z dyscyplin HST — właściwy próg może być wyższy
+            (np. 300 dla monografii). Zweryfikuj wartość.
+        </div>
+    {% endif %}
+
+    <form hx-post="{% url 'importer_publikacji:punktacja' session.pk %}"
+          hx-target="#importer-wizard"
+          hx-indicator="#punktacja-spinner">
+        {% csrf_token %}
+        <div class="field-group">
+            <label class="field-label" for="id_punkty_kbn">Punkty MNiSW</label>
+            {{ form.punkty_kbn }}
+        </div>
+
+        {% if form.errors %}
+            <div class="callout alert">
+                {% for field, errors in form.errors.items %}
+                    {% for error in errors %}<p>{{ error }}</p>{% endfor %}
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <button type="button" class="button secondary"
+                hx-get="{% url 'importer_publikacji:authors' session.pk %}"
+                hx-target="#importer-wizard">
+            <span class="fi-arrow-left"></span> Wstecz
+        </button>
+        <button type="submit" class="button">
+            Dalej <span class="fi-arrow-right"></span>
+        </button>
+    </form>
+
+    <div id="punktacja-spinner" class="htmx-indicator">
+        <span class="fi-loop"></span> Przetwarzanie...
+    </div>
+</div>

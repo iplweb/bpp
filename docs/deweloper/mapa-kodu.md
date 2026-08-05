@@ -523,10 +523,26 @@ DJANGO_BPP_DB_HOST, DJANGO_BPP_DB_PORT
 DJANGO_BPP_REDIS_HOST, DJANGO_BPP_REDIS_PORT
 DJANGO_BPP_REDIS_DB_BROKER, DJANGO_BPP_REDIS_DB_CELERY
 DJANGO_BPP_SECRET_KEY
-DJANGO_BPP_ROLLBAR_TOKEN (optional)
+ROLLBAR_ACCESS_TOKEN (optional)         # Rollbar serwerowy (post_server_item) — sekretny
+ROLLBAR_CLIENT_ACCESS_TOKEN (optional)  # Rollbar front-end (post_client_item) — publiczny
 MICROSOFT_AUTH_CLIENT_ID (optional)
 AUTH_LDAP_SERVER_URI (optional)
 ```
+
+### Rollbar — dwa różne tokeny
+
+Rollbar (monitoring błędów) używa **dwóch osobnych** tokenów dostępu z tego
+samego projektu — nie wolno ich mylić:
+
+- `ROLLBAR_ACCESS_TOKEN` — token **serwerowy** (`post_server_item`). Sekretny;
+  używany przez backend (`CustomRollbarNotifierMiddleware`). **Nigdy** nie
+  renderowany w przeglądarce.
+- `ROLLBAR_CLIENT_ACCESS_TOKEN` — token **kliencki** (`post_client_item`) do
+  raportowania błędów JavaScriptu we front-endzie. Z założenia publiczny
+  (osadzany w HTML), potrafi wyłącznie tworzyć zdarzenia. Pusty = front-end
+  Rollbar wyłączony (no-op). Wpisywany w `.env` (wzorzec w `.env.example`).
+  Token `post_client_item` generuje się w dashboardzie Rollbara:
+  Project Settings → Project Access Tokens.
 
 ---
 

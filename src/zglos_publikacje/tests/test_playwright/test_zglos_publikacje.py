@@ -7,6 +7,7 @@ from playwright.sync_api import Page
 from bpp.models import Autor_Dyscyplina, Autor_Jednostka
 from django_bpp.playwright_util import (
     select_select2_autocomplete,
+    set_select2_value,
 )
 
 
@@ -51,7 +52,11 @@ def _przejdz_kroki_0_1_2(
     # Krok 2: dane
     page.fill("[name='2-tytul_oryginalny']", "test")
     page.fill("[name='2-rok']", str(rok))
-    page.fill("[name='2-email']", "moj@email.pl")
+    # Pole e-mail jest `disabled` i pre-wypełnione kontem dla zalogowanego
+    # użytkownika z e-mailem (F2) — wypełniamy je tylko gdy edytowalne
+    # (anonim / zalogowany bez e-maila).
+    if page.is_editable("[name='2-email']"):
+        page.fill("[name='2-email']", "moj@email.pl")
     if strona_www:
         page.fill("[name='2-strona_www']", strona_www)
 
@@ -95,10 +100,11 @@ def test_zglos_publikacje_drugi_autor_dyscyplina(
     admin_page.wait_for_selector(
         f"#id_3-{n}-autor", state="visible"
     )
-    select_select2_autocomplete(
+    set_select2_value(
         admin_page,
         f"id_3-{n}-autor",
-        "Kowal",
+        autor_jan_kowalski.pk,
+        label=str(autor_jan_kowalski),
         timeout=30000,
     )
 
@@ -163,10 +169,11 @@ def test_zglos_publikacje_ograniczony_dostep(
 
     admin_page.locator(f"#id_3-{n}-autor").scroll_into_view_if_needed()
 
-    select_select2_autocomplete(
+    set_select2_value(
         admin_page,
         f"id_3-{n}-autor",
-        "Kowal",
+        autor_jan_kowalski.pk,
+        label=str(autor_jan_kowalski),
         timeout=30000,
     )
 
@@ -223,6 +230,8 @@ def test_zglos_publikacje_wiele_klikniec(
         "#id_3-2-autor", state="visible"
     )
 
+    # NIE ZASTĘPOWAĆ przez set_select2_value: test ma potwierdzać, że po
+    # wielokrotnym dodaniu formularzy Select2 nadal przyjmuje wpisywanie.
     select_select2_autocomplete(
         admin_page,
         "id_3-1-autor",

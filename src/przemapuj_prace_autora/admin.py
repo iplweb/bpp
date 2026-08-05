@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
 from bpp.admin.core import DynamicAdminFilterMixin
@@ -17,11 +18,13 @@ class PrzemapoaniePracAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         "liczba_prac",
         "utworzono",
         "utworzono_przez",
+        "zrodlowy_import",
     )
     list_filter = (
         "utworzono",
         "jednostka_z",
         "jednostka_do",
+        "zrodlowy_import",
     )
     search_fields = (
         "autor__nazwisko",
@@ -40,6 +43,7 @@ class PrzemapoaniePracAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         "liczba_prac",
         "utworzono",
         "utworzono_przez",
+        "zrodlowy_import",
         "display_prace_ciagle_historia",
         "display_prace_zwarte_historia",
     )
@@ -55,6 +59,7 @@ class PrzemapoaniePracAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
                     "jednostka_do",
                     "utworzono",
                     "utworzono_przez",
+                    "zrodlowy_import",
                 )
             },
         ),
@@ -92,11 +97,13 @@ class PrzemapoaniePracAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         html += "</tr></thead><tbody>"
 
         for praca in obj.prace_ciagle_historia:
+            # tytuł/źródło publikacji to niezaufany HTML (import/zgłoszenie) —
+            # escape() przed wstrzyknięciem w mark_safe-owany string (stored-XSS).
             html += "<tr>"
-            html += f"<td>{praca.get('id', '—')}</td>"
-            html += f"<td>{praca.get('tytul', '—')}</td>"
-            html += f"<td>{praca.get('rok', '—')}</td>"
-            html += f"<td>{praca.get('zrodlo', '—') or '—'}</td>"
+            html += f"<td>{escape(praca.get('id', '—'))}</td>"
+            html += f"<td>{escape(praca.get('tytul', '—'))}</td>"
+            html += f"<td>{escape(praca.get('rok', '—'))}</td>"
+            html += f"<td>{escape(praca.get('zrodlo', '—') or '—')}</td>"
             html += "</tr>"
 
         html += "</tbody></table></div>"
@@ -121,12 +128,14 @@ class PrzemapoaniePracAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         html += "</tr></thead><tbody>"
 
         for praca in obj.prace_zwarte_historia:
+            # tytuł/isbn/wydawnictwo to niezaufany HTML (import/zgłoszenie) —
+            # escape() przed wstrzyknięciem w mark_safe-owany string (stored-XSS).
             html += "<tr>"
-            html += f"<td>{praca.get('id', '—')}</td>"
-            html += f"<td>{praca.get('tytul', '—')}</td>"
-            html += f"<td>{praca.get('rok', '—')}</td>"
-            html += f"<td>{praca.get('isbn', '—') or '—'}</td>"
-            html += f"<td>{praca.get('wydawnictwo', '—') or '—'}</td>"
+            html += f"<td>{escape(praca.get('id', '—'))}</td>"
+            html += f"<td>{escape(praca.get('tytul', '—'))}</td>"
+            html += f"<td>{escape(praca.get('rok', '—'))}</td>"
+            html += f"<td>{escape(praca.get('isbn', '—') or '—')}</td>"
+            html += f"<td>{escape(praca.get('wydawnictwo', '—') or '—')}</td>"
             html += "</tr>"
 
         html += "</tbody></table></div>"

@@ -132,7 +132,6 @@ class Wydawnictwo_ZwarteAdmin_Baza(BaseBppAdminMixin, admin.ModelAdmin):
         "liczba_znakow_wydawniczych",
         "wydawnictwo_nadrzedne__tytul_oryginalny",
         "konferencja__nazwa",
-        "liczba_znakow_wydawniczych",
         "doi",
         "pbn_uid__pk",
     ]
@@ -282,6 +281,9 @@ class Wydawnictwo_ZwarteForm(
     wydawca = forms.ModelChoiceField(
         required=False,
         queryset=Wydawca.objects.all(),
+        help_text="Przy rozdziale (gdy wskazano wydawnictwo nadrzędne) wydawca "
+        "jest dziedziczony po wydawnictwie nadrzędnym, o ile pozostawisz to pole "
+        "puste. Możesz wpisać innego wydawcę ręcznie.",
         widget=autocomplete.ModelSelect2(
             url="bpp:wydawca-autocomplete", attrs={"class": "bpp-autocomplete-wide"}
         ),
@@ -354,7 +356,31 @@ class Wydawnictwo_ZwarteForm(
             if message:
                 self._warnings.append(message)
 
+        self._dziedzicz_wydawce_po_nadrzednym(cleaned_data, wydawnictwo_nadrzedne)
+
         return cleaned_data
+
+    def _dziedzicz_wydawce_po_nadrzednym(self, cleaned_data, wydawnictwo_nadrzedne):
+        """Dziedziczenie wydawcy po wydawnictwie nadrzędnym (rozdziale).
+
+        Freshdesk #385. Jeżeli rekord ma wskazane wydawnictwo nadrzędne
+        (czyli jest rozdziałem), a operator nie podał własnego wydawcy —
+        podstaw wydawcę z wydawnictwa nadrzędnego. Jawnie wpisany wydawca
+        NIE jest nadpisywany. Mutuje ``cleaned_data`` w miejscu.
+        """
+        if not wydawnictwo_nadrzedne:
+            return
+        if cleaned_data.get("wydawca"):
+            return
+        if wydawnictwo_nadrzedne.wydawca_id is None:
+            return
+
+        cleaned_data["wydawca"] = wydawnictwo_nadrzedne.wydawca
+        self._warnings.append(
+            "Wydawca został odziedziczony po wydawnictwie nadrzędnym "
+            f"'{wydawnictwo_nadrzedne.tytul_oryginalny}': "
+            f"{wydawnictwo_nadrzedne.wydawca}."
+        )
 
     class Meta:
         model = Wydawnictwo_Zwarte
@@ -435,6 +461,13 @@ class Wydawnictwo_ZwarteForm(
             "tom": forms.TextInput(attrs={"class": "bpp-input-narrow"}),
             "slowa_kluczowe": TextareaTagWidget(attrs={"rows": 2}),
         }
+
+    class Media:
+        # Freshdesk #385: podświetlenie wymaganego pola "wydawca" przy
+        # rozdziale (rekord z wydawnictwem nadrzędnym). Warstwa wyłącznie
+        # wizualna — dziedziczenie wydawcy realizuje serwer w clean().
+        js = ["/static/bpp/js/wydawnictwo_zwarte_wydawca.js"]
+        css = {"all": ["/static/bpp/css/wydawnictwo_zwarte_wydawca.css"]}
 
 
 class Wydawnictwo_Zwarte_Zewnetrzna_Baza_DanychForm(forms.ModelForm):

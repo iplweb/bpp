@@ -2,12 +2,14 @@
 import sys
 
 import rollbar
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.http import HttpResponseBadRequest
 from django.utils import timezone
 from django.views.generic import RedirectView
+from pbn_client.conf import settings as pbn_defaults
 
 from bpp.models import Uczelnia
 
@@ -83,6 +85,11 @@ class TokenLandingPage(LoginRequiredMixin, RedirectView):
                 uczelnia.pbn_app_name,
                 uczelnia.pbn_app_token,
                 ott,
+                timeout=getattr(
+                    settings,
+                    "PBN_CLIENT_HTTP_TIMEOUT",
+                    pbn_defaults.PBN_CLIENT_HTTP_TIMEOUT,
+                ),
             )
             user = self.request.user
             user.pbn_token = user_token

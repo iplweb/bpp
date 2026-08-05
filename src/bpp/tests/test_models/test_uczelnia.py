@@ -1,16 +1,33 @@
 import pytest
 from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.test import override_settings
 from django.urls import reverse
 from model_bakery import baker
 
 from bpp.models import Uczelnia
+from pbn_api.reporting import rollbar_reporter
 
 
-def test_Uczelnia_wydzialy(uczelnia, wydzial):
+def test_Uczelnia_wydzialy(uczelnia):
+    # Faza B (#438): ``Uczelnia.wydzialy()`` nie zwraca już modeli
+    # ``Wydzial`` -- pokazuje widoczne jednostki TOP-LEVEL (tak samo jak
+    # ``jednostki()``). Węzły-lustra wydziałów są tworzone jako
+    # ``widoczna=False`` (patrz ``struktura_konwersja.py``), więc fixture
+    # ``wydzial`` sama w sobie tu nie wystarczy -- potrzebna widoczna
+    # jednostka top-level.
+    from bpp.tests.util import any_jednostka
+
+    any_jednostka(wydzial=None, uczelnia=uczelnia)
     assert uczelnia.wydzialy().exists()
 
 
-def test_Uczelnia_jednostki(uczelnia, jednostka):
+def test_Uczelnia_jednostki(uczelnia):
+    # Faza B (#438): ``Uczelnia.jednostki()`` = jednostki TOP-LEVEL (parent IS
+    # NULL) i widoczne. Fixture ``jednostka`` wisi teraz pod ukrytym węzłem-
+    # lustrem (nie-top-level), więc tworzymy jednostkę top-level wprost.
+    from bpp.tests.util import any_jednostka
+
+    any_jednostka(wydzial=None, uczelnia=uczelnia)
     assert uczelnia.jednostki().exists()
 
 
@@ -60,6 +77,19 @@ def test_Uczelnia_pbn_client():
     uczelnia.save()
 
     assert uczelnia.pbn_client()
+
+
+@pytest.mark.django_db
+@override_settings(PBN_CLIENT_HTTP_TIMEOUT="1,9")
+def test_uczelnia_pbn_client_injects_bpp_transport_policy(uczelnia):
+    uczelnia.pbn_app_name = "app"
+    uczelnia.pbn_app_token = "token"
+    uczelnia.pbn_api_root = "https://pbn.example"
+
+    client = uczelnia.pbn_client("user-token")
+
+    assert client.transport.timeout == (1.0, 9.0)
+    assert client.transport.reporter is rollbar_reporter
 
 
 @pytest.mark.django_db

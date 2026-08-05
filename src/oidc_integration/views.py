@@ -1,13 +1,63 @@
-"""Widoki OIDC dla BPP — na razie tylko backend-aware wylogowanie."""
+"""Widoki OIDC dla BPP — backend-aware wylogowanie oraz linkowanie konta."""
 
 from django.contrib.auth import BACKEND_SESSION_KEY
 from django.contrib.auth import logout as auth_logout
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LogoutView
 from django.http import HttpResponseRedirect
+from django.shortcuts import redirect, render
+from django.urls import reverse
+from django.views import View
 
 from oidc_integration.logout import build_provider_logout_url
 
 OIDC_BACKEND_PATH = "oidc_integration.backends.BppOIDCBackend"
+
+
+class SSOLinkInitView(LoginRequiredMixin, View):
+    """Start linkowania konta z SSO — wymaga potwierdzenia hasła (re-auth).
+
+    Konto bez używalnego hasła (LDAP/Microsoft/OIDC) nie może linkować tą
+    drogą — świadoma decyzja. Po poprawnym re-auth ustawiamy w sesji tryb
+    linkowania i odbijamy na standardowy start OIDC; backend
+    ``get_or_create_user`` wychwytuje tryb i wiąże ``(issuer, sub)`` z tym
+    kontem zamiast tworzyć/dopasowywać nowe.
+    """
+
+    template_name = "oidc_integration/polacz.html"
+
+    @staticmethod
+    def _clear_stale_link_flags(request):
+        """Usuń ewentualne pozostałości po przerwanym wcześniej linkowaniu.
+
+        Gdy poprzedni link został porzucony (user nie dokończył flow), flagi
+        ``oidc_link_mode``/``oidc_link_target`` mogłyby zostać w sesji i sprawić,
+        że następne *zwykłe* logowanie OIDC zostanie w ``get_or_create_user``
+        błędnie potraktowane jako linkowanie. Czyścimy je na WEJŚCIU (GET i
+        POST), zanim ustawimy świeży stan po re-auth.
+        """
+        request.session.pop("oidc_link_mode", None)
+        request.session.pop("oidc_link_target", None)
+        request.session.save()
+
+    def get(self, request):
+        self._clear_stale_link_flags(request)
+        return render(request, self.template_name, {})
+
+    def post(self, request):
+        self._clear_stale_link_flags(request)
+        user = request.user
+        password = request.POST.get("password", "")
+        if not user.has_usable_password() or not user.check_password(password):
+            return render(
+                request,
+                self.template_name,
+                {"error": "Nieprawidłowe hasło lub konto bez hasła lokalnego."},
+            )
+        request.session["oidc_link_mode"] = True
+        request.session["oidc_link_target"] = user.pk
+        request.session.save()
+        return redirect(reverse("oidc_authentication_init"))
 
 
 class BppOIDCAwareLogoutView(LogoutView):

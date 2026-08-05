@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from django.test import override_settings
 
 from importer_publikacji.providers import (
     get_available_providers,
@@ -12,18 +13,36 @@ from importer_publikacji.providers.pbn import (
     _extract_abstract,
     _extract_authors,
     _extract_isbn,
+    _extract_issn,
     _extract_keywords,
     _extract_license_url,
     _extract_year,
     _get_current_version_object,
+    _get_pbn_client,
 )
 from pbn_api.exceptions import (
     AccessDeniedException,
     HttpException,
     PraceSerwisoweException,
 )
+from pbn_api.reporting import rollbar_reporter
 
 SAMPLE_PBN_UID = "5e709189878c28a04737dc6f"
+
+
+@override_settings(PBN_CLIENT_HTTP_TIMEOUT="3,7")
+def test_get_pbn_client_injects_django_timeout_and_bpp_reporter():
+    uczelnia = MagicMock(
+        pbn_app_name="app",
+        pbn_app_token="token",
+        pbn_api_root="https://pbn.example",
+    )
+
+    client = _get_pbn_client(uczelnia)
+
+    assert client.transport.timeout == (3.0, 7.0)
+    assert client.transport.reporter is rollbar_reporter
+
 
 SAMPLE_PBN_ARTICLE = {
     "mongoId": SAMPLE_PBN_UID,
@@ -459,6 +478,46 @@ def test_extract_isbn_from_book():
 
 def test_extract_isbn_none():
     assert _extract_isbn({}) is None
+
+
+def test_extract_issn_real():
+    assert _extract_issn("1234-5678") == "1234-5678"
+
+
+def test_extract_issn_none():
+    assert _extract_issn(None) is None
+    assert _extract_issn("") is None
+
+
+def test_extract_issn_pomija_syntetyczny_xpbn():
+    """PBN dla czasopism bez ISSN podsyła placeholder ``xpbn-<uuid>`` (41
+    znaków). Nie jest to ISSN i nie mieści się w polach ISSN (max_length=32),
+    więc traktujemy go jako brak ISSN."""
+    xpbn = "xpbn-1585798a-33ca-44a8-8daf-6f1c15b25127"
+    assert len(xpbn) > 32
+    assert _extract_issn(xpbn) is None
+
+
+@patch("importer_publikacji.providers.pbn._save_to_pbn_publication")
+@patch("importer_publikacji.providers.pbn._get_pbn_client")
+def test_fetch_pomija_syntetyczny_xpbn_issn(mock_get_client, mock_save):
+    """Fetch publikacji, której czasopismo ma placeholder ``xpbn-`` w ISSN,
+    nie może przenieść 41-znakowego śmiecia do pól ISSN rekordu."""
+    import copy
+
+    data = copy.deepcopy(SAMPLE_PBN_ARTICLE)
+    journal = data["versions"][0]["object"]["journal"]
+    journal["issn"] = "xpbn-1585798a-33ca-44a8-8daf-6f1c15b25127"
+    journal["eissn"] = "xpbn-8f1c1585-44a8-33ca-8daf-6b25127c1579"
+
+    mock_client = MagicMock()
+    mock_client.get_publication_by_id.return_value = data
+    mock_get_client.return_value = mock_client
+
+    pub = PBNProvider().fetch(SAMPLE_PBN_UID)
+
+    assert pub.issn is None
+    assert pub.e_issn is None
 
 
 def test_extract_license_url():

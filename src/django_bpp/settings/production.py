@@ -1,3 +1,4 @@
+from django.core.exceptions import ImproperlyConfigured
 from django_minify_html.middleware import MinifyHtmlMiddleware
 
 from .base import *  # noqa
@@ -9,8 +10,22 @@ from .base import (  # noqa
     REDIS_HOST,
     REDIS_PORT,
     ROLLBAR,
+    SECRET_KEY,
+    SECRET_KEY_UNSET,
     env,
 )
+from .secret_key_guard import secret_key_niebezpieczny_placeholder
+
+# Fail-closed: produkcja NIE wstaje z placeholderem SECRET_KEY (patrz
+# secret_key_guard). Odpala się przy imporcie ustawień, więc gate'uje web,
+# celery i migrate — nie tylko komendy z system-checkami.
+if secret_key_niebezpieczny_placeholder(SECRET_KEY, unset_sentinel=SECRET_KEY_UNSET):
+    raise ImproperlyConfigured(
+        "DJANGO_BPP_SECRET_KEY nie jest ustawiony lub to placeholder — "
+        "produkcja nie wystartuje z publicznie znanym kluczem (ryzyko "
+        "forgowania sesji i tokenów resetu hasła). Ustaw realny klucz "
+        "(auto-gen w bpp-deploy; ręcznie: `openssl rand -hex 50`)."
+    )
 
 DEBUG = False
 DEBUG_TOOLBAR = False
@@ -106,9 +121,32 @@ CACHEOPS = {
     "bpp.rzeczownik": {"ops": ("fetch", "get", "count", "exists")},
     "django_countdown.SiteCountdown": {"ops": ("fetch", "get", "count", "exists")},
     "bpp.uczelnia": {"ops": ("get", "fetch", "count", "exists")},
-    "bpp.wydzial": {"ops": ("get", "fetch", "count", "exists")},
     "bpp.jednostka": {"ops": ("get", "fetch", "count", "exists")},
     "bpp.wydawnictwo_ciagle_streszczenie": {"ops": ("get", "fetch", "count", "exists")},
+    # `SiteResolutionMiddleware` rozstrzyga domenę → Site przy KAŻDYM
+    # requeście (także anonimowym). Celowo nie używa `get_current_site`, bo
+    # ono priorytetyzuje SITE_ID (założenie single-site), a BPP jest
+    # multi-host — a więc omija też wbudowany SITE_CACHE Django. Cacheops
+    # daje ten cache z powrotem, z automatyczną inwalidacją przy zapisie
+    # Site (czego ręczny cache.set z TTL by nie zapewnił).
+    "sites.site": {"ops": ("get", "fetch", "count", "exists")},
+    # Filtr szablonowy `has_group` robi Group.objects.get(name=...) przy
+    # każdym wywołaniu — a wywołuje się go w szablonach wielokrotnie.
+    "auth.group": {"ops": ("get", "fetch", "count", "exists")},
+    # Słowniki: małe, rzadko zmieniane, a odpytywane jako FK praktycznie
+    # z każdej publikacji. Cacheops inwaliduje je przy zapisie, więc edycja
+    # w adminie jest widoczna natychmiast.
+    "bpp.tytul": {"ops": ("get", "fetch", "count", "exists")},
+    "bpp.jezyk": {"ops": ("get", "fetch", "count", "exists")},
+    "bpp.typ_kbn": {"ops": ("get", "fetch", "count", "exists")},
+    "bpp.charakter_formalny": {"ops": ("get", "fetch", "count", "exists")},
+    "bpp.funkcja_autora": {"ops": ("get", "fetch", "count", "exists")},
+    "bpp.dyscyplina_naukowa": {"ops": ("get", "fetch", "count", "exists")},
+    # `bpp.konferencja` CELOWO nie jest tu wymieniona. Wygląda na słownik, ale
+    # rośnie razem z danymi z PBN, a `pbn_integrator.utils.conferences` robi
+    # bezwarunkowy save() na KAŻDYM rekordzie przy każdym przebiegu integratora
+    # (nie „zapisz gdy się zmieniło"). Cache'owanie dałoby tysiące inwalidacji
+    # na przebieg — koszt większy niż zysk z czytań.
 }
 
 CACHEOPS_DEFAULTS = {"timeout": 60 * 60}
@@ -121,6 +159,18 @@ ALLOWED_HOSTS = [
 ]
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Nagłówki bezpieczeństwa transportu (defense-in-depth). nginx wymusza HTTPS
+# na wszystkich vhostach — poniższe chronią na wypadek pojedynczego żądania,
+# które trafiłoby do Django plaintextem (SSL-strip/MITM). SECURE_SSL_REDIRECT
+# rozpoznaje HTTPS poprawnie dzięki SECURE_PROXY_SSL_HEADER powyżej.
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_SSL_REDIRECT = True
+SECURE_HSTS_SECONDS = 31536000  # 1 rok
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+# preload wymaga ręcznego zgłoszenia domeny do list przeglądarek i jest
+# trudno odwracalny — świadomie zostawiony do decyzji wdrożeniowej.
+SECURE_HSTS_PRELOAD = False
 
 
 if (

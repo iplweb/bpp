@@ -6,8 +6,11 @@ Ten moduł zawiera testy dla:
 """
 
 import pytest
+from django.contrib.auth.models import Group
 from django.urls import reverse
 from model_bakery import baker
+
+from bpp.const import GR_WPROWADZANIE_DANYCH
 
 
 @pytest.mark.django_db
@@ -25,6 +28,7 @@ def test_lista_skasowanych_zrodel_view_requires_login(client):
 def test_lista_skasowanych_zrodel_view_shows_deleted_sources(client, django_user_model):
     """Test czy widok pokazuje źródła ze statusem DELETED"""
     user = baker.make(django_user_model)
+    user.groups.add(Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)[0])
     client.force_login(user)
 
     # Utwórz źródło ze statusem DELETED
@@ -63,6 +67,7 @@ def test_lista_skasowanych_zrodel_shows_usun_button_for_zero_records(
 ):
     """Test czy lista pokazuje przycisk 'Usuń' dla źródeł bez rekordów"""
     user = baker.make(django_user_model)
+    user.groups.add(Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)[0])
     client.force_login(user)
 
     # Źródło bez rekordów

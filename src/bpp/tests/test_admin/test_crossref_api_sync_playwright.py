@@ -9,13 +9,20 @@ from playwright.sync_api import Page
 from bpp.models import Autor, Wydawnictwo_Ciagle
 
 
-def _poll_until(predicate, timeout: float = 10.0, interval: float = 0.1) -> bool:
-    """Poll ``predicate`` until truthy or timeout elapses; return last result."""
+def _poll_until(page, predicate, timeout: float = 10.0, interval_ms: int = 100) -> bool:
+    """Pompuj event-loop Playwrighta, aż ``predicate`` stanie się prawdziwy.
+
+    Do pollingu MUSIMY użyć ``page.wait_for_timeout`` (nie ``time.sleep``) —
+    ``time.sleep`` blokuje wątek testu, więc handlery route/dialogów
+    Playwrighta nie mają szansy odpalić w trakcie pollingu i predykat
+    (zależny od efektów po stronie serwera) nigdy nie zmienia stanu.
+    Wzorzec: patrz ``test_clarivate._wait_for_dialog``.
+    """
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if predicate():
             return True
-        time.sleep(interval)
+        page.wait_for_timeout(interval_ms)
     return predicate()
 
 
@@ -29,6 +36,11 @@ def autor_m():
     )
 
 
+# UWAGA: testy w tym pliku celowo uzywaja ``live_server`` (WSGI, watek
+# W PROCESIE testu), NIE ``channels_live_server`` (Daphne, subprocess).
+# Kasety VCR (@pytest.mark.vcr) patchuja HTTP tylko w procesie testu —
+# widok "pobierz z crossref" wykonuje zapytania do api.crossref.org
+# server-side, wiec pod Daphne leci prawdziwy ruch sieciowy zamiast kaset.
 @pytest.mark.vcr(ignore_localhost=True)
 def test_crossref_api_autor_sync(
     admin_page: Page, live_server, transactional_db, autor_m
@@ -54,7 +66,7 @@ def test_crossref_api_autor_sync(
             return autor_m.orcid == "0000-0003-2575-3642"
 
         # Poll until ORCID is updated (max 10 seconds, 100ms granularity).
-        _poll_until(check_orcid)
+        _poll_until(admin_page, check_orcid)
 
         assert check_orcid(), (
             f"Expected ORCID to be '0000-0003-2575-3642', got '{autor_m.orcid}'"
@@ -101,7 +113,6 @@ def admin_page_strona_porownania(admin_page: Page, live_server):
 def test_crossref_api_strony_sync_browser(
     transactional_db,
     wydawnictwo_ciagle_jehs_2022,
-    live_server,
     admin_page_strona_porownania: Page,
     id_przycisku,
     atrybut,
@@ -116,7 +127,7 @@ def test_crossref_api_strony_sync_browser(
         wydawnictwo_ciagle_jehs_2022.refresh_from_db()
         return getattr(wydawnictwo_ciagle_jehs_2022, atrybut, None) == wynik
 
-    _poll_until(check_attribute)
+    _poll_until(admin_page_strona_porownania, check_attribute)
 
     assert check_attribute(), (
         f"Expected {atrybut} to be '{wynik}', "
@@ -128,7 +139,6 @@ def test_crossref_api_strony_sync_browser(
 def test_crossref_api_streszczenie_sync_browser(
     transactional_db,
     wydawnictwo_ciagle_jehs_2022,
-    live_server,
     admin_page_strona_porownania: Page,
 ):
     """Test clicking button to sync streszczenie (abstract) from CrossRef."""
@@ -140,6 +150,6 @@ def test_crossref_api_streszczenie_sync_browser(
         wydawnictwo_ciagle_jehs_2022.refresh_from_db()
         return wydawnictwo_ciagle_jehs_2022.streszczenia.exists()
 
-    _poll_until(check_streszczenie)
+    _poll_until(admin_page_strona_porownania, check_streszczenie)
 
     assert check_streszczenie(), "Expected streszczenie to be created"

@@ -31,10 +31,12 @@ from bpp.models import (
     Dyscyplina_Naukowa,
     Dyscyplina_Zrodla,
     Element_Repozytorium,
+    Finansowanie,
     Funkcja_Autora,
     Grant,
     Grant_Rekordu,
     Grupa_Pracownicza,
+    Instytucja_Finansujaca,
     Jednostka,
     Jezyk,
     Kierunek_Studiow,
@@ -42,10 +44,13 @@ from bpp.models import (
     Patent_Autor,
     Praca_Doktorska,
     Praca_Habilitacyjna,
+    Projekt,
+    Projekt_Autor,
     Punktacja_Zrodla,
     Redakcja_Zrodla,
     Rodzaj_Prawa_Patentowego,
     Rodzaj_Zrodla,
+    RodzajJednostki,
     Status_Korekty,
     Typ_KBN,
     Typ_Odpowiedzialnosci,
@@ -60,7 +65,6 @@ from bpp.models import (
     Wydawnictwo_Zwarte_Autor,
     Wydawnictwo_Zwarte_Streszczenie,
     Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych,
-    Wydzial,
     Wymiar_Etatu,
     Zewnetrzna_Baza_Danych,
     Zrodlo,
@@ -78,7 +82,7 @@ from bpp.models.openaccess import (
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 from bpp.models.profile import BppUser
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
-from bpp.models.struktura import Jednostka_Wydzial
+from bpp.models.struktura import Jednostka_Rodzic
 from bpp.models.system import Charakter_PBN
 from bpp.models.wydawca import Poziom_Wydawcy, Wydawca
 from deduplikator_autorow.models import IgnoredScientist, LogScalania, NotADuplicate
@@ -111,6 +115,7 @@ groups = {
         Charakter_Formalny,
         Crossref_Mapper,
         Kierunek_Studiow,
+        RodzajJednostki,
         Charakter_PBN,
         Funkcja_Autora,
         Zrodlo_Informacji,
@@ -130,6 +135,9 @@ groups = {
         Dyscyplina_Naukowa,
         Zewnetrzna_Baza_Danych,
         Grant,
+        # Słownik grantodawców — jak ``Grant`` wypełniany raz i rzadko
+        # zmieniany, nie przy okazji wprowadzania publikacji.
+        Instytucja_Finansujaca,
         FormFieldRepresentation,
         FormRepresentation,
         Grupa_Pracownicza,
@@ -151,9 +159,8 @@ groups = {
     "struktura": [
         Uczelnia,
         LiczbaNDlaUczelni,
-        Wydzial,
         Jednostka,
-        Jednostka_Wydzial,
+        Jednostka_Rodzic,
         Ukryj_Status_Korekty,
     ],
     GR_WPROWADZANIE_DANYCH: [
@@ -183,6 +190,11 @@ groups = {
         Wydawca,
         Poziom_Wydawcy,
         Grant_Rekordu,
+        # Dane wprowadzane przez redakcję na bieżąco — jak ``Grant_Rekordu``,
+        # w odróżnieniu od słownikowego ``Grant``/``Instytucja_Finansujaca``.
+        Projekt,
+        Projekt_Autor,
+        Finansowanie,
         Element_Repozytorium,
         IloscUdzialowDlaAutoraZaRok,
         RozbieznosciView,

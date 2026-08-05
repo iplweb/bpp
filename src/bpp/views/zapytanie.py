@@ -1,11 +1,13 @@
 import json
-import re
+from typing import NamedTuple
+from urllib.parse import quote, urlencode
 
 from django import forms
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldError, ValidationError
 from django.core.paginator import Paginator
+from django.db.models import Sum
 from django.http import Http404, HttpResponse, JsonResponse
 from django.urls import NoReverseMatch, reverse
 from django.views.generic import FormView, View
@@ -17,13 +19,30 @@ from djangoql.serializers import SuggestionsAPISerializer
 from djangoql.views import SuggestionsAPIView
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
-from bpp.djangoql_schema import BppQLSchema
+from bpp.djangoql_errors import (
+    error_location as _error_location,
+)
+from bpp.djangoql_errors import (
+    error_payload as _error_payload,
+)
+from bpp.djangoql_errors import (
+    format_error_text as _format_error_text,
+)
+from bpp.djangoql_schema import BppQLSchemaOgraniczony
 from bpp.models import Autor
 from bpp.models.cache import Rekord
+from bpp.views.multiseek_export import (
+    MULTISEEK_RENDER_LIST_FIELDS,
+    MULTISEEK_RENDER_TABLE_FIELDS,
+    TABLE_REPORT_TYPES,
+)
 
 # Alias zgodności: schemat przeniesiony do bpp.djangoql_schema (wspólny trzon
 # dla widoku i adminów). Widok i testy odwołują się do BppZapytanieSchema.
-BppZapytanieSchema = BppQLSchema
+# Widok „Szukaj zapytaniem" używa ograniczonego (allow-lista) schematu —
+# autocomplete/zapytania tylko po modelach bibliograficznych. Adminy zostają
+# na pełnym BppQLSchema.
+BppZapytanieSchema = BppQLSchemaOgraniczony
 
 MODEL_REKORD = "rekord"
 MODEL_AUTOR = "autor"
@@ -37,6 +56,110 @@ MODELS = {
     MODEL_REKORD: Rekord,
     MODEL_AUTOR: Autor,
 }
+
+# Wartości "postac" to identyfikatory ReportType z multiseek_registry.reports
+# (list/table/pkt_wewn/pkt_wewn_bez/bibtex/pivot) — NIE polskie etykiety.
+# "rekordy" to jedyna postać własna tej strony (bez odpowiednika w multiseeku).
+POSTAC_REKORDY = "rekordy"
+# "pivot" — tabela krzyżowa (render przez multiseek/report-body-pivot.html,
+# reużyty bez zmian dla logiki, patrz _pivot_context). Rejestr wymiarów/metryk
+# rozgałęzia się po modelu przez bpp.pivot.wybierz_rejestr_pivota: rekord ma
+# swój od Zadania 6, autor (baza kadrowa K) od Zadania 9. Zasada tego widoku
+# zostaje: opcja w <select> albo działa, albo jej nie ma — teraz działa dla
+# obu modeli.
+POSTAC_PIVOT = "pivot"
+
+POSTACIE_REKORD = (
+    (POSTAC_REKORDY, "rekordy (ID + akcje)"),
+    ("list", "lista"),
+    ("table", "tabela"),
+    ("pkt_wewn", "punktacja z wewnętrzną"),
+    ("pkt_wewn_bez", "punktacja sumaryczna"),
+    ("bibtex", "BibTeX"),
+    (POSTAC_PIVOT, "tabela krzyżowa"),
+)
+POSTACIE_AUTOR = (
+    (POSTAC_REKORDY, "autorzy (ID + akcje)"),
+    (POSTAC_PIVOT, "tabela krzyżowa"),
+)
+
+
+def postacie_dla_modelu(model_key):
+    return POSTACIE_AUTOR if model_key == MODEL_AUTOR else POSTACIE_REKORD
+
+
+def eksport_formaty(model_key, postac):
+    """Formaty eksportu sensowne dla danego modelu i postaci wyniku.
+
+    Model "autor" zwraca CSV/XLSX niezależnie od postaci: macierz
+    (postac="pivot") idzie przez _eksport_pivota i naprawdę działa od
+    Zadania 9 (bpp.pivot.autor + wybierz_rejestr_pivota); lista autorów
+    (postac="rekordy", domyślna) idzie przez autor_csv_export_response /
+    autor_xlsx_export_response i naprawdę działa od Zadania 11
+    (zapytanie_export.py) — obie ścieżki realne, więc pasek pokazuje linki
+    dla obu.
+
+    UWAGA: przy postac="pivot" górny pasek eksportu NIE renderuje się wcale
+    (zapytanie.html) — macierz eksportuje własny pasek pod tabelą, bo tylko
+    on niesie pivot_row/pivot_col/pivot_val. Gałąź POSTAC_PIVOT niżej zostaje
+    jako jedno miejsce opisujące, co endpoint eksportu przyjmuje dla tej
+    kombinacji (dane tak, dokument nie).
+    """
+    if model_key == MODEL_AUTOR:
+        return (("csv", "CSV"), ("xlsx", "XLSX"))
+    formaty = [("csv", "CSV"), ("xlsx", "XLSX")]
+    if postac == POSTAC_PIVOT:
+        # Pivot nie ma jeszcze partiala dokumentu (patrz komentarz przy
+        # POSTAC_PIVOT) — html/docx/bib zostają na później, dane (csv/xlsx)
+        # już mają sens, bo eksport danych nie przechodzi przez partial.
+        return tuple(formaty)
+    formaty += [("html", "HTML"), ("docx", "DOCX")]
+    if postac == "bibtex":
+        formaty.append(("bib", "BibTeX (.bib)"))
+    return tuple(formaty)
+
+
+def parse_postac(GET, model_key):
+    """Postać wyniku z GET-a, z cichą degradacją do domyślnej.
+
+    Cicha degradacja (nie 400), bo postać przychodzi z linku/zakładki, a
+    zmiana modelu w formularzu może unieważnić wcześniejszy wybór — user nie
+    ma wtedy nic złego na sumieniu.
+    """
+    dozwolone = {key for key, _ in postacie_dla_modelu(model_key)}
+    postac = GET.get("postac") or POSTAC_REKORDY
+    return postac if postac in dozwolone else POSTAC_REKORDY
+
+
+class WynikZapytania(NamedTuple):
+    """Queryset albo błąd — jedno źródło prawdy dla strony i eksportu."""
+
+    queryset: object | None
+    error: str | None
+    error_location: dict | None
+
+
+def wykonaj_zapytanie(model_key, query):
+    """Zamienia zapytanie DjangoQL na queryset wskazanego modelu.
+
+    Wydzielone z ZapytanieView.render_results, żeby eksport liczył DOKŁADNIE
+    ten sam zbiór co strona — łącznie z .distinct(), bez którego filtr po
+    relacji "do wielu" (np. autorzy.autor.nazwisko) zwielokrotniłby rekord
+    raz na każdy pasujący wiersz powiązany.
+    """
+    model = MODELS[model_key]
+    try:
+        queryset = apply_search(
+            model.objects.all(), query, schema=BppZapytanieSchema
+        ).distinct()
+    except (DjangoQLError, FieldError, ValidationError, ValueError) as exc:
+        line, column, mark = _error_location(exc, query)
+        location = (
+            {"line": line, "column": column, "mark": mark} if line and column else None
+        )
+        return WynikZapytania(None, _format_error_text(exc), location)
+    return WynikZapytania(queryset, None, None)
+
 
 # Przyklady zapytan renderowane w sekcji pomocy. Wszystkie SA testowane na
 # poprawnosc skladniowa przez DjangoQLParser (test_zapytanie_examples_parseable).
@@ -271,6 +394,69 @@ EXAMPLES = [
 ]
 
 
+# Presety pivota autorskiego — skróty do gotowych tabel krzyżowych w sekcji
+# pomocy. Pierwsze cztery korzystają z bazy kadrowej K (liczba autorów),
+# pozostałe z baz bibliometrycznych: P (liczba prac) i U (Σ slotów, Σ pkdaut).
+# KAŻDA para (wymiar, metryka) musi być poprawna dla bazy tej metryki —
+# wymiar publikacyjny (rok, dyscyplina) NIE istnieje w bazie K i
+# parse_pivot_params_autor cicho zamieniłby go na domyślny, dając preset
+# pokazujący nie to, co obiecuje etykieta.
+PIVOT_PRESETY_AUTOR = (
+    ("Struktura kadrowa", "jednostka", "tytul", "liczba_autorow"),
+    ("Audyt kompletności ORCID", "jednostka", "ma_orcid", "liczba_autorow"),
+    ("Gotowość do PBN", "jednostka", "ma_pbn_uid", "liczba_autorow"),
+    ("Struktura płci wg tytułów", "tytul", "plec", "liczba_autorow"),
+    ("Produktywność jednostek", "jednostka", "rok", "liczba_prac"),
+    ("Ranking autorów (slotowy)", "autor", "rok", "suma_slotow"),
+    ("Udziały dyscyplinowe", "dyscyplina", "rok", "suma_slotow"),
+    ("Wkład punktowy jednostek", "jednostka", "rok", "suma_pkdaut"),
+)
+
+
+def pivot_presety_dla_modelu(model_key, query):
+    """Skróty do gotowych tabel krzyżowych, renderowane w sekcji pomocy —
+    ten sam wzorzec co EXAMPLES dla zapytań DjangoQL.
+
+    `query` to WYSŁANE zapytanie DjangoQL z GET-a — presety mają DOŁOŻYĆ wybór
+    wymiarów/metryki do zapytania, jakie user już wysłał, nie zgubić go (klik
+    w preset ma pokazać macierz DLA BIEŻĄCEGO zawężenia).
+
+    Lista jest zwracana niezależnie od tego, czy zapytanie już poszło —
+    natomiast szablon renderuje ją jako KLIKALNE linki tylko wtedy, gdy
+    `query` jest niepuste. Bez zapytania preset nie ma czego dokładać: puste
+    zapytanie nie przechodzi przez parser DjangoQL („Unexpected end of
+    input"), więc `ZapytanieView.get` w ogóle nie wchodzi w `render_results`
+    i taki link przeładowałby stronę bez żadnego efektu i bez komunikatu.
+    Zamiast martwego linku szablon pokazuje wtedy same nazwy presetów plus
+    zdanie, co trzeba zrobić, żeby ożyły.
+
+    `safe="/"` w urlencode() dobrany tak, żeby zakodowana wartość `query`
+    zgadzała się bajt-w-bajt z tym, co produkuje filtr szablonowy
+    `|urlencode` (Django: quote(value, safe='/') gdy `safe` nie podano) —
+    ta sama para znaków bezpiecznych, żeby test na obecność zakodowanego
+    zapytania w linku presetu nie zależał od przypadkowej zgodności dwóch
+    niezależnych implementacji urlencode.
+    """
+    if model_key != MODEL_AUTOR:
+        return ()
+    presety = []
+    for opis, row, col, metric in PIVOT_PRESETY_AUTOR:
+        qs = urlencode(
+            {
+                "model": MODEL_AUTOR,
+                "query": query,
+                "postac": POSTAC_PIVOT,
+                "pivot_row": row,
+                "pivot_col": col,
+                "pivot_val": metric,
+            },
+            quote_via=quote,
+            safe="/",
+        )
+        presety.append({"opis": opis, "query": qs})
+    return tuple(presety)
+
+
 def user_can_use_query_editor(user):
     """Czy user widzi/uzywa edytora zapytan DjangoQL.
 
@@ -330,58 +516,6 @@ class ZapytanieForm(forms.Form):
     )
 
 
-def _format_error_text(exc):
-    """Czytelny komunikat błędu zapytania (łączy komunikaty ValidationError)."""
-    if isinstance(exc, ValidationError):
-        return "; ".join(exc.messages)
-    return str(exc)
-
-
-def _locate_token(query, needle):
-    """1-based ``(line, column)`` wystąpienia ``needle`` w ``query`` albo None.
-
-    Najpierw szuka jako całego słowa (granice nie-słowne, bez kropki z lewej —
-    żeby ``foo`` nie złapało się w ``bar.foo``), z fallbackiem do zwykłego
-    podciągu. Pozwala podświetlić nieznane pole/wartość, którą djangoql wskazuje
-    tylko przez ``exc.value`` (bez pozycji)."""
-    match = re.search(r"(?<![\w.])" + re.escape(needle) + r"(?![\w])", query)
-    pos = match.start() if match else query.find(needle)
-    if pos < 0:
-        return None
-    line = query.count("\n", 0, pos) + 1
-    column = pos - query.rfind("\n", 0, pos)
-    return line, column
-
-
-def _error_location(exc, query):
-    """``(line, column, mark)`` wskazujące miejsce błędu, albo ``(None,)*3``.
-
-    ``mark='to_end'`` — błąd składni/leksera (djangoql niesie ``line``+``column``):
-    podświetlamy ogon zapytania od tej kolumny. ``mark='token'`` — nieznane
-    pole/wartość (djangoql niesie tylko ``value``): lokalizujemy ten jeden token.
-    Most między wyjątkami Pythona a czerwoną falką nakładki ``highlight.js``
-    (idiom z ``djangoql/example_project``)."""
-    line = getattr(exc, "line", None)
-    column = getattr(exc, "column", None)
-    if line and column:
-        return line, column, "to_end"
-    value = getattr(exc, "value", None)
-    if value:
-        loc = _locate_token(query, str(value))
-        if loc:
-            return loc[0], loc[1], "token"
-    return None, None, None
-
-
-def _error_payload(exc, query):
-    """Słownik odpowiedzi JSON błędu: ``{error[, line, column, mark]}``."""
-    payload = {"error": _format_error_text(exc)}
-    line, column, mark = _error_location(exc, query)
-    if line and column:
-        payload.update(line=line, column=column, mark=mark)
-    return payload
-
-
 class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
     template_name = "bpp/zapytanie.html"
     form_class = ZapytanieForm
@@ -396,6 +530,21 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx.setdefault("examples", EXAMPLES)
+        # model_key nie jest jeszcze w kontekscie przed pierwszym szukaniem
+        # (render_results go dokłada) — spadamy do GET-a/domyślnego modelu,
+        # żeby pasek "Postać wyniku" pokazywał sensowne opcje od pierwszego
+        # wyrenderowania strony, nie tylko po wynikach.
+        model_key = ctx.get("model_key")
+        if model_key not in MODELS:
+            model_key = self.request.GET.get("model", MODEL_REKORD)
+            if model_key not in MODELS:
+                model_key = MODEL_REKORD
+        ctx.setdefault("postac", parse_postac(self.request.GET, model_key))
+        ctx.setdefault("postacie", postacie_dla_modelu(model_key))
+        ctx.setdefault(
+            "pivot_presety",
+            pivot_presety_dla_modelu(model_key, self.request.GET.get("query", "")),
+        )
         return ctx
 
     def get(self, request, *args, **kwargs):
@@ -407,32 +556,59 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
     def render_results(self, form):
         model_key = form.cleaned_data["model"]
         query = form.cleaned_data["query"].strip()
-        model = MODELS[model_key]
-        queryset = model.objects.all()
-        error = None
-        error_location = None
+        postac = parse_postac(self.request.GET, model_key)
+        wynik = wykonaj_zapytanie(model_key, query)
         results_page = None
         count = None
+        sumy = None
 
-        try:
-            queryset = apply_search(queryset, query, schema=BppZapytanieSchema)
-            # Filtrowanie po relacjach "do wielu" (np. autorzy.autor.nazwisko)
-            # tworzy JOIN, ktory zwielokrotnia ten sam rekord raz na kazdy
-            # pasujacy wiersz powiazany. .distinct() zwija te duplikaty, zeby
-            # liczba wynikow i lista byly zgodne z liczba unikalnych obiektow.
-            queryset = queryset.distinct()
-            count = queryset.count()
-            paginator = Paginator(queryset, self.paginate_by)
+        if wynik.queryset is not None:
+            count = wynik.queryset.count()
+            # Projekcja dostrojona do partiala renderu (jak w
+            # document_export_response) — bez niej strona ciągnie CAŁY
+            # rekord (N+1 na charakter_formalny/typ_kbn na każdym wierszu).
+            # "rekordy"/"pivot" trzymają dzisiejszą tabelę/placeholder bez
+            # zmian, więc queryset zostaje nietkniety.
+            queryset_do_widoku = wynik.queryset
+            if model_key == MODEL_REKORD and postac in TABLE_REPORT_TYPES:
+                queryset_do_widoku = queryset_do_widoku.select_related(
+                    "charakter_formalny", "typ_kbn"
+                ).only(*MULTISEEK_RENDER_TABLE_FIELDS)
+            elif model_key == MODEL_REKORD and postac not in (
+                POSTAC_REKORDY,
+                POSTAC_PIVOT,
+            ):
+                # Obejmuje "list" (report-body-list.html) i "bibtex"
+                # (report-body-bibtex.html). Ta druga woła
+                # element.original.to_bibtex — "original" dociąga PEŁNY
+                # obiekt publikacji OSOBNYM zapytaniem po polu "id" (tuple
+                # content_type_id+object_id, czyli composite PK Rekordu).
+                # .only() na Rekordzie nie ma na to wpływu: "id" jest PK-iem,
+                # więc Django go dociąga zawsze, niezależnie od projekcji.
+                queryset_do_widoku = queryset_do_widoku.only(
+                    *MULTISEEK_RENDER_LIST_FIELDS
+                )
+            paginator = Paginator(queryset_do_widoku, self.paginate_by)
             page_number = self.request.GET.get("page") or 1
             results_page = paginator.get_page(page_number)
-        except (DjangoQLError, FieldError, ValidationError, ValueError) as exc:
-            error = _format_error_text(exc)
-            line, column, mark = _error_location(exc, query)
-            if line and column:
-                error_location = {"line": line, "column": column, "mark": mark}
 
         if results_page is not None and model_key == MODEL_REKORD:
             self._attach_admin_urls(results_page)
+
+        if postac in TABLE_REPORT_TYPES and wynik.queryset is not None:
+            # Sumy liczone po CAŁYM zbiorze wyników, nie po stronie —
+            # inaczej "Suma:" w stopce tabeli myłaby redaktora przy
+            # zapytaniach z wieloma stronami.
+            sumy = wynik.queryset.aggregate(
+                Sum("impact_factor"),
+                Sum("liczba_cytowan"),
+                Sum("punkty_kbn"),
+                Sum("punktacja_wewnetrzna"),
+            )
+
+        pivot_ctx = {}
+        if postac == POSTAC_PIVOT and wynik.queryset is not None:
+            pivot_ctx = self._pivot_context(model_key, wynik.queryset)
 
         # Rozbicie „dlaczego 0 wyników" pokazuje (z podświetlaniem składni) panel
         # „Wyjaśnij liczby" w JS — auto-otwierany, gdy count == 0 (patrz
@@ -442,12 +618,73 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
             form=form,
             results=results_page,
             count=count,
-            error=error,
-            error_location=error_location,
+            error=wynik.error,
+            error_location=wynik.error_location,
             model_key=model_key,
             query=query,
+            postac=postac,
+            postacie=postacie_dla_modelu(model_key),
+            sumy=sumy,
+            eksport_formaty=eksport_formaty(model_key, postac),
+            **pivot_ctx,
         )
         return self.render_to_response(context)
+
+    def _pivot_context(self, model_key, queryset):
+        """Kontekst tabeli krzyżowej — klucze zgodne z multiseekiem, żeby
+        partial report-body-pivot.html renderował się bez zmian.
+
+        Dokłada też trzy klucze, które report-body-pivot.html potrzebuje
+        DODATKOWO na tej stronie (P1-P3 z brief'u): multiseek trzyma filtr
+        w sesji i renderuje partial pod /multiseek/results/, więc jego
+        domyślne wartości (form action=".", linki "../export/") nie
+        przenoszą stanu strony zapytania (model/query/postac żyją w URL-u)
+        i nie trafiają pod właściwy prefiks eksportu.
+
+        Rejestr wymiarów/metryk (rekord vs autor) wybiera
+        `wybierz_rejestr_pivota` — JEDYNE miejsce w widoku, które rozgałęzia
+        się po modelu (eksport, `ZapytanieExportView._eksport_pivota`, woła
+        ten sam helper).
+
+        `pivot_dimensions` w kontekście to już PRZEFILTROWANY słownik — tylko
+        wymiary dostępne w bazie agregacji wybranej metryki
+        (`dim.expr_dla(metric.baza) is not None`). Partial iteruje ten
+        słownik ślepo i nic nie wie o bazach K/P/U; dla rejestru rekordowego
+        `expr` jest zwykłym stringiem, więc `expr_dla()` zawsze zwraca
+        ścieżkę i filtr nic nie usuwa (zachowanie multiseeka bez zmian).
+        """
+        from bpp.pivot import core as pivot_core
+        from bpp.pivot import wybierz_rejestr_pivota
+
+        rejestr = wybierz_rejestr_pivota(model_key)
+        row_dim, col_dim, metric = rejestr.parse_params(self.request.GET)
+        dostepne_wymiary = {
+            key: dim
+            for key, dim in rejestr.DIMENSIONS.items()
+            if dim.expr_dla(metric.baza) is not None
+        }
+        ctx = {
+            "pivot_dimensions": dostepne_wymiary,
+            "pivot_metrics": rejestr.METRICS,
+            "pivot_row_dim": row_dim,
+            "pivot_col_dim": col_dim,
+            "pivot_metric": metric,
+            "pivot_form_action": reverse("bpp:zapytanie"),
+            "pivot_form_hidden": [
+                ("model", model_key),
+                ("query", self.request.GET.get("query", "")),
+                ("postac", POSTAC_PIVOT),
+            ],
+            "pivot_export_base": reverse(
+                "bpp:zapytanie_eksport", kwargs={"export_format": "csv"}
+            ).rsplit("csv/", 1)[0],
+        }
+        try:
+            ctx["pivot"] = rejestr.zbuduj(queryset, row_dim, col_dim, metric)
+        except pivot_core.PivotTooLargeError as exc:
+            ctx["pivot"] = None
+            ctx["pivot_error"] = exc
+        return ctx
 
     @staticmethod
     def _attach_admin_urls(results_page):

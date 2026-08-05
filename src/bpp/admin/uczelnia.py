@@ -9,7 +9,7 @@ from reversion.admin import VersionAdmin
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 from pbn_api.exceptions import PraceSerwisoweException
 
-from ..models import Uczelnia, Ukryj_Status_Korekty, Wydzial
+from ..models import Uczelnia, Ukryj_Status_Korekty
 from ..profil_autora import waliduj_uklad
 
 # Uczelnia
@@ -17,15 +17,9 @@ from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers.constance_field_mixin import ConstanceUczelniaFieldsMixin
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
+from .helpers.ror_field import czysc_ror
 from .helpers.site_filtered import SiteFilteredAdminMixin
 from .widgets.uklad_profilu import EdytorUkladuWidget
-
-
-class WydzialInlineForm(forms.ModelForm):
-    class Meta:
-        fields = ["nazwa", "skrot", "widoczny", "kolejnosc"]
-        model = Wydzial
-        widgets = {"kolejnosc": forms.HiddenInput}
 
 
 class LiczbaNDlaUczelniInline(admin.TabularInline):
@@ -45,14 +39,6 @@ class LiczbaNDlaUczelniInline(admin.TabularInline):
         fields = ["dyscyplina_naukowa", "liczba_n"]
 
 
-class WydzialInline(admin.TabularInline):
-    classes = ["grp-collapse grp-closed grp-never-open-automatically"]
-    model = Wydzial
-    form = WydzialInlineForm
-    extra = 0
-    sortable_field_name = "kolejnosc"
-
-
 class Ukryj_Status_KorektyInline(admin.StackedInline):
     model = Ukryj_Status_Korekty
     fields = [
@@ -63,6 +49,7 @@ class Ukryj_Status_KorektyInline(admin.StackedInline):
         "rankingi",
         "sloty",
         "api",
+        "cerif",
     ]
     extra = 0
 
@@ -114,6 +101,9 @@ class UczelniaAdminForm(forms.ModelForm):
             except (ValueError, TypeError):
                 return None
         return waliduj_uklad(wartosc)
+
+    def clean_ror_id(self):
+        return czysc_ror(self.cleaned_data.get("ror_id"))
 
 
 class UczelniaAdmin(
@@ -183,6 +173,33 @@ class UczelniaAdmin(
                 ),
             },
         ),
+        # DWA osobne fieldsety, mimo że oba dotyczą OAI-PMH. To NIE jest
+        # jeden przełącznik z dodatkami: `oai_pmh_aktywny` bramkuje wyłącznie
+        # /oai/ (feed oai_dc dla Primo), a `eksport_cerif_wlaczony` wyłącznie
+        # /cerif-oai/. Wrzucone do wspólnej sekcji sugerowałyby redaktorowi,
+        # że odznaczenie pierwszego wyłącza też drugi — a tak nie jest.
+        (
+            "OAI-PMH dla Primo (/oai/)",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "oai_pmh_aktywny",
+                    "oai_identyfikator_repozytorium",
+                ),
+            },
+        ),
+        (
+            "Eksport CERIF / OpenAIRE (/cerif-oai/)",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "eksport_cerif_wlaczony",
+                    "eksport_cerif_osoby",
+                    "eksport_cerif_kwoty",
+                    "ror_id",
+                ),
+            },
+        ),
         (
             "Strona wizualna",
             {
@@ -196,6 +213,7 @@ class UczelniaAdmin(
                     "pokazuj_punktacje_wewnetrzna",
                     "pokazuj_index_copernicus",
                     "pokazuj_punktacja_snip",
+                    "zwijaj_dlugie_listy_autorow",
                     "pokazuj_status_korekty",
                     "pokazuj_ranking_autorow",
                     "ranking_autorow_bez_kol_naukowych",
@@ -334,6 +352,13 @@ class UczelniaAdmin(
             },
         ),
         (
+            "REST API",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": ("api_v1_wlaczone",),
+            },
+        ),
+        (
             "Deklaracja dostępności",
             {
                 "classes": (
@@ -351,7 +376,6 @@ class UczelniaAdmin(
     )
 
     inlines = [
-        WydzialInline,
         Ukryj_Status_KorektyInline,
         LiczbaNDlaUczelniInline,
     ]

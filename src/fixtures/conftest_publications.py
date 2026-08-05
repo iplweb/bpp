@@ -58,7 +58,11 @@ def _wydawnictwo_ciagle_maker(**kwargs):
     set_default("informacje", "zrodlo-informacje", kwargs)
     set_default("issn", "123-IS-SN-34", kwargs)
     if "jezyk" not in kwargs:
-        jezyk = Jezyk.objects.get(nazwa__icontains="polski")
+        # Nie zakładaj baseline — flush sąsiada bywa go zmiata; twórz gdy brak.
+        jezyk = (
+            Jezyk.objects.filter(nazwa__icontains="polski").first()
+            or Jezyk.objects.create(nazwa="polski", skrot="pol")
+        )
         jezyk.pbn_uid = Language.objects.get_or_create(
             pk="pol",
             language={

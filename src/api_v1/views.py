@@ -72,6 +72,9 @@ Knowledge finds its home.
 
             # Define what goes into each category
             categories_mapping = {
+                "search": [
+                    "szukaj",
+                ],
                 "publications": [
                     "wydawnictwo_zwarte",
                     "wydawnictwo_zwarte_autor",
@@ -92,7 +95,6 @@ Knowledge finds its home.
                     "tytul",
                     "recent_author_publications",
                     "jednostka",
-                    "wydzial",
                     "uczelnia",
                 ],
                 "sources_and_publishers": [

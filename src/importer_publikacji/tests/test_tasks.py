@@ -44,6 +44,13 @@ def test_fetch_session_task_success_sets_status_fetched(fetch_session):
         license_url="",
         keywords=[],
         extra={},
+        patent_number=None,
+        patent_grant_number=None,
+        filing_date=None,
+        grant_date=None,
+        patent_type=None,
+        patent_holder=None,
+        jurisdiction=None,
     )
 
     with patch("importer_publikacji.tasks.get_provider") as mock_get_provider:
@@ -135,6 +142,13 @@ def test_fetch_session_task_processes_authors(fetch_session):
         license_url="",
         keywords=[],
         extra={},
+        patent_number=None,
+        patent_grant_number=None,
+        filing_date=None,
+        grant_date=None,
+        patent_type=None,
+        patent_holder=None,
+        jurisdiction=None,
     )
 
     with patch("importer_publikacji.tasks.get_provider") as mock_get_provider:
@@ -149,6 +163,47 @@ def test_fetch_session_task_processes_authors(fetch_session):
     fetch_session.refresh_from_db()
     assert fetch_session.authors.count() == 2
     assert fetch_session.status == ImportSession.Status.FETCHED
+
+
+@pytest.mark.django_db
+def test_fetch_session_task_stores_patent_fields(fetch_session):
+    """Pola patentowe z FetchedPublication (real dataclass, nie MagicMock)
+    musza przetrwac do session.normalized_data — inaczej _create_patent nie
+    ma z czego uzupelnic numer_zgloszenia/data_zgloszenia/etc w prawdziwym
+    (nie testowym) fetchu."""
+    from importer_publikacji.providers import FetchedPublication
+
+    fake_result = FetchedPublication(
+        raw_data={"bibtex_type": "patent"},
+        title="A New Widget",
+        year=2024,
+        authors=[],
+        publication_type="patent",
+        patent_number="PL123456",
+        patent_holder="ACME Corp",
+        jurisdiction="Poland",
+        patent_type="patent",
+        filing_date="2024-03-15",
+    )
+
+    with patch("importer_publikacji.tasks.get_provider") as mock_get_provider:
+        provider = MagicMock()
+        provider.fetch.return_value = fake_result
+        mock_get_provider.return_value = provider
+
+        fetch_session_task.apply(
+            args=[fetch_session.pk, fetch_session.created_by_id]
+        ).get()
+
+    fetch_session.refresh_from_db()
+    nd = fetch_session.normalized_data
+    assert nd["patent_number"] == "PL123456"
+    assert nd["patent_holder"] == "ACME Corp"
+    assert nd["jurisdiction"] == "Poland"
+    assert nd["patent_type"] == "patent"
+    assert nd["filing_date"] == "2024-03-15"
+    assert nd["patent_grant_number"] is None
+    assert nd["grant_date"] is None
 
 
 @pytest.fixture

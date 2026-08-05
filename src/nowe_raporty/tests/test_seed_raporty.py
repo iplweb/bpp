@@ -19,8 +19,9 @@ def test_seed_pusta_baza_tworzy_komplet():
     call_command("seed_raporty")
 
     assert set(Report.objects.values_list("slug", flat=True)) >= DEFAULT_SLUGS
-    # jedna wspolna tabela
-    assert Table.objects.count() == 1
+    # jedna wspolna tabela (count skope'owany do labela seeda — globalny
+    # count zaklada czysta baze; audyt sekcja 4)
+    assert Table.objects.filter(label="Publikacje autorów").count() == 1
     # tabela ma komplet kolumn (7 z dumpu)
     assert Column.objects.filter(parent__label="Publikacje autorów").count() == 7
 

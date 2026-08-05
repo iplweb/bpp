@@ -1,8 +1,7 @@
 import pytest
 from dbtemplates.models import Template
-from django.db import IntegrityError
-
 from django.contrib.contenttypes.models import ContentType
+from django.db import IntegrityError
 
 from bpp.models import Wydawnictwo_Zwarte
 from bpp.models.szablondlaopisubibliograficznego import (
@@ -24,10 +23,14 @@ def test_nulltest_idx():
 
     if not SzablonDlaOpisuBibliograficznego.objects.filter(model=None).exists():
         # przy ponownym uruchamianiu testow moze byc taka sytuacja
-        SzablonDlaOpisuBibliograficznego.objects.create(template=test_template)
+        SzablonDlaOpisuBibliograficznego.objects.create(
+            nazwa_szablonu=test_template.name
+        )
 
     with pytest.raises(IntegrityError):
-        SzablonDlaOpisuBibliograficznego.objects.create(template=test_template)
+        SzablonDlaOpisuBibliograficznego.objects.create(
+            nazwa_szablonu=test_template.name
+        )
 
 
 @pytest.mark.django_db
@@ -40,10 +43,12 @@ def test_rozne_opisy_rozne_klasy(wydawnictwo_ciagle, wydawnictwo_zwarte):
     # Szablon dla każdej klasy
     try:
         sz = SzablonDlaOpisuBibliograficznego.objects.get(model=None)
-        sz.template = test_template
+        sz.nazwa_szablonu = test_template.name
         sz.save()
     except SzablonDlaOpisuBibliograficznego.DoesNotExist:
-        SzablonDlaOpisuBibliograficznego.objects.create(template=test_template)
+        SzablonDlaOpisuBibliograficznego.objects.create(
+            nazwa_szablonu=test_template.name
+        )
 
     assert wydawnictwo_ciagle.opis_bibliograficzny() == test_template.content
     assert wydawnictwo_zwarte.opis_bibliograficzny() == test_template.content
@@ -51,7 +56,7 @@ def test_rozne_opisy_rozne_klasy(wydawnictwo_ciagle, wydawnictwo_zwarte):
     # Szablon tylko dla zwartych
     SzablonDlaOpisuBibliograficznego.objects.create(
         model=ContentType.objects.get_for_model(Wydawnictwo_Zwarte),
-        template=second_template,
+        nazwa_szablonu=second_template.name,
     )
 
     assert wydawnictwo_ciagle.opis_bibliograficzny() == test_template.content
@@ -100,6 +105,62 @@ def test_opis_bibliograficzny_wydawnictwo_nadrzedne_w_pbn(
 
 
 @pytest.mark.django_db
+def test_opis_bibliograficzny_wydawnictwo_nadrzedne_z_pbn_object_book(
+    wydawnictwo_zwarte,
+):
+    """Rozdział zaimportowany z PBN: rodzic siedzi w surowym JSON-ie
+    publikacji (``object.book.title``), bez ustawionego FK BPP ani kurowanego
+    FK PBN. Opis i tak pokazuje 'W: tytuł' (ticket #329)."""
+    pbn_pub = Publication.objects.create(
+        mongoId="test-pbn-rozdzial-id",
+        versions=[
+            {
+                "current": True,
+                "object": {"book": {"title": "Rodzic z surowego PBN"}},
+            }
+        ],
+    )
+    wydawnictwo_zwarte.pbn_uid = pbn_pub
+    wydawnictwo_zwarte.wydawnictwo_nadrzedne = None
+    wydawnictwo_zwarte.wydawnictwo_nadrzedne_w_pbn = None
+    wydawnictwo_zwarte.informacje = ""
+    wydawnictwo_zwarte.zrodlo = None
+    wydawnictwo_zwarte.save()
+
+    opis = wydawnictwo_zwarte.opis_bibliograficzny()
+    assert "W: Rodzic z surowego PBN." in opis
+
+
+@pytest.mark.django_db
+def test_opis_bibliograficzny_fk_bpp_wygrywa_nad_pbn_object_book(
+    wydawnictwo_zwarte,
+):
+    """Gdy ustawiony jest FK BPP, ma pierwszeństwo nad ``object.book`` z PBN."""
+    parent = Wydawnictwo_Zwarte.objects.create(
+        tytul_oryginalny="Rodzic w BPP",
+        charakter_formalny=wydawnictwo_zwarte.charakter_formalny,
+        typ_kbn=wydawnictwo_zwarte.typ_kbn,
+        jezyk=wydawnictwo_zwarte.jezyk,
+        status_korekty=wydawnictwo_zwarte.status_korekty,
+        rok=wydawnictwo_zwarte.rok,
+    )
+    pbn_pub = Publication.objects.create(
+        mongoId="test-pbn-rozdzial-id-2",
+        versions=[{"current": True, "object": {"book": {"title": "Rodzic z PBN"}}}],
+    )
+    wydawnictwo_zwarte.wydawnictwo_nadrzedne = parent
+    wydawnictwo_zwarte.pbn_uid = pbn_pub
+    wydawnictwo_zwarte.wydawnictwo_nadrzedne_w_pbn = None
+    wydawnictwo_zwarte.informacje = ""
+    wydawnictwo_zwarte.zrodlo = None
+    wydawnictwo_zwarte.save()
+
+    opis = wydawnictwo_zwarte.opis_bibliograficzny()
+    assert "W: Rodzic w BPP." in opis
+    assert "Rodzic z PBN" not in opis
+
+
+@pytest.mark.django_db
 def test_opis_bibliograficzny_bez_wydawnictwa_nadrzednego(
     wydawnictwo_zwarte,
 ):
@@ -112,3 +173,18 @@ def test_opis_bibliograficzny_bez_wydawnictwa_nadrzednego(
 
     opis = wydawnictwo_zwarte.opis_bibliograficzny()
     assert "W:" not in opis
+
+
+@pytest.mark.django_db
+def test_clean_odrzuca_nieistniejacy_szablon():
+    from django.core.exceptions import ValidationError
+
+    sz = SzablonDlaOpisuBibliograficznego(nazwa_szablonu="nie-istnieje-xyz.html")
+    with pytest.raises(ValidationError):
+        sz.clean()
+
+
+@pytest.mark.django_db
+def test_clean_przepuszcza_szablon_z_dysku():
+    sz = SzablonDlaOpisuBibliograficznego(nazwa_szablonu="opis_bibliograficzny.html")
+    sz.clean()  # nie rzuca

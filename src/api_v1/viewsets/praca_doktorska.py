@@ -20,6 +20,10 @@ class Praca_DoktorskaViewSet(UkryjStatusyKorektyMixin, viewsets.ReadOnlyModelVie
     queryset = (
         Praca_Doktorska.objects.exclude(nie_eksportuj_przez_api=True)
         .order_by("pk")
+        # status_korekty to jedyny StringRelatedField, który Praca_Doktorska
+        # faktycznie ma: pola openaccess_* są zadeklarowane w
+        # WydawnictwoSerializerMixin, ale model ich nie posiada (DRF pomija je
+        # przez SkipField), więc nie ma tu czego dojoinowywać.
         .select_related("status_korekty")
         .prefetch_related("slowa_kluczowe")
     )

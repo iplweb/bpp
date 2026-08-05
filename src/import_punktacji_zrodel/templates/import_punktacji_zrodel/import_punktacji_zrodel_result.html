@@ -1,0 +1,24 @@
+{# Fragment wyniku (liveops result_template_name). Renderowany po p.result() #}
+{# jako OOB-swap #op-result oraz przy wejściu na zakończoną operację. #}
+{# Kontekst: operation + klucze z result_context (total, do_aktualizacji, #}
+{# niedopasowane, duplikaty, byl_dry_run, rok). #}
+<div class="panel callout {% if byl_dry_run %}warning{% else %}success{% endif %}">
+    <h3>
+        <span class="fi-check"></span>
+        {% if byl_dry_run %}Podgląd gotowy{% else %}Import zakończony{% endif %}
+    </h3>
+    <p>
+        Przetworzono wierszy: <strong>{{ total }}</strong>,
+        do aktualizacji: <strong>{{ do_aktualizacji }}</strong>,
+        niedopasowanych: <strong>{{ niedopasowane }}</strong>{% if duplikaty %},
+        duplikatów: <strong>{{ duplikaty }}</strong>{% endif %}.
+    </p>
+    {% if byl_dry_run %}
+        <p>To był <strong>podgląd</strong> — nic nie zapisano do bazy. Zatwierdzić
+            zapis możesz na stronie pełnych wyników.</p>
+    {% endif %}
+    <a href="{% url 'import_punktacji_zrodel:importpunktacjizrodel-results' operation.pk %}"
+       class="button">
+        <span class="fi-list"></span> Zobacz pełne wyniki importu
+    </a>
+</div>

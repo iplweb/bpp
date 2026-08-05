@@ -37,6 +37,41 @@ def test_import_session_admin_list(admin_client, importer_user):
 
 
 @pytest.mark.django_db
+def test_authors_display_escapuje_html_w_nazwisku(importer_user):
+    """Audyt bezpieczeństwa: nazwisko importowanego autora z HTML nie może
+    trafić do panelu admina jako nieescapowany markup (stored XSS). Dane
+    autora pochodzą z pliku importu (BibTeX) bez sanityzacji.
+    """
+    from django.contrib.admin.sites import site
+
+    from importer_publikacji.admin import ImportSessionAdmin
+    from importer_publikacji.models import ImportedAuthor, ImportSession
+
+    session = ImportSession.objects.create(
+        created_by=importer_user,
+        provider_name="BibTeX",
+        identifier="xss_key",
+        status=ImportSession.Status.COMPLETED,
+        raw_data={},
+        normalized_data={},
+    )
+    ImportedAuthor.objects.create(
+        session=session,
+        order=0,
+        family_name="<img src=x onerror=alert(1)>",
+        given_name="Jan",
+        match_status=ImportedAuthor.MatchStatus.UNMATCHED,
+    )
+
+    html = str(ImportSessionAdmin(ImportSession, site).authors_display(session))
+
+    # Payload zescapowany, a nie żywy tag; legalny markup tabeli pozostaje.
+    assert "<img" not in html
+    assert "&lt;img" in html
+    assert "<td>" in html
+
+
+@pytest.mark.django_db
 def test_import_session_admin_detail(admin_client, importer_user):
     """Test szczegółów sesji importu w adminie."""
     from importer_publikacji.models import ImportedAuthor, ImportSession

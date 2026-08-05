@@ -1,14 +1,13 @@
 import os
-import time
 
 import pytest
 from django.urls import reverse
 from model_bakery import baker
 from playwright.sync_api import Page
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from bpp.models import Uczelnia
 from django_bpp.playwright_util import proper_click_element, wait_for_page_load
+from import_dyscyplin.models import Import_Dyscyplin
 
 
 @pytest.mark.timeout(300)
@@ -39,46 +38,18 @@ def test_integracyjny(admin_page: Page, channels_live_server, settings):  # noqa
         admin_page.click("#id_submit")
         wait_for_page_load(admin_page)
 
-        body_text = admin_page.evaluate("document.body.textContent")
-
-        # Check if modal appears or we're already redirected. If neither shows
-        # up within the timeout, fall through to the manual fallback below —
-        # PlaywrightTimeoutError here is expected, not a test failure.
-        try:
-            admin_page.wait_for_function(
-                """() => {
-                    const modal = document.querySelector('#modal1[aria-hidden="false"]');
-                    const onOkreslKolumny = window.location.href.includes('okresl-kolumny');
-                    return modal || onOkreslKolumny;
-                }""",
-                timeout=5000,
-            )
-        except PlaywrightTimeoutError:
-            pass
-
-        # Check if we need to wait for redirect or should navigate manually
+        # Per-test settings changes live in the pytest process, not in the
+        # already-running Daphne subprocess. Its AJAX-triggered Celery task has
+        # no worker here, so waiting for it always burns two 5-second fallbacks.
+        # Run the same model operation synchronously and continue deterministically.
         current_url = admin_page.url
-        if "okresl-kolumny" in current_url:
-            pass  # Already on the right page
-        elif "Plik został dodany do systemu" in body_text:
-            # Poll the DB for state change instead of sleeping for a fixed
-            # 5s — when CELERY_TASK_ALWAYS_EAGER works, the task is already
-            # done by the time the response comes back, and we want to exit
-            # immediately. Up to 5s safety margin if eager dispatch raced
-            # with on_commit.
+        if "okresl-kolumny" not in current_url:
+            assert (
+                "Plik został dodany do systemu"
+                in admin_page.locator("body").inner_text()
+            )
             import_dyscyplin_id = current_url.rstrip("/").split("/")[-1]
-            from import_dyscyplin.models import Import_Dyscyplin
-
-            deadline = time.monotonic() + 5
-            while time.monotonic() < deadline:
-                obj = Import_Dyscyplin.objects.get(pk=import_dyscyplin_id)
-                if obj.stan != "nowy":
-                    break
-                time.sleep(0.1)
-            else:
-                obj = Import_Dyscyplin.objects.get(pk=import_dyscyplin_id)
-
-            # If task didn't run, call it manually (test workaround for Celery eager mode)
+            obj = Import_Dyscyplin.objects.get(pk=import_dyscyplin_id)
             if obj.stan == "nowy":
                 try:
                     obj.stworz_kolumny()
@@ -127,9 +98,6 @@ def test_integracyjny(admin_page: Page, channels_live_server, settings):  # noqa
             else:
                 # We're on detail page, wait for it to fully load
                 wait_for_page_load(admin_page)
-
-                # Check if we need to trigger processing manually
-                from import_dyscyplin.models import Import_Dyscyplin
 
                 obj = Import_Dyscyplin.objects.get(
                     pk=admin_page.url.rstrip("/").split("/")[-1]

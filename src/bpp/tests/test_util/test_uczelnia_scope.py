@@ -35,6 +35,7 @@ def test_scope_dwie_uczelnie_filtruje(
     jednostka_uczelnia2,
     autor_uczelnia1,
     autor_uczelnia2,
+    typy_odpowiedzialnosci,
 ):
     w1 = baker.make("bpp.Wydawnictwo_Ciagle", tytul_oryginalny="MOJA")
     w1.dodaj_autora(autor_uczelnia1, jednostka_uczelnia1)

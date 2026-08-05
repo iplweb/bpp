@@ -160,6 +160,12 @@ def _mock_response(text="", status_code=200, json_data=None):
     resp = MagicMock()
     resp.text = text
     resp.status_code = status_code
+    resp.headers = {}
+    # ``safe_get`` streamuje ciało (stream=True) i wczytuje je przez
+    # ``iter_content`` z limitem rozmiaru — mock musi je dostarczyć.
+    resp.iter_content = lambda chunk_size=1: iter(
+        [text.encode("utf-8")] if text else []
+    )
     resp.raise_for_status = MagicMock()
     if json_data is not None:
         resp.json.return_value = json_data

@@ -249,7 +249,7 @@ class PublicationAdmin(
 
         default_jednostka = (
             Jednostka.objects.filter(
-                uczelnia=uczelnia, widoczna=True, wchodzi_do_raportow=True
+                uczelnia=uczelnia, widoczna=True, wchodzi_do_rankingu_autorow=True
             )
             .exclude(pk__in=[-1, uczelnia.obca_jednostka_id])
             .first()

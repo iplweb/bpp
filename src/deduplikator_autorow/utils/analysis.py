@@ -166,6 +166,35 @@ def _ocena_nazwiska(glowny_autor: Autor, duplikat: Autor) -> tuple[int, list[str
     return 0, []
 
 
+def _poprzednie_set(poprzednie_nazwiska: str | None) -> set[str]:
+    """Zbiór znormalizowanych (strip+lower) członów listy CSV poprzednich nazwisk."""
+    if not poprzednie_nazwiska:
+        return set()
+    return {p.strip().lower() for p in poprzednie_nazwiska.split(",") if p.strip()}
+
+
+def _ocena_poprzednich_nazwisk(
+    glowny_autor: Autor, duplikat: Autor
+) -> tuple[int, list[str]]:
+    """Analiza poprzednich nazwisk (FD#407).
+
+    Nazwisko jednego autora figuruje w poprzednich nazwiskach drugiego (zmiana
+    nazwiska: panieńskie → po mężu, dwuczłonowe → jednoczłonowe) albo obaj mają
+    wspólne poprzednie nazwisko.
+    """
+    glw_naz = (glowny_autor.nazwisko or "").strip().lower()
+    dup_naz = (duplikat.nazwisko or "").strip().lower()
+    glw_prev = _poprzednie_set(glowny_autor.poprzednie_nazwiska)
+    dup_prev = _poprzednie_set(duplikat.poprzednie_nazwiska)
+
+    if (glw_naz and glw_naz in dup_prev) or (dup_naz and dup_naz in glw_prev):
+        return 40, ["nazwisko figuruje w poprzednich nazwiskach drugiego autora"]
+    wspolne = glw_prev & dup_prev
+    if wspolne:
+        return 35, [f"wspólne poprzednie nazwisko ({', '.join(sorted(wspolne))})"]
+    return 0, []
+
+
 def _ocena_zamiany_imienia_nazwiska(
     glowny_autor: Autor, duplikat: Autor
 ) -> tuple[int, list[str]]:
@@ -315,6 +344,7 @@ _OCENY = (
     _ocena_tytulu,
     _ocena_orcid,
     _ocena_nazwiska,
+    _ocena_poprzednich_nazwisk,
     _ocena_zamiany_imienia_nazwiska,
     _ocena_imion,
     _ocena_temporalna,

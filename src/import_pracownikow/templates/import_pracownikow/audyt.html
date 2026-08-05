@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block extratitle %}Import pracowników i jednostek — log zmian{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "import_pracownikow:index" %}">import pracowników i jednostek</a></li>
+    <li><a href="{% url "import_pracownikow:przeglad" parent_object.pk %}">przegląd importu</a></li>
+    <li class="current">log zmian</li>
+{% endblock %}
+
+{% block content %}
+    <p>
+        <a href="{% url "import_pracownikow:przeglad" parent_object.pk %}">&larr; wróć do przeglądu</a>
+    </p>
+    <h1>Log zmian (audyt)</h1>
+    <p>
+        Co import faktycznie zmienił w bazie: utworzenia (autorzy, jednostki,
+        tytuły), zmiany danych autorów i powiązań, przepięcia dorobku oraz
+        odpięcia. Wiersze bez zmian nie są pokazywane.
+    </p>
+
+    {# DataTables: biblioteki + polski język ładuje globalnie bare.html. #}
+
+    {# Wykonane odpięcia (Ludzie spoza XLS zakończeni w tej integracji). #}
+    {% if odpiecia_wykonane %}
+        <h2><span class="fi-link"></span> Zakończone zatrudnienia (odpięcia)</h2>
+        <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Autor</th>
+                    <th>Jednostka</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for odp in odpiecia_wykonane %}
+                    <tr>
+                        <td>
+                            {% include "import_pracownikow/partials/_autor_dane.html" with autor=odp.autor_jednostka.autor pbn_inst=odp.autor_z_pbn_inst admin_link=True %}
+                        </td>
+                        <td title="{{ odp.autor_jednostka.jednostka.skrot }}">{{ odp.autor_jednostka.jednostka.nazwa }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    {% endif %}
+
+    <h2><span class="fi-list"></span> Zmiany per wiersz</h2>
+    {# Poz. 10: aktywne wyszukiwanie + stronicowanie po stronie klienta #}
+    {# (DataTables) zamiast serwerowej paginacji. Wszystkie wiersze w DOM. #}
+    <div style="overflow-x: auto;">
+        <table id="tabela-audyt">
+            <thead>
+                <tr>
+                    <th>Autor</th>
+                    <th>Jednostka</th>
+                    <th>Zmiany</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in wiersze %}
+                    {% if row.log_zmian_lista %}
+                        <tr>
+                            <td>
+                                {% include "import_pracownikow/partials/_autor_dane.html" with autor=row.autor pbn_inst=row.autor_z_pbn_inst admin_link=True %}
+                            </td>
+                            <td>
+                                {% if row.jednostka %}
+                                    <span class="label secondary"
+                                          title="{{ row.jednostka.skrot }}">{{ row.jednostka.nazwa }}</span>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td>
+                                <ul>
+                                    {% for elem in row.log_zmian_lista %}
+                                        <li>{{ elem }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </td>
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+    $(function () {
+        // Audyt jest read-only po integracji — pełne DataTables (search +
+        // paging), bez per-wierszowego HTMX do zachowania. Kolumna „Zmiany”
+        // (index 2) bez sortowania.
+        $('#tabela-audyt').DataTable({
+            pageLength: 25,
+            order: [],
+            columnDefs: [{orderable: false, targets: [2]}]
+        });
+    });
+    </script>
+{% endblock %}

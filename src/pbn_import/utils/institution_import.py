@@ -1,6 +1,6 @@
 """Institution import utilities"""
 
-from bpp.models import Jednostka, Jednostka_Wydzial, Wydzial
+from bpp.models import Jednostka, Jednostka_Rodzic
 
 from .base import ImportStepBase
 
@@ -20,7 +20,10 @@ def zrob_skrot(s: str) -> str:
 
 
 def znajdz_lub_utworz_wydzial_domyslny(uczelnia, nazwa_domyslna="Wydział Domyślny"):
-    """Szukaj wydziału zaczynającego się od podanej nazwy (case insensitive).
+    """Szukaj jednostki TOP-LEVEL (rola wydziału) zaczynającej się od podanej
+    nazwy (case insensitive); utwórz jeśli brak.
+
+    Faza C (#438): „wydział" = jednostka z ``parent IS NULL``.
 
     Args:
         uczelnia: Obiekt Uczelnia
@@ -28,28 +31,28 @@ def znajdz_lub_utworz_wydzial_domyslny(uczelnia, nazwa_domyslna="Wydział Domyś
             znaleziono
 
     Returns:
-        tuple: (wydzial, created)
+        tuple: (jednostka_root, created)
     """
-    wydzial = Wydzial.objects.filter(
+    wydzial = Jednostka.objects.filter(
         nazwa__istartswith=nazwa_domyslna,
         uczelnia=uczelnia,
+        parent__isnull=True,
     ).first()
     if wydzial:
         return wydzial, False
 
-    # Multi-hosted: Wydzial.nazwa i .skrot są unique=True GLOBALNIE, a wszystkie
+    # Multi-hosted: Jednostka.nazwa i .skrot są unique=True GLOBALNIE, a wszystkie
     # uczelnie współdzielą jedną bazę. Nazwę/skrót tworzonego wydziału sufiksujemy
     # skrótem uczelni, żeby druga uczelnia nie wpadła w IntegrityError na "Wydział
     # Domyślny". Ścieżka FIND (istartswith) i tak matchuje legacy rekordy bez
     # sufiksu, więc istniejące instalacje nie widzą churnu.
     return (
-        Wydzial.objects.create(
+        Jednostka.objects.create(
             nazwa=f"{nazwa_domyslna} {uczelnia.skrot}",
-            # Wydzial.skrot to varchar(10) — przycinamy, bo uczelnia.skrot bywa
-            # dłuższy. Realne skróty uczelni są krótkie, więc forma czytelna
-            # przeżywa; przycięcie chroni tylko przed patologicznie długim skrótem.
-            skrot=f"{zrob_skrot(nazwa_domyslna)}-{uczelnia.skrot}"[:10],
+            # Jednostka.skrot to varchar(128) — przycinamy defensywnie.
+            skrot=f"{zrob_skrot(nazwa_domyslna)}-{uczelnia.skrot}"[:128],
             uczelnia=uczelnia,
+            parent=None,
         ),
         True,
     )
@@ -105,15 +108,19 @@ def znajdz_lub_utworz_obca_jednostke(uczelnia, wydzial=None):
        ``Jednostka.nazwa``/``skrot`` są ``unique=True`` GLOBALNIE, a w multi-hosted
        wszystkie uczelnie współdzielą jedną bazę (stąd kolizja "Obca jednostka").
 
-    Następnie (zawsze, idempotentnie): podpięcie do wydziału tej uczelni i
-    ustawienie ``uczelnia.obca_jednostka``. ``wydzial`` można podać jawnie (krok
-    importu podpina obcą jednostkę pod TEN sam wydział co jednostkę domyślną);
-    przy ``None`` helper sam ustala/tworzy "Wydział Domyślny" uczelni. Obca
-    jednostka i wydział należą do tej samej uczelni, więc trigger
-    ``bpp_jednostka_wydzial_sprawdz_uczelnia_id`` przechodzi.
+    Następnie (zawsze, idempotentnie) ustawia ``uczelnia.obca_jednostka``.
+
+    Podpięcie do wydziału jest OPCJONALNE i wykonuje się TYLKO gdy podano
+    jawny ``wydzial``: krok importu (``InstitutionImporter.run``) buduje realne
+    drzewo wydział+jednostka i podpina obcą pod TEN sam wydział co jednostkę
+    domyślną. Przy ``wydzial=None`` (np. komenda ``create_obca_jednostka`` na
+    uczelni bez wydziałów) obca jednostka zostaje czystym węzłem-root — nie
+    tworzymy "Wydziału Domyślnego" ani metryczki ``Jednostka_Rodzic``, bo gate
+    ``sprawdz_obca_jednostka`` już tego nie wymaga (triggery spójności uczelni
+    zdjęto w Fazie B, #438).
 
     Zwraca ``(jednostka, created)`` — ``created`` mówi tylko o utworzeniu samej
-    Jednostki (krok 3), nie o ubocznym utworzeniu wydziału / linku / FK.
+    Jednostki (krok 3), nie o ubocznym utworzeniu linku / FK.
     """
     obca = None
     created = False
@@ -140,11 +147,13 @@ def znajdz_lub_utworz_obca_jednostke(uczelnia, wydzial=None):
         )
         created = True
 
-    # Podepnij do wydziału tej uczelni (idempotentnie). Oba obiekty należą do
-    # `uczelnia`, więc trigger spójności uczelni przechodzi.
-    if wydzial is None:
-        wydzial, _ = znajdz_lub_utworz_wydzial_domyslny(uczelnia)
-    Jednostka_Wydzial.objects.get_or_create(jednostka=obca, wydzial=wydzial)
+    # Podpięcie do wydziału TYLKO gdy caller poda jawny `wydzial` (ścieżka
+    # importera). Bez niego (komenda / uczelnia bez wydziałów) obca jednostka
+    # zostaje węzłem-root — gate `sprawdz_obca_jednostka` nie wymaga linku.
+    if wydzial is not None:
+        # Faza C (#438): „wydział" to już root-Jednostka — podpinamy obcą
+        # jednostkę wprost pod niego (MPTT ``parent``).
+        Jednostka_Rodzic.objects.get_or_create(jednostka=obca, parent=wydzial)
 
     if uczelnia.obca_jednostka_id != obca.pk:
         uczelnia.obca_jednostka = obca
@@ -165,9 +174,12 @@ def sprawdz_obca_jednostka(uczelnia):
 
     - FK ustawiony,
     - target należy do tej uczelni,
-    - ``skupia_pracownikow is False`` (invariant z ``Uczelnia.clean()``),
-    - obca jednostka podpięta do wydziału tej samej uczelni (inaczej import
-      trafiłby na trigger przy linkowaniu).
+    - ``skupia_pracownikow is False`` (invariant z ``Uczelnia.clean()``).
+
+    Pozycja obcej jednostki w strukturze (wydział / rodzic) świadomie NIE jest
+    sprawdzana — uczelnie mogą nie używać wydziałów, a triggery spójności
+    uczelni, które dawniej wymuszały podpięcie, zdjęto w Fazie B (#438,
+    migracja 0455). Obca jednostka jako czysty węzeł-root jest w pełni OK.
     """
     napraw = " Uruchom: python src/manage.py create_obca_jednostka"
 
@@ -183,14 +195,6 @@ def sprawdz_obca_jednostka(uczelnia):
         return (
             "Obca jednostka ma skupia_pracownikow=True — musi być faktycznie "
             "obca." + napraw
-        )
-    podpieta = Jednostka_Wydzial.objects.filter(
-        jednostka=obca,
-        wydzial__uczelnia=uczelnia,
-    ).exists()
-    if not podpieta:
-        return (
-            "Obca jednostka nie jest podpięta do żadnego wydziału tej uczelni." + napraw
         )
     return None
 
@@ -301,9 +305,10 @@ class InstitutionImporter(ImportStepBase):
         if created:
             self.log("info", "Created default unit: Jednostka Domyślna")
 
-        # Link unit to department
-        jw, created = Jednostka_Wydzial.objects.get_or_create(
-            jednostka=jednostka, wydzial=wydzial
+        # Link unit to department. Faza C (#438): „wydział" to już root-Jednostka
+        # — jednostka domyślna wisi wprost pod nim (MPTT ``parent``).
+        jw, created = Jednostka_Rodzic.objects.get_or_create(
+            jednostka=jednostka, parent=wydzial
         )
         if created:
             self.log(

@@ -1,9 +1,15 @@
 """Faza A (#438) — testy anty-wyciekowe dla kanałów zwracających Jednostka.
 
-Trzy kanały nie mogą zwracać jednostek `widoczna=False`:
-- API (`api_v1.viewsets.struktura.JednostkaViewSet`)
+Dwa kanały nie mogą zwracać jednostek `widoczna=False`:
 - sitemapa (`django_bpp.sitemaps.JednostkaSitemap`)
 - publiczny autocomplete (`bpp.views.autocomplete.units.PublicJednostkaAutocomplete`)
+
+UWAGA — API (`api_v1.viewsets.struktura.JednostkaViewSet`) CELOWO wypadło z
+tej listy. Zgłoszenie UMLub pokazało, że jednostki obce mają `widoczna=False`,
+ale autorzy obcy afiliują się do nich, więc serializery API emitują do nich
+hiperłącza — bramkowanie API widocznością robiło z tych linków 404 i wywalało
+eksport. Od teraz API bramkuje wyłącznie jawny `nie_eksportuj_przez_api`
+(patrz `api_v1/tests/test_struktura.py`), a nie widoczność.
 
 Bazowy `JednostkaAutocomplete` (`.all()`) jest natomiast celowo
 nieprzefiltrowany co do `widoczna` — patrz test
@@ -16,6 +22,7 @@ jednostki, endpoint `jednostka-autocomplete` MUSI wymagać zalogowania
 import pytest
 from model_bakery import baker
 
+from api_v1.viewsets.struktura import JednostkaViewSet
 from bpp.models import Jednostka
 from bpp.views.autocomplete.units import (
     JednostkaAutocomplete,
@@ -35,12 +42,20 @@ def test_sitemap_pomija_niewidoczne():
 
 
 @pytest.mark.django_db
-def test_api_jednostka_pomija_niewidoczne(client):
-    baker.make(Jednostka, widoczna=False, nazwa="UkrytaAPI")
-    resp = client.get("/api/v1/jednostka/")
-    assert resp.status_code == 200
-    nazwy = [r["nazwa"] for r in resp.json()["results"]]
-    assert "UkrytaAPI" not in nazwy
+def test_api_jednostka_pokazuje_niewidoczne():
+    """ODWRÓCENIE poprzedniej reguły (zgłoszenie UMLub): API NIE bramkuje już
+    widocznością — jednostka `widoczna=False` z domyślnym
+    `nie_eksportuj_przez_api=False` MUSI być dostępna przez API (inaczej
+    hiperłącza z autorów obcych dają 404). Bramkuje wyłącznie jawny
+    `nie_eksportuj_przez_api`; pełne pokrycie w `api_v1/tests/test_struktura.py`.
+    """
+    ukryta = baker.make(Jednostka, widoczna=False, nazwa="UkrytaAPI")
+    zablokowana = baker.make(
+        Jednostka, widoczna=True, nie_eksportuj_przez_api=True, nazwa="Zablokowana"
+    )
+    widoczne_w_api = set(JednostkaViewSet().queryset.values_list("pk", flat=True))
+    assert ukryta.pk in widoczne_w_api
+    assert zablokowana.pk not in widoczne_w_api
 
 
 @pytest.mark.django_db

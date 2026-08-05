@@ -16,6 +16,9 @@ def test_Wydawnictwo_Zwarte_Autor_Admin_forwarding_works(
 ):
     rok = 2022
 
+    # Defensywny guard: baseline lub wcześniejszy test mógł zostawić wiersze
+    # Autor_Dyscyplina — czyścimy, by poniższy create dał deterministyczny
+    # stan (mirror toz/tamze).
     Autor_Dyscyplina.objects.all().delete()
 
     Autor_Dyscyplina.objects.create(
@@ -41,13 +44,17 @@ def test_Wydawnictwo_Zwarte_Autor_Admin_forwarding_works(
     # Wait for rok field to exist (it's a hidden input, so we don't check visibility)
     admin_page.wait_for_selector("[name='rok']", state="attached")
 
+    # NIE ZASTĘPOWAĆ przez set_select2_value: ten test sprawdza prawdziwe
+    # wpisywanie w Select2 oraz przekazanie pól autor/rok do endpointu.
     select_select2_autocomplete(
         admin_page, "id_dyscyplina_naukowa", dyscyplina1.nazwa, timeout=30000
     )
 
-    # Submit form
-    admin_page.click("input[type=submit][name='_save']")
-    admin_page.wait_for_load_state("domcontentloaded", timeout=10000)
+    # Submit form. Zapis przekierowuje na changelist — blokujemy do
+    # zakończenia nawigacji, żeby kolejne waity nie wracały od razu na
+    # STAREJ stronie (race z domcontentloaded).
+    with admin_page.expect_navigation(wait_until="domcontentloaded"):
+        admin_page.click("input[type=submit][name='_save']")
 
     # Check success message
     admin_page.wait_for_function(

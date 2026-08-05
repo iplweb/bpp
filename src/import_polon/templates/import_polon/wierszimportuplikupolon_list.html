@@ -171,34 +171,16 @@
             <h2>Zmiany nie zostały wprowadzone do bazy danych.</h2> Import został uruchomiony bez opcji zapisywania
             danych do bazy, więc to co widzisz poniżej, to informacja, która byłaby wprowadzona do bazy, gdyby
             zaznaczono opcję zapisywania zmian do bazy.
+            {% if object.finished_successfully %}
+                <p style="margin-top: 1rem; margin-bottom: 0;">
+                    <a href="{% url 'import_polon:importplikupolon-zapisz-do-bazy' object.pk %}"
+                       class="button alert" style="margin-bottom: 0;">
+                        <span class="fi-save"></span> Zapisz ten import do bazy danych
+                    </a>
+                </p>
+            {% endif %}
         </div>
     {% endif %}
-
-    <button id="toggle-details" class="button small secondary">
-        <span class="fi-info"></span> <span id="toggle-details-text">Pokaż</span> szczegóły operacji
-    </button>
-    <div id="operation-details-container" style="display: none; margin-top: 0.5rem;">
-        {% include "long_running/operation_details.html" %}
-    </div>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const toggleDetailsBtn = document.getElementById('toggle-details');
-            const toggleDetailsText = document.getElementById('toggle-details-text');
-            const detailsContainer = document.getElementById('operation-details-container');
-
-            if (toggleDetailsBtn) {
-                toggleDetailsBtn.addEventListener('click', function() {
-                    if (detailsContainer.style.display === 'none') {
-                        detailsContainer.style.display = 'block';
-                        toggleDetailsText.textContent = 'Ukryj';
-                    } else {
-                        detailsContainer.style.display = 'none';
-                        toggleDetailsText.textContent = 'Pokaż';
-                    }
-                });
-            }
-        });
-    </script>
 
     {% if object.finished_successfully and unmatched_count > 0 %}
         <div class="panel callout secondary">

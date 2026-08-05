@@ -85,15 +85,20 @@ def _auto_match_single_author(session, author_data, order, year):
     - zapisany_jako domyślnie pre-fillowane z family+given dostawcy,
     - bulk_create kandydatów do ImportedAuthor_Candidate (UI modala).
     """
-    family = author_data.get("family", "")
-    given = author_data.get("given", "")
+    # Defense-in-depth: przycinamy do limitow kolumn, zeby zaden wpis (np.
+    # zle sparsowane pole author) nie wywalil calego importu przez
+    # StringDataRightTruncation (Freshdesk #344). Root-cause naprawiony jest
+    # w _parse_authors; tu jest siatka bezpieczenstwa.
+    family = (author_data.get("family") or "")[:255]
+    given = (author_data.get("given") or "")[:255]
+    orcid = (author_data.get("orcid") or "")[:50]
     imported = ImportedAuthor.objects.create(
         session=session,
         order=order,
         family_name=family,
         given_name=given,
-        orcid=author_data.get("orcid", ""),
-        zapisany_jako=f"{family} {given}".strip(),
+        orcid=orcid,
+        zapisany_jako=f"{family} {given}".strip()[:512],
     )
 
     result = Komparator.porownaj_author(author_data)
@@ -183,16 +188,34 @@ def _find_matching_zgloszenie(session):
     return None
 
 
+def _zgloszenie_dla_prefilla(session):
+    """Zgłoszenie, z którego prefill ma brać dyscypliny.
+
+    Gdy sesja jest **związana** ze zgłoszeniem (FD#443: jawny wybór
+    operatora albo auto-wiązanie po DOI), prefill używa go wprost —
+    inaczej dyscypliny mogłyby przyjść z innego zgłoszenia niż to, które
+    import domknie (heurystyka ``_find_matching_zgloszenie`` dopasowuje
+    też po tytule).
+
+    Heurystyka zostaje wyłącznie jako fallback dla sesji niezwiązanych —
+    ich zachowanie jest bez zmian.
+    """
+    if session.zgloszenie_id:
+        return session.zgloszenie
+    return _find_matching_zgloszenie(session)
+
+
 def _prefill_dyscypliny_z_zgloszen(session):
     """Uzupełnij brakujące dyscypliny z danych zgłoszeń publikacji.
 
-    Szuka pasującego Zgloszenie_Publikacji (po DOI/tytule)
-    i kopiuje dyscypliny dla autorów, którym brakuje.
-    Nigdy nie nadpisuje istniejących wartości.
+    Bierze zgłoszenie związane z sesją, a gdy takiego nie ma — szuka
+    pasującego ``Zgloszenie_Publikacji`` heurystycznie (po DOI/tytule).
+    Kopiuje dyscypliny dla autorów, którym brakuje. Nigdy nie nadpisuje
+    istniejących wartości.
     """
     from zglos_publikacje.models import Zgloszenie_Publikacji_Autor
 
-    zgloszenie = _find_matching_zgloszenie(session)
+    zgloszenie = _zgloszenie_dla_prefilla(session)
     if not zgloszenie:
         return
 
@@ -220,6 +243,45 @@ def _prefill_dyscypliny_z_zgloszen(session):
 
 
 @transaction.atomic
+def _create_single_author(imported, obca):
+    """Utwórz (lub dopasuj po ORCID) rekord ``Autor`` dla pojedynczego
+    ``ImportedAuthor`` i przypisz go do obcej jednostki.
+
+    Wspólny rdzeń dla masowego ``_create_unmatched_authors`` oraz
+    per-wierszowego ``AuthorCreateNewView`` ("Utwórz nowego" z modala
+    edycji). Trzymane w jednym miejscu, żeby logika dedupowania po ORCID
+    nie rozjechała się między ścieżkami.
+
+    Jeśli dostawca podał ORCID i istnieje już ``Autor`` z tym ORCID-em,
+    dopasowuje istniejącego zamiast tworzyć duplikat.
+    """
+    orcid = imported.orcid.strip() or None
+
+    if orcid:
+        existing = Autor.objects.filter(orcid=orcid).first()
+        if existing:
+            existing.dodaj_jednostke(obca)
+            imported.matched_autor = existing
+            imported.matched_jednostka = obca
+            imported.match_status = ImportedAuthor.MatchStatus.MANUAL
+            imported.save()
+            return existing
+
+    autor = Autor.objects.create(
+        imiona=imported.given_name,
+        nazwisko=imported.family_name,
+        orcid=orcid,
+    )
+    autor.dodaj_jednostke(obca)
+
+    imported.matched_autor = autor
+    imported.matched_jednostka = obca
+    imported.match_status = ImportedAuthor.MatchStatus.MANUAL
+    imported.save()
+    return autor
+
+
+@transaction.atomic
 def _create_unmatched_authors(session, obca):
     """Utwórz rekordy Autor dla niedopasowanych
     autorów i przypisz do obcej jednostki."""
@@ -227,28 +289,4 @@ def _create_unmatched_authors(session, obca):
         match_status=(ImportedAuthor.MatchStatus.UNMATCHED)
     )
     for imported in unmatched:
-        orcid = imported.orcid.strip() or None
-
-        # Jeśli ORCID podany i istnieje Autor
-        # z takim ORCID -- dopasuj istniejącego
-        if orcid:
-            existing = Autor.objects.filter(orcid=orcid).first()
-            if existing:
-                imported.matched_autor = existing
-                imported.matched_jednostka = obca
-                imported.match_status = ImportedAuthor.MatchStatus.MANUAL
-                existing.dodaj_jednostke(obca)
-                imported.save()
-                continue
-
-        autor = Autor.objects.create(
-            imiona=imported.given_name,
-            nazwisko=imported.family_name,
-            orcid=orcid,
-        )
-        autor.dodaj_jednostke(obca)
-
-        imported.matched_autor = autor
-        imported.matched_jednostka = obca
-        imported.match_status = ImportedAuthor.MatchStatus.MANUAL
-        imported.save()
+        _create_single_author(imported, obca)

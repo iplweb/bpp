@@ -12,10 +12,12 @@
             <p><strong>Dostawca:</strong> {{ session.provider_name }}</p>
         </div>
 
-        <div id="progress-container"
-             hx-get="{% url 'importer_publikacji:task-status' session_id=session.pk %}"
-             hx-trigger="every 3s"
-             hx-swap="innerHTML">
+        {# Polling siedzi na ROOT-cie partiala postepu (hx-swap=outerHTML), #}
+        {# nie na tym kontenerze. Dzieki temu gdy zadanie sie konczy (blad #}
+        {# lub redirect) partial bez hx-trigger zastepuje pollujacy element #}
+        {# i odswiezanie co 3s ustaje — inaczej traceback "mrugal" co 3s i #}
+        {# nie dalo sie go zaznaczyc (Freshdesk #344). #}
+        <div id="progress-container">
             {% if session.status == 'import_failed' %}
                 {% include "importer_publikacji/partials/task_error.html" %}
             {% else %}

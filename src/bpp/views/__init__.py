@@ -1,7 +1,6 @@
 import datetime
 from pathlib import Path
 
-import nh3
 from django import shortcuts
 from django.conf import settings
 
@@ -18,6 +17,7 @@ from django.views.defaults import page_not_found, permission_denied
 from django_sendfile import sendfile
 
 from bpp.models import Uczelnia
+from bpp.util import sanitize_multiseek_title
 
 
 def root(request):
@@ -55,17 +55,7 @@ def favicon(request):
 
 @csrf_exempt
 def update_multiseek_title(request):
-    v = request.POST.get("value")
-    if not v or not len(v):
-        v = ""
-    from django.conf import settings
-
-    v = nh3.clean(
-        v.replace("\r\n", "\n").replace("\n", "<br/>"),
-        tags=set(getattr(settings, "ALLOWED_TAGS", [])) | {"hr", "p", "br"},
-        clean_content_tags=set(),
-        link_rel=None,
-    )
+    v = sanitize_multiseek_title(request.POST.get("value"))
     request.session["MULTISEEK_TITLE"] = v
     return JsonResponse(v, safe=False)
 

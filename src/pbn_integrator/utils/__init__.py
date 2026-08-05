@@ -51,7 +51,6 @@ from pbn_integrator.utils.constants import (  # noqa
 
 # Dictionaries (languages, countries, disciplines)
 from pbn_integrator.utils.dictionaries import (  # noqa
-    integruj_dyscypliny,
     integruj_jezyki,
     integruj_kraje,
 )
@@ -223,7 +222,6 @@ __all__ = [
     "zapisz_oswiadczenie_instytucji",
     "zapisz_publikacje_instytucji",
     # Dictionaries
-    "integruj_dyscypliny",
     "integruj_jezyki",
     "integruj_kraje",
     # Institutions

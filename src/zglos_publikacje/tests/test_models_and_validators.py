@@ -116,7 +116,8 @@ def test_validate_file_extension_pdf_uppercase():
 @pytest.mark.django_db
 def test_obsulgujacy_zgloszenia_wydzialow_multiple_same_email():
     uczelnia = baker.make(Uczelnia)
-    wydzial = baker.make("bpp.Wydzial", uczelnia=uczelnia)
+    # Faza B (#438) II-2: ``wydzial`` to FK->Jednostka (korzeń drzewa).
+    wydzial = baker.make("bpp.Jednostka", uczelnia=uczelnia)
 
     user1 = baker.make("bpp.BppUser", email="test@example.com")
     user2 = baker.make("bpp.BppUser", email="test@example.com")
@@ -124,7 +125,7 @@ def test_obsulgujacy_zgloszenia_wydzialow_multiple_same_email():
     Obslugujacy_Zgloszenia_Wydzialow.objects.create(user=user1, wydzial=wydzial)
     Obslugujacy_Zgloszenia_Wydzialow.objects.create(user=user2, wydzial=wydzial)
 
-    result = Obslugujacy_Zgloszenia_Wydzialow.objects.emaile_dla_wydzialu(wydzial)
+    result = Obslugujacy_Zgloszenia_Wydzialow.objects.emaile_dla_obslugujacego(wydzial)
 
     # Manager doesn't deduplicate by default
     assert len(result) == 2
@@ -134,13 +135,14 @@ def test_obsulgujacy_zgloszenia_wydzialow_multiple_same_email():
 @pytest.mark.django_db
 def test_obsulgujacy_zgloszenia_wydzialow_empty_email():
     uczelnia = baker.make(Uczelnia)
-    wydzial = baker.make("bpp.Wydzial", uczelnia=uczelnia)
+    # Faza B (#438) II-2: ``wydzial`` to FK->Jednostka (korzeń drzewa).
+    wydzial = baker.make("bpp.Jednostka", uczelnia=uczelnia)
 
     user = baker.make("bpp.BppUser", email=PUSTY_ADRES_EMAIL)
 
     Obslugujacy_Zgloszenia_Wydzialow.objects.create(user=user, wydzial=wydzial)
 
-    result = Obslugujacy_Zgloszenia_Wydzialow.objects.emaile_dla_wydzialu(wydzial)
+    result = Obslugujacy_Zgloszenia_Wydzialow.objects.emaile_dla_obslugujacego(wydzial)
 
     assert result is None
 
@@ -148,7 +150,8 @@ def test_obsulgujacy_zgloszenia_wydzialow_empty_email():
 @pytest.mark.django_db
 def test_obsulgujacy_zgloszenia_wydzialow_meta_unique():
     uczelnia = baker.make(Uczelnia)
-    wydzial = baker.make("bpp.Wydzial", uczelnia=uczelnia)
+    # Faza B (#438) II-2: ``wydzial`` to FK->Jednostka (korzeń drzewa).
+    wydzial = baker.make("bpp.Jednostka", uczelnia=uczelnia)
     user = baker.make("bpp.BppUser")
 
     baker.make(

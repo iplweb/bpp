@@ -1,5 +1,6 @@
 import re
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+from fractions import Fraction
 
 # math.isnan zamiast numpy.isnan: ten moduł jest importowany tranzytywnie przez
 # modele/admin BPP (np. bpp.models.dyscyplina_naukowa), więc eager ``from numpy
@@ -226,6 +227,51 @@ def normalize_wymiar_etatu(s: str):
     return normalize_skrot(s)
 
 
+_WYMIAR_PELNY = {"pełny", "pełen", "cały", "caly", "pelny", "pelen"}
+
+
+def parsuj_wymiar_etatu(s: str | None) -> Fraction | None:
+    """Parsuje wymiar etatu z formy tekstowej LUB dziesiętnej do ``Fraction``.
+
+    Pusty/None → ``None``. „Pełny/pełen/cały etat" → 1. „N/M etatu" → N/M.
+    Dziesiętny „0,5"/„0.5"/„1" (polski przecinek lub kropka) → ułamek.
+    Nieparsowalne → ``ValueError`` (wołający zamienia na błąd wiersza)."""
+    if s is None:
+        return None
+    tekst = str(s).strip().lower()
+    if not tekst:
+        return None
+    rdzen = tekst
+    for sufiks in ("etatu", "etat"):
+        if rdzen.endswith(sufiks):
+            rdzen = rdzen[: -len(sufiks)].strip()
+            break
+    if rdzen in _WYMIAR_PELNY:
+        return Fraction(1)
+    if "/" in rdzen:
+        licznik, _, mianownik = rdzen.partition("/")
+        try:
+            return Fraction(int(licznik.strip()), int(mianownik.strip()))
+        except (ValueError, ZeroDivisionError) as exc:
+            raise ValueError(f"Nieparsowalny wymiar etatu: {s!r}") from exc
+    try:
+        return Fraction(Decimal(rdzen.replace(",", ".")))
+    except (InvalidOperation, ValueError) as exc:
+        raise ValueError(f"Nieparsowalny wymiar etatu: {s!r}") from exc
+
+
+def kanonizuj_wymiar_etatu(frac: Fraction) -> str:
+    """Kanoniczny zapis wymiaru: liczba całkowita bez przecinka („1"), inaczej
+    ułamek dziesiętny z POLSKIM przecinkiem, max 2 miejsca, bez zer końcowych
+    („0,5", „0,75", „0,67"). Trafia w istniejące „dobre" wpisy słownika."""
+    if frac.denominator == 1:
+        return str(frac.numerator)
+    dziesietnie = (Decimal(frac.numerator) / Decimal(frac.denominator)).quantize(
+        Decimal("0.01")
+    )
+    return format(dziesietnie.normalize(), "f").replace(".", ",")
+
+
 def normalize_nazwa_jednostki(s: str) -> str:
     return remove_extra_spaces(s.strip())
 
@@ -302,6 +348,40 @@ def normalize_doi(s: str) -> None | str:
         .replace("dx.doi.org/", "")
         .replace("doi.org/", "")
     )
+
+
+# Wzorzec DOI wg ISO 26324 / DOI handbook: prefiks "10." + rejestrant +
+# znak "/" + sufiks. Nie próbujemy walidować sufiksu (DOI dopuszcza niemal
+# dowolne znaki) — łapiemy najdłuższy sensowny ciąg do pierwszego białego
+# znaku, znaku zapytania lub kotwicy (#).
+_DOI_IN_TEXT_RE = re.compile(r"10\.\d{4,9}/[^\s?#]+", re.IGNORECASE)
+
+
+def extract_doi_from_url(s: None | str) -> None | str:
+    """Wyłuskaj DOI z dowolnego ciągu (np. adresu URL pracy).
+
+    Zwraca znormalizowany DOI (przez :func:`normalize_doi`), jeśli w
+    ``s`` da się rozpoznać wzorzec ``10.xxxx/...``. W przeciwnym razie
+    zwraca ``None`` — adres, którego NIE da się zinterpretować jako DOI,
+    nie jest błędem; po prostu nie ma DOI do przekazania.
+
+    >>> extract_doi_from_url("https://doi.org/10.1234/abc.def")
+    '10.1234/abc.def'
+    >>> extract_doi_from_url("https://example.com/papers/123") is None
+    True
+    >>> extract_doi_from_url(None) is None
+    True
+    """
+    if not s:
+        return None
+
+    match = _DOI_IN_TEXT_RE.search(s)
+    if match is None:
+        return None
+
+    # Obetnij częste „ogony" interpunkcyjne sklejone z DOI w tekście.
+    doi = match.group(0).rstrip(".,;)]}>\"'")
+    return normalize_doi(doi)
 
 
 def normalize_filename(s: str) -> str:
@@ -433,6 +513,29 @@ def remove_polish_diacritics(s: str) -> str:
     for polish, ascii_char in POLISH_DIACRITICS_MAP.items():
         s = s.replace(polish, ascii_char)
     return s
+
+
+def poprzednie_nazwiska_token_regex(nazwisko: str) -> str:
+    r"""Wzorzec regex (Postgres ARE) dopasowujący ``nazwisko`` jako pełny
+    człon listy ``poprzednie_nazwiska`` (wartości oddzielone przecinkami).
+
+    Dopasowuje CAŁY człon (z opcjonalnymi spacjami wokół), a nie podłańcuch —
+    dzięki temu "Gawlik" NIE trafia w "Nowak-Gawlikowski". Przeznaczony do
+    użycia z lookupem Django ``__iregex`` (Postgres operator ``~*``), np.::
+
+        Q(poprzednie_nazwiska__iregex=poprzednie_nazwiska_token_regex(nazwisko))
+
+    Człon złożony ("Gawlik-Dziki") jest dopasowywany jako całość — myślnik
+    jest częścią członu, nie separatorem. Separatorem jest wyłącznie przecinek.
+
+    >>> import re
+    >>> rx = poprzednie_nazwiska_token_regex("Gawlik")
+    >>> bool(re.search(rx, "Kowalska, Gawlik-Dziki", re.IGNORECASE))
+    False
+    >>> bool(re.search(rx, "Kowalska, Gawlik", re.IGNORECASE))
+    True
+    """
+    return r"(^|,)\s*" + re.escape(nazwisko) + r"\s*(,|$)"
 
 
 def normalize_nazwisko_do_porownania(s: str) -> str:

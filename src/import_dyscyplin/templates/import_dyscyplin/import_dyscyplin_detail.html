@@ -30,11 +30,14 @@
 
 
     <h2>Import dyscyplin - plik {{ object.plik }}
-        <button class="button warning"
-                data-confirm="Czy na pewno usunąć ten plik z systemu?"
-                data-redirect-url="{% url "import_dyscyplin:usun" object.pk %}">
-            <i class="fi-page-remove"></i> usuń plik
-        </button>
+        <form method="post" action="{% url "import_dyscyplin:usun" object.pk %}"
+              class="usun-import-form" style="display:inline">
+            {% csrf_token %}
+            <button class="button warning" type="submit"
+                    data-confirm="Czy na pewno usunąć ten plik z systemu?">
+                <i class="fi-page-remove"></i> usuń plik
+            </button>
+        </form>
     </h2>
     Rok: <strong>{{ object.rok }}</strong>.
     Utworzono: <strong>{{ object.created }}</strong>.
@@ -48,7 +51,8 @@
                 $("#modal1").foundation('open');
                 $.ajax({
                     url: "{% url "import_dyscyplin:stworz_kolumny" object.pk %}",
-                    method: "GET",
+                    method: "POST",
+                    headers: {"X-CSRFToken": "{{ csrf_token }}"},
                 });
             });
         </script>
@@ -70,7 +74,8 @@
                 $("#modal1").foundation('open');
                 $.ajax({
                     url: "{% url "import_dyscyplin:przetwarzaj" object.pk %}",
-                    method: "GET",
+                    method: "POST",
+                    headers: {"X-CSRFToken": "{{ csrf_token }}"},
                     data: {"web_page_uid": channelsBroadcast.messageCookieId}
                 });
             });
@@ -288,15 +293,6 @@
         // Event delegation handlers
         // (data-confirm is handled globally by event-handlers.js)
         document.addEventListener('click', function(e) {
-            // Handle redirect action
-            var redirectBtn = e.target.closest('[data-redirect-url]');
-            if (redirectBtn) {
-                e.preventDefault();
-                var url = redirectBtn.dataset.redirectUrl;
-                location.href = url;
-                return;
-            }
-
             // Handle integrate action
             var integrateBtn = e.target.closest('[data-integrate-action]');
             if (integrateBtn) {
@@ -308,7 +304,8 @@
                 }
                 $.ajax({
                     url: url,
-                    method: 'GET',
+                    method: 'POST',
+                    headers: {"X-CSRFToken": "{{ csrf_token }}"},
                     data: {'web_page_uid': channelsBroadcast.messageCookieId}
                 });
                 return;

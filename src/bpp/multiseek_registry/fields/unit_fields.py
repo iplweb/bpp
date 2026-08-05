@@ -16,8 +16,7 @@ from multiseek.logic import (
     ValueListQueryObject,
 )
 
-from bpp.models import Autorzy, Jednostka
-from bpp.models.struktura import Wydzial
+from bpp.models import Autorzy, Jednostka, RodzajJednostki, Uczelnia
 from bpp.multiseek_registry.mixins import BppMultiseekVisibilityMixin
 from bpp.util import zaloguj_polkniety_wyjatek
 
@@ -51,6 +50,11 @@ class JednostkaQueryObject(
     url = "bpp:jednostka-widoczna-autocomplete"
 
     def real_query(self, value, operation):
+        if value is None:
+            # ``value_from_web`` zwróciło None (nierozwiązywalny/stały pk) →
+            # głośny brak dopasowania. BEZ tego Q(...=None) daje szeroki błędny
+            # match (a DIFFERENT wręcz odwraca go w "wszystko"), zamiast pustki.
+            return Q(pk__in=[])
         if operation in EQUALITY_OPS_ALL:
             ret = Q(autorzy__jednostka=value)
 
@@ -131,6 +135,8 @@ class AktualnaJednostkaAutoraQueryObject(JednostkaQueryObject):
     url = "bpp:jednostka-widoczna-autocomplete"
 
     def real_query(self, value, operation):
+        if value is None:
+            return Q(pk__in=[])  # nierozwiązywalna wartość → pusto (#438/F4)
         if operation in EQUALITY_OPS_ALL:
             ret = Q(autorzy__autor__aktualna_jednostka=value)
 
@@ -169,6 +175,8 @@ class PierwszaJednostkaQueryObject(JednostkaQueryObject):
     field_name = "pierwsza_jednostka"
 
     def real_query(self, value, operation):
+        if value is None:
+            return Q(pk__in=[])  # nierozwiązywalna wartość → pusto (#438/F4)
         if operation in EQUALITY_OPS_ALL:
             ret = Q(autorzy__jednostka=value, autorzy__kolejnosc=0)
 
@@ -196,21 +204,81 @@ class PierwszaJednostkaQueryObject(JednostkaQueryObject):
 class WydzialQueryObject(
     BppMultiseekVisibilityMixin, ForeignKeyDescribeMixin, AutocompleteQueryObject
 ):
+    # Faza B (#438): „wydział" = jednostka-korzeń (self-FK, NULL dla top-level).
+    # Picker = jednostki top-level; ``real_query`` przez denorm ``wydzial``
+    # (poddrzewo) + ``jednostka=value`` (prace samego korzenia). Operatory
+    # męskie (EQUAL/DIFFERENT/UNION) zostają. Pole rejestrowane ZAWSZE;
+    # widoczność per-uczelnia przez ``option_enabled`` (``uzywaj_wydzialow``).
     label = "Wydział"
     type = AUTOCOMPLETE
     ops = [EQUAL, DIFFERENT, UNION]
-    model = Wydzial
+    model = Jednostka
     search_fields = ["nazwa"]
     field_name = "wydzial"
     djangoql_field_name = "autorzy__jednostka__wydzial"
-    url = "bpp:public-wydzial-autocomplete"
+    url = "bpp:public-jednostka-toplevel-autocomplete"
+
+    def option_enabled(self, request=None):
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        if uczelnia is not None:
+            return uczelnia.uzywaj_wydzialow
+        return True
+
+    def value_from_web(self, value):
+        # F4 (#438): „wydział" = jednostka-KORZEŃ (parent IS NULL). Ograniczamy
+        # rozwiązywanie wartości do rootów, żeby stary zapisany search z pk
+        # nie-roota / dawnego Wydzialu dał GŁOŚNY brak dopasowania (None), a nie
+        # cichy zły raport na przypadkowej jednostce o kolidującym pk.
+        try:
+            value_i = int(value)
+        except (TypeError, ValueError):
+            return None
+        return self.model.objects.filter(parent__isnull=True, pk=value_i).first()
+
+    def to_djangoql(self, value, operation):
+        """F5 (#438): eksport DjangoQL tłumaczy TYLKO część poddrzewową
+        (``autorzy.jednostka.wydzial__rel``). Union ``| autorzy__jednostka=value``
+        (prace przypięte do samego korzenia) nie ma odpowiednika w DjangoQL bez
+        osobnego pola wirtualnego, więc emitujemy ostrzeżenie o nierównoważnej
+        translacji (precedens: ``JednostkaQueryObject.to_djangoql``)."""
+        op = str(operation)
+        try:
+            obj = self.value_from_web(value)
+        except Exception:  # noqa: BLE001 — uszkodzony/nieistniejacy pk -> nieprzekladalne
+            zaloguj_polkniety_wyjatek(
+                f"Rozwiązywanie wydziału dla eksportu DjangoQL (value={value!r})",
+                logger=logger,
+            )
+            return None
+        if obj is None:
+            return None
+        label = str(obj).replace("\\", "\\\\").replace('"', '\\"')
+        suffix = f'"{label} [{obj.pk}]"'
+        warning = (
+            'Filtr „wydział" przełożono tylko na poddrzewo — eksport DjangoQL '
+            "pomija prace przypięte do samej jednostki-korzenia."
+        )
+        if op == str(EQUAL):
+            return f"autorzy.jednostka.wydzial__rel = {suffix}", warning
+        if op == str(DIFFERENT):
+            return f"autorzy.jednostka.wydzial__rel != {suffix}", warning
+        if op == str(UNION):
+            return f"autorzy.jednostka.wydzial__rel = {suffix}", warning
+        return None
 
     def real_query(self, value, operation):
+        if value is None:
+            # F4: nierozwiązywalny/stały pk (nie-root, dawny Wydzial) → głośny
+            # brak dopasowania. BEZ tego Q(autorzy__jednostka__wydzial=None)
+            # łapie wszystkich autorów w jednostkach-korzeniach (denorm=NULL).
+            return Q(pk__in=[])
         if operation in EQUALITY_OPS_ALL:
-            ret = Q(autorzy__jednostka__wydzial=value)
+            ret = Q(autorzy__jednostka__wydzial=value) | Q(autorzy__jednostka=value)
 
         elif operation in UNION_OPS_ALL:
-            q = Autorzy.objects.filter(jednostka__wydzial=value).values("rekord_id")
+            q = Autorzy.objects.filter(
+                Q(jednostka__wydzial=value) | Q(jednostka=value)
+            ).values("rekord_id")
             ret = Q(pk__in=q)
 
         else:
@@ -227,13 +295,17 @@ class PierwszyWydzialQueryObject(WydzialQueryObject):
     field_name = "pierwszy_wydzial"
 
     def real_query(self, value, operation):
+        if value is None:
+            return Q(pk__in=[])  # nierozwiązywalna wartość → pusto (#438/F4)
         if operation in EQUALITY_OPS_ALL:
-            ret = Q(autorzy__jednostka__wydzial=value, autorzy__kolejnosc=0)
+            ret = Q(autorzy__jednostka__wydzial=value, autorzy__kolejnosc=0) | Q(
+                autorzy__jednostka=value, autorzy__kolejnosc=0
+            )
 
         elif operation in UNION_OPS_ALL:
-            q = Autorzy.objects.filter(jednostka__wydzial=value, kolejnosc=0).values(
-                "rekord_id"
-            )
+            q = Autorzy.objects.filter(
+                Q(jednostka__wydzial=value) | Q(jednostka=value), kolejnosc=0
+            ).values("rekord_id")
             ret = Q(pk__in=q)
 
         else:
@@ -245,10 +317,52 @@ class PierwszyWydzialQueryObject(WydzialQueryObject):
         return ret
 
 
+class JednostkaNadrzednaQueryObject(WydzialQueryObject):
+    # #438: odpowiednik „Wydział" dla uczelni, która NIE używa wydziałów, ale ma
+    # strukturę drzewa jednostek (korzeń + podjednostki). Dziedziczy CAŁE
+    # zapytanie po „Wydział" (``real_query``/``value_from_web``/``to_djangoql``
+    # — filtr po denormie ``wydzial`` = całe poddrzewo korzenia); różni się
+    # tylko etykietą i widocznością. Etykieta jest STATYCZNA, bo w multiseeku
+    # ``label`` to klucz tożsamości/persystencji pola (``make_field`` serializuje
+    # ``{"field": label}``, ``get_field_by_name`` mapuje po label, rejestr to
+    # globalny singleton budowany raz bez requestu) — dynamiczna etykieta
+    # rozjechałaby zapisane wyszukiwania. Rozłączność z „Wydział" po fladze:
+    # „Wydział" widoczne gdy ``uzywaj_wydzialow``, to pole — gdy NIE
+    # ``uzywaj_wydzialow`` i istnieje poddrzewo.
+    label = "Jednostka nadrzędna"
+    field_name = "jednostka_nadrzedna"
+
+    def option_enabled(self, request=None):
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        if uczelnia is None:
+            return False
+        if uczelnia.uzywaj_wydzialow:
+            return False
+        return uczelnia.ma_jednostki_glowne_z_podjednostkami()
+
+
 class RodzajJednostkiQueryObject(BppMultiseekVisibilityMixin, ValueListQueryObject):
+    # Faza B (#438), III-1: CharField ``rodzaj_jednostki`` + TextChoices
+    # ``RODZAJ_JEDNOSTKI`` usunięte — filtrujemy przez FK ``rodzaj``
+    # (słownik ``RodzajJednostki``, per-tenant edytowalny w adminie).
+    # ``field_name`` zostaje ``"rodzaj_jednostki"`` — to etykieta
+    # PERSYSTENCJI zapisanych wyszukiwań (identycznie jak przy
+    # ``WydzialQueryObject.field_name == "wydzial"`` mimo zmiany semantyki
+    # pola), nie nazwa kolumny/lookupu.
     label = "Rodzaj jednostki"
     field_name = "rodzaj_jednostki"
-    values = Jednostka.RODZAJ_JEDNOSTKI.labels
+
+    def _values(self):
+        # Lista dynamiczna (property, wzorem ``CharakterFormalnyQueryObject``)
+        # — słownik jest edytowalny w adminie, nie da się go zamrozić w
+        # czasie importu modułu.
+        return list(
+            RodzajJednostki.objects.order_by("kolejnosc", "nazwa").values_list(
+                "nazwa", flat=True
+            )
+        )
+
+    values = property(_values)
 
     def value_from_web(self, value):
         if value not in self.values:
@@ -256,27 +370,17 @@ class RodzajJednostkiQueryObject(BppMultiseekVisibilityMixin, ValueListQueryObje
         return value
 
     def real_query(self, value, operation):
-        if value == Jednostka.RODZAJ_JEDNOSTKI.NORMALNA.label:
-            tk = Jednostka.RODZAJ_JEDNOSTKI.NORMALNA.value
-        else:
-            tk = Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE.value
-
-        q = Q(**{"autorzy__jednostka__rodzaj_jednostki": tk})
+        if value is None:
+            # ``value_from_web`` zwraca None dla wartości spoza słownika
+            # ``RodzajJednostki`` → pusto (a nie ``rodzaj IS NULL`` / przy
+            # DIFFERENT ``rodzaj IS NOT NULL`` = szeroki match). (#438)
+            return Q(pk__in=[])
+        q = Q(**{"autorzy__jednostka__rodzaj__nazwa": value})
         if operation == DIFFERENT:
             return ~q
         return q
 
     def to_djangoql(self, value, operation):
-        mapa = {
-            Jednostka.RODZAJ_JEDNOSTKI.NORMALNA.label: (
-                Jednostka.RODZAJ_JEDNOSTKI.NORMALNA.value
-            ),
-            Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE.label: (
-                Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE.value
-            ),
-        }
-        kod = mapa.get(value)
-        if kod is None:
-            return None
         op = "!=" if str(operation) == str(DIFFERENT) else "="
-        return f'autorzy.jednostka.rodzaj_jednostki {op} "{kod}"'
+        escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')
+        return f'autorzy.jednostka.rodzaj.nazwa {op} "{escaped}"'

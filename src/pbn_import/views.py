@@ -13,7 +13,7 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import DetailView, ListView, TemplateView
 
-from bpp.models import Jednostka, Jezyk, Uczelnia, Wydzial
+from bpp.models import Jednostka, Jezyk, Uczelnia
 from bpp.util import zaloguj_polkniety_wyjatek
 
 from .models import (
@@ -100,9 +100,10 @@ class ImportDashboardView(LoginRequiredMixin, ImportPermissionMixin, TemplateVie
         context["uczelnia"] = uczelnia
         context["uzywaj_wydzialow"] = uczelnia.uzywaj_wydzialow if uczelnia else False
 
-        # Gate-check multi-hosted: obca jednostka MUSI istnieć i być podpięta do
-        # wydziału tej uczelni, inaczej import padnie na triggerze spójności.
-        # Sygnalizujemy to już przy wejściu na stronę (baner w szablonie).
+        # Gate-check multi-hosted: obca jednostka MUSI istnieć, należeć do tej
+        # uczelni i mieć skupia_pracownikow=False (jej pozycja w strukturze /
+        # wydział nas nie obchodzi). Sygnalizujemy to już przy wejściu na
+        # stronę (baner w szablonie).
         context["obca_jednostka_problem"] = (
             sprawdz_obca_jednostka(uczelnia) if uczelnia else None
         )
@@ -115,25 +116,32 @@ class ImportDashboardView(LoginRequiredMixin, ImportPermissionMixin, TemplateVie
         # uczelni, co prowadziło do startu importu z domyślną jednostką spoza
         # właściwej uczelni. Bez uczelni (brak kontekstu) nie ma czego importować.
         if uczelnia:
-            wydzialy = Wydzial.objects.filter(uczelnia=uczelnia)
+            wydzialy = Jednostka.objects.filter(uczelnia=uczelnia, parent__isnull=True)
             jednostki = Jednostka.objects.filter(
                 skupia_pracownikow=True, uczelnia=uczelnia
             )
         else:
-            wydzialy = Wydzial.objects.none()
+            wydzialy = Jednostka.objects.none()
             jednostki = Jednostka.objects.none()
 
         # Jeśli brak wydziałów I brak jednostek - utwórz domyślne
         if not wydzialy.exists() and not jednostki.exists() and uczelnia:
             wydzial_domyslny, _ = znajdz_lub_utworz_wydzial_domyslny(uczelnia)
             jednostka_domyslna, _ = znajdz_lub_utworz_jednostke_domyslna(uczelnia)
-            # Przypisz wydział do jednostki jeśli brak
-            if jednostka_domyslna.wydzial is None:
-                jednostka_domyslna.wydzial = wydzial_domyslny
+            # Faza C (#438): „wydział domyślny" to root-Jednostka (parent IS
+            # NULL) — jednostkę domyślną podpinamy wprost pod niego (MPTT
+            # ``parent``); denorm ``wydzial`` (korzeń) wyliczy się przy zapisie.
+            if jednostka_domyslna.parent is None:
+                # MPTT: ``wydzial_domyslny`` utworzono PRZED ``jednostka_domyslna``
+                # (nowy root), więc jego in-memory lft/rght/tree_id mogą być
+                # nieaktualne — odśwież przed move, inaczej MPTT błędnie widzi
+                # cel jako potomka i rzuca InvalidMove.
+                wydzial_domyslny.refresh_from_db()
+                jednostka_domyslna.parent = wydzial_domyslny
                 jednostka_domyslna.skupia_pracownikow = True
-                jednostka_domyslna.save(update_fields=["wydzial", "skupia_pracownikow"])
+                jednostka_domyslna.save()
             # Odśwież querysets (wciąż zawężone do uczelni kontekstu)
-            wydzialy = Wydzial.objects.filter(uczelnia=uczelnia)
+            wydzialy = Jednostka.objects.filter(uczelnia=uczelnia, parent__isnull=True)
             jednostki = Jednostka.objects.filter(
                 skupia_pracownikow=True, uczelnia=uczelnia
             )
@@ -191,8 +199,9 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
         autorów/prace do encji obcej uczelni (cichy wyciek danych między
         tenantami). Egzekwujemy nawet przy zmanipulowanym formularzu (encje
         zawężamy też w GET, ale POST musi się bronić sam). Dodatkowo obca
-        jednostka uczelni musi być skonfigurowana, bo krok institution_setup
-        padłby na triggerze ``bpp_jednostka_wydzial_sprawdz_uczelnia_id``.
+        jednostka uczelni musi być poprawnie skonfigurowana (patrz
+        ``sprawdz_obca_jednostka``) — bez niej import nie ma gdzie umieścić
+        autorów spoza uczelni.
 
         Zwraca listę komunikatów błędów (pustą, gdy wszystko OK).
         """
@@ -222,7 +231,11 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
         wydzial_id = request.POST.get("wydzial_domyslny_id")
         jednostka_id = request.POST.get("jednostka_domyslna_id")
 
-        wydzial = Wydzial.objects.filter(pk=wydzial_id).first() if wydzial_id else None
+        wydzial = (
+            Jednostka.objects.filter(pk=wydzial_id, parent__isnull=True).first()
+            if wydzial_id
+            else None
+        )
         jednostka = (
             Jednostka.objects.filter(pk=jednostka_id).first() if jednostka_id else None
         )

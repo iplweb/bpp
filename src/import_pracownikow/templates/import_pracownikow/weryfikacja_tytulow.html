@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block extratitle %}Import pracowników i jednostek — weryfikacja tytułów{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "import_pracownikow:index" %}">import pracowników i jednostek</a></li>
+    <li class="current">weryfikacja tytułów</li>
+{% endblock %}
+
+{% block content %}
+    <p>
+        <a href="{% url "import_pracownikow:przeglad" pk=parent_object.pk %}">&larr; wróć do przeglądu</a>
+    </p>
+
+    <h1>Weryfikacja tytułów</h1>
+    <p>
+        Tytuły wymienione w pliku, których nie dopasowano dokładnie do bazy.
+        Wskaż, co zrobić z każdym, zanim zapiszesz import. Domyślnie każdy zostanie
+        utworzony (lub użyte zostanie auto-dopasowanie) — możesz to zmienić.
+    </p>
+
+    {% if not decyzje_brak and not decyzje_zgadywanie %}
+        <div class="callout success">
+            {# brak decyzji = wszystkie tytuły dopasowane dokładnie #}
+            Wszystkie tytuły z pliku zostały dopasowane — nie ma nic do
+            weryfikacji.
+        </div>
+        <a href="{% url "import_pracownikow:przeglad" pk=parent_object.pk %}"
+           class="button secondary">Wróć do przeglądu</a>
+    {% else %}
+    <form method="post">
+        {% csrf_token %}
+
+        {% if decyzje_zgadywanie %}
+            <h2>Dopasowane automatycznie</h2>
+            <p>
+                Nazwa z pliku jest bardzo zbliżona do istniejącego tytułu —
+                zweryfikuj automatyczny wybór.
+            </p>
+            <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nazwa z pliku</th>
+                        <th>Osób</th>
+                        <th>Auto-tytuł</th>
+                        <th>Decyzja</th>
+                        <th>Mapuj na</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dec in decyzje_zgadywanie %}
+                        <tr>
+                            <td>{{ dec.nazwa_zrodlowa }}</td>
+                            <td>{{ dec.liczba_osob }}</td>
+                            <td>
+                                {% if dec.auto_tytul %}
+                                    {{ dec.auto_tytul.skrot }}
+                                    {% if dec.auto_similarity %}
+                                        <span class="label secondary">{{ dec.auto_similarity|floatformat:2 }}</span>
+                                    {% endif %}
+                                {% else %}—{% endif %}
+                            </td>
+                            <td>
+                                <select name="dec_{{ dec.pk }}_decyzja"
+                                        {% if not moze_edytowac %}disabled{% endif %}>
+                                    <option value="{{ DECYZJA_AKCEPTUJ }}"
+                                            {% if dec.decyzja == DECYZJA_AKCEPTUJ %}selected{% endif %}>
+                                        Użyj auto-dopasowania
+                                    </option>
+                                    <option value="{{ DECYZJA_MAPUJ }}"
+                                            {% if dec.decyzja == DECYZJA_MAPUJ %}selected{% endif %}>
+                                        Mapuj na inny
+                                    </option>
+                                    <option value="{{ DECYZJA_POMIN }}"
+                                            {% if dec.decyzja == DECYZJA_POMIN %}selected{% endif %}>
+                                        Pomiń
+                                    </option>
+                                </select>
+                            </td>
+                            <td>
+                                <select name="dec_{{ dec.pk }}_wybrana"
+                                        {% if not moze_edytowac %}disabled{% endif %}>
+                                    <option value="">— wybierz (dla „Mapuj”) —</option>
+                                    {% for t in mapuj_opcje %}
+                                        <option value="{{ t.pk }}"
+                                                {% if dec.wybrany_tytul_id == t.pk %}selected{% endif %}>
+                                            {{ t.skrot }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        {% endif %}
+
+        {% if decyzje_brak %}
+            <h2>Do utworzenia</h2>
+            <p>
+                Brak dopasowania w bazie — domyślnie zostaną utworzone jako nowe
+                tytuły. Możesz poprawić nazwę i skrót przed zapisem.
+            </p>
+            <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nazwa z pliku</th>
+                        <th>Osób</th>
+                        <th>Decyzja</th>
+                        <th>Nazwa</th>
+                        <th>Skrót</th>
+                        <th>Mapuj na</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dec in decyzje_brak %}
+                        <tr>
+                            <td>{{ dec.nazwa_zrodlowa }}</td>
+                            <td>{{ dec.liczba_osob }}</td>
+                            <td>
+                                <select name="dec_{{ dec.pk }}_decyzja"
+                                        {% if not moze_edytowac %}disabled{% endif %}>
+                                    <option value="{{ DECYZJA_AKCEPTUJ }}"
+                                            {% if dec.decyzja == DECYZJA_AKCEPTUJ %}selected{% endif %}>
+                                        Utwórz nowy
+                                    </option>
+                                    <option value="{{ DECYZJA_MAPUJ }}"
+                                            {% if dec.decyzja == DECYZJA_MAPUJ %}selected{% endif %}>
+                                        Mapuj na istniejący
+                                    </option>
+                                    <option value="{{ DECYZJA_POMIN }}"
+                                            {% if dec.decyzja == DECYZJA_POMIN %}selected{% endif %}>
+                                        Pomiń
+                                    </option>
+                                </select>
+                            </td>
+                            <td>
+                                <input type="text" name="dec_{{ dec.pk }}_nazwa"
+                                       value="{{ dec.nazwa_do_utworzenia }}"
+                                       {% if not moze_edytowac %}disabled{% endif %}>
+                            </td>
+                            <td>
+                                <input type="text" name="dec_{{ dec.pk }}_skrot"
+                                       value="{{ dec.skrot_do_utworzenia }}"
+                                       {% if not moze_edytowac %}disabled{% endif %}>
+                            </td>
+                            <td>
+                                <select name="dec_{{ dec.pk }}_wybrana"
+                                        {% if not moze_edytowac %}disabled{% endif %}>
+                                    <option value="">— wybierz (dla „Mapuj”) —</option>
+                                    {% for t in mapuj_opcje %}
+                                        <option value="{{ t.pk }}"
+                                                {% if dec.wybrany_tytul_id == t.pk %}selected{% endif %}>
+                                            {{ t.skrot }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        {% endif %}
+
+        <div style="margin-top: 1rem;">
+            {% if moze_edytowac %}
+                <button type="submit" class="button">Zapisz decyzje</button>
+            {% else %}
+                <div class="callout warning">
+                    {# poza podglądem (np. już zintegrowany) decyzje są tylko do wglądu #}
+                    Import nie jest w podglądzie — decyzje są tylko do wglądu.
+                </div>
+            {% endif %}
+            <a href="{% url "import_pracownikow:przeglad" pk=parent_object.pk %}"
+               class="button secondary">Wróć do przeglądu</a>
+        </div>
+    </form>
+    {% endif %}
+{% endblock %}

@@ -6,7 +6,7 @@ import pytest
 from model_bakery import baker
 
 from bpp.models.autor import Autor, Tytul
-from bpp.models.struktura import Jednostka, Uczelnia, Wydzial
+from bpp.models.struktura import Jednostka, Uczelnia
 from bpp.models.zrodlo import Zrodlo
 
 from .const import JEDNOSTKA_PODRZEDNA, JEDNOSTKA_UCZELNI
@@ -43,8 +43,9 @@ def uczelnia_z_obca_jednostka(uczelnia, obca_jednostka):
 
 @pytest.mark.django_db
 def _wydzial_maker(nazwa, skrot, uczelnia, **kwargs):
-    return Wydzial.objects.get_or_create(
-        uczelnia=uczelnia, skrot=skrot, nazwa=nazwa, **kwargs
+    # Faza C (#438): „wydział" = jednostka top-level (``parent IS NULL``).
+    return Jednostka.objects.get_or_create(
+        uczelnia=uczelnia, skrot=skrot, nazwa=nazwa, parent=None, **kwargs
     )[0]
 
 
@@ -59,7 +60,8 @@ def wydzial(uczelnia, db):
 
 
 def _autor_maker(imiona, nazwisko, tytul="dr", **kwargs):
-    tytul = Tytul.objects.get(skrot=tytul)
+    # Nie zakładaj baseline — transakcyjny flush sąsiada bywa go zmiata.
+    tytul, _ = Tytul.objects.get_or_create(skrot=tytul, defaults={"nazwa": tytul})
     return Autor.objects.get_or_create(
         tytul=tytul, imiona=imiona, nazwisko=nazwisko, **kwargs
     )[0]
@@ -86,8 +88,18 @@ def autor_jan_kowalski(db, tytuly) -> Autor:
 
 
 def _jednostka_maker(nazwa, skrot, wydzial, **kwargs):
+    # Faza C (#438): „wydział" to jednostka top-level (root). Jednostka
+    # „w wydziale" wisi wprost pod nim (MPTT ``parent``), a denorm ``wydzial``
+    # (korzeń) wylicza się przy zapisie.
+    parent = kwargs.pop("parent", None)
+    if parent is None and wydzial is not None:
+        parent = wydzial
     ret = Jednostka.objects.get_or_create(
-        nazwa=nazwa, skrot=skrot, wydzial=wydzial, uczelnia=wydzial.uczelnia, **kwargs
+        nazwa=nazwa,
+        skrot=skrot,
+        parent=parent,
+        uczelnia=wydzial.uczelnia,
+        **kwargs,
     )[0]
     ret.refresh_from_db()
     return ret
@@ -100,28 +112,41 @@ def jednostka(wydzial, db):
 
 @pytest.fixture(scope="function")
 def kolo_naukowe(jednostka: Jednostka):
+    from bpp.models import RodzajJednostki
+
+    # Faza B (#438), III-1: wykluczenie kół z rankingu idzie przez FK
+    # ``rodzaj`` + flagę ``wyklucz_z_rankingu_autorow`` (CharField
+    # ``rodzaj_jednostki`` usunięty).
+    rodzaj, _ = RodzajJednostki.objects.get_or_create(
+        nazwa="Koło naukowe", defaults={"wyklucz_z_rankingu_autorow": True}
+    )
+    if not rodzaj.wyklucz_z_rankingu_autorow:
+        rodzaj.wyklucz_z_rankingu_autorow = True
+        rodzaj.save()
     jednostka.nazwa = "Studenckie Koło Naukowe Przykładowe"
     jednostka.skrot = "SKN"
-    jednostka.rodzaj_jednostki = Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
+    jednostka.rodzaj = rodzaj
     jednostka.save()
     return jednostka
 
 
 @pytest.fixture(scope="function")
 def aktualna_jednostka(jednostka: Jednostka, wydzial, db):
-    jednostka.jednostka_wydzial_set.create(wydzial=wydzial)
+    # Faza C (#438): „wydział" to jednostka top-level; metryczka wskazuje
+    # wprost na nią (parent).
+    jednostka.jednostka_rodzic_set.create(parent=wydzial)
     jednostka.refresh_from_db()
     return jednostka
 
 
 @pytest.fixture
 def drugi_wydzial(uczelnia):
-    return baker.make(Wydzial, uczelnia=uczelnia)
+    return baker.make(Jednostka, uczelnia=uczelnia, parent=None)
 
 
 @pytest.fixture
 def druga_aktualna_jednostka(druga_jednostka, drugi_wydzial):
-    druga_jednostka.jednostka_wydzial_set.create(wydzial=drugi_wydzial)
+    druga_jednostka.jednostka_rodzic_set.create(parent=drugi_wydzial)
     druga_jednostka.refresh_from_db()
     return druga_jednostka
 
@@ -149,7 +174,7 @@ def obca_jednostka(wydzial):
         skupia_pracownikow=False,
         zarzadzaj_automatycznie=False,
         widoczna=False,
-        wchodzi_do_raportow=False,
+        wchodzi_do_rankingu_autorow=False,
     )
 
 
@@ -176,6 +201,8 @@ def zrodlo(db):
 def kierunek_studiow(wydzial):
     from bpp.models import Kierunek_Studiow
 
+    # Faza C (#438) II-2: ``Kierunek_Studiow.wydzial`` to FK->Jednostka
+    # (jednostka top-level = dawny „wydział").
     return Kierunek_Studiow.objects.get_or_create(
         wydzial=wydzial,
         nazwa="memetyka użytkowa",

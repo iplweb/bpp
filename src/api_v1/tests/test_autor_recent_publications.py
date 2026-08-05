@@ -3,7 +3,7 @@ from django.urls import reverse
 from model_bakery import baker
 from rest_framework.test import APIClient
 
-from bpp.models import Autor, Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
+from bpp.models import Autor, Jednostka, Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 
 
 @pytest.mark.django_db
@@ -70,6 +70,35 @@ def test_autor_recent_publications_no_publications():
     assert data["autor_id"] == autor.pk
     assert data["count"] == 0
     assert data["publications"] == []
+
+
+@pytest.mark.django_db
+def test_autor_recent_publications_respektuje_nie_eksportuj_przez_api():
+    """Embed musi honorować flagę nie_eksportuj_przez_api (jak /szukaj/ i
+    /zapytanie/), nie tylko ukryte statusy (L1)."""
+    client = APIClient()
+    autor = baker.make(Autor, nazwisko="Testowy", imiona="Jan")
+
+    baker.make(
+        Wydawnictwo_Ciagle_Autor,
+        rekord=baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Widoczna"),
+        autor=autor,
+    )
+    baker.make(
+        Wydawnictwo_Ciagle_Autor,
+        rekord=baker.make(
+            Wydawnictwo_Ciagle,
+            tytul_oryginalny="Ukryta",
+            nie_eksportuj_przez_api=True,
+        ),
+        autor=autor,
+    )
+
+    url = reverse("api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk})
+    response = client.get(url)
+
+    assert response.status_code == 200
+    assert response.json()["count"] == 1
 
 
 @pytest.mark.django_db
@@ -214,12 +243,20 @@ def test_autor_recent_publications_ukryty_status_pominiety(uczelnia, przed_korek
     client = APIClient()
 
     autor = baker.make(Autor, nazwisko="Statusowy", imiona="Stefan")
+    # Rekordy powiązane z uczelnią oglądającego (autorstwo w jej jednostce),
+    # by przetrwały izolację multi-host (scope_rekord_api) — testujemy tu
+    # warstwę ukrytych statusów, nie zawężenie per-uczelnia.
+    jednostka = baker.make(Jednostka, uczelnia=uczelnia)
     widoczna = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Widoczna")
-    baker.make(Wydawnictwo_Ciagle_Autor, rekord=widoczna, autor=autor)
+    baker.make(
+        Wydawnictwo_Ciagle_Autor, rekord=widoczna, autor=autor, jednostka=jednostka
+    )
     ukryta = baker.make(
         Wydawnictwo_Ciagle, tytul_oryginalny="Ukryta", status_korekty=przed_korekta
     )
-    baker.make(Wydawnictwo_Ciagle_Autor, rekord=ukryta, autor=autor)
+    baker.make(
+        Wydawnictwo_Ciagle_Autor, rekord=ukryta, autor=autor, jednostka=jednostka
+    )
 
     uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
 

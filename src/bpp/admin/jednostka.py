@@ -2,16 +2,22 @@ import sys
 
 from django import forms
 from django.contrib import admin
+from django.contrib.admin.actions import delete_selected
+from django.core.exceptions import PermissionDenied
+from django.urls import reverse
 from django.utils.html import format_html
+from django.utils.translation import gettext
 from import_export.admin import ImportMixin
 from mptt.admin import DraggableMPTTAdmin
+from mptt.forms import MPTTAdminForm
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
+from bpp.admin.helpers.ror_field import czysc_ror
 from bpp.models import Autor_Jednostka, Uczelnia
 
-from ..models.struktura import Jednostka, Jednostka_Wydzial
+from ..models.struktura import Jednostka, Jednostka_Rodzic
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
-from .filters import PBN_UID_IDObecnyFilter
+from .filters import JednostkaNadrzednaFilter, PBN_UID_IDObecnyFilter, WydzialFilter
 from .helpers import LimitingFormset
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
@@ -21,9 +27,46 @@ from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
 
 
-class Jednostka_WydzialInline(admin.TabularInline):
-    model = Jednostka_Wydzial
+class Jednostka_RodzicInline(admin.TabularInline):
+    model = Jednostka_Rodzic
+    # Jednostka_Rodzic ma DWA FK do Jednostka (jednostka, parent) — inline na
+    # JednostkaAdmin musi jawnie wskazać po którym się wiąże.
+    fk_name = "jednostka"
     extra = 1
+
+
+class PodjednostkiInline(admin.TabularInline):
+    """Read-only lista jednostek PODRZĘDNYCH (bezpośrednich dzieci, ``parent=
+    self``) w formularzu JednostkaAdmin -- pokazywana NAD inlinem
+    autor-jednostka (Faza B, #438, issue 4).
+
+    W adminie edytujemy jeden poziom drzewa naraz, więc pokazujemy tylko
+    bezpośrednie dzieci (nie całe poddrzewo). Inline jest wyłącznie do
+    podglądu: bez dodawania/kasowania, pola tylko-do-odczytu, z linkiem do
+    formularza zmiany każdej podjednostki. ``fk_name`` jawnie wskazuje
+    self-FK ``parent`` (Jednostka ma DWA odwołania do samej siebie:
+    ``parent`` w drzewie i denorm ``wydzial``)."""
+
+    model = Jednostka
+    fk_name = "parent"
+    extra = 0
+    can_delete = False
+    show_change_link = True
+    verbose_name = "jednostka podrzędna"
+    verbose_name_plural = "jednostki podrzędne (bezpośrednie)"
+    fields = ("nazwa_link", "skrot", "rodzaj", "aktualna", "widoczna")
+    readonly_fields = ("nazwa_link", "skrot", "rodzaj", "aktualna", "widoczna")
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def nazwa_link(self, instance):
+        if instance.pk is None:
+            return ""
+        url = reverse("admin:bpp_jednostka_change", args=(instance.pk,))
+        return format_html('<a href="{}">{}</a>', url, instance.nazwa)
+
+    nazwa_link.short_description = "Nazwa jednostki"
 
 
 class Autor_JednostkaForm(forms.ModelForm):
@@ -41,6 +84,29 @@ class Autor_JednostkaInline(admin.TabularInline):
     extra = 0
 
 
+class JednostkaAdminForm(MPTTAdminForm):
+    """Walidacja ROR-a przy zapisie jednostki.
+
+    Identyfikator ma sumę kontrolną, więc literówkę widać od razu,
+    a nie dopiero po cichym braku ``RORID`` w eksporcie CERIF.
+
+    Dziedziczy z ``MPTTAdminForm``, a NIE z ``forms.ModelForm``. To nie
+    jest kosmetyka: ``MPTTModelAdmin`` ustawia ``form = MPTTAdminForm``,
+    a ta klasa wycina potomków z listy wyboru ``parent`` i w ``clean()``
+    odrzuca rodzica będącego własnym potomkiem. Podmiana na goły
+    ``ModelForm`` kasowała tę walidację po MRO i pozwalała zapisać PĘTLĘ
+    w drzewie jednostek — czyli rozjechane ``lft``/``rght``/``tree_id``
+    i ``get_descendants()`` kręcące się w nieskończoność.
+    """
+
+    class Meta:
+        model = Jednostka
+        fields = ["ror_id"]
+
+    def clean_ror_id(self):
+        return czysc_ror(self.cleaned_data.get("ror_id"))
+
+
 class JednostkaAdmin(
     ImportMixin,
     SiteFilteredAdminMixin,
@@ -51,6 +117,7 @@ class JednostkaAdmin(
     BaseBppAdminMixin,
     DraggableMPTTAdmin,
 ):
+    form = JednostkaAdminForm
     uczelnia_field_path = "uczelnia"
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
@@ -82,32 +149,38 @@ class JednostkaAdmin(
         "indented_title",
         "skrot",
         "parent_nazwa",
+        "uczelnia_skrot",
         "wydzial_skrot",
         "widoczna",
-        "rodzaj_jednostki",
-        "wchodzi_do_raportow",
+        "rodzaj",
+        "wchodzi_do_rankingu_autorow",
         "skupia_pracownikow",
         "pbn_uid_id",
     ]
 
     list_select_related = [
         "wydzial",
+        "rodzaj",
+        "uczelnia",
     ]
     fields = None
     list_filter = (
-        "wydzial",
+        WydzialFilter,
+        JednostkaNadrzednaFilter,
         "widoczna",
-        "wchodzi_do_raportow",
+        "nie_eksportuj_przez_api",
+        "wchodzi_do_rankingu_autorow",
         "skupia_pracownikow",
         "zarzadzaj_automatycznie",
-        "rodzaj_jednostki",
+        "rodzaj",
         "aktualna",
         PBN_UID_IDObecnyFilter,
     )
     search_fields = ["nazwa", "skrot", "wydzial__nazwa"]
 
     inlines = (
-        Jednostka_WydzialInline,
+        Jednostka_RodzicInline,
+        PodjednostkiInline,
         Autor_JednostkaInline,
     )
 
@@ -127,14 +200,16 @@ class JednostkaAdmin(
                     "aktualna",
                     "pbn_id",
                     "pbn_uid",
-                    "rodzaj_jednostki",
+                    "rodzaj",
                     "opis",
                     "widoczna",
-                    "wchodzi_do_raportow",
+                    "nie_eksportuj_przez_api",
+                    "wchodzi_do_rankingu_autorow",
                     "skupia_pracownikow",
                     "zarzadzaj_automatycznie",
                     "email",
                     "www",
+                    "ror_id",
                 ),
             },
         ),
@@ -151,6 +226,69 @@ class JednostkaAdmin(
     def changelist_view(self, request, *args, **kwargs):
         self.request = request
         return super().changelist_view(request, *args, **kwargs)
+
+    #
+    # Bezpieczne kasowanie: tylko puste jednostki (spec 2026-07-07).
+    #
+
+    def get_deleted_objects(self, objs, request):
+        """Bramkuj kasowanie niepustych jednostek przez listę ``protected``.
+
+        Dla każdej jednostki z odwrotnymi referencjami (patrz
+        ``Jednostka.przeszkody_w_kasowaniu``) dokładamy czytelny wpis do
+        ``protected`` — Django renderuje go na stronie potwierdzenia i CHOWA
+        przycisk potwierdzenia. Obsługuje pojedynczy delete ORAZ stronę
+        potwierdzenia akcji masowej (MPTT ``delete_selected_tree`` na pierwszym
+        przejściu deleguje do standardowego ``delete_selected``)."""
+        deletable, model_count, perms_needed, protected = super().get_deleted_objects(
+            objs, request
+        )
+        protected = list(protected)
+        for obj in objs:
+            przeszkody = obj.przeszkody_w_kasowaniu()
+            if not przeszkody:
+                continue
+            szczegoly = ", ".join(
+                f"{liczba}× {etykieta}" for etykieta, liczba in przeszkody
+            )
+            protected.append(
+                format_html(
+                    gettext(
+                        "Jednostka „{}” — nie można usunąć, bo są do niej "
+                        "przypięte inne obiekty (odepnij je najpierw): {}"
+                    ),
+                    obj.nazwa,
+                    szczegoly,
+                )
+            )
+        return deletable, model_count, perms_needed, protected
+
+    def delete_selected_tree(self, modeladmin, request, queryset):
+        """Akcja masowa: wszystko-albo-nic.
+
+        MPTT ``delete_selected_tree`` na potwierdzeniu (``post``) kasuje pętlą
+        ``obj.delete()`` z per-obiektowym ``has_delete_permission`` — omija
+        nasz ``get_deleted_objects``. Dlatego: jeśli w zaznaczeniu jest CHOĆ
+        JEDNA niepusta jednostka, routujemy CAŁĄ partię do standardowego
+        ``delete_selected`` (który przez nasz ``get_deleted_objects`` pokaże
+        listę blokad i nie skasuje niczego). Gdy wszystkie puste — normalne
+        kasowanie drzewa MPTT."""
+        if any(not obj.czy_mozna_skasowac() for obj in queryset):
+            return delete_selected(modeladmin, request, queryset)
+        return super().delete_selected_tree(modeladmin, request, queryset)
+
+    def delete_model(self, request, obj):
+        """Defense-in-depth dla pojedynczego kasowania: nie kasuj niepustej
+        jednostki nawet gdyby ścieżka ominęła ``get_deleted_objects``.
+
+        Rzucamy ``PermissionDenied`` (a nie ``message_user`` + ``return``) —
+        inaczej Django ``_delete_view`` domknąłby flow komunikatem „usunięto
+        pomyślnie" i wpisem DELETION w LogEntry mimo braku kasowania."""
+        if not obj.czy_mozna_skasowac():
+            raise PermissionDenied(
+                gettext("Nie skasowano „%s” — jednostka nie jest pusta.") % obj
+            )
+        super().delete_model(request, obj)
 
     def indented_title(self, item):
         """
@@ -175,6 +313,12 @@ class JednostkaAdmin(
 
     wydzial_skrot.short_description = "Wydział"
 
+    def uczelnia_skrot(self, item):
+        if item.uczelnia_id:
+            return item.uczelnia.skrot
+
+    uczelnia_skrot.short_description = "Uczelnia"
+
     def parent_nazwa(self, item):
         if item.parent_id:
             return item.parent.nazwa
@@ -185,6 +329,16 @@ class JednostkaAdmin(
         if request.GET.keys():
             return self.list_display[1:]
         return self.list_display
+
+    def get_list_filter(self, request):
+        # Multi-hosted: superuser widzi jednostki WSZYSTKICH uczelni naraz
+        # (SiteFilteredAdminMixin zawęża tylko nie-superuserów), więc bez filtra
+        # nie da się ograniczyć listy do jednej uczelni. Dokładamy filtr
+        # „uczelnia" (pierwszy) TYLKO gdy w systemie jest >1 uczelnia — na
+        # instalacji single-tenant byłby zbędny (jedna wartość do wyboru).
+        if Uczelnia.objects.count() > 1:
+            return ("uczelnia", *self.list_filter)
+        return self.list_filter
 
     def get_list_per_page(self):
         from django.db import DatabaseError, connection

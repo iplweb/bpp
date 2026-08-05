@@ -14,7 +14,9 @@
                         <form method="post"
                               action="{% url 'bpp:browse_build_search' %}"
                               class="autor-page__staty-form">
-                            {% csrf_token %}
+                            {# Brak {% csrf_token %} celowo — BuildSearch jest #}
+                            {# @csrf_exempt, a token blokowałby cache_publiczny #}
+                            {# strony autora (bezpiecznik _ZAWIERA_CSRF). #}
                             <input type="hidden" name="autor" value="{{ autor.pk }}"/>
                             <input type="hidden"
                                    name="charakter_formalny"

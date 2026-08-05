@@ -201,3 +201,18 @@ def test_author_candidates_modal_view_renderuje_kandydatow(session, importer_cli
     assert "85%" in html
     assert "wariant PL/EN" in html
     assert "polish_english" not in html
+
+
+@pytest.mark.django_db
+def test_author_match_view_zapisuje_typ_redaktor(session, importer_client):
+    from django.urls import reverse
+
+    from bpp import const
+
+    autor = baker.make(Autor)
+    imp = baker.make(ImportedAuthor, session=session, order=0)
+    url = reverse("importer_publikacji:author-match", args=[session.pk, imp.pk])
+    response = importer_client.post(url, {"autor": autor.pk, "typ": const.TO_REDAKTOR})
+    assert response.status_code == 200
+    imp.refresh_from_db()
+    assert imp.typ_ogolny == const.TO_REDAKTOR

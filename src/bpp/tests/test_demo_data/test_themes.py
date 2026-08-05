@@ -117,6 +117,35 @@ def test_wydawca_nazwy_are_unique():
     assert len(set(nazwy)) == 5  # unikalne mimo puli < n
 
 
+def test_wydzial_nazwy_are_unique():
+    """Wydzial.nazwa ma unique=True — gdy prosimy o więcej wydziałów niż jest
+    dziedzin w motywie, nazwy MUSZĄ pozostać unikalne (dawniej pula była
+    cyklowana bez deduplikacji → IntegrityError w bulk_create)."""
+    import random
+
+    from bpp.demo_data.themes.compose import wydzial_nazwy
+
+    t = _mini_theme()  # pula = 3 wydziały
+    nazwy = wydzial_nazwy(t, random.Random(1), 7)
+    assert len(nazwy) == 7
+    assert len(set(nazwy)) == 7  # unikalne mimo puli < n
+    assert all(n.startswith("Wydział ") for n in nazwy)
+
+
+def test_jednostka_nazwy_are_unique():
+    """Jednostka.nazwa ma unique=True — nazwy MUSZĄ być unikalne nawet gdy
+    liczba jednostek przekracza iloczyn prefiks×dziedzina (dawniej losowa
+    kompozycja per-jednostka zderzała się → IntegrityError)."""
+    import random
+
+    from bpp.demo_data.themes.compose import jednostka_nazwy
+
+    t = _mini_theme()  # 7 prefiksów (SHARED) × 2 dziedziny = 14 kombinacji
+    nazwy = jednostka_nazwy(t, random.Random(1), 20)
+    assert len(nazwy) == 20
+    assert len(set(nazwy)) == 20  # unikalne mimo iloczynu < n
+
+
 def test_apply_prefix():
     from bpp.demo_data.themes.compose import apply_prefix
 

@@ -3,10 +3,13 @@
 import csv
 import io
 import json
+import re
 from decimal import Decimal
 
 import pytest
 from django.conf import settings
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import translation
 from model_bakery import baker
@@ -15,7 +18,11 @@ from multiseek.views import MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED
 
 from bpp.models import Wydawnictwo_Ciagle
 from bpp.models.cache import Rekord
-from bpp.tests.util import any_ciagle
+from bpp.tests.util import any_ciagle, any_zwarte
+from bpp.views.multiseek_export import (
+    MULTISEEK_EXPORT_OPIS_XLSX_HEADERS,
+    _plain_opis_bibliograficzny,
+)
 from bpp.views.mymultiseek import (
     MULTISEEK_DEFAULT_REPORT_TITLE,
     MULTISEEK_EXPORT_HEADERS,
@@ -162,11 +169,13 @@ def test_multiseek_export_csv(logged_in_client, multiseek_export_rekord):
     assert rows[1] == [
         multiseek_export_rekord.tytul_oryginalny,
         "Kowalski Jan",
+        multiseek_export_rekord.zrodlo.nazwa,
         "2024",
         "1.230",
         "42.00",
         str(tuple(multiseek_export_rekord.pk)),
         "wydawnictwo ciągłe",
+        multiseek_export_rekord.typ_kbn.nazwa,
         str(multiseek_export_rekord.object_id),
         "507f1f77bcf86cd799439011",
         f"http://testserver{multiseek_export_rekord.get_absolute_url()}",
@@ -254,11 +263,13 @@ def test_multiseek_export_xlsx(logged_in_client, multiseek_export_rekord):
     assert rows[1] == (
         multiseek_export_rekord.tytul_oryginalny,
         "Kowalski Jan",
+        multiseek_export_rekord.zrodlo.nazwa,
         2024,
         1.23,
         42,
         str(tuple(multiseek_export_rekord.pk)),
         "wydawnictwo ciągłe",
+        multiseek_export_rekord.typ_kbn.nazwa,
         multiseek_export_rekord.object_id,
         "507f1f77bcf86cd799439011",
         '=HYPERLINK("'
@@ -270,10 +281,13 @@ def test_multiseek_export_xlsx(logged_in_client, multiseek_export_rekord):
         '507f1f77bcf86cd799439011/current", "[link]")',
     )
     assert worksheet.freeze_panes == "B1"
-    assert worksheet["D2"].data_type == "n"
     assert worksheet["E2"].data_type == "n"
-    assert worksheet["D2"].number_format == "0.000"
-    assert worksheet["E2"].number_format == "0.00"
+    assert worksheet["F2"].data_type == "n"
+    assert worksheet["E2"].number_format == "0.000"  # Impact Factor (było D)
+    assert worksheet["F2"].number_format == "0.00"  # PK (było E)
+    # kolumny linków (L, M, N) zawierają =HYPERLINK
+    for col in ("L", "M", "N"):
+        assert worksheet[f"{col}2"].value.startswith("=HYPERLINK(")
 
 
 @pytest.mark.django_db
@@ -397,3 +411,642 @@ def test_multiseek_export_does_not_match_unfiltered_records(
 
     rows = list(csv.DictReader(io.StringIO(response.content.decode("utf-8"))))
     assert [row["bpp_id"] for row in rows] == [str(tuple(multiseek_export_rekord.pk))]
+
+
+@pytest.mark.django_db
+def test_export_dane_csv_ma_zrodlo_i_typ_mnisw(
+    logged_in_client, multiseek_export_rekord
+):
+    _set_multiseek_title_filter(logged_in_client)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "csv"})
+    )
+
+    assert response.status_code == 200
+    text = response.content.decode("utf-8")
+    header = text.splitlines()[0]
+    cols = header.split(",")
+    assert cols[2] == "zrodlo"
+    assert cols[8] == "typ_mnisw_mein"
+    assert cols[6] == "bpp_id"  # BPP ID nadal przed typ_rekordu (kol. 8)
+    assert cols[7] == "typ_rekordu"
+
+    rows = list(csv.DictReader(io.StringIO(text)))
+    assert rows[0]["zrodlo"] == multiseek_export_rekord.zrodlo.nazwa
+    assert rows[0]["typ_mnisw_mein"] == multiseek_export_rekord.typ_kbn.nazwa
+
+
+@pytest.mark.django_db
+def test_export_dane_csv_ksiazka_bez_zrodla_ma_puste_pole(
+    logged_in_client, standard_data, denorms
+):
+    """Wydawnictwo_Zwarte (książka/monografia) nie ma pola ``zrodlo`` — w
+    cache Rekord to ``zrodlo=None``. Każda książka w produkcji trafia w tę
+    gałąź _iter_export_rows (``zrodlo.nazwa if zrodlo is not None else
+    ""``); żaden dotychczasowy test jej nie ćwiczył."""
+    any_zwarte(tytul_oryginalny=f"{EXPORT_TITLE_PREFIX} - książka")
+    denorms.flush()
+    _set_multiseek_title_filter(logged_in_client)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "csv"})
+    )
+
+    assert response.status_code == 200
+    rows = list(csv.DictReader(io.StringIO(response.content.decode("utf-8"))))
+    assert len(rows) == 1
+    assert rows[0]["zrodlo"] == ""
+
+
+@pytest.mark.django_db
+def test_export_dane_xlsx_ma_zrodlo_i_typ_mnisw(
+    logged_in_client, multiseek_export_rekord
+):
+    from openpyxl import load_workbook
+
+    _set_multiseek_title_filter(logged_in_client)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "xlsx"})
+    )
+
+    assert response.status_code == 200
+    wb = load_workbook(io.BytesIO(response.content))
+    ws = wb.active
+    headers = [c.value for c in ws[1]]
+    assert headers[2] == "Źródło"
+    assert headers[8] == "Typ MNiSW/MEiN"
+    assert headers[6] == "BPP ID"
+    assert headers[7] == "Typ rekordu"
+
+    rows = list(ws.iter_rows(values_only=True))
+    assert rows[1][2] == multiseek_export_rekord.zrodlo.nazwa
+    assert rows[1][8] == multiseek_export_rekord.typ_kbn.nazwa
+
+
+def _make_n_plus_1_rows(prefix, count):
+    """``count`` rekordów, każdy z WŁASNYM zrodlo/typ_kbn/charakter_formalny.
+
+    ``any_ciagle()`` bez jawnych kwargs tworzy te FK-i od zera przy każdym
+    wywołaniu (model_bakery nie współdzieli/nie cache'uje instancji FK
+    między wywołaniami) — dzięki temu ewentualny N+1 na dostępie do tych
+    pól faktycznie odpali osobne zapytanie na wiersz, zamiast schować się
+    za pamięcią podręczną kluczoną po (współdzielonej) wartości FK.
+    """
+    for i in range(count):
+        any_ciagle(tytul_oryginalny=f"{prefix} - {i}")
+
+
+def _query_count_for_export(client, url):
+    # Rozgrzewka: pierwsze zapytanie w sesji odpala dodatkowy, jednorazowy
+    # SELECT z niepowiązanego middleware'u password_policies (sprawdzenie
+    # historii haseł raz na sesję) — bez tego call'a porównanie N1 vs N2
+    # byłoby fałszywie różne o 1 zapytanie, mimo braku N+1 w eksporcie.
+    client.get(url)
+    with CaptureQueriesContext(connection) as ctx:
+        response = client.get(url)
+    assert response.status_code == 200
+    return response, len(ctx.captured_queries)
+
+
+@pytest.mark.django_db
+def test_export_dane_xlsx_nie_ma_n_plus_1(logged_in_client, standard_data, denorms):
+    """Liczba zapytań SQL dla eksportu 'dane' jest STAŁA względem liczby
+    wierszy — to jest definicja braku N+1. Samo sprawdzenie górnego progu
+    (max_num_queries) przepuściłoby częściowy N+1 (np. +1 zapytanie na
+    wiersz przy dużym marginesie); porównanie N1 vs N2 tego nie przepuści.
+    """
+    from openpyxl import load_workbook
+
+    prefix = f"{EXPORT_TITLE_PREFIX} - n plus 1"
+    url = reverse("multiseek-export", kwargs={"export_format": "xlsx"})
+
+    _make_n_plus_1_rows(prefix, 2)
+    denorms.flush()
+    _set_multiseek_title_filter(logged_in_client, title_prefix=prefix)
+
+    response, n1_queries = _query_count_for_export(logged_in_client, url)
+    load_workbook(io.BytesIO(response.content))
+
+    _make_n_plus_1_rows(prefix, 4)  # razem 6 rekordów
+    denorms.flush()
+
+    response, n2_queries = _query_count_for_export(logged_in_client, url)
+    load_workbook(io.BytesIO(response.content))
+
+    assert n2_queries == n1_queries, (
+        "Liczba zapytań SQL rośnie wraz z liczbą wierszy "
+        f"({n1_queries} dla 2 wierszy → {n2_queries} dla 6 wierszy) — N+1."
+    )
+    assert n1_queries <= 18  # sensowny górny limit, z marginesem
+
+
+def test_plain_opis_bibliograficzny_czysci_html():
+    value = "Tytuł <i>Źródła</i> 2026<br>s. 1-2"
+
+    opis = _plain_opis_bibliograficzny(value)
+
+    assert "<" not in opis and ">" not in opis
+    assert "Źródła" in opis
+    assert "  " not in opis  # spacje skolapsowane, <br> nie sklejone
+    # <br> (tag blokowy) MUSI zostać zamieniony na spację, a nie po prostu
+    # zniknąć — inaczej "2026" i "s." skleją się w "2026s." (usunięcie kroku
+    # MULTISEEK_REPORT_TITLE_HTML_BREAK_RE.sub(" ", ...) nie zostałoby
+    # wykryte przez samo "  " not in opis, bo sklejenie nie tworzy podwójnej
+    # spacji).
+    assert "2026 s. 1-2" in opis
+
+
+def test_plain_opis_bibliograficzny_dekoduje_encje_html():
+    value = "Kowalski J. &amp; Nowak T. &oacute;wczesny"
+
+    opis = _plain_opis_bibliograficzny(value)
+
+    assert "&amp;" not in opis
+    assert "&" in opis
+    assert "&oacute;" not in opis
+    assert "ó" in opis
+
+
+def test_plain_opis_bibliograficzny_puste_wejscie_bez_fallbacku():
+    assert _plain_opis_bibliograficzny("") == ""
+    assert _plain_opis_bibliograficzny(None) == ""
+
+
+@pytest.mark.django_db
+def test_multiseek_export_opis_xlsx_uklad(logged_in_client, multiseek_export_rekord):
+    from openpyxl import load_workbook
+
+    _set_multiseek_title_filter(logged_in_client)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "xlsx"}) + "?wariant=opis"
+    )
+
+    assert response.status_code == 200
+    wb = load_workbook(io.BytesIO(response.content))
+    ws = wb.active
+    headers = [c.value for c in ws[1]]
+    assert headers == list(MULTISEEK_EXPORT_OPIS_XLSX_HEADERS)
+    assert ws["A2"].value == 1  # numeracja Lp.
+    assert ws.freeze_panes == "A2"
+
+
+@pytest.mark.django_db
+def test_multiseek_export_opis_xlsx_wiersz(logged_in_client, multiseek_export_rekord):
+    from openpyxl import load_workbook
+
+    _set_multiseek_title_filter(logged_in_client)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "xlsx"}) + "?wariant=opis"
+    )
+
+    assert response.status_code == 200
+    ws = load_workbook(io.BytesIO(response.content)).active
+    rows = list(ws.iter_rows(values_only=True))
+    assert rows[1] == (
+        1,
+        _plain_opis_bibliograficzny(multiseek_export_rekord.opis_bibliograficzny_cache),
+        1.23,
+        42,
+        multiseek_export_rekord.charakter_formalny.nazwa,
+        multiseek_export_rekord.typ_kbn.nazwa,
+    )
+
+
+@pytest.mark.django_db
+def test_multiseek_export_opis_csv_degraduje_do_dane(
+    logged_in_client, multiseek_export_rekord
+):
+    _set_multiseek_title_filter(logged_in_client)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "csv"}) + "?wariant=opis"
+    )
+
+    assert response.status_code == 200
+    header = response.content.decode("utf-8").splitlines()[0]
+    assert header.split(",")[0] == "tytul_oryginalny"  # układ dane, nie opis
+
+
+@pytest.mark.django_db
+def test_multiseek_export_nieznany_wariant_to_dane(
+    logged_in_client, multiseek_export_rekord
+):
+    from openpyxl import load_workbook
+
+    _set_multiseek_title_filter(logged_in_client)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "xlsx"})
+        + "?wariant=cokolwiek"
+    )
+
+    assert response.status_code == 200
+    ws = load_workbook(io.BytesIO(response.content)).active
+    assert ws[1][0].value == "Tytuł oryginalny"  # układ dane
+
+
+@pytest.mark.django_db
+def test_multiseek_export_opis_print_removed_wspolistnieja(
+    logged_in_client, multiseek_export_pair
+):
+    visible, removed = multiseek_export_pair
+    _set_multiseek_title_filter(logged_in_client)
+    session = logged_in_client.session
+    session[MULTISEEK_SESSION_KEY_REMOVED] = [removed.pk]
+    session.save()
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "xlsx"})
+        + "?wariant=opis&print-removed=1"
+    )
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_multiseek_export_opis_xlsx_nie_ma_n_plus_1(
+    logged_in_client, standard_data, denorms
+):
+    """Analogicznie do test_export_dane_xlsx_nie_ma_n_plus_1 — liczba zapytań
+    SQL musi być stała względem liczby wierszy (nie tylko poniżej progu)."""
+    from openpyxl import load_workbook
+
+    prefix = f"{EXPORT_TITLE_PREFIX} - opis n plus 1"
+    url = (
+        reverse("multiseek-export", kwargs={"export_format": "xlsx"}) + "?wariant=opis"
+    )
+
+    _make_n_plus_1_rows(prefix, 2)
+    denorms.flush()
+    _set_multiseek_title_filter(logged_in_client, title_prefix=prefix)
+
+    response, n1_queries = _query_count_for_export(logged_in_client, url)
+    load_workbook(io.BytesIO(response.content))
+
+    _make_n_plus_1_rows(prefix, 4)  # razem 6 rekordów
+    denorms.flush()
+
+    response, n2_queries = _query_count_for_export(logged_in_client, url)
+    load_workbook(io.BytesIO(response.content))
+
+    assert n2_queries == n1_queries, (
+        "Liczba zapytań SQL rośnie wraz z liczbą wierszy "
+        f"({n1_queries} dla 2 wierszy → {n2_queries} dla 6 wierszy) — N+1."
+    )
+    assert n1_queries <= 18  # sensowny górny limit, z marginesem
+
+
+# ---------------------------------------------------------------------------
+# Eksport dokumentu: HTML / DOCX / BibTeX (feat-multiseek-eksport-html-docx)
+# ---------------------------------------------------------------------------
+
+LIST_REPORT_TYPE = "0"
+NUMER_LIST_REPORT_TYPE = "4"
+TABLE_CYTOWANIA_REPORT_TYPE = "5"
+BIBTEX_REPORT_TYPE = "8"
+
+
+@pytest.mark.django_db
+def test_multiseek_export_bibtex_dla_widoku_bibtex(
+    logged_in_client, multiseek_export_rekord
+):
+    _set_multiseek_title_filter(logged_in_client, report_type=BIBTEX_REPORT_TYPE)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "bib"})
+    )
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == "application/x-bibtex; charset=utf-8"
+    assert (
+        f'filename="eksport-{MULTISEEK_DEFAULT_REPORT_TITLE}.bib"'
+        in response["Content-Disposition"]
+    )
+    assert b"@" in response.content
+
+
+@pytest.mark.django_db
+def test_multiseek_export_bib_poza_widokiem_bibtex_to_400(
+    logged_in_client, multiseek_export_rekord
+):
+    _set_multiseek_title_filter(logged_in_client, report_type=LIST_REPORT_TYPE)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "bib"})
+    )
+
+    assert response.status_code == 400
+
+
+@pytest.mark.django_db
+def test_multiseek_export_bib_degraduje_html_docx_w_widoku_bibtex(
+    logged_in_client, multiseek_export_rekord
+):
+    """W widoku BibTeX zapytanie o html/docx URL-em ręcznym degraduje do .bib."""
+    _set_multiseek_title_filter(logged_in_client, report_type=BIBTEX_REPORT_TYPE)
+
+    for fmt in ("html", "docx"):
+        response = logged_in_client.get(
+            reverse("multiseek-export", kwargs={"export_format": fmt})
+        )
+        assert response.status_code == 200
+        assert response["Content-Type"] == "application/x-bibtex; charset=utf-8"
+        assert ".bib" in response["Content-Disposition"]
+
+
+@pytest.mark.django_db
+def test_multiseek_export_html_lista(logged_in_client, multiseek_export_rekord):
+    _set_multiseek_title_filter(logged_in_client, report_type=LIST_REPORT_TYPE)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "html"})
+    )
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == "text/html; charset=utf-8"
+    assert (
+        f'filename="eksport-{MULTISEEK_DEFAULT_REPORT_TITLE}.html"'
+        in response["Content-Disposition"]
+    )
+    content = response.content.decode("utf-8")
+    assert "<ol" in content
+    assert multiseek_export_rekord.tytul_oryginalny in content
+
+
+@pytest.mark.django_db
+def test_multiseek_export_html_tabela(logged_in_client, multiseek_export_rekord):
+    _set_multiseek_title_filter(logged_in_client, report_type=TABLE_REPORT_TYPE)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "html"})
+    )
+
+    assert response.status_code == 200
+    content = response.content.decode("utf-8")
+    assert "<table" in content
+    assert "Typ MNiSW/MEiN" in content
+
+
+@pytest.mark.django_db
+def test_multiseek_export_html_tytul_z_html_jest_escapowany(
+    logged_in_client, multiseek_export_rekord
+):
+    _set_multiseek_title_filter(logged_in_client, report_type=LIST_REPORT_TYPE)
+    # Tytuł zakodowany encjami w sesji → plain_multiseek_report_title robi
+    # html.unescape PO strip_tags → literalny '<b>ZNACZNIK'. Shell musi go
+    # zescape'ować (bez |safe), inaczej XSS.
+    _set_multiseek_report_title(logged_in_client, "&lt;b&gt;ZNACZNIK")
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "html"})
+    )
+
+    content = response.content.decode("utf-8")
+    assert "&lt;b&gt;ZNACZNIK" in content
+    assert "<b>ZNACZNIK" not in content
+
+
+@pytest.mark.django_db
+def test_report_body_table_numeruje_od_start_index_zero():
+    """Regression off-by-one: eksport tabeli (start_index=0) numeruje od 1,
+    nie od 0. Partial renderowany bezpośrednio z fake-elementami.
+
+    Wymaga ``django_db``, mimo że rekordy są sztuczne: loader dbtemplates
+    z ``DBTEMPLATES_SKIP_UNKNOWN_NAMES`` odpytuje raz ``Template`` (znane
+    nazwy) przy renderze — bez markera trafia to na blokadę bazy pytest-django
+    zależnie od kolejności testów w workerze xdist (flaky)."""
+    from types import SimpleNamespace
+
+    from django.template.loader import render_to_string
+
+    def fake(opis):
+        return SimpleNamespace(
+            opis_bibliograficzny_cache=opis,
+            impact_factor="1.00",
+            punkty_kbn="10.00",
+            liczba_cytowan=0,
+            punktacja_wewnetrzna="0.00",
+            charakter_formalny="Artykuł",
+            typ_kbn="typ",
+            js_safe_pk="1_1",
+            uwagi="",
+        )
+
+    html = render_to_string(
+        "multiseek/report-body-table.html",
+        {
+            "object_list": [fake("Pierwszy"), fake("Drugi")],
+            "report_type": "table",
+            "export_mode": True,
+            "start_index": 0,
+            "sumy": {},
+        },
+    )
+    lp_numbers = re.findall(r"(\d+)\.\s*</td>", html)
+    assert lp_numbers[:2] == ["1", "2"], f"Numeracja od zera: {lp_numbers}"
+
+
+DOCX_CONTENT_TYPE = (
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+)
+
+
+def _pandoc_available():
+    try:
+        import pypandoc
+
+        pypandoc.get_pandoc_path()
+        return True
+    except Exception:  # noqa: BLE001 - brak pandoca w tym środowisku
+        return False
+
+
+@pytest.mark.django_db
+def test_multiseek_export_docx_uzywa_html_to_docx(
+    logged_in_client, multiseek_export_rekord, monkeypatch
+):
+    monkeypatch.setattr(
+        "nowe_raporty.docx_export.html_to_docx",
+        lambda html, **kw: b"DOCXSENTINEL",
+    )
+    _set_multiseek_title_filter(logged_in_client, report_type=LIST_REPORT_TYPE)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "docx"})
+    )
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == DOCX_CONTENT_TYPE
+    assert (
+        f'filename="eksport-{MULTISEEK_DEFAULT_REPORT_TITLE}.docx"'
+        in response["Content-Disposition"]
+    )
+    assert response.content == b"DOCXSENTINEL"
+
+
+@pytest.mark.skipif(not _pandoc_available(), reason="pandoc niedostępny")
+@pytest.mark.django_db
+def test_multiseek_export_docx_realny_zwraca_zip(
+    logged_in_client, multiseek_export_rekord
+):
+    _set_multiseek_title_filter(logged_in_client, report_type=LIST_REPORT_TYPE)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "docx"})
+    )
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == DOCX_CONTENT_TYPE
+    # DOCX to ZIP — magic header PK\x03\x04.
+    assert response.content[:4] == b"PK\x03\x04"
+
+
+@pytest.mark.django_db
+def test_multiseek_export_html_tabela_cytowania_bez_n_plus_1(
+    logged_in_client, standard_data, denorms
+):
+    """Guard dla D9: eksport tabeli z liczbą cytowań ma STAŁĄ liczbę zapytań
+    względem liczby wierszy (liczba_cytowan w projekcji, nie deferred)."""
+    prefix = f"{EXPORT_TITLE_PREFIX} - html tab n1"
+    url = reverse("multiseek-export", kwargs={"export_format": "html"})
+
+    _make_n_plus_1_rows(prefix, 2)
+    denorms.flush()
+    _set_multiseek_title_filter(
+        logged_in_client,
+        title_prefix=prefix,
+        report_type=TABLE_CYTOWANIA_REPORT_TYPE,
+    )
+    _, n1 = _query_count_for_export(logged_in_client, url)
+
+    _make_n_plus_1_rows(prefix, 4)
+    denorms.flush()
+    _, n2 = _query_count_for_export(logged_in_client, url)
+
+    assert n2 == n1, f"N+1 w eksporcie tabeli: {n1} → {n2}"
+
+
+@pytest.mark.django_db
+def test_multiseek_export_html_numer_list_bez_n_plus_1(
+    logged_in_client, standard_data, denorms
+):
+    """Guard dla D9: numer_list renderuje uwagi — musi być w projekcji."""
+    prefix = f"{EXPORT_TITLE_PREFIX} - html numer n1"
+    url = reverse("multiseek-export", kwargs={"export_format": "html"})
+
+    _make_n_plus_1_rows(prefix, 2)
+    denorms.flush()
+    _set_multiseek_title_filter(
+        logged_in_client,
+        title_prefix=prefix,
+        report_type=NUMER_LIST_REPORT_TYPE,
+    )
+    _, n1 = _query_count_for_export(logged_in_client, url)
+
+    _make_n_plus_1_rows(prefix, 4)
+    denorms.flush()
+    _, n2 = _query_count_for_export(logged_in_client, url)
+
+    assert n2 == n1, f"N+1 w eksporcie numer_list: {n1} → {n2}"
+
+
+def test_sanitize_export_html_usuwa_script_zachowuje_strukture():
+    from bpp.views.multiseek_export import sanitize_export_html
+
+    dirty = (
+        "<ol><li>Tytuł <i>x</i><sub>2</sub>"
+        "<script>alert(1)</script></li></ol>"
+        '<table><tr><td colspan="2">a</td></tr></table>'
+    )
+    clean = sanitize_export_html(dirty)
+
+    assert "<script" not in clean
+    assert "alert(1)" not in clean
+    assert "<ol>" in clean and "<li>" in clean
+    assert "<i>" in clean and "<sub>" in clean
+    assert "<table>" in clean and 'colspan="2"' in clean
+
+
+@pytest.mark.django_db
+def test_dropdown_pokazuje_html_docx_dla_listy(
+    logged_in_client, multiseek_export_rekord
+):
+    _set_multiseek_title_filter(logged_in_client, report_type=LIST_REPORT_TYPE)
+
+    content = logged_in_client.get(reverse("live-results")).content.decode("utf-8")
+
+    assert reverse("multiseek-export", kwargs={"export_format": "html"}) in content
+    assert reverse("multiseek-export", kwargs={"export_format": "docx"}) in content
+    assert reverse("multiseek-export", kwargs={"export_format": "bib"}) not in content
+
+
+@pytest.mark.django_db
+def test_dropdown_pokazuje_bib_dla_bibtex(logged_in_client, multiseek_export_rekord):
+    _set_multiseek_title_filter(logged_in_client, report_type=BIBTEX_REPORT_TYPE)
+
+    content = logged_in_client.get(reverse("live-results")).content.decode("utf-8")
+
+    assert reverse("multiseek-export", kwargs={"export_format": "bib"}) in content
+    assert reverse("multiseek-export", kwargs={"export_format": "html"}) not in content
+    assert reverse("multiseek-export", kwargs={"export_format": "docx"}) not in content
+
+
+@pytest.mark.django_db
+def test_multiseek_export_html_numer_list_uwagi_wyroznione(
+    logged_in_client, standard_data, denorms, autor_jan_kowalski, jednostka
+):
+    """numer_list: uwagi muszą być wizualnie wyróżnione także w eksporcie.
+    Na ekranie to <span style="color:red"> — nh3 zdejmuje style, więc w
+    eksporcie owijamy w tag emfazy (przetrwa sanityzację)."""
+    wyd = any_ciagle(
+        tytul_oryginalny=f"{EXPORT_TITLE_PREFIX} - uwagi",
+        uwagi="MOJA_UWAGA_XYZ",
+    )
+    denorms.flush()
+    Rekord.objects.get_original(wyd)
+    _set_multiseek_title_filter(logged_in_client, report_type=NUMER_LIST_REPORT_TYPE)
+
+    content = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "html"})
+    ).content.decode("utf-8")
+
+    assert "MOJA_UWAGA_XYZ" in content
+    assert re.search(r"<(b|em|strong)>\s*MOJA_UWAGA_XYZ\s*</(b|em|strong)>", content), (
+        "uwagi w eksporcie nie są wyróżnione tagiem emfazy"
+    )
+
+
+@pytest.mark.django_db
+def test_multiseek_export_html_tabela_numeracja_przez_endpoint(
+    logged_in_client, multiseek_export_pair
+):
+    """Realny endpoint (nie fake-obiekty): tabela numeruje 1., 2. od start_index=0."""
+    _set_multiseek_title_filter(logged_in_client, report_type=TABLE_REPORT_TYPE)
+
+    content = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "html"})
+    ).content.decode("utf-8")
+
+    lp = re.findall(r"(\d+)\.\s*</td>", content)
+    assert lp[:2] == ["1", "2"], f"Numeracja przez endpoint: {lp}"
+
+
+@pytest.mark.django_db
+def test_multiseek_export_html_print_removed_nie_crashuje(
+    logged_in_client, multiseek_export_rekord
+):
+    """Eksport dokumentu w trybie print-removed zwraca 200 (dzieli
+    get_queryset_for_current_mode z CSV/XLSX)."""
+    _set_multiseek_title_filter(logged_in_client, report_type=LIST_REPORT_TYPE)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "html"})
+        + "?print-removed=1"
+    )
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == "text/html; charset=utf-8"

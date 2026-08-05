@@ -198,6 +198,11 @@ class KierunekStudiowQueryObject(
     url = "bpp:kierunek-studiow-autocomplete"
 
     def real_query(self, value, operation):
+        if value is None:
+            # Nierozwiązywalny pk kierunku (value_from_web → None) → pusto.
+            # BEZ tego Q(autorzy__kierunek_studiow=None) daje szeroki match
+            # (kolumna NULL dla większości), a DIFFERENT odwraca w "wszystko".
+            return Q(pk__in=[])
         if operation in EQUALITY_OPS_ALL:
             ret = Q(autorzy__kierunek_studiow=value)
 

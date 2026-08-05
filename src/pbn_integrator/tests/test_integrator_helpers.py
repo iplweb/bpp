@@ -97,7 +97,7 @@ class TestPbnKeywordsToSlowaKluczowe:
 
 
 @pytest.mark.django_db
-def test_get_jezyk_polski_zwraca_jezyk_polski():
+def test_get_jezyk_polski_zwraca_jezyk_polski(jezyki):
     """get_jezyk_polski zwraca rekord języka polskiego (skrot='pol.')."""
     assert get_jezyk_polski() == Jezyk.objects.get(skrot="pol.")
 
@@ -112,13 +112,13 @@ def test_get_jezyk_polski_brak_w_bazie_rzuca():
 
 
 @pytest.mark.django_db
-def test_pobierz_jezyk_rozpoznaje_jezyk_po_skrocie():
+def test_pobierz_jezyk_rozpoznaje_jezyk_po_skrocie(jezyki):
     """Znany kod PBN (po skrócie) zwraca właściwy język, nie domyślny."""
     assert pobierz_jezyk("ang", "Some title") == Jezyk.objects.get(skrot="ang.")
 
 
 @pytest.mark.django_db
-def test_pobierz_jezyk_nieznany_kod_zwraca_domyslny_polski():
+def test_pobierz_jezyk_nieznany_kod_zwraca_domyslny_polski(jezyki):
     """Nieznany kod języka spada na domyślny — polski, nie 'pierwszy w bazie'."""
     assert pobierz_jezyk("xyz-nieznany", "Some title") == Jezyk.objects.get(
         skrot="pol."
@@ -126,13 +126,13 @@ def test_pobierz_jezyk_nieznany_kod_zwraca_domyslny_polski():
 
 
 @pytest.mark.django_db
-def test_pobierz_jezyk_brak_kodu_zwraca_domyslny_polski():
+def test_pobierz_jezyk_brak_kodu_zwraca_domyslny_polski(jezyki):
     """Brak mainLanguage (None) nie wywala importu — spada na polski."""
     assert pobierz_jezyk(None, None) == Jezyk.objects.get(skrot="pol.")
 
 
 @pytest.mark.django_db
-def test_pobierz_jezyk_uzywa_podanego_domyslnego_jezyka():
+def test_pobierz_jezyk_uzywa_podanego_domyslnego_jezyka(jezyki):
     """Jawnie podany domyslny_jezyk wygrywa nad wbudowanym polskim."""
     angielski = Jezyk.objects.get(skrot="ang.")
     assert pobierz_jezyk("xyz-nieznany", None, domyslny_jezyk=angielski) == angielski

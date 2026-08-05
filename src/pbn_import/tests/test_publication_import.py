@@ -37,11 +37,15 @@ def importer(session, uczelnia):
     return imp
 
 
-def test_setup_wires_default_jezyk_from_resolver(importer):
+def test_setup_wires_default_jezyk_from_resolver(importer, jezyki):
     """``_setup_uczelnia_and_jednostka`` ustawia ``self.default_jezyk``.
 
     Bez wyboru w configu resolver zwraca polski — i to on (a nie None) jedzie
     potem do importera jako ``domyslny_jezyk``.
+
+    ``jezyki``: resolver woła ``get_jezyk_polski`` (potrzebuje ``pol.``).
+    Fixture zamiast ambientnego baseline — ten bywa wyTRUNCATE-owany przez
+    sąsiedni test ``transaction=True`` pod równoległym xdist.
     """
     from bpp.models import Jezyk
 

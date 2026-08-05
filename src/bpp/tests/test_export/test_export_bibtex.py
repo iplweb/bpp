@@ -48,9 +48,9 @@ class TestBibTeXExport:
 
         for input_str, expected in test_cases:
             result = sanitize_bibtex_string(input_str)
-            assert (
-                result == expected
-            ), f"Input: {input_str}, Expected: {expected}, Got: {result}"
+            assert result == expected, (
+                f"Input: {input_str}, Expected: {expected}, Got: {result}"
+            )
 
     def test_generate_bibtex_key(self):
         """Test BibTeX key generation."""
@@ -248,7 +248,11 @@ class TestBibTeXExport:
         """Test BibTeX export for Patent."""
         # Create test data
         autor = baker.make(Autor, nazwisko="Tesla", imiona="Nikola")
-        wydzial = baker.make("bpp.Wydzial", nazwa="Faculty of Engineering")
+        # Faza C (#438): „wydział" to jednostka top-level; ``Patent.wydzial``
+        # to FK->Jednostka wskazujący na taki korzeń.
+        jednostka_wydzialu = baker.make(
+            "bpp.Jednostka", nazwa="Faculty of Engineering", parent=None
+        )
 
         patent = baker.make(
             Patent,
@@ -259,7 +263,7 @@ class TestBibTeXExport:
             data_zgloszenia=datetime.date(2023, 1, 1),
             data_decyzji=datetime.date(2023, 6, 1),
             www="https://patent.example.com",
-            wydzial=wydzial,
+            wydzial=jednostka_wydzialu,
         )
 
         # Add author
@@ -289,10 +293,16 @@ class TestBibTeXExport:
         autor = baker.make(Autor, nazwisko="Smith", imiona="John")
         uczelnia = baker.make("bpp.Uczelnia", nazwa="University")
         wydzial = baker.make(
-            "bpp.Wydzial", nazwa="Faculty of Science", uczelnia=uczelnia
+            "bpp.Jednostka",
+            nazwa="Faculty of Science",
+            uczelnia=uczelnia,
+            parent=None,
         )
         jednostka = baker.make(
-            "bpp.Jednostka", nazwa="Department", wydzial=wydzial, uczelnia=uczelnia
+            "bpp.Jednostka",
+            nazwa="Department",
+            parent=wydzial,
+            uczelnia=uczelnia,
         )
 
         praca = baker.make(
@@ -324,10 +334,16 @@ class TestBibTeXExport:
         autor = baker.make(Autor, nazwisko="Johnson", imiona="Jane")
         uczelnia = baker.make("bpp.Uczelnia", nazwa="University")
         wydzial = baker.make(
-            "bpp.Wydzial", nazwa="Faculty of Medicine", uczelnia=uczelnia
+            "bpp.Jednostka",
+            nazwa="Faculty of Medicine",
+            uczelnia=uczelnia,
+            parent=None,
         )
         jednostka = baker.make(
-            "bpp.Jednostka", nazwa="Department", wydzial=wydzial, uczelnia=uczelnia
+            "bpp.Jednostka",
+            nazwa="Department",
+            parent=wydzial,
+            uczelnia=uczelnia,
         )
 
         praca = baker.make(
@@ -362,9 +378,14 @@ class TestBibTeXExport:
         zrodlo = baker.make(Zrodlo, nazwa="Journal")
         wydawca = baker.make("bpp.Wydawca", nazwa="Publisher")
         uczelnia = baker.make("bpp.Uczelnia", nazwa="University")
-        wydzial = baker.make("bpp.Wydzial", nazwa="Faculty", uczelnia=uczelnia)
+        wydzial = baker.make(
+            "bpp.Jednostka", nazwa="Faculty", uczelnia=uczelnia, parent=None
+        )
         jednostka = baker.make(
-            "bpp.Jednostka", nazwa="Department", wydzial=wydzial, uczelnia=uczelnia
+            "bpp.Jednostka",
+            nazwa="Department",
+            parent=wydzial,
+            uczelnia=uczelnia,
         )
 
         # Create publications of all types
@@ -444,9 +465,14 @@ class TestBibTeXExport:
         # Create minimal test data
         autor = baker.make(Autor, nazwisko="Test", imiona="Author")
         uczelnia = baker.make("bpp.Uczelnia", nazwa="University")
-        wydzial = baker.make("bpp.Wydzial", nazwa="Faculty", uczelnia=uczelnia)
+        wydzial = baker.make(
+            "bpp.Jednostka", nazwa="Faculty", uczelnia=uczelnia, parent=None
+        )
         jednostka = baker.make(
-            "bpp.Jednostka", nazwa="Department", wydzial=wydzial, uczelnia=uczelnia
+            "bpp.Jednostka",
+            nazwa="Department",
+            parent=wydzial,
+            uczelnia=uczelnia,
         )
 
         ciagle = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Test Article")
@@ -475,13 +501,13 @@ class TestBibTeXExport:
         ]
 
         for model, expected_title in models_to_test:
-            assert hasattr(
-                model, "to_bibtex"
-            ), f"{model._meta.model_name} missing to_bibtex method"
+            assert hasattr(model, "to_bibtex"), (
+                f"{model._meta.model_name} missing to_bibtex method"
+            )
             bibtex = model.to_bibtex()
-            assert isinstance(
-                bibtex, str
-            ), f"{model._meta.model_name} to_bibtex should return string"
-            assert (
-                expected_title in bibtex
-            ), f"{expected_title} not found in bibtex for {model._meta.model_name}"
+            assert isinstance(bibtex, str), (
+                f"{model._meta.model_name} to_bibtex should return string"
+            )
+            assert expected_title in bibtex, (
+                f"{expected_title} not found in bibtex for {model._meta.model_name}"
+            )

@@ -10,17 +10,33 @@ from deduplikator_autorow.models import (
     NotADuplicate,
 )
 from deduplikator_autorow.tasks import _run_general_phase
+from deduplikator_autorow.utils.cluster import find_clusters
 
 
 @pytest.mark.django_db
 def test_general_finds_simple_pair():
     """Dwóch autorów o tym samym nazwisku/imieniu, żaden bez OsobaZInstytucji."""
-    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
-    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
+    a = baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
+    b = baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
     scan = DuplicateScanRun.objects.create()
     _run_general_phase(scan, min_confidence=50)
+
+    # UWAGA (flake pod xdist/shardingiem): faza general skanuje CAŁĄ tabelę
+    # autorów, więc ambient autorzy „Kowalski Jan" scommitowani przez sąsiednie
+    # testy (na współdzielonym workerze) wpadają do wspólnego bucketu
+    # „kowalski", doczepiają się do klastra i — mając niższy pk — przejmują
+    # rolę `main`. Wtedy zamiast dokładnie jednej pary {a, b} emitowane są np.
+    # (ambient, a) + (ambient, b) i asercja na globalnym `count() == 1` pękała
+    # (obserwowane w CI: 4 zamiast 1). Testujemy więc WŁASNĄ inwariantę: a i b
+    # lądują w jednym klastrze duplikatów — odporne na ambient szum (identyczny
+    # wzorzec co ``test_general_finds_pair_with_unicode_hyphen_variant``).
     cands = DuplicateCandidate.objects.filter(scan_run=scan, scan_mode="general")
-    assert cands.count() == 1
+    edges = [(c.main_autor_id, c.duplicate_autor_id) for c in cands]
+    clusters = find_clusters(edges)
+    assert any({a.pk, b.pk} <= cluster for cluster in clusters), (
+        f"Dwóch autorów o identycznym nazwisku/imieniu powinno trafić do "
+        f"jednego klastra duplikatów; klastry={clusters}"
+    )
 
 
 @pytest.mark.django_db
@@ -32,10 +48,23 @@ def test_general_finds_pair_with_unicode_hyphen_variant():
     scan = DuplicateScanRun.objects.create()
     _run_general_phase(scan, min_confidence=50)
 
+    # UWAGA (flake pod xdist/shardingiem): faza general skanuje CAŁĄ tabelę
+    # autorów, więc ambient autorzy scommitowani przez sąsiednie testy
+    # (transactional / live-server) o pospolitych polskich nazwiskach
+    # ("Nowak", "Kowalski") wpadają do wspólnych bucketów "kowalski"/"nowak",
+    # doczepiają się do klastra i — mając niższy pk — przejmują rolę `main`.
+    # Wtedy zamiast bezpośredniej pary {a, b} emitowane są (ambient, a) +
+    # (ambient, b), przez co asercja na dokładnej liczbie/tożsamości pary
+    # pękała. Testujemy więc WYŁĄCZNIE własną inwariantę: dzięki normalizacji
+    # myślnika Unicode a i b lądują w tym samym klastrze duplikatów (bez
+    # normalizacji trafiłyby do rozłącznych bucketów i różnych klastrów).
     cands = DuplicateCandidate.objects.filter(scan_run=scan, scan_mode="general")
-    assert cands.count() == 1
-    cand = cands.get()
-    assert {cand.main_autor_id, cand.duplicate_autor_id} == {a.pk, b.pk}
+    edges = [(c.main_autor_id, c.duplicate_autor_id) for c in cands]
+    clusters = find_clusters(edges)
+    assert any({a.pk, b.pk} <= cluster for cluster in clusters), (
+        f"Autorzy różniący się tylko wariantem myślnika Unicode powinni "
+        f"trafić do jednego klastra duplikatów; klastry={clusters}"
+    )
 
 
 @pytest.mark.django_db

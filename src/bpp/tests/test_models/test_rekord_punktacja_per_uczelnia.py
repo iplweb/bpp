@@ -17,7 +17,6 @@ from bpp.models import (
     Cache_Punktacja_Dyscypliny,
     Jednostka,
     Uczelnia,
-    Wydzial,
 )
 from bpp.models.cache import Rekord
 
@@ -26,9 +25,14 @@ from bpp.models.cache import Rekord
 def jednostka_drugiej_uczelni(db):
     site = baker.make(Site, domain="druga-rek.testserver", name="druga-rek")
     uczelnia2 = Uczelnia.objects.create(skrot="DRR", nazwa="Druga", site=site)
-    wydzial = Wydzial.objects.create(uczelnia=uczelnia2, skrot="W2", nazwa="Wydz II")
+    wydzial = Jednostka.objects.create(
+        uczelnia=uczelnia2, skrot="W2", nazwa="Wydz II", parent=None
+    )
     return Jednostka.objects.create(
-        nazwa="Jedn II", skrot="JDR", wydzial=wydzial, uczelnia=uczelnia2
+        nazwa="Jedn II",
+        skrot="JDR",
+        parent=wydzial,
+        uczelnia=uczelnia2,
     )
 
 

@@ -278,6 +278,7 @@ class Wydawnictwo_Ciagle(
 
     def clean(self):
         DwaTytuly.clean(self)
+        ModelZeSzczegolami.clean(self)
         ModelZOplataZaPublikacje.clean(self)
 
 

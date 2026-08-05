@@ -15,7 +15,6 @@ from bpp.models import (
     Jednostka,
     Uczelnia,
     Wydawnictwo_Ciagle,
-    Wydzial,
 )
 from oswiadczenia.views import WydrukOswiadczen2022View
 
@@ -24,9 +23,14 @@ from oswiadczenia.views import WydrukOswiadczen2022View
 def jednostka_drugiej_uczelni(db):
     site = baker.make(Site, domain="druga-osw.testserver", name="druga-osw")
     uczelnia2 = Uczelnia.objects.create(skrot="DR2", nazwa="Druga uczelnia", site=site)
-    wydzial = Wydzial.objects.create(uczelnia=uczelnia2, skrot="W2", nazwa="Wydział II")
+    wydzial = Jednostka.objects.create(
+        uczelnia=uczelnia2, skrot="W2", nazwa="Wydział II", parent=None
+    )
     return Jednostka.objects.create(
-        nazwa="Jedn. Drugiej Ucz.", skrot="JDU2", wydzial=wydzial, uczelnia=uczelnia2
+        nazwa="Jedn. Drugiej Ucz.",
+        skrot="JDU2",
+        parent=wydzial,
+        uczelnia=uczelnia2,
     )
 
 

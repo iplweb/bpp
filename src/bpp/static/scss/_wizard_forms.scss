@@ -1,4 +1,5 @@
-// Wizard form styles for zglos_publikacje
+// Wizard form styles for zglos_publikacje (i kafle importera publikacji —
+// importer_publikacji reużywa .tile-grid/.tile-card zamiast dublować style).
 // Uses theme's $primary-color for consistent theming
 
 .tile-grid {
@@ -10,6 +11,22 @@
 
 .tile-grid--stacked {
     grid-template-columns: 1fr;
+}
+
+// Kafle dostawców danych importera: stały układ 3 kolumn na desktopie
+// (dla 5 źródeł daje czytelne 3 + 2), 2 kolumny na tablecie, 1 na mobile.
+// Wcześniejszy auto-fit (minmax 220px) dawał na szerokich ekranach 4 + 1,
+// co wyglądało niesymetrycznie.
+.tile-grid--providers {
+    grid-template-columns: 1fr;
+
+    @media screen and (min-width: 640px) {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media screen and (min-width: 1024px) {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
 
 .wizard-wybor-info {
@@ -148,5 +165,64 @@
 
     &.nav-single {
         grid-column: 1 / -1;
+    }
+}
+
+// Blok ALTCHA na górze kroku 0 — wyśrodkowany, jako pierwszy ekran anonima.
+.zglos-captcha {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.75rem;
+    margin: 1.5rem 0;
+
+    .zglos-captcha-lead {
+        font-size: 1.2rem;
+        font-weight: bold;
+        margin: 0;
+    }
+
+    .zglos-captcha-hint {
+        font-size: 0.9rem;
+        color: #666;
+        margin: 0;
+    }
+}
+
+// Gating: nagłówek + kafelki ukryte do czasu statechange:verified (JS dodaje
+// `revealed`). display:none — kafelki nie zajmują miejsca ani nie są
+// fokusowalne/klikalne przed weryfikacją.
+.zglos-gated {
+    display: none;
+
+    &.revealed {
+        display: block;
+    }
+}
+
+@keyframes zglos-tiles-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.zglos-gated.revealed .tile-card {
+    animation: zglos-tiles-in 0.3s ease-out both;
+
+    &:nth-child(1) { animation-delay: 0s; }
+    &:nth-child(2) { animation-delay: 0.06s; }
+    &:nth-child(3) { animation-delay: 0.12s; }
+    &:nth-child(4) { animation-delay: 0.18s; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .zglos-gated.revealed .tile-card {
+        animation: none;
     }
 }

@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils.functional import cached_property
+from pbn_client import normalize_author_name
 
 from bpp import const
 from bpp.models.abstract import LinkDoPBNMixin
@@ -39,6 +40,20 @@ class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
     @cached_property
     def journal(self):
         return self.value_or_none("object", "journal")
+
+    @cached_property
+    def book(self):
+        """Rodzic (książka) rozdziału, tak jak PBN go osadza w JSON-ie pod
+        ``object.book``. Analogiczne do ``journal`` dla artykułów."""
+        return self.value_or_none("object", "book")
+
+    @cached_property
+    def book_title(self):
+        """Tytuł wydawnictwa nadrzędnego z PBN (``object.book.title``),
+        wystawiony tak, by szablon opisu bibliograficznego mógł go wyrenderować
+        zwykłym ``{{ praca.pbn_uid.book_title }}``."""
+        book = self.book
+        return book.get("title") if book else None
 
     def get_pbn_uuid(self):
         """Nazwa tej funkcji to NIE literówka; alias to PBN UID V2
@@ -90,22 +105,15 @@ class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
     def _normalizuj_autora(autor):
         """Sprowadza pojedynczego autora z PBN do ``{lastName, firstName}``.
 
-        PBN podaje imię raz jako ``firstName``, raz jako ``givenNames``,
-        a w danych zaciągniętych z API instytucji jako ``name``. Czasem
-        zamiast słownika dostajemy goły UID (string) — wtedy nie mamy
-        danych osobowych i zwracamy puste pola (zamiast wysadzać szablon).
+        Deleguje wybór pól do ``pbn_client.normalize_author_name`` (jedno
+        źródło prawdy dla niespójnych kształtów PBN: ``lastName``/``familyName``
+        dla nazwiska, ``firstName``/``givenNames``/``name`` dla imienia; goły
+        UID lub inny nie-dict → brak danych). Paczka używa ``None`` jako
+        sentinela pustki — tu koerujemy go do ``""``, bo szablon rekordu i
+        ``str(autorzy)`` (logi) zakładają puste stringi, nie ``None``.
         """
-        if not isinstance(autor, dict):
-            return {"lastName": "", "firstName": ""}
-        return {
-            "lastName": autor.get("lastName") or "",
-            "firstName": (
-                autor.get("firstName")
-                or autor.get("givenNames")
-                or autor.get("name")
-                or ""
-            ),
-        }
+        normalized = normalize_author_name(autor)
+        return {klucz: (wartosc or "") for klucz, wartosc in normalized.items()}
 
     @cached_property
     def autorzy(self):
@@ -179,6 +187,4 @@ class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
             ret += f", {self.year}"
         if self.doi:
             ret += f", {self.doi}"
-        if self.status == "DELETED":
-            ret = f"[❌ USUNIĘTY] {ret}"
-        return ret
+        return self.with_deleted_marker(ret)

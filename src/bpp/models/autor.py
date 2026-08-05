@@ -5,14 +5,20 @@ Autorzy
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from autoslug import AutoSlugField
+from django.contrib.postgres.constraints import ExclusionConstraint
+from django.contrib.postgres.fields import (
+    DateRangeField,
+    RangeBoundary,
+    RangeOperators,
+)
 from django.contrib.postgres.search import SearchVectorField as VectorField
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import RegexValidator
 from django.db import IntegrityError, models, transaction
-from django.db.models import CASCADE, SET_NULL, Count, Q, Sum, UniqueConstraint
+from django.db.models import CASCADE, SET_NULL, Count, Func, Q, Sum
 from django.urls.base import reverse
 from django.utils import timezone
 from django.utils.functional import cached_property
@@ -85,6 +91,31 @@ class AutorQuerySet(models.QuerySet):
             | Q(autor_jednostka__jednostka__uczelnia=uczelnia)
         ).distinct()
 
+    def kiedykolwiek_zatrudnieni(self, uczelnia):
+        """Autorzy zatrudnieni w uczelni obecnie LUB historycznie, w REALNEJ
+        jednostce (``skupia_pracownikow=True``).
+
+        Różnica względem ``kiedykolwiek_zwiazani``: liczą się TYLKO powiązania
+        przez jednostki skupiające pracowników — jednostki obce/techniczne
+        (``skupia_pracownikow=False``) są pomijane, także gdy ich uczelnia to
+        bieżąca uczelnia (lustrzana jednostka obca o nazwie naszej uczelni NIE
+        kwalifikuje autora). Realność sprawdzana per-strona OR: albo aktualna
+        jednostka jest realna, albo któraś jednostka historyczna jest realna —
+        powiązanie wyłącznie przez jednostkę obcą nie łapie autora.
+        """
+        if uczelnia is None:
+            return self.none()
+        return self.filter(
+            Q(
+                aktualna_jednostka__uczelnia=uczelnia,
+                aktualna_jednostka__skupia_pracownikow=True,
+            )
+            | Q(
+                autor_jednostka__jednostka__uczelnia=uczelnia,
+                autor_jednostka__jednostka__skupia_pracownikow=True,
+            )
+        ).distinct()
+
 
 class AutorManager(FulltextSearchMixin, models.Manager.from_queryset(AutorQuerySet)):
     # Nie włączaj websearch gdy podano minus (podwójne nazwiska z myślnikiem)
@@ -125,6 +156,13 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
     imiona = models.CharField(max_length=512, db_index=True)
     nazwisko = models.CharField(max_length=256, db_index=True)
     tytul = models.ForeignKey(Tytul, CASCADE, blank=True, null=True)
+    stopien_sluzbowy = models.ForeignKey(
+        "bpp.StopienSluzbowy",
+        SET_NULL,
+        blank=True,
+        null=True,
+        verbose_name="stopień służbowy",
+    )
     pseudonim = models.CharField(
         max_length=300,
         blank=True,
@@ -350,15 +388,69 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
             return czy_juz_istnieje.first()
 
         try:
-            ret = Autor_Jednostka.objects.create(
+            # Wlasny savepoint: ponizszy ``except IntegrityError`` istnial tu
+            # od dawna, ale bez atomic() BYL martwy — w PostgreSQL blad
+            # integralnosci uniewaznia cala otaczajaca transakcje, wiec
+            # "polkniecie" wyjatku zostawialo polamana transakcje. Odkad
+            # (autor, jednostka) z pusta data rozpoczecia jest chronione
+            # czesciowym UniqueConstraintem, ta sciezka realnie potrafi
+            # zlapac wyjatek (wywolanie ``dodaj_jednostke`` bez ``rok``).
+            with transaction.atomic():
+                ret = Autor_Jednostka.objects.create(
+                    autor=self,
+                    jednostka=jednostka,
+                    funkcja=funkcja,
+                    rozpoczal_prace=start_pracy,
+                    zakonczyl_prace=koniec_pracy,
+                )
+        except IntegrityError:
+            # Wyscig: rownolegly zapis utworzyl DOKLADNIE ten sam wiersz
+            # (autor, jednostka, rozpoczal_prace=start_pracy) w okienku miedzy
+            # exists() a create(). Chroni go unique_together (autor, jednostka,
+            # rozpoczal_prace) — dla start_pracy=None dodatkowo czesciowy
+            # UniqueConstraint (rozpoczal_prace IS NULL). Post-check pyta o
+            # dokladnie ta trojke: dla braku roku (start_pracy=None) Django
+            # tlumaczy filter(rozpoczal_prace=None) na IS NULL, a dla podanego
+            # roku porownuje z konkretna data — wiec jedno wyrazenie obsluguje
+            # oba przypadki. Jesli wiersz faktycznie juz istnieje — stan
+            # docelowy jest osiagniety, wiec zachowujemy sie jak dotad
+            # (return None). Jesli jednak nadal go nie ma, IntegrityError mowil
+            # o czyms INNYM (np. zerwany FK) i musi poleciec dalej — inaczej
+            # realny blad danych podczas importu znikalby bez sladu jako cichy
+            # no-op.
+            #
+            # Sciezka PRZEDZIALOWA (datowana): rownolegly zapis mogl utworzyc
+            # okres POKRYWAJACY zadany [start_pracy, koniec_pracy] o INNYM
+            # rozpoczal_prace, lamiac ExclusionConstraint
+            # 'bpp_autor_jednostka_okresy_bez_nakladan' (a nie unique_together,
+            # bo trojka sie rozni). Post-check ponizej pyta o dokladny start,
+            # wiec by go NIE zlapal i bledny re-raise poszedlby jako 500. Tak
+            # jak czy_juz_istnieje na wejsciu: jesli jakis wiersz pokrywa juz
+            # zadany zakres, stan docelowy jest osiagniety — zwracamy go.
+            # NULL-owy start pomijamy (predykat przedzialowy i tak nic nie
+            # zlapie; ten przypadek obsluguje wylacznie post-check nizej).
+            if start_pracy is not None:
+                pokrywajacy = Autor_Jednostka.objects.filter(
+                    autor=self,
+                    jednostka=jednostka,
+                    rozpoczal_prace__lte=start_pracy,
+                    zakonczyl_prace__gte=koniec_pracy,
+                ).first()
+                if pokrywajacy is not None:
+                    return pokrywajacy
+            if not Autor_Jednostka.objects.filter(
                 autor=self,
                 jednostka=jednostka,
-                funkcja=funkcja,
                 rozpoczal_prace=start_pracy,
-                zakonczyl_prace=koniec_pracy,
+            ).exists():
+                raise
+            logger.debug(
+                "Powiazanie autor=%s jednostka=%s utworzone rownolegle "
+                "przez inna transakcje — pomijam.",
+                self.pk,
+                jednostka.pk,
             )
-        except IntegrityError:
-            return
+            return None
         self.defragmentuj_jednostke(jednostka)
 
         return ret
@@ -387,20 +479,20 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
         koniec_pracy = date(rok, 12, 31)
 
         if Autor_Jednostka.objects.filter(
+            Q(jednostka__wydzial=wydzial) | Q(jednostka=wydzial),
             autor=self,
             rozpoczal_prace__lte=start_pracy,
             zakonczyl_prace__gte=koniec_pracy,
-            jednostka__wydzial=wydzial,
         ):
             return True
 
         # A może ma wpisaną tylko datę początku pracy? W takiej sytuacji
         # stwierdzamy, że autor NADAL tam pracuje, bo nie ma końca, więc:
         if Autor_Jednostka.objects.filter(
+            Q(jednostka__wydzial=wydzial) | Q(jednostka=wydzial),
             autor=self,
             rozpoczal_prace__lte=start_pracy,
             zakonczyl_prace=None,
-            jednostka__wydzial=wydzial,
         ):
             return True
 
@@ -416,7 +508,9 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
         # być przydatne np przy importowaniu imion i innych rzeczy, więc sprawdźmy w sytuacj
         # gdy jest rozszerzona afiliacja:
 
-        if Autor_Jednostka.objects.filter(autor=self, jednostka__wydzial=wydzial):
+        if Autor_Jednostka.objects.filter(
+            Q(jednostka__wydzial=wydzial) | Q(jednostka=wydzial), autor=self
+        ):
             return True
 
     def get_full_name(self):
@@ -542,6 +636,27 @@ class Funkcja_Autora(NazwaISkrot):
         app_label = "bpp"
 
 
+class StopienSluzbowy(NazwaISkrot):
+    """Stopień służbowy (np. pożarniczy: kpt., bryg.) — słownik na autorze."""
+
+    class Meta:
+        verbose_name = "stopień służbowy"
+        verbose_name_plural = "stopnie służbowe"
+        ordering = ["nazwa"]
+        app_label = "bpp"
+
+
+class StanowiskoDydaktyczne(NazwaISkrot):
+    """Stanowisko dydaktyczne (np. adiunkt, profesor) — słownik na
+    powiązaniu autor-jednostka."""
+
+    class Meta:
+        verbose_name = "stanowisko dydaktyczne"
+        verbose_name_plural = "stanowiska dydaktyczne"
+        ordering = ["nazwa"]
+        app_label = "bpp"
+
+
 class Grupa_Pracownicza(ModelZNazwa):
     class Meta:
         verbose_name = "grupa pracownicza"
@@ -584,10 +699,14 @@ class Autor_Jednostka_Manager(models.Manager):
                 previous.save()
             return True
 
-        # Sprawdź czy obecny rekord można włączyć do poprzedniego
+        # Sprawdź czy obecny rekord można włączyć do poprzedniego. Tak jak przy
+        # scalaniu kolejnych dni: kasujemy wchłaniany rekord PRZED domknięciem
+        # otwartego końca poprzedniego, żeby chwilowo nie powstały dwa
+        # nakładające się okresy łamiące ExclusionConstraint (IMMEDIATE).
         if current.rozpoczal_prace >= previous.rozpoczal_prace:
-            to_remove.append(current)
-            previous.zakonczyl_prace = current.zakonczyl_prace
+            nowy_koniec = current.zakonczyl_prace
+            current.delete()
+            previous.zakonczyl_prace = nowy_koniec
             previous.save()
             return True
 
@@ -621,14 +740,44 @@ class Autor_Jednostka_Manager(models.Manager):
 
             # Połącz kolejne dni
             if self._can_merge_consecutive(poprzedni_rekord, rec):
-                usun.append(rec)
-                poprzedni_rekord.zakonczyl_prace = rec.zakonczyl_prace
+                # Wchłaniany rekord kasujemy PRZED rozszerzeniem ocalałego.
+                # ExclusionConstraint 'bpp_autor_jednostka_okresy_bez_nakladan'
+                # jest IMMEDIATE — gdyby poprzedni_rekord urósł o zakres rec
+                # ZANIM rec zniknie, przez moment istniałyby dwa nakładające się
+                # okresy tej samej pary (autor, jednostka) i save() poleciałby
+                # IntegrityError. Obiekt rec żyje dalej w pamięci, więc jego
+                # daty czytamy bez problemu po delete().
+                nowy_koniec = rec.zakonczyl_prace
+                rec.delete()
+                poprzedni_rekord.zakonczyl_prace = nowy_koniec
                 poprzedni_rekord.save()
             else:
                 poprzedni_rekord = rec
 
         for aj in usun:
             aj.delete()
+
+
+class DateRange(Func):
+    """``daterange(rozpoczal, zakonczyl, '[]')`` jako wyrażenie ORM.
+
+    Granice DOMKNIETE obustronnie (``'[]'``) — spójnie z semantyką domeny:
+    ``dodaj_jednostke`` traktuje obie daty inkluzywnie (``__lte``/``__gte``),
+    a ``zakonczyl_prace`` to OSTATNI dzień pracy (np. rok → 31.12). Dzięki temu
+    dwa okresy dzielące skrajny dzień (…-12-31 i 12-31-…) liczą się jako
+    NAKŁADAJĄCE, a przylegające (…-12-31 i następny 01-01) — już nie. NULL-owy
+    ``zakonczyl_prace`` daje zakres otwarty w prawo ``[rozpoczal, )``.
+    """
+
+    function = "DATERANGE"
+    output_field = DateRangeField()
+
+    def __init__(self, lower, upper):
+        super().__init__(
+            lower,
+            upper,
+            RangeBoundary(inclusive_lower=True, inclusive_upper=True),
+        )
 
 
 class Autor_Jednostka(models.Model):
@@ -646,6 +795,13 @@ class Autor_Jednostka(models.Model):
         "Zakończył pracę", null=True, blank=True, db_index=True
     )
     funkcja = models.ForeignKey("bpp.Funkcja_Autora", CASCADE, null=True, blank=True)
+    stanowisko = models.ForeignKey(
+        "bpp.StanowiskoDydaktyczne",
+        SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="stanowisko dydaktyczne",
+    )
 
     podstawowe_miejsce_pracy = models.BooleanField(null=True, blank=True, default=None)
 
@@ -663,16 +819,54 @@ class Autor_Jednostka(models.Model):
         verbose_name_plural = "powiązania autor-jednostka"
         ordering = ["autor__nazwisko", "rozpoczal_prace", "jednostka__nazwa"]
         unique_together = [("autor", "jednostka", "rozpoczal_prace")]
-        app_label = "bpp"
         constraints = [
-            UniqueConstraint(
-                fields=["autor_id"],
-                condition=Q(podstawowe_miejsce_pracy=True),
-                name="jedno_podstawowe_miejsce_pracy_na_autora",
-            )
+            # unique_together powyzej deklaruje niezmiennik "jedno powiazanie
+            # na trojke", ale w PostgreSQL NULL-e w indeksie unikalnym sa
+            # wzajemnie rozroznialne — wiersze z rozpoczal_prace IS NULL nie
+            # byly wiec chronione niczym. Tymczasem check-then-create w
+            # bpp.models.abstract.authors (save() KAZDEGO autorstwa) tworzy
+            # dokladnie takie wiersze. Ten czesciowy indeks domyka luke;
+            # dotyczy WYLACZNIE wierszy z NULL-owa data rozpoczecia, wiec
+            # wielokrotne (datowane) okresy zatrudnienia sa nadal legalne.
+            models.UniqueConstraint(
+                fields=("autor", "jednostka"),
+                condition=models.Q(rozpoczal_prace__isnull=True),
+                name="bpp_autor_jednostka_bez_daty_unikalne",
+            ),
+            # Wariant PRZEDZIALOWY (poz. 1.7 audytu). ``dodaj_jednostke`` robi
+            # check-then-create z predykatem przedzialowym — dwa rownolegle
+            # wywolania tworza NAKLADAJACE sie okresy tego samego autora w tej
+            # samej jednostce. Zwykly UniqueConstraint tego nie wyrazi; potrzeba
+            # EXCLUDE z btree_gist (operator ``=`` na FK w GiST) + ``&&`` na
+            # daterange. Warunek ``rozpoczal_prace IS NOT NULL`` sprawia, ze ten
+            # constraint i partial-unique wyzej (IS NULL) IDEALNIE partycjonuja
+            # wiersze: zadnego pokrycia ani luki. Wiersze bez daty startu pilnuje
+            # tamten (jeden na pare), wiersze z data — ten (brak nakladan).
+            ExclusionConstraint(
+                name="bpp_autor_jednostka_okresy_bez_nakladan",
+                expressions=[
+                    ("autor", RangeOperators.EQUAL),
+                    ("jednostka", RangeOperators.EQUAL),
+                    (
+                        DateRange("rozpoczal_prace", "zakonczyl_prace"),
+                        RangeOperators.OVERLAPS,
+                    ),
+                ],
+                condition=models.Q(rozpoczal_prace__isnull=False),
+            ),
         ]
+        app_label = "bpp"
+        # Niezmiennik "co najwyzej jedno podstawowe miejsce pracy na autora" NIE
+        # jest tu egzekwowany przez UniqueConstraint (partial unique index byl
+        # natychmiastowy/per-statement i wysadzal legalne przelaczanie domyslnego
+        # miejsca pracy w obrebie jednej transakcji). Zamiast tego pilnuje go
+        # DEFERRED constraint trigger sprawdzajacy stan KONCOWY przy COMMIT —
+        # patrz migracja 0444_deferred_podstawowe_miejsce_pracy.
 
     def __str__(self):
+        komunikat = f"Budowanie reprezentacji tekstowej Autor_Jednostka (pk={self.pk})"
+        fallback = f"Autor_Jednostka #{self.pk if self.pk else 'nowy'}"
+
         try:
             autor_str = str(self.autor) if self.autor_id else "???"
             jednostka_str = self.jednostka.skrot if self.jednostka_id else "???"
@@ -681,13 +875,30 @@ class Autor_Jednostka(models.Model):
             if self.funkcja_id and self.funkcja:
                 buf = f"{autor_str} ↔ {self.funkcja.nazwa}, {jednostka_str}"
             return buf
+        except ObjectDoesNotExist:
+            # SPODZIEWANE, nie błąd aplikacji: str() bywa wołany na obiekcie,
+            # który wciąż żyje w pamięci, choć jego wiersz — i wiersz po
+            # drugiej stronie FK — już zniknął. Najpewniejszy znany nam
+            # wywołujący to audyt easyaudit, liczący ``object_repr`` w
+            # ``transaction.on_commit`` (ten sam mechanizm opisuje komentarz
+            # przy ``Jednostka.__str__``); traceback z Rollbara nie zawiera
+            # ramek wywołującego, więc nie zgadujemy dalej.
+            #
+            # Nie raportujemy tego do Rollbara: hash itemu obejmuje numer
+            # linii, więc KAŻDY deploy zakładał nowy item i alert szedł od
+            # nowa, mimo że aplikacja zachowywała się poprawnie.
+            #
+            # Uwaga: logger ``bpp.*`` nie ma dziś własnego handlera w
+            # ustawieniach, więc ten ślad ląduje na stderr przez
+            # ``logging.lastResort``. Diagnostyka jest zatem słaba — ale to
+            # osobny temat (konfiguracja LOGGING), nie powód, by zostawiać
+            # fałszywy alarm w Rollbarze.
+            zaloguj_polkniety_wyjatek(komunikat, logger=logger, do_rollbar=False)
+            return fallback
         except Exception:
-            zaloguj_polkniety_wyjatek(
-                f"Budowanie reprezentacji tekstowej Autor_Jednostka (pk={self.pk})",
-                logger=logger,
-            )
-            # Fallback w przypadku jakichkolwiek błędów podczas usuwania
-            return f"Autor_Jednostka #{self.pk if self.pk else 'nowy'}"
+            # Cokolwiek innego jest naprawdę nieoczekiwane — raportuj.
+            zaloguj_polkniety_wyjatek(komunikat, logger=logger)
+            return fallback
 
     def clean(self, exclude=None):
         if self.rozpoczal_prace is not None and self.zakonczyl_prace is not None:
@@ -696,27 +907,21 @@ class Autor_Jednostka(models.Model):
                     "Początek pracy późniejszy lub równy, jak zakończenie"
                 )
 
-        if self.zakonczyl_prace is not None:
-            if self.zakonczyl_prace >= datetime.now().date():
-                raise ValidationError(
-                    "Czas zakończenia pracy w jednostce nie może być taki sam"
-                    " lub większy, jak obecna data"
-                )
+        # UWAGA: świadomie NIE odrzucamy daty zakończenia w przyszłości —
+        # zatrudnienie bywa planowane naprzód („pan X pracuje do zaplanowanej
+        # daty"). Jest to spójne z triggerem `bpp_autor_ustaw_jednostka_aktualna`,
+        # który dla przyszłej daty „do" i tak liczy `aktualny = True`. Dawny
+        # zakaz (model + DB-owy CHECK `bez_dat_do_w_przyszlosci`) zdjęty w
+        # migracji 0469; w bazie zastąpiony odpornym na czas CHECK
+        # `rozpoczal_prace < zakonczyl_prace`.
 
-        if self.podstawowe_miejsce_pracy:
-            czy_istnieje = Autor_Jednostka.objects.filter(
-                autor_id=self.autor_id, podstawowe_miejsce_pracy=True
-            )
-            if self.pk:
-                czy_istnieje = czy_istnieje.exclude(pk=self.pk)
-
-            if czy_istnieje.exists():
-                raise ValidationError(
-                    "Ten autor ma już określone podstawowe miejsce pracy. Najpierw usuń podstawowe "
-                    f"miejsce pracy (ustaw wartość na 'Nie' dla jednostki '{czy_istnieje.first().jednostka.nazwa}'), "
-                    f"następnie zapisz rekord autora, następnie ustaw ponownie właściwe podstawowe miejsce pracy "
-                    f"(ustaw wartość na 'Tak') i zapisz po raz kolejny. "
-                )
+        # UWAGA: niezmiennik "jedno podstawowe miejsce pracy na autora" NIE jest
+        # tu walidowany per-instancja. Eager .exists() (widzacy stan sprzed
+        # zapisu) blokowal legalne przelaczanie domyslnego miejsca pracy, bo
+        # przejsciowo istnialy dwa rekordy True. Stan KONCOWY pilnuje DEFERRED
+        # constraint trigger (przy COMMIT), a przyjazny komunikat dla wielu
+        # zaznaczonych naraz daje walidacja formsetu w adminie
+        # (Autor_JednostkaInlineFormSet).
 
     @transaction.atomic
     def ustaw_podstawowe_miejsce_pracy(self):

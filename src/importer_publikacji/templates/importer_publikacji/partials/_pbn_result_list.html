@@ -1,0 +1,30 @@
+{# Lista wyników wyszukiwania PBN dla jednej osi. #}
+{# Kontekst: `results` (lista dictów), `session`. #}
+{% for r in results %}
+    <div class="callout secondary pbn-result">
+        <strong>{{ r.title|default:"(bez tytułu)" }}</strong>
+        {% if r.year %}<span class="pbn-result-year">({{ r.year }})</span>{% endif %}
+        {% if r.doi %}
+            <br><small>DOI: {{ r.doi }}</small>
+        {% endif %}
+        <div class="pbn-result-actions">
+            {% if r.pbn_url %}
+                <a href="{{ r.pbn_url }}"
+                   target="_blank"
+                   rel="noopener"
+                   class="button tiny secondary">
+                    <span class="fi-link"></span> Otwórz w PBN
+                </a>
+            {% endif %}
+            <form hx-post="{% url 'importer_publikacji:pbn-select' session.pk %}"
+                  hx-target="#importer-wizard"
+                  style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="mongo_id" value="{{ r.mongo_id }}">
+                <button type="submit" class="button tiny">
+                    <span class="fi-check"></span> Wybierz jako odpowiednik
+                </button>
+            </form>
+        </div>
+    </div>
+{% endfor %}

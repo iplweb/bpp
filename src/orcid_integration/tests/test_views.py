@@ -59,6 +59,7 @@ def test_orcid_callback_rejects_external_next_url(
     uczelnia_with_orcid,
     autor_with_orcid,
     bpp_user_matching_autor,
+    linked_identity,
 ):
     mock_instance = mock_client_class.return_value
     mock_instance.fetch_token.return_value = {
@@ -120,6 +121,7 @@ def test_orcid_callback_success(
     uczelnia_with_orcid,
     autor_with_orcid,
     bpp_user_matching_autor,
+    linked_identity,
 ):
     mock_instance = mock_client_class.return_value
     mock_instance.fetch_token.return_value = {

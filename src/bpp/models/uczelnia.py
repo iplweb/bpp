@@ -20,6 +20,7 @@ from tinymce.models import HTMLField
 from bpp.fields import EncryptedTextField
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID, NazwaWDopelniaczu
+from bpp.util.ror import waliduj as waliduj_ror
 from pbn_api.exceptions import WillNotExportError
 
 from .. import const
@@ -210,6 +211,25 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         help_text="Powiązanie z obiektem Site (domena internetowa tej uczelni).",
     )
 
+    oai_pmh_aktywny = models.BooleanField(
+        "Udostępniaj endpoint OAI-PMH",
+        default=True,
+        help_text="Gdy wyłączone, adres /oai/ tej uczelni odpowiada błędem "
+        "404. Nie wpływa na pozostałe uczelnie w tej instalacji.",
+    )
+
+    oai_identyfikator_repozytorium = models.CharField(
+        "Identyfikator repozytorium OAI-PMH",
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Środkowy człon identyfikatorów wystawianych przez endpoint "
+        "/oai/ (postać: oai:IDENTYFIKATOR:model/id). Puste = domena z pola "
+        "„Strona (domena)”. Raz opublikowanego identyfikatora nie należy "
+        "zmieniać — harvestery (OpenAIRE, Primo, BASE) używają go jako "
+        "trwałej części klucza rekordu.",
+    )
+
     theme_name = models.CharField(
         "Motyw kolorystyczny",
         max_length=50,
@@ -287,6 +307,15 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     )
     pokazuj_punktacja_snip = models.BooleanField(
         "Pokazuj punktację SNIP na stronie rekordu", default=True
+    )
+    zwijaj_dlugie_listy_autorow = models.BooleanField(
+        "Zwijaj długie listy autorów na stronie rekordu",
+        default=True,
+        help_text="Gdy lista autorów publikacji przekracza 25 nazwisk, "
+        "domyślnie zwijaj ją na stronie rekordu (widoczni pierwsi autorzy "
+        "oraz autorzy z naszej uczelni; resztę użytkownik rozwija "
+        "przyciskiem). Ustawienie domyślne dla całej uczelni — zalogowany "
+        "użytkownik może je nadpisać we własnym profilu.",
     )
     pokazuj_status_korekty = OpcjaWyswietlaniaField(
         "Pokazuj status korekty na stronie rekordu",
@@ -561,6 +590,48 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         blank=True,
         default="pl",
     )
+
+    ror_id = models.CharField(
+        "Identyfikator ROR",
+        max_length=64,
+        blank=True,
+        default="",
+        validators=[waliduj_ror],
+        help_text="Identyfikator w Research Organization Registry (ROR), np. https://ror.org/016f61126 — ma wbudowaną sumę kontrolną, więc literówka zostanie odrzucona. Używany w eksporcie "
+        "CERIF/OpenAIRE jako identyfikator zewnętrzny instytucji; gdy pusty, "
+        "nie zostanie wyeksportowany.",
+    )
+
+    api_v1_wlaczone = models.BooleanField(
+        "Włącz REST API (/api/v1/)",
+        default=True,
+        help_text="Gdy odznaczone, publiczne REST API tej uczelni "
+        "(/api/v1/) przestaje odpowiadać.",
+    )
+
+    eksport_cerif_wlaczony = models.BooleanField(
+        "Włącz eksport CERIF/OpenAIRE",
+        default=True,
+        help_text="Gdy odznaczone, endpoint OAI-PMH z danymi w formacie "
+        "CERIF-XML (OpenAIRE CRIS Guidelines) przestaje odpowiadać dla tej "
+        "uczelni.",
+    )
+    eksport_cerif_osoby = models.BooleanField(
+        "Eksportuj dane osób do CERIF/OpenAIRE",
+        default=True,
+        help_text="Gdy odznaczone, zestaw „openaire_cris_persons” pozostaje "
+        "pusty, a autorzy pojawiają się wyłącznie jako encje osadzone "
+        "w opisie publikacji: samo imię i nazwisko, bez własnych rekordów, "
+        "bez ORCID-ów, bez afiliacji i bez historii zatrudnienia. Zestaw "
+        "musi istnieć nawet pusty — wymagają tego wytyczne OpenAIRE.",
+    )
+    eksport_cerif_kwoty = models.BooleanField(
+        verbose_name="Eksport CERIF: kwoty finansowania",
+        default=False,
+        help_text="Czy w eksporcie CERIF-XML wystawiać kwoty finansowania "
+        "projektów. Domyślnie wyłączone — kwoty zostają w bazie "
+        "do użytku wewnętrznego.",
+    )
     pbn_kasuj_dyscypliny_selektywnie = models.BooleanField(
         "Kasuj oświadczenia selektywnie (per osoba)",
         default=True,
@@ -731,15 +802,37 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         return reverse("bpp:browse_uczelnia", args=(self.slug,))
 
     def wydzialy(self):
-        """Widoczne wydziały -- do pokazania na WWW"""
-        from .wydzial import Wydzial
+        """Widoczne jednostki najwyższego poziomu -- do pokazania na WWW w
+        sekcji "Wybierz wydział".
 
-        return Wydzial.objects.filter(uczelnia=self, widoczny=True)
+        Faza B (#438): model ``Wydzial`` nie jest już renderowany na WWW
+        jako osobna strona -- struktura organizacyjna to teraz drzewo
+        ``Jednostka``. Zwracamy widoczne korzenie (``parent=None``); to ta
+        sama definicja co ``jednostki()`` poniżej -- różnica jest wyłącznie
+        w etykiecie/konfiguracji sekcji na stronie głównej (per-uczelnia).
+        """
+        from .jednostka import Jednostka
+
+        return Jednostka.objects.filter(uczelnia=self, widoczna=True, parent=None)
 
     def jednostki(self):
         from .jednostka import Jednostka
 
         return Jednostka.objects.filter(uczelnia=self, widoczna=True, parent=None)
+
+    def ma_jednostki_glowne_z_podjednostkami(self):
+        """Czy w tej uczelni istnieje jednostka-korzeń mająca podjednostki?
+
+        #438: włącza w multiseeku pole „Jednostka nadrzędna" (filtr po
+        poddrzewie korzenia) dla uczelni, która NIE używa wydziałów, ale ma
+        strukturę drzewa jednostek. Denorm ``Jednostka.wydzial`` wskazuje
+        KORZEŃ poddrzewa i jest NULL dla samych korzeni, więc dowolny wiersz z
+        ``wydzial != NULL`` to potomek — czyli jakiś korzeń MA podjednostki.
+        Jeden indeksowany ``.exists()`` (FK ``wydzial`` jest zaindeksowany).
+        """
+        from .jednostka import Jednostka
+
+        return Jednostka.objects.filter(uczelnia=self, wydzial__isnull=False).exists()
 
     def clean(self):
         if self.obca_jednostka is not None:
@@ -808,7 +901,11 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         Klient zna ``self`` jako swoją ``uczelnia`` — orchestracja czyta z niej
         flagi zamiast zgadywać ``get_default()`` (kluczowe dla multi-hosted).
         """
+        from django.conf import settings
+        from pbn_client.conf import settings as pbn_defaults
+
         from pbn_api import client
+        from pbn_api.reporting import rollbar_reporter
 
         class UczelniaTransport(client.RequestsTransport):
             def authorize(self, base_url, app_id, token):
@@ -827,7 +924,16 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
             raise ImproperlyConfigured("Brak tokena aplikacji dla API PBN")
 
         transport = UczelniaTransport(
-            self.pbn_app_name, self.pbn_app_token, self.pbn_api_root, pbn_user_token
+            self.pbn_app_name,
+            self.pbn_app_token,
+            self.pbn_api_root,
+            pbn_user_token,
+            timeout=getattr(
+                settings,
+                "PBN_CLIENT_HTTP_TIMEOUT",
+                pbn_defaults.PBN_CLIENT_HTTP_TIMEOUT,
+            ),
+            reporter=rollbar_reporter,
         )
         return client.BppPBNClient(transport, uczelnia=self)
 
@@ -847,9 +953,26 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     def orcid_enabled(self):
         return bool(self.orcid_client_id and self.orcid_client_secret)
 
+    def oai_repository_identifier(self) -> str:
+        """Środkowy człon identyfikatorów OAI-PMH tej uczelni.
+
+        Domyślnie domena serwisu, ale jawne ustawienie
+        ``oai_identyfikator_repozytorium`` pozwala zachować dotychczasowe
+        identyfikatory po zmianie domeny (są one trwałym kluczem rekordu po
+        stronie harvesterów).
+
+        Używane zarówno przez feed ``oai_dc`` dla Primo, jak i przez eksport
+        CERIF — obie warstwy muszą wydawać identyfikatory z tego samego
+        namespace'u.
+        """
+        return self.oai_identyfikator_repozytorium.strip() or self.site.domain
+
     def ukryte_statusy(self, dla_funkcji: str) -> list[int]:
         """
-        :param dla_funkcji: "sloty", "raporty", "multiwyszukiwarka", "rankingi"
+        :param dla_funkcji: nazwa kanału (pola :class:`Ukryj_Status_Korekty`):
+            "multiwyszukiwarka", "podglad", "raporty", "rankingi", "sloty",
+            "api" (REST API JSON oraz OAI-PMH dla Primo) albo "cerif"
+            (eksport CERIF/OpenAIRE)
         :return: lista numerów PK obiektów :class:`bpp.models.system.Status_Korekty`
         """
         return self.ukryj_status_korekty_set.filter(**{dla_funkcji: True}).values_list(
@@ -930,7 +1053,12 @@ class Ukryj_Status_Korekty(models.Model):
     api = models.BooleanField(
         "API",
         default=True,
-        help_text="Dotyczy ukrywania prac w API JSON-REST oraz OAI-PMH",
+        help_text="Dotyczy ukrywania prac w API JSON-REST oraz OAI-PMH dla Primo",
+    )
+    cerif = models.BooleanField(
+        "Eksport CERIF",
+        default=True,
+        help_text="Dotyczy ukrywania prac w eksporcie CERIF/OpenAIRE",
     )
 
     class Meta:
@@ -944,7 +1072,9 @@ class Ukryj_Status_Korekty(models.Model):
             f"{'multiwyszukiwarki, ' if self.multiwyszukiwarka else ''}"
             f"{'raportów, ' if self.raporty else ''}"
             f"{'rankingów, ' if self.rankingi else ''}"
-            f"{'slotów. ' if self.sloty else ''}"
+            f"{'slotów, ' if self.sloty else ''}"
+            f"{'API, ' if self.api else ''}"
+            f"{'eksportu CERIF, ' if self.cerif else ''}"
         )
 
         if res.endswith(", "):

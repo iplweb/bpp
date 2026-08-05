@@ -7,7 +7,7 @@ Loader ładowany jest z ``/static/embed/bpp-publikacje.js`` (serwowany przez
 
 import pytest
 from model_bakery import baker
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 from bpp.models import Autor, Rekord, Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 
@@ -22,7 +22,9 @@ def _strona_z_widgetem(page: Page, base_url: str, script_attrs: str) -> None:
     )
 
 
-def test_embed_widget_renderuje_liste(channels_live_server, page: Page, transactional_db):
+def test_embed_widget_renderuje_liste(
+    channels_live_server, page: Page, transactional_db
+):
     """Widget pobiera publikacje autora z API i renderuje listę pozycji."""
     autor = baker.make(Autor, nazwisko="Widgetowy", imiona="Wiktor")
     for i in range(3):
@@ -30,14 +32,12 @@ def test_embed_widget_renderuje_liste(channels_live_server, page: Page, transact
         baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub, autor=autor)
     Rekord.objects.full_refresh()
 
-    _strona_z_widgetem(
-        page, channels_live_server.url, f'data-autor="{autor.slug}"'
-    )
+    _strona_z_widgetem(page, channels_live_server.url, f'data-autor="{autor.slug}"')
 
-    page.wait_for_selector(".bpp-publikacje__item", timeout=15000)
-    assert page.locator(".bpp-publikacje__item").count() == 3
+    # to_have_count auto-waituje — nie potrzebujemy osobnego wait_for_selector.
+    expect(page.locator(".bpp-publikacje__item")).to_have_count(3, timeout=15000)
     # Stopka z linkiem do pełnego profilu
-    assert page.locator(".bpp-publikacje__stopka").count() == 1
+    expect(page.locator(".bpp-publikacje__stopka")).to_have_count(1)
 
 
 def test_embed_widget_pusta_lista(channels_live_server, page: Page, transactional_db):
@@ -51,7 +51,9 @@ def test_embed_widget_pusta_lista(channels_live_server, page: Page, transactiona
     assert page.locator(".bpp-publikacje__item").count() == 0
 
 
-def test_embed_widget_sanityzuje_xss(channels_live_server, page: Page, transactional_db):
+def test_embed_widget_sanityzuje_xss(
+    channels_live_server, page: Page, transactional_db
+):
     """Sanitizer loadera usuwa niebezpieczny HTML (allowlist), zachowuje
     tagi formatujące, i nigdy nie wykonuje wstrzykniętego kodu."""
     autor = baker.make(Autor, nazwisko="Pusty", imiona="Piotr")

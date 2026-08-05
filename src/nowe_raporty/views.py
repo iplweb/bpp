@@ -257,16 +257,24 @@ class RaportFormView(RaportDostepMixin, FormDefaultsMixin, FormView):
         initial = super().get_initial()
         cfg = POZIOMY[self.definicja.poziom]
         if cfg.ma_pk and not initial.get("obiekt"):
+            # #438: pracujemy na zawężonym querysecie poziomu (dla „wydziału" =
+            # widoczne korzenie), nie ``cfg.model.objects.all()`` — inaczej
+            # instalacja z 1 wydziałem, ale wieloma jednostkami, gubiła
+            # auto-preselekcję ``obiekt`` (count liczył WSZYSTKIE jednostki).
+            queryset = cfg.obiekt_queryset()
+
             # Wstępny wybór z querystringu — np. „Raport szczegółowy" ze
             # strony autora przekazuje ?obiekt=<pk>, dzięki czemu pole Select2
             # od razu pokazuje wybrany obiekt (autora/jednostkę/wydział).
+            # Szukamy w ``queryset``, nie w ``cfg.model`` — pk podrzucony w URL
+            # spoza poziomu nie ma prawa przemycić obiektu, którego formularz
+            # i tak by nie przyjął (ta sama zasada co w ``get_object``).
             pk = self.request.GET.get("obiekt")
             if pk:
-                initial["obiekt"] = cfg.model.objects.filter(pk=pk).first()
-            if not initial.get("obiekt"):
-                queryset = cfg.model.objects.all()
-                if queryset.count() == 1:
-                    initial["obiekt"] = queryset.first()
+                initial["obiekt"] = queryset.filter(pk=pk).first()
+
+            if not initial.get("obiekt") and queryset.count() == 1:
+                initial["obiekt"] = queryset.first()
         return initial
 
     def form_valid(self, form):
@@ -296,7 +304,11 @@ class RaportGenerujView(RaportDostepMixin, GenerujRaportBase):
     def get_object(self, queryset=None):
         cfg = POZIOMY[self.definicja.poziom]
         if cfg.ma_pk:
-            return get_object_or_404(cfg.model, pk=self.kwargs["pk"])
+            # #438: pobieramy z zawężonego querysetu poziomu (dla „wydziału" =
+            # widoczne korzenie), nie z ``cfg.model`` — inaczej generujący URL
+            # przyjąłby DOWOLNY pk Jednostki (walidacja jest tylko na polu
+            # formularza, a bookmark celuje wprost w URL generowania).
+            return get_object_or_404(cfg.obiekt_queryset(), pk=self.kwargs["pk"])
         return Uczelnia.objects.get_for_request(self.request)
 
     def get_base_queryset(self):

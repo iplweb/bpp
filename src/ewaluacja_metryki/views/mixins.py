@@ -3,13 +3,16 @@ from django.contrib.auth.mixins import (
     UserPassesTestMixin,
 )
 
-from bpp.const import GR_WPROWADZANIE_DANYCH
+from bpp.permissions import moze_wprowadzac_dane
 
 
 def ma_pelne_uprawnienia_ewaluacji(user):
     """Sprawdza czy użytkownik ma pełne uprawnienia do ewaluacji
-    (superuser lub grupa wprowadzania danych)."""
-    return user.is_superuser or user.groups.filter(name=GR_WPROWADZANIE_DANYCH).exists()
+    (superuser lub grupa wprowadzania danych).
+
+    Deleguje do centralnej bramki ``bpp.permissions.moze_wprowadzac_dane``
+    — jedno źródło prawdy dla „pełnych uprawnień redaktorskich"."""
+    return moze_wprowadzac_dane(user)
 
 
 def ma_uprawnienia_ewaluacji(user):

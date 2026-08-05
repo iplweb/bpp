@@ -27,3 +27,16 @@ def test_seed_rodzajow_obecny():
     assert kolo.pokazuj_jako_odrebna_sekcje is True
     assert RodzajJednostki.objects.get(nazwa="Standard")
     assert RodzajJednostki.objects.get(nazwa="Wydział")
+
+
+@pytest.mark.django_db
+def test_rodzajjednostki_autor_moze_afiliowac_default_true():
+    r = RodzajJednostki.objects.create(nazwa="Instytut badawczy")
+    assert r.autor_moze_afiliowac is True
+
+
+@pytest.mark.django_db
+def test_seed_wydzial_nie_dopuszcza_afiliacji():
+    """#438: rodzaj „Wydział" domyślnie nie dopuszcza afiliacji autorów —
+    afiliacja powinna wskazywać jednostkę podrzędną, nie korzeń-wydział."""
+    assert RodzajJednostki.objects.get(nazwa="Wydział").autor_moze_afiliowac is False

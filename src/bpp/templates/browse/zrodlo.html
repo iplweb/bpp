@@ -57,7 +57,8 @@
     <!-- Quick Actions -->
     <div class="source-quick-actions">
         <form method="post" action="{% url "bpp:browse_build_search" %}" style="display: inline;">
-            {% csrf_token %}
+            {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt #}
+            {# (zapis tylko do własnej sesji), by strona weszła do cache. #}
             <input type="hidden" name="zrodlo" value="{{ zrodlo.pk }}"/>
             <input type="hidden" name="suggested-title" value="{{ zrodlo }}"/>
             <button type="submit" class="button button-show-all">
@@ -82,7 +83,7 @@
         </div>
 
         <form method="post" action="{% url "bpp:browse_build_search" %}" class="browserForm">
-            {% csrf_token %}
+            {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt. #}
             <input type="hidden" name="suggested-title" value="{{ zrodlo }}"/>
             <input type="hidden" name="zrodlo" value="{{ zrodlo.pk }}"/>
 
@@ -200,7 +201,9 @@
                     <ul class="accordion" data-accordion data-allow-all-closed="false">
                         {% regroup zrodlo.dyscypliny_aktualna_ewaluacja by rok as disciplines_by_year %}
                         {% for year_group in disciplines_by_year reversed %}
-                            <li class="accordion-item{% if year_group.grouper == 2025 %} is-active{% endif %}" data-accordion-item>
+                            {# Pętla idzie od najnowszego roku (reversed) — domyślnie #}
+                            {# rozwijamy pierwszy, czyli najnowszy rok w bazie (Freshdesk 296). #}
+                            <li class="accordion-item{% if forloop.first %} is-active{% endif %}" data-accordion-item>
                                 <a href="#" class="accordion-title">
                                     <i class="fi-calendar"></i>
                                     Rok {{ year_group.grouper }}

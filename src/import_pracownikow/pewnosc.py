@@ -1,0 +1,145 @@
+"""Status pewności dopasowania autora (§8 spec).
+
+Czysta funkcja ``oblicz_status_pewnosci`` liczy status WPROST z listy kandydatów
+zwróconej przez ``import_common.core.autor.znajdz_kandydatow_autora`` (posortowanej
+malejąco po ``pewnosc``) — NIE z ``matchuj_autora`` (poza priorytetową ścieżką po
+ID, sygnalizowaną ``match_po_id``). Stałe ``STATUS_*`` mieszkają tutaj, a nie na
+modelu, żeby model, pipeline i widoki dzieliły jedno źródło prawdy bez importu ORM
+w warstwie logiki.
+"""
+
+from import_common.core.autor import PEWNOSC_IEXACT, PEWNOSC_MIN_AUTOMATYCZNA
+
+STATUS_TWARDY = "twardy"
+STATUS_ZGADYWANIE = "zgadywanie"
+STATUS_WIELU = "wielu"
+STATUS_BRAK = "brak"
+# Ręczny wybór autora przez operatora (wybór kandydata / override z
+# autocomplete). NIE powstaje w analizie (``oblicz_status_pewnosci`` zwraca tylko
+# statusy automatyczne) — ustawia go dopiero akcja usera w podglądzie. Odróżnia
+# świadomy wybór operatora od automatycznego „twardego matcha" (badge nie kłamie).
+STATUS_RECZNY = "reczny"
+# Autor przekierowany na rekord ORYGINALNY/GŁÓWNY (deduplikacja): dopasowanie
+# po nazwisku trafiło na duplikat, a zatrudnienie podpięto do rekordu z
+# odpowiednikiem w API instytucjonalnym PBN (patrz dedup.kanoniczny_autor).
+# NIE powstaje w ``oblicz_status_pewnosci`` — ustawia go krok przekierowania.
+STATUS_DEDUP = "dedup"
+
+STATUS_CHOICES = [
+    (STATUS_TWARDY, "twardy match"),
+    (STATUS_ZGADYWANIE, "zgadywanie"),
+    (STATUS_WIELU, "wielu kandydatów"),
+    (STATUS_BRAK, "brak dopasowania"),
+]
+
+# Confidence autora ma DODATKOWO statusy „ręczny" (świadomy wybór operatora) i
+# „dedup" (przekierowanie na rekord główny). Osobna lista, bo
+# ``jednostka_status``/``tytul_status`` (też ``STATUS_CHOICES``) NIE mają tych
+# override'ów — trzymamy ich pulę na oryginalnych 4 wartościach (poprawna
+# semantyka + węższy, czystszy zakres migracji confidence).
+CONFIDENCE_CHOICES = STATUS_CHOICES + [
+    (STATUS_RECZNY, "ręczny (wybór użytkownika)"),
+    (STATUS_DEDUP, "rekord główny (deduplikacja)"),
+]
+
+# status → (klasa label, ikona Foundation-Icons, etykieta). Kolory
+# success/warning/primary/secondary/alert są built-in (bez SCSS); „import-reczny"
+# to własna klasa z common.scss (odrębny kolor dla ręcznego wyboru — inne
+# statusy zajęły wszystkie built-inowe kolory).
+STATUS_DISPLAY = {
+    STATUS_TWARDY: ("success", "fi-check", "twardy match"),
+    STATUS_ZGADYWANIE: ("warning", "fi-flag", "zgadywanie"),
+    # Czerwony (alert): „wielu kandydatów" WYMAGA uwagi operatora — wcześniej
+    # było neutralne primary (niebieski), zwolnione teraz dla STATUS_DEDUP.
+    STATUS_WIELU: ("alert", "fi-page-multiple", "wielu kandydatów"),
+    STATUS_BRAK: ("secondary", "fi-minus-circle", "brak dopasowania"),
+    # Własny kolor (common.scss `.label.import-reczny`) + ikona-ołówek — świadomy
+    # wybór operatora, wizualnie odróżnialny od twardego matcha (zielony/fi-check)
+    # i od wszystkich pozostałych statusów.
+    STATUS_RECZNY: ("import-reczny", "fi-pencil", "wybór użytkownika"),
+    # Niebieski (primary), zwolniony przez wielu→alert; ikona osoby sygnalizuje
+    # „podpięto do rekordu głównego" (oryginał z API instytucjonalnego PBN).
+    STATUS_DEDUP: ("primary", "fi-torso", "rekord główny"),
+}
+
+
+def oblicz_status_pewnosci(kandydaci, *, match_po_id):
+    """Zwraca jeden ze ``STATUS_*`` dla listy ``KandydatAutora`` (DESC po
+    ``pewnosc``). Reguła „czystego zwycięzcy": ``twardy``/``zgadywanie`` wymaga
+    DOKŁADNIE jednego kandydata na najwyższym tierze; remis → ``wielu``."""
+    if match_po_id:
+        return STATUS_TWARDY
+    if not kandydaci:
+        return STATUS_BRAK
+
+    najwyzsza = kandydaci[0].pewnosc
+    top_tier = [k for k in kandydaci if k.pewnosc == najwyzsza]
+
+    if len(top_tier) >= 2:
+        return STATUS_WIELU
+    if najwyzsza < PEWNOSC_MIN_AUTOMATYCZNA:
+        return STATUS_WIELU
+    if najwyzsza == PEWNOSC_IEXACT:
+        return STATUS_TWARDY
+    return STATUS_ZGADYWANIE
+
+
+def wybierz_autora_z_kandydatow(kandydaci, status):
+    """Autor materializowany z listy kandydatów dla statusu twardy/zgadywanie
+    (pierwszy = najpewniejszy, lista DESC po ``pewnosc``). Dla ``wielu``/``brak``
+    → ``None`` (decyzję podejmuje user). Wspólne źródło reguły dla analizy (T7)
+    i re-matchu inline (T10), żeby ``kandydaci[0].autor if status in {...}`` nie
+    było powielone w dwóch miejscach."""
+    if status in (STATUS_TWARDY, STATUS_ZGADYWANIE) and kandydaci:
+        return kandydaci[0].autor
+    return None
+
+
+def odtworz_autor_jednostka(row, autor):
+    """Po zmianie autora wiersza (wybór kandydata T9 / korekta inline T10)
+    ustawia powiązanie ``Autor_Jednostka`` i porządkuje ``diff_do_utworzenia``:
+
+    - ZAWSZE zdejmuje ewentualny nieaktualny wpis ``autor_jednostka`` (odłożony
+      dla POPRZEDNIEGO autora) — inaczej integracja (``_materializuj_diff``)
+      utworzyłaby AJ dla już-nie-autora wiersza i nadpisała ``row.autor_jednostka``
+      (korupcja danych: dane zatrudnienia nowego autora lądują u starego),
+    - gdy AJ ``(autor, jednostka)`` istnieje: podpina je i przelicza
+      ``zmiany_potrzebne`` z realnej różnicy (``check_if_integration_needed`` czyta
+      ``self.autor_jednostka``, więc nie może zostać ``None``),
+    - gdy AJ brak: odkłada create w ``diff_do_utworzenia`` i ustawia
+      ``zmiany_potrzebne=True`` (integracja zmaterializuje AJ przez ``get_or_create``).
+
+    Wybór okresu (istniejący vs NOWY) rozstrzyga resolver ``rozwiaz_okres_
+    zatrudnienia`` po „dacie od" z pliku (§7) — TEN SAM co analiza i porównywarka,
+    żeby podgląd nie zapowiadał innego okresu niż utworzy commit. Inna data od niż
+    w bazie → odroczony NOWY okres (``rozpoczal_prace`` + ``nowy_okres`` w diffie).
+
+    NIE zapisuje wiersza — caller składa ``save``/``update_fields``. Caller MUSI
+    ustawić ``row.autor = autor`` PRZED wywołaniem (``check_if_integration_needed``
+    / ``_aj_lista`` czytają ``self.autor``). Jedyne funkcje w module sięgające ORM
+    są LAZY (w ciele), więc ładowanie modułu pozostaje ORM-free i ``models.py``
+    dalej może importować ``STATUS_*``.
+    """
+    from import_pracownikow.okresy import rozwiaz_okres_zatrudnienia
+
+    row.diff_do_utworzenia.pop("autor_jednostka", None)
+    # Zmiana autora unieważnia decyzję okresu policzoną dla poprzedniego autora.
+    row._zapomnij_okres()
+    aj_lista = row._aj_lista()
+    rodzaj, wartosc = rozwiaz_okres_zatrudnienia(
+        autor, row.jednostka, row._plik_od(), aj_lista=aj_lista
+    )
+    if rodzaj == "istniejacy":
+        row.autor_jednostka = wartosc
+        row.zmiany_potrzebne = bool(row.diff_do_utworzenia) or (
+            row.check_if_integration_needed()
+        )
+    else:
+        row.autor_jednostka = None
+        row.diff_do_utworzenia["autor_jednostka"] = {
+            "autor": autor.pk,
+            "jednostka": row.jednostka_id,
+            "rozpoczal_prace": wartosc.isoformat() if wartosc else None,
+            "nowy_okres": bool(aj_lista),
+        }
+        row.zmiany_potrzebne = True

@@ -42,7 +42,7 @@ def pobierz_skasowane_prace(client):
 
     from multiprocessing import Pool
 
-    from pbn_api.const import DELETED
+    from pbn_client.const import DELETED
 
     from bpp.util import pbar
 

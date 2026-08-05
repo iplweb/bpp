@@ -46,7 +46,17 @@ plugins:
         - en
   - autorefs
   - glightbox
-  - include-markdown
+  # Wlasne ograniczniki zamiast domyslnych `{% %}`. Domyslne sa DOKLADNIE
+  # te same, ktorych uzywa Django, a dokumentacja BPP cytuje szablony Django
+  # w kolko (np. `{% include "long_running/operation_details.html" %}`
+  # w planach liveops). Wtyczka brala taki cytat za polecenie i probowala
+  # wciagnac plik, ktorego w `docs/` nie ma -- build padal z BuildError,
+  # a autor dokumentu nie mial powodu podejrzewac, ze opisanie szablonu
+  # Django psuje strone. Rozdzielenie skladni likwiduje cala te klase
+  # bledow; escape'owanie pojedynczych wystapien tylko odsuwa nastepne.
+  - include-markdown:
+      opening_tag: "{!"
+      closing_tag: "!}"
 
 exclude_docs: |
   superpowers/
@@ -107,6 +117,8 @@ nav:
       - deweloper/index.md
       - Mapa kodu: deweloper/mapa-kodu.md
       - Polecenia: deweloper/polecenia.md
+      - Pakiety klienckie PBN: deweloper/pakiety-pbn.md
+      - Import z SQLite (harvestery): deweloper/import-sqlite.md
       - Budowanie CSS/SCSS: deweloper/budowanie-css.md
       - Rozwijanie projektu: deweloper/rozwijanie-projektu.md
       - Dane demo: deweloper/dane-demo.md

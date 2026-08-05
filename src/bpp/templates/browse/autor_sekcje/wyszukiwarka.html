@@ -12,7 +12,8 @@
     <form method="post"
           action="{% url "bpp:browse_build_search" %}"
           class="browserForm">
-        {% csrf_token %}
+        {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt. #}
+        {# Token w formularzu blokowałby cache_publiczny (_ZAWIERA_CSRF). #}
         <input type="hidden" name="suggested-title" value="{{ autor }}"/>
         <input type="hidden" name="autor" value="{{ autor.pk }}"/>
 
@@ -25,14 +26,16 @@
             </div>
         </div>
 
-        {% if autor.jednostki_gdzie_ma_publikacje %}
+        {# Jednostki autora — jeden queryset na warunek i pętlę. #}
+        {% with jednostki_autora=autor.jednostki_gdzie_ma_publikacje %}
+        {% if jednostki_autora %}
             <div class="card autor-page__search-card">
                 <div class="card-section">
                     <h6 class="autor-page__search-card-title">
                         <i class="fi-home autor-page__icon--mr-sm"></i>Opracowane w jednostkach:
                     </h6>
                     <div class="grid-x grid-margin-x">
-                        {% for jednostka in autor.jednostki_gdzie_ma_publikacje %}
+                        {% for jednostka in jednostki_autora %}
                             <div class="cell medium-6 autor-page__checkbox-item">
                                 <input type="checkbox"
                                        name="jednostka"
@@ -54,6 +57,7 @@
                 </div>
             </div>
         {% endif %}
+        {% endwith %}
 
         <div class="card autor-page__search-card">
             <div class="card-section">

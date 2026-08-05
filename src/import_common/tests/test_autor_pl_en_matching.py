@@ -11,6 +11,11 @@ from model_bakery import baker
 
 from bpp.models import Autor
 from import_common.core import matchuj_autora
+from import_common.core.autor import (
+    PEWNOSC_INICJAL,
+    POWOD_INICJAL,
+    znajdz_kandydatow_autora,
+)
 
 
 @pytest.mark.django_db
@@ -161,3 +166,73 @@ def test_match_lech_maranda_literal():
     """Dokladny przypadek zgloszenia: Lech-Maranda Eva ↔ Lech-Marańda Ewa."""
     autor = baker.make(Autor, imiona="Ewa", nazwisko="Lech-Marańda")
     assert matchuj_autora(imiona="Eva", nazwisko="Lech-Maranda") == autor
+
+
+# ---------------------------------------------------------------------------
+# Inicjał imienia (CrossRef daje "E.", BPP ma pełne "Ewa")
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_inicjal_znajduje_kandydata():
+    """Zgłoszenie: CrossRef 'Lech-Maranda E.' vs BPP 'Lech-Marańda Ewa'.
+
+    Inicjał + nazwisko (z unaccent) zwraca autora jako kandydata o
+    NISKIEJ pewności — importer pokaże go jako sugestię do potwierdzenia.
+    """
+    autor = baker.make(Autor, imiona="Ewa", nazwisko="Lech-Marańda")
+    kandydaci = znajdz_kandydatow_autora("E.", "Lech-Maranda")
+    assert [k.autor for k in kandydaci] == [autor]
+    assert kandydaci[0].powod == POWOD_INICJAL
+    assert kandydaci[0].pewnosc == PEWNOSC_INICJAL
+
+
+@pytest.mark.django_db
+def test_inicjal_bez_kropki():
+    """Inicjał bez kropki ('E') działa tak samo jak z kropką ('E.')."""
+    autor = baker.make(Autor, imiona="Ewa", nazwisko="Lech-Marańda")
+    kandydaci = znajdz_kandydatow_autora("E", "Lech-Maranda")
+    assert [k.autor for k in kandydaci] == [autor]
+
+
+@pytest.mark.django_db
+def test_inicjal_zla_litera_nie_pasuje():
+    """Inicjał 'A.' nie pasuje do 'Ewa' — pierwsza litera się nie zgadza."""
+    baker.make(Autor, imiona="Ewa", nazwisko="Lech-Marańda")
+    assert znajdz_kandydatow_autora("A.", "Lech-Maranda") == []
+
+
+@pytest.mark.django_db
+def test_inicjal_nie_auto_wiaze_pojedynczego():
+    """matchuj_autora NIE wiąże automatycznie samego inicjału.
+
+    Sam inicjał to za słaby sygnał na auto-przypisanie — decyzja należy
+    do użytkownika (importer pokazuje listę / sugestię).
+    """
+    baker.make(Autor, imiona="Ewa", nazwisko="Lech-Marańda")
+    assert matchuj_autora(imiona="E.", nazwisko="Lech-Maranda") is None
+
+
+@pytest.mark.django_db
+def test_inicjal_wielu_kandydatow():
+    """'E.' przy dwóch osobach (Ewa, Elżbieta) → obaj jako kandydaci."""
+    ewa = baker.make(Autor, imiona="Ewa", nazwisko="Lech-Marańda")
+    elzbieta = baker.make(Autor, imiona="Elżbieta", nazwisko="Lech-Marańda")
+    kandydaci = znajdz_kandydatow_autora("E.", "Lech-Maranda")
+    assert {k.autor for k in kandydaci} == {ewa, elzbieta}
+    assert matchuj_autora(imiona="E.", nazwisko="Lech-Maranda") is None
+
+
+@pytest.mark.django_db
+def test_pelne_imie_nie_degradowane_do_inicjalu():
+    """Regresja: pełne imię wciąż matchuje z wysoką pewnością (nie 0.5)."""
+    baker.make(Autor, imiona="Ewa", nazwisko="Lech-Marańda")
+    kandydaci = znajdz_kandydatow_autora("Ewa", "Lech-Marańda")
+    assert kandydaci[0].pewnosc > PEWNOSC_INICJAL
+
+
+@pytest.mark.django_db
+def test_inicjal_nie_laczy_z_innym_nazwiskiem():
+    """Inicjał nie łączy w poprzek nazwisk: 'E. Kowalska' ≠ 'Ewa Nowak'."""
+    baker.make(Autor, imiona="Ewa", nazwisko="Nowak")
+    assert znajdz_kandydatow_autora("E.", "Kowalska") == []

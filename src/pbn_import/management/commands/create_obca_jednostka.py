@@ -2,9 +2,10 @@
 
 W multi-hosted wszystkie uczelnie współdzielą jedną bazę, a ``Jednostka.nazwa`` /
 ``skrot`` są ``unique=True`` globalnie. Obca jednostka MUSI więc być per-uczelnia
-(nazwa "Obca jednostka <SKRÓT>") i podpięta do wydziału tej samej uczelni —
-inaczej import PBN wywala się na triggerze ``bpp_jednostka_wydzial_
-sprawdz_uczelnia_id``. To polecenie provisionuje / naprawia ten stan hurtem.
+(nazwa "Obca jednostka <SKRÓT>") i ustawiona jako ``Uczelnia.obca_jednostka``.
+To polecenie provisionuje / naprawia ten stan hurtem. Nie wymusza podpięcia
+obcej jednostki do wydziału — uczelnie mogą nie używać wydziałów, a gate
+``sprawdz_obca_jednostka`` tego nie wymaga (triggery spójności zdjęto w #438).
 """
 
 from django.core.management.base import BaseCommand, CommandError
@@ -18,8 +19,9 @@ from pbn_import.utils.institution_import import (
 
 class Command(BaseCommand):
     help = (
-        "Zapewnia obcą jednostkę (per-uczelnia, podpiętą do wydziału domyślnego) "
-        "dla każdej uczelni. Idempotentne. --dry-run tylko raportuje braki."
+        "Zapewnia obcą jednostkę (per-uczelnia) i ustawia FK "
+        "Uczelnia.obca_jednostka dla każdej uczelni. Idempotentne. "
+        "--dry-run tylko raportuje braki."
     )
 
     def add_arguments(self, parser):
