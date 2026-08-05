@@ -7833,6 +7833,11 @@ CREATE TABLE public.bpp_uczelnia (
     ror_id character varying(64) NOT NULL,
     eksport_cerif_osoby boolean NOT NULL,
     eksport_cerif_kwoty boolean NOT NULL,
+    api_v1_dane_bibliograficzne boolean NOT NULL,
+    api_v1_kafelki boolean NOT NULL,
+    api_v1_narzedzia_redaktorskie boolean NOT NULL,
+    api_v1_tylko_zalogowani boolean NOT NULL,
+    api_v1_wyszukiwanie boolean NOT NULL,
     CONSTRAINT bpp_uczelnia_ilosc_jednostek_na_strone_check CHECK ((ilosc_jednostek_na_strone >= 0)),
     CONSTRAINT bpp_uczelnia_pokazuj_deklaracje_dostepnosci_check CHECK ((pokazuj_deklaracje_dostepnosci >= 0))
 );
@@ -15833,7 +15838,7 @@ COPY public.bpp_tytul (id, nazwa, skrot) FROM stdin;
 -- Data for Name: bpp_uczelnia; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_uczelnia (id, ostatnio_zmieniony, adnotacje, nazwa, skrot, nazwa_dopelniacz_field, slug, logo_www, logo_svg, favicon_ico, pbn_id, obca_jednostka_id, pokazuj_index_copernicus, pokazuj_punktacje_wewnetrzna, pokazuj_status_korekty, pokazuj_ranking_autorow, pokazuj_praca_recenzowana, clarivate_password, clarivate_username, domyslnie_afiliuje, pokazuj_liczbe_cytowan_w_rankingu, pokazuj_liczbe_cytowan_na_stronie_autora, wydruk_logo, wydruk_parametry_zapytania, wydruk_logo_szerokosc, wyszukiwanie_rekordy_na_strone_anonim, wyszukiwanie_rekordy_na_strone_zalogowany, pokazuj_punktacja_snip, podpowiadaj_dyscypliny, pokazuj_tabele_slotow_na_stronie_rekordu, pokazuj_raport_slotow_autor, pokazuj_raport_slotow_uczelnia, ranking_autorow_rozbij_domyslnie, pokazuj_raport_slotow_zerowy, sortuj_jednostki_alfabetycznie, metoda_do_roku_formularze, pbn_uid_id, pbn_api_root, pbn_app_name, pbn_app_token, pbn_aktualizuj_na_biezaco, pbn_integracja, pbn_api_user_id, pbn_api_nie_wysylaj_prac_bez_pk, ilosc_jednostek_na_strone, pokazuj_tylko_jednostki_nadrzedne, wymagaj_informacji_o_oplatach, pokazuj_formularz_zglaszania_publikacji, pbn_api_afiliacja_zawsze_na_uczelnie, pbn_wysylaj_bez_oswiadczen, deklaracja_dostepnosci_tekst, deklaracja_dostepnosci_url, pokazuj_deklaracje_dostepnosci, ranking_autorow_bez_kol_naukowych, pokazuj_autorow_obcych_w_przegladaniu_danych, pokazuj_autorow_bez_prac_w_przegladaniu_danych, drukuj_alternatywne_oswiadczenia, drukuj_oswiadczenia, pokazuj_zrodla_bez_prac_w_przegladaniu_danych, pokazuj_jednostki_na_pierwszej_stronie, pokazuj_wydzialy_na_pierwszej_stronie, przydzielaj_1_slot_gdy_udzial_mniejszy, pytaj_o_zgode_na_publikacje_pelnego_tekstu, uzywaj_wydzialow, tytul_strony_glownej, wymagaj_logowania_zglos_publikacje, nowy_autor_z_formularza_pokazuj, orcid_client_id, orcid_client_secret, orcid_sandbox, orcid_tylko_dla_pracownikow, wymagaj_oplatach_artykul, wymagaj_oplatach_inne, wymagaj_oplatach_monografia, wymagaj_oplatach_rozdzial, pbn_kasuj_dyscypliny_selektywnie, pokazuj_siec_powiazan, dspace_aktywny, dspace_api_endpoint, dspace_api_password, dspace_api_username, dspace_domyslny_jezyk_dc, site_id, theme_name, google_analytics_property_id, google_verification_code, pokazuj_oswiadczenie_ken, skrot_wydzialu_w_nazwie_jednostki, wydruk_margines_dol, wydruk_margines_gora, wydruk_margines_lewo, wydruk_margines_prawo, zwijaj_dlugie_listy_autorow, oai_identyfikator_repozytorium, oai_pmh_aktywny, api_v1_wlaczone, eksport_cerif_wlaczony, ror_id, eksport_cerif_osoby, eksport_cerif_kwoty) FROM stdin;
+COPY public.bpp_uczelnia (id, ostatnio_zmieniony, adnotacje, nazwa, skrot, nazwa_dopelniacz_field, slug, logo_www, logo_svg, favicon_ico, pbn_id, obca_jednostka_id, pokazuj_index_copernicus, pokazuj_punktacje_wewnetrzna, pokazuj_status_korekty, pokazuj_ranking_autorow, pokazuj_praca_recenzowana, clarivate_password, clarivate_username, domyslnie_afiliuje, pokazuj_liczbe_cytowan_w_rankingu, pokazuj_liczbe_cytowan_na_stronie_autora, wydruk_logo, wydruk_parametry_zapytania, wydruk_logo_szerokosc, wyszukiwanie_rekordy_na_strone_anonim, wyszukiwanie_rekordy_na_strone_zalogowany, pokazuj_punktacja_snip, podpowiadaj_dyscypliny, pokazuj_tabele_slotow_na_stronie_rekordu, pokazuj_raport_slotow_autor, pokazuj_raport_slotow_uczelnia, ranking_autorow_rozbij_domyslnie, pokazuj_raport_slotow_zerowy, sortuj_jednostki_alfabetycznie, metoda_do_roku_formularze, pbn_uid_id, pbn_api_root, pbn_app_name, pbn_app_token, pbn_aktualizuj_na_biezaco, pbn_integracja, pbn_api_user_id, pbn_api_nie_wysylaj_prac_bez_pk, ilosc_jednostek_na_strone, pokazuj_tylko_jednostki_nadrzedne, wymagaj_informacji_o_oplatach, pokazuj_formularz_zglaszania_publikacji, pbn_api_afiliacja_zawsze_na_uczelnie, pbn_wysylaj_bez_oswiadczen, deklaracja_dostepnosci_tekst, deklaracja_dostepnosci_url, pokazuj_deklaracje_dostepnosci, ranking_autorow_bez_kol_naukowych, pokazuj_autorow_obcych_w_przegladaniu_danych, pokazuj_autorow_bez_prac_w_przegladaniu_danych, drukuj_alternatywne_oswiadczenia, drukuj_oswiadczenia, pokazuj_zrodla_bez_prac_w_przegladaniu_danych, pokazuj_jednostki_na_pierwszej_stronie, pokazuj_wydzialy_na_pierwszej_stronie, przydzielaj_1_slot_gdy_udzial_mniejszy, pytaj_o_zgode_na_publikacje_pelnego_tekstu, uzywaj_wydzialow, tytul_strony_glownej, wymagaj_logowania_zglos_publikacje, nowy_autor_z_formularza_pokazuj, orcid_client_id, orcid_client_secret, orcid_sandbox, orcid_tylko_dla_pracownikow, wymagaj_oplatach_artykul, wymagaj_oplatach_inne, wymagaj_oplatach_monografia, wymagaj_oplatach_rozdzial, pbn_kasuj_dyscypliny_selektywnie, pokazuj_siec_powiazan, dspace_aktywny, dspace_api_endpoint, dspace_api_password, dspace_api_username, dspace_domyslny_jezyk_dc, site_id, theme_name, google_analytics_property_id, google_verification_code, pokazuj_oswiadczenie_ken, skrot_wydzialu_w_nazwie_jednostki, wydruk_margines_dol, wydruk_margines_gora, wydruk_margines_lewo, wydruk_margines_prawo, zwijaj_dlugie_listy_autorow, oai_identyfikator_repozytorium, oai_pmh_aktywny, api_v1_wlaczone, eksport_cerif_wlaczony, ror_id, eksport_cerif_osoby, eksport_cerif_kwoty, api_v1_dane_bibliograficzne, api_v1_kafelki, api_v1_narzedzia_redaktorskie, api_v1_tylko_zalogowani, api_v1_wyszukiwanie) FROM stdin;
 \.
 
 
@@ -16444,6 +16449,53 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+1103	import_list_if	0005_liveops	2000-01-01 00:00:00+00
+554	constance	0001_initial	2000-01-01 00:00:00+00
+808	integrator2	0001_initial	2000-01-01 00:00:00+00
+716	flexible_reports	0008_auto_20171025_0553	2000-01-01 00:00:00+00
+717	flexible_reports	0009_auto_20171025_0558	2000-01-01 00:00:00+00
+718	flexible_reports	0010_auto_20171026_0340	2000-01-01 00:00:00+00
+719	flexible_reports	0011_alter_reportelement_options_alter_column_attrs_and_more	2000-01-01 00:00:00+00
+720	flexible_reports	0012_add_query_language	2000-01-01 00:00:00+00
+721	flexible_reports	0013_add_sample_context	2000-01-01 00:00:00+00
+722	flexible_reports	0014_alter_datasource_sample_context	2000-01-01 00:00:00+00
+723	formdefaults	0001_initial	2000-01-01 00:00:00+00
+724	formdefaults	0002_django32	2000-01-01 00:00:00+00
+725	formdefaults	0003_formrepresentation_pre_registered	2000-01-01 00:00:00+00
+726	formdefaults	0004_unique_field_user	2000-01-01 00:00:00+00
+727	formdefaults	0005_unique_field_system	2000-01-01 00:00:00+00
+728	formdefaults	0006_formfielddefaultvalue_is_auto_snapshot	2000-01-01 00:00:00+00
+729	formdefaults	0007_backfill_is_auto_snapshot	2000-01-01 00:00:00+00
+730	import_dyscyplin	0001_initial	2000-01-01 00:00:00+00
+731	import_dyscyplin	0002_import_dyscyplin_web_page_uid	2000-01-01 00:00:00+00
+732	import_dyscyplin	0003_auto_20180409_1129	2000-01-01 00:00:00+00
+733	import_dyscyplin	0004_auto_20180409_1240	2000-01-01 00:00:00+00
+734	import_dyscyplin	0005_auto_20180414_1801	2000-01-01 00:00:00+00
+735	import_dyscyplin	0006_auto_20180414_1841	2000-01-01 00:00:00+00
+736	import_dyscyplin	0007_auto_20180414_1917	2000-01-01 00:00:00+00
+737	import_dyscyplin	0008_auto_20180415_0813	2000-01-01 00:00:00+00
+738	import_dyscyplin	0009_auto_20180415_0847	2000-01-01 00:00:00+00
+739	import_dyscyplin	0010_auto_20180415_1107	2000-01-01 00:00:00+00
+740	import_dyscyplin	0011_auto_20180415_2223	2000-01-01 00:00:00+00
+741	import_dyscyplin	0012_import_dyscyplin_row_dyscyplina_ostateczna	2000-01-01 00:00:00+00
+742	import_dyscyplin	0013_auto_20190324_1826	2000-01-01 00:00:00+00
+743	import_dyscyplin	0014_auto_20190324_1906	2000-01-01 00:00:00+00
+744	import_dyscyplin	0015_auto_20190326_0553	2000-01-01 00:00:00+00
+745	import_dyscyplin	0016_auto_20190327_0129	2000-01-01 00:00:00+00
+746	import_dyscyplin	0017_auto_20190327_2246	2000-01-01 00:00:00+00
+747	import_dyscyplin	0018_auto_20200329_1719	2000-01-01 00:00:00+00
+748	import_dyscyplin	0019_drop_pesel_md5	2000-01-01 00:00:00+00
+749	import_dyscyplin	0020_django32	2000-01-01 00:00:00+00
+750	import_dyscyplin	0021_import_pustych_do_skasowania	2000-01-01 00:00:00+00
+751	import_dyscyplin	0022_move_files_to_protected	2000-01-01 00:00:00+00
+752	import_dyscyplin	0023_remove_null_from_string_fields	2000-01-01 00:00:00+00
+754	import_list_if	0002_auto_20210308_1246	2000-01-01 00:00:00+00
+755	import_list_if	0003_django32	2000-01-01 00:00:00+00
+756	import_list_if	0004_alter_importlistif_plik_xls	2000-01-01 00:00:00+00
+757	import_list_ministerialnych	0001_initial	2000-01-01 00:00:00+00
+758	import_list_ministerialnych	0002_alter_wierszimportudyscyplinzrodel_nr_wiersza	2000-01-01 00:00:00+00
+759	import_list_ministerialnych	0003_rename_wierszimportudyscyplinzrodel_wierszimportulistyministerialnej	2000-01-01 00:00:00+00
+760	import_list_ministerialnych	0004_importlistministerialnych_ignoruj_zrodla_bez_odpowiednika	2000-01-01 00:00:00+00
 593	denorm	0001_initial	2000-01-01 00:00:00+00
 94	bpp	0017_typy_pbn	2000-01-01 00:00:00+00
 970	bpp	0417_ensure_uczelnia_site_not_null	2000-01-01 00:00:00+00
@@ -16821,7 +16873,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1100	bpp	0473_merge_20260722_1632	2000-01-01 00:00:00+00
 1101	ewaluacja_metryki	0010_dedup_statusgenerowania_bez_uczelni	2000-01-01 00:00:00+00
 1102	ewaluacja_metryki	0011_statusgenerowania_jeden_wiersz_bez_uczelni	2000-01-01 00:00:00+00
-1103	import_list_if	0005_liveops	2000-01-01 00:00:00+00
 1104	import_polon	0017_liveops	2000-01-01 00:00:00+00
 1105	pbn_api	0078_deduplikacja_publikacji_instytucji	2000-01-01 00:00:00+00
 1106	pbn_api	0079_constraint_publikacja_instytucji	2000-01-01 00:00:00+00
@@ -17369,7 +17420,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 550	bpp	0432_cache_trigger_plpgsql	2000-01-01 00:00:00+00
 551	bpp	0433_cache_trigger_when_gate	2000-01-01 00:00:00+00
 553	channels_broadcast	0001_initial	2000-01-01 00:00:00+00
-554	constance	0001_initial	2000-01-01 00:00:00+00
 555	constance	0002_migrate_from_old_table	2000-01-01 00:00:00+00
 556	constance	0003_drop_pickle	2000-01-01 00:00:00+00
 557	crossref_bpp	0001_initial	2000-01-01 00:00:00+00
@@ -17443,7 +17493,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 625	django_countdown	0001_initial	2000-01-01 00:00:00+00
 626	django_countdown	0002_alter_sitecountdown_countdown_time	2000-01-01 00:00:00+00
 627	django_countdown	0003_sitecountdown_maintenance_until	2000-01-01 00:00:00+00
-808	integrator2	0001_initial	2000-01-01 00:00:00+00
 628	django_countdown	0004_alter_sitecountdown_long_description	2000-01-01 00:00:00+00
 629	django_countdown	0005_alter_sitecountdown_options_and_more	2000-01-01 00:00:00+00
 630	dspace_api	0001_initial	2000-01-01 00:00:00+00
@@ -17529,50 +17578,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 712	flexible_reports	0004_auto_20170823_2342	2000-01-01 00:00:00+00
 714	flexible_reports	0006_default_ordering	2000-01-01 00:00:00+00
 715	flexible_reports	0007_sort_desc	2000-01-01 00:00:00+00
-716	flexible_reports	0008_auto_20171025_0553	2000-01-01 00:00:00+00
-717	flexible_reports	0009_auto_20171025_0558	2000-01-01 00:00:00+00
-718	flexible_reports	0010_auto_20171026_0340	2000-01-01 00:00:00+00
-719	flexible_reports	0011_alter_reportelement_options_alter_column_attrs_and_more	2000-01-01 00:00:00+00
-720	flexible_reports	0012_add_query_language	2000-01-01 00:00:00+00
-721	flexible_reports	0013_add_sample_context	2000-01-01 00:00:00+00
-722	flexible_reports	0014_alter_datasource_sample_context	2000-01-01 00:00:00+00
-723	formdefaults	0001_initial	2000-01-01 00:00:00+00
-724	formdefaults	0002_django32	2000-01-01 00:00:00+00
-725	formdefaults	0003_formrepresentation_pre_registered	2000-01-01 00:00:00+00
-726	formdefaults	0004_unique_field_user	2000-01-01 00:00:00+00
-727	formdefaults	0005_unique_field_system	2000-01-01 00:00:00+00
-728	formdefaults	0006_formfielddefaultvalue_is_auto_snapshot	2000-01-01 00:00:00+00
-729	formdefaults	0007_backfill_is_auto_snapshot	2000-01-01 00:00:00+00
-730	import_dyscyplin	0001_initial	2000-01-01 00:00:00+00
-731	import_dyscyplin	0002_import_dyscyplin_web_page_uid	2000-01-01 00:00:00+00
-732	import_dyscyplin	0003_auto_20180409_1129	2000-01-01 00:00:00+00
-733	import_dyscyplin	0004_auto_20180409_1240	2000-01-01 00:00:00+00
-734	import_dyscyplin	0005_auto_20180414_1801	2000-01-01 00:00:00+00
-735	import_dyscyplin	0006_auto_20180414_1841	2000-01-01 00:00:00+00
-736	import_dyscyplin	0007_auto_20180414_1917	2000-01-01 00:00:00+00
-737	import_dyscyplin	0008_auto_20180415_0813	2000-01-01 00:00:00+00
-738	import_dyscyplin	0009_auto_20180415_0847	2000-01-01 00:00:00+00
-739	import_dyscyplin	0010_auto_20180415_1107	2000-01-01 00:00:00+00
-740	import_dyscyplin	0011_auto_20180415_2223	2000-01-01 00:00:00+00
-741	import_dyscyplin	0012_import_dyscyplin_row_dyscyplina_ostateczna	2000-01-01 00:00:00+00
-742	import_dyscyplin	0013_auto_20190324_1826	2000-01-01 00:00:00+00
-743	import_dyscyplin	0014_auto_20190324_1906	2000-01-01 00:00:00+00
-744	import_dyscyplin	0015_auto_20190326_0553	2000-01-01 00:00:00+00
-745	import_dyscyplin	0016_auto_20190327_0129	2000-01-01 00:00:00+00
-746	import_dyscyplin	0017_auto_20190327_2246	2000-01-01 00:00:00+00
-747	import_dyscyplin	0018_auto_20200329_1719	2000-01-01 00:00:00+00
-748	import_dyscyplin	0019_drop_pesel_md5	2000-01-01 00:00:00+00
-749	import_dyscyplin	0020_django32	2000-01-01 00:00:00+00
-750	import_dyscyplin	0021_import_pustych_do_skasowania	2000-01-01 00:00:00+00
-751	import_dyscyplin	0022_move_files_to_protected	2000-01-01 00:00:00+00
-752	import_dyscyplin	0023_remove_null_from_string_fields	2000-01-01 00:00:00+00
-754	import_list_if	0002_auto_20210308_1246	2000-01-01 00:00:00+00
-755	import_list_if	0003_django32	2000-01-01 00:00:00+00
-756	import_list_if	0004_alter_importlistif_plik_xls	2000-01-01 00:00:00+00
-757	import_list_ministerialnych	0001_initial	2000-01-01 00:00:00+00
-758	import_list_ministerialnych	0002_alter_wierszimportudyscyplinzrodel_nr_wiersza	2000-01-01 00:00:00+00
-759	import_list_ministerialnych	0003_rename_wierszimportudyscyplinzrodel_wierszimportulistyministerialnej	2000-01-01 00:00:00+00
-760	import_list_ministerialnych	0004_importlistministerialnych_ignoruj_zrodla_bez_odpowiednika	2000-01-01 00:00:00+00
+1135	bpp	0487_api_v1_przelaczniki	2000-01-01 00:00:00+00
 \.
 
 
@@ -17945,21 +17951,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-238	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
-239	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
-240	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-241	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-242	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-243	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-244	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-245	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-246	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-247	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-248	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-249	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-250	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-251	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-252	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -19576,7 +19567,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1134, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1135, true);
 
 
 --

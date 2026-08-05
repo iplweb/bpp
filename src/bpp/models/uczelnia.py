@@ -202,6 +202,21 @@ def do_roku_default(request=None):
     raise NotImplementedError
 
 
+class GrupaApiV1(models.TextChoices):
+    """Grupy endpointów ``/api/v1/`` — po jednej na przełącznik na ``Uczelnia``.
+
+    Wartość enuma jest jednocześnie sufiksem nazwy pola: ``api_v1_<value>``.
+    Kontrakt pilnuje ``test_kazda_grupa_ma_pole_na_uczelni`` — bez niego
+    literówka wyszłaby dopiero na produkcji, przy pierwszym żądaniu do danej
+    grupy.
+    """
+
+    DANE_BIBLIOGRAFICZNE = "dane_bibliograficzne", "dane bibliograficzne"
+    WYSZUKIWANIE = "wyszukiwanie", "wyszukiwanie"
+    KAFELKI = "kafelki", "kafelki do osadzania"
+    NARZEDZIA_REDAKTORSKIE = "narzedzia_redaktorskie", "narzędzia redaktorskie"
+
+
 class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     site = models.OneToOneField(
         "sites.Site",
@@ -587,7 +602,50 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         "Włącz REST API (/api/v1/)",
         default=True,
         help_text="Gdy odznaczone, publiczne REST API tej uczelni "
-        "(/api/v1/) przestaje odpowiadać.",
+        "(/api/v1/) przestaje odpowiadać. NIE dotyczy kafelków do "
+        "osadzania — te mają własny przełącznik niżej i działają "
+        "niezależnie, żeby wyłączenie API nie psuło widgetów wklejonych "
+        "na stronach WWW jednostek.",
+    )
+
+    api_v1_tylko_zalogowani = models.BooleanField(
+        "REST API tylko dla zalogowanych",
+        default=False,
+        help_text="Gdy zaznaczone, niezalogowany klient dostaje 401 zamiast "
+        "danych. Nie dotyczy kafelków do osadzania — te z założenia wiszą "
+        "na publicznych stronach.",
+    )
+
+    api_v1_dane_bibliograficzne = models.BooleanField(
+        "Udostępniaj dane bibliograficzne",
+        default=True,
+        help_text="Słowniki, struktura uczelni, autorzy, rekordy publikacji, "
+        "źródła i wydawcy.",
+    )
+
+    api_v1_wyszukiwanie = models.BooleanField(
+        "Udostępniaj wyszukiwanie",
+        default=True,
+        help_text="Endpoint /api/v1/szukaj/ — pełnotekstowe wyszukiwanie po "
+        "wszystkich publikacjach. Kosztowny, objęty osobnym limitem zapytań.",
+    )
+
+    api_v1_kafelki = models.BooleanField(
+        "Udostępniaj kafelki do osadzania",
+        default=True,
+        help_text="Endpointy /api/v1/recent_author_publications/ i "
+        "/api/v1/recent_unit_publications/, z których korzysta widget "
+        "bpp-publikacje.js. UWAGA: odznaczenie zgasi listy publikacji "
+        "wklejone na stronach WWW jednostek i wydziałów.",
+    )
+
+    api_v1_narzedzia_redaktorskie = models.BooleanField(
+        "Udostępniaj narzędzia redaktorskie",
+        default=True,
+        help_text="Zapytania DjangoQL (/api/v1/zapytanie/) i raport slotów "
+        "uczelni. Wymagają konta redaktora także wtedy, gdy to pole jest "
+        "zaznaczone — decyduje ono wyłącznie o tym, czy endpointy w ogóle "
+        "istnieją.",
     )
 
     eksport_cerif_wlaczony = models.BooleanField(
@@ -947,6 +1005,14 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         namespace'u.
         """
         return self.oai_identyfikator_repozytorium.strip() or self.site.domain
+
+    def api_v1_grupa_wlaczona(self, grupa: GrupaApiV1) -> bool:
+        """Czy dana grupa endpointów ``/api/v1/`` jest włączona.
+
+        Nazwa pola wyprowadzana z wartości enuma — jedno miejsce zamiast
+        czterech gałęzi ``if``.
+        """
+        return getattr(self, f"api_v1_{grupa.value}")
 
     def ukryte_statusy(self, dla_funkcji: str) -> list[int]:
         """

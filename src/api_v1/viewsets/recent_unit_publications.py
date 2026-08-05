@@ -5,13 +5,14 @@ from rest_framework.permissions import AllowAny
 from bpp.models import Jednostka
 
 from .recent_publications_common import (
+    CorsNaBledachMixin,
     odpowiedz_z_publikacjami,
     pobierz_encje_lub_404,
     queryset_rekordow,
 )
 
 
-class RecentUnitPublicationsViewSet(viewsets.ViewSet):
+class RecentUnitPublicationsViewSet(CorsNaBledachMixin, viewsets.ViewSet):
     """
     ViewSet dla pobierania ostatnich publikacji jednostki (embed na stronie WWW).
 
