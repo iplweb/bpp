@@ -382,7 +382,9 @@ CERIF_VALIDATOR_CACHE ?= $(HOME)/.cache/bpp/cerif-validator
 CERIF_VALIDATOR_IMAGE ?= iplweb/cerif-validator
 # Przypięta suma pobieranego JAR-a. Pusta = weryfikacja spada na .sha256
 # z release'u (słabsza, patrz komentarz przy regule pobierania).
-CERIF_VALIDATOR_SHA256 ?=
+# Przy podbiciu CERIF_VALIDATOR_VERSION trzeba podbić RÓWNIEŻ to — inaczej
+# pobranie nowej wersji zostanie odrzucone jako niezgodne z sumą.
+CERIF_VALIDATOR_SHA256 ?= e077bb69007b7b45020b652d0d8040a26b5879198adfa2bac74eabe01f13cc28
 
 _cerif_asset = openaire-cris-validator-$(CERIF_VALIDATOR_VERSION)-jar-with-dependencies.jar
 _cerif_jar = $(CERIF_VALIDATOR_CACHE)/$(_cerif_asset)
@@ -397,7 +399,8 @@ _cerif_image_tag = $(patsubst v%,%,$(CERIF_VALIDATOR_VERSION))
 $(_cerif_jar):
 	@mkdir -p "$(CERIF_VALIDATOR_CACHE)"
 	@echo "Pobieram walidator euroCRIS $(CERIF_VALIDATOR_VERSION)..."
-	@curl -fL --retry 3 --proto '=https' --tlsv1.2 -o "$@.tmp" "$(_cerif_url)" || { \
+	@curl -fL --retry 3 --progress-bar --proto '=https' --tlsv1.2 \
+	  -o "$@.tmp" "$(_cerif_url)" || { \
 	  rm -f "$@.tmp"; \
 	  echo ""; \
 	  echo "Nie udało się pobrać walidatora z:"; \
