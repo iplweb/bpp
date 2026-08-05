@@ -81,6 +81,17 @@ class CustomRouter(routers.DefaultRouter):
         self.grupy_endpointow = {}
 
     def register(self, prefix, viewset, basename=None, *, grupa):
+        # Keyword-only bez defaultu chroni przed POMINIECIEM grupy; isinstance
+        # chroni przed jej zlym TYPEM (np. ``grupa="kafelki"``), ktory
+        # przeszedlby rejestracje i wybuchl dopiero na pierwszym zadaniu:
+        # porownanie ``is GrupaApiV1.KAFELKI`` byloby falszywe, a pozniejsze
+        # ``grupa.value`` rzucilo ``AttributeError`` → 500. Oba bledy maja
+        # wychodzic przy starcie aplikacji.
+        if grupa is not None and not isinstance(grupa, GrupaApiV1):
+            raise TypeError(
+                f"grupa dla prefiksu {prefix!r} musi być członkiem GrupaApiV1 "
+                f"albo None, dostałem {grupa!r}"
+            )
         if basename is None:
             basename = self.get_default_basename(viewset)
         self.grupy_endpointow[prefix] = grupa

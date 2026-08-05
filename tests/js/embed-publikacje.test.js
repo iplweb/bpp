@@ -118,4 +118,60 @@ describe("widget osadzania — odpowiedzi bledne", () => {
         expect(kontener.textContent).toContain("Nie udało się załadować");
         expect(console.warn).toHaveBeenCalled();
     });
+
+    test("sekwencje zamykajace komentarz sa zwijane", async () => {
+        // `createComment` nie parsuje HTML-a, wiec jedynym realnym wektorem
+        // jest przedwczesne zamkniecie komentarza. Kazdy z wariantow (`-->`,
+        // `--!>`, `<!--`) wymaga podwojnego myslnika.
+        const kontener = await uruchomWidget(
+            odpowiedz(404, {
+                detail: "zle --> i --!> oraz <!-- w srodku",
+                powod: "grupa_wylaczona",
+            })
+        );
+
+        // Kontener ma byc JEDNYM wezlem komentarza — gdyby tresc zamknela go
+        // przedwczesnie, jsdom sparsowalby reszte jako tekst/elementy.
+        expect(kontener.childNodes).toHaveLength(1);
+        expect(kontener.childNodes[0].nodeType).toBe(Node.COMMENT_NODE);
+
+        // W samej TRESCI komentarza nie moze zostac zadne `--`; jedyne `--`
+        // w innerHTML pochodzi z ograniczników `<!--` i `-->`.
+        expect(kontener.childNodes[0].nodeValue).not.toContain("--");
+        expect(kontener.textContent.trim()).toBe("");
+    });
+});
+
+describe("widget osadzania — sciezka sukcesu", () => {
+    beforeEach(() => {
+        vi.spyOn(console, "warn").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    test("200 renderuje liste publikacji i nie loguje ostrzezenia", async () => {
+        const kontener = await uruchomWidget(
+            odpowiedz(200, {
+                autor_id: 1,
+                autor_nazwa: "Jan Kowalski",
+                count: 1,
+                publications: [
+                    {
+                        id: "1_2",
+                        opis_bibliograficzny: "Wazna praca o czyms",
+                        rok: 2025,
+                        ostatnio_zmieniony: "2025-01-01T00:00:00Z",
+                        url: "https://bpp.example.org/bpp/rekord/1/2/",
+                    },
+                ],
+            })
+        );
+
+        expect(kontener.textContent).toContain("Wazna praca o czyms");
+        expect(kontener.textContent).not.toContain("Nie udało się załadować");
+        expect(kontener.innerHTML).not.toContain("<!--");
+        expect(console.warn).not.toHaveBeenCalled();
+    });
 });

@@ -350,3 +350,54 @@ def test_api_v1_bez_uczelni_nie_jest_blokowane(client):
     kto podjąć decyzji, więc zachowujemy dotychczasowe zachowanie."""
     res = client.get(reverse("api_v1:jednostka-list"))
     assert res.status_code == 200
+
+
+def test_grupa_wylaczona_wygrywa_nad_tylko_zalogowanymi(client, uczelnia):
+    """Kolejność kroków 4 → 5 w bramce, zapisana jako test.
+
+    404 jest prawdziwe dla każdego (grupa wyłączona dla wszystkich), 401
+    tylko dla niezalogowanych — więc anonim ma dostać 404, a nie „zaloguj
+    się" pod adresem, który po zalogowaniu i tak nie odpowie. Bez tego testu
+    refaktor odwracający kolejność przeszedłby zielono.
+    """
+    uczelnia.api_v1_tylko_zalogowani = True
+    uczelnia.api_v1_dane_bibliograficzne = False
+    uczelnia.save()
+
+    res = client.get(reverse("api_v1:jednostka-list"))
+    assert res.status_code == 404
+    assert res.json()["powod"] == "grupa_wylaczona"
+
+
+def test_root_i_whoami_daja_401_anonimowi_przy_tylko_zalogowanych(client, uczelnia):
+    uczelnia.api_v1_tylko_zalogowani = True
+    uczelnia.save()
+
+    for nazwa in ("api_v1:api-root", "api_v1:whoami"):
+        res = client.get(reverse(nazwa))
+        assert res.status_code == 401, nazwa
+        assert res.has_header("WWW-Authenticate"), nazwa
+
+
+def test_rejestracja_ze_zlym_typem_grupy_jest_bledem():
+    """Sam keyword-only nie wystarcza: string zamiast członka enuma
+    przeszedłby rejestrację i wybuchł dopiero na pierwszym żądaniu."""
+    from api_v1.urls import CustomRouter
+    from api_v1.viewsets.struktura import JednostkaViewSet
+
+    router = CustomRouter()
+    with pytest.raises(TypeError):
+        router.register(
+            r"test", JednostkaViewSet, basename="test_zly_typ", grupa="kafelki"
+        )
+
+
+def test_cors_nie_gubi_vary_accept(client, uczelnia, autor_jan_nowak):
+    """``_ustaw_cors`` biegnie w ``finalize_response``, czyli PO domergowaniu
+    ``Accept`` przez DRF. Gołe ``resp["Vary"] = "Origin"`` skasowałoby
+    ``Accept``, a endpoint negocjuje treść (JSON kontra browsable HTML) —
+    cache po drodze mógłby podać widgetowi zbuforowany HTML."""
+    res = client.get(url_kafelka_autora(autor_jan_nowak))
+    vary = [v.strip().lower() for v in res["Vary"].split(",")]
+    assert "origin" in vary
+    assert "accept" in vary

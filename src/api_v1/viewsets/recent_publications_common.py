@@ -11,6 +11,7 @@ JSON konsumowanym przez loader ``bpp-publikacje.js``. Współdzielą:
 
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
+from django.utils.cache import patch_vary_headers
 from rest_framework.response import Response
 
 from bpp.models import Uczelnia
@@ -47,7 +48,12 @@ def _ustaw_cors(resp):
     resp["Access-Control-Allow-Methods"] = "GET, OPTIONS"
     resp["Access-Control-Allow-Headers"] = "Content-Type, Range"
     resp["Access-Control-Expose-Headers"] = "Content-Disposition, Content-Length"
-    resp["Vary"] = "Origin"
+    # ``patch_vary_headers``, a nie ``resp["Vary"] = "Origin"``: wołamy to
+    # z ``finalize_response``, czyli PO tym, jak DRF domergowal tam ``Accept``
+    # (negocjacja tresci: JSON kontra browsable HTML). Gole przypisanie
+    # skasowaloby ``Accept`` i cache po drodze moglby podac widgetowi
+    # zbuforowany HTML zamiast JSON-a.
+    patch_vary_headers(resp, ["Origin"])
 
 
 class CorsNaBledachMixin:
@@ -70,6 +76,13 @@ class CorsNaBledachMixin:
 
     Zakres celowo wąski: tylko endpointy kafelkowe są projektowane do wołania
     cross-origin. Reszta ``/api/v1/`` zostaje bez CORS, tak jak dotąd.
+
+    Wyjątek, którego ten mixin NIE pokrywa: gdy ``exception_handler`` DRF
+    zwróci ``None`` (wyjątek spoza rodziny ``APIException``),
+    ``raise_uncaught_exception`` wyrzuca go z ``dispatch()`` jeszcze przed
+    ``finalize_response``, więc odpowiedź 500 idzie bez nagłówków. Widget
+    trafia wtedy w ``.catch`` i pokazuje ramkę błędu — czyli zachowanie
+    przewidziane dla „innego błędu", tylko osiągnięte inną drogą.
     """
 
     def finalize_response(self, request, response, *args, **kwargs):
