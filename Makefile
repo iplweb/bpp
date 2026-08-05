@@ -357,26 +357,155 @@ tests-with-microsoft-auth: enable-microsoft-auth tests-without-playwright-with-m
 
 # Walidacja endpointu CERIF względem openaire-cris-validator (euroCRIS).
 #
-# Celowo POZA domyślną suitą: wymaga JVM, Mavena i DZIAŁAJĄCEGO endpointu
-# pod adresem URL. Testy w src/cerif_export/tests/test_serializery.py
-# walidują ładunek względem vendorowanych XSD i biegną offline — ten target
-# jest krokiem dodatkowym, sprawdzającym całość protokołu tak, jak zrobi to
-# zespół agregacji OpenAIRE przy rejestracji.
+# Celowo POZA domyślną suitą: wymaga DZIAŁAJĄCEGO endpointu pod adresem URL.
+# Testy w src/cerif_export/tests/test_serializery.py walidują ładunek
+# względem vendorowanych XSD i biegną offline — ten target jest krokiem
+# dodatkowym, sprawdzającym całość protokołu tak, jak zrobi to zespół
+# agregacji OpenAIRE przy rejestracji.
+#
+# Wcześniej target budował walidator mavenem przy KAŻDYM wywołaniu: upstream
+# (EuroCRIS) nie publikuje binariów, więc trzeba było mieć u siebie JDK,
+# Mavena, cache ~/.m2 i dwa klony — ~550 MB narzędzi, żeby wyprodukować
+# 4,7 MB JAR-a, a `mvn clean` kasował gotowy artefakt przed każdym buildem.
+# Teraz artefakt pobieramy z forka, który buduje go raz, na CI:
+# https://github.com/iplweb/openaire-cris-validator
+#
+# Wymagania: JRE 17+ ALBO Docker. Mavena i JDK nie trzeba.
+#
+# Oba tory uruchamiają walidator z katalogiem roboczym ustawionym na cache,
+# NIE na korzeń repo: walidator zapisuje pobrane odpowiedzi OAI-PMH do
+# WZGLĘDNEGO katalogu data/ (CRISValidator:
+# `new FileLoggingConnectionStreamFactory("data")`), więc uruchomiony stąd
+# zasypałby repo setkami nieśledzonych plików. Tor javowy dostaje `cd`,
+# dockerowy — montowanie tej samej ścieżki na /work/data.
 #
 # Użycie:  make cerif-validate URL=https://twoja-instancja/cerif-oai/
-CERIF_VALIDATOR_DIR ?= $(HOME)/Programowanie/openaire-cris-validator
+CERIF_VALIDATOR_VERSION ?= v2.1.1-iplweb.1
+# Poza drzewem repo celowo: `make clean` robi `rm -rf .cache` (patrz
+# clean-pycache), więc cache w .cache/ znikałby przy każdym sprzątaniu.
+# W $(HOME) przeżywa clean i jest współdzielony między worktree — na tym
+# hoście zwykle biega ich kilka naraz.
+CERIF_VALIDATOR_CACHE ?= $(HOME)/.cache/bpp/cerif-validator
+CERIF_VALIDATOR_IMAGE ?= iplweb/cerif-validator
+# Przypięta suma pobieranego JAR-a. Pusta = weryfikacja spada na .sha256
+# z release'u (słabsza, patrz komentarz przy regule pobierania).
+# Przy podbiciu CERIF_VALIDATOR_VERSION trzeba podbić RÓWNIEŻ to — inaczej
+# pobranie nowej wersji zostanie odrzucone jako niezgodne z sumą.
+CERIF_VALIDATOR_SHA256 ?= e077bb69007b7b45020b652d0d8040a26b5879198adfa2bac74eabe01f13cc28
+
+_cerif_asset = openaire-cris-validator-$(CERIF_VALIDATOR_VERSION)-jar-with-dependencies.jar
+_cerif_jar = $(CERIF_VALIDATOR_CACHE)/$(_cerif_asset)
+_cerif_url = https://github.com/iplweb/openaire-cris-validator/releases/download/$(CERIF_VALIDATOR_VERSION)/$(_cerif_asset)
+# Tag obrazu = tag gita bez wiodącego "v" (Docker nie dopuszcza go w naszej
+# konwencji nazewniczej); v2.1.1-iplweb.1 -> 2.1.1-iplweb.1
+_cerif_image_tag = $(patsubst v%,%,$(CERIF_VALIDATOR_VERSION))
+
+# Pobranie do pliku tymczasowego + mv, żeby przerwany transfer nie zostawił
+# w cache'u obciętego JAR-a, który przy kolejnym wywołaniu wyglądałby na
+# gotowy artefakt i wywalał się dopiero w JVM.
+$(_cerif_jar):
+	@mkdir -p "$(CERIF_VALIDATOR_CACHE)"
+	@echo "Pobieram walidator euroCRIS $(CERIF_VALIDATOR_VERSION)..."
+	@curl -fL --retry 3 --progress-bar --proto '=https' --tlsv1.2 \
+	  -o "$@.tmp" "$(_cerif_url)" || { \
+	  rm -f "$@.tmp"; \
+	  echo ""; \
+	  echo "Nie udało się pobrać walidatora z:"; \
+	  echo "  $(_cerif_url)"; \
+	  echo "Sprawdź, czy release $(CERIF_VALIDATOR_VERSION) istnieje:"; \
+	  echo "  https://github.com/iplweb/openaire-cris-validator/releases"; \
+	  exit 1; }
+	@# Sumę pobieramy z tego samego release'u, więc NIE jest to kotwica
+	@# zaufania — łapie obcięty transfer i przypadkowo podmieniony asset,
+	@# nie skompromitowane wydanie. Realny gate to CERIF_VALIDATOR_SHA256
+	@# (przypięty w gicie, przechodzi przez code review) — jeśli ustawiony,
+	@# ma pierwszeństwo.
+	@expected="$(CERIF_VALIDATOR_SHA256)"; \
+	if [ -z "$$expected" ]; then \
+	  expected=$$(curl -fsL --retry 3 --proto '=https' "$(_cerif_url).sha256" \
+	              2>/dev/null | cut -d' ' -f1); \
+	fi; \
+	if [ -n "$$expected" ]; then \
+	  actual=$$(shasum -a 256 "$@.tmp" 2>/dev/null | cut -d' ' -f1); \
+	  if [ "$$actual" != "$$expected" ]; then \
+	    rm -f "$@.tmp"; \
+	    echo "Suma SHA-256 się nie zgadza — pobrany plik odrzucony."; \
+	    echo "  oczekiwano: $$expected"; \
+	    echo "  otrzymano:  $$actual"; \
+	    exit 1; \
+	  fi; \
+	else \
+	  echo "OSTRZEŻENIE: brak sumy SHA-256 do weryfikacji artefaktu."; \
+	fi
+	@mv "$@.tmp" "$@"
 
 cerif-validate: ## Waliduj endpoint CERIF (URL=...) walidatorem euroCRIS
 	@test -n "$(URL)" || { \
 	  echo "Podaj URL, np. make cerif-validate URL=https://host/cerif-oai/"; \
 	  exit 1; }
-	@command -v mvn >/dev/null || { \
-	  echo "Brak mavena. Zainstaluj: brew install maven"; exit 1; }
-	@test -d "$(CERIF_VALIDATOR_DIR)" || git clone \
-	  https://github.com/EuroCRIS/openaire-cris-validator.git \
-	  "$(CERIF_VALIDATOR_DIR)"
-	cd "$(CERIF_VALIDATOR_DIR)" && mvn clean package -DskipTests && \
-	  java -jar target/openaire-cris-validator-*-jar-with-dependencies.jar "$(URL)"
+	@# Sama obecność `java` w PATH nie wystarcza: JAR ma target 17, więc na
+	@# JRE 8/11 (wciąż typowe) wywali się UnsupportedClassVersionError —
+	@# komunikatem, którego nikt nie mapuje na "zainstaluj nowszą Javę".
+	@# Za stara java jest traktowana jak jej brak i spada na Dockera.
+	@java_ok=0; \
+	if command -v java >/dev/null 2>&1; then \
+	  v=$$(java -version 2>&1 | sed -n '1s/.*version "\([0-9]*\).*/\1/p'); \
+	  if [ -n "$$v" ] && [ "$$v" -ge 17 ] 2>/dev/null; then \
+	    java_ok=1; \
+	  elif [ -n "$$v" ]; then \
+	    echo "Znaleziono Javę $$v, walidator wymaga 17+ — próbuję Dockera."; \
+	  else \
+	    echo "java jest w PATH, ale nie działa (stub macOS?) — próbuję Dockera."; \
+	  fi; \
+	fi; \
+	if [ "$$java_ok" = 1 ]; then \
+	  $(MAKE) --no-print-directory "$(_cerif_jar)" && \
+	  ( cd "$(CERIF_VALIDATOR_CACHE)" && java -jar "$(_cerif_jar)" "$(URL)" ); \
+	elif command -v docker >/dev/null 2>&1; then \
+	  echo "Używam obrazu $(CERIF_VALIDATOR_IMAGE):$(_cerif_image_tag)"; \
+	  host=$$(printf '%s' "$(URL)" | sed -E 's#^[a-zA-Z]+://([^/:]+).*#\1#'); \
+	  addhost=""; \
+	  lc() { printf '%s' "$$1" | tr 'A-Z' 'a-z'; }; \
+	  host_lc=$$(lc "$$host"); \
+	  self_lc=$$(lc "$$(hostname)"); \
+	  self_short_lc=$$(lc "$$(hostname -s)"); \
+	  case "$$host_lc" in \
+	    localhost|127.0.0.1|0.0.0.0|::1) \
+	      addhost="--add-host=$$host:host-gateway"; \
+	      echo "UWAGA: '$$host' w kontenerze wskazuje na sam kontener —"; \
+	      echo "       mapuję na bramę hosta. Serwer MUSI słuchać na 0.0.0.0;"; \
+	      echo "       przy bindzie tylko na 127.0.0.1 połączenie będzie odrzucone."; \
+	      ;; \
+	    "$$self_lc"|"$$self_short_lc") \
+	      ip=$$(getent hosts "$$host" 2>/dev/null | awk '{print $$1; exit}'); \
+	      [ -n "$$ip" ] || ip=$$(dscacheutil -q host -a name "$$host" 2>/dev/null \
+	                             | awk '/^ip_address:/{print $$2; exit}'); \
+	      [ -n "$$ip" ] || ip=$$(ping -c1 -t1 "$$host" 2>/dev/null \
+	                             | sed -n '1s/.*(\([0-9.]*\)).*/\1/p'); \
+	      case "$$ip" in \
+	        ""|127.*) \
+	          addhost="--add-host=$$host:host-gateway"; \
+	          echo "UWAGA: '$$host' nie rozwiązuje się na adres widoczny z kontenera"; \
+	          echo "       — mapuję na bramę hosta."; \
+	          ;; \
+	        *) \
+	          addhost="--add-host=$$host:$$ip"; \
+	          echo "Mapuję '$$host' -> $$ip w kontenerze."; \
+	          ;; \
+	      esac; \
+	      ;; \
+	  esac; \
+	  mkdir -p "$(CERIF_VALIDATOR_CACHE)/data"; \
+	  docker run --rm $$addhost \
+	    -v "$(CERIF_VALIDATOR_CACHE)/data:/work/data" \
+	    "$(CERIF_VALIDATOR_IMAGE):$(_cerif_image_tag)" "$(URL)"; \
+	else \
+	  echo "Potrzebny JRE 17+ albo Docker. Zainstaluj jedno z:"; \
+	  echo "  brew install openjdk@17          # macOS"; \
+	  echo "  brew install --cask docker       # macOS, wariant kontenerowy"; \
+	  echo "  apt install openjdk-17-jre       # Debian/Ubuntu"; \
+	  exit 1; \
+	fi
 
 # Chromium i Daphne konkuruja o zasoby przy `-n auto`, ktore bierze WSZYSTKIE
 # rdzenie logiczne. Na Apple Silicon oznacza to doliczenie rdzeni
