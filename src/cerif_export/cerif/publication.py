@@ -32,7 +32,9 @@ doktorskich/habilitacyjnych ``autor`` i ``jednostka``.
 
 ``prefetch_related``: ``autorzy_set__autor``, ``autorzy_set__jednostka``,
 ``autorzy_set__typ_odpowiedzialnosci``, ``dodatkowe_tytuly__jezyk``,
-``streszczenia__jezyk_streszczenia``, ``slowa_kluczowe``.
+``streszczenia__jezyk_streszczenia``, ``slowa_kluczowe``, oraz — dla
+``OriginatesFrom``, które osadza pełny ``<Project>`` — komplet
+z ``providers.projekty.prefetche_pochodzenia``.
 """
 
 import datetime
@@ -378,6 +380,9 @@ def serializuj(obj, ctx):
     dodaj_licencje(el, obj)
     wspolne.dodaj_slowa_kluczowe(el, obj)
     dodaj_streszczenia(el, obj)
+    # ``xs:sequence``: ... Keyword, Abstract, Status, OriginatesFrom,
+    # PresentedAt ... — projekty muszą wyjść PRZED konferencją.
+    wspolne.dodaj_pochodzenie(el, obj, ctx)
     dodaj_konferencje(el, obj, ctx)
     dodaj_dostep(el, obj)
     wspolne.dodaj_pliki(el, obj)

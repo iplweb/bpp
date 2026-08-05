@@ -383,6 +383,73 @@ def dodaj_wklad_osoby(
     return el
 
 
+def projekty_rekordu(obj, ctx):
+    """Projekty, z których pochodzi rekord — bez duplikatów, w stabilnej
+    kolejności.
+
+    Droga jest dwuetapowa: rekord → ``Grant_Rekordu`` → ``Grant.projekt``.
+    ``Grant`` bez projektu (zwykła etykieta numeru) nie daje niczego, bo
+    ``OriginatesFrom`` bez dziecka z grupy podstawień byłby niepoprawny
+    wobec XSD.
+
+    Odsiew po uczelni **nie jest** nadgorliwością. ``Grant`` jest w BPP
+    słownikiem współdzielonym między tenantami, więc ``grant.projekt``
+    bywa projektem cudzej uczelni; osadzony ``<Project>`` zawsze dostaje
+    ``@id`` (``ustaw_id_rekordu``), więc taki projekt dałby referencję do
+    rekordu, którego harvester nigdy nie zobaczy. Warunek jest dokładnie
+    tym samym, co filtr providera
+    (``providers.projekty.widoczne_projekty``): ``Projekt.jednostka`` to
+    jedyny nośnik przynależności projektu do uczelni.
+
+    Ten sam projekt bywa rozliczany kilkoma numerami grantu — stąd
+    deduplikacja po kluczu głównym.
+
+    Wymaga od providera prefetchu ``granty_rekordu`` z
+    ``select_related("grant", "grant__projekt", "grant__projekt__jednostka")``
+    — bez tego każdy odczyt byłby zapytaniem, czego serializerowi nie
+    wolno.
+    """
+    powiazania = getattr(obj, "granty_rekordu", None)
+    if powiazania is None:
+        return []
+
+    uczelnia_pk = getattr(ctx.uczelnia, "pk", None)
+    projekty, widziane = [], set()
+    for powiazanie in powiazania.all():
+        grant = powiazanie.grant
+        if grant is None or grant.projekt_id is None:
+            continue
+        if grant.projekt_id in widziane:
+            continue
+        projekt = grant.projekt
+        if projekt.jednostka.uczelnia_id != uczelnia_pk:
+            continue
+        widziane.add(projekt.pk)
+        projekty.append(projekt)
+    return projekty
+
+
+def dodaj_pochodzenie(el, obj, ctx):
+    """Dopisz ``OriginatesFrom`` z **osadzonym pełnym** ``<Project>``.
+
+    Profil nie przewiduje tu referencji: element rozszerza
+    ``cfLink__BaseType`` o obowiązkowe dziecko z grupy podstawień
+    ``ProjectFunding__SubstitutionGroupHead``, czyli całe ``<Project>``
+    albo całe ``<Funding>``. Osadzamy projekt — niesie on w
+    ``Funded/As`` również swoje finansowania, więc łańcuch publikacja →
+    projekt → finansowanie domyka się w jednym poddrzewie.
+
+    Import ``cerif.project`` jest lokalny, bo ``project`` importuje ten
+    moduł (helpery ``element``/``dodaj``) — na poziomie modułu powstałby
+    cykl.
+    """
+    from cerif_export.cerif import project as cerif_project
+
+    for projekt in projekty_rekordu(obj, ctx):
+        kontener = dodaj_kontener(el, "OriginatesFrom")
+        kontener.append(cerif_project.serializuj(projekt, ctx))
+
+
 def dodaj_slowa_kluczowe(rodzic, obj):
     """Dopisz ``Keyword`` z obu list słów kluczowych rekordu.
 

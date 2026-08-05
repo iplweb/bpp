@@ -15,9 +15,14 @@ from cerif_export.providers.base import ProviderEncji
 from cerif_export.providers.jednostki import (
     widoczne_jednostki,
     widoczne_pk,
+    widoczni_grantodawcy,
     wymagaj_uczelni,
 )
 from cerif_export.providers.osoby import widoczni_autorzy
+from cerif_export.providers.projekty import (
+    klucze_osadzonych_projektow,
+    prefetche_pochodzenia,
+)
 
 
 def widoczne_patenty(uczelnia):
@@ -73,11 +78,14 @@ class ProviderPatentow(ProviderEncji):
         return (
             widoczne_patenty(uczelnia)
             .select_related("rodzaj_prawa", "status_korekty", "wydzial")
-            .prefetch_related("slowa_kluczowe", PREFETCH_TWORCOW)
+            .prefetch_related(
+                "slowa_kluczowe", PREFETCH_TWORCOW, *prefetche_pochodzenia()
+            )
         )
 
     def zbiory_widocznosci(self, uczelnia, obiekty) -> ZbioryWidocznosci:
-        """Prekomputuj widoczność twórców (``Inventors``) i ich jednostek."""
+        """Prekomputuj widoczność twórców (``Inventors``), ich jednostek
+        oraz encji osadzanych przez ``OriginatesFrom``."""
         wymagaj_uczelni(uczelnia)
 
         autorzy, jednostki = set(), set()
@@ -87,7 +95,12 @@ class ProviderPatentow(ProviderEncji):
                 autorzy.add(autorstwo.autor_id)
                 jednostki.add(autorstwo.jednostka_id)
 
+        z_projektow = klucze_osadzonych_projektow(obiekty)
+        autorzy |= z_projektow[0]
+        jednostki |= z_projektow[1]
+
         return ZbioryWidocznosci(
             autorzy=widoczne_pk(widoczni_autorzy(uczelnia), autorzy),
             jednostki=widoczne_pk(widoczne_jednostki(uczelnia), jednostki),
+            grantodawcy=widoczne_pk(widoczni_grantodawcy(uczelnia), z_projektow[2]),
         )

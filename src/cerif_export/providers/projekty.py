@@ -10,6 +10,14 @@ Reguły widoczności **samej jednostki** (``widoczna``,
 dotyczy jednostki jako encji organizacyjnej, a nie prowadzonych w niej
 badań. Skutkiem jest jedynie brak ``Consortium/Coordinator`` w rekordzie —
 serializer nie osadzi jednostki spoza zbioru widoczności.
+
+Moduł obsługuje też **drugie** miejsce, w którym projekt się pojawia:
+``Publication/OriginatesFrom`` i ``Patent/OriginatesFrom`` osadzają pełne
+``<Project>``. Prefetche (:func:`prefetche_pochodzenia`) i zbiory
+widoczności (:func:`klucze_osadzonych_projektow`) dla tamtej ścieżki
+mieszkają tutaj, a nie w providerach publikacji i patentów, bo są
+pochodną tego, czego wymaga ``cerif.project.serializuj`` — dwie kopie tej
+wiedzy rozjechałyby się przy pierwszym nowym elemencie projektu.
 """
 
 from django.db.models import Prefetch
@@ -34,20 +42,105 @@ def widoczne_projekty(uczelnia):
     return Projekt.objects.filter(jednostka__uczelnia=uczelnia)
 
 
-# Zespół projektu. Kolejność jest stabilna (po kluczu głównym), bo model nie
-# ma pola porządkującego, a niedeterministyczna kolejność w XML-u zamieniałaby
-# każdy harvest w pozorną zmianę rekordu.
-PREFETCH_ZESPOLU = Prefetch(
-    "projekt_autor_set",
-    queryset=Projekt_Autor.objects.select_related("autor").order_by("pk"),
-)
+def prefetche_projektu(prefiks=""):
+    """Komplet prefetchy wymaganych przez ``cerif.project.serializuj``.
 
-# Finansowania wraz z grantodawcami — serializer osadza pełne ``<Funding>``
-# w ``Funded/As``, więc potrzebuje obiektu instytucji, nie tylko jej klucza.
-PREFETCH_FINANSOWANIA = Prefetch(
-    "finansowanie_set",
-    queryset=Finansowanie.objects.select_related("instytucja").order_by("pk"),
-)
+    Funkcja, a nie stałe, bo te same relacje trzeba założyć w DWÓCH
+    miejscach: na rekordzie projektu (prefiks pusty) i o dwa przeskoki
+    dalej, przy publikacji osadzającej projekt w ``OriginatesFrom``
+    (prefiks ``granty_rekordu__grant__projekt__``). Rozjazd między
+    kopiami tej listy nie wywala testu — daje po cichu N+1 przy pełnym
+    harveście.
+
+    Kolejność zespołu i finansowań jest stabilna (po kluczu głównym), bo
+    żaden z tych modeli nie ma pola porządkującego, a niedeterministyczna
+    kolejność w XML-u zamieniałaby każdy harvest w pozorną zmianę rekordu.
+    """
+    return [
+        Prefetch(
+            f"{prefiks}projekt_autor_set",
+            queryset=Projekt_Autor.objects.select_related("autor").order_by("pk"),
+        ),
+        # Serializer osadza pełne ``<Funding>`` w ``Funded/As``, więc
+        # potrzebuje obiektu instytucji, nie tylko jej klucza.
+        Prefetch(
+            f"{prefiks}finansowanie_set",
+            queryset=Finansowanie.objects.select_related("instytucja").order_by("pk"),
+        ),
+        f"{prefiks}dyscypliny",
+        f"{prefiks}slowa_kluczowe",
+    ]
+
+
+# Ścieżka od rekordu bibliograficznego do projektu: ``Grant_Rekordu`` wiąże
+# rekord z numerem grantu (``GenericRelation`` na ``RekordBPPBaza``), a
+# ``Grant.projekt`` — numer z projektem.
+PREFIKS_PROJEKTU_REKORDU = "granty_rekordu__grant__projekt__"
+
+
+def prefetche_pochodzenia():
+    """Prefetche, których wymaga ``Publication``/``Patent`` ``OriginatesFrom``.
+
+    ``select_related`` na querysecie ``Grant_Rekordu`` ściąga grant, projekt
+    i jego jednostkę jednym zapytaniem na całą stronę harvestu; dalsze
+    pozycje dociągają to, czego potrzebuje sam ``cerif.project.serializuj``.
+    Bez kompletu każda publikacja kosztowałaby kilka dodatkowych zapytań —
+    niewidoczne w teście z jednym rekordem, zabójcze przy pełnym harveście.
+
+    Kolejność jest stabilna (po kluczu głównym ``Grant_Rekordu``), bo model
+    nie ma pola porządkującego.
+    """
+    from bpp.models.grant import Grant_Rekordu
+
+    return [
+        Prefetch(
+            "granty_rekordu",
+            queryset=Grant_Rekordu.objects.select_related(
+                "grant",
+                "grant__projekt",
+                # ``jednostka`` rozstrzyga przynależność projektu do tenanta
+                # (serializer odsiewa po ``uczelnia_id``) i jest osadzana
+                # jako ``Consortium/Coordinator``.
+                "grant__projekt__jednostka",
+            ).order_by("pk"),
+        ),
+        *prefetche_projektu(PREFIKS_PROJEKTU_REKORDU),
+    ]
+
+
+def klucze_osadzonych_projektow(obiekty):
+    """Klucze encji, które osadzi ``OriginatesFrom`` — ``(autorzy,
+    jednostki, grantodawcy)``.
+
+    Bez tego zbiory widoczności providera publikacji i patentów obejmowałyby
+    wyłącznie ludzi i jednostki samej publikacji — a osadzony projekt
+    referuje SWÓJ zespół, SWOJĄ jednostkę realizującą i SWOICH grantodawców.
+    Kierownik projektu nie musi być autorem publikacji, więc bez tego kroku
+    ``Team/PrincipalInvestigator`` osadzałby ``Person`` bez ``@id``,
+    a ``Funded/By`` — ``OrgUnit`` bez ``@id``.
+
+    Kandydatów nie filtrujemy tu po uczelni: przecięcie z querysetami
+    widoczności robi i tak ``widoczne_pk``, a warunek zdublowany w dwóch
+    miejscach rozjeżdża się przy pierwszej zmianie.
+    """
+    autorzy, jednostki, grantodawcy = set(), set(), set()
+
+    for obj in obiekty:
+        powiazania = getattr(obj, "granty_rekordu", None)
+        if powiazania is None:
+            continue
+        for powiazanie in powiazania.all():
+            grant = powiazanie.grant
+            if grant is None or grant.projekt_id is None:
+                continue
+            projekt = grant.projekt
+            jednostki.add(projekt.jednostka_id)
+            for czlonek in projekt.projekt_autor_set.all():
+                autorzy.add(czlonek.autor_id)
+            for finansowanie in projekt.finansowanie_set.all():
+                grantodawcy.add(finansowanie.instytucja_id)
+
+    return autorzy, jednostki, grantodawcy
 
 
 class ProviderProjektow(ProviderEncji):
@@ -67,12 +160,7 @@ class ProviderProjektow(ProviderEncji):
         return (
             widoczne_projekty(uczelnia)
             .select_related("jednostka")
-            .prefetch_related(
-                PREFETCH_ZESPOLU,
-                PREFETCH_FINANSOWANIA,
-                "dyscypliny",
-                "slowa_kluczowe",
-            )
+            .prefetch_related(*prefetche_projektu())
         )
 
     def zbiory_widocznosci(self, uczelnia, obiekty) -> ZbioryWidocznosci:
