@@ -16445,6 +16445,51 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
 593	denorm	0001_initial	2000-01-01 00:00:00+00
+94	bpp	0017_typy_pbn	2000-01-01 00:00:00+00
+970	bpp	0417_ensure_uczelnia_site_not_null	2000-01-01 00:00:00+00
+704	favicon	0001_initial	2000-01-01 00:00:00+00
+761	import_list_ministerialnych	0005_add_duplicate_tracking_fields	2000-01-01 00:00:00+00
+762	import_list_ministerialnych	0006_importlistministerialnych_nie_porownuj_po_tytulach	2000-01-01 00:00:00+00
+763	import_list_ministerialnych	0007_move_files_to_protected	2000-01-01 00:00:00+00
+764	import_list_ministerialnych	0008_remove_null_from_string_fields	2000-01-01 00:00:00+00
+765	import_polon	0001_initial	2000-01-01 00:00:00+00
+766	import_polon	0002_remove_wierszimportuplikupolon_orig_and_more	2000-01-01 00:00:00+00
+767	import_polon	0003_wierszimportuplikupolon_dyscyplina_naukowa_and_more	2000-01-01 00:00:00+00
+768	import_polon	0004_importplikupolon_rok	2000-01-01 00:00:00+00
+769	import_polon	0005_alter_wierszimportuplikupolon_options_and_more	2000-01-01 00:00:00+00
+770	import_polon	0006_importplikupolon_zapisz_zmiany_do_bazy	2000-01-01 00:00:00+00
+771	import_polon	0007_importplikupolon_ukryj_niezmatchowanych_autorow	2000-01-01 00:00:00+00
+772	import_polon	0008_importplikuabsencji	2000-01-01 00:00:00+00
+773	import_polon	0009_wierszimportuplikuabsencji	2000-01-01 00:00:00+00
+774	import_polon	0010_alter_wierszimportuplikuabsencji_options_and_more	2000-01-01 00:00:00+00
+775	import_polon	0011_alter_wierszimportuplikuabsencji_ile_dni_and_more	2000-01-01 00:00:00+00
+776	import_polon	0012_importpolonoverride	2000-01-01 00:00:00+00
+777	import_polon	0013_alter_importpolonoverride_options_and_more	2000-01-01 00:00:00+00
+778	import_polon	0014_add_ignoruj_miejsce_pracy	2000-01-01 00:00:00+00
+779	import_polon	0015_move_files_to_protected	2000-01-01 00:00:00+00
+780	import_pracownikow	0001_initial	2000-01-01 00:00:00+00
+781	import_pracownikow	0002_importpracownikowrow	2000-01-01 00:00:00+00
+782	import_pracownikow	0003_auto_20210228_1916	2000-01-01 00:00:00+00
+783	import_pracownikow	0004_auto_20210307_1110	2000-01-01 00:00:00+00
+784	import_pracownikow	0005_auto_20210307_1204	2000-01-01 00:00:00+00
+785	import_pracownikow	0006_importpracownikowrow_tytul	2000-01-01 00:00:00+00
+787	import_pracownikow	0008_nullbooleanfield	2000-01-01 00:00:00+00
+788	import_pracownikow	0009_move_files_to_protected	2000-01-01 00:00:00+00
+789	pbn_api	0067_fix_osobazinstytucji_title_not_null	2000-01-01 00:00:00+00
+790	pbn_api	0068_add_cache_models	2000-01-01 00:00:00+00
+791	importer_autorow_pbn	0001_initial	2000-01-01 00:00:00+00
+792	importer_autorow_pbn	0002_add_cache_models	2000-01-01 00:00:00+00
+793	importer_publikacji	0001_initial	2000-01-01 00:00:00+00
+794	importer_publikacji	0002_remove_skip_match_status	2000-01-01 00:00:00+00
+795	importer_publikacji	0003_importedauthor_dyscyplina_source	2000-01-01 00:00:00+00
+796	importer_publikacji	0004_rename_user_to_created_by_add_modified_by	2000-01-01 00:00:00+00
+797	importer_publikacji	0005_importsession_wydawnictwo_nadrzedne	2000-01-01 00:00:00+00
+798	importer_publikacji	0005_alter_importsession_created_by	2000-01-01 00:00:00+00
+799	importer_publikacji	0006_merge_20260421_1100	2000-01-01 00:00:00+00
+800	importer_publikacji	0007_async_import_state	2000-01-01 00:00:00+00
+801	importer_publikacji	0008_identifier_textfield	2000-01-01 00:00:00+00
+1133	bpp	0485_projekt_finansowanie	2000-01-01 00:00:00+00
+1134	bpp	0486_seed_instytucje_finansujace	2000-01-01 00:00:00+00
 1089	import_pracownikow	0027_profil_uczelnia	2000-01-01 00:00:00+00
 520	bpp	0411_nowy_formularz_zgloszenia	2000-01-01 00:00:00+00
 802	importer_publikacji	0009_importedauthor_candidate	2000-01-01 00:00:00+00
@@ -16615,7 +16660,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 959	zglos_publikacje	0025_alter_obslugujacy_zgloszenia_wydzialow_user	2000-01-01 00:00:00+00
 960	denorm	0001_squashed_0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
 1120	bpp	0478_uczelnia_oai_pmh_aktywny	2000-01-01 00:00:00+00
-94	bpp	0017_typy_pbn	2000-01-01 00:00:00+00
 282	bpp	0195_cc0	2000-01-01 00:00:00+00
 406	bpp	0312_przypieta	2000-01-01 00:00:00+00
 492	bpp	0385_alter_crossref_mapper_charakter_crossref_and_more	2000-01-01 00:00:00+00
@@ -16628,7 +16672,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 967	bpp	0414_copy_constance_to_uczelnia	2000-01-01 00:00:00+00
 968	bpp	0415_rename_accessible_sites_to_uczelnie	2000-01-01 00:00:00+00
 969	bpp	0416_merge_20260428_1806	2000-01-01 00:00:00+00
-970	bpp	0417_ensure_uczelnia_site_not_null	2000-01-01 00:00:00+00
 971	bpp	0418_merge_20260521_1015	2000-01-01 00:00:00+00
 972	bpp	0419_merge_20260601_0952	2000-01-01 00:00:00+00
 973	bpp	0420_merge_20260601_1246	2000-01-01 00:00:00+00
@@ -17047,6 +17090,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 249	bpp	0166_auto_20190702_1200	2000-01-01 00:00:00+00
 250	bpp	0167_auto_20190707_2029	2000-01-01 00:00:00+00
 251	bpp	0166_auto_20190708_0022	2000-01-01 00:00:00+00
+373	bpp	0280_auto_20210725_2217	2000-01-01 00:00:00+00
 252	bpp	0167_dyscyplina_change_trigger_fix	2000-01-01 00:00:00+00
 253	bpp	0168_dyscyplina_w_autorzy_mat	2000-01-01 00:00:00+00
 254	bpp	0169_dyscyplina_change_trigger_cacher	2000-01-01 00:00:00+00
@@ -17160,7 +17204,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 370	bpp	0277_lepsze_global_search	2000-01-01 00:00:00+00
 371	bpp	0278_autorzy_profil_orcid	2000-01-01 00:00:00+00
 372	bpp	0279_usun_ost_akt_pbn	2000-01-01 00:00:00+00
-373	bpp	0280_auto_20210725_2217	2000-01-01 00:00:00+00
 374	bpp	0281_auto_20210725_2332	2000-01-01 00:00:00+00
 375	bpp	0282_auto_20210808_2334	2000-01-01 00:00:00+00
 376	bpp	0283_auto_20210809_0142	2000-01-01 00:00:00+00
@@ -17476,7 +17519,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 701	ewaluacja_optymalizacja	0014_add_optimality_gap_to_optimization_run	2000-01-01 00:00:00+00
 702	ewaluacja_optymalizacja	0015_remove_disciplineswapopportunity_ewaluacja_o_uczelni_ed0a90_idx_and_more	2000-01-01 00:00:00+00
 703	ewaluacja_optymalizuj_publikacje	0001_initial	2000-01-01 00:00:00+00
-704	favicon	0001_initial	2000-01-01 00:00:00+00
 705	favicon	0002_favicon_site	2000-01-01 00:00:00+00
 706	favicon	0003_site_manager	2000-01-01 00:00:00+00
 707	favicon	0004_faviconimg_favicon_size_rel_unique	2000-01-01 00:00:00+00
@@ -17531,48 +17573,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 758	import_list_ministerialnych	0002_alter_wierszimportudyscyplinzrodel_nr_wiersza	2000-01-01 00:00:00+00
 759	import_list_ministerialnych	0003_rename_wierszimportudyscyplinzrodel_wierszimportulistyministerialnej	2000-01-01 00:00:00+00
 760	import_list_ministerialnych	0004_importlistministerialnych_ignoruj_zrodla_bez_odpowiednika	2000-01-01 00:00:00+00
-761	import_list_ministerialnych	0005_add_duplicate_tracking_fields	2000-01-01 00:00:00+00
-762	import_list_ministerialnych	0006_importlistministerialnych_nie_porownuj_po_tytulach	2000-01-01 00:00:00+00
-763	import_list_ministerialnych	0007_move_files_to_protected	2000-01-01 00:00:00+00
-764	import_list_ministerialnych	0008_remove_null_from_string_fields	2000-01-01 00:00:00+00
-765	import_polon	0001_initial	2000-01-01 00:00:00+00
-766	import_polon	0002_remove_wierszimportuplikupolon_orig_and_more	2000-01-01 00:00:00+00
-767	import_polon	0003_wierszimportuplikupolon_dyscyplina_naukowa_and_more	2000-01-01 00:00:00+00
-768	import_polon	0004_importplikupolon_rok	2000-01-01 00:00:00+00
-769	import_polon	0005_alter_wierszimportuplikupolon_options_and_more	2000-01-01 00:00:00+00
-770	import_polon	0006_importplikupolon_zapisz_zmiany_do_bazy	2000-01-01 00:00:00+00
-771	import_polon	0007_importplikupolon_ukryj_niezmatchowanych_autorow	2000-01-01 00:00:00+00
-772	import_polon	0008_importplikuabsencji	2000-01-01 00:00:00+00
-773	import_polon	0009_wierszimportuplikuabsencji	2000-01-01 00:00:00+00
-774	import_polon	0010_alter_wierszimportuplikuabsencji_options_and_more	2000-01-01 00:00:00+00
-775	import_polon	0011_alter_wierszimportuplikuabsencji_ile_dni_and_more	2000-01-01 00:00:00+00
-776	import_polon	0012_importpolonoverride	2000-01-01 00:00:00+00
-777	import_polon	0013_alter_importpolonoverride_options_and_more	2000-01-01 00:00:00+00
-778	import_polon	0014_add_ignoruj_miejsce_pracy	2000-01-01 00:00:00+00
-779	import_polon	0015_move_files_to_protected	2000-01-01 00:00:00+00
-780	import_pracownikow	0001_initial	2000-01-01 00:00:00+00
-781	import_pracownikow	0002_importpracownikowrow	2000-01-01 00:00:00+00
-782	import_pracownikow	0003_auto_20210228_1916	2000-01-01 00:00:00+00
-783	import_pracownikow	0004_auto_20210307_1110	2000-01-01 00:00:00+00
-784	import_pracownikow	0005_auto_20210307_1204	2000-01-01 00:00:00+00
-785	import_pracownikow	0006_importpracownikowrow_tytul	2000-01-01 00:00:00+00
-787	import_pracownikow	0008_nullbooleanfield	2000-01-01 00:00:00+00
-788	import_pracownikow	0009_move_files_to_protected	2000-01-01 00:00:00+00
-789	pbn_api	0067_fix_osobazinstytucji_title_not_null	2000-01-01 00:00:00+00
-790	pbn_api	0068_add_cache_models	2000-01-01 00:00:00+00
-791	importer_autorow_pbn	0001_initial	2000-01-01 00:00:00+00
-792	importer_autorow_pbn	0002_add_cache_models	2000-01-01 00:00:00+00
-793	importer_publikacji	0001_initial	2000-01-01 00:00:00+00
-794	importer_publikacji	0002_remove_skip_match_status	2000-01-01 00:00:00+00
-795	importer_publikacji	0003_importedauthor_dyscyplina_source	2000-01-01 00:00:00+00
-796	importer_publikacji	0004_rename_user_to_created_by_add_modified_by	2000-01-01 00:00:00+00
-797	importer_publikacji	0005_importsession_wydawnictwo_nadrzedne	2000-01-01 00:00:00+00
-798	importer_publikacji	0005_alter_importsession_created_by	2000-01-01 00:00:00+00
-799	importer_publikacji	0006_merge_20260421_1100	2000-01-01 00:00:00+00
-800	importer_publikacji	0007_async_import_state	2000-01-01 00:00:00+00
-801	importer_publikacji	0008_identifier_textfield	2000-01-01 00:00:00+00
-1133	bpp	0485_projekt_finansowanie	2000-01-01 00:00:00+00
-1134	bpp	0486_seed_instytucje_finansujace	2000-01-01 00:00:00+00
 \.
 
 
@@ -17945,6 +17945,21 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+238	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+239	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
+240	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+241	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+242	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+243	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+244	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+245	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+246	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+247	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+248	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+249	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+250	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+251	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+252	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -19799,7 +19814,7 @@ SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 42,
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 237, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 252, true);
 
 
 --
