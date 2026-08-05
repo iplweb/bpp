@@ -71,16 +71,20 @@ def _sufiks(wartosc):
             return tekst.lower()
         return rozbite.path.strip("/").strip().lower()
 
-    tekst = tekst.lower()
-    if tekst.startswith("www."):
-        tekst = tekst[len("www.") :]
+    # Bez schematu: rozcinamy na pierwszym ukośniku i porównujemy pierwszy
+    # segment DOKŁADNIE. `startswith("ror.org")` traktowałby
+    # `ror.org.evil.example/x` tak samo jak `ror.org/x` — CodeQL zgłasza to
+    # jako py/incomplete-url-substring-sanitization i słusznie.
+    glowa, _, ogon = tekst.lower().partition("/")
 
-    # Bez ukośnika we wzorcu, żeby samo ``ror.org`` (bez identyfikatora)
-    # zredukowało się do pustego łańcucha.
-    if tekst.startswith("ror.org"):
-        tekst = tekst[len("ror.org") :]
+    if glowa.startswith("www."):
+        glowa = glowa[len("www.") :]
 
-    return tekst.strip("/").strip()
+    if glowa in HOSTY_ROR:
+        # Samo ``ror.org`` bez identyfikatora redukuje się do pustego.
+        return ogon.strip("/").strip()
+
+    return tekst.lower().strip("/").strip()
 
 
 def normalizuj(wartosc):
