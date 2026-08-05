@@ -111,6 +111,7 @@ nav:
       - Konfiguracja PBN: administrator/konfiguracja-pbn.md
       - Integracja z PBN: administrator/integracja-pbn.md
       - Integracja z DSpace: administrator/integracja-dspace.md
+      - Eksport CERIF / OpenAIRE: administrator/eksport-cerif.md
       - Konfiguracja zaawansowana: administrator/zaawansowane.md
   - API: api/index.md
   - Dla deweloperów i agentów:

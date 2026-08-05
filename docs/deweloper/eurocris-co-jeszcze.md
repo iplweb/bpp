@@ -2,6 +2,8 @@
 
 > **Śledzenie prac:** issue-parasol [#709](https://github.com/iplweb/bpp/issues/709).
 > Ten dokument opisuje **dlaczego** jest jak jest; issues opisują **co i kto**.
+> Konfigurację i uruchomienie eksportu na instancji opisuje
+> [Eksport CERIF / OpenAIRE — dla administratora](../administrator/eksport-cerif.md).
 > Poszczególne sekcje mają odpowiadające im issues: A1 → #701, A2 → #702,
 > A3 → #703, A4 → #704, B → #705 i #706, D → #707, F1 → #708.
 
@@ -182,8 +184,9 @@ zombie w indeksie.
    ORCID, płeć oraz historię zatrudnienia do publicznego endpointu
    agregowanego przez OpenAIRE. Jedynym zabezpieczeniem jest `Autor.pokazuj`.
    Do rozstrzygnięcia przez uczelnię: czy taki zakres jest akceptowalny, czy
-   wyłączyć set osób (`eksport_cerif_wlaczony=False` wyłącza całość; węższe
-   wyłączenie samego setu osób wymagałoby drobnej zmiany w kodzie).
+   wyłączyć set osób. `eksport_cerif_wlaczony=False` wyłącza całość, a
+   `eksport_cerif_osoby=False` — sam set osób (autorzy zostają wtedy przy
+   publikacjach jako samo imię i nazwisko, bez `@id`, ORCID-a i afiliacji).
 
 ---
 
