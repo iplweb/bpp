@@ -1,3 +1,0 @@
-Nowa encja "projekt badawczy" wraz z zespołem projektu. Numery grantów
-można teraz przypiąć do projektu, a projekty wychodzą w eksporcie
-CERIF-XML w zestawie ``openaire_cris_projects``.

@@ -1,4 +1,0 @@
-Nowa encja "finansowanie" wraz ze słownikiem instytucji finansujących
-(z identyfikatorami ROR i Crossref Funder ID). Finansowanie projektów
-wychodzi w eksporcie CERIF-XML w zestawie ``openaire_cris_funding``.
-Kwoty są eksportowane wyłącznie po włączeniu opcji w ustawieniach uczelni.
