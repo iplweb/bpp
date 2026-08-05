@@ -411,9 +411,11 @@ Komentarz HTML wstrzykiwany do kontenera:
 
 Niewidoczny dla czytelnika strony, widoczny w „pokaż źródło" — czyli
 osoba, która wkleiła widget, dowie się, dlaczego nic nie ma, bez
-otwierania DevToolsów. Treść komentarza bierzemy z `detail`, po
-przepuszczeniu przez `sanitize` (widget już ma tę funkcję) i po usunięciu
-`--`, które przedwcześnie zamknęłoby komentarz.
+otwierania DevToolsów. Treść bierzemy z `detail` i wstawiamy przez
+`document.createComment`, które nie interpretuje HTML-a; jedynym realnym
+wektorem jest sekwencja zamykająca, więc zwijamy `--`. Istniejąca funkcja
+`sanitize` **nie** ma tu zastosowania — czyści HTML w kontekście
+elementu, a to inny kontekst.
 
 Podział ról jest tu celowy: strona ma wyglądać normalnie po świadomej
 decyzji administratora, ale nie ma ukrywać cudzej literówki.
