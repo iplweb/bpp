@@ -1,9 +1,7 @@
 from django.core.exceptions import ObjectDoesNotExist
 
 
-def object_or_something(
-    model, attrname, default_pk=-1, default_attr="nazwa", default_value="--", **kwargs
-):
+def object_or_something(model, attrname, default_pk=-1, default_attr="nazwa", default_value="--", **kwargs):
     """
     Funkcja do rozsądnego zwracania czegoś w przypadku, gdy obiekt powiązany
     (ForeignKey) może być None/NULL. W takich sytuacjach Django zwraca błąd.

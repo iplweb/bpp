@@ -113,7 +113,7 @@ class Command(BaseCommand):
                 with open(options["output"], "w", encoding="utf-8") as f:
                     f.write(bibtex_content)
                 self.stdout.write(
-                    self.style.SUCCESS(f"Successfully exported to {options['output']}")
+                    self.style.SUCCESS(f'Successfully exported to {options["output"]}')
                 )
             except OSError as e:
                 raise CommandError(f"Error writing to file: {e}")

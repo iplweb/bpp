@@ -110,14 +110,12 @@ class ListaMinisterialnaIntegration(BaseIntegration):
 
     strategie = [
         lambda obj: Zrodlo.objects.get(issn=obj.issn) if obj.issn is not None else None,
-        lambda obj: (
-            Zrodlo.objects.get(e_issn=obj.e_issn) if obj.e_issn is not None else None
-        ),
-        lambda obj: (
-            Zrodlo.objects.get(nazwa__upper=obj.nazwa.upper())
-            if obj.nazwa is not None
-            else None
-        ),
+        lambda obj: Zrodlo.objects.get(e_issn=obj.e_issn)
+        if obj.e_issn is not None
+        else None,
+        lambda obj: Zrodlo.objects.get(nazwa__upper=obj.nazwa.upper())
+        if obj.nazwa is not None
+        else None,
     ]
 
     @transaction.atomic

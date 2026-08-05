@@ -62,7 +62,5 @@ class WydawnictwoSerializerMixin(serializers.HyperlinkedModelSerializer):
     )
 
     nagrody = serializers.HyperlinkedRelatedField(
-        many=True,
-        view_name="api_v1:nagroda-detail",
-        read_only=True,
+        many=True, view_name="api_v1:nagroda-detail", read_only=True,
     )

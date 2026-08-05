@@ -51,7 +51,7 @@ class Command(BaseCommand):
         # Show some examples
         self.stdout.write(f"Examples from {model_name}:")
         for i, record in enumerate(all_records[:3]):
-            self.stdout.write(f"  {i + 1}. {record.tytul_oryginalny[:80]}...")
+            self.stdout.write(f"  {i+1}. {record.tytul_oryginalny[:80]}...")
 
         if total_count > 3:
             self.stdout.write(f"  ... and {total_count - 3} more records")
