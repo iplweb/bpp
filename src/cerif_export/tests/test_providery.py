@@ -549,13 +549,18 @@ def test_zbiory_widocznosci_to_stala_liczba_zapytan(
     "set_spec",
     [
         const.SET_PRODUCTS,
-        const.SET_PROJECTS,
-        const.SET_FUNDING,
         const.SET_EQUIPMENTS,
     ],
 )
 def test_provider_pusty_odpowiada_zerem_rekordow(set_spec, uczelnia_cerif):
-    """Sety muszą istnieć („even if unpopulated"), ale nic nie zwracają."""
+    """Sety muszą istnieć („even if unpopulated"), ale nic nie zwracają.
+
+    Zostały już tylko dwa takie sety. ``openaire_cris_projects``
+    i ``openaire_cris_funding`` mają — od wprowadzenia modeli ``Projekt``
+    i ``Finansowanie`` — własne providery: ich pusta odpowiedź zależy
+    dziś od zawartości bazy, a nie od klasy providera, i jest sprawdzana
+    w ``test_eksport_projektow.py``.
+    """
     provider = provider_dla_setu(set_spec)
 
     assert provider.strona(uczelnia_cerif) == ([], None)

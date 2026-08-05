@@ -83,6 +83,8 @@ MODULY_SERIALIZERA = {
     "if": "orgunit",
     "pt": "patent",
     "kf": "event",
+    "pj": "project",
+    "fn": "funding",
 }
 
 _WZORCE_DATY = (

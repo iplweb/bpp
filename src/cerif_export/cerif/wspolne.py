@@ -298,6 +298,12 @@ def osadz_orgunit(rodzic, jednostka, ctx):
     swojego pełnego rekordu, więc oba elementy budujemy dokładnie tak samo
     jak :func:`cerif_export.cerif.orgunit.serializuj`.
 
+    Skrót nazwy nosi w BPP dwa różne pola: ``skrot`` (``Jednostka``,
+    ``Uczelnia``) i ``akronim`` (``Instytucja_Finansujaca``). Oba wychodzą
+    w pełnym rekordzie jako ``Acronym``, więc oba muszą być brane też tutaj
+    — inaczej osadzony grantodawca gubiłby akronim, po którym najłatwiej go
+    rozpoznać.
+
     Jednostka spoza zbioru widoczności nie jest osadzana wcale — patrz
     :func:`jednostka_ujawnialna`.
     """
@@ -305,9 +311,30 @@ def osadz_orgunit(rodzic, jednostka, ctx):
         return None
     el = element("OrgUnit")
     ustaw_id(el, jednostka, ctx)
-    dodaj(el, "Acronym", tekst(getattr(jednostka, "skrot", None)))
+    skrot = getattr(jednostka, "skrot", None) or getattr(jednostka, "akronim", None)
+    dodaj(el, "Acronym", tekst(skrot))
     dodaj(el, "Name", tekst(getattr(jednostka, "nazwa", None)))
     rodzic.append(el)
+    return el
+
+
+def dodaj_link_do_orgunit(rodzic, nazwa, jednostka, ctx):
+    """Dopisz element-link niosący osadzony ``OrgUnit``.
+
+    Odpowiada typowi ``cfLinkWithDisplayNameToPersonOrOrgUnit__Type`` —
+    ``DisplayName?`` plus **wymagany** ``Person`` albo ``OrgUnit``. Używają
+    go ``Project/Consortium/Coordinator``, ``Project/Funded/By``
+    i ``Funding/Funder``.
+
+    Element powstaje **tylko** wtedy, gdy jednostkę wolno pokazać. Pusty
+    kontener byłby niepoprawny wobec XSD (dziecko jest obowiązkowe),
+    a stworzenie go „na wszelki wypadek" i zostawienie pustym to dokładnie
+    ten rodzaj błędu, który wychodzi dopiero pod walidatorem.
+    """
+    if not jednostka_ujawnialna(jednostka, ctx):
+        return None
+    el = dodaj_kontener(rodzic, nazwa)
+    osadz_orgunit(el, jednostka, ctx)
     return el
 
 
