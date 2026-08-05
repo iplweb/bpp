@@ -50,12 +50,21 @@ def status_ok(db):
 
 
 @pytest.fixture
-def fabryka_autorow(jednostka):
+def fabryka_autorow(jednostka, typ_autor):
     """Autor powiązany z jednostką uczelni — czyli kandydat do eksportu.
 
     Samo ``pokazuj=True`` nie wystarcza: reguła widoczności wymaga też
     powiązania ``Autor_Jednostka`` z jednostką TEJ uczelni, inaczej każdy
     tenant eksportowałby cudzych autorów.
+
+    Zależność od ``typ_autor`` jest celowa, mimo że sam ``Autor`` jej nie
+    potrzebuje: każdy konsument tej fabryki podpina autora do rekordu przez
+    ``dodaj_autora()``, a to robi ``Typ_Odpowiedzialnosci.objects.get(
+    skrot="aut.")``. Wiersz ten pochodzi z baseline'u, więc *zwykle* jest
+    w bazie — ale test transakcyjny truncate'uje tabele i kolejne testy
+    tego samego workera zastają je puste. Test, który liczy na dane
+    referencyjne zamiast je stworzyć, jest wtedy zielony albo czerwony
+    zależnie od tego, co się przed nim wykonało.
     """
 
     def zbuduj(nazwisko="Kowalski", pokazuj=True, powiaz=True, **kwargs):
