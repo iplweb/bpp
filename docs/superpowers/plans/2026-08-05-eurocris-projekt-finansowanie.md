@@ -35,7 +35,7 @@ Fundament — wszystkie pozostałe zadania z niego korzystają. Wykonywane **sek
 - Create: `src/bpp/models/projekt.py`
 - Modify: `src/bpp/models/__init__.py`, `src/bpp/models/grant.py`, `src/bpp/models/uczelnia.py`, `src/bpp/system.py`
 - Create: `src/bpp/tests/test_projekt.py`
-- Create (przez `makemigrations`): `src/bpp/migrations/XXXX_projekt_finansowanie.py`
+- Create (przez `makemigrations`): `src/bpp/migrations/0485_projekt_finansowanie.py`
 
 **Interfaces:**
 - Produces: modele `Projekt`, `Projekt_Autor`, `Instytucja_Finansujaca`, `Finansowanie` w `bpp.models`; stałe `Projekt.STATUS_*`, `Projekt_Autor.ROLA_KIEROWNIK`, `Finansowanie.TYP_*`; pola `Grant.projekt`, `Uczelnia.eksport_cerif_kwoty`.
@@ -665,12 +665,12 @@ def seed(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    dependencies = [("bpp", "XXXX_projekt_finansowanie")]
+    dependencies = [("bpp", "0485_projekt_finansowanie")]
 
     operations = [migrations.RunPython(seed, migrations.RunPython.noop)]
 ```
 
-Podmień `XXXX_projekt_finansowanie` na faktyczną nazwę migracji z Taska 1 i wypełnij `INSTYTUCJE` danymi ze Stepu 1.
+Podmień `0485_projekt_finansowanie` na faktyczną nazwę migracji z Taska 1 i wypełnij `INSTYTUCJE` danymi ze Stepu 1.
 
 - [ ] **Step 5: Uruchom testy**
 
