@@ -606,6 +606,13 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         "bez ORCID-ów, bez afiliacji i bez historii zatrudnienia. Zestaw "
         "musi istnieć nawet pusty — wymagają tego wytyczne OpenAIRE.",
     )
+    eksport_cerif_kwoty = models.BooleanField(
+        verbose_name="Eksport CERIF: kwoty finansowania",
+        default=False,
+        help_text="Czy w eksporcie CERIF-XML wystawiać kwoty finansowania "
+        "projektów. Domyślnie wyłączone — kwoty zostają w bazie "
+        "do użytku wewnętrznego.",
+    )
     pbn_kasuj_dyscypliny_selektywnie = models.BooleanField(
         "Kasuj oświadczenia selektywnie (per osoba)",
         default=True,
