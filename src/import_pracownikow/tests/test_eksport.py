@@ -1,3 +1,4 @@
+import uuid
 from io import BytesIO
 
 import pytest
@@ -184,6 +185,42 @@ def test_autor_bez_zatrudnienia_wchodzi_z_pustymi_polami_zatrudnienia():
     assert wiersze[0][kol["Wymiar etatu"]] in (None, "")
 
 
+BLOK_ZATRUDNIENIA = [
+    "Funkcja w jednostce",
+    "Stanowisko dydaktyczne",
+    "Grupa pracownicza",
+    "Wymiar etatu",
+    "Data zatrudnienia",
+    "Data końca zatrudnienia",
+    "Podstawowe miejsce pracy",
+]
+
+
+@pytest.mark.django_db
+def test_blok_zatrudnienia_zawsze_obecny_mimo_braku_mapowania_i_zatrudnienia():
+    # Kontrakt: cały blok Autor_Jednostka jest ZAWSZE w pliku — user ma gdzie
+    # ręcznie wpisać czas pracy od-do, funkcję i stanowisko, nawet gdy plik
+    # wejściowy tych kolumn nie zawierał i autor nie ma jeszcze zatrudnienia.
+    imp = _import_zintegrowany(
+        mapowanie_kolumn={
+            "Nazwisko": "nazwisko",
+            "Imię": "imię",
+            "Jednostka": "nazwa_jednostki",
+        }
+    )
+    a = baker.make(Autor, nazwisko="Bez", imiona="Etatu")
+    _wiersz(imp, loc=0, autor=a, autor_jednostka=None)
+
+    naglowki, wiersze = _wczytaj(zbuduj_plik_po_imporcie(imp))
+
+    for kol in BLOK_ZATRUDNIENIA:
+        assert kol in naglowki, f"Brak zawsze-obecnej kolumny: {kol}"
+    # Bez zatrudnienia komórki są puste („do wpisania"), ale kolumna istnieje.
+    idx = {n: i for i, n in enumerate(naglowki)}
+    for kol in BLOK_ZATRUDNIENIA:
+        assert wiersze[0][idx[kol]] in (None, "")
+
+
 @pytest.mark.django_db
 def test_round_trip_naglowki_auto_mapuja_sie():
     # Plik „po imporcie" musi re-importować się bez ręcznego mapowania:
@@ -303,7 +340,8 @@ def test_pbn_uuid_24_znaki_jest_emitowany():
         }
     )
     j = baker.make(Jednostka, nazwa=unikalna_nazwa("Klinika PBN"))
-    scientist = baker.make(Scientist, mongoId="a" * 24)
+    mongo_id = uuid.uuid4().hex[:24]
+    scientist = baker.make(Scientist, mongoId=mongo_id)
     a = baker.make(Autor, nazwisko="Pbn", imiona="Poprawny", pbn_uid=scientist)
     aj = baker.make(Autor_Jednostka, autor=a, jednostka=j)
     _wiersz(imp, loc=0, autor=a, autor_jednostka=aj)
@@ -312,7 +350,7 @@ def test_pbn_uuid_24_znaki_jest_emitowany():
 
     assert "PBN UUID" in naglowki
     kol = {n: i for i, n in enumerate(naglowki)}
-    assert wiersze[0][kol["PBN UUID"]] == "a" * 24
+    assert wiersze[0][kol["PBN UUID"]] == mongo_id
 
 
 @pytest.mark.django_db
@@ -329,7 +367,7 @@ def test_pbn_uuid_nietypowej_dlugosci_jest_pomijany():
         }
     )
     j = baker.make(Jednostka, nazwa=unikalna_nazwa("Klinika PBN Zła"))
-    scientist = baker.make(Scientist, mongoId="krotki-id")
+    scientist = baker.make(Scientist, mongoId=f"krotki-{uuid.uuid4().hex[:8]}")
     a = baker.make(Autor, nazwisko="Pbn", imiona="Zly", pbn_uid=scientist)
     aj = baker.make(Autor_Jednostka, autor=a, jednostka=j)
     _wiersz(imp, loc=0, autor=a, autor_jednostka=aj)
@@ -366,4 +404,17 @@ def test_zapisz_snapshot_populuje_pole_i_zgadza_sie_z_builderem():
     assert imp.plik_po_imporcie
     with imp.plik_po_imporcie.open("rb") as f:
         zapisane = f.read()
-    assert zapisane == zbuduj_plik_po_imporcie(imp)
+    # Porownanie SEMANTYCZNE (naglowki + wiersze), nie bajt-w-bajt: openpyxl
+    # pieczetuje kazdy zapis czasem — ``dcterms:created`` w docProps/core.xml
+    # (rozdzielczosc 1 s) oraz ``date_time`` kazdego wpisu ZIP-a. Dwa buildy
+    # tej samej tresci roznia sie wiec bajtami, gdy tylko przekrocza granice
+    # sekundy. Lokalnie oba buildy mieszcza sie w tej samej sekundzie i test
+    # przechodzil; na obciazonym CI potrafil rozjechac sie o sekunde i pekac
+    # jako ``assert b'PK\x03\x04...' == b'PK\x03\x04...'``. Intencja testu to
+    # „snapshot zawiera to samo, co zwraca builder" — tresc, nie identycznosc
+    # kontenera ZIP.
+    naglowki, wiersze = _wczytaj(zapisane)
+    assert (naglowki, wiersze) == _wczytaj(zbuduj_plik_po_imporcie(imp))
+    # Sanity na kilku komorkach — snapshot odbija autorow z bazy.
+    plaskie = {str(c) for w in wiersze for c in w}
+    assert {"Snap", "Jeden", "Shot", "Dwa"} <= plaskie

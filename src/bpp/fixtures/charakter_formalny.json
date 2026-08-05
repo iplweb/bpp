@@ -7,7 +7,8 @@
             "skrot": "AC",
             "publikacja": true,
             "streszczenie": false,
-            "nazwa_w_primo": "Artykuł"
+            "nazwa_w_primo": "Artykuł",
+            "coar_type": "http://purl.org/coar/resource_type/c_6501"
         }
     },
     {
@@ -18,7 +19,8 @@
             "skrot": "KS",
             "publikacja": true,
             "streszczenie": false,
-            "nazwa_w_primo": "Książka"
+            "nazwa_w_primo": "Książka",
+            "coar_type": "http://purl.org/coar/resource_type/c_2f33"
         }
     },
     {
@@ -29,7 +31,8 @@
             "skrot": "KOM",
             "publikacja": true,
             "streszczenie": false,
-            "nazwa_w_primo": ""
+            "nazwa_w_primo": "",
+            "coar_type": "http://purl.org/coar/resource_type/D97F-VB57"
         }
     },
     {
@@ -40,7 +43,8 @@
             "skrot": "L",
             "publikacja": true,
             "streszczenie": false,
-            "nazwa_w_primo": ""
+            "nazwa_w_primo": "",
+            "coar_type": "http://purl.org/coar/resource_type/c_545b"
         }
     },
     {
@@ -51,7 +55,8 @@
             "skrot": "Supl",
             "publikacja": true,
             "streszczenie": false,
-            "nazwa_w_primo": "Artykuł"
+            "nazwa_w_primo": "Artykuł",
+            "coar_type": ""
         }
     },
     {
@@ -62,7 +67,8 @@
             "skrot": "CZ",
             "publikacja": false,
             "streszczenie": false,
-            "nazwa_w_primo": "Czasopismo"
+            "nazwa_w_primo": "Czasopismo",
+            "coar_type": "http://purl.org/coar/resource_type/c_0640"
         }
     },
     {
@@ -73,7 +79,8 @@
             "skrot": "KSP",
             "publikacja": true,
             "streszczenie": false,
-            "nazwa_w_primo": "Książka"
+            "nazwa_w_primo": "Książka",
+            "coar_type": "http://purl.org/coar/resource_type/c_2f33"
         }
     },
     {
@@ -84,7 +91,8 @@
             "skrot": "KSZ",
             "publikacja": true,
             "streszczenie": false,
-            "nazwa_w_primo": "Książka"
+            "nazwa_w_primo": "Książka",
+            "coar_type": "http://purl.org/coar/resource_type/c_2f33"
         }
     },
     {
@@ -95,7 +103,8 @@
             "skrot": "frg",
             "publikacja": true,
             "streszczenie": false,
-            "nazwa_w_primo": ""
+            "nazwa_w_primo": "",
+            "coar_type": "http://purl.org/coar/resource_type/c_3248"
         }
     },
     {
@@ -106,7 +115,8 @@
             "skrot": "IN",
             "publikacja": false,
             "streszczenie": false,
-            "nazwa_w_primo": ""
+            "nazwa_w_primo": "",
+            "coar_type": ""
         }
     },
     {
@@ -117,7 +127,8 @@
             "skrot": "TŁ",
             "publikacja": false,
             "streszczenie": false,
-            "nazwa_w_primo": ""
+            "nazwa_w_primo": "",
+            "coar_type": ""
         }
     },
     {
@@ -128,7 +139,8 @@
             "skrot": "SKR",
             "publikacja": false,
             "streszczenie": false,
-            "nazwa_w_primo": ""
+            "nazwa_w_primo": "",
+            "coar_type": "http://purl.org/coar/resource_type/c_2f33"
         }
     },
     {
@@ -139,7 +151,8 @@
             "skrot": "PRZ",
             "publikacja": true,
             "streszczenie": false,
-            "nazwa_w_primo": "Materiał konferencyjny"
+            "nazwa_w_primo": "Materiał konferencyjny",
+            "coar_type": "http://purl.org/coar/resource_type/c_5794"
         }
     },
     {
@@ -150,7 +163,8 @@
             "skrot": "PSZ",
             "publikacja": false,
             "streszczenie": true,
-            "nazwa_w_primo": "Materiał konferencyjny"
+            "nazwa_w_primo": "Materiał konferencyjny",
+            "coar_type": "http://purl.org/coar/resource_type/c_c94f"
         }
     },
     {
@@ -161,7 +175,8 @@
             "skrot": "PZ",
             "publikacja": false,
             "streszczenie": false,
-            "nazwa_w_primo": ""
+            "nazwa_w_primo": "",
+            "coar_type": ""
         }
     },
     {
@@ -172,7 +187,8 @@
             "skrot": "R",
             "publikacja": false,
             "streszczenie": false,
-            "nazwa_w_primo": ""
+            "nazwa_w_primo": "",
+            "coar_type": "http://purl.org/coar/resource_type/c_efa0"
         }
     },
     {
@@ -183,7 +199,8 @@
             "skrot": "ROZ",
             "publikacja": true,
             "streszczenie": false,
-            "nazwa_w_primo": "Rozdział"
+            "nazwa_w_primo": "Rozdział",
+            "coar_type": "http://purl.org/coar/resource_type/c_3248"
         }
     },
     {
@@ -194,7 +211,8 @@
             "skrot": "ROZS",
             "publikacja": false,
             "streszczenie": false,
-            "nazwa_w_primo": "Rozdział"
+            "nazwa_w_primo": "Rozdział",
+            "coar_type": "http://purl.org/coar/resource_type/c_3248"
         }
     },
     {
@@ -205,7 +223,8 @@
             "skrot": "ZRZ",
             "publikacja": true,
             "streszczenie": false,
-            "nazwa_w_primo": "Materiał konferencyjny"
+            "nazwa_w_primo": "Materiał konferencyjny",
+            "coar_type": "http://purl.org/coar/resource_type/c_5794"
         }
     },
     {
@@ -216,7 +235,8 @@
             "skrot": "ZSZ",
             "publikacja": false,
             "streszczenie": true,
-            "nazwa_w_primo": ""
+            "nazwa_w_primo": "",
+            "coar_type": "http://purl.org/coar/resource_type/c_c94f"
         }
     },
     {
@@ -227,7 +247,8 @@
             "skrot": "BR",
             "publikacja": false,
             "streszczenie": false,
-            "nazwa_w_primo": ""
+            "nazwa_w_primo": "",
+            "coar_type": ""
         }
     },
     {
@@ -238,7 +259,8 @@
             "skrot": "WYN",
             "publikacja": false,
             "streszczenie": false,
-            "nazwa_w_primo": ""
+            "nazwa_w_primo": "",
+            "coar_type": ""
         }
     },
     {
@@ -249,7 +271,8 @@
             "skrot": "PAT",
             "publikacja": false,
             "streszczenie": false,
-            "nazwa_w_primo": ""
+            "nazwa_w_primo": "",
+            "coar_type": ""
         }
     },
     {
@@ -260,7 +283,8 @@
             "skrot": "D",
             "publikacja": true,
             "streszczenie": false,
-            "nazwa_w_primo": ""
+            "nazwa_w_primo": "",
+            "coar_type": "http://purl.org/coar/resource_type/c_db06"
         }
     },
     {
@@ -271,7 +295,8 @@
             "skrot": "H",
             "publikacja": true,
             "streszczenie": false,
-            "nazwa_w_primo": ""
+            "nazwa_w_primo": "",
+            "coar_type": "http://purl.org/coar/resource_type/c_46ec"
         }
     },
     {
@@ -282,10 +307,11 @@
             "skrot": "PA",
             "publikacja": false,
             "streszczenie": false,
-            "nazwa_w_primo": ""
+            "nazwa_w_primo": "",
+            "coar_type": "http://purl.org/coar/resource_type/c_2f33"
         }
     },
-   {
+    {
         "model": "bpp.charakter_formalny",
         "pk": null,
         "fields": {
@@ -293,7 +319,8 @@
             "skrot": "DE",
             "publikacja": false,
             "streszczenie": false,
-            "nazwa_w_primo": ""
+            "nazwa_w_primo": "",
+            "coar_type": ""
         }
     }
 ]

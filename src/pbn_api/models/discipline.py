@@ -16,7 +16,11 @@ class DisciplineGroupManager(models.Manager):
 
 
 class DisciplineGroup(BasePBNModel):
-    uuid = models.UUIDField()
+    # unique=True: ``PBNClient.download_disciplines`` robi lookup po samym
+    # ``uuid``. Bez unikalności dwa równoległe importy tworzyły duplikat, a od
+    # tego momentu KAŻDY kolejny ``update_or_create(uuid=...)`` rzucał
+    # ``MultipleObjectsReturned`` — import dyscyplin blokował się na twardo.
+    uuid = models.UUIDField(unique=True)
     validityDateFrom = models.DateField()
     validityDateTo = models.DateField(null=True, blank=True)
 
@@ -63,6 +67,18 @@ class Discipline(BasePBNModel):
         verbose_name = "Dyscyplina PBN"
         verbose_name_plural = "Dyscypliny PBN"
         ordering = ("name", "code")
+        constraints = [
+            # UWAGA: ``uuid`` dyscypliny NIE jest w PBN unikalny globalnie —
+            # ta sama dyscyplina występuje pod tym samym ``uuid`` w wielu
+            # słownikach (w fixture 44 z 59 uuid-ów powtarza się między
+            # słownikiem 2018-2022 a 2022-teraz). Unikalna jest dopiero para
+            # (słownik, uuid) — i dokładnie po takiej parze robi lookup
+            # ``PBNClient.download_disciplines``.
+            models.UniqueConstraint(
+                fields=["parent_group", "uuid"],
+                name="pbn_api_discipline_uuid_unikalny_w_slowniku",
+            )
+        ]
 
     def __str__(self):
         ret = f"Dyscyplina {self.name} ("

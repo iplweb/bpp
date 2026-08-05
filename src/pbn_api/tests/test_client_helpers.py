@@ -9,6 +9,11 @@ For discipline tests, see test_client_disciplines.py
 import pytest
 from django.contrib.messages import get_messages
 from model_bakery import baker
+from pbn_client.const import (
+    PBN_GET_INSTITUTION_PUBLICATIONS_V2,
+    PBN_POST_INSTITUTION_STATEMENTS_URL,
+    PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
+)
 
 from bpp.admin.helpers.pbn_api.gui import sprobuj_wyslac_do_pbn_gui
 from fixtures.pbn_api import (
@@ -20,11 +25,6 @@ from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.client import (
     PBN_GET_INSTITUTION_STATEMENTS,
     PBN_GET_PUBLICATION_BY_ID_URL,
-)
-from pbn_api.const import (
-    PBN_GET_INSTITUTION_PUBLICATIONS_V2,
-    PBN_POST_INSTITUTION_STATEMENTS_URL,
-    PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
 )
 from pbn_api.models import Institution, Publication
 from pbn_api.tests.utils import middleware

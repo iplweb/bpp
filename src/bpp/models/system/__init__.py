@@ -78,6 +78,17 @@ class Jezyk(NazwaISkrot):
 
     widoczny = models.BooleanField(default=True)
 
+    kod_bcp47 = models.CharField(
+        "Kod języka wg BCP 47",
+        max_length=35,
+        blank=True,
+        default="",
+        help_text="Kod języka w notacji BCP 47 (RFC 5646), np. „pl”, „en”, "
+        "„en-GB”. Używany w eksporcie CERIF/OpenAIRE jako wartość atrybutu "
+        "xml:lang; gdy pusty, elementy w tym języku zostaną wyeksportowane "
+        "bez oznaczenia języka.",
+    )
+
     class Meta:
         verbose_name = "język"
         verbose_name_plural = "języki"
@@ -131,6 +142,27 @@ class Typ_KBN(NazwaISkrot):
 
 
 class Rodzaj_Prawa_Patentowego(ModelZNazwa):
+    eksportuj_jako_patent = models.BooleanField(
+        "Eksportuj do CERIF jako patent",
+        default=True,
+        help_text="Odznacz dla praw, które nie są patentami w rozumieniu "
+        "słownika COAR (np. znak towarowy). Takie rekordy nie trafią do "
+        "eksportu CERIF/OpenAIRE — profil wymaga dla każdego rekordu typu "
+        "z gałęzi „patent”, więc jedyną alternatywą byłoby zadeklarowanie "
+        "ich patentami wbrew prawdzie.",
+    )
+
+    coar_type = models.CharField(
+        "Typ COAR",
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Pełny identyfikator typu zasobu ze słownika COAR Resource "
+        "Types, np. http://purl.org/coar/resource_type/c_15cd dla patentu. "
+        "Używany w eksporcie CERIF/OpenAIRE; gdy pusty, patenty o tym "
+        "rodzaju prawa zostaną wyeksportowane bez typu zasobu.",
+    )
+
     class Meta:
         verbose_name = "rodzaj prawa patentowego"
         verbose_name_plural = "rodzaje praw patentowych"

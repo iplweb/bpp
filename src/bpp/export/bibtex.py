@@ -90,7 +90,15 @@ def generate_bibtex_key(wydawnictwo) -> str:
     key_parts = []
 
     try:
-        first_author = wydawnictwo.autorzy_dla_opisu().first()
+        # `autorzy_dla_opisu()` NIE zawsze zwraca queryset. Zwraca też zwykłą
+        # listę (prefetch przez `Prefetch(to_attr=...)` albo `[]` dla obiektu
+        # bez `pk`) oraz `FakeSet` doktoratu/habilitacji. Tylko queryset ma
+        # `first()` — dla pozostałych trzeba wziąć pierwszy element wprost.
+        # Ten sam idiom stosuje `bpp.models.util`.
+        autorzy = wydawnictwo.autorzy_dla_opisu()
+        first_author = (
+            autorzy.first() if hasattr(autorzy, "first") else next(iter(autorzy), None)
+        )
         if first_author and hasattr(first_author, "autor"):
             surname = first_author.autor.nazwisko
             # Clean surname for key

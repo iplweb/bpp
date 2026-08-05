@@ -111,7 +111,7 @@ class TestSendToPbn:
             "bpp.admin.helpers.pbn_api.cli.sprobuj_wyslac_do_pbn_celery"
         ) as mock_send:
             mock_send.side_effect = StatementsResendFailedException(
-                publication_pk=wydawnictwo_ciagle.pk,
+                correlation_id=wydawnictwo_ciagle.pk,
                 pbn_uid="abc-123",
                 last_error="HTTP 500: Server Error",
             )
@@ -124,6 +124,37 @@ class TestSendToPbn:
             assert "Synchronizacja oświadczeń" in queue_item.komunikat
             assert "abc-123" in queue_item.komunikat
             assert "Ponowię" in queue_item.komunikat
+
+    def test_send_to_pbn_http_423_ponawia_zamiast_bledu_technicznego(
+        self, wydawnictwo_ciagle, admin_user
+    ):
+        """423 to blokada przejściowa — ponawiamy, nie zamykamy błędem.
+
+        Dotyczy też 423 z JSON-owym body, którego pbn-client nie rozpozna
+        jako ``ResourceLockedException``.
+        """
+        queue_item = baker.make(
+            PBN_Export_Queue,
+            rekord_do_wysylki=wydawnictwo_ciagle,
+            zamowil=admin_user,
+        )
+
+        with patch(
+            "bpp.admin.helpers.pbn_api.cli.sprobuj_wyslac_do_pbn_celery"
+        ) as mock_send:
+            mock_send.side_effect = HttpException(
+                423,
+                "/api/v2/institution-profile/statements",
+                '{"message": "Locked", "description": "Publikacja zostało '
+                'tymczasowo zablokowane z uwagi na równoległą operację."}',
+            )
+
+            result = queue_item.send_to_pbn()
+
+            assert result == SendStatus.RETRY_LATER
+            queue_item.refresh_from_db()
+            assert queue_item.rodzaj_bledu is None
+            assert "zablokowany" in queue_item.komunikat.lower()
 
     def test_send_to_pbn_prace_serwisowe_exception(
         self, wydawnictwo_ciagle, admin_user

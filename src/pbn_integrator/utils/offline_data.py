@@ -7,9 +7,9 @@ import os
 from typing import TYPE_CHECKING
 
 from django.db import transaction
+from pbn_client.const import ACTIVE, DELETED
 
 from bpp.util import pbar
-from pbn_api.const import ACTIVE, DELETED
 from pbn_api.models import Publication, Scientist
 from pbn_integrator.utils.mongodb_ops import pobierz_mongodb
 from pbn_integrator.utils.multiprocessing_utils import (

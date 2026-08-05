@@ -4,7 +4,7 @@ from playwright.sync_api import Page
 
 from bpp.const import CHARAKTER_OGOLNY_KSIAZKA
 from bpp.models import Charakter_Formalny
-from django_bpp.playwright_util import select_select2_autocomplete
+from django_bpp.playwright_util import set_select2_value
 
 
 @pytest.mark.django_db(transaction=True)
@@ -44,9 +44,11 @@ def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
     wydawnictwo_zwarte.charakter_formalny = chf
     wydawnictwo_zwarte.save()
 
-    # Select wydawnictwo_zwarte as parent publication (wydawnictwo_nadrzedne)
-    select_select2_autocomplete(
-        admin_page, "id_wydawnictwo_nadrzedne", "Wydawnictwo Zwarte"
+    set_select2_value(
+        admin_page,
+        "id_wydawnictwo_nadrzedne",
+        wydawnictwo_zwarte.pk,
+        label=str(wydawnictwo_zwarte),
     )
 
     # Clear rok and click button - should get year from miejsce_i_rok

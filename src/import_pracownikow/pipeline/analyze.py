@@ -13,7 +13,7 @@ from copy import copy
 
 from django.core.exceptions import ObjectDoesNotExist
 
-from bpp.models import Autor_Jednostka, Uczelnia, Wydzial
+from bpp.models import Autor_Jednostka, Jednostka
 from import_common.core import (
     matchuj_autora,
     matchuj_funkcja_autora,
@@ -524,7 +524,7 @@ def _zrodlo_jednostki_wiersza(dane_form):
 
     1. ``komórka_złożona`` → ``parsuj_komorke``: nazwa = czysta nazwa z parsera,
        ``skrot_hint`` = skrót z pliku (zasili ``Jednostka.skrot`` przy tworzeniu),
-       oddział rozwiązany przez ``Wydzial.skrot`` → jego NAZWA jako wydzial-hint
+       oddział rozwiązany przez skrót jednostki top-level → jej NAZWA jako hint
        (``matchuj_wydzial`` robi tylko ``nazwa__iexact``; §7 finding #6).
        Klasyfikacja zwykłym ``sklasyfikuj_jednostke`` po skrócie/nazwie.
     2. ``nazwa_jednostki_niepelna`` (i brak ``nazwa_jednostki``) →
@@ -547,7 +547,8 @@ def _zrodlo_jednostki_wiersza(dane_form):
         skrot_hint = wynik["skrot"]
         oddzial = wynik["oddzial"]
         if oddzial:
-            w = Wydzial.objects.filter(skrot=oddzial).first()
+            # Faza C (#438): „wydział" to jednostka TOP-LEVEL (parent IS NULL).
+            w = Jednostka.objects.filter(skrot=oddzial, parent__isnull=True).first()
             if w is not None:
                 wydzial = w.nazwa
         nazwa_do_klas = nazwa if 0 < len(nazwa) <= 512 else ""
@@ -774,10 +775,11 @@ def _przetworz_wiersz(
 def _materializuj_odpiecia(parent):
     """Tworzy wiersze ``ImportPracownikowOdpiecie`` (zaznaczone=False) dla
     powiązań spoza pliku (§9). Delete-first → idempotentne względem re-analizy
-    (``on_restart`` też je kasuje). Uczelnię ustala
-    ``get_single_uczelnia_or_none`` (brak requestu w tle) — ``None`` pomija
-    wykluczenie obcej jednostki. Zwraca liczbę utworzonych odpięć."""
-    uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
+    (``on_restart`` też je kasuje). Uczelnię ustala ``uczelnia_do_integracji``
+    (uczelnia importu z requestu; fallback: jedyna w systemie) — w multi-hosted
+    (>1 uczelnia) inaczej byłoby ``None`` i wykluczenie obcej jednostki nie
+    działałoby. ``None`` (nieustalona) pomija wykluczenie. Zwraca liczbę odpięć."""
+    uczelnia = parent.uczelnia_do_integracji()
     parent.odpiecia.all().delete()
     ImportPracownikowOdpiecie.objects.bulk_create(
         [
@@ -843,6 +845,11 @@ def analizuj(parent, p):
         else ImportPracownikow.STAN_PRZEANALIZOWANY
     )
     parent.save(update_fields=["stan"])
+
+    # Materializacja stanów pól dla filtra listy wyników — filtr działa na
+    # `stany_pol_snapshot` w SQL, więc pole musi być wypełnione od razu po
+    # analizie (inaczej filtr nie znalazłby świeżo przeanalizowanego importu).
+    parent.odswiez_stany_pol_wierszy()
 
     wiersze = parent.get_details_set()
     p.result(

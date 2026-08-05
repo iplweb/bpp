@@ -3,7 +3,6 @@ from django.urls import reverse
 from model_bakery import baker
 
 from bpp.models import Autor
-from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 from powiazania_autorow.models import AuthorConnection
 
 
@@ -386,14 +385,14 @@ def test_siec_filtr_tylko_zatrudnieni_centrum_zawsze(client, jednostka):
 def test_siec_filtr_zatrudnieni_pomija_obca_uczelnie(client, jednostka):
     # Sąsiad zatrudniony, ale w INNEJ uczelni — filtr go pomija (sprawdza,
     # że liczy się dopasowanie uczelni, nie samo "ma aktualną jednostkę").
-    from bpp.models import Jednostka, Uczelnia, Wydzial
+    from bpp.models import Jednostka, Uczelnia
 
     obca_uczelnia = baker.make(Uczelnia, nazwa="Obca", skrot="OB")
-    obcy_wydzial = baker.make(Wydzial, uczelnia=obca_uczelnia)
+    obcy_wydzial = baker.make(Jednostka, uczelnia=obca_uczelnia, parent=None)
     obca_jednostka = baker.make(
         Jednostka,
         uczelnia=obca_uczelnia,
-        parent=znajdz_lub_utworz_wezel_wydzialu(obcy_wydzial)[0],
+        parent=obcy_wydzial,
     )
 
     centrum = baker.make(Autor, pokazuj=True, aktualna_jednostka=jednostka)
@@ -465,6 +464,26 @@ def test_strona_grafu_3d_renderuje_kontener(client):
     assert f'data-autor-id="{autor.pk}"' in tresc
     # lazy bundle 3D (nazwa może być zahashowana przez ManifestStaticFiles)
     assert "three-bundle" in tresc
+
+
+@pytest.mark.django_db
+def test_strona_grafu_3d_podaje_link_awaryjny_do_2d(client):
+    """Kontener 3D musi nieść adres widoku 2D — to wyjście awaryjne, którym
+    JS ratuje użytkownika bez WebGL-a (Rollbar #4006).
+
+    Nazwa atrybutu jest tu istotna: ``data-url-2d`` NIE mapuje się na
+    ``dataset.url2d``. Konwersja atrybut→dataset skleja ``-x`` w ``X``
+    tylko wtedy, gdy ``x`` jest małą literą — a po myślniku stoi cyfra
+    ``2``, więc klucz wyszedłby ``dataset["url-2d"]`` i JS by go nie
+    znalazł. Test pilnuje obu stron tej pułapki.
+    """
+    autor = baker.make(Autor, imiona="Jan", nazwisko="Kowalski", pokazuj=True)
+    resp = client.get(reverse("bpp:browse_autor_powiazania_3d", args=[autor.pk]))
+    tresc = resp.content.decode("utf-8")
+
+    url_2d = reverse("bpp:browse_autor_powiazania", args=[autor.pk])
+    assert f'data-url2d="{url_2d}"' in tresc
+    assert "data-url-2d=" not in tresc
 
 
 @pytest.mark.django_db

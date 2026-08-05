@@ -17,6 +17,8 @@
 
 import SpriteText from "three-spritetext";
 
+import { czyWebglDostepny, pokazBrakWebgl } from "./webgl.js";
+
 // Kolory wg poziomu: centrum złote, dalej chłodna paleta (dobre na ciemnym tle).
 const PALETA = [
     "#ffd54a", "#4ea1ff", "#36c9c0", "#7ed957",
@@ -76,6 +78,15 @@ export function init(ForceGraph3D) {
     const autorId = String(el.dataset.autorId);
     const siecTpl = el.dataset.siecUrlTemplate;
     const graf3dTpl = el.dataset.graf3dUrlTemplate;
+    const url2d = el.dataset.url2d;
+
+    // Bez WebGL-a nie ma po co budować renderera — Three.js rzuciłby wyjątek,
+    // a użytkownik dostałby czarny prostokąt bez wyjaśnienia (Rollbar #4006).
+    // Zamiast tego komunikat i wyjście awaryjne do widoku 2D.
+    if (!czyWebglDostepny(document)) {
+        pokazBrakWebgl(el, { url2d: url2d });
+        return;
+    }
 
     // --- kontrolki podstawowe ---
     const sliderGleb = document.getElementById("siec3d-glebokosc");
@@ -102,7 +113,20 @@ export function init(ForceGraph3D) {
     // linków przy zmianie opcji "powiązania w grupie" bez ponownego fetcha.
     let rawData = { nodes: [], edges: [], extra_edges: [] };
 
-    const Graph = ForceGraph3D()(el)
+    // Druga linia obrony: sonda wyżej mogła przejść, a renderer i tak paść.
+    // Kontekst bywa tracony między sondą a konstrukcją, karta ma twardy limit
+    // ~16 żywych kontekstów, a sterownik potrafi wysypać się w trakcie
+    // inicjalizacji. Nie wyciszamy — logujemy i informujemy użytkownika.
+    let Graph;
+    try {
+        Graph = ForceGraph3D()(el);
+    } catch (e) {
+        console.warn("Widok 3D: nie udało się utworzyć renderera WebGL.", e);
+        pokazBrakWebgl(el, { url2d: url2d, szczegoly: e && e.message });
+        return;
+    }
+
+    Graph
         .backgroundColor("#0b1020")
         .nodeRelSize(4)
         .nodeVal(function (n) { return wartoscMetryki(n, metryka); })

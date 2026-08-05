@@ -9,6 +9,7 @@ from django.db.models import (
     Count,
     IntegerField,
     Prefetch,
+    Q,
     Value,
     When,
 )
@@ -18,7 +19,7 @@ from django.http import (
     HttpResponseBadRequest,
     HttpResponseRedirect,
 )
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.functional import cached_property
@@ -53,6 +54,7 @@ from import_pracownikow.models import (
     ProfilMapowania,
     wiersz_kwalifikuje_do_przepiecia,
 )
+from import_pracownikow.okresy import wstepnie_zaladuj_okresy
 from import_pracownikow.pbn import adnotuj_pbn_instytucjonalny
 from import_pracownikow.pewnosc import (
     CONFIDENCE_CHOICES,
@@ -64,6 +66,52 @@ from import_pracownikow.pewnosc import (
 )
 
 GROUP_REQUIRED = "wprowadzanie danych"
+
+# Paginacja listy wyników importu. Bez opcji „wszystkie" — przy paginacji
+# serwerowej byłaby jednoklikowym powrotem do renderowania całego importu.
+ROZMIARY_STRONY = (10, 25, 50, 100)
+DOMYSLNY_ROZMIAR_STRONY = 25
+# Dozwolone wartości filtra stanu pola (pusty string = „wszystkie", czyli brak
+# filtra); komplet stanów zwracanych przez ekstraktory `POLA_ROZNIC`.
+STANY_POLA = ("zmienione", "zgodne", "brak")
+
+
+class WymagajUczelniZRequestuMixin:
+    """Bramka multi-hosted: import działa TYLKO w zakresie uczelni z requestu.
+
+    ``dispatch``: brak uczelni z requestu (``get_for_request`` → None: domena
+    bez mapowania Site→Uczelnia albo 0 uczelni) → redirect na home + komunikat.
+    Dla WSZYSTKICH (też superusera) — kolejność MRO: ``GroupRequiredMixin`` →
+    ten mixin → widok, więc auth/grupa lecą pierwsze, a bramka uczelni obowiązuje
+    także superusera (który jest zwolniony z grupy, ale NIE z uczelni).
+
+    ``sprawdz_uczelnie(obj)``: obiekt spoza bieżącej uczelni → ``Http404``
+    (semantyka jak ``uczelnia_do_integracji`` — single-tenant łapie legacy NULL
+    przez fallback do jedynej uczelni)."""
+
+    @cached_property
+    def uczelnia_biezaca(self):
+        return Uczelnia.objects.get_for_request(self.request)
+
+    def dispatch(self, request, *args, **kwargs):
+        if self.uczelnia_biezaca is None:
+            messages.error(
+                request,
+                "Nie ustalono uczelni dla tej domeny — import pracowników i "
+                "jednostek jest niedostępny.",
+            )
+            return redirect("root")
+        return super().dispatch(request, *args, **kwargs)
+
+    def sprawdz_uczelnie(self, obj):
+        # 404 tylko dla importu należącego do INNEJ, JEDNOZNACZNEJ uczelni.
+        # Import o nieokreślonej uczelni (``uczelnia_do_integracji`` → None: brak
+        # ``uczelnia`` i brak jedynej uczelni) przepuszczamy — w produkcji każdy
+        # import ma uczelnię (łapaną z requestu przy tworzeniu), więc dotyczy to
+        # tylko rekordów legacy/NULL, których i tak nie ma na multi-hosted.
+        u = obj.uczelnia_do_integracji()
+        if u is not None and u != self.uczelnia_biezaca:
+            raise Http404
 
 
 def oznacz_przepiecie_prac(rows, parent):
@@ -115,12 +163,13 @@ def oznacz_przepiecie_prac(rows, parent):
     return rows
 
 
-class ListaImportowView(GroupRequiredMixin, ListView):
-    """Lista importów bieżącego użytkownika.
+class ListaImportowView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, ListView):
+    """Lista importów bieżącego użytkownika (w zakresie bieżącej uczelni).
 
     Dawniej long_running.LongRunningOperationsView. Teraz zwykły owner-scoped
     ListView — strona live (postęp/wynik) jest osobno, pod centralnym
-    ``liveops:live`` (link przez ``object.get_absolute_url``).
+    ``liveops:live`` (link przez ``object.get_absolute_url``). Multi-hosted:
+    dodatkowo zawężone do uczelni z requestu (``widoczne_dla_uczelni``).
     """
 
     group_required = GROUP_REQUIRED
@@ -128,12 +177,16 @@ class ListaImportowView(GroupRequiredMixin, ListView):
     template_name = "import_pracownikow/importpracownikow_list.html"
 
     def get_queryset(self):
-        return ImportPracownikow.objects.filter(owner=self.request.user).order_by(
-            "-created_on"
+        return (
+            ImportPracownikow.widoczne_dla_uczelni(self.uczelnia_biezaca)
+            .filter(owner=self.request.user)
+            .order_by("-created_on")
         )
 
 
-class NowyImportView(GroupRequiredMixin, CreateLiveOperationView):
+class NowyImportView(
+    GroupRequiredMixin, WymagajUczelniZRequestuMixin, CreateLiveOperationView
+):
     """Formularz nowego importu.
 
     ``CreateLiveOperationView`` (liveops) sam ustawia owner, zapisuje,
@@ -161,6 +214,12 @@ class NowyImportView(GroupRequiredMixin, CreateLiveOperationView):
         # NIE enqueue — najpierw ekran mapowania (analiza dopiero po zmapowaniu).
         self.object = form.save(commit=False)
         self.object.owner = self.request.user
+        # Multi-hosted: łapiemy uczelnię z requestu (host → Site → Uczelnia) i
+        # utrwalamy na imporcie — integracja biegnie w tle (bez requestu), a przy
+        # >1 uczelni to JEDYNE wiarygodne źródło. Bez tego FAZA 0 nie utworzyłaby
+        # jednostek (get_single_uczelnia_or_none() = None). None (domena
+        # nierozstrzygnięta) → ostrzeżenie nad listą jednostek, nie ciche pominięcie.
+        self.object.uczelnia = self.uczelnia_biezaca  # bramka gwarantuje non-None
         self.object.stan = ImportPracownikow.STAN_UTWORZONY
         self.object.save()
         return HttpResponseRedirect(
@@ -177,7 +236,7 @@ _STANY_MAPOWALNE = (
 )
 
 
-class MapowanieView(GroupRequiredMixin, FormView):
+class MapowanieView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, FormView):
     """Ekran mapowania kolumn. GET: auto-propozycja (lub profil) + próbka.
     POST: zapis mapowania + ewentualny profil → stan zmapowany → (re)enqueue."""
 
@@ -187,9 +246,11 @@ class MapowanieView(GroupRequiredMixin, FormView):
 
     @cached_property
     def object(self):
-        return get_object_or_404(
+        obj = get_object_or_404(
             ImportPracownikow, pk=self.kwargs["pk"], owner=self.request.user
         )
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
+        return obj
 
     def _przygotuj(self, request):
         """Wywoływane z get()/post() (PO kontroli dostępu GroupRequiredMixin,
@@ -228,9 +289,9 @@ class MapowanieView(GroupRequiredMixin, FormView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs["naglowki"] = self._naglowki
-        profil = dopasuj_profil(self._naglowki) or wybierz_profil_fallback(
-            self._naglowki
-        )
+        profil = dopasuj_profil(
+            self._naglowki, self.uczelnia_biezaca
+        ) or wybierz_profil_fallback(self._naglowki, self.uczelnia_biezaca)
         # Zapamiętaj na instancji dla get_context_data (info w szablonie §13).
         self._profil_zastosowany = profil
         if profil is not None:
@@ -287,6 +348,7 @@ class MapowanieView(GroupRequiredMixin, FormView):
 
         if form.cleaned_data.get("zapisz_profil"):
             ProfilMapowania.objects.update_or_create(
+                uczelnia=self.uczelnia_biezaca,
                 nazwa=form.cleaned_data["nazwa_profilu"],
                 defaults={
                     "mapowanie": obj.mapowanie_kolumn,
@@ -307,7 +369,7 @@ class MapowanieView(GroupRequiredMixin, FormView):
         return HttpResponseRedirect(obj.get_absolute_url())
 
 
-class _ImportPodgladMixin(GroupRequiredMixin, View):
+class _ImportPodgladMixin(GroupRequiredMixin, WymagajUczelniZRequestuMixin, View):
     """Wspólna bramka podglądu importu (owner/superuser scoping + stan
     ``przeanalizowany``) dla widoków HTMX modyfikujących decyzje wiersza/odpięcia
     (Faza 3/4). Wydzielona, żeby scoping i bramka żyły w JEDNYM miejscu —
@@ -321,6 +383,7 @@ class _ImportPodgladMixin(GroupRequiredMixin, View):
         obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
         if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
             raise Http404
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         return obj
 
     def _blad_jesli_nie_podglad(self):
@@ -408,6 +471,12 @@ def _zwiaz_autora_z_wierszem(row, autor):
     row.utworz_nowego = False
     row.przepnij_prace = False
     row.wybrany_kandydat = None
+    # Zmiana autora przestawia praktycznie każdy stan pola (ekstraktory czytają
+    # autora i jego powiązanie), a filtr listy wyników działa na zmaterializowanym
+    # `stany_pol_snapshot` w SQL — bez przeliczenia tutaj filtr kłamałby po cichu
+    # aż do końca fazy osób. Liczymy przez `stany_pol_live()`, bo `stany_pol()`
+    # przy niepustym snapshocie zwróciłoby po prostu starą wartość.
+    row.stany_pol_snapshot = row.stany_pol_live()
     row.save(
         update_fields=[
             "autor",
@@ -418,6 +487,7 @@ def _zwiaz_autora_z_wierszem(row, autor):
             "utworz_nowego",
             "przepnij_prace",
             "wybrany_kandydat",
+            "stany_pol_snapshot",
         ]
     )
 
@@ -641,7 +711,9 @@ class ZaznaczOdpieciaView(_ImportPodgladMixin):
         )
 
 
-class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
+class ImportPracownikowResultsView(
+    GroupRequiredMixin, WymagajUczelniZRequestuMixin, ListView
+):
     """Filtrowalna tabela wyników importu (dopasowani/niedopasowani autorzy).
 
     Zastępuje dawną long_running.LongRunningResultsView: właściciel-scoping
@@ -652,21 +724,115 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
     group_required = GROUP_REQUIRED
     template_name = "import_pracownikow/importpracownikowrow_list.html"
     context_object_name = "object_list"
+    paginate_by = DOMYSLNY_ROZMIAR_STRONY
 
     @cached_property
     def parent_object(self):
         obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
         if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
             raise Http404
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         return obj
 
+    def get_paginate_by(self, queryset):
+        """Rozmiar strony z ``?per_page=``; śmieć degraduje do domyślnego.
+
+        Opcji „wszystkie" NIE ma świadomie — przy paginacji serwerowej byłaby
+        jednoklikowym powrotem do renderowania całego importu, czyli do problemu,
+        który ta zmiana usuwa.
+        """
+        try:
+            wybrany = int(self.request.GET.get("per_page", ""))
+        except (TypeError, ValueError):
+            return DOMYSLNY_ROZMIAR_STRONY
+        return wybrany if wybrany in ROZMIARY_STRONY else DOMYSLNY_ROZMIAR_STRONY
+
+    def _filtr_rodzaju(self, qs):
+        """``?rodzaj=`` — status dopasowania albo syntetyczne „do pominięcia".
+
+        „do pominięcia" czyta ``utworz_nowego`` WPROST z bazy (nie ze
+        zmaterializowanych stanów pól), więc jest świeże bez odświeżania
+        snapshotu — ten sam predykat co ``row.do_pominiecia``.
+        """
+        rodzaj = self.wybrany_rodzaj
+        if not rodzaj:
+            return qs
+        if rodzaj == "do-pominiecia":
+            return qs.filter(autor__isnull=True, utworz_nowego=False)
+        return qs.filter(confidence=rodzaj)
+
+    def _filtr_tekstu(self, qs):
+        """``?q=`` — odpowiednik dawnego filtra klienckiego po ``[data-szukaj]``.
+
+        Szukamy po tym, co widać w kolumnach Osoba / Autor / Jednostka: danych
+        z pliku, danych autora BPP (łącznie z ORCID-em i poprzednimi nazwiskami,
+        bo renderuje je ``_autor_dane.html``) oraz nazwach jednostek.
+        """
+        q = self.request.GET.get("q", "").strip()
+        if not q:
+            return qs
+        warunek = (
+            Q(**{"dane_znormalizowane__nazwisko__icontains": q})
+            | Q(**{"dane_znormalizowane__imię__icontains": q})
+            | Q(**{"dane_znormalizowane__tytuł_stopień__icontains": q})
+            | Q(autor__nazwisko__icontains=q)
+            | Q(autor__imiona__icontains=q)
+            | Q(autor__poprzednie_nazwiska__icontains=q)
+            | Q(autor__orcid__icontains=q)
+            | Q(jednostka__nazwa__icontains=q)
+            | Q(autor__aktualna_jednostka__nazwa__icontains=q)
+        )
+        return qs.filter(warunek)
+
+    def _filtr_stanow_pol(self, qs):
+        """``?stan_<klucz>=`` — filtr po zmaterializowanych stanach pól (JSONB).
+
+        Stan „brak" wymaga osobnego warunku: istnieją zamrożone snapshoty sprzed
+        dodania ``data_od``/``data_do``, którym tych kluczy po prostu brakuje
+        (``stany_pol()`` dopełnia je w Pythonie, ale równość w SQL ich nie
+        znajdzie). Dlatego „brak" = wartość „brak" LUB brak klucza.
+        """
+        from import_pracownikow.roznice import POLA_ROZNIC
+
+        for klucz, _etykieta, _ekstraktor in POLA_ROZNIC:
+            wartosc = self.request.GET.get(f"stan_{klucz}", "")
+            if wartosc not in STANY_POLA:
+                continue
+            pole = f"stany_pol_snapshot__{klucz}"
+            if wartosc == "brak":
+                qs = qs.filter(
+                    Q(**{pole: "brak"}) | ~Q(**{"stany_pol_snapshot__has_key": klucz})
+                )
+            else:
+                qs = qs.filter(**{pole: wartosc})
+        return qs
+
+    @cached_property
+    def wybrany_rodzaj(self):
+        """Zwalidowane ``?rodzaj=``; śmieć degraduje do „" (= wszystkie)."""
+        dozwolone = {"do-pominiecia"} | {k for k, _ in CONFIDENCE_CHOICES}
+        rodzaj = self.request.GET.get("rodzaj", "")
+        return rodzaj if rodzaj in dozwolone else ""
+
     def get_queryset(self):
+        # Backfill importów sprzed materializacji stanów pól. Filtr stanu pola
+        # działa w SQL na `stany_pol_snapshot`, więc wiersze z NULL-em byłyby
+        # dla niego niewidoczne. Robimy to RAZ na import (przy pierwszym wejściu
+        # po wdrożeniu) i wyłącznie dla wierszy pustych — niepusty snapshot bywa
+        # zamrożonym zapisem audytowym, którego nadpisanie skasowałoby ślad
+        # „co import zmienił". MUSI wykonać się PRZED filtrowaniem: warunek
+        # stanu „brak" używa `~Q(has_key)`, który dopasowałby także NULL-e.
+        if self.parent_object.importpracownikowrow_set.filter(
+            stany_pol_snapshot__isnull=True
+        ).exists():
+            self.parent_object.odswiez_stany_pol_wierszy(tylko_puste=True)
+
         # Rozstrzygnięte (twardy match + ręczny wybór operatora) na dół, wiersze
         # do rozstrzygnięcia (brak/wielu/zgadywanie) na górę, potem kolejność z
         # pliku. G5: prefetch kandydatów Z AUTOREM — partial dla wierszy `wielu`
         # iteruje row.kandydaci.all i czyta k.autor per opcja dropdownu; bez
         # tego N+1 (setki zapytań przy dużych plikach).
-        return (
+        qs = (
             adnotuj_pbn_instytucjonalny(self.parent_object.get_details_set())
             .annotate(
                 _prio=Case(
@@ -678,6 +844,20 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
                     output_field=IntegerField(),
                 )
             )
+            .select_related(
+                # `Jednostka.__str__` czyta `self.uczelnia.uzywaj_wydzialow`, a
+                # szablon renderuje DWIE jednostki na wiersz (`row.jednostka`
+                # i `row.autor.aktualna_jednostka`). `select_related` tworzy
+                # osobną instancję `Jednostka` per wiersz, więc cache FK na
+                # instancji nie pomaga — bez tego 2 zapytania na wiersz.
+                "jednostka__uczelnia",
+                "autor__aktualna_jednostka__uczelnia",
+                # Gdy `uzywaj_wydzialow` jest włączone, `__str__` sięga dalej po
+                # `self.wydzial`. `jednostka__wydzial` jest już w
+                # `get_details_set()`; tu brakowało odpowiednika dla jednostki
+                # aktualnej autora.
+                "autor__aktualna_jednostka__wydzial",
+            )
             .prefetch_related(
                 Prefetch(
                     "kandydaci",
@@ -688,6 +868,12 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
             )
             .order_by("_prio", "nr_arkusza", "nr_wiersza")
         )
+        # Filtry działają na CAŁYM imporcie, w SQL — nie na tym, co akurat jest
+        # w DOM-ie. Dawny filtr kliencki widziałby tylko bieżącą stronę, więc
+        # deep-link „pokaż wiersze do pominięcia" trafiałby w pustkę.
+        qs = self._filtr_rodzaju(qs)
+        qs = self._filtr_tekstu(qs)
+        return self._filtr_stanow_pol(qs)
 
     def get_context_data(self, **kwargs):
         # Sekcja odpięć („Ludzie spoza XLS") żyje teraz w OSOBNYM widoku
@@ -697,8 +883,13 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
             parent_object=parent,
             **kwargs,
         )
+        # Jedna lista instancji dla wszystkich adnotacji i dla renderu — memo
+        # `_aj_lista_cache` musi trafić w te same obiekty, które pójdą do
+        # szablonu.
+        rows = list(ctx["object_list"])
+        wstepnie_zaladuj_okresy(rows)
         if parent.edytowalny_podglad:
-            oznacz_przepiecie_prac(list(ctx["object_list"]), parent)
+            oznacz_przepiecie_prac(rows, parent)
         # Pasek filtrów stanu pól — etykiety z rejestru POLA_ROZNIC (jedno źródło
         # prawdy z modelem/szablonem). Dzielimy na ZAWSZE WIDOCZNE (główne) i
         # ZWIJANE (dodatkowe, w <details>). Stopień/stanowisko wypadają całkiem,
@@ -713,21 +904,44 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
             klucze_dodatkowe.remove("stopien")
         if not parent.ma_kolumne_stanowiska:
             klucze_dodatkowe.remove("stanowisko")
-        ctx["pola_glowne"] = [(k, etykiety[k]) for k in klucze_glowne]
-        ctx["pola_dodatkowe"] = [(k, etykiety[k]) for k in klucze_dodatkowe]
+
+        # Trójki (klucz, etykieta, wybrany) — partial odtwarza zaznaczenie radia
+        # z GET bez potrzeby filtra szablonowego do odczytu wartości ze słownika.
+        def _stan(klucz):
+            wartosc = self.request.GET.get(f"stan_{klucz}", "")
+            return wartosc if wartosc in STANY_POLA else ""
+
+        ctx["pola_glowne"] = [(k, etykiety[k], _stan(k)) for k in klucze_glowne]
+        ctx["pola_dodatkowe"] = [(k, etykiety[k], _stan(k)) for k in klucze_dodatkowe]
+        # Sekcja „Więcej filtrów…" ma być rozwinięta, gdy któryś z jej filtrów
+        # jest aktywny — inaczej użytkownik widzi zawężony wynik bez widocznej
+        # przyczyny.
+        ctx["ma_aktywny_filtr_dodatkowy"] = any(
+            wybrany for _k, _et, wybrany in ctx["pola_dodatkowe"]
+        )
         # Filtr „Rodzaj dopasowania" — opcje statusów (jedno źródło:
         # CONFIDENCE_CHOICES) + syntetyczne „do pominięcia" (autor IS NULL AND
         # NOT utworz_nowego, patrz row.do_pominiecia). Deep-link z ostrzeżenia
         # finalizacji przychodzi jako ?rodzaj=do-pominiecia; walidujemy go tu,
         # a śmieciowa wartość degraduje do "" (traktowane jak „wszystkie").
         ctx["rodzaje_confidence"] = list(CONFIDENCE_CHOICES)
-        dozwolone_rodzaje = {"do-pominiecia"} | {k for k, _ in CONFIDENCE_CHOICES}
-        rodzaj = self.request.GET.get("rodzaj", "")
-        ctx["wybrany_rodzaj"] = rodzaj if rodzaj in dozwolone_rodzaje else ""
+        ctx["wybrany_rodzaj"] = self.wybrany_rodzaj
+        # Stan formularza filtrów (odtwarzany z GET) + querystring bez `page`,
+        # żeby linki pagera zachowywały aktywne filtry.
+        ctx["szukany_tekst"] = self.request.GET.get("q", "").strip()
+        ctx["wybrane_stany"] = {
+            klucz: self.request.GET.get(f"stan_{klucz}", "")
+            for klucz, _et, _ekstraktor in POLA_ROZNIC
+        }
+        ctx["rozmiary_strony"] = ROZMIARY_STRONY
+        ctx["wybrany_rozmiar"] = self.get_paginate_by(None)
+        parametry = self.request.GET.copy()
+        parametry.pop("page", None)
+        ctx["querystring_filtrow"] = parametry.urlencode()
         return ctx
 
 
-class PodgladImportuView(GroupRequiredMixin, DetailView):
+class PodgladImportuView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, DetailView):
     """Hub „szczegóły importu" — landing z 2–4 kafelkami (Jednostki / Ludzie z
     XLS / Ludzie spoza XLS / Tytuły) i skupionymi podstronami.
 
@@ -745,6 +959,7 @@ class PodgladImportuView(GroupRequiredMixin, DetailView):
         obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
         if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
             raise Http404
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         return obj
 
     def get(self, request, *args, **kwargs):
@@ -819,12 +1034,19 @@ class PodgladImportuView(GroupRequiredMixin, DetailView):
                 # Item 6: ekran audytu (log zmian) ma sens po pełnej integracji
                 # osób — wtedy wiersze mają zapisany log_zmian.
                 "pokaz_audyt": parent.stan == ImportPracownikow.STAN_ZINTEGROWANY,
+                # Ostrzeżenie finalizacji (spec nadpisywania dat §3.5):
+                # licznik liczony tylko w fazie osób — w Kroku 1 formularz
+                # zapisu osób i tak się nie renderuje.
+                "nadpisywanie_dat_wlaczone": parent.nadpisuj_daty_zatrudnienia,
+                "liczba_nadpisan_dat": (
+                    parent.liczba_nadpisan_dat() if parent.faza_osob else 0
+                ),
             }
         )
         return ctx
 
 
-class OdpieciaView(GroupRequiredMixin, ListView):
+class OdpieciaView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, ListView):
     """Podstrona huba „Ludzie spoza XLS" — powiązania Autor+Jednostka OBECNE w
     bazie, ale NIEOBECNE w tym imporcie (§9 odpięcia).
 
@@ -841,6 +1063,7 @@ class OdpieciaView(GroupRequiredMixin, ListView):
         obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
         if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
             raise Http404
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         return obj
 
     def get_queryset(self):
@@ -857,7 +1080,7 @@ class OdpieciaView(GroupRequiredMixin, ListView):
         return super().get_context_data(parent_object=self.parent_object, **kwargs)
 
 
-class LogZmianView(GroupRequiredMixin, ListView):
+class LogZmianView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, ListView):
     """Ekran audytu (item 6) — per-wiersz log zmian po integracji: utworzenia
     (autor/jednostka/tytuł), zmiany Autora i Autor_Jednostka, przepięcia prac
     (z→do, liczba) oraz wykonane odpięcia. Owner/superuser-scoped.
@@ -878,6 +1101,7 @@ class LogZmianView(GroupRequiredMixin, ListView):
         obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
         if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
             raise Http404
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         return obj
 
     def get_queryset(self):
@@ -901,7 +1125,7 @@ class LogZmianView(GroupRequiredMixin, ListView):
         return ctx
 
 
-class WeryfikacjaJednostekView(GroupRequiredMixin, View):
+class WeryfikacjaJednostekView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, View):
     """Ekran weryfikacji decyzji o jednostkach (do utworzenia / auto-dopasowane).
 
     GET renderuje listę decyzji z kontrolkami (utwórz/mapuj/pomiń + parent +
@@ -918,6 +1142,7 @@ class WeryfikacjaJednostekView(GroupRequiredMixin, View):
         obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
         if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
             raise Http404
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         return obj
 
     def _decyzje(self):
@@ -934,7 +1159,12 @@ class WeryfikacjaJednostekView(GroupRequiredMixin, View):
         re-renderu po błędzie walidacji. Przy re-renderze ``decyzje`` mają
         NAŁOŻONE (niezapisane) wartości z POST, więc formularz nie gubi tego, co
         user ustawił; ``bledne_pks`` podświetla wiersze „mapuj bez celu”."""
-        uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
+        # Uczelnia importu (multi-hosted: złapana z requestu; fallback: jedyna).
+        # Nią też ZAWĘŻAMY pule „Mapuj na" / „Wydział (parent)" — w multi-hosted
+        # nie wolno mapować/parentować na jednostkę innej uczelni (Jednostka.uczelnia
+        # jest NOT NULL, więc filtr jest no-opem w single-tenant, a poprawny przy >1).
+        uczelnia = parent.uczelnia_do_integracji()
+        parent_opcje, mapuj_opcje = self._pule_jednostek(uczelnia)
         return {
             "parent_object": parent,
             "decyzje_brak": [
@@ -946,18 +1176,30 @@ class WeryfikacjaJednostekView(GroupRequiredMixin, View):
                 if d.tryb == ImportPracownikowJednostka.TRYB_ZGADYWANIE
             ],
             "uzywaj_wydzialow": bool(uczelnia and uczelnia.uzywaj_wydzialow),
-            "parent_opcje": Jednostka.objects.filter(parent__isnull=True).order_by(
-                "nazwa"
-            ),
-            "mapuj_opcje": Jednostka.objects.filter(
-                skupia_pracownikow=True, widoczna=True
-            ).order_by("nazwa"),
+            "parent_opcje": parent_opcje,
+            "mapuj_opcje": mapuj_opcje,
             "moze_edytowac": parent.stan == ImportPracownikow.STAN_PRZEANALIZOWANY,
             "bledne_pks": bledne_pks,
+            # Ostrzeżenie NAD listą jednostek: uczelni nie da się ustalić, więc
+            # jednostki „do utworzenia" NIE powstaną (zamiast cichego pominięcia).
+            "uczelnia_nieokreslona": parent.uczelnia_nieokreslona_a_potrzebna,
             "DECYZJA_AKCEPTUJ": ImportPracownikowJednostka.DECYZJA_AKCEPTUJ,
             "DECYZJA_MAPUJ": ImportPracownikowJednostka.DECYZJA_MAPUJ,
             "DECYZJA_POMIN": ImportPracownikowJednostka.DECYZJA_POMIN,
         }
+
+    @staticmethod
+    def _pule_jednostek(uczelnia):
+        """Pule kontrolek „Wydział (parent)" i „Mapuj na", zawężone do uczelni
+        importu gdy jest ustalona (multi-hosted). Wspólne dla kontekstu (UI) i
+        walidacji POST (``_z_puli``) — jedno źródło prawdy, więc spreparowany POST
+        nie przypisze pracowników do jednostki innej uczelni."""
+        parent_opcje = Jednostka.objects.filter(parent__isnull=True)
+        mapuj_opcje = Jednostka.objects.filter(skupia_pracownikow=True, widoczna=True)
+        if uczelnia is not None:
+            parent_opcje = parent_opcje.filter(uczelnia=uczelnia)
+            mapuj_opcje = mapuj_opcje.filter(uczelnia=uczelnia)
+        return parent_opcje.order_by("nazwa"), mapuj_opcje.order_by("nazwa")
 
     @staticmethod
     def _z_puli(raw, queryset):
@@ -975,23 +1217,22 @@ class WeryfikacjaJednostekView(GroupRequiredMixin, View):
             return None
         return queryset.filter(pk=int(raw)).first()
 
-    def _naloz_post(self, dec, prawidlowe):
+    def _naloz_post(self, dec, prawidlowe, parent_opcje, mapuj_opcje):
         """Nakłada wybory z POST na obiekt decyzji (BEZ zapisu do bazy). Wspólne
         dla walidacji, re-renderu po błędzie i finalnego zapisu — jedno źródło
-        prawdy o tym, jak POST mapuje się na pola decyzji."""
+        prawdy o tym, jak POST mapuje się na pola decyzji. ``parent_opcje`` /
+        ``mapuj_opcje`` to TE SAME (zawężone do uczelni importu) pule co UI —
+        ``_z_puli`` waliduje pk względem nich, więc spreparowany POST nie
+        przypisze pracowników do jednostki innej uczelni."""
         pref = f"dec_{dec.pk}_"
         decyzja = self.request.POST.get(pref + "decyzja")
         if decyzja in prawidlowe:
             dec.decyzja = decyzja
-        # Te same querysety co pula UI w ``_build_context`` (parent_opcje /
-        # mapuj_opcje) — patrz ``_z_puli``.
         dec.wybrany_parent = self._z_puli(
-            self.request.POST.get(pref + "parent"),
-            Jednostka.objects.filter(parent__isnull=True),
+            self.request.POST.get(pref + "parent"), parent_opcje
         )
         dec.wybrana_jednostka = self._z_puli(
-            self.request.POST.get(pref + "wybrana"),
-            Jednostka.objects.filter(skupia_pracownikow=True, widoczna=True),
+            self.request.POST.get(pref + "wybrana"), mapuj_opcje
         )
 
     def get(self, request, *args, **kwargs):
@@ -1013,9 +1254,13 @@ class WeryfikacjaJednostekView(GroupRequiredMixin, View):
             ImportPracownikowJednostka.DECYZJA_MAPUJ,
             ImportPracownikowJednostka.DECYZJA_POMIN,
         }
+        # Pule zawężone do uczelni importu — te same dla UI i walidacji POST.
+        parent_opcje, mapuj_opcje = self._pule_jednostek(
+            parent.uczelnia_do_integracji()
+        )
         decyzje = list(self._decyzje())
         for dec in decyzje:
-            self._naloz_post(dec, prawidlowe)
+            self._naloz_post(dec, prawidlowe, parent_opcje, mapuj_opcje)
         # Walidacja: „mapuj na istniejącą" bez wskazanej jednostki docelowej to
         # cicha pułapka — integracja zostawiłaby te wiersze niedopasowane.
         # Alarmuj i NIE zapisuj, ale RE-RENDERUJ z nałożonymi wartościami (BEZ
@@ -1046,7 +1291,7 @@ class WeryfikacjaJednostekView(GroupRequiredMixin, View):
         )
 
 
-class WeryfikacjaTytulowView(GroupRequiredMixin, View):
+class WeryfikacjaTytulowView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, View):
     """Ekran weryfikacji decyzji o tytułach (do utworzenia / auto-dopasowane).
 
     Mirror ``WeryfikacjaJednostekView`` — tytuł nie ma drzewa ani wydziału,
@@ -1065,6 +1310,7 @@ class WeryfikacjaTytulowView(GroupRequiredMixin, View):
         obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
         if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
             raise Http404
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         return obj
 
     def _decyzje(self):
@@ -1159,7 +1405,7 @@ class WeryfikacjaTytulowView(GroupRequiredMixin, View):
         )
 
 
-class WeryfikacjaStopniView(GroupRequiredMixin, View):
+class WeryfikacjaStopniView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, View):
     """Ekran weryfikacji decyzji o stopniach służbowych (mirror
     ``WeryfikacjaTytulowView``)."""
 
@@ -1171,6 +1417,7 @@ class WeryfikacjaStopniView(GroupRequiredMixin, View):
         obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
         if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
             raise Http404
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         return obj
 
     def _decyzje(self):
@@ -1257,7 +1504,7 @@ class WeryfikacjaStopniView(GroupRequiredMixin, View):
         )
 
 
-class WeryfikacjaStanowiskView(GroupRequiredMixin, View):
+class WeryfikacjaStanowiskView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, View):
     """Ekran weryfikacji decyzji o stanowiskach dydaktycznych (mirror
     ``WeryfikacjaStopniView``)."""
 
@@ -1269,6 +1516,7 @@ class WeryfikacjaStanowiskView(GroupRequiredMixin, View):
         obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
         if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
             raise Http404
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         return obj
 
     def _decyzje(self):
@@ -1357,7 +1605,9 @@ class WeryfikacjaStanowiskView(GroupRequiredMixin, View):
         )
 
 
-class _PkOwnerRestartMixin(GroupRequiredMixin, RestartView):
+class _PkOwnerRestartMixin(
+    GroupRequiredMixin, WymagajUczelniZRequestuMixin, RestartView
+):
     """Wspólny ``get_object`` dla widoków restartu — URL ma tylko ``pk``
     (bez ``op_type``), więc nadpisujemy ``OpTypeObjectMixin.get_object``
     i rozwiązujemy konkretny model wprost, owner-scoped.
@@ -1373,9 +1623,11 @@ class _PkOwnerRestartMixin(GroupRequiredMixin, RestartView):
     group_required = GROUP_REQUIRED
 
     def get_object(self, queryset=None):
-        return get_object_or_404(
+        obj = get_object_or_404(
             ImportPracownikow, pk=self.kwargs["pk"], owner=self.request.user
         )
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
+        return obj
 
 
 class ZatwierdzImportView(_PkOwnerRestartMixin):
@@ -1555,13 +1807,14 @@ def _pobierz_wlasny_import(request, pk):
     return obj
 
 
-class PobierzOryginalView(GroupRequiredMixin, View):
+class PobierzOryginalView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, View):
     """Pobranie oryginalnego, wgranego pliku XLSX (chroniony, przez sendfile)."""
 
     group_required = GROUP_REQUIRED
 
     def get(self, request, pk):
         obj = _pobierz_wlasny_import(request, pk)
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         if not obj.plik_xls or not os.path.exists(obj.plik_xls.path):
             raise Http404("Plik oryginalny nie istnieje.")
         return sendfile(
@@ -1572,7 +1825,7 @@ class PobierzOryginalView(GroupRequiredMixin, View):
         )
 
 
-class PobierzPoImporcieView(GroupRequiredMixin, View):
+class PobierzPoImporcieView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, View):
     """Pobranie kanonicznego, SKORYGOWANEGO pliku „po imporcie”.
 
     Dostępny dopiero po finalizacji (``STAN_ZINTEGROWANY``). Od finalizacji
@@ -1596,6 +1849,7 @@ class PobierzPoImporcieView(GroupRequiredMixin, View):
 
     def get(self, request, pk):
         obj = _pobierz_wlasny_import(request, pk)
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         if obj.stan != ImportPracownikow.STAN_ZINTEGROWANY:
             raise Http404("Plik „po imporcie” dostępny dopiero po zakończeniu importu.")
         if obj.plik_xls:

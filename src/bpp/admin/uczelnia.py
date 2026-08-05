@@ -14,6 +14,7 @@ from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers.constance_field_mixin import ConstanceUczelniaFieldsMixin
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
+from .helpers.ror_field import czysc_ror
 from .helpers.site_filtered import SiteFilteredAdminMixin
 
 
@@ -44,6 +45,7 @@ class Ukryj_Status_KorektyInline(admin.StackedInline):
         "rankingi",
         "sloty",
         "api",
+        "cerif",
     ]
     extra = 0
 
@@ -77,6 +79,9 @@ class UczelniaAdminForm(forms.ModelForm):
                 "multi-hosted to powiązanie z domeną wiąże uczelnię z jej "
                 "adresem — nie istnieje „uczelnia domyślna”."
             )
+
+    def clean_ror_id(self):
+        return czysc_ror(self.cleaned_data.get("ror_id"))
 
 
 class UczelniaAdmin(
@@ -143,6 +148,33 @@ class UczelniaAdmin(
                     "pbn_api_nie_wysylaj_prac_bez_pk",
                     "pbn_api_afiliacja_zawsze_na_uczelnie",
                     "pbn_wysylaj_bez_oswiadczen",
+                ),
+            },
+        ),
+        # DWA osobne fieldsety, mimo że oba dotyczą OAI-PMH. To NIE jest
+        # jeden przełącznik z dodatkami: `oai_pmh_aktywny` bramkuje wyłącznie
+        # /oai/ (feed oai_dc dla Primo), a `eksport_cerif_wlaczony` wyłącznie
+        # /cerif-oai/. Wrzucone do wspólnej sekcji sugerowałyby redaktorowi,
+        # że odznaczenie pierwszego wyłącza też drugi — a tak nie jest.
+        (
+            "OAI-PMH dla Primo (/oai/)",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "oai_pmh_aktywny",
+                    "oai_identyfikator_repozytorium",
+                ),
+            },
+        ),
+        (
+            "Eksport CERIF / OpenAIRE (/cerif-oai/)",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "eksport_cerif_wlaczony",
+                    "eksport_cerif_osoby",
+                    "eksport_cerif_kwoty",
+                    "ror_id",
                 ),
             },
         ),
@@ -281,6 +313,13 @@ class UczelniaAdmin(
                     "dspace_api_password",
                     "dspace_domyslny_jezyk_dc",
                 ),
+            },
+        ),
+        (
+            "REST API",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": ("api_v1_wlaczone",),
             },
         ),
         (

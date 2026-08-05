@@ -1,6 +1,13 @@
-"""Disciplines synchronization mixin for PBN API client."""
+"""Disciplines synchronization mixin for PBN API client.
 
-from django.db import transaction
+Pobranie słownika z PBN korzysta z ``django_pbn_client.sync_dictionary``
+(materialize-before-atomic): remote-fetch wykonuje się PRZED transakcją, a
+upsert do lokalnych modeli — w świeżym bloku atomic. Wcześniej
+``@transaction.atomic`` obejmował cały remote-call.
+"""
+
+from django.db import IntegrityError, transaction
+from django_pbn_client import sync_dictionary
 
 from import_common.core import (
     matchuj_aktualna_dyscypline_pbn,
@@ -11,19 +18,56 @@ from pbn_api.models import TlumaczDyscyplin
 from pbn_api.models.discipline import Discipline, DisciplineGroup
 
 
+def _update_or_create_odporne_na_wyscig(manager, defaults, **lookup):
+    """``update_or_create`` odporny na równoległy import.
+
+    Właściwej ochrony przed duplikatem dostarcza unikalny constraint na
+    (``uuid``) słownika i na (``parent_group``, ``uuid``) dyscypliny — bez
+    niego dwa równoległe importy po prostu tworzyły dwa wiersze. Constraint
+    sam w sobie zamienia jednak cichy duplikat w ``IntegrityError``, który
+    wywala cały import. Tutaj przegrany wyścig jest domykany: wiersz utworzony
+    przez równoległy proces zostaje pobrany i zaktualizowany.
+
+    ``transaction.atomic()`` w środku to savepoint — dzięki niemu
+    ``IntegrityError`` nie unieważnia transakcji zewnętrznej
+    (``download_disciplines`` jest ``@transaction.atomic``) i da się po nim
+    dalej odpytywać bazę.
+    """
+    try:
+        with transaction.atomic():
+            return manager.update_or_create(defaults=defaults, **lookup)
+    except IntegrityError:
+        obj = manager.get(**lookup)
+        for key, value in defaults.items():
+            setattr(obj, key, value)
+        obj.save()
+        return obj, False
+
+
 class DisciplinesMixin:
     """Mixin providing discipline synchronization methods."""
 
-    @transaction.atomic
     def download_disciplines(self):
-        """Zapisuje słownik dyscyplin z API PBN do lokalnej bazy"""
+        """Pobierz słownik dyscyplin z API PBN i zapisz do lokalnej bazy.
 
-        for elem in self.get_disciplines():
+        Remote-fetch (``get_disciplines``) wykonuje się poza transakcją; sam
+        zapis leci atomowo (patrz ``sync_dictionary``).
+        """
+        sync_dictionary(self.get_disciplines, self._upsert_disciplines)
+
+    def _upsert_disciplines(self, elems):
+        """Upsert pobranego słownika do ``DisciplineGroup``/``Discipline``.
+
+        Wołane WEWNĄTRZ transakcji otwartej przez ``sync_dictionary`` — bez
+        własnego ``@transaction.atomic``.
+        """
+        for elem in elems:
             validityDateFrom = elem.get("validityDateFrom", None)
             validityDateTo = elem.get("validityDateTo", None)
             uuid = elem["uuid"]
 
-            parent_group, created = DisciplineGroup.objects.update_or_create(
+            parent_group, created = _update_or_create_odporne_na_wyscig(
+                DisciplineGroup.objects,
                 uuid=uuid,
                 defaults={
                     "validityDateFrom": validityDateFrom,
@@ -32,7 +76,8 @@ class DisciplinesMixin:
             )
 
             for discipline in elem["disciplines"]:
-                Discipline.objects.update_or_create(
+                _update_or_create_odporne_na_wyscig(
+                    Discipline.objects,
                     parent_group=parent_group,
                     uuid=discipline["uuid"],
                     defaults=dict(
@@ -43,9 +88,25 @@ class DisciplinesMixin:
                     ),
                 )
 
-    @transaction.atomic
     def sync_disciplines(self):
+        """Pobierz słownik i zsynchronizuj tłumaczenia dyscyplin BPP.
+
+        Remote-fetch (``download_disciplines``) jest transakcyjnie bezpieczny;
+        dopasowanie do modeli BPP leci w OSOBNEJ transakcji
+        (``_sync_discipline_translations``). Remote-call NIE jest już
+        obejmowany transakcją (wcześniejszy ``@transaction.atomic`` na całej
+        metodzie trzymał ją otwartą przez czas pobierania z PBN).
+        """
         self.download_disciplines()
+        self._sync_discipline_translations()
+
+    @transaction.atomic
+    def _sync_discipline_translations(self):
+        """Dopasuj aktualny słownik PBN do modeli BPP.
+
+        Matching (``Dyscyplina_Naukowa``/``TlumaczDyscyplin``) jest BPP-specific
+        i celowo pozostaje w BPP (nie w pakiecie).
+        """
         try:
             cur_dg = DisciplineGroup.objects.get_current()
         except DisciplineGroup.DoesNotExist as e:
@@ -76,9 +137,7 @@ class DisciplinesMixin:
             wpis_tlumacza.save()
 
         for discipline in cur_dg.discipline_set.all():
-            if discipline.name == "weterynaria":
-                pass
-            # Każda dyscyplina z aktualnego słownika powinna być wpisana do systemu BPP
+            # Każda dyscyplina z aktualnego słownika powinna być wpisana do BPP
             try:
                 TlumaczDyscyplin.objects.get(pbn_2024_now=discipline)
             except TlumaczDyscyplin.DoesNotExist:

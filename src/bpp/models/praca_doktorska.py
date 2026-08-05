@@ -37,6 +37,13 @@ class Praca_Doktorska_Baza(
             def all(self):
                 return self
 
+            def first(self):
+                # Doktorat/habilitacja ma dokładnie jednego autora (pole
+                # `autor`, nie relacja M2M), ale kod wołający traktuje wynik
+                # jak queryset. Bez `first()` leciał AttributeError — m.in.
+                # w bpp.export.bibtex.generate_bibtex_key.
+                return self[0] if self else None
+
             def select_related(self, *args, **kw):
                 return self
 
@@ -47,6 +54,13 @@ class Praca_Doktorska_Baza(
                 return self
 
             def exists(self):
+                # NIE jest to sprzeczność z `first()` powyżej. `exists()` na
+                # FakeSet jest osiągalne wyłącznie po łańcuchu `exclude(...)`
+                # (patrz Rekord.ma_odpiete_dyscypliny), a `exclude()` tutaj
+                # IGNORUJE warunki i zwraca self. Twarde False znaczy więc
+                # „brak autorów z odpiętą dyscypliną", nie „brak autorów" —
+                # doktorat nie ma czego odpinać. Gdyby zwracało True, strona
+                # rekordu renderowałaby pusty box „odpięte dyscypliny".
                 return False
 
         ret = FakeAutorDoktoratuHabilitacji()

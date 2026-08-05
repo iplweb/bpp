@@ -20,6 +20,7 @@ class Charakter_FormalnyAdmin(
         "charakter_pbn",
         "charakter_sloty",
         "rodzaj_pbn",
+        "coar_type",
         "ukryty",
     ]
     list_filter = (

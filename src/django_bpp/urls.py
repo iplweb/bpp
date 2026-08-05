@@ -113,6 +113,12 @@ urlpatterns = (
             ),
         ),
         path(
+            "kompletnosc_polon/",
+            include(
+                "kompletnosc_polon.urls",
+            ),
+        ),
+        path(
             "ewaluacja_optymalizacja/",
             include(
                 "ewaluacja_optymalizacja.urls",
@@ -137,6 +143,13 @@ urlpatterns = (
         url(
             r"^api/v1/api-auth/",
             include("rest_framework.urls", namespace="rest_framework"),
+        ),
+        # Endpoint OAI-PMH z profilem OpenAIRE CRIS 1.2. Osobny od
+        # `bpp:oai`, który serwuje oai_dc dla Primo — tamten zostaje bez
+        # zmian, bo harvestują go biblioteki.
+        path(
+            "cerif-oai/",
+            include(("cerif_export.urls", "cerif_export"), namespace="cerif_export"),
         ),
         path(
             "zglos_publikacje/",

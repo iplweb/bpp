@@ -1,0 +1,110 @@
+{% comment %}
+Tabela krzyżowa (pivot). Kontekst: pivot (PivotResult lub None gdy za duża),
+pivot_error (PivotTooLargeError lub brak), pivot_row_dim / pivot_col_dim /
+pivot_metric (aktualny wybór — dostępne też przy błędzie), pivot_dimensions,
+pivot_metrics. Konfiguracja idzie parametrami GET (pivot_row/col/val).
+pivot_form_action / pivot_form_hidden / pivot_export_base to opcjonalne
+haki konsumenta (domyślne wartości = zachowanie multiseeka bez zmian):
+strona zapytania trzyma filtr w URL-u (nie w sesji jak multiseek), więc
+musi je przenosić przez ukryte pola i wskazać własny prefiks eksportu.
+{% endcomment %}
+<div class="multiseek-pivot-wrap">
+    <form method="get" action="{{ pivot_form_action|default:'.' }}"
+          class="multiseek-pivot-controls">
+        {# Ukryte pola przenoszą stan konsumenta (na /zapytanie/: model, #}
+        {# query, postac). Multiseek nie przekazuje pivot_form_hidden — #}
+        {# jego filtr żyje w sesji, więc pętla jest pusta. #}
+        {% for name, value in pivot_form_hidden %}
+            <input type="hidden" name="{{ name }}" value="{{ value }}">
+        {% endfor %}
+        <label>Wiersze
+            <select name="pivot_row" onchange="this.form.submit()">
+                {% for key, dim in pivot_dimensions.items %}
+                    <option value="{{ key }}"{% if key == pivot_row_dim.key %} selected{% endif %}>{{ dim.label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>Kolumny
+            <select name="pivot_col" onchange="this.form.submit()">
+                <option value="">(brak)</option>
+                {% for key, dim in pivot_dimensions.items %}
+                    {% if dim.allow_column %}
+                        <option value="{{ key }}"{% if pivot_col_dim and key == pivot_col_dim.key %} selected{% endif %}>{{ dim.label }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </label>
+        <label>W komórce
+            <select name="pivot_val" onchange="this.form.submit()">
+                {% for key, m in pivot_metrics.items %}
+                    <option value="{{ key }}"{% if key == pivot_metric.key %} selected{% endif %}>{{ m.label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <noscript><button type="submit" class="button">Odśwież</button></noscript>
+        {% if pivot and request.user.is_authenticated %}
+        {# Prefiks eksportu jest parametrem konsumenta: "../export/" dziala #}
+        {# tylko pod /multiseek/results/ (dwa segmenty sciezki). Na stronie #}
+        {# zapytania URL ma jeden segment, wiec wzglednosc trafialaby w /export/ #}
+        {# i dawala 404 — dlatego widok podaje wlasny pivot_export_base. #}
+        {% with base=pivot_export_base|default:"../export/" %}
+        <div class="multiseek-pivot-export hide-for-print">
+            Eksport tabeli:
+            <a href="{{ base }}xlsx/?{{ request.GET.urlencode }}">XLSX</a>
+            <a href="{{ base }}csv/?{{ request.GET.urlencode }}">CSV</a>
+        </div>
+        {% endwith %}
+        {% endif %}
+    </form>
+
+    {% if pivot %}
+    {% with t=pivot.as_table %}
+    <div class="multiseek-pivot-scroll">
+        <table class="multiseek-pivot">
+            <thead>
+                <tr>
+                    <th>{{ t.row_header }}</th>
+                    {% for ch in t.col_headers %}<th>{{ ch }}</th>{% endfor %}
+                    <th class="pivot-total">RAZEM</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in t.rows %}
+                <tr>
+                    <th>{{ row.label }}</th>
+                    {% for c in row.cells %}<td>{{ c|default_if_none:"" }}</td>{% endfor %}
+                    <td class="pivot-total">{{ row.total|default_if_none:"" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th class="pivot-total">RAZEM</th>
+                    {% for ct in t.col_totals %}<td class="pivot-total">{{ ct|default_if_none:"" }}</td>{% endfor %}
+                    <td class="pivot-total">{{ t.grand_total|default_if_none:"" }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    {% endwith %}
+
+    {% if pivot.has_autorzy_dim %}
+    <p class="multiseek-pivot-note">
+        {% comment %} Adnotacja o dublowaniu — bezpośrednio POD tabelą (spec §5/§7). {% endcomment %}
+        <span class="fi-info"></span>
+        Wybrany wymiar (jednostka, dyscyplina, autor…) liczy powiązania, nie
+        unikatowe prace — praca powiązana z wieloma wartościami wymiaru
+        liczona jest w każdej z nich; sumy mogą przewyższać wartości
+        całkowite.
+    </p>
+    {% endif %}
+
+    {% elif pivot_error %}
+    <p class="multiseek-pivot-note multiseek-pivot-toobig">
+        Wynik dałby zbyt dużą tabelę krzyżową do wyświetlenia
+        (liczba {% if pivot_error.kind == "cells" %}komórek{% else %}powiązań{% endif %}:
+        {{ pivot_error.count }}, limit: {{ pivot_error.limit }}). Zawęź zapytanie
+        albo wybierz mniej liczny wymiar wierszy/kolumn.
+    </p>
+    {% endif %}
+</div>

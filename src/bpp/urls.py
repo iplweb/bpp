@@ -49,7 +49,6 @@ from bpp.views.autocomplete import (
     PublicStatusKorektyAutocomplete,
     PublicTaggitTagAutocomplete,
     PublicWydawnictwo_NadrzedneAutocomplete,
-    PublicWydzialAutocomplete,
     PublicZrodloAutocomplete,
     PublisherAutocomplete,
     Seria_WydawniczaAutocomplete,
@@ -59,7 +58,6 @@ from bpp.views.autocomplete import (
     Wydawnictwo_Nadrzedne_W_PBNAutocomplete,
     Wydawnictwo_NadrzedneAutocomplete,
     Wydawnictwo_ZwarteAdminAutocomplete,
-    WydzialAutocomplete,
     ZapisanyJakoAutocomplete,
     Zewnetrzna_Baza_DanychAutocomplete,
     ZrodloAutocomplete,
@@ -101,6 +99,7 @@ from bpp.views.zapytanie import (
     ZapytanieSuggestionsView,
     ZapytanieView,
 )
+from bpp.views.zapytanie_export import ZapytanieExportView
 from powiazania_autorow.views import (
     GrafPowiazan3DView,
     GrafPowiazanDaneView,
@@ -135,6 +134,11 @@ urlpatterns = [
         "zapytanie/explain/<str:model_key>/",
         ZapytanieExplainView.as_view(),
         name="zapytanie_explain",
+    ),
+    path(
+        "zapytanie/eksport/<str:export_format>/",
+        ZapytanieExportView.as_view(),
+        name="zapytanie_eksport",
     ),
     path(
         "profil/",
@@ -369,11 +373,6 @@ urlpatterns = [
         name="public-konferencja-autocomplete",
     ),
     url(
-        r"^wydzial-autocomplete/$",
-        WydzialAutocomplete.as_view(),
-        name="wydzial-autocomplete",
-    ),
-    url(
         r"^wydawnictwo-ciagle-admin-autocomplete/$",
         Wydawnictwo_CiagleAdminAutocomplete.as_view(),
         name="wydawnictwo-ciagle-admin-autocomplete",
@@ -382,11 +381,6 @@ urlpatterns = [
         r"^wydawnictwo-zwarte-admin-autocomplete/$",
         Wydawnictwo_ZwarteAdminAutocomplete.as_view(),
         name="wydawnictwo-zwarte-admin-autocomplete",
-    ),
-    url(
-        r"^public-wydzial-autocomplete/$",
-        PublicWydzialAutocomplete.as_view(),
-        name="public-wydzial-autocomplete",
     ),
     url(
         r"^seria-wydawnicza-autocomplete/$",

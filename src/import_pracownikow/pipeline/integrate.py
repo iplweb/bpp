@@ -36,7 +36,6 @@ from bpp.models import (
     StanowiskoDydaktyczne,
     StopienSluzbowy,
     Tytul,
-    Uczelnia,
     Wymiar_Etatu,
 )
 from import_common.core.jednostka import unikalny_skrot, zaproponuj_skrot
@@ -191,8 +190,17 @@ def _integruj_wiersz(row):
         # dałoby „zgodne". Snapshot musi odzwierciedlać stan z podglądu (m.in.
         # odroczone AJ = None → funkcja „brak"). `integrate()` niżej go nie
         # nadpisze (guard `is None`), a gałąź create-only utrwala go tym save.
-        if row.stany_pol_snapshot is None:
-            row.stany_pol_snapshot = row.stany_pol()
+        #
+        # Przeliczamy BEZWARUNKOWO i przez `stany_pol_live()`. Pole bywa już
+        # wypełnione przed integracją (materializacja dla filtra listy wyników),
+        # więc dawny guard `is None` nigdy by tu nie strzelił i audyt zamroziłby
+        # stan z końca analizy — dla wierszy „utwórz nowego" jeszcze sprzed
+        # powstania autora (`autor=None` → wszędzie „brak"). `stany_pol()`
+        # zwróciłoby z kolei istniejący snapshot, czyli przypisanie byłoby
+        # no-opem. To jest JEDYNE miejsce zamrożenia; guard w `integrate()`
+        # (models.py) zostaje nietknięty, bo tamten kod biegnie już PO
+        # `_materializuj_diff` i nadpisałby zamrożenie stanem po zmianie bazy.
+        row.stany_pol_snapshot = row.stany_pol_live()
         created = _materializuj_diff(row)
         # Nowy okres zatrudnienia = utworzono AJ (created), który analiza
         # oznaczyła jako DODATKOWY okres (nowy_okres) → licznik §10.
@@ -566,24 +574,28 @@ def _rozstrzygnij_jednostki(parent, p):
     MUSI być pierwszym krokiem ``integruj`` — przed snapshotem ``stare_jednostki``
     (inaczej świeżo podłączone wiersze nie trafią do snapshotu → przepięcia
     milczą) i przed fazą nowych autorów (inaczej wiersz z odroczoną jednostką
-    poszedłby w ``get_or_create(jednostka_id=None)`` → IntegrityError)."""
-    uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
+    poszedłby w ``get_or_create(jednostka_id=None)`` → IntegrityError).
+
+    Uczelnię bierzemy z ``parent.uczelnia_do_integracji()`` (uczelnia importu
+    złapana z requestu; fallback: jedyna w systemie) — w multi-hosted (>1
+    uczelnia) ``get_single_uczelnia_or_none()`` zwróciłoby ``None`` i FAZA 0 NIE
+    utworzyłaby żadnej jednostki (regresja: ciche pominięcie)."""
+    uczelnia = parent.uczelnia_do_integracji()
     zajete_skroty = set()
     utworzono = 0
     _cache = {}
 
     def pobierz_parent_domyslny():
         if "wezel" not in _cache:
-            from bpp.models.struktura_konwersja import (
-                znajdz_lub_utworz_wezel_wydzialu,
-            )
             from pbn_import.utils.institution_import import (
                 znajdz_lub_utworz_wydzial_domyslny,
             )
 
+            # Faza C (#438): helper zwraca już jednostkę TOP-LEVEL (rola
+            # wydziału) — nie ma osobnego modelu Wydzial ani węzła-lustra,
+            # więc nowe jednostki wiszą wprost pod tym rootem.
             wydzial, _ = znajdz_lub_utworz_wydzial_domyslny(uczelnia)
-            wezel, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
-            _cache["wezel"] = wezel
+            _cache["wezel"] = wydzial
         return _cache["wezel"]
 
     for dec in parent.jednostki_do_decyzji.all():
@@ -936,6 +948,14 @@ def integruj(parent, p):
         # odblokowuje Krok 2 (import osób) i odsłania szczegóły autorów.
         parent.stan = ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
         parent.save(update_fields=["stan"])
+        # FAZY 0–0.7 przypisały wierszom jednostkę/tytuł/stopień/stanowisko, więc
+        # zmaterializowane stany pól są nieaktualne. Odświeżamy TU, bo stan
+        # „struktura zintegrowana" jest nadal `edytowalny_podglad` — to jest
+        # Krok 2, faza osób, dokładnie ta, w której operator pracuje na liście
+        # wyników i filtruje po stanach pól. Zakres strukturalny bywa
+        # uruchamiany po raz drugi (dotworzenie słowników z Kroku 2), dlatego
+        # odświeżenie musi być idempotentne — i jest, bo liczy od zera.
+        parent.odswiez_stany_pol_wierszy()
         p.result(
             {
                 "zakres": zakres,

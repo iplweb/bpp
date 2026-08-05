@@ -426,27 +426,93 @@ def test_uczelnia_do_roku_default(uczelnia, wydawnictwo_zwarte):
     assert Uczelnia.objects.do_roku_default() == 3000
 
 
-def test_zapis_uczelni_inwaliduje_cache_strony_glownej(uczelnia, mocker):
-    """Zapis Uczelni musi zrzucić cache kontekstu strony głównej.
+# Realny backend dla testu inwalidacji: domyślny DummyCache z autouse
+# ``disable_cache_for_tests`` nic nie zapisuje, więc na nim inwalidacji NIE
+# da się zaobserwować (każdy ``get`` to miss). Podmieniamy na LocMem (wzorzec
+# z ``test_cache_publiczny.py``), by przejść PEŁNĄ ścieżkę zapis→odczyt→
+# inwalidacja context-procesora ``uczelnia`` (górny pasek, strona główna).
+LOCMEM_UCZELNIA = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "test-invalidacja-uczelnia",
+    }
+}
 
-    ``get_uczelnia_context_data`` to ``@cached`` z cacheops (cache funkcji,
-    nie zapytania ORM), więc cacheops nie czyści go sam przy zapisie modelu —
-    robi to dopiero sygnał ``invalidate_uczelnia_caches``. Bez tego zmiany
-    ustawień uczelni (tytuł, flagi ``pokazuj_*``, logo) nie pojawiają się na
-    stronie głównej do godziny. Weryfikujemy samo podpięcie, niezależnie od
-    backendu cache (w tym module wyłączonego).
+
+def test_zapis_uczelni_inwaliduje_cache_strony_glownej(uczelnia, settings, mocker):
+    """Zapis Uczelni FAKTYCZNIE unieważnia cache kontekstu strony głównej.
+
+    Poprzednia wersja mockowała ``cache.delete`` — dowodziła tylko, że sygnał
+    WOŁA ``delete(klucz)``, a nie że context-procesor czyta ten SAM klucz ani
+    że po zapisie serwuje świeżą wartość (tautologia względem prawdziwego
+    backendu). Tu, na realnym ``LocMemCache``, sprawdzamy skutek: pierwsze
+    żądanie zapisuje kontekst, zapis Uczelni go usuwa, kolejne żądanie dostaje
+    nową nazwę zamiast zapamiętanej starej.
+
+    Zakres: weryfikujemy realnie warstwę Django-cache (klucz
+    ``bpp_uczelnia_<site_pk>``). Druga warstwa — ``get_uczelnia_context_data``
+    (``@cached`` cacheops) — jest w testach globalnie wyłączona (INSTALLED_APPS
+    bez ``cacheops`` + ``CACHEOPS_ENABLED=False``, patrz ``settings/test.py``),
+    a włączanie cacheopsa per-test to landmine (globalny monkey-patch, cross-
+    worker leak w Redisie pod xdist). Jej podpięcie pilnujemy osobno: ``spy``
+    potwierdza, że sygnał woła ``.invalidate()``.
     """
+    from django.core.cache import cache
+    from django.test import RequestFactory
+
+    from bpp.context_processors.uczelnia import _cache_key_for_request
+    from bpp.context_processors.uczelnia import uczelnia as uczelnia_ctx
     from bpp.views.browse import get_uczelnia_context_data
 
-    invalidate = mocker.patch.object(get_uczelnia_context_data, "invalidate")
-    delete = mocker.patch("bpp.context_processors.uczelnia.cache.delete")
+    # Override autouse ``disable_cache_for_tests`` (DummyCache) na realny LocMem.
+    settings.CACHES = {**settings.CACHES, **LOCMEM_UCZELNIA}
+    cache.clear()
 
-    uczelnia.nazwa = "Zmieniona nazwa"
+    # Spy (nie mock): przepuszcza prawdziwe wywołanie, tylko je liczy — pilnuje
+    # podpięcia inwalidacji warstwy cacheopsa (w testach będącej no-opem).
+    spy_invalidate = mocker.spy(get_uczelnia_context_data, "invalidate")
+
+    site = uczelnia.site
+
+    def swiezy_request():
+        # Symuluje osobne żądanie HTTP: ``request.site`` ustawia w produkcji
+        # ``SiteResolutionMiddleware`` — tu ustawiamy je ręcznie tak samo.
+        r = RequestFactory().get("/", HTTP_HOST=site.domain)
+        r.site = site
+        return r
+
+    klucz = _cache_key_for_request(swiezy_request())
+
+    # 1. Pierwsze żądanie zapisuje kontekst strony głównej do cache.
+    assert cache.get(klucz) is None
+    ctx1 = uczelnia_ctx(swiezy_request())
+    assert ctx1["uczelnia"].nazwa == "Testowa uczelnia"
+    assert cache.get(klucz) is not None, "pierwsze żądanie nie zapisało cache"
+
+    # 2. Warunek kontrolny (reguła #8): zmiana z POMINIĘCIEM sygnału
+    #    (``update`` nie wysyła post_save) NIE unieważnia — kolejne żądanie
+    #    dostaje STARĄ wartość z cache. Dowodzi, że cache naprawdę trzyma
+    #    migawkę; inaczej asercja z p. 3 przechodziłaby, bo cache nie działa.
+    Uczelnia.objects.filter(pk=uczelnia.pk).update(nazwa="Nazwa z pominietym sygnalem")
+    ctx_stale = uczelnia_ctx(swiezy_request())
+    assert ctx_stale["uczelnia"].nazwa == "Testowa uczelnia", (
+        "cache nie zwrócił zapamiętanej wartości — LocMem nie działa, więc "
+        "test inwalidacji niczego by nie dowodził"
+    )
+
+    # 3. Zapis przez ``save()`` → sygnał ``invalidate_uczelnia_caches`` →
+    #    ``cache.delete(klucz)``. Kolejne żądanie MUSI dostać świeżą nazwę.
+    uczelnia.nazwa = "Nazwa po zapisie"
     uczelnia.save()
 
-    invalidate.assert_called_once_with()
-    # Po wprowadzeniu kluczowania cache context-processora per-site, sygnał kasuje
-    # ZARÓWNO klucz per-site (bpp_uczelnia_<site_pk>) JAK I legacy b"bpp_uczelnia".
-    assert delete.call_count == 2
-    delete.assert_any_call(f"bpp_uczelnia_{uczelnia.site_id}")
-    delete.assert_any_call(b"bpp_uczelnia")
+    assert cache.get(klucz) is None, (
+        "zapis Uczelni nie usunął klucza cache context-procesora — "
+        "inwalidacja NIE działa"
+    )
+    spy_invalidate.assert_called_once_with()
+
+    ctx2 = uczelnia_ctx(swiezy_request())
+    assert ctx2["uczelnia"].nazwa == "Nazwa po zapisie", (
+        "po zapisie Uczelni strona główna nadal serwuje starą nazwę z cache "
+        "— inwalidacja context-procesora nie działa"
+    )

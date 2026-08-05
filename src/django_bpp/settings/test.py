@@ -112,3 +112,23 @@ ZGLOS_CAPTCHA_ENABLED = False
 # Stały test-key (nie efemeryczny z local.py) — dla testów captchy, które
 # włączają ZGLOS_CAPTCHA_ENABLED przez @override_settings.
 ALTCHA_HMAC_KEY = "test-altcha-hmac-key-deterministic-0123456789abcdef"
+
+# Szybki hasher haseł. Domyślny PBKDF2 kosztuje ~177 ms na JEDNO
+# `make_password` (zmierzone na tej bazie kodu) — a suitę zalewają fikstury
+# tworzące użytkowników: `admin_user` / `admin_client` / `admin_page` mają
+# łącznie ~2600 wystąpień w plikach testowych, a każdy test, który którąś z
+# nich zamawia, płaci za pełne przeliczenie PBKDF2 w `create_superuser`.
+#
+# Zmierzone na `src/bpp/tests/test_admin` (626 testów, `-n 8`):
+#   PBKDF2: 40,86 s wall / 264,6 s CPU
+#   MD5:    30,92 s wall / 169,7 s CPU   → −24% wall, −36% CPU
+#
+# Zysk jest największy tam, gdzie testy są CPU-bound — czyli na shardach CI
+# (runnery mają ~4 rdzenie). Suita Playwright, która czeka głównie na
+# przeglądarkę, zyskuje na czasie ściany niewiele, ale i tak oddaje ~9% CPU.
+#
+# Bezpieczne: żaden test nie asertuje algorytmu hashowania, a
+# `set_password` / `check_password` / `password_policies` chodzą przez API
+# hasherów Django i działają z dowolnym z nich. MD5 jest tu WYŁĄCZNIE
+# testowy — produkcja bierze domyślną listę hasherów z base.py.
+PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]

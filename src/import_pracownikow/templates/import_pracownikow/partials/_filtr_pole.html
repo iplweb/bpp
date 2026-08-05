@@ -1,10 +1,14 @@
 {# Jeden fieldset filtra stanu pola (radia wszystkie/zmienione/zgodne/brak). #}
-{# Kontekst: klucz, etykieta (z pola_glowne / pola_dodatkowe). Współdzielony #}
-{# przez pasek widoczny i sekcję zwijaną <details>. #}
+{# Kontekst: klucz, etykieta, wybrany — trójki z pola_glowne / pola_dodatkowe. #}
+{# `wybrany` odtwarza zaznaczenie z GET po przeładowaniu strony. #}
+{# Współdzielony przez pasek widoczny i sekcję zwijaną <details>. #}
+{# Nazwa pola to `stan_<klucz>`: filtrowanie dzieje się w SQL po #}
+{# zmaterializowanych stanach pól (stany_pol_snapshot), nie w JS po DOM-ie, #}
+{# więc obejmuje CAŁY import, a nie bieżącą stronę. #}
 <fieldset class="import-filtr-pole">
     <legend>{{ etykieta }}</legend>
-    <label><input type="radio" name="filtr-{{ klucz }}" value="wszystkie" checked> wszystkie</label>
-    <label><input type="radio" name="filtr-{{ klucz }}" value="zmienione"> zmienione</label>
-    <label><input type="radio" name="filtr-{{ klucz }}" value="zgodne"> zgodne</label>
-    <label><input type="radio" name="filtr-{{ klucz }}" value="brak"> brak w pliku</label>
+    <label><input type="radio" name="stan_{{ klucz }}" value=""{% if not wybrany %} checked{% endif %}> wszystkie</label>
+    <label><input type="radio" name="stan_{{ klucz }}" value="zmienione"{% if wybrany == "zmienione" %} checked{% endif %}> zmienione</label>
+    <label><input type="radio" name="stan_{{ klucz }}" value="zgodne"{% if wybrany == "zgodne" %} checked{% endif %}> zgodne</label>
+    <label><input type="radio" name="stan_{{ klucz }}" value="brak"{% if wybrany == "brak" %} checked{% endif %}> brak w pliku</label>
 </fieldset>

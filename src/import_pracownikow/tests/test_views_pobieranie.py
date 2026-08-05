@@ -11,11 +11,13 @@ from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Autor, Autor_Jednostka, Jednostka
 from import_pracownikow.eksport import zapisz_snapshot_po_imporcie
 from import_pracownikow.models import ImportPracownikow, ImportPracownikowRow
-from import_pracownikow.tests._helpers import unikalna_nazwa
+from import_pracownikow.tests._helpers import unikalna_nazwa, unikalny_id
 
 
 def _user_w_grupie(django_user_model, username="entry"):
-    u = django_user_model.objects.create_user(username=username, password="pass")
+    u = django_user_model.objects.create_user(
+        username=unikalny_id(username), password="pass"
+    )
     grupa, _ = Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)
     u.groups.add(grupa)
     return u
@@ -42,7 +44,9 @@ def test_oryginal_pobiera_wlasciciel_z_grupa(client, django_user_model):
 
 @pytest.mark.django_db
 def test_oryginal_bez_grupy_odmowa(client, django_user_model):
-    u = django_user_model.objects.create_user(username="plain", password="pass")
+    u = django_user_model.objects.create_user(
+        username=unikalny_id("plain"), password="pass"
+    )
     client.force_login(u)
     imp = _import_z_plikiem(u)
     resp = client.get(

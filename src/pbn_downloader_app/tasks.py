@@ -197,8 +197,16 @@ def create_task_with_lock(task_model, user, initial_step):
     from django.db import connection, transaction
     from django.utils import timezone
 
-    # 32-bit signed int dla pg_advisory_xact_lock(int)
-    lock_key = abs(hash(task_model.__name__)) % (2**31)
+    from django_bpp.db_locks import advisory_lock_id
+
+    # Klucz MUSI być deterministyczny między procesami — poprzednie
+    # `abs(hash(nazwa)) % 2**31` nie było, bo `hash()` dla str jest solony
+    # PYTHONHASHSEED-em: każdy worker Celery zakładał lock na własnym,
+    # prywatnym numerze i wykluczanie nie zachodziło w ogóle.
+    # Patrz `django_bpp.db_locks`.
+    lock_key = advisory_lock_id(
+        f"pbn_downloader_app.create_task_with_lock.{task_model.__name__}"
+    )
 
     with transaction.atomic():
         with connection.cursor() as cursor:

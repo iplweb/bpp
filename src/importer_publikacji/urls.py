@@ -3,6 +3,7 @@ from django.urls import path
 from . import views
 from .views.retry import ImportTaskRetryView
 from .views.task_status import ImportTaskStatusView
+from .views.zgloszenie import ZgloszenieWyborView
 
 app_name = "importer_publikacji"
 
@@ -121,6 +122,11 @@ urlpatterns = [
         "<int:session_id>/cancel/",
         views.CancelView.as_view(),
         name="cancel",
+    ),
+    path(
+        "<int:session_id>/zgloszenie/wybierz/",
+        ZgloszenieWyborView.as_view(),
+        name="zgloszenie-wybierz",
     ),
     path(
         "batch/<int:batch_id>/",

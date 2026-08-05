@@ -9,8 +9,10 @@ from django.utils.html import format_html
 from django.utils.translation import gettext
 from import_export.admin import ImportMixin
 from mptt.admin import DraggableMPTTAdmin
+from mptt.forms import MPTTAdminForm
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
+from bpp.admin.helpers.ror_field import czysc_ror
 from bpp.models import Autor_Jednostka, Uczelnia
 
 from ..models.struktura import Jednostka, Jednostka_Rodzic
@@ -82,6 +84,29 @@ class Autor_JednostkaInline(admin.TabularInline):
     extra = 0
 
 
+class JednostkaAdminForm(MPTTAdminForm):
+    """Walidacja ROR-a przy zapisie jednostki.
+
+    Identyfikator ma sumę kontrolną, więc literówkę widać od razu,
+    a nie dopiero po cichym braku ``RORID`` w eksporcie CERIF.
+
+    Dziedziczy z ``MPTTAdminForm``, a NIE z ``forms.ModelForm``. To nie
+    jest kosmetyka: ``MPTTModelAdmin`` ustawia ``form = MPTTAdminForm``,
+    a ta klasa wycina potomków z listy wyboru ``parent`` i w ``clean()``
+    odrzuca rodzica będącego własnym potomkiem. Podmiana na goły
+    ``ModelForm`` kasowała tę walidację po MRO i pozwalała zapisać PĘTLĘ
+    w drzewie jednostek — czyli rozjechane ``lft``/``rght``/``tree_id``
+    i ``get_descendants()`` kręcące się w nieskończoność.
+    """
+
+    class Meta:
+        model = Jednostka
+        fields = ["ror_id"]
+
+    def clean_ror_id(self):
+        return czysc_ror(self.cleaned_data.get("ror_id"))
+
+
 class JednostkaAdmin(
     ImportMixin,
     SiteFilteredAdminMixin,
@@ -92,6 +117,7 @@ class JednostkaAdmin(
     BaseBppAdminMixin,
     DraggableMPTTAdmin,
 ):
+    form = JednostkaAdminForm
     uczelnia_field_path = "uczelnia"
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
@@ -142,6 +168,7 @@ class JednostkaAdmin(
         WydzialFilter,
         JednostkaNadrzednaFilter,
         "widoczna",
+        "nie_eksportuj_przez_api",
         "wchodzi_do_rankingu_autorow",
         "skupia_pracownikow",
         "zarzadzaj_automatycznie",
@@ -176,11 +203,13 @@ class JednostkaAdmin(
                     "rodzaj",
                     "opis",
                     "widoczna",
+                    "nie_eksportuj_przez_api",
                     "wchodzi_do_rankingu_autorow",
                     "skupia_pracownikow",
                     "zarzadzaj_automatycznie",
                     "email",
                     "www",
+                    "ror_id",
                 ),
             },
         ),
@@ -300,6 +329,16 @@ class JednostkaAdmin(
         if request.GET.keys():
             return self.list_display[1:]
         return self.list_display
+
+    def get_list_filter(self, request):
+        # Multi-hosted: superuser widzi jednostki WSZYSTKICH uczelni naraz
+        # (SiteFilteredAdminMixin zawęża tylko nie-superuserów), więc bez filtra
+        # nie da się ograniczyć listy do jednej uczelni. Dokładamy filtr
+        # „uczelnia" (pierwszy) TYLKO gdy w systemie jest >1 uczelnia — na
+        # instalacji single-tenant byłby zbędny (jedna wartość do wyboru).
+        if Uczelnia.objects.count() > 1:
+            return ("uczelnia", *self.list_filter)
+        return self.list_filter
 
     def get_list_per_page(self):
         from django.db import DatabaseError, connection

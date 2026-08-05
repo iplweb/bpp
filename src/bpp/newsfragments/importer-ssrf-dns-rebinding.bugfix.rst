@@ -1,1 +1,0 @@
-Importer publikacji: pobieranie URL od użytkownika (WWW/DSpace/Omega-PSIR) pinuje połączenie do zweryfikowanego adresu IP (zamknięcie okna na DNS rebinding), nakłada twardy limit rozmiaru pobieranego ciała oraz całkowity budżet czasu na wszystkie przekierowania — utwardzenie przeciw SSRF i wyczerpaniu pamięci.

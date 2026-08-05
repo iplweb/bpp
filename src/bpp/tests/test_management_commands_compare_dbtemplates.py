@@ -219,3 +219,21 @@ def test_compare_template_side_by_side(template):
     assert result is not None
     assert any("Template: foo/bar.html" in line for line in result)
     assert any(line.startswith("-X") for line in result)
+
+
+@pytest.mark.django_db
+def test_compare_wykrywa_rozjazd_db_vs_dysk():
+    """Regresja: dawniej compare czytał 'dysk' przez get_template (loader
+    dbtemplates pierwszy) => DB-vs-DB => zawsze 'match'. Teraz czyta faktyczny
+    dysk => rozjazd MUSI być widoczny."""
+    from dbtemplates.models import Template
+
+    Template.objects.update_or_create(
+        name="opis_bibliograficzny.html",
+        defaults={"content": "TRESC-DB-INNA-NIZ-DYSK"},
+    )
+    out = io.StringIO()
+    call_command("compare_dbtemplates", "opis_bibliograficzny.html", stdout=out)
+    output = out.getvalue()
+    assert "match" not in output.lower()
+    assert "TRESC-DB-INNA-NIZ-DYSK" in output

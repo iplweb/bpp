@@ -194,6 +194,9 @@
                     {# Ostrzeżenie #4 (PR #531): zapis zmienia podstawowe #}
                     {# miejsce pracy — szczegółowy warning tuż przed przyciskiem. #}
                     {% include "import_pracownikow/partials/_ostrzezenie_podstawowe_miejsce.html" %}
+                    {% if nadpisywanie_dat_wlaczone %}
+                        {% include "import_pracownikow/partials/_ostrzezenie_nadpisanie_dat.html" %}
+                    {% endif %}
                     {# Ostrzeżenie finalizacji: wiersze bez decyzji zostaną #}
                     {# pominięte. {% with %} liczy COUNT raz (nie 2× w if+confirm). #}
                     {% with liczba_pominietych=parent_object.liczba_wierszy_do_pominiecia %}
@@ -202,7 +205,7 @@
                         {% endif %}
                         <form method="post"
                               action="{% url "import_pracownikow:zatwierdz" parent_object.pk %}"
-                              {% if liczba_pominietych %}onsubmit="return confirm('Wiersze bez dopasowania zostaną pominięte: {{ liczba_pominietych }}. Kontynuować zapis?');"{% endif %}>
+                              {% if liczba_pominietych or liczba_nadpisan_dat %}onsubmit="return confirm('{% if liczba_pominietych %}Wiersze bez dopasowania zostaną pominięte: {{ liczba_pominietych }}. {% endif %}{% if liczba_nadpisan_dat %}Daty zatrudnienia zostaną NADPISANE wartościami z pliku dla wierszy: {{ liczba_nadpisan_dat }}. {% endif %}Kontynuować zapis?');"{% endif %}>
                             {% csrf_token %}
                             <input type="hidden" name="zakres" value="pelny">
                             <label>

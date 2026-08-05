@@ -1,8 +1,29 @@
+import zipfile
 from decimal import Decimal
 
 import pytest
 
+from import_common.exceptions import DecompressionBombException
 from import_punktacji_zrodel.parser import wczytaj_plik_jcr
+
+
+def test_odrzuca_bombe_dekompresji(tmp_path):
+    """XLSX-bomba (~KB na dysku, setki MB po rozpakowaniu) jest odrzucana PRZED
+    materializacją wierszy do listy — inaczej ubija workera importu (OOM).
+
+    Zapisujemy jeden silnie kompresowalny wpis (same zera) o zadeklarowanym
+    rozmiarze rozpakowanym powyżej ``MAX_ROZMIAR_PO_DEKOMPRESJI`` (500 MB),
+    streamując go 1-MB kawałkami — plik na dysku to kilkanaście KB, a w RAM
+    trzymamy naraz tylko jeden kawałek.
+    """
+    p = tmp_path / "bomba.xlsx"
+    with zipfile.ZipFile(str(p), "w", zipfile.ZIP_DEFLATED) as zf:
+        with zf.open("xl/worksheets/sheet1.xml", "w") as f:
+            chunk = b"\0" * (1024 * 1024)
+            for _ in range(520):  # 520 MB > 500 MB limit
+                f.write(chunk)
+    with pytest.raises(DecompressionBombException):
+        wczytaj_plik_jcr(str(p))
 
 
 @pytest.mark.parametrize("fmt", ["xlsx", "csv"])

@@ -6,9 +6,8 @@ def test_Obslugujacy_Zgloszenia_WydzialowManager_emaile_dla_obslugujacego(
 ):
     # Faza B (#438) II-2: ``wydzial`` to teraz FK->Jednostka (korzeń drzewa,
     # węzeł-lustro dawnego Wydzialu).
-    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 
-    jednostka_root, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
+    jednostka_root = wydzial
 
     normal_django_user.email = "foo@bar.pl"
     normal_django_user.save()

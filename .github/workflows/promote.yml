@@ -34,7 +34,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout (pełna historia + tagi)
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -47,8 +47,11 @@ jobs:
           git fetch --tags origin master dev '+refs/heads/release/*:refs/remotes/origin/release/*'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
+          # Pin jak w tests.yml (job `lock-check`) — sciezka wydawnicza tym
+          # bardziej nie moze zalezec od plywajacej wersji narzedzia.
+          version: "0.11.29"
           enable-cache: true
 
       - name: Wykryj gałąź wydania + odczytaj RC
@@ -83,7 +86,7 @@ jobs:
           echo "::notice::Promuję ${RELEASE_REF}: obraz :${RC_TAG} → :${BASE} + :latest"
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
         with:
           username: ${{ vars.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PAT }}
@@ -127,9 +130,13 @@ jobs:
           # cairo. bumpver/towncrier czytają tylko ./pyproject.toml i edytują
           # pliki — nie potrzebują env projektu. (Ten sam wzorzec i uzasadnienie
           # co w release-candidate.yml.)
-          uvx bumpver update --no-fetch --commit --no-push \
+          # WERSJE PRZYPIETE (bumpver@2026.1132, towncrier@25.8.0 = spojne z
+          # uv.lock): ten job ma contents: write i commituje finalny bump +
+          # changelog, wiec `uvx` bez pinu ciagnalby najnowszy kod z PyPI do
+          # joba z write-em. BUMP: podnos razem z pyproject.toml/uv.lock.
+          uvx bumpver@2026.1132 update --no-fetch --commit --no-push \
             --set-version "v${BASE}"
-          uvx towncrier build --yes || echo "towncrier: brak newsfragmentów."
+          uvx towncrier@25.8.0 build --yes || echo "towncrier: brak newsfragmentów."
           git add -A
           git commit -m "Changelog dla v${BASE}" || echo "Brak zmian changelogu."
 

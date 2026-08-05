@@ -64,9 +64,8 @@ def test_JednostkaQueryObject(jednostka):
 def test_WydzialQueryObject(wydzial):
     # Faza B (#438): „wydział" w multiseeku to jednostka-korzeń (self-FK),
     # więc real_query przyjmuje root-Jednostkę (węzeł-lustro), nie Wydzial.
-    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 
-    root, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
+    root = wydzial
     n = WydzialQueryObject()
 
     ret = n.real_query(root, logic.EQUAL)
@@ -89,9 +88,8 @@ def test_WydzialQueryObject(wydzial):
 
 
 def test_PierwszyWydzialQueryObject(wydzial):
-    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 
-    root, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
+    root = wydzial
     n = PierwszyWydzialQueryObject()
 
     ret = n.real_query(root, logic.EQUAL)

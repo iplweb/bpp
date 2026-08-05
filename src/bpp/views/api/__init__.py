@@ -3,6 +3,8 @@ from decimal import Decimal, InvalidOperation
 from django.db import models, transaction
 from django.http import JsonResponse
 from django.http.response import HttpResponseNotFound
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import View
 
 from bpp.models import Autor, Autor_Dyscyplina, Uczelnia, Zrodlo
@@ -154,9 +156,38 @@ def ostatnia_dyscyplina(request, a, rok):
             return ad.dyscyplina_naukowa or ad.subdyscyplina_naukowa
 
 
-class OstatniaJednostkaIDyscyplinaView(WprowadzanieDanychRequiredMixin, View):
+@method_decorator(csrf_exempt, name="dispatch")
+class OstatniaJednostkaIDyscyplinaView(View):
     """Zwraca jako JSON ostatnią jednostkę danego autora oraz ewentualnie jego
     dyscyplinę naukową, w sytuacji gdy jest ona jedna i określona na dany rok.
+
+    Widok jest ŚWIADOMIE w pełni publiczny — bez bramki uprawnień, bez bramki
+    logowania i bez CSRF. Każda z nich była tu osobnym błędem:
+
+    - ``WprowadzanieDanychRequiredMixin`` (``e892142ff``) → 403 dla każdego
+      zgłaszającego bez roli redaktora (Rollbar #4283-4294 i ~19 bliźniaczych),
+    - ``LoginRequiredMixin`` (``84673573c``) → 302 na login dla anonimów,
+    - CSRF → wymóg świeżego tokenu z formularza.
+
+    Konsumentem jest ``autorform_dependant.js``, ładowany do PUBLICZNEGO
+    formularza ``zglos_publikacje`` (patrz ``zglos_publikacje.forms``), którego
+    ``Zgloszenie_PublikacjiWizard`` nie ma żadnej bramki logowania. Odcięci
+    użytkownicy tracili podpowiedź jednostki i dyscypliny PO CICHU, bo to AJAX
+    — ``.done()`` po prostu się nie wykonywał.
+
+    Dlaczego poluzowanie jest bezpieczne:
+
+    - widok niczego nie MUTUJE — czyta ``Autor``/``Autor_Dyscyplina`` i zwraca
+      JSON; CSRF chroni wyłącznie przed wymuszoną zmianą stanu, więc na
+      czystym odczycie nie wnosi ochrony, a psuje konsumenta,
+    - nie ujawnia niczego nowego: te same dane (istnienie autora, jego aktualna
+      jednostka) anonim dostaje z publicznej, cache'owanej ``AutorView``
+      pod ``/bpp/autor/<pk>/``,
+    - podpowiadanie dyscypliny i tak pozostaje pod kontrolą wdrożenia przez
+      ``Uczelnia.podpowiadaj_dyscypliny`` (patrz :func:`ostatnia_dyscyplina`).
+
+    Bramki redaktorskie zostają na widokach MUTUJĄCYCH obok — pilnuje tego
+    ``test_pozostale_api_nadal_wymagaja_uprawnien_redaktorskich``.
     """
 
     def post(self, request, *args, **kw):

@@ -11,7 +11,36 @@ podglądu (``models.ImportPracownikowRow.porownaj_z_baza``) — podgląd nie mo�
 zapowiadać innego okresu niż utworzy commit.
 """
 
+from collections import defaultdict
 from datetime import date
+
+
+def wstepnie_zaladuj_okresy(rows):
+    """Zasila memo ``_aj_lista_cache`` wszystkich wierszy JEDNYM zapytaniem.
+
+    ``ImportPracownikowRow._aj_lista()`` memoizuje listę okresów
+    ``Autor_Jednostka`` na instancji, ale memo jest per-wiersz — na liście setek
+    wierszy dawało to jedno zapytanie NA WIERSZ (``bpp.autor_jednostka`` nie jest
+    w ``CACHEOPS``, więc każde szło do PostgreSQL). Wypełniamy to samo memo
+    hurtowo; logika modelu pozostaje nietknięta, korzystamy z jej kontraktu.
+
+    Wiersze bez pary ``(autor, jednostka)`` też dostają wpis (pustą listę), żeby
+    ``hasattr`` w ``_aj_lista`` nie odpalił zapytania. ``rows`` MUSI być tą samą
+    listą instancji, która pójdzie dalej — inaczej memo trafi w inne obiekty.
+    """
+    from bpp.models import Autor_Jednostka
+
+    pary = {(r.autor_id, r.jednostka_id) for r in rows if r.autor_id and r.jednostka_id}
+    mapa = defaultdict(list)
+    if pary:
+        for aj in Autor_Jednostka.objects.filter(
+            autor_id__in={a for a, _ in pary},
+            jednostka_id__in={j for _, j in pary},
+        ):
+            mapa[(aj.autor_id, aj.jednostka_id)].append(aj)
+    for row in rows:
+        row._aj_lista_cache = mapa.get((row.autor_id, row.jednostka_id), [])
+    return rows
 
 
 def _wybierz_aktywny_najswiezszy(aj_lista):
