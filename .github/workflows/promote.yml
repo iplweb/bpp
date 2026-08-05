@@ -80,9 +80,11 @@ jobs:
 
           git switch -C "$RELEASE_REF" "origin/$RELEASE_REF"
           RC_TAG=$(./bin/bpp-version.py)        # np. 202606.1392rc2 (immutable docker-tag źródłowy)
-          echo "release_ref=${RELEASE_REF}" >> "$GITHUB_OUTPUT"
-          echo "base=${BASE}" >> "$GITHUB_OUTPUT"
-          echo "rc_tag=${RC_TAG}" >> "$GITHUB_OUTPUT"
+          {
+            echo "release_ref=${RELEASE_REF}"
+            echo "base=${BASE}"
+            echo "rc_tag=${RC_TAG}"
+          } >> "$GITHUB_OUTPUT"
           echo "::notice::Promuję ${RELEASE_REF}: obraz :${RC_TAG} → :${BASE} + :latest"
 
       - name: Log in to Docker Hub
@@ -137,6 +139,25 @@ jobs:
           uvx bumpver@2026.1132 update --no-fetch --commit --no-push \
             --set-version "v${BASE}"
           uvx towncrier@25.8.0 build --yes || echo "towncrier: brak newsfragmentów."
+
+          # uv.lock trzyma wersje root-pakietu we wlasnym wpisie `[[package]]
+          # bpp-iplweb`, a bumpver go NIE patchuje (file_patterns obejmuja
+          # pyproject.toml, version.py, package.json i Makefile). Bez tego
+          # kroku lock zostaje z poprzednia wersja i po merge'u do dev bramka
+          # `lockfile` (tests.yml -> `uv lock --check`) pada na kazdym wydaniu.
+          #
+          # To NIE jest to samo, co usuniete `uv lock` z release-candidate.yml.
+          # Tamto RE-RESOLVOWALO zaleznosci przy kazdym RC i mogło wciagnac
+          # deps, ktorych dev nigdy nie testowal. Tutaj `uv lock` (bez
+          # `--upgrade`) zachowuje istniejace piny, a dev jest juz bramkowany
+          # na spojnosc locka z pyproject.toml — wiec jedyna zmiana, jaka
+          # moze wniesc, to ta jedna linia z wersja root-pakietu.
+          #
+          # uv jest przypiete na 0.11.29 w kroku setup-uv wyzej. Wersja ma
+          # znaczenie: `uv lock --check` na dev biegnie na tym samym pinie,
+          # a rozne uv potrafia wygenerowac rozny (choc rownowazny) lock.
+          uv lock
+
           git add -A
           git commit -m "Changelog dla v${BASE}" || echo "Brak zmian changelogu."
 
