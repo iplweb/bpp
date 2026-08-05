@@ -81,7 +81,7 @@ jobs:
       should_test: ${{ steps.bump.outputs.should_test }}
     steps:
       - name: Checkout (pełna historia + tagi)
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -343,7 +343,7 @@ jobs:
       NUM_SHARDS: "12"
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Testujemy RC commit (bump), nie dev tip. Bez tego .test_durations
           # (mount) i ewentualne compose-refy byłyby ze złego drzewa. Obraz i
