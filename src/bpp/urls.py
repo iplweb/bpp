@@ -99,6 +99,7 @@ from bpp.views.zapytanie import (
     ZapytanieSuggestionsView,
     ZapytanieView,
 )
+from bpp.views.zapytanie_export import ZapytanieExportView
 from powiazania_autorow.views import (
     GrafPowiazan3DView,
     GrafPowiazanDaneView,
@@ -133,6 +134,11 @@ urlpatterns = [
         "zapytanie/explain/<str:model_key>/",
         ZapytanieExplainView.as_view(),
         name="zapytanie_explain",
+    ),
+    path(
+        "zapytanie/eksport/<str:export_format>/",
+        ZapytanieExportView.as_view(),
+        name="zapytanie_eksport",
     ),
     path(
         "profil/",

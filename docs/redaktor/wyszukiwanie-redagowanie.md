@@ -238,3 +238,77 @@ Analogicznie w przykładzie matematycznym:
 ``` python
 (10 + 20) * 30 * 40 # wynik to 36000
 ```
+
+## Samodzielna strona "Wyszukiwanie zapytaniem" (`/zapytanie/`)
+
+Oprócz filtru DjangoQL wbudowanego w listy modułu Redagowanie, dla
+zalogowanych redaktorów dostępna jest osobna strona pod adresem
+`/zapytanie/` (w menu **szukaj → zapytaniem**). Różni się od filtru
+listy tym, że:
+
+- zapytanie wpisuje się raz, niezależnie od konkretnej tabeli — wybiera
+  się tylko model (**rekord** albo **autor**), a samo zapytanie DjangoQL
+  działa tak samo jak opisano wyżej,
+- wynik można pokazać w kilku **postaciach**, wyeksportować w kilku
+  formatach oraz zestawić jako **tabelę krzyżową** — czego filtr listy
+  w Redagowaniu nie oferuje.
+
+### Postać wyniku
+
+Nad wynikami znajduje się rozwijana lista **Postać wyniku**. Wybór jedzie
+razem z zapytaniem — po kliknięciu "Szukaj" URL zawiera parametr
+`postac`, więc wynik da się też przesłać jako link czy zapisać w
+zakładkach.
+
+Dla modelu **rekord** dostępne są:
+
+- **rekordy (ID + akcje)** — domyślna, dzisiejsza tabela z ID rekordu
+  i linkami "Zobacz" / "Edytuj",
+- **lista** — numerowana lista opisów bibliograficznych,
+- **tabela** — tabela z sumami (impact factor, liczba cytowań, punkty
+  KBN, punktacja wewnętrzna),
+- **punktacja z wewnętrzną** / **punktacja sumaryczna** — warianty
+  tabeli z innym zestawem kolumn punktowych,
+- **BibTeX** — lista opisów jako brama do eksportu pliku `.bib`,
+- **tabela krzyżowa** — patrz niżej.
+
+Dla modelu **autor** dostępne są tylko **autorzy (ID + akcje)**
+(domyślna) i **tabela krzyżowa**.
+
+### Eksport wyników
+
+Pod nagłówkiem wyników pojawia się pasek **Eksport** z linkami do
+formatów sensownych dla wybranej postaci i modelu:
+
+- **rekord**: CSV i XLSX zawsze; HTML i DOCX dla postaci innych niż
+  tabela krzyżowa; BibTeX (`.bib`) tylko przy postaci **BibTeX**,
+- **autor**: CSV i XLSX — kartoteka kadrowa (jednostka, tytuł, stopień,
+  ORCID, PBN UID i inne) wraz z metrykami dorobku (liczba prac, Σ
+  slotów, Σ pkdaut).
+
+Eksport zawsze obejmuje **cały** wynik zapytania, nie tylko widoczną
+stronę wyników. Ze względu na to jest ograniczony limitami: eksport
+danych (CSV/XLSX) — maksymalnie 25 000 rekordów, eksport dokumentu
+(HTML/DOCX) — maksymalnie 5 000 rekordów. Po przekroczeniu limitu
+strona pokazuje komunikat z liczbą trafień i prośbą o zawężenie
+zapytania.
+
+### Tabela krzyżowa
+
+Wybranie postaci **tabela krzyżowa** odsłania dodatkowe pola wyboru
+wiersza, kolumny i miary macierzy — działa to tak samo, jak tabela
+krzyżowa znana z wyszukiwania precyzyjnego (formularzowego), ale liczy
+się na wyniku zapytania DjangoQL. Dostępna jest zarówno dla rekordów
+(np. rok × charakter formalny, liczba prac albo suma punktów), jak i
+dla autorów — w dwóch rodzinach wymiarów:
+
+- **kadrowej** — jednostka, tytuł, stopień, funkcja, płeć, kompletność
+  ORCID/PBN/e-mail,
+- **bibliometrycznej** — liczba prac, Σ slotów, Σ pkdaut wg roku
+  publikacji, dyscypliny, jednostki przy pracy, typu odpowiedzialności
+  i charakteru formalnego.
+
+W sekcji pomocy nad formularzem znajdują się gotowe **presety** —
+linki, które od razu dokładają wiersz/kolumnę/miarę do bieżącego
+zapytania i przełączają postać wyniku na tabelę krzyżową. Samą macierz
+(bez surowych wyników) można wyeksportować do CSV i XLSX.

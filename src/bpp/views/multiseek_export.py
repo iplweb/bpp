@@ -16,9 +16,42 @@ from django.utils.http import content_disposition_header
 
 from bpp import const
 from bpp.models import Uczelnia
+from bpp.pivot.core import etykieta_bool
 
 MULTISEEK_DEFAULT_REPORT_TITLE = "Rezultat wyszukiwania"
 XLSX_WORKSHEET_TITLE_MAX_LENGTH = 31
+
+PKT_WEWN = "pkt_wewn"
+PKT_WEWN_BEZ = "pkt_wewn_bez"
+TABLE = "table"
+
+EXTRA_TYPES = [
+    PKT_WEWN,
+    PKT_WEWN_BEZ,
+    TABLE,
+    PKT_WEWN + "_cytowania",
+    PKT_WEWN_BEZ + "_cytowania",
+    TABLE + "_cytowania",
+]
+
+# report_type renderowane jako tabela (reszta: lista/numer_list/None).
+TABLE_REPORT_TYPES = frozenset(EXTRA_TYPES)
+
+# Projekcje eksportu DOKUMENTU dostrojone do partiali renderu (nie do CSV/XLSX).
+# Bazowe get_queryset() gubi liczba_cytowan/uwagi → N+1 na całym querysecie.
+MULTISEEK_RENDER_LIST_FIELDS = ("id", "opis_bibliograficzny_cache", "uwagi")
+MULTISEEK_RENDER_TABLE_FIELDS = (
+    "id",
+    "opis_bibliograficzny_cache",
+    "impact_factor",
+    "punkty_kbn",
+    "liczba_cytowan",
+    "punktacja_wewnetrzna",
+    "charakter_formalny",
+    "typ_kbn",
+    "charakter_formalny__nazwa",
+    "typ_kbn__nazwa",
+)
 
 MULTISEEK_EXPORT_HEADERS = (
     "tytul_oryginalny",
@@ -404,6 +437,215 @@ def xlsx_export_response(queryset, request, report_title, wariant="dane"):
     return response
 
 
+AUTOR_EXPORT_HEADERS = (
+    "nazwisko",
+    "imiona",
+    "tytul",
+    "stopien_sluzbowy",
+    "jednostka",
+    "funkcja",
+    "orcid",
+    "orcid_w_pbn",
+    "pbn_uid_id",
+    "email",
+    "id_kadrowy",
+    "plec",
+    "liczba_prac",
+    "suma_slotow",
+    "suma_pkdaut",
+    "id_autora",
+    "link_do_bpp_url",
+)
+
+AUTOR_EXPORT_XLSX_HEADERS = (
+    "Nazwisko",
+    "Imiona",
+    "Tytuł",
+    "Stopień służbowy",
+    "Jednostka",
+    "Funkcja",
+    "ORCID",
+    "ORCID w PBN",
+    "PBN UID",
+    "E-mail",
+    "ID kadrowy",
+    "Płeć",
+    "Liczba prac",
+    "Σ slotów",
+    "Σ pkdaut",
+    "ID autora",
+    "Link do BPP",
+)
+
+AUTOR_EXPORT_SELECT_RELATED = (
+    "tytul",
+    "stopien_sluzbowy",
+    "aktualna_jednostka",
+    "aktualna_funkcja",
+    "plec",
+)
+
+
+def _metryki_dorobku(autor_ids):
+    """Liczba prac, Σ slotów i Σ pkdaut per autor_id — DWA zapytania, celowo.
+
+    "liczba_prac" idzie przez relację `autorzy` (materializowany widok
+    bpp_autorzy_mat), Σ slotów/Σ pkdaut przez ZUPEŁNIE INNĄ relację do-wielu
+    `cache_punktacja_autora_query` (FK do Rekordu na
+    bpp_cache_punktacja_autora). Dwie różne relacje do-wielu w JEDNYM
+    annotate() dają iloczyn kartezjański: `Count(..., distinct=True)` jest na
+    to odporny, `Sum` NIE JEST — zwielokrotniłby się razy liczbę dopasowań
+    drugiej relacji. Stąd DWA osobne zapytania scalane w Pythonie, nigdy
+    jeden wspólny annotate(). Dowód: test_eksport_autorow_nie_zawyza_metryk
+    w test_zapytanie_export.py.
+
+    Te same ścieżki ORM i te same nazwy pól, co metryki "liczba_prac" /
+    "suma_slotow" / "suma_pkdaut" w bpp.pivot.autor.METRICS (bazy P i U) —
+    CELOWO, żeby lista autorów i tabela krzyżowa autorów nigdy nie pokazały
+    dwóch różnych liczb dla tej samej populacji. Zmieniasz jedną stronę?
+    Zmień też drugą.
+
+    Zwraca {autor_id: (liczba_prac, suma_slotow, suma_pkdaut)} — Decimal|None
+    dla sum (None gdy autor nie ma żadnego wpisu punktacji), int dla prac
+    (0, nie None, dzięki LEFT JOIN-owi po samym "pk").
+    """
+    from django.db.models import Count, Sum
+
+    from bpp.models import Autor
+
+    baza = Autor.objects.filter(pk__in=autor_ids)
+
+    prace = {
+        row["pk"]: row["n"]
+        for row in baza.values("pk").annotate(
+            n=Count("autorzy__rekord_id", distinct=True)
+        )
+    }
+    udzialy = {
+        row["pk"]: (row["slot"], row["pkdaut"])
+        for row in baza.values("pk").annotate(
+            slot=Sum("cache_punktacja_autora_query__slot"),
+            pkdaut=Sum("cache_punktacja_autora_query__pkdaut"),
+        )
+    }
+    return {
+        autor_id: (prace.get(autor_id, 0), *udzialy.get(autor_id, (None, None)))
+        for autor_id in autor_ids
+    }
+
+
+def _iter_autor_export_rows(queryset, request):
+    queryset = queryset.select_related(*AUTOR_EXPORT_SELECT_RELATED)
+    autorzy = list(queryset)
+    metryki = _metryki_dorobku([a.pk for a in autorzy])
+    for autor in autorzy:
+        liczba_prac, slot, pkdaut = metryki.get(autor.pk, (0, None, None))
+        yield (
+            _export_value(autor.nazwisko),
+            _export_value(autor.imiona),
+            _export_value(autor.tytul),
+            _export_value(autor.stopien_sluzbowy),
+            _export_value(autor.aktualna_jednostka),
+            _export_value(autor.aktualna_funkcja),
+            _export_value(autor.orcid),
+            # Bool przez wspólny słownik pivota (TAK/NIE/— brak —), nie przez
+            # _export_value: ten dawał pythonowe „True"/„False", więc ta sama
+            # wartość jechała inaczej w CSV-ce i inaczej w macierzy
+            # eksportowanej z tej samej strony.
+            etykieta_bool(autor.orcid_w_pbn),
+            _export_value(autor.pbn_uid_id),
+            _export_value(autor.email),
+            _export_value(autor.system_kadrowy_id),
+            _export_value(autor.plec),
+            # liczba_prac/slot/pkdaut NIE przez _export_value: zostają
+            # int/Decimal/None (nie str), żeby xlsx_export_response zapisał
+            # je jako liczby (data_type "n"), nie tekst — patrz
+            # test_eksport_autorow_xlsx. csv.writer stringuje je sam
+            # (None -> pole puste), więc CSV dostaje to samo, co dawał
+            # wcześniej _export_value.
+            liczba_prac,
+            slot,
+            pkdaut,
+            autor.pk,
+            request.build_absolute_uri(autor.get_absolute_url()),
+        )
+
+
+def autor_csv_export_response(queryset, request, report_title):
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(AUTOR_EXPORT_HEADERS)
+    writer.writerows(
+        _sanitize_spreadsheet_row(row)
+        for row in _iter_autor_export_rows(queryset, request)
+    )
+
+    response = HttpResponse(output.getvalue(), content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = content_disposition_header(
+        as_attachment=True,
+        filename=_export_filename("csv", report_title),
+    )
+    return response
+
+
+def autor_xlsx_export_response(queryset, request, report_title):
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    from bpp.util import (
+        sanitize_xlsx_row,
+        worksheet_columns_autosize,
+        worksheet_create_table,
+    )
+
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = _xlsx_worksheet_title(report_title)
+    worksheet.append(AUTOR_EXPORT_XLSX_HEADERS)
+    for row in _iter_autor_export_rows(queryset, request):
+        worksheet.append(sanitize_xlsx_row(row))
+
+    header_fill = PatternFill("solid", fgColor="1F4E78")
+    header_font = Font(color="FFFFFF", bold=True)
+    for cell in worksheet[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    url_cols = _xlsx_columns_where(
+        AUTOR_EXPORT_XLSX_HEADERS, lambda h: h.startswith("Link")
+    )
+    suma_cols = _xlsx_columns_where(
+        AUTOR_EXPORT_XLSX_HEADERS, lambda h: h.startswith("Σ")
+    )
+
+    for row in worksheet.iter_rows(min_row=2):
+        for cell in row:
+            cell.alignment = Alignment(vertical="top", wrap_text=True)
+
+    _apply_xlsx_number_format(worksheet, suma_cols, "0.0000")
+    _apply_xlsx_hyperlinks(worksheet, url_cols)
+
+    worksheet.freeze_panes = "B1"
+    worksheet_columns_autosize(worksheet)
+    if worksheet.max_row > 1:
+        worksheet_create_table(worksheet, title="AutorExport")
+
+    output = io.BytesIO()
+    workbook.save(output)
+    response = HttpResponse(
+        output.getvalue(),
+        content_type=(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ),
+    )
+    response["Content-Disposition"] = content_disposition_header(
+        as_attachment=True,
+        filename=_export_filename("xlsx", report_title),
+    )
+    return response
+
+
 def _pivot_export_rows(pivot_result):
     """Wiersze eksportu macierzy pivota: nagłówek (etykieta wiersza +
     etykiety kolumn + RAZEM), wiersze danych, wiersz RAZEM. Puste komórki
@@ -469,3 +711,56 @@ def pivot_xlsx_export_response(pivot_result, request, report_title):
         filename=_export_filename("xlsx", report_title),
     )
     return response
+
+
+def document_export_response(
+    queryset, request, report_type, report_title, export_format
+):
+    """Render postaci wyniku (lista/tabela) do HTML-a albo DOCX-a.
+
+    Wydzielone z MyMultiseekExport._export_document: metoda nie używała self
+    do niczego poza odczytem report_type, a strona „Wyszukiwanie zapytaniem"
+    potrzebuje tej samej ścieżki renderu. Jeden zestaw partiali, jedna
+    sanityzacja, jedna konwersja do DOCX.
+    """
+    from django.db.models import Sum
+    from django.template.loader import render_to_string
+
+    if report_type in TABLE_REPORT_TYPES:
+        queryset = queryset.select_related("charakter_formalny", "typ_kbn").only(
+            *MULTISEEK_RENDER_TABLE_FIELDS
+        )
+        sumy = queryset.aggregate(
+            Sum("impact_factor"),
+            Sum("liczba_cytowan"),
+            Sum("punkty_kbn"),
+            Sum("punktacja_wewnetrzna"),
+        )
+        partial = "multiseek/report-body-table.html"
+    else:
+        queryset = queryset.only(*MULTISEEK_RENDER_LIST_FIELDS)
+        sumy = None
+        partial = "multiseek/report-body-list.html"
+
+    body_html = render_to_string(
+        partial,
+        {
+            "object_list": queryset,
+            "report_type": report_type,
+            "sumy": sumy,
+            "export_mode": True,
+            "start_index": 0,
+        },
+        request=request,
+    )
+    document_html = render_to_string(
+        "multiseek/export-document.html",
+        {
+            "body_html": sanitize_export_html(body_html),
+            "report_title": report_title,
+        },
+        request=request,
+    )
+    if export_format == "docx":
+        return docx_export_response(document_html, report_title)
+    return html_export_response(document_html, report_title)

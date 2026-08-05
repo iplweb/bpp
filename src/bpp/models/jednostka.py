@@ -27,6 +27,7 @@ from bpp.models import ModelZAdnotacjami, ModelZPBN_UID
 from bpp.models.abstract import ModelOpcjonalnieNieEksportowanyDoAPI, ModelZPBN_ID
 from bpp.models.autor import Autor, Autor_Jednostka
 from bpp.util import FulltextSearchMixin
+from bpp.util.ror import waliduj as waliduj_ror
 
 from .uczelnia import Uczelnia
 
@@ -156,6 +157,17 @@ class Jednostka(
     )
     email = models.EmailField("E-mail", max_length=128, blank=True, default="")
     www = models.URLField("WWW", max_length=1024, blank=True, default="")
+
+    ror_id = models.CharField(
+        "Identyfikator ROR",
+        max_length=64,
+        blank=True,
+        default="",
+        validators=[waliduj_ror],
+        help_text="Identyfikator w Research Organization Registry (ROR), np. https://ror.org/016f61126 — ma wbudowaną sumę kontrolną, więc literówka zostanie odrzucona. Używany w eksporcie "
+        "CERIF/OpenAIRE jako identyfikator zewnętrzny jednostki "
+        "organizacyjnej; gdy pusty, nie zostanie wyeksportowany.",
+    )
 
     pbn_uid = models.ForeignKey(
         "pbn_api.Institution",
