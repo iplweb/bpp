@@ -83,4 +83,35 @@ describe("bppHighlightOutsideTags", () => {
             'Kowalski &amp; <mark class="bpp-highlight">Nowak</mark>'
         );
     });
+
+    it("NIE podswietla frazy trafiajacej w podwojnie zescape'owana encje", () => {
+        // _escape_bare_angle_brackets (src/bpp/util/text.py) zamienia bare
+        // "<" na "&lt;", co po dalszym escapowaniu ampersandu w
+        // data-records daje lancuch "&amp;lt;". Fraza "amp" jest pospolita
+        // w tytulach medycznych ("ampicylina") — nie moze rozbic encji.
+        const html = "Stezenie &amp;lt;30 IU/dL u pacjentow";
+        expect(highlight(html, "amp")).toBe(html);
+    });
+
+    it("NIE podswietla frazy 'lt' trafiajacej w ten sam lancuch encji", () => {
+        const html = "Stezenie &amp;lt;30 IU/dL u pacjentow";
+        expect(highlight(html, "lt")).toBe(html);
+    });
+
+    it("NIE podswietla frazy 'amp' trafiajacej w prosta encje &amp;", () => {
+        const html = "Kowalski &amp; Nowak";
+        expect(highlight(html, "amp")).toBe(html);
+    });
+
+    it("podswietla fraze w tresci, ale nie wewnatrz encji o tej samej frazie", () => {
+        const html = "Kowalski &amp; Nowak, ampicylina";
+        expect(highlight(html, "amp")).toBe(
+            'Kowalski &amp; Nowak, <mark class="bpp-highlight">amp</mark>icylina'
+        );
+    });
+
+    it("NIE podswietla frazy trafiajacej w encje numeryczna", () => {
+        const html = "Lata 2020&#8211;2023";
+        expect(highlight(html, "8211")).toBe(html);
+    });
 });

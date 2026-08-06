@@ -10,6 +10,9 @@ gdyby allowlista nie została rozszerzona. Test broni tego rozszerzenia
 przed cofnięciem.
 """
 
+import json
+
+import lxml.html
 import pytest
 from django.core.management import call_command
 from model_bakery import baker
@@ -152,5 +155,23 @@ def test_data_records_zawiera_znacznik_jezyka(
     res = client.get(wydawnictwo_zwarte.get_absolute_url())
 
     assert res.status_code == 200
-    assert b"data-records" in res.content
-    assert b"lang=" in res.content
+
+    # Asercja NIE na całej stronie (tam "lang=" jest też w widocznym linku,
+    # renderowanym osobno przez {{ elem.opis_bibliograficzny_cache|safe }}),
+    # tylko konkretnie na wartości atrybutu data-records — to on jest
+    # wejściem wyszukiwarki/podświetlania. Wartość tekstowa przechodzi przez
+    # filtr |escapejs (Django), który zamienia "<", "=", "\"" na sekwencje
+    # \uXXXX — dokładnie tak samo, jak JS w przeglądarce robi to przez
+    # JSON.parse(), dekodujemy więc atrybut jako JSON zamiast szukać
+    # dosłownego 'lang="en"' w surowym źródle strony.
+    tree = lxml.html.fromstring(res.content)
+    elementy = tree.xpath("//*[@data-records]")
+    assert elementy, "brak elementu z atrybutem data-records na stronie"
+
+    znaleziono_lang = False
+    for element in elementy:
+        rekordy = json.loads(element.get("data-records"))
+        if any('lang="en"' in rekord["text"] for rekord in rekordy):
+            znaleziono_lang = True
+            break
+    assert znaleziono_lang, "znacznik lang nie dotarl do atrybutu data-records"
