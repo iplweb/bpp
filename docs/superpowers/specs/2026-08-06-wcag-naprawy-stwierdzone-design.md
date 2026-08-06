@@ -25,8 +25,12 @@ i raportu bez odbiorcy byłoby produkcją artefaktu, którego nikt nie czyta.
 
 - 1.1.1 — obraz bez `alt` w `504.html`
 - 1.1.1 — martwy szablon z obrazem bez `alt` (usunięcie, nie łatanie)
+- 3.1.1 — `<html lang="en">` na polskiej stronie 504 (znalezione przy
+  poprawce `alt`; patrz „Naprawa 1")
 - 3.1.2 — atrybuty `lang` na tytułach oryginalnych, **oba wektory**
 - warunek konieczny dla 3.1.2: rozszerzenie allowlisty sanityzatora
+- naprawa podświetlania w wyszukiwarce rekordów powiązanych (regresja
+  wywołana przez powyższe — patrz „Wpływ na konsumentów opisu")
 - wykaz świadomie odroczonych niezgodności
 - korekta błędnych ustaleń w specyfikacji z 2026-08-05
 
@@ -61,6 +65,17 @@ gdy brak atrybutu każe mu odczytać nazwę pliku („database dot es vee gee").
 
 Opis w rodzaju `alt="ikona bazy danych"` byłby błędem — powtarzałby
 dekorację jako treść i wydłużał odczyt strony błędu.
+
+**Przy okazji: 3.1.1 Language of Page (A).** `504.html:2` deklaruje
+`<html lang="en">`, a cała treść strony jest polska („Przekroczono
+dozwolony czas wykonywania zapytania…"). Czytnik ekranu odczytuje ją
+angielską fonetyką — całą, nie fragment. Poprawka to `en` → `pl`.
+
+Wchodzi do zakresu, bo dotyczy pliku edytowanego w tej samej iteracji i
+jest jednowyrazowa. Kryterium nie było w specyfikacji z 2026-08-05, bo
+inwentaryzacja szła po widokach publicznych, a `504.html` to strona błędu
+serwera. To jedyny szablon w projekcie z własnym `<html lang>` —
+pozostałe dziedziczą po `base.html`, które deklaruje `pl` poprawnie.
 
 ## Naprawa 2 — 1.1.1, martwy szablon
 
@@ -351,13 +366,32 @@ przed tytułem.
 | pomocnik tytułu | `src/pbn_export_queue/views/utils.py:188-200` | fallback na opis |
 | **rekordy powiązane (publiczne)** | `src/bpp/templates/browse/praca_tabela_mono.html:676,914` | `data-records` z `\|safe\|escapejs`; JS szuka po surowym HTML i podświetla przez `replace` |
 
-Ostatnia pozycja jest najistotniejsza, bo leży w **zakresie audytu** — to
-wyszukiwarka na publicznej stronie szczegółów, a nie narzędzie
-administracyjne. Znacznik wstawiony przed tytułem może rozciąć frazę
-szukaną przez użytkownika i zaburzyć podświetlanie.
+Ostatnia pozycja wymaga **naprawy, nie tylko testu** — i leży w zakresie
+audytu, bo to wyszukiwarka na publicznej stronie szczegółów.
 
-Blob już dziś zawiera znaczniki, więc klasa problemu nie jest nowa — ale
-wstawiamy je w nowym miejscu, więc każda z czterech pozycji dostaje test.
+Kod (`praca_tabela_mono.html:1140-1200`) filtruje przez `indexOf` na surowym
+HTML-u, a trafienia podświetla przez
+`text.replace(regex, '<mark …>$1</mark>')`, po czym wstawia wynik metodą
+`.html(text)`. Regex nie odróżnia treści od znaczników.
+
+Dziś blob zawiera `<b>`, `<i>`, `<sub>` — tagi krótkie i rzadko będące
+szukaną frazą, więc problem jest utajony. `<span lang="en">` wprowadza do
+tekstu podciągi `span`, `lang`, `en`, `an` — pospolite w tytułach polskich i
+angielskich. Wpisanie „en" wstawi `<mark>` **w środek atrybutu**
+(`lang="<mark>en</mark>"`), co daje zepsuty markup w `.html()`.
+
+To regresja wywołana naszą zmianą, nie zastany dług — więc wchodzi do
+zakresu. Naprawa: podświetlać wyłącznie w segmentach tekstowych, z
+pominięciem zawartości znaczników. Logika podświetlania zostaje
+wyekstrahowana z szablonu do modułu JS, żeby dało się ją przetestować
+jednostkowo (vitest, `tests/js/`); reszta inline'owego kodu tej wyszukiwarki
+zostaje na miejscu.
+
+Filtrowanie przez `indexOf` na HTML-u pozostaje bez zmian — fraza przecięta
+znacznikiem po prostu nie znajdzie rekordu, co jest zachowaniem zastanym i
+nie psuje markupu. Odnotowujemy je testem dokumentującym stan.
+
+Trzy pozostałe pozycje z tej grupy dostają testy bez zmian w kodzie.
 
 ## Testy
 
@@ -389,18 +423,27 @@ przez `SzablonDlaOpisuBibliograficznego.nazwa_szablonu`):
 - `<span style="...">`, `<span class="...">` → atrybuty usunięte
 - `<span lang="en">` → przechodzi w całości
 
-**Wyszukiwanie po podłańcuchu** — po jednym teście na każdą z czterech
-pozycji z tabeli:
+**Wyszukiwanie po podłańcuchu (PBN, bez zmian w kodzie)** — po jednym teście:
 - `list_views.py` i `action_views.py`: rekord **bez** `tytul_oryginalny`
   (inaczej test nie trafi w gałąź `elif`), fraza z opisu niesąsiadująca ze
   znacznikiem → rekord nadal znajdowany
 - `utils.py`: fallback zwraca opis ze znacznikiem
-- rekordy powiązane: test szablonowy sprawdzający, że `data-records`
-  zawiera znacznik, plus test JS (vitest) na wyszukiwanie i podświetlanie
-  w tekście ze znacznikiem
 
-Przypadek frazy przeciętej znacznikiem odnotowujemy asercją zgodną z
-zastanym zachowaniem — dokumentuje stan, nie udaje naprawy.
+**Podświetlanie w rekordach powiązanych (naprawa)** — vitest na
+wyekstrahowanym module:
+- fraza w treści → podświetlona `<mark>`
+- fraza występująca **wyłącznie w nazwie atrybutu lub jego wartości**
+  (`en`, `lang`, `span`) → **żadnego `<mark>`**, markup nietknięty
+- fraza występująca i w treści, i w atrybucie → podświetlone tylko
+  wystąpienie w treści
+- fraza rozdzielona znacznikiem → brak dopasowania, markup nietknięty
+- znaki specjalne regexa w frazie (`.`, `*`, `(`) → traktowane dosłownie
+- plus test szablonowy: `data-records` zawiera `<span lang=` po zmianie
+  generatora
+
+Przypadek frazy przeciętej znacznikiem przy **filtrowaniu** (`indexOf`)
+odnotowujemy asercją zgodną z zastanym zachowaniem — dokumentuje stan, nie
+udaje naprawy.
 
 **1.1.1** — asercja, że `504.html` renderuje `<img` z `alt=""`.
 
