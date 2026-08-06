@@ -1,8 +1,10 @@
-# Soft-delete — Faza 05: PBN wycofanie przez kolejkę
+# Soft-delete — Faza 05: PBN wycofanie (kolejka + ścieżka synchroniczna)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. TDD: każdy krok najpierw PRAWDZIWY failing test → komenda + FAIL → PRAWDZIWA implementacja → komenda + PASS → commit.
 
 **Goal:** Rozszerzyć `pbn_export_queue` o operację `WYCOFANIE` (obok dotychczasowej `WYSYLKA`), tak by soft-delete publikacji mógł asynchronicznie wycofać oświadczenia dyscyplin z profilu instytucji PBN przez `client.delete_all_publication_statements(pbn_uid)`, z retry/locking/błędami jak istniejąca ścieżka wysyłki. Dostarczyć publiczne funkcje zakolejkowujące (`zakolejkuj_wycofanie`, `zakolejkuj_wysylke`) wołane potem z fazy 06, oraz zaktualizować `SentData` po udanym wycofaniu (`submitted_successfully=False` + znacznik `withdrawn_at`), bez kasowania wiersza.
+
+> 🔄 **Zmiana zakresu 2026-08-06 (decyzja #16).** Wycofanie musi działać **dwoma wejściami**, nie jednym: rekord bywa wysyłany do PBN także **synchronicznie, bez kolejki** (`synchronizuj_publikacje`, `src/pbn_integrator/utils/synchronization.py:180`). Dlatego logika wycofania ma mieszkać w **wolnostojącej funkcji-prymitywie**, a `withdraw_from_pbn()` na modelu kolejki jest tylko jej cienkim wywołaniem. Patrz Task 05.0 i 05.9.
 
 **Architecture:** Nowe pole `operacja` (`TextChoices` `WYSYLKA="wysylka"`/`WYCOFANIE="wycofanie"`, default `WYSYLKA` dla kompatybilności wstecznej) na `PBN_Export_Queue`. `send_to_pbn()` rozgałęzia się na początku: `WYCOFANIE` → nowa metoda `withdraw_from_pbn()` (GET klienta jak w wysyłce, `delete_all_publication_statements` z retry, aktualizacja `SentData`, status przez istniejące `_handle_successful_send`-analog / `error()`); `WYSYLKA` → dotychczasowa ścieżka bez zmian. Gate zakolejkowania: wycofanie tylko gdy rekord ma `pbn_uid_id`.
 
@@ -61,6 +63,48 @@
 ---
 
 ## Tasks
+
+### Task 05.0 — Prymityw `wycofaj_oswiadczenia()` (jedno miejsce prawdy)
+
+> Dodane 2026-08-06 (decyzja #16). **Rób to PRZED 05.3** — `withdraw_from_pbn()`
+> ma być cienkim wywołaniem tego prymitywu, nie własną implementacją.
+
+Cała logika wycofania mieszka w wolnostojącej funkcji, żeby wejście
+asynchroniczne (kolejka) i synchroniczne (`synchronizuj_publikacje`)
+zostawiały **identyczny** stan `SentData` i identyczną klasyfikację błędów.
+
+**Files:**
+- Create: `src/pbn_api/wycofanie.py` (lub `src/pbn_export_queue/wycofanie.py` —
+  wybierz tak, by NIE powstał cykl importów: prymityw nie może importować
+  modelu kolejki)
+- Test: `src/pbn_api/tests/test_wycofanie.py`
+
+Kontrakt:
+
+```python
+def wycofaj_oswiadczenia(publikacja, client) -> WynikWycofania:
+    """Wycofuje oświadczenia dyscyplin publikacji z profilu instytucji PBN.
+
+    Gate: publikacja bez pbn_uid -> zwraca wynik POMINIETO (nie błąd).
+    Obiektu publikacji w PBN NIE kasujemy (jest współdzielony).
+    Aktualizuje SentData: submitted_successfully=False + withdrawn_at.
+    """
+```
+
+- [ ] **Krok 05.0.1 — testy obsługi wyjątków (wzorzec do przejęcia:
+  `src/pbn_wysylka_oswiadczen/tasks.py:54-76`).** Trzy przypadki, każdy
+  z innym wynikiem:
+  - `CannotDeleteStatementsException` → **SUKCES** (oświadczeń nie było —
+    stan docelowy osiągnięty). To NIE jest błąd; zaległa pułapka.
+  - `PraceSerwisoweException` → propaguj (retry ma sens, PBN w oknie
+    serwisowym).
+  - `HttpException` → błąd zaklasyfikowany, z treścią odpowiedzi.
+  - `pbn_uid is None` → POMINIETO, bez wołania klienta.
+- [ ] **Krok 05.0.2 — implementacja** + aktualizacja `SentData` wewnątrz
+  prymitywu (NIE u wywołującego).
+- [ ] **Krok 05.0.3 — PASS** + commit.
+
+---
 
 ### Task 05.1 — Pole `operacja` na `PBN_Export_Queue` + migracja
 
@@ -646,6 +690,42 @@ Drobne wsparcie operacyjne: pokaż operację na liście kolejki, by superuser od
 - [ ] **Komenda + PASS:** `uv run pytest src/pbn_export_queue/tests/test_operacja_wycofanie.py::test_admin_pokazuje_operacje -x` → PASS.
 - [ ] **Lint:** `uv run ruff check src/pbn_export_queue/admin.py && uv run ruff format src/pbn_export_queue/admin.py`
 - [ ] **Commit:** `git add -A && git commit -m "feat(pbn_export_queue): admin pokazuje kolumnę/filtr operacja"`
+
+---
+
+### Task 05.9 — Wejście synchroniczne (poza kolejką)
+
+> Dodane 2026-08-06 (decyzja #16).
+
+Rekord bywa wysyłany do PBN bez kolejki — ta sama ścieżka musi umieć wycofać.
+
+**Files:**
+- Modify: `src/pbn_integrator/utils/synchronization.py` (i/lub miejsce, które
+  faktycznie robi synchroniczną wysyłkę — **zweryfikuj wywołujących**:
+  `grep -rn --include='*.py' "synchronizuj_publikacje" src/`)
+- Test: `src/pbn_integrator/tests/test_wycofanie_sync.py`
+
+- [ ] **Krok 05.9.1 — ustal realny zbiór ścieżek synchronicznych.** Nie zgaduj;
+  wypisz wywołujących i rozstrzygnij, które z nich mogą wystąpić w kontekście
+  soft-delete (management command? admin action? import?).
+- [ ] **Krok 05.9.2 — test: ścieżka synchroniczna woła prymityw i zostawia
+  `SentData` w tym samym stanie co kolejka.** Kluczowa asercja — **równoważność
+  obu wejść**:
+  ```python
+  # po wycofaniu synchronicznym i po wycofaniu przez kolejkę
+  # SentData ma być nieodróżnialne (submitted_successfully, withdrawn_at)
+  ```
+- [ ] **Krok 05.9.3 — implementacja: wywołanie `wycofaj_oswiadczenia()`.**
+  ⚠️ **NIE** wołaj `client.delete_all_publication_statements()` bezpośrednio —
+  to złamałoby niezmiennik z §4.2 specu (rozjazd `SentData`/`SoftDeleteLog`
+  między wejściami).
+- [ ] **Krok 05.9.4 — grep kontrolny:** poza prymitywem i testami nie ma
+  wywołań `delete_all_publication_statements`, z wyjątkiem
+  `pbn_wysylka_oswiadczen` i `pbn_api/management/` (istniejące, wsadowe,
+  poza zakresem soft-delete):
+  ```bash
+  grep -rn --include='*.py' "delete_all_publication_statements" src/ | grep -v tests
+  ```
 
 ---
 

@@ -61,7 +61,7 @@
 - `src/bpp/tests/test_soft_delete/test_audyt_kategorii_b.py`
 
 **Bez zmian (decyzja audytu udokumentowana w planie):**
-- 90 miejsc `*_Autor.objects` w ewaluacji / API / przemapuj — patrz Task 7.
+- 128 miejsc `*_Autor.objects` w ewaluacji / API / przemapuj — patrz Task 7.
 - `src/komparator_pbn/views.py`, `src/snapshot_odpiec/tasks.py`,
   `src/ewaluacja_dwudyscyplinowcy/core.py` — patrz Task 7.
 
@@ -128,6 +128,63 @@ git add src/bpp/tests/test_soft_delete/__init__.py \
     src/bpp/tests/test_soft_delete/test_audyt_kategorii_b.py
 git commit -m "test(soft-delete): re-import po pbn_uid widzi soft-deletowany rekord (failing)"
 ```
+
+---
+
+## Task 1b: Polityka „trafiłem w kosz" — POMIŃ + ZARAPORTUJ (decyzja #14)
+
+> 🔄 **Dodane 2026-08-06.** Przełączenie na `global_objects` (Taski 2-5)
+> rozwiązuje **duplikaty**, ale zostawia otwarte drugie pytanie: importer
+> dopasował rekord, który operator świadomie skasował — **i co teraz?**
+> Bez jawnej decyzji domyślne zachowanie to „zaktualizuj po cichu", czyli
+> import nadpisuje zawartość kosza.
+
+**DECYZJA: pomiń rekord w koszu, zaraportuj trafienie.** Nie tykamy go, nie
+przywracamy, nie tworzymy obok nowego. Uzasadnienie: soft-delete to jawna
+deklaracja „tego tu nie ma"; cichy update ją podważa, auto-restore pozwoliłby
+importowi wskrzeszać rzeczy skasowane celowo, a nowy rekord obok odtwarzałby
+problem duplikatów.
+
+**Konsekwencja dla Tasków 2-5:** samo `global_objects` NIE wystarcza — każde
+przełączone miejsce musi po dopasowaniu **sprawdzić `deleted_at`** i odciąć
+przetwarzanie z raportem. Kolejność: najpierw ten task (kontrakt + helper),
+potem 2-5 go używają.
+
+**Files:**
+- Create: helper w `src/import_common/` (np. `pomin_skasowane()` /
+  `WynikDopasowania`) — miejsce ustal tak, by mogły go importować zarówno
+  `import_common`, jak i `pbn_integrator` bez cyklu
+- Test: `src/import_common/tests/test_pomijanie_kosza.py`
+
+- [ ] **Krok 1b.1 — padający test kontraktu:**
+  ```python
+  @pytest.mark.django_db
+  def test_import_pomija_rekord_w_koszu_i_raportuje(wydawnictwo_ciagle_z_pbn_uid):
+      wc = wydawnictwo_ciagle_z_pbn_uid
+      pbn_uid, tytul_przed = wc.pbn_uid_id, wc.tytul_oryginalny
+      wc.delete()
+
+      wynik = <ścieżka importu>(pbn_uid=pbn_uid, dane={"tytul_oryginalny": "NOWY"})
+
+      # 1) nie utworzono duplikatu
+      assert Wydawnictwo_Ciagle.global_objects.filter(pbn_uid_id=pbn_uid).count() == 1
+      # 2) rekord w koszu NIE został nadpisany
+      wc.refresh_from_db()
+      assert wc.tytul_oryginalny == tytul_przed
+      assert wc.deleted_at is not None
+      # 3) fakt został zaraportowany (nie połknięty)
+      assert wynik.pominieto_bo_w_koszu
+  ```
+
+- [ ] **Krok 1b.2 — implementacja helpera + raportowanie.** ⚠️ **Nie połykaj
+  po cichu** — to byłoby złamanie reguły „żadnych cichych porażek" z CLAUDE.md.
+  Tam gdzie ścieżka importu ma strukturę raportu (`import_common`) — dodaj
+  osobną kategorię (nie „błąd", nie „utworzono"). Tam gdzie jej nie ma
+  (management commands) — log + licznik na końcu przebiegu.
+
+- [ ] **Krok 1b.3 — inwentaryzacja miejsc.** Wypisz wszystkie ścieżki
+  z Tasków 2-5 i przy każdej zapisz, GDZIE ląduje raport. Miejsce bez
+  odbiorcy raportu = niedokończony task, nie „szczegół".
 
 ---
 
@@ -604,7 +661,7 @@ git commit -m "fix(soft-delete): pbn_import czysci publikacje przez hard_delete 
 
 ---
 
-## Task 7: Audyt 90 miejsc `*_Autor.objects` — decyzje (zostaw `objects` / zmień na `global_objects`)
+## Task 7: Audyt 128 miejsc `*_Autor.objects` — decyzje (zostaw `objects` / zmień na `global_objects`)
 
 Po fazie 02 `*_Autor.objects` ukrywa kaskadowo soft-deletowane autorstwa
 (kaskada §2.2). To jest **poprawny default dla ewaluacji** (praca w koszu nie
@@ -890,7 +947,7 @@ git commit -m "chore(soft-delete): faza 03 audyt kat. B — format/lint"
   rekordach, nie matching tworzący duplikaty; **bez zmian**.
 - `pbn_import/utils/publication_import.py:115-116` jawny `.hard_delete()` →
   Task 6. ✓
-- Audyt 90 miejsc `*_Autor.objects` → Task 7 (decyzje per-miejsce; jedyna
+- Audyt 128 miejsc `*_Autor.objects` → Task 7 (decyzje per-miejsce; jedyna
   zmiana: merge → `global_objects`). ✓
 - Testy wymagane przez zlecenie: re-import nie tworzy duplikatu (Task 1-4),
   matching po `pbn_uid` znajduje soft-deletowaną (Task 1-3), ewaluacja pomija

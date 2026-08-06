@@ -4,7 +4,7 @@
 
 **Goal:** Uczynić 5 modeli publikacji (`Wydawnictwo_Ciagle`, `Wydawnictwo_Zwarte`, `Praca_Doktorska`, `Praca_Habilitacyjna`, `Patent`) `SoftDeleteModel`-ami z **wąską, kontrolowaną kaskadą** soft-delete na własne wiersze `*_Autor` (`Wydawnictwo_Ciagle_Autor`, `Wydawnictwo_Zwarte_Autor`, `Patent_Autor`) pod wspólnym `transaction_id`, **bez** refleksyjnej kaskady pakietu (która ruszyłaby `*_Streszczenie` itd.). Zamienić `slug unique=True` na warunkowy `UniqueConstraint` (reuse slug po soft-delete). Przepleść filtr soft-delete z istniejącymi menedżerami `Wydawnictwo_*_Manager` (mixin opłat) przez wspólny QuerySet/MRO, bez nadpisywania metod fees.
 
-**Architecture:** `django-soft-delete` daje `SoftDeleteModel` (pola `deleted_at`/`restored_at`/`transaction_id`, menedżery `objects`/`global_objects`/`deleted_objects`, sygnały `post_soft_delete`/`post_restore`/`post_hard_delete`). Faza 01 utworzyła `src/bpp/models/soft_delete.py` z `BppSoftDeleteQuerySet` (gate na bulk `update(deleted_at=...)`), `BppSoftDeleteManager`, `BppGlobalManager` oraz uczyniła 3 modele `*_Autor` SoftDeleteModel-ami (+ filtr `deleted_at` w widokach źródłowych). **Ta faza zależy od 01.** Tu nadpisujemy `delete()`/`restore()` na 5 modelach: per-instancja `save()` (NIGDY bulk `update`), jawna wąska kaskada na `autorzy_set` (related_name `*_Autor`→publikacja) przez `.delete(transaction_id=...)`/`.restore(transaction_id=...)` na każdym wierszu (kontrakt z reversion: zawsze per-instancja).
+**Architecture:** `django-soft-delete` daje `SoftDeleteModel` (pola `deleted_at`/`restored_at`/`transaction_id`, menedżery `objects`/`global_objects`/`deleted_objects`, sygnały `post_soft_delete`/`post_restore`/`post_hard_delete`). Faza 01 utworzyła `src/bpp/models/soft_delete.py` z `BppSoftDeleteQuerySet` (gate na bulk `update(deleted_at=...)`), `BppSoftDeleteManager`, `BppGlobalManager` oraz uczyniła 3 modele `*_Autor` SoftDeleteModel-ami — wraz z DDL-em dla **ścieżki autorstwa** (widoki `bpp_*_autorzy` + gałąź kasująca w `bpp_refresh_autor_*` + bramka `WHEN`). ⚠️ **Dla 5 tabel publikacji ten sam DDL trzeba zrobić w TEJ fazie** — Task 2b. **Ta faza zależy od 01.** Tu nadpisujemy `delete()`/`restore()` na 5 modelach: per-instancja `save()` (NIGDY bulk `update`), jawna wąska kaskada na `autorzy_set` (related_name `*_Autor`→publikacja) przez `.delete(transaction_id=...)`/`.restore(transaction_id=...)` na każdym wierszu (kontrakt z reversion: zawsze per-instancja).
 
 **Tech Stack:** Django, PostgreSQL, `django-soft-delete>=1.0.23`, `django-denorm-iplweb` (slug jest polem `@denormalized`!), pytest + `model_bakery.baker`. Python wyłącznie przez `uv run`. Linia ≤88 znaków (ruff). Komentarze/komunikaty po polsku.
 
@@ -28,7 +28,7 @@
 - `Praca_Doktorska.autor` FK CASCADE (`praca_doktorska.py:136`), `Praca_Habilitacyjna.autor` O2O PROTECT (`praca_habilitacyjna.py:42`). Te FK to **faza 04** — NIE ruszamy tu.
 - **`slug` jest polem `@denormalized(models.SlugField, max_length=400, unique=True, db_index=True, null=True, blank=True)`** (denorm z `django-denorm-iplweb`), w: `wydawnictwo_ciagle.py:246`, `wydawnictwo_zwarte.py:325` (w `Wydawnictwo_Zwarte`), `patent.py:180`, `praca_doktorska.py:105` (w `Praca_Doktorska_Baza` → dziedziczone przez `Praca_Doktorska` **i** `Praca_Habilitacyjna`). Denorm field jest fizyczną kolumną w DB → migracja zmiany `unique=True`→`UniqueConstraint` jest realną migracją schematu.
 - `Praca_Habilitacyjna` i `Praca_Doktorska` dziedziczą slug z `Praca_Doktorska_Baza` (abstract) — zmiana atrybutu pola w abstrakcie dotyka OBU modeli; migracje per model (każdy ma własną kolumnę `slug`).
-- Następny numer migracji: `0421` (ostatnia: `0420_autor_pokazuj_siec_powiazan_and_more.py`). NIE modyfikuj istniejących migracji.
+- ⚠️ **Numeracja migracji (stan 2026-08-06):** faza 01 zajmuje `0488`/`0489`, więc ta faza startuje od `0490`. **Zweryfikuj liść przed startem** (`ls src/bpp/migrations/*.py | tail -3`) — `dev` żyje. Numery w tym planie są orientacyjne; kanoniczna jest kolejność. NIE modyfikuj istniejących migracji.
 - `Zgloszenie_Publikacji` (`src/zglos_publikacje/models.py:60`) — precedens: po prostu dziedziczy `SoftDeleteModel` bez własnego menedżera.
 
 ## Kontrakt z reversion (PINNED — NIE łamać)
@@ -91,11 +91,13 @@ Mixin dziedziczy `SoftDeleteModel` i nadpisuje `delete()`/`restore()`: per-insta
       """Wąska, kontrolowana kaskada soft-delete: rodzic + własne wiersze
       `*_Autor` (related_name `autorzy_set`) pod wspólnym `transaction_id`.
 
-      NIE używa refleksyjnej kaskady pakietu (rzuciłaby SoftDeleteException
-      na `*_Streszczenie`/`*_Zewnetrzna_Baza_Danych`/`Publikacja_Habilitacyjna`
-      przy strict=True, albo twardo skasowała je przy strict=False). Kaskada
-      zatrzymuje się na `*_Autor`. Kontrakt z reversion: zawsze per-instancja
-      save()/delete(), NIGDY bulk update(deleted_at=...).
+      NIE uzywa refleksyjnej kaskady pakietu. UWAGA: delete() pakietu ma
+      DOMYSLNIE strict=False (a restore() -- strict=True), wiec kaskada NIE
+      krzyknelaby SoftDeleteException na *_Streszczenie /
+      *_Zewnetrzna_Baza_Danych / Publikacja_Habilitacyjna -- po cichu by po
+      nich przejechala. Kaskada zatrzymuje sie na *_Autor. Kontrakt z
+      reversion: zawsze per-instancja save()/delete(), NIGDY bulk
+      update(deleted_at=...).
       """
 
       class Meta:
@@ -161,7 +163,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - Modify: `src/bpp/models/patent.py:62` (klasa `Patent`)
 - Modify: `src/bpp/models/praca_doktorska.py:135` (klasa `Praca_Doktorska`)
 - Modify: `src/bpp/models/praca_habilitacyjna.py:41` (klasa `Praca_Habilitacyjna`)
-- Create: `src/bpp/migrations/0421_publikacje_soft_delete_fields.py`
+- Create: `src/bpp/migrations/0490_publikacje_soft_delete_fields.py`
 - Test path: `src/bpp/tests/test_soft_delete_publikacje.py`
 
 > **Kolejność MRO:** mixin dopisujemy jako **pierwszą** bazę (przed pozostałymi mixinami modelu), żeby jego `delete()`/`restore()` wygrały w MRO nad `models.Model.delete()`. NIE jako ostatnią. `BppPublikacjaSoftDeleteMixin(SoftDeleteModel)` wnosi też pola `deleted_at`/`restored_at`/`transaction_id` i menedżery — ale menedżery dla `Wydawnictwo_*` nadpiszemy w Task 4 (interleaving fees); dla `Patent`/`Praca_*` zostaną menedżery z `SoftDeleteModel`.
@@ -184,7 +186,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
   ```bash
   uv run python src/manage.py makemigrations bpp --name publikacje_soft_delete_fields
   ```
-  Oczekiwane: nowa migracja `0421_publikacje_soft_delete_fields.py` z `AddField` `deleted_at`/`restored_at`/`transaction_id` dla 5 modeli. Zweryfikuj nazwę pliku (`0421_`); jeśli numer inny — użyj faktycznego.
+  Oczekiwane: nowa migracja `0490_publikacje_soft_delete_fields.py` z `AddField` `deleted_at`/`restored_at`/`transaction_id` dla 5 modeli. Zweryfikuj nazwę pliku (`0490_`); jeśli numer inny — użyj faktycznego.
 - [ ] **Krok 2.3 — dopisz indeks per model na `deleted_at`.** Do wygenerowanej migracji dołóż operacje `AddIndex` (lub edytuj `Meta.indexes` modeli i przegeneruj). Ręcznie w migracji, po `AddField`-ach:
   ```python
   from django.db import migrations, models
@@ -212,7 +214,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
   Oczekiwane: PASS.
 - [ ] **Krok 2.6 — commit:**
   ```bash
-  git add src/bpp/models/wydawnictwo_ciagle.py src/bpp/models/wydawnictwo_zwarte.py src/bpp/models/patent.py src/bpp/models/praca_doktorska.py src/bpp/models/praca_habilitacyjna.py src/bpp/migrations/0421_publikacje_soft_delete_fields.py
+  git add src/bpp/models/wydawnictwo_ciagle.py src/bpp/models/wydawnictwo_zwarte.py src/bpp/models/patent.py src/bpp/models/praca_doktorska.py src/bpp/models/praca_habilitacyjna.py src/bpp/migrations/0490_publikacje_soft_delete_fields.py
   git commit -m "feat(soft-delete): 5 modeli publikacji -> SoftDeleteModel + migracje pol/indeksow
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
@@ -227,7 +229,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - Modify: `src/bpp/models/wydawnictwo_zwarte.py:325`
 - Modify: `src/bpp/models/patent.py:180`
 - Modify: `src/bpp/models/praca_doktorska.py:105` (w `Praca_Doktorska_Baza`)
-- Create: `src/bpp/migrations/0422_publikacje_slug_warunkowy_unique.py`
+- Create: `src/bpp/migrations/0491_publikacje_slug_warunkowy_unique.py`
 - Test path: `src/bpp/tests/test_soft_delete_publikacje.py`
 
 Zamiana `unique=True` na `models.UniqueConstraint(fields=["slug"], condition=Q(deleted_at__isnull=True), name="...")` per model. Skasowany rekord trzyma slug → nowy rekord z tym samym slug-iem nie koliduje (constraint pomija `deleted_at IS NOT NULL`).
@@ -274,7 +276,7 @@ Zamiana `unique=True` na `models.UniqueConstraint(fields=["slug"], condition=Q(d
   ```bash
   uv run python src/manage.py makemigrations bpp --name publikacje_slug_warunkowy_unique
   ```
-  Oczekiwane: `RemoveField`/`AlterField` (zdjęcie `unique`) + `AddConstraint` dla 5 modeli. Zweryfikuj numer `0422_`.
+  Oczekiwane: `RemoveField`/`AlterField` (zdjęcie `unique`) + `AddConstraint` dla 5 modeli. Zweryfikuj numer `0491_`.
 - [ ] **Krok 3.5 — uruchom test (PASS) + check migracji:**
   ```bash
   uv run pytest src/bpp/tests/test_soft_delete_publikacje.py::test_reuse_slug_po_soft_delete -x
@@ -283,10 +285,141 @@ Zamiana `unique=True` na `models.UniqueConstraint(fields=["slug"], condition=Q(d
   Oczekiwane: PASS + `No changes detected`.
 - [ ] **Krok 3.6 — commit:**
   ```bash
-  git add src/bpp/models/wydawnictwo_ciagle.py src/bpp/models/wydawnictwo_zwarte.py src/bpp/models/patent.py src/bpp/models/praca_doktorska.py src/bpp/models/praca_habilitacyjna.py src/bpp/migrations/0422_publikacje_slug_warunkowy_unique.py
+  git add src/bpp/models/wydawnictwo_ciagle.py src/bpp/models/wydawnictwo_zwarte.py src/bpp/models/patent.py src/bpp/models/praca_doktorska.py src/bpp/models/praca_habilitacyjna.py src/bpp/migrations/0491_publikacje_slug_warunkowy_unique.py
   git commit -m "feat(soft-delete): slug -> warunkowy UniqueConstraint (reuse po soft-delete)
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
+  ```
+
+---
+
+## Task 2b: Widoki + gałąź kasująca + bramka `WHEN` dla 5 tabel publikacji (LUKA)
+
+> 🔄 **Dodane 2026-08-06.** Poprzednia wersja planu zakładała, że fazа 01
+> „dodała filtr `deleted_at` w widokach `bpp_rekord`/`bpp_*_autorzy`" i że
+> ta faza nie musi ruszać DDL-a. **To nieprawda:** faza 01 dotyka wyłącznie
+> ścieżki autorstwa (3 tabele `*_autor`). Dla 5 tabel publikacji ten sam
+> trójskładnikowy wzorzec trzeba powtórzyć TUTAJ — inaczej soft-delete
+> publikacji nie usunie jej z `bpp_rekord_mat`.
+
+Powtórz wzorzec z fazy 01, Task 3 (tam jest pełny opis mechanizmu i pułapek),
+dla `REKORD_SITES` z `0432_cache_trigger_plpgsql.py`:
+
+1. filtr `deleted_at IS NULL` w 5 widokach `bpp_<typ>_view`,
+2. gałąź kasująca w 5 funkcjach `bpp_refresh_rekord_<model>()`,
+3. regeneracja bramki `WHEN` na 5 triggerach `<tabela>_cache_upd`.
+
+**Files:**
+- Create: `src/bpp/migrations/0493_soft_delete_rekord_views.py`
+- Test: `src/bpp/tests/test_soft_delete/test_views_sql_publikacje.py`
+- Test (modify): `src/bpp/tests/test_cache/test_soft_delete_preconditions.py` —
+  **zdejmij `xfail`** z oryginalnych kanarków i odwróć ich asercje (operują na
+  `bpp_wydawnictwo_ciagle`, więc dopiero ta faza je zazieleni).
+
+⚠️ **Różnica wobec fazy 01 — doktorat i habilitacja dotykają OBU tabel `_mat`.**
+`_create_rekord_function` z `0432` generuje dla nich (`autor_na_wierszu=True`)
+dodatkowy blok na `bpp_autorzy_mat`, bo autor leży na wierszu publikacji.
+Gałąź kasująca musi wyczyścić **obie**:
+
+```sql
+IF NEW.deleted_at IS NOT NULL THEN
+    DELETE FROM bpp_rekord_mat  WHERE id        = ARRAY[ct, NEW.id]::integer[];
+    DELETE FROM bpp_autorzy_mat WHERE rekord_id = ARRAY[ct, NEW.id]::integer[];
+    RETURN NULL;
+END IF;
+```
+
+(dla `wydawnictwo_ciagle`/`wydawnictwo_zwarte`/`patent` — tylko `bpp_rekord_mat`;
+ich autorstwa czyści kaskada na `*_Autor` z Task 1 + gałąź z fazy 01).
+
+⚠️ **Zwróć uwagę na klucz:** w `bpp_rekord_mat` kolumna nazywa się `id`,
+w `bpp_autorzy_mat` — `rekord_id` (patrz `_create_rekord_function`
+i `_create_delete_rekord_function` w `0432`).
+
+- [ ] Testy kontraktu DDL (wzorzec z fazy 01, Task 3) dla 5 widoków, 5 funkcji,
+      5 triggerów — oczekiwany FAIL przed migracją.
+- [ ] Migracja `RunPython` w kolejności widoki → funkcje → bramka.
+- [ ] Odwrócone kanarki `test_soft_delete_preconditions.py` — PASS.
+- [ ] `makemigrations --check --dry-run` — brak driftu.
+
+---
+
+## Task 3b: `unique_together` na `*_Autor` → warunkowy `UniqueConstraint` (decyzja #13)
+
+> Dodane 2026-08-06 (spec §2.2b). Ten sam problem co ze slugiem, przeoczony
+> w pierwszej wersji planu.
+
+Soft-deletowany wiersz `*_Autor` **nadal zajmuje slot w unique**, będąc
+niewidocznym dla operatora. Od Task 1 tej fazy kaskada soft-deletuje wiersze
+`*_Autor` masowo, więc kolizja przestaje być teoretyczna: `deduplikator_autorow`
+przenosi autorstwa z duplikatu na autora głównego
+(`src/deduplikator_autorow/utils/merge.py:191,284,354`) i trafia w
+soft-deletowany wiersz o tej samej trójce → `IntegrityError` o rekord,
+którego nie widać.
+
+**Files:**
+- Modify: `src/bpp/models/wydawnictwo_ciagle.py:73-77` (`Wydawnictwo_Ciagle_Autor.Meta`)
+- Modify: `src/bpp/models/wydawnictwo_zwarte.py` (`Wydawnictwo_Zwarte_Autor.Meta`)
+- Modify: `src/bpp/models/patent.py` (`Patent_Autor.Meta`)
+- Create: `src/bpp/migrations/0492_autor_warunkowy_unique.py`
+- Test: `src/bpp/tests/test_soft_delete/test_autor_unique.py`
+
+- [ ] **Krok 3b.1 — padający test: re-add autorstwa po soft-delete.**
+  ```python
+  @pytest.mark.django_db
+  def test_readd_autorstwa_po_soft_delete(wydawnictwo_ciagle_z_autorem, autor_jan_kowalski):
+      """Po soft-delete autorstwa da się dodać to samo powiązanie ponownie."""
+      wca = wydawnictwo_ciagle_z_autorem.autorzy_set.first()
+      rekord, autor, typ, kolejnosc = (
+          wca.rekord, wca.autor, wca.typ_odpowiedzialnosci, wca.kolejnosc,
+      )
+      wca.delete()
+
+      # bez warunkowego constraintu: IntegrityError na (rekord, autor, typ)
+      Wydawnictwo_Ciagle_Autor.objects.create(
+          rekord=rekord, autor=autor, jednostka=wca.jednostka,
+          typ_odpowiedzialnosci=typ, kolejnosc=kolejnosc,
+      )
+      assert Wydawnictwo_Ciagle_Autor.objects.filter(rekord=rekord).count() == 1
+      assert Wydawnictwo_Ciagle_Autor.global_objects.filter(rekord=rekord).count() == 2
+  ```
+
+- [ ] **Krok 3b.2 — zamiana w `Meta` 3 modeli.** Usuń `unique_together`, dodaj:
+  ```python
+  constraints = [
+      models.UniqueConstraint(
+          fields=["rekord", "autor", "typ_odpowiedzialnosci"],
+          condition=Q(deleted_at__isnull=True),
+          name="wc_autor_uniq_rekord_autor_typ",
+      ),
+      models.UniqueConstraint(
+          fields=["rekord", "autor", "kolejnosc"],
+          condition=Q(deleted_at__isnull=True),
+          name="wc_autor_uniq_rekord_autor_kolejnosc",
+      ),
+  ]
+  ```
+  Nazwy per model (`wc_`/`wz_`/`pat_`) — muszą być unikalne w całej bazie.
+
+- [ ] **Krok 3b.3 — ⚠️ zweryfikuj admin.** Komentarz przy drugiej krotce
+  („Tu musi być autor, inaczej admin nie pozwoli wyedytować") sugeruje, że ten
+  constraint istnieje **ze względu na walidację formularzy**.
+  `Model.validate_unique()` honoruje `unique_together`, ale **`UniqueConstraint`
+  z `condition` pomija** (Django waliduje tylko constrainty bezwarunkowe).
+  Ryzyko: zamiast czytelnego błędu formularza operator dostanie `IntegrityError`
+  (HTTP 500). Test:
+  ```bash
+  uv run pytest src/bpp/tests/test_admin/ -k "autor and (inline or duplikat)" -v
+  ```
+  Jeśli admin regresuje — dodaj jawną walidację w formularzu inline
+  (`clean()` sprawdzający kolizję przez `objects`), NIE wracaj do
+  `unique_together` (nie da się go pogodzić z soft-delete).
+
+- [ ] **Krok 3b.4 — migracja + brak driftu:**
+  ```bash
+  DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py makemigrations bpp
+  DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py makemigrations --check --dry-run
+  uv run pytest src/bpp/tests/test_soft_delete/test_autor_unique.py -q
   ```
 
 ---
@@ -539,10 +672,10 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ## Definition of Done (faza 02)
 
-- [ ] 5 modeli publikacji to `SoftDeleteModel` (przez `BppPublikacjaSoftDeleteMixin`); migracje `deleted_at`/`restored_at`/`transaction_id` + indeks per model (`0421_`).
+- [ ] 5 modeli publikacji to `SoftDeleteModel` (przez `BppPublikacjaSoftDeleteMixin`); migracje `deleted_at`/`restored_at`/`transaction_id` + indeks per model (`0490_`).
 - [ ] `delete(self, *args, user=None, reason="", **kwargs)` / `restore(self, *args, user=None, **kwargs)` — per-instancja `save()`, wąska kaskada na `autorzy_set` pod wspólnym `transaction_id`, BEZ refleksyjnej kaskady pakietu, BEZ bulk `update(deleted_at=)`.
 - [ ] `*_Streszczenie` (i pozostałe nie-soft dzieci) nietknięte; `delete()` nie rzuca `SoftDeleteException`.
-- [ ] `slug` → warunkowy `UniqueConstraint(condition=Q(deleted_at__isnull=True))` (`0422_`); reuse slug po soft-delete działa.
+- [ ] `slug` → warunkowy `UniqueConstraint(condition=Q(deleted_at__isnull=True))` (`0491_`); reuse slug po soft-delete działa.
 - [ ] `Wydawnictwo_*_Manager` przeplecione: `objects` filtruje `deleted_at` ORAZ ma `rekordy_z_oplata()`/`wydawnictwa_nadrzedne_dla_innych()`; `global_objects`/`deleted_objects` dostępne na wszystkich 5 modelach.
 - [ ] Testy: kaskada wspólny txid, znika z Rekord/Autorzy + restore, restore `*_Autor`, `post_soft_delete`, `*_Streszczenie` nietknięte, gate bulk-update — zielone.
 - [ ] `makemigrations --check --dry-run bpp` → `No changes detected`. Istniejące migracje NIE modyfikowane.

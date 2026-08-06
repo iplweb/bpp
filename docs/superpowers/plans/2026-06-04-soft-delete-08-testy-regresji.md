@@ -149,11 +149,11 @@ def test_kaskada_autor_soft_deletowany_razem_z_publikacja(
 
 Run: `uv run pytest src/bpp/tests/test_soft_delete/test_soft_delete_regresja_cache.py -v`
 Expected: 3 PASS. Jeśli `test_soft_delete_publikacji_znika_z_rekord_i_autorzy`
-FAIL (rekord wraca do mat-view) → **luka w fazie 01**: filtr `deleted_at IS
-NULL` nie pokrywa wszystkich gałęzi UNION `bpp_rekord` / `bpp_*_autorzy`.
-Zadanie naprawcze: dopisz brakujący `WHERE deleted_at IS NULL` w
-`src/bpp/migrations/0XXX_soft_delete_views.sql` (NOWA migracja, nie modyfikuj
-istniejących) i ponów.
+FAIL (rekord wraca lub zostaje w mat-view) → **luka w fazie 01 lub 02**.
+Diagnozuj w kolejności: (1) czy bramka `WHEN` triggera zna `deleted_at`
+(`pg_get_triggerdef`), (2) czy funkcja refresh ma gałąź kasującą
+(`pg_get_functiondef`), (3) czy widok źródłowy filtruje (`pg_get_viewdef`).
+Naprawa idzie NOWĄ migracją `RunPython` (nie modyfikuj istniejących).
 
 - [ ] **Step 4: Commit**
 
@@ -177,29 +177,51 @@ Oczekiwane: ustal, czy `verify_cache` jest sprawny. **Znana luka:**
 `src/bpp/management/commands/verify_cache.py` to dziś stub
 (`raise NotImplementedError`, twarde `psycopg2.connect(database="b_med",
 host="linux-dev")`) — NIE da się go uruchomić w teście. Weryfikację spójności
-robimy przez `Rekord.objects.full_refresh()` (`src/bpp/models/cache/rekord.py:117`),
-która jest realnym, testowalnym odpowiednikiem „re-projekcji ze źródła"
-opisanym w spec §2.1. (Patrz „Luki wykryte" na końcu — `verify_cache` należy
-naprawić osobnym zadaniem, poza zakresem soft-delete.)
+robimy **wprost, surowym SQL-em** (wzorzec:
+`src/bpp/tests/test_cache/test_cache_plpgsql_port.py`).
 
-- [ ] **Step 2: Napisz failing test — full_refresh nie wskrzesza skasowanych + Cache_Punktacja_* znika**
+> ⚠️ **Korekta 2026-08-06.** Poprzednia wersja tego kroku używała
+> `Rekord.objects.full_refresh()` jako „re-projekcji ze źródła". **To nie jest
+> re-projekcja** — `full_refresh()` (`src/bpp/models/cache/rekord.py:121-127`)
+> woła `denorm.rebuildall(...)`, czyli przebudowuje pola denormalizowane i
+> **nigdy niczego nie usuwa ani nie wstawia do `_mat`**. Test „po
+> `full_refresh()` skasowane nie wracają" przechodziłby z fałszywych powodów.
+> Patrz spec §2.1 + decyzja #12.
+
+- [ ] **Step 2: Napisz testy — re-projekcja nie wskrzesza skasowanych + Cache_Punktacja_* znika**
 
 Dopisz do `test_soft_delete_regresja_cache.py`:
 
 ```python
+from django.db import connection
+
 from bpp.models.cache.punktacja import Cache_Punktacja_Dyscypliny
 
 
 @pytest.mark.django_db
-def test_full_refresh_nie_wskrzesza_skasowanej_publikacji(
-    wydawnictwo_ciagle_z_dwoma_autorami,
+def test_reprojekcja_ze_zrodla_nie_wskrzesza_skasowanej_publikacji(
+    transactional_db, wydawnictwo_ciagle_z_dwoma_autorami,
 ):
-    """Re-projekcja ze źródła (full_refresh) respektuje deleted_at —
-    inaczej skasowany rekord wróciłby do bpp_rekord_mat (spec §2.1)."""
-    wydawnictwo_ciagle_z_dwoma_autorami.delete()
+    """Wymuszone przejście triggera nie przywraca skasowanego rekordu.
+
+    NIE używamy full_refresh() — to denorm.rebuildall, nie re-projekcja _mat
+    (decyzja #12). Zamiast tego wymuszamy wejście triggera UPDATE-em
+    bramkowanej kolumny i sprawdzamy, ze wiersz NIE wrocil z widoku.
+    """
+    wc = wydawnictwo_ciagle_z_dwoma_autorami
+    pk, ct = wc.pk, wc.content_type_id
+    wc.delete()
     assert Rekord.objects.count() == 0
 
-    Rekord.objects.full_refresh()
+    with connection.cursor() as cur:
+        cur.execute(
+            "UPDATE bpp_wydawnictwo_ciagle SET rok = rok + 1 WHERE id = %s", [pk]
+        )
+        cur.execute(
+            "SELECT count(*) FROM bpp_rekord_mat WHERE id = ARRAY[%s, %s]::integer[]",
+            [ct, pk],
+        )
+        assert cur.fetchone()[0] == 0, "skasowany rekord wrocil do _mat"
 
     assert Rekord.objects.count() == 0
     assert Autorzy.objects.count() == 0
@@ -238,10 +260,14 @@ def test_soft_delete_usuwa_cache_punktacji_dyscyplin(zwarte_z_dyscyplinami):
 
 - [ ] **Step 3: Uruchom — oczekuj PASS**
 
-Run: `uv run pytest src/bpp/tests/test_soft_delete/test_soft_delete_regresja_cache.py -k "full_refresh or cache_punktacji" -v`
+Run: `uv run pytest src/bpp/tests/test_soft_delete/test_soft_delete_regresja_cache.py -k "reprojekcja or cache_punktacji" -v`
 Expected: PASS. Jeśli `Cache_Punktacja_Dyscypliny` wraca po delete →
-sprawdź, czy override `delete()` (faza 02) czyści punktację dyscyplin albo
-czy trigger usuwa wpisy `Cache_Punktacja_*` na podstawie `deleted_at`.
+sprawdź **receivery z fazy 06** (decyzja #15, spec §2.5b): `post_soft_delete`
+ma kasować wiersze `Cache_Punktacja_Autora`/`_Dyscypliny` dla tego
+`rekord_id`, `post_restore` — przeliczać je z powrotem. ⚠️ Tych tabel **nie
+rusza** ani kaskada `*_Autor`, ani trigger cache (nie mają FK do publikacji,
+klucz to tablica `[content_type_id, pk]`) — jeśli faza 06 tego nie wdrożyła,
+ten test jest jedynym miejscem, gdzie luka wyjdzie.
 Jeśli pole `rekord_id` w `Cache_Punktacja_Dyscypliny` ma inną strukturę niż
 `[content_type_id, pk]`, dostosuj filtr do realnego schematu modelu
 (`src/bpp/models/cache/punktacja.py:18`) — sprawdź `uv run python
@@ -750,7 +776,7 @@ je ukrywa).
 ```python
 """Regresja ewaluacji (spec §2.5, §3 fazy).
 
-90 miejsc czyta ``*_Autor.objects`` bezpośrednio; po wpięciu
+128 miejsc czyta ``*_Autor.objects`` bezpośrednio; po wpięciu
 ``SoftDeleteModel`` domyślny menedżer ukrywa kaskadowo-skasowane
 autorstwa, więc ewaluacja pomija prace w koszu. Restore przywraca punktację.
 """

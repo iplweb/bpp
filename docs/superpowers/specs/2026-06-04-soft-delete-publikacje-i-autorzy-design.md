@@ -1,6 +1,16 @@
 # Spec: Soft-delete publikacji + autorów (jedno opracowanie wdrożeniowe)
 
-> ✅ **STATUS: DO REALIZACJI (2026-06-04).**
+> ✅ **STATUS: DO REALIZACJI (2026-06-04; zrewidowany 2026-08-06).**
+>
+> 🔄 **Rewizja 2026-08-06.** Spec powstał przed PR #363 (port
+> `bpp_refresh_cache` PL/Python → PL/pgSQL + bramka `WHEN`, migracje
+> `0432`/`0433`). Weryfikacja na aktualnym `dev` obaliła **dwa nośne
+> założenia** o warstwie cache — §2.1 przepisana od zera, decyzja #9
+> unieważniona. Domknięto też 5 luk/decyzji (#12–#16): `Cache_Punktacja_*`,
+> warunkowy unique na `*_Autor`, polityka importu wobec kosza, dwuwejściowe
+> wycofanie z PBN, semantyka `full_refresh()`. Dowód empiryczny obalonych
+> założeń: `src/bpp/tests/test_cache/test_soft_delete_preconditions.py`.
+>
 > Ten dokument jest projektem wdrożeniowym (design), zatwierdzonym przez
 > użytkownika. Zastępuje feasibility-spec
 > [`2026-06-03-soft-delete-publikacje.md`](2026-06-03-soft-delete-publikacje.md)
@@ -20,13 +30,15 @@ sens, przy minimalnym blast-radiusie:
    „kosz" dla pustych/błędnych rekordów). Autor **z** pracami → `PROTECT`
    (zero kasowania, soft ani hard).
 3. **PBN** — soft-delete publikacji wycofuje oświadczenia dyscyplin z profilu
-   instytucji, asynchronicznie przez kolejkę (`pbn_export_queue`).
+   instytucji: asynchronicznie przez kolejkę (`pbn_export_queue`) lub
+   synchronicznie, gdy rekord szedł do PBN bez kolejki (§4.2).
 4. **Audyt** — dedykowana tabela `SoftDeleteLog` (kto / kiedy / dlaczego /
    status PBN).
 5. **Admin** (superuser-only) — „kosz" zamiast hard-delete, filtr „pokaż
    skasowane", akcja „przywróć", osobna jawna akcja „usuń trwale".
 
-**Stack.** Django, PostgreSQL (triggery `plpython3u`), `django-soft-delete`
+**Stack.** Django, PostgreSQL (triggery **PL/pgSQL** — po porcie z `plpython3u`,
+PR #363), `django-soft-delete`
 (`SoftDeleteModel`, już w `pyproject.toml`), `django-denorm-iplweb`,
 Celery + `pbn_export_queue`.
 
@@ -55,11 +67,11 @@ i `Patent_Autor` **stają się `SoftDeleteModel`** — ale wyłącznie jako cel
 **wąskiej kaskady** z soft-delete publikacji (§2.2), NIE pełnego refleksyjnego
 Projektu B. Pozostałe dzieci (`*_Streszczenie`, `*_Zewnetrzna_Baza_Danych`,
 `Publikacja_Habilitacyjna`, `Opi_2012_Tytul_Cache`) zostają nie-soft —
-kaskada zatrzymuje się na `*_Autor` i **nie jest wirusowa**. Powód: 90
+kaskada zatrzymuje się na `*_Autor` i **nie jest wirusowa**. Powód: 128
 bezpośrednich zapytań `*_Autor.objects` w kodzie (większość w
 `ewaluacja_optymalizacja` — najwrażliwszy korekcyjnie podsystem) — domyślny
 menedżer `objects` po wpięciu `SoftDeleteModel` czyni je poprawnymi
-automatycznie, eliminując 90-punktowe ryzyko „silent leak" do ewaluacji.
+automatycznie, eliminując 128-punktowe ryzyko „silent leak" do ewaluacji.
 
 **Dlaczego nie kaskada autor→prace ani „guard z 50 publikacjami":**
 realny przypadek użycia kasowania autora jest wąski — to wyłącznie puste /
@@ -81,74 +93,134 @@ publikacji przed usunięciem czyni kasowanie bezużytecznym. Wąska semantyka
 
 ### 2.1 Trigger jako choke-point (najwrażliwszy, robiony PIERWSZY)
 
-`Rekord` to UNION-view nad materializowaną tabelą `bpp_rekord_mat`, zasilaną
-triggerem `bpp_refresh_cache()`. **Aktualna wersja funkcji to
-`src/bpp/migrations/0399_fix_refresh_cache_upsert.sql`** (NIE baseline
-`0001_cache_functions.sql` — historyczny; funkcja ewoluowała przez `0112`,
-`0310`, `0387`, `0399`, + `0400_drop/restore_cache_triggers`). Z
-`bpp_rekord_mat`/`bpp_autorzy_mat` czyta większość systemu (publiczny frontend,
-multiseek, global search, ewaluacja `Cache_Punktacja_*`, raporty).
+> 🔄 **Sekcja przepisana 2026-08-06** po weryfikacji na aktualnym `dev`.
+> Poprzednia wersja opisywała funkcję `bpp_refresh_cache()` z migracji
+> `0399_fix_refresh_cache_upsert.sql` (PL/Python). **Ta funkcja już nie
+> istnieje** — PR #363 (migracje `0432`/`0433`) zastąpił ją 16 statycznymi
+> funkcjami PL/pgSQL i bramką `WHEN` na triggerach UPDATE. Oba założenia,
+> na których stała poprzednia wersja, są **fałszywe**; dowód w kanarkach
+> `src/bpp/tests/test_cache/test_soft_delete_preconditions.py`.
 
-**Fakt z kodu** (`0399_fix_refresh_cache_upsert.sql`): na `DELETE` trigger usuwa
-wiersze z `_mat`; na `UPDATE/INSERT` robi **`DELETE` + upsert**
-(`INSERT ... SELECT FROM <widok źródłowy> ... ON CONFLICT DO UPDATE`, pod
-`pg_advisory_xact_lock`). `DELETE` przed upsertem jest **bezwarunkowy** (linie
-125-126), więc gdy widok źródłowy odfiltruje skasowane — upsert nic nie
-re-insertuje. Soft-delete to technicznie `UPDATE` → **bez filtra w widoku
-skasowany rekord wróciłby** (upsert wstawiłby go ponownie). (Uwaga: `0399` ma
-drobny utajony bug — `"bpp_autorzy_mat" not in refresh_tables` sprawdza string
-w liście krotek `(table, id_col)`; do poprawienia przy okazji, faza 01.)
+`Rekord` to model nad **tabelą materializowaną `bpp_rekord_mat`**
+(`src/bpp/models/cache/rekord.py:382-386` — `db_table = "bpp_rekord_mat"`;
+widok `bpp_rekord` obsługuje osobna, marginalna klasa `RekordView`, `:394-396`).
+Z `bpp_rekord_mat`/`bpp_autorzy_mat` czyta większość systemu (publiczny
+frontend, multiseek, global search, raporty). **Tabele `_mat` utrzymywane są
+WYŁĄCZNIE triggerami** — nie ma innej ścieżki zapisu.
 
-**Zmiana:** ścieżka `UPDATE/INSERT` triggera uczona reguły:
-> jeśli `TD['new']['deleted_at'] IS NOT NULL` → zachowaj się jak `DELETE`
-> (usuń z `_mat`, **nie** re-insertuj).
-> `deleted_at: <data>→NULL` (restore) → normalny re-insert.
+**Stan faktyczny po PR #363** (`0432_cache_trigger_plpgsql.py`,
+`0433_cache_trigger_when_gate.py`):
+
+- 8 tabel bazowych (5 publikacji + 3 `*_autor`), każda z **trzema** triggerami:
+  `_cache_ins` (AFTER INSERT, bezwarunkowy), `_cache_del` (AFTER DELETE,
+  bezwarunkowy), `_cache_upd` (AFTER UPDATE, **bramkowany**);
+- funkcja refresh dla publikacji to **czysty upsert, BEZ `DELETE`**:
+  ```sql
+  PERFORM pg_advisory_xact_lock(ct, NEW.id);
+  INSERT INTO bpp_rekord_mat (...) SELECT ... FROM bpp_<typ>_view
+    WHERE object_id_raw = NEW.id
+    ON CONFLICT (id) DO UPDATE SET ...;
+  ```
+- bramka na UPDATE to `WHEN (OLD."kol" IS DISTINCT FROM NEW."kol" OR ...)`,
+  gdzie lista kolumn jest **wyliczana z `pg_depend`** (kolumny bazowe, które
+  widok faktycznie czyta) **w momencie migracji** i wklejona na sztywno
+  w definicję triggera.
+
+**Dwa fałszywe założenia poprzedniej wersji (potwierdzone testem):**
+
+| Założenie | Rzeczywistość |
+|---|---|
+| „UPDATE ustawiający `deleted_at` doleci do triggera" | **Nie doleci.** `django-soft-delete` zapisuje przez `save(update_fields=['deleted_at','restored_at','transaction_id'])`. Żadna z tych kolumn nie jest w bramce (i być nie może — nie zasilają widoku), więc `WHEN` jest fałszywe. Efekt uboczny `update_fields`: `ostatnio_zmieniony` (`auto_now`) też **nie** jest bumpowany, więc nie ma przypadkowego ratunku. |
+| „Filtr `deleted_at IS NULL` w widoku wystarczy, bo trigger robi bezwarunkowy `DELETE` przed upsertem" | **Nie robi.** `INSERT ... SELECT` z widoku, który odfiltrował wiersz, wybiera zero wierszy → **no-op** → stary wiersz przeżywa w `_mat`. Inwariant „delete-first" nie istnieje dla `bpp_rekord_mat`. |
+
+**Wzorzec do naśladowania jest już w kodzie.** Gałąź doktorat/habilitacja
+w `_create_rekord_function` robi dokładnie to, czego potrzebujemy — bo tam
+wiersz **może wypaść ze źródła** (widok `*_autorzy` ma INNER JOIN do
+`bpp_autor`):
+
+```sql
+DELETE FROM bpp_autorzy_mat WHERE rekord_id = ARRAY[ct, NEW.id]::integer[];
+INSERT INTO bpp_autorzy_mat (...) SELECT ... ;
+```
+
+Soft-delete to uogólnienie tej samej sytuacji na wszystkie 8 tabel.
+
+**Zmiana — trzy elementy, wszystkie OBOWIĄZKOWE** (żaden nie wystarcza sam):
+
+1. **Gałąź kasująca w 8 funkcjach refresh.** Prolog przed upsertem:
+   ```sql
+   IF NEW.deleted_at IS NOT NULL THEN
+       DELETE FROM bpp_rekord_mat WHERE id = ARRAY[ct, NEW.id]::integer[];
+       RETURN NULL;
+   END IF;
+   ```
+   (dla `*_autor` analogicznie na `bpp_autorzy_mat`). Restore
+   (`deleted_at: data→NULL`) przechodzi dalej do normalnego upsertu — symetria
+   za darmo.
+2. **Regeneracja bramki `WHEN`** — żeby UPDATE w ogóle doszedł do funkcji.
+   Nie hardkodujemy `deleted_at`: bramka wylicza kolumny z `pg_depend` po
+   definicji widoku, więc **gdy punkt 3 wstawi `deleted_at` do `WHERE` widoku,
+   ponowne uruchomienie logiki `forward()` z `0433` samo ją wciągnie**. Nowa
+   migracja = `RunPython` wołający tę samą funkcję (kolejność: najpierw widok,
+   potem regeneracja bramki).
+3. **Filtr `deleted_at IS NULL` w widokach źródłowych** — po **własnej**
+   kolumnie tabeli, bez JOIN do rodzica (każda z 8 tabel ma własne
+   `deleted_at`, patrz §2.2). Rola tego filtra jest **inna niż zakładano**:
+   nie sprząta `_mat` (to robi punkt 1), tylko (a) karmi `pg_depend` dla
+   punktu 2 i (b) gwarantuje, że pełne przebudowy i odczyty przez `bpp_rekord`
+   nie wskrzeszą kosza.
 
 **Jednolitość dzięki wąskiej kaskadzie na `*_Autor` (§2.2).** Ponieważ
-through-modele też stają się `SoftDeleteModel`, **każda z 8 tabel pod
-triggerem ma własną kolumnę `deleted_at`** (5 publikacji + 3 `*_autor`).
-Trigger czyta `deleted_at` z **własnego** wiersza (`TD['new']`) — reguła
-działa identycznie niezależnie od tego, czy zadziałała tabela publikacji czy
-tabela autorska. **Nie ma potrzeby JOIN-a/lookupu do rekordu nadrzędnego.**
+through-modele też stają się `SoftDeleteModel`, każda z 8 tabel pod triggerem
+ma własną kolumnę `deleted_at`. Funkcja czyta `deleted_at` z **własnego**
+wiersza (`NEW`) — reguła działa identycznie dla tabeli publikacji i autorskiej.
+**Nie ma potrzeby JOIN-a/lookupu do rekordu nadrzędnego.**
 
-Skutki:
-- **Mechanizm #1 — filtr `deleted_at IS NULL` w widokach źródłowych** (po
-  **własnej** kolumnie tabeli, bez JOIN): `bpp_*_autorzy` (selektują
-  `FROM bpp_*_autor`, `src/bpp/migrations/0001_widoki_autorzy.sql`) i każda
-  gałąź UNION-u `bpp_rekord`. **To jest nadrzędny mechanizm**, bo pokrywa
-  WSZYSTKIE ścieżki: re-insert triggera, bezpośredni odczyt z widoku `bpp_rekord`
-  (`Rekord` czyta `bpp_rekord`, `src/bpp/models/cache/rekord.py:357`), oraz
-  pełną re-projekcję/weryfikację cache.
-- **Mechanizm #2 (optymalizacja) — trigger-skip:** w gałęzi `UPDATE/INSERT`
-  `if TD['new'].get('deleted_at') is not None: <pomiń upsert>` (DELETE i tak
-  już zaszedł). Oszczędza no-op SELECT/upsert, ale **sam nie pokrywa pełnej
-  re-projekcji** (ta re-selektuje z widoku). Filtr widoku (#1) jest
-  obowiązkowy; trigger-skip opcjonalny.
-- **Weryfikacja spójności — `Rekord.objects.full_refresh()`** (re-projekcja
-  `_mat` ze źródła), NIE `verify_cache`. ⚠️ `src/bpp/management/commands/verify_cache.py`
-  to **martwy stub** (`psycopg2.connect(database="b_med", host="linux-dev")` +
-  `raise NotImplementedError`) — nie da się go uruchomić; jego naprawa jest
-  POZA zakresem soft-delete. Testy spójności robią pełen `full_refresh` i
-  sprawdzają, że skasowane rekordy NIE wracają do `_mat` (to weryfikuje filtr
-  widoku #1).
-- **Przypadek brzegowy znika strukturalnie:** edycja wiersza autorstwa
-  skasowanej publikacji nie wskrzesi go w `bpp_autorzy_mat`, bo widok
-  źródłowy go odfiltruje (ma własne `deleted_at` ustawione kaskadą).
-- **Koszt:** soft-delete publikacji z N autorami odpala N dodatkowych (no-op)
-  triggerów through. Pomijalne.
+**Przypadek brzegowy znika strukturalnie:** edycja wiersza autorstwa
+skasowanej publikacji nie wskrzesi go w `bpp_autorzy_mat` — jego własne
+`deleted_at` jest ustawione kaskadą, więc gałąź z punktu 1 zadziała.
 
-Testy spójności mat-view obowiązkowe (soft-delete → znika z `Rekord` i
-`Autorzy`; restore → wraca; po `full_refresh()` skasowane NIE wracają do `_mat`;
-brak rozjazdu `Cache_Punktacja_*`).
+**Koszt:** soft-delete publikacji z N autorami odpala N dodatkowych triggerów
+through (każdy = jeden `DELETE` po indeksie). Pomijalne.
+
+⚠️ **`full_refresh()` NIE jest re-projekcją `_mat`.**
+`Rekord.objects.full_refresh()` (`src/bpp/models/cache/rekord.py:121-127`) to
+`denorm.rebuildall(...)` — przebudowa pól denormalizowanych, nie odtworzenie
+`_mat` z widoków. Nie nadaje się jako weryfikacja spójności soft-delete (nigdy
+nic z `_mat` nie usuwa, więc test „po `full_refresh()` skasowane nie wracają"
+przeszedłby z fałszywych powodów). Dodatkowo po wpięciu `SoftDeleteModel`
+`rebuildall` iteruje po domyślnym managerze, więc **pominie rekordy
+skasowane** — to jest pożądane, ale zapisujemy jako świadomą decyzję (#12),
+nie odkrycie.
+
+⚠️ `src/bpp/management/commands/verify_cache.py` to **martwy stub**
+(`psycopg2.connect(database="b_med", host="linux-dev")` + `raise
+NotImplementedError`) — nie da się go uruchomić; naprawa POZA zakresem.
+
+**Weryfikacja spójności robimy wprost, surowym SQL-em** (wzorzec:
+`src/bpp/tests/test_cache/test_cache_plpgsql_port.py`): soft-delete → wiersza
+nie ma w `bpp_rekord_mat`/`bpp_autorzy_mat`; restore → wraca i zgadza się
+kolumna-po-kolumnie ze świeżo policzonym widokiem; `ctid` do wykrywania
+jałowych przepisań.
 
 ### 2.2 Override `delete()` — wąska, kontrolowana kaskada na `*_Autor`
 
 `SoftDeleteModel.delete()` domyślnie kaskaduje **refleksyjnie** po wszystkich
-odwrotnych relacjach. W `strict=True` (domyślny) rzuci `SoftDeleteException`
-na nie-soft dzieciach (`*_Streszczenie`, `*_Zewnetrzna_Baza_Danych`,
-`Publikacja_Habilitacyjna`, `Opi_2012_Tytul_Cache`), a `strict=False` twardo
-skasuje je przez CASCADE. **Oba złe.** Dlatego na 5 modelach nadpisujemy
-`delete()` tak, by **NIE** używał refleksyjnej kaskady pakietu, lecz:
+odwrotnych relacjach.
+
+⚠️ **Korekta 2026-08-06:** poprzednia wersja tej sekcji twierdziła, że
+`strict=True` jest domyślne. W zainstalowanej wersji pakietu jest **odwrotnie**
+(`django_softdelete/models.py`): `delete(self, strict: bool = False, ...)`,
+ale `restore(self, strict: bool = True, ...)`. To czyni argument za własnym
+override'em **mocniejszym**, nie słabszym: przy `strict=False` kaskada nie
+krzyknie `SoftDeleteException` na nie-soft dzieciach — **po cichu przejedzie
+po wszystkich odwrotnych relacjach**. Asymetria `delete`/`restore` to dodatkowy
+powód, by nie polegać na domyślnym zachowaniu pakietu w żadną stronę.
+
+Nie-soft dzieci (`*_Streszczenie`, `*_Zewnetrzna_Baza_Danych`,
+`Publikacja_Habilitacyjna`, `Opi_2012_Tytul_Cache`) nie mają być ruszane
+w żadnym trybie. Dlatego na 5 modelach nadpisujemy `delete()` tak, by **NIE**
+używał refleksyjnej kaskady pakietu, lecz:
 
 1. ustawił własne `deleted_at` i zapisał,
 2. **jawnie soft-deletował własne wiersze `*_Autor`** (`Wydawnictwo_Ciagle_Autor`
@@ -163,15 +235,60 @@ wszystko z `_mat` na podstawie własnych `deleted_at`; przy restore
 re-projektuje ze źródła.
 
 Po co jawna kaskada na `*_Autor`, skoro trigger i tak czyści `bpp_autorzy_mat`?
-Bo **90 miejsc w kodzie czyta `*_Autor.objects` bezpośrednio** (z pominięciem
+Bo **128 miejsc w kodzie czyta `*_Autor.objects` bezpośrednio** (z pominięciem
 cache), głównie w `ewaluacja_optymalizacja`. Domyślny menedżer `objects`
-`SoftDeleteModel` ukrywa skasowane → te 90 miejsc staje się poprawne
+`SoftDeleteModel` ukrywa skasowane → te 128 miejsc staje się poprawnych
 automatycznie, bez ręcznych filtrów `wydawnictwo_ciagle__deleted_at__isnull`
 (których pominięcie = po cichu zliczona skasowana praca w ewaluacji).
 
 Zweryfikować, że nadpisany `delete()`/`restore()` nadal emituje sygnały
 `post_soft_delete`/`post_restore` (patrz §5), oraz że ścieżka queryset
 (`.delete()` na QS) również kaskaduje na `*_Autor`.
+
+### 2.2b `unique_together` na `*_Autor` — też warunkowy (decyzja #13)
+
+Ten sam problem co ze slugiem (§2.3), przeoczony w pierwszej wersji specu.
+`BazaModeluOdpowiedzialnosciAutorow` ma w konkretnych klasach (np.
+`src/bpp/models/wydawnictwo_ciagle.py:73-77`):
+
+```python
+unique_together = [
+    ("rekord", "autor", "typ_odpowiedzialnosci"),
+    ("rekord", "autor", "kolejnosc"),
+]
+```
+
+Soft-deletowany wiersz `*_Autor` **nadal zajmuje slot w unique**, będąc
+niewidocznym dla operatora. Realny scenariusz kolizji: `deduplikator_autorow`
+przenosi autorstwa z duplikatu na autora głównego
+(`src/deduplikator_autorow/utils/merge.py:191,284,354`) i trafia w
+soft-deletowany wiersz o tej samej trójce → `IntegrityError` o rekord, którego
+nie widać.
+
+**DECYZJA: zamienić na warunkowy `UniqueConstraint`** — spójnie ze slugiem:
+
+```python
+constraints = [
+    models.UniqueConstraint(
+        fields=["rekord", "autor", "typ_odpowiedzialnosci"],
+        condition=Q(deleted_at__isnull=True),
+        name="...",
+    ),
+    models.UniqueConstraint(
+        fields=["rekord", "autor", "kolejnosc"],
+        condition=Q(deleted_at__isnull=True),
+        name="...",
+    ),
+]
+```
+
+⚠️ Uwaga wykonawcza: `unique_together` jest walidowane także przez
+`Model.validate_unique()` (formularze adminu), a `UniqueConstraint` z
+`condition` **nie jest** brane pod uwagę przez `validate_unique` w starszym
+Django. Zweryfikować w fazie 02, czy admin inline'ów autorstwa nadal daje
+czytelny komunikat zamiast `IntegrityError` — komentarz przy drugiej krotce
+(„Tu musi być autor, inaczej admin nie pozwoli wyedytować") sugeruje, że ten
+constraint istnieje właśnie ze względu na admina.
 
 ### 2.3 `slug` — warunkowy unique
 
@@ -209,8 +326,54 @@ eksport / liczenie) staje się czysta automatycznie (zero zmian). Ale
 > menedżera, soft-delete staje się generatorem duplikatów. Audyt kat. B jest
 > obowiązkowy.
 
-**Through-modele `*_Autor` (90 miejsc).** Po wpięciu `SoftDeleteModel`
-90 bezpośrednich zapytań `*_Autor.objects` (głównie `ewaluacja_optymalizacja`:
+**Co po dopasowaniu do rekordu w koszu (decyzja #14).** Samo przejście na
+`global_objects` usuwa duplikaty, ale otwiera drugie pytanie: importer
+dopasował po `pbn_uid`/DOI rekord, który operator świadomie skasował — i co
+teraz? Bez rozstrzygnięcia domyślnie „zaktualizowałby go po cichu", czyli
+import nadpisywałby zawartość kosza.
+
+> **DECYZJA: POMIŃ + ZARAPORTUJ.** Rekord w koszu nie jest tykany; trafienie
+> ląduje w raporcie importu jako osobna kategoria (nie „błąd", nie „utworzono").
+> Uzasadnienie: soft-delete to jawna deklaracja operatora „tego tu nie ma";
+> cichy update kosza ją podważa, a auto-restore pozwoliłby importowi wskrzeszać
+> rzeczy skasowane celowo. Nowy rekord obok też odpada — odtwarzałby dokładnie
+> ten problem duplikatów, przed którym broni `global_objects`.
+>
+> Wymaganie wykonawcze: **każda** ścieżka kat. B musi mieć gdzie ten fakt
+> zaraportować. Tam, gdzie importer nie ma struktury raportu, wystarczy log
+> + licznik; nie wolno pominąć milcząco.
+
+### 2.5b `Cache_Punktacja_*` — praca w koszu nie może liczyć się do ewaluacji
+
+⚠️ **Luka wykryta 2026-08-06** — nie pokrywa jej wąska kaskada na `*_Autor`.
+
+`Cache_Punktacja_Autora` i `Cache_Punktacja_Dyscypliny`
+(`src/bpp/models/cache/punktacja.py`) to **osobne tabele**, kluczowane tablicą
+`rekord_id = [content_type_id, pk]`. Nie mają FK do publikacji, więc **żadna
+kaskada Django ich nie ruszy**, a triggery cache ich nie dotyczą. Zapisywane
+są z `src/bpp/models/sloty/core.py:401,439`.
+
+Czytane bezpośrednio, z pominięciem `Rekord`, m.in. w:
+- `src/ewaluacja_optymalizacja/utils.py:182`,
+- `src/ewaluacja_optymalizacja/views/evaluation_browser/prefetch.py:41`,
+- `src/oswiadczenia/views.py:353`.
+
+Bez osobnego mechanizmu **soft-deletowana praca dalej wnosi sloty i punkty do
+ewaluacji** — czyli dokładnie ten „silent leak", przed którym broni §2.2, tyle
+że innym kanałem.
+
+> **DECYZJA: kasować przy soft-delete, przeliczać przy restore (#15).**
+> - `post_soft_delete` publikacji → usuń wiersze `Cache_Punktacja_Autora`
+>   i `Cache_Punktacja_Dyscypliny` dla tego `rekord_id`;
+> - `post_restore` → przelicz je z powrotem (maszyneria istnieje —
+>   `src/bpp/models/sloty/core.py`).
+>
+> Wybrane zamiast „filtrować przy odczycie", bo nie wymaga tknięcia ~10 miejsc
+> odczytu ani pilnowania każdego nowego. Koszt: restore staje się operacją
+> liczącą (nie samym `UPDATE`), co trzeba uwzględnić w adminie (może trwać).
+
+**Through-modele `*_Autor` (128 miejsc).** Po wpięciu `SoftDeleteModel`
+128 bezpośrednich zapytań `*_Autor.objects` (głównie `ewaluacja_optymalizacja`:
 `reset_pins`, `reset_disciplines`, `unpin_all_sensible`, `optimization`,
 `author_works`, `evaluation_browser`, `verification`; oraz `api_v1`,
 `przemapuj_prace_autora`, `ewaluacja_dwudyscyplinowcy`) **staje się poprawne
@@ -307,7 +470,7 @@ Skutki:
 
 ---
 
-## 4. PBN — wycofanie oświadczeń przez kolejkę
+## 4. PBN — wycofanie oświadczeń (kolejka + ścieżka synchroniczna)
 
 ### 4.1 Co i kiedy
 
@@ -323,20 +486,40 @@ Prymityw PBN istnieje:
 `delete_publication_statement` w `:135`, retry w
 `pbn_api/client/publication_sync.py`).
 
-### 4.2 Mechanizm — rozszerzenie istniejącej `pbn_export_queue`
+### 4.2 Mechanizm — jeden prymityw, DWA wejścia (decyzja #16)
 
-Nie wprowadzamy nowego mechanizmu. Kolejka eksportu PBN żyje jako dedykowana
-aplikacja **`src/pbn_export_queue/`** (model `PBN_Export_Queue`: GFK
-content_type+object_id, `zamowil`, `ilosc_prob`, `zakonczono_pomyslnie`,
-`rodzaj_bledu`, klasyfikacja błędów, locking, „ponowna wysyłka", admin,
-`send_to_pbn()`).
+⚠️ **Zmiana 2026-08-06.** Poprzednia wersja zakładała jedno wejście
+(`pbn_export_queue`). Rekord może jednak trafić do PBN **synchronicznie, bez
+kolejki** (`synchronizuj_publikacje`, `src/pbn_integrator/utils/synchronization.py:180`,
+wołane m.in. z `pbn_uploader` / `pbn_integrator`), a od czasu pisania specu
+doszła aplikacja `src/pbn_wysylka_oswiadczen/`, która już woła
+`delete_all_publication_statements` (`tasks.py:68`) z dopracowaną obsługą
+wyjątków PBN. Wycofanie musi więc działać w obu trybach.
 
-Rozszerzenie:
-- dodać pole `operacja: TextChoices(WYSYLKA, WYCOFANIE)` (default `WYSYLKA`
-  dla kompatybilności wstecznej), migracja,
-- gałąź w logice wysyłki: `WYCOFANIE` → `delete_all_publication_statements`,
-- status zapisywany jak dla wysyłki (`zakonczono_pomyslnie`, `komunikat`,
-  `ilosc_prob`) + odzwierciedlenie w `SentData` i `SoftDeleteLog`.
+**Architektura: wspólna funkcja-prymityw + dwa wywołujące ją wejścia.**
+
+1. **Prymityw** (nowy, jedno miejsce prawdy) — np.
+   `wycofaj_oswiadczenia(publikacja, client) -> wynik`:
+   - gate na `pbn_uid` (brak → no-op, jawnie zaraportowany),
+   - `client.delete_all_publication_statements(pbn_uid)`,
+   - obsługa `CannotDeleteStatementsException` (brak oświadczeń = sukces,
+     nie błąd), `PraceSerwisoweException`, `HttpException` — wzorzec
+     do przejęcia z `pbn_wysylka_oswiadczen/tasks.py:54-76`,
+   - aktualizacja `SentData` (§4.2b) — zawsze, niezależnie od wejścia.
+2. **Wejście asynchroniczne** — `pbn_export_queue` rozszerzona o pole
+   `operacja: TextChoices(WYSYLKA, WYCOFANIE)` (default `WYSYLKA` dla
+   kompatybilności wstecznej). Gałąź w `send_to_pbn()`
+   (`src/pbn_export_queue/models.py:456`): `WYCOFANIE` → prymityw. Status
+   zapisywany jak dla wysyłki (`zakonczono_pomyslnie`, `komunikat`,
+   `ilosc_prob`). To jest **ścieżka domyślna** dla soft-delete z admina —
+   ma retry, locking i `UniqueConstraint` na jednym aktywnym wpisie na rekord.
+3. **Wejście synchroniczne** — kod, który wysyła rekord bez kolejki, woła
+   prymityw bezpośrednio. Nie kolejkuje, nie ma retry; odpowiada za obsługę
+   wyniku na miejscu.
+
+> **Niezmiennik:** żadne z wejść nie woła `delete_all_publication_statements`
+> samodzielnie — wyłącznie przez prymityw. Inaczej aktualizacja `SentData`
+> i wpis w `SoftDeleteLog` rozjadą się między ścieżkami.
 
 ⚠️ **`PBN_Export_Queue.zamowil` jest NOT NULL (`on_delete=CASCADE`).**
 Zakolejkowanie z admina ma `request.user`. Ale zakolejkowanie inicjowane
@@ -344,6 +527,8 @@ sygnałem przy soft-delete bez usera (operacje programistyczne / celery) nie ma
 kogo wpisać. Rozwiązanie (faza 05/06): **konto techniczne** (np.
 `get_or_create` systemowego użytkownika) jako `zamowil` dla operacji
 systemowych — NIE robić `zamowil` nullable (psułoby istniejące zał. kolejki).
+
+### 4.2b `SentData` — stan PBN per-rekord
 
 `SentData` (`src/pbn_api/models/sentdata.py`, GFK + `pbn_uid` +
 `submitted_successfully` + `mark_as_successful`/`mark_as_failed`) trzyma stan
@@ -353,10 +538,15 @@ False` (rekord nie jest już „wystawiony" w PBN) i dodajemy znacznik wycofania
 `SentData` NIE kasujemy** — zostaje dla audytu i re-matchingu przy restore.
 Restore (`WYSYLKA`) → ponowne `mark_as_successful` po udanej wysyłce.
 
+Aktualizację `SentData` robi **prymityw** (§4.2 pkt 1), nie wywołujący — dzięki
+temu ścieżka asynchroniczna i synchroniczna zostawiają identyczny stan.
+
 ### 4.3 Restore → symetria
 
-Restore publikacji → wpis `WYSYLKA` w `pbn_export_queue` (ponowna wysyłka
-oświadczeń, dyscypliny wracają do profilu). Symetria delete↔restore.
+Restore publikacji → ponowna wysyłka oświadczeń (dyscypliny wracają do
+profilu instytucji), tym samym dwuwejściowym wzorcem co wycofanie: domyślnie
+wpis `WYSYLKA` w `pbn_export_queue`, a w kontekście synchronicznym —
+bezpośrednio. Symetria delete↔restore.
 
 ---
 
@@ -417,20 +607,27 @@ odłożone, YAGNI; można dorobić jako zadanie `CELERYBEAT_SCHEDULE`,
 
 ## 8. Kolejność prac (fazy; szczegółowy TDD → writing-plans)
 
-1. **`*_Autor` + trigger + widoki** — kolejność wewnątrz fazy: (a) migracja
-   `SoftDeleteModel` na 3 through-modelach (`deleted_at`+indeks) — **musi być
-   PRZED** (b), bo trigger/widok czytają tę kolumnę; (b) filtr `deleted_at IS
-   NULL` w widokach źródłowych `bpp_rekord`/`bpp_*_autorzy` (mechanizm #1, po
-   własnej kolumnie); (c) funkcja `bpp_refresh_cache()` z regułą
-   `deleted_at IS NOT NULL → pomiń re-insert` (opcjonalna optymalizacja).
-   Testy spójności mat-view + `verify_cache`. **Najwrażliwsze, pierwsze.**
+1. **`*_Autor` + widoki + funkcje triggera + bramka** — kolejność wewnątrz
+   fazy jest wymuszona zależnościami (§2.1):
+   (a) migracja `SoftDeleteModel` na 3 through-modelach (`deleted_at`+indeks) —
+   **musi być PRZED** (b), bo widok czyta tę kolumnę;
+   (b) filtr `deleted_at IS NULL` w widokach źródłowych `bpp_*_autorzy`
+   (po własnej kolumnie, bez JOIN);
+   (c) **gałąź kasująca** w funkcjach refresh (`IF NEW.deleted_at IS NOT NULL
+   THEN DELETE ... RETURN NULL`) — **obowiązkowa**, nie optymalizacja;
+   (d) **regeneracja bramki `WHEN`** (logika `forward()` z `0433`) — musi być
+   PO (b), żeby `pg_depend` już znało `deleted_at`.
+   Weryfikacja: odwrócenie asercji w
+   `src/bpp/tests/test_cache/test_soft_delete_preconditions.py` + testy
+   spójności surowym SQL-em. **Najwrażliwsze, pierwsze.**
 2. **Publikacje** — `SoftDeleteModel` na 5 modelach, override
    `delete()`/`restore()` z **wąską kaskadą na `*_Autor`** (wspólny
    `transaction_id`, bez refleksyjnej kaskady pakietu), migracje
    (`deleted_at`+indeks, ew. `CONCURRENTLY`), `slug` `UniqueConstraint`,
-   przeplecenie menedżerów.
+   warunkowe `UniqueConstraint` na `*_Autor` (§2.2b), przeplecenie menedżerów,
+   powtórzenie kroków 1(b)–1(d) dla 5 widoków publikacji i ich funkcji.
 3. **Audyt kat. B** — przełączenie import/dedup/PBN-matching na
-   `global_objects`; audyt 90 miejsc `*_Autor.objects` (default „pomijaj"
+   `global_objects`; audyt 128 miejsc `*_Autor.objects` (default „pomijaj"
    poprawny, wyjątki → `global_objects`). Testy: re-import nie tworzy
    duplikatów; ewaluacja pomija prace w koszu.
 4. **Guardy PROTECT** (ten sam wzorzec: flip FK + guard liczący przez
@@ -441,10 +638,12 @@ odłożone, YAGNI; można dorobić jako zadanie `CELERYBEAT_SCHEDULE`,
    - **`Wydawnictwo_Zwarte` (rozdziały)** — flip FK `wydawnictwo_nadrzedne`
      `CASCADE→PROTECT`, guard w soft `delete()` blokujący gdy ma rozdziały
      (§2.6).
-5. **PBN** — `operacja WYCOFANIE` w `pbn_export_queue` + restore→`WYSYLKA`;
-   integracja `SentData`.
+5. **PBN** — prymityw `wycofaj_oswiadczenia()` + dwa wejścia: `operacja
+   WYCOFANIE` w `pbn_export_queue` (async) i wywołanie bezpośrednie
+   (synchroniczne); restore→`WYSYLKA`; integracja `SentData` (§4.2).
 6. **SoftDeleteLog** + receivery sygnałów (`post_soft_delete`/`post_restore`/
-   `post_hard_delete`), wstrzykiwanie `user`.
+   `post_hard_delete`), wstrzykiwanie `user`, **kasowanie/przeliczanie
+   `Cache_Punktacja_*`** (§2.5b).
 7. **Admin** — kosz / filtr / przywróć / usuń-trwale / powód (5 modeli +
    `Autor`).
 8. **Testy regresji** — pełna suita: PBN (duplikaty + wycofanie), dashboard,
@@ -455,9 +654,20 @@ odłożone, YAGNI; można dorobić jako zadanie `CELERYBEAT_SCHEDULE`,
 ## 9. Ryzyka
 
 - **Cache/trigger** — rozjazd, jeśli `deleted_at` nie obsłużone we wszystkich
-  8 tabelach (5 publikacji + 3 `*_autor`) + ścieżce UPDATE + widokach
-  źródłowych. Najgroźniejsze, wydajnościowo wrażliwe. Mitygacja: testy
-  spójności jako pierwsze.
+  8 tabelach (5 publikacji + 3 `*_autor`) × trzech elementach (widok, gałąź
+  kasująca, bramka `WHEN`). Najgroźniejsze, wydajnościowo wrażliwe.
+  Mitygacja: kanarki `test_soft_delete_preconditions.py` odwrócone na
+  docelowe asercje jako PIERWSZY krok fazy 01.
+- **Bramka `WHEN` zapomniana przy kolejnej zmianie widoku** — bramka jest
+  wypiekana w migracji z `pg_depend`, więc **każda przyszła zmiana definicji
+  widoku źródłowego wymaga jej regeneracji**. Pominięcie = cichy staleness
+  (rekord w koszu widoczny dalej). Mitygacja: kanarki + nota w
+  `docs/deweloper/spec-bpp-refresh-cache-plpgsql-2026-06.md`.
+- **`Cache_Punktacja_*` nietknięte przy soft-delete** — praca w koszu nadal
+  liczy się do ewaluacji (§2.5b). Osobny kanał, którego kaskada `*_Autor`
+  NIE zamyka.
+- **Restore staje się operacją liczącą** — przeliczenie `Cache_Punktacja_*`
+  (§2.5b) może trwać; admin musi to znieść (komunikat / zadanie w tle).
 - **Guard autora przez `objects` zamiast `global_objects`** — autor z pracami
   tylko-w-koszu przeszedłby przez guard (autorstwa kaskadowo skasowane są
   ukryte). MUSI być `global_objects` (§3.2).
@@ -484,7 +694,7 @@ odłożone, YAGNI; można dorobić jako zadanie `CELERYBEAT_SCHEDULE`,
    soft-deletuje rodzica i jego `*_Autor` (wspólny `transaction_id`), bez
    refleksyjnej kaskady na pozostałe dzieci. Trigger jako choke-point,
    jednolity dzięki własnym `deleted_at` na wszystkich 8 tabelach (bez JOIN
-   do rodzica). Powód kaskady: 90 miejsc `*_Autor.objects` w ewaluacji.
+   do rodzica). Powód kaskady: 128 miejsc `*_Autor.objects` w ewaluacji.
 3. **PBN przy soft-delete:** wycofanie oświadczeń instytucji
    (`delete_all_publication_statements`), gate na `pbn_uid`; obiektu
    publikacji nie kasujemy.
@@ -495,14 +705,35 @@ odłożone, YAGNI; można dorobić jako zadanie `CELERYBEAT_SCHEDULE`,
 7. **Admin:** superuser-only; soft-delete zastępuje „usuń"; hard-delete jako
    osobna jawna akcja.
 8. **Retencja:** brak auto-czyszczenia; tylko ręczny hard-delete.
-9. **Cache — mechanizm nadrzędny:** filtr `deleted_at IS NULL` w widokach
-   źródłowych (pokrywa trigger, odczyt z `bpp_rekord`, `verify_cache`);
-   trigger-skip to opcjonalna optymalizacja.
+9. ~~**Cache — mechanizm nadrzędny:** filtr `deleted_at IS NULL` w widokach
+   źródłowych; trigger-skip to opcjonalna optymalizacja.~~
+   **UNIEWAŻNIONE 2026-08-06.** Zastąpione przez: **trzy elementy, wszystkie
+   obowiązkowe** — (a) filtr w widoku, (b) gałąź kasująca w funkcji refresh,
+   (c) regeneracja bramki `WHEN`. Żaden nie wystarcza sam (§2.1).
 10. **SentData przy wycofaniu:** `submitted_successfully=False` + znacznik
     wycofania, wiersza nie kasujemy.
 11. **Self-FK `Wydawnictwo_Zwarte` (rozdziały):** **PROTECT** — soft-delete
     książki-matki zablokowany, jeśli ma rozdziały (flip FK `CASCADE→PROTECT`
     + guard liczący przez `global_objects`, §2.6). Wzorzec jak guard autora.
+
+### Decyzje domknięte 2026-08-06 (po weryfikacji na `dev`)
+
+12. **`full_refresh()` pomija skasowane** — `denorm.rebuildall` iteruje po
+    domyślnym managerze. Świadomie akceptowane (przebudowa opisów
+    bibliograficznych rekordu w koszu jest bez wartości). NIE używamy
+    `full_refresh()` jako weryfikacji spójności soft-delete (§2.1).
+13. **`unique_together` na `*_Autor` → warunkowy `UniqueConstraint`**
+    z `condition=Q(deleted_at__isnull=True)`, spójnie ze slugiem (§2.2b).
+14. **Import trafiający w kosz: POMIŃ + ZARAPORTUJ.** Nie tykamy rekordu
+    w koszu; trafienie idzie do raportu importu jako osobna kategoria.
+    Nie auto-restore, nie nowy rekord (§2.5).
+15. **`Cache_Punktacja_*`: kasować przy soft-delete, przeliczać przy restore.**
+    Zamiast filtrowania w ~10 miejscach odczytu (§2.5b).
+16. **PBN: jeden prymityw, dwa wejścia** — asynchroniczne przez
+    `pbn_export_queue` (`operacja=WYCOFANIE`, ścieżka domyślna) i
+    synchroniczne wywołanie bezpośrednie, bo rekord bywa wysyłany bez kolejki.
+    Żadne wejście nie woła `delete_all_publication_statements` samodzielnie
+    (§4.2).
 
 ---
 
@@ -512,7 +743,16 @@ odłożone, YAGNI; można dorobić jako zadanie `CELERYBEAT_SCHEDULE`,
 - `src/zglos_publikacje/models.py` — `Zgłoszenie_Publikacji` już
   `SoftDeleteModel` (wzorzec).
 - `src/pbn_export_queue/` — dojrzała kolejka PBN (model + Celery + admin +
-  retry/lock), wzorzec dla operacji `WYCOFANIE`.
+  retry/lock), wzorzec dla operacji `WYCOFANIE` (wejście asynchroniczne).
+- `src/pbn_wysylka_oswiadczen/tasks.py:54-76` — wzorcowa obsługa wyjątków PBN
+  przy `delete_all_publication_statements` (`CannotDeleteStatementsException`
+  = brak oświadczeń = sukces, nie błąd). Do przejęcia przez prymityw §4.2.
 - `src/pbn_api/models/sentdata.py` — `SentData` (stan PBN per-rekord).
 - `src/bpp/models/oplaty_log.py`, log w `deduplikator_autorow` — precedensy
   tabel-logów.
+- `src/bpp/migrations/0432_cache_trigger_plpgsql.py` /
+  `0433_cache_trigger_when_gate.py` — generatory funkcji triggera i bramki.
+  **Faza 01 wprost korzysta z ich logiki**, nie pisze SQL-a od zera.
+- `src/bpp/tests/test_cache/test_cache_plpgsql_port.py` — wzorzec testów
+  spójności `_mat` surowym SQL-em (porównanie kolumna-po-kolumnie, `ctid`
+  do wykrywania jałowych przepisań).
