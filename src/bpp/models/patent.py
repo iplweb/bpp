@@ -25,11 +25,12 @@ from bpp.models.abstract import (
     RekordBPPBaza,
 )
 from bpp.models.autor import Autor
+from bpp.models.soft_delete import BppAutorstwoSoftDeleteMixin
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.util import safe_tytul_html
 
 
-class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
+class Patent_Autor(BppAutorstwoSoftDeleteMixin, BazaModeluOdpowiedzialnosciAutorow):
     """Powiązanie autora do patentu."""
 
     rekord = models.ForeignKey(
@@ -50,6 +51,9 @@ class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
             ("rekord", "autor", "typ_odpowiedzialnosci"),
             # Tu musi być autor, inaczej admin nie pozwoli wyedytować
             ("rekord", "autor", "kolejnosc"),
+        ]
+        indexes = [
+            models.Index(fields=["deleted_at"], name="patent_autor_deleted_at_idx"),
         ]
 
 

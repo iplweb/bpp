@@ -53,6 +53,7 @@ from bpp.models.abstract import (
 )
 from bpp.models.autor import Autor
 from bpp.models.nagroda import Nagroda
+from bpp.models.soft_delete import BppAutorstwoSoftDeleteMixin
 from bpp.models.system import Zewnetrzna_Baza_Danych
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 from bpp.models.wydawca import Wydawca
@@ -60,6 +61,7 @@ from bpp.models.wydawca import Wydawca
 
 class Wydawnictwo_Zwarte_Autor(
     DirtyFieldsMixin,
+    BppAutorstwoSoftDeleteMixin,
     BazaModeluOdpowiedzialnosciAutorow,
 ):
     """Model zawierający informację o przywiązaniu autorów do wydawnictwa
@@ -83,6 +85,9 @@ class Wydawnictwo_Zwarte_Autor(
             ("rekord", "autor", "typ_odpowiedzialnosci"),
             # Tu musi być autor, inaczej admin nie pozwoli wyedytować
             ("rekord", "autor", "kolejnosc"),
+        ]
+        indexes = [
+            models.Index(fields=["deleted_at"], name="wz_autor_deleted_at_idx"),
         ]
 
 
