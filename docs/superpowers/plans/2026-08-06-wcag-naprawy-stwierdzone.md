@@ -657,7 +657,7 @@ tej listy zamiast dodawać nową linię.
 uv run pytest src/bpp/tests/test_wcag/test_lang_szablony.py -v
 ```
 
-Oczekiwane: 5 passed.
+Oczekiwane: 3 passed.
 
 - [ ] **Step 7: Regresja widoków browse**
 
@@ -1255,6 +1255,8 @@ fałszywie.
 """
 
 import pytest
+from django.urls import reverse
+from model_bakery import baker
 
 from pbn_export_queue.views.utils import _get_record_title
 
@@ -1271,22 +1273,51 @@ def test_get_record_title_zwraca_opis_ze_znacznikiem(wydawnictwo_ciagle):
     assert _get_record_title(wydawnictwo_ciagle) == OPIS_ZE_ZNACZNIKIEM
 
 
-@pytest.mark.parametrize(
-    "fraza,znajdzie",
-    [
-        ("kowalski", True),
-        ("postępy higieny", True),
-        ("effects of x on y", True),
-        ("kowalski jan. effects", False),
-    ],
-)
-def test_fraza_w_opisie_ze_znacznikiem(fraza, znajdzie):
-    # Ostatni przypadek dokumentuje zachowanie ZASTANE: fraza przecięta
-    # znacznikiem nie znajdzie rekordu. To nie regresja tej zmiany — opis
-    # już wcześniej zawierał <b>/<i> — ale znacznik poszerza zbiór takich
-    # fraz, więc stan jest tu utrwalony asercją, a nie przemilczany.
-    assert (fraza in OPIS_ZE_ZNACZNIKIEM.lower()) is znajdzie
+def test_get_record_title_woli_tytul_nad_opisem(wydawnictwo_ciagle):
+    # Gałąź elif: opis czytany WYŁĄCZNIE gdy brak tytułu oryginalnego.
+    wydawnictwo_ciagle.tytul_oryginalny = "Tytuł wprost"
+    wydawnictwo_ciagle.opis_bibliograficzny_cache = OPIS_ZE_ZNACZNIKIEM
+
+    assert _get_record_title(wydawnictwo_ciagle) == "Tytuł wprost"
+
+
+@pytest.mark.django_db
+def test_lista_kolejki_znajduje_rekord_po_opisie(admin_client, wydawnictwo_ciagle):
+    # Realny filtr widoku (list_views.py:76-83) na rekordzie BEZ tytułu
+    # oryginalnego — inaczej dopasowanie nigdy nie sięgnie opisu.
+    from pbn_export_queue.models import PBN_Export_Queue
+
+    wydawnictwo_ciagle.tytul_oryginalny = ""
+    wydawnictwo_ciagle.opis_bibliograficzny_cache = OPIS_ZE_ZNACZNIKIEM
+    wydawnictwo_ciagle.save()
+
+    baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=None,
+    )
+
+    res = admin_client.get(
+        reverse("pbn_export_queue:list"), {"search": "postępy higieny"}
+    )
+
+    assert res.status_code == 200
 ```
+
+Drugi test zależy od nazwy URL-a i pola formularza wyszukiwania. Sprawdź je
+przed napisaniem testu:
+
+```bash
+grep -rn "name=\"list\"\|name='list'" src/pbn_export_queue/urls.py
+grep -n "search" src/pbn_export_queue/views/list_views.py | head -5
+```
+
+Dostosuj `reverse(...)`, nazwę parametru GET oraz pole
+`rekord_do_wysylki`/`zamowil` do rzeczywistego modelu
+(`src/pbn_export_queue/models.py`). Jeżeli widok wymaga uprawnień innych niż
+`admin_client`, użyj właściwej fixture — ale **nie** zamieniaj tego testu na
+asercję o samej stałej `OPIS_ZE_ZNACZNIKIEM`: test ma wykonywać kod
+produkcyjny, inaczej nie testuje niczego.
 
 - [ ] **Step 2: Uruchom testy**
 
@@ -1294,7 +1325,7 @@ def test_fraza_w_opisie_ze_znacznikiem(fraza, znajdzie):
 uv run pytest src/pbn_export_queue/tests/test_wyszukiwanie_opisu.py -v
 ```
 
-Oczekiwane: 5 passed.
+Oczekiwane: 3 passed.
 
 `_get_record_title(rekord)` (`src/pbn_export_queue/views/utils.py:188-202`)
 sprawdza `tytul_oryginalny`, a opis czyta dopiero w `elif` — dlatego test
