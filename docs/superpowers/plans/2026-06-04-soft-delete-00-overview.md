@@ -69,6 +69,23 @@ Szczegóły i uzasadnienie: §2.1 specu.
 - `SoftDeleteQuerySet.delete()` iteruje per-instancję (`for obj in self.iterator(): obj.delete()`) — bezpieczny dla sygnałów. **NIE** robi bulk update.
 - Sygnały (`django_softdelete/signals.py`): `post_soft_delete`, `post_hard_delete`, `post_restore`.
 - ⚠️ **`strict` jest ASYMETRYCZNE:** `delete(strict=False)`, ale `restore(strict=True)`. Czyli domyślna kaskada `delete()` **nie krzyknie** na nie-soft dzieciach — po cichu po nich przejedzie. Kolejny powód, by nie polegać na kaskadzie pakietu (§2.2 specu).
+- 🔴 **KONSEKWENCJA `restore(strict=True)` — wykryta przy wykonaniu fazy 01, Task 2.**
+  Pakiet sprawdza `strict` w pętli po **WSZYSTKICH** polach z `related_model`,
+  zanim rozróżni typ relacji — więc także po **zwykłych FK w przód**
+  (`django_softdelete/models.py`, pętla w `restore()`):
+  ```python
+  for field in self._meta.get_fields():
+      RelatedModel = field.related_model
+      if not RelatedModel: continue
+      if strict and not issubclass(RelatedModel, SoftDeleteModel):
+          raise SoftDeleteException(...)
+  ```
+  `*_Autor` ma FK do `Autor` i `Jednostka` (nie-soft), więc **gołe
+  `.restore()` rzuca `SoftDeleteException` i nie da się przywrócić niczego.**
+  **Kontrakt PINNED: każdy model soft-delete w BPP nadpisuje `restore()`
+  z `strict=False`** (albo pisze własne, jak mixin publikacji w fazie 02).
+  Dotyczy fazy 01 (`BppAutorstwoSoftDeleteMixin`) i fazy 04 (`Autor` — ma FK
+  do `Tytul`, `Funkcja_Autora` itd., więc trafi na to samo).
 - ⚠️ **`delete()` zapisuje przez `save(update_fields=['deleted_at','restored_at','transaction_id'])`** — to jest przyczyna, dla której bramka `WHEN` triggera cache nie przepuszcza soft-delete (i dla której `ostatnio_zmieniony`/`auto_now` NIE jest bumpowany).
 
 ### Nowy moduł `src/bpp/models/soft_delete.py` (tworzy faza 01)
