@@ -48,7 +48,22 @@ Gałęzie `UNION` w `bpp_rekord` per typ publikacji NIE filtrują po `*_autor.de
 - **Trigger (AKTUALNY, po PR #363):** `0432_cache_trigger_plpgsql.py` generuje 3 funkcje `bpp_refresh_autor_<model>()` (upsert **bez** DELETE, `_create_through_function`) + 3 `bpp_delete_autor_<model>()`, oraz triggery `<tabela>_cache_ins` / `_cache_del` / `_cache_upd`. `0433_cache_trigger_when_gate.py` nakłada bramkę `WHEN` na `_cache_upd`, z listą kolumn wyliczoną z `pg_depend`. ⚠️ **Funkcja `bpp_refresh_cache()` NIE ISTNIEJE** — `DROP` w `0432`. Nie kopiować `0399` ani `0001_cache_functions.sql`.
 - Widoki `bpp_*_autorzy`: ostatnia wersja definicji w `0421_cache_trigger_pk_filter.sql` (dodaje `object_id_raw`). Odtwarzając widok, wychodź z `pg_get_viewdef()`, nie z `0001_widoki_autorzy.sql`.
 - ⚠️ **`transactional_db` NIE jest wymagany** do oglądania efektów triggera — triggery bazodanowe działają wewnątrz transakcji testowej (dowód: kanarki `test_soft_delete_preconditions.py` chodzą pod zwykłym `django_db`). Używaj `django_db`; `transactional_db` tylko spowalnia. Fixture `denorms` (`src/fixtures/conftest_system.py:255`) daje `denorms.flush()`. Fixtury: `wydawnictwo_ciagle_z_dwoma_autorami`, `wydawnictwo_ciagle_z_autorem`, `autor_jan_kowalski`, `jednostka`, `standard_data`, `typy_odpowiedzialnosci`.
-- ⚠️ **Numeracja migracji (stan 2026-08-06):** liść to `0487_api_v1_przelaczniki`. Nowe migracje tej fazy: `0488_autor_soft_delete_fields` → `0489_soft_delete_autorzy_views` (SQL + regeneracja bramki). **Przed startem zweryfikuj liść ponownie** (`ls src/bpp/migrations/*.py | tail -3`) — `dev` żyje, numery mogły się przesunąć. Wszystkie numery w tym planie są orientacyjne; kanoniczna jest kolejność, nie cyfra.
+- ⚠️ **Numeracja migracji (stan po zakończeniu fazy, 2026-08-06):** liść przed
+  fazą to był `0487_api_v1_przelaczniki`. Faza 01 dołożyła w praktyce OSIEM
+  migracji `bpp` — `0488_autor_soft_delete_fields` →
+  `0489_soft_delete_autorzy_views` → `0490_autor_indeks_fk_rekord` →
+  `0491_autor_unique_rekord_autor_typ` → `0492_autor_excl_rekord_kolejnosc` →
+  `0493_autor_zdjecie_starych_unique` → `0494_liczba_autorow_bez_skasowanych`
+  → `0495_nowe_sumy_bez_skasowanych` — plus
+  `rozbieznosci_dyscyplin/0022_rozbieznosci_zrodel_bez_skasowanych.py` w
+  osobnej aplikacji. `0490`-`0493` to rozbite (jedna migracja na `ALTER
+  TABLE`, każda `atomic = False`) to, co ten plan opisuje niżej jako
+  jednolite `0490_autor_warunkowy_unique` (Task 3c) — patrz `progress.md` i
+  `naprawa-finalna-report.md` w katalogu SDD tej fazy po uzasadnienie
+  rozbicia. `0494`/`0495` naprawiają blokery znalezione dopiero w finalnej
+  recenzji (widoki pochodne `liczba_autorow` i `bpp_nowe_sumy_*`, poza
+  pierwotnym zakresem tego planu). Wszystkie numery w tym planie są
+  orientacyjne; kanoniczna jest kolejność, nie cyfra.
 
 **Kontrakt z reversion (PINNED):** soft-delete idzie WYŁĄCZNIE per-instancja przez `.delete()`/`.save()` (nigdy `queryset.update(deleted_at=...)`). `BppSoftDeleteQuerySet.update()` to egzekwuje fail-fast (gate). W tej fazie testujemy gate i kaskadę queryset-ową.
 
@@ -339,13 +354,23 @@ Wpięcie `SoftDeleteModel` w abstrakcyjną bazę → Django doda `deleted_at`/`r
 
 - [ ] Zweryfikuj treść wygenerowanej migracji — musi zawierać `AddField` `deleted_at`/`restored_at`/`transaction_id` dla `wydawnictwo_ciagle_autor`, `wydawnictwo_zwarte_autor`, `patent_autor`. Jeśli Django dorzuciło `AlterModelManagers` — usuń tę operację ręcznie (Edit), bo managery soft-delete nie idą do schematu. Dependency MUSI wskazywać na **aktualny liść** migracji `bpp` (na 2026-08-06: `("bpp", "0487_api_v1_przelaczniki")`) — zweryfikuj `ls src/bpp/migrations/*.py | tail -3` przed commitem.
 
-- [ ] Dodaj indeks na `deleted_at` do każdej z 3 tabel. Dopisz do `operations` w `0488_autor_soft_delete_fields.py` (po `AddField`-ach), używając `AddIndex`:
+- [ ] Dodaj indeks na `deleted_at` do każdej z 3 tabel. ⚠️ **Stan po
+  zakończeniu fazy: indeks jest CZĘŚCIOWY**
+  (`condition=Q(deleted_at__isnull=False)`), nie pełny — zdecydowane w
+  finalnej recenzji: `deleted_at IS NULL` pasuje do ~100% wierszy, więc
+  planner pod ten predykat i tak wybiera seq scan, a pełny btree byłby
+  wyłącznie kosztem (rozmiar + wpis przy każdym zapisie autorstwa).
+  Selektywne jest zapytanie ODWROTNE (`deleted_objects`,
+  `deleted_at IS NOT NULL`) i to jemu służy indeks. Dopisz do `operations`
+  w `0488_autor_soft_delete_fields.py` (po `AddField`-ach), używając
+  `AddIndex`:
   ```python
           migrations.AddIndex(
               model_name="wydawnictwo_ciagle_autor",
               index=models.Index(
                   fields=["deleted_at"],
                   name="wc_autor_deleted_at_idx",
+                  condition=models.Q(deleted_at__isnull=False),
               ),
           ),
           migrations.AddIndex(
@@ -353,6 +378,7 @@ Wpięcie `SoftDeleteModel` w abstrakcyjną bazę → Django doda `deleted_at`/`r
               index=models.Index(
                   fields=["deleted_at"],
                   name="wz_autor_deleted_at_idx",
+                  condition=models.Q(deleted_at__isnull=False),
               ),
           ),
           migrations.AddIndex(
@@ -360,10 +386,17 @@ Wpięcie `SoftDeleteModel` w abstrakcyjną bazę → Django doda `deleted_at`/`r
               index=models.Index(
                   fields=["deleted_at"],
                   name="patent_autor_deleted_at_idx",
+                  condition=models.Q(deleted_at__isnull=False),
               ),
           ),
   ```
-  (Nazwy indeksów ≤ 30 znaków — wymóg PostgreSQL/Django. Jeśli `makemigrations` samo dodało `Meta.indexes` przez zmianę modelu — nie dublować; w tej fazie indeks definiujemy WYŁĄCZNIE w migracji, bo `Meta.indexes` w abstrakcyjnej bazie dałby kolizję nazw między 3 tabelami.)
+  (Nazwy indeksów ≤ 30 znaków — wymóg PostgreSQL/Django. W finalnym
+  stanie te same indeksy MUSZĄ być odzwierciedlone też w `Meta.indexes`
+  każdego z 3 konkretnych modeli — patrz `wydawnictwo_ciagle.py`,
+  `wydawnictwo_zwarte.py`, `patent.py` — inaczej `makemigrations --check`
+  wykrywa drift; `Meta.indexes` w ABSTRAKCYJNEJ bazie dałoby kolizję nazw
+  między 3 tabelami, dlatego indeks jest w `Meta` konkretnych klas, nie w
+  `BazaModeluOdpowiedzialnosciAutorow`.)
 
 - [ ] Uruchom `makemigrations --check` (oczekiwane: brak nowych zmian — model i migracja zgodne):
   ```bash
@@ -894,7 +927,8 @@ więc komunikat błędu mówi o rekordzie, którego nie widać.
   — ma przejść po tym tasku.
 
 - [ ] **Krok 3c.2 — zamiana w `Meta` 3 konkretnych klas.** Usuń `unique_together`,
-  dodaj warunkowe constrainty (nazwy MUSZĄ być unikalne w całej bazie):
+  dodaj warunkowy `UniqueConstraint` na `(rekord, autor, typ_odpowiedzialnosci)`
+  (nazwy MUSZĄ być unikalne w całej bazie):
   ```python
       constraints = [
           models.UniqueConstraint(
@@ -902,14 +936,47 @@ więc komunikat błędu mówi o rekordzie, którego nie widać.
               condition=Q(deleted_at__isnull=True),
               name="wc_autor_uniq_rekord_autor_typ",
           ),
-          models.UniqueConstraint(
-              fields=["rekord", "autor", "kolejnosc"],
-              condition=Q(deleted_at__isnull=True),
-              name="wc_autor_uniq_rekord_autor_kolejnosc",
-          ),
       ]
   ```
   (prefiksy per model: `wc_` / `wz_` / `pat_`)
+
+  ⚠️ **Stan po zakończeniu fazy: BEZ `UniqueConstraint(rekord, autor,
+  kolejnosc)`.** Naiwna wersja powyżej (i ta pierwotnie w tym planie)
+  dokładała jeszcze drugi warunkowy `UniqueConstraint` na
+  `(rekord, autor, kolejnosc)` (`..._uniq_rekord_autor_kolejnosc`) — recenzja
+  finalna go USUNĘŁA jako w 100% redundantny wobec `ExclusionConstraint`
+  `..._excl_rekord_kolejnosc` niżej (krok 3c.2b): ten pilnuje pary
+  `(rekord, kolejnosc)` NIE patrząc na autora, więc jest ściśle silniejszy —
+  skoro w obrębie rekordu żadna pozycja się nie powtarza, to tym bardziej
+  nie powtórzy się w obrębie `(rekord, autor)`. Jeśli implementujesz ten
+  plan od zera — pomiń `..._uniq_rekord_autor_kolejnosc` w ogóle, żeby nie
+  budować trzeciego, martwego indeksu na najgorętszej ścieżce zapisu.
+
+- [ ] **Krok 3c.2b — `ExclusionConstraint` na `(rekord, kolejnosc)`.**
+  Legacy raw-SQL `UNIQUE (rekord_id, kolejnosc) DEFERRABLE INITIALLY
+  DEFERRED` z migracji `0132` (2018) jest DRUGĄ, niezależną od ORM
+  przyczyną tej samej klasy regresji (niewidoczny dla `makemigrations`).
+  Zastąp go, per model, przez:
+  ```python
+      ExclusionConstraint(
+          name="wc_autor_excl_rekord_kolejnosc",
+          expressions=[
+              ("rekord", RangeOperators.EQUAL),
+              ("kolejnosc", RangeOperators.EQUAL),
+          ],
+          condition=Q(deleted_at__isnull=True),
+          deferrable=Deferrable.DEFERRED,
+      ),
+  ```
+  `deferrable` jest tu wymagane przez drag&drop reorder w adminie
+  (adminsortable2, `sortable_field_name = "kolejnosc"`) — zamiana
+  kolejności dwóch wierszy przejściowo dubluje `kolejnosc` w obrębie jednej
+  transakcji. `UniqueConstraint` nie umie łączyć `condition` z `deferrable`
+  (Django to blokuje), stąd `ExclusionConstraint` (wymaga `btree_gist`,
+  patrz migracja `0056`) — jedyny typ ograniczenia w Postgresie, który
+  łączy `WHERE` z `DEFERRABLE`. Skasuj stary legacy `UNIQUE` z `0132` osobną
+  migracją `RunSQL` (`DROP CONSTRAINT IF EXISTS ...`), w kroku PO dodaniu
+  nowych constraintów — zob. „Kolejność" niżej.
 
 - [ ] **Krok 3c.3 — ⚠️ ZWERYFIKUJ ADMIN.** Komentarz przy drugiej krotce w kodzie
   („Tu musi być autor, inaczej admin nie pozwoli wyedytować") sugeruje, że ten
@@ -1143,5 +1210,14 @@ grep -rEn --include='*.py' "$P" src/ | grep -vcE '/tests?/|test_'
 3. **Każda przyszła zmiana definicji widoku źródłowego wymaga regeneracji bramki `WHEN`.** Bramka jest wypiekana z `pg_depend` w momencie migracji, więc nie zaktualizuje się sama. Pominięcie = cichy staleness. Testy `test_views_sql.py` i kanarki `test_soft_delete_preconditions.py` to wyłapią.
 3. **Widoki `bpp_praca_doktorska_autorzy` / `bpp_praca_habilitacyjna_autorzy` NIE filtrowane** — autorstwo doktoratu/habilitacji nie jest `*_Autor` SoftDeleteModel (autor doktoratu to FK `Praca_Doktorska.autor`, nie through). Faza 02 (soft-delete publikacji doktorat/habilitacja) musi zadbać o ich zniknięcie z `bpp_rekord` przez własne `deleted_at` na tabeli publikacji — to NIE jest pokryte tą fazą.
 4. **Gałęzie UNION `bpp_rekord` NIE dotknięte** w fazie 01 — soft-delete publikacji (kolumna `deleted_at` na `bpp_wydawnictwo_ciagle` itd.) to faza 02; dopiero ona doda filtr `deleted_at IS NULL` do `bpp_*_view`. Faza 01 dotyka wyłącznie ścieżki autorstwa.
-6. **`unique_together` na `*_Autor` zachowane bez `deleted_at`** — w tej fazie autorstwa nie mają warunkowego unique. **Faza 02 MUSI to zmienić** (decyzja #13, spec §2.2b): soft-deletowany wiersz nadal zajmuje slot w `(rekord, autor, typ_odpowiedzialnosci)` / `(rekord, autor, kolejnosc)`, a `deduplikator_autorow` przenoszący autorstwa trafi wtedy w `IntegrityError` o niewidoczny rekord. Przejście na `UniqueConstraint(condition=Q(deleted_at__isnull=True))` — razem ze slugiem.
+6. ~~`unique_together` na `*_Autor` zachowane bez `deleted_at` — Faza 02 MUSI
+   to zmienić~~ **NIEAKTUALNE, zrobione w tej fazie (Task 3c, patrz wyżej).**
+   Pierwotnie planowane na fazę 02, ale finalna recenzja fazy 01 wykryła
+   regresję na żywym przepływie (`import_sqlite`) już na HEAD Taska 2, więc
+   zamiana `unique_together` → warunkowy `UniqueConstraint` +
+   `ExclusionConstraint` (plus zdjęcie legacy `UNIQUE` z migracji `0132`)
+   wylądowała migracjami `0490`-`0493` W TEJ fazie. Faza 02 dziedziczy
+   gotowy wzorzec — nie musi go powtarzać dla `*_Autor` (tylko ewentualnie
+   dla analogicznych `unique_together` na samych tabelach publikacji, jeśli
+   takie istnieją).
 7. **`Cache_Punktacja_*` NIE są dotknięte** żadnym mechanizmem tej fazy (nie mają FK do publikacji ani triggerów cache). Domknięcie tej luki to faza 06 (decyzja #15, spec §2.5b) — do tego czasu soft-deletowana praca nadal liczyłaby się do ewaluacji.
