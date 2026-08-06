@@ -125,3 +125,32 @@ def test_kursywa_w_tytule_przezywa_obok_znacznika(wydawnictwo_ciagle, jezyk_angi
 
     assert "<i>Candida</i>" in opis
     assert 'lang="en"' in opis
+
+
+@pytest.mark.django_db
+def test_data_records_zawiera_znacznik_jezyka(
+    client, wydawnictwo_zwarte, jezyk_angielski, denorms
+):
+    # Wyszukiwarka rekordów powiązanych czyta surowy HTML opisu z atrybutu
+    # data-records (praca_tabela_mono.html:676). Rozdział w wydawnictwie
+    # nadrzędnym trafia tam przez wydawnictwa_powiazane_posortowane
+    # (wydawnictwo_zwarte.py:263), więc po zmianie generatora niesie
+    # <span lang=…> — i to on psuł podświetlanie przed naprawą z Task 5.
+    from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
+
+    rozdzial = baker.make(
+        Wydawnictwo_Zwarte,
+        tytul_oryginalny="Effects of X on Y",
+        tytul="",
+        jezyk=jezyk_angielski,
+        wydawnictwo_nadrzedne=wydawnictwo_zwarte,
+        rok=wydawnictwo_zwarte.rok,
+    )
+    rozdzial.opis_bibliograficzny_cache = rozdzial.opis_bibliograficzny()
+    rozdzial.save()
+
+    res = client.get(wydawnictwo_zwarte.get_absolute_url())
+
+    assert res.status_code == 200
+    assert b"data-records" in res.content
+    assert b"lang=" in res.content

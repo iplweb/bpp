@@ -1,4 +1,4 @@
-{% load prace user_in_group dspace_links %}
+{% load prace user_in_group dspace_links static %}
 {# Streszczenia pobierane RAZ: szablon odwołuje się do nich w kilku #}
 {# miejscach (warunki, pętla, licznik języków). Widok dodatkowo robi #}
 {# prefetch, więc całość to jedno zapytanie na stronę. #}
@@ -974,6 +974,9 @@
 </div>
 
 <!-- JavaScript for interactive elements -->
+{# Modul podswietlania — wydzielony z inline'owego JS ponizej, zeby dalo #}
+{# sie go przetestowac jednostkowo (tests/js/). #}
+<script src="{% static 'bpp/js/related-records-highlight.js' %}"></script>
 <script type="text/javascript">
     (function ($) {
         $(document).ready(function () {
@@ -1188,11 +1191,12 @@
                     records.forEach(function(record) {
                         var text = record.text;
 
-                        // Add simple highlighting if search term provided
+                        // Podswietlanie omijajace znaczniki HTML — opis
+                        // niesie <b>/<i> oraz <span lang> (WCAG 3.1.2),
+                        // a regex na calym stringu wstawialby <mark>
+                        // w srodek atrybutu. Modul: related-records-highlight.js
                         if (searchTerm) {
-                            var escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                            var regex = new RegExp('(' + escapedTerm + ')', 'gi');
-                            text = text.replace(regex, '<mark style="background-color: #fff59d; padding: 2px;">$1</mark>');
+                            text = window.bppHighlightOutsideTags(text, searchTerm);
                         }
 
                         var li = $('<li style="margin-bottom: 8px;"></li>');
