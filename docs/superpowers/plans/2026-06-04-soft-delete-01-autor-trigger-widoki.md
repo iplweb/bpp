@@ -1134,7 +1134,11 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ## Założenia i ostrzeżenia między-fazowe (dla faz 02+)
 
-1. **Domyślny manager `*_Autor.objects` zmienił klasę** na `BppSoftDeleteManager` (filtruje `deleted_at__isnull=True`). Faza 03 (audyt kat. B) MUSI przejść **128** miejsc `*_Autor.objects` (stan 2026-08-06; spec mówił „90" — przelicz przed startem fazy 03: `grep -rn --include='*.py' -E "(Wydawnictwo_Ciagle_Autor|Wydawnictwo_Zwarte_Autor|Patent_Autor)\.objects" src/ | wc -l`). W fazie 01 nic nie jest skasowane, więc filtr jest no-op, ale od fazy 02 (kaskada soft-delete publikacji) zacznie ukrywać. Guard autora (faza 04) MUSI liczyć przez `global_objects` (spec §3.2).
+1. **Domyślny manager `*_Autor.objects` zmienił klasę** na `BppSoftDeleteManager` (filtruje `deleted_at__isnull=True`). Faza 03 (audyt kat. B) MUSI przejść **89 miejsc w kodzie produkcyjnym** czyta `*_Autor.objects` bezpośrednio (stan 2026-08-06; łącznie 146 wystąpień, z czego 57 w testach — audyt fazy 03 dotyczy wyłącznie kodu produkcyjnego). Komenda kontrolna:
+```bash
+P='(Wydawnictwo_Ciagle_Autor|Wydawnictwo_Zwarte_Autor|Patent_Autor)\.objects'
+grep -rEn --include='*.py' "$P" src/ | grep -vcE '/tests?/|test_'
+```. W fazie 01 nic nie jest skasowane, więc filtr jest no-op, ale od fazy 02 (kaskada soft-delete publikacji) zacznie ukrywać. Guard autora (faza 04) MUSI liczyć przez `global_objects` (spec §3.2).
 2. **Faza 02 powtarza ten sam trójskładnikowy wzorzec dla 5 tabel publikacji**: filtr `deleted_at` w `bpp_*_view` → gałąź kasująca w `bpp_refresh_rekord_<model>()` (`DELETE FROM bpp_rekord_mat`) → regeneracja bramki `WHEN`. Uwaga na doktorat/habilitację: ich funkcje refresh dotykają **obu** tabel `_mat` (`bpp_rekord_mat` i `bpp_autorzy_mat`, bo autor leży na wierszu publikacji) — gałąź kasująca musi czyścić obie.
 3. **Każda przyszła zmiana definicji widoku źródłowego wymaga regeneracji bramki `WHEN`.** Bramka jest wypiekana z `pg_depend` w momencie migracji, więc nie zaktualizuje się sama. Pominięcie = cichy staleness. Testy `test_views_sql.py` i kanarki `test_soft_delete_preconditions.py` to wyłapią.
 3. **Widoki `bpp_praca_doktorska_autorzy` / `bpp_praca_habilitacyjna_autorzy` NIE filtrowane** — autorstwo doktoratu/habilitacji nie jest `*_Autor` SoftDeleteModel (autor doktoratu to FK `Praca_Doktorska.autor`, nie through). Faza 02 (soft-delete publikacji doktorat/habilitacja) musi zadbać o ich zniknięcie z `bpp_rekord` przez własne `deleted_at` na tabeli publikacji — to NIE jest pokryte tą fazą.

@@ -783,7 +783,8 @@ je ukrywa).
 ```python
 """Regresja ewaluacji (spec §2.5, §3 fazy).
 
-128 miejsc czyta ``*_Autor.objects`` bezpośrednio; po wpięciu
+89 miejsc w kodzie produkcyjnym czyta ``*_Autor.objects``
+bezpośrednio (146 wystąpień łącznie, 57 w testach); po wpięciu
 ``SoftDeleteModel`` domyślny menedżer ukrywa kaskadowo-skasowane
 autorstwa, więc ewaluacja pomija prace w koszu. Restore przywraca punktację.
 """
