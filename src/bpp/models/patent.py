@@ -59,6 +59,12 @@ class Patent_Autor(BppAutorstwoSoftDeleteMixin, BazaModeluOdpowiedzialnosciAutor
             models.Index(fields=["deleted_at"], name="patent_autor_deleted_at_idx"),
         ]
 
+    # django-denorm buduje bramkę WHEN triggera z listy `only=` w
+    # @depend_on_related. Bez deleted_at soft-delete autorstwa nie
+    # unieważniłby denorm-cache rodzica (opis bibliograficzny, slug,
+    # cached_punkty_dyscyplin) — zostałby nieświeży na stałe.
+    denorm_always_only = ("deleted_at",)
+
 
 class _Patent_PropertyCache:
     # Brak wpisu w słowniku -> None (nie DoesNotExist); patrz slowniki_stale.
