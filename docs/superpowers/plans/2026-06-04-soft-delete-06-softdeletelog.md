@@ -755,7 +755,11 @@ def on_post_restore(sender, instance, **kwargs):
   def test_soft_delete_kasuje_cache_punktacji(zwarte_z_dyscyplinami):
       zw = zwarte_z_dyscyplinami
       zw.przelicz_punkty_dyscyplin()
-      klucz = [zw.content_type_id, zw.pk]
+      # content_type NIE jest atrybutem modeli publikacji (property na
+      # RekordBase) -- bierzemy przez ContentType.
+      from django.contrib.contenttypes.models import ContentType
+
+      klucz = [ContentType.objects.get_for_model(type(zw)).pk, zw.pk]
       assert Cache_Punktacja_Autora.objects.filter(rekord_id=klucz).exists()
       assert Cache_Punktacja_Dyscypliny.objects.filter(rekord_id=klucz).exists()
 

@@ -193,6 +193,7 @@ robimy **wprost, surowym SQL-em** (wzorzec:
 Dopisz do `test_soft_delete_regresja_cache.py`:
 
 ```python
+from django.contrib.contenttypes.models import ContentType
 from django.db import connection
 
 from bpp.models.cache.punktacja import Cache_Punktacja_Dyscypliny
@@ -209,7 +210,10 @@ def test_reprojekcja_ze_zrodla_nie_wskrzesza_skasowanej_publikacji(
     bramkowanej kolumny i sprawdzamy, ze wiersz NIE wrocil z widoku.
     """
     wc = wydawnictwo_ciagle_z_dwoma_autorami
-    pk, ct = wc.pk, wc.content_type_id
+    # content_type NIE jest atrybutem modeli publikacji (property na
+    # RekordBase, rekord.py:288) -- bierzemy przez ContentType.
+    pk = wc.pk
+    ct = ContentType.objects.get_for_model(type(wc)).pk
     wc.delete()
     assert Rekord.objects.count() == 0
 
@@ -233,7 +237,10 @@ def test_soft_delete_usuwa_cache_punktacji_dyscyplin(zwarte_z_dyscyplinami):
     zwarte_z_dyscyplinami.przelicz_punkty_dyscyplin()
     ct_pks = list(
         Cache_Punktacja_Dyscypliny.objects.filter(
-            rekord_id=[zwarte_z_dyscyplinami.content_type_id, zwarte_z_dyscyplinami.pk]
+            rekord_id=[
+            ContentType.objects.get_for_model(type(zwarte_z_dyscyplinami)).pk,
+            zwarte_z_dyscyplinami.pk,
+        ]
         ).values_list("pk", flat=True)
     )
     assert len(ct_pks) > 0
@@ -250,7 +257,7 @@ def test_soft_delete_usuwa_cache_punktacji_dyscyplin(zwarte_z_dyscyplinami):
     assert (
         Cache_Punktacja_Dyscypliny.objects.filter(
             rekord_id=[
-                zwarte_z_dyscyplinami.content_type_id,
+                ContentType.objects.get_for_model(type(zwarte_z_dyscyplinami)).pk,
                 zwarte_z_dyscyplinami.pk,
             ]
         ).count()

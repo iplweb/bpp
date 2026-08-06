@@ -44,7 +44,31 @@
 - Modify: `src/bpp/models/soft_delete.py` (dodaj klasę mixinu na końcu)
 - Test path: `src/bpp/tests/test_soft_delete_publikacje.py` (nowy plik)
 
-Mixin dziedziczy `SoftDeleteModel` i nadpisuje `delete()`/`restore()`: per-instancja `save()` rodzica, jawna wąska kaskada na `autorzy_set` (każdy wiersz `*_Autor` przez `.delete(transaction_id=...)`), bez refleksyjnej kaskady pakietu (`super().delete()` nie wołamy — sami ustawiamy `deleted_at` + emitujemy sygnał, żeby NIE ruszać `*_Streszczenie`). Wszystkie 5 modeli mają `autorzy_set` (potwierdzone), więc kaskada jest jednolita.
+Mixin dziedziczy `SoftDeleteModel` i nadpisuje `delete()`/`restore()`: per-instancja `save()` rodzica, jawna wąska kaskada na `autorzy_set` (każdy wiersz `*_Autor` przez `.delete(transaction_id=...)`), bez refleksyjnej kaskady pakietu (`super().delete()` nie wołamy — sami ustawiamy `deleted_at` + emitujemy sygnał, żeby NIE ruszać `*_Streszczenie`).
+
+> 🩹 **Poprawka 2026-08-06 (self-review) — kaskada NIE jest jednolita dla 5 modeli.**
+> Pierwsza wersja twierdziła „wszystkie 5 modeli mają `autorzy_set` (potwierdzone)".
+> **Nieprawda.** Dla doktoratu i habilitacji `autorzy_set` to **property**
+> zwracająca atrapy (`src/bpp/models/praca_doktorska.py:30-70`):
+> ```python
+> @property
+> def autorzy_set(self):
+>     class FakeAutorDoktoratuHabilitacji:
+>         autor = self.autor
+>         ...
+>     class FakeSet(list):
+>         def all(self):
+>             return self
+>     ...
+>     return FakeSet([ret])
+> ```
+> `FakeSet` to podklasa `list` — nie ma `.model`, a `FakeAutorDoktoratuHabilitacji`
+> nie ma `.delete()`. Kaskada verbatim wywaliłaby się `AttributeError` na
+> obu modelach (`delete()` przy `autorstwo.delete(...)`, `restore()` przy
+> `self.autorzy_set.model`). Dlatego mixin ma `_model_through()` /
+> `_autorstwa_do_kaskady()`, które zwracają `None`/`[]` dla publikacji bez
+> through-modelu. Autor doktoratu/habilitacji leży na wierszu publikacji, więc
+> kaskada nie jest tam potrzebna — sam soft-delete rekordu wystarcza.
 
 - [ ] **Krok 1.1 — padający test: soft-delete publikacji kaskaduje na `*_Autor` tym samym `transaction_id`.**
   Dopisz do `src/bpp/tests/test_soft_delete_publikacje.py`:
@@ -103,12 +127,31 @@ Mixin dziedziczy `SoftDeleteModel` i nadpisuje `delete()`/`restore()`: per-insta
       class Meta:
           abstract = True
 
+      def _model_through(self):
+          """Model *_Autor tej publikacji, albo None (doktorat/habilitacja).
+
+          Praca_Doktorska/Praca_Habilitacyjna NIE mają through-modelu — autor
+          leży na wierszu publikacji, a `autorzy_set` jest tam PROPERTY
+          zwracającą FakeSet z atrapami (patrz box pod kodem).
+          """
+          if isinstance(type(self).__dict__.get("autorzy_set"), property):
+              return None
+          return self.autorzy_set.model
+
+      def _autorstwa_do_kaskady(self):
+          """Wiersze *_Autor do soft-delete; pusto dla doktorat/habilitacja."""
+          if self._model_through() is None:
+              return []
+          return list(self.autorzy_set.all())
+
       def delete(self, *args, user=None, reason="", **kwargs):
           now = timezone.now()
           txid = kwargs.pop("transaction_id", None) or uuid.uuid4()
           with transaction.atomic():
               # 1. wąska kaskada na własne *_Autor (per-instancja!)
-              for autorstwo in self.autorzy_set.all():
+              #    ⚠️ TYLKO gdy autorzy_set to prawdziwy related manager —
+              #    patrz _przez_through() i box-ostrzeżenie pod kodem.
+              for autorstwo in self._autorstwa_do_kaskady():
                   autorstwo.delete(transaction_id=txid)
               # 2. własne deleted_at + save (NIGDY bulk update)
               self.deleted_at = now
@@ -126,8 +169,9 @@ Mixin dziedziczy `SoftDeleteModel` i nadpisuje `delete()`/`restore()`: per-insta
           txid = self.transaction_id
           with transaction.atomic():
               # przywróć własne *_Autor skasowane tym samym transaction_id
-              if txid is not None:
-                  for autorstwo in self.autorzy_set.model.deleted_objects.filter(
+              through = self._model_through()
+              if txid is not None and through is not None:
+                  for autorstwo in through.deleted_objects.filter(
                       rekord=self, transaction_id=txid
                   ):
                       autorstwo.restore(transaction_id=txid)
@@ -305,9 +349,21 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 Powtórz wzorzec z fazy 01, Task 3 (tam jest pełny opis mechanizmu i pułapek),
 dla `REKORD_SITES` z `0432_cache_trigger_plpgsql.py`:
 
-1. filtr `deleted_at IS NULL` w 5 widokach `bpp_<typ>_view`,
+1. filtr `deleted_at IS NULL` w 5 widokach `bpp_<typ>_view` **oraz w 2 widokach
+   `bpp_praca_doktorska_autorzy` / `bpp_praca_habilitacyjna_autorzy`** — te
+   ostatnie selektują z tabeli PUBLIKACJI (autor leży na jej wierszu), więc
+   filtr jest tam „po własnej kolumnie" i klucz `object_id_raw` = id
+   publikacji jest POPRAWNY. Bez nich `bpp_autorzy` przecieka autorów
+   skasowanego doktoratu (faza 01 ich nie dotyka — przypis 3 tamtego planu),
 2. gałąź kasująca w 5 funkcjach `bpp_refresh_rekord_<model>()`,
 3. regeneracja bramki `WHEN` na 5 triggerach `<tabela>_cache_upd`.
+
+⚠️ **Klucz filtra zależy od rodzaju widoku.** W `bpp_<typ>_view` i w
+`bpp_praca_{doktorska,habilitacyjna}_autorzy` `object_id_raw` to id
+publikacji — filtruj po nim. W widokach `bpp_*_autorzy` trzech typów
+z through-modelem (faza 01) `object_id_raw` to też id publikacji, ale
+filtrowaliśmy tam po pk wiersza through (`(id)[2]`). Nie kopiuj klucza
+między fazami bez sprawdzenia, co dana kolumna znaczy.
 
 **Files:**
 - Create: `src/bpp/migrations/0493_soft_delete_rekord_views.py`
@@ -546,25 +602,29 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
       wc = baker.make(Wydawnictwo_Ciagle)
       baker.make(Wydawnictwo_Ciagle_Autor, rekord=wc)
       wc.refresh_from_db()
-      ct_pk = wc.content_type_id if hasattr(wc, "content_type_id") else None
+      from django.contrib.contenttypes.models import ContentType
+
+      # UWAGA: content_type NIE istnieje na modelach publikacji -- to
+      # property na RekordBase (rekord.py:288). Bierzemy z ContentType.
+      ct_pk = ContentType.objects.get_for_model(type(wc)).pk
 
       assert Rekord.objects.filter(
-          id=(wc.content_type_id, wc.pk)
+          id=(ct_pk, wc.pk)
       ).exists() or Rekord.objects.filter(tytul_oryginalny=wc.tytul_oryginalny).exists()
 
       wc.delete()
       assert not Rekord.objects.filter(
           tytul_oryginalny=wc.tytul_oryginalny
       ).exists(), "skasowany rekord wciąż w Rekord"
-      assert not Autorzy.objects.filter(rekord_id=(wc.content_type_id, wc.pk)).exists()
+      assert not Autorzy.objects.filter(rekord_id=(ct_pk, wc.pk)).exists()
 
       wc.restore()
       assert Rekord.objects.filter(
           tytul_oryginalny=wc.tytul_oryginalny
       ).exists(), "po restore rekord nie wrócił do Rekord"
-      assert Autorzy.objects.filter(rekord_id=(wc.content_type_id, wc.pk)).exists()
+      assert Autorzy.objects.filter(rekord_id=(ct_pk, wc.pk)).exists()
   ```
-  > `Rekord.id` to tuple `(content_type_id, object_id)`. Jeśli `Rekord`/`Autorzy` API różni się — dostosuj filtr po realnym kontrakcie `src/bpp/models/cache/`. Fixture `denorms` (z `src/conftest.py`) odpala denorm flush — sprawdź czy istnieje; jeśli nie, użyj właściwej fixtury cache z repo (`flush_denorm`/`denorm_rebuild`).
+  > `Rekord.id` to tuple `(content_type_id, object_id)`. ⚠️ `content_type_id` bierz z `ContentType.objects.get_for_model(...)` — modele publikacji tego atrybutu NIE mają. Jeśli `Rekord`/`Autorzy` API różni się — dostosuj filtr po realnym kontrakcie `src/bpp/models/cache/`. Fixture `denorms` (z `src/conftest.py`) odpala denorm flush — sprawdź czy istnieje; jeśli nie, użyj właściwej fixtury cache z repo (`flush_denorm`/`denorm_rebuild`).
 - [ ] **Krok 5.2 — test: restore przywraca `*_Autor` po tym samym transaction_id.**
   ```python
   @pytest.mark.django_db

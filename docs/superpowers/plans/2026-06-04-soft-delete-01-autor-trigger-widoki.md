@@ -21,7 +21,7 @@
 > **Filtr widoku sam NIE wystarcza.** Ta faza robi trzy rzeczy, nie jedną —
 > patrz „Architecture" niżej. Wszystkie obowiązkowe.
 
-**Goal:** Uczynić 3 through-modele `Wydawnictwo_Ciagle_Autor`, `Wydawnictwo_Zwarte_Autor`, `Patent_Autor` modelami `SoftDeleteModel` (przez wspólną bazę `BazaModeluOdpowiedzialnosciAutorow`), dodać im pola `deleted_at`/`restored_at`/`transaction_id` + indeks na `deleted_at`, i doprowadzić do tego, by soft-deletowane autorstwa **znikały** z materializowanego cache (`bpp_autorzy_mat`, model `Autorzy`) i **wracały** po `restore`. Faza najwrażliwsza — robiona pierwsza; gwarantuje spójność cache zanim cokolwiek innego (publikacje, admin) zacznie soft-deletować.
+**Goal:** Uczynić 3 through-modele `Wydawnictwo_Ciagle_Autor`, `Wydawnictwo_Zwarte_Autor`, `Patent_Autor` modelami `SoftDeleteModel` (przez mixin `BppAutorstwoSoftDeleteMixin` wpinany w **3 KONKRETNE** klasy — NIE w abstrakt `BazaModeluOdpowiedzialnosciAutorow`, patrz Task 2), dodać im pola `deleted_at`/`restored_at`/`transaction_id` + indeks na `deleted_at`, i doprowadzić do tego, by soft-deletowane autorstwa **znikały** z materializowanego cache (`bpp_autorzy_mat`, model `Autorzy`) i **wracały** po `restore`. Faza najwrażliwsza — robiona pierwsza; gwarantuje spójność cache zanim cokolwiek innego (publikacje, admin) zacznie soft-deletować.
 
 **Architecture — trzy elementy, wszystkie obowiązkowe** (żaden nie wystarcza sam; uzasadnienie: §2.1 specu):
 
@@ -36,18 +36,18 @@ Gałęzie `UNION` w `bpp_rekord` per typ publikacji NIE filtrują po `*_autor.de
 **Spec źródłowy:** [`../specs/2026-06-04-soft-delete-publikacje-i-autorzy-design.md`](../specs/2026-06-04-soft-delete-publikacje-i-autorzy-design.md) (§1, §2.1, §2.2, §8 pkt 1). Indeks: [`2026-06-04-soft-delete-00-overview.md`](2026-06-04-soft-delete-00-overview.md).
 
 **Fakty z kodu (zweryfikowane, NIE zmieniać bez ponownej weryfikacji):**
-- `BazaModeluOdpowiedzialnosciAutorow` jest `models.Model` (abstract), `src/bpp/models/abstract/authors.py:16`. Po niej dziedziczą wszystkie 3 through-modele.
-- `Wydawnictwo_Ciagle_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAutorow)` — `src/bpp/models/wydawnictwo_ciagle.py:52`. FK `rekord` → `Wydawnictwo_Ciagle`, `related_name="autorzy_set"`, `src/bpp/models/wydawnictwo_ciagle.py:58`.
+- `BazaModeluOdpowiedzialnosciAutorow` jest `models.Model` (abstract), `src/bpp/models/abstract/authors.py:19`. ⚠️ Dziedziczą po niej **CZTERY** modele: 3 through-modele publikacji **oraz** `Zgloszenie_Publikacji_Autor` (`src/zglos_publikacje/models.py:315`) — ten ostatni jest POZA zakresem soft-delete. Dlatego NIE ruszamy abstraktu (Task 2).
+- `Wydawnictwo_Ciagle_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAutorow)` — `src/bpp/models/wydawnictwo_ciagle.py:53`. FK `rekord` → `Wydawnictwo_Ciagle`, `related_name="autorzy_set"`, `src/bpp/models/wydawnictwo_ciagle.py:59`.
 - `Wydawnictwo_Zwarte_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAutorow)` — `src/bpp/models/wydawnictwo_zwarte.py:60`. FK `rekord`, `related_name="autorzy_set"`, `:67`.
 - `Patent_Autor(BazaModeluOdpowiedzialnosciAutorow)` — `src/bpp/models/patent.py:32`. FK `rekord`, `related_name="autorzy_set"`, `:35`.
 - Wszystkie 3 mają `Meta.unique_together` — `("rekord","autor","typ_odpowiedzialnosci")` i `("rekord","autor","kolejnosc")`, np. `src/bpp/models/wydawnictwo_ciagle.py:73-77`. **W TEJ fazie NIE ruszamy**; zamiana na warunkowy `UniqueConstraint` (decyzja #13, §2.2b specu) idzie w fazie 02 razem ze slugiem.
-- `BazaModeluOdpowiedzialnosciAutorow.objects` NIE jest jawnie zdefiniowany → po wpięciu `SoftDeleteModel` domyślne `objects` = `SoftDeleteManager` (z pakietu). Nadpiszemy je naszymi `Bpp*` z `src/bpp/models/soft_delete.py`.
+- `BazaModeluOdpowiedzialnosciAutorow.objects` NIE jest jawnie zdefiniowany. Managery `Bpp*` wnosi mixin `BppAutorstwoSoftDeleteMixin` (Task 2); w MRO stoi PRZED bazą modelu, więc jego `objects` wygrywa.
 - `SoftDeleteModel.delete()` (pakiet, `django_softdelete/models.py`) robi **refleksyjną kaskadę** po reverse relacjach — dla `*_Autor` reverse relacji do soft-delete dzieci NIE ma (ich dzieci to nie-soft `Autor`/`Jednostka` przez FK forward), więc kaskada jest no-op. `delete()` woła `self.save(update_fields=['deleted_at','restored_at','transaction_id'])`. ⚠️ **Ten UPDATE dotyka WYŁĄCZNIE tych 3 kolumn** — dlatego bramka `WHEN` musi znać `deleted_at` (punkt 3 „Architecture"), inaczej trigger się nie odpali. `ostatnio_zmieniony` (`auto_now`) też NIE jest bumpowany (`update_fields` filtruje `pre_save`).
 - ⚠️ `strict` w pakiecie jest **asymetryczne**: `delete(strict=False)`, `restore(strict=True)`.
 - Tabela `bpp_autorzy_mat` (model `Autorzy`, `src/bpp/models/cache/autorzy.py:39`, `db_table="bpp_autorzy_mat"`) zasilana triggerami z widoków `bpp_*_autorzy`.
 - **Trigger (AKTUALNY, po PR #363):** `0432_cache_trigger_plpgsql.py` generuje 3 funkcje `bpp_refresh_autor_<model>()` (upsert **bez** DELETE, `_create_through_function`) + 3 `bpp_delete_autor_<model>()`, oraz triggery `<tabela>_cache_ins` / `_cache_del` / `_cache_upd`. `0433_cache_trigger_when_gate.py` nakłada bramkę `WHEN` na `_cache_upd`, z listą kolumn wyliczoną z `pg_depend`. ⚠️ **Funkcja `bpp_refresh_cache()` NIE ISTNIEJE** — `DROP` w `0432`. Nie kopiować `0399` ani `0001_cache_functions.sql`.
 - Widoki `bpp_*_autorzy`: ostatnia wersja definicji w `0421_cache_trigger_pk_filter.sql` (dodaje `object_id_raw`). Odtwarzając widok, wychodź z `pg_get_viewdef()`, nie z `0001_widoki_autorzy.sql`.
-- `transactional_db` fixture wymagany dla testów dotykających trigger/cache (trigger działa tylko z prawdziwym commitem). Fixture `denorms` (`src/fixtures/conftest_system.py:193`) daje `denorms.flush()`. Fixtury: `wydawnictwo_ciagle_z_dwoma_autorami`, `wydawnictwo_ciagle_z_autorem`, `autor_jan_kowalski`, `jednostka`, `standard_data`, `typy_odpowiedzialnosci`.
+- ⚠️ **`transactional_db` NIE jest wymagany** do oglądania efektów triggera — triggery bazodanowe działają wewnątrz transakcji testowej (dowód: kanarki `test_soft_delete_preconditions.py` chodzą pod zwykłym `django_db`). Używaj `django_db`; `transactional_db` tylko spowalnia. Fixture `denorms` (`src/fixtures/conftest_system.py:255`) daje `denorms.flush()`. Fixtury: `wydawnictwo_ciagle_z_dwoma_autorami`, `wydawnictwo_ciagle_z_autorem`, `autor_jan_kowalski`, `jednostka`, `standard_data`, `typy_odpowiedzialnosci`.
 - ⚠️ **Numeracja migracji (stan 2026-08-06):** liść to `0487_api_v1_przelaczniki`. Nowe migracje tej fazy: `0488_autor_soft_delete_fields` → `0489_soft_delete_autorzy_views` (SQL + regeneracja bramki). **Przed startem zweryfikuj liść ponownie** (`ls src/bpp/migrations/*.py | tail -3`) — `dev` żyje, numery mogły się przesunąć. Wszystkie numery w tym planie są orientacyjne; kanoniczna jest kolejność, nie cyfra.
 
 **Kontrakt z reversion (PINNED):** soft-delete idzie WYŁĄCZNIE per-instancja przez `.delete()`/`.save()` (nigdy `queryset.update(deleted_at=...)`). `BppSoftDeleteQuerySet.update()` to egzekwuje fail-fast (gate). W tej fazie testujemy gate i kaskadę queryset-ową.
@@ -193,7 +193,9 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 Wpięcie `SoftDeleteModel` w abstrakcyjną bazę → Django doda `deleted_at`/`restored_at`/`transaction_id` do WSZYSTKICH 3 konkretnych tabel `*_autor`. Nadpisujemy managery (`objects`/`global_objects`/`deleted_objects`) naszymi `Bpp*` z Task 1, żeby gate był aktywny. Migracja dodaje 3 pola × 3 tabele + indeks na `deleted_at` × 3.
 
 **Files:**
-- Modify: `src/bpp/models/abstract/authors.py:16` (deklaracja klasy + managery), import `:1-13`.
+- Modify: `src/bpp/models/soft_delete.py` (dopisz `BppAutorstwoSoftDeleteMixin`)
+- Modify: `src/bpp/models/wydawnictwo_ciagle.py:53`, `wydawnictwo_zwarte.py` (`Wydawnictwo_Zwarte_Autor`), `patent.py:32` — wepnij mixin w bazy klas
+- ⚠️ **NIE modyfikuj** `src/bpp/models/abstract/authors.py` — abstrakt ma czwartego potomka poza zakresem
 - Create: `src/bpp/migrations/0488_autor_soft_delete_fields.py`
 - Test (create): `src/bpp/tests/test_soft_delete/test_autor_softdelete_model.py`
 
@@ -262,35 +264,59 @@ Wpięcie `SoftDeleteModel` w abstrakcyjną bazę → Django doda `deleted_at`/`r
   uv run pytest src/bpp/tests/test_soft_delete/test_autor_softdelete_model.py -q
   ```
 
-- [ ] Zmodyfikuj import w `src/bpp/models/abstract/authors.py` — dodaj po linii `from django.db.models import CASCADE, SET_NULL, Q, Sum` (`:10`):
-  ```python
-  from django_softdelete.models import SoftDeleteModel
+> 🩹 **Poprawka 2026-08-06 (self-review) — NIE ruszaj abstraktu.**
+> Pierwsza wersja kazała zmienić `BazaModeluOdpowiedzialnosciAutorow(models.Model)`
+> na `(SoftDeleteModel)`. To wciągnęłoby **czwarty** model, spoza zakresu
+> soft-delete:
+> ```
+> src/zglos_publikacje/models.py:315:
+>     class Zgloszenie_Publikacji_Autor(BazaModeluOdpowiedzialnosciAutorow):
+> ```
+> Skutki: nieplanowana migracja w aplikacji `zglos_publikacje`, podmieniony
+> `objects` w module zgłoszeń (nieaudytowana zmiana zachowania) i dryf
+> w `makemigrations --check`. **Wpinamy `SoftDeleteModel` w 3 konkretne
+> modele**, dokładnie te z §2.2 specu.
 
-  from bpp.models.soft_delete import (
-      BppGlobalManager,
-      BppSoftDeleteManager,
-  )
-  from django_softdelete.managers import DeletedManager
-  ```
-  (UWAGA na cykl importów: `soft_delete.py` nie importuje modeli BPP, więc bezpieczne. `authors.py` już importuje z `bpp.models.dyscyplina_naukowa` — kolejność OK.)
+- [ ] Dodaj wspólny mixin na końcu `src/bpp/models/soft_delete.py` (obok managerów z Task 1) — żeby nie powtarzać deklaracji managerów trzy razy:
+  ```python
+  class BppAutorstwoSoftDeleteMixin(SoftDeleteModel):
+      """SoftDeleteModel + nasze managery dla through-modeli *_Autor.
 
-- [ ] Zmień deklarację klasy `src/bpp/models/abstract/authors.py:16` z:
-  ```python
-  class BazaModeluOdpowiedzialnosciAutorow(models.Model):
-  ```
-  na:
-  ```python
-  class BazaModeluOdpowiedzialnosciAutorow(SoftDeleteModel):
-  ```
+      Wpinany w 3 KONKRETNE modele (Wydawnictwo_Ciagle_Autor,
+      Wydawnictwo_Zwarte_Autor, Patent_Autor), NIE w abstrakt
+      BazaModeluOdpowiedzialnosciAutorow — ten ma czwartego potomka,
+      Zgloszenie_Publikacji_Autor, który jest poza zakresem soft-delete.
+      """
 
-- [ ] Dodaj jawne managery w ciele klasy `BazaModeluOdpowiedzialnosciAutorow`, tuż przed `class Meta:` (`:92`). Wstaw przed linią `    class Meta:`:
-  ```python
       # Nadpisujemy managery pakietu naszymi (gate na update()).
       # Kolejność: pierwszy zdefiniowany manager = _default_manager.
       objects = BppSoftDeleteManager()
       global_objects = BppGlobalManager()
       deleted_objects = DeletedManager()
 
+      class Meta:
+          abstract = True
+  ```
+  Import w `soft_delete.py`: `from django_softdelete.models import SoftDeleteModel` oraz `from django_softdelete.managers import DeletedManager`.
+
+- [ ] Wepnij mixin do **3 konkretnych** klas (kolejność baz: mixin PRZED bazą modelu, żeby jego managery wygrały MRO):
+  - `src/bpp/models/wydawnictwo_ciagle.py:53` —
+    `class Wydawnictwo_Ciagle_Autor(DirtyFieldsMixin, BppAutorstwoSoftDeleteMixin, BazaModeluOdpowiedzialnosciAutorow):`
+  - `src/bpp/models/wydawnictwo_zwarte.py` (klasa `Wydawnictwo_Zwarte_Autor`) — analogicznie
+  - `src/bpp/models/patent.py:32` —
+    `class Patent_Autor(BppAutorstwoSoftDeleteMixin, BazaModeluOdpowiedzialnosciAutorow):`
+
+- [ ] **Sanity: `Zgloszenie_Publikacji_Autor` NIE został ruszony.** Dopisz do
+  `test_autor_softdelete_model.py`:
+  ```python
+  def test_zgloszenie_publikacji_autor_nie_jest_soft_delete():
+      """Czwarty potomek abstraktu jest POZA zakresem soft-delete."""
+      from django_softdelete.models import SoftDeleteModel
+
+      from zglos_publikacje.models import Zgloszenie_Publikacji_Autor
+
+      assert not issubclass(Zgloszenie_Publikacji_Autor, SoftDeleteModel)
+      assert not hasattr(Zgloszenie_Publikacji_Autor, "global_objects")
   ```
 
 - [ ] Uruchom `makemigrations` — wygeneruje migrację dla 3 konkretnych modeli:
@@ -362,9 +388,10 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 Jedna migracja, trzy zmiany, w **wymuszonej kolejności**:
 
-1. przedefiniowanie 3 widoków `bpp_*_autorzy` z filtrem `deleted_at IS NULL`
-   po własnej kolumnie tabeli `*_autor` (+ odtworzenie zależnego `bpp_autorzy`,
-   bo `DROP ... CASCADE` go skasuje),
+1. przedefiniowanie 3 widoków `bpp_*_autorzy` z filtrem odcinającym
+   soft-deletowane autorstwa. Używamy `CREATE OR REPLACE VIEW` (zachowuje
+   listę i typy kolumn), więc zależny `bpp_autorzy` **NIE** jest kasowany
+   i nie trzeba go odtwarzać — żadnego `DROP ... CASCADE`,
 2. przedefiniowanie 3 funkcji `bpp_refresh_autor_<model>()` z prologiem
    kasującym,
 3. regeneracja bramki `WHEN` na 3 triggerach `*_cache_upd` — **musi być po
@@ -442,7 +469,47 @@ dokładnie ten problem, który `0432`/`0433` rozwiązały — patrz
           row = cur.fetchone()
       assert row is not None, f"brak triggera {trigger}"
       assert "deleted_at" in row[0], f"{trigger}: bramka WHEN nie zna deleted_at"
+
+
+  @pytest.mark.django_db
+  def test_widok_odcina_WLASCIWY_wiersz_a_nie_cudzy(
+      wydawnictwo_ciagle_z_dwoma_autorami, wydawnictwo_ciagle_z_autorem
+  ):
+      """Test SEMANTYCZNY klucza filtra — nie sam fakt obecności `deleted_at`.
+
+      Łapie pomyłkę `object_id_raw` (id publikacji) vs `(id)[2]` (pk wiersza
+      through): przy złym kluczu skasowane autorstwo zostaje w widoku, a
+      wycięte zostają autorstwa INNEJ publikacji o zbieżnym numerze.
+      """
+      wca = wydawnictwo_ciagle_z_dwoma_autorami.autorzy_set.first()
+      obcy = wydawnictwo_ciagle_z_autorem.autorzy_set.first()
+      wca.delete()
+
+      with connection.cursor() as cur:
+          cur.execute(
+              "SELECT count(*) FROM bpp_wydawnictwo_ciagle_autorzy "
+              "WHERE (id)[2] = %s",
+              [wca.pk],
+          )
+          assert cur.fetchone()[0] == 0, (
+              "skasowane autorstwo NADAL w widoku — filtr używa złego klucza"
+          )
+          cur.execute(
+              "SELECT count(*) FROM bpp_wydawnictwo_ciagle_autorzy "
+              "WHERE (id)[2] = %s",
+              [obcy.pk],
+          )
+          assert cur.fetchone()[0] == 1, (
+              "filtr wyciął autorstwo INNEJ publikacji — klucz porównuje "
+              "id publikacji z id wiersza through"
+          )
   ```
+
+  ⚠️ Test `test_widok_zrodlowy_filtruje_po_deleted_at` (substring w
+  `pg_get_viewdef`) i `test_bramka_when_zna_deleted_at` **przejdą także dla
+  błędnego klucza** — `pg_depend` widzi `deleted_at` przez podzapytanie
+  niezależnie od tego, czy porównanie ma sens. Powyższy test semantyczny jest
+  jedyną realną wyrocznią tego kroku; **nie pomijaj go**.
 
 - [ ] Uruchom (oczekiwany FAIL — wszystkie 9 przypadków):
   ```bash
@@ -488,20 +555,45 @@ dokładnie ten problem, który `0432`/`0433` rozwiązały — patrz
 
 
   def _filtruj_widok(cur, tabela, widok):
-      """Dokłada 'AND <tabela>.deleted_at IS NULL' do widoku źródłowego.
+      """Odcina z widoku *_autorzy wiersze soft-deletowanych autorstw.
 
       Owijamy istniejącą definicję zamiast ją przepisywać: definicja jest
       generowana (0421) i przepisanie jej ręcznie rozjechałoby się przy
       następnej zmianie kolumn.
+
+      ⚠️ KLUCZ: w widokach *_autorzy `object_id_raw` to `rekord_id`, czyli
+      **id PUBLIKACJI**, a nie pk wiersza through. Pk wiersza through siedzi
+      w drugim elemencie tablicy `id` (`ARRAY[ct, <through_pk>]`), stąd
+      `(_orig.id)[2]`. Filtrowanie po `object_id_raw` porównywałoby id
+      publikacji z id autorstwa — patrz komentarz niżej.
       """
       orig = _viewdef(cur, widok)
       cur.execute(
           f"CREATE OR REPLACE VIEW {widok} AS "
           f"SELECT * FROM ({orig}) _orig "
-          f"WHERE _orig.object_id_raw NOT IN ("
-          f"    SELECT id FROM {tabela} WHERE deleted_at IS NOT NULL)"
+          f"WHERE NOT EXISTS ("
+          f"    SELECT 1 FROM {tabela} _t "
+          f"    WHERE _t.id = (_orig.id)[2] AND _t.deleted_at IS NOT NULL)"
       )
   ```
+
+  > 🩹 **Poprawka 2026-08-06 (self-review).** Pierwsza wersja tego kroku
+  > filtrowała `WHERE _orig.object_id_raw NOT IN (SELECT id FROM <through>
+  > WHERE deleted_at IS NOT NULL)` — **błędnie**. Dowód z kodu
+  > (`0421_cache_trigger_pk_filter.sql:315-321,336`):
+  > ```sql
+  > CREATE OR REPLACE VIEW bpp_wydawnictwo_ciagle_autorzy AS
+  >  SELECT ARRAY[(...'wydawnictwo_ciagle'...), rekord_id] AS rekord_id,
+  >         ARRAY[(...'wydawnictwo_ciagle'...), id]        AS id,     -- ← through pk
+  >         ...
+  >       , bpp_wydawnictwo_ciagle_autor.rekord_id AS object_id_raw   -- ← id PUBLIKACJI
+  > ```
+  > Skutki błędnej wersji (obie realne): soft-delete autorstwa **nie
+  > odfiltrowałby** właściwego wiersza, a przy zbieżności numerów
+  > **wyciąłby autorstwa cudzej publikacji**. Uwaga na przyszłość: w widokach
+  > `bpp_<typ>_view` (faza 02) `object_id_raw` to id publikacji i tam jest
+  > kluczem **poprawnym** — te dwa zestawy widoków mają różną semantykę
+  > `object_id_raw`.
 
   ⚠️ **Do rozstrzygnięcia przy implementacji (nie zgaduj — zmierz):** czy
   owijanie widoku (`SELECT * FROM (orig) WHERE object_id_raw NOT IN ...`)
@@ -649,8 +741,11 @@ Główny gejt fazy: soft-delete wiersza `*_Autor` → znika z `bpp_autorzy_mat` 
 - [ ] Napisz testy spójności — `src/bpp/tests/test_soft_delete/test_cache_consistency.py`:
   ```python
   """Spójność materializowanego cache (bpp_autorzy_mat / model Autorzy) po
-  soft-delete wierszy *_Autor. Wymaga transactional_db — trigger odpala się
-  dopiero przy realnym commicie."""
+  soft-delete wierszy *_Autor.
+
+  UWAGA: zwykły django_db WYSTARCZA — triggery bazodanowe dzialaja wewnatrz
+  transakcji testowej (kanarki test_soft_delete_preconditions.py to
+  pokazuja). transactional_db jest tu zbedny i tylko spowalnia."""
 
   import pytest
 
@@ -661,9 +756,12 @@ Główny gejt fazy: soft-delete wiersza `*_Autor` → znika z `bpp_autorzy_mat` 
   def _autorzy_mat_dla(wca):
       """Wiersze bpp_autorzy_mat (model Autorzy) wskazujące na danego autora
       w danym rekordzie."""
+      from django.contrib.contenttypes.models import ContentType
+
+      ct = ContentType.objects.get_for_model(type(wca.rekord)).pk
       return Autorzy.objects.filter(
           autor_id=wca.autor_id,
-          rekord_id=[wca.rekord.content_type_id, wca.rekord_id],
+          rekord_id=[ct, wca.rekord_id],
       )
 
 
@@ -746,7 +844,7 @@ Główny gejt fazy: soft-delete wiersza `*_Autor` → znika z `bpp_autorzy_mat` 
 
       # Wszystkie autorstwa tej pracy zniknęły z mat-view
       assert not Autorzy.objects.filter(
-          rekord_id=[wc.content_type_id, wc.pk]
+          rekord_id=[ContentType.objects.get_for_model(type(wc)).pk, wc.pk]
       ).exists()
       # ... ale wiersze fizycznie żyją (soft, nie hard)
       assert Wydawnictwo_Ciagle_Autor.global_objects.filter(rekord=wc).count() >= 2
