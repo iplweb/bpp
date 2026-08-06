@@ -63,9 +63,17 @@ class Wydawnictwo_Ciagle_Autor(
         "Wydawnictwo_Ciagle",
         CASCADE,
         related_name="autorzy_set",
-        # Auto-indeks FK redundantny: unique_together ma rekord jako kolumnę
-        # wiodącą w obu krotkach — pokrywa lookup po rekord i kaskadę usuwania.
-        db_index=False,
+        # Task 3c: `db_index=False` było tu uzasadnione, dopóki
+        # `unique_together` dawało pełny (nie częściowy) indeks btree z
+        # `rekord` jako kolumną wiodącą. Warunkowe UniqueConstraint/
+        # ExclusionConstraint z Taska 3c są CZĘŚCIOWE
+        # (`WHERE deleted_at IS NULL`) — nie pokrywają zapytań po samym
+        # `rekord` bez tego predykatu: RI-check Postgresa przy DELETE
+        # rodzica, kolektor kaskady Django (`_base_manager`, bez filtra
+        # soft-delete) i `global_objects`/`deleted_objects`.filter(rekord=…)
+        # (czyli dokładnie zapytania, po które soft-delete istnieje).
+        # Zwykły indeks FK (domyślny dla ForeignKey) jest więc znów
+        # potrzebny — NIE ustawiaj tu `db_index=False`.
     )
 
     class Meta:
@@ -77,10 +85,16 @@ class Wydawnictwo_Ciagle_Autor(
         # wciąż są w tabeli) i blokowałby wzorzec "skasuj i wstaw od nowa"
         # (re-import, korekta kolejności, edycja inline). Warunkowy
         # UniqueConstraint (condition=deleted_at__isnull) pilnuje unikalności
-        # TYLKO wśród żywych wierszy. Walidacja formularza admina (Django
-        # `validate_unique()` ignoruje `UniqueConstraint` z `condition`) jest
-        # dopięta ręcznie w `bpp.admin.core` (`generuj_formularz_dla_autorow`
-        # / `generuj_inline_dla_autorow`) — patrz Task 3c.
+        # TYLKO wśród żywych wierszy. Django `validate_unique()` W OGÓLE nie
+        # patrzy na `Meta.constraints` (mechanizmem jest osobny
+        # `Model.validate_constraints()`, Django >=4.1) — a TEN wymaga, żeby
+        # pole użyte w `condition` (`deleted_at`) nie było wykluczone z
+        # walidacji formularza, inaczej cicho pomija sprawdzenie (albo, dla
+        # ExclusionConstraint, rzuca gołym FieldError). Stąd `deleted_at`
+        # jest jawnym, ukrytym polem w `generuj_formularz_dla_autorow`
+        # (`bpp.admin.core`). Formset inline ma DODATKOWO ręczną walidację
+        # kolizji nowy-wiersz-vs-istniejący-w-tym-samym-submicie
+        # (`generuj_inline_dla_autorow`) — patrz Task 3c, raport.
         constraints = [
             models.UniqueConstraint(
                 fields=["rekord", "autor", "typ_odpowiedzialnosci"],

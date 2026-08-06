@@ -368,19 +368,33 @@ def _waliduj_kolizje_autorstwa_w_formsecie(formset):
     wierszem. Powód: dla nowego wiersza `rekord` nie jest jeszcze ustawiony
     w momencie walidacji (przypisuje go dopiero
     `BaseInlineFormSet.save_new()`, PO walidacji) — DB-owy
-    `UniqueConstraint.validate()` po prostu pomija sprawdzenie, gdy pole
-    złożonego klucza jest `None` (`NULL != NULL` w SQL). A formsetowe
-    `validate_unique()` (Django) sprawdza pary formularzy tylko dla
-    constraintów BEZWARUNKOWYCH (`Meta.total_unique_constraints`,
-    `condition is None`) — nasze, warunkowe, są tam pomijane. Stąd ręczne
-    porównanie par formularzy widocznych w formsecie (bez zapytań do bazy —
-    `formset.instance`, czyli rodzic/rekord, jest wspólny dla wszystkich
-    wierszy formsetu z definicji inline)."""
-    forms_to_delete = formset.deleted_forms
+    `UniqueConstraint.validate()`/`ExclusionConstraint.validate()` po prostu
+    pomijają sprawdzenie, gdy pole złożonego klucza jest `None` (`NULL !=
+    NULL` w SQL). A formsetowe `BaseModelFormSet.validate_unique()` (Django)
+    sprawdza pary formularzy tylko dla constraintów BEZWARUNKOWYCH
+    (`Meta.total_unique_constraints`, `condition is None`) — nasze,
+    warunkowe, są tam pomijane. Stąd ręczne porównanie par formularzy
+    widocznych w formsecie (bez zapytań do bazy — `formset.instance`, czyli
+    rodzic/rekord, jest wspólny dla wszystkich wierszy formsetu z definicji
+    inline). Dwa klucze pokrywają WSZYSTKIE TRZY constrainty z Meta:
+    (autor, typ) ↔ `..._uniq_rekord_autor_typ`; goła `kolejnosc` (bez
+    autora) ↔ zarówno `..._uniq_rekord_autor_kolejnosc` (ten sam autor z
+    dwoma wpisami o tej samej kolejności), jak i `..._excl_rekord_kolejnosc`
+    (DWÓCH RÓŻNYCH autorów na tej samej pozycji) — goła `kolejnosc` jest
+    ściślejsza (autor nieistotny), więc pokrywa oba naraz."""
+    # UWAGA: `formset.deleted_forms` NIE nadaje się tu do użytku — jego
+    # własna implementacja zaczyna od `if not self.is_valid(): return []`.
+    # Wołane z wnętrza `clean()` (a więc z wnętrza `full_clean()`), gdy
+    # JAKIKOLWIEK INNY wiersz formsetu ma błąd walidacji pola, zwraca pustą
+    # listę — wiersze faktycznie zaznaczone do usunięcia trafiłyby wtedy do
+    # `aktywne` i dostały FAŁSZYWY komunikat o kolizji z wierszem, który
+    # dopiero je zastępuje (wzorzec „usuń + wstaw od nowa" w JEDNYM
+    # submicie). `_should_delete_form()` sprawdza tylko dane TEGO wiersza,
+    # bez wywoływania `is_valid()` na całym formsecie.
     aktywne = [
         f
         for f in formset.forms
-        if getattr(f, "cleaned_data", None) and f not in forms_to_delete
+        if getattr(f, "cleaned_data", None) and not formset._should_delete_form(f)
     ]
 
     widziane_typ = {}
@@ -388,6 +402,21 @@ def _waliduj_kolizje_autorstwa_w_formsecie(formset):
     for form in aktywne:
         cd = form.cleaned_data
         autor = cd.get("autor")
+        kolejnosc = cd.get("kolejnosc")
+
+        # Goła `kolejnosc` (bez autora) — pokrywa zarówno „ten sam autor
+        # dwa razy na tej samej pozycji" jak i „dwóch różnych autorów na
+        # tej samej pozycji" (`..._excl_rekord_kolejnosc` w Meta nie patrzy
+        # na autora wcale).
+        if kolejnosc is not None:
+            if kolejnosc in widziane_kolejnosc:
+                form.add_error(
+                    None,
+                    "To miejsce w kolejności autorów jest już zajęte.",
+                )
+            else:
+                widziane_kolejnosc[kolejnosc] = form
+
         if autor is None:
             continue
 
@@ -402,17 +431,6 @@ def _waliduj_kolizje_autorstwa_w_formsecie(formset):
                 )
             else:
                 widziane_typ[klucz] = form
-
-        kolejnosc = cd.get("kolejnosc")
-        if kolejnosc is not None:
-            klucz = (autor.pk, kolejnosc)
-            if klucz in widziane_kolejnosc:
-                form.add_error(
-                    None,
-                    "Ten autor ma już powiązanie z tą kolejnością.",
-                )
-            else:
-                widziane_kolejnosc[klucz] = form
 
 
 def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
