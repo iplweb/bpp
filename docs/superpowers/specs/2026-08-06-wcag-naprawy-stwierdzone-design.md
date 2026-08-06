@@ -114,29 +114,42 @@ trzy pola językowe:
 `jezyk_orig` jest udokumentowany jako pole dla tłumaczeń eksportowane do
 PBN i nie opisuje języka żadnego z dwóch wyświetlanych tytułów.
 
-Semantyka `jezyk_alt` jest **nieustalona**. Pole nie ma `help_text`, a w
-kodzie występuje wyłącznie jako pozycja w fieldsetach admina
-(`src/bpp/admin/helpers/fieldsets.py:104`), w serializerach API, w eksporcie
-XLSX (`src/bpp/admin/xlsx_export/resources.py:82`) i w komendzie
-`ukryj_nieuzywane_jezyki` — żadne z tych miejsc nie ujawnia, co pole
-oznacza. Fakt osłabiający hipotezę „to język przekładu": eksport CERIF
-oznacza tytuły językami z `jezyk` i `dodatkowe_tytuly.jezyk`, a `jezyk_alt`
-bierze wyłącznie do `select_related` — gdyby opisywał język tytułu
-przełożonego, byłby tam użyty.
+`jezyk_alt` **nie opisuje języka tytułu przełożonego** — ustalone z autorem
+modelu: pole odwzorowuje atrybut z API PBN (`pbn.nauka.gov.pl/api/v1/`),
+skopiowany do modelu „na zapas", i oznacza *drugi język pracy* (publikacja
+dwujęzyczna), nie język przekładu tytułu.
 
-**Decyzja: w tej iteracji oznaczamy wyłącznie `tytul_oryginalny`, językiem
-z `jezyk`. Tytuł przełożony (`tytul`) nie dostaje atrybutu.**
+Potwierdzenia w kodzie:
 
-Uzasadnienie: przy **wypełnionym** `jezyk_alt` o innej semantyce
-oznaczylibyśmy tytuł błędnym językiem, a błędne oznaczenie jest gorsze niż
+- adapter PBN (`src/pbn_api/adapters/wydawnictwo.py:312-319`) wysyła
+  `mainLanguage` z `jezyk` i `originalLanguage` z `jezyk_orig` — `jezyk_alt`
+  nie jest do PBN eksportowane mimo pochodzenia stamtąd;
+- żaden importer ani adapter nie wypełnia tego pola; wchodzi wyłącznie
+  ręcznie z admina;
+- eksport CERIF oznacza tytuły językami z `jezyk` i `dodatkowe_tytuly.jezyk`,
+  a `jezyk_alt` bierze tylko do `select_related`;
+- pole nie ma `help_text`; poza tym występuje jedynie w fieldsetach admina
+  (`src/bpp/admin/helpers/fieldsets.py:104`), serializerach API, eksporcie
+  XLSX (`src/bpp/admin/xlsx_export/resources.py:82`) i komendzie
+  `ukryj_nieuzywane_jezyki`.
+
+**Wniosek: model nie zawiera danych o języku tytułu przełożonego.**
+
+**Decyzja: oznaczamy wyłącznie `tytul_oryginalny`, językiem z `jezyk`.
+Tytuł przełożony (`tytul`) nie dostaje atrybutu.**
+
+Nie jest to ostrożność wobec niepewnej semantyki, tylko brak danych: użycie
+`jezyk_alt` oznaczyłoby tytuł drugim językiem *pracy*, co przy publikacji
+dwujęzycznej byłoby po prostu błędne, a błędne oznaczenie jest gorsze niż
 brak (patrz „Reguła"). Bez atrybutu tytuł przełożony dziedziczy `lang="pl"`
-ze strony, co dla polskiego przekładu — przypadek dominujący w polskiej
+ze strony, co dla polskiego przekładu — przypadku dominującego w polskiej
 bibliografii — jest prawdą.
 
-Koszt tej ostrożności: rekordy, w których przekład jest obcojęzyczny (tytuł
-oryginalny polski, `tytul` angielski), pozostają nieoznaczone. Trafia to do
-wykazu jako niezgodność częściowa, do domknięcia po ustaleniu semantyki
-`jezyk_alt` z osobą znającą historię modelu.
+Koszt: rekordy, w których przekład jest obcojęzyczny (tytuł oryginalny
+polski, `tytul` angielski), pozostają nieoznaczone. Domknięcie wymagałoby
+**nowego pola** w modelu, nie wykorzystania istniejącego — to zmiana
+schematu z migracją i uzupełnianiem danych przez uczelnie, więc jawnie poza
+tą iteracją.
 
 ### Reguła
 
@@ -423,9 +436,11 @@ wdrożeń wyłączona.
 **3.1.2 — tytuł przełożony (`tytul`).**
 Stan: **spełnione częściowo**. Oznaczamy tytuł oryginalny; przekład zostaje
 bez atrybutu i dziedziczy `lang="pl"`. Dla rekordów, w których przekład jest
-obcojęzyczny, kryterium pozostaje niespełnione. Powód: semantyka pola
-`jezyk_alt` jest nieustalona, a błędne oznaczenie byłoby gorsze niż brak. Do
-domknięcia po potwierdzeniu, co pole oznacza.
+obcojęzyczny, kryterium pozostaje niespełnione. Powód: **model nie zawiera
+danych o języku przekładu** — `jezyk_alt` to odwzorowanie atrybutu z API PBN
+oznaczające drugi język pracy, nie język tytułu przełożonego. Domknięcie
+wymaga nowego pola (migracja schematu + uzupełnienie danych przez uczelnie),
+więc jest osobnym zadaniem, nie doszlifowaniem tego.
 
 **3.1.2 — instalacje z niewypełnionym `kod_bcp47`.**
 Stan: **spełnione warunkowo**. Pole jest `blank=True`; poprawka oznacza
