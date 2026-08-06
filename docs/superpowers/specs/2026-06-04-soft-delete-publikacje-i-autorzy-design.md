@@ -740,8 +740,16 @@ odłożone, YAGNI; można dorobić jako zadanie `CELERYBEAT_SCHEDULE`,
 ## 11. Precedensy w repo
 
 - `django-soft-delete>=1.0.23` — `pyproject.toml`.
-- `src/zglos_publikacje/models.py` — `Zgłoszenie_Publikacji` już
+- `src/zglos_publikacje/models.py:60` — `Zgłoszenie_Publikacji` już
   `SoftDeleteModel` (wzorzec).
+- `src/bpp/models/repozytorium.py:18` — `Element_Repozytorium` też jest
+  `SoftDeleteModel` (drugi precedens, wykryty przy wykonaniu fazy 01).
+  Model bez własnych managerów — przydatny w testach jako gotowy nośnik
+  kolumn `deleted_at`/`restored_at`.
+- ⚠️ `src/zglos_publikacje/models.py:315` — `Zgloszenie_Publikacji_Autor`
+  dziedziczy po `BazaModeluOdpowiedzialnosciAutorow`, ale jest **POZA
+  zakresem** soft-delete. Dlatego `SoftDeleteModel` wpinamy w 3 konkretne
+  through-modele, NIE w abstrakt (§2.2).
 - `src/pbn_export_queue/` — dojrzała kolejka PBN (model + Celery + admin +
   retry/lock), wzorzec dla operacji `WYCOFANIE` (wejście asynchroniczne).
 - `src/pbn_wysylka_oswiadczen/tasks.py:54-76` — wzorcowa obsługa wyjątków PBN

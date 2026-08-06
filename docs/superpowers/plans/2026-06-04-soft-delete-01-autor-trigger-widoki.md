@@ -111,22 +111,34 @@ Tworzy współdzielony fundament menedżerów dla całego wdrożenia. Guard zale
   def test_managery_zwracaja_bpp_queryset():
       """Oba managery MUSZĄ zwracać BppSoftDeleteQuerySet — inaczej gate
       na update() nie zadziała (pakietowy QuerySet go nie ma)."""
-      from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
+      from bpp.models.repozytorium import Element_Repozytorium
 
       for manager_cls in (BppSoftDeleteManager, BppGlobalManager):
           manager = manager_cls()
-          manager.model = Wydawnictwo_Ciagle_Autor
+          manager.model = Element_Repozytorium
           manager._db = None
           assert isinstance(manager.get_queryset(), BppSoftDeleteQuerySet), (
               f"{manager_cls.__name__} nie zwraca BppSoftDeleteQuerySet"
           )
   ```
 
-  ⚠️ **Uwaga:** `BppSoftDeleteManager.get_queryset()` filtruje po
-  `deleted_at__isnull=True`, a na tym etapie `Wydawnictwo_Ciagle_Autor`
-  **nie ma jeszcze** kolumny `deleted_at` (dodaje ją Task 2). Budowa
-  queryset-u jest leniwa (filtr nie odpala SQL-a), więc `isinstance` przejdzie
-  — ale **nie iteruj** po tym queryset-cie w tym teście.
+  > 🩹 **Poprawka 2026-08-06 (wykryta przy wykonaniu Task 1).** Pierwsza wersja
+  > używała tu `Wydawnictwo_Ciagle_Autor` z notatką „budowa queryset-u jest
+  > leniwa, więc `isinstance` przejdzie". **To nieprawda:** Django resolwuje
+  > nazwy pól już w `Query.build_filter()`, przy wywołaniu `.filter()`, a nie
+  > dopiero przy wykonaniu SQL-a. `BppSoftDeleteManager.get_queryset()` filtruje
+  > po `deleted_at__isnull=True`, więc na modelu bez tej kolumny rzuca
+  > `FieldError` **natychmiast** — test padłby, i to nie z powodu wadliwej
+  > implementacji.
+  >
+  > Dlatego bierzemy model, który JUŻ jest `SoftDeleteModel`:
+  > `Element_Repozytorium` (`src/bpp/models/repozytorium.py:18`) — trzeci
+  > precedens soft-delete w repo, obok `Zgłoszenie_Publikacji`. Test dalej
+  > weryfikuje dokładnie to, co ma: klasę zwracanego queryset-u.
+  >
+  > Ogólna zasada dla dalszych faz: **nie zakładaj, że `.filter()` jest
+  > odroczone** — walidacja pól jest natychmiastowa, odroczone jest tylko
+  > wykonanie zapytania.
 
 - [ ] Uruchom (oczekiwany FAIL — `ModuleNotFoundError: bpp.models.soft_delete`):
   ```bash
