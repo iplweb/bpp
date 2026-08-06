@@ -81,6 +81,11 @@ dependencies = [
     "django-extensions>=3.2,<5",
     "django-minify-html>=1.14,<2",
     "Pillow>=12.2,<14",
+    # UWAGA: linia wersji Grappelli jest przesunieta o jeden WSTECZ wzgledem
+    # Django — Grappelli 5.0.x jest dla Django 6.x, a 4.0.x dla Django 5.x.
+    # Nie "podbijaj" tego automatem bez sprawdzenia, na ktorym Django stoimy;
+    # dependabot juz raz przeskoczyl 4.0.3 -> 5.0.0 (29f0ecd7b) zostawiajac
+    # skorke admina dla Django 6.x na Django 5.2.
     "django-grappelli>=5.0.0,<6",
     "django-multiseek==0.10.2",
     "django-braces>=1.15.0",
@@ -135,7 +140,6 @@ dependencies = [
     "thefuzz>=0.22.1",
     "celery-singleton>=0.3.1",
     "rollbar>=1.4.0",
-    "django-prometheus>=2.5.0",
     "ortools>=9.15.6755",
     "psycopg2-binary>=2.9.12", # ZOSTAW psycopg2 dla django-denorm
     "python-docx>=1.1.0", # Post-processing DOCX dla page breaks

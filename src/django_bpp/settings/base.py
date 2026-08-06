@@ -168,10 +168,6 @@ env = environ.Env(
     # stronie, której nie naprawimy kodem.
     DJANGO_BPP_ROLLBAR_IGNORE_SMTP_AUTH_ERRORS=(bool, False),
     #
-    # Prometheus
-    #
-    DJANGO_BPP_ENABLE_PROMETHEUS=(bool, False),
-    #
     # Liczniki w filtrac
     #
     DYNAMIC_FILTER_COUNTS_ENABLE=(bool, True),
@@ -1801,27 +1797,6 @@ ROLLBAR = {
 # INNY niż sekretny ROLLBAR["access_token"] (post_server_item) — ten można
 # bezpiecznie renderować w przeglądarce. Pusty = front-end Rollbar wyłączony.
 ROLLBAR_CLIENT_ACCESS_TOKEN = env("ROLLBAR_CLIENT_ACCESS_TOKEN")
-
-#
-# Prometheus
-#
-
-DJANGO_BPP_ENABLE_PROMETHEUS = env("DJANGO_BPP_ENABLE_PROMETHEUS")
-
-if DJANGO_BPP_ENABLE_PROMETHEUS:
-    MIDDLEWARE = (
-        [
-            "django_prometheus.middleware.PrometheusBeforeMiddleware",
-        ]
-        + MIDDLEWARE
-        + [
-            "django_prometheus.middleware.PrometheusAfterMiddleware",
-        ]
-    )
-
-    INSTALLED_APPS += [
-        "django_prometheus",
-    ]
 
 DYNAMIC_FILTER_COUNTS_ENABLE = env("DYNAMIC_FILTER_COUNTS_ENABLE")
 

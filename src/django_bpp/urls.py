@@ -439,12 +439,6 @@ if settings.OIDC_LOGIN_ENABLED:
     ]
 
 
-if settings.DJANGO_BPP_ENABLE_PROMETHEUS:
-    urlpatterns += [
-        path("", include("django_prometheus.urls")),
-    ]
-
-
 if settings.DEBUG and settings.DEBUG_TOOLBAR:
     from debug_toolbar.toolbar import debug_toolbar_urls
 
