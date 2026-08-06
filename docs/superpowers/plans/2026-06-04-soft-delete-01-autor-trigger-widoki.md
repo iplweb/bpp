@@ -108,12 +108,25 @@ Tworzy współdzielony fundament menedżerów dla całego wdrożenia. Guard zale
       assert qs.update(kolejnosc=5) == 0  # pusty QS, ale nie rzuca
 
 
-  def test_managery_sa_wlasciwych_klas():
-      assert issubclass(BppSoftDeleteManager.__bases__[0].__mro__[0], object)
-      assert isinstance(
-          BppSoftDeleteManager().get_queryset.__func__.__qualname__, str
-      )
+  def test_managery_zwracaja_bpp_queryset():
+      """Oba managery MUSZĄ zwracać BppSoftDeleteQuerySet — inaczej gate
+      na update() nie zadziała (pakietowy QuerySet go nie ma)."""
+      from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
+
+      for manager_cls in (BppSoftDeleteManager, BppGlobalManager):
+          manager = manager_cls()
+          manager.model = Wydawnictwo_Ciagle_Autor
+          manager._db = None
+          assert isinstance(manager.get_queryset(), BppSoftDeleteQuerySet), (
+              f"{manager_cls.__name__} nie zwraca BppSoftDeleteQuerySet"
+          )
   ```
+
+  ⚠️ **Uwaga:** `BppSoftDeleteManager.get_queryset()` filtruje po
+  `deleted_at__isnull=True`, a na tym etapie `Wydawnictwo_Ciagle_Autor`
+  **nie ma jeszcze** kolumny `deleted_at` (dodaje ją Task 2). Budowa
+  queryset-u jest leniwa (filtr nie odpala SQL-a), więc `isinstance` przejdzie
+  — ale **nie iteruj** po tym queryset-cie w tym teście.
 
 - [ ] Uruchom (oczekiwany FAIL — `ModuleNotFoundError: bpp.models.soft_delete`):
   ```bash
