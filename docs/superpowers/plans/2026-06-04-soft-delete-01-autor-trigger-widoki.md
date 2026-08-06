@@ -721,6 +721,123 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 
 ---
 
+## Task 3b — Bramka denorm: `deleted_at` w `depend_on_related` (DRUGI system triggerów)
+
+> 🔴 **Dodane 2026-08-06** po recenzji Taska 2. Luka w zakresie, nie defekt
+> implementacji — żaden task faz 01-05 tego nie obejmował.
+
+**BPP ma DWA niezależne systemy triggerów na tych samych tabelach**, oba
+z bramką po liście kolumn:
+
+| System | Trigger | Bramka budowana z | Naprawia |
+|---|---|---|---|
+| cache `_mat` (nasz) | `<tabela>_cache_upd` | `pg_depend` (migracja `0433`) | Task 3 |
+| `django-denorm` | `d_aft_row_upd_on_<tabela>_<pole>` | listy `only=` w `@depend_on_related` | **ten task** |
+
+Task 3 naprawia wyłącznie pierwszy. Drugi zostaje ślepy na `deleted_at`, więc
+**pola denormalizowane rodzica pozostają nieświeże NA STAŁE** po soft-delete
+autorstwa (aż do ręcznego `denorm.rebuildall`).
+
+**Dowód (zweryfikowany w źródle pakietu i empirycznie):**
+`denorm/db/triggers.py:102-118` buduje `WHEN (OLD.f IS DISTINCT FROM NEW.f OR …)`
+z `self.fields`, a te pochodzą z `only=`:
+```python
+# denorm/db/base.py:136,167
+only = (only or ()) + getattr(self.model, "denorm_always_only", ())
+...
+self.fields = [... for k, v in fields_with_model
+               if not v and k.attname not in skip and k.attname in only]
+```
+Żadna z 15 zależności na `*_Autor` nie wymienia `deleted_at`, więc UPDATE
+ruszający tylko `deleted_at`/`restored_at`/`transaction_id` **nie odpala
+żadnego triggera denorm**, a stary `AFTER DELETE` nie ma już czego łapać.
+
+**Co zostaje nieświeże:** `opis_bibliograficzny_cache`,
+`opis_bibliograficzny_autorzy_cache`,
+`opis_bibliograficzny_zapisani_autorzy_cache`, `slug` oraz
+**`cached_punkty_dyscyplin`** — czyli publiczna strona pokazuje usuniętego
+autora, a punkty dyscyplin dalej go liczą.
+
+**Files:**
+- Modify: `src/bpp/models/wydawnictwo_ciagle.py`, `wydawnictwo_zwarte.py`, `patent.py`
+  (3 klasy `*_Autor` — dodanie `denorm_always_only`)
+- Test: `src/bpp/tests/test_soft_delete/test_denorm_gate.py`
+
+**Steps:**
+
+- [ ] **Krok 3b.1 — padający test.** Sprawdza mechanizm END-TO-END, nie samą
+  obecność stringu w DDL:
+  ```python
+  @pytest.mark.django_db
+  def test_soft_delete_autorstwa_odswieza_opis_biblio(
+      wydawnictwo_ciagle_z_autorem, denorms
+  ):
+      """Soft-delete autorstwa MUSI unieważnić denorm-cache rodzica.
+
+      Drugi system triggerów (django-denorm) ma własną bramkę WHEN po liście
+      `only=` — bez `deleted_at` UPDATE soft-delete jej nie przechodzi i opis
+      zostaje nieświeży NA STAŁE.
+      """
+      wc = wydawnictwo_ciagle_z_autorem
+      denorms.flush()
+      wc.refresh_from_db()
+      assert "KOWALSKI" in wc.opis_bibliograficzny_cache
+
+      wc.autorzy_set.first().delete()
+      denorms.flush()
+      wc.refresh_from_db()
+
+      assert "KOWALSKI" not in wc.opis_bibliograficzny_cache, (
+          "denorm-cache nieświeży — bramka WHEN triggera denorm nie zna "
+          "deleted_at (denorm_always_only)"
+      )
+  ```
+  (nazwisko dopasuj do realnej fixtury)
+
+- [ ] **Krok 3b.2 — implementacja.** Dodaj do KAŻDEJ z 3 klas `*_Autor`
+  atrybut klasowy:
+  ```python
+      # django-denorm buduje bramkę WHEN triggera z listy `only=` w
+      # @depend_on_related. Bez deleted_at soft-delete autorstwa nie
+      # unieważniłby denorm-cache rodzica (opis bibliograficzny, slug,
+      # cached_punkty_dyscyplin) — zostałby nieświeży na stałe.
+      denorm_always_only = ("deleted_at",)
+  ```
+
+  ⚠️ **Dlaczego to bezpieczne akurat tutaj — SPRAWDŹ PRZED ZMIANĄ.**
+  `only = (only or ()) + denorm_always_only` w połączeniu z późniejszym
+  `if only: … else: only = <wszystkie pola>` znaczy, że dodanie
+  `denorm_always_only` do modelu, którego zależność **nie ma** `only=`,
+  **ZAWĘZI** ją z „wszystkie kolumny" do „tylko `deleted_at`" — czyli
+  wyłączy istniejące odświeżanie. Zweryfikowano 2026-08-06: wszystkie **15**
+  zależności celujących w `*_Autor` mają jawne `only=`, więc dodanie jest
+  czysto addytywne. **Powtórz tę weryfikację**, zanim zmienisz kod:
+  ```bash
+  grep -rn --include='*.py' -A4 "depend_on_related" src/ | grep -B1 -A4 "_Autor\""
+  ```
+  Jeśli znajdziesz choć jedną bez `only=` — NIE używaj `denorm_always_only`;
+  zamiast tego dopisz `"deleted_at"` do każdej listy `only=` ręcznie.
+
+- [ ] **Krok 3b.3 — przeinstaluj triggery denorm.** Zmiana list `only=` nie
+  zmienia DDL sama z siebie. Ustal, jak repo instaluje triggery denorm
+  (`grep -rn "denorm_init\|denorm_rebuild\|install_triggers" src/ Makefile`)
+  i wykonaj właściwy krok; jeśli triggery są zakładane migracją — dodaj nową
+  migrację, **nie modyfikuj istniejącej**. Zweryfikuj DDL:
+  ```sql
+  SELECT tgname, pg_get_triggerdef(oid) FROM pg_trigger
+   WHERE tgrelid='bpp_wydawnictwo_ciagle_autor'::regclass AND NOT tgisinternal;
+  ```
+  Bramka `d_aft_row_upd_on_*` MUSI zawierać `deleted_at`.
+
+- [ ] **Krok 3b.4 — PASS + regresja.** `uv run pytest src/bpp/tests/test_cache/
+  src/bpp/tests/test_soft_delete/ -q`. Test `test_opis_bibliograficzny_dependent`
+  i denorm-owe asercje w `test_wca_delete_cache` powinny się zazielenić
+  właśnie tutaj (Task 3 ich NIE naprawia — recenzja Taska 2 to potwierdziła).
+
+- [ ] **Krok 3b.5 — commit** + newsfragment jeśli jeszcze nie ma.
+
+---
+
 ## Task 4 — Testy spójności cache (mat-view) po soft-delete `*_Autor`
 
 Główny gejt fazy: soft-delete wiersza `*_Autor` → znika z `bpp_autorzy_mat` (model `Autorzy`) i z `bpp_autorzy` (model `AutorzyView`); restore → wraca; edycja autorstwa skasowanej publikacji nie wskrzesza wiersza w cache; kaskada queryset-owa (`.delete()` na QS) działa per-instancja. Testy wymagają `transactional_db` (trigger działa tylko z prawdziwym commitem).

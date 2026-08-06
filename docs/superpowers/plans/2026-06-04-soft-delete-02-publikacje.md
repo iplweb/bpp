@@ -12,6 +12,28 @@
 
 ---
 
+## ⚠️ KOLEJNOŚĆ WYKONANIA (taski NIE stoją w dokumencie w kolejności wykonania)
+
+Taski dopisywane po rewizjach wylądowały poza numeracją. Wykonuj w TEJ kolejności:
+
+| # | Task | Dlaczego tu |
+|---|---|---|
+| 1 | Task 1 — mixin `delete()`/`restore()` | fundament |
+| 2 | Task 2 — 5 modeli + migracja pól | kolumny muszą istnieć przed DDL |
+| 3 | **Task 2b** — widoki + gałąź kasująca + bramka `WHEN` | czyta `deleted_at` z kroku 2 |
+| 4 | **Task 2c** — bramka denorm | drugi system triggerów |
+| 5 | Task 3 — `slug` warunkowy unique | niezależny |
+| 6 | **Task 3b** — `unique_together` na `*_Autor` | niezależny |
+| 7 | Task 4 — przeplecenie menedżerów | — |
+| 8 | Task 5 — testy integracyjne | wymaga 1-7 |
+| 9 | Task 6 — weryfikacja fazy | ostatni |
+
+**Numery migracji nadawaj sekwencyjnie w KOLEJNOŚCI WYKONANIA**, nie wg numerów
+z nagłówków tasków (te są orientacyjne i już się rozjechały). Przed każdą
+migracją: `ls src/bpp/migrations/*.py | tail -3`.
+
+---
+
 ## Założenia wejściowe (z fazy 01 — VERBATIM, nie zmieniać)
 
 - `src/bpp/models/soft_delete.py` istnieje i eksportuje `BppSoftDeleteQuerySet`, `BppSoftDeleteManager`, `BppGlobalManager` (kod w indeksie §"Nowy moduł").
@@ -397,6 +419,40 @@ i `_create_delete_rekord_function` w `0432`).
 - [ ] Migracja `RunPython` w kolejności widoki → funkcje → bramka.
 - [ ] Odwrócone kanarki `test_soft_delete_preconditions.py` — PASS.
 - [ ] `makemigrations --check --dry-run` — brak driftu.
+
+---
+
+## Task 2c: Bramka denorm dla 5 modeli publikacji (DRUGI system triggerów)
+
+> 🔴 **Dodane 2026-08-06** po recenzji fazy 01 Task 2. Analogia do Taska 3b
+> fazy 01 — tam dla `*_Autor`, tu dla samych publikacji.
+
+`django-denorm` ma własną bramkę `WHEN` budowaną z list `only=` w
+`@depend_on_related` (`denorm/db/triggers.py:102-118`, `denorm/db/base.py:136`).
+Jest to system NIEZALEŻNY od naszych triggerów `<tabela>_cache_upd` z `0432`/`0433`.
+
+Dla publikacji dochodzi drugi wariant zależności — `@depend_on_related("self",
+"wydawnictwo_nadrzedne")` (rozdziały → książka-matka, `wydawnictwo_zwarte.py`).
+Soft-delete książki-matki musi unieważnić denorm-cache rozdziałów.
+
+**Steps:**
+
+- [ ] Wypisz WSZYSTKIE `@depend_on_related` celujące w 5 modeli publikacji
+      (także `"self"`) i sprawdź, które mają `only=`, a które nie:
+      ```bash
+      grep -rn --include='*.py' -A5 "depend_on_related" src/ | grep -B2 -A5 "self\|Wydawnictwo_\|Patent\|Praca_"
+      ```
+      ⚠️ Zależność **bez** `only=` + `denorm_always_only` = ZAWĘŻENIE do samego
+      `deleted_at` (patrz ostrzeżenie w fazie 01 Task 3b). Jeśli choć jedna taka
+      jest — dopisz `"deleted_at"` do list `only=` ręcznie zamiast używać
+      `denorm_always_only`.
+- [ ] Test end-to-end: soft-delete książki-matki → denorm-cache rozdziału
+      (`opis_bibliograficzny_cache` zawierający tytuł nadrzędny) przestaje być
+      aktualny? Rozstrzygnij, czy to w ogóle pożądane — guard PROTECT z fazy 04
+      i tak zablokuje soft-delete książki z rozdziałami, więc być może ten
+      przypadek jest nieosiągalny. **Jeśli nieosiągalny — zapisz to i pomiń**,
+      nie dokładaj martwego kodu.
+- [ ] Przeinstaluj triggery denorm i zweryfikuj DDL (`pg_get_triggerdef`).
 
 ---
 
