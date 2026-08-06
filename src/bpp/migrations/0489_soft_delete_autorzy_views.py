@@ -79,9 +79,16 @@ def _filtruj_widok(cur, tabela, widok):
     Owijka NIE zachowuje planu (dokłada anti-join i sondę po pkey na każdy
     wiersz), więc — zgodnie z instrukcją planu na taki właśnie wypadek —
     dopisujemy ``deleted_at IS NULL`` do ``WHERE`` wewnętrznego. Ten wariant
-    daje plan **identyczny** z oryginałem na hot-pathie (Index Scan, 7.35), a
-    pełny skan wręcz przyspiesza (2.36) — trafia w indeks na ``deleted_at``
-    założony w 0488.
+    daje plan **identyczny** z oryginałem na hot-pathie (Index Scan, 7.35).
+
+    ⚠️ Pomiar pełnego skanu z tabeli wyżej został zebrany na PUSTEJ bazie
+    testowej i nie uogólnia się: pierwotnie zanotowano tam „2.36 — trafia w
+    indeks na ``deleted_at``". Na produkcji tak NIE będzie. ``deleted_at IS
+    NULL`` pasuje do ~100% wierszy, więc planner pod ten predykat wybierze
+    seq scan, a nie indeks — i właśnie dlatego indeks z 0488 jest CZĘŚCIOWY
+    (``WHERE deleted_at IS NOT NULL``, pod ``deleted_objects``). Filtr
+    wewnętrzny wybieramy z powodu hot-pathu triggera, nie z powodu pełnego
+    skanu.
 
     ⚠️ KLUCZ (pułapka, na której przejechał się pierwotny plan): w widokach
     ``*_autorzy`` kolumna ``object_id_raw`` to ``rekord_id``, czyli **id

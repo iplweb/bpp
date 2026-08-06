@@ -376,12 +376,11 @@ def _waliduj_kolizje_autorstwa_w_formsecie(formset):
     warunkowe, są tam pomijane. Stąd ręczne porównanie par formularzy
     widocznych w formsecie (bez zapytań do bazy — `formset.instance`, czyli
     rodzic/rekord, jest wspólny dla wszystkich wierszy formsetu z definicji
-    inline). Dwa klucze pokrywają WSZYSTKIE TRZY constrainty z Meta:
-    (autor, typ) ↔ `..._uniq_rekord_autor_typ`; goła `kolejnosc` (bez
-    autora) ↔ zarówno `..._uniq_rekord_autor_kolejnosc` (ten sam autor z
-    dwoma wpisami o tej samej kolejności), jak i `..._excl_rekord_kolejnosc`
-    (DWÓCH RÓŻNYCH autorów na tej samej pozycji) — goła `kolejnosc` jest
-    ściślejsza (autor nieistotny), więc pokrywa oba naraz."""
+    inline). Dwa klucze pokrywają OBA constrainty z Meta: (autor, typ) ↔
+    `..._uniq_rekord_autor_typ`; goła `kolejnosc` (bez autora) ↔
+    `..._excl_rekord_kolejnosc`, który tak samo nie patrzy na autora — łapie
+    więc zarówno „ten sam autor dwa razy na tej samej pozycji", jak i „dwóch
+    RÓŻNYCH autorów na tej samej pozycji"."""
     # UWAGA: `formset.deleted_forms` NIE nadaje się tu do użytku — jego
     # własna implementacja zaczyna od `if not self.is_valid(): return []`.
     # Wołane z wnętrza `clean()` (a więc z wnętrza `full_clean()`), gdy

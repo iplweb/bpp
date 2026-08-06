@@ -101,11 +101,14 @@ class Wydawnictwo_Ciagle_Autor(
                 condition=Q(deleted_at__isnull=True),
                 name="wc_autor_uniq_rekord_autor_typ",
             ),
-            models.UniqueConstraint(
-                fields=["rekord", "autor", "kolejnosc"],
-                condition=Q(deleted_at__isnull=True),
-                name="wc_autor_uniq_rekord_autor_kolejnosc",
-            ),
+            # NIE MA tu `UniqueConstraint(rekord, autor, kolejnosc)` — byłby
+            # w 100% redundantny wobec `wc_autor_excl_rekord_kolejnosc`
+            # niżej. Ten pilnuje pary (rekord, kolejnosc) NIE PATRZĄC na
+            # autora, a więc jest ściśle silniejszy: skoro w obrębie rekordu
+            # żadna pozycja nie może się powtórzyć, to tym bardziej nie może
+            # się powtórzyć w obrębie (rekord, autor). Kosztowałby wyłącznie
+            # trzeci indeks: build w oknie serwisowym + stały narzut na
+            # każdym zapisie autorstwa (najgorętsza ścieżka zapisu w BPP).
             # Odpowiednik legacy `ALTER TABLE ... UNIQUE (rekord_id,
             # kolejnosc) DEFERRABLE INITIALLY DEFERRED` z migracji 0132 —
             # gwarantuje, że DWÓCH RÓŻNYCH autorów nie dzieli tej samej
@@ -131,7 +134,19 @@ class Wydawnictwo_Ciagle_Autor(
             ),
         ]
         indexes = [
-            models.Index(fields=["deleted_at"], name="wc_autor_deleted_at_idx"),
+            # Indeks CZĘŚCIOWY (`WHERE deleted_at IS NOT NULL`), nie pełny.
+            # Predykat `deleted_at IS NULL` pasuje do ~100% wierszy, więc
+            # planner i tak nigdy nie wybrałby pod niego indeksu (seq scan
+            # jest tańszy) — pełny btree byłby wyłącznie kosztem: rozmiar
+            # rzędu tabeli + wpis przy każdym INSERT/UPDATE autorstwa.
+            # Realnie selektywne jest zapytanie ODWROTNE — `deleted_objects`
+            # (`deleted_at IS NOT NULL`), czyli kosz/audyt — i to ono
+            # dostaje tu mikroskopijny indeks.
+            models.Index(
+                fields=["deleted_at"],
+                name="wc_autor_deleted_at_idx",
+                condition=Q(deleted_at__isnull=False),
+            ),
         ]
 
     # django-denorm buduje bramkę WHEN triggera z listy `only=` w
