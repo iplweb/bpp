@@ -110,11 +110,10 @@ class Wydawnictwo_Zwarte_Autor(
                 condition=Q(deleted_at__isnull=True),
                 name="wz_autor_uniq_rekord_autor_typ",
             ),
-            models.UniqueConstraint(
-                fields=["rekord", "autor", "kolejnosc"],
-                condition=Q(deleted_at__isnull=True),
-                name="wz_autor_uniq_rekord_autor_kolejnosc",
-            ),
+            # NIE MA tu `UniqueConstraint(rekord, autor, kolejnosc)` —
+            # `wz_autor_excl_rekord_kolejnosc` niżej jest ściśle silniejszy
+            # (nie patrzy na autora); patrz komentarz w
+            # `Wydawnictwo_Ciagle_Autor.Meta`.
             # Odpowiednik legacy `ALTER TABLE ... UNIQUE (rekord_id,
             # kolejnosc) DEFERRABLE INITIALLY DEFERRED` z migracji 0132 —
             # patrz analogiczny komentarz w Wydawnictwo_Ciagle_Autor.Meta.
@@ -129,7 +128,13 @@ class Wydawnictwo_Zwarte_Autor(
             ),
         ]
         indexes = [
-            models.Index(fields=["deleted_at"], name="wz_autor_deleted_at_idx"),
+            # Indeks CZĘŚCIOWY — patrz uzasadnienie w
+            # `Wydawnictwo_Ciagle_Autor.Meta.indexes`.
+            models.Index(
+                fields=["deleted_at"],
+                name="wz_autor_deleted_at_idx",
+                condition=Q(deleted_at__isnull=False),
+            ),
         ]
 
     # django-denorm buduje bramkę WHEN triggera z listy `only=` w

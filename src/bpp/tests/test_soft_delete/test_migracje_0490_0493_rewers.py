@@ -1,10 +1,18 @@
-"""Odwracalność migracji 0490 (warunkowy UniqueConstraint/ExclusionConstraint
-na *_Autor + zastąpienie legacy `RunSQL` constraintu z migracji 0132).
+"""Odwracalność serii 0490-0493 (Task 3c): warunkowe ograniczenia na *_Autor.
 
-``backward`` musi przywrócić DOKŁADNIE stan sprzed migracji: bezwarunkowy
-`unique_together` ORAZ legacy `UNIQUE (rekord_id, kolejnosc) DEFERRABLE
-INITIALLY DEFERRED` — inaczej rollback zostawia bazę bez żadnego z dwóch
-mechanizmów pilnujących unikalności kolejności autorów.
+Task 3c był pierwotnie jedną migracją (0490); jest rozbity na cztery
+(indeks FK / unique po typie / exclusion po kolejności / zdjęcie starych),
+każda z ``atomic = False`` — patrz docstring ``0490_autor_indeks_fk_rekord``.
+
+``backward`` całej serii musi przywrócić DOKŁADNIE stan sprzed niej:
+bezwarunkowy ``unique_together`` ORAZ legacy ``UNIQUE (rekord_id, kolejnosc)
+DEFERRABLE INITIALLY DEFERRED`` — inaczej rollback zostawia bazę bez żadnego
+z dwóch mechanizmów pilnujących unikalności kolejności autorów.
+
+Test zjeżdża do 0489 i wraca do NAJNOWSZEJ migracji ``bpp`` (``migrate bpp``
+bez numeru). Powrót „do 0490" byłby błędem: baza testowa jest współdzielona
+przez cały przebieg (``--reuse-db``), więc pozostawienie migracji późniejszych
+niż cel jako niezastosowanych psułoby kolejne testy.
 """
 
 import pytest
@@ -52,16 +60,22 @@ def _constraint_names(cur, tabela):
     return nazwy
 
 
+def _sprawdz_stan_po(cur):
+    for tabela in TABELE:
+        nazwy = _constraint_names(cur, tabela)
+        prefix = PREFIX[tabela]
+        assert f"{prefix}_autor_uniq_rekord_autor_typ" in nazwy
+        assert f"{prefix}_autor_excl_rekord_kolejnosc" in nazwy
+        # Redundantny wobec `..._excl_rekord_kolejnosc` (ten nie patrzy na
+        # autora, więc jest ściśle silniejszy) — świadomie NIE tworzony.
+        assert f"{prefix}_autor_uniq_rekord_autor_kolejnosc" not in nazwy
+        assert LEGACY_CONSTRAINT[tabela] not in nazwy
+
+
 @pytest.mark.django_db
-def test_migracja_0490_odwracalna():
+def test_migracje_0490_0493_odwracalne():
     with connection.cursor() as cur:
-        for tabela in TABELE:
-            nazwy = _constraint_names(cur, tabela)
-            prefix = PREFIX[tabela]
-            assert f"{prefix}_autor_uniq_rekord_autor_typ" in nazwy
-            assert f"{prefix}_autor_uniq_rekord_autor_kolejnosc" in nazwy
-            assert f"{prefix}_autor_excl_rekord_kolejnosc" in nazwy
-            assert LEGACY_CONSTRAINT[tabela] not in nazwy
+        _sprawdz_stan_po(cur)
 
     call_command("migrate", "bpp", "0489", verbosity=0)
 
@@ -70,17 +84,10 @@ def test_migracja_0490_odwracalna():
             nazwy = _constraint_names(cur, tabela)
             prefix = PREFIX[tabela]
             assert f"{prefix}_autor_uniq_rekord_autor_typ" not in nazwy
-            assert f"{prefix}_autor_uniq_rekord_autor_kolejnosc" not in nazwy
             assert f"{prefix}_autor_excl_rekord_kolejnosc" not in nazwy
             assert LEGACY_CONSTRAINT[tabela] in nazwy
 
-    call_command("migrate", "bpp", "0490", verbosity=0)
+    call_command("migrate", "bpp", verbosity=0)
 
     with connection.cursor() as cur:
-        for tabela in TABELE:
-            nazwy = _constraint_names(cur, tabela)
-            prefix = PREFIX[tabela]
-            assert f"{prefix}_autor_uniq_rekord_autor_typ" in nazwy
-            assert f"{prefix}_autor_uniq_rekord_autor_kolejnosc" in nazwy
-            assert f"{prefix}_autor_excl_rekord_kolejnosc" in nazwy
-            assert LEGACY_CONSTRAINT[tabela] not in nazwy
+        _sprawdz_stan_po(cur)
