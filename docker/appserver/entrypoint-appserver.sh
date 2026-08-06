@@ -53,6 +53,31 @@ echo "Starting background tasks..."
     python src/manage.py compress -v0 --force --traceback
     echo "  [bg] compress done."
 
+    # Prekompresja gzip wyjscia django-compressora ($STATIC_ROOT/CACHE,
+    # patrz COMPRESS_ROOT + COMPRESS_OUTPUT_DIR w settings/base.py).
+    # Reszta staticow ma `.gz` juz w obrazie (R16 w docker/bpp_base/Dockerfile),
+    # ale CACHE/ powstaje DOPIERO TERAZ, w runtime — build-time go nie widzial.
+    # To realny ruch: bare.html pakuje bundle.js (786 KB) w {% compress js %},
+    # wiec przegladarka pobiera CACHE/js/output.<hash>.js, a nie plik z .baked.
+    #
+    # Nieaktualny `.gz` nie grozi: compressor nazywa wyjscie content-hashem,
+    # wiec zmiana tresci = nowa nazwa pliku, a nie nadpisanie starej.
+    #
+    # Bledu NIE eskalujemy (skrypt leci z `sh -e`) — brak `.gz` degraduje sie
+    # miekko do `gzip on` w locie, a to nie powod, zeby nie wstal serwis.
+    # Logujemy za to glosno, bo inaczej regresja byla by niewidoczna.
+    if [ -d "$STATIC_ROOT/CACHE" ]; then
+        echo "  [bg] gzip CACHE..."
+        if find "$STATIC_ROOT/CACHE" -type f -size +1000c \
+                \( -name '*.js' -o -name '*.css' \) \
+                -exec gzip -9 -k -f {} +; then
+            echo "  [bg] gzip CACHE done."
+        else
+            echo "  [bg] UWAGA: prekompresja CACHE nie powiodla sie —"
+            echo "  [bg] nginx spadnie na gzip w locie (wolniej, ale dziala)."
+        fi
+    fi
+
     echo "  [bg] generate_500_page..."
     python src/manage.py generate_500_page
     echo "  [bg] generate_500_page done."
