@@ -238,7 +238,7 @@ Generator to szablon Django renderowany przez
 - `src/bpp/templates/browse/praca_tabela.html:7-10` — wariant alternatywny
 
 Drugi bywa mylony ze stroną szczegółów, bo leży w katalogu `browse/`. Nie
-jest stroną: `praca.html:54` włącza wyłącznie `praca_tabela_mono.html`, a
+jest stroną: `praca.html:55` włącza wyłącznie `praca_tabela_mono.html`, a
 jedyne odwołanie do `praca_tabela.html` w repozytorium to migracja
 `0295_instaluj_szablony.py:25`, która instalowała go do `dbtemplates` obok
 `opis_bibliograficzny.html` — czyli jako drugi oferowany format opisu.

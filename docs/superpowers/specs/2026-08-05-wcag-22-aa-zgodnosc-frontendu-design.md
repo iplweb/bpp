@@ -57,7 +57,11 @@ BPP nie startuje od zera. Zweryfikowane elementy już obecne:
   `src/bpp/templates/504.html:12` (strony błędów są w zakresie) oraz
   `src/bpp/templates/user_navigation_autocomplete.html:7` (modal
   globalnego wyszukiwania); trzeci — `src/maint-site/index.html:19` —
-  jest poza zakresem
+  jest poza zakresem.
+  **Korekta (2026-08-06):** `user_navigation_autocomplete.html` okazał się
+  martwym szablonem (żaden widok go nie renderuje) i został usunięty
+  zamiast dopisania `alt` — w zakresie zostaje jeden obraz, nie dwa. Patrz
+  korekta w sekcji „1.1.1 Non-text Content" niżej.
 - `Uczelnia.deklaracja_dostepnosci_*` — `uczelnia.py:669,709,714`
 - gotowa infrastruktura Playwright (`src/integration_tests/`, fixture
   `channels_live_server`, marker `playwright` w `pytest.ini:73`)
@@ -580,7 +584,7 @@ wspólnego na całym bloku.
 mimo katalogu `browse/` jest to WARIANT generatora opisu bibliograficznego
 (instalowany przez migrację `0295_instaluj_szablony.py:25` obok
 `opis_bibliograficzny.html`). Strona szczegółów włącza wyłącznie
-`praca_tabela_mono.html` (`browse/praca.html:54`).
+`praca_tabela_mono.html` (`browse/praca.html:55`).
 
 **Wektor 2 — `opis_bibliograficzny_cache` (kosztowny).** Opis
 bibliograficzny jest generowany serwerowo i cache'owany jako gotowy HTML,
@@ -604,6 +608,13 @@ Wektor 2 został wykonany 2026-08-06.
 Ten wektor jest zasadniczą częścią kosztu 3.1.2 i to on decyduje, czy
 kryterium da się domknąć w tej iteracji, czy trafi do wykazu niezgodności
 jako zaplanowane.
+
+**Korekta (2026-08-06):** rozstrzygnięte — wektor 2 domknięto w tej
+iteracji (patrz korekta wyżej), więc kryterium 3.1.2 nie trafia do wykazu
+niezgodności jako całość. Do wykazu trafiają wyłącznie odrębne, węższe
+warunki brzegowe: tytuł przełożony (`tytul`), niewypełnione `kod_bcp47`,
+własny szablon opisu, własna allowlista `OPIS_BIBLIOGRAFICZNY_ALLOWED_TAGS`
+— sekcja „Odroczone niezgodności" niżej.
 
 **Zastrzeżenie:** `kod_bcp47` jest opcjonalne i w istniejących instalacjach
 bywa niewypełnione. Poprawka kodu nie wystarcza — uzupełnienie słownika
@@ -858,6 +869,11 @@ nie da się ułożyć:
    dopóki nie ma skanu, lista widoków jest wstępna.
 3. **Naprawy stwierdzone** (2.1.4, 3.1.2 wektor 1, 1.1.1-alt, 2.5.7).
    Niezależne od skanu — wynikają z lektury kodu. Mogą iść równolegle z (2).
+   **Korekta (2026-08-06):** krok wykonano szerzej niż tu zaplanowano — objął
+   też 3.1.2 wektor 2 (patrz korekty w sekcji „3.1.2 Language of Parts"
+   wyżej), a `2.1.4` i `2.5.7` zostały świadomie odroczone, nie naprawione
+   (sekcja „Odroczone niezgodności"). Szczegóły:
+   `2026-08-06-wcag-naprawy-stwierdzone-design.md`.
 4. **Baseline freeze.** Dopiero **po** (3) i po zamrożeniu próbki. Kolejność
    jest istotna: baseline zakładany przed naprawami zaksięgowałby dług,
    który zaraz znika, i wymuszałby natychmiastową aktualizację pliku.
@@ -895,6 +911,14 @@ uczelnia".
 **domyślnie poza tą iteracją**, ze statusem *zaplanowane* w wykazie
 niezgodności. Przebudowa cache'u to operacja liveops na każdym wdrożeniu
 z osobna, godziny przeliczania na dużych bazach.
+
+**Korekta (2026-08-06):** ta rekomendacja nie została przyjęta — wektor 2
+wykonano w tej samej iteracji. Przesłanka o liveops była błędna: przeliczenie
+całej bazy dzieje się co noc niezależnie od tej zmiany, przez istniejący
+`denorm_rebuild --no-flush` z harmonogramu Ofelii. Rzeczywistym warunkiem
+koniecznym było rozszerzenie allowlisty nh3 o `span`/`lang`
+(`src/bpp/util/text.py:306-313`), nie migracja danych. Szczegóły:
+`2026-08-06-wcag-naprawy-stwierdzone-design.md`, sekcja „Rollout wektora 2".
 
 **Alternatywy tekstowe dla wizualizacji (B3).** Pięć bibliotek, wymóg
 „równoważnej informacji". Do rozstrzygnięcia, czy w tej iteracji, czy jako
@@ -948,6 +972,15 @@ przebudowy cache'u na produkcji. Jeśli okaże się zbyt kosztowny, kryterium
 trafia do wykazu jako *zaplanowane*, z opisem stanu częściowego (strony
 szczegółowe oznaczone, listy i wyniki wyszukiwania nie) — nie jako
 spełnione.
+
+**Korekta (2026-08-06):** ryzyko się nie zmaterializowało — wektor 2
+domknięto w tej samej iteracji, bez przebudowy cache'u na produkcji poza
+istniejącym nocnym `denorm_rebuild`. Warunkiem koniecznym okazała się
+allowlista sanityzatora, nie liveops. Zarówno strony szczegółowe, jak i
+listy/wyniki wyszukiwania oznaczają tytuł atrybutem `lang`. Pozostałe
+niezgodności 3.1.2 (tytuł przełożony, puste `kod_bcp47`, własny szablon lub
+własna allowlista) są odnotowane w sekcji „Odroczone niezgodności", nie
+dotyczą już zakresu wektora 2.
 
 ## Znaleziska poboczne
 
