@@ -46,12 +46,14 @@ from bpp.models.abstract import (
     ModelZWWW,
     Wydawnictwo_Baza,
 )
+from bpp.models.soft_delete import BppAutorstwoSoftDeleteMixin
 from bpp.models.system import Zewnetrzna_Baza_Danych
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 
 
 class Wydawnictwo_Ciagle_Autor(
     DirtyFieldsMixin,
+    BppAutorstwoSoftDeleteMixin,
     BazaModeluOdpowiedzialnosciAutorow,
 ):
     """Powiązanie autora do wydawnictwa ciągłego."""
@@ -76,6 +78,9 @@ class Wydawnictwo_Ciagle_Autor(
         # W formsecie inline'a sprawdza je ``_sprawdz_powtorzona_kolejnosc``.
         unique_together = [
             ("rekord", "autor", "typ_odpowiedzialnosci"),
+        ]
+        indexes = [
+            models.Index(fields=["deleted_at"], name="wc_autor_deleted_at_idx"),
         ]
 
 

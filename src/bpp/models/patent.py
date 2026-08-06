@@ -26,11 +26,12 @@ from bpp.models.abstract import (
 )
 from bpp.models.autor import Autor
 from bpp.models.slowniki_stale import cached_if_found, wpis_slownika
+from bpp.models.soft_delete import BppAutorstwoSoftDeleteMixin
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.util import safe_tytul_html
 
 
-class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
+class Patent_Autor(BppAutorstwoSoftDeleteMixin, BazaModeluOdpowiedzialnosciAutorow):
     """Powiązanie autora do patentu."""
 
     rekord = models.ForeignKey(
@@ -53,6 +54,9 @@ class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
         # W formsecie inline'a sprawdza je ``_sprawdz_powtorzona_kolejnosc``.
         unique_together = [
             ("rekord", "autor", "typ_odpowiedzialnosci"),
+        ]
+        indexes = [
+            models.Index(fields=["deleted_at"], name="patent_autor_deleted_at_idx"),
         ]
 
 
