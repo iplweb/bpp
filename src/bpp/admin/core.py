@@ -376,9 +376,9 @@ def sprawdz_powtorzona_kolejnosc(formset):
     pilnuje w bazie odroczony ``ExclusionConstraint`` (soft-delete; wcześniej
     legacy ``UNIQUE DEFERRABLE`` z migracji 0132). Formularz go nie sprawdza
     (Django pomija ograniczenia odroczone), więc bez tego sprawdzenia
-    powtórzona pozycja kończy się IntegrityError na COMMIT. Sprawdzamy wartości DOCELOWE
-    ze wszystkich wierszy naraz, a nie każdy wiersz osobno względem bazy, żeby
-    zamiana dwóch wierszy miejscami przechodziła.
+    powtórzona pozycja kończy się IntegrityError na COMMIT. Sprawdzamy
+    wartości DOCELOWE ze wszystkich wierszy naraz, a nie każdy wiersz osobno
+    względem bazy, żeby zamiana dwóch wierszy miejscami przechodziła.
     """
     zajete = set()
     for form in formset.forms:
@@ -419,11 +419,19 @@ def _waliduj_kolizje_autorstwa_w_formsecie(formset):
     Kolizję (rekord, kolejnosc) sprawdza osobno
     :func:`sprawdz_powtorzona_kolejnosc`.
     """
-    forms_to_delete = formset.deleted_forms
+    # UWAGA: `formset.deleted_forms` NIE nadaje się tu do użytku — jego
+    # własna implementacja zaczyna od `if not self.is_valid(): return []`.
+    # Wołane z wnętrza `clean()` (a więc z wnętrza `full_clean()`), gdy
+    # JAKIKOLWIEK INNY wiersz formsetu ma błąd walidacji pola, zwraca pustą
+    # listę — wiersze faktycznie zaznaczone do usunięcia trafiłyby wtedy do
+    # `aktywne` i dostały FAŁSZYWY komunikat o kolizji z wierszem, który
+    # dopiero je zastępuje (wzorzec „usuń + wstaw od nowa" w JEDNYM
+    # submicie). `_should_delete_form()` sprawdza tylko dane TEGO wiersza,
+    # bez wywoływania `is_valid()` na całym formsecie.
     aktywne = [
         f
         for f in formset.forms
-        if getattr(f, "cleaned_data", None) and f not in forms_to_delete
+        if getattr(f, "cleaned_data", None) and not formset._should_delete_form(f)
     ]
 
     widziane_typ = set()
