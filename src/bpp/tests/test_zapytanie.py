@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from django.contrib.auth.models import Group
 from django.urls import reverse
@@ -687,6 +689,23 @@ def test_wykonaj_zapytanie_dedupuje_po_relacji_do_wielu(
     assert wynik.queryset.count() == 1
 
 
+def _laduje_skrypt(js, nazwa_pliku):
+    """Czy lista mediów admina ładuje plik JS o tej nazwie?
+
+    Django 6.1 renderuje ``str(Script(...))`` przez staticfiles storage, więc
+    przy ``ManifestStaticFilesStorage`` w URL-u ląduje content-hash
+    (``highlight.js`` → ``highlight.f65f9cbe99ea.js``). Do 6.0 ``str()``
+    zwracał ścieżkę bez hasha, dlatego gołe ``"highlight.js" in str(p)``
+    działało. Dopasowujemy nazwę tolerując wstawiony hash — sprawdzamy to,
+    co realnie trafia do strony, ale bez przywiązania do cache-bustingu.
+    """
+    trzon, _, rozszerzenie = nazwa_pliku.rpartition(".")
+    wzorzec = re.compile(
+        rf"{re.escape(trzon)}(\.[0-9a-f]{{8,}})?\.{re.escape(rozszerzenie)}"
+    )
+    return any(wzorzec.search(str(p)) for p in js)
+
+
 def test_admin_djangoql_highlight_loaded():
     """Adminy z BppDjangoQLSearchMixin ładują nakładkę podświetlania + skrypt
     falki błędu (przez własne ``media``, nie wbudowane ``djangoql_highlight``)."""
@@ -703,8 +722,8 @@ def test_admin_djangoql_highlight_loaded():
         (Wydawnictwo_CiagleAdmin, Wydawnictwo_Ciagle),
     ):
         js = list(admin_cls(model, dj_admin.site).media._js)
-        assert any("highlight.js" in str(p) for p in js), (admin_cls.__name__, js)
-        assert any("djangoql-admin.js" in str(p) for p in js), (
+        assert _laduje_skrypt(js, "highlight.js"), (admin_cls.__name__, js)
+        assert _laduje_skrypt(js, "djangoql-admin.js"), (
             admin_cls.__name__,
             js,
         )

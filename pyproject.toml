@@ -28,9 +28,10 @@ authors = [
 classifiers = [
     "DoNotUpload :: Use this project via github.com/iplweb/bpp-deploy repo",
 ]
-requires-python = ">=3.11,<3.15"
+# Django 6.1 wymaga Pythona >= 3.12 (3.11 wypadlo razem z 6.0).
+requires-python = ">=3.12,<3.15"
 dependencies = [
-    "Django>=5.2.16,<5.3",
+    "Django>=6.1,<6.2",
     # Reużywalne pakiety PBN wydzielone na PyPI (github.com/iplweb/*).
     "django-pbn-client>=0.2,<0.3",
     "pbn-client>=0.2.2,<0.3",
@@ -100,10 +101,16 @@ dependencies = [
     "django-mptt>=0.16,<1",
     "wosclient==0.1.5",
     "MOAI-iplweb>=2.0.2",
-    "django_redis_iplweb>=6.0.1,<6.1",
+    # Powrot na upstream jazzband/django-redis: fork `django_redis_iplweb`
+    # byl czystym republishem (zero kodu iplweb, ten sam modul `django_redis`)
+    # i utknal na `Django<6.1`. Upstream 7.0.0 deklaruje `Django<7.0,>=5.2`,
+    # wiec obejmuje 6.1. Nazwa modulu w settings sie NIE zmienia.
+    "django-redis>=7,<8",
     "django-filter>=26.1,<26.2",
     "dbfread>=2.0.7",
-    "djangorestframework==3.17.1",
+    # TYMCZASOWO z gita — patrz [tool.uv.sources] nizej. DRF <=3.17.2
+    # importuje `cc_delim_re` z django.utils.cache, usuniete w Django 6.1.
+    "djangorestframework>=3.17.2",
     "Markdown>=3.7,<4",
     "django-admin-sortable2>=2.3.1,<3",
     "cssmin==0.2.0",
@@ -241,7 +248,7 @@ tag = false
 push = false
 
 [tool.uv]
-environments = ["python_version >= '3.10' and python_version < '3.15' and platform_python_implementation != 'PyPy'"]
+environments = ["python_version >= '3.12' and python_version < '3.15' and platform_python_implementation != 'PyPy'"]
 
 # Security floors dla zaleznosci TRANZYTYWNYCH (nie deklarujemy ich jako
 # direct deps - przychodza przez inne pakiety). constraint-dependencies
@@ -320,10 +327,20 @@ default = true
 # WYCOFAĆ gdy upstream wyda release z #2156 → wróć na PyPI `>=4.5`. Tracking: #280.
 [tool.uv.sources]
 django-import-export = { git = "https://github.com/mpasternak/django-import-export.git", rev = "d6ee0d39194fee31437affbdc6fee5ce549b4b8f" }
-# TYMCZASOWO: django-pbn-client 0.2.2 (sync_dictionary D3 + with_deleted_marker
-# A2) nie jest jeszcze na PyPI. Pin do commita gałęzi feat/deleted-marker
-# (stacked na feat/sync-dictionary). USUŃ po wydaniu 0.2.2 na PyPI.
-django-pbn-client = { git = "https://github.com/iplweb/django-pbn-client.git", rev = "bb952e98967a96f96cd3773e3dcfcaf4555c8690" }
+# TYMCZASOWO: django-pbn-client na PyPI (0.2.2) ma twardy cap `django<5.3`,
+# ktory blokuje Django 6.1. Pin do HEAD gałęzi feat/django-61 (PR
+# iplweb/django-pbn-client#5 — luzuje pin na `Django>=5.2` i dokłada oś
+# django-version 5.2/6.0/6.1 do matrycy CI).
+# USUŃ i wróć na `django-pbn-client>=0.3` gdy PR #5 zostanie zmergowany
+# i wydany na PyPI.
+django-pbn-client = { git = "https://github.com/iplweb/django-pbn-client.git", rev = "1b91ac4f968a971815160863cc7297a17dc8712b" }
+# TYMCZASOWO: DRF 3.17.2 (najnowsze na PyPI, wydane 2026-08-05) wciaz robi
+# `from django.utils.cache import cc_delim_re`, a Django 6.1 to usunelo ->
+# ImportError przy imporcie rest_framework.views, czyli calego api_v1.
+# Na `main` fix jest juz w drzewie (import zwezony do patch_vary_headers),
+# a PR encode/django-rest-framework#10015 przygotowuje wydanie 3.18.0.
+# USUŃ i wróć na `djangorestframework>=3.18` gdy 3.18.0 trafi na PyPI.
+djangorestframework = { git = "https://github.com/encode/django-rest-framework.git", rev = "80d535ddf08226020a9f44ca57f6eb1bbd91fa6a" }
 
 # Konfiguracja `pytest-testcontainers-django` — pluginu pytest, ktory
 # startuje kontenery PG/Redis przed importem Django settings i wstrzykuje

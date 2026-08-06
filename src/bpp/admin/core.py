@@ -148,8 +148,16 @@ def generuj_formularz_dla_autorow(  # noqa
 ):
     class baseModel_AutorForm(forms.ModelForm):
         if include_rekord:
+            # Django 6.1: ForwardManyToOneDescriptor.get_queryset() wymaga
+            # keyword-only `instance` (dokłada .fetch_mode() z jej stanu), a
+            # tutaj jesteśmy w czasie definicji klasy — żadnej instancji nie
+            # ma. Sięgamy po `_base_manager` wprost, czyli dokładnie to, co
+            # deskryptor robił pod spodem w 5.2. `_base_manager`, NIE
+            # `_default_manager` — to pole ma być w stanie dowiązać rekord
+            # odfiltrowany przez managera domyślnego (m.in. soft-delete).
             rekord = forms.ModelChoiceField(
-                widget=HiddenInput, queryset=baseModel.rekord.get_queryset()
+                widget=HiddenInput,
+                queryset=baseModel.rekord.field.remote_field.model._base_manager.all(),
             )
 
         autor = forms.ModelChoiceField(

@@ -15,8 +15,12 @@ from django.core.exceptions import ImproperlyConfigured
 
 from bpp.util import slugify_function
 from django_bpp.channels_prefix import get_channels_prefix
+from django_bpp.compat import zalataj_zaleznosci
 from django_bpp.rollbar_filters import zbuduj_exception_level_filters
 from django_bpp.version import VERSION
+
+# MUSI pójść przed apps.populate() — patrz django_bpp.compat.
+zalataj_zaleznosci()
 
 logger = logging.getLogger(__name__)
 
@@ -227,10 +231,6 @@ USE_TZ = True
 # wyłączony, degradacja miękka (DocxConversionError). Patrz
 # nowe_raporty.docx_export._convert_using_html2docx_service.
 HTML2DOCX_URL = env("DJANGO_BPP_HTML2DOCX_URL", default=None)
-
-# Django 5.0 transitional; stanie się domyślne w 6.0. Wycisza
-# RemovedInDjango60Warning z forms.URLField dla URL-i bez schematu.
-FORMS_URLFIELD_ASSUME_HTTPS = True
 
 STATIC_URL = "/static/"
 
