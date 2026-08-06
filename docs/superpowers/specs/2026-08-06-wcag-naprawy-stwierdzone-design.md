@@ -332,6 +332,30 @@ używanych nazw. Zmiana pliku w repozytorium dociera więc do każdego
 wdrożenia zwykłym deployem — bez migracji danych i bez ryzyka skasowania
 customizacji uczelni.
 
+**Wyjątek: `browse/praca_tabela.html` miał osierocony wiersz dbtemplate.**
+Powyższe „szablon jest na dysku, nie w bazie" było prawdziwe dla
+`opis_bibliograficzny.html`, ale nie dla wariantu `browse/praca_tabela.html`.
+`purge_opis_dbtemplate` w migracji `0473_szablon_nazwa_szablonu.py` czyściła
+dbtemplates wyłącznie dla nazw referencjonowanych przez
+`SzablonDlaOpisuBibliograficznego.nazwa_szablonu` — a domyślną (i jedyną
+używaną bez ręcznej zmiany w adminie) wartością tego pola jest
+`opis_bibliograficzny.html`, więc wiersz dla `browse/praca_tabela.html`
+(zainstalowany migracją `0295_instaluj_szablony.py:25`) tej migracji nie
+przeszedł i przetrwał w bazie — a wraz z nią w `baseline-sql/baseline.sql`
+— jako sierota. Loader dbtemplates ma pierwszeństwo przed loaderem
+plikowym, więc dopóki ten wiersz istniał, edycja pliku w repozytorium nie
+miała żadnego efektu na wdrożeniu, które przełączyłoby
+`nazwa_szablonu` na ten wariant: renderowałaby się stara treść z bazy, bez
+znacznika `lang`.
+
+Naprawiono migracją `src/bpp/migrations/0488_purge_praca_tabela_dbtemplate.py`
+(dopisaną do planu w trakcie realizacji jako Task 4b) — usuwa wiersz
+dbtemplate dla `browse/praca_tabela.html` tą samą ścieżką co `0473`
+(`usun_dbtemplate_i_przebuduj`, `flush=False`, asynchroniczne przeliczenie
+przez kolejkę `denorm`). Po tej migracji obowiązuje reguła znad tego akapitu
+bez wyjątków: plik na dysku jest jedynym źródłem prawdy dla obu wariantów
+generatora.
+
 ## Wpływ na konsumentów opisu
 
 `opis_bibliograficzny_cache` nie służy wyłącznie do publicznego HTML-a.

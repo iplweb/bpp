@@ -576,6 +576,12 @@ Uwaga na dwa różne języki w jednym miejscu: szablony renderują obok siebie
 zwykle polski. Wymagają **osobnych** znaczników `lang`, a nie jednego
 wspólnego na całym bloku.
 
+**Korekta (2026-08-06):** `browse/praca_tabela.html` nie jest stroną —
+mimo katalogu `browse/` jest to WARIANT generatora opisu bibliograficznego
+(instalowany przez migrację `0295_instaluj_szablony.py:25` obok
+`opis_bibliograficzny.html`). Strona szczegółów włącza wyłącznie
+`praca_tabela_mono.html` (`browse/praca.html:54`).
+
 **Wektor 2 — `opis_bibliograficzny_cache` (kosztowny).** Opis
 bibliograficzny jest generowany serwerowo i cache'owany jako gotowy HTML,
 a używany w 31 miejscach w szablonach — listy `browse`, wyniki multiseek,
@@ -584,6 +590,16 @@ zcache'owanego HTML-u**, więc poprawka na poziomie szablonu go nie
 obejmuje. Domknięcie 3.1.2 dla list i wyników wyszukiwania wymaga zmiany
 w generatorze opisu (`src/bpp/models/util.py`) oraz **przebudowy
 cache'u**, czyli migracji danych na produkcji.
+
+**Korekta (2026-08-06):** to ustalenie jest nieprawdziwe. Przeliczenie
+całej bazy dzieje się co noc niezależnie od tej zmiany —
+`denorm_rebuild --no-flush` o 22:00 z harmonogramu Ofelii
+(`bpp-deploy/docker-compose.application.yml:117-118`) brudzi wszystkie
+wiersze, kolejka `denorm` je przelicza, a trigger `bpp_refresh_cache`
+propaguje wynik do `bpp_rekord_mat`. Rzeczywistym warunkiem koniecznym
+wektora 2 jest rozszerzenie allowlisty nh3 o `span`/`lang`
+(`src/bpp/util/text.py:306-313`), którego ten dokument nie wymieniał.
+Wektor 2 został wykonany 2026-08-06.
 
 Ten wektor jest zasadniczą częścią kosztu 3.1.2 i to on decyduje, czy
 kryterium da się domknąć w tej iteracji, czy trafi do wykazu niezgodności
@@ -601,6 +617,12 @@ Dwa elementy `<img>` w zakresie nie mają atrybutu `alt`:
 `src/bpp/templates/user_navigation_autocomplete.html:7`. Naprawa
 trywialna; wymaga jedynie rozstrzygnięcia, czy obraz niesie treść
 (`alt="…"`), czy jest dekoracją (`alt=""`).
+
+**Korekta (2026-08-06):** `user_navigation_autocomplete.html` jest martwy —
+żaden widok go nie renderuje. Widok `bpp:navigation-autocomplete` zwraca
+JSON (`Select2QuerySetSequenceView`), a listę rysuje Select2 po stronie
+klienta. Szablon usunięto zamiast dopisywać `alt`. W zakresie zostaje jeden
+obraz, nie dwa.
 
 ### 2.5.7 Dragging Movements (AA) — graf powiązań
 
@@ -938,6 +960,58 @@ odnotowane żeby nie zginęły:
   URL deklaracji dostępności z doklejonym `}`. Ironicznie dotyczy to
   metadanej wskazującej deklarację dostępności. Poprawka jednoznakowa,
   ale wymaga osobnego commita — nie jest częścią audytu.
+
+## Odroczone niezgodności
+
+Decyzje podjęte 2026-08-06 przy wykonywaniu kroku 3 („Naprawy stwierdzone").
+Zapisane tutaj, bo raport zgodności — właściwe miejsce takich wpisów —
+jeszcze nie istnieje. Szczegóły i uzasadnienia:
+`2026-08-06-wcag-naprawy-stwierdzone-design.md`.
+
+**2.1.4 Character Key Shortcuts (A) — skrót `/`.**
+Handler w `src/django_bpp/templates/base.html:39-49` wiąże `/` na
+`document`, wykluczając jedynie `input`/`textarea`/`select`. Nie spełnia
+żadnego z trzech warunków kryterium (wyłączalny, przemapowywalny, aktywny
+tylko przy focusie). Stan: **niezgodne, świadomie odroczone**. Powód: brak
+nacisku regulacyjnego i brak odbiorcy raportu; wszystkie trzy dopuszczone
+wyjścia mają koszt produktowy (utrata skrótu globalnego albo zbudowanie
+interfejsu preferencji dla użytkownika anonimowego).
+
+**2.5.7 Dragging Movements (AA) — graf powiązań.**
+`src/powiazania_autorow/templates/powiazania_autorow/graf.html`, widok
+publiczny bramkowany per uczelnia (`czy_pokazywac_siec_powiazan`,
+`src/bpp/views/browse.py:245`). Nawigacja wyłącznie przez przeciąganie.
+Stan: **niezgodne, świadomie odroczone**. Powód: koszt nieproporcjonalny do
+pozostałych napraw w tej iteracji, a funkcja jest opcjonalna i w części
+wdrożeń wyłączona.
+
+**3.1.2 — tytuł przełożony (`tytul`).**
+Stan: **spełnione częściowo**. Oznaczamy tytuł oryginalny; przekład zostaje
+bez atrybutu i dziedziczy `lang="pl"`. Dla rekordów, w których przekład jest
+obcojęzyczny, kryterium pozostaje niespełnione. Powód: **model nie zawiera
+danych o języku przekładu** — `jezyk_alt` to odwzorowanie atrybutu z API PBN
+oznaczające drugi język pracy, nie język tytułu przełożonego. Domknięcie
+wymaga nowego pola (migracja schematu + uzupełnienie danych przez uczelnie),
+więc jest osobnym zadaniem, nie doszlifowaniem tego.
+
+**3.1.2 — instalacje z niewypełnionym `kod_bcp47`.**
+Stan: **spełnione warunkowo**. Pole jest `blank=True`; poprawka oznacza
+tytuł tylko tam, gdzie słownik języków ma wypełniony kod BCP 47.
+Uzupełnienie słownika jest zadaniem uczelni. Dodatkowo: `@depend_on_related`
+przy `opis_bibliograficzny_cache`
+(`src/bpp/models/wydawnictwo_ciagle.py:218-226`) **nie obejmuje**
+`bpp.Jezyk`, więc uzupełnienie kodu w słowniku nie zabrudzi cache'ów —
+opisy złapią nowy kod dopiero po najbliższym nocnym rebuildzie (do 24 h).
+
+**3.1.2 — instalacje z własnym szablonem opisu.**
+Stan: **spełnione warunkowo**. Edytujemy dwa szablony z repozytorium; jeśli
+`SzablonDlaOpisuBibliograficznego.nazwa_szablonu` wskazuje na inny plik,
+opisy nie dostaną znaczników mimo poprawnej allowlisty.
+
+**3.1.2 — instalacje z własnym `OPIS_BIBLIOGRAFICZNY_ALLOWED_TAGS`.**
+Stan: **spełnione warunkowo**. Override w settings zastępuje domyślną
+allowlistę; wdrożenie, które go ustawiło przed tą zmianą, straci znaczniki
+w opisie do czasu dopisania `span`/`lang`.
 
 ## Poza zakresem
 
