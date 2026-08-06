@@ -90,6 +90,12 @@ class Wydawnictwo_Zwarte_Autor(
             models.Index(fields=["deleted_at"], name="wz_autor_deleted_at_idx"),
         ]
 
+    # django-denorm buduje bramkę WHEN triggera z listy `only=` w
+    # @depend_on_related. Bez deleted_at soft-delete autorstwa nie
+    # unieważniłby denorm-cache rodzica (opis bibliograficzny, slug,
+    # cached_punkty_dyscyplin) — zostałby nieświeży na stałe.
+    denorm_always_only = ("deleted_at",)
+
 
 MIEJSCE_I_ROK_MAX_LENGTH = 256
 
