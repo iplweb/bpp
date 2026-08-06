@@ -2,24 +2,36 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-> ⚠️ **AKTUALIZACJA ZAKRESU (decyzja użytkownika 2026-06-04) — CZYTAJ PRZED STARTEM:**
-> 1. **NIE ruszamy funkcji `bpp_refresh_cache()`.** Zmieniamy **wyłącznie widoki
->    źródłowe** (`bpp_*_autorzy`, ew. `bpp_rekord`) — filtr `deleted_at IS NULL`.
->    Każde zadanie tego planu dotyczące **trigger-skip** / modyfikacji kopii
->    `0399` / fixu utajonego buga z krotkami — **POMIŃ** (zostaje równoległej
->    optymalizacji triggera).
-> 2. **BLOKER:** funkcja `bpp_refresh_cache()` jest równolegle optymalizowana w
->    osobnej gałęzi. Tej fazy **NIE startować**, dopóki ta gałąź nie wyląduje i
->    `feat/soft-delete` nie zostanie na nią zaktualizowana. Po aktualizacji
->    zweryfikować inwariant: trigger na `UPDATE/INSERT` robi **bezwarunkowy
->    `DELETE` z `_mat` przed re-insertem/upsertem** (na tym wisi wystarczalność
->    filtra widoku). Jeśli inwariant zniknie → dopiero wtedy rozważyć trigger-skip.
+> 🔄 **AKTUALIZACJA ZAKRESU 2026-08-06 — CZYTAJ PRZED STARTEM. Zastępuje
+> poprzedni box „decyzja użytkownika 2026-06-04".**
+>
+> **BLOKER ZDJĘTY.** Optymalizacja triggera wylądowała (PR #363, migracje
+> `0421`/`0429`/`0432`/`0433`), gałąź jest zrebasowana na `dev`.
+>
+> **Ale inwariant, o który pytał poprzedni box, NIE przetrwał** — i to
+> ROZSZERZA tę fazę. Zweryfikowane empirycznie
+> (`src/bpp/tests/test_cache/test_soft_delete_preconditions.py`, oba kanarki
+> zielone na obecnym kodzie):
+> 1. funkcja refresh to **czysty upsert bez `DELETE`** → odfiltrowanie wiersza
+>    z widoku daje **no-op**, stary wiersz przeżywa w `_mat`;
+> 2. **bramka `WHEN`** (migracja `0433`) nie zna `deleted_at`, a
+>    `django-soft-delete` zapisuje przez `save(update_fields=[...])` → UPDATE
+>    soft-delete **w ogóle nie dochodzi do funkcji triggera**.
+>
+> **Filtr widoku sam NIE wystarcza.** Ta faza robi trzy rzeczy, nie jedną —
+> patrz „Architecture" niżej. Wszystkie obowiązkowe.
 
-**Goal:** Uczynić 3 through-modele `Wydawnictwo_Ciagle_Autor`, `Wydawnictwo_Zwarte_Autor`, `Patent_Autor` modelami `SoftDeleteModel` (przez wspólną bazę `BazaModeluOdpowiedzialnosciAutorow`), dodać im pola `deleted_at`/`restored_at`/`transaction_id` + indeks na `deleted_at`, oraz wpiąć filtr `deleted_at IS NULL` do widoków źródłowych PostgreSQL (`bpp_*_autorzy` + gałęzie UNION `bpp_rekord`) tak, by soft-deletowane autorstwa znikały z materializowanego cache (`bpp_autorzy_mat`, model `Autorzy`) i wracały po `restore`. Opcjonalnie: trigger-skip w `bpp_refresh_cache()`. Faza najwrażliwsza — robiona pierwsza; gwarantuje spójność cache zanim cokolwiek innego (publikacje, admin) zacznie soft-deletować.
+**Goal:** Uczynić 3 through-modele `Wydawnictwo_Ciagle_Autor`, `Wydawnictwo_Zwarte_Autor`, `Patent_Autor` modelami `SoftDeleteModel` (przez wspólną bazę `BazaModeluOdpowiedzialnosciAutorow`), dodać im pola `deleted_at`/`restored_at`/`transaction_id` + indeks na `deleted_at`, i doprowadzić do tego, by soft-deletowane autorstwa **znikały** z materializowanego cache (`bpp_autorzy_mat`, model `Autorzy`) i **wracały** po `restore`. Faza najwrażliwsza — robiona pierwsza; gwarantuje spójność cache zanim cokolwiek innego (publikacje, admin) zacznie soft-deletować.
 
-**Architecture:** Mechanizm nadrzędny to **filtr widoku (#1)** — każda tabela `bpp_*_autor` ma własną kolumnę `deleted_at`, a widoki źródłowe `bpp_wydawnictwo_ciagle_autorzy` / `bpp_wydawnictwo_zwarte_autorzy` / `bpp_patent_autorzy` (`0001_widoki_autorzy.sql`) dostają `AND <tabela>.deleted_at IS NULL` po **własnej** kolumnie (bez JOIN do rekordu nadrzędnego). To pokrywa WSZYSTKIE ścieżki: re-insert triggera `bpp_refresh_cache()`, bezpośredni odczyt `Rekord`/`RekordView` z widoku `bpp_rekord`, oraz pełną re-projekcję cache. Gałęzie `UNION` w `bpp_rekord` (`0001_widoki_rekord.sql`) per typ publikacji NIE filtrują po `*_autor.deleted_at` (rekord publikacji żyje niezależnie od soft-delete pojedynczego autorstwa — soft-delete publikacji to faza 02), ale dla spójności kontraktu dodajemy filtr `deleted_at IS NULL` na poziomie tabeli autorskiej tylko w widokach `bpp_*_autorzy`. Trigger-skip (#2) to opcjonalna optymalizacja w gałęzi `UPDATE/INSERT` funkcji `bpp_refresh_cache()` (aktualna wersja: `0399_fix_refresh_cache_upsert.sql`): gdy `TD['new']['deleted_at'] is not None` → pomiń upsert (delete-only). Nie zastępuje #1.
+**Architecture — trzy elementy, wszystkie obowiązkowe** (żaden nie wystarcza sam; uzasadnienie: §2.1 specu):
 
-**Tech Stack:** Django 4.2, PostgreSQL (`plpython3u` trigger + widoki), `django-soft-delete>=1.0.23` (`SoftDeleteModel`, `SoftDeleteManager`/`GlobalManager`/`DeletedManager`), pytest + model_bakery, `denorm` (django-denorm-iplweb). Python wyłącznie przez `uv run`.
+1. **Filtr `deleted_at IS NULL` w widokach źródłowych** `bpp_wydawnictwo_ciagle_autorzy` / `bpp_wydawnictwo_zwarte_autorzy` / `bpp_patent_autorzy` — po **własnej** kolumnie tabeli `*_autor` (bez JOIN do rekordu nadrzędnego). Rola: (a) karmi `pg_depend` dla punktu 3, (b) chroni pełne przebudowy i odczyt przez `bpp_autorzy`. **Nie sprząta `_mat`** — to robi punkt 2.
+2. **Gałąź kasująca w 3 funkcjach `bpp_refresh_autor_<model>()`** (`0432_cache_trigger_plpgsql.py`): prolog `IF NEW.deleted_at IS NOT NULL THEN DELETE FROM bpp_autorzy_mat WHERE id = ARRAY[ct, NEW.id]::integer[]; RETURN NULL; END IF;`. Wzorzec jest już w kodzie — gałąź doktorat/habilitacja w `_create_rekord_function` robi dokładnie `DELETE` + `INSERT`, bo tam wiersz też może wypaść ze źródła. Restore (`deleted_at → NULL`) przechodzi dalej do normalnego upsertu — symetria za darmo.
+3. **Regeneracja bramki `WHEN`** na 3 triggerach `*_cache_upd` — `RunPython` wołający logikę `forward()` z `0433_cache_trigger_when_gate.py`. `deleted_at` wejdzie do bramki **sama**, przez `pg_depend`, bo punkt 1 wstawił ją do `WHERE` widoku. **Kolejność w migracji: punkt 1 → punkt 3** (bramka czyta definicję widoku).
+
+Gałęzie `UNION` w `bpp_rekord` per typ publikacji NIE filtrują po `*_autor.deleted_at` — rekord publikacji żyje niezależnie od soft-delete pojedynczego autorstwa (soft-delete publikacji to faza 02).
+
+**Tech Stack:** Django 4.2, PostgreSQL (triggery **PL/pgSQL** + widoki), `django-soft-delete>=1.0.23` (`SoftDeleteModel`, `SoftDeleteManager`/`GlobalManager`/`DeletedManager`), pytest + model_bakery, `denorm` (django-denorm-iplweb). Python wyłącznie przez `uv run`.
 
 **Spec źródłowy:** [`../specs/2026-06-04-soft-delete-publikacje-i-autorzy-design.md`](../specs/2026-06-04-soft-delete-publikacje-i-autorzy-design.md) (§1, §2.1, §2.2, §8 pkt 1). Indeks: [`2026-06-04-soft-delete-00-overview.md`](2026-06-04-soft-delete-00-overview.md).
 
@@ -28,13 +40,15 @@
 - `Wydawnictwo_Ciagle_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAutorow)` — `src/bpp/models/wydawnictwo_ciagle.py:52`. FK `rekord` → `Wydawnictwo_Ciagle`, `related_name="autorzy_set"`, `src/bpp/models/wydawnictwo_ciagle.py:58`.
 - `Wydawnictwo_Zwarte_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAutorow)` — `src/bpp/models/wydawnictwo_zwarte.py:60`. FK `rekord`, `related_name="autorzy_set"`, `:67`.
 - `Patent_Autor(BazaModeluOdpowiedzialnosciAutorow)` — `src/bpp/models/patent.py:32`. FK `rekord`, `related_name="autorzy_set"`, `:35`.
-- Wszystkie 3 mają `Meta.unique_together` (NIE ruszamy; `deleted_at` nie wchodzi w `unique_together` — autorstwa nie mają warunkowego unique w tej fazie, sług to faza 02).
+- Wszystkie 3 mają `Meta.unique_together` — `("rekord","autor","typ_odpowiedzialnosci")` i `("rekord","autor","kolejnosc")`, np. `src/bpp/models/wydawnictwo_ciagle.py:73-77`. **W TEJ fazie NIE ruszamy**; zamiana na warunkowy `UniqueConstraint` (decyzja #13, §2.2b specu) idzie w fazie 02 razem ze slugiem.
 - `BazaModeluOdpowiedzialnosciAutorow.objects` NIE jest jawnie zdefiniowany → po wpięciu `SoftDeleteModel` domyślne `objects` = `SoftDeleteManager` (z pakietu). Nadpiszemy je naszymi `Bpp*` z `src/bpp/models/soft_delete.py`.
-- `SoftDeleteModel.delete()` (pakiet, `django_softdelete/models.py`) robi **refleksyjną kaskadę** po reverse relacjach — dla `*_Autor` reverse relacji do soft-delete dzieci NIE ma (ich dzieci to nie-soft `Autor`/`Jednostka` przez FK forward), więc kaskada jest no-op. `delete()` woła `self.save(update_fields=['deleted_at','restored_at','transaction_id'])` → odpala trigger `bpp_*_autor_cache_trigger` jako `UPDATE`. To jest pożądane.
-- Widok `bpp_autorzy_mat` (model `Autorzy`, `src/bpp/models/cache/autorzy.py:39`, `db_table="bpp_autorzy_mat"`) zasilany triggerem z `bpp_autorzy` (UNION `bpp_*_autorzy`).
-- Aktualna funkcja triggera to `0399_fix_refresh_cache_upsert.sql` (NIE `0001_cache_functions.sql` — ta jest baseline, nadpisana przez 0399). Trigger-skip dopisujemy do **kopii treści 0399** w nowym pliku SQL.
+- `SoftDeleteModel.delete()` (pakiet, `django_softdelete/models.py`) robi **refleksyjną kaskadę** po reverse relacjach — dla `*_Autor` reverse relacji do soft-delete dzieci NIE ma (ich dzieci to nie-soft `Autor`/`Jednostka` przez FK forward), więc kaskada jest no-op. `delete()` woła `self.save(update_fields=['deleted_at','restored_at','transaction_id'])`. ⚠️ **Ten UPDATE dotyka WYŁĄCZNIE tych 3 kolumn** — dlatego bramka `WHEN` musi znać `deleted_at` (punkt 3 „Architecture"), inaczej trigger się nie odpali. `ostatnio_zmieniony` (`auto_now`) też NIE jest bumpowany (`update_fields` filtruje `pre_save`).
+- ⚠️ `strict` w pakiecie jest **asymetryczne**: `delete(strict=False)`, `restore(strict=True)`.
+- Tabela `bpp_autorzy_mat` (model `Autorzy`, `src/bpp/models/cache/autorzy.py:39`, `db_table="bpp_autorzy_mat"`) zasilana triggerami z widoków `bpp_*_autorzy`.
+- **Trigger (AKTUALNY, po PR #363):** `0432_cache_trigger_plpgsql.py` generuje 3 funkcje `bpp_refresh_autor_<model>()` (upsert **bez** DELETE, `_create_through_function`) + 3 `bpp_delete_autor_<model>()`, oraz triggery `<tabela>_cache_ins` / `_cache_del` / `_cache_upd`. `0433_cache_trigger_when_gate.py` nakłada bramkę `WHEN` na `_cache_upd`, z listą kolumn wyliczoną z `pg_depend`. ⚠️ **Funkcja `bpp_refresh_cache()` NIE ISTNIEJE** — `DROP` w `0432`. Nie kopiować `0399` ani `0001_cache_functions.sql`.
+- Widoki `bpp_*_autorzy`: ostatnia wersja definicji w `0421_cache_trigger_pk_filter.sql` (dodaje `object_id_raw`). Odtwarzając widok, wychodź z `pg_get_viewdef()`, nie z `0001_widoki_autorzy.sql`.
 - `transactional_db` fixture wymagany dla testów dotykających trigger/cache (trigger działa tylko z prawdziwym commitem). Fixture `denorms` (`src/fixtures/conftest_system.py:193`) daje `denorms.flush()`. Fixtury: `wydawnictwo_ciagle_z_dwoma_autorami`, `wydawnictwo_ciagle_z_autorem`, `autor_jan_kowalski`, `jednostka`, `standard_data`, `typy_odpowiedzialnosci`.
-- Jedyny liść migracji `bpp`: `0420_autor_pokazuj_siec_powiazan_and_more`. Nowe migracje od niego zależą i są łańcuchowane: `0421 → 0422 (SQL)`.
+- ⚠️ **Numeracja migracji (stan 2026-08-06):** liść to `0487_api_v1_przelaczniki`. Nowe migracje tej fazy: `0488_autor_soft_delete_fields` → `0489_soft_delete_autorzy_views` (SQL + regeneracja bramki). **Przed startem zweryfikuj liść ponownie** (`ls src/bpp/migrations/*.py | tail -3`) — `dev` żyje, numery mogły się przesunąć. Wszystkie numery w tym planie są orientacyjne; kanoniczna jest kolejność, nie cyfra.
 
 **Kontrakt z reversion (PINNED):** soft-delete idzie WYŁĄCZNIE per-instancja przez `.delete()`/`.save()` (nigdy `queryset.update(deleted_at=...)`). `BppSoftDeleteQuerySet.update()` to egzekwuje fail-fast (gate). W tej fazie testujemy gate i kaskadę queryset-ową.
 
@@ -167,7 +181,7 @@ Wpięcie `SoftDeleteModel` w abstrakcyjną bazę → Django doda `deleted_at`/`r
 
 **Files:**
 - Modify: `src/bpp/models/abstract/authors.py:16` (deklaracja klasy + managery), import `:1-13`.
-- Create: `src/bpp/migrations/0421_autor_soft_delete_fields.py`
+- Create: `src/bpp/migrations/0488_autor_soft_delete_fields.py`
 - Test (create): `src/bpp/tests/test_soft_delete/test_autor_softdelete_model.py`
 
 **Steps:**
@@ -270,11 +284,11 @@ Wpięcie `SoftDeleteModel` w abstrakcyjną bazę → Django doda `deleted_at`/`r
   ```bash
   uv run python src/manage.py makemigrations bpp --name autor_soft_delete_fields
   ```
-  (Spodziewany plik: `src/bpp/migrations/0421_autor_soft_delete_fields.py`, 3 pola × 3 modele = 9 `AddField`. Manager-y są `use_in_migrations=False` domyślnie, więc nie pojawią się w migracji.)
+  (Spodziewany plik: `src/bpp/migrations/0488_autor_soft_delete_fields.py`, 3 pola × 3 modele = 9 `AddField`. Manager-y są `use_in_migrations=False` domyślnie, więc nie pojawią się w migracji.)
 
-- [ ] Zweryfikuj treść wygenerowanej migracji — musi zawierać `AddField` `deleted_at`/`restored_at`/`transaction_id` dla `wydawnictwo_ciagle_autor`, `wydawnictwo_zwarte_autor`, `patent_autor`. Jeśli Django dorzuciło `AlterModelManagers` — usuń tę operację ręcznie (Edit), bo managery soft-delete nie idą do schematu. Dependency MUSI być `("bpp", "0420_autor_pokazuj_siec_powiazan_and_more")`.
+- [ ] Zweryfikuj treść wygenerowanej migracji — musi zawierać `AddField` `deleted_at`/`restored_at`/`transaction_id` dla `wydawnictwo_ciagle_autor`, `wydawnictwo_zwarte_autor`, `patent_autor`. Jeśli Django dorzuciło `AlterModelManagers` — usuń tę operację ręcznie (Edit), bo managery soft-delete nie idą do schematu. Dependency MUSI wskazywać na **aktualny liść** migracji `bpp` (na 2026-08-06: `("bpp", "0487_api_v1_przelaczniki")`) — zweryfikuj `ls src/bpp/migrations/*.py | tail -3` przed commitem.
 
-- [ ] Dodaj indeks na `deleted_at` do każdej z 3 tabel. Dopisz do `operations` w `0421_autor_soft_delete_fields.py` (po `AddField`-ach), używając `AddIndex`:
+- [ ] Dodaj indeks na `deleted_at` do każdej z 3 tabel. Dopisz do `operations` w `0488_autor_soft_delete_fields.py` (po `AddField`-ach), używając `AddIndex`:
   ```python
           migrations.AddIndex(
               model_name="wydawnictwo_ciagle_autor",
@@ -318,7 +332,7 @@ Wpięcie `SoftDeleteModel` w abstrakcyjną bazę → Django doda `deleted_at`/`r
 
 - [ ] Commit:
   ```bash
-  git add src/bpp/models/abstract/authors.py src/bpp/migrations/0421_autor_soft_delete_fields.py src/bpp/tests/test_soft_delete/test_autor_softdelete_model.py
+  git add src/bpp/models/abstract/authors.py src/bpp/migrations/0488_autor_soft_delete_fields.py src/bpp/tests/test_soft_delete/test_autor_softdelete_model.py
   git commit -m "feat(soft-delete): *_Autor → SoftDeleteModel + migracja pól deleted_at + indeks
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
@@ -326,284 +340,266 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ---
 
-## Task 3 — Migracja SQL: filtr `deleted_at IS NULL` w widokach `bpp_*_autorzy` + trigger-skip
+## Task 3 — Widoki + gałąź kasująca w funkcjach refresh + regeneracja bramki
 
-Przedefiniowanie 3 widoków źródłowych (`bpp_wydawnictwo_ciagle_autorzy`, `bpp_wydawnictwo_zwarte_autorzy`, `bpp_patent_autorzy`) z filtrem po **własnej** kolumnie `deleted_at` tabeli `*_autor` (mechanizm #1, obowiązkowy). Po `DROP ... CASCADE` widoku `bpp_*_autorzy` trzeba odtworzyć też zależny `bpp_autorzy` (UNION). Dodatkowo trigger-skip (#2, opcjonalny) — przedefiniowanie `bpp_refresh_cache()` na bazie 0399 z regułą „deleted_at NOT NULL → delete-only". Migracja ładuje plik `.sql` wzorcem `0399`.
+> 🔄 **Task przepisany 2026-08-06.** Poprzednia wersja tworzyła kopię
+> `bpp_refresh_cache()` z `0399` z „trigger-skipem". **Tamta funkcja już nie
+> istnieje** (`DROP` w `0432`), a sam filtr widoku nie sprząta `_mat`. Nowa
+> wersja robi trzy rzeczy naraz — patrz „Architecture" na górze planu.
+
+Jedna migracja, trzy zmiany, w **wymuszonej kolejności**:
+
+1. przedefiniowanie 3 widoków `bpp_*_autorzy` z filtrem `deleted_at IS NULL`
+   po własnej kolumnie tabeli `*_autor` (+ odtworzenie zależnego `bpp_autorzy`,
+   bo `DROP ... CASCADE` go skasuje),
+2. przedefiniowanie 3 funkcji `bpp_refresh_autor_<model>()` z prologiem
+   kasującym,
+3. regeneracja bramki `WHEN` na 3 triggerach `*_cache_upd` — **musi być po
+   kroku 1**, bo bramka czyta kolumny z `pg_depend` po definicji widoku.
 
 **Files:**
-- Create: `src/bpp/migrations/0422_soft_delete_views.sql`
-- Create: `src/bpp/migrations/0422_soft_delete_views.py`
-- Test: pokrycie w Task 4 (testy spójności cache) — tu tylko migracja stosuje się czysto.
+- Create: `src/bpp/migrations/0489_soft_delete_autorzy_views.py` (numer
+  zweryfikuj — patrz „Fakty z kodu")
+- Test: `src/bpp/tests/test_soft_delete/test_views_sql.py` (nowy),
+  plus odwrócenie kanarków w
+  `src/bpp/tests/test_cache/test_soft_delete_preconditions.py` (Task 4)
+
+**Dlaczego migracja jest `RunPython`, a nie plik `.sql`:** definicje widoków
+i funkcji są **generowane z introspekcji** (`information_schema.columns`,
+`pg_depend`), a nie zapisane na sztywno. Kopiowanie ich do `.sql` odtworzyłoby
+dokładnie ten problem, który `0432`/`0433` rozwiązały — patrz
+`docs/superpowers/specs/2026-06-13-materialized-union-rekord-autorzy-design.md`.
 
 **Steps:**
 
-- [ ] Napisz failing test smoke — dopisz do `src/bpp/tests/test_soft_delete/test_views_sql.py`:
+- [ ] Napisz failing testy — `src/bpp/tests/test_soft_delete/test_views_sql.py`:
   ```python
-  """Widoki źródłowe bpp_*_autorzy filtrują po własnym deleted_at."""
+  """Kontrakt DDL po fazie 01: widok filtruje, funkcja kasuje, bramka przepuszcza."""
 
   import pytest
   from django.db import connection
-
 
   WIDOKI = [
       "bpp_wydawnictwo_ciagle_autorzy",
       "bpp_wydawnictwo_zwarte_autorzy",
       "bpp_patent_autorzy",
   ]
+  FUNKCJE = [
+      "bpp_refresh_autor_wydawnictwo_ciagle",
+      "bpp_refresh_autor_wydawnictwo_zwarte",
+      "bpp_refresh_autor_patent",
+  ]
+  TRIGGERY = [
+      ("bpp_wydawnictwo_ciagle_autor", "bpp_wydawnictwo_ciagle_autor_cache_upd"),
+      ("bpp_wydawnictwo_zwarte_autor", "bpp_wydawnictwo_zwarte_autor_cache_upd"),
+      ("bpp_patent_autor", "bpp_patent_autor_cache_upd"),
+  ]
 
 
   @pytest.mark.django_db
   @pytest.mark.parametrize("widok", WIDOKI)
-  def test_widok_zrodlowy_ma_filtr_deleted_at(widok):
-      """Definicja widoku w pg_get_viewdef musi zawierać 'deleted_at'
-      (filtr po własnej kolumnie tabeli autorskiej)."""
+  def test_widok_zrodlowy_filtruje_po_deleted_at(widok):
       with connection.cursor() as cur:
           cur.execute("SELECT pg_get_viewdef(%s::regclass, true)", [widok])
           defn = cur.fetchone()[0]
       assert "deleted_at" in defn, f"{widok} nie filtruje po deleted_at"
+
+
+  @pytest.mark.django_db
+  @pytest.mark.parametrize("fn", FUNKCJE)
+  def test_funkcja_refresh_ma_galaz_kasujaca(fn):
+      """Bez DELETE odfiltrowanie z widoku jest no-opem (upsert nic nie usuwa)."""
+      with connection.cursor() as cur:
+          cur.execute("SELECT pg_get_functiondef(%s::regproc)", [fn])
+          src = cur.fetchone()[0]
+      assert "NEW.deleted_at IS NOT NULL" in src, f"{fn}: brak gałęzi kasującej"
+      assert "DELETE FROM bpp_autorzy_mat" in src, f"{fn}: brak DELETE"
+
+
+  @pytest.mark.django_db
+  @pytest.mark.parametrize("tabela,trigger", TRIGGERY)
+  def test_bramka_when_zna_deleted_at(tabela, trigger):
+      """Bez deleted_at w bramce UPDATE soft-delete nie dochodzi do funkcji."""
+      with connection.cursor() as cur:
+          cur.execute(
+              "SELECT pg_get_triggerdef(t.oid) FROM pg_trigger t "
+              "WHERE t.tgrelid = %s::regclass AND t.tgname = %s",
+              [tabela, trigger],
+          )
+          row = cur.fetchone()
+      assert row is not None, f"brak triggera {trigger}"
+      assert "deleted_at" in row[0], f"{trigger}: bramka WHEN nie zna deleted_at"
   ```
 
-- [ ] Uruchom (oczekiwany FAIL — widoki jeszcze bez `deleted_at`):
+- [ ] Uruchom (oczekiwany FAIL — wszystkie 9 przypadków):
   ```bash
   uv run pytest src/bpp/tests/test_soft_delete/test_views_sql.py -q
   ```
 
-- [ ] Utwórz `src/bpp/migrations/0422_soft_delete_views.sql`. Treść = 3 widoki `bpp_*_autorzy` z dodanym `AND <tabela>.deleted_at IS NULL`, odtworzenie `bpp_autorzy` (UNION, bo `DROP CASCADE` go skasuje), oraz przedefiniowanie `bpp_refresh_cache()` skopiowane z `0399_fix_refresh_cache_upsert.sql` z dopisanym trigger-skip w gałęzi `UPDATE/INSERT`:
-  ```sql
-  BEGIN;
-
-  -- ── Mechanizm #1 (OBOWIĄZKOWY): filtr deleted_at w widokach źródłowych ──
-  -- Po DROP ... CASCADE widoku bpp_*_autorzy znika też zależny bpp_autorzy,
-  -- więc odtwarzamy go niżej. Filtr po WŁASNEJ kolumnie deleted_at tabeli
-  -- autorskiej (bez JOIN do rekordu nadrzędnego) — patrz spec §2.1.
-
-  DROP VIEW IF EXISTS bpp_wydawnictwo_ciagle_autorzy CASCADE;
-  CREATE OR REPLACE VIEW bpp_wydawnictwo_ciagle_autorzy AS
-    select
-      django_content_type.id::text || '_' || rekord_id::text || '_' || autor_id::text || '_' || typ_odpowiedzialnosci_id::text || '_' || kolejnosc::text AS fake_id,
-      django_content_type.id::text || '_' || rekord_id::text AS fake_rekord_id,
-      django_content_type.id AS content_type_id,
-      rekord_id as object_id,
-      autor_id,
-      jednostka_id,
-      kolejnosc,
-      typ_odpowiedzialnosci_id,
-      zapisany_jako
-    from bpp_wydawnictwo_ciagle_autor, django_content_type
-    WHERE django_content_type.model = 'wydawnictwo_ciagle'
-      AND django_content_type.app_label = 'bpp'
-      AND bpp_wydawnictwo_ciagle_autor.deleted_at IS NULL;
-
-  DROP VIEW IF EXISTS bpp_wydawnictwo_zwarte_autorzy CASCADE;
-  CREATE OR REPLACE VIEW bpp_wydawnictwo_zwarte_autorzy AS
-    select
-      django_content_type.id::text || '_' || rekord_id::text || '_' || autor_id::text || '_' || typ_odpowiedzialnosci_id::text || '_' || kolejnosc::text AS fake_id,
-      django_content_type.id::text || '_' || rekord_id::text AS fake_rekord_id,
-      django_content_type.id AS content_type_id,
-      rekord_id as object_id,
-      autor_id,
-      jednostka_id,
-      kolejnosc,
-      typ_odpowiedzialnosci_id,
-      zapisany_jako
-    from bpp_wydawnictwo_zwarte_autor, django_content_type
-    WHERE django_content_type.model = 'wydawnictwo_zwarte'
-      AND django_content_type.app_label = 'bpp'
-      AND bpp_wydawnictwo_zwarte_autor.deleted_at IS NULL;
-
-  DROP VIEW IF EXISTS bpp_patent_autorzy CASCADE;
-  CREATE OR REPLACE VIEW bpp_patent_autorzy AS
-    select
-      django_content_type.id::text || '_' || rekord_id::text || '_' || autor_id::text || '_' || typ_odpowiedzialnosci_id::text || '_' || kolejnosc::text AS fake_id,
-      django_content_type.id::text || '_' || rekord_id::text AS fake_rekord_id,
-      django_content_type.id AS content_type_id,
-      rekord_id as object_id,
-      autor_id,
-      jednostka_id,
-      kolejnosc,
-      typ_odpowiedzialnosci_id,
-      zapisany_jako
-    from bpp_patent_autor, django_content_type
-    WHERE django_content_type.model = 'patent'
-      AND django_content_type.app_label = 'bpp'
-      AND bpp_patent_autor.deleted_at IS NULL;
-
-  -- Odtworzenie UNION bpp_autorzy (skasowany przez DROP ... CASCADE powyżej).
-  -- bpp_praca_doktorska_autorzy / bpp_praca_habilitacyjna_autorzy NIE były
-  -- ruszane (autorstwo doktoratu/habilitacji nie jest *_Autor SoftDeleteModel
-  -- w tej fazie) — wciąż istnieją, więc UNION je dociągnie.
-  DROP VIEW IF EXISTS bpp_autorzy;
-  CREATE VIEW bpp_autorzy AS
-    SELECT * FROM bpp_wydawnictwo_ciagle_autorzy
-      UNION
-        SELECT * FROM bpp_wydawnictwo_zwarte_autorzy
-          UNION
-            SELECT * FROM bpp_patent_autorzy
-              UNION
-                SELECT * FROM bpp_praca_doktorska_autorzy
-                  UNION
-                    SELECT * FROM bpp_praca_habilitacyjna_autorzy;
-
-  -- ── Mechanizm #2 (OPCJONALNY): trigger-skip w bpp_refresh_cache() ──
-  -- Kopia 0399_fix_refresh_cache_upsert.sql z jedną zmianą: w gałęzi
-  -- UPDATE/INSERT, gdy nowy wiersz ma deleted_at IS NOT NULL, pomijamy upsert
-  -- (zostaje samo DELETE z _mat). Filtr widoku #1 i tak pokrywa odczyt, ale to
-  -- oszczędza no-op SELECT/INSERT przy kaskadzie soft-delete na *_Autor.
-  CREATE OR REPLACE FUNCTION bpp_refresh_cache()
-    RETURNS TRIGGER
-    LANGUAGE plpython3u
-    AS $$
-      cache_key = "django_content_type_ver_1"
-      columns_cache_key = "table_columns_ver_1"
-      table_name = TD["table_name"]
-      app_name, model_name = table_name.split("_", 1)
-
-      refresh_rekord = True
-      refresh_autor = False
-
-      trigger_field_name = "new"
-      if TD['event'] in ["DELETE", "UPDATE"]:
-          trigger_field_name = "old"
-
-      TABELE_AUTORSKIE = ['bpp_wydawnictwo_ciagle_autor', 'bpp_wydawnictwo_zwarte_autor', 'bpp_patent_autor']
-      id_field_name = 'id'
-      extra_where = ''
-      if table_name in TABELE_AUTORSKIE:
-          id_field_name = 'rekord_id'
-          model_name = model_name.replace("_autor", "")
-          refresh_autor = True
-          refresh_rekord = False
-          extra_where = ' AND autor_id = %s' % TD[trigger_field_name]['autor_id']
-
-      object_id = TD[trigger_field_name][id_field_name]
-
-      if GD.get(cache_key) is None:
-          GD[cache_key] = {}
-
-      if GD.get(columns_cache_key) is None:
-          GD[columns_cache_key] = {}
-
-      try:
-          content_type_id = GD[cache_key][table_name]
-      except KeyError:
-          query = "SELECT id FROM django_content_type WHERE app_label = '%s' AND model = '%s'" % (app_name, model_name)
-          res = plpy.execute(query)
-          GD[cache_key][table_name] = res[0]['id']
-          content_type_id = GD[cache_key][table_name]
-
-      if TD["table_name"] in ["bpp_praca_doktorska", "bpp_praca_habilitacyjna"]:
-          refresh_autor = True
-
-      where = "WHERE %%s = ARRAY[%s, %s]::INTEGER[2]" % (content_type_id, object_id)
-      where += extra_where
-
-      # ── trigger-skip: soft-delete (UPDATE z deleted_at IS NOT NULL) ──
-      # zachowuje się jak DELETE (samo wyczyszczenie _mat, bez re-insertu).
-      skip_reinsert = (
-          TD["event"] in ["UPDATE", "INSERT"]
-          and TD["new"] is not None
-          and TD["new"].get("deleted_at") is not None
-      )
-
-      refresh_tables = []
-      if refresh_rekord:
-          refresh_tables.append(("bpp_rekord_mat", "id"))
-          refresh_tables.append(("bpp_autorzy_mat", "rekord_id"))
-      if refresh_autor:
-          if "bpp_autorzy_mat" not in [t for t, _ in refresh_tables]:
-              refresh_tables.append(("bpp_autorzy_mat", "rekord_id"))
-
-      def get_table_columns(mat_table):
-          if mat_table not in GD[columns_cache_key]:
-              query = """
-                  SELECT column_name
-                  FROM information_schema.columns
-                  WHERE table_schema = 'public'
-                  AND table_name = '%s'
-                  ORDER BY ordinal_position
-              """ % mat_table
-              res = plpy.execute(query)
-              GD[columns_cache_key][mat_table] = [row['column_name'] for row in res]
-          return GD[columns_cache_key][mat_table]
-
-      def get_unique_constraint_column(mat_table):
-          return "id"
-
-      with plpy.subtransaction():
-          for table, id_col in refresh_tables:
-            lock_key = hash(f"{table}_{content_type_id}_{object_id}") % (2**31)
-            plpy.execute(f"SELECT pg_advisory_xact_lock({lock_key})")
-
-            if TD["event"] == "DELETE" or skip_reinsert:
-                query = "DELETE FROM " + table + " " + (where % id_col)
-                plpy.execute(query)
-            elif TD["event"] in ["UPDATE", "INSERT"]:
-                source_view = table.replace("_mat", "")
-                columns = get_table_columns(table)
-                conflict_col = get_unique_constraint_column(table)
-                columns_str = ", ".join(columns)
-                update_columns = [col for col in columns if col != conflict_col]
-                set_clause = ", ".join([f"{col} = EXCLUDED.{col}" for col in update_columns])
-                delete_query = "DELETE FROM " + table + " " + (where % id_col)
-                plpy.execute(delete_query)
-                select_query = f"SELECT {columns_str} FROM {source_view} " + (where % id_col)
-                upsert_query = f"""
-                    INSERT INTO {table} ({columns_str})
-                    {select_query}
-                    ON CONFLICT ({conflict_col}) DO UPDATE SET {set_clause}
-                """
-                plpy.execute(upsert_query)
-  $$;
-
-  COMMIT;
+- [ ] Zweryfikuj liść migracji i ustal numer:
+  ```bash
+  ls src/bpp/migrations/*.py | tail -3
   ```
-  (UWAGA: `refresh_tables` w 0399 to lista krotek `(table, id_col)`, więc sprawdzenie `"bpp_autorzy_mat" not in refresh_tables` z 0399 było błędne dla krotek — tu poprawiamy na `not in [t for t, _ in refresh_tables]`. Reszta logiki 1:1 z 0399.)
 
-- [ ] Utwórz `src/bpp/migrations/0422_soft_delete_views.py` (wzorzec `0399`):
+- [ ] Utwórz `src/bpp/migrations/0489_soft_delete_autorzy_views.py`.
+  **Reużyj generatorów z `0432`/`0433`** zamiast przepisywać SQL — nazwy
+  modułów zaczynają się od cyfry, więc zwykły `import` nie zadziała; użyj
+  `importlib.import_module` (moduły mają na poziomie modułu wyłącznie stałe
+  i funkcje, więc import jest bezpieczny):
+
   ```python
-  from pathlib import Path
+  """Soft-delete autorstw: filtr w widokach + gałąź kasująca + bramka WHEN.
+
+  Kolejność operacji jest WYMUSZONA:
+    1) widoki (dodają deleted_at do WHERE)  ->
+    2) funkcje refresh (gałąź kasująca)     ->
+    3) regeneracja bramki WHEN (czyta pg_depend po definicji widoku z kroku 1)
+
+  Odwrócenie 1<->3 daje bramkę bez deleted_at, czyli cichy staleness:
+  soft-deletowane autorstwo zostaje w bpp_autorzy_mat.
+  """
+
+  import importlib
 
   from django.db import connection, migrations
 
+  _p0432 = importlib.import_module("bpp.migrations.0432_cache_trigger_plpgsql")
+  _p0433 = importlib.import_module("bpp.migrations.0433_cache_trigger_when_gate")
 
-  def load_sql(apps, schema_editor):
-      sql_file = Path(__file__).parent / "0422_soft_delete_views.sql"
-      with open(sql_file) as f:
-          sql = f.read()
-      # connection.cursor() zamiast schema_editor.execute(): schema_editor
-      # interpretuje %s jako placeholdery parametrów (a w plpython3u są %s
-      # w stringach SQL budowanych ręcznie).
-      with connection.cursor() as cursor:
-          cursor.execute(sql)
+  THROUGH_SITES = _p0432.THROUGH_SITES  # [(tabela, model), ...]
 
 
-  class Migration(migrations.Migration):
+  def _viewdef(cur, widok):
+      cur.execute("SELECT pg_get_viewdef(%s::regclass, true)", [widok])
+      return cur.fetchone()[0].rstrip().rstrip(";")
 
-      dependencies = [
-          ("bpp", "0421_autor_soft_delete_fields"),
-      ]
 
-      operations = [
-          migrations.RunPython(load_sql, migrations.RunPython.noop),
-      ]
+  def _filtruj_widok(cur, tabela, widok):
+      """Dokłada 'AND <tabela>.deleted_at IS NULL' do widoku źródłowego.
+
+      Owijamy istniejącą definicję zamiast ją przepisywać: definicja jest
+      generowana (0421) i przepisanie jej ręcznie rozjechałoby się przy
+      następnej zmianie kolumn.
+      """
+      orig = _viewdef(cur, widok)
+      cur.execute(
+          f"CREATE OR REPLACE VIEW {widok} AS "
+          f"SELECT * FROM ({orig}) _orig "
+          f"WHERE _orig.object_id_raw NOT IN ("
+          f"    SELECT id FROM {tabela} WHERE deleted_at IS NOT NULL)"
+      )
   ```
 
-- [ ] Uruchom test smoke (oczekiwany PASS — migracja zastosuje się przy starcie testowej bazy, widoki będą miały `deleted_at`):
+  ⚠️ **Do rozstrzygnięcia przy implementacji (nie zgaduj — zmierz):** czy
+  owijanie widoku (`SELECT * FROM (orig) WHERE object_id_raw NOT IN ...`)
+  zachowuje plan wykonania i czy `pg_depend` zarejestruje `deleted_at` jako
+  kolumnę bazową. Jeśli którekolwiek nie — wygeneruj definicję widoku od nowa
+  z listą kolumn i dopisz `AND <tabela>.deleted_at IS NULL` do `WHERE`
+  wewnętrznego. **Test `test_bramka_when_zna_deleted_at` jest tu wyrocznią**:
+  jeśli po regeneracji bramka nie zna `deleted_at`, to znaczy że `pg_depend`
+  nie zobaczył kolumny przez owijkę.
+
+- [ ] Dopisz gałąź kasującą do funkcji refresh. Ciało generujemy tak jak
+  `_p0432._create_through_function`, ale z prologiem:
+
+  ```python
+  def _funkcja_z_galezia_kasujaca(cur, tabela, model):
+      autorzy_view = tabela[: -len("_autor")] + "_autorzy"
+      upsert = _p0432._upsert_sql(
+          cur, "bpp_autorzy_mat", autorzy_view,
+          "object_id_raw = NEW.rekord_id AND autor_id = NEW.autor_id",
+      )
+      ct_lookup = _p0432._ct_lookup(model)
+      return f"""
+  CREATE OR REPLACE FUNCTION bpp_refresh_autor_{model}() RETURNS trigger
+  LANGUAGE plpgsql AS $bpp_body$
+  DECLARE ct integer;
+  BEGIN
+        {ct_lookup}
+        PERFORM pg_advisory_xact_lock(ct, NEW.rekord_id);
+        IF NEW.deleted_at IS NOT NULL THEN
+            DELETE FROM bpp_autorzy_mat WHERE id = ARRAY[ct, NEW.id]::integer[];
+            RETURN NULL;
+        END IF;
+        {upsert};
+        RETURN NULL;
+  END $bpp_body$;
+  """
+  ```
+
+  Uwagi:
+  - klucz `ARRAY[ct, NEW.id]` jest identyczny jak w
+    `_create_delete_through_function` (`0432`) — tam `OLD.id`, tu `NEW.id`;
+    przy UPDATE to ten sam wiersz;
+  - `pg_advisory_xact_lock` **przed** rozgałęzieniem — kasowanie musi brać ten
+    sam lock co upsert, inaczej wraca wyścig z #309;
+  - restore (`deleted_at` → NULL) leci normalną ścieżką upsertu — nic
+    dodatkowego nie trzeba.
+
+- [ ] Złóż `forward()` w wymuszonej kolejności i `backward()` przywracający
+  stan sprzed migracji:
+
+  ```python
+  def forward(apps, schema_editor):
+      with connection.cursor() as cur:
+          for tabela, model in THROUGH_SITES:                      # 1) widoki
+              _filtruj_widok(cur, tabela, tabela[: -len("_autor")] + "_autorzy")
+          for tabela, model in THROUGH_SITES:                      # 2) funkcje
+              cur.execute(_funkcja_z_galezia_kasujaca(cur, tabela, model))
+      _regeneruj_bramke()                                          # 3) bramka
+
+
+  def _regeneruj_bramke():
+      """Ta sama logika co 0433.forward -- po zmianie widoku pg_depend zna
+      juz deleted_at, wiec bramka wciagnie ja sama."""
+      with connection.cursor() as cur:
+          for tabela, refresh_fn, widoki in _p0433.GATED:
+              if not tabela.endswith("_autor"):
+                  continue                       # publikacje to faza 02
+              kolumny = _p0433._gate_columns(cur, tabela, widoki)
+              when = _p0433._when_clause(kolumny)
+              cur.execute(f"DROP TRIGGER IF EXISTS {tabela}_cache_upd ON {tabela};")
+              cur.execute(
+                  f"CREATE TRIGGER {tabela}_cache_upd AFTER UPDATE ON {tabela} "
+                  f"FOR EACH ROW WHEN ({when}) "
+                  f"EXECUTE PROCEDURE {refresh_fn}();"
+              )
+  ```
+
+  ⚠️ `_gate_columns` z `0433` **rzuca `RuntimeError`, gdy `pg_depend` nie
+  zwróci kolumn** — to celowy bezpiecznik (nie tworzy niebramkowanego UPDATE).
+  Nie obchodź go; jeśli wystąpi, znaczy że krok 1 nie zadziałał.
+
+- [ ] `backward`: odtwórz widoki bez filtra (`pg_get_viewdef` sprzed owijki nie
+  jest dostępny — wygeneruj z `_p0432`/`0421` albo zapisz oryginał w migracji),
+  funkcje przez `_p0432._create_through_function`, bramkę przez ponowne
+  `_regeneruj_bramke()` (po cofnięciu widoku `deleted_at` zniknie z `pg_depend`
+  samo). **Migracja MUSI być odwracalna** — testy migracji w CI to sprawdzają.
+
+- [ ] Uruchom testy kontraktu DDL (oczekiwany PASS — 9/9):
   ```bash
   uv run pytest src/bpp/tests/test_soft_delete/test_views_sql.py -q
   ```
 
-- [ ] Zweryfikuj brak driftu migracji i czystość modeli:
+- [ ] Sprawdź brak driftu migracji:
   ```bash
-  uv run python src/manage.py makemigrations bpp --check --dry-run
+  DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py makemigrations --check --dry-run
   ```
 
 - [ ] Commit:
   ```bash
-  git add src/bpp/migrations/0422_soft_delete_views.sql src/bpp/migrations/0422_soft_delete_views.py src/bpp/tests/test_soft_delete/test_views_sql.py
-  git commit -m "feat(soft-delete): filtr deleted_at w widokach bpp_*_autorzy + trigger-skip
+  git add src/bpp/migrations/0489_soft_delete_autorzy_views.py src/bpp/tests/test_soft_delete/test_views_sql.py
+  git commit -m "feat(soft-delete): widoki + galaz kasujaca + bramka WHEN dla *_Autor
 
-Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
+Trzy zmiany w jednej migracji, w wymuszonej kolejnosci: filtr deleted_at
+w widokach bpp_*_autorzy -> galaz kasujaca w funkcjach bpp_refresh_autor_*
+-> regeneracja bramki WHEN (pg_depend zna juz deleted_at).
+
+Zadna z nich nie wystarcza sama: filtr widoku nie sprzata _mat (upsert bez
+DELETE = no-op), a bez deleted_at w bramce UPDATE soft-delete w ogole nie
+dochodzi do funkcji triggera.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
   ```
 
 ---
@@ -614,15 +610,34 @@ Główny gejt fazy: soft-delete wiersza `*_Autor` → znika z `bpp_autorzy_mat` 
 
 **Files:**
 - Test (create): `src/bpp/tests/test_soft_delete/test_cache_consistency.py`
+- Test (modify): `src/bpp/tests/test_cache/test_soft_delete_preconditions.py` — **odwrócenie kanarków**
 - Modify (jeśli testy ujawnią drift): brak planowanych — testy mają przejść na implementacji z Task 2-3.
 
 **Steps:**
 
+- [ ] **Odwróć kanarki warunków wstępnych.** `test_soft_delete_preconditions.py`
+  przypina stan „soft-delete by nie zadziałał" i jest zielony PRZED tą fazą.
+  Po Task 3 musi asertować stan docelowy:
+  - `test_update_samego_deleted_at_nie_odpala_triggera` → **zmień na**
+    `test_update_samego_deleted_at_odpala_trigger`: `ctid` ma zniknąć
+    (wiersz usunięty z `_mat`), nie pozostać bez zmian;
+  - `test_filtr_widoku_sam_nie_usuwa_wiersza_z_mat` → **zmień na**
+    `test_soft_delete_usuwa_wiersz_z_mat`: po `UPDATE ... SET deleted_at`
+    `_ctid(...)` ma być `None`.
+
+  Testy operują na `bpp_wydawnictwo_ciagle` (publikacja), więc **naprawdę
+  zazielenią się dopiero po fazie 02**. W fazie 01 napisz ich odpowiedniki
+  dla `bpp_wydawnictwo_ciagle_autor` / `bpp_autorzy_mat` (kolumna `deleted_at`
+  już istnieje po Task 2, więc pomocnicze `_dodaj_deleted_at` znika), a
+  oryginalne zostaw jako czerwone-oczekiwane z `@pytest.mark.xfail(reason=
+  "faza 02 — soft-delete publikacji")`. **NIE kasuj ich** — to jedyny
+  regresyjny dowód, że bramka i gałąź kasująca działają.
+
 - [ ] Napisz testy spójności — `src/bpp/tests/test_soft_delete/test_cache_consistency.py`:
   ```python
   """Spójność materializowanego cache (bpp_autorzy_mat / model Autorzy) po
-  soft-delete wierszy *_Autor. Wymaga transactional_db — trigger plpython3u
-  odpala się dopiero przy realnym commicie."""
+  soft-delete wierszy *_Autor. Wymaga transactional_db — trigger odpala się
+  dopiero przy realnym commicie."""
 
   import pytest
 
@@ -728,7 +743,12 @@ Główny gejt fazy: soft-delete wiersza `*_Autor` → znika z `bpp_autorzy_mat` 
   ```bash
   uv run pytest src/bpp/tests/test_soft_delete/test_cache_consistency.py -q
   ```
-  Jeśli `test_edycja_skasowanego_autorstwa_nie_wskrzesza_w_mat` FAIL → znaczy, że trigger-skip lub filtr widoku nie działa. Diagnoza: sprawdź `pg_get_viewdef('bpp_wydawnictwo_ciagle_autorzy')` (czy `deleted_at IS NULL` obecne) — to obowiązkowy mechanizm #1; trigger-skip sam nie wystarcza dla tej ścieżki (potwierdza spec §2.1). Użyj superpowers:systematic-debugging, NIE łataj testu.
+  Jeśli którykolwiek FAIL → **zdiagnozuj który z trzech elementów nie zadziałał**, w tej kolejności (każdy warunkuje następny):
+  1. `SELECT pg_get_triggerdef(...)` — czy bramka `WHEN` zna `deleted_at`? Jeśli nie, trigger w ogóle się nie odpalił i reszta diagnostyki jest bez sensu (to najczęstsza przyczyna: krok 1 migracji nie wstawił kolumny do `pg_depend`).
+  2. `SELECT pg_get_functiondef('bpp_refresh_autor_wydawnictwo_ciagle'::regproc)` — czy jest gałąź `IF NEW.deleted_at IS NOT NULL ... DELETE`? Bez niej upsert jest no-opem i wiersz zostaje.
+  3. `SELECT pg_get_viewdef('bpp_wydawnictwo_ciagle_autorzy'::regclass, true)` — czy filtr `deleted_at` obecny?
+
+  Użyj superpowers:systematic-debugging, NIE łataj testu.
 
 - [ ] Commit:
   ```bash
@@ -776,8 +796,10 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ## Założenia i ostrzeżenia między-fazowe (dla faz 02+)
 
-1. **Domyślny manager `*_Autor.objects` zmienił klasę** na `BppSoftDeleteManager` (filtruje `deleted_at__isnull=True`). Faza 03 (audyt kat. B) MUSI przejść 90 miejsc `*_Autor.objects` — w fazie 01 nic nie jest skasowane, więc filtr jest no-op, ale od fazy 02 (kaskada soft-delete publikacji) zacznie ukrywać. Guard autora (faza 04) MUSI liczyć przez `global_objects` (spec §3.2).
-2. **Trigger-skip oparty na 0399**, nie 0001. Każda przyszła zmiana `bpp_refresh_cache()` musi wychodzić od `0422_soft_delete_views.sql` (nie od 0399 ani 0001). Naprawiono przy okazji błąd `"bpp_autorzy_mat" not in refresh_tables` (lista krotek) z 0399 — zweryfikować, czy 0399 faktycznie nie dublował `bpp_autorzy_mat` (jeśli dublował, to drobny regres wydajności, nie poprawności).
+1. **Domyślny manager `*_Autor.objects` zmienił klasę** na `BppSoftDeleteManager` (filtruje `deleted_at__isnull=True`). Faza 03 (audyt kat. B) MUSI przejść **128** miejsc `*_Autor.objects` (stan 2026-08-06; spec mówił „90" — przelicz przed startem fazy 03: `grep -rn --include='*.py' -E "(Wydawnictwo_Ciagle_Autor|Wydawnictwo_Zwarte_Autor|Patent_Autor)\.objects" src/ | wc -l`). W fazie 01 nic nie jest skasowane, więc filtr jest no-op, ale od fazy 02 (kaskada soft-delete publikacji) zacznie ukrywać. Guard autora (faza 04) MUSI liczyć przez `global_objects` (spec §3.2).
+2. **Faza 02 powtarza ten sam trójskładnikowy wzorzec dla 5 tabel publikacji**: filtr `deleted_at` w `bpp_*_view` → gałąź kasująca w `bpp_refresh_rekord_<model>()` (`DELETE FROM bpp_rekord_mat`) → regeneracja bramki `WHEN`. Uwaga na doktorat/habilitację: ich funkcje refresh dotykają **obu** tabel `_mat` (`bpp_rekord_mat` i `bpp_autorzy_mat`, bo autor leży na wierszu publikacji) — gałąź kasująca musi czyścić obie.
+3. **Każda przyszła zmiana definicji widoku źródłowego wymaga regeneracji bramki `WHEN`.** Bramka jest wypiekana z `pg_depend` w momencie migracji, więc nie zaktualizuje się sama. Pominięcie = cichy staleness. Testy `test_views_sql.py` i kanarki `test_soft_delete_preconditions.py` to wyłapią.
 3. **Widoki `bpp_praca_doktorska_autorzy` / `bpp_praca_habilitacyjna_autorzy` NIE filtrowane** — autorstwo doktoratu/habilitacji nie jest `*_Autor` SoftDeleteModel (autor doktoratu to FK `Praca_Doktorska.autor`, nie through). Faza 02 (soft-delete publikacji doktorat/habilitacja) musi zadbać o ich zniknięcie z `bpp_rekord` przez własne `deleted_at` na tabeli publikacji — to NIE jest pokryte tą fazą.
 4. **Gałęzie UNION `bpp_rekord` NIE dotknięte** w fazie 01 — soft-delete publikacji (kolumna `deleted_at` na `bpp_wydawnictwo_ciagle` itd.) to faza 02; dopiero ona doda filtr `deleted_at IS NULL` do `bpp_*_view`. Faza 01 dotyka wyłącznie ścieżki autorstwa.
-5. **`unique_together` na `*_Autor` zachowane bez `deleted_at`** — w tej fazie autorstwa nie mają warunkowego unique. Jeśli przyszła faza pozwoli na re-add tego samego autora po soft-delete (kolizja `(rekord, autor, typ_odpowiedzialnosci)`), trzeba będzie przejść na `UniqueConstraint(condition=Q(deleted_at__isnull=True))` — odłożone, poza zakresem 01.
+6. **`unique_together` na `*_Autor` zachowane bez `deleted_at`** — w tej fazie autorstwa nie mają warunkowego unique. **Faza 02 MUSI to zmienić** (decyzja #13, spec §2.2b): soft-deletowany wiersz nadal zajmuje slot w `(rekord, autor, typ_odpowiedzialnosci)` / `(rekord, autor, kolejnosc)`, a `deduplikator_autorow` przenoszący autorstwa trafi wtedy w `IntegrityError` o niewidoczny rekord. Przejście na `UniqueConstraint(condition=Q(deleted_at__isnull=True))` — razem ze slugiem.
+7. **`Cache_Punktacja_*` NIE są dotknięte** żadnym mechanizmem tej fazy (nie mają FK do publikacji ani triggerów cache). Domknięcie tej luki to faza 06 (decyzja #15, spec §2.5b) — do tego czasu soft-deletowana praca nadal liczyłaby się do ewaluacji.

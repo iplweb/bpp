@@ -207,7 +207,7 @@ def test_context_zagniezdzony_przywraca_zewnetrzny(django_user_model, db):
 - Create: `src/bpp/models/soft_delete_log.py`
 - Modify: `src/bpp/models/__init__.py` (dopisz import, wzorzec `oplaty_log`
   na `:52`)
-- Create: `src/bpp/migrations/0421_softdeletelog.py` (NUMER: sprawdź najwyższą
+- Create: `src/bpp/migrations/0494_softdeletelog.py` (NUMER: sprawdź najwyższą
   istniejącą migrację `bpp` przez `ls src/bpp/migrations/ | grep -E '^04' |
   sort | tail -1` i nadaj kolejny — **NIE modyfikuj istniejących migracji**)
 - Test: `src/bpp/tests/test_soft_delete/test_soft_delete_log_model.py`
@@ -725,6 +725,78 @@ def on_post_restore(sender, instance, **kwargs):
 
 ---
 
+### Task 6b: Receivery `Cache_Punktacja_*` — praca w koszu nie liczy się do ewaluacji
+
+> 🔄 **Dodane 2026-08-06 (decyzja #15, spec §2.5b).** Luka nieobjęta żadnym
+> innym mechanizmem: `Cache_Punktacja_Autora` i `Cache_Punktacja_Dyscypliny`
+> **nie mają FK do publikacji** (klucz to tablica `rekord_id =
+> [content_type_id, pk]`), więc nie rusza ich ani kaskada Django, ani kaskada
+> `*_Autor` z fazy 02, ani triggery cache. Bez tego zadania soft-deletowana
+> praca **nadal wnosi sloty i punkty do ewaluacji**.
+
+**Files:**
+- Modify: `src/bpp/receivers/soft_delete.py` (receivery z Task 4/6)
+- Test: `src/bpp/tests/test_soft_delete/test_cache_punktacji.py`
+
+**Fakty z kodu (zweryfikowane 2026-08-06):**
+- modele: `src/bpp/models/cache/punktacja.py` (`Cache_Punktacja_Autora:63`,
+  `Cache_Punktacja_Dyscypliny`),
+- zapis: `src/bpp/models/sloty/core.py:401` (`_Dyscypliny`), `:439` (`_Autora`),
+- przeliczenie: `przelicz_punkty_dyscyplin()`
+  (`src/bpp/models/abstract/disciplines.py:12`),
+- odczyt (te miejsca zobaczą różnicę): `ewaluacja_optymalizacja/utils.py:182`,
+  `ewaluacja_optymalizacja/views/evaluation_browser/prefetch.py:41`,
+  `oswiadczenia/views.py:353`.
+
+- [ ] **Krok 6b.1 — padający test: soft-delete kasuje punktację, restore ją
+  przywraca.**
+  ```python
+  @pytest.mark.django_db
+  def test_soft_delete_kasuje_cache_punktacji(zwarte_z_dyscyplinami):
+      zw = zwarte_z_dyscyplinami
+      zw.przelicz_punkty_dyscyplin()
+      klucz = [zw.content_type_id, zw.pk]
+      assert Cache_Punktacja_Autora.objects.filter(rekord_id=klucz).exists()
+      assert Cache_Punktacja_Dyscypliny.objects.filter(rekord_id=klucz).exists()
+
+      zw.delete()
+
+      assert not Cache_Punktacja_Autora.objects.filter(rekord_id=klucz).exists()
+      assert not Cache_Punktacja_Dyscypliny.objects.filter(rekord_id=klucz).exists()
+
+      zw.restore()
+
+      assert Cache_Punktacja_Autora.objects.filter(rekord_id=klucz).exists()
+  ```
+
+- [ ] **Krok 6b.2 — implementacja w receiverach.**
+  - `post_soft_delete` → skasuj wiersze obu modeli dla `rekord_id`
+    `[content_type_id, pk]`;
+  - `post_restore` → przelicz (`przelicz_punkty_dyscyplin()` lub równoważna
+    ścieżka z `sloty/core.py`).
+
+  ⚠️ **Gate na typ nadawcy.** Receivery są globalne (podpięte bez `sender=`),
+  a `Cache_Punktacja_*` dotyczy tylko 5 modeli publikacji. Dla `Autor`
+  i `*_Autor` ten kod **nie może** się odpalić — sprawdź `sender` przed
+  czymkolwiek.
+
+  ⚠️ **Kaskada `*_Autor` NIE może tego wyzwalać drugi raz.** Soft-delete
+  publikacji z N autorami emituje 1 + N sygnałów `post_soft_delete`. Kasowanie
+  punktacji ma zajść **raz**, przy sygnale rodzica — inaczej N-1 zbędnych
+  zapytań na każde kasowanie.
+
+- [ ] **Krok 6b.3 — ⚠️ zmierz koszt `restore()`.** Przeliczenie punktacji jest
+  operacją liczącą, nie `UPDATE`-em. Jeśli dla realnego rekordu trwa zauważalnie
+  (>1 s), zgłoś to do fazy 07 (admin) — akcja „Przywróć" na queryset-cie
+  N rekordów może potrzebować zadania w tle zamiast żądania HTTP.
+  ```bash
+  uv run pytest src/bpp/tests/test_soft_delete/test_cache_punktacji.py -q --durations=5
+  ```
+
+- [ ] **Krok 6b.4 — PASS + commit.**
+
+---
+
 ### Task 7: Test integracyjny end-to-end + weryfikacja rejestracji w apps.ready
 
 **Files:**
@@ -827,7 +899,7 @@ istnieją, Task 5 pomijamy. (ii) **Faza 02 wpina** `SoftDeleteModel` + override
 owijający `soft_delete_context` na publikacjach — jeśli nie ma jeszcze tego
 w worktree, testy receiverów Tasków 4/6 idą przez ręczny
 `post_soft_delete.send(...)` w izolacji (wariant udokumentowany w docstringu
-testu). (iii) Numer migracji `0421_*` orientacyjny — wykonawca nadaje kolejny
+testu). (iii) Numer migracji `0494_*` orientacyjny — wykonawca nadaje kolejny
 po sprawdzeniu `ls src/bpp/migrations/`. (iv) `soft_delete_context.py` tworzy
 ta faza; gdy fazy 02/04 dodały wcześniej stub — scalić VERBATIM z kontraktem.
 
