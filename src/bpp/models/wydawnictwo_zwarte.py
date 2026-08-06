@@ -4,10 +4,11 @@ import warnings
 from denorm import denormalized, depend_on_fields, depend_on_related
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.contrib.contenttypes.fields import GenericRelation
-from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.constraints import ExclusionConstraint
+from django.contrib.postgres.fields import ArrayField, RangeOperators
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import CASCADE, PROTECT, JSONField
+from django.db.models import CASCADE, PROTECT, Deferrable, JSONField, Q
 from django.db.models.expressions import RawSQL
 
 from bpp import const
@@ -81,10 +82,37 @@ class Wydawnictwo_Zwarte_Autor(
         verbose_name_plural = "powiązania autorów z wyd. zwartymi"
         app_label = "bpp"
         ordering = ("kolejnosc",)
-        unique_together = [
-            ("rekord", "autor", "typ_odpowiedzialnosci"),
-            # Tu musi być autor, inaczej admin nie pozwoli wyedytować
-            ("rekord", "autor", "kolejnosc"),
+        # `unique_together` widziałby też wiersze soft-deleted (fizycznie
+        # wciąż są w tabeli) i blokowałby wzorzec "skasuj i wstaw od nowa"
+        # (re-import, korekta kolejności, edycja inline). Warunkowy
+        # UniqueConstraint (condition=deleted_at__isnull) pilnuje unikalności
+        # TYLKO wśród żywych wierszy. Walidacja formularza admina (Django
+        # `validate_unique()` ignoruje `UniqueConstraint` z `condition`) jest
+        # dopięta ręcznie w `bpp.admin.core` (`generuj_formularz_dla_autorow`
+        # / `generuj_inline_dla_autorow`) — patrz Task 3c.
+        constraints = [
+            models.UniqueConstraint(
+                fields=["rekord", "autor", "typ_odpowiedzialnosci"],
+                condition=Q(deleted_at__isnull=True),
+                name="wz_autor_uniq_rekord_autor_typ",
+            ),
+            models.UniqueConstraint(
+                fields=["rekord", "autor", "kolejnosc"],
+                condition=Q(deleted_at__isnull=True),
+                name="wz_autor_uniq_rekord_autor_kolejnosc",
+            ),
+            # Odpowiednik legacy `ALTER TABLE ... UNIQUE (rekord_id,
+            # kolejnosc) DEFERRABLE INITIALLY DEFERRED` z migracji 0132 —
+            # patrz analogiczny komentarz w Wydawnictwo_Ciagle_Autor.Meta.
+            ExclusionConstraint(
+                name="wz_autor_excl_rekord_kolejnosc",
+                expressions=[
+                    ("rekord", RangeOperators.EQUAL),
+                    ("kolejnosc", RangeOperators.EQUAL),
+                ],
+                condition=Q(deleted_at__isnull=True),
+                deferrable=Deferrable.DEFERRED,
+            ),
         ]
         indexes = [
             models.Index(fields=["deleted_at"], name="wz_autor_deleted_at_idx"),

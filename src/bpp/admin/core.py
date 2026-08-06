@@ -152,6 +152,25 @@ def generuj_formularz_dla_autorow(  # noqa
                 widget=HiddenInput, queryset=baseModel.rekord.get_queryset()
             )
 
+        # `deleted_at` MUSI być polem formularza (choć ukrytym/wyłączonym) —
+        # inaczej Django wyklucza je z walidacji modelu (nie ma go w
+        # Meta.fields => `_get_validation_exclusions()` dorzuca je do
+        # `exclude`), a `Meta.constraints` (warunkowe UniqueConstraint /
+        # ExclusionConstraint z Taska 3c, `condition=Q(deleted_at__isnull=…)`)
+        # odwołują się właśnie do tego pola. Skutek bez tego pola: dla
+        # UniqueConstraint Django CICHO POMIJA walidację (łapie FieldError i
+        # nie zgłasza błędu — kolizja przechodzi, IntegrityError wyskakuje
+        # dopiero przy zapisie), a dla ExclusionConstraint Django W OGÓLE NIE
+        # ŁAPIE tego FieldError — `is_valid()` wywala się niekontrolowanym
+        # wyjątkiem (HTTP 500) przy KAŻDYM zapisie, nie tylko przy kolizji.
+        # Formularz zawsze dotyczy ŻYWEGO wiersza (managery `objects`/
+        # `autorzy_set` już odfiltrowują soft-deleted), więc `disabled=True`
+        # + `initial=None` jest zawsze poprawną wartością — pole nigdy nie
+        # jest edytowalne przez usera.
+        deleted_at = forms.DateTimeField(
+            required=False, disabled=True, widget=HiddenInput
+        )
+
         autor = forms.ModelChoiceField(
             queryset=Autor.objects.all(),
             widget=autocomplete.ModelSelect2(url="bpp:autor-autocomplete"),
@@ -317,6 +336,7 @@ def generuj_formularz_dla_autorow(  # noqa
                 "profil_orcid",
                 DATA_OSWIADCZENIA,
                 "kolejnosc",
+                "deleted_at",
             ]
 
             if include_dyscyplina:
@@ -339,6 +359,60 @@ def generuj_formularz_dla_autorow(  # noqa
             widgets = {"kolejnosc": HiddenInput, "rekord": HiddenInput}
 
     return baseModel_AutorForm
+
+
+def _waliduj_kolizje_autorstwa_w_formsecie(formset):
+    """Task 3c: warunkowy `UniqueConstraint`/`ExclusionConstraint`
+    (`condition=Q(deleted_at__isnull=True)`) na *_Autor NIE łapie kolizji
+    NOWEGO wiersza formsetu z ISTNIEJĄCYM (widocznym w tym samym formsecie)
+    wierszem. Powód: dla nowego wiersza `rekord` nie jest jeszcze ustawiony
+    w momencie walidacji (przypisuje go dopiero
+    `BaseInlineFormSet.save_new()`, PO walidacji) — DB-owy
+    `UniqueConstraint.validate()` po prostu pomija sprawdzenie, gdy pole
+    złożonego klucza jest `None` (`NULL != NULL` w SQL). A formsetowe
+    `validate_unique()` (Django) sprawdza pary formularzy tylko dla
+    constraintów BEZWARUNKOWYCH (`Meta.total_unique_constraints`,
+    `condition is None`) — nasze, warunkowe, są tam pomijane. Stąd ręczne
+    porównanie par formularzy widocznych w formsecie (bez zapytań do bazy —
+    `formset.instance`, czyli rodzic/rekord, jest wspólny dla wszystkich
+    wierszy formsetu z definicji inline)."""
+    forms_to_delete = formset.deleted_forms
+    aktywne = [
+        f
+        for f in formset.forms
+        if getattr(f, "cleaned_data", None) and f not in forms_to_delete
+    ]
+
+    widziane_typ = {}
+    widziane_kolejnosc = {}
+    for form in aktywne:
+        cd = form.cleaned_data
+        autor = cd.get("autor")
+        if autor is None:
+            continue
+
+        typ = cd.get("typ_odpowiedzialnosci")
+        if typ is not None:
+            klucz = (autor.pk, typ.pk)
+            if klucz in widziane_typ:
+                form.add_error(
+                    None,
+                    "To powiązanie autora z tym typem odpowiedzialności "
+                    "już istnieje w tym rekordzie.",
+                )
+            else:
+                widziane_typ[klucz] = form
+
+        kolejnosc = cd.get("kolejnosc")
+        if kolejnosc is not None:
+            klucz = (autor.pk, kolejnosc)
+            if klucz in widziane_kolejnosc:
+                form.add_error(
+                    None,
+                    "Ten autor ma już powiązanie z tą kolejnością.",
+                )
+            else:
+                widziane_kolejnosc[klucz] = form
 
 
 def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
@@ -366,6 +440,8 @@ def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
                 raise forms.ValidationError(
                     "Liczba podanych procent odpowiedzialności przekracza 100.0"
                 )
+
+            _waliduj_kolizje_autorstwa_w_formsecie(self)
 
     baseClass = admin.StackedInline
     extraRows = 0

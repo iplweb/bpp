@@ -1,8 +1,9 @@
 from denorm import denormalized, depend_on_fields, depend_on_related
 from dirtyfields.dirtyfields import DirtyFieldsMixin
-from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.constraints import ExclusionConstraint
+from django.contrib.postgres.fields import ArrayField, RangeOperators
 from django.db import models
-from django.db.models import CASCADE, SET_NULL, JSONField
+from django.db.models import CASCADE, SET_NULL, Deferrable, JSONField, Q
 
 from bpp.models import (
     BazaModeluStreszczen,
@@ -72,10 +73,48 @@ class Wydawnictwo_Ciagle_Autor(
         verbose_name_plural = "powiązania autorów z wyd. ciągłymi"
         app_label = "bpp"
         ordering = ("kolejnosc",)
-        unique_together = [
-            ("rekord", "autor", "typ_odpowiedzialnosci"),
-            # Tu musi być autor, inaczej admin nie pozwoli wyedytować
-            ("rekord", "autor", "kolejnosc"),
+        # `unique_together` widziałby też wiersze soft-deleted (fizycznie
+        # wciąż są w tabeli) i blokowałby wzorzec "skasuj i wstaw od nowa"
+        # (re-import, korekta kolejności, edycja inline). Warunkowy
+        # UniqueConstraint (condition=deleted_at__isnull) pilnuje unikalności
+        # TYLKO wśród żywych wierszy. Walidacja formularza admina (Django
+        # `validate_unique()` ignoruje `UniqueConstraint` z `condition`) jest
+        # dopięta ręcznie w `bpp.admin.core` (`generuj_formularz_dla_autorow`
+        # / `generuj_inline_dla_autorow`) — patrz Task 3c.
+        constraints = [
+            models.UniqueConstraint(
+                fields=["rekord", "autor", "typ_odpowiedzialnosci"],
+                condition=Q(deleted_at__isnull=True),
+                name="wc_autor_uniq_rekord_autor_typ",
+            ),
+            models.UniqueConstraint(
+                fields=["rekord", "autor", "kolejnosc"],
+                condition=Q(deleted_at__isnull=True),
+                name="wc_autor_uniq_rekord_autor_kolejnosc",
+            ),
+            # Odpowiednik legacy `ALTER TABLE ... UNIQUE (rekord_id,
+            # kolejnosc) DEFERRABLE INITIALLY DEFERRED` z migracji 0132 —
+            # gwarantuje, że DWÓCH RÓŻNYCH autorów nie dzieli tej samej
+            # pozycji w obrębie rekordu. `UniqueConstraint` nie umie
+            # łączyć `condition` z `deferrable` (Django to blokuje —
+            # `condition` i `deferrable` się wykluczają), a `deferrable`
+            # jest tu wymagane przez drag&drop reorder w adminie
+            # (adminsortable2, patrz `sortable_field_name = "kolejnosc"`)
+            # — zamiana kolejności dwóch wierszy przejściowo dubluje
+            # wartość `kolejnosc` w obrębie jednej transakcji, co bez
+            # DEFERRED wywaliłoby się na pierwszym UPDATE. Stąd
+            # `ExclusionConstraint` (GiST + btree_gist, rozszerzenie już
+            # włączone w bazie) — jedyny typ ograniczenia w Postgresie,
+            # który łączy `WHERE` (warunek) z `DEFERRABLE`.
+            ExclusionConstraint(
+                name="wc_autor_excl_rekord_kolejnosc",
+                expressions=[
+                    ("rekord", RangeOperators.EQUAL),
+                    ("kolejnosc", RangeOperators.EQUAL),
+                ],
+                condition=Q(deleted_at__isnull=True),
+                deferrable=Deferrable.DEFERRED,
+            ),
         ]
         indexes = [
             models.Index(fields=["deleted_at"], name="wc_autor_deleted_at_idx"),
