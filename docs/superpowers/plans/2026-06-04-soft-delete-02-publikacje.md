@@ -456,7 +456,17 @@ Soft-delete książki-matki musi unieważnić denorm-cache rozdziałów.
 
 ---
 
-## Task 3b: `unique_together` na `*_Autor` → warunkowy `UniqueConstraint` (decyzja #13)
+## ~~Task 3b: `unique_together` na `*_Autor`~~ → PRZENIESIONE DO FAZY 01 (Task 3c)
+
+> 🔀 **Przeniesione 2026-08-06.** Umieszczenie tego w fazie 02 było błędem
+> kolejności: `*_Autor` staje się soft-delete już w fazie 01 (Task 2), więc
+> `unique_together` blokuje re-insert od tamtej fazy. Regresja wyszła realnie
+> (`import_sqlite/handlers/patent.py:192` → `UniqueViolation`) i jest naprawiana
+> w fazie 01, Task 3c. **W tej fazie NIE rób nic z `*_Autor` unique** —
+> poniższa treść zostaje wyłącznie jako kontekst historyczny.
+
+<details><summary>oryginalna treść tasku (nieaktualna)</summary>
+
 
 > Dodane 2026-08-06 (spec §2.2b). Ten sam problem co ze slugiem, przeoczony
 > w pierwszej wersji planu.
@@ -535,6 +545,8 @@ którego nie widać.
   ```
 
 ---
+
+</details>
 
 ## Task 4: Przeplecenie menedżerów `Wydawnictwo_*_Manager` z filtrem soft-delete (wspólny QuerySet/MRO)
 

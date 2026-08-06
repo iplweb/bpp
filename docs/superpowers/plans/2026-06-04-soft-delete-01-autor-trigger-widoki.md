@@ -838,6 +838,104 @@ autora, a punkty dyscyplin dalej go liczą.
 
 ---
 
+## Task 3c — Warunkowy `UniqueConstraint` na `*_Autor` (PRZENIESIONE z fazy 02)
+
+> 🔴 **Przeniesione tutaj 2026-08-06** po wykryciu regresji przy wykonaniu Taska 3.
+> Pierwotnie decyzja #13 była zaplanowana w fazie 02 (razem ze slugiem) —
+> **błąd kolejności**: `*_Autor` staje się soft-delete już w fazie 01 (Task 2),
+> więc `unique_together` blokuje re-insert od TEJ fazy, nie od następnej.
+
+**Regresja (zweryfikowana, realna):**
+```
+$ uv run pytest src/import_sqlite/tests/test_patent_apply.py::test_apply_idempotent_update
+E  psycopg2.errors.UniqueViolation: podwójna wartość klucza narusza ograniczenie
+   unikalności "bpp_patent_autor_rekord_id_autor_id_kolejnosc_96bdce4c_uniq"
+E  DETAIL: Klucz (rekord_id, autor_id, kolejnosc)=(288874, 483391, 0) już istnieje.
+```
+`src/import_sqlite/handlers/patent.py:192` robi `patent.autorzy_set.all().delete()`
+i wstawia od nowa. Po Tasku 2 `delete()` jest miękki → stary wiersz fizycznie
+istnieje → `unique_together` go widzi → `IntegrityError`.
+
+**Wzorzec jest ogólny**, nie dotyczy jednego importera: **każdy** przepływ
+„skasuj autorstwa i wstaw od nowa" (re-import, admin inline, korekta kolejności)
+uderzy w to samo. Skasowany wiersz jest przy tym **niewidoczny dla operatora**,
+więc komunikat błędu mówi o rekordzie, którego nie widać.
+
+**Files:**
+- Modify: `src/bpp/models/wydawnictwo_ciagle.py` (`Wydawnictwo_Ciagle_Autor.Meta`),
+  `wydawnictwo_zwarte.py` (`Wydawnictwo_Zwarte_Autor.Meta`), `patent.py` (`Patent_Autor.Meta`)
+- Create: `src/bpp/migrations/0490_autor_warunkowy_unique.py` (zweryfikuj liść!)
+- Test: `src/bpp/tests/test_soft_delete/test_autor_unique.py`
+
+**Steps:**
+
+- [ ] **Krok 3c.1 — padający test odtwarzający regresję** (na `Patent_Autor`,
+  bo tam wyszła realnie, plus jeden na `Wydawnictwo_Ciagle_Autor`):
+  ```python
+  @pytest.mark.django_db
+  def test_reinsert_autorstwa_po_soft_delete(patent, autor_jan_kowalski, jednostka, typy_odpowiedzialnosci):
+      """Wzorzec "skasuj autorstwa i wstaw od nowa" MUSI działać po soft-delete."""
+      pa = Patent_Autor.objects.create(
+          rekord=patent, autor=autor_jan_kowalski, jednostka=jednostka,
+          typ_odpowiedzialnosci=Typ_Odpowiedzialnosci.objects.get(skrot="aut."),
+          kolejnosc=0, zapisany_jako="Kowalski Jan",
+      )
+      patent.autorzy_set.all().delete()          # soft
+      Patent_Autor.objects.create(               # ten sam (rekord, autor, kolejnosc)
+          rekord=patent, autor=autor_jan_kowalski, jednostka=jednostka,
+          typ_odpowiedzialnosci=Typ_Odpowiedzialnosci.objects.get(skrot="aut."),
+          kolejnosc=0, zapisany_jako="Kowalski Jan",
+      )
+      assert Patent_Autor.objects.filter(rekord=patent).count() == 1
+      assert Patent_Autor.global_objects.filter(rekord=patent).count() == 2
+  ```
+  Oraz **test regresyjny na realnym przepływie**:
+  `uv run pytest src/import_sqlite/tests/test_patent_apply.py::test_apply_idempotent_update`
+  — ma przejść po tym tasku.
+
+- [ ] **Krok 3c.2 — zamiana w `Meta` 3 konkretnych klas.** Usuń `unique_together`,
+  dodaj warunkowe constrainty (nazwy MUSZĄ być unikalne w całej bazie):
+  ```python
+      constraints = [
+          models.UniqueConstraint(
+              fields=["rekord", "autor", "typ_odpowiedzialnosci"],
+              condition=Q(deleted_at__isnull=True),
+              name="wc_autor_uniq_rekord_autor_typ",
+          ),
+          models.UniqueConstraint(
+              fields=["rekord", "autor", "kolejnosc"],
+              condition=Q(deleted_at__isnull=True),
+              name="wc_autor_uniq_rekord_autor_kolejnosc",
+          ),
+      ]
+  ```
+  (prefiksy per model: `wc_` / `wz_` / `pat_`)
+
+- [ ] **Krok 3c.3 — ⚠️ ZWERYFIKUJ ADMIN.** Komentarz przy drugiej krotce w kodzie
+  („Tu musi być autor, inaczej admin nie pozwoli wyedytować") sugeruje, że ten
+  constraint istnieje ze względu na **walidację formularzy**.
+  `Model.validate_unique()` honoruje `unique_together`, ale `UniqueConstraint`
+  z `condition` **pomija** (Django waliduje tylko constrainty bezwarunkowe).
+  Ryzyko: zamiast czytelnego błędu formularza operator dostanie `IntegrityError`
+  (HTTP 500) przy inline'ach autorstwa.
+  ```bash
+  uv run pytest src/bpp/tests/test_admin/ -k "autor" -q
+  ```
+  Jeśli admin regresuje — dodaj walidację w formularzu/inline (`clean()`
+  sprawdzający kolizję przez `objects`), **NIE wracaj do `unique_together`**
+  (nie da się go pogodzić z soft-delete).
+
+- [ ] **Krok 3c.4 — migracja + brak driftu + regresja:**
+  ```bash
+  DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py makemigrations bpp --name autor_warunkowy_unique
+  DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py makemigrations --check --dry-run
+  uv run pytest src/bpp/tests/test_soft_delete/ src/import_sqlite/ -q
+  ```
+
+- [ ] **Krok 3c.5 — commit** (użyj `git commit -F <plik>`, nie `-m` z backtickami).
+
+---
+
 ## Task 4 — Testy spójności cache (mat-view) po soft-delete `*_Autor`
 
 Główny gejt fazy: soft-delete wiersza `*_Autor` → znika z `bpp_autorzy_mat` (model `Autorzy`) i z `bpp_autorzy` (model `AutorzyView`); restore → wraca; edycja autorstwa skasowanej publikacji nie wskrzesza wiersza w cache; kaskada queryset-owa (`.delete()` na QS) działa per-instancja. Testy wymagają `transactional_db` (trigger działa tylko z prawdziwym commitem).
