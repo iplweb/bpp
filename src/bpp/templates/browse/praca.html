@@ -46,7 +46,8 @@
 {% block breadcrumbs %}
     {{ block.super }}
     <li><a href="{% url "multiseek:index" %}">Wyszukiwanie</a></li>
-    <li class="current">{{ rekord.tytul_oryginalny|truncatewords_html:15|safe_tytul }}</li>
+    {# WCAG 3.1.2 — jezyk tytulu oryginalnego w okruszku nawigacyjnym. #}
+    <li class="current">{{ rekord.tytul_oryginalny|truncatewords_html:15|safe_tytul|oznacz_jezyk:rekord.jezyk }}</li>
 {% endblock %}
 
 

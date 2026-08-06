@@ -14,11 +14,14 @@
     <!-- Title Section - Most prominent -->
     <div class="praca-mono__title-section">
         <h2 class="praca-mono__title">
+            {# WCAG 3.1.2: znacznik jezyka TYLKO na tytule oryginalnym. #}
+            {# Przeklad nie ma w modelu pola z jezykiem, wiec dziedziczy #}
+            {# lang="pl" ze strony — patrz spec 2026-08-06. #}
             {% if praca.tytul %}
-                {{ praca.tytul_oryginalny|safe_tytul }}
+                {{ praca.tytul_oryginalny|safe_tytul|oznacz_jezyk:praca.jezyk }}
                 <span class="praca-mono__title-translation">({{ praca.tytul|safe_tytul }})</span>
             {% else %}
-                {{ praca.tytul_oryginalny|znak_na_koncu:"."|safe_tytul }}
+                {{ praca.tytul_oryginalny|znak_na_koncu:"."|safe_tytul|oznacz_jezyk:praca.jezyk }}
             {% endif %}
             {% if praca.charakter_formalny.charakter_ogolny != 'roz' %}
                 <span class="praca-mono__edition-mark">{{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}</span>
