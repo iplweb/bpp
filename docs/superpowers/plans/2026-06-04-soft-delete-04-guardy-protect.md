@@ -22,6 +22,12 @@
 - **Max długość linii 88 znaków** (ruff). Komentarze/komunikaty po polsku.
 - **Testy:** pytest-only, standalone funkcje (bez klas `unittest.TestCase`), `@pytest.mark.django_db`, `model_bakery.baker.make`. Fixtury z `src/fixtures/` (`autor_jan_nowak`, `autor_jan_kowalski`, `jednostka`, `typy_odpowiedzialnosci`, `wydawnictwo_zwarte`, `wydawnictwo_ciagle`, `praca_doktorska`, `patent`).
 - **Kontrakt z reversion (NIE łamać):** override `delete()`/`restore()` idzie per-instancja przez `self.save()` / `super().delete()` — **nigdy** bulk `queryset.update(deleted_at=...)`. Faza 04 nie ustawia `deleted_at` ręcznie; deleguje do `super().delete()` pakietu.
+- 🔴 **`Autor.restore()` MUSI nadpisać `strict` na `False`** (wykryte przy wykonaniu fazy 01, Task 2 — patrz kontrakty PINNED w indeksie 00). `SoftDeleteModel.restore()` ma domyślnie `strict=True` i sprawdza **każde** pole z `related_model` — także zwykłe FK w przód — zanim rozróżni typ relacji. `Autor` ma FK m.in. do `Tytul`, więc gołe `Autor.restore()` rzuci `SoftDeleteException` i **przywrócenie husku będzie niemożliwe**. Wzorzec z fazy 01:
+  ```python
+  def restore(self, strict: bool = False, *args, **kwargs):
+      return super().restore(*args, strict=strict, **kwargs)
+  ```
+  Bez tego test przywrócenia husku autora NIE przejdzie — i to nie z powodu wadliwego guardu.
 - **Po każdym zadaniu:** `ruff format src/bpp` + `ruff check src/bpp` (tylko zmienione), komenda testu z zadania na zielono, commit.
 
 ## Stan zweryfikowany w kodzie (punkt wyjścia)
