@@ -67,11 +67,11 @@ i `Patent_Autor` **stają się `SoftDeleteModel`** — ale wyłącznie jako cel
 **wąskiej kaskady** z soft-delete publikacji (§2.2), NIE pełnego refleksyjnego
 Projektu B. Pozostałe dzieci (`*_Streszczenie`, `*_Zewnetrzna_Baza_Danych`,
 `Publikacja_Habilitacyjna`, `Opi_2012_Tytul_Cache`) zostają nie-soft —
-kaskada zatrzymuje się na `*_Autor` i **nie jest wirusowa**. Powód: 128
-bezpośrednich zapytań `*_Autor.objects` w kodzie (większość w
+kaskada zatrzymuje się na `*_Autor` i **nie jest wirusowa**. Powód: 89
+bezpośrednich, produkcyjnych zapytań `*_Autor.objects` w kodzie (większość w
 `ewaluacja_optymalizacja` — najwrażliwszy korekcyjnie podsystem) — domyślny
 menedżer `objects` po wpięciu `SoftDeleteModel` czyni je poprawnymi
-automatycznie, eliminując 128-punktowe ryzyko „silent leak" do ewaluacji.
+automatycznie, eliminując 89-punktowe ryzyko „silent leak" do ewaluacji.
 
 **Dlaczego nie kaskada autor→prace ani „guard z 50 publikacjami":**
 realny przypadek użycia kasowania autora jest wąski — to wyłącznie puste /
@@ -235,9 +235,9 @@ wszystko z `_mat` na podstawie własnych `deleted_at`; przy restore
 re-projektuje ze źródła.
 
 Po co jawna kaskada na `*_Autor`, skoro trigger i tak czyści `bpp_autorzy_mat`?
-Bo **128 miejsc w kodzie czyta `*_Autor.objects` bezpośrednio** (z pominięciem
+Bo **89 miejsc w kodzie produkcyjnym czyta `*_Autor.objects` bezpośrednio** (z pominięciem
 cache), głównie w `ewaluacja_optymalizacja`. Domyślny menedżer `objects`
-`SoftDeleteModel` ukrywa skasowane → te 128 miejsc staje się poprawnych
+`SoftDeleteModel` ukrywa skasowane → te 89 miejsc staje się poprawnych
 automatycznie, bez ręcznych filtrów `wydawnictwo_ciagle__deleted_at__isnull`
 (których pominięcie = po cichu zliczona skasowana praca w ewaluacji).
 
@@ -372,8 +372,8 @@ ewaluacji** — czyli dokładnie ten „silent leak", przed którym broni §2.2,
 > odczytu ani pilnowania każdego nowego. Koszt: restore staje się operacją
 > liczącą (nie samym `UPDATE`), co trzeba uwzględnić w adminie (może trwać).
 
-**Through-modele `*_Autor` (128 miejsc).** Po wpięciu `SoftDeleteModel`
-128 bezpośrednich zapytań `*_Autor.objects` (głównie `ewaluacja_optymalizacja`:
+**Through-modele `*_Autor` (89 miejsc produkcyjnych).** Po wpięciu `SoftDeleteModel`
+89 bezpośrednich, produkcyjnych zapytań `*_Autor.objects` (głównie `ewaluacja_optymalizacja`:
 `reset_pins`, `reset_disciplines`, `unpin_all_sensible`, `optimization`,
 `author_works`, `evaluation_browser`, `verification`; oraz `api_v1`,
 `przemapuj_prace_autora`, `ewaluacja_dwudyscyplinowcy`) **staje się poprawne
@@ -627,7 +627,7 @@ odłożone, YAGNI; można dorobić jako zadanie `CELERYBEAT_SCHEDULE`,
    warunkowe `UniqueConstraint` na `*_Autor` (§2.2b), przeplecenie menedżerów,
    powtórzenie kroków 1(b)–1(d) dla 5 widoków publikacji i ich funkcji.
 3. **Audyt kat. B** — przełączenie import/dedup/PBN-matching na
-   `global_objects`; audyt 128 miejsc `*_Autor.objects` (default „pomijaj"
+   `global_objects`; audyt 89 miejsc produkcyjnych `*_Autor.objects` (146 wystąpień łącznie, 57 w testach) (default „pomijaj"
    poprawny, wyjątki → `global_objects`). Testy: re-import nie tworzy
    duplikatów; ewaluacja pomija prace w koszu.
 4. **Guardy PROTECT** (ten sam wzorzec: flip FK + guard liczący przez
@@ -694,7 +694,7 @@ odłożone, YAGNI; można dorobić jako zadanie `CELERYBEAT_SCHEDULE`,
    soft-deletuje rodzica i jego `*_Autor` (wspólny `transaction_id`), bez
    refleksyjnej kaskady na pozostałe dzieci. Trigger jako choke-point,
    jednolity dzięki własnym `deleted_at` na wszystkich 8 tabelach (bez JOIN
-   do rodzica). Powód kaskady: 128 miejsc `*_Autor.objects` w ewaluacji.
+   do rodzica). Powód kaskady: 89 miejsc produkcyjnych `*_Autor.objects` w ewaluacji.
 3. **PBN przy soft-delete:** wycofanie oświadczeń instytucji
    (`delete_all_publication_statements`), gate na `pbn_uid`; obiektu
    publikacji nie kasujemy.

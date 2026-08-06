@@ -18,7 +18,7 @@
 |---|---|---|---|
 | 01 | `2026-06-04-soft-delete-01-autor-trigger-widoki.md` | `*_Autor` → SoftDeleteModel; widoki `bpp_*_autorzy` + **gałąź kasująca w funkcjach refresh** + **regeneracja bramki `WHEN`**; spójność weryfikowana surowym SQL-em (NIE `full_refresh()`) | — |
 | 02 | `2026-06-04-soft-delete-02-publikacje.md` | 5 modeli → SoftDeleteModel; override `delete()`/`restore()` z wąską kaskadą na `*_Autor`; `slug` warunkowy unique; przeplecenie menedżerów | 01 |
-| 03 | `2026-06-04-soft-delete-03-audyt-kategorii-b.md` | przełączenie import/dedup/PBN-matching na `global_objects`; jawny `.hard_delete()` w `pbn_import`; audyt 128 miejsc `*_Autor.objects` | 02 |
+| 03 | `2026-06-04-soft-delete-03-audyt-kategorii-b.md` | przełączenie import/dedup/PBN-matching na `global_objects`; jawny `.hard_delete()` w `pbn_import`; audyt 89 miejsc produkcyjnych `*_Autor.objects` (146 wystąpień łącznie, 57 w testach) | 02 |
 | 04 | `2026-06-04-soft-delete-04-guardy-protect.md` | flip FK `CASCADE→PROTECT` (autor, doktorat, `wydawnictwo_nadrzedne`); guard w soft `delete()` (autor + książka-matka); soft-delete husku autora | 02 |
 | 05 | `2026-06-04-soft-delete-05-pbn-wycofanie.md` | prymityw `wycofaj_oswiadczenia()`; `pbn_export_queue.operacja = WYSYLKA\|WYCOFANIE` (wejście async) + wywołanie bezpośrednie (sync); restore → `WYSYLKA`; integracja `SentData` | 02 |
 | 06 | `2026-06-04-soft-delete-06-softdeletelog.md` | model `SoftDeleteLog`; receivery `post_soft_delete`/`post_restore`/`post_hard_delete`; wstrzykiwanie `user`; **kasowanie/przeliczanie `Cache_Punktacja_*`** | 02, 05 |

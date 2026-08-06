@@ -61,7 +61,7 @@
 - `src/bpp/tests/test_soft_delete/test_audyt_kategorii_b.py`
 
 **Bez zmian (decyzja audytu udokumentowana w planie):**
-- 128 miejsc `*_Autor.objects` w ewaluacji / API / przemapuj — patrz Task 7.
+- 89 miejsc produkcyjnych `*_Autor.objects` w ewaluacji / API / przemapuj — patrz Task 7.
 - `src/komparator_pbn/views.py`, `src/snapshot_odpiec/tasks.py`,
   `src/ewaluacja_dwudyscyplinowcy/core.py` — patrz Task 7.
 
@@ -661,7 +661,7 @@ git commit -m "fix(soft-delete): pbn_import czysci publikacje przez hard_delete 
 
 ---
 
-## Task 7: Audyt 128 miejsc `*_Autor.objects` — decyzje (zostaw `objects` / zmień na `global_objects`)
+## Task 7: Audyt 89 miejsc produkcyjnych `*_Autor.objects` — decyzje (zostaw `objects` / zmień na `global_objects`)
 
 Po fazie 02 `*_Autor.objects` ukrywa kaskadowo soft-deletowane autorstwa
 (kaskada §2.2). To jest **poprawny default dla ewaluacji** (praca w koszu nie
@@ -947,7 +947,7 @@ git commit -m "chore(soft-delete): faza 03 audyt kat. B — format/lint"
   rekordach, nie matching tworzący duplikaty; **bez zmian**.
 - `pbn_import/utils/publication_import.py:115-116` jawny `.hard_delete()` →
   Task 6. ✓
-- Audyt 128 miejsc `*_Autor.objects` → Task 7 (decyzje per-miejsce; jedyna
+- Audyt 89 miejsc produkcyjnych `*_Autor.objects` → Task 7 (decyzje per-miejsce; jedyna
   zmiana: merge → `global_objects`). ✓
 - Testy wymagane przez zlecenie: re-import nie tworzy duplikatu (Task 1-4),
   matching po `pbn_uid` znajduje soft-deletowaną (Task 1-3), ewaluacja pomija
