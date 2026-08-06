@@ -145,7 +145,16 @@ INSERT INTO bpp_autorzy_mat (...) SELECT ... ;
 
 Soft-delete to uogólnienie tej samej sytuacji na wszystkie 8 tabel.
 
-**Zmiana — trzy elementy, wszystkie OBOWIĄZKOWE** (żaden nie wystarcza sam):
+**Zmiana — CZTERY elementy, wszystkie OBOWIĄZKOWE** (żaden nie wystarcza sam;
+> 🔄 **liczba poprawiona 2026-08-06** po finalnej recenzji fazy 01: pierwotna
+> wersja tej sekcji zatrzymywała się na trzech i faza 01 dokładnie w to
+> trafiła — widok źródłowy + gałąź kasująca + bramka `WHEN` przeszły bez
+> problemu, ale finalna recenzja osobno znalazła TRZY widoki POCHODNE
+> (`bpp_<typ>_view.liczba_autorow`, `bpp_nowe_sumy_*_view`,
+> `rozbieznosci_dyscyplin_zrodel`), które czytały surową tabelę `*_autor`
+> niezależnie od widoku źródłowego z punktu 3 i wymagały osobnych migracji
+> `0494`/`0495`/`rozbieznosci_dyscyplin/0022`. Punkt 4 poniżej domyka ten
+> wzorzec jako STAŁY element checklisty, nie jednorazową łatkę):
 
 1. **Gałąź kasująca w 8 funkcjach refresh.** Prolog przed upsertem:
    ```sql
@@ -169,6 +178,26 @@ Soft-delete to uogólnienie tej samej sytuacji na wszystkie 8 tabel.
    nie sprząta `_mat` (to robi punkt 1), tylko (a) karmi `pg_depend` dla
    punktu 2 i (b) gwarantuje, że pełne przebudowy i odczyty przez `bpp_rekord`
    nie wskrzeszą kosza.
+4. **Widoki i agregaty POCHODNE** — każdy widok SQL poza `bpp_*_view`/
+   `bpp_*_autorzy` (punkt 3), który JOIN-uje lub podzapytuje którąkolwiek z
+   8 tabel objętych soft-delete, musi być znaleziony i naprawiony osobno —
+   filtr w widoku źródłowym NIE propaguje się automatycznie do widoków,
+   które czytają surową tabelę bazową zamiast widoku już przefiltrowanego.
+   Znalezione (i naprawione) w fazie 01: `bpp_<typ>_view.liczba_autorow`
+   (`count()` po surowej `*_autor`), `bpp_nowe_sumy_*_view` (ranking
+   autorów), `rozbieznosci_dyscyplin_zrodel`. Dla `count()`/agregatów: użyj
+   `FILTER (WHERE deleted_at IS NULL)`, NIE warunku w `JOIN`/`WHERE` — ten
+   drugi zamienia `LEFT JOIN` w efektywny `INNER JOIN` i wywala z widoku
+   całą publikację, której WSZYSTKIM autorom soft-deletowano wiersz
+   (patrz `bpp/migrations/0494_liczba_autorow_bez_skasowanych.py`).
+   **Źródłem prawdy o tym, co jeszcze nie jest naprawione, jest żywy
+   `pg_views` — nie pliki migracji** (późniejsze migracje nadpisują
+   wcześniejsze definicje widoków, a `baseline.sql` bywa snapshotem sprzed
+   części migracji). Faza 01 dodała kanarka katalogowego
+   (`src/bpp/tests/test_soft_delete/test_kanarek_katalogowy.py`), który
+   odpytuje `pg_views` i pilnuje tego niezmiennika automatycznie dla całej
+   listy tabel objętych soft-delete — faza 02 rozszerza jego stałą
+   modułową o 5 tabel publikacji zamiast odkrywać te widoki ręcznie.
 
 **Jednolitość dzięki wąskiej kaskadzie na `*_Autor` (§2.2).** Ponieważ
 through-modele też stają się `SoftDeleteModel`, każda z 8 tabel pod triggerem
@@ -707,9 +736,11 @@ odłożone, YAGNI; można dorobić jako zadanie `CELERYBEAT_SCHEDULE`,
 8. **Retencja:** brak auto-czyszczenia; tylko ręczny hard-delete.
 9. ~~**Cache — mechanizm nadrzędny:** filtr `deleted_at IS NULL` w widokach
    źródłowych; trigger-skip to opcjonalna optymalizacja.~~
-   **UNIEWAŻNIONE 2026-08-06.** Zastąpione przez: **trzy elementy, wszystkie
-   obowiązkowe** — (a) filtr w widoku, (b) gałąź kasująca w funkcji refresh,
-   (c) regeneracja bramki `WHEN`. Żaden nie wystarcza sam (§2.1).
+   **UNIEWAŻNIONE 2026-08-06.** Zastąpione przez: **cztery elementy, wszystkie
+   obowiązkowe** — (a) filtr w widoku źródłowym, (b) gałąź kasująca w
+   funkcji refresh, (c) regeneracja bramki `WHEN`, (d) widoki i agregaty
+   POCHODNE (dopisany po finalnej recenzji fazy 01 — patrz §2.1 punkt 4).
+   Żaden nie wystarcza sam (§2.1).
 10. **SentData przy wycofaniu:** `submitted_successfully=False` + znacznik
     wycofania, wiersza nie kasujemy.
 11. **Self-FK `Wydawnictwo_Zwarte` (rozdziały):** **PROTECT** — soft-delete

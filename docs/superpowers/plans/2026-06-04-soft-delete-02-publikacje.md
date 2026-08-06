@@ -2,6 +2,54 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Każdy krok TDD: napisz padający test → uruchom (oczekiwany FAIL) → minimalna implementacja → uruchom (PASS) → commit.
 
+> ⚠️ **OSTRZEŻENIE — CZYTAJ PRZED STARTEM (dopisane po naprawie blokerów
+> fazy 01, 2026-08-06).** Faza 01 odkrywała konsumentów surowych tabel
+> `*_autor` **pojedynczo, przez awarie** — najpierw bramka cache'u, potem
+> bramka denorma, `unique_together`, legacy constraint z 2018, a na końcu
+> finalna recenzja znalazła jeszcze trzy widoki pochodne czytające surowe
+> tabele bez filtra na `deleted_at`. Faza 02 (soft-delete PUBLIKACJI:
+> `bpp_wydawnictwo_ciagle`, `bpp_wydawnictwo_zwarte`, `bpp_patent`,
+> `bpp_praca_doktorska`, `bpp_praca_habilitacyjna`) trafi na dokładnie ten
+> sam problem, jeśli nie zaadresuje go z góry. Trzy obowiązkowe rzeczy:
+>
+> **(a) Rozszerz kanarka katalogowego o 5 tabel publikacji.** Test
+> `src/bpp/tests/test_soft_delete/test_kanarek_katalogowy.py` (dodany razem
+> z tym ostrzeżeniem) trzyma listę tabel objętych soft-delete jako stałą
+> modułową `TABELE_SOFT_DELETE` — dopisanie 5 tabel publikacji ma być
+> jednolinijkową zmianą (skonstruowaną tak celowo). Kanarek odpytuje żywy
+> `pg_views` i pilnuje, że KAŻDY widok czytający którąkolwiek z tych tabel
+> filtruje po `deleted_at`, chyba że jest na jawnej liście wyjątków z
+> uzasadnieniem. Rozszerz listę na starcie fazy 02, ZANIM zaczniesz pisać
+> DDL — kanarek od razu zacznie łapać widoki, które trzeba naprawić, zamiast
+> odkrywać je po raz drugi przez awarie na produkcji.
+>
+> **(b) Sprawdź `count()`/agregaty w widokach pochodnych pod kątem
+> `FILTER` vs warunek w `JOIN`/`WHERE`.** Wzorzec z migracji `0494`
+> (`bpp/migrations/0494_liczba_autorow_bez_skasowanych.py`, faza 01):
+> `bpp_<typ>_view` liczy `count(<tabela>_autor.autor_id) AS liczba_autorow`
+> przez `LEFT JOIN` do tabeli `*_autor`. Dopisanie `deleted_at IS NULL` do
+> `WHERE`/`JOIN ... ON` zamieniłoby `LEFT JOIN` w efektywny `INNER JOIN` dla
+> publikacji, którym soft-deletowano WSZYSTKICH autorów — cała publikacja
+> wypadłaby z widoku, więc z `bpp_rekord_mat` i z całego serwisu (dokładnie
+> ten błąd, gdyby ktoś naiwnie dopisał warunek do `WHERE`). Właściwy wzorzec
+> to `count(...) FILTER (WHERE ... deleted_at IS NULL)` — rusza wyłącznie
+> licznik, nie krotność joina. Dla soft-delete PUBLIKACJI analogiczne
+> ryzyko dotyczy każdego agregatu w `bpp_*_view`/`bpp_rekord` liczącego coś
+> przez `LEFT JOIN` do tabeli publikacji.
+>
+> **(c) Przejrzyj `bpp_nowe_sumy_*` i `rozbieznosci_dyscyplin` pod kątem
+> `deleted_at` PUBLIKACJI** (nie tylko autora — to już zrobione w fazie 01,
+> migracje `0495_nowe_sumy_bez_skasowanych` i
+> `rozbieznosci_dyscyplin/0022_rozbieznosci_zrodel_bez_skasowanych`). Te
+> same widoki (i prawdopodobnie inne w `ranking_autorow`) czytają też
+> kolumny/joiny do tabel publikacji — sprawdź `pg_depend`, nie tylko grep,
+> czy po dodaniu `deleted_at` na `bpp_wydawnictwo_ciagle` itd. te widoki
+> wymagają analogicznej poprawki.
+>
+> Raport z naprawy blokerów fazy 01 (metoda, mutation test kanarka, pełna
+> lista sprawdzonych widoków):
+> `.superpowers/sdd/2026-06-04-soft-delete-01-autor-trigger-widoki/kanarek-report.md`.
+
 **Goal:** Uczynić 5 modeli publikacji (`Wydawnictwo_Ciagle`, `Wydawnictwo_Zwarte`, `Praca_Doktorska`, `Praca_Habilitacyjna`, `Patent`) `SoftDeleteModel`-ami z **wąską, kontrolowaną kaskadą** soft-delete na własne wiersze `*_Autor` (`Wydawnictwo_Ciagle_Autor`, `Wydawnictwo_Zwarte_Autor`, `Patent_Autor`) pod wspólnym `transaction_id`, **bez** refleksyjnej kaskady pakietu (która ruszyłaby `*_Streszczenie` itd.). Zamienić `slug unique=True` na warunkowy `UniqueConstraint` (reuse slug po soft-delete). Przepleść filtr soft-delete z istniejącymi menedżerami `Wydawnictwo_*_Manager` (mixin opłat) przez wspólny QuerySet/MRO, bez nadpisywania metod fees.
 
 **Architecture:** `django-soft-delete` daje `SoftDeleteModel` (pola `deleted_at`/`restored_at`/`transaction_id`, menedżery `objects`/`global_objects`/`deleted_objects`, sygnały `post_soft_delete`/`post_restore`/`post_hard_delete`). Faza 01 utworzyła `src/bpp/models/soft_delete.py` z `BppSoftDeleteQuerySet` (gate na bulk `update(deleted_at=...)`), `BppSoftDeleteManager`, `BppGlobalManager` oraz uczyniła 3 modele `*_Autor` SoftDeleteModel-ami — wraz z DDL-em dla **ścieżki autorstwa** (widoki `bpp_*_autorzy` + gałąź kasująca w `bpp_refresh_autor_*` + bramka `WHEN`). ⚠️ **Dla 5 tabel publikacji ten sam DDL trzeba zrobić w TEJ fazie** — Task 2b. **Ta faza zależy od 01.** Tu nadpisujemy `delete()`/`restore()` na 5 modelach: per-instancja `save()` (NIGDY bulk `update`), jawna wąska kaskada na `autorzy_set` (related_name `*_Autor`→publikacja) przez `.delete(transaction_id=...)`/`.restore(transaction_id=...)` na każdym wierszu (kontrakt z reversion: zawsze per-instancja).
@@ -50,7 +98,13 @@ migracją: `ls src/bpp/migrations/*.py | tail -3`.
 - `Praca_Doktorska.autor` FK CASCADE (`praca_doktorska.py:136`), `Praca_Habilitacyjna.autor` O2O PROTECT (`praca_habilitacyjna.py:42`). Te FK to **faza 04** — NIE ruszamy tu.
 - **`slug` jest polem `@denormalized(models.SlugField, max_length=400, unique=True, db_index=True, null=True, blank=True)`** (denorm z `django-denorm-iplweb`), w: `wydawnictwo_ciagle.py:246`, `wydawnictwo_zwarte.py:325` (w `Wydawnictwo_Zwarte`), `patent.py:180`, `praca_doktorska.py:105` (w `Praca_Doktorska_Baza` → dziedziczone przez `Praca_Doktorska` **i** `Praca_Habilitacyjna`). Denorm field jest fizyczną kolumną w DB → migracja zmiany `unique=True`→`UniqueConstraint` jest realną migracją schematu.
 - `Praca_Habilitacyjna` i `Praca_Doktorska` dziedziczą slug z `Praca_Doktorska_Baza` (abstract) — zmiana atrybutu pola w abstrakcie dotyka OBU modeli; migracje per model (każdy ma własną kolumnę `slug`).
-- ⚠️ **Numeracja migracji (stan 2026-08-06):** faza 01 zajmuje `0488`/`0489`, więc ta faza startuje od `0490`. **Zweryfikuj liść przed startem** (`ls src/bpp/migrations/*.py | tail -3`) — `dev` żyje. Numery w tym planie są orientacyjne; kanoniczna jest kolejność. NIE modyfikuj istniejących migracji.
+- ⚠️ **Numeracja migracji (stan po zakończeniu fazy 01, 2026-08-06):** faza
+  01 zajęła ostatecznie `0488`-`0495` w `bpp` (nie tylko `0488`/`0489` —
+  patrz naprawa blokerów finalnej recenzji) plus
+  `rozbieznosci_dyscyplin/0022`, więc ta faza startuje od `0496` w `bpp`.
+  **Zweryfikuj liść przed startem** (`ls src/bpp/migrations/*.py | tail -3`)
+  — `dev` żyje. Numery w tym planie są orientacyjne; kanoniczna jest
+  kolejność. NIE modyfikuj istniejących migracji.
 - `Zgloszenie_Publikacji` (`src/zglos_publikacje/models.py:60`) — precedens: po prostu dziedziczy `SoftDeleteModel` bez własnego menedżera.
 
 ## Kontrakt z reversion (PINNED — NIE łamać)
