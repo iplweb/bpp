@@ -503,6 +503,13 @@ udokumentowanego uzasadnienia, nie samego stwierdzenia.
 | 2.5.7 Dragging Movements | AA | naprawa stwierdzona → B5 |
 | 2.5.8 Target Size (Minimum) | AA | B5 + axe (`target-size`, częściowo) |
 
+**Korekta (2026-08-06):** wiersze `2.1.4` i `2.5.7` powyżej zakładają, że
+naprawa nastąpiła, a wskazane źródło werdyktu (B1/B5) już tylko ją
+weryfikuje. Oba kryteria zostały ostatecznie **świadomie odroczone**, nie
+naprawione — patrz sekcja „Odroczone niezgodności". Formuła „naprawa
+stwierdzona → B…" dla `3.1.2` niżej jest poprawna i pozostaje bez zmian —
+tam naprawa faktycznie zaszła.
+
 ### Zrozumiałość
 
 | Kryterium | Poz. | Źródło werdyktu |
@@ -541,6 +548,13 @@ uzasadnienia — nie są „darmowe", choć są tanie.
 Poniższe zostały **potwierdzone lekturą kodu** i wchodzą do zakresu napraw
 bez czekania na audyt. Zadanie brzmi „napraw".
 
+**Korekta (2026-08-06):** z czterech kryteriów w tej sekcji ostatecznie
+naprawiono dwa — 1.1.1 i 3.1.2 (patrz korekty w odpowiednich podsekcjach
+niżej). Pozostałe dwa, 2.1.4 i 2.5.7, zostały **świadomie odroczone**, nie
+naprawione — decyzje i uzasadnienia w sekcji „Odroczone niezgodności".
+„Zadanie brzmi »napraw«" było zamiarem na starcie tej sekcji, nie jest
+opisem tego, co się faktycznie stało z każdym z czterech kryteriów.
+
 ### 2.1.4 Character Key Shortcuts (A) — skrót `/`
 
 `base.html:39-49` wiąże jednoznakowy skrót `/` na poziomie `document`.
@@ -555,6 +569,12 @@ którzy dyktując tekst wysyłają pojedyncze znaki w stronę dokumentu.
 
 Wymaga decyzji produktowej: skrót wyłączalny w profilu użytkownika czy
 przeniesiony w zasięg focusa pola wyszukiwania.
+
+**Korekta (2026-08-06):** kryterium **odroczono**, nie naprawiono. Skrót
+`/` działa dokładnie tak samo jak w opisie wyżej — bez zmian w kodzie.
+Rekomendacja z sekcji „Otwarte decyzje" (zawężenie do focusa pola
+wyszukiwania) nie została wdrożona. Wpis w wykazie: sekcja „Odroczone
+niezgodności".
 
 ### 3.1.2 Language of Parts (AA) — tytuły obcojęzyczne
 
@@ -642,6 +662,12 @@ publiczny (bramkowany per uczelnia przez `czy_pokazywac_siec_powiazan` —
 `bpp/views/browse.py:245`). Nawigacja po grafie opiera się na przeciąganiu.
 Kryterium wymaga alternatywy realizowanej pojedynczym wskaźnikiem:
 przycisków przesuwania i zoomu albo obsługi klawiaturą.
+
+**Korekta (2026-08-06):** kryterium **odroczono**, nie naprawiono. Graf
+powiązań nadal nawiguje się wyłącznie przeciąganiem, bez alternatywy
+jednowskaźnikowej. Powód: koszt nieproporcjonalny do pozostałych napraw w
+tej iteracji, funkcja opcjonalna i w części wdrożeń wyłączona. Wpis w
+wykazie: sekcja „Odroczone niezgodności".
 
 ## Hipotezy do zbadania w audycie
 
@@ -898,6 +924,12 @@ czyli dokładnie dla audytowanego zakresu. **Rekomendacja: zawężenie skrótu
 do sytuacji, gdy focus spoczywa na polu wyszukiwania w top-barze.** Jest to
 jedyna opcja wykonalna bez budowania profilu preferencji dla anonima.
 Decyzja produktowa — skrót przestanie działać globalnie.
+
+**Korekta (2026-08-06):** rekomendacja nie została przyjęta. Faktyczna
+decyzja: kryterium **odroczone**, skrót `/` zostaje bez zmian (nadal
+globalny, nadal niewyłączalny), wpis w wykazie niezgodności zamiast
+implementacji zawężenia do focusa. Powód i szczegóły: sekcja „Odroczone
+niezgodności".
 
 **Motywy uczelniane w raporcie silnika.** `vizja`, `mwsl`, `uafm` to
 motywy konkretnych klientów, nie warianty produktu. Jeśli test (b) wykaże
