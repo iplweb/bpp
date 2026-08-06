@@ -153,6 +153,25 @@ def generuj_formularz_dla_autorow(  # noqa
                 widget=HiddenInput, queryset=baseModel.rekord.get_queryset()
             )
 
+        # `deleted_at` MUSI być polem formularza (choć ukrytym/wyłączonym) —
+        # inaczej Django wyklucza je z walidacji modelu (nie ma go w
+        # Meta.fields => `_get_validation_exclusions()` dorzuca je do
+        # `exclude`), a `Meta.constraints` (warunkowe UniqueConstraint /
+        # ExclusionConstraint z Taska 3c, `condition=Q(deleted_at__isnull=…)`)
+        # odwołują się właśnie do tego pola. Skutek bez tego pola: dla
+        # UniqueConstraint Django CICHO POMIJA walidację (łapie FieldError i
+        # nie zgłasza błędu — kolizja przechodzi, IntegrityError wyskakuje
+        # dopiero przy zapisie), a dla ExclusionConstraint Django W OGÓLE NIE
+        # ŁAPIE tego FieldError — `is_valid()` wywala się niekontrolowanym
+        # wyjątkiem (HTTP 500) przy KAŻDYM zapisie, nie tylko przy kolizji.
+        # Formularz zawsze dotyczy ŻYWEGO wiersza (managery `objects`/
+        # `autorzy_set` już odfiltrowują soft-deleted), więc `disabled=True`
+        # + `initial=None` jest zawsze poprawną wartością — pole nigdy nie
+        # jest edytowalne przez usera.
+        deleted_at = forms.DateTimeField(
+            required=False, disabled=True, widget=HiddenInput
+        )
+
         autor = forms.ModelChoiceField(
             queryset=Autor.objects.all(),
             widget=autocomplete.ModelSelect2(url="bpp:autor-autocomplete"),
@@ -318,6 +337,7 @@ def generuj_formularz_dla_autorow(  # noqa
                 "profil_orcid",
                 DATA_OSWIADCZENIA,
                 "kolejnosc",
+                "deleted_at",
             ]
 
             if include_dyscyplina:
@@ -352,9 +372,11 @@ def sprawdz_powtorzona_kolejnosc(formset):
     """Rzuca ``ValidationError``, gdy dwa wiersze inline'a autorów dostałyby
     tę samą pozycję (``kolejnosc``).
 
-    Unikalności (rekord, kolejnosc) pilnuje w bazie odroczone ograniczenie
-    (migracja 0132), którego Django nie zna -- bez tego sprawdzenia powtórzona
-    pozycja kończy się IntegrityError na COMMIT. Sprawdzamy wartości DOCELOWE
+    Unikalności (rekord, kolejnosc) wśród żywych (nie skasowanych) wierszy
+    pilnuje w bazie odroczony ``ExclusionConstraint`` (soft-delete; wcześniej
+    legacy ``UNIQUE DEFERRABLE`` z migracji 0132). Formularz go nie sprawdza
+    (Django pomija ograniczenia odroczone), więc bez tego sprawdzenia
+    powtórzona pozycja kończy się IntegrityError na COMMIT. Sprawdzamy wartości DOCELOWE
     ze wszystkich wierszy naraz, a nie każdy wiersz osobno względem bazy, żeby
     zamiana dwóch wierszy miejscami przechodziła.
     """
@@ -382,6 +404,40 @@ def sprawdz_powtorzona_kolejnosc(formset):
         .exists()
     ):
         raise forms.ValidationError(KOMUNIKAT_POWTORZONA_KOLEJNOSC)
+
+
+def _waliduj_kolizje_autorstwa_w_formsecie(formset):
+    """Wykrywa w formsecie dwa wiersze z tym samym (autor, typ
+    odpowiedzialności).
+
+    Warunkowy ``UniqueConstraint`` (``condition=Q(deleted_at__isnull=True)``)
+    na *_Autor NIE łapie kolizji NOWEGO wiersza formsetu z innym wierszem tego
+    samego formsetu: dla nowego wiersza ``rekord`` nie jest jeszcze ustawiony
+    w momencie walidacji (przypisuje go dopiero
+    ``BaseInlineFormSet.save_new()``), a formsetowe ``validate_unique()``
+    Django sprawdza pary formularzy tylko dla ograniczeń BEZWARUNKOWYCH.
+    Kolizję (rekord, kolejnosc) sprawdza osobno
+    :func:`sprawdz_powtorzona_kolejnosc`.
+    """
+    forms_to_delete = formset.deleted_forms
+    aktywne = [
+        f
+        for f in formset.forms
+        if getattr(f, "cleaned_data", None) and f not in forms_to_delete
+    ]
+
+    widziane_typ = set()
+    for form in aktywne:
+        cd = form.cleaned_data
+        autor = cd.get("autor")
+        typ = cd.get("typ_odpowiedzialnosci")
+        if autor is None or typ is None:
+            continue
+        klucz = (autor.pk, typ.pk)
+        if klucz in widziane_typ:
+            form.add_error(None, KOMUNIKAT_DUPLIKAT_AUTORA)
+        else:
+            widziane_typ.add(klucz)
 
 
 def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
@@ -417,6 +473,8 @@ def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
                 raise forms.ValidationError(
                     "Liczba podanych procent odpowiedzialności przekracza 100.0"
                 )
+
+            _waliduj_kolizje_autorstwa_w_formsecie(self)
 
         def get_unique_error_message(self, unique_check):
             if frozenset(unique_check) | {self.fk.name} == UNIQUE_AUTOR_TYP:
