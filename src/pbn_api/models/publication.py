@@ -12,6 +12,49 @@ from .base import BasePBNMongoDBModel
 STATUS_ACTIVE = "ACTIVE"
 
 
+def modele_publikacji_z_pbn_uid():
+    """Modele publikacji BPP, które MAJĄ pole ``pbn_uid``.
+
+    ⚠️ ``Patent`` go NIE ma — sprawdzone na modelach, nie założone. Dopisanie
+    go tutaj wywaliłoby ``FieldError`` przy pierwszym ``.filter()``, bo Django
+    resolwuje nazwy pól NATYCHMIAST (``Query.build_filter``), a nie dopiero
+    przy iteracji querysetu.
+    """
+    from bpp.models import (
+        Praca_Doktorska,
+        Praca_Habilitacyjna,
+        Wydawnictwo_Ciagle,
+        Wydawnictwo_Zwarte,
+    )
+
+    return (
+        Wydawnictwo_Ciagle,
+        Wydawnictwo_Zwarte,
+        Praca_Doktorska,
+        Praca_Habilitacyjna,
+    )
+
+
+def znajdz_publikacje_po_pbn_uid(pbn_uid_pk):
+    """Publikacje BPP o danym ``pbn_uid`` — RAZEM Z KOSZEM.
+
+    DLACZEGO NIE PRZEZ ``Rekord``: ``Rekord`` to widok (``bpp_rekord_mat``),
+    przefiltrowany po ``deleted_at`` już w fazie 01. Soft-skasowana
+    publikacja z niego znika, więc matching po ``pbn_uid`` zwracał ``None``,
+    a importer zakładał, że rekordu nie ma — i tworzył DUPLIKAT. Odpytujemy
+    zatem modele źródłowe przez ich ``global_objects``.
+
+    Zwraca listę (zwykle pustą albo jednoelementową). Co zrobić z wieloma
+    trafieniami, rozstrzyga wołający — ``get_bpp_publication`` i
+    ``rekord_w_bpp`` robiły z tym historycznie DWIE różne rzeczy i ta
+    różnica jest zachowana.
+    """
+    znalezione = []
+    for klass in modele_publikacji_z_pbn_uid():
+        znalezione.extend(klass.global_objects.filter(pbn_uid_id=pbn_uid_pk))
+    return znalezione
+
+
 class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
     url_do_pbn = const.LINK_PBN_DO_PUBLIKACJI
     atrybut_dla_url_do_pbn = "pk"
@@ -158,26 +201,29 @@ class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
         )
 
     def get_bpp_publication(self):
-        """Zwraca rekord BPP powiązany przez PBN UID (bez fuzzy matching)."""
-        from bpp.models.cache import Rekord
+        """Rekord BPP powiązany przez PBN UID (bez fuzzy matching).
 
-        try:
-            return Rekord.objects.get(pbn_uid_id=self.pk)
-        except (Rekord.DoesNotExist, Rekord.MultipleObjectsReturned):
-            return None
+        Widzi TAKŻE kosz — patrz ``znajdz_publikacje_po_pbn_uid``. Zachowane
+        zachowanie historyczne: zarówno brak trafienia, jak i wiele trafień
+        dają ``None`` (dawniej ``DoesNotExist`` / ``MultipleObjectsReturned``).
+        """
+        znalezione = znajdz_publikacje_po_pbn_uid(self.pk)
+        if len(znalezione) == 1:
+            return znalezione[0]
+        return None
 
     @cached_property
     def rekord_w_bpp(self):
-        from bpp.models.cache import Rekord
+        """Jak wyżej, ale przy wielu trafieniach zwraca sklejone tytuły,
+        a przy braku — spada do fuzzy matchingu. Ta różnica wobec
+        ``get_bpp_publication`` jest historyczna i celowo zachowana."""
+        znalezione = znajdz_publikacje_po_pbn_uid(self.pk)
 
-        try:
-            return Rekord.objects.get(pbn_uid_id=self.pk)
-        except Rekord.MultipleObjectsReturned:
-            return ";; ".join(
-                [x.tytul_oryginalny for x in Rekord.objects.filter(pbn_uid_id=self.pk)]
-            )
-        except Rekord.DoesNotExist:
-            pass
+        if len(znalezione) == 1:
+            return znalezione[0]
+
+        if len(znalezione) > 1:
+            return ";; ".join(x.tytul_oryginalny for x in znalezione)
 
         return self.matchuj_do_rekordu_bpp()
 
