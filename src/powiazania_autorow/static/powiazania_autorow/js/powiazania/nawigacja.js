@@ -52,3 +52,50 @@ export function zoomuj(cy, wspolczynnik) {
 export function dopasuj(cy) {
     cy.fit();
 }
+
+// Mapuje zdarzenie keydown na akcje nawigacji po grafie (WCAG 2.1.1).
+// Zwraca true, jesli klawisz zostal obsluzony — wolajacy uzywa tego, zeby
+// zdecydowac, czy wywolac preventDefault (WYLACZNIE dla obsluzonych
+// klawiszy; inaczej Tab zostalby zablokowany w grafie — pulapka
+// klawiaturowa, zlamanie 2.1.2).
+//
+// Skroty z modyfikatorem naleza do przegladarki, nie do nas: Ctrl/Cmd +/-
+// to zoom strony (WCAG 1.4.4 Resize Text), Alt+strzalka to nawigacja
+// wstecz/wprzod, Ctrl+Home to przewijanie na gore. Przechwycenie ich
+// zlamaloby funkcje wazniejsze niz nawigacja po grafie — stad wczesne
+// wyjscie. `shiftKey` NIE wchodzi do tego warunku: na wielu ukladach
+// klawiatury `+` wymaga Shift, wiec jego zablokowanie zepsuloby
+// przyblizanie grafu tej samej klawiszologii, ktora ma dzialac.
+export function obsluzKlawisz(cy, e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) {
+        return false;
+    }
+
+    switch (e.key) {
+        case "ArrowUp":
+            przesun(cy, "gora");
+            return true;
+        case "ArrowDown":
+            przesun(cy, "dol");
+            return true;
+        case "ArrowLeft":
+            przesun(cy, "lewo");
+            return true;
+        case "ArrowRight":
+            przesun(cy, "prawo");
+            return true;
+        case "+":
+        case "=":
+            zoomuj(cy, 1.2);
+            return true;
+        case "-":
+        case "_":
+            zoomuj(cy, 1 / 1.2);
+            return true;
+        case "Home":
+            dopasuj(cy);
+            return true;
+        default:
+            return false;
+    }
+}
