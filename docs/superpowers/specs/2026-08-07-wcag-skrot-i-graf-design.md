@@ -224,7 +224,7 @@ ekranu".
 **Podpięcie zdarzeń** w istniejącym `powiazania/controls.js`, zgodnie z
 tamtejszym wzorcem (`podepnijZdarzenia(ctx)`).
 
-**Style** — nowy partial `src/bpp/static/scss/_graf_powiazan.scss`,
+**Style** — nowy partial `src/bpp/static/scss/graf_powiazan.scss`,
 zaimportowany w `common.scss` obok pozostałych (`@import "graf_powiazan";`).
 
 Aplikacja `powiazania_autorow` **nie ma własnego katalogu SCSS** — `graf.html`
