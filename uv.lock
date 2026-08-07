@@ -23,6 +23,7 @@ supported-markers = [
 constraints = [
     { name = "bleach", specifier = ">=6.4.0" },
     { name = "daphne", specifier = ">=4.2.2" },
+    { name = "h2", specifier = ">=4.4.1" },
     { name = "pyasn1", specifier = ">=0.6.4" },
     { name = "pypdf", specifier = ">=6.13.3" },
 ]
@@ -712,8 +713,8 @@ dev = [
     { name = "pytest-repeat", specifier = ">=0.9.4" },
     { name = "pytest-rerunfailures", specifier = ">=16.4" },
     { name = "pytest-split", specifier = ">=0.9.0" },
-    { name = "pytest-testcontainers", specifier = ">=0.2.2" },
-    { name = "pytest-testcontainers-django", specifier = ">=0.2.5" },
+    { name = "pytest-testcontainers", specifier = ">=0.3.1" },
+    { name = "pytest-testcontainers-django", specifier = ">=0.3.1" },
     { name = "pytest-timeout", specifier = ">=2.1.0" },
     { name = "pytest-tqdm", specifier = ">=0.4.0" },
     { name = "pytest-xdist", specifier = ">=2.3.0" },
@@ -2828,24 +2829,24 @@ wheels = [
 
 [[package]]
 name = "h2"
-version = "4.3.0"
+version = "4.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "hpack", marker = "platform_python_implementation != 'PyPy'" },
     { name = "hyperframe", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1d/17/afa56379f94ad0fe8defd37d6eb3f89a25404ffc71d4d848893d270325fc/h2-4.3.0.tar.gz", hash = "sha256:6c59efe4323fa18b47a632221a1888bd7fde6249819beda254aeca909f221bf1", size = 2152026, upload-time = "2025-08-23T18:12:19.778Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e7/85/7c366e69d84c17bb778fe41419e1fbcce3033d5b7ce29bbffff0a98b859f/h2-4.4.1.tar.gz", hash = "sha256:4e866ffb1a869ae14dd9b5e6beb5c24a13da0495ad72b65925ded182521c1516", size = 2157281, upload-time = "2026-08-03T11:45:09.509Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/69/b2/119f6e6dcbd96f9069ce9a2665e0146588dc9f88f29549711853645e736a/h2-4.3.0-py3-none-any.whl", hash = "sha256:c438f029a25f7945c69e0ccf0fb951dc3f73a5f6412981daee861431b70e2bdd", size = 61779, upload-time = "2025-08-23T18:12:17.779Z" },
+    { url = "https://files.pythonhosted.org/packages/7e/22/e85faf23bd72a92d1921e37d674ca56eb298a3c8be31fdecef0ff2b3aaac/h2-4.4.1-py3-none-any.whl", hash = "sha256:0e25f1462b23c9cb82d9eb02e28bc706dac2a68cb457c6a0d74d63c8a2a5d0e6", size = 62636, upload-time = "2026-08-03T11:44:59.164Z" },
 ]
 
 [[package]]
 name = "hpack"
-version = "4.1.0"
+version = "4.2.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/2c/48/71de9ed269fdae9c8057e5a4c0aa7402e8bb16f2c6e90b3aa53327b113f8/hpack-4.1.0.tar.gz", hash = "sha256:ec5eca154f7056aa06f196a557655c5b009b382873ac8d1e66e79e87535f1dca", size = 51276, upload-time = "2025-01-22T21:44:58.347Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/26/5b/fcabf6028144a8723726318b07a32c2f3314acdff6265743cf08a344b18e/hpack-4.2.0.tar.gz", hash = "sha256:0895cfa3b5531fc65fe439c05eb65144f123bf7a394fcaa56aa423548d8e45c0", size = 51300, upload-time = "2026-06-23T18:34:46.667Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/07/c6/80c95b1b2b94682a72cbdbfb85b81ae2daffa4291fbfa1b1464502ede10d/hpack-4.1.0-py3-none-any.whl", hash = "sha256:157ac792668d995c657d93111f46b4535ed114f0c9c8d672271bbec7eae1b496", size = 34357, upload-time = "2025-01-22T21:44:56.92Z" },
+    { url = "https://files.pythonhosted.org/packages/71/b4/4a9fcfb2aef6ba44d9073ecd301443aa00b3dac95de5619f2a7de7ec8a91/hpack-4.2.0-py3-none-any.whl", hash = "sha256:858ac0b02280fa582b5080d68db0899c62a80375e0e5413a74970c5e518b6986", size = 34246, upload-time = "2026-06-23T18:34:45.472Z" },
 ]
 
 [[package]]
@@ -4760,21 +4761,21 @@ wheels = [
 
 [[package]]
 name = "pytest-testcontainers"
-version = "0.2.2"
+version = "0.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docker", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
     { name = "testcontainers", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3c/ab/e71331e7ed6ecfd87755bd17c0b79462ca50f5e6b52592432b47d1fd9cfc/pytest_testcontainers-0.2.2.tar.gz", hash = "sha256:8df25594dc022773d4cbb4ee78f99810b0b3ae1ad9b5c0dea731e45ac85311db", size = 37465, upload-time = "2026-06-29T14:29:04.438Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3e/ba/ed37243f066980a11621094553f68bb0999ad7717a04d670b918a0d4b0be/pytest_testcontainers-0.3.1.tar.gz", hash = "sha256:23ca03a4549144e0c58d4027ad31d54aac2662d9f243717b25a477b975296031", size = 56642, upload-time = "2026-08-07T14:44:26.827Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/23/20/f26e05d45ef12fc00ee03b3df37d73579cb6ec2c1b971abf950bb028e1cd/pytest_testcontainers-0.2.2-py3-none-any.whl", hash = "sha256:055eb2f76b74fd4ddd0a2acfb866eb07e7373cc79c8025b7cd88b6dec70cce2e", size = 33922, upload-time = "2026-06-29T14:29:03.181Z" },
+    { url = "https://files.pythonhosted.org/packages/71/1e/885bd7afd0fff12d77a15609c03a0f0a36bf9d2dfe4edda7efcabcfb4517/pytest_testcontainers-0.3.1-py3-none-any.whl", hash = "sha256:b9ef03e8f86296b8c51d7b9f4b749fec45f26f897490f6226a36564c42e86a14", size = 38244, upload-time = "2026-08-07T14:44:25.536Z" },
 ]
 
 [[package]]
 name = "pytest-testcontainers-django"
-version = "0.2.5"
+version = "0.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
@@ -4782,9 +4783,9 @@ dependencies = [
     { name = "pytest-testcontainers", marker = "platform_python_implementation != 'PyPy'" },
     { name = "testcontainers", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a7/1d/f4ab596c6ec7606dcfb2ad6a27e2ff18044ff7beabef48cf88610df4d42d/pytest_testcontainers_django-0.2.5.tar.gz", hash = "sha256:f4d20576ea0826224307e06b102b44d504881eef65acbacc3ac2a50328625e4f", size = 30776, upload-time = "2026-06-29T14:32:45.311Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/63/71/72c7531f55eacf4289d4697335218d84d6cdaba95d6ebf4046ecc5dcf3f3/pytest_testcontainers_django-0.3.1.tar.gz", hash = "sha256:a4a9cdc2fe6aa92eee939edf2cfa3a0f927ff890a8a91e0140ad70d33cf6da6c", size = 34891, upload-time = "2026-08-07T14:45:40.833Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1b/8d/bfb0ab62e418ec2b6e48ebaf517b6d0617554e79f3b64a550c4a9231c323/pytest_testcontainers_django-0.2.5-py3-none-any.whl", hash = "sha256:db3087bca07d9b3dfd7df53776aabd8b6ebc7e1eb3cae936e0b850e10523dcc9", size = 23697, upload-time = "2026-06-29T14:32:44.056Z" },
+    { url = "https://files.pythonhosted.org/packages/93/ce/cd297aef437af881e0c32e91abe43f20ac63b4714173da3c186b803ea3c2/pytest_testcontainers_django-0.3.1-py3-none-any.whl", hash = "sha256:91c322b52631350ee524abbf7678f4d314c8b0d5d195002be8974946caa43a2d", size = 24993, upload-time = "2026-08-07T14:45:39.615Z" },
 ]
 
 [[package]]
