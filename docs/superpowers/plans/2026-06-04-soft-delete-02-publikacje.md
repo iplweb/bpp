@@ -60,6 +60,41 @@
 
 ---
 
+## 🧹 Sprzątanie `bpp_kronika_*` — jedno zadanie, nie po kawałku (decyzja 2026-08-07)
+
+Próba usunięcia trzech martwych widoków `bpp_kronika_{wydawnictwo_ciagle,
+wydawnictwo_zwarte,patent}_view` w fazie 01 została **zablokowana**: zależą od
+nich dwa widoki nadrzędne, `bpp_kronika_all_unsorted_view` (UNION pięciu) i
+`bpp_kronika_view` (`0443_drop_pl_PL_collation.sql:13-14,30-31`). Goły
+`DROP VIEW` bez `CASCADE` nie przejdzie.
+
+Zweryfikowano: **cała siódemka jest martwa** — zero konsumentów w kodzie,
+szablonach, `Meta.db_table`, `flexible_reports` i surowym SQL-u.
+
+**Decyzja: skasować wszystkie 7 naraz, w TEJ fazie**, bo faza 02 i tak dołoży
+`bpp_kronika_praca_{doktorska,habilitacyjna}_view` do zakresu kanarka
+(rozszerzenie `TABELE_SOFT_DELETE` o tabele publikacji) i wtedy trzeba by je
+weryfikować osobno. Jedna migracja, jedna decyzja, pełny graf zależności:
+
+```
+bpp_kronika_view
+  └── bpp_kronika_all_unsorted_view
+        ├── bpp_kronika_wydawnictwo_ciagle_view
+        ├── bpp_kronika_wydawnictwo_zwarte_view
+        ├── bpp_kronika_patent_view
+        ├── bpp_kronika_praca_doktorska_view      ← żywotność do potwierdzenia
+        └── bpp_kronika_praca_habilitacyjna_view  ← żywotność do potwierdzenia
+```
+
+Kolejność `DROP`: od góry (parasole) w dół. Migracja **odwracalna** — `backward`
+odtwarza całą siódemkę; wyjdź z `pg_get_viewdef()` przed skasowaniem.
+Po zrobieniu: usuń wpisy z `WYJATKI` w `test_kanarek_katalogowy.py`.
+
+Jeśli któryś z dwóch niezweryfikowanych okaże się mieć konsumenta — **nie
+kasuj żadnego**, zostaw wyjątki i zgłoś.
+
+---
+
 ## ⚠️ KOLEJNOŚĆ WYKONANIA (taski NIE stoją w dokumencie w kolejności wykonania)
 
 Taski dopisywane po rewizjach wylądowały poza numeracją. Wykonuj w TEJ kolejności:
