@@ -188,9 +188,12 @@ class JednostkaAdmin(
         wprost; ``select_related`` się scala, więc ``wydzial`` z managera
         nie ginie.
 
-        Regresję pilnuje ``test_fetch_raise_gate.py`` (tryb ``FETCH_RAISE``
-        wywala się z nazwą pola, gdy changelista dotknie relacji spoza
-        deklaracji).
+        Regresję pilnuje ``test_admin_select_related.py``: przybija
+        niezmiennik „liczba zapytań nie rośnie z liczbą wierszy", więc
+        działa na Django 5.2 i nie potrzebuje *fetch modes*. Na gałęzi
+        ``django-6.1`` dokłada się do tego ostrzejsza bramka
+        ``test_fetch_raise_gate.py`` (tryb ``FETCH_RAISE`` wywala się
+        z nazwą pola, gdy changelista dotknie relacji spoza deklaracji).
         """
         qs = super().get_queryset(request)
         return qs.select_related(*self.list_select_related)

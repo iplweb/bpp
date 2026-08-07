@@ -323,7 +323,19 @@ class AutorAdmin(
         "tytul": [
             "tytul",
         ],
-        "aktualna_jednostka": ["aktualna_jednostka", "aktualna_jednostka__wydzial"],
+        "aktualna_jednostka": [
+            "aktualna_jednostka",
+            "aktualna_jednostka__wydzial",
+            # ``Jednostka.__str__`` czyta ``self.uczelnia.uzywaj_wydzialow``,
+            # żeby zdecydować, czy dokleić wydział do nazwy — więc bez tego
+            # JOIN-a wychodzi jeden SELECT na KAŻDY wiersz changelisty
+            # (zmierzone: 50 zapytań po ``bpp_uczelnia`` na stronie 50
+            # autorów). Z produkcyjnymi regułami CACHEOPS ``bpp.uczelnia``
+            # jest cache'owana, więc licznik zapytań SQL tego NIE pokazuje:
+            # koszt zamienia się w 50 round-tripów do Redisa i widać go
+            # dopiero na zegarze.
+            "aktualna_jednostka__uczelnia",
+        ],
         "aktualna_funkcja": ["aktualna_funkcja"],
     }
 
