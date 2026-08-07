@@ -26,7 +26,10 @@ from bpp.models.abstract import (
     RekordBPPBaza,
 )
 from bpp.models.autor import Autor
-from bpp.models.soft_delete import BppAutorstwoSoftDeleteMixin
+from bpp.models.soft_delete import (
+    BppAutorstwoSoftDeleteMixin,
+    BppPublikacjaSoftDeleteMixin,
+)
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.util import safe_tytul_html
 
@@ -124,6 +127,7 @@ _Patent_PropertyCache = _Patent_PropertyCache()
 
 
 class Patent(
+    BppPublikacjaSoftDeleteMixin,
     RekordBPPBaza,
     ModelZRokiem,
     ModelZeStatusem,
@@ -177,6 +181,15 @@ class Patent(
         verbose_name = "patent"
         verbose_name_plural = "patenty"
         app_label = "bpp"
+        indexes = [
+            # Indeks CZĘŚCIOWY — uzasadnienie przy `wc_deleted_at_idx`
+            # (`wydawnictwo_ciagle.py`, Meta klasy Wydawnictwo_Ciagle).
+            models.Index(
+                fields=["deleted_at"],
+                name="patent_deleted_at_idx",
+                condition=Q(deleted_at__isnull=False),
+            ),
+        ]
 
     def __str__(self):
         return self.tytul_oryginalny

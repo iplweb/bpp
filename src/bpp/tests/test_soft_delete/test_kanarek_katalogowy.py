@@ -93,41 +93,45 @@ NIE są już częścią rdzenia kanarka — ale zostają w module, bo:
    naprawa faktycznie łapie to, co stary kod przepuszczał.
 """
 
+import importlib
 import re
 
 import pytest
 from django.db import connection
+
+from bpp.migration_util import viewdef
 
 # Tabele objęte soft-delete (django-soft-delete SoftDeleteModel) — jedyne
 # źródło niezmiennika, świadomie utrzymywane jako lista, nie regex-owa
 # heurystyka po nazwie.
 #
 # Faza 01 (2026-08-06): trzy tabele through autorstwa.
+# Faza 02 (2026-08-07): pięć tabel publikacji.
 #
-# Faza 02 MUSI DOPISAĆ TU 5 TABEL PUBLIKACJI:
-#     "bpp_wydawnictwo_ciagle",
-#     "bpp_wydawnictwo_zwarte",
-#     "bpp_patent",
-#     "bpp_praca_doktorska",
-#     "bpp_praca_habilitacyjna",
-# To WCIĄŻ jest jednolinijkowa (a ściślej: pięciolinijkowa) zmiana W TYM
-# MIEJSCU — rdzeń kanarka (pg_depend) jest generyczny względem listy i nie
-# wymaga żadnych innych zmian kodu. ALE: po dopisaniu tych 5 tabel kanarek
-# realnie zaczerwieni się na WIĘCEJ niż na 3 znane winowajców z raportu —
-# złapie też ``bpp_kronika_praca_doktorska_view`` i
-# ``bpp_kronika_praca_habilitacyjna_view`` (czytają swoje tabele bez
-# żadnego filtra i, w odróżnieniu od pozostałych trzech ``bpp_kronika_*``,
-# NIE są jeszcze zweryfikowane jako martwe ani wpisane do ``WYJATKI`` —
-# tego akurat nikt jeszcze nie sprawdzał, bo dotąd nie było powodu). To
-# NIE jest fałszywy alarm do wyciszenia odruchowo — to dokładnie ta klasa
-# odkrycia, dla której ten kanarek istnieje. Faza 02 ma:
-#   a) albo zweryfikować, że są martwe (jak pozostałe trzy) i dopisać je
-#      do ``WYJATKI`` z uzasadnieniem i datą,
-#   b) albo je naprawić wzorcem z sekcji „Wzorzec naprawy" wyżej.
+# Rozszerzenie o fazę 02 zrobiono NA STARCIE tej fazy, jeszcze przed
+# napisaniem jakiegokolwiek DDL — i to jest cała wartość tego kanarka.
+# Zamiast odkrywać konsumentów pojedynczo, przez awarie (tak przebiegła
+# faza 01), dostaliśmy pełną listę 15 widoków jednym przebiegiem trwającym
+# 19 sekund. Rdzeń (pg_depend) jest generyczny względem tej listy, więc było
+# to dopisanie pięciu linijek i nic więcej.
+#
+# Inwentaryzacja i to, co z niej wynikło:
+# docs/superpowers/reviews/2026-08-07-faza-02-inwentaryzacja-widokow.md
+#
+# Przewidywanie fazy 01 się sprawdziło: rozszerzenie listy złapało też
+# ``bpp_kronika_praca_{doktorska,habilitacyjna}_view``, których żywotności
+# nikt wcześniej nie badał. Nie zostały wyciszone wyjątkiem — okazały się
+# martwe i cała siedmioelementowa rodzina ``bpp_kronika_*`` została
+# skasowana migracją ``0499``.
 TABELE_SOFT_DELETE = [
     "bpp_wydawnictwo_ciagle_autor",
     "bpp_wydawnictwo_zwarte_autor",
     "bpp_patent_autor",
+    "bpp_wydawnictwo_ciagle",
+    "bpp_wydawnictwo_zwarte",
+    "bpp_patent",
+    "bpp_praca_doktorska",
+    "bpp_praca_habilitacyjna",
 ]
 
 # Widoki-wyjątki: nazwa widoku -> uzasadnienie + data weryfikacji.
@@ -145,26 +149,20 @@ TABELE_SOFT_DELETE = [
 # (metadane pakietowania, nie kod). Naprawianie widoku, którego nikt nie
 # czyta, byłoby czystym churnem — zostawione świadomie, do ewentualnego
 # DROP-u przy innej okazji.
-WYJATKI = {
-    "bpp_kronika_wydawnictwo_ciagle_view": (
-        "martwy widok (migracja 0001_widoki_kronika.sql) — zero "
-        "konsumentów w kodzie/szablonach/modelach; jedyne trafienia "
-        "'kronika' poza migracjami to SOURCES.txt. Zweryfikowane "
-        "2026-08-06, naprawa-finalna-report.md faza 01."
-    ),
-    "bpp_kronika_wydawnictwo_zwarte_view": (
-        "martwy widok (migracja 0001_widoki_kronika.sql) — zero "
-        "konsumentów w kodzie/szablonach/modelach; jedyne trafienia "
-        "'kronika' poza migracjami to SOURCES.txt. Zweryfikowane "
-        "2026-08-06, naprawa-finalna-report.md faza 01."
-    ),
-    "bpp_kronika_patent_view": (
-        "martwy widok (migracja 0001_widoki_kronika.sql) — zero "
-        "konsumentów w kodzie/szablonach/modelach; jedyne trafienia "
-        "'kronika' poza migracjami to SOURCES.txt. Zweryfikowane "
-        "2026-08-06, naprawa-finalna-report.md faza 01."
-    ),
-}
+# PUSTE — i to jest stan docelowy, nie przeoczenie.
+#
+# Faza 01 trzymała tu trzy widoki ``bpp_kronika_*``, zweryfikowane jako
+# martwe, ale niemożliwe do skasowania w tamtej fazie: zależały od nich dwa
+# widoki nadrzędne, więc goły ``DROP VIEW`` nie przechodził, a ``CASCADE``
+# zabrałby po cichu także je. Faza 02 rozcięła cały graf jedną migracją
+# (``0499_drop_kronika_views``) — po siódemce nie ma śladu, więc wyjątki
+# straciły przedmiot.
+#
+# Jeśli kanarek zacznie zgłaszać NOWY widok, to jest FAIL do zbadania, a nie
+# sygnał, żeby dopisać go tutaj. Wyjątek wpisuje się dopiero po weryfikacji
+# martwoty (``pg_depend`` + grep po kodzie/szablonach/``Meta.db_table``)
+# i zawsze z uzasadnieniem oraz datą.
+WYJATKI = {}
 
 
 def _regex_dla_tabeli(tabela):
@@ -439,20 +437,13 @@ def test_matcher_prefiks_tabeli_publikacji_kontra_tabela_autorstwa(tekst, oczeki
     assert widok_uzywa_tabeli(tekst, "bpp_wydawnictwo_ciagle") is oczekiwane
 
 
-# --- Test dowodowy: symulacja fazy 02 -----------------------------------
+# --- Test dowodowy: fałszywa zieleń starego rdzenia ---------------------
 
-# Pięć tabel publikacji, które faza 02 dopisze do TABELE_SOFT_DELETE.
-# Zduplikowane tu ŚWIADOMIE (a nie zaimportowane) — ten test ma przetrwać
-# NIEZMIENIONY moment, w którym faza 02 faktycznie dopisze je do stałej
-# modułowej; do tego czasu musi budować symulację sam, niezależnie od
-# TABELE_SOFT_DELETE.
-_TABELE_PUBLIKACJI_FAZA_02 = [
-    "bpp_wydawnictwo_ciagle",
-    "bpp_wydawnictwo_zwarte",
-    "bpp_patent",
-    "bpp_praca_doktorska",
-    "bpp_praca_habilitacyjna",
-]
+# Funkcje transformujące definicję widoku, wzięte WPROST z migracji 0497 —
+# zamiast kopii, która rozjechałaby się przy pierwszej zmianie kształtu
+# widoku. Nazwy modułów migracji zaczynają się od cyfry, więc zwykły import
+# nie przejdzie.
+_p0497 = importlib.import_module("bpp.migrations.0497_soft_delete_rekord_views")
 
 
 def _winowajcy_starym_algorytmem(widoki, tabele, wyjatki):
@@ -474,66 +465,68 @@ def _winowajcy_starym_algorytmem(widoki, tabele, wyjatki):
 
 
 @pytest.mark.django_db
-def test_symulacja_fazy_02_kanarek_lapie_widoki_ktore_stara_wersja_przepuszczala():
-    """DOWÓD, nie test dzisiejszego stanu bazy: symuluje przyszły stan po
-    fazie 02 (soft-delete PUBLIKACJI), gdzie ``TABELE_SOFT_DELETE`` rośnie
-    o 5 tabel publikacji, i udowadnia, że naprawiony (pg_depend) rdzeń
-    kanarka łapie DOKŁADNIE to, co stary (tekstowy) rdzeń przepuszczał.
+def test_stary_rdzen_przepuszczal_widok_dziedziczacy_deleted_at_z_joina():
+    """DOWÓD, że przejście na ``pg_depend`` zamknęło REALNĄ dziurę.
 
-    ``TABELE_SOFT_DELETE`` w tym pliku NIE jest tu modyfikowane — budujemy
-    lokalną, rozszerzoną listę i wołamy oba warianty algorytmu na tych
-    samych, żywych danych z ``pg_views``/``pg_depend``. Ten test ma
-    zostać na stałe (nie jest tymczasowym scratchem): to on dowodzi, że
-    faza 02 dostanie od kanarka prawdziwą, kompletną listę winowajców
-    jednym przebiegiem, zamiast — jak faza 01 — odkrywać ich pojedynczo
-    przez awarie produkcyjne.
+    Poprzednia wersja tego testu (faza 01) była symulacją: brała trzy
+    widoki, które NAPRAWDĘ czytały wtedy ``bpp_wydawnictwo_ciagle`` bez
+    filtra, i pokazywała, że stary (tekstowy) rdzeń ich nie widzi. Faza 02
+    te widoki naprawiła, więc dowód stracił materiał — nie dlatego, że
+    przestał być prawdziwy, tylko dlatego, że opierał się na usterce, której
+    już nie ma.
 
-    Trzy konkretne pary (widok, tabela) niżej pochodzą z recenzji
-    ``kanarek-fix-report.md`` (żywy katalog, 2026-08-06): widoki
-    odziedziczyły tekstowo ``deleted_at`` z filtra po
-    ``bpp_wydawnictwo_ciagle_autor`` (ten sam JOIN), mimo że nie filtrują
-    wcale po WŁASNYM ``deleted_at`` tabeli ``bpp_wydawnictwo_ciagle``.
+    Wersja obecna wytwarza tę usterkę SAMA, w transakcji testowej, więc
+    zostaje prawdziwa niezależnie od stanu bazy. Zdejmujemy z
+    ``bpp_wydawnictwo_ciagle_view`` filtr po WŁASNYM ``deleted_at``
+    (dokładnie tę wstawkę, którą zakłada migracja ``0497``) i pytamy oba
+    warianty algorytmu.
+
+    Sedno fałszywej zieleni: po zdjęciu filtra w definicji NADAL jest słowo
+    ``deleted_at`` — bo widok liczy ``count(...) FILTER (WHERE
+    bpp_wydawnictwo_ciagle_autor.deleted_at IS NULL)`` (migracja ``0494``).
+    Matcher tekstowy widzi więc „jest deleted_at, jest OK", mimo że filtr
+    dotyczy INNEJ tabeli — tej po drugiej stronie JOIN-a. Zależność
+    kolumnowa w ``pg_depend`` takiej pomyłki nie popełnia.
     """
-    tabele_symulowane = TABELE_SOFT_DELETE + _TABELE_PUBLIKACJI_FAZA_02
-
-    oczekiwane_falszywa_zielen = {
-        ("bpp_wydawnictwo_ciagle_view", "bpp_wydawnictwo_ciagle"),
-        ("bpp_nowe_sumy_wydawnictwo_ciagle_view", "bpp_wydawnictwo_ciagle"),
-        (
-            "rozbieznosci_dyscyplin_rozbieznoscizrodelview",
-            "bpp_wydawnictwo_ciagle",
-        ),
-    }
+    widok = "bpp_wydawnictwo_ciagle_view"
+    tabela = "bpp_wydawnictwo_ciagle"
+    para = (widok, tabela)
 
     with connection.cursor() as cur:
-        widoki = _pobierz_widoki_publiczne(cur)
-        stary_winowajcy = set(
-            _winowajcy_starym_algorytmem(widoki, tabele_symulowane, WYJATKI)
-        )
-        nowy_winowajcy = set(znajdz_winowajcow(cur, tabele=tabele_symulowane))
+        oryginal = viewdef(cur, widok)
+        zepsuta = _p0497._bez_filtra(oryginal, tabela, widok)
 
-    # Dowód #1 (ISTNIENIE DZIURY): stary algorytm PRZEPUSZCZAŁ te 3 pary —
-    # nie ma ich wśród jego winowajców, mimo że widoki naprawdę czytają
-    # bpp_wydawnictwo_ciagle bez filtra po jej deleted_at. To jest
-    # regression-proof samego buga opisanego w brief-ie/raporcie: jeśli
-    # ten assert kiedyś zacznie padać, znaczy że któryś z tych widoków się
-    # zmienił (np. ktoś usunął z jego tekstu literalne "deleted_at") i
-    # test wymaga aktualizacji dowodu, nie że naprawa przestała działać.
-    zlapane_przez_stary = stary_winowajcy & oczekiwane_falszywa_zielen
-    assert not zlapane_przez_stary, (
-        "Stary (tekstowy) algorytm złapał widoki, które wg raportu miał "
-        f"PRZEPUSZCZAĆ (fałszywa zieleń): {zlapane_przez_stary}. Dane "
-        "widoki się zmieniły — dowód wymaga aktualizacji, sprawdź "
-        "kanarek-fix-report.md."
+        assert "deleted_at" in zepsuta, (
+            "po zdjęciu filtra w definicji NIE MA już słowa 'deleted_at' — "
+            "cały dowód opiera się na tym, że ono zostaje (przez FILTER po "
+            "tabeli *_autor). Widok się zmienił, zaktualizuj dowód."
+        )
+
+        try:
+            cur.execute(f"CREATE OR REPLACE VIEW {widok} AS {zepsuta}")
+
+            widoki = _pobierz_widoki_publiczne(cur)
+            stary = set(
+                _winowajcy_starym_algorytmem(widoki, TABELE_SOFT_DELETE, WYJATKI)
+            )
+            nowy = set(znajdz_winowajcow(cur, tabele=TABELE_SOFT_DELETE))
+        finally:
+            # Przywracamy NIEZALEŻNIE od wyniku asercji (rollback transakcji
+            # testowej i tak by to cofnął, ale test ma dowodzić całego cyklu).
+            cur.execute(f"CREATE OR REPLACE VIEW {widok} AS {oryginal}")
+
+    # Dowód #1 — ISTNIENIE DZIURY: stary rdzeń przepuszcza zepsuty widok.
+    assert para not in stary, (
+        "Stary (tekstowy) rdzeń ZŁAPAŁ widok bez filtra, choć miał go "
+        "przepuścić — czyli fałszywa zieleń, którą ten test dokumentuje, "
+        "już nie zachodzi. Sprawdź, czy widok nadal zawiera 'deleted_at' "
+        "wyłącznie przez FILTER po tabeli *_autor."
     )
 
-    # Dowód #2 (NAPRAWA DZIAŁA): nowy (pg_depend) algorytm łapie wszystkie
-    # 3 pary, których stary nie widział.
-    niezlapane_przez_nowy = oczekiwane_falszywa_zielen - nowy_winowajcy
-    assert not niezlapane_przez_nowy, (
-        "Nowy (pg_depend) algorytm NIE złapał widoków z symulacji fazy "
-        f"02, które miał złapać: {niezlapane_przez_nowy}. Naprawa nie "
-        "działa albo się cofnęła."
+    # Dowód #2 — NAPRAWA DZIAŁA: rdzeń oparty o pg_depend go łapie.
+    assert para in nowy, (
+        "Rdzeń oparty o pg_depend NIE złapał widoku, który czyta "
+        f"{tabela} bez zależności od jej deleted_at. Naprawa się cofnęła."
     )
 
 

@@ -105,8 +105,9 @@ Taski dopisywane po rewizjach wylądowały poza numeracją. Wykonuj w TEJ kolejn
 | 2 | Task 2 — 5 modeli + migracja pól | kolumny muszą istnieć przed DDL |
 | 3 | **Task 2b** — widoki + gałąź kasująca + bramka `WHEN` | czyta `deleted_at` z kroku 2 |
 | 4 | **Task 2c** — bramka denorm | drugi system triggerów |
-| 5 | Task 3 — `slug` warunkowy unique | niezależny |
+| ~~5~~ | ~~Task 3 — `slug` warunkowy unique~~ | **NIEWYKONANY świadomie** — slug zawiera `pk`, kolizja niemożliwa; patrz box przy tasku |
 | 6 | **Task 3b** — `unique_together` na `*_Autor` | niezależny |
+| **3.5** | **Task 2d — sumy + rozbieżności (6 widoków)** | **DOPISANY** — inwentaryzacja kanarka na starcie fazy; w planie był tylko ostrzeżeniem (c) |
 | 7 | Task 4 — przeplecenie menedżerów | — |
 | 8 | Task 5 — testy integracyjne | wymaga 1-7 |
 | 9 | Task 6 — weryfikacja fazy | ostatni |
@@ -377,7 +378,34 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ---
 
-## Task 3: `slug` — warunkowy `UniqueConstraint` (reuse slug po soft-delete)
+## ~~Task 3: `slug` — warunkowy `UniqueConstraint`~~ → ŚWIADOMIE NIEWYKONANY
+
+> 🛑 **DECYZJA WŁAŚCICIELA, 2026-08-07: tego zadania NIE robimy.**
+> `slug` zostaje `unique=True`, bezwarunkowo. To NIE jest dług ani
+> przeoczenie — poniżej powód, żeby nikt nie „dokończył" tego w dobrej wierze.
+>
+> **Przesłanka zadania nie zachodzi.** `get_slug()`
+> (`src/bpp/models/util.py:246-254`) skleja slug jako
+> `tytuł-źródło-autorzy-<content_type_pk>-<pk>`. Slug **zawiera klucz
+> główny**, więc dwa różne wiersze nie mogą mieć tego samego slugu, a
+> skasowany rekord nie zablokuje nowego — nowy dostaje nowe `pk`, czyli inny
+> slug. Kolizja, którą to zadanie miało rozwiązać, jest konstrukcyjnie
+> niemożliwa. ID jest w slugu CELOWO, właśnie po to, żeby slug był unikalny.
+>
+> Plan pisano najwyraźniej przy założeniu slugu opartego wyłącznie na
+> tytule. Przy obecnej formule zamiana `unique=True` na
+> `UniqueConstraint(condition=Q(deleted_at__isnull=True))` **osłabiłaby**
+> gwarancję (unikalność tylko wśród żywych) i wymagała przebudowy indeksu na
+> pięciu dużych tabelach — w zamian za rozwiązanie nieistniejącego problemu.
+>
+> Wyszło przy pisaniu testów TDD do tego zadania: padły wszystkie dziesięć,
+> w tym ten, który powinien przechodzić JESZCZE PRZED zmianą. Denorm
+> dodatkowo nadpisuje ręcznie ustawiony slug, więc kolizji nie da się nawet
+> wywołać sztucznie.
+>
+> Poniższa treść zostaje wyłącznie jako kontekst historyczny.
+
+<details><summary>oryginalna treść tasku (nieaktualna)</summary>
 
 **Files:**
 - Modify: `src/bpp/models/wydawnictwo_ciagle.py:246` (denorm `slug`: `unique=True`→brak unique; `Meta.constraints`)
@@ -445,6 +473,8 @@ Zamiana `unique=True` na `models.UniqueConstraint(fields=["slug"], condition=Q(d
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
   ```
+
+</details>
 
 ---
 
@@ -892,7 +922,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - [ ] 5 modeli publikacji to `SoftDeleteModel` (przez `BppPublikacjaSoftDeleteMixin`); migracje `deleted_at`/`restored_at`/`transaction_id` + indeks per model (`0490_`).
 - [ ] `delete(self, *args, user=None, reason="", **kwargs)` / `restore(self, *args, user=None, **kwargs)` — per-instancja `save()`, wąska kaskada na `autorzy_set` pod wspólnym `transaction_id`, BEZ refleksyjnej kaskady pakietu, BEZ bulk `update(deleted_at=)`.
 - [ ] `*_Streszczenie` (i pozostałe nie-soft dzieci) nietknięte; `delete()` nie rzuca `SoftDeleteException`.
-- [ ] `slug` → warunkowy `UniqueConstraint(condition=Q(deleted_at__isnull=True))` (`0491_`); reuse slug po soft-delete działa.
+- [x] ~~`slug` → warunkowy `UniqueConstraint`~~ — **świadomie NIEwykonane.** `slug` zostaje `unique=True`; slug zawiera `pk`, więc kolizja jest konstrukcyjnie niemożliwa i warunkowanie tylko osłabiłoby gwarancję. Uzasadnienie w boxie przy Tasku 3.
 - [ ] `Wydawnictwo_*_Manager` przeplecione: `objects` filtruje `deleted_at` ORAZ ma `rekordy_z_oplata()`/`wydawnictwa_nadrzedne_dla_innych()`; `global_objects`/`deleted_objects` dostępne na wszystkich 5 modelach.
 - [ ] Testy: kaskada wspólny txid, znika z Rekord/Autorzy + restore, restore `*_Autor`, `post_soft_delete`, `*_Streszczenie` nietknięte, gate bulk-update — zielone.
 - [ ] `makemigrations --check --dry-run bpp` → `No changes detected`. Istniejące migracje NIE modyfikowane.

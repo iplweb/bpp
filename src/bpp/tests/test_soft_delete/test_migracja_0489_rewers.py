@@ -59,7 +59,7 @@ def _stan_ddl(cur):
 
 
 @pytest.mark.django_db
-def test_migracja_0489_odwracalna():
+def test_migracja_0489_odwracalna(bez_reinstalacji_denorma):
     with connection.cursor() as cur:
         przed = _stan_ddl(cur)
 

@@ -37,6 +37,20 @@ class RokHabilitacjiView(WprowadzanieDanychRequiredMixin, View):
         except Praca_Habilitacyjna.DoesNotExist:
             return HttpResponseNotFound("Habilitacja")
 
+        # ⚠️ Odwrotne OneToOne NIE respektuje soft-delete. Django rozwiązuje
+        # `autor.praca_habilitacyjna` przez `ReverseOneToOneDescriptor`, a ten
+        # pyta `_base_manager` — z definicji NIEprzefiltrowany (Django wymaga,
+        # żeby zwracał wszystkie wiersze, bo służy do pobierania obiektów
+        # powiązanych). Skasowana habilitacja jest więc tą ścieżką nadal
+        # osiągalna, mimo że `Praca_Habilitacyjna.objects` jej nie pokazuje.
+        #
+        # Nie da się tego naprawić centralnie bez ustawienia
+        # `Meta.base_manager_name` na menedżer filtrujący — a tego Django
+        # jawnie odradza (rozwaliłoby m.in. deserializację i
+        # `refresh_from_db`). Dlatego sprawdzamy tu jawnie.
+        if habilitacja.deleted_at is not None:
+            return HttpResponseNotFound("Habilitacja")
+
         return JsonResponse({"rok": habilitacja.rok})
 
 

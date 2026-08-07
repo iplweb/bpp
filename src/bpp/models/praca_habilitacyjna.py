@@ -1,11 +1,12 @@
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from django.db.models import CASCADE, PROTECT
+from django.db.models import CASCADE, PROTECT, Q
 from django.utils.functional import cached_property
 
 from bpp.models import Autor, Charakter_Formalny, DwaTytuly, ModelZOplataZaPublikacje
 from bpp.models.praca_doktorska import Praca_Doktorska_Baza
+from bpp.models.soft_delete import BppPublikacjaSoftDeleteMixin
 
 
 class Publikacja_Habilitacyjna(models.Model):
@@ -43,7 +44,7 @@ class _Praca_Habilitacyjna_PropertyCache:
 _Praca_Habilitacyjna_PropertyCache = _Praca_Habilitacyjna_PropertyCache()
 
 
-class Praca_Habilitacyjna(Praca_Doktorska_Baza):
+class Praca_Habilitacyjna(BppPublikacjaSoftDeleteMixin, Praca_Doktorska_Baza):
     autor = models.OneToOneField(Autor, PROTECT)
 
     publikacje_habilitacyjne = GenericRelation(Publikacja_Habilitacyjna)
@@ -56,6 +57,15 @@ class Praca_Habilitacyjna(Praca_Doktorska_Baza):
         verbose_name = "praca habilitacyjna"
         verbose_name_plural = "prace habilitacyjne"
         app_label = "bpp"
+        indexes = [
+            # Indeks CZĘŚCIOWY — uzasadnienie przy `wc_deleted_at_idx`
+            # (`wydawnictwo_ciagle.py`, Meta klasy Wydawnictwo_Ciagle).
+            models.Index(
+                fields=["deleted_at"],
+                name="phab_deleted_at_idx",
+                condition=Q(deleted_at__isnull=False),
+            ),
+        ]
 
     def clean(self):
         DwaTytuly.clean(self)
