@@ -176,6 +176,36 @@ def test_schemat_ograniczony_i_llm_maja_ten_sam_kontrakt(
 
 
 @pytest.mark.django_db
+def test_dlugowieczna_instancja_schematu_nie_pamieta_prosby_o_kosz(
+    wydawnictwo_ciagle_z_autorem,
+):
+    """Instancja schematu bywa SINGLETONEM (``multiseek_registry.
+    djangoql_export`` trzyma ``BppQLSchemaOgraniczony(Rekord)`` jako bramkę
+    walidacyjną). Prośba o kosz z jednego zapytania nie może przeciekać na
+    następne — inaczej pierwsze zapytanie po starcie procesu decydowałoby
+    o widoczności kosza dla wszystkich kolejnych."""
+    from djangoql.parser import DjangoQLParser
+    from djangoql.queryset import build_filter
+
+    wc = wydawnictwo_ciagle_z_autorem
+    autor_id = wc.autorzy_set.first().autor_id
+    wc.autorzy_set.first().delete()
+
+    schemat = BppQLSchema(Wydawnictwo_Ciagle)
+
+    def _uruchom(zapytanie):
+        ast = DjangoQLParser().parse(zapytanie)
+        schemat.validate(ast)
+        return _pk_set(Wydawnictwo_Ciagle.objects.filter(build_filter(ast, schemat)))
+
+    z_koszem = f"autorzy_set.autor.id = {autor_id} and autorzy_set.deleted_at != None"
+    assert wc.pk in _uruchom(z_koszem)
+
+    # …a NASTĘPNE zapytanie na tej samej instancji znów odsiewa kosz.
+    assert wc.pk not in _uruchom(f"autorzy_set.autor.id = {autor_id}")
+
+
+@pytest.mark.django_db
 def test_api_zapytanie_autor_nie_widzi_skasowanego_autorstwa(
     wydawnictwo_ciagle_z_autorem,
 ):

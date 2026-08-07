@@ -303,22 +303,30 @@ class WykluczSkasowaneMixin:
         # Ustawiane przed ``super()``, bo konstruktor bazy robi
         # introspekcję i może wołać metody schematu.
         self._jawne_prefiksy_soft_delete = frozenset()
-        self._ast_zbadany = False
+        self._glebokosc_validate = 0
         super().__init__(model)
 
     def validate(self, node):
         """Zapamiętaj prefiksy, na których użytkownik JAWNIE pyta o kosz.
 
-        ``apply_search()`` woła ``validate()`` z CAŁYM drzewem zanim
-        zbuduje filtr, a ``djangoql.breakdown`` — z każdym podzapytaniem
-        osobno; w obu wypadkach pierwszy węzeł, jaki widzimy, jest
-        korzeniem tego, co zaraz zostanie wykonane. ``validate()`` rekuruje
-        po sobie, więc analizę robimy tylko raz (``_ast_zbadany``).
+        ``apply_search()`` woła ``validate()`` z CAŁYM drzewem, zanim
+        zbuduje filtr, więc analizę robimy na węźle NAJWYŻSZYM — ``validate()``
+        rekuruje po sobie, stąd licznik głębokości.
+
+        Licznik (a nie jednorazowa flaga) dlatego, że instancja schematu
+        bywa DŁUGOWIECZNA: ``bpp.multiseek_registry.djangoql_export``
+        trzyma ``BppQLSchemaOgraniczony(Rekord)`` jako singleton bramki
+        walidacyjnej. Z flagą pierwsze zapytanie zamrażałoby swoje prefiksy
+        na zawsze i kolejne dostawałyby cudzą odpowiedź na pytanie „czy
+        użytkownik prosił o kosz".
         """
-        if not self._ast_zbadany:
-            self._ast_zbadany = True
-            self._jawne_prefiksy_soft_delete = prefiksy_z_jawnym_deleted_at(node)
-        return super().validate(node)
+        self._glebokosc_validate += 1
+        try:
+            if self._glebokosc_validate == 1:
+                self._jawne_prefiksy_soft_delete = prefiksy_z_jawnym_deleted_at(node)
+            return super().validate(node)
+        finally:
+            self._glebokosc_validate -= 1
 
     def resolve_name(self, name):
         pole = super().resolve_name(name)
