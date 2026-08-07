@@ -371,8 +371,18 @@ class JednostkaFilter(SimpleListFilter):
         return queryset
 
     def lookups(self, request, model_admin):
+        # ``uczelnia`` w select_related, NIE tylko ``wydzial``:
+        # ``Jednostka.__str__`` czyta OBA FK — ``self.uczelnia`` (bramka
+        # ``uzywaj_wydzialow``) i ``self.wydzial`` (skrót w nawiasie). Bez
+        # ``uczelnia`` każda opcja listy kosztowała osobny SELECT: na bazie
+        # produkcyjnej 504 jednostki = 504 zapytania na KAŻDE wejście na
+        # changelistę autorów. Cacheops zamieniał je na trafienia w Redis
+        # (``bpp.uczelnia`` jest w regułach), więc licznik zapytań SQL tego
+        # nie pokazywał — ale 504 round-tripy do Redisa nadal kosztowały
+        # ~200 ms na request.
         return (
-            (x.pk, str(x)) for x in Jednostka.objects.all().select_related("wydzial")
+            (x.pk, str(x))
+            for x in Jednostka.objects.all().select_related("wydzial", "uczelnia")
         )
 
 
@@ -392,11 +402,22 @@ class LogEntryFilterBase(SimpleListFilter):
         )
 
     def lookups(self, request, model_admin):
+        # ``only()`` MUSI wymieniać wszystkie pola, które czyta
+        # ``BppUser.__str__`` (``last_name``, ``first_name`` — patrz
+        # ``bpp/models/profile.py``), inaczej „optymalizacja" kosztuje
+        # zamiast oszczędzać: każde pole odroczone to osobny
+        # ``refresh_from_db()`` per użytkownik, czyli DWA dodatkowe SELECT-y
+        # na wiersz. Na bazie produkcyjnej to było 156 zapytań na wejście
+        # na changelistę wydawnictw ciągłych (78 użytkowników × 2 pola) —
+        # i w przeciwieństwie do słowników ``bpp.bppuser`` NIE jest
+        # cache'owany przez cacheops, więc szły wprost do PostgreSQL.
+        #
+        # Jeśli dokładasz pole do ``__str__``, dołóż je też tutaj.
         return (
             (x.pk, str(x))
             for x in BppUser.objects.filter(
                 pk__in=self.logentries().values_list("user_id")
-            ).only("pk", "username")
+            ).only("pk", "username", "last_name", "first_name")
         )
 
 
