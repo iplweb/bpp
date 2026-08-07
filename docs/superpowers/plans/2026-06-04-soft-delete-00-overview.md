@@ -175,7 +175,11 @@ Pola PINNED: `content_type` (FK ContentType), `object_id` (PositiveIntegerField,
 
 ### `pbn_export_queue` rozszerzenie (faza 05)
 - Nowe pole na `PBN_Export_Queue`: `operacja = models.CharField(choices=Operacja.choices, default=Operacja.WYSYLKA)` gdzie `class Operacja(models.TextChoices): WYSYLKA="wysylka"; WYCOFANIE="wycofanie"`.
-- Gałąź w logice wysyłki: `WYCOFANIE` → `client.delete_all_publication_statements(pbn_uid)` (`src/pbn_api/client/mixins/institutions.py:87`).
+- Gałąź w logice wysyłki: `WYCOFANIE` → `client.delete_all_publication_statements(pbn_uid)`.
+  ⚠️ Klient PBN to **pakiet zewnętrzny** — metoda żyje w site-packages
+  (`pbn_client/mixins/institutions.py:87`), importowana przez
+  `src/pbn_api/client/__init__.py`. Katalog `src/pbn_api/client/mixins/`
+  zawiera dziś wyłącznie `__pycache__`.
 
 ### Wstrzykiwanie `user` (PINNED — API thread-local, faza 06 tworzy, 07 używa)
 - Override sygnatury: `delete(self, *args, user=None, reason="", **kwargs)` i `restore(self, *args, user=None, **kwargs)`.
@@ -199,7 +203,7 @@ Pola PINNED: `content_type` (FK ContentType), `object_id` (PositiveIntegerField,
 - `verify_cache`: `src/bpp/management/commands/verify_cache.py` — **martwy stub**, nie używać.
 - Wzorzec testów cache: `src/bpp/tests/test_cache/test_cache_plpgsql_port.py`. Kanarki soft-delete: `test_soft_delete_preconditions.py`.
 - Admin tych modeli: `src/bpp/admin/{wydawnictwo_ciagle,wydawnictwo_zwarte,patent,praca_doktorska,praca_habilitacyjna,autor}.py`; mixiny `src/bpp/admin/helpers/mixins.py`.
-- PBN klient: `src/pbn_api/client/mixins/institutions.py:87`. `SentData`: `src/pbn_api/models/sentdata.py`. Kolejka: `src/pbn_export_queue/{models,tasks,admin}.py`.
+- PBN klient: **pakiet zewnętrzny** `pbn_client` (site-packages), nie `src/pbn_api/client/mixins/`. `SentData`: `src/pbn_api/models/sentdata.py` — ⚠️ scope'owane po uczelni (`get_for_rec(rec, uczelnia=None)`). Kolejka: `src/pbn_export_queue/{models,tasks,admin}.py`.
 - Merge autorów: `src/deduplikator_autorow/views/merge.py:155`, `utils/merge.py:191,284,354`.
 - Precedens wzorca: `src/zglos_publikacje/models.py` (`Zgłoszenie_Publikacji` już `SoftDeleteModel`).
 

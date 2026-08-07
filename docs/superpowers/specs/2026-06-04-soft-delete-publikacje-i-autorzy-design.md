@@ -522,10 +522,14 @@ się wywalić; wycofanie oświadczeń jest zawsze bezpieczne). Gate: jeśli reko
 nigdy nie poszedł do PBN (`pbn_uid is None`) — nic nie robimy.
 
 Prymityw PBN istnieje:
-`src/pbn_api/client/mixins/institutions.py:87` →
+⚠️ **w pakiecie zewnętrznym** `pbn_client/mixins/institutions.py:87` →
 `delete_all_publication_statements(publicationId)` (+ selektywne
 `delete_publication_statement` w `:135`, retry w
-`pbn_api/client/publication_sync.py`).
+`pbn_client/statements.py:211`).
+⚠️ `_delete_statements_with_retry` z pakietu **NIE jest wzorcem** — ponawia
+na `CannotDeleteStatementsException`, a u nas ten wyjątek oznacza SUKCES
+(oświadczeń nie było, stan docelowy osiągnięty). Wzorzec obsługi:
+`src/pbn_wysylka_oswiadczen/tasks.py:54-76`.
 
 ### 4.2 Mechanizm — jeden prymityw, DWA wejścia (decyzja #16)
 
