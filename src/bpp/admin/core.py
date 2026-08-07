@@ -185,12 +185,33 @@ class BaseBppAdminMixin(DynamicAdminFilterMixin):
         rodzeństwa z tego samego pobrania — N+1 zamienia się w 2 zapytania,
         bez zgadywania z góry, które FK dotknie szablon.
 
-        Zmierzone na kopii bazy produkcyjnej (z produkcyjnymi regułami
-        ``CACHEOPS``) — zapytania i mediana czasu na request:
+        Zmierzone na kopii bazy produkcyjnej (68 tys. autorów, 491 jednostek,
+        produkcyjne reguły ``CACHEOPS``, wariant ``bench_prod``), mediana
+        z dwóch niezależnych przebiegów po 25 powtórzeń na cichym hoście —
+        para ``ee5e81a35`` → ``ccb9756ff``:
 
-        * changelist jednostek        66 → 17 zapytań, 185 → 120 ms
-        * changelist wyd. zwartych   220 → 40 zapytań, 227 → 184 ms
-        * changelist wyd. ciągłych   190 → 38 zapytań, 221 → 190 ms
+        * changelist jednostek        66 → 17 zapytań, 220 → 128 ms
+        * changelist wyd. zwartych   220 → 36 zapytań, 248 → 209 ms
+        * changelist wyd. ciągłych   190 → 34 zapytań, 233 → 213 ms
+        * changelist autorów          27 → 27 zapytań, 744 → 239 ms
+
+        Wcześniejsza wersja tego docstringu podawała 40/38 zapytań i czasy
+        opisane jako rząd wielkości — powyższe są pomiarem. Uwaga na
+        changelist autorów: liczba zapytań jest identyczna, a czas spada
+        o 68 %, bo dotykane tam relacje są cache'owane przez ``CACHEOPS``
+        i koszt to round-tripy do Redisa, niewidoczne dla licznika SQL.
+        Sam ten spadek pochodzi zresztą głównie z poprawek filtrów na
+        ``dev`` (``5ffc83f50``), nie z ``FETCH_PEERS``.
+
+        WAŻNE, gdy ta gałąź pociągnie ``dev``: PR #738 dokłada na ``dev``
+        jawne ``select_related`` dla tych samych relacji i schodzi z nimi
+        do 16 (jednostki) i 35 (wyd. zwarte) zapytań, czyli o JEDNO mniej
+        niż ``FETCH_PEERS`` — ten musi dorzucić zapytanie hurtowe na każdą
+        relację, a JOIN załatwia to bez dodatkowego round-tripu. Po scaleniu
+        te trzy pozycje przestaną być argumentem za ``FETCH_PEERS``.
+        Zostaje właściwy: to SIATKA BEZPIECZEŃSTWA na relacje, których nikt
+        nie zadeklarował — działa bez zgadywania z góry, które FK dotknie
+        szablon, i chroni changelisty, do których nikt nie doszedł pomiarem.
 
         Dlaczego TU, a nie globalnie (podstawienie ``DEFAULT_FETCH_MODE``):
         ``track_peers`` trzyma ``weakref`` do każdej instancji z pobrania,

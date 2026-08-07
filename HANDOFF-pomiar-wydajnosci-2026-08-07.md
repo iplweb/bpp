@@ -1,11 +1,105 @@
-# HANDOFF: dokończyć pomiar czasów wydajności (drugi komputer)
+# HANDOFF: pomiar czasów wydajności — ZAMKNIĘTY
 
-**Data:** 2026-08-07
+**Data zlecenia:** 2026-08-07
+**Data wykonania:** 2026-08-07 (MacBook Pro, cichy host)
 **Gałąź:** `django-6.1`
-**Powód handoffu:** host `mac-mini` jest stale obłożony (równolegle biegną
-inne sesje i suity testowe), więc **nie da się na nim zmierzyć czasów
-odpowiedzi**. Liczby zapytań są już zmierzone i pewne — brakuje wyłącznie
-wiarygodnych czasów ściany.
+**Status:** **ZROBIONE.** Czasy zmierzone, kryterium kontrolera spełnione.
+Wynik niżej; oryginalna treść handoffu zostaje jako zapis procedury.
+
+---
+
+## WYNIK
+
+Warunki: kopia bazy produkcyjnej (`db-backup-20260603-023000`, 68 355
+autorów, 491 jednostek), wariant `bench_prod` (23 produkcyjne reguły
+`CACHEOPS`), 25 powtórzeń × dwa niezależne przebiegi na stronę, sekwencja
+`po → przed → po → przed`, `FLUSHDB` przed każdym przebiegiem. Dev-owy
+stack `docker compose` zatrzymany na czas pomiaru.
+
+### Kontroler — kryterium ważności SPEŁNIONE
+
+`admin: źródło (changelist)`, 16 zapytań we **wszystkich czterech**
+przebiegach; mediany 284,2 / 281,7 / 284,6 / 281,4 ms. Rozrzut między
+przebiegami **3,2 ms = 1,1 %** mediany, **zero flag `SZUM`**. (Na
+`mac-mini` ten sam kontroler skakał 320 → 420 ms, +31 %.)
+
+Podłoga szumu wyznaczona dodatkowo z **dziesięciu** niezmienionych
+scenariuszy: dla stron > 100 ms żaden nie odchylił się o więcej niż
+**3,5 %**; na stronach kilkudziesięciomilisekundowych sięga 9 %.
+
+### Czasy, para `ee5e81a35` → `ccb9756ff`
+
+| scenariusz | zapytań | przed [ms] | po [ms] | różnica |
+|---|---|---|---|---|
+| publiczne: lista jednostek | 514→3 | 196,2 / 182,0 | 26,7 / 29,1 | **−161 ms (−85 %)** |
+| admin: autor (changelist) | 27→27 | 788,4 / 698,7 | 237,2 / 240,3 | **−505 ms (−68 %)** |
+| admin: jednostka (changelist) | 66→17 | 240,2 / 199,1 | 131,7 / 123,7 | **−92 ms (−42 %)** |
+| admin: wyd. zwarte (changelist) | 220→36 | 246,6 / 249,8 | 210,8 / 208,0 | **−39 ms (−16 %)** |
+| admin: wyd. ciągłe (changelist) | 190→34 | 233,4 / 233,1 | 219,5 / 207,4 | −20 ms (−8,5 %) |
+
+Wszystkie powyżej progu 3,5 %; `wyd. ciągłe` najbliżej i najmniej pewna.
+Liczby zapytań odtworzyły się co do jednego względem tych z handoffu.
+
+### Ile z tego wymaga Django 6.1 — prawie nic
+
+Trzeci punkt pomiarowy (czubek `dev`, Django 5.2.16; zbiory migracji
+`dev` i `django-6.1` są identyczne, więc obsłużyła go ta sama baza):
+
+| scenariusz | `ee5e81a35` | `dev` 5.2 | 6.1 + PEERS | `dev` + PR #738 (5.2) |
+|---|---|---|---|---|
+| publiczne: lista jednostek | 514 | **3** | 3 | 3 |
+| admin: wyd. ciągłe | 190 | **34** | 34 | 34 |
+| admin: wyd. zwarte | 220 | 70 | 36 | **35** |
+| admin: jednostka | 66 | 66 | 17 | **16** |
+| admin: źródło (kontroler) | 16 | 16 | 16 | 16 |
+
+Wnioski:
+
+1. Dwie wygrane (`lista jednostek`, `wyd. ciągłe`) były **już na 5.2** —
+   dają je poprawki z `dev`, `FETCH_PEERS` nie dokłada tam nic.
+2. Spadek czasu `admin: autor` 788 → ~250 ms daje commit `5ffc83f50`
+   z `dev`; `FETCH_PEERS` dokłada już tylko ~250 → 238 ms. Czyli i ta
+   wygrana jest **w praktyce cała na 5.2**.
+3. Pozostałe dwie (`jednostka`, `wyd. zwarte`) da się na 5.2 zrobić
+   jawnym `select_related` — i wychodzi **o jedno zapytanie lepiej** niż
+   `FETCH_PEERS`, bo ten musi dorzucić zapytanie hurtowe na relację.
+   Zrobione w **PR #738** (do `dev`).
+
+Czyli: **sam upgrade do 6.1 nie kupuje wydajności, a `FETCH_PEERS` daje
+mniej, niż wyglądało.** Jego wartością zostaje bycie siatką bezpieczeństwa
+na relacje, których nikt nie zadeklarował, oraz `FETCH_RAISE` jako
+detektor N+1 (PR #736).
+
+### Znalezisko poboczne
+
+Na każdej changelistcie admina siedzi stałe **13 zapytań** aplikacji
+`dynamic_admin_columns` (8 × `dynamic_columns_modeladmin` + 5 ×
+`dynamic_columns_modeladmincolumn`), w 5.2 i w 6.1 jednakowo.
+`FETCH_PEERS` tego nie rusza. Przy changelistcie autorów to prawie połowa
+z 27 zapytań — jedno miejsce, zysk na wszystkich changelistach.
+
+### PUŁAPKA, której nie było w oryginalnym handoffie
+
+`bench.py` ustawia porty kontenerów przez `os.environ.setdefault()`:
+
+```python
+os.environ.setdefault("DJANGO_BPP_DB_PORT", "55432")
+os.environ.setdefault("DJANGO_BPP_REDIS_PORT", "55379")
+```
+
+`setdefault` **nie nadpisuje** zmiennej już ustawionej. Jeśli profil
+shella eksportuje `DJANGO_BPP_DB_PORT=5432` / `DJANGO_BPP_REDIS_PORT=6379`
+(typowe przy dev-owym `docker compose`), benchmark **po cichu uderza
+w dev-owe kontenery** zamiast w odtworzony dump. Bez błędu, bez
+ostrzeżenia, z wiarygodnie wyglądającym wynikiem. To samo dotyczy
+`manage.py migrate` uruchomionego z tym settings-modułem — domigruje
+cudzą bazę.
+
+Kontrola: przed pomiarem wypisz `settings.DATABASES["default"]["PORT"]` —
+ma być `55432`. Druga kontrola: liczby zapytań muszą odtworzyć `514`,
+`190`, `220`, `66` (przed) i `3`, `34`, `36`, `17` (po); na dev-owej bazie
+się nie odtworzą. Obejście: **eksportuj** porty zamiast polegać na
+`setdefault`.
 
 ---
 
