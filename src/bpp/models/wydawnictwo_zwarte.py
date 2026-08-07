@@ -57,6 +57,7 @@ from bpp.models.nagroda import Nagroda
 from bpp.models.soft_delete import (
     BppAutorstwoSoftDeleteMixin,
     BppPublikacjaSoftDeleteMixin,
+    BppSoftDeleteManager,
 )
 from bpp.models.system import Zewnetrzna_Baza_Danych
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
@@ -235,7 +236,18 @@ class ModelZOpenAccessWydawnictwoZwarte(ModelZOpenAccess):
 rok_regex = re.compile(r"\s[12]\d\d\d")
 
 
-class Wydawnictwo_Zwarte_Manager(ManagerModeliZOplataZaPublikacjeMixin, models.Manager):
+class Wydawnictwo_Zwarte_Manager(
+    ManagerModeliZOplataZaPublikacjeMixin, BppSoftDeleteManager
+):
+    """Jak ``Wydawnictwo_Ciagle_Manager`` — uzasadnienie doboru bazy
+    (i tego, dlaczego kolejność NIE jest nośna) w jego docstringu
+    (``wydawnictwo_ciagle.py``).
+
+    ``wydawnictwa_nadrzedne_dla_innych()`` też korzysta na przepleceniu:
+    po fazie 02 nie zwróci już książki-matki, której jedyne rozdziały
+    trafiły do kosza.
+    """
+
     def wydawnictwa_nadrzedne_dla_innych(self):
         return (
             self.exclude(wydawnictwo_nadrzedne_id=None)

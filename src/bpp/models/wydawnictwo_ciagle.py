@@ -50,6 +50,7 @@ from bpp.models.abstract import (
 from bpp.models.soft_delete import (
     BppAutorstwoSoftDeleteMixin,
     BppPublikacjaSoftDeleteMixin,
+    BppSoftDeleteManager,
 )
 from bpp.models.system import Zewnetrzna_Baza_Danych
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
@@ -172,8 +173,26 @@ class ModelZOpenAccessWydawnictwoCiagle(ModelZOpenAccess):
         abstract = True
 
 
-class Wydawnictwo_Ciagle_Manager(ManagerModeliZOplataZaPublikacjeMixin, models.Manager):
-    pass
+class Wydawnictwo_Ciagle_Manager(
+    ManagerModeliZOplataZaPublikacjeMixin, BppSoftDeleteManager
+):
+    """Menedżer opłat PRZEPLECIONY z filtrem soft-delete (faza 02).
+
+    Nośna jest DRUGA BAZA, nie kolejność. Do fazy 02 stało tu
+    ``models.Manager``, więc ``objects`` w ogóle nie znało ``deleted_at``
+    i pokazywało kosz — mimo że model dziedziczył już
+    ``BppPublikacjaSoftDeleteMixin`` (menedżer zadeklarowany w ciele klasy
+    przesłania ten wniesiony przez bazę abstrakcyjną). Podmiana na
+    ``BppSoftDeleteManager`` to naprawia.
+
+    Kolejność baz jest natomiast WYŁĄCZNIE konwencją (mixiny przed klasą
+    bazową) — sprawdzone mutacyjnie: odwrócenie jej nie zmienia zachowania.
+    Powód: ``ManagerModeliZOplataZaPublikacjeMixin`` NIE jest menedżerem,
+    tylko czystym mixinem z jedną metodą (``self.exclude(...)``), więc nie
+    wnosi własnego ``get_queryset()`` i nie ma o co konkurować w MRO.
+    Dzięki temu ``rekordy_z_oplata()`` operuje na już-przefiltrowanym
+    querysecie bez jednej linijki kodu o soft-delete.
+    """
 
 
 class Wydawnictwo_Ciagle(
