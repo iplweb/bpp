@@ -253,9 +253,12 @@ environments = ["python_version >= '3.10' and python_version < '3.15' and platfo
 #                     CVE-2026-54531, GHSA-jm82-fx9c-mx94
 #   pyasn1  >=0.6.4  (via pyasn1-modules/python-ldap) - PYSEC-2026-3455,
 #                     PYSEC-2026-3456, PYSEC-2026-3457 (audyt: lipiec 2026)
+#   h2      >=4.4.1  (via twisted[http2]/daphne)      - CVE-2026-71554
+#                     (audyt: sierpien 2026)
 constraint-dependencies = [
     "bleach>=6.4.0",
     "daphne>=4.2.2",
+    "h2>=4.4.1",
     "pyasn1>=0.6.4",
     "pypdf>=6.13.3",
 ]
@@ -521,8 +524,15 @@ dev = [
     # przestaje byc potrzebne. Konfiguracja w [tool.pytest-testcontainers-django].
     # 0.2.2 / 0.2.5: from_env() honoruje aktywny `docker context`, wiec stack
     # startuje na OrbStack / colima / Docker Desktop bez recznego DOCKER_HOST.
-    "pytest-testcontainers>=0.2.2",
-    "pytest-testcontainers-django>=0.2.5",
+    # 0.3.0: kontenery sa niszczone od reki takze przy SIGTERM/SIGHUP (wczesniej
+    # tylko pytest_unconfigure + atexit, wiec ubicie zawieszonego pytesta
+    # zostawialo je Ryukowi na ~10 s — albo na zawsze, gdy w miedzyczasie
+    # restartowal sie demon Dockera). Ryuk jest teraz zamykany razem z sesja
+    # zamiast wisiec ~60 s po niej, a `--testcontainers-clean` szuka po etykiecie
+    # org.testcontainers=true, wiec zastepuje `make clean-testcontainers`.
+    # SIGKILL nadal spada na Ryuka — tego nie da sie przechwycic.
+    "pytest-testcontainers>=0.3.1",
+    "pytest-testcontainers-django>=0.3.1",
     # django-run-site: CLI orchestrator dev stack-u. Dawniej `manage.py run_site`
     # + helpery w `_run_site_helpers/`. Instalowany w dev-deps zeby `uv run run-site`
     # mialo dostep do CLI bez globalnego `uv tool install`. Konfiguracja: runsite.toml.
