@@ -1,6 +1,7 @@
 import os
 import random
 import time
+import warnings
 from datetime import date
 from uuid import uuid4
 
@@ -1137,6 +1138,36 @@ def constance_cache_warmed_up(db):
     return config
 
 
+# Tabele powiązań autorstwa, na które triggery denorm (denorm_always_only =
+# ("deleted_at",) w Patent, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte) generują
+# SQL referujący NEW."deleted_at". Kolumna przyszła w migracji
+# bpp.0488_autor_soft_delete_fields — patrz guard w django_db_setup niżej.
+_AUTOR_TABELE_Z_DELETED_AT = (
+    "bpp_patent_autor",
+    "bpp_wydawnictwo_ciagle_autor",
+    "bpp_wydawnictwo_zwarte_autor",
+)
+
+
+def _autor_tabele_maja_deleted_at(connection) -> bool:
+    """True, gdy WSZYSTKIE tabele ``*_autor`` mają już kolumnę ``deleted_at``.
+
+    Rozpoznaje wyłącznie ten jeden, konkretny przypadek (baza sprzed migracji
+    0488 — reużyty kontener/baza ze starym schematem) — nie łyka żadnych
+    innych błędów ``install_triggers()``. Patrz komentarz w
+    ``django_db_setup``.
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT table_name FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND column_name = 'deleted_at' "
+            "AND table_name = ANY(%s)",
+            [list(_AUTOR_TABELE_Z_DELETED_AT)],
+        )
+        znalezione = {row[0] for row in cursor.fetchall()}
+    return znalezione == set(_AUTOR_TABELE_Z_DELETED_AT)
+
+
 @pytest.fixture(scope="session")
 def django_db_setup(django_db_setup, django_db_blocker):
     """Rebuild denorm triggers on the freshly-built test DB, then jitter
@@ -1158,13 +1189,43 @@ def django_db_setup(django_db_setup, django_db_blocker):
     1.12.1) usuwa wszystkie ``d_*``-triggery, a install_triggers() instaluje
     świeże, rozwiązujące content_type dynamicznie (patrz
     ``denorm.helpers.content_type_select_sql``).
+
+    Fixture jest session-scoped, ale uruchamia się w KAŻDEJ sesji pytest —
+    także bez ani jednego testu ``django_db`` — bo autouse ``_audit_wipe_once``
+    (niżej) go zależnościowo wymusza. Od fazy 01 soft-delete triggery denorm
+    dla Patent/Wydawnictwo_Ciagle/Wydawnictwo_Zwarte referują
+    ``NEW."deleted_at"`` (denorm_always_only). Na bazie sprzed migracji
+    bpp.0488 (typowo: reużyty kontener testcontainers albo ``--reuse-db`` ze
+    starym schematem) tej kolumny jeszcze nie ma i
+    ``install_triggers()`` pada ``UndefinedColumn``, wywalając CAŁĄ sesję
+    pytest — również tę bez testów bazodanowych. Guard rozpoznaje WYŁĄCZNIE
+    ten jeden przypadek (brak kolumny) i pomija instalację triggerów z
+    ostrzeżeniem zamiast crashować; każdy inny błąd leci dalej.
     """
     from denorm import denorms
     from django.db import connection
 
     with django_db_blocker.unblock():
-        denorms.drop_triggers()
-        denorms.install_triggers()
+        if _autor_tabele_maja_deleted_at(connection):
+            denorms.drop_triggers()
+            denorms.install_triggers()
+        else:
+            warnings.warn(
+                "Pomijam denorm.drop_triggers()/install_triggers(): tabele "
+                + ", ".join(_AUTOR_TABELE_Z_DELETED_AT)
+                + " nie mają jeszcze kolumny deleted_at (migracja "
+                "bpp.0488_autor_soft_delete_fields nie została zastosowana "
+                "na tej bazie testowej — najczęściej reużyty kontener "
+                "testcontainers albo baza --reuse-db ze starym schematem). "
+                'Triggery denorm referują NEW."deleted_at" '
+                "(denorm_always_only), więc install_triggers() padłby "
+                "UndefinedColumn. Zastosuj migracje "
+                "(`uv run python src/manage.py migrate`) albo uruchom testy "
+                "na świeżej bazie (np. `--create-db` / świeży kontener "
+                "testcontainers).",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
         # Przesuń każdą sekwencję w public o losową wartość z zakresu
         # [50 000, 500 000], niezależnie per sekwencja. Cel: nie pozwolić
