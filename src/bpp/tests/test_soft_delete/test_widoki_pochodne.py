@@ -19,9 +19,24 @@ Ten moduł pilnuje dwóch takich rodzin widoków:
 """
 
 import pytest
+from django.db import connection
 
 from bpp.models.cache import Rekord
 from bpp.models.sumy_views import Sumy
+from bpp.tests.test_soft_delete.test_kanarek_katalogowy import (
+    _widoki_zalezne_od_deleted_at,
+)
+
+# (widok sum, tabela PUBLIKACJI) — wymiar domkniety w fazie 02 (bpp.0498).
+# Wymiar AUTORSTWA (0495) obejmowal tylko pierwsze trzy, bo pozostale dwa
+# nie maja tabeli *_autor.
+SUMY_PUBLIKACJE = [
+    ("bpp_nowe_sumy_wydawnictwo_ciagle_view", "bpp_wydawnictwo_ciagle"),
+    ("bpp_nowe_sumy_wydawnictwo_zwarte_view", "bpp_wydawnictwo_zwarte"),
+    ("bpp_nowe_sumy_patent_view", "bpp_patent"),
+    ("bpp_nowe_sumy_praca_doktorska_view", "bpp_praca_doktorska"),
+    ("bpp_nowe_sumy_praca_habilitacyjna_view", "bpp_praca_habilitacyjna"),
+]
 
 
 @pytest.mark.django_db
@@ -92,3 +107,77 @@ def test_sumy_rankingu_wracaja_po_restore(wydawnictwo_ciagle_z_autorem):
     Wydawnictwo_Ciagle_Autor.global_objects.get(pk=pk).restore()
 
     assert Sumy.objects.filter(autor_id=autor_id).exists()
+
+
+# --- wymiar PUBLIKACJI (faza 02, migracja 0498) -------------------------
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("widok,tabela", SUMY_PUBLIKACJE)
+def test_sumy_zaleza_od_deleted_at_publikacji(widok, tabela):
+    """Kontrakt DDL: dowód, że ``0498`` w ogóle się wykonała.
+
+    Pytamy ``pg_depend`` o zależność KOLUMNOWĄ, nie tekst definicji — trzy
+    z tych widoków zawierają już ``deleted_at`` z migracji ``0495`` (wymiar
+    autorstwa), więc test substringowy dawałby dla nich fałszywą zieleń.
+    """
+    with connection.cursor() as cur:
+        assert (widok, tabela) in _widoki_zalezne_od_deleted_at(cur, [tabela]), (
+            f"{widok} nie zalezy od kolumny {tabela}.deleted_at"
+        )
+
+
+@pytest.mark.django_db
+def test_sumy_pomijaja_soft_deletowana_publikacje_IZOLOWANE(
+    wydawnictwo_ciagle_z_autorem,
+):
+    """Wyrocznia dla SAMEGO wymiaru publikacji.
+
+    ⚠️ Kasujemy publikację SUROWYM UPDATE-em, a nie ``wc.delete()``, i jest
+    to celowe. ``delete()`` kaskaduje na autorstwa, więc wiersz zniknąłby
+    z sum z DWÓCH niezależnych powodów: przez filtr publikacji (``0498``,
+    czyli to, co ten test ma sprawdzać) ORAZ przez filtr autorstwa
+    (``0495``). Test przechodziłby wtedy nawet po cofnięciu ``0498`` — czyli
+    nie byłby wyrocznią niczego.
+
+    Surowy SQL omija też gate na ``.update(deleted_at=...)``
+    (``BppSoftDeleteQuerySet``), co poza testem izolującym wymiar jest
+    zakazane.
+    """
+    wc = wydawnictwo_ciagle_z_autorem
+    autor_id = wc.autorzy_set.first().autor_id
+
+    assert Sumy.objects.filter(autor_id=autor_id).exists()
+
+    with connection.cursor() as cur:
+        cur.execute(
+            "UPDATE bpp_wydawnictwo_ciagle SET deleted_at = now() WHERE id = %s",
+            [wc.pk],
+        )
+
+    assert not Sumy.objects.filter(autor_id=autor_id).exists(), (
+        "soft-skasowana publikacja dalej wnosi punkty do rankingu"
+    )
+
+
+@pytest.mark.django_db
+def test_sumy_pomijaja_soft_deletowana_publikacje_end_to_end(
+    wydawnictwo_ciagle_z_autorem,
+):
+    """Realna ścieżka (``delete()`` z kaskadą) + powrót po ``restore()``.
+
+    Nie izoluje wymiaru (patrz test wyżej), ale pokrywa to, co faktycznie
+    robi operator, łącznie z odwracalnością.
+    """
+    wc = wydawnictwo_ciagle_z_autorem
+    autor_id = wc.autorzy_set.first().autor_id
+
+    assert Sumy.objects.filter(autor_id=autor_id).exists()
+
+    wc.delete()
+    assert not Sumy.objects.filter(autor_id=autor_id).exists()
+
+    wc.restore()
+    assert Sumy.objects.filter(autor_id=autor_id).exists(), (
+        "po restore publikacja nie wrocila do rankingu"
+    )
