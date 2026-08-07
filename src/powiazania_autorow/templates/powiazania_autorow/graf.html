@@ -156,6 +156,9 @@
 
     <div id="graf-wrapper" style="position: relative;">
         <div id="cytoscape-container"
+             tabindex="0"
+             role="application"
+             aria-label="Graf powiązań autorów. Strzałki przesuwają widok, plus i minus przybliżają, klawisz Home dopasowuje graf do ekranu."
              data-autor-id="{{ autor.pk }}"
              data-autor-label="{{ autor.imiona }} {{ autor.nazwisko }}"
              data-dane-url-template="{% url 'bpp:browse_autor_powiazania_dane' 0 %}"

@@ -409,4 +409,35 @@ export function podepnijZdarzenia(ctx) {
             dopasuj(cy);
         });
     }
+
+    // --- obsluga klawiatura (WCAG 2.1.1) ---
+    // Klawisze `+`/`-` sa znakami drukowalnymi, wiec podlegaja tez 2.1.4 —
+    // spelniaja je trzecim wariantem kryterium: dzialaja WYLACZNIE gdy
+    // kontener grafu ma focus, bo handler wisi na nim, nie na `document`.
+    const kontener = document.getElementById("cytoscape-container");
+    if (kontener) {
+        kontener.addEventListener("keydown", function (e) {
+            let obsluzone = true;
+
+            switch (e.key) {
+                case "ArrowUp": przesun(cy, "gora"); break;
+                case "ArrowDown": przesun(cy, "dol"); break;
+                case "ArrowLeft": przesun(cy, "lewo"); break;
+                case "ArrowRight": przesun(cy, "prawo"); break;
+                case "+":
+                case "=": zoomuj(cy, 1.2); break;
+                case "-":
+                case "_": zoomuj(cy, 1 / 1.2); break;
+                case "Home": dopasuj(cy); break;
+                default: obsluzone = false;
+            }
+
+            // preventDefault WYLACZNIE dla obsluzonych klawiszy. Blokowanie
+            // wszystkiego zamknelo by Tab w grafie, czyli naprawiajac 2.1.1
+            // stworzylibysmy pulapke klawiaturowa i zlamali 2.1.2.
+            if (obsluzone) {
+                e.preventDefault();
+            }
+        });
+    }
 }

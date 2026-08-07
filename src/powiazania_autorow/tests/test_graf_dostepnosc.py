@@ -61,3 +61,31 @@ def test_glify_ukryte_przed_czytnikiem():
     for fragment in tresc.split("<button")[1:]:
         if "graf-nav-" in fragment:
             assert 'aria-hidden="true"' in fragment
+
+
+def test_kontener_grafu_jest_fokusowalny():
+    # Bez tabindex użytkownik klawiatury nigdy nie dotrze do grafu.
+    tresc = _tresc()
+    fragment = tresc.split('id="cytoscape-container"')[1][:600]
+
+    assert 'tabindex="0"' in fragment
+
+
+def test_kontener_grafu_ma_role_application():
+    # Bez tego czytnik ekranu w trybie przeglądania sam obsłuży strzałki
+    # i nigdy nie dotrą one do grafu.
+    tresc = _tresc()
+    fragment = tresc.split('id="cytoscape-container"')[1][:600]
+
+    assert 'role="application"' in fragment
+
+
+def test_kontener_grafu_opisuje_dostepne_klawisze():
+    # role="application" wycisza tryb przeglądania, więc aria-label jest
+    # jedynym sposobem, w jaki użytkownik pozna dostępne klawisze.
+    tresc = _tresc()
+    fragment = tresc.split('id="cytoscape-container"')[1][:600]
+
+    assert "aria-label=" in fragment
+    for slowo in ("trzałk", "Home"):
+        assert slowo in fragment
