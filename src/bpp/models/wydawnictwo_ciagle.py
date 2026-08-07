@@ -47,7 +47,10 @@ from bpp.models.abstract import (
     ModelZWWW,
     Wydawnictwo_Baza,
 )
-from bpp.models.soft_delete import BppAutorstwoSoftDeleteMixin
+from bpp.models.soft_delete import (
+    BppAutorstwoSoftDeleteMixin,
+    BppPublikacjaSoftDeleteMixin,
+)
 from bpp.models.system import Zewnetrzna_Baza_Danych
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 
@@ -174,6 +177,7 @@ class Wydawnictwo_Ciagle_Manager(ManagerModeliZOplataZaPublikacjeMixin, models.M
 
 
 class Wydawnictwo_Ciagle(
+    BppPublikacjaSoftDeleteMixin,
     ZapobiegajNiewlasciwymCharakterom,
     Wydawnictwo_Baza,
     DwaTytuly,
@@ -229,6 +233,22 @@ class Wydawnictwo_Ciagle(
         verbose_name = "wydawnictwo ciągłe"
         verbose_name_plural = "wydawnictwa ciągłe"
         app_label = "bpp"
+        indexes = [
+            # Indeks CZĘŚCIOWY (`WHERE deleted_at IS NOT NULL`) — ten sam
+            # wzorzec i to samo uzasadnienie, co `wc_autor_deleted_at_idx`
+            # wyżej (faza 01): predykat `deleted_at IS NULL` pasuje do ~100%
+            # wierszy, więc planner nigdy nie wybrałby pod niego indeksu, a
+            # pełny btree byłby wyłącznie kosztem (rozmiar + wpis przy
+            # każdym INSERT/UPDATE publikacji). Selektywne jest zapytanie
+            # ODWROTNE — kosz/audyt (`deleted_objects`) — i to ono dostaje
+            # tu mikroskopijny indeks. KANONICZNE UZASADNIENIE dla
+            # wszystkich pięciu tabel publikacji.
+            models.Index(
+                fields=["deleted_at"],
+                name="wc_deleted_at_idx",
+                condition=Q(deleted_at__isnull=False),
+            ),
+        ]
 
     def punktacja_zrodla(self):
         """Funkcja - skrót do użycia w templatkach, zwraca punktację zrodla
