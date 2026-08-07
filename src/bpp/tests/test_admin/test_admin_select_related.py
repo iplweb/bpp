@@ -24,11 +24,32 @@ from django.urls import reverse
 from model_bakery import baker
 
 from bpp.admin.filters import WydzialAutoraFilter
-from bpp.models import Autor, Jednostka
+from bpp.models import Autor, Jednostka, Wydawca, Wydawnictwo_Zwarte
+from bpp.models.rodzaj_jednostki import RodzajJednostki
+
+
+def _zapytania_do(ctx, tabela):
+    return sum(f'FROM "{tabela}"' in q["sql"] for q in ctx.captured_queries)
 
 
 def _zapytania_o_uczelnie(ctx):
-    return sum('FROM "bpp_uczelnia"' in q["sql"] for q in ctx.captured_queries)
+    return _zapytania_do(ctx, "bpp_uczelnia")
+
+
+def _nie_skaluje(admin_client, url, tabela, zbuduj):
+    """Zwróć ``(przy_malej, przy_duzej)`` liczby zapytań do ``tabela``.
+
+    ``zbuduj(ile)`` ma dołożyć ``ile`` wierszy widocznych na changelistcie.
+    """
+    zbuduj(1)
+    with CaptureQueriesContext(connection) as maly:
+        assert admin_client.get(url).status_code == 200
+    przy_malej = _zapytania_do(maly, tabela)
+
+    zbuduj(5)
+    with CaptureQueriesContext(connection) as duzy:
+        assert admin_client.get(url).status_code == 200
+    return przy_malej, _zapytania_do(duzy, tabela)
 
 
 @pytest.mark.django_db
@@ -118,4 +139,56 @@ def test_filtr_wydzialu_nie_dociaga_uczelni_per_pozycja(admin_user, uczelnia):
         f"liczba zapytań o Uczelnia rośnie z długością listy filtra "
         f"({przy_jednym} → {przy_pieciu}) — wrócił N+1 w "
         f"WydzialAutoraFilter.lookups"
+    )
+
+
+@pytest.mark.django_db
+def test_changelist_jednostek_nie_dociaga_rodzaju_per_wiersz(admin_client, uczelnia):
+    """Changelista jednostek: ``rodzaj`` musi wejść JOIN-em.
+
+    ``ChangeList.get_queryset`` aplikuje ``list_select_related`` tylko wtedy,
+    gdy queryset bazowy nie ma JESZCZE żadnego ``select_related`` — a
+    ``JednostkaManager`` dokłada ``select_related("wydzial")``, więc cała
+    deklaracja przepadała i ``rodzaj`` dociągał się per wiersz.
+    Zmierzone na kopii produkcji: 51 zapytań po ``bpp_rodzajjednostki``.
+    """
+    url = reverse("admin:bpp_jednostka_changelist")
+
+    def zbuduj(ile):
+        for _ in range(ile):
+            baker.make(
+                Jednostka, uczelnia=uczelnia, rodzaj=baker.make(RodzajJednostki)
+            )
+
+    maly, duzy = _nie_skaluje(admin_client, url, "bpp_rodzajjednostki", zbuduj)
+    assert duzy == maly, (
+        f"zapytania o RodzajJednostki rosną z liczbą wierszy ({maly} → {duzy}) "
+        f"— wrócił N+1; sprawdź JednostkaAdmin.get_queryset"
+    )
+
+
+@pytest.mark.django_db
+def test_changelist_wyd_zwartych_nie_dociaga_wydawcy_per_wiersz(
+    admin_client, uczelnia, monkeypatch
+):
+    """Kolumna ``wydawnictwo`` czyta ``self.wydawca.nazwa`` przez property.
+
+    ``list_select_related`` mapowało wydawcę wyłącznie na jawną kolumnę
+    ``wydawca``, więc przy domyślnym zestawie kolumn JOIN nie wchodził.
+    Zmierzone na kopii produkcji: 35 zapytań po ``bpp_wydawca``.
+    """
+    url = reverse("admin:bpp_wydawnictwo_zwarte_changelist")
+    adm = dj_admin.site._registry[Wydawnictwo_Zwarte]
+
+    widoczne = list(adm.list_display_always) + ["wydawnictwo"]
+    monkeypatch.setattr(type(adm), "get_list_display", lambda self, request: widoczne)
+
+    def zbuduj(ile):
+        for _ in range(ile):
+            baker.make(Wydawnictwo_Zwarte, wydawca=baker.make(Wydawca))
+
+    maly, duzy = _nie_skaluje(admin_client, url, "bpp_wydawca", zbuduj)
+    assert duzy == maly, (
+        f"zapytania o Wydawca rosną z liczbą wierszy ({maly} → {duzy}) — "
+        f"wrócił N+1; sprawdź wpis 'wydawnictwo' w list_select_related"
     )
