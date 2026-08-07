@@ -591,7 +591,7 @@ requires-dist = [
     { name = "django-multiseek", specifier = "==0.10.2" },
     { name = "django-oauth-toolkit", specifier = "==3.4.0" },
     { name = "django-password-policies-iplweb", specifier = "==0.9.0" },
-    { name = "django-pbn-client", git = "https://github.com/iplweb/django-pbn-client.git?rev=1b91ac4f968a971815160863cc7297a17dc8712b" },
+    { name = "django-pbn-client", specifier = ">=0.2.3,<0.3" },
     { name = "django-pg-baseline", specifier = ">=0.3.0" },
     { name = "django-polish-inflection", specifier = ">=0.1,<0.2" },
     { name = "django-querysetsequence", specifier = "==0.18" },
@@ -2008,11 +2008,15 @@ wheels = [
 
 [[package]]
 name = "django-pbn-client"
-version = "0.2.2"
-source = { git = "https://github.com/iplweb/django-pbn-client.git?rev=1b91ac4f968a971815160863cc7297a17dc8712b#1b91ac4f968a971815160863cc7297a17dc8712b" }
+version = "0.2.3"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pbn-client", marker = "platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ad/ef/5cf6c80b523e3ad98dc7d110b8d556db61c55f31a292faee749f398dbcb5/django_pbn_client-0.2.3.tar.gz", hash = "sha256:a77ec871e8e069a4a5b7436c90e533835b3e58a566e76f82f347da6237cdd4a9", size = 15427, upload-time = "2026-08-07T08:22:39.188Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a3/cf/245e7257184e80ccbe97bb3b7f19800dac83e4b3a229b28c6d2067b029ce/django_pbn_client-0.2.3-py3-none-any.whl", hash = "sha256:98d2a6310792fb9ee09d99e515fe28e889f486bd416e8273a26ccaa7bc84f419", size = 11276, upload-time = "2026-08-07T08:22:38.202Z" },
 ]
 
 [[package]]

@@ -33,7 +33,9 @@ requires-python = ">=3.12,<3.15"
 dependencies = [
     "Django>=6.1,<6.2",
     # Reużywalne pakiety PBN wydzielone na PyPI (github.com/iplweb/*).
-    "django-pbn-client>=0.2,<0.3",
+    # 0.2.3 to pierwsze wydanie bez capu `django<5.3` (PR iplweb/
+    # django-pbn-client#5) — poniżej niej Django 6.1 się nie rozwiąże.
+    "django-pbn-client>=0.2.3,<0.3",
     "pbn-client>=0.2.2,<0.3",
     "django-polish-inflection>=0.1,<0.2",
     "django-axes>=7.0,<9",
@@ -332,13 +334,6 @@ default = true
 # WYCOFAĆ gdy upstream wyda release z #2156 → wróć na PyPI `>=4.5`. Tracking: #280.
 [tool.uv.sources]
 django-import-export = { git = "https://github.com/mpasternak/django-import-export.git", rev = "d6ee0d39194fee31437affbdc6fee5ce549b4b8f" }
-# TYMCZASOWO: django-pbn-client na PyPI (0.2.2) ma twardy cap `django<5.3`,
-# ktory blokuje Django 6.1. Pin do HEAD gałęzi feat/django-61 (PR
-# iplweb/django-pbn-client#5 — luzuje pin na `Django>=5.2` i dokłada oś
-# django-version 5.2/6.0/6.1 do matrycy CI).
-# USUŃ i wróć na `django-pbn-client>=0.3` gdy PR #5 zostanie zmergowany
-# i wydany na PyPI.
-django-pbn-client = { git = "https://github.com/iplweb/django-pbn-client.git", rev = "1b91ac4f968a971815160863cc7297a17dc8712b" }
 # TYMCZASOWO: DRF 3.17.2 (najnowsze na PyPI, wydane 2026-08-05) wciaz robi
 # `from django.utils.cache import cc_delim_re`, a Django 6.1 to usunelo ->
 # ImportError przy imporcie rest_framework.views, czyli calego api_v1.
