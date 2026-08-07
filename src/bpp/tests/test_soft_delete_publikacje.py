@@ -120,3 +120,88 @@ def test_wydawnictwa_nadrzedne_dla_innych_zachowane():
 
     nadrzedne = set(Wydawnictwo_Zwarte.objects.wydawnictwa_nadrzedne_dla_innych())
     assert matka.pk in nadrzedne
+
+
+# --- Task 5: integracja --------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_restore_przywraca_autorstwa_po_tym_samym_txid():
+    """``restore()`` podnosi wyłącznie autorstwa skasowane RAZEM z publikacją.
+
+    Autorstwo skasowane WCZEŚNIEJ, osobną decyzją operatora, ma zostać
+    w koszu — inaczej przywrócenie publikacji cofałoby też decyzje, których
+    nikt nie cofał.
+    """
+    wc = baker.make(Wydawnictwo_Ciagle)
+    wczesniej = baker.make(Wydawnictwo_Ciagle_Autor, rekord=wc, kolejnosc=0)
+    razem = baker.make(Wydawnictwo_Ciagle_Autor, rekord=wc, kolejnosc=1)
+
+    wczesniej.delete()  # osobna decyzja, INNY transaction_id
+    wc.delete()  # kaskada obejmuje tylko `razem`
+
+    wc.restore()
+
+    assert Wydawnictwo_Ciagle_Autor.objects.filter(pk=razem.pk).exists(), (
+        "autorstwo skasowane RAZEM z publikacja nie wrocilo"
+    )
+    assert not Wydawnictwo_Ciagle_Autor.objects.filter(pk=wczesniej.pk).exists(), (
+        "restore podniosl autorstwo skasowane WCZESNIEJ, osobna decyzja"
+    )
+
+
+@pytest.mark.django_db
+def test_post_soft_delete_emitowany():
+    """Sygnał musi lecieć — konsumuje go ``SoftDeleteLog`` z fazy 06."""
+    from django_softdelete.signals import post_soft_delete
+
+    odebrane = []
+
+    def odbiorca(sender, instance, **kwargs):
+        odebrane.append(instance)
+
+    post_soft_delete.connect(odbiorca, sender=Wydawnictwo_Ciagle)
+    try:
+        wc = baker.make(Wydawnictwo_Ciagle)
+        wc.delete()
+    finally:
+        post_soft_delete.disconnect(odbiorca, sender=Wydawnictwo_Ciagle)
+
+    assert len(odebrane) == 1
+    assert odebrane[0].pk == wc.pk
+
+
+@pytest.mark.django_db
+def test_kaskada_nie_rusza_streszczenia():
+    """Kaskada zatrzymuje się na ``*_Autor``.
+
+    Gdybyśmy użyli refleksyjnej kaskady pakietu, zjechałaby po
+    ``*_Streszczenie``. Co gorsza CICHO: ``delete()`` pakietu ma domyślnie
+    ``strict=False``, więc nie usłyszelibyśmy ``SoftDeleteException`` —
+    stąd asercja na SAM BRAK wyjątku nie wystarcza i sprawdzamy też, że
+    streszczenie fizycznie zostało.
+    """
+    from bpp.models import Wydawnictwo_Ciagle_Streszczenie
+
+    wc = baker.make(Wydawnictwo_Ciagle)
+    strz = baker.make(Wydawnictwo_Ciagle_Streszczenie, rekord=wc)
+
+    wc.delete()  # NIE moze rzucic SoftDeleteException
+
+    assert Wydawnictwo_Ciagle_Streszczenie.objects.filter(pk=strz.pk).exists(), (
+        "kaskada zjechala po streszczeniu"
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("klasa", MODELE_PUBLIKACJI)
+def test_bulk_update_deleted_at_zabroniony(klasa):
+    """Kontrakt z reversion: soft-delete idzie WYŁĄCZNIE per-instancja.
+
+    Bulk ``update(deleted_at=...)`` omija ``post_save``, kaskadę na
+    ``*_Autor``, sygnały i przyszły ``SoftDeleteLog``. Gate z fazy 01 ma to
+    blokować fail-fast, a nie „na ogół".
+    """
+    baker.make(klasa)
+    with pytest.raises(RuntimeError):
+        klasa.objects.update(deleted_at="2026-01-01")

@@ -71,6 +71,40 @@ co sugeruje utratę danych. Faktyczny kierunek jest odwrotny i łagodny:
 publikacje są w koszu, więc takie źródło NIE zostanie skasowane. Skutek to
 zalegające śmieci, nie utrata danych.
 
+### 5. DOPISANE PÓŹNIEJ: klasa wycieku, której kanarek NIE MOŻE złapać
+
+Wyszła przy weryfikacji fazy (Task 6), z padającego testu
+`test_rok_habilitacji_view` — nie z kanarka.
+
+**Trawersowanie relacji przez ATRYBUT omija soft-delete.** Widok robił:
+
+```python
+habilitacja = autor.praca_habilitacyjna       # odwrotne OneToOne
+```
+
+Django rozwiązuje to przez `ReverseOneToOneDescriptor`, który pyta
+`_base_manager` — z definicji nieprzefiltrowany. Skasowana habilitacja jest
+więc tą ścieżką **nadal osiągalna**, mimo że `Praca_Habilitacyjna.objects`
+jej nie pokazuje. Widok zwracał 200 zamiast 404.
+
+To odwrotna strona faktu, który przy okazji easyauditu wyglądał na dobrą
+wiadomość: nieprzefiltrowany `_base_manager` ratuje audyt i psuje
+trawersowanie relacji.
+
+⚠️ **Kanarek ORM nie ma szans tego wykryć.** Skanuje ARGUMENTY wywołań ORM
+(`filter`, `annotate`, `Count`…), a tutaj nie ma żadnego wywołania — jest
+dostęp do atrybutu. Żadne rozszerzanie listy `RELACJE` tego nie zmieni; to
+inna oś problemu niż ta, którą kanarek pokrywa.
+
+Nie da się tego naprawić centralnie: `Meta.base_manager_name` wskazujący
+menedżer filtrujący jest przez Django jawnie odradzany (rozwaliłby m.in.
+deserializację i `refresh_from_db`). Zostaje sprawdzanie `deleted_at`
+w miejscach użycia — tak zrobiono w `RokHabilitacjiView`.
+
+**Dla fazy 03:** potrzebny osobny przegląd dostępów atrybutowych do relacji
+O2O/FK celujących w modele soft-delete. Kandydaci to `autor.praca_habilitacyjna`
+i każde `*.wydawnictwo_nadrzedne`. Narzędziem nie może być obecny kanarek.
+
 ### Co z tego wynika dla decyzji o fazie 03
 
 Sam podział (faza 02 = warstwa bazodanowa, faza 03 = wywołania ORM) uważam

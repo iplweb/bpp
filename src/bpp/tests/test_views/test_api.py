@@ -267,11 +267,18 @@ def test_rok_habilitacji_view():
     assert str(CURRENT_YEAR) in res.content.decode()
     assert json.loads(res.content)["rok"] == CURRENT_YEAR
 
-    h.delete()
+    h.delete()  # od fazy 02 MIĘKKO
     res = rhv.post(request)
     assert res.status_code == 404
     assert "Habilitacja" in res.content.decode()
 
+    # ⚠️ Soft-delete ZOSTAWIA wiersz, a `Praca_Habilitacyjna.autor` to O2O
+    # z PROTECT — więc dopóki habilitacja siedzi w koszu, autora nie da się
+    # skasować (`ProtectedError`). To NIE jest regresja: rekord nadal
+    # istnieje i nie wolno go osierocić. Ten test sprawdza ścieżki 404
+    # widoku, a nie semantykę kasowania, więc usuwamy habilitację trwale,
+    # żeby dojść do gałęzi „nie ma autora".
+    h.hard_delete()
     a.delete()
     res = rhv.post(request)
     assert res.status_code == 404
