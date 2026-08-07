@@ -135,6 +135,29 @@ od użytkowników.
   PBN, deduplikator) płaci teraz za jego utrzymanie. `0490` dokłada btree po
   `rekord_id`, co część kosztu łagodzi. **Nikt tego nie zmierzył** — testy
   z definicji tego nie wykryją.
+- **Artefakty DjangoQL dla LLM są nieaktualne.**
+  `src/bpp/data/*_djangoql_schema.compact.txt` — schematy wystawiane
+  konsumentom `/api/v1/zapytanie/` (w tym asystentom LLM) — **nie wymieniają
+  pola `deleted_at`** i nie mają testu świeżości.
+
+  Skutek: klient układający zapytanie DjangoQL nie ma skąd wiedzieć, że
+  powinien wykluczyć skasowane rekordy, więc domyślnie ich **nie wyklucza**.
+  To spójne ze świadomą decyzją z §„Zostawione" naprawy wycieku ORM (DjangoQL
+  traktujemy jako narzędzie audytowe, które *ma* widzieć kosz), ale
+  niekomunikowane na zewnątrz.
+
+  Do rozstrzygnięcia przed fazą 02 — trzy warianty:
+  1. **zregenerować artefakty** (wtedy `deleted_at` staje się jawnym,
+     dostępnym polem; hałaśliwy diff, bo zmienia się nagłówek z wersją);
+  2. **udokumentować w opisie API**, że wyniki obejmują kosz i jak go
+     odfiltrować (`deleted_at = None`);
+  3. zostawić i przyjąć, że to narzędzie dla operatora, nie dla integracji.
+
+  Wariant 1 bez 2 nie wystarczy — samo pojawienie się pola w schemacie nie
+  mówi klientowi, że *powinien* go użyć. **Dopisać test świeżości** artefaktów
+  niezależnie od wybranego wariantu; dziś nic nie pilnuje, żeby schemat
+  nadążał za modelami.
+
 - **Trzy martwe widoki** `bpp_kronika_{wydawnictwo_ciagle,wydawnictwo_zwarte,
   patent}_view` czytają surowe tabele bez filtra. Zweryfikowano brak
   konsumentów (kod, szablony, modele) — są jawnym wyjątkiem w kanarku
