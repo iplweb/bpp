@@ -4,6 +4,82 @@
 > (`src/bpp/tests/test_soft_delete/test_kanarek_orm.py`) o pięć modeli
 > publikacji, 2026-08-07. Kanarek zgłosił **14 miejsc**; triage niżej.
 
+---
+
+## ⚠️ SELF-REVIEW (2026-08-07, po napisaniu reszty dokumentu)
+
+**Ten audyt jest niekompletny i w jednym miejscu wprost nieprawdziwy.**
+Zostawiam go w całości — poniższe zastrzeżenia są ważniejsze niż tabelka.
+
+### 1. Premisa dokumentu jest FAŁSZYWA na obecnym stanie gałęzi
+
+Sekcja niżej twierdzi, że „zapytania startujące OD publikacji są bezpieczne,
+bo `objects` to `BppSoftDeleteManager`". Sprawdzone empirycznie:
+
+| model | `objects` | widzi skasowane? |
+|---|---|---|
+| `Wydawnictwo_Ciagle` | `Wydawnictwo_Ciagle_Manager` | **TAK** |
+| `Wydawnictwo_Zwarte` | `Wydawnictwo_Zwarte_Manager` | **TAK** |
+| `Patent` | `BppSoftDeleteManager` | nie |
+| `Praca_Doktorska` | `BppSoftDeleteManager` | nie |
+| `Praca_Habilitacyjna` | `BppSoftDeleteManager` | nie |
+
+Dwa najważniejsze modele mają wciąż menedżera z fazy 01 (mixin opłat +
+`models.Manager`), bo **Task 4 — przeplecenie menedżerów — nie jest jeszcze
+zrobiony**. Premisa stanie się prawdziwa dopiero po nim. Do tego czasu
+KAŻDE `Wydawnictwo_Ciagle.objects...` w kodzie zwraca też rekordy z kosza.
+
+### 2. Lista nazw relacji jest niekompletna → „14 miejsc" to DOLNA GRANICA
+
+Audyt użył pięciu nazw modeli. Pominął co najmniej:
+
+- **`rekord`** — nazwa FK z modeli-dzieci do publikacji
+  (`*_Streszczenie`, `*_Dodatkowy_Tytul`, `*_Zewnetrzna_Baza_Danych`),
+- **`wydawnictwo_nadrzedne`** — self-FK rozdział → książka-matka,
+- `wydawnictwa_powiazane_set` — relacja odwrotna do powyższej (0 trafień).
+
+Po dołożeniu tych nazw skan daje **120 znalezisk zamiast 14**. Zdanie
+„lista jest gotowa, nikt nie musi jej odtwarzać" było więc nieuprawnione.
+
+### 3. …ale te 120 to w większości FAŁSZYWE trafienia — i to jest wniosek o NARZĘDZIU
+
+Nazwa `rekord` jest wieloznaczna i kanarek nie umie tych znaczeń rozróżnić:
+
+1. `*_Autor.rekord` → publikacja (zakres fazy 01),
+2. `*_Streszczenie.rekord` i pokrewne → publikacja (**realny zakres fazy 02**),
+3. `Cache_Punktacja_Autora.rekord` → widok `Rekord`, **już przefiltrowany**
+   migracją 0497 — czyli bezpieczne,
+4. `request.GET.get("rekord__id__exact")`, `cleaned_data.get("rekord")` —
+   parametry HTTP i formularzy, w ogóle nie ORM.
+
+**Sedno:** kanarek ORM jest matcherem NAZW, a nie modeli. W fazie 01 działał
+świetnie, bo nazwy były dystynktywne (`autorzy_set`, `wydawnictwo_ciagle_autor`
+— nic innego się tak nie nazywa). W fazie 02 nazwy to zwykłe słowa (`patent`,
+`rekord`, `wydawnictwo_ciagle`), więc precyzja narzędzia się załamuje. To nie
+jest usterka do załatania listą wyjątków — to granica metody.
+
+Uczciwe narzędzie dla fazy 02 musiałoby rozwiązywać ścieżkę lookupu wobec
+metadanych Django (`_meta`) i pytać, czy faktycznie dochodzi do tabeli objętej
+soft-delete — czyli działać tak, jak kanarek KATALOGOWY działa na `pg_depend`.
+To jest osobne narzędzie, nie parametr istniejącego.
+
+### 4. Błąd w tabeli: pozycja #1 ma odwróconą wymowę
+
+Wpis dla `usun_zrodla_bez_publikacji` jest zatytułowany **„KASUJE ŹRÓDŁA"**,
+co sugeruje utratę danych. Faktyczny kierunek jest odwrotny i łagodny:
+`filter(wydawnictwo_ciagle__isnull=True)` **nie znajdzie** źródła, którego
+publikacje są w koszu, więc takie źródło NIE zostanie skasowane. Skutek to
+zalegające śmieci, nie utrata danych.
+
+### Co z tego wynika dla decyzji o fazie 03
+
+Sam podział (faza 02 = warstwa bazodanowa, faza 03 = wywołania ORM) uważam
+nadal za słuszny, a `xfail(strict=True)` spełnia swoją rolę. Ale faza 03 NIE
+powinna traktować tabelki niżej jako gotowej listy zadań — powinna zacząć od
+zbudowania narzędzia model-aware, bo inaczej utonie w fałszywych trafieniach.
+
+---
+
 ## Dlaczego to nie jest to samo ryzyko, co w fazie 01
 
 Dla publikacji zagrożenie jest skierowane **odwrotnie** niż dla autorstw.
