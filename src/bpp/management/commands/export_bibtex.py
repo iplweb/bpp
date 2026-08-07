@@ -59,6 +59,23 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        publications = self._zbierz_publikacje(options)
+
+        # Generate BibTeX content
+        self.stdout.write(f"Exporting {len(publications)} publications to BibTeX...")
+        bibtex_content = export_to_bibtex(publications)
+
+        self._zapisz_wynik(options, bibtex_content)
+
+        self.stdout.write(
+            self.style.SUCCESS(f"Export completed: {len(publications)} publications")
+        )
+
+    def _zbierz_publikacje(self, options):
+        """Buduje zapytania wg opcji CLI i zwraca listę pasujących publikacji.
+
+        Rzuca ``CommandError``, gdy po zastosowaniu filtrów nic nie zostanie.
+        """
         publications = []
 
         # Build queries based on options
@@ -112,11 +129,10 @@ class Command(BaseCommand):
         if not publications:
             raise CommandError("No publications found matching the criteria.")
 
-        # Generate BibTeX content
-        self.stdout.write(f"Exporting {len(publications)} publications to BibTeX...")
-        bibtex_content = export_to_bibtex(publications)
+        return publications
 
-        # Output to file or stdout
+    def _zapisz_wynik(self, options, bibtex_content):
+        """Zapisuje wygenerowany BibTeX do pliku (``--output``) albo na stdout."""
         if options["output"]:
             try:
                 with open(options["output"], "w", encoding="utf-8") as f:
@@ -125,10 +141,6 @@ class Command(BaseCommand):
                     self.style.SUCCESS(f"Successfully exported to {options['output']}")
                 )
             except OSError as e:
-                raise CommandError(f"Error writing to file: {e}")
+                raise CommandError(f"Error writing to file: {e}") from e
         else:
             sys.stdout.write(bibtex_content)
-
-        self.stdout.write(
-            self.style.SUCCESS(f"Export completed: {len(publications)} publications")
-        )
