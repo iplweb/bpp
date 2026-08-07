@@ -1173,8 +1173,17 @@
                         updateCount(totalCount, totalCount);
                     } else {
                         // Filter records
+                        //
+                        // Filtrowanie po tekscie BEZ znacznikow HTML — opis
+                        // niesie <b>/<i> oraz <span lang> (WCAG 3.1.2), a
+                        // dopasowanie na surowym record.text.indexOf() zna-
+                        // lazloby fraze "span"/"lang" w KAZDYM rekordzie z
+                        // tytulem obcojezycznym (falszywie pozytywne trafie-
+                        // nie, bez zadnego podswietlenia na liscie). Modul:
+                        // related-records-highlight.js (bppStripTags).
                         var filtered = allRecords.filter(function(record) {
-                            return record.text.toLowerCase().indexOf(searchTerm) !== -1;
+                            var haystack = window.bppStripTags(record.text).toLowerCase();
+                            return haystack.indexOf(searchTerm) !== -1;
                         });
 
                         // Rebuild list with filtered records and highlighting

@@ -3,12 +3,19 @@
 // regex na calym stringu podswietlal fragmenty ATRYBUTOW: fraza "en"
 // trafiala w lang="en" i wstawiala <mark> w srodek znacznika, co przy
 // .html(text) daje zepsuty markup.
+//
+// Drugi eksport modulu, bppStripTags(html), rozwiazuje pokrewny problem po
+// stronie FILTROWANIA (nie podswietlania): praca_tabela_mono.html filtrowal
+// rekordy przez `record.text.indexOf(fraza)` na surowym HTML-u, wiec fraza
+// "span"/"lang" dopasowywala KAZDY rekord z <span lang="…"> — falszywie
+// pozytywne trafienie, bez zadnego podswietlenia na liscie (regresja I1).
 
 import { describe, it, expect, beforeAll } from "vitest";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 
 let highlight;
+let stripTags;
 
 beforeAll(() => {
     const zrodlo = readFileSync(
@@ -21,7 +28,14 @@ beforeAll(() => {
     const window = {};
     new Function("window", zrodlo)(window);
     highlight = window.bppHighlightOutsideTags;
+    stripTags = window.bppStripTags;
 });
+
+// Powtarza logike filtra z praca_tabela_mono.html (haystack = bppStripTags
+// zamiast surowego record.text) — testujemy TĘ SAMĄ logike, nie kopie.
+function pasujeDoFiltra(html, fraza) {
+    return stripTags(html).toLowerCase().indexOf(fraza.toLowerCase()) !== -1;
+}
 
 describe("bppHighlightOutsideTags", () => {
     it("podswietla fraze w tekscie", () => {
@@ -52,7 +66,13 @@ describe("bppHighlightOutsideTags", () => {
         );
     });
 
-    it("nie podswietla frazy rozdzielonej znacznikiem", () => {
+    it("nie podswietla frazy rozdzielonej znacznikiem (dot. PODSWIETLANIA, nie filtrowania)", () => {
+        // Zakres: <mark> nie moze rozciagac sie przez granice znacznika —
+        // to ograniczenie samego podswietlania (jeden segment tekstowy),
+        // niezalezne od bppStripTags. Filtrowanie w praca_tabela_mono.html
+        // NIE korzysta juz z tej funkcji do dopasowania rekordu — od naprawy
+        // I1 dziala na bppStripTags(html) i TAKA SAMA fraza rekord
+        // ZNAJDUJE (patrz "filtr: fraza rozdzielona znacznikiem" nizej).
         const html = "Rola <i>Candida</i> w X";
         expect(highlight(html, "rola candida")).toBe(html);
     });
@@ -113,5 +133,65 @@ describe("bppHighlightOutsideTags", () => {
     it("NIE podswietla frazy trafiajacej w encje numeryczna", () => {
         const html = "Lata 2020&#8211;2023";
         expect(highlight(html, "8211")).toBe(html);
+    });
+});
+
+describe("bppStripTags", () => {
+    it("usuwa znaczniki, zostawia tresc", () => {
+        expect(stripTags('<span lang="en">Effects</span>')).toBe("Effects");
+    });
+
+    it("fraza 'span' NIE wystepuje w wyniku strip dla opisu ze znacznikiem", () => {
+        const opis =
+            'Kowalski Jan. <span lang="en">Effects of X on Y</span>. ' +
+            "Postępy Higieny 2024, t. 78, s. 112-119.";
+        expect(stripTags(opis).toLowerCase()).not.toContain("span");
+    });
+
+    it("fraza 'lang' NIE wystepuje w wyniku strip dla opisu ze znacznikiem", () => {
+        const opis =
+            'Kowalski Jan. <span lang="en">Effects of X on Y</span>. ' +
+            "Postępy Higieny 2024, t. 78, s. 112-119.";
+        expect(stripTags(opis).toLowerCase()).not.toContain("lang");
+    });
+
+    it("dekoduje encje: &amp; -> &", () => {
+        expect(stripTags("Kowalski &amp; Nowak")).toBe("Kowalski & Nowak");
+    });
+
+    it("dekoduje encje: &lt; &gt; &quot; &#39;", () => {
+        expect(stripTags("&lt;a&gt; &quot;x&quot; &#39;y&#39;")).toBe(
+            '<a> "x" \'y\''
+        );
+    });
+
+    it("laczy tresc z wielu segmentow tekstowych rozdzielonych znacznikiem", () => {
+        expect(stripTags("Rola <i>Candida</i> w X")).toBe("Rola Candida w X");
+    });
+});
+
+describe("filtr rekordow powiazanych (bppStripTags jako haystack)", () => {
+    it("fraza 'lang' NIE pasuje do opisu ze znacznikiem — brak falszywego trafienia", () => {
+        const html = '<span lang="en">Effects of X on Y</span>';
+        expect(pasujeDoFiltra(html, "lang")).toBe(false);
+    });
+
+    it("fraza 'span' NIE pasuje do opisu ze znacznikiem — brak falszywego trafienia", () => {
+        const html = '<span lang="en">Effects of X on Y</span>';
+        expect(pasujeDoFiltra(html, "span")).toBe(false);
+    });
+
+    it("fraza z realnej tresci PASUJE", () => {
+        const html = '<span lang="en">Effects of X on Y</span>';
+        expect(pasujeDoFiltra(html, "effects")).toBe(true);
+    });
+
+    it("filtr: fraza rozdzielona znacznikiem TERAZ pasuje (zmiana zamierzona, patrz I1)", () => {
+        // Kontrast z testem highlight() wyzej: podswietlanie nadal nie
+        // rozciaga <mark> przez granice znacznika, ale FILTROWANIE od tej
+        // naprawy dziala na tekscie bez znacznikow — usuwa to zarowno
+        // falszywe trafienia ("span"/"lang"), jak i ten zastany przypadek.
+        const html = "Rola <i>Candida</i> w X";
+        expect(pasujeDoFiltra(html, "rola candida")).toBe(true);
     });
 });

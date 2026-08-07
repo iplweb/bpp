@@ -20,6 +20,12 @@
  * Rozwiazanie: podziel wejscie na segmenty <tag> / encja / tekst i
  * podswietlaj wylacznie w tekstowych.
  *
+ * Ten sam tokenizer napedza druga funkcje modulu, bppStripTags(html) —
+ * zwraca sam tekst (bez znacznikow, z encjami zdekodowanymi). Uzywana do
+ * FILTROWANIA rekordow (nie tylko podswietlania): dopasowanie po tekscie
+ * bez znacznikow, zeby fraza "span"/"lang" nie trafiala fałszywie w
+ * <span lang="…"> i nie dawala trafien bez zadnego podswietlenia na liscie.
+ *
  * UWAGA: funkcja zaklada wejscie juz przepuszczone przez sanityzator HTML
  * (nh3 — patrz safe_opis_bibliograficzny_html). Nie jest bezpieczna dla
  * dowolnego surowego tekstu zawierajacego goly znak "<" bez odpowiadajacego
@@ -70,5 +76,76 @@
         );
     }
 
+    // Encje nazwane obslugiwane przez decodeEncje. Zestaw minimalny (te,
+    // ktore faktycznie wystepuja w potoku opisu bibliograficznego) —
+    // encje numeryczne (&#NN; / &#xHH;) obslugiwane osobno, ponizej.
+    var ENCJE_NAZWANE = {
+        amp: "&",
+        lt: "<",
+        gt: ">",
+        quot: '"',
+        apos: "'"
+    };
+
+    var ENCJA_REGEX = /&(#x[0-9a-fA-F]+|#[0-9]+|[a-zA-Z]+);/g;
+
+    function decodeEncje(tekst) {
+        var poprzedni;
+        var wynik = tekst;
+        var iteracje = 0;
+        // Petla obsluguje wielokrotnie zagniezdzone encje (np. podwojnie
+        // zescape'owany "&amp;lt;" -> jedna decyzja regexu dekoduje tylko
+        // najbardziej zewnetrzna warstwe, "&lt;" zostaje na kolejny
+        // przebieg) - do ustalonego punktu albo limitu iteracji jako
+        // zabezpieczenie przed patologicznym wejsciem.
+        do {
+            poprzedni = wynik;
+            wynik = wynik.replace(ENCJA_REGEX, function (dopasowanie, cialo) {
+                if (cialo.charAt(0) === "#") {
+                    var kod;
+                    if (cialo.charAt(1) === "x" || cialo.charAt(1) === "X") {
+                        kod = parseInt(cialo.slice(2), 16);
+                    } else {
+                        kod = parseInt(cialo.slice(1), 10);
+                    }
+                    return isNaN(kod) ? dopasowanie : String.fromCodePoint(kod);
+                }
+                var znak = ENCJE_NAZWANE[cialo];
+                return znak === undefined ? dopasowanie : znak;
+            });
+            iteracje += 1;
+        } while (wynik !== poprzedni && iteracje < 5);
+        return wynik;
+    }
+
+    /**
+     * Usuwa znaczniki HTML z opisu, zostawiajac wylacznie tresc tekstowa
+     * (z zdekodowanymi encjami). Uzywa TEGO SAMEGO tokenizera co
+     * podswietlanie, wiec segmentacja tekst/znacznik/encja jest identyczna —
+     * przeznaczone do filtrowania po tresci (patrz uzycie w
+     * praca_tabela_mono.html), zeby fraza "span"/"lang" nie trafiala w
+     * znacznik <span lang="…"> i nie dawala falszywie pozytywnych trafien.
+     *
+     * @param {string} html - opis bibliograficzny (moze zawierac znaczniki
+     *   i encje HTML)
+     * @returns {string} sam tekst, bez znacznikow, z encjami zdekodowanymi
+     */
+    function bppStripTags(html) {
+        var segmenty = [];
+        html.replace(TAG_LUB_ENCJA_LUB_TEKST, function (_, znacznik, encja, tekst) {
+            if (znacznik) {
+                return "";
+            }
+            if (encja) {
+                segmenty.push(decodeEncje(encja));
+                return "";
+            }
+            segmenty.push(tekst);
+            return "";
+        });
+        return segmenty.join("");
+    }
+
     window.bppHighlightOutsideTags = bppHighlightOutsideTags;
+    window.bppStripTags = bppStripTags;
 })(typeof window !== "undefined" ? window : this);
