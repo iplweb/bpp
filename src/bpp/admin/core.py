@@ -104,6 +104,42 @@ class DynamicAdminFilterMixin:
             return HttpResponse("-", content_type="text/html; charset=utf-8")
 
 
+MAKSYMALNA_LICZBA_OBIEKTOW_NA_STRONIE_KASOWANIA = 100
+"""Ile obiektów wypisać na stronie potwierdzenia kasowania w adminie.
+
+Trafia do ``ModelAdmin.delete_confirmation_max_display`` (Django >= 6.1).
+
+DLACZEGO w ogóle: strona potwierdzenia kasowania enumeruje KAŻDY obiekt,
+który poleci kaskadą. Dla ``Autor``, ``Zrodlo`` czy dowolnego masowego
+``delete_selected`` na przefiltrowanej changeliście to dziesiątki tysięcy
+``<li>`` z linkiem do zmiany — kilkanaście MB HTML-a, którego przeglądarka
+i tak nie jest w stanie sensownie pokazać, a człowiek przeczytać.
+
+DLACZEGO akurat 100:
+
+* to wartość z przykładu w docstringu samego filtra Django
+  (``{{ deleted_objects|truncated_unordered_list:100 }}``) — nie wymyślamy
+  własnego standardu tam, gdzie upstream ma swój,
+* to 2× ``list_per_page`` (50) — cała strona changelisty zaznaczona do
+  kasowania nadal wypisuje się co do sztuki,
+* powyżej ~100 pozycji lista i tak przestaje być narzędziem weryfikacji,
+  a staje się ścianą tekstu.
+
+CZEGO NIE TRACIMY: sekcja „Podsumowanie" (``object_delete_summary.html``)
+renderuje PEŁNE liczniki per model (``model_count``) i jest ponad listą.
+Obcięcie zabiera więc tylko wyliczankę pojedynczych obiektów — informacja
+o SKALI kasowania zostaje nienaruszona. Dodatkowo filtr sam dopisuje na
+końcu „…i N innych obiektów".
+
+CZEGO TO NIE ZAŁATWIA (żeby nie było złudzeń): opcja działa WYŁĄCZNIE na
+etapie renderowania. ``get_deleted_objects`` nadal zbiera i formatuje
+komplet obiektów (``NestedObjects.collect`` + ``format_callback`` z
+``reverse()`` per obiekt), więc zapytań do bazy ani szczytowego zużycia
+pamięci po stronie Pythona to nie zmniejsza. Zyskiem jest rozmiar
+odpowiedzi i to, że przeglądarka nie umiera na renderowaniu listy.
+"""
+
+
 class BaseBppAdminMixin(DynamicAdminFilterMixin):
     """Ta klasa jest potrzebna, (XXXżeby działały sygnały post_commit.XXX)
 
@@ -117,6 +153,26 @@ class BaseBppAdminMixin(DynamicAdminFilterMixin):
 
     # ograniczenie wielkosci listy
     list_per_page = 50
+
+    # Limit wyliczanki obiektów na stronie potwierdzenia kasowania.
+    #
+    # Ustawiamy GLOBALNIE (tu, a nie punktowo na paru „ciężkich" adminach),
+    # bo eksplozja listy nie bierze się z samego modelu, tylko z jego
+    # ogona kaskad — a ten potrafi urosnąć w dowolnym adminie po dodaniu
+    # jednego FK w zupełnie innej aplikacji. Limit punktowy z definicji
+    # nie chroni tam, gdzie nikt nie przewidział problemu, a nie ma
+    # w BPP modelu, dla którego wypisanie >100 obiektów co do sztuki
+    # niosłoby wartość (patrz argumentacja przy stałej wyżej).
+    #
+    # UWAGA: sama ta wartość NIE wystarczy. Aktywna skórka admina to
+    # grappelli, a jej ``admin/delete_confirmation.html`` i
+    # ``admin/delete_selected_confirmation.html`` renderują listę filtrem
+    # ``|unordered_list`` (bez obcinania). Dlatego BPP nadpisuje blok
+    # ``content`` obu tych szablonów w ``src/django_bpp/templates/admin/``
+    # i woła tam ``|truncated_unordered_list:delete_confirmation_max_display``.
+    # Jeżeli kiedyś znika grappelli — te nadpisania można skasować,
+    # bo szablony samego Django honorują opcję z automatu.
+    delete_confirmation_max_display = MAKSYMALNA_LICZBA_OBIEKTOW_NA_STRONIE_KASOWANIA
 
     def get_queryset(self, request):
         """Włącz ``FETCH_PEERS`` (Django 6.1) dla querysetów tego admina.
