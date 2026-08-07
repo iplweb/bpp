@@ -72,8 +72,17 @@ class Command(BaseCommand):
 
         # Filter by author
         if options["author"]:
-            author_filter = Q(autorzy__nazwisko__icontains=options["author"]) | Q(
-                autorzy__imiona__icontains=options["author"]
+            # Idziemy przez ``autorzy_set__autor__…`` (through-model), a NIE
+            # przez M2M ``autorzy__…``: tylko wtedy predykat
+            # ``deleted_at__isnull=True`` trafia na TEN SAM JOIN, co warunek
+            # po nazwisku. M2M ``autorzy`` też złącza się po surowej tabeli
+            # ``*_autor`` (manager soft-delete nie jest pytany), ale dopięcie
+            # do niego ``autorzy_set__deleted_at`` dałoby DRUGI, nieskorelowany
+            # JOIN — czyli warunek „ma jakiekolwiek żywe autorstwo", a nie
+            # „autorstwo TEGO autora żyje".
+            author_filter = Q(autorzy_set__deleted_at__isnull=True) & (
+                Q(autorzy_set__autor__nazwisko__icontains=options["author"])
+                | Q(autorzy_set__autor__imiona__icontains=options["author"])
             )
             ciagle_q &= author_filter
             zwarte_q &= author_filter
@@ -113,7 +122,7 @@ class Command(BaseCommand):
                 with open(options["output"], "w", encoding="utf-8") as f:
                     f.write(bibtex_content)
                 self.stdout.write(
-                    self.style.SUCCESS(f'Successfully exported to {options["output"]}')
+                    self.style.SUCCESS(f"Successfully exported to {options['output']}")
                 )
             except OSError as e:
                 raise CommandError(f"Error writing to file: {e}")
