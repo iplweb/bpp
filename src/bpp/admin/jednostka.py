@@ -162,7 +162,39 @@ class JednostkaAdmin(
         "wydzial",
         "rodzaj",
         "uczelnia",
+        # kolumna ``parent_nazwa`` czyta ``item.parent.nazwa``
+        "parent",
     ]
+
+    def get_queryset(self, request):
+        """Wymuś ``list_select_related`` — ChangeList by go tutaj POMINĄŁ.
+
+        ``ChangeList.get_queryset`` aplikuje ``list_select_related``
+        warunkowo::
+
+            if not qs.query.select_related:
+                qs = self.apply_select_related(qs)
+
+        czyli TYLKO gdy queryset bazowy nie ma jeszcze ŻADNEGO
+        ``select_related``. A ``JednostkaManager.get_queryset()`` dokłada
+        ``.select_related("wydzial")`` (denormalizowany self-FK), więc
+        warunek jest fałszywy i CAŁA deklaracja wyżej przepada — do
+        zapytania trafia sam ``wydzial``, bez ``rodzaj`` i ``uczelnia``.
+
+        Efekt był niewidoczny gołym okiem, bo obie relacje i tak są
+        dotykane w każdym wierszu (``rodzaj`` to kolumna ``list_display``,
+        ``uczelnia`` czyta ``Jednostka.__str__`` sprawdzając
+        ``uzywaj_wydzialow``) — po prostu leniwie, per wiersz. Dokładamy je
+        wprost; ``select_related`` się scala, więc ``wydzial`` z managera
+        nie ginie.
+
+        Regresję pilnuje ``test_fetch_raise_gate.py`` (tryb ``FETCH_RAISE``
+        wywala się z nazwą pola, gdy changelista dotknie relacji spoza
+        deklaracji).
+        """
+        qs = super().get_queryset(request)
+        return qs.select_related(*self.list_select_related)
+
     fields = None
     list_filter = (
         WydzialFilter,

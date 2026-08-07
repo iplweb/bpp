@@ -541,6 +541,11 @@ class Wydawnictwo_ZwarteAdmin(
         "wydawnictwo_nadrzedne": ["wydawnictwo_nadrzedne"],
         "wydawnictwo_nadrzedne_col": ["wydawnictwo_nadrzedne"],
         "wydawca": ["wydawca"],
+        # Kolumna ``wydawnictwo`` (DOMYŚLNIE widoczna) to property modelu
+        # ``get_wydawnictwo``, które sięga po ``self.wydawca.nazwa``. Bez
+        # tego wpisu JOIN na wydawcę wchodził tylko przy jawnie włączonej
+        # kolumnie ``wydawca`` — czyli praktycznie nigdy.
+        "wydawnictwo": ["wydawca"],
     }
 
     autocomplete_fields = [
