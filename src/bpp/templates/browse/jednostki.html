@@ -125,10 +125,10 @@
                                     </div>
                                 {% endif %}
 
-                                {% if item.aktualna_jednostka.count > 0 %}
+                                {% if item.liczba_autorow > 0 %}
                                     <div>
                                         <i class="fi-torsos-all"></i>
-                                        {{ item.aktualna_jednostka.count }} {% if item.aktualna_jednostka.count == 1 %}autor{% elif item.aktualna_jednostka.count < 5 %}autorów{% else %}autorów{% endif %}
+                                        {{ item.liczba_autorow }} {% if item.liczba_autorow == 1 %}autor{% elif item.liczba_autorow < 5 %}autorów{% else %}autorów{% endif %}
                                     </div>
                                 {% endif %}
                             </div>

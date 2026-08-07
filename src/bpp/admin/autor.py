@@ -28,6 +28,7 @@ from .filters import (
     OrcidObecnyFilter,
     PBN_UID_IDObecnyFilter,
     PBNIDObecnyFilter,
+    WydzialAutoraFilter,
 )
 from .helpers.fieldsets import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
 from .helpers.site_filtered import SiteFilteredAdminMixin
@@ -335,7 +336,7 @@ class AutorAdmin(
     ]
     list_filter = [
         JednostkaFilter,
-        "aktualna_jednostka__wydzial",
+        WydzialAutoraFilter,
         "tytul",
         PBNIDObecnyFilter,
         OrcidObecnyFilter,
