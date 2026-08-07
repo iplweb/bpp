@@ -8,6 +8,7 @@ from django import forms
 from django.conf import settings
 from django.contrib import admin
 from django.core.cache import cache
+from django.db.models import FETCH_PEERS
 from django.db.models.fields import BLANK_CHOICE_DASH
 from django.forms import NullBooleanField
 from django.forms.widgets import HiddenInput
@@ -116,6 +117,41 @@ class BaseBppAdminMixin(DynamicAdminFilterMixin):
 
     # ograniczenie wielkosci listy
     list_per_page = 50
+
+    def get_queryset(self, request):
+        """Włącz ``FETCH_PEERS`` (Django 6.1) dla querysetów tego admina.
+
+        Changelisty admina to najgęstsze w BPP skupisko N+1: ``list_display``
+        i ``__str__`` modeli sięgają po FK, których nikt nie zadeklarował
+        w ``list_select_related``, a każde takie dotknięcie to osobny SELECT
+        per wiersz. ``FETCH_PEERS`` sprawia, że PIERWSZE leniwe dotknięcie
+        relacji (albo pola odroczonego) dociąga ją HURTEM dla całego
+        rodzeństwa z tego samego pobrania — N+1 zamienia się w 2 zapytania,
+        bez zgadywania z góry, które FK dotknie szablon.
+
+        Zmierzone na kopii bazy produkcyjnej (z produkcyjnymi regułami
+        ``CACHEOPS``) — zapytania i mediana czasu na request:
+
+        * changelist jednostek        66 → 17 zapytań, 185 → 120 ms
+        * changelist wyd. zwartych   220 → 40 zapytań, 227 → 184 ms
+        * changelist wyd. ciągłych   190 → 38 zapytań, 221 → 190 ms
+
+        Dlaczego TU, a nie globalnie (podstawienie ``DEFAULT_FETCH_MODE``):
+        ``track_peers`` trzyma ``weakref`` do każdej instancji z pobrania,
+        więc koszt ponosiłby KAŻDY queryset w aplikacji, a zysk jest
+        skoncentrowany w adminie. Samo ``get_queryset`` wystarcza, bo
+        ``QuerySet._clone()`` przenosi ``_fetch_mode`` — tryb przeżywa
+        filtry, sortowanie i slicing dokładane przez dalsze mixiny
+        i przez sam ``ChangeList``.
+
+        Semantyka się NIE zmienia: ``fetch_one`` i ``fetch_many`` idą tą samą
+        ścieżką managera (``_base_manager``), więc tryb nie zaczyna nagle
+        odfiltrowywać rekordów — istotne przy soft-delete.
+
+        WYMAGA Django >= 6.1 (``QuerySet.fetch_mode``) — dlatego ta zmiana
+        celuje w gałąź ``django-6.1``, a nie w ``dev``.
+        """
+        return super().get_queryset(request).fetch_mode(FETCH_PEERS)
 
     def save_related(self, request, form, formsets, change):
         """
