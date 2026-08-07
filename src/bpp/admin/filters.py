@@ -326,6 +326,40 @@ class WydzialFilter(SimpleListFilter):
         return queryset
 
 
+class WydzialAutoraFilter(WydzialFilter):
+    """``WydzialFilter`` dla changelisty ``AutorAdmin`` (#438, domknięcie).
+
+    Ten sam problem co w ``JednostkaAdmin``, tylko o jeden hop dalej: goły
+    ``list_filter = ("aktualna_jednostka__wydzial", ...)`` kazał Django
+    zbudować ``RelatedFieldListFilter``, a ten woła ``field.get_choices()``.
+    Skoro po Fazie B denorm ``Jednostka.wydzial`` jest self-FK na
+    ``Jednostka``, ``get_choices()`` enumerowało CAŁĄ tabelę jednostek --
+    produkcyjnie 504 pozycje zamiast 7 wydziałów, plus 504 zapytania na
+    request (``Jednostka.__str__`` czyta ``self.uczelnia``).
+
+    Z klasy bazowej dziedziczymy BEZ zmian ``lookups`` (tylko korzenie,
+    zawężone do uczelni z requestu) i ``has_output`` (bramka
+    ``uzywaj_wydzialow``) -- lista „wydziałów" jest ta sama niezależnie od
+    tego, co filtrujemy. Nadpisujemy wyłącznie ``queryset``, bo tu
+    zawężamy ``Autor``, a nie ``Jednostka``: do korzenia trzeba dojść przez
+    ``aktualna_jednostka__``.
+    """
+
+    def queryset(self, request, queryset):
+        v = self.value()
+        if v:
+            # Odpowiednik `Q(wydzial_id=v) | Q(pk=v)` z klasy bazowej,
+            # przetraversowany o jeden FK dalej: autorzy z jednostek
+            # niosących denorm ``wydzial=korzeń`` PLUS autorzy przypisani
+            # wprost do samego korzenia (korzeń nie wskazuje na siebie).
+            # Oba warunki to forward-FK (bez multi-valued join), więc unia
+            # nie duplikuje wierszy i nie potrzebuje ``distinct()``.
+            return queryset.filter(
+                Q(aktualna_jednostka__wydzial_id=v) | Q(aktualna_jednostka_id=v)
+            )
+        return queryset
+
+
 class JednostkaFilter(SimpleListFilter):
     title = "Jednostka"
     parameter_name = "jednostka"
