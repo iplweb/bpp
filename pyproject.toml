@@ -255,6 +255,17 @@ environments = ["python_version >= '3.10' and python_version < '3.15' and platfo
 #                     PYSEC-2026-3456, PYSEC-2026-3457 (audyt: lipiec 2026)
 #   h2      >=4.4.1  (via twisted[http2]/daphne)      - CVE-2026-71554
 #                     (audyt: sierpien 2026)
+#
+# CELOWO NIEPODNIESIONE (nie dopisuj bez przeczytania tego):
+#   setuptools >=83.0.0 - CVE-2026-59890 (dependabot alert #326, medium).
+#     Bump JEST BREAKING: setuptools 83 usunal `pkg_resources`, a `pyoai`
+#     (direct dep, ==2.5.0) importuje go na poziomie modulu w oaipmh/common.py
+#     -> `manage.py check` sie wywala. Sprawdzone empirycznie: sierpien 2026.
+#     Jednoczesnie ekspozycja jest zerowa: CVE dotyczy WYLACZNIE budowania
+#     sdist z regulami MANIFEST.in, a sdist buduje sie w izolowanym srodowisku
+#     PEP 517 z `[build-system].requires`, gdzie mamy juz setuptools>=83.0.0.
+#     Alert wisi na uv.lock, czyli na setuptools *runtime*, ktory nigdy nic
+#     nie buduje. Odblokowanie wymaga wymiany/zalatania pyoai (nieutrzymywany).
 constraint-dependencies = [
     "bleach>=6.4.0",
     "daphne>=4.2.2",
