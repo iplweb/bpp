@@ -77,11 +77,23 @@ class BezJakichkolwiekDyscyplinFilter(SimpleListFilter):
             field = self.parameter_name
 
         if v == "tak":
+            # Oba liczniki muszą mieć ``autorzy_set__deleted_at__isnull=True``:
+            # agregat po ``autorzy_set`` to JOIN po SUROWEJ tabeli ``*_autor``
+            # (manager soft-delete nie jest pytany). Bez tego skasowane
+            # autorstwo Z dyscypliną podbijało wyłącznie ``total_authors``,
+            # więc rekord, w którym wszyscy ŻYWI autorzy są bez dyscypliny,
+            # wypadał z wyników filtra.
             return queryset.annotate(
-                total_authors=Count("autorzy_set"),
+                total_authors=Count(
+                    "autorzy_set",
+                    filter=Q(autorzy_set__deleted_at__isnull=True),
+                ),
                 authors_without_discipline=Count(
                     "autorzy_set",
-                    filter=Q(autorzy_set__dyscyplina_naukowa__isnull=True),
+                    filter=Q(
+                        autorzy_set__dyscyplina_naukowa__isnull=True,
+                        autorzy_set__deleted_at__isnull=True,
+                    ),
                 ),
             ).filter(
                 total_authors__gt=0,  # Ma autorów

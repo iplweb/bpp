@@ -126,16 +126,21 @@
             </p>
         </div>
 
+        {# ``autorzy_set__deleted_at__isnull=True`` MUSI być w obu linkach: #}
+        {# changelist admina filtruje JOIN-em po surowej tabeli ``*_autor``, #}
+        {# a liczniki wyżej (verification.py) już ten predykat mają. Bez niego #}
+        {# lista w adminie byłaby dłuższa niż liczba obok — o publikacje, #}
+        {# których problematyczne autorstwo zostało skasowane. #}
         <div class="button-group">
             {% if brak_oswiadczenia_ciagle_count > 0 %}
-            <a href="{% url 'admin:bpp_wydawnictwo_ciagle_changelist' %}?rok__gte=2022&autorzy_set__dyscyplina_naukowa__isnull=False&autorzy_set__data_oswiadczenia__isnull=True"
+            <a href="{% url 'admin:bpp_wydawnictwo_ciagle_changelist' %}?rok__gte=2022&autorzy_set__dyscyplina_naukowa__isnull=False&autorzy_set__data_oswiadczenia__isnull=True&autorzy_set__deleted_at__isnull=True"
                class="button"
                target="_blank">
                 <span class="fi-page-multiple"></span> Wydawnictwa ciągłe w admin
             </a>
             {% endif %}
             {% if brak_oswiadczenia_zwarte_count > 0 %}
-            <a href="{% url 'admin:bpp_wydawnictwo_zwarte_changelist' %}?rok__gte=2022&autorzy_set__dyscyplina_naukowa__isnull=False&autorzy_set__data_oswiadczenia__isnull=True"
+            <a href="{% url 'admin:bpp_wydawnictwo_zwarte_changelist' %}?rok__gte=2022&autorzy_set__dyscyplina_naukowa__isnull=False&autorzy_set__data_oswiadczenia__isnull=True&autorzy_set__deleted_at__isnull=True"
                class="button"
                target="_blank">
                 <span class="fi-page-multiple"></span> Wydawnictwa zwarte w admin

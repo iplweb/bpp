@@ -415,10 +415,16 @@ def _publikacji_counts_bulk(pks: list[int]) -> dict[int, int]:
     Count("zwarte") + Count("patent")`` w jednym querysecie Django robi
     cross-JOIN i kardynalności się mnożą. Tu mamy 3 round-tripy na cały
     request, niezależnie od liczby kandydatów.
+
+    ``filter=Q(…__deleted_at__isnull=True)`` jest KONIECZNY: agregat idzie
+    JOIN-em po surowej tabeli ``*_autor``, a nie przez ``objects`` tych
+    modeli, więc bez tego predykatu soft-delete autorstwa w ogóle nie
+    zmniejszałby licznika. Deduplikator pokazuje tę liczbę przy kandydacie
+    — husk autora wyglądałby na aktywnego.
     """
     from collections import defaultdict
 
-    from django.db.models import Count
+    from django.db.models import Count, Q
 
     totals: dict[int, int] = defaultdict(int)
     for relation in (
@@ -428,7 +434,12 @@ def _publikacji_counts_bulk(pks: list[int]) -> dict[int, int]:
     ):
         rows = (
             Autor.objects.filter(pk__in=pks)
-            .annotate(_n=Count(relation))
+            .annotate(
+                _n=Count(
+                    relation,
+                    filter=Q(**{f"{relation}__deleted_at__isnull": True}),
+                )
+            )
             .values_list("pk", "_n")
         )
         for pk, n in rows:
