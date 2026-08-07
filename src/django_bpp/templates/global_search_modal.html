@@ -1045,7 +1045,13 @@
             }
 
             // Check for "/" key (forward slash)
-            if (e.key === '/' && !$('#globalSearchModal').hasClass('show')) {
+            // WCAG 2.1.4: skrot jednoznakowy musi dac sie wylaczyc.
+            // Guard `typeof` — gdy modul sie nie zaladuje, degradujemy do
+            // zachowania dotychczasowego zamiast rzucac TypeError.
+            var skrotyWl = (typeof window.bppSkrotyWlaczone !== 'function'
+                            || window.bppSkrotyWlaczone());
+            if (e.key === '/' && skrotyWl
+                && !$('#globalSearchModal').hasClass('show')) {
                 e.preventDefault();
                 openGlobalSearch(null, true); // Pass true to indicate keyboard trigger
             }
