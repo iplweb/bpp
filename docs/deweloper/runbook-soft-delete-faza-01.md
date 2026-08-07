@@ -98,6 +98,23 @@ ProgrammingError: kolumna old.deleted_at nie istnieje
 To jedyny nieudany rewers w całej serii — pozostałe wracają do stanu
 wyjściowego bit-w-bit (zweryfikowane zrzutem katalogu przed/po).
 
+> **Faza 02 rozszerza to na tabele publikacji.** Migracja `0496` dokłada
+> `deleted_at` do pięciu tabel publikacji, więc **każdy** zjazd poniżej
+> `0496` — nie tylko poniżej `0488` — wpada w ten sam mechanizm. Zasada
+> pozostaje ta sama i nie zmienia procedury: rollback wycofuje KOD razem ze
+> schematem, a stare modele nie deklarują `deleted_at`, więc `denorm`
+> wygeneruje poprawne triggery. Kombinacja „nowy kod + stary schemat"
+> powstaje wyłącznie sztucznie.
+>
+> Skutek uboczny w testach: testy odwracalności fazy 01
+> (`test_migracja_0489_rewers`, `test_migracje_0490_0493_rewers`) schodzą
+> poniżej `0496`, trzymając kod na miejscu — czyli produkują dokładnie tę
+> zakazaną kombinację. Dlatego korzystają z fixtury
+> `bez_reinstalacji_denorma` (`src/bpp/tests/test_soft_delete/conftest.py`),
+> która odpina handler `post_migrate` na czas testu i przebudowuje triggery
+> ręcznie na końcu. To obejście **testowe** — nie zmienia niczego we
+> wdrożeniu.
+
 Dodatkowo: rewers `0493` przywraca **bezwarunkowe** `UNIQUE (rekord_id,
 kolejnosc)`, które padnie, jeśli ktokolwiek zdążył skorzystać z soft-delete
 (soft-deletowane wiersze wyglądają wtedy jak duplikaty). Rollback po realnym

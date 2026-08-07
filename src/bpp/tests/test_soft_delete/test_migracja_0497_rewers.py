@@ -47,7 +47,7 @@ def _pary_zalezne():
 
 
 @pytest.mark.django_db
-def test_0497_odwracalna():
+def test_0497_odwracalna(bez_reinstalacji_denorma):
     # Stan wyjsciowy: wszystkie 7 widokow zalezy od deleted_at swojej tabeli.
     assert OCZEKIWANE_PARY <= _pary_zalezne(), (
         "stan przed testem juz jest niepoprawny — migracja 0497 nie jest "
