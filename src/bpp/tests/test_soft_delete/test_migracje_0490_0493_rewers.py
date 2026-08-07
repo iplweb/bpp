@@ -73,7 +73,7 @@ def _sprawdz_stan_po(cur):
 
 
 @pytest.mark.django_db
-def test_migracje_0490_0493_odwracalne():
+def test_migracje_0490_0493_odwracalne(bez_reinstalacji_denorma):
     with connection.cursor() as cur:
         _sprawdz_stan_po(cur)
 

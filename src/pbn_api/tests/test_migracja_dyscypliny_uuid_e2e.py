@@ -58,7 +58,7 @@ def _przywroc_pelny_stan_migracji():
 
 
 @pytest.mark.django_db(transaction=True)
-def test_migracja_przechodzi_na_bazie_z_duplikatami():
+def test_migracja_przechodzi_na_bazie_z_duplikatami(bez_reinstalacji_denorma):
     try:
         _test_migracji_na_bazie_z_duplikatami()
     finally:

@@ -78,14 +78,33 @@ import pytest
 #: Katalog ``src/`` — korzeń skanowania.
 KORZEN = pathlib.Path(__file__).resolve().parents[3]
 
-#: Nazwy relacji do trzech soft-delete'owanych through-modeli. ``autorzy_set``
-#: to strona publikacji; pozostałe to nazwy odwrotne od strony ``Autor``,
+#: Nazwy relacji do soft-delete'owanych modeli.
+#:
+#: Faza 01 — trzy through-modele autorstwa. ``autorzy_set`` to strona
+#: publikacji; pozostałe to nazwy odwrotne od strony ``Autor``,
 #: ``Jednostka`` i słowników (brak ``related_name`` → nazwa modelu małymi).
+#:
+#: Faza 02 — pięć modeli publikacji. Tu ryzyko jest odwrotnie skierowane:
+#: zapytania startujące OD publikacji są bezpieczne, bo ``objects`` to
+#: ``BppSoftDeleteManager`` i sam filtruje ``deleted_at``. Przecieka
+#: dołączenie DO publikacji od strony słownika/relacji (``Zrodlo``,
+#: ``Wydawca``, ``Charakter_Formalny``, ``Autor``…), gdzie żaden manager
+#: się nie włącza — i to łapią nazwy niżej.
 RELACJE = (
     "autorzy_set",
     "wydawnictwo_ciagle_autor",
     "wydawnictwo_zwarte_autor",
     "patent_autor",
+)
+
+#: Relacje do pięciu modeli PUBLIKACJI (faza 02). Trzymane OSOBNO od
+#: ``RELACJE``, bo pilnuje ich osobny test — patrz ``xfail`` niżej.
+RELACJE_PUBLIKACJI = (
+    "wydawnictwo_ciagle",
+    "wydawnictwo_zwarte",
+    "patent",
+    "praca_doktorska",
+    "praca_habilitacyjna",
 )
 
 #: Wywołania, w których nazwa argumentu / literał napisowy jest ścieżką ORM.
@@ -158,13 +177,13 @@ def _pliki_produkcyjne():
         yield sciezka, wzgledna
 
 
-def _jest_sciezka_relacji(tekst: str) -> bool:
+def _jest_sciezka_relacji(tekst: str, relacje=RELACJE) -> bool:
     """Czy ``tekst`` (nazwa kwargu albo literał) jest ścieżką ORM do
     through-modelu? ``autorzy_set__autor`` tak, ``patent_autor`` (nazwa
     endpointu w routerze) — tylko gdy stoi samo albo z ``__``."""
     if not isinstance(tekst, str):
         return False
-    for relacja in RELACJE:
+    for relacja in relacje:
         if tekst == relacja or tekst.startswith(relacja + "__"):
             return True
         if "__" + relacja + "__" in tekst or tekst.endswith("__" + relacja):
@@ -180,19 +199,19 @@ def _nazwa_wywolania(wezel: ast.Call) -> str | None:
     return None
 
 
-def _wywolanie_dotyka_relacji(wezel: ast.Call) -> bool:
+def _wywolanie_dotyka_relacji(wezel: ast.Call, relacje=RELACJE) -> bool:
     if _nazwa_wywolania(wezel) not in WYWOLANIA_ORM:
         return False
     for kw in wezel.keywords:
-        if kw.arg and _jest_sciezka_relacji(kw.arg):
+        if kw.arg and _jest_sciezka_relacji(kw.arg, relacje):
             return True
     for arg in wezel.args:
-        if isinstance(arg, ast.Constant) and _jest_sciezka_relacji(arg.value):
+        if isinstance(arg, ast.Constant) and _jest_sciezka_relacji(arg.value, relacje):
             return True
     return False
 
 
-def _podejrzane_instrukcje(zrodlo: str, wzgledna: str):
+def _podejrzane_instrukcje(zrodlo: str, wzgledna: str, relacje=RELACJE):
     """Zwraca [(linia, pierwsza linia instrukcji)] — instrukcje z wywołaniem
     ORM po relacji do ``*_Autor``, bez ``deleted_at``, spoza ``DOZWOLONE``."""
     try:
@@ -224,10 +243,10 @@ def _podejrzane_instrukcje(zrodlo: str, wzgledna: str):
             literaly = [
                 w.value for w in ast.walk(wezel.iter) if isinstance(w, ast.Constant)
             ]
-            if not any(_jest_sciezka_relacji(x) for x in literaly):
+            if not any(_jest_sciezka_relacji(x, relacje) for x in literaly):
                 continue
         elif not any(
-            isinstance(w, ast.Call) and _wywolanie_dotyka_relacji(w)
+            isinstance(w, ast.Call) and _wywolanie_dotyka_relacji(w, relacje)
             for w in ast.walk(wezel)
         ):
             continue
@@ -243,6 +262,18 @@ def _podejrzane_instrukcje(zrodlo: str, wzgledna: str):
     return wynik
 
 
+def _skanuj(relacje):
+    """``[plik:linia: fragment]`` dla wszystkich podejrzanych instrukcji."""
+    znaleziska = []
+    for sciezka, wzgledna in _pliki_produkcyjne():
+        zrodlo = sciezka.read_text(encoding="utf-8")
+        if not any(relacja in zrodlo for relacja in relacje):
+            continue
+        for lineno, fragment in _podejrzane_instrukcje(zrodlo, wzgledna, relacje):
+            znaleziska.append(f"{wzgledna}:{lineno}: {fragment}")
+    return znaleziska
+
+
 def test_kanarek_orm_join_po_autorstwie_ma_predykat_deleted_at():
     """Żadne produkcyjne wywołanie ORM nie JOIN-uje ``*_Autor`` bez
     ``deleted_at``.
@@ -252,13 +283,7 @@ def test_kanarek_orm_join_po_autorstwie_ma_predykat_deleted_at():
     semantycznej — dowodzi tylko, że autor kodu w ogóle pomyślał o
     soft-delete. Semantyki pilnują testy w ``test_orm_wyciek_join.py``.
     """
-    znaleziska = []
-    for sciezka, wzgledna in _pliki_produkcyjne():
-        zrodlo = sciezka.read_text(encoding="utf-8")
-        if not any(relacja in zrodlo for relacja in RELACJE):
-            continue
-        for lineno, fragment in _podejrzane_instrukcje(zrodlo, wzgledna):
-            znaleziska.append(f"{wzgledna}:{lineno}: {fragment}")
+    znaleziska = _skanuj(RELACJE)
 
     assert not znaleziska, (
         "JOIN po soft-delete'owanym through-modelu bez predykatu "
@@ -266,6 +291,48 @@ def test_kanarek_orm_join_po_autorstwie_ma_predykat_deleted_at():
         + "\n  ".join(znaleziska)
         + "\n\nCo zrobić — patrz docstring modułu "
         "src/bpp/tests/test_soft_delete/test_kanarek_orm.py"
+    )
+
+
+@pytest.mark.xfail(
+    reason="faza 03 — audyt wywolan ORM w imporcie/dedup/PBN",
+    strict=True,
+)
+def test_kanarek_orm_join_po_publikacji_ma_predykat_deleted_at():
+    """To samo, ale dla pięciu modeli PUBLIKACJI (faza 02).
+
+    ⚠️ ``xfail(strict=True)`` JEST TU CELOWY i ma się utrzymać do fazy 03.
+
+    Ryzyko jest skierowane odwrotnie niż przy autorstwach: zapytania
+    startujące OD publikacji są bezpieczne, bo ``objects`` to
+    ``BppSoftDeleteManager``. Przecieka dołączenie DO publikacji od strony
+    słownika (``Zrodlo``, ``Charakter_Formalny``…), gdzie żaden manager się
+    nie włącza.
+
+    Faza 02 zamknęła warstwę BAZODANOWĄ (modele, widoki, triggery,
+    ograniczenia, menedżery). Audyt wywołań ORM w imporcie/dedup/PBN plan
+    przypisuje jawnie FAZIE 03 — dlatego ten test dokumentuje dług, zamiast
+    go po cichu ukrywać albo wymuszać naprawę poza zakresem fazy.
+
+    Pełna, przetriagowana lista (10 prawdziwych wycieków + 4 fałszywe
+    trafienia, z uzasadnieniem każdego) jest w
+    ``docs/superpowers/reviews/2026-08-07-faza-02-inwentaryzacja-orm.md`` —
+    faza 03 nie musi jej odtwarzać.
+
+    ``strict=True`` znaczy, że gdy faza 03 naprawi te miejsca, test zacznie
+    PADAĆ jako XPASS i zmusi do zdjęcia markera. Bez ``strict`` naprawa
+    przeszłaby niezauważona, a kanarek zostałby wyłączony na zawsze — tę
+    dokładnie pułapkę odnotowuje handoff fazy 01 („pusty wynik ≠
+    potwierdzenie").
+    """
+    znaleziska = _skanuj(RELACJE_PUBLIKACJI)
+
+    assert not znaleziska, (
+        "JOIN po soft-delete'owanej PUBLIKACJI bez predykatu "
+        "``deleted_at``:\n  "
+        + "\n  ".join(znaleziska)
+        + "\n\nTriage: docs/superpowers/reviews/"
+        "2026-08-07-faza-02-inwentaryzacja-orm.md"
     )
 
 

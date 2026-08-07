@@ -14,24 +14,24 @@ kodzie, dokumentujac stan "soft-delete by nie zadzialal".
 
 Faza 01 objela WYLACZNIE tabele ``*_Autor`` (migracja 0489: widok filtruje,
 funkcja refresh ma galaz kasujaca, bramka WHEN zna ``deleted_at`` -- patrz
-``test_soft_delete/test_views_sql.py``). Tabele publikacji (np.
-``bpp_wydawnictwo_ciagle``) sa poza zakresem -- to faza 02. Dlatego:
+``test_soft_delete/test_views_sql.py``), a faza 02 -- 5 tabel PUBLIKACJI
+(migracje 0496 i 0497, patrz ``test_soft_delete/test_views_sql_publikacje.py``).
 
-- oryginalne dwa testy ponizej sa ODWROCONE na docelowe asercje (to co
-  soft-delete MA robic), ale zostawione jako ``xfail`` -- to JEDYNY
-  regresyjny dowod, ze bramka i galaz kasujaca dzialaja poprawnie DOPIERO
-  po fazie 02 (gdy przestana byc xfail, to znak, ze ktos wdrozyl mechanizm
-  dla publikacji i NIE zaktualizowal tego markera -- patrz uwaga przy
-  ``xfail`` nizej);
-- ponizej dopisane sa ich ODPOWIEDNIKI dla ``bpp_wydawnictwo_ciagle_autor``
-  / ``bpp_autorzy_mat``, ktore juz DZIALAJA (faza 01) -- to one sa realnym
-  dowodem regresyjnym na CO DZIEN, nie oryginaly.
+Historia tego pliku, bo tlumaczy jego ksztalt:
+
+- oryginalne dwa testy zostaly po fazie 01 ODWROCONE na docelowe asercje (to,
+  co soft-delete MA robic) i oznaczone ``xfail(strict=True)``, bo dla
+  publikacji mechanizmu jeszcze nie bylo. Zeby w ogole dalo sie je napisac,
+  dokladaly kolumne ``deleted_at`` ALTER-em i owijaly widok filtrem WEWNATRZ
+  transakcji testowej;
+- faza 02 dostarczyla jedno i drugie NAPRAWDE, wiec symulacja zostala
+  usunieta, a wraz z nia markery ``xfail``. Testy sa teraz zwyklymi testami
+  regresyjnymi;
+- ich ODPOWIEDNIKI dla ``bpp_wydawnictwo_ciagle_autor`` / ``bpp_autorzy_mat``
+  (dopisane w fazie 01) zostaja -- pokrywaja druga sciezke.
 
 Surowy SQL, zeby izolowac sam trigger bazodanowy (bez denorm / sygnalow
-Django). Dla oryginalnych (publikacja) testow kolumne ``deleted_at``
-dokladamy ALTER-em wewnatrz transakcji testowej -- DDL w Postgresie jest
-transakcyjny, wiec rollback ja sprzata. Dla nowych (``*_Autor``) testow
-ALTER nie jest potrzebny -- kolumna jest realna od migracji 0488.
+Django).
 """
 
 import pytest
@@ -62,48 +62,18 @@ def _ctid(cur, ct, pk):
     return row[0] if row else None
 
 
-def _dodaj_deleted_at(cur):
-    cur.execute("ALTER TABLE bpp_wydawnictwo_ciagle ADD COLUMN deleted_at timestamptz")
-
-
-def _filtruj_widok_po_deleted_at(cur):
-    """Owija bpp_wydawnictwo_ciagle_view filtrem deleted_at IS NULL.
-
-    Odpowiednik "mechanizmu #1" ze specu, bez ruszania oryginalnej definicji
-    (CREATE OR REPLACE zachowuje liste kolumn -- bpp_rekord, ktory ten widok
-    UNION-uje, pozostaje wazny).
-    """
-    cur.execute("SELECT pg_get_viewdef('bpp_wydawnictwo_ciagle_view'::regclass, true)")
-    orig = cur.fetchone()[0].rstrip().rstrip(";")
-    cur.execute(
-        f"CREATE OR REPLACE VIEW bpp_wydawnictwo_ciagle_view AS "
-        f"SELECT * FROM ({orig}) _orig "
-        f"WHERE _orig.object_id_raw NOT IN ("
-        f"    SELECT id FROM bpp_wydawnictwo_ciagle WHERE deleted_at IS NOT NULL)"
-    )
-
-
-@pytest.mark.xfail(
-    reason="faza 02 -- soft-delete publikacji (bpp_wydawnictwo_ciagle)",
-    strict=True,
-)
 @pytest.mark.django_db
 def test_update_samego_deleted_at_odpala_trigger():
-    """Docelowo: bramka WHEN MA znac deleted_at -> UPDATE soft-delete MA
-    odpalac trigger, ktory kasuje wiersz z bpp_rekord_mat (ctid znika).
+    """Bramka WHEN zna deleted_at -> UPDATE soft-delete odpala trigger,
+    ktory kasuje wiersz z bpp_rekord_mat (ctid znika).
 
     Odwrocenie ``test_update_samego_deleted_at_nie_odpala_triggera`` (nazwa
-    i asercja sprzed fazy 01). Dla ``bpp_wydawnictwo_ciagle`` samej to
-    dalej NIE dziala -- faza 01 dotknela wylacznie tabel ``*_Autor``
-    (migracja 0489). Ten test ma pozostac xfail az do fazy 02; gdy
-    zazieleni sie SAM (bez zmiany kodu tego pliku), oznacza to niezamierzona
-    regresje zakresu -- zbadaj, co dotknelo bramki ``bpp_wydawnictwo_ciagle``.
+    i asercja sprzed fazy 01). Do fazy 02 test byl ``xfail(strict=True)``,
+    a kolumne ``deleted_at`` dokladal ALTER-em w transakcji testowej --
+    faza 01 dotknela wylacznie tabel ``*_Autor``. Faza 02 (migracje 0496
+    i 0497) dodala kolumne i bramke NAPRAWDE, wiec symulacja zniknela,
+    a marker ``xfail`` razem z nia.
     """
-    # DDL PRZED utworzeniem rekordu: ALTER TABLE nie przejdzie, gdy tabela ma
-    # zakolejkowane zdarzenia wyzwalaczy z INSERT-a w tej samej transakcji.
-    with connection.cursor() as cur:
-        _dodaj_deleted_at(cur)
-
     wc = any_ciagle(tytul_oryginalny="Bramka a soft-delete")
     pk = wc.pk
 
@@ -125,27 +95,18 @@ def test_update_samego_deleted_at_odpala_trigger():
     )
 
 
-@pytest.mark.xfail(
-    reason="faza 02 -- soft-delete publikacji (bpp_wydawnictwo_ciagle)",
-    strict=True,
-)
 @pytest.mark.django_db
 def test_soft_delete_usuwa_wiersz_z_mat():
-    """Docelowo: goly UPDATE ... SET deleted_at MA usunac wiersz z
-    bpp_rekord_mat (mechanizm #1 -- filtr widoku -- wystarcza, bo funkcja
-    refresh ma galaz kasujaca uruchamiana PRZED upsertem).
+    """Goly ``UPDATE ... SET deleted_at`` usuwa wiersz z bpp_rekord_mat.
 
     Odwrocenie ``test_filtr_widoku_sam_nie_usuwa_wiersza_z_mat`` (nazwa i
-    asercja sprzed fazy 01). Jak wyzej: dla publikacji to faza 02, ten test
-    ma zostac xfail do tego czasu.
-    """
-    # Cale DDL przed INSERT-em (patrz test wyzej). Filtr widoku jest juz
-    # aktywny przy tworzeniu rekordu, ale deleted_at jest wtedy NULL, wiec
-    # wiersz normalnie wchodzi do bpp_rekord_mat.
-    with connection.cursor() as cur:
-        _dodaj_deleted_at(cur)
-        _filtruj_widok_po_deleted_at(cur)
+    asercja sprzed fazy 01). Jak w tescie wyzej: do fazy 02 byl to
+    ``xfail(strict=True)`` z symulacja (ALTER + owijka widoku); faza 02
+    dostarczyla filtr i galaz kasujaca naprawde (migracja 0497).
 
+    Filtr widoku jest aktywny juz przy tworzeniu rekordu, ale ``deleted_at``
+    jest wtedy NULL, wiec wiersz normalnie wchodzi do bpp_rekord_mat.
+    """
     wc = any_ciagle(tytul_oryginalny="Filtr widoku bez DELETE", rok=2020)
     pk = wc.pk
 

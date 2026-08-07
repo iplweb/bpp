@@ -8,6 +8,7 @@ autorstw, których w systemie już nie ma — a użytkownik nie ma jak ich
 """
 
 import pytest
+from django.db import connection
 from model_bakery import baker
 
 from bpp.models import Dyscyplina_Zrodla, Wydawnictwo_Ciagle
@@ -47,3 +48,28 @@ def test_rozbieznosci_zrodel_pomijaja_soft_deletowane(rozbieznosc_zrodla):
     assert not RozbieznosciZrodelView.objects.filter(
         autor_id=rozbieznosc_zrodla.autor_id
     ).exists()
+
+
+@pytest.mark.django_db
+def test_rozbieznosci_zrodel_pomijaja_soft_deletowana_publikacje(rozbieznosc_zrodla):
+    """Wymiar PUBLIKACJI (faza 02, migracja 0023 tej aplikacji).
+
+    ⚠️ Kasujemy publikację SUROWYM UPDATE-em, nie ``rekord.delete()``, i jest
+    to celowe: ``delete()`` kaskaduje na autorstwa, więc wiersz raportu
+    zniknąłby z DWÓCH niezależnych powodów — przez filtr publikacji (to, co
+    ten test sprawdza) ORAZ przez filtr autorstwa z migracji ``0022``. Test
+    przechodziłby wtedy nawet po cofnięciu ``0023``, czyli nie byłby
+    wyrocznią niczego.
+    """
+    autor_id = rozbieznosc_zrodla.autor_id
+    assert RozbieznosciZrodelView.objects.filter(autor_id=autor_id).exists()
+
+    with connection.cursor() as cur:
+        cur.execute(
+            "UPDATE bpp_wydawnictwo_ciagle SET deleted_at = now() WHERE id = %s",
+            [rozbieznosc_zrodla.rekord_id],
+        )
+
+    assert not RozbieznosciZrodelView.objects.filter(autor_id=autor_id).exists(), (
+        "soft-skasowana publikacja dalej generuje wiersz raportu rozbieznosci"
+    )

@@ -37,7 +37,11 @@ z fazy 06::
     Model.deleted_objects.filter(ostatnio_zmieniony__gte=X)
 """
 
+import uuid
+
 from django.core.exceptions import FieldDoesNotExist
+from django.db import transaction
+from django.utils import timezone
 from django_softdelete.managers import (
     DeletedManager,
     DeletedQuerySet,
@@ -46,6 +50,13 @@ from django_softdelete.managers import (
     SoftDeleteQuerySet,
 )
 from django_softdelete.models import SoftDeleteModel
+from django_softdelete.signals import post_restore, post_soft_delete
+
+#: Akcesor relacji odwrotnej publikacja -> wiersze ``*_Autor``. Istnieje
+#: jako PRAWDZIWA relacja tylko dla trzech typów z through-modelem;
+#: ``Praca_Doktorska``/``Praca_Habilitacyjna`` mają pod tą nazwą property
+#: zwracającą atrapy — patrz ``BppPublikacjaSoftDeleteMixin``.
+NAZWA_RELACJI_AUTORSTW = "autorzy_set"
 
 #: Nazwa pola-znacznika czasu modyfikacji. Ta sama w
 #: ``BazaModeluOdpowiedzialnosciAutorow`` (``abstract/authors.py``) i w
@@ -225,3 +236,152 @@ class BppAutorstwoSoftDeleteMixin(SoftDeleteModel):
         ``obj.restore(False, txid)``.
         """
         return super().restore(strict, transaction_id, *args, **kwargs)
+
+
+class BppPublikacjaSoftDeleteMixin(SoftDeleteModel):
+    """SoftDeleteModel dla 5 modeli PUBLIKACJI (faza 02) z **wąską,
+    kontrolowaną** kaskadą na własne wiersze ``*_Autor`` pod wspólnym
+    ``transaction_id``.
+
+    DLACZEGO NIE REFLEKSYJNA KASKADA PAKIETU: ``SoftDeleteModel.delete()``
+    przechodzi po wszystkich relacjach zwrotnych. Zjechałaby więc po
+    ``*_Streszczenie``, ``*_Zewnetrzna_Baza_Danych`` i
+    ``Publikacja_Habilitacyjna`` — modelach, które soft-delete NIE obejmuje.
+    Co gorsza zrobiłaby to CICHO: ``delete()`` pakietu ma domyślnie
+    ``strict=False``, więc nie usłyszelibyśmy ``SoftDeleteException``.
+    Dlatego kaskadę piszemy sami i zatrzymujemy ją na ``*_Autor``.
+
+    Kaskada NIE jest jednolita dla wszystkich pięciu modeli — patrz
+    ``_relacja_autorstw()``.
+    """
+
+    # Managery z gate'em na .update() (faza 01). ``deleted_objects`` to
+    # NASZ ``BppDeletedManager``, nie pakietowy ``DeletedManager`` —
+    # pakietowy zwraca queryset z ``strict=True`` w ``restore()``, co łamie
+    # inwariant z docstringu modułu.
+    objects = BppSoftDeleteManager()
+    global_objects = BppGlobalManager()
+    deleted_objects = BppDeletedManager()
+
+    class Meta:
+        abstract = True
+
+    # --- rozpoznanie kształtu kaskady ----------------------------------
+
+    def _relacja_autorstw(self):
+        """Relacja odwrotna ``autorzy_set`` (``ForeignObjectRel``) albo
+        ``None``, gdy publikacja nie ma through-modelu autorstw.
+
+        DLACZEGO PYTAMY ``_meta``, A NIE TYPU ATRYBUTU: pod nazwą
+        ``autorzy_set`` kryją się dwie różne rzeczy. Dla
+        ``Wydawnictwo_Ciagle``/``Wydawnictwo_Zwarte``/``Patent`` to
+        prawdziwy related manager (``related_name`` FK w modelu
+        ``*_Autor``). Dla ``Praca_Doktorska``/``Praca_Habilitacyjna`` to
+        PROPERTY zwracająca ``FakeSet`` z atrapami (autor leży na wierszu
+        samej publikacji) — ``FakeSet`` jest podklasą ``list``, nie ma
+        ``.model``, a atrapy nie mają ``.delete()``.
+
+        Rozpoznawanie tego przez ``type(self).__dict__.get("autorzy_set")``
+        NIE DZIAŁA: property jest zadeklarowana na abstrakcyjnej bazie
+        ``Praca_Doktorska_Baza``, a dziedziczenie abstrakcyjne w Django
+        kopiuje do klasy potomnej POLA, nie zwykłe atrybuty Pythona — te
+        zostają na bazie i są znajdowane dopiero przez MRO. ``__dict__``
+        klasy konkretnej jest więc pusty i test na ``property`` dawałby
+        fałszywe „to jest through-model", a zaraz potem ``AttributeError``
+        na ``FakeSet.model``.
+
+        ``_meta.related_objects`` zna wyłącznie PRAWDZIWE relacje, więc
+        odpowiada na pytanie, które faktycznie zadajemy.
+        """
+        for rel in self._meta.related_objects:
+            if rel.get_accessor_name() == NAZWA_RELACJI_AUTORSTW:
+                return rel
+        return None
+
+    def _model_through(self):
+        """Model ``*_Autor`` tej publikacji albo ``None``."""
+        rel = self._relacja_autorstw()
+        return rel.related_model if rel is not None else None
+
+    def _autorstwa_do_kaskady(self):
+        """Wiersze ``*_Autor`` do soft-delete; pusto bez through-modelu.
+
+        Czyta przez domyślny manager (``objects``, więc już-skasowane są
+        pominięte) — kasowanie drugi raz nie szkodzi, ale i nie ma po co.
+        """
+        if self._relacja_autorstw() is None:
+            return []
+        return list(getattr(self, NAZWA_RELACJI_AUTORSTW).all())
+
+    # --- kontrakt zapisu ------------------------------------------------
+
+    def save(self, *args, **kwargs):
+        """Bump ``ostatnio_zmieniony`` przy soft-delete i restore.
+
+        Ten sam kontrakt (PINNED), co
+        ``BppAutorstwoSoftDeleteMixin.save()`` — pełne uzasadnienie
+        mechanizmu jest w docstringu ``dopisz_znacznik_zmiany()``. Bez
+        tego nagrobki dla harvestu przyrostowego (OAI-PMH, CERIF, REST
+        API) byłyby nieodpytywalne po ``ostatnio_zmieniony__gte``, bo
+        ``auto_now`` nie rusza pola nieobecnego w ``update_fields``.
+        """
+        update_fields = kwargs.get("update_fields")
+        if update_fields:
+            kwargs["update_fields"] = dopisz_znacznik_zmiany(self, update_fields)
+        return super().save(*args, **kwargs)
+
+    # --- soft-delete / restore ------------------------------------------
+
+    def delete(self, *args, user=None, reason="", **kwargs):
+        """Soft-delete publikacji + wąska kaskada na ``*_Autor``.
+
+        ``user``/``reason`` są na razie wyłącznie przepuszczane — konsumuje
+        je ``SoftDeleteLog`` z fazy 06. W sygnaturze MUSZĄ być już teraz
+        (kontrakt PINNED), żeby wołający kod nie wymagał później zmiany.
+        """
+        txid = kwargs.pop("transaction_id", None) or uuid.uuid4()
+        with transaction.atomic():
+            # 1. kaskada per-instancja — NIGDY bulk update(deleted_at=...),
+            #    bo omijałby post_save, sygnały i reversion (gate w
+            #    BppSoftDeleteQuerySet.update() egzekwuje to fail-fast).
+            for autorstwo in self._autorstwa_do_kaskady():
+                autorstwo.delete(transaction_id=txid)
+            # 2. własny wiersz
+            self.deleted_at = timezone.now()
+            self.restored_at = None
+            self.transaction_id = txid
+            self.save(update_fields=["deleted_at", "restored_at", "transaction_id"])
+            post_soft_delete.send(sender=self.__class__, instance=self)
+        return 1, {self._meta.label: 1}
+
+    delete.alters_data = True
+
+    def restore(self, *args, strict: bool = False, user=None, **kwargs):
+        """Przywrócenie publikacji + tych ``*_Autor``, które zniknęły RAZEM
+        z nią (ten sam ``transaction_id``).
+
+        Filtr po ``transaction_id`` jest istotny: autorstwo skasowane
+        wcześniej, osobną decyzją operatora, ma POZOSTAĆ w koszu.
+
+        ``strict`` przyjmujemy i ignorujemy świadomie — przekazują go
+        ścieżki queryset-owe (``global_objects``/``deleted_objects``), a my
+        i tak nie wołamy ``super().restore()``, więc pakietowy
+        ``SoftDeleteException`` nie ma jak polecieć (inwariant z docstringu
+        modułu).
+        """
+        txid = self.transaction_id
+        rel = self._relacja_autorstw()
+        with transaction.atomic():
+            if txid is not None and rel is not None:
+                # Nazwa pola FK z metadanych relacji — bez zaszywania
+                # "rekord" na sztywno.
+                filtr = {rel.field.name: self, "transaction_id": txid}
+                for autorstwo in rel.related_model.deleted_objects.filter(**filtr):
+                    autorstwo.restore(transaction_id=txid)
+            self.deleted_at = None
+            self.restored_at = timezone.now()
+            self.transaction_id = None
+            self.save(update_fields=["deleted_at", "restored_at", "transaction_id"])
+            post_restore.send(sender=self.__class__, instance=self, transaction_id=txid)
+
+    restore.alters_data = True

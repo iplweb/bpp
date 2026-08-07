@@ -54,7 +54,11 @@ from bpp.models.abstract import (
 )
 from bpp.models.autor import Autor
 from bpp.models.nagroda import Nagroda
-from bpp.models.soft_delete import BppAutorstwoSoftDeleteMixin
+from bpp.models.soft_delete import (
+    BppAutorstwoSoftDeleteMixin,
+    BppPublikacjaSoftDeleteMixin,
+    BppSoftDeleteManager,
+)
 from bpp.models.system import Zewnetrzna_Baza_Danych
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 from bpp.models.wydawca import Wydawca
@@ -232,7 +236,18 @@ class ModelZOpenAccessWydawnictwoZwarte(ModelZOpenAccess):
 rok_regex = re.compile(r"\s[12]\d\d\d")
 
 
-class Wydawnictwo_Zwarte_Manager(ManagerModeliZOplataZaPublikacjeMixin, models.Manager):
+class Wydawnictwo_Zwarte_Manager(
+    ManagerModeliZOplataZaPublikacjeMixin, BppSoftDeleteManager
+):
+    """Jak ``Wydawnictwo_Ciagle_Manager`` — uzasadnienie doboru bazy
+    (i tego, dlaczego kolejność NIE jest nośna) w jego docstringu
+    (``wydawnictwo_ciagle.py``).
+
+    ``wydawnictwa_nadrzedne_dla_innych()`` też korzysta na przepleceniu:
+    po fazie 02 nie zwróci już książki-matki, której jedyne rozdziały
+    trafiły do kosza.
+    """
+
     def wydawnictwa_nadrzedne_dla_innych(self):
         return (
             self.exclude(wydawnictwo_nadrzedne_id=None)
@@ -242,6 +257,7 @@ class Wydawnictwo_Zwarte_Manager(ManagerModeliZOplataZaPublikacjeMixin, models.M
 
 
 class Wydawnictwo_Zwarte(
+    BppPublikacjaSoftDeleteMixin,
     ZapobiegajNiewlasciwymCharakterom,
     Wydawnictwo_Zwarte_Baza,
     ModelZCharakterem,
@@ -317,6 +333,15 @@ class Wydawnictwo_Zwarte(
         verbose_name = "wydawnictwo zwarte"
         verbose_name_plural = "wydawnictwa zwarte"
         app_label = "bpp"
+        indexes = [
+            # Indeks CZĘŚCIOWY — uzasadnienie przy `wc_deleted_at_idx`
+            # (`wydawnictwo_ciagle.py`, Meta klasy Wydawnictwo_Ciagle).
+            models.Index(
+                fields=["deleted_at"],
+                name="wz_deleted_at_idx",
+                condition=Q(deleted_at__isnull=False),
+            ),
+        ]
 
     def wydawnictwa_powiazane_posortowane(self):
         """
