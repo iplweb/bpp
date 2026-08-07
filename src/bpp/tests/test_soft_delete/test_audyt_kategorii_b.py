@@ -42,3 +42,65 @@ def test_get_bpp_publication_widzi_soft_deletowany_rekord():
         "matching po pbn_uid musi widzieć soft-deletowany rekord"
     )
     assert znaleziony.pk == rec.pk
+
+
+@pytest.mark.django_db
+def test_matchuj_publikacje_po_tytule_widzi_soft_deletowany():
+    """Fuzzy matching importu musi znaleźć soft-skasowaną publikację.
+
+    Inaczej re-import „nie widzi" rekordu, tworzy go od nowa — i baza dostaje
+    duplikat, którego operator nie zobaczy, bo oryginał siedzi w koszu.
+    """
+    from import_common.core.publikacja import matchuj_publikacje
+
+    rec = baker.make(
+        Wydawnictwo_Ciagle,
+        tytul_oryginalny="Unikalny tytul do matchowania importu",
+        rok=2019,
+    )
+    rec.delete()
+
+    wynik = matchuj_publikacje(
+        Wydawnictwo_Ciagle,
+        title="Unikalny tytul do matchowania importu",
+        year=2019,
+    )
+
+    assert wynik is not None, (
+        "fuzzy matching nie widzi soft-deletowanego rekordu -> re-import "
+        "utworzy duplikat"
+    )
+    assert wynik.pk == rec.pk
+
+
+@pytest.mark.django_db
+def test_matchuj_publikacje_po_doi_widzi_soft_deletowany():
+    """To samo dla DOI.
+
+    ⚠️ Tytuł MUSI być zgodny, mimo że matchujemy po DOI:
+    ``_try_match_pub_by_doi`` zawęża co prawda po DOI, ale kandydata i tak
+    przepuszcza przez próg podobieństwa tytułu (0.80). Pierwsza wersja tego
+    testu podawała celowo inny tytuł i padała — nie dlatego, że kod nie widzi
+    kosza, tylko dlatego, że tak działa matching. Wartość testu jest w tym,
+    żeby mierzył widoczność kosza, a nie regułę podobieństwa.
+    """
+    from import_common.core.publikacja import matchuj_publikacje
+
+    tytul = "Publikacja z DOI do matchowania importu"
+    rec = baker.make(
+        Wydawnictwo_Ciagle,
+        tytul_oryginalny=tytul,
+        rok=2021,
+        doi="10.1234/test.soft.delete",
+    )
+    rec.delete()
+
+    wynik = matchuj_publikacje(
+        Wydawnictwo_Ciagle,
+        title=tytul,
+        year=2021,
+        doi="10.1234/test.soft.delete",
+    )
+
+    assert wynik is not None, "matching po DOI nie widzi kosza"
+    assert wynik.pk == rec.pk
