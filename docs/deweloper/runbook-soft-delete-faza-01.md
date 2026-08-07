@@ -135,28 +135,36 @@ od użytkowników.
   PBN, deduplikator) płaci teraz za jego utrzymanie. `0490` dokłada btree po
   `rekord_id`, co część kosztu łagodzi. **Nikt tego nie zmierzył** — testy
   z definicji tego nie wykryją.
-- **Artefakty DjangoQL dla LLM są nieaktualne.**
-  `src/bpp/data/*_djangoql_schema.compact.txt` — schematy wystawiane
-  konsumentom `/api/v1/zapytanie/` (w tym asystentom LLM) — **nie wymieniają
-  pola `deleted_at`** i nie mają testu świeżości.
+- **DjangoQL: kosz domyślnie niewidoczny (ZAMKNIĘTE 2026-08-07).**
+  Wcześniejszy zapis mówił, że język zapytań traktujemy jako narzędzie
+  audytowe, które *ma* widzieć kosz, a artefakty schematu dla LLM są
+  nieaktualne. **Oba punkty są nieaktualne.** Decyzją właściciela projektu:
 
-  Skutek: klient układający zapytanie DjangoQL nie ma skąd wiedzieć, że
-  powinien wykluczyć skasowane rekordy, więc domyślnie ich **nie wyklucza**.
-  To spójne ze świadomą decyzją z §„Zostawione" naprawy wycieku ORM (DjangoQL
-  traktujemy jako narzędzie audytowe, które *ma* widzieć kosz), ale
-  niekomunikowane na zewnątrz.
+  1. **Zapytania DjangoQL domyślnie NIE zwracają rekordów skasowanych** —
+     w adminach, na `/zapytanie/` i w `/api/v1/zapytanie/*`. Realizuje to
+     `src/bpp/djangoql_soft_delete.py` (`WykluczSkasowaneMixin` wpięty w
+     `BppQLSchema` i `RekordLLMSchema`); zakres wykrywany introspekcją
+     `SoftDeleteModel`, więc faza 02 nic tu nie przepisuje.
+  2. **Kosz jest nadal dostępny, ale na jawne żądanie** — wystarczy wymienić
+     `deleted_at` na danej ścieżce relacji:
+     `autorzy_set.deleted_at != None` (tylko kosz),
+     `autorzy_set.deleted_at = None` (to samo, co domyślnie).
+     Zdjęcie predykatu działa PER PREFIKS ścieżki, nie globalnie.
+     Świadome ślepe plamy (M2M przez through, `relacja != None`, operatory
+     negujące na ścieżce relacyjnej) — opisane w docstringu modułu.
+  3. **Artefakty `src/bpp/data/*_djangoql_schema.compact.txt` zregenerowane**
+     — mają `deleted_at` oraz notę w nagłówku mówiącą konsumentowi, że
+     kosz jest domyślnie pomijany i jak go zobaczyć.
+  4. **Jest test świeżości** —
+     `src/bpp/tests/test_djangoql_schema_swiezosc.py` pada, gdy artefakt
+     rozjedzie się z modelami. Regeneracja:
+     `uv run python src/manage.py opisz_schemat_djangoql_dla_llm --wszystkie-korzenie`
+     (przeciw bazie z `baseline-sql/baseline.sql`, żeby nie wciągnąć danych
+     instytucji).
 
-  Do rozstrzygnięcia przed fazą 02 — trzy warianty:
-  1. **zregenerować artefakty** (wtedy `deleted_at` staje się jawnym,
-     dostępnym polem; hałaśliwy diff, bo zmienia się nagłówek z wersją);
-  2. **udokumentować w opisie API**, że wyniki obejmują kosz i jak go
-     odfiltrować (`deleted_at = None`);
-  3. zostawić i przyjąć, że to narzędzie dla operatora, nie dla integracji.
-
-  Wariant 1 bez 2 nie wystarczy — samo pojawienie się pola w schemacie nie
-  mówi klientowi, że *powinien* go użyć. **Dopisać test świeżości** artefaktów
-  niezależnie od wybranego wariantu; dziś nic nie pilnuje, żeby schemat
-  nadążał za modelami.
+  Otwarte zostaje wyłącznie pytanie o **ręcznie sklejone parametry GET
+  changelistu admina** (`?autorzy_set__…=`) — tam whitelist `lookup_allowed`
+  nadal przepuszcza surowy lookup.
 
 - **Trzy martwe widoki** `bpp_kronika_{wydawnictwo_ciagle,wydawnictwo_zwarte,
   patent}_view` czytają surowe tabele bez filtra. Zweryfikowano brak
