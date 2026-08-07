@@ -45,8 +45,18 @@ Znane ślepe plamy (świadome, dlatego OBOK stoją testy semantyczne w
   czy ``Charakter_Formalny`` to zwykły FK. Znowu: zależy od lewego modelu;
 * ścieżka sklejona w innej instrukcji niż wywołanie, ``**kwargs`` przekazane
   przez kilka warstw;
-* DjangoQL i surowe parametry GET changelistu admina — to język zapytań
-  użytkownika, świadomie surowy (patrz raport ``orm-leak-report.md``).
+* surowe parametry GET changelistu admina (``?autorzy_set__…=``) — whitelist
+  w ``lookup_allowed`` przepuszcza je bez predykatu; wszystkie linki
+  GENEROWANE przez BPP predykat niosą (patrz ``orm-leak-report.md``, poz. C).
+
+**DjangoQL nie jest już ślepą plamą.** Wcześniejsze uzasadnienie w tym
+miejscu („język zapytań użytkownika = narzędzie audytowe, świadomie surowe,
+ma widzieć kosz") jest NIEAKTUALNE — decyzją właściciela projektu z
+2026-08-07 język zapytań domyślnie odsiewa skasowane, a kosz pokazuje
+dopiero na jawne żądanie. Realizuje to ``bpp/djangoql_soft_delete.py``
+(kontrakt w docstringu modułu), pilnują testy
+``test_djangoql_bez_skasowanych.py``. Ten kanarek i tak nie miałby czego
+skanować — zapytania DjangoQL powstają w runtime, nie w kodzie.
 
 Gdy test padnie
 ===============
