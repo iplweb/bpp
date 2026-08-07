@@ -86,7 +86,50 @@ Szczegóły i uzasadnienie: §2.1 specu.
   z `strict=False`** (albo pisze własne, jak mixin publikacji w fazie 02).
   Dotyczy fazy 01 (`BppAutorstwoSoftDeleteMixin`) i fazy 04 (`Autor` — ma FK
   do `Tytul`, `Funkcja_Autora` itd., więc trafi na to samo).
-- ⚠️ **`delete()` zapisuje przez `save(update_fields=['deleted_at','restored_at','transaction_id'])`** — to jest przyczyna, dla której bramka `WHEN` triggera cache nie przepuszcza soft-delete (i dla której `ostatnio_zmieniony`/`auto_now` NIE jest bumpowany).
+- ⚠️ **`delete()` (i `restore()`) zapisuje przez `save(update_fields=['deleted_at','restored_at','transaction_id'])`** — to jest przyczyna, dla której bramka `WHEN` triggera cache nie przepuszcza soft-delete, oraz dla której `ostatnio_zmieniony`/`auto_now` NIE byłby bumpowany bez naszej interwencji (patrz kontrakt niżej).
+- 🔴 **KONTRAKT PINNED: `ostatnio_zmieniony` MUSI być bumpowany przy `delete()` I `restore()`.**
+  Decyzja właściciela projektu (2026-08-07), **korekta** wcześniejszej oceny ze
+  specu fazy 01 (traktował brak bumpa jako neutralny efekt uboczny). Soft-delete
+  jest **modyfikacją rekordu** i tak musi wyglądać dla każdego konsumenta
+  przyrostowego (OAI-PMH, CERIF, REST API). Zysk praktyczny: nagrobki
+  („co skasowano od daty X") są odpytywalne od ręki, bez czekania na
+  `SoftDeleteLog` z fazy 06:
+  ```python
+  Model.deleted_objects.filter(ostatnio_zmieniony__gte=X)
+  ```
+  **Realizacja (PINNED, faza 01 — fazy 02 i 04 dziedziczą/powtarzają wzorzec):**
+  `src/bpp/models/soft_delete.py` udostępnia
+  `POLE_ZNACZNIKA_ZMIANY = "ostatnio_zmieniony"` oraz
+  `dopisz_znacznik_zmiany(instance, update_fields)`; mixin nadpisuje `save()`:
+  ```python
+  def save(self, *args, **kwargs):
+      update_fields = kwargs.get("update_fields")
+      if update_fields:
+          kwargs["update_fields"] = dopisz_znacznik_zmiany(self, update_fields)
+      return super().save(*args, **kwargs)
+  ```
+  Zaczep jest w `save()`, **nie** w `delete()`/`restore()` — kaskada i księgowość
+  transakcji siedzą w kodzie pakietu, a ten w obu ścieżkach woła `self.save()`
+  z własną listą pól; nie kopiujemy więc ani grama logiki pakietu.
+  Helper dopisuje nazwę **tylko** gdy `update_fields` zawiera `deleted_at`
+  (zwykły częściowy zapis zostaje nietknięty) i **tylko** gdy model ma to pole
+  (`_meta.get_field` → `FieldDoesNotExist`) — faza 04 (`Autor`) i modele bez
+  znacznika (np. `Element_Repozytorium`) nie mogą się na tym wywrócić.
+  Dlaczego samo dopisanie nazwy wystarcza: `Model._save_table()` zawęża listę
+  pól przez `update_fields` **przed** wywołaniem `Field.pre_save()`, a
+  `auto_now` żyje wyłącznie w `pre_save()`. Zweryfikowane testem
+  (`src/bpp/tests/test_soft_delete/test_ostatnio_zmieniony.py`), nie lekturą.
+- ℹ️ **`ostatnio_zmieniony` PUBLIKACJI nie drga przy soft-delete autorstwa**
+  (ustalone empirycznie 2026-08-07, test `test_a2_soft_delete_autorstwa_a_znacznik_publikacji`).
+  Denorm **przelicza** publikację (`opis_bibliograficzny_cache` itd. — potwierdzone
+  kontrolą pozytywną), ale BPP ma `DENORM_DISABLE_AUTOTIME_DURING_FLUSH = True`
+  (`src/django_bpp/settings/base.py`), więc `denorm.denorms._build_save_kwargs()`
+  buduje `update_fields` **jawnie wykluczające** pola `auto_now`. To zachowanie
+  **prekursorskie wobec soft-delete** — identycznie działa hard-delete autorstwa
+  na `dev` — więc nie jest regresją fazy 01. Konsekwencja dla harvestu
+  przyrostowego po stronie publikacji: zmiana samego składu autorów nie podnosi
+  znacznika rekordu nadrzędnego. Jeśli faza 02/06 tego potrzebuje, to jest
+  osobna decyzja dotykająca denorma, nie soft-delete.
 
 ### Nowy moduł `src/bpp/models/soft_delete.py` (tworzy faza 01)
 ```python

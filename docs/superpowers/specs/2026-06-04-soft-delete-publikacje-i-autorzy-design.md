@@ -133,6 +133,18 @@ WYŁĄCZNIE triggerami** — nie ma innej ścieżki zapisu.
 | „UPDATE ustawiający `deleted_at` doleci do triggera" | **Nie doleci.** `django-soft-delete` zapisuje przez `save(update_fields=['deleted_at','restored_at','transaction_id'])`. Żadna z tych kolumn nie jest w bramce (i być nie może — nie zasilają widoku), więc `WHEN` jest fałszywe. Efekt uboczny `update_fields`: `ostatnio_zmieniony` (`auto_now`) też **nie** jest bumpowany, więc nie ma przypadkowego ratunku. |
 | „Filtr `deleted_at IS NULL` w widoku wystarczy, bo trigger robi bezwarunkowy `DELETE` przed upsertem" | **Nie robi.** `INSERT ... SELECT` z widoku, który odfiltrował wiersz, wybiera zero wierszy → **no-op** → stary wiersz przeżywa w `_mat`. Inwariant „delete-first" nie istnieje dla `bpp_rekord_mat`. |
 
+> ⚠️ **KOREKTA (2026-08-07) do zdania o `ostatnio_zmieniony` w pierwszym
+> wierszu tabeli.** Ten spec traktował brak bumpa `ostatnio_zmieniony` jako
+> neutralny efekt uboczny. **To był błąd oceny.** Decyzja właściciela projektu:
+> soft-delete jest modyfikacją rekordu, więc `ostatnio_zmieniony` **MUSI** się
+> zmieniać — przy `delete()` **i** przy `restore()`. Faza 01 realizuje to przez
+> `dopisz_znacznik_zmiany()` + override `save()` w `BppAutorstwoSoftDeleteMixin`
+> (`src/bpp/models/soft_delete.py`); pełny kontrakt PINNED siedzi w
+> `docs/superpowers/plans/2026-06-04-soft-delete-00-overview.md`.
+> Dla triggera nic się nie zmienia: bramka `WHEN` nadal musi znać `deleted_at`
+> (`ostatnio_zmieniony` nie zasila widoku i nie ma prawa być w bramce), więc
+> zdanie „nie ma przypadkowego ratunku" pozostaje prawdziwe.
+
 **Wzorzec do naśladowania jest już w kodzie.** Gałąź doktorat/habilitacja
 w `_create_rekord_function` robi dokładnie to, czego potrzebujemy — bo tam
 wiersz **może wypaść ze źródła** (widok `*_autorzy` ma INNER JOIN do
