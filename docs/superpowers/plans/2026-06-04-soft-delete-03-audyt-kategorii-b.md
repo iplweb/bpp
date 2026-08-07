@@ -139,11 +139,36 @@ git commit -m "test(soft-delete): re-import po pbn_uid widzi soft-deletowany rek
 > Bez jawnej decyzji domyślne zachowanie to „zaktualizuj po cichu", czyli
 > import nadpisuje zawartość kosza.
 
-**DECYZJA: pomiń rekord w koszu, zaraportuj trafienie.** Nie tykamy go, nie
-przywracamy, nie tworzymy obok nowego. Uzasadnienie: soft-delete to jawna
-deklaracja „tego tu nie ma"; cichy update ją podważa, auto-restore pozwoliłby
-importowi wskrzeszać rzeczy skasowane celowo, a nowy rekord obok odtwarzałby
-problem duplikatów.
+> 🔁 **DECYZJA ZMIENIONA 2026-08-08 przez właściciela systemu.**
+> Obowiązuje wariant **PRZYWRÓĆ + ODNOTUJ**, opisany zaraz pod tym boksem.
+> Poniższy akapit zostaje jako zapis pierwotnego rozumowania — bo argument,
+> który podnosił, nadal jest ważny i to on uzasadnia istnienie rejestru.
+>
+> ~~**DECYZJA: pomiń rekord w koszu, zaraportuj trafienie.**~~ Nie tykamy go,
+> nie przywracamy, nie tworzymy obok nowego. Uzasadnienie: soft-delete to
+> jawna deklaracja „tego tu nie ma"; cichy update ją podważa, auto-restore
+> pozwoliłby importowi wskrzeszać rzeczy skasowane celowo, a nowy rekord obok
+> odtwarzałby problem duplikatów.
+
+**DECYZJA OBOWIĄZUJĄCA: przywróć rekord z kosza i odnotuj to w rejestrze.**
+
+Uzasadnienie właściciela: **PBN jest źródłem prawdy** dla tych publikacji —
+skoro rekord nadal tam jest, ma wrócić także do BPP.
+
+Zastrzeżenie z pierwotnej decyzji nie zostało uznane za nieważne, tylko
+przeniesione: z „nie róbmy tego" na „róbmy, ale zostawmy ślad". Śladem jest
+model `pbn_integrator.RekordPrzywroconyPrzezImport` (migracja `0001`) —
+rekord (generic FK), data, publikacja PBN, ścieżka importu. Dzięki niemu
+operator, który znajdzie w bazie publikację skasowaną przez siebie tydzień
+wcześniej, ma gdzie sprawdzić, że wróciła z importu, kiedy i skąd.
+
+⚠️ Wpis powstaje **wyłącznie przy realnym wskrzeszeniu**. Zwykły re-import
+żywego rekordu nie zostawia nic — inaczej rejestr zapełniłby się szumem
+i przestałby cokolwiek znaczyć.
+
+**Zrealizowane:** helper `pbn_integrator.kosz.przywroc_jesli_w_koszu()`,
+wpięty w `articles.py`, `books.py`, `chapters.py`. Testy:
+`src/pbn_integrator/tests/test_przywracanie_z_kosza.py`.
 
 **Konsekwencja dla Tasków 2-5:** samo `global_objects` NIE wystarcza — każde
 przełączone miejsce musi po dopasowaniu **sprawdzić `deleted_at`** i odciąć
