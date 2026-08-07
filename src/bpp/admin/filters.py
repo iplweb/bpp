@@ -307,7 +307,13 @@ class WydzialFilter(SimpleListFilter):
         return super().has_output()
 
     def lookups(self, request, model_admin):
-        qs = Jednostka.objects.filter(parent__isnull=True, widoczna=True)
+        # ``select_related("uczelnia")``, bo ``str(j)`` niżej woła
+        # ``Jednostka.__str__``, a ten czyta ``self.uczelnia.uzywaj_wydzialow``
+        # — bez JOIN-a to jeden SELECT na każdy wydział z listy rozwijanej.
+        # ``wydzial`` dokłada już ``JednostkaManager.get_queryset()``.
+        qs = Jednostka.objects.filter(
+            parent__isnull=True, widoczna=True
+        ).select_related("uczelnia")
         # Multi-hosted: zwykły admin widzi tylko korzenie swojej uczelni
         # (parytet z SiteFilteredAdminMixin.get_queryset); superuser -- wszystkie.
         if not request.user.is_superuser:
