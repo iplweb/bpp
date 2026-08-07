@@ -24,7 +24,10 @@ tam, gdzie koszt jest znany i ograniczony.
 
 **Wchodzi:**
 
-- 2.1.4 — mechanizm wyłączania skrótów jednoznakowych (localStorage)
+- 2.1.4 — mechanizm wyłączania skrótów jednoznakowych (localStorage),
+  obejmujący **wszystkie** publiczne handlery `/`, nie jeden
+- likwidacja zduplikowanego handlera `/` (dziś `openGlobalSearch` woła się
+  dwa razy na jedno naciśnięcie) — znalezisko poboczne, naprawiane przy okazji
 - 2.5.7 — przyciski nawigacji po grafie (kierunki, zoom, dopasowanie)
 - 2.1.1 — obsługa grafu klawiaturą (strzałki, `+`/`−`, `Home`)
 - 2.4.7 — widoczny pierścień focusa na kontenerze grafu
@@ -41,26 +44,35 @@ tam, gdzie koszt jest znany i ograniczony.
 
 ### Problem
 
-`src/django_bpp/templates/base.html:39-49` wiąże handler na `document`:
-
-```javascript
-document.addEventListener('keydown', function(e) {
-    if (e.key === '/' && !$(e.target).is('input, textarea, select')) {
-        e.preventDefault();
-        if (typeof openGlobalSearch === 'function') {
-            openGlobalSearch(null, true);
-        }
-    }
-});
-```
-
 Wykluczenie pól formularza nie wystarcza: gdy focus spoczywa na `body`,
 linku albo przycisku, naciśnięcie `/` porywa klawisz. Kryterium wymaga
 spełnienia **jednego z trzech** warunków — wyłączalności, przemapowania albo
-aktywności wyłącznie przy focusie komponentu. Handler nie spełnia żadnego.
+aktywności wyłącznie przy focusie komponentu. Żaden z istniejących handlerów
+nie spełnia żadnego.
 
 Kryterium chroni przede wszystkim użytkowników sterowania głosem, których
 wejściem są ciągi liter, oraz osoby z drżeniem rąk.
+
+### Inwentaryzacja: skrót `/` obsługiwany jest w czterech miejscach
+
+To ustalenie jest warunkiem skuteczności całej części A. Objęcie preferencją
+jednego handlera nie da nic, dopóki pozostałe reagują niezależnie.
+
+| miejsce | co robi | w zakresie? |
+|---|---|---|
+| `src/django_bpp/templates/base.html:42` | otwiera wyszukiwarkę globalną | **tak** |
+| `src/django_bpp/templates/global_search_modal.html:1048` | otwiera wyszukiwarkę globalną (**duplikat**) | **tak** |
+| `src/bpp/templates/browse/uczelnia.html:134` | zamyka baner podpowiedzi | **tak** |
+| `src/django_bpp/templates/admin/base_site.html:127` | wyszukiwarka w adminie | nie — panel zalogowanego jest poza zakresem audytu |
+
+Modal jest włączany z `top_bar.html:511`, a ten z `base.html`, więc oba
+pierwsze handlery wiszą na `document` **na tej samej stronie**.
+
+**Znalezisko poboczne: dziś oba wołają `openGlobalSearch` na jedno
+naciśnięcie.** Handler w `base.html` nie sprawdza stanu modala, handler w
+modalu sprawdza (`!$('#globalSearchModal').hasClass('show')`), ale przy
+zamkniętym modalu oba warunki są prawdziwe. To istniejący błąd, niezależny
+od WCAG.
 
 ### Wybrane wyjście: mechanizm wyłączania
 
@@ -91,25 +103,58 @@ Odrzucone alternatywy:
 ### Komponenty
 
 **Moduł preferencji** — `src/bpp/static/bpp/js/skroty-klawiszowe.js`.
-Jedna odpowiedzialność: odczyt i zapis preferencji.
+Odpowiedzialność: preferencja użytkownika i jej przełącznik.
 
 - klucz `localStorage`: `bpp.skrotyJednoznakowe`, wartości `"1"` / `"0"`
 - `window.bppSkrotyWlaczone()` → `boolean`, **domyślnie `true`** (brak wpisu
-  = zachowanie niezmienione dla każdego, kto nic nie ustawił)
+  = zachowanie niezmienione dla każdego, kto nic nie ustawił); wartość inna
+  niż `"0"`/`"1"` traktowana jak brak wpisu
 - `window.bppUstawSkroty(bool)` → zapisuje i zwraca nowy stan
+- `window.bppPodepnijPrzelacznikSkrotow(el)` → wiąże `click` na przekazanym
+  elemencie, aktualizuje jego tekst i `aria-pressed`
 - odporny na niedostępny `localStorage` (tryb prywatny, wyczerpany limit,
   wyłączone ciasteczka): `try`/`catch` wokół obu operacji, w razie błędu
   zwraca wartość domyślną zamiast rzucać wyjątkiem
 
-**Handler** w `base.html` — jeden dodatkowy warunek przed reakcją:
+Trzecia funkcja jest w module celowo: gdyby logika przełącznika została
+inline w stopce, nie dałoby się jej przetestować jednostkowo, a moduł
+znałby tylko połowę własnego kontraktu.
+
+**Handlery** — warunek dodany w **obu** publicznych miejscach otwierających
+wyszukiwarkę oraz w handlerze banera:
 
 ```javascript
-if (e.key === '/' && window.bppSkrotyWlaczone()
+if (e.key === '/'
+    && (typeof window.bppSkrotyWlaczone !== 'function'
+        || window.bppSkrotyWlaczone())
     && !$(e.target).is('input, textarea, select')) {
 ```
 
-Moduł ładowany przed inline'owym blokiem, tym samym wzorcem co
-`related-records-highlight.js` w poprzedniej iteracji.
+Guard `typeof` jest konieczny: gdyby moduł się nie załadował (404, błąd
+wcześniejszego skryptu), gołe wywołanie rzucałoby `TypeError` przy każdym
+naciśnięciu `/` i skrót umarłby po cichu. Wzorzec jest zgodny z istniejącym
+`typeof openGlobalSearch === 'function'` w tym samym handlerze
+(`base.html:44`). Przy braku modułu degradujemy do zachowania dotychczasowego.
+
+**Likwidacja duplikatu.** Handler w `base.html:39-49` i ten w
+`global_search_modal.html:1040-1052` robią to samo. Zostaje **jeden** — ten
+w `global_search_modal.html`, bo sprawdza już stan modala i mieszka obok
+kodu, który obsługuje. Handler z `base.html` znika w całości.
+
+To upraszcza część A: zamiast trzech miejsc do objęcia warunkiem zostają
+dwa (modal + baner na stronie uczelni).
+
+**Kolejność ładowania nie jest krytyczna.** Handlery rejestrują się wewnątrz
+`DOMContentLoaded`, ale preferencję sprawdzają dopiero w momencie
+naciśnięcia klawisza — więc moduł musi być obecny przy pierwszym użyciu
+skrótu, nie przy rejestracji. Mimo to ładujemy go w `base.html` przed
+blokiem skryptów, dla przewidywalności.
+
+**Baner podpowiedzi.** `src/django_bpp/templates/search_banner.html:9`
+reklamuje skrót („Wciśnij klawisz `/` (ukośnik) aby szybko znaleźć…").
+Przy wyłączonych skrótach baner **nie może się pokazywać** — instrukcja
+używania niedziałającej funkcji jest gorsza niż brak instrukcji. Moduł
+ukrywa baner, gdy preferencja jest wyłączona.
 
 **Przełącznik w stopce** — `src/django_bpp/templates/base_footer.html`.
 
@@ -123,17 +168,24 @@ konfigurowalna per uczelnia (`Uczelnia.pokazuj_deklaracje_dostepnosci`:
 wartość 1 → zewnętrzny URL uczelni, 2 → wewnętrzna strona BPP, brak → brak
 linku). Na części wdrożeń strony nie ma wcale, na innych prowadzi na serwer
 uczelni, gdzie nie postawimy przełącznika. Mechanizm ukryty za opcjonalną
-stroną nie spełnia wymogu „dostępny". Stopka (`base_footer.html`,
-renderowana z `base.html`) jest zawsze.
+stroną nie spełnia wymogu „dostępny".
+
+**Zasięg stopki.** `base_footer.html` jest włączana z `base.html`, więc stoi
+na wszystkich stronach dziedziczących po nim. Strony rozszerzające
+bezpośrednio `bare.html` (kreator instalacji, `multiseek/live-results.html`,
+podgląd opisu w adminie) stopki nie mają — ale nie mają też handlera `/`,
+bo ten żyje w bloku `body` w `base.html`. Mechanizm i skrót pokrywają się
+zakresem, więc nie powstaje strona ze skrótem bez możliwości wyłączenia go.
 
 ## Część B — 2.5.7, nawigacja po grafie wskaźnikiem
 
 ### Problem
 
 `src/powiazania_autorow/templates/powiazania_autorow/graf.html` to widok
-publiczny, bramkowany per uczelnia (`czy_pokazywac_siec_powiazan`,
-`src/bpp/views/browse.py:245`). Wizualizacja stoi na Cytoscape.js; jedyną
-drogą przesunięcia widoku jest przeciąganie.
+publiczny, bramkowany metodą `Autor.czy_pokazywac_siec_powiazan(uczelnia)`
+(`src/bpp/views/browse.py:245`) — ustawienie per-autor nadpisuje
+per-uczelnia. Wizualizacja stoi na Cytoscape.js (`^3.34.0`); jedyną drogą
+przesunięcia widoku jest przeciąganie.
 
 Kryterium wymaga alternatywy realizowanej **pojedynczym wskaźnikiem** —
 kliknięciem lub tapnięciem. Obsługa klawiaturą (część C) jest odrębnym
@@ -160,8 +212,9 @@ lub wysokości), nie stała w pikselach. Przy dużym przybliżeniu stały krok
 byłby ledwo zauważalny, przy oddaleniu — przeskakiwałby cały graf.
 
 **Współczynnik zoomu**: 1,2 na krok, z ograniczeniem do zakresu ustawionego
-w instancji Cytoscape (`cy.minZoom()` / `cy.maxZoom()`), żeby przyciski nie
-wyprowadzały widoku poza dopuszczalne wartości.
+przy tworzeniu instancji — `utworzCy` (`powiazania/cy.js:99-100`) ustawia
+`minZoom: 0.1`, `maxZoom: 4`. Moduł odczytuje je przez `cy.minZoom()` /
+`cy.maxZoom()`, nie zaszywa liczb u siebie.
 
 **Nakładka z przyciskami** — w `graf.html`, wewnątrz istniejącego
 `#graf-wrapper` (ma już `position: relative`, więc nakładka nie zmienia
@@ -182,9 +235,19 @@ pseudoklasy `:focus-visible` (część C), której w atrybucie `style` zapisać
 się nie da, a rozbijanie jednego komponentu między atrybut i arkusz byłoby
 gorsze niż trzymanie go w całości w arkuszu.
 
-Pozycjonowanie absolutne wewnątrz `#graf-wrapper`, w rogu **przeciwległym do
-legendy** — legenda zajmuje prawy górny (`top: 10px; right: 10px`), więc
-nawigacja idzie w lewy dolny.
+Pozycjonowanie absolutne wewnątrz `#graf-wrapper`. Trzy z czterech rogów są
+już zajęte:
+
+| róg | zajmuje | kiedy widoczny |
+|---|---|---|
+| lewy górny | `#graf-panel` (`graf.html:183`) | po kliknięciu węzła |
+| prawy górny | `#graf-legenda` (`graf.html:167`) | zawsze |
+| lewy dolny | `#graf-notka` (`graf.html:191`) | gdy sieć przycięta (`data.truncated`) |
+| **prawy dolny** | — | — |
+
+Nakładka idzie w **prawy dolny**. Lewy dolny odpada mimo pozornej wolności:
+`#graf-notka` pojawia się dokładnie przy dużych sieciach, czyli wtedy, gdy
+nawigacja jest najbardziej potrzebna.
 
 Po zmianie SCSS wymagany `grunt build` (albo `make assets`).
 
@@ -249,12 +312,18 @@ focusa.
 Konwencja: pytest (funkcje standalone, `@pytest.mark.django_db` gdzie baza),
 vitest dla JS (`tests/js/**/*.test.js`).
 
-**Moduł preferencji skrótów** (vitest, atrapa `localStorage`):
+**Moduł preferencji skrótów** (vitest). Moduł jest skryptem window-globalnym
+(jak `djangoql-*.js`), więc plik testowy deklaruje u siebie
+`// @vitest-environment jsdom` — domyślnym środowiskiem w `vitest.config.js`
+jest `node`, w którym nie ma `window` ani `localStorage`.
+
 - brak wpisu → `true` (domyślka)
 - `"0"` → `false`; `"1"` → `true`
+- `getItem` zwracający śmieci (`"tak"`) → domyślka
 - `bppUstawSkroty(false)` zapisuje `"0"` i zwraca `false`
 - rzucający `localStorage` (tryb prywatny) → zwraca domyślkę, nie wyjątek
-- `getItem` zwracający śmieci (`"tak"`) → domyślka
+- `bppPodepnijPrzelacznikSkrotow(el)` — klik odwraca stan, aktualizuje
+  `aria-pressed` i tekst; drugi klik wraca do stanu wyjściowego
 
 **Moduł nawigacji grafu** (vitest, atrapa `cy` z `pan`, `zoom`, `fit`,
 `width`, `height`, `minZoom`, `maxZoom`):
@@ -267,16 +336,36 @@ vitest dla JS (`tests/js/**/*.test.js`).
 - stopka zawiera przycisk przełącznika z `aria-pressed`
 - `graf.html` zawiera siedem przycisków nawigacji, każdy z `aria-label`
 - `#cytoscape-container` ma `tabindex="0"`, `role`, `aria-label`
-- moduły JS są podpięte (`<script src>` obecny w renderze) — inaczej
-  usunięcie tagu nie wywali żadnego testu, a funkcja przestanie działać
+- `skroty-klawiszowe.js` jest podpięty przez `<script src>` w renderze —
+  inaczej usunięcie tagu nie wywali żadnego testu, a przełącznik przestanie
+  działać
+- w `base.html` **nie ma już** handlera `/` (dowód likwidacji duplikatu)
+
+Analogiczna asercja **nie ma sensu dla `nawigacja.js`**: moduł trafia do
+`dist/cytoscape-bundle.js` przez import w `controls.js` (entry
+`js/cytoscape-entry.js`, esbuild), więc w renderze `graf.html` nie pojawi
+się osobny `<script src>` — tag bundla (`graf.html:202`) istnieje już dziś
+i niczego z tej iteracji nie broni. Dla grafu rolę tę pełnią testy vitest
+samego modułu plus test Playwright klikający przycisk.
 
 **Playwright** — `src/integration_tests/`, obok istniejącego
 `test_siec3d_bez_webgl.py` (jedyny dotychczasowy test przeglądarkowy
 wizualizacji powiązań; testy widoków grafu bez przeglądarki żyją w
-`src/powiazania_autorow/test_views.py`):
+`src/powiazania_autorow/test_views.py`).
+
+Graf:
 - klik w „dopasuj" zmienia zoom/pan grafu
 - Tab dochodzi do kontenera grafu, strzałka przesuwa widok
 - `Tab` po sfokusowaniu grafu **wychodzi** z niego (brak pułapki, 2.1.2)
+
+Skrót `/` — **to jest test broniący celu całej części A**, bez niego
+usunięcie warunku z handlera nie wywali niczego:
+- przy domyślnej preferencji `/` otwiera wyszukiwarkę globalną
+- po kliknięciu przełącznika w stopce `/` **nie** otwiera wyszukiwarki
+- po ponownym kliknięciu otwiera znowu
+- przy wyłączonych skrótach baner podpowiedzi się nie pokazuje
+- `/` wciśnięty przy focusie w polu tekstowym wpisuje znak, nie otwiera
+  wyszukiwarki (zachowanie zastane, nie może się zepsuć)
 
 Weryfikacja przed PR: `make tests-without-playwright`, `make js-tests`,
 `make tests-only-playwright`, `pre-commit` (bez argumentów).
@@ -306,10 +395,10 @@ własną nawigacją. To zamierzone (inaczej strzałki nie dotrą do grafu), ale
 oznacza, że `aria-label` musi wyczerpująco opisać dostępne klawisze — poza
 nim użytkownik nie ma jak ich odkryć.
 
-**Nakładka może zasłonić graf na wąskich ekranach.** Przyciski zajmują róg
-kontenera; przy małej wysokości widoku mogą przykryć węzły. Mitygacja:
-lewy dolny róg (legenda zajmuje prawy górny), półprzezroczyste tło jak w
-legendzie.
+**Nakładka może zasłonić graf na wąskich ekranach.** Przyciski zajmują prawy
+dolny róg — jedyny wolny — więc przy małej wysokości widoku mogą przykryć
+węzły. Mitygacja: półprzezroczyste tło jak w legendzie, `z-index` spójny z
+sąsiadami (1001).
 
 **Nowy partial SCSS obok stylów inline.** `graf.html` opisuje dziś cały
 wygląd atrybutami `style=""`; dokładamy do niego arkusz. Rozbicie jest
