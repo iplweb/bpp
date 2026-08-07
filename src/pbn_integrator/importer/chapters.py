@@ -16,6 +16,7 @@ from bpp.models import (
 from bpp.util import safe_tytul_html
 from pbn_api.client import PBNClient
 from pbn_api.models import Publication
+from pbn_integrator.kosz import przywroc_jesli_w_koszu
 
 from .authors import utworz_autorow
 from .books import importuj_ksiazke
@@ -90,6 +91,10 @@ def importuj_rozdzial(
     ret = pbn_publication.rekord_w_bpp
 
     if ret is not None and not force:
+        # Trafienie w kosz: PBN jest zrodlem prawdy, wiec rekord wraca --
+        # i zostaje po tym slad w rejestrze. Uzasadnienie i zmiana wobec
+        # decyzji #14 planu: docstring RekordPrzywroconyPrzezImport.
+        przywroc_jesli_w_koszu(ret, pbn_publication, "chapters")
         return ret
 
     pbn_json = pbn_publication.current_version["object"]
