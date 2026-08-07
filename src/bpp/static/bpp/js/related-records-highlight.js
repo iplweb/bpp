@@ -50,6 +50,23 @@
     }
 
     /**
+     * CodeQL (js/incomplete-multi-character-sanitization, alert 155) flaguje
+     * ten `.replace()` jako "moze wciaz zawierac <script". Fałszywy alarm —
+     * funkcja NIE odejmuje ani nie dekoduje niczego z wejscia, wiec nie ma
+     * jak "odslonic" ukryty <script>. Segmenty <znacznik> i &encja; sa
+     * zwracane BYTE-FOR-BYTE (linie 68-69: `return znacznik || encja;`),
+     * wiec jedyne NOWE znaki "<" w wyniku to stały, zaszyty w kodzie
+     * napis `<mark class="bpp-highlight">`/`</mark>` — nigdy pochodna
+     * wejscia czy frazy uzytkownika. Fraza trafia do wyniku wylacznie jako
+     * $1 wewnatrz segmentu tekstowego, a segment tekstowy z definicji
+     * regexu (`[^<&]+`) nie moze zawierac "<" ani "&" — nie ma wiec kanalu,
+     * ktorym atakujacy mogłby wstrzyknac nowy znacznik. Do tego wejscie
+     * (`opis_bibliograficzny_cache`) jest juz przepuszczone przez
+     * `safe_opis_bibliograficzny_html` -> `nh3.clean(..., clean_content_tags=
+     * {"script","style"})` (src/bpp/util/text.py) - <script> nie przezywa
+     * juz po stronie serwera. Zob. tez raport:
+     * .superpowers/sdd/2026-08-06-wcag-naprawy-stwierdzone/codeql-155-156-report.md
+     *
      * @param {string} html - opis bibliograficzny (moze zawierac znaczniki
      *   i encje HTML)
      * @param {string} fraza - szukany tekst (bez rozrozniania wielkosci liter)
@@ -126,9 +143,30 @@
      * praca_tabela_mono.html), zeby fraza "span"/"lang" nie trafiala w
      * znacznik <span lang="…"> i nie dawala falszywie pozytywnych trafien.
      *
+     * CodeQL (js/incomplete-multi-character-sanitization, alert 156) flaguje
+     * `decodeEncje()` ponizej — SLUSZNIE zauwaza, ze zdekodowanie lancucha
+     * podwojnie zescape'owanych encji (np. "&amp;lt;script&amp;gt;") MOZE
+     * odtworzyc tekst "<script>" (patrz test w
+     * tests/js/related-records-highlight.test.js:
+     * "stripTags MOZE zwrocic tekst przypominajacy znacznik ..." — to
+     * udokumentowane, zamierzone zachowanie funkcji "strip", nie blad).
+     * Fałszywy alarm mimo to, bo to NIE jest sink HTML: `bppStripTags()` ma
+     * DOKŁADNIE jedno miejsce uzycia w calym repo —
+     * praca_tabela_mono.html:1185, gdzie wynik trafia wylacznie do
+     * `.toLowerCase().indexOf(...)` (haystack filtra). Nigdy nie jest
+     * przypisywany do `.html()`/`innerHTML`/`$(...)`. Zwykly string, nigdy
+     * nie renderowany jako HTML — odtworzony tekstowo "<script>" jest tu
+     * rownie niegrozny jak w zmiennej `var x = "<script>";`. Jesli kiedys
+     * ktos zechce uzyc wyniku tej funkcji jako HTML — NIE WOLNO, potrzebny
+     * bylby wtedy inny mechanizm (np. escape przed wstawieniem). Zob. tez
+     * raport:
+     * .superpowers/sdd/2026-08-06-wcag-naprawy-stwierdzone/codeql-155-156-report.md
+     *
      * @param {string} html - opis bibliograficzny (moze zawierac znaczniki
      *   i encje HTML)
      * @returns {string} sam tekst, bez znacznikow, z encjami zdekodowanymi
+     *   — WYŁĄCZNIE do porownan tekstowych (np. indexOf), NIGDY do
+     *   wstawienia jako HTML (patrz uzasadnienie wyzej)
      */
     function bppStripTags(html) {
         var segmenty = [];

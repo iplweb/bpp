@@ -134,6 +134,53 @@ describe("bppHighlightOutsideTags", () => {
         const html = "Lata 2020&#8211;2023";
         expect(highlight(html, "8211")).toBe(html);
     });
+
+    // CodeQL js/incomplete-multi-character-sanitization, alert 155 (linia
+    // 76): "This string may still contain `<script`". Ponizsze testy
+    // dokumentuja, ze to falszywy alarm — zob. uzasadnienie w komentarzu
+    // nad bppHighlightOutsideTags w related-records-highlight.js.
+    describe("zalozenie bezpieczenstwa (CodeQL alert 155, falszywy alarm)", () => {
+        it("nie zamienia encji &lt;script&gt; w prawdziwy znacznik <script>", () => {
+            // Encje sa PRZEPUSZCZANE, nie dekodowane — "&lt;" zostaje
+            // "&lt;", nigdy nie staje sie literalnym "<".
+            const html = "Tekst &lt;script&gt;alert(1)&lt;/script&gt; koniec";
+            const wynik = highlight(html, "script");
+            expect(wynik).not.toContain("<script");
+            expect(wynik).toContain("&lt;");
+            expect(wynik).toContain("&gt;");
+        });
+
+        it("jedyne NOWE znaki '<' w wyniku pochodza z <mark>, nigdy z frazy ani z wejscia", () => {
+            const rozneWejscia = [
+                "Tekst &lt;script&gt;alert(1)&lt;/script&gt; koniec",
+                "<i>Rola</i> <span lang=\"en\">script kiddie</span>",
+                "Stezenie &amp;lt;script&amp;gt; u pacjentow",
+            ];
+            rozneWejscia.forEach((html) => {
+                const wynik = highlight(html, "script");
+                // Wyciagnij wszystkie znaczniki z wejscia i z wyniku —
+                // jedyna dopuszczalna ROZNICA to dodane <mark>/</mark>.
+                const znacznikiWejscia = html.match(/<[^>]*>/g) || [];
+                const znacznikiWyniku = (wynik.match(/<[^>]*>/g) || []).filter(
+                    (t) => !/^<\/?mark\b/i.test(t)
+                );
+                expect(znacznikiWyniku).toEqual(znacznikiWejscia);
+            });
+        });
+
+        it("wejscie z ALLOWLISTY (i/b/sub/sup/u/a/span[lang]) nigdy nie moze zawierac <script — nh3 usuwa go po stronie serwera przed dotarciem tutaj", () => {
+            // Test dokumentuje zalozenie o gornej warstwie (nh3.clean z
+            // clean_content_tags={"script","style"} w
+            // safe_opis_bibliograficzny_html, src/bpp/util/text.py) — ta
+            // funkcja JS jej nie weryfikuje, tylko na niej polega. Gdyby
+            // mimo to <script> trafil do wejscia (regresja gornej warstwy),
+            // ponizszy test pokazuje ze i tak zostalby przepuszczony bez
+            // zmian (bo funkcja nie usuwa znacznikow) — obrona MUSI byc
+            // po stronie serwera, nie tutaj.
+            const html = "<script>alert(1)</script>";
+            expect(highlight(html, "x")).toBe(html);
+        });
+    });
 });
 
 describe("bppStripTags", () => {
@@ -167,6 +214,40 @@ describe("bppStripTags", () => {
 
     it("laczy tresc z wielu segmentow tekstowych rozdzielonych znacznikiem", () => {
         expect(stripTags("Rola <i>Candida</i> w X")).toBe("Rola Candida w X");
+    });
+
+    // CodeQL js/incomplete-multi-character-sanitization, alert 156 (linia
+    // 145): "This string may still contain `<script`". CodeQL ma racje co
+    // do faktu (test ponizej to POTWIERDZA — dekodowanie podwojnie
+    // zescape'owanych encji MOZE odtworzyc tekst "<script>"), ale to
+    // falszywy alarm co do WPLYWU: bppStripTags() ma jedno miejsce uzycia w
+    // calym repo (praca_tabela_mono.html:1185) i jego wynik trafia
+    // WYLACZNIE do .indexOf() przy filtrowaniu — nigdy do DOM. Zob.
+    // uzasadnienie w komentarzu nad bppStripTags w
+    // related-records-highlight.js.
+    describe("zalozenie bezpieczenstwa (CodeQL alert 156, falszywy alarm)", () => {
+        it("MOZE odtworzyc tekst '<script>' z podwojnie zescape'owanej encji — to znany, zamierzony efekt uboczny funkcji 'strip'", () => {
+            // "&amp;lt;script&amp;gt;" to dokladnie to, co powstaje gdy
+            // safe_opis_bibliograficzny_html (nh3) zserializuje literalny
+            // tekst "&lt;script&gt;" wpisany przez autora jako proza, a
+            // nastepnie szablon dolozy |escapejs->JSON.parse (patrz
+            // praca_tabela_mono.html). Wynik zawiera SUBSTRING "<script>"
+            // jako zwykly tekst — nie jako znacznik HTML.
+            const wynik = stripTags("Tekst &amp;lt;script&amp;gt; koniec");
+            expect(wynik).toContain("<script>");
+        });
+
+        it("wynik zawierajacy '<script>' NIGDZIE w repo nie jest wstawiany jako HTML (jedyny consumer: indexOf w filtrze)", () => {
+            // Ten test nie moze zweryfikowac calego repo statycznie, ale
+            // dokumentuje kontrakt: konsument (praca_tabela_mono.html)
+            // wolno mu uzywac wyniku WYLACZNIE tekstowo.
+            const html = "Tekst &amp;lt;script&amp;gt; koniec";
+            const haystack = stripTags(html).toLowerCase();
+            // Jedyne dozwolone uzycie w produkcyjnym kodzie:
+            expect(haystack.indexOf("script")).toBeGreaterThanOrEqual(0);
+            // (nie: $(...).html(haystack) ani podobne — patrz komentarz
+            // nad definicja bppStripTags)
+        });
     });
 });
 
