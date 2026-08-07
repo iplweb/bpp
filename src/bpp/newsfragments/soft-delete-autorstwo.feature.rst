@@ -3,5 +3,8 @@ Wewnętrzny fundament pod usuwanie „miękkie" (soft-delete) powiązań autor-
 patenty) zyskały znaczniki kasowania/przywracania zamiast trwałego
 usuwania wiersza. Skasowane przypisania znikają też z widoków źródłowych i
 z materializowanego cache'u bibliografii, więc nie pokazują się na stronach
-publikacji. Zmiana jest na razie wewnętrzna i niewidoczna dla użytkowników —
+publikacji, w liczbie publikacji autora, w podpowiedziach wyszukiwarki,
+w eksporcie BibTeX, w listach panelu administracyjnego ani w zestawieniach
+oświadczeń wysyłanych do PBN.
+Zmiana jest na razie wewnętrzna i niewidoczna dla użytkowników —
 pełne wsparcie (panel administracyjny, przywracanie) wdrażają kolejne etapy.
