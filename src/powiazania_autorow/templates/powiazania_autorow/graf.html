@@ -197,6 +197,25 @@
             sieć przekroczyła limit węzłów. Zmniejsz głębokość lub liczbę
             współautorów, aby zobaczyć węższy, pełny wycinek.
         </div>
+        {# WCAG 2.5.7: nawigacja bez przeciagania. Prawy dolny rog to #}
+        {# jedyny wolny — lewy gorny zajmuje #graf-panel, prawy gorny #}
+        {# #graf-legenda, lewy dolny #graf-notka (przy przycietej sieci). #}
+        <div id="graf-nawigacja" class="graf-nawigacja">
+            <button type="button" id="graf-nav-gora" class="graf-nawigacja__btn"
+                    aria-label="Przesuń widok w górę"><span aria-hidden="true">↑</span></button>
+            <button type="button" id="graf-nav-lewo" class="graf-nawigacja__btn"
+                    aria-label="Przesuń widok w lewo"><span aria-hidden="true">←</span></button>
+            <button type="button" id="graf-nav-dopasuj" class="graf-nawigacja__btn"
+                    aria-label="Dopasuj graf do ekranu"><span aria-hidden="true">⤢</span></button>
+            <button type="button" id="graf-nav-prawo" class="graf-nawigacja__btn"
+                    aria-label="Przesuń widok w prawo"><span aria-hidden="true">→</span></button>
+            <button type="button" id="graf-nav-dol" class="graf-nawigacja__btn"
+                    aria-label="Przesuń widok w dół"><span aria-hidden="true">↓</span></button>
+            <button type="button" id="graf-nav-zoom-in" class="graf-nawigacja__btn"
+                    aria-label="Przybliż"><span aria-hidden="true">+</span></button>
+            <button type="button" id="graf-nav-zoom-out" class="graf-nawigacja__btn"
+                    aria-label="Oddal"><span aria-hidden="true">−</span></button>
+        </div>
     </div>
 
     <script src="{% static 'powiazania_autorow/js/dist/cytoscape-bundle.js' %}"></script>

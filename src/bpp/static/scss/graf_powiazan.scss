@@ -1,0 +1,55 @@
+// Nakladka nawigacji po grafie powiazan (WCAG 2.5.7) oraz pierscien focusa
+// kontenera grafu (2.4.7). Aplikacja powiazania_autorow nie ma wlasnego
+// katalogu SCSS — graf.html opisuje wyglad atrybutami style="" — ale
+// :focus-visible wymaga arkusza, wiec komponent siedzi w calosci tutaj.
+
+.graf-nawigacja {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    z-index: 1001;
+
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: 2px;
+
+    padding: 6px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.graf-nawigacja__btn {
+    // WCAG 2.5.8 (Target Size Minimum): cel dotykowy nie mniejszy niz
+    // 24x24 px CSS. Naprawiajac 2.5.7 nie wolno zlamac sasiedniego
+    // kryterium.
+    min-width: 28px;
+    min-height: 28px;
+
+    padding: 0;
+    margin: 0;
+    font-size: 15px;
+    line-height: 1;
+
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    color: #333;
+    cursor: pointer;
+
+    &:hover {
+        background: #f0f0f0;
+    }
+
+    &:focus-visible {
+        outline: 2px solid #2c6cb0;
+        outline-offset: 1px;
+    }
+}
+
+// WCAG 2.4.7: uzytkownik klawiatury musi widziec, ze graf przejal focus —
+// inaczej nie wie, ze strzalki zaczely dzialac.
+#cytoscape-container:focus-visible {
+    outline: 3px solid #2c6cb0;
+    outline-offset: -3px;
+}

@@ -3,6 +3,7 @@
 // źródeł/wydawców, opcje zaawansowane, metryka, układ, wyszukiwarka,
 // odśwież oraz eksport PNG/SVG. Debounce dla żądań sterowanych suwakami.
 import { pobierzPlik } from "./dom.js";
+import { przesun, zoomuj, dopasuj } from "./nawigacja.js";
 import {
     pokazPanelAutora,
     pokazTooltipAutor,
@@ -370,5 +371,42 @@ export function podepnijZdarzenia(ctx) {
         });
     } else if (btnSvg) {
         btnSvg.style.display = "none"; // rozszerzenie SVG nie załadowane
+    }
+
+    // --- nawigacja bez przeciagania (WCAG 2.5.7) ---
+    const KIERUNKI = {
+        "graf-nav-gora": "gora",
+        "graf-nav-dol": "dol",
+        "graf-nav-lewo": "lewo",
+        "graf-nav-prawo": "prawo"
+    };
+    Object.keys(KIERUNKI).forEach(function (id) {
+        const btn = document.getElementById(id);
+        if (btn) {
+            btn.addEventListener("click", function () {
+                przesun(cy, KIERUNKI[id]);
+            });
+        }
+    });
+
+    const btnZoomIn = document.getElementById("graf-nav-zoom-in");
+    if (btnZoomIn) {
+        btnZoomIn.addEventListener("click", function () {
+            zoomuj(cy, 1.2);
+        });
+    }
+
+    const btnZoomOut = document.getElementById("graf-nav-zoom-out");
+    if (btnZoomOut) {
+        btnZoomOut.addEventListener("click", function () {
+            zoomuj(cy, 1 / 1.2);
+        });
+    }
+
+    const btnDopasuj = document.getElementById("graf-nav-dopasuj");
+    if (btnDopasuj) {
+        btnDopasuj.addEventListener("click", function () {
+            dopasuj(cy);
+        });
     }
 }
