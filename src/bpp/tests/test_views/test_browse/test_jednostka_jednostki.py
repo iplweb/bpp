@@ -349,3 +349,62 @@ def test_jednostka_aktualni_pracownicy(
     html = normalize_html(res.rendered_content)
     assert "Obecni pracownicy" in html
     assert "Byli pracownicy" in html
+
+
+def test_JednostkiView_liczba_autorow_jednym_zapytaniem(
+    uczelnia, rf, django_assert_num_queries
+):
+    """Liczba autorów per jednostka przychodzi z adnotacji, nie z pętli.
+
+    Regresja: szablon ``browse/jednostki.html`` wołał
+    ``item.aktualna_jednostka.count`` — relacja ODWROTNA (Autor → Jednostka),
+    więc każde użycie to osobny ``COUNT(*)``, a szablon używał go 3–4 razy na
+    wiersz. Na bazie produkcyjnej (150 jednostek na stronę) dawało to ~514
+    zapytań na jedno wejście na indeks jednostek.
+
+    Test pilnuje SEDNA: przejście po całym querysecie i odczytanie
+    ``liczba_autorow`` dla każdego wiersza to JEDNO zapytanie, niezależnie od
+    liczby jednostek. Sam queryset budujemy poza pomiarem, bo
+    ``Uczelnia.objects.get_for_request`` też odpytuje bazę, a nie o nim tu mowa.
+    """
+    from bpp.tests.util import any_jednostka
+
+    z_autorami = any_jednostka(nazwa="Jednostka Z Autorami", uczelnia=uczelnia)
+    bez_autorow = any_jednostka(nazwa="Jednostka Bez Autorow", uczelnia=uczelnia)
+    for _ in range(3):
+        baker.make(Autor, aktualna_jednostka=z_autorami)
+
+    widok = JednostkiView()
+    widok.request = rf.get(reverse("bpp:browse_jednostki"))
+    widok.kwargs = {}
+    queryset = widok.get_queryset()
+
+    with django_assert_num_queries(1):
+        liczby = {j.pk: j.liczba_autorow for j in queryset}
+
+    assert liczby[z_autorami.pk] == 3
+    assert liczby[bez_autorow.pk] == 0
+
+
+def test_browse_jednostki_pokazuje_liczbe_autorow(uczelnia, client):
+    """Liczba autorów jest widoczna na stronie — nie zniknęła z szablonu.
+
+    Odrębny test od powyższego, bo optymalizacja przeniosła źródło liczby
+    z ``item.aktualna_jednostka.count`` na adnotację ``item.liczba_autorow``.
+    Literówka w nazwie adnotacji NIE wywaliłaby żadnego wyjątku — Django
+    renderuje nieistniejącą zmienną jako pusty łańcuch — więc strona po cichu
+    przestałaby pokazywać liczby. Ten test to wyłapuje.
+    """
+    from bpp.tests.util import any_jednostka
+
+    jednostka_z_autorami = any_jednostka(
+        nazwa="Jednostka Licznikowa", uczelnia=uczelnia
+    )
+    for _ in range(2):
+        baker.make(Autor, aktualna_jednostka=jednostka_z_autorami)
+
+    res = client.get(reverse("bpp:browse_jednostki"))
+    tresc = normalize_html(res.rendered_content)
+
+    assert "Jednostka Licznikowa" in tresc
+    assert "2 autorów" in tresc
