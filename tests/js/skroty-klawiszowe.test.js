@@ -103,6 +103,42 @@ describe("bppUstawSkroty", () => {
         expect(() => w.bppUstawSkroty(false)).not.toThrow();
         window.localStorage.setItem = oryginalny;
     });
+
+    it("fallback: gdy setItem rzuca, stan trzyma się w sesji (nie w localStorage)", () => {
+        const oryginalny = window.localStorage.setItem;
+        window.localStorage.setItem = () => {
+            throw new Error("QuotaExceededError");
+        };
+        const w = zaladuj();
+        w.bppUstawSkroty(false);
+        // localStorage jest puste (zapis się nie powiódł)
+        expect(window.localStorage.getItem("bpp.skrotyJednoznakowe")).toBe(null);
+        // ale bppSkrotyWlaczone() zwraca false (z fallback-u w pamięci)
+        expect(w.bppSkrotyWlaczone()).toBe(false);
+        window.localStorage.setItem = oryginalny;
+    });
+
+    it("fallback: przełącznik działa w sesji nawet bez localStorage", () => {
+        const oryginalny = window.localStorage.setItem;
+        window.localStorage.setItem = () => {
+            throw new Error("QuotaExceededError");
+        };
+        const w = zaladuj();
+        const el = window.document.createElement("button");
+        window.document.body.appendChild(el);
+        w.bppPodepnijPrzelacznikSkrotow(el);
+        // Initialnie włączone
+        expect(el.getAttribute("aria-pressed")).toBe("true");
+        // Klik wyłącza
+        el.click();
+        expect(el.getAttribute("aria-pressed")).toBe("false");
+        expect(el.textContent).toContain("wyłączone");
+        // Drugi klik włącza
+        el.click();
+        expect(el.getAttribute("aria-pressed")).toBe("true");
+        expect(el.textContent).toContain("włączone");
+        window.localStorage.setItem = oryginalny;
+    });
 });
 
 describe("bppPodepnijPrzelacznikSkrotow", () => {

@@ -19,23 +19,30 @@
     var KLUCZ = "bpp.skrotyJednoznakowe";
     var ETYKIETA_WL = "Skróty klawiszowe: włączone";
     var ETYKIETA_WYL = "Skróty klawiszowe: wyłączone";
+    var stanAwaryjny = null;  // Fallback w pamięci gdy localStorage niedostępny
 
     function bppSkrotyWlaczone() {
+        if (stanAwaryjny !== null) {
+            return stanAwaryjny;
+        }
         try {
             return window.localStorage.getItem(KLUCZ) !== "0";
         } catch (e) {
             // Tryb prywatny, wylaczone ciasteczka, wyczerpany limit —
-            // degradujemy do domyslki zamiast wywracac obsluge klawisza.
-            return true;
+            // czytamy fallback z pamięci sesji.
+            return stanAwaryjny !== null ? stanAwaryjny : true;
         }
     }
 
     function bppUstawSkroty(wlaczone) {
         try {
             window.localStorage.setItem(KLUCZ, wlaczone ? "1" : "0");
+            stanAwaryjny = null;  // Zapis się powiedział — czyść fallback
         } catch (e) {
-            // Zapis niemozliwy — preferencja nie przetrwa przeladowania,
-            // ale biezaca sesja i tak dziala na zwroconej wartosci.
+            // Zapis niemozliwy (tryb prywatny, limit, itp.) — trzymaj
+            // stan w pamięci sesji. Przełącznik będzie działa w bieżącej
+            // sesji, choć preferencja nie przetrwa przeładowania.
+            stanAwaryjny = !!wlaczone;
         }
         return !!wlaczone;
     }
