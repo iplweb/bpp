@@ -8,6 +8,7 @@ dziedziczy ``lang="pl"`` ze strony, co dla polskiego tłumaczenia jest
 prawdą — a błędne oznaczenie byłoby gorsze niż brak.
 """
 
+import lxml.html
 import pytest
 from django.template.loader import render_to_string
 from model_bakery import baker
@@ -60,12 +61,27 @@ def test_mono_bez_atrybutu_gdy_kod_pusty(wydawnictwo_ciagle, jezyk_bez_kodu):
 
     assert "Tytuł bez kodu" in tresc
     assert 'lang=""' not in tresc
+    # 'lang=""' not in tresc nie wyklucza gołego opakowania bez atrybutu
+    # (<span>Tytuł bez kodu</span>) — oznacz_jezyk ma zwrócić wartość BEZ
+    # żadnego <span>, gdy kod języka jest pusty (patrz docstring filtra).
+    assert "<span>Tytuł bez kodu</span>" not in tresc
 
 
 @pytest.mark.django_db
-def test_mono_przeklad_zostaje_poza_znacznikiem(
-    wydawnictwo_ciagle, jezyk_angielski
-):
+def test_strona_wlacza_modul_js_wyszukiwarki_rekordow(client, wydawnictwo_ciagle):
+    # Testy vitest ładują related-records-highlight.js przez readFileSync —
+    # usunięcie <script src=…> z szablonu nie wywaliłoby żadnego testu JS,
+    # a wyszukiwarka rzuciłaby w przeglądarce TypeError (window.bppStripTags
+    # / window.bppHighlightOutsideTags is not a function). Asercja pilnuje,
+    # że moduł jest faktycznie podpięty do strony.
+    res = client.get(wydawnictwo_ciagle.get_absolute_url())
+
+    assert res.status_code == 200
+    assert b"related-records-highlight.js" in res.content
+
+
+@pytest.mark.django_db
+def test_mono_przeklad_zostaje_poza_znacznikiem(wydawnictwo_ciagle, jezyk_angielski):
     # Znacznik obejmuje WYŁĄCZNIE tytuł oryginalny. Wspólny <span> na bloku
     # "oryginalny (przekład)" oznaczyłby jednym językiem dwa różne języki.
     wydawnictwo_ciagle.tytul_oryginalny = "Effects of X"
@@ -82,6 +98,12 @@ def test_mono_przeklad_zostaje_poza_znacznikiem(
 
 @pytest.mark.django_db
 def test_breadcrumb_oznacza_tytul(client, wydawnictwo_ciagle, jezyk_angielski):
+    # Strona rekordu włącza praca_tabela_mono.html, który SAM emituje
+    # <span lang="en"> gdzie indziej na tej samej stronie — asercja na
+    # 'lang="en"' in res.content przechodziłaby z samego mono, niezależnie
+    # od tego, czy filtr w okruszku nawigacyjnym w ogóle istnieje. Asercja
+    # musi więc celować w konkretny węzeł okruszka (li.current), nie w
+    # całą stronę.
     wydawnictwo_ciagle.tytul_oryginalny = "Effects of X on Y"
     wydawnictwo_ciagle.jezyk = jezyk_angielski
     wydawnictwo_ciagle.save()
@@ -89,13 +111,19 @@ def test_breadcrumb_oznacza_tytul(client, wydawnictwo_ciagle, jezyk_angielski):
     res = client.get(wydawnictwo_ciagle.get_absolute_url())
 
     assert res.status_code == 200
-    assert b'lang="en"' in res.content
+    tree = lxml.html.fromstring(res.content)
+    (li,) = tree.xpath('//li[@class="current"]')
+    assert li.xpath('.//span[@lang="en"]')
 
 
 @pytest.mark.django_db
 def test_breadcrumb_bez_atrybutu_gdy_kod_pusty(
     client, wydawnictwo_ciagle, jezyk_bez_kodu
 ):
+    # 'lang=""' not in res.content przeszłoby nawet na czystym dev — filtr
+    # oznacz_jezyk strukturalnie nie generuje pustego atrybutu, tylko brak
+    # <span> w ogóle. Asercja musi sprawdzić węzeł okruszka wprost: brak
+    # JAKIEGOKOLWIEK <span> (nie tylko brak lang="").
     wydawnictwo_ciagle.tytul_oryginalny = "Tytuł bez kodu"
     wydawnictwo_ciagle.jezyk = jezyk_bez_kodu
     wydawnictwo_ciagle.save()
@@ -103,4 +131,6 @@ def test_breadcrumb_bez_atrybutu_gdy_kod_pusty(
     res = client.get(wydawnictwo_ciagle.get_absolute_url())
 
     assert res.status_code == 200
-    assert b'lang=""' not in res.content
+    tree = lxml.html.fromstring(res.content)
+    (li,) = tree.xpath('//li[@class="current"]')
+    assert not li.xpath(".//span")

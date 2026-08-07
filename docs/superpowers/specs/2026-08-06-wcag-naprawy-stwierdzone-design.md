@@ -411,9 +411,23 @@ wyekstrahowana z szablonu do modułu JS, żeby dało się ją przetestować
 jednostkowo (vitest, `tests/js/`); reszta inline'owego kodu tej wyszukiwarki
 zostaje na miejscu.
 
-Filtrowanie przez `indexOf` na HTML-u pozostaje bez zmian — fraza przecięta
-znacznikiem po prostu nie znajdzie rekordu, co jest zachowaniem zastanym i
-nie psuje markupu. Odnotowujemy je testem dokumentującym stan.
+**Korekta (2026-08-06, po recenzji całości gałęzi):** ustalenie wyżej było
+błędne. Filtrowanie NIE zostaje bez zmian — działa dalej na `indexOf`, ale
+na tym samym `record.text` (surowy HTML), co podświetlanie naprawione wyżej,
+więc odziedziczyło dokładnie tę samą regresję: fraza „span" albo „lang"
+dopasowuje KAŻDY rekord z `<span lang="…">`, a lista i tak nie pokazuje
+żadnego podświetlenia (podświetlanie już omija znaczniki) — licznik trafień
+kłamie. To wpływa na publiczną wyszukiwarkę rekordów powiązanych identycznie
+jak regresja podświetlania i wchodzi w ten sam zakres naprawy.
+
+Naprawa: moduł `related-records-highlight.js` dostał drugi eksport,
+`bppStripTags(html)` — używa tego samego tokenizera co podświetlanie, zwraca
+wyłącznie tekst (bez znaczników, z zdekodowanymi encjami). Filtr w
+`praca_tabela_mono.html` dopasowuje teraz `bppStripTags(record.text)`
+zamiast surowego `record.text`. Efekt uboczny, na plus: znika też zastany
+przypadek frazy przeciętej znacznikiem (np. „Rola <i>Candida</i>" dla frazy
+„rola candida") — dawniej `indexOf` na surowym HTML-u jej nie znajdował,
+teraz tekst bez znaczników robi to poprawnie.
 
 Trzy pozostałe pozycje z tej grupy dostają testy bez zmian w kodzie.
 
@@ -465,9 +479,13 @@ wyekstrahowanym module:
 - plus test szablonowy: `data-records` zawiera `<span lang=` po zmianie
   generatora
 
-Przypadek frazy przeciętej znacznikiem przy **filtrowaniu** (`indexOf`)
-odnotowujemy asercją zgodną z zastanym zachowaniem — dokumentuje stan, nie
-udaje naprawy.
+**Korekta (2026-08-06, po recenzji całości gałęzi):** dopisano `bppStripTags`
+i drugi blok testów (`describe("bppStripTags")` oraz `describe("filtr
+rekordów powiązanych…")`) — dopasowanie po tekście bez znaczników, encje
+zdekodowane, fraza „span"/„lang" nie znajduje żadnego rekordu ze
+znacznikiem, a fraza przecięta znacznikiem TERAZ znajduje rekord (zmiana
+zamierzona — patrz wyżej). Test dokumentujący „zastany stan" zastąpiono
+testem broniącym naprawy.
 
 **1.1.1** — asercja, że `504.html` renderuje `<img` z `alt=""`.
 
@@ -522,6 +540,31 @@ opisy złapią nowy kod dopiero po najbliższym nocnym rebuildzie (do 24 h).
 Stan: **spełnione warunkowo**. Edytujemy dwa szablony z repozytorium; jeśli
 `SzablonDlaOpisuBibliograficznego.nazwa_szablonu` wskazuje na inny plik,
 opisy nie dostaną znaczników mimo poprawnej allowlisty.
+
+**3.1.2 — override `opis_bibliograficzny.html` w dbtemplates.**
+Stan: **spełnione warunkowo**. Wariant węższy od powyższego, ale groźniejszy
+i bardziej prawdopodobny: nie chodzi o inną *nazwę* szablonu, tylko o inną
+*treść* pod tą samą, domyślną nazwą. Kolejność loaderów
+(`src/django_bpp/settings/base.py`, ok. linii 280) stawia
+`dbtemplates.loader.Loader` PRZED loaderami plikowymi, a admin wprost
+zachęca do edycji tego konkretnego szablonu w bazie —
+`src/django_bpp/templates/admin/dbtemplates/template/change_form.html`
+dodaje akcję „Szybki podgląd" specjalnie dla
+`original.name == "opis_bibliograficzny.html"`. Migracja 0488 czyści
+wyłącznie osierocony wariant `browse/praca_tabela.html` — nie dotyka
+`opis_bibliograficzny.html`. Każde wdrożenie, na którym administrator
+kiedykolwiek zapisał ten szablon w dbtemplates (po migracji 0473, która
+wprowadziła obecną treść pliku na dysku), dostanie deploy BEZ znacznika
+`lang` w opisie bibliograficznym i bez żadnego sygnału o tym — render po
+prostu się powiedzie, tylko z treścią sprzed tej zmiany.
+
+Sposób sprawdzenia na konkretnym wdrożeniu:
+`Template.objects.filter(name="opis_bibliograficzny.html").exists()`
+(model z `dbtemplates`). Jeśli `True`, dwa wyjścia: ręcznie dopisać filtr
+`oznacz_jezyk` do tytułu w treści tego wiersza (zsynchronizować z plikiem na
+dysku) albo usunąć wiersz komendą
+`manage.py drop_dbtemplate opis_bibliograficzny.html` (spadek na plik z
+dysku + przebudowa `opis_bibliograficzny_cache`).
 
 **3.1.2 — instalacje z własnym `OPIS_BIBLIOGRAFICZNY_ALLOWED_TAGS`.**
 Stan: **spełnione warunkowo**. Override w settings zastępuje domyślną

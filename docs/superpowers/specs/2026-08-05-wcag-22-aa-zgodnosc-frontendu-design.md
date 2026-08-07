@@ -655,6 +655,14 @@ JSON (`Select2QuerySetSequenceView`), a listę rysuje Select2 po stronie
 klienta. Szablon usunięto zamiast dopisywać `alt`. W zakresie zostaje jeden
 obraz, nie dwa.
 
+**Korekta (2026-08-06):** przy okazji poprawki `alt` w tym samym pliku
+(`504.html`) naprawiono też kryterium **3.1.1 Language of Page (A)** — poza
+pierwotną inwentaryzacją tego dokumentu. `504.html:2` deklarował
+`<html lang="en">` na całkowicie polskiej treści strony błędu; poprawka to
+`en` → `pl`. Jedyny szablon w projekcie z własnym `<html lang>` — pozostałe
+dziedziczą po `base.html` (`pl` poprawnie). Szczegóły: „Naprawa 1" w
+`2026-08-06-wcag-naprawy-stwierdzone-design.md`.
+
 ### 2.5.7 Dragging Movements (AA) — graf powiązań
 
 `src/powiazania_autorow/templates/powiazania_autorow/graf.html` to widok
@@ -1072,6 +1080,31 @@ opisy złapią nowy kod dopiero po najbliższym nocnym rebuildzie (do 24 h).
 Stan: **spełnione warunkowo**. Edytujemy dwa szablony z repozytorium; jeśli
 `SzablonDlaOpisuBibliograficznego.nazwa_szablonu` wskazuje na inny plik,
 opisy nie dostaną znaczników mimo poprawnej allowlisty.
+
+**3.1.2 — override `opis_bibliograficzny.html` w dbtemplates.**
+Stan: **spełnione warunkowo**. Wariant węższy od powyższego, ale groźniejszy
+i bardziej prawdopodobny: nie chodzi o inną *nazwę* szablonu, tylko o inną
+*treść* pod tą samą, domyślną nazwą. Kolejność loaderów
+(`src/django_bpp/settings/base.py`, ok. linii 280) stawia
+`dbtemplates.loader.Loader` PRZED loaderami plikowymi, a admin wprost
+zachęca do edycji tego konkretnego szablonu w bazie —
+`src/django_bpp/templates/admin/dbtemplates/template/change_form.html`
+dodaje akcję „Szybki podgląd" specjalnie dla
+`original.name == "opis_bibliograficzny.html"`. Migracja 0488 czyści
+wyłącznie osierocony wariant `browse/praca_tabela.html` — nie dotyka
+`opis_bibliograficzny.html`. Każde wdrożenie, na którym administrator
+kiedykolwiek zapisał ten szablon w dbtemplates (po migracji 0473, która
+wprowadziła obecną treść pliku na dysku), dostanie deploy BEZ znacznika
+`lang` w opisie bibliograficznym i bez żadnego sygnału o tym — render po
+prostu się powiedzie, tylko z treścią sprzed tej zmiany.
+
+Sposób sprawdzenia na konkretnym wdrożeniu:
+`Template.objects.filter(name="opis_bibliograficzny.html").exists()`
+(model z `dbtemplates`). Jeśli `True`, dwa wyjścia: ręcznie dopisać filtr
+`oznacz_jezyk` do tytułu w treści tego wiersza (zsynchronizować z plikiem na
+dysku) albo usunąć wiersz komendą
+`manage.py drop_dbtemplate opis_bibliograficzny.html` (spadek na plik z
+dysku + przebudowa `opis_bibliograficzny_cache`).
 
 **3.1.2 — instalacje z własnym `OPIS_BIBLIOGRAFICZNY_ALLOWED_TAGS`.**
 Stan: **spełnione warunkowo**. Override w settings zastępuje domyślną

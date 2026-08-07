@@ -14,7 +14,6 @@ import json
 
 import lxml.html
 import pytest
-from django.core.management import call_command
 from model_bakery import baker
 
 from bpp.models.system import Jezyk
@@ -73,10 +72,14 @@ def test_opis_nie_oznacza_przekladu(wydawnictwo_ciagle, jezyk_angielski):
 
 @pytest.mark.django_db
 def test_znacznik_przezywa_post_processing(wydawnictwo_ciagle, jezyk_angielski):
-    # opis_bibliograficzny() normalizuje interpunkcję łańcuchem .replace()
-    # (" , ", " . ", ". . ", " .", ".</b>[" — util.py:106-121). Tytuł
-    # kończący się kropką sąsiaduje ze znacznikiem, więc to najbliższy
-    # kontakt tych wzorców z <span>.
+    # Dowodzi, że <span lang="en"> przechodzi CAŁY pipeline
+    # opis_bibliograficzny() — render szablonu, łańcuch normalizacji
+    # interpunkcji .replace() (util.py:106-123) i sanityzację nh3 —
+    # nienaruszony i niezdublowany: dokładnie jedno otwarcie i jedno
+    # zamknięcie <span lang="en">…</span> w wyniku. Tytuł kończący się
+    # kropką stawia znacznik w bezpośrednim sąsiedztwie normalizowanej
+    # interpunkcji (".</span></b>[" — patrz osobny .replace() dla tego
+    # wariantu), więc to najostrzejszy z tych testów przypadek kontaktu.
     wydawnictwo_ciagle.tytul_oryginalny = "Effects of X."
     wydawnictwo_ciagle.tytul = ""
     wydawnictwo_ciagle.jezyk = jezyk_angielski
@@ -98,15 +101,13 @@ def test_znacznik_w_wariancie_praca_tabela(wydawnictwo_ciagle, jezyk_angielski):
         model=None,
         defaults={"nazwa_szablonu": "browse/praca_tabela.html"},
     )
-    # Baseline nosi osierocony wiersz dbtemplates dla "browse/praca_tabela.html"
-    # (wgrany przez migrację 0295, nigdy nie wyczyszczony przez 0473 — jej
-    # guard czyści tylko nazwy AKTUALNIE referencjonowane przez
-    # SzablonDlaOpisuBibliograficznego, a nic w danych produkcyjnych nie
-    # wskazywało na ten wariant). Loader dbtemplates stoi przed loaderem
-    # plikowym, więc bez tego czyszczenia render dostałby starą treść z bazy,
-    # sprzed edycji WCAG na dysku — dokładnie scenariusz, na który istnieje
-    # komenda drop_dbtemplate (patrz test_management_commands_drop_dbtemplate.py).
-    call_command("drop_dbtemplate", "browse/praca_tabela.html", "--skip-rebuild")
+    # Migracja 0488 (purge_praca_tabela_dbtemplate) czyści osierocony wiersz
+    # dbtemplates dla "browse/praca_tabela.html" na poziomie schematu — więc
+    # do czasu testu ten wiersz już nie istnieje i ręczne drop_dbtemplate()
+    # tutaj byłoby no-opem (a dopóki tu stało, test przechodziłby także po
+    # cofnięciu 0488, czyli przestał bronić tego, o co chodzi). Czystość
+    # loadera dbtemplates dla tej nazwy pilnuje osobny test:
+    # test_purge_dbtemplate.py.
     wydawnictwo_ciagle.tytul_oryginalny = "Effects of X on Y"
     wydawnictwo_ciagle.tytul = ""
     wydawnictwo_ciagle.jezyk = jezyk_angielski

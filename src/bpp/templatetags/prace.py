@@ -332,7 +332,6 @@ def autor_nazwa(autor, links="", pokaz_pozycje=False):
     końcu pliku) wstawiało spację przed przecinkiem między autorami.
     """
     from django.urls import reverse
-    from django.utils.html import format_html
 
     klasa = "author-name"
     if not links:

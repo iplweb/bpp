@@ -16,6 +16,7 @@ from model_bakery import baker
 
 from bpp.models import Wydawnictwo_Ciagle
 from pbn_export_queue.models import PBN_Export_Queue
+from pbn_export_queue.views.action_views import _get_ids_matching_title
 from pbn_export_queue.views.utils import get_record_title
 
 OPIS_ZE_ZNACZNIKIEM = (
@@ -71,3 +72,30 @@ def test_lista_kolejki_znajduje_rekord_po_opisie(
 
     assert res.status_code == 200
     assert queue_item in res.context["export_queue_items"]
+
+
+@pytest.mark.django_db
+def test_akcje_kolejki_znajduja_rekord_po_opisie(wydawnictwo_ciagle, admin_user):
+    # action_views._get_ids_matching_title (ok. linii 370-396) powiela ten
+    # sam wzorzec `fraza in opis.lower()` co list_views, ale zasila widok
+    # POST /resend-filtered/ (masowe wznowienie), a nie GET listy. Test
+    # bezpośrednio na funkcji filtrującej — przejście przez pełny widok
+    # resend_filtered wymagałoby mockowania wywołań PBN dla rekordu, co jest
+    # niezwiązane z logiką wyszukiwania po opisie i tylko dublowałoby
+    # pokrycie z test_views_actions.py.
+    wydawnictwo_ciagle.tytul_oryginalny = ""
+    wydawnictwo_ciagle.save()
+
+    Wydawnictwo_Ciagle.objects.filter(pk=wydawnictwo_ciagle.pk).update(
+        opis_bibliograficzny_cache=OPIS_ZE_ZNACZNIKIEM
+    )
+
+    queue_item = baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=admin_user,
+    )
+
+    ids = _get_ids_matching_title(PBN_Export_Queue.objects.all(), "postępy higieny")
+
+    assert queue_item.pk in ids
