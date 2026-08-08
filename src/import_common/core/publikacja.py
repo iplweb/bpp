@@ -78,29 +78,13 @@ def _check_candidate(candidate, title: str, threshold: float) -> bool:
     return False
 
 
-def widzacy_manager(klass):
-    """Menedżer widzący TAKŻE rekordy w koszu.
-
-    Matching importu należy do „kategorii B" — miejsc, które MUSZĄ widzieć
-    soft-skasowane wiersze. Gdy ich nie widzi, re-import uznaje rekord za
-    nieistniejący i tworzy DUPLIKAT, którego operator nie zauważy, bo
-    oryginał siedzi w koszu.
-
-    ``getattr`` z fallbackiem, bo ``klass`` bywa też ``Rekord`` — a to widok
-    (``managed=False``), nie ``SoftDeleteModel``, więc ``global_objects`` nie
-    ma. Jest za to odfiltrowany po ``deleted_at`` już na poziomie SQL-a
-    (faza 01), czyli dla niego „menedżer widzący" po prostu nie istnieje.
-    """
-    return getattr(klass, "global_objects", klass.objects)
-
-
 def _try_match_pub_by_doi(klass, title, year, doi, doi_matchuj_tylko_nadrzedne, debug):
     """Próbuje dopasować publikację po DOI."""
     doi = normalize_doi(doi)
     if not doi:
         return None
 
-    zapytanie = widzacy_manager(klass).filter(doi__istartswith=doi, rok=year)
+    zapytanie = klass.objects.filter(doi__istartswith=doi, rok=year)
     if doi_matchuj_tylko_nadrzedne and hasattr(klass, "wydawnictwo_nadrzedne_id"):
         zapytanie = zapytanie.filter(wydawnictwo_nadrzedne_id=None)
 
@@ -121,7 +105,7 @@ def _try_match_pub_by_zrodlo(klass, title, year, zrodlo):
     if zrodlo is None or not hasattr(klass, "zrodlo"):
         return None
     try:
-        return widzacy_manager(klass).get(
+        return klass.objects.get(
             tytul_oryginalny__istartswith=title, rok=year, zrodlo=zrodlo
         )
     except klass.DoesNotExist:
@@ -137,10 +121,8 @@ def _build_isbn_query(klass, isbn_matchuj_tylko_nadrzedne):
     """Buduje zapytanie dla matchowania ISBN."""
     from django.contrib.contenttypes.models import ContentType
 
-    zapytanie = (
-        widzacy_manager(klass)
-        .exclude(isbn=None, e_isbn=None)
-        .exclude(isbn="", e_isbn="")
+    zapytanie = klass.objects.exclude(isbn=None, e_isbn=None).exclude(
+        isbn="", e_isbn=""
     )
 
     if not isbn_matchuj_tylko_nadrzedne:
@@ -196,8 +178,7 @@ def _try_match_pub_by_uri(klass, title, public_uri, debug):
         return None
 
     res = (
-        widzacy_manager(klass)
-        .filter(Q(www=public_uri) | Q(public_www=public_uri))
+        klass.objects.filter(Q(www=public_uri) | Q(public_www=public_uri))
         .annotate(podobienstwo=TrigramSimilarity(normalized_db_title, title.lower()))
         .order_by("-podobienstwo")[:2]
     )
@@ -251,8 +232,7 @@ def _try_match_pub_by_title(klass, title, year, debug, isbn=None):
     """
     # Najpierw próba z istartswith
     res = (
-        widzacy_manager(klass)
-        .filter(tytul_oryginalny__istartswith=title, rok=year)
+        klass.objects.filter(tytul_oryginalny__istartswith=title, rok=year)
         .annotate(podobienstwo=TrigramSimilarity(normalized_db_title, title.lower()))
         .order_by("-podobienstwo")[:2]
     )
@@ -266,8 +246,7 @@ def _try_match_pub_by_title(klass, title, year, debug, isbn=None):
 
     # Ostatnia szansa - tylko po roku z niskim progiem
     res = (
-        widzacy_manager(klass)
-        .filter(rok=year)
+        klass.objects.filter(rok=year)
         .annotate(podobienstwo=TrigramSimilarity(normalized_db_title, title.lower()))
         .order_by("-podobienstwo")[:2]
     )
