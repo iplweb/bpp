@@ -13,7 +13,7 @@ from bpp.models import (
 )
 from bpp.util import safe_tytul_html
 from pbn_api.client import PBNClient
-from pbn_integrator.kosz import przywroc_jesli_w_koszu
+from pbn_integrator.kosz import znajdz_lub_wskrzes_rekord
 
 from .authors import utworz_autorow
 from .cache import (
@@ -65,14 +65,16 @@ def importuj_ksiazke(
         )
         return None
 
-    ret = pbn_publication.rekord_w_bpp
-
-    if ret is not None and not force:
-        # Trafienie w kosz: PBN jest zrodlem prawdy, wiec rekord wraca --
-        # i zostaje po tym slad w rejestrze. Uzasadnienie i zmiana wobec
-        # decyzji #14 planu: docstring RekordPrzywroconyPrzezImport.
-        przywroc_jesli_w_koszu(ret, pbn_publication, "books")
-        return ret
+    if not force:
+        # Kosz jest niewidoczny dla matchingu (``Rekord`` filtruje po
+        # ``deleted_at``), ale widoczny dla unique na ``pbn_uid``. Bez zajrzenia
+        # tam re-import ksiazki z kosza wywala sie ``IntegrityError``-em.
+        # Szczegoly: docstring ``znajdz_lub_wskrzes_rekord``.
+        istniejacy = znajdz_lub_wskrzes_rekord(
+            pbn_publication, Wydawnictwo_Zwarte, "books"
+        )
+        if istniejacy is not None:
+            return istniejacy
 
     pbn_json = pbn_publication.current_version["object"]
     orig_pbn_json = copy.deepcopy(pbn_json)  # noqa
