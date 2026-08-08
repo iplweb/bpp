@@ -1,0 +1,116 @@
+# Handoff: soft-delete, start fazy 04
+
+> Po zamknięciu **fazy 03** (audyt kategorii B), 2026-08-08.
+> Czytaj to zamiast odtwarzania historii z gita.
+
+---
+
+## 1. Gdzie jesteśmy
+
+| | |
+|---|---|
+| Gałąź | `feat/soft-delete-03`, worktree `~/Programowanie/bpp-soft-delete-03` |
+| Baza | `feat/soft-delete` (zawiera fazy 01 i 02; PR #741 scalony) |
+| Migracje fazy 03 | `pbn_integrator/0001` (nowy model rejestru) |
+
+Faza 03 domknęła **blocker wydania**: re-import z PBN nie tworzy już
+duplikatów rekordów skasowanych miękko.
+
+---
+
+## 2. NAJWAŻNIEJSZE: zmieniona decyzja o polityce kosza
+
+Plan fazy 03 miał decyzję #14 „**POMIŃ + ZARAPORTUJ**”, argumentując, że
+auto-restore pozwoliłby importowi wskrzeszać rzeczy skasowane celowo.
+
+**Właściciel systemu zmienił ją 2026-08-08 na „PRZYWRÓĆ + ODNOTUJ”.**
+Uzasadnienie: PBN jest źródłem prawdy dla tych publikacji — skoro rekord tam
+jest, ma wrócić także do BPP.
+
+Zastrzeżenie z pierwotnej decyzji nie zostało uznane za nieważne, tylko
+przeniesione: z „nie róbmy tego” na „róbmy, ale zostawmy ślad”. Śladem jest
+`pbn_integrator.RekordPrzywroconyPrzezImport` — rekord (generic FK), data,
+publikacja PBN, ścieżka importu.
+
+⚠️ Wpis powstaje **wyłącznie przy realnym wskrzeszeniu**. Zwykły re-import
+żywego rekordu nie zostawia nic — inaczej rejestr zapełniłby się szumem
+i przestałby cokolwiek znaczyć. Przypięte osobnym testem.
+
+Punkt wejścia: `pbn_integrator.kosz.przywroc_jesli_w_koszu()`, wpięty
+w `articles.py`, `books.py`, `chapters.py` (ta ostatnia w dwóch miejscach —
+sam rozdział i jego książka-matka, rozróżnialne po `zrodlo_importu`).
+
+---
+
+## 3. Co faza 03 zmieniła w kodzie
+
+| Miejsce | Zmiana |
+|---|---|
+| `pbn_api/models/publication.py` | `get_bpp_publication` / `rekord_w_bpp` matchują przez `global_objects` modeli źródłowych zamiast widoku `Rekord` |
+| `import_common/core/publikacja.py` | helper `widzacy_manager()`; 6 lookupów matchingu widzi kosz |
+| `pbn_integrator/importer/chapters.py` | `znajdz_ksiazke_nadrzedna()` — wydzielony, widzi kosz, wskrzesza |
+| `pbn_import/utils/publication_import.py` | `global_objects` + `hard_delete()` przy czyszczeniu przed re-importem |
+| `deduplikator_autorow/utils/merge.py` | `wiersze_do_transferu()` — transfer widzi kosz |
+
+**ZOSTAWIONE świadomie na `objects`** (rejestr decyzji w
+`src/bpp/tests/test_soft_delete/test_audyt_kategorii_b.py`): ewaluacja,
+snapshot odpięć, komparator PBN, REST API, skanowanie do dedupu publikacji.
+
+---
+
+## 4. Fakty, które kosztowały rundę poprawek
+
+- **`Patent` NIE ma pola `pbn_uid`.** Wpisanie go do listy modeli
+  matchowanych po `pbn_uid` wywala `FieldError` przy pierwszym `.filter()`.
+- **`get_bpp_publication` i `rekord_w_bpp` zachowują się RÓŻNIE**: przy wielu
+  trafieniach pierwsza zwraca `None`, druga sklejone tytuły; przy braku
+  trafień druga spada do fuzzy matchingu. Różnica jest historyczna i celowo
+  zachowana — nie ujednolicaj jej „przy okazji”.
+- **`rekord_w_bpp` bywa STRINGIEM.** Każdy helper na ścieżce importu musi to
+  przyjąć bez wyjątku (`getattr`, nie `isinstance`), inaczej wywróci cały
+  przebieg z powodu niezwiązanego z koszem.
+- **`_try_match_pub_by_doi` mimo zawężenia po DOI przepuszcza kandydata przez
+  próg podobieństwa tytułu (0.80).** Test z celowo innym tytułem padnie —
+  i NIE będzie to dowód, że kod nie widzi kosza.
+- **Linie cytowane w planie dla `merge.py` były nieaktualne** (plik
+  zrefaktoryzowany). Szukaj lookupów na nowo, nie po numerach.
+- **`GlobalManager` pakietu nie ma metod domenowych.** `wydawnictwa_
+  nadrzedne_dla_innych()` zostaje na `objects` — świadomie.
+
+---
+
+## 5. Co czeka fazę 04 (guardy PROTECT)
+
+- **Nikt nie przeplata `AutorManager`** — po uczynieniu `Autor`
+  `SoftDeleteModel` husk autora zostanie widoczny.
+- **`Autor.restore()` musi nadpisać `strict=False`** (inwariant z docstringu
+  `bpp/models/soft_delete.py`).
+- **Soft-skasowana publikacja NADAL trzyma referencję O2O PROTECT do autora**
+  — `Praca_Habilitacyjna.autor`. Dziś oznacza to `ProtectedError` przy próbie
+  skasowania autora i jest to zachowanie poprawne (rekord istnieje, nie wolno
+  go osierocić), ale faza 04 musi to obsłużyć w UI, a nie zostawić jako gołe
+  500.
+- **Odwrotne `OneToOne` omija soft-delete** (`autor.praca_habilitacyjna` idzie
+  przez `_base_manager`). Naprawione punktowo w `RokHabilitacjiView`; faza 04
+  dotyka tej samej relacji, więc trafi na to ponownie.
+
+## 6. Dług nadal otwarty
+
+| Sprawa | Stan |
+|---|---|
+| **Wycieki ORM (kanarek `xfail(strict=True)`)** | `test_kanarek_orm_join_po_publikacji_ma_predykat_deleted_at` dalej `xfail`. ⚠️ Tabelka 10 wycieków w `reviews/2026-08-07-faza-02-inwentaryzacja-orm.md` NIE jest listą zadań — patrz self-review w tym pliku. Potrzebne narzędzie model-aware (pytające `_meta`), nie rozszerzanie listy nazw |
+| **PR upstream `django-easy-audit`** | gałąź gotowa w `~/Programowanie/django-easy-audit`, przetestowana na Django 5.2 i 6.1, **niewypchnięta** — czeka na decyzję o koncie/forku |
+| **`bpp-deploy`** | kontrolka „kronika views: N” po `bpp.0499` wypisze 0 i może zmylić operatora |
+| Pomiar `0492` i narzutu GiST | wciąż nikt nie zmierzył (dług fazy 01) |
+| Strategia wydania | rekomendacja bez zmian: wydać po fazie 04 |
+
+## 7. Proces — co znowu się sprawdziło
+
+- **Mutacja jest jedynym dowodem, że test coś pilnuje.** W fazie 03 pierwsza
+  czerwień testu rejestru była `ImportError` — a to nie dowodzi, że asercje
+  działają. Dopiero wyłączenie warunku na `deleted_at` pokazało, że tak.
+- **`ruff format` na całym katalogu znowu zagarnął cudzy plik.** Formatuj
+  tylko własne; cofnięcie kosztowało osobny commit.
+- **`make tests-without-playwright` zwraca EXIT 0 mimo porażek** (sprawdzone
+  w fazie 02: 7 failed + 2 errors przy zerowym kodzie). Czytaj podsumowanie
+  pytest, nie kod wyjścia.
