@@ -24,6 +24,17 @@ niż brzmiała pierwotna obietnica „re-import nie tworzy duplikatów" — patr
 Zgodnie z CLAUDE.md odświeżenie (`make baseline-update`) robi się **raz, przy
 scalaniu**, a nie w równoległych feature-branchach.
 
+⚠️ **CI NIE URUCHAMIA SIĘ na PR-ach do `feat/soft-delete`.** Workflow `Tests`
+ma `pull_request: branches: [dev]`, więc PR #742 (`feat/soft-delete-03` →
+`feat/soft-delete`) dostaje wyłącznie GitGuardiana. Zielony check na takim
+PR-ze **nie jest dowodem, że testy przeszły** — jedyną weryfikacją jest
+przebieg lokalny. To samo będzie dotyczyć PR-ów faz 04–07, dopóki są stackowane
+na `feat/soft-delete`. Odpalaj `make tests` lokalnie i czytaj podsumowanie
+pytest (target zwraca EXIT 0 mimo porażek i przerywa się na pierwszym błędnym
+kroku, więc `tests-only-playwright` i `js-tests` trzeba dokończyć osobno).
+
+Stan fazy 03 na `ac809b958`: 9522 + 157 + 81 passed, 0 failed.
+
 ---
 
 ## 2. NAJWAŻNIEJSZE: zmieniona decyzja o polityce kosza
