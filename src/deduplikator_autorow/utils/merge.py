@@ -227,6 +227,24 @@ def _transfer_authorship_record(
     return True
 
 
+def wiersze_do_transferu(model, autor_duplikat):
+    """Rekordy duplikatu do przeniesienia — RAZEM Z KOSZEM.
+
+    Scalanie autorów należy do „kategorii B". Gdyby transfer widział tylko
+    żywe wiersze, autorstwa (i prace) soft-skasowane zostałyby przy autorze
+    duplikacie — a ten po scaleniu ma zniknąć. Powstałyby SIEROTY: wiersze
+    w koszu wskazujące na autora, którego już nie ma. W fazie 04 zablokują
+    dodatkowo guard PROTECT, więc problem ujawniłby się dopiero tam —
+    w miejscu niezwiązanym z przyczyną.
+
+    ``getattr`` z fallbackiem, bo ta sama funkcja obsługuje modele
+    soft-delete (publikacje z fazy 02, through-modele z fazy 01) i takie,
+    które nimi nie są.
+    """
+    manager = getattr(model, "global_objects", model.objects)
+    return manager.filter(autor=autor_duplikat)
+
+
 def _transfer_simple_authorship(
     model, model_label, glowny_autor, autor_duplikat, user, skip_pbn, results
 ):
@@ -236,7 +254,7 @@ def _transfer_simple_authorship(
     """
     from pbn_export_queue.models import PBN_Export_Queue
 
-    for praca in model.objects.filter(autor=autor_duplikat):
+    for praca in wiersze_do_transferu(model, autor_duplikat):
         # Przemapuj autora
         praca.autor = glowny_autor
         praca.save()
@@ -337,7 +355,7 @@ def scal_autora(
 
             # 1-3. Rekordy autorstwa (ciągłe, zwarte, patenty)
             for model_label, model, log_publication in authorship_models:
-                for record in model.objects.filter(autor=autor_duplikat):
+                for record in wiersze_do_transferu(model, autor_duplikat):
                     _transfer_authorship_record(
                         record,
                         glowny_autor,
