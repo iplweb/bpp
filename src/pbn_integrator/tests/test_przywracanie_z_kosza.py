@@ -91,11 +91,10 @@ def test_ksiazka_nadrzedna_w_koszu_jest_znajdowana_i_wskrzeszana():
     PONOWNIE — powstawał duplikat książki, a rozdziały odpinały się od
     oryginału.
     """
+    from bpp.models import Wydawnictwo_Zwarte
     from pbn_api.models import Publication
     from pbn_integrator.importer.chapters import znajdz_ksiazke_nadrzedna
     from pbn_integrator.models import RekordPrzywroconyPrzezImport
-
-    from bpp.models import Wydawnictwo_Zwarte
 
     pub_ksiazki = baker.make(Publication)
     ksiazka = baker.make(Wydawnictwo_Zwarte, pbn_uid=pub_ksiazki)
