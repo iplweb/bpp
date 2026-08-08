@@ -81,3 +81,42 @@ def test_niemodelowy_wynik_matchingu_nie_wywala_helpera():
 
     assert przywroc_jesli_w_koszu("Tytul A ;; Tytul B", publication, "books") is False
     assert przywroc_jesli_w_koszu(None, publication, "books") is False
+
+
+@pytest.mark.django_db
+def test_ksiazka_nadrzedna_w_koszu_jest_znajdowana_i_wskrzeszana():
+    """Re-import rozdziału nie może zgubić skasowanej książki-matki.
+
+    Bez widzenia kosza importer uznawał ją za nieistniejącą i importował
+    PONOWNIE — powstawał duplikat książki, a rozdziały odpinały się od
+    oryginału.
+    """
+    from pbn_api.models import Publication
+    from pbn_integrator.importer.chapters import znajdz_ksiazke_nadrzedna
+    from pbn_integrator.models import RekordPrzywroconyPrzezImport
+
+    from bpp.models import Wydawnictwo_Zwarte
+
+    pub_ksiazki = baker.make(Publication)
+    ksiazka = baker.make(Wydawnictwo_Zwarte, pbn_uid=pub_ksiazki)
+    ksiazka.delete()
+
+    znaleziona = znajdz_ksiazke_nadrzedna(pub_ksiazki.pk)
+
+    assert znaleziona is not None, "ksiazka-matka w koszu nie zostala znaleziona"
+    assert znaleziona.pk == ksiazka.pk
+    assert Wydawnictwo_Zwarte.objects.filter(pk=ksiazka.pk).exists(), (
+        "ksiazka-matka nie zostala wskrzeszona"
+    )
+    assert RekordPrzywroconyPrzezImport.objects.filter(
+        object_id=ksiazka.pk, zrodlo_importu="chapters:ksiazka-nadrzedna"
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_brak_ksiazki_nadrzednej_zwraca_none():
+    """Kontrakt zachowany: brak trafienia to ``None``, a nie wyjątek —
+    wołający ma wtedy zaimportować książkę z PBN."""
+    from pbn_integrator.importer.chapters import znajdz_ksiazke_nadrzedna
+
+    assert znajdz_ksiazke_nadrzedna("nie-istnieje-taki-pbn-uid") is None
