@@ -32,23 +32,19 @@ class RokHabilitacjiView(WprowadzanieDanychRequiredMixin, View):
         except Autor.DoesNotExist:
             return HttpResponseNotFound("Autor")
 
-        try:
-            habilitacja = autor.praca_habilitacyjna
-        except Praca_Habilitacyjna.DoesNotExist:
-            return HttpResponseNotFound("Habilitacja")
-
-        # ⚠️ Odwrotne OneToOne NIE respektuje soft-delete. Django rozwiązuje
-        # `autor.praca_habilitacyjna` przez `ReverseOneToOneDescriptor`, a ten
-        # pyta `_base_manager` — z definicji NIEprzefiltrowany (Django wymaga,
-        # żeby zwracał wszystkie wiersze, bo służy do pobierania obiektów
-        # powiązanych). Skasowana habilitacja jest więc tą ścieżką nadal
-        # osiągalna, mimo że `Praca_Habilitacyjna.objects` jej nie pokazuje.
+        # Jawne zapytanie po `objects` (menedżer filtrujący kosz), a NIE po
+        # akcesorze odwrotnym. Wcześniej `autor.praca_habilitacyjna` szło przez
+        # `ReverseOneToOneDescriptor`, ten pyta `_base_manager` — z definicji
+        # NIEprzefiltrowany — i habilitacja z kosza była tą ścieżką nadal
+        # osiągalna, więc trzeba było dokładać ręczny warunek na `deleted_at`.
         #
-        # Nie da się tego naprawić centralnie bez ustawienia
-        # `Meta.base_manager_name` na menedżer filtrujący — a tego Django
-        # jawnie odradza (rozwaliłoby m.in. deserializację i
-        # `refresh_from_db`). Dlatego sprawdzamy tu jawnie.
-        if habilitacja.deleted_at is not None:
+        # Od czasu, gdy `Praca_Habilitacyjna.autor` jest zwykłym `ForeignKey`
+        # (warunkowy unique, faza 03), tamten akcesor już nie istnieje.
+        # `first()` zamiast `get()`, bo unikalność jest teraz pilnowana
+        # warunkowo — a niepowtarzalny jest tylko wiersz ŻYWY, czyli dokładnie
+        # ten, którego `objects` szuka.
+        habilitacja = Praca_Habilitacyjna.objects.filter(autor=autor).first()
+        if habilitacja is None:
             return HttpResponseNotFound("Habilitacja")
 
         return JsonResponse({"rok": habilitacja.rok})
