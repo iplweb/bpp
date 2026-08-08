@@ -1,5 +1,25 @@
 # Handoff: domknięcie fazy 03 (PR #742 wymaga poprawek)
 
+> ## ✅ ZAMKNIĘTE 2026-08-08 — dokument HISTORYCZNY, nie lista zadań
+>
+> Wszystkie pięć pozycji (3.1–3.5) zostało zrobione. Nie działaj na podstawie
+> tego pliku — aktualny stan i dług są w
+> `docs/superpowers/HANDOFF-soft-delete-faza-04.md`.
+>
+> | Pozycja | Commit |
+> |---|---|
+> | 3.1 zaglądanie do kosza w gałęzi `None` | `b98aad5be` |
+> | 3.2 warunkowy unique na habilitacji | `9c3ecb23e` |
+> | 3.3 detekcja kolizji po `global_objects` | `369e6a5f6` |
+> | 3.4 brak kolejkowania kosza do PBN | `369e6a5f6` |
+> | 3.5 opis PR #742 | przepisany w GitHubie |
+>
+> Pozycje 9, 10, 13, 14 z §4 (niższy priorytet) NADAL otwarte — przeniesione
+> do §6 handoffu fazy 04. Pułapki z §5 przeniesione do §7 tamże, wraz z trzema
+> nowymi, które kosztowały tę sesję.
+>
+> ---
+
 > Stan na 2026-08-08. Sesja przerwana w połowie naprawiania po self-review.
 > **PR #742 NIE nadaje się do scalenia w obecnym stanie.**
 
