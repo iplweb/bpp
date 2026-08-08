@@ -38,6 +38,28 @@ from .publishers import sciagnij_i_zapisz_wydawce
 logger = logging.getLogger(__name__)
 
 
+def znajdz_ksiazke_nadrzedna(pbn_book_id):
+    """Książka-matka rozdziału, po ``pbn_uid`` — RAZEM Z KOSZEM.
+
+    Wydzielone z ``importuj_rozdzial`` po to, żeby dało się to przetestować
+    bez budowania całego JSON-a z PBN.
+
+    Bez widzenia kosza re-import rozdziału, którego książka-matka została
+    skasowana, uznawał ją za nieistniejącą i importował PONOWNIE — tworząc
+    duplikat książki, a przy okazji odpinając rozdziały od oryginału.
+
+    Trafienie w kosz oznacza wskrzeszenie (decyzja właściciela, 2026-08-08):
+    skoro PBN nadal ma tę książkę, ma ją mieć też BPP. Fakt ląduje
+    w rejestrze ``RekordPrzywroconyPrzezImport``.
+    """
+    ksiazka = Wydawnictwo_Zwarte.global_objects.filter(pbn_uid_id=pbn_book_id).first()
+    if ksiazka is None:
+        return None
+
+    przywroc_jesli_w_koszu(ksiazka, ksiazka.pbn_uid, "chapters:ksiazka-nadrzedna")
+    return ksiazka
+
+
 def _chapter_json_z_nadrzednego(wydawnictwo_nadrzedne, mongoId):
     """Zwraca sub-słownik rozdziału z ``chapters`` wyd. nadrzędnego albo ``{}``.
 
@@ -100,9 +122,8 @@ def importuj_rozdzial(
     pbn_json = pbn_publication.current_version["object"]
     orig_pbn_json = copy.deepcopy(pbn_json)  # noqa
     pbn_book_id = pbn_json.pop("book")["id"]
-    try:
-        wydawnictwo_nadrzedne = Wydawnictwo_Zwarte.objects.get(pbn_uid_id=pbn_book_id)
-    except Wydawnictwo_Zwarte.DoesNotExist:
+    wydawnictwo_nadrzedne = znajdz_ksiazke_nadrzedna(pbn_book_id)
+    if wydawnictwo_nadrzedne is None:
         wydawnictwo_nadrzedne = importuj_ksiazke(
             pbn_book_id,
             default_jednostka,
