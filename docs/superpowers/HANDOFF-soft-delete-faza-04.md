@@ -79,6 +79,42 @@ snapshot odpięć, komparator PBN, REST API, skanowanie do dedupu publikacji.
 
 ---
 
+## 4a. Mapa pozostałych faz — co dalej
+
+Kolejność nie jest dowolna: każda kolejna konsumuje coś, co dostarcza poprzednia.
+
+| Faza | Co robi | Zależy od |
+|---|---|---|
+| **04 — guardy PROTECT** | flip FK `CASCADE→PROTECT` na powiązaniach autora (`*_Autor.autor`, `Praca_Doktorska.autor`) i na self-FK rozdziałów (`Wydawnictwo_Zwarte.wydawnictwo_nadrzedne`) + guard aplikacyjny; `Autor` staje się `SoftDeleteModel` | — |
+| **05 — wycofanie z PBN** | `pbn_export_queue` dostaje operację `WYCOFANIE` obok `WYSYLKA`; soft-delete publikacji asynchronicznie wycofuje oświadczenia dyscyplin z profilu instytucji w PBN | kolejka PBN |
+| **06 — `SoftDeleteLog`** | model audytu (kto / kiedy / dlaczego / status PBN) zasilany receiverami `post_soft_delete` / `post_restore` / `post_hard_delete`; receiver DELETE kolejkuje wycofanie z fazy 05 | **05** |
+| **07 — admin** | kosz w adminie dla 5 typów publikacji + `Autor`: „Usuń" = soft-delete z powodem, filtr „Pokaż skasowane", akcja „Przywróć", osobna „Usuń trwale" (superuser) | **06** (powód → log) |
+| **08 — regresja E2E** | suita domykająca całość | wszystkie |
+
+### Co fazy 01–03 już pod nie podłożyły
+
+Trzy rzeczy są gotowe i kolejne fazy mają je po prostu skonsumować — nie
+trzeba ich projektować od nowa:
+
+- **Sygnatury `delete(user=..., reason=...)` / `restore(user=...)`** istnieją
+  w mixinie publikacji od fazy 02 (puste, ale obecne — kontrakt PINNED).
+  Faza 06 wpina w nie `SoftDeleteLog`, faza 07 wstrzykuje `request.user`.
+  Sygnatur nie trzeba ruszać.
+- **Sygnały `post_soft_delete` / `post_restore` są emitowane** i przypięte
+  testem (faza 02). Faza 06 podpina receivery pod gotowy mechanizm.
+- **Kontrakt `ostatnio_zmieniony`** — soft-delete bumpuje znacznik, więc
+  nagrobki dla harvestu przyrostowego są odpytywalne przez
+  `deleted_objects.filter(ostatnio_zmieniony__gte=X)` już teraz, bez czekania
+  na `SoftDeleteLog` z fazy 06.
+
+### Nagrobki na zewnątrz — NIEZROBIONE, bramka wydania
+
+Handoff fazy 02 (§3.1) traktował to jako bramkę wydania i **nadal nie jest
+zrobione**: OAI-PMH `<header status="deleted">` w `src/cerif_export`, odpowiednik
+w CERIF, sposób odkrycia usuniętych w `/api/v1/`. Fundament (bump
+`ostatnio_zmieniony`) jest gotowy; brakuje samej ekspozycji. Do zaplanowania
+jako osobny PR — nie należy do żadnej z faz 04–08.
+
 ## 5. Co czeka fazę 04 (guardy PROTECT)
 
 - **Nikt nie przeplata `AutorManager`** — po uczynieniu `Autor`
