@@ -47,22 +47,79 @@
 
   // Rozbudowana klauzula nie może urosnąć na całą wysokość okna i znów
   // zasłonić strony — po przekroczeniu progu pasek dostaje własny suwak.
-  max-height: 40vh;
+  max-height: 30vh;
   overflow-y: auto;
 }
 
-#CookielawBanner > div:first-child {
+// Układ paska: treść po lewej, przyciski po prawej. Przyciski nie kurczą
+// się przy długim tekście (flex-shrink: 0), więc zawsze zostają w tym samym
+// miejscu — użytkownik nie musi ich szukać wzrokiem.
+.cookie-pasek {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 12px 16px;
+  padding: 0.6rem 1rem;
 
-  // Tło, ramka i cień są teraz na samym pasku; wewnętrzny kontener był
-  // kartą modala i nie ma już czego okalać.
-  background-color: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
+  // Poniżej tej szerokości układ poziomy ściska tekst do kilku słów
+  // w wierszu — wtedy przechodzimy na kolumnę, a przyciski lądują pod
+  // treścią, na całą szerokość.
+  @media screen and (max-width: 39.9375em) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+}
+
+.cookie-pasek__tresc {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cookie-pasek__tekst {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.cookie-pasek__linki {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  opacity: 0.85;
+
+  a {
+    text-decoration: underline;
+  }
+}
+
+.cookie-pasek__akcje {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0.5rem;
+
+  @media screen and (max-width: 39.9375em) {
+    // Na wąskim ekranie przyciski dzielą szerokość po połowie zamiast
+    // zwijać się do rozmiaru tekstu.
+    > * {
+      flex: 1 1 0;
+    }
+  }
+}
+
+.cookie-pasek__btn {
+  // Foundation daje przyciskom margin-bottom pod formularze; w pasku
+  // rozjeżdżałby pionowe wyśrodkowanie.
+  margin: 0;
+  white-space: nowrap;
+
+  // WCAG 2.5.8 (Target Size Minimum): cel dotykowy nie mniejszy niż 24 px.
+  min-height: 2.25rem;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.85rem;
 }
 
 // WCAG 2.4.11 Focus Not Obscured (AA, nowe w 2.2): pasek przyklejony do dołu
@@ -76,8 +133,8 @@ html {
 // CSS Cookie Icons
 .cookie-icon {
   display: inline-block;
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
   background: linear-gradient(135deg, #d2691e 0%, #8b4513 100%);
   border-radius: 50%;
   position: relative;
@@ -88,44 +145,24 @@ html {
 .cookie-icon::before {
   content: '';
   position: absolute;
-  top: 4px;
-  left: 6px;
-  width: 3px;
-  height: 3px;
+  top: 3px;
+  left: 4px;
+  width: 2px;
+  height: 2px;
   background: #654321;
   border-radius: 50%;
-  box-shadow: 8px 2px 0 #654321,
-  4px 8px 0 #654321,
-  12px 10px 0 #654321,
-  2px 12px 0 #654321,
-  10px 4px 0 #654321;
+  // Okruszki rozmieszczone pod mniejszą ikonę (18 px zamiast 24 px).
+  box-shadow: 6px 1px 0 #654321,
+  3px 6px 0 #654321,
+  9px 8px 0 #654321,
+  1px 9px 0 #654321,
+  8px 3px 0 #654321;
 }
 
-// Privacy icon
-.privacy-icon {
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  margin-right: 6px;
-  vertical-align: middle;
-}
-
-.privacy-icon::before {
-  content: '🛡️';
-  font-size: 16px;
-}
-
-// Information links styling
-.cookie-info-links {
-  margin-top: 10px;
-  font-size: 0.85em;
-}
-
-.cookie-info-links a {
-  color: $primary-color;
-  text-decoration: none;
-  margin-right: 15px;
-}
+// Usunięte razem z przebudową paska: `.privacy-icon` (emoji tarczy) i
+// `.cookie-info-links` — obie klasy przestały występować w jakimkolwiek
+// szablonie, a `.cookie-info-links a` było jedynym miejscem w tym pliku
+// sięgającym po zmienną Foundation `$primary-color`.
 
 .cookie-info-links a:hover {
   text-decoration: underline;
