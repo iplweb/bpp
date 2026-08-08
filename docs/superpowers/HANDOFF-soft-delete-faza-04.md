@@ -173,7 +173,7 @@ i wyrzucenie tego kodu w fazie 07 — koszt bez odbiorcy.
 | Sprawa | Stan |
 |---|---|
 | **Wycieki ORM (kanarek `xfail(strict=True)`)** | `test_kanarek_orm_join_po_publikacji_ma_predykat_deleted_at` dalej `xfail`. ⚠️ Tabelka 10 wycieków w `reviews/2026-08-07-faza-02-inwentaryzacja-orm.md` NIE jest listą zadań — patrz self-review w tym pliku. Potrzebne narzędzie model-aware (pytające `_meta`), nie rozszerzanie listy nazw |
-| **PR upstream `django-easy-audit`** | gałąź gotowa w `~/Programowanie/django-easy-audit`, przetestowana na Django 5.2 i 6.1, **niewypchnięta** — czeka na decyzję o koncie/forku |
+| **PR upstream `django-easy-audit`** | **WYSTAWIONY 2026-08-08: [soynatan/django-easy-audit#348](https://github.com/soynatan/django-easy-audit/pull/348)** (fork `mpasternak`). Gdy zostanie scalony — skasować `src/bpp/easyaudit_shim.py`, wywołanie `zainstaluj()` w `BppConfig.ready()` i `test_easyaudit_shim.py`. Przypomni o tym test `test_upstream_nadal_ma_blad_czyli_shim_jest_potrzebny`, który wtedy zacznie padać |
 | **`bpp-deploy`** | kontrolka „kronika views: N” po `bpp.0499` wypisze 0 i może zmylić operatora |
 | Pomiar `0492` i narzutu GiST | wciąż nikt nie zmierzył (dług fazy 01) |
 | **Strategia wydania** | ⚠️ **ZMIENIONA 2026-08-08: bramka przesunięta z fazy 04 na fazę 07.** Uzasadnienie w sekcji 4b |
