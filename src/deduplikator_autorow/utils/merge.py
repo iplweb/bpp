@@ -18,6 +18,15 @@ from .analysis import analiza_duplikatow
 logger = logging.getLogger(__name__)
 
 
+class KonfliktScalania(Exception):
+    """Scalania nie da się wykonać z powodu danych, nie z powodu awarii.
+
+    Wydzielone z ``Exception``, żeby ``scal_autora`` mogło odróżnić „operator
+    poprosił o coś sprzecznego" od „coś się zepsuło": to pierwsze wraca jako
+    czytelny komunikat i NIE trafia do Rollbara.
+    """
+
+
 def _assign_discipline_if_missing(
     autor_record, glowny_autor, rok, auto_assign_discipline, use_subdiscipline, warnings
 ):
@@ -246,15 +255,37 @@ def wiersze_do_transferu(model, autor_duplikat):
 
 
 def _transfer_simple_authorship(
-    model, model_label, glowny_autor, autor_duplikat, user, skip_pbn, results
+    model,
+    model_label,
+    glowny_autor,
+    autor_duplikat,
+    user,
+    skip_pbn,
+    results,
+    opis_konfliktu=None,
 ):
     """
     Przenosi proste rekordy autorstwa (Praca_Habilitacyjna / Praca_Doktorska),
     gdzie sam obiekt jest publikacją — przemapowuje autora i kolejkuje do PBN.
+
+    ``opis_konfliktu`` podaje się dla modeli, w których autor może mieć tylko
+    JEDEN żywy wiersz (habilitacja). Wtedy zderzenie dwóch żywych prac jest
+    prawdziwym konfliktem danych i kończy scalanie czytelnym komunikatem,
+    zamiast pozwalać bazie rzucić ``IntegrityError``.
     """
     from pbn_export_queue.models import PBN_Export_Queue
 
     for praca in wiersze_do_transferu(model, autor_duplikat):
+        # Kolizja dotyczy WYŁĄCZNIE wierszy żywych — warunkowy unique
+        # (`deleted_at IS NULL`) nie obejmuje kosza, więc praca skasowana
+        # przechodzi na głównego autora bez przeszkód.
+        if (
+            opis_konfliktu
+            and getattr(praca, "deleted_at", None) is None
+            and model.objects.filter(autor=glowny_autor).exists()
+        ):
+            raise KonfliktScalania(f"Nie można scalić autorów: {opis_konfliktu}.")
+
         # Przemapuj autora
         praca.autor = glowny_autor
         praca.save()
@@ -322,10 +353,12 @@ def scal_autora(
         ("Wydawnictwo_Zwarte_Autor", Wydawnictwo_Zwarte_Autor, False),
         ("Patent_Autor", Patent_Autor, False),
     ]
-    # Proste publikacje (sam obiekt jest publikacją).
+    # Proste publikacje (sam obiekt jest publikacją). Trzeci element to opis
+    # konfliktu dla modeli z regułą „jeden żywy wiersz na autora"; ``None``
+    # znaczy, że autor może mieć takich prac wiele (doktorat).
     simple_models = [
-        ("Praca_Habilitacyjna", Praca_Habilitacyjna),
-        ("Praca_Doktorska", Praca_Doktorska),
+        ("Praca_Habilitacyjna", Praca_Habilitacyjna, "obaj mają pracę habilitacyjną"),
+        ("Praca_Doktorska", Praca_Doktorska, None),
     ]
 
     try:
@@ -370,7 +403,7 @@ def scal_autora(
                     )
 
             # 4-5. Prace doktorskie / habilitacyjne
-            for model_label, model in simple_models:
+            for model_label, model, opis_konfliktu in simple_models:
                 _transfer_simple_authorship(
                     model,
                     model_label,
@@ -379,11 +412,21 @@ def scal_autora(
                     user,
                     skip_pbn,
                     results,
+                    opis_konfliktu=opis_konfliktu,
                 )
 
             autor_duplikat.delete()
 
             return results
+
+    except KonfliktScalania as e:
+        # Sprzeczne dane, nie awaria — operator ma dostać komunikat, którym może
+        # coś zrobić, a Rollbar nie ma dostać szumu. `transaction.atomic` już
+        # wycofał częściowe zmiany.
+        logger.info("Scalanie autorow przerwane konfliktem danych: %s", e)
+        results["success"] = False
+        results["error"] = str(e)
+        return results
 
     except Exception as e:
         traceback.print_exc()
