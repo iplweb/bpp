@@ -1,4 +1,28 @@
-# Soft-delete — Faza 05: PBN wycofanie (kolejka + ścieżka synchroniczna)
+# Soft-delete — Faza 05: propagacja usunięcia na zewnątrz (PBN + nagrobki)
+
+> 🔁 **ROZSZERZENIE ZAKRESU 2026-08-08 (decyzja właściciela).**
+> Do tej fazy dochodzą **NAGROBKI** — ogłaszanie usunięć konsumentom
+> przyrostowym. Powód: to ten sam motyw co wycofanie z PBN — *systemy
+> zewnętrzne dowiadują się, że coś zniknęło*. Inny odbiorca, ta sama
+> historia. Trzymane osobno przepadłyby między fazami, bo żaden plan ich nie
+> obejmował, a handoff fazy 02 (§3.1) traktował je jako bramkę wydania.
+>
+> **Zakres nagrobków:**
+> - **OAI-PMH**: `<header status="deleted">` w `src/cerif_export` (serwuje
+>   `ListRecords`/`ListIdentifiers`/`resumptionToken`; **dziś ZERO obsługi
+>   `deleted`**), respektujące `from`/`until`;
+> - **CERIF**: odpowiednik nagrobka w formacie rekordu;
+> - **`/api/v1/`**: sposób odkrycia usuniętych (endpoint „usunięte od…”
+>   albo parametr).
+>
+> **Fundament jest gotowy** — soft-delete bumpuje `ostatnio_zmieniony`
+> (kontrakt PINNED z fazy 01), więc lista nagrobków to po prostu
+> `Model.deleted_objects.filter(ostatnio_zmieniony__gte=X)`. Nie trzeba
+> `SoftDeleteLog` z fazy 06. Brakuje wyłącznie ekspozycji.
+>
+> ⚠️ **Termin:** nagrobki muszą być gotowe przed **fazą 07**, nie przed 04.
+> Dopóki kasowanie jest rzadkie, luka w OAI-PMH jest teoretyczna; faza 07
+> czyni kasowanie rutynowym i dopiero wtedy zaczyna realnie boleć.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. TDD: każdy krok najpierw PRAWDZIWY failing test → komenda + FAIL → PRAWDZIWA implementacja → komenda + PASS → commit.
 

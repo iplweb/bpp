@@ -107,13 +107,51 @@ trzeba ich projektować od nowa:
   `deleted_objects.filter(ostatnio_zmieniony__gte=X)` już teraz, bez czekania
   na `SoftDeleteLog` z fazy 06.
 
-### Nagrobki na zewnątrz — NIEZROBIONE, bramka wydania
+### Nagrobki na zewnątrz — WCIĄGNIĘTE DO FAZY 05 (decyzja 2026-08-08)
 
-Handoff fazy 02 (§3.1) traktował to jako bramkę wydania i **nadal nie jest
-zrobione**: OAI-PMH `<header status="deleted">` w `src/cerif_export`, odpowiednik
-w CERIF, sposób odkrycia usuniętych w `/api/v1/`. Fundament (bump
-`ostatnio_zmieniony`) jest gotowy; brakuje samej ekspozycji. Do zaplanowania
-jako osobny PR — nie należy do żadnej z faz 04–08.
+OAI-PMH `<header status="deleted">` w `src/cerif_export` (dziś **zero**
+obsługi `deleted`), odpowiednik w CERIF, sposób odkrycia usuniętych
+w `/api/v1/`. Fundament gotowy — soft-delete bumpuje `ostatnio_zmieniony`,
+więc `Model.deleted_objects.filter(ostatnio_zmieniony__gte=X)` działa już
+teraz. Brakuje wyłącznie ekspozycji.
+
+**Dołączone do zakresu fazy 05**, bo to ten sam motyw co wycofanie oświadczeń
+z PBN: *systemy zewnętrzne dowiadują się, że coś zniknęło* — inny odbiorca,
+ta sama historia. Trzymane osobno przepadłyby między fazami, bo żaden plan
+ich nie obejmował.
+
+⚠️ Muszą być gotowe **przed fazą 07**, nie przed 04. Dopóki kasowanie jest
+rzadkie, luka w OAI-PMH jest teoretyczna; faza 07 czyni kasowanie rutynowym
+i dopiero wtedy zaczyna realnie boleć.
+
+## 4b. Strategia wydania — bramka przesunięta na fazę 07
+
+> 🔁 **DECYZJA 2026-08-08.** Poprzednia rekomendacja (fazy 01–03) brzmiała
+> „wydać po fazie 04”. Zmieniona: **wydajemy dopiero po fazie 07**.
+
+Powód nie jest bezpieczeństwem — guardy z fazy 04 domykają je w porządku.
+Powodem jest **spójność dla operatora**.
+
+Sprawdzone na kodzie (2026-08-08): `src/bpp/admin/` nie ma dziś ŻADNEGO
+kosza — trafienia `deleted_at` to hydraulika (ukryte pole formularza dla
+walidacji ograniczeń, filtry agregatów), a nie filtr „pokaż skasowane” ani
+akcja „Przywróć”. Jednocześnie `SoftDeleteQuerySet.delete()` jest już miękki,
+a `delete_selected` Django woła właśnie queryset.
+
+Czyli wydanie po fazie 04 dałoby operatorowi:
+
+- „Usuń” przestaje znaczyć „zniknęło” — rekord zostaje w bazie,
+- **nie da się go przywrócić ani obejrzeć bez programisty**,
+- nie da się go usunąć naprawdę.
+
+Operator traci jedną zdolność i nie dostaje w zamian żadnej, bo kosz
+z przywracaniem przychodzi dopiero w fazie 07. To regresja UX, nie funkcja.
+
+**Fazy 01–06 scalamy dalej do `feat/soft-delete`, ale nie wydajemy.**
+
+Świadomie ODRZUCONE: wydanie faz 01+02 z tymczasowym „Usuń = twardo”
+w adminie. Oznaczałoby utrzymywanie dwóch semantyk kasowania równolegle
+i wyrzucenie tego kodu w fazie 07 — koszt bez odbiorcy.
 
 ## 5. Co czeka fazę 04 (guardy PROTECT)
 
@@ -138,7 +176,7 @@ jako osobny PR — nie należy do żadnej z faz 04–08.
 | **PR upstream `django-easy-audit`** | gałąź gotowa w `~/Programowanie/django-easy-audit`, przetestowana na Django 5.2 i 6.1, **niewypchnięta** — czeka na decyzję o koncie/forku |
 | **`bpp-deploy`** | kontrolka „kronika views: N” po `bpp.0499` wypisze 0 i może zmylić operatora |
 | Pomiar `0492` i narzutu GiST | wciąż nikt nie zmierzył (dług fazy 01) |
-| Strategia wydania | rekomendacja bez zmian: wydać po fazie 04 |
+| **Strategia wydania** | ⚠️ **ZMIENIONA 2026-08-08: bramka przesunięta z fazy 04 na fazę 07.** Uzasadnienie w sekcji 4b |
 
 ## 7. Proces — co znowu się sprawdziło
 
