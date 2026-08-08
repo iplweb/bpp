@@ -104,3 +104,80 @@ def test_matchuj_publikacje_po_doi_widzi_soft_deletowany():
 
     assert wynik is not None, "matching po DOI nie widzi kosza"
     assert wynik.pk == rec.pk
+
+
+# ---------------------------------------------------------------------------
+# REJESTR DECYZJI AUDYTU (Task 7) — miejsca ZOSTAWIONE na `objects`
+# ---------------------------------------------------------------------------
+#
+# Reguła nadrzędna: default „pomijaj skasowane" jest tu ZNACZNIE bezpieczniejszy
+# niż odwrotny. Zmieniamy wyłącznie miejsca, które MUSZĄ widzieć kosz, żeby nie
+# zostawić sierot albo nie zgubić transferu. Poniższe zostają bez zmian —
+# świadomie, a nie przez przeoczenie:
+#
+#   * ewaluacja (`ewaluacja_optymalizacja/**`, `ewaluacja_dwudyscyplinowcy`) —
+#     praca w koszu nie bierze udziału w punktacji ani optymalizacji;
+#   * snapshot odpięć (`snapshot_odpiec`) — praca w koszu to brak odpięcia do
+#     zapisania;
+#   * komparator PBN (`komparator_pbn/views.py`) — soft-delete wycofuje
+#     oświadczenia z PBN (faza 05), więc BPP tej pracy już nie deklaruje;
+#     `objects` daje obraz spójny z PBN;
+#   * REST API (`api_v1/viewsets/*`) — publiczne API nie może serwować autorstw
+#     pracy, która sama z API zniknęła;
+#   * skanowanie do dedupu publikacji (`deduplikator_publikacji/tasks.py`) —
+#     patrz test niżej.
+#
+# ⚠️ Wszystkie `.update()` w tych miejscach dotyczą `przypieta`,
+# `dyscyplina_naukowa` i `afiliuje` — NIE `deleted_at`, więc gate
+# `BppSoftDeleteQuerySet.update()` z fazy 01 się nie odpala. Sprawdzone.
+
+
+@pytest.mark.django_db
+def test_dedup_publikacji_NIE_widzi_kosza():
+    """Skanowanie do deduplikacji ma pomijać kosz — i to jest poprawne.
+
+    Rekord skasowany nie jest duplikatem do rozstrzygnięcia; podsuwanie go
+    operatorowi kazałoby mu scalać rzecz, którą sam usunął. To odwrotna
+    decyzja niż przy matchingu importu (który MUSI widzieć kosz, żeby nie
+    tworzyć duplikatów) — i właśnie dlatego jest tu przypięta testem, a nie
+    zostawiona jako „oczywista".
+    """
+    from deduplikator_publikacji.tasks import _get_publications_to_scan
+
+    zywa = baker.make(Wydawnictwo_Ciagle, rok=2020)
+    kosz = baker.make(Wydawnictwo_Ciagle, rok=2020)
+    kosz.delete()
+
+    zebrane = {pub.pk for _ct, pub in _get_publications_to_scan(2020, 2020)}
+
+    assert zywa.pk in zebrane
+    assert kosz.pk not in zebrane, "dedup podsuwa operatorowi rekord z kosza"
+
+
+@pytest.mark.django_db
+def test_transfer_przy_scalaniu_autorow_widzi_kosz():
+    """Scalanie autorów MUSI przenieść też autorstwa w koszu.
+
+    Inaczej zostają SIEROTY: wiersze wskazujące na autora-duplikat, który po
+    scaleniu ma zniknąć. W fazie 04 zablokują dodatkowo guard PROTECT — czyli
+    problem ujawniłby się dopiero tam, w miejscu niezwiązanym z przyczyną.
+    """
+    from bpp.models import Autor, Wydawnictwo_Ciagle_Autor
+    from deduplikator_autorow.utils.merge import wiersze_do_transferu
+
+    duplikat = baker.make(Autor)
+    wc = baker.make(Wydawnictwo_Ciagle)
+    zywe = baker.make(Wydawnictwo_Ciagle_Autor, rekord=wc, autor=duplikat, kolejnosc=0)
+    skasowane = baker.make(
+        Wydawnictwo_Ciagle_Autor, rekord=wc, autor=duplikat, kolejnosc=1
+    )
+    skasowane.delete()
+
+    do_transferu = {
+        x.pk for x in wiersze_do_transferu(Wydawnictwo_Ciagle_Autor, duplikat)
+    }
+
+    assert zywe.pk in do_transferu
+    assert skasowane.pk in do_transferu, (
+        "autorstwo w koszu nie zostanie przeniesione -> sierota przy duplikacie"
+    )
