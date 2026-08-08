@@ -27,6 +27,15 @@ class KonfliktScalania(Exception):
     """
 
 
+def _w_koszu(obiekt):
+    """``True``, gdy obiekt jest soft-skasowany.
+
+    ``getattr`` z fallbackiem, bo scalanie przechodzi też przez modele spoza
+    soft-delete (jak ``wiersze_do_transferu``).
+    """
+    return getattr(obiekt, "deleted_at", None) is not None
+
+
 def _assign_discipline_if_missing(
     autor_record, glowny_autor, rok, auto_assign_discipline, use_subdiscipline, warnings
 ):
@@ -151,8 +160,18 @@ def _transfer_authorship_record(
     # Store old discipline before any changes
     old_discipline = record.dyscyplina_naukowa
 
-    # CHECK IF MAIN AUTHOR ALREADY HAS THIS PUBLICATION
-    existing = model.objects.filter(
+    # CZY GŁÓWNY AUTOR JUŻ MA TĘ PUBLIKACJĘ — SZUKAMY RAZEM Z KOSZEM.
+    #
+    # Po menedżerze ŻYWYCH kolizja była niewidoczna dokładnie wtedy, gdy
+    # publikacja jest w koszu: wtedy oba autorstwa (głównego i duplikatu) też
+    # tam są. Transfer przechodził i w koszu lądowały DWA wiersze
+    # `(rekord, glowny, typ)` — a warunkowy `wc_autor_uniq_rekord_autor_typ`
+    # obowiązuje wśród ŻYWYCH, więc kolizja wybuchała dopiero przy
+    # `publikacja.restore()`. Kosz stawał się drzwiami jednokierunkowymi:
+    # rekordu nie dało się już z niego wyjąć (dotyczy też wskrzeszania
+    # z importu, `pbn_integrator/kosz.py`).
+    manager = getattr(model, "global_objects", model.objects)
+    existing = manager.filter(
         rekord=record.rekord,
         autor=glowny_autor,
         typ_odpowiedzialnosci=record.typ_odpowiedzialnosci,
@@ -165,6 +184,11 @@ def _transfer_authorship_record(
             f"z typem odpowiedzialności {record.typ_odpowiedzialnosci}. "
             f"Usunięto duplikat."
         )
+        # Wiersz duplikatu zostaje przy duplikacie i znika razem z nim
+        # (`autor_duplikat.delete()` na końcu scalania kaskaduje TWARDO po FK).
+        # Dla wiersza już skasowanego `delete()` odświeża tylko `deleted_at` —
+        # to no-op, ale trzymamy jedną ścieżkę zamiast rozgałęziać na coś,
+        # czego i tak za chwilę nie będzie.
         record.delete()
         return False
 
@@ -221,8 +245,11 @@ def _transfer_authorship_record(
             **log_ctx,
         )
 
-    # Dodaj do kolejki PBN
-    if not skip_pbn and record.rekord:
+    # Dodaj do kolejki PBN — ale NIE rekordu z kosza. Kierunek soft-delete jest
+    # odwrotny: faza 05 ma oświadczenia z PBN WYCOFYWAĆ, a nie wysyłać tam
+    # rzeczy, których w BPP „nie ma". Scalanie kolejkowało wszystko, co
+    # przeniosło, łącznie z rekordami skasowanymi wcześniej przez operatora.
+    if not skip_pbn and record.rekord and not _w_koszu(record.rekord):
         content_type = ContentType.objects.get_for_model(record.rekord)
         PBN_Export_Queue.objects.create(
             content_type=content_type,
@@ -290,8 +317,9 @@ def _transfer_simple_authorship(
         praca.autor = glowny_autor
         praca.save()
 
-        # Dodaj do kolejki PBN
-        if not skip_pbn:
+        # Dodaj do kolejki PBN — z pominięciem kosza, jak w
+        # `_transfer_authorship_record`.
+        if not skip_pbn and not _w_koszu(praca):
             content_type = ContentType.objects.get_for_model(praca)
             PBN_Export_Queue.objects.create(
                 content_type=content_type,
