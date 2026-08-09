@@ -51,39 +51,46 @@
   overflow-y: auto;
 }
 
-// Pasek ma dwa wiersze: zdanie wyjaśniające, a pod nim odnośniki i przyciski
-// w jednej linii. Przyciski nie stoją w osobnej kolumnie, więc wysokość
-// paska to suma dwóch wierszy tekstu, a nie wysokość najwyższego z bloków.
+// Dwie kolumny: po lewej zdanie i odnośniki jeden pod drugim, po prawej
+// przyciski wyśrodkowane pionowo względem tej kolumny.
 .cookie-pasek {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0.45rem 1rem;
+  padding: 0.5rem 1rem;
+}
+
+.cookie-pasek__tresc {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .cookie-pasek__tekst {
   margin: 0;
-  font-size: 0.85rem;
-  line-height: 1.3;
-}
-
-.cookie-pasek__dol {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.4rem 0.75rem;
-  margin-top: 0.3rem;
+  font-size: 0.9rem;
+  line-height: 1.35;
 }
 
 .cookie-pasek__linki {
-  flex: 1 1 auto;
-  min-width: 0;
-  margin: 0;
-  font-size: 0.78rem;
-  line-height: 1.25;
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  line-height: 1.3;
   opacity: 0.85;
 
+  // Odnośnik wstawiany przez JS mieszka w opakowującym spanie;
+  // `display: contents` usuwa ten span z układu, dzięki czemu sam odnośnik
+  // zachowuje się jak bezpośrednie dziecko — inaczej nie dałby się ułożyć
+  // ani blokowo, ani po połowie szerokości.
+  #browser-specific-links {
+    display: contents;
+  }
+
   a {
+    display: block;
     text-decoration: underline;
   }
 }
@@ -117,9 +124,9 @@
   color: #1f1f1f;
 
   // WCAG 2.5.8 (Target Size Minimum): cel dotykowy nie mniejszy niż 24 px.
-  min-height: 1.9rem;
-  padding: 0.3rem 0.7rem;
-  font-size: 0.78rem;
+  min-height: 2rem;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.85rem;
   line-height: 1.2;
 
   &:hover,
@@ -134,15 +141,28 @@
   }
 }
 
-// Poniżej tej szerokości odnośniki i przyciski nie mieszczą się w jednym
-// wierszu — przyciski schodzą pod spód i dzielą szerokość po połowie.
+// Wąski ekran: kolumny nie mieszczą się obok siebie. Wszystko idzie
+// pionowo — zdanie, pod nim odnośniki po połowie szerokości, pod nimi
+// przyciski również po połowie.
 @media screen and (max-width: 39.9375em) {
-  .cookie-pasek__akcje {
-    flex: 1 1 100%;
+  .cookie-pasek {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
 
-    > * {
+  .cookie-pasek__linki {
+    display: flex;
+    gap: 0.5rem;
+
+    a {
       flex: 1 1 0;
+      min-width: 0;
     }
+  }
+
+  .cookie-pasek__akcje > * {
+    flex: 1 1 0;
   }
 }
 

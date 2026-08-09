@@ -8,18 +8,19 @@
      aria-label="Zgoda na pliki cookie">
     <div class="cookie-pasek">
 
-        <p class="cookie-pasek__tekst">
-            <span class="cookie-icon" aria-hidden="true"></span>
-            <strong>Ciasteczka.</strong> Używamy ich, żeby zapamiętać Twoje
-            ustawienia i policzyć odwiedziny. Odmowa też zostawia ciasteczko —
-            bez niego nie zapamiętalibyśmy Twojej decyzji.
-        </p>
+        {# Lewa kolumna: zdanie, pod nim odnosniki jeden pod drugim. #}
+        <div class="cookie-pasek__tresc">
+            <p class="cookie-pasek__tekst">
+                <span class="cookie-icon" aria-hidden="true"></span>
+                <strong>Ciasteczka.</strong> Używamy ich, żeby zapamiętać Twoje
+                ustawienia i policzyć odwiedziny. Odmowa też zostawia ciasteczko —
+                bez niego nie zapamiętalibyśmy Twojej decyzji.
+            </p>
 
-        {# Druga linia: odnosniki i przyciski w jednym wierszu. Przyciski #}
-        {# nie stoja w osobnej kolumnie, wiec pasek ma dwie linie zamiast #}
-        {# wysokosci najwyzszego z dwoch blokow. #}
-        <div class="cookie-pasek__dol">
-            <p class="cookie-pasek__linki">
+            <div class="cookie-pasek__linki">
+                {# display: contents na tym spanie sprawia, ze wstawiony #}
+                {# przez JS odnosnik jest bezposrednim dzieckiem kontenera #}
+                {# — inaczej nie dalby sie ulozyc ani blokowo, ani 50/50. #}
                 <span id="browser-specific-links"></span>
                 <a href="https://www.nask.pl/aktualnosci/slodka-nazwa-gorzkie-konsekwencje-co-tak-naprawde-robia-pliki-cookie"
                    target="_blank" rel="noopener">
@@ -27,17 +28,17 @@
                         class="link-zewnetrzny" aria-hidden="true">↗</span>
                     <span class="show-for-sr">Otwiera się w nowej karcie</span>
                 </a>
-            </p>
-
-            {# Przyciski, nie linki: to akcja zmieniajaca stan, a nie #}
-            {# nawigacja. Poprzednie <a href="javascript:..."> bylo #}
-            {# nieosiagalne dla czesci czytnikow ekranu i lamalo WCAG 4.1.2. #}
-            <div class="cookie-pasek__akcje">
-                <button type="button" class="button cookie-pasek__btn"
-                        onclick="Cookielaw.accept();">Zgadzam się</button>
-                <button type="button" class="button cookie-pasek__btn"
-                        onclick="Cookielaw.reject();">Nie zgadzam się</button>
             </div>
+        </div>
+
+        {# Prawa kolumna. Przyciski, nie linki: to akcja zmieniajaca stan, #}
+        {# a nie nawigacja. Poprzednie <a href="javascript:..."> bylo #}
+        {# nieosiagalne dla czesci czytnikow ekranu i lamalo WCAG 4.1.2. #}
+        <div class="cookie-pasek__akcje">
+            <button type="button" class="button cookie-pasek__btn"
+                    onclick="Cookielaw.accept();">Zgadzam się</button>
+            <button type="button" class="button cookie-pasek__btn"
+                    onclick="Cookielaw.reject();">Nie zgadzam się</button>
         </div>
 
     </div>
@@ -96,8 +97,21 @@
             a.target = '_blank';
             a.rel = 'noopener';
             a.textContent = link.tekst;
+
+            // Strzalka zewnetrzna jak przy odnosniku NASK: znak jest
+            // dekoracja, tresc dla czytnika niesie tekst obok.
+            var strzalka = document.createElement('span');
+            strzalka.className = 'link-zewnetrzny';
+            strzalka.setAttribute('aria-hidden', 'true');
+            strzalka.textContent = '↗';
+            a.appendChild(strzalka);
+
+            var dlaCzytnika = document.createElement('span');
+            dlaCzytnika.className = 'show-for-sr';
+            dlaCzytnika.textContent = 'Otwiera się w nowej karcie';
+            a.appendChild(dlaCzytnika);
+
             kontener.appendChild(a);
-            kontener.appendChild(document.createTextNode(' · '));
         }
     })();
 
