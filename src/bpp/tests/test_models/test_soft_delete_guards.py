@@ -303,6 +303,23 @@ def test_queryset_autora_nie_pozwala_na_bulk_update_deleted_at(autor_jan_nowak):
         Autor.objects.filter(pk=autor_jan_nowak.pk).update(deleted_at=None)
 
 
+def test_menedzer_autora_nie_zgubil_wlasnych_metod():
+    """``AutorManager`` musi zachować swoje metody po dołożeniu soft-delete.
+
+    Faza 04 dopisała do tej klasy ``get_queryset()`` i dołożyła obok dwa nowe
+    menedżery. Wstawienie ``class`` w środku ciała klasy jest w Pythonie
+    ciche: metody poniżej po prostu przenoszą się na nową klasę, import
+    przechodzi, typ ``Autor.objects`` nadal się zgadza — a wywołanie pada
+    dopiero w produkcji (tu: autocomplete tworzący nowego autora).
+
+    Sprawdzamy powierzchnię menedżera wprost, bo jest ona kontraktem
+    dla widoków i autocomplete.
+    """
+    assert hasattr(Autor.objects, "create_from_string")
+    assert hasattr(Autor.objects, "fulltext_annotate")
+    assert hasattr(Autor.objects, "fulltext_filter")
+
+
 @pytest.mark.django_db
 def test_metody_domenowe_autorquerysetu_przezyly_przepiecie(autor_jan_nowak, uczelnia):
     """Przepięcie bazy ``AutorQuerySet`` nie może zgubić metod zakresów.

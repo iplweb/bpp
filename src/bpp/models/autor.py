@@ -149,29 +149,6 @@ class AutorManager(FulltextSearchMixin, models.Manager.from_queryset(AutorQueryS
         """
         return super().get_queryset().filter(deleted_at__isnull=True)
 
-
-class AutorGlobalManager(GlobalManager):
-    """``Autor.global_objects`` — żywi RAZEM z koszem.
-
-    Zwraca ``AutorQuerySet``, a nie generyczny queryset pakietu, żeby
-    ``global_objects.aktualnie_zatrudnieni(...)`` i reszta metod domenowych
-    działały tak samo jak na ``objects``. Menedżer globalny bez metod
-    domenowych to pułapka: kod przełączony „na kosz" wywala się na
-    ``AttributeError`` w miejscu niezwiązanym z soft-delete.
-    """
-
-    def get_queryset(self):
-        return AutorQuerySet(self.model, using=self._db)
-
-
-class AutorDeletedManager(DeletedManager):
-    """``Autor.deleted_objects`` — wyłącznie kosz. Też z metodami domenowymi."""
-
-    def get_queryset(self):
-        return AutorQuerySet(self.model, using=self._db).filter(
-            deleted_at__isnull=False
-        )
-
     def create_from_string(self, text, uczelnia=None):
         """Tworzy rekord autora z ciągu znaków. Używane, gdy dysponujemy
         wpisanym ciągiem znaków z np AutorAutocomplete i chcemy utworzyć
@@ -220,6 +197,29 @@ class AutorDeletedManager(DeletedManager):
                 filter=Q(wydawnictwo_ciagle_autor__deleted_at__isnull=True),
             )
         }
+
+
+class AutorGlobalManager(GlobalManager):
+    """``Autor.global_objects`` — żywi RAZEM z koszem.
+
+    Zwraca ``AutorQuerySet``, a nie generyczny queryset pakietu, żeby
+    ``global_objects.aktualnie_zatrudnieni(...)`` i reszta metod domenowych
+    działały tak samo jak na ``objects``. Menedżer globalny bez metod
+    domenowych to pułapka: kod przełączony „na kosz" wywala się na
+    ``AttributeError`` w miejscu niezwiązanym z soft-delete.
+    """
+
+    def get_queryset(self):
+        return AutorQuerySet(self.model, using=self._db)
+
+
+class AutorDeletedManager(DeletedManager):
+    """``Autor.deleted_objects`` — wyłącznie kosz. Też z metodami domenowymi."""
+
+    def get_queryset(self):
+        return AutorQuerySet(self.model, using=self._db).filter(
+            deleted_at__isnull=False
+        )
 
 
 #: Relacje, których istnienie BLOKUJE skasowanie autora (faza 04).
