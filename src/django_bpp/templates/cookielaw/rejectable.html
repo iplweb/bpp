@@ -8,30 +8,36 @@
      aria-label="Zgoda na pliki cookie">
     <div class="cookie-pasek">
 
-        <div class="cookie-pasek__tresc">
-            <p class="cookie-pasek__tekst">
-                <span class="cookie-icon" aria-hidden="true"></span>
-                <strong>Ciasteczka.</strong> Używamy ich, żeby zapamiętać Twoje
-                ustawienia i policzyć odwiedziny. Odmowa też zostawia ciasteczko —
-                bez niego nie zapamiętalibyśmy Twojej decyzji.
-            </p>
+        <p class="cookie-pasek__tekst">
+            <span class="cookie-icon" aria-hidden="true"></span>
+            <strong>Ciasteczka.</strong> Używamy ich, żeby zapamiętać Twoje
+            ustawienia i policzyć odwiedziny. Odmowa też zostawia ciasteczko —
+            bez niego nie zapamiętalibyśmy Twojej decyzji.
+        </p>
+
+        {# Druga linia: odnosniki i przyciski w jednym wierszu. Przyciski #}
+        {# nie stoja w osobnej kolumnie, wiec pasek ma dwie linie zamiast #}
+        {# wysokosci najwyzszego z dwoch blokow. #}
+        <div class="cookie-pasek__dol">
             <p class="cookie-pasek__linki">
                 <span id="browser-specific-links"></span>
                 <a href="https://www.nask.pl/aktualnosci/slodka-nazwa-gorzkie-konsekwencje-co-tak-naprawde-robia-pliki-cookie"
                    target="_blank" rel="noopener">
-                    Co naprawdę robią pliki cookie? (NASK)
+                    Co naprawdę robią pliki cookie? (NASK)<span
+                        class="link-zewnetrzny" aria-hidden="true">↗</span>
+                    <span class="show-for-sr">Otwiera się w nowej karcie</span>
                 </a>
             </p>
-        </div>
 
-        {# Przyciski, nie linki: to akcja zmieniajaca stan, a nie nawigacja. #}
-        {# Poprzednie <a href="javascript:..."> bylo nieosiagalne dla czesci #}
-        {# czytnikow ekranu i lamalo WCAG 4.1.2 (Name, Role, Value). #}
-        <div class="cookie-pasek__akcje">
-            <button type="button" class="button success cookie-pasek__btn"
-                    onclick="Cookielaw.accept();">Zgadzam się</button>
-            <button type="button" class="button secondary cookie-pasek__btn"
-                    onclick="Cookielaw.reject();">Nie zgadzam się</button>
+            {# Przyciski, nie linki: to akcja zmieniajaca stan, a nie #}
+            {# nawigacja. Poprzednie <a href="javascript:..."> bylo #}
+            {# nieosiagalne dla czesci czytnikow ekranu i lamalo WCAG 4.1.2. #}
+            <div class="cookie-pasek__akcje">
+                <button type="button" class="button cookie-pasek__btn"
+                        onclick="Cookielaw.accept();">Zgadzam się</button>
+                <button type="button" class="button cookie-pasek__btn"
+                        onclick="Cookielaw.reject();">Nie zgadzam się</button>
+            </div>
         </div>
 
     </div>

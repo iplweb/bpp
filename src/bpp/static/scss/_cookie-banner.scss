@@ -47,48 +47,40 @@
 
   // Rozbudowana klauzula nie może urosnąć na całą wysokość okna i znów
   // zasłonić strony — po przekroczeniu progu pasek dostaje własny suwak.
-  max-height: 30vh;
+  max-height: 25vh;
   overflow-y: auto;
 }
 
-// Układ paska: treść po lewej, przyciski po prawej. Przyciski nie kurczą
-// się przy długim tekście (flex-shrink: 0), więc zawsze zostają w tym samym
-// miejscu — użytkownik nie musi ich szukać wzrokiem.
+// Pasek ma dwa wiersze: zdanie wyjaśniające, a pod nim odnośniki i przyciski
+// w jednej linii. Przyciski nie stoją w osobnej kolumnie, więc wysokość
+// paska to suma dwóch wierszy tekstu, a nie wysokość najwyższego z bloków.
 .cookie-pasek {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0.6rem 1rem;
-
-  // Poniżej tej szerokości układ poziomy ściska tekst do kilku słów
-  // w wierszu — wtedy przechodzimy na kolumnę, a przyciski lądują pod
-  // treścią, na całą szerokość.
-  @media screen and (max-width: 39.9375em) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.6rem;
-  }
-}
-
-.cookie-pasek__tresc {
-  flex: 1 1 auto;
-  min-width: 0;
+  padding: 0.45rem 1rem;
 }
 
 .cookie-pasek__tekst {
   margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.35;
+  font-size: 0.85rem;
+  line-height: 1.3;
+}
+
+.cookie-pasek__dol {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.75rem;
+  margin-top: 0.3rem;
 }
 
 .cookie-pasek__linki {
-  margin: 0.2rem 0 0;
-  font-size: 0.8rem;
-  line-height: 1.3;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.25;
   opacity: 0.85;
 
   a {
@@ -96,30 +88,62 @@
   }
 }
 
+// Strzałka po odnośniku zewnętrznym. Sam znak jest dekoracją (aria-hidden),
+// treść dla czytnika niesie sąsiedni tekst „Otwiera się w nowej karcie".
+.link-zewnetrzny {
+  margin-left: 0.15em;
+  font-size: 0.9em;
+  text-decoration: none;
+}
+
 .cookie-pasek__akcje {
   flex: 0 0 auto;
   display: flex;
-  gap: 0.5rem;
-
-  @media screen and (max-width: 39.9375em) {
-    // Na wąskim ekranie przyciski dzielą szerokość po połowie zamiast
-    // zwijać się do rozmiaru tekstu.
-    > * {
-      flex: 1 1 0;
-    }
-  }
+  gap: 0.4rem;
 }
 
 .cookie-pasek__btn {
   // Foundation daje przyciskom margin-bottom pod formularze; w pasku
-  // rozjeżdżałby pionowe wyśrodkowanie.
+  // rozjeżdżałby wyrównanie do linii odnośników.
   margin: 0;
   white-space: nowrap;
 
+  // Obie odpowiedzi wyglądają tak samo. RODO wymaga, żeby odmowa była
+  // równie łatwa jak zgoda; przycisk wyróżniony kolorem obok wyszarzonego
+  // to wzorzec, który organy ochrony danych kwestionują jako naciskanie
+  // na zgodę. Neutralna szarość z czytelną ramką zdejmuje ten zarzut.
+  background-color: #f0f0f0;
+  border: 1px solid #9a9a9a;
+  color: #1f1f1f;
+
   // WCAG 2.5.8 (Target Size Minimum): cel dotykowy nie mniejszy niż 24 px.
-  min-height: 2.25rem;
-  padding: 0.5rem 0.9rem;
-  font-size: 0.85rem;
+  min-height: 1.9rem;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.78rem;
+  line-height: 1.2;
+
+  &:hover,
+  &:focus {
+    background-color: #e2e2e2;
+    color: #1f1f1f;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #2c6cb0;
+    outline-offset: 1px;
+  }
+}
+
+// Poniżej tej szerokości odnośniki i przyciski nie mieszczą się w jednym
+// wierszu — przyciski schodzą pod spód i dzielą szerokość po połowie.
+@media screen and (max-width: 39.9375em) {
+  .cookie-pasek__akcje {
+    flex: 1 1 100%;
+
+    > * {
+      flex: 1 1 0;
+    }
+  }
 }
 
 // WCAG 2.4.11 Focus Not Obscured (AA, nowe w 2.2): pasek przyklejony do dołu
@@ -163,7 +187,3 @@ html {
 // `.cookie-info-links` — obie klasy przestały występować w jakimkolwiek
 // szablonie, a `.cookie-info-links a` było jedynym miejscem w tym pliku
 // sięgającym po zmienną Foundation `$primary-color`.
-
-.cookie-info-links a:hover {
-  text-decoration: underline;
-}
