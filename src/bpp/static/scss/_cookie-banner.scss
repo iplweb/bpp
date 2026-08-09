@@ -70,16 +70,16 @@
 }
 
 .cookie-pasek__tekst {
+  // Bez własnego font-size: tekst paska ma być tej samej wielkości co
+  // reszta strony. Pomniejszanie komunikatu o zgodzie jest wzorcem, który
+  // organy ochrony danych traktują jak ukrywanie informacji.
   margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.35;
+  line-height: 1.4;
 }
 
 .cookie-pasek__linki {
-  margin-top: 0.15rem;
-  font-size: 0.8rem;
-  line-height: 1.3;
-  opacity: 0.85;
+  margin-top: 0.35rem;
+  line-height: 1.4;
 
   // Odnośnik wstawiany przez JS mieszka w opakowującym spanie;
   // `display: contents` usuwa ten span z układu, dzięki czemu sam odnośnik
@@ -97,15 +97,24 @@
 
 // Strzałka po odnośniku zewnętrznym. Sam znak jest dekoracją (aria-hidden),
 // treść dla czytnika niesie sąsiedni tekst „Otwiera się w nowej karcie".
+//
+// U+2197 ma w większości krojów bardzo niską pozycję względem linii pisma —
+// domyślnie ląduje pod tekstem zamiast obok. `vertical-align: middle`
+// wyrównuje go do środka wysokości x-height, a `line-height: 1` odcina go od
+// interlinii wiersza, żeby nie rozpychał odnośnika w pionie.
 .link-zewnetrzny {
-  margin-left: 0.15em;
-  font-size: 0.9em;
+  margin-left: 0.2em;
+  font-size: 0.85em;
+  line-height: 1;
+  vertical-align: middle;
   text-decoration: none;
 }
 
+// Przyciski jeden pod drugim: „Zgadzam się", niżej „Nie zgadzam się".
 .cookie-pasek__akcje {
   flex: 0 0 auto;
   display: flex;
+  flex-direction: column;
   gap: 0.4rem;
 }
 
@@ -124,9 +133,8 @@
   color: #1f1f1f;
 
   // WCAG 2.5.8 (Target Size Minimum): cel dotykowy nie mniejszy niż 24 px.
-  min-height: 2rem;
-  padding: 0.35rem 0.8rem;
-  font-size: 0.85rem;
+  min-height: 2.3rem;
+  padding: 0.45rem 0.95rem;
   line-height: 1.2;
 
   &:hover,
@@ -161,8 +169,14 @@
     }
   }
 
-  .cookie-pasek__akcje > * {
-    flex: 1 1 0;
+  // Na wąskim ekranie przyciski wracają obok siebie i dzielą szerokość
+  // po połowie — w kolumnie zajęłyby dwa razy więcej wysokości.
+  .cookie-pasek__akcje {
+    flex-direction: row;
+
+    > * {
+      flex: 1 1 0;
+    }
   }
 }
 

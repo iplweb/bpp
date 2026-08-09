@@ -115,16 +115,48 @@
         }
     })();
 
+    // Pasek jest `position: fixed`, wiec nie zajmuje miejsca w przeplywie —
+    // bez rezerwacji przykrywalby dol strony na stale i nie dalo by sie
+    // przewinac do stopki. Odstep liczymy z realnej wysokosci paska, bo ta
+    // zalezy od dlugosci tekstu, szerokosci okna i ustawien czcionki
+    // uzytkownika; stala wartosc rozjezdzalaby sie przy kazdej z tych zmian.
+    (function() {
+        var pasek = document.getElementById('CookielawBanner');
+        if (!pasek) { return; }
+
+        function dopasujOdstep() {
+            var wysokosc = pasek.offsetHeight;
+            document.body.style.paddingBottom = wysokosc + 'px';
+            // Ten sam zapas dla przewijania do elementu z focusem
+            // (WCAG 2.4.11 Focus Not Obscured).
+            document.documentElement.style.scrollPaddingBottom = wysokosc + 'px';
+        }
+
+        dopasujOdstep();
+
+        // Zawijanie tekstu zmienia wysokosc paska przy zmianie szerokosci
+        // okna i przy zmianie rozmiaru czcionki w przegladarce.
+        if (typeof ResizeObserver === 'function') {
+            new ResizeObserver(dopasujOdstep).observe(pasek);
+        } else {
+            window.addEventListener('resize', dopasujOdstep);
+        }
+    })();
+
     window.Cookielaw = {
         accept: function() {
             document.cookie = 'cookielaw_accepted=1; max-age=31536000; path=/; SameSite=Lax';
             document.getElementById('CookielawBanner').style.display = 'none';
+            document.body.style.paddingBottom = '';
+            document.documentElement.style.scrollPaddingBottom = '';
             window.location.reload();
         },
 
         reject: function() {
             document.cookie = 'cookielaw_accepted=0; max-age=31536000; path=/; SameSite=Lax';
             document.getElementById('CookielawBanner').style.display = 'none';
+            document.body.style.paddingBottom = '';
+            document.documentElement.style.scrollPaddingBottom = '';
             window.location.reload();
         }
     };
