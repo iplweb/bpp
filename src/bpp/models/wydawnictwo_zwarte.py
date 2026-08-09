@@ -283,9 +283,13 @@ class Wydawnictwo_Zwarte(
     autor_rekordu_klass = Wydawnictwo_Zwarte_Autor
     autorzy = models.ManyToManyField(Autor, through=autor_rekordu_klass)
 
+    # PROTECT, nie CASCADE (faza 04 soft-delete): skasowanie książki-matki nie
+    # ma prawa zabrać ze sobą rozdziałów — to osobne rekordy bibliograficzne,
+    # każdy z własnymi autorami, punktacją i historią w PBN. Miękkie kasowanie
+    # blokuje guard w ``Wydawnictwo_Zwarte.delete()``.
     wydawnictwo_nadrzedne = models.ForeignKey(
         "self",
-        CASCADE,
+        PROTECT,
         blank=True,
         null=True,
         help_text="""Jeżeli dodajesz rozdział,

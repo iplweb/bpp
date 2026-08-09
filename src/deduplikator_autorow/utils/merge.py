@@ -5,6 +5,7 @@ Funkcje scalania duplikatów autorów.
 import logging
 import sys
 import traceback
+import uuid
 
 import rollbar
 from django.contrib.contenttypes.models import ContentType
@@ -132,6 +133,50 @@ def _transfer_disciplines(glowny_autor, autor_duplikat, user, log_ctx, results):
         )
 
 
+def _odstaw_zdublowane_autorstwo(record, glowny_autor):
+    """Zamyka wiersz autorstwa, którego NIE DA SIĘ przenieść, bo główny autor
+    ma już to samo ``(rekord, autor, typ_odpowiedzialności)``.
+
+    Wiersz i tak musi zmienić właściciela. Do fazy 04 nie musiał: duplikat
+    znikał TWARDO, a kaskada FK zabierała ten wiersz razem z nim. Faza 04
+    przestawiła ``*_Autor.autor`` na ``PROTECT`` i uczyniła ``Autor.delete()``
+    miękkim, więc pozostawienie wiersza przy duplikacie kończy się na dwa
+    sposoby naraz:
+
+    - ``PROTECT`` blokuje skasowanie duplikatu (``ProtectedError`` łapany
+      wyżej jako awaria — całe scalanie wraca z ``success=False``),
+    - a gdyby nawet przeszło, w koszu zostałaby SIEROTA wskazująca na autora,
+      którego już nie ma.
+
+    Trzy kroki, każdy konieczny:
+
+    1. **Miękkie skasowanie** (jeśli wiersz jeszcze żyje) — zwalnia warunkowy
+       ``wc_autor_uniq_rekord_autor_typ``, który obowiązuje wśród ŻYWYCH.
+       Bez tego przepięcie na głównego autora zderzyłoby się z jego własnym,
+       żywym wierszem.
+    2. **Przepięcie na głównego autora** — żeby po zniknięciu duplikatu nie
+       zostawała sierota.
+    3. **WŁASNY ``transaction_id``** — i to jest najmniej oczywisty krok.
+       Wiersz trafił do kosza kaskadą z publikacji, więc nosi JEJ
+       ``transaction_id``. ``publikacja.restore()`` wskrzesza dokładnie te
+       autorstwa, które mają ten sam znacznik — po przepięciu wskrzesiłby
+       DWA wiersze ``(rekord, glowny, typ)`` i wywalił się na warunkowym
+       unique. Kosz stałby się drzwiami jednokierunkowymi: publikacji nie
+       dałoby się już z niego wyjąć.
+
+    Ta funkcja była raz napisana w fazie 03 i usunięta — przy twardej
+    kaskadzie była martwym kodem (mutacja przechodziła). Faza 04 ją ożywia.
+    """
+    if not _w_koszu(record):
+        # `delete()` pakietu ustawia deleted_at/transaction_id także na
+        # instancji w pamięci, więc `record` jest dalej aktualny.
+        record.delete()
+
+    record.autor = glowny_autor
+    record.transaction_id = uuid.uuid4()
+    record.save()
+
+
 def _transfer_authorship_record(
     record,
     glowny_autor,
@@ -184,12 +229,7 @@ def _transfer_authorship_record(
             f"z typem odpowiedzialności {record.typ_odpowiedzialnosci}. "
             f"Usunięto duplikat."
         )
-        # Wiersz duplikatu zostaje przy duplikacie i znika razem z nim
-        # (`autor_duplikat.delete()` na końcu scalania kaskaduje TWARDO po FK).
-        # Dla wiersza już skasowanego `delete()` odświeża tylko `deleted_at` —
-        # to no-op, ale trzymamy jedną ścieżkę zamiast rozgałęziać na coś,
-        # czego i tak za chwilę nie będzie.
-        record.delete()
+        _odstaw_zdublowane_autorstwo(record, glowny_autor)
         return False
 
     # Sprawdź dyscypliny

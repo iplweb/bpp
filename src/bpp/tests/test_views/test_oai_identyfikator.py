@@ -10,7 +10,7 @@ import pytest
 from django.contrib.sites.models import Site
 from django.urls import reverse
 
-from bpp.models import Uczelnia
+from bpp.models import Autor, Uczelnia
 from bpp.models.cache import Rekord
 from bpp.models.system import Charakter_Formalny, Typ_Odpowiedzialnosci
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
@@ -178,6 +178,16 @@ def test_oai_bez_uczelni_to_404(client, oai_url, settings):
         jednostka=any_jednostka(),
         typ_odpowiedzialnosci=aut,
     )
+    # Odpięcie autorów od jednostek PRZED skasowaniem uczelni.
+    #
+    # ``Autor.aktualna_jednostka`` (pole denormalizowane, liczone triggerem
+    # z ``Autor_Jednostka``) ma ``on_delete=CASCADE``, więc skasowanie
+    # uczelni ciągnęło kaskadę Uczelnia → Jednostka → Autor → autorstwa.
+    # Do fazy 04 przechodziło to po cichu; od flipu ``*_Autor.autor`` na
+    # ``PROTECT`` kończy się ``ProtectedError``. Test dotyczy OAI, a nie
+    # polityki kaskad — więc rozłączamy tę przypadkową krawędź jawnie,
+    # zamiast liczyć na to, że kasowanie uczelni zabierze ludzi.
+    Autor.objects.all().update(aktualna_jednostka=None)
     Uczelnia.objects.all().delete()
     Rekord.objects.full_refresh()
 

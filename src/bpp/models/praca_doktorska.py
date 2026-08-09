@@ -1,7 +1,7 @@
 from denorm import denormalized, depend_on_fields, depend_on_related
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
-from django.db.models import CASCADE, SET_NULL, Q
+from django.db.models import CASCADE, PROTECT, SET_NULL, Q
 from django.utils.functional import cached_property
 
 from bpp.models import (
@@ -151,7 +151,9 @@ _Praca_Doktorska_PropertyCache = _Praca_Doktorska_PropertyCache()
 
 
 class Praca_Doktorska(BppPublikacjaSoftDeleteMixin, Praca_Doktorska_Baza):
-    autor = models.ForeignKey(Autor, CASCADE)
+    # PROTECT — patrz komentarz przy ``BazaModeluOdpowiedzialnosciAutorow.
+    # autor``. Doktorat bez autora nie ma sensu jako rekord bibliograficzny.
+    autor = models.ForeignKey(Autor, PROTECT)
 
     promotor = models.ForeignKey(
         Autor, SET_NULL, related_name="promotor_doktoratu", blank=True, null=True
