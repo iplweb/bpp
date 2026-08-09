@@ -41,6 +41,7 @@ import uuid
 
 from django.core.exceptions import FieldDoesNotExist
 from django.db import transaction
+from django.db.models import ProtectedError
 from django.utils import timezone
 from django_softdelete.managers import (
     DeletedManager,
@@ -111,6 +112,54 @@ def dopisz_znacznik_zmiany(instance, update_fields):
         return update_fields
 
     return list(update_fields) + [POLE_ZNACZNIKA_ZMIANY]
+
+
+#: Ile chronionych obiektów najwyżej dołączamy do ``ProtectedError``.
+#: Django wypełnia ``protected_objects`` po to, żeby admin mógł je pokazać —
+#: przy autorze z tysiącami prac materializacja całości byłaby czystym
+#: marnotrawstwem (i tak nikt nie wypisze tysiąca pozycji na stronie błędu).
+#: Liczbę raportujemy z ``count()``, więc obcięcie próbki jej nie zafałszuje.
+LIMIT_PROBKI_CHRONIONYCH = 20
+
+
+def raise_if_has_protected_children(instance, relations, label):
+    """Blokuje soft-delete ``instance``, jeśli ma „chronione" dzieci.
+
+    ``relations`` to lista krotek ``(Model, "pole_fk")``. Rzuca
+    ``django.db.models.ProtectedError`` z komunikatem PL, gdy w którejkolwiek
+    z relacji jest co najmniej jedno dziecko.
+
+    DLACZEGO GUARD W OGÓLE MUSI ISTNIEĆ, SKORO FK SĄ ``PROTECT``: ``on_delete``
+    obsługuje wyłącznie kolektor Django dla kasowania TWARDEGO. Miękkie
+    ``delete()`` to zwykły ``UPDATE`` na ``deleted_at`` — nie przechodzi przez
+    kolektor i o ``PROTECT`` się nawet nie dowiaduje. Warstwa pierwsza (FK)
+    broni przed ``hard_delete()``, ta broni przed ``delete()``.
+
+    DLACZEGO ``global_objects``, A NIE ``objects``: ``objects`` ukrywa
+    autorstwa skasowane kaskadą fazy 02. Autor, którego wszystkie prace
+    poszły do kosza, wyglądałby przez ``objects`` na pustego — a to nieprawda:
+    przywrócenie takiej pracy dałoby publikację wskazującą na autora, którego
+    już nie ma (spec §3.2). Model spoza soft-delete (np. ``Projekt_Autor``)
+    nie ma ``global_objects``, więc schodzimy na ``objects`` — tak samo, jak
+    robi to ``wiersze_do_transferu`` w scalaniu autorów.
+    """
+    ile = 0
+    probka = []
+    for model, pole in relations:
+        manager = getattr(model, "global_objects", model.objects)
+        qs = manager.filter(**{pole: instance})
+        ile += qs.count()
+        if len(probka) < LIMIT_PROBKI_CHRONIONYCH:
+            probka.extend(qs[: LIMIT_PROBKI_CHRONIONYCH - len(probka)])
+
+    if ile:
+        raise ProtectedError(
+            f"Nie można usunąć {label} „{instance}” — rekord ma {ile} "
+            f"powiązanych rekordów (autorstwa / doktorat / habilitacja / "
+            f"rozdziały / projekty), także tych w koszu. Najpierw przenieś "
+            f"lub usuń te powiązania.",
+            probka,
+        )
 
 
 class BppSoftDeleteQuerySet(SoftDeleteQuerySet):
