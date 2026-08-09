@@ -13,13 +13,17 @@ Django dla twardego kasowania — miękkie ``delete()`` w ogóle go nie pyta.
 """
 
 import pytest
-from django.db.models import ProtectedError
+from django.db.models import PROTECT, ProtectedError
 from model_bakery import baker
 
 from bpp.models import (
     Autor,
+    Patent_Autor,
     Praca_Doktorska,
+    Praca_Habilitacyjna,
     Wydawnictwo_Ciagle_Autor,
+    Wydawnictwo_Zwarte,
+    Wydawnictwo_Zwarte_Autor,
     soft_delete,
 )
 from bpp.models.soft_delete import raise_if_has_protected_children
@@ -146,3 +150,53 @@ def test_raise_if_has_protected_children_komunikat_zawiera_liczbe_i_etykiete(
     assert len(exc.value.protected_objects) == 1, (
         "próbka dołączona do ProtectedError ma respektować limit"
     )
+
+
+# --- Warstwa 1: FK CASCADE → PROTECT --------------------------------------
+#
+# Obrona przed kasowaniem TWARDYM. Miękkie `delete()` tego nie pyta (patrz
+# docstring helpera), ale `hard_delete()`, `queryset.hard_delete()` i kaskady
+# ORM z innych modeli — owszem. Bez tego flipu twarde skasowanie autora
+# zabrałoby ze sobą jego autorstwa i doktorat, a skasowanie książki-matki —
+# wszystkie jej rozdziały.
+
+
+def test_fk_autora_jest_protect():
+    for model in (
+        Wydawnictwo_Ciagle_Autor,
+        Wydawnictwo_Zwarte_Autor,
+        Patent_Autor,
+        Praca_Doktorska,
+    ):
+        field = model._meta.get_field("autor")
+        assert field.remote_field.on_delete is PROTECT, model
+
+
+def test_fk_autora_habilitacji_nadal_protect():
+    """Kontrola: habilitacja była PROTECT już przed fazą 04.
+
+    Faza 03 zamieniła to pole z ``OneToOneField`` na ``ForeignKey``
+    (migracja ``bpp/0500`` + warunkowy ``phab_uniq_autor_zywy``) — sam
+    ``on_delete`` przetrwał tę zmianę i ma tak zostać.
+    """
+    field = Praca_Habilitacyjna._meta.get_field("autor")
+    assert field.remote_field.on_delete is PROTECT
+
+
+def test_wydawnictwo_nadrzedne_jest_protect():
+    field = Wydawnictwo_Zwarte._meta.get_field("wydawnictwo_nadrzedne")
+    assert field.remote_field.on_delete is PROTECT
+
+
+def test_flip_protect_nie_zmienil_reszty_pola_wydawnictwo_nadrzedne():
+    """`related_name`, `null` i `blank` muszą przeżyć flip.
+
+    Zgubienie ``related_name`` przestawiłoby akcesor odwrotny na domyślny
+    ``wydawnictwo_zwarte_set`` i po cichu zepsuło każdy kod liczący rozdziały
+    — a `on_delete` sam w sobie nadal by się zgadzał, więc test powyżej nic
+    by nie zauważył.
+    """
+    field = Wydawnictwo_Zwarte._meta.get_field("wydawnictwo_nadrzedne")
+    assert field.remote_field.related_name == "wydawnictwa_powiazane_set"
+    assert field.null is True
+    assert field.blank is True
