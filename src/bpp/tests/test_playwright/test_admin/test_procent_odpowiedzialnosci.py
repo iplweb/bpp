@@ -56,6 +56,24 @@ def force_commit():
     connection.close()
 
 
+def _skasuj_trwale(obj):
+    """Kasowanie w teardownie musi być NIEODWRACALNE.
+
+    Te testy nie działają w transakcji (``transaction.set_autocommit(True)``
+    + live server), więc sprzątają po sobie ręcznie. Od fazy 02 ``delete()``
+    na publikacji jest MIĘKKIE: wiersz zostaje, a razem z nim jego autorstwa
+    ``*_Autor`` — tyle że z ustawionym ``deleted_at``. Od fazy 04 te wiersze
+    chronią autora przez ``PROTECT``, więc kasowanie jednostki (kaskada
+    ``Jednostka`` → ``Autor.aktualna_jednostka`` → autorstwa) wywala się
+    ``ProtectedError`` i teardown nie sprząta do końca.
+
+    ``hard_delete()`` istnieje na modelach soft-delete; dla pozostałych
+    zwykłe ``delete()`` i tak jest twarde.
+    """
+    hard = getattr(obj, "hard_delete", None)
+    return hard() if hard is not None else obj.delete()
+
+
 def create_and_commit_fixtures():
     """Create required system lookup tables and commit to make visible to live server.
 
@@ -722,10 +740,10 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dobrze_potem_zle_dwoch
         try:
             # Delete created publication first (has foreign keys to other objects)
             if created_publication is not None:
-                created_publication.delete()
+                _skasuj_trwale(created_publication)
 
             # Delete test data objects
             for obj in reversed(created_objects):
-                obj.delete()
+                _skasuj_trwale(obj)
         finally:
             transaction.set_autocommit(old_autocommit)

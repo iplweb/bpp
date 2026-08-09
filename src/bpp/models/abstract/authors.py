@@ -8,7 +8,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, models, transaction
-from django.db.models import CASCADE, SET_NULL, Q, Sum
+from django.db.models import CASCADE, PROTECT, SET_NULL, Q, Sum
 
 from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina, Dyscyplina_Naukowa
 from bpp.models.util import dodaj_autora
@@ -22,7 +22,12 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     czyli: powiązanie ForeignKey, jednostkę, rodzaj zapisu nazwiska, ale
     nie zawiera podstawowej informacji, czyli powiązania"""
 
-    autor = models.ForeignKey("bpp.Autor", CASCADE)
+    # PROTECT, nie CASCADE (faza 04 soft-delete): twarde skasowanie autora nie
+    # ma prawa po cichu zabrać ze sobą jego autorstw — publikacja zostałaby
+    # bez autora. Miękkie kasowanie autora blokuje osobno guard aplikacyjny
+    # (``Autor.delete()``), bo ``on_delete`` obsługuje wyłącznie kolektor
+    # Django dla kasowania twardego.
+    autor = models.ForeignKey("bpp.Autor", PROTECT)
     jednostka = models.ForeignKey("bpp.Jednostka", CASCADE)
     kierunek_studiow = models.ForeignKey(
         "bpp.Kierunek_Studiow", SET_NULL, blank=True, null=True

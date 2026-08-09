@@ -59,6 +59,13 @@ def _stan_ddl(cur):
 
 
 @pytest.mark.django_db
+# Ten test odtwarza migracje w OBIE strony (unapply do 0488, reapply do
+# HEAD-a), więc jego czas rośnie z każdą kolejną migracją w gałęzi — faza 04
+# dołożyła `0501` i `0502`. Solo mieści się w ~45 s, ale w pełnym przebiegu
+# na ~10 workerach xdist rywalizuje o CPU i bazę i przekraczał globalne
+# `--timeout 90` z `pytest.ini`. Padał wtedy w TEARDOWNIE, przy zielonym
+# teście — objaw mylący, bo wyglądał na błąd migracji.
+@pytest.mark.timeout(300)
 def test_migracja_0489_odwracalna(bez_reinstalacji_denorma):
     with connection.cursor() as cur:
         przed = _stan_ddl(cur)
