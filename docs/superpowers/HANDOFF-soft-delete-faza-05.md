@@ -35,6 +35,14 @@ całego `feat/soft-delete` do `dev`, a nie w równoległych feature-branchach.
 względem faz 02–03. Zielony check na takim PR-ze nie jest dowodem;
 jedyną weryfikacją jest przebieg lokalny.
 
+Stan fazy 04 na `feat/soft-delete-04` (przebieg lokalny, świeże kontenery):
+
+| krok | wynik |
+|---|---|
+| `pytest -m "not playwright"` | **9562 passed**, 4 skipped, 2 xfailed, 0 failed |
+| `pytest -m playwright` | **157 passed**, 1 skipped, 0 failed |
+| `vitest run` | **81 passed** |
+
 ---
 
 ## 2. Co faza 04 zmieniła w kodzie
@@ -185,6 +193,22 @@ kasowanie rutynowym.
 - **`Autor.hard_delete()` nie emituje `post_hard_delete`** — ten sam dług,
   co dla querysetów publikacji (do fazy 06).
 - **Kaskada `Jednostka` → `Autor`** — patrz §3.
+- ⚠️ **`Autor.slug` jest `unique=True` BEZWARUNKOWO** — husk trzyma swój
+  slug zarezerwowany. Utworzenie nowego autora o tym samym imieniu
+  i nazwisku, gdy poprzedni siedzi w koszu, kończy się `IntegrityError`
+  na `bpp_autor_slug_key`. To dokładnie ten sam kształt problemu, który
+  faza 03 rozbroiła dla `pbn_uid` (`OneToOneField(unique=True)` bez
+  warunku partial): rekord w koszu nadal trzyma unikalną wartość.
+  Wyszło przy `test_seed_determinism` w generatorze danych demo.
+
+  Dopóki kasowanie autorów jest rzadkie (dziś: tylko husk po scaleniu
+  duplikatów, a husk ma slug po duplikacie), to teoretyczne. **Faza 07
+  czyni kasowanie rutynowym i wtedy zacznie boleć** — wzorzec rozwiązania
+  jest gotowy w `bpp/0500` (warunkowy `UniqueConstraint` z
+  `condition=Q(deleted_at__isnull=True)`). Uwaga: `AutoSlugField`
+  z `unique=True` sam dokleja sufiks `-1`, `-2`… szukając wolnej wartości,
+  więc zamiana na constraint warunkowy wymaga sprawdzenia, czy pole
+  respektuje warunek przy generowaniu sufiksu.
 
 ---
 
