@@ -45,7 +45,23 @@ _Praca_Habilitacyjna_PropertyCache = _Praca_Habilitacyjna_PropertyCache()
 
 
 class Praca_Habilitacyjna(BppPublikacjaSoftDeleteMixin, Praca_Doktorska_Baza):
-    autor = models.OneToOneField(Autor, PROTECT)
+    # ``ForeignKey``, a NIE ``OneToOneField``, wyłącznie po to, żeby dało się
+    # zdjąć bezwarunkowy ``UNIQUE (autor_id)`` — Django wymusza `unique=True`
+    # w ``OneToOneField.__init__`` i nie ma tego jak wyłączyć. Reguła „jeden
+    # autor, jedna habilitacja" nie znika: pilnuje jej warunkowy
+    # ``phab_uniq_autor_zywy`` w ``Meta.constraints`` niżej.
+    #
+    # Twarde UNIQUE nie znało kosza. Duplikat z habilitacją soft-skasowaną
+    # + główny autor z żywą wywracał CAŁE scalanie autorów ``IntegrityError``-em
+    # (scalanie przenosi wiersze RAZEM Z KOSZEM, żeby nie zostawiać sierot).
+    #
+    # ⚠️ Akcesor odwrotny to teraz ``autor.praca_habilitacyjna_set`` (manager),
+    # a nie ``autor.praca_habilitacyjna`` (obiekt). Ścieżka FILTROWANIA w ORM /
+    # DjangoQL się NIE zmienia — ``related_query_name`` domyślnie i tak jest
+    # nazwą modelu. Zmiana akcesora to zarazem naprawa: manager relacji używa
+    # ``_default_manager`` (filtruje kosz), podczas gdy odwrotne OneToOne szło
+    # przez ``_base_manager`` i pokazywało rekordy skasowane.
+    autor = models.ForeignKey(Autor, PROTECT)
 
     publikacje_habilitacyjne = GenericRelation(Publikacja_Habilitacyjna)
 
@@ -64,6 +80,31 @@ class Praca_Habilitacyjna(BppPublikacjaSoftDeleteMixin, Praca_Doktorska_Baza):
                 fields=["deleted_at"],
                 name="phab_deleted_at_idx",
                 condition=Q(deleted_at__isnull=False),
+            ),
+        ]
+        constraints = [
+            # Następca bezwarunkowego `UNIQUE (autor_id)` z `OneToOneField`.
+            # Ten sam wzorzec, co faza 01 zastosowała do `*_Autor`: reguła
+            # obowiązuje TYLKO wśród żywych wierszy, więc habilitacja w koszu
+            # nie blokuje ani ponownego wprowadzenia, ani przeniesienia przy
+            # scalaniu autorów.
+            #
+            # ⚠️ To ograniczenie NIE jest samo z siebie widoczne w formularzu.
+            # `Model.validate_constraints()` (Django >=4.1) po cichu POMIJA
+            # sprawdzenie, gdy pole użyte w `condition` (`deleted_at`) jest
+            # wykluczone z walidacji — a admin wyklucza wszystko spoza swoich
+            # `fieldsets`. Komunikat dla operatora daje jawne `clean_autor()`
+            # w `bpp/admin/praca_habilitacyjna.py`; tutejsze ograniczenie jest
+            # ostateczną gwarancją na poziomie bazy.
+            models.UniqueConstraint(
+                fields=["autor"],
+                condition=Q(deleted_at__isnull=True),
+                name="phab_uniq_autor_zywy",
+                # Bez tego operator zobaczyłby w adminie domyślne
+                # „Constraint “phab_uniq_autor_zywy” is violated." — Django nie
+                # umie zmapować UniqueConstraint z `condition` na komunikat
+                # przy polu, więc trafia to w błędy ogólne formularza.
+                violation_error_message="Ten autor ma już pracę habilitacyjną.",
             ),
         ]
 
