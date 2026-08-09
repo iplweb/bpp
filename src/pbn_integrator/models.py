@@ -61,6 +61,15 @@ class RekordPrzywroconyPrzezImport(models.Model):
                 fields=["-przywrocono", "content_type"],
                 name="pbnint_przywr_data_ct_idx",
             ),
+            # Drugie pytanie, i jedyne zadawane WPROST o konkretną publikację:
+            # „czy TEN rekord wrócił?". Indeks po dacie go nie obsługuje, a sam
+            # `content_type_id` (indeks domyślny FK) zawęża do typu, nie do
+            # wiersza — przy jednym typie publikacji to praktycznie skan całej
+            # tabeli, która rośnie z każdym importem.
+            models.Index(
+                fields=["content_type", "object_id"],
+                name="pbnint_przywr_ct_objid_idx",
+            ),
         ]
 
     def __str__(self):

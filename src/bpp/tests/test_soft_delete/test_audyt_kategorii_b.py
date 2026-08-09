@@ -55,6 +55,48 @@ def test_get_bpp_publication_NIE_widzi_soft_deletowanego():
     )
 
 
+@pytest.mark.django_db
+def test_oswiadczenie_instytucji_get_bpp_publication_NIE_widzi_kosza():
+    """Ta sama nazwa metody, INNY model — i też zostaje na `objects`.
+
+    ⚠️ Łatwo pomylić z `Publication.get_bpp_publication` wyżej.
+    `Oswiadczenie_Instytucji.get_bpp_publication` iteruje po czterech modelach
+    publikacji po `pbn_uid`. Przy pierwszym audycie nie została rozstrzygnięta
+    w ogóle — ani zmieniona, ani wpisana jako „zostawiona świadomie".
+
+    ROZSTRZYGNIĘCIE (2026-08-09): zostaje na `objects`, bo to **akcesor**,
+    a zaglądanie do kosza jest decyzją importera. Nie jest to jednak martwy
+    przepis — łańcuch wołaczy realizuje wariant A w całości:
+
+        `integruj_oswiadczenia...` (statements.py:404)
+          → get_bpp_publication() zwraca None (rekord w koszu = "nie ma")
+          → importuj_publikacje_instytucji(...)
+          → importuj_publikacje_po_pbn_uid_id(...)
+          → znajdz_lub_wskrzes_rekord()  ← TU rekord wraca z kosza
+
+    Wołacz przyjmuje wynik obu kształtów: `Rekord` rozpakowuje przez
+    `.original`, model konkretny (taki wraca ze wskrzeszenia) przepuszcza.
+    Gdyby akcesor sam zaglądał do kosza, importer nigdy by się nie odpalił —
+    i nie powstałby wpis w `RekordPrzywroconyPrzezImport`.
+    """
+    from pbn_api.models import OswiadczenieInstytucji, Publication
+
+    publication = baker.make(Publication)
+    rec = baker.make(Wydawnictwo_Ciagle, pbn_uid=publication)
+    oswiadczenie = baker.make(OswiadczenieInstytucji, publicationId=publication)
+
+    assert oswiadczenie.get_bpp_publication() is not None, (
+        "setup zepsuty — zywy rekord powinien byc znaleziony"
+    )
+
+    rec.delete()  # soft-delete
+
+    assert oswiadczenie.get_bpp_publication() is None, (
+        "akcesor oswiadczenia widzi kosz — importer nigdy nie dostanie szansy "
+        "wskrzesic rekordu i wpisac tego do rejestru"
+    )
+
+
 # ---------------------------------------------------------------------------
 # REJESTR DECYZJI AUDYTU (Task 7) — miejsca ZOSTAWIONE na `objects`
 # ---------------------------------------------------------------------------
@@ -73,6 +115,10 @@ def test_get_bpp_publication_NIE_widzi_soft_deletowanego():
 #     `objects` daje obraz spójny z PBN;
 #   * REST API (`api_v1/viewsets/*`) — publiczne API nie może serwować autorstw
 #     pracy, która sama z API zniknęła;
+#   * `Oswiadczenie_Instytucji.get_bpp_publication`
+#     (`pbn_api/models/oswiadczenie_instytucji.py`) — akcesor, nie importer;
+#     wskrzeszanie robi wołacz o poziom wyżej. Dopisane 2026-08-09, bo przy
+#     pierwszym audycie NIE zostało rozstrzygnięte w ogóle. Patrz test wyżej;
 #   * skanowanie do dedupu publikacji (`deduplikator_publikacji/tasks.py`) —
 #     patrz test niżej.
 #
