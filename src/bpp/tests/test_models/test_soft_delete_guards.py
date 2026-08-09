@@ -421,3 +421,159 @@ def test_autor_zablokowany_guardem_nie_trafil_do_kosza(
     autor_jan_kowalski.refresh_from_db()
     assert autor_jan_kowalski.deleted_at is None
     assert Autor.objects.filter(pk=autor_jan_kowalski.pk).exists()
+
+
+# --- Zadanie 5: guard Wydawnictwo_Zwarte.delete() na rozdziały --------------
+
+
+@pytest.mark.django_db
+def test_ksiazka_matka_z_rozdzialem_protect(wydawnictwo_zwarte):
+    rozdzial = baker.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=wydawnictwo_zwarte)
+    assert rozdzial.wydawnictwo_nadrzedne_id == wydawnictwo_zwarte.pk
+
+    with pytest.raises(ProtectedError):
+        wydawnictwo_zwarte.delete()
+
+    wydawnictwo_zwarte.refresh_from_db()
+    assert wydawnictwo_zwarte.deleted_at is None
+
+
+@pytest.mark.django_db
+def test_ksiazka_bez_rozdzialow_soft_delete_ok(wydawnictwo_zwarte):
+    wydawnictwo_zwarte.delete()
+    wydawnictwo_zwarte.refresh_from_db()
+    assert wydawnictwo_zwarte.deleted_at is not None
+
+
+@pytest.mark.django_db
+def test_ksiazka_matka_z_rozdzialem_w_koszu_nadal_protect(wydawnictwo_zwarte):
+    """Rozdział w koszu też blokuje (spec §2.6).
+
+    Inaczej skasowanie książki-matki „przez kosz" (najpierw rozdział, potem
+    książka) dałoby się przeprowadzić w dwóch krokach, a przywrócenie
+    rozdziału zostawiłoby go bez książki.
+    """
+    rozdzial = baker.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=wydawnictwo_zwarte)
+    rozdzial.delete()
+
+    assert not Wydawnictwo_Zwarte.objects.filter(pk=rozdzial.pk).exists()
+    assert Wydawnictwo_Zwarte.global_objects.filter(pk=rozdzial.pk).exists()
+
+    with pytest.raises(ProtectedError):
+        wydawnictwo_zwarte.delete()
+
+
+@pytest.mark.django_db
+def test_guard_rozdzialow_nie_dotyka_innych_typow_publikacji(wydawnictwo_ciagle):
+    """Guard NIE MOŻE trafić do wspólnego mixinu publikacji (§4c/R3).
+
+    ``BppPublikacjaSoftDeleteMixin`` dzieli pięć modeli. Wstawiony tam guard
+    odpytywałby dla ``Wydawnictwo_Ciagle`` czy ``Patent``
+    ``Wydawnictwo_Zwarte.global_objects.filter(wydawnictwo_nadrzedne=<obiekt
+    innego modelu>)`` — zapytanie międzytypowe, w najlepszym razie zawsze
+    puste, w gorszym wyjątek. Dlatego guard siedzi we własnym ``delete()``
+    modelu ``Wydawnictwo_Zwarte``.
+    """
+    wydawnictwo_ciagle.delete()
+    wydawnictwo_ciagle.refresh_from_db()
+    assert wydawnictwo_ciagle.deleted_at is not None
+
+
+@pytest.mark.django_db
+def test_ksiazka_bez_rozdzialow_nadal_kaskaduje_na_autorstwa(
+    wydawnictwo_zwarte, autor_jan_kowalski, jednostka, typy_odpowiedzialnosci
+):
+    """Guard wstawiamy PRZED kaskadą fazy 02 — ale jej NIE GUBIMY."""
+    wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
+    assert Wydawnictwo_Zwarte_Autor.objects.filter(rekord=wydawnictwo_zwarte).exists()
+
+    wydawnictwo_zwarte.delete()
+
+    assert not Wydawnictwo_Zwarte_Autor.objects.filter(
+        rekord=wydawnictwo_zwarte
+    ).exists()
+    assert Wydawnictwo_Zwarte_Autor.global_objects.filter(
+        rekord=wydawnictwo_zwarte
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_delete_ksiazki_przepuszcza_user_i_reason(wydawnictwo_zwarte, admin_user):
+    """Własny ``delete()`` nie może ZAWĘZIĆ sygnatury z mixinu.
+
+    ``delete(user=..., reason=...)`` to kontrakt PINNED faz 06/07: tak woła
+    kasowanie z powodem z panelu admina. Override w ``Wydawnictwo_Zwarte``
+    przesłania wersję z ``BppPublikacjaSoftDeleteMixin``, więc zawężenie
+    sygnatury (np. do samego ``self``) wywaliłoby ``TypeError`` na każdej
+    książce — i dopiero w fazie 07, daleko od tej zmiany.
+
+    Zakres tego testu — sprawdzone mutacyjnie: łapie ZAWĘŻENIE sygnatury,
+    NIE łapie zgubienia ``user``/``reason`` w wywołaniu ``super()``. To
+    drugie jest dziś nieobserwowalne, bo mixin tylko przyjmuje te parametry
+    i nic z nimi nie robi (konsumuje je dopiero ``SoftDeleteLog`` z fazy
+    06). Przekazujemy je jawnie mimo to — gdy faza 06 zacznie ich używać,
+    ta ścieżka ma już działać.
+    """
+    wydawnictwo_zwarte.delete(user=admin_user, reason="test")
+    wydawnictwo_zwarte.refresh_from_db()
+    assert wydawnictwo_zwarte.deleted_at is not None
+
+
+# --- Zadanie 6: guard nie blokuje scalania autorów --------------------------
+
+
+@pytest.mark.django_db
+def test_husk_po_transferze_prac_soft_delete_ok(
+    wydawnictwo_ciagle,
+    autor_jan_kowalski,
+    autor_jan_nowak,
+    jednostka,
+    typy_odpowiedzialnosci,
+):
+    """Po przeniesieniu prac duplikat jest pusty — guard go przepuszcza.
+
+    To jest warunek, żeby faza 04 nie zablokowała scalania duplikatów
+    autorów, czyli jedynej operacji, która husków w ogóle produkuje.
+    """
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka)
+    wca = Wydawnictwo_Ciagle_Autor.global_objects.get(autor=autor_jan_nowak)
+
+    wca.autor = autor_jan_kowalski
+    wca.save()
+
+    autor_jan_nowak.delete()
+    autor_jan_nowak.refresh_from_db()
+    assert autor_jan_nowak.deleted_at is not None
+
+
+@pytest.mark.django_db
+def test_husk_z_autorstwem_zostawionym_w_koszu_JEST_blokowany(
+    wydawnictwo_ciagle,
+    autor_jan_kowalski,
+    autor_jan_nowak,
+    jednostka,
+    typy_odpowiedzialnosci,
+):
+    """Przypadek, którego plan fazy 04 nie przewidywał (§4c/R1 handoffu).
+
+    Symulacja z testu wyżej pokrywa wyłącznie CZYSTY transfer. Scalanie ma
+    jednak gałąź „kolizja": gdy główny autor ma już to samo autorstwo,
+    wiersza duplikatu nie da się przenieść. Gdyby zostawić go przy
+    duplikacie, guard zobaczyłby go przez ``global_objects`` i całe
+    scalanie padłoby na ``ProtectedError``.
+
+    Ten test pilnuje, że guard rzeczywiście tak zareaguje — czyli że
+    poprawka w ``_transfer_authorship_record`` (przepięcie wiersza na
+    głównego autora) jest KONIECZNA, a nie kosmetyczna. Gdyby guard
+    przepuszczał autorstwa w koszu, poprawka wyglądałaby na zbędną i ktoś
+    by ją usunął, a wtedy w koszu zostałaby sierota wskazująca na autora,
+    którego nie ma.
+    """
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka)
+    wca = Wydawnictwo_Ciagle_Autor.global_objects.get(autor=autor_jan_nowak)
+    wca.delete()  # wiersz w koszu, ale NADAL przy duplikacie
+
+    assert not Wydawnictwo_Ciagle_Autor.objects.filter(autor=autor_jan_nowak).exists()
+
+    with pytest.raises(ProtectedError):
+        autor_jan_nowak.delete()
