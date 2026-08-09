@@ -37,7 +37,12 @@ def test_str_autor_jednostka_po_skasowaniu_autora_nie_raportuje(
     # Świeży obiekt z bazy — bez podpiętego w pamięci cache'u FK ``autor``,
     # dokładnie tak jak w produkcyjnym tracebacku.
     aj = Autor_Jednostka.objects.get(autor=autor_jan_kowalski, jednostka=jednostka)
-    Autor.objects.filter(pk=autor_jan_kowalski.pk).delete()
+    # ``hard_delete()``, nie ``delete()``: od fazy 04 ``Autor`` jest modelem
+    # soft-delete, więc zwykłe kasowanie zostawia wiersz w bazie i ŻADNA
+    # wisząca referencja by nie powstała — a to ją właśnie testujemy.
+    # Wiszące referencje nie zniknęły z produkcji razem z soft-deletem:
+    # biorą się z twardych kasowań (`hard_delete`, kaskady ORM, ręcznego SQL).
+    Autor.objects.filter(pk=autor_jan_kowalski.pk).hard_delete()
 
     with caplog.at_level(logging.ERROR, logger="bpp.models.autor"):
         assert str(aj) == f"Autor_Jednostka #{aj.pk}"

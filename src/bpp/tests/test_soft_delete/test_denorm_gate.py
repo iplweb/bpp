@@ -74,9 +74,17 @@ def test_soft_delete_ksiazki_matki_nie_psuje_cache_rozdzialu(denorms):
     rozdziału zależy od tego, czy matka jest w koszu — a nie zależy i nie
     powinien.
 
-    Faza 04 doda guard PROTECT, który prawdopodobnie w ogóle zablokuje
-    skasowanie książki mającej rozdziały. Do tego czasu ta ścieżka jest
-    osiągalna i ten test opisuje, co się na niej dzieje.
+    🔁 **ZAKTUALIZOWANE W FAZIE 04.** Przewidywanie z akapitu powyżej się
+    spełniło: guard w ``Wydawnictwo_Zwarte.delete()`` blokuje teraz
+    skasowanie książki mającej rozdziały (także rozdziały w koszu), więc
+    opisywana ścieżka nie jest już osiągalna przez publiczne API.
+
+    Test zachowuje jednak swój przedmiot — **nienaruszalność rozdziału** —
+    tyle że po nowej stronie kontraktu: próba kasowania kończy się
+    ``ProtectedError``, a rozdział, jego ``deleted_at`` i jego denorm-cache
+    zostają dokładnie takie, jakie były. Sprawdzamy tu cache, czego NIE robi
+    ``test_ksiazka_matka_z_rozdzialem_protect`` w ``test_soft_delete_
+    guards.py`` — tam chodzi o sam guard, tu o skutki uboczne odmowy.
     """
     from bpp.models import Wydawnictwo_Zwarte
 
@@ -96,16 +104,22 @@ def test_soft_delete_ksiazki_matki_nie_psuje_cache_rozdzialu(denorms):
         f"setup zepsuty — slug rozdzialu nie zawiera tytulu matki: {slug_przed!r}"
     )
 
-    matka.delete()  # soft
+    from django.db.models import ProtectedError
+
+    with pytest.raises(ProtectedError):
+        matka.delete()  # guard fazy 04 — ksiazka ma rozdzial
     denorms.flush()
 
+    matka.refresh_from_db()
+    assert matka.deleted_at is None, "matka trafila do kosza mimo odmowy"
+
     assert Wydawnictwo_Zwarte.objects.filter(pk=rozdzial.pk).exists(), (
-        "rozdzial znikl razem z matka — kaskada NIE jest waska"
+        "rozdzial znikl przy odmowie skasowania matki"
     )
 
     rozdzial.refresh_from_db()
     assert rozdzial.deleted_at is None, "rozdzial zostal soft-skasowany kaskadowo"
     assert rozdzial.slug == slug_przed, (
-        f"denorm-cache rozdzialu zmienil sie po skasowaniu matki: "
+        f"denorm-cache rozdzialu zmienil sie przy probie skasowania matki: "
         f"{slug_przed!r} -> {rozdzial.slug!r}"
     )

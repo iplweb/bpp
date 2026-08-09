@@ -401,6 +401,7 @@ bpp.autor:
   autor_jednostka              -> bpp.autor_jednostka?
   autorzy                      -> bpp.autorzy?
   cache_punktacja_autora       -> bpp.cache_punktacja_autora?
+  deleted_at                   datetime?
   expertus_id                  str?  "Identyfikator w bazie Expertus"
   id                           int
   imiona                       str
@@ -426,10 +427,12 @@ bpp.autor:
   praca_habilitacyjna          -> bpp.praca_habilitacyjna?
   promotor_doktoratu           -> bpp.praca_doktorska?
   pseudonim                    str
+  restored_at                  datetime?
   search                       unknown
   slug                         str
   sort                         str
   system_kadrowy_id            int?  "Identyfikator w systemie kadrowym" — Identyfikator cyfrowy, używany do matchowania autora z danymi z systemu kadrowego Uczelni
+  transaction_id               str?
   tytul                        -> bpp.tytul?
   www                          str
   wydawnictwo_ciagle           -> bpp.wydawnictwo_ciagle?
