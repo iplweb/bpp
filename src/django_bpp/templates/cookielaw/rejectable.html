@@ -8,27 +8,31 @@
      aria-label="Zgoda na pliki cookie">
     <div class="cookie-pasek">
 
-        {# Lewa kolumna: zdanie, pod nim odnosniki jeden pod drugim. #}
+        {# Lewa kolumna: zdanie, a za nim odnosniki w tym samym akapicie, #}
+        {# rozdzielone kropka srodkowa. #}
         <div class="cookie-pasek__tresc">
             <p class="cookie-pasek__tekst">
                 <span class="cookie-icon" aria-hidden="true"></span>
                 <strong>Ciasteczka.</strong> Używamy ich, żeby zapamiętać Twoje
                 ustawienia i policzyć odwiedziny. Odmowa też zostawia ciasteczko —
                 bez niego nie zapamiętalibyśmy Twojej decyzji.
-            </p>
-
-            <div class="cookie-pasek__linki">
-                {# display: contents na tym spanie sprawia, ze wstawiony #}
-                {# przez JS odnosnik jest bezposrednim dzieckiem kontenera #}
-                {# — inaczej nie dalby sie ulozyc ani blokowo, ani 50/50. #}
+                {# Separatory dostaja aria-hidden: czytnik ekranu odczytalby #}
+                {# je jako "kropka srodkowa", co nic nie wnosi. #}
+                <span class="cookie-pasek__sep" aria-hidden="true">·</span>
                 <span id="browser-specific-links"></span>
                 <a href="https://www.nask.pl/aktualnosci/slodka-nazwa-gorzkie-konsekwencje-co-tak-naprawde-robia-pliki-cookie"
-                   target="_blank" rel="noopener">
-                    Co naprawdę robią pliki cookie? (NASK)<span
-                        class="link-zewnetrzny" aria-hidden="true">↗</span>
-                    <span class="show-for-sr">Otwiera się w nowej karcie</span>
-                </a>
-            </div>
+                   target="_blank" rel="noopener">Co naprawdę robią pliki cookie?
+                    (NASK)<svg class="ikona-zewnetrzna" viewBox="0 0 12 12"
+                         width="12" height="12" aria-hidden="true"
+                         focusable="false"><path d="M4.5 1.5H1.5v9h9v-3"
+                        fill="none" stroke="currentColor" stroke-width="1.3"
+                        stroke-linecap="round"/><path d="M7 1.5h3.5V5"
+                        fill="none" stroke="currentColor" stroke-width="1.3"
+                        stroke-linecap="round" stroke-linejoin="round"/><path
+                        d="M10.5 1.5L6 6" fill="none" stroke="currentColor"
+                        stroke-width="1.3" stroke-linecap="round"/></svg><span
+                        class="show-for-sr">Otwiera się w nowej karcie</span></a>
+            </p>
         </div>
 
         {# Prawa kolumna. Przyciski, nie linki: to akcja zmieniajaca stan, #}
@@ -98,13 +102,13 @@
             a.rel = 'noopener';
             a.textContent = link.tekst;
 
-            // Strzalka zewnetrzna jak przy odnosniku NASK: znak jest
-            // dekoracja, tresc dla czytnika niesie tekst obok.
-            var strzalka = document.createElement('span');
-            strzalka.className = 'link-zewnetrzny';
-            strzalka.setAttribute('aria-hidden', 'true');
-            strzalka.textContent = '↗';
-            a.appendChild(strzalka);
+            // Ta sama ikona odnosnika zewnetrznego co przy NASK. Klonujemy
+            // ja z gotowego elementu w szablonie zamiast sklejac druga kopie
+            // sciezek SVG — jedno zrodlo ksztaltu, zero rozjazdu.
+            var wzor = document.querySelector('.ikona-zewnetrzna');
+            if (wzor) {
+                a.appendChild(wzor.cloneNode(true));
+            }
 
             var dlaCzytnika = document.createElement('span');
             dlaCzytnika.className = 'show-for-sr';
@@ -112,6 +116,12 @@
             a.appendChild(dlaCzytnika);
 
             kontener.appendChild(a);
+
+            var sep = document.createElement('span');
+            sep.className = 'cookie-pasek__sep';
+            sep.setAttribute('aria-hidden', 'true');
+            sep.textContent = '·';
+            kontener.appendChild(sep);
         }
     })();
 

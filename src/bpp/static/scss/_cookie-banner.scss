@@ -77,37 +77,27 @@
   line-height: 1.4;
 }
 
-.cookie-pasek__linki {
-  margin-top: 0.35rem;
-  line-height: 1.4;
-
-  // Odnośnik wstawiany przez JS mieszka w opakowującym spanie;
-  // `display: contents` usuwa ten span z układu, dzięki czemu sam odnośnik
-  // zachowuje się jak bezpośrednie dziecko — inaczej nie dałby się ułożyć
-  // ani blokowo, ani po połowie szerokości.
-  #browser-specific-links {
-    display: contents;
-  }
-
-  a {
-    display: block;
-    text-decoration: underline;
-  }
+// Odnośniki płyną w tym samym akapicie co zdanie, rozdzielone kropką.
+.cookie-pasek__tekst a {
+  text-decoration: underline;
+  white-space: nowrap;
 }
 
-// Strzałka po odnośniku zewnętrznym. Sam znak jest dekoracją (aria-hidden),
-// treść dla czytnika niesie sąsiedni tekst „Otwiera się w nowej karcie".
-//
-// U+2197 ma w większości krojów bardzo niską pozycję względem linii pisma —
-// domyślnie ląduje pod tekstem zamiast obok. `vertical-align: middle`
-// wyrównuje go do środka wysokości x-height, a `line-height: 1` odcina go od
-// interlinii wiersza, żeby nie rozpychał odnośnika w pionie.
-.link-zewnetrzny {
-  margin-left: 0.2em;
-  font-size: 0.85em;
-  line-height: 1;
-  vertical-align: middle;
-  text-decoration: none;
+.cookie-pasek__sep {
+  margin: 0 0.35em;
+  opacity: 0.5;
+}
+
+// Ikona odnośnika zewnętrznego rysowana SVG, nie znakiem Unicode. U+2197
+// siedzi w większości krojów daleko poniżej linii pisma i nie da się tego
+// wyrównać przenośnie — każdy krój ma inną metrykę. SVG ma własne pudełko
+// o znanej wysokości, więc `vertical-align` działa przewidywalnie wszędzie.
+.ikona-zewnetrzna {
+  width: 0.75em;
+  height: 0.75em;
+  margin-left: 0.3em;
+  vertical-align: 0.02em;
+  flex-shrink: 0;
 }
 
 // Przyciski jeden pod drugim: „Zgadzam się", niżej „Nie zgadzam się".
@@ -157,16 +147,6 @@
     flex-direction: column;
     align-items: stretch;
     gap: 0.5rem;
-  }
-
-  .cookie-pasek__linki {
-    display: flex;
-    gap: 0.5rem;
-
-    a {
-      flex: 1 1 0;
-      min-width: 0;
-    }
   }
 
   // Na wąskim ekranie przyciski wracają obok siebie i dzielą szerokość
