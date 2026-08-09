@@ -200,3 +200,224 @@ def test_flip_protect_nie_zmienil_reszty_pola_wydawnictwo_nadrzedne():
     assert field.remote_field.related_name == "wydawnictwa_powiazane_set"
     assert field.null is True
     assert field.blank is True
+
+
+# --- Warstwa 2: Autor jako model soft-delete + guard ------------------------
+
+
+@pytest.mark.django_db
+def test_autor_bez_prac_soft_delete_ok(autor_jan_nowak):
+    """Autor bez prac („husk") kasuje się miękko — to on zostaje po scaleniu."""
+    autor_jan_nowak.delete()
+    autor_jan_nowak.refresh_from_db()
+
+    assert autor_jan_nowak.deleted_at is not None
+    assert not Autor.objects.filter(pk=autor_jan_nowak.pk).exists()
+    assert Autor.global_objects.filter(pk=autor_jan_nowak.pk).exists()
+
+
+@pytest.mark.django_db
+def test_autor_soft_delete_nie_kasuje_powiazan_spoza_soft_delete(
+    autor_jan_nowak, jednostka
+):
+    """Miękkie skasowanie autora NIE WOLNO, by cokolwiek fizycznie usunęło.
+
+    ``SoftDeleteModel.delete()`` pakietu przechodzi po WSZYSTKICH relacjach
+    odwrotnych i dla dziecka z ``CASCADE``, które nie jest samo modelem
+    soft-delete, woła zwykłe ``delete()`` — czyli kasuje TWARDO. ``Autor``
+    ma 27 takich dzieci, m.in. ``Autor_Jednostka``, ``Autor_Dyscyplina``
+    i ``Autor_Absencja``: delegowanie do ``super().delete()`` wymazałoby
+    zatrudnienie i dyscypliny osoby, a husk przestałby dać się sensownie
+    przywrócić.
+
+    Sprawdzone mutacją: po podmianie ciała na ``super().delete()`` ten test
+    nie tylko pada — samo przejście po relacjach ``Autora`` wywala się
+    ``ProgrammingError``-em na tabeli, której w bazie nie ma
+    (``raport_slotow_raportzerowyentry``). Refleksyjna kaskada pakietu jest
+    dla tego modelu nie tyle ryzykowna, co po prostu nieużywalna.
+
+    Dlatego ``Autor.delete()`` pisze ``deleted_at`` sam — tak samo, jak
+    zdecydowała faza 02 dla publikacji (patrz ``BppPublikacjaSoftDelete
+    Mixin``). Ten test jest jedynym, który to pilnuje.
+    """
+    from bpp.models import Autor_Jednostka
+
+    Autor_Jednostka.objects.create(autor=autor_jan_nowak, jednostka=jednostka)
+    assert Autor_Jednostka.objects.filter(autor=autor_jan_nowak).count() == 1
+
+    autor_jan_nowak.delete()
+
+    assert Autor_Jednostka.objects.filter(autor=autor_jan_nowak).count() == 1, (
+        "miękkie skasowanie autora fizycznie usunęło jego powiązanie "
+        "z jednostką — to kaskada pakietu, której NIE WOLNO uruchamiać"
+    )
+
+
+@pytest.mark.django_db
+def test_autor_husk_wraca_z_kosza(autor_jan_nowak):
+    """``restore()`` musi działać mimo relacji do modeli spoza soft-delete.
+
+    ``SoftDeleteModel.restore()`` pakietu ma domyślnie ``strict=True``
+    i sprawdza KAŻDE pole z ``related_model`` — także zwykłe FK w przód.
+    ``Autor`` ma FK m.in. do ``Tytul``, więc gołe ``restore()`` rzuciłoby
+    ``SoftDeleteException`` i przywrócenie husku byłoby niemożliwe.
+    """
+    autor_jan_nowak.delete()
+    assert not Autor.objects.filter(pk=autor_jan_nowak.pk).exists()
+
+    autor_jan_nowak.restore()
+    autor_jan_nowak.refresh_from_db()
+
+    assert autor_jan_nowak.deleted_at is None
+    assert Autor.objects.filter(pk=autor_jan_nowak.pk).exists()
+
+
+@pytest.mark.django_db
+def test_husk_autora_znika_z_menedzera_objects_i_z_wyszukiwarki(autor_jan_nowak):
+    """``Autor.objects`` musi ukrywać husk — inaczej „usunięty" autor
+    dalej wyskakuje w autocomplete, na listach i w wyszukiwarce
+    pełnotekstowej.
+
+    ``AutorManager`` nie był przepleciony z filtrem soft-delete (§4c/R4
+    handoffu): sam ``SoftDeleteModel`` w bazie klas tego NIE załatwia, bo
+    ``objects = AutorManager()`` nadpisuje menedżer pakietu.
+    """
+    nazwisko = autor_jan_nowak.nazwisko
+    autor_jan_nowak.delete()
+
+    assert not Autor.objects.filter(nazwisko=nazwisko).exists()
+    assert Autor.objects.all().count() == 0
+    assert Autor.deleted_objects.filter(pk=autor_jan_nowak.pk).exists()
+
+
+@pytest.mark.django_db
+def test_queryset_autora_nie_pozwala_na_bulk_update_deleted_at(autor_jan_nowak):
+    """Gate z fazy 01 musi obowiązywać też ``AutorQuerySet``.
+
+    Bulk ``update(deleted_at=...)`` omija ``save()``, sygnały, reversion
+    i (od fazy 06) ``SoftDeleteLog``. ``AutorQuerySet`` dziedziczy dziś po
+    zwykłym ``models.QuerySet``, więc bez przepięcia bazy gate by tu nie
+    obowiązywał.
+    """
+    with pytest.raises(RuntimeError):
+        Autor.objects.filter(pk=autor_jan_nowak.pk).update(deleted_at=None)
+
+
+@pytest.mark.django_db
+def test_metody_domenowe_autorquerysetu_przezyly_przepiecie(autor_jan_nowak, uczelnia):
+    """Przepięcie bazy ``AutorQuerySet`` nie może zgubić metod zakresów.
+
+    ``aktualnie_zatrudnieni`` / ``kiedykolwiek_zwiazani`` /
+    ``kiedykolwiek_zatrudnieni`` są używane przez widoki i API — gdyby
+    zniknęły przy zmianie klasy bazowej, padłoby to daleko od tego pliku.
+    """
+    qs = Autor.objects.all()
+    assert qs.aktualnie_zatrudnieni(uczelnia).count() == 0
+    assert qs.kiedykolwiek_zwiazani(uczelnia).count() == 0
+    assert qs.kiedykolwiek_zatrudnieni(uczelnia).count() == 0
+
+
+# --- Zadanie 4: guard Autor.delete() dla każdego typu pracy -----------------
+
+
+@pytest.mark.django_db
+def test_autor_z_praca_ciagla_protect(
+    wydawnictwo_ciagle, autor_jan_kowalski, jednostka, typy_odpowiedzialnosci
+):
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+    with pytest.raises(ProtectedError):
+        autor_jan_kowalski.delete()
+
+
+@pytest.mark.django_db
+def test_autor_z_praca_zwarta_protect(
+    wydawnictwo_zwarte, autor_jan_kowalski, jednostka, typy_odpowiedzialnosci
+):
+    wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
+    with pytest.raises(ProtectedError):
+        autor_jan_kowalski.delete()
+
+
+@pytest.mark.django_db
+def test_autor_z_patentem_protect(
+    patent, autor_jan_kowalski, jednostka, typy_odpowiedzialnosci
+):
+    patent.dodaj_autora(autor_jan_kowalski, jednostka)
+    with pytest.raises(ProtectedError):
+        autor_jan_kowalski.delete()
+
+
+@pytest.mark.django_db
+def test_autor_z_doktoratem_protect(autor_jan_nowak, jednostka):
+    baker.make(Praca_Doktorska, autor=autor_jan_nowak, jednostka=jednostka)
+    with pytest.raises(ProtectedError):
+        autor_jan_nowak.delete()
+
+
+@pytest.mark.django_db
+def test_autor_z_habilitacja_protect(autor_jan_nowak, jednostka):
+    baker.make(Praca_Habilitacyjna, autor=autor_jan_nowak, jednostka=jednostka)
+    with pytest.raises(ProtectedError):
+        autor_jan_nowak.delete()
+
+
+@pytest.mark.django_db
+def test_autor_w_projekcie_protect(autor_jan_nowak):
+    """Uczestnictwo w projekcie chroni autora — tak jak chroniło zawsze.
+
+    ``Projekt_Autor.autor`` ma ``PROTECT`` od dawna, więc TWARDE
+    ``autor.delete()`` już przed fazą 04 kończyło się ``ProtectedError``.
+    Guard musi to zachować: gdyby liczył wyłącznie prace, miękkie kasowanie
+    po cichu obeszłoby istniejącą gwarancję i zostawiło projekt wskazujący
+    na husk.
+    """
+    from bpp.models.projekt import Projekt_Autor
+
+    baker.make(Projekt_Autor, autor=autor_jan_nowak)
+    with pytest.raises(ProtectedError):
+        autor_jan_nowak.delete()
+
+
+@pytest.mark.django_db
+def test_autor_z_praca_tylko_w_koszu_nadal_protect(
+    wydawnictwo_ciagle, autor_jan_kowalski, jednostka, typy_odpowiedzialnosci
+):
+    """Najważniejszy przypadek: autor „cały w koszu" NIE jest pusty.
+
+    Publikacja skasowana miękko zabiera kaskadą fazy 02 swoje autorstwa.
+    Przez ``objects`` autor wygląda wtedy na wolnego od zobowiązań — i to
+    jest pułapka: przywrócenie tej publikacji dałoby rekord wskazujący na
+    autora, którego nie ma. Guard liczy przez ``global_objects``
+    (spec §3.2).
+    """
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+    wydawnictwo_ciagle.delete()
+
+    assert not Wydawnictwo_Ciagle_Autor.objects.filter(
+        autor=autor_jan_kowalski
+    ).exists()
+    assert Wydawnictwo_Ciagle_Autor.global_objects.filter(
+        autor=autor_jan_kowalski
+    ).exists()
+
+    with pytest.raises(ProtectedError):
+        autor_jan_kowalski.delete()
+
+
+@pytest.mark.django_db
+def test_autor_zablokowany_guardem_nie_trafil_do_kosza(
+    wydawnictwo_ciagle, autor_jan_kowalski, jednostka, typy_odpowiedzialnosci
+):
+    """Guard ma ODMÓWIĆ, a nie „odmówić po fakcie".
+
+    Gdyby stał za zapisem ``deleted_at``, autor lądowałby w koszu mimo
+    wyjątku — a operator zobaczyłby błąd i zniknięcie naraz.
+    """
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+
+    with pytest.raises(ProtectedError):
+        autor_jan_kowalski.delete()
+
+    autor_jan_kowalski.refresh_from_db()
+    assert autor_jan_kowalski.deleted_at is None
+    assert Autor.objects.filter(pk=autor_jan_kowalski.pk).exists()
