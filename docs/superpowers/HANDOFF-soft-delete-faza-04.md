@@ -9,9 +9,11 @@
 
 | | |
 |---|---|
-| Gałąź | `feat/soft-delete-03`, worktree `~/Programowanie/bpp-soft-delete-03` |
-| Baza | `feat/soft-delete` (zawiera fazy 01 i 02; PR #741 scalony) |
-| Migracje fazy 03 | `pbn_integrator/0001` (rejestr wskrzeszeń), `bpp/0500` (warunkowy unique na habilitacji) |
+| Stan fazy 03 | ✅ **SCALONA** 2026-08-09, merge commit `774f1a72d`, PR #742 MERGED |
+| Punkt startowy fazy 04 | gałąź `feat/soft-delete` (zawiera fazy 01, 02, 03) |
+| Gałąź do założenia | `feat/soft-delete-04`, worktree `~/Programowanie/bpp-soft-delete-04` |
+| Migracje fazy 03 | `pbn_integrator/0001` (rejestr wskrzeszeń), `pbn_integrator/0002` (indeks), `bpp/0500` (warunkowy unique na habilitacji) |
+| Plan fazy 04 | `docs/superpowers/plans/2026-06-04-soft-delete-04-guardy-protect.md` — ⚠️ **czytaj razem z §4c**, plan jest starszy niż fazy 02–03 |
 
 Faza 03 domknęła **blocker wydania**: re-import z PBN publikacji, której rekord
 BPP siedzi w koszu, nie wywala się już `IntegrityError`-em na unikalności
@@ -225,6 +227,129 @@ z przywracaniem przychodzi dopiero w fazie 07. To regresja UX, nie funkcja.
 w adminie. Oznaczałoby utrzymywanie dwóch semantyk kasowania równolegle
 i wyrzucenie tego kodu w fazie 07 — koszt bez odbiorcy.
 
+## 4c. ⚠️ PLAN FAZY 04 vs KOD — rozjazdy sprawdzone 2026-08-09
+
+Plan `docs/superpowers/plans/2026-06-04-soft-delete-04-guardy-protect.md`
+powstał **przed fazami 02 i 03**. Poniższe zweryfikowane w kodzie, nie
+zgadywane. **Przeczytaj to PRZED Zadaniem 1** — plan cytuje stan, którego
+już nie ma.
+
+### R1. BLOKER: Zadanie 3 zepsuje scalanie autorów, a Zadanie 6 tego nie złapie
+
+To jest najważniejsza pozycja na tej liście.
+
+Plan (Zadanie 6) zakłada, że po transferze prac husk duplikatu jest pusty,
+więc guard go przepuści. **To nieprawda dla przypadku „kolizja w koszu"**,
+i to nie hipotetycznie — ten scenariusz ma już test:
+`deduplikator_autorow/tests/test_scal_autora_soft_delete.py::
+test_kolizja_autorstw_w_koszu_nie_tworzy_dwoch_wierszy`.
+
+Mechanizm:
+
+1. Publikacja jest w koszu → oba autorstwa (głównego i duplikatu) też.
+2. `_transfer_authorship_record` wykrywa kolizję (faza 03, po `global_objects`)
+   i **NIE przenosi** wiersza duplikatu — zostawia go przy duplikacie.
+3. Dziś to bezpieczne, bo `autor_duplikat.delete()` jest TWARDY i kaskaduje po
+   FK — wiersz znika fizycznie.
+4. **Zadanie 3 zmienia `Autor.delete()` na miękki.** Kaskada znika. Wiersz
+   zostaje przy duplikacie.
+5. Guard z Zadania 3 liczy przez `global_objects`, więc **widzi ten wiersz
+   w koszu** → `ProtectedError` → `scal_autora` łapie to jako `Exception`
+   i zwraca `success=False`. **Całe scalanie pada.**
+
+Zadanie 6 tego nie wykryje, bo symuluje wyłącznie czysty transfer (autorstwo
+żywe, przeniesione ręcznie). Test regresji z Zadania 6
+(`uv run pytest src/deduplikator_autorow/`) **wykryje** — i wtedy trzeba
+wiedzieć, że to nie przypadek, tylko przewidziana konsekwencja.
+
+**Poprawka należy do gałęzi `if existing:` w `_transfer_authorship_record`**
+(`deduplikator_autorow/utils/merge.py`): wiersz duplikatu trzeba przepiąć na
+głównego autora ORAZ nadać mu WŁASNY `transaction_id`. To drugie jest
+konieczne, bo inaczej `publikacja.restore()` wskrzesi dwa wiersze
+`(rekord, glowny, typ)` naraz i wywali się na
+`wc_autor_uniq_rekord_autor_typ`.
+
+Ta poprawka **była już raz napisana i usunięta** w fazie 03 — mutacja
+pokazała, że przy twardej kaskadzie jest martwym kodem. Faza 04 ją ożywia.
+Kolejność: napisz ją RAZEM z Zadaniem 3, nie po nim, bo inaczej między
+commitami zostaje zepsuty merge.
+
+### R2. `Praca_Habilitacyjna.autor` NIE jest już `OneToOneField`
+
+Plan, sekcja „Stan zweryfikowany w kodzie": „`OneToOneField(Autor, PROTECT)` —
+**już PROTECT, nie ruszamy**; reverse `autor.praca_habilitacyjna`".
+
+Po fazie 03 (migracja `bpp/0500`) to `ForeignKey(Autor, PROTECT)` + warunkowy
+`phab_uniq_autor_zywy`. `PROTECT` się zgadza, więc **konkluzja planu („nie
+ruszamy") zostaje słuszna** — ale dwie rzeczy w niej nie:
+
+- reverse to `autor.praca_habilitacyjna_set` (manager), nie obiekt;
+- w tabeli mapowania relacji plan pisze „`autor` (O2O)". Helper i tak liczy
+  przez `Model.global_objects.filter(autor=…)`, więc kod działa bez zmian —
+  ale autor może teraz mieć **wiele** habilitacji (żywą + dowolnie wiele
+  w koszu). Nie zakładaj, że licznik zwróci 0 albo 1.
+
+### R3. Zadanie 5 wskazuje nieistniejący plik docelowy
+
+Plan: „w istniejącym override `delete()` (z fazy 02) w
+`src/bpp/models/wydawnictwo_zwarte.py` dodaj guard na samym początku".
+
+**W `wydawnictwo_zwarte.py` NIE MA override `delete()`.** Faza 02 umieściła go
+w `BppPublikacjaSoftDeleteMixin.delete()` (`bpp/models/soft_delete.py:335`),
+dzielonym przez WSZYSTKIE pięć modeli publikacji.
+
+Wstawienie tam guarda na rozdziały byłoby błędem: dla `Wydawnictwo_Ciagle`
+czy `Patent` helper odpytałby
+`Wydawnictwo_Zwarte.global_objects.filter(wydawnictwo_nadrzedne=<obiekt innego
+modelu>)` — zapytanie międzytypowe, w najlepszym razie zawsze puste, w gorszym
+wyjątek.
+
+Guard musi trafić do **własnego** `delete()` w `Wydawnictwo_Zwarte`, wołającego
+`super().delete(*args, **kwargs)`. Sygnatura musi przepuścić `user`/`reason`
+(kontrakt PINNED fazy 06/07).
+
+### R4. `AutorManager` NIE jest przepleciony — to nie jest „warunek wstępny", to zakres
+
+Zadanie 3 pisze: „To zadanie traktuje przeplecenie menedżera jako warunek
+wstępny; jeśli go brak — najpierw dorób". **Brak.** `Autor` ma
+`objects = AutorManager()` (`autor.py:298`, NIE `:200`) i własny `save()`,
+a `AutorManager` dziedziczy `FulltextSearchMixin` +
+`models.Manager.from_queryset(AutorQuerySet)` — zero filtrowania po
+`deleted_at`.
+
+Czyli po dodaniu `SoftDeleteModel` do bazy klasy **husk autora będzie widoczny
+wszędzie**: w autocomplete, w wyszukiwarce pełnotekstowej, na listach.
+To osobna, nietrywialna robota (MRO + FTS), a nie jednolinijkowiec — wyceń ją
+jako część Zadania 3, nie jako przypis.
+
+### R5. Wszystkie numery linii w planie są nieaktualne
+
+Ta sama pułapka, co w fazie 03. Szukaj po nazwach, nie po numerach.
+
+| Plan mówi | Jest naprawdę |
+|---|---|
+| `abstract/authors.py:22` | `:25` (`autor = models.ForeignKey("bpp.Autor", CASCADE)`) |
+| `praca_doktorska.py:136` | `:154` |
+| `wydawnictwo_zwarte.py:202` | `:286` |
+| `autor.py:81` (`class Autor`) | `:172` |
+| `autor.py:200` (`objects = AutorManager()`) | `:298` |
+| `merge.py:191/223/265/317/335/410/430` | plik zrefaktoryzowany w fazie 03 — wszystkie nieaktualne |
+
+### Co w planie jest nadal PRAWDZIWE (sprawdzone)
+
+- `Wydawnictwo_*_Autor.autor` i `Praca_Doktorska.autor` to nadal `CASCADE` —
+  flip do `PROTECT` (Zadanie 2) jest do zrobienia.
+- `Wydawnictwo_Zwarte.wydawnictwo_nadrzedne` to nadal `CASCADE`
+  + `related_name="wydawnictwa_powiazane_set"`.
+- `Autor` nie ma własnego `delete()` — dziś kasuje się twardo, z kaskadą FK.
+- `raise_if_has_protected_children` nie istnieje nigdzie w `src/`.
+- Katalog `src/bpp/tests/test_models/` istnieje, `test_wydawnictwo_zwarte.py`
+  też — ścieżki testów z planu są dobre.
+- Migracja state-only (`SeparateDatabaseAndState`) jest właściwa: `on_delete`
+  żyje wyłącznie w ORM, DDL nie jest potrzebne.
+
+---
+
 ## 5. Co czeka fazę 04 (guardy PROTECT)
 
 - **Nikt nie przeplata `AutorManager`** — po uczynieniu `Autor`
@@ -243,19 +368,9 @@ i wyrzucenie tego kodu w fazie 07 — koszt bez odbiorcy.
   `autor.praca_habilitacyjna` jako po OBIEKT jest zepsuty. Dwa znane miejsca
   są już naprawione (`RokHabilitacjiView`, `browse/autor.html`) i oba miały
   testy, które to złapały.
-- ⚠️ **`scal_autora` polega dziś na TWARDEJ kaskadzie `autor_duplikat.delete()`.**
-  Gdy autorstwo duplikatu koliduje z autorstwem głównego i OBA są w koszu,
-  wiersz duplikatu zostaje przy duplikacie — i znika dopiero dlatego, że
-  usunięcie autora kaskaduje po FK fizycznie. **Faza 04 zmienia kasowanie
-  autora na miękkie, więc ten wiersz przetrwa** i zostanie sierotą wskazującą
-  na autora w koszu; co gorsza będzie miał `transaction_id` publikacji, więc
-  `publikacja.restore()` wskrzesi DWA wiersze `(rekord, glowny, typ)`
-  i wywali się na `wc_autor_uniq_rekord_autor_typ`.
-  Miejsce: gałąź `if existing:` w `_transfer_authorship_record`
-  (`deduplikator_autorow/utils/merge.py`). Poprawka to prawdopodobnie
-  przepięcie wiersza na głównego autora + nadanie mu WŁASNEGO
-  `transaction_id` (odpięcie od grupy restore'u publikacji). Napisana raz
-  i usunięta, bo mutacja pokazała, że dziś jest martwym kodem — patrz §7.
+- ⚠️ **`scal_autora` polega dziś na TWARDEJ kaskadzie `autor_duplikat.delete()`
+  — Zadanie 3 to zepsuje.** Pełny mechanizm i miejsce poprawki: **§4c, R1**
+  (to jest bloker, nie przypis).
 
 ## 6. Dług nadal otwarty
 
