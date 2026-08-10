@@ -520,7 +520,7 @@ dev = [
     "ruff==0.16.1",
     "djlint>=1.43.2,<2",
     "pre-commit>=4.6.1",
-    "twine>=5.1.0",
+    "twine>=7.0.0",
     "ipdb>=0.13.9",
     "ipython>=8.2.0",
     "playwright>=1.62.0,<2",
