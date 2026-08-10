@@ -31,6 +31,29 @@ from pbn_api.exceptions import (
 logger = logging.getLogger(__name__)
 
 
+#: Nazwa częściowego unikatu z Meta.constraints — jedyny IntegrityError,
+#: który wolno przetłumaczyć na domenowe „już w kolejce".
+NAZWA_UNIKATU_AKTYWNEGO_WPISU = "pbn_export_queue_jeden_aktywny_wpis_na_rekord"
+
+
+def _to_kolizja_aktywnego_wpisu(exc):
+    """Czy ten ``IntegrityError`` NAPRAWDĘ znaczy „już w kolejce"?
+
+    psycopg wystawia nazwę naruszonego ograniczenia w
+    ``exc.__cause__.diag.constraint_name``; gdy jej nie ma (inny sterownik
+    albo backend) — fallback na tekst wyjątku.
+
+    Tłumaczenie „w ciemno" połykało naruszenie NOT NULL na ``zamowil``
+    (operacja systemowa bez użytkownika) i zamieniało brak wycofania
+    oświadczeń w PBN w niewinny komunikat „już w kolejce".
+    """
+    diag = getattr(getattr(exc, "__cause__", None), "diag", None)
+    nazwa = getattr(diag, "constraint_name", None)
+    if nazwa:
+        return nazwa == NAZWA_UNIKATU_AKTYWNEGO_WPISU
+    return NAZWA_UNIKATU_AKTYWNEGO_WPISU in str(exc)
+
+
 class PBN_Export_QueueManager(models.Manager):
     def filter_rekord_do_wysylki(self, rekord):
         return self.filter(
@@ -58,6 +81,12 @@ class PBN_Export_QueueManager(models.Manager):
                     uczelnia=uczelnia,
                 )
         except IntegrityError as e:
+            # Tylko kolizja częściowego unikatu znaczy „już w kolejce".
+            # Każde inne naruszenie (NOT NULL na `zamowil` przy operacji
+            # systemowej, zerwany FK) MUSI polecieć w górę — inaczej
+            # zniknęłoby pod komunikatem sugerującym, że wszystko gra.
+            if not _to_kolizja_aktywnego_wpisu(e):
+                raise
             raise AlreadyEnqueuedError(
                 "ten rekord jest już w kolejce do wysyłki"
             ) from e

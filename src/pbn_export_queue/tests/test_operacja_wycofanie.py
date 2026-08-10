@@ -177,3 +177,62 @@ def test_sprzataczka_nie_kasuje_zlecen_wycofania(
         "wpis WYSYLKA rekordu z kosza ma nadal znikać — to zachowanie "
         "z fazy 02, którego nie wolno zepsuć przy okazji"
     )
+
+
+@pytest.mark.django_db
+def test_wysylka_nie_wola_delete_all_statements(
+    wydawnictwo_ciagle, admin_user, uczelnia
+):
+    """Dodanie gałęzi WYCOFANIE nie mogło przekierować WYSYŁKI.
+
+    Rozgałęzienie siedzi na wspólnej ścieżce ``send_to_pbn()``, więc błąd
+    w warunku (albo default pola) zamieniłby zaległą kolejkę wysyłek
+    w kolejkę wycofań — i skasował oświadczenia rekordów, których nikt
+    nie usuwał.
+    """
+    wpis = baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=admin_user,
+        uczelnia=uczelnia,
+        operacja=PBN_Export_Queue.Operacja.WYSYLKA,
+        wysylke_zakonczono=None,
+    )
+
+    sent_data = MagicMock()
+    with (
+        patch.object(PBN_Export_Queue, "_pozyskaj_klienta_pbn") as mock_klient,
+        patch(
+            "bpp.admin.helpers.pbn_api.cli.sprobuj_wyslac_do_pbn_celery",
+            return_value=(sent_data, ["ok"]),
+        ) as mock_send,
+    ):
+        result = wpis.send_to_pbn()
+
+    assert result == SendStatus.FINISHED_OKAY
+    mock_send.assert_called_once()
+    # ścieżka WYSYLKA przekazuje uczelnię wpisu (multi-hosted)
+    assert mock_send.call_args.kwargs["uczelnia"] == uczelnia
+    # klienta wycofania nie budujemy w ogóle
+    mock_klient.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_integrity_error_zamowil_nie_udaje_already_enqueued(wydawnictwo_ciagle):
+    """Prawdziwy ``IntegrityError`` nie może udawać „już w kolejce".
+
+    ``sprobuj_utowrzyc_wpis`` tłumaczyło KAŻDY ``IntegrityError`` na
+    ``AlreadyEnqueuedError``, bo spodziewało się wyłącznie kolizji
+    częściowego unikatu. Operacja systemowa (soft-delete z sygnału,
+    z celery, ze scalania — bez ``request.user``) trafia jednak w NOT NULL
+    na ``zamowil`` i dostawała „ten rekord jest już w kolejce":
+    ``zakolejkuj_wycofanie`` zwracało None, oświadczenia zostawały w PBN,
+    a operator widział komunikat sugerujący, że wszystko jest w porządku.
+
+    ``zamowil=None`` łamie NOT NULL, a NIE unikat aktywnego wpisu — więc
+    MUSI polecieć w górę jako ``IntegrityError``.
+    """
+    from django.db import IntegrityError
+
+    with pytest.raises(IntegrityError):
+        PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(None, wydawnictwo_ciagle)
