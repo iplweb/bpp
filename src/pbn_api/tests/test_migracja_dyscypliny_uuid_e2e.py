@@ -14,6 +14,8 @@ import pytest
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 
+from pbn_api.tests.migracje_e2e_utils import przywroc_czubek_migracji_pbn_api
+
 PRZED = ("pbn_api", "0075_sentdata_fee_sent_sentdata_fee_uploaded_okay")
 PO = ("pbn_api", "0077_constrainty_uuid_dyscyplin")
 
@@ -48,39 +50,42 @@ def _policz(sql, *params):
 def test_migracja_przechodzi_na_bazie_z_duplikatami(bez_reinstalacji_denorma):
     uuid_slownika, uuid_dyscypliny = uuid4(), uuid4()
 
-    MigrationExecutor(connection).migrate([PRZED])
-    _wstaw_duplikaty(uuid_slownika, uuid_dyscypliny)
+    try:
+        MigrationExecutor(connection).migrate([PRZED])
+        _wstaw_duplikaty(uuid_slownika, uuid_dyscypliny)
 
-    assert (
-        _policz(
-            "SELECT count(*) FROM pbn_api_disciplinegroup WHERE uuid=%s",
-            uuid_slownika,
+        assert (
+            _policz(
+                "SELECT count(*) FROM pbn_api_disciplinegroup WHERE uuid=%s",
+                uuid_slownika,
+            )
+            == 2
         )
-        == 2
-    )
 
-    # to jest właściwy asert: migracja NIE wywala się na bazie z duplikatami
-    executor = MigrationExecutor(connection)
-    executor.loader.build_graph()
-    executor.migrate([PO])
+        # to jest właściwy asert: migracja NIE wywala się na bazie z duplikatami
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        executor.migrate([PO])
 
-    assert (
-        _policz(
-            "SELECT count(*) FROM pbn_api_disciplinegroup WHERE uuid=%s",
-            uuid_slownika,
+        assert (
+            _policz(
+                "SELECT count(*) FROM pbn_api_disciplinegroup WHERE uuid=%s",
+                uuid_slownika,
+            )
+            == 1
         )
-        == 1
-    )
-    assert (
-        _policz(
-            "SELECT count(*) FROM pbn_api_discipline WHERE uuid=%s", uuid_dyscypliny
+        assert (
+            _policz(
+                "SELECT count(*) FROM pbn_api_discipline WHERE uuid=%s", uuid_dyscypliny
+            )
+            == 1
         )
-        == 1
-    )
-    assert (
-        _policz(
-            "SELECT count(*) FROM pg_constraint WHERE conname=%s",
-            "pbn_api_discipline_uuid_unikalny_w_slowniku",
+        assert (
+            _policz(
+                "SELECT count(*) FROM pg_constraint WHERE conname=%s",
+                "pbn_api_discipline_uuid_unikalny_w_slowniku",
+            )
+            == 1
         )
-        == 1
-    )
+    finally:
+        przywroc_czubek_migracji_pbn_api()
