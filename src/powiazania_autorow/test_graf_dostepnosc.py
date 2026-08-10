@@ -8,8 +8,15 @@ funkcje dało się wywołać z klawiatury (2.1.1).
 
 from pathlib import Path
 
+import powiazania_autorow
+
+# Kotwiczymy na katalogu PAKIETU, nie na `__file__` testu: ścieżka liczona
+# przez `parents[n]` łamie się przy każdym przeniesieniu pliku testowego, a
+# ten plik już raz zmienił miejsce (mieszkał w `tests/`, która to nazwa
+# przesłaniała istniejący moduł `powiazania_autorow.tests` i wywalała
+# kolekcję pytesta).
 SZABLON = (
-    Path(__file__).resolve().parents[1]
+    Path(powiazania_autorow.__file__).resolve().parent
     / "templates"
     / "powiazania_autorow"
     / "graf.html"
