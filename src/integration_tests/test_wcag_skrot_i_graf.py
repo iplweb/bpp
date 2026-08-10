@@ -21,18 +21,30 @@ from model_bakery import baker
 from playwright.sync_api import Page, expect
 
 from bpp.models import Autor
+from powiazania_autorow.models import AuthorConnection
 
 
 def _url_autora(channels_live_server):
     autor = baker.make(Autor, imiona="Jan", nazwisko="Kowalski", pokazuj=True)
-    return (
-        f"{channels_live_server.url}"
-        f"{reverse('bpp:browse_autor', args=[autor.slug])}"
-    )
+    return f"{channels_live_server.url}{reverse('bpp:browse_autor', args=[autor.slug])}"
 
 
 def _url_grafu(channels_live_server):
+    # Autor MUSI mieć co najmniej jednego współautora: sieć BFS o <=1 węźle
+    # trafia w gałąź "pusta sieć" w renderujSiec() (graph.js:172-178), która
+    # asynchronicznie chowa #cytoscape-container (`style.display = "none"`).
+    # Bez współautora testy klawiatury/kliknięć poniżej są wyścigiem: klawisz
+    # albo klik trafiały czasem w kontener tuż przed jego ukryciem, więc
+    # cy.pan()/cy.zoom() się nie zmieniało (~20-30% flaky, znalezisko z
+    # code review — patrz raport).
     autor = baker.make(Autor, imiona="Jan", nazwisko="Kowalski", pokazuj=True)
+    wspolautor = baker.make(Autor, imiona="Anna", nazwisko="Nowak", pokazuj=True)
+    baker.make(
+        AuthorConnection,
+        primary_author=autor,
+        secondary_author=wspolautor,
+        shared_publications_count=3,
+    )
     return (
         f"{channels_live_server.url}"
         f"{reverse('bpp:browse_autor_powiazania', args=[autor.pk])}"
@@ -57,9 +69,7 @@ def _idz_na_strone(page: Page, url: str) -> None:
        ``document.activeElement`` po naciśnięciu klawisza gubi fokus
        ustawiony chwilę wcześniej przez ``locator.focus()``.
     """
-    page.context.add_cookies(
-        [{"name": "cookielaw_accepted", "value": "1", "url": url}]
-    )
+    page.context.add_cookies([{"name": "cookielaw_accepted", "value": "1", "url": url}])
     page.goto(url, wait_until="domcontentloaded")
     page.bring_to_front()
 
@@ -79,15 +89,16 @@ def test_skrot_otwiera_wyszukiwarke_domyslnie(
 
 
 @pytest.mark.django_db(transaction=True)
-def test_wylaczenie_skrotu_dziala(
-    channels_live_server, page: Page, transactional_db
-):
+def test_wylaczenie_skrotu_dziala(channels_live_server, page: Page, transactional_db):
     _idz_na_strone(page, _url_autora(channels_live_server))
 
     page.locator("#bpp-przelacznik-skrotow").click()
     page.keyboard.press("/")
-    page.wait_for_timeout(500)
 
+    # Handler "/" jest synchroniczny (brak fetchy/await), więc jeśli miałby
+    # otworzyć modal mimo wyłączenia, zrobiłby to natychmiast — `expect`
+    # sam odpytuje aż do timeoutu, więc twardy `wait_for_timeout` jest tu
+    # zbędny.
     expect(page.locator("#globalSearchModal")).not_to_be_visible()
 
 
@@ -155,14 +166,52 @@ def _cy_pan(page):
     )
 
 
+def _ustaw_zoom_z_zapasem(page):
+    """Ustawia zoom na 1 i sprawdza, że do `maxZoom` został zapas.
+
+    Po wyrenderowaniu sieci `renderujSiec()` woła `cy.fit()`, a przy
+    dwuwęzłowej sieci testowej dopasowanie dobija do `maxZoom` (4, patrz
+    ``powiazania/cy.js``). `zoomuj()` przycina wynik do `cy.maxZoom()`, więc
+    przybliżanie jest wtedy — całkiem poprawnie — operacją pustą i asercja
+    "zoom wzrósł" pada mimo sprawnego handlera. Zamiast dobierać liczbę
+    współautorów tak, żeby `fit()` przypadkiem zostawił zapas (kruche:
+    zależy od geometrii układu i rozmiaru viewportu), ustawiamy punkt
+    startowy jawnie.
+    """
+    page.evaluate("document.getElementById('cytoscape-container')._cyreg.cy.zoom(1)")
+    assert _cy_zoom(page) < page.evaluate(
+        "document.getElementById('cytoscape-container')._cyreg.cy.maxZoom()"
+    ), "brak zapasu do maxZoom -- test przybliżania nie mógłby niczego dowieść"
+
+
 def _czekaj_na_graf(page):
-    """Cytoscape inicjalizuje się synchronicznie przy DOMContentLoaded, ale
-    czekamy jawnie na `_cyreg`, żeby nie uzależniać testu od kolejności
-    ładowania skryptów."""
+    """Czeka, aż `renderujSiec()` (``powiazania/graph.js``) SKOŃCZY
+    renderowanie sieci — nie tylko na to, że instancja Cytoscape istnieje.
+
+    Samo `_cyreg.cy` powstaje synchronicznie przy starcie (`utworzCy()`),
+    ZANIM fetch `siec.json` w ogóle wystartuje, więc czekanie na nie było
+    czekaniem na nic: klawisz albo klik w oknie między "cy istnieje" a
+    "render się skończył" trafiał w pusty, jeszcze nieustawiony widok
+    i `cy.pan()`/`cy.zoom()` się nie zmieniało (~20-30% flaky).
+
+    Czekamy więc na sygnał POZYTYWNY — obecność węzłów. `cy.nodes()`
+    zapełnia dopiero `renderujSiec()`, przechodząc `data.nodes` już po
+    odpowiedzi z `siec.json`, więc niezerowa liczba węzłów dowodzi, że
+    asynchroniczna gałąź się zakończyła. Warunek "kontener nie jest
+    ukryty" byłby tu bezużyteczny: ``#cytoscape-container`` nie ma w
+    szablonie reguły ``display``, więc `getComputedStyle` zwraca "block"
+    od chwili sparsowania elementu — spełniałby się PRZED renderem,
+    a gałąź pustej sieci (`graph.js:172-178`) ustawia `display: none`
+    dopiero potem. `_url_grafu` seeduje współautora, żeby w tę gałąź
+    w ogóle nie wejść.
+    """
     page.wait_for_function(
-        "document.getElementById('cytoscape-container')"
-        " && document.getElementById('cytoscape-container')._cyreg"
-        " && document.getElementById('cytoscape-container')._cyreg.cy"
+        "() => {"
+        " const k = document.getElementById('cytoscape-container');"
+        " return !!(k && k._cyreg && k._cyreg.cy"
+        " && k._cyreg.cy.nodes().length > 0);"
+        "}",
+        timeout=15000,
     )
 
 
@@ -171,6 +220,7 @@ def test_graf_ma_przyciski_nawigacji_i_jest_fokusowalny(
     channels_live_server, page: Page, transactional_db
 ):
     _idz_na_strone(page, _url_grafu(channels_live_server))
+    _czekaj_na_graf(page)
 
     kontener = page.locator("#cytoscape-container")
     expect(kontener).to_have_attribute("tabindex", "0")
@@ -184,6 +234,7 @@ def test_graf_przycisk_zoom_realnie_zmienia_widok(
     _idz_na_strone(page, _url_grafu(channels_live_server))
     expect(page.locator("#graf-nav-zoom-in")).to_be_visible(timeout=10000)
     _czekaj_na_graf(page)
+    _ustaw_zoom_z_zapasem(page)
 
     zoom_przed = _cy_zoom(page)
     page.locator("#graf-nav-zoom-in").click()
@@ -243,6 +294,7 @@ def test_graf_nie_jest_pulapka_klawiaturowa(
     # blokował wszystko, Tab przestałby wyprowadzać focus — czyli naprawiając
     # 2.1.1 stworzylibyśmy pułapkę klawiaturową i złamalibyśmy 2.1.2.
     _idz_na_strone(page, _url_grafu(channels_live_server))
+    _czekaj_na_graf(page)
 
     kontener = page.locator("#cytoscape-container")
     kontener.focus()
