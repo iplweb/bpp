@@ -199,10 +199,25 @@ class PBN_Export_Queue(models.Model):
             # ⚠️ `get_object_for_this_type` pyta `_base_manager`, który z
             # definicji NIE filtruje (Django wymaga, żeby zwracał wszystkie
             # wiersze). Rekord soft-skasowany jest więc tą drogą nadal
-            # znajdowany, mimo że `objects` go nie pokazuje. Dla kolejki PBN
+            # znajdowany, mimo że `objects` go nie pokazuje. Dla WYSYŁKI
             # „w koszu" ma znaczyć „nie ma go" — inaczej wysyłalibyśmy do PBN
             # publikację, którą operator usunął.
-            if getattr(obiekt, "deleted_at", None) is not None:
+            #
+            # Dla WYCOFANIA ta sama przesłanka prowadzi do wniosku
+            # przeciwnego: oświadczenia wycofujemy WŁAŚNIE dlatego, że rekord
+            # trafił do kosza, więc soft-delete jest tu stanem oczekiwanym,
+            # a nie powodem przerwania. Bez tego warunku gałąź WYCOFANIE
+            # w `send_to_pbn()` byłaby martwym kodem, a sprzątaczka kolejki
+            # (`kolejka_wyczysc_wpisy_bez_rekordow`) po cichu kasowałaby
+            # zlecenia wycofania, zostawiając oświadczenia w PBN.
+            #
+            # Rekord skasowany TWARDO (wiersza nie ma) nadal daje False dla
+            # obu operacji — bez wiersza nie odczytamy `pbn_uid`, więc nie ma
+            # czego wycofywać. To świadoma, głośna porażka.
+            if (
+                self.operacja != self.Operacja.WYCOFANIE
+                and getattr(obiekt, "deleted_at", None) is not None
+            ):
                 return False
 
             if obiekt:
@@ -441,6 +456,73 @@ class PBN_Export_Queue(models.Model):
         self.save()
         return SendStatus.FINISHED_OKAY
 
+    def _pozyskaj_klienta_pbn(self):
+        """Buduje klienta PBN dla TEGO wpisu kolejki.
+
+        Uczelnia z FK wpisu (``self.uczelnia``) — nigdy „pierwsza z brzegu":
+        dawne API uczelni domyślnej zostało trwale usunięte i jest pilnowane
+        guardem ``bpp/tests/test_multihosted_get_default_guard.py``. Dla
+        wpisów legacy (``uczelnia_id is None``, sprzed migracji ``0009``)
+        jedyny dozwolony fallback to „jedyna-albo-głośny-błąd".
+
+        Token: z konta PBN zamawiającego — ``get_pbn_user()`` respektuje
+        ``przedstawiaj_w_pbn_jako``, więc konto techniczne (operacje
+        systemowe) można podpiąć pod konto z ważnym tokenem bez zmiany kodu.
+        """
+        from bpp.models import Uczelnia
+
+        pbn_user = self.zamowil.get_pbn_user()
+        uczelnia = self.uczelnia or Uczelnia.objects.get_single_uczelnia_or_fail()
+        return uczelnia.pbn_client(pbn_user.pbn_token)
+
+    def withdraw_from_pbn(self):
+        """Gałąź WYCOFANIE — cienkie wywołanie prymitywu.
+
+        NIE woła klienta PBN bezpośrednio i NIE dotyka ``SentData`` — robi
+        to ``wycofaj_oswiadczenia()``, wspólne z wejściem synchronicznym.
+        Tu wyłącznie: pozyskanie klienta, wywołanie prymitywu i tłumaczenie
+        wyniku/wyjątku na ``SendStatus``. Klasyfikacja wyjątków PBN idzie
+        przez wspólne ``_handle_pbn_exception`` (ResourceLocked →
+        RETRY_LATER, PraceSerwisowe → RETRY_MUCH_LATER, HTTP 423 →
+        RETRY_LATER, …), czyli DOKŁADNIE tę samą tabelę co wysyłka.
+
+        :return: SendStatus
+        """
+        from pbn_api.wycofanie import wycofaj_oswiadczenia
+
+        try:
+            client = self._pozyskaj_klienta_pbn()
+        except Exception as exc:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się zbudować klienta PBN do wycofania oświadczeń "
+                f"(PBN_Export_Queue pk={self.pk})",
+                logger=logger,
+                do_rollbar=False,  # Rollbar w _handle_pbn_exception
+            )
+            return self._handle_pbn_exception(exc)
+
+        try:
+            wynik = wycofaj_oswiadczenia(
+                self.rekord_do_wysylki, client, uczelnia=self.uczelnia
+            )
+        except Exception as exc:
+            zaloguj_polkniety_wyjatek(
+                "Błąd podczas wycofywania oświadczeń z PBN z kolejki eksportu "
+                f"(PBN_Export_Queue pk={self.pk})",
+                logger=logger,
+                do_rollbar=False,  # Rollbar w _handle_pbn_exception
+            )
+            return self._handle_pbn_exception(exc)
+
+        # POMINIETO (rekord bez PBN UID) też kończy wpis sukcesem: nic nie
+        # poszło do PBN, więc stan docelowy jest osiągnięty. To gate
+        # obronny — `zakolejkuj_wycofanie` takich wpisów w ogóle nie tworzy.
+        self.wysylke_zakonczono = timezone.now()
+        self.zakonczono_pomyslnie = True
+        self.dopisz_komunikat(wynik.komunikat)
+        self.save()
+        return SendStatus.FINISHED_OKAY
+
     def _zajmij_atomowo(self):
         """Atomowo zajmij wpis do wysyłki (zabezpieczenie przed dwoma workerami).
 
@@ -495,6 +577,12 @@ class PBN_Export_Queue(models.Model):
             # Inny worker zdążył zająć ten wiersz (row lock) albo go zakończył.
             # On dokończy — bieżące zadanie kończymy bez ponawiania.
             return SendStatus.LOCKED_ELSEWHERE
+
+        # Rozgałęzienie PO zajęciu wiersza: wycofanie dziedziczy za darmo
+        # licznik `ilosc_prob`, znacznik `wysylke_podjeto` i ochronę przed
+        # dwoma workerami. Ścieżka WYSYLKA niżej — bez zmian.
+        if self.operacja == self.Operacja.WYCOFANIE:
+            return self.withdraw_from_pbn()
 
         from bpp.admin.helpers.pbn_api.cli import sprobuj_wyslac_do_pbn_celery
 

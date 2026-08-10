@@ -5,10 +5,43 @@ z profilu instytucji. Realizuje to nowa operacja ``WYCOFANIE`` w kolejce
 eksportu, obok dotychczasowej ``WYSYLKA``.
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 from model_bakery import baker
 
-from pbn_export_queue.models import PBN_Export_Queue
+from pbn_export_queue.models import PBN_Export_Queue, SendStatus
+
+
+@pytest.fixture
+def wpis_wycofania(wydawnictwo_ciagle, admin_user, uczelnia):
+    """Zlecenie wycofania dla publikacji, która poszła do PBN i trafiła
+    do kosza — czyli dokładnie sytuacja, w której faza 05 działa.
+
+    Kolejność ma znaczenie: wpis powstaje PRZED skasowaniem rekordu, tak
+    jak w produkcji (receiver fazy 06 kolejkuje przy usuwaniu).
+    """
+    from pbn_api.models import Publication, SentData
+
+    wydawnictwo_ciagle.pbn_uid = baker.make(Publication)
+    wydawnictwo_ciagle.save()
+    SentData.objects.create(
+        object=wydawnictwo_ciagle,
+        data_sent={},
+        submitted_successfully=True,
+        uploaded_okay=True,
+        uczelnia=uczelnia,
+    )
+    wpis = baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=admin_user,
+        uczelnia=uczelnia,
+        operacja=PBN_Export_Queue.Operacja.WYCOFANIE,
+        wysylke_zakonczono=None,
+    )
+    wydawnictwo_ciagle.delete()
+    return wpis
 
 
 @pytest.mark.django_db
@@ -61,3 +94,36 @@ def test_sentdata_mark_as_withdrawn(wydawnictwo_ciagle, uczelnia):
     sd = SentData.objects.get_for_rec(wydawnictwo_ciagle, uczelnia)
     assert sd.submitted_successfully is True
     assert sd.withdrawn_at is None
+
+
+@pytest.mark.django_db
+def test_wycofanie_wola_delete_all_statements(
+    wpis_wycofania, wydawnictwo_ciagle, uczelnia
+):
+    """Gałąź WYCOFANIE dochodzi do klienta PBN i kończy wpis sukcesem.
+
+    ⚠️ Rekord jest w KOSZU (fixture go kasuje) — i to jest cała trudność.
+    Do fazy 05 ``send_to_pbn()`` odrzucał takie wpisy guardem
+    ``check_if_record_still_exists()``, więc gałąź wycofania byłaby martwym
+    kodem. Test bez soft-delete'u przechodziłby także przed poprawką
+    i niczego by nie pilnował.
+    """
+    from pbn_api.models import SentData
+
+    mock_client = MagicMock()
+    with patch.object(
+        PBN_Export_Queue, "_pozyskaj_klienta_pbn", return_value=mock_client
+    ):
+        result = wpis_wycofania.send_to_pbn()
+
+    assert result == SendStatus.FINISHED_OKAY
+    mock_client.delete_all_publication_statements.assert_called_once_with(
+        wydawnictwo_ciagle.pbn_uid_id
+    )
+    wpis_wycofania.refresh_from_db()
+    assert wpis_wycofania.zakonczono_pomyslnie is True
+    assert wpis_wycofania.wysylke_zakonczono is not None
+
+    sd = SentData.objects.get_for_rec(wydawnictwo_ciagle, uczelnia)
+    assert sd.submitted_successfully is False
+    assert sd.withdrawn_at is not None
