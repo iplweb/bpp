@@ -15,8 +15,12 @@ from django.core.exceptions import ImproperlyConfigured
 
 from bpp.util import slugify_function
 from django_bpp.channels_prefix import get_channels_prefix
+from django_bpp.compat import zalataj_zaleznosci
 from django_bpp.rollbar_filters import zbuduj_exception_level_filters
 from django_bpp.version import VERSION
+
+# MUSI pójść przed apps.populate() — patrz django_bpp.compat.
+zalataj_zaleznosci()
 
 logger = logging.getLogger(__name__)
 
@@ -168,10 +172,6 @@ env = environ.Env(
     # stronie, której nie naprawimy kodem.
     DJANGO_BPP_ROLLBAR_IGNORE_SMTP_AUTH_ERRORS=(bool, False),
     #
-    # Prometheus
-    #
-    DJANGO_BPP_ENABLE_PROMETHEUS=(bool, False),
-    #
     # Liczniki w filtrac
     #
     DYNAMIC_FILTER_COUNTS_ENABLE=(bool, True),
@@ -231,10 +231,6 @@ USE_TZ = True
 # wyłączony, degradacja miękka (DocxConversionError). Patrz
 # nowe_raporty.docx_export._convert_using_html2docx_service.
 HTML2DOCX_URL = env("DJANGO_BPP_HTML2DOCX_URL", default=None)
-
-# Django 5.0 transitional; stanie się domyślne w 6.0. Wycisza
-# RemovedInDjango60Warning z forms.URLField dla URL-i bez schematu.
-FORMS_URLFIELD_ASSUME_HTTPS = True
 
 STATIC_URL = "/static/"
 
@@ -1801,27 +1797,6 @@ ROLLBAR = {
 # INNY niż sekretny ROLLBAR["access_token"] (post_server_item) — ten można
 # bezpiecznie renderować w przeglądarce. Pusty = front-end Rollbar wyłączony.
 ROLLBAR_CLIENT_ACCESS_TOKEN = env("ROLLBAR_CLIENT_ACCESS_TOKEN")
-
-#
-# Prometheus
-#
-
-DJANGO_BPP_ENABLE_PROMETHEUS = env("DJANGO_BPP_ENABLE_PROMETHEUS")
-
-if DJANGO_BPP_ENABLE_PROMETHEUS:
-    MIDDLEWARE = (
-        [
-            "django_prometheus.middleware.PrometheusBeforeMiddleware",
-        ]
-        + MIDDLEWARE
-        + [
-            "django_prometheus.middleware.PrometheusAfterMiddleware",
-        ]
-    )
-
-    INSTALLED_APPS += [
-        "django_prometheus",
-    ]
 
 DYNAMIC_FILTER_COUNTS_ENABLE = env("DYNAMIC_FILTER_COUNTS_ENABLE")
 

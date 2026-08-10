@@ -21,6 +21,32 @@ from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
 
 
+class Projekt_AutorForm(forms.ModelForm):
+    """Wyłącza walidację ``UniqueConstraint`` na poziomie pojedynczego wiersza.
+
+    Django 6.1 dodało ``BaseModelForm.validate_constraints()`` (w 5.2 ta
+    metoda jeszcze nie istniała) — każdy formularz sam odpytuje bazę o
+    naruszenie constraintów modelu. W inline'ie to daje fałszywy alarm przy
+    podmianie kierownika w jednym zapisie: stary wiersz jest oznaczony
+    ``DELETE``, ale wciąż siedzi w bazie, więc nowy kierownik „narusza"
+    ``projekt_jeden_kierownik``, choć po zapisie stan będzie poprawny.
+
+    Django koordynuje to między formularzami tylko dla unikalności —
+    ``BaseModelFormSet.validate_unique()`` odsiewa ``self.deleted_forms``.
+    Dla constraintów odpowiednika nie ma, więc odsiew robimy sami:
+    ``Projekt_AutorFormSet.clean()`` niżej liczy kierowników pomijając wiersze
+    z ``DELETE``, a constraint w bazie zostaje jako ostatnia linia obrony.
+    Netto: zachowanie sprzed 6.1, tyle że teraz świadomie.
+    """
+
+    def clean(self):
+        dane = super().clean()
+        # ``BaseModelForm.clean()`` ustawia tę flagę na True; gasimy ją po
+        # nim, ale przed ``_post_clean()``, które ją odczytuje.
+        self._validate_constraints = False
+        return dane
+
+
 class Projekt_AutorFormSet(forms.BaseInlineFormSet):
     """Duplikuje bazowy ``UniqueConstraint`` na „jeden kierownik na projekt”.
 
@@ -46,6 +72,7 @@ class Projekt_AutorFormSet(forms.BaseInlineFormSet):
 
 class Projekt_AutorInline(admin.TabularInline):
     model = Projekt_Autor
+    form = Projekt_AutorForm
     formset = Projekt_AutorFormSet
     extra = 0
     autocomplete_fields = ["autor"]

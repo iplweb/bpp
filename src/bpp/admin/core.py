@@ -8,6 +8,7 @@ from django import forms
 from django.conf import settings
 from django.contrib import admin
 from django.core.cache import cache
+from django.db.models import FETCH_PEERS
 from django.db.models.fields import BLANK_CHOICE_DASH
 from django.forms import NullBooleanField
 from django.forms.widgets import HiddenInput
@@ -103,6 +104,42 @@ class DynamicAdminFilterMixin:
             return HttpResponse("-", content_type="text/html; charset=utf-8")
 
 
+MAKSYMALNA_LICZBA_OBIEKTOW_NA_STRONIE_KASOWANIA = 100
+"""Ile obiektów wypisać na stronie potwierdzenia kasowania w adminie.
+
+Trafia do ``ModelAdmin.delete_confirmation_max_display`` (Django >= 6.1).
+
+DLACZEGO w ogóle: strona potwierdzenia kasowania enumeruje KAŻDY obiekt,
+który poleci kaskadą. Dla ``Autor``, ``Zrodlo`` czy dowolnego masowego
+``delete_selected`` na przefiltrowanej changeliście to dziesiątki tysięcy
+``<li>`` z linkiem do zmiany — kilkanaście MB HTML-a, którego przeglądarka
+i tak nie jest w stanie sensownie pokazać, a człowiek przeczytać.
+
+DLACZEGO akurat 100:
+
+* to wartość z przykładu w docstringu samego filtra Django
+  (``{{ deleted_objects|truncated_unordered_list:100 }}``) — nie wymyślamy
+  własnego standardu tam, gdzie upstream ma swój,
+* to 2× ``list_per_page`` (50) — cała strona changelisty zaznaczona do
+  kasowania nadal wypisuje się co do sztuki,
+* powyżej ~100 pozycji lista i tak przestaje być narzędziem weryfikacji,
+  a staje się ścianą tekstu.
+
+CZEGO NIE TRACIMY: sekcja „Podsumowanie" (``object_delete_summary.html``)
+renderuje PEŁNE liczniki per model (``model_count``) i jest ponad listą.
+Obcięcie zabiera więc tylko wyliczankę pojedynczych obiektów — informacja
+o SKALI kasowania zostaje nienaruszona. Dodatkowo filtr sam dopisuje na
+końcu „…i N innych obiektów".
+
+CZEGO TO NIE ZAŁATWIA (żeby nie było złudzeń): opcja działa WYŁĄCZNIE na
+etapie renderowania. ``get_deleted_objects`` nadal zbiera i formatuje
+komplet obiektów (``NestedObjects.collect`` + ``format_callback`` z
+``reverse()`` per obiekt), więc zapytań do bazy ani szczytowego zużycia
+pamięci po stronie Pythona to nie zmniejsza. Zyskiem jest rozmiar
+odpowiedzi i to, że przeglądarka nie umiera na renderowaniu listy.
+"""
+
+
 class BaseBppAdminMixin(DynamicAdminFilterMixin):
     """Ta klasa jest potrzebna, (XXXżeby działały sygnały post_commit.XXX)
 
@@ -116,6 +153,82 @@ class BaseBppAdminMixin(DynamicAdminFilterMixin):
 
     # ograniczenie wielkosci listy
     list_per_page = 50
+
+    # Limit wyliczanki obiektów na stronie potwierdzenia kasowania.
+    #
+    # Ustawiamy GLOBALNIE (tu, a nie punktowo na paru „ciężkich" adminach),
+    # bo eksplozja listy nie bierze się z samego modelu, tylko z jego
+    # ogona kaskad — a ten potrafi urosnąć w dowolnym adminie po dodaniu
+    # jednego FK w zupełnie innej aplikacji. Limit punktowy z definicji
+    # nie chroni tam, gdzie nikt nie przewidział problemu, a nie ma
+    # w BPP modelu, dla którego wypisanie >100 obiektów co do sztuki
+    # niosłoby wartość (patrz argumentacja przy stałej wyżej).
+    #
+    # UWAGA: sama ta wartość NIE wystarczy. Aktywna skórka admina to
+    # grappelli, a jej ``admin/delete_confirmation.html`` i
+    # ``admin/delete_selected_confirmation.html`` renderują listę filtrem
+    # ``|unordered_list`` (bez obcinania). Dlatego BPP nadpisuje blok
+    # ``content`` obu tych szablonów w ``src/django_bpp/templates/admin/``
+    # i woła tam ``|truncated_unordered_list:delete_confirmation_max_display``.
+    # Jeżeli kiedyś znika grappelli — te nadpisania można skasować,
+    # bo szablony samego Django honorują opcję z automatu.
+    delete_confirmation_max_display = MAKSYMALNA_LICZBA_OBIEKTOW_NA_STRONIE_KASOWANIA
+
+    def get_queryset(self, request):
+        """Włącz ``FETCH_PEERS`` (Django 6.1) dla querysetów tego admina.
+
+        Changelisty admina to najgęstsze w BPP skupisko N+1: ``list_display``
+        i ``__str__`` modeli sięgają po FK, których nikt nie zadeklarował
+        w ``list_select_related``, a każde takie dotknięcie to osobny SELECT
+        per wiersz. ``FETCH_PEERS`` sprawia, że PIERWSZE leniwe dotknięcie
+        relacji (albo pola odroczonego) dociąga ją HURTEM dla całego
+        rodzeństwa z tego samego pobrania — N+1 zamienia się w 2 zapytania,
+        bez zgadywania z góry, które FK dotknie szablon.
+
+        Zmierzone na kopii bazy produkcyjnej (68 tys. autorów, 491 jednostek,
+        produkcyjne reguły ``CACHEOPS``, wariant ``bench_prod``), mediana
+        z dwóch niezależnych przebiegów po 25 powtórzeń na cichym hoście —
+        para ``ee5e81a35`` → ``ccb9756ff``:
+
+        * changelist jednostek        66 → 17 zapytań, 220 → 128 ms
+        * changelist wyd. zwartych   220 → 36 zapytań, 248 → 209 ms
+        * changelist wyd. ciągłych   190 → 34 zapytań, 233 → 213 ms
+        * changelist autorów          27 → 27 zapytań, 744 → 239 ms
+
+        Wcześniejsza wersja tego docstringu podawała 40/38 zapytań i czasy
+        opisane jako rząd wielkości — powyższe są pomiarem. Uwaga na
+        changelist autorów: liczba zapytań jest identyczna, a czas spada
+        o 68 %, bo dotykane tam relacje są cache'owane przez ``CACHEOPS``
+        i koszt to round-tripy do Redisa, niewidoczne dla licznika SQL.
+        Sam ten spadek pochodzi zresztą głównie z poprawek filtrów na
+        ``dev`` (``5ffc83f50``), nie z ``FETCH_PEERS``.
+
+        WAŻNE, gdy ta gałąź pociągnie ``dev``: PR #738 dokłada na ``dev``
+        jawne ``select_related`` dla tych samych relacji i schodzi z nimi
+        do 16 (jednostki) i 35 (wyd. zwarte) zapytań, czyli o JEDNO mniej
+        niż ``FETCH_PEERS`` — ten musi dorzucić zapytanie hurtowe na każdą
+        relację, a JOIN załatwia to bez dodatkowego round-tripu. Po scaleniu
+        te trzy pozycje przestaną być argumentem za ``FETCH_PEERS``.
+        Zostaje właściwy: to SIATKA BEZPIECZEŃSTWA na relacje, których nikt
+        nie zadeklarował — działa bez zgadywania z góry, które FK dotknie
+        szablon, i chroni changelisty, do których nikt nie doszedł pomiarem.
+
+        Dlaczego TU, a nie globalnie (podstawienie ``DEFAULT_FETCH_MODE``):
+        ``track_peers`` trzyma ``weakref`` do każdej instancji z pobrania,
+        więc koszt ponosiłby KAŻDY queryset w aplikacji, a zysk jest
+        skoncentrowany w adminie. Samo ``get_queryset`` wystarcza, bo
+        ``QuerySet._clone()`` przenosi ``_fetch_mode`` — tryb przeżywa
+        filtry, sortowanie i slicing dokładane przez dalsze mixiny
+        i przez sam ``ChangeList``.
+
+        Semantyka się NIE zmienia: ``fetch_one`` i ``fetch_many`` idą tą samą
+        ścieżką managera (``_base_manager``), więc tryb nie zaczyna nagle
+        odfiltrowywać rekordów — istotne przy soft-delete.
+
+        WYMAGA Django >= 6.1 (``QuerySet.fetch_mode``) — dlatego ta zmiana
+        celuje w gałąź ``django-6.1``, a nie w ``dev``.
+        """
+        return super().get_queryset(request).fetch_mode(FETCH_PEERS)
 
     def save_related(self, request, form, formsets, change):
         """
@@ -148,8 +261,16 @@ def generuj_formularz_dla_autorow(  # noqa
 ):
     class baseModel_AutorForm(forms.ModelForm):
         if include_rekord:
+            # Django 6.1: ForwardManyToOneDescriptor.get_queryset() wymaga
+            # keyword-only `instance` (dokłada .fetch_mode() z jej stanu), a
+            # tutaj jesteśmy w czasie definicji klasy — żadnej instancji nie
+            # ma. Sięgamy po `_base_manager` wprost, czyli dokładnie to, co
+            # deskryptor robił pod spodem w 5.2. `_base_manager`, NIE
+            # `_default_manager` — to pole ma być w stanie dowiązać rekord
+            # odfiltrowany przez managera domyślnego (m.in. soft-delete).
             rekord = forms.ModelChoiceField(
-                widget=HiddenInput, queryset=baseModel.rekord.get_queryset()
+                widget=HiddenInput,
+                queryset=baseModel.rekord.field.remote_field.model._base_manager.all(),
             )
 
         autor = forms.ModelChoiceField(
