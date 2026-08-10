@@ -137,6 +137,21 @@ class PBN_Export_Queue(models.Model):
         help_text="Publikacja wykluczona z eksportu z przyczyn projektowych (nie błąd)",
     )
 
+    class Operacja(models.TextChoices):
+        WYSYLKA = "wysylka", "Wysyłka"
+        WYCOFANIE = "wycofanie", "Wycofanie oświadczeń"
+
+    operacja = models.CharField(
+        max_length=16,
+        choices=Operacja.choices,
+        default=Operacja.WYSYLKA,
+        db_index=True,
+        verbose_name="Operacja",
+        help_text="Wycofanie usuwa oświadczenia dyscyplin publikacji z profilu "
+        "instytucji w PBN (soft-delete rekordu). Nie kasuje samego obiektu "
+        "publikacji w PBN — ten jest współdzielony między instytucjami.",
+    )
+
     objects = PBN_Export_QueueManager()
 
     class Meta:
