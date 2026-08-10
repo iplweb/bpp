@@ -422,3 +422,97 @@ def test_pozyskaj_klienta_bierze_token_zamawiajacego(
         wpis._pozyskaj_klienta_pbn()
 
     mock_pbn_client.assert_called_once_with("TOKEN-123")
+
+
+@pytest.mark.django_db
+def test_wycofanie_brak_oswiadczen_to_sukces(
+    wpis_wycofania, wydawnictwo_ciagle, uczelnia
+):
+    """Idempotencja przez CAŁĄ kolejkę, nie tylko w prymitywie.
+
+    Powtórne wycofanie (albo wycofanie rekordu, którego oświadczeń nigdy
+    nie było) nie może zostawić wpisu w błędzie — inaczej operator
+    dostawałby czerwień za operację, która osiągnęła cel.
+    """
+    from pbn_api.exceptions import CannotDeleteStatementsException
+    from pbn_api.models import SentData
+
+    mock_client = MagicMock()
+    mock_client.delete_all_publication_statements.side_effect = (
+        CannotDeleteStatementsException("brak oświadczeń")
+    )
+    with patch.object(
+        PBN_Export_Queue, "_pozyskaj_klienta_pbn", return_value=mock_client
+    ):
+        result = wpis_wycofania.send_to_pbn()
+
+    assert result == SendStatus.FINISHED_OKAY
+    wpis_wycofania.refresh_from_db()
+    assert wpis_wycofania.zakonczono_pomyslnie is True
+    assert (
+        SentData.objects.get_for_rec(wydawnictwo_ciagle, uczelnia).withdrawn_at
+        is not None
+    )
+
+
+def _resource_locked():
+    from pbn_api.exceptions import ResourceLockedException
+
+    # ResourceLockedException dziedziczy po HttpException — potrzebuje
+    # (status_code, url, content), nie samego komunikatu.
+    return ResourceLockedException(423, "/v2/statements", "zasób zablokowany")
+
+
+def _prace_serwisowe():
+    from pbn_api.exceptions import PraceSerwisoweException
+
+    return PraceSerwisoweException("okno serwisowe PBN")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "zbuduj_wyjatek,oczekiwany_status",
+    [
+        (_resource_locked, SendStatus.RETRY_LATER),
+        (_prace_serwisowe, SendStatus.RETRY_MUCH_LATER),
+    ],
+    ids=["resource_locked", "prace_serwisowe"],
+)
+def test_wycofanie_dziedziczy_tabele_retry_wysylki(
+    wpis_wycofania, wydawnictwo_ciagle, uczelnia, zbuduj_wyjatek, oczekiwany_status
+):
+    """Wycofanie korzysta z TEJ SAMEJ klasyfikacji wyjątków co wysyłka.
+
+    Dwa różne wyjątki, dwie różne polityki ponowienia — obie pochodzą
+    z ``_handle_pbn_exception``, a nie z osobnej drabinki ``except``
+    w ``withdraw_from_pbn``. Gdyby wycofanie miało własną tabelę decyzji,
+    rozjechałaby się z wysyłką przy pierwszej zmianie.
+
+    Wpis NIE może być zakończony, a ``SentData`` NIE oznaczone: wycofanie
+    się nie udało, więc oświadczenia nadal są w PBN.
+    """
+    from pbn_api.models import SentData
+
+    mock_client = MagicMock()
+    mock_client.delete_all_publication_statements.side_effect = zbuduj_wyjatek()
+
+    with patch.object(
+        PBN_Export_Queue, "_pozyskaj_klienta_pbn", return_value=mock_client
+    ):
+        result = wpis_wycofania.send_to_pbn()
+
+    assert result == oczekiwany_status
+    wpis_wycofania.refresh_from_db()
+    assert wpis_wycofania.wysylke_zakonczono is None
+    sd = SentData.objects.get_for_rec(wydawnictwo_ciagle, uczelnia)
+    assert sd.withdrawn_at is None
+    assert sd.submitted_successfully is True
+
+
+def test_admin_pokazuje_operacje():
+    """Superuser musi odróżnić w kolejce wycofanie od wysyłki."""
+    from pbn_export_queue.admin import PBN_Export_QueueAdmin
+
+    assert "operacja" in PBN_Export_QueueAdmin.list_display
+    assert "operacja" in PBN_Export_QueueAdmin.list_filter
+    assert "operacja" in PBN_Export_QueueAdmin.readonly_fields
