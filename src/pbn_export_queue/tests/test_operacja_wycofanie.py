@@ -236,3 +236,189 @@ def test_integrity_error_zamowil_nie_udaje_already_enqueued(wydawnictwo_ciagle):
 
     with pytest.raises(IntegrityError):
         PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(None, wydawnictwo_ciagle)
+
+
+@pytest.mark.django_db
+def test_zakolejkuj_wycofanie_gate_brak_pbn_uid(wydawnictwo_ciagle, admin_user):
+    """Bez PBN UID nic nie poszło do PBN — nie kolejkujemy wycofania."""
+    from pbn_export_queue.operacje import zakolejkuj_wycofanie
+
+    assert wydawnictwo_ciagle.pbn_uid_id is None
+    with patch("pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn") as mock_task:
+        wpis = zakolejkuj_wycofanie(wydawnictwo_ciagle, user=admin_user)
+
+    assert wpis is None
+    assert (
+        PBN_Export_Queue.objects.filter_rekord_do_wysylki(wydawnictwo_ciagle).count()
+        == 0
+    )
+    mock_task.delay.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_zakolejkuj_wycofanie_tworzy_wpis(wydawnictwo_ciagle, admin_user, uczelnia):
+    from pbn_api.models import Publication
+    from pbn_export_queue.operacje import zakolejkuj_wycofanie
+
+    wydawnictwo_ciagle.pbn_uid = baker.make(Publication)
+    wydawnictwo_ciagle.save()
+
+    with patch("pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn") as mock_task:
+        wpis = zakolejkuj_wycofanie(
+            wydawnictwo_ciagle, user=admin_user, uczelnia=uczelnia
+        )
+
+    assert wpis is not None
+    assert wpis.operacja == PBN_Export_Queue.Operacja.WYCOFANIE
+    assert wpis.uczelnia == uczelnia
+    mock_task.delay.assert_called_once_with(wpis.pk)
+
+
+@pytest.mark.django_db
+def test_zakolejkuj_wysylke_nie_ma_gate_na_pbn_uid(wydawnictwo_ciagle, admin_user):
+    """WYSYŁKA celowo NIE ma gate'u na ``pbn_uid``.
+
+    Rekord, który nigdy nie poszedł do PBN, po przywróceniu i tak ma prawo
+    pojechać — wysyłka dopiero nadaje PBN UID. Kontrakt PINNED planu fazy
+    06 mówi „None gdy brak pbn_uid" dla OBU funkcji; to rozstrzygnięcie
+    jest świadomym odejściem, żeby nikt go nie „naprawił" pod tamten opis.
+    """
+    from pbn_export_queue.operacje import zakolejkuj_wysylke
+
+    assert wydawnictwo_ciagle.pbn_uid_id is None
+    with patch("pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn") as mock_task:
+        wpis = zakolejkuj_wysylke(wydawnictwo_ciagle, user=admin_user)
+
+    assert wpis is not None
+    assert wpis.operacja == PBN_Export_Queue.Operacja.WYSYLKA
+    mock_task.delay.assert_called_once_with(wpis.pk)
+
+
+@pytest.mark.django_db
+def test_zakolejkuj_idempotentne(wydawnictwo_ciagle, admin_user):
+    """Drugie zlecenie dla tego samego rekordu to no-op, nie błąd."""
+    from pbn_api.models import Publication
+    from pbn_export_queue.operacje import zakolejkuj_wycofanie
+
+    wydawnictwo_ciagle.pbn_uid = baker.make(Publication)
+    wydawnictwo_ciagle.save()
+
+    with patch("pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn"):
+        pierwszy = zakolejkuj_wycofanie(wydawnictwo_ciagle, user=admin_user)
+        drugi = zakolejkuj_wycofanie(wydawnictwo_ciagle, user=admin_user)
+
+    assert pierwszy is not None
+    assert drugi is None
+    assert (
+        PBN_Export_Queue.objects.filter_rekord_do_wysylki(wydawnictwo_ciagle).count()
+        == 1
+    )
+
+
+@pytest.mark.django_db
+def test_zakolejkuj_wycofanie_bez_usera_uzywa_konta_technicznego(
+    wydawnictwo_ciagle, uczelnia
+):
+    """Soft-delete systemowy (bez zalogowanego użytkownika) MUSI utworzyć wpis.
+
+    ``zamowil`` jest NOT NULL, a sygnał/celery/scalanie nie mają requestu.
+    Zwrot ``None`` znaczyłby, że oświadczenia zostaną w PBN.
+    """
+    from pbn_api.models import Publication
+    from pbn_export_queue.operacje import (
+        NAZWA_KONTA_TECHNICZNEGO,
+        zakolejkuj_wycofanie,
+    )
+
+    wydawnictwo_ciagle.pbn_uid = baker.make(Publication)
+    wydawnictwo_ciagle.save()
+
+    with patch("pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn"):
+        wpis = zakolejkuj_wycofanie(wydawnictwo_ciagle, user=None, uczelnia=uczelnia)
+
+    assert wpis is not None, (
+        "systemowy soft-delete MUSI utworzyć wpis wycofania — zwrot None "
+        "znaczy, że oświadczenia zostaną w PBN"
+    )
+    assert wpis.zamowil.username == NAZWA_KONTA_TECHNICZNEGO
+    assert wpis.operacja == PBN_Export_Queue.Operacja.WYCOFANIE
+    assert wpis.zamowil.is_active is False
+    assert wpis.zamowil.has_usable_password() is False
+
+
+@pytest.mark.django_db
+def test_konto_techniczne_bez_tokenu_konczy_glosno(wydawnictwo_ciagle, uczelnia):
+    """Brak tokenu PBN kończy wpis BŁĘDEM, nie cichym sukcesem.
+
+    Konto techniczne nie ma własnego ``pbn_token``, więc autoryzacja
+    w PBN rzuci ``WillNotExportError``. To jest akceptowalne WYŁĄCZNIE
+    dlatego, że kończy się głośno — wpis dostaje ``FINISHED_ERROR``
+    z błędem merytorycznym i komunikatem wskazującym konfigurację.
+    Gdyby kończyło się ``FINISHED_OKAY`` albo cichym ``None``, operator
+    myślałby, że oświadczenia zostały wycofane.
+
+    Obejście produkcyjne (bez zmiany kodu): administrator ustawia kontu
+    technicznemu ``przedstawiaj_w_pbn_jako`` na konto z ważnym tokenem.
+
+    Test nie odtwarza pełnej ścieżki HTTP, bo ``authorize`` w transporcie
+    odpala się dopiero na odpowiedzi 403 — czyli po realnym żądaniu do
+    PBN. Sprawdzamy więc to, co faktycznie jest nasze: że wyjątek z
+    klienta trafia w klasyfikację jako błąd MERYTORYCZNY.
+    """
+    from pbn_api.exceptions import WillNotExportError
+    from pbn_api.models import Publication
+    from pbn_export_queue.models import RodzajBledu
+    from pbn_export_queue.operacje import pobierz_konto_techniczne
+
+    wydawnictwo_ciagle.pbn_uid = baker.make(Publication)
+    wydawnictwo_ciagle.save()
+    wpis = baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=pobierz_konto_techniczne(),
+        uczelnia=uczelnia,
+        operacja=PBN_Export_Queue.Operacja.WYCOFANIE,
+        wysylke_zakonczono=None,
+    )
+    wydawnictwo_ciagle.delete()
+
+    with patch.object(
+        PBN_Export_Queue,
+        "_pozyskaj_klienta_pbn",
+        side_effect=WillNotExportError(
+            "Najpierw wykonaj autoryzację w PBN API za pomocą menu"
+        ),
+    ):
+        result = wpis.send_to_pbn()
+
+    assert result == SendStatus.FINISHED_ERROR
+    wpis.refresh_from_db()
+    assert wpis.zakonczono_pomyslnie is False
+    assert wpis.rodzaj_bledu == RodzajBledu.MERYTORYCZNY
+    assert "autoryzacj" in wpis.komunikat.lower()
+
+
+@pytest.mark.django_db
+def test_pozyskaj_klienta_bierze_token_zamawiajacego(
+    wydawnictwo_ciagle, admin_user, uczelnia
+):
+    """Klient budowany jest z uczelni WPISU i tokenu zamawiającego.
+
+    Nigdy „pierwszej z brzegu" uczelni — w multi-hosted wycofanie dotyczy
+    profilu konkretnej instytucji. Token idzie przez ``get_pbn_user()``,
+    więc ``przedstawiaj_w_pbn_jako`` działa bez zmiany kodu.
+    """
+    admin_user.pbn_token = "TOKEN-123"
+    admin_user.save()
+    wpis = baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=admin_user,
+        uczelnia=uczelnia,
+        operacja=PBN_Export_Queue.Operacja.WYCOFANIE,
+    )
+
+    with patch.object(type(uczelnia), "pbn_client") as mock_pbn_client:
+        wpis._pozyskaj_klienta_pbn()
+
+    mock_pbn_client.assert_called_once_with("TOKEN-123")

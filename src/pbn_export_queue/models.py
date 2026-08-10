@@ -62,7 +62,7 @@ class PBN_Export_QueueManager(models.Manager):
             wysylke_zakonczono=None,
         )
 
-    def sprobuj_utowrzyc_wpis(self, user, rekord, uczelnia=None):
+    def sprobuj_utowrzyc_wpis(self, user, rekord, uczelnia=None, operacja=None):
         # Szybka ścieżka (przyjazny błąd bez trafiania w constraint bazy).
         if self.filter_rekord_do_wysylki(rekord).exists():
             raise AlreadyEnqueuedError("ten rekord jest już w kolejce do wysyłki")
@@ -73,13 +73,19 @@ class PBN_Export_QueueManager(models.Manager):
         # ten TOCTOU w twardy IntegrityError, który tłumaczymy na domenowy
         # AlreadyEnqueuedError. savepoint (atomic) izoluje błąd, żeby nie
         # unieważnić ewentualnej otaczającej transakcji.
+        kwargs = {
+            "rekord_do_wysylki": rekord,
+            "zamowil": user,
+            "uczelnia": uczelnia,
+        }
+        if operacja is not None:
+            # Pominięcie zostawia default modelu (WYSYLKA), więc wszystkie
+            # dotychczasowe wywołania działają bez zmian.
+            kwargs["operacja"] = operacja
+
         try:
             with transaction.atomic():
-                return self.create(
-                    rekord_do_wysylki=rekord,
-                    zamowil=user,
-                    uczelnia=uczelnia,
-                )
+                return self.create(**kwargs)
         except IntegrityError as e:
             # Tylko kolizja częściowego unikatu znaczy „już w kolejce".
             # Każde inne naruszenie (NOT NULL na `zamowil` przy operacji
