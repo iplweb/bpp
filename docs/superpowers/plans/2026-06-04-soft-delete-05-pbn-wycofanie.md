@@ -1397,7 +1397,40 @@ Rekord bywa wysyłany do PBN bez kolejki — ta sama ścieżka musi umieć wycof
   `grep -rn --include='*.py' "synchronizuj_publikacje" src/`)
 - Test: `src/pbn_integrator/tests/test_wycofanie_sync.py`
 
-- [ ] **Krok 05.9.1 — ustal realny zbiór ścieżek synchronicznych.** Nie zgaduj;
+> ✅ **USTALONE 2026-08-10 — ta faza NIE dokłada tu kodu. Uzasadnienie niżej.**
+>
+> `synchronizuj_publikacje` (`pbn_integrator/utils/synchronization.py:180`)
+> to **wsadowy uploader**, nie ścieżka kasowania: iteruje publikacje „do
+> synchronizacji" i je wysyła. Wołają go dwie komendy CLI
+> (`pbn_uploader.py:12`, `pbn_integrator.py:392`) — stan bez zmian względem
+> 2026-08-07.
+>
+> Decyzja #16 była trafna co do FAKTU (rekord bywa wysyłany **poza kolejką**),
+> ale wysyłka synchroniczna nie rodzi potrzeby wycofania synchronicznego:
+> **wycofanie wyzwala soft-delete, a ten zawsze idzie przez kolejkę**
+> (receivery fazy 06 → `zakolejkuj_wycofanie`). Żadna ścieżka wsadowa nie
+> kasuje dziś rekordów.
+>
+> Dodatkowo `wydawnictwa_zwarte_do_synchronizacji()` (`:46-47`) filtruje przez
+> `Wydawnictwo_Zwarte.objects`, czyli menedżer, który od fazy 02 **pomija
+> kosz** — rekord soft-skasowany po prostu wypada z wsadu. Nie ma tam czego
+> podpinać.
+>
+> **Co ta faza faktycznie dostarcza dla wejścia synchronicznego:** prymityw
+> `wycofaj_oswiadczenia(publikacja, client, uczelnia=None)` przyjmuje klienta
+> **od wywołującego**, więc jest gotowym kontraktem dla dowolnej przyszłej
+> ścieżki poza kolejką. `src/pbn_api/tests/test_wycofanie.py` woła go
+> dokładnie w ten sposób (własny klient, bez kolejki) — czyli testuje
+> właśnie kształt wejścia synchronicznego. Równoważność obu wejść jest więc
+> zagwarantowana konstrukcyjnie: kolejka nie ma własnej implementacji, tylko
+> cienki wrapper.
+>
+> ⚠️ Gdy kiedyś powstanie realna ścieżka synchronicznego kasowania (np.
+> komenda „wyczyść rekordy z PBN"), MUSI wołać prymityw, a NIE
+> `client.delete_all_publication_statements()` — inaczej `SentData`
+> rozjedzie się między wejściami (niezmiennik §4.2 specu).
+
+- [ ] ~~**Krok 05.9.1 — ustal realny zbiór ścieżek synchronicznych.**~~ Nie zgaduj;
   wypisz wywołujących i rozstrzygnij, które z nich mogą wystąpić w kontekście
   soft-delete (management command? admin action? import?). Stan na 2026-08-07
   (`grep`): `synchronizuj_publikacje` definiowana w
@@ -1430,6 +1463,12 @@ Rekord bywa wysyłany do PBN bez kolejki — ta sama ścieżka musi umieć wycof
   wystąpienia w prymitywie** — żadne w `pbn_export_queue/` ani
   `pbn_integrator/`. (`pbn_client` jest w site-packages, więc się tu nie
   pokaże — to poprawne.)
+
+  ✅ **Wynik 2026-08-10:** w produkcji doszła DOKŁADNIE jedna linia —
+  `src/pbn_api/wycofanie.py:68`. Trzy baseline'owe wystąpienia bez zmian.
+  W `pbn_export_queue/` są 3 trafienia, ale wszystkie w
+  `tests/test_operacja_wycofanie.py` (asercje na `MagicMock`), zero
+  w kodzie produkcyjnym. W `pbn_integrator/` — zero.
 
 ---
 
