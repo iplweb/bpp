@@ -127,3 +127,53 @@ def test_wycofanie_wola_delete_all_statements(
     sd = SentData.objects.get_for_rec(wydawnictwo_ciagle, uczelnia)
     assert sd.submitted_successfully is False
     assert sd.withdrawn_at is not None
+
+
+@pytest.mark.django_db
+def test_sprzataczka_nie_kasuje_zlecen_wycofania(
+    wydawnictwo_ciagle, wydawnictwo_zwarte, admin_user, uczelnia
+):
+    """Regresja blokera #2 (rewizja planu 2026-08-10).
+
+    ``kolejka_wyczysc_wpisy_bez_rekordow()`` kasuje wpisy, których rekord
+    „już nie istnieje", i używa do tego tego samego guardu co
+    ``send_to_pbn()``. Zanim guard poznał operację, soft-delete publikacji
+    sprawiał, że sprzątaczka kasowała WŁAŚNIE UTWORZONE zlecenie wycofania:
+    oświadczenia zostawały w PBN, śladu brak, a wyścig z workerem celery
+    rozstrzygał się losowo.
+
+    Dowodem jest RÓŻNICA między operacjami, nie samo przetrwanie wpisu —
+    zachowanie dla WYSYLKI (fazy 02) musi zostać nietknięte.
+    """
+    from pbn_export_queue.tasks import kolejka_wyczysc_wpisy_bez_rekordow
+
+    wycofanie = baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=admin_user,
+        uczelnia=uczelnia,
+        operacja=PBN_Export_Queue.Operacja.WYCOFANIE,
+        wysylke_zakonczono=None,
+    )
+    wysylka = baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_zwarte,
+        zamowil=admin_user,
+        uczelnia=uczelnia,
+        operacja=PBN_Export_Queue.Operacja.WYSYLKA,
+        wysylke_zakonczono=None,
+    )
+
+    wydawnictwo_ciagle.delete()
+    wydawnictwo_zwarte.delete()
+
+    kolejka_wyczysc_wpisy_bez_rekordow()
+
+    assert PBN_Export_Queue.objects.filter(pk=wycofanie.pk).exists(), (
+        "sprzątaczka skasowała zlecenie WYCOFANIA — oświadczenia zostaną "
+        "w PBN i nikt się o tym nie dowie"
+    )
+    assert not PBN_Export_Queue.objects.filter(pk=wysylka.pk).exists(), (
+        "wpis WYSYLKA rekordu z kosza ma nadal znikać — to zachowanie "
+        "z fazy 02, którego nie wolno zepsuć przy okazji"
+    )
