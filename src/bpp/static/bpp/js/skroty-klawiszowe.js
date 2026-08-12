@@ -28,9 +28,11 @@
         try {
             return window.localStorage.getItem(KLUCZ) !== "0";
         } catch (e) {
-            // Tryb prywatny, wylaczone ciasteczka, wyczerpany limit —
-            // czytamy fallback z pamięci sesji.
-            return stanAwaryjny !== null ? stanAwaryjny : true;
+            // Tryb prywatny, wylaczone ciasteczka, wyczerpany limit. Fallbacku
+            // z pamieci NIE czytamy tu ponownie: warunek wyzej juz zwrocil
+            // `stanAwaryjny`, jesli byl ustawiony, wiec w tym miejscu jest on
+            // zawsze `null`. Zostaje domyslka — skroty wlaczone.
+            return true;
         }
     }
 

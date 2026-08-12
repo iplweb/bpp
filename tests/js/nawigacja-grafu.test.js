@@ -80,6 +80,19 @@ describe("przesun", () => {
         );
     });
 
+    it("krok skaluje sie z wysokoscia widoku", () => {
+        // Osobny test dla osi Y, bo `przesun` liczy dy z `cy.height()`, a nie
+        // z `cy.width()`: pomylka w tej jednej literze przeszlaby test wyzej
+        // (tam wysokosc jest stala), a pionowy krok skalowalby sie szerokoscia.
+        const niski = atrapaCy({ height: 250 });
+        const wysoki = atrapaCy({ height: 1000 });
+        przesun(niski, "gora");
+        przesun(wysoki, "gora");
+        expect(Math.abs(wysoki._stan.panBy.y)).toBeGreaterThan(
+            Math.abs(niski._stan.panBy.y)
+        );
+    });
+
     it("nieznany kierunek nic nie robi", () => {
         przesun(cy, "wszedzie");
         expect(cy._stan.panBy).toBeNull();
