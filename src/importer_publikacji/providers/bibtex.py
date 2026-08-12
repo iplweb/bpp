@@ -2,6 +2,7 @@ import logging
 import re
 
 import bibtexparser
+from bibtexparser.middlewares import NormalizeFieldKeys
 from bibtexparser.model import Entry, ParsingFailedBlock
 
 from bpp.util import zaloguj_polkniety_wyjatek
@@ -39,6 +40,30 @@ BIBTEX_TYPE_MAP = {
     # dalszym potoku importera (normalized_data["publication_type"]).
     "patent": "patent",
 }
+
+
+def _parse(text: str):
+    """Sparsuj BibTeX, normalizujac nazwy pol do malych liter.
+
+    Nazwy pol sa w BibTeX niewrazliwe na wielkosc liter — ``Title``,
+    ``title`` i ``TITLE`` oznaczaja to samo pole. ``bibtexparser`` 2.x
+    zachowuje jednak w ``entry.fields_dict`` oryginalna pisownie i wynosi
+    normalizacje do opcjonalnego middleware'u, ktorego domyslnie NIE
+    stosuje (w 1.x dzialo sie to samo z siebie).
+
+    Web of Science i Scopus eksportuja pola kapitalizowane
+    (``Author``, ``Title``, ``Journal``, ``Year``), wiec bez tego kroku
+    ``_get_field(fields, "title")`` nie widzialo zadnego pola: ``fetch()``
+    zwracalo ``None`` ("dostawca nic nie zwrocil"), a lista rekordow do
+    zaimportowania pokazywala wpis z pustym tytulem. Parsowanie samo w
+    sobie sie udawalo, wiec ``validate_identifier()`` przepuszczalo taki
+    wpis do kolejki i blad wychodzil dopiero w tasku Celery.
+
+    Middleware dziala na modelu, nie na tekscie zrodlowym — ``block.raw``
+    (uzywany przez ``split_input()`` i podawany potem do ``fetch()``)
+    pozostaje surowym, parsowalnym BibTeX-em.
+    """
+    return bibtexparser.parse_string(text, append_middleware=[NormalizeFieldKeys()])
 
 
 @register_provider
@@ -85,7 +110,7 @@ class BibTeXProvider(DataProvider):
         if not identifier or not identifier.strip():
             return None
         try:
-            library = bibtexparser.parse_string(identifier)
+            library = _parse(identifier)
         except Exception:
             zaloguj_polkniety_wyjatek(
                 "Walidacja identyfikatora BibTeX (bibtexparser)",
@@ -112,7 +137,7 @@ class BibTeXProvider(DataProvider):
         znikałby po cichu (dokładnie bug, który naprawiamy). Kolejność
         źródłowa zachowana przez iterację po ``library.blocks``.
         """
-        library = bibtexparser.parse_string(text)
+        library = _parse(text)
         records: list[SplitRecord] = []
         for block in library.blocks:
             if isinstance(block, Entry):
@@ -135,7 +160,7 @@ class BibTeXProvider(DataProvider):
         # a nie zniknac jako "dostawca nic nie zwrocil". validate_identifier
         # juz potwierdzil parsowalnosc synchronicznie przed kolejka.
         try:
-            library = bibtexparser.parse_string(identifier)
+            library = _parse(identifier)
         except Exception:
             logger.exception("Nieoczekiwany blad parsowania BibTeX w fetch()")
             raise
