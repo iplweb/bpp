@@ -951,3 +951,182 @@ def test_filter_excludes_inactive_account(db):
     b = _backend()
     claims = {"sub": "S1", "iss": "https://kc", "email": "jan@x.pl"}
     assert list(b.filter_users_by_claims(claims)) == []
+
+
+# --- Zaufanie po domenie instytucjonalnej (realm UAFM) ---
+#
+# Realm UAFM trzyma adres instytucjonalny w `mail`, a PRYWATNY w `email`
+# (patrz a2124bf34). Stara reguła zaufania wymagała `email == payload_email`,
+# czyli równości instytucjonalnego z prywatnym — w tym realmie niespełnialnej.
+
+UAFM_ISS = "https://auth.uafm.edu.pl/auth/realms/KA"
+
+
+def _uafm_claims(**extra):
+    claims = {
+        "sub": "P1",
+        "iss": UAFM_ISS,
+        "mail": "profesor@uafm.edu.pl",
+        "email": "prywatny@gmail.com",
+        "email_verified": True,
+        "preferred_username": "profesor",
+    }
+    claims.update(extra)
+    return claims
+
+
+@override_settings(OIDC_TRUSTED_EMAIL_DOMAINS=["uafm.edu.pl"])
+def test_domena_czyni_email_zaufanym_mimo_prywatnego_email_claimu():
+    out = _backend()._normalized(_uafm_claims())
+    assert out["email"] == "profesor@uafm.edu.pl"
+    assert out["_bpp_email_domain_trusted"] is True
+    assert out["_bpp_email_trusted"] is True
+
+
+def test_bez_listy_domen_realm_uafm_nie_jest_zaufany():
+    # Regresja: udokumentowanie stanu sprzed poprawki.
+    out = _backend()._normalized(_uafm_claims())
+    assert out["_bpp_email_trusted"] is False
+
+
+@override_settings(OIDC_TRUSTED_EMAIL_DOMAINS=["uafm.edu.pl"])
+def test_domena_spoza_listy_nie_daje_zaufania():
+    out = _backend()._normalized(_uafm_claims(mail="ktos@obca.pl"))
+    assert out["_bpp_email_domain_trusted"] is False
+    assert out["_bpp_email_trusted"] is False
+
+
+@override_settings(OIDC_TRUSTED_EMAIL_DOMAINS=["uafm.edu.pl"])
+def test_domena_porownywana_bez_wzgledu_na_wielkosc_liter():
+    out = _backend()._normalized(_uafm_claims(mail="Profesor@UAFM.Edu.PL"))
+    assert out["_bpp_email_domain_trusted"] is True
+
+
+@override_settings(OIDC_TRUSTED_EMAIL_DOMAINS=["student-afm.edu.pl"])
+def test_domena_nie_ufa_adresowi_z_preferred_username():
+    # Adres z fallbacku (UPN) pozostaje niezaufany — niezmiennik sprzed zmiany.
+    claims = {
+        "sub": "S1",
+        "iss": UAFM_ISS,
+        "preferred_username": "99999@student-afm.edu.pl",
+    }
+    out = _backend()._normalized(claims)
+    assert out["email"] == "99999@student-afm.edu.pl"
+    assert out["_bpp_email_domain_trusted"] is False
+    assert out["_bpp_email_trusted"] is False
+
+
+@override_settings(OIDC_TRUSTED_EMAIL_DOMAINS=["uafm.edu.pl"])
+def test_domena_zaufana_nie_wymaga_email_verified():
+    # `email_verified` dotyczy prywatnego claimu `email` — dla adresu z
+    # katalogu instytucjonalnego jest nieadekwatne, więc nie blokuje.
+    out = _backend()._normalized(_uafm_claims(email_verified=False))
+    assert out["_bpp_email_trusted"] is True
+
+
+# --- Wiązanie kont uprzywilejowanych (grace bind privileged) ---
+
+
+def _privileged_settings(settings):
+    settings.OIDC_GRACE_BIND_ENABLED = True
+    settings.OIDC_GRACE_BIND_PRIVILEGED = True
+    settings.OIDC_TRUSTED_EMAIL_DOMAINS = ["uafm.edu.pl"]
+
+
+def test_grace_wiaze_konto_staff_gdy_domena_zaufana(db, settings):
+    _privileged_settings(settings)
+    u = baker.make("bpp.BppUser", email="profesor@uafm.edu.pl", is_staff=True)
+    u.set_unusable_password()
+    u.save()
+    b = _backend()
+    out = b._try_grace_bind(b._normalized(_uafm_claims()))
+    assert out == u
+    assert u.oidc_identities.filter(issuer=UAFM_ISS, sub="P1").exists()
+
+
+def test_grace_wiaze_superusera_z_grupami_uprawnieniami_i_pbn(db, settings):
+    _privileged_settings(settings)
+    u = baker.make(
+        "bpp.BppUser",
+        email="profesor@uafm.edu.pl",
+        is_staff=True,
+        is_superuser=True,
+        # Wartości bez znaczenia — liczy się tylko to, że pola są NIEPUSTE
+        # (w torze bez trybu uprzywilejowanego każde z nich dyskwalifikuje
+        # konto). Celowo placeholdery, nie ciągi wyglądające na poświadczenia.
+        pbn_token="dummy",
+    )
+    u.set_password("secret")
+    u.groups.add(baker.make("auth.Group"))
+    u.save()
+    b = _backend()
+    assert b._try_grace_bind(b._normalized(_uafm_claims())) == u
+
+
+def test_create_user_wiaze_staff_zamiast_odmawiac(db, settings):
+    # Właściwy bug: create_user odmawiał ("konto z tym adresem już istnieje"),
+    # bo grace bind odpadał na is_staff i na niezaufanej domenie.
+    _privileged_settings(settings)
+    u = baker.make("bpp.BppUser", email="profesor@uafm.edu.pl", is_staff=True)
+    u.set_unusable_password()
+    u.save()
+    b = _backend()
+    assert b.create_user(b._normalized(_uafm_claims())) == u
+
+
+def test_grace_nie_wiaze_staff_gdy_privileged_wylaczony(db, settings):
+    _privileged_settings(settings)
+    settings.OIDC_GRACE_BIND_PRIVILEGED = False
+    u = baker.make("bpp.BppUser", email="profesor@uafm.edu.pl", is_staff=True)
+    u.set_unusable_password()
+    u.save()
+    b = _backend()
+    assert b._try_grace_bind(b._normalized(_uafm_claims())) is None
+
+
+def test_grace_nie_wiaze_staff_bez_listy_domen(db, settings):
+    # Blokada wzajemna: sam PRIVILEGED, bez bramki domenowej, nic nie otwiera.
+    settings.OIDC_GRACE_BIND_ENABLED = True
+    settings.OIDC_GRACE_BIND_PRIVILEGED = True
+    settings.OIDC_TRUSTED_EMAIL_DOMAINS = []
+    u = baker.make("bpp.BppUser", email="profesor@uafm.edu.pl", is_staff=True)
+    u.set_unusable_password()
+    u.save()
+    b = _backend()
+    assert b._try_grace_bind(b._normalized(_uafm_claims())) is None
+
+
+def test_grace_privileged_odmawia_gdy_konto_ma_tozsamosc_w_tym_realmie(db, settings):
+    from oidc_integration.models import OIDCIdentity
+
+    _privileged_settings(settings)
+    u = baker.make("bpp.BppUser", email="profesor@uafm.edu.pl", is_staff=True)
+    u.set_unusable_password()
+    u.save()
+    OIDCIdentity.objects.create(user=u, issuer=UAFM_ISS, sub="INNY-SUB")
+    b = _backend()
+    assert b._try_grace_bind(b._normalized(_uafm_claims())) is None
+
+
+def test_grace_privileged_pozwala_gdy_tozsamosc_w_innym_realmie(db, settings):
+    from oidc_integration.models import OIDCIdentity
+
+    _privileged_settings(settings)
+    u = baker.make("bpp.BppUser", email="profesor@uafm.edu.pl", is_staff=True)
+    u.set_unusable_password()
+    u.save()
+    OIDCIdentity.objects.create(user=u, issuer="https://inny-realm", sub="Z")
+    b = _backend()
+    assert b._try_grace_bind(b._normalized(_uafm_claims())) == u
+
+
+def test_grace_privileged_odmawia_gdy_dwa_konta_z_tym_adresem(db, settings):
+    _privileged_settings(settings)
+    for i in range(2):
+        u = baker.make(
+            "bpp.BppUser", username=f"u{i}", email="profesor@uafm.edu.pl", is_staff=True
+        )
+        u.set_unusable_password()
+        u.save()
+    b = _backend()
+    assert b._try_grace_bind(b._normalized(_uafm_claims())) is None
