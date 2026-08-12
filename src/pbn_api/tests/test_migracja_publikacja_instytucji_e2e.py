@@ -16,7 +16,7 @@ from model_bakery import baker
 
 from pbn_api.models import Institution, Publication, Scientist
 from pbn_api.models.publikacja_instytucji import PublikacjaInstytucji
-from pbn_api.tests.migracje_e2e_utils import przywroc_czubek_migracji_pbn_api
+from pbn_api.tests.migracje_e2e_utils import przywroc_czubek_migracji
 
 PRZED = ("pbn_api", "0077_constrainty_uuid_dyscyplin")
 PO = ("pbn_api", "0079_constraint_publikacja_instytucji")
@@ -80,4 +80,4 @@ def test_migracja_przechodzi_na_bazie_z_duplikatami(bez_reinstalacji_denorma):
         # wierszy trójki jako część forward-migrate, więc nie ma osobnego
         # kroku „usuń dane" przed „odtwórz stan", który mógłby rzucić
         # wyjątkiem maskującym oryginalny AssertionError z bloku try.
-        przywroc_czubek_migracji_pbn_api()
+        przywroc_czubek_migracji()
