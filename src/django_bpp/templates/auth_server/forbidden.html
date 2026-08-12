@@ -1,0 +1,39 @@
+{% extends "auth_server/base.html" %}
+
+{# Strona pokazywana zamiast gołego 403 nginksa, gdy zalogowany użytkownik #}
+{# NIE jest superuserem, a wszedł na /grafana/, /dozzle/, /flower/ lub #}
+{# /netdata/. nginx robi tu wewnętrzne przekierowanie przez #}
+{# `error_page 403 = /__external_auth/forbidden/` (bpp-deploy), więc adres #}
+{# w pasku przeglądarki zostaje ten, o który użytkownik prosił. #}
+
+{% block title %}Brak uprawnień — BPP{% endblock %}
+{% block naglowek %}Brak uprawnień{% endblock %}
+{% block podtytul %}To narzędzie jest dostępne tylko dla administratorów systemu{% endblock %}
+
+{% block tresc %}
+    {% if user.is_authenticated %}
+    <div class="info-box">
+        Jesteś zalogowany jako <strong>{{ user.get_username }}</strong>.
+        To konto nie ma uprawnień administratora, więc nie ma dostępu do
+        narzędzi monitoringu.
+    </div>
+
+    {# Ścieżki są wpisane wprost, a nie przez {% url %}: nginx kieruje do #}
+    {# authservera wyłącznie prefiks /__external_auth/, więc to on — a nie #}
+    {# nazwa route'u — jest kontraktem z warstwą webserwera. #}
+    <form method="post" action="/__external_auth/logout/">
+        {% csrf_token %}
+        <button type="submit">Wyloguj się</button>
+    </form>
+    <p class="hint">
+        Wylogowanie zakończy również Twoją sesję w BPP.
+    </p>
+    {% else %}
+    <div class="info-box">
+        Nie jesteś zalogowany albo Twoja sesja wygasła.
+    </div>
+    <a class="secondary-link" href="/__external_auth/login/">Zaloguj się</a>
+    {% endif %}
+
+    <a class="secondary-link" href="/">Wróć do BPP</a>
+{% endblock %}
