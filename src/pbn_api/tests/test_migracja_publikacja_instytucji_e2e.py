@@ -16,6 +16,7 @@ from model_bakery import baker
 
 from pbn_api.models import Institution, Publication, Scientist
 from pbn_api.models.publikacja_instytucji import PublikacjaInstytucji
+from pbn_api.tests.migracje_e2e_utils import przywroc_czubek_migracji
 
 PRZED = ("pbn_api", "0077_constrainty_uuid_dyscyplin")
 PO = ("pbn_api", "0079_constraint_publikacja_instytucji")
@@ -60,15 +61,23 @@ def test_migracja_przechodzi_na_bazie_z_duplikatami(bez_reinstalacji_denorma):
             == 1
         )
     finally:
-        # Baza MUSI wrócić na docelową migrację (0079) niezależnie od tego,
-        # czy powyższe asercje przeszły — inaczej worker testowy zostaje na
+        # Baza MUSI wrócić na NAJNOWSZĄ migrację niezależnie od tego, czy
+        # powyższe asercje przeszły — inaczej worker testowy zostaje na
         # 0077 (bez constraintu) i psuje WSZYSTKIE kolejne testy w tym
         # procesie kaskadą niezrozumiałych błędów zamiast jednego czytelnego
         # AssertionError z bloku try.
+        #
+        # ⚠️ Czubek grafu, a NIE zaszyte ``PO``. Cofnięcie do ``PRZED``
+        # odapplikowuje wszystko powyżej, więc powrót do stałej zostawia
+        # bazę o tyle migracji w tyle, ile przybyło ich od napisania testu.
+        # Zaszyte ``0079`` przestało wystarczać w chwili, gdy faza 05
+        # soft-delete dołożyła ``0080`` (``SentData.withdrawn_at``):
+        # Playwrightowy test admina ``SentData`` zaczął padać na
+        # ``UndefinedColumn`` w miejscu bez związku z przyczyną.
         #
         # Same dane testowe nie wymagają tu ręcznego kasowania: migracja
         # 0078 (RunPython dedup) dedupikuje dowolną liczbę pozostawionych
         # wierszy trójki jako część forward-migrate, więc nie ma osobnego
         # kroku „usuń dane" przed „odtwórz stan", który mógłby rzucić
         # wyjątkiem maskującym oryginalny AssertionError z bloku try.
-        MigrationExecutor(connection).migrate([PO])
+        przywroc_czubek_migracji()

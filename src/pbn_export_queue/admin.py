@@ -54,6 +54,7 @@ class PBN_Export_QueueAdmin(
     list_per_page = 10
     list_display = [
         "rekord_do_wysylki",
+        "operacja",
         "object_id",
         "zamowil",
         "wysylke_podjeto",
@@ -67,6 +68,7 @@ class PBN_Export_QueueAdmin(
 
     list_filter = [
         ZamowilUniqueFilter,
+        "operacja",
         "zakonczono_pomyslnie",
         "retry_after_user_authorised",
     ]
@@ -76,6 +78,7 @@ class PBN_Export_QueueAdmin(
     readonly_fields = [
         "object_id",
         "content_type",
+        "operacja",
         "zamowiono",
         "zamowil",
         "wysylke_podjeto",
