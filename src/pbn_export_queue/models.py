@@ -67,12 +67,6 @@ class PBN_Export_QueueManager(models.Manager):
         if self.filter_rekord_do_wysylki(rekord).exists():
             raise AlreadyEnqueuedError("ten rekord jest już w kolejce do wysyłki")
 
-        # Właściwe zabezpieczenie przed wyścigiem: między exists() a create()
-        # inny proces mógł dodać aktywny wpis. Częściowy unikat
-        # (content_type, object_id) WHERE wysylke_zakonczono IS NULL zamienia
-        # ten TOCTOU w twardy IntegrityError, który tłumaczymy na domenowy
-        # AlreadyEnqueuedError. savepoint (atomic) izoluje błąd, żeby nie
-        # unieważnić ewentualnej otaczającej transakcji.
         kwargs = {
             "rekord_do_wysylki": rekord,
             "zamowil": user,
@@ -83,6 +77,12 @@ class PBN_Export_QueueManager(models.Manager):
             # dotychczasowe wywołania działają bez zmian.
             kwargs["operacja"] = operacja
 
+        # Właściwe zabezpieczenie przed wyścigiem: między exists() a create()
+        # inny proces mógł dodać aktywny wpis. Częściowy unikat
+        # (content_type, object_id) WHERE wysylke_zakonczono IS NULL zamienia
+        # ten TOCTOU w twardy IntegrityError, który tłumaczymy na domenowy
+        # AlreadyEnqueuedError. savepoint (atomic) izoluje błąd, żeby nie
+        # unieważnić ewentualnej otaczającej transakcji.
         try:
             with transaction.atomic():
                 return self.create(**kwargs)
