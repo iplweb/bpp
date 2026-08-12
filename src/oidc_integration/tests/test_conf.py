@@ -193,3 +193,58 @@ def test_get_bool_prefers_skrot_variant():
 
 def test_get_bool_default_when_absent():
     assert _get_bool({}, "REQUIRE_EMAIL_VERIFIED", None, default=True) is True
+
+
+# --- Zaufane domeny instytucjonalne + wiązanie kont uprzywilejowanych ---
+
+
+def _base_env(**extra):
+    env = {
+        "DJANGO_BPP_OIDC_CLIENT_ID": "abc",
+        "DJANGO_BPP_OIDC_CLIENT_SECRET": "sekret",
+        "DJANGO_BPP_OIDC_ISSUER": ISSUER,
+    }
+    env.update(extra)
+    return env
+
+
+def test_trusted_email_domains_domyslnie_puste():
+    cfg = discover_oidc_config(_base_env())
+    assert cfg["trusted_email_domains"] == ()
+
+
+def test_trusted_email_domains_z_csv():
+    cfg = discover_oidc_config(
+        _base_env(
+            DJANGO_BPP_OIDC_TRUSTED_EMAIL_DOMAINS="uafm.edu.pl, student-afm.edu.pl"
+        )
+    )
+    assert cfg["trusted_email_domains"] == ("uafm.edu.pl", "student-afm.edu.pl")
+
+
+def test_trusted_email_domains_normalizuje_malpe_i_wielkosc():
+    # Operator równie dobrze wpisze "@UAFM.edu.pl" — ma zadziałać tak samo.
+    cfg = discover_oidc_config(
+        _base_env(DJANGO_BPP_OIDC_TRUSTED_EMAIL_DOMAINS="@UAFM.edu.pl")
+    )
+    assert cfg["trusted_email_domains"] == ("uafm.edu.pl",)
+
+
+def test_trusted_email_domains_prefiks_ma_pierwszenstwo():
+    env = {
+        "DJANGO_BPP_OIDC_UAFM_CLIENT_ID": "abc",
+        "DJANGO_BPP_OIDC_UAFM_CLIENT_SECRET": "sekret",
+        "DJANGO_BPP_OIDC_UAFM_ISSUER": ISSUER,
+        "DJANGO_BPP_OIDC_UAFM_TRUSTED_EMAIL_DOMAINS": "uafm.edu.pl",
+        "DJANGO_BPP_OIDC_TRUSTED_EMAIL_DOMAINS": "inna.edu.pl",
+    }
+    assert discover_oidc_config(env)["trusted_email_domains"] == ("uafm.edu.pl",)
+
+
+def test_grace_bind_privileged_domyslnie_false():
+    assert discover_oidc_config(_base_env())["grace_bind_privileged"] is False
+
+
+def test_grace_bind_privileged_z_env():
+    cfg = discover_oidc_config(_base_env(DJANGO_BPP_OIDC_GRACE_BIND_PRIVILEGED="1"))
+    assert cfg["grace_bind_privileged"] is True

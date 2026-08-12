@@ -1411,6 +1411,16 @@ if "oidc_integration" not in INSTALLED_APPS:
 # Defaulty bezpieczne również dla instalacji bez OIDC.
 OIDC_REQUIRE_EMAIL_VERIFIED = (_OIDC_CONFIG or {}).get("require_email_verified", True)
 OIDC_GRACE_BIND_ENABLED = (_OIDC_CONFIG or {}).get("grace_bind", False)
+# Domeny, dla których adres z instytucjonalnego claimu (`mail`) jest wiarygodny
+# bez oglądania się na `email_verified` — ten flag dotyczy claimu `email`, a ten
+# w realmach LDAP-owych bywa adresem PRYWATNYM (patrz a2124bf34). Pusta lista =
+# bramka wyłączona, zachowanie jak dotąd.
+OIDC_TRUSTED_EMAIL_DOMAINS = (_OIDC_CONFIG or {}).get("trusted_email_domains", ())
+# Pozwól grace-bindowi związać konto Z UPRAWNIENIAMI (is_staff/superuser, grupy,
+# uprawnienia, token PBN, hasło lokalne). Działa WYŁĄCZNIE dla adresu zaufanego
+# po domenie — sam ten flag, bez OIDC_TRUSTED_EMAIL_DOMAINS, jest no-opem
+# (blokada wzajemna, żeby nie dało się tego otworzyć przez przypadek).
+OIDC_GRACE_BIND_PRIVILEGED = (_OIDC_CONFIG or {}).get("grace_bind_privileged", False)
 
 if _OIDC_CONFIG:
     OIDC_OP_ISSUER = _OIDC_CONFIG["issuer"]
