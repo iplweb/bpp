@@ -34,12 +34,12 @@ dependencies = [
     # Reużywalne pakiety PBN wydzielone na PyPI (github.com/iplweb/*).
     "django-pbn-client>=0.2,<0.3",
     "pbn-client>=0.2.2,<0.3",
-    "django-polish-inflection>=0.1,<0.2",
+    "django-polish-inflection>=0.1.1,<0.2",
     "django-axes>=7.0,<9",
     "arrow>=1.3,<2",
     "numpy>=2.4.6",
     "pygad>=3.7.0",
-    "django-denorm-iplweb>=1.12.2",
+    "django-denorm-iplweb>=1.14.0",
     "django-tabular-permissions==2.9.3",
     "simplejson>=4.1.1,<5",
     "django-reversion>=6.3.0,<7",
@@ -47,11 +47,11 @@ dependencies = [
     "channels[daphne]>=4.3.2,<5",
     "uvicorn[standard]>=0.52.1",
     "channels-redis>=4,<5",
-    "django-flexible-reports>=0.4.1",
-    "django-dsl>=0.1.14",
+    "django-flexible-reports>=0.4.2",
+    "django-dsl>=0.1.15",
     "django-group-by==0.3.1",
     "django-columns==0.1.0",
-    "django-dynamic-admin-columns>=0.5.0",
+    "django-dynamic-admin-columns>=0.6.0",
     "tablib==3.10.0",
     "openpyxl>=3.1.5",
     "django-dirtyfields==1.9.9",
@@ -73,7 +73,7 @@ dependencies = [
     "django-compressor==4.6.0",
     "nh3>=0.3.6",
     "django-session-security>=2.6.8",
-    "django-password-policies-iplweb==0.9.0",
+    "django-password-policies-iplweb==0.9.4",
     "dj-pagination==2.5.0",
     "requests>=2.34.2",
     "dspace-rest-client>=0.1.12",
@@ -82,7 +82,7 @@ dependencies = [
     "django-minify-html>=1.14,<2",
     "Pillow>=12.2,<14",
     "django-grappelli>=5.0.0,<6",
-    "django-multiseek==0.10.2",
+    "django-multiseek==0.10.3",
     "django-braces>=1.15.0",
     "django-loginas==0.3.14",
     "django-webmaster-verification==0.4.3",
@@ -95,10 +95,10 @@ dependencies = [
     "django-mptt>=0.16,<1",
     "wosclient==0.1.5",
     "MOAI-iplweb>=2.0.2",
-    "django_redis_iplweb>=6.0.1,<6.1",
+    "django_redis_iplweb>=6.0.2,<6.1",
     "django-filter>=26.1,<26.2",
     "dbfread>=2.0.7",
-    "djangorestframework==3.17.2",
+    "djangorestframework==3.18.0",
     "Markdown>=3.7,<4",
     "django-admin-sortable2>=2.3.1,<3",
     "cssmin==0.2.0",
@@ -110,7 +110,7 @@ dependencies = [
     "requests-oauthlib==2.0.0",
     "django-cacheops>=7.2,<8",
     "django-constance>=4.3.5",
-    "djangoql-iplweb>=0.31.1",
+    "djangoql-iplweb>=0.31.2",
     "django-weasyprint>=2.5.0",
     "django-templated-email>=3.0.0",
     "django-formtools>=2.7,<3",
@@ -125,7 +125,7 @@ dependencies = [
     "crispy-bootstrap5>=2026.3",
     "crispy-bootstrap3>=2022.1",
     "twisted[http2,tls]>=26.4.0",
-    "django-dbtemplates-iplweb>=4.4.0",
+    "django-dbtemplates-iplweb>=4.4.1",
     "django-soft-delete>=1.0.23",
     "tqdm>=4.70.0",
     "xhtml2pdf>=0.2.16",
@@ -146,17 +146,27 @@ dependencies = [
     "gunicorn>=26.0.0", # authserver WSGI runner (moved from docker/authserver build-time uv pip install)
     "watchdog>=5.0.3", # --reload mode dla uvicorn/celery w dev compose (moved from entrypoint `uv pip install`)
     "sqlparse>=0.5.4", # Dependabot: transitive via Django, bumped to fix DoS in format_list_of_tuples
-    "django-channels-broadcast>=0.2.2",
-    "django-countdown>=0.3.0",
-    "django-formdefaults>=0.6.2",
+    "django-channels-broadcast>=0.3.0",
+    "django-countdown>=0.3.1",
+    "django-formdefaults>=0.6.3",
     # django-pg-baseline: zewnetrzny pakiet zarzadzajacy baseline.sql + monkey-patch
     # tworzenia testowej bazy. Dawniej wewnetrzny `src/django_pg_baseline/`.
     # Dependency runtime, bo INSTALLED_APPS odwoluje sie do niego z kazdego srodowiska
     # (testy/dev/baseline_rebuild). Sam runtime nic nie kosztuje gdy PG_BASELINE
     # niezdefiniowane (no-op AppConfig.ready).
-    "django-pg-baseline>=0.3.0",
-    "django-site-blog>=0.2.1",
-    "django-first-run-wizard>=0.2.0",
+    #
+    # TRZYMANE NA 0.3.0 CELOWO: 0.3.1 usunal komende `baseline_check`, ktora
+    # wola job `baseline-check` w .github/workflows/tests.yml (linia ~191:
+    # `manage.py baseline_check --max-delta 50`). Na 0.3.1 job pada z
+    # "Unknown command: 'baseline_check'". Zostalo tylko `baseline_info`,
+    # ktore jest czysto informacyjne — drukuje deltay i ZAWSZE konczy sie
+    # zerem, wiec nie moze pelnic roli bramki. Migracja na 0.3.1 wymaga
+    # przepisania joba na `django_pg_baseline.freshness.check_freshness`
+    # (API nadal istnieje) z wlasnym progiem; do tego czasu podnoszenie tej
+    # zaleznosci po cichu zamienia bramke w dekoracje.
+    "django-pg-baseline>=0.3.0,<0.3.1",
+    "django-site-blog>=0.2.2",
+    "django-first-run-wizard>=0.2.1",
     "uvicorn-worker>=0.4.0",
     "mozilla-django-oidc>=5.0.2,<6",
     "babel>=2.17",
@@ -517,7 +527,7 @@ dev = [
     # .pre-commit-config.yaml. CI lints via pre-commit (that rev is the
     # source of truth); this `==` pin only keeps ad-hoc `uv run ruff`
     # producing identical output. Bump both together, never one alone.
-    "ruff==0.16.1",
+    "ruff==0.16.2",
     "djlint>=1.44.1,<2",
     "pre-commit>=4.6.1",
     "twine>=7.0.0",
@@ -542,16 +552,16 @@ dev = [
     # zamiast wisiec ~60 s po niej, a `--testcontainers-clean` szuka po etykiecie
     # org.testcontainers=true, wiec zastepuje `make clean-testcontainers`.
     # SIGKILL nadal spada na Ryuka — tego nie da sie przechwycic.
-    "pytest-testcontainers>=0.3.1",
-    "pytest-testcontainers-django>=0.3.1",
+    "pytest-testcontainers>=0.3.2",
+    "pytest-testcontainers-django>=0.3.2",
     # django-run-site: CLI orchestrator dev stack-u. Dawniej `manage.py run_site`
     # + helpery w `_run_site_helpers/`. Instalowany w dev-deps zeby `uv run run-site`
     # mialo dostep do CLI bez globalnego `uv tool install`. Konfiguracja: runsite.toml.
-    "django-run-site>=0.20.1",
+    "django-run-site>=0.20.2",
     # django-dev-helpers: autologin endpoint + dotfiles dla agentow LLM. Dawniej
     # `src/django_bpp/views_run_site_autologin.py`. Aktywuje sie tylko gdy run-site
     # ustawi DJANGO_DEV_HELPERS_ENABLED=1 — w produkcji no-op.
-    "django-dev-helpers>=0.1.14",
+    "django-dev-helpers>=0.2.0",
     "pytest-repeat>=0.9.4",
     "vulture>=2.16",
 ]
