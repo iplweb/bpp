@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+{# Wspólna skorupa stron authservera (logowanie + brak uprawnień). #}
+{# Style są inline CELOWO: authserver to osobny, minimalny serwis (własne #}
+{# INSTALLED_APPS, bez staticfiles/Foundation) i musi się wyrenderować, #}
+{# nawet gdy główna aplikacja nie odpowiada. Jedyny zewnętrzny zasób to #}
+{# logo z /static/, którego brak degraduje stronę, ale jej nie psuje. #}
+<html lang="pl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}BPP{% endblock %}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                         "Helvetica Neue", Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Background logo - dimmed */
+        body::before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 500px;
+            height: 500px;
+            background-image: url("/static/images/bpp-icon.png");
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            opacity: 0.04;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .panel {
+            position: relative;
+            z-index: 1;
+            background: white;
+            padding: 3rem 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 380px;
+            text-align: center;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 2rem;
+        }
+
+        .error-message {
+            background: #fee2e2;
+            color: #b91c1c;
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .info-box {
+            background: #f3f4f6;
+            color: #374151;
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            text-align: left;
+            line-height: 1.5;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+
+        button[type="submit"] {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            font-family: inherit;
+            margin-top: 0.5rem;
+        }
+
+        button[type="submit"]:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+        }
+
+        button[type="submit"]:active {
+            transform: translateY(0);
+        }
+
+        .hint {
+            margin-top: 0.75rem;
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        .secondary-link {
+            display: inline-block;
+            margin-top: 1.25rem;
+            font-size: 0.85rem;
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        .secondary-link:hover {
+            text-decoration: underline;
+        }
+
+        .footer-note {
+            margin-top: 2rem;
+            font-size: 0.75rem;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        {# Ścieżka statyku wpisana wprost, bez {% static %}: authserver NIE ma #}
+        {# django.contrib.staticfiles w INSTALLED_APPS ani STATIC_URL we #}
+        {# własnych ustawieniach, a cała ta strona ma się renderować przy #}
+        {# minimum zależności. Brak logo degraduje wygląd, nie działanie. #}
+        {# djlint:off D004 #}
+        <img src="/static/images/bpp-icon.png" alt="BPP" class="logo">
+        {# djlint:on D004 #}
+        <h1>{% block naglowek %}BPP{% endblock %}</h1>
+        <p class="subtitle">{% block podtytul %}{% endblock %}</p>
+
+        {% block tresc %}{% endblock %}
+
+        <p class="footer-note">
+            Bibliografia Publikacji Pracowników
+        </p>
+    </div>
+</body>
+</html>

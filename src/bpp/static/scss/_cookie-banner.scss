@@ -1,96 +1,243 @@
 // =============================================================================
 // COOKIE BANNER
-// Cookie law banner styling with overlay effect
+// Pasek informacyjny przyklejony do dołu okna.
+//
+// Wcześniej był to pełnoekranowy modal (100vw × 100vh, przyciemnienie
+// rgba(0,0,0,.6) plus backdrop-filter: blur(10px), z-index 9998), który
+// zasłaniał całą stronę do czasu podjęcia decyzji o ciasteczkach. Powody
+// zmiany, w kolejności wagi:
+//
+//  * treść — BPP to bibliografia publiczna, użytkownik zwykle trafia
+//    z wyszukiwarki prosto na rekord publikacji; zasłonięcie go rozmytą
+//    płachtą przy pierwszym wejściu jest barierą dokładnie w momencie,
+//    w którym serwis ma pokazać, po co się na nim jest;
+//  * prawo — RODO ani ePrivacy nie wymagają blokowania dostępu do treści.
+//    Konstrukcja „cookie wall" bywa kwestionowana, bo zgoda wymuszona
+//    brakiem alternatywy trudno uchodzi za dobrowolną;
+//  * dostępność — overlay o z-index 9998 przykrywał WSZYSTKO, łącznie ze
+//    stopką i nawigacją, więc do czasu kliknięcia serwis był bezużyteczny.
+//
+// Dół, a nie góra ani bok: góra zasłania nagłówek i wyszukiwarkę, czyli to,
+// po co użytkownik przyszedł; bok wymaga osobnego układu na wąskich
+// ekranach i tak kończy jako pas. Dół jest konwencją i nie zabiera treści
+// miejsca.
 // =============================================================================
 
 #CookielawBanner {
-  // Make the banner container cover the entire viewport
   position: fixed !important;
-  top: 0 !important;
+  top: auto !important;
+  bottom: 0 !important;
   left: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  background-color: rgba(0, 0, 0, 0.6) !important;
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
-  z-index: 9998 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  margin-bottom: -10px !important;
+  right: 0 !important;
+  width: 100% !important;
+  height: auto !important;
+
+  // Bez przyciemnienia i bez backdrop-filter: strona pod spodem ma zostać
+  // czytelna i klikalna. Znika przy okazji rozmycie całego widoku,
+  // przeliczane przez przeglądarkę przy każdym przewinięciu.
+  background-color: rgba(255, 255, 255, 0.97) !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.15);
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.15);
+
+  // Nad treścią strony, ale pod modalem wyszukiwarki globalnej.
+  z-index: 1000 !important;
+
+  display: block !important;
+  margin-bottom: 0 !important;
+
+  // Rozbudowana klauzula nie może urosnąć na całą wysokość okna i znów
+  // zasłonić strony — po przekroczeniu progu pasek dostaje własny suwak.
+  max-height: 25vh;
+  overflow-y: auto;
 }
 
-#CookielawBanner > div:first-child {
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  border-radius: 12px;
-  background-color: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  max-height: 90vh;
-  overflow-y: auto;
-  // Responsive width
-  width: 90vw;
+// Dwie kolumny: po lewej zdanie i odnośniki jeden pod drugim, po prawej
+// przyciski wyśrodkowane pionowo względem tej kolumny.
+.cookie-pasek {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 
-  @media screen and (min-width: 768px) {
-    width: 50vw;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.5rem 1rem;
+}
+
+.cookie-pasek__tresc {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cookie-pasek__tekst {
+  // Bez własnego font-size: tekst paska ma być tej samej wielkości co
+  // reszta strony. Pomniejszanie komunikatu o zgodzie jest wzorcem, który
+  // organy ochrony danych traktują jak ukrywanie informacji.
+  margin: 0;
+  line-height: 1.4;
+
+  // Ikona jest pozycjonowana absolutnie względem tego akapitu, a tekst
+  // dostaje wcięcie na jej szerokość. Dzięki temu kolejne wiersze zaczynają
+  // się w tej samej kolumnie co pierwszy, zamiast podpływać pod ikonę.
+  position: relative;
+  padding-left: 1.75rem;
+}
+
+// Odnośniki płyną w tym samym akapicie co zdanie, rozdzielone kropką.
+.cookie-pasek__tekst a {
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.cookie-pasek__sep {
+  margin: 0 0.35em;
+  opacity: 0.5;
+}
+
+// Ikona odnośnika zewnętrznego rysowana SVG, nie znakiem Unicode. U+2197
+// siedzi w większości krojów daleko poniżej linii pisma i nie da się tego
+// wyrównać przenośnie — każdy krój ma inną metrykę.
+//
+// Pozycję poprawiamy przez `position: relative` + `top`, a NIE przez
+// `vertical-align` z wartością dodatnią: ta druga podnosi całe pudełko
+// ikony ponad linię pisma i rozpycha wysokość wiersza, przez co tekst obok
+// wygląda, jakby miał wyższą linię bazową i inny rozmiar. Przesunięcie
+// względne jest czysto wizualne i nie dotyka układu wiersza.
+.ikona-zewnetrzna {
+  position: relative;
+  top: 0.09em;
+
+  width: 0.72em;
+  height: 0.72em;
+  margin-left: 0.45em;
+
+  vertical-align: baseline;
+  flex-shrink: 0;
+}
+
+// Przyciski obok siebie: pionowo zajmowały więcej wysokości niż sam tekst
+// paska, przez co nad zdaniem i pod nim robiło się dużo pustego miejsca.
+.cookie-pasek__akcje {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.cookie-pasek__btn {
+  // Foundation daje przyciskom margin-bottom pod formularze; w pasku
+  // rozjeżdżałby wyrównanie do linii odnośników.
+  margin: 0;
+  white-space: nowrap;
+
+  // Obie odpowiedzi mają tę samą wagę wizualną: identyczny rozmiar, tę samą
+  // grubość ramki i porównywalny kontrast. Różni je odcień, nie donośność —
+  // RODO wymaga, żeby odmowa była równie łatwa jak zgoda, a przycisk
+  // krzyczący obok wyszarzonego to wzorzec kwestionowany przez organy
+  // ochrony danych jako naciskanie na zgodę.
+  border: 1px solid;
+  border-radius: 3px;
+
+  // WCAG 2.5.8 (Target Size Minimum): cel dotykowy nie mniejszy niż 24 px.
+  min-height: 2.3rem;
+  padding: 0.45rem 0.95rem;
+  line-height: 1.2;
+
+  &:focus-visible {
+    outline: 2px solid #2c6cb0;
+    outline-offset: 1px;
   }
+}
+
+// Stonowana zieleń — dość wyraźna, żeby odróżnić odpowiedzi, na tyle
+// spokojna, żeby nie przytłaczać sąsiada.
+.cookie-pasek__btn--tak {
+  background-color: #e6f2e6;
+  border-color: #4a7c4a;
+  color: #1e401e;
+
+  &:hover,
+  &:focus {
+    background-color: #d5e9d5;
+    color: #1e401e;
+  }
+}
+
+// Neutralna szarość zamiast czerwieni: odmowa nie jest błędem ani
+// operacją destrukcyjną, a czerwony sugerowałby jedno albo drugie.
+.cookie-pasek__btn--nie {
+  background-color: #f2f2f2;
+  border-color: #7a7a7a;
+  color: #262626;
+
+  &:hover,
+  &:focus {
+    background-color: #e4e4e4;
+    color: #262626;
+  }
+}
+
+// Wąski ekran: kolumny nie mieszczą się obok siebie. Wszystko idzie
+// pionowo — zdanie, pod nim odnośniki po połowie szerokości, pod nimi
+// przyciski również po połowie.
+@media screen and (max-width: 39.9375em) {
+  .cookie-pasek {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  // Na wąskim ekranie przyciski wracają obok siebie i dzielą szerokość
+  // po połowie — w kolumnie zajęłyby dwa razy więcej wysokości.
+  .cookie-pasek__akcje {
+    flex-direction: row;
+
+    > * {
+      flex: 1 1 0;
+    }
+  }
+}
+
+// WCAG 2.4.11 Focus Not Obscured (AA, nowe w 2.2): pasek przyklejony do dołu
+// zasłoniłby element, na który przechodzi focus tabulacją, gdyby ten wypadł
+// przy dolnej krawędzi okna. scroll-padding rezerwuje miejsce, więc
+// przeglądarka przewija stronę tak, żeby element pozostał widoczny.
+html {
+  scroll-padding-bottom: 8rem;
 }
 
 // CSS Cookie Icons
 .cookie-icon {
-  display: inline-block;
-  width: 24px;
-  height: 24px;
+  // Wyjęta z przepływu tekstu: stoi w lewej krawędzi akapitu, a wcięcie
+  // `padding-left` na `.cookie-pasek__tekst` rezerwuje jej miejsce.
+  position: absolute;
+  left: 0;
+  top: 0.2em;
+
+  display: block;
+  width: 18px;
+  height: 18px;
   background: linear-gradient(135deg, #d2691e 0%, #8b4513 100%);
   border-radius: 50%;
-  position: relative;
-  margin-right: 8px;
-  vertical-align: middle;
 }
 
 .cookie-icon::before {
   content: '';
   position: absolute;
-  top: 4px;
-  left: 6px;
-  width: 3px;
-  height: 3px;
+  top: 3px;
+  left: 4px;
+  width: 2px;
+  height: 2px;
   background: #654321;
   border-radius: 50%;
-  box-shadow: 8px 2px 0 #654321,
-  4px 8px 0 #654321,
-  12px 10px 0 #654321,
-  2px 12px 0 #654321,
-  10px 4px 0 #654321;
+  // Okruszki rozmieszczone pod mniejszą ikonę (18 px zamiast 24 px).
+  box-shadow: 6px 1px 0 #654321,
+  3px 6px 0 #654321,
+  9px 8px 0 #654321,
+  1px 9px 0 #654321,
+  8px 3px 0 #654321;
 }
 
-// Privacy icon
-.privacy-icon {
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  margin-right: 6px;
-  vertical-align: middle;
-}
-
-.privacy-icon::before {
-  content: '🛡️';
-  font-size: 16px;
-}
-
-// Information links styling
-.cookie-info-links {
-  margin-top: 10px;
-  font-size: 0.85em;
-}
-
-.cookie-info-links a {
-  color: $primary-color;
-  text-decoration: none;
-  margin-right: 15px;
-}
-
-.cookie-info-links a:hover {
-  text-decoration: underline;
-}
+// Usunięte razem z przebudową paska: `.privacy-icon` (emoji tarczy) i
+// `.cookie-info-links` — obie klasy przestały występować w jakimkolwiek
+// szablonie, a `.cookie-info-links a` było jedynym miejscem w tym pliku
+// sięgającym po zmienną Foundation `$primary-color`.

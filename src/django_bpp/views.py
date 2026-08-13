@@ -248,8 +248,9 @@ def is_superuser(request):
     """Authorization endpoint for nginx auth_request.
 
     Returns:
-    - 401 Unauthorized: user not authenticated
-    - 403 Forbidden: user authenticated but not superuser
+    - 401 Unauthorized: user not authenticated (nginx -> formularz logowania)
+    - 403 Forbidden: user authenticated but not superuser (nginx -> strona
+      ``brak_uprawnien``)
     - 200 OK: user is superuser (with X-WEBAUTH-* headers)
     """
     if not request.user.is_authenticated:
@@ -263,6 +264,20 @@ def is_superuser(request):
     resp["X-WEBAUTH-EMAIL"] = request.user.email or ""
     resp["X-WEBAUTH-NAME"] = request.user.get_full_name() or request.user.get_username()
     return resp
+
+
+def brak_uprawnien(request):
+    """Strona 403 dla zalogowanych, którzy nie są superuserami.
+
+    ``is_superuser`` zwraca nginksowi samo 403 — bez tej strony użytkownik
+    widziałby generyczny błąd webserwera i nie dowiedziałby się, że problem
+    leży w koncie, na które jest właśnie zalogowany (typowo: konto redaktora
+    zamiast administratora). nginx wchodzi tu wewnętrznym przekierowaniem
+    (``error_page 403``), więc adres w przeglądarce się nie zmienia, a status
+    odpowiedzi pozostaje 403 — celowo, żeby nie udawać sukcesu przed
+    klientami innymi niż przeglądarka.
+    """
+    return render(request, "auth_server/forbidden.html", status=403)
 
 
 class RateLimitedPasswordResetFormView:

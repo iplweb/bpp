@@ -131,7 +131,7 @@ CACHES = {
     },
 }
 
-# Login URLs for the emergency login form
+# Login URLs for the SSO login form (nginx auth_request -> error_page 401)
 LOGIN_URL = "/__external_auth/login/"
 LOGIN_REDIRECT_URL = "/"
 
