@@ -101,6 +101,7 @@ from pbn_api.models import (
     SentData,
 )
 from pbn_api.models.discipline import DisciplineGroup
+from rozbieznosci.models import IgnorowanaRozbieznosc, RozbieznoscLog
 from rozbieznosci_dyscyplin.models import RozbieznosciView, RozbieznosciZrodelView
 from zglos_publikacje.models import (
     Obslugujacy_Zgloszenia_Wydzialow,
@@ -199,6 +200,11 @@ groups = {
         IloscUdzialowDlaAutoraZaRok,
         RozbieznosciView,
         RozbieznosciZrodelView,
+        # Podrzędne wobec ``Wydawnictwo_Ciagle`` (FK z CASCADE): bez tych
+        # uprawnień admin nie pozwoli skasować publikacji, do której powstał
+        # log zmiany punktacji albo wpis o ignorowanej rozbieżności.
+        IgnorowanaRozbieznosc,
+        RozbieznoscLog,
         NotADuplicate,
         LogScalania,
         IgnoredScientist,
