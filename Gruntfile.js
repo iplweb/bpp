@@ -1,5 +1,9 @@
 const sass = require('sass');
 
+// Sentinel kompletnego builda assetow. MUSI byc zgodny z `CSS_STAMP`
+// w Makefile — to po jego mtime `make assets` decyduje, czy przebudowywac.
+const SENTINEL_BUILDA = '.grunt-build-stamp';
+
 module.exports = function (grunt) {
     grunt.initConfig({
         // pkg: grunt.file.readJSON('package.json'),
@@ -299,6 +303,26 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks('grunt-concurrent');
 
     grunt.registerTask('shell-test', ['shell:collectstatic']);
+
+    // Odswieza sentinel, po ktorym `make assets` poznaje, ze assety sa
+    // aktualne. Wczesniej `touch` robila wylacznie regula w Makefile, wiec
+    // `npx grunt build` odpalony RECZNIE budowal pliki, ale zostawial
+    // sentinel starszy niz zrodla — kolejny `make assets` przebudowywal
+    // wszystko od nowa, mimo ze nie bylo po co. Latwo bylo tez wyciagnac
+    // z tego bledny wniosek, ze build nie dziala.
+    //
+    // Zadanie stoi na KONCU listy `build`, bo grunt przerywa kolejke na
+    // pierwszym bledzie: sentinel odswieza sie wylacznie wtedy, gdy
+    // wszystkie wczesniejsze kroki faktycznie sie powiodly.
+    grunt.registerTask(
+        'stampBuild',
+        'Odswieza sentinel kompletnego builda (patrz CSS_STAMP w Makefile)',
+        function () {
+            grunt.file.write(SENTINEL_BUILDA, '');
+            grunt.log.ok('sentinel odswiezony: ' + SENTINEL_BUILDA);
+        }
+    );
+
     grunt.registerTask('build', [
         'concurrent:themes',
         'shell:linkSitePackages',
@@ -307,8 +331,12 @@ module.exports = function (grunt) {
         'shell:esbuildThree',
         'shell:patchBundle',
         'shell:copyRollbar',
-        'shell:collectstatic'
+        'shell:collectstatic',
+        'stampBuild'
     ]);
+    // `build-non-interactive` CELOWO nie dotyka sentinela: pomija
+    // `collectstatic`, wiec nie spelnia tego, co `make assets` obiecuje.
+    // Uzywaja go tylko Dockerfile'e, gdzie `make` nie wystepuje.
     grunt.registerTask('build-non-interactive', [
         'concurrent:themes',
         'shell:linkSitePackages',
