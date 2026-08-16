@@ -90,6 +90,35 @@ class ProviderEncji:
         i z kompletem prefetchy potrzebnym serializerowi."""
         raise NotImplementedError
 
+    def przynaleznosc(self, uczelnia, model):
+        """Rekordy TEGO tenanta — także niewidoczne i te w koszu.
+
+        Wyłącznie atrybucja tenanta. ŻADNYCH reguł ekspozycji
+        (``nie_eksportuj_przez_api``, ``status_korekty``, ``widoczna``,
+        ``pokazuj``, przełączniki ``Uczelnia.eksport_cerif_*``) — te należą
+        do ``queryset()`` i to ich dopełnienie daje nagrobki.
+
+        Rozszczepienie jest konieczne, bo predykat widoczności sklei dziś
+        dwie różne rzeczy. Dopełnienie CAŁEJ widoczności wystawiłoby
+        w multi-hosted nagrobki dla rekordów innych uczelni —
+        ``widoczne_jednostki()`` filtruje ``uczelnia=uczelnia`` wprost.
+
+        Prefetche: te same co w ``queryset()``. Prefetch na husku jest
+        nieszkodliwy, a alternatywa (ponowne pobranie żywych z prefetchami)
+        dokładałaby zapytanie na każdą stronę harvestu.
+        """
+        raise NotImplementedError
+
+    def nagrobki(self, uczelnia, model):
+        """Rekordy tenanta, które przestały być wystawiane.
+
+        Różnica liczona po kluczach głównych: ``queryset()`` niesie
+        prefetche, a te w podzapytaniu i tak nie działają — ``values("pk")``
+        sprowadza je do samego klucza.
+        """
+        widoczne = self.queryset(uczelnia, model).values("pk")
+        return self.przynaleznosc(uczelnia, model).exclude(pk__in=widoczne)
+
     def zbiory_widocznosci(self, uczelnia, obiekty) -> ZbioryWidocznosci:
         """Prekomputuj klucze encji sąsiadujących, które wyjdą w swoich
         setach — dla podanej partii obiektów."""
@@ -226,6 +255,9 @@ class ProviderPusty(ProviderEncji):
     modele: list = []
 
     def queryset(self, uczelnia, model):
+        raise NotImplementedError("Set pusty nie ma modeli")
+
+    def przynaleznosc(self, uczelnia, model):
         raise NotImplementedError("Set pusty nie ma modeli")
 
     def zbiory_widocznosci(self, uczelnia, obiekty) -> ZbioryWidocznosci:
