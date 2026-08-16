@@ -156,16 +156,24 @@ Co weszło:
   a `idDoesNotExist` zostaje dla identyfikatorów spoza tenanta.
 - `DELETED_RECORD = "transient"` — obietnica w `Identify` jest teraz prawdziwa.
 - `/api/v1/usuniete/` — identyfikator + data, nigdy treść. Zakres **węższy**
-  niż OAI (sam kosz), decyzja D5 specu.
+  niż OAI (sam kosz), decyzja D5 specu. Stronicowany
+  (`BppLimitOffsetPagination`), przy czym `ORDER BY` i `LIMIT/OFFSET`
+  wykonuje baza: sześć modeli kosza łączy `UNION ALL` o wspólnym kształcie
+  `(etykieta modelu, pk, deleted_at)`. Sklejanie list w Pythonie byłoby tu
+  pesymalizacją — każde żądanie ciągnęłoby cały kosz, a stron jest wiele.
 - Faza **nie dodaje migracji** (dlatego ostrzeżenie o `eksport_cerif_osoby`
   poszło do `docs/deweloper/eurocris-co-jeszcze.md`, a nie w `help_text`).
 
 Co zostaje otwarte dla faz dalszych:
 
-- **`/api/v1/usuniete/` nie stronicuje** — zwraca cały kosz w jednej
-  odpowiedzi (`pagination_class = None`). Przy dużym koszu to problem;
-  łagodzi go filtr `usuniety_od_after`/`_before`, ale klient nie jest do
-  niego zmuszony. Kandydat na osobną poprawkę.
+- **Asymetria gate'u na `.update(deleted_at=...)`.** `BppSoftDeleteQuerySet`
+  blokuje bulk-ustawienie znacznika (omijałoby `post_save`, kaskadę
+  `*_Autor`, `SoftDeleteLog` i reversion), ale gate dziedziczy tylko
+  `AutorQuerySet` — `BppDeletedQuerySet` publikacji **nie**. Czyli
+  `Autor.deleted_objects.filter(...).update(deleted_at=...)` rzuca
+  `RuntimeError`, a to samo na `Wydawnictwo_Ciagle` przechodzi. Wygląda na
+  przeoczenie, nie na decyzję. Testy fazy 05b tego nie wykorzystują (opierają
+  się na zegarze), więc domknięcie gate'u ich nie zepsuje.
 - Modele soft-delete to nadal publikacje (faza 02) + `Autor` (faza 04).
   Słowniki (`Zrodlo`, `Konferencja`, `Projekt`, `Jednostka`) — **nie**;
   ich nagrobki biorą się z dopełnienia ekspozycji, nie z kosza, więc
