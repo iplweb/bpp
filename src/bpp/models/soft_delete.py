@@ -421,6 +421,56 @@ class BppPublikacjaSoftDeleteMixin(BppPkPrzedHardDeleteMixin, SoftDeleteModel):
             return []
         return list(getattr(self, NAZWA_RELACJI_AUTORSTW).all())
 
+    # --- atrybucja tenanta ----------------------------------------------
+
+    def uczelnia_rekordu(self):
+        """Uczelnia, do której należy rekord, albo ``None`` przy dwuznaczności.
+
+        PO CO: wpisy ``PBN_Export_Queue`` tworzone przez receivery fazy 06
+        nie mają requestu, z którego reszta kodu bierze tenanta
+        (``Uczelnia.objects.get_for_request``). Bez uczelni
+        ``_pozyskaj_klienta_pbn()`` spada na „jedyna-albo-głośny-błąd", więc
+        w multi-hosted wycofanie oświadczeń kończyłoby się
+        ``FINISHED_ERROR``.
+
+        REGUŁA JEST ODWRÓCENIEM PRZYNALEŻNOŚCI Z FAZY 05b — ``naleza_
+        wydawnictwa`` / ``naleza_prace`` (``cerif_export/providers/
+        publikacje.py``). Nie definiujemy drugiej, konkurencyjnej: gdy
+        tamta się zmieni, ta musi pójść za nią. Odwracamy, zamiast wołać
+        wprost, bo ``cerif_export`` zależy od ``bpp``, nie odwrotnie.
+
+        ``global_objects`` JEST KONIECZNE, nie ostrożnościowe: wąska
+        kaskada fazy 02 kasuje wiersze ``*_Autor`` PRZED wysłaniem
+        ``post_soft_delete`` rodzica. W momencie odczytu autorstwa są już
+        w koszu, więc ``objects`` zwróciłoby pustkę i uczelnia wychodziłaby
+        ``None`` przy każdym kasowaniu — czyli zawsze wtedy, kiedy jest
+        potrzebna.
+
+        DWUZNACZNOŚĆ → ``None``. Praca współautorska między uczelniami nie
+        ma jednego właściciela, a wybranie „pierwszej z brzegu" wysłałoby
+        wycofanie przez konto PBN cudzego tenanta. ``None`` degraduje do
+        zachowania sprzed tej fazy: jedna uczelnia w bazie działa, kilka
+        daje głośny błąd na wpisie kolejki.
+        """
+        from bpp.models.uczelnia import Uczelnia
+
+        rel = self._relacja_autorstw()
+        if rel is None:
+            # Praca_Doktorska / Praca_Habilitacyjna — autor i jednostka
+            # siedzą na wierszu samej pracy (odpowiednik ``naleza_prace``).
+            uczelnie = {self.jednostka.uczelnia_id}
+        else:
+            uczelnie = set(
+                rel.related_model.global_objects.filter(
+                    **{rel.field.name: self}
+                ).values_list("jednostka__uczelnia_id", flat=True)
+            )
+
+        uczelnie.discard(None)
+        if len(uczelnie) != 1:
+            return None
+        return Uczelnia.objects.filter(pk=uczelnie.pop()).first()
+
     # --- kontrakt zapisu ------------------------------------------------
 
     def save(self, *args, **kwargs):
