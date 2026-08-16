@@ -24,6 +24,7 @@ from .docx_export import as_docx
 from .forms import form_class_dla
 from .models import DefinicjaRaportu
 from .poziomy import POZIOMY
+from .sortowanie import pola_dla
 
 
 def zastosuj_filtry_zaawansowane(queryset, params):
@@ -154,6 +155,14 @@ class GenerujRaportBase(DetailView):
                 }
             )
 
+            # Wariant sortowania z formularza (FD467). Wołamy setter TYLKO dla
+            # wariantu nadpisującego — dla domyślnego zostawiamy ``ColumnOrder``
+            # tabeli nietknięty, żeby instalacje, które go sobie przestawiły,
+            # zachowały swoją kolejność.
+            pola_sortowania = pola_dla(self.request.GET.get("sortowanie"))
+            if pola_sortowania:
+                report.set_order_by(*pola_sortowania)
+
         kwargs["report"] = report
         kwargs["od_roku"] = self.kwargs["od_roku"]
         kwargs["do_roku"] = self.kwargs["do_roku"]
@@ -268,7 +277,7 @@ class RaportFormView(RaportDostepMixin, FormDefaultsMixin, FormView):
 
     def form_valid(self, form):
         return _redirect_do_generuj(
-            form.cleaned_data, getattr(form, "POLA_ZAAWANSOWANE", [])
+            form.cleaned_data, getattr(form, "POLA_PRZEKAZYWANE", [])
         )
 
     def get_context_data(self, **kwargs):
