@@ -43,6 +43,27 @@ def test_context_zagniezdzony_przywraca_zewnetrzny(django_user_model, db):
     assert current_soft_delete_user() is None
 
 
+def test_context_pominiety_argument_dziedziczy_zewnetrzny(django_user_model, db):
+    """Wejście bez ``user`` NIE zeruje atrybucji z zewnątrz.
+
+    ``delete()`` faz 02/04 zakłada ten kontekst zawsze — także gdy wołający
+    nie podał ``user=``. Gdyby brak argumentu zerował, wzorzec
+    ``with soft_delete_context(user=X): obj.delete()`` dawałby log
+    z ``user=None``, czyli oba przewidziane sposoby atrybucji wykluczałyby
+    się nawzajem.
+    """
+    u = django_user_model.objects.create(username="zewnetrzny")
+    with soft_delete_context(user=u, reason="powod zewnetrzny"):
+        with soft_delete_context():
+            assert current_soft_delete_user() == u
+            assert current_soft_delete_reason() == "powod zewnetrzny"
+
+        # Jawnie podany argument nadal wygrywa nad odziedziczonym.
+        with soft_delete_context(reason="powod wewnetrzny"):
+            assert current_soft_delete_user() == u
+            assert current_soft_delete_reason() == "powod wewnetrzny"
+
+
 def test_context_czysci_takze_przy_wyjatku(django_user_model, db):
     """``delete()`` może paść (np. ``ProtectedError`` guardu fazy 04).
 

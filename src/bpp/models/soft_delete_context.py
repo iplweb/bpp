@@ -49,11 +49,20 @@ def soft_delete_context(user=None, reason=""):
     który przeciekłby po wyjątku, przypisałby cudzego usera NASTĘPNEJ
     operacji w tym wątku (w produkcji: kolejnemu requestowi na tym samym
     workerze). Byłby to błąd cichy i nie do wykrycia po fakcie.
+
+    POMINIĘTY ARGUMENT DZIEDZICZY, NIE ZERUJE. Wejście bez ``user``
+    zachowuje usera z kontekstu zewnętrznego. Bez tej reguły oba
+    przewidziane sposoby atrybucji wykluczałyby się nawzajem: ``delete()``
+    (fazy 02/04) zakłada ten kontekst ZAWSZE, więc wywołanie bez ``user=``
+    wewnątrz jawnego ``soft_delete_context(user=X)`` wyzerowałoby X i
+    operacja trafiłaby do logu jako niczyja. Opakowanie, które nie wnosi
+    informacji, nie ma prawa jej niszczyć — ``None`` znaczy tu „nie wiem",
+    a nie „wiem, że nikt".
     """
     prev_user = getattr(_ctx, "user", None)
     prev_reason = getattr(_ctx, "reason", "")
-    _ctx.user = user
-    _ctx.reason = reason
+    _ctx.user = user if user is not None else prev_user
+    _ctx.reason = reason if reason else prev_reason
     try:
         yield
     finally:

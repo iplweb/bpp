@@ -53,6 +53,8 @@ from django_softdelete.managers import (
 from django_softdelete.models import SoftDeleteModel
 from django_softdelete.signals import post_restore, post_soft_delete
 
+from bpp.models.soft_delete_context import soft_delete_context
+
 #: Akcesor relacji odwrotnej publikacja -> wiersze ``*_Autor``. Istnieje
 #: jako PRAWDZIWA relacja tylko dla trzech typów z through-modelem;
 #: ``Praca_Doktorska``/``Praca_Habilitacyjna`` mają pod tą nazwą property
@@ -441,12 +443,16 @@ class BppPublikacjaSoftDeleteMixin(BppPkPrzedHardDeleteMixin, SoftDeleteModel):
     def delete(self, *args, user=None, reason="", **kwargs):
         """Soft-delete publikacji + wąska kaskada na ``*_Autor``.
 
-        ``user``/``reason`` są na razie wyłącznie przepuszczane — konsumuje
-        je ``SoftDeleteLog`` z fazy 06. W sygnaturze MUSZĄ być już teraz
-        (kontrakt PINNED), żeby wołający kod nie wymagał później zmiany.
+        ``user``/``reason`` trafiają do ``SoftDeleteLog`` (faza 06) przez
+        thread-local ``soft_delete_context``. Kontekst obejmuje CAŁE ciało,
+        nie samo ``post_soft_delete.send()``: kaskada na ``*_Autor`` wysyła
+        własne sygnały (przez ``delete()`` pakietu), a te mają zostać
+        zalogowane z tym samym userem i powodem. Zawężenie kontekstu do
+        ostatniej linii dałoby wpisy autorstw z ``user=None`` mimo
+        świadomej decyzji operatora.
         """
         txid = kwargs.pop("transaction_id", None) or uuid.uuid4()
-        with transaction.atomic():
+        with soft_delete_context(user=user, reason=reason), transaction.atomic():
             # 1. kaskada per-instancja — NIGDY bulk update(deleted_at=...),
             #    bo omijałby post_save, sygnały i reversion (gate w
             #    BppSoftDeleteQuerySet.update() egzekwuje to fail-fast).
@@ -477,7 +483,7 @@ class BppPublikacjaSoftDeleteMixin(BppPkPrzedHardDeleteMixin, SoftDeleteModel):
         """
         txid = self.transaction_id
         rel = self._relacja_autorstw()
-        with transaction.atomic():
+        with soft_delete_context(user=user), transaction.atomic():
             if txid is not None and rel is not None:
                 # Nazwa pola FK z metadanych relacji — bez zaszywania
                 # "rekord" na sztywno.
