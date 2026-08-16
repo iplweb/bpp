@@ -118,6 +118,11 @@ class ModelZOpisemBibliograficznym(models.Model):
             .replace(". , ", ". ")
             .replace(" .", ".")
             .replace(".</b>[", ".</b> [")
+            # Ten sam wzorzec, ale dla tytułu obcojęzycznego owiniętego w
+            # <span lang="…"> (WCAG 3.1.2) wewnątrz <b> — sąsiedztwo tokenów
+            # przesuwa się na ".</span></b>[" i powyższy .replace() go nie
+            # łapie.
+            .replace(".</span></b>[", ".</span></b> [")
         )
 
         # Opis powstaje m.in. z (niezaufanego) tytułu i jest renderowany |safe

@@ -1,6 +1,7 @@
 import json
 
 from django.template import Library
+from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 register = Library()
@@ -124,7 +125,9 @@ def safe_tytul(value):
     Zamiennik dla ``|safe`` przy ``tytul``/``tytul_oryginalny``: sanityzuje
     HTML tytułu (wąska allowlista inline — kursywa, pogrubienie, sub/sup),
     usuwając XSS z tytułów pochodzących z importu/zgłoszeń. Stosować jako
-    OSTATNI filtr (po ``truncatewords_html``/``znak_na_koncu``).
+    ostatni filtr SANITYZUJĄCY (po ``truncatewords_html``/``znak_na_koncu``).
+    Wyjątek: ``oznacz_jezyk`` idzie PO nim — tylko owija wynik, nie wnosi
+    treści do sanityzacji.
     """
     from bpp.util import safe_tytul_html
 
@@ -329,7 +332,6 @@ def autor_nazwa(autor, links="", pokaz_pozycje=False):
     końcu pliku) wstawiało spację przed przecinkiem między autorami.
     """
     from django.urls import reverse
-    from django.utils.html import format_html
 
     klasa = "author-name"
     if not links:
@@ -360,3 +362,25 @@ def autor_nazwa(autor, links="", pokaz_pozycje=False):
             '{} <span class="praca-mono__author-pozycja">({}.)</span>', nazwa, pozycja
         )
     return nazwa
+
+
+@register.filter(name="oznacz_jezyk")
+def oznacz_jezyk(wartosc, jezyk):
+    """Owiń tytuł w ``<span lang="…">`` na podstawie ``Jezyk.kod_bcp47``.
+
+    WCAG 2.2 AA, kryterium 3.1.2 (Language of Parts): tytuł obcojęzyczny na
+    stronie ``lang="pl"`` musi nieść własny znacznik języka, inaczej czytnik
+    ekranu odczyta go polską fonetyką.
+
+    Gdy kod języka jest pusty (``kod_bcp47`` jest ``blank=True``) albo relacja
+    ``jezyk`` nie istnieje, atrybut NIE jest dodawany. ``lang=""`` byłby
+    gorszy niż jego brak: pusta wartość znaczy "język nieznany" i unieważnia
+    dziedziczenie z ``<html lang="pl">``.
+
+    Stosować jako filtr OSTATNI — po ``safe_tytul``/``safe``, bo te
+    sanityzują wąską allowlistą, która ``<span>`` by wycięła.
+    """
+    kod = getattr(jezyk, "kod_bcp47", None)
+    if not kod:
+        return wartosc
+    return format_html('<span lang="{}">{}</span>', kod, wartosc)
