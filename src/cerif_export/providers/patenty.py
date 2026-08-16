@@ -53,6 +53,23 @@ def widoczne_patenty(uczelnia):
     )
 
 
+def nalezace_patenty(uczelnia):
+    """Patenty TEJ uczelni — bez reguł ekspozycji.
+
+    Scope przez model autorstwa z KOSZEM (``global_objects``), jak
+    wydawnictwa; sam ``Patent`` też przez ``global_objects``, bo jest
+    soft-delete od fazy 02. ``status_korekty``, ``nie_eksportuj_przez_api``
+    i ``rodzaj_prawa.eksportuj_jako_patent`` to ekspozycja — zostają
+    w ``widoczne_patenty()``.
+    """
+    wymagaj_uczelni(uczelnia)
+    return Patent.global_objects.filter(
+        pk__in=Patent_Autor.global_objects.filter(jednostka__uczelnia=uczelnia).values(
+            "rekord_id"
+        )
+    )
+
+
 PREFETCH_TWORCOW = Prefetch(
     "autorzy_set",
     queryset=Patent_Autor.objects.select_related(
@@ -77,6 +94,21 @@ class ProviderPatentow(ProviderEncji):
 
         return (
             widoczne_patenty(uczelnia)
+            .select_related("rodzaj_prawa", "status_korekty", "wydzial")
+            .prefetch_related(
+                "slowa_kluczowe", PREFETCH_TWORCOW, *prefetche_pochodzenia()
+            )
+        )
+
+    def przynaleznosc(self, uczelnia, model):
+        wymagaj_uczelni(uczelnia)
+        if model is not Patent:
+            raise BlednyIdentyfikator(
+                f"Model {model!r} nie należy do setu {self.set_spec}"
+            )
+
+        return (
+            nalezace_patenty(uczelnia)
             .select_related("rodzaj_prawa", "status_korekty", "wydzial")
             .prefetch_related(
                 "slowa_kluczowe", PREFETCH_TWORCOW, *prefetche_pochodzenia()
