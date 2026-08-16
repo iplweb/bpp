@@ -196,3 +196,18 @@ def test_getrecord_na_usunietym_zwraca_nagrobek(uczelnia):
     assert naglowek is not None, "GetRecord nie zwrócił nagłówka (błąd protokołu?)"
     assert naglowek.get("status") == "deleted"
     assert korzen.find(f".//{{{NS_PMH}}}metadata") is None
+
+
+@pytest.mark.django_db
+def test_identify_deklaruje_transient(uczelnia):
+    """Deklaracja to obietnica wobec harvestera, nie kosmetyka.
+
+    ``no`` znaczy „nie dowiesz się o usunięciach — rób pełny re-harvest".
+    ``transient`` znaczy „ogłaszam usunięcia, ale nie gwarantuję, że
+    nagrobek zostanie na zawsze" — i to jest prawda: husk może zniknąć przy
+    twardym kasowaniu albo czyszczeniu kosza w fazie 07.
+    """
+    korzen = _wykonaj(uczelnia, verb="Identify")
+    element = korzen.find(f".//{{{NS_PMH}}}deletedRecord")
+    assert element is not None, "Identify nie zwrócił deletedRecord"
+    assert element.text == "transient"
