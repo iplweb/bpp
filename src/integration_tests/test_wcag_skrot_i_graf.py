@@ -6,10 +6,16 @@ pliku; te dowodzą, że działa. Bez nich usunięcie warunku
 z obsługi klawiatury grafu, albo samych handlerów kliknięcia przycisków
 nawigacji — nie wywaliłoby żadnego testu.
 
-Widok strony autora (``bpp:browse_autor``) wybrany zamiast strony uczelni,
-bo nie wymaga obiektu ``Uczelnia`` w bazie (patrz też
-``test_siec3d_bez_webgl.py``, który idzie tą samą drogą), a stopka i modal
-wyszukiwarki renderują się na nim tak samo.
+Większość testów jedzie po stronie autora (``bpp:browse_autor``), bo nie
+wymaga obiektu ``Uczelnia`` w bazie (patrz też ``test_siec3d_bez_webgl.py``,
+który idzie tą samą drogą), a stopka i modal wyszukiwarki renderują się na
+niej tak samo.
+
+Wyjątkiem jest ``test_baner_skrotu_na_stronie_uczelni_slucha_preferencji``:
+strona uczelni ma WŁASNY, inline'owy skrypt reklamujący skrót, którego nie
+ma nigdzie indziej, więc tam trzeba zapłacić za seed ``Uczelnia``. Bez tego
+testu odwrócenie guardu (``|| !bppSkrotyWlaczone()``) przechodziło całą
+suitę: testy szablonowe sprawdzają regexem obecność, nie semantykę.
 
 WYMAGANIE WSTĘPNE: ``make assets`` — bez zbudowanego bundla strona nie ma
 czego wykonać i testy padną na braku elementów / błędnym zachowaniu JS.
@@ -20,7 +26,7 @@ from django.urls import reverse
 from model_bakery import baker
 from playwright.sync_api import Page, expect
 
-from bpp.models import Autor
+from bpp.models import Autor, Uczelnia
 from powiazania_autorow.models import AuthorConnection
 
 
@@ -305,6 +311,125 @@ def test_graf_nie_jest_pulapka_klawiaturowa(
     assert page.evaluate("document.activeElement.id") != "cytoscape-container"
 
 
+def _url_grafu_bez_powiazan(channels_live_server):
+    """Autor BEZ współautorów — sieć jednowęzłowa, gałąź „pusta" w
+    ``renderujSiec()``. To nie jest przypadek egzotyczny: ``AuthorConnection``
+    liczy się raz na dobę, więc każdy świeżo dodany autor trafia tu zawsze.
+    """
+    autor = baker.make(Autor, imiona="Samotny", nazwisko="Badacz", pokazuj=True)
+    return (
+        f"{channels_live_server.url}"
+        f"{reverse('bpp:browse_autor_powiazania', args=[autor.pk])}"
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_graf_pusty_chowa_nawigacje(channels_live_server, page: Page, transactional_db):
+    # Po ukryciu płótna `#graf-wrapper` zapada się do wysokości akapitu,
+    # a nawigacja — pozycjonowana absolutnie względem niego — wychodziła
+    # PONAD wrapper i nachodziła na komunikat „Brak powiązań". Przyciski
+    # były przy tym martwe (`cy.width()` ukrytego kontenera to 0, więc
+    # `przesun` robi `panBy({x: 0, y: 0})`) i zostawały w kolejności Taba:
+    # siedem kontrolek, które nic nie robią, a audyt widzi je jako spełnienie
+    # 2.5.7.
+    _idz_na_strone(page, _url_grafu_bez_powiazan(channels_live_server))
+
+    expect(page.locator("#graf-empty")).to_be_visible(timeout=10000)
+    expect(page.locator("#graf-nawigacja")).not_to_be_visible()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_przyciski_grafu_maja_cel_dotykowy_24px(
+    channels_live_server, page: Page, transactional_db
+):
+    # WCAG 2.5.8: cel nie mniejszy niż 24x24 px CSS. SCSS deklaruje
+    # `min-width/height: 28px`, ale nic tego nie pilnowało — zejście do
+    # 10px przechodziło całą suitę.
+    _idz_na_strone(page, _url_grafu(channels_live_server))
+    _czekaj_na_graf(page)
+
+    przyciski = page.locator(".graf-nawigacja__btn")
+    assert przyciski.count() == 7
+    for i in range(przyciski.count()):
+        bb = przyciski.nth(i).bounding_box()
+        nazwa = przyciski.nth(i).get_attribute("id")
+        assert bb["width"] >= 24 and bb["height"] >= 24, (
+            f"{nazwa}: cel {bb['width']}x{bb['height']} px, próg 2.5.8 to 24x24"
+        )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_przelacznik_skrotow_ma_cel_dotykowy_24px(
+    channels_live_server, page: Page, transactional_db
+):
+    # Ten sam próg dla przełącznika w stopce. `.footer__content` ma
+    # `font-size: 70%`, więc bez paddingu cel miał 15 px wysokości — a to
+    # JEDYNY sposób skorzystania z naprawy 2.1.4, adresowanej do osób ze
+    # sterowaniem głosem i zaburzeniami motoryki.
+    _idz_na_strone(page, _url_autora(channels_live_server))
+
+    bb = page.locator("#bpp-przelacznik-skrotow").bounding_box()
+    assert bb["height"] >= 24, (
+        f"przełącznik ma {bb['height']} px wysokości, próg 2.5.8 to 24"
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_kontener_grafu_ma_widoczny_pierscien_focusa(
+    channels_live_server, page: Page, transactional_db
+):
+    # WCAG 2.4.7. Przy `role="application"` + `tabindex="0"` to nie jest
+    # ozdoba: bez widocznego focusa użytkownik nie wie, że strzałki zaczęły
+    # sterować grafem, a nie przewijaniem strony. Skasowanie bloku
+    # `:focus-visible` przechodziło wcześniej całą suitę.
+    _idz_na_strone(page, _url_grafu(channels_live_server))
+    _czekaj_na_graf(page)
+
+    page.locator("#cytoscape-container").focus()
+    obrys = page.evaluate(
+        "getComputedStyle(document.getElementById('cytoscape-container')).outlineWidth"
+    )
+
+    assert obrys not in ("", "0px"), (
+        f"kontener grafu nie ma pierścienia focusa (outline-width={obrys!r})"
+    )
+
+
+def _url_uczelni(channels_live_server):
+    uczelnia = baker.make(Uczelnia, nazwa="Uczelnia Testowa", skrot="UT")
+    return (
+        f"{channels_live_server.url}"
+        f"{reverse('bpp:browse_uczelnia', args=[uczelnia.slug])}"
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_baner_skrotu_na_stronie_uczelni_slucha_preferencji(
+    channels_live_server, page: Page, transactional_db
+):
+    # Strona uczelni ma WŁASNY, inline'owy skrypt reklamujący skrót `/`.
+    # Testy szablonowe sprawdzają go regexem po źródle, więc przepuszczają
+    # odwróconą logikę (`|| !bppSkrotyWlaczone()`): guard nadal tam jest,
+    # nadal ma `typeof`, nadal nazywa się `skrotyWl` — a baner reklamuje
+    # skrót DOKŁADNIE wtedy, gdy użytkownik go wyłączył. Wyłapie to tylko
+    # test sprawdzający skutek, i to jest ten test.
+    url = _url_uczelni(channels_live_server)
+    _idz_na_strone(page, url)
+
+    baner = page.locator("#search-shortcut-banner")
+    expect(baner).to_be_visible(timeout=5000)
+
+    page.locator("#bpp-przelacznik-skrotow").click()
+    page.reload(wait_until="domcontentloaded")
+
+    # Baner wstaje przez `setTimeout(..., 500)`, więc dajemy mu szansę się
+    # pojawić i dopiero potem stwierdzamy, że go nie ma.
+    expect(page.locator("#bpp-przelacznik-skrotow")).to_have_attribute(
+        "aria-pressed", "false"
+    )
+    expect(baner).not_to_be_visible(timeout=2000)
+
+
 @pytest.mark.django_db(transaction=True)
 def test_graf_na_waskim_ekranie_nawigacja_nie_zaslania_plotna(
     channels_live_server, page: Page, transactional_db
@@ -321,6 +446,12 @@ def test_graf_na_waskim_ekranie_nawigacja_nie_zaslania_plotna(
     _czekaj_na_graf(page)
 
     expect(page.locator("#graf-legenda")).not_to_be_visible()
+
+    # Legenda może zniknąć, ale klucz do ODCZYTU grafu — co znaczy wielkość
+    # koła i grubość linii — musi zostać. Chowanie treści na małym ekranie
+    # to strata informacji, nie dekoracji (1.3.1). Dlatego to zdanie żyje
+    # w `<small>` nad grafem, nie w chowanej nakładce.
+    expect(page.get_by_text("Wielkość koła odpowiada")).to_be_visible()
 
     plotno = page.locator("#cytoscape-container").bounding_box()
     nawigacja = page.locator("#graf-nawigacja").bounding_box()

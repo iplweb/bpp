@@ -149,9 +149,18 @@
             </button>
         </div>
     </div>
+    {# Klucz do odczytu grafu stoi TUTAJ, nie w nakladce #graf-legenda: #}
+    {# legenda jest chowana ponizej 640 px (graf_powiazan.scss), a bez tego #}
+    {# zdania uzytkownik telefonu widzi kola roznej wielkosci i linie roznej #}
+    {# grubosci, nie wiedzac, co znacza. Chowanie TRESCI na malym ekranie to #}
+    {# strata informacji, nie dekoracji — czyli dokladnie to, przed czym #}
+    {# stoi 1.3.1. W legendzie zostaja wylacznie podpowiedzi o najechaniu #}
+    {# kursorem, ktorych na ekranie dotykowym i tak nie ma. #}
     <small style="display: block; color: #666; margin: 6px 0 12px;">
         Na każdym węźle pokazujemy najpierw współautorów z największą liczbą
         wspólnych publikacji. Klik w węzeł dowija jego dalszych współautorów.
+        Wielkość koła odpowiada wybranej metryce (liczba prac / IF / PK),
+        a grubość linii — liczbie wspólnych publikacji.
     </small>
 
     <div id="graf-wrapper" style="position: relative;">
@@ -174,9 +183,7 @@
                     color: #444; pointer-events: none; z-index: 1001;">
             Najedź na węzeł, aby zobaczyć autora; najedź na linię, aby zobaczyć
             liczbę wspólnych publikacji. Kliknij węzeł, aby rozwinąć jego
-            współautorów i otworzyć menu akcji. Wielkość koła odpowiada wybranej
-            metryce (liczba prac / IF / PK), a grubość linii — liczbie wspólnych
-            publikacji.
+            współautorów i otworzyć menu akcji.
         </div>
         <div id="graf-tooltip"
              style="position: absolute; display: none; pointer-events: none;

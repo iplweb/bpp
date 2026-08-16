@@ -13,10 +13,18 @@
 
     // Przelacznik skrotow klawiszowych (WCAG 2.1.4) ma wygladac jak sasiednie
     // linki stopki — jest <button>, bo zmienia stan aplikacji, a nie nawiguje.
+    //
+    // Padding NIE jest kosmetyka. `.footer__content` ma `font-size: 70%`, wiec
+    // bez niego cel miał 134 x 15 px, przy progu 24 x 24 z 2.5.8. Formalnie
+    // bronilby sie wyjatkiem "inline" (cel osadzony w bloku tekstu), ale
+    // konsekwencja byla realna: beneficjentem naprawy 2.1.4 sa osoby ze
+    // sterowaniem glosem i z zaburzeniami motoryki, a jedyny sposob
+    // skorzystania z tej naprawy to trafienie w ten wlasnie przycisk.
+    // Sam `padding` nie rusza `font-size`, wiec linia stopki sie nie rozjezdza.
     &__link-button {
         background: none;
         border: none;
-        padding: 0;
+        padding: 5px 6px;
         margin: 0;
         font: inherit;
         color: inherit;

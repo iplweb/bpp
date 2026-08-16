@@ -66,6 +66,73 @@ export function dopasuj(cy) {
 // wyjscie. `shiftKey` NIE wchodzi do tego warunku: na wielu ukladach
 // klawiatury `+` wymaga Shift, wiec jego zablokowanie zepsuloby
 // przyblizanie grafu tej samej klawiszologii, ktora ma dzialac.
+// Mapowanie identyfikatora przycisku na kierunek. Wyniesione z controls.js,
+// zeby dalo sie je sprawdzic testem — samo `przesun()` bylo przetestowane
+// porzadnie, ale SPOIWO miedzy DOM-em a nim nie bylo wcale, wiec zamiana
+// "gora" z "dol" przechodzila cala suite na zielono.
+export const KIERUNKI_PRZYCISKOW = {
+    "graf-nav-gora": "gora",
+    "graf-nav-dol": "dol",
+    "graf-nav-lewo": "lewo",
+    "graf-nav-prawo": "prawo"
+};
+
+export const KROK_ZOOMU = 1.2;
+
+// Podpina 7 przyciskow nawigacji i obsluge klawiatury. `dok` wstrzykiwany
+// dla testow (domyslnie globalny `document`).
+//
+// Zwraca element, do ktorego podpieto keydown — wolajacy i test moga sie
+// upewnic, ze to KONTENER GRAFU, a nie `document`. To nie jest kosmetyka:
+// `+` i `-` sa znakami drukowalnymi, wiec podlegaja 2.1.4, a spelniamy je
+// trzecim wariantem kryterium — "aktywne wylacznie gdy komponent ma focus".
+// Podpiecie tego handlera do `document` zamienilo by je w globalne skroty
+// jednoznakowe, czyli zlamalo dokladnie to kryterium, ktore ta galaz naprawia.
+export function podepnijNawigacje(cy, dok) {
+    const d = dok || document;
+
+    Object.keys(KIERUNKI_PRZYCISKOW).forEach(function (id) {
+        const btn = d.getElementById(id);
+        if (btn) {
+            btn.addEventListener("click", function () {
+                przesun(cy, KIERUNKI_PRZYCISKOW[id]);
+            });
+        }
+    });
+
+    [
+        ["graf-nav-zoom-in", KROK_ZOOMU],
+        ["graf-nav-zoom-out", 1 / KROK_ZOOMU]
+    ].forEach(function (para) {
+        const btn = d.getElementById(para[0]);
+        if (btn) {
+            btn.addEventListener("click", function () {
+                zoomuj(cy, para[1]);
+            });
+        }
+    });
+
+    const btnDopasuj = d.getElementById("graf-nav-dopasuj");
+    if (btnDopasuj) {
+        btnDopasuj.addEventListener("click", function () {
+            dopasuj(cy);
+        });
+    }
+
+    const kontener = d.getElementById("cytoscape-container");
+    if (kontener) {
+        kontener.addEventListener("keydown", function (e) {
+            // preventDefault WYLACZNIE dla obsluzonych klawiszy. Blokowanie
+            // wszystkiego zamknelo by Tab w grafie, czyli naprawiajac 2.1.1
+            // stworzylibysmy pulapke klawiaturowa i zlamali 2.1.2.
+            if (obsluzKlawisz(cy, e)) {
+                e.preventDefault();
+            }
+        });
+    }
+    return kontener;
+}
+
 export function obsluzKlawisz(cy, e) {
     if (e.ctrlKey || e.metaKey || e.altKey) {
         return false;

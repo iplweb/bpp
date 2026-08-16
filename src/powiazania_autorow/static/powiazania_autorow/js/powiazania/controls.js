@@ -3,7 +3,7 @@
 // źródeł/wydawców, opcje zaawansowane, metryka, układ, wyszukiwarka,
 // odśwież oraz eksport PNG/SVG. Debounce dla żądań sterowanych suwakami.
 import { pobierzPlik } from "./dom.js";
-import { przesun, zoomuj, dopasuj, obsluzKlawisz } from "./nawigacja.js";
+import { podepnijNawigacje } from "./nawigacja.js";
 import {
     pokazPanelAutora,
     pokazTooltipAutor,
@@ -373,58 +373,10 @@ export function podepnijZdarzenia(ctx) {
         btnSvg.style.display = "none"; // rozszerzenie SVG nie załadowane
     }
 
-    // --- nawigacja bez przeciagania (WCAG 2.5.7) ---
-    const KIERUNKI = {
-        "graf-nav-gora": "gora",
-        "graf-nav-dol": "dol",
-        "graf-nav-lewo": "lewo",
-        "graf-nav-prawo": "prawo"
-    };
-    Object.keys(KIERUNKI).forEach(function (id) {
-        const btn = document.getElementById(id);
-        if (btn) {
-            btn.addEventListener("click", function () {
-                przesun(cy, KIERUNKI[id]);
-            });
-        }
-    });
-
-    const btnZoomIn = document.getElementById("graf-nav-zoom-in");
-    if (btnZoomIn) {
-        btnZoomIn.addEventListener("click", function () {
-            zoomuj(cy, 1.2);
-        });
-    }
-
-    const btnZoomOut = document.getElementById("graf-nav-zoom-out");
-    if (btnZoomOut) {
-        btnZoomOut.addEventListener("click", function () {
-            zoomuj(cy, 1 / 1.2);
-        });
-    }
-
-    const btnDopasuj = document.getElementById("graf-nav-dopasuj");
-    if (btnDopasuj) {
-        btnDopasuj.addEventListener("click", function () {
-            dopasuj(cy);
-        });
-    }
-
-    // --- obsluga klawiatura (WCAG 2.1.1) ---
-    // Mapowanie klawisz -> akcja siedzi w obsluzKlawisz (nawigacja.js),
-    // zeby dalo sie je przetestowac bez importowania calego controls.js.
-    // Klawisze `+`/`-` sa znakami drukowalnymi, wiec podlegaja tez 2.1.4 —
-    // spelniaja je trzecim wariantem kryterium: dzialaja WYLACZNIE gdy
-    // kontener grafu ma focus, bo handler wisi na nim, nie na `document`.
-    const kontener = document.getElementById("cytoscape-container");
-    if (kontener) {
-        kontener.addEventListener("keydown", function (e) {
-            // preventDefault WYLACZNIE dla obsluzonych klawiszy. Blokowanie
-            // wszystkiego zamknelo by Tab w grafie, czyli naprawiajac 2.1.1
-            // stworzylibysmy pulapke klawiaturowa i zlamali 2.1.2.
-            if (obsluzKlawisz(cy, e)) {
-                e.preventDefault();
-            }
-        });
-    }
+    // --- nawigacja bez przeciagania (2.5.7) i klawiatura (2.1.1) ---
+    // Cale spoiwo DOM -> akcja siedzi w nawigacja.js, zeby dalo sie je
+    // przetestowac bez importowania tego modulu. Bez tego mapowanie
+    // przyciskow bylo nietestowane: zamiana "gora" z "dol" przechodzila
+    // cala suite.
+    podepnijNawigacje(cy);
 }
