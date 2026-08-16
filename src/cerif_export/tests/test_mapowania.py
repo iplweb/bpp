@@ -1,10 +1,17 @@
 """Migracja mapująca słowniki BPP na wartości kontrolowane profilu.
 
-Testy czytające słownik z bazy żądają fixtur ``charaktery_formalne`` /
-``jezyki`` JAWNIE, mimo że dane są też w baseline. Bez tego mierzą stan
-zostawiony przez poprzedni test w shardzie: obie fixtury kasują słownik
-i odtwarzają go z JSON-a, a test ``transaction=True`` taki podmieniony
-słownik utrwala. Dokładnie tak padł CI, mimo zieleni lokalnie.
+Testy czytające słownik z bazy żądają fixtury JAWNIE, mimo że dane są też
+w baseline. Bez tego mierzą stan zostawiony przez poprzedni test w
+shardzie: ``charaktery_formalne`` / ``jezyki`` kasują słownik i odtwarzają
+go z JSON-a, a test ``transaction=True`` taki podmieniony słownik utrwala.
+Dokładnie tak padł CI, mimo zieleni lokalnie.
+
+Ta sama reguła obowiązuje słowniki bez fixtury JSON-owej: ``tryby_otwarte``
+i ``prawa_patentowe`` znikają po transakcyjnym flushu (``TRUNCATE``), bo
+``bpp.seed_slowniki`` odtwarza po ``post_migrate`` wyłącznie
+``RodzajJednostki``. Oba testy pod nie podpięte padały na CI z
+``DoesNotExist`` — stąd fixtury ``tryby_openaccess`` / ``prawa_patentowe``
+w ``conftest.py`` tego katalogu.
 """
 
 import importlib
@@ -88,7 +95,7 @@ def test_jezyki_nieokreslone_zostaja_bez_kodu(jezyki):
 
 
 @pytest.mark.django_db
-def test_prawa_patentowe_zmapowane():
+def test_prawa_patentowe_zmapowane(prawa_patentowe):
     assert (
         Rodzaj_Prawa_Patentowego.objects.get(nazwa="wynalazek").coar_type
         == coar.PATENT_ROOT
@@ -102,7 +109,7 @@ def test_prawa_patentowe_zmapowane():
 
 
 @pytest.mark.django_db
-def test_tryby_otwarte_maja_prawo_dostepu():
+def test_tryby_otwarte_maja_prawo_dostepu(tryby_openaccess):
     otwarty = Tryb_OpenAccess_Wydawnictwo_Ciagle.objects.get(skrot="OPEN_JOURNAL")
     assert otwarty.coar_access_right == dostep.OPEN
 
