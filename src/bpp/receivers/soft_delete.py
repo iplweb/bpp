@@ -70,9 +70,44 @@ def _utworz_log(instance, akcja, pbn_queue_entry=None, pbn_status=""):
     )
 
 
+def _wylicza_punktacje(instance):
+    """Czy rekord wnosi wiersze do ``Cache_Punktacja_*``.
+
+    Gate zawęża do ``Wydawnictwo_Ciagle``, ``Wydawnictwo_Zwarte``
+    i ``Patent`` — tylko one dziedziczą ``ModelZPrzeliczaniemDyscyplin``.
+    Prace dyplomowe, ``Autor``, ``*_Autor`` i ``Element_Repozytorium``
+    nie mają nawet metody ``przelicz_punkty_dyscyplin()``, więc bez gate'u
+    receiver wywracałby się na ``AttributeError``.
+
+    Gate załatwia przy okazji drugą rzecz: kaskada ``*_Autor`` emituje
+    własne sygnały, a te wiersze tego abstraktu nie dziedziczą — więc
+    przeliczenie zachodzi RAZ, przy sygnale rodzica, a nie 1 + N razy.
+    """
+    from bpp.models.abstract import ModelZPrzeliczaniemDyscyplin
+
+    return isinstance(instance, ModelZPrzeliczaniemDyscyplin)
+
+
+def _skasuj_punktacje(instance):
+    """Kosz zabiera rekordowi sloty i punkty w ewaluacji.
+
+    ``Cache_Punktacja_*`` nie ma FK do publikacji (klucz to tablica
+    ``rekord_id = [content_type_id, pk]``), więc nie sprząta jej ani
+    kaskada Django, ani kaskada ``*_Autor`` z fazy 02, ani triggery
+    denormalizacji. Bez tego praca w koszu nadal liczyłaby się do
+    ewaluacji.
+    """
+    from bpp.models.sloty.core import IPunktacjaCacher
+
+    IPunktacjaCacher(instance).removeEntries()
+
+
 def on_post_soft_delete(sender, instance, **kwargs):
     """Kosz → zlecenie wycofania oświadczeń z PBN + wpis audytu."""
     from pbn_export_queue.operacje import zakolejkuj_wycofanie
+
+    if _wylicza_punktacje(instance):
+        _skasuj_punktacje(instance)
 
     wpis, status = _kolejkuj_pbn(instance, zakolejkuj_wycofanie, STATUS_WYCOFANIE)
     _utworz_log(
@@ -84,8 +119,20 @@ def on_post_soft_delete(sender, instance, **kwargs):
 
 
 def on_post_restore(sender, instance, **kwargs):
-    """Przywrócenie → zlecenie ponownej wysyłki do PBN + wpis audytu."""
+    """Przywrócenie → ponowna wysyłka do PBN, punktacja i wpis audytu.
+
+    Punktację PRZELICZAMY, a nie odtwarzamy z kopii: wiersze
+    ``Cache_Punktacja_*`` zostały skasowane, a przez czas pobytu w koszu
+    mogły się zmienić dyscypliny autorów albo progi punktowe. Odtworzenie
+    starych wartości przywróciłoby nieaktualny stan.
+
+    ⚠️ To operacja LICZĄCA, nie ``UPDATE``. Przy masowym przywracaniu
+    z admina (faza 07) koszt rośnie liniowo — patrz notatka w handoffie.
+    """
     from pbn_export_queue.operacje import zakolejkuj_wysylke
+
+    if _wylicza_punktacje(instance):
+        instance.przelicz_punkty_dyscyplin()
 
     wpis, status = _kolejkuj_pbn(instance, zakolejkuj_wysylke, STATUS_WYSYLKA)
     _utworz_log(

@@ -1,7 +1,5 @@
 """Receivery sygnałów soft-delete → ``SoftDeleteLog`` (faza 06)."""
 
-from unittest.mock import patch
-
 import pytest
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
@@ -10,16 +8,6 @@ from model_bakery import baker
 
 from bpp.models.soft_delete_context import soft_delete_context
 from bpp.models.soft_delete_log import SoftDeleteLog
-
-
-@pytest.fixture
-def bez_celery():
-    """Kolejkowanie odpala ``task_sprobuj_wyslac_do_pbn.delay()``, a testy
-    biegną z ``CELERY_TASK_ALWAYS_EAGER`` — bez tego wysyłka do PBN
-    wykonałaby się synchronicznie, w środku ``delete()``.
-    """
-    with patch("pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn") as mock_task:
-        yield mock_task
 
 
 def _z_pbn_uid(rekord):
