@@ -41,4 +41,12 @@ class RozbieznoscLogAdmin(admin.ModelAdmin):
         return False
 
     def has_delete_permission(self, request, obj=None):
-        return False
+        # NIE twarde ``False``. Django admin pyta tą samą metodą o dwie różne
+        # rzeczy: (a) czy pokazać "usuń" tutaj i (b) czy wolno skasować ten
+        # wpis KASKADOWO, przy kasowaniu publikacji-rodzica (patrz
+        # ``django.contrib.admin.utils.get_deleted_objects``). Twarde ``False``
+        # blokowało więc skasowanie publikacji KAŻDEMU, również superuserowi,
+        # komunikatem o braku uprawnień do "logu zmiany punktacji".
+        # Log pozostaje niemodyfikowalny (brak add/change); skasować go może
+        # ten, kto ma standardowe uprawnienie ``delete_rozbieznosclog``.
+        return super().has_delete_permission(request, obj)
