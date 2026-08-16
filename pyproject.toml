@@ -155,16 +155,13 @@ dependencies = [
     # (testy/dev/baseline_rebuild). Sam runtime nic nie kosztuje gdy PG_BASELINE
     # niezdefiniowane (no-op AppConfig.ready).
     #
-    # TRZYMANE NA 0.3.0 CELOWO: 0.3.1 usunal komende `baseline_check`, ktora
-    # wola job `baseline-check` w .github/workflows/tests.yml (linia ~191:
-    # `manage.py baseline_check --max-delta 50`). Na 0.3.1 job pada z
-    # "Unknown command: 'baseline_check'". Zostalo tylko `baseline_info`,
-    # ktore jest czysto informacyjne — drukuje deltay i ZAWSZE konczy sie
-    # zerem, wiec nie moze pelnic roli bramki. Migracja na 0.3.1 wymaga
-    # przepisania joba na `django_pg_baseline.freshness.check_freshness`
-    # (API nadal istnieje) z wlasnym progiem; do tego czasu podnoszenie tej
-    # zaleznosci po cichu zamienia bramke w dekoracje.
-    "django-pg-baseline>=0.3.0,<0.3.1",
+    # 0.3.1 usunal komende `baseline_check`; bramka swiezosci mieszka od tego
+    # czasu w repo (`src/bpp/management/commands/baseline_check.py`) i stoi na
+    # publicznym API pakietu (`django_pg_baseline.freshness.check_freshness`).
+    # Nie podmieniaj jej na dostarczane przez pakiet `baseline_info` — to
+    # komenda czysto informacyjna, ZAWSZE konczy sie zerem, wiec zamienilaby
+    # gate w dekoracje.
+    "django-pg-baseline>=0.3.1",
     "django-site-blog>=0.2.2",
     "django-first-run-wizard>=0.2.1",
     "uvicorn-worker>=0.4.0",
