@@ -234,7 +234,15 @@ class ImportLogAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         return False
 
     def has_delete_permission(self, request, obj=None):
-        return False
+        # NIE twarde ``False``. Django pyta tą samą metodą o dwie różne rzeczy:
+        # (a) czy pokazać „usuń" na liście dziennika i (b) czy wolno skasować
+        # ten wpis KASKADOWO, razem z sesją-rodzicem (patrz
+        # ``django.contrib.admin.utils.get_deleted_objects``). Twarde ``False``
+        # blokowało więc skasowanie KAŻDEJ sesji, która cokolwiek zalogowała —
+        # czyli każdej wykonanej — i to również superuserowi.
+        # Dziennik pozostaje niepodrabialny: ``has_add_permission`` wyżej dalej
+        # zwraca ``False``, a wszystkie pola są w ``readonly_fields``.
+        return super().has_delete_permission(request, obj)
 
 
 @admin.register(ImportInconsistency)
