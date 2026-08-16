@@ -87,7 +87,11 @@ from bpp.models.system import Charakter_PBN
 from bpp.models.wydawca import Poziom_Wydawcy, Wydawca
 from deduplikator_autorow.models import IgnoredScientist, LogScalania, NotADuplicate
 from ewaluacja_common.models import Rodzaj_Autora
-from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok, LiczbaNDlaUczelni
+from ewaluacja_liczba_n.models import (
+    IloscUdzialowDlaAutoraZaCalosc,
+    IloscUdzialowDlaAutoraZaRok,
+    LiczbaNDlaUczelni,
+)
 from import_polon.models import ImportPolonOverride
 from pbn_api.models import (
     Conference,
@@ -198,6 +202,10 @@ groups = {
         Finansowanie,
         Element_Repozytorium,
         IloscUdzialowDlaAutoraZaRok,
+        # Podrzędny wobec ``Autor`` (FK z CASCADE), jak wariant „za rok" wyżej:
+        # bez tego uprawnienia admin nie pozwoli skasować autora, dla którego
+        # policzono udziały za cały okres.
+        IloscUdzialowDlaAutoraZaCalosc,
         RozbieznosciView,
         RozbieznosciZrodelView,
         # Podrzędne wobec ``Wydawnictwo_Ciagle`` (FK z CASCADE): bez tych
