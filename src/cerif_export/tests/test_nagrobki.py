@@ -94,3 +94,29 @@ def test_konferencja_bez_widocznych_publikacji_to_nagrobek(
         "konferencja straciła jedyną widoczną publikację, a nie dostała "
         "nagrobka — znika z feedu po cichu"
     )
+
+
+@pytest.mark.django_db
+def test_strona_miesza_zywe_i_nagrobki_w_porzadku_dat(uczelnia, jednostka, typ_autor):
+    """Jeden strumień, jeden kursor.
+
+    Nagrobki NIE mogą iść osobnym przebiegiem po żywych rekordach:
+    ``resumptionToken`` niesie jeden kursor ``(datestamp, pk)`` i zakłada
+    jeden porządek. Dwa strumienie zepsułyby przyrostowość ``from``/``until``,
+    czyli dokładnie to, co ta faza naprawia.
+    """
+    from model_bakery import baker
+
+    from bpp.models import Jednostka
+    from cerif_export import const
+
+    ukryta = baker.make(
+        Jednostka, uczelnia=uczelnia, nazwa="Ukryta", skrot="UKR", widoczna=False
+    )
+
+    provider = rejestr_providerow()[const.SET_ORGUNITS]
+    pary, _kursor = provider.strona(uczelnia, rozmiar=100)
+
+    mapa = {obiekt.pk: nagrobek for obiekt, nagrobek in pary}
+    assert mapa.get(ukryta.pk) is True, "jednostka ukryta ma być nagrobkiem"
+    assert mapa.get(jednostka.pk) is False, "jednostka widoczna ma być żywa"

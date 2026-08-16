@@ -127,7 +127,13 @@ class ProviderEncji:
     # -- stronicowanie keyset -------------------------------------------
 
     def strona(self, uczelnia, od=None, do=None, kursor=None, rozmiar=None):
-        """Zwróć ``(obiekty, kolejny_kursor)``.
+        """Zwróć ``([(obiekt, czy_nagrobek), ...], kolejny_kursor)``.
+
+        Stronicujemy **nadzbiór** (``przynaleznosc``), więc żywe rekordy
+        i nagrobki płyną jednym strumieniem, w jednym porządku keyset.
+        Nagrobki NIE mogą iść osobnym przebiegiem: ``resumptionToken``
+        niesie dokładnie jeden kursor ``(datestamp, pk)``, a dwa strumienie
+        zepsułyby okno ``from``/``until``.
 
         Modele wyczerpywane są sekwencyjnie w kolejności ``self.modele``;
         w obrębie modelu porządek to ``(COALESCE(ostatnio_zmieniony, EPOKA),
@@ -168,20 +174,54 @@ class ProviderEncji:
 
             if len(partia) > brakuje:
                 partia = partia[:brakuje]
-                zebrane.extend(partia)
+                zebrane.extend(self._oznacz(uczelnia, model, partia))
                 return zebrane, self._kursor(slugi[indeks], partia[-1])
 
-            zebrane.extend(partia)
+            zebrane.extend(self._oznacz(uczelnia, model, partia))
 
             if len(zebrane) >= rozmiar:
                 # Strona pełna, bieżący model wyczerpany (sonda nic nie
                 # dołożyła). Token wydajemy tylko, gdy realnie jest co
                 # jeszcze pokazać.
+                #
+                # Kursor dostaje GOŁY obiekt, nie parę — czyta ``ADNOTACJA_TS``
+                # i ``pk``. ``partia[-1]`` jest tu tożsame z ostatnim
+                # zebranym: strona przekroczyła rozmiar dopiero po tym
+                # ``extend``, więc partia na pewno nie była pusta.
                 if self._istnieje_dalej(uczelnia, modele, indeks, od, do):
-                    return zebrane, self._kursor(slugi[indeks], zebrane[-1])
+                    return zebrane, self._kursor(slugi[indeks], partia[-1])
                 return zebrane, None
 
         return zebrane, None
+
+    def _oznacz(self, uczelnia, model, partia):
+        """Opakuj obiekty w pary ``(obiekt, czy_nagrobek)``.
+
+        Oznaczamy per model, bo ``widoczne_pk_ze_strony`` pyta o widoczność
+        konkretnego modelu — strona bywa sklejona z kilku.
+        """
+        widoczne = self.widoczne_pk_ze_strony(uczelnia, model, partia)
+        return [(obiekt, obiekt.pk not in widoczne) for obiekt in partia]
+
+    def widoczne_pk_ze_strony(self, uczelnia, model, obiekty) -> frozenset:
+        """Klucze obiektów tej strony, które są nadal wystawiane.
+
+        Jedno tanie zapytanie na stronę, zawężone do jej kluczy — nie
+        skanuje całego zbioru widocznych.
+
+        ``prefetch_related(None)`` czyści prefetche odziedziczone po
+        ``queryset()``: nie ma na co ich nakładać, bo ``values_list``
+        zwraca krotki, a nie instancje modelu.
+        """
+        if not obiekty:
+            return frozenset()
+        klucze = [obiekt.pk for obiekt in obiekty]
+        return frozenset(
+            self.queryset(uczelnia, model)
+            .prefetch_related(None)
+            .filter(pk__in=klucze)
+            .values_list("pk", flat=True)
+        )
 
     def _istnieje_dalej(self, uczelnia, modele, indeks, od, do):
         """Czy w modelach po ``indeks`` został jeszcze jakikolwiek rekord?"""
@@ -208,7 +248,9 @@ class ProviderEncji:
     def _strona_modelu(self, uczelnia, model, od, do, kursor, limit):
         from django.db.models import Q
 
-        qs = z_datestampem(self.queryset(uczelnia, model))
+        # Nadzbiór: żywe + nagrobki w JEDNYM porządku keyset. Kursor
+        # resumption tokenu niesie (datestamp, pk) i zakłada jeden strumień.
+        qs = z_datestampem(self.przynaleznosc(uczelnia, model))
 
         if od is not None:
             qs = qs.filter(**{f"{ADNOTACJA_TS}__gte": od})
