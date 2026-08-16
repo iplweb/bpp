@@ -14,6 +14,47 @@ const ZRODLO = readFileSync(
     "utf-8"
 );
 
+// Podmienia CALY obiekt `localStorage` na atrape z podanymi nadpisaniami
+// i zwraca funkcje przywracajaca oryginal.
+//
+// NIE wolno tu robic `window.localStorage.setItem = () => {...}`. W jsdom
+// `Storage` jest legacy platform object: przypisanie nieznanej wlasciwosci
+// nie przeslania metody, tylko ZAPISUJE POZYCJE o kluczu "setItem".
+// Prawdziwy `setItem` wykonuje sie wtedy dalej, a test przestaje sprawdzac
+// to, co deklaruje. Zachowanie zalezy od wersji jsdom: lokalnie testy
+// przechodzily, a na CI padl ten jeden, ktory FAKTYCZNIE potrzebowal
+// dzialajacego stubu (`expected '0' to be null`). Pozostale trzy
+// przechodzily niezaleznie od tego, czy stub zadzialal — czyli nie
+// pilnowaly niczego.
+function podmienStorage(nadpisania) {
+    const oryginalny = window.localStorage;
+    const atrapa = {
+        getItem: (k) => oryginalny.getItem(k),
+        setItem: (k, v) => oryginalny.setItem(k, v),
+        removeItem: (k) => oryginalny.removeItem(k),
+        clear: () => oryginalny.clear(),
+        ...nadpisania,
+    };
+    Object.defineProperty(window, "localStorage", {
+        value: atrapa,
+        configurable: true,
+        writable: true,
+    });
+    return function przywroc() {
+        Object.defineProperty(window, "localStorage", {
+            value: oryginalny,
+            configurable: true,
+            writable: true,
+        });
+    };
+}
+
+const RZUCAJACY_ZAPIS = {
+    setItem: () => {
+        throw new Error("QuotaExceededError");
+    },
+};
+
 function zaladuj() {
     // Modul jest skryptem window-globalnym (IIFE), nie modulem ESM —
     // wykonujemy go na biezacym window jsdom.
@@ -69,13 +110,17 @@ describe("bppSkrotyWlaczone", () => {
     });
 
     it("nie rzuca gdy localStorage niedostepny", () => {
-        const oryginalny = window.localStorage.getItem;
-        window.localStorage.getItem = () => {
-            throw new Error("SecurityError");
-        };
-        const w = zaladuj();
-        expect(w.bppSkrotyWlaczone()).toBe(true);
-        window.localStorage.getItem = oryginalny;
+        const przywroc = podmienStorage({
+            getItem: () => {
+                throw new Error("SecurityError");
+            },
+        });
+        try {
+            const w = zaladuj();
+            expect(w.bppSkrotyWlaczone()).toBe(true);
+        } finally {
+            przywroc();
+        }
     });
 });
 
@@ -95,49 +140,51 @@ describe("bppUstawSkroty", () => {
     });
 
     it("nie rzuca gdy zapis niemozliwy", () => {
-        const oryginalny = window.localStorage.setItem;
-        window.localStorage.setItem = () => {
-            throw new Error("QuotaExceededError");
-        };
-        const w = zaladuj();
-        expect(() => w.bppUstawSkroty(false)).not.toThrow();
-        window.localStorage.setItem = oryginalny;
+        const przywroc = podmienStorage(RZUCAJACY_ZAPIS);
+        try {
+            const w = zaladuj();
+            expect(() => w.bppUstawSkroty(false)).not.toThrow();
+        } finally {
+            przywroc();
+        }
     });
 
     it("fallback: gdy setItem rzuca, stan trzyma się w sesji (nie w localStorage)", () => {
-        const oryginalny = window.localStorage.setItem;
-        window.localStorage.setItem = () => {
-            throw new Error("QuotaExceededError");
-        };
-        const w = zaladuj();
-        w.bppUstawSkroty(false);
-        // localStorage jest puste (zapis się nie powiódł)
-        expect(window.localStorage.getItem("bpp.skrotyJednoznakowe")).toBe(null);
-        // ale bppSkrotyWlaczone() zwraca false (z fallback-u w pamięci)
-        expect(w.bppSkrotyWlaczone()).toBe(false);
-        window.localStorage.setItem = oryginalny;
+        const przywroc = podmienStorage(RZUCAJACY_ZAPIS);
+        try {
+            const w = zaladuj();
+            w.bppUstawSkroty(false);
+            // localStorage jest puste (zapis się nie powiódł)
+            expect(window.localStorage.getItem("bpp.skrotyJednoznakowe")).toBe(
+                null
+            );
+            // ale bppSkrotyWlaczone() zwraca false (z fallback-u w pamięci)
+            expect(w.bppSkrotyWlaczone()).toBe(false);
+        } finally {
+            przywroc();
+        }
     });
 
     it("fallback: przełącznik działa w sesji nawet bez localStorage", () => {
-        const oryginalny = window.localStorage.setItem;
-        window.localStorage.setItem = () => {
-            throw new Error("QuotaExceededError");
-        };
-        const w = zaladuj();
-        const el = window.document.createElement("button");
-        window.document.body.appendChild(el);
-        w.bppPodepnijPrzelacznikSkrotow(el);
-        // Initialnie włączone
-        expect(el.getAttribute("aria-pressed")).toBe("true");
-        // Klik wyłącza
-        el.click();
-        expect(el.getAttribute("aria-pressed")).toBe("false");
-        expect(el.textContent).toContain("wyłączone");
-        // Drugi klik włącza
-        el.click();
-        expect(el.getAttribute("aria-pressed")).toBe("true");
-        expect(el.textContent).toContain("włączone");
-        window.localStorage.setItem = oryginalny;
+        const przywroc = podmienStorage(RZUCAJACY_ZAPIS);
+        try {
+            const w = zaladuj();
+            const el = window.document.createElement("button");
+            window.document.body.appendChild(el);
+            w.bppPodepnijPrzelacznikSkrotow(el);
+            // Initialnie włączone
+            expect(el.getAttribute("aria-pressed")).toBe("true");
+            // Klik wyłącza
+            el.click();
+            expect(el.getAttribute("aria-pressed")).toBe("false");
+            expect(el.textContent).toContain("wyłączone");
+            // Drugi klik włącza
+            el.click();
+            expect(el.getAttribute("aria-pressed")).toBe("true");
+            expect(el.textContent).toContain("włączone");
+        } finally {
+            przywroc();
+        }
     });
 });
 
