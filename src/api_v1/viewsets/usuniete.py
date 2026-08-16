@@ -1,11 +1,10 @@
-import datetime
-
+from django.db.models import CharField, Value
 from rest_framework import viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.fields import DateTimeField
 from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
 
+from api_v1.pagination import BppLimitOffsetPagination
 from api_v1.serializers.usuniete import UsunietySerializer
 from bpp.models import (
     Autor,
@@ -38,8 +37,9 @@ FILTRY_ZAKRESU = {
     "usuniety_od_before": "deleted_at__lte",
 }
 
-#: Zastępnik daty przy sortowaniu wierszy z ``deleted_at IS NULL``.
-_NAJSTARSZY = datetime.datetime.min.replace(tzinfo=datetime.UTC)
+#: Nazwa kolumny z etykietą modelu w złączonym zapytaniu. Nie może kolidować
+#: z żadnym polem sześciu modeli, bo ``annotate`` podniósłby wtedy błąd.
+KOLUMNA_MODELU = "_etykieta_modelu"
 
 
 class UsunieteViewSet(viewsets.ViewSet):
@@ -59,7 +59,7 @@ class UsunieteViewSet(viewsets.ViewSet):
     """
 
     serializer_class = UsunietySerializer
-    pagination_class = None
+    pagination_class = BppLimitOffsetPagination
 
     # Domyślne ``DjangoModelPermissionsOrAnonReadOnly`` wymaga ``queryset``
     # albo ``get_queryset()``, a ten viewset łączy sześć modeli i żadnego
@@ -70,27 +70,69 @@ class UsunieteViewSet(viewsets.ViewSet):
     # z ``api_v1/urls.py`` i przełącznik ``Uczelnia.api_v1_dane_bibliograficzne``.
     permission_classes = [AllowAny]
 
+    def get_queryset(self):
+        """Jeden queryset ``UNION`` ponad sześcioma modelami kosza.
+
+        DLACZEGO UNION, A NIE SKLEJANIE LIST W PYTHONIE: stronicowanie ma
+        sens tylko wtedy, gdy schodzi do bazy. Gdyby każde żądanie pobierało
+        cały kosz i dopiero potem wycinało z niego stronę, koszt jednej
+        odpowiedzi zostałby ten sam co bez stronicowania — a klient robiłby
+        teraz N żądań zamiast jednego, więc **łączna** praca by wzrosła.
+        Tak `ORDER BY` i `LIMIT/OFFSET` wykonuje PostgreSQL, a wraca dokładnie
+        tyle wierszy, ile mieści strona.
+
+        Kolumny są trzy i we wszystkich sześciu gałęziach mają ten sam
+        kształt (wymóg ``UNION``): etykieta modelu, klucz główny, data.
+        Etykieta jest stałą wstrzykniętą przez ``Value`` — inaczej po
+        złączeniu nie dałoby się odróżnić, z którego modelu pochodzi wiersz
+        (klucze główne kolidują między modelami).
+
+        Sortowanie ``(deleted_at, etykieta, pk)``: sama data nie wystarcza,
+        bo dwa rekordy skasowane w tej samej mikrosekundzie miałyby
+        niezdeterminowaną kolejność, a to na granicy strony znaczy zgubiony
+        albo zdublowany wiersz. PostgreSQL sortuje ``NULL`` na końcu przy
+        ``ASC``, więc wiersze sprzed wprowadzenia ``deleted_at`` lądują tam,
+        gdzie wcześniej stawiał je sort w Pythonie.
+        """
+        warunki = self._warunki_zakresu(self.request)
+
+        galezie = [
+            model.deleted_objects.filter(**warunki)
+            # ``order_by()`` bez argumentów CZYŚCI porządek domyślny modelu.
+            # Bez tego każda gałąź wnosi swoje ``Meta.ordering``
+            # (``Autor.sort``, ``Praca_Doktorska.rok, tytul_oryginalny``) —
+            # sortowanie po kolumnach, których nawet nie wybieramy, w wyniku
+            # i tak nadpisane przez ``ORDER BY`` całości. Czysty koszt, a przy
+            # tym kolumny spoza listy SELECT-a wewnątrz ``UNION`` to
+            # konstrukcja, której nie każdy silnik przyjmie.
+            .order_by()
+            .annotate(**{KOLUMNA_MODELU: Value(nazwa, output_field=CharField())})
+            .values_list(KOLUMNA_MODELU, "pk", "deleted_at")
+            for nazwa, model in MODELE_NAGROBKOW.items()
+        ]
+
+        zlaczone = galezie[0].union(*galezie[1:], all=True)
+        return zlaczone.order_by("deleted_at", KOLUMNA_MODELU, "pk")
+
     def list(self, request):
-        warunki = self._warunki_zakresu(request)
+        queryset = self.get_queryset()
 
-        wiersze = []
-        for nazwa, model in MODELE_NAGROBKOW.items():
-            queryset = model.deleted_objects.filter(**warunki)
-            # Filtrujemy na querysecie każdego modelu, nie na sklejonej
-            # liście: inaczej baza oddawałaby cały kosz, a Python wyrzucał
-            # z niego większość.
-            wiersze.extend(
-                {"model": nazwa, "pk": pk, "usuniety_od": usuniety_od}
-                for pk, usuniety_od in queryset.values_list("pk", "deleted_at")
-            )
-
-        # ``deleted_at`` bywa NULL na wierszach sprzed wprowadzenia pola —
-        # trzymamy je na końcu zamiast wywalać się na porównaniu z ``None``.
-        wiersze.sort(
-            key=lambda w: (w["usuniety_od"] is None, w["usuniety_od"] or _NAJSTARSZY)
+        strona = self.paginator.paginate_queryset(queryset, request, view=self)
+        wiersze = [
+            {"model": nazwa, "pk": pk, "usuniety_od": usuniety_od}
+            for nazwa, pk, usuniety_od in strona
+        ]
+        return self.paginator.get_paginated_response(
+            UsunietySerializer(wiersze, many=True).data
         )
 
-        return Response({"results": UsunietySerializer(wiersze, many=True).data})
+    @property
+    def paginator(self):
+        """Paginator instancji — ``ViewSet`` (w odróżnieniu od
+        ``GenericViewSet``) nie dostaje go z gotowej implementacji."""
+        if not hasattr(self, "_paginator"):
+            self._paginator = self.pagination_class()
+        return self._paginator
 
     def _warunki_zakresu(self, request):
         """Przetłumacz parametry zakresu na filtry ``deleted_at``.
