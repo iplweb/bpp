@@ -9,8 +9,20 @@
     bottom: 10px;
     z-index: 1001;
 
+    // Krzyz kierunkowy, nie kolejnosc czytania: "w gore" ma lezec NAD
+    // srodkiem, a nie obok "w lewo". Dla pomocy nawigacyjnej afordans jest
+    // istotny — uzytkownik trafia w przycisk bez czytania etykiet. Zoom
+    // stoi osobno, oddzielony pusta kolumna, zeby nie wpadal w krzyz.
+    //
+    // Kolejnosc w DOM (gora, lewo, dopasuj, prawo, dol, zoom+, zoom-) jest
+    // CELOWO nietknieta — daje sensowna kolejnosc Taba, a grid rozstawia
+    // przyciski niezaleznie od niej.
     display: grid;
-    grid-template-columns: repeat(3, auto);
+    grid-template-columns: auto auto auto 8px auto;
+    grid-template-areas:
+        ".    gora     .      . zoom-in"
+        "lewo dopasuj  prawo  . zoom-out"
+        ".    dol      .      . .";
     gap: 2px;
 
     padding: 6px;
@@ -18,6 +30,14 @@
     border: 1px solid #ddd;
     border-radius: 4px;
 }
+
+#graf-nav-gora { grid-area: gora; }
+#graf-nav-lewo { grid-area: lewo; }
+#graf-nav-dopasuj { grid-area: dopasuj; }
+#graf-nav-prawo { grid-area: prawo; }
+#graf-nav-dol { grid-area: dol; }
+#graf-nav-zoom-in { grid-area: zoom-in; }
+#graf-nav-zoom-out { grid-area: zoom-out; }
 
 .graf-nawigacja__btn {
     // WCAG 2.5.8 (Target Size Minimum): cel dotykowy nie mniejszy niz
@@ -52,4 +72,36 @@
 #cytoscape-container:focus-visible {
     outline: 3px solid #2c6cb0;
     outline-offset: -3px;
+}
+
+// Waskie ekrany (Foundation small-only, ponizej 640 px).
+//
+// Graf ma CZTERY nakladki w naroznikach: #graf-panel (lewy gorny),
+// #graf-legenda (prawy gorny), #graf-notka (lewy dolny) i nawigacja (prawy
+// dolny). Przy 390 px legenda o szerokosci 260 px zaslaniala wiekszosc
+// obszaru rysowania, a notka (max-width 320 px inline) stykala sie
+// z nawigacja.
+//
+// Nakladek nie da sie przestawic z arkusza: `max-width` i `bottom` siedza
+// w atrybutach `style=""` w graf.html, a styl inline wygrywa. Zamiast
+// rozsiewac `!important` — wyprowadzamy nawigacje SPOD nakladek: na malych
+// ekranach przestaje byc pozycjonowana absolutnie i lezy pod grafem. Znika
+// kolizja ze wszystkimi czterema naroznikami naraz, a cele dotykowe robia
+// sie latwiejsze do trafienia niz przyciski nad plotnem.
+@media screen and (max-width: 39.9375em) {
+    // Legenda opisuje interakcje myszy ("Najedz na wezel…"), ktorych na
+    // ekranie dotykowym nie ma. Chowamy ja, zamiast sciskac.
+    #graf-legenda {
+        display: none;
+    }
+
+    .graf-nawigacja {
+        position: static;
+        margin-top: 8px;
+        justify-content: center;
+
+        background: none;
+        border: none;
+        padding: 0;
+    }
 }

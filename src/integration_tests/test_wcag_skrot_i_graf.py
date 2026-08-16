@@ -303,3 +303,47 @@ def test_graf_nie_jest_pulapka_klawiaturowa(
     page.keyboard.press("Tab")
 
     assert page.evaluate("document.activeElement.id") != "cytoscape-container"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_graf_na_waskim_ekranie_nawigacja_nie_zaslania_plotna(
+    channels_live_server, page: Page, transactional_db
+):
+    # Graf ma cztery nakładki w narożnikach. Przy 390 px legenda (260 px)
+    # zasłaniała większość obszaru rysowania, a notka (320 px) stykała się
+    # z nawigacją. Media query wyprowadza nawigację spod nakładek — poniżej
+    # płótna — i chowa legendę, która i tak opisuje interakcje myszy.
+    #
+    # Bez tego testu regresja w arkuszu przechodzi niezauważona: przyciski
+    # nadal istnieją i nadal działają, więc pozostałe testy są zielone.
+    page.set_viewport_size({"width": 390, "height": 844})
+    _idz_na_strone(page, _url_grafu(channels_live_server))
+    _czekaj_na_graf(page)
+
+    expect(page.locator("#graf-legenda")).not_to_be_visible()
+
+    plotno = page.locator("#cytoscape-container").bounding_box()
+    nawigacja = page.locator("#graf-nawigacja").bounding_box()
+    assert nawigacja["y"] >= plotno["y"] + plotno["height"] - 1, (
+        "nawigacja nadal leży NA płótnie przy 390 px — media query nie działa"
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_graf_na_szerokim_ekranie_nawigacja_zostaje_na_plotnie(
+    channels_live_server, page: Page, transactional_db
+):
+    # Kontrola dla testu wyżej: na desktopie nakładka ma pozostać nakładką.
+    # Inaczej "naprawa" wąskich ekranów mogłaby po cichu przenieść przyciski
+    # pod graf na wszystkich rozdzielczościach.
+    page.set_viewport_size({"width": 1440, "height": 900})
+    _idz_na_strone(page, _url_grafu(channels_live_server))
+    _czekaj_na_graf(page)
+
+    expect(page.locator("#graf-legenda")).to_be_visible()
+
+    plotno = page.locator("#cytoscape-container").bounding_box()
+    nawigacja = page.locator("#graf-nawigacja").bounding_box()
+    assert nawigacja["y"] < plotno["y"] + plotno["height"], (
+        "nawigacja zjechała pod płótno na desktopie"
+    )
