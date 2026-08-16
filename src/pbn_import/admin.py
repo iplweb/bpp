@@ -182,6 +182,13 @@ class ImportLogAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         "level",
         "step",
         "message",
+        # ``details`` (samo pole), nie tylko ``details_display`` (metoda go
+        # renderująca). Admin nie deklaruje ``fields`` ani ``fieldsets``, więc
+        # Django buduje formularz ze WSZYSTKICH pól edytowalnych — bez tego
+        # wpisu ``details`` zostawało do edycji i wpis dziennika dało się po
+        # cichu zmienić. Formularz pokazywał wtedy oba naraz: widżet ``details``
+        # i obok read-only ``details_display``.
+        "details",
         "details_display",
     ]
     date_hierarchy = "timestamp"
@@ -234,7 +241,15 @@ class ImportLogAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         return False
 
     def has_delete_permission(self, request, obj=None):
-        return False
+        # NIE twarde ``False``. Django pyta tą samą metodą o dwie różne rzeczy:
+        # (a) czy pokazać „usuń" na liście dziennika i (b) czy wolno skasować
+        # ten wpis KASKADOWO, razem z sesją-rodzicem (patrz
+        # ``django.contrib.admin.utils.get_deleted_objects``). Twarde ``False``
+        # blokowało więc skasowanie KAŻDEJ sesji, która cokolwiek zalogowała —
+        # czyli każdej wykonanej — i to również superuserowi.
+        # Dziennik pozostaje niepodrabialny: ``has_add_permission`` wyżej dalej
+        # zwraca ``False``, a wszystkie pola są w ``readonly_fields``.
+        return super().has_delete_permission(request, obj)
 
 
 @admin.register(ImportInconsistency)
