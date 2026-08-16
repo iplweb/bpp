@@ -268,15 +268,22 @@ class ProviderEncji:
     # -- pozostałe operacje ---------------------------------------------
 
     def pojedynczy(self, uczelnia, model, pk):
-        """Pojedynczy obiekt albo ``None``, gdy niewidoczny."""
-        return z_datestampem(self.queryset(uczelnia, model)).filter(pk=pk).first()
+        """Obiekt należący do tenanta albo ``None``.
+
+        Szuka w NADZBIORZE: rekord niewidoczny nadal istnieje dla OAI —
+        jako nagrobek. O tym, czy jest żywy, decyduje wywołujący
+        (``widoczne_pk_ze_strony``).
+        """
+        return z_datestampem(self.przynaleznosc(uczelnia, model)).filter(pk=pk).first()
 
     def najstarszy_datestamp(self, uczelnia):
         """Najstarszy datestamp w secie albo ``None``, gdy set pusty."""
         najstarszy = None
         for model in self.modele:
             wiersz = (
-                z_datestampem(self.queryset(uczelnia, model))
+                # Nadzbiór, bo nagrobek też jest rekordem o dacie i może być
+                # najstarszym, co repozytorium ma do pokazania.
+                z_datestampem(self.przynaleznosc(uczelnia, model))
                 .order_by(ADNOTACJA_TS)
                 .values_list(ADNOTACJA_TS, flat=True)
                 .first()

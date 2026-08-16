@@ -94,6 +94,11 @@ class FikcyjnyProvider:
                 return obiekt
         return None
 
+    def widoczne_pk_ze_strony(self, uczelnia, model, obiekty):
+        # Atrapa trzyma wyłącznie żywe rekordy — wszystko, co w niej jest,
+        # jest z definicji wystawiane. Nagrobki ma ``test_nagrobki.py``.
+        return frozenset(obiekt.pk for obiekt in obiekty)
+
     def zbiory_widocznosci(self, uczelnia, obiekty):
         return ZbioryWidocznosci()
 

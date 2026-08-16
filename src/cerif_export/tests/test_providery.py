@@ -397,6 +397,13 @@ def test_najstarszy_datestamp_pustego_setu_to_none(uczelnia_cerif, provider_publ
 def test_pojedynczy_zwraca_obiekt_i_none(
     uczelnia_cerif, fabryka_wydawnictw, provider_publikacji
 ):
+    """``pojedynczy`` szuka w nadzbiorze; ``None`` znaczy „nie nasz".
+
+    Od fazy 05b rekord ukryty JEST odnajdywany — GetRecord ma na niego
+    odpowiedzieć nagrobkiem, nie ``idDoesNotExist``. O tym, czy jest żywy,
+    rozstrzyga dopiero ``widoczne_pk_ze_strony``. ``None`` zostaje dla
+    rekordów spoza tenanta i nieistniejących.
+    """
     widoczny = fabryka_wydawnictw(Wydawnictwo_Ciagle)
     ukryty = fabryka_wydawnictw(Wydawnictwo_Ciagle, nie_eksportuj_przez_api=True)
 
@@ -406,8 +413,19 @@ def test_pojedynczy_zwraca_obiekt_i_none(
         ).pk
         == widoczny.pk
     )
+
+    znaleziony = provider_publikacji.pojedynczy(
+        uczelnia_cerif, Wydawnictwo_Ciagle, ukryty.pk
+    )
+    assert znaleziony is not None, "ukryty rekord tenanta musi dać się odnaleźć"
+    zywe = provider_publikacji.widoczne_pk_ze_strony(
+        uczelnia_cerif, Wydawnictwo_Ciagle, [znaleziony]
+    )
+    assert znaleziony.pk not in zywe, "ukryty rekord ma być oznaczony jako nagrobek"
+
+    obcy_pk = max(widoczny.pk, ukryty.pk) + 1000
     assert (
-        provider_publikacji.pojedynczy(uczelnia_cerif, Wydawnictwo_Ciagle, ukryty.pk)
+        provider_publikacji.pojedynczy(uczelnia_cerif, Wydawnictwo_Ciagle, obcy_pk)
         is None
     )
 
