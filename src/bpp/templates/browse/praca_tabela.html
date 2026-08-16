@@ -23,12 +23,14 @@
         </th>
         <td>
             {{ praca.tekst_przed_pierwszym_autorem|default:"" }}
+            {# Jeden wezel <a>, zamiast otwarcia i zamkniecia w osobnych #}
+            {# galeziach {% if %}. Tamten wzorzec djlint widzi jako sieroty #}
+            {# (H025) i gubil przez to parsowanie reszty pliku — a plik jest #}
+            {# zywym wariantem generatora opisu, wiec ma podlegac kontroli. #}
+            {# Semantyka bez zmian: admin/normal → link, inne prawdziwe #}
+            {# `links` → sam zapis, brak `links` → WERSALIKI. #}
             {% for autor in praca.autorzy_dla_opisu %}{% ifchanged autor.typ_odpowiedzialnosci %}
-                [{{ autor.typ_odpowiedzialnosci.skrot|upper }}] {% endifchanged %}{% if links == "admin" %}
-                <a href="{% url "admin:bpp_autor_change" autor.autor.pk %}">
-                {% else %}{% if links == "normal" %}<a href="{% url "bpp:browse_autor" autor.autor.slug %}">{% else %}
-                {% endif %}{% endif %}{% if links %}{{ autor.zapisany_jako }}{% else %}
-                {{ autor.zapisany_jako|upper }}{% endif %}{% if links == "admin" or links == "normal" %}</a>{% endif %}
+                [{{ autor.typ_odpowiedzialnosci.skrot|upper }}] {% endifchanged %}{% if links == "admin" or links == "normal" %}<a href="{% if links == "admin" %}{% url "admin:bpp_autor_change" autor.autor.pk %}{% else %}{% url "bpp:browse_autor" autor.autor.slug %}{% endif %}">{{ autor.zapisany_jako }}</a>{% elif links %}{{ autor.zapisany_jako }}{% else %}{{ autor.zapisany_jako|upper }}{% endif %}
                 {% if not forloop.last %}, {% else %}{{ praca.tekst_po_ostatnim_autorze|default:"" }}.
                 {% endif %}{% endfor %}
         </td>
@@ -142,7 +144,7 @@
     {% if praca.doi %}
         <tr>
             <th>DOI</th>
-            <td><a target="_blank" href="http://doi.org/{{ praca.doi }}">{{ praca.doi }}</a></td>
+            <td><a target="_blank" href="https://doi.org/{{ praca.doi }}">{{ praca.doi }}</a></td>
         </tr>
     {% endif %}
 
@@ -192,11 +194,21 @@
         <tr>
             <th>PBN UID:</th>
             <td>
-                <button class="button secondary"
-                        type="button"
-                        data-open-url="{{ praca.link_do_pbn }}" data-target="_blank">
-                    🔗 {{ praca.pbn_uid_id }}
-                </button>
+                {# Link do PBN buduje się z pbn_api_root uczelni oglądającego; #}
+                {# w multi-hosted bez tego degradował do napisu "None". Tag, #}
+                {# nie filtr: ten szablon renderuje też opis_bibliograficzny() #}
+                {# kontekstem bez `uczelnia`, a argument filtra Django rozwija #}
+                {# zachłannie → VariableDoesNotExist. #}
+                {% link_do_pbn praca as pbn_url %}
+                {% if pbn_url %}
+                    <button class="button secondary"
+                            type="button"
+                            data-open-url="{{ pbn_url }}" data-target="_blank">
+                        🔗 {{ praca.pbn_uid_id }}
+                    </button>
+                {% else %}
+                    {{ praca.pbn_uid_id }}
+                {% endif %}
                 {% if not request.user.is_anonymous and praca|link_do_pi:uczelnia %}
                     <button class="button secondary"
                             type="button"
@@ -299,7 +311,6 @@
                     <br/>
 
                 {% endif %}
-            </td>
             </td>
         </tr>
     {% endif %}

@@ -152,7 +152,10 @@
                                     <a href="{% url "bpp:browse_praca_by_slug" praca.wydawnictwo_nadrzedne.slug %}">Zobacz wydawnictwo nadrzędne</a>
                                 {% endif %}
                             {% elif praca.wydawnictwo_nadrzedne_w_pbn %}
-                                W: <a href="{{ praca.wydawnictwo_nadrzedne_w_pbn.link_do_pbn }}" target="_blank" title="Link do PBN">
+                                {# Jak wyżej: link do PBN wymaga uczelni z kontekstu. Bez niej #}
+                                {# pokazujemy sam opis wydawnictwa nadrzędnego, bez linku. #}
+                                {% link_do_pbn praca.wydawnictwo_nadrzedne_w_pbn as pbn_url %}
+                                    W: {% if pbn_url %}<a href="{{ pbn_url }}" target="_blank" title="Link do PBN">{% endif %}
                                     {{ praca.wydawnictwo_nadrzedne_w_pbn.title }}
                                     {% if praca.wydawnictwo_nadrzedne_w_pbn.autorzy %}
                                         /
@@ -163,8 +166,7 @@
                                             {% if not forloop.last %}, {% endif %}
                                         {% endfor %}
                                     {% endif %}
-                                    <span class="fi-link-external praca-mono__external-link-icon"></span>
-                                </a>
+                                    {% if pbn_url %}<span class="fi-link-external praca-mono__external-link-icon"></span></a>{% endif %}
                             {% endif %}
                             {{ praca.informacje|default:""|znak_na_koncu:", "|safe }}
                             {{ praca.szczegoly|default:""|safe }}
@@ -290,11 +292,16 @@
                                             title="Kopiuj identyfikator">
                                         <i class="fi-clipboard"></i>
                                     </button>
-                                    <button class="button open-button" type="button"
-                                            data-open-url="{{ praca.link_do_pbn }}" data-target="_blank"
-                                            title="Otwórz w PBN">
-                                        <i class="fi-arrow-right"></i> Otwórz
-                                    </button>
+                                    {# Link do PBN buduje się z pbn_api_root uczelni oglądającego; #}
+                                    {# w multi-hosted bez tego degradował do napisu "None". #}
+                                    {% link_do_pbn praca as pbn_url %}
+                                    {% if pbn_url %}
+                                        <button class="button open-button" type="button"
+                                                data-open-url="{{ pbn_url }}" data-target="_blank"
+                                                title="Otwórz w PBN">
+                                            <i class="fi-arrow-right"></i> Otwórz
+                                        </button>
+                                    {% endif %}
                                 </div>
                             </div>
                         {% endif %}

@@ -165,21 +165,84 @@ def jsonify(value):
     return mark_safe(result)
 
 
+#: Wartownik odróżniający „filtr zawołany bez argumentu" od „argument podany,
+#: ale uczelni nie dało się ustalić". To NIE to samo: pierwsze zostawia
+#: legacy-fallback w metodzie modelu, drugie musi zwrócić brak linku.
+_UCZELNIA_NIE_PODANA = object()
+
+
+def _uczelnia_albo_none(uczelnia):
+    """Znormalizuj uczelnię z kontekstu szablonu do ``Uczelnia`` albo ``None``.
+
+    Context processor ``bpp.context_processors.uczelnia`` wstawia do kontekstu
+    ``NiezdefiniowanaUczelnia`` (placeholder bez ``pk``), gdy z requestu nie da
+    się ustalić uczelni. Dla metod modelu to NIE jest uczelnia — przekazanie go
+    dalej wysypałoby render na ``pbn_api_root``. Rozpoznajemy po braku ``pk``.
+    """
+    if getattr(uczelnia, "pk", None) is None:
+        return None
+    return uczelnia
+
+
 @register.filter(name="link_do_pi")
-def link_do_pi(praca, uczelnia=None):
+def link_do_pi(praca, uczelnia=_UCZELNIA_NIE_PODANA):
     """Zwróć link do Profilu Instytucji rekordu dla danej uczelni.
 
     Multi-hosted (audyt uczelnia, track 7b): templejt nie umie podać argumentu
     metodzie, więc filtr przekazuje uczelnię oglądającego (z kontekstu) do
     ``praca.link_do_pi(uczelnia)`` — link wskazuje na PBN-root TEJ uczelni i
     rozwiązuje wiersz ``PublikacjaInstytucji_V2`` otagowany TĄ uczelnią.
-    ``uczelnia=None`` (brak uczelni w kontekście) → brak linku (NIE ma
-    „uczelni domyślnej").
+
+    Gdy uczelnia zostaje podana, ale nie da się jej ustalić (placeholder
+    ``NiezdefiniowanaUczelnia``), zwracamy brak linku BEZ wołania metody.
+    Degradacja do ``link_do_pi(None)`` robiłaby lookup nie zawężony do
+    uczelni — a w multi-install dwa wiersze ``PublikacjaInstytucji_V2`` na
+    jeden ``objectId`` to stan POPRAWNY, więc ``MultipleObjectsReturned``
+    wyzwoliłoby fałszywy alarm do Rollbara i mail do adminów za link, który
+    i tak zostanie ukryty.
     """
     method = getattr(praca, "link_do_pi", None)
     if method is None:
         return None
+
+    if uczelnia is _UCZELNIA_NIE_PODANA:
+        return method()
+
+    uczelnia = _uczelnia_albo_none(uczelnia)
+    if uczelnia is None:
+        return None
     return method(uczelnia=uczelnia)
+
+
+@register.simple_tag(takes_context=True, name="link_do_pbn")
+def link_do_pbn(context, obiekt):
+    """Zwróć link do rekordu w PBN dla uczelni oglądającego.
+
+    Użycie: ``{% link_do_pbn praca as pbn_url %}``.
+
+    Multi-hosted: szablon nie umie podać argumentu metodzie, więc
+    ``{{ praca.link_do_pbn }}`` wołało ją bez uczelni →
+    ``get_single_uczelnia_or_none()`` przy >1 uczelni zwraca ``None`` →
+    metoda zwraca ``None`` → Django renderuje dosłownie napis ``None``.
+
+    Dlaczego TAG z ``takes_context``, a nie filtr z argumentem ``uczelnia``:
+    Django rozwija argumenty filtrów zachłannie i poza blokiem ``try``, więc
+    ``{% with x=praca|link_do_pbn:uczelnia %}`` wysypuje się przez
+    ``VariableDoesNotExist`` wszędzie tam, gdzie ``uczelnia`` nie ma
+    w kontekście. A jest taki render: ``opis_bibliograficzny()`` renderuje
+    wariant szablonu kontekstem ``dict(praca=..., links=...)``, bez requestu
+    i bez context processorów. Tag czyta kontekst sam, więc brak zmiennej to
+    zwykłe „nie ma uczelni", a nie błąd.
+
+    Brak uczelni → ``None`` (szablon ma wtedy nie renderować linku). Dla
+    ``opis_bibliograficzny_cache`` to jedyne poprawne zachowanie w
+    multi-install: opis jest cache'owany PER REKORD, nie per uczelnia, więc
+    link zależny od uczelni oglądającego przeciekłby między tenantami.
+    """
+    method = getattr(obiekt, "link_do_pbn", None)
+    if method is None:
+        return None
+    return method(uczelnia=_uczelnia_albo_none(context.get("uczelnia")))
 
 
 @register.simple_tag
