@@ -301,14 +301,19 @@ def _get_record(zadanie, argumenty):
         raise BlednyArgument("GetRecord wymaga argumentu metadataPrefix")
     _sprawdz_prefix(prefix)
 
-    set_spec, provider, obiekt = _znajdz_rekord(zadanie, identyfikator)
-
-    widoczne = provider.zbiory_widocznosci(zadanie.uczelnia, [obiekt])
-    kontekst = _kontekst(zadanie, widoczne)
+    set_spec, provider, obiekt, nagrobek = _znajdz_rekord(zadanie, identyfikator)
 
     korzen = etree.Element(f"{{{NS_PMH}}}GetRecord")
     rekord = _pod(korzen, "record")
-    _naglowek(rekord, set_spec, obiekt, zadanie.namespace)
+    _naglowek(rekord, set_spec, obiekt, zadanie.namespace, usuniety=nagrobek)
+    if nagrobek:
+        # Rekord usunięty to sam nagłówek — nie ma czego serializować.
+        # Zbiory widoczności i kontekst liczymy DOPIERO tutaj, bo dla
+        # nagrobka byłyby zbędnymi zapytaniami.
+        return korzen
+
+    widoczne = provider.zbiory_widocznosci(zadanie.uczelnia, [obiekt])
+    kontekst = _kontekst(zadanie, widoczne)
 
     # GetRecord dotyczy jednego rekordu — pominięcie go dałoby odpowiedź
     # niezgodną ze schematem, więc tutaj błąd serializacji propaguje się
@@ -568,7 +573,13 @@ def _wg_setu(pary):
 
 
 def _znajdz_rekord(zadanie, identyfikator):
-    """Zwróć ``(setSpec, provider, obiekt)`` albo podnieś idDoesNotExist."""
+    """Zwróć ``(setSpec, provider, obiekt, czy_nagrobek)`` albo idDoesNotExist.
+
+    ``idDoesNotExist`` zostaje dla identyfikatorów spoza tenanta i spoza
+    repozytorium. Rekord, który do tenanta NALEŻY, ale przestał być
+    wystawiany, wychodzi jako nagrobek — harvester dostał go od nas
+    wcześniej, więc „nigdy o takim nie słyszałem" byłoby kłamstwem.
+    """
     try:
         namespace, model, pk = identyfikatory.rozbierz(identyfikator)
     except identyfikatory.BlednyIdentyfikator as wyjatek:
@@ -586,7 +597,10 @@ def _znajdz_rekord(zadanie, identyfikator):
         obiekt = provider.pojedynczy(zadanie.uczelnia, model, pk)
         if obiekt is None:
             break
-        return set_spec, provider, obiekt
+        nagrobek = obiekt.pk not in provider.widoczne_pk_ze_strony(
+            zadanie.uczelnia, model, [obiekt]
+        )
+        return set_spec, provider, obiekt, nagrobek
 
     raise NieznanyIdentyfikator(f"Brak rekordu o identyfikatorze {identyfikator}")
 

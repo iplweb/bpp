@@ -166,3 +166,33 @@ def test_listrecords_emituje_nagrobek_bez_metadanych(uczelnia, jednostka):
         assert rekord.find(f"{{{NS_PMH}}}metadata") is None, (
             "nagrobek nie może nieść <metadata>"
         )
+
+
+@pytest.mark.django_db
+def test_getrecord_na_usunietym_zwraca_nagrobek(uczelnia):
+    """Usunięty rekord ma nagrobek, nie błąd.
+
+    ``idDoesNotExist`` znaczy „nigdy o takim nie słyszałem" — dla rekordu,
+    który harvester dostał od nas wcześniej, to odpowiedź myląca.
+    """
+    from model_bakery import baker
+
+    from bpp.models import Jednostka
+    from cerif_export import const, identyfikatory
+
+    ukryta = baker.make(
+        Jednostka, uczelnia=uczelnia, nazwa="Ukryta", skrot="UKR", widoczna=False
+    )
+    zadanie = _zadanie_dla(uczelnia)
+    identyfikator = identyfikatory.zbuduj(zadanie.namespace, ukryta)
+
+    korzen = _wykonaj(
+        uczelnia,
+        verb="GetRecord",
+        identifier=identyfikator,
+        metadataPrefix=const.METADATA_PREFIX,
+    )
+    naglowek = korzen.find(f".//{{{NS_PMH}}}header")
+    assert naglowek is not None, "GetRecord nie zwrócił nagłówka (błąd protokołu?)"
+    assert naglowek.get("status") == "deleted"
+    assert korzen.find(f".//{{{NS_PMH}}}metadata") is None
