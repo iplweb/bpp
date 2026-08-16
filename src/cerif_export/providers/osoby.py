@@ -54,6 +54,26 @@ def widoczni_autorzy(uczelnia):
     )
 
 
+def nalezacy_autorzy(uczelnia):
+    """Autorzy afiliowani przy TEJ uczelni — bez reguł ekspozycji.
+
+    ⚠️ Świadomie IGNORUJEMY ``Uczelnia.eksport_cerif_osoby`` i ``pokazuj``.
+    Oba są regułami ekspozycji, więc ich wyłączenie MA produkować nagrobki
+    — harvester ma te osoby usunąć. Skutek uboczny (opisany w specu):
+    przestawienie przełącznika wystawia nagrobki dla wszystkich autorów
+    uczelni naraz. To poprawne, ale jednorazowo bardzo hałaśliwe.
+
+    ``global_objects``, bo ``Autor`` jest soft-delete od fazy 04 — autor
+    w koszu ma dostać nagrobek, a nie zniknąć po cichu.
+    """
+    wymagaj_uczelni(uczelnia)
+    return Autor.global_objects.filter(
+        pk__in=Autor_Jednostka.objects.filter(jednostka__uczelnia=uczelnia).values(
+            "autor_id"
+        )
+    )
+
+
 # Affiliation — komplet powiązań autor-jednostka wraz z jednostką. Serializer
 # emituje ``@id`` jednostki wyłącznie gdy siedzi ona w zbiorze widoczności,
 # ale nazwę/skrót osadza zawsze, więc obiekt ``Jednostka`` musi tu być.
@@ -79,6 +99,19 @@ class ProviderOsob(ProviderEncji):
 
         return (
             widoczni_autorzy(uczelnia)
+            .select_related("plec", "tytul", "pbn_uid", "aktualna_jednostka")
+            .prefetch_related(PREFETCH_AFILIACJI)
+        )
+
+    def przynaleznosc(self, uczelnia, model):
+        wymagaj_uczelni(uczelnia)
+        if model is not Autor:
+            raise BlednyIdentyfikator(
+                f"Model {model!r} nie należy do setu {self.set_spec}"
+            )
+
+        return (
+            nalezacy_autorzy(uczelnia)
             .select_related("plec", "tytul", "pbn_uid", "aktualna_jednostka")
             .prefetch_related(PREFETCH_AFILIACJI)
         )

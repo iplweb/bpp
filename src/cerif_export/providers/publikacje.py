@@ -148,6 +148,72 @@ def widoczne_zrodla(uczelnia):
     )
 
 
+# -- predykaty przynależności (faza 05b: nagrobki) ----------------------
+
+
+def naleza_wydawnictwa(model, uczelnia):
+    """Wydawnictwa TEJ uczelni — bez reguł ekspozycji.
+
+    ⚠️ OBA managery to ``global_objects``, czyli **z koszem**. Zewnętrzny,
+    bo rekord wrzucony do kosza ma dostać nagrobek, a nie zniknąć —
+    ``objects`` (``BppSoftDeleteManager``) odsiałby go od razu. Wewnętrzny,
+    bo autorstwa mają ``BppAutorstwoSoftDeleteMixin`` od fazy 02, więc
+    rekord, któremu skasowano ostatniego autora z tej uczelni, pozostaje
+    „kiedyś nasz". Użycie ``objects`` po którejkolwiek stronie cofnęłoby
+    jedną z czterech dróg zniknięcia z powrotem do ciszy.
+    """
+    wymagaj_uczelni(uczelnia)
+    return model.global_objects.filter(
+        pk__in=model.autor_rekordu_klass.global_objects.filter(
+            jednostka__uczelnia=uczelnia
+        ).values("rekord_id")
+    )
+
+
+def naleza_prace(model, uczelnia):
+    """Prace dyplomowe TEJ uczelni — bez reguł ekspozycji.
+
+    Atrybucja przez bezpośredni FK ``jednostka`` (jak ``widoczne_prace``),
+    ale przez ``global_objects`` — praca w koszu ma dostać nagrobek.
+    """
+    wymagaj_uczelni(uczelnia)
+    return model.global_objects.filter(jednostka__uczelnia=uczelnia)
+
+
+def naleza_zrodla(uczelnia):
+    """Źródła wskazywane przez wydawnictwa ciągłe NALEŻĄCE do tej uczelni.
+
+    Provider pochodny — odpowiednik ``widoczne_zrodla`` wyprowadzony
+    z przynależności. Tylko ``Wydawnictwo_Ciagle`` ma FK ``zrodlo``.
+    Różnica obu zbiorów to źródła, do których prowadziły wyłącznie
+    wydawnictwa, które przestały być widoczne — i one dostają nagrobek.
+    """
+    wymagaj_uczelni(uczelnia)
+    return Zrodlo.objects.filter(
+        pk__in=naleza_wydawnictwa(Wydawnictwo_Ciagle, uczelnia)
+        .filter(zrodlo__isnull=False)
+        .values("zrodlo_id")
+    )
+
+
+def naleza_dla_modelu(model, uczelnia):
+    """Dispatcher równoległy do ``widoczne_dla_modelu``.
+
+    MUSI mieć te same trzy gałęzie co tamten — w tym ``Zrodlo``. Pominięcie
+    którejś dałoby ``NotImplementedError`` dopiero przy harveście akurat
+    tego modelu, czyli u konsumenta.
+    """
+    if model in MODELE_WYDAWNICTW:
+        return naleza_wydawnictwa(model, uczelnia)
+    if model in MODELE_PRAC:
+        return naleza_prace(model, uczelnia)
+    if model is Zrodlo:
+        return naleza_zrodla(uczelnia)
+    raise BlednyIdentyfikator(
+        f"Model {model!r} nie należy do setu {const.SET_PUBLICATIONS}"
+    )
+
+
 def widoczne_konferencje(uczelnia):
     """Konferencje wskazywane przez co najmniej jedną widoczną publikację.
 
@@ -272,6 +338,59 @@ _SELECT_PRACY = (
 )
 
 
+def dekoruj(model, queryset):
+    """Nałóż na queryset komplet prefetchy/adnotacji wymaganych przez serializer.
+
+    Wydzielone z ``queryset()``, bo od fazy 05b dokładnie ten sam komplet
+    musi nieść ``przynaleznosc()`` — to ją paginuje ``strona()``, więc
+    serializacja żywych rekordów czyta relacje właśnie z niej. Dwie kopie
+    tej listy rozjechałyby się przy pierwszej zmianie i dały N+1 na każdej
+    stronie harvestu, czego żaden test by nie złapał.
+    """
+    if model is Wydawnictwo_Ciagle:
+        return queryset.select_related(
+            *_SELECT_WYDAWNICTWA, "zrodlo", "zrodlo__jezyk"
+        ).prefetch_related(*_prefetche_wydawnictwa(model))
+
+    if model is Wydawnictwo_Zwarte:
+        return queryset.select_related(
+            *_SELECT_WYDAWNICTWA,
+            "wydawca",
+            "wydawnictwo_nadrzedne",
+            # `PartOf` osadza skrócone wydawnictwo nadrzędne, a to
+            # czyta typ i język rodzica. Bez tych dwóch pozycji
+            # rozdział kosztował dodatkowe zapytania na każdy rekord
+            # — niewidoczne w testach z jednym rozdziałem.
+            "wydawnictwo_nadrzedne__charakter_formalny",
+            "wydawnictwo_nadrzedne__jezyk",
+            "seria_wydawnicza",
+        ).prefetch_related(
+            *_prefetche_wydawnictwa(model),
+            Prefetch(
+                "wydawnictwo_nadrzedne__dodatkowe_tytuly",
+                queryset=Wydawnictwo_Zwarte_Tytul.objects.select_related("jezyk"),
+            ),
+        )
+
+    if model in MODELE_PRAC:
+        return (
+            queryset.select_related(*_SELECT_PRACY)
+            .prefetch_related("slowa_kluczowe", *prefetche_pochodzenia())
+            .annotate(
+                **{ADNOTACJA_COAR: Value(coar_pracy(model), output_field=CharField())}
+            )
+        )
+
+    if model is Zrodlo:
+        return queryset.select_related(
+            "rodzaj", "jezyk", "openaccess_licencja", "pbn_uid"
+        )
+
+    raise BlednyIdentyfikator(
+        f"Model {model!r} nie należy do setu {const.SET_PUBLICATIONS}"
+    )
+
+
 class ProviderPublikacji(ProviderEncji):
     """Publikacje wszystkich pięciu typów + kanały wydawnicze."""
 
@@ -287,60 +406,11 @@ class ProviderPublikacji(ProviderEncji):
 
     def queryset(self, uczelnia, model):
         wymagaj_uczelni(uczelnia)
+        return dekoruj(model, widoczne_dla_modelu(model, uczelnia))
 
-        if model is Wydawnictwo_Ciagle:
-            return (
-                widoczne_wydawnictwa(model, uczelnia)
-                .select_related(*_SELECT_WYDAWNICTWA, "zrodlo", "zrodlo__jezyk")
-                .prefetch_related(*_prefetche_wydawnictwa(model))
-            )
-
-        if model is Wydawnictwo_Zwarte:
-            return (
-                widoczne_wydawnictwa(model, uczelnia)
-                .select_related(
-                    *_SELECT_WYDAWNICTWA,
-                    "wydawca",
-                    "wydawnictwo_nadrzedne",
-                    # `PartOf` osadza skrócone wydawnictwo nadrzędne, a to
-                    # czyta typ i język rodzica. Bez tych dwóch pozycji
-                    # rozdział kosztował dodatkowe zapytania na każdy rekord
-                    # — niewidoczne w testach z jednym rozdziałem.
-                    "wydawnictwo_nadrzedne__charakter_formalny",
-                    "wydawnictwo_nadrzedne__jezyk",
-                    "seria_wydawnicza",
-                )
-                .prefetch_related(
-                    *_prefetche_wydawnictwa(model),
-                    Prefetch(
-                        "wydawnictwo_nadrzedne__dodatkowe_tytuly",
-                        queryset=Wydawnictwo_Zwarte_Tytul.objects.select_related(
-                            "jezyk"
-                        ),
-                    ),
-                )
-            )
-
-        if model in MODELE_PRAC:
-            return (
-                widoczne_prace(model, uczelnia)
-                .select_related(*_SELECT_PRACY)
-                .prefetch_related("slowa_kluczowe", *prefetche_pochodzenia())
-                .annotate(
-                    **{
-                        ADNOTACJA_COAR: Value(
-                            coar_pracy(model), output_field=CharField()
-                        )
-                    }
-                )
-            )
-
-        if model is Zrodlo:
-            return widoczne_zrodla(uczelnia).select_related(
-                "rodzaj", "jezyk", "openaccess_licencja", "pbn_uid"
-            )
-
-        raise BlednyIdentyfikator(f"Model {model!r} nie należy do setu {self.set_spec}")
+    def przynaleznosc(self, uczelnia, model):
+        wymagaj_uczelni(uczelnia)
+        return dekoruj(model, naleza_dla_modelu(model, uczelnia))
 
     def zbiory_widocznosci(self, uczelnia, obiekty) -> ZbioryWidocznosci:
         """Prekomputuj widoczność encji osadzanych przy publikacjach.
