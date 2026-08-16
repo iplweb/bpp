@@ -183,9 +183,12 @@ tenanta jak w pozostałych viewsetach (`Uczelnia.objects.get_for_request`).
   `widoczne_projekty()` i `widoczne_finansowania()` to czysta atrybucja bez
   reguł ekspozycji, a modele nie mają soft-delete → dopełnienie jest puste.
   Kontrakt i tak implementujemy (spójność, gotowość na przyszłe reguły).
-  Uwaga: **`orgunits` nagrobki wygeneruje** — obok `Jednostka` (reguły
-  `widoczna` i `nie_eksportuj_przez_api`) siedzi w tym secie
-  `Instytucja_Finansujaca` z widocznością pochodną od projektów.
+  Uwaga: **`orgunits` nagrobki wygeneruje**, ale wyłącznie przez `Jednostka`
+  (reguły `widoczna` i `nie_eksportuj_przez_api`). Trzeci model tego setu,
+  `Instytucja_Finansujaca`, ma widoczność
+  (`finansowanie__projekt__jednostka__uczelnia`) **równą** atrybucji, więc
+  jego dopełnienie też jest puste — korekta ustalona przy pisaniu planu
+  2026-08-16.
 - **REST węższy niż OAI** (D5): rekord ukryty przez `nie_eksportuj_przez_api`
   dostanie nagrobek w OAI, ale nie pojawi się w `/api/v1/usuniete/`.
 
