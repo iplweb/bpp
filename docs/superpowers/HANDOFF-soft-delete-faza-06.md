@@ -10,9 +10,33 @@
 | | |
 |---|---|
 | Stan fazy 05a | gałąź `feat/soft-delete-05`, PR do `feat/soft-delete-04` (stacked) |
-| Punkt startowy fazy 06 | `feat/soft-delete-05` |
+| Punkt startowy fazy 06 | `feat/soft-delete-05` **albo** `feat/soft-delete-05b` — patrz niżej |
 | Migracje fazy 05a | `pbn_export_queue/0011` (pole `operacja`), `pbn_api/0080` (`SentData.withdrawn_at`), `zglos_publikacje/0028` (state-only, dług fazy 04) |
-| **Zakres rozdzielony** | nagrobki OAI-PMH/CERIF/REST **wyszły do fazy 05b** (decyzja właściciela 2026-08-10) |
+| **Zakres rozdzielony** | nagrobki OAI-PMH/CERIF/REST **wyszły do fazy 05b** (decyzja właściciela 2026-08-10), ZROBIONE — patrz §5 |
+
+### Stos PR-ów (stan 2026-08-16, wszystkie OTWARTE, żaden niescalony)
+
+```
+#312  feat/soft-delete       -> dev
+#745  feat/soft-delete-04    -> feat/soft-delete
+#755  feat/soft-delete-05    -> feat/soft-delete-04
+#767  feat/soft-delete-05b   -> feat/soft-delete-05      (faza 05b, nagrobki)
+```
+
+**Decyzja do podjęcia przed startem fazy 06:** od czego odbić gałąź.
+Faza 06 (`SoftDeleteLog` + receivery sygnałów) **nie zależy** od fazy 05b —
+nagrobki liczą się z dopełnienia ekspozycji, nie z logu. Więc:
+
+- odbicie od `feat/soft-delete-05` — fazy 06 i 05b są równoległe,
+  konflikt przy scalaniu praktycznie żaden (rozłączne pliki: 06 rusza
+  `bpp/models/soft_delete.py` i sygnały, 05b ruszała `cerif_export/`
+  + `api_v1/`);
+- odbicie od `feat/soft-delete-05b` — stos rośnie liniowo, prościej
+  w rozumieniu, ale faza 06 czeka wtedy na review 05b.
+
+⚠️ **PR #767 nie był jeszcze recenzowany ani scalony.** Jeśli zadaniem
+sesji jest jego dopilnowanie (review, poprawki, merge), to ten handoff jest
+złym punktem startu — zacznij od samego PR-a (`gh pr view 767`) i od §5.
 
 ⚠️ **Faza 05 była w planie JEDNĄ fazą o dwóch niezależnych podsystemach.**
 Wycofanie z PBN miało drobiazgowy plan (1286 linii); nagrobki miały baner
