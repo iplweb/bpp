@@ -33,6 +33,35 @@ Doszła `0503`. Odświeżenie robi się **raz, przy scalaniu** całego
 ⚠️ **CI NIE URUCHAMIA SIĘ na PR-ach do gałęzi `feat/soft-delete*`** — bez
 zmian. Jedyną weryfikacją jest przebieg lokalny.
 
+### Wynik weryfikacji fazy 06
+
+`make tests-without-playwright`: **9647 passed, 2 failed, 4 skipped,
+2 xfailed** (8:06).
+
+Obie porażki to `Failed: Timeout (>90.0s)` — NIE asercje:
+
+- `bpp/tests/test_soft_delete/test_kronika_usunieta.py::test_0499_odwracalna`
+- `pbn_api/tests/test_migracja_dyscypliny_uuid_e2e.py::test_migracja_
+  przechodzi_na_bazie_z_duplikatami`
+
+**Nie są regresją fazy 06** — zmierzone czasy seryjne na obu gałęziach:
+
+| Test | `feat/soft-delete-05b` | `feat/soft-delete-06` |
+|---|---|---|
+| `test_migracja_...duplikatami` | 45,70 s | 43,16 s |
+| `test_0499_odwracalna` | 31,88 s | 32,33 s |
+
+Identyczne co do szumu. Żaden z nich nie wykonuje operacji soft-delete
+(w `test_kronika_usunieta.py` nie ma ani jednego `.delete()`/`.restore()`/
+`hard_delete`), więc receivery nie mają się w nich gdzie odpalić; wkład
+fazy 06 do grafu migracji to jedno `CreateModel`.
+
+⚠️ **To testy o ~2× zapasie do limitu 90 s**, a `-n auto` odpala 10 workerów.
+Na współdzielonym hoście przekraczają limit — ta sama klasa problemu, co
+w handoffie fazy 05a §8 (load 6+ wywracał start testcontainerów). Kandydat
+do podniesienia `@pytest.mark.timeout` dla tych dwóch plików; poza zakresem
+fazy 06.
+
 ---
 
 ## 2. Co faza 06 dostarcza (kontrakt dla fazy 07)
