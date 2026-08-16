@@ -16449,6 +16449,52 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+25	axes	0006_remove_accesslog_trusted	2000-01-01 00:00:00+00
+372	bpp	0279_usun_ost_akt_pbn	2000-01-01 00:00:00+00
+582	deduplikator_autorow	0005_replace_log_model	2000-01-01 00:00:00+00
+583	deduplikator_autorow	0006_add_ignored_author	2000-01-01 00:00:00+00
+584	deduplikator_autorow	0007_add_duplicate_scan_models	2000-01-01 00:00:00+00
+585	deduplikator_autorow	0008_add_priority_field	2000-01-01 00:00:00+00
+586	deduplikator_autorow	0009_rename_ignoredauthor_ignoredscientist	2000-01-01 00:00:00+00
+587	deduplikator_autorow	0010_add_ignored_author	2000-01-01 00:00:00+00
+588	deduplikator_autorow	0011_scan_mode_phase_partial	2000-01-01 00:00:00+00
+589	deduplikator_autorow	0012_alter_duplicatecandidate_main_autor_and_more	2000-01-01 00:00:00+00
+590	deduplikator_publikacji	0001_initial	2000-01-01 00:00:00+00
+591	deduplikator_publikacji	0002_remove_publicationduplicatecandidate_deduplikato_similar_17e420_idx_and_more	2000-01-01 00:00:00+00
+594	denorm	0002_dirtyinstance_func_name	2000-01-01 00:00:00+00
+595	denorm	0003_auto_20211002_1955	2000-01-01 00:00:00+00
+596	denorm	0004_alter_dirtyinstance_success	2000-01-01 00:00:00+00
+597	denorm	0005_dirtyinstance_created_on	2000-01-01 00:00:00+00
+598	denorm	0006_auto_20211003_0346	2000-01-01 00:00:00+00
+599	denorm	0007_auto_created_on_now	2000-01-01 00:00:00+00
+600	denorm	0008_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+601	denorm	0009_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+602	denorm	0010_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+603	denorm	0011_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+604	denorm	0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+605	denorm	0013_alter_dirtyinstance_success	2000-01-01 00:00:00+00
+606	denorm	0014_parametrized_notify	2000-01-01 00:00:00+00
+607	denorm	0015_remove_dirtyinstance_processing_finished_and_more	2000-01-01 00:00:00+00
+608	denorm	0016_not_parametrized_notify	2000-01-01 00:00:00+00
+609	denorm	0017_dirtyinstance_unique_index	2000-01-01 00:00:00+00
+610	django_celery_results	0001_initial	2000-01-01 00:00:00+00
+611	django_celery_results	0002_add_task_name_args_kwargs	2000-01-01 00:00:00+00
+612	django_celery_results	0003_auto_20181106_1101	2000-01-01 00:00:00+00
+613	django_celery_results	0004_auto_20190516_0412	2000-01-01 00:00:00+00
+614	django_celery_results	0005_taskresult_worker	2000-01-01 00:00:00+00
+615	django_celery_results	0006_taskresult_date_created	2000-01-01 00:00:00+00
+616	django_celery_results	0007_remove_taskresult_hidden	2000-01-01 00:00:00+00
+617	django_celery_results	0008_chordcounter	2000-01-01 00:00:00+00
+618	django_celery_results	0009_groupresult	2000-01-01 00:00:00+00
+619	django_celery_results	0010_remove_duplicate_indices	2000-01-01 00:00:00+00
+620	django_celery_results	0011_taskresult_periodic_task_name	2000-01-01 00:00:00+00
+621	django_celery_results	0012_taskresult_date_started	2000-01-01 00:00:00+00
+622	django_celery_results	0013_taskresult_django_cele_periodi_1993cf_idx	2000-01-01 00:00:00+00
+623	django_celery_results	0014_alter_taskresult_status	2000-01-01 00:00:00+00
+624	sites	0002_alter_domain_unique	2000-01-01 00:00:00+00
+625	django_countdown	0001_initial	2000-01-01 00:00:00+00
+626	django_countdown	0002_alter_sitecountdown_countdown_time	2000-01-01 00:00:00+00
+1136	bpp	0488_purge_praca_tabela_dbtemplate	2000-01-01 00:00:00+00
 593	denorm	0001_initial	2000-01-01 00:00:00+00
 20	axes	0001_initial	2000-01-01 00:00:00+00
 76	taggit	0001_initial	2000-01-01 00:00:00+00
@@ -17009,7 +17055,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 22	axes	0003_auto_20160322_0929	2000-01-01 00:00:00+00
 23	axes	0004_auto_20181024_1538	2000-01-01 00:00:00+00
 24	axes	0005_remove_accessattempt_trusted	2000-01-01 00:00:00+00
-25	axes	0006_remove_accesslog_trusted	2000-01-01 00:00:00+00
 26	axes	0007_alter_accessattempt_unique_together	2000-01-01 00:00:00+00
 27	axes	0008_accessfailurelog	2000-01-01 00:00:00+00
 28	axes	0009_add_session_hash	2000-01-01 00:00:00+00
@@ -17232,6 +17277,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 250	bpp	0167_auto_20190707_2029	2000-01-01 00:00:00+00
 251	bpp	0166_auto_20190708_0022	2000-01-01 00:00:00+00
 373	bpp	0280_auto_20210725_2217	2000-01-01 00:00:00+00
+376	bpp	0283_auto_20210809_0142	2000-01-01 00:00:00+00
 252	bpp	0167_dyscyplina_change_trigger_fix	2000-01-01 00:00:00+00
 253	bpp	0168_dyscyplina_w_autorzy_mat	2000-01-01 00:00:00+00
 254	bpp	0169_dyscyplina_change_trigger_cacher	2000-01-01 00:00:00+00
@@ -17343,10 +17389,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 368	bpp	0275_jednostka_hier	2000-01-01 00:00:00+00
 369	bpp	0276_auto_20210607_0109	2000-01-01 00:00:00+00
 370	bpp	0277_lepsze_global_search	2000-01-01 00:00:00+00
-372	bpp	0279_usun_ost_akt_pbn	2000-01-01 00:00:00+00
 374	bpp	0281_auto_20210725_2332	2000-01-01 00:00:00+00
 375	bpp	0282_auto_20210808_2334	2000-01-01 00:00:00+00
-376	bpp	0283_auto_20210809_0142	2000-01-01 00:00:00+00
 377	bpp	0284_auto_20210814_0023	2000-01-01 00:00:00+00
 378	bpp	0285_auto_20210814_0103	2000-01-01 00:00:00+00
 379	bpp	0286_auto_20210814_0104	2000-01-01 00:00:00+00
@@ -17536,50 +17580,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 579	deduplikator_autorow	0002_logautomatycznegoscalania	2000-01-01 00:00:00+00
 580	deduplikator_autorow	0003_alter_notaduplicate_scientist_pk	2000-01-01 00:00:00+00
 581	deduplikator_autorow	0004_alter_notaduplicate_unique_together_and_more	2000-01-01 00:00:00+00
-582	deduplikator_autorow	0005_replace_log_model	2000-01-01 00:00:00+00
-583	deduplikator_autorow	0006_add_ignored_author	2000-01-01 00:00:00+00
-584	deduplikator_autorow	0007_add_duplicate_scan_models	2000-01-01 00:00:00+00
-585	deduplikator_autorow	0008_add_priority_field	2000-01-01 00:00:00+00
-586	deduplikator_autorow	0009_rename_ignoredauthor_ignoredscientist	2000-01-01 00:00:00+00
-587	deduplikator_autorow	0010_add_ignored_author	2000-01-01 00:00:00+00
-588	deduplikator_autorow	0011_scan_mode_phase_partial	2000-01-01 00:00:00+00
-589	deduplikator_autorow	0012_alter_duplicatecandidate_main_autor_and_more	2000-01-01 00:00:00+00
-590	deduplikator_publikacji	0001_initial	2000-01-01 00:00:00+00
-591	deduplikator_publikacji	0002_remove_publicationduplicatecandidate_deduplikato_similar_17e420_idx_and_more	2000-01-01 00:00:00+00
-594	denorm	0002_dirtyinstance_func_name	2000-01-01 00:00:00+00
-595	denorm	0003_auto_20211002_1955	2000-01-01 00:00:00+00
-596	denorm	0004_alter_dirtyinstance_success	2000-01-01 00:00:00+00
-597	denorm	0005_dirtyinstance_created_on	2000-01-01 00:00:00+00
-598	denorm	0006_auto_20211003_0346	2000-01-01 00:00:00+00
-599	denorm	0007_auto_created_on_now	2000-01-01 00:00:00+00
-600	denorm	0008_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-601	denorm	0009_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-602	denorm	0010_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-603	denorm	0011_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-604	denorm	0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-605	denorm	0013_alter_dirtyinstance_success	2000-01-01 00:00:00+00
-606	denorm	0014_parametrized_notify	2000-01-01 00:00:00+00
-607	denorm	0015_remove_dirtyinstance_processing_finished_and_more	2000-01-01 00:00:00+00
-608	denorm	0016_not_parametrized_notify	2000-01-01 00:00:00+00
-609	denorm	0017_dirtyinstance_unique_index	2000-01-01 00:00:00+00
-610	django_celery_results	0001_initial	2000-01-01 00:00:00+00
-611	django_celery_results	0002_add_task_name_args_kwargs	2000-01-01 00:00:00+00
-612	django_celery_results	0003_auto_20181106_1101	2000-01-01 00:00:00+00
-613	django_celery_results	0004_auto_20190516_0412	2000-01-01 00:00:00+00
-614	django_celery_results	0005_taskresult_worker	2000-01-01 00:00:00+00
-615	django_celery_results	0006_taskresult_date_created	2000-01-01 00:00:00+00
-616	django_celery_results	0007_remove_taskresult_hidden	2000-01-01 00:00:00+00
-617	django_celery_results	0008_chordcounter	2000-01-01 00:00:00+00
-618	django_celery_results	0009_groupresult	2000-01-01 00:00:00+00
-619	django_celery_results	0010_remove_duplicate_indices	2000-01-01 00:00:00+00
-620	django_celery_results	0011_taskresult_periodic_task_name	2000-01-01 00:00:00+00
-621	django_celery_results	0012_taskresult_date_started	2000-01-01 00:00:00+00
-622	django_celery_results	0013_taskresult_django_cele_periodi_1993cf_idx	2000-01-01 00:00:00+00
-623	django_celery_results	0014_alter_taskresult_status	2000-01-01 00:00:00+00
-624	sites	0002_alter_domain_unique	2000-01-01 00:00:00+00
-625	django_countdown	0001_initial	2000-01-01 00:00:00+00
-626	django_countdown	0002_alter_sitecountdown_countdown_time	2000-01-01 00:00:00+00
-1136	bpp	0488_purge_praca_tabela_dbtemplate	2000-01-01 00:00:00+00
 \.
 
 
@@ -17951,6 +17951,21 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+268	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+269	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
+270	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+271	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+272	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+273	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+274	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+275	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+276	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+277	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+278	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+279	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+280	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+281	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+282	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -19805,7 +19820,7 @@ SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 42,
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 267, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 282, true);
 
 
 --

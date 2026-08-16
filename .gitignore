@@ -180,6 +180,7 @@ dump.rdb
 .claude/
 
 .grunt-build-stamp
+.grunt-build.lock
 
 # Local TODO / audit notes (not committed)
 TODO-*.txt
