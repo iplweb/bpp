@@ -92,6 +92,18 @@ testowa częściowo i (3) naprawy stwierdzone. **Otwarte pozostają:**
 - **(7) Raport zgodności** — wymaga (6) i wyników (5). Dziś nie istnieje,
   dlatego wykazy niezgodności mieszkają tymczasowo w specyfikacjach.
 
+**Znalezione przy recenzji fazy 2 (2026-08-16), nierozwiązane:**
+
+- **2.1.4 w panelu administracyjnym.**
+  `src/django_bpp/templates/admin/base_site.html:127` wiąże skrót `/` na
+  `$(document)` i robi `preventDefault()` — dokładnie ten sam wzorzec, który
+  faza 2 naprawiła po stronie publicznej, tylko nietknięty. Poza
+  zadeklarowanym zakresem audytu (część publiczna dla anonima), ale
+  kryterium obowiązuje per strona, więc raport zgodności obejmujący panel
+  administracyjny to wykaże. Naprawa nie jest jednolinijkowa: admin nie
+  dziedziczy po `base.html`, więc nie ładuje `skroty-klawiszowe.js` —
+  potrzebny jest i skrypt, i guard. Osobne zadanie.
+
 **Hipotezy do zbadania** (nie są stwierdzonymi naruszeniami — zadanie brzmi
 „zbadaj", nie „napraw"):
 
