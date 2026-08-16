@@ -39,11 +39,27 @@ def pytest_configure(config):
     celowo nieaktualnym sentinelu — jeden build, sentinel odświeżony, testy
     zielone.
 
-    Sentinel psuje też `npx grunt build` odpalany RĘCZNIE: buduje pliki, ale
-    nie dotyka `.grunt-build-stamp` (robi to dopiero reguła w Makefile), więc
-    kolejny `make assets` i tak przebuduje. Do odświeżenia assetów używaj
-    `make assets`, nie gołego grunta.
+    Budowanie stoi pod ZAMKIEM PLIKOWYM, bo „jeden build na przebieg" nie
+    wystarcza, gdy przebiegów jest kilka. Dwa `pytest` odpalone naraz w TYM
+    SAMYM worktree (druga konsola, agent obok człowieka) to dwa kontrolery —
+    przy nieaktualnym sentinelu obydwa ruszyłyby `grunt build` na te same
+    pliki wyjściowe. `flock` ustawia je w kolejkę: pierwszy buduje, drugi
+    czeka, a po wejściu jego `make assets` jest już pustym przebiegiem —
+    podwójne sprawdzenie robi za nas sam `make`, po mtime sentinela. Zamek
+    zwalnia jądro przy zamknięciu deskryptora, więc nie da się go osierocić
+    nawet przez `kill -9`.
+
+    Zamek NIE serializuje różnych worktree i nie powinien: każdy ma własny
+    `.grunt-build-stamp` i własny `staticroot`, więc ich buildy nie kolidują
+    na plikach — konkurują wyłącznie o CPU, co jest problemem harmonogramu,
+    nie poprawności.
+
+    Zamek obejmuje ścieżkę pytestową, czyli tę, która odpala się sama i
+    równolegle. Ręczne `make assets` puszczone w tej samej chwili co testy
+    nadal może się z nimi zbiec — to świadome działanie człowieka, nie
+    automat, więc nie budujemy pod to maszynerii.
     """
+    import fcntl
     import os
     import sys
 
@@ -55,13 +71,15 @@ def pytest_configure(config):
 
     repo_root = Path(__file__).parent
     env = {**os.environ, "UV_NO_SYNC": "1"}
-    result = subprocess.run(
-        ["make", "assets"],
-        cwd=repo_root,
-        env=env,
-        capture_output=True,
-        text=True,
-    )
+    with open(repo_root / ".grunt-build.lock", "w") as zamek:
+        fcntl.flock(zamek, fcntl.LOCK_EX)
+        result = subprocess.run(
+            ["make", "assets"],
+            cwd=repo_root,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
     if result.returncode != 0:
         sys.stderr.write(f"\n=== `make assets` failed (exit {result.returncode}) ===\n")
         if result.stdout:
