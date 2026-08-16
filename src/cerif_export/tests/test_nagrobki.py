@@ -211,3 +211,196 @@ def test_identify_deklaruje_transient(uczelnia):
     element = korzen.find(f".//{{{NS_PMH}}}deletedRecord")
     assert element is not None, "Identify nie zwrócił deletedRecord"
     assert element.text == "transient"
+
+
+# -- cztery drogi zniknięcia --------------------------------------------
+
+
+def _ukryj_kosz(praca, uczelnia):
+    praca.delete()
+
+
+def _ukryj_opt_out(praca, uczelnia):
+    praca.nie_eksportuj_przez_api = True
+    praca.save()
+
+
+def _ukryj_status(praca, uczelnia):
+    from bpp.models import Status_Korekty
+    from bpp.models.uczelnia import Ukryj_Status_Korekty
+
+    status = Status_Korekty.objects.get_or_create(nazwa="wycofany z eksportu")[0]
+    # Fixture ``uczelnia`` nie ma żadnego statusu ukrytego w kanale ``cerif``,
+    # więc trzecią drogę zniknięcia musimy tu zbudować, a nie pominąć.
+    Ukryj_Status_Korekty.objects.create(
+        uczelnia=uczelnia, status_korekty=status, cerif=True
+    )
+    praca.status_korekty = status
+    praca.save()
+
+    assert list(uczelnia.ukryte_statusy("cerif")), (
+        "test musi mieć status ukryty w kanale cerif — bez tego przypadek "
+        "nie odtwarza trzeciej drogi zniknięcia"
+    )
+
+
+def _ukryj_odpiecie_autora(praca, uczelnia):
+    # Skasowanie autorstwa to soft-delete (faza 02) — wiersz zostaje w koszu
+    # i to on trzyma historyczną atrybucję rekordu do uczelni.
+    praca.autorzy_set.first().delete()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "ukryj",
+    [_ukryj_kosz, _ukryj_opt_out, _ukryj_status, _ukryj_odpiecie_autora],
+    ids=["kosz", "opt_out", "ukryty_status", "odpiecie_autora"],
+)
+def test_kazda_droga_znikniecia_daje_nagrobek(uczelnia, jednostka, typ_autor, ukryj):
+    """Cztery drogi, jeden skutek dla harvestera — więc jeden nagrobek.
+
+    Przypadek ``odpiecie_autora`` jest tu najważniejszy: dowodzi, że
+    ``przynaleznosc`` idzie przez ``global_objects`` modelu autorstwa.
+    Gdyby szła przez ``objects``, rekord wypadłby z nadzbioru i zniknął
+    po cichu — czyli wróciłaby dokładnie ta luka, którą faza zamyka.
+
+    Przypadek ``kosz`` dowodzi tego samego o zewnętrznym managerze rekordu.
+    """
+    from model_bakery import baker
+
+    from bpp.models import Autor, Wydawnictwo_Ciagle
+    from cerif_export import const
+
+    praca = baker.make(Wydawnictwo_Ciagle)
+    praca.dodaj_autora(baker.make(Autor, nazwisko="Kowalski", imiona="Jan"), jednostka)
+
+    provider = rejestr_providerow()[const.SET_PUBLICATIONS]
+    assert (
+        not provider.nagrobki(uczelnia, Wydawnictwo_Ciagle).filter(pk=praca.pk).exists()
+    ), "rekord widoczny nie może być nagrobkiem"
+
+    ukryj(praca, uczelnia)
+
+    assert (
+        provider.nagrobki(uczelnia, Wydawnictwo_Ciagle).filter(pk=praca.pk).exists()
+    ), "rekord przestał być widoczny, a nie dostał nagrobka"
+
+
+# -- okno from/until i granica strony -----------------------------------
+
+
+def _ustaw_datestamp(model, pk, wartosc):
+    """``ostatnio_zmieniony`` ma ``auto_now``, więc omijamy ``save()``."""
+    model.objects.filter(pk=pk).update(ostatnio_zmieniony=wartosc)
+
+
+def _dzien(numer):
+    import datetime
+
+    return datetime.datetime(2024, 3, numer, 12, 0, 0, tzinfo=datetime.UTC)
+
+
+@pytest.mark.django_db
+def test_okno_od_do_obejmuje_nagrobki(uczelnia, jednostka):
+    """Nagrobek jest datowany i podlega ``from``/``until`` jak żywy rekord.
+
+    Znacznik bierze się z ``ostatnio_zmieniony``, który soft-delete bumpuje
+    (kontrakt PINNED fazy 01) — bez tego harvest przyrostowy nigdy by
+    nagrobka nie zobaczył, bo konsument pyta zawsze o okno „od ostatniego
+    razu".
+    """
+    from model_bakery import baker
+
+    from bpp.models import Jednostka
+    from cerif_export import const
+
+    ukryta = baker.make(
+        Jednostka, uczelnia=uczelnia, nazwa="Ukryta", skrot="UKR", widoczna=False
+    )
+    _ustaw_datestamp(Jednostka, ukryta.pk, _dzien(10))
+
+    provider = rejestr_providerow()[const.SET_ORGUNITS]
+
+    def pk_jednostek(**kwargs):
+        pary, _ = provider.strona(uczelnia, rozmiar=100, **kwargs)
+        return {
+            obiekt.pk for obiekt, _nagrobek in pary if isinstance(obiekt, Jednostka)
+        }
+
+    assert ukryta.pk in pk_jednostek(od=_dzien(9)), (
+        "nagrobek wypadł z okna `from` — harvest przyrostowy go nie zobaczy"
+    )
+    assert ukryta.pk in pk_jednostek(od=_dzien(9), do=_dzien(11))
+    assert ukryta.pk not in pk_jednostek(do=_dzien(9)), (
+        "nagrobek z przyszłości wszedł w okno `until`"
+    )
+    assert ukryta.pk not in pk_jednostek(od=_dzien(11))
+
+
+@pytest.mark.django_db
+def test_harvest_po_tokenach_nie_gubi_i_nie_dubluje_na_granicy_nagrobka(
+    uczelnia, jednostka
+):
+    """Strona kończy się DOKŁADNIE na nagrobku — bez duplikatu i bez luki.
+
+    To tu żyły wcześniejsze bugi ``Trunc``/``tzinfo`` opisane
+    w ``z_datestampem``: kursor i wartość sortowania rozjeżdżały się
+    o mikrosekundy albo o offset strefy, więc rekord graniczny wracał na
+    następnej stronie (duplikat) albo znikał (luka). Nagrobki nie mogą tego
+    przywrócić, bo płyną tym samym strumieniem i tym samym kursorem.
+    """
+    from model_bakery import baker
+
+    from bpp.models import Jednostka
+    from cerif_export import const
+
+    ROZMIAR = 3
+
+    _ustaw_datestamp(Jednostka, jednostka.pk, _dzien(1))
+    oczekiwane = {jednostka.pk: False}
+
+    # Pozycje 3 i 6 w porządku dat są nagrobkami — przy rozmiarze 3 pierwsza
+    # strona kończy się dokładnie na nagrobku.
+    for numer in range(2, 8):
+        widoczna = numer not in (3, 6)
+        obiekt = baker.make(
+            Jednostka,
+            uczelnia=uczelnia,
+            nazwa=f"Jednostka {numer}",
+            skrot=f"J{numer}",
+            widoczna=widoczna,
+        )
+        _ustaw_datestamp(Jednostka, obiekt.pk, _dzien(numer))
+        oczekiwane[obiekt.pk] = not widoczna
+
+    provider = rejestr_providerow()[const.SET_ORGUNITS]
+
+    pierwsza, kursor = provider.strona(uczelnia, rozmiar=ROZMIAR)
+    assert kursor is not None, "harvest musi być wielostronicowy"
+    assert pierwsza[-1][1] is True, (
+        "setup się rozjechał: strona nie kończy się na nagrobku, "
+        "czyli test nie bada granicy, o którą chodzi"
+    )
+
+    zebrane = list(pierwsza)
+    for _ in range(50):
+        if kursor is None:
+            break
+        partia, kursor = provider.strona(uczelnia, kursor=kursor, rozmiar=ROZMIAR)
+        zebrane.extend(partia)
+    else:
+        raise AssertionError("harvest nie zakończył się po 50 stronach")
+
+    klucze = [(type(obiekt).__name__, obiekt.pk) for obiekt, _nagrobek in zebrane]
+    assert len(klucze) == len(set(klucze)), (
+        f"rekord wyszedł dwa razy na granicy strony: {klucze}"
+    )
+
+    otrzymane = {
+        obiekt.pk: nagrobek
+        for obiekt, nagrobek in zebrane
+        if isinstance(obiekt, Jednostka)
+    }
+    assert otrzymane == oczekiwane, (
+        "harvest zgubił rekord albo pomylił żywego z nagrobkiem"
+    )
