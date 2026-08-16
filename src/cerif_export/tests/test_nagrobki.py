@@ -404,3 +404,98 @@ def test_harvest_po_tokenach_nie_gubi_i_nie_dubluje_na_granicy_nagrobka(
     assert otrzymane == oczekiwane, (
         "harvest zgubił rekord albo pomylił żywego z nagrobkiem"
     )
+
+
+# -- walidacja XSD odpowiedzi z nagrobkami ------------------------------
+
+
+@pytest.fixture(scope="module")
+def schemat_koperty():
+    """``XMLSchema`` koperty OAI-PMH razem z ładunkiem profilu CERIF.
+
+    Testy serializerów walidują pojedyncze encje względem profilu; tu
+    walidujemy CAŁĄ odpowiedź, bo ``status="deleted"`` jest konstrukcją
+    koperty OAI-PMH, nie profilu. Bez tego łatwo wyemitować XML, który
+    agregator odrzuci — a dowiedzielibyśmy się o tym od niego.
+    """
+    import pathlib
+
+    from lxml import etree
+
+    from cerif_export.tests.test_serializery import ResolverLokalny
+
+    katalog = pathlib.Path(__file__).parent / "xsd"
+    parser = etree.XMLParser(no_network=True)
+    parser.resolvers.add(ResolverLokalny())
+    return etree.XMLSchema(etree.parse(str(katalog / "oai-pmh-z-profilem.xsd"), parser))
+
+
+def _zwaliduj(schemat, korzen):
+    from lxml import etree
+
+    dokument = etree.fromstring(etree.tostring(korzen))
+    if not schemat.validate(dokument):
+        raise AssertionError(
+            "odpowiedź nie przechodzi XSD OAI-PMH:\n"
+            + "\n".join(str(b) for b in schemat.error_log)
+        )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("czasownik", ["ListRecords", "ListIdentifiers"])
+def test_odpowiedz_z_nagrobkiem_przechodzi_xsd(
+    schemat_koperty, uczelnia, jednostka, czasownik
+):
+    """Nagrobek obok żywego rekordu musi być poprawny wobec schematu."""
+    from model_bakery import baker
+
+    from bpp.models import Jednostka
+    from cerif_export import const
+
+    baker.make(
+        Jednostka, uczelnia=uczelnia, nazwa="Ukryta", skrot="UKR", widoczna=False
+    )
+
+    korzen = _wykonaj(
+        uczelnia,
+        verb=czasownik,
+        metadataPrefix=const.METADATA_PREFIX,
+        set=const.SET_ORGUNITS,
+    )
+
+    naglowki = korzen.findall(f".//{{{NS_PMH}}}header")
+    assert [h for h in naglowki if h.get("status") == "deleted"], (
+        "odpowiedź bez nagrobka nie testuje tego, o co chodzi"
+    )
+    assert [h for h in naglowki if h.get("status") is None], (
+        "odpowiedź bez żywego rekordu nie sprawdza sąsiedztwa obu rodzajów"
+    )
+
+    _zwaliduj(schemat_koperty, korzen)
+
+
+@pytest.mark.django_db
+def test_getrecord_z_nagrobkiem_przechodzi_xsd(schemat_koperty, uczelnia):
+    """GetRecord na nagrobku: ``<record>`` z samym ``<header>``.
+
+    Schemat dopuszcza ``<metadata>`` jako ``minOccurs="0"``, więc rekord bez
+    ładunku jest poprawny — ale tylko dlatego, że NIE dokładamy pustego
+    ``<metadata>``.
+    """
+    from model_bakery import baker
+
+    from bpp.models import Jednostka
+    from cerif_export import const, identyfikatory
+
+    ukryta = baker.make(
+        Jednostka, uczelnia=uczelnia, nazwa="Ukryta", skrot="UKR", widoczna=False
+    )
+    zadanie = _zadanie_dla(uczelnia)
+
+    korzen = _wykonaj(
+        uczelnia,
+        verb="GetRecord",
+        identifier=identyfikatory.zbuduj(zadanie.namespace, ukryta),
+        metadataPrefix=const.METADATA_PREFIX,
+    )
+    _zwaliduj(schemat_koperty, korzen)

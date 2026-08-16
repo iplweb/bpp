@@ -135,6 +135,18 @@ zombie w indeksie.
    `eksport_cerif_osoby=False` — sam set osób (autorzy zostają wtedy przy
    publikacjach jako samo imię i nazwisko, bez `@id`, ORCID-a i afiliacji).
 
+   **⚠️ Operacyjnie — od fazy 05b (nagrobki):** przestawienie
+   `eksport_cerif_osoby` na `False` wystawi w najbliższym harveście
+   **nagrobki dla WSZYSTKICH autorów uczelni naraz** (nagłówki ze statusem
+   `deleted`). Zachowanie jest poprawne i zamierzone — harvester ma te osoby
+   u siebie usunąć, a to jest właśnie skutek, o który chodzi przy decyzji
+   RODO. Jednorazowo jest to jednak bardzo duży wsad: przy kilku tysiącach
+   autorów harvest przyrostowy zwróci tyle samo nagrobków, rozłożonych na
+   wiele stron `resumptionToken`. Operator powinien o tym wiedzieć przed
+   przestawieniem przełącznika i najlepiej zrobić to w oknie serwisowym,
+   a nie w środku dnia. To samo dotyczy ponownego włączenia — autorzy wrócą
+   wtedy jako rekordy żywe, znów wszyscy naraz.
+
 ---
 
 ## E. Drobiazgi z profilu — pola dziś pomijane

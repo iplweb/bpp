@@ -46,6 +46,26 @@ czego w testach jednostkowych nie chcemy.
   typy finansowania i kompatybilności OpenAIRE),
 - `cached/xml.xsd` — schemat namespace `xml:` (dla atrybutu `xml:lang`).
 
+### Koperta OAI-PMH (dołożone w fazie 05b — nagrobki)
+
+- `OAI-PMH.xsd` — schemat **protokołu** OAI-PMH 2.0 (namespace
+  `http://www.openarchives.org/OAI/2.0/`), pobrany z
+  <https://www.openarchives.org/OAI/2.0/OAI-PMH.xsd> dnia 2026-08-16.
+  Plik jest samowystarczalny (zero `import`/`include`).
+- `oai-pmh-z-profilem.xsd` — nasz plik spinający, importuje oba namespace'y
+  do jednego `XMLSchema`.
+
+Po co: `status="deleted"` na `<header>` jest konstrukcją **koperty**, nie
+profilu CERIF, więc testy serializerów (walidujące pojedyncze encje) nigdy by
+go nie sprawdziły. `test_nagrobki.py` waliduje całą odpowiedź.
+
+Dlaczego plik spinający, a nie sam `OAI-PMH.xsd`: element `<metadata>` jest
+w nim zadeklarowany jako `<any namespace="##other" processContents="strict"/>`.
+„Strict" znaczy, że walidator musi znać schemat ładunku — bez zaimportowanego
+profilu CERIF każdy rekord **żywy** wywalałby się na „no matching global
+declaration", czyli test przechodziłby tylko dla odpowiedzi złożonych z samych
+nagrobków.
+
 Katalog `vocabularies/00-preparations/` z repozytorium źródłowego **nie**
 został skopiowany — to materiały robocze do generowania słowników, nie są
 importowane przez żaden schemat.
