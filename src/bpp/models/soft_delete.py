@@ -38,6 +38,7 @@ z fazy 06::
 """
 
 import uuid
+from collections import defaultdict
 
 from django.core.exceptions import FieldDoesNotExist
 from django.db import transaction
@@ -164,9 +165,46 @@ def raise_if_has_protected_children(instance, relations, label):
         )
 
 
+def hard_delete_per_instancja(queryset):
+    """``hard_delete()`` wiersz po wierszu, żeby leciał ``post_hard_delete``.
+
+    DLACZEGO NIE BULK: pakietowy ``hard_delete()`` na querysecie to goły
+    ``super().delete()`` (``django_softdelete/managers.py``) — jedno
+    zapytanie, ZERO sygnałów. Rekordy znikały fizycznie i bez jednego wpisu
+    w ``SoftDeleteLog``, czyli dokładnie ta klasa cichej utraty, przed którą
+    ten log ma chronić. Najbardziej prawdopodobna droga do tej luki to
+    opróżnianie kosza z admina (faza 07).
+
+    To ta sama zasada, którą kieruje się gate w ``BppSoftDeleteQuerySet.
+    update()`` i wąska kaskada fazy 02: operacja masowa nie ma prawa być
+    tańsza kosztem pominięcia sygnałów. Pakiet stosuje ją zresztą sam —
+    jego ``SoftDeleteQuerySet.delete()`` też iteruje po instancjach.
+
+    KOSZT: N zapytań zamiast jednego. Świadomy — audyt masowego kasowania
+    jest wart więcej niż pojedynczy ``DELETE ... WHERE id IN (...)``.
+
+    Zwrotka jak w Django: ``(łączna_liczba, {etykieta_modelu: liczba})``,
+    zsumowana po instancjach.
+    """
+    laczna = 0
+    liczniki = defaultdict(int)
+    # list(): iterujemy po materializowanej liście, bo kasujemy w trakcie.
+    for obiekt in list(queryset):
+        ile, per_model = obiekt.hard_delete()
+        laczna += ile
+        for etykieta, n in per_model.items():
+            liczniki[etykieta] += n
+    return laczna, dict(liczniki)
+
+
 class BppSoftDeleteQuerySet(SoftDeleteQuerySet):
     """Gate: blokuje bulk-ustawienie deleted_at/restored_at przez .update()
     (omijałoby post_save, kaskadę *_Autor, SoftDeleteLog i reversion)."""
+
+    def hard_delete(self):
+        return hard_delete_per_instancja(self)
+
+    hard_delete.alters_data = True
 
     def update(self, **kwargs):
         if "deleted_at" in kwargs or "restored_at" in kwargs:
@@ -221,6 +259,13 @@ class BppDeletedQuerySet(DeletedQuerySet):
         return
 
     restore.alters_data = True
+
+    def hard_delete(self):
+        """Opróżnianie kosza też musi zostawiać ślad — patrz
+        ``hard_delete_per_instancja()``."""
+        return hard_delete_per_instancja(self)
+
+    hard_delete.alters_data = True
 
 
 class BppDeletedManager(DeletedManager):

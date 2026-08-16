@@ -18,6 +18,18 @@ def _z_pbn_uid(rekord):
     return rekord
 
 
+def _kolejne_ciagle(nr):
+    """Kolejne wydawnictwo ciągłe obok tego z fixture'u.
+
+    Fixture-factory ``wydawnictwo_ciagle_maker`` w ``fixtures/
+    conftest_publications.py`` nie ma dekoratora ``@pytest.fixture``, więc
+    pytest go nie rejestruje — sięgamy po sam maker.
+    """
+    from fixtures.conftest_publications import _wydawnictwo_ciagle_maker
+
+    return _wydawnictwo_ciagle_maker(tytul_oryginalny=f"Hard delete {nr}")
+
+
 def _logi(instance, akcja):
     return SoftDeleteLog.objects.filter(
         content_type=ContentType.objects.get_for_model(instance),
@@ -406,3 +418,111 @@ def test_praca_doktorska_bierze_uczelnie_z_jednostki(
     praca_doktorska.delete(user=superuser)
 
     assert PBN_Export_Queue.objects.get().uczelnia == uczelnia
+
+
+# --- Task 8: hard_delete na querysecie też musi zostawiać ślad ---------
+
+
+@pytest.mark.django_db
+def test_hard_delete_na_querysecie_tworzy_logi(wydawnictwo_ciagle, superuser):
+    """Masowe twarde kasowanie NIE MOŻE być niewidoczne dla audytu.
+
+    Pakietowy ``hard_delete()`` na querysecie to goły ``super().delete()`` —
+    jedno zapytanie bulk, bez ``post_hard_delete``, więc bez wpisu w logu.
+    Rekord znikał fizycznie i bez śladu, czyli dokładnie ta klasa cichej
+    utraty, przed którą ``SoftDeleteLog`` ma chronić. Handoff §7 przypisuje
+    tę lukę fazie 06.
+    """
+    from bpp.models import Wydawnictwo_Ciagle
+
+    pk_i = [wydawnictwo_ciagle.pk] + [_kolejne_ciagle(i).pk for i in range(2)]
+    ct = ContentType.objects.get_for_model(Wydawnictwo_Ciagle)
+
+    with soft_delete_context(user=superuser, reason="czystka"):
+        Wydawnictwo_Ciagle.objects.filter(pk__in=pk_i).hard_delete()
+
+    assert not Wydawnictwo_Ciagle.global_objects.filter(pk__in=pk_i).exists()
+
+    logi = SoftDeleteLog.objects.filter(
+        content_type=ct, object_id__in=pk_i, akcja=SoftDeleteLog.Akcja.HARD_DELETE
+    )
+    assert logi.count() == 3
+    assert {log.object_id for log in logi} == set(pk_i)
+    assert all(log.user == superuser and log.powod == "czystka" for log in logi)
+
+
+@pytest.mark.django_db
+def test_hard_delete_na_deleted_objects_tworzy_logi(wydawnictwo_ciagle, superuser):
+    """Ta sama luka na ``deleted_objects`` — czyli na opróżnianiu kosza.
+
+    To najbardziej prawdopodobna droga masowego twardego kasowania
+    w adminie fazy 07.
+    """
+    from bpp.models import Wydawnictwo_Ciagle
+
+    pk = wydawnictwo_ciagle.pk
+    wydawnictwo_ciagle.delete(user=superuser)
+
+    Wydawnictwo_Ciagle.deleted_objects.filter(pk=pk).hard_delete()
+
+    assert SoftDeleteLog.objects.filter(
+        content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
+        object_id=pk,
+        akcja=SoftDeleteLog.Akcja.HARD_DELETE,
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_hard_delete_na_querysecie_zwraca_licznik(wydawnictwo_ciagle):
+    """Kontrakt zwrotki ``(liczba, {etykieta: liczba})`` jak w Django."""
+    from bpp.models import Wydawnictwo_Ciagle
+
+    pk_i = [wydawnictwo_ciagle.pk, _kolejne_ciagle(9).pk]
+
+    ile, liczniki = Wydawnictwo_Ciagle.objects.filter(pk__in=pk_i).hard_delete()
+
+    assert liczniki["bpp.Wydawnictwo_Ciagle"] == 2
+    assert ile >= 2
+
+
+# --- Task 7: rejestracja przez apps.ready() ----------------------------
+
+
+def test_receivery_zarejestrowane_przez_apps_ready():
+    """Receivery mają być podpięte przez ``BppConfig.ready()``.
+
+    Wszystkie pozostałe testy tego pliku przeszłyby także wtedy, gdyby
+    ``register()`` wołał ktoś inny (albo gdyby podpinał je import
+    ubocznie). Ten test dowodzi, że mechanizm działa w produkcji: nikt
+    w kodzie aplikacyjnym nie woła ``register()`` ręcznie.
+    """
+    from django_softdelete.signals import (
+        post_hard_delete,
+        post_restore,
+        post_soft_delete,
+    )
+
+    def _uids(sygnal):
+        # Signal.receivers: [(lookup_key, receiver, ...), ...], gdzie
+        # lookup_key == (dispatch_uid_albo_id_receivera, id_nadawcy).
+        return {klucz[0] for klucz, *_ in sygnal.receivers}
+
+    assert "bpp.soft_delete.post_soft_delete" in _uids(post_soft_delete)
+    assert "bpp.soft_delete.post_restore" in _uids(post_restore)
+    assert "bpp.soft_delete.post_hard_delete" in _uids(post_hard_delete)
+
+
+def test_rejestracja_jest_idempotentna():
+    """Powtórne ``register()`` nie może zdublować receiverów.
+
+    ``AppConfig.ready()`` bywa wołane więcej niż raz (m.in. przy
+    ``TransactionTestCase``). Bez ``dispatch_uid`` każdy soft-delete
+    tworzyłby wtedy dwa identyczne wpisy w logu — audyt zacząłby zmyślać.
+    """
+    from django_softdelete.signals import post_soft_delete
+
+    from bpp.receivers import soft_delete as receivery
+
+    przed = len(post_soft_delete.receivers)
+    receivery.register()
+    assert len(post_soft_delete.receivers) == przed
