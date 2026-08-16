@@ -2,6 +2,167 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202608.1400 (2026-08-16)
+
+### Naprawione
+
+- Listy jednostek oraz wydawnictw zwartych w panelu administracyjnym dociągały
+  część danych osobno dla każdego wiersza, mimo że deklaracja w kodzie mówiła co
+  innego. Lista jednostek pobierała pojedynczo rodzaj jednostki, uczelnię
+  i jednostkę nadrzędną, a lista wydawnictw zwartych — wydawcę. Powiązania te są
+  teraz pobierane jednym zapytaniem dla całej strony. ([#admin-brakujace-joiny](https://github.com/iplweb/bpp/issues/admin-brakujace-joiny))
+- Assety frontendu (CSS i tłumaczenia) budują się raz na przebieg testów,
+  a nie osobno w każdym procesie roboczym ``pytest-xdist``. Przy
+  ``-n auto`` na dziesięciu rdzeniach startowało jedenaście równoległych
+  ``grunt build`` piszących do tych samych plików — niepotrzebne obciążenie
+  maszyny i wyścig na zapisie. ([#assets-build-raz-na-przebieg](https://github.com/iplweb/bpp/issues/assets-build-raz-na-przebieg))
+- Formularz logowania serwera uwierzytelniania (``authserver``, brama SSO do
+  Grafany, Dozzle, Flowera i Netdaty) nie twierdzi już, że jest logowaniem
+  awaryjnym ani że "system jest w trakcie uruchamiania" — żadne z tych zdań nie
+  było prawdziwe: to zwykła ścieżka logowania do narzędzi administracyjnych.
+  Strona nazywa się teraz "Logowanie do BPP" i jest napisana po polsku
+  z diakrytykami. Zalogowany użytkownik bez uprawnień administratora zamiast
+  generycznego błędu 403 webserwera dostaje stronę z wyjaśnieniem, na jakie konto
+  jest zalogowany, i przyciskiem wylogowania. ([#authserver-logowanie-tresc](https://github.com/iplweb/bpp/issues/authserver-logowanie-tresc))
+- Filtr „Wydział" na liście autorów w panelu admina listował wszystkie jednostki
+  (na produkcji 504 pozycje) zamiast samych wydziałów — teraz pokazuje wyłącznie
+  jednostki-korzenie i filtruje po całym poddrzewie wydziału, co dodatkowo
+  usuwa setki zbędnych zapytań przy każdym wyświetleniu listy. ([#autor-filtr-wydzial](https://github.com/iplweb/bpp/issues/autor-filtr-wydzial))
+- Importer publikacji: rekordy BibTeX wyeksportowane z Web of Science i Scopusa
+  (nazwy pól pisane wielką literą — ``Author``, ``Title``, ``Journal``, ``Year``)
+  nie były rozpoznawane. Wpis pokazywał się na liście bez tytułu, a pobranie
+  danych kończyło się komunikatem, że dostawca nic nie zwrócił. Nazwy pól BibTeX
+  są zgodnie ze specyfikacją niewrażliwe na wielkość liter i tak są teraz
+  traktowane. ([#bibtex-wielkosc-liter-pol](https://github.com/iplweb/bpp/issues/bibtex-wielkosc-liter-pol))
+- Eksport CERIF/OpenAIRE: jednostka, której jednostka nadrzędna jest wyłączona
+  z eksportu (``widoczna=False`` albo ``nie_eksportuj_przez_api``), nie zostawia
+  już pustego elementu ``PartOf``. Pusty ``PartOf`` jest niepoprawny wobec
+  schematu profilu, a walidator euroCRIS przerywał na nim harvest całego zestawu
+  ``openaire_cris_orgunits`` — przez co kolejne jednostki nie trafiały do indeksu
+  i ich powiązania z publikacji wyglądały na wiszące (dwa błędy walidatora
+  z jednej przyczyny). Taka jednostka jest teraz podpinana pod uczelnię, więc
+  drzewo organizacyjne pozostaje spójne, a o ukrytej jednostce nadrzędnej nadal
+  nic nie wychodzi na zewnątrz. ([#cerif-pusty-partof](https://github.com/iplweb/bpp/issues/cerif-pusty-partof))
+- Metadana wskazująca deklarację dostępności zawierała adres z doklejonym
+  nawiasem klamrowym (``...deklaracja-dostepnosci/}``), przez co wskazywała
+  nieistniejącą stronę. Dotyczyło to instalacji, w których deklaracja jest
+  serwowana przez BPP (opcja „tekst", nie zewnętrzny adres). ([#deklaracja-dostepnosci-meta-url](https://github.com/iplweb/bpp/issues/deklaracja-dostepnosci-meta-url))
+- ``grunt build`` odświeża teraz sam znacznik kompletnego builda assetów.
+  Wcześniej robiła to wyłącznie reguła w ``Makefile``, więc ręcznie odpalony
+  ``npx grunt build`` budował pliki, ale zostawiał znacznik nieaktualny —
+  i kolejne ``make assets`` przebudowywało wszystko bez potrzeby.
+
+  Budowanie assetów przed testami stoi dodatkowo pod zamkiem plikowym: dwa
+  przebiegi ``pytest`` uruchomione naraz w tym samym katalogu roboczym nie
+  wejdą już sobie w drogę, pisząc równolegle do tych samych plików. ([#grunt-odswieza-sentinel](https://github.com/iplweb/bpp/issues/grunt-odswieza-sentinel))
+- Kasowanie autora nie jest już blokowane komunikatem o braku uprawnień do
+  usunięcia obiektów „ilość udziałów dla autora". Django sprawdza uprawnienie do
+  usunięcia każdego obiektu kasowanego kaskadowo, a adminy udziałów ewaluacyjnych
+  odmawiały go bezwarunkowo — również superuserowi — więc autora, dla którego
+  policzono udziały, nie dało się skasować. Udziały są danymi wtórnymi
+  (przeliczalnymi z danych źródłowych), więc giną razem z autorem; nadal nie można
+  ich dopisać ani zmienić ręcznie. Redakcja otrzymała też brakujące uprawnienia do
+  udziałów za cały okres, żeby kasowanie autora działało dla użytkowników spoza
+  grupy administracyjnej. ([#kasowanie-autora-udzialy-ewaluacyjne](https://github.com/iplweb/bpp/issues/kasowanie-autora-udzialy-ewaluacyjne))
+- Kasowanie publikacji nie jest już blokowane komunikatem o braku uprawnień do
+  usunięcia obiektu „log zmiany punktacji". Django admin sprawdza uprawnienie do
+  usunięcia każdego obiektu kasowanego kaskadowo, a admin logu rozbieżności
+  odmawiał go bezwarunkowo — również superuserowi — więc żadnego wydawnictwa
+  ciągłego, do którego powstał wpis w logu, nie dało się skasować. Log nadal
+  pozostaje niemodyfikowalny (nie można go dopisać ani zmienić), a redakcja
+  otrzymała uprawnienia do modeli aplikacji rozbieżności, żeby kasowanie
+  publikacji działało także dla użytkowników spoza grupy administracyjnej. ([#kasowanie-publikacji-log-punktacji](https://github.com/iplweb/bpp/issues/kasowanie-publikacji-log-punktacji))
+- Kasowanie sesji importu PBN nie jest już blokowane komunikatem o braku
+  uprawnień do usunięcia wpisów dziennika importu. Django sprawdza uprawnienie do
+  usunięcia każdego obiektu kasowanego kaskadowo, a admin dziennika odmawiał go
+  bezwarunkowo — również superuserowi — więc nieusuwalna była w praktyce każda
+  sesja, która się wykonała, bo każdy import wpisy dziennika produkuje. Dziennik
+  nadal pozostaje niepodrabialny: nie można dopisać do niego wpisu ani zmienić
+  istniejącego, a ginie wyłącznie razem ze swoją sesją. ([#kasowanie-sesji-importu-pbn](https://github.com/iplweb/bpp/issues/kasowanie-sesji-importu-pbn))
+- Na stronie rekordu przycisk "Otwórz w PBN" prowadził do adresu ``None``
+  w instalacjach obsługujących więcej niż jedną uczelnię. Link jest teraz
+  budowany na podstawie adresu PBN uczelni, której stronę ogląda użytkownik,
+  a gdy uczelni nie da się ustalić — przycisk nie jest pokazywany.
+
+  Poprawka objęła też wariant opisu bibliograficznego
+  ``browse/praca_tabela.html``: usunięty zdublowany znacznik zamykający
+  komórkę tabeli oraz podniesiony do HTTPS link do doi.org. ([#link-do-pbn-multi-hosted](https://github.com/iplweb/bpp/issues/link-do-pbn-multi-hosted))
+- Strona przekroczenia czasu zapytania (błąd 504) jest poprawnie odczytywana
+  przez czytniki ekranu: ikona ma atrybut ``alt`` (nie jest już czytana jako
+  nazwa pliku graficznego), a dokument deklaruje język polski zamiast
+  angielskiego — wcześniej cała polska treść była odczytywana angielską
+  fonetyką (kryteria WCAG 2.2 AA 1.1.1 i 3.1.1). ([#wcag-alt-obrazow](https://github.com/iplweb/bpp/issues/wcag-alt-obrazow))
+- Przyspieszono listę autorów w panelu administracyjnym. Gdy była na niej
+  włączona kolumna „aktualna jednostka”, nazwa każdej jednostki wymagała
+  osobnego zapytania o uczelnię — jednego na każdy wiersz strony. Lista
+  rozwijana filtru „Wydział” miała ten sam problem: jedno zapytanie na
+  każdą pozycję.
+
+  Obie relacje są teraz dociągane jednym zapytaniem. Na kopii bazy
+  produkcyjnej liczba zapytań tej listy spadła ze 102 do 45. ([#wydajnosc-changelist-autorow](https://github.com/iplweb/bpp/issues/wydajnosc-changelist-autorow))
+- Przyspieszono listy rozwijane filtrów w panelu administracyjnym. Filtr
+  „Jednostka" dociągał uczelnię osobnym zapytaniem dla każdej pozycji listy
+  (na dużej bazie ponad 500 zapytań na każde wejście na listę autorów),
+  a filtry „Utworzone przez" i „Ostatnio zmienione przez" pobierały imię
+  i nazwisko użytkownika dwoma dodatkowymi zapytaniami na pozycję. Teraz
+  każda z tych list powstaje jednym zapytaniem. ([#wydajnosc-filtry-admina](https://github.com/iplweb/bpp/issues/wydajnosc-filtry-admina))
+- Przyspieszono indeks jednostek w części publicznej. Liczba autorów przy
+  każdej jednostce była liczona osobnym zapytaniem, i to kilkukrotnie na
+  wiersz — na dużej bazie dawało to ponad 500 zapytań na jedno wyświetlenie
+  strony. Teraz liczby przychodzą jednym zapytaniem razem z listą jednostek. ([#wydajnosc-indeks-jednostek](https://github.com/iplweb/bpp/issues/wydajnosc-indeks-jednostek))
+- Rozstrzyganie szablonu w testach nie wymaga już bazy danych: loader
+  ``dbtemplates`` (stojący przed loaderami dyskowymi) odpytywał
+  ``django_template`` o listę znanych nazw, a wynik trzymał w globalnej dla
+  procesu zmiennej kasowanej przy każdym zapisie wiersza ``Template``. Testy
+  bez ``django_db`` renderujące szablon przechodziły albo padały w zależności
+  od tego, co wcześniej przeleciało na tym samym workerze xdist. ([#766](https://github.com/iplweb/bpp/issues/766))
+
+### Dokumentacja
+
+- Dokumentacja administratora opisuje eksport CERIF/OpenAIRE: adres endpointu
+  ``/cerif-oai/``, przełączniki na obiekcie Uczelnia, identyfikatory ROR, reguły
+  widoczności rekordów, walidację walidatorem euroCRIS oraz rejestrację w DRIS
+  i OpenAIRE Provide. ([#cerif-dokumentacja-admin](https://github.com/iplweb/bpp/issues/cerif-dokumentacja-admin))
+- Dokumentacja administratora: jak podejrzeć dane wychodzące eksportem
+  CERIF/OpenAIRE — gotowe adresy dla zestawu osób (``ListRecords``,
+  ``ListIdentifiers``, ``GetRecord``), opis stronicowania
+  ``resumptionToken``, pobieranie przyrostowe oraz recepty na ``curl``,
+  ``xmllint`` i zrzut całego zestawu osób do CSV. ([#cerif-podglad-danych](https://github.com/iplweb/bpp/issues/cerif-podglad-danych))
+
+### Usprawnienie
+
+- Komunikat o ciasteczkach nie zasłania już całej strony. Zamiast
+  pełnoekranowego okna z przyciemnieniem i rozmyciem pojawia się dyskretny
+  pasek przy dolnej krawędzi okna — treść serwisu można czytać i przeglądać
+  od razu, bez podejmowania decyzji o ciasteczkach. Ma to znaczenie zwłaszcza
+  dla osób trafiających z wyszukiwarki wprost na opis publikacji, a także dla
+  użytkowników czytników ekranu i klawiatury, którym poprzednie okno blokowało
+  dostęp do nawigacji i stopki. ([#cookie-banner-pasek](https://github.com/iplweb/bpp/issues/cookie-banner-pasek))
+- Pliki statyczne są prekompresowane gzipem już w obrazie Dockera, a wyjście
+  django-compressora (``CACHE/``) przy starcie kontenera. Nginx w ``bpp-deploy``
+  ma ``gzip_static on`` włączone od dawna, ale bez plików ``.gz`` dyrektywa nic
+  nie robiła — każde żądanie kompresowało plik od nowa. Największe assety
+  (``plotly.min.js`` 4,4 MB, ``three-bundle.js`` 1,9 MB) schodzą teraz z dysku
+  gotowe, mocniej skompresowane (poziom 9 zamiast 5) i bez narzutu CPU na brzegu. ([#prekompresja-gzip-staticow](https://github.com/iplweb/bpp/issues/prekompresja-gzip-staticow))
+- Tytuły obcojęzyczne publikacji są teraz oznaczane atrybutem ``lang``
+  (kryterium WCAG 2.2 AA 3.1.2) — na stronach szczegółów, listach i w wynikach
+  wyszukiwania. Czytnik ekranu odczyta angielski tytuł angielską fonetyką
+  zamiast polskiej. Wymaga wypełnionego pola „Kod języka wg BCP 47" w słowniku
+  języków; opisy bibliograficzne złapią znacznik po najbliższym nocnym
+  przeliczeniu. Jeśli administrator ma w bazie własną wersję szablonu
+  ``opis_bibliograficzny.html`` (zapisaną kiedyś w panelu „Szablony stron"),
+  znacznik go nie obejmie — trzeba dopisać filtr ``oznacz_jezyk`` ręcznie albo
+  usunąć wiersz komendą ``manage.py drop_dbtemplate opis_bibliograficzny.html``,
+  żeby wrócić do wersji z repozytorium. ([#wcag-lang-tytulow](https://github.com/iplweb/bpp/issues/wcag-lang-tytulow))
+- Konfiguracja REST API ``/api/v1/`` w obiekcie Uczelnia: obok istniejącego
+  głównego wyłącznika doszły opcja „tylko dla zalogowanych" oraz osobne
+  przełączniki czterech grup endpointów (dane bibliograficzne, wyszukiwanie,
+  kafelki do osadzania, narzędzia redaktorskie). Domyślnie wszystko działa tak
+  jak dotychczas. Wyłączone endpointy zwracają czytelny komunikat zamiast
+  gołego 404, a widget osadzania odróżnia świadomą decyzję administratora
+  od nieistniejącego autora. ([#api-v1-przelaczniki](https://github.com/iplweb/bpp/issues/api-v1-przelaczniki))
+
+
 ## bpp 202608.1399 (2026-08-05)
 
 ### Naprawione
