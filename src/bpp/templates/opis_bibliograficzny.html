@@ -4,10 +4,13 @@
 {# TYTUŁ PRACY #}
 {# *********** #}
 
+{# WCAG 3.1.2: znacznik jezyka TYLKO na tytule oryginalnym. Musi byc #}
+{# w srodku cache'owanego HTML-u, bo listy i wyniki wyszukiwania #}
+{# wstawiaja gotowy blob, nie renderuja pol modelu. #}
 {% if praca.tytul %}
-    <b>{{ praca.tytul_oryginalny|safe }} ({{ praca.tytul|safe }}).</b>
+    <b>{{ praca.tytul_oryginalny|safe|oznacz_jezyk:praca.jezyk }} ({{ praca.tytul|safe }}).</b>
 {% else %}
-    <b>{{ praca.tytul_oryginalny|znak_na_koncu:"."|safe }}</b>
+    <b>{{ praca.tytul_oryginalny|znak_na_koncu:"."|safe|oznacz_jezyk:praca.jezyk }}</b>
 {% endif %}
 {% if praca.charakter_formalny.charakter_ogolny != 'roz' %}
     {{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}

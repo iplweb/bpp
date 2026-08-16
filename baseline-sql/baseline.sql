@@ -16449,6 +16449,101 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+25	axes	0006_remove_accesslog_trusted	2000-01-01 00:00:00+00
+372	bpp	0279_usun_ost_akt_pbn	2000-01-01 00:00:00+00
+582	deduplikator_autorow	0005_replace_log_model	2000-01-01 00:00:00+00
+583	deduplikator_autorow	0006_add_ignored_author	2000-01-01 00:00:00+00
+584	deduplikator_autorow	0007_add_duplicate_scan_models	2000-01-01 00:00:00+00
+585	deduplikator_autorow	0008_add_priority_field	2000-01-01 00:00:00+00
+586	deduplikator_autorow	0009_rename_ignoredauthor_ignoredscientist	2000-01-01 00:00:00+00
+587	deduplikator_autorow	0010_add_ignored_author	2000-01-01 00:00:00+00
+588	deduplikator_autorow	0011_scan_mode_phase_partial	2000-01-01 00:00:00+00
+589	deduplikator_autorow	0012_alter_duplicatecandidate_main_autor_and_more	2000-01-01 00:00:00+00
+590	deduplikator_publikacji	0001_initial	2000-01-01 00:00:00+00
+591	deduplikator_publikacji	0002_remove_publicationduplicatecandidate_deduplikato_similar_17e420_idx_and_more	2000-01-01 00:00:00+00
+594	denorm	0002_dirtyinstance_func_name	2000-01-01 00:00:00+00
+595	denorm	0003_auto_20211002_1955	2000-01-01 00:00:00+00
+596	denorm	0004_alter_dirtyinstance_success	2000-01-01 00:00:00+00
+597	denorm	0005_dirtyinstance_created_on	2000-01-01 00:00:00+00
+598	denorm	0006_auto_20211003_0346	2000-01-01 00:00:00+00
+599	denorm	0007_auto_created_on_now	2000-01-01 00:00:00+00
+600	denorm	0008_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+601	denorm	0009_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+602	denorm	0010_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+603	denorm	0011_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+604	denorm	0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+605	denorm	0013_alter_dirtyinstance_success	2000-01-01 00:00:00+00
+606	denorm	0014_parametrized_notify	2000-01-01 00:00:00+00
+607	denorm	0015_remove_dirtyinstance_processing_finished_and_more	2000-01-01 00:00:00+00
+608	denorm	0016_not_parametrized_notify	2000-01-01 00:00:00+00
+609	denorm	0017_dirtyinstance_unique_index	2000-01-01 00:00:00+00
+610	django_celery_results	0001_initial	2000-01-01 00:00:00+00
+611	django_celery_results	0002_add_task_name_args_kwargs	2000-01-01 00:00:00+00
+612	django_celery_results	0003_auto_20181106_1101	2000-01-01 00:00:00+00
+613	django_celery_results	0004_auto_20190516_0412	2000-01-01 00:00:00+00
+614	django_celery_results	0005_taskresult_worker	2000-01-01 00:00:00+00
+615	django_celery_results	0006_taskresult_date_created	2000-01-01 00:00:00+00
+616	django_celery_results	0007_remove_taskresult_hidden	2000-01-01 00:00:00+00
+617	django_celery_results	0008_chordcounter	2000-01-01 00:00:00+00
+618	django_celery_results	0009_groupresult	2000-01-01 00:00:00+00
+619	django_celery_results	0010_remove_duplicate_indices	2000-01-01 00:00:00+00
+620	django_celery_results	0011_taskresult_periodic_task_name	2000-01-01 00:00:00+00
+621	django_celery_results	0012_taskresult_date_started	2000-01-01 00:00:00+00
+622	django_celery_results	0013_taskresult_django_cele_periodi_1993cf_idx	2000-01-01 00:00:00+00
+623	django_celery_results	0014_alter_taskresult_status	2000-01-01 00:00:00+00
+624	sites	0002_alter_domain_unique	2000-01-01 00:00:00+00
+625	django_countdown	0001_initial	2000-01-01 00:00:00+00
+626	django_countdown	0002_alter_sitecountdown_countdown_time	2000-01-01 00:00:00+00
+1136	bpp	0488_purge_praca_tabela_dbtemplate	2000-01-01 00:00:00+00
+593	denorm	0001_initial	2000-01-01 00:00:00+00
+20	axes	0001_initial	2000-01-01 00:00:00+00
+76	taggit	0001_initial	2000-01-01 00:00:00+00
+627	django_countdown	0003_sitecountdown_maintenance_until	2000-01-01 00:00:00+00
+628	django_countdown	0004_alter_sitecountdown_long_description	2000-01-01 00:00:00+00
+629	django_countdown	0005_alter_sitecountdown_options_and_more	2000-01-01 00:00:00+00
+630	dspace_api	0001_initial	2000-01-01 00:00:00+00
+631	dspace_api	0002_senttodspace	2000-01-01 00:00:00+00
+632	dspace_api	0003_senttodspace_bitstreams	2000-01-01 00:00:00+00
+633	dspace_api	0004_senttodspace_dspace_handle	2000-01-01 00:00:00+00
+634	easyaudit	0001_initial	2000-01-01 00:00:00+00
+635	easyaudit	0002_auto_20170125_0759	2000-01-01 00:00:00+00
+636	easyaudit	0003_auto_20170228_1505	2000-01-01 00:00:00+00
+637	easyaudit	0004_auto_20170620_1354	2000-01-01 00:00:00+00
+638	easyaudit	0005_auto_20170713_1155	2000-01-01 00:00:00+00
+639	easyaudit	0006_auto_20171018_1242	2000-01-01 00:00:00+00
+640	easyaudit	0007_auto_20180105_0838	2000-01-01 00:00:00+00
+641	easyaudit	0008_auto_20180220_1908	2000-01-01 00:00:00+00
+642	easyaudit	0009_auto_20180314_2225	2000-01-01 00:00:00+00
+644	easyaudit	0011_auto_20181101_1339	2000-01-01 00:00:00+00
+645	easyaudit	0012_auto_20181018_0012	2000-01-01 00:00:00+00
+646	easyaudit	0013_auto_20190723_0126	2000-01-01 00:00:00+00
+647	easyaudit	0014_auto_20200513_0008	2000-01-01 00:00:00+00
+648	easyaudit	0015_auto_20201019_1217	2000-01-01 00:00:00+00
+649	easyaudit	0016_alter_crudevent_event_type	2000-01-01 00:00:00+00
+650	easyaudit	0017_alter_requestevent_datetime	2000-01-01 00:00:00+00
+651	easyaudit	0018_rename_crudevent_object_id_content_type_index	2000-01-01 00:00:00+00
+652	easyaudit	0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
+653	ewaluacja2021	0001_initial	2000-01-01 00:00:00+00
+654	ewaluacja2021	0002_auto_20211026_1137	2000-01-01 00:00:00+00
+655	ewaluacja2021	0003_auto_20211027_2320	2000-01-01 00:00:00+00
+656	ewaluacja2021	0004_importmaksymalnychslotow_ostatnia_zmiana	2000-01-01 00:00:00+00
+657	ewaluacja2021	0005_auto_20211028_0039	2000-01-01 00:00:00+00
+658	ewaluacja2021	0006_auto_20211110_0000	2000-01-01 00:00:00+00
+659	ewaluacja2021	0007_auto_20211110_0002	2000-01-01 00:00:00+00
+660	ewaluacja2021	0008_auto_20211122_0103	2000-01-01 00:00:00+00
+661	ewaluacja2021	0009_zamowienienaraport_status	2000-01-01 00:00:00+00
+662	ewaluacja2021	0010_django32	2000-01-01 00:00:00+00
+663	ewaluacja2021	0011_nullbooleanfield	2000-01-01 00:00:00+00
+664	ewaluacja2021	0012_liczbandlauczelni_2022_2025_and_more	2000-01-01 00:00:00+00
+665	ewaluacja2021	0013_alter_iloscudzialowdlaautora_ilosc_udzialow_and_more	2000-01-01 00:00:00+00
+666	ewaluacja2021	0014_iloscudzialowzarok	2000-01-01 00:00:00+00
+667	ewaluacja2021	0015_dyscyplina_nie_raportowana	2000-01-01 00:00:00+00
+668	ewaluacja2021	0016_alter_iloscudzialowdlaautora_2022_2025_unique_together_and_more	2000-01-01 00:00:00+00
+669	ewaluacja2021	0017_alter_liczbandlauczelni_dyscyplina_naukowa_and_more	2000-01-01 00:00:00+00
+670	ewaluacja2021	0018_move_files_to_protected	2000-01-01 00:00:00+00
+671	ewaluacja2021	0019_remove_null_from_string_fields	2000-01-01 00:00:00+00
+672	ewaluacja2021	0020_delete_ewaluacja2021_models	2000-01-01 00:00:00+00
+673	ewaluacja_liczba_n	0001_initial	2000-01-01 00:00:00+00
 991	bpp	0448_rodzajjednostki	2000-01-01 00:00:00+00
 371	bpp	0278_autorzy_profil_orcid	2000-01-01 00:00:00+00
 487	bpp	0380_rekord_wydawca	2000-01-01 00:00:00+00
@@ -16541,7 +16636,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 758	import_list_ministerialnych	0002_alter_wierszimportudyscyplinzrodel_nr_wiersza	2000-01-01 00:00:00+00
 759	import_list_ministerialnych	0003_rename_wierszimportudyscyplinzrodel_wierszimportulistyministerialnej	2000-01-01 00:00:00+00
 760	import_list_ministerialnych	0004_importlistministerialnych_ignoruj_zrodla_bez_odpowiednika	2000-01-01 00:00:00+00
-593	denorm	0001_initial	2000-01-01 00:00:00+00
 94	bpp	0017_typy_pbn	2000-01-01 00:00:00+00
 970	bpp	0417_ensure_uczelnia_site_not_null	2000-01-01 00:00:00+00
 704	favicon	0001_initial	2000-01-01 00:00:00+00
@@ -16819,7 +16913,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1022	import_dyscyplin	0024_faza_b_ii2_repoint_wydzial	2000-01-01 00:00:00+00
 1023	import_polon	0016_importplikupolon_uczelnia	2000-01-01 00:00:00+00
 1024	import_punktacji_zrodel	0001_initial	2000-01-01 00:00:00+00
-20	axes	0001_initial	2000-01-01 00:00:00+00
 831	nowe_raporty	0001_initial	2000-01-01 00:00:00+00
 1025	importer_publikacji	0012_importsession_uczelnia	2000-01-01 00:00:00+00
 1026	importer_publikacji	0013_merge_20260604_1952	2000-01-01 00:00:00+00
@@ -16962,7 +17055,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 22	axes	0003_auto_20160322_0929	2000-01-01 00:00:00+00
 23	axes	0004_auto_20181024_1538	2000-01-01 00:00:00+00
 24	axes	0005_remove_accessattempt_trusted	2000-01-01 00:00:00+00
-25	axes	0006_remove_accesslog_trusted	2000-01-01 00:00:00+00
 26	axes	0007_alter_accessattempt_unique_together	2000-01-01 00:00:00+00
 27	axes	0008_accessfailurelog	2000-01-01 00:00:00+00
 28	axes	0009_add_session_hash	2000-01-01 00:00:00+00
@@ -17012,7 +17104,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 73	pbn_api	0039_alter_oswiadczenieinstytucji_area	2000-01-01 00:00:00+00
 74	sites	0001_initial	2000-01-01 00:00:00+00
 75	dbtemplates	0001_initial	2000-01-01 00:00:00+00
-76	taggit	0001_initial	2000-01-01 00:00:00+00
 77	taggit	0002_auto_20150616_2121	2000-01-01 00:00:00+00
 78	taggit	0003_taggeditem_add_unique_index	2000-01-01 00:00:00+00
 79	bpp	0002_auto_20141020_1738	2000-01-01 00:00:00+00
@@ -17186,6 +17277,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 250	bpp	0167_auto_20190707_2029	2000-01-01 00:00:00+00
 251	bpp	0166_auto_20190708_0022	2000-01-01 00:00:00+00
 373	bpp	0280_auto_20210725_2217	2000-01-01 00:00:00+00
+376	bpp	0283_auto_20210809_0142	2000-01-01 00:00:00+00
 252	bpp	0167_dyscyplina_change_trigger_fix	2000-01-01 00:00:00+00
 253	bpp	0168_dyscyplina_w_autorzy_mat	2000-01-01 00:00:00+00
 254	bpp	0169_dyscyplina_change_trigger_cacher	2000-01-01 00:00:00+00
@@ -17297,10 +17389,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 368	bpp	0275_jednostka_hier	2000-01-01 00:00:00+00
 369	bpp	0276_auto_20210607_0109	2000-01-01 00:00:00+00
 370	bpp	0277_lepsze_global_search	2000-01-01 00:00:00+00
-372	bpp	0279_usun_ost_akt_pbn	2000-01-01 00:00:00+00
 374	bpp	0281_auto_20210725_2332	2000-01-01 00:00:00+00
 375	bpp	0282_auto_20210808_2334	2000-01-01 00:00:00+00
-376	bpp	0283_auto_20210809_0142	2000-01-01 00:00:00+00
 377	bpp	0284_auto_20210814_0023	2000-01-01 00:00:00+00
 378	bpp	0285_auto_20210814_0103	2000-01-01 00:00:00+00
 379	bpp	0286_auto_20210814_0104	2000-01-01 00:00:00+00
@@ -17490,95 +17580,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 579	deduplikator_autorow	0002_logautomatycznegoscalania	2000-01-01 00:00:00+00
 580	deduplikator_autorow	0003_alter_notaduplicate_scientist_pk	2000-01-01 00:00:00+00
 581	deduplikator_autorow	0004_alter_notaduplicate_unique_together_and_more	2000-01-01 00:00:00+00
-582	deduplikator_autorow	0005_replace_log_model	2000-01-01 00:00:00+00
-583	deduplikator_autorow	0006_add_ignored_author	2000-01-01 00:00:00+00
-584	deduplikator_autorow	0007_add_duplicate_scan_models	2000-01-01 00:00:00+00
-585	deduplikator_autorow	0008_add_priority_field	2000-01-01 00:00:00+00
-586	deduplikator_autorow	0009_rename_ignoredauthor_ignoredscientist	2000-01-01 00:00:00+00
-587	deduplikator_autorow	0010_add_ignored_author	2000-01-01 00:00:00+00
-588	deduplikator_autorow	0011_scan_mode_phase_partial	2000-01-01 00:00:00+00
-589	deduplikator_autorow	0012_alter_duplicatecandidate_main_autor_and_more	2000-01-01 00:00:00+00
-590	deduplikator_publikacji	0001_initial	2000-01-01 00:00:00+00
-591	deduplikator_publikacji	0002_remove_publicationduplicatecandidate_deduplikato_similar_17e420_idx_and_more	2000-01-01 00:00:00+00
-594	denorm	0002_dirtyinstance_func_name	2000-01-01 00:00:00+00
-595	denorm	0003_auto_20211002_1955	2000-01-01 00:00:00+00
-596	denorm	0004_alter_dirtyinstance_success	2000-01-01 00:00:00+00
-597	denorm	0005_dirtyinstance_created_on	2000-01-01 00:00:00+00
-598	denorm	0006_auto_20211003_0346	2000-01-01 00:00:00+00
-599	denorm	0007_auto_created_on_now	2000-01-01 00:00:00+00
-600	denorm	0008_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-601	denorm	0009_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-602	denorm	0010_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-603	denorm	0011_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-604	denorm	0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-605	denorm	0013_alter_dirtyinstance_success	2000-01-01 00:00:00+00
-606	denorm	0014_parametrized_notify	2000-01-01 00:00:00+00
-607	denorm	0015_remove_dirtyinstance_processing_finished_and_more	2000-01-01 00:00:00+00
-608	denorm	0016_not_parametrized_notify	2000-01-01 00:00:00+00
-609	denorm	0017_dirtyinstance_unique_index	2000-01-01 00:00:00+00
-610	django_celery_results	0001_initial	2000-01-01 00:00:00+00
-611	django_celery_results	0002_add_task_name_args_kwargs	2000-01-01 00:00:00+00
-612	django_celery_results	0003_auto_20181106_1101	2000-01-01 00:00:00+00
-613	django_celery_results	0004_auto_20190516_0412	2000-01-01 00:00:00+00
-614	django_celery_results	0005_taskresult_worker	2000-01-01 00:00:00+00
-615	django_celery_results	0006_taskresult_date_created	2000-01-01 00:00:00+00
-616	django_celery_results	0007_remove_taskresult_hidden	2000-01-01 00:00:00+00
-617	django_celery_results	0008_chordcounter	2000-01-01 00:00:00+00
-618	django_celery_results	0009_groupresult	2000-01-01 00:00:00+00
-619	django_celery_results	0010_remove_duplicate_indices	2000-01-01 00:00:00+00
-620	django_celery_results	0011_taskresult_periodic_task_name	2000-01-01 00:00:00+00
-621	django_celery_results	0012_taskresult_date_started	2000-01-01 00:00:00+00
-622	django_celery_results	0013_taskresult_django_cele_periodi_1993cf_idx	2000-01-01 00:00:00+00
-623	django_celery_results	0014_alter_taskresult_status	2000-01-01 00:00:00+00
-624	sites	0002_alter_domain_unique	2000-01-01 00:00:00+00
-625	django_countdown	0001_initial	2000-01-01 00:00:00+00
-626	django_countdown	0002_alter_sitecountdown_countdown_time	2000-01-01 00:00:00+00
-627	django_countdown	0003_sitecountdown_maintenance_until	2000-01-01 00:00:00+00
-628	django_countdown	0004_alter_sitecountdown_long_description	2000-01-01 00:00:00+00
-629	django_countdown	0005_alter_sitecountdown_options_and_more	2000-01-01 00:00:00+00
-630	dspace_api	0001_initial	2000-01-01 00:00:00+00
-631	dspace_api	0002_senttodspace	2000-01-01 00:00:00+00
-632	dspace_api	0003_senttodspace_bitstreams	2000-01-01 00:00:00+00
-633	dspace_api	0004_senttodspace_dspace_handle	2000-01-01 00:00:00+00
-634	easyaudit	0001_initial	2000-01-01 00:00:00+00
-635	easyaudit	0002_auto_20170125_0759	2000-01-01 00:00:00+00
-636	easyaudit	0003_auto_20170228_1505	2000-01-01 00:00:00+00
-637	easyaudit	0004_auto_20170620_1354	2000-01-01 00:00:00+00
-638	easyaudit	0005_auto_20170713_1155	2000-01-01 00:00:00+00
-639	easyaudit	0006_auto_20171018_1242	2000-01-01 00:00:00+00
-640	easyaudit	0007_auto_20180105_0838	2000-01-01 00:00:00+00
-641	easyaudit	0008_auto_20180220_1908	2000-01-01 00:00:00+00
-642	easyaudit	0009_auto_20180314_2225	2000-01-01 00:00:00+00
-644	easyaudit	0011_auto_20181101_1339	2000-01-01 00:00:00+00
-645	easyaudit	0012_auto_20181018_0012	2000-01-01 00:00:00+00
-646	easyaudit	0013_auto_20190723_0126	2000-01-01 00:00:00+00
-647	easyaudit	0014_auto_20200513_0008	2000-01-01 00:00:00+00
-648	easyaudit	0015_auto_20201019_1217	2000-01-01 00:00:00+00
-649	easyaudit	0016_alter_crudevent_event_type	2000-01-01 00:00:00+00
-650	easyaudit	0017_alter_requestevent_datetime	2000-01-01 00:00:00+00
-651	easyaudit	0018_rename_crudevent_object_id_content_type_index	2000-01-01 00:00:00+00
-652	easyaudit	0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
-653	ewaluacja2021	0001_initial	2000-01-01 00:00:00+00
-654	ewaluacja2021	0002_auto_20211026_1137	2000-01-01 00:00:00+00
-655	ewaluacja2021	0003_auto_20211027_2320	2000-01-01 00:00:00+00
-656	ewaluacja2021	0004_importmaksymalnychslotow_ostatnia_zmiana	2000-01-01 00:00:00+00
-657	ewaluacja2021	0005_auto_20211028_0039	2000-01-01 00:00:00+00
-658	ewaluacja2021	0006_auto_20211110_0000	2000-01-01 00:00:00+00
-659	ewaluacja2021	0007_auto_20211110_0002	2000-01-01 00:00:00+00
-660	ewaluacja2021	0008_auto_20211122_0103	2000-01-01 00:00:00+00
-661	ewaluacja2021	0009_zamowienienaraport_status	2000-01-01 00:00:00+00
-662	ewaluacja2021	0010_django32	2000-01-01 00:00:00+00
-663	ewaluacja2021	0011_nullbooleanfield	2000-01-01 00:00:00+00
-664	ewaluacja2021	0012_liczbandlauczelni_2022_2025_and_more	2000-01-01 00:00:00+00
-665	ewaluacja2021	0013_alter_iloscudzialowdlaautora_ilosc_udzialow_and_more	2000-01-01 00:00:00+00
-666	ewaluacja2021	0014_iloscudzialowzarok	2000-01-01 00:00:00+00
-667	ewaluacja2021	0015_dyscyplina_nie_raportowana	2000-01-01 00:00:00+00
-668	ewaluacja2021	0016_alter_iloscudzialowdlaautora_2022_2025_unique_together_and_more	2000-01-01 00:00:00+00
-669	ewaluacja2021	0017_alter_liczbandlauczelni_dyscyplina_naukowa_and_more	2000-01-01 00:00:00+00
-670	ewaluacja2021	0018_move_files_to_protected	2000-01-01 00:00:00+00
-671	ewaluacja2021	0019_remove_null_from_string_fields	2000-01-01 00:00:00+00
-672	ewaluacja2021	0020_delete_ewaluacja2021_models	2000-01-01 00:00:00+00
-673	ewaluacja_liczba_n	0001_initial	2000-01-01 00:00:00+00
 \.
 
 
@@ -17596,7 +17597,6 @@ COPY public.django_site (id, domain, name) FROM stdin;
 --
 
 COPY public.django_template (id, name, content, creation_date, last_changed) FROM stdin;
-2	browse/praca_tabela.html	{% load prace user_in_group %}\n<table width="{{ width|default:"100%" }}"\n       class="szczegolyRekordu {{ htmlclass|default:"naglowki_z_lewej" }}">\n    <tr>\n        <th width="20%">Tytuł:</th>\n        <td>\n            {% if praca.tytul %}\n                <b>{{ praca.tytul_oryginalny|safe }} ({{ praca.tytul|safe }}).</b>\n            {% else %}\n                <b>{{ praca.tytul_oryginalny|znak_na_koncu:"."|safe }}</b>\n            {% endif %}\n            {% if praca.charakter_formalny.charakter_ogolny != 'roz' %}\n                {{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}\n            {% endif %}\n        </td>\n    </tr>\n    <tr>\n        <th>\n            Autorzy:\n        </th>\n        <td>\n            {{ praca.tekst_przed_pierwszym_autorem|default:"" }}\n            {% for autor in praca.autorzy_dla_opisu %}{% ifchanged autor.typ_odpowiedzialnosci %}\n                [{{ autor.typ_odpowiedzialnosci.skrot|upper }}] {% endifchanged %}{% if links == "admin" %}\n                <a href="{% url "admin:bpp_autor_change" autor.autor.pk %}">\n                {% else %}{% if links == "normal" %}<a href="{% url "bpp:browse_autor" autor.autor.slug %}">{% else %}\n                {% endif %}{% endif %}{% if links %}{{ autor.zapisany_jako }}{% else %}\n                {{ autor.zapisany_jako|upper }}{% endif %}{% if links == "admin" or links == "normal" %}</a>{% endif %}\n                {% if not forloop.last %}, {% else %}{{ praca.tekst_po_ostatnim_autorze|default:"" }}.\n                {% endif %}{% endfor %}\n        </td>\n    </tr>\n    {% if praca.zrodlo or praca.wydawnictwo_nadrzedne or praca.informacje or praca.szczegoly %}\n        <tr>\n            <th>\n                Szczegóły:\n            </th>\n            <td>\n                {% if praca.zrodlo %}\n                    {% if links == "admin" %}\n                        <a href="{% url "admin:bpp_zrodlo_change" praca.zrodlo.pk %}">{{ praca.zrodlo }}</a>\n                    {% else %}\n                        <a href="{% url "bpp:browse_zrodlo" praca.zrodlo.slug %}">{{ praca.zrodlo }}</a>\n                    {% endif %}\n                {% endif %}\n                {% if praca.wydawnictwo_nadrzedne %}\n                    <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" praca.wydawnictwo_nadrzedne.pk %}">\n                {% endif %}\n                {% if not praca.informacje and not praca.szczegoly %}\n                    {% if praca.wydawnictwo_nadrzedne.opis_bibliograficzny %}\n                        W: {{ praca.wydawnictwo_nadrzedne.opis_bibliograficzny|safe }}\n                    {% endif %}\n                {% endif %}\n                {{ praca.informacje|default:""|znak_na_koncu:", "|safe }}\n                {{ praca.szczegoly|default:""|safe }}\n                {% if praca.wydawnictwo_nadrzedne %}\n                    </a>\n                {% endif %}\n            </td>\n        </tr>\n    {% endif %}\n\n    {% if praca.wydawca or praca.wydawca_opis %}\n        <tr>\n            <th>Wydawca:</th>\n            <td>{{ praca.wydawca|default:"" }} {{ praca.wydawca_opis|default:"" }}</td>\n        </tr>\n    {% endif %}\n\n    {% if praca.streszczenia.exists %}\n        <tr>\n            <th>Streszczenie:</th>\n            <td>{% for streszczenie in praca.streszczenia.all %}\n                <!-- <strong>{{streszczenie.jezyk_streszczenia.nazwa}}</strong> -->\n                <p>{{ streszczenie.streszczenie|safe_streszczenie }}</p>\n            {% endfor %}\n            </td>\n        </tr>\n    {% endif %}\n\n    {% if praca.isbn %}\n        <tr>\n            <th>ISBN:</th>\n            <td>{{ praca.isbn }}</td>\n        </tr>\n    {% endif %}\n    {% if praca.e_isbn %}\n        <tr>\n            <th>e-ISBN:</th>\n            <td>{{ praca.e_isbn }}</td>\n        </tr>\n    {% endif %}\n\n    {% if praca.issn %}\n        <tr>\n            <th>ISSN:</th>\n            <td>{{ praca.issn }}</td>\n        </tr>\n    {% endif %}\n    {% if praca.e_issn %}\n        <tr>\n            <th>e-ISSN:</th>\n            <td>{{ praca.e_issn }}</td>\n        </tr>\n    {% endif %}\n\n    {% if praca.charakter_formalny.skrot == "PAT" %}\n        <tr>\n            <th>Patent:</th>\n            <td>\n                <b>- numer zgłoszenia:</b> {{ praca.numer_zgloszenia|default:"brak" }}. <br/>\n                <b>- wydział:</b> {{ praca.wydzial|default:"brak" }}<br/>\n                <b>- rodzaj prawa:</b> {{ praca.rodzaj_prawa|default:"brak" }}<br/>\n                <b>- data zgłoszenia:</b> {{ praca.data_zgloszenia|default:"brak" }}<br/>\n                <b>- numer zgłoszenia:</b> {{ praca.numer_zgloszenia|default:"brak" }}<br/>\n                <b>- data decyzji:</b> {{ praca.data_decyzji|default:"brak" }}<br/>\n                <b>- numer prawa wyłącznego:</b> {{ praca.numer_prawa_wylacznego|default:"brak" }}<br/>\n                <b>- wdrożenie:</b> {% if praca.wdrozenie %}tak{% else %}nie{% endif %}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.public_www or praca.www %}\n        <tr>\n            <th>\n                Strona WWW:\n            </th>\n            <td>\n                {% if praca.public_www %}\n                    <a href="{{ praca.public_www }}">\n                        {{ praca.public_www|truncatechars:120 }}</a>\n                {% elif praca.www %}\n                    <a href="{{ praca.www }}">{{ praca.www|truncatechars:120 }}</a>\n                {% else %}\n                    Brak danych\n                {% endif %}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.doi %}\n        <tr>\n            <th>DOI</th>\n            <td><a target="_blank" href="http://doi.org/{{ praca.doi }}">{{ praca.doi }}</a></td>\n        </tr>\n    {% endif %}\n\n    {% if praca.pubmed_id %}\n        <tr>\n            <th>PubMed ID:</th>\n            <td><a target="_blank"\n                   href="https://www.ncbi.nlm.nih.gov/pubmed/{{ praca.pubmed_id }}">{{ praca.pubmed_id }}</a></td>\n        </tr>\n    {% endif %}\n\n    {% if praca.pmc_id %}\n        <tr>\n            <th>PMC ID:</th>\n            <td><a href="https://www.ncbi.nlm.nih.gov/pmc/{{ praca.pmc_id }}">{{ praca.pmc_id }}</a></td>\n        </tr>\n    {% endif %}\n\n    <tr>\n        <th>\n            BPP ID:\n        </th>\n        <td>\n            {{ rekord.pk }} <small>czyli {{ rekord.describe_content_type }} o ID = {{ praca.pk }}</small>\n        </td>\n    </tr>\n    <tr>\n        <th>\n            BibTeX:\n        </th>\n        <td>\n            <button id="bibtex-toggle-btn" class="button secondary" type="button">\n                📋 Pokaż BibTeX\n            </button>\n            <button id="bibtex-copy-btn" class="button success" type="button" style="margin-left: 10px; display: none;">\n                📄 Skopiuj do schowka\n            </button>\n            <span id="bibtex-copy-feedback" style="margin-left: 10px;">\n                ✓ Skopiowane!\n            </span>\n            <div id="bibtex-container" style="display: none;">\n                <textarea id="bibtex-content" readonly></textarea>\n            </div>\n        </td>\n    </tr>\n    {% if praca.pbn_uid_id %}\n        <tr>\n            <th>PBN UID:</th>\n            <td>\n                <button class="button secondary"\n                        type="button"\n                        data-open-url="{{ praca.link_do_pbn }}" data-target="_blank">\n                    🔗 {{ praca.pbn_uid_id }}\n                </button>\n                {% if not request.user.is_anonymous and praca.link_do_pi %}\n                    <button class="button secondary"\n                            type="button"\n                            data-open-url="{{ praca.link_do_pi }}" data-target="_blank"\n                            style="margin-left: 10px;">\n                        🏢 Profil instytucji\n                    </button>\n                {% endif %}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.pbn_id %}\n        <tr>\n            <th>\n                PBN ID (historyczne):\n            </th>\n            <td>\n                {{ praca.pbn_id }}\n            </td>\n        </tr>\n    {% endif %}\n\n    <tr>\n        <th>\n            Rok:\n        </th>\n        <td>\n            {{ praca.rok }}\n        </td>\n    </tr>\n    <tr>\n        <th>\n            Charakter formalny:\n        </th>\n        <td>\n            {{ praca.charakter_formalny }}\n        </td>\n    </tr>\n\n    <tr>\n        <th>\n            Język:\n        </th>\n        <td>\n            {{ praca.jezyk }}\n        </td>\n    </tr>\n    {% if praca.typ_kbn %}\n        <tr>\n            <th>\n                Typ MNiSW/MEiN:\n            </th>\n            <td>\n                {{ praca.typ_kbn }}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.openaccess_tryb_dostepu or praca.openaccess_wersja_tekstu or praca.openaccess_licencja or praca.openaccess_czas_publikacji or praca.openaccess_ilosc_miesiecy %}\n        <tr>\n            <th style="vertical-align: top;">OpenAccess:</th>\n            <td>\n                {% if praca.openaccess_tryb_dostepu %}\n                    <b>- tryb dostępu: </b>\n                    {{ praca.openaccess_tryb_dostepu|lower }}\n                    <br/>\n                {% endif %}\n\n                {% if praca.openaccess_wersja_tekstu %}\n\n                    <b> - wersja tekstu: </b>\n                    {{ praca.openaccess_wersja_tekstu|lower }}<br/>\n\n                {% endif %}\n                {% if praca.openaccess_licencja %}\n\n                    <b> - licencja: </b>\n                    {% if praca.openaccess_licencja.webname %}\n                        <a target="_blank"\n                           href="https://creativecommons.org/licenses/{{ praca.openaccess_licencja.webname }}/3.0/pl/#content">\n                    {% endif %}\n                {{ praca.openaccess_licencja }}\n                {% if praca.openaccess_licencja.webname %}\n                    </a>\n                {% endif %}\n                    <br/>\n\n                {% endif %}\n                {% if praca.openaccess_czas_publikacji %}\n\n                    <b> - czas udostępnienia: </b>\n                    {{ praca.openaccess_czas_publikacji|lower }}<br/>\n\n                {% endif %}\n                {% if praca.openaccess_ilosc_miesiecy %}\n\n                    <b> - ilość miesięcy: </b>\n                    {{ praca.openaccess_ilosc_miesiecy }}\n                    <small>ilość miesięcy które upłynęły od momentu opublikowania do momentu udostępnienia\n                    </small>\n                    <br/>\n\n                {% endif %}\n            </td>\n            </td>\n        </tr>\n    {% endif %}\n    <tr>\n        <th>\n            Punkty MNiSW/MEiN:\n        </th>\n        <td>\n            {{ praca.punkty_kbn }}\n        </td>\n    </tr>\n\n    <tr>\n        <th>\n            Impact factor:\n        </th>\n        <td>\n            {{ praca.impact_factor }}\n        </td>\n    </tr>\n    {% if praca.kwartyl_w_scopus %}\n        <tr>\n            <th>\n                Kwartyl w SCOPUS:\n            </th>\n            <td>\n                Q{{ praca.kwartyl_w_scopus }}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.kwartyl_w_wos %}\n        <tr>\n            <th>\n                Kwartyl w WoS:\n            </th>\n            <td>\n                Q{{ praca.kwartyl_w_wos }}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.liczba_cytowan %}\n        <tr>\n            <th>Liczba cytowań:</th>\n            <td>{{ praca.liczba_cytowan }}</td>\n        </tr>\n    {% endif %}\n    {% if praca.liczba_znakow_wydawniczych %}\n        <tr>\n            <th>Liczba arkuszy wydawniczych:</th>\n            <td>{{ praca.wymiar_wydawniczy_w_arkuszach }}</td>\n        </tr>\n    {% endif %}\n    {% if uczelnia.pokazuj_punktacja_snip %}\n        <tr>\n            <th>Punktacja SNIP:</th>\n            <td>{{ praca.punktacja_snip }}</td>\n        </tr>\n    {% endif %}\n    {% if uczelnia.pokazuj_index_copernicus %}\n        <tr>\n            <th>\n                Index Copernicus:\n            </th>\n            <td>\n                {{ praca.index_copernicus }}\n            </td>\n        </tr>\n    {% endif %}\n\n    {% if uczelnia.pokazuj_punktacje_wewnetrzna %}\n        <tr>\n            <th>\n                Punktacja wewnętrzna:\n            </th>\n            <td>\n                {{ praca.punktacja_wewnetrzna }}\n            </td>\n        </tr>\n    {% endif %}\n    {% if uczelnia.pokazuj_status_korekty == "always" or uczelnia.pokazuj_status_korekty == "logged-in" and not request.user.is_anonymous %}\n        <tr>\n            <th>\n                Status:\n            </th>\n            <td>\n                {{ praca.status_korekty }}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.wydawnictwa_powiazane_set.exists %}\n        <tr>\n            <th>Rekordy powiązane</th>\n            <td>\n                <ol>\n                    {% for elem in praca.wydawnictwa_powiazane_posortowane.all %}\n                        <li>\n                            <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" elem.pk %}">{{ elem.opis_bibliograficzny_cache|safe }}</a>\n                        </li>\n                    {% endfor %}\n                </ol>\n            </td>\n        </tr>\n    {% endif %}\n    {% if uczelnia.pokazuj_praca_recenzowana == "always" or uczelnia.pokazuj_praca_recenzowana == "logged-in" and not request.user.is_anonymous %}\n        <tr>\n            <th>\n                Praca recenzowana:\n            </th>\n            <td>\n                {{ praca.recenzowana|yesno }}\n            </td>\n        </tr>\n    {% endif %}\n    {% if praca.ma_procenty %}\n        <tr>\n            <th>Odpowiedzialność za powstanie pracy</th>\n            <td>\n                {% for autor in praca.autorzy_set.all %}\n                    {% if autor.procent %}\n                        {{ autor.procent }}% {{ autor.zapisany_jako }}<br/>\n                    {% endif %}\n                {% endfor %}\n\n            </td>\n        </tr>\n    {% endif %}\n\n    <tr>\n        <th>\n            Rekord utworzony:\n        </th>\n        <td>\n            {{ praca.utworzono }}\n        </td>\n    </tr>\n\n    <tr>\n        <th>\n            Rekord zaktualizowany:\n        </th>\n        <td>\n            {{ praca.ostatnio_zmieniony }}\n        </td>\n    </tr>\n    {% if praca.zewnetrzna_baza_danych.exists %}\n        <tr>\n            <th>Zewnętrzna<br/>baza danych:</th>\n            <td>\n                <ul>{% for db in praca.zewnetrzna_baza_danych.all %}\n                    <li>{{ db.baza.nazwa }}</li>\n                {% endfor %}\n                </ul>\n            </td>\n        </tr>\n    {% endif %}\n</table>\n\n{% if rekord.ma_punktacje_sloty %}\n    {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}\n        <h4>Punkty i sloty autorów\n            {% if uczelnia.drukuj_oswiadczenia %}\n                {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}\n                    <a target="_blank" href="{% url "oswiadczenia:wiele-oswiadczen" rekord.id.0 rekord.id.1 %}">\n                        <span class="fi-print"></span>\n                    </a>\n                {% endif %}\n            {% endif %}\n\n        </h4>\n        <table>\n            <tr>\n                <th>Autor</th>\n                <th>Dyscyplina</th>\n                <th>PkD / PkDAut</th>\n                <th>Slot</th>\n                {% if uczelnia.drukuj_oswiadczenia %}\n                    {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}\n                        <th>Oświadczenia</th>\n                    {% endif %}\n                {% endif %}\n            </tr>\n\n            {% for pa in rekord.punktacja_autora.select_related %}\n                <tr>\n                    <td>{{ pa.autor }}</td>\n                    <td>{{ pa.dyscyplina.nazwa }}</td>\n                    <td>{{ pa.pkdaut }}</td>\n                    <td>{{ pa.slot }}</td>\n                    {% if uczelnia.drukuj_oswiadczenia %}\n                        {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}\n                            <td>\n                                <!-- wydruk oswiadczenia -->\n                                <a target="_blank"\n                                   title="Wydruk dyscypliny zgłoszonej dla publikacji"\n                                   href="{% url "oswiadczenia:jedno-oswiadczenie" rekord.id.0 rekord.id.1 pa.autor.id pa.dyscyplina.id %}">\n                                    <span class="fi-print"></span>\n                                </a>\n                                <!-- wydruk drugiego oswiadczenia jezeli ma subdyscypline -->\n                                {% if pa.czy_autor_ma_alternatywna_dyscypline and uczelnia.drukuj_alternatywne_oswiadczenia %}\n                                    &nbsp;\n                                    <a target="_blank"\n                                       title="Wydruk alternatywnej dyscypliny autora (innej, niż zgłoszona dla publikacji)"\n                                       href="{% url "oswiadczenia:jedno-oswiadczenie-druga-dyscyplina" rekord.id.0 rekord.id.1 pa.autor.id pa.dyscyplina.id %}">\n                                        <span class="fi-print" style="color: palevioletred;"></span>\n                                    </a>\n                                {% endif %}\n                            </td>\n                        {% endif %}\n                    {% endif %}\n                </tr>\n            {% endfor %}\n        </table>\n        <h4>Punkty i sloty dyscyplin</h4>\n        <table>\n            <tr>\n                <th>Dyscyplina</th>\n                <th>PkD / PkDAut</th>\n                <th>Slot</th>\n            </tr>\n            {% for pd in rekord.punktacja_dyscypliny.select_related %}\n                <tr>\n                    <td>{{ pd.dyscyplina.nazwa }}</td>\n                    <td>{{ pd.pkd }}</td>\n                    <td>{{ pd.slot }}</td>\n                    {% load user_in_group %}\n                </tr>\n            {% endfor %}\n        </table>\n\n    {% endif %}\n{% endif %}\n\n<style type="text/css">\n/* BibTeX specific styles */\n#bibtex-container {\n    margin-top: 10px;\n}\n\n#bibtex-content {\n    width: 100%;\n    min-height: 200px;\n    font-family: 'Courier New', Consolas, Monaco, monospace;\n    font-size: 12px;\n    background-color: #f8f8f8;\n    border: 1px solid #ccc;\n    border-radius: 3px;\n    padding: 10px;\n    resize: vertical;\n    line-height: 1.4;\n}\n\n#bibtex-toggle-btn,\n#bibtex-copy-btn {\n    margin: 0;\n    vertical-align: top;\n}\n\n#bibtex-copy-btn {\n    margin-left: 10px;\n}\n\n#bibtex-copy-feedback {\n    margin-left: 10px;\n    color: #28a745;\n    font-weight: bold;\n    display: none;\n    vertical-align: top;\n}\n\n/* Responsive adjustments */\n@media screen and (max-width: 640px) {\n    #bibtex-content {\n        font-size: 10px;\n        min-height: 150px;\n    }\n\n    #bibtex-toggle-btn,\n    #bibtex-copy-btn {\n        font-size: 0.8rem;\n        padding: 0.5rem 1rem;\n    }\n}\n\n/* Better button styling for loading state */\n#bibtex-toggle-btn:disabled {\n    opacity: 0.6;\n    cursor: not-allowed;\n}\n</style>\n\n<script type="text/javascript">\n(function($) {\n    $(document).ready(function() {\n        var bibtexToggleBtn = $('#bibtex-toggle-btn');\n        var bibtexContainer = $('#bibtex-container');\n        var bibtexContent = $('#bibtex-content');\n        var bibtexCopyBtn = $('#bibtex-copy-btn');\n        var bibtexCopyFeedback = $('#bibtex-copy-feedback');\n        var bibtexLoaded = false;\n\n        // Toggle BibTeX display\n        bibtexToggleBtn.click(function() {\n            if (bibtexContainer.is(':visible')) {\n                bibtexContainer.hide();\n                bibtexToggleBtn.text('📋 Pokaż BibTeX');\n            } else {\n                if (!bibtexLoaded) {\n                    // Load BibTeX via AJAX\n                    loadBibTeX();\n                } else {\n                    bibtexContainer.show();\n                    bibtexToggleBtn.text('📋 Ukryj BibTeX');\n                }\n            }\n        });\n\n        // Copy to clipboard functionality\n        bibtexCopyBtn.click(function() {\n            copyToClipboard();\n        });\n\n        function loadBibTeX() {\n            bibtexToggleBtn.prop('disabled', true).text('⏳ Ładowanie...');\n\n            // Extract model and pk from the current page\n            var modelName = '{{ rekord.content_type.model }}';\n            var pk = '{{ praca.pk }}';\n\n            var url = '/bpp/api/bibtex/' + modelName + '/' + pk + '/';\n\n            $.ajax({\n                url: url,\n                type: 'GET',\n                dataType: 'json',\n                success: function(data) {\n                    bibtexContent.val(data.bibtex);\n                    bibtexContainer.show();\n                    bibtexToggleBtn.text('📋 Ukryj BibTeX');\n                    bibtexCopyBtn.show();\n                    bibtexLoaded = true;\n\n                    // Auto-resize textarea to content\n                    autoResizeTextarea();\n                },\n                error: function(xhr, status, error) {\n                    var errorMsg = 'Błąd podczas pobierania BibTeX';\n                    if (xhr.responseJSON && xhr.responseJSON.error) {\n                        errorMsg += ': ' + xhr.responseJSON.error;\n                    }\n                    bibtexContent.val(errorMsg);\n                    bibtexContainer.show();\n                    bibtexToggleBtn.text('📋 Ukryj BibTeX (błąd)');\n                },\n                complete: function() {\n                    bibtexToggleBtn.prop('disabled', false);\n                }\n            });\n        }\n\n        function autoResizeTextarea() {\n            var lines = bibtexContent.val().split('\\n').length;\n            var minHeight = 200;\n            var lineHeight = 16;\n            var newHeight = Math.max(minHeight, (lines + 1) * lineHeight);\n            bibtexContent.css('height', newHeight + 'px');\n        }\n\n        function copyToClipboard() {\n            // Modern Clipboard API\n            if (navigator.clipboard && window.isSecureContext) {\n                navigator.clipboard.writeText(bibtexContent.val()).then(function() {\n                    showCopyFeedback();\n                }, function(err) {\n                    fallbackCopy();\n                });\n            } else {\n                fallbackCopy();\n            }\n        }\n\n        function fallbackCopy() {\n            // Fallback for older browsers\n            bibtexContent.select();\n            bibtexContent[0].setSelectionRange(0, 99999); // For mobile devices\n\n            try {\n                document.execCommand('copy');\n                showCopyFeedback();\n            } catch (err) {\n                alert('Nie można skopiować do schowka. Proszę zaznacz tekst i skopiuj ręcznie (Ctrl+C).');\n            }\n        }\n\n        function showCopyFeedback() {\n            bibtexCopyFeedback.show();\n            setTimeout(function() {\n                bibtexCopyFeedback.fadeOut();\n            }, 2000);\n        }\n    });\n})(jQuery || django.jQuery || $);\n</script>\n\n{% if rekord.ma_odpiete_dyscypliny %}\n    {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}\n        <h4>"Odpięte" dyscypliny:</h4>\n        <table>\n            <tr>\n                <th>Autor</th>\n                <th>Dyscyplina</th>\n            </tr>\n            {% for pa in praca.odpiete_dyscypliny.select_related %}\n                <tr>\n                    <td>{{ pa.autor }}</td>\n                    <td>{{ pa.dyscyplina_naukowa.nazwa }}</td>\n                </tr>\n            {% endfor %}\n        </table>\n    {% endif %}\n{% endif %}\n	2000-01-01 00:00:00+00	2000-01-01 00:00:00+00
 3	oswiadczenia/tresc_jednego_oswiadczenia.html	<h1>Oświadczenie upoważaniające podmiot do wykazania osiągnięć w ewaluacji jakości działalności naukowej</h1>\n<hr>\n<h2>{{ autor.nazwisko }} {{ autor.imiona }}</h2>\n<p>ORCID: <strong>{{ autor.orcid }}</strong></p>\n<p>Dyscypliny:</p>\n<ul>\n    <li>{{ dyscyplina_naukowa }}</li>\n    {% if subdyscyplina_naukowa %}\n        <li>{{ subdyscyplina_naukowa }}</li>\n    {% endif %}\n</ul>\n<p>\n    Ja, <strong>{{ autor.nazwisko }} {{ autor.imiona }}</strong>, zgodnie z art. 265 ust. 13 ustawy z dnia\n    20 lipca 2018 r. – Prawo  o szkolnictwie\n    wyższym i nauce (Dz. U. z 2021 r. poz. 478, z późn. zm.) upoważniam do wykazania na potrzeby\n    ewaluacji jakości działalności naukowej za lata <strong>2022-2025</strong> moich, wymienionych w niniejszym\n    oświadczeniu osiągnięć przez <strong>{{ uczelnia.nazwa }}</strong> w dyscyplinie:\n    <strong>{{ dyscyplina_pracy }}</strong>.\n</p>\n<p>\n    Oświadczam, że osiągnięcia te powstały w związku z prowadzeniem przeze mnie działalności naukowej\n    w tym podmiocie (nie dotyczy osiągnięć artystycznych).\n</p>\n<div width="10%" style="text-align: center; width:50%; float: right;">\n    <p>{{ data_oswiadczenia|default:"" }}...........................................................</p>\n    <p>(data i podpis)</p>\n</div>\n<div style="clear:both;"></div>\n<strong>Dotyczy:</strong><br/>\n{{ object.opis_bibliograficzny_cache|safe }}\n	2000-01-01 00:00:00+00	2000-01-01 00:00:00+00
 \.
 
@@ -17951,21 +17951,21 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-253	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
-254	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
-255	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-256	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-257	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-258	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-259	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-260	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-261	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-262	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-263	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-264	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-265	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-266	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-267	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+268	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+269	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
+270	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+271	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+272	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+273	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+274	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+275	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+276	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+277	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+278	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+279	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+280	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+281	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+282	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -19582,7 +19582,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1135, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1136, true);
 
 
 --
@@ -19820,7 +19820,7 @@ SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 42,
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 267, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 282, true);
 
 
 --

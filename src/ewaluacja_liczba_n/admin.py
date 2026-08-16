@@ -14,6 +14,31 @@ from .models import (
 )
 
 
+class ReadonlyExceptCascadeDeleteMixin(ReadonlyAdminMixin):
+    """Read-only jak ``ReadonlyAdminMixin``, ale bez weta na kaskadę.
+
+    ``ReadonlyAdminMixin.has_delete_permission`` zwraca twarde ``False``.
+    Django pyta TĄ SAMĄ metodą o uprawnienia do obiektów kasowanych
+    KASKADOWO (``django.contrib.admin.utils.get_deleted_objects``), więc na
+    modelach z FK ``CASCADE`` do ``Autor`` taka odmowa blokuje skasowanie
+    samego autora — również superuserowi.
+
+    Udziały są danymi wtórnymi: liczy je ``ewaluacja_liczba_n`` z danych
+    źródłowych i można je przeliczyć ponownie, więc mają ginąć razem
+    z autorem, zgodnie z ``on_delete=CASCADE`` na FK. Dopisanie ani edycja
+    nadal są zablokowane — dziedziczymy je z ``ReadonlyAdminMixin``.
+
+    Sam ``ReadonlyAdminMixin`` zostaje nietknięty: dla modeli opartych
+    o widoki bazodanowe (``managed=False``, FK z ``DO_NOTHING``) jego
+    zachowanie jest poprawne, bo tam kaskady nie ma.
+    """
+
+    def has_delete_permission(self, request, obj=None):
+        # Z pominięciem ``ReadonlyAdminMixin`` w MRO — jak
+        # ``RestrictDeletionToAdministracjaGroupMixin`` w ``bpp.admin.core``.
+        return admin.ModelAdmin.has_delete_permission(self, request, obj=obj)
+
+
 class IloscUdzialowDlaAutoraZaRokResource(resources.ModelResource):
     def get_queryset(self):
         return (
@@ -95,7 +120,10 @@ class LiczbaNDlaUczelniResource(resources.ModelResource):
 
 @admin.register(IloscUdzialowDlaAutoraZaRok)
 class IloscUdzialowDlaAutoraZaRokAdmin(
-    DynamicAdminFilterMixin, EksportDanychMixin, ReadonlyAdminMixin, admin.ModelAdmin
+    DynamicAdminFilterMixin,
+    EksportDanychMixin,
+    ReadonlyExceptCascadeDeleteMixin,
+    admin.ModelAdmin,
 ):
     resource_classes = [IloscUdzialowDlaAutoraZaRokResource]
     list_display = [
@@ -117,7 +145,10 @@ class IloscUdzialowDlaAutoraZaRokAdmin(
 
 @admin.register(IloscUdzialowDlaAutoraZaCalosc)
 class IloscUdzialowDlaAutoraZaCaloscAdmin(
-    DynamicAdminFilterMixin, EksportDanychMixin, ReadonlyAdminMixin, admin.ModelAdmin
+    DynamicAdminFilterMixin,
+    EksportDanychMixin,
+    ReadonlyExceptCascadeDeleteMixin,
+    admin.ModelAdmin,
 ):
     resource_classes = [IloscUdzialowDlaAutoraZaCaloscResource]
     list_display = [
