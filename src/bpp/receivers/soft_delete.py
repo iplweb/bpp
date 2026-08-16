@@ -1,9 +1,16 @@
 """Receivery sygnałów ``django-soft-delete`` → ``SoftDeleteLog``.
 
-JEDEN punkt podpięcia dla WSZYSTKICH modeli soft-delete (publikacje,
-``*_Autor``, ``Autor``, ``Element_Repozytorium``) — receivery są rejestrowane
-bez ``sender=``, więc nowy model soft-delete jest logowany bez dopisywania
-czegokolwiek tutaj. Rejestracja: ``BppConfig.ready()``.
+JEDEN punkt podpięcia dla WSZYSTKICH modeli soft-delete — receivery są
+rejestrowane bez ``sender=``, więc nowy model soft-delete jest logowany bez
+dopisywania czegokolwiek tutaj. Rejestracja: ``BppConfig.ready()``.
+
+Objęte modele (stan 2026-08-16): 5 publikacji + 3 ``*_Autor`` (fazy 02/01),
+``Autor`` (04), ``Element_Repozytorium`` (01) oraz
+``zglos_publikacje.Zgloszenie_Publikacji`` — ten ostatni jest soft-delete
+NIEZALEŻNIE od faz 01-04 i nie było go na żadnej liście w planach; znalazła
+go dopiero asercja ``test_kazdy_model_soft_delete_zachowuje_pk`` nad
+``apps.get_models()``. Nie wypisuj tej listy nigdzie w kodzie — to ta
+asercja jest źródłem prawdy.
 
 Usera i powód wnosi thread-local ``soft_delete_context`` — sygnały pakietu
 ich nie niosą (patrz ``bpp/models/soft_delete_context.py``).
