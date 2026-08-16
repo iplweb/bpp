@@ -38,6 +38,7 @@ from cerif_export.providers import (
 )
 from cerif_export.providers.base import ADNOTACJA_TS
 from cerif_export.providers.publikacje import ADNOTACJA_COAR, coar_pracy
+from cerif_export.tests.pomocnicze import strona_zywych
 
 # -- helpery budujące dane ----------------------------------------------
 
@@ -170,15 +171,15 @@ def test_strona_zwraca_kursor_wewnatrz_modelu(
         rekord = fabryka_wydawnictw(Wydawnictwo_Ciagle)
         ustaw_datestamp(Wydawnictwo_Ciagle, rekord.pk, dt(1 + i))
 
-    obiekty, kursor = provider_publikacji.strona(uczelnia_cerif, rozmiar=2)
+    obiekty, kursor = strona_zywych(provider_publikacji, uczelnia_cerif, rozmiar=2)
 
     assert len(obiekty) == 2
     assert kursor is not None
     assert kursor.slug == slug_dla(Wydawnictwo_Ciagle)
     assert kursor.pk == obiekty[-1].pk
 
-    reszta, kolejny = provider_publikacji.strona(
-        uczelnia_cerif, kursor=kursor, rozmiar=2
+    reszta, kolejny = strona_zywych(
+        provider_publikacji, uczelnia_cerif, kursor=kursor, rozmiar=2
     )
     assert len(reszta) == 1
     assert kolejny is None
@@ -225,15 +226,15 @@ def test_kursor_na_granicy_modelu_wskazuje_ostatni_wydany_rekord(
     for _ in range(2):
         fabryka_wydawnictw(Wydawnictwo_Zwarte)
 
-    obiekty, kursor = provider_publikacji.strona(uczelnia_cerif, rozmiar=2)
+    obiekty, kursor = strona_zywych(provider_publikacji, uczelnia_cerif, rozmiar=2)
 
     assert {slug_dla(o) for o in obiekty} == {slug_dla(Wydawnictwo_Ciagle)}
     assert kursor is not None
     assert kursor.slug == slug_dla(Wydawnictwo_Ciagle)
     assert kursor.pk == obiekty[-1].pk
 
-    reszta, kolejny = provider_publikacji.strona(
-        uczelnia_cerif, kursor=kursor, rozmiar=2
+    reszta, kolejny = strona_zywych(
+        provider_publikacji, uczelnia_cerif, kursor=kursor, rozmiar=2
     )
     assert {slug_dla(o) for o in reszta} == {slug_dla(Wydawnictwo_Zwarte)}
     assert kolejny is None
@@ -252,7 +253,7 @@ def test_brak_tokenu_gdy_kolejne_modele_sa_puste(
     for _ in range(2):
         fabryka_wydawnictw(Wydawnictwo_Ciagle)
 
-    obiekty, kursor = provider_publikacji.strona(uczelnia_cerif, rozmiar=2)
+    obiekty, kursor = strona_zywych(provider_publikacji, uczelnia_cerif, rozmiar=2)
 
     assert len(obiekty) == 2
     assert kursor is None
@@ -327,7 +328,7 @@ def test_rekord_z_nullowym_datestampem_nie_ginie(
     zwykly = fabryka_wydawnictw(Wydawnictwo_Ciagle)
     ustaw_datestamp(Wydawnictwo_Ciagle, zwykly.pk, dt(5))
 
-    obiekty, _ = provider_publikacji.strona(uczelnia_cerif)
+    obiekty, _ = strona_zywych(provider_publikacji, uczelnia_cerif)
     pk_wc = [o.pk for o in obiekty if isinstance(o, Wydawnictwo_Ciagle)]
 
     assert z_nullem.pk in pk_wc
@@ -344,7 +345,7 @@ def test_rekord_z_nullowym_datestampem_lapie_sie_w_zakres(
     z_nullem = fabryka_wydawnictw(Wydawnictwo_Ciagle)
     ustaw_datestamp(Wydawnictwo_Ciagle, z_nullem.pk, None)
 
-    obiekty, _ = provider_publikacji.strona(uczelnia_cerif, do=dt(1))
+    obiekty, _ = strona_zywych(provider_publikacji, uczelnia_cerif, do=dt(1))
     assert [o.pk for o in obiekty if isinstance(o, Wydawnictwo_Ciagle)] == [z_nullem.pk]
 
 
@@ -361,13 +362,13 @@ def test_filtry_od_do_zawezaja_wynik(
     nowy = fabryka_wydawnictw(Wydawnictwo_Ciagle)
     ustaw_datestamp(Wydawnictwo_Ciagle, nowy.pk, dt(20))
 
-    obiekty, _ = provider_publikacji.strona(uczelnia_cerif, od=dt(5), do=dt(15))
+    obiekty, _ = strona_zywych(provider_publikacji, uczelnia_cerif, od=dt(5), do=dt(15))
     assert [o.pk for o in obiekty] == [srodkowy.pk]
 
-    obiekty, _ = provider_publikacji.strona(uczelnia_cerif, od=dt(5))
+    obiekty, _ = strona_zywych(provider_publikacji, uczelnia_cerif, od=dt(5))
     assert [o.pk for o in obiekty] == [srodkowy.pk, nowy.pk]
 
-    obiekty, _ = provider_publikacji.strona(uczelnia_cerif, do=dt(15))
+    obiekty, _ = strona_zywych(provider_publikacji, uczelnia_cerif, do=dt(15))
     assert [o.pk for o in obiekty] == [stary.pk, srodkowy.pk]
 
 
@@ -396,6 +397,13 @@ def test_najstarszy_datestamp_pustego_setu_to_none(uczelnia_cerif, provider_publ
 def test_pojedynczy_zwraca_obiekt_i_none(
     uczelnia_cerif, fabryka_wydawnictw, provider_publikacji
 ):
+    """``pojedynczy`` szuka w nadzbiorze; ``None`` znaczy „nie nasz".
+
+    Od fazy 05b rekord ukryty JEST odnajdywany — GetRecord ma na niego
+    odpowiedzieć nagrobkiem, nie ``idDoesNotExist``. O tym, czy jest żywy,
+    rozstrzyga dopiero ``widoczne_pk_ze_strony``. ``None`` zostaje dla
+    rekordów spoza tenanta i nieistniejących.
+    """
     widoczny = fabryka_wydawnictw(Wydawnictwo_Ciagle)
     ukryty = fabryka_wydawnictw(Wydawnictwo_Ciagle, nie_eksportuj_przez_api=True)
 
@@ -405,8 +413,19 @@ def test_pojedynczy_zwraca_obiekt_i_none(
         ).pk
         == widoczny.pk
     )
+
+    znaleziony = provider_publikacji.pojedynczy(
+        uczelnia_cerif, Wydawnictwo_Ciagle, ukryty.pk
+    )
+    assert znaleziony is not None, "ukryty rekord tenanta musi dać się odnaleźć"
+    zywe = provider_publikacji.widoczne_pk_ze_strony(
+        uczelnia_cerif, Wydawnictwo_Ciagle, [znaleziony]
+    )
+    assert znaleziony.pk not in zywe, "ukryty rekord ma być oznaczony jako nagrobek"
+
+    obcy_pk = max(widoczny.pk, ukryty.pk) + 1000
     assert (
-        provider_publikacji.pojedynczy(uczelnia_cerif, Wydawnictwo_Ciagle, ukryty.pk)
+        provider_publikacji.pojedynczy(uczelnia_cerif, Wydawnictwo_Ciagle, obcy_pk)
         is None
     )
 
@@ -446,7 +465,7 @@ def test_praca_niesie_gotowy_typ_coar_bez_dotykania_slownika(
         status_korekty=status_ok,
         rok=2020,
     )
-    obiekty, _ = provider_publikacji.strona(uczelnia_cerif)
+    obiekty, _ = strona_zywych(provider_publikacji, uczelnia_cerif)
     praca = next(o for o in obiekty if isinstance(o, Praca_Doktorska))
     assert getattr(praca, ADNOTACJA_COAR).startswith("http://purl.org/coar/")
 
@@ -511,7 +530,7 @@ def test_liczba_zapytan_nie_rosnie_z_liczba_rekordow(
         fabryka_wydawnictw(Wydawnictwo_Zwarte)
 
     with django_assert_max_num_queries(BUDZET_ZAPYTAN_PUBLIKACJE):
-        obiekty, _ = provider_publikacji.strona(uczelnia_cerif, rozmiar=1000)
+        obiekty, _ = strona_zywych(provider_publikacji, uczelnia_cerif, rozmiar=1000)
         dotknij_publikacje(obiekty)
 
     assert len(obiekty) == 2 * ile + 1
@@ -532,7 +551,7 @@ def test_zbiory_widocznosci_to_stala_liczba_zapytan(
     for _ in range(ile):
         fabryka_wydawnictw(Wydawnictwo_Ciagle, zrodlo=zrodlo, konferencja=konferencja)
 
-    obiekty, _ = provider_publikacji.strona(uczelnia_cerif, rozmiar=1000)
+    obiekty, _ = strona_zywych(provider_publikacji, uczelnia_cerif, rozmiar=1000)
 
     with django_assert_max_num_queries(5):
         zbiory = provider_publikacji.zbiory_widocznosci(uczelnia_cerif, obiekty)
@@ -586,7 +605,9 @@ def _przejdz_wszystkie_strony(provider, uczelnia, rozmiar):
     """Przejdź cały set stronami, pilnując, żeby pętla się skończyła."""
     kursor = None
     for _ in range(50):
-        obiekty, kursor = provider.strona(uczelnia, kursor=kursor, rozmiar=rozmiar)
+        obiekty, kursor = strona_zywych(
+            provider, uczelnia, kursor=kursor, rozmiar=rozmiar
+        )
         if obiekty:
             yield obiekty
         if kursor is None:

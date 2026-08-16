@@ -55,6 +55,17 @@ def widoczne_jednostki(uczelnia):
     )
 
 
+def nalezace_jednostki(uczelnia):
+    """Jednostki TEJ uczelni — bez reguł ekspozycji.
+
+    Atrybucja to bezpośredni FK ``uczelnia``; ``widoczna``
+    i ``nie_eksportuj_przez_api`` są regułami ekspozycji i zostają
+    w ``widoczne_jednostki()``, żeby ich dopełnienie dało nagrobki.
+    """
+    wymagaj_uczelni(uczelnia)
+    return Jednostka.objects.filter(uczelnia=uczelnia)
+
+
 def widoczni_grantodawcy(uczelnia):
     """Instytucje finansujące eksportowane dla tej uczelni — bez prefetchy.
 
@@ -67,6 +78,25 @@ def widoczni_grantodawcy(uczelnia):
 
     Przynależność do tenanta niesie ``Projekt.jednostka`` — to jedyny
     nośnik atrybucji projektu do uczelni.
+    """
+    wymagaj_uczelni(uczelnia)
+    return Instytucja_Finansujaca.objects.filter(
+        finansowanie__projekt__jednostka__uczelnia=uczelnia
+    ).distinct()
+
+
+def nalezacy_grantodawcy(uczelnia):
+    """Instytucje finansujące projekty TEJ uczelni.
+
+    ⚠️ Treść jest IDENTYCZNA z ``widoczni_grantodawcy`` — i to nie pomyłka.
+    Tamten helper filtruje ``finansowanie__projekt__jednostka__uczelnia``
+    wprost, czyli sama atrybucja, bez żadnej reguły ekspozycji. Dopełnienie
+    jest więc puste i ten model nagrobków nie wygeneruje.
+
+    Implementujemy mimo to, bo kontrakt providera musi być kompletny
+    (``test_kazdy_provider_deklaruje_przynaleznosc``), a rozdzielenie nazw
+    pokazuje następnemu czytelnikowi, gdzie dopisać regułę ekspozycji, gdyby
+    kiedyś powstała — wtedy nagrobki zaczną działać bez zmian w bazie.
     """
     wymagaj_uczelni(uczelnia)
     return Instytucja_Finansujaca.objects.filter(
@@ -112,6 +142,26 @@ class ProviderJednostek(ProviderEncji):
 
         if model is Instytucja_Finansujaca:
             return widoczni_grantodawcy(uczelnia)
+
+        raise BlednyIdentyfikator(f"Model {model!r} nie należy do setu {self.set_spec}")
+
+    def przynaleznosc(self, uczelnia, model):
+        wymagaj_uczelni(uczelnia)
+
+        if model is Jednostka:
+            return nalezace_jednostki(uczelnia).select_related(
+                "uczelnia",
+                "parent",
+                "wydzial",
+                "rodzaj",
+                "pbn_uid",
+            )
+
+        if model is Uczelnia:
+            return Uczelnia.objects.filter(pk=uczelnia.pk).select_related("site")
+
+        if model is Instytucja_Finansujaca:
+            return nalezacy_grantodawcy(uczelnia)
 
         raise BlednyIdentyfikator(f"Model {model!r} nie należy do setu {self.set_spec}")
 

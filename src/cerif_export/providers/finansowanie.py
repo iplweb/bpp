@@ -27,6 +27,13 @@ def widoczne_finansowania(uczelnia):
     return Finansowanie.objects.filter(projekt__jednostka__uczelnia=uczelnia)
 
 
+def nalezace_finansowania(uczelnia):
+    """Finansowania projektów TEJ uczelni. Jak projekty: czysta atrybucja,
+    dopełnienie puste."""
+    wymagaj_uczelni(uczelnia)
+    return Finansowanie.objects.filter(projekt__jednostka__uczelnia=uczelnia)
+
+
 class ProviderFinansowania(ProviderEncji):
     """Źródła finansowania projektów tej uczelni."""
 
@@ -42,6 +49,15 @@ class ProviderFinansowania(ProviderEncji):
             )
 
         return widoczne_finansowania(uczelnia).select_related("instytucja")
+
+    def przynaleznosc(self, uczelnia, model):
+        wymagaj_uczelni(uczelnia)
+        if model is not Finansowanie:
+            raise BlednyIdentyfikator(
+                f"Model {model!r} nie należy do setu {self.set_spec}"
+            )
+
+        return nalezace_finansowania(uczelnia).select_related("instytucja")
 
     def zbiory_widocznosci(self, uczelnia, obiekty) -> ZbioryWidocznosci:
         """Prekomputuj widoczność grantodawców osadzanych w ``Funder``."""

@@ -27,6 +27,7 @@ from cerif_export.oai import czasowniki
 from cerif_export.providers import provider_dla_modelu, provider_dla_setu
 from cerif_export.providers.jednostki import ProviderJednostek
 from cerif_export.slowniki import typy_finansowania
+from cerif_export.tests.pomocnicze import strona_zywych
 
 NAMESPACE = "cerif.example.org"
 
@@ -144,7 +145,7 @@ def test_funder_wychodzi_raz_mimo_wielu_finansowan(uczelnia, jednostka):
     # Także po przepuszczeniu przez stronicowanie keyset — ``DISTINCT``
     # musi przeżyć adnotację ``_cerif_ts`` i ``ORDER BY`` po niej, inaczej
     # harvester dostałby ten sam rekord tyle razy, ile jest finansowań.
-    obiekty, _ = provider.strona(uczelnia, rozmiar=1000)
+    obiekty, _ = strona_zywych(provider, uczelnia, rozmiar=1000)
     assert [o for o in obiekty if isinstance(o, Instytucja_Finansujaca)] == [instytucja]
 
 
@@ -172,7 +173,7 @@ def test_funder_jest_w_secie_orgunits(uczelnia, jednostka):
     zbuduj_finansowanie(jednostka, instytucja)
 
     provider = provider_dla_setu(const.SET_ORGUNITS)
-    obiekty, _ = provider.strona(uczelnia, rozmiar=1000)
+    obiekty, _ = strona_zywych(provider, uczelnia, rozmiar=1000)
     assert instytucja in obiekty
 
     assert provider_dla_modelu(Instytucja_Finansujaca) is provider

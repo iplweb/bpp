@@ -75,20 +75,29 @@ class FikcyjnyProvider:
             pozostale = [o for o in pozostale if self._klucz(o) > granica]
 
         partia = pozostale[:rozmiar]
+        # Od fazy 05b kontrakt to pary ``(obiekt, czy_nagrobek)``. Atrapa
+        # trzyma wyłącznie żywe rekordy — nagrobki mają własną suitę
+        # (``test_nagrobki.py``), która chodzi po REALNYCH providerach.
+        oznaczone = [(obiekt, False) for obiekt in partia]
         if len(pozostale) > rozmiar:
             ostatni = partia[-1]
-            return partia, Kursor(
+            return oznaczone, Kursor(
                 slug=identyfikatory.slug_dla(ostatni),
                 ts=na_datestamp(getattr(ostatni, ADNOTACJA_TS)),
                 pk=ostatni.pk,
             )
-        return partia, None
+        return oznaczone, None
 
     def pojedynczy(self, uczelnia, model, pk):
         for obiekt in self.obiekty:
             if type(obiekt) is model and obiekt.pk == pk:
                 return obiekt
         return None
+
+    def widoczne_pk_ze_strony(self, uczelnia, model, obiekty):
+        # Atrapa trzyma wyłącznie żywe rekordy — wszystko, co w niej jest,
+        # jest z definicji wystawiane. Nagrobki ma ``test_nagrobki.py``.
+        return frozenset(obiekt.pk for obiekt in obiekty)
 
     def zbiory_widocznosci(self, uczelnia, obiekty):
         return ZbioryWidocznosci()

@@ -12,7 +12,10 @@ from cerif_export.identyfikatory import BlednyIdentyfikator
 from cerif_export.kontekst import ZbioryWidocznosci
 from cerif_export.providers.base import ProviderEncji
 from cerif_export.providers.jednostki import wymagaj_uczelni
-from cerif_export.providers.publikacje import widoczne_konferencje
+from cerif_export.providers.publikacje import (
+    nalezace_konferencje,
+    widoczne_konferencje,
+)
 
 
 class ProviderKonferencji(ProviderEncji):
@@ -29,6 +32,14 @@ class ProviderKonferencji(ProviderEncji):
                 f"Model {model!r} nie należy do setu {self.set_spec}"
             )
         return widoczne_konferencje(uczelnia).select_related("pbn_uid")
+
+    def przynaleznosc(self, uczelnia, model):
+        wymagaj_uczelni(uczelnia)
+        if model is not Konferencja:
+            raise BlednyIdentyfikator(
+                f"Model {model!r} nie należy do setu {self.set_spec}"
+            )
+        return nalezace_konferencje(uczelnia).select_related("pbn_uid")
 
     def zbiory_widocznosci(self, uczelnia, obiekty) -> ZbioryWidocznosci:
         """Konferencja nie osadza encji sąsiadujących — zbiory są puste."""

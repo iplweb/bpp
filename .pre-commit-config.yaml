@@ -73,12 +73,23 @@ repos:
             # `mkdocs build --strict` parsuje plik bez problemu.
             exclude: ^(docker-compose\.test\.ci\.yml|mkdocs\.yml)$
         -   id: check-toml
+        # `src/cerif_export/tests/xsd/` to VENDOROWANE schematy XSD (profil
+        # OpenAIRE CERIF 1.2 + koperta OAI-PMH 2.0) — kopie plików cudzych,
+        # pobrane wprost od wydawcy. Nie normalizujemy w nich białych znaków:
+        # plik ma zostać porównywalny bajt-w-bajt z upstreamem, żeby przy
+        # podbiciu wersji diff pokazywał ZMIANY SCHEMATU, a nie nasze
+        # przeformatowanie. Wyjątek nie obejmuje naszego pliku spinającego
+        # `oai-pmh-z-profilem.xsd` — ten piszemy sami.
         -   id: end-of-file-fixer
-            exclude: ^baseline-sql/baseline\.sql$
+            exclude: &wylaczone_z_bialych_znakow |
+              (?x)^(
+                baseline-sql/baseline\.sql$
+                | src/cerif_export/tests/xsd/(?!oai-pmh-z-profilem\.xsd).*\.xsd$
+              )
         -   id: trailing-whitespace
-            exclude: ^baseline-sql/baseline\.sql$
+            exclude: *wylaczone_z_bialych_znakow
         -   id: mixed-line-ending
-            exclude: ^baseline-sql/baseline\.sql$
+            exclude: *wylaczone_z_bialych_znakow
         -   id: check-added-large-files
             args: ['--maxkb=500']
             # .test_durations to celowy, generowany plik danych pytest-split

@@ -42,6 +42,14 @@ def widoczne_projekty(uczelnia):
     return Projekt.objects.filter(jednostka__uczelnia=uczelnia)
 
 
+def nalezace_projekty(uczelnia):
+    """Projekty TEJ uczelni. Czysta atrybucja — identyczna z widocznością,
+    więc dopełnienie jest puste i ten set nagrobków nie wygeneruje.
+    Kontrakt implementujemy dla spójności i gotowości na przyszłe reguły."""
+    wymagaj_uczelni(uczelnia)
+    return Projekt.objects.filter(jednostka__uczelnia=uczelnia)
+
+
 def prefetche_projektu(prefiks=""):
     """Komplet prefetchy wymaganych przez ``cerif.project.serializuj``.
 
@@ -159,6 +167,19 @@ class ProviderProjektow(ProviderEncji):
 
         return (
             widoczne_projekty(uczelnia)
+            .select_related("jednostka")
+            .prefetch_related(*prefetche_projektu())
+        )
+
+    def przynaleznosc(self, uczelnia, model):
+        wymagaj_uczelni(uczelnia)
+        if model is not Projekt:
+            raise BlednyIdentyfikator(
+                f"Model {model!r} nie należy do setu {self.set_spec}"
+            )
+
+        return (
+            nalezace_projekty(uczelnia)
             .select_related("jednostka")
             .prefetch_related(*prefetche_projektu())
         )

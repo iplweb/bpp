@@ -301,14 +301,19 @@ def _get_record(zadanie, argumenty):
         raise BlednyArgument("GetRecord wymaga argumentu metadataPrefix")
     _sprawdz_prefix(prefix)
 
-    set_spec, provider, obiekt = _znajdz_rekord(zadanie, identyfikator)
-
-    widoczne = provider.zbiory_widocznosci(zadanie.uczelnia, [obiekt])
-    kontekst = _kontekst(zadanie, widoczne)
+    set_spec, provider, obiekt, nagrobek = _znajdz_rekord(zadanie, identyfikator)
 
     korzen = etree.Element(f"{{{NS_PMH}}}GetRecord")
     rekord = _pod(korzen, "record")
-    _naglowek(rekord, set_spec, obiekt, zadanie.namespace)
+    _naglowek(rekord, set_spec, obiekt, zadanie.namespace, usuniety=nagrobek)
+    if nagrobek:
+        # Rekord usunięty to sam nagłówek — nie ma czego serializować.
+        # Zbiory widoczności i kontekst liczymy DOPIERO tutaj, bo dla
+        # nagrobka byłyby zbędnymi zapytaniami.
+        return korzen
+
+    widoczne = provider.zbiory_widocznosci(zadanie.uczelnia, [obiekt])
+    kontekst = _kontekst(zadanie, widoczne)
 
     # GetRecord dotyczy jednego rekordu — pominięcie go dałoby odpowiedź
     # niezgodną ze schematem, więc tutaj błąd serializacji propaguje się
@@ -353,8 +358,8 @@ def _lista(zadanie, argumenty, nazwa, z_metadanymi):
     if z_metadanymi:
         _dopisz_rekordy(korzen, zadanie, rejestr, pary, namespace)
     else:
-        for biezacy_set, obiekt in pary:
-            _naglowek(korzen, biezacy_set, obiekt, namespace)
+        for biezacy_set, (obiekt, nagrobek) in pary:
+            _naglowek(korzen, biezacy_set, obiekt, namespace, usuniety=nagrobek)
 
     _dopisz_token(korzen, argumenty, kolejny, set_spec, prefix, od, do)
     return korzen
@@ -401,10 +406,14 @@ def _parametry_listy(argumenty):
 
 
 def _zbierz_strone(uczelnia, rejestr, set_spec, od, do, kursor, rozmiar=None):
-    """Zbierz stronę ``[(setSpec, obiekt), ...]`` i kolejny kursor.
+    """Zbierz stronę ``[(setSpec, (obiekt, czy_nagrobek)), ...]`` i kolejny kursor.
 
     Bez argumentu ``set`` harvest idzie przez wszystkie sety po kolei; pozycję
     niesie ``Kursor.slug``, bo każdy slug należy do dokładnie jednego setu.
+
+    Od fazy 05b provider zwraca pary ``(obiekt, czy_nagrobek)`` — żywe rekordy
+    i nagrobki jednym strumieniem. Kursor liczymy zawsze z GOŁEGO obiektu,
+    bo czyta ``ADNOTACJA_TS`` i ``pk``.
     """
     rozmiar = rozmiar or const.ROZMIAR_STRONY
     kolejnosc = [set_spec] if set_spec else list(const.WSZYSTKIE_SETY)
@@ -426,7 +435,7 @@ def _zbierz_strone(uczelnia, rejestr, set_spec, od, do, kursor, rozmiar=None):
             # rozmiar=1, przycinała wynik do zera i wywalała się na
             # `obiekty[-1]`.)
             if _cos_zostalo(uczelnia, rejestr, kolejnosc, pozycja, od, do):
-                return zebrane, _kursor_dla(zebrane[-1][1])
+                return zebrane, _kursor_dla(zebrane[-1][1][0])
             return zebrane, None
 
         biezacy_set = kolejnosc[pozycja]
@@ -435,17 +444,17 @@ def _zbierz_strone(uczelnia, rejestr, set_spec, od, do, kursor, rozmiar=None):
 
         # Nadmiarowy element to sonda: jego obecność mówi, że w tym secie
         # jest jeszcze co najmniej jeden rekord, więc trzeba wydać token.
-        obiekty, _ = provider.strona(
+        oznaczone, _ = provider.strona(
             uczelnia, od=od, do=do, kursor=wewnetrzny, rozmiar=brakuje + 1
         )
-        obiekty = list(obiekty)
+        oznaczone = list(oznaczone)
 
-        if len(obiekty) > brakuje:
-            obiekty = obiekty[:brakuje]
-            zebrane.extend((biezacy_set, obiekt) for obiekt in obiekty)
-            return zebrane, _kursor_dla(obiekty[-1])
+        if len(oznaczone) > brakuje:
+            oznaczone = oznaczone[:brakuje]
+            zebrane.extend((biezacy_set, para) for para in oznaczone)
+            return zebrane, _kursor_dla(oznaczone[-1][0])
 
-        zebrane.extend((biezacy_set, obiekt) for obiekt in obiekty)
+        zebrane.extend((biezacy_set, para) for para in oznaczone)
 
     return zebrane, None
 
@@ -506,12 +515,22 @@ def _dopisz_token(korzen, argumenty, kolejny, set_spec, prefix, od, do):
 
 def _dopisz_rekordy(korzen, zadanie, rejestr, pary, namespace):
     pominiete = 0
-    for biezacy_set, obiekty in _wg_setu(pary):
+    for biezacy_set, oznaczone in _wg_setu(pary):
         provider = rejestr[biezacy_set]
-        widoczne = provider.zbiory_widocznosci(zadanie.uczelnia, obiekty)
+        # Zbiory widoczności liczymy WYŁĄCZNIE dla żywych rekordów: nagrobek
+        # nie jest serializowany, więc jego encje sąsiadujące nie mają gdzie
+        # się osadzić, a husk w partii tylko poszerzałby zapytania.
+        zywe = [obiekt for obiekt, nagrobek in oznaczone if not nagrobek]
+        widoczne = provider.zbiory_widocznosci(zadanie.uczelnia, zywe)
         kontekst = _kontekst(zadanie, widoczne)
 
-        for obiekt in obiekty:
+        for obiekt, nagrobek in oznaczone:
+            if nagrobek:
+                # Nagrobek PRZED serializacją — nie ma czego serializować.
+                rekord = _pod(korzen, "record")
+                _naglowek(rekord, biezacy_set, obiekt, namespace, usuniety=True)
+                continue
+
             identyfikator = identyfikatory.zbuduj(namespace, obiekt)
             serializuj = serializer_dla(identyfikatory.slug_dla(obiekt))
             element = _bezpiecznie(
@@ -536,13 +555,17 @@ def _dopisz_rekordy(korzen, zadanie, rejestr, pary, namespace):
 
 
 def _wg_setu(pary):
-    """Pogrupuj ``[(setSpec, obiekt)]`` zachowując kolejność setów."""
+    """Pogrupuj ``[(setSpec, para)]`` zachowując kolejność setów.
+
+    ``para`` to ``(obiekt, czy_nagrobek)`` — grupujemy je w całości, bo
+    ``_dopisz_rekordy`` potrzebuje obu członów.
+    """
     grupy = []
-    for set_spec, obiekt in pary:
+    for set_spec, para in pary:
         if grupy and grupy[-1][0] == set_spec:
-            grupy[-1][1].append(obiekt)
+            grupy[-1][1].append(para)
         else:
-            grupy.append((set_spec, [obiekt]))
+            grupy.append((set_spec, [para]))
     return grupy
 
 
@@ -550,7 +573,13 @@ def _wg_setu(pary):
 
 
 def _znajdz_rekord(zadanie, identyfikator):
-    """Zwróć ``(setSpec, provider, obiekt)`` albo podnieś idDoesNotExist."""
+    """Zwróć ``(setSpec, provider, obiekt, czy_nagrobek)`` albo idDoesNotExist.
+
+    ``idDoesNotExist`` zostaje dla identyfikatorów spoza tenanta i spoza
+    repozytorium. Rekord, który do tenanta NALEŻY, ale przestał być
+    wystawiany, wychodzi jako nagrobek — harvester dostał go od nas
+    wcześniej, więc „nigdy o takim nie słyszałem" byłoby kłamstwem.
+    """
     try:
         namespace, model, pk = identyfikatory.rozbierz(identyfikator)
     except identyfikatory.BlednyIdentyfikator as wyjatek:
@@ -568,7 +597,10 @@ def _znajdz_rekord(zadanie, identyfikator):
         obiekt = provider.pojedynczy(zadanie.uczelnia, model, pk)
         if obiekt is None:
             break
-        return set_spec, provider, obiekt
+        nagrobek = obiekt.pk not in provider.widoczne_pk_ze_strony(
+            zadanie.uczelnia, model, [obiekt]
+        )
+        return set_spec, provider, obiekt, nagrobek
 
     raise NieznanyIdentyfikator(f"Brak rekordu o identyfikatorze {identyfikator}")
 
@@ -616,8 +648,16 @@ def _pod(rodzic, nazwa, tekst=None):
     return element
 
 
-def _naglowek(rodzic, set_spec, obiekt, namespace):
+def _naglowek(rodzic, set_spec, obiekt, namespace, usuniety=False):
+    """Nagłówek rekordu; ``usuniety=True`` daje nagrobek.
+
+    OAI-PMH sygnalizuje usunięcie atrybutem ``status="deleted"`` na
+    ``<header>``. Rekord usunięty NIE niesie ``<metadata>`` — dołożenie ich
+    złamałoby schemat odpowiedzi.
+    """
     naglowek = _pod(rodzic, "header")
+    if usuniety:
+        naglowek.set("status", "deleted")
     _pod(naglowek, "identifier", identyfikatory.zbuduj(namespace, obiekt))
     _pod(naglowek, "datestamp", na_datestamp(getattr(obiekt, ADNOTACJA_TS, None)))
     _pod(naglowek, "setSpec", set_spec)

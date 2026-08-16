@@ -25,19 +25,20 @@ from cerif_export.cerif import publication
 from cerif_export.kontekst import KontekstSerializacji
 from cerif_export.providers import provider_dla_setu
 from cerif_export.slowniki import coar
+from cerif_export.tests.pomocnicze import strona_zywych
 
 NAMESPACE = "cerif.example.org"
 
 
 def pki(provider, uczelnia):
-    obiekty, _ = provider.strona(uczelnia, rozmiar=1000)
+    obiekty, _ = strona_zywych(provider, uczelnia, rozmiar=1000)
     return {o.pk for o in obiekty}
 
 
 def zserializuj(uczelnia, rekord):
     """Zserializuj publikację w kontekście zbudowanym przez provider."""
     provider = provider_dla_setu(const.SET_PUBLICATIONS)
-    obiekty, _ = provider.strona(uczelnia, rozmiar=1000)
+    obiekty, _ = strona_zywych(provider, uczelnia, rozmiar=1000)
     swiezy = next(o for o in obiekty if o.pk == rekord.pk and type(o) is type(rekord))
     kontekst = KontekstSerializacji(
         namespace=NAMESPACE,
@@ -287,7 +288,7 @@ def test_typ_coar_pracy_dociera_do_xml(uczelnia, jednostka, fabryka_autorow, sta
     )
 
     provider = provider_dla_setu(const.SET_PUBLICATIONS)
-    obiekty, _ = provider.strona(uczelnia, rozmiar=100)
+    obiekty, _ = strona_zywych(provider, uczelnia, rozmiar=100)
     kontekst = KontekstSerializacji(
         namespace=NAMESPACE,
         uczelnia=uczelnia,
@@ -389,7 +390,7 @@ def test_orcid_ukrytego_autora_nie_wycieka(
 
 def _kontekst(uczelnia, set_spec):
     provider = provider_dla_setu(set_spec)
-    obiekty, _ = provider.strona(uczelnia, rozmiar=100)
+    obiekty, _ = strona_zywych(provider, uczelnia, rozmiar=100)
     return obiekty, KontekstSerializacji(
         namespace=NAMESPACE,
         uczelnia=uczelnia,
@@ -451,7 +452,7 @@ def zserializuj_jednostke(uczelnia, jednostka):
     from cerif_export.cerif import orgunit
 
     provider = provider_dla_setu(const.SET_ORGUNITS)
-    obiekty, _ = provider.strona(uczelnia, rozmiar=1000)
+    obiekty, _ = strona_zywych(provider, uczelnia, rozmiar=1000)
     swiezy = next(o for o in obiekty if o.pk == jednostka.pk and type(o) is Jednostka)
     kontekst = KontekstSerializacji(
         namespace=NAMESPACE,
