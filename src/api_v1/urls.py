@@ -31,6 +31,7 @@ from api_v1.viewsets.system import (
     Typ_KBNViewSet,
 )
 from api_v1.viewsets.szukaj import SzukajViewSet
+from api_v1.viewsets.usuniete import UsunieteViewSet
 from api_v1.viewsets.wydawca import Poziom_WydawcyViewSet, WydawcaViewSet
 from api_v1.viewsets.wydawnictwo_ciagle import (
     Wydawnictwo_Ciagle_AutorViewSet,
@@ -184,6 +185,12 @@ router.register(r"autor", AutorViewSet, grupa=DANE)
 router.register(r"funkcja_autora", Funkcja_AutoraViewSet, grupa=DANE)
 router.register(r"tytul", TytulViewSet, grupa=DANE)
 router.register(r"autor_jednostka", Autor_JednostkaViewSet, grupa=DANE)
+
+# Nagrobki (faza 05b soft-delete). ``basename`` jest obowiązkowy — ``ViewSet``
+# bez ``queryset`` nie ma z czego go wywieść. Pod istniejącą grupą DANE:
+# nowa ``GrupaApiV1`` wymagałaby pola ``api_v1_<value>`` na ``Uczelnia``,
+# czyli migracji, a ta faza migracji nie dodaje.
+router.register(r"usuniete", UsunieteViewSet, basename="usuniete", grupa=DANE)
 
 #
 # Wyszukiwanie — kosztowne, objęte osobnym limitem zapytań
