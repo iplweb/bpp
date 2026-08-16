@@ -1,6 +1,6 @@
 {
     "name": "bpp-iplweb",
-    "version": "v202608.1399",
+    "version": "v202608.1400",
     "license": "MIT",
     "devDependencies": {
         "esbuild": "^0.28.1",
@@ -46,7 +46,7 @@
     "resolutions": {
         "jquery": "^3.7.1",
         "minimatch": "^3.1.2",
-        "js-yaml": "^4.2.0",
+        "js-yaml": "^4.3.1",
         "esbuild": "^0.28.1"
     },
     "scripts": {

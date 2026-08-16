@@ -174,6 +174,37 @@ RUN DJANGO_BPP_SECRET_KEY=build-time-only-not-used \
         --noinput -v0 --traceback \
         --ignore sinon --ignore qunit --ignore '*.map'
 
+# R16: prekompresja gzip dla `gzip_static on` po stronie nginksa (bpp-deploy,
+# defaults/webserver/_bpp-locations.conf). Ta dyrektywa jest tam wlaczona od
+# dawna, ale BEZ plikow `.gz` jest MARTWA i nie zglasza tego niczym — nginx
+# po prostu cicho spada na `gzip on` i kompresuje kazdy plik OD NOWA przy
+# kazdym cache-missie. Najwieksze assety to plotly.min.js (4.4 MB),
+# three-bundle.js (1.9 MB) i cytoscape-bundle.js (886 KB) — wszystkie trzy
+# ladowane w szablonach przez {% static %} POZA blokami {% compress %},
+# czyli serwowane wprost stad, a nie z CACHE/ compressora.
+#
+# Pomiar na 202608.1399rc5: 1813 plikow, 2 s buildu, +12.5 MB do obrazu.
+#
+# Dlaczego build-time, a nie runtime: entrypoint-appserver.sh robi `cp -rf`
+# z `.baked` do $STATIC_ROOT, wiec `.gz` powstaje w tym samym kroku co plik
+# zrodlowy i JEST Z NIM ZAWSZE ZGODNY. Gdyby generowac je pozniej, na
+# wolumenie, mielibysmy klasyczna pulapke `gzip_static`: nginx serwuje `x.js.gz`
+# NIE POROWNUJAC mtime z `x.js`, wiec nieaktualny `.gz` = wieczne serwowanie
+# starego JS-a, bez sladu w logach.
+#
+# `-size +1000c` odpowiada `gzip_min_length 1000` z konfiguracji nginksa.
+# Kompresujemy WYLACZNIE formaty tekstowe — woff/woff2/png/jpg/webp sa juz
+# skompresowane i `.gz` tylko zajalby miejsce nic nie dajac.
+# Drugi `find` kasuje `.gz`, ktory wyszedl nie mniejszy od oryginalu (nginx
+# serwowalby WIEKSZY plik klientom deklarujacym gzip). Na obecnym drzewie
+# takich przypadkow jest 0, ale to zabezpieczenie na przyszle assety.
+RUN find /app/staticroot.baked -type f -size +1000c \
+        \( -name '*.js' -o -name '*.css' -o -name '*.svg' -o -name '*.json' \
+           -o -name '*.xml' -o -name '*.txt' -o -name '*.html' \) \
+        -exec gzip -9 -k -f {} + && \
+    find /app/staticroot.baked -type f -name '*.gz' -exec sh -c \
+        'for g; do o="${g%.gz}"; if [ -f "$o" ] && [ "$(stat -c%s "$g")" -ge "$(stat -c%s "$o")" ]; then rm -f "$g"; fi; done' _ {} +
+
 RUN rm -rf /app/node_modules
 
 # R2: testy i pytest-only fixture package nie są potrzebne w produkcji.

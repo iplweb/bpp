@@ -34,6 +34,16 @@ def _username_claim_keys():
     )
 
 
+def _trusted_email_domains():
+    """Domeny uznane za instytucjonalne (settings → pusta krotka).
+
+    Pusta krotka = bramka wyłączona: żaden adres nie dostaje zaufania tą
+    drogą i obowiązuje wyłącznie reguła historyczna (``email_verified``).
+    """
+    raw = getattr(settings, "OIDC_TRUSTED_EMAIL_DOMAINS", None) or ()
+    return tuple(str(d).strip().lstrip("@").lower() for d in raw if str(d).strip())
+
+
 def _first_claim(claims, keys):
     """Pierwsza niepusta wartość claimu z ``keys`` (albo ``None``)."""
     for key in keys:
@@ -176,6 +186,22 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         """Cienki wrapper (wsteczna zgodność) — sam adres, bez źródła."""
         return cls._resolve_email_with_source(claims)[0]
 
+    @staticmethod
+    def _domain_trusted(email):
+        """Czy domena adresu jest na liście ``OIDC_TRUSTED_EMAIL_DOMAINS``.
+
+        Dopasowanie DOKŁADNE (case-insensitive), bez wieloznaczników i bez
+        obejmowania subdomen: ``student-afm.edu.pl`` trzeba wypisać osobno,
+        obok ``uafm.edu.pl``. Świadomie — lista domen jest jedyną bramką
+        chroniącą wiązanie kont uprzywilejowanych, więc nie chcemy w niej
+        reguł, które łatwo napisać szerzej, niż się zamierzało.
+        """
+        domains = _trusted_email_domains()
+        if not domains:
+            return False
+        _, _, domain = (email or "").rpartition("@")
+        return bool(domain) and domain.lower() in domains
+
     @classmethod
     def _normalized(cls, claims):
         """Zwróć claimy z kanonicznym ``email`` + anotacją zaufania i ``iss``.
@@ -187,20 +213,33 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
 
         * ``email`` — kanoniczny adres (patrz ``_resolve_email_with_source``),
         * ``email_verified`` — znormalizowany bool z payloadu/userinfo,
-        * ``_bpp_email_trusted`` — czy adresowi wolno ufać przy fail-closed:
+        * ``_bpp_email_domain_trusted`` — adres pochodzi z właściwego claimu
+          (nie z fallbacku ``preferred_username``), a jego domena jest na liście
+          ``OIDC_TRUSTED_EMAIL_DOMAINS``. Zaufanie płynie wtedy z katalogu
+          instytucji, nie z ``email_verified``,
+        * ``_bpp_email_trusted`` — czy adresowi wolno ufać przy fail-closed.
+          Prawda, gdy zachodzi zaufanie po domenie ALBO (reguła historyczna)
           ``email_verified is True`` ORAZ adres pochodzi z właściwego claimu
-          (nie z fallbacku ``preferred_username``) ORAZ równa się poświadczonemu
-          claimowi ``email`` (``email_verified`` dotyczy tego właśnie claimu),
+          ORAZ równa się poświadczonemu claimowi ``email``.
+
+          Reguła historyczna sama w sobie jest niespełnialna w realmie, dla
+          którego ustawiono mail-first (``a2124bf34``): wymaga równości adresu
+          instytucjonalnego (``mail``) z prywatnym (``email``). Dlatego
+          instalacje takie jak UAFM muszą wskazać domeny jawnie,
         * ``iss`` — issuer bez końcowego ``/`` (do dopasowania po ``(iss, sub)``).
         """
         email, from_fallback = cls._resolve_email_with_source(claims)
         verified = bool(claims.get("email_verified") is True)
         payload_email = (claims.get("email") or "").lower()
-        trusted = verified and not from_fallback and email.lower() == payload_email
+        domain_trusted = not from_fallback and cls._domain_trusted(email)
+        trusted = domain_trusted or (
+            verified and not from_fallback and email.lower() == payload_email
+        )
         iss = (claims.get("iss") or "").rstrip("/")
         out = dict(claims)
         out["email"] = email
         out["email_verified"] = verified
+        out["_bpp_email_domain_trusted"] = domain_trusted
         out["_bpp_email_trusted"] = trusted
         out["iss"] = iss
         return out
@@ -439,7 +478,8 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         adresie może zostać JEDNORAZOWO związane z ``sub`` — ale tylko gdy jest
         „czysto-OIDC" i niskiego ryzyka:
 
-        * ``_bpp_email_trusted`` (email_verified + zgodny adres),
+        * ``_bpp_email_trusted`` (email_verified + zgodny adres ALBO zaufana
+          domena instytucjonalna),
         * dokładnie jedno konto z tym adresem,
         * bez ``is_staff``/``is_superuser``, aktywne,
         * bez używalnego hasła lokalnego (logowanie tylko przez OIDC),
@@ -449,6 +489,19 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         Każdy z tych warunków chroni przed przejęciem konta o realnych
         uprawnieniach. Zwraca związane konto albo ``None`` (→ normalny tor
         create_user / fail-closed). Domyślnie wyłączone.
+
+        **Tryb uprzywilejowany** (``OIDC_GRACE_BIND_PRIVILEGED``): powyższe
+        warunki „niskiego ryzyka" ustępują, gdy adres jest zaufany PO DOMENIE
+        (``_bpp_email_domain_trusted``) — wtedy wolno związać także konto
+        ``is_staff``/superusera, z grupami, uprawnieniami, tokenem PBN i
+        hasłem lokalnym. Rolę zabezpieczenia przejmuje wtedy w całości lista
+        ``OIDC_TRUSTED_EMAIL_DOMAINS`` plus założenie, że użytkownik nie może
+        samodzielnie zmienić sobie adresu w katalogu instytucji. Bez listy
+        domen flag jest no-opem. Zostaje wymóg pojedynczego konta z danym
+        adresem, aktywności oraz braku tożsamości W TYM SAMYM realmie — konto
+        związane już z innym ``sub`` tego issuera nie da się „przejąć",
+        natomiast powiązanie z innego realmu nie przeszkadza (świadomie: pod
+        wiele realmów można dołożyć kolejne powiązanie, tak jak w profilu).
         """
         if not getattr(settings, "OIDC_GRACE_BIND_ENABLED", False):
             return None
@@ -463,16 +516,25 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         if qs.count() != 1:
             return None
         user = qs.first()
-        eligible = (
-            not user.is_staff
-            and not user.is_superuser
-            and user.is_active
-            and not user.has_usable_password()
-            and not user.groups.exists()
-            and not user.user_permissions.exists()
-            and not (user.pbn_token or "")
-            and not user.oidc_identities.exists()
-        )
+        privileged = getattr(
+            settings, "OIDC_GRACE_BIND_PRIVILEGED", False
+        ) and claims.get("_bpp_email_domain_trusted")
+        if privileged:
+            eligible = (
+                user.is_active
+                and not user.oidc_identities.filter(issuer=issuer).exists()
+            )
+        else:
+            eligible = (
+                not user.is_staff
+                and not user.is_superuser
+                and user.is_active
+                and not user.has_usable_password()
+                and not user.groups.exists()
+                and not user.user_permissions.exists()
+                and not (user.pbn_token or "")
+                and not user.oidc_identities.exists()
+            )
         if not eligible:
             return None
         try:

@@ -446,3 +446,103 @@ def test_patent_date_only_year_left_unset():
     pub = p.fetch(bibtex)
     assert pub is not None
     assert pub.filing_date is None
+
+
+# --- wielkosc liter w nazwach pol (eksport z Web of Science) ---
+
+# Nazwy pol w BibTeX sa case-insensitive (spec), a Web of Science i Scopus
+# eksportuja je kapitalizowane: Author/Title/Journal/Year. bibtexparser 2.x
+# zachowuje oryginalna wielkosc liter w fields_dict, wiec bez normalizacji
+# _get_field(fields, "title") nie widzialo NICZEGO: fetch() zwracal None
+# ("dostawca nic nie zwrocil"), a lista rekordow pokazywala pusty tytul.
+# Ponizsze rekordy to verbatim eksport z WOS zgloszony przez uzytkownika.
+
+WOS_ARTICLE = (
+    "@article{ WOS:000448237400001, Author = {Nowak, Jacek}, Title = "
+    "{Human major histocompatibility complex (MHC)-region gene and "
+    "haplotype polymorphisms in non-Hodgkin's lymphoma}, Journal = "
+    "{ONCOLOGY IN CLINICAL PRACTICE}, Year = {2008}, Volume = {4}, "
+    "Number = {D}, Pages = {D1-D28}, ISSN = {2450-1654}, EISSN = "
+    "{2450-6478}, ResearcherID-Numbers = {Nowak, Jacek/X-3477-2018}, "
+    "Unique-ID = {WOS:000448237400001}, }"
+)
+
+WOS_ARTICLE_MANY_AUTHORS = (
+    "@article{ WOS:000258575800005, Author = {Nowak, Jacek and "
+    "Mika-Witkowska, Renata and Polak, Malgorzata and Zajko, Malgorzata "
+    "and Rogatko-Koros, Marta and Graczyk-Pol, Elzbieta and Stepkowski, "
+    "Tomasz and Lange, Andrzej}, Title = {Road-like pattern of "
+    "HLA-ABDR-based genetic distances between populations}, Journal = "
+    "{CENTRAL EUROPEAN JOURNAL OF IMMUNOLOGY}, Year = {2008}, Volume = "
+    "{33}, Number = {3}, Pages = {114-119}, ISSN = {1426-3912}, EISSN = "
+    "{1644-4124}, Unique-ID = {WOS:000258575800005}, }"
+)
+
+
+def test_fetch_wos_capitalized_field_names():
+    """Eksport z WOS (Author/Title/Journal/Year) musi sie zaciagnac."""
+    p = BibTeXProvider()
+    pub = p.fetch(WOS_ARTICLE)
+    assert pub is not None
+    assert pub.title == (
+        "Human major histocompatibility complex (MHC)-region gene and "
+        "haplotype polymorphisms in non-Hodgkin's lymphoma"
+    )
+    assert pub.year == 2008
+    assert pub.source_title == "ONCOLOGY IN CLINICAL PRACTICE"
+    assert pub.volume == "4"
+    assert pub.issue == "D"
+    assert pub.pages == "D1-D28"
+    assert pub.issn == "2450-1654"
+    assert pub.authors == [{"family": "Nowak", "given": "Jacek"}]
+    assert pub.publication_type == "journal-article"
+
+
+def test_fetch_wos_all_authors_parsed():
+    """Osmiu autorow z WOS trafia na liste, nie tylko pierwszy."""
+    p = BibTeXProvider()
+    pub = p.fetch(WOS_ARTICLE_MANY_AUTHORS)
+    assert pub is not None
+    assert len(pub.authors) == 8
+    assert pub.authors[0] == {"family": "Nowak", "given": "Jacek"}
+    assert pub.authors[-1] == {"family": "Lange", "given": "Andrzej"}
+
+
+def test_split_input_wos_shows_titles():
+    """Lista rekordow do zaimportowania pokazuje tytuly, nie puste pola."""
+    p = BibTeXProvider()
+    records = p.split_input(WOS_ARTICLE + "\n\n" + WOS_ARTICLE_MANY_AUTHORS)
+    assert len(records) == 2
+    assert all(r.ok for r in records)
+    assert records[0].title.startswith("Human major histocompatibility")
+    assert records[1].title.startswith("Road-like pattern")
+
+
+def test_split_input_raw_stays_reparsable():
+    """``raw`` z split_input() trafia potem do fetch() — musi zostac
+    surowym, parsowalnym BibTeX-em (normalizacja nazw pol dziala na
+    modelu, nie na tekscie zrodlowym)."""
+    p = BibTeXProvider()
+    records = p.split_input(WOS_ARTICLE)
+    assert "Title = {" in records[0].raw
+    pub = p.fetch(records[0].raw)
+    assert pub is not None
+    assert pub.title.startswith("Human major histocompatibility")
+
+
+def test_fetch_uppercase_field_names():
+    """Skrajny przypadek: pola KRZYCZANE w calosci (spec dopuszcza)."""
+    bibtex = """
+@ARTICLE{screaming2024,
+  TITLE = {Loud Title},
+  AUTHOR = {Kowalski, Jan},
+  JOURNAL = {Journal of Caps},
+  YEAR = {2024},
+}
+"""
+    p = BibTeXProvider()
+    pub = p.fetch(bibtex)
+    assert pub is not None
+    assert pub.title == "Loud Title"
+    assert pub.year == 2024
+    assert pub.source_title == "Journal of Caps"

@@ -28,7 +28,7 @@ import re
 from bpp.models.projekt import Instytucja_Finansujaca
 from bpp.util import ror
 from cerif_export.cerif import wspolne
-from cerif_export.cerif.wspolne import dodaj, dodaj_kontener, element, tekst
+from cerif_export.cerif.wspolne import dodaj, element, tekst
 
 TYP_ID_ROR = "https://w3id.org/cerif/vocab/IdentifierTypes#RORID"
 TYP_ID_PBN_INSTYTUCJA = "https://pbn.nauka.gov.pl/core/#/institution"
@@ -108,27 +108,43 @@ def dodaj_adresy(el, jednostka):
     dodaj(el, "ElectronicAddress", tekst(getattr(jednostka, "www", None)))
 
 
-def _nadrzedna(jednostka):
+def _nadrzedna(jednostka, ctx):
     """Jednostka nadrzędna: rodzic w drzewie MPTT, a w korzeniu — uczelnia.
 
     Bez podpięcia korzeni pod uczelnię drzewo organizacyjne w OpenAIRE
     rozpadłoby się na niepowiązane wydziały.
+
+    Rodzic **poza eksportem** (``widoczna=False``, ``nie_eksportuj_przez_api``
+    albo cudzy tenant) jest traktowany jak jego brak: schodzimy na uczelnię,
+    zamiast zostawiać jednostkę bez ``PartOf``. Oderwana jednostka to ta sama
+    fragmentacja drzewa, przed którą broni akapit wyżej, a podpięcie pod
+    uczelnię jest prawdziwe (``Jednostka.uczelnia`` to FK) i nie zdradza
+    o ukrytym rodzicu niczego — nawet tego, że istnieje.
+
+    Rozstrzygnięcie widoczności musi być tutaj, a nie w miejscu osadzenia:
+    inaczej nie da się odróżnić „rodzica nie ma" od „rodzica nie wolno
+    pokazać", a to drugie wymaga zejścia o poziom wyżej.
     """
-    if getattr(jednostka, "parent_id", None):
-        return jednostka.parent
+    rodzic = jednostka.parent if getattr(jednostka, "parent_id", None) else None
+    if wspolne.jednostka_ujawnialna(rodzic, ctx):
+        return rodzic
     if getattr(jednostka, "uczelnia_id", None):
         return jednostka.uczelnia
     return None
 
 
 def dodaj_part_of(el, jednostka, ctx):
-    """Dopisz ``PartOf`` wskazujące na jednostkę nadrzędną."""
-    nadrzedna = _nadrzedna(jednostka)
-    if nadrzedna is None:
-        return None
-    part_of = dodaj_kontener(el, "PartOf")
-    wspolne.osadz_orgunit(part_of, nadrzedna, ctx)
-    return part_of
+    """Dopisz ``PartOf`` wskazujące na jednostkę nadrzędną.
+
+    Kontener powstaje **wyłącznie** razem z treścią — tym zajmuje się
+    :func:`cerif_export.cerif.wspolne.dodaj_link_do_orgunit`, bo ``PartOf``
+    ma tę samą sekwencję ``DisplayName? | OrgUnit`` co ``Funding/Funder``
+    i ``Project/Funded/By``. Wcześniej ta funkcja tworzyła ``PartOf``
+    samodzielnie, przed sprawdzeniem widoczności, i przy rodzicu spoza
+    eksportu zostawiała pusty ``<PartOf/>`` — element niepoprawny wobec XSD,
+    na którym walidator euroCRIS przerywał harvest całego setu.
+    """
+    return wspolne.dodaj_link_do_orgunit(el, "PartOf", _nadrzedna(jednostka, ctx), ctx)
 
 
 def serializuj_grantodawce(instytucja, ctx):

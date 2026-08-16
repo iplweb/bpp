@@ -122,3 +122,23 @@ def test_uczelnia_deklaracja_dostepnosci_url(uczelnia, client):
 
     res = client.get("/", follow=True)
     assert b"https://onet.pl" in res.content
+
+
+@pytest.mark.django_db
+def test_uczelnia_deklaracja_dostepnosci_meta_adres_dokladny(uczelnia, client):
+    # Metadana z adresem deklaracji musi zawierać sam adres -- bez
+    # doklejonych znaków. Testy powyżej sprawdzają `adres in content`,
+    # a przy takiej asercji śmieć doklejony do adresu przechodzi
+    # niezauważony: adres pozostaje podciągiem. Stąd asercja na pełny
+    # atrybut, wraz z zamykającym cudzysłowem.
+    uczelnia.pokazuj_deklaracje_dostepnosci = (
+        Uczelnia.DeklaracjaDostepnosciChoices.TEKST
+    )
+    uczelnia.deklaracja_dostepnosci_tekst = "<h1>TEST</h1>"
+    uczelnia.save()
+
+    url = reverse("bpp:browse_deklaracja_dostepnosci")
+
+    res = client.get("/", follow=True)
+
+    assert f'content="{url}"'.encode() in res.content

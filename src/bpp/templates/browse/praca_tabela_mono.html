@@ -1,4 +1,4 @@
-{% load prace user_in_group dspace_links %}
+{% load prace user_in_group dspace_links static %}
 {# Streszczenia pobierane RAZ: szablon odwołuje się do nich w kilku #}
 {# miejscach (warunki, pętla, licznik języków). Widok dodatkowo robi #}
 {# prefetch, więc całość to jedno zapytanie na stronę. #}
@@ -14,11 +14,14 @@
     <!-- Title Section - Most prominent -->
     <div class="praca-mono__title-section">
         <h2 class="praca-mono__title">
+            {# WCAG 3.1.2: znacznik jezyka TYLKO na tytule oryginalnym. #}
+            {# Przeklad nie ma w modelu pola z jezykiem, wiec dziedziczy #}
+            {# lang="pl" ze strony — patrz spec 2026-08-06. #}
             {% if praca.tytul %}
-                {{ praca.tytul_oryginalny|safe_tytul }}
+                {{ praca.tytul_oryginalny|safe_tytul|oznacz_jezyk:praca.jezyk }}
                 <span class="praca-mono__title-translation">({{ praca.tytul|safe_tytul }})</span>
             {% else %}
-                {{ praca.tytul_oryginalny|znak_na_koncu:"."|safe_tytul }}
+                {{ praca.tytul_oryginalny|znak_na_koncu:"."|safe_tytul|oznacz_jezyk:praca.jezyk }}
             {% endif %}
             {% if praca.charakter_formalny.charakter_ogolny != 'roz' %}
                 <span class="praca-mono__edition-mark">{{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}</span>
@@ -149,7 +152,10 @@
                                     <a href="{% url "bpp:browse_praca_by_slug" praca.wydawnictwo_nadrzedne.slug %}">Zobacz wydawnictwo nadrzędne</a>
                                 {% endif %}
                             {% elif praca.wydawnictwo_nadrzedne_w_pbn %}
-                                W: <a href="{{ praca.wydawnictwo_nadrzedne_w_pbn.link_do_pbn }}" target="_blank" title="Link do PBN">
+                                {# Jak wyżej: link do PBN wymaga uczelni z kontekstu. Bez niej #}
+                                {# pokazujemy sam opis wydawnictwa nadrzędnego, bez linku. #}
+                                {% link_do_pbn praca.wydawnictwo_nadrzedne_w_pbn as pbn_url %}
+                                    W: {% if pbn_url %}<a href="{{ pbn_url }}" target="_blank" title="Link do PBN">{% endif %}
                                     {{ praca.wydawnictwo_nadrzedne_w_pbn.title }}
                                     {% if praca.wydawnictwo_nadrzedne_w_pbn.autorzy %}
                                         /
@@ -160,8 +166,7 @@
                                             {% if not forloop.last %}, {% endif %}
                                         {% endfor %}
                                     {% endif %}
-                                    <span class="fi-link-external praca-mono__external-link-icon"></span>
-                                </a>
+                                    {% if pbn_url %}<span class="fi-link-external praca-mono__external-link-icon"></span></a>{% endif %}
                             {% endif %}
                             {{ praca.informacje|default:""|znak_na_koncu:", "|safe }}
                             {{ praca.szczegoly|default:""|safe }}
@@ -287,11 +292,16 @@
                                             title="Kopiuj identyfikator">
                                         <i class="fi-clipboard"></i>
                                     </button>
-                                    <button class="button open-button" type="button"
-                                            data-open-url="{{ praca.link_do_pbn }}" data-target="_blank"
-                                            title="Otwórz w PBN">
-                                        <i class="fi-arrow-right"></i> Otwórz
-                                    </button>
+                                    {# Link do PBN buduje się z pbn_api_root uczelni oglądającego; #}
+                                    {# w multi-hosted bez tego degradował do napisu "None". #}
+                                    {% link_do_pbn praca as pbn_url %}
+                                    {% if pbn_url %}
+                                        <button class="button open-button" type="button"
+                                                data-open-url="{{ pbn_url }}" data-target="_blank"
+                                                title="Otwórz w PBN">
+                                            <i class="fi-arrow-right"></i> Otwórz
+                                        </button>
+                                    {% endif %}
                                 </div>
                             </div>
                         {% endif %}
@@ -971,6 +981,9 @@
 </div>
 
 <!-- JavaScript for interactive elements -->
+{# Modul podswietlania — wydzielony z inline'owego JS ponizej, zeby dalo #}
+{# sie go przetestowac jednostkowo (tests/js/). #}
+<script src="{% static 'bpp/js/related-records-highlight.js' %}"></script>
 <script type="text/javascript">
     (function ($) {
         $(document).ready(function () {
@@ -1167,8 +1180,17 @@
                         updateCount(totalCount, totalCount);
                     } else {
                         // Filter records
+                        //
+                        // Filtrowanie po tekscie BEZ znacznikow HTML — opis
+                        // niesie <b>/<i> oraz <span lang> (WCAG 3.1.2), a
+                        // dopasowanie na surowym record.text.indexOf() zna-
+                        // lazloby fraze "span"/"lang" w KAZDYM rekordzie z
+                        // tytulem obcojezycznym (falszywie pozytywne trafie-
+                        // nie, bez zadnego podswietlenia na liscie). Modul:
+                        // related-records-highlight.js (bppStripTags).
                         var filtered = allRecords.filter(function(record) {
-                            return record.text.toLowerCase().indexOf(searchTerm) !== -1;
+                            var haystack = window.bppStripTags(record.text).toLowerCase();
+                            return haystack.indexOf(searchTerm) !== -1;
                         });
 
                         // Rebuild list with filtered records and highlighting
@@ -1185,11 +1207,12 @@
                     records.forEach(function(record) {
                         var text = record.text;
 
-                        // Add simple highlighting if search term provided
+                        // Podswietlanie omijajace znaczniki HTML — opis
+                        // niesie <b>/<i> oraz <span lang> (WCAG 3.1.2),
+                        // a regex na calym stringu wstawialby <mark>
+                        // w srodek atrybutu. Modul: related-records-highlight.js
                         if (searchTerm) {
-                            var escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                            var regex = new RegExp('(' + escapedTerm + ')', 'gi');
-                            text = text.replace(regex, '<mark style="background-color: #fff59d; padding: 2px;">$1</mark>');
+                            text = window.bppHighlightOutsideTags(text, searchTerm);
                         }
 
                         var li = $('<li style="margin-bottom: 8px;"></li>');

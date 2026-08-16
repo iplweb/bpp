@@ -268,10 +268,15 @@ $(NODE_MODULES): package.json yarn.lock
 	export PUPPETEER_SKIP_CHROME_DOWNLOAD=true PUPPETEER_SKIP_CHROME_HEADLESS_SHELL_DOWNLOAD=true && $(YARN_CMD) install  --no-progress --emoji false -s
 	touch $(NODE_MODULES)
 
+# Sentinel kompletnego builda assetow. Nazwa MUSI byc zgodna ze stala
+# SENTINEL_BUILDA w Gruntfile.js — zadanie `stampBuild` na koncu `grunt build`
+# odswieza go samo, zeby recznie odpalony `npx grunt build` tez sie liczyl.
 CSS_STAMP := .grunt-build-stamp
 
 $(CSS_STAMP): $(SCSS_SOURCES) $(JS_SOURCES) $(NODE_MODULES)
 	grunt build
+# Redundantne, odkad `grunt build` sam stempluje — zostawione jako
+# zabezpieczenie, gdyby ktos wywalil `stampBuild` z Gruntfile'a.
 	@touch $(CSS_STAMP)
 
 $(MO_FILES): $(PO_FILES)
@@ -903,7 +908,7 @@ loc: clean ## Pokaż statystyki liczby linii (pygount)
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202608.1399
+DOCKER_VERSION=202608.1400
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)
