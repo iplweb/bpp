@@ -55,3 +55,42 @@ def test_nagrobki_nie_wyciekaja_miedzy_uczelniami(uczelnia, druga_uczelnia):
     assert not nagrobki.filter(pk__in=obce.values("pk")).exists(), (
         "nagrobki uczelni A zawierają jednostkę uczelni B — wyciek tenanta"
     )
+
+
+@pytest.mark.django_db
+def test_konferencja_bez_widocznych_publikacji_to_nagrobek(
+    uczelnia, jednostka, typ_autor
+):
+    """Provider pochodny: konferencja znika, gdy znikną jej publikacje.
+
+    Widoczność konferencji jest wyprowadzona z publikacji. Gdy jedyna
+    publikacja wskazująca konferencję przestaje być widoczna, konferencja
+    też wypada z feedu — i musi dostać nagrobek, a nie zniknąć po cichu.
+    """
+    from model_bakery import baker
+
+    from bpp.models import Konferencja, Wydawnictwo_Ciagle
+    from cerif_export import const
+
+    konferencja = baker.make(Konferencja)
+    praca = baker.make(Wydawnictwo_Ciagle, konferencja=konferencja)
+    # Nazwisko/imiona jawnie: baker generuje 500-znakowe losowe łańcuchy,
+    # a ``dodaj_autora`` skleja z nich ``zapisany_jako`` (max 512 znaków).
+    praca.dodaj_autora(
+        baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan"), jednostka
+    )
+
+    provider = rejestr_providerow()[const.SET_EVENTS]
+    assert (
+        not provider.nagrobki(uczelnia, Konferencja).filter(pk=konferencja.pk).exists()
+    ), "konferencja z widoczną publikacją nie jest nagrobkiem"
+
+    praca.nie_eksportuj_przez_api = True
+    praca.save()
+
+    assert (
+        provider.nagrobki(uczelnia, Konferencja).filter(pk=konferencja.pk).exists()
+    ), (
+        "konferencja straciła jedyną widoczną publikację, a nie dostała "
+        "nagrobka — znika z feedu po cichu"
+    )

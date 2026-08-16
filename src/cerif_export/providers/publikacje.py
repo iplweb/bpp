@@ -231,6 +231,24 @@ def widoczne_konferencje(uczelnia):
     return Konferencja.objects.filter(warunek)
 
 
+def nalezace_konferencje(uczelnia):
+    """Konferencje wskazywane przez publikacje NALEŻĄCE do tej uczelni.
+
+    Odpowiednik ``widoczne_konferencje``, ale wyprowadzony z przynależności,
+    nie z widoczności. Różnica tych dwóch zbiorów to właśnie konferencje,
+    które wypadły z feedu — i o nie chodzi w nagrobkach.
+    """
+    wymagaj_uczelni(uczelnia)
+    warunek = Q()
+    for model in MODELE_WYDAWNICTW:
+        warunek |= Q(
+            pk__in=naleza_wydawnictwa(model, uczelnia)
+            .filter(konferencja__isnull=False)
+            .values("konferencja_id")
+        )
+    return Konferencja.objects.filter(warunek)
+
+
 # -- typ COAR prac dyplomowych ------------------------------------------
 
 
