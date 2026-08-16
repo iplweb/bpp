@@ -37,6 +37,7 @@ from cerif_export.kontekst import KontekstSerializacji
 from cerif_export.oai import czasowniki
 from cerif_export.providers import provider_dla_modelu, provider_dla_setu
 from cerif_export.slowniki import typy_finansowania
+from cerif_export.tests.pomocnicze import strona_zywych
 
 NAMESPACE = "cerif.example.org"
 BASE_URL = "https://cerif.example.org/cerif-oai/"
@@ -155,7 +156,7 @@ def test_sety_projektow_i_finansowania_maja_wlasne_providery():
 @pytest.mark.django_db
 def test_projekt_wychodzi_w_secie(uczelnia, projekt):
     provider = provider_dla_setu(const.SET_PROJECTS)
-    obiekty, _ = provider.strona(uczelnia, rozmiar=100)
+    obiekty, _ = strona_zywych(provider, uczelnia, rozmiar=100)
     assert list(obiekty) == [projekt]
 
 
@@ -172,7 +173,7 @@ def test_projekt_cudzej_uczelni_nie_wychodzi(uczelnia, projekt):
     baker.make(Projekt, tytul="Cudzy projekt", jednostka=obca_jednostka)
 
     provider = provider_dla_setu(const.SET_PROJECTS)
-    obiekty, _ = provider.strona(uczelnia, rozmiar=100)
+    obiekty, _ = strona_zywych(provider, uczelnia, rozmiar=100)
     assert list(obiekty) == [projekt]
 
 
@@ -192,7 +193,7 @@ def test_finansowanie_cudzej_uczelni_nie_wychodzi(uczelnia, projekt, grantodawca
     dodaj_finansowanie(obcy_projekt, grantodawca)
 
     provider = provider_dla_setu(const.SET_FUNDING)
-    obiekty, _ = provider.strona(uczelnia, rozmiar=100)
+    obiekty, _ = strona_zywych(provider, uczelnia, rozmiar=100)
     assert list(obiekty) == [nasze]
 
 
@@ -549,7 +550,7 @@ def test_projekt_bez_finansowania_serializuje_sie(uczelnia, projekt):
     assert el.find(q("Title")) is not None
 
     provider = provider_dla_setu(const.SET_PROJECTS)
-    obiekty, _ = provider.strona(uczelnia, rozmiar=100)
+    obiekty, _ = strona_zywych(provider, uczelnia, rozmiar=100)
     assert projekt in obiekty
 
 
@@ -608,7 +609,7 @@ def test_serializacja_strony_nie_rosnie_z_liczba_projektow(
             )
 
         with CaptureQueriesContext(connection) as licznik:
-            obiekty, _ = provider.strona(uczelnia, rozmiar=100)
+            obiekty, _ = strona_zywych(provider, uczelnia, rozmiar=100)
             obiekty = list(obiekty)
             kontekst = KontekstSerializacji(
                 namespace=NAMESPACE,
