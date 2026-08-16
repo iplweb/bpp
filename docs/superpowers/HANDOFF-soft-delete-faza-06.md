@@ -10,7 +10,8 @@
 | | |
 |---|---|
 | Stan fazy 05a | gałąź `feat/soft-delete-05`, PR do `feat/soft-delete-04` (stacked) |
-| Punkt startowy fazy 06 | `feat/soft-delete-05` **albo** `feat/soft-delete-05b` — patrz niżej |
+| Punkt startowy fazy 06 | **`feat/soft-delete-05b`** (decyzja właściciela 2026-08-16) |
+| Plan fazy 06 | [`plans/2026-06-04-soft-delete-06-softdeletelog.md`](plans/2026-06-04-soft-delete-06-softdeletelog.md), 914 linii — **istnieje, nie trzeba brainstormingu ani specu** |
 | Migracje fazy 05a | `pbn_export_queue/0011` (pole `operacja`), `pbn_api/0080` (`SentData.withdrawn_at`), `zglos_publikacje/0028` (state-only, dług fazy 04) |
 | **Zakres rozdzielony** | nagrobki OAI-PMH/CERIF/REST **wyszły do fazy 05b** (decyzja właściciela 2026-08-10), ZROBIONE — patrz §5 |
 
@@ -23,20 +24,23 @@
 #767  feat/soft-delete-05b   -> feat/soft-delete-05      (faza 05b, nagrobki)
 ```
 
-**Decyzja do podjęcia przed startem fazy 06:** od czego odbić gałąź.
-Faza 06 (`SoftDeleteLog` + receivery sygnałów) **nie zależy** od fazy 05b —
-nagrobki liczą się z dopełnienia ekspozycji, nie z logu. Więc:
+**Baza fazy 06: `feat/soft-delete-05b`** — rozstrzygnięte, stos rośnie
+liniowo. (Technicznie faza 06 **nie zależy** od 05b: nagrobki liczą się
+z dopełnienia ekspozycji, nie z `SoftDeleteLog`, a pliki są rozłączne —
+06 rusza `bpp/models/soft_delete.py` i sygnały, 05b ruszała `cerif_export/`
++ `api_v1/`. Odbicie od 05 też by działało; wybrano liniowość.)
 
-- odbicie od `feat/soft-delete-05` — fazy 06 i 05b są równoległe,
-  konflikt przy scalaniu praktycznie żaden (rozłączne pliki: 06 rusza
-  `bpp/models/soft_delete.py` i sygnały, 05b ruszała `cerif_export/`
-  + `api_v1/`);
-- odbicie od `feat/soft-delete-05b` — stos rośnie liniowo, prościej
-  w rozumieniu, ale faza 06 czeka wtedy na review 05b.
+```bash
+git checkout feat/soft-delete-05b && git checkout -b feat/soft-delete-06
+```
 
-⚠️ **PR #767 nie był jeszcze recenzowany ani scalony.** Jeśli zadaniem
-sesji jest jego dopilnowanie (review, poprawki, merge), to ten handoff jest
-złym punktem startu — zacznij od samego PR-a (`gh pr view 767`) i od §5.
+⚠️ **PR #767 nie był jeszcze recenzowany ani scalony**, więc faza 06
+dziedziczy jego commity. Gdyby review wymusiło zmiany w 05b, trzeba będzie
+je przenieść (rebase) do gałęzi 06.
+
+⚠️ Jeśli zadaniem sesji jest **dopilnowanie samego PR #767** (review,
+poprawki, merge), a nie start fazy 06 — ten handoff jest złym punktem
+startu. Zacznij od `gh pr view 767` i od §5.
 
 ⚠️ **Faza 05 była w planie JEDNĄ fazą o dwóch niezależnych podsystemach.**
 Wycofanie z PBN miało drobiazgowy plan (1286 linii); nagrobki miały baner
