@@ -17,6 +17,7 @@ from bpp.models.abstract import (
     ModelZOplataZaPublikacje,
     ModelZRokiem,
 )
+from bpp.models.soft_delete import BppPkPrzedHardDeleteMixin
 from bpp.models.wydawca import Wydawca
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from pbn_api.models.publication import Publication as PBN_Publication
@@ -58,7 +59,16 @@ def zgloszenie_publikacji_upload_to(instance, filename):
 
 
 class Zgloszenie_Publikacji(
-    ModelZRokiem, DwaTytuly, ModelZDOI, ModelZOplataZaPublikacje, SoftDeleteModel
+    # BppPkPrzedHardDeleteMixin: ten model jest soft-delete NIEZALEŻNIE od
+    # faz 01-04 (używa pakietu od dawna, na własne potrzeby), więc receivery
+    # fazy 06 obejmują go razem z resztą — a wtedy jego hard_delete()
+    # potrzebuje zachowanego pk. Patrz docstring mixinu.
+    BppPkPrzedHardDeleteMixin,
+    ModelZRokiem,
+    DwaTytuly,
+    ModelZDOI,
+    ModelZOplataZaPublikacje,
+    SoftDeleteModel,
 ):
     email = models.EmailField("E-mail zgłaszającego")
 
