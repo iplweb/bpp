@@ -132,29 +132,51 @@ per-aplikacja. Szukanie dziedziczących tylko w `bpp/` nie wystarcza.
 
 ---
 
-## 5. Faza 05b — nagrobki (przed fazą 07, nie przed 06)
+## 5. Faza 05b — nagrobki: ZROBIONA (2026-08-16)
 
-Wyszła z fazy 05 decyzją właściciela 2026-08-10. **Nie ma jeszcze specu ani
-planu** — potrzebuje własnego cyklu brainstorming → spec → plan → PR.
+Wyszła z fazy 05 decyzją właściciela 2026-08-10; zaimplementowana na gałęzi
+`feat/soft-delete-05b`.
 
-Punkt startowy rozpoznany:
+- Spec: [`specs/2026-08-15-soft-delete-nagrobki-design.md`](specs/2026-08-15-soft-delete-nagrobki-design.md)
+- Plan: [`plans/2026-08-16-soft-delete-05b-nagrobki.md`](plans/2026-08-16-soft-delete-05b-nagrobki.md)
 
-- `src/cerif_export/const.py:115` → **`DELETED_RECORD = "no"`**. To nie jest
-  „brak funkcji", to **obietnica w `Identify`**: harvester ma prawo nie pytać
-  przyrostowo o usunięcia. Zmiana na `persistent`/`transient` to zmiana
-  kontraktu, nie dopisanie atrybutu.
-- Emisja nagłówka: `oai/czasowniki.py` (`_naglowek()`), `Identify` w `:198`.
-- **Architektura providerów jest gotowa**: `ProviderEncji.strona()`
-  (`providers/base.py`) stronicuje keysetem po
-  `(COALESCE(ostatnio_zmieniony, EPOKA), pk)`, a soft-delete bumpuje
-  `ostatnio_zmieniony`. Husk wpadłby więc **naturalnie na właściwe miejsce
-  w kursorze**. Brakuje wyłącznie poszerzenia `queryset()` o kosz i flagi
-  „to nagrobek" na obiekcie.
+Co weszło:
+
+- `ProviderEncji.przynaleznosc(uczelnia, model)` — drugi człon kontraktu:
+  atrybucja tenanta BEZ reguł ekspozycji. `nagrobki()` to różnica
+  `przynaleznosc − queryset`. Rozszczepienie jest konieczne, bo dopełnienie
+  całej widoczności wystawiałoby w multi-hosted rekordy cudzych uczelni
+  (`widoczne_jednostki()` filtruje `uczelnia=` wprost).
+- `strona()` paginuje **nadzbiór** i zwraca pary `(obiekt, czy_nagrobek)` —
+  jeden strumień, jeden kursor keyset. **To zmiana kształtu zwrotki**:
+  wszyscy wołający (OAI + suity testowe) zostali dostosowani, testy poza
+  `test_nagrobki.py` używają helpera `tests/pomocnicze.py::strona_zywych`.
+- `status="deleted"` w `ListRecords`, `ListIdentifiers` i `GetRecord`
+  (bez `<metadata>`); `GetRecord` na rekordzie usuniętym zwraca nagrobek,
+  a `idDoesNotExist` zostaje dla identyfikatorów spoza tenanta.
+- `DELETED_RECORD = "transient"` — obietnica w `Identify` jest teraz prawdziwa.
+- `/api/v1/usuniete/` — identyfikator + data, nigdy treść. Zakres **węższy**
+  niż OAI (sam kosz), decyzja D5 specu.
+- Faza **nie dodaje migracji** (dlatego ostrzeżenie o `eksport_cerif_osoby`
+  poszło do `docs/deweloper/eurocris-co-jeszcze.md`, a nie w `help_text`).
+
+Co zostaje otwarte dla faz dalszych:
+
+- **`/api/v1/usuniete/` nie stronicuje** — zwraca cały kosz w jednej
+  odpowiedzi (`pagination_class = None`). Przy dużym koszu to problem;
+  łagodzi go filtr `usuniety_od_after`/`_before`, ale klient nie jest do
+  niego zmuszony. Kandydat na osobną poprawkę.
+- Modele soft-delete to nadal publikacje (faza 02) + `Autor` (faza 04).
+  Słowniki (`Zrodlo`, `Konferencja`, `Projekt`, `Jednostka`) — **nie**;
+  ich nagrobki biorą się z dopełnienia ekspozycji, nie z kosza, więc
+  twarde skasowanie takiego wiersza nadal znika po cichu.
 - ⚠️ `z_datestampem()` niesie dwie zapisane blizny (`Trunc` do sekundy,
-  `tzinfo=UTC`) — obie o duplikatach na granicy strony. Nagrobki muszą iść
-  tą samą ścieżką.
-- Modele soft-delete: publikacje (faza 02) + `Autor` (faza 04). Słowniki
-  (`Zrodlo`, `Konferencja`, `Projekt`, `Jednostka`) — **nie**.
+  `tzinfo=UTC`) — obie o duplikatach na granicy strony. Nagrobki idą tą samą
+  ścieżką; pilnuje tego
+  `test_harvest_po_tokenach_nie_gubi_i_nie_dubluje_na_granicy_nagrobka`.
+- Ograniczenia świadomie poza zakresem (sekcja „Ograniczenia" specu):
+  przepięcie autorstwa do innej uczelni bez śladu w koszu nadal znika po
+  cichu; rekordy nigdy-niewidoczne też dostają nagrobek.
 
 ---
 
