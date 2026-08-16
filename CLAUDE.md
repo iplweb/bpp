@@ -535,6 +535,24 @@ Konfiguracja jest w `[tool.pytest-testcontainers-django]` w `pyproject.toml`.
   co „celuj po PID / po ścieżce worktree, nie `pkill`": komenda
   zbiorcza jest wygodna, ale na współdzielonym hoście ubija cudzą
   pracę.
+- **PUŁAPKA `REUSE`: fałszywe czerwone w testach danych referencyjnych.**
+  Reużyty kontener zachowuje bazę między przebiegami, ale słowniki
+  seedowane przez `post_migrate` (`seed_slowniki`, seed instytucji) NIE
+  są przy kolejnym uruchomieniu odtwarzane — schema jest już zmigrowana,
+  więc `post_migrate` nie leci. Tymczasem teardown `TransactionTestCase`
+  (`_fixture_teardown` → `TRUNCATE`) potrafi je w trakcie przebiegu
+  zmieść. Efekt: PIERWSZY przebieg na świeżym kontenerze przechodzi,
+  a KOLEJNE na tym samym kontenerze sypią testami sprawdzającymi
+  obecność słowników — np. `bpp/tests/test_seed_instytucji.py`,
+  `cerif_export/tests/test_mapowania.py`. Wygląda jak regresja w kodzie,
+  a jest stanem bazy.
+  - **Zanim ogłosisz regresję — powtórz BEZ `REUSE`.** Jeśli wtedy
+    przechodzi, to był stan kontenera, nie Twoja zmiana.
+  - Kontenery są nazywane PER GAŁĄŹ
+    (`bpp_iplweb-tc-{psql,redis}-<gałąź>-<hash>-master`), więc to NIE
+    jest kolizja z cudzym worktree — to carry-over między Twoimi
+    własnymi przebiegami. Reset: `docker rm -f` po tych dwóch nazwach
+    (tylko swoich — patrz UWAGA wyżej).
 - CI (`docker-compose.test.yml`) ma `PYTEST_TESTCONTAINERS_DISABLE=1` —
   usługi dostarcza tam docker-compose.
 
