@@ -56,6 +56,13 @@ class BppConfig(AppConfig):
 
             zainstaluj()
 
+        # Receivery soft-delete -> SoftDeleteLog + kolejka PBN (faza 06).
+        # Podpięte bez `sender=`, czyli obejmują KAŻDY model soft-delete —
+        # dodanie kolejnego nie wymaga dopisywania nic tutaj.
+        from bpp.receivers import soft_delete as soft_delete_receivers
+
+        soft_delete_receivers.register()
+
         # Initialize Rollbar with global hostname handler
         from bpp.rollbar_config import configure_rollbar
 

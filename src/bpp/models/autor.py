@@ -32,6 +32,7 @@ from bpp.core import zbieraj_sloty
 from bpp.models import LinkDoPBNMixin, ModelZAdnotacjami, ModelZNazwa, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID
 from bpp.models.soft_delete import (
+    BppPkPrzedHardDeleteMixin,
     BppSoftDeleteQuerySet,
     dopisz_znacznik_zmiany,
     raise_if_has_protected_children,
@@ -256,7 +257,13 @@ def _relacje_chronione_autora():
     ]
 
 
-class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID, SoftDeleteModel):
+class Autor(
+    BppPkPrzedHardDeleteMixin,
+    LinkDoPBNMixin,
+    ModelZAdnotacjami,
+    ModelZPBN_ID,
+    SoftDeleteModel,
+):
     url_do_pbn = const.LINK_PBN_DO_AUTORA
 
     imiona = models.CharField(max_length=512, db_index=True)

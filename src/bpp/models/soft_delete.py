@@ -228,7 +228,64 @@ class BppDeletedManager(DeletedManager):
         )
 
 
-class BppAutorstwoSoftDeleteMixin(SoftDeleteModel):
+#: Atrybut, pod którym ``hard_delete()`` zostawia ``pk`` na czas sygnału.
+ATRYBUT_PK_PRZED_HARD_DELETE = "_bpp_pk_przed_hard_delete"
+
+
+class BppPkPrzedHardDeleteMixin:
+    """Zapamiętuje ``pk`` przed twardym skasowaniem, dla receivera fazy 06.
+
+    ``SoftDeleteModel.hard_delete()`` woła ``Model.delete()``, a kolektor
+    Django na samym końcu zeruje ``pk`` skasowanych instancji —
+    ``post_hard_delete`` leci PO tym (pakiet, ``models.py:84-85``). Receiver
+    dostaje więc instancję z ``pk is None`` i nie ma z czego zapisać
+    ``SoftDeleteLog.object_id``.
+
+    Naiwne „zapisz ``instance.pk``" dałoby ``object_id=None``, czyli
+    ``IntegrityError`` w receiverze — a wyjątek z receivera przewróciłby
+    ``hard_delete()``. Audyt zepsułby operację, którą ma tylko obserwować.
+
+    NIE jest modelem (zwykła klasa, nie ``models.Model``) — dlatego
+    dopisanie go do baz istniejącego modelu NIE generuje migracji. Musi
+    stać PRZED ``SoftDeleteModel`` w liście baz, żeby jego ``hard_delete``
+    wygrał w MRO.
+
+    Strażnikiem kompletności jest
+    ``test_receivers.py::test_kazdy_model_soft_delete_zachowuje_pk`` —
+    nowy model soft-delete bez tego mixinu zapala się w testach, nie
+    dopiero przy pierwszym twardym skasowaniu na produkcji.
+    """
+
+    def hard_delete(self, *args, **kwargs):
+        setattr(self, ATRYBUT_PK_PRZED_HARD_DELETE, self.pk)
+        return super().hard_delete(*args, **kwargs)
+
+    hard_delete.alters_data = True
+
+
+def pk_dla_audytu(instance):
+    """``pk`` instancji, także po twardym skasowaniu (zerującym ``pk``).
+
+    Rzuca ``RuntimeError``, gdy ``pk`` nie jest znany — to znaczy, że model
+    soft-delete nie ma ``BppPkPrzedHardDeleteMixin``. Głośno, bo cichy
+    ``return`` zamieniłby audyt w atrapę dokładnie w tym przypadku, przed
+    którym ma chronić: rekord znikający fizycznie i bez śladu.
+    """
+    if instance.pk is not None:
+        return instance.pk
+
+    pk = getattr(instance, ATRYBUT_PK_PRZED_HARD_DELETE, None)
+    if pk is None:
+        raise RuntimeError(
+            f"Nie znam pk dla {instance._meta.label} — model soft-delete bez "
+            f"BppPkPrzedHardDeleteMixin, więc SoftDeleteLog nie ma czego "
+            f"zapisać w object_id. Dopisz ten mixin do baz modelu (przed "
+            f"SoftDeleteModel)."
+        )
+    return pk
+
+
+class BppAutorstwoSoftDeleteMixin(BppPkPrzedHardDeleteMixin, SoftDeleteModel):
     """SoftDeleteModel + nasze managery dla through-modeli *_Autor.
 
     Wpinany w 3 KONKRETNE modele (Wydawnictwo_Ciagle_Autor,
@@ -287,7 +344,7 @@ class BppAutorstwoSoftDeleteMixin(SoftDeleteModel):
         return super().restore(strict, transaction_id, *args, **kwargs)
 
 
-class BppPublikacjaSoftDeleteMixin(SoftDeleteModel):
+class BppPublikacjaSoftDeleteMixin(BppPkPrzedHardDeleteMixin, SoftDeleteModel):
     """SoftDeleteModel dla 5 modeli PUBLIKACJI (faza 02) z **wąską,
     kontrolowaną** kaskadą na własne wiersze ``*_Autor`` pod wspólnym
     ``transaction_id``.
