@@ -120,3 +120,49 @@ def test_strona_miesza_zywe_i_nagrobki_w_porzadku_dat(uczelnia, jednostka, typ_a
     mapa = {obiekt.pk: nagrobek for obiekt, nagrobek in pary}
     assert mapa.get(ukryta.pk) is True, "jednostka ukryta ma być nagrobkiem"
     assert mapa.get(jednostka.pk) is False, "jednostka widoczna ma być żywa"
+
+
+BASE_URL = "https://bpp.example.org/cerif/"
+NS_PMH = "http://www.openarchives.org/OAI/2.0/"
+
+
+def _zadanie_dla(uczelnia):
+    """Żądanie OAI oderwane od HTTP — jak ``wykonaj`` w ``test_oai.py``."""
+    from cerif_export.oai import czasowniki
+
+    return czasowniki.Zadanie(uczelnia, BASE_URL)
+
+
+def _wykonaj(uczelnia, **argumenty):
+    from cerif_export.oai import czasowniki
+
+    return czasowniki.odpowiedz(czasowniki.Zadanie(uczelnia, BASE_URL, argumenty))
+
+
+@pytest.mark.django_db
+def test_listrecords_emituje_nagrobek_bez_metadanych(uczelnia, jednostka):
+    """Rekord usunięty to SAM nagłówek — dokładanie <metadata> łamie schemat."""
+    from model_bakery import baker
+
+    from bpp.models import Jednostka
+    from cerif_export import const
+
+    baker.make(
+        Jednostka, uczelnia=uczelnia, nazwa="Ukryta", skrot="UKR", widoczna=False
+    )
+
+    korzen = _wykonaj(
+        uczelnia,
+        verb="ListRecords",
+        metadataPrefix=const.METADATA_PREFIX,
+        set=const.SET_ORGUNITS,
+    )
+    naglowki = korzen.findall(f".//{{{NS_PMH}}}header")
+    usuniete = [h for h in naglowki if h.get("status") == "deleted"]
+    assert usuniete, "brak nagrobka w ListRecords"
+
+    for naglowek in usuniete:
+        rekord = naglowek.getparent()
+        assert rekord.find(f"{{{NS_PMH}}}metadata") is None, (
+            "nagrobek nie może nieść <metadata>"
+        )
