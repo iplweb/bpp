@@ -1,0 +1,6 @@
+Rozstrzyganie szablonu w testach nie wymaga już bazy danych: loader
+``dbtemplates`` (stojący przed loaderami dyskowymi) odpytywał
+``django_template`` o listę znanych nazw, a wynik trzymał w globalnej dla
+procesu zmiennej kasowanej przy każdym zapisie wiersza ``Template``. Testy
+bez ``django_db`` renderujące szablon przechodziły albo padały w zależności
+od tego, co wcześniej przeleciało na tym samym workerze xdist.
