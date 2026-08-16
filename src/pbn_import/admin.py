@@ -182,6 +182,13 @@ class ImportLogAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         "level",
         "step",
         "message",
+        # ``details`` (samo pole), nie tylko ``details_display`` (metoda go
+        # renderująca). Admin nie deklaruje ``fields`` ani ``fieldsets``, więc
+        # Django buduje formularz ze WSZYSTKICH pól edytowalnych — bez tego
+        # wpisu ``details`` zostawało do edycji i wpis dziennika dało się po
+        # cichu zmienić. Formularz pokazywał wtedy oba naraz: widżet ``details``
+        # i obok read-only ``details_display``.
+        "details",
         "details_display",
     ]
     date_hierarchy = "timestamp"

@@ -49,3 +49,21 @@ def test_dziennik_importu_pozostaje_niedopisywalny(admin_client):
     request = admin_client.request(PATH_INFO="/").wsgi_request
 
     assert ma.has_add_permission(request) is False
+
+
+@pytest.mark.django_db
+def test_formularz_dziennika_nie_ma_edytowalnych_pol(admin_client):
+    """Żadnego pola wpisu nie da się zmienić przez formularz admina.
+
+    ``readonly_fields`` wymieniało ``details_display`` (metodę renderującą),
+    ale nie samo pole ``details`` — a że admin nie deklaruje ``fields`` ani
+    ``fieldsets``, Django budowało formularz ze wszystkich pól edytowalnych
+    i ``details`` (JSONField) zostawało do edycji. Wpis dziennika mógł więc
+    zostać po cichu zmieniony przez każdego z uprawnieniem ``change``.
+    """
+    ma = site.get_model_admin(ImportLog)
+    request = admin_client.request(PATH_INFO="/").wsgi_request
+
+    form = ma.get_form(request, None, change=False)
+
+    assert list(form.base_fields) == []
