@@ -31,6 +31,14 @@ def _utworz_log(instance, akcja, pbn_queue_entry=None, pbn_status=""):
     )
 
 
+def on_post_soft_delete(sender, instance, **kwargs):
+    _utworz_log(instance, SoftDeleteLog.Akcja.DELETE)
+
+
+def on_post_restore(sender, instance, **kwargs):
+    _utworz_log(instance, SoftDeleteLog.Akcja.RESTORE)
+
+
 def on_post_hard_delete(sender, instance, **kwargs):
     """Hard-delete: rekord fizycznie znika, więc bez operacji PBN.
 
@@ -50,8 +58,16 @@ def register():
     logu. Import sygnałów jest lokalny, żeby moduł dał się zaimportować
     poza kontekstem gotowej aplikacji.
     """
-    from django_softdelete.signals import post_hard_delete
+    from django_softdelete.signals import (
+        post_hard_delete,
+        post_restore,
+        post_soft_delete,
+    )
 
+    post_soft_delete.connect(
+        on_post_soft_delete, dispatch_uid="bpp.soft_delete.post_soft_delete"
+    )
+    post_restore.connect(on_post_restore, dispatch_uid="bpp.soft_delete.post_restore")
     post_hard_delete.connect(
         on_post_hard_delete, dispatch_uid="bpp.soft_delete.post_hard_delete"
     )
