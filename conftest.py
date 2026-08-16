@@ -23,9 +23,32 @@ def pytest_configure(config):
     więc każdy z N shardów odpalający `make assets` to tylko narzut —
     a w praktyce robi pełny `yarn install` + `grunt build`, bo Dockerfile
     nie zostawia w obrazie sentinela `node_modules/.installed`.
+
+    Pod xdistem budujemy TYLKO w kontrolerze. `pytest_configure` odpala się
+    w kontrolerze i dodatkowo w każdym workerze, więc `-n auto` na dziesięciu
+    rdzeniach dawało jedenaście równoległych `make assets` (zmierzone).
+    Inkrementalność `make` tego nie ratuje: wszystkie procesy sprawdzają
+    sentinel `.grunt-build-stamp` w tej samej chwili, każdy niezależnie
+    stwierdza „nieaktualny" i wszystkie wchodzą w `grunt build` naraz —
+    pisząc do TYCH SAMYCH plików wyjściowych. To był zarówno skok obciążenia
+    (kilkanaście równoległych sass + esbuild), jak i wyścig na zapisie.
+
+    Kolejność jest bezpieczna: kontroler kończy `pytest_configure`, zanim
+    xdist rozstawi workery w `pytest_sessionstart`, więc assety są gotowe,
+    nim którykolwiek worker zacznie renderować. Zweryfikowane empirycznie na
+    celowo nieaktualnym sentinelu — jeden build, sentinel odświeżony, testy
+    zielone.
+
+    Sentinel psuje też `npx grunt build` odpalany RĘCZNIE: buduje pliki, ale
+    nie dotyka `.grunt-build-stamp` (robi to dopiero reguła w Makefile), więc
+    kolejny `make assets` i tak przebuduje. Do odświeżenia assetów używaj
+    `make assets`, nie gołego grunta.
     """
     import os
     import sys
+
+    if hasattr(config, "workerinput"):
+        return
 
     if os.environ.get("BPP_SKIP_ASSETS_BUILD"):
         return
