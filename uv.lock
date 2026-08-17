@@ -607,7 +607,7 @@ requires-dist = [
     { name = "django-grappelli", specifier = ">=5.0.0,<6" },
     { name = "django-group-by", specifier = "==0.3.1" },
     { name = "django-import-export", git = "https://github.com/mpasternak/django-import-export.git?rev=d6ee0d39194fee31437affbdc6fee5ce549b4b8f" },
-    { name = "django-liveops", extras = ["celery"], specifier = ">=0.4.0,<0.5" },
+    { name = "django-liveops", extras = ["celery"], specifier = ">=0.4.1,<0.5" },
     { name = "django-loginas", specifier = "==0.3.14" },
     { name = "django-messages-extends", specifier = "==0.6.3" },
     { name = "django-microsoft-auth", marker = "extra == 'office365'", specifier = ">=3.0.1" },
@@ -1975,16 +1975,16 @@ wheels = [
 
 [[package]]
 name = "django-liveops"
-version = "0.4.0"
+version = "0.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "channels" },
     { name = "django" },
     { name = "django-channels-broadcast" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/10/29/4123555061c6f6f8bd7eeb83113e7cdb7a9a8989049ea15a30ce9841f90b/django_liveops-0.4.0.tar.gz", hash = "sha256:afec32be5093e5906e9e10818b128db30ebb20f39800a0fa2cd8392ba2bd23dd", size = 278916, upload-time = "2026-07-11T14:32:44.098Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/78/ee/ee27891ea2e81d44b3d100b3b2b03b6fee2775bfe895bd98fd48d75fb7d0/django_liveops-0.4.1.tar.gz", hash = "sha256:2c6903881f26f287ce642503726172a650f846ab3b031879ed28655fdd6a2aa9", size = 279310, upload-time = "2026-08-07T08:29:30.625Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d2/7f/2143a3d82b68bb97a54b31ba9d0b2fe3cb1a4d2b02025b1b53527be194d7/django_liveops-0.4.0-py3-none-any.whl", hash = "sha256:43bd5150efe642b65f3bd62a4ebcee6e361abb739d7d8ffd0346f07911ed3e84", size = 78205, upload-time = "2026-07-11T14:32:42.666Z" },
+    { url = "https://files.pythonhosted.org/packages/f0/9f/136cc2f536637baec3ed11fd777d7c57bb127b1ae6ef13f8bb4282405790/django_liveops-0.4.1-py3-none-any.whl", hash = "sha256:bb33fbc19fd35346285883251c093cf0f7c73efe26c871fa9ba01d48dc168171", size = 78232, upload-time = "2026-08-07T08:29:28.532Z" },
 ]
 
 [package.optional-dependencies]
