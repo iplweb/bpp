@@ -83,8 +83,12 @@ które hipoteza wymienia — werdykt dotyczy wyłącznie trzech stron.
 
 2. **Przyciemnienie dwóch szarości** — `#7f8c8d` i `#6c757d` — do co
    najmniej 4.5:1. Zakres zawężony do **deklaracji `color:` w części
-   publicznej**: `browse.scss`, `browse_autorzy.scss`,
-   `browse_jednostki.scss`, `uczelnia.scss`, `_autor-legacy.scss`. Oba
+   publicznej**: `_autor-bem.scss`, `browse.scss`, `browse_autorzy.scss`,
+   `browse_jednostki.scss`, `uczelnia.scss`, `_autor-legacy.scss`.
+   `_autor-bem.scss` jest tu najważniejszy — ma cztery wystąpienia
+   `#7f8c8d` i to on stoi za czterema z sześciu naruszeń kontrastu na
+   stronie autora (`__id-value`, `__search-subtitle`, `__title-hint`,
+   `__embed-link`). Pominięcie go zostawia próg zero nieosiągalnym. Oba
    kolory występują też w aplikacjach za logowaniem
    (`ewaluacja_optymalizuj_publikacje`, `pbn_downloader_app`,
    `pbn_export_queue`), gdzie `#6c757d` bywa `background-color` — tam
@@ -96,17 +100,26 @@ które hipoteza wymienia — werdykt dotyczy wyłącznie trzech stron.
    trzech stronach bramki, więc bez tej naprawy próg zero jest
    nieosiągalny i punkt 6 nie może przejść.
 
-4. **Pomiar wszystkich sześciu motywów** (`blue`, `green`, `orange`,
-   `vizja`, `mwsl`, `uafm`). Tani: context processor czyta
-   `Uczelnia.theme_name`, więc wystarczy seed per motyw, bez restartu
-   settings. Wynik ma charakter rozpoznania — naprawy w motywach
-   **klienckich** nie wchodzą do tej fazy, tylko do wykazu i do rozmowy
-   z uczelnią.
+4. **Pomiar wszystkich sześciu motywów** — wartości to `app-blue`,
+   `app-green`, `app-orange`, `app-vizja`, `app-mwsl`, `app-uafm`
+   (`settings/base.py`), a context processor skleja je wprost do
+   `scss/<wartość>.css`. Uwaga na kontrakt: motyw bierze się z
+   `request._uczelnia`, czyli z mapowania host → `Site` → `Uczelnia`, a nie
+   z oglądanego obiektu. Sześć rekordów `Uczelnia` na jednym hoście
+   zmierzyłoby sześć razy to samo. Pomiar wymaga **jednej** uczelni
+   powiązanej z `Site`, przestawianej per przebieg, plus asercji, że
+   faktycznie załadował się właściwy `app-X.css` ze statusem 200. Wynik ma
+   charakter rozpoznania — naprawy w motywach **klienckich** nie wchodzą do
+   tej fazy, tylko do wykazu i do rozmowy z uczelnią.
 
-5. **Dane testowe bramki** — jawnie zdefiniowany fixture per strona plus
-   asercja sanity, że badane elementy w ogóle istnieją (np. że axe ocenił
-   niezerową liczbę węzłów w `color-contrast`). Bez tego próg zero można
-   spełnić pustą stroną.
+5. **Dane testowe bramki i sanity** — jawnie zdefiniowany fixture per
+   strona. Sama asercja „axe ocenił niezerową liczbę węzłów" nie
+   wystarcza: wspólny `base.html` spełnia ją nawet na stronie 404. Bramka
+   ma więc sprawdzać status odpowiedzi 200, obecność sentinela właściwego
+   widoku (element unikalny dla tej strony) i liczność kluczowych bloków,
+   a dopiero potem uruchamiać axe. Do tego **wyłączony rerun**: fixture
+   `page` dokłada automatyczny powtórny przebieg (`src/fixtures/conftest.py`),
+   więc chwiejna bramka „czerwona, potem zielona" zostałaby zaliczona.
 
 6. **Bramka axe-core** w istniejącym harnessie Playwright, progiem na zero
    naruszeń. **Wymaga ukończenia punktów 1–3 i 5.**
@@ -135,14 +148,27 @@ na trzech stronach, bo dołączenie czwartej zawsze będzie „na później".
 nie umiały rozstrzygnąć (na stronie autora był jeden taki przypadek;
 `color-contrast` ląduje tam regularnie przy półprzezroczystych tłach, a
 wrapper breadcrumbs ma `rgba(240,240,240,.85)` i `backdrop-filter`).
-Bramka **nie blokuje** na `incomplete`, ale **wypisuje je w komunikacie**.
-Powód: naruszenie może zmigrować z `violations` do `incomplete` po zmianie
-tła i cicho zniknąć z pola widzenia.
+Bramka **nie blokuje** na `incomplete`, ale musi je **utrwalać**. Samo
+`print` nie wystarczy: CI uruchamia pytest z domyślnym przechwytywaniem
+wyjścia, więc tekst z przechodzącego testu nigdzie się nie pokaże i
+migracja `violation → incomplete` zniknie dokładnie tak, jak ten zapis miał
+temu zapobiec. Zapis idzie do artefaktu przebiegu albo do Step Summary.
 
-**Kształt techniczny.** Moduł testowy wstrzykuje `axe.min.js`
-z `node_modules` przez `page.add_script_tag` (projekt nie ma CSP, a obraz
-testowy zachowuje `node_modules` — `docker/bpp_base/Dockerfile:499`), woła
-`axe.run()` z tagami WCAG 2.2 A i AA, asertuje pustą listę naruszeń.
+**Kształt techniczny.** Moduł testowy wstrzykuje `axe.min.js` przez
+`page.add_script_tag` (projekt nie ma CSP), woła `axe.run()` z tagami WCAG
+2.2 A i AA, asertuje pustą listę naruszeń.
+
+**Skąd `axe.min.js` w CI — warunek konieczny.** Obraz, w którym biegną
+testy na CI, to target `test-runner` (`.github/workflows/tests.yml:257`),
+a ten **nie zawiera `node_modules`**: stage `test-assets-builder` kompiluje
+CSS/JS osobno i do finalnego obrazu trafiają „tylko gotowe pliki z /src/src
+— bez Node, Yarn, Grunta i node_modules" (`docker/bpp_base/Dockerfile`,
+komentarz nad stage'em). Wstrzykiwanie prosto z `node_modules` przejdzie
+lokalnie i **padnie na CI**. Plan musi więc dołożyć jawny `COPY` samego
+`axe.min.js` z `test-assets-builder` do `test-runner` i wskazywać ścieżkę
+docelową, a nie hostowy `node_modules`. Weryfikacja tego punktu wymaga
+zbudowania targetu `test-runner` i uruchomienia bramki w nim — lokalna
+suita niczego tu nie dowodzi.
 Komunikat błędu wypisuje regułę, selektor i fragment HTML-a, żeby diagnoza
 nie wymagała powtarzania pomiaru. `axe-core` dochodzi jako devDependency
 przez yarn; wersja jest przypięta w `yarn.lock`, a jej podbicie to świadoma
@@ -173,6 +199,29 @@ Po wdrożeniu zaktualizować mapę dokumentów w
 `2026-08-13-wcag-stan-i-pozostale-prace.md`, żeby kroki 4 i 5 planu z 08-05
 nie wyglądały na nietknięte.
 
+## Odrzucone propozycje z recenzji
+
+Zapisane, żeby nie wracały jako „przeoczenie".
+
+**Hybryda: zero dla trzech czystych stron + ratchet baseline dla nowych.**
+Kusząca i technicznie słuszna — zdejmuje zarzut, że próg zero premiuje
+trzymanie brudnej strony poza CI. Odrzucona na teraz, bo wprowadza dokładnie
+tę maszynerię, której ta faza unika, zanim istnieje choć jedna strona
+z długiem nie do spłacenia. **Warunek powrotu:** pierwszy widok, którego
+naruszeń nie da się naprawić w ramach jednego PR-a. Wtedy ratchet z 08-05
+(wiersze 269–328) jest gotowym projektem do przejęcia.
+
+**Właściciel bramki, cadence aktualizacji axe, SLA triage'u, zakaz `xfail`
+bez numeru sprawy.** Rozsądne w większym zespole. Tutaj byłby to proces
+pisany dla samego procesu — reguły, których nikt nie egzekwuje, psują
+dokument bardziej niż ich brak. Ryzyko degeneracji jest za to nazwane
+w „Ryzykach", a przypięta wersja axe znaczy, że bramka nie zmieni zdania
+sama z siebie.
+
+**Meta-test pilnujący, że nikt nie dopisał `skip`, `exclude` ani
+`disableRules`.** Odłożone: przy trzech przypadkach i jednym helperze
+przegląd kodu wystarcza. Wraca razem z ratchetem, gdy bramka urośnie.
+
 ## Poza zakresem
 
 - Skan szeroki na dumpie produkcyjnym (krok 2 planu z 08-05).
@@ -198,6 +247,17 @@ ale globalna w części publicznej. Weryfikacja zrzutami przed i po.
 sześciokrotny czas przebiegu; świadomie poza fazą. Pomiar z punktu 4 powie,
 czy to pilne.
 
+**Token zamiast literału rozszerza promień zmiany.** Wprowadzenie jednego
+tokenu SCSS w miejsce dwóch literałów brzmi porządkowo, ale `common.scss`
+importuje kilkanaście arkuszy — zmiana tokenu dotknie selektorów spoza
+pięciu wymienionych plików. Zrzuty tylko strony autora i uczelni nie pokryją
+takiego promienia. Jeśli token ma wejść, to z osobnym przeglądem widoków.
+
+**DOM testowy różni się od produkcyjnego.** Widget UserWay jest całkowicie
+wyłączony pod `TESTING` (`base.html`), więc bramka mierzy stronę bez niego.
+To świadome ograniczenie zakresu, nie przeoczenie — ale znaczy, że zielona
+bramka nie mówi nic o dostępności tego widgetu na produkcji.
+
 **Próg zero jest bezlitosny dla nowych stron.** To jego zaleta i wada
 naraz: nie da się dołączyć strony bez naprawy, więc pokrycie rośnie wolno.
 Reguła dołączania wyżej ma zapobiec temu, żeby „wolno" zmieniło się
@@ -207,15 +267,20 @@ w „nigdy".
 
 - Każda naprawa potwierdzona ponownym pomiarem axe na tej samej stronie:
   z naruszenia ma zrobić się `pass`.
-- Bramka sprawdzona w obie strony: celowe wprowadzenie naruszenia (np.
-  usunięcie etykiety) musi ją zapalić. Bez tego kroku nie wiadomo, czy
-  bramka cokolwiek pilnuje — trzy razy w fazie 2 test przechodził
-  z niewłaściwego powodu.
+- **Bramka uruchomiona w zbudowanym targecie `test-runner`**, nie tylko
+  lokalnie. Bez tego nie wiadomo, czy `axe.min.js` w ogóle jest w obrazie.
+- Bramka sprawdzona w obie strony, dla **obu** egzekwowanych rodzin reguł:
+  usunięcie etykiety musi zapalić `label`, a rozjaśnienie koloru —
+  `color-contrast`. Mutacja tylko pierwszej dowodzi połowy. Bez tego kroku
+  nie wiadomo, czy bramka cokolwiek pilnuje — trzy razy w fazie 2 test
+  przechodził z niewłaściwego powodu.
 - Asercja sanity na niepustość: bramka ma widzieć elementy, nie pustą
   stronę.
 - Zrzuty ekranu przed i po zmianie szarości, na stronie autora i uczelni.
 - Naprawy w trzech szablonach spoza zasięgu bramki (`jednostka`, `zrodlo`,
-  `tytul_raportu`) potwierdzone testem szablonowym albo doraźnym pomiarem —
-  bramka ich nie obejmie.
+  `tytul_raportu`) potwierdzone **semantycznie na wyrenderowanym DOM** —
+  sprawdzeniem dostępnej nazwy pola, nie obecnością znacznika `<label>`
+  w źródle. `<label>` z błędnym `for` istnieje i niczego nie wiąże; to
+  dokładnie ten rodzaj pozornej zieleni, który faza 2 złapała trzy razy.
 - Pełna suita lokalnie na świeżych kontenerach; `PYTEST_TESTCONTAINERS_REUSE`
   unieważnia wynik przy testach zależnych od stanu bazy.
