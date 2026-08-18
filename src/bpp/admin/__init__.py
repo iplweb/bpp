@@ -297,7 +297,39 @@ class BppUserAdmin(UserAdmin):
 
     add_form = BppUserCreationForm
 
+    actions = ["odblokuj_logowanie"]
+
     # change_form_template = 'loginas/change_form.html'
+
+    @admin.action(
+        description="Odblokuj logowanie (usuń blokadę po nieudanych próbach)",
+        permissions=["change"],
+    )
+    def odblokuj_logowanie(self, request, queryset):
+        """Kasuje wpisy ``axes.AccessAttempt`` wybranych użytkowników.
+
+        django-axes liczy blokadę z tabeli ``AccessAttempt``, więc skasowanie
+        wierszy = natychmiastowe odblokowanie. Blokada jest per (login, IP),
+        a wiersze dodatkowo rozbite po ``user_agent``, więc jednemu loginowi
+        odpowiada zwykle kilka wierszy — kasujemy wszystkie po ``username``.
+
+        ``AccessFailureLog`` NIE jest ruszany: to trwały log audytowy, nie ma
+        wpływu na blokadę, a jego kasowanie zacierałoby ślad ataku.
+
+        Akcja istnieje, bo modele axes w adminie widzi tylko ktoś z
+        uprawnieniami ``axes.*`` — a tych BPP nie nadaje żadnej grupie. Osoba
+        zarządzająca użytkownikami odblokowuje więc konto tam, gdzie już
+        pracuje, bez wiedzy o istnieniu django-axes.
+        """
+        from axes.models import AccessAttempt
+
+        usernames = list(queryset.values_list("username", flat=True))
+        count, _ = AccessAttempt.objects.filter(username__in=usernames).delete()
+        self.message_user(
+            request,
+            f"Usunięto blokadę logowania dla {len(usernames)} "
+            f"użytkownik(ów); skasowanych wpisów: {count}.",
+        )
 
     def has_delete_permission(self, request, obj=None):
         if obj is not None:
