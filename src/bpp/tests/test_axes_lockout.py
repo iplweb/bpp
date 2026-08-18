@@ -12,8 +12,6 @@ from datetime import timedelta
 import pytest
 from django.test.utils import override_settings
 
-from bpp.const import GR_WPROWADZANIE_DANYCH
-
 ADMIN_LOGIN_URL = "/admin/login/"
 LOCK_USERNAME = "axes-locktest"
 LOCK_PASSWORD = "correct-horse-battery-staple"
@@ -194,20 +192,17 @@ def _uruchom_akcje(client, users):
 def _staff_z_uprawnieniami(django_user_model, username, codenames):
     """Staff (nie-superuser) z podanymi uprawnieniami na modelu BppUser.
 
-    Grupa ``wprowadzanie danych`` NIE ma wpływu na sprawdzane tu uprawnienie —
-    jest obejściem znanego, celowo zapiętego quirku budowania menu admina
-    (``django_bpp/menu.py`` kasuje element z ``menu.children[-1]``, choć przy
-    braku tej grupy lista jest pusta → IndexError → 500 na każdej stronie
-    admina). Quirk jest udokumentowany i zapięty testem
-    ``django_bpp/tests/test_menu.py::test_uzytkownik_bez_grup_powoduje_indexerror``;
-    jego naprawa to osobne zadanie, nie zakres tej zmiany.
+    Celowo BEZ żadnej grupy: uprawnienie do modelu wystarcza, a konto bez grup
+    jest najostrzejszym wariantem persony. Do niedawna taki użytkownik dostawał
+    HTTP 500 na każdej stronie admina (``django_bpp/menu.py`` kasował element
+    z pustej listy) — naprawione w tej samej zmianie, patrz
+    ``django_bpp/tests/test_menu.py::test_uzytkownik_bez_grup_nie_wywraca_menu``.
     """
-    from django.contrib.auth.models import Group, Permission
+    from django.contrib.auth.models import Permission
 
     user = django_user_model.objects.create_user(
         username=username, password=LOCK_PASSWORD, is_staff=True
     )
-    user.groups.add(Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)[0])
     for codename in codenames:
         user.user_permissions.add(
             Permission.objects.get(codename=codename, content_type__app_label="bpp")
