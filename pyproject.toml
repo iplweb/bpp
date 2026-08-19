@@ -145,7 +145,11 @@ dependencies = [
     "beautifulsoup4>=4.15.0", # importer_publikacji.providers.www imports at app-ready time
     "gunicorn>=26.0.0", # authserver WSGI runner (moved from docker/authserver build-time uv pip install)
     "watchdog>=5.0.3", # --reload mode dla uvicorn/celery w dev compose (moved from entrypoint `uv pip install`)
-    "sqlparse>=0.5.4", # Dependabot: transitive via Django, bumped to fix DoS in format_list_of_tuples
+    # Transitive via Django, pinowany zeby wymusic wersje z fixem. 0.6.0 zamyka
+    # CVE-2026-71491, CVE-2026-59894, CVE-2026-59893 i CVE-2026-54284 (wszystkie
+    # fixable, wiec `pip-audit --gate on fixable` na nich pada); 0.5.4 wnosil
+    # wczesniejszy fix DoS w format_list_of_tuples.
+    "sqlparse>=0.6.0",
     "django-channels-broadcast>=0.3.0",
     "django-countdown>=0.3.1",
     "django-formdefaults>=0.6.3",
