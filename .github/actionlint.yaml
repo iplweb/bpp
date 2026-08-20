@@ -1,0 +1,27 @@
+# Konfiguracja actionlinta (hook `actionlint` w .pre-commit-config.yaml).
+#
+# tests.yml celowo trzyma flagi compose w JEDNEJ zmiennej:
+#
+#   COMPOSE_FILES: -f docker-compose.test.yml -f docker-compose.test.ci.yml
+#   run: docker compose $COMPOSE_FILES up -d db redis
+#
+# `$COMPOSE_FILES` MUSI się rozdzielić na słowa — to cztery osobne
+# argumenty. Zacytowanie go (czego żąda SC2086) przekazałoby cały ciąg
+# jako JEDEN argument i `docker compose` by się wywalił. Czyli SC2086
+# jest tu fałszywym alarmem, a "poprawka" wg podpowiedzi shellchecka
+# zepsułaby CI.
+#
+# Bez tego wyciszenia hook `actionlint` failuje na KAŻDYM commicie
+# dotykającym workflowa — findings są pre-existing (7 sztuk, identycznie
+# na dev), więc blokował każdą edycję .github/workflows/*.yml niezależnie
+# od jej treści. Wyciszenie jest zawężone do tests.yml; pozostałe
+# workflowy nadal dostają pełny shellcheck.
+#
+# SC2086 ma severity `info`, a jedyne jego wystąpienia w tym pliku to
+# powyższy zamierzony wzorzec. Gdyby doszedł tu prawdziwy przypadek
+# nieplanowanego word-splittingu, ta reguła go przemilczy — wtedy lepiej
+# przenieść flagi compose do tablicy w skrypcie i wyciszenie usunąć.
+paths:
+  .github/workflows/tests.yml:
+    ignore:
+      - 'shellcheck reported issue in this script: SC2086:.*'

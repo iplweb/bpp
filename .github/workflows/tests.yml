@@ -82,6 +82,22 @@ jobs:
             echo "ref=origin/dev" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Assert ruff pins agree (pyproject vs .pre-commit-config)
+        # Krok POPRZEDZA lint, bo ustala CZYM lintujemy. Ruff ma dwa piny:
+        # `ruff==X` w extrze [dev] (pyproject.toml) i `rev: vX` przy
+        # astral-sh/ruff-pre-commit (.pre-commit-config.yaml). Krok niżej
+        # używa tego drugiego, `uv run ruff` u dewelopera — pierwszego.
+        # To dwa różne binaria, więc rozjazd pinów przywraca dokładnie ten
+        # tryb awarii, który krok niżej deklaruje jako niemożliwy ("one
+        # ruff, one config"): patrz komentarz przy rev w pre-commit config
+        # o układzie I001 przepuszczonym lokalnie i odrzuconym przez CI.
+        #
+        # Osobny krok, a nie hook w tamtym wywołaniu, bo krok niżej odpala
+        # hooki PO NAZWIE (`pre-commit run ruff`), więc lokalny hook
+        # `ruff-piny-zsynchronizowane` nigdy by się w CI nie uruchomił.
+        # Skrypt jest stdlib-only → goły `python3`, bez `uv sync`.
+        run: python3 bin/check-ruff-pin-sync.py
+
       - name: Ruff + ruff-format (via pre-commit — single source of truth)
         # Runs the SAME `ruff` and `ruff-format` hooks declared in
         # .pre-commit-config.yaml (pinned rev) over the changed range, so
