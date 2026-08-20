@@ -644,7 +644,7 @@ requires-dist = [
     { name = "isbnlib", specifier = ">=3.10.14" },
     { name = "langdetect", specifier = ">=1.0.9" },
     { name = "markdown", specifier = ">=3.7,<4" },
-    { name = "moai-iplweb", specifier = ">=2.0.3" },
+    { name = "moai-iplweb", specifier = ">=2.0.4" },
     { name = "mozilla-django-oidc", specifier = ">=5.0.2,<6" },
     { name = "nh3", specifier = ">=0.3.6" },
     { name = "numpy", specifier = ">=2.4.6" },
@@ -3550,7 +3550,7 @@ wheels = [
 
 [[package]]
 name = "moai-iplweb"
-version = "2.0.3"
+version = "2.0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "oaipmh" },
@@ -3562,9 +3562,9 @@ dependencies = [
     { name = "wsgi-intercept" },
     { name = "wsgiutils" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6d/73/bb01a574911d1b849e5122971aec35a475a6fae4018cabeb7d01d04bd053/moai_iplweb-2.0.3.tar.gz", hash = "sha256:2e5f5620f6cb7595f636a4dcd70993dbdd83830f6f2f52aa548f5fbfc00c1e07", size = 35092, upload-time = "2026-08-20T09:06:07.872Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1e/c2/2ccf7a12e5289e16b2a186df385777cce0906bb02aba5d4c299030be7c00/moai_iplweb-2.0.4.tar.gz", hash = "sha256:007eb7046534eac474801b655b55ac208b788011b1e94c00a1f9380c25413be1", size = 35500, upload-time = "2026-08-20T09:35:28.759Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c4/88/da59cbb9bbd8269d51be1c9197cc26b3f03cfd28a80f62320f6aac12c81b/moai_iplweb-2.0.3-py3-none-any.whl", hash = "sha256:ca1910fa8055f99173af5d65af8c9209f61918ea947ab43dba16b70a430fcb19", size = 43888, upload-time = "2026-08-20T09:06:08.806Z" },
+    { url = "https://files.pythonhosted.org/packages/48/85/a89744d6018c454a58852f84be3ec8a47272c7c5c81780c4f60cde9ad3c6/moai_iplweb-2.0.4-py3-none-any.whl", hash = "sha256:ec837944dcff8d8d45caffdc32ed13265ac11cd28841107f9b8a895679a8241a", size = 44283, upload-time = "2026-08-20T09:35:29.945Z" },
 ]
 
 [[package]]

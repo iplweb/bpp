@@ -93,7 +93,7 @@ dependencies = [
     "django-fsm-2>=4,<5",
     "django-mptt>=0.16,<1",
     "wosclient==0.1.5",
-    "MOAI-iplweb>=2.0.3",
+    "MOAI-iplweb>=2.0.4",
     "django_redis_iplweb>=6.0.2,<6.1",
     "django-filter>=26.1,<26.2",
     "dbfread>=2.0.7",
@@ -265,13 +265,23 @@ environments = ["python_version >= '3.10' and python_version < '3.15' and platfo
 #                     PYSEC-2026-3456, PYSEC-2026-3457 (audyt: lipiec 2026)
 #   h2      >=4.4.1  (via twisted[http2]/daphne)      - CVE-2026-71554
 #                     (audyt: sierpien 2026)
-#   setuptools >=83.0.0 (via autobahn, django-static-sitemaps)
+#   setuptools >=83.0.0 (tranzytywnie: autobahn, bleach, incremental, paste,
+#                     pastescript, pysolr, django-static-sitemaps)
 #                     - CVE-2026-59890 (dependabot alert #326, sierpien 2026).
 #                     Odblokowane w #785: jedynym blokerem byl `pyoai`, ktory
 #                     importowal usuniety w setuptools 83 `pkg_resources` na
-#                     poziomie modulu (oaipmh/common.py:1). Zastapiony przez
-#                     `oaipmh` (utrzymywany fork ETH Library), ktory ciagnie
-#                     moai-iplweb>=2.0.3 i uzywa importlib.metadata.
+#                     poziomie modulu (oaipmh/common.py:1). Zastapil go
+#                     `oaipmh` (utrzymywany fork ETH Library, uzywa
+#                     importlib.metadata), ciagniety przez moai-iplweb>=2.0.4.
+#
+#     UWAGA na przyszlosc: setuptools >=83 znaczy, ze `pkg_resources` NIE
+#     ISTNIEJE w runtime. Kod, ktory go importuje, wybucha dopiero przy
+#     wywolaniu, jesli import jest leniwy. Znany przypadek: `isbnlib`
+#     (isbnlib/registry.py) - `isbnlib.meta()` i formattery bibliograficzne
+#     rzucaja ModuleNotFoundError, upstream nie ma fixa. bpp uzywa dzis
+#     wylacznie `isbnlib.notisbn()` i `isbnlib.canonical()` (czyste funkcje
+#     z isbnlib._core, bez rejestru), wiec nic sie nie psuje - ale NIE
+#     siegaj po `isbnlib.meta()` bez wczesniejszej wymiany biblioteki.
 constraint-dependencies = [
     "bleach>=6.4.0",
     "daphne>=4.2.2",
