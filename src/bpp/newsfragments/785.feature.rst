@@ -1,0 +1,5 @@
+Serwer OAI-PMH korzysta teraz z utrzymywanej biblioteki ``oaipmh`` (fork ETH
+Library) zamiast porzuconego ``pyoai`` z 2017 roku. Zmiana jest niewidoczna
+w interfejsie — protokół i wystawiane dane pozostają bez zmian — ale odblokowuje
+aktualizację ``setuptools`` do wersji z załatanym CVE-2026-59890, którą
+``pyoai`` blokował.

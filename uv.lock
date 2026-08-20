@@ -26,6 +26,7 @@ constraints = [
     { name = "h2", specifier = ">=4.4.1" },
     { name = "pyasn1", specifier = ">=0.6.4" },
     { name = "pypdf", specifier = ">=6.13.3" },
+    { name = "setuptools", specifier = ">=83.0.0" },
 ]
 
 [[package]]
@@ -470,7 +471,6 @@ dependencies = [
     { name = "psycopg2-binary" },
     { name = "pygad" },
     { name = "pymed-iplweb" },
-    { name = "pyoai" },
     { name = "pypandoc" },
     { name = "python-dateutil" },
     { name = "python-docx" },
@@ -644,7 +644,7 @@ requires-dist = [
     { name = "isbnlib", specifier = ">=3.10.14" },
     { name = "langdetect", specifier = ">=1.0.9" },
     { name = "markdown", specifier = ">=3.7,<4" },
-    { name = "moai-iplweb", specifier = ">=2.0.2" },
+    { name = "moai-iplweb", specifier = ">=2.0.3" },
     { name = "mozilla-django-oidc", specifier = ">=5.0.2,<6" },
     { name = "nh3", specifier = ">=0.3.6" },
     { name = "numpy", specifier = ">=2.4.6" },
@@ -657,7 +657,6 @@ requires-dist = [
     { name = "psycopg2-binary", specifier = ">=2.9.12" },
     { name = "pygad", specifier = ">=3.7.0" },
     { name = "pymed-iplweb", specifier = "==0.8.11" },
-    { name = "pyoai", specifier = "==2.5.0" },
     { name = "pypandoc", specifier = ">=1.13,<2" },
     { name = "python-dateutil", specifier = ">=2.9.0.post0" },
     { name = "python-docx", specifier = ">=1.1.0" },
@@ -3551,21 +3550,21 @@ wheels = [
 
 [[package]]
 name = "moai-iplweb"
-version = "2.0.2"
+version = "2.0.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "oaipmh" },
     { name = "paste" },
     { name = "pastedeploy" },
     { name = "pastescript" },
-    { name = "pyoai" },
     { name = "sqlalchemy" },
     { name = "webob" },
     { name = "wsgi-intercept" },
     { name = "wsgiutils" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1c/13/d2624e206d90885e93a49cb1320774abc82a239fa10ff06ec20210240b74/moai_iplweb-2.0.2.tar.gz", hash = "sha256:6109e12181ef2f473667372da6f785fbfb2c14724019a991847a299538243038", size = 36259, upload-time = "2026-04-19T20:57:07.637Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6d/73/bb01a574911d1b849e5122971aec35a475a6fae4018cabeb7d01d04bd053/moai_iplweb-2.0.3.tar.gz", hash = "sha256:2e5f5620f6cb7595f636a4dcd70993dbdd83830f6f2f52aa548f5fbfc00c1e07", size = 35092, upload-time = "2026-08-20T09:06:07.872Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/56/59/67c4fd977373fbe5ac4834e5306a39c93a5c8fa3038b2145b9840300981b/moai_iplweb-2.0.2-py3-none-any.whl", hash = "sha256:25c5a307b5a9d2c465ba822c6b28d757e8eca0f00d35dcc07cca672a5a1c5425", size = 43863, upload-time = "2026-04-19T20:57:06.291Z" },
+    { url = "https://files.pythonhosted.org/packages/c4/88/da59cbb9bbd8269d51be1c9197cc26b3f03cfd28a80f62320f6aac12c81b/moai_iplweb-2.0.3-py3-none-any.whl", hash = "sha256:ca1910fa8055f99173af5d65af8c9209f61918ea947ab43dba16b70a430fcb19", size = 43888, upload-time = "2026-08-20T09:06:08.806Z" },
 ]
 
 [[package]]
@@ -3796,6 +3795,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/1a/9c/c531f2293b91265d8b48e9b329f54fdd7ffae73cb4134ea10cca4237e9cc/numpy-2.4.6-pp311-pypy311_pp73-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:5dbbdb29840ca3d91ee0fece42fc29278886d908280bfec0a5846c6f901a3eb0", size = 15798374, upload-time = "2026-05-18T23:37:02.674Z" },
     { url = "https://files.pythonhosted.org/packages/1a/b0/413077f6b1153ed3cba361401c6783bbad6114804a000cc22eb71c13e190/numpy-2.4.6-pp311-pypy311_pp73-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:8ad03c0965fb3c692200e74d458ca28c1dbb4ce96f9a479a8aa041ad5fabca02", size = 16747286, upload-time = "2026-05-18T23:37:06.327Z" },
     { url = "https://files.pythonhosted.org/packages/15/ce/e5ec180bc41812edcd8daeb8639d205622c0e8c02259d8ab25a0201b3c2a/numpy-2.4.6-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:2803abfebfc990042cd494d8ce2d5f82e9d847af6d35ec486923aa19dbad5e73", size = 12504263, upload-time = "2026-05-18T23:37:09.715Z" },
+]
+
+[[package]]
+name = "oaipmh"
+version = "3.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "lxml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/58/0a/ec17bcfb5d1c3d25d9b5852cb59683182c29055ce3fae3cac6fd2c954e93/oaipmh-3.2.0.tar.gz", hash = "sha256:79235ef64cfdb39863919689c854e68989b6f9c40d016b01b65eaabce2bc0d4c", size = 26060, upload-time = "2026-05-15T18:04:18.455Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f2/1f/3f6fbdfb5ebc4ba4b2fb3ae7803522a5bf09403a94d7a3783edbd79b96ee/oaipmh-3.2.0-py3-none-any.whl", hash = "sha256:860df5046cf9cecde95f0638eff6a29f2443005effdb1545c6342930f1752be0", size = 21765, upload-time = "2026-05-15T18:04:16.93Z" },
 ]
 
 [[package]]
@@ -4524,16 +4535,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/41/ad/334600e8cacc7d86587fe5f565480fde569dfb487389c8e1be56ac21d8ac/pynacl-1.6.2-cp38-abi3-win_amd64.whl", hash = "sha256:62985f233210dee6548c223301b6c25440852e13d59a8b81490203c3227c5ba0", size = 239754, upload-time = "2026-01-01T17:32:34.557Z" },
     { url = "https://files.pythonhosted.org/packages/29/7d/5945b5af29534641820d3bd7b00962abbbdfee84ec7e19f0d5b3175f9a31/pynacl-1.6.2-cp38-abi3-win_arm64.whl", hash = "sha256:834a43af110f743a754448463e8fd61259cd4ab5bbedcf70f9dabad1d28a394c", size = 184801, upload-time = "2026-01-01T17:32:36.309Z" },
 ]
-
-[[package]]
-name = "pyoai"
-version = "2.5.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "lxml" },
-    { name = "six" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/21/3c/0ad6e6d50fc355be718fe667541797a27d0252641983b7925df685ef2163/pyoai-2.5.0.tar.gz", hash = "sha256:029521e1f6a819511feb4299a6181b5c312e8a71f7cddc4547e27001e7552be0", size = 106528, upload-time = "2017-07-03T15:06:47.99Z" }
 
 [[package]]
 name = "pyopenssl"
@@ -5527,11 +5528,11 @@ wheels = [
 
 [[package]]
 name = "setuptools"
-version = "79.0.1"
+version = "84.0.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/bb/71/b6365e6325b3290e14957b2c3a804a529968c77a049b2ed40c095f749707/setuptools-79.0.1.tar.gz", hash = "sha256:128ce7b8f33c3079fd1b067ecbb4051a66e8526e7b65f6cec075dfc650ddfa88", size = 1367909, upload-time = "2025-04-23T22:20:59.241Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6d/44/f5da03a8ef95d369145c5bb53050e7877c9f3d312e128605fd9504829143/setuptools-84.0.0.tar.gz", hash = "sha256:f4695c21257f0d9b537ec2692c941d02ee143b7cc1276941349a546573b2ef73", size = 1168449, upload-time = "2026-08-08T18:27:58.365Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0d/6d/b4752b044bf94cb802d88a888dc7d288baaf77d7910b7dedda74b5ceea0c/setuptools-79.0.1-py3-none-any.whl", hash = "sha256:e147c0549f27767ba362f9da434eab9c5dc0045d5304feb602a0af001089fc51", size = 1256281, upload-time = "2025-04-23T22:20:56.768Z" },
+    { url = "https://files.pythonhosted.org/packages/95/9c/c510029fc6ef33a6275cd2c5d3cecd6613dfd6aa401d57c54f1c18852ccf/setuptools-84.0.0-py3-none-any.whl", hash = "sha256:51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670", size = 818216, upload-time = "2026-08-08T18:27:56.719Z" },
 ]
 
 [[package]]
