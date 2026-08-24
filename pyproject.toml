@@ -47,7 +47,7 @@ dependencies = [
     "channels[daphne]>=4.3.2,<5",
     "uvicorn[standard]>=0.52.3",
     "channels-redis>=4,<5",
-    "django-flexible-reports>=0.4.2",
+    "django-flexible-reports>=0.5.0",
     "django-dsl>=0.1.15",
     "django-group-by==0.3.1",
     "django-columns==0.1.0",
@@ -142,7 +142,7 @@ dependencies = [
     "bibtexparser>=2.0.0b7", # BibTeX import
     "langdetect>=1.0.9", # Language detection for imports
     "beautifulsoup4>=4.15.0", # importer_publikacji.providers.www imports at app-ready time
-    "gunicorn>=26.0.0", # authserver WSGI runner (moved from docker/authserver build-time uv pip install)
+    "gunicorn>=26.1.0", # authserver WSGI runner (moved from docker/authserver build-time uv pip install)
     "watchdog>=5.0.3", # --reload mode dla uvicorn/celery w dev compose (moved from entrypoint `uv pip install`)
     # Transitive via Django, pinowany zeby wymusic wersje z fixem. 0.6.0 zamyka
     # CVE-2026-71491, CVE-2026-59894, CVE-2026-59893 i CVE-2026-54284 (wszystkie
@@ -509,7 +509,7 @@ dev = [
     # (CI / agent / pipe = non-TTY = no-op), sam wylacza sugara gdy aktywny.
     # https://github.com/mpasternak/pytest-tqdm
     "pytest-tqdm>=0.4.0",
-    "pytest-rerunfailures>=16.5",
+    "pytest-rerunfailures>=16.6",
     "django-debug-toolbar>=7.1.1",
     "model-bakery>=1.24.0",
     "django-dynamic-fixture>=1.8.0",
@@ -534,7 +534,7 @@ dev = [
     # .pre-commit-config.yaml. CI lints via pre-commit (that rev is the
     # source of truth); this `==` pin only keeps ad-hoc `uv run ruff`
     # producing identical output. Bump both together, never one alone.
-    "ruff==0.16.3",
+    "ruff==0.16.4",
     "djlint>=1.44.1,<2",
     "pre-commit>=4.6.2",
     "twine>=7.0.0",
