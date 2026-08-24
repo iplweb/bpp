@@ -212,7 +212,9 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
             "licencja_openaccess",
             "autor",
             "aktualna_jednostka",
+            "aktualny_wydzial",
             "afiliowana_jednostka",
+            "afiliowany_wydzial",
             "pbn_id",
             "orcid",
             "dyscyplina",
@@ -238,8 +240,15 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
     aktualna_jednostka = Column(
         "Aktualna jednostka", "autorzy__autor__aktualna_jednostka__nazwa"
     )
+    aktualny_wydzial = Column(
+        "Aktualny wydział",
+        "autorzy__autor__aktualna_jednostka__wydzial__nazwa",
+    )
 
     afiliowana_jednostka = Column("Afiliowana jednostka", "autorzy__jednostka__nazwa")
+    afiliowany_wydzial = Column(
+        "Afiliowany wydział", "autorzy__jednostka__wydzial__nazwa"
+    )
     rok = Column("Rok", "rekord__rok", orderable=True)
     zrodlo_informacje = None
     # Column(
@@ -374,5 +383,7 @@ class RaportEwaluacjaUpowaznieniaTable(RaportSlotowEwaluacjaTable):
 
     pbn_uid_id = Column("PBN UID ID", accessor="autor")
 
+    aktualny_wydzial = None
+    afiliowany_wydzial = None
     pkdaut = None
     slot = None
