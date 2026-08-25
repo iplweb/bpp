@@ -200,3 +200,71 @@ def test_usun_trwale_pomija_rekordy_spoza_kosza(superuser_client):
     assert resp.status_code == 200
     assert Wydawnictwo_Ciagle.objects.filter(pk=pk).exists()
     assert "Pominięto rekordów spoza kosza: 1" in resp.content.decode("utf-8")
+
+
+@pytest.mark.django_db
+def test_akcja_usun_do_kosza_z_powodem_trafia_do_logu(superuser, superuser_client):
+    obj = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Z powodem")
+    pk = obj.pk
+    url = reverse("admin:bpp_wydawnictwo_ciagle_changelist")
+
+    # Krok 1: wybor akcji bez potwierdzenia -> strona posrednia z polem.
+    resp1 = superuser_client.post(
+        url,
+        {"action": "usun_do_kosza", "_selected_action": [str(pk)]},
+    )
+    assert resp1.status_code == 200
+    tresc = resp1.content.decode("utf-8")
+    assert 'name="powod"' in tresc
+    assert "Z powodem" in tresc
+    # Nic sie jeszcze nie stalo:
+    assert Wydawnictwo_Ciagle.objects.filter(pk=pk).exists()
+
+    # Krok 2: potwierdzenie z powodem.
+    resp2 = superuser_client.post(
+        url,
+        {
+            "action": "usun_do_kosza",
+            "_selected_action": [str(pk)],
+            "powod_potwierdzony": "1",
+            "powod": "Duplikat rekordu",
+        },
+    )
+    assert resp2.status_code in (200, 302)
+
+    assert not Wydawnictwo_Ciagle.objects.filter(pk=pk).exists()
+    wpis = _log(Wydawnictwo_Ciagle, pk, "delete")
+    assert wpis is not None
+    assert wpis.powod == "Duplikat rekordu"
+    assert wpis.user_id == superuser.pk
+
+
+@pytest.mark.django_db
+def test_powod_dziedziczy_kaskada_na_autorstwa(superuser, superuser_client):
+    """Powod i user maja objac takze wiersze ``*_Autor`` kasowane kaskada.
+
+    Kontekst fazy 06 obejmuje CALE cialo ``delete()``, wiec kaskada
+    dziedziczy atrybucje rodzica — bez tego wpisy autorstw byłyby niczyje
+    mimo swiadomej decyzji operatora.
+    """
+    from bpp.models import Wydawnictwo_Ciagle_Autor
+
+    obj = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Z autorem")
+    autorstwo = baker.make(Wydawnictwo_Ciagle_Autor, rekord=obj)
+    pk_autorstwa = autorstwo.pk
+
+    url = reverse("admin:bpp_wydawnictwo_ciagle_changelist")
+    superuser_client.post(
+        url,
+        {
+            "action": "usun_do_kosza",
+            "_selected_action": [str(obj.pk)],
+            "powod_potwierdzony": "1",
+            "powod": "Wycofanie calego rekordu",
+        },
+    )
+
+    wpis = _log(Wydawnictwo_Ciagle_Autor, pk_autorstwa, "delete")
+    assert wpis is not None
+    assert wpis.powod == "Wycofanie calego rekordu"
+    assert wpis.user_id == superuser.pk

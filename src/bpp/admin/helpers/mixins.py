@@ -2,6 +2,8 @@ from contextlib import contextmanager
 
 from django import forms
 from django.contrib import admin, messages
+from django.contrib.admin import helpers as admin_helpers
+from django.template.response import TemplateResponse
 from django.urls import reverse
 from django_softdelete.filters import SoftDeleteFilter
 
@@ -294,6 +296,58 @@ class BppSoftDeleteAdminMixin:
             level=messages.SUCCESS,
         )
 
+    #: Ile rekordow wypisac na stronie posredniej z powodem. Zaznaczenie
+    #: "wszystkie pasujace" (``select_across``) potrafi objac dziesiatki
+    #: tysiecy wierszy — wypisanie wszystkich zabiloby te strone, a nikt
+    #: i tak nie czyta takiej listy.
+    LIMIT_PODGLADU_KOSZA = 50
+
+    @admin.action(description="🗑️ Usuń do kosza (z powodem)")
+    def usun_do_kosza(self, request, queryset):
+        """Kasowanie do kosza z powodem podanym na stronie pośredniej.
+
+        DLACZEGO OSOBNA AKCJA, SKORO ``delete_selected`` TEŻ IDZIE DO KOSZA:
+        bo Django nie ma gdzie zapytać o powód. Jego strona potwierdzenia
+        jest zbudowana wokół kolektora (co jeszcze zniknie), nie wokół
+        metadanych operacji, a ``SoftDeleteLog.powod`` odpowiada na pytanie
+        „dlaczego", na które sam kolektor nie odpowie.
+
+        ``delete_selected`` zostaje działające (kosz bez powodu) — to ta
+        sama operacja, tylko uboższa o uzasadnienie.
+        """
+        if request.POST.get("powod_potwierdzony"):
+            with self._soft_delete_user_context(request):
+                powod = self._powod_z_requestu(request)
+                usunieto = 0
+                for obj in queryset:
+                    obj.delete(user=request.user, reason=powod)
+                    usunieto += 1
+            self.message_user(
+                request,
+                f"Przeniesiono do kosza: {usunieto}.",
+                level=messages.SUCCESS,
+            )
+            return None
+
+        ile = queryset.count()
+        podglad = list(queryset[: self.LIMIT_PODGLADU_KOSZA])
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Usuń do kosza",
+            "obiekty": podglad,
+            "ile_obiektow": ile,
+            "ile_ukrytych": max(0, ile - len(podglad)),
+            "wybrane_pk": request.POST.getlist(admin_helpers.ACTION_CHECKBOX_NAME),
+            "opts": self.model._meta,
+            "action_checkbox_name": admin_helpers.ACTION_CHECKBOX_NAME,
+            # Przenosimy stan zaznaczenia dalej — bez ``select_across``
+            # potwierdzenie zawezilo by "wszystkie pasujace" do biezacej
+            # strony i czesc rekordow po cichu nie trafilaby do kosza.
+            "action_index": request.POST.get("index", 0),
+            "select_across": request.POST.get("select_across", "0"),
+        }
+        return TemplateResponse(request, "admin/bpp/soft_delete_powod.html", context)
+
     @admin.action(description="❌ Usuń TRWALE (nieodwracalnie, tylko superuser)")
     def usun_trwale_zaznaczone(self, request, queryset):
         """Opróżnianie kosza: fizyczne skasowanie rekordów.
@@ -355,6 +409,7 @@ class BppSoftDeleteAdminMixin:
         get_actions``.
         """
         actions = super().get_actions(request)
+        actions["usun_do_kosza"] = self.get_action("usun_do_kosza")
         actions["przywroc_zaznaczone"] = self.get_action("przywroc_zaznaczone")
         if request.user.is_superuser:
             actions["usun_trwale_zaznaczone"] = self.get_action(
