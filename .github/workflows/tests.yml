@@ -56,7 +56,7 @@ jobs:
       # so the heavy toolchain the test jobs need is unnecessary for
       # linting. uv is only a fast launcher for pre-commit (via uvx).
       - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           # Patrz komentarz przy jobie `lock-check` — bez `version` setup-uv
           # bierze "latest", co czyni CI niedeterministycznym.
@@ -81,6 +81,22 @@ jobs:
             git fetch --no-tags --depth=100 origin dev
             echo "ref=origin/dev" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Assert ruff pins agree (pyproject vs .pre-commit-config)
+        # Krok POPRZEDZA lint, bo ustala CZYM lintujemy. Ruff ma dwa piny:
+        # `ruff==X` w extrze [dev] (pyproject.toml) i `rev: vX` przy
+        # astral-sh/ruff-pre-commit (.pre-commit-config.yaml). Krok niżej
+        # używa tego drugiego, `uv run ruff` u dewelopera — pierwszego.
+        # To dwa różne binaria, więc rozjazd pinów przywraca dokładnie ten
+        # tryb awarii, który krok niżej deklaruje jako niemożliwy ("one
+        # ruff, one config"): patrz komentarz przy rev w pre-commit config
+        # o układzie I001 przepuszczonym lokalnie i odrzuconym przez CI.
+        #
+        # Osobny krok, a nie hook w tamtym wywołaniu, bo krok niżej odpala
+        # hooki PO NAZWIE (`pre-commit run ruff`), więc lokalny hook
+        # `ruff-piny-zsynchronizowane` nigdy by się w CI nie uruchomił.
+        # Skrypt jest stdlib-only → goły `python3`, bez `uv sync`.
+        run: python3 bin/check-ruff-pin-sync.py
 
       - name: Ruff + ruff-format (via pre-commit — single source of truth)
         # Runs the SAME `ruff` and `ruff-format` hooks declared in
@@ -132,7 +148,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           # PIN OBOWIAZKOWY. Bez `version` setup-uv loguje "Could not
           # determine uv version from uv.toml or pyproject.toml. Falling back
@@ -174,7 +190,7 @@ jobs:
         xargs -a docker/bpp_base/build.txt sudo apt-get install -y
 
     - name: Install uv
-      uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       with:
         # Patrz komentarz przy jobie `lock-check`. Tu dochodzi drugi powod:
         # `uv sync --frozen` czyta uv.lock, wiec plywajaca wersja uv czyni

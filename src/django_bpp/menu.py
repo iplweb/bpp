@@ -125,6 +125,10 @@ STRUKTURA_MENU = [
     ("Kierunki studiów", "/admin/bpp/kierunek_studiow/"),
 ]
 
+# Wyciągnięte do stałej, bo pozycja jest filtrowana po URL-u w
+# _add_group_submenus — dzięki temu filtr nie może rozjechać się z listą.
+ZGLOSZENIA_PUBLIKACJI_URL = "/admin/zglos_publikacje/zgloszenie_publikacji/"
+
 REDAKTOR_MENU = [
     ("Autorzy", "/admin/bpp/autor/"),
     (
@@ -149,7 +153,7 @@ REDAKTOR_MENU = [
         "Rozbieżności dyscyplin źródeł",
         "/admin/rozbieznosci_dyscyplin/rozbieznoscizrodelview/",
     ),
-    ("Zgłoszenia publikacji", "/admin/zglos_publikacje/zgloszenie_publikacji/"),
+    ("Zgłoszenia publikacji", ZGLOSZENIA_PUBLIKACJI_URL),
     ("Importer publikacji", "/importer_publikacji/"),
 ]
 
@@ -296,10 +300,27 @@ def _add_group_submenus(menu, user, groups, request):
         struktura_menu = [item for i, item in enumerate(STRUKTURA_MENU) if i != 1]
 
     flt("struktura", "Struktura", struktura_menu, "menu-icon-structure")
-    flt(GR_WPROWADZANIE_DANYCH, "Wprowadzanie danych", REDAKTOR_MENU, "menu-icon-edit")
-    if GR_ZGLOSZENIA_PUBLIKACJI not in groups and not user.is_superuser:
-        # Wyrzuć "zgłoszenia publikacji" z REDAKTOR_MENU
-        del menu.children[-1].children[-1]
+
+    # "Zgłoszenia publikacji" widzą tylko członkowie GR_ZGLOSZENIA_PUBLIKACJI
+    # (i superuser). Pozycję filtrujemy PRZED zbudowaniem poddrzewa. Dawniej
+    # kasował ją `del menu.children[-1].children[-1]` już po dodaniu, co było
+    # błędne na dwa sposoby:
+    #   1. gdy użytkownik nie miał grupy `wprowadzanie danych`, poddrzewo
+    #      w ogóle nie powstawało — indeks [-1] celował wtedy w cudze
+    #      poddrzewo albo w pustą listę, dając IndexError, czyli HTTP 500 na
+    #      KAŻDEJ stronie admina (dotyczyło m.in. osoby z samą grupą
+    #      `administracja`, czyli typowego zarządcy użytkowników);
+    #   2. ostatnią pozycją REDAKTOR_MENU jest "Importer publikacji", nie
+    #      "Zgłoszenia publikacji" — kasowana była zła pozycja, a zgłoszenia
+    #      zostawały widoczne dla kogoś, kto nie miał do nich uprawnienia.
+    redaktor_menu = REDAKTOR_MENU
+    if not (user.is_superuser or GR_ZGLOSZENIA_PUBLIKACJI in groups):
+        redaktor_menu = [
+            pozycja
+            for pozycja in REDAKTOR_MENU
+            if pozycja[1] != ZGLOSZENIA_PUBLIKACJI_URL
+        ]
+    flt(GR_WPROWADZANIE_DANYCH, "Wprowadzanie danych", redaktor_menu, "menu-icon-edit")
 
     flt("raporty", "Raporty", RAPORTY_MENU, "menu-icon-reports")
     flt("administracja", "Administracja", ADMIN_MENU, "menu-icon-admin")

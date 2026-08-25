@@ -2,6 +2,44 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202608.1401 (2026-08-25)
+
+### Naprawione
+
+- Panel administracyjny nie zgłasza już błędu serwera użytkownikowi, który ma
+  status personelu, ale nie należy do żadnej z grup budujących menu. Dotyczyło
+  to również osób z samą grupą „administracja", a więc typowego zarządcy
+  użytkowników — dla nich panel był całkowicie niedostępny. Przy okazji
+  naprawione zostało ukrywanie pozycji „Zgłoszenia publikacji": dotąd osobom
+  bez odpowiedniej grupy znikał z menu „Importer publikacji", a same
+  zgłoszenia pozostawały widoczne. ([#menu-admina-bez-grup](https://github.com/iplweb/bpp/issues/menu-admina-bez-grup))
+
+### Usprawnienie
+
+- Na liście użytkowników w panelu administracyjnym pojawiła się akcja
+  „Odblokuj logowanie", zdejmująca blokadę założoną po nieudanych próbach
+  logowania. Wcześniej wymagało to uprawnień do modeli ``axes``, których BPP
+  nie nadaje żadnej grupie — w praktyce odblokować mógł wyłącznie
+  superużytkownik albo administrator serwera z linii poleceń. Akcja radzi
+  sobie z blokadą zapisaną inną wielkością liter niż nazwa konta (logowanie
+  przez LDAP), a samo odblokowanie zapisuje się w dzienniku panelu
+  administracyjnego — kto i kiedy zdjął blokadę. ([#axes-odblokuj-z-admina](https://github.com/iplweb/bpp/issues/axes-odblokuj-z-admina))
+- Zablokowanie logowania po serii nieudanych prób pokazuje teraz normalną
+  stronę BPP z komunikatem „Konto tymczasowo zablokowane" zamiast białej
+  strony z jednym zdaniem, nieodróżnialnej dla użytkownika od awarii serwera.
+  Strona mówi wprost, że blokada mija sama, ale odliczanie startuje od
+  ostatniej próby logowania — kolejne kliknięcia „Zaloguj" przedłużają
+  blokadę. Czas blokady wydłużono z 30 minut do godziny. ([#axes-strona-blokady](https://github.com/iplweb/bpp/issues/axes-strona-blokady))
+- Raport slotów - ewaluacja pokazuje aktualny i afiliowany wydział autora
+  w uczelniach korzystających ze struktury wydziałowej. ([#raport-slotow-ewaluacja-wydzialy](https://github.com/iplweb/bpp/issues/raport-slotow-ewaluacja-wydzialy))
+- Serwer OAI-PMH korzysta teraz z utrzymywanej biblioteki ``oaipmh`` (fork ETH
+  Library) zamiast porzuconego ``pyoai`` z 2017 roku. Protokół i wystawiane
+  rekordy pozostają bez zmian; jedyna widoczna różnica to blok ``<toolkit>``
+  w odpowiedzi ``Identify``, który podaje teraz nazwę nowej biblioteki. Zmiana
+  odblokowuje aktualizację ``setuptools`` do wersji z załatanym CVE-2026-59890,
+  którą ``pyoai`` blokował. ([#785](https://github.com/iplweb/bpp/issues/785))
+
+
 ## bpp 202608.1400 (2026-08-16)
 
 ### Naprawione

@@ -92,6 +92,12 @@ AUTHENTICATION_BACKENDS = [
 # Brak django.contrib.admin w tym serwisie — wyłączamy integrację z adminem axes.
 AXES_ENABLE_ADMIN = False
 
+# AXES_LOCKOUT_TEMPLATE świadomie NIE jest dziedziczone z base: szablon
+# "axes_lockout.html" rozszerza base.html, który wymaga context processorów BPP
+# (uczelnia, konfiguracja, menu), a ten serwis ma tylko dwa minimalne. Lockout
+# zwraca tu domyślny, tekstowy komunikat axes — akceptowalne, bo formularz jest
+# techniczny (nginx auth_request), nie jest to powierzchnia dla użytkownika.
+
 ROOT_URLCONF = "django_bpp.urls_auth_server"
 
 # Minimal template configuration for login form

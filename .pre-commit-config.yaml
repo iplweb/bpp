@@ -8,7 +8,7 @@ repos:
       # A lower pin here caused pre-commit to accept an I001 layout that
       # ruff 0.15.x (used by CI) rejected — the diff was invisible
       # locally until GitHub Actions failed.
-      rev: v0.16.1
+      rev: v0.16.3
       hooks:
         - id: ruff
           args: ["--fix", "--exit-non-zero-on-fix"]
@@ -109,6 +109,25 @@ repos:
               | src/django_bpp/static/500\.html$
               | src/bpp/static/500\.html$
             )
+
+        # Ruff jest przypięty w DWÓCH miejscach, które muszą być równe:
+        # `ruff==X` w extrze [dev] w pyproject.toml (to ruff z `uv run
+        # ruff`) ORAZ `rev: vX` przy astral-sh/ruff-pre-commit wyżej (to
+        # ruff, którego odpala pre-commit i job CI "Lint changed files").
+        # pre-commit NIE używa ruffa z pyproject — buduje własne izolowane
+        # środowisko z wheela dla tagu spod `rev:`, więc to dwa różne
+        # binaria. Rozjazd = "przechodzi lokalnie, pada w CI" (zdarzyło
+        # się już: niższy `rev` przepuścił układ I001 odrzucony przez CI).
+        # Dependabot podbija TYLKO pin w pyproject (śledzi ekosystem `uv`,
+        # nie `pre-commit`), więc bez tej bramki każdy bump ruffa je
+        # rozjeżdża. Zamienia zasadę pilnowaną komentarzem na zasadę
+        # pilnowaną przez build. language: python → stdlib-only venv.
+        - id: ruff-piny-zsynchronizowane
+          name: "ruff: pin w pyproject == rev w .pre-commit-config"
+          entry: python bin/check-ruff-pin-sync.py
+          language: python
+          pass_filenames: false
+          always_run: true
 
         - id: trufflehog
           name: TruffleHog

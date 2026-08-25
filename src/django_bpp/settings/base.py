@@ -1481,9 +1481,18 @@ AUTHENTICATION_BACKENDS = [
 # Polityka lockoutu (PCI-DSS 8.3.4: ≤10 prób, blokada ≥30 min):
 AXES_FAILURE_LIMIT = 10  # 10 nieudanych prób...
 AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]  # ...na parę (login, IP)
-AXES_COOLOFF_TIME = timedelta(minutes=30)  # auto-odblokowanie po 30 min
+AXES_COOLOFF_TIME = timedelta(hours=1)  # auto-odblokowanie po godzinie
 AXES_RESET_ON_SUCCESS = True  # udane logowanie zeruje licznik nieudanych prób
 AXES_ENABLE_ADMIN = True  # podgląd/odblokowanie prób z panelu admina
+# Bez tego axes zwraca gołe HttpResponse z jednym zdaniem (biała strona, bez
+# nawigacji) — dla użytkownika nieodróżnialne od awarii serwera. Szablon
+# renderuje się w layoucie BPP; kontekst od axes: failure_limit, username,
+# cooloff_time (ISO8601), cooloff_timedelta.
+AXES_LOCKOUT_TEMPLATE = "axes_lockout.html"
+# UWAGA: AXES_RESET_COOL_OFF_ON_FAILURE_DURING_LOCKOUT zostaje na domyślnym
+# True — każda próba logowania W TRAKCIE blokady odświeża attempt_time, więc
+# cooloff liczy się od OSTATNIEJ próby, nie od pierwszej. Uparte klikanie
+# "Zaloguj" nie odblokuje konta nigdy; szablon lockoutu mówi o tym wprost.
 # IP klienta zza nginx: bierzemy OSTATNI wpis X-Forwarded-For (doklejony przez
 # nginx z $remote_addr = realny klient, niefalsyfikowalny). Bez tego axes użyłby
 # REMOTE_ADDR = IP nginxa i komponent (ip_address) lockoutu zlałby się do jednej
@@ -1494,9 +1503,9 @@ AXES_CLIENT_IP_CALLABLE = "django_bpp.client_ip.get_client_ip"
 #
 # Blokujemy po KOMBINACJI (login + IP), nie po samym loginie — twardy lockout
 # konta jest wektorem DoS (atakujący celowo blokuje ofiarę złym hasłem; NIST
-# SP 800-63B przed tym ostrzega). Atakującemu z jednego IP wystarczy ~10 prób/30
-# min na konto — grubo poniżej pułapu NIST (100/h), a ofiara nie traci dostępu
-# globalnie.
+# SP 800-63B przed tym ostrzega). Atakującemu z jednego IP zostaje ~10 prób na
+# godzinę na konto — grubo poniżej pułapu NIST (100/h), a ofiara nie traci
+# dostępu globalnie: wystarczy, że zaloguje się z innej sieci.
 #
 
 #

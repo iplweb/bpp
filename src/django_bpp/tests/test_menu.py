@@ -3,11 +3,14 @@
 Pinują OBECNE zachowanie budowania menu admina zależnie od grup/uprawnień
 użytkownika, aby umożliwić bezpieczny refactor (zdjęcie C901).
 
-Zachowane quirki (NIE są naprawiane w refaktorze):
-- użytkownik bez grup i nie-superuser → IndexError (usuwanie z pustego
-  poddrzewa "Dashboard"),
-- usuwanie "zgłoszeń" faktycznie kasuje OSTATNI element REDAKTOR_MENU
-  ("Importer publikacji"), nie "Zgłoszenia publikacji".
+Dawne quirki, NAPRAWIONE (testy poniżej pilnują poprawnego zachowania):
+- użytkownik bez grup i nie-superuser dostawał IndexError → HTTP 500 na
+  każdej stronie admina (usuwanie z pustego poddrzewa),
+- usuwanie "zgłoszeń" kasowało OSTATNI element REDAKTOR_MENU
+  ("Importer publikacji"), zostawiając widoczne "Zgłoszenia publikacji".
+
+Oba wynikały z filtrowania PO zbudowaniu poddrzewa (``del children[-1]``);
+teraz lista jest filtrowana PRZED jego zbudowaniem.
 
 Ukrywanie wydziału buduje LOKALNĄ kopię STRUKTURA_MENU (nie mutuje globala —
 multi-host); fixtura snapshotu została jako defense-in-depth.
@@ -88,23 +91,37 @@ def test_superuser_administracja_ma_uslugi_docker():
 
 
 @pytest.mark.django_db
-def test_uzytkownik_bez_grup_powoduje_indexerror():
-    # Quirk: del self.children[-1].children[-1] na pustym "Dashboard".
+def test_uzytkownik_bez_grup_nie_wywraca_menu():
+    """Staff bez żadnej grupy musi dostać działające menu.
+
+    Dawniej ``del menu.children[-1].children[-1]`` leciał bezwarunkowo, choć
+    przy braku grupy "wprowadzanie danych" poddrzewo redaktora w ogóle nie
+    powstawało — lista bywała pusta, co dawało IndexError i HTTP 500 na
+    KAŻDEJ stronie admina. Dotyczyło to m.in. osoby z samą grupą
+    "administracja", czyli typowego zarządcy użytkowników.
+    """
     u = baker.make("bpp.BppUser", is_superuser=False, is_staff=True)
-    with pytest.raises(IndexError):
-        _menu_for(u)
+    m = _menu_for(u)
+    assert _labels(m) == ["BPP", "Dashboard", "Mój profil"]
 
 
 @pytest.mark.django_db
-def test_grupa_wprowadzanie_danych_kasuje_ostatni_element_redaktora():
+def test_bez_grupy_zgloszen_znika_wlasnie_pozycja_zgloszen():
+    """Ukrywana ma być pozycja "Zgłoszenia publikacji" — i tylko ona.
+
+    Dawniej kasowany był element o indeksie [-1], czyli "Importer
+    publikacji": użytkownik tracił importer, a zgłoszenia, których widzieć
+    nie powinien, zostawały na miejscu.
+    """
     u = baker.make("bpp.BppUser", is_superuser=False, is_staff=True, first_name="Ala")
     u.groups.add(Group.objects.get_or_create(name="wprowadzanie danych")[0])
     m = _menu_for(u)
     assert _labels(m) == ["BPP", "Dashboard", "Wprowadzanie danych", "Mój profil"]
     redaktor = _child(m, "Wprowadzanie danych")
-    # OSTATNI element ("Importer publikacji") jest usuwany; zostaje 15.
+    etykiety = [str(c.title) for c in redaktor.children]
     assert len(redaktor.children) == 15
-    assert str(redaktor.children[-1].title) == "Zgłoszenia publikacji"
+    assert "Zgłoszenia publikacji" not in etykiety
+    assert etykiety[-1] == "Importer publikacji"
 
 
 @pytest.mark.django_db
