@@ -130,6 +130,76 @@ testowa częściowo i (3) naprawy stwierdzone. **Otwarte pozostają:**
   sygnału o tym**. Sposób sprawdzenia per wdrożenie i dwa wyjścia opisane
   w 08-05.
 
+## Kontrast w motywach (pomiar 2026-08-25)
+
+Bramka axe (zadania 1–5) biegnie wyłącznie na motywie domyślnym
+`app-green` — o pozostałych pięciu (`app-blue`, `app-orange`, `app-vizja`,
+`app-mwsl`, `app-uafm`, patrz `Uczelnia.theme_name` w
+`src/django_bpp/settings/base.py`) nie było żadnych danych. To zadanie
+(6) jest **rozpoznaniem, nie naprawą**: naprawy w motywach klienckich
+(`app-vizja`, `app-mwsl`, `app-uafm`) nie wchodzą do tej fazy — audyt nie
+oddaje takich decyzji zespołowi bez udziału uczelni.
+
+**Metoda.** Skrypt tymczasowy (`src/integration_tests/test_tmp_motywy.py`,
+skasowany po pomiarze, nie wszedł do commita) parametryzowany po sześciu
+motywach: dla każdego, w izolowanym `transaction=True` teście, tworzy
+**jedną** `Uczelnia` z danym `theme_name`, otwiera stronę autora i skanuje
+axe-core (`axe_helper.skanuj`, wersja **axe-core 4.13.0**, zbudowana przez
+`make assets` tego samego dnia). Motyw bierze się z `request._uczelnia`,
+czyli z mapowania host → `Site` → `Uczelnia`, **nie** z oglądanego obiektu —
+gdyby test trzymał sześć rekordów `Uczelnia` naraz na jednym hoście,
+zmierzyłby sześć razy ten sam (pierwszy dopasowany) motyw. Dlatego każdy
+przebieg miał dokładnie jedną `Uczelnię` w bazie (test transakcyjny,
+tabele czyszczone między przebiegami), a asercja po `page.goto`
+sprawdzała, że w `document.styleSheets` faktycznie załadował się arkusz
+zawierający nazwę zadanego motywu w nazwie pliku (`{% static THEME_NAME %}`
+→ `scss/app-X.css`) — inaczej test padał, zamiast cicho zmierzyć nie ten
+motyw.
+
+Asercja o arkuszu **przeszła za każdym razem bez modyfikacji seeda** —
+kontrakt zadziałał zgodnie z założeniem briefu: `Site.objects.get(domain=…)`
+nie znajduje dopasowania dla hosta testowego live-servera, `SITE_ID` też nie
+wskazuje powiązanej `Uczelni`, więc `uczelnia_dla_site` spada na fallback
+„jedyna uczelnia w systemie" (`get_single_uczelnia_or_none`) — a w
+izolowanym teście transakcyjnym jest dokładnie jedna. Asercja została
+zostawiona w skrypcie (i w pliku źródłowym cytowana niżej) jako dowód, że
+pomiar mierzył to, co miał mierzyć — nie usunięto jej mimo że nie
+zapaliła się ani razu.
+
+| motyw | naruszenia `color-contrast` (elementy) | wniosek |
+|---|---|---|
+| `app-green` (domyślny) | 0 | pokryty istniejącą bramką axe (zadania 1–5) |
+| `app-blue` | 3 | naprawa w zakresie zespołu BPP — osobne zadanie |
+| `app-orange` | 8 | naprawa w zakresie zespołu BPP — osobne zadanie |
+| `app-vizja` | 8 | **motyw klienta** — naprawa wymaga decyzji uczelni |
+| `app-mwsl` | 8 | **motyw klienta** — naprawa wymaga decyzji uczelni |
+| `app-uafm` | 0 | brak naruszeń na zmierzonej stronie |
+
+Naruszenia w `app-orange`, `app-vizja` i `app-mwsl` to (poza jednym
+wspólnym z `app-blue`) ten sam zestaw ośmiu elementów: link „Autorzy" w
+menu, link do widgetu publikacji, dwa linki w informacji
+„przeglądarko-specyficznej", pasek cookie (tekst + oba przyciski) i stopka
+(`bpp.iplweb.pl`, `iplweb.pl`) — sugeruje to wspólne źródło (prawdopodobnie
+kolor tła/tekstu odziedziczony z tych samych zmiennych SCSS) zamiast
+sześciu niezależnych usterek. `app-blue` dzieli z nimi 2 z 3 pozycji (link
+„Autorzy", stopka), ale nie ma naruszeń w pasku cookie ani w linkach
+„przeglądarko-specyficznych" — nie jest identyczny.
+
+**Zasięg pomiaru** — jak w istniejącej bramce (zadanie 5): tylko strona
+autora, jedna strona na motyw. Nie jest to skan sześciu motywów × trzech
+stron bramki; rozszerzenie zasięgu to osobna decyzja (koszt: 6× więcej
+przebiegów Playwrighta na CI, gdyby miało wejść do bramki na stałe).
+
+**Wniosek dla planowania:** `app-blue` i `app-orange` mają rzeczywiste,
+naprawialne przez zespół BPP naruszenia kontrastu — kandydaci na kolejne
+zadanie naprawcze w tym samym stylu co zadania 1–5 (dopasowanie koloru w
+SCSS, bez zmiany layoutu). `app-vizja` i `app-mwsl` mają ten sam kształt
+usterki, ale są motywami klienckimi — naprawa (zmiana koloru marki) nie
+jest decyzją, którą audyt WCAG może podjąć sam; wymaga zgody właściciela
+motywu. `app-uafm`, mimo że też klienckie, nie wykazał naruszeń na
+zmierzonej stronie — nie znaczy to zgodności całego motywu, tylko że ta
+jedna strona nie ujawniła problemu tym skanem.
+
 ## Pułapki, które kosztowały czas
 
 - **`grunt build` jest konieczny** po zmianie SCSS; szablony Django
