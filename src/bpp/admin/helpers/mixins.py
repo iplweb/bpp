@@ -187,6 +187,20 @@ class BppSoftDeleteAdminMixin:
             qs = qs.order_by(*ordering)
         return qs
 
+    def get_urls(self):
+        """# SZEW reversion (odłożone).
+
+        Gdy włączymy ``django-reversion``, jego widok „recover deleted"
+        (URL ``recover/``) musi tu zostać UKRYTY albo przekierowany na
+        ``restore()``. Recover wskrzesza rekord POZA przepływem
+        soft-delete: bez zlecenia ``WYSYLKA`` do PBN, bez wpisu
+        ``SoftDeleteLog``, bez przeliczenia punktacji i z pominięciem
+        warunkowego unique na ``Autor.slug`` (husk trzyma slug
+        zarezerwowany). Byłaby to druga, cicha ścieżka przywracania —
+        dokładnie to, czemu ta faza ma zapobiegać.
+        """
+        return super().get_urls()
+
     def get_list_filter(self, request):
         list_filter = list(super().get_list_filter(request) or [])
         if PokazSkasowaneFilter not in list_filter:
