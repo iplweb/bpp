@@ -69,3 +69,45 @@ def test_changeform_otwiera_skasowany_rekord(superuser_client):
     resp = superuser_client.get(url)
 
     assert resp.status_code == 200
+
+
+def _log(model, pk, akcja):
+    """Najnowszy wpis ``SoftDeleteLog`` dla konkretnego rekordu.
+
+    Filtr po ``content_type`` jest istotny: ``object_id`` nie jest unikalne
+    globalnie, a kaskada fazy 02 loguje przy okazji wiersze ``*_Autor``,
+    ktore z latwoscia trafiaja na te sama wartosc ``pk``.
+    """
+    from django.contrib.contenttypes.models import ContentType
+
+    from bpp.models import SoftDeleteLog
+
+    return (
+        SoftDeleteLog.objects.filter(
+            content_type=ContentType.objects.get_for_model(model),
+            object_id=pk,
+            akcja=akcja,
+        )
+        .order_by("-timestamp", "-pk")
+        .first()
+    )
+
+
+@pytest.mark.django_db
+def test_delete_w_adminie_soft_deletuje_i_zapisuje_usera(superuser, superuser_client):
+    """Przycisk „Usuń" na changeformie = kosz, nie fizyczne skasowanie."""
+    obj = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Do kosza")
+    pk = obj.pk
+    url = reverse("admin:bpp_wydawnictwo_ciagle_delete", args=[pk])
+
+    assert superuser_client.get(url).status_code == 200
+
+    resp = superuser_client.post(url, {"post": "yes"})
+    assert resp.status_code == 302
+
+    assert not Wydawnictwo_Ciagle.objects.filter(pk=pk).exists()
+    assert Wydawnictwo_Ciagle.global_objects.get(pk=pk).deleted_at is not None
+
+    wpis = _log(Wydawnictwo_Ciagle, pk, "delete")
+    assert wpis is not None
+    assert wpis.user_id == superuser.pk
