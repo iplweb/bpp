@@ -111,3 +111,28 @@ def test_delete_w_adminie_soft_deletuje_i_zapisuje_usera(superuser, superuser_cl
     wpis = _log(Wydawnictwo_Ciagle, pk, "delete")
     assert wpis is not None
     assert wpis.user_id == superuser.pk
+
+
+@pytest.mark.django_db
+def test_akcja_przywroc_dziala_i_zapisuje_usera(superuser, superuser_client):
+    obj = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Wraca z kosza")
+    pk = obj.pk
+    obj.delete(reason="test")
+    assert not Wydawnictwo_Ciagle.objects.filter(pk=pk).exists()
+
+    # Akcja dziala na tym, co widac na liscie — a kosz widac dopiero pod
+    # filtrem. Django POST-uje formularz akcji na biezacy URL RAZEM z
+    # query stringiem, wiec tak wyglada realny przeplyw operatora.
+    url = reverse("admin:bpp_wydawnictwo_ciagle_changelist") + "?is_deleted=true"
+    resp = superuser_client.post(
+        url,
+        {"action": "przywroc_zaznaczone", "_selected_action": [str(pk)]},
+    )
+    assert resp.status_code in (200, 302)
+
+    assert Wydawnictwo_Ciagle.objects.filter(pk=pk).exists()
+    assert Wydawnictwo_Ciagle.global_objects.get(pk=pk).deleted_at is None
+
+    wpis = _log(Wydawnictwo_Ciagle, pk, "restore")
+    assert wpis is not None
+    assert wpis.user_id == superuser.pk
