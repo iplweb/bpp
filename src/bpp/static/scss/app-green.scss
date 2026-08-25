@@ -24,6 +24,14 @@ input[type=radio] {
 }
 
 // Theme-specific overrides for browse.scss
+// WCAG 1.4.3: `primary: green` z palety Foundation (#008000) daje na tle
+// paska breadcrumbs (#efefef) kontrast 4.47 — ponizej progu 4.5 dla tekstu.
+// Override jest punktowy CELOWO: zmiana palety przemalowala by caly motyw
+// (przyciski, linki, akcenty), a chodzi o jeden element.
+#breadcrumbs-wrapper .breadcrumbs a {
+  color: #006e00; // 5.65 na #efefef
+}
+
 .modern-header {
   h1, h2 {
     .fi-foundation {
