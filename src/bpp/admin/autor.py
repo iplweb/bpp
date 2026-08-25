@@ -38,6 +38,7 @@ from .filters import (
     WydzialAutoraFilter,
 )
 from .helpers.fieldsets import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
+from .helpers.mixins import BppSoftDeleteAdminMixin
 from .helpers.site_filtered import SiteFilteredAdminMixin
 from .helpers.wersje import HistoriaWersjiMixin
 from .helpers.widgets import CHARMAP_SINGLE_LINE
@@ -342,6 +343,11 @@ class AutorAdmin(
     EksportDanychMixin,
     BaseBppAdminMixin,
     BppDynamicColumnsMixin,
+    # Soft-delete: OSTATNI mixin z własnym ``get_queryset`` (nie woła
+    # ``super()``) — patrz docstring BppSoftDeleteAdminMixin. Stoi przed
+    # ``HistoriaWersjiMixin``, który zgodnie ze swoim docstringiem musi być
+    # tuż przed ``VersionAdmin`` (żaden z nich nie nadpisuje get_queryset).
+    BppSoftDeleteAdminMixin,
     HistoriaWersjiMixin,
     VersionAdmin,
 ):

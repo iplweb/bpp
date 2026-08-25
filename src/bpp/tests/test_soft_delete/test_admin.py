@@ -268,3 +268,86 @@ def test_powod_dziedziczy_kaskada_na_autorstwa(superuser, superuser_client):
     assert wpis is not None
     assert wpis.powod == "Wycofanie calego rekordu"
     assert wpis.user_id == superuser.pk
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "model_name,admin_slug",
+    [
+        ("Wydawnictwo_Zwarte", "wydawnictwo_zwarte"),
+        ("Patent", "patent"),
+        ("Praca_Doktorska", "praca_doktorska"),
+        ("Praca_Habilitacyjna", "praca_habilitacyjna"),
+        ("Autor", "autor"),
+    ],
+)
+def test_kosz_w_adminie_dla_kazdego_modelu(model_name, admin_slug, superuser_client):
+    import bpp.models
+
+    model = getattr(bpp.models, model_name)
+    obj = baker.make(model)
+    pk = obj.pk
+    obj.delete(reason="test")
+
+    # Changeform otwiera skasowany rekord (global_objects):
+    url_change = reverse(f"admin:bpp_{admin_slug}_change", args=[pk])
+    assert superuser_client.get(url_change).status_code == 200
+
+    # Filtr kosza pokazuje skasowany, a akcje kosza sa oferowane:
+    url_list = reverse(f"admin:bpp_{admin_slug}_changelist") + "?is_deleted=true"
+    resp = superuser_client.get(url_list)
+    assert resp.status_code == 200
+    assert b"przywroc_zaznaczone" in resp.content
+    assert b"usun_trwale_zaznaczone" in resp.content
+    assert b"usun_do_kosza" in resp.content
+
+    # Przywracanie dziala:
+    resp_r = superuser_client.post(
+        url_list,
+        {"action": "przywroc_zaznaczone", "_selected_action": [str(pk)]},
+    )
+    assert resp_r.status_code in (200, 302)
+    assert model.objects.filter(pk=pk).exists()
+
+
+@pytest.mark.django_db
+def test_mixin_nie_znosi_zawezenia_do_uczelni_w_autoradmin(staff_user, rf):
+    """REGRESJA MRO: kosz nie ma prawa poszerzyc widoku poza wlasna uczelnie.
+
+    Plan fazy 07 kazal wpinac ``BppSoftDeleteAdminMixin`` jako PIERWSZY.
+    Jego ``get_queryset`` nie woła ``super()`` (podmienia manager bazowy),
+    wiec z pierwszej pozycji uciolby cały łańcuch — w tym
+    ``SiteFilteredAdminMixin.get_queryset`` w ``AutorAdmin``, zawezajace
+    widok nie-superusera do jego uczelni (FD#390). Personel uczelni A
+    zobaczylby (i skasowal) autorow uczelni B.
+
+    Ten test pilnuje, ze mixin stoi na koncu MRO — czyli ze jest PODSTAWA
+    lancucha, a nie jego obcieciem.
+    """
+    from django.contrib.admin.sites import site
+
+    from bpp.models import Autor, Autor_Jednostka, Jednostka, Uczelnia
+
+    uczelnia_a = baker.make(Uczelnia, nazwa="Uczelnia A", skrot="UA")
+    uczelnia_b = baker.make(Uczelnia, nazwa="Uczelnia B", skrot="UB")
+    jednostka_a = baker.make(Jednostka, uczelnia=uczelnia_a)
+    jednostka_b = baker.make(Jednostka, uczelnia=uczelnia_b)
+
+    autor_a = baker.make(Autor)
+    baker.make(Autor_Jednostka, autor=autor_a, jednostka=jednostka_a)
+    autor_b = baker.make(Autor)
+    baker.make(Autor_Jednostka, autor=autor_b, jednostka=jednostka_b)
+    autor_b_w_koszu = baker.make(Autor)
+    baker.make(Autor_Jednostka, autor=autor_b_w_koszu, jednostka=jednostka_b)
+    autor_b_w_koszu.delete(reason="test")
+
+    request = rf.get("/admin/bpp/autor/")
+    request.user = staff_user
+    request._uczelnia = uczelnia_b
+
+    qs = site._registry[Autor].get_queryset(request)
+    widoczne = set(qs.values_list("pk", flat=True))
+
+    assert autor_b.pk in widoczne, "wlasna uczelnia musi byc widoczna"
+    assert autor_b_w_koszu.pk in widoczne, "kosz wlasnej uczelni tez (global_objects)"
+    assert autor_a.pk not in widoczne, "CUDZA uczelnia NIE MOZE byc widoczna"
