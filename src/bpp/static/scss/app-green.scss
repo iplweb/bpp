@@ -28,7 +28,15 @@ input[type=radio] {
 // paska breadcrumbs (#efefef) kontrast 4.47 — ponizej progu 4.5 dla tekstu.
 // Override jest punktowy CELOWO: zmiana palety przemalowala by caly motyw
 // (przyciski, linki, akcenty), a chodzi o jeden element.
-#breadcrumbs-wrapper .breadcrumbs a {
+//
+// #tip-text (porady BPP na stronie uczelni, browse/uczelnia.html) dzieli
+// TEN SAM wrapper (#breadcrumbs-wrapper, tlo rgba(240,240,240,.85)) i te
+// sama wade — trzy z pietnastu losowanych porad zawieraja <a href> bez
+// wlasnego koloru, wiec dziedzicza domyslna zielen. Znalezisko z rundy
+// poprawek Zadania 5: bramka axe nie wykrywala tego wczesniej, bo porada
+// jest losowana przy kazdym przebiegu i zwykle trafial sie tekst bez linku.
+#breadcrumbs-wrapper .breadcrumbs a,
+#breadcrumbs-wrapper #tip-text a {
   color: #006e00; // 5.65 na #efefef
 }
 
