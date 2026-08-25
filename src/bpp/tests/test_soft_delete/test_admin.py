@@ -409,3 +409,58 @@ def test_guard_nie_blokuje_pozostalych_z_zaznaczenia(superuser_client):
     assert resp.status_code == 200
     assert Autor.objects.filter(pk=zablokowany.pk).exists()
     assert not Autor.objects.filter(pk=wolny.pk).exists()
+
+
+@pytest.mark.django_db
+def test_staff_moze_do_kosza_ale_nie_trwale(staff_user, staff_client):
+    """Podzial uprawnien: kosz dla staffu, nieodwracalne kasowanie nie."""
+    obj = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Staff do kosza")
+    pk = obj.pk
+    url = reverse("admin:bpp_wydawnictwo_ciagle_changelist")
+
+    resp = staff_client.post(
+        url,
+        {
+            "action": "usun_do_kosza",
+            "_selected_action": [str(pk)],
+            "powod_potwierdzony": "1",
+            "powod": "staff kasuje",
+        },
+        follow=True,
+    )
+    assert resp.status_code == 200
+
+    # Kosz, nie fizyczne skasowanie:
+    assert not Wydawnictwo_Ciagle.objects.filter(pk=pk).exists()
+    assert Wydawnictwo_Ciagle.global_objects.filter(pk=pk).exists()
+
+    wpis = _log(Wydawnictwo_Ciagle, pk, "delete")
+    assert wpis is not None
+    assert wpis.user_id == staff_user.pk
+    assert wpis.powod == "staff kasuje"
+
+    # Akcja trwalego usuwania nie jest staffowi w ogole oferowana:
+    resp_list = staff_client.get(url + "?is_deleted=true")
+    assert b"usun_trwale_zaznaczone" not in resp_list.content
+    assert b"przywroc_zaznaczone" in resp_list.content
+
+
+@pytest.mark.django_db
+def test_delete_selected_tez_idzie_do_kosza(superuser, superuser_client):
+    """Domyslna akcja Django przechodzi przez nasz delete_queryset."""
+    obj = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Przez delete_selected")
+    pk = obj.pk
+    url = reverse("admin:bpp_wydawnictwo_ciagle_changelist")
+
+    resp = superuser_client.post(
+        url,
+        {"action": "delete_selected", "_selected_action": [str(pk)], "post": "yes"},
+        follow=True,
+    )
+    assert resp.status_code == 200
+    assert not Wydawnictwo_Ciagle.objects.filter(pk=pk).exists()
+    assert Wydawnictwo_Ciagle.global_objects.filter(pk=pk).exists()
+
+    wpis = _log(Wydawnictwo_Ciagle, pk, "delete")
+    assert wpis is not None
+    assert wpis.user_id == superuser.pk
