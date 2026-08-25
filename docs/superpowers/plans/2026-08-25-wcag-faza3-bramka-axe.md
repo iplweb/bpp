@@ -384,6 +384,11 @@ def _widoczne_pola(html):
     ]
 
 
+# `browse/autor.html` NIE jest tu parametryzowany — jego pole pilnuje
+# bramka axe (Task 5) na realnie wyrenderowanej stronie, co jest mocniejsze
+# niz render szablonu. `browse/tytul_raportu.html` DOPISZ do tej listy,
+# jesli Step 1 wykazal, ze szablon zyje; jesli jest martwy i skasowany —
+# zostaw liste bez niego.
 @pytest.mark.parametrize(
     "szablon",
     [
