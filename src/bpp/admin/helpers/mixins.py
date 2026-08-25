@@ -1,7 +1,10 @@
+from contextlib import contextmanager
+
 from django import forms
 from django.urls import reverse
 from django_softdelete.filters import SoftDeleteFilter
 
+from bpp.models.soft_delete_context import soft_delete_context
 from bpp.models.system import Status_Korekty
 
 
@@ -186,3 +189,67 @@ class BppSoftDeleteAdminMixin:
         if PokazSkasowaneFilter not in list_filter:
             list_filter.insert(0, PokazSkasowaneFilter)
         return list_filter
+
+    # --- jeden punkt wstrzykniecia usera --------------------------------
+
+    @contextmanager
+    def _soft_delete_user_context(self, request):
+        """JEDEN punkt wstrzyknięcia ``request.user`` dla całego przepływu
+        kosza w adminie: ``delete_model``, ``delete_queryset``,
+        ``usun_do_kosza``, ``przywroc_zaznaczone``, ``usun_trwale_zaznaczone``.
+
+        Deleguje do ``soft_delete_context`` z fazy 06 — thread-locala czytają
+        receivery sygnałów, bo sygnały pakietu ``django-soft-delete`` niosą
+        wyłącznie ``sender`` i ``instance``.
+
+        DLACZEGO KONTEKST, SKORO ``delete()`` PRZYJMUJE ``user=``: bo
+        ``hard_delete()`` go NIE przyjmuje. ``BppPkPrzedHardDeleteMixin.
+        hard_delete()`` przekazuje argumenty prosto do pakietu, który o
+        żadnym userze nie wie — atrybucja trwałego usunięcia ma więc tylko
+        ten jeden kanał. Plan fazy 07 zakładał tu ``hard_delete(user=,
+        reason=)``; taka sygnatura nie istnieje.
+
+        # SZEW reversion: tutaj (i tylko tutaj) dojdzie w przyszłości
+        # ``reversion.set_user(request.user)`` — jeden hook, nie dwa
+        # konkurencyjne. Patrz overview, „Kontrakty z reversion".
+        """
+        with soft_delete_context(
+            user=request.user, reason=self._powod_z_requestu(request)
+        ):
+            yield
+
+    def _powod_z_requestu(self, request):
+        """Powód operacji podany na stronie pośredniej (``usun_do_kosza``).
+
+        Puste, gdy ścieżka nie pyta o powód — ``soft_delete_context``
+        traktuje pusty łańcuch jako „nie wnoszę informacji" i dziedziczy
+        powód z kontekstu zewnętrznego, zamiast go zerować.
+        """
+        if request.method != "POST":
+            return ""
+        return request.POST.get("powod", "")
+
+    # --- kasowanie = kosz -----------------------------------------------
+
+    def delete_model(self, request, obj):
+        """Przycisk „Usuń" na changeformie przenosi do kosza.
+
+        Bez tego nadpisania rekord i tak trafiłby do kosza (``delete()``
+        modelu jest miękkie), ale BEZ atrybucji — wpis ``SoftDeleteLog``
+        powstawałby z ``user=None``.
+        """
+        with self._soft_delete_user_context(request):
+            obj.delete(user=request.user, reason=self._powod_z_requestu(request))
+
+    def delete_queryset(self, request, queryset):
+        """Akcja ``delete_selected`` — soft-delete PER INSTANCJA.
+
+        Nigdy zbiorczo: kaskada ``*_Autor`` (faza 02), ``SoftDeleteLog``
+        i sprzątanie ``Cache_Punktacja_*`` wiszą na sygnałach per obiekt,
+        a gate w ``BppSoftDeleteQuerySet.update()`` i tak blokuje bulk
+        ustawienie ``deleted_at``.
+        """
+        with self._soft_delete_user_context(request):
+            powod = self._powod_z_requestu(request)
+            for obj in queryset:
+                obj.delete(user=request.user, reason=powod)
