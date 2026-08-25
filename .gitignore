@@ -226,6 +226,9 @@ TODO-*.md
 # Rollbar.js kopiowany z node_modules przez grunt (build artifact, nie commitować)
 src/bpp/static/rollbar/
 
+# axe-core kopiowany z node_modules przez grunt (build artifact, nie commitować)
+src/bpp/static/axe/
+
 # SDD workflow scratch (briefs, reports, ledger, diffs)
 .superpowers/
 

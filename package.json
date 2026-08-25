@@ -3,6 +3,7 @@
     "version": "v202608.1399",
     "license": "MIT",
     "devDependencies": {
+        "axe-core": "^4.13.0",
         "esbuild": "^0.28.1",
         "grunt": "^1.6.1",
         "grunt-concurrent": "^3.0.0",

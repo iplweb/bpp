@@ -291,6 +291,15 @@ module.exports = function (grunt) {
                          'cp node_modules/rollbar/dist/rollbar.umd.min.js ' +
                          'src/bpp/static/rollbar/rollbar.umd.min.js'
             },
+            copyAxe: {
+                // axe-core dla bramki dostepnosci. Kopiujemy do statykow tym
+                // samym wzorcem co Rollbara, bo obraz CI `test-runner` NIE ma
+                // node_modules — wstrzykiwanie prosto stamtad dziala lokalnie
+                // i pada na CI.
+                command: 'mkdir -p src/bpp/static/axe && ' +
+                         'cp node_modules/axe-core/axe.min.js ' +
+                         'src/bpp/static/axe/axe.min.js'
+            },
             collectstatic: {
                 command: 'uv run src/manage.py collectstatic --noinput -v0 --traceback'
             }
@@ -331,12 +340,20 @@ module.exports = function (grunt) {
         'shell:esbuildThree',
         'shell:patchBundle',
         'shell:copyRollbar',
+        'shell:copyAxe',
         'shell:collectstatic',
         'stampBuild'
     ]);
     // `build-non-interactive` CELOWO nie dotyka sentinela: pomija
     // `collectstatic`, wiec nie spelnia tego, co `make assets` obiecuje.
     // Uzywaja go tylko Dockerfile'e, gdzie `make` nie wystepuje.
+    //
+    // `shell:copyAxe` MUSI tu byc: to jedyna lista tasków, ktora faktycznie
+    // biegnie w stage'u `test-assets-builder` obrazu CI (`docker/bpp_base/
+    // Dockerfile`, `RUN npx grunt build-non-interactive`) — `build` (z
+    // `collectstatic`) tam nigdy sie nie wykonuje. Bez tego wpisu axe.min.js
+    // istnialby lokalnie (przez `make assets` -> `build`), ale nie trafilby
+    // do obrazu test-runnera.
     grunt.registerTask('build-non-interactive', [
         'concurrent:themes',
         'shell:linkSitePackages',
@@ -344,7 +361,8 @@ module.exports = function (grunt) {
         'shell:esbuildCytoscape',
         'shell:esbuildThree',
         'shell:patchBundle',
-        'shell:copyRollbar'
+        'shell:copyRollbar',
+        'shell:copyAxe'
     ]);
 
     // Rename the original watch task and create an alias that builds first
