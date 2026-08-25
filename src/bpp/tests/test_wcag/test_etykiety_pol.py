@@ -4,28 +4,27 @@ axe zgłosił `label` (critical) dla widocznego pola „Tytuł raportu" na
 stronie autora. To samo pole jest w kolejnych szablonach, których bramka
 axe nie obejmuje — stąd te testy.
 
-Sprawdzamy POWIĄZANIE, nie obecność znacznika: `<label for="zle-id">`
-istnieje i nie wiąże niczego, a `aria-label` na ukrytym polu byłby
-bezużyteczny.
+Sprawdzamy POWIĄZANIE na wyrenderowanym DOM-ie (`lxml.html`), nie regexem
+po źródle HTML: `<label for="zle-id">` istnieje i nie wiąże niczego, a
+`aria-label` na ukrytym polu byłby bezużyteczny. Ten sam wzorzec parsowania
+(`lxml.html.fromstring(...).xpath(...)`) stosuje sąsiedni
+`test_alt_obrazy.py`.
 """
 
-import re
-
+import lxml.html
 import pytest
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.sessions.backends.db import SessionStore
 from django.template.loader import render_to_string
 from django.test import RequestFactory
 
-WZORZEC_POLA = re.compile(r'<input[^>]*name="suggested-title"[^>]*>', re.IGNORECASE)
 
-
-def _widoczne_pola(html):
-    """Pola `suggested-title`, które NIE są ukryte."""
+def _widoczne_pola(drzewo):
+    """Elementy `<input name="suggested-title">`, które NIE są ukryte."""
     return [
-        znacznik
-        for znacznik in WZORZEC_POLA.findall(html)
-        if 'type="hidden"' not in znacznik.lower()
+        pole
+        for pole in drzewo.xpath('//input[@name="suggested-title"]')
+        if (pole.get("type") or "").lower() != "hidden"
     ]
 
 
@@ -66,29 +65,39 @@ def _html_request():
 def test_widoczne_pole_tytulu_ma_dostepna_nazwe(szablon, nazwa_fixture, request):
     obiekt = request.getfixturevalue(nazwa_fixture)
     html = render_to_string(szablon, {nazwa_fixture: obiekt}, request=_html_request())
+    drzewo = lxml.html.fromstring(html)
 
-    pola = _widoczne_pola(html)
+    pola = _widoczne_pola(drzewo)
     assert pola, f"{szablon}: nie znaleziono widocznego pola suggested-title"
 
     for pole in pola:
-        # Sprawdzamy WARTOŚĆ atrybutu, nie samą jego obecność: pusty
-        # `aria-label=""` USUWA dostępną nazwę (WCAG 4.1.2), a nie ją
-        # nadaje — substring-check `"aria-label=" in pole` przepuściłby
-        # to jako poprawne. To samo dotyczy `id=""`: bez tej poprawki
-        # `re.search(...).group(1)` na pustym dopasowaniu i tak by nie
-        # wybuchł (grupa dopasowuje pusty string), ale dawałby
-        # `identyfikator = ""` i mylące `for=""` w komunikacie zamiast
-        # jasnego „pole bez dostępnej nazwy".
-        aria_match = re.search(r'aria-label="([^"]*)"', pole, re.IGNORECASE)
-        ma_aria = bool(aria_match and aria_match.group(1).strip())
+        # Pusty `aria-label=""` USUWA dostępną nazwę (WCAG 4.1.2), a nie ją
+        # nadaje — `.strip()` odrzuca pusty string i sam biały znak jako
+        # brak nazwy, tak samo jak dla `id=""`.
+        aria_label = (pole.get("aria-label") or "").strip()
+        ma_aria = bool(aria_label)
 
-        id_match = re.search(r'id="([^"]*)"', pole, re.IGNORECASE)
-        ma_id = bool(id_match and id_match.group(1).strip())
+        identyfikator = (pole.get("id") or "").strip()
+        ma_id = bool(identyfikator)
 
-        assert ma_aria or ma_id, f"{szablon}: pole bez dostępnej nazwy — {pole}"
+        assert ma_aria or ma_id, (
+            f"{szablon}: pole bez dostępnej nazwy — "
+            f"{lxml.html.tostring(pole, encoding='unicode')}"
+        )
         if ma_id and not ma_aria:
-            identyfikator = id_match.group(1)
-            assert f'for="{identyfikator}"' in html, (
+            etykiety = drzewo.xpath(f'//label[@for="{identyfikator}"]')
+            assert etykiety, (
                 f"{szablon}: jest id={identyfikator}, ale żaden <label> "
                 "go nie wskazuje — etykieta nie wiąże się z polem"
+            )
+
+            # Zduplikowany `id` rozrywa powiązanie label↔input: przeglądarka
+            # (i czytnik ekranu) wiąże `<label for>` z PIERWSZYM elementem
+            # o tym `id` w dokumencie. Jeśli to nie jest nasze pole, etykieta
+            # jest bezużyteczna mimo formalnej obecności `for=`.
+            z_tym_id = drzewo.xpath(f'//*[@id="{identyfikator}"]')
+            assert len(z_tym_id) == 1, (
+                f"{szablon}: id={identyfikator} występuje "
+                f"{len(z_tym_id)}x w dokumencie — powiązanie label↔input "
+                "jest niejednoznaczne"
             )

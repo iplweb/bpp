@@ -290,6 +290,10 @@ production-assets: distclean assets ## Pełny clean + build assetów pod produkc
 # usuń ze staticroot niepotrzebne pakiety (Poetry pyproject.toml exclude
 # nie do końca to załatwia...)
 	rm -rf src/django_bpp/staticroot/{qunit,sinon}
+# axe-core (`shell:copyAxe`) to biblioteka testowa dla bramki axe
+# (src/integration_tests/test_wcag_bramka_axe.py) — 580 KB, którego nic
+# na produkcji nie ładuje. Ten sam wzorzec jak qunit/sinon wyżej.
+	rm -rf src/django_bpp/staticroot/axe
 	rm -rf src/django_bpp/staticroot/sitemap-*
 	rm -rf src/django_bpp/staticroot/grappelli/tinymce/
 	rm -rf src/django_bpp/staticroot/autocomplete_light/vendor/select2/tests/

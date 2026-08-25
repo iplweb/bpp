@@ -168,11 +168,16 @@ RUN /app/.venv/bin/python src/manage.py compilemessages -v0 -l pl --traceback
 # Source maps sluza tylko browser devtools podczas debugowania JS/CSS;
 # w prod 404 na .map pojawia sie w konsoli gdy user otworzy devtools —
 # bez wplywu na dzialanie aplikacji.
+# R17: --ignore axe wycina axe-core (`shell:copyAxe` w Gruntfile.js, ~580 KB
+# axe.min.js), skopiowany do statykow WYLACZNIE dla bramki dostepnosci Playwright
+# (src/integration_tests/test_wcag_bramka_axe.py) i przez `build-non-interactive`
+# trafiajacy takze do tego stage'a. Nic na produkcji go nie laduje — sam wzorzec
+# co sinon/qunit powyzej.
 RUN DJANGO_BPP_SECRET_KEY=build-time-only-not-used \
     STATIC_ROOT=/app/staticroot.baked \
     /app/.venv/bin/python src/manage.py collectstatic \
         --noinput -v0 --traceback \
-        --ignore sinon --ignore qunit --ignore '*.map'
+        --ignore sinon --ignore qunit --ignore axe --ignore '*.map'
 
 # R16: prekompresja gzip dla `gzip_static on` po stronie nginksa (bpp-deploy,
 # defaults/webserver/_bpp-locations.conf). Ta dyrektywa jest tam wlaczona od
