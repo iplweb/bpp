@@ -351,3 +351,61 @@ def test_mixin_nie_znosi_zawezenia_do_uczelni_w_autoradmin(staff_user, rf):
     assert autor_b.pk in widoczne, "wlasna uczelnia musi byc widoczna"
     assert autor_b_w_koszu.pk in widoczne, "kosz wlasnej uczelni tez (global_objects)"
     assert autor_a.pk not in widoczne, "CUDZA uczelnia NIE MOZE byc widoczna"
+
+
+@pytest.mark.django_db
+def test_soft_delete_autora_z_pracami_pokazuje_komunikat(superuser_client):
+    """Guard fazy 04 ma dawac komunikat, nie 500.
+
+    ``usun_do_kosza`` jest tu sciezka krytyczna: wlasna akcja NIE
+    przechodzi przez kolektor Django (ktory dla ``delete_selected``
+    zatrzymalby operacje na FK ``PROTECT``), wiec ``ProtectedError``
+    wyleciałby prosto z ``Autor.delete()``.
+    """
+    from bpp.models import Autor, Wydawnictwo_Ciagle_Autor
+
+    autor = baker.make(Autor)
+    baker.make(Wydawnictwo_Ciagle_Autor, autor=autor)
+
+    url = reverse("admin:bpp_autor_changelist")
+    resp = superuser_client.post(
+        url,
+        {
+            "action": "usun_do_kosza",
+            "_selected_action": [str(autor.pk)],
+            "powod_potwierdzony": "1",
+            "powod": "próba",
+        },
+        follow=True,
+    )
+
+    assert resp.status_code == 200
+    assert Autor.objects.filter(pk=autor.pk).exists()
+    tresc = resp.content.decode("utf-8").lower()
+    assert "nie można usunąć" in tresc
+
+
+@pytest.mark.django_db
+def test_guard_nie_blokuje_pozostalych_z_zaznaczenia(superuser_client):
+    """Jeden zablokowany rekord nie moze przewrocic calej operacji."""
+    from bpp.models import Autor, Wydawnictwo_Ciagle_Autor
+
+    zablokowany = baker.make(Autor)
+    baker.make(Wydawnictwo_Ciagle_Autor, autor=zablokowany)
+    wolny = baker.make(Autor)
+
+    url = reverse("admin:bpp_autor_changelist")
+    resp = superuser_client.post(
+        url,
+        {
+            "action": "usun_do_kosza",
+            "_selected_action": [str(zablokowany.pk), str(wolny.pk)],
+            "powod_potwierdzony": "1",
+            "powod": "próba",
+        },
+        follow=True,
+    )
+
+    assert resp.status_code == 200
+    assert Autor.objects.filter(pk=zablokowany.pk).exists()
+    assert not Autor.objects.filter(pk=wolny.pk).exists()
