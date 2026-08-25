@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from django import forms
 from django.contrib import admin, messages
 from django.contrib.admin import helpers as admin_helpers
+from django.db.models import ProtectedError
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from django_softdelete.filters import SoftDeleteFilter
@@ -248,6 +249,24 @@ class BppSoftDeleteAdminMixin:
 
     # --- kasowanie = kosz -----------------------------------------------
 
+    def _soft_delete_jeden(self, request, obj, powod):
+        """Soft-delete jednego rekordu; ``False`` gdy guard fazy 04 zablokował.
+
+        POKAZUJEMY KOMUNIKAT Z WYJĄTKU, nie własny. ``raise_if_has_protected_
+        children`` zna liczbę i rodzaj powiązań i już je opisuje po polsku;
+        drugi tekst tutaj byłby kopią tej samej reguły, która rozjedzie się
+        z oryginałem przy pierwszej zmianie listy relacji.
+
+        Łapiemy per instancja, żeby jeden zablokowany autor nie przewracał
+        całego zaznaczenia — reszta ma trafić do kosza.
+        """
+        try:
+            obj.delete(user=request.user, reason=powod)
+            return True
+        except ProtectedError as e:
+            self.message_user(request, e.args[0], level=messages.ERROR)
+            return False
+
     def delete_model(self, request, obj):
         """Przycisk „Usuń" na changeformie przenosi do kosza.
 
@@ -256,7 +275,9 @@ class BppSoftDeleteAdminMixin:
         powstawałby z ``user=None``.
         """
         with self._soft_delete_user_context(request):
-            obj.delete(user=request.user, reason=self._powod_z_requestu(request))
+            # Guard rzuca ProtectedError takze tutaj — Django zrobi wtedy
+            # redirect z komunikatem bledu, a rekord zostanie.
+            self._soft_delete_jeden(request, obj, self._powod_z_requestu(request))
 
     def delete_queryset(self, request, queryset):
         """Akcja ``delete_selected`` — soft-delete PER INSTANCJA.
@@ -269,7 +290,7 @@ class BppSoftDeleteAdminMixin:
         with self._soft_delete_user_context(request):
             powod = self._powod_z_requestu(request)
             for obj in queryset:
-                obj.delete(user=request.user, reason=powod)
+                self._soft_delete_jeden(request, obj, powod)
 
     # --- akcje kosza ----------------------------------------------------
 
@@ -334,13 +355,14 @@ class BppSoftDeleteAdminMixin:
                 powod = self._powod_z_requestu(request)
                 usunieto = 0
                 for obj in queryset:
-                    obj.delete(user=request.user, reason=powod)
-                    usunieto += 1
-            self.message_user(
-                request,
-                f"Przeniesiono do kosza: {usunieto}.",
-                level=messages.SUCCESS,
-            )
+                    if self._soft_delete_jeden(request, obj, powod):
+                        usunieto += 1
+            if usunieto:
+                self.message_user(
+                    request,
+                    f"Przeniesiono do kosza: {usunieto}.",
+                    level=messages.SUCCESS,
+                )
             return None
 
         ile = queryset.count()
