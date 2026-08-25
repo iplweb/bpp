@@ -262,6 +262,26 @@ motywu. `app-uafm`, mimo że też klienckie, nie wykazał naruszeń na
 zmierzonej stronie — nie znaczy to zgodności całego motywu, tylko że ta
 jedna strona nie ujawniła problemu tym skanem.
 
+### Drobiazgi odnotowane przy fazie 3 (nie blokują, do osobnych zadań)
+
+**Te same dwie szarości żyją też poza zakresem naprawy.** Faza 3 przyciemniła
+`#7f8c8d` i `#6c757d` w deklaracjach `color:` w `src/bpp/static/scss/*.scss`.
+Oba kolory występują dodatkowo w arkuszach aplikacji **za logowaniem**
+(`komparator_pbn.scss`, `ewaluacja_optymalizacja.scss`, `_multiseek-*.scss`,
+`_pagination.scss`) oraz w innych aplikacjach (`pbn_import`,
+`komparator_publikacji_pbn`, `ewaluacja_optymalizuj_publikacje`,
+`src/bpp/static/bpp/scss/`). Były poza zadeklarowanym zakresem audytu (część
+publiczna dla anonima), więc świadomie ich nie ruszano — ale jeśli zakres
+kiedyś obejmie widoki za logowaniem, to jest gotowa lista miejsc.
+
+**Martwe, śledzone w gicie arkusze CSS.** `src/bpp/static/scss/*.css` (m.in.
+`browse.css`, `komparator_pbn.css`) są śledzone w repozytorium mimo wpisu
+w `.gitignore`. Są przy tym **martwe**: grunt ich nie kompiluje (kompiluje
+wyłącznie entrypointy `app-*.scss` i arkusze aplikacji), a żaden szablon ich
+nie linkuje. `browse.css` to zastygły zrzut błędu kompilacji Sass sprzed lat.
+Problem jest przedistniejący, niezwiązany z żadną fazą WCAG — wart osobnego
+zgłoszenia i `git rm --cached`.
+
 ## Pułapki, które kosztowały czas
 
 - **`grunt build` jest konieczny** po zmianie SCSS; szablony Django
