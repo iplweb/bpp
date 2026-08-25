@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 
 from django import forms
+from django.contrib import admin, messages
 from django.urls import reverse
 from django_softdelete.filters import SoftDeleteFilter
 
@@ -253,3 +254,54 @@ class BppSoftDeleteAdminMixin:
             powod = self._powod_z_requestu(request)
             for obj in queryset:
                 obj.delete(user=request.user, reason=powod)
+
+    # --- akcje kosza ----------------------------------------------------
+
+    @admin.action(description="♻️ Przywróć zaznaczone (z kosza)")
+    def przywroc_zaznaczone(self, request, queryset):
+        """Przywraca rekordy z kosza przez ten sam hook usera.
+
+        Zaznaczenie idzie z ``global_objects``, więc może zawierać rekordy
+        żywe — te pomijamy zamiast wołać na nich ``restore()``. To nie jest
+        kosmetyka: ``restore()`` publikacji przelicza punktację dyscyplin
+        (operacja licząca, nie ``UPDATE``) i kolejkuje wysyłkę do PBN,
+        więc „przywrócenie" nieskasowanego rekordu byłoby kosztownym
+        no-opem z fałszywym wpisem w ``SoftDeleteLog``.
+        """
+        with self._soft_delete_user_context(request):
+            przywrocono = 0
+            for obj in queryset:
+                if obj.deleted_at is None:
+                    continue
+                obj.restore(user=request.user)
+                przywrocono += 1
+        if not przywrocono:
+            # Najczestsza przyczyna: operator zaznaczyl rekordy na liscie
+            # bez filtra kosza, wiec do akcji nie doszedl ani jeden
+            # skasowany wiersz. Ciche "przywrocono: 0" wygladaloby jak
+            # awaria przywracania.
+            self.message_user(
+                request,
+                "Nie przywrócono nic — w zaznaczeniu nie było rekordów "
+                "z kosza. Ustaw filtr „Kosz” na „🗑️ Tylko skasowane”, "
+                "zaznacz rekordy i powtórz akcję.",
+                level=messages.WARNING,
+            )
+            return
+        self.message_user(
+            request,
+            f"Przywrócono z kosza: {przywrocono}.",
+            level=messages.SUCCESS,
+        )
+
+    def get_actions(self, request):
+        """Dokłada akcje kosza do tych zebranych przez resztę łańcucha.
+
+        Wołamy ``super()`` i tylko DOKŁADAMY klucze — dlatego mixin działa
+        także z ostatniej pozycji w MRO (patrz docstring klasy), mimo że
+        wyżej stoją ``AutorAdmin.get_actions`` i ``ExportActionsMixin.
+        get_actions``.
+        """
+        actions = super().get_actions(request)
+        actions["przywroc_zaznaczone"] = self.get_action("przywroc_zaznaczone")
+        return actions
