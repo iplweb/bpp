@@ -71,11 +71,23 @@ def test_widoczne_pole_tytulu_ma_dostepna_nazwe(szablon, nazwa_fixture, request)
     assert pola, f"{szablon}: nie znaleziono widocznego pola suggested-title"
 
     for pole in pola:
-        ma_aria = "aria-label=" in pole.lower()
-        ma_id = 'id="' in pole.lower()
+        # Sprawdzamy WARTOŚĆ atrybutu, nie samą jego obecność: pusty
+        # `aria-label=""` USUWA dostępną nazwę (WCAG 4.1.2), a nie ją
+        # nadaje — substring-check `"aria-label=" in pole` przepuściłby
+        # to jako poprawne. To samo dotyczy `id=""`: bez tej poprawki
+        # `re.search(...).group(1)` na pustym dopasowaniu i tak by nie
+        # wybuchł (grupa dopasowuje pusty string), ale dawałby
+        # `identyfikator = ""` i mylące `for=""` w komunikacie zamiast
+        # jasnego „pole bez dostępnej nazwy".
+        aria_match = re.search(r'aria-label="([^"]*)"', pole, re.IGNORECASE)
+        ma_aria = bool(aria_match and aria_match.group(1).strip())
+
+        id_match = re.search(r'id="([^"]*)"', pole, re.IGNORECASE)
+        ma_id = bool(id_match and id_match.group(1).strip())
+
         assert ma_aria or ma_id, f"{szablon}: pole bez dostępnej nazwy — {pole}"
         if ma_id and not ma_aria:
-            identyfikator = re.search(r'id="([^"]+)"', pole).group(1)
+            identyfikator = id_match.group(1)
             assert f'for="{identyfikator}"' in html, (
                 f"{szablon}: jest id={identyfikator}, ale żaden <label> "
                 "go nie wskazuje — etykieta nie wiąże się z polem"
