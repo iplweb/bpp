@@ -714,6 +714,55 @@ def superuser_client(client, superuser):
     return client
 
 
+STAFF_USERNAME = "staff"
+STAFF_PASSWORD = "staffpass"
+
+
+@pytest.fixture
+def staff_user(db):
+    """Uzytkownik z dostepem do admina, ale BEZ ``is_superuser``.
+
+    Potrzebny wszedzie tam, gdzie testujemy roznice miedzy „staff" a
+    „superuser" — sam ``is_staff`` nie wystarczy, bo bez uprawnien
+    modelowych Django nie wpuszcza nawet na changeliste i test mierzylby
+    brak dostepu zamiast badanej reguly.
+    """
+    from django.contrib.auth.models import Group, Permission
+
+    from bpp.const import GR_WPROWADZANIE_DANYCH
+
+    u = User.objects.create_user(
+        username=STAFF_USERNAME,
+        password=STAFF_PASSWORD,
+        email="staff@example.com",
+    )
+    u.is_staff = True
+    u.save()
+    u.user_permissions.add(
+        *Permission.objects.filter(
+            content_type__app_label="bpp",
+            content_type__model__in=("wydawnictwo_ciagle", "autor"),
+        )
+    )
+    # Grupa „wprowadzanie danych" to nie ozdobnik. Staff BEZ zadnej grupy
+    # wywraca render menu admina 500-tka: `_add_group_submenus` dokleja
+    # submenu tylko czlonkom grupy, a zaraz potem bezwarunkowo robi
+    # `del menu.children[-1].children[-1]` (src/django_bpp/menu.py:302) —
+    # przy pustym `menu.children` leci IndexError. To bug niezalezny od
+    # soft-delete; fixture modeluje realnego redaktora, ktory te grupe ma.
+    grupa, _ = Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)
+    u.groups.add(grupa)
+    return u
+
+
+@pytest.fixture
+def staff_client(client, staff_user):
+    """Zalogowany ``staff_user`` (nie-superuser)."""
+    if not client.login(username=STAFF_USERNAME, password=STAFF_PASSWORD):
+        raise Exception("Cannot login staff")
+    return client
+
+
 @pytest.fixture
 def user_request_factory(test_user):
     """Fixture zwracający UserRequestFactory."""

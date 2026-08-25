@@ -294,6 +294,58 @@ class BppSoftDeleteAdminMixin:
             level=messages.SUCCESS,
         )
 
+    @admin.action(description="❌ Usuń TRWALE (nieodwracalnie, tylko superuser)")
+    def usun_trwale_zaznaczone(self, request, queryset):
+        """Opróżnianie kosza: fizyczne skasowanie rekordów.
+
+        TYLKO Z KOSZA, nigdy wprost z rekordu żywego — i nie jest to
+        ostrożnościowy rytuał. ``Cache_Punktacja_*`` nie ma FK do
+        publikacji (klucz to tablica ``[content_type_id, pk]``), więc nie
+        sprząta jej ani kolektor Django, ani triggery. Kasuje ją dopiero
+        receiver ``post_soft_delete`` (faza 06). Twarde skasowanie rekordu
+        z pominięciem kosza zostawiłoby więc wiersze punktacji wskazujące
+        na nieistniejący rekord — i liczące się do ewaluacji.
+
+        Podwójny gate na superusera (tu i w ``get_actions``) jest celowy:
+        ``get_actions`` decyduje o WIDOCZNOŚCI, ta metoda o WYKONANIU.
+        Django odrzuca akcje spoza ``get_actions``, ale to jest operacja
+        nieodwracalna — jeden mechanizm obronny na nią za mało.
+        """
+        if not request.user.is_superuser:
+            self.message_user(
+                request,
+                "Trwałe usuwanie jest dostępne wyłącznie dla superużytkownika.",
+                level=messages.ERROR,
+            )
+            return
+
+        with self._soft_delete_user_context(request):
+            usunieto = 0
+            pominieto = 0
+            for obj in queryset:
+                if obj.deleted_at is None:
+                    pominieto += 1
+                    continue
+                # hard_delete() NIE przyjmuje user=/reason= — atrybucję
+                # niesie wyłącznie kontekst powyżej.
+                obj.hard_delete()
+                usunieto += 1
+
+        if pominieto:
+            self.message_user(
+                request,
+                f"Pominięto rekordów spoza kosza: {pominieto}. Trwale usuwać "
+                "można wyłącznie to, co jest już w koszu — najpierw „🗑️ Usuń "
+                "do kosza”, potem „❌ Usuń TRWALE”.",
+                level=messages.WARNING,
+            )
+        if usunieto:
+            self.message_user(
+                request,
+                f"Usunięto trwale (nieodwracalnie): {usunieto}.",
+                level=messages.SUCCESS,
+            )
+
     def get_actions(self, request):
         """Dokłada akcje kosza do tych zebranych przez resztę łańcucha.
 
@@ -304,4 +356,11 @@ class BppSoftDeleteAdminMixin:
         """
         actions = super().get_actions(request)
         actions["przywroc_zaznaczone"] = self.get_action("przywroc_zaznaczone")
+        if request.user.is_superuser:
+            actions["usun_trwale_zaznaczone"] = self.get_action(
+                "usun_trwale_zaznaczone"
+            )
+        else:
+            # Gdyby ktos dopisal ta akcje wyzej w lancuchu — zdejmij.
+            actions.pop("usun_trwale_zaznaczone", None)
         return actions
