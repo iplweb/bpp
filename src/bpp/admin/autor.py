@@ -31,6 +31,7 @@ from .filters import (
     WydzialAutoraFilter,
 )
 from .helpers.fieldsets import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
+from .helpers.mixins import BppSoftDeleteAdminMixin
 from .helpers.site_filtered import SiteFilteredAdminMixin
 from .helpers.widgets import CHARMAP_SINGLE_LINE
 from .xlsx_export import resources
@@ -251,6 +252,8 @@ class AutorAdmin(
     EksportDanychMixin,
     BaseBppAdminMixin,
     DynamicColumnsMixin,
+    # OSTATNI przed baza terminalna — patrz docstring BppSoftDeleteAdminMixin.
+    BppSoftDeleteAdminMixin,
     admin.ModelAdmin,
 ):
     uczelnia_field_path = "aktualna_jednostka__uczelnia"

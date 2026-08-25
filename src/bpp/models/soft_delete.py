@@ -38,6 +38,7 @@ z fazy 06::
 """
 
 import uuid
+from collections import defaultdict
 
 from django.core.exceptions import FieldDoesNotExist
 from django.db import transaction
@@ -52,6 +53,8 @@ from django_softdelete.managers import (
 )
 from django_softdelete.models import SoftDeleteModel
 from django_softdelete.signals import post_restore, post_soft_delete
+
+from bpp.models.soft_delete_context import soft_delete_context
 
 #: Akcesor relacji odwrotnej publikacja -> wiersze ``*_Autor``. Istnieje
 #: jako PRAWDZIWA relacja tylko dla trzech typów z through-modelem;
@@ -162,9 +165,46 @@ def raise_if_has_protected_children(instance, relations, label):
         )
 
 
+def hard_delete_per_instancja(queryset):
+    """``hard_delete()`` wiersz po wierszu, żeby leciał ``post_hard_delete``.
+
+    DLACZEGO NIE BULK: pakietowy ``hard_delete()`` na querysecie to goły
+    ``super().delete()`` (``django_softdelete/managers.py``) — jedno
+    zapytanie, ZERO sygnałów. Rekordy znikały fizycznie i bez jednego wpisu
+    w ``SoftDeleteLog``, czyli dokładnie ta klasa cichej utraty, przed którą
+    ten log ma chronić. Najbardziej prawdopodobna droga do tej luki to
+    opróżnianie kosza z admina (faza 07).
+
+    To ta sama zasada, którą kieruje się gate w ``BppSoftDeleteQuerySet.
+    update()`` i wąska kaskada fazy 02: operacja masowa nie ma prawa być
+    tańsza kosztem pominięcia sygnałów. Pakiet stosuje ją zresztą sam —
+    jego ``SoftDeleteQuerySet.delete()`` też iteruje po instancjach.
+
+    KOSZT: N zapytań zamiast jednego. Świadomy — audyt masowego kasowania
+    jest wart więcej niż pojedynczy ``DELETE ... WHERE id IN (...)``.
+
+    Zwrotka jak w Django: ``(łączna_liczba, {etykieta_modelu: liczba})``,
+    zsumowana po instancjach.
+    """
+    laczna = 0
+    liczniki = defaultdict(int)
+    # list(): iterujemy po materializowanej liście, bo kasujemy w trakcie.
+    for obiekt in list(queryset):
+        ile, per_model = obiekt.hard_delete()
+        laczna += ile
+        for etykieta, n in per_model.items():
+            liczniki[etykieta] += n
+    return laczna, dict(liczniki)
+
+
 class BppSoftDeleteQuerySet(SoftDeleteQuerySet):
     """Gate: blokuje bulk-ustawienie deleted_at/restored_at przez .update()
     (omijałoby post_save, kaskadę *_Autor, SoftDeleteLog i reversion)."""
+
+    def hard_delete(self):
+        return hard_delete_per_instancja(self)
+
+    hard_delete.alters_data = True
 
     def update(self, **kwargs):
         if "deleted_at" in kwargs or "restored_at" in kwargs:
@@ -220,6 +260,13 @@ class BppDeletedQuerySet(DeletedQuerySet):
 
     restore.alters_data = True
 
+    def hard_delete(self):
+        """Opróżnianie kosza też musi zostawiać ślad — patrz
+        ``hard_delete_per_instancja()``."""
+        return hard_delete_per_instancja(self)
+
+    hard_delete.alters_data = True
+
 
 class BppDeletedManager(DeletedManager):
     def get_queryset(self):
@@ -228,7 +275,64 @@ class BppDeletedManager(DeletedManager):
         )
 
 
-class BppAutorstwoSoftDeleteMixin(SoftDeleteModel):
+#: Atrybut, pod którym ``hard_delete()`` zostawia ``pk`` na czas sygnału.
+ATRYBUT_PK_PRZED_HARD_DELETE = "_bpp_pk_przed_hard_delete"
+
+
+class BppPkPrzedHardDeleteMixin:
+    """Zapamiętuje ``pk`` przed twardym skasowaniem, dla receivera fazy 06.
+
+    ``SoftDeleteModel.hard_delete()`` woła ``Model.delete()``, a kolektor
+    Django na samym końcu zeruje ``pk`` skasowanych instancji —
+    ``post_hard_delete`` leci PO tym (pakiet, ``models.py:84-85``). Receiver
+    dostaje więc instancję z ``pk is None`` i nie ma z czego zapisać
+    ``SoftDeleteLog.object_id``.
+
+    Naiwne „zapisz ``instance.pk``" dałoby ``object_id=None``, czyli
+    ``IntegrityError`` w receiverze — a wyjątek z receivera przewróciłby
+    ``hard_delete()``. Audyt zepsułby operację, którą ma tylko obserwować.
+
+    NIE jest modelem (zwykła klasa, nie ``models.Model``) — dlatego
+    dopisanie go do baz istniejącego modelu NIE generuje migracji. Musi
+    stać PRZED ``SoftDeleteModel`` w liście baz, żeby jego ``hard_delete``
+    wygrał w MRO.
+
+    Strażnikiem kompletności jest
+    ``test_receivers.py::test_kazdy_model_soft_delete_zachowuje_pk`` —
+    nowy model soft-delete bez tego mixinu zapala się w testach, nie
+    dopiero przy pierwszym twardym skasowaniu na produkcji.
+    """
+
+    def hard_delete(self, *args, **kwargs):
+        setattr(self, ATRYBUT_PK_PRZED_HARD_DELETE, self.pk)
+        return super().hard_delete(*args, **kwargs)
+
+    hard_delete.alters_data = True
+
+
+def pk_dla_audytu(instance):
+    """``pk`` instancji, także po twardym skasowaniu (zerującym ``pk``).
+
+    Rzuca ``RuntimeError``, gdy ``pk`` nie jest znany — to znaczy, że model
+    soft-delete nie ma ``BppPkPrzedHardDeleteMixin``. Głośno, bo cichy
+    ``return`` zamieniłby audyt w atrapę dokładnie w tym przypadku, przed
+    którym ma chronić: rekord znikający fizycznie i bez śladu.
+    """
+    if instance.pk is not None:
+        return instance.pk
+
+    pk = getattr(instance, ATRYBUT_PK_PRZED_HARD_DELETE, None)
+    if pk is None:
+        raise RuntimeError(
+            f"Nie znam pk dla {instance._meta.label} — model soft-delete bez "
+            f"BppPkPrzedHardDeleteMixin, więc SoftDeleteLog nie ma czego "
+            f"zapisać w object_id. Dopisz ten mixin do baz modelu (przed "
+            f"SoftDeleteModel)."
+        )
+    return pk
+
+
+class BppAutorstwoSoftDeleteMixin(BppPkPrzedHardDeleteMixin, SoftDeleteModel):
     """SoftDeleteModel + nasze managery dla through-modeli *_Autor.
 
     Wpinany w 3 KONKRETNE modele (Wydawnictwo_Ciagle_Autor,
@@ -287,7 +391,7 @@ class BppAutorstwoSoftDeleteMixin(SoftDeleteModel):
         return super().restore(strict, transaction_id, *args, **kwargs)
 
 
-class BppPublikacjaSoftDeleteMixin(SoftDeleteModel):
+class BppPublikacjaSoftDeleteMixin(BppPkPrzedHardDeleteMixin, SoftDeleteModel):
     """SoftDeleteModel dla 5 modeli PUBLIKACJI (faza 02) z **wąską,
     kontrolowaną** kaskadą na własne wiersze ``*_Autor`` pod wspólnym
     ``transaction_id``.
@@ -362,6 +466,56 @@ class BppPublikacjaSoftDeleteMixin(SoftDeleteModel):
             return []
         return list(getattr(self, NAZWA_RELACJI_AUTORSTW).all())
 
+    # --- atrybucja tenanta ----------------------------------------------
+
+    def uczelnia_rekordu(self):
+        """Uczelnia, do której należy rekord, albo ``None`` przy dwuznaczności.
+
+        PO CO: wpisy ``PBN_Export_Queue`` tworzone przez receivery fazy 06
+        nie mają requestu, z którego reszta kodu bierze tenanta
+        (``Uczelnia.objects.get_for_request``). Bez uczelni
+        ``_pozyskaj_klienta_pbn()`` spada na „jedyna-albo-głośny-błąd", więc
+        w multi-hosted wycofanie oświadczeń kończyłoby się
+        ``FINISHED_ERROR``.
+
+        REGUŁA JEST ODWRÓCENIEM PRZYNALEŻNOŚCI Z FAZY 05b — ``naleza_
+        wydawnictwa`` / ``naleza_prace`` (``cerif_export/providers/
+        publikacje.py``). Nie definiujemy drugiej, konkurencyjnej: gdy
+        tamta się zmieni, ta musi pójść za nią. Odwracamy, zamiast wołać
+        wprost, bo ``cerif_export`` zależy od ``bpp``, nie odwrotnie.
+
+        ``global_objects`` JEST KONIECZNE, nie ostrożnościowe: wąska
+        kaskada fazy 02 kasuje wiersze ``*_Autor`` PRZED wysłaniem
+        ``post_soft_delete`` rodzica. W momencie odczytu autorstwa są już
+        w koszu, więc ``objects`` zwróciłoby pustkę i uczelnia wychodziłaby
+        ``None`` przy każdym kasowaniu — czyli zawsze wtedy, kiedy jest
+        potrzebna.
+
+        DWUZNACZNOŚĆ → ``None``. Praca współautorska między uczelniami nie
+        ma jednego właściciela, a wybranie „pierwszej z brzegu" wysłałoby
+        wycofanie przez konto PBN cudzego tenanta. ``None`` degraduje do
+        zachowania sprzed tej fazy: jedna uczelnia w bazie działa, kilka
+        daje głośny błąd na wpisie kolejki.
+        """
+        from bpp.models.uczelnia import Uczelnia
+
+        rel = self._relacja_autorstw()
+        if rel is None:
+            # Praca_Doktorska / Praca_Habilitacyjna — autor i jednostka
+            # siedzą na wierszu samej pracy (odpowiednik ``naleza_prace``).
+            uczelnie = {self.jednostka.uczelnia_id}
+        else:
+            uczelnie = set(
+                rel.related_model.global_objects.filter(
+                    **{rel.field.name: self}
+                ).values_list("jednostka__uczelnia_id", flat=True)
+            )
+
+        uczelnie.discard(None)
+        if len(uczelnie) != 1:
+            return None
+        return Uczelnia.objects.filter(pk=uczelnie.pop()).first()
+
     # --- kontrakt zapisu ------------------------------------------------
 
     def save(self, *args, **kwargs):
@@ -384,12 +538,16 @@ class BppPublikacjaSoftDeleteMixin(SoftDeleteModel):
     def delete(self, *args, user=None, reason="", **kwargs):
         """Soft-delete publikacji + wąska kaskada na ``*_Autor``.
 
-        ``user``/``reason`` są na razie wyłącznie przepuszczane — konsumuje
-        je ``SoftDeleteLog`` z fazy 06. W sygnaturze MUSZĄ być już teraz
-        (kontrakt PINNED), żeby wołający kod nie wymagał później zmiany.
+        ``user``/``reason`` trafiają do ``SoftDeleteLog`` (faza 06) przez
+        thread-local ``soft_delete_context``. Kontekst obejmuje CAŁE ciało,
+        nie samo ``post_soft_delete.send()``: kaskada na ``*_Autor`` wysyła
+        własne sygnały (przez ``delete()`` pakietu), a te mają zostać
+        zalogowane z tym samym userem i powodem. Zawężenie kontekstu do
+        ostatniej linii dałoby wpisy autorstw z ``user=None`` mimo
+        świadomej decyzji operatora.
         """
         txid = kwargs.pop("transaction_id", None) or uuid.uuid4()
-        with transaction.atomic():
+        with soft_delete_context(user=user, reason=reason), transaction.atomic():
             # 1. kaskada per-instancja — NIGDY bulk update(deleted_at=...),
             #    bo omijałby post_save, sygnały i reversion (gate w
             #    BppSoftDeleteQuerySet.update() egzekwuje to fail-fast).
@@ -420,7 +578,7 @@ class BppPublikacjaSoftDeleteMixin(SoftDeleteModel):
         """
         txid = self.transaction_id
         rel = self._relacja_autorstw()
-        with transaction.atomic():
+        with soft_delete_context(user=user), transaction.atomic():
             if txid is not None and rel is not None:
                 # Nazwa pola FK z metadanych relacji — bez zaszywania
                 # "rekord" na sztywno.

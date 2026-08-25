@@ -35,7 +35,11 @@ from .helpers.fieldsets import (
     MODEL_ZE_SZCZEGOLAMI,
     POZOSTALE_MODELE_FIELDSET,
 )
-from .helpers.mixins import DomyslnyStatusKorektyMixin, Wycinaj_W_z_InformacjiMixin
+from .helpers.mixins import (
+    BppSoftDeleteAdminMixin,
+    DomyslnyStatusKorektyMixin,
+    Wycinaj_W_z_InformacjiMixin,
+)
 from .praca_doktorska import Praca_Doktorska_Habilitacyjna_Admin_Base
 
 #
@@ -208,6 +212,8 @@ class Praca_HabilitacyjnaAdmin(
     ConstanceScoringFieldsMixin,
     EksportDanychZFormatowanieMixin,
     ExportActionsMixin,
+    # OSTATNI przed baza terminalna — patrz docstring BppSoftDeleteAdminMixin.
+    BppSoftDeleteAdminMixin,
     Praca_Doktorska_Habilitacyjna_Admin_Base,
 ):
     resource_classes = [Praca_HabilitacyjnaResource]

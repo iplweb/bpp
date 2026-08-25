@@ -32,10 +32,12 @@ from bpp.core import zbieraj_sloty
 from bpp.models import LinkDoPBNMixin, ModelZAdnotacjami, ModelZNazwa, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID
 from bpp.models.soft_delete import (
+    BppPkPrzedHardDeleteMixin,
     BppSoftDeleteQuerySet,
     dopisz_znacznik_zmiany,
     raise_if_has_protected_children,
 )
+from bpp.models.soft_delete_context import soft_delete_context
 from bpp.util import FulltextSearchMixin, zaloguj_polkniety_wyjatek
 
 logger = logging.getLogger(__name__)
@@ -256,7 +258,13 @@ def _relacje_chronione_autora():
     ]
 
 
-class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID, SoftDeleteModel):
+class Autor(
+    BppPkPrzedHardDeleteMixin,
+    LinkDoPBNMixin,
+    ModelZAdnotacjami,
+    ModelZPBN_ID,
+    SoftDeleteModel,
+):
     url_do_pbn = const.LINK_PBN_DO_AUTORA
 
     imiona = models.CharField(max_length=512, db_index=True)
@@ -596,9 +604,13 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID, SoftDeleteModel):
         autorstw (spec §1, §10.1). Autor z autorstwami i tak tu nie dojdzie
         — zatrzyma go guard.
 
-        ``user``/``reason`` są tylko przepuszczane; konsumuje je
-        ``SoftDeleteLog`` z fazy 06. W sygnaturze muszą być już teraz
-        (kontrakt PINNED).
+        ``user``/``reason`` trafiają do ``SoftDeleteLog`` (faza 06) przez
+        thread-local ``soft_delete_context``.
+
+        Kontekst zakładamy PO guardzie, nie przed: gdy guard rzuci
+        ``ProtectedError``, żaden sygnał nie poleci, więc nie ma czego
+        atrybuować. (Poprawność nie zależy od tej kolejności — context
+        manager sprząta w ``finally`` — ale węższy zakres jest uczciwszy.)
         """
         raise_if_has_protected_children(
             self,
@@ -607,7 +619,7 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID, SoftDeleteModel):
         )
 
         txid = kwargs.pop("transaction_id", None) or uuid.uuid4()
-        with transaction.atomic():
+        with soft_delete_context(user=user, reason=reason), transaction.atomic():
             self.deleted_at = timezone.now()
             self.restored_at = None
             self.transaction_id = txid
@@ -632,7 +644,7 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID, SoftDeleteModel):
         nie zabrało, więc nie ma czego wskrzeszać.
         """
         txid = self.transaction_id
-        with transaction.atomic():
+        with soft_delete_context(user=user), transaction.atomic():
             self.deleted_at = None
             self.restored_at = timezone.now()
             self.transaction_id = None

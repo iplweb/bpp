@@ -32,7 +32,11 @@ from .helpers.fieldsets import (
     POZOSTALE_MODELE_FIELDSET,
     AdnotacjeZDatamiMixin,
 )
-from .helpers.mixins import DomyslnyStatusKorektyMixin, Wycinaj_W_z_InformacjiMixin
+from .helpers.mixins import (
+    BppSoftDeleteAdminMixin,
+    DomyslnyStatusKorektyMixin,
+    Wycinaj_W_z_InformacjiMixin,
+)
 from .wydawnictwo_ciagle import CleanDOIWWWPublicWWWMixin
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychZFormatowanieMixin, ExportActionsMixin
@@ -211,6 +215,8 @@ class Praca_DoktorskaAdmin(
     ConstanceScoringFieldsMixin,
     EksportDanychZFormatowanieMixin,
     ExportActionsMixin,
+    # OSTATNI przed baza terminalna — patrz docstring BppSoftDeleteAdminMixin.
+    BppSoftDeleteAdminMixin,
     Praca_Doktorska_Habilitacyjna_Admin_Base,
 ):
     resource_classes = [Praca_DoktorskaResource]

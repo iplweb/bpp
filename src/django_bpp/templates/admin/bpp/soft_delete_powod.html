@@ -1,0 +1,46 @@
+{% extends "admin/base_site.html" %}
+{% load admin_urls %}
+
+{% block content %}
+{# Strona pośrednia akcji "Usuń do kosza": pyta o powód operacji. #}
+{# Powód wędruje przez reason= do SoftDeleteLog.powod (receiver fazy 06). #}
+
+<p>🗑️ Zaznaczone rekordy zostaną przeniesione do <strong>kosza</strong>.</p>
+<p>
+  Operacja jest odwracalna — rekordy wrócą akcją „♻️ Przywróć zaznaczone”
+  na liście z filtrem <em>Kosz → 🗑️ Tylko skasowane</em>.
+</p>
+
+<p>Do kosza trafi rekordów: <strong>{{ ile_obiektow }}</strong>.</p>
+
+<ul>
+  {% for obj in obiekty %}
+    <li>{{ obj }}</li>
+  {% endfor %}
+</ul>
+
+{% if ile_ukrytych %}
+  {# Przy zaznaczeniu "wszystkie pasujące" lista bywa ogromna — pokazujemy #}
+  {# próbkę, a nie materializujemy dziesiątek tysięcy rekordów na stronie. #}
+  <p>… oraz {{ ile_ukrytych }} dalszych (lista skrócona).</p>
+{% endif %}
+
+<form method="post">{% csrf_token %}
+  {% for pk in wybrane_pk %}
+    <input type="hidden" name="{{ action_checkbox_name }}" value="{{ pk }}">
+  {% endfor %}
+  <input type="hidden" name="action" value="usun_do_kosza">
+  <input type="hidden" name="powod_potwierdzony" value="1">
+  <input type="hidden" name="index" value="{{ action_index }}">
+  <input type="hidden" name="select_across" value="{{ select_across }}">
+
+  <p>
+    <label for="id_powod">Powód usunięcia (trafi do dziennika operacji):</label>
+    <br>
+    <textarea name="powod" id="id_powod" rows="3" cols="60"></textarea>
+  </p>
+
+  <input type="submit" value="🗑️ Przenieś do kosza">
+  <a href="{% url opts|admin_urlname:'changelist' %}">Anuluj</a>
+</form>
+{% endblock %}

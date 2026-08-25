@@ -21,7 +21,11 @@ from .helpers.fieldsets import (
     POZOSTALE_MODELE_FIELDSET,
     AdnotacjeZDatamiMixin,
 )
-from .helpers.mixins import DomyslnyStatusKorektyMixin, Wycinaj_W_z_InformacjiMixin
+from .helpers.mixins import (
+    BppSoftDeleteAdminMixin,
+    DomyslnyStatusKorektyMixin,
+    Wycinaj_W_z_InformacjiMixin,
+)
 from .wydawnictwo_zwarte import Wydawnictwo_ZwarteAdmin_Baza
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychZFormatowanieMixin, ExportActionsMixin
@@ -89,6 +93,8 @@ class Patent_Admin(
     AdnotacjeZDatamiMixin,
     EksportDanychZFormatowanieMixin,
     ExportActionsMixin,
+    # OSTATNI przed baza terminalna — patrz docstring BppSoftDeleteAdminMixin.
+    BppSoftDeleteAdminMixin,
     Wydawnictwo_ZwarteAdmin_Baza,
 ):
     djangoql_completion_enabled_by_default = False

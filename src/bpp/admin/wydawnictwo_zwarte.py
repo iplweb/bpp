@@ -59,7 +59,11 @@ from .helpers import (
     sprawdz_duplikaty_www_doi,
 )
 from .helpers.constance_field_mixin import ConstanceScoringFieldsMixin
-from .helpers.mixins import OptionalPBNSaveMixin, RestrictDeletionWhenPBNUIDSetMixin
+from .helpers.mixins import (
+    BppSoftDeleteAdminMixin,
+    OptionalPBNSaveMixin,
+    RestrictDeletionWhenPBNUIDSetMixin,
+)
 from .nagroda import NagrodaInline
 
 # Proste tabele
@@ -496,6 +500,8 @@ class Wydawnictwo_ZwarteAdmin(
     AdminCrossrefAPIMixin,
     AdminCrossrefPBNAPIMixin,
     RestrictDeletionWhenPBNUIDSetMixin,
+    # OSTATNI przed baza terminalna — patrz docstring BppSoftDeleteAdminMixin.
+    BppSoftDeleteAdminMixin,
     Wydawnictwo_ZwarteAdmin_Baza,
 ):
     change_list_template = "admin/bpp/wydawnictwo_zwarte/change_list.html"
