@@ -115,7 +115,14 @@
                     </h6>
                     <div class="grid-x grid-margin-x align-middle">
                         <div class="cell auto">
-                            <input type="text" name="suggested-title" value="{{ zrodlo }}"/>
+                            {# WCAG 1.3.1: pole musi miec dostepna nazwe. Tekst obok #}
+                            {# jest podpowiedzia, nie etykieta — bez `for`/`id` #}
+                            {# czytnik ekranu oglasza samo "edit text". #}
+                            <label for="id_suggested_title" class="show-for-sr">
+                                Tytuł wyszukiwania
+                            </label>
+                            <input type="text" id="id_suggested_title"
+                                   name="suggested-title" value="{{ zrodlo }}"/>
                         </div>
                     </div>
                     <small class="form-hint">
