@@ -365,7 +365,7 @@ wheels = [
 
 [[package]]
 name = "bpp-iplweb"
-version = "202608.1400"
+version = "202608.1401"
 source = { editable = "." }
 dependencies = [
     { name = "arrow" },
