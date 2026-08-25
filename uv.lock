@@ -587,7 +587,7 @@ requires-dist = [
     { name = "django-compressor", specifier = "==4.6.0" },
     { name = "django-constance", specifier = ">=4.3.5" },
     { name = "django-cookie-law", specifier = "==2.2.0" },
-    { name = "django-countdown", specifier = ">=0.3.1" },
+    { name = "django-countdown", specifier = ">=0.4.0" },
     { name = "django-crispy-forms", specifier = ">=2.7,<3" },
     { name = "django-dbtemplates-iplweb", specifier = ">=4.4.1" },
     { name = "django-denorm-iplweb", specifier = ">=1.14.0" },
@@ -1684,14 +1684,14 @@ wheels = [
 
 [[package]]
 name = "django-countdown"
-version = "0.3.1"
+version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cd/af/a3bc6b4830be4b6acabe31e0f87ae6eb398534650596abe4f16dd0b7d746/django_countdown-0.3.1.tar.gz", hash = "sha256:f7cd1762450e8fd16b3418ba19fb66f920a87f123ad9e46ef0434096e53f9037", size = 52421, upload-time = "2026-08-07T08:32:30.038Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ba/dd/6df46b3a8a160d8198ccc934acc510e5ec5a0367bab4a0a68efc3c80bb81/django_countdown-0.4.0.tar.gz", hash = "sha256:fc9e4d311ce2a08324ed3588d10f7bc423424f4a5581e8f826dee341c73a5f55", size = 63524, upload-time = "2026-08-25T13:57:29.4Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/59/7a/9e9ba3a78ac0a79eb5ffb56263d8135c1626572b757bc10a7f72db502abf/django_countdown-0.3.1-py3-none-any.whl", hash = "sha256:50d75d82071f1d12ef27d3a03547c15fbdb0ed6592d8b8e80280f34b22fb4413", size = 48378, upload-time = "2026-08-07T08:32:31.418Z" },
+    { url = "https://files.pythonhosted.org/packages/a9/d1/e0122096b1898196f9425d5f528ed40bb6ba18654771e5f4d464780b728c/django_countdown-0.4.0-py3-none-any.whl", hash = "sha256:44e2a15dcb173bdc34ae090deabb08ab97426a2ed000775cf5c9595e42806182", size = 53751, upload-time = "2026-08-25T13:57:28.256Z" },
 ]
 
 [[package]]
