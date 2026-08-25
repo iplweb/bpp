@@ -21,10 +21,13 @@
 #745  feat/soft-delete-04    -> feat/soft-delete
 #755  feat/soft-delete-05    -> feat/soft-delete-04
 #767  feat/soft-delete-05b   -> feat/soft-delete-05
-      feat/soft-delete-06    -> feat/soft-delete-05b   (fazy 06 ORAZ 07)
+#792  feat/soft-delete-06    -> feat/soft-delete-05b   (fazy 06 ORAZ 07)
 ```
 
-⚠️ Żaden PR ze stosu nie jest scalony. Bez zmian względem handoffu fazy 07.
+⚠️ Żaden PR ze stosu nie jest scalony. Nowość względem handoffu fazy 07:
+gałąź `feat/soft-delete-06` (fazy 06 **i** 07) jest wypchnięta i ma wreszcie
+własny PR — [#792](https://github.com/iplweb/bpp/pull/792). Wcześniej była
+jedynym ogniwem stosu bez numeru, bo faza 06 nigdy nie została wypchnięta.
 
 ⚠️ **Baseline (`baseline-sql/`) nadal NIEŚWIEŻY** — stoi na `bpp/0487`, ostatnia
 migracja to `0503` (faza 06). Faza 07 nic tu nie zmieniła. Odświeżenie robi się
