@@ -75,7 +75,7 @@ a[name="pager"] {
 .pagination li.disabled a,
 .pagination li.disabled span {
     background: #e9ecef;
-    color: #6c757d;
+    color: #636b73;
     border-color: #dee2e6;
     cursor: not-allowed;
 }
@@ -83,7 +83,7 @@ a[name="pager"] {
 .pagination li.ellipsis span {
     background: transparent;
     border: none;
-    color: #6c757d;
+    color: #636b73;
     padding: 0 0.5rem;
 }
 
@@ -104,6 +104,6 @@ a[name="pager"] {
 .pagination .pagination-previous.disabled a,
 .pagination .pagination-next.disabled a {
     background: #e9ecef;
-    color: #6c757d;
+    color: #636b73;
     border-color: #dee2e6;
 }
