@@ -158,6 +158,7 @@ class MyMultiseekResults(MultiseekResults):
 
         if ctx.get("report_type") == "pivot":
             from bpp.multiseek_registry import pivot as pivot_mod
+            from bpp.pivot.core import DOZWOLONE_NA_STRONIE
 
             self._ensure_default_title()
             base_qs = self.get_queryset_for_current_mode()
@@ -173,7 +174,7 @@ class MyMultiseekResults(MultiseekResults):
             # prezentacji, nie tego CO policzyć — patrz PivotWidok.
             widok = pivot_mod.parse_widok(self.request.GET)
             ctx["pivot_widok"] = widok
-            ctx["pivot_na_stronie_opcje"] = pivot_mod.DOZWOLONE_NA_STRONIE
+            ctx["pivot_na_stronie_opcje"] = DOZWOLONE_NA_STRONIE
             # Uczciwy licznik dla breadcrumbu: liczba rekordów, które pivot
             # podsumowuje (nie 0).
             ctx["paginator_count"] = base_qs.values("pk").distinct().count()

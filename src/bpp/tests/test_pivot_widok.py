@@ -118,6 +118,56 @@ def test_sortowanie_po_sumie_rosnaco():
     assert [r["label"] for r in t["rows"]] == ["Gamma", "Alfa", "Beta"]
 
 
+@pytest.mark.parametrize("sort", [core.SORT_ETYKIETA, core.SORT_SUMA])
+def test_kolejnosc_jest_totalna_gdy_etykiety_sie_powtarzaja(sort, monkeypatch):
+    """Etykiety NIE są unikatowe — dwóch autorów „Kowalski Jan" ma różne PK
+    i ten sam `str()`. Gdyby remis rozstrzygała sama etykieta, o kolejności
+    decydowałaby kolejność wejścia — a ta pochodzi z GROUP BY bez ORDER BY,
+    więc nie jest powtarzalna między wykonaniami. Wiersz na granicy strony
+    pokazałby się wtedy na dwóch stronach albo na żadnej.
+
+    Wiersze budujemy przez `_labels`, tak jak robi to `_build_matrix`:
+    dla sort=etykieta cała totalność siedzi właśnie tam.
+    """
+    dim = _dim()
+    etykiety = {1: "Kowalski Jan", 2: "Kowalski Jan", 3: "Nowak Ewa"}
+    sumy = {1: 5, 2: 5, 3: 5}  # remis także po sumie
+    monkeypatch.setattr(
+        core, "_label_mapping", lambda keys, d: {k: etykiety[k] for k in keys}
+    )
+
+    def wynik(kolejnosc_wejscia):
+        rows = core._labels(kolejnosc_wejscia, dim)
+        return core.PivotResult(
+            rows=rows,
+            cols=[],
+            cells={(k, None): sumy[k] for k, _ in rows},
+            row_totals=dict(sumy),
+            col_totals={},
+            grand_total=sum(sumy.values()),
+            row_dim=dim,
+            col_dim=None,
+            metric=_metric(),
+            has_autorzy_dim=False,
+        )
+
+    widok = core.PivotWidok(sort=sort)
+    a = [p[0] for p in wynik([1, 2, 3]).posortowane_wiersze(widok)]
+    b = [p[0] for p in wynik([3, 2, 1]).posortowane_wiersze(widok)]
+    assert a == b == [1, 2, 3]
+
+
+def test_labels_jest_totalne_przy_powtorzonych_etykietach(monkeypatch):
+    """Warstwa `_labels` osobno: `keys` przychodzi tam jako `set`, a klucze
+    o wspólnej etykiecie nie mogą się gubić ani przestawiać."""
+    dim = _dim()
+    monkeypatch.setattr(
+        core, "_label_mapping", lambda keys, d: dict.fromkeys(keys, "Kowalski Jan")
+    )
+    assert core._labels([3, 1, 2], dim) == core._labels([2, 3, 1], dim)
+    assert [k for k, _ in core._labels([3, 1, 2], dim)] == [1, 2, 3]
+
+
 def test_sortowanie_po_sumie_rozstrzyga_remisy_etykieta():
     """Bez porządku totalnego wiersze o równych sumach mogłyby wypaść w innej
     kolejności przy kolejnym żądaniu — a wtedy przy stronicowaniu ten sam

@@ -163,19 +163,24 @@ class PivotResult:
         """`self.rows` (już w kolejności naturalnej z `_labels`) przestawione
         wg `widok`.
 
-        Rozstrzyganie remisów po etykiecie NIE jest kosmetyką: bez porządku
-        totalnego dwa wiersze o równych sumach mogą wypaść w innej kolejności
-        przy kolejnym żądaniu, a wtedy przy stronicowaniu ten sam wiersz
-        pokazuje się na dwóch stronach albo znika z obu.
+        Rozstrzyganie remisów NIE jest kosmetyką: bez porządku totalnego dwa
+        wiersze o równej sumie mogą wypaść w innej kolejności przy kolejnym
+        żądaniu, a wtedy przy stronicowaniu ten sam wiersz pokazuje się na
+        dwóch stronach albo znika z obu.
         """
         rosnaco = widok.kierunek_efektywny == "asc"
         if widok.sort == SORT_SUMA:
             znak = 1 if rosnaco else -1
             return sorted(
                 self.rows,
-                key=lambda p: (znak * (self.row_totals.get(p[0]) or 0), p[1].lower()),
+                key=lambda p: (
+                    znak * (self.row_totals.get(p[0]) or 0),
+                    p[1].lower(),
+                    _klucz_rozstrzygajacy(p[0]),
+                ),
             )
         # SORT_ETYKIETA: kolejność naturalna wymiaru albo jej odwrotność.
+        # `_labels` jest już totalne, więc i `reversed` takie zostaje.
         return list(self.rows) if rosnaco else list(reversed(self.rows))
 
     def _naglowki_sortowania(self, widok):
@@ -394,15 +399,34 @@ def _build_matrix(triples, row_dim, col_dim, metric, has_autorzy):
     )
 
 
+def _klucz_rozstrzygajacy(key):
+    """Ostateczny dyskryminator kolejności — sam klucz wymiaru.
+
+    Etykieta go NIE zastępuje, bo etykiety nie są unikatowe: dwóch autorów
+    „Kowalski Jan" ma różne PK i ten sam `str()`. Przy remisie decydowałaby
+    wtedy kolejność wejścia, a ta pochodzi z `set(row_keys)` wypełnianego
+    wynikiem GROUP BY bez ORDER BY — Postgres nie gwarantuje jej
+    powtarzalności między wykonaniami (HashAggregate, parallel workers).
+    Efekt: wiersz na granicy strony pokazuje się na dwóch stronach albo na
+    żadnej. `str()` zamiast surowej wartości, bo klucze bywają mieszanych
+    typów (int, str, Decimal, bool) i nie da się ich porównać wprost.
+    """
+    return (key is None, str(key))
+
+
 def _labels(keys, dim):
     """Zwraca posortowaną listę (key, label). Rok/koszyk malejąco liczbowo,
-    słowniki alfabetycznie po etykiecie."""
+    słowniki alfabetycznie po etykiecie. Kolejność jest TOTALNA (patrz
+    `_klucz_rozstrzygajacy`) — inaczej stronicowanie gubi wiersze."""
     mapping = _label_mapping(keys, dim)
     pairs = [(k, mapping.get(k, BRAK if k is None else str(k))) for k in keys]
-    if dim.key in ("rok", "koszyk_pk"):
+    if dim.key in WYMIARY_MALEJACE:
+        # Klucz jest tu jedynym kryterium, więc porządek już jest totalny.
         pairs.sort(key=lambda p: (p[0] is None, -(p[0] or 0)))
     else:
-        pairs.sort(key=lambda p: (p[1] == BRAK, p[1].lower()))
+        pairs.sort(
+            key=lambda p: (p[1] == BRAK, p[1].lower(), _klucz_rozstrzygajacy(p[0]))
+        )
     return pairs
 
 

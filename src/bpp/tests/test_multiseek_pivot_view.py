@@ -235,11 +235,27 @@ def test_pivot_multiseek_stronicuje_wiersze(
 def test_pivot_multiseek_sortowanie_po_sumie(
     logged_in_client, test_user, standard_data, denorms
 ):
-    any_ciagle(tytul_oryginalny=f"{PIVOT_TITLE_PREFIX} - a", rok=2020)
-    any_ciagle(tytul_oryginalny=f"{PIVOT_TITLE_PREFIX} - b", rok=2021)
-    any_ciagle(tytul_oryginalny=f"{PIVOT_TITLE_PREFIX} - c", rok=2021)
+    # TRZY lata o różnych licznościach. Przy dwóch wierszach „sortuj po
+    # sumie malejąco" i „odwróć kolejność naturalną" dają ten sam wynik,
+    # więc test przechodziłby także przy zignorowanym sortowaniu. Tu:
+    #   naturalna (rok malejąco): 2022, 2021, 2020
+    #   odwrócona naturalna:      2020, 2021, 2022
+    #   suma malejąco:            2021 (3), 2022 (2), 2020 (1)
+    #   suma rosnąco:             2020, 2022, 2021
+    # — cztery różne kolejności, żadnej nie da się pomylić z inną.
+    for nr, rok in enumerate([2020, 2021, 2021, 2021, 2022, 2022]):
+        any_ciagle(tytul_oryginalny=f"{PIVOT_TITLE_PREFIX} - {nr}", rok=rok)
     denorms.flush()
     _set_multiseek_pivot_filter(logged_in_client, test_user)
+
+    naturalna = logged_in_client.get(
+        reverse("multiseek:results") + "?pivot_row=rok&pivot_val=liczba"
+    )
+    assert [r["label"] for r in naturalna.context["pivot_table"]["rows"]] == [
+        "2022",
+        "2021",
+        "2020",
+    ]
 
     resp = logged_in_client.get(
         reverse("multiseek:results")
@@ -247,8 +263,18 @@ def test_pivot_multiseek_sortowanie_po_sumie(
     )
 
     t = resp.context["pivot_table"]
-    assert [r["label"] for r in t["rows"]] == ["2021", "2020"]
-    assert [r["total"] for r in t["rows"]] == [2, 1]
+    assert [r["label"] for r in t["rows"]] == ["2021", "2022", "2020"]
+    assert [r["total"] for r in t["rows"]] == [3, 2, 1]
+
+    rosnaco = logged_in_client.get(
+        reverse("multiseek:results")
+        + "?pivot_row=rok&pivot_val=liczba&pivot_sort=suma&pivot_dir=asc"
+    )
+    assert [r["label"] for r in rosnaco.context["pivot_table"]["rows"]] == [
+        "2020",
+        "2022",
+        "2021",
+    ]
 
 
 @pytest.mark.django_db

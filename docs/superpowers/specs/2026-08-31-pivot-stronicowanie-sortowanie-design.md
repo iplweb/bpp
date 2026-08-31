@@ -78,10 +78,20 @@ testami kolejności i z osią kolumn, która sortowania nie dostaje).
 - `sort=suma`: klucz `(-suma, etykieta.lower())`; `kierunek=asc` daje
   `(suma, etykieta.lower())`.
 
-**Rozstrzyganie remisów po etykiecie jest obowiązkowe, nie kosmetyczne.**
-Bez porządku totalnego wiersze o równych sumach mogą wypaść w różnej
-kolejności między żądaniami — a wtedy przy stronicowaniu wiersz pokazuje
-się na dwóch stronach albo znika z obu.
+**Kolejność musi być porządkiem TOTALNYM, inaczej stronicowanie gubi
+wiersze.** Bez tego wiersze nierozróżnialne przez kryterium główne mogą
+wypaść w różnej kolejności między żądaniami — a wtedy wiersz na granicy
+strony pokazuje się na dwóch stronach albo znika z obu.
+
+Etykieta jako ostatni dyskryminator NIE wystarcza: etykiety nie są
+unikatowe (dwóch autorów „Kowalski Jan" ma różne PK i ten sam `str()`).
+Przy remisie decydowałaby wtedy kolejność wejścia, a ta pochodzi
+z `set(row_keys)` wypełnianego wynikiem `GROUP BY` bez `ORDER BY` —
+Postgres nie gwarantuje jej powtarzalności między wykonaniami
+(HashAggregate, parallel workers). Ostatecznym dyskryminatorem jest więc
+sam klucz wymiaru (`_klucz_rozstrzygajacy`, `str()` bo klucze bywają
+mieszanych typów). To samo dotyczy `_labels` — dla `sort=etykieta` cała
+totalność siedzi właśnie tam.
 
 ### 3. Stronicowanie — `as_table(widok=None)`
 

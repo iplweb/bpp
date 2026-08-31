@@ -697,28 +697,60 @@ def test_pivot_druga_strona_pokazuje_reszte(redaktor, jednostka):
 
 
 @pytest.mark.django_db
-def test_pivot_sortowanie_po_sumie_zmienia_kolejnosc(
-    redaktor, wydawnictwo_ciagle, denorms
-):
-    """Wiersze mają iść wg kolumny RAZEM, nie alfabetycznie."""
+def test_pivot_sortowanie_po_sumie_zmienia_kolejnosc(redaktor, denorms):
+    """Wiersze mają iść wg kolumny RAZEM, nie wg kolejności naturalnej.
+
+    Dane są ułożone tak, by obie kolejności były RÓŻNE (starszy rok ma
+    więcej prac, a naturalna kolejność roku jest malejąca) — inaczej test
+    przechodziłby także przy całkowicie zignorowanym sortowaniu.
+    """
+    from bpp.tests.util import any_ciagle
+
+    # TRZY lata o różnych licznościach. Przy dwóch wierszach „sortuj po
+    # sumie malejąco" i „odwróć kolejność naturalną" dają ten sam wynik,
+    # więc test przechodziłby także przy zignorowanym sortowaniu. Tu:
+    #   naturalna (rok malejąco): 2022, 2021, 2020
+    #   odwrócona naturalna:      2020, 2021, 2022
+    #   suma malejąco:            2021 (3), 2022 (2), 2020 (1)
+    #   suma rosnąco:             2020, 2022, 2021
+    # — cztery różne kolejności, żadnej nie da się pomylić z inną.
+    for nr, rok in enumerate([2020, 2021, 2021, 2021, 2022, 2022]):
+        any_ciagle(tytul_oryginalny=f"Sort {nr}", rok=rok)
     denorms.flush()
+
     wspolne = {
         "model": "rekord",
-        "query": f"rok >= {wydawnictwo_ciagle.rok - 5}",
+        "query": "rok >= 2020",
         "postac": "pivot",
-        "pivot_row": "charakter_formalny",
+        "pivot_row": "rok",
         "pivot_val": "liczba",
     }
+
+    naturalna = redaktor.get(reverse("bpp:zapytanie"), wspolne)
+    assert [r["label"] for r in naturalna.context["pivot_table"]["rows"]] == [
+        "2022",
+        "2021",
+        "2020",
+    ]
+
     res = redaktor.get(
         reverse("bpp:zapytanie"), {**wspolne, "pivot_sort": "suma", "pivot_dir": "desc"}
     )
-
-    assert res.status_code == 200
     t = res.context["pivot_table"]
-    sumy = [r["total"] or 0 for r in t["rows"]]
-    assert sumy == sorted(sumy, reverse=True)
+    assert [r["label"] for r in t["rows"]] == ["2021", "2022", "2020"]
+    assert [r["total"] for r in t["rows"]] == [3, 2, 1]
     assert t["sort"] == "suma"
     assert t["sort_suma_strzalka"] == "▼"
+
+    rosnaco = redaktor.get(
+        reverse("bpp:zapytanie"), {**wspolne, "pivot_sort": "suma", "pivot_dir": "asc"}
+    )
+    assert [r["label"] for r in rosnaco.context["pivot_table"]["rows"]] == [
+        "2020",
+        "2022",
+        "2021",
+    ]
+    assert rosnaco.context["pivot_table"]["sort_suma_strzalka"] == "▲"
 
 
 @pytest.mark.django_db
