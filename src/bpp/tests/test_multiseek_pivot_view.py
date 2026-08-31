@@ -1,6 +1,9 @@
 """Widok Multiseek z report_type=pivot (tabela krzyżowa) — patrz Task 3."""
 
+import csv
+import io
 import json
+import re
 
 import pytest
 from django.conf import settings
@@ -200,3 +203,90 @@ def test_pivot_report_type_na_koncu_listy():
     # dotychczasowe typy zachowują pozycje (list/table na 0/1)
     assert multiseek_report_types[0].id == "list"
     assert multiseek_report_types[1].id == "table"
+
+
+# --- stronicowanie i sortowanie macierzy (multiseek) ------------------------
+
+
+@pytest.mark.django_db
+def test_pivot_multiseek_stronicuje_wiersze(
+    logged_in_client, test_user, standard_data, denorms
+):
+    """Ta sama funkcja co na /zapytanie/ — body pivota to WSPÓLNY partial,
+    ale kontekst (pivot_widok/pivot_table) buduje każdy widok osobno."""
+    for rok in range(2000, 2030):
+        any_ciagle(tytul_oryginalny=f"{PIVOT_TITLE_PREFIX} - {rok}", rok=rok)
+    denorms.flush()
+    _set_multiseek_pivot_filter(logged_in_client, test_user)
+
+    resp = logged_in_client.get(
+        reverse("multiseek:results")
+        + "?pivot_row=rok&pivot_val=liczba&pivot_per_page=25"
+    )
+
+    t = resp.context["pivot_table"]
+    assert t["wszystkich_wierszy"] == 30
+    assert len(t["rows"]) == 25
+    assert t["is_paginated"] is True
+    assert "pivot_page=2" in resp.content.decode().replace("&amp;", "&")
+
+
+@pytest.mark.django_db
+def test_pivot_multiseek_sortowanie_po_sumie(
+    logged_in_client, test_user, standard_data, denorms
+):
+    any_ciagle(tytul_oryginalny=f"{PIVOT_TITLE_PREFIX} - a", rok=2020)
+    any_ciagle(tytul_oryginalny=f"{PIVOT_TITLE_PREFIX} - b", rok=2021)
+    any_ciagle(tytul_oryginalny=f"{PIVOT_TITLE_PREFIX} - c", rok=2021)
+    denorms.flush()
+    _set_multiseek_pivot_filter(logged_in_client, test_user)
+
+    resp = logged_in_client.get(
+        reverse("multiseek:results")
+        + "?pivot_row=rok&pivot_val=liczba&pivot_sort=suma&pivot_dir=desc"
+    )
+
+    t = resp.context["pivot_table"]
+    assert [r["label"] for r in t["rows"]] == ["2021", "2020"]
+    assert [r["total"] for r in t["rows"]] == [2, 1]
+
+
+@pytest.mark.django_db
+def test_pivot_multiseek_linki_sortowania_gasza_tryb_wydruku(
+    logged_in_client, test_user, standard_data, denorms
+):
+    """{% querystring %} przenosi CAŁY bieżący GET — a common-results.html
+    odpala window.print() dla ?print=1. Bez print=None klik w sortowanie
+    otwierałby okno drukowania."""
+    any_ciagle(tytul_oryginalny=f"{PIVOT_TITLE_PREFIX} - print", rok=2024)
+    denorms.flush()
+    _set_multiseek_pivot_filter(logged_in_client, test_user)
+
+    resp = logged_in_client.get(
+        reverse("multiseek:results") + "?pivot_row=rok&pivot_val=liczba&print=1"
+    )
+    html = resp.content.decode().replace("&amp;", "&")
+
+    linki = re.findall(r'class="multiseek-pivot-sort"\s+href="([^"]+)"', html)
+    assert linki, "brak linków sortujących w wyrenderowanej macierzy"
+    assert all("print=1" not in link for link in linki)
+    assert any("pivot_sort=suma" in link for link in linki)
+
+
+@pytest.mark.django_db
+def test_pivot_multiseek_eksport_ignoruje_strone(
+    logged_in_client, test_user, standard_data, denorms
+):
+    for rok in range(2000, 2030):
+        any_ciagle(tytul_oryginalny=f"{PIVOT_TITLE_PREFIX} - {rok}", rok=rok)
+    denorms.flush()
+    _set_multiseek_pivot_filter(logged_in_client, test_user)
+
+    resp = logged_in_client.get(
+        reverse("multiseek-export", args=["csv"])
+        + "?pivot_row=rok&pivot_val=liczba&pivot_per_page=25&pivot_page=2"
+    )
+
+    wiersze = list(csv.reader(io.StringIO(resp.content.decode())))
+    # nagłówek + 30 lat + RAZEM
+    assert len(wiersze) == 32

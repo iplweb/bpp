@@ -13,10 +13,13 @@ w bpp.pivot.core, gdzie mieszkają.
 
 from bpp.pivot.core import (  # noqa: F401
     BRAK,
+    DOZWOLONE_NA_STRONIE,
     PivotDimension,
     PivotMetric,
     PivotResult,
     PivotTooLargeError,
+    PivotWidok,
+    parse_widok,
     zbuduj_pivot,
 )
 from bpp.pivot.rekord import (  # noqa: F401

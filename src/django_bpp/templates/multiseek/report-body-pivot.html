@@ -2,7 +2,9 @@
 Tabela krzyżowa (pivot). Kontekst: pivot (PivotResult lub None gdy za duża),
 pivot_error (PivotTooLargeError lub brak), pivot_row_dim / pivot_col_dim /
 pivot_metric (aktualny wybór — dostępne też przy błędzie), pivot_dimensions,
-pivot_metrics. Konfiguracja idzie parametrami GET (pivot_row/col/val).
+pivot_metrics, pivot_widok (PivotWidok: sortowanie + strona).
+Konfiguracja idzie parametrami GET (pivot_row/col/val, pivot_sort/pivot_dir,
+pivot_page/pivot_per_page).
 pivot_form_action / pivot_form_hidden / pivot_export_base to opcjonalne
 haki konsumenta (domyślne wartości = zachowanie multiseeka bez zmian):
 strona zapytania trzyma filtr w URL-u (nie w sesji jak multiseek), więc
@@ -17,6 +19,13 @@ musi je przenosić przez ukryte pola i wskazać własny prefiks eksportu.
         {% for name, value in pivot_form_hidden %}
             <input type="hidden" name="{{ name }}" value="{{ value }}">
         {% endfor %}
+        {# Selecty niżej auto-submitują, więc formularz musi przenieść #}
+        {# wybrane sortowanie — inaczej zmiana wymiaru cicho wracałaby #}
+        {# do kolejności domyślnej. pivot_page CELOWO nie jest tu #}
+        {# przenoszone: zmiana wymiaru/metryki ma wracać na stronę 1. #}
+        <input type="hidden" name="pivot_sort" value="{{ pivot_widok.sort }}">
+        <input type="hidden" name="pivot_dir"
+               value="{{ pivot_widok.kierunek_efektywny }}">
         <label>Wiersze
             <select name="pivot_row" onchange="this.form.submit()">
                 {% for key, dim in pivot_dimensions.items %}
@@ -41,6 +50,13 @@ musi je przenosić przez ukryte pola i wskazać własny prefiks eksportu.
                 {% endfor %}
             </select>
         </label>
+        <label>Wierszy na stronie
+            <select name="pivot_per_page" onchange="this.form.submit()">
+                {% for ile in pivot_na_stronie_opcje %}
+                    <option value="{{ ile }}"{% if ile == pivot_widok.na_stronie %} selected{% endif %}>{{ ile }}</option>
+                {% endfor %}
+            </select>
+        </label>
         <noscript><button type="submit" class="button">Odśwież</button></noscript>
         {% if pivot and request.user.is_authenticated %}
         {# Prefiks eksportu jest parametrem konsumenta: "../export/" dziala #}
@@ -58,14 +74,30 @@ musi je przenosić przez ukryte pola i wskazać własny prefiks eksportu.
     </form>
 
     {% if pivot %}
-    {% with t=pivot.as_table %}
+    {# pivot_table = pivot.as_table(pivot_widok) — zbudowane w widoku, bo #}
+    {# szablon Django nie umie wywołać metody z argumentem. #}
+    {% with t=pivot_table %}
+    {% include "multiseek/_pivot-pager.html" %}
     <div class="multiseek-pivot-scroll">
         <table class="multiseek-pivot">
             <thead>
                 <tr>
-                    <th>{{ t.row_header }}</th>
+                    {# Nagłówki wymiaru wierszy i RAZEM sortują. querystring #}
+                    {# przenosi caly biezacy filtr; pivot_page=None wraca na #}
+                    {# stronę 1, print=None gasi tryb wydruku (patrz pager). #}
+                    <th{% if t.sort_etykieta_aktywny %} aria-sort="{% if t.sort_etykieta_rosnaco %}ascending{% else %}descending{% endif %}"{% endif %}>
+                        <a class="multiseek-pivot-sort"
+                           href="{% querystring pivot_sort="etykieta" pivot_dir=t.sort_etykieta_link pivot_page=None print=None %}">
+                            {{ t.row_header }}<span aria-hidden="true">{{ t.sort_etykieta_strzalka }}</span>
+                        </a>
+                    </th>
                     {% for ch in t.col_headers %}<th>{{ ch }}</th>{% endfor %}
-                    <th class="pivot-total">RAZEM</th>
+                    <th class="pivot-total"{% if t.sort_suma_aktywny %} aria-sort="{% if t.sort_suma_rosnaco %}ascending{% else %}descending{% endif %}"{% endif %}>
+                        <a class="multiseek-pivot-sort"
+                           href="{% querystring pivot_sort="suma" pivot_dir=t.sort_suma_link pivot_page=None print=None %}">
+                            RAZEM<span aria-hidden="true">{{ t.sort_suma_strzalka }}</span>
+                        </a>
+                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -86,6 +118,16 @@ musi je przenosić przez ukryte pola i wskazać własny prefiks eksportu.
             </tfoot>
         </table>
     </div>
+    {% include "multiseek/_pivot-pager.html" %}
+
+    {% if t.is_paginated %}
+    <p class="multiseek-pivot-note">
+        {% comment %} Bez tego redaktor zsumuje widoczną kolumnę i uzna, że liczby się nie zgadzają. {% endcomment %}
+        <span class="fi-info"></span>
+        Wiersz i kolumna „RAZEM" podsumowują <strong>cały</strong> wynik, nie
+        tylko widoczną stronę.
+    </p>
+    {% endif %}
     {% endwith %}
 
     {% if pivot.has_autorzy_dim %}

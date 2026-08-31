@@ -169,11 +169,19 @@ class MyMultiseekResults(MultiseekResults):
             ctx["pivot_row_dim"] = row_dim
             ctx["pivot_col_dim"] = col_dim
             ctx["pivot_metric"] = metric
+            # Widok (sortowanie + strona) idzie osobnym parametrem, bo dotyczy
+            # prezentacji, nie tego CO policzyć — patrz PivotWidok.
+            widok = pivot_mod.parse_widok(self.request.GET)
+            ctx["pivot_widok"] = widok
+            ctx["pivot_na_stronie_opcje"] = pivot_mod.DOZWOLONE_NA_STRONIE
             # Uczciwy licznik dla breadcrumbu: liczba rekordów, które pivot
             # podsumowuje (nie 0).
             ctx["paginator_count"] = base_qs.values("pk").distinct().count()
             try:
                 ctx["pivot"] = pivot_mod.zbuduj_pivot(base_qs, row_dim, col_dim, metric)
+                # as_table() z widokiem musi powstać tutaj — szablon nie umie
+                # wywołać metody z argumentem.
+                ctx["pivot_table"] = ctx["pivot"].as_table(widok)
             except pivot_mod.PivotTooLargeError as exc:
                 ctx["pivot"] = None
                 ctx["pivot_error"] = exc
@@ -276,6 +284,9 @@ class MyMultiseekExport(LoginRequiredMixin, MyMultiseekResults):
             )
         base_qs = self.get_queryset_for_current_mode()
         row_dim, col_dim, metric = pivot_mod.parse_pivot_params(request.GET)
+        # Plik ma zawierać CAŁĄ macierz — sortowanie z ekranu przenosimy,
+        # ale stronicowanie zdejmujemy (bez_stronicowania()).
+        widok = pivot_mod.parse_widok(request.GET).bez_stronicowania()
         try:
             pivot_result = pivot_mod.zbuduj_pivot(base_qs, row_dim, col_dim, metric)
         except pivot_mod.PivotTooLargeError:
@@ -285,8 +296,8 @@ class MyMultiseekExport(LoginRequiredMixin, MyMultiseekResults):
             )
         report_title = _multiseek_report_title(request)
         if export_format == "csv":
-            return pivot_csv_export_response(pivot_result, request, report_title)
-        return pivot_xlsx_export_response(pivot_result, request, report_title)
+            return pivot_csv_export_response(pivot_result, request, report_title, widok)
+        return pivot_xlsx_export_response(pivot_result, request, report_title, widok)
 
     def _export_data(self, request, export_format, queryset, report_title):
         wariant = request.GET.get("wariant", "dane")
