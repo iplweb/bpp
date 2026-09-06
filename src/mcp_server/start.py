@@ -1,16 +1,24 @@
 """Jednorazowe wejście w lifespan aplikacji MCP, w osobnym zadaniu.
 
 Menedżer sesji MCP zakłada grupę zadań anyio (``session_manager.run()``).
-Zadanie, które w nią wchodzi, staje się jej HOST TASKIEM — a to ma dwie
-konsekwencje, przez które nie wolno robić tego z zadania obsługującego
-żądanie (spec §5.1):
+Zadanie, które w nią wchodzi, staje się jej HOST TASKIEM i nigdy z niej nie
+wraca (grupa żyje, dopóki host task działa) — a to jest fatalne, gdy tym
+zadaniem jest zadanie obsługujące żądanie (spec §5.1). Objaw zależy od tego,
+JAK błędnie to zrobiono — nie ma jednego wyjątku do złapania:
 
-* jeżeli w tym zadaniu jest aktywny inny cancel scope (nasz budżet czasu),
-  wyjście z niego rzuci ``RuntimeError: Attempted to exit a cancel scope that
-  isn't the current task's current cancel scope`` — a grupa jest już wtedy
-  oznaczona jako wystartowana, więc padają też WSZYSTKIE kolejne żądania;
-* anulowanie host taska (timeout, ``application_close_timeout`` Daphne)
-  zatruwa grupę nieodwracalnie, bo ``run()`` wchodzi się raz na instancję.
+* jeśli w tym zadaniu jest aktywny inny cancel scope (nasz budżet czasu)
+  i porządek LIFO scope'ów zostanie naruszony, wyjście z tamtego scope'u
+  rzuci ``RuntimeError: Attempted to exit a cancel scope that isn't the
+  current task's current cancel scope``;
+* jeśli zagnieżdżenie scope'ów zostaje poprawne (np. wejście w grupę jest
+  w pełni ustrukturyzowane), zadanie żądania po prostu **nigdy nie wraca**
+  — wisi, trzymając grupę, aż zewnętrzny budżet czasu (``fail_after``,
+  timeout serwera) je anuluje.
+
+W obu przypadkach grupa jest już oznaczona jako wystartowana, więc padają
+też WSZYSTKIE kolejne żądania — a anulowanie host taska (timeout,
+``application_close_timeout`` Daphne) zatruwa ją nieodwracalnie, bo
+``run()`` wchodzi się raz na instancję.
 
 Dlatego host taskiem jest zadanie tła, żyjące tyle, co proces.
 """

@@ -63,7 +63,10 @@ def test_zapewnij_pod_aktywnym_cancel_scope_nie_psuje_zadania():
     start = StartMcp(app)
 
     async def scenariusz():
-        with anyio.fail_after(5):
+        # 1 s wystarczy: przy poprawnej implementacji test i tak kończy się
+        # natychmiast, a przy regresji (zadanie wisi, trzymając grupę) budżet
+        # ogranicza karę CI do 1 s zamiast do domyślnych tu 5 s.
+        with anyio.fail_after(1):
             await start.zapewnij()
         # wyjście z fail_after musi się udać — i drugie wywołanie też
         await start.zapewnij()
