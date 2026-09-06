@@ -10,6 +10,7 @@ import rollbar
 from bpp_mcp.auth import set_current_bearer
 from django.conf import settings
 from django.db import Error as BladBazy
+from redis.exceptions import ConnectionError as BladRedisa
 
 from django_bpp.client_ip import get_client_ip
 from mcp_server.auth import BramkaBearera
@@ -66,8 +67,9 @@ class RouterHttp:
         self._start = start
         self._publiczny = BramkaBearera(mcp_app, wymagany=False)
         self._z_logowaniem = BramkaBearera(mcp_app, wymagany=True)
-        # Rate-limit zgłoszeń Rollbara przy awarii bazy w bramce uczelni
-        # (patrz ``_obsluz``) — patrz komentarz tam, dlaczego per instancję.
+        # Rate-limit zgłoszeń Rollbara przy awarii bazy/cache w bramce
+        # uczelni (patrz ``_obsluz``, obsługuje ``BladBazy`` ORAZ
+        # ``BladRedisa``) — komentarz tam wyjaśnia, dlaczego per instancję.
         self._blad_bazy_uczelni_zgloszony = False
 
     async def __call__(self, scope, receive, send):
@@ -83,7 +85,6 @@ class RouterHttp:
             await self._przekieruj(send, "/mcp/")
             return
 
-        dane = self._dane(scope)
         poczatek = time.monotonic()
         # Kod odpowiedzi znamy dopiero z komunikatu wysłanego przez warstwę
         # niżej — podglądamy go w drodze na zewnątrz, żeby log audytowy
@@ -97,17 +98,42 @@ class RouterHttp:
                 widziany["status"] = komunikat["status"]
             await send(komunikat)
 
+        # `dane` wyliczamy DOPIERO wewnątrz siatki bezpieczeństwa (nie przed
+        # `try` jak wcześniej) — usterka 2a z self-review PR #804:
+        # `_dane(scope)` woła bez `errors=` na `.decode()`, więc niepoprawny
+        # UTF-8 w nagłówku (np. `Authorization: Bearer \xff`) rzucał
+        # `UnicodeDecodeError` PRZED jakimkolwiek `try`, co dawało gołe 500
+        # bez wpisu w logu audytowym i bez Rollbara — anonimowo, jednym
+        # żądaniem. Poprawka niżej (`errors="replace"`) usuwa tę KONKRETNĄ
+        # przyczynę, ale `dane` zostaje w siatce jako obrona w głąb: kolejny
+        # nieoczywisty błąd w tej funkcji też dostanie log + zgłoszenie
+        # + kontrolowane 503, nie gołe 500.
+        dane = None
         try:
+            dane = self._dane(scope)
             await self._obsluz(sciezka, scope, receive, sledzacy, dane)
+        except Exception:
+            # JEDNA siatka bezpieczeństwa na całą obsługę żądania — patrz
+            # komentarz nad `except (BladBazy, BladRedisa)` w `_obsluz` o
+            # tym, dlaczego TA gałąź nie duplikuje raportowania z węższych
+            # except-ów: te kończą się (return) bez re-raise, więc do tego
+            # miejsca dochodzi wyłącznie to, czego węższy except NIE złapał.
+            logger.exception("mcp: nieobsłużony wyjątek w obsłudze żądania")
+            rollbar.report_exc_info()
+            if "status" not in widziany:
+                # Nie próbuj wysyłać drugiego `http.response.start` — ASGI
+                # nie pozwala na dwa starty odpowiedzi, a warstwa niżej może
+                # już swój wysłać (np. gdzieś w środku strumieniowania).
+                await self._niedostepny(sledzacy)
         finally:
             logger.info(
                 "mcp %s %s host=%s bearer=%s status=%s czas=%.3fs",
                 scope.get("method", "?"),
                 sciezka,
-                dane.host,
+                dane.host if dane is not None else "?",
                 # OBECNOŚĆ, nigdy wartość — token w logu byłby poświadczeniem
                 # leżącym w pliku, który wędruje do agregatora i backupów.
-                "tak" if dane.bearer else "nie",
+                "tak" if dane is not None and dane.bearer else "nie",
                 widziany.get("status"),
                 time.monotonic() - poczatek,
             )
@@ -136,13 +162,24 @@ class RouterHttp:
         # uczelni, otwierałby bramkę API na oścież.
         try:
             rozstrzygnieta = await host_rozstrzyga_uczelnie(dane.host)
-        except BladBazy:
-            # Bez tego `except` awaria bazy leciała poza aplikację ASGI jako
-            # gołe 500 bez treści i bez zgłoszenia do Rollbara (middleware
+        except (BladBazy, BladRedisa):
+            # Bez tego `except` awaria bazy/cache leciała poza aplikację ASGI
+            # jako gołe 500 bez treści i bez zgłoszenia do Rollbara (middleware
             # Django nie jest na tej ścieżce) — wprost sprzeczne z B3, które
-            # ten sam diff wprowadził dla `zapewnij()`. Celujemy w
-            # `django.db.Error`, NIE w gołe `Exception`: szerszy złap
-            # przykryłby też błędy programistyczne w `host_rozstrzyga_uczelnie`.
+            # ten sam diff wprowadził dla `zapewnij()`. Celujemy w konkretne
+            # typy (`django.db.Error` ORAZ `redis.exceptions.ConnectionError`),
+            # NIE w gołe `Exception` — dla drugiego mamy siatkę bezpieczeństwa
+            # w `__call__`, a tu szerszy złap przykryłby błędy programistyczne
+            # w `host_rozstrzyga_uczelnie` i pozbawił je jej raportowania
+            # (patrz tamten `except Exception`, bez rate-limitu poniżej).
+            #
+            # `BladRedisa` jest tu obok `BladBazy`, nie osobno: `sites.site`
+            # i `bpp.uczelnia` są w `CACHEOPS` (`production.py`), a
+            # `CACHEOPS_DEGRADE_ON_FAILURE` nie jest ustawione, więc leżący
+            # Redis daje `redis.exceptions.ConnectionError` z samego ORM-u
+            # (nie z bazy) — `except BladBazy` samo w sobie by tego nie
+            # złapało, mimo że to DOKŁADNIE ten sam epizod „infrastruktura pod
+            # `/mcp` nie odpowiada", który ten blok ma obsłużyć.
             #
             # Rate-limit jak w `StartMcp._trzymaj` (B3, komentarz tam) —
             # baza może leżeć dłużej niż jedno żądanie, a bez ograniczenia
@@ -221,7 +258,19 @@ class RouterHttp:
         # i ZAWSZE trafia w wartość domyślną. Skutek po cichu: bearer
         # zawsze None, host zawsze "localhost" — mostek z pkt 2 briefu
         # wygląda podłączony, a nic nie przenosi.
-        naglowki = {k.lower().decode(): v.decode() for k, v in scope.get("headers", [])}
+        #
+        # UWAGA 2 (usterka 2a z self-review PR #804): ``errors="replace"`` na
+        # WARTOŚCI jest wymagane — nagłówek to dane od klienta, nie coś, czemu
+        # ufamy jako poprawnemu UTF-8. Bez tego `curl -H 'Authorization:
+        # Bearer \xff'` dawał `UnicodeDecodeError` tu, w miejscu wywoływanym
+        # PRZED jakąkolwiek siatką bezpieczeństwa w `__call__` — anonimowo,
+        # jednym żądaniem, bez wpisu w logu i bez Rollbara. Ten sam wybór
+        # (`errors="replace"`) robi już `mcp_server.auth.BramkaBearera` —
+        # jedno źródło prawdy dla obu miejsc.
+        naglowki = {
+            k.lower().decode(): v.decode(errors="replace")
+            for k, v in scope.get("headers", [])
+        }
         host = naglowki.get("host", "localhost")
         # nginx→uvicorn jest plaintext; prawdziwy schemat niesie nagłówek
         # wskazany przez SECURE_PROXY_SSL_HEADER (spec §7.6). Nagłówka NIE

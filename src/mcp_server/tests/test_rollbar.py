@@ -19,12 +19,15 @@ czy przekonwertować.
 from unittest.mock import Mock
 
 import bpp_mcp.tools as bpp_tools
+import httpx
 import pytest
 from bpp_mcp.client import BppError
 from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError
 
 from mcp_server import aplikacja
 from mcp_server.aplikacja import build_application
+from mcp_server.klient import BppClientInProcess
+from mcp_server.kontekst import DaneZadania, dane_zadania
 from mcp_server.tests.utils import uruchom
 
 
@@ -122,15 +125,76 @@ def test_bpperror_bez_statusu_nie_trafia_do_rollbara(monkeypatch):
     mock_rollbar.report_exc_info.assert_not_called()
 
 
-def test_bpperror_5xx_jednak_trafia_do_rollbara(monkeypatch):
-    """Granica wyjątku od wyjątku: status 5xx pochodzi z odpowiedzi NASZEJ
-    aplikacji Django na żądanie wewnętrzne, więc mówi o awarii po naszej
-    stronie. Pytający nie ma jak jej wymusić z ``/api/v1/``, więc ta gałąź
-    nie daje się użyć do zalania Rollbara."""
-    mock_rollbar = _wywolaj_djangoql_schema(
-        monkeypatch, _rzucajacy_bpperror(status=503), ToolError
+def test_bpperror_5xx_z_prawdziwego_klienta_nie_trafia_do_rollbara(monkeypatch):
+    """Regresja na usterkę z self-review PR #804: wcześniejsza wersja
+    ``_z_raportowaniem`` robiła wyjątek dla ``BppError`` ze statusem 5xx, z
+    uzasadnieniem że taki status mówi o awarii po NASZEJ stronie i „użytkownik
+    nie ma jak wymusić 5xx z /api/v1/”. Recenzent zmierzył empirycznie, że jest
+    ODWROTNIE: timeout DjangoQL (``statement_timeout`` w
+    ``api_v1/viewsets/zapytanie.py``) daje 503 DETERMINISTYCZNIE przy zbyt
+    szerokim zapytaniu, a ``retry_5xx=False`` na tej ścieżce
+    (w zainstalowanym ``bpp-mcp``) przenosi ten status aż do ``BppError`` —
+    3 wywołania dawały 3 zgłoszenia Rollbara, czyli ten sam hałas od anonima,
+    który reszta tej funkcji ma wygaszać. Gałąź usunięto całkowicie.
+
+    Test idzie przez PRAWDZIWY ``BppClientInProcess`` (mockowany transport
+    HTTP zwracający 503, nie wstrzyknięty wyjątek) — poprzednia wersja tego
+    testu wstrzykiwała ``BppError(status_code=503)`` ręcznie prosto do
+    narzędzia, co niczego nie dowodziło: klient produkuje taki obiekt
+    wyłącznie dla tej jednej, konkretnej ścieżki (DjangoQL), a nie w ogóle
+    dla „realnego 500”.
+
+    Wołamy ``narzedzie.fn`` (czyli nasz ``wrapper``) wprost, z ATRAPĄ
+    ``Context`` — ``serwer.call_tool()`` (użyte w innych testach tego modułu)
+    buduje ``Context`` bez ``request_context``, a ``zapytanie_rekord`` (w
+    odróżnieniu od ``djangoql_schema``) go potrzebuje (``_client(ctx)`` w
+    zainstalowanym ``bpp-mcp``), więc poleciałby ``ValueError`` niezwiązany
+    z tezą tego testu."""
+    mock_rollbar = Mock()
+    monkeypatch.setattr(aplikacja, "rollbar", mock_rollbar)
+
+    def odpowiedz_503(request):
+        return httpx.Response(503, json={"error": "statement_timeout"})
+
+    monkeypatch.setattr(
+        aplikacja,
+        "zbuduj_klienta",
+        lambda: BppClientInProcess(transport=httpx.MockTransport(odpowiedz_503)),
     )
-    mock_rollbar.report_exc_info.assert_called_once()
+
+    mcp_app, _ = build_application()
+    serwer = mcp_app.state.serwer_mcp
+    narzedzie = serwer._tool_manager.get_tool("zapytanie_rekord")
+
+    class _AtrapaRequestContext:
+        def __init__(self, lifespan_context):
+            self.request = None
+            self.lifespan_context = lifespan_context
+
+    class _AtrapaContext:
+        def __init__(self, lifespan_context):
+            self.request_context = _AtrapaRequestContext(lifespan_context)
+
+    async def scenariusz():
+        zeton = dane_zadania.set(
+            DaneZadania(
+                host="bpp.example.test",
+                scheme="https",
+                ip="198.51.100.9",
+                bearer=None,
+                deadline=None,
+            )
+        )
+        try:
+            ctx = _AtrapaContext(aplikacja.KontekstZadania())
+            with pytest.raises(BppError) as exc_info:
+                await narzedzie.fn(ctx, "rok=2020")
+            assert exc_info.value.status_code == 503
+        finally:
+            dane_zadania.reset(zeton)
+
+    uruchom(scenariusz)
+    mock_rollbar.report_exc_info.assert_not_called()
 
 
 def test_context_i_schemat_przetrwaly_wrapper():

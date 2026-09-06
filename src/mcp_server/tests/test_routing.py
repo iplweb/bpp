@@ -5,6 +5,8 @@ bez przepisania ścieżki /mcp/auth dostałoby 404 (spec §5.1, bloker BL-1).
 Dopasowanie prefiksowe byłoby dodatkowo sprzeczne z §8: /mcp/ ma iść do Django.
 """
 
+import logging
+
 import pytest
 
 from mcp_server.routing import LifespanMcp, RouterHttp
@@ -226,3 +228,28 @@ def test_lifespan_startup_complete():
         "lifespan.startup.complete",
         "lifespan.shutdown.complete",
     ]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_naglowek_z_niepoprawnym_utf8_nie_wycieka_wyjatku(caplog, uczelnia):
+    """Usterka 2a z self-review PR #804: ``curl -H $'Authorization: Bearer
+    \\xff' https://<uczelnia>/mcp`` dawał ``UnicodeDecodeError`` z
+    ``_dane()`` — wywoływanego w ``__call__`` PRZED jakąkolwiek siatką
+    bezpieczeństwa, więc wyjątek wychodził poza aplikację ASGI jako gołe 500
+    bez treści, bez wpisu w logu audytowym i bez Rollbara. Naprawa:
+    ``errors="replace"``, tak jak już robi ``mcp_server.auth`` (patrz
+    ``BramkaBearera._odmow``).
+
+    Bearer po zamianie na znak zastępczy jest po prostu NIEPRAWIDŁOWYM
+    tokenem — odpowiedź to zwykłe, kontrolowane 401, nie wyjątek."""
+    scope = zbuduj_scope("/mcp")
+    scope["headers"] = [*scope["headers"], (b"authorization", b"Bearer \xff")]
+
+    caplog.set_level(logging.INFO, logger="mcp_server.routing")
+    router = RouterHttp(_echo_sciezki, _django, StartMcp(_AtrapaLifespanu()))
+    status, _, _ = uruchom(lambda: wywolaj(router, scope))
+
+    assert status == 401
+    # Wpis audytowy (spec §7.5) MUSI powstać, mimo błędu w nagłówku —
+    # w buggy wersji finally nigdy nie był osiągany.
+    assert any("mcp POST /mcp" in rekord.message for rekord in caplog.records)

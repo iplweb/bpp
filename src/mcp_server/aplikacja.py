@@ -97,20 +97,42 @@ def _z_raportowaniem(serwer: MCPServer) -> MCPServer:
       zarejestrowałby ``ctx`` jako zwykły, wymagany parametr wejściowy
       zamiast wstrzykiwanego kontekstu.
 
-    **Co NIE jest raportowane: ``BppError``.** W ``bpp-mcp`` to normalny kanał
-    komunikatów do użytkownika, nie awaria — 401 anonima przy DjangoQL, 404
-    nieistniejącej encji, odrzucony argument, przekroczony budżet czasu. Na
-    nieuwierzytelnionym, publicznym endpoincie raportowanie ich znaczyłoby, że
-    dowolna osoba z internetu wyczerpuje kwotę Rollbara jednym ``curl``-em
-    w pętli i topi realne alerty (zmierzone przez recenzenta: 4 zgłoszenia na
-    4 wywołania). Okno maintenance albo niedokończony kreator dawałyby
-    zgłoszenie z KAŻDEGO wywołania.
+    **``BppError`` NIGDY nie jest raportowany — także przy statusie 5xx.**
+    W ``bpp-mcp`` to normalny kanał komunikatów do użytkownika, nie awaria —
+    401 anonima przy DjangoQL, 404 nieistniejącej encji, odrzucony argument,
+    przekroczony budżet czasu. Na nieuwierzytelnionym, publicznym endpoincie
+    raportowanie ich znaczyłoby, że dowolna osoba z internetu wyczerpuje
+    kwotę Rollbara jednym ``curl``-em w pętli i topi realne alerty (zmierzone
+    przez recenzenta: 4 zgłoszenia na 4 wywołania). Okno maintenance albo
+    niedokończony kreator dawałyby zgłoszenie z KAŻDEGO wywołania.
 
-    Wyjątek od wyjątku: ``BppError`` ze statusem 5xx. Ten status pochodzi
-    z odpowiedzi NASZEJ aplikacji Django na żądanie wewnętrzne — czyli mówi
-    o awarii po naszej stronie, nie o błędzie pytającego. Takie zgłoszenie
-    jest wprost tym, co monitoring ma zobaczyć, a wywołać je może wyłącznie
-    faktyczna awaria serwisu (użytkownik nie ma jak wymusić 5xx z /api/v1/).
+    Wcześniejsza wersja tej funkcji robiła wyjątek dla statusu >= 500, z
+    uzasadnieniem, że taki status pochodzi z odpowiedzi naszej aplikacji
+    Django na żądanie wewnętrzne, więc mówi o awarii po naszej stronie, a
+    „użytkownik nie ma jak wymusić 5xx z /api/v1/”. Recenzent zmierzył
+    empirycznie, że ta gałąź działała ODWROTNIE do zamierzenia:
+
+    * Timeout DjangoQL (``statement_timeout`` w
+      ``api_v1/viewsets/zapytanie.py``) daje 503 DETERMINISTYCZNIE przy zbyt
+      szerokim zapytaniu — dowolny anonim wymusza go samym zapytaniem.
+      ``retry_5xx=False`` na tej ścieżce (``bpp_mcp/client.py``) przenosi
+      ``status_code=503`` aż do ``BppError``, więc trafiał do Rollbara przy
+      KAŻDYM wywołaniu (zmierzone: 3 wywołania = 3 zgłoszenia) — czyli
+      dokładnie ten hałas od anonima, który reszta tej funkcji ma wygaszać.
+    * Prawdziwe 500 z Django, przeciwnie, NIE trafiało do Rollbara: narzędzia
+      z ``retry_5xx=True`` (wszystkie poza ``zapytanie_*``) po wyczerpaniu
+      prób gubią ``status_code`` w końcowym
+      ``raise BppNetworkError("Nie udało się pobrać ... po N próbach")``
+      (``bpp_mcp/client.py``) — warunek ``status >= 500`` nigdy nie był
+      prawdziwy tam, gdzie miał być.
+
+    Gałąź usunięto całkowicie — ``BppError`` idzie tą samą, jedną ścieżką
+    niezależnie od statusu. Realne 500 i tak nie jest ślepą plamą: żądanie
+    do ``/api/v1/`` idzie przez własną aplikację Django W PROCESIE
+    (``mcp_server.klient``), a na TEJ ścieżce Django biegnie normalnie —
+    ``CustomRollbarNotifierMiddleware`` (``bpp.middleware``) zgłasza wyjątek
+    z żądania wewnętrznego do Rollbara, zanim ``BppClient`` zdąży zamienić
+    odpowiedź na czytelny ``BppError``.
     """
     oryginalny = serwer.tool
 
@@ -122,10 +144,8 @@ def _z_raportowaniem(serwer: MCPServer) -> MCPServer:
             async def wrapper(*a, **kw):
                 try:
                     return await fn(*a, **kw)
-                except BppError as exc:
-                    status = getattr(exc, "status_code", None)
-                    if status is not None and status >= 500:
-                        rollbar.report_exc_info()
+                except BppError:
+                    # Nigdy nie raportuj — patrz docstring funkcji.
                     raise
                 except Exception:
                     rollbar.report_exc_info()

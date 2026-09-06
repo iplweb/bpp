@@ -21,6 +21,7 @@ from unittest.mock import Mock
 
 import pytest
 from django.db import OperationalError
+from redis.exceptions import ConnectionError as BladRedisa
 
 from mcp_server import routing
 from mcp_server.routing import RouterHttp
@@ -182,3 +183,83 @@ def test_awaria_bazy_w_bramce_zglaszana_ponownie_po_odzyskaniu(monkeypatch):
 
     uruchom(scenariusz)
     assert mock_rollbar.report_exc_info.call_count == 2
+
+
+async def _wybuchaj_redis(_host):
+    """Zastępuje ``host_rozstrzyga_uczelnie`` — symuluje padłego Redisa pod
+    cacheops (nie bazę: to jest INNY typ wyjątku od ``_wybuchaj_baza``)."""
+    raise BladRedisa("Redis nie odpowiada")
+
+
+def test_awaria_redis_w_bramce_daje_503_tak_jak_awaria_bazy(monkeypatch):
+    """Usterka 2c z self-review PR #804: ``sites.site`` i ``bpp.uczelnia``
+    są w ``CACHEOPS`` (``production.py``), a ``CACHEOPS_DEGRADE_ON_FAILURE``
+    nie jest ustawione — leżący Redis daje ``redis.exceptions.ConnectionError``
+    Z SAMEGO ORM-u, nie ``django.db.Error``. Wąski ``except BladBazy`` (przed
+    poprawką) tego NIE łapał, więc ta awaria wychodziła poza aplikację ASGI
+    jako gołe 500 — mimo że to dokładnie ten sam epizod „infrastruktura pod
+    /mcp nie odpowiada", który ``except BladBazy`` miał obsłużyć. Musi dać
+    to samo kontrolowane 503 + zgłoszenie, co awaria bazy."""
+    mock_rollbar = Mock()
+    monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_redis)
+    monkeypatch.setattr(routing, "rollbar", mock_rollbar)
+
+    router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
+    status, _, tresc = uruchom(lambda: wywolaj(router, zbuduj_scope("/mcp")))
+
+    assert status == 503
+    assert "MCP" not in tresc
+    mock_rollbar.report_exc_info.assert_called_once()
+
+
+def test_awaria_redis_w_bramce_zglaszana_raz_na_epizod_nie_na_zadanie(monkeypatch):
+    """Rozstrzyga, KTÓRY except faktycznie złapał ``BladRedisa`` — jedno
+    żądanie (test wyżej) dałoby 503 + jedno zgłoszenie NIEZALEŻNIE od tego,
+    czy złapał go rate-limitowany ``except (BladBazy, BladRedisa)`` w
+    ``_obsluz``, czy ogólna siatka bezpieczeństwa w ``__call__`` (ta zgłasza
+    BEZ rate-limitu). Trzy żądania w tym samym epizodzie odróżniają te dwa
+    przypadki: rate-limitowany except da JEDNO zgłoszenie (jak dla
+    ``BladBazy`` — patrz ``test_awaria_bazy_w_bramce_zglaszana_raz_na_epizod_
+    nie_na_zadanie``), a sama ogólna siatka dałaby TRZY."""
+    mock_rollbar = Mock()
+    monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_redis)
+    monkeypatch.setattr(routing, "rollbar", mock_rollbar)
+
+    router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
+
+    async def scenariusz():
+        for _ in range(3):
+            await wywolaj(router, zbuduj_scope("/mcp"))
+
+    uruchom(scenariusz)
+    mock_rollbar.report_exc_info.assert_called_once()
+
+
+async def _wybuchaj_niespodziewanie(_host):
+    """Symuluje błąd PROGRAMISTYCZNY (np. literówkę w nowym kodzie), nie
+    znaną awarię infrastruktury — ma sprawdzić SZERSZĄ siatkę bezpieczeństwa
+    w ``RouterHttp.__call__``, różną od wąskiego
+    ``except (BladBazy, BladRedisa)`` w ``_obsluz``."""
+    raise RuntimeError("błąd programistyczny w host_rozstrzyga_uczelnie")
+
+
+def test_niespodziewany_wyjatek_w_obsludze_daje_503_i_trafia_do_rollbara(
+    monkeypatch,
+):
+    """Usterka 2c z self-review PR #804: komentarz przy wąskim
+    ``except BladBazy`` uzasadniał go obawą o przykrycie błędów
+    programistycznych — ale błąd programistyczny wychodzący do uvicorna jako
+    gołe 500 bez Rollbara jest GORSZY niż zaraportowane 503. Siatka
+    bezpieczeństwa w ``__call__`` (``except Exception``) ma złapać WSZYSTKO,
+    co nie trafiło do węższych except-ów — zaraportować i odpowiedzieć
+    kontrolowanym 503, a nie połknąć po cichu jako gołe 500."""
+    mock_rollbar = Mock()
+    monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_niespodziewanie)
+    monkeypatch.setattr(routing, "rollbar", mock_rollbar)
+
+    router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
+    status, _, tresc = uruchom(lambda: wywolaj(router, zbuduj_scope("/mcp")))
+
+    assert status == 503
+    assert "MCP" not in tresc
+    mock_rollbar.report_exc_info.assert_called_once()
