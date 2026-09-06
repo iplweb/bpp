@@ -1,14 +1,14 @@
 # Hostowany serwer MCP w serwisie BPP (`/mcp`) — projekt 1 z 3
 
-Data: 2026-09-05 (wersja 3, 2026-09-06)
+Data: 2026-09-05 (wersja 4, 2026-09-06)
 Status: projekt do zatwierdzenia
 Poprzednik: `2026-07-11-mcp-oauth-authorization-design.md` (warstwa OAuth po
 stronie BPP — **zrealizowana**, `src/oauth_mcp/`)
 
-> **Historia dokumentu.** Wersja 1 dostała werdykt „wymaga przeprojektowania".
-> Wersja 2 (przepisana po pierwszej recenzji i dwóch probe'ach) dostała
-> „niewdrażalne — trzy blokery". Ta wersja zamyka B1–B3 i dwanaście poprawek.
-> Rozliczenie w §14.
+> **Historia dokumentu.** Wersja 1: „wymaga przeprojektowania". Wersja 2:
+> „niewdrażalne — trzy blokery" (B1–B3). Wersja 3 zamknęła B1, ale wprowadziła
+> trzy nowe blokery we własnych rozwiązaniach B2/B3 (BL-1…BL-3). Ta wersja
+> zamyka BL-1…BL-3 i jedenaście poprawek. Rozliczenie w §14.
 
 ---
 
@@ -95,8 +95,22 @@ atrybutach**" (`server.py:291-315`) — i to jest furtka, z której korzystamy.
   (`lowlevel/server.py:793-806`) — i wtedy odrzuca 401-ką **każde** żądanie bez
   tożsamości (`bearer_auth.py:93-97`). Czyli SDK nie zna trybu „anonim
   dozwolony, zły token odrzucony". Stąd D10 (§5.4).
-- `stateless_http=True` + `GET` → **405** (`streamable_http.py:788-790,848`),
-  nie SSE.
+- `SessionMessage.metadata.request` niesie do narzędzia **cały obiekt
+  `Request` zewnętrznego żądania** (`streamable_http.py:608-611`), z `Cookie`
+  włącznie. Dziś czyta z niego tylko `bearer_from_request` (`bpp_mcp/auth.py:46-53`),
+  ale D6 stoi przez to na **dyscyplinie kodu w `bpp-mcp`**, nie na izolacji
+  transportowej (§7.1).
+- SDK zamienia każdy wyjątek narzędzia na `CallToolResult(is_error=True)`
+  (`mcpserver/server.py:423-424`) — wyjątki narzędzi **nie docierają** do
+  warstwy ASGI (§7.5).
+- Dwie ścieżki protokołu mają **różny model czasu życia**: „modern"
+  (`MCP-Protocol-Version` spoza `HANDSHAKE_PROTOCOL_VERSIONS`, `manager:183-187`)
+  wykonuje handler w zadaniu żądania, „legacy" — w zadaniu grupy menedżera.
+  Budżet czasu musi działać w obu (§5.2).
+- Czy `stateless_http=True` + `GET` daje 405, **nie zostało potwierdzone** —
+  wersja 3 cytowała `streamable_http.py:788-790,848`, ale 788-790 dotyczy
+  DELETE, a 848 to generyczna obsługa nieobsługiwanej metody. Do sprawdzenia
+  empirycznego, zanim powstanie test (§11).
 - Lifespan wchodzi **raz na serwer**; `session_manager.run()` można wejść
   **raz na instancję** (`streamable_http_manager.py:137-143`).
 
@@ -142,10 +156,21 @@ z docstringu:
 >    mapowania Site→Uczelnia) → **przepuszczamy**, bo nie ma kto podjąć decyzji
 
 `Uczelnia` rozstrzyga się z nagłówka `Host` (`SiteResolutionMiddleware`,
-`Uczelnia.objects.get_for_request`). Czyli **request z nieznanym hostem omija
-wszystkie sześć przełączników API**, a `UkryjStatusyKorektyMixin.ukryte_statusy`
-daje `None` (`viewsets/common.py:9-13`) → rekordy ukrytych statusów przestają
-być filtrowane.
+`Uczelnia.objects.get_for_request`).
+
+**Zakres zagrożenia — sprostowanie wobec wersji 3.** Nie jest tak, że nieznany
+host zawsze daje `Uczelnia=None`: `_site_dla_requestu` spada na `SITE_ID`
+(`uczelnia.py:97-104`), a `uczelnia_dla_site` na „jedyną-albo-None"
+(`:126-129`). W instalacji **jednouczelnianej** nieznany host trafi więc na
+właściwą uczelnię. Obejście bramki zachodzi w instalacji **wielouczelnianej**
+(>1 `Uczelnia`) albo bez `SITE_ID`.
+
+Tam jednak skutek jest dokładnie taki, jak opisano: `BramkaApiV1` przepuszcza
+bezwarunkowo, omijając wszystkie sześć przełączników, a
+`UkryjStatusyKorektyMixin.ukryte_statusy` daje `None`
+(`viewsets/common.py:9-13`) → rekordy ukrytych statusów przestają być
+filtrowane. D5 zostaje bez zmian — po prostu uzasadnienie dotyczy
+wielouczelnianości, nie każdego wdrożenia.
 
 `SearchAnonThrottle` dziedziczy po `AnonRateThrottle`. Bez `NUM_PROXIES`
 (nie ma go w settings) DRF kluczuje po **całym** `X-Forwarded-For`, gdy jest
@@ -174,7 +199,7 @@ uwierzytelniania**, a wrzucanie jej do środka feature'a było błędem.
 | # | Decyzja | Uzasadnienie |
 |---|---|---|
 | D1 | Narzędzia z `bpp-mcp`, zero kopii w `src/` | jedna implementacja |
-| D2 | Klucz `"lifespan"` w istniejącym `ProtocolTypeRouter` **+ leniwy start** | klucz naprawia uvicorna; leniwy start naprawia Daphne (§2.4, §5.1) |
+| D2 | Klucz `"lifespan"` w istniejącym `ProtocolTypeRouter` **+ leniwy start w osobnym zadaniu** | klucz naprawia uvicorna; leniwy start naprawia Daphne; osobne zadanie jest warunkiem poprawności, nie optymalizacją (§2.4, §5.1) |
 | D3 | `stateless_http=True` + `json_response=True` | recykling workera zabiłby sesję stateful; `json_response` znosi SSE |
 | D4 | Dane przez `httpx.ASGITransport` na `django_asgi_app` | ta sama ścieżka kodu, bez gniazda |
 | D5 | Wewnętrzne żądanie dziedziczy `Host`, scheme i IP klienta | inaczej `Uczelnia=None` → obejście bramki i wyciek (§7.2) |
@@ -182,8 +207,8 @@ uwierzytelniania**, a wrzucanie jej do środka feature'a było błędem.
 | D7 | Polityka dostępu dziedziczona z `/api/v1/` | anonim czyta publiczne, bearer odblokowuje resztę |
 | D8 | Read-only | narzędzia wykonują wyłącznie GET |
 | **D9** | **`BppClient` per żądanie**, przez property w obiekcie lifespanu | `_api_root` zapamiętany w `__init__` (§2.2); rozwiązuje też cache i semafor |
-| **D10** | **Dwa adresy: `/mcp` (publiczny) i `/mcp/auth` (zawsze 401 bez tokenu)** | SDK nie zna trybu „anonim tak, zły token nie" (§2.3); dwa adresy usuwają zależność od nieznanego zachowania klientów |
-| **D11** | **Jawny sufit czasu i współbieżności** w naszej warstwie | timeouty `httpx` martwe przy `ASGITransport`, gunicornowy `timeout` to heartbeat (§2.4) |
+| **D10** | **Dwa adresy: `/mcp` (publiczny) i `/mcp/auth` (zawsze 401 bez tokenu)**, z przepisaniem ścieżki | SDK montuje `Route`, nie `Mount`, więc drugi adres wymaga przepisania (§5.1); SDK nie zna trybu „anonim tak, zły token nie" (§2.3); dwa adresy usuwają zależność od nieznanego zachowania klientów |
+| **D11** | **Jawny sufit czasu i współbieżności — egzekwowany w `BppClientInProcess`** | timeouty `httpx` martwe przy `ASGITransport`, gunicornowy `timeout` to heartbeat (§2.4) |
 | **D12** | `follow_redirects=False` w kliencie w procesie | inaczej `SECURE_SSL_REDIRECT` po cichu podwaja każde żądanie, a kreator instalacji przekierowuje na HTML (§7.6) |
 
 ---
@@ -244,53 +269,97 @@ warstwy bezpieczeństwa po to, żeby naprawić rzecz, która jej nie dotyczy.
 Patchowanie `channels` odrzucone: jego zachowanie nie jest błędne, a monkeypatch
 byłby niewidoczny w `asgi.py` i pękłby przy aktualizacji.
 
-**Leniwy start.** Sam klucz naprawia uvicorna i **nie naprawia Daphne**, pod
-którym chodzi `run-site run` i `channels_live_server` (§2.4). Dlatego start
-menedżera sesji jest **idempotentny i wyzwalany z obu stron**:
+**Leniwy start — w osobnym, długowiecznym zadaniu.** Sam klucz naprawia
+uvicorna i **nie naprawia Daphne**, pod którym chodzi `run-site run`
+i `channels_live_server` (§2.4).
+
+Wersja 3 kazała wchodzić w `session_manager.run()` **z zadania żądania**. To
+było błędne i jest przyczyną blokera BL-3 trzeciej recenzji:
+`run()` to `async with lifespan, anyio.create_task_group()`
+(`streamable_http_manager.py:145`), więc zadanie, które w to wchodzi, staje się
+**host taskiem** grupy. Konsekwencje:
+
+- jeśli w tym zadaniu jest aktywny **jakikolwiek inny cancel scope** (a §5.2
+  każe owijać obsługę w `fail_after`), wyjście z niego rzuci
+  `RuntimeError: Attempted to exit a cancel scope that isn't the current
+  task's current cancel scope` (`anyio/_backends/_asyncio.py:470-474`).
+  Pierwsze żądanie pada, grupa jest już oznaczona jako wystartowana
+  (`_has_started`, `manager:143`), więc **każde kolejne też pada**;
+- anulowanie host taska (timeout, `application_close_timeout` Daphne,
+  `daphne/server.py:281-289`) **zatruwa grupę** — późniejsze `start()` kończy
+  się `RuntimeError("Child exited without calling task_status.started()")`.
+  Bez restartu procesu nie ma wyjścia, bo `run()` wchodzi się raz na instancję.
+
+Dlatego host taskiem musi być **zadanie tła**, nigdy żądanie:
 
 ```python
 class StartMcp:
-    """Wejście w session_manager.run() dokładnie raz, skądkolwiek przyjdzie."""
+    """Wejście w session_manager.run() dokładnie raz, w OSOBNYM zadaniu."""
 
     def __init__(self, mcp_app):
         self._app = mcp_app
-        self._lock = anyio.Lock()
-        self._stack: AsyncExitStack | None = None
+        self._gotowe = asyncio.Event()
+        self._zadanie: asyncio.Task | None = None
+        self._blad: BaseException | None = None
 
     async def zapewnij(self) -> None:
-        if self._stack is not None:
-            return
-        async with self._lock:
-            if self._stack is not None:      # double-check pod blokadą
-                return
-            stack = AsyncExitStack()
-            await stack.enter_async_context(
-                self._app.router.lifespan_context(self._app)
-            )
-            self._stack = stack
+        if self._zadanie is None:
+            self._zadanie = asyncio.get_running_loop().create_task(self._trzymaj())
+        await self._gotowe.wait()
+        if self._blad is not None:
+            raise RuntimeError("Menedżer sesji MCP nie wstał") from self._blad
+
+    async def _trzymaj(self) -> None:
+        """Host task grupy zadań — żyje tyle, co proces."""
+        try:
+            async with self._app.router.lifespan_context(self._app):
+                self._gotowe.set()
+                await asyncio.Event().wait()     # nigdy
+        except BaseException as exc:             # noqa: BLE001 — re-raise przez zapewnij()
+            self._blad = exc
+            self._gotowe.set()
+            raise
 ```
 
-`LifespanMcp` woła `zapewnij()` na `lifespan.startup`; `RouterHttp` woła je
-przed pierwszym żądaniem do `/mcp*`. Pod uvicornem zadziała pierwsze, pod
-Daphne — drugie. **`session_manager.run()` można wejść raz na instancję**
-(`streamable_http_manager.py:137-143`), więc blokada i double-check są
-obowiązkowe, nie ozdobne.
-
-Kontekst zadania: `run()` zakłada grupę zadań anyio, która żyje tak długo, jak
-kontekst, w którym ją utworzono. Przy starcie z żądania trzymamy `AsyncExitStack`
-w obiekcie modułowym, więc nie ginie z żądaniem — **to jest miejsce wymagające
-własnego testu**, nie założenia (§11).
+`zapewnij()` musi być **pierwszą instrukcją** w `RouterHttp`, przed założeniem
+jakiegokolwiek scope'u (§5.2). `LifespanMcp` woła je na `lifespan.startup`;
+pod Daphne pierwsze wywołanie przychodzi z pierwszego żądania. Tworzenie
+zadania jest jednorazowe (`self._zadanie is None`), a `Event` szereguje
+równoległych czekających — blokada nie jest potrzebna, bo `create_task`
+w jednej pętli nie ma punktu przerwania między testem a przypisaniem.
 
 **Błąd startu** raportujemy jako `lifespan.startup.failed` z komunikatem. Pod
 gunicornem oznacza to `should_exit` w uvicornie (`lifespan/on.py:58-60`) →
 worker pada → gunicorn respawnuje. Czyli **boot-loop, nie cisza** — i tak ma
-być: awaria startu MCP nie może przejść niezauważona.
+być. Pod Daphne błąd wraca z `zapewnij()` jako 503 na `/mcp`.
 
-**`RouterHttp`** rozdziela po **ścieżce**, nie po metodzie. `GET /mcp`
-z `Accept: text/html` (człowiek wkleił adres do przeglądarki) przekierowujemy
-na `/mcp/` — inaczej SDK odda 406 „Client must accept text/event-stream"
-(`streamable_http.py:698-703`). Aplikacja MCP sama routuje na
-`streamable_http_path`, więc **nie obcinamy prefiksu**.
+**Zatrucie grupy mimo wszystko.** Wyjątek dziecka grupy poza `serve_connection`
+anuluje scope grupy; pod uvicornem po starcie skutkuje to procesem, który żyje,
+ale każde `/mcp` zwraca 500 aż do recyklingu `max_requests`. `StartMcp`
+wystawia więc **stan gotowości** do healthchecku (§10.3), a `RouterHttp` przy
+martwym zadaniu zwraca 503 zamiast 500.
+
+**`RouterHttp`** — dopasowanie **dokładne**, nie prefiksowe:
+
+| Ścieżka | Trafia do |
+|---|---|
+| `/mcp` | `BramkaBearera(tryb=publiczny)` → aplikacja MCP |
+| `/mcp/auth` | `BramkaBearera(tryb=wymagany)` → **przepisanie ścieżki na `/mcp`** → aplikacja MCP |
+| `/mcp/` | Django (strona HTML, §8) |
+| reszta | Django |
+
+**Przepisanie ścieżki jest obowiązkowe** (BL-1): SDK montuje trasę jako
+`Route`, nie `Mount` (`lowlevel/server.py:808-813`), czyli regex `^/mcp$`.
+Bez przepisania `/mcp/auth` dostałoby **404**, a `redirect_slashes` Starlette
+próbowałoby jeszcze `/mcp/auth/`. Przepisujemy `scope["path"]` i `raw_path`
+po przejściu przez bramkę.
+
+Prefiksowe `/mcp*` z wersji 3 było też sprzeczne z §8: `/mcp/` trafiłoby do
+Starlette i dostało 307 na `/mcp`.
+
+`GET /mcp` z `Accept: text/html` (człowiek wkleił adres do przeglądarki)
+przekierowujemy na `/mcp/` — inaczej SDK odda 406
+(`streamable_http.py:698-703`).
 
 ### 5.2 `KontekstMcp` i `KlientScope` — dwie warstwy, nie jedna
 
@@ -318,12 +387,48 @@ zrobić.
 
 Reset ContextVarów na wyjściu obowiązkowy.
 
-**Sufit czasu (D11).** Timeouty `httpx` są przy `ASGITransport` martwe, a
-gunicornowy `timeout` to heartbeat. Jedno `tools/call` rozwija się na N żądań do
-API bez żadnego limitu. `KontekstMcp` owija obsługę w `anyio.fail_after(...)`
-i trzyma semafor ograniczający liczbę równoległych żądań wewnętrznych. Wartości
-do ustalenia w planie, ale **istnienie limitu jest decyzją specu**, nie
-„pomiarem na później".
+**Sufit czasu (D11) — egzekwowany W KLIENCIE, nie wokół aplikacji.**
+
+Timeouty `httpx` są przy `ASGITransport` martwe, a gunicornowy `timeout` to
+heartbeat. Jedno `tools/call` rozwija się na N żądań do API bez żadnego limitu.
+
+Wersja 3 kazała owinąć obsługę w `anyio.fail_after(...)` w `KontekstMcp`.
+**To nie działa** (bloker BL-2 trzeciej recenzji). W trybie bezstanowym serwer
+JSON-RPC startuje jako zadanie **grupy menedżera**
+(`streamable_http_manager.py:243`), a handler narzędzia jest spawnowany do
+grupy dispatchera (`jsonrpc_dispatcher.py:493,684`). `fail_after` wokół
+`mcp_app(...)` anuluje wyłącznie zadanie żądania, które czeka na odpowiedź —
+czyli:
+
+- **narzędzie i jego N żądań do Django biegną dalej**, tylko nikt już na nie
+  nie czeka;
+- `http_transport.terminate()` **nie jest w `finally`** (`manager:246-249`),
+  więc `read_stream` nigdy się nie zamyka → `run_stateless_server` żyje
+  wiecznie → **wyciek zadania na każdy timeout**.
+
+Ten sam wyciek zachodzi przy **każdym rozłączeniu klienta** w trakcie
+`tools/call`, nie tylko przy timeoucie. Przy `proxy_read_timeout 300s` to
+realny wektor wyczerpania zasobów: N rozłączeń = N wiecznych zadań.
+
+Dlatego budżet trafia tam, gdzie faktycznie wykonuje się praca:
+
+- `KontekstMcp` kładzie **deadline** (monotoniczny znacznik) i **semafor**
+  w `ContextVar`;
+- `BppClientInProcess` czyta deadline w `_request` i **sam podnosi `BppError`**,
+  gdy budżet wyczerpany, a każde pojedyncze wywołanie owija w `fail_after`
+  na resztkę budżetu;
+- semafor ogranicza liczbę równoległych żądań wewnętrznych tego samego
+  wywołania narzędzia.
+
+Dzięki temu przekroczenie limitu **zatrzymuje pracę**, a nie tylko przestaje na
+nią czekać — i wraca do klienta jako czytelny błąd narzędzia.
+
+Wartości do ustalenia w planie; **istnienie limitu jest decyzją specu**.
+
+**Wyciek przy rozłączeniu** jest niezależny od naszego budżetu i leży w SDK.
+Do planu: zgłoszenie upstream oraz — do czasu naprawy — licznik żywych zadań
+menedżera wystawiony w healthchecku (§10.3), żeby wyciek był widoczny, zanim
+położy proces.
 
 ### 5.3 `BppClient` per żądanie (D9)
 
@@ -380,9 +485,27 @@ wariantach montażu:
 | `/mcp` | przepuść jako anonim | **401** + `WWW-Authenticate` | przepuść z tożsamością |
 | `/mcp/auth` | **401** + `WWW-Authenticate` | **401** + `WWW-Authenticate` | przepuść z tożsamością |
 
-Weryfikacja tokenu to lookup w tej samej bazie — wzorzec z
-`ApiReadOnlyForBearerMiddleware._ma_wazny_bearer` (`middleware.py:31-40`),
-opakowany w `sync_to_async` (kontekst async).
+**Weryfikacja musi sprawdzać to samo, co DRF — nie mniej.**
+`ApiReadOnlyForBearerMiddleware._ma_wazny_bearer` (`middleware.py:31-40`)
+patrzy wyłącznie na `AccessToken.is_valid()`. `StrictOAuth2Authentication`
+sprawdza dodatkowo `user.is_active` i scope `read`
+(`authentication.py:33-35`). Gdyby `BramkaBearera` skopiowała tylko ten
+pierwszy wzorzec, **token bez scope'u `read` przeszedłby bramkę i padł dopiero
+w DRF** — czyli wróciłby jako błąd w treści JSON-RPC z HTTP 200, a klient nigdy
+nie zrobiłby ponownej autoryzacji. Bramka musi więc sprawdzać: `is_valid()`
+**oraz** `user.is_active` **oraz** scope `read`.
+
+To jest **trzecia kopia** tych reguł w repo (obok `authentication.py`
+i `middleware.py`). Wersja 2 specu proponowała konsolidację w
+`oauth_mcp/tokens.py` i słusznie odsunąłem ją do projektu 3 jako zmianę
+w testowanej warstwie auth — ale trzecia kopia jest ceną, którą trzeba nazwać.
+**Do planu: minimalny wspólny helper czytany przez wszystkie trzy miejsca**,
+bez ruszania struktury klas DRF. Pełna konsolidacja zostaje projektem 3.
+
+Lookup idzie przez `sync_to_async` (kontekst async). Ponieważ dzieje się **poza
+cyklem żądania Django** (brak sygnałów `request_started`/`request_finished`),
+obowiązkowe jest `close_old_connections()` wokół zapytania — inaczej połączenia
+do bazy nie są sprzątane.
 
 **Dlaczego dwa adresy.** `/mcp` nigdy nie zmusi klienta do logowania, bo anonim
 dostaje 200 — a czy klienci MCP odpalają OAuth przy 401 na **późniejszym**
@@ -423,8 +546,10 @@ hostów. Trzy rzeczy, których wersja 2 nie widziała:
    (`transport_security.py:49-60`). Django-owe `.domena` i `*` **nie działają**;
    trzeba je przetłumaczyć, a testy repo używają `ALLOWED_HOSTS = ["*"]`.
 2. **Sprawdzany jest też `Origin`** (`:65-70`) — klienci przeglądarkowe
-   i MCP Inspector go wysyłają; pusta lista `allowed_origins` + obecny `Origin`
-   → 421.
+   i MCP Inspector go wysyłają. Niezgodny `Origin` daje **403**
+   (`transport_security.py:113-114`), nie 421. Decyzja: `allowed_origins`
+   wypełniamy tymi samymi hostami co `allowed_hosts`, ze schematem `https://`
+   (plus `http://` dla `localhost` w dev).
 3. **`host=` bez `transport_security` po cichu wyłącza ochronę**
    (`lowlevel/server.py:738-744`). Dlatego **zawsze** przekazujemy jawne
    `TransportSecuritySettings`.
@@ -449,6 +574,16 @@ to `Bearer`**, plus `Accept` i `Content-Type`. Odcinamy `Cookie`,
   uwierzytelnia hasłem, a `ApiReadOnlyForBearerMiddleware` sprawdza **wyłącznie
   prefiks `bearer `** (`middleware.py:33`) — więc dla Basica warstwa read-only
   **nie istnieje**.
+
+**Gdzie ta allowlista musi stać.** SDK przekazuje narzędziu **cały obiekt
+`Request` zewnętrznego żądania** przez `SessionMessage.metadata.request`
+(`streamable_http.py:608-611`) — z `Cookie` włącznie. Dziś czyta z niego tylko
+`bearer_from_request` (`bpp_mcp/auth.py:46-53`), więc D6 jest w praktyce
+zachowane, ale **przez dyscyplinę kodu w cudzym pakiecie, nie przez izolację**.
+Nasza allowlista działa przy budowaniu żądania wewnętrznego
+(`BppClientInProcess`), i to ona jest właściwą zaporą. Test „`Cookie` nie
+uwierzytelnia" **musi być po stronie BPP**, nie tylko w `bpp-mcp` — bo to my
+ponosimy skutki, gdyby tamta dyscyplina się zmieniła.
 
 ### 7.2 Propagacja `Host` — to jest kontrola dostępu
 
@@ -484,7 +619,14 @@ w `KontekstMcp` (ścieżka, kod, czas, obecność bearera — **nigdy token**).
 z `LifespanMcp`, `KontekstMcp` ani aplikacji MCP — te nie trafią do Rollbara
 same. Warstwa MCP woła `rollbar.report_exc_info()` jawnie i **nie wkłada
 nagłówków do `extra_data`**. (`"authorization"` jest w `ROLLBAR_SCRUB_FIELDS`,
-`base.py:1777`, ale to dotyczy żądań Django — zamyka §15.7.)
+`base.py:1777`, ale to dotyczy żądań Django.)
+
+**Wyjątki narzędzi wymagają osobnego przechwycenia.** SDK zamienia każdy
+wyjątek handlera na `CallToolResult(is_error=True)` (`mcpserver/server.py:423-424`),
+więc **nic nie dociera** do warstwy ASGI — jawne `report_exc_info()` tam by ich
+nie zobaczyło. Potrzebny jest cienki wrapper wokół `register_tools`, który
+owija każde zarejestrowane narzędzie i raportuje wyjątek, zanim SDK go zamieni
+na wynik. Bez tego awarie narzędzi są **całkowicie niewidoczne** w monitoringu.
 
 ### 7.6 Przekierowania — `follow_redirects=False` (D12)
 
@@ -574,6 +716,13 @@ bo na niej stoi D4. Poza zakresem tego specu (§13).
    z D11 działa **wewnątrz** aplikacji; strefa nginx chroni przed zalewem samych
    żądań MCP. Do zmierzenia, ale nie jest to już „poza zakresem" (§7.3).
 
+3. **Healthcheck `/mcp`.** Grupa zadań menedżera może zostać „zatruta"
+   (wyjątek dziecka anuluje scope grupy) — proces wtedy żyje, ale **każde
+   `/mcp` zwraca błąd aż do recyklingu `max_requests`**. `StartMcp` wystawia
+   stan gotowości i licznik żywych zadań; `RouterHttp` przy martwym zadaniu
+   oddaje 503 zamiast 500, a monitoring ma po czym poznać, że endpoint padł
+   mimo zdrowego procesu (§5.1, §5.2).
+
 Bez zmian: `stateless_http` czyni recykling `--max-requests` nieszkodliwym,
 `json_response` znosi problem `proxy_read_timeout`.
 
@@ -599,7 +748,15 @@ zobaczy override'u z fixture'a `settings` (§6.1); (ii)
   próbuje startować ponownie
 - ruch spoza `/mcp` do Django; `websocket` do channels
 - `GET /mcp` z `Accept: text/html` → redirect na `/mcp/`
-- `GET /mcp` bez tego nagłówka przy `stateless_http` → **405** (nie SSE)
+- **`/mcp/auth` dociera do aplikacji MCP** — dowód, że przepisanie ścieżki
+  działa (bez niego SDK dałoby 404, BL-1)
+- `/mcp/` (ze slashem) trafia do **Django**, nie do Starlette
+- start menedżera odbywa się w **osobnym zadaniu**: `zapewnij()` wywołane
+  z zadania, w którym jest aktywny `fail_after`, **nie** psuje ani tego
+  żądania, ani kolejnych (regresja na BL-3)
+- po przekroczeniu budżetu czasu **narzędzie przestaje wykonywać żądania**
+  do Django (licznik wywołań się nie zwiększa) — a nie tylko przestajemy
+  czekać (regresja na BL-2)
 
 **Bezpieczeństwo (każdy osobno)**
 - `Cookie` wysłany do `/mcp` **nie** uwierzytelnia — także po wewnętrznym
@@ -645,7 +802,11 @@ zobaczy override'u z fixture'a `settings` (§6.1); (ii)
 - `/.well-known/oauth-protected-resource` poprawne przy wielu hostach.
 - `GET /mcp/` renderuje stronę z oboma adresami właściwymi dla hosta.
 - Narzędzia z `bpp_mcp` — **żadnej kopii** w `src/`.
-- Jawny sufit czasu i współbieżności działa (D11).
+- Jawny sufit czasu **zatrzymuje pracę narzędzia**, nie tylko odpowiedź (D11).
+- `/mcp/auth` dociera do aplikacji MCP (przepisanie ścieżki, BL-1).
+- Menedżer sesji startuje w osobnym zadaniu i przeżywa żądanie, w którym go
+  wywołano — także gdy w tym żądaniu był aktywny `fail_after` (BL-3).
+- Healthcheck rozróżnia stan procesu od stanu endpointu MCP (§10.3).
 - Testy zielone; `ruff` czysty; `pre-commit` bez uwag.
 - Newsfragment w `src/bpp/newsfragments/`.
 - Istniejące testy `oauth_mcp` i `api_v1` przechodzą **bez modyfikacji**.
@@ -670,55 +831,60 @@ Strefa `limit_req` **przestaje** być poza zakresem — patrz §10.2.
 
 ## 14. Rozliczenie z recenzjami
 
-**Wersja 1 → 2** (pierwsza recenzja): bloker lifespanu potwierdzony, ale
-rozwiązywalny; bloker hosta potwierdzony i groźniejszy (kontrola dostępu, nie
-błąd 400); dodane `Basic`, cache, throttling, ModSecurity, allowlista DCR;
-poprawione 7 → 11 narzędzi; zakres rozbity na trzy projekty.
+**Wersja 1 → 2:** bloker lifespanu potwierdzony, ale rozwiązywalny; bloker
+hosta potwierdzony i groźniejszy (kontrola dostępu, nie błąd 400); dodane
+`Basic`, cache, throttling, ModSecurity, allowlista DCR; 7 → 11 narzędzi;
+zakres rozbity na trzy projekty.
 
-**Wersja 2 → 3** (druga recenzja):
+**Wersja 2 → 3:** B1 (`base_url` per żądanie) → D9; B2 (Daphne) → leniwy start;
+B3 (401 + PRM) → D10 dwa adresy; plus dwanaście poprawek.
 
-| Ustalenie | Rozstrzygnięcie |
+**Wersja 3 → 4.** Trzecia recenzja **potwierdziła D9 jako zamknięte** i wskazała
+trzy nowe blokery — wszystkie w rozwiązaniach B2/B3, nie w architekturze:
+
+| Ustalenie | Rozstrzygnięcie w tej wersji |
 |---|---|
-| **B1** `base_url` per żądanie niewykonalne z 0.4.0 | **D9** — klient per żądanie przez property w obiekcie lifespanu; zero zmian w `bpp-mcp` (§5.3) |
-| **B2** lifespan nie działa pod Daphne (dev, Playwright) | **D2** — leniwy start idempotentny, wyzwalany z obu stron (§5.1) |
-| **B3** brak wykonawcy 401 + PRM; `token_verifier` kasuje anonima | **D10** — własna `BramkaBearera` i **dwa adresy** (§5.4) |
-| IP klienta nieosiągalne przed aplikacją MCP | `KlientScope` za transportem (§5.2) |
-| scheme i `SECURE_SSL_REDIRECT` | propagacja + `follow_redirects=False` (§7.6) |
-| semantyka allowlisty SDK, `Origin`, `host=` bez `transport_security` | §6.1 |
-| `FirstRunWizardMiddleware` przekierowuje | potwierdzone, **zamyka §15.6** (§7.6) |
-| brak sufitu czasu | **D11** (§5.2) |
-| `GET /mcp` → 406 | redirect przy `Accept: text/html` (§5.1) |
-| Rollbar nie obejmuje warstwy MCP | jawne `report_exc_info` (§7.5), **zamyka §15.7** |
-| throttling po całym XFF | nie dokładamy XFF (§7.3) |
-| `startup.failed` → boot-loop | nazwane jako oczekiwane (§5.1) |
-| testy: fabryka, brak `pytest-asyncio`, `run()` raz | §11 |
-| `stateless_http` + GET → 405, nie SSE | §11 |
-| numery linii `views_dcr`, `channels/routing` | poprawione (§2.1, §2.4) |
-| `CountdownBlockingMiddleware` nie zwalnia `/api/` | §7.7 |
+| **BL-1** `/mcp/auth` → 404; SDK montuje `Route` (`^/mcp$`), nie `Mount` | `RouterHttp` **przepisuje ścieżkę** na `/mcp` po bramce; dopasowanie dokładne, nie prefiksowe (§5.1) |
+| **BL-2** `fail_after` wokół aplikacji nie zatrzymuje narzędzia i wycieka zadanie | budżet i semafor **w `BppClientInProcess`**, egzekwowane w `_request` (§5.2) |
+| **BL-3** leniwy start pęka pod własnym `fail_after`; anulowanie hosta zatruwa grupę | start w **osobnym, długowiecznym zadaniu**; `zapewnij()` przed jakimkolwiek scope'em (§5.1) |
+| bramka sprawdzała mniej niż DRF (brak scope, `is_active`) | pełny zestaw reguł + `close_old_connections` (§5.4) |
+| `KlientScope` bez decyzji o pustym ContextVar | fail-closed (§5.2) |
+| `Origin` → 403, nie 421; brak reguły dla `allowed_origins` | §6.1 |
+| Rollbar nie zobaczy wyjątków narzędzi | wrapper wokół `register_tools` (§7.5) |
+| `Cookie` dociera do narzędzia przez `SessionMessage` | nazwane; test po stronie BPP (§7.1) |
+| wyciek zadania przy **każdym** rozłączeniu klienta | nazwane, healthcheck + zgłoszenie upstream (§5.2, §10.3) |
+| zatrucie grupy także pod uvicornem | healthcheck, 503 zamiast 500 (§10.3) |
+| `Uczelnia=None` przesadzone dla single-site | sprostowane — dotyczy wielouczelnianości (§2.5) |
+| `stateless + GET → 405` niepotwierdzone | wycofane z §2.3, test warunkowy (§11) |
+| dwie ścieżki protokołu, różny czas życia | §2.3, uwzględnione w §5.2 |
 
-**Nieprawdziwe twierdzenia wersji 2, wycofane:** „szew cache rozwiązuje problem
-współdzielenia" (rozwiązywał połowę — `_api_root` został, D9 rozwiązuje oba);
-„throttling potwierdzony" (problem tak, mechanizm naprawy nie istniał);
-„lifespan rozwiązany jednym kluczem" (tylko pod uvicornem).
+**Wycofane twierdzenia wersji 3:** „B2 zamknięty przez D2" i „B3 zamknięty przez
+D10" — obie były przedwczesne; zamykają je dopiero poprawki tej wersji.
+„Rollbar zamyka §15.7" — nie obejmowało wyjątków narzędzi.
 
 ---
 
 ## 15. Otwarte kwestie
 
-Zamknięte w tej wersji: **§15.1** (kształt endpointu → D10), **§15.2**
-(`starlette` — brak kolizji, §9), **§15.6** (kreator przekierowuje — tak, §7.6),
-**§15.7** (Rollbar — §7.5).
+Zamknięte: **§15.1 wersji 2** (kształt endpointu → D10); **`starlette`** (brak
+kolizji, §9); **kreator przekierowuje** (tak, §7.6); **Rollbar** (§7.5);
+**`anyio`** — `mcp 2.0` wymaga `>=4.9`, BPP ma 4.11.0 (§9).
 
 Zostają:
 
-1. Czy `mcp 2.0` wymaga `anyio` nowszego niż 4.11.0 z `uv.lock` (§9).
-2. Wpływ dziesięciu nowych pakietów na bramkę Trivy i rozmiar obrazu (§9).
-3. Wartości sufitu czasu i współbieżności (D11) — do ustalenia pomiarem, ale
-   **istnienie limitu jest już zdecydowane**.
-4. Kształt reguły wyłączającej ModSecurity dla `/mcp` (§10.1).
-5. Czy strefa `limit_req` dla `/mcp` jest potrzebna (§10.2).
-6. Czy `httpx2` ma `ASGITransport` o semantyce wymaganej przez D4 — warunek
-   wstępny dla przejścia `bpp-mcp` na jeden klient HTTP (§9, §13).
-7. **Trwałość grupy zadań anyio przy leniwym starcie** — `run()` wchodzony
-   z kontekstu żądania, a `AsyncExitStack` trzymany w obiekcie modułowym.
-   Do potwierdzenia testem pod Daphne (§5.1, §11).
+1. Wpływ dziesięciu nowych pakietów na bramkę Trivy i rozmiar obrazu (§9).
+2. Wartości budżetu czasu i semafora (D11) — pomiar; **istnienie limitu jest
+   zdecydowane** (§5.2).
+3. Kształt reguły wyłączającej ModSecurity dla `/mcp` (§10.1).
+4. Czy strefa `limit_req` dla `/mcp` jest potrzebna (§10.2).
+5. Czy `httpx2` ma `ASGITransport` o semantyce wymaganej przez D4 — warunek
+   przejścia `bpp-mcp` na jeden klient HTTP (§9, §13).
+6. Czy `stateless_http` + `GET` daje 405 — do sprawdzenia przed napisaniem
+   testu (§2.3, §11).
+7. Czy klienci Claude walidują pole `resource` w PRM względem adresu serwera —
+   przy dwóch adresach (`/mcp`, `/mcp/auth`) może wymagać metadanych pod
+   `/.well-known/oauth-protected-resource/<ścieżka>` (RFC 9728 §3.1). **Do
+   sprawdzenia ręcznie na obu adresach.**
+8. Zgłoszenie upstream braku `terminate()` w `finally`
+   (`streamable_http_manager.py:246-249`) — wyciek zadania przy rozłączeniu
+   klienta (§5.2).
