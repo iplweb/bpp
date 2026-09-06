@@ -103,6 +103,75 @@ def test_zadanie_przezywa_zadanie_ktore_je_utworzylo():
     assert uruchom(scenariusz) is True
 
 
+def test_anulowanie_nie_jest_zapamietane_jako_trwaly_blad():
+    """``CancelledError`` NIE może latchować stanu.
+
+    ``except BaseException`` łapało też anulowanie, więc JEDNO anulowanie
+    z dowolnego powodu (zamykanie procesu, ubita pętla, timeout serwera)
+    zapisywało się w ``_blad``. Skutki były dwa i oba złe: ``zapewnij()``
+    rzucało wyjątkiem zamiast pozwolić oddać kontrolowane 503, a przy KAŻDYM
+    zamknięciu workera szło zgłoszenie do Rollbara — z rutynowego zdarzenia.
+
+    Po poprawce anulowanie zwalnia czekających, nie zostaje zapamiętane
+    i nie jest raportowane. Endpoint i tak jest wtedy martwy
+    (``zywy is False`` → 503), bo ``session_manager.run()`` SDK wchodzi się
+    raz na instancję — świadomie NIE próbujemy restartu (patrz ``zapewnij``).
+    """
+    from unittest.mock import Mock
+
+    from mcp_server import start as modul_start
+
+    mock_rollbar = Mock()
+    app = _AplikacjaZLifespanem()
+    start = StartMcp(app)
+
+    async def scenariusz():
+        await start.zapewnij()
+        start._zadanie.cancel()
+        # Dwie tury pętli: jedna na dostarczenie anulowania, druga na
+        # domknięcie zadania (``_trzymaj`` ma jeszcze except do wykonania).
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+        await start.zapewnij()  # NIE może rzucić — anulowanie to nie awaria
+        return start._blad, start.zywy
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(modul_start, "rollbar", mock_rollbar)
+        blad, zywy = uruchom(scenariusz)
+
+    assert blad is None, "anulowanie zostało zapamiętane jako trwały błąd"
+    assert zywy is False, "po anulowaniu żądania mają dostawać 503"
+    mock_rollbar.report_exc_info.assert_not_called()
+
+
+def test_blad_startu_jest_raportowany_do_rollbara(monkeypatch):
+    """Wyjątek host taska nie ma żadnej innej drogi do monitoringu:
+    ``CustomRollbarNotifierMiddleware`` łapie wyjątki Django, a ten leci
+    w zadaniu tła poza jakimkolwiek żądaniem (spec §7.5). Zgłoszenie idzie
+    stąd, a nie z ``RouterHttp``, żeby przypadło RAZ na awarię, a nie raz na
+    żądanie — inaczej martwy menedżer sam wyczerpałby kwotę Rollbara."""
+    from unittest.mock import Mock
+
+    from mcp_server import start as modul_start
+
+    mock_rollbar = Mock()
+    monkeypatch.setattr(modul_start, "rollbar", mock_rollbar)
+
+    app = _AplikacjaZLifespanem(blad=RuntimeError("brak Redisa"))
+    start = StartMcp(app)
+
+    async def scenariusz():
+        with pytest.raises(RuntimeError):
+            await start.zapewnij()
+        # drugie i trzecie żądanie NIE mogą dołożyć kolejnych zgłoszeń
+        for _ in range(2):
+            with pytest.raises(RuntimeError):
+                await start.zapewnij()
+
+    uruchom(scenariusz)
+    mock_rollbar.report_exc_info.assert_called_once()
+
+
 def test_wiele_rownoleglych_zapewnij_wchodzi_raz():
     """Brak punktu przerwania między ``if self._zadanie is None`` a
     ``create_task`` (komentarz w ``start.py``) ma znaczenie tylko wtedy, gdy

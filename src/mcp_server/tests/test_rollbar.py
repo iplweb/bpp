@@ -20,7 +20,8 @@ from unittest.mock import Mock
 
 import bpp_mcp.tools as bpp_tools
 import pytest
-from mcp.server.mcpserver.exceptions import UnexpectedToolError
+from bpp_mcp.client import BppError
+from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError
 
 from mcp_server import aplikacja
 from mcp_server.aplikacja import build_application
@@ -29,6 +30,34 @@ from mcp_server.tests.utils import uruchom
 
 async def _wybuchaj(*_a, **_kw):
     raise RuntimeError("awaria-testowa-narzedzia")
+
+
+def _rzucajacy_bpperror(status=None):
+    async def narzedzie(*_a, **_kw):
+        raise BppError("nie znaleziono encji", status_code=status)
+
+    return narzedzie
+
+
+def _wywolaj_djangoql_schema(monkeypatch, funkcja, oczekiwany_wyjatek):
+    """Zbuduj aplikację z podmienionym ``djangoql_schema`` i zawołaj narzędzie.
+
+    ``djangoql_schema`` nie potrzebuje ani ``ctx``, ani klienta HTTP — to
+    najlżejsze narzędzie do wywołania bez stawiania pełnego żądania.
+    """
+    mock_rollbar = Mock()
+    monkeypatch.setattr(aplikacja, "rollbar", mock_rollbar)
+    monkeypatch.setattr(bpp_tools, "djangoql_schema", funkcja)
+
+    mcp_app, _ = build_application()
+    serwer = mcp_app.state.serwer_mcp
+
+    async def scenariusz():
+        with pytest.raises(oczekiwany_wyjatek):
+            await serwer.call_tool("djangoql_schema", {"model": "rekord"})
+
+    uruchom(scenariusz)
+    return mock_rollbar
 
 
 def test_wyjatek_narzedzia_trafia_do_rollbara(monkeypatch):
@@ -67,6 +96,41 @@ def test_narzedzie_bez_wyjatku_nie_raportuje(monkeypatch):
     uruchom(scenariusz)
 
     mock_rollbar.report_exc_info.assert_not_called()
+
+
+def test_bpperror_nie_trafia_do_rollbara(monkeypatch):
+    """``BppError`` to normalny kanał komunikatów do użytkownika, nie awaria.
+
+    Zmierzone przed poprawką: 4 zgłoszenia na 4 wywołania (401 anonima przy
+    DjangoQL, dwa 404 nieistniejących encji, walidacja argumentu). Na
+    publicznym, nieuwierzytelnionym endpoincie znaczyło to, że dowolna osoba
+    z internetu wyczerpuje kwotę Rollbara jednym ``curl``-em w pętli i topi
+    realne alerty.
+    """
+    mock_rollbar = _wywolaj_djangoql_schema(
+        monkeypatch, _rzucajacy_bpperror(status=404), ToolError
+    )
+    mock_rollbar.report_exc_info.assert_not_called()
+
+
+def test_bpperror_bez_statusu_nie_trafia_do_rollbara(monkeypatch):
+    """Błąd domenowy bez statusu HTTP (walidacja argumentu, przekroczony
+    budżet czasu) też jest komunikatem, nie awarią."""
+    mock_rollbar = _wywolaj_djangoql_schema(
+        monkeypatch, _rzucajacy_bpperror(status=None), ToolError
+    )
+    mock_rollbar.report_exc_info.assert_not_called()
+
+
+def test_bpperror_5xx_jednak_trafia_do_rollbara(monkeypatch):
+    """Granica wyjątku od wyjątku: status 5xx pochodzi z odpowiedzi NASZEJ
+    aplikacji Django na żądanie wewnętrzne, więc mówi o awarii po naszej
+    stronie. Pytający nie ma jak jej wymusić z ``/api/v1/``, więc ta gałąź
+    nie daje się użyć do zalania Rollbara."""
+    mock_rollbar = _wywolaj_djangoql_schema(
+        monkeypatch, _rzucajacy_bpperror(status=503), ToolError
+    )
+    mock_rollbar.report_exc_info.assert_called_once()
 
 
 def test_context_i_schemat_przetrwaly_wrapper():

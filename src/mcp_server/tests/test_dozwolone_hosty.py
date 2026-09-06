@@ -5,6 +5,13 @@ rozumie ``TransportSecuritySettings`` SDK MCP — semantyka OBU list jest
 inna (SDK dopasowuje dokładnie albo wzorcem ``host:*``; Django rozumie
 ``*`` i wiodącą ``.domenę``), więc błąd tutaj otwiera albo zamyka DNS
 rebinding protection na całej ``/mcp``.
+
+**Zakres odpowiedzialności — świadomie wąski.** Ta lista NIE jest kontrolą
+wielotenantową i nie ma nią być: nie da się jej policzyć z bazy, bo biegnie
+przy imporcie ``django_bpp.asgi``. Tożsamość uczelni rozstrzyga per żądanie
+``mcp_server.uczelnia`` (testy: ``test_bramka_uczelni.py``) i to tam jest
+fail-closed. Ostatni test w tym pliku pilnuje, żeby ten podział nie został
+przez pomyłkę „naprawiony” tutaj — bo naprawa tutaj byłaby pozorna.
 """
 
 from mcp_server.aplikacja import _dozwolone_hosty
@@ -54,3 +61,23 @@ def test_wiodaca_kropka_django_bez_wiodacej_kropki_w_wyniku(settings):
     hosty = _dozwolone_hosty()
     assert hosty == ["przyklad.test", "przyklad.test:*"]
     assert not any(h.startswith(".") for h in hosty)
+
+
+def test_hosty_infrastrukturalne_przechodza_ta_warstwe(settings):
+    """Dokumentacja podziału odpowiedzialności, nie akceptacja dziury.
+
+    Produkcyjne ``ALLOWED_HOSTS`` zawiera ``127.0.0.1``, ``appserver``
+    i ``appserver:8000`` (``settings/production.py`` — potrzebne m.in. sondzie
+    Dockera). Ta funkcja je przepuszcza i tak ma zostać: ochrona przed DNS
+    rebindingiem to nie to samo, co rozstrzyganie uczelni.
+
+    Żądanie z takim hostem jest odrzucane 421-ką dopiero PER ŻĄDANIE, przez
+    ``mcp_server.uczelnia`` — bo dopiero tam wolno zapytać bazę, czy host ma
+    swój ``Site``. Gdyby ktoś kiedyś zawęził tę listę „dla bezpieczeństwa”,
+    dostałby zawężenie liczone z konfiguracji, a nie z danych — czyli poczucie
+    bezpieczeństwa bez samego bezpieczeństwa.
+    """
+    settings.ALLOWED_HOSTS = ["bpp.przyklad.test", "appserver", "127.0.0.1"]
+    hosty = _dozwolone_hosty()
+    assert "appserver" in hosty
+    assert "127.0.0.1" in hosty

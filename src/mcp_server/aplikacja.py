@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 
 import rollbar
 from bpp_mcp import register_tools
+from bpp_mcp.client import BppError
 from django.conf import settings
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
@@ -40,6 +41,21 @@ def _dozwolone_hosty() -> list[str]:
     ``.domena`` i ``*`` nie działają (spec §6.1). ``*`` w ALLOWED_HOSTS
     (używane w testach) mapujemy na wyłączenie sprawdzania, bo nie ma dla
     niego odpowiednika.
+
+    **Ta lista NIE jest kontrolą wielotenantową** i nie próbuje nią być.
+    ``TransportSecuritySettings`` chroni przed DNS rebindingiem — przed
+    przeglądarką namówioną na wysłanie żądania z cudzą nazwą. Tożsamość
+    uczelni rozstrzyga ``mcp_server.uczelnia`` PER ŻĄDANIE, i tam jest
+    fail-closed (spec §7.2).
+
+    Dlaczego nie zawężamy tej listy do hostów mapujących się na ``Site``:
+    funkcja biegnie przy budowie aplikacji, czyli przy imporcie
+    ``django_bpp.asgi``, a import modułu ASGI nie może zależeć od dostępnej
+    bazy. Zawężenie do samego ``DJANGO_BPP_HOSTNAMES`` (bez bazy) też nie
+    rozwiązywałoby problemu: hostname w konfiguracji nie dowodzi istnienia
+    ``Site`` ani powiązanej ``Uczelnia`` — dałoby więc poczucie
+    bezpieczeństwa bez samego bezpieczeństwa, a przy okazji rozjechałoby
+    ``ALLOWED_HOSTS`` z allowlistą MCP w dev i w testach.
     """
     hosty: list[str] = []
     for wpis in settings.ALLOWED_HOSTS:
@@ -80,6 +96,21 @@ def _z_raportowaniem(serwer: MCPServer) -> MCPServer:
       ``test_context_i_schemat_przetrwaly_wrapper`` — bez tego wrapper
       zarejestrowałby ``ctx`` jako zwykły, wymagany parametr wejściowy
       zamiast wstrzykiwanego kontekstu.
+
+    **Co NIE jest raportowane: ``BppError``.** W ``bpp-mcp`` to normalny kanał
+    komunikatów do użytkownika, nie awaria — 401 anonima przy DjangoQL, 404
+    nieistniejącej encji, odrzucony argument, przekroczony budżet czasu. Na
+    nieuwierzytelnionym, publicznym endpoincie raportowanie ich znaczyłoby, że
+    dowolna osoba z internetu wyczerpuje kwotę Rollbara jednym ``curl``-em
+    w pętli i topi realne alerty (zmierzone przez recenzenta: 4 zgłoszenia na
+    4 wywołania). Okno maintenance albo niedokończony kreator dawałyby
+    zgłoszenie z KAŻDEGO wywołania.
+
+    Wyjątek od wyjątku: ``BppError`` ze statusem 5xx. Ten status pochodzi
+    z odpowiedzi NASZEJ aplikacji Django na żądanie wewnętrzne — czyli mówi
+    o awarii po naszej stronie, nie o błędzie pytającego. Takie zgłoszenie
+    jest wprost tym, co monitoring ma zobaczyć, a wywołać je może wyłącznie
+    faktyczna awaria serwisu (użytkownik nie ma jak wymusić 5xx z /api/v1/).
     """
     oryginalny = serwer.tool
 
@@ -91,6 +122,11 @@ def _z_raportowaniem(serwer: MCPServer) -> MCPServer:
             async def wrapper(*a, **kw):
                 try:
                     return await fn(*a, **kw)
+                except BppError as exc:
+                    status = getattr(exc, "status_code", None)
+                    if status is not None and status >= 500:
+                        rollbar.report_exc_info()
+                    raise
                 except Exception:
                     rollbar.report_exc_info()
                     raise

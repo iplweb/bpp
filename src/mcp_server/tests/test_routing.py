@@ -73,13 +73,18 @@ def _router():
     return RouterHttp(_echo_sciezki, _django, StartMcp(_AtrapaLifespanu()))
 
 
-def test_mcp_trafia_do_aplikacji_mcp():
+@pytest.mark.django_db(transaction=True)
+def test_mcp_trafia_do_aplikacji_mcp(uczelnia):
+    """``uczelnia`` NIE jest ozdobnikiem: ``RouterHttp`` odrzuca 421-ką host,
+    dla którego nie da się rozstrzygnąć uczelni (spec §7.2, patrz
+    ``mcp_server.uczelnia``). Bez żadnej uczelni w bazie żądanie nigdy nie
+    dotarłoby do aplikacji MCP."""
     status, _, tresc = uruchom(lambda: wywolaj(_router(), zbuduj_scope("/mcp")))
     assert status == 200 and tresc == "MCP:/mcp"
 
 
 @pytest.mark.django_db(transaction=True)
-def test_mcp_auth_ma_przepisana_sciezke_na_mcp():
+def test_mcp_auth_ma_przepisana_sciezke_na_mcp(uczelnia):
     """REGRESJA BL-1: bez przepisania SDK oddałoby 404.
 
     ``/mcp/auth`` bez ważnego tokenu to zawsze 401 (spec §5.4, D10) — bez
@@ -115,7 +120,7 @@ def test_get_mcp_z_przegladarki_przekierowuje_na_slash():
 
 
 @pytest.mark.django_db(transaction=True)
-def test_bearer_trafia_do_contextvara_pakietu():
+def test_bearer_trafia_do_contextvara_pakietu(uczelnia):
     """`BppClient` czyta token z WŁASNEGO ContextVara pakietu bpp_mcp, nie
     z naszego. Bez tego mostka zalogowany użytkownik po cichu leciałby
     anonimowo, a warstwa OAuth byłaby dekoracją.
@@ -141,7 +146,7 @@ def test_bearer_trafia_do_contextvara_pakietu():
 
 
 @pytest.mark.django_db(transaction=True)
-def test_bearer_nie_wycieka_do_nastepnego_zadania():
+def test_bearer_nie_wycieka_do_nastepnego_zadania(uczelnia):
     """Po zakończeniu żądania ContextVar pakietu musi być wyczyszczony."""
     from bpp_mcp.auth import current_bearer
 
@@ -161,6 +166,43 @@ def test_bearer_nie_wycieka_do_nastepnego_zadania():
 
     uruchom(scenariusz)
     assert widziany == ["T1", None]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_schemat_zadania_z_naglowka_wskazanego_przez_ustawienie(settings, uczelnia):
+    """``DaneZadania.scheme`` decyduje o ``base_url`` klienta w procesie, więc
+    zły schemat to albo podwojone żądanie (``SECURE_SSL_REDIRECT``), albo
+    adresy z ``http://`` w danych zwracanych użytkownikowi.
+
+    Nazwa nagłówka MUSI pochodzić z ``SECURE_PROXY_SSL_HEADER`` — to samo
+    źródło, z którego czyta ``auth.BramkaBearera``. Zaszycie
+    ``X-Forwarded-Proto`` rozjechałoby warstwę MCP z Django w środowisku,
+    w którym ustawienie mówi ``HTTP_X_FORWARDED_PROTOCOL`` (``base.py``).
+    """
+    settings.SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTOCOL", "https")
+    widziane = []
+
+    async def _podglada(scope, receive, send):
+        from mcp_server.kontekst import biezace
+
+        widziane.append(biezace().scheme)
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    router = RouterHttp(_podglada, _django, StartMcp(_AtrapaLifespanu()))
+
+    async def scenariusz():
+        await wywolaj(
+            router,
+            zbuduj_scope("/mcp", naglowki={"x-forwarded-protocol": "https"}),
+        )
+        # Nagłówek SPOZA ustawienia nie ma prawa podnieść schematu.
+        await wywolaj(
+            router, zbuduj_scope("/mcp", naglowki={"x-forwarded-proto": "https"})
+        )
+
+    uruchom(scenariusz)
+    assert widziane == ["https", "http"]
 
 
 def test_lifespan_startup_complete():

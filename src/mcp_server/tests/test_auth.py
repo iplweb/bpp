@@ -50,10 +50,55 @@ def test_publiczny_bez_naglowka_przepuszcza():
 
 @pytest.mark.django_db(transaction=True)
 def test_wymagany_bez_naglowka_daje_401_z_naglowkiem():
+    """Asercja na PEŁNY adres, nie na obecność podciągu ``resource_metadata=``.
+
+    Słaba wersja tego testu przepuściła bloker: ``WWW-Authenticate`` wskazywał
+    PRM pod ``http://`` na produkcji (schemat brany ze ``scope["scheme"]``,
+    któremu uvicorn nie poprawia, bo gunicorn nie ustawia
+    ``forwarded_allow_ips``), a asercja na sam podciąg tego nie widziała —
+    mimo że zepsute discovery OAuth to jedyny powód, dla którego ten adres
+    istnieje.
+    """
     app = BramkaBearera(_ok, wymagany=True)
     status, naglowki, _ = uruchom(lambda: wywolaj(app, zbuduj_scope("/mcp/auth")))
     assert status == 401
-    assert "resource_metadata=" in naglowki["www-authenticate"]
+    assert naglowki["www-authenticate"] == (
+        'Bearer resource_metadata="http://bpp.example.test'
+        '/.well-known/oauth-protected-resource"'
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_prm_ma_https_gdy_proxy_tak_mowi(settings):
+    """Produkcja: nginx w osobnym kontenerze, ruch do uvicorna plaintextem.
+
+    Schemat czytamy z nagłówka wskazanego przez ``SECURE_PROXY_SSL_HEADER``,
+    a nie z zaszytego ``X-Forwarded-Proto`` — ``settings/base.py`` deklaruje
+    ``HTTP_X_FORWARDED_PROTOCOL``, a ``settings/production.py``
+    ``HTTP_X_FORWARDED_PROTO``, więc zaszycie jednej nazwy rozjeżdżałoby
+    warstwę MCP z Django w jednym z dwóch środowisk.
+    """
+    settings.SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    app = BramkaBearera(_ok, wymagany=True)
+    scope = zbuduj_scope("/mcp/auth", naglowki={"x-forwarded-proto": "https"})
+    status, naglowki, _ = uruchom(lambda: wywolaj(app, scope))
+    assert status == 401
+    assert naglowki["www-authenticate"] == (
+        'Bearer resource_metadata="https://bpp.example.test'
+        '/.well-known/oauth-protected-resource"'
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_prm_ignoruje_naglowek_spoza_ustawienia(settings):
+    """Nagłówek INNY niż zadeklarowany w ``SECURE_PROXY_SSL_HEADER`` nie ma
+    prawa podnieść schematu — inaczej dowolny klient podnosiłby go sam,
+    a Django (które ufa tylko zadeklarowanemu) widziałoby co innego."""
+    settings.SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTOCOL", "https")
+    app = BramkaBearera(_ok, wymagany=True)
+    scope = zbuduj_scope("/mcp/auth", naglowki={"x-forwarded-proto": "https"})
+    _, naglowki, _ = uruchom(lambda: wywolaj(app, scope))
+    assert 'resource_metadata="http://' in naglowki["www-authenticate"]
 
 
 @pytest.mark.django_db(transaction=True)

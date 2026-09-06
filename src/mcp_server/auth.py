@@ -13,6 +13,8 @@ import json
 from asgiref.sync import sync_to_async
 from django.db import close_old_connections
 
+from mcp_server.kontekst import schemat_zadania
+
 WYMAGANY_SCOPE = "read"
 
 
@@ -72,9 +74,19 @@ class BramkaBearera:
         await self._aplikacja(scope, receive, send)
 
     async def _odmow(self, scope, send) -> None:
-        naglowki = {k.lower(): v for k, v in scope.get("headers", [])}
-        host = naglowki.get(b"host", b"localhost").decode()
-        schemat = "https" if scope.get("scheme") in ("https", "wss") else "http"
+        naglowki = {
+            k.lower().decode(): v.decode(errors="replace")
+            for k, v in scope.get("headers", [])
+        }
+        host = naglowki.get("host", "localhost")
+        # NIE ``scope["scheme"]``: nginx stoi w osobnym kontenerze, a
+        # ``docker/appserver/gunicorn_conf.py`` nie ustawia
+        # ``forwarded_allow_ips`` (default gunicorna to 127.0.0.1), więc
+        # uvicorn NIE ufa nagłówkom proxy i zostawia scheme="http". PRM
+        # wskazywałby wtedy na ``http://`` i psuł discovery OAuth — czyli
+        # dokładnie to, po co ten adres istnieje. Nagłówek czytamy tak samo
+        # jak ``RouterHttp._dane`` (jedno źródło prawdy: ``schemat_zadania``).
+        schemat = schemat_zadania(naglowki, scope.get("scheme", "http"))
         prm = f"{schemat}://{host}/.well-known/oauth-protected-resource"
         cialo = json.dumps(
             {
