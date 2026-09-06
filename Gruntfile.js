@@ -75,6 +75,12 @@ module.exports = function (grunt) {
                         'src/bpp/static/bpp/scss/admin-filter-panel.scss'
                 }
             },
+            adminprint: {
+                files: {
+                    'src/bpp/static/bpp/css/admin-print.css':
+                        'src/bpp/static/bpp/scss/admin-print.scss'
+                }
+            },
             przemapuj_zrodla: {
                 files: {
                     'src/przemapuj_zrodla_pbn/static/przemapuj_zrodla_pbn/css/przemapuj-zrodla.css':
@@ -172,6 +178,7 @@ module.exports = function (grunt) {
                     'sass:uafm',
                     'sass:adminthemes',
                     'sass:adminfilterpanel',
+                    'sass:adminprint',
                     'sass:przemapuj_zrodla',
                     'sass:deduplikator_autorow',
                     'sass:deduplikator_zrodel',

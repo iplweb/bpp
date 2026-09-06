@@ -215,6 +215,12 @@
         <link rel="stylesheet" type="text/css" media="screen" href="{{ STATIC_URL }}bpp/css/admin-menu.css"/>
         <link rel="stylesheet" type="text/css" media="screen" href="{{ STATIC_URL }}bpp/css/admin-themes.css"/>
 
+        {# Style wydruku admina. CELOWO BEZ media="screen" — trzy arkusze #}
+        {# wyzej sa screen-only, wiec nie da sie w nich umiescic regul #}
+        {# @media print (przegladarka by ich nie zastosowala). Sama tresc #}
+        {# pliku siedzi w @media print, wiec na ekranie nie zmienia niczego. #}
+        <link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}bpp/css/admin-print.css"/>
+
         <!-- CSS Custom Property dla hover color (per theme) -->
         <style type="text/css">
             :root {
