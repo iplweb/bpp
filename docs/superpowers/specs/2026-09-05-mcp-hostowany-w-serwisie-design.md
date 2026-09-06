@@ -676,8 +676,10 @@ link do `bpp-mcp` dla stdio. Adresy przez `build_absolute_uri`. Teksty przez
 
 ## 9. Zależności i obraz
 
-Dochodzi `bpp-mcp>=0.4,<0.5`. **Delta policzona** przeciwko `uv.lock` BPP —
-dziesięć nowych pakietów:
+Dochodzi `bpp-mcp>=0.4,<0.5`. **Zmierzone po faktycznym `uv lock`
+(Task 1 planu): 21 nowych pakietów, nie dziesięć.** Wcześniejsze oszacowanie
+liczyło tylko zależności bezpośrednie i było zaniżone ponad dwukrotnie —
+poniżej stan rzeczywisty:
 
 | Nowe | Uwaga |
 |---|---|
@@ -686,7 +688,23 @@ dziesięć nowych pakietów:
 | `pydantic` | kompilowana, spora |
 | `opentelemetry-api`, `jsonschema`, `mcp-types`, `python-multipart`, `sse-starlette`, `starlette`, `typing-inspection` | |
 
+Zależności przechodnie, których pierwsze oszacowanie nie objęło:
+`annotated-types`, `httpcore`, `httpcore2`, `httpx2-jsfetch`, `jsonschema`,
+`jsonschema-specifications`, **`pydantic-core`**, `referencing`, **`rpds-py`**,
+`truststore`, `typing-inspection`.
+
 Już obecne: `anyio` (4.11.0), `pyjwt`, `uvicorn`.
+
+**Dwa ustalenia, które podnoszą wagę ryzyka z §15:**
+
+1. **`pydantic-core` i `rpds-py` to kompilowane rozszerzenia Rust** — osobne
+   koła per platforma. To realny wzrost rozmiaru obrazu i osobna powierzchnia
+   CVE dla bramki Trivy, której pierwsze oszacowanie w ogóle nie przewidywało.
+2. **Dwa równoległe stosy HTTP w drzewie**: `bpp-mcp` zależy od `httpx`, a
+   `mcp` 2.x od `httpx2` — każdy z własnym `httpcore`. Dochodzi też
+   `httpx2-jsfetch` z markerem `sys_platform == 'emscripten'`, czyli kod WASM
+   nieużywany w kontenerze Linux, ale obecny w locku. To wzmacnia argument za
+   przejściem `bpp-mcp` na `httpx2` (§13, §15.5) — dziś wozimy oba.
 
 **Kolizji `starlette` nie ma** — `channels[daphne]` ciągnie `asgiref` i `daphne`,
 nie `starlette`. To zamyka §15.2.
