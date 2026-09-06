@@ -68,6 +68,7 @@ urlpatterns = (
         ),
         path("formdefaults/", include("formdefaults.urls")),
         path("", include("oauth_mcp.urls")),
+        path("mcp/", include("mcp_server.urls", namespace="mcp_server")),
         url(r"^favicon\.ico$", cache_page(60 * 60)(favicon)),
         path("test_403/", login_required(test_403_view)),
         path("test_500/", login_required(test_500_view)),

@@ -1,0 +1,36 @@
+{# Strona /mcp/ — instrukcja podłączenia klienta AI (dla człowieka). #}
+{# Same adresy MCP (/mcp, /mcp/auth) obsługuje warstwa ASGI, patrz #}
+{# mcp_server.routing.RouterHttp — ta strona tylko je pokazuje. #}
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block extratitle %}
+    {% trans "Bibliografia w Twoim asystencie AI" %}
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="large-12 columns">
+    <h1>{% trans "Bibliografia w Twoim asystencie AI" %}</h1>
+
+    <p>
+      {% trans "Wklej adres poniżej do klienta AI obsługującego zdalne serwery MCP." %}
+    </p>
+
+    <h2>{% trans "Dostęp publiczny" %}</h2>
+    <p><code>{{ adres_publiczny }}</code></p>
+    <p>
+      {% trans "Bez logowania. Widzi to samo, co publiczna część bibliografii." %}
+    </p>
+
+    <h2>{% trans "Dostęp z logowaniem" %}</h2>
+    <p><code>{{ adres_z_logowaniem }}</code></p>
+    <p>
+      {% trans "Poprosi o zalogowanie w przeglądarce. Odblokowuje dane niepubliczne." %}
+    </p>
+
+    <h2>{% trans "Claude Code" %}</h2>
+    <pre>claude mcp add bpp --transport http {{ adres_publiczny }}</pre>
+  </div>
+</div>
+{% endblock %}
