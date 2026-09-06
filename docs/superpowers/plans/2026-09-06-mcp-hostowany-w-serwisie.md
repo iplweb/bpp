@@ -1290,7 +1290,11 @@ class RouterHttp:
 
     @staticmethod
     def _dane(scope) -> DaneZadania:
-        naglowki = {k.lower(): v.decode() for k, v in scope.get("headers", [])}
+        # Klucze nagłówków w ASGI to BYTES — bez .decode() na kluczu
+        # każdy odczyt po stringu chybia i bearer cicho ginie.
+        naglowki = {
+            k.lower().decode(): v.decode() for k, v in scope.get("headers", [])
+        }
         host = naglowki.get("host", "localhost")
         # nginx→uvicorn jest plaintext; prawdziwy schemat niesie
         # X-Forwarded-Proto (spec §7.6). Nagłówka NIE przekazujemy dalej —
