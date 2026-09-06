@@ -1107,6 +1107,46 @@ def test_get_mcp_z_przegladarki_przekierowuje_na_slash():
     assert status == 307 and naglowki["location"] == "/mcp/"
 
 
+def test_bearer_trafia_do_contextvara_pakietu():
+    """`BppClient` czyta token z WŁASNEGO ContextVara pakietu bpp_mcp, nie
+    z naszego. Bez tego mostka zalogowany użytkownik po cichu leciałby
+    anonimowo, a warstwa OAuth byłaby dekoracją."""
+    from bpp_mcp.auth import current_bearer
+
+    widziany = []
+
+    async def _podglada(scope, receive, send):
+        widziany.append(current_bearer())
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    router = RouterHttp(_podglada, _django, StartMcp(_AtrapaLifespanu()))
+    scope = zbuduj_scope("/mcp", naglowki={"authorization": "Bearer TOKEN-XYZ"})
+    uruchom(lambda: wywolaj(router, scope))
+    assert widziany == ["TOKEN-XYZ"]
+
+
+def test_bearer_nie_wycieka_do_nastepnego_zadania():
+    """Po zakończeniu żądania ContextVar pakietu musi być wyczyszczony."""
+    from bpp_mcp.auth import current_bearer
+
+    widziany = []
+
+    async def _podglada(scope, receive, send):
+        widziany.append(current_bearer())
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    async def scenariusz():
+        router = RouterHttp(_podglada, _django, StartMcp(_AtrapaLifespanu()))
+        z_tokenem = zbuduj_scope("/mcp", naglowki={"authorization": "Bearer T1"})
+        await wywolaj(router, z_tokenem)
+        await wywolaj(router, zbuduj_scope("/mcp"))
+
+    uruchom(scenariusz)
+    assert widziany == ["T1", None]
+
+
 def test_lifespan_startup_complete():
     start = StartMcp(_AtrapaLifespanu())
     app = LifespanMcp(start)
@@ -1146,6 +1186,8 @@ from __future__ import annotations
 import time
 
 from django.conf import settings
+
+from bpp_mcp.auth import set_current_bearer
 
 from django_bpp.client_ip import get_client_ip
 from mcp_server.auth import BramkaBearera
@@ -1215,8 +1257,15 @@ class RouterHttp:
             await self._niedostepny(send)
             return
 
-        scope = self._z_kontekstem(scope)
-        zeton = dane_zadania.set(self._dane(scope))
+        dane = self._dane(scope)
+        zeton = dane_zadania.set(dane)
+        # DWA ContextVary, nie jeden. `BppClient._auth_kwargs` czyta token
+        # z WŁASNEGO ContextVara pakietu bpp_mcp (`bpp_mcp.auth`), nie
+        # z naszego. Bez tej linii `DaneZadania.bearer` nie ma żadnej drogi
+        # do żądania wychodzącego i KAŻDE wywołanie leci anonimowo — czyli
+        # zalogowany użytkownik po cichu traci dostęp do swoich danych,
+        # a cała warstwa OAuth staje się dekoracją.
+        set_current_bearer(dane.bearer)
         try:
             if sciezka == SCIEZKA_Z_LOGOWANIEM:
                 # SDK montuje trasę jako Route (^/mcp$), nie Mount — bez
@@ -1227,6 +1276,10 @@ class RouterHttp:
                 await self._publiczny(scope, receive, send)
         finally:
             dane_zadania.reset(zeton)
+            # set_current_bearer nie zwraca tokenu resetu, więc czyścimy
+            # jawnie — inaczej token wyciekłby do następnego żądania
+            # obsłużonego w tym samym kontekście.
+            set_current_bearer(None)
 
     @staticmethod
     def _chce_html(scope) -> bool:
@@ -1234,10 +1287,6 @@ class RouterHttp:
             if klucz.lower() == b"accept" and b"text/html" in wartosc.lower():
                 return True
         return False
-
-    @staticmethod
-    def _z_kontekstem(scope):
-        return scope
 
     @staticmethod
     def _dane(scope) -> DaneZadania:
