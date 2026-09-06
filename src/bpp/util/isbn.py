@@ -73,11 +73,10 @@ def isbn_znormalizowany(pole: str):
     myślnikami, część bez. Porównanie musi więc normalizować obie strony;
     tu normalizujemy stronę bazodanową.
 
-    Pokrewne, ale NIE to samo: ``import_common.core.normalized_db_isbn``
-    (używane przez wyszukiwarkę globalną). Tamto wyrażenie ma zaszytą nazwę
-    kolumny ``isbn`` (więc nie obsłuży ``e_isbn``), zdejmuje wyłącznie myślnik
-    i sprowadza do małych liter. Tutaj potrzebujemy formy parametryzowanej
-    polem i zgodnej z ``kanoniczny_isbn`` po stronie Pythona.
+    Zastąpiło ``import_common.core.normalized_db_isbn``, które miało zaszytą
+    nazwę kolumny ``isbn`` (więc nie obsługiwało ``e_isbn``), zdejmowało
+    wyłącznie myślnik i sprowadzało do małych liter — przez co rozjeżdżało się
+    z pythonową ``normalize_isbn`` po drugiej stronie porównania.
 
     Uwaga wydajnościowa: takie porównanie nie użyje indeksu B-drzewa na
     kolumnie. Ścieżka ta uruchamia się tylko wtedy, gdy wpisany tekst wygląda
@@ -100,6 +99,41 @@ def isbn_znormalizowany(pole: str):
     return Upper(wyrazenie, output_field=tekst)
 
 
+def _nazwa_adnotacji(pole: str) -> str:
+    return f"_isbn_norm_{pole}"
+
+
+def adnotacje_isbn(*pola: str) -> dict:
+    """Adnotacje ORM normalizujące wskazane kolumny z ISBN-em.
+
+    Idą w parze z ``warunek_po_isbn`` — ten sam queryset musi dostać jedno
+    i drugie.
+    """
+    return {_nazwa_adnotacji(pole): isbn_znormalizowany(pole) for pole in pola}
+
+
+def warunek_po_isbn(txt, *pola: str):
+    """Warunek dopasowania po znormalizowanym ISBN, albo ``None``.
+
+    ``None`` oznacza „nie ma po czym szukać" (wpisano same separatory albo
+    pustkę) — wtedy w ogóle nie dokładaj adnotacji. To NIE jest ostrożnościowy
+    detal: pusty wariant zrównałby się z każdym rekordem bez ISBN-u.
+
+    Świadomie NIE sprawdzamy tu, czy tekst wygląda jak ISBN. Dopasowanie jest
+    równościowe, więc zwykły tytuł i tak niczego nie trafi, a każde dodatkowe
+    kryterium mogłoby wyciąć rekord, który dziś się znajduje — a wyszukiwarki
+    globalne mają znajdować więcej ISBN-ów, nie mniej.
+    """
+    warianty = warianty_isbn(txt)
+    if not warianty:
+        return None
+
+    warunek = Q()
+    for pole in pola:
+        warunek |= Q(**{f"{_nazwa_adnotacji(pole)}__in": warianty})
+    return warunek
+
+
 def filtruj_tytul_lub_isbn(qs, txt, pole_tytulu, *pola_isbn):
     """Zawęź ``qs`` do rekordów pasujących tytułem albo — gdy ``txt`` wygląda
     jak ISBN — którymkolwiek z podanych pól ISBN.
@@ -112,12 +146,9 @@ def filtruj_tytul_lub_isbn(qs, txt, pole_tytulu, *pola_isbn):
     warunek = Q(**{f"{pole_tytulu}__icontains": txt})
 
     if wyglada_jak_isbn(txt):
-        adnotacje = {
-            f"_isbn_norm_{pole}": isbn_znormalizowany(pole) for pole in pola_isbn
-        }
-        qs = qs.annotate(**adnotacje)
-        warianty = warianty_isbn(txt)
-        for nazwa in adnotacje:
-            warunek |= Q(**{f"{nazwa}__in": warianty})
+        warunek_isbn = warunek_po_isbn(txt, *pola_isbn)
+        if warunek_isbn is not None:
+            qs = qs.annotate(**adnotacje_isbn(*pola_isbn))
+            warunek |= warunek_isbn
 
     return qs.filter(warunek)
