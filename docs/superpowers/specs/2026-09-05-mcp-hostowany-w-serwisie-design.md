@@ -1,21 +1,21 @@
 # Hostowany serwer MCP w serwisie BPP (`/mcp`) — projekt 1 z 3
 
-Data: 2026-09-05 (przepisany 2026-09-06)
+Data: 2026-09-05 (wersja 3, 2026-09-06)
 Status: projekt do zatwierdzenia
 Poprzednik: `2026-07-11-mcp-oauth-authorization-design.md` (warstwa OAuth po
 stronie BPP — **zrealizowana**, `src/oauth_mcp/`)
 
-> **Ten dokument został przepisany.** Pierwsza wersja (commit poprzedzający)
-> dostała od recenzji werdykt „wymaga przeprojektowania". Dwa blokery
-> potwierdzono, jeden zdegradowano po weryfikacji empirycznej, cztery dziury
-> bezpieczeństwa dopisano. Wszystkie zmiany są opisane w §14.
+> **Historia dokumentu.** Wersja 1 dostała werdykt „wymaga przeprojektowania".
+> Wersja 2 (przepisana po pierwszej recenzji i dwóch probe'ach) dostała
+> „niewdrażalne — trzy blokery". Ta wersja zamyka B1–B3 i dwanaście poprawek.
+> Rozliczenie w §14.
 
 ---
 
 ## 1. Cel i motywacja
 
-Dostęp AI do danych BPP idzie dziś przez `bpp-mcp` — pakiet z PyPI, który
-użytkownik instaluje do swojego klienta MCP jako serwer stdio. Trzy koszty:
+Dostęp AI do danych BPP idzie dziś przez `bpp-mcp` — pakiet z PyPI instalowany
+do klienta MCP jako serwer stdio. Trzy koszty:
 
 1. **Próg wejścia.** Potrzebny Python i `uvx`, a przede wszystkim użytkownik
    musi **znać i wpisać adres swojej instancji** (`BPP_BASE_URL` celowo bez
@@ -24,133 +24,148 @@ użytkownik instaluje do swojego klienta MCP jako serwer stdio. Trzy koszty:
    mobilne **nie mają jak uruchomić procesu lokalnego**.
 3. **Skos wersji.** N wersji pakietu × M wdrożeń BPP.
 
-**Cel:** BPP wystawia własny endpoint MCP pod `/mcp`, wyjeżdżający z tym samym
-obrazem dockerowym co reszta serwisu. Użytkownik wkleja adres swojej instancji
+**Cel:** BPP wystawia własny endpoint MCP, wyjeżdżający z tym samym obrazem
+dockerowym co reszta serwisu. Użytkownik wkleja adres swojej instancji
 z dopiskiem `/mcp` i to jest cała konfiguracja.
 
 ### 1.1 Zasięg — uczciwie
 
-Pierwsza wersja tego specu obiecywała „claude.ai, ChatGPT, Cursor, VS Code".
-**To była nieprawda.** Allowlista redirect_uri w DCR
-(`src/oauth_mcp/views_dcr.py:17-23`) dopuszcza wyłącznie:
+Wersja 1 obiecywała „claude.ai, ChatGPT, Cursor, VS Code". **To była
+nieprawda.** Allowlista redirect_uri w DCR (`src/oauth_mcp/views_dcr.py:16-22`)
+dopuszcza wyłącznie `claude.ai`, `*.claude.ai`, `claude.com`, `localhost`
+i `127.0.0.1`. ChatGPT i Cursor **nie zarejestrują klienta**.
 
-```
-https://claude.ai/*      https://*.claude.ai/*      https://claude.com/*
-http://localhost[:port]/*                            http://127.0.0.1[:port]/*
-```
-
-ChatGPT i Cursor **nie zarejestrują klienta** — dostaną odmowę na DCR.
-Realny zasięg tej pracy to **ekosystem Claude** (web, desktop, Code) plus
-klienci lokalne. Rozszerzenie allowlisty jest osobną decyzją bezpieczeństwa,
-poza zakresem (§13).
-
-Dostęp anonimowy nie wymaga DCR w ogóle, więc **publiczna część działa
-z każdym klientem** obsługującym zdalne MCP. Ograniczenie dotyczy tylko
-logowania.
+Realny zasięg **logowania** to ekosystem Claude. **Dostęp anonimowy nie wymaga
+DCR w ogóle**, więc publiczna część działa z każdym klientem obsługującym
+zdalne MCP. Rozszerzenie allowlisty jest osobną decyzją bezpieczeństwa (§13).
 
 ---
 
 ## 2. Kontekst — ustalenia z kodu i z probe'ów
 
-Numery linii wg `dev` @ `31d3d4612`. Ustalenia oznaczone **[probe]** pochodzą
-z uruchomionego kodu, nie z lektury.
+Numery linii wg `dev` @ `31d3d4612`. **[probe]** = ustalenie z uruchomionego
+kodu, nie z lektury.
 
 ### 2.1 Warstwa OAuth po stronie BPP — istnieje i jest kompletna
 
 | Element | Plik |
 |---|---|
 | `/o/authorize/`, `/o/token/`, `/o/revoke_token/` | `oauth_mcp/urls.py` |
-| DCR `/o/register/` (RFC 7591) + allowlista + rate-limit | `oauth_mcp/views_dcr.py` |
-| AS metadata `/.well-known/oauth-authorization-server` (RFC 8414) | `oauth_mcp/views_metadata.py` |
+| DCR `/o/register/` (RFC 7591) + allowlista + rate-limit | `oauth_mcp/views_dcr.py:16-22` |
+| AS metadata RFC 8414 | `oauth_mcp/views_metadata.py` |
 | `StrictOAuth2Authentication` — bearer → `request.user`, twarde 401 | `oauth_mcp/authentication.py` |
-| `ApiReadOnlyForBearerMiddleware` — mutacje `/api/v1/` bearerem → 403 | `oauth_mcp/middleware.py` |
-| `WhoAmIView` — **routing w `api_v1/urls.py:265`**, pod `z_bramka_api_v1` | `oauth_mcp/views_whoami.py` |
+| `ApiReadOnlyForBearerMiddleware` — mutacje bearerem → 403 | `oauth_mcp/middleware.py:33` |
+| `WhoAmIView` — routing w `api_v1/urls.py:265`, pod `z_bramka_api_v1` | `oauth_mcp/views_whoami.py` |
 | revoke przy zmianie hasła / dezaktywacji | `oauth_mcp/signals.py` |
 
-`StrictOAuth2Authentication` jest **pierwsza** w
-`REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"]` (`base.py:1057`), przed
-`SessionAuthentication` (1058) i `BasicAuthentication` (1059).
+Kolejność w `DEFAULT_AUTHENTICATION_CLASSES` (`base.py:1057-1059`):
+`StrictOAuth2Authentication`, `SessionAuthentication`, `BasicAuthentication`.
 
-### 2.2 Pakiet `bpp-mcp` 0.4.0 — szwy gotowe
+### 2.2 Pakiet `bpp-mcp` 0.4.0
 
-Wydany dziś (projekt 2, PR-y #21–#23). Wystawia:
+Wydany (projekt 2, PR-y #21–#23). Wystawia `register_tools(mcp)` (**11 narzędzi
++ 1 prompt**, `server.py:315-330`), `KontekstApp`, `BppClient(transport=...)`,
+`TrybAuth.W_PROCESIE`, `BppClient._slownik_cache()`.
 
-- `register_tools(mcp)` — **11 narzędzi + 1 prompt** na instancji `MCPServer`
-  hosta. (Pierwsza wersja specu mówiła o siedmiu i twierdziła, że rejestrowane
-  są funkcje z `tools.py`; w rzeczywistości to wrappery z `server.py`, biorące
-  klienta z `ctx.request_context.lifespan_context`.)
-- `KontekstApp` — kontrakt lifespanu (`client`, `bearer_provider`).
-- `BppClient(transport=...)` — wstrzykiwany transport `httpx`.
-- `TrybAuth.W_PROCESIE` — bearer albo anonim, **nigdy Basic**.
-- `BppClient._slownik_cache()` — szew pod cache o zasięgu per-żądanie.
+**Ograniczenie, które kształtuje ten projekt:** `BppClient.__init__` zapamiętuje
+`self._api_root = config.api_root` **raz** (`client.py:135`), `Config` jest
+`frozen` (`config.py:25`), a `_full_url` czyta zapamiętaną wartość
+(`client.py:186`). Nie ma szwu na host per żądanie. Stąd D9 (§5.3).
 
-### 2.3 MCP SDK 2.0 — ustalenia z probe'ów
+Kontrakt `register_tools` mówi „`KontekstApp` **albo obiekt o tych samych
+atrybutach**" (`server.py:291-315`) — i to jest furtka, z której korzystamy.
 
-- **[probe]** `stateless_http` i `json_response` **nie są parametrami
-  konstruktora** `MCPServer` — mieszkają w `streamable_http_app()`.
-- **[probe]** `POST /mcp` **bez wejścia w lifespan** kończy się
-  `RuntimeError: Task group is not initialized. Make sure to use run().`
-  Dotyczy również `stateless_http=True`.
-- **[probe]** Po wejściu w lifespan aplikacji ta sama ścieżka oddaje **200**
-  z poprawną odpowiedzią `initialize`.
+### 2.3 MCP SDK 2.0
+
+- **[probe]** `stateless_http` i `json_response` są parametrami
+  `streamable_http_app()` (`mcpserver/server.py:1218-1229`), **nie**
+  konstruktora.
+- **[probe]** `POST /mcp` bez wejścia w lifespan →
+  `RuntimeError: Task group is not initialized` (`streamable_http_manager.py:174`),
+  także przy `stateless_http=True`. Po wejściu — **200** i poprawny `initialize`.
 - **[probe]** Aplikacja MCP ma **własną allowlistę hostów**
-  (`TransportSecuritySettings`), niezależną od `ALLOWED_HOSTS` Django. Nieznany
-  `Host` → **421 Invalid Host header**.
-- W SDK 2.0 **lifespan wchodzi RAZ na serwer**, nie per sesja — jego wynik
-  dzielą wszystkie sesje i żądania (docstring `bpp_mcp/server.py`).
+  (`TransportSecuritySettings`), niezależną od `ALLOWED_HOSTS`. Nieznany
+  `Host` → **421**.
+- Semantyka tej allowlisty **różni się od Django**: dopasowanie dokładne albo
+  wzorzec `host:*` (`transport_security.py:49-60`). Django-owe `.domena` i `*`
+  **nie działają**. Sprawdzany jest też `Origin` (`:65-70`).
+- Przekazanie `host=` **bez** `transport_security` po cichu **wyłącza** ochronę
+  (`lowlevel/server.py:738-744`).
+- `RequireAuthMiddleware` owija trasę **wyłącznie** gdy podano `token_verifier`
+  (`lowlevel/server.py:793-806`) — i wtedy odrzuca 401-ką **każde** żądanie bez
+  tożsamości (`bearer_auth.py:93-97`). Czyli SDK nie zna trybu „anonim
+  dozwolony, zły token odrzucony". Stąd D10 (§5.4).
+- `stateless_http=True` + `GET` → **405** (`streamable_http.py:788-790,848`),
+  nie SSE.
+- Lifespan wchodzi **raz na serwer**; `session_manager.run()` można wejść
+  **raz na instancję** (`streamable_http_manager.py:137-143`).
 
-### 2.4 Infrastruktura
+### 2.4 Serwery ASGI — trzy różne, nie jeden
 
-- ASGI: `src/django_bpp/asgi.py` — `ProtocolTypeRouter` z
-  `{"http": django_asgi_app, "websocket": ...}`. Sam router to piętnaście linii
-  (`channels/routing.py:45-51`): lookup w słowniku, a dla typu spoza słownika
-  `raise ValueError`. Klucza `"lifespan"` tam po prostu **nie ma**, więc uvicorn
-  w trybie `auto` dostaje `ValueError`, loguje „lifespan appears unsupported"
-  i jedzie dalej — błąd jest cichy. To NIE jest ograniczenie channels, tylko
-  brakujący wpis w naszej konfiguracji (§5.1).
-- Produkcja: `gunicorn django_bpp.asgi:application` z `UvicornWorker`;
-  `max_requests=1000` + jitter 200 w `docker/appserver/gunicorn_conf.py`
-  (**nie** w entrypoincie). Gałąź dev to `uvicorn --reload` bez gunicorna.
-- nginx (`bpp-deploy`): trzy strefy `limit_req` (`_bpp-locations.conf:74-89`) —
-  `/api/` 60 r/s burst 60, `/admin/` 50 r/s, `/` 100 r/s burst 100.
-- **ModSecurity/CRS** przed appserverem; jedyne wyłączenie dla DjangoQL to
+To jest źródło blokera B2.
+
+| Środowisko | Serwer | Lifespan |
+|---|---|---|
+| produkcja | `gunicorn` + `UvicornWorker` (`entrypoint-appserver.sh:104`) | **tak** |
+| kontener dev | `uvicorn --reload` (`:94`) | **tak** |
+| **lokalnie: `run-site run` → `manage.py runserver`** | **Daphne** (`daphne` w `INSTALLED_APPS`, `base.py:391`) | **NIE** |
+| **testy Playwright: `channels_live_server`** | **Daphne** (`src/channels_live_server.py:11,22`) | **NIE** |
+
+W źródłach `daphne` **nie ma ani jednego wystąpienia słowa `lifespan`**.
+
+`ProtocolTypeRouter` to piętnaście linii (`channels/routing.py:45-52`): lookup
+w słowniku, a dla typu spoza słownika `raise ValueError` (linie 50-52). Klucza
+`"lifespan"` po prostu nie ma, więc uvicorn dostaje `ValueError`, loguje
+„lifespan appears unsupported" (`lifespan/on.py:88-93`) i jedzie dalej — błąd
+jest cichy. **To nie jest ograniczenie channels, tylko brakujący wpis
+w naszej konfiguracji.**
+
+Pozostała infrastruktura:
+
+- `max_requests=1000` + jitter 200 w `docker/appserver/gunicorn_conf.py:44-45`;
+  gunicornowy `timeout` to heartbeat, **nie** limit czasu żądania (`:47-51`).
+- nginx: `Host $host`, `X-Forwarded-For`, `X-Forwarded-Proto`
+  (`_bpp-locations.conf:129-134`), `proxy_read_timeout 300s` (`:140`), trzy
+  strefy `limit_req` (`:74-89`) — `/api/` 60 r/s, `/admin/` 50 r/s, `/` 100 r/s.
+- **ModSecurity/CRS**; jedyne wyłączenie dla DjangoQL to
   `^/(bpp|api/v1)/zapytanie/` (`modsecurity-override.conf.template:79`).
-- `api_v1.pagination.BppLimitOffsetPagination` — `MAKS_LIMIT = 500`, **cichy
-  clamp pojedynczej strony** (nie odmowa).
+- nginx→uvicorn jest **plaintext**; HTTPS Django rozpoznaje z
+  `X-Forwarded-Proto` (`production.py:161`), a `SECURE_SSL_REDIRECT=True`
+  (`:168`).
 
 ### 2.5 Bramka API i model tożsamości hosta
 
-To jest źródło najgroźniejszego problemu w §7.2. Kolejność w
-`BramkaApiV1` (`src/api_v1/permissions.py`), cytat z docstringu:
+Kolejność w `BramkaApiV1` (`src/api_v1/permissions.py:66-68`), cytat
+z docstringu:
 
 > 1. uczelnia nierozstrzygnięta (pusta baza, kreator konfiguracji, brak
 >    mapowania Site→Uczelnia) → **przepuszczamy**, bo nie ma kto podjąć decyzji
 
 `Uczelnia` rozstrzyga się z nagłówka `Host` (`SiteResolutionMiddleware`,
-`Uczelnia.objects.get_for_request`). Czyli: **request z nieznanym hostem omija
-wszystkie sześć przełączników API.** Do tego
-`UkryjStatusyKorektyMixin.ukryte_statusy` daje wtedy `None` → rekordy ukrytych
-statusów przestają być filtrowane.
+`Uczelnia.objects.get_for_request`). Czyli **request z nieznanym hostem omija
+wszystkie sześć przełączników API**, a `UkryjStatusyKorektyMixin.ukryte_statusy`
+daje `None` (`viewsets/common.py:9-13`) → rekordy ukrytych statusów przestają
+być filtrowane.
 
-`SearchAnonThrottle` (`api_v1/throttling.py`) dziedziczy po `AnonRateThrottle`,
-czyli **liczy po IP**.
+`SearchAnonThrottle` dziedziczy po `AnonRateThrottle`. Bez `NUM_PROXIES`
+(nie ma go w settings) DRF kluczuje po **całym** `X-Forwarded-For`, gdy jest
+obecny (`rest_framework/throttling.py:29-39`); bez XFF — po `REMOTE_ADDR`,
+czyli po `scope["client"]`.
+
+`get_client_ip` bierze **skrajnie prawy** XFF (`django_bpp/client_ip.py:33-36`).
 
 ---
 
 ## 3. Trzy projekty, nie jeden
 
-Recenzja pierwszej wersji słusznie wskazała, że dokument mieszał trzy
-niezależne przedsięwzięcia. Rozbicie:
-
 | # | Projekt | Status |
 |---|---|---|
-| 1 | **Hosting MCP w BPP** — routing ASGI, klient w procesie, discovery, strona | **ten spec** |
+| 1 | **Hosting MCP w BPP** — routing ASGI, klient w procesie, auth, strona | **ten spec** |
 | 2 | Szwy w `bpp-mcp` | **zrobione** — 0.4.0 na PyPI |
 | 3 | Konsolidacja reguł tokenu w `oauth_mcp/tokens.py` | osobny spec, §13 |
 
-Projekt 3 wypada z zakresu świadomie: to zmiana w **testowanej warstwie
-uwierzytelniania**, i wrzucanie jej do środka feature'a było błędem. Ten spec
-konsumuje istniejące `StrictOAuth2Authentication` bez ruszania go.
+Projekt 3 wypada świadomie: to zmiana w **testowanej warstwie
+uwierzytelniania**, a wrzucanie jej do środka feature'a było błędem.
 
 ---
 
@@ -158,29 +173,25 @@ konsumuje istniejące `StrictOAuth2Authentication` bez ruszania go.
 
 | # | Decyzja | Uzasadnienie |
 |---|---|---|
-| D1 | Narzędzia z `bpp-mcp` (zależność), zero kopii w `src/` | jedna implementacja, zero rozjazdu |
-| D2 | Montaż: **klucz `"lifespan"` dopisany do istniejącego `ProtocolTypeRouter`** | bez obsługi tego scope'u menedżer sesji MCP nie wstaje **[probe]**; dopisanie klucza zostawia gałąź websocketową nietkniętą (§5.1) |
-| D3 | `stateless_http=True` + `json_response=True` | recykling workera zabiłby sesję stateful; `json_response` znosi SSE, więc `proxy_read_timeout 300s` przestaje być tematem |
-| D4 | Dane przez `httpx.ASGITransport` na `django_asgi_app` | ta sama ścieżka kodu co przez sieć, bez gniazda |
-| D5 | Wewnętrzne żądanie **dziedziczy `Host`, scheme i IP klienta** z zewnętrznego | inaczej `Uczelnia=None` → obejście bramki i wyciek (§2.5) |
-| D6 | Przekazujemy **wyłącznie `Bearer`**, nigdy surowy `Authorization` ani `Cookie` | inaczej Basic i sesja omijają model OAuth (§7.1) |
+| D1 | Narzędzia z `bpp-mcp`, zero kopii w `src/` | jedna implementacja |
+| D2 | Klucz `"lifespan"` w istniejącym `ProtocolTypeRouter` **+ leniwy start** | klucz naprawia uvicorna; leniwy start naprawia Daphne (§2.4, §5.1) |
+| D3 | `stateless_http=True` + `json_response=True` | recykling workera zabiłby sesję stateful; `json_response` znosi SSE |
+| D4 | Dane przez `httpx.ASGITransport` na `django_asgi_app` | ta sama ścieżka kodu, bez gniazda |
+| D5 | Wewnętrzne żądanie dziedziczy `Host`, scheme i IP klienta | inaczej `Uczelnia=None` → obejście bramki i wyciek (§7.2) |
+| D6 | Przekazujemy **wyłącznie `Bearer`** | inaczej Basic i sesja omijają model OAuth (§7.1) |
 | D7 | Polityka dostępu dziedziczona z `/api/v1/` | anonim czyta publiczne, bearer odblokowuje resztę |
 | D8 | Read-only | narzędzia wykonują wyłącznie GET |
-
-### 4.1 Co zostało obalone z pierwszej wersji
-
-Pierwsza wersja proponowała `config.api_root` wskazujący na
-`http://bpp.invalid/api/v1` z uzasadnieniem „host jest nieużywany przy
-`ASGITransport`". **To było fałszywe na trzech poziomach naraz** —
-`ALLOWED_HOSTS`, `SECURE_SSL_REDIRECT` i przede wszystkim rozstrzyganie
-`Uczelnia` z hosta (§2.5). Zastąpione przez D5.
+| **D9** | **`BppClient` per żądanie**, przez property w obiekcie lifespanu | `_api_root` zapamiętany w `__init__` (§2.2); rozwiązuje też cache i semafor |
+| **D10** | **Dwa adresy: `/mcp` (publiczny) i `/mcp/auth` (zawsze 401 bez tokenu)** | SDK nie zna trybu „anonim tak, zły token nie" (§2.3); dwa adresy usuwają zależność od nieznanego zachowania klientów |
+| **D11** | **Jawny sufit czasu i współbieżności** w naszej warstwie | timeouty `httpx` martwe przy `ASGITransport`, gunicornowy `timeout` to heartbeat (§2.4) |
+| **D12** | `follow_redirects=False` w kliencie w procesie | inaczej `SECURE_SSL_REDIRECT` po cichu podwaja każde żądanie, a kreator instalacji przekierowuje na HTML (§7.6) |
 
 ---
 
 ## 5. Architektura
 
 ```
-                   gunicorn + UvicornWorker
+              gunicorn+uvicorn (prod) | Daphne (dev, testy)
                              │
                django_bpp.asgi:application  =  ProtocolTypeRouter
                              │            (ten sam co dziś, +1 klucz)
@@ -189,35 +200,30 @@ Pierwsza wersja proponowała `config.api_root` wskazujący na
         │                    │                     │
    LifespanMcp          RouterHttp          AllowedHostsOriginValidator
    (nowy)               (nowy)              + AuthMiddlewareStack
-        │                ┌───┴───┐          + URLRouter
-        │             /mcp*    reszta       ── BEZ ZMIAN ──
-        │                │        │
-        │      KontekstMcpMiddleware
-        │                │        │
-        └──── trzyma ──→ aplikacja MCP
-                         │        │
-                    register_tools│
-                         │        │
-           BppClientInProcess ────┴──→ django_asgi_app
-                 (ASGITransport)
+        │              ┌─────┴─────┐        + URLRouter
+        │        /mcp*         reszta       ── BEZ ZMIAN ──
+        │              │           │
+        │        BramkaBearera     │   ← 401 + WWW-Authenticate (§5.4)
+        │              │           │
+        │        KontekstMcp       │   ← host/scheme/IP/limity → ContextVar
+        │              │           │
+        └── start ──→ aplikacja MCP│
+                      │            │
+                 register_tools    │
+                      │            │
+              BppClient (per żądanie, D9)
+                      │            │
+              ASGITransport        │
+                      │            │
+              KlientScope ─────────┤   ← nadpisuje scope["client"] (§5.2)
+                      │            │
+                      └──→  django_asgi_app  ←┘
 ```
 
-### 5.1 Lifespan — dopisany klucz, nie nowy router
+### 5.1 Lifespan — dopisany klucz plus leniwy start
 
-`ProtocolTypeRouter` **nie odrzuca lifespanu** — odrzuca to, czego nie ma
-w jego słowniku (`channels/routing.py:45-51`: dict lookup, w przeciwnym razie
-`raise ValueError`). A `lifespan` to zwyczajny typ scope'u, tej samej kategorii
-co `http` i `websocket`. Dziś klucza po prostu nie ma, więc uvicorn dostaje
-`ValueError`, uznaje że aplikacja lifespanu nie wspiera, loguje „lifespan
-appears unsupported" i **jedzie dalej** — stąd cisza zamiast błędu, i stąd
-`RuntimeError: Task group is not initialized` przy pierwszym `POST /mcp`
-**[probe]**.
-
-Dla Django to nigdy nie miało znaczenia (nie potrzebuje inicjalizacji przez
-lifespan), więc nikt nie zauważył, że ten kanał jest zatkany. Aplikacja MCP
-jest pierwszą rzeczą w BPP, która z niego korzysta.
-
-Rozwiązanie mieści się w `asgi.py`:
+**Klucz.** `ProtocolTypeRouter` nie odrzuca lifespanu; odrzuca to, czego nie ma
+w słowniku (§2.4). Dopisujemy:
 
 ```python
 application = ProtocolTypeRouter(
@@ -231,94 +237,172 @@ application = ProtocolTypeRouter(
 )
 ```
 
-**Świadomie NIE zastępujemy `ProtocolTypeRouter` własnym dyspozytorem** (tak
-proponowała poprzednia wersja tej sekcji). Przepisanie routera brałoby na nas
-odtworzenie gałęzi websocketowej wraz z `AllowedHostsOriginValidator`
-i `AuthMiddlewareStack` — czyli ruszanie działającej warstwy bezpieczeństwa
-WebSocketów po to, żeby naprawić rzecz, która jej w ogóle nie dotyczy. Przy
-dopisaniu klucza ta gałąź zostaje nietknięta bit w bit.
+**Świadomie NIE zastępujemy routera własnym dyspozytorem** — przepisanie
+brałoby na nas odtworzenie gałęzi websocketowej wraz z
+`AllowedHostsOriginValidator` i `AuthMiddlewareStack`, czyli ruszanie działającej
+warstwy bezpieczeństwa po to, żeby naprawić rzecz, która jej nie dotyczy.
+Patchowanie `channels` odrzucone: jego zachowanie nie jest błędne, a monkeypatch
+byłby niewidoczny w `asgi.py` i pękłby przy aktualizacji.
 
-Patchowanie `channels` odrzucone: jego zachowanie nie jest błędne — dostaje
-słownik i robi z nim dokładnie to, co obiecuje. Monkeypatch byłby niewidoczny
-w `asgi.py` i pękłby przy aktualizacji.
+**Leniwy start.** Sam klucz naprawia uvicorna i **nie naprawia Daphne**, pod
+którym chodzi `run-site run` i `channels_live_server` (§2.4). Dlatego start
+menedżera sesji jest **idempotentny i wyzwalany z obu stron**:
 
-**`LifespanMcp`** obsługuje protokół lifespan: na `lifespan.startup` wchodzi
-w `mcp_app.router.lifespan_context(mcp_app)`, na `lifespan.shutdown` z niego
-wychodzi. Błąd startu raportuje jako `lifespan.startup.failed` z komunikatem —
-**nie połyka go**, inaczej wracamy do cichej awarii, tylko innej.
+```python
+class StartMcp:
+    """Wejście w session_manager.run() dokładnie raz, skądkolwiek przyjdzie."""
 
-**`RouterHttp`** rozdziela po **ścieżce**, nie po metodzie: SDK obsługuje na
-trasie streamable również `GET` (SSE) i `DELETE`. Rozdzielenie „POST do
-protokołu, GET do HTML-a" z pierwszej wersji specu było błędne. Aplikacja MCP
-sama routuje na `streamable_http_path` (domyślnie `/mcp`), więc **nie obcinamy
-prefiksu**.
+    def __init__(self, mcp_app):
+        self._app = mcp_app
+        self._lock = anyio.Lock()
+        self._stack: AsyncExitStack | None = None
 
-### 5.2 Kontekst żądania — `KontekstMcpMiddleware`
+    async def zapewnij(self) -> None:
+        if self._stack is not None:
+            return
+        async with self._lock:
+            if self._stack is not None:      # double-check pod blokadą
+                return
+            stack = AsyncExitStack()
+            await stack.enter_async_context(
+                self._app.router.lifespan_context(self._app)
+            )
+            self._stack = stack
+```
 
-Cienka warstwa ASGI przed aplikacją MCP. Zdejmuje z **zewnętrznego** żądania to,
-czego wewnętrzne nie ma skąd wziąć, i zapisuje w `ContextVar`:
+`LifespanMcp` woła `zapewnij()` na `lifespan.startup`; `RouterHttp` woła je
+przed pierwszym żądaniem do `/mcp*`. Pod uvicornem zadziała pierwsze, pod
+Daphne — drugie. **`session_manager.run()` można wejść raz na instancję**
+(`streamable_http_manager.py:137-143`), więc blokada i double-check są
+obowiązkowe, nie ozdobne.
+
+Kontekst zadania: `run()` zakłada grupę zadań anyio, która żyje tak długo, jak
+kontekst, w którym ją utworzono. Przy starcie z żądania trzymamy `AsyncExitStack`
+w obiekcie modułowym, więc nie ginie z żądaniem — **to jest miejsce wymagające
+własnego testu**, nie założenia (§11).
+
+**Błąd startu** raportujemy jako `lifespan.startup.failed` z komunikatem. Pod
+gunicornem oznacza to `should_exit` w uvicornie (`lifespan/on.py:58-60`) →
+worker pada → gunicorn respawnuje. Czyli **boot-loop, nie cisza** — i tak ma
+być: awaria startu MCP nie może przejść niezauważona.
+
+**`RouterHttp`** rozdziela po **ścieżce**, nie po metodzie. `GET /mcp`
+z `Accept: text/html` (człowiek wkleił adres do przeglądarki) przekierowujemy
+na `/mcp/` — inaczej SDK odda 406 „Client must accept text/event-stream"
+(`streamable_http.py:698-703`). Aplikacja MCP sama routuje na
+`streamable_http_path`, więc **nie obcinamy prefiksu**.
+
+### 5.2 `KontekstMcp` i `KlientScope` — dwie warstwy, nie jedna
+
+Wersja 2 zakładała, że jedna warstwa przed aplikacją MCP ustawi wszystko.
+**To było błędne dla IP klienta**: `ASGITransport` buduje scope wewnętrznego
+żądania sam i wpisuje tam własne `client` (`httpx/_transports/asgi.py:92,117`).
+Warstwa stojąca przed aplikacją MCP nie ma jak tego dosięgnąć.
+
+Potrzebne są więc dwie:
+
+**`KontekstMcp`** (przed aplikacją MCP) zdejmuje z zewnętrznego żądania i kładzie
+w `ContextVar`:
 
 | Co | Po co |
 |---|---|
-| `Host` | rozstrzygnięcie `Uczelnia` → bramka API i `ukryte_statusy` (§2.5) |
-| scheme | `build_absolute_uri`, brak pętli `SECURE_SSL_REDIRECT` |
-| IP klienta | throttling `SearchAnonThrottle` liczy po IP (§7.3) |
-| bearer (jeśli jest) | przekazanie do wewnętrznego żądania |
-| świeży słownik cache | izolacja `_slownik_cache()` per żądanie |
+| `Host` | rozstrzygnięcie `Uczelnia` → bramka API i `ukryte_statusy` (§7.2) |
+| scheme z `X-Forwarded-Proto` | inaczej `SECURE_SSL_REDIRECT` zapętla (§7.6) |
+| IP z `get_client_ip` | throttling (§7.3) |
+| bearer | przekazanie do wewnętrznego żądania |
+| budżet czasu i współbieżności | D11 |
 
-Reset na wyjściu obowiązkowy — klient MCP żyje w lifespanie, czyli między
-żądaniami, a `ContextVar` bez resetu wycieka do następnego.
+**`KlientScope`** (wokół `django_asgi_app`, czyli **za** transportem) nadpisuje
+`scope["client"]` wartością z ContextVar. To jedyne miejsce, w którym da się to
+zrobić.
 
-### 5.3 `BppClientInProcess`
+Reset ContextVarów na wyjściu obowiązkowy.
+
+**Sufit czasu (D11).** Timeouty `httpx` są przy `ASGITransport` martwe, a
+gunicornowy `timeout` to heartbeat. Jedno `tools/call` rozwija się na N żądań do
+API bez żadnego limitu. `KontekstMcp` owija obsługę w `anyio.fail_after(...)`
+i trzyma semafor ograniczający liczbę równoległych żądań wewnętrznych. Wartości
+do ustalenia w planie, ale **istnienie limitu jest decyzją specu**, nie
+„pomiarem na później".
+
+### 5.3 `BppClient` per żądanie (D9)
+
+`BppClient` zapamiętuje `api_root` w `__init__`, `Config` jest `frozen`, a klient
+z lifespanu jest jeden na proces (§2.2). Zamiast obchodzić to nadpisywaniem
+prywatnego `_full_url`, korzystamy z furtki w kontrakcie `register_tools`:
+lifespan oddaje **obiekt o tych samych atrybutach**, którego `client` jest
+property:
 
 ```python
-class BppClientInProcess(BppClient):
-    def __init__(self, config, **kw):
-        super().__init__(
-            config,
-            transport=httpx.ASGITransport(
-                app=django_asgi_app,          # NIE `application` — rekurencja
-                raise_app_exceptions=False,   # 500 → BppNetworkError, nie traceback
-            ),
-            tryb_auth=TrybAuth.W_PROCESIE,
-            max_retries=0,                    # nie ma sieci do ponowienia
-            **kw,
-        )
+class KontekstZadania:
+    """Spełnia kontrakt KontekstApp, ale klienta oddaje per żądanie."""
 
-    def _slownik_cache(self):
-        return cache_zadania.get()            # ContextVar z §5.2
+    bearer_provider = None          # host wielo-użytkownikowy — nigdy cache tokenu
+
+    @property
+    def client(self) -> BppClient:
+        return klient_zadania.get()  # ContextVar, ustawiony przez KontekstMcp
 ```
 
-`config.base_url` składamy **per żądanie** z `Host` i scheme zewnętrznego
-żądania. Host `bpp.invalid` z pierwszej wersji jest wycofany (§4.1).
+`KontekstMcp` zakłada klienta na czas żądania:
 
-Odziedziczona mechanika:
+```python
+BppClientInProcess(
+    Config(base_url=f"{scheme}://{host}", transport="stdio"),
+    transport=httpx.ASGITransport(
+        app=KlientScope(django_asgi_app),
+        raise_app_exceptions=False,   # 500 → BppNetworkError, nie traceback
+    ),
+    tryb_auth=TrybAuth.W_PROCESIE,
+    max_retries=0,
+)
+```
 
-| Element | W procesie |
-|---|---|
-| retry + backoff | **martwy** (`max_retries=0`) |
-| timeouty `httpx` | **martwe** — `ASGITransport` ich nie czyta; sufit musi dać host |
-| semafor (8) | **zostaje** — dławi równoległe rozwijanie hyperlinków |
-| cache | **przekierowany** na słownik per-żądanie |
-| auto-follow paginacji | **zostaje** |
-| mapowanie błędów | **zostaje** |
+Rozwiązuje naraz: **`_api_root` z właściwego hosta**, **cache izolowany**
+(świeży klient = świeży słownik, szew `_slownik_cache` niepotrzebny),
+**semafor per żądanie**. Koszt to `AsyncClient` na żądanie — bez puli połączeń
+i bez TLS to praktycznie sam obiekt Pythona.
+
+`follow_redirects=False` (D12) — patrz §7.6.
+
+Odziedziczona mechanika: retry martwy (`max_retries=0`), timeouty martwe (sufit
+z §5.2), auto-follow paginacji i mapowanie błędów bez zmian.
+
+### 5.4 `BramkaBearera` — własna warstwa 401 (D10)
+
+SDK nie zna trybu „anonim dozwolony, zły token odrzucony" (§2.3): albo
+`token_verifier` i 401 dla wszystkich bez tożsamości, albo brak weryfikacji
+w ogóle. Piszemy więc własną warstwę ASGI **przed** aplikacją MCP, w dwóch
+wariantach montażu:
+
+| Adres | Brak nagłówka | Zły / wygasły / bez scope | Ważny |
+|---|---|---|---|
+| `/mcp` | przepuść jako anonim | **401** + `WWW-Authenticate` | przepuść z tożsamością |
+| `/mcp/auth` | **401** + `WWW-Authenticate` | **401** + `WWW-Authenticate` | przepuść z tożsamością |
+
+Weryfikacja tokenu to lookup w tej samej bazie — wzorzec z
+`ApiReadOnlyForBearerMiddleware._ma_wazny_bearer` (`middleware.py:31-40`),
+opakowany w `sync_to_async` (kontekst async).
+
+**Dlaczego dwa adresy.** `/mcp` nigdy nie zmusi klienta do logowania, bo anonim
+dostaje 200 — a czy klienci MCP odpalają OAuth przy 401 na **późniejszym**
+żądaniu, jest nieznane i zależne od implementacji. `/mcp/auth` odrzuca 401-ką
+już `initialize`, czyli w jedynym momencie, co do którego mamy pewność, że
+obsługuje go każdy klient. Użytkownik wybiera adres świadomie, a projekt
+przestaje zależeć od cudzego zachowania.
+
+`WWW-Authenticate`:
+`Bearer resource_metadata="https://<host>/.well-known/oauth-protected-resource"`
+
+**`token_verifier` SDK nie jest używany** — jego montaż wyłączyłby anonima.
 
 ---
 
-## 6. Uwierzytelnianie i discovery
+## 6. Discovery
 
-### 6.1 Przepływ
-
-```
-brak Bearera            → wewnętrzne żądanie bez Authorization → AnonymousUser
-ważny Bearer            → przekaż WYŁĄCZNIE ten nagłówek → StrictOAuth2Authentication
-nieważny / zły scope    → 401 + WWW-Authenticate
-```
-
-### 6.2 Discovery
-
-Nowy widok w `oauth_mcp/views_metadata.py` — `/.well-known/oauth-protected-resource`
-(RFC 9728), bliźniak istniejącego RFC 8414, ten sam wzorzec `build_absolute_uri`:
+Nowy widok w `oauth_mcp/views_metadata.py` —
+`/.well-known/oauth-protected-resource` (RFC 9728), bliźniak istniejącego
+RFC 8414, ten sam wzorzec `build_absolute_uri`:
 
 ```json
 { "resource": "https://<host>/mcp",
@@ -327,21 +411,27 @@ Nowy widok w `oauth_mcp/views_metadata.py` — `/.well-known/oauth-protected-res
   "bearer_methods_supported": ["header"] }
 ```
 
-Nagłówek przy 401:
-`Bearer resource_metadata="https://<host>/.well-known/oauth-protected-resource"`
-
 Poprzedni spec (§6) przypisywał ten plik pakietowi `bpp-mcp`. **Przenosi się do
 BPP** — Resource Serverem jest instancja.
 
-### 6.3 Allowlista hostów aplikacji MCP
+### 6.1 Allowlista hostów aplikacji MCP
 
-**[probe]** `TransportSecuritySettings` to druga, niezależna od Django lista
-dozwolonych hostów; nieznany `Host` → 421. Zasilamy ją z `ALLOWED_HOSTS`
-(i `DJANGO_BPP_HOSTNAMES` w instalacji wielouczelnianej). **Nie wyłączamy** —
-to ochrona przed DNS-rebinding.
+**[probe]** `TransportSecuritySettings` to druga, niezależna lista dozwolonych
+hostów. Trzy rzeczy, których wersja 2 nie widziała:
 
-Bez tego kroku wszystkie wdrożenia poza jednym dostaną 421 i nikt nie będzie
-wiedział dlaczego.
+1. **Inna semantyka niż `ALLOWED_HOSTS`** — dopasowanie dokładne albo `host:*`
+   (`transport_security.py:49-60`). Django-owe `.domena` i `*` **nie działają**;
+   trzeba je przetłumaczyć, a testy repo używają `ALLOWED_HOSTS = ["*"]`.
+2. **Sprawdzany jest też `Origin`** (`:65-70`) — klienci przeglądarkowe
+   i MCP Inspector go wysyłają; pusta lista `allowed_origins` + obecny `Origin`
+   → 421.
+3. **`host=` bez `transport_security` po cichu wyłącza ochronę**
+   (`lowlevel/server.py:738-744`). Dlatego **zawsze** przekazujemy jawne
+   `TransportSecuritySettings`.
+
+Lista budowana **fabryką aplikacji** (`build_application()`), nie przy imporcie
+modułu — inaczej `settings.ALLOWED_HOSTS` nadpisane w teście nigdy do niej nie
+dotrze (§11).
 
 ---
 
@@ -350,142 +440,195 @@ wiedział dlaczego.
 ### 7.1 Przekazujemy WYŁĄCZNIE `Bearer`
 
 Allowlista nagłówków wewnętrznego żądania: **`Authorization` tylko gdy schemat
-to `Bearer`**, plus `Accept`. Odcinamy jawnie `Cookie`, `X-Forwarded-*`,
-`Referer` i wszystko inne.
+to `Bearer`**, plus `Accept` i `Content-Type`. Odcinamy `Cookie`,
+`X-Forwarded-*`, `Referer` i resztę.
 
-Dwa niezależne obejścia, gdyby przekazywać hurtem:
-
-- **`Cookie`** → `SessionAuthentication` (`base.py:1058`) uwierzytelnia sesją.
-  Pełne uprawnienia zalogowanego, bez zgody, bez scope, bez revoke. CSRF nie
-  chroni, bo wykonujemy GET.
+- **`Cookie`** → `SessionAuthentication` (`base.py:1058`) uwierzytelnia sesją:
+  pełne uprawnienia, bez zgody, bez scope, bez revoke. CSRF nie chroni, bo GET.
 - **`Authorization: Basic`** → `BasicAuthentication` (`base.py:1059`)
-  uwierzytelnia hasłem. Do tego `ApiReadOnlyForBearerMiddleware` sprawdza
-  **wyłącznie prefiks `bearer `** (`middleware.py:33`), więc dla Basica druga
-  warstwa read-only **nie istnieje**.
+  uwierzytelnia hasłem, a `ApiReadOnlyForBearerMiddleware` sprawdza **wyłącznie
+  prefiks `bearer `** (`middleware.py:33`) — więc dla Basica warstwa read-only
+  **nie istnieje**.
 
-Oba wymagają testu regresyjnego.
+### 7.2 Propagacja `Host` — to jest kontrola dostępu
 
-### 7.2 Propagacja `Host` — to jest kontrola dostępu, nie kosmetyka
+Wewnętrzne żądanie **musi** nieść `Host` zewnętrznego. Inaczej `Uczelnia=None`
+(§2.5), a wtedy `BramkaApiV1` **przepuszcza bezwarunkowo** — API wyłączone przez
+administratora staje się dostępne przez `/mcp` — a `ukryte_statusy=None`
+przestaje filtrować rekordy ukrytych statusów. W instalacji wielouczelnianej to
+wyciek między uczelniami.
 
-Wewnętrzne żądanie **musi** nieść `Host` zewnętrznego. Inaczej `Uczelnia=None`,
-a wtedy (§2.5):
+### 7.3 Throttling
 
-- `BramkaApiV1` **przepuszcza bezwarunkowo** — obejście wszystkich sześciu
-  przełączników, w tym `api_v1_wlaczone` i `api_v1_tylko_zalogowani`. API
-  wyłączone przez administratora staje się dostępne przez `/mcp`.
-- `ukryte_statusy` → `None` → wyciekają rekordy ukrytych statusów korekty.
-- W instalacji wielouczelnianej: nie wiadomo, czyje dane zwrócić.
+`ASGITransport` ustawia `client=("127.0.0.1", 123)`, więc bez interwencji
+wszyscy anonimowi dzielą jeden kubełek. `KlientScope` (§5.2) wstawia IP
+z `get_client_ip`. **Nie dokładamy `X-Forwarded-For`** — DRF bez `NUM_PROXIES`
+kluczowałby po całym nagłówku (§2.5), a my chcemy `REMOTE_ADDR`.
 
-Test wielo-hostowy obowiązkowy.
+Osobno: strefa nginx `bpp_api` (60 r/s) **jest omijana**, bo wewnętrzne żądania
+nie przechodzą przez nginx, a jedno `tools/call` rozwija się na N żądań. Sufit
+z D11 jest jedyną obroną na tej ścieżce — dlatego jest decyzją, nie pomiarem.
 
-### 7.3 Throttling nie może zapaść się do jednego kubełka
+### 7.4 Rekurencja i zakres URL-i
 
-`ASGITransport` ustawia `client=("127.0.0.1", 123)`. `SearchAnonThrottle` liczy
-po IP → **wszyscy anonimowi użytkownicy MCP dzieliliby jeden limit**, czyli
-jeden klient DoS-uje wszystkich. `KontekstMcpMiddleware` wstawia do wewnętrznego scope'u
-`client` = IP rozstrzygnięte z zewnętrznego żądania.
+`ASGITransport` dostaje `django_asgi_app`, nie `application`. `BppClientInProcess`
+odrzuca ścieżki spoza `/api/v1/` **oraz sprawdza host** — `_full_url` przyjmuje
+URL-e bezwzględne wprost (`client.py:183-184`), a paginacyjne `next` je niosą.
 
-IP bierzemy przez istniejące `django_bpp.client_ip.get_client_ip` (używa go już
-`views_dcr.py`), **nie** przez ślepe przepisanie `X-Forwarded-For`.
+### 7.5 Widoczność i Rollbar
 
-Osobno: strefa nginx `bpp_api` (60 r/s) **jest omijana** — wewnętrzne żądania
-nie przechodzą przez nginx, a jedno wywołanie `pobierz_rekord` rozwija się na
-N żądań API. Kierunek ryzyka jest odwrotny do tego, co pisała pierwsza wersja
-specu (obawa o zbyt ciasny limit); realnie limit **nie działa** na tej ścieżce.
+Wewnętrzne żądania nie trafiają do access-logu nginx ani uvicorna. Logujemy je
+w `KontekstMcp` (ścieżka, kod, czas, obecność bearera — **nigdy token**).
 
-### 7.4 Rekurencja
+`CustomRollbarNotifierMiddleware` (`base.py:346`) **nie obejmuje** wyjątków
+z `LifespanMcp`, `KontekstMcp` ani aplikacji MCP — te nie trafią do Rollbara
+same. Warstwa MCP woła `rollbar.report_exc_info()` jawnie i **nie wkłada
+nagłówków do `extra_data`**. (`"authorization"` jest w `ROLLBAR_SCRUB_FIELDS`,
+`base.py:1777`, ale to dotyczy żądań Django — zamyka §15.7.)
 
-`ASGITransport` dostaje `django_asgi_app`, nie `application`. Dodatkowo
-`BppClientInProcess` odrzuca ścieżki spoza `/api/v1/`.
+### 7.6 Przekierowania — `follow_redirects=False` (D12)
 
-### 7.5 Widoczność
+`BppClient` domyślnie podąża za przekierowaniami (`client.py:153`). W procesie
+daje to dwa ciche problemy:
 
-Wewnętrzne żądania nie trafiają do access-logu nginx ani uvicorna — ruch API
-generowany przez MCP jest **niewidoczny dla dotychczasowego monitoringu**.
-Logujemy je po stronie `KontekstMcpMiddleware` (ścieżka, kod, czas, obecność
-bearera — **nigdy sam token**).
+1. **`SECURE_SSL_REDIRECT=True`** (`production.py:168`) + scheme `http` → 301 na
+   `https` → httpx podąża → **każde żądanie wewnętrzne wykonuje się dwa razy**,
+   niewidocznie. Propagacja scheme (§5.2) tego unika, ale `follow_redirects`
+   maskowałoby błąd, gdyby propagacja przestała działać.
+2. **`FirstRunWizardMiddleware`** — `DEFAULT_SKIP_PREFIXES` to `/static/`,
+   `/media/`, `/__debug__/`, `/admin/` (`first_run_wizard/middleware.py:22-27`),
+   a `FIRST_RUN_WIZARD_SKIP_PREFIXES` nie jest ustawione. Na świeżej instalacji
+   wewnętrzne `/api/v1/` **dostaje przekierowanie do kreatora**, httpx za nim
+   idzie, `resp.json()` na HTML-u rzuca `ValueError`, którego `_request` nie
+   mapuje (`client.py:271`) → surowy traceback w narzędziu. **To zamyka §15.6:
+   tak, przekierowuje.**
+
+Przy `follow_redirects=False` oba przypadki kończą się czytelnym `BppError` ze
+statusem 301/302.
+
+### 7.7 Co jeszcze wypada przez ominięcie middleware
+
+Przegląd `MIDDLEWARE` (`base.py:328-351`) dla **zewnętrznego** `/mcp`:
+
+| Middleware | Skutek |
+|---|---|
+| `SecurityMiddleware` | `/mcp` bez HSTS i nagłówków bezpieczeństwa — dokłada je nginx |
+| `MaliciousRequestBlockingMiddleware` | `/mcp` poza filtrem botów — nowa powierzchnia bez tej siatki |
+| `CountdownBlockingMiddleware` | **nie zwalnia `/api/`** (`django_countdown/middleware.py:22`): w trybie odliczania wewnętrzne żądania dostaną HTML blokady, a `/mcp` nie będzie blokowany. Decyzja: `/mcp` odbijamy **razem** z resztą serwisu |
+| `FirstRunWizardMiddleware` | §7.6 |
+| `CustomRollbarNotifierMiddleware` | §7.5 |
+| `Session`/`CSRF`/`Auth`/`SessionSecurity`/`Axes` | nieistotne **pod warunkiem D6** |
+| `LocaleMiddleware` | komunikaty narzędzi w domyślnym języku — kosmetyka |
 
 ---
 
 ## 8. Strona `/mcp/` dla człowieka
 
-`GET /mcp/` (ze slashem) → widok Django z instrukcją podłączenia; `POST /mcp` →
-protokół. Rozdzielenie po ścieżce, nie po metodzie (§5.1).
-
-Treść wzorowana na `mcp.sentry.dev`: adres złącza jako główna treść, jedno
-zdanie o dostępie, gotowe wklejki dla klientów, link do `bpp-mcp` dla stdio.
-Adres składany przez `build_absolute_uri` — każda uczelnia widzi swój.
-Szablon podlega `LocaleMiddleware`, więc teksty przez `gettext`.
+`GET /mcp/` → widok Django z instrukcją. `GET /mcp` z `Accept: text/html` →
+redirect na `/mcp/` (§5.1). Treść wzorowana na `mcp.sentry.dev`: **oba adresy**
+(publiczny i z logowaniem) z wyjaśnieniem różnicy, gotowe wklejki dla klientów,
+link do `bpp-mcp` dla stdio. Adresy przez `build_absolute_uri`. Teksty przez
+`gettext` (`LocaleMiddleware` działa dla tej ścieżki — idzie przez Django).
 
 ---
 
 ## 9. Zależności i obraz
 
-Dochodzą do `pyproject.toml`:
+Dochodzi `bpp-mcp>=0.4,<0.5`. **Delta policzona** przeciwko `uv.lock` BPP —
+dziesięć nowych pakietów:
 
-```
-bpp-mcp>=0.4,<0.5      # narzędzia + szwy
-```
+| Nowe | Uwaga |
+|---|---|
+| `httpx` | klient `BppClient` |
+| **`httpx2`** | `mcp` 2.0 przeszło na drugą bibliotekę HTTP |
+| `pydantic` | kompilowana, spora |
+| `opentelemetry-api`, `jsonschema`, `mcp-types`, `python-multipart`, `sse-starlette`, `starlette`, `typing-inspection` | |
 
-co ciągnie `mcp>=2,<3`, `httpx` i `starlette`. **Żadnego z nich nie ma dziś
-w `uv.lock` BPP.** Konsekwencje do sprawdzenia przed scaleniem:
+Już obecne: `anyio` (4.11.0), `pyjwt`, `uvicorn`.
 
+**Kolizji `starlette` nie ma** — `channels[daphne]` ciągnie `asgiref` i `daphne`,
+nie `starlette`. To zamyka §15.2.
+
+Do sprawdzenia przed scaleniem:
+- czy `mcp 2.0` nie wymaga `anyio` nowszego niż 4.11.0 (venv `bpp-mcp` ma 4.14.1),
 - rozmiar obrazu produkcyjnego,
-- bramka Trivy w `build-docker-images.yml` (nowe pakiety = nowe CVE),
-- czy `starlette` nie koliduje z wersją ciągniętą przez `channels[daphne]`.
+- **bramka Trivy** — dziesięć nowych pakietów to dziesięć nowych źródeł CVE
+  w łańcuchu; `python-multipart` ma historię.
+
+**`httpx` i `httpx2` naraz** to dublet, nie konflikt. Najczystsze wyjście wraca
+do projektu 2: `bpp-mcp` przechodzi na `httpx2` (0.5.0) i przestaje wozić drugi
+klient — pod warunkiem, że `httpx2` ma `ASGITransport` o tej samej semantyce,
+bo na niej stoi D4. Poza zakresem tego specu (§13).
 
 ---
 
 ## 10. Wdrożenie
 
-Wbrew pierwszej wersji specu, **`bpp-deploy` wymaga zmian**:
+`bpp-deploy` **wymaga zmian**:
 
-1. **ModSecurity/CRS.** Wyłączenie obejmuje dziś tylko
-   `^/(bpp|api/v1)/zapytanie/`. Ciało JSON-RPC na `/mcp` — zwłaszcza
-   z zapytaniem DjangoQL w argumentach narzędzia — będzie skanowane przez CRS
-   i 403 z WAF-a jest bardzo prawdopodobny. Potrzebne wyłączenie dla `/mcp`,
-   zawężone jak istniejące.
-2. **Strefa `limit_req`.** `/mcp` wpada dziś pod `location /` (100 r/s burst
-   100). Do zmierzenia; jeśli agent się o to obija — własna strefa.
+1. **ModSecurity/CRS** — wyłączenie obejmuje dziś tylko
+   `^/(bpp|api/v1)/zapytanie/`. Ciało JSON-RPC na `/mcp`, zwłaszcza
+   z DjangoQL w argumentach, będzie skanowane i 403 z WAF-a jest bardzo
+   prawdopodobny. Potrzebne wyłączenie dla `/mcp`, zawężone jak istniejące.
+2. **Strefa `limit_req`** — `/mcp` wpada dziś pod `location /` (100 r/s). Sufit
+   z D11 działa **wewnątrz** aplikacji; strefa nginx chroni przed zalewem samych
+   żądań MCP. Do zmierzenia, ale nie jest to już „poza zakresem" (§7.3).
 
-Bez zmian: `stateless_http` sprawia, że recykling `--max-requests` jest
-nieszkodliwy i sticky sessions nie są potrzebne; `json_response` znosi problem
-`proxy_read_timeout`.
+Bez zmian: `stateless_http` czyni recykling `--max-requests` nieszkodliwym,
+`json_response` znosi problem `proxy_read_timeout`.
 
 ---
 
 ## 11. Testy
 
 Konwencja repo: pytest, bez `unittest.TestCase`, `model_bakery.baker`.
+**Repo nie ma `pytest-asyncio`** — korutyny odpala się wzorcem z
+`django_bpp/tests/test_asgi_notifications.py:27` (`asyncio.run` w osobnym
+wątku), więc dostęp do bazy wymaga `transaction=True` albo tego samego wzorca.
 
-**Routing ASGI**
-- scope `lifespan` → `startup.complete`; błąd startu → `startup.failed`
-  (nie cisza)
-- `POST /mcp` przed lifespanem → kontrolowany błąd, nie `RuntimeError`
-- ruch spoza `/mcp` trafia do Django; `websocket` do channels
-- `GET`/`DELETE` na `/mcp` trafiają do aplikacji MCP (nie do Django)
+**Aplikacja musi być budowana fabryką** `build_application()`, nie tworzona przy
+imporcie: (i) allowlista hostów SDK liczona z `settings` przy imporcie nie
+zobaczy override'u z fixture'a `settings` (§6.1); (ii)
+`session_manager.run()` można wejść **raz na instancję**, więc modułowe
+`application` nie nadaje się do wielokrotnego lifespanu w testach.
 
-**Bezpieczeństwo (obowiązkowe, każdy osobno)**
-- `Cookie` wysłany do `/mcp` **nie** uwierzytelnia (§7.1)
-- `Authorization: Basic` **nie** jest przekazywany (§7.1)
-- wewnętrzne żądanie niesie `Host` zewnętrznego; **test wielo-hostowy**:
-  dwie `Uczelnia`, dwa hosty, każdy widzi swoje (§7.2)
-- `api_v1_wlaczone=False` → `/mcp` też odmawia (dowód, że bramka działa)
-- rekord o ukrytym statusie nie wycieka przez `/mcp`
-- dwa różne IP → dwa kubełki throttlingu (§7.3)
-- ścieżka spoza `/api/v1/` odrzucona (§7.4)
+**Routing i lifespan**
+- klucz `"lifespan"` → `startup.complete`; błąd startu → `startup.failed`
+- **leniwy start**: żądanie do `/mcp` **bez** lifespanu (symulacja Daphne)
+  startuje menedżera i zwraca 200 — plus test, że drugie żądanie **nie**
+  próbuje startować ponownie
+- ruch spoza `/mcp` do Django; `websocket` do channels
+- `GET /mcp` z `Accept: text/html` → redirect na `/mcp/`
+- `GET /mcp` bez tego nagłówka przy `stateless_http` → **405** (nie SSE)
+
+**Bezpieczeństwo (każdy osobno)**
+- `Cookie` wysłany do `/mcp` **nie** uwierzytelnia — także po wewnętrznym
+  przekierowaniu (httpx ma własny cookie-jar, `_client.py:566`)
+- `Authorization: Basic` **nie** jest przekazywany
+- **test wielo-hostowy**: fixture'y są (`src/fixtures/conftest_multisite.py:16-48`,
+  rejestracja `conftest.py:61`); domeny wymagają nadpisania `ALLOWED_HOSTS`
+  per test (wzorzec: `admin_dashboard/tests/test_cache_vary_host.py:46`) — dwie
+  `Uczelnia`, dwa hosty, każdy widzi swoje
+- `api_v1_wlaczone=False` → `/mcp` też odmawia
+- rekord o ukrytym statusie nie wycieka
+- dwa różne IP → dwa kubełki throttlingu
+- ścieżka **i host** spoza `/api/v1/` odrzucone (§7.4)
+- `/mcp` bez tokenu → 200; `/mcp/auth` bez tokenu → **401** z `WWW-Authenticate`;
+  zły token na obu → **401**
 
 **Klient**
-- `BppClientInProcess` zwraca to samo, co żądanie sieciowe dla tej ścieżki
-- cache izolowany między żądaniami (dwa żądania, różne konteksty)
-- wyjątek aplikacji → `BppNetworkError`, nie surowy traceback
+- `BppClientInProcess` zwraca to samo, co żądanie sieciowe
+- cache izolowany między żądaniami
+- przekierowanie kreatora → czytelny `BppError`, nie `ValueError` (§7.6)
+- przekroczenie sufitu czasu → kontrolowany błąd (D11)
 
 **Protokół**
-- `initialize` → `tools/list` → `tools/call` na żywej aplikacji, bez sieci
-- 11 narzędzi + 1 prompt widoczne
+- `initialize` → `tools/list` → `tools/call`, bez sieci; 11 narzędzi + 1 prompt
+- klient testowy musi wysyłać `Content-Type: application/json`
+  (`transport_security.py:96-100`)
 
-**Ręcznie, do odnotowania w planie**
-- podłączenie prawdziwego klienta Claude i pełny taniec OAuth
+**Ręcznie**
+- podłączenie prawdziwego klienta Claude do obu adresów i pełny taniec OAuth
 
 ---
 
@@ -493,15 +636,16 @@ Konwencja repo: pytest, bez `unittest.TestCase`, `model_bakery.baker`.
 
 - `POST /mcp` odpowiada na `initialize`, `tools/list`, `tools/call` bez tokenu,
   zwracając dane publiczne identyczne z `/api/v1/`.
-- Ważny bearer → narzędzie widzi tożsamość użytkownika.
-- Nieważny bearer → **401** z `WWW-Authenticate` wskazującym PRM.
-- `Cookie` i `Basic` wysłane do `/mcp` **nie** uwierzytelniają.
+- `POST /mcp/auth` bez tokenu → **401** z `WWW-Authenticate` wskazującym PRM.
+- Zły token na obu adresach → **401**.
+- `Cookie` i `Basic` **nie** uwierzytelniają.
 - Dwie uczelnie na dwóch hostach widzą **swoje** dane; `api_v1_wlaczone=False`
   blokuje również `/mcp`.
+- **`/mcp` działa pod Daphne** (`run-site run`) — leniwy start.
 - `/.well-known/oauth-protected-resource` poprawne przy wielu hostach.
-- `GET /mcp/` renderuje stronę z adresem właściwym dla hosta.
-- Narzędzia pochodzą z `bpp_mcp` — **żadnej kopii** w `src/`.
-- `stateless_http=True`, `json_response=True`, brak długożyjących strumieni.
+- `GET /mcp/` renderuje stronę z oboma adresami właściwymi dla hosta.
+- Narzędzia z `bpp_mcp` — **żadnej kopii** w `src/`.
+- Jawny sufit czasu i współbieżności działa (D11).
 - Testy zielone; `ruff` czysty; `pre-commit` bez uwag.
 - Newsfragment w `src/bpp/newsfragments/`.
 - Istniejące testy `oauth_mcp` i `api_v1` przechodzą **bez modyfikacji**.
@@ -510,52 +654,71 @@ Konwencja repo: pytest, bez `unittest.TestCase`, `model_bakery.baker`.
 
 ## 13. Poza zakresem
 
-- Narzędzia mutujące (zapis przez MCP).
-- **Rozszerzenie allowlisty DCR** o ChatGPT/Cursor — osobna decyzja
-  bezpieczeństwa (§1.1).
-- Konsolidacja reguł tokenu w `oauth_mcp/tokens.py` — projekt 3 (§3).
-- WebMCP jako API przeglądarki (`navigator.modelContext`).
+- Narzędzia mutujące.
+- **Rozszerzenie allowlisty DCR** o ChatGPT/Cursor — osobna decyzja (§1.1).
+- Konsolidacja reguł tokenu — projekt 3 (§3).
+- **Przejście `bpp-mcp` na `httpx2`** (0.5.0) — osobne wydanie (§9).
+- WebMCP jako API przeglądarki.
 - Wygaszenie `bpp-mcp`.
-- Zasoby (`resources`) MCP. Prompt `zloz_zapytanie_djangoql` wchodzi, bo
-  `register_tools` rejestruje go razem z narzędziami — pierwsza wersja specu
-  wykluczała prompty i jednocześnie wymagała braku kopii, co było sprzeczne.
-- Własna strefa `limit_req` — dopiero po pomiarze (§10).
-- RFC 8707 / audience binding — dziedziczone odstępstwo.
+- Zasoby (`resources`) MCP. Prompt `zloz_zapytanie_djangoql` **wchodzi**, bo
+  `register_tools` rejestruje go razem z narzędziami.
+- RFC 8707 / audience binding.
+
+Strefa `limit_req` **przestaje** być poza zakresem — patrz §10.2.
 
 ---
 
-## 14. Czym ta wersja różni się od pierwszej
+## 14. Rozliczenie z recenzjami
 
-| Ustalenie recenzji | Werdykt po weryfikacji |
+**Wersja 1 → 2** (pierwsza recenzja): bloker lifespanu potwierdzony, ale
+rozwiązywalny; bloker hosta potwierdzony i groźniejszy (kontrola dostępu, nie
+błąd 400); dodane `Basic`, cache, throttling, ModSecurity, allowlista DCR;
+poprawione 7 → 11 narzędzi; zakres rozbity na trzy projekty.
+
+**Wersja 2 → 3** (druga recenzja):
+
+| Ustalenie | Rozstrzygnięcie |
 |---|---|
-| Bloker: lifespan menedżera sesji | **potwierdzony** [probe], ale rozwiązywalny dopisaniem jednego klucza do `ProtocolTypeRouter` (§5.1) — nie wymaga przeprojektowania |
-| Bloker: host `bpp.invalid` | **potwierdzony i groźniejszy, niż zgłoszono** — to obejście kontroli dostępu, nie tylko 400 (§7.2) |
-| `Cookie` → `SessionAuthentication` | potwierdzony; **dodatkowo `Basic`**, którego pierwsza wersja nie widziała (§7.1) |
-| Cache współdzielony | potwierdzony; rozwiązany szwem z `bpp-mcp` 0.4.0 (§5.3) |
-| Throttling w jednym kubełku | potwierdzony; kierunek ryzyka w pierwszej wersji był **odwrotny** (§7.3) |
-| ModSecurity | potwierdzony — `bpp-deploy` jednak wymaga zmian (§10) |
-| Allowlista DCR | potwierdzona — obietnica zasięgu była nieprawdziwa (§1.1) |
-| 7 narzędzi z `tools.py` | **błąd** — 11 narzędzi + prompt, wrappery z `server.py` (§2.2) |
-| Zakres | rozbity na trzy projekty (§3) |
+| **B1** `base_url` per żądanie niewykonalne z 0.4.0 | **D9** — klient per żądanie przez property w obiekcie lifespanu; zero zmian w `bpp-mcp` (§5.3) |
+| **B2** lifespan nie działa pod Daphne (dev, Playwright) | **D2** — leniwy start idempotentny, wyzwalany z obu stron (§5.1) |
+| **B3** brak wykonawcy 401 + PRM; `token_verifier` kasuje anonima | **D10** — własna `BramkaBearera` i **dwa adresy** (§5.4) |
+| IP klienta nieosiągalne przed aplikacją MCP | `KlientScope` za transportem (§5.2) |
+| scheme i `SECURE_SSL_REDIRECT` | propagacja + `follow_redirects=False` (§7.6) |
+| semantyka allowlisty SDK, `Origin`, `host=` bez `transport_security` | §6.1 |
+| `FirstRunWizardMiddleware` przekierowuje | potwierdzone, **zamyka §15.6** (§7.6) |
+| brak sufitu czasu | **D11** (§5.2) |
+| `GET /mcp` → 406 | redirect przy `Accept: text/html` (§5.1) |
+| Rollbar nie obejmuje warstwy MCP | jawne `report_exc_info` (§7.5), **zamyka §15.7** |
+| throttling po całym XFF | nie dokładamy XFF (§7.3) |
+| `startup.failed` → boot-loop | nazwane jako oczekiwane (§5.1) |
+| testy: fabryka, brak `pytest-asyncio`, `run()` raz | §11 |
+| `stateless_http` + GET → 405, nie SSE | §11 |
+| numery linii `views_dcr`, `channels/routing` | poprawione (§2.1, §2.4) |
+| `CountdownBlockingMiddleware` nie zwalnia `/api/` | §7.7 |
 
-Nowe, spoza recenzji — z probe'ów: `stateless_http`/`json_response` przeniesione
-do `streamable_http_app()`, `json_response` znoszące SSE, oraz **własna
-allowlista hostów aplikacji MCP** (§6.3), o której nie wiedziała ani pierwsza
-wersja specu, ani recenzja.
+**Nieprawdziwe twierdzenia wersji 2, wycofane:** „szew cache rozwiązuje problem
+współdzielenia" (rozwiązywał połowę — `_api_root` został, D9 rozwiązuje oba);
+„throttling potwierdzony" (problem tak, mechanizm naprawy nie istniał);
+„lifespan rozwiązany jednym kluczem" (tylko pod uvicornem).
 
 ---
 
-## 15. Otwarte kwestie do rozstrzygnięcia w planie
+## 15. Otwarte kwestie
 
-1. **Czy klienci MCP odpalają OAuth przy 401 na kolejnym żądaniu, czy tylko
-   przy `initialize`?** Jeśli tylko przy `initialize`, endpoint anonimowy nigdy
-   nie zaproponuje logowania i potrzebny jest drugi adres (np. `/mcp/auth`).
-   **Do weryfikacji empirycznej na żywym kliencie.** Częściowo łagodzi to
-   istniejąca hybrydowa podpowiedź w treści odpowiedzi narzędzi.
-2. Czy `starlette` z `bpp-mcp` koliduje z wersją z `channels[daphne]` (§9).
-3. Wpływ nowych zależności na bramkę Trivy (§9).
-4. Czy `limit_req` faktycznie boli (§10).
-5. Kształt reguły wyłączającej ModSecurity dla `/mcp` (§10).
-6. Czy `FirstRunWizardMiddleware` przekierowuje wewnętrzne `/api/v1/` na
-   świeżej instalacji — niezweryfikowane bez uruchomienia.
-7. Czy Rollbar scrubuje `Authorization` dla wyjątków z wewnętrznego scope'u.
+Zamknięte w tej wersji: **§15.1** (kształt endpointu → D10), **§15.2**
+(`starlette` — brak kolizji, §9), **§15.6** (kreator przekierowuje — tak, §7.6),
+**§15.7** (Rollbar — §7.5).
+
+Zostają:
+
+1. Czy `mcp 2.0` wymaga `anyio` nowszego niż 4.11.0 z `uv.lock` (§9).
+2. Wpływ dziesięciu nowych pakietów na bramkę Trivy i rozmiar obrazu (§9).
+3. Wartości sufitu czasu i współbieżności (D11) — do ustalenia pomiarem, ale
+   **istnienie limitu jest już zdecydowane**.
+4. Kształt reguły wyłączającej ModSecurity dla `/mcp` (§10.1).
+5. Czy strefa `limit_req` dla `/mcp` jest potrzebna (§10.2).
+6. Czy `httpx2` ma `ASGITransport` o semantyce wymaganej przez D4 — warunek
+   wstępny dla przejścia `bpp-mcp` na jeden klient HTTP (§9, §13).
+7. **Trwałość grupy zadań anyio przy leniwym starcie** — `run()` wchodzony
+   z kontekstu żądania, a `AsyncExitStack` trzymany w obiekcie modułowym.
+   Do potwierdzenia testem pod Daphne (§5.1, §11).
