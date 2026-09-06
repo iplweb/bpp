@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import functools
 from contextlib import asynccontextmanager
 
+import rollbar
 from bpp_mcp import register_tools
 from django.conf import settings
 from mcp.server.mcpserver import MCPServer
@@ -48,6 +50,59 @@ def _dozwolone_hosty() -> list[str]:
     return hosty
 
 
+def _z_raportowaniem(serwer: MCPServer) -> MCPServer:
+    """Owiń ``serwer.tool()`` raportowaniem wyjątków narzędzi do Rollbara.
+
+    ``MCPServer._handle_call_tool`` łapie KAŻDY wyjątek handlera i zamienia
+    go w ``CallToolResult(is_error=True)`` (patrz
+    ``mcp.server.mcpserver.server``) — na tym poziomie zostaje po nim tylko
+    ``logger.exception(...)``. Nic z tego nie dociera do warstwy ASGI, więc
+    ``CustomRollbarNotifierMiddleware`` (który łapie wyjątki Django) nigdy nie
+    zobaczy awarii narzędzia — musimy zgłosić ją sami, ZANIM SDK ją pochłonie
+    (spec §7.5).
+
+    Zweryfikowane w zainstalowanym ``mcp`` (2.x), nie zgadywane:
+
+    * ``MCPServer.tool()`` to DEKORATOR-FABRYKA — ``tool(**kw)`` zwraca
+      ``decorator``, a ``decorator(fn)`` REJESTRUJE narzędzie natychmiast
+      (``self.add_tool(fn, ...)``) i oddaje ``fn`` bez zmian. Rejestracja
+      dzieje się więc w momencie dekorowania, nie leniwie — stąd podmiana
+      ``serwer.tool`` musi zdążyć PRZED wywołaniem ``register_tools``.
+    * Schemat argumentów i wykrycie parametru ``Context`` liczy
+      ``Tool.from_function`` na PODANEJ (owinięta) funkcji przez
+      ``inspect.signature(fn, eval_str=True)`` i ``typing.get_type_hints(fn)``
+      — obie te funkcje stdlib jawnie idą po łańcuchu ``__wrapped__``, więc
+      ``functools.wraps`` na wewnętrznym ``wrapper`` wystarcza, by dostały
+      oryginalny sygnaturę/adnotacje (i ``__globals__`` oryginału — istotne,
+      bo ``bpp_mcp.tools``/``server`` mają ``from __future__ import
+      annotations``, więc adnotacja ``Context`` jest stringiem do
+      wyliczenia). Potwierdzone w praktyce testem
+      ``test_context_i_schemat_przetrwaly_wrapper`` — bez tego wrapper
+      zarejestrowałby ``ctx`` jako zwykły, wymagany parametr wejściowy
+      zamiast wstrzykiwanego kontekstu.
+    """
+    oryginalny = serwer.tool
+
+    def tool(*args, **kwargs):
+        dekorator = oryginalny(*args, **kwargs)
+
+        def opakuj(fn):
+            @functools.wraps(fn)
+            async def wrapper(*a, **kw):
+                try:
+                    return await fn(*a, **kw)
+                except Exception:
+                    rollbar.report_exc_info()
+                    raise
+
+            return dekorator(wrapper)
+
+        return opakuj
+
+    serwer.tool = tool
+    return serwer
+
+
 def build_application():
     """Zbuduj aplikację ASGI serwera MCP i jej ``StartMcp``.
 
@@ -61,7 +116,7 @@ def build_application():
         yield KontekstZadania()
 
     serwer = MCPServer("bpp", version="1", lifespan=lifespan)
-    register_tools(serwer)
+    register_tools(_z_raportowaniem(serwer))
 
     hosty = _dozwolone_hosty()
     bezpieczenstwo = TransportSecuritySettings(
