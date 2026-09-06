@@ -478,6 +478,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "oauth_mcp",
     "oauth2_provider",
+    "mcp_server",
     "django_filters",
     "api_v1",
     "adminsortable2",
