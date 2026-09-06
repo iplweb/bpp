@@ -479,6 +479,12 @@
             // Save scroll position and block background scrolling
             scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
 
+            // Zmierz pasek nawigacji ZANIM cokolwiek ruszymy - za chwile
+            // wypadnie z flow i jego wysokosc bedzie potrzebna do
+            // kompensacji na <body>.
+            var nav = document.querySelector('nav.sticky-header');
+            var navHeight = nav ? nav.offsetHeight : 0;
+
             // Lock the body completely
             document.body.style.position = 'fixed';
             document.body.style.top = '-' + scrollPosition + 'px';
@@ -489,6 +495,19 @@
 
             // Also lock html element for extra security
             document.documentElement.style.overflow = 'hidden';
+
+            // Przypnij pasek nawigacji do viewportu i wysun go poza kadr.
+            // Blokada scrolla powyzej (body -> position: fixed) lamie jego
+            // `position: sticky`, wiec bez tego pasek znikalby skokowo;
+            // klasy sa zdejmowane w closeGlobalSearch(). Reflow miedzy
+            // klasami jest konieczny: bez niego przegladarka scala oba
+            // zapisy stylu w jeden i przejscia nie ma.
+            if (nav) {
+                nav.classList.add('global-search-pinned');
+                document.body.style.paddingTop = navHeight + 'px';
+                void nav.offsetHeight;
+                nav.classList.add('global-search-hidden');
+            }
 
             // Remove previous animation classes
             container.classList.remove('animating-out');
@@ -622,10 +641,18 @@
         window.closeGlobalSearch = function() {
             var modal = document.getElementById('globalSearchModal');
             var container = document.querySelector('.global-search-container');
+            var nav = document.querySelector('nav.sticky-header');
 
             // Add closing animation
             container.classList.add('animating-out');
             modal.classList.add('closing');
+
+            // Pasek wjezdza ROWNOLEGLE ze zwijaniem okna, nie po nim.
+            // Wlasne opoznienie 0.1s ma w CSS (top_bar.scss), zeby ruch nie
+            // startowal dokladnie w tej samej klatce co collapseToButton.
+            if (nav) {
+                nav.classList.remove('global-search-hidden');
+            }
 
             // After animation completes, hide modal and restore scrolling
             setTimeout(function() {
@@ -646,6 +673,16 @@
 
                 // Restore scroll position
                 window.scrollTo(0, scrollPosition);
+
+                // Oddaj pasek z powrotem `position: sticky`. Musi to isc w
+                // tej samej klatce co przywrocenie scrolla powyzej: pasek
+                // przypiety (fixed, top 0) i sticky przy top 0 sa w tym
+                // samym miejscu, wiec przelaczenie jest niewidoczne, a
+                // kompensacja paddingu znika razem z powrotem nav do flow.
+                if (nav) {
+                    nav.classList.remove('global-search-pinned');
+                    document.body.style.paddingTop = '';
+                }
 
                 // Reset container styles for next opening
                 container.style.transform = '';

@@ -18,6 +18,49 @@ nav.sticky-header {
     z-index: 2000;  // Must be highest to ensure dropdown appears above all sticky elements
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
+
+    // Chowanie paska na czas otwartego okna wyszukiwania globalnego.
+    //
+    // Modal blokuje przewijanie ustawiajac na <body> `position: fixed`
+    // z ujemnym `top` (global_search_modal.html). To lamie `position:
+    // sticky` powyzej: <body> przestaje byc kontenerem scrollujacym, wiec
+    // pasek wraca na swoja pozycje w dokumencie i - gdy strona byla
+    // przewinieta - znika skokowo za gorna krawedzia. Dlatego na czas
+    // trwania modala przypinamy go recznie klasa `global-search-pinned`
+    // i dopiero wtedy mozemy go plynnie wysunac klasa
+    // `global-search-hidden`. Obie klasy zdejmuje `closeGlobalSearch()`.
+    //
+    // `position: fixed` jest tu wzgledem viewportu, bo zaden przodek
+    // (<html>, <body>) nie ma transform/filter/perspective/contain -
+    // samo `position: relative`/`fixed` na <body> containing blocku dla
+    // fixed nie tworzy.
+    transition: transform 0.25s ease-out, opacity 0.25s ease-out;
+
+    // Opoznienie dotyczy stanu DOCELOWEGO przejscia, czyli powrotu paska:
+    // wjezdza chwile po starcie zwijania okna, zamiast scigac sie z nim.
+    transition-delay: 0.1s;
+
+    &.global-search-pinned {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+    }
+
+    &.global-search-hidden {
+        transform: translateY(-100%);
+        opacity: 0;
+        pointer-events: none;
+
+        // Chowanie ma ruszac natychmiast, rownolegle z rozwijaniem okna.
+        transition-delay: 0s;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    nav.sticky-header {
+        transition: none;
+    }
 }
 
 .top-bar {
