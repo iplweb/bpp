@@ -40,6 +40,10 @@ mieszka w globalnym `~/.claude/CLAUDE.md` — tu jest tylko skrót.
   interpretacje prowadzą do istotnie różnej pracy
 - **NEVER modify existing migration files** in `src/*/migrations/`
 - **Max line length: 88 characters** (enforced by ruff)
+- **Nową pracę (feature/bugfix) zaczynaj od worktree — z automatu, bez
+  pytania**, gdy stoisz na `dev`/`master`. To trwała zgoda, nie czekaj na
+  prośbę. Gdy już jesteś w worktree — pracuj w nim, nie zakładaj kolejnego;
+  drobna poprawka w miejscu worktree nie wymaga.
 - **Worktrees NIGDY w `bpp/` (ani w `.claude/worktrees/`).** Wszystkie
   worktree mają lądować jako siostrzane katalogi obok głównego checkoutu,
   tzn. w `~/Programowanie/`. Nazwa: `bpp-<feature-slug>`.
@@ -56,6 +60,14 @@ mieszka w globalnym `~/.claude/CLAUDE.md` — tu jest tylko skrót.
     ```
     a potem `EnterWorktree path=~/Programowanie/bpp-<slug>` żeby wejść
     w już-istniejący worktree zamiast tworzyć kolejny.
+- **Skończoną i lokalnie przetestowaną pracę domykaj z automatu**: commit
+  → push → `gh pr create --base dev`. Trwała zgoda — nie pytaj „czy mam
+  wypchnąć / założyć PR". Newsfragment w `src/bpp/newsfragments/` jest
+  częścią „skończonej"; testy muszą przejść **lokalnie**, a nie „pewnie
+  przejdą na CI". Nigdy nie commituj wprost na `dev`/`master` — jeśli tam
+  stoisz, najpierw gałąź. Zgoda **nie** obejmuje (o to nadal pytaj):
+  merge PR-a, `make release-candidate`/`release-promote`, tag wydania,
+  publikację obrazów, `git push --force`.
 - **Icons in templates:**
   - Public frontend (Foundation CSS): monochrome Foundation-Icons
     (`<span class="fi-icon"/>`)
