@@ -102,9 +102,12 @@ Wydany dziś (projekt 2, PR-y #21–#23). Wystawia:
 ### 2.4 Infrastruktura
 
 - ASGI: `src/django_bpp/asgi.py` — `ProtocolTypeRouter` z
-  `{"http": django_asgi_app, "websocket": ...}`. **`ProtocolTypeRouter` rzuca
-  `ValueError` na scope `lifespan`**, a uvicorn w trybie `auto` loguje to jako
-  „appears unsupported" i jedzie dalej — czyli błąd jest cichy.
+  `{"http": django_asgi_app, "websocket": ...}`. Sam router to piętnaście linii
+  (`channels/routing.py:45-51`): lookup w słowniku, a dla typu spoza słownika
+  `raise ValueError`. Klucza `"lifespan"` tam po prostu **nie ma**, więc uvicorn
+  w trybie `auto` dostaje `ValueError`, loguje „lifespan appears unsupported"
+  i jedzie dalej — błąd jest cichy. To NIE jest ograniczenie channels, tylko
+  brakujący wpis w naszej konfiguracji (§5.1).
 - Produkcja: `gunicorn django_bpp.asgi:application` z `UvicornWorker`;
   `max_requests=1000` + jitter 200 w `docker/appserver/gunicorn_conf.py`
   (**nie** w entrypoincie). Gałąź dev to `uvicorn --reload` bez gunicorna.
@@ -141,7 +144,7 @@ niezależne przedsięwzięcia. Rozbicie:
 
 | # | Projekt | Status |
 |---|---|---|
-| 1 | **Hosting MCP w BPP** — dyspozytor, klient w procesie, discovery, strona | **ten spec** |
+| 1 | **Hosting MCP w BPP** — routing ASGI, klient w procesie, discovery, strona | **ten spec** |
 | 2 | Szwy w `bpp-mcp` | **zrobione** — 0.4.0 na PyPI |
 | 3 | Konsolidacja reguł tokenu w `oauth_mcp/tokens.py` | osobny spec, §13 |
 
@@ -156,7 +159,7 @@ konsumuje istniejące `StrictOAuth2Authentication` bez ruszania go.
 | # | Decyzja | Uzasadnienie |
 |---|---|---|
 | D1 | Narzędzia z `bpp-mcp` (zależność), zero kopii w `src/` | jedna implementacja, zero rozjazdu |
-| D2 | Montaż: **własny dyspozytor ASGI** zamiast `ProtocolTypeRouter` | `ProtocolTypeRouter` nie obsługuje `lifespan`, a bez niego menedżer sesji nie wstaje **[probe]** |
+| D2 | Montaż: **klucz `"lifespan"` dopisany do istniejącego `ProtocolTypeRouter`** | bez obsługi tego scope'u menedżer sesji MCP nie wstaje **[probe]**; dopisanie klucza zostawia gałąź websocketową nietkniętą (§5.1) |
 | D3 | `stateless_http=True` + `json_response=True` | recykling workera zabiłby sesję stateful; `json_response` znosi SSE, więc `proxy_read_timeout 300s` przestaje być tematem |
 | D4 | Dane przez `httpx.ASGITransport` na `django_asgi_app` | ta sama ścieżka kodu co przez sieć, bez gniazda |
 | D5 | Wewnętrzne żądanie **dziedziczy `Host`, scheme i IP klienta** z zewnętrznego | inaczej `Uczelnia=None` → obejście bramki i wyciek (§2.5) |
@@ -179,56 +182,76 @@ Pierwsza wersja proponowała `config.api_root` wskazujący na
 ```
                    gunicorn + UvicornWorker
                              │
-               django_bpp.asgi:application  =  Dyspozytor
-                             │
+               django_bpp.asgi:application  =  ProtocolTypeRouter
+                             │            (ten sam co dziś, +1 klucz)
         ┌────────────────────┼────────────────────┐
-   scope=lifespan      scope=http            scope=websocket
+   "lifespan"            "http"              "websocket"
         │                    │                     │
-  lifespan aplikacji   ┌─────┴─────┐          channels
-    MCP (nasz!)     /mcp*      reszta
-                       │           │
-              KontekstMcpMiddleware│
-                       │           │
-              aplikacja MCP        │
-                       │           │
-              register_tools       │
-                       │           │
-        BppClientInProcess ────────┴──→ django_asgi_app
-              (ASGITransport)
+   LifespanMcp          RouterHttp          AllowedHostsOriginValidator
+   (nowy)               (nowy)              + AuthMiddlewareStack
+        │                ┌───┴───┐          + URLRouter
+        │             /mcp*    reszta       ── BEZ ZMIAN ──
+        │                │        │
+        │      KontekstMcpMiddleware
+        │                │        │
+        └──── trzyma ──→ aplikacja MCP
+                         │        │
+                    register_tools│
+                         │        │
+           BppClientInProcess ────┴──→ django_asgi_app
+                 (ASGITransport)
 ```
 
-### 5.1 Dyspozytor — rozwiązanie blokera lifespanu
+### 5.1 Lifespan — dopisany klucz, nie nowy router
 
-`ProtocolTypeRouter` z channels rzuca `ValueError` na scope `lifespan`, więc
-menedżer sesji MCP nigdy nie wstaje. Probe potwierdził objaw i potwierdził, że
-**wystarczy samemu obsłużyć ten scope**:
+`ProtocolTypeRouter` **nie odrzuca lifespanu** — odrzuca to, czego nie ma
+w jego słowniku (`channels/routing.py:45-51`: dict lookup, w przeciwnym razie
+`raise ValueError`). A `lifespan` to zwyczajny typ scope'u, tej samej kategorii
+co `http` i `websocket`. Dziś klucza po prostu nie ma, więc uvicorn dostaje
+`ValueError`, uznaje że aplikacja lifespanu nie wspiera, loguje „lifespan
+appears unsupported" i **jedzie dalej** — stąd cisza zamiast błędu, i stąd
+`RuntimeError: Task group is not initialized` przy pierwszym `POST /mcp`
+**[probe]**.
+
+Dla Django to nigdy nie miało znaczenia (nie potrzebuje inicjalizacji przez
+lifespan), więc nikt nie zauważył, że ten kanał jest zatkany. Aplikacja MCP
+jest pierwszą rzeczą w BPP, która z niego korzysta.
+
+Rozwiązanie mieści się w `asgi.py`:
 
 ```python
-class Dyspozytor:
-    """Zastępuje ProtocolTypeRouter: trzy scope'y zamiast dwóch."""
-
-    async def __call__(self, scope, receive, send):
-        if scope["type"] == "lifespan":
-            await self._lifespan(scope, receive, send)   # nasz, dla MCP
-        elif scope["type"] == "http" and self._to_mcp(scope["path"]):
-            await self._mcp(scope, receive, send)
-        elif scope["type"] == "websocket":
-            await self._ws(scope, receive, send)         # channels
-        else:
-            await self._django(scope, receive, send)
+application = ProtocolTypeRouter(
+    {
+        "http": RouterHttp(mcp_app, django_asgi_app),
+        "websocket": AllowedHostsOriginValidator(          # BEZ ZMIAN
+            AuthMiddlewareStack(URLRouter(websocket_urlpatterns))
+        ),
+        "lifespan": LifespanMcp(mcp_app),                  # ← nowy klucz
+    }
+)
 ```
 
-`_lifespan` na `lifespan.startup` wchodzi w
-`self._mcp.router.lifespan_context(self._mcp)`, na `lifespan.shutdown` z niego
-wychodzi, a błąd startu raportuje jako `lifespan.startup.failed` — **nie
-połyka go**, inaczej wracamy do cichej awarii, tylko innej.
+**Świadomie NIE zastępujemy `ProtocolTypeRouter` własnym dyspozytorem** (tak
+proponowała poprzednia wersja tej sekcji). Przepisanie routera brałoby na nas
+odtworzenie gałęzi websocketowej wraz z `AllowedHostsOriginValidator`
+i `AuthMiddlewareStack` — czyli ruszanie działającej warstwy bezpieczeństwa
+WebSocketów po to, żeby naprawić rzecz, która jej w ogóle nie dotyczy. Przy
+dopisaniu klucza ta gałąź zostaje nietknięta bit w bit.
 
-`_to_mcp` dopasowuje **ścieżkę**, nie metodę: SDK obsługuje na trasie
-streamable również `GET` (SSE) i `DELETE`. Rozdzielenie „POST do protokołu, GET
-do HTML-a" z pierwszej wersji było błędne.
+Patchowanie `channels` odrzucone: jego zachowanie nie jest błędne — dostaje
+słownik i robi z nim dokładnie to, co obiecuje. Monkeypatch byłby niewidoczny
+w `asgi.py` i pękłby przy aktualizacji.
 
-Aplikacja MCP sama routuje na `streamable_http_path` (domyślnie `/mcp`), więc
-dyspozytor **nie obcina prefiksu**.
+**`LifespanMcp`** obsługuje protokół lifespan: na `lifespan.startup` wchodzi
+w `mcp_app.router.lifespan_context(mcp_app)`, na `lifespan.shutdown` z niego
+wychodzi. Błąd startu raportuje jako `lifespan.startup.failed` z komunikatem —
+**nie połyka go**, inaczej wracamy do cichej awarii, tylko innej.
+
+**`RouterHttp`** rozdziela po **ścieżce**, nie po metodzie: SDK obsługuje na
+trasie streamable również `GET` (SSE) i `DELETE`. Rozdzielenie „POST do
+protokołu, GET do HTML-a" z pierwszej wersji specu było błędne. Aplikacja MCP
+sama routuje na `streamable_http_path` (domyślnie `/mcp`), więc **nie obcinamy
+prefiksu**.
 
 ### 5.2 Kontekst żądania — `KontekstMcpMiddleware`
 
@@ -359,7 +382,7 @@ Test wielo-hostowy obowiązkowy.
 
 `ASGITransport` ustawia `client=("127.0.0.1", 123)`. `SearchAnonThrottle` liczy
 po IP → **wszyscy anonimowi użytkownicy MCP dzieliliby jeden limit**, czyli
-jeden klient DoS-uje wszystkich. Dyspozytor wstawia do wewnętrznego scope'u
+jeden klient DoS-uje wszystkich. `KontekstMcpMiddleware` wstawia do wewnętrznego scope'u
 `client` = IP rozstrzygnięte z zewnętrznego żądania.
 
 IP bierzemy przez istniejące `django_bpp.client_ip.get_client_ip` (używa go już
@@ -435,7 +458,7 @@ nieszkodliwy i sticky sessions nie są potrzebne; `json_response` znosi problem
 
 Konwencja repo: pytest, bez `unittest.TestCase`, `model_bakery.baker`.
 
-**Dyspozytor**
+**Routing ASGI**
 - scope `lifespan` → `startup.complete`; błąd startu → `startup.failed`
   (nie cisza)
 - `POST /mcp` przed lifespanem → kontrolowany błąd, nie `RuntimeError`
@@ -505,7 +528,7 @@ Konwencja repo: pytest, bez `unittest.TestCase`, `model_bakery.baker`.
 
 | Ustalenie recenzji | Werdykt po weryfikacji |
 |---|---|
-| Bloker: lifespan menedżera sesji | **potwierdzony** [probe], ale rozwiązywalny dyspozytorem (§5.1) — nie wymaga przeprojektowania |
+| Bloker: lifespan menedżera sesji | **potwierdzony** [probe], ale rozwiązywalny dopisaniem jednego klucza do `ProtocolTypeRouter` (§5.1) — nie wymaga przeprojektowania |
 | Bloker: host `bpp.invalid` | **potwierdzony i groźniejszy, niż zgłoszono** — to obejście kontroli dostępu, nie tylko 400 (§7.2) |
 | `Cookie` → `SessionAuthentication` | potwierdzony; **dodatkowo `Basic`**, którego pierwsza wersja nie widziała (§7.1) |
 | Cache współdzielony | potwierdzony; rozwiązany szwem z `bpp-mcp` 0.4.0 (§5.3) |
