@@ -16,7 +16,17 @@ from mcp_server.tests.utils import uruchom
 
 
 class _AplikacjaZLifespanem:
-    """Namiastka aplikacji Starlette: liczy wejścia w lifespan."""
+    """Namiastka aplikacji Starlette: liczy wejścia w lifespan.
+
+    ``lifespan_context`` otwiera PRAWDZIWĄ ``anyio.create_task_group()`` —
+    tak jak realnie robi to ``session_manager.run()`` z SDK MCP. Bez tego
+    atrapa nie odwzorowuje mechanizmu z BL-3: prosty ``@asynccontextmanager``
+    bez grupy zadań nie zostawia na stosie zadania żadnego cancel scope'u,
+    więc naiwna (błędna) implementacja ``StartMcp`` nie psuje się przez
+    ``RuntimeError`` opisany w docstringu ``start.py`` — tylko wisi, aż
+    zewnętrzny ``fail_after`` ubije ją po timeout (inny, dużo wolniejszy
+    i mniej precyzyjny sposób zawodzenia testu).
+    """
 
     def __init__(self, blad=None):
         self.wejscia = 0
@@ -28,7 +38,8 @@ class _AplikacjaZLifespanem:
         if self._blad is not None:
             raise self._blad
         self.wejscia += 1
-        yield
+        async with anyio.create_task_group():
+            yield
 
 
 def test_zapewnij_wchodzi_dokladnie_raz():
@@ -87,3 +98,19 @@ def test_zadanie_przezywa_zadanie_ktore_je_utworzylo():
         return start.zywy
 
     assert uruchom(scenariusz) is True
+
+
+def test_wiele_rownoleglych_zapewnij_wchodzi_raz():
+    """Brak punktu przerwania między ``if self._zadanie is None`` a
+    ``create_task`` (komentarz w ``start.py``) ma znaczenie tylko wtedy, gdy
+    wiele wywołań ``zapewnij()`` rusza NAPRAWDĘ współbieżnie w tej samej
+    pętli — sekwencyjne `await` (jak w testach wyżej) tego nie sprawdza.
+    Tu odpalamy 50 wywołań przez ``asyncio.gather`` na raz."""
+    app = _AplikacjaZLifespanem()
+    start = StartMcp(app)
+
+    async def scenariusz():
+        await asyncio.gather(*(start.zapewnij() for _ in range(50)))
+        return app.wejscia
+
+    assert uruchom(scenariusz) == 1
