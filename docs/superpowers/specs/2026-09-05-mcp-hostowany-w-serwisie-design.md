@@ -593,6 +593,27 @@ administratora staje się dostępne przez `/mcp` — a `ukryte_statusy=None`
 przestaje filtrować rekordy ukrytych statusów. W instalacji wielouczelnianej to
 wyciek między uczelniami.
 
+**Propagacja to za mało — potrzebna jest bramka fail-closed.** `ALLOWED_HOSTS`
+na produkcji zawiera hosty infrastrukturalne (`127.0.0.1`, `appserver`,
+`appserver:8000` — `production.py:154-159`), które przechodzą **obie** bramki
+(allowlista transportowa SDK i `get_host()` Django), a nie mają swojego `Site`.
+Propagacja `Host` przenosi je wtedy wiernie — prosto w `Uczelnia=None`, czyli
+w otwartą bramkę API. `curl -H 'Host: appserver' https://<uczelnia>/mcp`
+obchodziłby wyłącznik API i filtr ukrytych statusów.
+
+Dlatego `mcp_server.uczelnia` sprawdza **per żądanie**, czy host jednoznacznie
+wskazuje uczelnię, i odrzuca **421 Misdirected Request**, gdy nie wskazuje:
+
+- host ma swój `Site` → wymagamy niepustego `get_for_request` (to samo
+  rozstrzygnięcie, którego użyje potem `BramkaApiV1`);
+- host nie ma `Site` → dopuszczalne **wyłącznie** w instalacji
+  jednouczelnianej, gdzie fallback na `SITE_ID` jest legalny; przy zerze
+  i przy dwóch-i-więcej uczelniach → odmowa.
+
+Sprawdzenie **musi** być per żądanie: allowlista transportowa (§6.1) liczy się
+przy imporcie `django_bpp.asgi`, a import modułu ASGI nie może zależeć od bazy;
+powiązanie host→`Site`→`Uczelnia` to zaś dane, nie konfiguracja.
+
 ### 7.3 Throttling
 
 `ASGITransport` ustawia `client=("127.0.0.1", 123)`, więc bez interwencji
@@ -734,12 +755,21 @@ bo na niej stoi D4. Poza zakresem tego specu (§13).
    z D11 działa **wewnątrz** aplikacji; strefa nginx chroni przed zalewem samych
    żądań MCP. Do zmierzenia, ale nie jest to już „poza zakresem" (§7.3).
 
-3. **Healthcheck `/mcp`.** Grupa zadań menedżera może zostać „zatruta"
-   (wyjątek dziecka anuluje scope grupy) — proces wtedy żyje, ale **każde
-   `/mcp` zwraca błąd aż do recyklingu `max_requests`**. `StartMcp` wystawia
-   stan gotowości i licznik żywych zadań; `RouterHttp` przy martwym zadaniu
-   oddaje 503 zamiast 500, a monitoring ma po czym poznać, że endpoint padł
-   mimo zdrowego procesu (§5.1, §5.2).
+3. **Healthcheck `/mcp` — osobny adres `GET /mcp/status`.** Grupa zadań
+   menedżera może zostać „zatruta" (wyjątek dziecka anuluje scope grupy) —
+   proces wtedy żyje, ale **każde `/mcp` zwraca błąd aż do recyklingu
+   `max_requests`**. `RouterHttp` przy martwym menedżerze oddaje kontrolowane
+   503 (kolejność sprawdzeń ma znaczenie: `zapewnij()` rzuca, więc jego wyjątek
+   musi być złapany, inaczej gałąź 503 jest martwym kodem), a monitoring pyta
+   `/mcp/status`: `200 {"status":"ok"}` albo `503 {"status":"error"}` plus
+   `wystartowany`/`zywy` w treści (§5.1, §5.2).
+
+   **Nie wpinamy tego w `/health/`**: tamten adres jest sondą Dockera, więc 503
+   z powodu awarii izolowanej do MCP restartowałby cały appserver. `/mcp/status`
+   obsługuje warstwa ASGI — bez uwierzytelnienia, bez bazy i bez middleware —
+   i sam wyzwala leniwy start, żeby pod Daphne nie raportować „padnięte" na
+   świeżym, zdrowym workerze. Do monitoringu zewnętrznego wystarczy zwykły
+   `GET`; nginx nie wymaga zmian (adres wpada pod `location /`).
 
 Bez zmian: `stateless_http` czyni recykling `--max-requests` nieszkodliwym,
 `json_response` znosi problem `proxy_read_timeout`.
@@ -824,7 +854,15 @@ zobaczy override'u z fixture'a `settings` (§6.1); (ii)
 - `/mcp/auth` dociera do aplikacji MCP (przepisanie ścieżki, BL-1).
 - Menedżer sesji startuje w osobnym zadaniu i przeżywa żądanie, w którym go
   wywołano — także gdy w tym żądaniu był aktywny `fail_after` (BL-3).
-- Healthcheck rozróżnia stan procesu od stanu endpointu MCP (§10.3).
+- Healthcheck rozróżnia stan procesu od stanu endpointu MCP (§10.3):
+  `GET /mcp/status` → 200/503, a `/mcp` przy martwym menedżerze → **503**,
+  nie wyciekający wyjątek.
+- Host, dla którego nie da się jednoznacznie rozstrzygnąć uczelni (np.
+  `Host: appserver`), dostaje **421** — nie obsługę z otwartą bramką API (§7.2).
+- `BppError` (normalny komunikat do użytkownika) **nie** trafia do Rollbara;
+  nieoczekiwany wyjątek narzędzia i awaria startu menedżera — **tak** (§7.5).
+- Każde żądanie `/mcp` zostawia wpis w logu: ścieżka, kod, czas, host,
+  **obecność** bearera — nigdy jego wartość (§7.5).
 - Testy zielone; `ruff` czysty; `pre-commit` bez uwag.
 - Newsfragment w `src/bpp/newsfragments/`.
 - Istniejące testy `oauth_mcp` i `api_v1` przechodzą **bez modyfikacji**.
