@@ -6,8 +6,10 @@ import json
 import logging
 import time
 
+import rollbar
 from bpp_mcp.auth import set_current_bearer
 from django.conf import settings
+from django.db import Error as BladBazy
 
 from django_bpp.client_ip import get_client_ip
 from mcp_server.auth import BramkaBearera
@@ -64,6 +66,9 @@ class RouterHttp:
         self._start = start
         self._publiczny = BramkaBearera(mcp_app, wymagany=False)
         self._z_logowaniem = BramkaBearera(mcp_app, wymagany=True)
+        # Rate-limit zgłoszeń Rollbara przy awarii bazy w bramce uczelni
+        # (patrz ``_obsluz``) — patrz komentarz tam, dlaczego per instancję.
+        self._blad_bazy_uczelni_zgloszony = False
 
     async def __call__(self, scope, receive, send):
         sciezka = scope.get("path", "")
@@ -129,7 +134,32 @@ class RouterHttp:
         # Fail-closed na tożsamości uczelni (spec §7.2) — patrz
         # ``mcp_server.uczelnia``: host, dla którego nie da się rozstrzygnąć
         # uczelni, otwierałby bramkę API na oścież.
-        if not await host_rozstrzyga_uczelnie(dane.host):
+        try:
+            rozstrzygnieta = await host_rozstrzyga_uczelnie(dane.host)
+        except BladBazy:
+            # Bez tego `except` awaria bazy leciała poza aplikację ASGI jako
+            # gołe 500 bez treści i bez zgłoszenia do Rollbara (middleware
+            # Django nie jest na tej ścieżce) — wprost sprzeczne z B3, które
+            # ten sam diff wprowadził dla `zapewnij()`. Celujemy w
+            # `django.db.Error`, NIE w gołe `Exception`: szerszy złap
+            # przykryłby też błędy programistyczne w `host_rozstrzyga_uczelnie`.
+            #
+            # Rate-limit jak w `StartMcp._trzymaj` (B3, komentarz tam) —
+            # baza może leżeć dłużej niż jedno żądanie, a bez ograniczenia
+            # zgłaszalibyśmy Rollbarowi raz na KAŻDE żądanie w oknie awarii,
+            # czyli dokładnie ten hałas, który B2 usunęło z narzędzi. W
+            # odróżnieniu od startu menedżera, tu żądania NIE kończą się —
+            # więc zgłaszamy raz na epizod i resetujemy przy najbliższym
+            # powodzeniu, żeby kolejna, odrębna awaria też trafiła do
+            # Rollbara.
+            if not self._blad_bazy_uczelni_zgloszony:
+                logger.exception("mcp: awaria bazy w bramce uczelni")
+                rollbar.report_exc_info()
+                self._blad_bazy_uczelni_zgloszony = True
+            await self._niedostepny(send)
+            return
+        self._blad_bazy_uczelni_zgloszony = False
+        if not rozstrzygnieta:
             logger.warning(
                 "mcp: odrzucony host bez jednoznacznej uczelni: %r", dane.host
             )

@@ -133,12 +133,25 @@ def test_initialize_tools_list_tools_call_przez_pelny_stos(settings, uczelnia, a
 
 
 @pytest.mark.django_db(transaction=True)
-def test_zle_host_daje_421(settings):
-    """Ochrona przed DNS-rebinding SDK działa niezależnie od ALLOWED_HOSTS."""
+def test_zle_host_daje_421(settings, uczelnia):
+    """Ochrona przed DNS-rebinding SDK działa niezależnie od ALLOWED_HOSTS.
+
+    Host MUSI mieć swój ``Site`` — fixture ``uczelnia`` wiąże go z domeną
+    "testserver" (``src/fixtures/conftest_models.py``) — inaczej 421 zapada
+    w NASZEJ bramce uczelni (``mcp_server.uczelnia``, patrz
+    ``test_bramka_uczelni.py``), zanim żądanie w ogóle dojdzie do SDK, i test
+    niczego nie dowodzi o warstwie, którą deklaruje sprawdzać (zweryfikowane:
+    bez tej fixture baza jest pusta, więc 421 zapadał u nas — przy wyłączonej
+    ochronie SDK, ``_dozwolone_hosty() == []``, cała reszta suity
+    ``mcp_server`` była zielona, więc NIC nie pokrywało sprawdzenia hosta
+    przez SDK na żywym żądaniu). "testserver" jest jednak SPOZA
+    ``ALLOWED_HOSTS`` (``_router`` ustawia je na ``["bpp.example.test"]``),
+    więc odrzucenie musi przyjść z ``TransportSecuritySettings`` SDK.
+    """
     router = _router(settings)
     scope = zbuduj_scope(
         "/mcp",
-        host="zly.host",
+        host="testserver",
         naglowki={"content-type": "application/json"},
     )
     status, _, _ = uruchom(

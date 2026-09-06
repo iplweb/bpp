@@ -17,8 +17,12 @@ odmowy w instalacji wielouczelnianej i ZACHOWANIA działania w jednouczelnianej,
 gdzie fallback na ``SITE_ID`` jest legalny.
 """
 
-import pytest
+from unittest.mock import Mock
 
+import pytest
+from django.db import OperationalError
+
+from mcp_server import routing
 from mcp_server.routing import RouterHttp
 from mcp_server.start import StartMcp
 from mcp_server.tests.utils import uruchom, wywolaj, zbuduj_scope
@@ -110,3 +114,71 @@ def test_strona_dla_czlowieka_nie_jest_bramkowana(uczelnia1, uczelnia2):
         lambda: wywolaj(router, zbuduj_scope("/mcp/", metoda="GET", host="appserver"))
     )
     assert status == 200 and tresc == "DJANGO"
+
+
+async def _wybuchaj_baza(_host):
+    """Zastępuje ``host_rozstrzyga_uczelnie`` — symuluje padniętą bazę."""
+    raise OperationalError("baza nie odpowiada")
+
+
+def test_awaria_bazy_w_bramce_daje_503_nie_wyciekajacy_wyjatek(monkeypatch):
+    """Bloker: ``host_rozstrzyga_uczelnie`` sięga do bazy, a wywołanie w
+    ``_obsluz`` nie miało żadnej obsługi błędu — ``OperationalError`` wychodził
+    poza aplikację ASGI jako gołe 500 bez treści i bez zgłoszenia do Rollbara
+    (middleware Django nie jest na tej ścieżce). To jest NOWY tryb awarii:
+    przed falą naprawczą anonimowe żądanie na ``/mcp`` wcale nie dotykało
+    bazy w warstwie routingu. Ma dać kontrolowane 503, tak jak awaria startu
+    menedżera (B3), z zgłoszeniem do Rollbara."""
+    mock_rollbar = Mock()
+    monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_baza)
+    monkeypatch.setattr(routing, "rollbar", mock_rollbar)
+
+    router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
+    status, _, tresc = uruchom(lambda: wywolaj(router, zbuduj_scope("/mcp")))
+
+    assert status == 503
+    assert "MCP" not in tresc
+    mock_rollbar.report_exc_info.assert_called_once()
+
+
+def test_awaria_bazy_w_bramce_zglaszana_raz_na_epizod_nie_na_zadanie(monkeypatch):
+    """Nie odtwarzaj B2: gdy baza leży dłużej niż jedno żądanie, Rollbar ma
+    dostać JEDNO zgłoszenie na epizod awarii, a nie jedno na każde odrzucone
+    żądanie w pętli — inaczej martwa baza sama wyczerpałaby kwotę Rollbara
+    (tak jak `BppError` przed B2, zmierzone: 4 zgłoszenia na 4 wywołania)."""
+    mock_rollbar = Mock()
+    monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_baza)
+    monkeypatch.setattr(routing, "rollbar", mock_rollbar)
+
+    router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
+
+    async def scenariusz():
+        for _ in range(3):
+            await wywolaj(router, zbuduj_scope("/mcp"))
+
+    uruchom(scenariusz)
+    mock_rollbar.report_exc_info.assert_called_once()
+
+
+def test_awaria_bazy_w_bramce_zglaszana_ponownie_po_odzyskaniu(monkeypatch):
+    """Po powrocie bazy do życia flaga rate-limitu wraca do zera — kolejny,
+    ODRĘBNY epizod awarii musi znowu trafić do Rollbara, inaczej pierwsza
+    awaria na wiele godzin uciszałaby monitoring na resztę życia workera."""
+    mock_rollbar = Mock()
+    monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_baza)
+    monkeypatch.setattr(routing, "rollbar", mock_rollbar)
+
+    router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
+
+    async def zdrowa(_host):
+        return True
+
+    async def scenariusz():
+        await wywolaj(router, zbuduj_scope("/mcp"))
+        monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", zdrowa)
+        await wywolaj(router, zbuduj_scope("/mcp"))
+        monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_baza)
+        await wywolaj(router, zbuduj_scope("/mcp"))
+
+    uruchom(scenariusz)
+    assert mock_rollbar.report_exc_info.call_count == 2
