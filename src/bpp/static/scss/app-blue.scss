@@ -33,3 +33,7 @@ input[type=radio] {
   background-color: #d4bafb;
   border-color: gray;
 }
+
+// Print styles — MUSZA byc ostatnie: Foundation (foundation-print-styles
+// wyzej) emituje wlasny blok @media print i chcemy byc za nim w kaskadzie.
+@import "print";
