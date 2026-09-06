@@ -1,8 +1,13 @@
-import isbnlib
+import functools
+import itertools
+import operator
+
 from dal import autocomplete
 from django import http
+from django.db.models import Q
 
 from bpp.models import Uczelnia
+from bpp.util.isbn import warianty_isbn, wyglada_jak_isbn
 from import_common.util import check_if_doi, strip_doi_urls
 from pbn_api.client import PBNClient
 from pbn_api.exceptions import WillNotExportError
@@ -23,12 +28,16 @@ class Wydawnictwo_Nadrzedne_W_PBNAutocomplete(
     TITLE = "tytuł"
     DOI = "DOI"
 
+    #: Rodzaje publikacji PBN, które mogą być wydawnictwem nadrzędnym. Pole
+    #: ``type`` w API PBN jest skalarem, więc każdy rodzaj to osobne zapytanie —
+    #: stąd kolejność od najczęstszego. Praca zbiorowa pod redakcją
+    #: (``EDITED_BOOK``) jest typową „okładką" dla rozdziału; monografia
+    #: autorska (``BOOK``) zdarza się rzadko.
+    RODZAJE_NADRZEDNYCH = ("EDITED_BOOK", "BOOK")
+
     def qualify_query(self, txt):
         """Zwraca wartość klucza po którym wyszukiwać w PBN, ale i tym samym kwalifikuje
         wpisaną przez użytkownika wartość ze zmiennej txt jako ISBN, DOI lub tytuł"""
-
-        if not isbnlib.notisbn(txt):
-            return self.ISBN
 
         if check_mongoId(txt):
             return self.MONGO_ID
@@ -36,14 +45,13 @@ class Wydawnictwo_Nadrzedne_W_PBNAutocomplete(
         if check_if_doi(txt):
             return self.DOI
 
+        if wyglada_jak_isbn(txt):
+            return self.ISBN
+
         return self.TITLE
 
     def get_create_option(self, context, q):
         qual = self.qualify_query(q)
-        if qual == self.DOI:
-            q = strip_doi_urls(q)
-        elif qual == self.ISBN:
-            q = isbnlib.canonical(q)
 
         create_option = [
             {
@@ -96,8 +104,20 @@ class Wydawnictwo_Nadrzedne_W_PBNAutocomplete(
             case self.MONGO_ID:
                 return Publication.objects.filter(pk=self.q)
             case self.ISBN:
-                isbn = isbnlib.canonical(self.q)
-                return Publication.objects.filter(isbn=isbn)
+                # ``Publication.pull_up_isbn`` zapisuje ISBN znormalizowany, więc
+                # normalizujemy tylko stronę wpisaną przez użytkownika.
+                # ``icontains``, a nie równość, bo w PBN trafiają się dopiski
+                # („9788374307338 (druk)"); indeks GIN trigram na ``UPPER(isbn)``
+                # z migracji 0028 to obsługuje.
+                warunek = functools.reduce(
+                    operator.or_,
+                    (Q(isbn__icontains=wariant) for wariant in warianty_isbn(self.q)),
+                    # Element neutralny dla OR — chroni przed pustą listą
+                    # wariantów, gdyby ``qualify_query`` kiedyś się rozjechało
+                    # z ``warianty_isbn``.
+                    Q(pk__in=[]),
+                )
+                return Publication.objects.filter(warunek)
             case self.TITLE:
                 return Publication.objects.filter(title__icontains=self.q)
             case self.DOI:
@@ -107,18 +127,37 @@ class Wydawnictwo_Nadrzedne_W_PBNAutocomplete(
                 raise NotImplementedError(self.q)
 
     def _get_pbn_search_results(self, client, query_type, text):
-        """Get search results from PBN based on query type"""
+        """Wyszukaj w PBN. Zwraca leniwy iterator wyników (albo ``None``).
+
+        Zapytania są łączone leniwie: kolejne odpala się dopiero wtedy, gdy
+        poprzednie zostanie wyczerpane. Przy typowym trafieniu w pierwszy
+        wariant nie wykonuje się ani jedno dodatkowe zapytanie sieciowe.
+        """
         match query_type:
             case self.MONGO_ID:
                 return client.search_publications(objectId=text)
             case self.ISBN:
-                text = isbnlib.canonical(text)
-                return client.search_publications(isbn=text, type="BOOK")
+                # Bez ``type``: filtr ``isbn`` w API PBN i tak trafia wyłącznie
+                # w rekordy książkowe (``type="CHAPTER"`` + ISBN zwraca pustkę),
+                # a każde zawężenie odcinałoby EDITED_BOOK.
+                #
+                # ISBN musi iść w formie kanonicznej — PBN indeksuje ISBN bez
+                # separatorów, ale zapytania NIE normalizuje, więc wersja
+                # z myślnikami nie znajduje niczego, nawet gdy PBN przechowuje
+                # ISBN właśnie z myślnikami. Warianty ISBN-10/ISBN-13 podajemy
+                # osobno, bo PBN ich nie przelicza.
+                return itertools.chain.from_iterable(
+                    client.search_publications(isbn=wariant)
+                    for wariant in warianty_isbn(text)
+                )
             case self.TITLE:
-                return client.search_publications(title=text, type="BOOK")
+                return itertools.chain.from_iterable(
+                    client.search_publications(title=text, type=rodzaj)
+                    for rodzaj in self.RODZAJE_NADRZEDNYCH
+                )
             case self.DOI:
-                text = strip_doi_urls(text)
-                return client.search_publications(doi=text, type="BOOK")
+                # Bez ``type`` — DOI i tak identyfikuje pojedynczą pracę.
+                return client.search_publications(doi=strip_doi_urls(text))
             case _:
                 return None
 

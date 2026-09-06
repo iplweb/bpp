@@ -6,6 +6,7 @@ from dal import autocomplete
 from bpp.const import CHARAKTER_OGOLNY_KSIAZKA
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
+from bpp.util.isbn import filtruj_tytul_lub_isbn
 
 from .mixins import SanitizedAutocompleteMixin
 
@@ -13,7 +14,11 @@ from .mixins import SanitizedAutocompleteMixin
 class Wydawnictwo_NadrzedneAutocomplete(
     SanitizedAutocompleteMixin, autocomplete.Select2QuerySetView
 ):
-    """Autocomplete for parent publications (books only)."""
+    """Autocomplete for parent publications (books only).
+
+    Rozumie zarówno tytuł, jak i ISBN — ten drugi niezależnie od tego, czy
+    użytkownik wpisał go z myślnikami i czy z myślnikami zapisano go w bazie.
+    """
 
     def get_queryset(self):
         qs = Wydawnictwo_Zwarte.objects.filter(
@@ -21,7 +26,9 @@ class Wydawnictwo_NadrzedneAutocomplete(
         ).order_by("tytul_oryginalny", "pk")
 
         if self.q:
-            qs = qs.filter(tytul_oryginalny__icontains=self.q)
+            qs = filtruj_tytul_lub_isbn(
+                qs, self.q, "tytul_oryginalny", "isbn", "e_isbn"
+            )
         return qs
 
 
@@ -72,5 +79,7 @@ class PublicWydawnictwo_NadrzedneAutocomplete(Wydawnictwo_NadrzedneAutocomplete)
         ).order_by("tytul_oryginalny", "pk")
 
         if self.q:
-            qs = qs.filter(tytul_oryginalny__icontains=self.q)
+            qs = filtruj_tytul_lub_isbn(
+                qs, self.q, "tytul_oryginalny", "isbn", "e_isbn"
+            )
         return qs
