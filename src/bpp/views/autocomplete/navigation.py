@@ -13,7 +13,6 @@ from queryset_sequence import QuerySetSequence
 
 from bpp.models import Uczelnia
 from bpp.models.autor import Autor
-from bpp.permissions import moze_wprowadzac_dane
 from bpp.models.cache import Rekord
 from bpp.models.konferencja import Konferencja
 from bpp.models.patent import Patent
@@ -22,9 +21,9 @@ from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
 from bpp.models.profile import BppUser
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
+from bpp.permissions import moze_wprowadzac_dane
+from bpp.util.isbn import adnotacje_isbn, warunek_po_isbn
 from bpp.util.orm import build_fulltext_search_query
-from import_common.core import normalized_db_isbn
-from import_common.normalization import normalize_isbn
 
 from .mixins import SanitizedAutocompleteMixin
 from .search_services import (
@@ -157,7 +156,12 @@ class GlobalNavigationAutocomplete(
         ftx = scope_rekord_do_uczelni(Rekord.objects.fulltext_filter(self.q), uczelnia)
 
         qry = Q(pk__in=Rekord.objects.filter(doi__iexact=self.q).values_list("pk"))
-        qry |= Q(pk__in=Rekord.objects.filter(isbn__iexact=self.q))
+        if (warunek_isbn := warunek_po_isbn(self.q, "isbn", "e_isbn")) is not None:
+            qry |= Q(
+                pk__in=Rekord.objects.annotate(**adnotacje_isbn("isbn", "e_isbn"))
+                .filter(warunek_isbn)
+                .values_list("pk")
+            )
         if jest_pbn_uid(self.q):
             qry |= Q(pk__in=Rekord.objects.filter(pbn_uid_id=self.q).values_list("pk"))
         glowny = scope_rekord_do_uczelni(
@@ -508,18 +512,20 @@ class AdminNavigationAutocomplete(
         ]:
             query_filter = self._build_publication_filter(klass)
 
-            # Handle ISBN normalization if applicable
-            annotate_isbn = False
-            if hasattr(klass, "isbn"):
-                ni = normalize_isbn(self.q)
-                if len(ni) < 20:
-                    query_filter |= Q(normalized_isbn=ni)
-                    annotate_isbn = True
+            # ISBN: porównanie po formie znormalizowanej PO OBU STRONACH.
+            # W bazie numery zapisane są tak, jak wpisał je użytkownik — raz
+            # z myślnikami, raz ze spacjami, raz bez niczego — więc samo
+            # zdjęcie separatorów z wpisanego tekstu nie wystarcza. Szukamy
+            # też po ``e_isbn`` i po odpowiedniku ISBN-10/ISBN-13, bo rekord
+            # bywa zapisany w innej długości niż ta, którą pamięta użytkownik.
+            pola_isbn = [pole for pole in ("isbn", "e_isbn") if hasattr(klass, pole)]
+            warunek_isbn = warunek_po_isbn(self.q, *pola_isbn) if pola_isbn else None
 
-            if annotate_isbn:
-                qset = klass.objects.annotate(
-                    normalized_isbn=normalized_db_isbn
-                ).filter(query_filter)
+            if warunek_isbn is not None:
+                query_filter |= warunek_isbn
+                qset = klass.objects.annotate(**adnotacje_isbn(*pola_isbn)).filter(
+                    query_filter
+                )
             else:
                 qset = klass.objects.filter(query_filter)
 
