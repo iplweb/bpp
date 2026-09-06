@@ -49,6 +49,12 @@
         animation: wizardFadeIn 0.3s ease-out;
     }
     </style>
+    {# Kasuje nieświeże snapshoty HTMX-a dla stron importera z localStorage. #}
+    {# Musi pójść PRZED htmx.min.js: `restoreHistory()` czyta cache mimo #}
+    {# `hx-history="false"` (ta flaga blokuje tylko zapis), więc bez tego #}
+    {# „Wstecz" przywracał układ kroku 1 sprzed kafelków. Szczegóły w pliku. #}
+    <script src="{% static 'importer_publikacji/js/history_cache.js' %}"
+            data-prefiks="{% url 'importer_publikacji:index' %}"></script>
     {# HTMX self-hostowany — bez zależności od zewnętrznego CDN-a. #}
     <script src="{% static 'liveops/vendor/htmx.min.js' %}"></script>
     <script>
