@@ -614,6 +614,35 @@ Sprawdzenie **musi** być per żądanie: allowlista transportowa (§6.1) liczy s
 przy imporcie `django_bpp.asgi`, a import modułu ASGI nie może zależeć od bazy;
 powiązanie host→`Site`→`Uczelnia` to zaś dane, nie konfiguracja.
 
+**Poprawność samego nagłówka sprawdzamy PRZED bramką uczelni.** `Host` walidujemy
+`django.http.request.split_domain_port` (ten sam `host_validation_re`, którego
+używa `HttpRequest.get_host()`), bo Django-owe `get_host()` na tej ścieżce nie
+biegnie. Bez tego host z niepoprawnym portem (`<uczelnia>:abc`) przechodził
+allowlistę SDK (dopasowuje `host:*` przez `startswith`, portu nie waliduje)
+i bramkę uczelni (obcinała port), a wysypywał się dopiero w `httpx.URL` przy
+budowie `base_url` — wyjątkiem, który nie jest ani `httpx.HTTPError`, ani
+`BppError`, więc wrapper narzędzi zgłaszał go do Rollbara. Jedno anonimowe
+żądanie = jedno zgłoszenie; `curl` w pętli wyczerpywał kwotę. Niepoprawny `Host`
+dostaje teraz **421**, zanim cokolwiek dotknie bazy.
+
+#### Czego ta propagacja NIE daje — dryf w `/api/v1/`
+
+**Propagacja `Host` steruje bramką API (`BramkaApiV1`) i filtrem ukrytych
+statusów korekty — ale NIE zawęża do uczelni typowanych endpointów publikacji.**
+`WydawnictwoCiagleViewSet`, `WydawnictwoZwarteViewSet`, `PatentViewSet`,
+`Praca_DoktorskaViewSet` i `Praca_HabilitacyjnaViewSet` mają wyłącznie
+`UkryjStatusyKorektyMixin` oraz `exclude(nie_eksportuj_przez_api=True)`; nie
+wołają `scope_rekord_do_uczelni` ani `scope_rekord_api`. Pełną politykę
+(`api_v1.scoping.scope_rekord_api` = uczelnia + ukryte statusy +
+`nie_eksportuj_przez_api`) stosują tylko `szukaj`, `zapytanie` i `recent`.
+
+W instalacji wielouczelnianej oznacza to, że pod hostem uczelni A typowany
+endpoint publikacji zwróci także rekordy uczelni B. **To jest stan
+PREEGZYSTUJĄCY w `/api/v1/`, nie wprowadzony przez `/mcp`** — `/mcp` woła te
+same endpointy, więc dziedziczy ich zachowanie i nic tu nie pogarsza ani nie
+naprawia. Naprawa idzie osobnym PR-em do `/api/v1/` (decyzja właściciela);
+tutaj spec ma tylko nie deklarować izolacji, której nie ma. Patrz §15.9.
+
 ### 7.3 Throttling
 
 `ASGITransport` ustawia `client=("127.0.0.1", 123)`, więc bez interwencji
@@ -682,6 +711,37 @@ Przegląd `MIDDLEWARE` (`base.py:328-351`) dla **zewnętrznego** `/mcp`:
 | `CustomRollbarNotifierMiddleware` | §7.5 |
 | `Session`/`CSRF`/`Auth`/`SessionSecurity`/`Axes` | nieistotne **pod warunkiem D6** |
 | `LocaleMiddleware` | komunikaty narzędzi w domyślnym języku — kosmetyka |
+
+### 7.8 Audience (RFC 8707) — deklarujemy i egzekwujemy
+
+PRM (§6) deklaruje zasób `https://<host>/mcp`. Klient MCP zgodny ze
+specyfikacją autoryzacji 2025-06-18 **MUSI** wysłać `resource=` z kanonicznym
+adresem serwera MCP — **wartość bierze z adresu, pod który się łączy, nie
+z naszego PRM**, więc usunięcie pola z PRM niczego by nie zmieniło. DOT zapisuje
+ją w `Grant.resource`, a potem w `AccessToken.resource` (oauthlib wciąga każdy
+parametr query/body do `Request._params`).
+
+Wynikały z tego dwie rzeczy naraz:
+
+- **nie egzekwowaliśmy** audience — `BramkaBearera` sprawdzała ważność, konto
+  i scope, ale nie `allows_audience()`; token zawężony do hosta uczelni A
+  przechodził bramkę pod hostem uczelni B;
+- **domyślny walidator DOT** (`validate_resource_as_url_prefix`, prefiks
+  ścieżki) odrzucał 401-ką żądanie wewnętrzne serwera MCP do własnego
+  `/api/v1/` — bo `/api/v1/...` nie zaczyna się od `/mcp`. Zmierzone na pełnym
+  stosie: token zgodnego klienta przechodził bramkę, a KAŻDE wywołanie
+  narzędzia kończyło się `BppError: Błąd HTTP 401`. Cała ścieżka `/mcp/auth`
+  była dla zgodnego klienta martwa.
+
+Rozwiązanie: audience egzekwujemy **po originie**, nie po prefiksie ścieżki.
+`BramkaBearera` woła `token.allows_audience(f"{schemat}://{host}/mcp")`,
+a `OAUTH2_PROVIDER["RESOURCE_SERVER_TOKEN_RESOURCE_VALIDATOR"] =
+"oauth_mcp.audience.waliduj_audience_po_originie"`. Uzasadnienie: `/mcp`
+i `/api/v1/` to **jeden** Resource Server — ta sama instancja, te same dane, ten
+sam scope `read`, a narzędzie MCP z definicji czyta `/api/v1/`. RFC 8707 chroni
+przed użyciem tokenu u **innego** Resource Servera, a w BPP „inny" znaczy „inny
+host" — i to nadal egzekwujemy. Ograniczenie, którego to nie usuwa (token bez
+`resource`), jest w §15.10.
 
 ---
 
@@ -944,3 +1004,19 @@ Zostają:
 8. Zgłoszenie upstream braku `terminate()` w `finally`
    (`streamable_http_manager.py:246-249`) — wyciek zadania przy rozłączeniu
    klienta (§5.2).
+9. **Typowane endpointy publikacji w `/api/v1/` nie są zawężane do uczelni**
+   (`wydawnictwo_ciagle`, `wydawnictwo_zwarte`, `patent`, `praca_doktorska`,
+   `praca_habilitacyjna` — same `UkryjStatusyKorektyMixin` +
+   `nie_eksportuj_przez_api`, bez `scope_rekord_do_uczelni`). Dryf
+   PREEGZYSTUJĄCY, nie wprowadzony przez ten PR; `/mcp` woła te same endpointy,
+   więc dziedziczy zachowanie. Do zamknięcia osobnym PR-em w `/api/v1/`
+   (decyzja właściciela). Szczegóły: §7.2.
+10. **Token OAuth wydany BEZ parametru `resource` pozostaje nieograniczony.**
+    `AccessToken.allows_audience` zwraca dla pustej listy `True`, zanim
+    jakikolwiek walidator zostanie zawołany — to kontrakt DOT (kompatybilność
+    wstecz z tokenami sprzed RFC 8707) i nie da się go zmienić bez przedefinio-
+    wania semantyki dla całego projektu. W instalacji wielouczelnianej taki
+    token, wydany pod hostem uczelni A, zadziała pod hostem uczelni B. Tokeny
+    klientów zgodnych ze specyfikacją MCP 2025-06-18 **niosą** `resource`, więc
+    są związane z originem (§7.2, `oauth_mcp.audience`); dotyczy to wyłącznie
+    tokenów zakładanych ręcznie i klientów nieimplementujących RFC 8707.

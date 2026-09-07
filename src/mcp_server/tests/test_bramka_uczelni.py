@@ -22,8 +22,9 @@ from unittest.mock import Mock
 import pytest
 from django.db import OperationalError
 from redis.exceptions import ConnectionError as BladRedisa
+from redis.exceptions import TimeoutError as PrzekroczonyCzasRedisa
 
-from mcp_server import routing
+from mcp_server import auth, routing
 from mcp_server.routing import RouterHttp
 from mcp_server.start import StartMcp
 from mcp_server.tests.utils import uruchom, wywolaj, zbuduj_scope
@@ -262,4 +263,85 @@ def test_niespodziewany_wyjatek_w_obsludze_daje_503_i_trafia_do_rollbara(
 
     assert status == 503
     assert "MCP" not in tresc
+    mock_rollbar.report_exc_info.assert_called_once()
+
+
+async def _wybuchaj_timeout_redisa(_host):
+    """Symuluje Redisa, który WISI (nie odmawia) — ``TimeoutError``, nie
+    ``ConnectionError``."""
+    raise PrzekroczonyCzasRedisa("Redis nie odpowiada w czasie")
+
+
+async def _zdrowa_uczelnia(_host):
+    """Bramka uczelni PRZECHODZI — scenariusz „leżąca baza + ŻYWY Redis".
+
+    ``sites.site`` i ``bpp.uczelnia`` są w ``CACHEOPS``, więc przy żywym Redisie
+    rozstrzygnięcie uczelni może iść z cache'u nawet wtedy, gdy baza leży. Wtedy
+    rate-limitowany ``except`` bramki uczelni w ogóle się nie uruchamia,
+    a awaria wychodzi dopiero przy weryfikacji bearera.
+    """
+    return True
+
+
+def _wybuchajacy_token(wyjatek):
+    async def zweryfikuj(_raw, _zasob):
+        raise wyjatek
+
+    return zweryfikuj
+
+
+def _z_bearerem():
+    return zbuduj_scope("/mcp", naglowki={"authorization": "Bearer COKOLWIEK"})
+
+
+def test_awaria_bazy_w_bramce_bearera_daje_503_i_zglasza_raz_na_epizod(monkeypatch):
+    """Znalezisko #3 z recenzji: ścieżka ``BramkaBearera`` → ``zweryfikuj_token``
+    nie miała własnego ``except``, więc awaria bazy na TEJ warstwie lądowała
+    w ogólnej siatce bezpieczeństwa w ``__call__`` — a ta zgłasza BEZ
+    rate-limitu, czyli raz na KAŻDE żądanie z bearerem.
+
+    Trzy żądania w jednym epizodzie rozstrzygają, KTÓRY ``except`` zadziałał:
+    rate-limitowany da JEDNO zgłoszenie, sama siatka dałaby TRZY. Bramka
+    uczelni jest tu celowo zdrowa — inaczej żądanie nie doszłoby do bearera
+    i test niczego by nie dowodził o warstwie, którą deklaruje sprawdzać.
+    """
+    mock_rollbar = Mock()
+    monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _zdrowa_uczelnia)
+    monkeypatch.setattr(routing, "rollbar", mock_rollbar)
+    monkeypatch.setattr(
+        auth, "zweryfikuj_token", _wybuchajacy_token(OperationalError("baza leży"))
+    )
+
+    router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
+
+    async def scenariusz():
+        return [await wywolaj(router, _z_bearerem()) for _ in range(3)]
+
+    wyniki = uruchom(scenariusz)
+    assert [status for status, _, _ in wyniki] == [503, 503, 503]
+    assert all("MCP" not in tresc for _, _, tresc in wyniki)
+    mock_rollbar.report_exc_info.assert_called_once()
+
+
+def test_timeout_redisa_tez_jest_awaria_infrastruktury_a_nie_hałasem(monkeypatch):
+    """``redis.exceptions.TimeoutError`` NIE jest podklasą ``ConnectionError``.
+
+    Jego MRO to ``RedisError`` → ``Exception`` (zweryfikowane w zainstalowanym
+    pakiecie), więc ``except (BladBazy, BladRedisa)`` go NIE łapał — a WISZĄCY
+    Redis (w odróżnieniu od Redisa ODMAWIAJĄCEGO połączenia) daje właśnie ten
+    typ. Bez niego w ``BLEDY_INFRASTRUKTURY`` każdy taki epizod leciał do siatki
+    bezpieczeństwa, czyli jedno zgłoszenie na żądanie. Trzy żądania odróżniają
+    te dwa przypadki: 1 zgłoszenie = rate-limitowany except, 3 = sama siatka.
+    """
+    mock_rollbar = Mock()
+    monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_timeout_redisa)
+    monkeypatch.setattr(routing, "rollbar", mock_rollbar)
+
+    router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
+
+    async def scenariusz():
+        return [await wywolaj(router, zbuduj_scope("/mcp")) for _ in range(3)]
+
+    wyniki = uruchom(scenariusz)
+    assert [status for status, _, _ in wyniki] == [503, 503, 503]
     mock_rollbar.report_exc_info.assert_called_once()

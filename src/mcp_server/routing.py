@@ -11,15 +11,37 @@ from bpp_mcp.auth import set_current_bearer
 from django.conf import settings
 from django.db import Error as BladBazy
 from redis.exceptions import ConnectionError as BladRedisa
+from redis.exceptions import TimeoutError as PrzekroczonyCzasRedisa
 
 from django_bpp.client_ip import get_client_ip
 from mcp_server.auth import BramkaBearera
-from mcp_server.kontekst import DaneZadania, dane_zadania, schemat_zadania
+from mcp_server.kontekst import (
+    DaneZadania,
+    dane_zadania,
+    domena_hosta,
+    schemat_zadania,
+)
 from mcp_server.start import StartMcp
 from mcp_server.uczelnia import host_rozstrzyga_uczelnie
 from mcp_server.zdrowie import stan_startu
 
 logger = logging.getLogger(__name__)
+
+#: „Infrastruktura pod ``/mcp`` nie odpowiada" — JEDEN epizod, niezależnie od
+#: tego, która warstwa go zauważyła. Trzy typy, nie jeden:
+#:
+#: * ``BladBazy`` (``django.db.Error``) — leżący PostgreSQL;
+#: * ``BladRedisa`` (``redis.exceptions.ConnectionError``) — ``sites.site``
+#:   i ``bpp.uczelnia`` są w ``CACHEOPS`` (``production.py``), a
+#:   ``CACHEOPS_DEGRADE_ON_FAILURE`` nie jest ustawione, więc leżący Redis
+#:   rzuca wyjątkiem Z SAMEGO ORM-u, nie z bazy;
+#: * ``PrzekroczonyCzasRedisa`` (``redis.exceptions.TimeoutError``) — NIE jest
+#:   podklasą ``ConnectionError`` (jego MRO to ``RedisError`` → ``Exception``,
+#:   zweryfikowane w zainstalowanym pakiecie). WISZĄCY Redis daje więc inny typ
+#:   niż Redis ODMAWIAJĄCY połączenia i bez tego wpisu leciałby do ogólnej
+#:   siatki bezpieczeństwa w ``__call__``, która zgłasza BEZ rate-limitu —
+#:   czyli dokładnie ten hałas raz-na-żądanie, który rate-limit ma wygaszać.
+BLEDY_INFRASTRUKTURY = (BladBazy, BladRedisa, PrzekroczonyCzasRedisa)
 
 #: Budżet czasu jednego wywołania narzędzia (spec D11).
 BUDZET_SEKUND = getattr(settings, "MCP_BUDZET_SEKUND", 25.0)
@@ -67,10 +89,11 @@ class RouterHttp:
         self._start = start
         self._publiczny = BramkaBearera(mcp_app, wymagany=False)
         self._z_logowaniem = BramkaBearera(mcp_app, wymagany=True)
-        # Rate-limit zgłoszeń Rollbara przy awarii bazy/cache w bramce
-        # uczelni (patrz ``_obsluz``, obsługuje ``BladBazy`` ORAZ
-        # ``BladRedisa``) — komentarz tam wyjaśnia, dlaczego per instancję.
-        self._blad_bazy_uczelni_zgloszony = False
+        # Rate-limit zgłoszeń Rollbara przy awarii infrastruktury — JEDNA flaga
+        # na OBIE bramki sięgające do bazy (uczelni i bearera), bo to JEDEN
+        # epizod „infrastruktura nie odpowiada", a nie dwa. Patrz
+        # ``_zglos_awarie_infrastruktury``.
+        self._awaria_infrastruktury_zgloszona = False
 
     async def __call__(self, scope, receive, send):
         sciezka = scope.get("path", "")
@@ -111,7 +134,21 @@ class RouterHttp:
         dane = None
         try:
             dane = self._dane(scope)
-            await self._obsluz(sciezka, scope, receive, sledzacy, dane)
+            if not domena_hosta(dane.host):
+                # NAJPIERW poprawność samego nagłówka, PRZED bramką uczelni
+                # i przed dotknięciem bazy. Powód w ``kontekst.domena_hosta``:
+                # allowlista SDK przepuszcza ``host:<cokolwiek>``, bramka
+                # uczelni obcinała port i widziała prawdziwy ``Site``, a
+                # ``httpx.URL`` w kliencie wysypywał się dopiero na budowie
+                # ``base_url`` — wyjątkiem, który wrapper narzędzi zgłaszał do
+                # Rollbara. Kontrolowane 421 zamyka ten kanał, a jednocześnie
+                # nie ujawnia, co serwis obsługuje (patrz ``_nieznany_host``).
+                logger.warning(
+                    "mcp: odrzucony niepoprawny nagłówek Host: %r", dane.host
+                )
+                await self._nieznany_host(sledzacy)
+                return
+            await self._obsluz(sciezka, scope, receive, sledzacy, dane, widziany)
         except Exception:
             # JEDNA siatka bezpieczeństwa na całą obsługę żądania — patrz
             # komentarz nad `except (BladBazy, BladRedisa)` w `_obsluz` o
@@ -138,8 +175,39 @@ class RouterHttp:
                 time.monotonic() - poczatek,
             )
 
-    async def _obsluz(self, sciezka, scope, receive, send, dane: DaneZadania):
-        """Właściwa obsługa żądania do ``/mcp`` — bez warstwy logowania."""
+    def _zglos_awarie_infrastruktury(self, komunikat: str) -> None:
+        """Zgłoś awarię bazy/cache RAZ NA EPIZOD, nie raz na żądanie.
+
+        Rate-limit jak w ``StartMcp._trzymaj`` (B3, komentarz tam) — baza może
+        leżeć dłużej niż jedno żądanie, a bez ograniczenia zgłaszalibyśmy
+        Rollbarowi raz na KAŻDE żądanie w oknie awarii, czyli dokładnie ten
+        hałas, który B2 usunęło z narzędzi. W odróżnieniu od startu menedżera tu
+        żądania NIE kończą się, więc flaga wraca do zera dopiero po żądaniu
+        obsłużonym w CAŁOŚCI bez awarii infrastruktury (patrz ``else`` przy
+        bramce bearera) — kolejny, ODRĘBNY epizod znów trafi do Rollbara.
+
+        Dlaczego JEDNA flaga na obie bramki: „baza/Redis nie odpowiada" to jeden
+        stan świata. Osobna flaga per bramka znaczyłaby, że ten sam epizod
+        zgłasza się dwa razy, a w scenariuszu „leżąca baza + ŻYWY Redis"
+        (cacheops przepuszcza bramkę uczelni z cache'u, więc awaria wychodzi
+        dopiero przy weryfikacji bearera) flaga uczelni i tak by nie zadziałała.
+        """
+        if self._awaria_infrastruktury_zgloszona:
+            return
+        logger.exception(komunikat)
+        rollbar.report_exc_info()
+        self._awaria_infrastruktury_zgloszona = True
+
+    async def _obsluz(
+        self, sciezka, scope, receive, send, dane: DaneZadania, widziany: dict
+    ):
+        """Właściwa obsługa żądania do ``/mcp`` — bez warstwy logowania.
+
+        ``widziany`` to ten sam słownik, który ``__call__`` wypełnia w
+        ``sledzacy``: potrzebny tu, żeby awaria PO rozpoczęciu odpowiedzi nie
+        próbowała wysłać drugiego ``http.response.start`` (ASGI na to nie
+        pozwala).
+        """
         # PIERWSZA instrukcja i POZA jakimkolwiek cancel scope'em (spec §5.1).
         try:
             await self._start.zapewnij()
@@ -162,40 +230,19 @@ class RouterHttp:
         # uczelni, otwierałby bramkę API na oścież.
         try:
             rozstrzygnieta = await host_rozstrzyga_uczelnie(dane.host)
-        except (BladBazy, BladRedisa):
+        except BLEDY_INFRASTRUKTURY:
             # Bez tego `except` awaria bazy/cache leciała poza aplikację ASGI
             # jako gołe 500 bez treści i bez zgłoszenia do Rollbara (middleware
             # Django nie jest na tej ścieżce) — wprost sprzeczne z B3, które
             # ten sam diff wprowadził dla `zapewnij()`. Celujemy w konkretne
-            # typy (`django.db.Error` ORAZ `redis.exceptions.ConnectionError`),
-            # NIE w gołe `Exception` — dla drugiego mamy siatkę bezpieczeństwa
-            # w `__call__`, a tu szerszy złap przykryłby błędy programistyczne
-            # w `host_rozstrzyga_uczelnie` i pozbawił je jej raportowania
-            # (patrz tamten `except Exception`, bez rate-limitu poniżej).
-            #
-            # `BladRedisa` jest tu obok `BladBazy`, nie osobno: `sites.site`
-            # i `bpp.uczelnia` są w `CACHEOPS` (`production.py`), a
-            # `CACHEOPS_DEGRADE_ON_FAILURE` nie jest ustawione, więc leżący
-            # Redis daje `redis.exceptions.ConnectionError` z samego ORM-u
-            # (nie z bazy) — `except BladBazy` samo w sobie by tego nie
-            # złapało, mimo że to DOKŁADNIE ten sam epizod „infrastruktura pod
-            # `/mcp` nie odpowiada", który ten blok ma obsłużyć.
-            #
-            # Rate-limit jak w `StartMcp._trzymaj` (B3, komentarz tam) —
-            # baza może leżeć dłużej niż jedno żądanie, a bez ograniczenia
-            # zgłaszalibyśmy Rollbarowi raz na KAŻDE żądanie w oknie awarii,
-            # czyli dokładnie ten hałas, który B2 usunęło z narzędzi. W
-            # odróżnieniu od startu menedżera, tu żądania NIE kończą się —
-            # więc zgłaszamy raz na epizod i resetujemy przy najbliższym
-            # powodzeniu, żeby kolejna, odrębna awaria też trafiła do
-            # Rollbara.
-            if not self._blad_bazy_uczelni_zgloszony:
-                logger.exception("mcp: awaria bazy w bramce uczelni")
-                rollbar.report_exc_info()
-                self._blad_bazy_uczelni_zgloszony = True
+            # typy (patrz `BLEDY_INFRASTRUKTURY`), NIE w gołe `Exception` — dla
+            # drugiego mamy siatkę bezpieczeństwa w `__call__`, a tu szerszy
+            # złap przykryłby błędy programistyczne w
+            # `host_rozstrzyga_uczelnie` i pozbawił je jej raportowania
+            # (patrz tamten `except Exception`, bez rate-limitu).
+            self._zglos_awarie_infrastruktury("mcp: awaria bazy w bramce uczelni")
             await self._niedostepny(send)
             return
-        self._blad_bazy_uczelni_zgloszony = False
         if not rozstrzygnieta:
             logger.warning(
                 "mcp: odrzucony host bez jednoznacznej uczelni: %r", dane.host
@@ -219,6 +266,32 @@ class RouterHttp:
                 await self._z_logowaniem(scope, receive, send)
             else:
                 await self._publiczny(scope, receive, send)
+        except BLEDY_INFRASTRUKTURY:
+            # Druga — obok bramki uczelni — warstwa sięgająca do bazy PRZED
+            # aplikacją MCP: `BramkaBearera` → `auth.zweryfikuj_token`. Bez tego
+            # `except` awaria na TEJ ścieżce leciała do ogólnej siatki
+            # bezpieczeństwa w `__call__`, która zgłasza BEZ rate-limitu.
+            #
+            # Scenariusz, w którym to boli: leżąca baza + ŻYWY Redis. Bramka
+            # uczelni przechodzi wtedy z cacheops (`sites.site` i `bpp.uczelnia`
+            # są w `CACHEOPS`), więc jej rate-limitowany `except` w ogóle się
+            # nie uruchamia, a KAŻDE żądanie z bearerem daje osobne zgłoszenie
+            # z siatki. Siatka adresuje *wyjątek*, nie *hałas* — rate-limit
+            # musi być tutaj.
+            self._zglos_awarie_infrastruktury("mcp: awaria bazy w bramce bearera")
+            if "status" not in widziany:
+                # Aplikacja MCP mogła już zacząć odpowiadać (drugi
+                # `http.response.start` jest w ASGI błędem) — patrz ta sama
+                # ostrożność w siatce w `__call__`.
+                await self._niedostepny(send)
+        else:
+            # Flaga wraca do zera dopiero tutaj, po żądaniu przeprowadzonym
+            # przez OBIE bramki bez awarii. Reset zaraz po bramce uczelni
+            # (jak było wcześniej) kasowałby rate-limit w scenariuszu „baza
+            # leży, Redis żyje": każde kolejne żądanie najpierw resetowałoby
+            # flagę na bramce uczelni (przechodzi z cache'u), a potem zgłaszało
+            # awarię bearera — czyli znowu raz na żądanie.
+            self._awaria_infrastruktury_zgloszona = False
         finally:
             dane_zadania.reset(zeton)
             # set_current_bearer nie zwraca tokenu resetu, więc czyścimy

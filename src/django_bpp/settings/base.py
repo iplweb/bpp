@@ -1996,4 +1996,15 @@ OAUTH2_PROVIDER = {
     "ROTATE_REFRESH_TOKEN": True,
     "ACCESS_TOKEN_EXPIRE_SECONDS": 60 * 30,  # 30 min
     "REFRESH_TOKEN_EXPIRE_SECONDS": 60 * 60 * 24 * 7,  # 7 dni (NIE None!)
+    # RFC 8707: klient MCP zgodny ze spec 2025-06-18 MUSI wysyłać
+    # `resource=https://<host>/mcp`, więc tokeny są zawężone do adresu
+    # serwera MCP. Domyślny walidator DOT dopasowuje PREFIKSEM ŚCIEŻKI, przez
+    # co żądanie wewnętrzne serwera MCP do własnego `/api/v1/` dostawało 401 —
+    # zalogowana ścieżka `/mcp/auth` była martwa dla każdego zgodnego klienta.
+    # Nasz walidator egzekwuje ORIGIN (schemat+host+port), bo `/mcp`
+    # i `/api/v1/` to jeden Resource Server; pełne uzasadnienie w docstringu
+    # `oauth_mcp.audience`.
+    "RESOURCE_SERVER_TOKEN_RESOURCE_VALIDATOR": (
+        "oauth_mcp.audience.waliduj_audience_po_originie"
+    ),
 }

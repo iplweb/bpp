@@ -14,6 +14,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 
 from django.conf import settings
+from django.http.request import split_domain_port
 
 
 @dataclass(frozen=True)
@@ -45,6 +46,41 @@ def biezace() -> DaneZadania:
             "uruchomiona albo ContextVar został zresetowany za wcześnie."
         )
     return dane
+
+
+def domena_hosta(host: str) -> str:
+    """Zwróć część domenową nagłówka ``Host`` — albo ``""``, gdy jest niepoprawny.
+
+    JEDNO źródło prawdy o tym, czym jest poprawny ``Host`` na ścieżce ``/mcp``,
+    używane w DWÓCH miejscach: przez bramkę w ``routing.RouterHttp`` (odrzuca
+    niepoprawny nagłówek 421-ką) i przez ``klient.BppClientInProcess`` (porównuje
+    host URL-a wychodzącego z hostem żądania). Rozjazd między tymi dwoma
+    miejscami już raz kosztował — patrz komentarze w obu.
+
+    Używamy ``django.http.request.split_domain_port``, czyli DOKŁADNIE tej samej
+    funkcji (i tego samego ``host_validation_re`` z numerycznym portem), którą
+    Django stosuje w ``HttpRequest.get_host()``. Dlaczego nie własne
+    ``host.split(":")[0]``:
+
+    * ``TransportSecuritySettings`` SDK dopasowuje wzorzec ``host:*`` przez
+      ``host.startswith(base_host + ":")`` (``mcp/server/transport_security.py``)
+      — portu NIE waliduje, więc ``uczelnia.example:abc``, ``:1:2`` czy ``:0x1F``
+      przechodzą jego kontrolę;
+    * ``uczelnia._rozstrzygalny`` obcinał port przez ``split(":")[0]``, więc
+      dostawał prawdziwy ``Site`` i przepuszczał żądanie dalej;
+    * ``klient.BppClientInProcess`` budował ``Config(base_url=f"{scheme}://
+      {host}")``, a ``httpx.URL`` na niepoprawnym porcie rzucał ``ValueError``
+      — czyli wyjątek, który NIE jest ani ``httpx.HTTPError`` (więc
+      ``BppClient._request`` go nie łapie), ani ``BppError`` (więc wrapper
+      ``aplikacja._z_raportowaniem`` robił ``rollbar.report_exc_info()``).
+
+    Razem dawało to anonimowy, nielimitowany kanał do Rollbara: jedno żądanie
+    z ``Host: <uczelnia>:abc`` = jedno zgłoszenie, a ``curl`` w pętli wyczerpywał
+    kwotę i topił realne alerty. Django-owe ``get_host()`` (z tym samym regexem)
+    NIE jest na tej ścieżce, bo żądanie nie przechodzi przez ``HttpRequest``.
+    """
+    domena, _port = split_domain_port(host)
+    return domena
 
 
 def _naglowek_schematu() -> tuple[str, str]:

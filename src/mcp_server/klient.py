@@ -8,7 +8,7 @@ import httpx
 from bpp_mcp.client import BppClient, BppError, TrybAuth
 from bpp_mcp.config import Config
 
-from mcp_server.kontekst import biezace
+from mcp_server.kontekst import biezace, domena_hosta
 
 
 class KlientScope:
@@ -78,7 +78,26 @@ class BppClientInProcess(BppClient):
             )
         if not str(full.path).startswith("/api/v1/"):
             raise BppError(f"Ścieżka spoza /api/v1/ jest niedozwolona: {full.path}")
-        if full.host and full.host != dane.host:
+        # Porównujemy DOMENĘ z domeną, nie z surowym nagłówkiem ``Host``.
+        # ``httpx.URL.host`` NIGDY nie zawiera portu (port jest w ``.port``),
+        # a ``dane.host`` to nagłówek tak, jak przyszedł — z portem włącznie.
+        # Poprzednia wersja porównywała te dwie różne rzeczy wprost, więc pod
+        # Daphne (``run-site run`` słucha na losowym porcie: ``Host:
+        # localhost:54321``) KAŻDE wywołanie narzędzia kończyło się tym
+        # błędem — czyli kryterium spec §12 „``/mcp`` działa pod Daphne" było
+        # niespełnione, a testy tego nie widziały, bo używały wyłącznie hostów
+        # bez portu.
+        #
+        # Domena to WŁAŚCIWA granulacja, a nie osłabienie kontroli: transportem
+        # jest ``httpx.ASGITransport``, więc adres nie trafia do żadnego
+        # gniazda — host służy WYŁĄCZNIE do zbudowania nagłówka ``Host``
+        # żądania wewnętrznego, a to on decyduje o ``Site`` → ``Uczelnia``
+        # (spec §7.2). Rozstrzyganie ``Site`` i tak port pomija, więc różnica
+        # portów nie może wynieść żądania poza uczelnię; obcy host — może,
+        # i dalej jest odrzucany. ``domena_hosta`` to ta sama funkcja, którą
+        # ``RouterHttp`` waliduje nagłówek na wejściu, więc do tego miejsca
+        # ``dane.host`` jest już poprawny i normalizacja się nie rozjedzie.
+        if full.host and full.host != domena_hosta(dane.host):
             raise BppError(
                 f"Host spoza bieżącego żądania jest niedozwolony: {full.host}"
             )
