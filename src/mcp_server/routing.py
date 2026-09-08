@@ -291,7 +291,31 @@ class RouterHttp:
             # leży, Redis żyje": każde kolejne żądanie najpierw resetowałoby
             # flagę na bramce uczelni (przechodzi z cache'u), a potem zgłaszało
             # awarię bearera — czyli znowu raz na żądanie.
-            self._awaria_infrastruktury_zgloszona = False
+            #
+            # WARUNEK ``dane.bearer`` jest tu konieczny, nie kosmetyczny.
+            # Żądanie ANONIMOWE na ``/mcp`` (publiczna bramka, ``wymagany=
+            # False``) w ogóle nie woła ``zweryfikuj_token`` — ``BramkaBearera
+            # .__call__`` przy braku nagłówka ``Authorization`` przechodzi
+            # prosto do aplikacji, nie dotykając bazy. Jego powodzenie NIE
+            # jest więc dowodem, że baza znów odpowiada. Bez tego warunku
+            # ruch PRZEPLECIONY anon/bearer (dokładnie ten, który jest
+            # publicznym ``/mcp`` w scenariuszu „leżąca baza + żywy Redis")
+            # resetowałby flagę na każdym anonimowym żądaniu, a zaraz potem
+            # ponownie zgłaszał awarię przy kolejnym żądaniu z bearerem —
+            # czyli z powrotem „zgłoszenie na każde żądanie z bearerem",
+            # dokładnie ten hałas, który rate-limit ma wygaszać.
+            #
+            # Bramki uczelni to NIE dotyczy (choć flaga jest jedna, wspólna
+            # dla obu): ``host_rozstrzyga_uczelnie`` jest wołane dla KAŻDEGO
+            # żądania, anonimowego i z bearerem, więc samo dojście do tego
+            # miejsca (czyli przejście przez obie bramki bez wyjątku) już
+            # dowodzi, że ta konkretna ścieżka do bazy działa. Warunek niżej
+            # jest więc ostrożniejszy niż to konieczne dla bramki uczelni,
+            # ale to nie szkodzi — dla ŻĄDANIA ANONIMOWEGO flaga po prostu
+            # zostaje ustawiona o jedno żądanie dłużej, aż nadejdzie pierwsze
+            # żądanie z bearerem, które potwierdzi odzyskanie OBU bramek.
+            if dane.bearer:
+                self._awaria_infrastruktury_zgloszona = False
         finally:
             dane_zadania.reset(zeton)
             # set_current_bearer nie zwraca tokenu resetu, więc czyścimy

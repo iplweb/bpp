@@ -134,3 +134,21 @@ def test_wazny_token_przechodzi():
     scope = zbuduj_scope("/mcp", naglowki={"authorization": "Bearer TOKEN123"})
     status, _, tresc = uruchom(lambda: wywolaj(app, scope))
     assert status == 200 and tresc == "PRZESZLO"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_wygasly_token_odrzucony():
+    """Luka z docstringu ``_sprawdz``: token WAŻNY strukturalnie (istnieje,
+    konto aktywne, scope ``read``), ale z ``expires`` w przeszłości, musi
+    paść już w bramce — nie dopiero w DRF. Inaczej klient dostaje ``isError``
+    w treści JSON-RPC z HTTP 200 i nigdy nie ponawia autoryzacji.
+
+    Pomocnik ``_token(wygasly=...)`` istniał od początku tego pliku, ale
+    żaden test go nie używał — dokładnie ta luka w pokryciu, którą recenzja
+    PR #804 znalazła mutacyjnie (usunięcie ``is_valid()`` z ``_sprawdz``
+    zostawiało wszystkie testy zielone)."""
+    _token(wygasly=True)
+    app = BramkaBearera(_ok, wymagany=False)
+    scope = zbuduj_scope("/mcp", naglowki={"authorization": "Bearer TOKEN123"})
+    status, _, _ = uruchom(lambda: wywolaj(app, scope))
+    assert status == 401

@@ -49,6 +49,39 @@ def test_obcy_albo_niepoprawny_origin_odrzucony(adres):
     assert waliduj_audience_po_originie(adres, [ZASOB]) is False
 
 
+def test_schemat_musi_sie_zgadzac_nawet_przy_takim_samym_porcie():
+    """Audyt PR #804, punkt 3: przypadek ``http://…/autor/`` powyżej
+    (``test_obcy_albo_niepoprawny_origin_odrzucony``) różni się od ``ZASOB``
+    RÓWNOCZEŚNIE schematem i portem domyślnym (80 vs 443) — walidator
+    zmutowany tak, żeby porównywał TYLKO ``(host, port)`` (pomijając
+    schemat), i tak by go odrzucił, bo porty się różnią. Różnica portu
+    maskuje więc różnicę schematu i test nie dowodzi tego, co deklaruje.
+
+    Tu port jest JAWNY i RÓWNY po obu stronach (443), więc jedyną różnicą
+    zostaje schemat — dokładnie to, co ``waliduj_audience_po_originie`` ma
+    sprawdzać poprzez porównanie krotki ``[:3]`` (schemat, host, port), nie
+    samego ``[1:3]``."""
+    audiences = ["https://bpp.example.test:443/mcp"]
+    assert (
+        waliduj_audience_po_originie(
+            "http://bpp.example.test:443/api/v1/autor/", audiences
+        )
+        is False
+    )
+
+
+def test_ten_sam_origin_z_jawnym_portem_nadal_przechodzi():
+    """Kontrola pozytywna do testu wyżej — jawny, równy port po obu stronach
+    NIE ma sam z siebie nic odrzucać, gdy schemat i host też się zgadzają."""
+    audiences = ["https://bpp.example.test:443/mcp"]
+    assert (
+        waliduj_audience_po_originie(
+            "https://bpp.example.test:443/api/v1/autor/", audiences
+        )
+        is True
+    )
+
+
 def test_pusta_lista_audience_znaczy_bez_ograniczen():
     """Kontrakt DOT: token bez ``resource`` jest nieograniczony (kompatybilność
     wstecz z tokenami sprzed RFC 8707)."""

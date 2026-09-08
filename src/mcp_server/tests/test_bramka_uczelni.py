@@ -165,7 +165,15 @@ def test_awaria_bazy_w_bramce_zglaszana_raz_na_epizod_nie_na_zadanie(monkeypatch
 def test_awaria_bazy_w_bramce_zglaszana_ponownie_po_odzyskaniu(monkeypatch):
     """Po powrocie bazy do życia flaga rate-limitu wraca do zera — kolejny,
     ODRĘBNY epizod awarii musi znowu trafić do Rollbara, inaczej pierwsza
-    awaria na wiele godzin uciszałaby monitoring na resztę życia workera."""
+    awaria na wiele godzin uciszałaby monitoring na resztę życia workera.
+
+    Środkowe, „zdrowe" żądanie MUSI nieść bearer. Od poprawki z recenzji PR
+    #804 (punkt 1) reset flagi wymaga ``dane.bearer`` — samo powodzenie
+    bramki uczelni na żądaniu ANONIMOWYM nie dowodzi, że warstwa bearera
+    (``zweryfikuj_token``) też odzyskała bazę (patrz
+    ``test_ruch_mieszany_anon_bearer_nie_resetuje_flagi_zadaniem_anonimowym``).
+    Token jest tu celowo nieprawidłowy (401) — liczy się WYKONANIE zapytania
+    do bazy, nie jego wynik."""
     mock_rollbar = Mock()
     monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_baza)
     monkeypatch.setattr(routing, "rollbar", mock_rollbar)
@@ -178,7 +186,7 @@ def test_awaria_bazy_w_bramce_zglaszana_ponownie_po_odzyskaniu(monkeypatch):
     async def scenariusz():
         await wywolaj(router, zbuduj_scope("/mcp"))
         monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", zdrowa)
-        await wywolaj(router, zbuduj_scope("/mcp"))
+        await wywolaj(router, _z_bearerem())
         monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_baza)
         await wywolaj(router, zbuduj_scope("/mcp"))
 
@@ -320,6 +328,46 @@ def test_awaria_bazy_w_bramce_bearera_daje_503_i_zglasza_raz_na_epizod(monkeypat
     wyniki = uruchom(scenariusz)
     assert [status for status, _, _ in wyniki] == [503, 503, 503]
     assert all("MCP" not in tresc for _, _, tresc in wyniki)
+    mock_rollbar.report_exc_info.assert_called_once()
+
+
+def test_ruch_mieszany_anon_bearer_nie_resetuje_flagi_zadaniem_anonimowym(
+    monkeypatch,
+):
+    """Recenzja PR #804, punkt 1: żądanie ANONIMOWE na publicznym ``/mcp``
+    w ogóle nie woła ``zweryfikuj_token`` (``BramkaBearera.__call__`` przy
+    braku nagłówka ``Authorization`` przechodzi prosto do aplikacji), więc
+    jego powodzenie nie jest dowodem, że baza znów odpowiada. Reset flagi
+    zaraz po TAKIM żądaniu (kod sprzed tej poprawki) odtwarzał B2 przy ruchu
+    PRZEPLECIONYM — a dokładnie taki przeplot jest publicznym ``/mcp``
+    w scenariuszu „leżąca baza + żywy Redis", dla którego rate-limit powstał.
+
+    Zmierzone na kodzie PRZED tą poprawką (sonda z recenzji): sondując
+    przeplotem anon/bearer × 3 dostajemy statusy
+    ``[200, 503, 200, 503, 200, 503]`` i ``report_exc_info`` wywołane TRZY
+    razy — bo każde ``200`` anonimowe resetowało flagę tuż przed kolejnym
+    ``503`` bearera. Po poprawce (reset warunkowany ``dane.bearer``) statusy
+    zostają te same, ale zgłoszenie do Rollbara ma polecieć raz na epizod,
+    nie raz na żądanie z bearerem.
+    """
+    mock_rollbar = Mock()
+    monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _zdrowa_uczelnia)
+    monkeypatch.setattr(routing, "rollbar", mock_rollbar)
+    monkeypatch.setattr(
+        auth, "zweryfikuj_token", _wybuchajacy_token(OperationalError("baza leży"))
+    )
+
+    router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
+
+    async def scenariusz():
+        wyniki = []
+        for _ in range(3):
+            wyniki.append(await wywolaj(router, zbuduj_scope("/mcp")))
+            wyniki.append(await wywolaj(router, _z_bearerem()))
+        return wyniki
+
+    wyniki = uruchom(scenariusz)
+    assert [status for status, _, _ in wyniki] == [200, 503, 200, 503, 200, 503]
     mock_rollbar.report_exc_info.assert_called_once()
 
 
