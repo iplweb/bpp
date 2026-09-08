@@ -247,7 +247,40 @@ tag = false
 push = false
 
 [tool.uv]
-environments = ["python_version >= '3.10' and python_version < '3.15' and platform_python_implementation != 'PyPy'"]
+# Zawezenie universal resolution uv. uv domyslnie rozwiazuje JEDEN lock
+# poprawny dla KAZDEJ platformy i KAZDEGO interpretera - takze tych,
+# ktorych nigdy nie uruchomimy. Wystarczy wtedy jeden pakiet z warunkiem
+# `platform_python_implementation == "PyPy"`, zeby scagnac w dol caly graf.
+#
+# Wykluczenie PyPy wjechalo commitem 0f3f049e0 ("Prepare fix, maybe",
+# 2025-10-14) razem z `urllib3>=2.2.3` i `vcrpy>=6.0.2` - i to byl wlasnie
+# ten fix, tylko nieopisany. vcrpy 6.0.2 deklarowalo:
+#
+#     urllib3;   platform_python_implementation != "PyPy" and python_version >= "3.10"
+#     urllib3<2; platform_python_implementation == "PyPy"     <- konflikt
+#
+# czyli galaz PyPy zadala `urllib3<2`, co jest nie do pogodzenia
+# z `urllib3>=2.2.3`. Skasowanie galezi PyPy odblokowalo rezolucje.
+#
+# STAN NA 2026-09-08: ten konkretny pozar wygasl - vcrpy 8.3.0 nie ma juz
+# tego warunku. Przeskanowany zostal CALY graf (364 pakiety z rejestru,
+# zero bledow pobrania): warunki `== "PyPy"` maja tylko celery (brotlipy),
+# fonttools (munkres) i jaraco-functools (mypy), a wszystkie trzy siedza
+# za extrasami, ktorych nie wlaczamy - `brotlipy`, `munkres` ani `mypy`
+# nie wystepuja w uv.lock (z fonttools bierzemy wylacznie extra `woff`).
+# Zdjecie wykluczenia daje dzis DOKLADNIE te same wersje (367 pakietow,
+# zero roznic w parach nazwa/wersja).
+#
+# Zostaje mimo to, jako tanie ubezpieczenie: kosztuje 13 linii
+# `resolution-markers` w naglowku locka, a chroni przed powtorka klasy
+# problemu, ktora juz raz zablokowala rezolucje. Bez niego trzy pakiety
+# (cryptography, pynacl, uvicorn[standard]) odzyskuja markery PyPy na
+# krawedziach do cffi/uvloop - wiec lock i tak nie robi sie prostszy.
+#
+# Dolna granica trzymana rownolegle do `requires-python` wyzej (>=3.11).
+# Do 2026-09 stalo tu `>= '3.10'` - martwe, bo przeciecie z requires-python
+# i tak dawalo 3.11, ale mylnie sugerowalo wsparcie dla 3.10.
+environments = ["python_version >= '3.11' and python_version < '3.15' and platform_python_implementation != 'PyPy'"]
 
 # Security floors dla zaleznosci TRANZYTYWNYCH (nie deklarujemy ich jako
 # direct deps - przychodza przez inne pakiety). constraint-dependencies
