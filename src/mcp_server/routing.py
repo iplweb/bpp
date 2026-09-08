@@ -89,11 +89,40 @@ class RouterHttp:
         self._start = start
         self._publiczny = BramkaBearera(mcp_app, wymagany=False)
         self._z_logowaniem = BramkaBearera(mcp_app, wymagany=True)
-        # Rate-limit zgłoszeń Rollbara przy awarii infrastruktury — JEDNA flaga
-        # na OBIE bramki sięgające do bazy (uczelni i bearera), bo to JEDEN
-        # epizod „infrastruktura nie odpowiada", a nie dwa. Patrz
-        # ``_zglos_awarie_infrastruktury``.
-        self._awaria_infrastruktury_zgloszona = False
+        # Rate-limit zgłoszeń Rollbara przy awarii infrastruktury — DWIE
+        # flagi, JEDNA NA BRAMKĘ, nie jedna wspólna. Powód: bramki mają RÓŻNY
+        # ZASIĘG, więc powodzenie jednej nie jest dowodem odzyskania drugiej.
+        #
+        # * bramka uczelni (``host_rozstrzyga_uczelnie``) jest wołana dla
+        #   KAŻDEGO żądania — anonimowego i z bearerem — więc jej powodzenie
+        #   dowodzi, że TA konkretna ścieżka do bazy działa, niezależnie od
+        #   tego, czy ktokolwiek się uwierzytelnia.
+        # * bramka bearera (``auth.zweryfikuj_token``) jest wołana WYŁĄCZNIE
+        #   przy obecnym nagłówku ``Authorization`` — żądanie anonimowe na
+        #   publicznym ``/mcp`` jej w ogóle nie dotyka.
+        #
+        # Jedna wspólna flaga psuje się w OBIE strony, zależnie od reguły
+        # resetu:
+        #
+        # * reset przy KAŻDYM udanym żądaniu (wersja sprzed tej poprawki) —
+        #   żądanie anonimowe gasi flagę ustawioną przez awarię bramki
+        #   bearera, której samo nie sprawdziło. Scenariusz „leżąca baza +
+        #   żywy Redis" (bramka uczelni przechodzi z cacheops) daje wtedy
+        #   ruch przeplatany anon/bearer i z powrotem „zgłoszenie na każde
+        #   żądanie z bearerem" — dokładnie ten hałas, który rate-limit ma
+        #   wygaszać (znalezisko z recenzji PR #804).
+        # * reset TYLKO przy żądaniu z bearerem (wersja POŚREDNIA, też
+        #   błędna) — w instalacji BEZ ŻADNEGO klienta OAuth (a OAuth w BPP
+        #   jest opcjonalny, takich instalacji jest sporo) awaria bramki
+        #   uczelni zgłasza się RAZ i NIGDY WIĘCEJ, bo nic nie nosi bearera,
+        #   który mógłby zresetować wspólną flagę.
+        #
+        # Rozdzielenie flag usuwa oba fałszywe dowody na raz: każda bramka
+        # zeruje WYŁĄCZNIE swoją flagę, na podstawie WŁASNEGO powodzenia.
+        # Patrz ``_zglos_awarie_bramki_uczelni`` / ``_zglos_awarie_bramki_
+        # bearera`` oraz miejsca resetu w ``_obsluz``.
+        self._awaria_bramki_uczelni_zgloszona = False
+        self._awaria_bramki_bearera_zgloszona = False
 
     async def __call__(self, scope, receive, send):
         sciezka = scope.get("path", "")
@@ -175,28 +204,44 @@ class RouterHttp:
                 time.monotonic() - poczatek,
             )
 
-    def _zglos_awarie_infrastruktury(self, komunikat: str) -> None:
-        """Zgłoś awarię bazy/cache RAZ NA EPIZOD, nie raz na żądanie.
+    def _zglos_awarie_bramki_uczelni(self, komunikat: str) -> None:
+        """Zgłoś awarię bramki UCZELNI raz na epizod tej konkretnej bramki.
 
-        Rate-limit jak w ``StartMcp._trzymaj`` (B3, komentarz tam) — baza może
-        leżeć dłużej niż jedno żądanie, a bez ograniczenia zgłaszalibyśmy
-        Rollbarowi raz na KAŻDE żądanie w oknie awarii, czyli dokładnie ten
-        hałas, który B2 usunęło z narzędzi. W odróżnieniu od startu menedżera tu
-        żądania NIE kończą się, więc flaga wraca do zera dopiero po żądaniu
-        obsłużonym w CAŁOŚCI bez awarii infrastruktury (patrz ``else`` przy
-        bramce bearera) — kolejny, ODRĘBNY epizod znów trafi do Rollbara.
-
-        Dlaczego JEDNA flaga na obie bramki: „baza/Redis nie odpowiada" to jeden
-        stan świata. Osobna flaga per bramka znaczyłaby, że ten sam epizod
-        zgłasza się dwa razy, a w scenariuszu „leżąca baza + ŻYWY Redis"
-        (cacheops przepuszcza bramkę uczelni z cache'u, więc awaria wychodzi
-        dopiero przy weryfikacji bearera) flaga uczelni i tak by nie zadziałała.
+        Rate-limit jak w ``StartMcp._trzymaj`` (B3) — baza może leżeć dłużej
+        niż jedno żądanie, a bez ograniczenia zgłaszalibyśmy Rollbarowi raz na
+        KAŻDE odrzucone żądanie, czyli dokładnie ten hałas, który B2 usunęło
+        z narzędzi. Flaga wraca do zera przy KAŻDYM żądaniu, które przeszło
+        przez ``host_rozstrzyga_uczelnie`` bez wyjątku (patrz ``_obsluz``,
+        zaraz po ``try/except`` tej bramki) — w tym przy żądaniu anonimowym,
+        bo ta bramka jest wołana dla każdego żądania. Osobna flaga od bramki
+        bearera (patrz ``__init__`` po uzasadnienie rozdziału) — powodzenie
+        TEJ bramki nie mówi nic o bramce bearera, więc nie może zerować jej
+        flagi, i odwrotnie.
         """
-        if self._awaria_infrastruktury_zgloszona:
+        if self._awaria_bramki_uczelni_zgloszona:
             return
         logger.exception(komunikat)
         rollbar.report_exc_info()
-        self._awaria_infrastruktury_zgloszona = True
+        self._awaria_bramki_uczelni_zgloszona = True
+
+    def _zglos_awarie_bramki_bearera(self, komunikat: str) -> None:
+        """Zgłoś awarię bramki BEARERA raz na epizod tej konkretnej bramki.
+
+        Ta bramka (``auth.zweryfikuj_token``) jest wołana WYŁĄCZNIE gdy
+        żądanie niesie nagłówek ``Authorization`` — żądanie anonimowe na
+        publicznym ``/mcp`` jej nie dotyka. Flaga wraca do zera dopiero przy
+        żądaniu, które faktycznie przez nią przeszło, czyli gdy ``dane.bearer``
+        jest ustawiony (patrz ``_obsluz``, gałąź ``else`` bramki bearera).
+        Osobna flaga od bramki uczelni — patrz ``__init__`` po pełne
+        uzasadnienie: reset wspólną flagą przy żądaniu anonimowym gasiłby
+        zgłoszenie o awarii TEJ bramki, mimo że ta bramka wcale się nie
+        wykonała (znalezisko z recenzji PR #804).
+        """
+        if self._awaria_bramki_bearera_zgloszona:
+            return
+        logger.exception(komunikat)
+        rollbar.report_exc_info()
+        self._awaria_bramki_bearera_zgloszona = True
 
     async def _obsluz(
         self, sciezka, scope, receive, send, dane: DaneZadania, widziany: dict
@@ -240,9 +285,18 @@ class RouterHttp:
             # złap przykryłby błędy programistyczne w
             # `host_rozstrzyga_uczelnie` i pozbawił je jej raportowania
             # (patrz tamten `except Exception`, bez rate-limitu).
-            self._zglos_awarie_infrastruktury("mcp: awaria bazy w bramce uczelni")
+            self._zglos_awarie_bramki_uczelni("mcp: awaria bazy w bramce uczelni")
             await self._niedostepny(send)
             return
+        # Żądanie przeszło przez bramkę uczelni BEZ WYJĄTKU — ta bramka jest
+        # wołana dla KAŻDEGO żądania (anonimowego i z bearerem), więc samo
+        # dojście tutaj już dowodzi, że JEJ ścieżka do bazy działa,
+        # niezależnie od tego, czy host się rozstrzygnął (``rozstrzygnieta``
+        # może być ``False`` — to i tak było udane zapytanie do bazy, tylko
+        # z odpowiedzią „nieznany host”, nie z wyjątkiem). Reset dotyczy
+        # WYŁĄCZNIE flagi tej bramki — patrz uzasadnienie rozdziału flag
+        # w ``__init__``.
+        self._awaria_bramki_uczelni_zgloszona = False
         if not rozstrzygnieta:
             logger.warning(
                 "mcp: odrzucony host bez jednoznacznej uczelni: %r", dane.host
@@ -278,44 +332,31 @@ class RouterHttp:
             # nie uruchamia, a KAŻDE żądanie z bearerem daje osobne zgłoszenie
             # z siatki. Siatka adresuje *wyjątek*, nie *hałas* — rate-limit
             # musi być tutaj.
-            self._zglos_awarie_infrastruktury("mcp: awaria bazy w bramce bearera")
+            self._zglos_awarie_bramki_bearera("mcp: awaria bazy w bramce bearera")
             if "status" not in widziany:
                 # Aplikacja MCP mogła już zacząć odpowiadać (drugi
                 # `http.response.start` jest w ASGI błędem) — patrz ta sama
                 # ostrożność w siatce w `__call__`.
                 await self._niedostepny(send)
         else:
-            # Flaga wraca do zera dopiero tutaj, po żądaniu przeprowadzonym
-            # przez OBIE bramki bez awarii. Reset zaraz po bramce uczelni
-            # (jak było wcześniej) kasowałby rate-limit w scenariuszu „baza
-            # leży, Redis żyje": każde kolejne żądanie najpierw resetowałoby
-            # flagę na bramce uczelni (przechodzi z cache'u), a potem zgłaszało
-            # awarię bearera — czyli znowu raz na żądanie.
+            # WARUNEK ``dane.bearer`` jest tu konieczny, nie kosmetyczny —
+            # to jest reset flagi BRAMKI BEARERA, nie flagi bramki uczelni
+            # (ta resetuje się osobno, wyżej, zaraz po SWOIM ``try/except``).
             #
-            # WARUNEK ``dane.bearer`` jest tu konieczny, nie kosmetyczny.
             # Żądanie ANONIMOWE na ``/mcp`` (publiczna bramka, ``wymagany=
             # False``) w ogóle nie woła ``zweryfikuj_token`` — ``BramkaBearera
             # .__call__`` przy braku nagłówka ``Authorization`` przechodzi
             # prosto do aplikacji, nie dotykając bazy. Jego powodzenie NIE
-            # jest więc dowodem, że baza znów odpowiada. Bez tego warunku
-            # ruch PRZEPLECIONY anon/bearer (dokładnie ten, który jest
-            # publicznym ``/mcp`` w scenariuszu „leżąca baza + żywy Redis")
-            # resetowałby flagę na każdym anonimowym żądaniu, a zaraz potem
-            # ponownie zgłaszał awarię przy kolejnym żądaniu z bearerem —
-            # czyli z powrotem „zgłoszenie na każde żądanie z bearerem",
-            # dokładnie ten hałas, który rate-limit ma wygaszać.
-            #
-            # Bramki uczelni to NIE dotyczy (choć flaga jest jedna, wspólna
-            # dla obu): ``host_rozstrzyga_uczelnie`` jest wołane dla KAŻDEGO
-            # żądania, anonimowego i z bearerem, więc samo dojście do tego
-            # miejsca (czyli przejście przez obie bramki bez wyjątku) już
-            # dowodzi, że ta konkretna ścieżka do bazy działa. Warunek niżej
-            # jest więc ostrożniejszy niż to konieczne dla bramki uczelni,
-            # ale to nie szkodzi — dla ŻĄDANIA ANONIMOWEGO flaga po prostu
-            # zostaje ustawiona o jedno żądanie dłużej, aż nadejdzie pierwsze
-            # żądanie z bearerem, które potwierdzi odzyskanie OBU bramek.
+            # jest więc dowodem, że baza znów odpowiada DLA TEJ bramki. Bez
+            # tego warunku ruch PRZEPLECIONY anon/bearer (dokładnie ten,
+            # który jest publicznym ``/mcp`` w scenariuszu „leżąca baza +
+            # żywy Redis") resetowałby flagę bramki bearera na każdym
+            # anonimowym żądaniu, a zaraz potem ponownie zgłaszał awarię przy
+            # kolejnym żądaniu z bearerem — czyli z powrotem „zgłoszenie na
+            # każde żądanie z bearerem", dokładnie ten hałas, który
+            # rate-limit ma wygaszać (znalezisko z recenzji PR #804).
             if dane.bearer:
-                self._awaria_infrastruktury_zgloszona = False
+                self._awaria_bramki_bearera_zgloszona = False
         finally:
             dane_zadania.reset(zeton)
             # set_current_bearer nie zwraca tokenu resetu, więc czyścimy

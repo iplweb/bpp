@@ -163,17 +163,21 @@ def test_awaria_bazy_w_bramce_zglaszana_raz_na_epizod_nie_na_zadanie(monkeypatch
 
 
 def test_awaria_bazy_w_bramce_zglaszana_ponownie_po_odzyskaniu(monkeypatch):
-    """Po powrocie bazy do życia flaga rate-limitu wraca do zera — kolejny,
-    ODRĘBNY epizod awarii musi znowu trafić do Rollbara, inaczej pierwsza
-    awaria na wiele godzin uciszałaby monitoring na resztę życia workera.
+    """Po powrocie bazy do życia flaga rate-limitu bramki uczelni wraca do
+    zera — kolejny, ODRĘBNY epizod awarii musi znowu trafić do Rollbara,
+    inaczej pierwsza awaria na wiele godzin uciszałaby monitoring na resztę
+    życia workera.
 
-    Środkowe, „zdrowe" żądanie MUSI nieść bearer. Od poprawki z recenzji PR
-    #804 (punkt 1) reset flagi wymaga ``dane.bearer`` — samo powodzenie
-    bramki uczelni na żądaniu ANONIMOWYM nie dowodzi, że warstwa bearera
-    (``zweryfikuj_token``) też odzyskała bazę (patrz
-    ``test_ruch_mieszany_anon_bearer_nie_resetuje_flagi_zadaniem_anonimowym``).
-    Token jest tu celowo nieprawidłowy (401) — liczy się WYKONANIE zapytania
-    do bazy, nie jego wynik."""
+    Środkowe, „zdrowe" żądanie jest celowo ANONIMOWE — to jest dokładnie
+    poprawny scenariusz DLA TEJ bramki: ``host_rozstrzyga_uczelnie`` jest
+    wołane dla KAŻDEGO żądania, więc samo jego powodzenie (bez wyjątku)
+    dowodzi odzyskania, niezależnie od tego, czy ktokolwiek niesie bearer.
+    Flaga bramki uczelni jest ODDZIELNA od flagi bramki bearera właśnie po
+    to, żeby instalacja BEZ ŻADNEGO klienta OAuth (OAuth w BPP jest
+    opcjonalny) nadal dostawała powtórne zgłoszenia — flaga wspólna,
+    resetowana tylko przy bearerze, uciszałaby tu monitoring na zawsze po
+    pierwszej awarii (patrz uzasadnienie rozdziału flag w
+    ``RouterHttp.__init__``)."""
     mock_rollbar = Mock()
     monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_baza)
     monkeypatch.setattr(routing, "rollbar", mock_rollbar)
@@ -186,12 +190,47 @@ def test_awaria_bazy_w_bramce_zglaszana_ponownie_po_odzyskaniu(monkeypatch):
     async def scenariusz():
         await wywolaj(router, zbuduj_scope("/mcp"))
         monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", zdrowa)
-        await wywolaj(router, _z_bearerem())
+        await wywolaj(router, zbuduj_scope("/mcp"))
         monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_baza)
         await wywolaj(router, zbuduj_scope("/mcp"))
 
     uruchom(scenariusz)
     assert mock_rollbar.report_exc_info.call_count == 2
+
+
+def test_awaria_bramki_uczelni_zglaszana_ponownie_przy_ruchu_wylacznie_anonimowym(
+    monkeypatch,
+):
+    """Strażnik przeciw regresji: wersja rate-limitu z JEDNĄ wspólną flagą,
+    resetowaną TYLKO przy żądaniu z bearerem, sprawiała, że instalacja bez
+    ani jednego klienta OAuth (a OAuth w BPP jest opcjonalny — takich
+    instalacji jest sporo) zgłaszała awarię bramki uczelni RAZ i NIGDY
+    WIĘCEJ, bo nic w ruchu nie niosło bearera, który mógłby zresetować
+    wspólną flagę.
+
+    Scenariusz: TRZY epizody awarii bramki uczelni, przeplecione dwoma
+    zdrowymi oknami, i ANI JEDNEGO żądania z bearerem w całym scenariuszu.
+    Z osobną flagą bramki uczelni (resetowaną przy KAŻDYM jej powodzeniu,
+    także anonimowym) Rollbar musi dostać TRZY zgłoszenia — po jednym na
+    epizod."""
+    mock_rollbar = Mock()
+    monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_baza)
+    monkeypatch.setattr(routing, "rollbar", mock_rollbar)
+
+    router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
+
+    async def zdrowa(_host):
+        return True
+
+    async def scenariusz():
+        for _ in range(3):
+            await wywolaj(router, zbuduj_scope("/mcp"))
+            monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", zdrowa)
+            await wywolaj(router, zbuduj_scope("/mcp"))
+            monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_baza)
+
+    uruchom(scenariusz)
+    assert mock_rollbar.report_exc_info.call_count == 3
 
 
 async def _wybuchaj_redis(_host):
