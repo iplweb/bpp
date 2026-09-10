@@ -453,23 +453,47 @@ jobs:
               -v &
             PYTEST_PID=$!
             (
-              sleep 720
-              echo "=== WATCHDOG: 720s, SIGABRT do procesow pytest ==="
+              sleep 660
+              echo "=== WATCHDOG: 660s, zrzut stosow ==="
+              echo "--- procesy ---"
               for d in /proc/[0-9]*; do
                 pid=${d##*/}
-                [ "$pid" = "$$" ] && continue
-                if tr "\0" " " < "$d/cmdline" 2>/dev/null | grep -q pytest; then
-                  echo "WATCHDOG: SIGABRT -> $pid"
-                  kill -ABRT "$pid" 2>/dev/null || true
-                fi
+                cmd=$(tr "\0" " " < "$d/cmdline" 2>/dev/null) || continue
+                [ -n "$cmd" ] && echo "  $pid: $cmd"
               done
-              sleep 30
+              # NAJPIERW workery xdista. Sa spawnowane przez execnet jako
+              # `python -c ...`, wiec ich cmdline NIE zawiera slowa "pytest"
+              # — poprzednia runda ich przez to nie trafila. Kontroler musi
+              # przezyc ten moment, bo to jego deskryptor 2 dziedzicza.
               for d in /proc/[0-9]*; do
                 pid=${d##*/}
                 [ "$pid" = "$$" ] && continue
-                if tr "\0" " " < "$d/cmdline" 2>/dev/null | grep -q pytest; then
-                  kill -9 "$pid" 2>/dev/null || true
-                fi
+                cmd=$(tr "\0" " " < "$d/cmdline" 2>/dev/null) || continue
+                case "$cmd" in
+                  *pytest*) continue ;;
+                  *python*) echo "WATCHDOG: SIGABRT worker -> $pid"
+                            kill -ABRT "$pid" 2>/dev/null || true ;;
+                esac
+              done
+              sleep 20
+              # Dopiero teraz kontroler.
+              for d in /proc/[0-9]*; do
+                pid=${d##*/}
+                [ "$pid" = "$$" ] && continue
+                cmd=$(tr "\0" " " < "$d/cmdline" 2>/dev/null) || continue
+                case "$cmd" in
+                  *pytest*) echo "WATCHDOG: SIGABRT kontroler -> $pid"
+                            kill -ABRT "$pid" 2>/dev/null || true ;;
+                esac
+              done
+              sleep 20
+              for d in /proc/[0-9]*; do
+                pid=${d##*/}
+                [ "$pid" = "$$" ] && continue
+                cmd=$(tr "\0" " " < "$d/cmdline" 2>/dev/null) || continue
+                case "$cmd" in
+                  *python*|*pytest*) kill -9 "$pid" 2>/dev/null || true ;;
+                esac
               done
             ) &
             WATCHDOG_PID=$!
