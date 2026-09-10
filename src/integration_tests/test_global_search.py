@@ -172,3 +172,170 @@ def test_global_search_in_admin(
         "() => document.body.textContent.includes('Zmień wydawnictwo ciągłe')",
         timeout=10000,
     )
+
+
+# Samples the page on every animation frame. Each sample holds the viewport
+# rects of the sticky top bar and the sticky breadcrumbs, window.scrollY and
+# the effective backdrop opacity (0 while the modal is display:none or
+# visibility:hidden). The test switches ``phase`` between the steps.
+_START_FRAME_PROBE_JS = """
+() => {
+    const rect = (selector) => {
+        const r = document.querySelector(selector).getBoundingClientRect();
+        return [r.top, r.left, r.width, r.height];
+    };
+    const modal = document.getElementById('globalSearchModal');
+    const probe = {phase: 'before', stop: false, samples: []};
+    window.__layoutProbe = probe;
+    const tick = () => {
+        const style = getComputedStyle(modal);
+        const hidden = style.display === 'none' || style.visibility === 'hidden';
+        probe.samples.push({
+            phase: probe.phase,
+            nav: rect('nav.sticky-header'),
+            breadcrumbs: rect('#breadcrumbs-wrapper'),
+            scrollY: window.scrollY,
+            opacity: hidden ? 0 : parseFloat(style.opacity),
+        });
+        if (!probe.stop) {
+            requestAnimationFrame(tick);
+        }
+    };
+    requestAnimationFrame(tick);
+}
+"""
+
+_MODAL_FULLY_SHOWN_JS = """
+() => {
+    const modal = document.getElementById('globalSearchModal');
+    return parseFloat(getComputedStyle(modal).opacity) === 1;
+}
+"""
+
+_MODAL_HIDDEN_JS = """
+() => {
+    const style = getComputedStyle(document.getElementById('globalSearchModal'));
+    return style.display === 'none' || style.visibility === 'hidden';
+}
+"""
+
+_MODAL_ANIMATIONS_SETTLED_JS = """
+() => document.getElementById('globalSearchModal')
+    .getAnimations({subtree: true})
+    .every((animation) => animation.playState !== 'running')
+"""
+
+
+def _wait_frames(page: Page, count: int) -> None:
+    n = page.evaluate("() => window.__layoutProbe.samples.length")
+    page.wait_for_function(f"() => window.__layoutProbe.samples.length >= {n + count}")
+
+
+def _set_phase(page: Page, phase: str) -> None:
+    page.evaluate(f"() => {{ window.__layoutProbe.phase = '{phase}'; }}")
+
+
+def _record_open_close_cycle(page: Page, url: str) -> list[dict]:
+    """Open and close the global search on a scrolled page, sampling every
+    animation frame. Samples are tagged: before / opening / open / closing /
+    closed."""
+    # Consent cookie up front: Cookielaw.accept() reloads the page, which
+    # would destroy the frame probe mid-test.
+    page.context.add_cookies([{"name": "cookielaw_accepted", "value": "1", "url": url}])
+    page.goto(url)
+    wait_for_page_load(page)
+    assert page.query_selector("#breadcrumbs-wrapper"), (
+        "the test page must render the sticky breadcrumbs"
+    )
+
+    # Scroll so that both sticky bars are actually stuck: at scrollY == 0 a
+    # scroll lock that re-positions <body> moves nothing and hides the bug.
+    page.evaluate(
+        """() => {
+            const spacer = document.createElement('div');
+            spacer.style.height = '3000px';
+            document.body.appendChild(spacer);
+            window.scrollTo(0, 400);
+        }"""
+    )
+    page.wait_for_function("() => window.scrollY === 400")
+
+    page.evaluate(_START_FRAME_PROBE_JS)
+    _wait_frames(page, 2)
+
+    _set_phase(page, "opening")
+    open_global_search(page)
+    page.wait_for_function(_MODAL_FULLY_SHOWN_JS)
+    page.wait_for_function(_MODAL_ANIMATIONS_SETTLED_JS)
+
+    # Neither a wheel over the backdrop (corner outside the dialog box) nor
+    # keyboard scrolling with focus outside the input may scroll the page
+    # underneath. The wheel is also blocked by a JS handler; PageDown is
+    # stopped only by the scroll lock itself.
+    _set_phase(page, "open")
+    page.mouse.move(5, page.viewport_size["height"] - 5)
+    page.mouse.wheel(0, 600)
+    page.evaluate("() => document.activeElement.blur()")
+    page.keyboard.press("PageDown")
+    _wait_frames(page, 5)
+
+    _set_phase(page, "closing")
+    page.keyboard.press("Escape")
+    page.wait_for_function(_MODAL_HIDDEN_JS)
+    page.wait_for_function(_MODAL_ANIMATIONS_SETTLED_JS)
+
+    _set_phase(page, "closed")
+    _wait_frames(page, 5)
+    return page.evaluate(
+        "() => { window.__layoutProbe.stop = true; "
+        "return window.__layoutProbe.samples; }"
+    )
+
+
+def _same_position(expected, actual, tolerance=0.5) -> bool:
+    if isinstance(expected, list):
+        return all(
+            abs(e - a) <= tolerance for e, a in zip(expected, actual, strict=True)
+        )
+    return abs(expected - actual) <= tolerance
+
+
+def test_global_search_does_not_move_page_layout(
+    channels_live_server, page: Page, transactional_db
+):
+    """Nothing under the backdrop moves while the global search opens,
+    stays open and closes: the sticky top bar, the sticky breadcrumbs and
+    the scroll position are identical in every animation frame. Catches a
+    scroll lock that re-positions <body> (it breaks position: sticky) and
+    any hide/slide choreography of the bar that shifts the layout."""
+    samples = _record_open_close_cycle(page, channels_live_server.url)
+
+    baseline = samples[0]
+    moved = [
+        (sample["phase"], key, baseline[key], sample[key])
+        for sample in samples
+        for key in ("nav", "breadcrumbs", "scrollY")
+        if not _same_position(baseline[key], sample[key])
+    ]
+    assert not moved, (
+        f"page layout moved: {len(moved)} deviations in {len(samples)} frames, "
+        f"first ones (phase, element, expected, actual): {moved[:5]}"
+    )
+
+
+def test_global_search_backdrop_fades_gradually(
+    channels_live_server, page: Page, transactional_db
+):
+    """The blurred backdrop passes through intermediate opacity both while
+    opening and while closing, instead of popping in or out in one frame.
+    Catches a backdrop that is switched from display:none (a CSS transition
+    never starts from display:none)."""
+    samples = _record_open_close_cycle(page, channels_live_server.url)
+
+    for phase in ("opening", "closing"):
+        opacities = [s["opacity"] for s in samples if s["phase"] == phase]
+        partial = [o for o in opacities if 0.05 < o < 0.95]
+        assert partial, (
+            f"backdrop has no intermediate opacity while {phase}; "
+            f"sampled opacities: {opacities}"
+        )

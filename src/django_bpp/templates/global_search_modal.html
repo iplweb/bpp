@@ -1,96 +1,6 @@
 <!-- Global Search Modal Styles -->
 <style>
-    /* Global search modal styles */
-    .global-search-modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        z-index: 10000;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-
-    .global-search-modal.show {
-        display: block;
-        opacity: 1;
-    }
-
-    .global-search-modal.closing {
-        animation: fadeOutModal 0.35s ease-out forwards;
-    }
-
-    @keyframes fadeOutModal {
-        from {
-            opacity: 1;
-        }
-        to {
-            opacity: 0;
-        }
-    }
-
-    .global-search-container {
-        position: fixed;
-        width: 85vw;
-        max-width: 1200px;
-        min-height: 300px;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-        padding: 30px;
-        opacity: 0;
-        transform: scale(0);
-        pointer-events: none;
-    }
-
-    .global-search-modal.show .global-search-container {
-        pointer-events: auto;
-    }
-
-    /* Animation from search button */
-    .global-search-modal.show .global-search-container:not(.animating-out) {
-        animation: expandFromButton 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    }
-
-    .global-search-container.animating-out {
-        animation: collapseToButton 0.35s cubic-bezier(0.4, 0, 1, 1) forwards !important;
-        pointer-events: none !important;
-    }
-
-    @keyframes expandFromButton {
-        from {
-            transform: scale(0);
-            opacity: 0;
-        }
-        60% {
-            transform: scale(1.05);
-            opacity: 1;
-        }
-        to {
-            transform: scale(1);
-            opacity: 1;
-        }
-    }
-
-    @keyframes collapseToButton {
-        from {
-            transform: scale(1);
-            opacity: 1;
-        }
-        30% {
-            transform: scale(0.95);
-            opacity: 1;
-        }
-        to {
-            transform: scale(0);
-            opacity: 0;
-        }
-    }
+    /* Szklo, okno, blokada scrolla i ich animacje: top_bar.scss */
 
     .global-search-input {
         width: 100%;
@@ -467,8 +377,25 @@
         var currentRequest = null;
         var selectedIndex = -1;
         var searchResults = [];
-        var scrollPosition = 0;
         var lastSearchTerm = '';  // Store the last search term used
+
+        // Blokada przewijania strony pod oknem. Celowo `overflow: hidden` na
+        // <html> (top_bar.scss), a nie `position: fixed` na <body>: ta druga
+        // wersja lamie `position: sticky` paska i breadcrumbs, wiec skacza.
+        // Przy klasycznym pasku przewijania rezerwujemy jego miejsce, zeby
+        // tresc nie przesunela sie w poziomie, gdy pasek zniknie.
+        function lockPageScroll() {
+            var root = document.documentElement;
+            var scrollbarWidth = window.innerWidth - root.clientWidth;
+            root.classList.toggle('global-search-scrollbar-gutter', scrollbarWidth > 0);
+            root.classList.add('global-search-open');
+        }
+
+        function unlockPageScroll() {
+            document.documentElement.classList.remove(
+                'global-search-open', 'global-search-scrollbar-gutter'
+            );
+        }
 
         // Open search modal with dynamic positioning
         window.openGlobalSearch = function(event, isKeyboard) {
@@ -476,38 +403,7 @@
             var input = document.getElementById('globalSearchInput');
             var container = document.querySelector('.global-search-container');
 
-            // Save scroll position and block background scrolling
-            scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
-
-            // Zmierz pasek nawigacji ZANIM cokolwiek ruszymy - za chwile
-            // wypadnie z flow i jego wysokosc bedzie potrzebna do
-            // kompensacji na <body>.
-            var nav = document.querySelector('nav.sticky-header');
-            var navHeight = nav ? nav.offsetHeight : 0;
-
-            // Lock the body completely
-            document.body.style.position = 'fixed';
-            document.body.style.top = '-' + scrollPosition + 'px';
-            document.body.style.left = '0';
-            document.body.style.right = '0';
-            document.body.style.width = '100%';
-            document.body.style.overflow = 'hidden';
-
-            // Also lock html element for extra security
-            document.documentElement.style.overflow = 'hidden';
-
-            // Przypnij pasek nawigacji do viewportu i wysun go poza kadr.
-            // Blokada scrolla powyzej (body -> position: fixed) lamie jego
-            // `position: sticky`, wiec bez tego pasek znikalby skokowo;
-            // klasy sa zdejmowane w closeGlobalSearch(). Reflow miedzy
-            // klasami jest konieczny: bez niego przegladarka scala oba
-            // zapisy stylu w jeden i przejscia nie ma.
-            if (nav) {
-                nav.classList.add('global-search-pinned');
-                document.body.style.paddingTop = navHeight + 'px';
-                void nav.offsetHeight;
-                nav.classList.add('global-search-hidden');
-            }
+            lockPageScroll();
 
             // Remove previous animation classes
             container.classList.remove('animating-out');
@@ -641,53 +537,20 @@
         window.closeGlobalSearch = function() {
             var modal = document.getElementById('globalSearchModal');
             var container = document.querySelector('.global-search-container');
-            var nav = document.querySelector('nav.sticky-header');
 
-            // Add closing animation
-            container.classList.add('animating-out');
-            modal.classList.add('closing');
-
-            // Pasek wjezdza ROWNOLEGLE ze zwijaniem okna, nie po nim.
-            // Wlasne opoznienie 0.1s ma w CSS (top_bar.scss), zeby ruch nie
-            // startowal dokladnie w tej samej klatce co collapseToButton.
-            if (nav) {
-                nav.classList.remove('global-search-hidden');
+            // Zamkniecie juz zamknietego (lub wlasnie gasnacego) okna nic nie robi.
+            if (!modal.classList.contains('show')) {
+                return;
             }
 
-            // After animation completes, hide modal and restore scrolling
-            setTimeout(function() {
-                modal.classList.remove('show', 'closing');
-                container.classList.remove('animating-out');
-                modal.setAttribute('aria-hidden', 'true');
-
-                // Restore background scrolling and position
-                document.body.style.position = '';
-                document.body.style.top = '';
-                document.body.style.left = '';
-                document.body.style.right = '';
-                document.body.style.width = '';
-                document.body.style.overflow = '';
-
-                // Restore html element overflow
-                document.documentElement.style.overflow = '';
-
-                // Restore scroll position
-                window.scrollTo(0, scrollPosition);
-
-                // Oddaj pasek z powrotem `position: sticky`. Musi to isc w
-                // tej samej klatce co przywrocenie scrolla powyzej: pasek
-                // przypiety (fixed, top 0) i sticky przy top 0 sa w tym
-                // samym miejscu, wiec przelaczenie jest niewidoczne, a
-                // kompensacja paddingu znika razem z powrotem nav do flow.
-                if (nav) {
-                    nav.classList.remove('global-search-pinned');
-                    document.body.style.paddingTop = '';
-                }
-
-                // Reset container styles for next opening
-                container.style.transform = '';
-                container.style.opacity = '';
-            }, 350);
+            // Okno zwija sie, a szklo gasnie w tej samej klatce i przez ten
+            // sam czas (top_bar.scss), bez timerow w JS: stan "ukryte" to
+            // po prostu brak klasy `show`. Klasa `animating-out` zostaje do
+            // nastepnego otwarcia i trzyma okno zwiniete.
+            container.classList.add('animating-out');
+            modal.classList.remove('show');
+            modal.setAttribute('aria-hidden', 'true');
+            unlockPageScroll();
 
             // Cancel any pending request
             if (currentRequest) {
@@ -935,14 +798,7 @@
         function navigateToResult(itemId) {
             if (itemId) {
                 // Restore scrolling before navigation
-                document.body.style.position = '';
-                document.body.style.top = '';
-                document.body.style.left = '';
-                document.body.style.right = '';
-                document.body.style.width = '';
-                document.body.style.overflow = '';
-                document.documentElement.style.overflow = '';
-                window.scrollTo(0, scrollPosition);
+                unlockPageScroll();
 
                 location.href = '/global-nav-redir/' + itemId + '/?source=user';
             }
