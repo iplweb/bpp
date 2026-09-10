@@ -1,0 +1,369 @@
+// =============================================================================
+// PRINT STYLES — panel administracyjny (Grappelli)
+//
+// OSOBNY ENTRYPOINT, a nie sekcja w admin-themes.scss — bo admin-themes.css,
+// admin-style.css i admin-menu.css sa linkowane w admin/base_site.html
+// z atrybutem media="screen". Cokolwiek dopisane tam do @media print
+// przegladarka pobierze, ale NIGDY nie zastosuje. Ten plik jest linkowany
+// bez media="screen" (patrz admin/base_site.html), a jego tresc siedzi
+// w @media print, wiec na ekranie nie zmienia niczego.
+//
+// Odpowiednik dla serwisu publicznego: src/bpp/static/scss/_print.scss
+//
+// Grappelli (grappelli/stylesheets/screen.css) jest linkowane z media="all",
+// wiec JEGO reguly obowiazuja rowniez na wydruku — i to z nimi walczymy nizej.
+// =============================================================================
+
+@media print {
+
+  // ===========================================================================
+  // 1. UKLAD — dwie pulapki Grappelliego
+  // ===========================================================================
+  //
+  // (a) `#grp-content { padding: 80px 20px 50vh }`. To `50vh` na dole jest
+  //     zabojcze: na ekranie rezerwuje miejsce pod przyklejona stopke z
+  //     przyciskami, ale przy druku 1vh to 1% wysokosci PUDELKA STRONY, wiec
+  //     kazdy wydruk z admina konczyl sie POLOWA PUSTEJ KARTKI (a przy
+  //     krotkiej tresci — cala pusta strona wiecej). Gorne 80px robilo
+  //     miejsce pod `position: fixed` naglowek, ktorego i tak nie drukujemy.
+  //
+  // (b) `#grp-header { position: fixed }` oraz
+  //     `.grp-fixed-footer { position: fixed; bottom: 0 }`. Elementy fixed
+  //     przy druku laduja na pierwszej stronie NA tresci. Oba i tak ukrywamy
+  //     w sekcji 2, ale zdejmujemy tez pozycjonowanie — na wypadek, gdyby
+  //     ktorys szablon nadpisal `display`.
+  #grp-content {
+    padding: 0 !important;
+    float: none !important;
+    width: auto !important;
+    position: static !important;
+  }
+
+  #grp-container,
+  #grp-content-container {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: auto !important;
+    float: none !important;
+    position: static !important;
+  }
+
+  #grp-header,
+  .grp-fixed-footer {
+    position: static !important;
+  }
+
+  // (c) Grappelli uklada liste zmian i moduly formularza na FLOATACH
+  //     (`.grp-changelist-results { float: left }`). Wysoki float NIE dzieli
+  //     sie miedzy strony wydruku — przegladarka przepycha go w calosci na
+  //     nastepna strone. Efekt: pierwsza kartka zawierala sam tytul i byla
+  //     poza tym pusta, a tabela zaczynala sie dopiero od strony 2.
+  //     W normalnym przeplywie tresc fragmentuje sie prawidlowo.
+  #grp-changelist,
+  #grp-changelist-form,
+  .grp-changelist-results,
+  .grp-module,
+  .grp-group {
+    float: none !important;
+    clear: none !important;
+    width: auto !important;
+  }
+
+  // Grappelli maluje ciemne paski naglowka/stopki gradientami; na papierze
+  // schodzi na to toner i nic nie wnosi.
+  html,
+  body,
+  #grp-container,
+  #grp-content,
+  #grp-content-container,
+  .grp-module {
+    background: #fff !important;
+    background-image: none !important;
+    color: #000 !important;
+  }
+
+  // Baner serwera testowego wstrzykuje `body { background-image: url(...) }`
+  // inline w admin/base.html — inline style bije selektor, stad !important
+  // wyzej nie wystarczy dla `background-image`; deklarujemy osobno.
+  body {
+    background-image: none !important;
+  }
+
+  // ===========================================================================
+  // 2. CHROME ADMINA — naglowek, nawigacja, narzedzia
+  // ===========================================================================
+
+  #grp-header,
+  #grp-navigation,
+  #grp-admin-title,
+  #grp-user-tools,
+  #grp-context-navigation,
+  #grp-breadcrumbs,
+  #grp-page-tools,
+  #nav-global-container,
+  #grp-toc-handler {
+    display: none !important;
+  }
+
+  // ===========================================================================
+  // 3. STEROWANIE — przyciski, akcje, filtry, wyszukiwarka, paginacja
+  // ===========================================================================
+  //
+  // Wszystko, czego nie da sie kliknac na kartce. Formularzy jako calosci
+  // NIE ukrywamy — na change_form wartosci pol SA trescia wydruku.
+
+  .grp-submit-row,
+  .grp-object-tools,
+  .grp-changelist-actions,
+  #grp-changelist-search-form,
+  .grp-search,
+  .grp-pagination,
+  .grp-add-link,
+  .grp-delete-link,
+  .grp-cancel-link,
+  .grp-reset-link,
+  #grp-open-all,
+  #grp-close-all,
+  .grp-messagelist,
+  .bpp-support-button,
+  .countdown-banner,
+  .maintenance-banner,
+  .hide-on-print,
+  .hide-for-print {
+    display: none !important;
+  }
+
+  // Panel filtrow: prawa kolumna Grappelliego oraz wlasny panel BPP
+  // (admin-filter-panel.scss, ladowany w admin/change_list.html).
+  #grp-filters,
+  .grp-filter,
+  #filter-panel-toggle,
+  .filter-panel,
+  .filter-panel-overlay,
+  .loading-overlay,
+  .filter-loading-indicator,
+  .htmx-error-toast {
+    display: none !important;
+  }
+
+  // Kolumna z checkboxami zaznaczania rekordow na liscie zmian — na papierze
+  // to pusty pasek zjadajacy szerokosc tabeli.
+  .action-checkbox-column,
+  td.action-checkbox,
+  th.action-checkbox-column,
+  #result_list .action-checkbox {
+    display: none !important;
+  }
+
+  // Teksty pomocy pod polami. Na ekranie tlumacza dzialanie przyciskow
+  // ("Kliknij Uzupelnij, zeby..."), na papierze to kilkanascie linii
+  // instrukcji do klikania w czyms, czego kliknac nie mozna — czysty szum,
+  // ktory na formularzu wydawnictwa potrafil dolozyc kilka kartek.
+  .grp-help,
+  .grp-help-tooltip,
+  p.help,
+  .help,
+  .helptext {
+    display: none !important;
+  }
+
+  // Przyciski akcji wewnatrz formularza (Uzupelnij, pobierz z PBN, ikonki
+  // narzedzi). Wartosci pol zostaja — znika tylko sterowanie.
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  a.grp-button,
+  .grp-tools,
+  .grp-button {
+    display: none !important;
+  }
+
+  // Kazdy <button> to sterowanie — m.in. `button.keypad-trigger` (klawiatura
+  // polskich znakow diakrytycznych przy polach tekstowych), ktory inaczej
+  // drukuje sie przy kazdym polu.
+  button {
+    display: none !important;
+  }
+
+  // Naglowki modulow Grappelliego maja pelnoszerokosciowe, kolorowe tla.
+  // Na wydruku wystarcza pogrubienie i kreska pod spodem.
+  .grp-module > h2,
+  .grp-module > h3,
+  .grp-group > h2,
+  .grp-collapse-handler {
+    background: #fff !important;
+    background-image: none !important;
+    color: #000 !important;
+    border: 0 !important;
+    border-bottom: 1px solid #000 !important;
+    padding: 0 0 2px 0 !important;
+    margin: 0.6em 0 0.4em 0 !important;
+  }
+
+  // Pola formularza: cienka ramka wystarczy, zeby bylo widac granice
+  // wartosci. Bez cieni, zaokraglen i tel.
+  input,
+  select,
+  textarea {
+    border: 1px solid #999 !important;
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    resize: none !important;
+  }
+
+  // Uchwyty zwijania modulow (strzalki) — sam tytul modulu zostaje.
+  .grp-collapse-handler::before,
+  .grp-collapse-handler::after {
+    display: none !important;
+  }
+
+  // Moduly zwiniete na ekranie (grp-closed) rozwijamy na wydruk — inaczej
+  // czesc danych rekordu po cichu znika z kartki.
+  .grp-collapse.grp-closed > .grp-module,
+  .grp-collapse.grp-closed .grp-row {
+    display: block !important;
+  }
+
+  // ===========================================================================
+  // 4. TYPOGRAFIA
+  // ===========================================================================
+  //
+  // Skala jak na froncie (_print.scss) — jedna liczba na caly wydruk,
+  // zeby admin i serwis publiczny drukowaly sie tak samo. Sam rem-base ma
+  // tu mniejszy wplyw niz na froncie, bo Grappelli wymiaruje glownie w px;
+  // realna robote robia jawne rozmiary w pt nizej.
+  html {
+    font-size: 9pt !important;
+  }
+
+  body,
+  p,
+  td,
+  th,
+  li,
+  label,
+  input,
+  select,
+  textarea {
+    font-size: 10.5pt !important;
+    line-height: 1.35;
+  }
+
+  #grp-content-title h1,
+  h1 { font-size: 16pt !important; }
+  h2 { font-size: 14pt !important; }
+  h3 { font-size: 12.5pt !important; }
+  h4,
+  h5,
+  h6 { font-size: 11pt !important; }
+
+  // Tytul strony zostaje — to jedyna rzecz, ktora mowi, CO trzymamy w reku,
+  // skoro breadcrumbs i naglowek admina znikaja.
+  #grp-content-title {
+    display: block !important;
+    padding: 0 0 0.5em 0 !important;
+    border-bottom: 1px solid #000;
+    margin-bottom: 0.8em;
+  }
+
+  // ===========================================================================
+  // 5. TABELE — listy zmian
+  // ===========================================================================
+
+  #result_list,
+  .grp-changelist-results table,
+  table.grp-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  // Naglowek tabeli powtarzany na kazdej kolejnej kartce.
+  thead {
+    display: table-header-group !important;
+  }
+
+  #result_list th,
+  #result_list td,
+  table.grp-table th,
+  table.grp-table td {
+    padding: 3px 6px !important;
+    border: 1px solid #999 !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  #result_list thead th,
+  table.grp-table thead th {
+    font-weight: bold !important;
+    border-bottom: 2px solid #000 !important;
+  }
+
+  // Zebra i hover Grappelliego/BPP — na papierze tylko zjadaja toner.
+  // (`--admin-hover-bg` z _admin-base.scss jest !important, stad !important tu.)
+  #result_list tbody tr:hover td,
+  #result_list tbody tr:hover th,
+  #result_list tbody tr.grp-row-even td,
+  #result_list tbody tr.grp-row-odd td,
+  .grp-row.grp-alternate,
+  tr:nth-child(even) td {
+    background-color: #fff !important;
+  }
+
+  // Sortowanie: strzalki w naglowkach kolumn sa linkami z ikonami.
+  #result_list thead th .grp-sortoptions,
+  #result_list thead th .grp-sortremove,
+  #result_list thead th .grp-toggle {
+    display: none !important;
+  }
+
+  // ===========================================================================
+  // 6. LINKI I LAMANIE STRON
+  // ===========================================================================
+
+  a[href] {
+    text-decoration: none !important;
+    color: #000 !important;
+  }
+
+  // Grappelli nie dokleja URL-i po linkach, ale gdyby ktos wlaczyl
+  // foundation-print-styles w adminie — zostaje wylaczone jawnie.
+  a[href]::after,
+  a[href]:after {
+    content: "" !important;
+  }
+
+  h1, h2, h3, h4 {
+    page-break-after: avoid;
+    break-after: avoid-page;
+  }
+
+  // `break-inside: avoid` TYLKO na malych jednostkach. Nalozone na kontener
+  // wyzszy niz kartka nie jest "staraj sie" — przegladarka wyrzuca CALY blok
+  // na nastepna strone. `.grp-changelist-results` ma klase `grp-module`
+  // i miewa 3000 px, wiec objecie `.grp-module` regula `avoid` zostawialo
+  // pierwsza kartke pusta, z samym tytulem.
+  .grp-row {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .grp-module {
+    box-shadow: none !important;
+    // Jawnie: duze kontenery MAJA sie dzielic miedzy stronami.
+    page-break-inside: auto;
+    break-inside: auto;
+  }
+
+  // Dlugie listy zmian MAJA sie dzielic miedzy stronami.
+  #result_list tr,
+  table.grp-table tr {
+    page-break-inside: auto;
+    break-inside: auto;
+  }
+
+  img {
+    max-width: 100% !important;
+  }
+}

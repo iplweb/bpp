@@ -1,21 +1,113 @@
 // =============================================================================
-// PRINT STYLES
-// All @media print rules consolidated in one place
-// Marginesy strony (@page) są teraz generowane dynamicznie przez szablon bare.html
-// na podstawie ustawień django-constance (WYDRUK_MARGINES_*)
+// PRINT STYLES (front-end)
+// Wszystkie reguły @media print dla serwisu publicznego w jednym miejscu.
+//
+// Marginesy strony (@page) generuje dynamicznie szablon bare.html na
+// podstawie ustawień django-constance (WYDRUK_MARGINES_*) — NIE dodawaj
+// tu @page, bo nadpisze ustawienia uczelni.
+//
+// Odpowiednik dla panelu admina: src/bpp/static/bpp/scss/admin-print.scss
+// (osobny plik, bo admin-themes.css jest linkowany z media="screen").
+//
+// KOLEJNOŚĆ: ten plik jest importowany na KOŃCU każdego app-*.scss, już za
+// `@import "foundation-includes"` — celowo NIE z common.scss, bo common
+// wchodzi PRZED Foundation. Foundation emituje własny blok @media print
+// (foundation-print-styles) z m.in. `* { background: transparent !important;
+// color: black !important }` i `a[href]:after { content: ' (' attr(href) ')' }`;
+// żeby móc je nadpisać bez eskalacji !important, musimy być w kaskadzie za nim.
 // =============================================================================
 
 @media print {
-  // Hide skip-link in print (accessibility element not needed in print)
-  .skip-link {
+
+  // ===========================================================================
+  // 1. SKALA TYPOGRAFII
+  // ===========================================================================
+  //
+  // Źródło problemu „wszystko drukuje się ogromne": rozmiary w całym projekcie
+  // są w rem, a _settings.scss ustawia $global-font-size: 92%. Nagłówek h1
+  // Foundation to 3rem — na kartce ~33pt, wielkość plakatu. Przy druku
+  // przeglądarka NIE przelicza rem-ów na jednostki papierowe.
+  //
+  // Dwa niezależne pokrętła, oba potrzebne:
+  //
+  //  1. rem-base (`html`). Ustawiamy go w pt, żeby wydruk był DETERMINISTYCZNY:
+  //     `92%` jest liczone od domyślnego rozmiaru czcionki przeglądarki, który
+  //     czytelnik może mieć podkręcony (np. na 20px dla czytelności) — wtedy
+  //     wydruk puchnie razem z ekranem. Wartość niżej jest też świadomie
+  //     MNIEJSZA niż ekranowy odpowiednik (0.92 × 16px ≈ 11pt), bo ścieśnia
+  //     paddingi i marginesy komponentów (one też są w rem), nie ruszając
+  //     rozmiaru tekstu — ten ustawiamy jawnie w pt zaraz niżej.
+  //
+  //  2. Jawne rozmiary tekstu i nagłówków w pt. Mnożniki Foundation (2.5–3rem)
+  //     są ekranowe i na papierze nie mają sensu przy żadnym rem-base.
+  html {
+    font-size: 9pt !important;
+  }
+
+  body,
+  p {
+    // Rozmiar zwykłego dokumentu tekstowego, nie petit.
+    font-size: 10.5pt;
+    line-height: 1.35;
+  }
+
+  // UWAGA: świadomie NIE ustawiamy tu font-size na `div`. Poprzednia wersja
+  // tego pliku miała `body, p, div { font-size: 9pt }` — wpisanie rozmiaru na
+  // KAŻDY div zabija dziedziczenie, więc zagnieżdżony kontekst (np. tabela w
+  // karcie) nie mógł już niczego zmniejszyć ani powiększyć względem rodzica.
+  // Sterowanie idzie przez rem-base wyżej.
+
+  // !important jest tu konieczne, nie kosmetyczne: komponenty mają własne,
+  // BARDZIEJ SPECYFICZNE reguły nagłówków w rem (np. `.autor-header h1`
+  // z 2.2rem), które inaczej wygrywają z gołym `h1`. Wydruk autora wychodził
+  // przez to na 24pt. Arkusz druku ma normalizować skalę — stąd twarde
+  // pierwszeństwo.
+  h1 { font-size: 16pt !important; }
+  h2 { font-size: 14pt !important; }
+  h3 { font-size: 12.5pt !important; }
+  h4,
+  h5,
+  h6 { font-size: 11pt !important; }
+
+  h1, h2, h3, h4, h5, h6 {
+    margin-top: 0.6em;
+    margin-bottom: 0.3em;
+  }
+
+  small,
+  .small {
+    font-size: 9pt;
+  }
+
+  // ===========================================================================
+  // 2. TŁO
+  // ===========================================================================
+  //
+  // Foundation robi `* { background: transparent !important }`, ale zostawia
+  // dwie dziury, przez które przechodzi szare tło serwisu:
+  //
+  //   a) `_layout.scss` ma `html { background-color: #e6e6e6 !important }`.
+  //      Oba selektory są !important, więc rozstrzyga specyficzność:
+  //      `html` (0,0,1) bije `*` (0,0,0).
+  //   b) gradient siedzi w `.gradient-background::before` — selektor `*` NIE
+  //      matchuje pseudo-elementów, więc gradient przeżywa. Na dodatek jest
+  //      `position: fixed`, czyli trafiłby na wydruk jako pełnostronicowa
+  //      szara plama.
+  html,
+  body {
+    background: #fff !important;
+    background-color: #fff !important;
+  }
+
+  .gradient-background::before {
     display: none !important;
   }
 
-  // Neutralize screen-only min-height:100vh rules. On screen they keep the
-  // footer pinned to the bottom of the viewport; in print 1vh == 1% of the
-  // PAGE box, so they force the content container to fill a whole page and
-  // push the footer onto a second, almost-blank page. See _layout.scss and
-  // _multiseek-base.scss for the source declarations.
+  // Neutralizacja reguł min-height:100vh przeznaczonych dla ekranu. Na ekranie
+  // trzymają stopkę przy dolnej krawędzi okna; przy druku 1vh to 1% wysokości
+  // PUDEŁKA STRONY, więc kontener treści rozpycha się na całą kartkę i spycha
+  // resztę na kolejną, prawie pustą. Źródła deklaracji: _layout.scss,
+  // _multiseek-base.scss.
   body,
   .gradient-background,
   .grid-container-fluid[data-sticky-container],
@@ -23,24 +115,166 @@
     min-height: 0 !important;
   }
 
-  // Basic typography
-  body, p, div {
-    font-size: 9pt;
+  // Kontener treści na ekranie jest białym prostokątem z cieniem na szarym
+  // tle; na papierze cień i ograniczona szerokość są zbędne.
+  .grid-container,
+  .grid-container-fluid {
+    max-width: none !important;
+    width: auto !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
   }
 
-  // Links
+  // ===========================================================================
+  // 3. KLASY POMOCNICZE
+  // ===========================================================================
+  //
+  // `hide-on-print` to konwencja BPP. Nigdy nie miała definicji w CSS — była
+  // martwa w czterech szablonach (base.html ×2, test_server_detection.html,
+  // admin/base_site.html) ORAZ w zewnętrznym pakiecie django-countdown
+  // (countdown_banner.html), którego nie możemy edytować. Definiujemy ją tu
+  // zamiast przepisywać szablony na foundation-owe `hide-for-print`: pakiet
+  // zewnętrzny i tak zostałby przy starej nazwie.
+  .hide-on-print,
+  .hide-for-print {
+    display: none !important;
+  }
+
+  // Element dostępnościowy, bez sensu na papierze.
+  .skip-link {
+    display: none !important;
+  }
+
+  // ===========================================================================
+  // 4. CHROME SERWISU — nawigacja, stopka, banery, widgety
+  // ===========================================================================
+
+  // Górny pasek nawigacji wraz ze sticky-wrapperem i mobilnym title-barem.
+  // Sam `.top-bar` ma w szablonie `hide-for-print`, ale opakowujący
+  // `nav.sticky-header` i `.title-bar` (hamburger) — nie.
+  nav.sticky-header,
+  .title-bar,
+  .top-bar,
+  .global-nav-container,
+  .global-search-modal,
+  .search-shortcut-banner,
+  .search-shortcut-hint {
+    display: none !important;
+  }
+
+  // Okruszki, menu boczne, stopka.
+  #breadcrumbs-wrapper,
+  .left-menu-sidebar,
+  .footer,
+  .footer-container {
+    display: none !important;
+  }
+
+  // Menu boczne rezerwuje miejsce na treść — po jego ukryciu odzyskujemy je.
+  .main-content-with-sidebar {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    width: auto !important;
+  }
+
+  // Baner cookies (nasz override `cookielaw/rejectable.html` ma już
+  // hide-for-print, ale wariant wbudowany w pakiet — #CookielawBanner — nie).
+  #CookielawBanner,
+  .cookie-pasek {
+    display: none !important;
+  }
+
+  // Komunikaty flash, powiadomienia, przycisk supportu, banery serwera
+  // testowego, baner odliczania (django-countdown).
+  #messagesPlaceholder,
+  #messageTemplate,
+  .bpp-support-button,
+  .test-server-banner,
+  .test-server-watermark,
+  .countdown-banner,
+  .maintenance-banner {
+    display: none !important;
+  }
+
+  // Widgety zewnętrzne wstrzykiwane przez JS: UserWay (dostępność WCAG)
+  // i Freshworks (zgłoszenia). Wstrzykiwane są do <body>, więc nie da się
+  // ich oznaczyć klasą w szablonie — celujemy po ich własnych selektorach.
+  .uwy,
+  #userwayAccessibilityIcon,
+  #freshworks-container,
+  #freshworks-frame-wrapper,
+  #launcher-frame,
+  iframe[id^="freshworks"],
+  iframe[title*="Freshworks"] {
+    display: none !important;
+  }
+
+  // ===========================================================================
+  // 5. ELEMENTY INTERAKTYWNE
+  // ===========================================================================
+  //
+  // Sterowanie, które na papierze jest tylko szumem. NIE ukrywamy tu
+  // formularzy jako całości — bywają widoki, gdzie wartości pól są treścią.
+  // Zasada podzialu: element <button> to ZAWSZE sterowanie i na papierze nie
+  // robi nic — chowamy wszystkie. Linku stylizowanego na przycisk
+  // (`<a class="button">`) NIE ruszamy: to nawigacja, ktora niesie tresc
+  // (np. odnosnik do pelnego tekstu czy DOI).
+  button {
+    display: none !important;
+  }
+
+  ul.pagination,
+  .close-button,
+  .dropdown-pane,
+  .reveal-overlay,
+  .tooltip,
+  .has-tip::after,
+  .accordion-title::before {
+    display: none !important;
+  }
+
+  // Podpowiedzi obslugi widoczne tylko na ekranie ("Kliknij opis aby
+  // skopiowac do schowka") — na kartce mowia o czynnosci niewykonalnej.
+  .praca-mono__biblio-hint {
+    display: none !important;
+  }
+
+  // ===========================================================================
+  // 6. LINKI
+  // ===========================================================================
+  //
+  // Foundation przy druku dokleja adres po tekście linku
+  // (`a[href]:after { content: ' (' attr(href) ')' }`). W bibliografii dałoby
+  // to po każdym tytule nawias z długim URL-em — nieczytelne. Wyłączamy.
   a[href] {
     text-decoration: none;
   }
 
+  a[href]::after,
   a[href]:after {
     content: "" !important;
   }
 
-  // Tables
+  abbr[title]::after,
+  abbr[title]:after {
+    content: "" !important;
+  }
+
+  // ===========================================================================
+  // 7. TABELE
+  // ===========================================================================
+
   table {
     border: none;
-    margin: 0pt;
+    margin: 0;
+    width: 100% !important;
+  }
+
+  // Powtarzaj nagłówek tabeli na każdej kolejnej stronie wydruku.
+  thead {
+    display: table-header-group;
   }
 
   table tfoot tr th,
@@ -48,13 +282,27 @@
     display: table-row-group;
   }
 
-  // Multiseek title
+  // Foundation maluje co drugi wiersz na szaro — na papierze zjada toner
+  // i pogarsza czytelność tekstu.
+  table tbody tr:nth-child(even),
+  table.hover tbody tr:hover {
+    background-color: transparent !important;
+  }
+
+  // django_tables2: bez tego kontener z overflow ucina zawartość (issue #409).
+  div.table-container {
+    display: inline !important;
+  }
+
+  // ===========================================================================
+  // 8. MULTISEEK — raporty z wynikami wyszukiwania
+  // ===========================================================================
+
   h1.bpp-multiseek-title {
-    font-size: 12pt;
+    font-size: 14pt !important;
     font-weight: bold;
   }
 
-  // Multiseek report elements - hide interactive elements
   .multiseek-removed-panel,
   .multiseek-remove-from-results,
   .bibtex-actions,
@@ -70,53 +318,65 @@
 
   .multiseek-list-report li {
     page-break-inside: avoid;
+    break-inside: avoid;
     border: none;
     box-shadow: none;
   }
 
   .multiseek-table-report {
     box-shadow: none;
-    overflow: visible !important;  // Fix for Edge printing issue (similar to #409)
+    overflow: visible !important; // Fix wydruku w Edge (podobnie jak #409)
 
     tr {
       page-break-inside: avoid;
+      break-inside: avoid;
     }
   }
 
-  // Grid display
-  div.grid-x {
-    display: block !important;
+  // ===========================================================================
+  // 9. ŁAMANIE STRON
+  // ===========================================================================
+
+  // UWAGA: NIE zamieniamy tu `div.grid-x` na `display: block`. Ta reguła
+  // (obecna w poprzedniej wersji pliku) pochodzi z czasów float-owego grida
+  // i dziś szkodzi: przy `display: block` komórki `.cell` tracą kontekst
+  // flex, ale ZACHOWUJĄ `max-width` z klas typu `medium-4`, więc kafelki
+  // strony głównej drukowały się jako wąski, kilkustronicowy słupek.
+  // Chrome i Firefox fragmentują dziś flexbox w mediach stronicowanych
+  // poprawnie — zostawiamy grid nietknięty i tylko zdejmujemy z komórek
+  // sufit szerokości, żeby treść mogła zająć całą kartkę.
+  .grid-x > .cell {
+    max-width: 100% !important;
   }
 
-  // Page breaks
-  tr, img {
+  // Nie zostawiaj nagłówka jako ostatniej linii na stronie.
+  h1, h2, h3, h4 {
+    page-break-after: avoid;
+    break-after: avoid-page;
+  }
+
+  p, h2, h3 {
+    orphans: 3;
+    widows: 3;
+  }
+
+  img {
+    max-width: 100% !important;
+  }
+
+  // Długie tabele KBN/BPP mają się DZIELIĆ między stronami (inaczej tabela
+  // dłuższa niż kartka znika albo generuje pustą stronę) — stąd `auto`,
+  // a nie `avoid`.
+  tr,
+  img {
     page-break-inside: auto !important;
   }
 
-  // KBN table page breaks
-  table.kbntab tr td {
-    page-break-inside: auto;
-    page-break-after: avoid;
-  }
-
-  table.kbntab tr {
-    page-break-inside: auto;
-    page-break-after: avoid;
-  }
-
-  // BPP table page breaks
+  table.kbntab tr,
+  table.kbntab tr td,
+  table.bpp-table tr,
   table.bpp-table tr td {
     page-break-inside: auto;
     page-break-after: avoid;
-  }
-
-  table.bpp-table tr {
-    page-break-inside: auto;
-    page-break-after: avoid;
-  }
-
-  // Django tables2 patch (issue #409)
-  div.table-container {
-    display: inline !important;
   }
 }
