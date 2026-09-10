@@ -47,17 +47,17 @@
 
     .search-result-group {
         padding: 8px 0;
-        animation: fadeIn 0.3s ease-out;
+        animation: searchResultsFadeIn 0.2s ease-out;
     }
 
-    @keyframes fadeIn {
+    /* Start od poziomu przygaszonych poprzednich wynikow (.is-loading
+       w top_bar.scss): nowa lista nie znika na chwile przed pojawieniem. */
+    @keyframes searchResultsFadeIn {
         from {
-            opacity: 0;
-            transform: translateY(-10px);
+            opacity: 0.5;
         }
         to {
             opacity: 1;
-            transform: translateY(0);
         }
     }
 
@@ -397,6 +397,17 @@
             );
         }
 
+        // Stan "trwa wyszukiwanie". Poprzednie wyniki ZOSTAJA na ekranie
+        // (przygaszone, pasek postepu w polu - top_bar.scss), az nowe podmienia
+        // je w jednym kroku. Zastepowanie listy napisem "Wyszukiwanie..."
+        // zapadalo okno do pustego rozmiaru przy kazdym znaku.
+        function setSearchLoading(isLoading) {
+            document.querySelector('.global-search-container')
+                .classList.toggle('is-loading', isLoading);
+            document.getElementById('globalSearchResults')
+                .setAttribute('aria-busy', isLoading ? 'true' : 'false');
+        }
+
         // Open search modal with dynamic positioning
         window.openGlobalSearch = function(event, isKeyboard) {
             var modal = document.getElementById('globalSearchModal');
@@ -522,6 +533,7 @@
                 '</ul>' +
                 '</div>';
             document.getElementById('globalSearchResults').innerHTML = helpHtml;
+            setSearchLoading(false);
             selectedIndex = -1;
             searchResults = [];
 
@@ -609,6 +621,13 @@
                     document.getElementById('globalSearchResults').innerHTML =
                         '<div class="global-search-no-results">Wpisz minimum 3 znaki</div>';
                 }
+                // Spozniona odpowiedz na dluzsze zapytanie nie moze nadpisac
+                // tego, co wlasnie pokazalismy.
+                if (currentRequest) {
+                    currentRequest.abort();
+                    currentRequest = null;
+                }
+                setSearchLoading(false);
                 lastSearchTerm = '';
                 return;
             }
@@ -622,9 +641,7 @@
                 currentRequest = null;
             }
 
-            // Show loading
-            document.getElementById('globalSearchResults').setAttribute('aria-busy', 'true');
-            document.getElementById('globalSearchResults').textContent = 'Wyszukiwanie...';
+            setSearchLoading(true);
 
             // Store search term in closure for this specific request
             var searchTermForThisRequest = query;
@@ -635,18 +652,17 @@
                 data: { q: query },
                 dataType: 'json',
                 success: function(data) {
-                    // First display results WITHOUT highlighting
-                    displayResultsPlain(data.results || []);
-
-                    // Then apply highlighting to the DOM after a small delay
-                    setTimeout(function() {
-                        applyHighlightsToDom(searchTermForThisRequest);
-                    }, 100);  // Slightly longer delay for smoother experience
-
+                    // Wyniki od razu z podswietleniem, jedna podmiana DOM.
+                    // Podswietlanie po fakcie przebudowywalo kazda pozycje
+                    // z mignieciem krycia chwile po pojawieniu sie listy.
+                    displayResults(data.results || [], searchTermForThisRequest);
                     currentRequest = null;
                 },
                 error: function(xhr) {
+                    // Przy 'abort' juz leci nowsze zapytanie - stan ladowania
+                    // zostaje.
                     if (xhr.statusText !== 'abort') {
+                        setSearchLoading(false);
                         document.getElementById('globalSearchResults').innerHTML =
                             '<div class="global-search-no-results">Błąd podczas wyszukiwania</div>';
                     }
@@ -656,10 +672,10 @@
         }
 
 
-        // Display results WITHOUT highlighting
-        function displayResultsPlain(results) {
+        // Display results with the search terms already highlighted
+        function displayResults(results, searchTerm) {
             var resultsContainer = document.getElementById('globalSearchResults');
-            resultsContainer.setAttribute('aria-busy', 'false');
+            setSearchLoading(false);
             searchResults = [];
 
             if (!results || results.length === 0) {
@@ -693,9 +709,8 @@
                         var index = searchResults.length;
                         searchResults.push(item);
 
-                        // Just display the raw text - NO highlighting yet
                         html += '<div class="search-result-item" data-index="' + index + '" data-id="' + item.id + '">';
-                        html += item.text || '';
+                        html += highlightTerms(item.text || '', searchTerm);
                         html += '</div>';
                     });
 
@@ -713,20 +728,13 @@
             });
         }
 
-        // Apply highlights to already-rendered DOM with staggered animation
-        function applyHighlightsToDom(searchTerm) {
-            if (!searchTerm || searchTerm.length < 1) {
-                return;
-            }
-
-            var words = searchTerm.trim().split(/\s+/).filter(function(word) {
+        // Wrap each search word (3+ characters) of a result label in a
+        // colour-coded span. The lookahead skips matches inside HTML tags.
+        function highlightTerms(html, searchTerm) {
+            var words = (searchTerm || '').trim().split(/\s+/).filter(function(word) {
                 // Only highlight words longer than 2 characters
                 return word.length > 2;
             });
-
-            if (words.length === 0) {
-                return;
-            }
 
             // Remove duplicates from words array to avoid highlighting the same word multiple times
             var uniqueWords = [];
@@ -739,58 +747,15 @@
                 }
             });
 
-            // Get all search result items
-            var resultItems = document.querySelectorAll('.search-result-item');
+            uniqueWords.forEach(function(word, wordIndex) {
+                var escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                var colorClass = 'search-highlight-' + ((wordIndex % 5) + 1);
+                var regex = new RegExp('(' + escapedWord + ')(?![^<]*>)', 'gi');
 
-            // Add staggered animation delay for each item
-            var totalHighlights = 0;
-
-            resultItems.forEach(function(item, itemIndex) {
-                // Add a small delay for each item to create a cascade effect
-                setTimeout(function() {
-                    var originalHTML = item.innerHTML;
-                    var highlightedHTML = originalHTML;
-
-                    // Apply highlighting for each unique word (only those with 2+ characters)
-                    uniqueWords.forEach(function(word, wordIndex) {
-                        var escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                        var colorClass = 'search-highlight-' + ((wordIndex % 5) + 1);
-                        var regex = new RegExp('(' + escapedWord + ')(?![^<]*>)', 'gi');
-
-                        highlightedHTML = highlightedHTML.replace(regex, '<span class="' + colorClass + '">$1</span>');
-                    });
-
-                    if (highlightedHTML !== originalHTML) {
-                        // Add a fade transition to the item
-                        item.style.transition = 'opacity 0.3s ease';
-                        item.style.opacity = '0.7';
-
-                        item.innerHTML = highlightedHTML;
-
-                        // Fade back to full opacity
-                        setTimeout(function() {
-                            item.style.opacity = '1';
-                        }, 10);
-
-                        totalHighlights++;
-                    }
-                }, itemIndex * 20); // 20ms delay between each item
+                html = html.replace(regex, '<span class="' + colorClass + '">$1</span>');
             });
 
-            // Verify highlights were applied after all items are processed
-            setTimeout(function() {
-                var highlights = document.querySelectorAll('[class*="search-highlight"]');
-
-                // Add a subtle pulse to all highlights once they're all added
-                highlights.forEach(function(highlight, i) {
-                    setTimeout(function() {
-                        highlight.style.transform = 'scale(1.1)';
-                        setTimeout(function() {
-                            highlight.style.transform = 'scale(1)';
-                        }, 200);
-                    }, i * 10);
-                });
-            }, resultItems.length * 20 + 100);
+            return html;
         }
 
 

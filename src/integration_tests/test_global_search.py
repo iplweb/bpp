@@ -1,3 +1,6 @@
+import re
+import time
+
 import pytest
 from model_bakery import baker
 from playwright.sync_api import Page
@@ -339,3 +342,133 @@ def test_global_search_backdrop_fades_gradually(
             f"backdrop has no intermediate opacity while {phase}; "
             f"sampled opacities: {opacities}"
         )
+
+
+_AUTOCOMPLETE_URL = re.compile(r"/bpp/navigation-autocomplete/")
+
+# Samples the global-search dialog height on every animation frame.
+_START_HEIGHT_PROBE_JS = """
+() => {
+    const box = document.querySelector('.global-search-container');
+    const probe = {stop: false, heights: []};
+    window.__heightProbe = probe;
+    const tick = () => {
+        probe.heights.push(box.getBoundingClientRect().height);
+        if (!probe.stop) {
+            requestAnimationFrame(tick);
+        }
+    };
+    requestAnimationFrame(tick);
+}
+"""
+
+_DIALOG_HEIGHT_JS = (
+    "() => document.querySelector('.global-search-container')"
+    ".getBoundingClientRect().height"
+)
+
+
+def _autocomplete_payload(group_sizes: list[int]) -> dict:
+    """JSON shaped like the GlobalNavigationAutocomplete response: one group
+    per content type, children with ``<content type>-<pk>`` ids."""
+    return {
+        "results": [
+            {
+                "id": None,
+                "text": f"Grupa {group}",
+                "children": [
+                    {"id": f"{group}-{item}", "text": f"Testowy wynik {group}.{item}"}
+                    for item in range(size)
+                ],
+            }
+            for group, size in enumerate(group_sizes)
+        ],
+        "pagination": {"more": False},
+    }
+
+
+def _wait_for_routes(page: Page, routes: list, count: int):
+    """Wait until ``count`` autocomplete requests were intercepted; return the
+    last one (still unanswered)."""
+    deadline = time.monotonic() + 5
+    while len(routes) < count:
+        assert time.monotonic() < deadline, (
+            f"expected {count} autocomplete requests, got {len(routes)}"
+        )
+        page.wait_for_timeout(50)
+    return routes[count - 1]
+
+
+def _wait_height_frames(page: Page, count: int) -> None:
+    n = page.evaluate("() => window.__heightProbe.heights.length")
+    page.wait_for_function(f"() => window.__heightProbe.heights.length >= {n + count}")
+
+
+def test_global_search_dialog_does_not_collapse_while_next_search_loads(
+    channels_live_server, page: Page, transactional_db
+):
+    """Editing the query while results are shown ("test" -> Backspace -> "t")
+    must not collapse the dialog while the next response is pending: the
+    previous results stay until the new ones replace them in one step.
+    Catches a loading placeholder that replaces the result list."""
+    routes = []
+    # Requests are parked here and answered by the test at a chosen moment.
+    page.route(_AUTOCOMPLETE_URL, lambda route: routes.append(route))
+    url = channels_live_server.url
+    page.context.add_cookies([{"name": "cookielaw_accepted", "value": "1", "url": url}])
+    page.goto(url)
+    wait_for_page_load(page)
+    open_global_search(page)
+
+    page.fill("#globalSearchInput", "test")
+    _wait_for_routes(page, routes, 1).fulfill(json=_autocomplete_payload([4, 4]))
+    page.wait_for_function(
+        "() => document.querySelectorAll('.search-result-item').length === 8"
+    )
+    page.wait_for_function(_MODAL_ANIMATIONS_SETTLED_JS)
+    page.evaluate(_START_HEIGHT_PROBE_JS)
+    _wait_height_frames(page, 2)
+    height_with_results = page.evaluate(_DIALOG_HEIGHT_JS)
+
+    # Two follow-up requests ("tes", then "test"), both left unanswered.
+    # Caret to the end first: openGlobalSearch() selects the input text on a
+    # timer, and a Backspace over the selection would clear the whole query.
+    # (No "End" key: on macOS Firefox/WebKit it does not move the caret.)
+    page.evaluate(
+        "() => { const input = document.querySelector('#globalSearchInput'); "
+        "input.setSelectionRange(input.value.length, input.value.length); }"
+    )
+    page.keyboard.press("Backspace")
+    assert page.input_value("#globalSearchInput") == "tes"
+    _wait_for_routes(page, routes, 2)
+    _wait_height_frames(page, 10)
+    page.keyboard.type("t")
+    assert page.input_value("#globalSearchInput") == "test"
+    latest = _wait_for_routes(page, routes, 3)
+    _wait_height_frames(page, 10)
+    heights_while_loading = page.evaluate("() => window.__heightProbe.heights.slice()")
+
+    latest.fulfill(json=_autocomplete_payload([2]))
+    page.wait_for_function(
+        "() => document.querySelectorAll('.search-result-item').length === 2"
+    )
+    page.wait_for_function(_MODAL_ANIMATIONS_SETTLED_JS)
+    _wait_height_frames(page, 10)
+    height_with_new_results = page.evaluate(_DIALOG_HEIGHT_JS)
+    heights = page.evaluate(
+        "() => { window.__heightProbe.stop = true; "
+        "return window.__heightProbe.heights; }"
+    )
+    # The page aborted the "tes" request, so it was never answered; settle
+    # its parked route so nothing is left pending when the page closes.
+    routes[1].abort()
+
+    assert min(heights_while_loading) >= height_with_results - 0.5, (
+        f"dialog shrank while the next search was loading: "
+        f"{height_with_results} -> {min(heights_while_loading)}"
+    )
+    floor = min(height_with_results, height_with_new_results)
+    assert min(heights) >= floor - 0.5, (
+        f"dialog dipped below both the old ({height_with_results}) and the "
+        f"new ({height_with_new_results}) height: {min(heights)}"
+    )
