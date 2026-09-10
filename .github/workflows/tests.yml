@@ -431,77 +431,13 @@ jobs:
         # 0-indexed (kept that way so the job names / required checks
         # don't change). Map group = shard + 1.
         GROUP=$((SHARD_ID + 1))
-        # DIAGNOSTYKA (do wycofania): watchdog wewnatrz kontenera.
-        # Ani `--timeout-method signal`, ani `thread` nie wystrzelily przy
-        # zawieszeniu sharda 5 — oba sa watchdogami po stronie Pythona, wiec
-        # zamrozenie w wywolaniu C nie zwalniajacym GIL-a jest dla nich
-        # niewidoczne. SIGABRT trafia do faulthandlera, ktorego handler jest
-        # w C i pisze prosto do fd 2 — zrzuca stosy WSZYSTKICH watkow, GIL
-        # nie jest do tego potrzebny. Procesy szukane przez /proc, zeby nie
-        # zalezec od obecnosci `pkill` (procps) w obrazie.
         docker compose $COMPOSE_FILES run --rm \
-          -e SHARD_SPLITS="$NUM_SHARDS" \
-          -e SHARD_GROUP="$GROUP" \
-          -e PYTHONFAULTHANDLER=1 \
-          test-runner sh -c '
-            uv run pytest \
-              -n auto \
-              --splits "$SHARD_SPLITS" --group "$SHARD_GROUP" \
-              --splitting-algorithm least_duration \
-              --durations-path .test_durations \
-              --timeout 300 \
-              -v &
-            PYTEST_PID=$!
-            (
-              sleep 660
-              echo "=== WATCHDOG: 660s, zrzut stosow ==="
-              echo "--- procesy ---"
-              for d in /proc/[0-9]*; do
-                pid=${d##*/}
-                cmd=$(tr "\0" " " < "$d/cmdline" 2>/dev/null) || continue
-                [ -n "$cmd" ] && echo "  $pid: $cmd"
-              done
-              # NAJPIERW workery xdista. Sa spawnowane przez execnet jako
-              # `python -c ...`, wiec ich cmdline NIE zawiera slowa "pytest"
-              # — poprzednia runda ich przez to nie trafila. Kontroler musi
-              # przezyc ten moment, bo to jego deskryptor 2 dziedzicza.
-              for d in /proc/[0-9]*; do
-                pid=${d##*/}
-                [ "$pid" = "$$" ] && continue
-                cmd=$(tr "\0" " " < "$d/cmdline" 2>/dev/null) || continue
-                case "$cmd" in
-                  *pytest*) continue ;;
-                  *python*) echo "WATCHDOG: SIGABRT worker -> $pid"
-                            kill -ABRT "$pid" 2>/dev/null || true ;;
-                esac
-              done
-              sleep 20
-              # Dopiero teraz kontroler.
-              for d in /proc/[0-9]*; do
-                pid=${d##*/}
-                [ "$pid" = "$$" ] && continue
-                cmd=$(tr "\0" " " < "$d/cmdline" 2>/dev/null) || continue
-                case "$cmd" in
-                  *pytest*) echo "WATCHDOG: SIGABRT kontroler -> $pid"
-                            kill -ABRT "$pid" 2>/dev/null || true ;;
-                esac
-              done
-              sleep 20
-              for d in /proc/[0-9]*; do
-                pid=${d##*/}
-                [ "$pid" = "$$" ] && continue
-                cmd=$(tr "\0" " " < "$d/cmdline" 2>/dev/null) || continue
-                case "$cmd" in
-                  *python*|*pytest*) kill -9 "$pid" 2>/dev/null || true ;;
-                esac
-              done
-            ) &
-            WATCHDOG_PID=$!
-            wait $PYTEST_PID
-            RC=$?
-            kill $WATCHDOG_PID 2>/dev/null || true
-            exit $RC
-          '
+          test-runner uv run pytest \
+            -n auto \
+            --splits "$NUM_SHARDS" --group "$GROUP" \
+            --splitting-algorithm least_duration \
+            --durations-path .test_durations \
+            --timeout 300
 
     - name: Cleanup
       if: always()
