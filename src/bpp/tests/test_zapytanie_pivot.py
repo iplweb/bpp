@@ -626,3 +626,175 @@ def test_presety_autora_sa_wykonalne_w_swojej_bazie():
         assert metric.key == metric_key, opis
         assert row.key == row_key, opis
         assert col is not None and col.key == col_key, opis
+
+
+# --- stronicowanie i sortowanie macierzy (/zapytanie/) ---------------------
+
+
+def _autorzy_nowak(ile, jednostka):
+    from model_bakery import baker
+
+    from bpp.models import Autor
+
+    return [
+        baker.make(
+            Autor,
+            nazwisko="Nowak",
+            imiona=f"Jan {i:03d}",
+            aktualna_jednostka=jednostka,
+        )
+        for i in range(ile)
+    ]
+
+
+@pytest.mark.django_db
+def test_pivot_autorow_stronicuje_wiersze(redaktor, jednostka):
+    """Sedno zgłoszenia: pivot_row=autor przy 2 tys. autorów wypluwał
+    wszystkie wiersze naraz."""
+    _autorzy_nowak(30, jednostka)
+
+    res = redaktor.get(
+        reverse("bpp:zapytanie"),
+        {
+            "model": "autor",
+            "query": 'nazwisko = "Nowak"',
+            "postac": "pivot",
+            "pivot_row": "autor",
+            "pivot_val": "liczba_autorow",
+            "pivot_per_page": "25",
+        },
+    )
+
+    assert res.status_code == 200
+    t = res.context["pivot_table"]
+    assert t["wszystkich_wierszy"] == 30
+    assert len(t["rows"]) == 25
+    assert t["is_paginated"] is True
+    assert "pivot_page=2" in res.content.decode().replace("&amp;", "&")
+
+
+@pytest.mark.django_db
+def test_pivot_druga_strona_pokazuje_reszte(redaktor, jednostka):
+    _autorzy_nowak(30, jednostka)
+
+    wspolne = {
+        "model": "autor",
+        "query": 'nazwisko = "Nowak"',
+        "postac": "pivot",
+        "pivot_row": "autor",
+        "pivot_val": "liczba_autorow",
+        "pivot_per_page": "25",
+    }
+    pierwsza = redaktor.get(reverse("bpp:zapytanie"), wspolne)
+    druga = redaktor.get(reverse("bpp:zapytanie"), {**wspolne, "pivot_page": "2"})
+
+    assert len(druga.context["pivot_table"]["rows"]) == 5
+    etykiety_1 = {r["label"] for r in pierwsza.context["pivot_table"]["rows"]}
+    etykiety_2 = {r["label"] for r in druga.context["pivot_table"]["rows"]}
+    assert not (etykiety_1 & etykiety_2)
+    # RAZEM nadal dotyczy całego zbioru, nie widocznej strony
+    assert druga.context["pivot_table"]["grand_total"] == 30
+
+
+@pytest.mark.django_db
+def test_pivot_sortowanie_po_sumie_zmienia_kolejnosc(redaktor, denorms):
+    """Wiersze mają iść wg kolumny RAZEM, nie wg kolejności naturalnej.
+
+    Dane są ułożone tak, by obie kolejności były RÓŻNE (starszy rok ma
+    więcej prac, a naturalna kolejność roku jest malejąca) — inaczej test
+    przechodziłby także przy całkowicie zignorowanym sortowaniu.
+    """
+    from bpp.tests.util import any_ciagle
+
+    # TRZY lata o różnych licznościach. Przy dwóch wierszach „sortuj po
+    # sumie malejąco" i „odwróć kolejność naturalną" dają ten sam wynik,
+    # więc test przechodziłby także przy zignorowanym sortowaniu. Tu:
+    #   naturalna (rok malejąco): 2022, 2021, 2020
+    #   odwrócona naturalna:      2020, 2021, 2022
+    #   suma malejąco:            2021 (3), 2022 (2), 2020 (1)
+    #   suma rosnąco:             2020, 2022, 2021
+    # — cztery różne kolejności, żadnej nie da się pomylić z inną.
+    for nr, rok in enumerate([2020, 2021, 2021, 2021, 2022, 2022]):
+        any_ciagle(tytul_oryginalny=f"Sort {nr}", rok=rok)
+    denorms.flush()
+
+    wspolne = {
+        "model": "rekord",
+        "query": "rok >= 2020",
+        "postac": "pivot",
+        "pivot_row": "rok",
+        "pivot_val": "liczba",
+    }
+
+    naturalna = redaktor.get(reverse("bpp:zapytanie"), wspolne)
+    assert [r["label"] for r in naturalna.context["pivot_table"]["rows"]] == [
+        "2022",
+        "2021",
+        "2020",
+    ]
+
+    res = redaktor.get(
+        reverse("bpp:zapytanie"), {**wspolne, "pivot_sort": "suma", "pivot_dir": "desc"}
+    )
+    t = res.context["pivot_table"]
+    assert [r["label"] for r in t["rows"]] == ["2021", "2022", "2020"]
+    assert [r["total"] for r in t["rows"]] == [3, 2, 1]
+    assert t["sort"] == "suma"
+    assert t["sort_suma_strzalka"] == "▼"
+
+    rosnaco = redaktor.get(
+        reverse("bpp:zapytanie"), {**wspolne, "pivot_sort": "suma", "pivot_dir": "asc"}
+    )
+    assert [r["label"] for r in rosnaco.context["pivot_table"]["rows"]] == [
+        "2020",
+        "2022",
+        "2021",
+    ]
+    assert rosnaco.context["pivot_table"]["sort_suma_strzalka"] == "▲"
+
+
+@pytest.mark.django_db
+def test_pivot_formularz_przenosi_sortowanie(redaktor, wydawnictwo_ciagle, denorms):
+    """Selecty auto-submitują; bez ukrytych pól zmiana wymiaru cicho
+    wracałaby do kolejności domyślnej."""
+    denorms.flush()
+    res = redaktor.get(
+        reverse("bpp:zapytanie"),
+        {
+            "model": "rekord",
+            "query": f"rok = {wydawnictwo_ciagle.rok}",
+            "postac": "pivot",
+            "pivot_row": "rok",
+            "pivot_val": "liczba",
+            "pivot_sort": "suma",
+            "pivot_dir": "asc",
+        },
+    )
+    content = res.content.decode()
+    assert 'name="pivot_sort" value="suma"' in content
+    assert 'value="asc"' in content
+    assert 'name="pivot_per_page"' in content
+
+
+@pytest.mark.django_db
+def test_pivot_eksport_ignoruje_strone_ale_bierze_sortowanie(redaktor, jednostka):
+    """Plik ma zawierać CAŁĄ macierz — dlatego UI nie ma „pokaż wszystkie"."""
+    _autorzy_nowak(30, jednostka)
+
+    res = redaktor.get(
+        reverse("bpp:zapytanie_eksport", kwargs={"export_format": "csv"}),
+        {
+            "model": "autor",
+            "query": 'nazwisko = "Nowak"',
+            "postac": "pivot",
+            "pivot_row": "autor",
+            "pivot_val": "liczba_autorow",
+            "pivot_per_page": "25",
+            "pivot_page": "2",
+            "pivot_sort": "suma",
+        },
+    )
+
+    wiersze = _wiersze_csv(res)
+    # nagłówek + 30 autorów + RAZEM — strona 2 nie ma na to wpływu
+    assert len(wiersze) == 32
