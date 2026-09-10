@@ -431,15 +431,53 @@ jobs:
         # 0-indexed (kept that way so the job names / required checks
         # don't change). Map group = shard + 1.
         GROUP=$((SHARD_ID + 1))
+        # DIAGNOSTYKA (do wycofania): watchdog wewnatrz kontenera.
+        # Ani `--timeout-method signal`, ani `thread` nie wystrzelily przy
+        # zawieszeniu sharda 5 — oba sa watchdogami po stronie Pythona, wiec
+        # zamrozenie w wywolaniu C nie zwalniajacym GIL-a jest dla nich
+        # niewidoczne. SIGABRT trafia do faulthandlera, ktorego handler jest
+        # w C i pisze prosto do fd 2 — zrzuca stosy WSZYSTKICH watkow, GIL
+        # nie jest do tego potrzebny. Procesy szukane przez /proc, zeby nie
+        # zalezec od obecnosci `pkill` (procps) w obrazie.
         docker compose $COMPOSE_FILES run --rm \
-          test-runner uv run pytest \
-            -n auto \
-            --splits "$NUM_SHARDS" --group "$GROUP" \
-            --splitting-algorithm least_duration \
-            --durations-path .test_durations \
-            --timeout 300 \
-            --timeout-method thread \
-            -v
+          -e SHARD_SPLITS="$NUM_SHARDS" \
+          -e SHARD_GROUP="$GROUP" \
+          -e PYTHONFAULTHANDLER=1 \
+          test-runner sh -c '
+            uv run pytest \
+              -n auto \
+              --splits "$SHARD_SPLITS" --group "$SHARD_GROUP" \
+              --splitting-algorithm least_duration \
+              --durations-path .test_durations \
+              --timeout 300 \
+              -v &
+            PYTEST_PID=$!
+            (
+              sleep 720
+              echo "=== WATCHDOG: 720s, SIGABRT do procesow pytest ==="
+              for d in /proc/[0-9]*; do
+                pid=${d##*/}
+                [ "$pid" = "$$" ] && continue
+                if tr "\0" " " < "$d/cmdline" 2>/dev/null | grep -q pytest; then
+                  echo "WATCHDOG: SIGABRT -> $pid"
+                  kill -ABRT "$pid" 2>/dev/null || true
+                fi
+              done
+              sleep 30
+              for d in /proc/[0-9]*; do
+                pid=${d##*/}
+                [ "$pid" = "$$" ] && continue
+                if tr "\0" " " < "$d/cmdline" 2>/dev/null | grep -q pytest; then
+                  kill -9 "$pid" 2>/dev/null || true
+                fi
+              done
+            ) &
+            WATCHDOG_PID=$!
+            wait $PYTEST_PID
+            RC=$?
+            kill $WATCHDOG_PID 2>/dev/null || true
+            exit $RC
+          '
 
     - name: Cleanup
       if: always()
