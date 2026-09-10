@@ -437,7 +437,9 @@ jobs:
             --splits "$NUM_SHARDS" --group "$GROUP" \
             --splitting-algorithm least_duration \
             --durations-path .test_durations \
-            --timeout 300
+            --timeout 300 \
+            --timeout-method thread \
+            -v
 
     - name: Cleanup
       if: always()
