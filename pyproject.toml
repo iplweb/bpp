@@ -41,13 +41,13 @@ dependencies = [
     "pygad>=3.7.0",
     "django-denorm-iplweb>=1.14.0",
     "django-tabular-permissions==2.9.3",
-    "simplejson>=4.1.1,<5",
+    "simplejson>=4.1.2,<5",
     "django-reversion>=6.3.0,<7",
     "django-reversion-compare>=0.19.2",
     "channels[daphne]>=4.3.2,<5",
-    "uvicorn[standard]>=0.52.3",
+    "uvicorn[standard]>=0.52.4",
     "channels-redis>=4,<5",
-    "django-flexible-reports>=0.4.2",
+    "django-flexible-reports>=0.5.0",
     "django-dsl>=0.1.15",
     "django-group-by==0.3.1",
     "django-columns==0.1.0",
@@ -62,7 +62,7 @@ dependencies = [
     "xlrd==2.0.2",
     "celery>=5.6.3",
     "django-celery-results==2.6.0",
-    "django-tables2>=3.0.0,<3.1",
+    "django-tables2>=3.0.1,<3.1",
     "django-sendfile2>=0.7.2",
     "Unidecode>=1.3,<2",
     "django-cookie-law==2.2.0",
@@ -70,7 +70,7 @@ dependencies = [
     "django-crispy-forms>=2.7,<3",
     "crispy-forms-foundation>=1.1.0,<2",
     "django-compressor==4.6.0",
-    "nh3>=0.3.6",
+    "nh3>=0.3.7",
     "django-session-security>=2.6.8",
     "django-password-policies-iplweb==0.9.4",
     "dj-pagination==2.5.0",
@@ -124,13 +124,13 @@ dependencies = [
     "urllib3>=2.7.0,<3.0.0",
     "pandas>=3.0.5",
     "django-tinymce>=5.0.0",
-    "crispy-bootstrap5>=2026.3",
+    "crispy-bootstrap5>=2026.9",
     "crispy-bootstrap3>=2022.1",
     "twisted[http2,tls]>=26.4.0",
     "django-dbtemplates-iplweb>=4.4.1",
     "django-soft-delete>=1.0.23",
     "tqdm>=4.70.0",
-    "xhtml2pdf>=0.2.16",
+    "xhtml2pdf>=0.2.18",
     "isbnlib>=3.10.14",
     "chardet>=7.6.0",
     "python-dateutil>=2.9.0.post0",
@@ -145,7 +145,7 @@ dependencies = [
     "bibtexparser>=2.0.0b7", # BibTeX import
     "langdetect>=1.0.9", # Language detection for imports
     "beautifulsoup4>=4.15.0", # importer_publikacji.providers.www imports at app-ready time
-    "gunicorn>=26.0.0", # authserver WSGI runner (moved from docker/authserver build-time uv pip install)
+    "gunicorn>=26.2.0", # authserver WSGI runner (moved from docker/authserver build-time uv pip install)
     "watchdog>=5.0.3", # --reload mode dla uvicorn/celery w dev compose (moved from entrypoint `uv pip install`)
     # Transitive via Django, pinowany zeby wymusic wersje z fixem. 0.6.0 zamyka
     # CVE-2026-71491, CVE-2026-59894, CVE-2026-59893 i CVE-2026-54284 (wszystkie
@@ -176,7 +176,7 @@ dependencies = [
     # django-liveops: framework dla dlugo-dzialajacych operacji z live UI
     # (WebSocket + HTMX). Nastepca wewnetrznego `src/long_running`.
     "django-liveops[celery]>=0.4.1,<0.5",
-    "django-oauth-toolkit==3.4.0",
+    "django-oauth-toolkit==3.4.1",
     "django-altcha>=1.0.0",
 ]
 
@@ -250,7 +250,40 @@ tag = false
 push = false
 
 [tool.uv]
-environments = ["python_version >= '3.10' and python_version < '3.15' and platform_python_implementation != 'PyPy'"]
+# Zawezenie universal resolution uv. uv domyslnie rozwiazuje JEDEN lock
+# poprawny dla KAZDEJ platformy i KAZDEGO interpretera - takze tych,
+# ktorych nigdy nie uruchomimy. Wystarczy wtedy jeden pakiet z warunkiem
+# `platform_python_implementation == "PyPy"`, zeby scagnac w dol caly graf.
+#
+# Wykluczenie PyPy wjechalo commitem 0f3f049e0 ("Prepare fix, maybe",
+# 2025-10-14) razem z `urllib3>=2.2.3` i `vcrpy>=6.0.2` - i to byl wlasnie
+# ten fix, tylko nieopisany. vcrpy 6.0.2 deklarowalo:
+#
+#     urllib3;   platform_python_implementation != "PyPy" and python_version >= "3.10"
+#     urllib3<2; platform_python_implementation == "PyPy"     <- konflikt
+#
+# czyli galaz PyPy zadala `urllib3<2`, co jest nie do pogodzenia
+# z `urllib3>=2.2.3`. Skasowanie galezi PyPy odblokowalo rezolucje.
+#
+# STAN NA 2026-09-08: ten konkretny pozar wygasl - vcrpy 8.3.0 nie ma juz
+# tego warunku. Przeskanowany zostal CALY graf (364 pakiety z rejestru,
+# zero bledow pobrania): warunki `== "PyPy"` maja tylko celery (brotlipy),
+# fonttools (munkres) i jaraco-functools (mypy), a wszystkie trzy siedza
+# za extrasami, ktorych nie wlaczamy - `brotlipy`, `munkres` ani `mypy`
+# nie wystepuja w uv.lock (z fonttools bierzemy wylacznie extra `woff`).
+# Zdjecie wykluczenia daje dzis DOKLADNIE te same wersje (367 pakietow,
+# zero roznic w parach nazwa/wersja).
+#
+# Zostaje mimo to, jako tanie ubezpieczenie: kosztuje 13 linii
+# `resolution-markers` w naglowku locka, a chroni przed powtorka klasy
+# problemu, ktora juz raz zablokowala rezolucje. Bez niego trzy pakiety
+# (cryptography, pynacl, uvicorn[standard]) odzyskuja markery PyPy na
+# krawedziach do cffi/uvloop - wiec lock i tak nie robi sie prostszy.
+#
+# Dolna granica trzymana rownolegle do `requires-python` wyzej (>=3.11).
+# Do 2026-09 stalo tu `>= '3.10'` - martwe, bo przeciecie z requires-python
+# i tak dawalo 3.11, ale mylnie sugerowalo wsparcie dla 3.10.
+environments = ["python_version >= '3.11' and python_version < '3.15' and platform_python_implementation != 'PyPy'"]
 
 # Security floors dla zaleznosci TRANZYTYWNYCH (nie deklarujemy ich jako
 # direct deps - przychodza przez inne pakiety). constraint-dependencies
@@ -512,7 +545,7 @@ dev = [
     # (CI / agent / pipe = non-TTY = no-op), sam wylacza sugara gdy aktywny.
     # https://github.com/mpasternak/pytest-tqdm
     "pytest-tqdm>=0.4.0",
-    "pytest-rerunfailures>=16.5",
+    "pytest-rerunfailures>=16.6.1",
     "django-debug-toolbar>=7.1.1",
     "model-bakery>=1.24.0",
     "django-dynamic-fixture>=1.8.0",
@@ -537,7 +570,7 @@ dev = [
     # .pre-commit-config.yaml. CI lints via pre-commit (that rev is the
     # source of truth); this `==` pin only keeps ad-hoc `uv run ruff`
     # producing identical output. Bump both together, never one alone.
-    "ruff==0.16.3",
+    "ruff==0.16.6",
     "djlint>=1.44.1,<2",
     "pre-commit>=4.6.2",
     "twine>=7.0.0",
