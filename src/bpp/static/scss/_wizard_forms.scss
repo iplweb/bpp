@@ -58,13 +58,17 @@
     padding: 1.5rem;
     cursor: pointer;
     text-align: center;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
     background: #fff;
 
     &:hover {
         text-decoration: none;
         border-color: $primary-color;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        // Delikatne uniesienie — ten sam sygnał „to jest klikalne", co na
+        // pozostałych kafelkowych ekranach BPP. Wyłączane niżej przy
+        // `prefers-reduced-motion`.
+        transform: translateY(-3px);
     }
 
     &:focus {
@@ -89,6 +93,7 @@
         display: block;
         font-size: 3rem;
         line-height: 1.2;
+        color: $primary-color;
     }
 
     .tile-title {
@@ -117,6 +122,46 @@
         &:focus {
             outline: 2px solid #999;
             outline-offset: 2px;
+        }
+    }
+}
+
+// Kafel-LINK w calloutcie: zdejmij z niego globalne style linków.
+//
+// Kafle importera publikacji to `<a class="tile-card">` stojące wewnątrz
+// `.callout`, więc łapie je globalna reguła z `flash_messages.css`:
+//
+//     .callout a:not(.close-button)        { font-weight: bolder; … }
+//     .callout a:not(.close-button):hover  { text-decoration: underline; }
+//
+// Efekt uboczny: pogrubiony CAŁY kafel (razem z opisem, który ma być zwykłą
+// czcionką) i podkreślenie wszystkich linii tekstu po najechaniu myszą.
+// Kafle kreatora zgłoszeń tego nie mają, bo są `<label>`, a nie `<a>` —
+// i to jest wygląd docelowy dla obu ekranów.
+//
+// Specyficzność musi wyjść REMISOWA (0,2,1) z regułą wyżej — samo
+// `.tile-card` (0,1,0) by przegrało. Remis rozstrzyga kolejność w pliku
+// wynikowym, a `wizard_forms` jest importowane po `common` (czyli po
+// `flash_messages`) we WSZYSTKICH motywach — patrz `app-*.scss`.
+.callout a.tile-card {
+    font-weight: normal;
+    color: $body-font-color;
+
+    &:hover,
+    &:focus {
+        color: $body-font-color;
+        text-decoration: none;
+    }
+}
+
+// Uniesienie kafla to dekoracja — przy `prefers-reduced-motion` zostaje sama
+// zmiana obramowania i cienia (nadal czytelny stan hover, bez ruchu).
+@media (prefers-reduced-motion: reduce) {
+    .tile-card {
+        transition: border-color 0.2s, box-shadow 0.2s;
+
+        &:hover {
+            transform: none;
         }
     }
 }
