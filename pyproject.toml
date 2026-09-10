@@ -568,7 +568,7 @@ dev = [
     # source of truth); this `==` pin only keeps ad-hoc `uv run ruff`
     # producing identical output. Bump both together, never one alone.
     "ruff==0.16.6",
-    "djlint>=1.44.1,<2",
+    "djlint>=1.45.2,<2",
     "pre-commit>=4.6.2",
     "twine>=7.0.0",
     "ipdb>=0.13.9",
