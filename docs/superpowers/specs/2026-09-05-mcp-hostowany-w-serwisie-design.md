@@ -254,10 +254,10 @@ w słowniku (§2.4). Dopisujemy:
 application = ProtocolTypeRouter(
     {
         "http": RouterHttp(mcp_app, django_asgi_app),
-        "websocket": AllowedHostsOriginValidator(          # BEZ ZMIAN
+        "websocket": AllowedHostsOriginValidator(  # BEZ ZMIAN
             AuthMiddlewareStack(URLRouter(websocket_urlpatterns))
         ),
-        "lifespan": LifespanMcp(mcp_app),                  # ← nowy klucz
+        "lifespan": LifespanMcp(mcp_app),  # ← nowy klucz
     }
 )
 ```
@@ -314,8 +314,8 @@ class StartMcp:
         try:
             async with self._app.router.lifespan_context(self._app):
                 self._gotowe.set()
-                await asyncio.Event().wait()     # nigdy
-        except BaseException as exc:             # noqa: BLE001 — re-raise przez zapewnij()
+                await asyncio.Event().wait()  # nigdy
+        except BaseException as exc:  # noqa: BLE001 — re-raise przez zapewnij()
             self._blad = exc
             self._gotowe.set()
             raise
@@ -442,7 +442,7 @@ property:
 class KontekstZadania:
     """Spełnia kontrakt KontekstApp, ale klienta oddaje per żądanie."""
 
-    bearer_provider = None          # host wielo-użytkownikowy — nigdy cache tokenu
+    bearer_provider = None  # host wielo-użytkownikowy — nigdy cache tokenu
 
     @property
     def client(self) -> BppClient:
@@ -456,7 +456,7 @@ BppClientInProcess(
     Config(base_url=f"{scheme}://{host}", transport="stdio"),
     transport=httpx.ASGITransport(
         app=KlientScope(django_asgi_app),
-        raise_app_exceptions=False,   # 500 → BppNetworkError, nie traceback
+        raise_app_exceptions=False,  # 500 → BppNetworkError, nie traceback
     ),
     tryb_auth=TrybAuth.W_PROCESIE,
     max_retries=0,

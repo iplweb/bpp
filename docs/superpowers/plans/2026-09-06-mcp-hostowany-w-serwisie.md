@@ -154,7 +154,7 @@ class McpServerConfig(AppConfig):
 W `src/django_bpp/settings/base.py`, w `INSTALLED_APPS`, bezpośrednio po
 `"oauth2_provider",`:
 
-```python
+```text
     "mcp_server",
 ```
 
@@ -478,9 +478,7 @@ from mcp_server.tests.utils import uruchom
 
 
 async def _echo_client(scope, receive, send):
-    await send(
-        {"type": "http.response.start", "status": 200, "headers": []}
-    )
+    await send({"type": "http.response.start", "status": 200, "headers": []})
     await send({"type": "http.response.body", "body": str(scope["client"]).encode()})
 
 
@@ -770,7 +768,9 @@ class BppClientInProcess(BppClient):
         if not str(full.path).startswith("/api/v1/"):
             raise BppError(f"Ścieżka spoza /api/v1/ jest niedozwolona: {full.path}")
         if full.host and full.host != dane.host:
-            raise BppError(f"Host spoza bieżącego żądania jest niedozwolony: {full.host}")
+            raise BppError(
+                f"Host spoza bieżącego żądania jest niedozwolony: {full.host}"
+            )
         return await super()._request(full, retry_5xx=retry_5xx)
 
 
@@ -990,7 +990,10 @@ class BramkaBearera:
         schemat = "https" if scope.get("scheme") in ("https", "wss") else "http"
         prm = f"{schemat}://{host}/.well-known/oauth-protected-resource"
         cialo = json.dumps(
-            {"error": "invalid_token", "error_description": "Wymagany ważny token OAuth."}
+            {
+                "error": "invalid_token",
+                "error_description": "Wymagany ważny token OAuth.",
+            }
         ).encode()
         await send(
             {
@@ -1067,7 +1070,9 @@ async def _echo_sciezki(scope, receive, send):
 
 async def _django(scope, receive, send):
     await send({"type": "http.response.start", "status": 200, "headers": []})
-    await send({"type": "http.response.body", "body": b"DJANGO:" + scope["path"].encode()})
+    await send(
+        {"type": "http.response.body", "body": b"DJANGO:" + scope["path"].encode()}
+    )
 
 
 def _router():
@@ -1222,9 +1227,7 @@ class LifespanMcp:
                     # Świadomie NIE połykamy: pod gunicornem worker padnie
                     # i zostanie respawnowany, czyli awaria będzie widoczna
                     # jako boot-loop, a nie jako cisza (spec §5.1).
-                    await send(
-                        {"type": "lifespan.startup.failed", "message": str(exc)}
-                    )
+                    await send({"type": "lifespan.startup.failed", "message": str(exc)})
                     return
                 await send({"type": "lifespan.startup.complete"})
             elif komunikat["type"] == "lifespan.shutdown":
@@ -1292,9 +1295,7 @@ class RouterHttp:
     def _dane(scope) -> DaneZadania:
         # Klucze nagłówków w ASGI to BYTES — bez .decode() na kluczu
         # każdy odczyt po stringu chybia i bearer cicho ginie.
-        naglowki = {
-            k.lower().decode(): v.decode() for k, v in scope.get("headers", [])
-        }
+        naglowki = {k.lower().decode(): v.decode() for k, v in scope.get("headers", [])}
         host = naglowki.get("host", "localhost")
         # nginx→uvicorn jest plaintext; prawdziwy schemat niesie
         # X-Forwarded-Proto (spec §7.6). Nagłówka NIE przekazujemy dalej —
@@ -1699,9 +1700,7 @@ def oauth_protected_resource_metadata(request):
     return JsonResponse(
         {
             "resource": request.build_absolute_uri("/mcp"),
-            "authorization_servers": [
-                request.build_absolute_uri("/").rstrip("/")
-            ],
+            "authorization_servers": [request.build_absolute_uri("/").rstrip("/")],
             "scopes_supported": ["read"],
             "bearer_methods_supported": ["header"],
         }
@@ -1712,7 +1711,7 @@ def oauth_protected_resource_metadata(request):
 
 W `urlpatterns`, po wpisie `oauth-as-metadata`:
 
-```python
+```text
     path(
         ".well-known/oauth-protected-resource",
         oauth_protected_resource_metadata,
@@ -1843,7 +1842,7 @@ urlpatterns = [
 
 W `urlpatterns`, obok innych `path(...)`:
 
-```python
+```text
         path("mcp/", include("mcp_server.urls", namespace="mcp_server")),
 ```
 
@@ -2081,7 +2080,7 @@ def _z_raportowaniem(serwer):
 
 i zmień wywołanie na:
 
-```python
+```text
     register_tools(_z_raportowaniem(serwer))
 ```
 
