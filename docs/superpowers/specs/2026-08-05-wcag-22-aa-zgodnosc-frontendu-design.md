@@ -510,6 +510,12 @@ naprawione — patrz sekcja „Odroczone niezgodności". Formuła „naprawa
 stwierdzona → B…" dla `3.1.2` niżej jest poprawna i pozostaje bez zmian —
 tam naprawa faktycznie zaszła.
 
+**Korekta (2026-08-07):** odroczenie z korekty wyżej okazało się
+tymczasowe — oba kryteria naprawiono dzień później
+(`2026-08-07-wcag-skrot-i-graf-design.md`). Pierwotne brzmienie wierszy
+`2.1.4` i `2.5.7` w tabeli („naprawa stwierdzona → B1/B5") jest więc znów
+aktualne: audyt ma te naprawy zweryfikować, nie odnotować niezgodność.
+
 ### Zrozumiałość
 
 | Kryterium | Poz. | Źródło werdyktu |
@@ -555,6 +561,12 @@ naprawione — decyzje i uzasadnienia w sekcji „Odroczone niezgodności".
 „Zadanie brzmi »napraw«" było zamiarem na starcie tej sekcji, nie jest
 opisem tego, co się faktycznie stało z każdym z czterech kryteriów.
 
+**Korekta (2026-08-07):** ostatecznie naprawiono wszystkie cztery. 2.1.4
+i 2.5.7 domknęła kolejna iteracja
+(`2026-08-07-wcag-skrot-i-graf-design.md`), więc pierwotne „Zadanie brzmi
+»napraw«" opisuje jednak to, co się stało — tyle że w dwóch podejściach,
+nie w jednym.
+
 ### 2.1.4 Character Key Shortcuts (A) — skrót `/`
 
 `base.html:39-49` wiąże jednoznakowy skrót `/` na poziomie `document`.
@@ -572,6 +584,14 @@ przeniesiony w zasięg focusa pola wyszukiwania.
 
 **Korekta (2026-08-06):** kryterium **odroczono**, nie naprawiono. Skrót
 `/` działa dokładnie tak samo jak w opisie wyżej — bez zmian w kodzie.
+
+**Korekta (2026-08-07):** kryterium **naprawione**. Z trzech dopuszczonych
+wyjść wybrano pierwsze — wyłączalność. Preferencja siedzi w `localStorage`
+(nie w profilu, więc działa też dla anonima), przełącznik „Skróty
+klawiszowe" jest w stopce, a wszystkie trzy handlery `/` sprawdzają ją
+przed otwarciem wyszukiwarki. Opis w akapitach wyżej („Obecny kod nie
+spełnia żadnego") dotyczy stanu sprzed tej naprawy. Szczegóły:
+`2026-08-07-wcag-skrot-i-graf-design.md`.
 Rekomendacja z sekcji „Otwarte decyzje" (zawężenie do focusa pola
 wyszukiwania) nie została wdrożona. Wpis w wykazie: sekcja „Odroczone
 niezgodności".
@@ -676,6 +696,16 @@ powiązań nadal nawiguje się wyłącznie przeciąganiem, bez alternatywy
 jednowskaźnikowej. Powód: koszt nieproporcjonalny do pozostałych napraw w
 tej iteracji, funkcja opcjonalna i w części wdrożeń wyłączona. Wpis w
 wykazie: sekcja „Odroczone niezgodności".
+
+**Korekta (2026-08-07):** kryterium **naprawione**, i to obiema drogami
+wymienionymi wyżej. Graf dostał siedem przycisków nawigacji (cztery
+kierunki, przybliż, oddal, dopasuj) oraz obsługę klawiaturą (strzałki,
+`+`/`-`, `Home`) na fokusowalnym kontenerze — przy okazji domyka to
+2.1.1 dla tego widoku. Handler robi `preventDefault` wyłącznie dla
+obsłużonych klawiszy, żeby nie stworzyć pułapki klawiaturowej (2.1.2),
+i przepuszcza kombinacje z Ctrl/Cmd/Alt, żeby nie przechwycić zoomu
+przeglądarki (1.4.4). Szczegóły:
+`2026-08-07-wcag-skrot-i-graf-design.md`.
 
 ## Hipotezy do zbadania w audycie
 
@@ -908,6 +938,11 @@ nie da się ułożyć:
    wyżej), a `2.1.4` i `2.5.7` zostały świadomie odroczone, nie naprawione
    (sekcja „Odroczone niezgodności"). Szczegóły:
    `2026-08-06-wcag-naprawy-stwierdzone-design.md`.
+   **Korekta (2026-08-07):** krok (3) domknięto w drugim podejściu — `2.1.4`
+   i `2.5.7` naprawiono nazajutrz
+   (`2026-08-07-wcag-skrot-i-graf-design.md`). Cały krok „Naprawy
+   stwierdzone" jest więc wykonany; kroki (4)–(7) nie mają już na co czekać
+   po tej stronie.
 4. **Baseline freeze.** Dopiero **po** (3) i po zamrożeniu próbki. Kolejność
    jest istotna: baseline zakładany przed naprawami zaksięgowałby dług,
    który zaraz znika, i wymuszałby natychmiastową aktualizację pliku.
@@ -938,6 +973,14 @@ decyzja: kryterium **odroczone**, skrót `/` zostaje bez zmian (nadal
 globalny, nadal niewyłączalny), wpis w wykazie niezgodności zamiast
 implementacji zawężenia do focusa. Powód i szczegóły: sekcja „Odroczone
 niezgodności".
+
+**Korekta (2026-08-07):** rekomendacja nadal nie została przyjęta, ale
+kryterium **naprawiono inaczej** — przez wyłączalność, nie przez zawężenie
+do focusa. Założenie stojące za rekomendacją („dwa pierwsze wyjścia
+wymagają interfejsu ustawień, a ten nie istnieje dla anonima") okazało się
+zbyt ostrożne: preferencja w `localStorage` plus jeden przycisk w stopce
+wystarczą, bez budowania profilu użytkownika. Skrót działa więc nadal
+globalnie — dla tych, którzy go nie wyłączyli.
 
 **Motywy uczelniane w raporcie silnika.** `vizja`, `mwsl`, `uafm` to
 motywy konkretnych klientów, nie warianty produktu. Jeśli test (b) wykaże
@@ -1041,22 +1084,15 @@ Zapisane tutaj, bo raport zgodności — właściwe miejsce takich wpisów —
 jeszcze nie istnieje. Szczegóły i uzasadnienia:
 `2026-08-06-wcag-naprawy-stwierdzone-design.md`.
 
-**2.1.4 Character Key Shortcuts (A) — skrót `/`.**
-Handler w `src/django_bpp/templates/base.html:39-49` wiąże `/` na
-`document`, wykluczając jedynie `input`/`textarea`/`select`. Nie spełnia
-żadnego z trzech warunków kryterium (wyłączalny, przemapowywalny, aktywny
-tylko przy focusie). Stan: **niezgodne, świadomie odroczone**. Powód: brak
-nacisku regulacyjnego i brak odbiorcy raportu; wszystkie trzy dopuszczone
-wyjścia mają koszt produktowy (utrata skrótu globalnego albo zbudowanie
-interfejsu preferencji dla użytkownika anonimowego).
+Wpisy, które przestały być aktualne, zostają w sekcji z datą domknięcia
+zamiast zniknąć — inaczej nie dałoby się odtworzyć, co i kiedy uznano za
+niezgodność.
 
-**2.5.7 Dragging Movements (AA) — graf powiązań.**
-`src/powiazania_autorow/templates/powiazania_autorow/graf.html`, widok
-publiczny bramkowany per uczelnia (`czy_pokazywac_siec_powiazan`,
-`src/bpp/views/browse.py:245`). Nawigacja wyłącznie przez przeciąganie.
-Stan: **niezgodne, świadomie odroczone**. Powód: koszt nieproporcjonalny do
-pozostałych napraw w tej iteracji, a funkcja jest opcjonalna i w części
-wdrożeń wyłączona.
+**2.1.4 i 2.5.7 — domknięte 2026-08-07.**
+Oba kryteria zostały naprawione w kolejnej iteracji: skrót `/` dostał
+mechanizm wyłączania (localStorage + przełącznik w stopce), graf powiązań —
+przyciski nawigacji i obsługę klawiaturą. Szczegóły:
+`2026-08-07-wcag-skrot-i-graf-design.md`.
 
 **3.1.2 — tytuł przełożony (`tytul`).**
 Stan: **spełnione częściowo**. Oznaczamy tytuł oryginalny; przekład zostaje

@@ -13,6 +13,11 @@
     {% load session_security_tags %}
     {% load l10n %}
 
+    {# WCAG 2.1.4: modul preferencji skrotow jednoznakowych. Musi ladowac #}
+    {# sie bezwarunkowo — skrot "/" i przelacznik w stopce dzialaja tez #}
+    {# na stronach publicznych (np. browse/uczelnia.html) dla anonimowych. #}
+    <script src="{% static 'bpp/js/skroty-klawiszowe.js' %}"></script>
+
     {% if request.user.is_authenticated %}
         {# django-formdefaults: popup do edycji wartości domyślnych formularzy #}
         <link rel="stylesheet" type="text/css" href="{% static 'formdefaults/modal.css' %}"/>
@@ -34,20 +39,6 @@
 {% endblock %}
 
 {% block body %}
-    <script type="text/javascript">
-        // Global search hotkey handler
-        document.addEventListener('DOMContentLoaded', function() {
-            document.addEventListener('keydown', function(e) {
-                // Check if "/" key is pressed and not in an input field
-                if (e.key === '/' && !$(e.target).is('input, textarea, select')) {
-                    e.preventDefault(); // Prevent default search behavior
-                    if (typeof openGlobalSearch === 'function') {
-                        openGlobalSearch(null, true); // Pass true to indicate keyboard trigger
-                    }
-                }
-            });
-        });
-    </script>
     <script type="text/javascript">
         function adjustBreadcrumbsPosition() {
             var topBar = document.getElementById('example-menu');
