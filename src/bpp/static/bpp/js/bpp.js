@@ -32,6 +32,9 @@ var qs = window.qs;
  * Sticky selectors checked:
  *   - nav.sticky-header  (main top bar)
  *   - #breadcrumbs-wrapper (breadcrumb bar)
+ *   - [data-bpp-sticky-bar] (dodatkowy pasek w treści strony,
+ *     np. nawigacja po sekcjach jednostki) -- liczony tylko, gdy
+ *     element docelowy leży pod nim
  *
  * @param {Element} element  DOM element to scroll into view
  * @param {Object}  [opts]   Optional settings
@@ -55,6 +58,28 @@ window.bpp.scrollToVisible = function(element, opts) {
         'breadcrumbs-wrapper'
     );
     if (bc) offset += bc.offsetHeight;
+
+    // Dodatkowy pasek sticky wewnątrz treści. Jego `top` jest już liczony
+    // od dołu belek powyżej (CSS: calc(var(--bpp-sticky-offset) + luz)),
+    // więc nie dodajemy go do sumy, tylko bierzemy dolną krawędź paska w
+    // pozycji przypiętej: top + wysokość.
+    //
+    // O tym, czy pasek w ogóle zasłoni cel, decyduje KOLEJNOŚĆ W DOM, a nie
+    // bieżące współrzędne: po przewinięciu pasek będzie przypięty u góry,
+    // więc każdy element leżący w dokumencie PO nim wyląduje pod nim.
+    // Porównanie prostokątów sprzed przewinięcia dawało tu złą odpowiedź
+    // dla pierwszej sekcji (skok do góry: cel był chwilowo nad paskiem).
+    var bar = document.querySelector('[data-bpp-sticky-bar]');
+    if (bar && bar.offsetHeight && bar !== element) {
+        var barStyle = window.getComputedStyle(bar);
+        var celPonizej = !!(bar.compareDocumentPosition(element)
+            & Node.DOCUMENT_POSITION_FOLLOWING);
+        if (barStyle.position === 'sticky' && celPonizej) {
+            var barOffset = (parseFloat(barStyle.top) || 0)
+                + bar.offsetHeight + padding;
+            offset = Math.max(offset, barOffset);
+        }
+    }
 
     var top = element.getBoundingClientRect().top
         + window.scrollY - offset;

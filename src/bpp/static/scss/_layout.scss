@@ -58,6 +58,27 @@ body {
   z-index: 10;
 }
 
+// Kotwice (<a href="#cos">) w CAŁYM serwisie
+//
+// Przeglądarka przewija cel kotwicy na y = 0 okna, a y = 0 jest ZA belkami
+// sticky (top bar + breadcrumbs) -- klikając odnośnik lądowało się pod nimi
+// i nagłówka nie było widać. `scroll-margin-top` to jedyne miejsce, w którym
+// da się to naprawić raz dla wszystkich kotwic: przeglądarka odejmuje tę
+// wartość, licząc gdzie jest "góra" dla danego celu. Działa dla kliknięcia
+// w odnośnik, wejścia z #hash w adresie, `scrollIntoView()`, nawigacji
+// klawiaturą i przywracania pozycji przyciskiem "wstecz".
+//
+// --bpp-sticky-offset (JS w base.html) to zmierzona wysokość belek, więc
+// reguła nadąża za zawijaniem top baru do dwóch linii; 90px to fallback na
+// czas przed pierwszym pomiarem. 1rem to oddech pod belką.
+//
+// Strony z WŁASNYM dodatkowym paskiem sticky (np. .wydzial-nav na stronie
+// jednostki) nadpisują to bardziej szczegółowym selektorem, dokładając
+// wysokość swojego paska.
+:target {
+  scroll-margin-top: calc(var(--bpp-sticky-offset, 90px) + 1rem);
+}
+
 // Make global nav expand to take available space
 .top-bar-right {
   flex: 1 !important;

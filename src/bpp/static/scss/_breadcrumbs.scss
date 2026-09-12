@@ -9,8 +9,12 @@
   padding: 10px 20px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   position: sticky;
-  top: 50px;
-  z-index: 1;
+  // --bpp-topbar-height ustawia JS w base.html (top bar potrafi się zawijać
+  // do dwóch linii); 50px to fallback na czas przed pierwszym pomiarem.
+  top: var(--bpp-topbar-height, 50px);
+  // Nad paskami sticky wewnątrz treści (np. .wydzial-nav, z-index 2),
+  // pod top barem (nav.sticky-header, z-index 2000).
+  z-index: 3;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 
