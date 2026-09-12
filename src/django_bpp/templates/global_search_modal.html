@@ -408,6 +408,54 @@
                 .setAttribute('aria-busy', isLoading ? 'true' : 'false');
         }
 
+        var heightAnimation = null;
+
+        // Podmienia zawartosc listy wynikow i plynnie przeprowadza okno ze
+        // starej wysokosci do nowej - bez tego okno przeskakuje do nowego
+        // rozmiaru w jednej klatce. Web Animations API zamiast `transition`,
+        // bo samo sprzata: po zakonczeniu wysokosc wraca do `auto` i nie
+        // zostaje nasluch ani zablokowana wartosc.
+        function animateHeightAroundSwap(renderNewContent) {
+            var box = document.querySelector('.global-search-container');
+            var reduceMotion = window.matchMedia
+                && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            // Pomiar PRZED anulowaniem poprzedniej animacji: przy szybkim
+            // pisaniu ruch startuje z biezacej wysokosci, a nie od nowa.
+            var before = box.getBoundingClientRect().height;
+
+            if (heightAnimation) {
+                heightAnimation.cancel();
+                heightAnimation = null;
+            }
+
+            renderNewContent();
+
+            if (reduceMotion || typeof box.animate !== 'function') {
+                return;
+            }
+
+            var after = box.getBoundingClientRect().height;
+            if (Math.abs(after - before) < 4) {
+                return;
+            }
+
+            // Na czas ruchu przycinamy tresc, ktora chwilowo nie miesci sie
+            // w kurczacym sie oknie.
+            box.style.overflow = 'hidden';
+            heightAnimation = box.animate(
+                [{height: before + 'px'}, {height: after + 'px'}],
+                {duration: 200, easing: 'ease-out'}
+            );
+
+            var cleanup = function() {
+                box.style.overflow = '';
+                heightAnimation = null;
+            };
+            heightAnimation.addEventListener('finish', cleanup);
+            heightAnimation.addEventListener('cancel', cleanup);
+        }
+
         // Open search modal with dynamic positioning
         window.openGlobalSearch = function(event, isKeyboard) {
             var modal = document.getElementById('globalSearchModal');
@@ -615,12 +663,14 @@
                     '</ul>' +
                     '</div>';
 
-                if (query.length === 0) {
-                    document.getElementById('globalSearchResults').innerHTML = helpHtml;
-                } else {
-                    document.getElementById('globalSearchResults').innerHTML =
-                        '<div class="global-search-no-results">Wpisz minimum 3 znaki</div>';
-                }
+                animateHeightAroundSwap(function() {
+                    if (query.length === 0) {
+                        document.getElementById('globalSearchResults').innerHTML = helpHtml;
+                    } else {
+                        document.getElementById('globalSearchResults').innerHTML =
+                            '<div class="global-search-no-results">Wpisz minimum 3 znaki</div>';
+                    }
+                });
                 // Spozniona odpowiedz na dluzsze zapytanie nie moze nadpisac
                 // tego, co wlasnie pokazalismy.
                 if (currentRequest) {
@@ -663,8 +713,10 @@
                     // zostaje.
                     if (xhr.statusText !== 'abort') {
                         setSearchLoading(false);
-                        document.getElementById('globalSearchResults').innerHTML =
-                            '<div class="global-search-no-results">Błąd podczas wyszukiwania</div>';
+                        animateHeightAroundSwap(function() {
+                            document.getElementById('globalSearchResults').innerHTML =
+                                '<div class="global-search-no-results">Błąd podczas wyszukiwania</div>';
+                        });
                     }
                     currentRequest = null;
                 }
@@ -679,12 +731,13 @@
             searchResults = [];
 
             if (!results || results.length === 0) {
-                resultsContainer.innerHTML =
-                    '<div class="global-search-no-results">Brak wyników</div>';
+                animateHeightAroundSwap(function() {
+                    resultsContainer.innerHTML =
+                        '<div class="global-search-no-results">Brak wyników</div>';
+                });
                 return;
             }
 
-            // Build HTML WITHOUT any highlighting
             var html = '';
             results.forEach(function(group, groupIndex) {
                 if (group.children && group.children.length > 0) {
@@ -718,7 +771,9 @@
                 }
             });
 
-            resultsContainer.innerHTML = html;
+            animateHeightAroundSwap(function() {
+                resultsContainer.innerHTML = html;
+            });
             selectedIndex = -1;
 
             // Add click handlers to results
