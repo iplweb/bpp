@@ -443,9 +443,12 @@
             // Na czas ruchu przycinamy tresc, ktora chwilowo nie miesci sie
             // w kurczacym sie oknie.
             box.style.overflow = 'hidden';
+            // Krzywa opisuje postep animacji w czasie, wiec hamowanie na
+            // koncu dziala tak samo przy powiekszaniu i przy zmniejszaniu
+            // okna. Mocniejsze wytracanie predkosci niz zwykle `ease-out`.
             heightAnimation = box.animate(
                 [{height: before + 'px'}, {height: after + 'px'}],
-                {duration: 200, easing: 'ease-in-out'}
+                {duration: 260, easing: 'cubic-bezier(0.22, 1, 0.36, 1)'}
             );
 
             var cleanup = function() {
