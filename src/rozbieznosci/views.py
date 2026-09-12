@@ -107,11 +107,21 @@ def _scope_do_uczelni(qs, request):
     No-op (zwraca ten sam qs) gdy brak mapowania Site→Uczelnia (fail-open, jak
     ``scope_rekord_do_uczelni``) albo gdy w systemie jest jedna uczelnia
     (guard ``tylko_jedna_uczelnia`` — single-host = brak zawężenia).
+
+    ``autorzy_set__deleted_at__isnull=True`` jest częścią reguły atrybucji, nie
+    ozdobnikiem: lookup przez relację buduje JOIN po SUROWEJ tabeli
+    ``bpp_wydawnictwo_ciagle_autor``, więc bez tego predykatu SKASOWANE
+    autorstwo dalej przypisywałoby rekord do uczelni — czyli pokazywałoby go
+    na cudzym hoście. ``scope_rekord_do_uczelni`` tego problemu nie ma, bo
+    idzie po ``bpp_autorzy_mat`` (widok już filtruje ``deleted_at``).
     """
     uczelnia = Uczelnia.objects.get_for_request(request)
     if uczelnia is None or tylko_jedna_uczelnia():
         return qs
-    return qs.filter(autorzy_set__jednostka__uczelnia=uczelnia).distinct()
+    return qs.filter(
+        autorzy_set__jednostka__uczelnia=uczelnia,
+        autorzy_set__deleted_at__isnull=True,
+    ).distinct()
 
 
 class RozbieznosciView(MetrykaMixin, GroupRequiredMixin, ListView):

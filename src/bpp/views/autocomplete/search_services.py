@@ -1,5 +1,6 @@
 """Global search functions for autocomplete views."""
 
+from django.db.models import Q
 from django.db.models.aggregates import Count
 
 from bpp import const
@@ -72,13 +73,24 @@ def globalne_wyszukiwanie_autora(querysets, q, uczelnia=None):
             )
         )
 
+    # Sortowanie pomocnicze po „dorobku" autora. Liczymy autorstwa przez
+    # through-model z ``filter=Q(…__deleted_at__isnull=True)`` — agregat po
+    # relacji idzie JOIN-em po SUROWEJ tabeli ``bpp_wydawnictwo_ciagle_autor``
+    # i managera soft-delete nie pyta, więc bez predykatu husk autora
+    # (wszystkie autorstwa skasowane) trzymałby swoją pozycję w podpowiedziach.
+    # Ta sama zasada co w ``AutorManager.fulltext_annotate``.
     querysets.append(
         _scope(
             Autor.objects.fulltext_filter(q)
-            .annotate(Count("wydawnictwo_ciagle"))
+            .annotate(
+                liczba_autorstw=Count(
+                    "wydawnictwo_ciagle_autor",
+                    filter=Q(wydawnictwo_ciagle_autor__deleted_at__isnull=True),
+                )
+            )
             .only(*AUTOR_ONLY)
             .select_related(*AUTOR_SELECT_RELATED)
-            .order_by("-search__rank", "-wydawnictwo_ciagle__count")
+            .order_by("-search__rank", "-liczba_autorstw")
         )
     )
 

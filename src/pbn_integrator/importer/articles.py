@@ -15,6 +15,7 @@ from bpp.models import (
 from bpp.util import safe_tytul_html
 from pbn_api.client import PBNClient
 from pbn_api.models import Publication
+from pbn_integrator.kosz import znajdz_lub_wskrzes_rekord
 
 from .authors import utworz_autorow
 from .cache import (
@@ -66,9 +67,15 @@ def importuj_artykul(
     except Publication.DoesNotExist as err:
         raise NotImplementedError(f"Publikacja {mongoId=} nie istnieje") from err
 
-    ret = pbn_publication.rekord_w_bpp
-    if ret is not None and not force:
-        return ret
+    if not force:
+        # Rekord moze juz byc w BPP: zywy (wtedy ``Rekord``) albo w koszu --
+        # wtedy wraca, bo PBN jest zrodlem prawdy, a fakt laduje w rejestrze
+        # ``RekordPrzywroconyPrzezImport`` (zmiana wobec decyzji #14 planu).
+        istniejacy = znajdz_lub_wskrzes_rekord(
+            pbn_publication, Wydawnictwo_Ciagle, "articles"
+        )
+        if istniejacy is not None:
+            return istniejacy
 
     pbn_json = pbn_publication.current_version["object"]
     orig_pbn_json = copy.deepcopy(pbn_json)  # noqa

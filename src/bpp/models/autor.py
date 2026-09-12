@@ -145,7 +145,28 @@ class AutorManager(FulltextSearchMixin, models.Manager.from_queryset(AutorQueryS
         )
 
     def fulltext_annotate(self, search_query, normalization):
-        return {self.fts_field + "__rank": Count("wydawnictwo_ciagle")}
+        """Ranking autora = liczba jego autorstw w wydawnictwach ciągłych.
+
+        Liczymy przez ``wydawnictwo_ciagle_autor`` (through-model), a NIE
+        przez M2M ``wydawnictwo_ciagle``, z dwóch powodów:
+
+        1. agregat po relacji to JOIN po SUROWEJ tabeli
+           ``bpp_wydawnictwo_ciagle_autor`` — manager soft-delete nie jest
+           pytany, więc bez ``filter=Q(…__deleted_at__isnull=True)`` husk
+           autora (wszystkie autorstwa skasowane) rankowałby się tak samo
+           wysoko, jak przed skasowaniem. Predykat MUSI iść tą samą ścieżką
+           relacji co agregat, inaczej Django zrobi drugi, nieskorelowany
+           JOIN;
+        2. przy okazji odpada drugi JOIN (do ``bpp_wydawnictwo_ciagle``) —
+           FK z through-modelu jest NOT NULL, więc kardynalność bez niego
+           jest ta sama.
+        """
+        return {
+            self.fts_field + "__rank": Count(
+                "wydawnictwo_ciagle_autor",
+                filter=Q(wydawnictwo_ciagle_autor__deleted_at__isnull=True),
+            )
+        }
 
 
 class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
