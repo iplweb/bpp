@@ -445,7 +445,7 @@
             box.style.overflow = 'hidden';
             heightAnimation = box.animate(
                 [{height: before + 'px'}, {height: after + 'px'}],
-                {duration: 200, easing: 'ease-out'}
+                {duration: 200, easing: 'ease-in-out'}
             );
 
             var cleanup = function() {
