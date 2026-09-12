@@ -458,8 +458,29 @@ nav.sticky-header {
 }
 
 // Global search modal styles
+//
+// Okno wyszukiwania NIE może ruszać układu strony pod spodem:
+// - przewijanie blokuje `overflow: hidden` na <html> (klasa
+//   `global-search-open`), a nie `position: fixed` na <body>. Ta druga
+//   technika łamie `position: sticky` paska nawigacji i breadcrumbs,
+//   które wtedy przeskakują;
+// - szkło pojawia się i gaśnie przez `opacity` + `visibility`, a nie
+//   przez `display: none`, bo od `display: none` przejście CSS nigdy
+//   nie startuje (szkło wskakiwało w jednej klatce).
+// Pilnują tego testy w src/integration_tests/test_global_search.py.
+$global-search-duration: 0.35s;
+
+html.global-search-open {
+    overflow: hidden;
+}
+
+// Ustawiana tylko przy klasycznym pasku przewijania (o niezerowej
+// szerokości): rezerwuje jego miejsce, żeby treść nie drgnęła w poziomie.
+html.global-search-scrollbar-gutter {
+    scrollbar-gutter: stable;
+}
+
 .global-search-modal {
-    display: none;
     position: fixed;
     top: 0;
     left: 0;
@@ -469,25 +490,18 @@ nav.sticky-header {
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     z-index: 10000;
+    visibility: hidden;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    // `visibility` przełącza się skokowo, ale respektuje opóźnienie:
+    // przy chowaniu gaśnie dopiero po wygaszeniu krycia.
+    transition: opacity $global-search-duration ease,
+                visibility 0s linear $global-search-duration;
 
     &.show {
-        display: block;
+        visibility: visible;
         opacity: 1;
-    }
-
-    &.closing {
-        animation: fadeOutModal 0.4s ease-out forwards;
-    }
-}
-
-@keyframes fadeOutModal {
-    from {
-        opacity: 1;
-    }
-    to {
-        opacity: 0;
+        transition: opacity $global-search-duration ease,
+                    visibility 0s linear 0s;
     }
 }
 
@@ -504,8 +518,11 @@ nav.sticky-header {
     transform: scale(0);
     pointer-events: none;
 
+    // Ten sam czas co szkło: okno rusza w tej samej klatce, w której
+    // szkło zaczyna narastać/gasnąć, i kończy razem z nim.
     &.animating-out {
-        animation: collapseToButton 0.4s cubic-bezier(0.64, 0, 0.66, 0.44) forwards !important;
+        animation: collapseToButton $global-search-duration
+                   cubic-bezier(0.4, 0, 1, 1) forwards !important;
         pointer-events: none !important;
     }
 }
@@ -514,7 +531,8 @@ nav.sticky-header {
     pointer-events: auto;
 
     &:not(.animating-out) {
-        animation: expandFromButton 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        animation: expandFromButton $global-search-duration
+                   cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
     }
 }
 
@@ -538,13 +556,24 @@ nav.sticky-header {
         transform: scale(1);
         opacity: 1;
     }
-    40% {
-        transform: scale(1.05);
+    30% {
+        transform: scale(0.95);
         opacity: 1;
     }
     to {
         transform: scale(0);
         opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    // Bez skalowania: okno narasta i gaśnie po prostu razem ze szkłem.
+    .global-search-container,
+    .global-search-container.animating-out,
+    .global-search-modal.show .global-search-container:not(.animating-out) {
+        animation: none !important;
+        opacity: 1;
+        transform: none;
     }
 }
 
@@ -570,6 +599,44 @@ nav.sticky-header {
     margin-top: 15px;
     padding-top: 5px;
     scroll-behavior: smooth;
+    transition: opacity 0.2s ease;
+}
+
+// Trwa wyszukiwanie (klasa ustawiana przez setSearchLoading()). Poprzednie
+// wyniki zostają na ekranie, przygaszone, aż nowe podmienią je w jednym
+// kroku — okno nie zapada się do pustego rozmiaru przy każdym znaku.
+// Postęp pokazuje pasek wewnątrz pola, więc nic nie zmienia wysokości.
+.global-search-container.is-loading {
+    .global-search-results {
+        opacity: 0.5;
+        // Szybka odpowiedź w ogóle nie przygasi listy.
+        transition-delay: 0.15s;
+    }
+
+    .global-search-input {
+        background-image: linear-gradient(90deg, transparent, $primary-color, transparent);
+        background-size: 40% 3px;
+        background-repeat: no-repeat;
+        background-position: -70% 100%;
+        animation: globalSearchProgress 1s linear infinite;
+    }
+}
+
+@keyframes globalSearchProgress {
+    from {
+        background-position: -70% 100%;
+    }
+    to {
+        background-position: 170% 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .global-search-container.is-loading .global-search-input {
+        animation: none;
+        background-size: 100% 3px;
+        background-position: 0 100%;
+    }
 }
 
 .search-result-group {
