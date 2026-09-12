@@ -1,0 +1,25 @@
+{# Stopnie naukowe (praca doktorska / habilitacyjna). Brak → nic. #}
+{% if autor.praca_doktorska_set.exists or autor.praca_habilitacyjna %}
+    <div class="author-info-section">
+        <h3><i class="fi-trophy"></i> Stopnie naukowe</h3>
+        {% if autor.praca_doktorska_set.exists %}
+            {% for praca_doktorska in autor.praca_doktorska_set.all %}
+                <p>
+                    <strong>Praca doktorska:</strong>
+                    <a href="{% url "bpp:browse_praca_old" "praca_doktorska" praca_doktorska.pk %}">
+                        {{ praca_doktorska|safe }}
+                    </a>
+                </p>
+            {% endfor %}
+        {% endif %}
+        {% if autor.praca_habilitacyjna %}
+            <p>
+                <strong>Praca habilitacyjna:</strong>
+                <a href="{% url "bpp:browse_praca_old" "praca_habilitacyjna" autor.praca_habilitacyjna.pk %}">
+                    {{ autor.praca_habilitacyjna|safe }}
+                </a>
+            </p>
+        {% endif %}
+    </div>
+    <div class="shaded-hr-div-small"></div>
+{% endif %}

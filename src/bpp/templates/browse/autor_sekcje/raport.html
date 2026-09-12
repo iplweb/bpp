@@ -1,0 +1,15 @@
+{# Linki do raportu autora — tylko gdy raport jest widoczny dla #}
+{# oglądającego (logika w AutorView._raport_links → kontekst `raport_links`). #}
+{% if raport_links %}
+    <div class="autor-page__raport-links hide-for-print">
+        <h3 class="autor-page__raport-links-title">
+            <i class="fi-graph-trend autor-page__icon--mr-sm"></i>Raport autora
+        </h3>
+        <div class="autor-page__raport-links-buttons">
+            {% for link in raport_links %}
+                <a href="{{ link.url }}" class="button primary">{{ link.label }}</a>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="shaded-hr-div-small"></div>
+{% endif %}

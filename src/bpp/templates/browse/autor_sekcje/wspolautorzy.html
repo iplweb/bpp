@@ -1,0 +1,19 @@
+{# Najczęstsi współautorzy + CTA do wizualnej sieci powiązań (gdy dostępna). #}
+<div class="author-info-section autor-page__sekcja">
+    <h3><i class="fi-torsos-all autor-page__icon--mr-sm"></i>{{ nazwa }}</h3>
+    <ul class="autor-page__wspolautorzy">
+        {% for w in dane.wspolautorzy %}
+            <li class="autor-page__wspolautor">
+                <a href="{{ w.autor.get_absolute_url }}">{{ w.autor }}</a>
+                <span class="autor-page__wspolautor-liczba">({{ w.liczba }})</span>
+            </li>
+        {% endfor %}
+    </ul>
+    {% if ma_powiazania %}
+        <a href="{% url 'bpp:browse_autor_powiazania' autor.pk %}"
+           class="button primary autor-page__network-btn">
+            <i class="fi-share autor-page__icon--mr-sm"></i>Zobacz pełną sieć powiązań
+        </a>
+    {% endif %}
+</div>
+<div class="shaded-hr-div-small"></div>

@@ -1,0 +1,18 @@
+{# Eksport publikacji autora do formatów bibliograficznych (§3.3). #}
+{# Asynchroniczne starty BibTeX/RIS (Celery). Zawsze obecne. #}
+<div class="autor-page__raport-links hide-for-print">
+    <h3 class="autor-page__raport-links-title">
+        <i class="fi-page-export autor-page__icon--mr-sm"></i>Eksport publikacji
+    </h3>
+    <div class="autor-page__raport-links-buttons">
+        <a href="{% url 'bpp:autor_eksport_start' autor.pk 'bib' %}"
+           class="button primary">
+            <i class="fi-download"></i> BibTeX
+        </a>
+        <a href="{% url 'bpp:autor_eksport_start' autor.pk 'ris' %}"
+           class="button primary">
+            <i class="fi-download"></i> RIS
+        </a>
+    </div>
+</div>
+<div class="shaded-hr-div-small"></div>

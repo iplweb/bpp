@@ -792,6 +792,10 @@ CELERYBEAT_SCHEDULE = {
         "task": "oswiadczenia.tasks.remove_old_oswiadczenia_export_files",
         "schedule": timedelta(days=1),
     },
+    "cleanup-eksport-autora-files": {
+        "task": "bpp.tasks.usun_stare_eksporty_autora",
+        "schedule": timedelta(days=1),
+    },
     # Retencja porzuconych plików tmp kreatora zgłoszeń publikacji (anonimowy
     # formularz — porzucone uploady zostałyby na wolumenie media bez ograniczeń;
     # anty-DoS na dysk, bpp #551). Kasuje sieroty >24h z osobnego katalogu tmp,

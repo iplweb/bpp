@@ -1,0 +1,18 @@
+{# Osiągnięcia autora pobierane na żywo z RAD-on OpenData (client-side). #}
+{# Bramka: tylko dla autorów z ORCID. Dane wstrzykuje radon-profil.js — #}
+{# kontener startuje ukryty i pokazuje się dopiero, gdy klient znajdzie #}
+{# rekord zweryfikowany po ORCID; przy braku danych/błędzie zostaje ukryty. #}
+{% if autor.orcid %}
+    <div class="author-info-section radon-osiagniecia"
+         data-radon-osiagniecia
+         data-orcid="{{ autor.orcid }}"
+         data-imie="{{ autor.imiona|default:'' }}"
+         data-nazwisko="{{ autor.nazwisko|default:'' }}"
+         hidden>
+        <h3><i class="fi-star"></i> Osiągnięcia naukowe</h3>
+        {# Wypełniane przez radon-profil.js (textContent — bez innerHTML). #}
+        <div class="radon-osiagniecia__wynik"></div>
+        <p class="radon-osiagniecia__zrodlo">informacje pobrane z RAD-on</p>
+    </div>
+    <div class="shaded-hr-div-small"></div>
+{% endif %}

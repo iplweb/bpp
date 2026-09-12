@@ -1,0 +1,8 @@
+{# Opis autora (osobny od biogramu). Wyłączony / pusty → nic. #}
+{% if autor.pokazuj_opis and autor.opis %}
+    <div class="author-info-section">
+        <h3><i class="fi-info"></i> Opis</h3>
+        {{ autor.opis|safe }}
+    </div>
+    <div class="shaded-hr-div-small"></div>
+{% endif %}
