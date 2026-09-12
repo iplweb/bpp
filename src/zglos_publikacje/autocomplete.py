@@ -13,6 +13,7 @@ from queryset_sequence import QuerySetSequence
 from bpp.const import CHARAKTER_OGOLNY_KSIAZKA
 from bpp.models.wydawca import Wydawca
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
+from bpp.util.isbn import filtruj_tytul_lub_isbn
 from bpp.views.autocomplete.mixins import SanitizedAutocompleteMixin
 from pbn_api.models.publication import Publication as PBN_Publication
 from pbn_api.models.publisher import Publisher as PBN_Publisher
@@ -88,8 +89,10 @@ class PublicWydawnictwoNadrzedneAutocomplete(
 
         if self.q:
             q = self.q.strip()
-            wz = wz.filter(tytul_oryginalny__icontains=q)[:MAX_RESULTS]
-            pbn_pub = pbn_pub.filter(title__icontains=q)[:MAX_RESULTS]
+            wz = filtruj_tytul_lub_isbn(wz, q, "tytul_oryginalny", "isbn", "e_isbn")[
+                :MAX_RESULTS
+            ]
+            pbn_pub = filtruj_tytul_lub_isbn(pbn_pub, q, "title", "isbn")[:MAX_RESULTS]
         else:
             wz = wz.none()
             pbn_pub = pbn_pub.none()
