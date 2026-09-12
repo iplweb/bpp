@@ -115,35 +115,38 @@
         {# zmaterializowanych listach zamiast wołać jednostka.wymaga_nawigacji, #}
         {# które robiło trzy dodatkowe EXISTS-y. #}
         {% if aktualne_podjednostki and kola_naukowe or aktualne_podjednostki and historyczne_podjednostki or kola_naukowe and historyczne_podjednostki %}
-            <div data-sticky-container id="navStickyContainer" class="wydzial-nav">
-                <div data-sticky class="sticky"
-                     data-anchor="listyJednostek" data-margin-top="4">
-                    <nav class="sticky-container">
-                        <ul class="menu expanded" data-magellan>
-                            {% if aktualne_podjednostki %}
-                                <li><a href="#aktualne">
-                                    <i class="fi-home"></i>Jednostki aktualne
-                                </a></li>
-                            {% endif %}
-                            {% if kola_naukowe %}
-                                <li><a href="#kola_naukowe">
-                                    <i class="fi-torsos-all"></i>Koła naukowe
-                                </a></li>
-                            {% endif %}
-                            {% if historyczne_podjednostki %}
-                                <li><a href="#historyczne">
-                                    <i class="fi-clock"></i>Jednostki historyczne
-                                </a></li>
-                            {% endif %}
-                        </ul>
-                    </nav>
-                </div>
+            {# Bez pluginów Foundation (Sticky/Magellan): Sticky przypinał #}
+            {# pasek jako position:fixed z z-index 5 i sztywnym 4rem od góry #}
+            {# okna, czyli NAD breadcrumbs, a Magellan przewijał kotwice na #}
+            {# y=0 -- pod te same belki. Teraz: natywny position:sticky #}
+            {# (browse.scss) + window.bpp.scrollToVisible, które mierzy #}
+            {# wysokość belek w locie. #}
+            <div id="navStickyContainer" class="wydzial-nav" data-bpp-sticky-bar>
+                <nav class="wydzial-nav__bar" aria-label="Sekcje jednostki">
+                    <ul class="menu expanded">
+                        {% if aktualne_podjednostki %}
+                            <li><a href="#aktualne">
+                                <i class="fi-home"></i>Jednostki aktualne
+                            </a></li>
+                        {% endif %}
+                        {% if kola_naukowe %}
+                            <li><a href="#kola_naukowe">
+                                <i class="fi-torsos-all"></i>Koła naukowe
+                            </a></li>
+                        {% endif %}
+                        {% if historyczne_podjednostki %}
+                            <li><a href="#historyczne">
+                                <i class="fi-clock"></i>Jednostki historyczne
+                            </a></li>
+                        {% endif %}
+                    </ul>
+                </nav>
             </div>
         {% endif %}
 
         <div class="sections" id="listyJednostek">
             {% if aktualne_podjednostki %}
-                <section id="aktualne" data-magellan-target="aktualne" style="margin-bottom: 40px;">
+                <section id="aktualne" style="margin-bottom: 40px;">
                     <div class="section-header">
                         <h2>
                             <i class="fi-home"></i>Jednostki aktualne
@@ -180,7 +183,7 @@
             {% endif %}
 
             {% if kola_naukowe %}
-                <section id="kola_naukowe" data-magellan-target="kola_naukowe" style="margin-bottom: 40px;">
+                <section id="kola_naukowe" style="margin-bottom: 40px;">
                     <div class="section-header">
                         <h2>
                             <i class="fi-torsos-all"></i>Koła naukowe
@@ -217,7 +220,7 @@
             {% endif %}
 
             {% if historyczne_podjednostki %}
-                <section id="historyczne" data-magellan-target="historyczne" style="margin-bottom: 40px;">
+                <section id="historyczne" style="margin-bottom: 40px;">
                     <div class="section-header">
                         <h2>
                             <i class="fi-clock"></i>Jednostki historyczne
@@ -252,8 +255,81 @@
         <script type="text/javascript">
             $(document).ready(function(){
                 showOrHideNav();
+                initSekcjeNav();
             });
             $(window).resize(showOrHideNav);
+
+            /* Nawigacja po sekcjach: klik w pozycję paska ma zostawić
+               nagłówek sekcji POD paskiem, a nie pod nim schować. Całą
+               arytmetykę belek (top bar, breadcrumbs, sam pasek) robi
+               window.bpp.scrollToVisible -- tutaj tylko przechwytujemy
+               klik i podświetlamy aktywną pozycję. */
+            function initSekcjeNav() {
+                var nav = document.getElementById("navStickyContainer");
+                if (!nav || !window.bpp || !window.bpp.scrollToVisible)
+                    return;
+
+                var links = Array.prototype.slice.call(
+                    nav.querySelectorAll('a[href^="#"]'));
+                var sections = links.map(function (link) {
+                    return document.getElementById(
+                        link.getAttribute("href").slice(1));
+                });
+
+                links.forEach(function (link, i) {
+                    link.addEventListener("click", function (e) {
+                        if (!sections[i]) return;
+                        e.preventDefault();
+                        window.bpp.scrollToVisible(sections[i]);
+                        if (window.history && window.history.replaceState) {
+                            window.history.replaceState(
+                                null, "", link.getAttribute("href"));
+                        }
+                    });
+                });
+
+                /* Aktywna jest ostatnia sekcja, której nagłówek przeszedł
+                   już pod dolną krawędź paska -- mierzoną z paska, więc
+                   bez zaszytych pikseli. */
+                var pending = false;
+                /* scrollToVisible zostawia kilka pikseli oddechu pod
+                   paskiem, więc nagłówek docelowej sekcji ląduje minimalnie
+                   PONIŻEJ jego krawędzi -- bez tego zapasu podświetlenie
+                   zostawałoby na sekcji poprzedniej. */
+                var LUZ_PODSWIETLENIA = 16;
+                function markActive() {
+                    pending = false;
+                    var line = nav.getBoundingClientRect().bottom
+                        + LUZ_PODSWIETLENIA;
+                    var current = -1;
+                    sections.forEach(function (section, i) {
+                        if (section
+                            && section.getBoundingClientRect().top <= line)
+                            current = i;
+                    });
+                    links.forEach(function (link, i) {
+                        link.classList.toggle("is-active", i === current);
+                    });
+                }
+                window.addEventListener("scroll", function () {
+                    if (pending) return;
+                    pending = true;
+                    window.requestAnimationFrame(markActive);
+                }, {passive: true});
+                markActive();
+
+                /* Wejście z #kotwicą w adresie: przeglądarka skacze na
+                   surowy anchor, więc po załadowaniu ustawiamy go jeszcze
+                   raz -- tym razem pod paskiem. */
+                if (window.location.hash) {
+                    var target = document.getElementById(
+                        window.location.hash.slice(1));
+                    if (target && sections.indexOf(target) !== -1) {
+                        window.bpp.scrollToVisible(
+                            target, {behavior: "instant"});
+                    }
+                }
+            }
 
             function showOrHideNav() {
                 /* decyzja o ukryciu lub pokazaniu nawigacji opiera się na określeniu, czy wyszła poza
