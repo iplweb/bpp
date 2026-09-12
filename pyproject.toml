@@ -82,6 +82,9 @@ dependencies = [
     "Pillow>=12.2,<14",
     "django-grappelli>=5.0.0,<6",
     "django-multiseek==0.10.3",
+    # Narzędzia MCP + szwy do hostowania ich w naszym procesie (spec §2.2).
+    # Ciągnie mcp>=2,<3, starlette i httpx — patrz spec §9.
+    "bpp-mcp>=0.4,<0.5",
     "django-braces>=1.15.0",
     "django-loginas==0.3.14",
     "django-webmaster-verification==0.4.3",

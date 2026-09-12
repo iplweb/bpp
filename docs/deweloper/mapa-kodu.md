@@ -304,6 +304,8 @@ graph LR
 | `notifications/` | WebSocket notifications | `Notification`, `NotificationsConsumer` |
 | `ranking_autorow/` | Author rankings | Ranking views and calculations |
 | `nowe_raporty/` | Modern reporting interface | Report forms and exports |
+| `mcp_server/` | Hosted MCP server for AI assistants (wraps `bpp-mcp` in-process) | `KontekstZadania`, `StartMcp` |
+| `oauth_mcp/` | OAuth 2.1 auth server backing `/mcp/auth` (DCR + PKCE) | — (no own models) |
 
 ---
 
@@ -511,6 +513,8 @@ from bpp.admin.helpers.fieldsets import (
 | `/api/v1/` | REST API | Read-only API |
 | `/multiseek/` | Multiseek | Advanced search |
 | `/pbn_import/` | ImportDashboard | PBN import interface |
+| `/mcp/` | StronaMcp | Human-readable MCP connection instructions |
+| `/mcp`, `/mcp/auth` | `mcp_server.routing.RouterHttp` (ASGI, not Django URLconf) | Streamable-HTTP MCP endpoint — public / OAuth-required |
 
 ---
 
