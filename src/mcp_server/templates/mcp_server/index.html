@@ -27,6 +27,38 @@
       {% endblocktrans %}
     </p>
 
+    {# Jeden wariant na stronę — wybór „z logowaniem czy bez” mylił. #}
+    {% if z_logowaniem %}
+      <p class="mcp-strona__wariant">
+        <span class="fi-lock" aria-hidden="true"></span>
+        {% blocktrans trimmed %}
+          Masz konto w bibliografii, więc instrukcje poniżej podłączają
+          dostęp z logowaniem — asystent zobaczy także dane niepubliczne.
+        {% endblocktrans %}
+      </p>
+    {% else %}
+      <div id="mcp-bez-konta" class="callout warning mcp-strona__bez-konta">
+        <p>
+          <strong>{% trans "Instrukcje poniżej podłączają dostęp publiczny, bez logowania." %}</strong>
+          {% blocktrans trimmed %}
+            Asystent zobaczy tylko publiczną część bibliografii — to nie
+            pozwala wykorzystać pełnych możliwości serwera MCP (dane
+            niepubliczne, precyzyjne zapytania o rekordy i autorów).
+            Najlepiej postaraj się o konto w bibliografii u jej
+            administratora w Twojej uczelni.
+          {% endblocktrans %}
+        </p>
+        <p class="mcp-strona__bez-konta-akcje">
+          {% trans "Masz już konto?" %}
+          <a class="button small" href="{% url "login_form" %}?next={{ request.get_full_path|urlencode }}">
+            <span class="fi-unlock" aria-hidden="true"></span>
+            {% trans "Zaloguj się" %}
+          </a>
+          {% trans "— strona pokaże instrukcje z logowaniem." %}
+        </p>
+      </div>
+    {% endif %}
+
     <section class="mcp-strona__sekcja mcp-strona__sekcja--wyrozniona"
              aria-labelledby="mcp-najprosciej">
       <h2 id="mcp-najprosciej">
@@ -59,24 +91,20 @@
     </section>
 
     <section class="mcp-strona__sekcja" aria-labelledby="mcp-adresy">
-      <h2 id="mcp-adresy">{% trans "Adresy serwera" %}</h2>
-
-      <h3>{% trans "Dostęp publiczny" %}</h3>
-      {% include "mcp_server/_kopiowalny.html" with id="mcp-adres-publiczny" tresc=adres_publiczny %}
-      <p>
-        {% trans "Bez logowania. Widzi to samo, co publiczna część bibliografii." %}
-      </p>
-
-      <h3>{% trans "Dostęp z logowaniem" %}</h3>
-      {% include "mcp_server/_kopiowalny.html" with id="mcp-adres-z-logowaniem" tresc=adres_z_logowaniem %}
-      <p>
-        {% trans "Poprosi o zalogowanie w przeglądarce. Odblokowuje dane niepubliczne." %}
-      </p>
-      <p>
-        {% trans "Logowanie działa obecnie w:" %}
-        {{ klienci_z_logowaniem|join:", " }}.
-        {% trans "W pozostałych narzędziach korzystaj z dostępu publicznego." %}
-      </p>
+      <h2 id="mcp-adresy">{% trans "Adres serwera" %}</h2>
+      {% include "mcp_server/_kopiowalny.html" with id="mcp-adres" tresc=adres_serwera %}
+      {% if z_logowaniem %}
+        <p>
+          {% trans "Poprosi o zalogowanie w przeglądarce. Logowanie działa obecnie w:" %}
+          {{ klienci_z_logowaniem|join:", " }}.
+          {% trans "Pozostałe narzędzia podłączysz tylko jako dostęp publiczny:" %}
+          <code>{{ adres_publiczny }}</code>
+        </p>
+      {% else %}
+        <p>
+          {% trans "Bez logowania. Widzi to samo, co publiczna część bibliografii." %}
+        </p>
+      {% endif %}
     </section>
 
     <section id="mcp-klienci" class="mcp-strona__sekcja"

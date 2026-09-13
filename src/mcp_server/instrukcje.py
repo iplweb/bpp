@@ -3,6 +3,10 @@
 Czyste funkcje bez requestu — widok podaje adresy i uczelnię, szablon tylko
 wyświetla. Dzięki temu prompt, linki i wklejki są testowalne bez HTML.
 
+Strona pokazuje JEDEN wariant naraz: zalogowanemu — dostęp z logowaniem,
+pozostałym — dostęp publiczny. Dwa przyciski „Dodaj” obok siebie i prompt
+każący asystentowi dopytywać „z logowaniem czy bez” myliły użytkowników.
+
 Kroki i formaty linków instalacyjnych zweryfikowane w dokumentacji klientów
 (stan 2026-09). Klienci zmieniają nazwy menu często — przy zgłoszeniu
 „nie ma takiej opcji” zacznij od sprawdzenia ich aktualnej dokumentacji.
@@ -67,60 +71,117 @@ def nazwa_serwera(uczelnia) -> str:
     return f"bpp-{slug}" if slug else "bpp"
 
 
-def prompt_dla_asystenta(
-    *, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str
-) -> str:
-    """Wiadomość do wklejenia we własne narzędzie AI — musi wystarczyć sama."""
+# --- Prompt dla asystenta ----------------------------------------------------
+
+
+def _uwierzytelnianie(z_logowaniem: bool) -> str:
+    if z_logowaniem:
+        return _(
+            "OAuth 2.1 z dynamiczną rejestracją klienta (DCR) i PKCE; logowanie "
+            "odbywa się w przeglądarce, nie podawaj klucza API ani hasła"
+        )
+    return _("brak")
+
+
+def _parametry_w_prompcie(*, nazwa: str, adres: str, z_logowaniem: bool) -> str:
     return _(
-        "Dodaj, proszę, zdalny serwer MCP z bibliografią publikacji do "
-        "programu, w którym teraz rozmawiamy.\n"
-        "\n"
-        "Wariant publiczny (bez logowania, dane publiczne):\n"
         "- nazwa: %(nazwa)s\n"
         "- transport: %(transport)s\n"
-        "- adres: %(publiczny)s\n"
-        "- uwierzytelnianie: brak\n"
-        "\n"
-        "Wariant z logowaniem (także dane niepubliczne, dla osób z kontem "
-        "w bibliografii):\n"
-        "- nazwa: %(nazwa)s\n"
-        "- transport: %(transport)s\n"
-        "- adres: %(z_logowaniem)s\n"
-        "- uwierzytelnianie: OAuth 2.1 z dynamiczną rejestracją klienta (DCR) "
-        "i PKCE; logowanie odbywa się w przeglądarce, nie podawaj klucza API "
-        "ani hasła\n"
-        "\n"
-        "Oba warianty dają dostęp tylko do odczytu.\n"
-        "\n"
-        "Zanim zaczniesz, zapytaj mnie, którego wariantu chcę. Jeśli potrafisz "
-        "dodać serwer sam (poleceniem w terminalu albo edycją pliku "
-        "konfiguracyjnego), zrób to i pokaż, co zmieniasz. Jeśli nie — podaj "
-        "mi dokładne kroki w ustawieniach tego programu. Jeśli rejestracja "
-        "klienta OAuth zostanie odrzucona (np. błąd invalid_redirect_uri), ten "
-        "program nie obsługuje logowania do tej bibliografii — użyj wtedy "
-        "wariantu publicznego. Na koniec sprawdź, czy widać narzędzia "
-        "%(narzedzia)s."
+        "- adres: %(adres)s\n"
+        "- uwierzytelnianie: %(uwierzytelnianie)s\n"
     ) % {
         "nazwa": nazwa,
         "transport": TRANSPORT,
-        "publiczny": adres_publiczny,
-        "z_logowaniem": adres_z_logowaniem,
-        "narzedzia": ", ".join(NARZEDZIA_KONTROLNE),
+        "adres": adres,
+        "uwierzytelnianie": _uwierzytelnianie(z_logowaniem),
     }
 
 
-def parametry_serwera(
+def _jak_dodac() -> str:
+    return _(
+        "Jeśli potrafisz dodać serwer sam (poleceniem w terminalu albo edycją "
+        "pliku konfiguracyjnego), zrób to i pokaż, co zmieniasz. Jeśli nie — "
+        "podaj mi dokładne kroki w ustawieniach tego programu."
+    )
+
+
+def _sprawdz_narzedzia() -> str:
+    return _("Na koniec sprawdź, czy widać narzędzia %(narzedzia)s.") % {
+        "narzedzia": ", ".join(NARZEDZIA_KONTROLNE)
+    }
+
+
+def prompt_z_logowaniem(
     *, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str
+) -> str:
+    """Wiadomość dla osoby z kontem — podłącza od razu dostęp z logowaniem.
+
+    Adres publiczny pada tylko jako plan awaryjny: klient spoza allowlisty
+    DCR dostanie ``invalid_redirect_uri`` i asystent ma się wtedy cofnąć sam,
+    bez dopytywania użytkownika.
+    """
+    return "".join(
+        [
+            _(
+                "Dodaj, proszę, zdalny serwer MCP z bibliografią publikacji do "
+                "programu, w którym teraz rozmawiamy. Mam konto w tej "
+                "bibliografii, więc podłącz dostęp z logowaniem:\n"
+            ),
+            "\n",
+            _parametry_w_prompcie(
+                nazwa=nazwa, adres=adres_z_logowaniem, z_logowaniem=True
+            ),
+            "\n",
+            _("Serwer daje dostęp tylko do odczytu."),
+            "\n\n",
+            _jak_dodac(),
+            " ",
+            _(
+                "Jeśli rejestracja klienta OAuth zostanie odrzucona (np. błąd "
+                "invalid_redirect_uri), ten program nie obsługuje logowania do "
+                "tej bibliografii — dodaj wtedy serwer bez uwierzytelniania pod "
+                "adresem %(adres)s (tylko dane publiczne) i powiedz mi o tym."
+            )
+            % {"adres": adres_publiczny},
+            " ",
+            _sprawdz_narzedzia(),
+        ]
+    )
+
+
+def prompt_publiczny(*, nazwa: str, adres_publiczny: str) -> str:
+    """Wiadomość dla osoby bez konta — tylko dostęp publiczny, bez logowania."""
+    return "".join(
+        [
+            _(
+                "Dodaj, proszę, zdalny serwer MCP z bibliografią publikacji do "
+                "programu, w którym teraz rozmawiamy:\n"
+            ),
+            "\n",
+            _parametry_w_prompcie(
+                nazwa=nazwa, adres=adres_publiczny, z_logowaniem=False
+            ),
+            "\n",
+            _(
+                "Serwer daje dostęp tylko do odczytu i tylko do publicznej "
+                "części bibliografii."
+            ),
+            "\n\n",
+            _jak_dodac(),
+            " ",
+            _sprawdz_narzedzia(),
+        ]
+    )
+
+
+def parametry_serwera(
+    *, nazwa: str, adres: str, z_logowaniem: bool
 ) -> list[tuple[str, str]]:
     return [
         (_("Nazwa"), nazwa),
         (_("Transport"), TRANSPORT),
-        (_("Adres publiczny"), adres_publiczny),
-        (_("Adres z logowaniem"), adres_z_logowaniem),
-        (
-            _("Uwierzytelnianie"),
-            _("brak (adres publiczny); OAuth 2.1 z DCR i PKCE (adres z logowaniem)"),
-        ),
+        (_("Adres"), adres),
+        (_("Uwierzytelnianie"), _uwierzytelnianie(z_logowaniem)),
         (_("Uprawnienia"), _("tylko odczyt")),
     ]
 
@@ -199,83 +260,68 @@ class Klient:
     uwagi: tuple[str, ...] = ()
 
 
-def _klient(slug, nazwa, *, linki=(), kroki=(), wklejki=(), uwagi=()):
-    """Złóż klienta: identyfikatory wklejek i uwaga, gdy nie ma logowania."""
-    logowanie = obsluguje_logowanie(slug)
-    uwagi = list(uwagi)
-    if not logowanie:
-        uwagi.append(
-            _(
-                "Logowanie (adres z /mcp/auth) nie jest w tym narzędziu "
-                "obsługiwane albo nie zostało jeszcze sprawdzone — korzystaj "
-                "z dostępu publicznego."
-            )
-        )
-    return Klient(
-        slug=slug,
-        nazwa=nazwa,
-        logowanie=logowanie,
-        linki=tuple(linki),
-        kroki=tuple(kroki),
-        wklejki=tuple(
-            Wklejka(id=f"mcp-wklejka-{slug}-{nr}", opis=opis, tekst=tekst)
-            for nr, (opis, tekst) in enumerate(wklejki, start=1)
-        ),
-        uwagi=tuple(uwagi),
-    )
-
-
 def _json(obiekt: dict) -> str:
     return json.dumps(obiekt, indent=2, ensure_ascii=False)
 
 
-def klienci(*, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str):
-    pub, auth = adres_publiczny, adres_z_logowaniem
-    publiczny, z_logowaniem = _("Dostęp publiczny"), _("Dostęp z logowaniem")
+def klienci(
+    *,
+    nazwa: str,
+    adres_publiczny: str,
+    adres_z_logowaniem: str,
+    z_logowaniem: bool,
+):
+    """Instrukcje klientów w jednym wariancie — jeden przycisk, jeden adres.
 
-    def warianty(slug, opis_publiczny, opis_z_logowaniem, budowniczy):
-        """Wariant publiczny, a z logowaniem tylko, gdy klient go obsłuży."""
-        wynik = [(opis_publiczny, budowniczy(pub))]
-        if obsluguje_logowanie(slug):
-            wynik.append((opis_z_logowaniem, budowniczy(auth)))
-        return wynik
+    W wariancie z logowaniem klient spoza allowlisty DCR i tak dostaje adres
+    publiczny (logowanie skończyłoby się ``invalid_redirect_uri``) i uwagę,
+    dlaczego.
+    """
 
-    def linki(slug, generator):
-        return [
-            Link(etykieta, adres)
-            for etykieta, adres in warianty(
-                slug,
-                _("Dodaj — dostęp publiczny"),
-                _("Dodaj — z logowaniem"),
-                lambda adres: generator(nazwa, adres),
+    def adres(slug):
+        if z_logowaniem and obsluguje_logowanie(slug):
+            return adres_z_logowaniem
+        return adres_publiczny
+
+    def klient(slug, nazwa_klienta, *, linki=(), kroki=(), wklejki=(), uwagi=()):
+        """Złóż klienta: identyfikatory wklejek i uwaga, gdy nie ma logowania."""
+        logowanie = obsluguje_logowanie(slug)
+        uwagi = list(uwagi)
+        if z_logowaniem and not logowanie:
+            uwagi.append(
+                _(
+                    "To narzędzie nie obsługuje logowania do tej bibliografii "
+                    "(albo nie zostało to jeszcze sprawdzone) — podłączysz je "
+                    "tylko jako dostęp publiczny, bez danych niepublicznych."
+                )
             )
-        ]
-
-    def adresy(slug):
-        return warianty(
-            slug,
-            _("Adres — dostęp publiczny"),
-            _("Adres — dostęp z logowaniem"),
-            lambda adres: adres,
+        return Klient(
+            slug=slug,
+            nazwa=nazwa_klienta,
+            logowanie=logowanie,
+            linki=tuple(Link(_("Dodaj serwer"), link) for link in linki),
+            kroki=tuple(kroki),
+            wklejki=tuple(
+                Wklejka(id=f"mcp-wklejka-{slug}-{nr}", opis=opis, tekst=tekst)
+                for nr, (opis, tekst) in enumerate(wklejki, start=1)
+            ),
+            uwagi=tuple(uwagi),
         )
 
-    def pary(slug, opis_pliku, budowniczy):
-        return warianty(
-            slug,
-            f"{opis_pliku} — {publiczny.lower()}",
-            f"{opis_pliku} — {z_logowaniem.lower()}",
-            budowniczy,
-        )
+    def z_loginem(polecenie, slug, logowanie):
+        """Dopisz polecenie logowania, gdy klient dostał adres ``/mcp/auth``."""
+        if adres(slug) == adres_z_logowaniem:
+            return f"{polecenie}\n{logowanie}"
+        return polecenie
 
-    def z_loginem(polecenie, adres, logowanie):
-        """Dopisz polecenie logowania do wklejki z adresem ``/mcp/auth``."""
-        return f"{polecenie}\n{logowanie}" if adres == auth else polecenie
+    adres_serwera = _("Adres serwera")
+    polecenie = _("Polecenie")
 
     return [
-        _klient(
+        klient(
             "claude",
             "Claude (claude.ai, Claude Desktop, Cowork)",
-            linki=linki("claude", link_claude),
+            linki=[link_claude(nazwa, adres("claude"))],
             kroki=[
                 _(
                     "Albo ręcznie: w Claude otwórz Customize → Connectors, "
@@ -284,7 +330,7 @@ def klienci(*, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str):
                 _("Wpisz nazwę %(nazwa)s i adres serwera, potem kliknij Add.")
                 % {"nazwa": nazwa},
             ],
-            wklejki=adresy("claude"),
+            wklejki=[(adres_serwera, adres("claude"))],
             uwagi=[
                 _(
                     "Konektor dodajesz raz — działa w claude.ai, Claude Desktop, "
@@ -302,7 +348,7 @@ def klienci(*, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str):
                 ),
             ],
         ),
-        _klient(
+        klient(
             "chatgpt",
             "ChatGPT",
             kroki=[
@@ -321,7 +367,7 @@ def klienci(*, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str):
                     "dodaną aplikację."
                 ),
             ],
-            wklejki=adresy("chatgpt"),
+            wklejki=[(adres_serwera, adres("chatgpt"))],
             uwagi=[
                 _(
                     "Wymaga planu Plus, Pro, Business, Enterprise lub Edu. "
@@ -330,44 +376,49 @@ def klienci(*, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str):
                 ),
             ],
         ),
-        _klient(
+        klient(
             "claude-code",
             "Claude Code",
-            wklejki=warianty(
-                "claude-code",
-                publiczny,
-                z_logowaniem,
-                lambda adres: z_loginem(
-                    f"claude mcp add --transport http --scope user {nazwa} {adres}",
-                    adres,
-                    f"claude mcp login {nazwa}",
-                ),
-            ),
+            wklejki=[
+                (
+                    polecenie,
+                    z_loginem(
+                        "claude mcp add --transport http --scope user "
+                        f"{nazwa} {adres('claude-code')}",
+                        "claude-code",
+                        f"claude mcp login {nazwa}",
+                    ),
+                )
+            ],
             uwagi=[
-                _(
-                    "--scope user udostępnia serwer we wszystkich projektach. "
-                    "Zamiast claude mcp login możesz w sesji wpisać /mcp "
-                    "i wybrać serwer."
+                _("--scope user udostępnia serwer we wszystkich projektach."),
+                *(
+                    [
+                        _(
+                            "Zamiast claude mcp login możesz w sesji wpisać /mcp "
+                            "i wybrać serwer."
+                        )
+                    ]
+                    if adres("claude-code") == adres_z_logowaniem
+                    else []
                 ),
             ],
         ),
-        _klient(
+        klient(
             "codex",
             "OpenAI Codex",
             wklejki=[
-                *warianty(
-                    "codex",
-                    publiczny,
-                    z_logowaniem,
-                    lambda adres: z_loginem(
-                        f"codex mcp add {nazwa} --url {adres}",
-                        adres,
+                (
+                    polecenie,
+                    z_loginem(
+                        f"codex mcp add {nazwa} --url {adres('codex')}",
+                        "codex",
                         f"codex mcp login {nazwa} --scopes read",
                     ),
                 ),
                 (
                     _("Albo wpis w ~/.codex/config.toml"),
-                    f'[mcp_servers.{nazwa}]\nurl = "{pub}"',
+                    f'[mcp_servers.{nazwa}]\nurl = "{adres("codex")}"',
                 ),
             ],
             uwagi=[
@@ -377,64 +428,69 @@ def klienci(*, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str):
                 ),
             ],
         ),
-        _klient(
+        klient(
             "cursor",
             "Cursor",
-            linki=linki("cursor", link_cursor),
-            wklejki=pary(
-                "cursor",
-                "~/.cursor/mcp.json",
-                lambda adres: _json({"mcpServers": {nazwa: {"url": adres}}}),
-            ),
+            linki=[link_cursor(nazwa, adres("cursor"))],
+            wklejki=[
+                (
+                    "~/.cursor/mcp.json",
+                    _json({"mcpServers": {nazwa: {"url": adres("cursor")}}}),
+                )
+            ],
         ),
-        _klient(
+        klient(
             "vscode",
             "Visual Studio Code (GitHub Copilot)",
-            linki=linki("vscode", link_vscode),
-            wklejki=pary(
-                "vscode",
-                _("Polecenie"),
-                lambda adres: (
+            linki=[link_vscode(nazwa, adres("vscode"))],
+            wklejki=[
+                (
+                    polecenie,
                     "code --add-mcp '"
                     + json.dumps(
-                        {"name": nazwa, "type": "http", "url": adres},
+                        {"name": nazwa, "type": "http", "url": adres("vscode")},
                         separators=(",", ":"),
                     )
-                    + "'"
-                ),
-            ),
+                    + "'",
+                )
+            ],
             uwagi=[
                 _("Narzędzia serwera są dostępne w trybie agenta GitHub Copilot."),
             ],
         ),
-        _klient(
+        klient(
             "gemini-cli",
             "Gemini CLI",
-            wklejki=pary(
-                "gemini-cli",
-                _("Polecenie"),
-                lambda adres: (
-                    f"gemini mcp add --transport http --scope user {nazwa} {adres}"
-                ),
-            ),
-            uwagi=[
-                _(
-                    "Przy adresie z logowaniem uruchom w sesji Gemini CLI "
-                    "polecenie /mcp auth %(nazwa)s."
+            wklejki=[
+                (
+                    polecenie,
+                    "gemini mcp add --transport http --scope user "
+                    f"{nazwa} {adres('gemini-cli')}",
                 )
-                % {"nazwa": nazwa},
             ],
+            uwagi=(
+                [
+                    _(
+                        "Po dodaniu uruchom w sesji Gemini CLI polecenie "
+                        "/mcp auth %(nazwa)s, żeby się zalogować."
+                    )
+                    % {"nazwa": nazwa}
+                ]
+                if adres("gemini-cli") == adres_z_logowaniem
+                else []
+            ),
         ),
-        _klient(
+        klient(
             "windsurf",
             "Windsurf",
-            wklejki=pary(
-                "windsurf",
-                "~/.codeium/windsurf/mcp_config.json",
-                lambda adres: _json({"mcpServers": {nazwa: {"serverUrl": adres}}}),
-            ),
+            wklejki=[
+                (
+                    "~/.codeium/windsurf/mcp_config.json",
+                    _json({"mcpServers": {nazwa: {"serverUrl": adres("windsurf")}}}),
+                )
+            ],
         ),
-        _klient(
+        klient(
             "zed",
             "Zed",
             kroki=[
@@ -443,24 +499,26 @@ def klienci(*, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str):
                     "Server — albo dopisz wpis do settings.json."
                 ),
             ],
-            wklejki=pary(
-                "zed",
-                "settings.json",
-                lambda adres: _json({"context_servers": {nazwa: {"url": adres}}}),
-            ),
+            wklejki=[
+                (
+                    "settings.json",
+                    _json({"context_servers": {nazwa: {"url": adres("zed")}}}),
+                )
+            ],
         ),
-        _klient(
+        klient(
             "lm-studio",
             "LM Studio",
-            linki=linki("lm-studio", link_lmstudio),
-            wklejki=pary(
-                "lm-studio",
-                "mcp.json",
-                lambda adres: _json({"mcpServers": {nazwa: {"url": adres}}}),
-            ),
+            linki=[link_lmstudio(nazwa, adres("lm-studio"))],
+            wklejki=[
+                (
+                    "mcp.json",
+                    _json({"mcpServers": {nazwa: {"url": adres("lm-studio")}}}),
+                )
+            ],
             uwagi=[_("Wymaga LM Studio w wersji 0.3.17 lub nowszej.")],
         ),
-        _klient(
+        klient(
             "le-chat",
             "Mistral Le Chat",
             kroki=[
@@ -474,9 +532,9 @@ def klienci(*, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str):
                 )
                 % {"nazwa": nazwa},
             ],
-            wklejki=adresy("le-chat"),
+            wklejki=[(adres_serwera, adres("le-chat"))],
         ),
-        _klient(
+        klient(
             "copilot-studio",
             "Microsoft Copilot Studio",
             kroki=[
@@ -487,7 +545,7 @@ def klienci(*, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str):
                 _("Podaj nazwę %(nazwa)s, krótki opis i adres serwera.")
                 % {"nazwa": nazwa},
             ],
-            wklejki=adresy("copilot-studio"),
+            wklejki=[(adres_serwera, adres("copilot-studio"))],
             uwagi=[
                 _(
                     "W Microsoft 365 Copilot własny serwer MCP rejestruje "

@@ -15,6 +15,9 @@ class StronaMcp(TemplateView):
     (``mcp_server.routing.RouterHttp``) — ta strona (``/mcp/``, ze
     slashem) idzie normalnym trybem przez Django i tylko pokazuje,
     dokąd wkleić te adresy w kliencie AI.
+
+    Wariant wynika z sesji: zalogowany ma konto, więc dostaje dostęp
+    z logowaniem; niezalogowany — publiczny, z zachętą do zalogowania się.
     """
 
     template_name = "mcp_server/index.html"
@@ -29,18 +32,38 @@ class StronaMcp(TemplateView):
     def get_context_data(self, **kwargs):
         kontekst = super().get_context_data(**kwargs)
         uczelnia = Uczelnia.objects.get_for_request(self.request)
-        parametry = {
-            "nazwa": instrukcje.nazwa_serwera(uczelnia),
-            "adres_publiczny": self.request.build_absolute_uri("/mcp"),
-            "adres_z_logowaniem": self.request.build_absolute_uri("/mcp/auth"),
-        }
-        klienci = instrukcje.klienci(**parametry)
+        z_logowaniem = self.request.user.is_authenticated
+        nazwa = instrukcje.nazwa_serwera(uczelnia)
+        adres_publiczny = self.request.build_absolute_uri("/mcp")
+        adres_z_logowaniem = self.request.build_absolute_uri("/mcp/auth")
+        adres = adres_z_logowaniem if z_logowaniem else adres_publiczny
+
+        if z_logowaniem:
+            prompt = instrukcje.prompt_z_logowaniem(
+                nazwa=nazwa,
+                adres_publiczny=adres_publiczny,
+                adres_z_logowaniem=adres_z_logowaniem,
+            )
+        else:
+            prompt = instrukcje.prompt_publiczny(
+                nazwa=nazwa, adres_publiczny=adres_publiczny
+            )
+
+        klienci = instrukcje.klienci(
+            nazwa=nazwa,
+            adres_publiczny=adres_publiczny,
+            adres_z_logowaniem=adres_z_logowaniem,
+            z_logowaniem=z_logowaniem,
+        )
         kontekst.update(
-            adres_publiczny=parametry["adres_publiczny"],
-            adres_z_logowaniem=parametry["adres_z_logowaniem"],
-            nazwa_serwera=parametry["nazwa"],
-            prompt_dla_asystenta=instrukcje.prompt_dla_asystenta(**parametry),
-            parametry_serwera=instrukcje.parametry_serwera(**parametry),
+            z_logowaniem=z_logowaniem,
+            adres_serwera=adres,
+            adres_publiczny=adres_publiczny,
+            nazwa_serwera=nazwa,
+            prompt_dla_asystenta=prompt,
+            parametry_serwera=instrukcje.parametry_serwera(
+                nazwa=nazwa, adres=adres, z_logowaniem=z_logowaniem
+            ),
             klienci=klienci,
             klienci_z_logowaniem=[k.nazwa for k in klienci if k.logowanie],
             adres_bpp_mcp=instrukcje.ADRES_BPP_MCP,

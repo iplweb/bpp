@@ -2,31 +2,13 @@
 
 import pytest
 
-
-@pytest.mark.django_db
-def test_strona_pokazuje_oba_adresy(client, settings):
-    # Bez nadpisania ALLOWED_HOSTS Django odda 400 dla obcego Hosta,
-    # zanim widok zdąży zbudować adresy (patrz test_cache_vary_host.py).
-    settings.ALLOWED_HOSTS = ["bpp.example.test"]
-
-    odp = client.get("/mcp/", HTTP_HOST="bpp.example.test")
-
-    assert odp.status_code == 200
-    tresc = odp.content.decode()
-    assert "http://bpp.example.test/mcp" in tresc
-    assert "http://bpp.example.test/mcp/auth" in tresc
-
-
-@pytest.mark.django_db
-def test_adresy_sa_per_host(client, settings):
-    settings.ALLOWED_HOSTS = ["uczelnia1.localhost"]
-
-    a = client.get("/mcp/", HTTP_HOST="uczelnia1.localhost").content.decode()
-
-    assert "uczelnia1.localhost/mcp" in a
+PUB = "http://bpp.example.test/mcp"
+AUTH = "http://bpp.example.test/mcp/auth"
 
 
 def _strona(client, settings, host="bpp.example.test"):
+    # Bez nadpisania ALLOWED_HOSTS Django odda 400 dla obcego Hosta,
+    # zanim widok zdąży zbudować adresy (patrz test_cache_vary_host.py).
     settings.ALLOWED_HOSTS = [host]
     odp = client.get("/mcp/", HTTP_HOST=host)
     assert odp.status_code == 200
@@ -34,17 +16,54 @@ def _strona(client, settings, host="bpp.example.test"):
 
 
 @pytest.mark.django_db
-def test_prompt_dla_asystenta_niesie_komplet_parametrow(client, settings):
-    """Prompt do wklejenia we własne narzędzie AI musi wystarczyć sam:
-    asystent nie ma skąd wziąć adresu, transportu ani sposobu logowania."""
-    prompt = _strona(client, settings).context["prompt_dla_asystenta"]
+def test_adresy_sa_per_host(client, settings):
+    tresc = _strona(client, settings, host="uczelnia1.localhost").content.decode()
 
-    assert "http://bpp.example.test/mcp" in prompt
-    assert "http://bpp.example.test/mcp/auth" in prompt
-    assert "Streamable HTTP" in prompt
+    assert "uczelnia1.localhost/mcp" in tresc
+
+
+@pytest.mark.django_db
+def test_anonim_dostaje_tylko_wariant_publiczny(client, settings):
+    """Strona pokazuje JEDEN wariant — dwa przyciski „Dodaj” i pytanie
+    „z logowaniem czy bez” myliły. Niezalogowany dostaje publiczny."""
+    odp = _strona(client, settings)
+    tresc = odp.content.decode()
+
+    assert PUB in tresc
+    assert AUTH not in tresc
+    prompt = odp.context["prompt_dla_asystenta"]
+    assert f"adres: {PUB}" in prompt
+    assert "OAuth" not in prompt
+
+
+@pytest.mark.django_db
+def test_anonim_wie_ze_to_nie_pelne_mozliwosci_i_moze_sie_zalogowac(client, settings):
+    tresc = _strona(client, settings).content.decode()
+
+    # Zachęta do konta idzie PRZED instrukcjami, żeby nikt jej nie przegapił.
+    assert tresc.index('id="mcp-bez-konta"') < tresc.index('id="mcp-prompt"')
+    # Wycinek z samą ramką — link logowania ma też górny pasek strony.
+    ramka = tresc[tresc.index('id="mcp-bez-konta"') : tresc.index('id="mcp-prompt"')]
+    assert "konto" in ramka
+    assert "pełnych możliwości" in ramka
+    assert 'href="/accounts/login/?next=/mcp/"' in ramka
+
+
+@pytest.mark.django_db
+def test_zalogowany_dostaje_tylko_wariant_z_logowaniem(admin_client, settings):
+    """Zalogowany ma konto — dostaje jedną wiadomość do wklejenia, bez wyboru
+    wariantu i bez zachęty do zakładania konta."""
+    odp = _strona(admin_client, settings)
+    tresc = odp.content.decode()
+
+    assert 'id="mcp-bez-konta"' not in tresc
+    prompt = odp.context["prompt_dla_asystenta"]
+    assert f"adres: {AUTH}" in prompt
     assert "OAuth" in prompt
+    assert "Streamable HTTP" in prompt
     # Po dodaniu asystent ma sprawdzić, że narzędzia faktycznie są widoczne.
     assert "szukaj_publikacji" in prompt
+    assert dict(odp.context["parametry_serwera"])["Adres"] == AUTH
 
 
 @pytest.mark.django_db
@@ -63,8 +82,8 @@ def test_parametry_serwera(client, settings):
     parametry = dict(_strona(client, settings).context["parametry_serwera"])
 
     assert parametry["Transport"] == "Streamable HTTP"
-    assert parametry["Adres publiczny"] == "http://bpp.example.test/mcp"
-    assert parametry["Adres z logowaniem"] == "http://bpp.example.test/mcp/auth"
+    assert parametry["Adres"] == PUB
+    assert parametry["Uwierzytelnianie"] == "brak"
 
 
 @pytest.mark.django_db
@@ -94,14 +113,17 @@ def test_instrukcje_klientow_z_linkami_instalacyjnymi(client, settings):
 
 
 @pytest.mark.django_db
-def test_strona_mowi_gdzie_dziala_logowanie(client, settings):
-    odp = _strona(client, settings)
+def test_zalogowany_wie_gdzie_dziala_logowanie(admin_client, settings):
+    odp = _strona(admin_client, settings)
 
     assert odp.context["klienci_z_logowaniem"][0] == (
         "Claude (claude.ai, Claude Desktop, Cowork)"
     )
     assert "ChatGPT" not in odp.context["klienci_z_logowaniem"]
-    assert "Claude Code" in odp.content.decode()
+    tresc = odp.content.decode()
+    assert "Claude Code" in tresc
+    # Klient bez logowania: adres publiczny z wyjaśnieniem, nie błąd DCR.
+    assert PUB + "<" in tresc or PUB + "\n" in tresc
 
 
 @pytest.mark.django_db

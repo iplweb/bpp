@@ -8,6 +8,23 @@
   max-width: 48rem;
 }
 
+.mcp-strona__wariant {
+  max-width: 48rem;
+  font-weight: bold;
+}
+
+.mcp-strona__bez-konta {
+  max-width: 48rem;
+
+  p:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.mcp-strona__bez-konta-akcje .button {
+  margin: 0 0.25rem;
+}
+
 .mcp-strona__sekcja {
   margin-top: 2rem;
 }

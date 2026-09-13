@@ -1,7 +1,9 @@
 Serwis wystawia własny serwer MCP pod adresem ``/mcp`` (publiczny) oraz
 ``/mcp/auth`` (z logowaniem OAuth). Asystenci AI obsługujący zdalne serwery
 MCP łączą się jednym adresem — bez instalowania czegokolwiek i bez podawania
-adresu uczelni. Instrukcja podłączenia jest na stronie ``/mcp/``. Stan samego
+adresu uczelni. Instrukcja podłączenia jest na stronie ``/mcp/`` — zalogowani
+dostają ją od razu w wariancie z logowaniem, pozostali w wariancie publicznym
+z zachętą do zalogowania się lub postarania o konto. Stan samego
 endpointu (niezależny od sondy ``/health/`` Dockera) pokazuje ``/mcp/status``.
 Serwer MCP można wyłączyć dla danej uczelni w jej ustawieniach (sekcja „Serwer
 MCP dla asystentów AI”) — niezależnie od REST API, którego wyłączenie nie jest

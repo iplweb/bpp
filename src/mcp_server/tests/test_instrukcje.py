@@ -19,14 +19,17 @@ AUTH = "https://bpp.example.test/mcp/auth"
 Z_LOGOWANIEM = {"claude", "claude-code", "codex", "gemini-cli", "lm-studio"}
 
 
-def _klienci():
+def _klienci(*, z_logowaniem=False):
     return instrukcje.klienci(
-        nazwa="bpp-up", adres_publiczny=PUB, adres_z_logowaniem=AUTH
+        nazwa="bpp-up",
+        adres_publiczny=PUB,
+        adres_z_logowaniem=AUTH,
+        z_logowaniem=z_logowaniem,
     )
 
 
-def _klient(slug):
-    return next(k for k in _klienci() if k.slug == slug)
+def _klient(slug, *, z_logowaniem=False):
+    return next(k for k in _klienci(z_logowaniem=z_logowaniem) if k.slug == slug)
 
 
 def _teksty(klient):
@@ -87,14 +90,15 @@ def test_link_vscode_niesie_nazwe_typ_i_adres():
 
 
 def test_kazdy_klient_ma_tresc_i_unikalne_identyfikatory():
-    klienci = _klienci()
+    for z_logowaniem in (False, True):
+        klienci = _klienci(z_logowaniem=z_logowaniem)
 
-    slugi = [k.slug for k in klienci]
-    assert len(slugi) == len(set(slugi))
-    id_wklejek = [w.id for k in klienci for w in k.wklejki]
-    assert len(id_wklejek) == len(set(id_wklejek))
-    for klient in klienci:
-        assert klient.kroki or klient.wklejki or klient.linki, klient.slug
+        slugi = [k.slug for k in klienci]
+        assert len(slugi) == len(set(slugi))
+        id_wklejek = [w.id for k in klienci for w in k.wklejki]
+        assert len(id_wklejek) == len(set(id_wklejek))
+        for klient in klienci:
+            assert klient.kroki or klient.wklejki or klient.linki, klient.slug
 
 
 def test_oczekiwani_klienci_sa_na_liscie():
@@ -121,22 +125,42 @@ def test_logowanie_tylko_tam_gdzie_adres_zwrotny_przejdzie_przez_dcr():
     assert {k.slug for k in _klienci() if k.logowanie} == Z_LOGOWANIEM
 
 
-def test_klient_z_logowaniem_dostaje_oba_warianty():
+def test_kazdy_klient_dostaje_jeden_wariant_bez_wyboru():
+    """Dwa przyciski „Dodaj” (publiczny / z logowaniem) myliły — klient
+    dostaje jeden przycisk i jeden adres, zależnie od wariantu strony."""
+    for z_logowaniem in (False, True):
+        for klient in _klienci(z_logowaniem=z_logowaniem):
+            teksty = _teksty(klient)
+            assert len(klient.linki) <= 1, klient.slug
+            # PUB jest przedrostkiem AUTH — najpierw wytnij AUTH.
+            assert not (AUTH in teksty and PUB in teksty.replace(AUTH, "")), klient.slug
+
+
+def test_wariant_publiczny_nie_podsuwa_logowania():
     for klient in _klienci():
+        teksty = _teksty(klient)
+        assert AUTH not in teksty, klient.slug
+        assert " login " not in teksty, klient.slug
+        assert not any("/mcp/auth" in u for u in klient.uwagi), klient.slug
+
+
+def test_wariant_z_logowaniem_u_klientow_obslugujacych_logowanie():
+    for klient in _klienci(z_logowaniem=True):
         if not klient.logowanie:
             continue
         teksty = _teksty(klient)
-        assert PUB in teksty or klient.linki, klient.slug
-        assert AUTH in teksty or len(klient.linki) == 2, klient.slug
+        assert AUTH in teksty, klient.slug
+        assert PUB not in teksty.replace(AUTH, ""), klient.slug
 
 
-def test_klient_bez_logowania_dostaje_tylko_dostep_publiczny_i_wyjasnienie():
-    for klient in _klienci():
+def test_wariant_z_logowaniem_u_pozostalych_publiczny_z_wyjasnieniem():
+    """Klient spoza allowlisty DCR dostałby ``invalid_redirect_uri`` — nawet
+    zalogowany użytkownik podłącza go adresem publicznym i wie dlaczego."""
+    for klient in _klienci(z_logowaniem=True):
         if klient.logowanie:
             continue
         assert AUTH not in _teksty(klient), klient.slug
-        assert len(klient.linki) <= 1, klient.slug
-        assert any("dostępu publicznego" in u for u in klient.uwagi), klient.slug
+        assert any("dostęp publiczny" in u for u in klient.uwagi), klient.slug
 
 
 def test_logowanie_wynika_z_allowlisty_dcr(monkeypatch):
@@ -144,12 +168,13 @@ def test_logowanie_wynika_z_allowlisty_dcr(monkeypatch):
     z logowaniem na stronie — bez drugiej, ręcznie utrzymywanej listy."""
     monkeypatch.setattr(instrukcje, "dozwolony_redirect_uri", lambda uri: True)
 
-    assert _klient("chatgpt").logowanie
-    assert AUTH in _teksty(_klient("chatgpt"))
+    chatgpt = _klient("chatgpt", z_logowaniem=True)
+    assert chatgpt.logowanie
+    assert AUTH in _teksty(chatgpt)
 
 
 def test_codex_loguje_sie_osobnym_poleceniem():
-    teksty = _teksty(_klient("codex"))
+    teksty = _teksty(_klient("codex", z_logowaniem=True))
 
     assert f"codex mcp add bpp-up --url {AUTH}" in teksty
     assert "codex mcp login bpp-up" in teksty
@@ -167,16 +192,51 @@ def test_gemini_uzywa_transportu_http():
     assert f"gemini mcp add --transport http --scope user bpp-up {PUB}" in teksty
 
 
-def test_liczba_linkow_instalacyjnych_zalezy_od_logowania():
-    assert len(_klient("claude").linki) == 2
-    assert len(_klient("lm-studio").linki) == 2
-    assert len(_klient("cursor").linki) == 1
-    assert len(_klient("vscode").linki) == 1
+def test_gemini_polecenie_logowania_tylko_w_wariancie_z_logowaniem():
+    assert not any("/mcp auth" in u for u in _klient("gemini-cli").uwagi)
+    uwagi = _klient("gemini-cli", z_logowaniem=True).uwagi
+    assert any("/mcp auth bpp-up" in u for u in uwagi)
 
 
-def test_prompt_podpowiada_wariant_publiczny_przy_odrzuconej_rejestracji():
-    prompt = instrukcje.prompt_dla_asystenta(
+def _prompt_z_logowaniem():
+    return instrukcje.prompt_z_logowaniem(
         nazwa="bpp-up", adres_publiczny=PUB, adres_z_logowaniem=AUTH
     )
 
+
+def _prompt_publiczny():
+    return instrukcje.prompt_publiczny(nazwa="bpp-up", adres_publiczny=PUB)
+
+
+def test_prompt_z_logowaniem_podlacza_od_razu_bez_pytania_o_wariant():
+    """Kto ma konto, wkleja i już — asystent nie dopytuje o wariant."""
+    prompt = _prompt_z_logowaniem()
+
+    assert f"adres: {AUTH}" in prompt
+    assert "OAuth" in prompt
+    assert "którego wariantu" not in prompt
+
+
+def test_prompt_z_logowaniem_cofa_sie_do_publicznego_przy_odrzuconej_rejestracji():
+    """Klient spoza allowlisty DCR dostanie ``invalid_redirect_uri`` — asystent
+    ma wtedy sam podłączyć adres publiczny, a więc musi go znać."""
+    prompt = _prompt_z_logowaniem()
+
     assert "invalid_redirect_uri" in prompt
+    assert PUB in prompt.split("invalid_redirect_uri", 1)[1]
+
+
+def test_prompt_publiczny_nie_wspomina_o_logowaniu():
+    prompt = _prompt_publiczny()
+
+    assert f"adres: {PUB}" in prompt
+    assert AUTH not in prompt
+    assert "OAuth" not in prompt
+    assert "uwierzytelnianie: brak" in prompt
+
+
+def test_oba_prompty_sprawdzaja_narzedzia_i_opisuja_transport():
+    for prompt in (_prompt_z_logowaniem(), _prompt_publiczny()):
+        assert "bpp-up" in prompt
+        assert "Streamable HTTP" in prompt
+        assert "szukaj_publikacji" in prompt
