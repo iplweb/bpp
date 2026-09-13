@@ -1,0 +1,101 @@
+// =============================================================================
+// STRONA /mcp/
+// Instrukcja podłączenia asystenta AI (mcp_server/templates/mcp_server/index.html)
+// =============================================================================
+
+.mcp-strona__wstep {
+  font-size: 1.125rem;
+  max-width: 48rem;
+}
+
+.mcp-strona__sekcja {
+  margin-top: 2rem;
+}
+
+.mcp-strona__sekcja--wyrozniona {
+  padding: 1rem 1.25rem;
+  border-left: 4px solid $primary-color;
+  border-radius: $global-radius;
+  background-color: rgba($primary-color, 0.06);
+}
+
+.mcp-strona__kopiowalny {
+  margin-bottom: 1rem;
+}
+
+.mcp-strona__kod {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border: $code-border;
+  border-radius: $global-radius;
+  background-color: $code-background;
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.mcp-strona__akcje {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+
+  .button {
+    margin-bottom: 0;
+  }
+}
+
+.mcp-strona__komunikat {
+  font-size: 0.875rem;
+}
+
+.mcp-strona__tabela {
+  overflow-x: auto;
+}
+
+.mcp-strona__parametry {
+  th {
+    width: 1%;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  code {
+    overflow-wrap: anywhere;
+  }
+}
+
+.mcp-strona__klient {
+  margin-bottom: 0.5rem;
+  border: 1px solid $medium-gray;
+  border-radius: $global-radius;
+
+  &[open] > .mcp-strona__klient-nazwa {
+    border-bottom: 1px solid $medium-gray;
+  }
+}
+
+.mcp-strona__klient-nazwa {
+  padding: 0.75rem 1rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.mcp-strona__klient-tresc {
+  padding: 1rem;
+}
+
+.mcp-strona__linki .button {
+  margin-right: 0.5rem;
+}
+
+.mcp-strona__opis-wklejki {
+  margin-bottom: 0.25rem;
+  font-weight: bold;
+}
+
+.mcp-strona__uwaga {
+  padding-left: 0.75rem;
+  border-left: 3px solid $medium-gray;
+  font-size: 0.875rem;
+}

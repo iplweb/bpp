@@ -1,0 +1,15 @@
+{# Blok tekstu z przyciskiem „Kopiuj”; obsługa w mcp_server/strona.js. #}
+{# Parametry: id (unikalne na stronie), tresc. #}
+{% load i18n %}
+<div class="mcp-strona__kopiowalny">
+  <pre id="{{ id }}" class="mcp-strona__kod">{{ tresc }}</pre>
+  <div class="mcp-strona__akcje">
+    <button type="button" class="button small mcp-strona__kopiuj"
+            data-mcp-kopiuj="{{ id }}"
+            data-komunikat-ok="{% trans 'Skopiowano do schowka.' %}"
+            data-komunikat-blad="{% trans 'Nie udało się skopiować — zaznacz tekst i naciśnij Ctrl+C.' %}">
+      <span class="fi-clipboard" aria-hidden="true"></span> {% trans "Kopiuj" %}
+    </button>
+    <span class="mcp-strona__komunikat" role="status" aria-live="polite"></span>
+  </div>
+</div>

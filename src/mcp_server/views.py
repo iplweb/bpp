@@ -3,6 +3,8 @@
 from django.shortcuts import render
 from django.views.generic import TemplateView
 
+from bpp.models import Uczelnia
+from mcp_server import instrukcje
 from mcp_server.uczelnia import mcp_wlaczone_dla_requestu
 
 
@@ -26,6 +28,19 @@ class StronaMcp(TemplateView):
 
     def get_context_data(self, **kwargs):
         kontekst = super().get_context_data(**kwargs)
-        kontekst["adres_publiczny"] = self.request.build_absolute_uri("/mcp")
-        kontekst["adres_z_logowaniem"] = self.request.build_absolute_uri("/mcp/auth")
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        parametry = {
+            "nazwa": instrukcje.nazwa_serwera(uczelnia),
+            "adres_publiczny": self.request.build_absolute_uri("/mcp"),
+            "adres_z_logowaniem": self.request.build_absolute_uri("/mcp/auth"),
+        }
+        kontekst.update(
+            adres_publiczny=parametry["adres_publiczny"],
+            adres_z_logowaniem=parametry["adres_z_logowaniem"],
+            nazwa_serwera=parametry["nazwa"],
+            prompt_dla_asystenta=instrukcje.prompt_dla_asystenta(**parametry),
+            parametry_serwera=instrukcje.parametry_serwera(**parametry),
+            klienci=instrukcje.klienci(**parametry),
+            adres_bpp_mcp=instrukcje.ADRES_BPP_MCP,
+        )
         return kontekst

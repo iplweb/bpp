@@ -1,36 +1,127 @@
 {# Strona /mcp/ — instrukcja podłączenia klienta AI (dla człowieka). #}
 {# Same adresy MCP (/mcp, /mcp/auth) obsługuje warstwa ASGI, patrz #}
 {# mcp_server.routing.RouterHttp — ta strona tylko je pokazuje. #}
+{# Treść (prompt, parametry, wklejki klientów) składa mcp_server.instrukcje. #}
 {% extends "base.html" %}
-{% load i18n %}
+{% load i18n static %}
 
 {% block extratitle %}
     {% trans "Bibliografia w Twoim asystencie AI" %}
 {% endblock %}
 
+{% block extrahead %}
+    {{ block.super }}
+    <script src="{% static 'mcp_server/strona.js' %}" defer></script>
+{% endblock %}
+
 {% block content %}
-<div class="row">
+<div class="row mcp-strona">
   <div class="large-12 columns">
     <h1>{% trans "Bibliografia w Twoim asystencie AI" %}</h1>
 
-    <p>
-      {% trans "Wklej adres poniżej do klienta AI obsługującego zdalne serwery MCP." %}
+    <p class="mcp-strona__wstep">
+      {% blocktrans trimmed %}
+        Podłącz bibliografię do asystenta AI (Claude, ChatGPT, Codex, Cursor
+        i innych) przez protokół MCP. Asystent będzie mógł wyszukiwać
+        publikacje i autorów oraz czytać rekordy — wyłącznie do odczytu.
+      {% endblocktrans %}
     </p>
 
-    <h2>{% trans "Dostęp publiczny" %}</h2>
-    <p><code>{{ adres_publiczny }}</code></p>
-    <p>
-      {% trans "Bez logowania. Widzi to samo, co publiczna część bibliografii." %}
-    </p>
+    <section class="mcp-strona__sekcja mcp-strona__sekcja--wyrozniona"
+             aria-labelledby="mcp-najprosciej">
+      <h2 id="mcp-najprosciej">
+        <span class="fi-lightbulb" aria-hidden="true"></span>
+        {% trans "Najprościej: poproś swoje narzędzie AI" %}
+      </h2>
+      <p>
+        {% blocktrans trimmed %}
+          Skopiuj poniższą wiadomość i wklej ją do asystenta AI, którego
+          używasz. Asystenci pracujący w terminalu lub edytorze (Claude Code,
+          Codex, Cursor) zwykle dodadzą serwer sami; pozostali podpowiedzą,
+          gdzie kliknąć.
+        {% endblocktrans %}
+      </p>
+      {% include "mcp_server/_kopiowalny.html" with id="mcp-prompt" tresc=prompt_dla_asystenta %}
 
-    <h2>{% trans "Dostęp z logowaniem" %}</h2>
-    <p><code>{{ adres_z_logowaniem }}</code></p>
-    <p>
-      {% trans "Poprosi o zalogowanie w przeglądarce. Odblokowuje dane niepubliczne." %}
-    </p>
+      <h3>{% trans "Parametry serwera" %}</h3>
+      <div class="mcp-strona__tabela">
+        <table class="mcp-strona__parametry">
+          <tbody>
+            {% for etykieta, wartosc in parametry_serwera %}
+              <tr>
+                <th scope="row">{{ etykieta }}</th>
+                <td><code>{{ wartosc }}</code></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-    <h2>{% trans "Claude Code" %}</h2>
-    <pre>claude mcp add bpp --transport http {{ adres_publiczny }}</pre>
+    <section class="mcp-strona__sekcja" aria-labelledby="mcp-adresy">
+      <h2 id="mcp-adresy">{% trans "Adresy serwera" %}</h2>
+
+      <h3>{% trans "Dostęp publiczny" %}</h3>
+      {% include "mcp_server/_kopiowalny.html" with id="mcp-adres-publiczny" tresc=adres_publiczny %}
+      <p>
+        {% trans "Bez logowania. Widzi to samo, co publiczna część bibliografii." %}
+      </p>
+
+      <h3>{% trans "Dostęp z logowaniem" %}</h3>
+      {% include "mcp_server/_kopiowalny.html" with id="mcp-adres-z-logowaniem" tresc=adres_z_logowaniem %}
+      <p>
+        {% trans "Poprosi o zalogowanie w przeglądarce. Odblokowuje dane niepubliczne." %}
+      </p>
+    </section>
+
+    <section id="mcp-klienci" class="mcp-strona__sekcja"
+             aria-labelledby="mcp-klienci-naglowek">
+      <h2 id="mcp-klienci-naglowek">{% trans "Instrukcje dla konkretnych narzędzi" %}</h2>
+
+      {% for klient in klienci %}
+        <details class="mcp-strona__klient" id="mcp-klient-{{ klient.slug }}">
+          <summary class="mcp-strona__klient-nazwa">{{ klient.nazwa }}</summary>
+          <div class="mcp-strona__klient-tresc">
+            {% if klient.linki %}
+              <p class="mcp-strona__linki">
+                {% for link in klient.linki %}
+                  <a class="button mcp-strona__instaluj" href="{{ link.adres }}"{% if link.zewnetrzny %} target="_blank" rel="noopener"{% endif %}>
+                    <span class="fi-download" aria-hidden="true"></span>
+                    {{ link.etykieta }}
+                  </a>
+                {% endfor %}
+              </p>
+            {% endif %}
+            {% if klient.kroki %}
+              <ol class="mcp-strona__kroki">
+                {% for krok in klient.kroki %}
+                  <li>{{ krok }}</li>
+                {% endfor %}
+              </ol>
+            {% endif %}
+            {% for wklejka in klient.wklejki %}
+              <p class="mcp-strona__opis-wklejki">{{ wklejka.opis }}</p>
+              {% include "mcp_server/_kopiowalny.html" with id=wklejka.id tresc=wklejka.tekst %}
+            {% endfor %}
+            {% for uwaga in klient.uwagi %}
+              <p class="mcp-strona__uwaga">{{ uwaga }}</p>
+            {% endfor %}
+          </div>
+        </details>
+      {% endfor %}
+    </section>
+
+    <section class="mcp-strona__sekcja" aria-labelledby="mcp-stdio">
+      <h2 id="mcp-stdio">{% trans "Narzędzie bez obsługi zdalnych serwerów MCP?" %}</h2>
+      <p>
+        {% blocktrans trimmed %}
+          Uruchom serwer lokalnie programem bpp-mcp — łączy się z tą samą
+          bibliografią, a z asystentem rozmawia przez standardowe wejście
+          i wyjście (stdio).
+        {% endblocktrans %}
+        <a href="{{ adres_bpp_mcp }}" target="_blank" rel="noopener">{{ adres_bpp_mcp }}</a>
+      </p>
+    </section>
   </div>
 </div>
 {% endblock %}
