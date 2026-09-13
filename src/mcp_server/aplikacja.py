@@ -145,7 +145,10 @@ def _z_raportowaniem(serwer: MCPServer) -> MCPServer:
                 try:
                     return await fn(*a, **kw)
                 except BppError:
-                    # Nigdy nie raportuj — patrz docstring funkcji.
+                    # Nigdy nie raportuj — patrz docstring funkcji. Od
+                    # bpp-mcp 0.4.1 BppError dziedziczy po ToolError, więc SDK
+                    # (mcp>=2.1) pokaże jego treść modelowi i zaloguje go bez
+                    # tracebacku; inny wyjątek uznałby za awarię.
                     raise
                 except Exception:
                     rollbar.report_exc_info()

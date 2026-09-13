@@ -116,6 +116,38 @@ def test_bpperror_nie_trafia_do_rollbara(monkeypatch):
     mock_rollbar.report_exc_info.assert_not_called()
 
 
+def test_bpperror_dociera_do_modelu_jako_zwykly_toolerror(monkeypatch):
+    """``BppError`` niesie czytelny komunikat DLA MODELU („Jednostka
+    niewidoczna lub nie istnieje…”), więc musi wyjść jako zwykły
+    ``ToolError``, nie ``UnexpectedToolError``.
+
+    Od ``mcp`` 2.1 każdy wyjątek spoza ``ToolError``/``ResourceError`` SDK
+    uznaje za awarię: zamienia go w ``UnexpectedToolError`` z samym „Error
+    executing tool <nazwa>” (treść zostaje na serwerze), a
+    ``_handle_call_tool`` loguje pełny traceback przez ``logger.exception``.
+    Model dostawał więc bezużyteczny komunikat, a log — traceback przy każdym
+    404 nieistniejącej encji. ``UnexpectedToolError`` dziedziczy po
+    ``ToolError``, stąd samo ``pytest.raises(ToolError)`` tego nie łapało.
+    """
+    mock_rollbar = Mock()
+    monkeypatch.setattr(aplikacja, "rollbar", mock_rollbar)
+    monkeypatch.setattr(bpp_tools, "djangoql_schema", _rzucajacy_bpperror(404))
+
+    mcp_app, _ = build_application()
+    serwer = mcp_app.state.serwer_mcp
+
+    async def scenariusz():
+        with pytest.raises(ToolError) as exc_info:
+            await serwer.call_tool("djangoql_schema", {"model": "rekord"})
+        return exc_info.value
+
+    blad = uruchom(scenariusz)
+
+    assert not isinstance(blad, UnexpectedToolError), repr(blad)
+    assert "nie znaleziono encji" in str(blad)
+    mock_rollbar.report_exc_info.assert_not_called()
+
+
 def test_bpperror_bez_statusu_nie_trafia_do_rollbara(monkeypatch):
     """Błąd domenowy bez statusu HTTP (walidacja argumentu, przekroczony
     budżet czasu) też jest komunikatem, nie awarią."""
