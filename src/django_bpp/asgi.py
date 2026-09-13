@@ -22,11 +22,23 @@ from channels.security.websocket import AllowedHostsOriginValidator  # noqa: E40
 # channels_broadcast działają dalej bez zmian.
 websocket_urlpatterns = liveops.routing.websocket_urlpatterns
 
+# Aplikacja MCP i jej routing. Import PO get_asgi_application() — mcp_server
+# sięga po modele przez klienta w procesie.
+from mcp_server.aplikacja import build_application  # noqa: E402
+from mcp_server.routing import LifespanMcp, RouterHttp  # noqa: E402
+
+_mcp_app, _mcp_start = build_application()
+
 application = ProtocolTypeRouter(
     {
-        "http": django_asgi_app,
+        "http": RouterHttp(_mcp_app, django_asgi_app, _mcp_start),
         "websocket": AllowedHostsOriginValidator(
             AuthMiddlewareStack(URLRouter(websocket_urlpatterns))
         ),
+        # ProtocolTypeRouter nie „nie obsługuje" lifespanu — po prostu nie ma
+        # dla niego klucza i rzuca ValueError, który uvicorn loguje jako
+        # „appears unsupported" i ignoruje. Menedżer sesji MCP nigdy wtedy nie
+        # wstaje (spec §2.4, §5.1).
+        "lifespan": LifespanMcp(_mcp_start),
     }
 )

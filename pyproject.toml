@@ -82,6 +82,15 @@ dependencies = [
     "Pillow>=12.2,<14",
     "django-grappelli>=5.0.0,<6",
     "django-multiseek==0.10.3",
+    # Narzędzia MCP + szwy do hostowania ich w naszym procesie (spec §2.2).
+    # Ciągnie mcp>=2,<3, starlette i httpx — patrz spec §9.
+    # 0.4.1: BppError dziedziczy po ToolError — inaczej mcp>=2.1 ukrywa treść
+    # błędu przed modelem i loguje traceback przy każdym 404.
+    # 0.4.2: narzędzia mają readOnlyHint — bez tego ChatGPT każe potwierdzać
+    # każde wywołanie.
+    # 0.4.3: publikacje_* zwracają typ + pk (z rekord_url w recent_*), a anonim
+    # bez tokenu dostaje „wymaga zalogowania" zamiast „wygasły token".
+    "bpp-mcp>=0.4.3,<0.5",
     "django-braces>=1.15.0",
     "django-loginas==0.3.14",
     "django-webmaster-verification==0.4.3",
@@ -597,7 +606,7 @@ dev = [
     # django-run-site: CLI orchestrator dev stack-u. Dawniej `manage.py run_site`
     # + helpery w `_run_site_helpers/`. Instalowany w dev-deps zeby `uv run run-site`
     # mialo dostep do CLI bez globalnego `uv tool install`. Konfiguracja: runsite.toml.
-    "django-run-site>=0.20.2",
+    "django-run-site>=0.21.0",
     # django-dev-helpers: autologin endpoint + dotfiles dla agentow LLM. Dawniej
     # `src/django_bpp/views_run_site_autologin.py`. Aktywuje sie tylko gdy run-site
     # ustawi DJANGO_DEV_HELPERS_ENABLED=1 — w produkcji no-op.
