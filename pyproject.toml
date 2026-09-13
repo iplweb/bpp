@@ -88,7 +88,9 @@ dependencies = [
     # błędu przed modelem i loguje traceback przy każdym 404.
     # 0.4.2: narzędzia mają readOnlyHint — bez tego ChatGPT każe potwierdzać
     # każde wywołanie.
-    "bpp-mcp>=0.4.2,<0.5",
+    # 0.4.3: publikacje_* zwracają typ + pk (z rekord_url w recent_*), a anonim
+    # bez tokenu dostaje „wymaga zalogowania" zamiast „wygasły token".
+    "bpp-mcp>=0.4.3,<0.5",
     "django-braces>=1.15.0",
     "django-loginas==0.3.14",
     "django-webmaster-verification==0.4.3",

@@ -566,7 +566,7 @@ requires-dist = [
     { name = "babel", specifier = ">=2.17" },
     { name = "beautifulsoup4", specifier = ">=4.15.0" },
     { name = "bibtexparser", specifier = ">=2.0.0b7" },
-    { name = "bpp-mcp", specifier = ">=0.4.2,<0.5" },
+    { name = "bpp-mcp", specifier = ">=0.4.3,<0.5" },
     { name = "celery", specifier = ">=5.6.3" },
     { name = "celery-singleton", specifier = ">=0.3.1" },
     { name = "channels", extras = ["daphne"], specifier = ">=4.3.2,<5" },
@@ -740,16 +740,16 @@ dev = [
 
 [[package]]
 name = "bpp-mcp"
-version = "0.4.2"
+version = "0.4.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx", marker = "platform_python_implementation != 'PyPy'" },
     { name = "mcp", marker = "platform_python_implementation != 'PyPy'" },
     { name = "starlette", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/71/22/4c7f8e1823e3dbd61380c0bac9bf8329746e25260fee432bc933462bc8df/bpp_mcp-0.4.2.tar.gz", hash = "sha256:2b6ba2b69679055bfd65ee24bebf2324938b4a9ed69eb0e01073de0badcb2f03", size = 117815, upload-time = "2026-09-13T14:28:34.617Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/97/10/0256ec6bdb953f785841b0bfc5001bf2c2164fad03599252e3ed1fa22d3e/bpp_mcp-0.4.3.tar.gz", hash = "sha256:4bda498ed4518455c0daaed417634499f28d4443549c8a00f81194856417c30a", size = 118832, upload-time = "2026-09-13T15:21:56.177Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e1/6c/3e8189c0dde910fd0ace64d0222c7d5516cc4e5c6751ae9951588bac6947/bpp_mcp-0.4.2-py3-none-any.whl", hash = "sha256:975f39f204732967ff27837c1667b52269f8bcccde8ed5833dc03300f254e195", size = 94951, upload-time = "2026-09-13T14:28:32.992Z" },
+    { url = "https://files.pythonhosted.org/packages/41/30/4807cdb2400867ffbab86fa43d565a34a2e56803973e81ac2f481e188d56/bpp_mcp-0.4.3-py3-none-any.whl", hash = "sha256:e5c44d2c9f63285992fdcb76875012b30517d41a6c6c97bd34fb34209000601b", size = 95299, upload-time = "2026-09-13T15:21:54.713Z" },
 ]
 
 [[package]]
