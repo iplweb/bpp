@@ -1,1 +1,0 @@
-Okno wyszukiwania globalnego ma spójne kolory motywu uczelni: obramowanie pola, nagłówki grup, zaznaczony wynik i ikonki pomocy nie są już zawsze niebieskie, lecz w kolorze głównym motywu — tak jak pasek postępu wyszukiwania.
