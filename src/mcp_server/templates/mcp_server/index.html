@@ -72,6 +72,11 @@
       <p>
         {% trans "Poprosi o zalogowanie w przeglądarce. Odblokowuje dane niepubliczne." %}
       </p>
+      <p>
+        {% trans "Logowanie działa obecnie w:" %}
+        {{ klienci_z_logowaniem|join:", " }}.
+        {% trans "W pozostałych narzędziach korzystaj z dostępu publicznego." %}
+      </p>
     </section>
 
     <section id="mcp-klienci" class="mcp-strona__sekcja"

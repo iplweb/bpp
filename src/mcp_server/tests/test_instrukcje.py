@@ -1,4 +1,4 @@
-"""Wklejki i linki instalacyjne strony /mcp/ (bez bazy, bez renderowania).
+"""Wklejki i linki instalacyjne strony /mcp/ (bez renderowania HTML).
 
 Formaty linków zweryfikowane w dokumentacji klientów (stan 2026-09):
 Claude — ``claude.ai/customize/connectors?modal=add-custom-connector``,
@@ -15,6 +15,9 @@ from mcp_server import instrukcje
 PUB = "https://bpp.example.test/mcp"
 AUTH = "https://bpp.example.test/mcp/auth"
 
+#: Adresy zwrotne tych klientów przechodzą przez allowlistę DCR.
+Z_LOGOWANIEM = {"claude", "claude-code", "codex", "gemini-cli", "lm-studio"}
+
 
 def _klienci():
     return instrukcje.klienci(
@@ -24,6 +27,12 @@ def _klienci():
 
 def _klient(slug):
     return next(k for k in _klienci() if k.slug == slug)
+
+
+def _teksty(klient):
+    return "\n".join(
+        [w.tekst for w in klient.wklejki] + [link.adres for link in klient.linki]
+    )
 
 
 def _zapytanie(link):
@@ -105,40 +114,69 @@ def test_oczekiwani_klienci_sa_na_liscie():
     } <= slugi
 
 
-def test_wklejki_maja_warianty_publiczny_i_z_logowaniem():
-    """Ręczne wklejki nie wymagają przerabiania adresu: każda jest w obu
-    wariantach, a wariant z logowaniem niesie adres ``/mcp/auth``."""
+def test_logowanie_tylko_tam_gdzie_adres_zwrotny_przejdzie_przez_dcr():
+    """Allowlista ``redirect_uri`` w DCR wpuszcza Claude i loopback. Wariant
+    z logowaniem u innych klientów kończyłby się ``invalid_redirect_uri``,
+    więc strona nie może go podsuwać."""
+    assert {k.slug for k in _klienci() if k.logowanie} == Z_LOGOWANIEM
+
+
+def test_klient_z_logowaniem_dostaje_oba_warianty():
     for klient in _klienci():
-        if not klient.wklejki:
+        if not klient.logowanie:
             continue
-        teksty = "\n".join(w.tekst for w in klient.wklejki)
-        assert PUB in teksty, klient.slug
-        assert AUTH in teksty, klient.slug
+        teksty = _teksty(klient)
+        assert PUB in teksty or klient.linki, klient.slug
+        assert AUTH in teksty or len(klient.linki) == 2, klient.slug
+
+
+def test_klient_bez_logowania_dostaje_tylko_dostep_publiczny_i_wyjasnienie():
+    for klient in _klienci():
+        if klient.logowanie:
+            continue
+        assert AUTH not in _teksty(klient), klient.slug
+        assert len(klient.linki) <= 1, klient.slug
+        assert any("dostępu publicznego" in u for u in klient.uwagi), klient.slug
+
+
+def test_logowanie_wynika_z_allowlisty_dcr(monkeypatch):
+    """Rozszerzenie allowlisty (np. o chatgpt.com) ma samo odblokować wariant
+    z logowaniem na stronie — bez drugiej, ręcznie utrzymywanej listy."""
+    monkeypatch.setattr(instrukcje, "dozwolony_redirect_uri", lambda uri: True)
+
+    assert _klient("chatgpt").logowanie
+    assert AUTH in _teksty(_klient("chatgpt"))
 
 
 def test_codex_loguje_sie_osobnym_poleceniem():
-    teksty = "\n".join(w.tekst for w in _klient("codex").wklejki)
+    teksty = _teksty(_klient("codex"))
 
     assert f"codex mcp add bpp-up --url {AUTH}" in teksty
     assert "codex mcp login bpp-up" in teksty
 
 
 def test_claude_code_z_zakresem_uzytkownika():
-    teksty = "\n".join(w.tekst for w in _klient("claude-code").wklejki)
+    teksty = _teksty(_klient("claude-code"))
 
     assert f"claude mcp add --transport http --scope user bpp-up {PUB}" in teksty
 
 
 def test_gemini_uzywa_transportu_http():
-    teksty = "\n".join(w.tekst for w in _klient("gemini-cli").wklejki)
+    teksty = _teksty(_klient("gemini-cli"))
 
     assert f"gemini mcp add --transport http --scope user bpp-up {PUB}" in teksty
 
 
-def test_linki_instalacyjne_w_obu_wariantach():
-    for slug in ("claude", "cursor", "vscode", "lm-studio"):
-        adresy = " ".join(link.adres for link in _klient(slug).linki)
-        # Linki kodują adres (base64 / URL-encoding) — sprawdzamy liczbę
-        # wariantów, a poprawność kodowania pokrywają testy link_*.
-        assert len(_klient(slug).linki) == 2, slug
-        assert adresy, slug
+def test_liczba_linkow_instalacyjnych_zalezy_od_logowania():
+    assert len(_klient("claude").linki) == 2
+    assert len(_klient("lm-studio").linki) == 2
+    assert len(_klient("cursor").linki) == 1
+    assert len(_klient("vscode").linki) == 1
+
+
+def test_prompt_podpowiada_wariant_publiczny_przy_odrzuconej_rejestracji():
+    prompt = instrukcje.prompt_dla_asystenta(
+        nazwa="bpp-up", adres_publiczny=PUB, adres_z_logowaniem=AUTH
+    )
+
+    assert "invalid_redirect_uri" in prompt

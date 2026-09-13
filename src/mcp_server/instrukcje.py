@@ -18,6 +18,8 @@ from urllib.parse import quote, urlencode
 from django.utils.text import slugify
 from django.utils.translation import gettext as _
 
+from oauth_mcp.views_dcr import dozwolony_redirect_uri
+
 #: Po tych narzędziach asystent pozna, że serwer faktycznie się podłączył.
 NARZEDZIA_KONTROLNE = ("szukaj_publikacji", "szukaj_autora")
 
@@ -25,6 +27,31 @@ NARZEDZIA_KONTROLNE = ("szukaj_publikacji", "szukaj_autora")
 ADRES_BPP_MCP = "https://github.com/iplweb/bpp-mcp"
 
 TRANSPORT = "Streamable HTTP"
+
+#: Adresy zwrotne OAuth, które klient zgłasza przy dynamicznej rejestracji
+#: (DCR) — z dokumentacji klientów, stan 2026-09. Rejestracja w ``oauth_mcp``
+#: odrzuca klienta, gdy CHOĆ JEDEN adres nie przejdzie przez allowlistę, więc
+#: wariant z logowaniem pokazujemy tylko, gdy przechodzą wszystkie. Klient
+#: spoza słownika (adres nieznany) dostaje wyłącznie dostęp publiczny.
+#:
+#: Klienci CLI słuchają na pętli zwrotnej z losowym portem; allowlista
+#: przepuszcza dowolny port i ścieżkę na localhost/127.0.0.1, więc port
+#: i ścieżka poniżej są tylko przykładowe.
+ADRESY_ZWROTNE = {
+    "claude": ("https://claude.ai/api/mcp/auth_callback",),
+    "chatgpt": ("https://chatgpt.com/connector_platform_oauth_redirect",),
+    "claude-code": ("http://localhost:33418/callback",),
+    "codex": ("http://127.0.0.1:33418/callback",),
+    "vscode": ("http://127.0.0.1:33418/", "https://vscode.dev/redirect"),
+    "gemini-cli": ("http://localhost:33418/oauth/callback",),
+    "lm-studio": ("http://127.0.0.1:33389/mcp-oauth-callback",),
+}
+
+
+def obsluguje_logowanie(slug: str) -> bool:
+    """Czy klient przejdzie rejestrację DCR (a więc adres ``/mcp/auth``)."""
+    adresy = ADRESY_ZWROTNE.get(slug, ())
+    return bool(adresy) and all(dozwolony_redirect_uri(a) for a in adresy)
 
 
 def nazwa_serwera(uczelnia) -> str:
@@ -68,8 +95,11 @@ def prompt_dla_asystenta(
         "Zanim zaczniesz, zapytaj mnie, którego wariantu chcę. Jeśli potrafisz "
         "dodać serwer sam (poleceniem w terminalu albo edycją pliku "
         "konfiguracyjnego), zrób to i pokaż, co zmieniasz. Jeśli nie — podaj "
-        "mi dokładne kroki w ustawieniach tego programu. Na koniec sprawdź, "
-        "czy widać narzędzia %(narzedzia)s."
+        "mi dokładne kroki w ustawieniach tego programu. Jeśli rejestracja "
+        "klienta OAuth zostanie odrzucona (np. błąd invalid_redirect_uri), ten "
+        "program nie obsługuje logowania do tej bibliografii — użyj wtedy "
+        "wariantu publicznego. Na koniec sprawdź, czy widać narzędzia "
+        "%(narzedzia)s."
     ) % {
         "nazwa": nazwa,
         "transport": TRANSPORT,
@@ -162,6 +192,7 @@ class Klient:
 
     slug: str
     nazwa: str
+    logowanie: bool = False
     linki: tuple[Link, ...] = ()
     kroki: tuple[str, ...] = ()
     wklejki: tuple[Wklejka, ...] = ()
@@ -169,10 +200,21 @@ class Klient:
 
 
 def _klient(slug, nazwa, *, linki=(), kroki=(), wklejki=(), uwagi=()):
-    """Złóż klienta, nadając wklejkom identyfikatory unikalne na stronie."""
+    """Złóż klienta: identyfikatory wklejek i uwaga, gdy nie ma logowania."""
+    logowanie = obsluguje_logowanie(slug)
+    uwagi = list(uwagi)
+    if not logowanie:
+        uwagi.append(
+            _(
+                "Logowanie (adres z /mcp/auth) nie jest w tym narzędziu "
+                "obsługiwane albo nie zostało jeszcze sprawdzone — korzystaj "
+                "z dostępu publicznego."
+            )
+        )
     return Klient(
         slug=slug,
         nazwa=nazwa,
+        logowanie=logowanie,
         linki=tuple(linki),
         kroki=tuple(kroki),
         wklejki=tuple(
@@ -191,29 +233,49 @@ def klienci(*, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str):
     pub, auth = adres_publiczny, adres_z_logowaniem
     publiczny, z_logowaniem = _("Dostęp publiczny"), _("Dostęp z logowaniem")
 
-    def linki(generator):
+    def warianty(slug, opis_publiczny, opis_z_logowaniem, budowniczy):
+        """Wariant publiczny, a z logowaniem tylko, gdy klient go obsłuży."""
+        wynik = [(opis_publiczny, budowniczy(pub))]
+        if obsluguje_logowanie(slug):
+            wynik.append((opis_z_logowaniem, budowniczy(auth)))
+        return wynik
+
+    def linki(slug, generator):
         return [
-            Link(_("Dodaj — dostęp publiczny"), generator(nazwa, pub)),
-            Link(_("Dodaj — z logowaniem"), generator(nazwa, auth)),
+            Link(etykieta, adres)
+            for etykieta, adres in warianty(
+                slug,
+                _("Dodaj — dostęp publiczny"),
+                _("Dodaj — z logowaniem"),
+                lambda adres: generator(nazwa, adres),
+            )
         ]
 
-    def adresy():
-        return [
-            (_("Adres — dostęp publiczny"), pub),
-            (_("Adres — dostęp z logowaniem"), auth),
-        ]
+    def adresy(slug):
+        return warianty(
+            slug,
+            _("Adres — dostęp publiczny"),
+            _("Adres — dostęp z logowaniem"),
+            lambda adres: adres,
+        )
 
-    def pary(opis_pliku, budowniczy):
-        return [
-            (f"{opis_pliku} — {publiczny.lower()}", budowniczy(pub)),
-            (f"{opis_pliku} — {z_logowaniem.lower()}", budowniczy(auth)),
-        ]
+    def pary(slug, opis_pliku, budowniczy):
+        return warianty(
+            slug,
+            f"{opis_pliku} — {publiczny.lower()}",
+            f"{opis_pliku} — {z_logowaniem.lower()}",
+            budowniczy,
+        )
+
+    def z_loginem(polecenie, adres, logowanie):
+        """Dopisz polecenie logowania do wklejki z adresem ``/mcp/auth``."""
+        return f"{polecenie}\n{logowanie}" if adres == auth else polecenie
 
     return [
         _klient(
             "claude",
             "Claude (claude.ai, Claude Desktop, Cowork)",
-            linki=linki(link_claude),
+            linki=linki("claude", link_claude),
             kroki=[
                 _(
                     "Albo ręcznie: w Claude otwórz Customize → Connectors, "
@@ -222,7 +284,7 @@ def klienci(*, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str):
                 _("Wpisz nazwę %(nazwa)s i adres serwera, potem kliknij Add.")
                 % {"nazwa": nazwa},
             ],
-            wklejki=adresy(),
+            wklejki=adresy("claude"),
             uwagi=[
                 _(
                     "Konektor dodajesz raz — działa w claude.ai, Claude Desktop, "
@@ -259,7 +321,7 @@ def klienci(*, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str):
                     "dodaną aplikację."
                 ),
             ],
-            wklejki=adresy(),
+            wklejki=adresy("chatgpt"),
             uwagi=[
                 _(
                     "Wymaga planu Plus, Pro, Business, Enterprise lub Edu. "
@@ -271,17 +333,16 @@ def klienci(*, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str):
         _klient(
             "claude-code",
             "Claude Code",
-            wklejki=[
-                (
-                    publiczny,
-                    f"claude mcp add --transport http --scope user {nazwa} {pub}",
-                ),
-                (
-                    z_logowaniem,
-                    f"claude mcp add --transport http --scope user {nazwa} {auth}\n"
+            wklejki=warianty(
+                "claude-code",
+                publiczny,
+                z_logowaniem,
+                lambda adres: z_loginem(
+                    f"claude mcp add --transport http --scope user {nazwa} {adres}",
+                    adres,
                     f"claude mcp login {nazwa}",
                 ),
-            ],
+            ),
             uwagi=[
                 _(
                     "--scope user udostępnia serwer we wszystkich projektach. "
@@ -294,11 +355,15 @@ def klienci(*, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str):
             "codex",
             "OpenAI Codex",
             wklejki=[
-                (publiczny, f"codex mcp add {nazwa} --url {pub}"),
-                (
+                *warianty(
+                    "codex",
+                    publiczny,
                     z_logowaniem,
-                    f"codex mcp add {nazwa} --url {auth}\n"
-                    f"codex mcp login {nazwa} --scopes read",
+                    lambda adres: z_loginem(
+                        f"codex mcp add {nazwa} --url {adres}",
+                        adres,
+                        f"codex mcp login {nazwa} --scopes read",
+                    ),
                 ),
                 (
                     _("Albo wpis w ~/.codex/config.toml"),
@@ -315,23 +380,19 @@ def klienci(*, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str):
         _klient(
             "cursor",
             "Cursor",
-            linki=linki(link_cursor),
+            linki=linki("cursor", link_cursor),
             wklejki=pary(
+                "cursor",
                 "~/.cursor/mcp.json",
                 lambda adres: _json({"mcpServers": {nazwa: {"url": adres}}}),
             ),
-            uwagi=[
-                _(
-                    "Przy adresie z logowaniem Cursor sam otworzy przeglądarkę "
-                    "do zalogowania."
-                ),
-            ],
         ),
         _klient(
             "vscode",
             "Visual Studio Code (GitHub Copilot)",
-            linki=linki(link_vscode),
+            linki=linki("vscode", link_vscode),
             wklejki=pary(
+                "vscode",
                 _("Polecenie"),
                 lambda adres: (
                     "code --add-mcp '"
@@ -343,17 +404,14 @@ def klienci(*, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str):
                 ),
             ),
             uwagi=[
-                _(
-                    "Narzędzia serwera są dostępne w trybie agenta GitHub "
-                    "Copilot. Przy adresie z logowaniem VS Code poprosi "
-                    "o zalogowanie."
-                ),
+                _("Narzędzia serwera są dostępne w trybie agenta GitHub Copilot."),
             ],
         ),
         _klient(
             "gemini-cli",
             "Gemini CLI",
             wklejki=pary(
+                "gemini-cli",
                 _("Polecenie"),
                 lambda adres: (
                     f"gemini mcp add --transport http --scope user {nazwa} {adres}"
@@ -371,6 +429,7 @@ def klienci(*, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str):
             "windsurf",
             "Windsurf",
             wklejki=pary(
+                "windsurf",
                 "~/.codeium/windsurf/mcp_config.json",
                 lambda adres: _json({"mcpServers": {nazwa: {"serverUrl": adres}}}),
             ),
@@ -385,16 +444,17 @@ def klienci(*, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str):
                 ),
             ],
             wklejki=pary(
+                "zed",
                 "settings.json",
                 lambda adres: _json({"context_servers": {nazwa: {"url": adres}}}),
             ),
-            uwagi=[_("Przy adresie z logowaniem Zed sam uruchomi logowanie.")],
         ),
         _klient(
             "lm-studio",
             "LM Studio",
-            linki=linki(link_lmstudio),
+            linki=linki("lm-studio", link_lmstudio),
             wklejki=pary(
+                "lm-studio",
                 "mcp.json",
                 lambda adres: _json({"mcpServers": {nazwa: {"url": adres}}}),
             ),
@@ -405,7 +465,8 @@ def klienci(*, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str):
             "Mistral Le Chat",
             kroki=[
                 _(
-                    "W Le Chat otwórz Intelligence → Connectors i kliknij Add Connector."
+                    "W Le Chat otwórz Intelligence → Connectors i kliknij Add "
+                    "Connector."
                 ),
                 _(
                     "Na karcie Custom MCP Connector podaj nazwę %(nazwa)s "
@@ -413,7 +474,7 @@ def klienci(*, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str):
                 )
                 % {"nazwa": nazwa},
             ],
-            wklejki=adresy(),
+            wklejki=adresy("le-chat"),
         ),
         _klient(
             "copilot-studio",
@@ -423,14 +484,10 @@ def klienci(*, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str):
                     "Otwórz agenta i przejdź do Tools → Add a tool → New tool "
                     "→ Model Context Protocol."
                 ),
-                _(
-                    "Podaj nazwę %(nazwa)s, krótki opis i adres serwera. Dla "
-                    "adresu z logowaniem wybierz OAuth 2.0 z opcją Dynamic "
-                    "discovery."
-                )
+                _("Podaj nazwę %(nazwa)s, krótki opis i adres serwera.")
                 % {"nazwa": nazwa},
             ],
-            wklejki=adresy(),
+            wklejki=adresy("copilot-studio"),
             uwagi=[
                 _(
                     "W Microsoft 365 Copilot własny serwer MCP rejestruje "

@@ -94,6 +94,17 @@ def test_instrukcje_klientow_z_linkami_instalacyjnymi(client, settings):
 
 
 @pytest.mark.django_db
+def test_strona_mowi_gdzie_dziala_logowanie(client, settings):
+    odp = _strona(client, settings)
+
+    assert odp.context["klienci_z_logowaniem"][0] == (
+        "Claude (claude.ai, Claude Desktop, Cowork)"
+    )
+    assert "ChatGPT" not in odp.context["klienci_z_logowaniem"]
+    assert "Claude Code" in odp.content.decode()
+
+
+@pytest.mark.django_db
 def test_link_do_bpp_mcp_dla_stdio(client, settings):
     """Spec §8: link do ``bpp-mcp`` dla klientów bez zdalnego MCP (stdio)."""
     tresc = _strona(client, settings).content.decode()

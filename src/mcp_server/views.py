@@ -34,13 +34,15 @@ class StronaMcp(TemplateView):
             "adres_publiczny": self.request.build_absolute_uri("/mcp"),
             "adres_z_logowaniem": self.request.build_absolute_uri("/mcp/auth"),
         }
+        klienci = instrukcje.klienci(**parametry)
         kontekst.update(
             adres_publiczny=parametry["adres_publiczny"],
             adres_z_logowaniem=parametry["adres_z_logowaniem"],
             nazwa_serwera=parametry["nazwa"],
             prompt_dla_asystenta=instrukcje.prompt_dla_asystenta(**parametry),
             parametry_serwera=instrukcje.parametry_serwera(**parametry),
-            klienci=instrukcje.klienci(**parametry),
+            klienci=klienci,
+            klienci_z_logowaniem=[k.nazwa for k in klienci if k.logowanie],
             adres_bpp_mcp=instrukcje.ADRES_BPP_MCP,
         )
         return kontekst
