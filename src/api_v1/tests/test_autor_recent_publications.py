@@ -54,6 +54,26 @@ def test_autor_recent_publications_endpoint():
 
 
 @pytest.mark.django_db
+def test_autor_recent_publications_rekord_url_prowadzi_do_typowanego_detalu():
+    """``id`` pozycji to ``"(content_type_id, pk)"``, a numery ContentType są
+    per-baza — konsument API (np. bpp-mcp) nie miał jak ustalić typu rekordu
+    i pobrać jego detalu. ``rekord_url`` wskazuje typowany detal, jak w
+    ``/szukaj/``."""
+    client = APIClient()
+    autor = baker.make(Autor, nazwisko="Testowy", imiona="Jan")
+    publikacja = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Z adresem")
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=publikacja, autor=autor)
+
+    url = reverse("api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk})
+    publikacje = client.get(url).json()["publications"]
+
+    assert len(publikacje) == 1
+    assert publikacje[0]["rekord_url"] == (
+        f"http://testserver/api/v1/wydawnictwo_ciagle/{publikacja.pk}/"
+    )
+
+
+@pytest.mark.django_db
 def test_autor_recent_publications_no_publications():
     """Test the endpoint when author has no publications."""
     client = APIClient()

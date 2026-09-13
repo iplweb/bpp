@@ -9,6 +9,19 @@ from django.urls import reverse
 from rest_framework import serializers
 
 
+def zbuduj_rekord_url(request, mapa_contenttype_viewname, rekord_id):
+    """Absolutny URL typowanego detalu API dla klucza ``Rekord``
+    ``(content_type_id, pk)``; ``None``, gdy typ spoza mapy.
+
+    Mapę buduje ``api_v1.viewsets.szukaj.mapa_contenttype_viewname`` (ID
+    ContentType są per-baza; nie hardkodujemy ich).
+    """
+    viewname = mapa_contenttype_viewname.get(rekord_id[0])
+    if viewname is None:
+        return None
+    return request.build_absolute_uri(reverse(viewname, args=(rekord_id[1],)))
+
+
 class SzukajSerializer(serializers.Serializer):
     """Serializuje wiersz ``bpp.Rekord`` (mat-view) do płaskiej pozycji wyniku."""
 
@@ -28,13 +41,9 @@ class SzukajSerializer(serializers.Serializer):
         return obj.opis_bibliograficzny_cache or obj.tytul_oryginalny
 
     def get_rekord_url(self, obj):
-        # Mapa content_type_id → viewname budowana w RUNTIME przez viewset
-        # (ID ContentType są per-baza; nie hardkodujemy ich).
-        viewname = self.context["contenttype_to_viewname"].get(obj.id[0])
-        if viewname is None:
-            return None
-        request = self.context["request"]
-        return request.build_absolute_uri(reverse(viewname, args=(obj.id[1],)))
+        return zbuduj_rekord_url(
+            self.context["request"], self.context["contenttype_to_viewname"], obj.id
+        )
 
     def get_absolute_url(self, obj):
         # Publiczny URL strony WWW: slug-first (jak embed recent_*).
