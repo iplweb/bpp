@@ -73,6 +73,3 @@ def normalize_zrodlo_nazwa_for_db_lookup(s):
     # trygramowe i dopasowanie źródła znika (FD#321).
     s = html.unescape(s)
     return s.lower().replace(" ", "").strip()
-
-
-normalized_db_isbn = Trim(Replace(Lower("isbn"), Value("-"), Value("")))

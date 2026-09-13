@@ -658,6 +658,7 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
 
         rejestr = wybierz_rejestr_pivota(model_key)
         row_dim, col_dim, metric = rejestr.parse_params(self.request.GET)
+        widok = pivot_core.parse_widok(self.request.GET)
         dostepne_wymiary = {
             key: dim
             for key, dim in rejestr.DIMENSIONS.items()
@@ -669,6 +670,8 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
             "pivot_row_dim": row_dim,
             "pivot_col_dim": col_dim,
             "pivot_metric": metric,
+            "pivot_widok": widok,
+            "pivot_na_stronie_opcje": pivot_core.DOZWOLONE_NA_STRONIE,
             "pivot_form_action": reverse("bpp:zapytanie"),
             "pivot_form_hidden": [
                 ("model", model_key),
@@ -681,6 +684,9 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
         }
         try:
             ctx["pivot"] = rejestr.zbuduj(queryset, row_dim, col_dim, metric)
+            # as_table() z widokiem musi powstać tutaj — szablon nie umie
+            # wywołać metody z argumentem.
+            ctx["pivot_table"] = ctx["pivot"].as_table(widok)
         except pivot_core.PivotTooLargeError as exc:
             ctx["pivot"] = None
             ctx["pivot_error"] = exc

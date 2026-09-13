@@ -45,10 +45,12 @@
 @import "autor";
 @import "api-root";
 @import "import-pracownikow";
+@import "mcp-strona";
 
 // Admin and utilities
 @import "admin-utilities";
 @import "utilities";
 
-// Print styles (should be last)
-@import "print";
+// UWAGA: @import "print" NIE jest tutaj. Musi trafic ZA
+// @import "foundation-includes" (Foundation emituje wlasny blok
+// @media print), wiec siedzi na koncu kazdego app-*.scss.

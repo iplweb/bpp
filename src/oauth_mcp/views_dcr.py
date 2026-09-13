@@ -22,7 +22,7 @@ _ALLOWED_REDIRECT_PATTERNS = [
 ]
 
 
-def _dozwolony(uri: str) -> bool:
+def dozwolony_redirect_uri(uri: str) -> bool:
     return any(p.match(uri) for p in _ALLOWED_REDIRECT_PATTERNS)
 
 
@@ -73,7 +73,7 @@ class DynamicClientRegistrationView(View):
             not isinstance(redirect_uris, list)
             or not redirect_uris
             or not all(isinstance(u, str) for u in redirect_uris)
-            or not all(_dozwolony(u) for u in redirect_uris)
+            or not all(dozwolony_redirect_uri(u) for u in redirect_uris)
         ):
             return JsonResponse({"error": "invalid_redirect_uri"}, status=400)
 

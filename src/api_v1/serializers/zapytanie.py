@@ -7,6 +7,8 @@ string (etykieta) + URL do detalu API, bez chodzenia po hyperlinkach.
 from django.urls import reverse
 from rest_framework import serializers
 
+from api_v1.serializers.szukaj import zbuduj_rekord_url
+
 
 class AutorKompaktSerializer(serializers.Serializer):
     id = serializers.IntegerField()
@@ -55,14 +57,10 @@ class AutorzyKompaktSerializer(serializers.Serializer):
         )
 
     def get_rekord(self, obj):
-        request = self.context["request"]
         rek = obj.rekord
-        viewname = self.context["contenttype_to_viewname"].get(rek.id[0])
-        rekord_url = None
-        if viewname is not None:
-            rekord_url = request.build_absolute_uri(
-                reverse(viewname, args=(rek.id[1],))
-            )
+        rekord_url = zbuduj_rekord_url(
+            self.context["request"], self.context["contenttype_to_viewname"], rek.id
+        )
         return {"tytul": rek.tytul_oryginalny, "rekord_url": rekord_url}
 
     def get_typ_odpowiedzialnosci(self, obj):

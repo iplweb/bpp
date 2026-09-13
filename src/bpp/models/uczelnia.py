@@ -648,6 +648,17 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         "istnieją.",
     )
 
+    mcp_wlaczone = models.BooleanField(
+        "Włącz serwer MCP dla asystentów AI (/mcp)",
+        default=True,
+        help_text="Gdy odznaczone, asystenci AI nie połączą się z bibliografią "
+        "tej uczelni: adresy /mcp i /mcp/auth odpowiadają 404, a strona /mcp/ "
+        "informuje o wyłączeniu. NIE wyłącza REST API ani logowania OAuth "
+        "(/o/) — korzystają z nich także inne integracje. Serwer MCP pobiera "
+        "dane przez REST API, więc przy wyłączonym API jego narzędzia i tak "
+        "nie zwrócą danych.",
+    )
+
     eksport_cerif_wlaczony = models.BooleanField(
         "Włącz eksport CERIF/OpenAIRE",
         default=True,
