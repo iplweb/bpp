@@ -2,6 +2,95 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202609.1402 (2026-09-13)
+
+### Naprawione
+
+- Okno wyszukiwania globalnego ma spójne kolory motywu uczelni: obramowanie pola, nagłówki grup, zaznaczony wynik i ikonki pomocy nie są już zawsze niebieskie, lecz w kolorze głównym motywu — tak jak pasek postępu wyszukiwania. ([#global-search-kolory-motywu](https://github.com/iplweb/bpp/issues/global-search-kolory-motywu))
+- Przycisk „Wstecz" w importerze publikacji nie przywraca już nieaktualnego
+  układu kroku 1 (wybór źródła przyciskami radio i lista sesji pod spodem).
+  Przeglądarki, które odwiedziły importer przed wprowadzeniem kafelków,
+  trzymały jego zrzut w pamięci podręcznej historii HTMX-a — a że nowa wersja
+  strony celowo nic już tam nie zapisuje, nieaktualny zrzut nie miał jak
+  zostać nadpisany. Strona kasuje go teraz przy wejściu. ([#importer-wstecz-stary-uklad](https://github.com/iplweb/bpp/issues/importer-wstecz-stary-uklad))
+- Kafelki wyboru źródła danych w importerze publikacji wyglądają teraz tak
+  samo jak kafelki kreatora „Zgłoś publikację": ikona, pogrubiony tytuł i opis
+  zwykłą czcionką. Wcześniej globalna reguła dla linków w ramkach ``callout``
+  pogrubiała cały kafelek i podkreślała po najechaniu myszą każdą linię jego
+  tekstu. Kafelki na obu ekranach unoszą się teraz delikatnie pod kursorem
+  (z poszanowaniem ustawienia „ogranicz ruch" w systemie). ([#kafelki-importera-wyglad](https://github.com/iplweb/bpp/issues/kafelki-importera-wyglad))
+- Otwieranie i zamykanie okna wyszukiwania globalnego nie przesuwa już paska
+  nawigacji ani okruszków — rozmyte tło płynnie narasta i gaśnie nad nieruchomą
+  stroną, bez białej szczeliny pod paskiem po naciśnięciu ESC. ([#okno-wyszukiwania-bez-skokow-ukladu](https://github.com/iplweb/bpp/issues/okno-wyszukiwania-bez-skokow-ukladu))
+- Pasek nawigacji po sekcjach na stronie jednostki (jednostki aktualne / koła
+  naukowe / jednostki historyczne) przypina się przy przewijaniu POD paskiem
+  breadcrumbs, a nie na nim, a kliknięcie pozycji zostawia nagłówek sekcji pod
+  paskiem -- widoczny, zamiast schowanego za belkami. Dodatkowo kotwice
+  (``<a href="#...">``) w całym serwisie przewijają się już pod belki sticky,
+  a nie za nie. ([#sticky-nav-jednostki](https://github.com/iplweb/bpp/issues/sticky-nav-jednostki))
+- Okno wyszukiwania globalnego nie zapada się już do pustego rozmiaru przy
+  dopisywaniu lub kasowaniu znaków — poprzednie wyniki zostają widoczne
+  (przygaszone, z paskiem postępu w polu) aż do nadejścia nowych. ([#wyszukiwanie-bez-zapadania-okna](https://github.com/iplweb/bpp/issues/wyszukiwanie-bez-zapadania-okna))
+- Wyszukiwanie wydawnictwa nadrzędnego rozumie teraz ISBN. Pola „Wydawnictwo
+  nadrzędne" (w module redakcyjnym, w wyszukiwarce publicznej i w formularzu
+  zgłaszania publikacji) szukają po numerze ISBN i e-ISBN niezależnie od tego,
+  czy myślniki wpisano w wyszukiwarce, czy zapisano je w bazie. Pole
+  „Wydawnictwo nadrzędne w PBN" przestało wymagać poprawnej cyfry kontrolnej —
+  ISBN z literówką był dotąd po cichu traktowany jak tytuł i nie znajdował
+  niczego — oraz przestało ograniczać wyszukiwanie w PBN do monografii
+  autorskich, przez co nie znajdowało prac zbiorowych pod redakcją, czyli
+  najczęstszych wydawnictw nadrzędnych. Dodatkowo, jeżeli w PBN numer zapisano
+  jako ISBN-13, a wpisano ISBN-10 (lub odwrotnie), rekord zostanie znaleziony. ([#wyszukiwanie-isbn-wydawnictwo-nadrzedne](https://github.com/iplweb/bpp/issues/wyszukiwanie-isbn-wydawnictwo-nadrzedne))
+- Wyszukiwarki globalne — publiczna i redakcyjna — znajdują teraz prace po numerze
+  ISBN niezależnie od tego, czy myślniki lub spacje wpisano w wyszukiwarce, czy
+  zapisano je w bazie. Przeszukiwany jest także numer e-ISBN, a rekord zapisany
+  jako ISBN-13 zostanie znaleziony po wpisaniu ISBN-10 i odwrotnie. Wcześniej
+  wyszukiwarka publiczna porównywała numer dosłownie, bez żadnej normalizacji,
+  a redakcyjna normalizowała obie strony porównania niejednakowo — przez co
+  przepadał m.in. ISBN-10 z cyfrą kontrolną „X". ([#wyszukiwarki-globalne-isbn](https://github.com/iplweb/bpp/issues/wyszukiwarki-globalne-isbn))
+- Importer publikacji podpowiada teraz język pracy również dla angielskiego
+  i pozostałych języków z danych referencyjnych BPP. Dotąd dopasowanie szło
+  wyłącznie przez pole „Skrót nazwy języka wg API CrossRef", które wypełnione
+  jest tylko dla polskiego — więc import pracy z ``language="en"`` zostawiał
+  pole „Język" puste. Teraz, gdy to pole jest niewypełnione, importer sięga po
+  kod BCP 47 języka (uzupełniony dla polskiego, angielskiego, niemieckiego,
+  francuskiego, hiszpańskiego, rosyjskiego i włoskiego), pomijając oznaczenie
+  regionu. Ta sama poprawka dotyczy języka streszczeń. ([#autodetekcja-jezyka-kod-bcp47](https://github.com/iplweb/bpp/issues/autodetekcja-jezyka-kod-bcp47))
+
+### Usprawnienie
+
+- Endpointy API ``recent_author_publications`` i ``recent_unit_publications`` zwracają przy każdej publikacji ``rekord_url`` — adres typowanego detalu rekordu w API, tak jak ``/szukaj/``. ([#api-recent-rekord-url](https://github.com/iplweb/bpp/issues/api-recent-rekord-url))
+- Serwis wystawia własny serwer MCP pod adresem ``/mcp`` (publiczny) oraz
+  ``/mcp/auth`` (z logowaniem OAuth). Asystenci AI obsługujący zdalne serwery
+  MCP łączą się jednym adresem — bez instalowania czegokolwiek i bez podawania
+  adresu uczelni. Instrukcja podłączenia jest na stronie ``/mcp/`` — zalogowani
+  dostają ją od razu w wariancie z logowaniem, pozostali w wariancie publicznym
+  z zachętą do zalogowania się lub postarania o konto. Stan samego
+  endpointu (niezależny od sondy ``/health/`` Dockera) pokazuje ``/mcp/status``.
+  Serwer MCP można wyłączyć dla danej uczelni w jej ustawieniach (sekcja „Serwer
+  MCP dla asystentów AI”) — niezależnie od REST API, którego wyłączenie nie jest
+  do tego potrzebne. ([#mcp-hostowany](https://github.com/iplweb/bpp/issues/mcp-hostowany))
+- Tabela krzyżowa (multiseek „precyzyjne" oraz „Szukaj zapytaniem") jest teraz
+  stronicowana — domyślnie 50 wierszy na stronę, do wyboru 25/50/100/250.
+  Wiersze można sortować alfabetycznie albo po kolumnie „RAZEM" (klikając
+  nagłówek), w obu kierunkach. Wiersz i kolumna „RAZEM" nadal podsumowują cały
+  wynik, nie tylko widoczną stronę, a eksport do XLSX/CSV zapisuje pełną macierz
+  w wybranej kolejności. ([#pivot-stronicowanie-sortowanie](https://github.com/iplweb/bpp/issues/pivot-stronicowanie-sortowanie))
+- Uporządkowane style wydruku (``@media print``) dla serwisu publicznego
+  i panelu administracyjnego: znika nawigacja, stopka, banery i widgety,
+  tło jest białe zamiast szarego, a skala typografii została sprowadzona do
+  rozmiarów dokumentu (tekst 10,5 pt, nagłówki 11–16 pt) zamiast ekranowych
+  ``rem``. Naprawione też: martwa klasa ``hide-on-print`` (nie miała
+  definicji w CSS, więc przycisk zgłoszeń i banery serwera testowego mimo
+  wszystko się drukowały), ignorowane ustawienia marginesów strony
+  z django-constance oraz pusta pierwsza strona wydruków z admina. ([#print-styles](https://github.com/iplweb/bpp/issues/print-styles))
+- Okno wyszukiwania globalnego zmienia teraz wysokość płynnie, gdy lista wyników
+  rośnie lub maleje, zamiast przeskakiwać do nowego rozmiaru w jednej klatce. ([#wyszukiwanie-plynna-zmiana-wysokosci](https://github.com/iplweb/bpp/issues/wyszukiwanie-plynna-zmiana-wysokosci))
+- Raport slotów – ewaluacja ma dwie nowe kolumny: „Typ MNiSW/MEiN” publikacji oraz
+  „Funkcja” autora (aktualna funkcja z profilu autora), również w eksporcie XLSX
+  (FD#473).
+
+
 ## bpp 202608.1401 (2026-08-25)
 
 ### Naprawione
