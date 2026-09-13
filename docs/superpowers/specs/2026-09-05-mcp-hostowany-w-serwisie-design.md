@@ -743,6 +743,32 @@ przed użyciem tokenu u **innego** Resource Servera, a w BPP „inny" znaczy „
 host" — i to nadal egzekwujemy. Ograniczenie, którego to nie usuwa (token bez
 `resource`), jest w §15.10.
 
+### 7.9 Wyłącznik per uczelnia — `Uczelnia.mcp_wlaczone`
+
+`api_v1_wlaczone=False` gasi MCP tylko pośrednio: klient łączy się, widzi listę
+narzędzi i dostaje błąd przy każdym wywołaniu, a przy okazji odcina wszystkie
+integracje `/api/v1/`. Stąd osobne pole `mcp_wlaczone` (domyślnie `True`,
+osobny fieldset w adminie uczelni), niezależne od przełączników API:
+
+| Miejsce | Przy `mcp_wlaczone=False` |
+|---|---|
+| `/mcp`, `/mcp/auth` | **404** `{"error": "mcp_disabled"}` |
+| `/.well-known/oauth-protected-resource` | **404** |
+| `/mcp/` | **404**, strona „Serwer MCP jest wyłączony" bez adresów |
+| `/api/v1/`, `/o/` | bez zmian |
+
+- **Kolejność w routerze:** bramka uczelni → wyłącznik → bramka bearera.
+  Wyłącznik stoi PRZED bearerem, bo 401 z `WWW-Authenticate` na `/mcp/auth`
+  uruchomiłoby w kliencie logowanie OAuth do usługi, której nie ma.
+- **Jedno zapytanie:** `mcp_server.uczelnia.uczelnia_hosta` zwraca obiekt
+  `Uczelnia` (albo `None`), a nie `bool`, więc router czyta flagę bez drugiego
+  zapytania. Flaga jest czytana per żądanie — działa bez restartu workerów.
+- **`/o/` zostaje:** tokenami OAuth posługuje się też REST API (skill `bpp-api`,
+  samodzielny `bpp-mcp`), więc wyłączenie MCP nie może zamykać serwera
+  autoryzacji. Wydane tokeny nie są unieważniane.
+- **Uczelnia nierozstrzygnięta** (świeża instalacja) nie blokuje `/mcp/` ani
+  PRM — adresy MCP router i tak odrzuca wtedy 421-ką (§7.2).
+
 ---
 
 ## 8. Strona `/mcp/` dla człowieka
@@ -906,6 +932,8 @@ zobaczy override'u z fixture'a `settings` (§6.1); (ii)
 - `Cookie` i `Basic` **nie** uwierzytelniają.
 - Dwie uczelnie na dwóch hostach widzą **swoje** dane; `api_v1_wlaczone=False`
   blokuje również `/mcp`.
+- `mcp_wlaczone=False` → `/mcp` i `/mcp/auth` (także bez tokenu) → **404**,
+  PRM → **404**, `/mcp/` bez adresów; `/api/v1/` działa dalej (§7.9).
 - **`/mcp` działa pod Daphne** (`run-site run`) — leniwy start.
 - `/.well-known/oauth-protected-resource` poprawne przy wielu hostach.
 - `GET /mcp/` renderuje stronę z oboma adresami właściwymi dla hosta.

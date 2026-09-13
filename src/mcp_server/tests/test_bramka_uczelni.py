@@ -17,6 +17,7 @@ odmowy w instalacji wielouczelnianej i ZACHOWANIA działania w jednouczelnianej,
 gdzie fallback na ``SITE_ID`` jest legalny.
 """
 
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -118,13 +119,17 @@ def test_strona_dla_czlowieka_nie_jest_bramkowana(uczelnia1, uczelnia2):
     assert status == 200 and tresc == "DJANGO"
 
 
+#: Wynik zdrowej bramki uczelni — router czyta z niego tylko ``mcp_wlaczone``.
+_UCZELNIA_Z_MCP = SimpleNamespace(mcp_wlaczone=True)
+
+
 async def _wybuchaj_baza(_host):
-    """Zastępuje ``host_rozstrzyga_uczelnie`` — symuluje padniętą bazę."""
+    """Zastępuje ``uczelnia_hosta`` — symuluje padniętą bazę."""
     raise OperationalError("baza nie odpowiada")
 
 
 def test_awaria_bazy_w_bramce_daje_503_nie_wyciekajacy_wyjatek(monkeypatch):
-    """Bloker: ``host_rozstrzyga_uczelnie`` sięga do bazy, a wywołanie w
+    """Bloker: ``uczelnia_hosta`` sięga do bazy, a wywołanie w
     ``_obsluz`` nie miało żadnej obsługi błędu — ``OperationalError`` wychodził
     poza aplikację ASGI jako gołe 500 bez treści i bez zgłoszenia do Rollbara
     (middleware Django nie jest na tej ścieżce). To jest NOWY tryb awarii:
@@ -132,7 +137,7 @@ def test_awaria_bazy_w_bramce_daje_503_nie_wyciekajacy_wyjatek(monkeypatch):
     bazy w warstwie routingu. Ma dać kontrolowane 503, tak jak awaria startu
     menedżera (B3), z zgłoszeniem do Rollbara."""
     mock_rollbar = Mock()
-    monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_baza)
+    monkeypatch.setattr(routing, "uczelnia_hosta", _wybuchaj_baza)
     monkeypatch.setattr(routing, "rollbar", mock_rollbar)
 
     router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
@@ -149,7 +154,7 @@ def test_awaria_bazy_w_bramce_zglaszana_raz_na_epizod_nie_na_zadanie(monkeypatch
     żądanie w pętli — inaczej martwa baza sama wyczerpałaby kwotę Rollbara
     (tak jak `BppError` przed B2, zmierzone: 4 zgłoszenia na 4 wywołania)."""
     mock_rollbar = Mock()
-    monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_baza)
+    monkeypatch.setattr(routing, "uczelnia_hosta", _wybuchaj_baza)
     monkeypatch.setattr(routing, "rollbar", mock_rollbar)
 
     router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
@@ -169,7 +174,7 @@ def test_awaria_bazy_w_bramce_zglaszana_ponownie_po_odzyskaniu(monkeypatch):
     życia workera.
 
     Środkowe, „zdrowe" żądanie jest celowo ANONIMOWE — to jest dokładnie
-    poprawny scenariusz DLA TEJ bramki: ``host_rozstrzyga_uczelnie`` jest
+    poprawny scenariusz DLA TEJ bramki: ``uczelnia_hosta`` jest
     wołane dla KAŻDEGO żądania, więc samo jego powodzenie (bez wyjątku)
     dowodzi odzyskania, niezależnie od tego, czy ktokolwiek niesie bearer.
     Flaga bramki uczelni jest ODDZIELNA od flagi bramki bearera właśnie po
@@ -179,19 +184,19 @@ def test_awaria_bazy_w_bramce_zglaszana_ponownie_po_odzyskaniu(monkeypatch):
     pierwszej awarii (patrz uzasadnienie rozdziału flag w
     ``RouterHttp.__init__``)."""
     mock_rollbar = Mock()
-    monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_baza)
+    monkeypatch.setattr(routing, "uczelnia_hosta", _wybuchaj_baza)
     monkeypatch.setattr(routing, "rollbar", mock_rollbar)
 
     router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
 
     async def zdrowa(_host):
-        return True
+        return _UCZELNIA_Z_MCP
 
     async def scenariusz():
         await wywolaj(router, zbuduj_scope("/mcp"))
-        monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", zdrowa)
+        monkeypatch.setattr(routing, "uczelnia_hosta", zdrowa)
         await wywolaj(router, zbuduj_scope("/mcp"))
-        monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_baza)
+        monkeypatch.setattr(routing, "uczelnia_hosta", _wybuchaj_baza)
         await wywolaj(router, zbuduj_scope("/mcp"))
 
     uruchom(scenariusz)
@@ -214,27 +219,27 @@ def test_awaria_bramki_uczelni_zglaszana_ponownie_przy_ruchu_wylacznie_anonimowy
     także anonimowym) Rollbar musi dostać TRZY zgłoszenia — po jednym na
     epizod."""
     mock_rollbar = Mock()
-    monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_baza)
+    monkeypatch.setattr(routing, "uczelnia_hosta", _wybuchaj_baza)
     monkeypatch.setattr(routing, "rollbar", mock_rollbar)
 
     router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
 
     async def zdrowa(_host):
-        return True
+        return _UCZELNIA_Z_MCP
 
     async def scenariusz():
         for _ in range(3):
             await wywolaj(router, zbuduj_scope("/mcp"))
-            monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", zdrowa)
+            monkeypatch.setattr(routing, "uczelnia_hosta", zdrowa)
             await wywolaj(router, zbuduj_scope("/mcp"))
-            monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_baza)
+            monkeypatch.setattr(routing, "uczelnia_hosta", _wybuchaj_baza)
 
     uruchom(scenariusz)
     assert mock_rollbar.report_exc_info.call_count == 3
 
 
 async def _wybuchaj_redis(_host):
-    """Zastępuje ``host_rozstrzyga_uczelnie`` — symuluje padłego Redisa pod
+    """Zastępuje ``uczelnia_hosta`` — symuluje padłego Redisa pod
     cacheops (nie bazę: to jest INNY typ wyjątku od ``_wybuchaj_baza``)."""
     raise BladRedisa("Redis nie odpowiada")
 
@@ -249,7 +254,7 @@ def test_awaria_redis_w_bramce_daje_503_tak_jak_awaria_bazy(monkeypatch):
     /mcp nie odpowiada", który ``except BladBazy`` miał obsłużyć. Musi dać
     to samo kontrolowane 503 + zgłoszenie, co awaria bazy."""
     mock_rollbar = Mock()
-    monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_redis)
+    monkeypatch.setattr(routing, "uczelnia_hosta", _wybuchaj_redis)
     monkeypatch.setattr(routing, "rollbar", mock_rollbar)
 
     router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
@@ -270,7 +275,7 @@ def test_awaria_redis_w_bramce_zglaszana_raz_na_epizod_nie_na_zadanie(monkeypatc
     ``BladBazy`` — patrz ``test_awaria_bazy_w_bramce_zglaszana_raz_na_epizod_
     nie_na_zadanie``), a sama ogólna siatka dałaby TRZY."""
     mock_rollbar = Mock()
-    monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_redis)
+    monkeypatch.setattr(routing, "uczelnia_hosta", _wybuchaj_redis)
     monkeypatch.setattr(routing, "rollbar", mock_rollbar)
 
     router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
@@ -288,7 +293,7 @@ async def _wybuchaj_niespodziewanie(_host):
     znaną awarię infrastruktury — ma sprawdzić SZERSZĄ siatkę bezpieczeństwa
     w ``RouterHttp.__call__``, różną od wąskiego
     ``except (BladBazy, BladRedisa)`` w ``_obsluz``."""
-    raise RuntimeError("błąd programistyczny w host_rozstrzyga_uczelnie")
+    raise RuntimeError("błąd programistyczny w uczelnia_hosta")
 
 
 def test_niespodziewany_wyjatek_w_obsludze_daje_503_i_trafia_do_rollbara(
@@ -302,7 +307,7 @@ def test_niespodziewany_wyjatek_w_obsludze_daje_503_i_trafia_do_rollbara(
     co nie trafiło do węższych except-ów — zaraportować i odpowiedzieć
     kontrolowanym 503, a nie połknąć po cichu jako gołe 500."""
     mock_rollbar = Mock()
-    monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_niespodziewanie)
+    monkeypatch.setattr(routing, "uczelnia_hosta", _wybuchaj_niespodziewanie)
     monkeypatch.setattr(routing, "rollbar", mock_rollbar)
 
     router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
@@ -327,7 +332,7 @@ async def _zdrowa_uczelnia(_host):
     rate-limitowany ``except`` bramki uczelni w ogóle się nie uruchamia,
     a awaria wychodzi dopiero przy weryfikacji bearera.
     """
-    return True
+    return _UCZELNIA_Z_MCP
 
 
 def _wybuchajacy_token(wyjatek):
@@ -353,7 +358,7 @@ def test_awaria_bazy_w_bramce_bearera_daje_503_i_zglasza_raz_na_epizod(monkeypat
     i test niczego by nie dowodził o warstwie, którą deklaruje sprawdzać.
     """
     mock_rollbar = Mock()
-    monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _zdrowa_uczelnia)
+    monkeypatch.setattr(routing, "uczelnia_hosta", _zdrowa_uczelnia)
     monkeypatch.setattr(routing, "rollbar", mock_rollbar)
     monkeypatch.setattr(
         auth, "zweryfikuj_token", _wybuchajacy_token(OperationalError("baza leży"))
@@ -390,7 +395,7 @@ def test_ruch_mieszany_anon_bearer_nie_resetuje_flagi_zadaniem_anonimowym(
     nie raz na żądanie z bearerem.
     """
     mock_rollbar = Mock()
-    monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _zdrowa_uczelnia)
+    monkeypatch.setattr(routing, "uczelnia_hosta", _zdrowa_uczelnia)
     monkeypatch.setattr(routing, "rollbar", mock_rollbar)
     monkeypatch.setattr(
         auth, "zweryfikuj_token", _wybuchajacy_token(OperationalError("baza leży"))
@@ -421,7 +426,7 @@ def test_timeout_redisa_tez_jest_awaria_infrastruktury_a_nie_hałasem(monkeypatc
     te dwa przypadki: 1 zgłoszenie = rate-limitowany except, 3 = sama siatka.
     """
     mock_rollbar = Mock()
-    monkeypatch.setattr(routing, "host_rozstrzyga_uczelnie", _wybuchaj_timeout_redisa)
+    monkeypatch.setattr(routing, "uczelnia_hosta", _wybuchaj_timeout_redisa)
     monkeypatch.setattr(routing, "rollbar", mock_rollbar)
 
     router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))

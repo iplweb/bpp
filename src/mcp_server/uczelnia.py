@@ -34,8 +34,13 @@ jest w SDK: ochroną przed DNS rebindingiem, a nie kontrolą wielotenantową.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from asgiref.sync import sync_to_async
 from django.db import close_old_connections
+
+if TYPE_CHECKING:
+    from bpp.models import Uczelnia
 
 
 class _ZadanieZHostem:
@@ -48,8 +53,12 @@ class _ZadanieZHostem:
         return self._host
 
 
-def _rozstrzygalny(host: str) -> bool:
-    """Czy ``host`` jednoznacznie wskazuje jedną ``Uczelnia``?
+def _uczelnia_hosta(host: str) -> Uczelnia | None:
+    """``Uczelnia`` jednoznacznie wskazana przez ``host`` albo ``None``.
+
+    Zwracamy obiekt, a nie ``bool``: router czyta z niego jeszcze wyłącznik
+    ``mcp_wlaczone``, więc drugie zapytanie o tę samą uczelnię byłoby
+    zbędne.
 
     Dwie ścieżki, obie zamierzone:
 
@@ -80,8 +89,8 @@ def _rozstrzygalny(host: str) -> bool:
             not Site.objects.filter(domain=hostname).exists()
             and Uczelnia.objects.count() != 1
         ):
-            return False
-        return Uczelnia.objects.get_for_request(_ZadanieZHostem(host)) is not None
+            return None
+        return Uczelnia.objects.get_for_request(_ZadanieZHostem(host))
     finally:
         close_old_connections()
 
@@ -89,4 +98,19 @@ def _rozstrzygalny(host: str) -> bool:
 #: Wersja asynchroniczna — warstwa ASGI nie ma pętli, w której wolno jej
 #: blokować na ORM. ``thread_sensitive=False`` jak przy weryfikacji tokenu:
 #: to czysty odczyt, bez współdzielonego stanu transakcyjnego z wołającym.
-host_rozstrzyga_uczelnie = sync_to_async(_rozstrzygalny, thread_sensitive=False)
+uczelnia_hosta = sync_to_async(_uczelnia_hosta, thread_sensitive=False)
+
+
+def mcp_wlaczone_dla_requestu(request) -> bool:
+    """Czy administrator nie wyłączył MCP dla uczelni tego żądania Django.
+
+    Dla stron obsługiwanych przez Django (``/mcp/``, dokument PRM), nie dla
+    samych adresów MCP — te sprawdza ``routing.RouterHttp``. Uczelnia
+    nierozstrzygnięta (świeża instalacja, kreator) NIE jest tu odmową: te
+    strony nie dają dostępu do danych, a adresy MCP router odrzuca wtedy
+    i tak, 421-ką.
+    """
+    from bpp.models import Uczelnia
+
+    uczelnia = Uczelnia.objects.get_for_request(request)
+    return uczelnia is None or uczelnia.mcp_wlaczone

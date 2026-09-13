@@ -514,7 +514,7 @@ from bpp.admin.helpers.fieldsets import (
 | `/multiseek/` | Multiseek | Advanced search |
 | `/pbn_import/` | ImportDashboard | PBN import interface |
 | `/mcp/` | StronaMcp | Human-readable MCP connection instructions |
-| `/mcp`, `/mcp/auth` | `mcp_server.routing.RouterHttp` (ASGI, not Django URLconf) | Streamable-HTTP MCP endpoint — public / OAuth-required |
+| `/mcp`, `/mcp/auth` | `mcp_server.routing.RouterHttp` (ASGI, not Django URLconf) | Streamable-HTTP MCP endpoint — public / OAuth-required; 404 when `Uczelnia.mcp_wlaczone` is off |
 
 ---
 

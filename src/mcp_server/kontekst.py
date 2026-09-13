@@ -66,7 +66,7 @@ def domena_hosta(host: str) -> str:
       ``host.startswith(base_host + ":")`` (``mcp/server/transport_security.py``)
       — portu NIE waliduje, więc ``uczelnia.example:abc``, ``:1:2`` czy ``:0x1F``
       przechodzą jego kontrolę;
-    * ``uczelnia._rozstrzygalny`` obcinał port przez ``split(":")[0]``, więc
+    * ``uczelnia._uczelnia_hosta`` obcinał port przez ``split(":")[0]``, więc
       dostawał prawdziwy ``Site`` i przepuszczał żądanie dalej;
     * ``klient.BppClientInProcess`` budował ``Config(base_url=f"{scheme}://
       {host}")``, a ``httpx.URL`` na niepoprawnym porcie rzucał ``ValueError``

@@ -3,3 +3,6 @@ Serwis wystawia własny serwer MCP pod adresem ``/mcp`` (publiczny) oraz
 MCP łączą się jednym adresem — bez instalowania czegokolwiek i bez podawania
 adresu uczelni. Instrukcja podłączenia jest na stronie ``/mcp/``. Stan samego
 endpointu (niezależny od sondy ``/health/`` Dockera) pokazuje ``/mcp/status``.
+Serwer MCP można wyłączyć dla danej uczelni w jej ustawieniach (sekcja „Serwer
+MCP dla asystentów AI”) — niezależnie od REST API, którego wyłączenie nie jest
+do tego potrzebne.

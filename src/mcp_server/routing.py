@@ -22,7 +22,7 @@ from mcp_server.kontekst import (
     schemat_zadania,
 )
 from mcp_server.start import StartMcp
-from mcp_server.uczelnia import host_rozstrzyga_uczelnie
+from mcp_server.uczelnia import uczelnia_hosta
 from mcp_server.zdrowie import stan_startu
 
 logger = logging.getLogger(__name__)
@@ -93,7 +93,7 @@ class RouterHttp:
         # flagi, JEDNA NA BRAMKĘ, nie jedna wspólna. Powód: bramki mają RÓŻNY
         # ZASIĘG, więc powodzenie jednej nie jest dowodem odzyskania drugiej.
         #
-        # * bramka uczelni (``host_rozstrzyga_uczelnie``) jest wołana dla
+        # * bramka uczelni (``uczelnia_hosta``) jest wołana dla
         #   KAŻDEGO żądania — anonimowego i z bearerem — więc jej powodzenie
         #   dowodzi, że TA konkretna ścieżka do bazy działa, niezależnie od
         #   tego, czy ktokolwiek się uwierzytelnia.
@@ -120,7 +120,8 @@ class RouterHttp:
         # Rozdzielenie flag usuwa oba fałszywe dowody na raz: każda bramka
         # zeruje WYŁĄCZNIE swoją flagę, na podstawie WŁASNEGO powodzenia.
         # Patrz ``_zglos_awarie_bramki_uczelni`` / ``_zglos_awarie_bramki_
-        # bearera`` oraz miejsca resetu w ``_obsluz``.
+        # bearera`` oraz miejsca resetu w ``_przepusc_uczelnie``
+        # i ``_przekaz_do_mcp``.
         self._awaria_bramki_uczelni_zgloszona = False
         self._awaria_bramki_bearera_zgloszona = False
 
@@ -180,7 +181,7 @@ class RouterHttp:
             await self._obsluz(sciezka, scope, receive, sledzacy, dane, widziany)
         except Exception:
             # JEDNA siatka bezpieczeństwa na całą obsługę żądania — patrz
-            # komentarz nad `except (BladBazy, BladRedisa)` w `_obsluz` o
+            # komentarz nad `except BLEDY_INFRASTRUKTURY` w `_przepusc_uczelnie` o
             # tym, dlaczego TA gałąź nie duplikuje raportowania z węższych
             # except-ów: te kończą się (return) bez re-raise, więc do tego
             # miejsca dochodzi wyłącznie to, czego węższy except NIE złapał.
@@ -211,7 +212,7 @@ class RouterHttp:
         niż jedno żądanie, a bez ograniczenia zgłaszalibyśmy Rollbarowi raz na
         KAŻDE odrzucone żądanie, czyli dokładnie ten hałas, który B2 usunęło
         z narzędzi. Flaga wraca do zera przy KAŻDYM żądaniu, które przeszło
-        przez ``host_rozstrzyga_uczelnie`` bez wyjątku (patrz ``_obsluz``,
+        przez ``uczelnia_hosta`` bez wyjątku (patrz ``_przepusc_uczelnie``,
         zaraz po ``try/except`` tej bramki) — w tym przy żądaniu anonimowym,
         bo ta bramka jest wołana dla każdego żądania. Osobna flaga od bramki
         bearera (patrz ``__init__`` po uzasadnienie rozdziału) — powodzenie
@@ -231,7 +232,7 @@ class RouterHttp:
         żądanie niesie nagłówek ``Authorization`` — żądanie anonimowe na
         publicznym ``/mcp`` jej nie dotyka. Flaga wraca do zera dopiero przy
         żądaniu, które faktycznie przez nią przeszło, czyli gdy ``dane.bearer``
-        jest ustawiony (patrz ``_obsluz``, gałąź ``else`` bramki bearera).
+        jest ustawiony (patrz ``_przekaz_do_mcp``, gałąź ``else`` bramki bearera).
         Osobna flaga od bramki uczelni — patrz ``__init__`` po pełne
         uzasadnienie: reset wspólną flagą przy żądaniu anonimowym gasiłby
         zgłoszenie o awarii TEJ bramki, mimo że ta bramka wcale się nie
@@ -269,12 +270,17 @@ class RouterHttp:
         if not self._start.zywy:
             await self._niedostepny(send)
             return
+        if not await self._przepusc_uczelnie(dane, send):
+            return
+        await self._przekaz_do_mcp(sciezka, scope, receive, send, dane, widziany)
 
+    async def _przepusc_uczelnie(self, dane: DaneZadania, send) -> bool:
+        """Bramka uczelni i wyłącznik MCP. ``False`` = odpowiedź już wysłana."""
         # Fail-closed na tożsamości uczelni (spec §7.2) — patrz
         # ``mcp_server.uczelnia``: host, dla którego nie da się rozstrzygnąć
         # uczelni, otwierałby bramkę API na oścież.
         try:
-            rozstrzygnieta = await host_rozstrzyga_uczelnie(dane.host)
+            uczelnia = await uczelnia_hosta(dane.host)
         except BLEDY_INFRASTRUKTURY:
             # Bez tego `except` awaria bazy/cache leciała poza aplikację ASGI
             # jako gołe 500 bez treści i bez zgłoszenia do Rollbara (middleware
@@ -283,27 +289,39 @@ class RouterHttp:
             # typy (patrz `BLEDY_INFRASTRUKTURY`), NIE w gołe `Exception` — dla
             # drugiego mamy siatkę bezpieczeństwa w `__call__`, a tu szerszy
             # złap przykryłby błędy programistyczne w
-            # `host_rozstrzyga_uczelnie` i pozbawił je jej raportowania
+            # `uczelnia_hosta` i pozbawił je jej raportowania
             # (patrz tamten `except Exception`, bez rate-limitu).
             self._zglos_awarie_bramki_uczelni("mcp: awaria bazy w bramce uczelni")
             await self._niedostepny(send)
-            return
+            return False
         # Żądanie przeszło przez bramkę uczelni BEZ WYJĄTKU — ta bramka jest
         # wołana dla KAŻDEGO żądania (anonimowego i z bearerem), więc samo
         # dojście tutaj już dowodzi, że JEJ ścieżka do bazy działa,
-        # niezależnie od tego, czy host się rozstrzygnął (``rozstrzygnieta``
-        # może być ``False`` — to i tak było udane zapytanie do bazy, tylko
+        # niezależnie od tego, czy host się rozstrzygnął (``uczelnia`` może
+        # być ``None`` — to i tak było udane zapytanie do bazy, tylko
         # z odpowiedzią „nieznany host”, nie z wyjątkiem). Reset dotyczy
         # WYŁĄCZNIE flagi tej bramki — patrz uzasadnienie rozdziału flag
         # w ``__init__``.
         self._awaria_bramki_uczelni_zgloszona = False
-        if not rozstrzygnieta:
+        if uczelnia is None:
             logger.warning(
                 "mcp: odrzucony host bez jednoznacznej uczelni: %r", dane.host
             )
             await self._nieznany_host(send)
-            return
+            return False
+        if not uczelnia.mcp_wlaczone:
+            # Wyłącznik administratora, rozstrzygany PRZED bramką bearera:
+            # 401 z ``WWW-Authenticate`` na ``/mcp/auth`` uruchomiłoby
+            # w kliencie logowanie OAuth do usługi, której nie ma. Czytany per
+            # żądanie, więc odznaczenie pola działa bez restartu workerów.
+            await self._wylaczone(send)
+            return False
+        return True
 
+    async def _przekaz_do_mcp(
+        self, sciezka, scope, receive, send, dane: DaneZadania, widziany: dict
+    ):
+        """Bramka bearera i aplikacja MCP — dla żądania, które przeszło uczelnię."""
         zeton = dane_zadania.set(dane)
         # DWA ContextVary, nie jeden. `BppClient._auth_kwargs` czyta token
         # z WŁASNEGO ContextVara pakietu bpp_mcp (`bpp_mcp.auth`), nie
@@ -449,6 +467,15 @@ class RouterHttp:
         odpowiedź dla nieuwierzytelnionego świata.
         """
         await cls._json(send, 421, {"error": "unknown_host"})
+
+    @classmethod
+    async def _wylaczone(cls, send) -> None:
+        """404 — administrator wyłączył MCP dla tej uczelni (``mcp_wlaczone``).
+
+        404, nie 403: dla klienta MCP usługi pod tym adresem po prostu nie ma,
+        a 403 sugerowałoby, że inne poświadczenia coś zmienią.
+        """
+        await cls._json(send, 404, {"error": "mcp_disabled"})
 
     @staticmethod
     async def _json(send, kod: int, tresc: dict) -> None:
