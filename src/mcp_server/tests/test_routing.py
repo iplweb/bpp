@@ -5,6 +5,7 @@ bez przepisania ścieżki /mcp/auth dostałoby 404 (spec §5.1, bloker BL-1).
 Dopasowanie prefiksowe byłoby dodatkowo sprzeczne z §8: /mcp/ ma iść do Django.
 """
 
+import json
 import logging
 
 import pytest
@@ -105,6 +106,30 @@ def test_mcp_ze_slashem_idzie_do_django():
         lambda: wywolaj(_router(), zbuduj_scope("/mcp/", metoda="GET"))
     )
     assert tresc == "DJANGO:/mcp/"
+
+
+@pytest.mark.parametrize(
+    "sciezka,adres_mcp", [("/mcp/", "/mcp"), ("/mcp/auth/", "/mcp/auth")]
+)
+def test_klient_mcp_na_adresie_ze_slashem_dostaje_wlasciwy_adres(sciezka, adres_mcp):
+    """Klient MCP skonfigurowany z ukośnikiem na końcu trafiał do Django
+    i dostawał 403 CSRF w HTML-u — bez słowa o tym, że pomylił adres.
+
+    Przekierowanie nic by nie dało: SDK ``mcp`` wysyła żądania z
+    ``follow_redirects=False``, więc 307/308 kończy się u klienta błędem
+    HTTP. Stąd odpowiedź w kształcie błędu JSON-RPC ze wskazanym adresem.
+    """
+    scope = zbuduj_scope(
+        sciezka, naglowki={"accept": "application/json, text/event-stream"}
+    )
+    cialo = {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
+    status, naglowki, tresc = uruchom(lambda: wywolaj(_router(), scope, cialo))
+
+    assert status == 404
+    assert naglowki["content-type"] == "application/json"
+    odpowiedz = json.loads(tresc)
+    assert odpowiedz["jsonrpc"] == "2.0"
+    assert odpowiedz["error"]["data"]["adres_mcp"] == adres_mcp
 
 
 def test_reszta_idzie_do_django():

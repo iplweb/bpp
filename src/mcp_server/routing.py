@@ -130,6 +130,14 @@ class RouterHttp:
         if sciezka == SCIEZKA_STANU:
             await self._stan(send)
             return
+        if sciezka in (
+            SCIEZKA_PUBLICZNA + "/",
+            SCIEZKA_Z_LOGOWANIEM + "/",
+        ) and scope.get("method") not in ("GET", "HEAD"):
+            # Pod ``/mcp/`` Django serwuje stronę dla człowieka, więc klient
+            # MCP z ukośnikiem w konfiguracji dostawał 403 CSRF w HTML-u.
+            await self._pomylony_adres(send, sciezka.rstrip("/"))
+            return
         if sciezka not in (SCIEZKA_PUBLICZNA, SCIEZKA_Z_LOGOWANIEM):
             await self._django(scope, receive, send)
             return
@@ -476,6 +484,32 @@ class RouterHttp:
         a 403 sugerowałoby, że inne poświadczenia coś zmienią.
         """
         await cls._json(send, 404, {"error": "mcp_disabled"})
+
+    @classmethod
+    async def _pomylony_adres(cls, send, adres_mcp: str) -> None:
+        """Klient MCP podał adres z ukośnikiem na końcu.
+
+        Przekierowanie nie pomoże: SDK ``mcp`` wysyła żądania z
+        ``follow_redirects=False``, więc 307/308 kończy się u klienta błędem.
+        Błąd w kształcie JSON-RPC klienci pokazują z treścią.
+        """
+        await cls._json(
+            send,
+            404,
+            {
+                "jsonrpc": "2.0",
+                "id": None,
+                "error": {
+                    "code": -32600,
+                    "message": (
+                        f"Serwer MCP jest pod adresem kończącym się na "
+                        f"{adres_mcp} — bez ukośnika na końcu. Adres z ukośnikiem "
+                        f"to strona z instrukcją dla człowieka."
+                    ),
+                    "data": {"adres_mcp": adres_mcp},
+                },
+            },
+        )
 
     @staticmethod
     async def _json(send, kod: int, tresc: dict) -> None:
