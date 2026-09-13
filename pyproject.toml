@@ -110,7 +110,7 @@ dependencies = [
     "django-import-export>=4.4.1,<5",
     "pymed-iplweb==0.8.11",
     "django-taggit>=5,<7",
-    "weasyprint>=69.0",
+    "weasyprint>=70.0",
     "requests-oauthlib==2.0.0",
     "django-cacheops>=7.2,<8",
     "django-constance>=4.3.5",
@@ -573,7 +573,7 @@ dev = [
     # source of truth); this `==` pin only keeps ad-hoc `uv run ruff`
     # producing identical output. Bump both together, never one alone.
     "ruff==0.16.6",
-    "djlint>=1.44.1,<2",
+    "djlint>=1.45.2,<2",
     "pre-commit>=4.6.2",
     "twine>=7.0.0",
     "ipdb>=0.13.9",

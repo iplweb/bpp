@@ -3,6 +3,11 @@
 // Browse pages styles
 // Common styles for browse pages like wydzial, jednostka, autorzy, zrodla
 
+// Prześwit między dolną krawędzią breadcrumbs a przypiętym paskiem
+// nawigacji po sekcjach (.wydzial-nav). Ta sama wartość musi trafić do
+// obliczeń przewijania -- stąd trzyma ją jedna zmienna.
+$wydzial-nav-gap: 8px;
+
 // Common header section
 .modern-header {
   background: white;
@@ -89,42 +94,59 @@
 }
 
 // Navigation menu
+//
+// Natywny `position: sticky` zamiast pluginu Foundation Sticky. Plugin
+// przypinał pasek przez `position: fixed; z-index: 5` (jego własne
+// `.sticky.is-stuck`) ze sztywnym `data-margin-top="4"` (= 4rem od góry
+// okna) -- czyli NAD belką breadcrumbs (`z-index: 1`, wysokość liczona
+// dopiero w JS). Efekt: pasek zasłaniał breadcrumbs. Tutaj przypięcie
+// liczy się od dołu belek stałych (--bpp-sticky-offset ustawia JS w
+// base.html), a z-index jest niższy niż breadcrumbs (3), więc kolejność
+// warstw jest jawna: top bar > breadcrumbs > pasek sekcji > treść.
 .wydzial-nav {
-  padding-top: 20px; // Add top padding to prevent breadcrumb obstruction
+  position: sticky;
+  top: calc(var(--bpp-sticky-offset, 90px) + #{$wydzial-nav-gap});
+  z-index: 2;
+  margin: 15px 0 20px;
 
-  .sticky {
+  &__bar {
     background: white;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    margin-bottom: 20px;
-    margin-top: 15px; // Additional top margin when sticky
+    padding: 15px 25px;
 
-    .sticky-container {
-      padding: 15px 25px;
+    ul.menu {
+      margin: 0;
 
-      ul.menu {
-        margin: 0;
+      a {
+        color: #2c3e50;
+        font-weight: 500;
+        padding: 10px 15px;
+        border-radius: 6px;
+        transition: all 0.2s ease;
 
-        a {
-          color: #2c3e50;
-          font-weight: 500;
-          padding: 10px 15px;
-          border-radius: 6px;
-          transition: all 0.2s ease;
+        &:hover {
+          background: #f8f9fa;
+        }
 
-          &:hover {
-            background: #f8f9fa;
-          }
-
-          .fi-home,
-          .fi-torsos-all,
-          .fi-clock {
-            margin-right: 8px;
-          }
+        .fi-home,
+        .fi-torsos-all,
+        .fi-clock {
+          margin-right: 8px;
         }
       }
     }
   }
+}
+
+// Nagłówek sekcji nie może chować się pod przypiętym paskiem, gdy
+// przeglądarka skacze do #kotwicy sama (deep link, Tab, "wróć"). JS
+// (window.bpp.scrollToVisible) mierzy to dokładnie; to jest zapas na
+// wypadek skoku bez udziału JS-a.
+.sections > section {
+  scroll-margin-top: calc(
+    var(--bpp-sticky-offset, 90px) + #{$wydzial-nav-gap} + 5rem
+  );
 }
 
 // Section headers

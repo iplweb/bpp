@@ -529,8 +529,9 @@
                     </p>
                 {% endif %}
                 {% if postac == "pivot" %}
-                    {# Tabela krzyżowa — NIE stronicowana (rozmiar macierzy nie #}
-                    {# zalezy od liczby stron rekordow), wiec bez pagera. #}
+                    {# Tabela krzyżowa ma WŁASNY pager (parametr pivot_page, #}
+                    {# wewnątrz partiala) — stronicuje wiersze macierzy, nie #}
+                    {# rekordy, więc _zapytanie_pager.html tu nie pasuje. #}
                     {% include "multiseek/report-body-pivot.html" %}
                 {% else %}
                     {% include "bpp/_zapytanie_pager.html" %}

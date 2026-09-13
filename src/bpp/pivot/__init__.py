@@ -2,12 +2,15 @@
 
 from .core import (  # noqa: F401
     BRAK,
+    DOZWOLONE_NA_STRONIE,
     PIVOT_MAX_CELLS,
     PIVOT_MAX_PAIRS,
     PivotDimension,
     PivotMetric,
     PivotResult,
     PivotTooLargeError,
+    PivotWidok,
+    parse_widok,
     zbuduj_pivot,
 )
 

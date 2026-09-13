@@ -50,13 +50,28 @@
     </script>
     <script type="text/javascript">
         function adjustBreadcrumbsPosition() {
-            var topBar = document.getElementById('example-menu');
+            var topBar = document.querySelector('nav.sticky-header')
+                || document.getElementById('example-menu');
             var breadcrumbs = document.getElementById('breadcrumbs-wrapper');
 
-            if (topBar && breadcrumbs) {
-                var topBarHeight = topBar.getBoundingClientRect().height;
+            var topBarHeight = topBar
+                ? topBar.getBoundingClientRect().height : 0;
+            var breadcrumbsHeight = breadcrumbs
+                ? breadcrumbs.getBoundingClientRect().height : 0;
+
+            if (breadcrumbs) {
                 breadcrumbs.style.top = topBarHeight + 'px';
             }
+
+            /* Kontrakt dla wszystkich *dodatkowych* pasków sticky na stronie
+               (np. nawigacja po sekcjach jednostki): --bpp-sticky-offset to
+               dolna krawędź stałych belek (top bar + breadcrumbs). Paski
+               ustawiają się pod nią zamiast zgadywać sztywne piksele. */
+            document.documentElement.style.setProperty(
+                '--bpp-topbar-height', topBarHeight + 'px');
+            document.documentElement.style.setProperty(
+                '--bpp-sticky-offset',
+                (topBarHeight + breadcrumbsHeight) + 'px');
         }
 
         // Adjust on page load

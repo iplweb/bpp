@@ -139,6 +139,7 @@ src/bpp/static/bpp/scss/*.css
 src/bpp/static/bpp/scss/*.css.map
 src/bpp/static/bpp/css/admin-themes.css
 src/bpp/static/bpp/css/admin-filter-panel.css
+src/bpp/static/bpp/css/admin-print.css
 src/bpp/static/scss/*.css
 src/bpp/static/scss/*.css.map
 src/przemapuj_zrodla_pbn/static/przemapuj_zrodla_pbn/css/przemapuj-zrodla.css

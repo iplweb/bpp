@@ -646,11 +646,15 @@ def autor_xlsx_export_response(queryset, request, report_title):
     return response
 
 
-def _pivot_export_rows(pivot_result):
+def _pivot_export_rows(pivot_result, widok=None):
     """Wiersze eksportu macierzy pivota: nagłówek (etykieta wiersza +
     etykiety kolumn + RAZEM), wiersze danych, wiersz RAZEM. Puste komórki
-    → "" (pusty string), nie None."""
-    t = pivot_result.as_table()
+    → "" (pusty string), nie None.
+
+    `widok` (PivotWidok) steruje wyłącznie KOLEJNOŚCIĄ — wywołujący ma
+    obowiązek podać go po `bez_stronicowania()`, bo plik ma zawierać pełną
+    macierz, nie widoczną stronę."""
+    t = pivot_result.as_table(widok)
     yield [t["row_header"], *t["col_headers"], "RAZEM"]
     for row in t["rows"]:
         cells = ["" if c is None else c for c in row["cells"]]
@@ -659,11 +663,11 @@ def _pivot_export_rows(pivot_result):
     yield ["RAZEM", *col_totals, t["grand_total"]]
 
 
-def pivot_csv_export_response(pivot_result, request, report_title):
+def pivot_csv_export_response(pivot_result, request, report_title, widok=None):
     """Eksport CSV tabeli krzyżowej (macierz, nie lista rekordów)."""
     output = io.StringIO()
     writer = csv.writer(output)
-    for row in _pivot_export_rows(pivot_result):
+    for row in _pivot_export_rows(pivot_result, widok):
         writer.writerow(_sanitize_spreadsheet_row(row))
 
     response = HttpResponse(output.getvalue(), content_type="text/csv; charset=utf-8")
@@ -674,7 +678,7 @@ def pivot_csv_export_response(pivot_result, request, report_title):
     return response
 
 
-def pivot_xlsx_export_response(pivot_result, request, report_title):
+def pivot_xlsx_export_response(pivot_result, request, report_title, widok=None):
     """Eksport XLSX tabeli krzyżowej (macierz z sumami brzegowymi)."""
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Font, PatternFill
@@ -684,7 +688,7 @@ def pivot_xlsx_export_response(pivot_result, request, report_title):
     workbook = Workbook()
     worksheet = workbook.active
     worksheet.title = _xlsx_worksheet_title(report_title)
-    for row in _pivot_export_rows(pivot_result):
+    for row in _pivot_export_rows(pivot_result, widok):
         worksheet.append(sanitize_xlsx_row(row))
 
     header_fill = PatternFill("solid", fgColor="1F4E78")
