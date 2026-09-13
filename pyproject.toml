@@ -86,7 +86,9 @@ dependencies = [
     # Ciągnie mcp>=2,<3, starlette i httpx — patrz spec §9.
     # 0.4.1: BppError dziedziczy po ToolError — inaczej mcp>=2.1 ukrywa treść
     # błędu przed modelem i loguje traceback przy każdym 404.
-    "bpp-mcp>=0.4.1,<0.5",
+    # 0.4.2: narzędzia mają readOnlyHint — bez tego ChatGPT każe potwierdzać
+    # każde wywołanie.
+    "bpp-mcp>=0.4.2,<0.5",
     "django-braces>=1.15.0",
     "django-loginas==0.3.14",
     "django-webmaster-verification==0.4.3",

@@ -229,6 +229,29 @@ def test_bpperror_5xx_z_prawdziwego_klienta_nie_trafia_do_rollbara(monkeypatch):
     mock_rollbar.report_exc_info.assert_not_called()
 
 
+def test_adnotacje_tylko_do_odczytu_przetrwaly_wrapper():
+    """Wszystkie narzędzia są tylko do odczytu i klient musi to wiedzieć.
+
+    ChatGPT traktuje narzędzie bez ``readOnlyHint`` jako zapisujące i każe
+    potwierdzać KAŻDE wywołanie. Adnotacje ustawia ``bpp-mcp`` (od 0.4.2)
+    argumentem ``mcp.tool(annotations=...)`` w ``register_tools`` — a ten
+    argument przechodzi przez podmieniony ``serwer.tool`` z
+    ``_z_raportowaniem``. Test pilnuje, że wrapper go nie gubi.
+    """
+    mcp_app, _ = build_application()
+    serwer = mcp_app.state.serwer_mcp
+
+    narzedzia = uruchom(serwer.list_tools)
+
+    assert len(narzedzia) == 11
+    bez_adnotacji = [
+        n.name
+        for n in narzedzia
+        if n.annotations is None or n.annotations.read_only_hint is not True
+    ]
+    assert bez_adnotacji == []
+
+
 def test_context_i_schemat_przetrwaly_wrapper():
     """Regresja na ryzyko opisane w docstringu ``_z_raportowaniem``: gdyby
     ``functools.wraps`` nie wystarczał do zachowania sygnatury/adnotacji
