@@ -16,7 +16,14 @@ PUB = "https://bpp.example.test/mcp"
 AUTH = "https://bpp.example.test/mcp/auth"
 
 #: Adresy zwrotne tych klientów przechodzą przez allowlistę DCR.
-Z_LOGOWANIEM = {"claude", "claude-code", "codex", "gemini-cli", "lm-studio"}
+Z_LOGOWANIEM = {
+    "claude",
+    "chatgpt",
+    "claude-code",
+    "codex",
+    "gemini-cli",
+    "lm-studio",
+}
 
 
 def _klienci(*, z_logowaniem=False):
@@ -171,6 +178,30 @@ def test_logowanie_wynika_z_allowlisty_dcr(monkeypatch):
     chatgpt = _klient("chatgpt", z_logowaniem=True)
     assert chatgpt.logowanie
     assert AUTH in _teksty(chatgpt)
+
+
+def test_prompt_nazywa_niekompletny_certyfikat():
+    prompty = (
+        instrukcje.prompt_publiczny(nazwa="bpp-up", adres_publiczny=PUB),
+        instrukcje.prompt_z_logowaniem(
+            nazwa="bpp-up", adres_publiczny=PUB, adres_z_logowaniem=AUTH
+        ),
+    )
+    for prompt in prompty:
+        assert "certyfikat SSL" in prompt
+        assert "nie wyłączaj weryfikacji" in prompt
+
+
+def test_chatgpt_przez_wtyczki_bez_trybu_deweloperskiego():
+    chatgpt = _klient("chatgpt", z_logowaniem=True)
+    kroki = "\n".join(chatgpt.kroki)
+
+    assert "Wtyczki" in kroki
+    assert "Streamable HTTP" in kroki
+    assert "Uwierzytelnij" in kroki
+    assert "Developer mode" not in kroki + "\n".join(chatgpt.uwagi)
+    assert any("trybie Work" in u for u in chatgpt.uwagi)
+    assert _teksty(chatgpt) == AUTH
 
 
 def test_codex_loguje_sie_osobnym_poleceniem():

@@ -173,6 +173,12 @@ class UczelniaAdmin(
             "Serwer MCP dla asystentów AI (/mcp)",
             {
                 "classes": ("grp-collapse grp-closed",),
+                "description": (
+                    "Warunek konieczny: serwis musi mieć prawidłowy certyfikat "
+                    "SSL z kompletnym łańcuchem (certyfikat serwera + pośredni). "
+                    "Przeglądarka uzupełni brakujący certyfikat pośredni sama, "
+                    "asystenci AI — nie, i połączenie się nie uda."
+                ),
                 "fields": ("mcp_wlaczone",),
             },
         ),

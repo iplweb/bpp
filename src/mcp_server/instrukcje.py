@@ -111,6 +111,17 @@ def _sprawdz_narzedzia() -> str:
     }
 
 
+def _certyfikat() -> str:
+    """Niekompletny łańcuch SSL wygląda jak awaria klienta — nazwij przyczynę,
+    zanim asystent zaproponuje wyłączenie weryfikacji certyfikatu."""
+    return _(
+        "Jeśli połączenie padnie z błędem certyfikatu (np. „unable to verify "
+        "the first certificate”), serwis ma niekompletny certyfikat SSL — "
+        "nie wyłączaj weryfikacji, powiedz mi, żebym zgłosił to "
+        "administratorowi bibliografii."
+    )
+
+
 def prompt_z_logowaniem(
     *, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str
 ) -> str:
@@ -144,6 +155,8 @@ def prompt_z_logowaniem(
             )
             % {"adres": adres_publiczny},
             " ",
+            _certyfikat(),
+            " ",
             _sprawdz_narzedzia(),
         ]
     )
@@ -168,6 +181,8 @@ def prompt_publiczny(*, nazwa: str, adres_publiczny: str) -> str:
             ),
             "\n\n",
             _jak_dodac(),
+            " ",
+            _certyfikat(),
             " ",
             _sprawdz_narzedzia(),
         ]
@@ -353,26 +368,32 @@ def klienci(
             "ChatGPT",
             kroki=[
                 _(
-                    "W ChatGPT w przeglądarce otwórz ustawienia i włącz tryb "
-                    "deweloperski (Developer mode) — obecnie w sekcji Security "
-                    "and login."
+                    "W ChatGPT otwórz Ustawienia → Wtyczki, kliknij „Dodaj” "
+                    "w prawym górnym rogu i wybierz Serwer MCP."
                 ),
-                _(
-                    "W ustawieniach aplikacji kliknij „+”, utwórz nową aplikację "
-                    "i podaj nazwę %(nazwa)s oraz adres serwera."
-                )
-                % {"nazwa": nazwa},
-                _(
-                    "W rozmowie wybierz z menu „+” Developer mode i zaznacz "
-                    "dodaną aplikację."
+                _("Wybierz %(transport)s, wpisz nazwę %(nazwa)s oraz adres serwera.")
+                % {"transport": TRANSPORT, "nazwa": nazwa},
+                *(
+                    [
+                        _(
+                            "Wejdź ponownie w Ustawienia → Wtyczki → Serwery MCP "
+                            "i przy dodanym serwerze kliknij „Uwierzytelnij”."
+                        )
+                    ]
+                    if adres("chatgpt") == adres_z_logowaniem
+                    else []
                 ),
             ],
             wklejki=[(adres_serwera, adres("chatgpt"))],
             uwagi=[
                 _(
-                    "Wymaga planu Plus, Pro, Business, Enterprise lub Edu. "
+                    "Sugerujemy pracę z tym konektorem w trybie Work — wybierz "
+                    "Work przełącznikiem u góry okna rozmowy."
+                ),
+                _("Nie trzeba włączać trybu deweloperskiego."),
+                _(
                     "Nazwy pozycji menu ChatGPT często się zmieniają — "
-                    "w razie wątpliwości szukaj „Developer mode”."
+                    "w razie wątpliwości szukaj ustawień wtyczek."
                 ),
             ],
         ),
