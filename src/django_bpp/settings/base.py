@@ -433,6 +433,7 @@ INSTALLED_APPS = [
     "bpp",
     "crossref_bpp",
     "pbn_api",
+    "usos_api",
     "dspace_api",
     "cerif_export",
     "pbn_export_queue",
