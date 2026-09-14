@@ -13,9 +13,10 @@
   font-weight: bold;
 }
 
-.mcp-strona__bez-konta {
-  max-width: 48rem;
-
+// Panele (callouty) na pełną szerokość, jak sekcje pod nimi — węższy
+// panel odstawał od reszty strony. Limit 48rem mają tylko akapity tekstu.
+.mcp-strona__bez-konta,
+.mcp-strona__certyfikat {
   p:last-child {
     margin-bottom: 0;
   }

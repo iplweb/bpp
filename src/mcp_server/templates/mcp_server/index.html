@@ -43,10 +43,14 @@
         {% endblocktrans %}
       </p>
       <p>
-        {% trans "Sprawdź certyfikat:" %}
+        {% trans "Sprawdź certyfikat, np.:" %}
         <a href="https://www.ssllabs.com/ssltest/analyze.html?d={{ request.get_host|urlencode }}"
            target="_blank" rel="noopener">SSL Labs</a>
-        {% trans "— ocena „Chain issues: Incomplete” oznacza ten problem." %}
+        {% trans "(ocena „Chain issues: Incomplete” oznacza ten problem)" %}
+        {% trans "lub" %}
+        <a href="https://www.sslshopper.com/ssl-checker.html#hostname={{ request.get_host|urlencode }}"
+           target="_blank" rel="noopener">SSL Checker</a>
+        {% trans "(wszystkie ogniwa łańcucha muszą mieć zielony znacznik)." %}
       </p>
     </div>
 

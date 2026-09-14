@@ -32,6 +32,7 @@ def test_certyfikat_ssl_jako_warunek_konieczny(client, admin_client, settings):
         assert 'id="mcp-certyfikat"' in tresc
         assert "sine qua non" in tresc
         assert "ssltest/analyze.html?d=bpp.example.test" in tresc
+        assert "ssl-checker.html#hostname=bpp.example.test" in tresc
 
 
 @pytest.mark.django_db
