@@ -27,6 +27,33 @@
       {% endblocktrans %}
     </p>
 
+    {# Niekompletny łańcuch certyfikatów: przeglądarka go dociągnie (AIA), #}
+    {# klienci MCP (Node, Python, chmury Anthropic/OpenAI) — nie. #}
+    <div id="mcp-certyfikat" class="callout alert mcp-strona__certyfikat">
+      <p>
+        <span class="fi-alert" aria-hidden="true"></span>
+        <strong>{% trans "Warunek sine qua non: prawidłowy certyfikat SSL." %}</strong>
+        {% blocktrans trimmed %}
+          Serwis musi mieć ważny certyfikat HTTPS z kompletnym łańcuchem
+          (certyfikat serwera razem z certyfikatem pośrednim). Przeglądarka
+          często sama uzupełni brakujący certyfikat pośredni, więc strona
+          wygląda poprawnie — ale asystenci AI tego nie robią i połączenie
+          się nie uda. Jeśli narzędzie nie może się połączyć, zgłoś to
+          administratorowi serwisu.
+        {% endblocktrans %}
+      </p>
+      <p>
+        {% trans "Sprawdź certyfikat, np.:" %}
+        <a href="https://www.ssllabs.com/ssltest/analyze.html?d={{ request.get_host|urlencode }}"
+           target="_blank" rel="noopener">SSL Labs</a>
+        {% trans "(ocena „Chain issues: Incomplete” oznacza ten problem)" %}
+        {% trans "lub" %}
+        <a href="https://www.sslshopper.com/ssl-checker.html#hostname={{ request.get_host|urlencode }}"
+           target="_blank" rel="noopener">SSL Checker</a>
+        {% trans "(wszystkie ogniwa łańcucha muszą mieć zielony znacznik)." %}
+      </p>
+    </div>
+
     {# Jeden wariant na stronę — wybór „z logowaniem czy bez” mylił. #}
     {% if z_logowaniem %}
       <p class="mcp-strona__wariant">

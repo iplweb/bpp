@@ -23,6 +23,19 @@ def test_adresy_sa_per_host(client, settings):
 
 
 @pytest.mark.django_db
+def test_certyfikat_ssl_jako_warunek_konieczny(client, admin_client, settings):
+    """Niekompletny łańcuch certyfikatów przeglądarka ukryje, klient MCP nie
+    — strona ma o tym mówić w obu wariantach, zanim ktoś zacznie klikać."""
+    for klient in (client, admin_client):
+        tresc = _strona(klient, settings).content.decode()
+
+        assert 'id="mcp-certyfikat"' in tresc
+        assert "sine qua non" in tresc
+        assert "ssltest/analyze.html?d=bpp.example.test" in tresc
+        assert "ssl-checker.html#hostname=bpp.example.test" in tresc
+
+
+@pytest.mark.django_db
 def test_anonim_dostaje_tylko_wariant_publiczny(client, settings):
     """Strona pokazuje JEDEN wariant — dwa przyciski „Dodaj” i pytanie
     „z logowaniem czy bez” myliły. Niezalogowany dostaje publiczny."""
@@ -119,7 +132,8 @@ def test_zalogowany_wie_gdzie_dziala_logowanie(admin_client, settings):
     assert odp.context["klienci_z_logowaniem"][0] == (
         "Claude (claude.ai, Claude Desktop, Cowork)"
     )
-    assert "ChatGPT" not in odp.context["klienci_z_logowaniem"]
+    assert "ChatGPT" in odp.context["klienci_z_logowaniem"]
+    assert "Zed" not in odp.context["klienci_z_logowaniem"]
     tresc = odp.content.decode()
     assert "Claude Code" in tresc
     # Klient bez logowania: adres publiczny z wyjaśnieniem, nie błąd DCR.
