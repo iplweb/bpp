@@ -16,7 +16,14 @@ PUB = "https://bpp.example.test/mcp"
 AUTH = "https://bpp.example.test/mcp/auth"
 
 #: Adresy zwrotne tych klientów przechodzą przez allowlistę DCR.
-Z_LOGOWANIEM = {"claude", "claude-code", "codex", "gemini-cli", "lm-studio"}
+Z_LOGOWANIEM = {
+    "claude",
+    "chatgpt",
+    "claude-code",
+    "codex",
+    "gemini-cli",
+    "lm-studio",
+}
 
 
 def _klienci(*, z_logowaniem=False):
@@ -171,6 +178,56 @@ def test_logowanie_wynika_z_allowlisty_dcr(monkeypatch):
     chatgpt = _klient("chatgpt", z_logowaniem=True)
     assert chatgpt.logowanie
     assert AUTH in _teksty(chatgpt)
+
+
+def test_przycisk_dodaj_serwer_ma_zdanie_wprowadzajace():
+    """Sam przycisk na początku zakładki nie mówi, co się po kliknięciu stanie
+    ani co zrobić, gdy nic się nie stanie."""
+    for klient in _klienci():
+        if not klient.linki:
+            continue
+        assert "Dodaj serwer" in klient.wstep, klient.slug
+
+
+def test_sciezki_konfiguracji_maja_wariant_windows():
+    """``~`` nie istnieje na Windows — bez %USERPROFILE% użytkownik Windows
+    nie wie, gdzie szukać pliku."""
+    warianty = {}
+    for slug in ("cursor", "windsurf", "codex"):
+        for wklejka in _klient(slug).wklejki:
+            if wklejka.opis_windows:
+                warianty[slug] = (wklejka.opis, wklejka.opis_windows)
+
+    assert set(warianty) == {"cursor", "windsurf", "codex"}, warianty
+    for slug, (posix, windows) in warianty.items():
+        assert "~/" in posix, slug
+        assert "%USERPROFILE%\\" in windows, slug
+        assert "/" not in windows.replace("Albo wpis w pliku ", ""), slug
+    assert warianty["cursor"][1] == "%USERPROFILE%\\.cursor\\mcp.json"
+
+
+def test_prompt_nazywa_niekompletny_certyfikat():
+    prompty = (
+        instrukcje.prompt_publiczny(nazwa="bpp-up", adres_publiczny=PUB),
+        instrukcje.prompt_z_logowaniem(
+            nazwa="bpp-up", adres_publiczny=PUB, adres_z_logowaniem=AUTH
+        ),
+    )
+    for prompt in prompty:
+        assert "certyfikat SSL" in prompt
+        assert "nie wyłączaj weryfikacji" in prompt
+
+
+def test_chatgpt_przez_wtyczki_bez_trybu_deweloperskiego():
+    chatgpt = _klient("chatgpt", z_logowaniem=True)
+    kroki = "\n".join(chatgpt.kroki)
+
+    assert "Wtyczki" in kroki
+    assert "Streamable HTTP" in kroki
+    assert "Uwierzytelnij" in kroki
+    assert "Developer mode" not in kroki + "\n".join(chatgpt.uwagi)
+    assert any("trybie Work" in u for u in chatgpt.uwagi)
+    assert _teksty(chatgpt) == AUTH
 
 
 def test_codex_loguje_sie_osobnym_poleceniem():

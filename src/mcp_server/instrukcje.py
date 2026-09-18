@@ -111,6 +111,17 @@ def _sprawdz_narzedzia() -> str:
     }
 
 
+def _certyfikat() -> str:
+    """Niekompletny łańcuch SSL wygląda jak awaria klienta — nazwij przyczynę,
+    zanim asystent zaproponuje wyłączenie weryfikacji certyfikatu."""
+    return _(
+        "Jeśli połączenie padnie z błędem certyfikatu (np. „unable to verify "
+        "the first certificate”), serwis ma niekompletny certyfikat SSL — "
+        "nie wyłączaj weryfikacji, powiedz mi, żebym zgłosił to "
+        "administratorowi bibliografii."
+    )
+
+
 def prompt_z_logowaniem(
     *, nazwa: str, adres_publiczny: str, adres_z_logowaniem: str
 ) -> str:
@@ -144,6 +155,8 @@ def prompt_z_logowaniem(
             )
             % {"adres": adres_publiczny},
             " ",
+            _certyfikat(),
+            " ",
             _sprawdz_narzedzia(),
         ]
     )
@@ -168,6 +181,8 @@ def prompt_publiczny(*, nazwa: str, adres_publiczny: str) -> str:
             ),
             "\n\n",
             _jak_dodac(),
+            " ",
+            _certyfikat(),
             " ",
             _sprawdz_narzedzia(),
         ]
@@ -245,6 +260,9 @@ class Wklejka:
     id: str
     opis: str
     tekst: str
+    #: Wariant opisu dla Windows (ścieżka z ``%USERPROFILE%``). Strona
+    #: pokazuje ten pasujący do systemu czytelnika — patrz ``strona.js``.
+    opis_windows: str = ""
 
 
 @dataclass(frozen=True)
@@ -254,6 +272,9 @@ class Klient:
     slug: str
     nazwa: str
     logowanie: bool = False
+    #: Zdanie nad przyciskiem „Dodaj serwer” — sam przycisk, bez kontekstu,
+    #: nie mówi, co się po kliknięciu stanie ani co zrobić, gdy nie zadziała.
+    wstep: str = ""
     linki: tuple[Link, ...] = ()
     kroki: tuple[str, ...] = ()
     wklejki: tuple[Wklejka, ...] = ()
@@ -262,6 +283,25 @@ class Klient:
 
 def _json(obiekt: dict) -> str:
     return json.dumps(obiekt, indent=2, ensure_ascii=False)
+
+
+def _sciezka(unix: str, *, przedrostek: str = "") -> tuple[str, str]:
+    """Opis pliku konfiguracyjnego w dwóch wariantach: POSIX i Windows.
+
+    Sam zapis ``~/.cursor/mcp.json`` jest na Windows bezużyteczny: nie ma tam
+    ``~``, a katalog domowy (``C:\\Users\\<login>``) podaje ``%USERPROFILE%``.
+    Który wariant zobaczy czytelnik, rozstrzyga ``strona.js`` po stronie
+    przeglądarki — HTML jest wspólny dla wszystkich, więc serwer nie może
+    różnicować go po ``User-Agent``.
+    """
+    windows = unix.replace("~/", "%USERPROFILE%\\").replace("/", "\\")
+    return (f"{przedrostek}{unix}", f"{przedrostek}{windows}")
+
+
+def _wklejka(identyfikator: str, opis, tekst: str) -> Wklejka:
+    """``opis`` to tekst albo para wariantów (POSIX, Windows) z ``_sciezka``."""
+    opis, opis_windows = opis if isinstance(opis, tuple) else (opis, "")
+    return Wklejka(id=identyfikator, opis=opis, tekst=tekst, opis_windows=opis_windows)
 
 
 def klienci(
@@ -283,7 +323,9 @@ def klienci(
             return adres_z_logowaniem
         return adres_publiczny
 
-    def klient(slug, nazwa_klienta, *, linki=(), kroki=(), wklejki=(), uwagi=()):
+    def klient(
+        slug, nazwa_klienta, *, wstep="", linki=(), kroki=(), wklejki=(), uwagi=()
+    ):
         """Złóż klienta: identyfikatory wklejek i uwaga, gdy nie ma logowania."""
         logowanie = obsluguje_logowanie(slug)
         uwagi = list(uwagi)
@@ -299,10 +341,11 @@ def klienci(
             slug=slug,
             nazwa=nazwa_klienta,
             logowanie=logowanie,
+            wstep=wstep,
             linki=tuple(Link(_("Dodaj serwer"), link) for link in linki),
             kroki=tuple(kroki),
             wklejki=tuple(
-                Wklejka(id=f"mcp-wklejka-{slug}-{nr}", opis=opis, tekst=tekst)
+                _wklejka(f"mcp-wklejka-{slug}-{nr}", opis, tekst)
                 for nr, (opis, tekst) in enumerate(wklejki, start=1)
             ),
             uwagi=tuple(uwagi),
@@ -321,6 +364,11 @@ def klienci(
         klient(
             "claude",
             "Claude (claude.ai, Claude Desktop, Cowork)",
+            wstep=_(
+                "Kliknij „Dodaj serwer” — Claude otworzy formularz konektora "
+                "z wpisaną nazwą i adresem, a Ty zatwierdzasz go przyciskiem "
+                "Add."
+            ),
             linki=[link_claude(nazwa, adres("claude"))],
             kroki=[
                 _(
@@ -353,26 +401,32 @@ def klienci(
             "ChatGPT",
             kroki=[
                 _(
-                    "W ChatGPT w przeglądarce otwórz ustawienia i włącz tryb "
-                    "deweloperski (Developer mode) — obecnie w sekcji Security "
-                    "and login."
+                    "W ChatGPT otwórz Ustawienia → Wtyczki, kliknij „Dodaj” "
+                    "w prawym górnym rogu i wybierz Serwer MCP."
                 ),
-                _(
-                    "W ustawieniach aplikacji kliknij „+”, utwórz nową aplikację "
-                    "i podaj nazwę %(nazwa)s oraz adres serwera."
-                )
-                % {"nazwa": nazwa},
-                _(
-                    "W rozmowie wybierz z menu „+” Developer mode i zaznacz "
-                    "dodaną aplikację."
+                _("Wybierz %(transport)s, wpisz nazwę %(nazwa)s oraz adres serwera.")
+                % {"transport": TRANSPORT, "nazwa": nazwa},
+                *(
+                    [
+                        _(
+                            "Wejdź ponownie w Ustawienia → Wtyczki → Serwery MCP "
+                            "i przy dodanym serwerze kliknij „Uwierzytelnij”."
+                        )
+                    ]
+                    if adres("chatgpt") == adres_z_logowaniem
+                    else []
                 ),
             ],
             wklejki=[(adres_serwera, adres("chatgpt"))],
             uwagi=[
                 _(
-                    "Wymaga planu Plus, Pro, Business, Enterprise lub Edu. "
+                    "Sugerujemy pracę z tym konektorem w trybie Work — wybierz "
+                    "Work przełącznikiem u góry okna rozmowy."
+                ),
+                _("Nie trzeba włączać trybu deweloperskiego."),
+                _(
                     "Nazwy pozycji menu ChatGPT często się zmieniają — "
-                    "w razie wątpliwości szukaj „Developer mode”."
+                    "w razie wątpliwości szukaj ustawień wtyczek."
                 ),
             ],
         ),
@@ -417,7 +471,9 @@ def klienci(
                     ),
                 ),
                 (
-                    _("Albo wpis w ~/.codex/config.toml"),
+                    _sciezka(
+                        "~/.codex/config.toml", przedrostek=_("Albo wpis w pliku ")
+                    ),
                     f'[mcp_servers.{nazwa}]\nurl = "{adres("codex")}"',
                 ),
             ],
@@ -431,10 +487,17 @@ def klienci(
         klient(
             "cursor",
             "Cursor",
+            wstep=_(
+                "Kliknij „Dodaj serwer” — przycisk otwiera Cursora i wypełnia "
+                "za Ciebie konfigurację; wystarczy ją zatwierdzić. Jeśli nic "
+                "się nie stanie (np. przeglądarka nie zna Cursora albo nie "
+                "jest on zainstalowany na tym komputerze), dopisz wpis "
+                "z poniższej ramki do pliku konfiguracyjnego."
+            ),
             linki=[link_cursor(nazwa, adres("cursor"))],
             wklejki=[
                 (
-                    "~/.cursor/mcp.json",
+                    _sciezka("~/.cursor/mcp.json"),
                     _json({"mcpServers": {nazwa: {"url": adres("cursor")}}}),
                 )
             ],
@@ -442,6 +505,11 @@ def klienci(
         klient(
             "vscode",
             "Visual Studio Code (GitHub Copilot)",
+            wstep=_(
+                "Kliknij „Dodaj serwer” — VS Code otworzy okno z gotową "
+                "konfiguracją do zatwierdzenia. Gdy przycisk nie zadziała, "
+                "użyj poniższego polecenia w terminalu."
+            ),
             linki=[link_vscode(nazwa, adres("vscode"))],
             wklejki=[
                 (
@@ -485,7 +553,7 @@ def klienci(
             "Windsurf",
             wklejki=[
                 (
-                    "~/.codeium/windsurf/mcp_config.json",
+                    _sciezka("~/.codeium/windsurf/mcp_config.json"),
                     _json({"mcpServers": {nazwa: {"serverUrl": adres("windsurf")}}}),
                 )
             ],
@@ -509,6 +577,12 @@ def klienci(
         klient(
             "lm-studio",
             "LM Studio",
+            wstep=_(
+                "Kliknij „Dodaj serwer” — LM Studio otworzy się z gotową "
+                "konfiguracją do zatwierdzenia. Gdy przycisk nie zadziała, "
+                "wklej poniższy wpis do pliku mcp.json (Program → Install "
+                "→ Edit mcp.json)."
+            ),
             linki=[link_lmstudio(nazwa, adres("lm-studio"))],
             wklejki=[
                 (
