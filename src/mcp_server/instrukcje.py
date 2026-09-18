@@ -260,6 +260,9 @@ class Wklejka:
     id: str
     opis: str
     tekst: str
+    #: Wariant opisu dla Windows (ścieżka z ``%USERPROFILE%``). Strona
+    #: pokazuje ten pasujący do systemu czytelnika — patrz ``strona.js``.
+    opis_windows: str = ""
 
 
 @dataclass(frozen=True)
@@ -282,14 +285,23 @@ def _json(obiekt: dict) -> str:
     return json.dumps(obiekt, indent=2, ensure_ascii=False)
 
 
-def _sciezka(unix: str) -> str:
-    """Ścieżka pliku konfiguracyjnego wraz z wariantem dla Windows.
+def _sciezka(unix: str, *, przedrostek: str = "") -> tuple[str, str]:
+    """Opis pliku konfiguracyjnego w dwóch wariantach: POSIX i Windows.
 
-    Sam zapis ``~/.cursor/mcp.json`` jest bezużyteczny na Windows: nie ma tam
+    Sam zapis ``~/.cursor/mcp.json`` jest na Windows bezużyteczny: nie ma tam
     ``~``, a katalog domowy (``C:\\Users\\<login>``) podaje ``%USERPROFILE%``.
+    Który wariant zobaczy czytelnik, rozstrzyga ``strona.js`` po stronie
+    przeglądarki — HTML jest wspólny dla wszystkich, więc serwer nie może
+    różnicować go po ``User-Agent``.
     """
     windows = unix.replace("~/", "%USERPROFILE%\\").replace("/", "\\")
-    return _("%(unix)s (Windows: %(windows)s)") % {"unix": unix, "windows": windows}
+    return (f"{przedrostek}{unix}", f"{przedrostek}{windows}")
+
+
+def _wklejka(identyfikator: str, opis, tekst: str) -> Wklejka:
+    """``opis`` to tekst albo para wariantów (POSIX, Windows) z ``_sciezka``."""
+    opis, opis_windows = opis if isinstance(opis, tuple) else (opis, "")
+    return Wklejka(id=identyfikator, opis=opis, tekst=tekst, opis_windows=opis_windows)
 
 
 def klienci(
@@ -333,7 +345,7 @@ def klienci(
             linki=tuple(Link(_("Dodaj serwer"), link) for link in linki),
             kroki=tuple(kroki),
             wklejki=tuple(
-                Wklejka(id=f"mcp-wklejka-{slug}-{nr}", opis=opis, tekst=tekst)
+                _wklejka(f"mcp-wklejka-{slug}-{nr}", opis, tekst)
                 for nr, (opis, tekst) in enumerate(wklejki, start=1)
             ),
             uwagi=tuple(uwagi),
@@ -459,8 +471,9 @@ def klienci(
                     ),
                 ),
                 (
-                    _("Albo wpis w pliku %(plik)s")
-                    % {"plik": _sciezka("~/.codex/config.toml")},
+                    _sciezka(
+                        "~/.codex/config.toml", przedrostek=_("Albo wpis w pliku ")
+                    ),
                     f'[mcp_servers.{nazwa}]\nurl = "{adres("codex")}"',
                 ),
             ],

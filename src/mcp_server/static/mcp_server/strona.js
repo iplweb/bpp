@@ -4,15 +4,28 @@
 (function () {
     "use strict";
 
-    function pokazKomunikat(pojemnik, tekst) {
+    // Widzący dostają potwierdzenie zmianą ikony (schowek -> „ptaszek”),
+    // czytniki ekranu — tekstem w obszarze aria-live.
+    function pokazKomunikat(pojemnik, tekst, udane) {
         var komunikat = pojemnik.querySelector(".mcp-strona__komunikat");
-        if (!komunikat) {
-            return;
+        if (komunikat) {
+            komunikat.textContent = tekst;
         }
-        komunikat.textContent = tekst;
+        var przycisk = pojemnik.querySelector(".mcp-strona__kopiuj");
+        var ikona = pojemnik.querySelector(".mcp-strona__kopiuj-ikona");
+        if (udane && przycisk && ikona) {
+            przycisk.classList.add("mcp-strona__kopiuj--skopiowano");
+            ikona.classList.replace("fi-clipboard", "fi-check");
+        }
         window.setTimeout(function () {
-            komunikat.textContent = "";
-        }, 2500);
+            if (komunikat) {
+                komunikat.textContent = "";
+            }
+            if (przycisk && ikona) {
+                przycisk.classList.remove("mcp-strona__kopiuj--skopiowano");
+                ikona.classList.replace("fi-check", "fi-clipboard");
+            }
+        }, 2000);
     }
 
     // Zapasowo dla kontekstu bez HTTPS (navigator.clipboard jest wtedy
@@ -42,6 +55,25 @@
         return Boolean(zaznaczenie) && zaznaczenie.toString().trim() !== "";
     }
 
+    // Ścieżki plików konfiguracyjnych mają wariant POSIX i windowsowy —
+    // oba są w HTML-u, bo strona jest cache'owana wspólnie dla wszystkich
+    // i serwer nie różnicuje jej po User-Agencie. Wybór robimy tutaj.
+    function toWindows() {
+        var dane = navigator.userAgentData;
+        var platforma = (dane && dane.platform) || navigator.platform || "";
+        return /win/i.test(platforma);
+    }
+
+    function dopasujSciezkiDoSystemu() {
+        if (!toWindows()) {
+            return;
+        }
+        var warianty = document.querySelectorAll("[data-system]");
+        Array.prototype.forEach.call(warianty, function (wariant) {
+            wariant.hidden = wariant.dataset.system !== "windows";
+        });
+    }
+
     document.addEventListener("click", function (zdarzenie) {
         var pojemnik = zdarzenie.target.closest("[data-mcp-kopiuj]");
         if (!pojemnik || trwaZaznaczanie(zdarzenie)) {
@@ -56,13 +88,14 @@
         var blad = pojemnik.dataset.komunikatBlad;
 
         function zapasowo() {
-            pokazKomunikat(pojemnik, kopiujPrzezZaznaczenie(zrodlo) ? ok : blad);
+            var udane = kopiujPrzezZaznaczenie(zrodlo);
+            pokazKomunikat(pojemnik, udane ? ok : blad, udane);
         }
 
         if (navigator.clipboard && window.isSecureContext) {
             navigator.clipboard.writeText(zrodlo.textContent).then(
                 function () {
-                    pokazKomunikat(pojemnik, ok);
+                    pokazKomunikat(pojemnik, ok, true);
                 },
                 function (odmowa) {
                     console.error("mcp: schowek odmówił zapisu", odmowa);
@@ -73,4 +106,7 @@
             zapasowo();
         }
     });
+
+    // Skrypt ładowany z „defer”, więc DOM jest już sparsowany.
+    dopasujSciezkiDoSystemu();
 })();

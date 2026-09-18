@@ -163,7 +163,14 @@
               </ol>
             {% endif %}
             {% for wklejka in klient.wklejki %}
-              <p class="mcp-strona__opis-wklejki">{{ wklejka.opis }}</p>
+              {# Ścieżkę pokazujemy w wariancie systemu czytelnika (strona.js); #}
+              {# bez JS zostaje POSIX-owy, a windowsowy dalej jest w HTML-u. #}
+              <p class="mcp-strona__opis-wklejki">
+                <span data-system="posix">{{ wklejka.opis }}</span>
+                {% if wklejka.opis_windows %}
+                  <span data-system="windows" hidden>{{ wklejka.opis_windows }}</span>
+                {% endif %}
+              </p>
               {% include "mcp_server/_kopiowalny.html" with id=wklejka.id tresc=wklejka.tekst %}
             {% endfor %}
             {% for uwaga in klient.uwagi %}

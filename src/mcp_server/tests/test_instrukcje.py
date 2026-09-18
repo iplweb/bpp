@@ -192,15 +192,18 @@ def test_przycisk_dodaj_serwer_ma_zdanie_wprowadzajace():
 def test_sciezki_konfiguracji_maja_wariant_windows():
     """``~`` nie istnieje na Windows — bez %USERPROFILE% użytkownik Windows
     nie wie, gdzie szukać pliku."""
-    opisy = {
-        w.opis
-        for slug in ("cursor", "windsurf", "codex")
-        for w in _klient(slug).wklejki
-    }
-    windowsowe = [o for o in opisy if "%USERPROFILE%" in o]
+    warianty = {}
+    for slug in ("cursor", "windsurf", "codex"):
+        for wklejka in _klient(slug).wklejki:
+            if wklejka.opis_windows:
+                warianty[slug] = (wklejka.opis, wklejka.opis_windows)
 
-    assert len(windowsowe) == 3, opisy
-    assert "%USERPROFILE%\\.cursor\\mcp.json" in "\n".join(windowsowe)
+    assert set(warianty) == {"cursor", "windsurf", "codex"}, warianty
+    for slug, (posix, windows) in warianty.items():
+        assert "~/" in posix, slug
+        assert "%USERPROFILE%\\" in windows, slug
+        assert "/" not in windows.replace("Albo wpis w pliku ", ""), slug
+    assert warianty["cursor"][1] == "%USERPROFILE%\\.cursor\\mcp.json"
 
 
 def test_prompt_nazywa_niekompletny_certyfikat():

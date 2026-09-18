@@ -125,6 +125,11 @@ def test_instrukcje_klientow_z_linkami_instalacyjnymi(client, settings):
     assert 'data-mcp-kopiuj="mcp-wklejka-codex-1"' in tresc
     assert "mcp-strona__kopiowalny" in tresc
     assert "data-komunikat-ok=" in tresc
+    # Oba warianty ścieżki jadą w HTML-u; wybiera strona.js po stronie
+    # przeglądarki, bo HTML jest wspólny dla wszystkich systemów.
+    assert 'data-system="posix"' in tresc
+    assert 'data-system="windows"' in tresc
+    assert "%USERPROFILE%\\.cursor\\mcp.json" in tresc
 
 
 @pytest.mark.django_db

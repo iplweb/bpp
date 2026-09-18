@@ -57,8 +57,8 @@
 
 .mcp-strona__kod {
   margin: 0;
-  // Miejsce na przycisk w rogu, żeby nie kładł się na tekście.
-  padding: 0.75rem 5.5rem 0.75rem 1rem;
+  // Miejsce na ikonę w rogu, żeby nie kładła się na tekście.
+  padding: 0.75rem 2.75rem 0.75rem 1rem;
   border: $code-border;
   border-radius: $global-radius;
   background-color: $code-background;
@@ -68,36 +68,54 @@
   transition: border-color 0.15s ease;
 }
 
+// Kwadratowa ikona w rogu ramki, jak przy blokach kodu na GitHubie:
+// bez napisu, bez tła, dopóki nie najedziesz.
 .mcp-strona__kopiuj {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  padding: 0.2rem 0.5rem;
-  border: 1px solid $medium-gray;
+  top: 0.375rem;
+  right: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 0;
   border-radius: $global-radius;
-  background-color: $white;
+  background-color: transparent;
   color: $dark-gray;
-  font-size: 0.75rem;
-  line-height: 1.4;
+  font-size: 0.875rem;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
 
   &:hover,
   &:focus {
-    border-color: $primary-color;
-    color: $primary-color;
+    background-color: rgba($black, 0.06);
+    color: $black;
   }
 
-  // Bez kursora (dotyk, klawiatura) nie ma najechania — przycisk, który
-  // pokazuje się tylko na hover, byłby tam niewidoczny.
+  &:focus-visible {
+    outline: 2px solid $primary-color;
+    outline-offset: 1px;
+  }
+
+  // Bez kursora (dotyk, klawiatura) nie ma najechania — ikona, która
+  // pokazuje się tylko na hover, byłaby tam niewidoczna.
   @media (hover: none) {
     opacity: 1;
   }
 }
 
-.mcp-strona__kopiuj-etykieta {
-  margin-left: 0.25rem;
+// Potwierdzenie skopiowania: ikona zmienia się w „ptaszka” (klasa z JS).
+.mcp-strona__kopiuj--skopiowano {
+  color: $success-color;
+  opacity: 1;
+
+  &:hover,
+  &:focus {
+    color: $success-color;
+  }
 }
 
 .mcp-strona__komunikat {
