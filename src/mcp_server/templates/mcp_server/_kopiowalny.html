@@ -1,18 +1,16 @@
-{# Blok tekstu kopiowany kliknięciem; obsługa w mcp_server/strona.js. #}
-{# Klikalny jest cały kontener (stąd data-mcp-kopiuj na nim), a ikona #}
-{# w rogu jest dla klawiatury i dla tych, którzy szukają jej wzrokiem. #}
+{# Blok tekstu kopiowany kliknięciem w pole; obsługa w mcp_server/strona.js. #}
+{# Klikalne jest całe szare pole — stąd role="button" i tabindex, żeby #}
+{# dało się je też uruchomić z klawiatury (Enter/Spacja). #}
 {# Parametry: id (unikalne na stronie), tresc. #}
 {% load i18n %}
 <div class="mcp-strona__kopiowalny"
      data-mcp-kopiuj="{{ id }}"
      data-komunikat-ok="{% trans 'Skopiowano do schowka.' %}"
-     data-komunikat-blad="{% trans 'Nie udało się skopiować — zaznacz tekst i naciśnij Ctrl+C.' %}">
+     data-komunikat-blad="{% trans 'Nie udało się skopiować — zaznacz tekst i naciśnij Ctrl+C.' %}"
+     role="button"
+     tabindex="0"
+     aria-label="{% trans 'Kliknij, aby skopiować do schowka' %}">
   <pre id="{{ id }}" class="mcp-strona__kod">{{ tresc }}</pre>
-  <button type="button" class="mcp-strona__kopiuj"
-          title="{% trans 'Kopiuj do schowka' %}"
-          aria-label="{% trans 'Kopiuj do schowka' %}">
-    <span class="fi-clipboard mcp-strona__kopiuj-ikona" aria-hidden="true"></span>
-  </button>
-  {# Komunikat tylko dla czytników ekranu — widzący dostają zmianę ikony. #}
-  <span class="mcp-strona__komunikat show-for-sr" role="status" aria-live="polite"></span>
+  <span class="mcp-strona__podpowiedz" aria-hidden="true">{% trans "Kliknij, aby skopiować" %}</span>
+  <span class="mcp-strona__komunikat" role="status" aria-live="polite"></span>
 </div>
