@@ -37,30 +37,67 @@
   background-color: rgba($primary-color, 0.06);
 }
 
+// Kopiowanie kliknięciem w całe pole; zielony przycisk pod ramką był
+// hałaśliwy, a powtórzony przy każdej wklejce — tym bardziej.
 .mcp-strona__kopiowalny {
+  position: relative;
   margin-bottom: 1rem;
+  cursor: pointer;
+
+  &:hover .mcp-strona__kod,
+  &:focus-within .mcp-strona__kod {
+    border-color: $primary-color;
+  }
+
+  &:hover .mcp-strona__kopiuj,
+  &:focus-within .mcp-strona__kopiuj {
+    opacity: 1;
+  }
 }
 
 .mcp-strona__kod {
   margin: 0;
-  padding: 0.75rem 1rem;
+  // Miejsce na przycisk w rogu, żeby nie kładł się na tekście.
+  padding: 0.75rem 5.5rem 0.75rem 1rem;
   border: $code-border;
   border-radius: $global-radius;
   background-color: $code-background;
   font-size: 0.875rem;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  transition: border-color 0.15s ease;
 }
 
-.mcp-strona__akcje {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
+.mcp-strona__kopiuj {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid $medium-gray;
+  border-radius: $global-radius;
+  background-color: $white;
+  color: $dark-gray;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 
-  .button {
-    margin-bottom: 0;
+  &:hover,
+  &:focus {
+    border-color: $primary-color;
+    color: $primary-color;
   }
+
+  // Bez kursora (dotyk, klawiatura) nie ma najechania — przycisk, który
+  // pokazuje się tylko na hover, byłby tam niewidoczny.
+  @media (hover: none) {
+    opacity: 1;
+  }
+}
+
+.mcp-strona__kopiuj-etykieta {
+  margin-left: 0.25rem;
 }
 
 .mcp-strona__komunikat {

@@ -180,6 +180,29 @@ def test_logowanie_wynika_z_allowlisty_dcr(monkeypatch):
     assert AUTH in _teksty(chatgpt)
 
 
+def test_przycisk_dodaj_serwer_ma_zdanie_wprowadzajace():
+    """Sam przycisk na początku zakładki nie mówi, co się po kliknięciu stanie
+    ani co zrobić, gdy nic się nie stanie."""
+    for klient in _klienci():
+        if not klient.linki:
+            continue
+        assert "Dodaj serwer" in klient.wstep, klient.slug
+
+
+def test_sciezki_konfiguracji_maja_wariant_windows():
+    """``~`` nie istnieje na Windows — bez %USERPROFILE% użytkownik Windows
+    nie wie, gdzie szukać pliku."""
+    opisy = {
+        w.opis
+        for slug in ("cursor", "windsurf", "codex")
+        for w in _klient(slug).wklejki
+    }
+    windowsowe = [o for o in opisy if "%USERPROFILE%" in o]
+
+    assert len(windowsowe) == 3, opisy
+    assert "%USERPROFILE%\\.cursor\\mcp.json" in "\n".join(windowsowe)
+
+
 def test_prompt_nazywa_niekompletny_certyfikat():
     prompty = (
         instrukcje.prompt_publiczny(nazwa="bpp-up", adres_publiczny=PUB),

@@ -1,12 +1,11 @@
-// Strona /mcp/: przyciski „Kopiuj” przy prompcie, adresach i wklejkach.
-// Przycisk wskazuje element do skopiowania atrybutem data-mcp-kopiuj="<id>".
+// Strona /mcp/: kopiowanie promptu, adresów i wklejek kliknięciem w pole.
+// Klikalny jest cały kontener z atrybutem data-mcp-kopiuj="<id>"; przycisk
+// w rogu to ta sama akcja, tyle że osiągalna z klawiatury.
 (function () {
     "use strict";
 
-    function pokazKomunikat(przycisk, tekst) {
-        var komunikat = przycisk.parentElement.querySelector(
-            ".mcp-strona__komunikat"
-        );
+    function pokazKomunikat(pojemnik, tekst) {
+        var komunikat = pojemnik.querySelector(".mcp-strona__komunikat");
         if (!komunikat) {
             return;
         }
@@ -32,27 +31,38 @@
         }
     }
 
+    // Kliknięcie kończące zaznaczanie myszą nie może podmieniać schowka —
+    // ktoś zaznacza fragment wklejki właśnie po to, żeby skopiować sam ten
+    // fragment. Przycisk kopiuje zawsze, bo tam intencja jest jednoznaczna.
+    function trwaZaznaczanie(zdarzenie) {
+        if (zdarzenie.target.closest(".mcp-strona__kopiuj")) {
+            return false;
+        }
+        var zaznaczenie = window.getSelection();
+        return Boolean(zaznaczenie) && zaznaczenie.toString().trim() !== "";
+    }
+
     document.addEventListener("click", function (zdarzenie) {
-        var przycisk = zdarzenie.target.closest("[data-mcp-kopiuj]");
-        if (!przycisk) {
+        var pojemnik = zdarzenie.target.closest("[data-mcp-kopiuj]");
+        if (!pojemnik || trwaZaznaczanie(zdarzenie)) {
             return;
         }
-        var zrodlo = document.getElementById(przycisk.dataset.mcpKopiuj);
+        var zrodlo = document.getElementById(pojemnik.dataset.mcpKopiuj);
         if (!zrodlo) {
-            console.error("mcp: brak elementu do skopiowania", przycisk);
+            console.error("mcp: brak elementu do skopiowania", pojemnik);
             return;
         }
-        var ok = przycisk.dataset.komunikatOk;
-        var blad = przycisk.dataset.komunikatBlad;
+        var ok = pojemnik.dataset.komunikatOk;
+        var blad = pojemnik.dataset.komunikatBlad;
 
         function zapasowo() {
-            pokazKomunikat(przycisk, kopiujPrzezZaznaczenie(zrodlo) ? ok : blad);
+            pokazKomunikat(pojemnik, kopiujPrzezZaznaczenie(zrodlo) ? ok : blad);
         }
 
         if (navigator.clipboard && window.isSecureContext) {
             navigator.clipboard.writeText(zrodlo.textContent).then(
                 function () {
-                    pokazKomunikat(przycisk, ok);
+                    pokazKomunikat(pojemnik, ok);
                 },
                 function (odmowa) {
                     console.error("mcp: schowek odmówił zapisu", odmowa);

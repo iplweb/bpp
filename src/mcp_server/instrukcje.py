@@ -269,6 +269,9 @@ class Klient:
     slug: str
     nazwa: str
     logowanie: bool = False
+    #: Zdanie nad przyciskiem „Dodaj serwer” — sam przycisk, bez kontekstu,
+    #: nie mówi, co się po kliknięciu stanie ani co zrobić, gdy nie zadziała.
+    wstep: str = ""
     linki: tuple[Link, ...] = ()
     kroki: tuple[str, ...] = ()
     wklejki: tuple[Wklejka, ...] = ()
@@ -277,6 +280,16 @@ class Klient:
 
 def _json(obiekt: dict) -> str:
     return json.dumps(obiekt, indent=2, ensure_ascii=False)
+
+
+def _sciezka(unix: str) -> str:
+    """Ścieżka pliku konfiguracyjnego wraz z wariantem dla Windows.
+
+    Sam zapis ``~/.cursor/mcp.json`` jest bezużyteczny na Windows: nie ma tam
+    ``~``, a katalog domowy (``C:\\Users\\<login>``) podaje ``%USERPROFILE%``.
+    """
+    windows = unix.replace("~/", "%USERPROFILE%\\").replace("/", "\\")
+    return _("%(unix)s (Windows: %(windows)s)") % {"unix": unix, "windows": windows}
 
 
 def klienci(
@@ -298,7 +311,9 @@ def klienci(
             return adres_z_logowaniem
         return adres_publiczny
 
-    def klient(slug, nazwa_klienta, *, linki=(), kroki=(), wklejki=(), uwagi=()):
+    def klient(
+        slug, nazwa_klienta, *, wstep="", linki=(), kroki=(), wklejki=(), uwagi=()
+    ):
         """Złóż klienta: identyfikatory wklejek i uwaga, gdy nie ma logowania."""
         logowanie = obsluguje_logowanie(slug)
         uwagi = list(uwagi)
@@ -314,6 +329,7 @@ def klienci(
             slug=slug,
             nazwa=nazwa_klienta,
             logowanie=logowanie,
+            wstep=wstep,
             linki=tuple(Link(_("Dodaj serwer"), link) for link in linki),
             kroki=tuple(kroki),
             wklejki=tuple(
@@ -336,6 +352,11 @@ def klienci(
         klient(
             "claude",
             "Claude (claude.ai, Claude Desktop, Cowork)",
+            wstep=_(
+                "Kliknij „Dodaj serwer” — Claude otworzy formularz konektora "
+                "z wpisaną nazwą i adresem, a Ty zatwierdzasz go przyciskiem "
+                "Add."
+            ),
             linki=[link_claude(nazwa, adres("claude"))],
             kroki=[
                 _(
@@ -438,7 +459,8 @@ def klienci(
                     ),
                 ),
                 (
-                    _("Albo wpis w ~/.codex/config.toml"),
+                    _("Albo wpis w pliku %(plik)s")
+                    % {"plik": _sciezka("~/.codex/config.toml")},
                     f'[mcp_servers.{nazwa}]\nurl = "{adres("codex")}"',
                 ),
             ],
@@ -452,10 +474,17 @@ def klienci(
         klient(
             "cursor",
             "Cursor",
+            wstep=_(
+                "Kliknij „Dodaj serwer” — przycisk otwiera Cursora i wypełnia "
+                "za Ciebie konfigurację; wystarczy ją zatwierdzić. Jeśli nic "
+                "się nie stanie (np. przeglądarka nie zna Cursora albo nie "
+                "jest on zainstalowany na tym komputerze), dopisz wpis "
+                "z poniższej ramki do pliku konfiguracyjnego."
+            ),
             linki=[link_cursor(nazwa, adres("cursor"))],
             wklejki=[
                 (
-                    "~/.cursor/mcp.json",
+                    _sciezka("~/.cursor/mcp.json"),
                     _json({"mcpServers": {nazwa: {"url": adres("cursor")}}}),
                 )
             ],
@@ -463,6 +492,11 @@ def klienci(
         klient(
             "vscode",
             "Visual Studio Code (GitHub Copilot)",
+            wstep=_(
+                "Kliknij „Dodaj serwer” — VS Code otworzy okno z gotową "
+                "konfiguracją do zatwierdzenia. Gdy przycisk nie zadziała, "
+                "użyj poniższego polecenia w terminalu."
+            ),
             linki=[link_vscode(nazwa, adres("vscode"))],
             wklejki=[
                 (
@@ -506,7 +540,7 @@ def klienci(
             "Windsurf",
             wklejki=[
                 (
-                    "~/.codeium/windsurf/mcp_config.json",
+                    _sciezka("~/.codeium/windsurf/mcp_config.json"),
                     _json({"mcpServers": {nazwa: {"serverUrl": adres("windsurf")}}}),
                 )
             ],
@@ -530,6 +564,12 @@ def klienci(
         klient(
             "lm-studio",
             "LM Studio",
+            wstep=_(
+                "Kliknij „Dodaj serwer” — LM Studio otworzy się z gotową "
+                "konfiguracją do zatwierdzenia. Gdy przycisk nie zadziała, "
+                "wklej poniższy wpis do pliku mcp.json (Program → Install "
+                "→ Edit mcp.json)."
+            ),
             linki=[link_lmstudio(nazwa, adres("lm-studio"))],
             wklejki=[
                 (

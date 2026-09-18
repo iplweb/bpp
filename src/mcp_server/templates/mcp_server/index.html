@@ -142,6 +142,9 @@
         <details class="mcp-strona__klient" id="mcp-klient-{{ klient.slug }}">
           <summary class="mcp-strona__klient-nazwa">{{ klient.nazwa }}</summary>
           <div class="mcp-strona__klient-tresc">
+            {% if klient.wstep %}
+              <p class="mcp-strona__klient-wstep">{{ klient.wstep }}</p>
+            {% endif %}
             {% if klient.linki %}
               <p class="mcp-strona__linki">
                 {% for link in klient.linki %}

@@ -121,8 +121,10 @@ def test_instrukcje_klientow_z_linkami_instalacyjnymi(client, settings):
         assert nazwa in tresc, nazwa
     assert 'href="cursor://anysphere.cursor-deeplink/mcp/install?' in tresc
     assert 'href="https://claude.ai/customize/connectors?' in tresc
-    # Każda wklejka dostaje własny przycisk „Kopiuj”.
+    # Każda wklejka kopiuje się kliknięciem w całe pole, nie tylko przyciskiem.
     assert 'data-mcp-kopiuj="mcp-wklejka-codex-1"' in tresc
+    assert "mcp-strona__kopiowalny" in tresc
+    assert "data-komunikat-ok=" in tresc
 
 
 @pytest.mark.django_db
