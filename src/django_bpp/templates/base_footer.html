@@ -1,6 +1,11 @@
 <div class="cell">
     <div class="hide-for-print cell">
         <div class="footer__content">
+            {# WCAG 2.1.4: mechanizm wylaczenia skrotow jednoznakowych. #}
+            {# Stopka, bo strona deklaracji dostepnosci jest opcjonalna #}
+            {# (Uczelnia.pokazuj_deklaracje_dostepnosci) i bywa zewnetrzna. #}
+            <button type="button" id="bpp-przelacznik-skrotow"
+                    class="footer__link-button" aria-pressed="true">Skróty klawiszowe: włączone</button> |
             {% if uczelnia.pokazuj_deklaracje_dostepnosci == 1 %}
                 <a href="{{ uczelnia.deklaracja_dostepnosci_url }}">deklaracja dostępności</a> |
             {% endif %}
@@ -37,3 +42,13 @@
         </div>
     </div>
 </div>
+
+<script type="text/javascript">
+    document.addEventListener('DOMContentLoaded', function () {
+        if (typeof window.bppPodepnijPrzelacznikSkrotow === 'function') {
+            window.bppPodepnijPrzelacznikSkrotow(
+                document.getElementById('bpp-przelacznik-skrotow')
+            );
+        }
+    });
+</script>

@@ -100,7 +100,11 @@
         const dismissedDate = localStorage.getItem('searchBannerDismissedDate');
 
         // Show banner if not dismissed or if dismissed more than 30 days ago
-        if (!bannerDismissed || (dismissedDate && daysSince(dismissedDate) > 30)) {
+        // WCAG 2.1.4: nie reklamuj skrotu, ktory uzytkownik wylaczyl.
+        var skrotyWl = (typeof window.bppSkrotyWlaczone !== 'function'
+                        || window.bppSkrotyWlaczone());
+        if (skrotyWl
+            && (!bannerDismissed || (dismissedDate && daysSince(dismissedDate) > 30))) {
             setTimeout(function() {
                 banner.style.display = 'block';
             }, 500); // Small delay for better UX
@@ -132,7 +136,9 @@
 
     // Also close banner when user uses the shortcut
     document.addEventListener('keydown', function(e) {
-        if (e.key === '/' && !$(e.target).is('input, textarea, select')) {
+        var skrotyWl = (typeof window.bppSkrotyWlaczone !== 'function'
+                        || window.bppSkrotyWlaczone());
+        if (e.key === '/' && skrotyWl && !$(e.target).is('input, textarea, select')) {
             const banner = document.getElementById('search-shortcut-banner');
             if (banner && banner.style.display !== 'none') {
                 closeSearchBanner();
