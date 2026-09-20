@@ -66,6 +66,43 @@ Jeżeli chcesz później schować lub pokazać takie formularze, skorzystaj z op
 Redagowanie➡Administracja➡Formularze wyszukiwania. Kliknij nazwę takiego
 formularza, następnie zaznacz lub odznacz opcję "Publiczny" i zapisz rekord
 
+#### Układ podstrony autora (profil autora) {#układ-podstrony-autora-profil-autora}
+
+W rekordzie uczelni (Redagowanie➡Struktura➡Uczelnia, edycja rekordu) znajduje
+się zwijana sekcja **„Profil autora (podstrona)"**. Zawiera ona **kafelkowy
+edytor układu** prawej kolumny publicznych podstron autorów (patrz
+[opis strony autora w instrukcji użytkownika](../uzytkownik/przegladanie-i-wyszukiwanie.md#strona-autora)).
+Ustawienie jest **globalne dla całej uczelni** — obowiązuje na podstronach
+wszystkich autorów.
+
+Edytor działa następująco:
+
+- każda dostępna sekcja prawej kolumny to osobny **kafelek**,
+- **przeciągnij** kafelki (ang. *drag and drop*), aby zmienić ich kolejność,
+- **odznacz checkbox** przy kafelku, aby ukryć daną sekcję,
+- dla sekcji listowych ustaw **limit** liczby wyświetlanych pozycji
+  (do wyboru 10, 20, 30 lub 50).
+
+!!! note
+    Lewa kolumna podstrony autora (zdjęcie, biogram, identyfikatory,
+    historia zatrudnienia, formularz wyszukiwania, przyciski eksportu itd.)
+    jest **stała** i nie podlega konfiguracji w tym edytorze.
+
+!!! tip
+    **Pusty układ oznacza układ domyślny** — system pokaże rozsądny,
+    wbudowany zestaw sekcji. Nie trzeba niczego konfigurować, jeśli domyślny
+    układ jest wystarczający.
+
+Wśród dostępnych sekcji prawej kolumny znajdują się m.in.: statystyki wg
+charakteru formalnego, wykresy roczne (liczba publikacji / suma punktów MNiSW /
+suma Impact Factor), najczęstsi współautorzy, najlepsze prace (wg punktacji
+oraz wg Impact Factor), najnowsze artykuły, najnowsze książki i rozdziały,
+ostatnio edytowane rekordy, dyscypliny, źródła oraz wyróżnione publikacje.
+
+!!! note "Zrzut ekranu"
+    W tym miejscu można w przyszłości umieścić zrzut ekranu kafelkowego
+    edytora układu podstrony autora.
+
 ## Sposób kalkulacji dyscyplin
 
 1.  Dyscyplina i subdyscyplina naukowa przypisana autorowi na dany rok zawiera się w rekordzie `Autor_Dyscyplina`.

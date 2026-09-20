@@ -194,6 +194,11 @@
   resolved "https://registry.yarnpkg.com/@esbuild/win32-x64/-/win32-x64-0.28.1.tgz#10064ee44f4347b90c9a02b446bbf80a91632b12"
   integrity sha512-bm4Mowrv+GXMlpWX++EcXw/iLyd1o3+bJkC2DkWXYVvgZCqD/bSj9ctZeAMC3cIxgjRVR2Dufaiu4YPxr5gW1A==
 
+"@iplweb/radon-opendata@^0.1.1":
+  version "0.1.1"
+  resolved "https://registry.yarnpkg.com/@iplweb/radon-opendata/-/radon-opendata-0.1.1.tgz#534716546cd7233781c2c3e1a669f5a525f1ba3a"
+  integrity sha512-GfH7TCEfC8F6JizdTYrHxblQPn2d112n6vn1XzrR1nvXhD38OGqiBec+VlkNpnyoewUeROLzEVFy9SkcOoINRg==
+
 "@jridgewell/sourcemap-codec@^1.5.5":
   version "1.5.5"
   resolved "https://registry.yarnpkg.com/@jridgewell/sourcemap-codec/-/sourcemap-codec-1.5.5.tgz#6912b00d2c631c0d15ce1a7ab57cd657f2a8f8ba"
