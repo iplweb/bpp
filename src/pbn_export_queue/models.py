@@ -177,11 +177,21 @@ class PBN_Export_Queue(models.Model):
                 return False
 
             try:
-                if self.content_type.get_object_for_this_type(pk=self.object_id):
-                    return True
-
+                obiekt = self.content_type.get_object_for_this_type(pk=self.object_id)
             except ObjectDoesNotExist:
                 return False
+
+            # ⚠️ `get_object_for_this_type` pyta `_base_manager`, który z
+            # definicji NIE filtruje (Django wymaga, żeby zwracał wszystkie
+            # wiersze). Rekord soft-skasowany jest więc tą drogą nadal
+            # znajdowany, mimo że `objects` go nie pokazuje. Dla kolejki PBN
+            # „w koszu" ma znaczyć „nie ma go" — inaczej wysyłalibyśmy do PBN
+            # publikację, którą operator usunął.
+            if getattr(obiekt, "deleted_at", None) is not None:
+                return False
+
+            if obiekt:
+                return True
         except self.content_type.model_class().DoesNotExist:
             return False
 

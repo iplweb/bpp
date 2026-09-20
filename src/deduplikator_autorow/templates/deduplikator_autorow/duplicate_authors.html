@@ -1347,8 +1347,15 @@
 
             var type = target.dataset.openWydawnictwo;
             var autorId = target.dataset.autorId;
+            // 'autorzy_set.deleted_at = None' jest KONIECZNE: DjangoQL tłumaczy
+            // 'autorzy_set.autor.id = N' na JOIN po SUROWEJ tabeli
+            // bpp_wydawnictwo_*_autor i managera soft-delete nie pyta. Bez tego
+            // deduplikator pokazywałby publikacje, na których autorstwo tego
+            // autora zostało już skasowane — czyli dokładnie husk, który
+            // deduplikator ma pomagać usuwać.
             var baseQuery = encodeURIComponent(
-                'rok >= 2022 and rok <= 2025 and autorzy_set.autor.id = ' + autorId
+                'rok >= 2022 and rok <= 2025 and autorzy_set.autor.id = ' + autorId +
+                ' and autorzy_set.deleted_at = None'
             );
             window.open('/admin/bpp/wydawnictwo_' + type + '/?q-l=on&q=' + baseQuery, '_blank');
             e.preventDefault();

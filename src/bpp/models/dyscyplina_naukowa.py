@@ -253,6 +253,13 @@ def przebuduj_prace_autora_po_udanej_transakcji(autor_id, rok):
 
     from bpp.models import Patent, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 
+    # ŚWIADOMIE BEZ ``autorzy_set__deleted_at__isnull=True``: to jedyne miejsce
+    # w kodzie, gdzie JOIN po SUROWEJ tabeli ``*_autor`` (z widocznymi
+    # soft-deletami) jest POŻĄDANY. ``rebuild_instances_of`` tylko wybiera
+    # publikacje DO PRZELICZENIA — a publikacja, której autorstwo tego autora
+    # zostało skasowane, potrzebuje przeliczenia tak samo (a nawet bardziej)
+    # jak ta z autorstwem żywym. Dodanie predykatu wycięłoby ją ze zbioru
+    # i zostawiło nieaktualne punkty/sloty do czasu nocnej rekalkulacji.
     def _(autor_id=autor_id, rok=rok):
         for klass in [Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Patent]:
             rebuild_instances_of(klass, rok=rok, autorzy_set__autor_id=autor_id)

@@ -1,8 +1,9 @@
 from denorm import denormalized, depend_on_fields, depend_on_related
 from dirtyfields.dirtyfields import DirtyFieldsMixin
-from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.constraints import ExclusionConstraint
+from django.contrib.postgres.fields import ArrayField, RangeOperators
 from django.db import models
-from django.db.models import CASCADE, SET_NULL, JSONField
+from django.db.models import CASCADE, SET_NULL, Deferrable, JSONField, Q
 
 from bpp.models import (
     BazaModeluStreszczen,
@@ -46,12 +47,18 @@ from bpp.models.abstract import (
     ModelZWWW,
     Wydawnictwo_Baza,
 )
+from bpp.models.soft_delete import (
+    BppAutorstwoSoftDeleteMixin,
+    BppPublikacjaSoftDeleteMixin,
+    BppSoftDeleteManager,
+)
 from bpp.models.system import Zewnetrzna_Baza_Danych
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 
 
 class Wydawnictwo_Ciagle_Autor(
     DirtyFieldsMixin,
+    BppAutorstwoSoftDeleteMixin,
     BazaModeluOdpowiedzialnosciAutorow,
 ):
     """Powiązanie autora do wydawnictwa ciągłego."""
@@ -60,9 +67,17 @@ class Wydawnictwo_Ciagle_Autor(
         "Wydawnictwo_Ciagle",
         CASCADE,
         related_name="autorzy_set",
-        # Auto-indeks FK redundantny: unique_together ma rekord jako kolumnę
-        # wiodącą w obu krotkach — pokrywa lookup po rekord i kaskadę usuwania.
-        db_index=False,
+        # Task 3c: `db_index=False` było tu uzasadnione, dopóki
+        # `unique_together` dawało pełny (nie częściowy) indeks btree z
+        # `rekord` jako kolumną wiodącą. Warunkowe UniqueConstraint/
+        # ExclusionConstraint z Taska 3c są CZĘŚCIOWE
+        # (`WHERE deleted_at IS NULL`) — nie pokrywają zapytań po samym
+        # `rekord` bez tego predykatu: RI-check Postgresa przy DELETE
+        # rodzica, kolektor kaskady Django (`_base_manager`, bez filtra
+        # soft-delete) i `global_objects`/`deleted_objects`.filter(rekord=…)
+        # (czyli dokładnie zapytania, po które soft-delete istnieje).
+        # Zwykły indeks FK (domyślny dla ForeignKey) jest więc znów
+        # potrzebny — NIE ustawiaj tu `db_index=False`.
     )
 
     class Meta:
@@ -70,11 +85,79 @@ class Wydawnictwo_Ciagle_Autor(
         verbose_name_plural = "powiązania autorów z wyd. ciągłymi"
         app_label = "bpp"
         ordering = ("kolejnosc",)
-        unique_together = [
-            ("rekord", "autor", "typ_odpowiedzialnosci"),
-            # Tu musi być autor, inaczej admin nie pozwoli wyedytować
-            ("rekord", "autor", "kolejnosc"),
+        # `unique_together` widziałby też wiersze soft-deleted (fizycznie
+        # wciąż są w tabeli) i blokowałby wzorzec "skasuj i wstaw od nowa"
+        # (re-import, korekta kolejności, edycja inline). Warunkowy
+        # UniqueConstraint (condition=deleted_at__isnull) pilnuje unikalności
+        # TYLKO wśród żywych wierszy. Django `validate_unique()` W OGÓLE nie
+        # patrzy na `Meta.constraints` (mechanizmem jest osobny
+        # `Model.validate_constraints()`, Django >=4.1) — a TEN wymaga, żeby
+        # pole użyte w `condition` (`deleted_at`) nie było wykluczone z
+        # walidacji formularza, inaczej cicho pomija sprawdzenie (albo, dla
+        # ExclusionConstraint, rzuca gołym FieldError). Stąd `deleted_at`
+        # jest jawnym, ukrytym polem w `generuj_formularz_dla_autorow`
+        # (`bpp.admin.core`). Formset inline ma DODATKOWO ręczną walidację
+        # kolizji nowy-wiersz-vs-istniejący-w-tym-samym-submicie
+        # (`generuj_inline_dla_autorow`) — patrz Task 3c, raport.
+        constraints = [
+            models.UniqueConstraint(
+                fields=["rekord", "autor", "typ_odpowiedzialnosci"],
+                condition=Q(deleted_at__isnull=True),
+                name="wc_autor_uniq_rekord_autor_typ",
+            ),
+            # NIE MA tu `UniqueConstraint(rekord, autor, kolejnosc)` — byłby
+            # w 100% redundantny wobec `wc_autor_excl_rekord_kolejnosc`
+            # niżej. Ten pilnuje pary (rekord, kolejnosc) NIE PATRZĄC na
+            # autora, a więc jest ściśle silniejszy: skoro w obrębie rekordu
+            # żadna pozycja nie może się powtórzyć, to tym bardziej nie może
+            # się powtórzyć w obrębie (rekord, autor). Kosztowałby wyłącznie
+            # trzeci indeks: build w oknie serwisowym + stały narzut na
+            # każdym zapisie autorstwa (najgorętsza ścieżka zapisu w BPP).
+            # Odpowiednik legacy `ALTER TABLE ... UNIQUE (rekord_id,
+            # kolejnosc) DEFERRABLE INITIALLY DEFERRED` z migracji 0132 —
+            # gwarantuje, że DWÓCH RÓŻNYCH autorów nie dzieli tej samej
+            # pozycji w obrębie rekordu. `UniqueConstraint` nie umie
+            # łączyć `condition` z `deferrable` (Django to blokuje —
+            # `condition` i `deferrable` się wykluczają), a `deferrable`
+            # jest tu wymagane przez drag&drop reorder w adminie
+            # (adminsortable2, patrz `sortable_field_name = "kolejnosc"`)
+            # — zamiana kolejności dwóch wierszy przejściowo dubluje
+            # wartość `kolejnosc` w obrębie jednej transakcji, co bez
+            # DEFERRED wywaliłoby się na pierwszym UPDATE. Stąd
+            # `ExclusionConstraint` (GiST + btree_gist, rozszerzenie już
+            # włączone w bazie) — jedyny typ ograniczenia w Postgresie,
+            # który łączy `WHERE` (warunek) z `DEFERRABLE`.
+            ExclusionConstraint(
+                name="wc_autor_excl_rekord_kolejnosc",
+                expressions=[
+                    ("rekord", RangeOperators.EQUAL),
+                    ("kolejnosc", RangeOperators.EQUAL),
+                ],
+                condition=Q(deleted_at__isnull=True),
+                deferrable=Deferrable.DEFERRED,
+            ),
         ]
+        indexes = [
+            # Indeks CZĘŚCIOWY (`WHERE deleted_at IS NOT NULL`), nie pełny.
+            # Predykat `deleted_at IS NULL` pasuje do ~100% wierszy, więc
+            # planner i tak nigdy nie wybrałby pod niego indeksu (seq scan
+            # jest tańszy) — pełny btree byłby wyłącznie kosztem: rozmiar
+            # rzędu tabeli + wpis przy każdym INSERT/UPDATE autorstwa.
+            # Realnie selektywne jest zapytanie ODWROTNE — `deleted_objects`
+            # (`deleted_at IS NOT NULL`), czyli kosz/audyt — i to ono
+            # dostaje tu mikroskopijny indeks.
+            models.Index(
+                fields=["deleted_at"],
+                name="wc_autor_deleted_at_idx",
+                condition=Q(deleted_at__isnull=False),
+            ),
+        ]
+
+    # django-denorm buduje bramkę WHEN triggera z listy `only=` w
+    # @depend_on_related. Bez deleted_at soft-delete autorstwa nie
+    # unieważniłby denorm-cache rodzica (opis bibliograficzny, slug,
+    # cached_punkty_dyscyplin) — zostałby nieświeży na stałe.
+    denorm_always_only = ("deleted_at",)
 
 
 class ModelZOpenAccessWydawnictwoCiagle(ModelZOpenAccess):
@@ -90,11 +173,30 @@ class ModelZOpenAccessWydawnictwoCiagle(ModelZOpenAccess):
         abstract = True
 
 
-class Wydawnictwo_Ciagle_Manager(ManagerModeliZOplataZaPublikacjeMixin, models.Manager):
-    pass
+class Wydawnictwo_Ciagle_Manager(
+    ManagerModeliZOplataZaPublikacjeMixin, BppSoftDeleteManager
+):
+    """Menedżer opłat PRZEPLECIONY z filtrem soft-delete (faza 02).
+
+    Nośna jest DRUGA BAZA, nie kolejność. Do fazy 02 stało tu
+    ``models.Manager``, więc ``objects`` w ogóle nie znało ``deleted_at``
+    i pokazywało kosz — mimo że model dziedziczył już
+    ``BppPublikacjaSoftDeleteMixin`` (menedżer zadeklarowany w ciele klasy
+    przesłania ten wniesiony przez bazę abstrakcyjną). Podmiana na
+    ``BppSoftDeleteManager`` to naprawia.
+
+    Kolejność baz jest natomiast WYŁĄCZNIE konwencją (mixiny przed klasą
+    bazową) — sprawdzone mutacyjnie: odwrócenie jej nie zmienia zachowania.
+    Powód: ``ManagerModeliZOplataZaPublikacjeMixin`` NIE jest menedżerem,
+    tylko czystym mixinem z jedną metodą (``self.exclude(...)``), więc nie
+    wnosi własnego ``get_queryset()`` i nie ma o co konkurować w MRO.
+    Dzięki temu ``rekordy_z_oplata()`` operuje na już-przefiltrowanym
+    querysecie bez jednej linijki kodu o soft-delete.
+    """
 
 
 class Wydawnictwo_Ciagle(
+    BppPublikacjaSoftDeleteMixin,
     ZapobiegajNiewlasciwymCharakterom,
     Wydawnictwo_Baza,
     DwaTytuly,
@@ -150,6 +252,22 @@ class Wydawnictwo_Ciagle(
         verbose_name = "wydawnictwo ciągłe"
         verbose_name_plural = "wydawnictwa ciągłe"
         app_label = "bpp"
+        indexes = [
+            # Indeks CZĘŚCIOWY (`WHERE deleted_at IS NOT NULL`) — ten sam
+            # wzorzec i to samo uzasadnienie, co `wc_autor_deleted_at_idx`
+            # wyżej (faza 01): predykat `deleted_at IS NULL` pasuje do ~100%
+            # wierszy, więc planner nigdy nie wybrałby pod niego indeksu, a
+            # pełny btree byłby wyłącznie kosztem (rozmiar + wpis przy
+            # każdym INSERT/UPDATE publikacji). Selektywne jest zapytanie
+            # ODWROTNE — kosz/audyt (`deleted_objects`) — i to ono dostaje
+            # tu mikroskopijny indeks. KANONICZNE UZASADNIENIE dla
+            # wszystkich pięciu tabel publikacji.
+            models.Index(
+                fields=["deleted_at"],
+                name="wc_deleted_at_idx",
+                condition=Q(deleted_at__isnull=False),
+            ),
+        ]
 
     def punktacja_zrodla(self):
         """Funkcja - skrót do użycia w templatkach, zwraca punktację zrodla

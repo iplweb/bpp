@@ -122,9 +122,16 @@ def get_uczelnia_context_data(uczelnia, article_slug=None):
         # JOIN po relacji wielowartościowej (rekord z N autorstwami tej samej
         # uczelni dałby N kopii streszczenia). W single-install filtru nie ma,
         # więc nie ma czego deduplikować.
+        #
+        # ``rekord__autorzy_set__deleted_at__isnull=True``: ten JOIN idzie po
+        # SUROWEJ tabeli ``bpp_wydawnictwo_ciagle_autor`` (manager soft-delete
+        # nie jest pytany przy lookupie przez relację), więc bez predykatu
+        # skasowane autorstwo nadal atrybuowałoby streszczenie do uczelni —
+        # czyli publikowałoby je na cudzym hoście.
         if uczelnia is not None and not tylko_jedna_uczelnia():
             recent_abstracts = recent_abstracts.filter(
-                rekord__autorzy_set__jednostka__uczelnia=uczelnia
+                rekord__autorzy_set__jednostka__uczelnia=uczelnia,
+                rekord__autorzy_set__deleted_at__isnull=True,
             ).distinct()
         context["recent_abstracts"] = recent_abstracts.order_by(
             "-rekord__ostatnio_zmieniony"
@@ -448,7 +455,8 @@ class Browser(ListView):
         # * ``fulltext_filter`` dla ``Autor`` — UWAGA, tu JOIN JEST:
         #   ``AutorManager.fulltext_annotate`` (``bpp/models/autor.py``)
         #   nadpisuje wersję z ``FulltextSearchMixin`` i zwraca
-        #   ``Count("wydawnictwo_ciagle")``, co dokłada ``LEFT OUTER JOIN
+        #   ``Count("wydawnictwo_ciagle_autor", filter=Q(…deleted_at
+        #   __isnull=True))``, co dokłada ``LEFT OUTER JOIN
         #   bpp_wydawnictwo_ciagle_autor``. Wierszy nie mnoży wyłącznie
         #   dlatego, że agregat wymusza ``GROUP BY`` po pk — deduplikacja
         #   pochodzi stamtąd, nie z braku złączenia. Zmiana tej adnotacji na

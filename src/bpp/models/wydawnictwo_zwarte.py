@@ -4,10 +4,11 @@ import warnings
 from denorm import denormalized, depend_on_fields, depend_on_related
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.contrib.contenttypes.fields import GenericRelation
-from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.constraints import ExclusionConstraint
+from django.contrib.postgres.fields import ArrayField, RangeOperators
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import CASCADE, PROTECT, JSONField
+from django.db.models import CASCADE, PROTECT, Deferrable, JSONField, Q
 from django.db.models.expressions import RawSQL
 
 from bpp import const
@@ -53,6 +54,11 @@ from bpp.models.abstract import (
 )
 from bpp.models.autor import Autor
 from bpp.models.nagroda import Nagroda
+from bpp.models.soft_delete import (
+    BppAutorstwoSoftDeleteMixin,
+    BppPublikacjaSoftDeleteMixin,
+    BppSoftDeleteManager,
+)
 from bpp.models.system import Zewnetrzna_Baza_Danych
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 from bpp.models.wydawca import Wydawca
@@ -60,6 +66,7 @@ from bpp.models.wydawca import Wydawca
 
 class Wydawnictwo_Zwarte_Autor(
     DirtyFieldsMixin,
+    BppAutorstwoSoftDeleteMixin,
     BazaModeluOdpowiedzialnosciAutorow,
 ):
     """Model zawierający informację o przywiązaniu autorów do wydawnictwa
@@ -69,9 +76,17 @@ class Wydawnictwo_Zwarte_Autor(
         "Wydawnictwo_Zwarte",
         CASCADE,
         related_name="autorzy_set",
-        # Auto-indeks FK redundantny: unique_together ma rekord jako kolumnę
-        # wiodącą — pokrywa lookup po rekord i kaskadę usuwania.
-        db_index=False,
+        # Task 3c: `db_index=False` było tu uzasadnione, dopóki
+        # `unique_together` dawało pełny (nie częściowy) indeks btree z
+        # `rekord` jako kolumną wiodącą. Warunkowe UniqueConstraint/
+        # ExclusionConstraint z Taska 3c są CZĘŚCIOWE
+        # (`WHERE deleted_at IS NULL`) — nie pokrywają zapytań po samym
+        # `rekord` bez tego predykatu: RI-check Postgresa przy DELETE
+        # rodzica, kolektor kaskady Django (`_base_manager`, bez filtra
+        # soft-delete) i `global_objects`/`deleted_objects`.filter(rekord=…)
+        # (czyli dokładnie zapytania, po które soft-delete istnieje).
+        # Zwykły indeks FK (domyślny dla ForeignKey) jest więc znów
+        # potrzebny — NIE ustawiaj tu `db_index=False`.
     )
 
     class Meta:
@@ -79,11 +94,58 @@ class Wydawnictwo_Zwarte_Autor(
         verbose_name_plural = "powiązania autorów z wyd. zwartymi"
         app_label = "bpp"
         ordering = ("kolejnosc",)
-        unique_together = [
-            ("rekord", "autor", "typ_odpowiedzialnosci"),
-            # Tu musi być autor, inaczej admin nie pozwoli wyedytować
-            ("rekord", "autor", "kolejnosc"),
+        # `unique_together` widziałby też wiersze soft-deleted (fizycznie
+        # wciąż są w tabeli) i blokowałby wzorzec "skasuj i wstaw od nowa"
+        # (re-import, korekta kolejności, edycja inline). Warunkowy
+        # UniqueConstraint (condition=deleted_at__isnull) pilnuje unikalności
+        # TYLKO wśród żywych wierszy. Django `validate_unique()` W OGÓLE nie
+        # patrzy na `Meta.constraints` (mechanizmem jest osobny
+        # `Model.validate_constraints()`, Django >=4.1) — a TEN wymaga, żeby
+        # pole użyte w `condition` (`deleted_at`) nie było wykluczone z
+        # walidacji formularza, inaczej cicho pomija sprawdzenie (albo, dla
+        # ExclusionConstraint, rzuca gołym FieldError). Stąd `deleted_at`
+        # jest jawnym, ukrytym polem w `generuj_formularz_dla_autorow`
+        # (`bpp.admin.core`). Formset inline ma DODATKOWO ręczną walidację
+        # kolizji nowy-wiersz-vs-istniejący-w-tym-samym-submicie
+        # (`generuj_inline_dla_autorow`) — patrz Task 3c, raport.
+        constraints = [
+            models.UniqueConstraint(
+                fields=["rekord", "autor", "typ_odpowiedzialnosci"],
+                condition=Q(deleted_at__isnull=True),
+                name="wz_autor_uniq_rekord_autor_typ",
+            ),
+            # NIE MA tu `UniqueConstraint(rekord, autor, kolejnosc)` —
+            # `wz_autor_excl_rekord_kolejnosc` niżej jest ściśle silniejszy
+            # (nie patrzy na autora); patrz komentarz w
+            # `Wydawnictwo_Ciagle_Autor.Meta`.
+            # Odpowiednik legacy `ALTER TABLE ... UNIQUE (rekord_id,
+            # kolejnosc) DEFERRABLE INITIALLY DEFERRED` z migracji 0132 —
+            # patrz analogiczny komentarz w Wydawnictwo_Ciagle_Autor.Meta.
+            ExclusionConstraint(
+                name="wz_autor_excl_rekord_kolejnosc",
+                expressions=[
+                    ("rekord", RangeOperators.EQUAL),
+                    ("kolejnosc", RangeOperators.EQUAL),
+                ],
+                condition=Q(deleted_at__isnull=True),
+                deferrable=Deferrable.DEFERRED,
+            ),
         ]
+        indexes = [
+            # Indeks CZĘŚCIOWY — patrz uzasadnienie w
+            # `Wydawnictwo_Ciagle_Autor.Meta.indexes`.
+            models.Index(
+                fields=["deleted_at"],
+                name="wz_autor_deleted_at_idx",
+                condition=Q(deleted_at__isnull=False),
+            ),
+        ]
+
+    # django-denorm buduje bramkę WHEN triggera z listy `only=` w
+    # @depend_on_related. Bez deleted_at soft-delete autorstwa nie
+    # unieważniłby denorm-cache rodzica (opis bibliograficzny, slug,
+    # cached_punkty_dyscyplin) — zostałby nieświeży na stałe.
+    denorm_always_only = ("deleted_at",)
 
 
 MIEJSCE_I_ROK_MAX_LENGTH = 256
@@ -174,7 +236,18 @@ class ModelZOpenAccessWydawnictwoZwarte(ModelZOpenAccess):
 rok_regex = re.compile(r"\s[12]\d\d\d")
 
 
-class Wydawnictwo_Zwarte_Manager(ManagerModeliZOplataZaPublikacjeMixin, models.Manager):
+class Wydawnictwo_Zwarte_Manager(
+    ManagerModeliZOplataZaPublikacjeMixin, BppSoftDeleteManager
+):
+    """Jak ``Wydawnictwo_Ciagle_Manager`` — uzasadnienie doboru bazy
+    (i tego, dlaczego kolejność NIE jest nośna) w jego docstringu
+    (``wydawnictwo_ciagle.py``).
+
+    ``wydawnictwa_nadrzedne_dla_innych()`` też korzysta na przepleceniu:
+    po fazie 02 nie zwróci już książki-matki, której jedyne rozdziały
+    trafiły do kosza.
+    """
+
     def wydawnictwa_nadrzedne_dla_innych(self):
         return (
             self.exclude(wydawnictwo_nadrzedne_id=None)
@@ -184,6 +257,7 @@ class Wydawnictwo_Zwarte_Manager(ManagerModeliZOplataZaPublikacjeMixin, models.M
 
 
 class Wydawnictwo_Zwarte(
+    BppPublikacjaSoftDeleteMixin,
     ZapobiegajNiewlasciwymCharakterom,
     Wydawnictwo_Zwarte_Baza,
     ModelZCharakterem,
@@ -259,6 +333,15 @@ class Wydawnictwo_Zwarte(
         verbose_name = "wydawnictwo zwarte"
         verbose_name_plural = "wydawnictwa zwarte"
         app_label = "bpp"
+        indexes = [
+            # Indeks CZĘŚCIOWY — uzasadnienie przy `wc_deleted_at_idx`
+            # (`wydawnictwo_ciagle.py`, Meta klasy Wydawnictwo_Ciagle).
+            models.Index(
+                fields=["deleted_at"],
+                name="wz_deleted_at_idx",
+                condition=Q(deleted_at__isnull=False),
+            ),
+        ]
 
     def wydawnictwa_powiazane_posortowane(self):
         """
