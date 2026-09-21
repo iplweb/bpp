@@ -545,7 +545,7 @@ dev = [
     "bumpver>=2026.1132",
     "pytest-recording>=0.12.1",
     "vcrpy>=8.3.0,<9",
-    "towncrier>=22.8.0",
+    "towncrier>=26.9.0",
     # pytest-tqdm: jeden zagregowany pasek postepu na kontrolerze xdist
     # (zamiast rozjezdzajacych sie paskow pytest-sugar). Auto-on tylko w TTY
     # (CI / agent / pipe = non-TTY = no-op), sam wylacza sugara gdy aktywny.
