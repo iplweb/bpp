@@ -1,11 +1,18 @@
 {% extends "admin/change_form.html" %}
+{% load prace %}
 
 {% block object-tools-items %}
     {% if original.publicationId_id %}
-        <li><a target="_blank" href="{{ original.publicationId.link_do_pbn }}">Zobacz publikacje w PBN</a></li>
+        {% link_do_pbn original.publicationId as pbn_url %}
+        {% if pbn_url %}
+            <li><a target="_blank" href="{{ pbn_url }}">Zobacz publikacje w PBN</a></li>
+        {% endif %}
     {% endif %}
     {% if original.insPersonId_id %}
-        <li><a target="_blank" href="{{ original.insPersonId.link_do_pbn }}">Zobacz autora w PBN</a></li>
+        {% link_do_pbn original.insPersonId as pbn_url %}
+        {% if pbn_url %}
+            <li><a target="_blank" href="{{ pbn_url }}">Zobacz autora w PBN</a></li>
+        {% endif %}
         {% if original.insPersonId.rekord_w_bpp %}
             <li><a target="_blank" href="{{ original.insPersonId.rekord_w_bpp.get_absolute_url }}">Zobacz autora w
                 BPP</a></li>

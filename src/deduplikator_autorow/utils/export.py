@@ -9,6 +9,7 @@ from io import BytesIO
 from openpyxl.styles import Font
 from openpyxl.workbook import Workbook
 
+from bpp.models import Uczelnia
 from bpp.util import (
     site_url_for_request,
     worksheet_columns_autosize,
@@ -24,16 +25,19 @@ def _get_site_domain(request=None):
     return site_url_for_request(request)
 
 
-def _create_pbn_url(autor):
+def _create_pbn_url(autor, uczelnia=None):
     """Zwraca aktualny URL do profilu autora w PBN.
 
     Używa Autor.link_do_pbn() które łączy LINK_PBN_DO_AUTORA z pbn_api_root
     z konfiguracji Uczelni - dotychczas zaszyty hardcoded https://pbn.nauka.gov.pl/
     sedno-webapp/persons/details/{uid} prowadził do martwego/pustego endpointu.
+
+    ``uczelnia`` (multi-hosted): uczelnia z requestu eksportującego — bez niej
+    przy >1 uczelni ``link_do_pbn()`` zwraca ``None`` i kolumna jest pusta.
     """
     if not autor or not autor.pbn_uid_id:
         return ""
-    url = autor.link_do_pbn()
+    url = autor.link_do_pbn(uczelnia=uczelnia)
     return url or ""
 
 
@@ -44,7 +48,7 @@ def _get_author_name(candidate_name, autor):
     return f"{autor.nazwisko or ''} {autor.imiona or ''}".strip()
 
 
-def _build_candidate_row(candidate, site_domain, duplicate_counts):
+def _build_candidate_row(candidate, site_domain, duplicate_counts, uczelnia=None):
     """Buduje pojedynczy wiersz danych dla kandydata na duplikat."""
     main = candidate.main_autor
     dup = candidate.duplicate_autor
@@ -58,13 +62,13 @@ def _build_candidate_row(candidate, site_domain, duplicate_counts):
         main.pk,
         f"{site_domain}/bpp/autor/{main.pk}/",
         main.pbn_uid_id or "",
-        _create_pbn_url(main),
+        _create_pbn_url(main, uczelnia),
         dup_name,
         dup.orcid or "",
         dup.pk,
         f"{site_domain}/bpp/autor/{dup.pk}/",
         dup.pbn_uid_id or "",
-        _create_pbn_url(dup),
+        _create_pbn_url(dup, uczelnia),
         round(candidate.confidence_percent, 2),
         duplicate_counts[candidate.main_autor_id],
         "PBN" if candidate.scan_mode == "pbn" else "Ogólny",
@@ -117,6 +121,7 @@ def export_duplicates_to_xlsx(request=None):
         bytes: Zawartość pliku XLSX
     """
     site_domain = _get_site_domain(request)
+    uczelnia = Uczelnia.objects.get_for_request(request)
 
     # JEDNO zapytanie zamiast tysięcy! Materializujemy raz, żeby Counter
     # i list-comprehension nie wykonywały dwóch iteracji po queryset
@@ -134,7 +139,7 @@ def export_duplicates_to_xlsx(request=None):
     duplicate_counts = Counter(c.main_autor_id for c in candidates)
 
     data_rows = [
-        _build_candidate_row(candidate, site_domain, duplicate_counts)
+        _build_candidate_row(candidate, site_domain, duplicate_counts, uczelnia)
         for candidate in candidates
     ]
 
