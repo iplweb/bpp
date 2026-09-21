@@ -1,11 +1,15 @@
 {% extends "admin/change_form.html" %}
+{% load prace %}
 
 {% block object-tools-items %}
     {% if original.wydawnictwo_ciagle_set.exists %}
         <li><a target="_blank" href="../../../wydawnictwo_ciagle/?q-l=on&q=zrodlo.id%3D+{{ original.pk }}">Powiązane</a></li>
     {% endif %}
     {% if original.pbn_uid_id %}
-        <li><a target="_blank" href="{{ original.link_do_pbn }}">Zobacz w PBN</a></li>
+        {% link_do_pbn original as pbn_url %}
+        {% if pbn_url %}
+            <li><a target="_blank" href="{{ pbn_url }}">Zobacz w PBN</a></li>
+        {% endif %}
     {% endif %}
     {{ block.super }}
 {% endblock %}

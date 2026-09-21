@@ -73,7 +73,7 @@ class PublikacjaInstytucji_V2(models.Model):
     created_on = models.DateTimeField(auto_now_add=True)
     last_updated = models.DateTimeField(auto_now=True)
 
-    def link_do_pi(self):
+    def link_do_pi(self, uczelnia=None):
         pbn_uid_id = self.objectId_id
 
         uuid = self.json_data.get("uuid", None)
@@ -83,12 +83,14 @@ class PublikacjaInstytucji_V2(models.Model):
         from bpp import const
         from bpp.models import Uczelnia
 
-        # Multi-hosted: wiersz lustrzany nie ma requestu. Gdy brak własnego
-        # taga uczelni, próbujemy JEDYNEJ w systemie (single → ona; 0/>1 →
-        # None → link się nie wyrenderuje). NIE ma „uczelni domyślnej" i nie
-        # zgadujemy pierwszej-z-brzegu (dawne ``Uczelnia.objects.get()``
-        # wybuchało MultipleObjectsReturned przy >1 uczelni).
-        uczelnia = self.uczelnia or Uczelnia.objects.get_single_uczelnia_or_none()
+        # Multi-hosted: pierwszeństwo ma własny tag uczelni wiersza (to ONA
+        # złożyła oświadczenie), potem uczelnia oglądającego (``uczelnia`` —
+        # filtr ``link_do_pi`` w szablonie), na końcu JEDYNA w systemie
+        # (single → ona; 0/>1 → None → link się nie wyrenderuje). NIE ma
+        # „uczelni domyślnej" i nie zgadujemy pierwszej-z-brzegu.
+        uczelnia = (
+            self.uczelnia or uczelnia or Uczelnia.objects.get_single_uczelnia_or_none()
+        )
         if uczelnia is not None:
             return const.LINK_PI_ADD_STATEMENTS.format(
                 pbn_api_root=uczelnia.pbn_api_root, pbn_uid_id=pbn_uid_id, uuid=uuid

@@ -1,3 +1,4 @@
+{% load prace %}
 {% if messages %}
     {% for message in messages %}
         <div class="callout
@@ -69,12 +70,15 @@
             </div>
             {% if record.pbn_uid_id %}
                 <div class="cell medium-6 large-3">
-                    <a href="{{ record.link_do_pbn }}"
+                    {% link_do_pbn record as pbn_url %}
+                    {% if pbn_url %}
+                    <a href="{{ pbn_url }}"
                        class="button expanded"
                        target="_blank">
                         <span class="fi-link"></span>
                         Pokaż w PBN
                     </a>
+                    {% endif %}
                 </div>
             {% endif %}
             {% if record.doi %}

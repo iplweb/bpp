@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load prace %}
 {% load static %}
 
 {% block extrahead %}
@@ -589,8 +590,11 @@
                                     brak
                                 {% endif %}
                                 {% if glowny_autor.pbn_uid_id %}
-                                    <br><strong>PBN:</strong> <a href="{{ glowny_autor.link_do_pbn }}"
+                                    {% link_do_pbn glowny_autor as pbn_url %}
+                                    {% if pbn_url %}
+                                    <br><strong>PBN:</strong> <a href="{{ pbn_url }}"
                                                                  target="_blank">{{ glowny_autor.pbn_uid_id }}</a><br/>
+                                    {% endif %}
                                     <strong>{{ glowny_autor.pbn_uid.x.pbn_uid.currentEmploymentsInstitutionDisplayName }}</strong>
                                 {% endif %}
                             </div>
@@ -792,9 +796,12 @@
                                                 brak
                                             {% endif %}
                                             {% if duplikat_data.autor.pbn_uid_id %}
+                                                {% link_do_pbn duplikat_data.autor as pbn_url %}
+                                                {% if pbn_url %}
                                                 <br><strong>PBN:</strong>
-                                                <a href="{{ duplikat_data.autor.link_do_pbn }}"
+                                                <a href="{{ pbn_url }}"
                                                    target="_blank">{{ duplikat_data.autor.pbn_uid_id }}</a>
+                                                {% endif %}
                                             {% endif %}
                                         </div>
                                         <div class="cell medium-12">
@@ -854,11 +861,14 @@
                                                 <span class="fi-link"></span> Otwórz na stronie głównej
                                             </a>
                                             {% if duplikat_data.autor.pbn_uid_id %}
-                                            <a href="{{ duplikat_data.autor.link_do_pbn }}"
+                                            {% link_do_pbn duplikat_data.autor as pbn_url %}
+                                            {% if pbn_url %}
+                                            <a href="{{ pbn_url }}"
                                                target="_blank"
                                                class="button small secondary deduplikator-autorow__button--full-width">
                                                 <span class="fi-arrow-right"></span> Otwórz w PBN
                                             </a>
+                                            {% endif %}
                                             {% endif %}
                                         </div>
                                     </div>
