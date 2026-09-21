@@ -64,24 +64,24 @@ def tytuly():
 
 @pytest.fixture(scope="function")
 def jezyki():
-    pl, created = Jezyk.objects.get_or_create(
-        skrot="pol.", defaults=dict(nazwa="polski")
-    )
-    pl.skrot_dla_pbn = "PL"
-    pl.skrot_crossref = "pl"
-    pl.kod_bcp47 = "pl"
-    pl.save()
+    """Języki referencyjne. Listę i ``kod_bcp47`` odtwarza ``seed_jezyki``
+    (ten sam kod, który wraca po flushu pod ``post_migrate``) — tu dokładamy
+    już tylko ``skrot_crossref``, którego seed runtime'owy świadomie nie rusza
+    (kolumna jest ``unique`` i w produkcji należy do redakcji; patrz
+    ``bpp.seed_slowniki.seed_jezyki``).
 
-    ang, created = Jezyk.objects.get_or_create(
-        skrot="ang.", defaults=dict(nazwa="angielski")
-    )
-    ang.skrot_dla_pbn = "EN"
-    ang.skrot_crossref = "en"
-    ang.kod_bcp47 = "en"
-    ang.save()
+    Poprzednia wersja ustawiała jeszcze ``skrot_dla_pbn``. Takiego pola nie ma
+    w modelu ``Jezyk`` (jest tylko metoda ``get_skrot_dla_pbn``, która je
+    czyta), więc przypisanie lądowało na instancji i ginęło przy ``save()`` —
+    a zwracane tu obiekty i tak pochodzą ze świeżego zapytania. Ustawianie
+    go było więc bez efektu; zostało usunięte.
+    """
+    from bpp.seed_slowniki import seed_jezyki
 
-    for elem in fixture("jezyk.json"):
-        Jezyk.objects.get_or_create(**elem["fields"])
+    seed_jezyki()
+
+    for skrot, crossref in (("pol.", "pl"), ("ang.", "en")):
+        Jezyk.objects.filter(skrot=skrot).update(skrot_crossref=crossref)
 
     return {jezyk.skrot: jezyk for jezyk in Jezyk.objects.all()}
 
