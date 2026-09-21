@@ -663,7 +663,7 @@ requires-dist = [
     { name = "ortools", specifier = ">=9.15.6755" },
     { name = "pandas", specifier = ">=3.0.5" },
     { name = "pathspec", specifier = ">=1.1.1" },
-    { name = "pbn-client", specifier = ">=0.2.2,<0.3" },
+    { name = "pbn-client", specifier = ">=0.2.3,<0.3" },
     { name = "pillow", specifier = ">=12.2,<14" },
     { name = "psycopg2-binary", specifier = ">=2.9.12" },
     { name = "pygad", specifier = ">=3.7.0" },
@@ -4180,15 +4180,15 @@ wheels = [
 
 [[package]]
 name = "pbn-client"
-version = "0.2.2"
+version = "0.2.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "requests" },
-    { name = "simplejson" },
+    { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "simplejson", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fb/53/ef61b6f58592eef44a27a216e9a7687a782a09f5e3f2d499860e59bd9c0d/pbn_client-0.2.2.tar.gz", hash = "sha256:21b78873fbea40c4e13cee39c75ea3e1411429dd21a9c772c2fac83963e3f6c4", size = 64750, upload-time = "2026-08-05T07:27:16.427Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fd/cd/1e5c1d7738a38b554738cc80a27a540b6ee59b4db2a14cab22444788272a/pbn_client-0.2.3.tar.gz", hash = "sha256:6d2ccc475ae570c6fff5dbe44ae79cbe368100ce9cc911b7b3dcbf80979feb6f", size = 66304, upload-time = "2026-09-21T18:59:11.619Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/44/ce/b8549f6fe70cd5965c161d0a2c6cd92ee6d65d3a5d818ec4904d8efdfdf6/pbn_client-0.2.2-py3-none-any.whl", hash = "sha256:07dc76a80bbc4c94f7b1a6d96ce9c42391b85cdbd4ef22ae36aec2eb67f386a7", size = 36044, upload-time = "2026-08-05T07:27:15.367Z" },
+    { url = "https://files.pythonhosted.org/packages/bf/83/cfacd469f34751bf9342f67061f178f5b8f0aefb261fa5bf8f5172fc5970/pbn_client-0.2.3-py3-none-any.whl", hash = "sha256:383055a8d84ca47debc7a9bb3bddf357438dd904d4252a07e3024c7a03d85ac2", size = 36702, upload-time = "2026-09-21T18:59:10.561Z" },
 ]
 
 [[package]]

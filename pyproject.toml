@@ -33,7 +33,7 @@ dependencies = [
     "Django>=5.2.17,<5.3",
     # Reużywalne pakiety PBN wydzielone na PyPI (github.com/iplweb/*).
     "django-pbn-client>=0.2,<0.3",
-    "pbn-client>=0.2.2,<0.3",
+    "pbn-client>=0.2.3,<0.3",
     "django-polish-inflection>=0.1.1,<0.2",
     "django-axes>=7.0,<9",
     "arrow>=1.3,<2",
