@@ -7,11 +7,10 @@ go z JSON-a, a test ``transaction=True`` taki podmieniony słownik utrwala.
 Dokładnie tak padł CI, mimo zieleni lokalnie.
 
 Ta sama reguła obowiązuje słowniki bez fixtury JSON-owej: ``tryby_otwarte``
-i ``prawa_patentowe`` znikają po transakcyjnym flushu (``TRUNCATE``), bo
-``bpp.seed_slowniki`` odtwarza po ``post_migrate`` wyłącznie
-``RodzajJednostki``. Oba testy pod nie podpięte padały na CI z
-``DoesNotExist`` — stąd fixtury ``tryby_openaccess`` / ``prawa_patentowe``
-w ``conftest.py`` tego katalogu.
+i ``prawa_patentowe`` znikają po transakcyjnym flushu (``TRUNCATE``) i nic
+ich potem nie odtwarza — migracje danych lecą raz, przy zakładaniu bazy.
+Oba testy pod nie podpięte padały na CI z ``DoesNotExist`` — stąd fixtury
+``tryby_openaccess`` / ``prawa_patentowe`` w ``conftest.py`` tego katalogu.
 """
 
 import importlib

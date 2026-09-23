@@ -136,7 +136,9 @@ def test_jednostka_pokazuj_opis(jednostka, client, arg_res):
     assert result is arg_res
 
 
-def test_browse_jednostka_styl_wydzialu_uklad_dawnego_wydzial_html(uczelnia, client):
+def test_browse_jednostka_styl_wydzialu_uklad_dawnego_wydzial_html(
+    uczelnia, client, rodzaje_jednostek
+):
     """Faza B (#438): strona w stylu wydziału (rodzaj z flagą
     ``pokazuj_strukture_podjednostek``) odtwarza układ dawnego wydzial.html:
     panel ``modern-header`` z nazwą i statami W ŚRODKU panelu, pod panelem
@@ -203,7 +205,9 @@ def test_browse_jednostka_styl_wydzialu_uklad_dawnego_wydzial_html(uczelnia, cli
     assert dziecko.nazwa in content
 
 
-def test_browse_jednostka_styl_wydzialu_nie_korzen_fallback_jednostki(uczelnia, client):
+def test_browse_jednostka_styl_wydzialu_nie_korzen_fallback_jednostki(
+    uczelnia, client, rodzaje_jednostek
+):
     """Węzeł w stylu wydziału położony GŁĘBIEJ w drzewie (ma rodzica) nie
     może użyć POST ``wydzial=pk`` — ``WydzialQueryObject.value_from_web``
     rozwiązuje wyłącznie korzenie (``parent IS NULL``), a denorm
@@ -251,7 +255,7 @@ def test_browse_jednostka_styl_wydzialu_nie_korzen_fallback_jednostki(uczelnia, 
 
 
 def test_browse_jednostka_styl_wydzialu_bez_wydzialow_jednostka_nadrzedna(
-    uczelnia, client
+    uczelnia, client, rodzaje_jednostek
 ):
     """#438: strona w stylu wydziału na uczelni, która NIE używa wydziałów,
     ale ma strukturę drzewa — przycisk „Pokaż wszystkie publikacje" na
@@ -298,7 +302,7 @@ def test_browse_jednostka_styl_wydzialu_bez_wydzialow_jednostka_nadrzedna(
 
 
 def test_browse_jednostka_styl_wydzialu_korzen_lisc_fallback_jednostki(
-    uczelnia, client
+    uczelnia, client, rodzaje_jednostek
 ):
     """#438: korzeń w stylu wydziału BEZ podjednostek (poddrzewo puste) nie ma
     po czym filtrować całym poddrzewem — przycisk wysyła jawną listę

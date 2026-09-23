@@ -25,7 +25,7 @@ from bpp.models import Jednostka, RodzajJednostki
 
 
 @pytest.mark.django_db
-def test_rodzaj_fk_da_sie_przypisac():
+def test_rodzaj_fk_da_sie_przypisac(rodzaje_jednostek):
     std = RodzajJednostki.objects.get(nazwa="Standard")
     j = baker.make(Jednostka, rodzaj=std)
     j.refresh_from_db()

@@ -6,7 +6,7 @@ from bpp.models import Jednostka, RodzajJednostki
 
 
 @pytest.mark.django_db
-def test_seed_wydzial_pokazuje_strukture_podjednostek():
+def test_seed_wydzial_pokazuje_strukture_podjednostek(rodzaje_jednostek):
     wydzial = RodzajJednostki.objects.get(nazwa="Wydział")
     assert wydzial.pokazuj_strukture_podjednostek is True
 
