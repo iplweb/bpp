@@ -47,6 +47,8 @@ dependencies = [
     "channels[daphne]>=4.3.2,<5",
     "uvicorn[standard]>=0.52.4",
     "channels-redis>=4,<5",
+    # >=0.5.0 wnosi Report.set_order_by() — bez niego wybór sortowania w
+    # formularzu raportów (FD467) nie ma jak nadpisać ColumnOrder tabeli.
     "django-flexible-reports>=0.5.0",
     "django-dsl>=0.1.15",
     "django-group-by==0.3.1",
