@@ -31,7 +31,33 @@ from pbn_api.exceptions import (
 logger = logging.getLogger(__name__)
 
 
-class PBN_Export_QueueManager(models.Manager):
+class PBN_Export_QueueQuerySet(models.QuerySet):
+    def dla_uczelni(self, uczelnia):
+        """Wpisy kolejki należące do danej uczelni (multi-hosted).
+
+        Uczelnia wysyła do PBN wyłącznie na profil własnej instytucji, więc
+        wpisy innych uczelni są dla niej bezużyteczne — a ich podgląd czy
+        ponowna wysyłka to wyciek między uczelniami.
+
+        - 0 lub 1 uczelnia w systemie: cała kolejka (także legacy ``NULL``)
+          należy do niej — bez filtra,
+        - >1 uczelnia: ściśle ``uczelnia=U``; wpisy ``NULL`` nie dają się
+          przypisać, więc nikt ich tu nie widzi (zostają w adminie),
+        - >1 uczelnia i ``uczelnia is None`` (domena bez mapowania): pusto.
+        """
+        from bpp.models import Uczelnia
+
+        inne = Uczelnia.objects.all()
+        if uczelnia is not None:
+            inne = inne.exclude(pk=uczelnia.pk)
+        if not inne.exists():
+            return self.all()
+        if uczelnia is None:
+            return self.none()
+        return self.filter(uczelnia=uczelnia)
+
+
+class PBN_Export_QueueManager(models.Manager.from_queryset(PBN_Export_QueueQuerySet)):
     def filter_rekord_do_wysylki(self, rekord):
         return self.filter(
             content_type=ContentType.objects.get_for_model(rekord),
