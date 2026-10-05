@@ -40,7 +40,6 @@ def test_admin_index_htmx_ladowany_raz(admin_client):
     assert len(re.findall(r"<script[^>]+/htmx\.org/dist/htmx[^\"']*\.js", html)) == 1
 
 
-
 @pytest.mark.parametrize(
     "pakiet,plik",
     [
