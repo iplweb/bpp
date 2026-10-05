@@ -40,19 +40,24 @@ def test_admin_index_htmx_ladowany_raz(admin_client):
     assert len(re.findall(r"<script[^>]+/htmx\.org/dist/htmx[^\"']*\.js", html)) == 1
 
 
+
 @pytest.mark.parametrize(
-    "sciezka",
+    "pakiet,plik",
     [
-        "htmx.org/dist/htmx.min.js",
-        "plotly.js/dist/plotly.min.js",
-        "plotly.js/dist/plotly-locale-pl.js",
-        "admin_dashboard/js/lazy-charts.js",
+        ("htmx.org", "dist/htmx.min.js"),
+        ("plotly.js", "dist/plotly.min.js"),
+        ("plotly.js", "dist/plotly-locale-pl.js"),
     ],
 )
-def test_statyki_admina_widoczne_dla_collectstatic(sciezka):
-    # TolerantManifestStaticFilesStorage nie wywali szablonu na brakującym
-    # pliku — w produkcji skończyłoby się cichym 404. Stąd jawny test
-    # białej listy node_modules (NPM_FILE_PATTERNS) i finderów.
+def test_statyki_admina_na_bialej_liscie_yarn(pakiet, plik, settings):
+    # Pliki z node_modules trafiają do collectstatic tylko przez białą listę
+    # YARN_FILE_PATTERNS. TolerantManifestStaticFilesStorage nie wywali
+    # szablonu na brakującym pliku — w produkcji byłoby ciche 404. Sprawdzamy
+    # konfigurację, nie finder: obraz testowy CI nie ma node_modules.
+    assert plik in settings.YARN_FILE_PATTERNS[pakiet]
+
+
+def test_lazy_charts_js_widoczny_dla_finderow():
     from django.contrib.staticfiles import finders
 
-    assert finders.find(sciezka), sciezka
+    assert finders.find("admin_dashboard/js/lazy-charts.js")
