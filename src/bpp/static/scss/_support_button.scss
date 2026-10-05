@@ -70,6 +70,21 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
 
+  // Skrypt widgetu Freshworks jest ladowany leniwie po kliknieciu
+  &.is-loading {
+    cursor: progress;
+    opacity: 0.8;
+  }
+
+  // Nie udalo sie zaladowac widgetu - klik prowadzi do support.iplweb.pl
+  &.is-error {
+    background-color: #b5332e;
+
+    &:hover {
+      background-color: color.adjust(#b5332e, $lightness: -10%);
+    }
+  }
+
   // Focus state for accessibility
   &:focus {
     outline: 2px solid color.adjust($primary-color, $lightness: 20%);

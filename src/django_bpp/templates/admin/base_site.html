@@ -147,17 +147,23 @@
 
     {% if user.is_authenticated %}
         {% if not TESTING %}
-        <!-- Freshworks Support Widget -->
+        {# Widget wsparcia Freshworks ladowany LENIWIE: skrypt z #}
+        {# euc-widget.freshworks.com wstrzykujemy dopiero po pierwszym #}
+        {# kliknieciu #bppSupportButton. Stub FreshworksWidget kolejkuje #}
+        {# wywolania w .q, a skrypt Freshworks po wyrenderowaniu widgetu #}
+        {# (widgetRenderComplete) odtwarza kolejke i podmienia #}
+        {# window.FreshworksWidget na wlasna implementacje. #}
         <script>
             window.fwSettings={
                 'widget_id':205000000433
             };
             !function(){if("function"!=typeof window.FreshworksWidget){var n=function(){n.q.push(arguments)};n.q=[],window.FreshworksWidget=n}}()
         </script>
-        <script type='text/javascript' src='https://euc-widget.freshworks.com/widgets/205000000433.js' async defer></script>
 
         <!-- Custom Support Button -->
-        <button class="bpp-support-button hide-on-print" id="bppSupportButton">
+        <button type="button" class="bpp-support-button hide-on-print" id="bppSupportButton"
+                data-widget-src="https://euc-widget.freshworks.com/widgets/205000000433.js"
+                data-fallback-url="https://support.iplweb.pl">
             <span class="button-content">
                 <span class="support-symbols">!?!</span>
                 <span class="support-text">Support BPP</span>
@@ -167,41 +173,100 @@
         <script type="text/javascript">
             (function($){
                 $(document).ready(function() {
-                    // Hide the default Freshworks launcher
-                    FreshworksWidget('hide', 'launcher');
+                    var $button = $('#bppSupportButton');
+                    var $symbols = $button.find('.support-symbols');
+                    var $text = $button.find('.support-text');
+                    var stub = window.FreshworksWidget;
 
-                    setTimeout(function() {
-                        if (typeof FreshworksWidget !== 'undefined') {
-
-                            FreshworksWidget('prefill', 'ticketForm', {
-                                custom_fields: {
-                                    cf_adres_url: window.location.href
-                                }
-                            });
-
-
-                            // Identify user for Freshworks
-                            FreshworksWidget('identify', 'ticketForm', {
-                                name: '{{ request.user.get_full_name|default:request.user.username|escapejs }}',
-                                email: '{{ request.user.email|escapejs }}'
-                            });
-                        }
-                    }, 1000);
-
-                    // Track widget state
+                    // 'idle' -> 'loading' -> 'ready' | 'error'
+                    var state = 'idle';
+                    // Freshworks nie udostepnia zdarzen zamkniecia widgetu
+                    // (brak metody 'on' w API bootstrapu), wiec stan
+                    // sledzimy sami - jak dotad.
                     var widgetOpen = false;
+                    var LOAD_TIMEOUT_MS = 20000;
+
+                    function setLoading() {
+                        state = 'loading';
+                        $button.addClass('is-loading').attr('aria-busy', 'true');
+                        $symbols.text('...');
+                        $text.text('Ładowanie...');
+                    }
+
+                    function setReady() {
+                        state = 'ready';
+                        $button.removeClass('is-loading').removeAttr('aria-busy');
+                        $symbols.text('!?!');
+                        $text.text('Support BPP');
+                    }
+
+                    function setError() {
+                        state = 'error';
+                        widgetOpen = false;
+                        $button.removeClass('is-loading').removeAttr('aria-busy')
+                            .addClass('is-error')
+                            .attr('title', 'Nie udało się załadować widgetu wsparcia. '
+                                + 'Kliknij, aby przejść do support.iplweb.pl');
+                        $symbols.text('!?!');
+                        $text.text('support.iplweb.pl');
+                    }
+
+                    function loadWidget() {
+                        setLoading();
+
+                        // Wywolania trafiaja do kolejki stuba i zostana
+                        // wykonane w tej kolejnosci po zaladowaniu widgetu.
+                        FreshworksWidget('hide', 'launcher');
+                        FreshworksWidget('prefill', 'ticketForm', {
+                            custom_fields: {
+                                cf_adres_url: window.location.href
+                            }
+                        });
+                        FreshworksWidget('identify', 'ticketForm', {
+                            name: '{{ request.user.get_full_name|default:request.user.username|escapejs }}',
+                            email: '{{ request.user.email|escapejs }}'
+                        });
+                        FreshworksWidget('open');
+                        widgetOpen = true;
+
+                        var script = document.createElement('script');
+                        script.type = 'text/javascript';
+                        script.async = true;
+                        script.src = $button.data('widget-src');
+                        script.onerror = setError;
+                        document.body.appendChild(script);
+
+                        // Widget gotowy = skrypt Freshworks podmienil stuba.
+                        var started = Date.now();
+                        var timer = setInterval(function() {
+                            if (state !== 'loading') {
+                                clearInterval(timer);
+                            } else if (window.FreshworksWidget !== stub) {
+                                clearInterval(timer);
+                                setReady();
+                            } else if (Date.now() - started > LOAD_TIMEOUT_MS) {
+                                clearInterval(timer);
+                                setError();
+                            }
+                        }, 200);
+                    }
 
                     // Handle custom support button click - toggle widget
-                    $('#bppSupportButton').on('click', function(e) {
+                    $button.on('click', function(e) {
                         e.preventDefault();
-                        if (typeof FreshworksWidget !== 'undefined') {
-                            if (!widgetOpen) {
-                                FreshworksWidget('open');
-                                widgetOpen = true;
-                            } else {
-                                FreshworksWidget('close');
-                                widgetOpen = false;
-                            }
+                        if (state === 'idle') {
+                            loadWidget();
+                        } else if (state === 'loading') {
+                            // Skrypt juz sie laduje - nie wstrzykuj ponownie.
+                            return;
+                        } else if (state === 'error') {
+                            window.open($button.data('fallback-url'), '_blank', 'noopener');
+                        } else if (!widgetOpen) {
+                            FreshworksWidget('open');
+                            widgetOpen = true;
+                        } else {
+                            FreshworksWidget('close');
+                            widgetOpen = false;
                         }
                     });
                 });
