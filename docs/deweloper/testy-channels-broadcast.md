@@ -304,3 +304,56 @@ zweryfikowano, że w env prod-like prefix = `"asgi"` (zgodny z domyślnym
   defense-in-depth (tania, chroni przed ewentualnym rezydualnym
   within-worker pollution session-scoped Daphne między testami tego samego
   workera).
+
+## Druga przyczyna: `force_sync` łatał asyncio globalnie (2026-10-08)
+
+Per-worker prefix zamknął kolizję grup, ale ta rodzina testów padała na CI
+dalej — z innego powodu i z innym objawem (nie „pusty body", a wyjątek):
+
+```
+src/integration_tests/test_bpp_with_notifications.py:161  call_command("send_message", …)
+src/bpp/management/commands/send_message.py:62             send_notification(…)
+channels_broadcast/core.py:88    _send       ← except RuntimeError: force_sync(…)
+channels_broadcast/core.py:57    force_sync  ← asyncio.run(…) po raz drugi
+asyncio/runners.py:191           RuntimeError: asyncio.run() cannot be called from a running event loop
+```
+
+### Mechanizm
+
+`channels_broadcast.core.force_sync` (do wersji 0.3.0) przy trafieniu na
+działającą pętlę wołał `nest_asyncio.apply()`. Ta łatka jest **globalna
+i nieodwracalna dla procesu**: podmienia fabryki zadań i future'ów oraz
+`_run_once` pętli dla każdego późniejszego wywołującego. Wystarczyło, że
+JEDNO wywołanie trafiło na żywą pętlę — a taką trzyma sync-API Playwrighta
+przez całą sesję (patrz komentarz w `src/conftest.py`) — by zatruć resztę
+procesu workera. Do tego gałąź `except RuntimeError` powtarzała dokładnie to
+samo `asyncio.run`, które właśnie padło, więc musiała paść ponownie.
+
+Ten sam mechanizm dał wcześniej inną awarię: zakleszczenie `AsyncToSync` ↔
+`nest_asyncio._run_once`, przy którym shard 5 wisiał do 25-minutowego limitu
+joba (udokumentowane w `src/mcp_server/tests/test_petla_testowa.py`).
+
+Dlatego awaria była nieodtwarzalna lokalnie: wymaga procesu **już zatrutego**
+przez wcześniejsze wywołanie, a nie samej żywej pętli. Cztery próby
+reprodukcji w izolacji — Python 3.12 i 3.13, pod sync-API Playwrighta, także
+w obrazie testowym identycznym z CI — przechodziły poprawnie.
+
+### Fix: 0.3.1, dedykowany wątek zamiast globalnej łatki
+
+`force_sync` nie patchuje już asyncio. Brak pętli w wątku wołającym →
+`asyncio.run` jak dotąd; jest pętla → korutyna idzie do dedykowanego wątku
+z własną, świeżą pętlą. Wzorzec był w BPP już przyjęty, z tym samym
+uzasadnieniem, w `src/django_bpp/tests/test_asgi_notifications.py`.
+
+- PR w pakiecie: `iplweb/django-channels-broadcast#4`, wydany jako 0.3.1.
+- Zależność `nest-asyncio` usunięta z pakietu (nic jej nie używa).
+- Dotyczyło także produkcji, nie tylko testów: `send_notification` wywołane
+  z handlera ASGI leci w wątku z żywą pętlą, czyli tą samą ścieżką.
+
+### Co z `@flaky(reruns=3)`
+
+Obie znane przyczyny są naprawione, więc marker i 2-sekundowe bufory nie mają
+już oparcia w żadnej znanej awarii. Zostawione świadomie — do zdjęcia po
+serii zielonych przebiegów CI na 0.3.1. Dawne opisy w testach („probabilistyczny
+flake ~20%", „miss-rate 80%→20%", odsyłacze do nieistniejącego
+`docs/CHANNELS_BROADCAST_FLAKE.md`) zostały poprawione.

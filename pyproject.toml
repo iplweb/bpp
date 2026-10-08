@@ -158,7 +158,10 @@ dependencies = [
     # fixable, wiec `pip-audit --gate on fixable` na nich pada); 0.5.4 wnosil
     # wczesniejszy fix DoS w format_list_of_tuples.
     "sqlparse>=0.6.0",
-    "django-channels-broadcast>=0.3.0",
+    # 0.3.1 naprawia force_sync: nie łata już asyncio globalnie przez
+    # nest_asyncio (łatka była nieodwracalna dla procesu i zatruwała kolejne
+    # testy w workerze xdista — zakleszczenia i RuntimeError z asyncio.run).
+    "django-channels-broadcast>=0.3.1",
     "django-countdown>=0.4.0",
     "django-formdefaults>=0.6.3",
     # django-pg-baseline: zewnetrzny pakiet zarzadzajacy baseline.sql + monkey-patch
