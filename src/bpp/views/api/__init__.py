@@ -32,9 +32,19 @@ class RokHabilitacjiView(WprowadzanieDanychRequiredMixin, View):
         except Autor.DoesNotExist:
             return HttpResponseNotFound("Autor")
 
-        try:
-            habilitacja = autor.praca_habilitacyjna
-        except Praca_Habilitacyjna.DoesNotExist:
+        # Jawne zapytanie po `objects` (menedżer filtrujący kosz), a NIE po
+        # akcesorze odwrotnym. Wcześniej `autor.praca_habilitacyjna` szło przez
+        # `ReverseOneToOneDescriptor`, ten pyta `_base_manager` — z definicji
+        # NIEprzefiltrowany — i habilitacja z kosza była tą ścieżką nadal
+        # osiągalna, więc trzeba było dokładać ręczny warunek na `deleted_at`.
+        #
+        # Od czasu, gdy `Praca_Habilitacyjna.autor` jest zwykłym `ForeignKey`
+        # (warunkowy unique, faza 03), tamten akcesor już nie istnieje.
+        # `first()` zamiast `get()`, bo unikalność jest teraz pilnowana
+        # warunkowo — a niepowtarzalny jest tylko wiersz ŻYWY, czyli dokładnie
+        # ten, którego `objects` szuka.
+        habilitacja = Praca_Habilitacyjna.objects.filter(autor=autor).first()
+        if habilitacja is None:
             return HttpResponseNotFound("Habilitacja")
 
         return JsonResponse({"rok": habilitacja.rok})

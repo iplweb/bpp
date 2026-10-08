@@ -615,6 +615,11 @@ class Wydawnictwo_ZwarteAdmin(
             "autorzy_set__dyscyplina_naukowa__isnull",
             "autorzy_set__data_oswiadczenia__isnull",
             "autorzy_set__autor__id__exact",
+            # Patrz komentarz w ``Wydawnictwo_CiagleAdmin.lookup_allowed``:
+            # linki BPP dokładają ``autorzy_set__deleted_at__isnull=True``,
+            # żeby JOIN po surowej tabeli ``*_autor`` nie pokazywał
+            # publikacji po skasowanym autorstwie.
+            "autorzy_set__deleted_at__isnull",
         ):
             return True
         return super().lookup_allowed(lookup, value, request)

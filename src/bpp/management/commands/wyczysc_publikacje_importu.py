@@ -286,16 +286,39 @@ class Command(BaseCommand):
             for model in publication_models
         ]
 
+    @staticmethod
+    def _wszystkie_wiersze(model):
+        """Manager widzący RÓWNIEŻ kosz.
+
+        Od fazy 02 soft-delete ``model.objects`` ukrywa wiersze z
+        ``deleted_at``. Ta komenda ma CZYŚCIĆ, a nie chować — pominięcie kosza
+        zostawiłoby publikacje, które operator uznał już za usunięte, a które
+        przy kolejnym imporcie kolidowałyby jako niewidoczne duplikaty.
+        """
+        return getattr(model, "global_objects", model.objects)
+
+    @staticmethod
+    def _skasuj_trwale(queryset):
+        """Kasowanie NIEODWRACALNE, także gdy model jest soft-delete.
+
+        ``QuerySet.delete()`` na modelu soft-delete jest MIĘKKIE — wiersze
+        zostają, a razem z nimi ich dzieci (bo CASCADE nie ma czego kasować).
+        Dla komendy czyszczącej to nie byłoby kasowanie, tylko oznaczanie.
+        """
+        hard = getattr(queryset, "hard_delete", None)
+        return hard() if hard is not None else queryset.delete()
+
     def _delete_publications(self, publication_models, batch_size):
         deleted = {}
         for model in publication_models:
-            pks = list(model.objects.order_by("pk").values_list("pk", flat=True))
+            manager = self._wszystkie_wiersze(model)
+            pks = list(manager.order_by("pk").values_list("pk", flat=True))
             total = len(pks)
             self._progress(f"  - {model._meta.label}: usuwam {total} rekordow")
 
             for start in range(0, total, batch_size):
                 batch = pks[start : start + batch_size]
-                _, details = model.objects.filter(pk__in=batch).delete()
+                _, details = self._skasuj_trwale(manager.filter(pk__in=batch))
                 for model_label, count in details.items():
                     deleted[model_label] = deleted.get(model_label, 0) + count
 
@@ -323,7 +346,7 @@ class Command(BaseCommand):
                 f"    [{index}/{len(grouped_queries)}] {model._meta.label}: "
                 f"usuwam {planned_count}"
             )
-            count, _ = queryset.delete()
+            count, _ = self._skasuj_trwale(queryset)
             results.append(GenericReferenceResult(model._meta.label, "usunieto", count))
         return results
 

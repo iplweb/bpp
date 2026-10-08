@@ -18,6 +18,24 @@ from .analysis import analiza_duplikatow
 logger = logging.getLogger(__name__)
 
 
+class KonfliktScalania(Exception):
+    """Scalania nie da się wykonać z powodu danych, nie z powodu awarii.
+
+    Wydzielone z ``Exception``, żeby ``scal_autora`` mogło odróżnić „operator
+    poprosił o coś sprzecznego" od „coś się zepsuło": to pierwsze wraca jako
+    czytelny komunikat i NIE trafia do Rollbara.
+    """
+
+
+def _w_koszu(obiekt):
+    """``True``, gdy obiekt jest soft-skasowany.
+
+    ``getattr`` z fallbackiem, bo scalanie przechodzi też przez modele spoza
+    soft-delete (jak ``wiersze_do_transferu``).
+    """
+    return getattr(obiekt, "deleted_at", None) is not None
+
+
 def _assign_discipline_if_missing(
     autor_record, glowny_autor, rok, auto_assign_discipline, use_subdiscipline, warnings
 ):
@@ -142,8 +160,18 @@ def _transfer_authorship_record(
     # Store old discipline before any changes
     old_discipline = record.dyscyplina_naukowa
 
-    # CHECK IF MAIN AUTHOR ALREADY HAS THIS PUBLICATION
-    existing = model.objects.filter(
+    # CZY GŁÓWNY AUTOR JUŻ MA TĘ PUBLIKACJĘ — SZUKAMY RAZEM Z KOSZEM.
+    #
+    # Po menedżerze ŻYWYCH kolizja była niewidoczna dokładnie wtedy, gdy
+    # publikacja jest w koszu: wtedy oba autorstwa (głównego i duplikatu) też
+    # tam są. Transfer przechodził i w koszu lądowały DWA wiersze
+    # `(rekord, glowny, typ)` — a warunkowy `wc_autor_uniq_rekord_autor_typ`
+    # obowiązuje wśród ŻYWYCH, więc kolizja wybuchała dopiero przy
+    # `publikacja.restore()`. Kosz stawał się drzwiami jednokierunkowymi:
+    # rekordu nie dało się już z niego wyjąć (dotyczy też wskrzeszania
+    # z importu, `pbn_integrator/kosz.py`).
+    manager = getattr(model, "global_objects", model.objects)
+    existing = manager.filter(
         rekord=record.rekord,
         autor=glowny_autor,
         typ_odpowiedzialnosci=record.typ_odpowiedzialnosci,
@@ -156,6 +184,11 @@ def _transfer_authorship_record(
             f"z typem odpowiedzialności {record.typ_odpowiedzialnosci}. "
             f"Usunięto duplikat."
         )
+        # Wiersz duplikatu zostaje przy duplikacie i znika razem z nim
+        # (`autor_duplikat.delete()` na końcu scalania kaskaduje TWARDO po FK).
+        # Dla wiersza już skasowanego `delete()` odświeża tylko `deleted_at` —
+        # to no-op, ale trzymamy jedną ścieżkę zamiast rozgałęziać na coś,
+        # czego i tak za chwilę nie będzie.
         record.delete()
         return False
 
@@ -212,8 +245,11 @@ def _transfer_authorship_record(
             **log_ctx,
         )
 
-    # Dodaj do kolejki PBN
-    if not skip_pbn and record.rekord:
+    # Dodaj do kolejki PBN — ale NIE rekordu z kosza. Kierunek soft-delete jest
+    # odwrotny: faza 05 ma oświadczenia z PBN WYCOFYWAĆ, a nie wysyłać tam
+    # rzeczy, których w BPP „nie ma". Scalanie kolejkowało wszystko, co
+    # przeniosło, łącznie z rekordami skasowanymi wcześniej przez operatora.
+    if not skip_pbn and record.rekord and not _w_koszu(record.rekord):
         content_type = ContentType.objects.get_for_model(record.rekord)
         PBN_Export_Queue.objects.create(
             content_type=content_type,
@@ -227,22 +263,63 @@ def _transfer_authorship_record(
     return True
 
 
+def wiersze_do_transferu(model, autor_duplikat):
+    """Rekordy duplikatu do przeniesienia — RAZEM Z KOSZEM.
+
+    Scalanie autorów należy do „kategorii B". Gdyby transfer widział tylko
+    żywe wiersze, autorstwa (i prace) soft-skasowane zostałyby przy autorze
+    duplikacie — a ten po scaleniu ma zniknąć. Powstałyby SIEROTY: wiersze
+    w koszu wskazujące na autora, którego już nie ma. W fazie 04 zablokują
+    dodatkowo guard PROTECT, więc problem ujawniłby się dopiero tam —
+    w miejscu niezwiązanym z przyczyną.
+
+    ``getattr`` z fallbackiem, bo ta sama funkcja obsługuje modele
+    soft-delete (publikacje z fazy 02, through-modele z fazy 01) i takie,
+    które nimi nie są.
+    """
+    manager = getattr(model, "global_objects", model.objects)
+    return manager.filter(autor=autor_duplikat)
+
+
 def _transfer_simple_authorship(
-    model, model_label, glowny_autor, autor_duplikat, user, skip_pbn, results
+    model,
+    model_label,
+    glowny_autor,
+    autor_duplikat,
+    user,
+    skip_pbn,
+    results,
+    opis_konfliktu=None,
 ):
     """
     Przenosi proste rekordy autorstwa (Praca_Habilitacyjna / Praca_Doktorska),
     gdzie sam obiekt jest publikacją — przemapowuje autora i kolejkuje do PBN.
+
+    ``opis_konfliktu`` podaje się dla modeli, w których autor może mieć tylko
+    JEDEN żywy wiersz (habilitacja). Wtedy zderzenie dwóch żywych prac jest
+    prawdziwym konfliktem danych i kończy scalanie czytelnym komunikatem,
+    zamiast pozwalać bazie rzucić ``IntegrityError``.
     """
     from pbn_export_queue.models import PBN_Export_Queue
 
-    for praca in model.objects.filter(autor=autor_duplikat):
+    for praca in wiersze_do_transferu(model, autor_duplikat):
+        # Kolizja dotyczy WYŁĄCZNIE wierszy żywych — warunkowy unique
+        # (`deleted_at IS NULL`) nie obejmuje kosza, więc praca skasowana
+        # przechodzi na głównego autora bez przeszkód.
+        if (
+            opis_konfliktu
+            and getattr(praca, "deleted_at", None) is None
+            and model.objects.filter(autor=glowny_autor).exists()
+        ):
+            raise KonfliktScalania(f"Nie można scalić autorów: {opis_konfliktu}.")
+
         # Przemapuj autora
         praca.autor = glowny_autor
         praca.save()
 
-        # Dodaj do kolejki PBN
-        if not skip_pbn:
+        # Dodaj do kolejki PBN — z pominięciem kosza, jak w
+        # `_transfer_authorship_record`.
+        if not skip_pbn and not _w_koszu(praca):
             content_type = ContentType.objects.get_for_model(praca)
             PBN_Export_Queue.objects.create(
                 content_type=content_type,
@@ -304,10 +381,12 @@ def scal_autora(
         ("Wydawnictwo_Zwarte_Autor", Wydawnictwo_Zwarte_Autor, False),
         ("Patent_Autor", Patent_Autor, False),
     ]
-    # Proste publikacje (sam obiekt jest publikacją).
+    # Proste publikacje (sam obiekt jest publikacją). Trzeci element to opis
+    # konfliktu dla modeli z regułą „jeden żywy wiersz na autora"; ``None``
+    # znaczy, że autor może mieć takich prac wiele (doktorat).
     simple_models = [
-        ("Praca_Habilitacyjna", Praca_Habilitacyjna),
-        ("Praca_Doktorska", Praca_Doktorska),
+        ("Praca_Habilitacyjna", Praca_Habilitacyjna, "obaj mają pracę habilitacyjną"),
+        ("Praca_Doktorska", Praca_Doktorska, None),
     ]
 
     try:
@@ -337,7 +416,7 @@ def scal_autora(
 
             # 1-3. Rekordy autorstwa (ciągłe, zwarte, patenty)
             for model_label, model, log_publication in authorship_models:
-                for record in model.objects.filter(autor=autor_duplikat):
+                for record in wiersze_do_transferu(model, autor_duplikat):
                     _transfer_authorship_record(
                         record,
                         glowny_autor,
@@ -352,7 +431,7 @@ def scal_autora(
                     )
 
             # 4-5. Prace doktorskie / habilitacyjne
-            for model_label, model in simple_models:
+            for model_label, model, opis_konfliktu in simple_models:
                 _transfer_simple_authorship(
                     model,
                     model_label,
@@ -361,11 +440,21 @@ def scal_autora(
                     user,
                     skip_pbn,
                     results,
+                    opis_konfliktu=opis_konfliktu,
                 )
 
             autor_duplikat.delete()
 
             return results
+
+    except KonfliktScalania as e:
+        # Sprzeczne dane, nie awaria — operator ma dostać komunikat, którym może
+        # coś zrobić, a Rollbar nie ma dostać szumu. `transaction.atomic` już
+        # wycofał częściowe zmiany.
+        logger.info("Scalanie autorow przerwane konfliktem danych: %s", e)
+        results["success"] = False
+        results["error"] = str(e)
+        return results
 
     except Exception as e:
         traceback.print_exc()

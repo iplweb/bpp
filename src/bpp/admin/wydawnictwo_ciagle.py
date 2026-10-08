@@ -450,6 +450,13 @@ class Wydawnictwo_CiagleAdmin(
             "autorzy_set__dyscyplina_naukowa__isnull",
             "autorzy_set__data_oswiadczenia__isnull",
             "autorzy_set__autor__id__exact",
+            # Lookupy po ``autorzy_set__`` to JOIN po surowej tabeli
+            # ``bpp_wydawnictwo_ciagle_autor`` — manager soft-delete nie jest
+            # pytany. Linki generowane przez BPP (change_form autora,
+            # ekran weryfikacji bazy) dokładają ten predykat, żeby changelist
+            # nie pokazywał publikacji po SKASOWANYM autorstwie. Whitelist
+            # musi go przepuścić, inaczej admin odrzuci własny link.
+            "autorzy_set__deleted_at__isnull",
         ):
             return True
         return super().lookup_allowed(lookup, value, request)

@@ -25,6 +25,7 @@ from django.db.models import Q
 from django.utils.html import strip_tags
 from djangoql.extras import AutocompleteField, ExtrasSchema
 
+from bpp.djangoql_soft_delete import WykluczSkasowaneMixin
 from bpp.models import Charakter_Formalny, Jednostka
 
 
@@ -243,13 +244,16 @@ class RelPickerSchemaMixin:
         return super().get_field_instance(model, field_name)
 
 
-class BppQLSchema(RelPickerSchemaMixin, ExtrasSchema):
+class BppQLSchema(WykluczSkasowaneMixin, RelPickerSchemaMixin, ExtrasSchema):
     """ExtrasSchema (agregaty + części dat) + auto-pickery ``<fk>__rel``.
 
     Wspólny dla widoku „Szukaj zapytaniem" i adminów (``djangoql_schema =
     BppQLSchema``). Mapa modeli jest budowana lazy per-model, więc ten sam
     schemat obsługuje dowolny model (Rekord, Autor, Wydawnictwo_*, Patent,
     Praca_Doktorska/Habilitacyjna, …).
+
+    ``WykluczSkasowaneMixin`` domyślnie odsiewa kosz (soft-delete) —
+    kontrakt „jak zobaczyć kosz" w ``bpp/djangoql_soft_delete.py``.
     """
 
     def excluded(self, model):
@@ -570,7 +574,9 @@ _LLM_HIDDEN_FIELDS_LABELS = {
 }
 
 
-class RekordLLMSchema(DeprecatedAndRestrictedFieldsMixin, ExtrasSchema):
+class RekordLLMSchema(
+    WykluczSkasowaneMixin, DeprecatedAndRestrictedFieldsMixin, ExtrasSchema
+):
     """Schemat dla eksportu opisu DjangoQL do promptu LLM.
 
     Baza ``ExtrasSchema`` (agregaty + części dat), **bez** pickerów
