@@ -1,0 +1,10 @@
+{# Biogram autora. Gdy zdjęcie jest sekcją bezpośrednio poprzedzającą w tej #}
+{# samej kolumnie, biogram je opływa (biogram nie ma `clear`, pozostałe #}
+{# sekcje lewej kolumny mają — patrz _autor-bem.scss). Pusty → nic. #}
+{% if autor.biogram_html %}
+    <div class="author-info-section autor-page__biogram-sekcja">
+        <h3><i class="fi-quote autor-page__icon--mr-sm"></i> Biogram</h3>
+        <div class="autor-page__biogram-tresc">{{ autor.biogram_html|safe }}</div>
+    </div>
+    <div class="shaded-hr-div-small"></div>
+{% endif %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Eksport publikacji autora
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="medium-8 medium-centered columns">
+        <h2>Eksport publikacji autora</h2>
+
+        <div class="callout">
+            <p><strong>Autor:</strong> {{ task.autor }}</p>
+            <p><strong>Format:</strong> {{ task.get_format_display }}</p>
+        </div>
+
+        {# Kontener pollingowy HTMX: dopóki zadanie pending/running, co 2 s #}
+        {# odpytuje status i podmienia własną zawartość partialem _progress. #}
+        <div id="progress-container"
+             hx-get="{% url 'bpp:autor_eksport_status' task.pk %}"
+             hx-trigger="{% if task.status == 'pending' or task.status == 'running' %}every 2s{% endif %}"
+             hx-swap="innerHTML">
+            {% include "browse/eksport_autora/_progress.html" %}
+        </div>
+
+        <p style="margin-top: 1rem;">
+            <a href="{{ task.autor.get_absolute_url }}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrót do strony autora
+            </a>
+        </p>
+    </div>
+</div>
+{% endblock %}

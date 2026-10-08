@@ -1,0 +1,49 @@
+{% if task.status == "pending" %}
+    <div class="callout warning">
+        <h4><span class="fi-clock"></span> Oczekuje na uruchomienie...</h4>
+        <p>Zadanie zostało dodane do kolejki i wkrótce zostanie uruchomione.</p>
+    </div>
+{% elif task.status == "running" %}
+    <div class="callout warning">
+        <h4><span class="fi-loop"></span> Trwa generowanie...</h4>
+        <div class="progress large" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+             aria-valuenow="50">
+            <div class="progress-meter" style="width: 50%">
+                <p class="progress-meter-text">Generowanie pliku...</p>
+            </div>
+        </div>
+    </div>
+{% elif task.status == "completed" %}
+    <div class="callout success">
+        <h4><span class="fi-check"></span> Zakończono!</h4>
+        {% if task.result_file %}
+            <p>Plik {{ task.get_format_display }} został wygenerowany pomyślnie.</p>
+            <p><em>Plik powinien pobrać się automatycznie w tle. Jeżeli tak się nie stało, skorzystaj z poniższego przycisku.</em></p>
+            <a href="{% url 'bpp:autor_eksport_pobierz' task.pk %}" class="button success large"
+               id="download-link">
+                <span class="fi-download"></span> Pobierz plik
+            </a>
+            <script>
+                // Auto-download when task completes
+                (function() {
+                    var downloadLink = document.getElementById('download-link');
+                    if (downloadLink && !window.autoDownloadTriggered) {
+                        window.autoDownloadTriggered = true;
+                        // Small delay to ensure UI is visible first
+                        setTimeout(function() {
+                            window.location.href = downloadLink.href;
+                        }, 500);
+                    }
+                })();
+            </script>
+        {% else %}
+            <p>{{ task.error_message }}</p>
+        {% endif %}
+    </div>
+{% elif task.status == "failed" %}
+    <div class="callout alert">
+        <h4><span class="fi-x"></span> Błąd!</h4>
+        <p>Wystąpił błąd podczas generowania pliku:</p>
+        <pre>{{ task.error_message }}</pre>
+    </div>
+{% endif %}
