@@ -1034,7 +1034,7 @@ YARN_FILE_PATTERNS = {
     "jquery-circle-progress": ["dist/circle-progress.min.js"],
     "select2-foundation-theme": ["dist/select2-foundation-theme.css"],
     "plotly.js": ["dist/plotly.min.js", "dist/plotly-locale-pl.js"],
-    "htmx.org": ["dist/htmx.js"],
+    "htmx.org": ["dist/htmx.min.js"],
     # Wykresy w ewaluacja_optymalizacja (dawniej ładowane z cdn.jsdelivr.net).
     "chart.js": ["dist/chart.umd.min.js"],
     "tone": ["build/Tone.js", "build/Tone.js.map"],

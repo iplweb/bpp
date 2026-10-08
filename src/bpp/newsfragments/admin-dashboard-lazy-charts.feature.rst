@@ -1,0 +1,1 @@
+Panel sterowania admina ładuje wykresy leniwie — dane i biblioteka Plotly pobierają się dopiero, gdy wykres pojawia się na ekranie (z animowanym szkieletem i możliwością ponowienia przy błędzie). Strony admina pokazują się od razu po wczytaniu treści, zamiast czekać na wszystkie zasoby (m.in. zewnętrzny widget wsparcia), a htmx jest ładowany raz, w wersji zminifikowanej.
