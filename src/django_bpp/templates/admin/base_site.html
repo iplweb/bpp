@@ -13,7 +13,7 @@
 
     <!-- HTMX for AJAX functionality -->
     {% load static %}
-    <script src="{% static 'htmx.org/dist/htmx.js' %}"></script>
+    <script src="{% static 'htmx.org/dist/htmx.min.js' %}"></script>
 
     <!-- Anti-FOUC: Hide page until fully loaded -->
     <style>
@@ -23,18 +23,27 @@
         }
     </style>
     <script>
-        // Show page after select2 and all scripts are loaded
+        // Pokaż stronę po DOMContentLoaded — wtedy DOM, CSS i wszystkie
+        // synchroniczne skrypty (w tym handlery jQuery ready inicjujące
+        // select2) są gotowe. NIE czekamy na window.load: ono czeka też na
+        // obrazki, skrypty async (widget Freshworks z zewnętrznego CDN)
+        // i leniwie doładowywane biblioteki (Plotly na dashboardzie), przez
+        // co cały admin wisiał biały, dopóki najwolniejszy zasób nie dojechał.
         (function() {
+            var shown = false;
             function showPage() {
+                if (shown) return;
+                shown = true;
                 document.documentElement.style.setProperty('visibility', 'visible', 'important');
                 document.documentElement.style.setProperty('opacity', '1', 'important');
             }
 
-            // Wait for window.load (all resources including scripts loaded)
-            window.addEventListener('load', function() {
-                // Give select2 extra 100ms to initialize
-                setTimeout(showPage, 100);
+            document.addEventListener('DOMContentLoaded', function() {
+                // Daj select2 chwilę na inicjalizację po jQuery ready
+                setTimeout(showPage, 50);
             });
+            // Siatka bezpieczeństwa, gdyby DOMContentLoaded już minął
+            window.addEventListener('load', showPage);
         })();
     </script>
 {% endblock %}
