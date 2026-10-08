@@ -80,8 +80,8 @@ WebSocket consumer w pakiecie:
 def connect(self):
     user = self.scope.get("user")
     ...
-    self.subscribe()       # group_add → channel_layer
-    self.accept()          # 101 Switching Protocols
+    self.subscribe()  # group_add → channel_layer
+    self.accept()  # 101 Switching Protocols
     Notification.objects.on_connect(self.channels)
 ```
 
@@ -202,7 +202,7 @@ Wnioski:
 def test_bpp_notifications(preauth_asgi_page_per_test: Page):
     ...
     expect(page.locator("body")).not_to_contain_text(s)
-    page.wait_for_timeout(2000)                         # 80% miss → 20%
+    page.wait_for_timeout(2000)  # 80% miss → 20%
     call_command("send_notification", ...)
     page.wait_for_timeout(1000)
     expect(page.locator("body")).to_contain_text(s, timeout=15000)
