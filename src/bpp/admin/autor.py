@@ -3,9 +3,9 @@ from django import forms
 from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.forms.models import BaseInlineFormSet
-from dynamic_admin_columns.mixins import DynamicColumnsMixin
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
+from bpp.admin.helpers.dynamic_columns import BppDynamicColumnsMixin
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok
 from pbn_api.models import Scientist
 
@@ -250,7 +250,7 @@ class AutorAdmin(
     ZapiszZAdnotacjaMixin,
     EksportDanychMixin,
     BaseBppAdminMixin,
-    DynamicColumnsMixin,
+    BppDynamicColumnsMixin,
     admin.ModelAdmin,
 ):
     uczelnia_field_path = "aktualna_jednostka__uczelnia"
