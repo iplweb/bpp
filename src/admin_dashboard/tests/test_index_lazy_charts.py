@@ -27,7 +27,8 @@ def test_admin_index_wykresy_leniwe(admin_client):
     # Plotly nie może blokować <head> — doładowuje go lazy-charts.js.
     assert not re.search(r"<script[^>]+plotly\.min\.js", html)
     assert "data-plotly-src=" in html
-    assert "admin_dashboard/js/lazy-charts.js" in html
+    # Po collectstatic ManifestStorage podaje nazwę z hashem treści.
+    assert re.search(r"admin_dashboard/js/lazy-charts(\.[0-9a-f]+)?\.js", html)
 
     for nazwa in WYKRESY:
         url = reverse(f"admin_dashboard:{nazwa}")
