@@ -91,13 +91,22 @@ def test_live_server(live_server, page: Page):
 @pytest.mark.flaky(reruns=3)
 @pytest.mark.django_db(transaction=True)
 def test_channels_live_server(preauth_asgi_page: Page):
-    # Ten sam probabilistyczny flake (~20% per run) co `test_bpp_notifications`
-    # i `test_bpp_notifications_and_messages`: notyfikacja ginie gdzies miedzy
-    # `send_notification` (`group_send`) a `chat_message` handlerem consumera w
-    # Daphne, mimo udowodnionej subskrypcji WS w fixture
-    # (wait_for_channel_subscription). 2-sekundowy bufor PRZED wyslaniem obniza
-    # miss-rate z ~80% do ~20%, `@flaky(reruns=3)` lapie reszte. Patrz
-    # docs/deweloper/testy-channels-broadcast.md.
+    # Historia flake'ow tej rodziny testow. OBIE znane przyczyny sa naprawione:
+    #
+    # 1. Kolizja nazw grup channel-layer miedzy workerami xdista (wspolny
+    #    namespace w Redisie + stale nazwy grup) — naprawiona per-worker
+    #    prefiksem, patrz `django_bpp.channels_prefix`.
+    # 2. `force_sync` z `channels_broadcast` latal asyncio globalnie przez
+    #    `nest_asyncio.apply()`. Latka byla nieodwracalna dla procesu, wiec
+    #    jedno wywolanie trafiajace na zywa petle zatruwalo workera: stad
+    #    zakleszczenia i `RuntimeError: asyncio.run() cannot be called from a
+    #    running event loop`. Naprawione w django-channels-broadcast 0.3.1.
+    #
+    # Nie ma wiec dzis znanej, NIENAPRAWIONEJ przyczyny gubienia notyfikacji —
+    # dawny opis („probabilistyczny flake ~20%, miss-rate 80%->20%") byl
+    # nieaktualny. `@flaky(reruns=3)` i bufor ponizej zostawiamy do czasu
+    # potwierdzenia serie zielonych przebiegow CI; wtedy mozna je zdjac.
+    # Szczegoly: docs/deweloper/testy-channels-broadcast.md.
     s = "test notyfikacji 123 456"
 
     page = preauth_asgi_page
@@ -121,12 +130,9 @@ def test_channels_live_server(preauth_asgi_page: Page):
 @pytest.mark.django_db(transaction=True)
 def test_bpp_notifications(preauth_asgi_page_per_test: Page):
     """Sprawdz, czy notyfikacje dochodza."""
-    # Probabilistic flake (~20% per run): notyfikacja ginie gdzies miedzy
-    # `channel_layer.group_send` w teście a `chat_message` handlerem w
-    # Daphne consumer'a, mimo że subscription jest udowodniona w fixture
-    # (wait_for_channel_subscription). 2-sekundowy bufor obniza miss-rate
-    # z ~80% do ~20%, `@flaky(reruns=3)` lapie reszte (0.2^4 ≈ 0.16%
-    # combined). Patrz docs/CHANNELS_BROADCAST_FLAKE.md.
+    # Ta sama rodzina co `test_channels_live_server` — powody dawnych flake'ow
+    # i stan ich naprawy opisuje komentarz tam oraz
+    # docs/deweloper/testy-channels-broadcast.md.
     s = "test notyfikacji 123 456"
     page = preauth_asgi_page_per_test
     expect(page.locator("body")).not_to_contain_text(s)
@@ -144,13 +150,15 @@ def test_bpp_notifications(preauth_asgi_page_per_test: Page):
 @pytest.mark.flaky(reruns=3)
 def test_bpp_notifications_and_messages(preauth_asgi_page: Page):
     """Sprawdz, czy notyfikacje dochodza."""
-    # Ten sam probabilistyczny flake co `test_bpp_notifications`: pierwszy
-    # `wait_for_function` czeka na live-push wiadomosci przez WebSocket, ktory
-    # ginie gdzies miedzy `group_send` a `chat_message` handlerem consumera w
-    # Daphne (mimo udowodnionej subskrypcji w fixture). 2-sekundowy bufor PRZED
-    # wyslaniem obniza miss-rate, `@flaky(reruns=3)` lapie reszte. Drugi
-    # assertion (po `page.reload()`) renderuje wiadomosc server-side z bazy,
-    # wiec nie podlega temu zgubowi. Patrz docs/CHANNELS_BROADCAST_FLAKE.md.
+    # Ta sama rodzina co `test_channels_live_server` — powody dawnych flake'ow
+    # i stan ich naprawy opisuje komentarz tam oraz
+    # docs/deweloper/testy-channels-broadcast.md. Ten test padal na CI
+    # najdluzej: `call_command("send_message")` szlo przez `force_sync`, ktore
+    # do 0.3.1 latalo asyncio globalnie.
+    #
+    # Pierwszy `wait_for_function` czeka na live-push przez WebSocket; drugi
+    # (po `page.reload()`) renderuje wiadomosc server-side z bazy, wiec nie
+    # zalezy od transportu WS.
     # (transactional_db dostarcza fixture `preauth_asgi_page`, wiec osobny
     # marker @pytest.mark.django_db jest zbedny.)
     s = "test notyfikacji 123 456 902309093209092"
