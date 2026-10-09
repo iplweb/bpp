@@ -246,11 +246,24 @@ def _get_site_domain(request=None):
     return site_url_for_request(request)
 
 
-def _create_pbn_journal_url(pbn_uid):
-    """Helper function to create PBN journal URL."""
-    if pbn_uid:
-        return f"https://pbn.nauka.gov.pl/-/journal/{pbn_uid}"
-    return ""
+def _create_pbn_journal_url(pbn_uid, uczelnia=None):
+    """Link do źródła w PBN — root z konfiguracji uczelni.
+
+    Adres był wpisany na sztywno (``https://pbn.nauka.gov.pl/-/journal/{uid}``):
+    ignorował ``pbn_api_root`` uczelni (multi-hosted → cudzy PBN) i prowadził
+    pod martwą ścieżkę z czasów sedno-webapp. Teraz składamy kanoniczną postać
+    ``bpp.const.LINK_PBN_DO_ZRODLA``.
+
+    Bez ustalonej uczelni (0 lub >1 w systemie, brak requestu) nie zgadujemy
+    roota — kolumna zostaje pusta, tak jak reszta linków do PBN w systemie.
+    """
+    if not pbn_uid or uczelnia is None:
+        return ""
+    from bpp import const
+
+    return const.LINK_PBN_DO_ZRODLA.format(
+        pbn_api_root=uczelnia.pbn_api_root, pbn_uid_id=pbn_uid
+    )
 
 
 def _format_worksheet_urls(ws, data_rows):
@@ -276,7 +289,7 @@ def _format_worksheet_urls(ws, data_rows):
                 cell.font = Font(color="0000FF", underline="single")
 
 
-def _candidate_zrodlo_row(zrodlo, fallback_nazwa, site_domain):
+def _candidate_zrodlo_row(zrodlo, fallback_nazwa, site_domain, uczelnia=None):
     """Wiersz danych źródła dla eksportu kandydata (na żywo z obiektu Zrodlo)."""
     nazwa = (zrodlo.nazwa if zrodlo else "") or fallback_nazwa or ""
     if not zrodlo:
@@ -288,7 +301,7 @@ def _candidate_zrodlo_row(zrodlo, fallback_nazwa, site_domain):
         zrodlo.issn or "",
         zrodlo.e_issn or "",
         zrodlo.pbn_uid_id or "",
-        _create_pbn_journal_url(zrodlo.pbn_uid_id if zrodlo.pbn_uid_id else None),
+        _create_pbn_journal_url(zrodlo.pbn_uid_id or None, uczelnia),
     ]
 
 
@@ -307,11 +320,19 @@ def export_candidates_to_xlsx(candidates, request=None):
 
     site_domain = _get_site_domain(request)
 
+    from bpp.models import Uczelnia
+
+    # Multi-hosted: link do PBN składamy dla uczelni eksportującego (z hosta
+    # requestu); bez requestu → jedyna-albo-None (kolumna zostaje pusta).
+    uczelnia = Uczelnia.objects.get_for_request(request)
+
     data_rows = []
     for c in candidates:
-        main_row = _candidate_zrodlo_row(c.main_zrodlo, c.main_nazwa, site_domain)
+        main_row = _candidate_zrodlo_row(
+            c.main_zrodlo, c.main_nazwa, site_domain, uczelnia
+        )
         dup_row = _candidate_zrodlo_row(
-            c.duplicate_zrodlo, c.duplicate_nazwa, site_domain
+            c.duplicate_zrodlo, c.duplicate_nazwa, site_domain, uczelnia
         )
         data_rows.append([*main_row, *dup_row, c.confidence_score])
 

@@ -703,10 +703,12 @@ $(document).ready(function() {
                 + ' target="_blank">strona ORCID</a>'
             );
         }
-        if (info.pbn_uid_id) {
+        // Adres PBN składa backend (zna pbn_api_root uczelni z requestu) —
+        // sklejanie go tutaj z literału prowadziło w instalacji multi-hosted
+        // do cudzego, publicznego PBN.
+        if (info.pbn_url) {
             $links.append(
-                '<a href="https://pbn.nauka.gov.pl/core/#/person/view/'
-                + info.pbn_uid_id + '"'
+                '<a href="' + info.pbn_url + '"'
                 + ' target="_blank">strona w PBN</a>'
             );
         }
