@@ -10,7 +10,7 @@ from django.views.generic import ListView
 from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_export_queue.models import PBN_Export_Queue, RodzajBledu
 
-from .mixins import PBNExportQueuePermissionMixin
+from .mixins import PBNExportQueuePermissionMixin, kolejka_dla_requestu
 
 logger = logging.getLogger(__name__)
 
@@ -205,38 +205,34 @@ class BasePBNExportQueueListView(
         # Year filter values (rok_od defaults to 2022)
         context["rok_od"] = self.request.GET.get("rok_od", "2022")
         context["rok_do"] = self.request.GET.get("rok_do", "")
+        # Liczniki tylko dla kolejki uczelni z domeny (jak lista wyżej)
+        kolejka = kolejka_dla_requestu(self.request)
         # Add count of error records for the resend button (exclude wykluczone)
-        context["error_count"] = PBN_Export_Queue.objects.filter(
+        context["error_count"] = kolejka.filter(
             zakonczono_pomyslnie=False, wykluczone=False
         ).count()
         # Add count of waiting records for the resend button
-        context["waiting_count"] = PBN_Export_Queue.objects.filter(
+        context["waiting_count"] = kolejka.filter(
             retry_after_user_authorised=True
         ).count()
         # Add count of never sent records for the wake up button
-        context["never_sent_count"] = PBN_Export_Queue.objects.filter(
+        context["never_sent_count"] = kolejka.filter(
             wysylke_podjeto=None,
             wysylke_zakonczono=None,
         ).count()
         # Add counts for filter buttons
-        context["total_count"] = PBN_Export_Queue.objects.count()
-        context["success_count"] = PBN_Export_Queue.objects.filter(
-            zakonczono_pomyslnie=True
-        ).count()
-        context["pending_count"] = PBN_Export_Queue.objects.filter(
-            zakonczono_pomyslnie=None
-        ).count()
+        context["total_count"] = kolejka.count()
+        context["success_count"] = kolejka.filter(zakonczono_pomyslnie=True).count()
+        context["pending_count"] = kolejka.filter(zakonczono_pomyslnie=None).count()
         # Add count of wykluczone records
-        context["wykluczone_count"] = PBN_Export_Queue.objects.filter(
-            wykluczone=True
-        ).count()
+        context["wykluczone_count"] = kolejka.filter(wykluczone=True).count()
         # Add counts for error type filter buttons (exclude wykluczone)
-        context["error_techniczny_count"] = PBN_Export_Queue.objects.filter(
+        context["error_techniczny_count"] = kolejka.filter(
             zakonczono_pomyslnie=False,
             rodzaj_bledu=RodzajBledu.TECHNICZNY,
             wykluczone=False,
         ).count()
-        context["error_merytoryczny_count"] = PBN_Export_Queue.objects.filter(
+        context["error_merytoryczny_count"] = kolejka.filter(
             zakonczono_pomyslnie=False,
             rodzaj_bledu=RodzajBledu.MERYTORYCZNY,
             wykluczone=False,
