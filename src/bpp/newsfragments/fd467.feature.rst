@@ -1,0 +1,6 @@
+Formularz raportów (autora, jednostki, wydziału, uczelni) ma nowe pole
+"Sortowanie". Obok dotychczasowego porządku (rok malejąco, potem opis
+bibliograficzny) można wybrać uporządkowanie alfabetyczne wg nazwisk autorów —
+przydatne przy spisach do sprawozdań rocznych. Wybór dotyczy także eksportu do
+MS Word i MS Excel. Domyślną wartość pola dla swojej instalacji można ustawić
+w panelu domyślnych wartości formularzy.
