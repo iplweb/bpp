@@ -79,8 +79,9 @@ def tryby_openaccess(db):
     migracja 0480 — czyli oba są w baseline i *zwykle* są w bazie. Test,
     który na tym poprzestaje, mierzy jednak stan zostawiony przez
     poprzednika w shardzie, a nie zawartość migracji: transakcyjny flush
-    truncate'uje tabele, a ``bpp.seed_slowniki`` odtwarza po nim wyłącznie
-    ``RodzajJednostki``. Stąd ``DoesNotExist`` na CI przy zieleni lokalnie.
+    truncate'uje tabele i nic ich potem nie odtwarza — migracja danych leci
+    raz, przy zakładaniu bazy. Stąd ``DoesNotExist`` na CI przy zieleni
+    lokalnie.
 
     Ta fixtura zamyka lukę, którą siostrzane testy w ``test_mapowania.py``
     zamykają przez ``charaktery_formalne`` / ``jezyki``.

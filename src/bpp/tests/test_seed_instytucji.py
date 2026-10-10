@@ -31,14 +31,14 @@ OCZEKIWANE_AKRONIMY = {
 
 
 @pytest.mark.django_db
-def test_seed_zawiera_ncn():
+def test_seed_zawiera_ncn(instytucje_finansujace):
     ncn = Instytucja_Finansujaca.objects.filter(akronim="NCN").first()
     assert ncn is not None
     assert ncn.kraj == "PL"
 
 
 @pytest.mark.django_db
-def test_seed_zawiera_wszystkie_instytucje_z_zakresu():
+def test_seed_zawiera_wszystkie_instytucje_z_zakresu(instytucje_finansujace):
     obecne = set(
         Instytucja_Finansujaca.objects.filter(
             akronim__in=OCZEKIWANE_AKRONIMY
@@ -48,14 +48,14 @@ def test_seed_zawiera_wszystkie_instytucje_z_zakresu():
 
 
 @pytest.mark.django_db
-def test_seed_bez_zmyslonych_identyfikatorow():
+def test_seed_bez_zmyslonych_identyfikatorow(instytucje_finansujace):
     # FundRef ID Crossrefa to sam ciąg cyfr (bez URL-a i bez prefiksu).
     for instytucja in Instytucja_Finansujaca.objects.exclude(fundref_id=""):
         assert instytucja.fundref_id.isdigit(), instytucja.nazwa
 
 
 @pytest.mark.django_db
-def test_seed_ma_poprawne_identyfikatory_ror():
+def test_seed_ma_poprawne_identyfikatory_ror(instytucje_finansujace):
     # ROR ma wbudowaną sumę kontrolną — literówka w przepisanym identyfikatorze
     # jest tu wykrywalna bez odpytywania sieci.
     for instytucja in Instytucja_Finansujaca.objects.exclude(ror_id=""):
@@ -63,7 +63,7 @@ def test_seed_ma_poprawne_identyfikatory_ror():
 
 
 @pytest.mark.django_db
-def test_seed_ma_identyfikatory_dla_calego_zakresu():
+def test_seed_ma_identyfikatory_dla_calego_zakresu(instytucje_finansujace):
     # Każda instytucja z zakresu została potwierdzona w OBU rejestrach —
     # gdyby któraś straciła identyfikator przy edycji seeda, chcemy to
     # zobaczyć tutaj, a nie w harveście OpenAIRE.
@@ -75,7 +75,7 @@ def test_seed_ma_identyfikatory_dla_calego_zakresu():
 
 
 @pytest.mark.django_db
-def test_seed_jest_idempotentny():
+def test_seed_jest_idempotentny(instytucje_finansujace):
     # ``get_or_create`` po ``fundref_id`` — powtórne przejście migracji
     # (np. przy odtwarzaniu bazy z dumpu sprzed baseline'u) nie może
     # zdublować słownika.

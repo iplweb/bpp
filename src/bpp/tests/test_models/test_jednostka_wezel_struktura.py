@@ -18,7 +18,7 @@ from bpp.tests.util import any_jednostka
 
 
 @pytest.fixture
-def wezel(uczelnia, db):
+def wezel(uczelnia, db, rodzaje_jednostek):
     """Węzeł-korzeń w stylu strukturalnym (rodzaj "Wydział")."""
     rodzaj = RodzajJednostki.objects.get(nazwa="Wydział")
     return any_jednostka(

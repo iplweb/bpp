@@ -21,7 +21,7 @@ def test_rodzajjednostki_nazwa_unique():
 
 
 @pytest.mark.django_db
-def test_seed_rodzajow_obecny():
+def test_seed_rodzajow_obecny(rodzaje_jednostek):
     kolo = RodzajJednostki.objects.get(nazwa="Koło naukowe")
     assert kolo.wyklucz_z_rankingu_autorow is True
     assert kolo.pokazuj_jako_odrebna_sekcje is True
@@ -36,7 +36,7 @@ def test_rodzajjednostki_autor_moze_afiliowac_default_true():
 
 
 @pytest.mark.django_db
-def test_seed_wydzial_nie_dopuszcza_afiliacji():
+def test_seed_wydzial_nie_dopuszcza_afiliacji(rodzaje_jednostek):
     """#438: rodzaj „Wydział" domyślnie nie dopuszcza afiliacji autorów —
     afiliacja powinna wskazywać jednostkę podrzędną, nie korzeń-wydział."""
     assert RodzajJednostki.objects.get(nazwa="Wydział").autor_moze_afiliowac is False

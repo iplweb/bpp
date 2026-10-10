@@ -23,7 +23,7 @@ def _form_data(autor, jednostka, rok=2024):
 
 
 @pytest.mark.django_db
-def test_form_odrzuca_jednostke_rodzaju_wydzial(autor, jednostka):
+def test_form_odrzuca_jednostke_rodzaju_wydzial(autor, jednostka, rodzaje_jednostek):
     jednostka.rodzaj = RodzajJednostki.objects.get(nazwa="Wydział")
     jednostka.save()
 
