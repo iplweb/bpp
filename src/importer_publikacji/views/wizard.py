@@ -634,18 +634,25 @@ class AuthorCandidatesModalView(ImporterPermissionMixin, View):
 
 
 class AuthorInfoView(ImporterPermissionMixin, View):
-    """Zwraca JSON z metadanymi autora BPP (pk, slug, orcid, pbn_uid_id)
-    — używane w modalu edycji do aktualizacji linków do admina/BPP/PBN/
-    ORCID po zmianie wybranego autora w select2.
+    """Zwraca JSON z metadanymi autora BPP (pk, slug, orcid, pbn_uid_id,
+    pbn_url) — używane w modalu edycji do aktualizacji linków do admina/BPP/
+    PBN/ORCID po zmianie wybranego autora w select2.
+
+    ``pbn_url`` składa BACKEND (``Autor.link_do_pbn`` z uczelnią z requestu).
+    Wcześniej adres sklejał JavaScript z wpisanego na sztywno
+    ``https://pbn.nauka.gov.pl/core/#/person/view/``, więc w instalacji
+    multi-hosted link prowadził do cudzego (publicznego) PBN. Pusty string,
+    gdy autor nie ma PBN UID albo uczelni nie da się ustalić.
 
     Parameter ``author_id`` to PK ``Autor`` (nie ``ImportedAuthor``).
     """
 
     def get(self, request, session_id, author_id):
         self.get_scoped_or_404(ImportSession, pk=session_id)
-        from bpp.models import Autor
+        from bpp.models import Autor, Uczelnia
 
         autor = get_object_or_404(Autor, pk=author_id)
+        uczelnia = Uczelnia.objects.get_for_request(request)
         return JsonResponse(
             {
                 "pk": autor.pk,
@@ -653,6 +660,7 @@ class AuthorInfoView(ImporterPermissionMixin, View):
                 "display": str(autor),
                 "orcid": autor.orcid or "",
                 "pbn_uid_id": autor.pbn_uid_id or "",
+                "pbn_url": autor.link_do_pbn(uczelnia=uczelnia) or "",
             }
         )
 
