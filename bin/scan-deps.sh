@@ -349,9 +349,24 @@ if $RUN_PIPAUDIT; then
             --quiet -o "$PIPAUDIT_REQ"
     fi
 
-    # Brak whitelisty CVE. Gdyby trzeba bylo wyciszyc znany non-impact
-    # CVE bez fixa, dodaj PIPAUDIT_IGNORE=(--ignore-vuln <ID>) z komentarzem
-    # i zsynchronizuj z .github/workflows/dependency-audit.yml.
+    # Whitelist CVE — MUSI byc zsynchronizowana z
+    # .github/workflows/dependency-audit.yml, inaczej lokalny pre-release
+    # guard i gate CI rozjada sie (jeden przepusci, drugi zablokuje).
+    #
+    # PYSEC-2026-4027 (i jego alias PYSEC-2026-4031) = CVE-2026-77528
+    # w autobahn: permessage-deflate sprawdza maxMessagePayloadSize na
+    # ramce SKOMPRESOWANEJ, wiec skonfigurowany limit da sie obejsc po
+    # dekompresji. U nas bez zastosowania: zadnego limitu nie ustawiamy,
+    # a produkcyjne WebSockety obsluguje uvicorn (gunicorn + UvicornWorker);
+    # daphne, jedyny konsument autobahna, sluzy testom i runserverowi.
+    # Fix istnieje (26.7.1), ale ta wersja ciagnie numpy do KAZDEGO procesu
+    # (+13 MB RSS) — szczegoly przy pinie `autobahn` w pyproject.toml,
+    # zgloszone w crossbario/autobahn-python#1983. Zdjac oba wpisy, gdy
+    # upstream zrobi ten import leniwym.
+    PIPAUDIT_IGNORE=(
+        --ignore-vuln PYSEC-2026-4027
+        --ignore-vuln PYSEC-2026-4031
+    )
     # NIE tłumimy stderr: pip-audit odpytuje serwis podatności PyPI dla
     # każdego z ~270 pakietów (stąd potrafi „wisieć" parę–kilkanaście s) i
     # pokazuje na stderr spinner „Collecting known vulnerabilities…". Raport
@@ -364,6 +379,7 @@ if $RUN_PIPAUDIT; then
         --requirement "$PIPAUDIT_REQ" \
         --disable-pip \
         --no-deps \
+        "${PIPAUDIT_IGNORE[@]}" \
         --format json \
         --output "$PIPAUDIT_REPORT"
     pipaudit_exit=$?
