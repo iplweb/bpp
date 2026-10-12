@@ -596,7 +596,7 @@ requires-dist = [
     { name = "django-cacheops", specifier = ">=7.2,<8" },
     { name = "django-celery-email", specifier = ">=3.0.0" },
     { name = "django-celery-results", specifier = "==2.6.0" },
-    { name = "django-channels-broadcast", specifier = ">=0.3.0" },
+    { name = "django-channels-broadcast", specifier = ">=0.3.1" },
     { name = "django-classy-tags", specifier = "==4.1.0" },
     { name = "django-columns", specifier = "==0.1.0" },
     { name = "django-compressor", specifier = "==4.6.0" },
@@ -1640,17 +1640,16 @@ wheels = [
 
 [[package]]
 name = "django-channels-broadcast"
-version = "0.3.0"
+version = "0.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "asgiref", marker = "platform_python_implementation != 'PyPy'" },
     { name = "channels", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "nest-asyncio", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/50/e0/facb33741759eb54efb5fcff1ca83ead25aece1fa2725b6c0fd6abb6835a/django_channels_broadcast-0.3.0.tar.gz", hash = "sha256:34492908b917bfb01e453def1d07de15ffd7e96f9141b4e4a73fd6ab7d7b63d7", size = 73467, upload-time = "2026-08-07T09:05:59.412Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2d/41/d24ccfc1f2239cdbaeefd54864ab8355c35c5e7d3183d5c24a0bac0ff2de/django_channels_broadcast-0.3.1.tar.gz", hash = "sha256:9cb74b0f4bae57f86be3c03daa7aab7d0a96e14a8dd208065702c3b8108cc2ec", size = 75355, upload-time = "2026-10-08T09:53:24.211Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/49/bf/e9e960cd84218fa9bd7de0ee70f7428930793230a16455b6b93ff3e480ff/django_channels_broadcast-0.3.0-py3-none-any.whl", hash = "sha256:d8afd6b3e1ae77032fa112a98a267a4e676f07c91ce75b5a3c13fd4f5d04a82e", size = 45750, upload-time = "2026-08-07T09:06:00.822Z" },
+    { url = "https://files.pythonhosted.org/packages/8e/51/2d5c364d3313473920d599ee213c53ce2b87f743aabc0c8f3bb0d4ea0ce4/django_channels_broadcast-0.3.1-py3-none-any.whl", hash = "sha256:3f10799edc81c286dec97a9d9e8e4aef151c1ac5e9c948c9a8e7f2c87ec949a1", size = 46305, upload-time = "2026-10-08T09:53:26.43Z" },
 ]
 
 [[package]]
