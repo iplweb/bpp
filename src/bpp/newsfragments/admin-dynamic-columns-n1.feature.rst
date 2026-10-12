@@ -1,0 +1,1 @@
+Listy rekordów w panelu admina (autorzy, wydawnictwa ciągłe i zwarte) czytają konfigurację wybieralnych kolumn raz na wyświetlenie zamiast kilkanaście razy, a pierwsze wyświetlenie w procesie nie odtwarza już układu kolumn zapytaniem na każdą kolumnę (np. lista wydawnictw ciągłych: 132 → 45 zapytań SQL przy pierwszym, 51 → 42 przy kolejnych wyświetleniach).
