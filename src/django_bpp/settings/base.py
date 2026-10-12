@@ -1034,7 +1034,7 @@ YARN_FILE_PATTERNS = {
     "jquery-circle-progress": ["dist/circle-progress.min.js"],
     "select2-foundation-theme": ["dist/select2-foundation-theme.css"],
     "plotly.js": ["dist/plotly.min.js", "dist/plotly-locale-pl.js"],
-    "htmx.org": ["dist/htmx.js"],
+    "htmx.org": ["dist/htmx.min.js"],
     # Wykresy w ewaluacja_optymalizacja (dawniej ładowane z cdn.jsdelivr.net).
     "chart.js": ["dist/chart.umd.min.js"],
     "tone": ["build/Tone.js", "build/Tone.js.map"],
@@ -1081,7 +1081,8 @@ ASGI_APPLICATION = "django_bpp.asgi.application"
 # Channel-layer key prefix (get_channels_prefix imported at top). Production:
 # "asgi" (channels_redis default). Under pytest-xdist: "asgi-test-<worker>" so
 # colliding per-user group names cannot cross-talk between workers sharing one
-# Redis. See django_bpp.channels_prefix and docs/CHANNELS_BROADCAST_FLAKE.md.
+# Redis. See django_bpp.channels_prefix and
+# docs/deweloper/testy-channels-broadcast.md.
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",

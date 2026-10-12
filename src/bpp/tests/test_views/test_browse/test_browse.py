@@ -533,3 +533,41 @@ def test_autorzy_view_original_malicious_string(client, autor):
     )
     response = client.get(f"/bpp/autorzy/?page={malicious_page}")
     assert response.status_code == 444
+
+
+@pytest.mark.django_db
+def test_buildSearch_najnowsze_lista_sortowana_wg_utworzono_malejaco(client):
+    """„Przeglądaj najnowsze prace" (``najnowsze=1``) otwiera multiseek
+    w formacie „lista", posortowany po polu „utworzono" malejąco."""
+    from multiseek.logic import get_ordering_key_name
+
+    from bpp.multiseek_registry import registry
+
+    client.post(reverse("bpp:browse_build_search"), {"najnowsze": "1"})
+
+    data = json.loads(client.session[MULTISEEK_SESSION_KEY])
+
+    report_types = [x.id for x in registry.report_types]
+    assert report_types[int(data["report_type"])] == "list"
+
+    key, key_dir = get_ordering_key_name(0)
+    orderings = [x.field for x in registry.ordering]
+    assert orderings[int(data["ordering"][key])] == "utworzono"
+    assert data["ordering"][key_dir] == "1"
+
+
+@pytest.mark.django_db
+def test_buildSearch_bez_najnowsze_bez_sortowania(client):
+    """Pozostałe przyciski (autor, jednostka, źródło) nie narzucają sortowania
+    ani rodzaju raportu — zostaje domyślne sortowanie rejestru."""
+    client.post(reverse("bpp:browse_build_search"), {"rok": "2013"})
+
+    data = json.loads(client.session[MULTISEEK_SESSION_KEY])
+    assert "ordering" not in data
+    assert "report_type" not in data
+
+
+@pytest.mark.django_db
+def test_uczelnia_przycisk_najnowsze_prace_wysyla_najnowsze(client, uczelnia):
+    res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
+    assert b'name="najnowsze" value="1"' in res.content

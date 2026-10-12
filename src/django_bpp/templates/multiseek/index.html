@@ -36,6 +36,19 @@
 
     <form>
         {% include "multiseek/multiseek_fields.html" %}
+        <script type="text/javascript">
+            {# Formularz z sesji bez żadnego warunku (np. „Przeglądaj najnowsze #}
+            {# prace" przy małej bazie) dawał samą ramkę z przyciskami „dodaj #}
+            {# pole/dodaj ramkę". Dokładamy wtedy domyślne puste pole — tak jak #}
+            {# na świeżym formularzu (initialize_empty_form w multiseeku). #}
+            {# Ten ready() rejestruje się po tym z multiseek_fields.html. #}
+            $(document).ready(function () {
+                {# serialize() zwraca [null, ...warunki] — sam null = brak pól. #}
+                if ($("#frame-0").multiseekFrame("serialize").length === 1) {
+                    $("#frame-0").multiseekFrame("addField");
+                }
+            });
+        </script>
         <div class="grid-x grid-margin-x">
             <div class="large-3 medium-3 cell">
 

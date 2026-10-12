@@ -26,7 +26,7 @@ from django.db.models.query_utils import Q
 from django.http import Http404, HttpResponseForbidden, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect
 from django.views.generic import DetailView, ListView, RedirectView, TemplateView
-from multiseek.logic import AND, OR
+from multiseek.logic import AND, OR, get_ordering_key_name
 from multiseek.util import make_field
 from multiseek.views import MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED
 from siteblog.models import Article
@@ -49,6 +49,7 @@ from bpp.multiseek_registry import (
     WydzialQueryObject,
     ZakresLatQueryObject,
     ZrodloQueryObject,
+    registry,
 )
 from bpp.permissions import moze_wprowadzac_dane
 from bpp.util import sanitize_multiseek_title
@@ -912,7 +913,9 @@ def zrob_box_z_requestu(dct, name, qo):
     return []
 
 
-def zrob_formularz(*args):
+def zrob_formularz(*args, **extra):
+    """Zwraca JSON formularza multiseeka dla sesji. ``extra`` (np. ``ordering``,
+    ``report_type``) trafia obok ``form_data``."""
     ret = [None]
 
     prev_op = None
@@ -928,7 +931,20 @@ def zrob_formularz(*args):
 
         prev_op = AND
 
-    return json.dumps({"form_data": ret})
+    return json.dumps({"form_data": ret, **extra})
+
+
+def ustawienia_najnowszych_prac(request):
+    """Rodzaj raportu „lista" + sortowanie po „utworzono" malejąco — dla
+    przycisku „Przeglądaj najnowsze prace" ze strony głównej. Indeksy liczymy
+    z rejestru (a nie na sztywno), bo lista raportów zależy od requestu."""
+    report_types = [x.id for x in registry.get_report_types(request)]
+    orderings = [x.field for x in registry.ordering]
+    key, key_dir = get_ordering_key_name(0)
+    return {
+        "report_type": str(report_types.index("list")),
+        "ordering": {key: str(orderings.index("utworzono")), key_dir: "1"},
+    }
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -1006,6 +1022,11 @@ class BuildSearch(RedirectView):
             jednostki_nadrzedne_box,
             lata_box,
             zakres_lat_box,
+            **(
+                ustawienia_najnowszych_prac(self.request)
+                if self.request.POST.get("najnowsze")
+                else {}
+            ),
         )
 
         self.request.session["MULTISEEK_TITLE"] = sanitize_multiseek_title(

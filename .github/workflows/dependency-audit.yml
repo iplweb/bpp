@@ -71,15 +71,31 @@ jobs:
           uv export --no-dev --format requirements-txt --no-hashes --quiet \
             -o /tmp/audit/requirements.txt
 
-      # Brak whitelisty CVE: gdy pojawi sie znany non-impact CVE bez
-      # dostepnego fixa, dodaj tu --ignore-vuln <ID> z komentarzem
-      # uzasadniajacym (i zsynchronizuj z bin/scan-deps.sh).
+      # Whitelist CVE — MUSI byc zsynchronizowana z bin/scan-deps.sh
+      # (tam PIPAUDIT_IGNORE), inaczej lokalny pre-release guard i ten gate
+      # rozjada sie: jeden przepusci, drugi zablokuje.
+      #
+      # PYSEC-2026-4027 (i alias PYSEC-2026-4031) = CVE-2026-77528
+      # w autobahn: permessage-deflate sprawdza maxMessagePayloadSize na
+      # ramce SKOMPRESOWANEJ, wiec skonfigurowany limit da sie obejsc po
+      # dekompresji. U nas bez zastosowania — zadnego limitu nie ustawiamy,
+      # a produkcyjne WebSockety obsluguje uvicorn (gunicorn + UvicornWorker);
+      # daphne, jedyny konsument autobahna, sluzy testom i runserverowi.
+      #
+      # Wyjatek od zasady „fix dostepny => bump": fix jest w 26.7.1, ale ta
+      # wersja importuje vendorowane flatbuffers w autobahn/__init__.py,
+      # co ciagnie numpy do KAZDEGO procesu (+13 MB RSS, zmierzone) i lamie
+      # test_lazy_heavy_imports. Pelne uzasadnienie przy pinie `autobahn`
+      # w pyproject.toml; zgloszone w crossbario/autobahn-python#1983.
+      # Zdjac oba wpisy razem z pinem, gdy upstream zrobi import leniwym.
       - name: Run pip-audit (gate on fixable)
         run: |
           uvx --from pip-audit pip-audit \
             --requirement /tmp/audit/requirements.txt \
             --disable-pip \
             --no-deps \
+            --ignore-vuln PYSEC-2026-4027 \
+            --ignore-vuln PYSEC-2026-4031 \
             --format columns
 
       - name: Run pip-audit (JSON full report - non-blocking)
