@@ -170,6 +170,21 @@ class CharakterFormalnyQueryObject(
             nazwa=value.lstrip("-").lstrip(" ")
         ).first()
 
+    def value_to_web(self, value):
+        """Zmapuj zapisaną wartość na DOKŁADNĄ etykietę z listy wyboru.
+
+        Pole jest typu VALUE_LIST — widget multiseeka ustawia ``select.val()``,
+        więc zapisana wartość musi równać się jednej z opcji (``values``), a te
+        są etykietami MPTT z prefiksem poziomu (i wiodącą spacją). Gdy w boxie
+        ląduje samo ``nazwa`` (np. z „klik w charakter" na stronie autora),
+        bez tego mapowania select nie trafia w żadną opcję i pole jest puste —
+        mimo że samo wyszukiwanie działa (``value_from_web`` zdejmuje prefiks).
+        """
+        obj = self.value_from_web(value)
+        if obj is None:
+            return value
+        return self.label_from_instance(obj)
+
     def __init__(self, *args, **kwargs):
         ValueListQueryObject.__init__(self, *args, **kwargs)
 

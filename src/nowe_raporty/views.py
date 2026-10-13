@@ -257,12 +257,23 @@ class RaportFormView(RaportDostepMixin, FormDefaultsMixin, FormView):
         initial = super().get_initial()
         cfg = POZIOMY[self.definicja.poziom]
         if cfg.ma_pk and not initial.get("obiekt"):
-            # #438: liczymy z zawężonego querysetu poziomu (dla „wydziału" =
+            # #438: pracujemy na zawężonym querysecie poziomu (dla „wydziału" =
             # widoczne korzenie), nie ``cfg.model.objects.all()`` — inaczej
             # instalacja z 1 wydziałem, ale wieloma jednostkami, gubiła
             # auto-preselekcję ``obiekt`` (count liczył WSZYSTKIE jednostki).
             queryset = cfg.obiekt_queryset()
-            if queryset.count() == 1:
+
+            # Wstępny wybór z querystringu — np. „Raport szczegółowy" ze
+            # strony autora przekazuje ?obiekt=<pk>, dzięki czemu pole Select2
+            # od razu pokazuje wybrany obiekt (autora/jednostkę/wydział).
+            # Szukamy w ``queryset``, nie w ``cfg.model`` — pk podrzucony w URL
+            # spoza poziomu nie ma prawa przemycić obiektu, którego formularz
+            # i tak by nie przyjął (ta sama zasada co w ``get_object``).
+            pk = self.request.GET.get("obiekt")
+            if pk:
+                initial["obiekt"] = queryset.filter(pk=pk).first()
+
+            if not initial.get("obiekt") and queryset.count() == 1:
                 initial["obiekt"] = queryset.first()
         return initial
 

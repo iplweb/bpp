@@ -1,0 +1,19 @@
+{# Punkty / sloty autora w latach. Oczekuje: dane.wiersze (rekord__rok, pkd, sloty). #}
+<div class="author-info-section autor-page__sekcja">
+    <h3><i class="fi-graph-trend autor-page__icon--mr-sm"></i>{{ nazwa }}</h3>
+    <table class="autor-page__staty">
+        <thead>
+            <tr><th>Rok</th><th>Punkty (PKdAut)</th><th>Sloty</th></tr>
+        </thead>
+        <tbody>
+            {% for w in dane.wiersze %}
+                <tr>
+                    <td>{{ w.rekord__rok }}</td>
+                    <td>{{ w.pkd|floatformat:2 }}</td>
+                    <td>{{ w.sloty|floatformat:4 }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<div class="shaded-hr-div-small"></div>

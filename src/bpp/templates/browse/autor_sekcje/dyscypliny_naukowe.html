@@ -1,0 +1,14 @@
+{# Dyscypliny naukowe (aktualne) — blok tożsamości lewej kolumny. #}
+{# Uwaga: to NIE jest statystyczna sekcja `dyscypliny` (udział dyscyplin). #}
+{% if autor.aktualna_dyscyplina or autor.aktualna_subdyscyplina %}
+    <div class="author-info-section">
+        <h3><i class="fi-book"></i> Dyscypliny naukowe</h3>
+        {% if autor.aktualna_dyscyplina %}
+            <p><strong>Dyscyplina:</strong> {{ autor.aktualna_dyscyplina }}</p>
+        {% endif %}
+        {% if autor.aktualna_subdyscyplina %}
+            <p><strong>Druga dyscyplina:</strong> {{ autor.aktualna_subdyscyplina }}</p>
+        {% endif %}
+    </div>
+    <div class="shaded-hr-div-small"></div>
+{% endif %}
