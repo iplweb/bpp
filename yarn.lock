@@ -3660,10 +3660,10 @@ right-now@^1.0.0:
   resolved "https://registry.yarnpkg.com/right-now/-/right-now-1.0.0.tgz#6e89609deebd7dcdaf8daecc9aea39cf585a0918"
   integrity sha512-DA8+YS+sMIVpbsuKgy+Z67L9Lxb1p05mNxRpDPNksPDEFir4vmBlUtuN9jkTGn9YMMdlBuK7XQgFiz6ws+yhSg==
 
-rollbar@^3.1.0:
-  version "3.1.0"
-  resolved "https://registry.yarnpkg.com/rollbar/-/rollbar-3.1.0.tgz#4eece3ca49359f4bcb7f69df01071623f4b97191"
-  integrity sha512-YELG0MDRzOLnV5sa2vL/IiGEgNoK5JAivKlpjcJewEIqgmiVlEAPFQUNNB3fsK1PZy6VdHpsUd+Xp4qEuAylfQ==
+rollbar@^4.0.0:
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/rollbar/-/rollbar-4.0.0.tgz#60c68639e530bc50ca7ce40e0357906c0b246e66"
+  integrity sha512-DcJ11PTnwuk63ZlcF48TqvfVZVz4k44qdEhhhQEckCd6uvxgnRbbzougvFYpSynIUiisOAVkqshxSlzcxxFBUQ==
   dependencies:
     "@rrweb/record" "^2.0.0-alpha.18"
     async "~3.2.3"
