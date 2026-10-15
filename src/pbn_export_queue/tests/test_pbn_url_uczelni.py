@@ -21,6 +21,8 @@ def dwie_uczelnie(db, settings):
     uczelnia_a.site.domain = "uczelnia-a.example.com"
     uczelnia_a.site.save()
     uczelnia_b = baker.make(Uczelnia, pbn_api_root="https://pbn-b.example.com")
+    uczelnia_b.site.domain = "uczelnia-b.example.com"
+    uczelnia_b.site.save()
     return uczelnia_a, uczelnia_b
 
 
@@ -48,21 +50,24 @@ def _wpis_z_sentdata(uczelnia_wpisu, admin_user):
     return wpis, publication
 
 
-def _context(client, admin_user, wpis):
+def _context(client, admin_user, wpis, host="uczelnia-a.example.com"):
     client.force_login(admin_user)
     url = reverse("pbn_export_queue:export-queue-detail", args=[wpis.pk])
-    resp = client.get(url, HTTP_HOST="uczelnia-a.example.com")
+    resp = client.get(url, HTTP_HOST=host)
     assert resp.status_code == 200
     return resp.context
 
 
 @pytest.mark.django_db
 def test_link_uzywa_pbn_api_root_uczelni_wpisu(client, admin_user, dwie_uczelnie):
-    """Wpis otagowany uczelnią B → link do PBN-roota uczelni B."""
+    """Wpis otagowany uczelnią B → link do PBN-roota uczelni B.
+
+    Kolejka jest zawężona do uczelni z domeny, więc wpis B ogląda się z domeny
+    B (z domeny A byłby 404)."""
     _, uczelnia_b = dwie_uczelnie
     wpis, publication = _wpis_z_sentdata(uczelnia_b, admin_user)
 
-    context = _context(client, admin_user, wpis)
+    context = _context(client, admin_user, wpis, host="uczelnia-b.example.com")
 
     assert context["pbn_publication_url"] == (
         f"https://pbn-b.example.com/core/#/publication/view/{publication.pk}/current"
@@ -73,7 +78,11 @@ def test_link_uzywa_pbn_api_root_uczelni_wpisu(client, admin_user, dwie_uczelnie
 def test_link_bez_tagu_uczelni_bierze_uczelnie_z_hosta(
     client, admin_user, dwie_uczelnie
 ):
-    """Legacy wpis bez uczelni → root uczelni z adresu strony."""
+    """Legacy wpis bez uczelni → root uczelni z adresu strony.
+
+    Wpis ``NULL`` jest widoczny tylko w instalacji z jedną uczelnią (przy
+    kilku nie da się go przypisać i kolejka go ukrywa), stąd usunięcie B."""
+    dwie_uczelnie[1].delete()
     wpis, publication = _wpis_z_sentdata(None, admin_user)
 
     context = _context(client, admin_user, wpis)
