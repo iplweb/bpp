@@ -173,11 +173,19 @@ export function renderujSiec(ctx, data) {
         ctx.container.style.display = "none";
         if (ctx.emptyEl) { ctx.emptyEl.style.display = "block"; }
         if (ctx.notkaEl) { ctx.notkaEl.style.display = "none"; }
+        // Nawigacja jest pozycjonowana absolutnie wzgledem #graf-wrapper.
+        // Po ukryciu plotna wrapper zapada sie do wysokosci akapitu, a panel
+        // (~100 px) wychodzi PONAD niego i nachodzi na komunikat "Brak
+        // powiazan". Przyciski sa przy tym martwe: cy.width() ukrytego
+        // kontenera to 0, wiec przesun() robi panBy({x: 0, y: 0}). Zostawaly
+        // tez w kolejnosci Taba — siedem kontrolek, ktore nic nie robia.
+        if (ctx.nawigacjaEl) { ctx.nawigacjaEl.style.display = "none"; }
         ctx.animujDodawanie = true;
         return;
     }
     ctx.container.style.display = "";
     if (ctx.emptyEl) { ctx.emptyEl.style.display = "none"; }
+    if (ctx.nawigacjaEl) { ctx.nawigacjaEl.style.display = ""; }
 
     const children = {};
     const levelOf = {};

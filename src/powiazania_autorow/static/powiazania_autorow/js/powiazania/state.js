@@ -30,6 +30,7 @@ export function utworzKontekst() {
         container: container,
         emptyEl: document.getElementById("graf-empty"),
         notkaEl: document.getElementById("graf-notka"),
+        nawigacjaEl: document.getElementById("graf-nawigacja"),
         tooltip: document.getElementById("graf-tooltip"),
         panel: document.getElementById("graf-panel"),
         slider: slider,

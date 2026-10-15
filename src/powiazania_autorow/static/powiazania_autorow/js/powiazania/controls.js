@@ -3,6 +3,7 @@
 // źródeł/wydawców, opcje zaawansowane, metryka, układ, wyszukiwarka,
 // odśwież oraz eksport PNG/SVG. Debounce dla żądań sterowanych suwakami.
 import { pobierzPlik } from "./dom.js";
+import { podepnijNawigacje } from "./nawigacja.js";
 import {
     pokazPanelAutora,
     pokazTooltipAutor,
@@ -371,4 +372,11 @@ export function podepnijZdarzenia(ctx) {
     } else if (btnSvg) {
         btnSvg.style.display = "none"; // rozszerzenie SVG nie załadowane
     }
+
+    // --- nawigacja bez przeciagania (2.5.7) i klawiatura (2.1.1) ---
+    // Cale spoiwo DOM -> akcja siedzi w nawigacja.js, zeby dalo sie je
+    // przetestowac bez importowania tego modulu. Bez tego mapowanie
+    // przyciskow bylo nietestowane: zamiana "gora" z "dol" przechodzila
+    // cala suite.
+    podepnijNawigacje(cy);
 }
