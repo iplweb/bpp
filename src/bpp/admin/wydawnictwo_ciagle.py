@@ -3,7 +3,6 @@ from django import forms
 from django.contrib import admin
 from django.forms.utils import flatatt
 from django.utils.safestring import mark_safe
-from dynamic_admin_columns.mixins import DynamicColumnsMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
@@ -19,6 +18,7 @@ from bpp.admin.filters import (
     ZrodloUsunieteWPBNFilter,
 )
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
+from bpp.admin.helpers.dynamic_columns import BppDynamicColumnsMixin
 from bpp.admin.helpers.fieldsets import (
     ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
     DWA_TYTULY,
@@ -284,7 +284,7 @@ class Wydawnictwo_CiagleAdmin(
     AdminCrossrefPBNAPIMixin,
     EksportDanychZFormatowanieMixin,
     ExportActionsMixin,
-    DynamicColumnsMixin,
+    BppDynamicColumnsMixin,
     RestrictDeletionWhenPBNUIDSetMixin,
     admin.ModelAdmin,
 ):

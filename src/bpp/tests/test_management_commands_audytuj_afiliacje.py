@@ -24,7 +24,9 @@ def _zepsuj_afiliacje(wa, jednostka):
 
 
 @pytest.mark.django_db
-def test_audyt_raportuje_bledny_wiersz(wydawnictwo_ciagle, autor_jan_nowak, jednostka):
+def test_audyt_raportuje_bledny_wiersz(
+    wydawnictwo_ciagle, autor_jan_nowak, jednostka, rodzaje_jednostek
+):
     wa = wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka, afiliuje=True)
     _zepsuj_afiliacje(wa, jednostka)
 
@@ -40,7 +42,7 @@ def test_audyt_raportuje_bledny_wiersz(wydawnictwo_ciagle, autor_jan_nowak, jedn
 
 @pytest.mark.django_db
 def test_audyt_z_naprawa_odznacza_afiliuje(
-    wydawnictwo_ciagle, autor_jan_nowak, jednostka
+    wydawnictwo_ciagle, autor_jan_nowak, jednostka, rodzaje_jednostek
 ):
     wa = wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka, afiliuje=True)
     _zepsuj_afiliacje(wa, jednostka)

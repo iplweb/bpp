@@ -2,7 +2,6 @@ from dal import autocomplete
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
-from dynamic_admin_columns.mixins import DynamicColumnsMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
@@ -22,6 +21,7 @@ from bpp.admin.filters import (
 )
 from bpp.admin.helpers import fieldsets
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
+from bpp.admin.helpers.dynamic_columns import BppDynamicColumnsMixin
 from bpp.admin.helpers.widgets import COMMA_DECIMAL_FIELD_OVERRIDE
 from bpp.models import (
     Charakter_Formalny,
@@ -492,7 +492,7 @@ class Wydawnictwo_ZwarteAdmin(
     ExportActionsMixin,
     UzupelniajWstepneDanePoNumerzeZgloszeniaMixin,
     UzupelniajWstepneDanePoCrossRefAPIMixin,
-    DynamicColumnsMixin,
+    BppDynamicColumnsMixin,
     AdminCrossrefAPIMixin,
     AdminCrossrefPBNAPIMixin,
     RestrictDeletionWhenPBNUIDSetMixin,
