@@ -47,10 +47,20 @@ def get_publications_queryset(
 
     # Add annotations if needed (for views displaying counts)
     if with_annotations:
+        # ``autorzy_set__deleted_at__isnull=True`` w OBU licznikach: agregat
+        # po ``autorzy_set`` idzie JOIN-em po SUROWEJ tabeli ``*_autor``,
+        # z pominięciem managera soft-delete. Bez tego predykatu skasowane
+        # autorstwo liczy się do ``liczba_oswiadczen``, a filtr
+        # ``tylko_odpiete`` (liczba_oswiadczen > 0 AND liczba_przypietych = 0)
+        # wskazuje do wycofania z PBN rekordy, na których nie ma już ani
+        # jednego żywego oświadczenia.
         annotations = {
             "liczba_oswiadczen": Count(
                 "autorzy_set__pk",
-                filter=Q(autorzy_set__dyscyplina_naukowa__isnull=False),
+                filter=Q(
+                    autorzy_set__dyscyplina_naukowa__isnull=False,
+                    autorzy_set__deleted_at__isnull=True,
+                ),
                 distinct=True,
             ),
             "liczba_przypietych": Count(
@@ -58,6 +68,7 @@ def get_publications_queryset(
                 filter=Q(
                     autorzy_set__przypieta=True,
                     autorzy_set__dyscyplina_naukowa__isnull=False,
+                    autorzy_set__deleted_at__isnull=True,
                 ),
                 distinct=True,
             ),

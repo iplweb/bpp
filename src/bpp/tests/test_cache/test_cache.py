@@ -194,7 +194,9 @@ def test_wca_delete_cache(wydawnictwo_ciagle_z_dwoma_autorami, denorms):
 
     denorms.flush()
 
-    assert Autorzy.objects.filter_rekord(aca).count() == 0
+    # filter_rekord() oczekuje obiektu Rekord (pk = krotka (ct, object_id)),
+    # nie Wydawnictwo_Ciagle_Autor (pk = zwykły int) — stąd `r`, nie `aca`.
+    assert Autorzy.objects.filter_rekord(r).count() == 0
     assert Rekord.objects.all().count() == 1
 
     r = Rekord.objects.all()[0]

@@ -45,7 +45,7 @@ def _policz(sql, *params):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_migracja_przechodzi_na_bazie_z_duplikatami():
+def test_migracja_przechodzi_na_bazie_z_duplikatami(bez_reinstalacji_denorma):
     uuid_slownika, uuid_dyscypliny = uuid4(), uuid4()
 
     MigrationExecutor(connection).migrate([PRZED])

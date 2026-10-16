@@ -302,10 +302,24 @@ def run_cleanup(opts: CleanupOptions, *, stdin=None, stdout=None):
             total=n_batches,
             disable=opts.disable_progress,
         )
+        # Manager widzący RÓWNIEŻ kosz i kasowanie NIEODWRACALNE — patrz
+        # komentarz niżej. `getattr` zamiast `isinstance`, bo lista modeli
+        # przychodzi z manifestu i miesza modele soft-delete z resztą.
+        manager = getattr(model, "global_objects", model.objects)
+
         for start in pbar:
             chunk = sorted_pks[start : start + opts.batch_size]
             with transaction.atomic():
-                model.objects.filter(pk__in=chunk).delete()
+                qs = manager.filter(pk__in=chunk)
+                # ⚠️ Na modelu soft-delete `QuerySet.delete()` jest MIĘKKIE:
+                # wiersz zostaje. Cleanup danych demo musi kasować trwale,
+                # i to z dwóch powodów. Po pierwsze zostawione publikacje
+                # trzymają FK z PROTECT (np. `Wydawnictwo_Zwarte.wydawca`),
+                # więc kasowanie słowników dalej w manifeście wywala się na
+                # `ProtectedError`. Po drugie „posprzątane" dane demo, które
+                # nadal siedzą w bazie, mijają się z celem komendy.
+                hard = getattr(qs, "hard_delete", None)
+                (hard or qs.delete)()
 
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     applied = opts.manifest.with_suffix(opts.manifest.suffix + f".applied.{ts}")
