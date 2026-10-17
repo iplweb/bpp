@@ -543,8 +543,30 @@ Konfiguracja jest w `[tool.pytest-testcontainers-django]` w `pyproject.toml`.
     jest kolizja z cudzym worktree — to carry-over między Twoimi
     własnymi przebiegami. Reset: `docker rm -f` po tych dwóch nazwach
     (tylko swoich — patrz UWAGA wyżej).
+- **PUŁAPKA `--timeout 90`: zimny start wygląda jak złamana asercja.**
+  Pierwszy przebieg w świeżym worktree płaci jednorazowy koszt zimnego
+  startu — kontener plus pierwsze renderowanie strony (zmierzone: 47 s
+  setupu i 95 s na jednym `client.get("/")`). Test, który przekroczy
+  `--timeout 90` z `pytest.ini`, ląduje w podsumowaniu jako zwykły
+  `FAILED`, więc łatwo wziąć go za regresję w kodzie.
+  - **Zanim ogłosisz regresję — zerknij na `--durations` i powtórz sam
+    test.** Czas ocierający się o 90 s to timeout, nie asercja; kolejny
+    przebieg schodzi do sekund.
+  - Auto-retry tego NIE łapie i nie da się go dopisać bezkarnie.
+    pytest-timeout podnosi `Failed`, a `--only-rerun` dopasowuje regex
+    do stringa `"{TypeName}: {value}"`, czyli tutaj
+    `"Failed: Timeout >90.0s"` — czego na liście w `pytest.ini` nie ma.
+    Dopisanie wzorca włączyłoby reruny, ale pytest-timeout NIE uzbraja
+    timera ponownie przy rerunie (sprawdzone: `sleep(3)` pod
+    `--timeout 1` przechodzi w drugiej próbie), więc zawieszony test
+    przestałby umierać po 90 s i wisiałby do timeoutu całego joba.
+  - Reruny są tu celowo markerowe, nie globalne: `flaky(reruns=1)`
+    dostają wyłącznie testy z fikstur `page`/`admin_page`/`zrodla_page`
+    (`src/fixtures/conftest.py`). Testy jednostkowe nie są ponawiane
+    z rozmysłem — ich niedeterminizm to bug do naprawy.
 - CI (`docker-compose.test.yml`) ma `PYTEST_TESTCONTAINERS_DISABLE=1` —
-  usługi dostarcza tam docker-compose.
+  usługi dostarcza tam docker-compose. Dlatego pułapka zimnego startu
+  dotyczy przebiegów lokalnych, nie CI.
 
 ### Baseline bazy (django-pg-baseline) — refresh po migracjach
 
