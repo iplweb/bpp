@@ -206,6 +206,21 @@ class ImportSession(models.Model):
             "baner nie pokazuje się już dla tej sesji."
         ),
     )
+    # NULL i "" znaczą tu co innego (patrz help_text) — stąd null=True.
+    powrot_do_zgloszen = models.CharField(  # noqa: DJ001
+        "Powrót do listy zgłoszeń",
+        max_length=2000,
+        null=True,
+        blank=True,
+        help_text=(
+            "NULL — import nie zaczął się w module zgłoszeń. Pusty ciąg albo "
+            "querystring filtrów listy — zaczął się tam (przycisk „Użyj "
+            "importera”); ekran końcowy pokazuje wtedy „Wróć do zgłoszeń” "
+            "(FD#482). Osobno od pola zgłoszenia: wiązanie po DOI nie znaczy, "
+            "że operator był w zgłoszeniach, a „Odepnij” nie zmienia tego, "
+            "skąd przyszedł."
+        ),
+    )
 
     created = models.DateTimeField("utworzono", auto_now_add=True)
     modified = models.DateTimeField("zmodyfikowano", auto_now=True)

@@ -68,6 +68,15 @@ class FetchForm(forms.Form):
         max_value=2147483647,
         widget=forms.HiddenInput,
     )
+    # Filtry listy zgłoszeń, z której operator kliknął „Użyj importera" —
+    # po imporcie przycisk „Wróć do zgłoszeń" wraca do tej samej listy
+    # (FD#482). Bez ``max_length``: to pole nie może zablokować importu,
+    # za długą wartość odrzuca ``normalizuj_filtry_listy_zgloszen``.
+    zgloszenia_filtry = forms.CharField(
+        required=False,
+        strip=False,
+        widget=forms.HiddenInput,
+    )
 
     def __init__(self, *args, **kwargs):
         last_provider = kwargs.pop("last_provider", None)
