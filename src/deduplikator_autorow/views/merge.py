@@ -14,7 +14,7 @@ from django.shortcuts import redirect
 from django.views.decorators.http import require_http_methods
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
-from bpp.models import Autor
+from bpp.models import Autor, Uczelnia
 from bpp.models.cache import Rekord
 
 from ..models import DuplicateCandidate
@@ -96,6 +96,9 @@ def scal_autorow_view(request):
             skip_pbn=skip_pbn,
             auto_assign_discipline=auto_assign_discipline,
             use_subdiscipline=use_subdiscipline,
+            # Multi-hosted: wpisy kolejki PBN niosą uczelnię z requestu,
+            # inaczej wysyłka w tle nie wie, do którego PBN-a wysłać (#5359).
+            uczelnia=Uczelnia.objects.get_for_request(request),
         )
 
         # Mark candidate as merged if provided
