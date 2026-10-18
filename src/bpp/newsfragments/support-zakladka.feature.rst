@@ -1,0 +1,1 @@
+Przycisk „Support BPP" w adminie i na stronie publicznej jest teraz pionową zakładką na prawej krawędzi ekranu i nie zasłania już przycisków na dole strony. Zakładkę można przeciągnąć w górę lub w dół (pozycja jest zapamiętywana), a formularz zgłoszenia otwiera też klawisz „?" naciśnięty poza polem tekstowym. Na stronie publicznej widget wsparcia ładuje się dopiero po kliknięciu.

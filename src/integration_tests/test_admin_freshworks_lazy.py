@@ -163,3 +163,114 @@ def test_freshworks_widget_blad_ladowania(freshworks_live_server, admin_page: Pa
     assert len(requests) == 1
     assert "support.iplweb.pl" in button.get_attribute("title")
     assert "is-loading" not in button.get_attribute("class")
+
+
+# --- Zakładka na prawej krawędzi: pozycja, przeciąganie, skrót „?" ---------
+
+CHANGE_FORM_URL = "/admin/bpp/zrodlo/add/"
+
+
+def _open(page: Page, server, url=ADMIN_URL):
+    page.goto(server.url + url)
+    wait_for_page_load(page)
+
+
+def _drag_tab(page: Page, dy):
+    box = page.locator("#bppSupportButton").bounding_box()
+    x = box["x"] + box["width"] / 2
+    y = box["y"] + box["height"] / 2
+    page.mouse.move(x, y)
+    page.mouse.down()
+    page.mouse.move(x, y + dy, steps=10)
+    page.mouse.up()
+
+
+def test_zakladka_przy_prawej_krawedzi_nie_zaslania_stopki(
+    freshworks_live_server, admin_page: Page
+):
+    _track_freshworks(admin_page)
+    admin_page.set_viewport_size({"width": 1280, "height": 600})
+    _open(admin_page, freshworks_live_server, CHANGE_FORM_URL)
+
+    tab = admin_page.locator("#bppSupportButton")
+    footer = admin_page.locator("footer.grp-fixed-footer")
+    assert footer.is_visible()
+
+    viewport_width = admin_page.evaluate("document.documentElement.clientWidth")
+    tab_box = tab.bounding_box()
+    assert tab_box["x"] + tab_box["width"] == pytest.approx(viewport_width, abs=1)
+
+    # Nawet zaciągnięta maksymalnie w dół zostaje nad stopką z przyciskami.
+    _drag_tab(admin_page, 2000)
+    tab_box = tab.bounding_box()
+    assert tab_box["y"] + tab_box["height"] <= footer.bounding_box()["y"]
+
+
+def test_przeciagniecie_zakladki_nie_otwiera_widgetu_i_jest_zapamietane(
+    freshworks_live_server, admin_page: Page
+):
+    requests = _track_freshworks(admin_page)
+    admin_page.set_viewport_size({"width": 1280, "height": 800})
+    _open(admin_page, freshworks_live_server)
+
+    tab = admin_page.locator("#bppSupportButton")
+    before = tab.bounding_box()["y"]
+    _drag_tab(admin_page, -150)
+    after = tab.bounding_box()["y"]
+    assert after == pytest.approx(before - 150, abs=2)
+
+    assert requests == []
+    assert _calls(admin_page) == []
+
+    # Pozycja przeżywa przeładowanie strony.
+    admin_page.reload()
+    wait_for_page_load(admin_page)
+    assert tab.bounding_box()["y"] == pytest.approx(after, abs=2)
+
+    # Zwykłe kliknięcie po przeciągnięciu nadal otwiera widget.
+    tab.click()
+    admin_page.wait_for_function("() => (window.__fwCalls || []).length >= 4")
+    assert len(requests) == 1
+
+
+def test_skrot_pytajnik_nie_dziala_w_polu_tekstowym(
+    freshworks_live_server, admin_page: Page
+):
+    requests = _track_freshworks(admin_page)
+    _open(admin_page, freshworks_live_server, CHANGE_FORM_URL)
+
+    field = admin_page.locator("#id_nazwa")
+    field.click()
+    admin_page.keyboard.type("Co?")
+    assert field.input_value() == "Co?"
+    assert requests == []
+
+    # Poza polem tekstowym „?" otwiera widget.
+    admin_page.evaluate("() => document.activeElement.blur()")
+    admin_page.keyboard.press("?")
+    admin_page.wait_for_function("() => (window.__fwCalls || []).length >= 4")
+    assert len(requests) == 1
+    assert [c[0] for c in _calls(admin_page)] == [
+        "hide",
+        "prefill",
+        "identify",
+        "open",
+    ]
+
+
+def test_zakladka_na_stronie_publicznej_laduje_widget_leniwie(
+    freshworks_live_server, admin_page: Page, uczelnia
+):
+    requests = _track_freshworks(admin_page)
+    _open(admin_page, freshworks_live_server, "/")
+    admin_page.wait_for_load_state("networkidle")
+
+    tab = admin_page.locator("#bppSupportButton")
+    assert tab.is_visible()
+    assert requests == []
+
+    tab.click()
+    admin_page.wait_for_function("() => (window.__fwCalls || []).length >= 4")
+    assert len(requests) == 1
+    calls = _calls(admin_page)
+    assert calls[2][2]["email"] == admin_page.authorized_user.email
