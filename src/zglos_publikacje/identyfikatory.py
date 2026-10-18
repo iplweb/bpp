@@ -19,8 +19,11 @@ import idutils
 # DOI, a do niego nie należą.
 _OGONY = ".,;"
 
-_PMID_RE = re.compile(r"^pmid\s*:?\s*(\d+)$", re.IGNORECASE)
-_PMCID_RE = re.compile(r"^(?:pmcid\s*:?\s*)?(pmc\d+)$", re.IGNORECASE)
+# Separator po prefiksie to JEDNA klasa ``[\s:]*``, nie ``\s*:?\s*`` — przy
+# dwóch sąsiednich ``\s*`` ciąg spacji bez cyfry na końcu daje backtracking
+# wielomianowy (ReDoS na danych z publicznego formularza).
+_PMID_RE = re.compile(r"^pmid[\s:]*(\d+)$", re.IGNORECASE)
+_PMCID_RE = re.compile(r"^(?:pmcid[\s:]*)?(pmc\d+)$", re.IGNORECASE)
 _ARXIV_RE = re.compile(r"^arxiv\s*:\s*(\S+)$", re.IGNORECASE)
 
 

@@ -5,6 +5,8 @@ Klient wkleja DOI bez ``https://`` (``10.xxxx/…``, ``doi:10.xxxx/…``,
 rozpoznać identyfikator (jak „różdżka" Zotero) i zapisać kanoniczny URL.
 """
 
+import time
+
 import pytest
 from model_bakery import baker
 
@@ -64,6 +66,15 @@ def test_repro_fd480_inne_identyfikatory(wpisane, oczekiwane):
 )
 def test_repro_fd480_reszta_bez_zmian(wpisane):
     assert normalizuj_identyfikator(wpisane) == wpisane
+
+
+@pytest.mark.parametrize("prefiks", ["pmid", "pmcid", "arxiv"])
+def test_repro_fd480_brak_redos(prefiks):
+    """Długi ciąg spacji po prefiksie nie może dławić regexu (CodeQL)."""
+    zlosliwe = prefiks + " " * 50_000 + "x"
+    start = time.perf_counter()
+    assert normalizuj_identyfikator(zlosliwe) == zlosliwe
+    assert time.perf_counter() - start < 1
 
 
 def _form(strona_www):
