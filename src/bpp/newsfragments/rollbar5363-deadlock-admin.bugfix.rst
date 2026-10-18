@@ -1,0 +1,1 @@
+Zapis wydawnictwa ciągłego, zwartego lub patentu w module redagowania nie kończy się już sporadycznie zakleszczeniem bazy danych (deadlock) z równoległym przeliczaniem punktów dla dyscyplin w tle — edytowany rekord jest blokowany na początku zapisu, zanim zmienione zostaną tabele punktacji.

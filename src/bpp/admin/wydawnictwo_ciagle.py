@@ -33,7 +33,10 @@ from bpp.admin.helpers.fieldsets import (
     PRZED_PO_LISCIE_AUTOROW_FIELDSET,
     AdnotacjeZDatamiOrazPBNMixin,
 )
-from bpp.admin.helpers.mixins import DomyslnyStatusKorektyMixin
+from bpp.admin.helpers.mixins import (
+    BlokujRekordPrzedZapisemMixin,
+    DomyslnyStatusKorektyMixin,
+)
 from bpp.admin.helpers.pbn_api.gui import sprobuj_policzyc_sloty
 from bpp.admin.helpers.widgets import (
     COMMA_DECIMAL_FIELD_OVERRIDE,
@@ -271,6 +274,7 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
 
 
 class Wydawnictwo_CiagleAdmin(
+    BlokujRekordPrzedZapisemMixin,
     DSpaceLinkAdminMixin,
     ConstanceScoringFieldsMixin,
     BppDjangoQLSearchMixin,
