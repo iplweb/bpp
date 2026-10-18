@@ -469,7 +469,8 @@ dependencies = [
     { name = "djangorestframework", marker = "platform_python_implementation != 'PyPy'" },
     { name = "dspace-rest-client", marker = "platform_python_implementation != 'PyPy'" },
     { name = "gunicorn", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "isbnlib", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "idutils", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "isbnlib2", marker = "platform_python_implementation != 'PyPy'" },
     { name = "langdetect", marker = "platform_python_implementation != 'PyPy'" },
     { name = "markdown", marker = "platform_python_implementation != 'PyPy'" },
     { name = "moai-iplweb", marker = "platform_python_implementation != 'PyPy'" },
@@ -656,7 +657,8 @@ requires-dist = [
     { name = "djangorestframework", specifier = "==3.18.0" },
     { name = "dspace-rest-client", specifier = ">=0.1.12" },
     { name = "gunicorn", specifier = ">=26.2.0" },
-    { name = "isbnlib", specifier = ">=3.10.14" },
+    { name = "idutils", specifier = ">=1.7.0" },
+    { name = "isbnlib2", specifier = ">=3.11.24" },
     { name = "langdetect", specifier = ">=1.0.9" },
     { name = "markdown", specifier = ">=3.7,<4" },
     { name = "moai-iplweb", specifier = ">=2.0.4" },
@@ -3049,6 +3051,18 @@ wheels = [
 ]
 
 [[package]]
+name = "idutils"
+version = "1.7.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "isbnlib2", marker = "platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/55/93/2a3357012f4abc1b3e9740af52e15cbb74ab139c8425311c4957491942b7/idutils-1.7.0.tar.gz", hash = "sha256:848702d9b953a34ba597ac9fd04823fa2ace9dafda3924e91bcf349223cd7442", size = 17933, upload-time = "2026-07-16T13:03:35.373Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/20/1f/c49c4729feead2d0f32d8261418293fa04138184a2af9b650fddbdfebaa3/idutils-1.7.0-py3-none-any.whl", hash = "sha256:2fb2dc5117c58a71261cbc724aa97c770b0f1540c01e671de7c5be66ad015422", size = 22196, upload-time = "2026-07-16T13:03:34.424Z" },
+]
+
+[[package]]
 name = "immutabledict"
 version = "4.2.2"
 source = { registry = "https://pypi.org/simple" }
@@ -3134,12 +3148,12 @@ wheels = [
 ]
 
 [[package]]
-name = "isbnlib"
-version = "3.10.14"
+name = "isbnlib2"
+version = "3.11.24"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/9e/6d/55b9ee89fdfb3aacb92b975a60357c7aa547db358817e16be3b6f8f5d781/isbnlib-3.10.14.tar.gz", hash = "sha256:96f90864c77b01f55fa11e5bfca9fd909501d9842f3bc710d4eab85195d90539", size = 48046, upload-time = "2023-04-26T08:53:05.486Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b3/63/3d3394634d9e14b1dfbc4d5c1ba9733c1018083cabad65f51636063f85d5/isbnlib2-3.11.24.tar.gz", hash = "sha256:d13dbb147779c975f42bd69c10715111a353d66cb720a858009101b8638f6ee7", size = 57312, upload-time = "2026-09-19T13:55:29.751Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/dd/ce/1eb1e2afaca49add3185e202ce9c2c6d5779b7eecb20973e43ad804eb2a4/isbnlib-3.10.14-py2.py3-none-any.whl", hash = "sha256:f885b350fc8e600a919ed46e3b07253062cd604af69885455a25a299217b3fe2", size = 52535, upload-time = "2023-04-26T08:53:03.024Z" },
+    { url = "https://files.pythonhosted.org/packages/0a/3b/69dfdc1990f6c154b101b656aa662b1f2890511e849fd060976d7e02b6f2/isbnlib2-3.11.24-py3-none-any.whl", hash = "sha256:bb49dffb55b112de3800cbbdf9a484592e2a1033c0d126a73f52db98ecbd69c9", size = 68239, upload-time = "2026-09-19T13:55:28.201Z" },
 ]
 
 [[package]]
