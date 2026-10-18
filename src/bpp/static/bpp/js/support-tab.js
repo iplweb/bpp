@@ -173,10 +173,18 @@
         }
 
         var position = readStoredPosition();
-        placeFromFraction(position);
-        window.addEventListener("resize", function () {
+        function reposition() {
             placeFromFraction(position);
-        });
+        }
+
+        reposition();
+        window.addEventListener("resize", reposition);
+        // W adminie arkusze CSS sa dolaczane PO zakladce (blok footer), wiec
+        // przy starcie skryptu wysokosc zakladki moze byc jeszcze bez stylow.
+        // Po zaladowaniu strony przelicz pozycje z prawdziwa wysokoscia.
+        if (document.readyState !== "complete") {
+            window.addEventListener("load", reposition);
+        }
 
         // --- Przeciaganie --------------------------------------------------
 

@@ -173,6 +173,30 @@ CHANGE_FORM_URL = "/admin/bpp/zrodlo/add/"
 def _open(page: Page, server, url=ADMIN_URL):
     page.goto(server.url + url)
     wait_for_page_load(page)
+    # Arkusze CSS admina są w bloku footer — zakładka musi już być
+    # wystylowana (position: fixed), zanim zaczniemy ją przeciągać.
+    page.wait_for_load_state("load")
+    page.wait_for_function(
+        "() => getComputedStyle(document.querySelector('#bppSupportButton'))"
+        "  .position === 'fixed'"
+    )
+
+
+def _tab_diag(page: Page):
+    return page.evaluate(
+        """() => {
+            const b = document.querySelector('#bppSupportButton');
+            const r = b.getBoundingClientRect();
+            const hit = document.elementFromPoint(
+                r.left + r.width / 2, r.top + r.height / 2);
+            return {
+                rect: [r.left, r.top, r.width, r.height],
+                styleTop: b.style.top,
+                position: getComputedStyle(b).position,
+                hit: hit && hit.outerHTML.slice(0, 120),
+            };
+        }"""
+    )
 
 
 def _drag_tab(page: Page, dy):
@@ -217,7 +241,7 @@ def test_przeciagniecie_zakladki_nie_otwiera_widgetu_i_jest_zapamietane(
     before = tab.bounding_box()["y"]
     _drag_tab(admin_page, -150)
     after = tab.bounding_box()["y"]
-    assert after == pytest.approx(before - 150, abs=2)
+    assert after == pytest.approx(before - 150, abs=2), _tab_diag(admin_page)
 
     assert requests == []
     assert _calls(admin_page) == []
