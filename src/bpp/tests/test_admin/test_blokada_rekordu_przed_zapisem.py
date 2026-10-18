@@ -5,9 +5,11 @@ ZANIM dotknie tabel ``bpp_cache_punktacja_*`` -- tak samo jak flush denorm.
 """
 
 import pytest
+from django.contrib.contenttypes.models import ContentType
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from model_bakery import baker
 
 from bpp.models.cache.punktacja import (
     Cache_Punktacja_Autora,
@@ -67,6 +69,19 @@ def test_admin_change_blokuje_rekord_przed_cache_punktacji(
 ):
     obj = request.getfixturevalue(fixture_name)
     db_table = type(obj)._meta.db_table
+
+    # Zasiej wiersze cache dla rekordu: removeEntries() musi je realnie
+    # skasować (pusty .delete() przez Collector kończy się na SELECT, bez
+    # DELETE) -- inaczej test kolejności blokad przeszedłby „na pusto".
+    rekord_id = [ContentType.objects.get_for_model(obj).pk, obj.pk]
+    baker.make(
+        Cache_Punktacja_Dyscypliny,
+        rekord_id=rekord_id,
+        uczelnia=uczelnia,
+        pkd=1,
+        slot=1,
+    )
+    baker.make(Cache_Punktacja_Autora, rekord_id=rekord_id, pkdaut=1, slot=1)
 
     page = admin_app.get(reverse(url_name, args=(obj.pk,)))
     form = page.forms[form_id]
