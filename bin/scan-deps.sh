@@ -366,6 +366,11 @@ if $RUN_PIPAUDIT; then
     PIPAUDIT_IGNORE=(
         --ignore-vuln PYSEC-2026-4027
         --ignore-vuln PYSEC-2026-4031
+        # CVE-2026-106454 / GHSA-8pqf-f4m5-798g: ReDoS w serwerze IMAP
+        # twisted (twisted.mail.imap4) — nie uzywamy IMAP na twisted, a fixu
+        # nie ma w zadnym wydaniu. Uzasadnienie w dependency-audit.yml.
+        --ignore-vuln CVE-2026-106454
+        --ignore-vuln GHSA-8pqf-f4m5-798g
     )
     # NIE tłumimy stderr: pip-audit odpytuje serwis podatności PyPI dla
     # każdego z ~270 pakietów (stąd potrafi „wisieć" parę–kilkanaście s) i
