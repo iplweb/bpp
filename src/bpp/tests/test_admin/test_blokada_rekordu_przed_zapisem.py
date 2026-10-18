@@ -5,11 +5,9 @@ ZANIM dotknie tabel ``bpp_cache_punktacja_*`` -- tak samo jak flush denorm.
 """
 
 import pytest
-from django.contrib.contenttypes.models import ContentType
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
-from model_bakery import baker
 
 from bpp.models.cache.punktacja import (
     Cache_Punktacja_Autora,
@@ -43,48 +41,24 @@ def _indeksy_cache(queries, tylko_zapis=False):
 
 
 @pytest.mark.parametrize(
-    "fixture_name,url_name,form_id",
-    [
-        (
-            "wydawnictwo_ciagle_z_autorem",
-            "admin:bpp_wydawnictwo_ciagle_change",
-            "wydawnictwo_ciagle_form",
-        ),
-        (
-            "wydawnictwo_zwarte_z_autorem",
-            "admin:bpp_wydawnictwo_zwarte_change",
-            "wydawnictwo_zwarte_form",
-        ),
-        ("patent", "admin:bpp_patent_change", "patent_form"),
-    ],
+    "rekord_z_dyscyplinami",
+    ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"],
+    indirect=True,
 )
 def test_admin_change_blokuje_rekord_przed_cache_punktacji(
-    request,
-    admin_app,
-    uczelnia,
-    charaktery_formalne,
-    fixture_name,
-    url_name,
-    form_id,
+    rekord_z_dyscyplinami, admin_app, uczelnia
 ):
-    obj = request.getfixturevalue(fixture_name)
+    # Rekord z autorami w dyscyplinach, dla którego sloty DAJĄ się policzyć:
+    # od odroczenia ``cached_punkty_dyscyplin`` (``OdroczPunktyDyscyplinMixin``)
+    # cache w trakcie requestu przebudowuje wyłącznie ``save_related`` -- i to
+    # tylko dla rekordów adaptowalnych. Na rekordzie nieadaptowalnym test
+    # kolejności blokad przeszedłby „na pusto".
+    obj = rekord_z_dyscyplinami
+    nazwa = obj._meta.model_name
     db_table = type(obj)._meta.db_table
 
-    # Zasiej wiersze cache dla rekordu: removeEntries() musi je realnie
-    # skasować (pusty .delete() przez Collector kończy się na SELECT, bez
-    # DELETE) -- inaczej test kolejności blokad przeszedłby „na pusto".
-    rekord_id = [ContentType.objects.get_for_model(obj).pk, obj.pk]
-    baker.make(
-        Cache_Punktacja_Dyscypliny,
-        rekord_id=rekord_id,
-        uczelnia=uczelnia,
-        pkd=1,
-        slot=1,
-    )
-    baker.make(Cache_Punktacja_Autora, rekord_id=rekord_id, pkdaut=1, slot=1)
-
-    page = admin_app.get(reverse(url_name, args=(obj.pk,)))
-    form = page.forms[form_id]
+    page = admin_app.get(reverse(f"admin:bpp_{nazwa}_change", args=(obj.pk,)))
+    form = page.forms[f"{nazwa}_form"]
     form["tytul_oryginalny"].value = "Zmieniony tytuł"
 
     with CaptureQueriesContext(connection) as ctx:
@@ -98,13 +72,6 @@ def test_admin_change_blokuje_rekord_przed_cache_punktacji(
     blokada = _indeks_blokady(queries, db_table)
     assert blokada is not None, "brak SELECT ... FOR UPDATE na rekordzie"
 
-    zapisy_cache = _indeksy_cache(queries, tylko_zapis=True)
-    # Test nie może przejść „na pusto" -- zapis z admina MUSI ruszyć cache.
-    assert zapisy_cache, "zapis nie dotknął bpp_cache_punktacja_*"
-
-    wszystkie_cache = _indeksy_cache(queries)
-    assert blokada < min(wszystkie_cache)
-
     # Blokada musi być w ogóle przed jakimkolwiek UPDATE rekordu.
     update_rekordu = [
         i
@@ -113,6 +80,21 @@ def test_admin_change_blokuje_rekord_przed_cache_punktacji(
     ]
     assert update_rekordu
     assert blokada < min(update_rekordu)
+
+    zapisy_cache = _indeksy_cache(queries, tylko_zapis=True)
+    if nazwa == "patent":
+        # Patent nie jest adaptowalny: save_related nie rusza cache, a pre_save
+        # denorma jest odroczony -- request nie pisze do cache wcale.
+        assert not zapisy_cache
+        return
+
+    # Test nie może przejść „na pusto" -- zapis z admina MUSI ruszyć cache.
+    assert zapisy_cache, "zapis nie dotknął bpp_cache_punktacja_*"
+
+    wszystkie_cache = _indeksy_cache(queries)
+    assert blokada < min(wszystkie_cache)
+    # Cache przebudowany PO zapisie rodzica (save_related), nie w pre_save.
+    assert min(zapisy_cache) > min(update_rekordu)
 
 
 def test_admin_add_nie_blokuje(admin_app, uczelnia, charaktery_formalne):

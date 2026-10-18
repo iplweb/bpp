@@ -61,6 +61,7 @@ from .helpers import (
 from .helpers.constance_field_mixin import ConstanceScoringFieldsMixin
 from .helpers.mixins import (
     BlokujRekordPrzedZapisemMixin,
+    OdroczPunktyDyscyplinMixin,
     OptionalPBNSaveMixin,
     RestrictDeletionWhenPBNUIDSetMixin,
 )
@@ -88,7 +89,10 @@ class Wydawnictwo_Zwarte_StreszczenieInline(
 
 
 class Wydawnictwo_ZwarteAdmin_Baza(
-    BlokujRekordPrzedZapisemMixin, BaseBppAdminMixin, admin.ModelAdmin
+    OdroczPunktyDyscyplinMixin,
+    BlokujRekordPrzedZapisemMixin,
+    BaseBppAdminMixin,
+    admin.ModelAdmin,
 ):
     formfield_overrides = {
         **helpers.widgets.NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,

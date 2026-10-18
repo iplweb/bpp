@@ -36,6 +36,7 @@ from bpp.admin.helpers.fieldsets import (
 from bpp.admin.helpers.mixins import (
     BlokujRekordPrzedZapisemMixin,
     DomyslnyStatusKorektyMixin,
+    OdroczPunktyDyscyplinMixin,
 )
 from bpp.admin.helpers.pbn_api.gui import sprobuj_policzyc_sloty
 from bpp.admin.helpers.widgets import (
@@ -274,6 +275,7 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
 
 
 class Wydawnictwo_CiagleAdmin(
+    OdroczPunktyDyscyplinMixin,
     BlokujRekordPrzedZapisemMixin,
     DSpaceLinkAdminMixin,
     ConstanceScoringFieldsMixin,

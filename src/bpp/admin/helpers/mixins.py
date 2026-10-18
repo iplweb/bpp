@@ -1,7 +1,9 @@
+import denorm
 from django import forms
 from django.contrib.admin.options import TO_FIELD_VAR
 from django.contrib.admin.utils import unquote
 from django.core.exceptions import FieldDoesNotExist, ValidationError
+from django.db import router, transaction
 from django.urls import reverse
 
 from bpp.models.system import Status_Korekty
@@ -141,3 +143,42 @@ class BlokujRekordPrzedZapisemMixin:
         ):
             self._zablokuj_rekord_do_edycji(request, object_id)
         return super()._changeform_view(request, object_id, form_url, extra_context)
+
+
+class OdroczPunktyDyscyplinMixin:
+    """Zapis z admina NIE liczy ``cached_punkty_dyscyplin`` w ``pre_save``.
+
+    Admin zapisuje rodzica (``save_model``) PRZED inline'ami autorów
+    (``save_related``), więc ``@denormalized cached_punkty_dyscyplin``
+    liczony w ``pre_save`` szedł na STARYCH autorach -- i jeszcze przed
+    ``UPDATE`` rodzica kasował/wstawiał wiersze ``bpp_cache_punktacja_*``
+    (kolejność blokad odwrotna do flusha denorm, Rollbar #5363). Ta praca
+    była zbędna: ``BaseBppAdminMixin.save_related`` po zapisie inline'ów
+    i tak przebudowuje tabele cache, a kolumnę JSON przelicza flush denorm.
+
+    ``denorm.deferred()`` (django-denorm-iplweb >= 1.15.0) sprawia, że przy
+    UPDATE kolumna zostaje bez zmian (``col = col``), przy INSERT dostaje
+    default (``None``), a na wyjściu z bloku powstaje marker
+    ``DirtyInstance`` -- flush policzy JSON raz, na danych po zapisie.
+
+    Zewnętrzne ``atomic`` jest konieczne: ``changeform_view`` Django sam
+    otwiera i COMMITUJE swoje ``atomic``, więc bez niego markery
+    zapisałyby się już po commicie, poza transakcją z danymi. Wewnątrz
+    atomic Django staje się savepointem; blokada rekordu z
+    ``BlokujRekordPrzedZapisemMixin`` nadal idzie przed zapisem cache.
+
+    Uwaga: w obrębie requestu ``obj.cached_punkty_dyscyplin`` jest
+    nieaktualne (do flusha) -- nic w ścieżce zapisu admina go nie czyta.
+    """
+
+    odroczone_pole_denorm = "cached_punkty_dyscyplin"
+
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        if request.method != "POST":
+            return super().changeform_view(request, object_id, form_url, extra_context)
+
+        with (
+            transaction.atomic(using=router.db_for_write(self.model)),
+            denorm.deferred(f"{self.model._meta.label}.{self.odroczone_pole_denorm}"),
+        ):
+            return super().changeform_view(request, object_id, form_url, extra_context)
