@@ -31,12 +31,14 @@ def test_send_to_pbn_bez_uczelni_przy_wielu_uczelniach(
             "bpp.admin.helpers.pbn_api.cli.sprobuj_wyslac_do_pbn_celery"
         ) as send_mock,
         mock.patch("rollbar.report_exc_info") as rollbar_mock,
+        mock.patch("rollbar.report_message") as report_message_mock,
     ):
         wynik = wpis.send_to_pbn()
 
     assert wynik == SendStatus.FINISHED_ERROR
     send_mock.assert_not_called()
     rollbar_mock.assert_not_called()
+    report_message_mock.assert_called_once()
     wpis.refresh_from_db()
     assert wpis.zakonczono_pomyslnie is False
     assert wpis.rodzaj_bledu == RodzajBledu.TECHNICZNY

@@ -509,6 +509,12 @@ class PBN_Export_Queue(models.Model):
                 "wielouczelnianej — nie wysyłam",
                 self.pk,
             )
+            # Jeden zgrupowany, czytelny item zamiast tracebacku.
+            rollbar.report_message(
+                "Wpis kolejki PBN bez uczelni w instalacji wielouczelnianej",
+                level="warning",
+                extra_data={"pbn_export_queue_pk": self.pk},
+            )
             return self.error(
                 "Wpis kolejki nie ma przypisanej uczelni, a w systemie jest "
                 "kilka uczelni — nie wiadomo, do którego PBN wysłać rekord. "
