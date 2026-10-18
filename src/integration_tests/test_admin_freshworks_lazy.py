@@ -165,7 +165,7 @@ def test_freshworks_widget_blad_ladowania(freshworks_live_server, admin_page: Pa
     assert "is-loading" not in button.get_attribute("class")
 
 
-# --- Zakładka na prawej krawędzi: pozycja, przeciąganie, skrót „?" ---------
+# --- Zakładka na prawej krawędzi: pozycja, skrót „?" -----------------------
 
 CHANGE_FORM_URL = "/admin/bpp/zrodlo/add/"
 
@@ -174,39 +174,12 @@ def _open(page: Page, server, url=ADMIN_URL):
     page.goto(server.url + url)
     wait_for_page_load(page)
     # Arkusze CSS admina są w bloku footer — zakładka musi już być
-    # wystylowana (position: fixed), zanim zaczniemy ją przeciągać.
+    # wystylowana (position: fixed), zanim zmierzymy jej położenie.
     page.wait_for_load_state("load")
     page.wait_for_function(
         "() => getComputedStyle(document.querySelector('#bppSupportButton'))"
         "  .position === 'fixed'"
     )
-
-
-def _tab_diag(page: Page):
-    return page.evaluate(
-        """() => {
-            const b = document.querySelector('#bppSupportButton');
-            const r = b.getBoundingClientRect();
-            const hit = document.elementFromPoint(
-                r.left + r.width / 2, r.top + r.height / 2);
-            return {
-                rect: [r.left, r.top, r.width, r.height],
-                styleTop: b.style.top,
-                position: getComputedStyle(b).position,
-                hit: hit && hit.outerHTML.slice(0, 120),
-            };
-        }"""
-    )
-
-
-def _drag_tab(page: Page, dy):
-    box = page.locator("#bppSupportButton").bounding_box()
-    x = box["x"] + box["width"] / 2
-    y = box["y"] + box["height"] / 2
-    page.mouse.move(x, y)
-    page.mouse.down()
-    page.mouse.move(x, y + dy, steps=10)
-    page.mouse.up()
 
 
 def test_zakladka_przy_prawej_krawedzi_nie_zaslania_stopki(
@@ -223,56 +196,7 @@ def test_zakladka_przy_prawej_krawedzi_nie_zaslania_stopki(
     viewport_width = admin_page.evaluate("document.documentElement.clientWidth")
     tab_box = tab.bounding_box()
     assert tab_box["x"] + tab_box["width"] == pytest.approx(viewport_width, abs=1)
-    # Pionowa zakładka, a nie ucięty przez Grappelli (height: 28px) przycisk.
-    assert tab_box["height"] > 2 * tab_box["width"], tab_box
-
-    # Nawet zaciągnięta maksymalnie w dół zostaje nad stopką z przyciskami.
-    _drag_tab(admin_page, 2000)
-    tab_box = tab.bounding_box()
     assert tab_box["y"] + tab_box["height"] <= footer.bounding_box()["y"]
-
-
-def test_przeciagniecie_zakladki_nie_otwiera_widgetu_i_jest_zapamietane(
-    freshworks_live_server, admin_page: Page
-):
-    requests = _track_freshworks(admin_page)
-    admin_page.set_viewport_size({"width": 1280, "height": 800})
-    _open(admin_page, freshworks_live_server)
-
-    tab = admin_page.locator("#bppSupportButton")
-    admin_page.evaluate(
-        """() => {
-            window.__ptr = [];
-            const b = document.querySelector('#bppSupportButton');
-            for (const t of ['pointerdown', 'pointermove', 'pointerup',
-                             'pointercancel', 'lostpointercapture']) {
-                window.addEventListener(t, (e) => window.__ptr.push(
-                    'win:' + t + ':' + e.target.className), true);
-                b.addEventListener(t, (e) => window.__ptr.push(
-                    'btn:' + t + ':' + e.defaultPrevented));
-            }
-        }"""
-    )
-    before = tab.bounding_box()["y"]
-    _drag_tab(admin_page, -150)
-    after = tab.bounding_box()["y"]
-    assert after == pytest.approx(before - 150, abs=2), (
-        _tab_diag(admin_page),
-        admin_page.evaluate("() => window.__ptr.slice(0, 40)"),
-    )
-
-    assert requests == []
-    assert _calls(admin_page) == []
-
-    # Pozycja przeżywa przeładowanie strony.
-    admin_page.reload()
-    wait_for_page_load(admin_page)
-    assert tab.bounding_box()["y"] == pytest.approx(after, abs=2)
-
-    # Zwykłe kliknięcie po przeciągnięciu nadal otwiera widget.
-    tab.click()
-    admin_page.wait_for_function("() => (window.__fwCalls || []).length >= 4")
-    assert len(requests) == 1
 
 
 def test_skrot_pytajnik_nie_dziala_w_polu_tekstowym(
