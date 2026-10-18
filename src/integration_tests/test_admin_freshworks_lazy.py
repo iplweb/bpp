@@ -223,6 +223,8 @@ def test_zakladka_przy_prawej_krawedzi_nie_zaslania_stopki(
     viewport_width = admin_page.evaluate("document.documentElement.clientWidth")
     tab_box = tab.bounding_box()
     assert tab_box["x"] + tab_box["width"] == pytest.approx(viewport_width, abs=1)
+    # Pionowa zakładka, a nie ucięty przez Grappelli (height: 28px) przycisk.
+    assert tab_box["height"] > 2 * tab_box["width"], tab_box
 
     # Nawet zaciągnięta maksymalnie w dół zostaje nad stopką z przyciskami.
     _drag_tab(admin_page, 2000)
@@ -238,10 +240,26 @@ def test_przeciagniecie_zakladki_nie_otwiera_widgetu_i_jest_zapamietane(
     _open(admin_page, freshworks_live_server)
 
     tab = admin_page.locator("#bppSupportButton")
+    admin_page.evaluate(
+        """() => {
+            window.__ptr = [];
+            const b = document.querySelector('#bppSupportButton');
+            for (const t of ['pointerdown', 'pointermove', 'pointerup',
+                             'pointercancel', 'lostpointercapture']) {
+                window.addEventListener(t, (e) => window.__ptr.push(
+                    'win:' + t + ':' + e.target.className), true);
+                b.addEventListener(t, (e) => window.__ptr.push(
+                    'btn:' + t + ':' + e.defaultPrevented));
+            }
+        }"""
+    )
     before = tab.bounding_box()["y"]
     _drag_tab(admin_page, -150)
     after = tab.bounding_box()["y"]
-    assert after == pytest.approx(before - 150, abs=2), _tab_diag(admin_page)
+    assert after == pytest.approx(before - 150, abs=2), (
+        _tab_diag(admin_page),
+        admin_page.evaluate("() => window.__ptr.slice(0, 40)"),
+    )
 
     assert requests == []
     assert _calls(admin_page) == []

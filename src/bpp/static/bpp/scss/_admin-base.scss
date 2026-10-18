@@ -68,7 +68,14 @@ button.keypad-trigger {
   background-color: #417690;
   color: white;
   border: none;
-  border-radius: 6px 0 0 6px;
+  // Grappelli stylizuje KAZDY <button>: height: 28px, overflow: hidden,
+  // border-radius: 5px !important - bez tego zakladka bylaby uciete 28 px.
+  height: auto;
+  width: auto;
+  overflow: visible;
+  box-sizing: content-box;
+  vertical-align: baseline;
+  border-radius: 6px 0 0 6px !important;
   margin: 0;
   padding: 14px 6px !important;
   font-size: 13px;
