@@ -124,6 +124,26 @@ def test_freshworks_widget_laduje_sie_dopiero_po_kliknieciu(
     assert admin_page.locator("script[src*='freshworks.com']").count() == 1
 
 
+def test_freshworks_widget_laduje_sie_juz_po_najechaniu(
+    freshworks_live_server, admin_page: Page
+):
+    requests = _track_freshworks(admin_page)
+
+    admin_page.goto(freshworks_live_server.url + ADMIN_URL)
+    wait_for_page_load(admin_page)
+    assert requests == []
+
+    # Najechanie ładuje skrypt (klik trafi w gotowy widget), ale NIE otwiera.
+    admin_page.hover("#bppSupportButton")
+    admin_page.wait_for_function("() => (window.__fwCalls || []).length >= 3")
+    assert len(requests) == 1
+    assert [c[0] for c in _calls(admin_page)] == ["hide", "prefill", "identify"]
+
+    admin_page.click("#bppSupportButton")
+    assert [c[0] for c in _calls(admin_page)][3:] == ["open"]
+    assert len(requests) == 1
+
+
 def test_freshworks_widget_szybkie_klikanie_nie_wstrzykuje_dwa_razy(
     freshworks_live_server, admin_page: Page
 ):

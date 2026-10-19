@@ -4,9 +4,14 @@
 // Celowo bez jQuery - admin ma grp.jQuery, strona publiczna globalne $.
 //
 // - Widget Freshworks ladowany LENIWIE: skrypt z data-widget-src wstrzykujemy
-//   dopiero po pierwszym kliknieciu. Stub FreshworksWidget (inline w
-//   szablonie) kolejkuje wywolania w .q, a skrypt Freshworks po
-//   wyrenderowaniu widgetu odtwarza kolejke i podmienia window.FreshworksWidget.
+//   dopiero, gdy uzytkownik najedzie na zakladke (albo wejdzie na nia
+//   klawiatura) - zanim kliknie, widget zwykle jest juz gotowy. Stub
+//   FreshworksWidget (inline w szablonie) kolejkuje wywolania w .q, a skrypt
+//   Freshworks po wyrenderowaniu widgetu odtwarza kolejke i podmienia
+//   window.FreshworksWidget.
+// - Okno widgetu wyskakuje Z zakladki i do niej sie chowa: polozenie i punkt
+//   skalowania okna przekazujemy do CSS (_support_widget.scss) w zmiennych
+//   --bpp-support-widget-*.
 // - Zakladka wystaje znad dolnej krawedzi okna, a w adminie - znad stalej
 //   belki z przyciskami (Zapisz/Usun), jesli strona ja ma. Jest odsunieta od
 //   prawej krawedzi, zeby klikniecie nie trafialo w pasek przewijania.
@@ -27,6 +32,14 @@
     var MARGIN_SIDE_PX = 24;
     // Stala dolna belka Grappelli z przyciskami (Zapisz/Usun) w adminie.
     var BUTTON_BAR_SELECTOR = "footer#submit, footer.grp-fixed-footer";
+    // Okno widgetu Freshworks: szerokosc z ich CSS i odstep od zakladki.
+    var WIDGET_WRAPPER_ID = "freshworks-frame-wrapper";
+    var WIDGET_CONTAINER_ID = "freshworks-container";
+    var WIDGET_WIDTH_PX = 384;
+    var WIDGET_GAP_PX = 8;
+    // Klasa animacji chowania okna do zakladki (_support_widget.scss).
+    var WIDGET_CLOSING_CLASS = "bpp-support-widget-closing";
+    var WIDGET_CLOSE_ANIMATION_MS = 200;
 
     function readStoredPosition() {
         try {
@@ -69,8 +82,7 @@
         // 'on' w API bootstrapu), wiec stan sledzimy sami.
         var widgetOpen = false;
 
-        function setLoading() {
-            state = "loading";
+        function showLoading() {
             button.classList.add("is-loading");
             button.setAttribute("aria-busy", "true");
             label.textContent = "Ładowanie...";
@@ -97,11 +109,10 @@
             label.textContent = "support.iplweb.pl";
         }
 
-        function loadWidget() {
-            setLoading();
-
-            // Wywolania trafiaja do kolejki stuba i zostana wykonane w tej
-            // kolejnosci po zaladowaniu widgetu.
+        // Wstrzyknij skrypt widgetu (bez otwierania). Wywolania trafiaja do
+        // kolejki stuba i zostana wykonane w tej kolejnosci po zaladowaniu.
+        function startLoading() {
+            state = "loading";
             window.FreshworksWidget("hide", "launcher");
             window.FreshworksWidget("prefill", "ticketForm", {
                 custom_fields: { cf_adres_url: window.location.href }
@@ -110,8 +121,6 @@
                 name: button.dataset.userName || "",
                 email: button.dataset.userEmail || ""
             });
-            window.FreshworksWidget("open");
-            widgetOpen = true;
 
             var script = document.createElement("script");
             script.type = "text/javascript";
@@ -135,22 +144,81 @@
             }, 200);
         }
 
-        function toggleWidget() {
+        function preload() {
             if (state === "idle") {
-                loadWidget();
-            } else if (state === "loading") {
-                // Skrypt juz sie laduje - nie wstrzykuj ponownie.
-                return;
-            } else if (state === "error") {
-                window.open(button.dataset.fallbackUrl, "_blank", "noopener");
-            } else if (!widgetOpen) {
-                window.FreshworksWidget("open");
-                widgetOpen = true;
-            } else {
-                window.FreshworksWidget("close");
-                widgetOpen = false;
+                startLoading();
             }
         }
+
+        function openWidget() {
+            updateWidgetAnchor();
+            // Przed zaladowaniem skryptu "open" czeka w kolejce stuba.
+            window.FreshworksWidget("open");
+            widgetOpen = true;
+        }
+
+        // Schowaj okno do zakladki, a dopiero potem zamknij widget -
+        // Freshworks przy "close" od razu usuwa okno z DOM, wiec bez tego
+        // nie byloby animacji.
+        function closeWidget() {
+            widgetOpen = false;
+            var wrapper = document.getElementById(WIDGET_WRAPPER_ID);
+            var reducedMotion = window.matchMedia
+                && window.matchMedia("(prefers-reduced-motion: reduce)")
+                    .matches;
+            if (!wrapper || reducedMotion) {
+                window.FreshworksWidget("close");
+                return;
+            }
+            var done = false;
+            function finish() {
+                if (done) {
+                    return;
+                }
+                done = true;
+                window.FreshworksWidget("close");
+                wrapper.classList.remove(WIDGET_CLOSING_CLASS);
+            }
+            wrapper.classList.add(WIDGET_CLOSING_CLASS);
+            wrapper.addEventListener("animationend", finish, { once: true });
+            // Gdyby animationend nie przyszlo (np. okno ukryte media query).
+            setTimeout(finish, WIDGET_CLOSE_ANIMATION_MS + 100);
+        }
+
+        // Czy okno jest otwarte. Prawdziwy widget zostawia w DOM kontener,
+        // a okno istnieje tylko, gdy jest otwarte - to lapie tez zamkniecie
+        // krzyzykiem w oknie (iframe, zdarzen nie dostajemy). Bez kontenera
+        // (stub w testach) zostaje nasz wlasny stan.
+        function isWidgetOpen() {
+            if (document.getElementById(WIDGET_CONTAINER_ID)) {
+                return Boolean(document.getElementById(WIDGET_WRAPPER_ID));
+            }
+            return widgetOpen;
+        }
+
+        function toggleWidget() {
+            if (state === "error") {
+                window.open(button.dataset.fallbackUrl, "_blank", "noopener");
+                return;
+            }
+            if (state === "idle") {
+                startLoading();
+            }
+            if (state === "loading") {
+                // Skrypt juz sie laduje - "open" poczeka w kolejce stuba.
+                if (!widgetOpen) {
+                    showLoading();
+                    openWidget();
+                }
+            } else if (isWidgetOpen()) {
+                closeWidget();
+            } else {
+                openWidget();
+            }
+        }
+
+        button.addEventListener("pointerenter", preload);
+        button.addEventListener("focus", preload);
 
         // --- Pozycja przy dolnej krawedzi ---------------------------------
 
@@ -168,6 +236,29 @@
 
         function updateBottom() {
             button.style.bottom = bottomOffset() + "px";
+            updateWidgetAnchor();
+        }
+
+        // Okno widgetu stoi tuz nad zakladka, prawym brzegiem rowno z nia
+        // (o ile miesci sie w oknie), a skaluje sie od srodka zakladki.
+        function updateWidgetAnchor() {
+            var rect = button.getBoundingClientRect();
+            var width = document.documentElement.clientWidth;
+            var right = Math.min(
+                width - rect.right,
+                Math.max(WIDGET_GAP_PX, width - WIDGET_WIDTH_PX - WIDGET_GAP_PX)
+            );
+            var bottom = window.innerHeight - rect.top + WIDGET_GAP_PX;
+            // Srodek zakladki wzgledem prawego dolnego rogu okna widgetu.
+            var originX = width - right - (rect.left + rect.width / 2);
+            var originY = WIDGET_GAP_PX + rect.height / 2;
+            var style = document.documentElement.style;
+            style.setProperty("--bpp-support-widget-right", right + "px");
+            style.setProperty("--bpp-support-widget-bottom", bottom + "px");
+            style.setProperty(
+                "--bpp-support-widget-origin",
+                "calc(100% - " + originX + "px) calc(100% + " + originY + "px)"
+            );
         }
 
         // Ustaw odleglosc prawej krawedzi zakladki od prawej krawedzi okna
@@ -180,6 +271,7 @@
                 Math.max(MARGIN_SIDE_PX, max)
             );
             button.style.right = clamped + "px";
+            updateWidgetAnchor();
         }
 
         var position = readStoredPosition();

@@ -1,0 +1,57 @@
+// Okno widgetu Freshworks (formularz zgloszenia) wyskakuje Z zakladki
+// "Support BPP" i do niej sie chowa. Wspolne dla strony publicznej
+// (common.scss) i admina (_admin-base.scss).
+//
+// Freshworks ustawia #freshworks-frame-wrapper inline (right: 30px;
+// bottom: 80px) i animuje go od wlasnego prawego dolnego rogu - nadpisujemy
+// to zmiennymi, ktore support-tab.js liczy z polozenia zakladki. Na telefonie
+// widget zajmuje caly ekran (wlasne reguly Freshworks z !important dla
+// max-device-width: 667px lub max-width: 450px) - tam go nie ruszamy.
+@media screen and (min-width: 451px) and (min-device-width: 668px) {
+  #freshworks-frame-wrapper {
+    right: var(--bpp-support-widget-right, 30px) !important;
+    bottom: var(--bpp-support-widget-bottom, 80px) !important;
+    height: calc(
+      100% - var(--bpp-support-widget-bottom, 80px) - 16px
+    ) !important;
+    transform-origin: var(--bpp-support-widget-origin, bottom right);
+    // !important, bo Freshworks ustawia animacje regula
+    // #freshworks-frame-wrapper.frame-right (wyzsza specyficznosc).
+    animation: bpp-support-widget-in 0.25s ease-out !important;
+
+    // Klase dodaje support-tab.js przed wywolaniem "close".
+    &.bpp-support-widget-closing {
+      animation: bpp-support-widget-out 0.2s ease-in forwards !important;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #freshworks-frame-wrapper {
+    animation: none !important;
+  }
+}
+
+@keyframes bpp-support-widget-in {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes bpp-support-widget-out {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  to {
+    transform: scale(0);
+    opacity: 0;
+  }
+}
