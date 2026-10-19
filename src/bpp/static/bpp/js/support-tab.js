@@ -1,4 +1,4 @@
-// Zakladka "Support BPP" w prawym dolnym rogu ekranu.
+// Zakladka "Pomoc" w prawym dolnym rogu ekranu.
 //
 // Wspolna dla admina (admin/base_site.html) i strony publicznej (base.html).
 // Celowo bez jQuery - admin ma grp.jQuery, strona publiczna globalne $.

@@ -1,6 +1,6 @@
 """Widget wsparcia Freshworks w adminie ładuje się LENIWIE — skrypt z
 ``euc-widget.freshworks.com`` jest wstrzykiwany dopiero po kliknięciu
-przycisku „Support BPP" (``#bppSupportButton``), a nie na każdej stronie.
+zakładki „Pomoc" (``#bppSupportButton``), a nie na każdej stronie.
 
 Szablon ``admin/base_site.html`` renderuje widget tylko przy
 ``TESTING=False``. Strony serwuje osobny proces Daphne, więc

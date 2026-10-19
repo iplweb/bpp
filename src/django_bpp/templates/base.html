@@ -116,7 +116,7 @@
         {{ extraChannels|json_script:"extra-channels" }}
 
         {% if not TESTING %}
-        {# Zakladka "Support BPP" w prawym dolnym rogu (do przeciagania). #}
+        {# Zakladka "Pomoc" w prawym dolnym rogu (do przeciagania). #}
         {# Widget Freshworks ladowany LENIWIE - cala logika: support-tab.js. #}
         {# Stub FreshworksWidget kolejkuje wywolania w .q, a skrypt Freshworks #}
         {# po wyrenderowaniu widgetu (widgetRenderComplete) odtwarza kolejke #}
@@ -134,7 +134,7 @@
                 data-fallback-url="https://support.iplweb.pl"
                 data-user-name="{{ request.user.get_full_name|default:request.user.username }}"
                 data-user-email="{{ request.user.email }}">
-            <span class="support-text">Support BPP</span>
+            <span class="support-text">Pomoc</span>
         </button>
         <script src="{% static 'bpp/js/support-tab.js' %}" defer></script>
         {% endif %}
