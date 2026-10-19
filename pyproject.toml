@@ -343,30 +343,13 @@ constraint-dependencies = [
     #   soupsieve PYSEC-2026-4170/4171
     #   urllib3   PYSEC-2026-4175/4176/4177 (pin w [dependencies])
     "anyio>=4.14.2",
-    # NIE podnosic do 26.7.1 bez przeczytania tego komentarza. Ta wersja
-    # zamyka CVE-2026-77528 (PYSEC-2026-4027), ale jej `autobahn/__init__.py`
-    # bezwarunkowo importuje vendorowane `flatbuffers`, a te ciagna `numpy`,
-    # gdy tylko numpy jest w srodowisku. `daphne` importuje
-    # `autobahn.twisted.websocket` ze swojego AppConfig, wiec numpy wracalby
-    # do KAZDEGO procesu (web, celery, beat, denorm) — zmierzone +13 MB RSS.
-    # Dokladnie tego pilnuje test_lazy_heavy_imports i slusznie wtedy pada.
-    #
-    # Samo CVE jest u nas bez zastosowania: dotyczy obejscia limitu
-    # `maxMessagePayloadSize` po dekompresji permessage-deflate, a my zadnego
-    # limitu nie ustawiamy; produkcyjne WebSockety obsluguje uvicorn
-    # (gunicorn + UvicornWorker), daphne sluzy testom i runserverowi.
-    # Dlatego PYSEC-2026-4027 jest na whitelscie pip-audit — patrz
-    # .github/workflows/dependency-audit.yml i bin/scan-deps.sh.
-    #
-    # Granica zmierzona na wheelach z PyPI: 24.4.2 i 25.9.1 NIE maja tego
-    # importu, 25.12.2 / 26.6.1 / 26.6.2 / 26.7.1 juz go maja (doszedl
-    # miedzy 25.9.1 a 25.12.2). Pin trzyma wersje z locka sprzed proby
-    # podbicia; swiadome podniesienie do 25.9.1 jest mozliwe, ale nie zmienia
-    # statusu CVE (fix dopiero w 26.7.1), wiec nie ma po co ryzykowac.
-    #
-    # Zgloszone upstream: crossbario/autobahn-python#1983. Gdy import stanie
-    # sie leniwy, zdejmij ten pin i whitelist.
-    "autobahn==24.4.2",
+    # >=26.10.1: zamyka CVE-2026-77528 (PYSEC-2026-4027, fix od 26.7.1),
+    # a zarazem pierwsza wersja z leniwym importem vendorowanych flatbuffers
+    # (crossbario/autobahn-python#1983). 25.12.2..26.7.1 importowaly je
+    # w `autobahn/__init__.py`, co ciagnelo numpy do KAZDEGO procesu
+    # (daphne importuje autobahn z AppConfig) — pilnuje tego
+    # test_lazy_heavy_imports. Nie cofac ponizej 26.10.1.
+    "autobahn>=26.10.1",
     "bleach>=6.4.0",
     "daphne>=4.2.2",
     "h2>=4.4.1",

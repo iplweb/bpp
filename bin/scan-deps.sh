@@ -352,20 +352,7 @@ if $RUN_PIPAUDIT; then
     # Whitelist CVE — MUSI byc zsynchronizowana z
     # .github/workflows/dependency-audit.yml, inaczej lokalny pre-release
     # guard i gate CI rozjada sie (jeden przepusci, drugi zablokuje).
-    #
-    # PYSEC-2026-4027 (i jego alias PYSEC-2026-4031) = CVE-2026-77528
-    # w autobahn: permessage-deflate sprawdza maxMessagePayloadSize na
-    # ramce SKOMPRESOWANEJ, wiec skonfigurowany limit da sie obejsc po
-    # dekompresji. U nas bez zastosowania: zadnego limitu nie ustawiamy,
-    # a produkcyjne WebSockety obsluguje uvicorn (gunicorn + UvicornWorker);
-    # daphne, jedyny konsument autobahna, sluzy testom i runserverowi.
-    # Fix istnieje (26.7.1), ale ta wersja ciagnie numpy do KAZDEGO procesu
-    # (+13 MB RSS) — szczegoly przy pinie `autobahn` w pyproject.toml,
-    # zgloszone w crossbario/autobahn-python#1983. Zdjac oba wpisy, gdy
-    # upstream zrobi ten import leniwym.
     PIPAUDIT_IGNORE=(
-        --ignore-vuln PYSEC-2026-4027
-        --ignore-vuln PYSEC-2026-4031
         # CVE-2026-106454 / GHSA-8pqf-f4m5-798g: ReDoS w serwerze IMAP
         # twisted (twisted.mail.imap4) — nie uzywamy IMAP na twisted, a fixu
         # nie ma w zadnym wydaniu. Uzasadnienie w dependency-audit.yml.
