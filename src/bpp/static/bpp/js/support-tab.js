@@ -1,4 +1,4 @@
-// Zakladka "Support BPP" przyklejona do prawej krawedzi ekranu.
+// Zakladka "Support BPP" w prawym dolnym rogu ekranu.
 //
 // Wspolna dla admina (admin/base_site.html) i strony publicznej (base.html).
 // Celowo bez jQuery - admin ma grp.jQuery, strona publiczna globalne $.
@@ -7,21 +7,26 @@
 //   dopiero po pierwszym kliknieciu. Stub FreshworksWidget (inline w
 //   szablonie) kolejkuje wywolania w .q, a skrypt Freshworks po
 //   wyrenderowaniu widgetu odtwarza kolejke i podmienia window.FreshworksWidget.
-// - Zakladke mozna przeciagnac w gore/dol wzdluz krawedzi; pozycja (jako
-//   ulamek wysokosci okna) trafia do localStorage. Przeciagniecie nie otwiera
-//   widgetu.
+// - Zakladka wystaje znad dolnej krawedzi okna, a w adminie - znad stalej
+//   belki z przyciskami (Zapisz/Usun), jesli strona ja ma. Jest odsunieta od
+//   prawej krawedzi, zeby klikniecie nie trafialo w pasek przewijania.
+// - Zakladke mozna przeciagnac w lewo/prawo wzdluz dolnej krawedzi; pozycja
+//   (jako ulamek szerokosci okna) trafia do localStorage. Przeciagniecie nie
+//   otwiera widgetu.
 // - Skrot "?" otwiera widget, ale tylko gdy fokus NIE jest w polu do pisania.
 (function () {
     "use strict";
 
-    var STORAGE_KEY = "bppSupportTabPosition";
+    // Inny klucz niz we wczesniejszej wersji (pionowa zakladka na prawej
+    // krawedzi zapisywala tam pozycje w pionie).
+    var STORAGE_KEY = "bppSupportTabRight";
     var LOAD_TIMEOUT_MS = 20000;
     var DRAG_THRESHOLD_PX = 5;
-    // Odstep od gornej krawedzi - zeby nie wjezdzac na belke nawigacji.
-    var MARGIN_TOP_PX = 90;
-    var MARGIN_BOTTOM_PX = 10;
-    // Stala dolna stopka Grappelli (przyciski Zapisz/Usun) w adminie.
-    var FIXED_FOOTER_SELECTOR = "footer.grp-fixed-footer";
+    // Odstep od bocznych krawedzi - z prawej m.in. po to, zeby klikniecie
+    // w zakladke nie trafialo w (nakladkowy) pasek przewijania.
+    var MARGIN_SIDE_PX = 24;
+    // Stala dolna belka Grappelli z przyciskami (Zapisz/Usun) w adminie.
+    var BUTTON_BAR_SELECTOR = "footer#submit, footer.grp-fixed-footer";
 
     function readStoredPosition() {
         try {
@@ -147,41 +152,62 @@
             }
         }
 
-        // --- Pozycja na krawedzi -------------------------------------------
+        // --- Pozycja przy dolnej krawedzi ---------------------------------
 
-        function bounds() {
-            var half = button.offsetHeight / 2;
-            var footer = document.querySelector(FIXED_FOOTER_SELECTOR);
-            var bottomReserved = footer ? footer.offsetHeight : 0;
-            var min = MARGIN_TOP_PX + half;
-            var max = window.innerHeight - bottomReserved
-                - MARGIN_BOTTOM_PX - half;
-            return { min: min, max: Math.max(min, max) };
+        // Wysokosc nad dolna krawedzia okna, od ktorej zakladka wystaje:
+        // gorna krawedz belki z przyciskami albo 0, gdy belki nie ma
+        // (lub jest poza ekranem).
+        function bottomOffset() {
+            var bar = document.querySelector(BUTTON_BAR_SELECTOR);
+            if (!bar || bar.offsetHeight === 0) {
+                return 0;
+            }
+            var barTop = bar.getBoundingClientRect().top;
+            return Math.max(0, window.innerHeight - barTop);
         }
 
-        // Ustaw srodek zakladki na wysokosci centerY (px), w granicach okna.
-        // Pozycjonujemy przez `top` gornej krawedzi, nie przez transform -
-        // motywy admina nadpisuja transform na :hover.
-        function placeAt(centerY) {
-            var b = bounds();
-            var clamped = Math.min(Math.max(centerY, b.min), b.max);
-            button.style.top = (clamped - button.offsetHeight / 2) + "px";
+        function updateBottom() {
+            button.style.bottom = bottomOffset() + "px";
         }
 
-        function placeFromFraction(fraction) {
-            placeAt((fraction === null ? 0.5 : fraction) * window.innerHeight);
+        // Ustaw odleglosc prawej krawedzi zakladki od prawej krawedzi okna
+        // (px), w granicach okna.
+        function placeAt(rightPx) {
+            var max = document.documentElement.clientWidth
+                - button.offsetWidth - MARGIN_SIDE_PX;
+            var clamped = Math.min(
+                Math.max(rightPx, MARGIN_SIDE_PX),
+                Math.max(MARGIN_SIDE_PX, max)
+            );
+            button.style.right = clamped + "px";
         }
 
         var position = readStoredPosition();
         function reposition() {
-            placeFromFraction(position);
+            placeAt(position === null
+                ? MARGIN_SIDE_PX
+                : position * document.documentElement.clientWidth);
+            updateBottom();
         }
 
         reposition();
         window.addEventListener("resize", reposition);
+        // Belka z przyciskami nie musi byc stala - wtedy zakladka jedzie nad
+        // nia razem z przewijaniem.
+        var scrollPending = false;
+        window.addEventListener("scroll", function () {
+            if (scrollPending) {
+                return;
+            }
+            scrollPending = true;
+            window.requestAnimationFrame(function () {
+                scrollPending = false;
+                updateBottom();
+            });
+        }, { passive: true });
         // W adminie arkusze CSS sa dolaczane PO zakladce (blok footer), wiec
-        // przy starcie skryptu wysokosc zakladki moze byc jeszcze bez stylow.
-        // Po zaladowaniu strony przelicz pozycje z prawdziwa wysokoscia.
+        // przy starcie skryptu ani zakladka, ani belka z przyciskami nie maja
+        // jeszcze stylow. Po zaladowaniu strony przelicz pozycje.
         if (document.readyState !== "complete") {
             window.addEventListener("load", reposition);
         }
@@ -197,9 +223,9 @@
             }
             drag = {
                 pointerId: e.pointerId,
-                startY: e.clientY,
-                startTop: button.getBoundingClientRect().top
-                    + button.offsetHeight / 2,
+                startX: e.clientX,
+                startRight: document.documentElement.clientWidth
+                    - button.getBoundingClientRect().right,
                 moved: false
             };
         });
@@ -208,8 +234,8 @@
             if (!drag || e.pointerId !== drag.pointerId) {
                 return;
             }
-            var dy = e.clientY - drag.startY;
-            if (!drag.moved && Math.abs(dy) < DRAG_THRESHOLD_PX) {
+            var dx = e.clientX - drag.startX;
+            if (!drag.moved && Math.abs(dx) < DRAG_THRESHOLD_PX) {
                 return;
             }
             if (!drag.moved) {
@@ -217,7 +243,7 @@
                 button.setPointerCapture(e.pointerId);
                 button.classList.add("is-dragging");
             }
-            placeAt(drag.startTop + dy);
+            placeAt(drag.startRight - dx);
             e.preventDefault();
         });
 
@@ -227,8 +253,9 @@
             }
             if (drag.moved) {
                 button.classList.remove("is-dragging");
-                var rect = button.getBoundingClientRect();
-                position = (rect.top + rect.height / 2) / window.innerHeight;
+                var width = document.documentElement.clientWidth;
+                position = (width - button.getBoundingClientRect().right)
+                    / width;
                 storePosition(position);
                 // Po przeciagnieciu przegladarka wysle jeszcze click (w tym
                 // samym tasku co pointerup) - polknij go. Timeout zdejmuje

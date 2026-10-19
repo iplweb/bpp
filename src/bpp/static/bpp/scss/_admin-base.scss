@@ -56,28 +56,30 @@ button.keypad-trigger {
   border-radius: 3px;
 }
 
-// Admin Support Button - zakladka na prawej krawedzi, kolory admina.
-// Pozycje w pionie (`top`) ustawia support-tab.js (przeciaganie +
-// zapamietana pozycja, z pominieciem stalej stopki z przyciskami).
+// Admin Support Button - zakladka w prawym dolnym rogu, kolory admina.
+// support-tab.js ustawia `right` (przeciaganie + zapamietana pozycja)
+// i `bottom` (zakladka wystaje znad stalej belki z przyciskami, jesli jest).
 .bpp-support-button {
   position: fixed;
-  right: 0;
-  top: calc(50% - 50px); // zanim JS ustawi zapamietana pozycje
-  z-index: 9999;
-  writing-mode: vertical-rl;
+  right: 24px; // zanim JS ustawi zapamietana pozycje
+  bottom: 0;
+  // Ponizej wszystkiego, co sie rozwija: #grp-filters (800), stala belka
+  // z przyciskami (900), pulldowny (910), menu nawigacji (1000+).
+  z-index: 790;
   background-color: #417690;
   color: white;
   border: none;
   // Grappelli stylizuje KAZDY <button>: height: 28px, overflow: hidden,
-  // border-radius: 5px !important - bez tego zakladka bylaby uciete 28 px.
+  // border-radius: 5px !important - nadpisujemy, zeby zakladka miala
+  // wlasna wysokosc i ksztalt.
   height: auto;
   width: auto;
   overflow: visible;
   box-sizing: content-box;
   vertical-align: baseline;
-  border-radius: 6px 0 0 6px !important;
+  border-radius: 6px 6px 0 0 !important;
   margin: 0;
-  padding: 14px 6px !important;
+  padding: 8px 14px 6px !important;
   font-size: 13px;
   font-weight: bold;
   line-height: 1;
@@ -86,15 +88,15 @@ button.keypad-trigger {
   cursor: grab;
   user-select: none;
   touch-action: none;
-  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
   transition: padding 0.2s ease, background-color 0.2s ease,
     box-shadow 0.2s ease;
 
   &:hover {
     background-color: #205067;
     color: white;
-    padding-right: 10px !important;
-    box-shadow: -3px 0 12px rgba(0, 0, 0, 0.2);
+    padding-bottom: 10px !important;
+    box-shadow: 0 -3px 12px rgba(0, 0, 0, 0.2);
   }
 
   &.is-dragging {

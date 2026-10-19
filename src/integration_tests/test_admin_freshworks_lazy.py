@@ -165,9 +165,15 @@ def test_freshworks_widget_blad_ladowania(freshworks_live_server, admin_page: Pa
     assert "is-loading" not in button.get_attribute("class")
 
 
-# --- Zakładka na prawej krawędzi: pozycja, skrót „?" -----------------------
+# --- Zakładka w prawym dolnym rogu: pozycja, skrót „?" ---------------------
 
 CHANGE_FORM_URL = "/admin/bpp/zrodlo/add/"
+
+# Odstęp zakładki od prawej krawędzi okna (MARGIN_SIDE_PX w support-tab.js) —
+# klik w zakładkę nie może trafiać w nakładkowy pasek przewijania.
+MARGIN_SIDE_PX = 24
+# Najniższy z-index rozwijanych elementów admina (#grp-filters).
+Z_INDEX_ROZWIJANYCH_MENU = 800
 
 
 def _open(page: Page, server, url=ADMIN_URL):
@@ -182,7 +188,16 @@ def _open(page: Page, server, url=ADMIN_URL):
     )
 
 
-def test_zakladka_przy_prawej_krawedzi_nie_zaslania_stopki(
+def _z_index(page: Page):
+    return int(
+        page.evaluate(
+            "() => getComputedStyle(document.querySelector('#bppSupportButton'))"
+            "  .zIndex"
+        )
+    )
+
+
+def test_zakladka_wystaje_znad_belki_z_przyciskami(
     freshworks_live_server, admin_page: Page
 ):
     _track_freshworks(admin_page)
@@ -195,8 +210,28 @@ def test_zakladka_przy_prawej_krawedzi_nie_zaslania_stopki(
 
     viewport_width = admin_page.evaluate("document.documentElement.clientWidth")
     tab_box = tab.bounding_box()
-    assert tab_box["x"] + tab_box["width"] == pytest.approx(viewport_width, abs=1)
-    assert tab_box["y"] + tab_box["height"] <= footer.bounding_box()["y"]
+    # Prawy dolny róg, odsunięta od prawej krawędzi…
+    assert tab_box["x"] + tab_box["width"] == pytest.approx(
+        viewport_width - MARGIN_SIDE_PX, abs=1
+    )
+    # …i stoi NA belce z przyciskami, a nie na niej albo pod nią.
+    assert tab_box["y"] + tab_box["height"] == pytest.approx(
+        footer.bounding_box()["y"], abs=1
+    )
+    assert _z_index(admin_page) < Z_INDEX_ROZWIJANYCH_MENU
+
+
+def test_zakladka_bez_belki_stoi_na_dolnej_krawedzi(
+    freshworks_live_server, admin_page: Page
+):
+    _track_freshworks(admin_page)
+    admin_page.set_viewport_size({"width": 1280, "height": 600})
+    # Strona główna admina nie ma belki z przyciskami.
+    _open(admin_page, freshworks_live_server, "/admin/")
+    assert admin_page.locator("footer.grp-fixed-footer").count() == 0
+
+    tab_box = admin_page.locator("#bppSupportButton").bounding_box()
+    assert tab_box["y"] + tab_box["height"] == pytest.approx(600, abs=1)
 
 
 def test_skrot_pytajnik_nie_dziala_w_polu_tekstowym(
@@ -228,12 +263,34 @@ def test_zakladka_na_stronie_publicznej_laduje_widget_leniwie(
     freshworks_live_server, admin_page: Page, uczelnia
 ):
     requests = _track_freshworks(admin_page)
+    # Pasek zgody na cookies (z-index 1000) celowo zasłania zakładkę, dopóki
+    # użytkownik go nie zamknie — zamykamy go zawczasu, jak użytkownik.
+    admin_page.context.add_cookies(
+        [
+            {
+                "name": "cookielaw_accepted",
+                "value": "1",
+                "url": freshworks_live_server.url,
+            }
+        ]
+    )
     _open(admin_page, freshworks_live_server, "/")
     admin_page.wait_for_load_state("networkidle")
 
     tab = admin_page.locator("#bppSupportButton")
     assert tab.is_visible()
     assert requests == []
+
+    # Prawy dolny róg, poniżej rozwijanych menu top-bara.
+    viewport = admin_page.evaluate(
+        "() => [document.documentElement.clientWidth, window.innerHeight]"
+    )
+    tab_box = tab.bounding_box()
+    assert tab_box["x"] + tab_box["width"] == pytest.approx(
+        viewport[0] - MARGIN_SIDE_PX, abs=1
+    )
+    assert tab_box["y"] + tab_box["height"] == pytest.approx(viewport[1], abs=1)
+    assert _z_index(admin_page) < Z_INDEX_ROZWIJANYCH_MENU
 
     tab.click()
     admin_page.wait_for_function("() => (window.__fwCalls || []).length >= 4")
