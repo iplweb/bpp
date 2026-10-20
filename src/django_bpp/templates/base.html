@@ -116,71 +116,27 @@
         {{ extraChannels|json_script:"extra-channels" }}
 
         {% if not TESTING %}
-        <!-- Freshworks Support Widget -->
+        {# Zakladka "Pomoc" w prawym dolnym rogu (do przeciagania). #}
+        {# Widget Freshworks ladowany LENIWIE - cala logika: support-tab.js. #}
+        {# Stub FreshworksWidget kolejkuje wywolania w .q, a skrypt Freshworks #}
+        {# po wyrenderowaniu widgetu (widgetRenderComplete) odtwarza kolejke #}
+        {# i podmienia window.FreshworksWidget na wlasna implementacje. #}
         <script>
             window.fwSettings={
                 'widget_id':205000000433
             };
             !function(){if("function"!=typeof window.FreshworksWidget){var n=function(){n.q.push(arguments)};n.q=[],window.FreshworksWidget=n}}()
         </script>
-        <script type='text/javascript' src='https://euc-widget.freshworks.com/widgets/205000000433.js' async defer></script>
 
-        <!-- Identify user for Freshworks -->
-        <script type="text/javascript">
-            $(document).ready(function() {
-                FreshworksWidget('hide', 'launcher');
-
-                // Wait a bit for the widget to initialize
-                setTimeout(function() {
-                    if (typeof FreshworksWidget !== 'undefined') {
-                        FreshworksWidget('identify', 'ticketForm', {
-                            name: '{{ request.user.get_full_name|default:request.user.username|escapejs }}',
-                            email: '{{ request.user.email|escapejs }}'
-                        });
-
-                    }
-                }, 1000);
-            });
-        </script>
-
-        <!-- Custom Support Button -->
-        <button class="bpp-support-button hide-on-print" id="bppSupportButton">
-            <span class="button-content">
-                <span class="support-symbols">!?!</span>
-                <span class="support-text">Support BPP</span>
-            </span>
+        <button type="button" class="bpp-support-button hide-on-print" id="bppSupportButton"
+                title="Zgłoś problem lub zadaj pytanie. Do zgłoszenia dołączymy adres tej strony. Skrót: ?"
+                data-widget-src="https://euc-widget.freshworks.com/widgets/205000000433.js"
+                data-fallback-url="https://support.iplweb.pl"
+                data-user-name="{{ request.user.get_full_name|default:request.user.username }}"
+                data-user-email="{{ request.user.email }}">
+            <span class="support-text">Pomoc</span>
         </button>
-
-        <script type="text/javascript">
-            $(document).ready(function() {
-                // Track widget state
-                var widgetOpen = false;
-
-                // Handle custom support button click - toggle widget
-                $('#bppSupportButton').on('click', function(e) {
-                    e.preventDefault();
-                    if (typeof FreshworksWidget !== 'undefined') {
-                        if (!widgetOpen) {
-
-                            FreshworksWidget('prefill', 'ticketForm', {
-                                custom_fields: {
-                                    cf_adres_url: window.location.href
-                                }
-                            });
-
-                            // Optional: make it read-only so users can’t change it
-                            FreshworksWidget('disable', 'ticketForm', ['custom_fields.cf_page_url']);
-
-                            FreshworksWidget('open');
-                            widgetOpen = true;
-                        } else {
-                            FreshworksWidget('close');
-                            widgetOpen = false;
-                        }
-                    }
-                });
-            });
-        </script>
+        <script src="{% static 'bpp/js/support-tab.js' %}" defer></script>
         {% endif %}
 
         <script type="text/javascript">
