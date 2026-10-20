@@ -1,12 +1,21 @@
-// Okno widgetu Freshworks (formularz zgloszenia) wyskakuje Z zakladki
-// "Pomoc" i do niej sie chowa. Wspolne dla strony publicznej
-// (common.scss) i admina (_admin-base.scss).
+// Okno widgetu Freshworks (formularz zgloszenia) rozklada sie Z zakladki
+// "Pomoc" i do niej sklada. Wspolne dla strony publicznej (common.scss)
+// i admina (_admin-base.scss).
 //
 // Freshworks ustawia #freshworks-frame-wrapper inline (right: 30px;
 // bottom: 80px) i animuje go od wlasnego prawego dolnego rogu - nadpisujemy
 // to zmiennymi, ktore support-tab.js liczy z polozenia zakladki. Na telefonie
 // widget zajmuje caly ekran (wlasne reguly Freshworks z !important dla
 // max-device-width: 667px lub max-width: 450px) - tam go nie ruszamy.
+//
+// Animacja: okno startuje jako prostokat zakladki - wycinek (clip-path)
+// dolnego paska okna o jej wymiarach, przesuniety w dol na zakladke
+// i przykryty warstwa w jej kolorze (::after) - i rozklada sie do pelnego
+// okna, a warstwa w tym czasie znika. Zamykanie to to samo od tylu.
+$bpp-support-widget-open: 0.34s;
+$bpp-support-widget-close: 0.26s;
+$bpp-support-widget-easing: cubic-bezier(0.2, 0.8, 0.2, 1);
+
 @media screen and (min-width: 451px) and (min-device-width: 668px) {
   #freshworks-frame-wrapper {
     right: var(--bpp-support-widget-right, 30px) !important;
@@ -14,44 +23,89 @@
     height: calc(
       100% - var(--bpp-support-widget-bottom, 80px) - 16px
     ) !important;
-    transform-origin: var(--bpp-support-widget-origin, bottom right);
     // !important, bo Freshworks ustawia animacje regula
     // #freshworks-frame-wrapper.frame-right (wyzsza specyficznosc).
-    animation: bpp-support-widget-in 0.25s ease-out !important;
+    animation: bpp-support-widget-unfold $bpp-support-widget-open
+      $bpp-support-widget-easing !important;
+
+    // Warstwa w kolorze zakladki nad iframe'em widgetu.
+    &::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: var(--bpp-support-tab-background, #417690);
+      opacity: 0;
+      pointer-events: none;
+      animation: bpp-support-widget-veil-out $bpp-support-widget-open
+        $bpp-support-widget-easing;
+    }
 
     // Klase dodaje support-tab.js przed wywolaniem "close".
     &.bpp-support-widget-closing {
-      animation: bpp-support-widget-out 0.2s ease-in forwards !important;
+      animation: bpp-support-widget-fold $bpp-support-widget-close ease-in
+        forwards !important;
+
+      &::after {
+        animation: bpp-support-widget-veil-in $bpp-support-widget-close ease-in
+          forwards;
+      }
     }
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #freshworks-frame-wrapper {
+  #freshworks-frame-wrapper,
+  #freshworks-frame-wrapper::after {
     animation: none !important;
   }
 }
 
-@keyframes bpp-support-widget-in {
+@keyframes bpp-support-widget-unfold {
   from {
-    transform: scale(0);
-    opacity: 0;
+    clip-path: var(--bpp-support-widget-clip-from, inset(100% 0 0 0));
+    transform: translateY(var(--bpp-support-widget-shift, 0px));
   }
 
   to {
-    transform: scale(1);
-    opacity: 1;
+    clip-path: inset(0 round 12px);
+    transform: none;
   }
 }
 
-@keyframes bpp-support-widget-out {
+@keyframes bpp-support-widget-fold {
   from {
-    transform: scale(1);
-    opacity: 1;
+    clip-path: inset(0 round 12px);
+    transform: none;
   }
 
   to {
-    transform: scale(0);
+    clip-path: var(--bpp-support-widget-clip-from, inset(100% 0 0 0));
+    transform: translateY(var(--bpp-support-widget-shift, 0px));
+  }
+}
+
+// Warstwa koloru znika w pierwszej czesci rozkladania (zeby formularz byl
+// widoczny, zanim okno osiagnie pelny rozmiar) i wraca pod koniec skladania.
+@keyframes bpp-support-widget-veil-out {
+  0%,
+  15% {
+    opacity: 1;
+  }
+
+  65%,
+  100% {
     opacity: 0;
+  }
+}
+
+@keyframes bpp-support-widget-veil-in {
+  0%,
+  35% {
+    opacity: 0;
+  }
+
+  85%,
+  100% {
+    opacity: 1;
   }
 }

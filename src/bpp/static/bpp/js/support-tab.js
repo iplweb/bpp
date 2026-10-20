@@ -9,9 +9,9 @@
 //   FreshworksWidget (inline w szablonie) kolejkuje wywolania w .q, a skrypt
 //   Freshworks po wyrenderowaniu widgetu odtwarza kolejke i podmienia
 //   window.FreshworksWidget.
-// - Okno widgetu wyskakuje Z zakladki i do niej sie chowa: polozenie i punkt
-//   skalowania okna przekazujemy do CSS (_support_widget.scss) w zmiennych
-//   --bpp-support-widget-*.
+// - Okno widgetu rozklada sie Z zakladki i do niej sklada: polozenie okna,
+//   prostokat zakladki wzgledem okna i kolor zakladki przekazujemy do CSS
+//   (_support_widget.scss) w zmiennych --bpp-support-*.
 // - Zakladka wystaje znad dolnej krawedzi okna, a w adminie - znad stalej
 //   belki z przyciskami (Zapisz/Usun), jesli strona ja ma. Jest odsunieta od
 //   prawej krawedzi, zeby klikniecie nie trafialo w pasek przewijania.
@@ -39,7 +39,7 @@
     var WIDGET_GAP_PX = 8;
     // Klasa animacji chowania okna do zakladki (_support_widget.scss).
     var WIDGET_CLOSING_CLASS = "bpp-support-widget-closing";
-    var WIDGET_CLOSE_ANIMATION_MS = 200;
+    var WIDGET_CLOSE_ANIMATION_MS = 280;
 
     function readStoredPosition() {
         try {
@@ -240,24 +240,41 @@
         }
 
         // Okno widgetu stoi tuz nad zakladka, prawym brzegiem rowno z nia
-        // (o ile miesci sie w oknie), a skaluje sie od srodka zakladki.
+        // (o ile miesci sie w oknie). Animacja zaczyna od prostokata zakladki:
+        // wycinek (clip-path) dolnego paska okna o wymiarach zakladki,
+        // przesuniety w dol dokladnie na zakladke, w jej kolorze.
         function updateWidgetAnchor() {
             var rect = button.getBoundingClientRect();
             var width = document.documentElement.clientWidth;
+            var tabRight = width - rect.right;
             var right = Math.min(
-                width - rect.right,
+                tabRight,
                 Math.max(WIDGET_GAP_PX, width - WIDGET_WIDTH_PX - WIDGET_GAP_PX)
             );
             var bottom = window.innerHeight - rect.top + WIDGET_GAP_PX;
-            // Srodek zakladki wzgledem prawego dolnego rogu okna widgetu.
-            var originX = width - right - (rect.left + rect.width / 2);
-            var originY = WIDGET_GAP_PX + rect.height / 2;
+            // Wciecia wycinka liczone od krawedzi okna widgetu.
+            var insetRight = tabRight - right;
+            var insetLeft = "calc(100% - " + (insetRight + rect.width) + "px)";
+            var insetTop = "calc(100% - " + rect.height + "px)";
+            var tabStyle = window.getComputedStyle(button);
             var style = document.documentElement.style;
             style.setProperty("--bpp-support-widget-right", right + "px");
             style.setProperty("--bpp-support-widget-bottom", bottom + "px");
             style.setProperty(
-                "--bpp-support-widget-origin",
-                "calc(100% - " + originX + "px) calc(100% + " + originY + "px)"
+                "--bpp-support-widget-clip-from",
+                "inset(" + insetTop + " " + insetRight + "px 0px " + insetLeft
+                    + " round 6px 6px 0 0)"
+            );
+            style.setProperty(
+                "--bpp-support-widget-shift",
+                (rect.height + WIDGET_GAP_PX) + "px"
+            );
+            // Motywy Mario/Luigi maja gradient (background-image).
+            style.setProperty(
+                "--bpp-support-tab-background",
+                tabStyle.backgroundImage !== "none"
+                    ? tabStyle.backgroundImage
+                    : tabStyle.backgroundColor
             );
         }
 
