@@ -1,0 +1,32 @@
+{% load static %}
+{# Zakladka "Pomoc" + widget wsparcia Freshdesk - wspolne dla base.html i admin/base_site.html. #}
+{# Konfiguracja z context processora bpp.context_processors.freshdesk: #}
+{# zalogowani i anonimowi dostaja ROZNE widgety (osobne ID), pusty ID = brak zakladki. #}
+{# Widget Freshworks ladowany LENIWIE - cala logika (takze JWT): support-tab.js. #}
+{# Stub FreshworksWidget kolejkuje wywolania w .q, a skrypt Freshworks #}
+{# po wyrenderowaniu widgetu (widgetRenderComplete) odtwarza kolejke #}
+{# i podmienia window.FreshworksWidget na wlasna implementacje. #}
+{% if FRESHDESK_WIDGET and not TESTING %}
+    <script>
+        window.fwSettings={
+            'widget_id':Number('{{ FRESHDESK_WIDGET.widget_id|escapejs }}')
+        };
+        !function(){if("function"!=typeof window.FreshworksWidget){var n=function(){n.q.push(arguments)};n.q=[],window.FreshworksWidget=n}}()
+    </script>
+
+    <button type="button" class="bpp-support-button hide-on-print" id="bppSupportButton"
+            title="Zgłoś problem lub zadaj pytanie. Do zgłoszenia dołączymy adres tej strony. Skrót: ?"
+            data-widget-id="{{ FRESHDESK_WIDGET.widget_id }}"
+            data-widget-src="{{ FRESHDESK_WIDGET.script_url }}"
+            data-fallback-url="https://support.iplweb.pl"
+            {% if FRESHDESK_WIDGET.authenticated %}
+            data-user-name="{{ request.user.get_full_name|default:request.user.get_username }}"
+            data-user-email="{{ request.user.email }}"
+            {% endif %}
+            {% if FRESHDESK_WIDGET.jwt %}
+            data-token-url="{% url 'freshdesk_widget_token' %}"
+            {% endif %}>
+        <span class="support-text">Pomoc</span>
+    </button>
+    <script src="{% static 'bpp/js/support-tab.js' %}" defer></script>
+{% endif %}

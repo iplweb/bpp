@@ -1,0 +1,1 @@
+Widget wsparcia Freshdesk: osobne widgety dla zalogowanych i anonimowych użytkowników (zmienne ``DJANGO_BPP_FRESHDESK_WIDGET_ID`` / ``DJANGO_BPP_FRESHDESK_WIDGET_ID_ANON``), a zalogowani są uwierzytelniani w widgecie tokenem JWT, gdy ustawiono ``DJANGO_BPP_FRESHDESK_WIDGET_JWT_SECRET``.

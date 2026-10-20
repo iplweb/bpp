@@ -109,6 +109,13 @@ env = environ.Env(
     DJANGO_BPP_SECRET_KEY=(str, SECRET_KEY_UNSET),
     ALTCHA_HMAC_KEY=(str, ALTCHA_HMAC_KEY_UNSET),
     ZGLOS_CAPTCHA_ENABLED=(bool, False),
+    #
+    # Widget wsparcia Freshdesk (Freshworks) — patrz
+    # docs/administrator/widget-wsparcia-freshdesk.md
+    #
+    DJANGO_BPP_FRESHDESK_WIDGET_ID=(str, "205000000433"),
+    DJANGO_BPP_FRESHDESK_WIDGET_ID_ANON=(str, ""),
+    DJANGO_BPP_FRESHDESK_WIDGET_JWT_SECRET=(str, ""),
     DJANGO_BPP_MEDIA_ROOT=(str, os.path.join(os.getenv("HOME", "C:/"), "bpp-media")),
     #
     # Konfiguracja wymuszania zmiany haseł
@@ -317,6 +324,7 @@ TEMPLATES = [
                 "bpp.context_processors.oidc.oidc_auth_status",
                 "bpp.context_processors.external_auth.external_auth_status",
                 "bpp.context_processors.testing.testing",
+                "bpp.context_processors.freshdesk.freshdesk_widget",
                 "cookielaw.context_processors.cookielaw",
                 "django_countdown.context_processors.countdown_context",
                 "nowe_raporty.menu.raporty_menu",
@@ -916,6 +924,14 @@ SECRET_KEY = env("DJANGO_BPP_SECRET_KEY")
 ALTCHA_HMAC_KEY = env("ALTCHA_HMAC_KEY")
 ZGLOS_CAPTCHA_ENABLED = env("ZGLOS_CAPTCHA_ENABLED")
 INSTALLED_APPS += ["django_altcha"]
+
+# Widget wsparcia Freshdesk: osobne widgety dla zalogowanych i anonimów.
+# Pusty ID = brak widgetu dla danej grupy. Gdy ustawiony jest sekret JWT
+# (Freshdesk: Admin > Security > Widget settings), zalogowany użytkownik jest
+# uwierzytelniany w widgecie tokenem z /freshdesk/widget-token/.
+FRESHDESK_WIDGET_ID = env("DJANGO_BPP_FRESHDESK_WIDGET_ID")
+FRESHDESK_WIDGET_ID_ANON = env("DJANGO_BPP_FRESHDESK_WIDGET_ID_ANON")
+FRESHDESK_WIDGET_JWT_SECRET = env("DJANGO_BPP_FRESHDESK_WIDGET_JWT_SECRET")
 
 # Klucz Fernet do szyfrowania sekretów integracji (DSpace itd.).
 # Wygeneruj: python -c "from cryptography.fernet import Fernet;
