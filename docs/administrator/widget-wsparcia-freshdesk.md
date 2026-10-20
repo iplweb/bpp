@@ -1,9 +1,9 @@
 # Widget wsparcia Freshdesk
 
 W prawym dolnym rogu stron BPP (frontend i moduł redagowania) wyświetla się
-przycisk **„Support BPP"**. Otwiera on formularz zgłoszenia z systemu Freshdesk
+zakładka **„Pomoc"**. Otwiera ona formularz zgłoszenia z systemu Freshdesk
 (widget Freshworks). Skrypt widgetu jest pobierany z serwera Freshworks dopiero
-po pierwszym kliknięciu przycisku.
+po najechaniu na zakładkę lub jej kliknięciu.
 
 BPP używa **dwóch osobnych widgetów** Freshdesk:
 
@@ -23,7 +23,7 @@ Zmienne ustawia się w pliku `.env` (patrz
 | Zmienna | Domyślnie | Znaczenie |
 |---------|-----------|-----------|
 | `DJANGO_BPP_FRESHDESK_WIDGET_ID` | `205000000433` | ID widgetu dla użytkowników zalogowanych. Pusta wartość wyłącza widget dla zalogowanych. |
-| `DJANGO_BPP_FRESHDESK_WIDGET_ID_ANON` | *(pusta)* | ID widgetu dla użytkowników niezalogowanych. Pusta wartość = anonimowi nie widzą przycisku „Support BPP". |
+| `DJANGO_BPP_FRESHDESK_WIDGET_ID_ANON` | *(pusta)* | ID widgetu dla użytkowników niezalogowanych. Pusta wartość = anonimowi nie widzą zakładki „Pomoc". |
 | `DJANGO_BPP_FRESHDESK_WIDGET_JWT_SECRET` | *(pusta)* | Wspólny sekret do podpisywania tokenów JWT widgetu. Pusta wartość = brak uwierzytelnienia JWT. |
 
 ID widgetu to liczba z kodu osadzenia (embed code), który Freshdesk pokazuje
@@ -50,7 +50,7 @@ Gdy ustawiono `DJANGO_BPP_FRESHDESK_WIDGET_JWT_SECRET`, zalogowany użytkownik
 jest automatycznie uwierzytelniany w widgecie
 ([dokumentacja Freshdesk](https://support.freshdesk.com/support/solutions/articles/50000000978)):
 
-1. Po kliknięciu „Support BPP" przeglądarka pobiera token z adresu
+1. Po najechaniu na zakładkę „Pomoc" (lub kliknięciu) przeglądarka pobiera token z adresu
    `/freshdesk/widget-token/` (dostępny tylko dla zalogowanych).
 2. Token (HS256) zawiera imię i nazwisko, adres e-mail użytkownika BPP oraz
    czas wygaśnięcia (1 godzina; Freshdesk dopuszcza maksymalnie 2 godziny).
@@ -73,5 +73,5 @@ Uwagi:
 Anonimowy widget jest osobnym widgetem w Freshdesku (inne ID). Włącz w nim
 captchę i ewentualnie ogranicz pola formularza — po stronie BPP nie jest
 potrzebna żadna dodatkowa konfiguracja poza `DJANGO_BPP_FRESHDESK_WIDGET_ID_ANON`.
-Przycisk dla anonimów pojawia się na stronach publicznych oraz na stronie
+Zakładka dla anonimów pojawia się na stronach publicznych oraz na stronie
 logowania do modułu redagowania.

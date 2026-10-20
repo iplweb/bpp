@@ -14,11 +14,18 @@ bootstrap Freshworks (``widgetRenderComplete``) — odtwarza kolejkę ``.q``
 stuba i podmienia ``window.FreshworksWidget``.
 """
 
+import jwt
 import pytest
 from playwright.sync_api import Page
 
 from django_bpp.playwright_util import wait_for_page_load
-from integration_tests._freshworks_daphne_setup import setup_freshworks_daphne
+from integration_tests._freshworks_daphne_setup import (
+    JWT_SECRET,
+    WIDGET_ID_ANON,
+    setup_freshworks_daphne,
+    setup_freshworks_daphne_anon,
+    setup_freshworks_daphne_jwt,
+)
 
 ADMIN_URL = "/admin/bpp/zrodlo/"
 FRESHWORKS_ROUTE = "**/euc-widget.freshworks.com/**"
@@ -39,20 +46,34 @@ STUB_WIDGET_JS = """
 """
 
 
-@pytest.fixture
-def freshworks_live_server(transactional_db):
-    """Per-test Daphne z ``TESTING=False`` (widget renderuje się w adminie)."""
+def _live_server(setup):
     from channels_live_server import _spawn_daphne
 
-    server, server_process, modified_settings = _spawn_daphne(
-        setup=setup_freshworks_daphne
-    )
+    server, server_process, modified_settings = _spawn_daphne(setup=setup)
     try:
         yield server
     finally:
         server_process.terminate()
         server_process.join()
         modified_settings.disable()
+
+
+@pytest.fixture
+def freshworks_live_server(transactional_db):
+    """Per-test Daphne z ``TESTING=False`` (widget renderuje się w adminie)."""
+    yield from _live_server(setup_freshworks_daphne)
+
+
+@pytest.fixture
+def freshworks_jwt_live_server(transactional_db):
+    """Jak wyżej, plus ustawiony sekret JWT widgetu."""
+    yield from _live_server(setup_freshworks_daphne_jwt)
+
+
+@pytest.fixture
+def freshworks_anon_live_server(transactional_db):
+    """Jak wyżej, plus osobny widget dla niezalogowanych."""
+    yield from _live_server(setup_freshworks_daphne_anon)
 
 
 def _track_freshworks(page: Page, abort=False):
@@ -317,3 +338,42 @@ def test_zakladka_na_stronie_publicznej_laduje_widget_leniwie(
     assert len(requests) == 1
     calls = _calls(admin_page)
     assert calls[2][2]["email"] == admin_page.authorized_user.email
+
+
+def test_freshworks_widget_jwt_uwierzytelnia_zalogowanego(
+    freshworks_jwt_live_server, admin_page: Page
+):
+    _track_freshworks(admin_page)
+    _open(admin_page, freshworks_jwt_live_server)
+
+    admin_page.locator("#bppSupportButton").click()
+    admin_page.wait_for_function("() => (window.__fwCalls || []).length >= 4")
+
+    calls = _calls(admin_page)
+    # "open" dopiero PO "authenticate" — inaczej formularz dla anonima.
+    assert [c[0] for c in calls] == ["hide", "prefill", "authenticate", "open"]
+    payload = jwt.decode(calls[2][1]["token"], JWT_SECRET, algorithms=["HS256"])
+    assert payload["email"] == admin_page.authorized_user.email
+
+
+def test_anonim_dostaje_osobny_widget_bez_identify(
+    freshworks_anon_live_server, page: Page, uczelnia
+):
+    requests = _track_freshworks(page)
+    page.context.add_cookies(
+        [
+            {
+                "name": "cookielaw_accepted",
+                "value": "1",
+                "url": freshworks_anon_live_server.url,
+            }
+        ]
+    )
+    page.goto(freshworks_anon_live_server.url + "/")
+    wait_for_page_load(page)
+
+    page.locator("#bppSupportButton").click()
+    page.wait_for_function("() => (window.__fwCalls || []).length >= 3")
+
+    assert requests[0].endswith(f"/widgets/{WIDGET_ID_ANON}.js")
+    assert [c[0] for c in _calls(page)] == ["hide", "prefill", "open"]
