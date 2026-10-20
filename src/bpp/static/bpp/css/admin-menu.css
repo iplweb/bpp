@@ -473,10 +473,18 @@ header#grp-header #grp-navigation ul#grp-user-tools {
 /* Two-column menu layout for "Dane systemowe" */
 /* -------------------------------------------------------------------------------- */
 
-/* Hide the dropdown by default */
+/* Hide the dropdown by default.
+   Two-column layout (flex + max-height) lives here, NOT in :hover - otherwise
+   on mouse-out the list collapses to one long column while still fading out
+   (admin-themes.css forces a 0.5s visibility transition), grows under the
+   cursor, regains :hover and flickers in a loop. */
 #grp-navigation ul#navigation-menu li.has-columns ul {
     visibility: hidden;
     opacity: 0;
+    display: flex !important;
+    flex-direction: column;
+    flex-wrap: wrap;
+    max-height: 525px; /* 15 items * ~35px per item */
     width: 500px !important;
     position: absolute;
     top: auto;
@@ -488,7 +496,6 @@ header#grp-header #grp-navigation ul#grp-user-tools {
     border: 1px solid #090909;
     border-radius: 8px !important;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
-    /* Delay opacity transition to allow flexbox to calculate layout first */
     transition: opacity 0.5s ease 0.05s, visibility 0s ease 0s;
     overflow: hidden;
 }
@@ -496,12 +503,6 @@ header#grp-header #grp-navigation ul#grp-user-tools {
 /* Show dropdown on hover */
 #grp-navigation ul#navigation-menu li.has-columns:hover ul,
 #grp-navigation ul#navigation-menu li.has-columns.over ul {
-    /* First, instantly show with display: flex but invisible */
-    display: flex !important;
-    flex-direction: column;
-    flex-wrap: wrap;
-    max-height: 525px; /* 15 items * ~35px per item */
-    /* Then fade in after layout is calculated */
     visibility: visible;
     opacity: 1;
 }
