@@ -12,6 +12,12 @@
 // dolnego paska okna o jej wymiarach, przesuniety w dol na zakladke
 // i przykryty warstwa w jej kolorze (::after) - i rozklada sie do pelnego
 // okna, a warstwa w tym czasie znika. Zamykanie to to samo od tylu.
+//
+// Warstwy: Freshworks daje oknu z-index 2147483647, przez co zaslanialo
+// rozwijane menu. Okno ma lezec nad zakladka (790), ale POD wszystkim, co
+// sie rozwija: #grp-filters (800), belka z przyciskami (900), pulldowny
+// (910), naglowek i menu admina (1000+), belka strony publicznej (2000).
+// Dlatego tez nie siega pod belke menu u gory (--bpp-support-widget-top).
 $bpp-support-widget-open: 0.34s;
 $bpp-support-widget-close: 0.26s;
 $bpp-support-widget-easing: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -21,8 +27,10 @@ $bpp-support-widget-easing: cubic-bezier(0.2, 0.8, 0.2, 1);
     right: var(--bpp-support-widget-right, 30px) !important;
     bottom: var(--bpp-support-widget-bottom, 80px) !important;
     height: calc(
-      100% - var(--bpp-support-widget-bottom, 80px) - 16px
+      100% - var(--bpp-support-widget-bottom, 80px) -
+        var(--bpp-support-widget-top, 16px)
     ) !important;
+    z-index: 795 !important;
     // !important, bo Freshworks ustawia animacje regula
     // #freshworks-frame-wrapper.frame-right (wyzsza specyficznosc).
     animation: bpp-support-widget-unfold $bpp-support-widget-open

@@ -37,6 +37,10 @@
     var WIDGET_CONTAINER_ID = "freshworks-container";
     var WIDGET_WIDTH_PX = 384;
     var WIDGET_GAP_PX = 8;
+    // Belka menu przyklejona do gory (strona publiczna / admin). Okno widgetu
+    // lezy POD rozwijanymi menu (z-index w _support_widget.scss), wiec nie
+    // moze siegac pod belke - zaslonilaby mu naglowek i krzyzyk.
+    var TOP_BAR_SELECTOR = "nav.sticky-header, #grp-header";
     // Klasa animacji chowania okna do zakladki (_support_widget.scss).
     var WIDGET_CLOSING_CLASS = "bpp-support-widget-closing";
     var WIDGET_CLOSE_ANIMATION_MS = 280;
@@ -252,6 +256,10 @@
                 Math.max(WIDGET_GAP_PX, width - WIDGET_WIDTH_PX - WIDGET_GAP_PX)
             );
             var bottom = window.innerHeight - rect.top + WIDGET_GAP_PX;
+            var topBar = document.querySelector(TOP_BAR_SELECTOR);
+            var top = (topBar
+                ? Math.max(0, topBar.getBoundingClientRect().bottom)
+                : 0) + WIDGET_GAP_PX;
             // Wciecia wycinka liczone od krawedzi okna widgetu.
             var insetRight = tabRight - right;
             var insetLeft = "calc(100% - " + (insetRight + rect.width) + "px)";
@@ -260,6 +268,7 @@
             var style = document.documentElement.style;
             style.setProperty("--bpp-support-widget-right", right + "px");
             style.setProperty("--bpp-support-widget-bottom", bottom + "px");
+            style.setProperty("--bpp-support-widget-top", top + "px");
             style.setProperty(
                 "--bpp-support-widget-clip-from",
                 "inset(" + insetTop + " " + insetRight + "px 0px " + insetLeft
