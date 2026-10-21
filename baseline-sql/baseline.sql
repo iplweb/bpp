@@ -16462,6 +16462,53 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+482	bpp	0375_alter_autor_absencja_options_and_more	2000-01-01 00:00:00+00
+483	bpp	0376_alter_autor_dyscyplina_rodzaj_autora	2000-01-01 00:00:00+00
+484	bpp	0377_autor_dyscyplina_zatrudnienie_do_and_more	2000-01-01 00:00:00+00
+485	bpp	0378_alter_praca_doktorska_pbn_uid_and_more	2000-01-01 00:00:00+00
+486	bpp	0379_cache_liczba_n_last_updated_and_more	2000-01-01 00:00:00+00
+488	bpp	0381_uczelnia_przydzielaj_1_slot_gdy_udzial_mniejszy	2000-01-01 00:00:00+00
+489	bpp	0382_alter_uczelnia_przydzielaj_1_slot_gdy_udzial_mniejszy	2000-01-01 00:00:00+00
+490	bpp	0383_uczelnia_pytaj_o_zgode_na_publikacje_pelnego_tekstu	2000-01-01 00:00:00+00
+491	bpp	0384_remove_charakter_formalny_charakter_crossref_and_more	2000-01-01 00:00:00+00
+493	bpp	0386_alter_crossref_mapper_charakter_crossref	2000-01-01 00:00:00+00
+494	bpp	0387_fix_refresh_cache_locking_deadlocks	2000-01-01 00:00:00+00
+495	bpp	0388_uczelnia_uzywaj_wydzialow	2000-01-01 00:00:00+00
+496	bpp	0389_alter_uczelnia_uzywaj_wydzialow	2000-01-01 00:00:00+00
+497	bpp	0390_add_filters_to_sumy_view	2000-01-01 00:00:00+00
+498	bpp	0391_migrate_rodzaj_autora_to_foreignkey	2000-01-01 00:00:00+00
+499	bpp	0392_alter_autor_dyscyplina_rodzaj_autora	2000-01-01 00:00:00+00
+500	bpp	0393_uczelnia_tytul_strony_glownej	2000-01-01 00:00:00+00
+501	bpp	0394_alter_uczelnia_clarivate_password_and_more	2000-01-01 00:00:00+00
+502	bpp	0395_add_wymagaj_logowania_zglos_publikacje	2000-01-01 00:00:00+00
+503	bpp	0396_uczelnia_nowy_autor_z_formularza_pokazuj	2000-01-01 00:00:00+00
+504	bpp	0397_remove_null_from_string_fields	2000-01-01 00:00:00+00
+505	bpp	0398_alter_autor_string_fields_schema	2000-01-01 00:00:00+00
+506	bpp	0399_fix_refresh_cache_upsert	2000-01-01 00:00:00+00
+507	bpp	0400_add_status_optymalizacji_bulk	2000-01-01 00:00:00+00
+508	bpp	0401_autorzy_przypieta	2000-01-01 00:00:00+00
+509	bpp	0402_autorzy_data_oswiadczenia	2000-01-01 00:00:00+00
+510	bpp	0403_autorzy_ostatnio_zmieniony	2000-01-01 00:00:00+00
+511	bpp	0404_add_oplaty_publikacji_log	2000-01-01 00:00:00+00
+512	bpp	0405_add_rok_to_oplaty_log	2000-01-01 00:00:00+00
+513	bpp	0406_add_pbn_evaluation_fields	2000-01-01 00:00:00+00
+514	bpp	0407_remove_null_from_string_fields	2000-01-01 00:00:00+00
+515	bpp	0408_add_jest_wydawnictwem_zwartym_to_crossref_mapper	2000-01-01 00:00:00+00
+516	bpp	0409_set_default_jest_wydawnictwem_zwartym	2000-01-01 00:00:00+00
+517	bpp	0410_set_polish_skrot_crossref	2000-01-01 00:00:00+00
+518	bpp	0411_uczelnia_orcid_fields	2000-01-01 00:00:00+00
+519	bpp	0412_uczelnia_orcid_staff_only	2000-01-01 00:00:00+00
+521	bpp	0413_merge_20260416_2124	2000-01-01 00:00:00+00
+522	bpp	0413_bppuser_autor_onetoone	2000-01-01 00:00:00+00
+523	bpp	0414_merge_20260427_1123	2000-01-01 00:00:00+00
+524	bpp	0414_code_review_2026_05_fixes	2000-01-01 00:00:00+00
+525	bpp	0415_merge_20260504_0907	2000-01-01 00:00:00+00
+526	bpp	0416_rename_dynamic_columns_to_admin	2000-01-01 00:00:00+00
+527	bpp	0417_remove_uczelnia_pokazuj_raport_autorow_and_more	2000-01-01 00:00:00+00
+528	bpp	0414_uczelnia_pbn_kasuj_dyscypliny_selektywnie	2000-01-01 00:00:00+00
+1137	bpp	0489_uczelnia_mcp_wlaczone	2000-01-01 00:00:00+00
+1138	oauth2_provider	0021_translatable_field_labels	2000-01-01 00:00:00+00
+1139	oauth2_provider	0022_refreshtoken_token_family_index	2000-01-01 00:00:00+00
 643	easyaudit	0010_repr_text	2000-01-01 00:00:00+00
 529	bpp	0416_merge_20260504_1024	2000-01-01 00:00:00+00
 530	bpp	0417_merge_20260601_0632	2000-01-01 00:00:00+00
@@ -17112,6 +17159,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 17	auth	0010_alter_group_name_max_length	2000-01-01 00:00:00+00
 18	auth	0011_update_proxy_permissions	2000-01-01 00:00:00+00
 19	auth	0012_alter_user_first_name_max_length	2000-01-01 00:00:00+00
+250	bpp	0167_auto_20190707_2029	2000-01-01 00:00:00+00
 21	axes	0002_auto_20151217_2044	2000-01-01 00:00:00+00
 22	axes	0003_auto_20160322_0929	2000-01-01 00:00:00+00
 23	axes	0004_auto_20181024_1538	2000-01-01 00:00:00+00
@@ -17335,7 +17383,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 247	bpp	0164_auto_20190701_1303	2000-01-01 00:00:00+00
 248	bpp	0165_cache_punktacja_autora_cache_punktacja_dyscypliny	2000-01-01 00:00:00+00
 249	bpp	0166_auto_20190702_1200	2000-01-01 00:00:00+00
-250	bpp	0167_auto_20190707_2029	2000-01-01 00:00:00+00
 251	bpp	0166_auto_20190708_0022	2000-01-01 00:00:00+00
 373	bpp	0280_auto_20210725_2217	2000-01-01 00:00:00+00
 376	bpp	0283_auto_20210809_0142	2000-01-01 00:00:00+00
@@ -17549,53 +17596,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 479	bpp	0372_autor_dyscyplina_dni_absencji_and_more	2000-01-01 00:00:00+00
 480	bpp	0373_alter_praca_doktorska_jezyk_and_more	2000-01-01 00:00:00+00
 481	bpp	0374_remove_autor_dyscyplina_dni_absencji_and_more	2000-01-01 00:00:00+00
-482	bpp	0375_alter_autor_absencja_options_and_more	2000-01-01 00:00:00+00
-483	bpp	0376_alter_autor_dyscyplina_rodzaj_autora	2000-01-01 00:00:00+00
-484	bpp	0377_autor_dyscyplina_zatrudnienie_do_and_more	2000-01-01 00:00:00+00
-485	bpp	0378_alter_praca_doktorska_pbn_uid_and_more	2000-01-01 00:00:00+00
-486	bpp	0379_cache_liczba_n_last_updated_and_more	2000-01-01 00:00:00+00
-488	bpp	0381_uczelnia_przydzielaj_1_slot_gdy_udzial_mniejszy	2000-01-01 00:00:00+00
-489	bpp	0382_alter_uczelnia_przydzielaj_1_slot_gdy_udzial_mniejszy	2000-01-01 00:00:00+00
-490	bpp	0383_uczelnia_pytaj_o_zgode_na_publikacje_pelnego_tekstu	2000-01-01 00:00:00+00
-491	bpp	0384_remove_charakter_formalny_charakter_crossref_and_more	2000-01-01 00:00:00+00
-493	bpp	0386_alter_crossref_mapper_charakter_crossref	2000-01-01 00:00:00+00
-494	bpp	0387_fix_refresh_cache_locking_deadlocks	2000-01-01 00:00:00+00
-495	bpp	0388_uczelnia_uzywaj_wydzialow	2000-01-01 00:00:00+00
-496	bpp	0389_alter_uczelnia_uzywaj_wydzialow	2000-01-01 00:00:00+00
-497	bpp	0390_add_filters_to_sumy_view	2000-01-01 00:00:00+00
-498	bpp	0391_migrate_rodzaj_autora_to_foreignkey	2000-01-01 00:00:00+00
-499	bpp	0392_alter_autor_dyscyplina_rodzaj_autora	2000-01-01 00:00:00+00
-500	bpp	0393_uczelnia_tytul_strony_glownej	2000-01-01 00:00:00+00
-501	bpp	0394_alter_uczelnia_clarivate_password_and_more	2000-01-01 00:00:00+00
-502	bpp	0395_add_wymagaj_logowania_zglos_publikacje	2000-01-01 00:00:00+00
-503	bpp	0396_uczelnia_nowy_autor_z_formularza_pokazuj	2000-01-01 00:00:00+00
-504	bpp	0397_remove_null_from_string_fields	2000-01-01 00:00:00+00
-505	bpp	0398_alter_autor_string_fields_schema	2000-01-01 00:00:00+00
-506	bpp	0399_fix_refresh_cache_upsert	2000-01-01 00:00:00+00
-507	bpp	0400_add_status_optymalizacji_bulk	2000-01-01 00:00:00+00
-508	bpp	0401_autorzy_przypieta	2000-01-01 00:00:00+00
-509	bpp	0402_autorzy_data_oswiadczenia	2000-01-01 00:00:00+00
-510	bpp	0403_autorzy_ostatnio_zmieniony	2000-01-01 00:00:00+00
-511	bpp	0404_add_oplaty_publikacji_log	2000-01-01 00:00:00+00
-512	bpp	0405_add_rok_to_oplaty_log	2000-01-01 00:00:00+00
-513	bpp	0406_add_pbn_evaluation_fields	2000-01-01 00:00:00+00
-514	bpp	0407_remove_null_from_string_fields	2000-01-01 00:00:00+00
-515	bpp	0408_add_jest_wydawnictwem_zwartym_to_crossref_mapper	2000-01-01 00:00:00+00
-516	bpp	0409_set_default_jest_wydawnictwem_zwartym	2000-01-01 00:00:00+00
-517	bpp	0410_set_polish_skrot_crossref	2000-01-01 00:00:00+00
-518	bpp	0411_uczelnia_orcid_fields	2000-01-01 00:00:00+00
-519	bpp	0412_uczelnia_orcid_staff_only	2000-01-01 00:00:00+00
-521	bpp	0413_merge_20260416_2124	2000-01-01 00:00:00+00
-522	bpp	0413_bppuser_autor_onetoone	2000-01-01 00:00:00+00
-523	bpp	0414_merge_20260427_1123	2000-01-01 00:00:00+00
-524	bpp	0414_code_review_2026_05_fixes	2000-01-01 00:00:00+00
-525	bpp	0415_merge_20260504_0907	2000-01-01 00:00:00+00
-526	bpp	0416_rename_dynamic_columns_to_admin	2000-01-01 00:00:00+00
-527	bpp	0417_remove_uczelnia_pokazuj_raport_autorow_and_more	2000-01-01 00:00:00+00
-528	bpp	0414_uczelnia_pbn_kasuj_dyscypliny_selektywnie	2000-01-01 00:00:00+00
-1137	bpp	0489_uczelnia_mcp_wlaczone	2000-01-01 00:00:00+00
-1138	oauth2_provider	0021_translatable_field_labels	2000-01-01 00:00:00+00
-1139	oauth2_provider	0022_refreshtoken_token_family_index	2000-01-01 00:00:00+00
+1140	bpp	0490_usun_unique_autor_kolejnosc	2000-01-01 00:00:00+00
 \.
 
 
@@ -17967,6 +17968,21 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+283	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+284	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
+285	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+286	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+287	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+288	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+289	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+290	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+291	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+292	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+293	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+294	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+295	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+296	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+297	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -19583,7 +19599,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1139, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1140, true);
 
 
 --
@@ -19821,7 +19837,7 @@ SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 42,
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 282, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 297, true);
 
 
 --
@@ -21174,14 +21190,6 @@ ALTER TABLE ONLY public.bpp_patent_autor
 
 
 --
--- Name: bpp_patent_autor bpp_patent_autor_rekord_id_autor_id_kolejnosc_96bdce4c_uniq; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.bpp_patent_autor
-    ADD CONSTRAINT bpp_patent_autor_rekord_id_autor_id_kolejnosc_96bdce4c_uniq UNIQUE (rekord_id, autor_id, kolejnosc);
-
-
---
 -- Name: bpp_patent_autor bpp_patent_autor_rekord_id_autor_id_typ_o_1e995a31_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -21790,14 +21798,6 @@ ALTER TABLE ONLY public.bpp_wydawca
 
 
 --
--- Name: bpp_wydawnictwo_ciagle_autor bpp_wydawnictwo_ciagle_a_rekord_id_autor_id_kolej_e5464f5d_uniq; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.bpp_wydawnictwo_ciagle_autor
-    ADD CONSTRAINT bpp_wydawnictwo_ciagle_a_rekord_id_autor_id_kolej_e5464f5d_uniq UNIQUE (rekord_id, autor_id, kolejnosc);
-
-
---
 -- Name: bpp_wydawnictwo_ciagle_autor bpp_wydawnictwo_ciagle_a_rekord_id_autor_id_typ_o_498474bc_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -21883,14 +21883,6 @@ ALTER TABLE ONLY public.bpp_wydawnictwo_ciagle_tytul
 
 ALTER TABLE ONLY public.bpp_wydawnictwo_ciagle_zewnetrzna_baza_danych
     ADD CONSTRAINT bpp_wydawnictwo_ciagle_zewnetrzna_baza_danych_pkey PRIMARY KEY (id);
-
-
---
--- Name: bpp_wydawnictwo_zwarte_autor bpp_wydawnictwo_zwarte_a_rekord_id_autor_id_kolej_e9acdf58_uniq; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.bpp_wydawnictwo_zwarte_autor
-    ADD CONSTRAINT bpp_wydawnictwo_zwarte_a_rekord_id_autor_id_kolej_e9acdf58_uniq UNIQUE (rekord_id, autor_id, kolejnosc);
 
 
 --
