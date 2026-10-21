@@ -4,18 +4,22 @@
 
     <p>{{ session.last_error_message }}</p>
 
-    <form method="post"
-          action="{% url 'importer_publikacji:task-retry' session_id=session.pk %}"
-          style="display:inline-block;">
-        {% csrf_token %}
-        <button type="submit" class="button primary">
-            <span class="fi-refresh"></span> Spróbuj ponownie
-        </button>
-    </form>
+    {# Flex wyrownuje przycisk w formularzu z linkiem w jednej linii #}
+    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:0.5rem;">
+        <form method="post"
+              action="{% url 'importer_publikacji:task-retry' session_id=session.pk %}"
+              style="margin:0;">
+            {% csrf_token %}
+            <button type="submit" class="button primary" style="margin:0;">
+                <span class="fi-refresh"></span> Spróbuj ponownie
+            </button>
+        </form>
 
-    <a href="{% url 'importer_publikacji:index' %}" class="button secondary">
-        <span class="fi-arrow-left"></span> Wróć do początku
-    </a>
+        <a href="{% url 'importer_publikacji:index' %}" class="button secondary"
+           style="margin:0;">
+            <span class="fi-arrow-left"></span> Wróć do początku
+        </a>
+    </div>
 
     {% if request.user.is_superuser and session.last_error_traceback %}
         <details style="margin-top: 1rem;">
