@@ -156,6 +156,26 @@ dla **rzadszych przypadków**: testy z `PYTEST_TESTCONTAINERS_DISABLE=1`
 albo gdy potrzebujesz długożyjącej bazy niezależnie od `run-site`.
 Do oglądania samej strony — używaj `run-site`.
 
+## Testowanie pull requestów z GitHuba
+
+Gdy user prosi „przetestuj / odpal / pokaż PR #N", **nie przełączaj gałęzi
+w głównym checkoucie** (może mieć niezacommitowaną pracę) — użyj:
+
+```bash
+make pr PR=856 ARGS="--no-browser"   # w tle (run_in_background=true)
+make pr PR=856 DUMP=example          # z danymi: najnowszy backup ~/Backups/*example*/
+make pr PR=856 NO_RUN=1              # tylko worktree, np. żeby odpalić testy
+make pr-list                         # pobrane PR-y, run-site, backupy do DUMP=
+make pr-clean PR=856                 # sprzątanie po teście
+```
+
+Worktree ląduje w `~/Programowanie/bpp-pr-<N>` (gałąź `pr-<N>`), z własnym
+`.venv`; ponowne `make pr` dociąga nowe commity autora. Port i token
+autologinu czytasz z `.dev_helpers_*` **w worktree PR-a**, nie w głównym
+checkoucie. Przed klikaniem przeczytaj opis PR-a (`gh pr view N`) i odpal
+testy dotknięte zmianą w worktree PR-a. Szczegóły:
+[docs/deweloper/polecenia.md](docs/deweloper/polecenia.md#testowanie-pull-requestów).
+
 ## Key Commands (Quick Reference)
 
 Full details: [docs/deweloper/polecenia.md](docs/deweloper/polecenia.md)

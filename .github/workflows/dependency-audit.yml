@@ -20,7 +20,7 @@
 #   jest dobrym proxy: jezeli upstream wypuscil fix, znaczy ze warto bumpnac.
 # - Vuln bez fixa: warning w job summary, nie blokuje (nic nie da sie zrobic).
 # - Whitelist non-impact CVE: opcjonalnie przez --ignore-vuln w jobie
-#   ponizej (obecnie pusta — patrz komentarz przy kroku pip-audit).
+#   ponizej (patrz komentarz przy kroku pip-audit).
 #
 # Defense-in-depth: drugi job (multi-scanner) odpala OSV-Scanner, Grype
 # i Trivy na SBOM-ie wygenerowanym z uv.lock. Wszystkie report-only -
@@ -75,27 +75,23 @@ jobs:
       # (tam PIPAUDIT_IGNORE), inaczej lokalny pre-release guard i ten gate
       # rozjada sie: jeden przepusci, drugi zablokuje.
       #
-      # PYSEC-2026-4027 (i alias PYSEC-2026-4031) = CVE-2026-77528
-      # w autobahn: permessage-deflate sprawdza maxMessagePayloadSize na
-      # ramce SKOMPRESOWANEJ, wiec skonfigurowany limit da sie obejsc po
-      # dekompresji. U nas bez zastosowania — zadnego limitu nie ustawiamy,
-      # a produkcyjne WebSockety obsluguje uvicorn (gunicorn + UvicornWorker);
-      # daphne, jedyny konsument autobahna, sluzy testom i runserverowi.
-      #
-      # Wyjatek od zasady „fix dostepny => bump": fix jest w 26.7.1, ale ta
-      # wersja importuje vendorowane flatbuffers w autobahn/__init__.py,
-      # co ciagnie numpy do KAZDEGO procesu (+13 MB RSS, zmierzone) i lamie
-      # test_lazy_heavy_imports. Pelne uzasadnienie przy pinie `autobahn`
-      # w pyproject.toml; zgloszone w crossbario/autobahn-python#1983.
-      # Zdjac oba wpisy razem z pinem, gdy upstream zrobi import leniwym.
+      # CVE-2026-106454 (alias GHSA-8pqf-f4m5-798g) w twisted: ReDoS w
+      # serwerze IMAP (twisted/mail/imap4.py, wildcardToRegexp — wzorzec
+      # LIST/LSUB od zalogowanego klienta idzie do re.compile bez escape).
+      # U nas bez zastosowania — nie uzywamy IMAP na twisted: twisted sluzy
+      # tylko jako serwer HTTP/WebSocket pod daphne/channels, a w src/ nie
+      # ma zadnego odwolania do twisted.mail ani imap4. Fix jest w upstream
+      # (twisted/twisted#12788, zmergowany 2026-08-15), ale nie wszedl do
+      # zadnego wydania (najnowsze na PyPI: 26.4.0). Zdjac oba wpisy po
+      # wydaniu twisted z fixem — wtedy zamiast tego podbic `twisted`.
       - name: Run pip-audit (gate on fixable)
         run: |
           uvx --from pip-audit pip-audit \
             --requirement /tmp/audit/requirements.txt \
             --disable-pip \
             --no-deps \
-            --ignore-vuln PYSEC-2026-4027 \
-            --ignore-vuln PYSEC-2026-4031 \
+            --ignore-vuln CVE-2026-106454 \
+            --ignore-vuln GHSA-8pqf-f4m5-798g \
             --format columns
 
       - name: Run pip-audit (JSON full report - non-blocking)
