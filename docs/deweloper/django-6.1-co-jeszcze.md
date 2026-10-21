@@ -147,7 +147,7 @@ produkcją — 6.1 usunęło klasę CSS `wide` i wyniosło `object-tools` poza b
 
 | Co | Warunek zdjęcia |
 |---|---|
-| `djangorestframework` pinowane z gita (`80d535dd`) | **Decyzja: zostaje**, nie czekamy na 3.18.0. Konsekwencja: DRF wypada z `pip-audit` (URL requirements) i buduje się ze źródeł. Pin wskazuje na SHA na `main`, więc jest trwały. Wymiana na `>=3.18` to jedna linijka, gdy wydanie się pojawi. |
+| ~~`djangorestframework` pinowane z gita (`80d535dd`)~~ | **Zdjęte**: DRF 3.18.0 wyszło na PyPI (zawiera fix `cc_delim_re`), pin z gita zastąpiony `djangorestframework==3.18.0` przy merge'u dev. |
 | Shim `django.utils.itercompat` w `django_bpp/compat.py` | `django-admin-tools` 0.9.3 (ostatnie wydanie: sierpień 2023) ma martwy import usuniętego modułu. Do zdjęcia razem z odejściem od tej paczki albo po forku `django-admin-tools-iplweb` z usuniętą jedną linią. |
 | `django-prometheus` usunięty z zależności | Stabilne 2.5.0 capuje `Django<6.1`; wsparcie jest dopiero w `2.6.0.devN`. Wrócić, gdy 2.6.0 wyjdzie stabilnie — jeśli integracja nadal ma być potrzebna. |
 
