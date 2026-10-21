@@ -94,7 +94,10 @@
     margin: 0;
     border-color: black !important;
     padding: 0px;
-    transition: opacity 0.5s ease, visibility 0.5s ease;
+    /* Fading-out menu ignores the mouse - otherwise moving the cursor back
+       over an almost invisible menu brings it back "out of nowhere". */
+    pointer-events: none;
+    transition: opacity 0.15s ease, visibility 0s linear 0.15s;
     border-radius: 8px;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
     overflow: hidden;
@@ -147,6 +150,7 @@
 #grp-navigation ul#navigation-menu li.over ul li ul {
     visibility: hidden;
     opacity: 0;
+    pointer-events: none;
 }
 
 #grp-navigation ul#navigation-menu li:hover ul,
@@ -155,6 +159,8 @@
 #grp-navigation ul#navigation-menu li ul li.over ul {
     visibility: visible;
     opacity: 1;
+    pointer-events: auto;
+    transition: opacity 0.2s ease, visibility 0s linear 0s;
 }
 
 #grp-navigation ul#navigation-menu li:hover ul li,
@@ -476,11 +482,12 @@ header#grp-header #grp-navigation ul#grp-user-tools {
 /* Hide the dropdown by default.
    Two-column layout (flex + max-height) lives here, NOT in :hover - otherwise
    on mouse-out the list collapses to one long column while still fading out
-   (admin-themes.css forces a 0.5s visibility transition), grows under the
+   (admin-themes.css forces a visibility transition), grows under the
    cursor, regains :hover and flickers in a loop. */
 #grp-navigation ul#navigation-menu li.has-columns ul {
     visibility: hidden;
     opacity: 0;
+    pointer-events: none;
     display: flex !important;
     flex-direction: column;
     flex-wrap: wrap;
@@ -496,7 +503,7 @@ header#grp-header #grp-navigation ul#grp-user-tools {
     border: 1px solid #090909;
     border-radius: 8px !important;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
-    transition: opacity 0.5s ease 0.05s, visibility 0s ease 0s;
+    transition: opacity 0.15s ease, visibility 0s linear 0.15s;
     overflow: hidden;
 }
 
@@ -505,6 +512,8 @@ header#grp-header #grp-navigation ul#grp-user-tools {
 #grp-navigation ul#navigation-menu li.has-columns.over ul {
     visibility: visible;
     opacity: 1;
+    pointer-events: auto;
+    transition: opacity 0.2s ease, visibility 0s linear 0s;
 }
 
 #grp-navigation ul#navigation-menu li.has-columns ul li {
