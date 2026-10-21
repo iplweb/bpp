@@ -109,6 +109,13 @@ env = environ.Env(
     DJANGO_BPP_SECRET_KEY=(str, SECRET_KEY_UNSET),
     ALTCHA_HMAC_KEY=(str, ALTCHA_HMAC_KEY_UNSET),
     ZGLOS_CAPTCHA_ENABLED=(bool, False),
+    #
+    # Widget wsparcia Freshdesk (Freshworks) — patrz
+    # docs/administrator/widget-wsparcia-freshdesk.md
+    #
+    DJANGO_BPP_FRESHDESK_WIDGET_ID=(str, "205000000433"),
+    DJANGO_BPP_FRESHDESK_WIDGET_ID_ANON=(str, ""),
+    DJANGO_BPP_FRESHDESK_WIDGET_JWT_SECRET=(str, ""),
     DJANGO_BPP_MEDIA_ROOT=(str, os.path.join(os.getenv("HOME", "C:/"), "bpp-media")),
     #
     # Konfiguracja wymuszania zmiany haseł
@@ -317,6 +324,7 @@ TEMPLATES = [
                 "bpp.context_processors.oidc.oidc_auth_status",
                 "bpp.context_processors.external_auth.external_auth_status",
                 "bpp.context_processors.testing.testing",
+                "bpp.context_processors.freshdesk.freshdesk_widget",
                 "cookielaw.context_processors.cookielaw",
                 "django_countdown.context_processors.countdown_context",
                 "nowe_raporty.menu.raporty_menu",
@@ -349,6 +357,18 @@ MIDDLEWARE = [
     # z backendu logowania i renderuje odpowiedź "konto zablokowane".
     "axes.middleware.AxesMiddleware",
 ]
+
+# Kreator pierwszego uruchomienia przepuszcza tylko `/admin/`. Strony admina
+# dociągają jednak treść z endpointów spoza tego prefiksu (widgety HTMX
+# dashboardu, menu admin_tools, grappelli, ping session_security) — bez tych
+# wyjątków dostawały 302 na krok kreatora i wstawiały jego stronę w kafelki
+# dashboardu (#873).
+FIRST_RUN_WIZARD_SKIP_PREFIXES = (
+    "/admin-dashboard/",
+    "/admin_tools/",
+    "/grappelli/",
+    "/session_security/",
+)
 
 INTERNAL_IPS = ("127.0.0.1",)
 
@@ -916,6 +936,14 @@ SECRET_KEY = env("DJANGO_BPP_SECRET_KEY")
 ALTCHA_HMAC_KEY = env("ALTCHA_HMAC_KEY")
 ZGLOS_CAPTCHA_ENABLED = env("ZGLOS_CAPTCHA_ENABLED")
 INSTALLED_APPS += ["django_altcha"]
+
+# Widget wsparcia Freshdesk: osobne widgety dla zalogowanych i anonimów.
+# Pusty ID = brak widgetu dla danej grupy. Gdy ustawiony jest sekret JWT
+# (Freshdesk: Admin > Security > Widget settings), zalogowany użytkownik jest
+# uwierzytelniany w widgecie tokenem z /freshdesk/widget-token/.
+FRESHDESK_WIDGET_ID = env("DJANGO_BPP_FRESHDESK_WIDGET_ID")
+FRESHDESK_WIDGET_ID_ANON = env("DJANGO_BPP_FRESHDESK_WIDGET_ID_ANON")
+FRESHDESK_WIDGET_JWT_SECRET = env("DJANGO_BPP_FRESHDESK_WIDGET_JWT_SECRET")
 
 # Klucz Fernet do szyfrowania sekretów integracji (DSpace itd.).
 # Wygeneruj: python -c "from cryptography.fernet import Fernet;
@@ -1647,14 +1675,20 @@ TINYMCE_DEFAULT_CONFIG = {
     "height": "320px",
     "width": "780px",
     "promotion": False,
+    # TinyMCE 7 bez klucza licencyjnego działa w trybie ewaluacyjnym
+    # i ostrzega w konsoli -- korzystamy z licencji open source (GPL).
+    "license_key": "gpl",
     "menubar": "file edit view insert format tools table help",
-    "plugins": "advlist autolink lists link image charmap print preview anchor searchreplace visualblocks code "
-    "fullscreen insertdatetime media table paste code help wordcount spellchecker",
-    "toolbar": "undo redo | bold italic underline strikethrough | fontselect fontsizeselect formatselect | alignleft "
-    "aligncenter alignright alignjustify | outdent indent |  numlist bullist checklist | forecolor "
-    "backcolor casechange permanentpen formatpainter removeformat | pagebreak | charmap emoticons | "
-    "fullscreen  preview save print | insertfile image media pageembed template link anchor codesample | "
-    "a11ycheck ltr rtl | showcomments addcomment code",
+    # Od TinyMCE 6 "paste" i "print" są w rdzeniu edytora (nie ma ich
+    # jako wtyczek), a "spellchecker" usunięto -- przeglądarki mają własny.
+    "plugins": "advlist autolink lists link image charmap preview anchor "
+    "searchreplace visualblocks code fullscreen insertdatetime media table "
+    "help wordcount",
+    "browser_spellcheck": True,
+    "toolbar": "undo redo | bold italic underline strikethrough | fontfamily "
+    "fontsize blocks | alignleft aligncenter alignright alignjustify | "
+    "outdent indent | numlist bullist | forecolor backcolor removeformat | "
+    "charmap | fullscreen preview print | image media link anchor | code",
 }
 
 #

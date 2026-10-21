@@ -19,6 +19,15 @@
 //   (jako ulamek szerokosci okna) trafia do localStorage. Przeciagniecie nie
 //   otwiera widgetu.
 // - Skrot "?" otwiera widget, ale tylko gdy fokus NIE jest w polu do pisania.
+// - Zalogowany uzytkownik przy wlaczonym JWT (data-token-url) jest
+//   uwierzytelniany przez FreshworksWidget("authenticate") tokenem z serwera;
+//   token odnawia callback widgetu. Skrypt widgetu laduje sie dopiero PO
+//   tokenie; brak tokenu (brak e-maila w koncie, blad sieci) = widget
+//   anonimowy (data-anon-widget-*, z captcha), a gdy go nie skonfigurowano -
+//   stan bledu, czyli support.iplweb.pl. Nigdy niepodpisany formularz
+//   w widgecie dla zalogowanych.
+//   Bez JWT - tylko "identify" (imie i e-mail wpisane w formularz).
+//   Anonim (brak data-user-*) - ani jedno, ani drugie.
 (function () {
     "use strict";
 
@@ -85,6 +94,10 @@
         // Freshworks nie udostepnia zdarzen zamkniecia widgetu (brak metody
         // 'on' w API bootstrapu), wiec stan sledzimy sami.
         var widgetOpen = false;
+        // Spelnia sie, gdy uwierzytelnienie (JWT) jest juz w kolejce widgetu -
+        // "open" musi isc PO "authenticate", inaczej formularz otworzy sie
+        // dla niezalogowanego. Wartosc false = tokenu nie bedzie.
+        var authReady = Promise.resolve(true);
 
         function showLoading() {
             button.classList.add("is-loading");
@@ -99,7 +112,7 @@
             label.textContent = defaultLabel;
         }
 
-        function setError() {
+        function setError(reason) {
             state = "error";
             widgetOpen = false;
             button.classList.remove("is-loading");
@@ -107,25 +120,109 @@
             button.classList.add("is-error");
             button.setAttribute(
                 "title",
-                "Nie udało się załadować widgetu wsparcia. "
-                    + "Kliknij, aby przejść do support.iplweb.pl"
+                (typeof reason === "string"
+                    ? reason
+                    : "Nie udało się załadować widgetu wsparcia.")
+                    + " Kliknij, aby przejść do support.iplweb.pl"
             );
             label.textContent = "support.iplweb.pl";
         }
 
-        // Wstrzyknij skrypt widgetu (bez otwierania). Wywolania trafiaja do
-        // kolejki stuba i zostana wykonane w tej kolejnosci po zaladowaniu.
+        function openFallback() {
+            window.open(button.dataset.fallbackUrl, "_blank", "noopener");
+        }
+
+        // Token JWT z serwera albo null (brak e-maila w koncie, blad sieci).
+        function fetchToken() {
+            return fetch(button.dataset.tokenUrl, {
+                credentials: "same-origin",
+                headers: { Accept: "application/json" }
+            }).then(function (response) {
+                return response.ok ? response.json() : null;
+            }).then(function (data) {
+                return (data && data.freshworks_widget_auth_token) || null;
+            }).catch(function (err) {
+                console.warn("Freshdesk: nie udalo sie pobrac tokenu", err);
+                return null;
+            });
+        }
+
+        // Widget wola ten callback przed wygasnieciem tokenu.
+        function renewToken() {
+            fetchToken().then(function (token) {
+                if (token) {
+                    window.FreshworksWidget("authenticate", {
+                        token: token,
+                        callback: renewToken
+                    });
+                }
+            });
+        }
+
+        function identify() {
+            if (!button.dataset.userEmail) {
+                return;
+            }
+            window.FreshworksWidget("identify", "ticketForm", {
+                name: button.dataset.userName || "",
+                email: button.dataset.userEmail
+            });
+        }
+
+        // Zakolejkuj konfiguracje widgetu i (po tokenie, gdy JWT) zaladuj go.
         function startLoading() {
             state = "loading";
             window.FreshworksWidget("hide", "launcher");
             window.FreshworksWidget("prefill", "ticketForm", {
                 custom_fields: { cf_adres_url: window.location.href }
             });
-            window.FreshworksWidget("identify", "ticketForm", {
-                name: button.dataset.userName || "",
-                email: button.dataset.userEmail || ""
-            });
+            if (button.dataset.tokenUrl) {
+                authReady = fetchToken().then(function (token) {
+                    if (!token && button.dataset.anonWidgetSrc) {
+                        // Widget dla zalogowanych wymaga podpisanych danych -
+                        // bez tokenu ladujemy zamiast niego widget anonimowy.
+                        // fwSettings skrypt czyta dopiero przy ladowaniu.
+                        window.fwSettings.widget_id = Number(
+                            button.dataset.anonWidgetId
+                        );
+                        button.dataset.widgetSrc =
+                            button.dataset.anonWidgetSrc;
+                        identify();
+                        injectScript();
+                        return true;
+                    }
+                    if (!token) {
+                        // Nie ma ani tokenu, ani widgetu anonimowego -
+                        // odsylamy do supportu.
+                        var wasOpening = widgetOpen;
+                        setError(
+                            "Nie udało się potwierdzić Twojej tożsamości "
+                                + "w widgecie wsparcia."
+                        );
+                        if (wasOpening) {
+                            openFallback();
+                        }
+                        return false;
+                    }
+                    window.FreshworksWidget("authenticate", {
+                        token: token,
+                        callback: renewToken
+                    });
+                    injectScript();
+                    return true;
+                });
+            } else {
+                identify();
+                injectScript();
+            }
+        }
 
+        // Wstrzyknij skrypt widgetu (bez otwierania). Wywolania trafiaja do
+        // kolejki stuba i zostana wykonane w tej kolejnosci po zaladowaniu.
+        function injectScript() {
+            if (state !== "loading") {
+                return;
+            }
             var script = document.createElement("script");
             script.type = "text/javascript";
             script.async = true;
@@ -156,9 +253,14 @@
 
         function openWidget() {
             updateWidgetAnchor();
-            // Przed zaladowaniem skryptu "open" czeka w kolejce stuba.
-            window.FreshworksWidget("open");
             widgetOpen = true;
+            // Przed zaladowaniem skryptu "open" czeka w kolejce stuba.
+            authReady.then(function (ok) {
+                // Zamkniete, zanim dojechal token - nie otwieraj.
+                if (ok && widgetOpen) {
+                    window.FreshworksWidget("open");
+                }
+            });
         }
 
         // Schowaj okno do zakladki, a dopiero potem zamknij widget -
@@ -202,7 +304,7 @@
 
         function toggleWidget() {
             if (state === "error") {
-                window.open(button.dataset.fallbackUrl, "_blank", "noopener");
+                openFallback();
                 return;
             }
             if (state === "idle") {
