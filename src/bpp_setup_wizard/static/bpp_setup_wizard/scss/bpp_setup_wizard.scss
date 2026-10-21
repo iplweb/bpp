@@ -259,6 +259,7 @@
 
     &__progress-item {
         flex: 1;
+        list-style: none; // Foundation numeruje <li> w <ol> — numer jest w etykiecie
         text-align: center;
         font-size: 13px;
         color: #888;
