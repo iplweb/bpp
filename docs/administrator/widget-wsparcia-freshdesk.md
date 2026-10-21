@@ -74,10 +74,14 @@ Uwagi:
 - Token poświadcza adres e-mail **zapisany w koncie BPP**. BPP nie weryfikuje
   tego adresu (wpisuje go administrator albo import), więc „uwierzytelniony"
   oznacza „zalogowany do BPP z takim adresem w profilu".
-- Użytkownik BPP **bez adresu e-mail** nie może być uwierzytelniony (Freshdesk
-  wymaga e-maila w tokenie) — widget otworzy się bez uwierzytelnienia.
-- Po włączeniu JWT można w ustawieniach widgetu dla zalogowanych ograniczyć
-  formularz kontaktowy i artykuły bazy wiedzy wyłącznie do zalogowanych
+- Przy włączonym JWT widget **nigdy nie otwiera się bez tokenu**. Jeżeli
+  tokenu nie da się uzyskać — użytkownik BPP **nie ma adresu e-mail**
+  (Freshdesk wymaga go w tokenie) albo zapytanie o token się nie powiodło —
+  skrypt Freshworks nie jest w ogóle ładowany, a zakładka „Pomoc" kieruje do
+  [support.iplweb.pl](https://support.iplweb.pl).
+- Żeby Freshdesk sam odrzucał niepodpisane zgłoszenia (np. spreparowane
+  ręcznie w przeglądarce), w ustawieniach widgetu dla zalogowanych ogranicz
+  formularz kontaktowy i artykuły bazy wiedzy wyłącznie do uwierzytelnionych
   użytkowników.
 
 ## Widget dla użytkowników anonimowych

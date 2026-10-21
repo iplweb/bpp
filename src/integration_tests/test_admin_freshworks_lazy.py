@@ -356,6 +356,35 @@ def test_freshworks_widget_jwt_uwierzytelnia_zalogowanego(
     assert payload["email"] == admin_page.authorized_user.email
 
 
+def test_freshworks_widget_jwt_bez_tokenu_odsyla_do_supportu(
+    freshworks_jwt_live_server, admin_page: Page
+):
+    # Bez e-maila endpoint nie wyda tokenu (404) — widget wymagający JWT
+    # nie może się wtedy otworzyć z niepodpisanym formularzem.
+    user = admin_page.authorized_user
+    user.email = ""
+    user.save(update_fields=["email"])
+
+    requests = _track_freshworks(admin_page)
+    _open(admin_page, freshworks_jwt_live_server)
+    admin_page.evaluate(
+        "() => { window.__opened = [];"
+        " window.open = function (url) { window.__opened.push(url); }; }"
+    )
+
+    tab = admin_page.locator("#bppSupportButton")
+    tab.click()
+    admin_page.wait_for_function("() => window.__opened.length >= 1")
+
+    assert admin_page.evaluate("() => window.__opened") == ["https://support.iplweb.pl"]
+    assert "is-error" in tab.get_attribute("class")
+    assert tab.inner_text() == "support.iplweb.pl"
+    # Skrypt Freshworks nie został pobrany — wywołania zostały w kolejce stuba.
+    assert requests == []
+    queued = admin_page.evaluate("() => window.FreshworksWidget.q.map(a => a[0])")
+    assert queued == ["hide", "prefill"]
+
+
 def test_anonim_dostaje_osobny_widget_bez_identify(
     freshworks_anon_live_server, page: Page, uczelnia
 ):
