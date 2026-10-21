@@ -154,31 +154,7 @@
 {% block footer %}
     {{ block.super }}
 
-    {% if user.is_authenticated %}
-        {% if not TESTING %}
-        {# Zakladka "Pomoc" w prawym dolnym rogu (do przeciagania). #}
-        {# Widget Freshworks ladowany LENIWIE - cala logika: support-tab.js. #}
-        {# Stub FreshworksWidget kolejkuje wywolania w .q, a skrypt Freshworks #}
-        {# po wyrenderowaniu widgetu (widgetRenderComplete) odtwarza kolejke #}
-        {# i podmienia window.FreshworksWidget na wlasna implementacje. #}
-        <script>
-            window.fwSettings={
-                'widget_id':205000000433
-            };
-            !function(){if("function"!=typeof window.FreshworksWidget){var n=function(){n.q.push(arguments)};n.q=[],window.FreshworksWidget=n}}()
-        </script>
-
-        <button type="button" class="bpp-support-button hide-on-print" id="bppSupportButton"
-                title="Zgłoś problem lub zadaj pytanie. Do zgłoszenia dołączymy adres tej strony. Skrót: ?"
-                data-widget-src="https://euc-widget.freshworks.com/widgets/205000000433.js"
-                data-fallback-url="https://support.iplweb.pl"
-                data-user-name="{{ request.user.get_full_name|default:request.user.username }}"
-                data-user-email="{{ request.user.email }}">
-            <span class="support-text">Pomoc</span>
-        </button>
-        <script src="{% static 'bpp/js/support-tab.js' %}" defer></script>
-        {% endif %}
-    {% endif %}
+    {% include "freshdesk_widget.html" %}
 
     {% compress css %}
         <link rel="stylesheet" type="text/css" media="screen" href="{{ STATIC_URL }}bpp/css/admin-style.css"/>

@@ -23,3 +23,38 @@ def setup_freshworks_daphne():
     from django.conf import settings
 
     settings.TESTING = False
+
+
+#: Sekret JWT widgetu dla ``setup_freshworks_daphne_jwt`` (tylko testy).
+JWT_SECRET = "sekret-widgetu-freshdesk-do-testow-playwright-0123456789"
+
+
+def setup_freshworks_daphne_jwt():
+    """Jak ``setup_freshworks_daphne``, plus włączone uwierzytelnianie JWT."""
+    setup_freshworks_daphne()
+
+    from django.conf import settings
+
+    settings.FRESHDESK_WIDGET_JWT_SECRET = JWT_SECRET
+
+
+#: ID widgetu dla anonimów w ``setup_freshworks_daphne_anon`` (tylko testy).
+WIDGET_ID_ANON = "205000000999"
+
+
+def setup_freshworks_daphne_anon():
+    """Jak ``setup_freshworks_daphne``, plus widget dla niezalogowanych."""
+    setup_freshworks_daphne()
+
+    from django.conf import settings
+
+    settings.FRESHDESK_WIDGET_ID_ANON = WIDGET_ID_ANON
+
+
+def setup_freshworks_daphne_jwt_anon():
+    """JWT dla zalogowanych plus widget anonimowy (fallback bez tokenu)."""
+    setup_freshworks_daphne_jwt()
+
+    from django.conf import settings
+
+    settings.FRESHDESK_WIDGET_ID_ANON = WIDGET_ID_ANON

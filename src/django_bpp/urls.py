@@ -36,6 +36,7 @@ from bpp.views.sentry_tester import (
     test_500_view,
     test_exception_view,
 )
+from django_bpp.freshdesk import widget_token_view
 from django_bpp.health import health_check
 from django_bpp.views import HTMXAwareLoginView
 
@@ -367,6 +368,11 @@ urlpatterns = (
         url(r"^admin_tools/", include("admin_tools.urls")),
         url(r"^grappelli/", include("grappelli.urls")),
         path("health/", health_check, name="health"),
+        path(
+            "freshdesk/widget-token/",
+            widget_token_view,
+            name="freshdesk_widget_token",
+        ),
         url(r"^$", root, name="root"),
         url(
             r"^messages/",
