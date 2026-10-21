@@ -1,4 +1,4 @@
-{% load prace user_in_group dspace_links %}
+{% load prace user_in_group dspace_links static czy_pokazywac %}
 {# Streszczenia pobierane RAZ: szablon odwołuje się do nich w kilku #}
 {# miejscach (warunki, pętla, licznik języków). Widok dodatkowo robi #}
 {# prefetch, więc całość to jedno zapytanie na stronę. #}
@@ -14,11 +14,14 @@
     <!-- Title Section - Most prominent -->
     <div class="praca-mono__title-section">
         <h2 class="praca-mono__title">
+            {# WCAG 3.1.2: znacznik jezyka TYLKO na tytule oryginalnym. #}
+            {# Przeklad nie ma w modelu pola z jezykiem, wiec dziedziczy #}
+            {# lang="pl" ze strony — patrz spec 2026-08-06. #}
             {% if praca.tytul %}
-                {{ praca.tytul_oryginalny|safe_tytul }}
+                {{ praca.tytul_oryginalny|safe_tytul|oznacz_jezyk:praca.jezyk }}
                 <span class="praca-mono__title-translation">({{ praca.tytul|safe_tytul }})</span>
             {% else %}
-                {{ praca.tytul_oryginalny|znak_na_koncu:"."|safe_tytul }}
+                {{ praca.tytul_oryginalny|znak_na_koncu:"."|safe_tytul|oznacz_jezyk:praca.jezyk }}
             {% endif %}
             {% if praca.charakter_formalny.charakter_ogolny != 'roz' %}
                 <span class="praca-mono__edition-mark">{{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}</span>
@@ -149,7 +152,10 @@
                                     <a href="{% url "bpp:browse_praca_by_slug" praca.wydawnictwo_nadrzedne.slug %}">Zobacz wydawnictwo nadrzędne</a>
                                 {% endif %}
                             {% elif praca.wydawnictwo_nadrzedne_w_pbn %}
-                                W: <a href="{{ praca.wydawnictwo_nadrzedne_w_pbn.link_do_pbn }}" target="_blank" title="Link do PBN">
+                                {# Jak wyżej: link do PBN wymaga uczelni z kontekstu. Bez niej #}
+                                {# pokazujemy sam opis wydawnictwa nadrzędnego, bez linku. #}
+                                {% link_do_pbn praca.wydawnictwo_nadrzedne_w_pbn as pbn_url %}
+                                    W: {% if pbn_url %}<a href="{{ pbn_url }}" target="_blank" title="Link do PBN">{% endif %}
                                     {{ praca.wydawnictwo_nadrzedne_w_pbn.title }}
                                     {% if praca.wydawnictwo_nadrzedne_w_pbn.autorzy %}
                                         /
@@ -160,8 +166,7 @@
                                             {% if not forloop.last %}, {% endif %}
                                         {% endfor %}
                                     {% endif %}
-                                    <span class="fi-link-external praca-mono__external-link-icon"></span>
-                                </a>
+                                    {% if pbn_url %}<span class="fi-link-external praca-mono__external-link-icon"></span></a>{% endif %}
                             {% endif %}
                             {{ praca.informacje|default:""|znak_na_koncu:", "|safe }}
                             {{ praca.szczegoly|default:""|safe }}
@@ -287,11 +292,16 @@
                                             title="Kopiuj identyfikator">
                                         <i class="fi-clipboard"></i>
                                     </button>
-                                    <button class="button open-button" type="button"
-                                            data-open-url="{{ praca.link_do_pbn }}" data-target="_blank"
-                                            title="Otwórz w PBN">
-                                        <i class="fi-arrow-right"></i> Otwórz
-                                    </button>
+                                    {# Link do PBN buduje się z pbn_api_root uczelni oglądającego; #}
+                                    {# w multi-hosted bez tego degradował do napisu "None". #}
+                                    {% link_do_pbn praca as pbn_url %}
+                                    {% if pbn_url %}
+                                        <button class="button open-button" type="button"
+                                                data-open-url="{{ pbn_url }}" data-target="_blank"
+                                                title="Otwórz w PBN">
+                                            <i class="fi-arrow-right"></i> Otwórz
+                                        </button>
+                                    {% endif %}
                                 </div>
                             </div>
                         {% endif %}
@@ -621,19 +631,19 @@
                             </tr>
                         {% endif %}
 
-                        {% if uczelnia.pokazuj_status_korekty == "always" or uczelnia.pokazuj_status_korekty == "logged-in" and not request.user.is_anonymous %}
+                        {% czy_pokazywac status_korekty ignoruj_grupe %}
                             <tr>
                                 <th class="praca-mono__table-cell">Status:</th>
                                 <td class="praca-mono__table-cell">{{ praca.status_korekty }}</td>
                             </tr>
-                        {% endif %}
+                        {% end_czy_pokazywac %}
 
-                        {% if uczelnia.pokazuj_praca_recenzowana == "always" or uczelnia.pokazuj_praca_recenzowana == "logged-in" and not request.user.is_anonymous %}
+                        {% czy_pokazywac praca_recenzowana ignoruj_grupe %}
                             <tr>
                                 <th class="praca-mono__table-cell">Praca recenzowana:</th>
                                 <td class="praca-mono__table-cell">{{ praca.recenzowana|yesno }}</td>
                             </tr>
-                        {% endif %}
+                        {% end_czy_pokazywac %}
 
                         {% if praca.ma_procenty %}
                             <tr>
@@ -703,7 +713,7 @@
 
     <!-- Points and Slots Tables -->
     {% if rekord.ma_punktacje_sloty %}
-        {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}
+        {% czy_pokazywac tabele_slotow_na_stronie_rekordu ignoruj_grupe %}
             <div class="praca-mono__slots-section">
                 <div class="praca-mono__card">
                     <h3 class="praca-mono__card-title">
@@ -713,7 +723,7 @@
                             {% comment %} Check if there are multiple authors with disciplines set {% endcomment %}
                             {% with authors_with_disciplines=rekord.punktacja_autora.select_related|length %}
                             {% if authors_with_disciplines > 0 %}
-                                {% if request.user.is_authenticated %}
+                                {% if request.user|moze_wprowadzac_dane %}
                                     <a href="{% url "ewaluacja_optymalizuj_publikacje:optymalizuj" rekord.slug %}"
                                        class="print-button print-button-header praca-mono__optimize-button"
                                        title="Optymalizuj przypisanie dyscyplin">
@@ -822,7 +832,7 @@
                     </div>
                 </div>
             </div>
-        {% endif %}
+        {% end_czy_pokazywac %}
     {% endif %}
 
     <!-- Additional Information Card - Show here if there are abstracts -->
@@ -859,19 +869,19 @@
                             </tr>
                         {% endif %}
 
-                        {% if uczelnia.pokazuj_status_korekty == "always" or uczelnia.pokazuj_status_korekty == "logged-in" and not request.user.is_anonymous %}
+                        {% czy_pokazywac status_korekty ignoruj_grupe %}
                             <tr>
                                 <th class="praca-mono__table-cell">Status:</th>
                                 <td class="praca-mono__table-cell">{{ praca.status_korekty }}</td>
                             </tr>
-                        {% endif %}
+                        {% end_czy_pokazywac %}
 
-                        {% if uczelnia.pokazuj_praca_recenzowana == "always" or uczelnia.pokazuj_praca_recenzowana == "logged-in" and not request.user.is_anonymous %}
+                        {% czy_pokazywac praca_recenzowana ignoruj_grupe %}
                             <tr>
                                 <th class="praca-mono__table-cell">Praca recenzowana:</th>
                                 <td class="praca-mono__table-cell">{{ praca.recenzowana|yesno }}</td>
                             </tr>
-                        {% endif %}
+                        {% end_czy_pokazywac %}
 
                         {% if praca.ma_procenty %}
                             <tr>
@@ -941,7 +951,7 @@
 
     <!-- "Odpięte" dyscypliny -->
     {% if rekord.ma_odpiete_dyscypliny %}
-        {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}
+        {% czy_pokazywac tabele_slotow_na_stronie_rekordu ignoruj_grupe %}
             <div class="praca-mono__detached-section">
                 <div class="praca-mono__card praca-mono__card--detached">
                     <h3 class="praca-mono__card-title">
@@ -966,11 +976,14 @@
                     </table>
                 </div>
             </div>
-        {% endif %}
+        {% end_czy_pokazywac %}
     {% endif %}
 </div>
 
 <!-- JavaScript for interactive elements -->
+{# Modul podswietlania — wydzielony z inline'owego JS ponizej, zeby dalo #}
+{# sie go przetestowac jednostkowo (tests/js/). #}
+<script src="{% static 'bpp/js/related-records-highlight.js' %}"></script>
 <script type="text/javascript">
     (function ($) {
         $(document).ready(function () {
@@ -1167,8 +1180,17 @@
                         updateCount(totalCount, totalCount);
                     } else {
                         // Filter records
+                        //
+                        // Filtrowanie po tekscie BEZ znacznikow HTML — opis
+                        // niesie <b>/<i> oraz <span lang> (WCAG 3.1.2), a
+                        // dopasowanie na surowym record.text.indexOf() zna-
+                        // lazloby fraze "span"/"lang" w KAZDYM rekordzie z
+                        // tytulem obcojezycznym (falszywie pozytywne trafie-
+                        // nie, bez zadnego podswietlenia na liscie). Modul:
+                        // related-records-highlight.js (bppStripTags).
                         var filtered = allRecords.filter(function(record) {
-                            return record.text.toLowerCase().indexOf(searchTerm) !== -1;
+                            var haystack = window.bppStripTags(record.text).toLowerCase();
+                            return haystack.indexOf(searchTerm) !== -1;
                         });
 
                         // Rebuild list with filtered records and highlighting
@@ -1185,11 +1207,12 @@
                     records.forEach(function(record) {
                         var text = record.text;
 
-                        // Add simple highlighting if search term provided
+                        // Podswietlanie omijajace znaczniki HTML — opis
+                        // niesie <b>/<i> oraz <span lang> (WCAG 3.1.2),
+                        // a regex na calym stringu wstawialby <mark>
+                        // w srodek atrybutu. Modul: related-records-highlight.js
                         if (searchTerm) {
-                            var escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                            var regex = new RegExp('(' + escapedTerm + ')', 'gi');
-                            text = text.replace(regex, '<mark style="background-color: #fff59d; padding: 2px;">$1</mark>');
+                            text = window.bppHighlightOutsideTags(text, searchTerm);
                         }
 
                         var li = $('<li style="margin-bottom: 8px;"></li>');

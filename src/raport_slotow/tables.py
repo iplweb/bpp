@@ -203,6 +203,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
             "zrodlo_lub_wydawnictwo_nadrzedne",
             "informacje",
             "rodzaj_publikacji",
+            "typ_kbn",
             "liczba_autorow_z_dyscypliny",
             "liczba_wszystkich_autorow",
             "punkty_pk",
@@ -211,8 +212,11 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
             "kwartyl_w_scopus",
             "licencja_openaccess",
             "autor",
+            "funkcja",
             "aktualna_jednostka",
+            "aktualny_wydzial",
             "afiliowana_jednostka",
+            "afiliowany_wydzial",
             "pbn_id",
             "orcid",
             "dyscyplina",
@@ -238,8 +242,15 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
     aktualna_jednostka = Column(
         "Aktualna jednostka", "autorzy__autor__aktualna_jednostka__nazwa"
     )
+    aktualny_wydzial = Column(
+        "Aktualny wydział",
+        "autorzy__autor__aktualna_jednostka__wydzial__nazwa",
+    )
 
     afiliowana_jednostka = Column("Afiliowana jednostka", "autorzy__jednostka__nazwa")
+    afiliowany_wydzial = Column(
+        "Afiliowany wydział", "autorzy__jednostka__wydzial__nazwa"
+    )
     rok = Column("Rok", "rekord__rok", orderable=True)
     zrodlo_informacje = None
     # Column(
@@ -279,6 +290,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
         return value.informacje
 
     rodzaj_publikacji = Column("Rodzaj", "rekord")
+    typ_kbn = Column("Typ MNiSW/MEiN", "rekord__typ_kbn__nazwa")
     liczba_autorow_z_dyscypliny = Column(
         "Liczba autorów z dyscypliny",
         "autorzy_z_dyscypliny",
@@ -292,6 +304,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
     punkty_pk = Column("PK", "rekord__punkty_kbn")
     impact_factor = Column("IF", "rekord__impact_factor")
     autor = Column("Autor ewaluowany", "autorzy__autor")
+    funkcja = Column("Funkcja", "autorzy__autor__aktualna_funkcja__nazwa")
     pbn_id = Column("PBN ID", "autorzy__autor__pbn_id")
     orcid = Column("ORCID", "autorzy__autor__orcid")
     dyscyplina = Column(
@@ -374,5 +387,7 @@ class RaportEwaluacjaUpowaznieniaTable(RaportSlotowEwaluacjaTable):
 
     pbn_uid_id = Column("PBN UID ID", accessor="autor")
 
+    aktualny_wydzial = None
+    afiliowany_wydzial = None
     pkdaut = None
     slot = None

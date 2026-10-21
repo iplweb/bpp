@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load prace %}
 {% load static %}
 
 {% block title %}Komparator publikacji PBN - {{ block.super }}{% endblock %}
@@ -161,11 +162,14 @@
                                    class="button tiny secondary">
                                     <span class="fi-pencil"></span> Edytuj w BPP
                                 </a>
-                                <a href="{{ comparison.pbn_publication.link_do_pbn }}"
+                                {% link_do_pbn comparison.pbn_publication as pbn_url %}
+                                {% if pbn_url %}
+                                <a href="{{ pbn_url }}"
                                    target="_blank"
                                    class="button tiny info">
                                     <span class="fi-link"></span> Zobacz w PBN
                                 </a>
+                                {% endif %}
                             </div>
                         </div>
                     </div>

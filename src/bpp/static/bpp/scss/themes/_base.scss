@@ -114,10 +114,22 @@ ul.grp-messagelist li.info {
                 border-width 0.2s ease-in-out !important;
 }
 
-/* Preserve menu dropdown fade animation - don't override opacity/visibility */
+/* Preserve menu dropdown fade animation - don't override opacity/visibility.
+   Fade-out is short and visibility flips to hidden right after it; together
+   with pointer-events: none (admin-menu.css) a fading menu can't be re-entered
+   by moving the cursor back over the place where it used to be. */
 #grp-navigation ul#navigation-menu li ul {
-    transition: opacity 0.5s ease,
-                visibility 0.5s ease,
+    transition: opacity 0.15s ease,
+                visibility 0s linear 0.15s,
+                background-color 0.2s ease-in-out,
+                background 0.2s ease-in-out,
+                border-color 0.2s ease-in-out !important;
+}
+
+#grp-navigation ul#navigation-menu li:hover ul,
+#grp-navigation ul#navigation-menu li.over ul {
+    transition: opacity 0.2s ease,
+                visibility 0s linear 0s,
                 background-color 0.2s ease-in-out,
                 background 0.2s ease-in-out,
                 border-color 0.2s ease-in-out !important;

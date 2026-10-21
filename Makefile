@@ -268,10 +268,15 @@ $(NODE_MODULES): package.json yarn.lock
 	export PUPPETEER_SKIP_CHROME_DOWNLOAD=true PUPPETEER_SKIP_CHROME_HEADLESS_SHELL_DOWNLOAD=true && $(YARN_CMD) install  --no-progress --emoji false -s
 	touch $(NODE_MODULES)
 
+# Sentinel kompletnego builda assetow. Nazwa MUSI byc zgodna ze stala
+# SENTINEL_BUILDA w Gruntfile.js — zadanie `stampBuild` na koncu `grunt build`
+# odswieza go samo, zeby recznie odpalony `npx grunt build` tez sie liczyl.
 CSS_STAMP := .grunt-build-stamp
 
 $(CSS_STAMP): $(SCSS_SOURCES) $(JS_SOURCES) $(NODE_MODULES)
 	grunt build
+# Redundantne, odkad `grunt build` sam stempluje — zostawione jako
+# zabezpieczenie, gdyby ktos wywalil `stampBuild` z Gruntfile'a.
 	@touch $(CSS_STAMP)
 
 $(MO_FILES): $(PO_FILES)
@@ -897,13 +902,34 @@ test-package-from-vcs: check-git-clean uv-sync set-version-from-vcs ## Przetestu
 	ls -lash dist
 	git reset --hard
 
+##@ Testowanie pull requestów z GitHuba
+
+# Każdy PR dostaje własny worktree ~/Programowanie/bpp-pr-<N> (siostra
+# głównego checkoutu) z własnym .venv i node_modules, a run-site stawia mu
+# świeżą bazę na losowych portach — testowanie PR-a nie rusza bieżącej
+# gałęzi, niezacommitowanej pracy ani bazy innych PR-ów. Ponowne
+# `make pr PR=<N>` dociąga nowe commity autora. Logika: bin/pr-worktree.sh,
+# opis: docs/deweloper/polecenia.md (sekcja „Testowanie pull requestów").
+.PHONY: pr pr-list pr-clean
+
+pr: ## Pobierz PR do worktree bpp-pr-N i uruchom run-site [PR=856 DUMP=host|plik|none NO_RUN=1 ARGS=...]
+	@test -n "$(PR)" || { echo "Użycie: make pr PR=<numer> [DUMP=host|plik|none] [NO_RUN=1] [ARGS=...]"; exit 2; }
+	bin/pr-worktree.sh start $(PR) $(if $(NO_RUN),--no-run) $(if $(DUMP),--dump "$(DUMP)") -- $(ARGS)
+
+pr-list: ## Pokaż worktree PR-ów (+ działające run-site), backupy do DUMP= i otwarte PR-y
+	@bin/pr-worktree.sh list
+
+pr-clean: ## Usuń worktree bpp-pr-N i gałąź pr-N [PR=856 FORCE=1]
+	@test -n "$(PR)" || { echo "Użycie: make pr-clean PR=<numer> [FORCE=1]"; exit 2; }
+	bin/pr-worktree.sh clean $(PR) $(if $(FORCE),--force)
+
 ##@ Różne
 
 loc: clean ## Pokaż statystyki liczby linii (pygount)
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202608.1399
+DOCKER_VERSION=202609.1402
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)

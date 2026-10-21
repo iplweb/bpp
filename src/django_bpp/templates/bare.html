@@ -59,15 +59,6 @@
         }
     </style>
 
-    {# Print margins from constance settings #}
-    <style>
-    @media print {
-      @page {
-        margin: {{ WYDRUK_MARGINES_GORA|default:"2cm" }} {{ WYDRUK_MARGINES_PRAWO|default:"2cm" }} {{ WYDRUK_MARGINES_DOL|default:"2cm" }} {{ WYDRUK_MARGINES_LEWO|default:"2cm" }};
-      }
-    }
-    </style>
-
     {% compress css %}
         <link rel="stylesheet" type="text/css" href="{% static THEME_NAME %}"/>
         <link rel="stylesheet" type="text/css" href="{% static "jqueryui/jquery-ui.css" %}">
@@ -100,6 +91,20 @@
             font-weight: normal;
             font-style: normal;
             font-display: block;
+        }
+    </style>
+
+    {# Marginesy wydruku z django-constance (WYDRUK_MARGINES_*). #}
+    {# MUSI stac PO {% compress css %} wyzej: skompilowany app-*.css wciaga #}
+    {# foundation-print-styles, ktore emituje wlasne `@page { margin: .5cm }`. #}
+    {# @page nie ma specyficznosci ani !important — rozstrzyga wylacznie #}
+    {# kolejnosc, wiec stojac PRZED arkuszem ten blok byl po cichu ignorowany #}
+    {# i ustawienia marginesow uczelni nie mialy zadnego efektu. #}
+    <style>
+        @media print {
+            @page {
+                margin: {{ WYDRUK_MARGINES_GORA|default:"2cm" }} {{ WYDRUK_MARGINES_PRAWO|default:"2cm" }} {{ WYDRUK_MARGINES_DOL|default:"2cm" }} {{ WYDRUK_MARGINES_LEWO|default:"2cm" }};
+            }
         }
     </style>
 

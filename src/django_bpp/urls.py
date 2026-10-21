@@ -36,6 +36,7 @@ from bpp.views.sentry_tester import (
     test_500_view,
     test_exception_view,
 )
+from django_bpp.freshdesk import widget_token_view
 from django_bpp.health import health_check
 from django_bpp.views import HTMXAwareLoginView
 
@@ -68,6 +69,7 @@ urlpatterns = (
         ),
         path("formdefaults/", include("formdefaults.urls")),
         path("", include("oauth_mcp.urls")),
+        path("mcp/", include("mcp_server.urls", namespace="mcp_server")),
         url(r"^favicon\.ico$", cache_page(60 * 60)(favicon)),
         path("test_403/", login_required(test_403_view)),
         path("test_500/", login_required(test_500_view)),
@@ -366,6 +368,11 @@ urlpatterns = (
         url(r"^admin_tools/", include("admin_tools.urls")),
         url(r"^grappelli/", include("grappelli.urls")),
         path("health/", health_check, name="health"),
+        path(
+            "freshdesk/widget-token/",
+            widget_token_view,
+            name="freshdesk_widget_token",
+        ),
         url(r"^$", root, name="root"),
         url(
             r"^messages/",

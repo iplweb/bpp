@@ -12,6 +12,7 @@ from django.urls import reverse_lazy
 from django_altcha import AltchaField
 
 from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka, Uczelnia
+from zglos_publikacje.identyfikatory import normalizuj_identyfikator
 from zglos_publikacje.models import (
     Zgloszenie_Publikacji,
     Zgloszenie_Publikacji_Autor,
@@ -115,10 +116,10 @@ _OGR_KATALOGI_TEKST = (
     " katalogu NUKAT (nukat.edu.pl)."
 )
 _FULL_URL_TEKST = (
-    "Prosimy o podanie pełnego adresu URL — z prefiksem"
-    " https:// lub http:// na początku. Jeżeli posiadasz sam"
-    " identyfikator DOI, dodaj go z prefiksem"
-    " https://dx.doi.org/[numer DOI]."
+    "Wklej adres strony (np. https://…) albo sam identyfikator DOI"
+    " w dowolnej postaci, np. 10.1234/abcd, doi:10.1234/abcd lub"
+    " https://doi.org/10.1234/abcd — system rozpozna go sam. Można też"
+    " podać PMID, PMCID lub identyfikator arXiv."
 )
 
 # Mapowanie (rodzaj, forma_dostepu) → tekst pomocniczy pola `strona_www`.
@@ -136,6 +137,33 @@ STRONA_WWW_HELP_TEXT = {
     ("POZOSTALE", "OTWARTY"): _FULL_URL_TEKST,
     ("POZOSTALE", "OGRANICZONY"): f"{_OGR_INFO_TEKST} {_FULL_URL_TEKST}",
 }
+
+
+class LinkLubIdentyfikatorField(forms.URLField):
+    """Pole URL, które przyjmuje też DOI/PMID/PMCID/arXiv w dowolnej postaci.
+
+    Rozpoznany identyfikator zamieniamy na kanoniczny URL przed walidacją
+    (FD#480), a adres bez schematu (``www.…``) uzupełniamy o ``https://``.
+    Widget to zwykły ``TextInput`` — ``<input type="url">`` kazałby
+    przeglądarce odrzucić goły DOI, zanim formularz dotrze do serwera.
+    """
+
+    widget = forms.TextInput
+
+    default_error_messages = {
+        "invalid": (
+            "Podaj poprawny adres URL albo identyfikator DOI (np. 10.1234/abcd)."
+        ),
+    }
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("assume_scheme", "https")
+        super().__init__(**kwargs)
+
+    def to_python(self, value):
+        if isinstance(value, str):
+            value = normalizuj_identyfikator(value)
+        return super().to_python(value)
 
 
 class RodzajPublikacjiForm(forms.Form):
@@ -234,7 +262,7 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
         required=True,
     )
 
-    strona_www = forms.URLField(
+    strona_www = LinkLubIdentyfikatorField(
         label="Link do publikacji lub DOI",
         max_length=1024,
         required=True,

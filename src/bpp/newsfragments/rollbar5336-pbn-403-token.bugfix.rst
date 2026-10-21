@@ -1,0 +1,1 @@
+Przy wysyłce do PBN z nieważnym lub unieważnionym tokenem użytkownika system pokazuje teraz prośbę o ponowną autoryzację w PBN (z linkiem), zamiast niezrozumiałego komunikatu o błędzie dekodowania JSON; wartość tokena nie trafia już do komunikatów, logów ani raportów błędów (pbn-client 0.2.3).

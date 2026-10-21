@@ -150,14 +150,15 @@ class Autor_Dyscyplina(models.Model):
 
     def __str__(self):
         try:
-            autor_str = str(self.autor) if self.autor_id else "???"
-            dyscyplina_str = (
-                str(self.dyscyplina_naukowa) if self.dyscyplina_naukowa_id else "???"
-            )
+            autor_str = self._opis_powiazanego("autor")
+            dyscyplina_str = self._opis_powiazanego("dyscyplina_naukowa")
 
-            ret = f"przypisanie {autor_str} na rok {self.rok} do dyscypliny {dyscyplina_str}"
+            ret = (
+                f"przypisanie {autor_str} na rok {self.rok} "
+                f"do dyscypliny {dyscyplina_str}"
+            )
             if self.subdyscyplina_naukowa_id is not None:
-                ret += f" oraz {self.subdyscyplina_naukowa}"
+                ret += f" oraz {self._opis_powiazanego('subdyscyplina_naukowa')}"
             return ret
         except Exception:
             zaloguj_polkniety_wyjatek(
@@ -166,6 +167,22 @@ class Autor_Dyscyplina(models.Model):
             )
             # Fallback w przypadku jakichkolwiek błędów podczas usuwania
             return f"Autor_Dyscyplina #{self.pk if self.pk else 'nowy'}"
+
+    def _opis_powiazanego(self, nazwa_pola):
+        """``str()`` obiektu z klucza obcego ``nazwa_pola`` albo zastępnik,
+        gdy klucza brak lub obiekt już nie istnieje w bazie."""
+        pk = getattr(self, f"{nazwa_pola}_id")
+        if pk is None:
+            return "???"
+        model = self._meta.get_field(nazwa_pola).related_model
+        try:
+            return str(getattr(self, nazwa_pola))
+        except model.DoesNotExist:
+            # Obiekt docelowy jest już usunięty, a my mamy tylko jego id —
+            # typowo przy kaskadowym kasowaniu autora, gdy Django/admin/log
+            # zmian woła ``str()`` na usuwanych przypisaniach. To nie błąd,
+            # więc nie raportujemy go (Rollbar #5357), tylko pokazujemy id.
+            return f"??? (#{pk}, usunięty)"
 
     def clean(self):
         p1 = self.procent_dyscypliny or Decimal("0.00")

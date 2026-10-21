@@ -205,6 +205,98 @@ _zainstaluj_testowy_progress_liveops()
 
 
 # =============================================================================
+# dbtemplates: rozstrzygnięcie szablonu NIE MOŻE wymagać bazy w teście, który
+# jej nie zamówił (issue #766).
+#
+# BPP stawia ``dbtemplates.loader.Loader`` PRZED loaderami dyskowymi, żeby
+# dowolny szablon dało się nadpisać wierszem w ``django_template``. Zanim ten
+# loader odpowie „nie mam, następny", pyta ``should_skip()`` →
+# ``known_names()``, a to przy ZIMNYM cache robi
+# ``SELECT name FROM django_template``. Innymi słowy: w tej konfiguracji
+# ``get_template("cokolwiek.html")`` potrafi sięgnąć po bazę.
+#
+# Cache ``known_names()`` to zmienna globalna PROCESU
+# (``dbtemplates.utils.names._names``), kasowana sygnałem przy każdym zapisie
+# i usunięciu wiersza ``Template`` (``dbtemplates/models.py``). W testach daje
+# to dwie osobne, ciche zależności między testami na tym samym workerze xdist:
+#
+#   1. cache ZIMNY + brak ``django_db`` → ``get_template()`` wywala się
+#      ``RuntimeError: Database access not allowed``. Czy trafi na zimny, czy
+#      na ciepły, zależy wyłącznie od tego, co wcześniej przeleciało na tym
+#      procesie. To jest #766: ``test_szablon_logowania_nie_udaje_awarii``
+#      i ``test_szablony_authservera_maja_polskie_znaki`` padały w pełnym
+#      przebiegu, a przechodziły w izolacji (poprzedzały je testy
+#      ``@pytest.mark.django_db`` z tego samego pliku, które ocieplały cache)
+#      i na CI (podział na 12 shardów inaczej rozkładał testy po procesach).
+#      Sam plik uruchomiony po jednym teście pada natychmiast:
+#      ``pytest "…::test_szablon_logowania_nie_udaje_awarii"``.
+#
+#   2. cache CIEPŁY, ale wypełniony nazwami z BAZY INNEGO testu (wycofanej
+#      rollbackiem). Nazwa, której już nie ma, nadal wygląda na „jest w bazie",
+#      więc loader i tak idzie do bazy — a nazwa, która w bieżącym teście
+#      w bazie JEST, może zostać pominięta i nadpisanie z bazy cicho nie
+#      zadziała.
+#
+# Poprawka jest dwuczęściowa i usuwa obie zależności:
+#
+#   * ``_zeruj_cache_nazw_dbtemplates`` — przed każdym testem cache jest
+#     kasowany, więc żaden test nie dziedziczy nazw po poprzedniku. Koszt to
+#     jeden mały ``SELECT`` na pierwszy render w teście z bazą.
+#   * ``_known_names_bez_dostepu_do_bazy`` — gdy pytest-django blokuje bazę,
+#     ``known_names()`` zwraca PUSTY zbiór zamiast wybuchać. To nie jest
+#     obejście, tylko stwierdzenie faktu: test bez ``django_db`` nie ma bazy,
+#     więc nie ma też żadnych nadpisań z bazy i loader ma oddać sterowanie
+#     loaderom dyskowym. Testy Z bazą nie zmieniają zachowania —
+#     ``known_names()`` po prostu się udaje.
+#
+# Łapiemy WYŁĄCZNIE ``RuntimeError`` blokady pytest-django, rozpoznawany po
+# treści komunikatu; każdy inny ``RuntimeError`` leci dalej. Gdyby pytest-django
+# zmienił komunikat, guard przestanie działać GŁOŚNO (testy w
+# ``bpp/tests/test_dbtemplates_bez_bazy.py`` zapalą się na czerwono), a nie po
+# cichu. Zależymy też od ``DBTEMPLATES_SKIP_UNKNOWN_NAMES = True`` (base.py) —
+# to ta flaga sprawia, że loader w ogóle pyta ``known_names()``; te same testy
+# pilnują, żeby jej wyłączenie nie przeszło niezauważone.
+# =============================================================================
+
+_KOMUNIKAT_BLOKADY_BAZY = "Database access not allowed"
+
+
+def _zainstaluj_guard_dbtemplates_bez_bazy():
+    from dbtemplates.utils import names as _dbtemplates_names
+
+    if getattr(_dbtemplates_names, "_bpp_guard_bez_bazy", False):
+        return
+    _dbtemplates_names._bpp_guard_bez_bazy = True
+
+    _oryginalne_known_names = _dbtemplates_names.known_names
+
+    def _known_names_bez_dostepu_do_bazy():
+        try:
+            return _oryginalne_known_names()
+        except RuntimeError as e:
+            if _KOMUNIKAT_BLOKADY_BAZY not in str(e):
+                raise
+            # Test bez ``django_db``: baza nie istnieje z jego punktu
+            # widzenia, więc nie ma w niej żadnych szablonów.
+            return frozenset()
+
+    _dbtemplates_names.known_names = _known_names_bez_dostepu_do_bazy
+
+
+_zainstaluj_guard_dbtemplates_bez_bazy()
+
+
+@pytest.fixture(autouse=True)
+def _zeruj_cache_nazw_dbtemplates():
+    """Każdy test zaczyna z zimnym cache nazw szablonów z bazy."""
+    from dbtemplates.utils.names import invalidate_known_names
+
+    invalidate_known_names()
+    yield
+    invalidate_known_names()
+
+
+# =============================================================================
 # Izolacja pod xdist: neutralizacja WYCIEKŁYCH scommitowanych danych domenowych.
 #
 # Problem (CI, sharding pytest-split + xdist -n auto): pod obciążeniem CI test,

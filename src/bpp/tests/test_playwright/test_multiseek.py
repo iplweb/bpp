@@ -201,3 +201,24 @@ def test_save_form_csrf(page: Page, live_server):
     assert "saved" in response.text(), (
         f"Zapis formularza nie powiodl sie, odpowiedz serwera: {response.text()}"
     )
+
+
+@pytest.mark.django_db
+def test_multiseek_pusty_formularz_z_sesji_ma_domyslne_pole(
+    page: Page, live_server, uczelnia
+):
+    """„Przeglądaj najnowsze prace" przy małej bazie nie wysyła żadnego
+    warunku, więc w sesji ląduje formularz bez pól. Strona multiseeka ma
+    wtedy pokazać domyślne puste pole (jak świeży formularz), a nie samą
+    ramkę z przyciskami „dodaj pole/dodaj ramkę"."""
+    page.goto(live_server.url + reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
+    page.evaluate("Cookielaw.accept()")
+    page.get_by_text("Przeglądaj najnowsze prace").click()
+    page.wait_for_url("**/multiseek/")
+
+    # ``#field-list`` to kontener pól ramki — liczymy tylko pola ``field-N``.
+    pola = page.locator("#frame-0 [id^=field-]:not(#field-list)")
+    expect(pola).to_have_count(1)
+    expect(page.locator("#id_report_type option:checked")).to_have_text("lista")
+    expect(page.locator("#id_ordering_0 option:checked")).to_have_text("utworzono")
+    expect(page.locator("#order_0_dir")).to_be_checked()

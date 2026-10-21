@@ -20,7 +20,7 @@
 #   jest dobrym proxy: jezeli upstream wypuscil fix, znaczy ze warto bumpnac.
 # - Vuln bez fixa: warning w job summary, nie blokuje (nic nie da sie zrobic).
 # - Whitelist non-impact CVE: opcjonalnie przez --ignore-vuln w jobie
-#   ponizej (obecnie pusta — patrz komentarz przy kroku pip-audit).
+#   ponizej (patrz komentarz przy kroku pip-audit).
 #
 # Defense-in-depth: drugi job (multi-scanner) odpala OSV-Scanner, Grype
 # i Trivy na SBOM-ie wygenerowanym z uv.lock. Wszystkie report-only -
@@ -59,7 +59,7 @@ jobs:
           persist-credentials: false
 
       - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           # Pin jak w tests.yml (job `lock-check`): bez tego setup-uv bierze
           # "latest", a `uv export` zaczyna zalezec od daty przebiegu.
@@ -71,24 +71,27 @@ jobs:
           uv export --no-dev --format requirements-txt --no-hashes --quiet \
             -o /tmp/audit/requirements.txt
 
-      # Brak whitelisty CVE: gdy pojawi sie znany non-impact CVE bez
-      # dostepnego fixa, dodaj tu --ignore-vuln <ID> z komentarzem
-      # uzasadniajacym (i zsynchronizuj z bin/scan-deps.sh).
-      # PYSEC-2026-3447 (setuptools): fix jest w 83.0.0, ale setuptools >=81
-      # USUNAL modul `pkg_resources`, ktorego wymaga `pyoai`/`oaipmh`
-      # (serwer OAI-PMH przez `moai`, uzywany w bpp.views.oai). Zaden wydany
-      # pyoai nie zrezygnowal z pkg_resources, wiec bump setuptools do 83
-      # wywala starty Django (ModuleNotFoundError: pkg_resources). setuptools
-      # to narzedzie buildowe o minimalnej powierzchni ataku w runtime.
-      # Zdejmiemy ignore, gdy pyoai zmigruje na importlib.metadata albo
-      # wymienimy stos OAI-PMH.
+      # Whitelist CVE — MUSI byc zsynchronizowana z bin/scan-deps.sh
+      # (tam PIPAUDIT_IGNORE), inaczej lokalny pre-release guard i ten gate
+      # rozjada sie: jeden przepusci, drugi zablokuje.
+      #
+      # CVE-2026-106454 (alias GHSA-8pqf-f4m5-798g) w twisted: ReDoS w
+      # serwerze IMAP (twisted/mail/imap4.py, wildcardToRegexp — wzorzec
+      # LIST/LSUB od zalogowanego klienta idzie do re.compile bez escape).
+      # U nas bez zastosowania — nie uzywamy IMAP na twisted: twisted sluzy
+      # tylko jako serwer HTTP/WebSocket pod daphne/channels, a w src/ nie
+      # ma zadnego odwolania do twisted.mail ani imap4. Fix jest w upstream
+      # (twisted/twisted#12788, zmergowany 2026-08-15), ale nie wszedl do
+      # zadnego wydania (najnowsze na PyPI: 26.4.0). Zdjac oba wpisy po
+      # wydaniu twisted z fixem — wtedy zamiast tego podbic `twisted`.
       - name: Run pip-audit (gate on fixable)
         run: |
           uvx --from pip-audit pip-audit \
             --requirement /tmp/audit/requirements.txt \
             --disable-pip \
             --no-deps \
-            --ignore-vuln PYSEC-2026-3447 \
+            --ignore-vuln CVE-2026-106454 \
+            --ignore-vuln GHSA-8pqf-f4m5-798g \
             --format columns
 
       - name: Run pip-audit (JSON full report - non-blocking)
@@ -136,7 +139,7 @@ jobs:
           persist-credentials: false
 
       - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           # Pin jak wyzej — SBOM ma byc funkcja tresci repo, nie daty runu.
           version: "0.11.29"
@@ -254,7 +257,7 @@ jobs:
 
       - name: Upload SBOM + raporty (artifact, retention 30d)
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dependency-scan-${{ github.run_id }}
           path: /tmp/sbom/

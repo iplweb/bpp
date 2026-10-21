@@ -1,0 +1,1 @@
+Dashboard admina przed dokończeniem kreatora pierwszego uruchomienia nie pokazuje już w kafelkach strony „Konfiguracja uczelni” — endpointy `/admin-dashboard/` (oraz admin_tools, grappelli, session_security) są pomijane przez middleware kreatora (#873).

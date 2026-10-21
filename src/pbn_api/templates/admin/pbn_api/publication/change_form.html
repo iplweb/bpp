@@ -1,8 +1,16 @@
 {% extends "admin/change_form.html" %}
+{% load prace %}
 
 {% block object-tools-items %}
-    <li><a target="_blank" href="{{ original.link_do_pbn }}">PBN</a></li>
-    <li><a target="_blank" href="{{ original.link_do_pi }}">PI</a></li>
+    {% link_do_pbn original as pbn_url %}
+    {% if pbn_url %}
+        <li><a target="_blank" href="{{ pbn_url }}">PBN</a></li>
+    {% endif %}
+    {% with pi_url=original|link_do_pi:uczelnia %}
+        {% if pi_url %}
+            <li><a target="_blank" href="{{ pi_url }}">PI</a></li>
+        {% endif %}
+    {% endwith %}
     <li><a target="_blank" href="/admin/pbn_api/oswiadczenieinstytucji/?q={{ original.mongoId }}">Kopia ośw.</a></li>
     {% with bpp_pub=original.get_bpp_publication %}
         {% if bpp_pub %}

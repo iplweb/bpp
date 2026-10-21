@@ -23,22 +23,63 @@ def pytest_configure(config):
     więc każdy z N shardów odpalający `make assets` to tylko narzut —
     a w praktyce robi pełny `yarn install` + `grunt build`, bo Dockerfile
     nie zostawia w obrazie sentinela `node_modules/.installed`.
+
+    Pod xdistem budujemy TYLKO w kontrolerze. `pytest_configure` odpala się
+    w kontrolerze i dodatkowo w każdym workerze, więc `-n auto` na dziesięciu
+    rdzeniach dawało jedenaście równoległych `make assets` (zmierzone).
+    Inkrementalność `make` tego nie ratuje: wszystkie procesy sprawdzają
+    sentinel `.grunt-build-stamp` w tej samej chwili, każdy niezależnie
+    stwierdza „nieaktualny" i wszystkie wchodzą w `grunt build` naraz —
+    pisząc do TYCH SAMYCH plików wyjściowych. To był zarówno skok obciążenia
+    (kilkanaście równoległych sass + esbuild), jak i wyścig na zapisie.
+
+    Kolejność jest bezpieczna: kontroler kończy `pytest_configure`, zanim
+    xdist rozstawi workery w `pytest_sessionstart`, więc assety są gotowe,
+    nim którykolwiek worker zacznie renderować. Zweryfikowane empirycznie na
+    celowo nieaktualnym sentinelu — jeden build, sentinel odświeżony, testy
+    zielone.
+
+    Budowanie stoi pod ZAMKIEM PLIKOWYM, bo „jeden build na przebieg" nie
+    wystarcza, gdy przebiegów jest kilka. Dwa `pytest` odpalone naraz w TYM
+    SAMYM worktree (druga konsola, agent obok człowieka) to dwa kontrolery —
+    przy nieaktualnym sentinelu obydwa ruszyłyby `grunt build` na te same
+    pliki wyjściowe. `flock` ustawia je w kolejkę: pierwszy buduje, drugi
+    czeka, a po wejściu jego `make assets` jest już pustym przebiegiem —
+    podwójne sprawdzenie robi za nas sam `make`, po mtime sentinela. Zamek
+    zwalnia jądro przy zamknięciu deskryptora, więc nie da się go osierocić
+    nawet przez `kill -9`.
+
+    Zamek NIE serializuje różnych worktree i nie powinien: każdy ma własny
+    `.grunt-build-stamp` i własny `staticroot`, więc ich buildy nie kolidują
+    na plikach — konkurują wyłącznie o CPU, co jest problemem harmonogramu,
+    nie poprawności.
+
+    Zamek obejmuje ścieżkę pytestową, czyli tę, która odpala się sama i
+    równolegle. Ręczne `make assets` puszczone w tej samej chwili co testy
+    nadal może się z nimi zbiec — to świadome działanie człowieka, nie
+    automat, więc nie budujemy pod to maszynerii.
     """
+    import fcntl
     import os
     import sys
+
+    if hasattr(config, "workerinput"):
+        return
 
     if os.environ.get("BPP_SKIP_ASSETS_BUILD"):
         return
 
     repo_root = Path(__file__).parent
     env = {**os.environ, "UV_NO_SYNC": "1"}
-    result = subprocess.run(
-        ["make", "assets"],
-        cwd=repo_root,
-        env=env,
-        capture_output=True,
-        text=True,
-    )
+    with open(repo_root / ".grunt-build.lock", "w") as zamek:
+        fcntl.flock(zamek, fcntl.LOCK_EX)
+        result = subprocess.run(
+            ["make", "assets"],
+            cwd=repo_root,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
     if result.returncode != 0:
         sys.stderr.write(f"\n=== `make assets` failed (exit {result.returncode}) ===\n")
         if result.stdout:

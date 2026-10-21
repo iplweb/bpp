@@ -1,5 +1,5 @@
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.admin.sites import AlreadyRegistered
 from django.contrib.auth.forms import AdminUserCreationForm
 from multiseek.models import SearchForm
@@ -297,7 +297,85 @@ class BppUserAdmin(UserAdmin):
 
     add_form = BppUserCreationForm
 
+    actions = ["odblokuj_logowanie"]
+
     # change_form_template = 'loginas/change_form.html'
+
+    @admin.action(
+        description="Odblokuj logowanie (usuń blokadę po nieudanych próbach)",
+        permissions=["change"],
+    )
+    def odblokuj_logowanie(self, request, queryset):
+        """Zdejmuje blokadę django-axes z zaznaczonych kont.
+
+        Reset idzie przez ``axes.utils.reset()``, a NIE przez bezpośrednie
+        kasowanie ``AccessAttempt``: ``reset()`` woła aktualnie skonfigurowany
+        handler (``AxesProxyHandler``), więc zadziała także po zmianie
+        ``AXES_HANDLER`` na cache'owy. Kasowanie wierszy byłoby wtedy cichym
+        no-opem, który melduje sukces, a konto zostaje zablokowane.
+
+        Warianty wielkości liter: axes zapisuje login DOKŁADNIE tak, jak go
+        wpisano w formularzu, natomiast ``LDAPBackend`` mapuje dowolną wielkość
+        liter na konto przez ``iexact``. Blokada zapisana jako "JAN" nie
+        zniknęłaby więc przy resecie konta "jan" — dlatego najpierw zbieramy
+        realnie zapisane warianty. Kanoniczny login resetujemy zawsze: przy
+        innym handlerze nie ma wierszy do wyliczenia, ale reset i tak trafi we
+        właściwy licznik.
+
+        Blokada jest per (login, IP), a wiersze dodatkowo rozbite po
+        ``user_agent``, więc jednemu loginowi odpowiada zwykle kilka wierszy.
+
+        Operacja trafia do dziennika admina (``log_change``) i jest to JEDYNY
+        jej trwały ślad: ``AccessAttempt`` z definicji znika, a
+        ``AccessFailureLog`` w BPP w ogóle nie powstaje, bo
+        ``AXES_ENABLE_ACCESS_FAILURE_LOG`` jest domyślnie wyłączone.
+
+        Akcja istnieje, bo modele axes w adminie widzi tylko ktoś z
+        uprawnieniami ``axes.*`` — a tych BPP nie nadaje żadnej grupie. Osoba
+        zarządzająca użytkownikami odblokowuje więc konto tam, gdzie już
+        pracuje, bez wiedzy o istnieniu django-axes.
+        """
+        from axes.models import AccessAttempt
+        from axes.utils import reset
+
+        odblokowane_konta = 0
+        usuniete_wpisy = 0
+
+        for user in queryset:
+            warianty = set(
+                AccessAttempt.objects.filter(
+                    username__iexact=user.username
+                ).values_list("username", flat=True)
+            )
+            warianty.add(user.username)
+
+            usuniete = sum(reset(username=wariant) for wariant in warianty)
+            if not usuniete:
+                continue
+
+            odblokowane_konta += 1
+            usuniete_wpisy += usuniete
+            self.log_change(
+                request,
+                user,
+                f"Odblokowano logowanie (usunięto wpisów blokady: {usuniete}).",
+            )
+
+        if odblokowane_konta:
+            self.message_user(
+                request,
+                f"Odblokowano logowanie dla {odblokowane_konta} konta/kont; "
+                f"usuniętych wpisów blokady: {usuniete_wpisy}.",
+                messages.SUCCESS,
+            )
+        else:
+            self.message_user(
+                request,
+                "Żadne z zaznaczonych kont nie miało blokady logowania — "
+                "nic nie zmieniono. Jeżeli użytkownik nie może się zalogować, "
+                "przyczyna jest inna (np. konto nieaktywne lub błędne hasło).",
+                messages.WARNING,
+            )
 
     def has_delete_permission(self, request, obj=None):
         if obj is not None:

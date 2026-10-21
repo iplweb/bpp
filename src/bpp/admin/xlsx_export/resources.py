@@ -15,6 +15,7 @@ from bpp.models import (
     Patent,
     Praca_Doktorska,
     Praca_Habilitacyjna,
+    Uczelnia,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
@@ -103,7 +104,11 @@ class Wydawnictwo_ResourceBase(resources.ModelResource):
     def dehydrate_pbn_url(self, obj):
         pbn_uid_id = getattr(obj, "pbn_uid_id", None)
         if pbn_uid_id:
-            return obj.pbn_uid.link_do_pbn()
+            # Multi-hosted: link do PBN uczelni eksportującego (z requestu);
+            # bez niej przy >1 uczelni link_do_pbn() zwraca None.
+            return obj.pbn_uid.link_do_pbn(
+                uczelnia=Uczelnia.objects.get_for_request(self.request)
+            )
 
     def get_site_url(self):
         return site_url_for_request(self.request)

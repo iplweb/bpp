@@ -204,7 +204,12 @@ class Zgloszenie_PublikacjiAdmin(
         extra_context = extra_context or {}
         obj = self.get_object(request, object_id)
         if obj is not None:
-            extra_context["importer_url"] = self.importer_url(obj)
+            # ``_changelist_filters`` — filtry listy, z której operator tu
+            # wszedł (admin dokleja je przy ``preserve_filters``). Importer
+            # wraca z nimi przyciskiem „Wróć do zgłoszeń" (FD#482).
+            extra_context["importer_url"] = self.importer_url(
+                obj, changelist_filters=request.GET.get("_changelist_filters")
+            )
             if obj.czy_zaimportowane:
                 # Panel „📥 Zaimportowane …" nad formularzem (FD#443, §8).
                 url, nazwa = self._rekord_url_i_nazwa(obj)
@@ -472,7 +477,9 @@ class Zgloszenie_PublikacjiAdmin(
 
         return format_html_join("<br/>", "{}", ((part,) for part in parts))
 
-    def importer_url(self, obj: Zgloszenie_Publikacji) -> str | None:
+    def importer_url(
+        self, obj: Zgloszenie_Publikacji, changelist_filters: str | None = None
+    ) -> str | None:
         """Zbuduj URL importera dla adresu zgłoszenia albo zwróć ``None``.
 
         Priorytet: jeśli z pola „Dostępna w sieci pod adresem" (lub z pola
@@ -485,6 +492,10 @@ class Zgloszenie_PublikacjiAdmin(
         Zgłoszenie już domknięte importerem także zwraca ``None``: przycisk
         znika, żeby operator nie zaimportował tej samej pracy drugi raz
         (FD#443, §7 specyfikacji).
+
+        ``changelist_filters`` (querystring filtrów listy zgłoszeń) jedzie
+        do importera jako ``zgloszenia_filtry`` — po imporcie przycisk
+        „Wróć do zgłoszeń" wraca na tę samą listę (FD#482).
         """
         if obj.status == Zgloszenie_Publikacji.Statusy.ZAIMPORTOWANY:
             return None
@@ -507,6 +518,8 @@ class Zgloszenie_PublikacjiAdmin(
         # Kontekst zgłoszenia musi przeżyć skok do importera — bez niego
         # sesja importu nie ma jak domknąć zgłoszenia (FD#443, §6 ścieżka A).
         params["zgloszenie"] = obj.pk
+        if changelist_filters:
+            params["zgloszenia_filtry"] = changelist_filters
 
         return "{}?{}".format(
             reverse("importer_publikacji:index"),

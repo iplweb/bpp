@@ -1,0 +1,1 @@
+Importer publikacji uruchomiony przyciskiem „Użyj importera” ze zgłoszenia publikacji otwiera się teraz w tej samej karcie, a po zakończonym imporcie pokazuje przycisk „Wróć do zgłoszeń”, który wraca na listę zgłoszeń z tymi samymi filtrami.

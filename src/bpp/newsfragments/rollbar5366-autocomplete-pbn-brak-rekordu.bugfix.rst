@@ -1,0 +1,1 @@
+Pobieranie rekordu z PBN po UID w polach autouzupełniania (publikacje, autorzy, źródła, wydawcy) pokazuje teraz czytelny komunikat, gdy w PBN nie ma rekordu o podanym UID albo PBN zwróci błąd HTTP, zamiast surowego błędu i zgłoszenia w Rollbarze.
