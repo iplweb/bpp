@@ -1,0 +1,1 @@
+W module redagowania zamiana miejscami dwóch wierszy tej samej osoby na liście autorów (np. jako autora i redaktora) nie kończy się już fałszywym błędem „Istnieje już instancja modelu…”, a powtórzona pozycja autora daje czytelny komunikat zamiast błędu serwera — dotyczy wydawnictw ciągłych, zwartych i patentów.
