@@ -259,6 +259,7 @@
 
     &__progress-item {
         flex: 1;
+        list-style: none; // Foundation numeruje <li> w <ol>; numer jest w „Krok N z 3"
         text-align: center;
         font-size: 13px;
         color: #888;

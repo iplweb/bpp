@@ -517,7 +517,9 @@ def test_middleware_does_not_redirect_admin_dashboard_widgets(admin_user, path):
 
     response = client.get(path, HTTP_HX_REQUEST="true")
     assert response.status_code == 200
-    assert "Konfiguracja uczelni" not in response.content.decode("utf-8")
+    body = response.content.decode("utf-8")
+    assert "Konfiguracja uczelni" not in body
+    assert "bpp-setup-wizard" not in body
 
 
 @pytest.mark.django_db
