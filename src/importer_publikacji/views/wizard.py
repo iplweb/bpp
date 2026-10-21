@@ -118,6 +118,10 @@ class IndexView(ImporterPermissionMixin, View):
         # przy odczycie w FetchView.post.
         if request.GET.get("zgloszenie"):
             initial["zgloszenie"] = request.GET["zgloszenie"]
+        # Filtry listy zgłoszeń dla „Wróć do zgłoszeń" (FD#482) — ta sama
+        # runda GET → render → POST, co ``zgloszenie``.
+        if request.GET.get("zgloszenia_filtry"):
+            initial["zgloszenia_filtry"] = request.GET["zgloszenia_filtry"]
         form = FetchForm(initial=initial)
 
         ctx = _fetch_context(form, request=request, provider_name=provider_name)
@@ -214,7 +218,26 @@ def _zgloszenie_z_pola(request, value):
     return zgloszenie_dozwolone(value, Uczelnia.objects.get_for_request(request))
 
 
-def _start_import_session(request, provider_name, identifier, zgloszenie=None):
+def _powrot_z_pola(form):
+    """Wartość ``ImportSession.powrot_do_zgloszen`` dla tego POST-a (FD#482).
+
+    O tym, że operator przyszedł z modułu zgłoszeń, rozstrzyga SUROWE ukryte
+    pole ``zgloszenie`` — przycisk „Użyj importera" zawsze je wypełnia. Nie
+    patrzymy na wynik :func:`_zgloszenie_z_pola`: zgłoszenie odrzucone przez
+    walidację (np. w międzyczasie zwrócone autorowi) nie zmienia tego, że
+    operator ma dokąd wracać.
+    """
+    if not form.data.get("zgloszenie"):
+        return None
+
+    from ..zgloszenia import normalizuj_filtry_listy_zgloszen
+
+    return normalizuj_filtry_listy_zgloszen(form.cleaned_data.get("zgloszenia_filtry"))
+
+
+def _start_import_session(
+    request, provider_name, identifier, zgloszenie=None, powrot_do_zgloszen=None
+):
     """Utwórz sesję importu (FETCHING) + wystartuj task fetch.
 
     BEZ guardu double-click po ``identifier`` — używane też przez import
@@ -224,6 +247,8 @@ def _start_import_session(request, provider_name, identifier, zgloszenie=None):
     ``zgloszenie`` (opcjonalne) wiąże sesję ze zgłoszeniem publikacji, które
     ten import ma domknąć — musi być zapisane już przy tworzeniu, bo zadanie
     Celery dostaje wyłącznie id sesji.
+
+    ``powrot_do_zgloszen`` — patrz :func:`_powrot_z_pola` (FD#482).
     """
     session = ImportSession.objects.create(
         created_by=request.user,
@@ -234,6 +259,7 @@ def _start_import_session(request, provider_name, identifier, zgloszenie=None):
         raw_data={},
         normalized_data={},
         zgloszenie=zgloszenie,
+        powrot_do_zgloszen=powrot_do_zgloszen,
     )
     task = fetch_session_task.delay(session.pk, request.user.pk)
     session.celery_task_id = task.id
@@ -257,6 +283,7 @@ class FetchView(ImporterPermissionMixin, View):
         request.session["importer_last_provider"] = provider_name
         provider = get_provider(provider_name)
         zgloszenie = _zgloszenie_z_pola(request, form.cleaned_data.get("zgloszenie"))
+        powrot_do_zgloszen = _powrot_z_pola(form)
 
         if provider.input_mode == InputMode.TEXT:
             raw_input = form.cleaned_data["text_input"]
@@ -326,10 +353,19 @@ class FetchView(ImporterPermissionMixin, View):
                 ImportSession.objects.filter(
                     pk=recent_in_flight.pk, zgloszenie__isnull=True
                 ).update(zgloszenie=zgloszenie)
+            # To samo dla „Wróć do zgłoszeń" (FD#482): dopisz, gdy puste.
+            if powrot_do_zgloszen is not None:
+                ImportSession.objects.filter(
+                    pk=recent_in_flight.pk, powrot_do_zgloszen__isnull=True
+                ).update(powrot_do_zgloszen=powrot_do_zgloszen)
             return _hx_or_redirect(request, recent_in_flight.get_continue_url())
 
         session = _start_import_session(
-            request, provider_name, normalized, zgloszenie=zgloszenie
+            request,
+            provider_name,
+            normalized,
+            zgloszenie=zgloszenie,
+            powrot_do_zgloszen=powrot_do_zgloszen,
         )
 
         url = reverse(
@@ -1166,8 +1202,14 @@ class DoneView(ImporterPermissionMixin, View):
             ImportSession,
             pk=session_id,
         )
+        from ..zgloszenia import url_powrotu_do_zgloszen
+
         record = session.created_record
-        ctx = {"session": session, "record": record}
+        ctx = {
+            "session": session,
+            "record": record,
+            "powrot_do_zgloszen_url": url_powrotu_do_zgloszen(session),
+        }
         batch_entry = getattr(session, "batch_entry", None)
         if batch_entry is not None:
             ctx["batch"] = batch_entry.parent
