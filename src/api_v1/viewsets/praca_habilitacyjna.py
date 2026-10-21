@@ -2,7 +2,7 @@ import django_filters
 from rest_framework import viewsets
 
 from api_v1.serializers.praca_habilitacyjna import Praca_HabilitacyjnaSerializer
-from api_v1.viewsets.common import UkryjStatusyKorektyMixin
+from api_v1.viewsets.common import UkryjStatusyKorektyMixin, ZawezDoUczelniMixin
 from bpp.models import Praca_Habilitacyjna
 
 
@@ -16,8 +16,10 @@ class Praca_HabilitacyjnaFilterSet(django_filters.rest_framework.FilterSet):
 
 
 class Praca_HabilitacyjnaViewSet(
-    UkryjStatusyKorektyMixin, viewsets.ReadOnlyModelViewSet
+    UkryjStatusyKorektyMixin, ZawezDoUczelniMixin, viewsets.ReadOnlyModelViewSet
 ):
+    uczelnia_lookup = "jednostka"
+
     # Lista musi być posortowana po PK aby nie było duplikatów
     queryset = (
         Praca_Habilitacyjna.objects.exclude(nie_eksportuj_przez_api=True)
