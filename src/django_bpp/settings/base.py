@@ -358,6 +358,18 @@ MIDDLEWARE = [
     "axes.middleware.AxesMiddleware",
 ]
 
+# Kreator pierwszego uruchomienia przepuszcza tylko `/admin/`. Strony admina
+# dociągają jednak treść z endpointów spoza tego prefiksu (widgety HTMX
+# dashboardu, menu admin_tools, grappelli, ping session_security) — bez tych
+# wyjątków dostawały 302 na krok kreatora i wstawiały jego stronę w kafelki
+# dashboardu (#873).
+FIRST_RUN_WIZARD_SKIP_PREFIXES = (
+    "/admin-dashboard/",
+    "/admin_tools/",
+    "/grappelli/",
+    "/session_security/",
+)
+
 INTERNAL_IPS = ("127.0.0.1",)
 
 ROOT_URLCONF = "django_bpp.urls"
