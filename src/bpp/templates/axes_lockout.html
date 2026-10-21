@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    Konto tymczasowo zablokowane
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li>Konto tymczasowo zablokowane</li>
+{% endblock %}
+
+{% block content %}
+    {# Strona pokazywana przez axes.middleware.AxesMiddleware zamiast formularza #}
+    {# logowania, gdy para (login, IP) przekroczyła AXES_FAILURE_LIMIT. Kontekst #}
+    {# buduje axes.helpers.get_lockout_response: failure_limit, username, #}
+    {# cooloff_time (ISO8601), cooloff_timedelta (timedelta). #}
+    <div class="grid-container" style="min-height: 50vh; display: flex; align-items: center;">
+        <div class="grid-x grid-padding-x align-center" style="width: 100%;">
+            <div class="cell large-6 medium-8 small-12 text-center">
+                <div style="padding: 3rem 0;">
+                    <span class="fi-lock" style="font-size: 4em; color: #ffae00; display: block; margin-bottom: 1rem;"></span>
+                    <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">Konto tymczasowo zablokowane</h1>
+                    <p style="font-size: 1.1rem; color: #666; margin-bottom: 1rem; line-height: 1.6;">
+                        Zbyt wiele nieudanych prób logowania. Dostęp do tego konta został
+                        tymczasowo zablokowany.
+                    </p>
+                    {% if cooloff_timedelta %}
+                        {# widthratio liczy minuty z timedelty — dzięki temu tekst śledzi #}
+                        {# AXES_COOLOFF_TIME i nie trzeba go poprawiać przy zmianie polityki. #}
+                        <p style="font-size: 1.1rem; color: #666; margin-bottom: 2rem; line-height: 1.6;">
+                            Blokada zniknie sama po około
+                            {% widthratio cooloff_timedelta.total_seconds 60 1 %} minutach
+                            <strong>bez prób logowania</strong> — każda kolejna próba
+                            liczy ten czas od nowa.
+                        </p>
+                    {% endif %}
+                    <a href="/" class="button secondary">
+                        <span class="fi-home"></span> Wróć do strony głównej
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

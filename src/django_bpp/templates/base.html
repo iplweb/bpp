@@ -50,13 +50,28 @@
     </script>
     <script type="text/javascript">
         function adjustBreadcrumbsPosition() {
-            var topBar = document.getElementById('example-menu');
+            var topBar = document.querySelector('nav.sticky-header')
+                || document.getElementById('example-menu');
             var breadcrumbs = document.getElementById('breadcrumbs-wrapper');
 
-            if (topBar && breadcrumbs) {
-                var topBarHeight = topBar.getBoundingClientRect().height;
+            var topBarHeight = topBar
+                ? topBar.getBoundingClientRect().height : 0;
+            var breadcrumbsHeight = breadcrumbs
+                ? breadcrumbs.getBoundingClientRect().height : 0;
+
+            if (breadcrumbs) {
                 breadcrumbs.style.top = topBarHeight + 'px';
             }
+
+            /* Kontrakt dla wszystkich *dodatkowych* pasków sticky na stronie
+               (np. nawigacja po sekcjach jednostki): --bpp-sticky-offset to
+               dolna krawędź stałych belek (top bar + breadcrumbs). Paski
+               ustawiają się pod nią zamiast zgadywać sztywne piksele. */
+            document.documentElement.style.setProperty(
+                '--bpp-topbar-height', topBarHeight + 'px');
+            document.documentElement.style.setProperty(
+                '--bpp-sticky-offset',
+                (topBarHeight + breadcrumbsHeight) + 'px');
         }
 
         // Adjust on page load
@@ -97,76 +112,10 @@
         </div>
         {# fix pycharm highlighting #}
 
+    {% include "freshdesk_widget.html" %}
+
     {% if request.user.is_authenticated %}
         {{ extraChannels|json_script:"extra-channels" }}
-
-        {% if not TESTING %}
-        <!-- Freshworks Support Widget -->
-        <script>
-            window.fwSettings={
-                'widget_id':205000000433
-            };
-            !function(){if("function"!=typeof window.FreshworksWidget){var n=function(){n.q.push(arguments)};n.q=[],window.FreshworksWidget=n}}()
-        </script>
-        <script type='text/javascript' src='https://euc-widget.freshworks.com/widgets/205000000433.js' async defer></script>
-
-        <!-- Identify user for Freshworks -->
-        <script type="text/javascript">
-            $(document).ready(function() {
-                FreshworksWidget('hide', 'launcher');
-
-                // Wait a bit for the widget to initialize
-                setTimeout(function() {
-                    if (typeof FreshworksWidget !== 'undefined') {
-                        FreshworksWidget('identify', 'ticketForm', {
-                            name: '{{ request.user.get_full_name|default:request.user.username|escapejs }}',
-                            email: '{{ request.user.email|escapejs }}'
-                        });
-
-                    }
-                }, 1000);
-            });
-        </script>
-
-        <!-- Custom Support Button -->
-        <button class="bpp-support-button hide-on-print" id="bppSupportButton">
-            <span class="button-content">
-                <span class="support-symbols">!?!</span>
-                <span class="support-text">Support BPP</span>
-            </span>
-        </button>
-
-        <script type="text/javascript">
-            $(document).ready(function() {
-                // Track widget state
-                var widgetOpen = false;
-
-                // Handle custom support button click - toggle widget
-                $('#bppSupportButton').on('click', function(e) {
-                    e.preventDefault();
-                    if (typeof FreshworksWidget !== 'undefined') {
-                        if (!widgetOpen) {
-
-                            FreshworksWidget('prefill', 'ticketForm', {
-                                custom_fields: {
-                                    cf_adres_url: window.location.href
-                                }
-                            });
-
-                            // Optional: make it read-only so users can’t change it
-                            FreshworksWidget('disable', 'ticketForm', ['custom_fields.cf_page_url']);
-
-                            FreshworksWidget('open');
-                            widgetOpen = true;
-                        } else {
-                            FreshworksWidget('close');
-                            widgetOpen = false;
-                        }
-                    }
-                });
-            });
-        </script>
-        {% endif %}
 
         <script type="text/javascript">
             $(document).ready(function () {

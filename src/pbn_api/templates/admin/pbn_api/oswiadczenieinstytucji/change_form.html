@@ -1,12 +1,18 @@
 {% extends "admin/change_form.html" %}
+{% load prace %}
 
 {% block object-tools-items %}
     {% if original.publicationId_id %}
-        <li><a target="_blank" href="{{ original.publicationId.link_do_pbn }}">PBN</a></li>
+        {% link_do_pbn original.publicationId as pbn_url %}
+        {% if pbn_url %}
+            <li><a target="_blank" href="{{ pbn_url }}">PBN</a></li>
+        {% endif %}
     {% endif %}
-    {% if original.link_do_pi %}
-        <li><a target="_blank" href="{{ original.link_do_pi }}">PI</a></li>
-    {% endif %}
+    {% with pi_url=original|link_do_pi:uczelnia %}
+        {% if pi_url %}
+            <li><a target="_blank" href="{{ pi_url }}">PI</a></li>
+        {% endif %}
+    {% endwith %}
     {% with bpp_pub=original.get_bpp_publication %}
         {% if bpp_pub %}
             <li><a target="_blank" href="{{ bpp_pub.get_absolute_url }}">BPP</a></li>
@@ -15,7 +21,10 @@
         {% endif %}
     {% endwith %}
     {% if original.personId_id %}
-        <li><a target="_blank" href="{{ original.personId.link_do_pbn }}">Autor PBN</a></li>
+        {% link_do_pbn original.personId as pbn_url %}
+        {% if pbn_url %}
+            <li><a target="_blank" href="{{ pbn_url }}">Autor PBN</a></li>
+        {% endif %}
         {% if original.personId.rekord_w_bpp %}
             <li><a target="_blank" href="{{ original.personId.rekord_w_bpp.get_absolute_url }}">Autor BPP</a>
             </li>

@@ -1,8 +1,15 @@
 from django.urls import reverse
 
+from bpp.models import Autor_Dyscyplina
+from raport_slotow.tables import RaportEwaluacjaUpowaznieniaTable
 from raport_slotow.views.upowaznienie_pbn import RaportEwaluacjaUpowaznienia
 
-from bpp.models import Autor_Dyscyplina
+
+def test_tabela_upowaznien_nie_dziedziczy_kolumn_wydzialow():
+    column_names = RaportEwaluacjaUpowaznieniaTable([]).columns.names()
+
+    assert "aktualny_wydzial" not in column_names
+    assert "afiliowany_wydzial" not in column_names
 
 
 def test_raport_ewaluacja_upowaznienia(

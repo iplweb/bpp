@@ -22,3 +22,28 @@ def oauth_authorization_server_metadata(request):
             "token_endpoint_auth_methods_supported": ["none"],
         }
     )
+
+
+def oauth_protected_resource_metadata(request):
+    """RFC 9728 — mówi klientowi MCP, który serwer autoryzacji obsługuje /mcp.
+
+    Poprzedni spec przypisywał ten dokument pakietowi bpp-mcp; odkąd Resource
+    Serverem jest sama instancja BPP, mieszka on tutaj. URL-e przez
+    build_absolute_uri — poprawny scheme z SECURE_PROXY_SSL_HEADER, host
+    per-request (wielo-domenowość).
+
+    Przy wyłączonym MCP (``Uczelnia.mcp_wlaczone``) — 404: nie ma zasobu do
+    opisania, a dokument wskazywałby klientowi, gdzie się logować.
+    """
+    from mcp_server.uczelnia import mcp_wlaczone_dla_requestu
+
+    if not mcp_wlaczone_dla_requestu(request):
+        return JsonResponse({"error": "mcp_disabled"}, status=404)
+    return JsonResponse(
+        {
+            "resource": request.build_absolute_uri("/mcp"),
+            "authorization_servers": [request.build_absolute_uri("/").rstrip("/")],
+            "scopes_supported": ["read"],
+            "bearer_methods_supported": ["header"],
+        }
+    )

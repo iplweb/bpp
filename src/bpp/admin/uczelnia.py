@@ -173,6 +173,37 @@ class UczelniaAdmin(
                 ),
             },
         ),
+        (
+            "REST API (/api/v1/)",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "api_v1_wlaczone",
+                    "api_v1_tylko_zalogowani",
+                    "api_v1_dane_bibliograficzne",
+                    "api_v1_wyszukiwanie",
+                    "api_v1_kafelki",
+                    "api_v1_narzedzia_redaktorskie",
+                ),
+            },
+        ),
+        # Osobny fieldset, mimo że MCP czyta dane przez REST API. Wrzucony do
+        # sekcji „REST API" sugerowałby, że `mcp_wlaczone` jest jednym
+        # z przełączników API — a to niezależny wyłącznik: gasi /mcp, nie
+        # ruszając /api/v1/ ani jego integracji.
+        (
+            "Serwer MCP dla asystentów AI (/mcp)",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "description": (
+                    "Warunek konieczny: serwis musi mieć prawidłowy certyfikat "
+                    "SSL z kompletnym łańcuchem (certyfikat serwera + pośredni). "
+                    "Przeglądarka uzupełni brakujący certyfikat pośredni sama, "
+                    "asystenci AI — nie, i połączenie się nie uda."
+                ),
+                "fields": ("mcp_wlaczone",),
+            },
+        ),
         # DWA osobne fieldsety, mimo że oba dotyczą OAI-PMH. To NIE jest
         # jeden przełącznik z dodatkami: `oai_pmh_aktywny` bramkuje wyłącznie
         # /oai/ (feed oai_dc dla Primo), a `eksport_cerif_wlaczony` wyłącznie
@@ -349,13 +380,6 @@ class UczelniaAdmin(
                     "dspace_api_password",
                     "dspace_domyslny_jezyk_dc",
                 ),
-            },
-        ),
-        (
-            "REST API",
-            {
-                "classes": ("grp-collapse grp-closed",),
-                "fields": ("api_v1_wlaczone",),
             },
         ),
         (

@@ -31,6 +31,19 @@ MODELE_DETAIL_VIEWNAME = {
     Praca_Habilitacyjna: "api_v1:praca_habilitacyjna-detail",
 }
 
+
+def mapa_contenttype_viewname():
+    """content_type_id → viewname typowanego detalu, rozwiązywane w RUNTIME.
+
+    ID ContentType są per-baza, więc nie da się ich zahardkodować. Wspólne dla
+    ``/szukaj/``, ``/zapytanie/`` i embedów ``recent_*``.
+    """
+    return {
+        ContentType.objects.get_for_model(model).pk: viewname
+        for model, viewname in MODELE_DETAIL_VIEWNAME.items()
+    }
+
+
 #: Minimalny zestaw kolumn ``Rekord`` potrzebny SzukajSerializer-owi.
 #: Mat-view ``bpp_rekord_mat`` ma ~50 kolumn, w tym tsvector ``search_index``
 #: (największa z nich) — bez ``only()`` każdy wiersz strony ciągnie je
@@ -76,16 +89,9 @@ class SzukajViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         except (TypeError, ValueError):
             return None
 
-    def _mapa_contenttype_viewname(self):
-        """content_type_id → viewname detalu, rozwiązywane w RUNTIME."""
-        return {
-            ContentType.objects.get_for_model(model).pk: viewname
-            for model, viewname in MODELE_DETAIL_VIEWNAME.items()
-        }
-
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context["contenttype_to_viewname"] = self._mapa_contenttype_viewname()
+        context["contenttype_to_viewname"] = mapa_contenttype_viewname()
         return context
 
     def get_queryset(self):

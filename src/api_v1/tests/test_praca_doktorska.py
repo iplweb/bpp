@@ -66,7 +66,6 @@ def test_rest_api_praca_doktorska_filtering_rok(api_client, praca_doktorska, rok
 def test_rest_api_praca_doktorska_ukryj_status(
     api_client, praca_doktorska, uczelnia, przed_korekta, po_korekcie
 ):
-
     res = api_client.get(reverse("api_v1:praca_doktorska-list"))
     assert res.json()["count"] == 1
 
@@ -135,5 +134,7 @@ def wiele_prac_doktorskich(db, typy_odpowiedzialnosci):
 def test_rest_api_praca_doktorska_no_queries(
     wiele_prac_doktorskich, django_assert_max_num_queries, api_client
 ):
-    with django_assert_max_num_queries(11):
+    # 12 = 11 + jednorazowe COUNT(uczelnia) z ZawezDoUczelniMixin (#808) —
+    # stała, nie zależy od liczby wierszy.
+    with django_assert_max_num_queries(12):
         api_client.get(reverse("api_v1:praca_doktorska-list"))

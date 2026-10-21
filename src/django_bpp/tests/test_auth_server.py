@@ -7,7 +7,8 @@ for protecting services like Grafana and Dozzle.
 
 import pytest
 from django.contrib.auth.models import AnonymousUser
-from django.test import RequestFactory
+from django.test import RequestFactory, override_settings
+from django.urls import resolve
 
 
 def test_auth_server_settings_import():
@@ -259,6 +260,10 @@ def test_auth_server_startuje_i_renderuje_login_w_osobnym_procesie():
         "import django; django.setup();"
         "from django.template.loader import get_template;"
         "get_template('auth_server/login.html').render({});"
+        # `csrf_token` w kontekście: bez niego {% csrf_token %} tylko loguje
+        # ostrzeżenie i renderuje pustkę — chcemy czysty stderr, żeby realny
+        # błąd importu był widoczny w komunikacie asercji.
+        "get_template('auth_server/forbidden.html').render({'csrf_token': 'x'});"
         "print('AUTHSERVER OK')"
     )
 
@@ -290,6 +295,134 @@ def test_auth_server_startuje_i_renderuje_login_w_osobnym_procesie():
         f"STDOUT:\n{wynik.stdout}\n\nSTDERR:\n{wynik.stderr}"
     )
     assert "AUTHSERVER OK" in wynik.stdout
+
+
+def test_szablon_logowania_nie_udaje_awarii():
+    """Formularz authservera nie może twierdzić, że to logowanie awaryjne.
+
+    Ta strona pokazuje się na CODZIENNEJ, poprawnej ścieżce: nginx odsyła tu
+    każdego, kto wchodzi na /grafana/, /dozzle/, /flower/ albo /netdata/ bez
+    ważnej sesji (``error_page 401 = @bpp_login`` w bpp-deploy). Nie ma tu
+    żadnej awarii ani startu systemu — gdy główna aplikacja nie odpowiada,
+    nginx serwuje ``maintenance.html``, a nie ten formularz. Napisy
+    „Emergency Login" i „System w trakcie uruchamiania" były nieprawdziwe:
+    straszyły administratora awarią, której nie ma, a w historii przeglądarki
+    zostawiały wpis wyglądający jak awaryjne wejście na skróty.
+    """
+    from django.template.loader import get_template
+
+    html = get_template("auth_server/login.html").render({})
+
+    assert "Emergency" not in html
+    assert "trakcie uruchamiania" not in html
+    assert "Logowanie do BPP" in html
+    assert "narzędzi administracyjnych" in html
+
+
+def test_szablony_authservera_maja_polskie_znaki():
+    """Szablony authservera piszą po polsku z diakrytykami.
+
+    Plik jest serwowany jako UTF-8, więc „Nazwa uzytkownika" / „Haslo" nie
+    wynikały z żadnego ograniczenia technicznego.
+    """
+    from django.template.loader import get_template
+
+    login = get_template("auth_server/login.html").render({})
+
+    assert "Nazwa użytkownika" in login
+    assert "Hasło" in login
+    assert "Bibliografia Publikacji Pracowników" in login
+    assert "uzytkownik" not in login.lower()
+    assert "haslo" not in login.lower()
+
+
+@pytest.mark.django_db
+def test_brak_uprawnien_zwraca_403_z_czytelnym_wyjasnieniem(test_user):
+    """Zalogowany nie-superuser dostaje stronę z wyjaśnieniem, nie gołe 403.
+
+    ``is_superuser`` zwraca nginksowi 403, a nginx do tej pory pokazywał
+    własną, generyczną stronę błędu — bez informacji, że problem to za niskie
+    uprawnienia konta, na które użytkownik jest właśnie zalogowany.
+    """
+    from importlib import import_module
+
+    from django.conf import settings
+
+    from django_bpp.views import brak_uprawnien
+
+    rf = RequestFactory()
+    request = rf.get("/__external_auth/forbidden/")
+    request.user = test_user
+    # Sesja: pod testowym settingsem lista context processorów jest pełniejsza
+    # niż minimalna lista authservera i część z nich sięga po request.session.
+    # W produkcji dostarcza ją SessionMiddleware.
+    request.session = import_module(settings.SESSION_ENGINE).SessionStore()
+
+    response = brak_uprawnien(request)
+
+    assert response.status_code == 403
+    tresc = response.content.decode("utf-8")
+    assert "administrator" in tresc.lower()
+    # Strona musi powiedzieć, NA KTÓRE konto użytkownik jest zalogowany —
+    # najczęstsza realna przyczyna to zalogowanie się kontem redaktora
+    # zamiast administratora.
+    assert test_user.username in tresc
+
+
+def test_authserver_wystawia_endpointy_braku_uprawnien_i_wylogowania():
+    """URL-e muszą być podpięte w urlconfie authservera, nie tylko istnieć.
+
+    nginx robi wewnętrzne przekierowanie na ``/__external_auth/forbidden/``
+    (``error_page 403``), więc literalna ścieżka jest częścią kontraktu
+    z bpp-deploy.
+    """
+    from django.contrib.auth.views import LogoutView
+
+    from django_bpp.views import brak_uprawnien
+
+    urlconf = "django_bpp.urls_auth_server"
+
+    assert (
+        resolve("/__external_auth/forbidden/", urlconf=urlconf).func is brak_uprawnien
+    )
+    assert (
+        resolve("/__external_auth/logout/", urlconf=urlconf).func.view_class
+        is LogoutView
+    )
+
+
+@pytest.mark.django_db
+@override_settings(
+    ROOT_URLCONF="django_bpp.urls_auth_server",
+    # Middleware TAKIE JAK NA AUTHSERVERZE. Pełna lista z settings.test zawiera
+    # m.in. password_policies, które na każdym żądaniu robi
+    # reverse("password_change") — a authserver takiego route'u nie ma i nigdy
+    # nie miał (NoReverseMatch). Test ma sprawdzać authserver, nie hybrydę.
+    MIDDLEWARE=[
+        "django.contrib.sessions.middleware.SessionMiddleware",
+        "django.middleware.csrf.CsrfViewMiddleware",
+        "django.contrib.auth.middleware.AuthenticationMiddleware",
+    ],
+)
+def test_wylogowanie_z_authservera_konczy_sesje_i_wraca_na_logowanie(client, test_user):
+    """Ze strony 403 da się wyjść: wylogować i wejść kontem administratora.
+
+    Sesja jest współdzielona z główną aplikacją (ten sam SECRET_KEY, ten sam
+    backend sesji w Redisie), więc wylogowanie tutaj kończy też sesję w BPP —
+    dlatego szablon mówi o tym wprost.
+    """
+    client.force_login(test_user)
+
+    # Django >= 5.0: wylogowanie tylko POST-em. GET nie może kończyć sesji,
+    # bo prefetch linku przez przeglądarkę wylogowywałby użytkownika.
+    assert client.get("/__external_auth/logout/").status_code == 405
+    assert "_auth_user_id" in client.session
+
+    response = client.post("/__external_auth/logout/")
+
+    assert response.status_code == 302
+    assert response["Location"] == "/__external_auth/login/"
+    assert "_auth_user_id" not in client.session
 
 
 def test_auth_server_has_rollbar_config():

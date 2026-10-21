@@ -1,9 +1,10 @@
+from types import SimpleNamespace
+
 from django import template
+from django.contrib.auth.models import AnonymousUser
+from django.template.base import FilterExpression, kwarg_re
 
 register = template.Library()
-
-
-from django.template.base import FilterExpression, kwarg_re
 
 
 def parse_tag(token, parser):
@@ -55,8 +56,13 @@ class CzyPokazywacNode(template.Node):
     def render(self, context):
         uczelnia = context.get("uczelnia")
         if uczelnia is not None:
+            # Szablon renderowany bez requestu (np. opis bibliograficzny)
+            # traktujemy jak oglądany przez niezalogowanego użytkownika.
+            request = getattr(context, "request", None) or SimpleNamespace(
+                user=AnonymousUser()
+            )
             if uczelnia.sprawdz_uprawnienie(
-                self.attr.token, context.request, ignoruj_grupe=self.ignoruj_grupe
+                self.attr.token, request, ignoruj_grupe=self.ignoruj_grupe
             ):
                 return self.nodelist.render(context)
         return ""

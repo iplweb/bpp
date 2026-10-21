@@ -1,7 +1,9 @@
 import pytest
+from django.contrib.contenttypes.models import ContentType
 from model_bakery import baker
-
 from pbn_client.exceptions import PBNValidationError
+
+from bpp.models import Wydawnictwo_Ciagle
 from pbn_export_queue.models import PBN_Export_Queue, RodzajBledu
 from pbn_export_queue.views.utils import parse_pbn_api_error
 
@@ -13,7 +15,10 @@ VALIDATION_BODY = (
 
 @pytest.mark.django_db
 def test_queue_classifies_pbnvalidationerror_as_merytoryczny():
-    rec = baker.make(PBN_Export_Queue)
+    rec = baker.make(
+        PBN_Export_Queue,
+        content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
+    )
     exc = PBNValidationError(400, "/api/v1/publications", VALIDATION_BODY)
 
     rec._handle_pbn_exception(exc)

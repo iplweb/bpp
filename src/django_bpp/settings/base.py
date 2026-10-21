@@ -109,6 +109,13 @@ env = environ.Env(
     DJANGO_BPP_SECRET_KEY=(str, SECRET_KEY_UNSET),
     ALTCHA_HMAC_KEY=(str, ALTCHA_HMAC_KEY_UNSET),
     ZGLOS_CAPTCHA_ENABLED=(bool, False),
+    #
+    # Widget wsparcia Freshdesk (Freshworks) — patrz
+    # docs/administrator/widget-wsparcia-freshdesk.md
+    #
+    DJANGO_BPP_FRESHDESK_WIDGET_ID=(str, "205000000433"),
+    DJANGO_BPP_FRESHDESK_WIDGET_ID_ANON=(str, ""),
+    DJANGO_BPP_FRESHDESK_WIDGET_JWT_SECRET=(str, ""),
     DJANGO_BPP_MEDIA_ROOT=(str, os.path.join(os.getenv("HOME", "C:/"), "bpp-media")),
     #
     # Konfiguracja wymuszania zmiany haseł
@@ -317,6 +324,7 @@ TEMPLATES = [
                 "bpp.context_processors.oidc.oidc_auth_status",
                 "bpp.context_processors.external_auth.external_auth_status",
                 "bpp.context_processors.testing.testing",
+                "bpp.context_processors.freshdesk.freshdesk_widget",
                 "cookielaw.context_processors.cookielaw",
                 "django_countdown.context_processors.countdown_context",
                 "nowe_raporty.menu.raporty_menu",
@@ -349,6 +357,18 @@ MIDDLEWARE = [
     # z backendu logowania i renderuje odpowiedź "konto zablokowane".
     "axes.middleware.AxesMiddleware",
 ]
+
+# Kreator pierwszego uruchomienia przepuszcza tylko `/admin/`. Strony admina
+# dociągają jednak treść z endpointów spoza tego prefiksu (widgety HTMX
+# dashboardu, menu admin_tools, grappelli, ping session_security) — bez tych
+# wyjątków dostawały 302 na krok kreatora i wstawiały jego stronę w kafelki
+# dashboardu (#873).
+FIRST_RUN_WIZARD_SKIP_PREFIXES = (
+    "/admin-dashboard/",
+    "/admin_tools/",
+    "/grappelli/",
+    "/session_security/",
+)
 
 INTERNAL_IPS = ("127.0.0.1",)
 
@@ -478,6 +498,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "oauth_mcp",
     "oauth2_provider",
+    "mcp_server",
     "django_filters",
     "api_v1",
     "adminsortable2",
@@ -920,6 +941,14 @@ ALTCHA_HMAC_KEY = env("ALTCHA_HMAC_KEY")
 ZGLOS_CAPTCHA_ENABLED = env("ZGLOS_CAPTCHA_ENABLED")
 INSTALLED_APPS += ["django_altcha"]
 
+# Widget wsparcia Freshdesk: osobne widgety dla zalogowanych i anonimów.
+# Pusty ID = brak widgetu dla danej grupy. Gdy ustawiony jest sekret JWT
+# (Freshdesk: Admin > Security > Widget settings), zalogowany użytkownik jest
+# uwierzytelniany w widgecie tokenem z /freshdesk/widget-token/.
+FRESHDESK_WIDGET_ID = env("DJANGO_BPP_FRESHDESK_WIDGET_ID")
+FRESHDESK_WIDGET_ID_ANON = env("DJANGO_BPP_FRESHDESK_WIDGET_ID_ANON")
+FRESHDESK_WIDGET_JWT_SECRET = env("DJANGO_BPP_FRESHDESK_WIDGET_JWT_SECRET")
+
 # Klucz Fernet do szyfrowania sekretów integracji (DSpace itd.).
 # Wygeneruj: python -c "from cryptography.fernet import Fernet;
 #   print(Fernet.generate_key().decode())"
@@ -1037,7 +1066,7 @@ YARN_FILE_PATTERNS = {
     "jquery-circle-progress": ["dist/circle-progress.min.js"],
     "select2-foundation-theme": ["dist/select2-foundation-theme.css"],
     "plotly.js": ["dist/plotly.min.js", "dist/plotly-locale-pl.js"],
-    "htmx.org": ["dist/htmx.js"],
+    "htmx.org": ["dist/htmx.min.js"],
     # Wykresy w ewaluacja_optymalizacja (dawniej ładowane z cdn.jsdelivr.net).
     "chart.js": ["dist/chart.umd.min.js"],
     "tone": ["build/Tone.js", "build/Tone.js.map"],
@@ -1084,7 +1113,8 @@ ASGI_APPLICATION = "django_bpp.asgi.application"
 # Channel-layer key prefix (get_channels_prefix imported at top). Production:
 # "asgi" (channels_redis default). Under pytest-xdist: "asgi-test-<worker>" so
 # colliding per-user group names cannot cross-talk between workers sharing one
-# Redis. See django_bpp.channels_prefix and docs/CHANNELS_BROADCAST_FLAKE.md.
+# Redis. See django_bpp.channels_prefix and
+# docs/deweloper/testy-channels-broadcast.md.
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
@@ -1415,6 +1445,16 @@ if "oidc_integration" not in INSTALLED_APPS:
 # Defaulty bezpieczne również dla instalacji bez OIDC.
 OIDC_REQUIRE_EMAIL_VERIFIED = (_OIDC_CONFIG or {}).get("require_email_verified", True)
 OIDC_GRACE_BIND_ENABLED = (_OIDC_CONFIG or {}).get("grace_bind", False)
+# Domeny, dla których adres z instytucjonalnego claimu (`mail`) jest wiarygodny
+# bez oglądania się na `email_verified` — ten flag dotyczy claimu `email`, a ten
+# w realmach LDAP-owych bywa adresem PRYWATNYM (patrz a2124bf34). Pusta lista =
+# bramka wyłączona, zachowanie jak dotąd.
+OIDC_TRUSTED_EMAIL_DOMAINS = (_OIDC_CONFIG or {}).get("trusted_email_domains", ())
+# Pozwól grace-bindowi związać konto Z UPRAWNIENIAMI (is_staff/superuser, grupy,
+# uprawnienia, token PBN, hasło lokalne). Działa WYŁĄCZNIE dla adresu zaufanego
+# po domenie — sam ten flag, bez OIDC_TRUSTED_EMAIL_DOMAINS, jest no-opem
+# (blokada wzajemna, żeby nie dało się tego otworzyć przez przypadek).
+OIDC_GRACE_BIND_PRIVILEGED = (_OIDC_CONFIG or {}).get("grace_bind_privileged", False)
 
 if _OIDC_CONFIG:
     OIDC_OP_ISSUER = _OIDC_CONFIG["issuer"]
@@ -1475,9 +1515,18 @@ AUTHENTICATION_BACKENDS = [
 # Polityka lockoutu (PCI-DSS 8.3.4: ≤10 prób, blokada ≥30 min):
 AXES_FAILURE_LIMIT = 10  # 10 nieudanych prób...
 AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]  # ...na parę (login, IP)
-AXES_COOLOFF_TIME = timedelta(minutes=30)  # auto-odblokowanie po 30 min
+AXES_COOLOFF_TIME = timedelta(hours=1)  # auto-odblokowanie po godzinie
 AXES_RESET_ON_SUCCESS = True  # udane logowanie zeruje licznik nieudanych prób
 AXES_ENABLE_ADMIN = True  # podgląd/odblokowanie prób z panelu admina
+# Bez tego axes zwraca gołe HttpResponse z jednym zdaniem (biała strona, bez
+# nawigacji) — dla użytkownika nieodróżnialne od awarii serwera. Szablon
+# renderuje się w layoucie BPP; kontekst od axes: failure_limit, username,
+# cooloff_time (ISO8601), cooloff_timedelta.
+AXES_LOCKOUT_TEMPLATE = "axes_lockout.html"
+# UWAGA: AXES_RESET_COOL_OFF_ON_FAILURE_DURING_LOCKOUT zostaje na domyślnym
+# True — każda próba logowania W TRAKCIE blokady odświeża attempt_time, więc
+# cooloff liczy się od OSTATNIEJ próby, nie od pierwszej. Uparte klikanie
+# "Zaloguj" nie odblokuje konta nigdy; szablon lockoutu mówi o tym wprost.
 # IP klienta zza nginx: bierzemy OSTATNI wpis X-Forwarded-For (doklejony przez
 # nginx z $remote_addr = realny klient, niefalsyfikowalny). Bez tego axes użyłby
 # REMOTE_ADDR = IP nginxa i komponent (ip_address) lockoutu zlałby się do jednej
@@ -1488,9 +1537,9 @@ AXES_CLIENT_IP_CALLABLE = "django_bpp.client_ip.get_client_ip"
 #
 # Blokujemy po KOMBINACJI (login + IP), nie po samym loginie — twardy lockout
 # konta jest wektorem DoS (atakujący celowo blokuje ofiarę złym hasłem; NIST
-# SP 800-63B przed tym ostrzega). Atakującemu z jednego IP wystarczy ~10 prób/30
-# min na konto — grubo poniżej pułapu NIST (100/h), a ofiara nie traci dostępu
-# globalnie.
+# SP 800-63B przed tym ostrzega). Atakującemu z jednego IP zostaje ~10 prób na
+# godzinę na konto — grubo poniżej pułapu NIST (100/h), a ofiara nie traci
+# dostępu globalnie: wystarczy, że zaloguje się z innej sieci.
 #
 
 #
@@ -1630,14 +1679,20 @@ TINYMCE_DEFAULT_CONFIG = {
     "height": "320px",
     "width": "780px",
     "promotion": False,
+    # TinyMCE 7 bez klucza licencyjnego działa w trybie ewaluacyjnym
+    # i ostrzega w konsoli -- korzystamy z licencji open source (GPL).
+    "license_key": "gpl",
     "menubar": "file edit view insert format tools table help",
-    "plugins": "advlist autolink lists link image charmap print preview anchor searchreplace visualblocks code "
-    "fullscreen insertdatetime media table paste code help wordcount spellchecker",
-    "toolbar": "undo redo | bold italic underline strikethrough | fontselect fontsizeselect formatselect | alignleft "
-    "aligncenter alignright alignjustify | outdent indent |  numlist bullist checklist | forecolor "
-    "backcolor casechange permanentpen formatpainter removeformat | pagebreak | charmap emoticons | "
-    "fullscreen  preview save print | insertfile image media pageembed template link anchor codesample | "
-    "a11ycheck ltr rtl | showcomments addcomment code",
+    # Od TinyMCE 6 "paste" i "print" są w rdzeniu edytora (nie ma ich
+    # jako wtyczek), a "spellchecker" usunięto -- przeglądarki mają własny.
+    "plugins": "advlist autolink lists link image charmap preview anchor "
+    "searchreplace visualblocks code fullscreen insertdatetime media table "
+    "help wordcount",
+    "browser_spellcheck": True,
+    "toolbar": "undo redo | bold italic underline strikethrough | fontfamily "
+    "fontsize blocks | alignleft aligncenter alignright alignjustify | "
+    "outdent indent | numlist bullist | forecolor backcolor removeformat | "
+    "charmap | fullscreen preview print | image media link anchor | code",
 }
 
 #
@@ -1980,4 +2035,15 @@ OAUTH2_PROVIDER = {
     "ROTATE_REFRESH_TOKEN": True,
     "ACCESS_TOKEN_EXPIRE_SECONDS": 60 * 30,  # 30 min
     "REFRESH_TOKEN_EXPIRE_SECONDS": 60 * 60 * 24 * 7,  # 7 dni (NIE None!)
+    # RFC 8707: klient MCP zgodny ze spec 2025-06-18 MUSI wysyłać
+    # `resource=https://<host>/mcp`, więc tokeny są zawężone do adresu
+    # serwera MCP. Domyślny walidator DOT dopasowuje PREFIKSEM ŚCIEŻKI, przez
+    # co żądanie wewnętrzne serwera MCP do własnego `/api/v1/` dostawało 401 —
+    # zalogowana ścieżka `/mcp/auth` była martwa dla każdego zgodnego klienta.
+    # Nasz walidator egzekwuje ORIGIN (schemat+host+port), bo `/mcp`
+    # i `/api/v1/` to jeden Resource Server; pełne uzasadnienie w docstringu
+    # `oauth_mcp.audience`.
+    "RESOURCE_SERVER_TOKEN_RESOURCE_VALIDATOR": (
+        "oauth_mcp.audience.waliduj_audience_po_originie"
+    ),
 }

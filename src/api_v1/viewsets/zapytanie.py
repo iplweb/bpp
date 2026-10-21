@@ -5,7 +5,6 @@ warstwie DRF, read-only, gate'owane ``MoznaUzywacZapytania``. Kształt wyników:
 kompaktowa płaska projekcja per model.
 """
 
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldError, ValidationError
 from django.db.utils import OperationalError
 from djangoql.exceptions import DjangoQLError
@@ -22,7 +21,11 @@ from api_v1.serializers.zapytanie import (
     AutorzyKompaktSerializer,
 )
 from api_v1.throttling import SearchUserThrottle
-from api_v1.viewsets.szukaj import MODELE_DETAIL_VIEWNAME, POLA_REKORDU_DLA_SZUKAJ
+from api_v1.viewsets.szukaj import (
+    MODELE_DETAIL_VIEWNAME,
+    POLA_REKORDU_DLA_SZUKAJ,
+    mapa_contenttype_viewname,
+)
 from bpp.djangoql_errors import error_payload
 from bpp.djangoql_schema import RekordLLMSchema
 from bpp.models import Autor, Uczelnia
@@ -62,10 +65,7 @@ class ZapytanieAPIBaseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context["contenttype_to_viewname"] = {
-            ContentType.objects.get_for_model(m).pk: v
-            for m, v in MODELE_DETAIL_VIEWNAME.items()
-        }
+        context["contenttype_to_viewname"] = mapa_contenttype_viewname()
         return context
 
     def _uczelnia(self):

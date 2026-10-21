@@ -83,8 +83,12 @@ class LinkDoPBNMixin:
         except AttributeError:
             pass
 
-        # pbn_api.models.Publication
-        return self.current_version.get("versionHash", None)
+        # pbn_api.models.Publication — bez bieżącej wersji (pusta lista
+        # ``versions``) nie ma hasha; wcześniej: AttributeError → 500 w adminie.
+        current_version = self.current_version
+        if current_version is None:
+            return None
+        return current_version.get("versionHash", None)
 
     def _format_link_pi(self, pbn_uid_id, uuid=None, versionHash=None, uczelnia=None):
         """Format the link to PI based on available data."""

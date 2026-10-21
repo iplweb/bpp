@@ -307,10 +307,16 @@ class safe_opis_bibliograficzny_defaults:
     # Opis bibliograficzny składa się z tytułu (sanityzowanego jak wyżej) oraz
     # inline'owego formatowania cytowania; w wariancie linkowanym niesie też
     # odnośniki autorów (``<a href>``). Dopuszczamy TE SAME tagi co tytuł plus
-    # ``<a>`` z samym ``href``/``rel``/``title`` — bez tagów blokowych, bez
-    # ``style``/``class`` i bez innych atrybutów.
-    ALLOWED_TAGS = safe_tytul_defaults.ALLOWED_TAGS + ("a",)
-    ALLOWED_ATTRIBUTES = {"a": ["href", "title", "rel"]}
+    # ``<a>`` z samym ``href``/``rel``/``title`` oraz ``<span>`` WYŁĄCZNIE
+    # z ``lang`` — bez tagów blokowych, bez ``style``/``class``.
+    #
+    # ``span``/``lang`` są tu dla WCAG 3.1.2 (Language of Parts): generator
+    # opisu owija tytuł obcojęzyczny znacznikiem języka, a bez tego wpisu nh3
+    # wyciąłby go i poprawka cicho by nie działała. ``lang`` jest atrybutem
+    # deklaratywnym — nie wykonuje kodu, nie ładuje zasobów, nie wpływa na
+    # układ; ``span`` bez ``style``/``class`` nie pozwala nadpisać wyglądu.
+    ALLOWED_TAGS = safe_tytul_defaults.ALLOWED_TAGS + ("a", "span")
+    ALLOWED_ATTRIBUTES = {"a": ["href", "title", "rel"], "span": ["lang"]}
 
 
 def safe_opis_bibliograficzny_html(html):

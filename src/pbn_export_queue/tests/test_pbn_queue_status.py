@@ -85,7 +85,11 @@ class TestCheckIfRecordStillExists:
 
     def test_check_if_record_still_exists_when_no_content_type_id(self, admin_user):
         """Test that method returns False when content_type_id is missing"""
-        queue_item = baker.make(PBN_Export_Queue, zamowil=admin_user)
+        queue_item = baker.make(
+            PBN_Export_Queue,
+            zamowil=admin_user,
+            content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
+        )
         # Manually set content_type_id to None
         queue_item.content_type_id = None
         assert queue_item.check_if_record_still_exists() is False

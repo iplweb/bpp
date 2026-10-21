@@ -87,6 +87,23 @@ def _get_claim_list(environ, field, skrot, default):
     return items or tuple(default)
 
 
+def _get_domain_list(environ, field, skrot):
+    """Rozwiąż listę domen e-mail (CSV) wg precedencji prefiks-skrót > bare.
+
+    Normalizuje wpisy operatora: obcina białe znaki, wiodącą ``@`` (naturalne
+    jest wpisać ``@uafm.edu.pl``) i sprowadza do małych liter — porównanie
+    domen jest case-insensitive. Brak/pusto → pusta krotka (bramka wyłączona).
+    """
+    raw = _get(environ, field, skrot)
+    if not raw:
+        return ()
+    return tuple(
+        part.strip().lstrip("@").lower()
+        for part in raw.split(",")
+        if part.strip().lstrip("@")
+    )
+
+
 def _keycloak_endpoints(issuer):
     """Wyprowadź endpointy z URL issuera konwencją Keycloaka.
 
@@ -151,9 +168,10 @@ def discover_oidc_config(environ=None):
     Zwracany słownik: ``client_id``, ``client_secret``, ``issuer``, ``skrot``
     (może być ``None``), ``endpoints`` (dict z 4 adresami), ``email_claims`` i
     ``username_claims`` (krotki nazw claimów wg preferencji),
-    ``require_email_verified`` (bool, default ``True``) oraz ``grace_bind``
-    (bool, default ``False``). ``None`` oznacza brak kompletu — aplikacja OIDC
-    ma się wtedy w ogóle nie aktywować.
+    ``require_email_verified`` (bool, default ``True``), ``grace_bind``
+    (bool, default ``False``), ``trusted_email_domains`` (krotka domen, default
+    pusta) oraz ``grace_bind_privileged`` (bool, default ``False``). ``None``
+    oznacza brak kompletu — aplikacja OIDC ma się wtedy w ogóle nie aktywować.
     """
     environ = os.environ if environ is None else environ
     skrot = _detect_skrot(environ)
@@ -175,4 +193,10 @@ def discover_oidc_config(environ=None):
         environ, "REQUIRE_EMAIL_VERIFIED", skrot, default=True
     )
     config["grace_bind"] = _get_bool(environ, "GRACE_BIND", skrot, default=False)
+    config["trusted_email_domains"] = _get_domain_list(
+        environ, "TRUSTED_EMAIL_DOMAINS", skrot
+    )
+    config["grace_bind_privileged"] = _get_bool(
+        environ, "GRACE_BIND_PRIVILEGED", skrot, default=False
+    )
     return config

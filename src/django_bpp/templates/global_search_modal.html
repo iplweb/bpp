@@ -1,120 +1,8 @@
 <!-- Global Search Modal Styles -->
 <style>
-    /* Global search modal styles */
-    .global-search-modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        z-index: 10000;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-
-    .global-search-modal.show {
-        display: block;
-        opacity: 1;
-    }
-
-    .global-search-modal.closing {
-        animation: fadeOutModal 0.35s ease-out forwards;
-    }
-
-    @keyframes fadeOutModal {
-        from {
-            opacity: 1;
-        }
-        to {
-            opacity: 0;
-        }
-    }
-
-    .global-search-container {
-        position: fixed;
-        width: 85vw;
-        max-width: 1200px;
-        min-height: 300px;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-        padding: 30px;
-        opacity: 0;
-        transform: scale(0);
-        pointer-events: none;
-    }
-
-    .global-search-modal.show .global-search-container {
-        pointer-events: auto;
-    }
-
-    /* Animation from search button */
-    .global-search-modal.show .global-search-container:not(.animating-out) {
-        animation: expandFromButton 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    }
-
-    .global-search-container.animating-out {
-        animation: collapseToButton 0.35s cubic-bezier(0.4, 0, 1, 1) forwards !important;
-        pointer-events: none !important;
-    }
-
-    @keyframes expandFromButton {
-        from {
-            transform: scale(0);
-            opacity: 0;
-        }
-        60% {
-            transform: scale(1.05);
-            opacity: 1;
-        }
-        to {
-            transform: scale(1);
-            opacity: 1;
-        }
-    }
-
-    @keyframes collapseToButton {
-        from {
-            transform: scale(1);
-            opacity: 1;
-        }
-        30% {
-            transform: scale(0.95);
-            opacity: 1;
-        }
-        to {
-            transform: scale(0);
-            opacity: 0;
-        }
-    }
-
-    .global-search-input {
-        width: 100%;
-        font-size: 1.2rem;
-        padding: 15px;
-        border: 2px solid #e0e0e0;
-        border-radius: 8px;
-        outline: none;
-        transition: border-color 0.3s;
-        background-color: #f9f9f9;
-    }
-
-    .global-search-input:focus {
-        border-color: #007bff;
-        background-color: white;
-    }
-
-    .global-search-results {
-        max-height: 60vh;
-        overflow-y: auto;
-        margin-top: 15px;
-        padding-top: 5px;
-        scroll-behavior: smooth;
-    }
+    /* Szklo, okno, pole, lista wynikow i pomoc: top_bar.scss. Kolory
+       biora $primary-color motywu - nie wpisuj ich tu na sztywno,
+       bo te style laduja pozniej i nadpisalyby motyw. */
 
     /* Custom scrollbar */
     .global-search-results::-webkit-scrollbar {
@@ -137,174 +25,18 @@
 
     .search-result-group {
         padding: 8px 0;
-        animation: fadeIn 0.3s ease-out;
+        animation: searchResultsFadeIn 0.2s ease-out;
     }
 
-    @keyframes fadeIn {
+    /* Start od poziomu przygaszonych poprzednich wynikow (.is-loading
+       w top_bar.scss): nowa lista nie znika na chwile przed pojawieniem. */
+    @keyframes searchResultsFadeIn {
         from {
-            opacity: 0;
-            transform: translateY(-10px);
+            opacity: 0.5;
         }
         to {
             opacity: 1;
-            transform: translateY(0);
         }
-    }
-
-    .search-result-group-title {
-        font-weight: 600;
-        color: #2c3e50;
-        padding: 8px 15px;
-        background: linear-gradient(90deg, #f8f9fa 0%, #ffffff 100%);
-        margin: 10px 0 5px 0;
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-left: 4px solid #007bff;
-        display: flex;
-        align-items: center;
-    }
-
-    .search-result-group-title i {
-        font-size: 1.1rem;
-        margin-right: 8px;
-        color: #007bff;
-        opacity: 0.8;
-    }
-
-    .search-result-item {
-        padding: 10px 15px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        border-radius: 6px;
-        margin: 2px 10px;
-        position: relative;
-        font-size: 0.95rem;
-        color: #333;
-        border: 1px solid transparent;
-    }
-
-    .search-result-item:hover {
-        background: linear-gradient(90deg, #f0f7ff 0%, #f8fbff 100%);
-        transform: translateX(5px);
-        box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
-        border-color: #e3f2fd;
-    }
-
-    .search-result-item.selected {
-        background: linear-gradient(90deg, #e3f2fd 0%, #f0f7ff 100%);
-        border-left: 3px solid #007bff;
-        padding-left: 12px;
-        box-shadow: 0 2px 12px rgba(0, 123, 255, 0.15);
-    }
-
-    .global-search-close {
-        position: absolute;
-        top: 15px;
-        right: 25px;
-        font-size: 1.5rem;
-        cursor: pointer;
-        color: #999;
-        background: none;
-        border: none;
-        padding: 0;
-        width: 30px;
-        height: 30px;
-        line-height: 30px;
-        text-align: center;
-    }
-
-    .global-search-close:hover {
-        color: #333;
-    }
-
-    .global-search-loading {
-        text-align: center;
-        padding: 20px;
-        color: #666;
-    }
-
-    .global-search-no-results {
-        text-align: center;
-        padding: 20px;
-        color: #999;
-    }
-
-    .global-search-help {
-        padding: 20px;
-        color: #555;
-        line-height: 1.8;
-    }
-
-    .global-search-help h3 {
-        color: #2c3e50;
-        font-size: 1.1rem;
-        margin-bottom: 15px;
-        font-weight: 600;
-    }
-
-    .global-search-help ul {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-
-    .global-search-help li {
-        padding: 10px 0;
-        border-bottom: 1px solid #f0f0f0;
-    }
-
-    .global-search-help li:last-child {
-        border-bottom: none;
-    }
-
-    .global-search-help .help-icon {
-        display: inline-block;
-        width: 24px;
-        height: 24px;
-        line-height: 24px;
-        text-align: center;
-        background: #007bff;
-        color: white;
-        border-radius: 50%;
-        margin-right: 10px;
-        font-size: 0.9rem;
-        font-weight: bold;
-        vertical-align: middle;
-    }
-
-    .global-search-help strong {
-        color: #2c3e50;
-        font-weight: 600;
-    }
-
-    .global-search-help code {
-        background: #f5f5f5;
-        padding: 2px 6px;
-        border-radius: 3px;
-        font-family: monospace;
-        color: #d63384;
-        font-size: 0.9em;
-    }
-
-    .global-search-help .example {
-        color: #666;
-        font-style: italic;
-        display: block;
-        margin-top: 5px;
-        padding-left: 34px;
-    }
-
-    .search-hint {
-        position: absolute;
-        top: 15px;
-        right: 60px;
-        color: #999;
-        font-size: 0.8rem;
-        background: rgba(255, 255, 255, 0.9);
-        padding: 4px 8px;
-        border-radius: 4px;
-        border: 1px solid #e0e0e0;
     }
 
     /* Search term highlighting with multiple colors and animation */
@@ -467,8 +199,87 @@
         var currentRequest = null;
         var selectedIndex = -1;
         var searchResults = [];
-        var scrollPosition = 0;
         var lastSearchTerm = '';  // Store the last search term used
+
+        // Blokada przewijania strony pod oknem. Celowo `overflow: hidden` na
+        // <html> (top_bar.scss), a nie `position: fixed` na <body>: ta druga
+        // wersja lamie `position: sticky` paska i breadcrumbs, wiec skacza.
+        // Przy klasycznym pasku przewijania rezerwujemy jego miejsce, zeby
+        // tresc nie przesunela sie w poziomie, gdy pasek zniknie.
+        function lockPageScroll() {
+            var root = document.documentElement;
+            var scrollbarWidth = window.innerWidth - root.clientWidth;
+            root.classList.toggle('global-search-scrollbar-gutter', scrollbarWidth > 0);
+            root.classList.add('global-search-open');
+        }
+
+        function unlockPageScroll() {
+            document.documentElement.classList.remove(
+                'global-search-open', 'global-search-scrollbar-gutter'
+            );
+        }
+
+        // Stan "trwa wyszukiwanie". Poprzednie wyniki ZOSTAJA na ekranie
+        // (przygaszone, pasek postepu w polu - top_bar.scss), az nowe podmienia
+        // je w jednym kroku. Zastepowanie listy napisem "Wyszukiwanie..."
+        // zapadalo okno do pustego rozmiaru przy kazdym znaku.
+        function setSearchLoading(isLoading) {
+            document.querySelector('.global-search-container')
+                .classList.toggle('is-loading', isLoading);
+            document.getElementById('globalSearchResults')
+                .setAttribute('aria-busy', isLoading ? 'true' : 'false');
+        }
+
+        var heightAnimation = null;
+
+        // Podmienia zawartosc listy wynikow i plynnie przeprowadza okno ze
+        // starej wysokosci do nowej - bez tego okno przeskakuje do nowego
+        // rozmiaru w jednej klatce. Web Animations API zamiast `transition`,
+        // bo samo sprzata: po zakonczeniu wysokosc wraca do `auto` i nie
+        // zostaje nasluch ani zablokowana wartosc.
+        function animateHeightAroundSwap(renderNewContent) {
+            var box = document.querySelector('.global-search-container');
+            var reduceMotion = window.matchMedia
+                && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            // Pomiar PRZED anulowaniem poprzedniej animacji: przy szybkim
+            // pisaniu ruch startuje z biezacej wysokosci, a nie od nowa.
+            var before = box.getBoundingClientRect().height;
+
+            if (heightAnimation) {
+                heightAnimation.cancel();
+                heightAnimation = null;
+            }
+
+            renderNewContent();
+
+            if (reduceMotion || typeof box.animate !== 'function') {
+                return;
+            }
+
+            var after = box.getBoundingClientRect().height;
+            if (Math.abs(after - before) < 4) {
+                return;
+            }
+
+            // Na czas ruchu przycinamy tresc, ktora chwilowo nie miesci sie
+            // w kurczacym sie oknie.
+            box.style.overflow = 'hidden';
+            // Krzywa opisuje postep animacji w czasie, wiec hamowanie na
+            // koncu dziala tak samo przy powiekszaniu i przy zmniejszaniu
+            // okna. Mocniejsze wytracanie predkosci niz zwykle `ease-out`.
+            heightAnimation = box.animate(
+                [{height: before + 'px'}, {height: after + 'px'}],
+                {duration: 260, easing: 'cubic-bezier(0.22, 1, 0.36, 1)'}
+            );
+
+            var cleanup = function() {
+                box.style.overflow = '';
+                heightAnimation = null;
+            };
+            heightAnimation.addEventListener('finish', cleanup);
+            heightAnimation.addEventListener('cancel', cleanup);
+        }
 
         // Open search modal with dynamic positioning
         window.openGlobalSearch = function(event, isKeyboard) {
@@ -476,19 +287,7 @@
             var input = document.getElementById('globalSearchInput');
             var container = document.querySelector('.global-search-container');
 
-            // Save scroll position and block background scrolling
-            scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
-
-            // Lock the body completely
-            document.body.style.position = 'fixed';
-            document.body.style.top = '-' + scrollPosition + 'px';
-            document.body.style.left = '0';
-            document.body.style.right = '0';
-            document.body.style.width = '100%';
-            document.body.style.overflow = 'hidden';
-
-            // Also lock html element for extra security
-            document.documentElement.style.overflow = 'hidden';
+            lockPageScroll();
 
             // Remove previous animation classes
             container.classList.remove('animating-out');
@@ -607,6 +406,7 @@
                 '</ul>' +
                 '</div>';
             document.getElementById('globalSearchResults').innerHTML = helpHtml;
+            setSearchLoading(false);
             selectedIndex = -1;
             searchResults = [];
 
@@ -623,34 +423,19 @@
             var modal = document.getElementById('globalSearchModal');
             var container = document.querySelector('.global-search-container');
 
-            // Add closing animation
+            // Zamkniecie juz zamknietego (lub wlasnie gasnacego) okna nic nie robi.
+            if (!modal.classList.contains('show')) {
+                return;
+            }
+
+            // Okno zwija sie, a szklo gasnie w tej samej klatce i przez ten
+            // sam czas (top_bar.scss), bez timerow w JS: stan "ukryte" to
+            // po prostu brak klasy `show`. Klasa `animating-out` zostaje do
+            // nastepnego otwarcia i trzyma okno zwiniete.
             container.classList.add('animating-out');
-            modal.classList.add('closing');
-
-            // After animation completes, hide modal and restore scrolling
-            setTimeout(function() {
-                modal.classList.remove('show', 'closing');
-                container.classList.remove('animating-out');
-                modal.setAttribute('aria-hidden', 'true');
-
-                // Restore background scrolling and position
-                document.body.style.position = '';
-                document.body.style.top = '';
-                document.body.style.left = '';
-                document.body.style.right = '';
-                document.body.style.width = '';
-                document.body.style.overflow = '';
-
-                // Restore html element overflow
-                document.documentElement.style.overflow = '';
-
-                // Restore scroll position
-                window.scrollTo(0, scrollPosition);
-
-                // Reset container styles for next opening
-                container.style.transform = '';
-                container.style.opacity = '';
-            }, 350);
+            modal.classList.remove('show');
+            modal.setAttribute('aria-hidden', 'true');
+            unlockPageScroll();
 
             // Cancel any pending request
             if (currentRequest) {
@@ -703,12 +488,21 @@
                     '</ul>' +
                     '</div>';
 
-                if (query.length === 0) {
-                    document.getElementById('globalSearchResults').innerHTML = helpHtml;
-                } else {
-                    document.getElementById('globalSearchResults').innerHTML =
-                        '<div class="global-search-no-results">Wpisz minimum 3 znaki</div>';
+                animateHeightAroundSwap(function() {
+                    if (query.length === 0) {
+                        document.getElementById('globalSearchResults').innerHTML = helpHtml;
+                    } else {
+                        document.getElementById('globalSearchResults').innerHTML =
+                            '<div class="global-search-no-results">Wpisz minimum 3 znaki</div>';
+                    }
+                });
+                // Spozniona odpowiedz na dluzsze zapytanie nie moze nadpisac
+                // tego, co wlasnie pokazalismy.
+                if (currentRequest) {
+                    currentRequest.abort();
+                    currentRequest = null;
                 }
+                setSearchLoading(false);
                 lastSearchTerm = '';
                 return;
             }
@@ -722,9 +516,7 @@
                 currentRequest = null;
             }
 
-            // Show loading
-            document.getElementById('globalSearchResults').setAttribute('aria-busy', 'true');
-            document.getElementById('globalSearchResults').textContent = 'Wyszukiwanie...';
+            setSearchLoading(true);
 
             // Store search term in closure for this specific request
             var searchTermForThisRequest = query;
@@ -735,20 +527,21 @@
                 data: { q: query },
                 dataType: 'json',
                 success: function(data) {
-                    // First display results WITHOUT highlighting
-                    displayResultsPlain(data.results || []);
-
-                    // Then apply highlighting to the DOM after a small delay
-                    setTimeout(function() {
-                        applyHighlightsToDom(searchTermForThisRequest);
-                    }, 100);  // Slightly longer delay for smoother experience
-
+                    // Wyniki od razu z podswietleniem, jedna podmiana DOM.
+                    // Podswietlanie po fakcie przebudowywalo kazda pozycje
+                    // z mignieciem krycia chwile po pojawieniu sie listy.
+                    displayResults(data.results || [], searchTermForThisRequest);
                     currentRequest = null;
                 },
                 error: function(xhr) {
+                    // Przy 'abort' juz leci nowsze zapytanie - stan ladowania
+                    // zostaje.
                     if (xhr.statusText !== 'abort') {
-                        document.getElementById('globalSearchResults').innerHTML =
-                            '<div class="global-search-no-results">Błąd podczas wyszukiwania</div>';
+                        setSearchLoading(false);
+                        animateHeightAroundSwap(function() {
+                            document.getElementById('globalSearchResults').innerHTML =
+                                '<div class="global-search-no-results">Błąd podczas wyszukiwania</div>';
+                        });
                     }
                     currentRequest = null;
                 }
@@ -756,19 +549,20 @@
         }
 
 
-        // Display results WITHOUT highlighting
-        function displayResultsPlain(results) {
+        // Display results with the search terms already highlighted
+        function displayResults(results, searchTerm) {
             var resultsContainer = document.getElementById('globalSearchResults');
-            resultsContainer.setAttribute('aria-busy', 'false');
+            setSearchLoading(false);
             searchResults = [];
 
             if (!results || results.length === 0) {
-                resultsContainer.innerHTML =
-                    '<div class="global-search-no-results">Brak wyników</div>';
+                animateHeightAroundSwap(function() {
+                    resultsContainer.innerHTML =
+                        '<div class="global-search-no-results">Brak wyników</div>';
+                });
                 return;
             }
 
-            // Build HTML WITHOUT any highlighting
             var html = '';
             results.forEach(function(group, groupIndex) {
                 if (group.children && group.children.length > 0) {
@@ -793,9 +587,8 @@
                         var index = searchResults.length;
                         searchResults.push(item);
 
-                        // Just display the raw text - NO highlighting yet
                         html += '<div class="search-result-item" data-index="' + index + '" data-id="' + item.id + '">';
-                        html += item.text || '';
+                        html += highlightTerms(item.text || '', searchTerm);
                         html += '</div>';
                     });
 
@@ -803,7 +596,9 @@
                 }
             });
 
-            resultsContainer.innerHTML = html;
+            animateHeightAroundSwap(function() {
+                resultsContainer.innerHTML = html;
+            });
             selectedIndex = -1;
 
             // Add click handlers to results
@@ -813,20 +608,13 @@
             });
         }
 
-        // Apply highlights to already-rendered DOM with staggered animation
-        function applyHighlightsToDom(searchTerm) {
-            if (!searchTerm || searchTerm.length < 1) {
-                return;
-            }
-
-            var words = searchTerm.trim().split(/\s+/).filter(function(word) {
+        // Wrap each search word (3+ characters) of a result label in a
+        // colour-coded span. The lookahead skips matches inside HTML tags.
+        function highlightTerms(html, searchTerm) {
+            var words = (searchTerm || '').trim().split(/\s+/).filter(function(word) {
                 // Only highlight words longer than 2 characters
                 return word.length > 2;
             });
-
-            if (words.length === 0) {
-                return;
-            }
 
             // Remove duplicates from words array to avoid highlighting the same word multiple times
             var uniqueWords = [];
@@ -839,58 +627,15 @@
                 }
             });
 
-            // Get all search result items
-            var resultItems = document.querySelectorAll('.search-result-item');
+            uniqueWords.forEach(function(word, wordIndex) {
+                var escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                var colorClass = 'search-highlight-' + ((wordIndex % 5) + 1);
+                var regex = new RegExp('(' + escapedWord + ')(?![^<]*>)', 'gi');
 
-            // Add staggered animation delay for each item
-            var totalHighlights = 0;
-
-            resultItems.forEach(function(item, itemIndex) {
-                // Add a small delay for each item to create a cascade effect
-                setTimeout(function() {
-                    var originalHTML = item.innerHTML;
-                    var highlightedHTML = originalHTML;
-
-                    // Apply highlighting for each unique word (only those with 2+ characters)
-                    uniqueWords.forEach(function(word, wordIndex) {
-                        var escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                        var colorClass = 'search-highlight-' + ((wordIndex % 5) + 1);
-                        var regex = new RegExp('(' + escapedWord + ')(?![^<]*>)', 'gi');
-
-                        highlightedHTML = highlightedHTML.replace(regex, '<span class="' + colorClass + '">$1</span>');
-                    });
-
-                    if (highlightedHTML !== originalHTML) {
-                        // Add a fade transition to the item
-                        item.style.transition = 'opacity 0.3s ease';
-                        item.style.opacity = '0.7';
-
-                        item.innerHTML = highlightedHTML;
-
-                        // Fade back to full opacity
-                        setTimeout(function() {
-                            item.style.opacity = '1';
-                        }, 10);
-
-                        totalHighlights++;
-                    }
-                }, itemIndex * 20); // 20ms delay between each item
+                html = html.replace(regex, '<span class="' + colorClass + '">$1</span>');
             });
 
-            // Verify highlights were applied after all items are processed
-            setTimeout(function() {
-                var highlights = document.querySelectorAll('[class*="search-highlight"]');
-
-                // Add a subtle pulse to all highlights once they're all added
-                highlights.forEach(function(highlight, i) {
-                    setTimeout(function() {
-                        highlight.style.transform = 'scale(1.1)';
-                        setTimeout(function() {
-                            highlight.style.transform = 'scale(1)';
-                        }, 200);
-                    }, i * 10);
-                });
-            }, resultItems.length * 20 + 100);
+            return html;
         }
 
 
@@ -898,14 +643,7 @@
         function navigateToResult(itemId) {
             if (itemId) {
                 // Restore scrolling before navigation
-                document.body.style.position = '';
-                document.body.style.top = '';
-                document.body.style.left = '';
-                document.body.style.right = '';
-                document.body.style.width = '';
-                document.body.style.overflow = '';
-                document.documentElement.style.overflow = '';
-                window.scrollTo(0, scrollPosition);
+                unlockPageScroll();
 
                 location.href = '/global-nav-redir/' + itemId + '/?source=user';
             }

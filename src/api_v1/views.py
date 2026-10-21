@@ -1,12 +1,20 @@
 from django.utils.safestring import mark_safe
 from rest_framework.routers import APIRootView
 
+from bpp.models import Uczelnia
+
 
 class CustomAPIRootView(APIRootView):
     """
     System BPP - Bibliografia Publikacji Pracowników
     BPP System - Academic Staff Publications Bibliography
     """
+
+    #: prefiks → :class:`~bpp.models.uczelnia.GrupaApiV1`; wstrzykiwane przez
+    #: ``CustomRouter.get_api_root_view()`` jako ``initkwargs``. Django
+    #: ``View.as_view()`` przyjmuje wyłącznie klucze odpowiadające istniejącym
+    #: atrybutom klasy, stąd ta deklaracja.
+    grupy_endpointow = {}
 
     def get_view_name(self):
         return "BPP API"
@@ -59,13 +67,29 @@ Knowledge finds its home.
             )
         return self.__doc__
 
+    def _bez_wylaczonych_grup(self, request, endpoints):
+        """Usuń z listingu endpointy z grup wyłączonych na tej uczelni.
+
+        Bez tego root reklamowałby adresy, które bramka i tak odda jako 404.
+        """
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        if uczelnia is None:
+            return endpoints
+
+        return {
+            prefiks: url
+            for prefiks, url in endpoints.items()
+            if self.grupy_endpointow.get(prefiks) is None
+            or uczelnia.api_v1_grupa_wlaczona(self.grupy_endpointow[prefiks])
+        }
+
     def get(self, request, *args, **kwargs):
         # Get the standard API root response
         response = super().get(request, *args, **kwargs)
 
         # Reorganize the endpoints into categories for better readability
         if hasattr(response, "data"):
-            endpoints = response.data.copy()
+            endpoints = self._bez_wylaczonych_grup(request, response.data.copy())
 
             # Track which endpoints we've categorized
             categorized_endpoints = set()

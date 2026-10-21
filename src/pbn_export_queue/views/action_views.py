@@ -16,9 +16,9 @@ from django.views.decorators.http import require_POST
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.exceptions import AlreadyEnqueuedError
-from pbn_export_queue.models import PBN_Export_Queue, RodzajBledu
+from pbn_export_queue.models import RodzajBledu
 
-from .mixins import PBNExportQueuePermissionMixin
+from .mixins import PBNExportQueuePermissionMixin, kolejka_dla_requestu
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ def delete_from_queue(request, pk):
         messages.error(request, "Brak uprawnień do wykonania tej operacji.")
         return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
 
-    queue_item = get_object_or_404(PBN_Export_Queue, pk=pk)
+    queue_item = get_object_or_404(kolejka_dla_requestu(request), pk=pk)
     queue_item.delete()
     messages.success(request, "Usunięto element z kolejki.")
     return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
@@ -52,7 +52,7 @@ def resend_to_pbn(request, pk):
             reverse_lazy("pbn_export_queue:export-queue-detail", args=[pk])
         )
 
-    queue_item = get_object_or_404(PBN_Export_Queue, pk=pk)
+    queue_item = get_object_or_404(kolejka_dla_requestu(request), pk=pk)
     # First prepare for resend
     try:
         queue_item.prepare_for_resend(
@@ -85,7 +85,7 @@ def prepare_for_resend(request, pk):
             reverse_lazy("pbn_export_queue:export-queue-detail", args=[pk])
         )
 
-    queue_item = get_object_or_404(PBN_Export_Queue, pk=pk)
+    queue_item = get_object_or_404(kolejka_dla_requestu(request), pk=pk)
     queue_item.prepare_for_resend(
         user=request.user, message_suffix=f" przez {request.user}"
     )
@@ -105,7 +105,7 @@ def try_send_to_pbn(request, pk):
             reverse_lazy("pbn_export_queue:export-queue-detail", args=[pk])
         )
 
-    queue_item = get_object_or_404(PBN_Export_Queue, pk=pk)
+    queue_item = get_object_or_404(kolejka_dla_requestu(request), pk=pk)
     queue_item.sprobuj_wyslac_do_pbn()
     messages.success(request, "Zlecono ponowną wysyłkę do PBN.")
     return HttpResponseRedirect(
@@ -122,9 +122,9 @@ def resend_all_waiting(request):
         return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
 
     # Get items waiting for authorization (retry_after_user_authorised=True) with limit
-    waiting_items = PBN_Export_Queue.objects.filter(retry_after_user_authorised=True)[
-        :100
-    ]  # Limit do 100
+    waiting_items = kolejka_dla_requestu(request).filter(
+        retry_after_user_authorised=True
+    )[:100]  # Limit do 100
 
     if not waiting_items:
         messages.warning(request, "Brak rekordów oczekujących na autoryzację.")
@@ -177,7 +177,7 @@ def resend_all_errors(request):
         return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
 
     # Get items with technical errors only (rodzaj_bledu=TECHNICZNY) with limit
-    error_items = PBN_Export_Queue.objects.filter(
+    error_items = kolejka_dla_requestu(request).filter(
         zakonczono_pomyslnie=False, rodzaj_bledu=RodzajBledu.TECHNICZNY
     )[:100]  # Limit do 100
 
@@ -237,7 +237,7 @@ def wake_up_queue(request):
 
     # Get items that were never attempted to send (with limit)
     # (wysylke_podjeto=None means sending was never started)
-    never_sent_items = PBN_Export_Queue.objects.filter(
+    never_sent_items = kolejka_dla_requestu(request).filter(
         wysylke_podjeto=None,
         wysylke_zakonczono=None,
     )[:100]  # Limit do 100 rekordów na raz
@@ -281,29 +281,22 @@ class PBNExportQueueCountsView(LoginRequiredMixin, PBNExportQueuePermissionMixin
 
     def get(self, request, *args, **kwargs):
         """Return JSON response with current counts"""
+        kolejka = self.get_queryset()
         counts = {
-            "total_count": PBN_Export_Queue.objects.count(),
-            "success_count": PBN_Export_Queue.objects.filter(
-                zakonczono_pomyslnie=True
-            ).count(),
-            "error_count": PBN_Export_Queue.objects.filter(
+            "total_count": kolejka.count(),
+            "success_count": kolejka.filter(zakonczono_pomyslnie=True).count(),
+            "error_count": kolejka.filter(
                 zakonczono_pomyslnie=False, wykluczone=False
             ).count(),
-            "pending_count": PBN_Export_Queue.objects.filter(
-                zakonczono_pomyslnie=None
-            ).count(),
-            "waiting_count": PBN_Export_Queue.objects.filter(
-                retry_after_user_authorised=True
-            ).count(),
-            "wykluczone_count": PBN_Export_Queue.objects.filter(
-                wykluczone=True
-            ).count(),
-            "error_techniczny_count": PBN_Export_Queue.objects.filter(
+            "pending_count": kolejka.filter(zakonczono_pomyslnie=None).count(),
+            "waiting_count": kolejka.filter(retry_after_user_authorised=True).count(),
+            "wykluczone_count": kolejka.filter(wykluczone=True).count(),
+            "error_techniczny_count": kolejka.filter(
                 zakonczono_pomyslnie=False,
                 rodzaj_bledu=RodzajBledu.TECHNICZNY,
                 wykluczone=False,
             ).count(),
-            "error_merytoryczny_count": PBN_Export_Queue.objects.filter(
+            "error_merytoryczny_count": kolejka.filter(
                 zakonczono_pomyslnie=False,
                 rodzaj_bledu=RodzajBledu.MERYTORYCZNY,
                 wykluczone=False,
@@ -413,7 +406,7 @@ def _filter_by_search_query(queryset, search_query):
 
 def _apply_filters_from_post(request):
     """Apply filters from POST data to queryset. Returns filtered queryset."""
-    queryset = PBN_Export_Queue.objects.all()
+    queryset = kolejka_dla_requestu(request)
 
     # Filter by success status
     queryset = _filter_by_success_status(

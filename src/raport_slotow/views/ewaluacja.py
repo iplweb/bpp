@@ -3,21 +3,20 @@ from urllib.parse import urlencode
 
 from django.http import HttpResponseRedirect
 from django.urls import reverse
+from django.utils import timezone
 from django.views.generic import FormView
 from django_filters.views import FilterView
 from django_tables2 import SingleTableMixin
-
 from formdefaults.helpers import FormDefaultsMixin
+
+from django_bpp.version import VERSION
 from nowe_raporty.views import BaseRaportAuthMixin
 from raport_slotow.filters import RaportSlotowUczelniaEwaluacjaFilter
 from raport_slotow.forms.ewaluacja import ParametryRaportSlotowEwaluacjaForm
 from raport_slotow.models import RaportUczelniaEwaluacjaView
 from raport_slotow.tables import RaportSlotowEwaluacjaTable
+from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 from raport_slotow.util import MyExportMixin
-
-from django.utils import timezone
-
-from django_bpp.version import VERSION
 
 
 class ParametryRaportSlotowEwaluacja(
@@ -56,6 +55,18 @@ class RaportSlotowEwaluacja(
 
     def get_form(self, dct):
         return ParametryRaportSlotowEwaluacjaForm(dct)
+
+    def get_table_kwargs(self):
+        kwargs = super().get_table_kwargs()
+        uczelnia = uczelnia_dla_odczytu(self.request)
+        if not (uczelnia and uczelnia.uzywaj_wydzialow):
+            exclude = tuple(kwargs.get("exclude", ()))
+            kwargs["exclude"] = (
+                *exclude,
+                "aktualny_wydzial",
+                "afiliowany_wydzial",
+            )
+        return kwargs
 
     def get(self, request, *args, **kw):
         form = self.get_form(request.GET)
@@ -100,15 +111,17 @@ class RaportSlotowEwaluacja(
                 "autor_dyscyplina",
                 "autorzy",
                 "rekord__charakter_formalny",
+                "rekord__typ_kbn",
                 "autorzy__autor",
                 "autorzy__dyscyplina_naukowa",
                 "autorzy__autor__tytul",
+                "autorzy__autor__aktualna_funkcja",
+                "autorzy__autor__aktualna_jednostka__wydzial",
+                "autorzy__jednostka__wydzial",
                 "autor_dyscyplina__dyscyplina_naukowa",
                 "autor_dyscyplina__subdyscyplina_naukowa",
             )
             .prefetch_related(
-                "autorzy__autor__aktualna_jednostka",
-                "autorzy__jednostka",
                 "rekord__zrodlo__punktacja_zrodla_set",
             )
             .only(
@@ -130,6 +143,9 @@ class RaportSlotowEwaluacja(
                 "rekord__wydawnictwo_nadrzedne__id",
                 "rekord__wydawnictwo_nadrzedne__tytul_oryginalny",
                 "rekord__charakter_formalny",
+                "rekord__typ_kbn_id",
+                "rekord__typ_kbn__id",
+                "rekord__typ_kbn__nazwa",
                 "rekord__pbn_uid_id",
                 "rekord__zrodlo_id",
                 "rekord__zrodlo__id",
@@ -144,12 +160,19 @@ class RaportSlotowEwaluacja(
                 "autorzy__autor__orcid",
                 "autorzy__autor__imiona",
                 "autorzy__autor__tytul",
+                "autorzy__autor__aktualna_funkcja_id",
+                "autorzy__autor__aktualna_funkcja__id",
+                "autorzy__autor__aktualna_funkcja__nazwa",
                 "autorzy__upowaznienie_pbn",
                 "autorzy__profil_orcid",
                 "autorzy__jednostka_id",
                 "autorzy__jednostka__nazwa",
+                "autorzy__jednostka__wydzial_id",
+                "autorzy__jednostka__wydzial__nazwa",
                 "autorzy__autor__aktualna_jednostka_id",
                 "autorzy__autor__aktualna_jednostka__nazwa",
+                "autorzy__autor__aktualna_jednostka__wydzial_id",
+                "autorzy__autor__aktualna_jednostka__wydzial__nazwa",
                 "autor_dyscyplina__dyscyplina_naukowa",
                 "autor_dyscyplina__dyscyplina_naukowa__id",
                 "autor_dyscyplina__dyscyplina_naukowa__nazwa",

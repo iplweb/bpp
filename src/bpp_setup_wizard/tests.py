@@ -326,3 +326,24 @@ def test_full_happy_path_empty_db_to_live_site():
         assert "/setup/" not in response.url, (
             f"unexpected redirect to setup wizard after both steps done: {response.url}"
         )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/admin-dashboard/recent-logins/",
+        "/admin-dashboard/weekday-stats/",
+    ],
+)
+def test_middleware_does_not_redirect_admin_dashboard_widgets(admin_user, path):
+    """#873: widgety HTMX dashboardu admina (``/admin-dashboard/``) wołane
+    z ``/admin/`` przed dokończeniem kreatora nie mogą dostać 302 na krok
+    „Konfiguracja uczelni" — HTMX wstawiłby całą stronę kreatora w kafelek."""
+    Uczelnia.objects.all().delete()
+    client = Client()
+    client.force_login(admin_user)
+
+    response = client.get(path, HTTP_HX_REQUEST="true")
+    assert response.status_code == 200
+    assert "Konfiguracja uczelni" not in response.content.decode("utf-8")

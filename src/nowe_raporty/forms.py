@@ -17,6 +17,7 @@ from bpp.models import Uczelnia
 from bpp.models.cache import Rekord
 from bpp.util import formdefaults_html_after, formdefaults_html_before, year_last_month
 
+from . import sortowanie as sortowanie_raportu
 from .models import DefinicjaRaportu
 
 
@@ -51,6 +52,15 @@ class BaseRaportForm(forms.Form):
         label="Format wyjściowy", choices=OUTPUT_FORMATS, required=True
     )
 
+    # FD467: porządek spisu. Nie jest to filtr, więc stoi w głównym fieldsecie
+    # obok formatu wyjściowego, a nie w "Opcjach zaawansowanych".
+    sortowanie = forms.ChoiceField(
+        label="Sortowanie",
+        choices=sortowanie_raportu.WYBORY,
+        initial=sortowanie_raportu.DOMYSLNE,
+        required=True,
+    )
+
     # Wspólny default; podklasy per-poziom mogą nadpisać label/help_text.
     tylko_z_jednostek_uczelni = forms.BooleanField(
         initial=True,
@@ -71,8 +81,13 @@ class BaseRaportForm(forms.Form):
         required=False, label="Tylko prace punktowane (pkt MNiSW > 0)"
     )
 
-    # nazwy pól zaawansowanych przekazywanych w querystringu do widoku generuj
-    POLA_ZAAWANSOWANE = [
+    # Nazwy pól przekazywanych w querystringu do widoku generującego. Lista
+    # steruje WYŁĄCZNIE przekazywaniem — o wyglądzie decyduje ``Layout`` niżej,
+    # dlatego jest tu ``sortowanie``, które w układzie stoi zupełnie gdzie
+    # indziej niż filtry zaawansowane. (Stąd nazwa ``POLA_PRZEKAZYWANE``, a nie
+    # dawna ``POLA_ZAAWANSOWANE``: ta druga sugerowała związek z sekcją "Opcje
+    # zaawansowane", którego nigdy nie było.)
+    POLA_PRZEKAZYWANE = [
         "punkty_mnisw_od",
         "punkty_mnisw_do",
         "if_od",
@@ -80,6 +95,7 @@ class BaseRaportForm(forms.Form):
         "punktacja_wewnetrzna_od",
         "punktacja_wewnetrzna_do",
         "tylko_punktowane",
+        "sortowanie",
     ]
 
     def clean(self):
@@ -140,7 +156,10 @@ class BaseRaportForm(forms.Form):
                     Column("od_roku", css_class="large-6 medium-6 small-12"),
                     Column("do_roku", css_class="large-6 medium-6 small-12"),
                 ),
-                Row(Column("_export")),
+                Row(
+                    Column("_export", css_class="large-6 medium-6 small-12"),
+                    Column("sortowanie", css_class="large-6 medium-6 small-12"),
+                ),
                 Row(Column("tylko_z_jednostek_uczelni")),
                 # "Opcje zaawansowane" jako rozwijana sekcja WEWNĄTRZ fieldsetu
                 # (analogicznie do "Filtry ..." na ranking-autorow). Natywny

@@ -142,6 +142,9 @@ class ZapytanieExportView(WprowadzanieDanychOrSuperuserMixin, View):
             return _blad("Eksport tabeli krzyżowej dostępny jako XLSX lub CSV.")
         rejestr = wybierz_rejestr_pivota(model_key)
         row_dim, col_dim, metric = rejestr.parse_params(request.GET)
+        # Sortowanie z ekranu przenosi się do pliku, stronicowanie nie —
+        # eksport zawsze zapisuje pełną macierz.
+        widok = pivot_core.parse_widok(request.GET).bez_stronicowania()
         try:
             pivot_result = rejestr.zbuduj(queryset, row_dim, col_dim, metric)
         except pivot_core.PivotTooLargeError:
@@ -150,8 +153,8 @@ class ZapytanieExportView(WprowadzanieDanychOrSuperuserMixin, View):
                 "zawęź zapytanie lub wybierz mniej liczny wymiar."
             )
         if export_format == "csv":
-            return pivot_csv_export_response(pivot_result, request, report_title)
-        return pivot_xlsx_export_response(pivot_result, request, report_title)
+            return pivot_csv_export_response(pivot_result, request, report_title, widok)
+        return pivot_xlsx_export_response(pivot_result, request, report_title, widok)
 
     @staticmethod
     def _eksport_dokumentu(request, export_format, postac, queryset, report_title):

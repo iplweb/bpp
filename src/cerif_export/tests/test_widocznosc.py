@@ -443,6 +443,169 @@ def test_wylaczenie_osob_odbiera_orcid_i_identyfikator_w_publikacji(
     assert "Jednostka CERIF" in xml
 
 
+# -- JEDNOSTKI: ukryty rodzic a `PartOf` ---------------------------------
+
+
+def zserializuj_jednostke(uczelnia, jednostka):
+    """Zserializuj jednostkę w kontekście zbudowanym przez jej provider."""
+    from cerif_export.cerif import orgunit
+
+    provider = provider_dla_setu(const.SET_ORGUNITS)
+    obiekty, _ = provider.strona(uczelnia, rozmiar=1000)
+    swiezy = next(o for o in obiekty if o.pk == jednostka.pk and type(o) is Jednostka)
+    kontekst = KontekstSerializacji(
+        namespace=NAMESPACE,
+        uczelnia=uczelnia,
+        widoczne=provider.zbiory_widocznosci(uczelnia, obiekty),
+    )
+    return orgunit.serializuj(swiezy, kontekst)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "ukrycie",
+    [
+        {"widoczna": False},
+        {"nie_eksportuj_przez_api": True},
+    ],
+    ids=["niewidoczna", "opt-out-api"],
+)
+def test_ukryty_rodzic_nie_zostawia_pustego_part_of(uczelnia, jednostka, ukrycie):
+    """Rodzic poza eksportem nie może zostawić po sobie pustego ``PartOf``.
+
+    ``PartOf`` wymaga w XSD dziecka (``DisplayName`` albo ``OrgUnit``), więc
+    pusty kontener unieważnia **cały** rekord jednostki. Skutek jest dużo
+    gorszy niż jeden zły rekord: walidator euroCRIS przerywa na nim harvest
+    setu ``openaire_cris_orgunits``, przez co żadna kolejna jednostka nie
+    trafia do indeksu i jej referencje z publikacji wyglądają na wiszące
+    (kontrola 5a). Jeden niepoprawny element wywraca więc dwa testy naraz.
+    """
+    rodzic = Jednostka.objects.create(
+        nazwa="Rodzic poza eksportem", skrot="RPE", uczelnia=uczelnia, **ukrycie
+    )
+    jednostka.parent = rodzic
+    jednostka.save()
+
+    el = zserializuj_jednostke(uczelnia, jednostka)
+
+    part_of = el.findall(f"{{{const.NS_CERIF}}}PartOf")
+    assert all(len(kontener) for kontener in part_of), (
+        "pusty <PartOf/> — kontener powstał, mimo że rodzica nie wolno pokazać"
+    )
+    # Samo „brak pustego kontenera" spełniłoby też pominięcie ``PartOf`` w
+    # ogóle (``all()`` po pustej liście jest prawdziwe), a to inne — i gorsze
+    # — zachowanie: jednostka zostaje oderwanym korzeniem. Dlatego wprost
+    # wymagamy zejścia na uczelnię.
+    osadzony = el.find(f"{{{const.NS_CERIF}}}PartOf/{{{const.NS_CERIF}}}OrgUnit")
+    assert osadzony is not None, "jednostka bez PartOf = oderwany korzeń drzewa"
+    assert osadzony.get("id") == f"OrgUnits/uc-{uczelnia.pk}"
+    # Nazwa ukrytego rodzica nie ma prawa wyciec także jako sam tekst.
+    assert "Rodzic poza eksportem" not in etree.tostring(el).decode()
+
+
+@pytest.mark.django_db
+def test_rodzic_z_cudzego_tenanta_nie_wychodzi_w_part_of(uczelnia, jednostka):
+    """Rodzic z innej uczelni to ten sam przypadek co rodzic ukryty.
+
+    W instalacji multi-hosted ``Jednostka.parent`` nie jest niczym ograniczony
+    do własnego tenanta, więc bez tego członu eksport uczelni A wystawiałby
+    nazwę jednostki uczelni B — i to jako ``@id``, którego w tym harveście
+    nie da się rozwiązać na żaden rekord (kontrola 5a walidatora).
+    """
+    obca_uczelnia = Uczelnia.objects.create(
+        nazwa="Uczelnia obca",
+        skrot="UOB",
+        site=Site.objects.create(domain="obca.example.org", name="obca.example.org"),
+    )
+    obcy_rodzic = Jednostka.objects.create(
+        nazwa="Jednostka obcej uczelni", skrot="JOU", uczelnia=obca_uczelnia
+    )
+    jednostka.parent = obcy_rodzic
+    jednostka.save()
+
+    el = zserializuj_jednostke(uczelnia, jednostka)
+
+    xml = etree.tostring(el).decode()
+    assert "Jednostka obcej uczelni" not in xml, (
+        "wyciek nazwy jednostki z cudzego tenanta"
+    )
+    assert f"OrgUnits/je-{obcy_rodzic.pk}" not in xml, "referencja nie do rozwiązania"
+
+    osadzony = el.find(f"{{{const.NS_CERIF}}}PartOf/{{{const.NS_CERIF}}}OrgUnit")
+    assert osadzony.get("id") == f"OrgUnits/uc-{uczelnia.pk}"
+
+
+@pytest.mark.django_db
+def test_ukryty_rodzic_takze_przez_get_record(uczelnia, jednostka):
+    """Ta sama reguła musi działać na ścieżce ``GetRecord``, nie tylko listowej.
+
+    ``GetRecord`` buduje kontekst z jednoelementowej listy, więc gdyby
+    prekomputacja widoczności zależała od tego, co jeszcze jest na stronie,
+    pojedynczy rekord wychodziłby inaczej niż ten sam rekord w ``ListRecords``.
+    """
+    from cerif_export.cerif import orgunit
+
+    rodzic = Jednostka.objects.create(
+        nazwa="Rodzic poza eksportem", skrot="RPE", uczelnia=uczelnia, widoczna=False
+    )
+    jednostka.parent = rodzic
+    jednostka.save()
+
+    provider = provider_dla_setu(const.SET_ORGUNITS)
+    obiekt = provider.pojedynczy(uczelnia, Jednostka, jednostka.pk)
+    kontekst = KontekstSerializacji(
+        namespace=NAMESPACE,
+        uczelnia=uczelnia,
+        widoczne=provider.zbiory_widocznosci(uczelnia, [obiekt]),
+    )
+
+    el = orgunit.serializuj(obiekt, kontekst)
+
+    osadzony = el.find(f"{{{const.NS_CERIF}}}PartOf/{{{const.NS_CERIF}}}OrgUnit")
+    assert osadzony is not None, "pusty albo brakujący PartOf na ścieżce GetRecord"
+    assert osadzony.get("id") == f"OrgUnits/uc-{uczelnia.pk}"
+
+
+@pytest.mark.django_db
+def test_jednostka_z_ukrytym_rodzicem_przechodzi_xsd(uczelnia, jednostka):
+    """Ten sam przypadek, ale sprawdzony tym, co orzeka walidator: XSD."""
+    from cerif_export.tests.test_serializery import sprawdz, zbuduj_schemat
+
+    rodzic = Jednostka.objects.create(
+        nazwa="Rodzic poza eksportem", skrot="RPE", uczelnia=uczelnia, widoczna=False
+    )
+    jednostka.parent = rodzic
+    jednostka.save()
+
+    sprawdz(zbuduj_schemat(), zserializuj_jednostke(uczelnia, jednostka))
+
+
+@pytest.mark.django_db
+def test_widoczny_rodzic_nadal_wychodzi_w_part_of(uczelnia, jednostka):
+    """Kontrola negatywna — poprawka nie może zjeść normalnego ``PartOf``."""
+    rodzic = Jednostka.objects.create(
+        nazwa="Rodzic widoczny", skrot="RW", uczelnia=uczelnia
+    )
+    jednostka.parent = rodzic
+    jednostka.save()
+
+    el = zserializuj_jednostke(uczelnia, jednostka)
+
+    osadzony = el.find(f"{{{const.NS_CERIF}}}PartOf/{{{const.NS_CERIF}}}OrgUnit")
+    assert osadzony is not None
+    assert osadzony.get("id") == f"OrgUnits/je-{rodzic.pk}"
+
+
+@pytest.mark.django_db
+def test_korzen_podpiety_pod_uczelnie(uczelnia, jednostka):
+    """Jednostka bez rodzica trafia pod uczelnię — drzewo zostaje spójne."""
+    el = zserializuj_jednostke(uczelnia, jednostka)
+
+    osadzony = el.find(f"{{{const.NS_CERIF}}}PartOf/{{{const.NS_CERIF}}}OrgUnit")
+    assert osadzony is not None
+    assert osadzony.get("id") == f"OrgUnits/uc-{uczelnia.pk}"
+
+
 @pytest.mark.django_db
 def test_set_persons_istnieje_mimo_wylaczenia(uczelnia):
     """Profil wymaga wszystkich dziewięciu zestawów, także pustych."""

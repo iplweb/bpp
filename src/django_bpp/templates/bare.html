@@ -47,7 +47,7 @@
     {% endif %}
 
     {% if uczelnia.pokazuj_deklaracje_dostepnosci == 2 %}
-        <meta name="deklaracja-dostępności" content="{% url "bpp:browse_deklaracja_dostepnosci" %}}"/>
+        <meta name="deklaracja-dostępności" content="{% url "bpp:browse_deklaracja_dostepnosci" %}"/>
     {% endif %}
 
     {# bare.html - FOUC prevention #}
@@ -57,15 +57,6 @@
         @media print {
             body.fouc-hidden { visibility: visible !important; opacity: 1 !important; }
         }
-    </style>
-
-    {# Print margins from constance settings #}
-    <style>
-    @media print {
-      @page {
-        margin: {{ WYDRUK_MARGINES_GORA|default:"2cm" }} {{ WYDRUK_MARGINES_PRAWO|default:"2cm" }} {{ WYDRUK_MARGINES_DOL|default:"2cm" }} {{ WYDRUK_MARGINES_LEWO|default:"2cm" }};
-      }
-    }
     </style>
 
     {% compress css %}
@@ -100,6 +91,20 @@
             font-weight: normal;
             font-style: normal;
             font-display: block;
+        }
+    </style>
+
+    {# Marginesy wydruku z django-constance (WYDRUK_MARGINES_*). #}
+    {# MUSI stac PO {% compress css %} wyzej: skompilowany app-*.css wciaga #}
+    {# foundation-print-styles, ktore emituje wlasne `@page { margin: .5cm }`. #}
+    {# @page nie ma specyficznosci ani !important — rozstrzyga wylacznie #}
+    {# kolejnosc, wiec stojac PRZED arkuszem ten blok byl po cichu ignorowany #}
+    {# i ustawienia marginesow uczelni nie mialy zadnego efektu. #}
+    <style>
+        @media print {
+            @page {
+                margin: {{ WYDRUK_MARGINES_GORA|default:"2cm" }} {{ WYDRUK_MARGINES_PRAWO|default:"2cm" }} {{ WYDRUK_MARGINES_DOL|default:"2cm" }} {{ WYDRUK_MARGINES_LEWO|default:"2cm" }};
+            }
         }
     </style>
 
@@ -144,7 +149,9 @@
         {% place_favicon %}
     {% endcache %}
 </head>
+{# djlint:off H025 #}
 <body class="fouc-hidden">
+{# djlint:on H025 #}
 {% block skip_link %}<a href="#main-content" class="skip-link">Przejdź do głównej zawartości</a>{% endblock %}
 {% block body %}
 {% endblock %}

@@ -1,0 +1,58 @@
+{% comment %}
+Pager wierszy tabeli krzyżowej. Kontekst: t (wynik PivotResult.as_table
+z widokiem) — t.page_obj, t.paginator, t.page_range, t.wszystkich_wierszy.
+
+Parametr strony to pivot_page, NIE page: multiseek i /zapytanie/ używają
+`page` do stronicowania listy rekordów i w gałęzi pivota ten parametr wciąż
+może siedzieć w URL-u po przełączeniu postaci wyniku.
+
+Linki budowane wbudowanym tagiem querystring (Django 5.1+), bo muszą
+przenieść CAŁY bieżący filtr (pivot_row/col/val,
+pivot_sort/dir, a na /zapytanie/ także model i query). `print=None` kasuje
+tryb wydruku — inaczej klik w pager na stronie otwartej z ?print=1
+otwierałby okno drukowania (patrz multiseek/common-results.html).
+{% endcomment %}
+{% if t.is_paginated %}
+<nav class="multiseek-pivot-pager hide-for-print"
+     aria-label="Stronicowanie tabeli krzyżowej">
+    <ul class="pagination" role="navigation">
+        {% if t.page_obj.has_previous %}
+            <li class="pagination-previous">
+                <a href="{% querystring pivot_page=t.page_obj.previous_page_number print=None %}"
+                   aria-label="Poprzednia strona">Poprzednia</a>
+            </li>
+        {% else %}
+            <li class="pagination-previous disabled">Poprzednia</li>
+        {% endif %}
+
+        {% for numer in t.page_range %}
+            {% if numer is None %}
+                <li class="ellipsis" aria-hidden="true"></li>
+            {% elif numer == t.page_obj.number %}
+                <li class="current">
+                    <span class="show-for-sr">Bieżąca strona</span>{{ numer }}
+                </li>
+            {% else %}
+                <li>
+                    <a href="{% querystring pivot_page=numer print=None %}"
+                       aria-label="Strona {{ numer }}">{{ numer }}</a>
+                </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if t.page_obj.has_next %}
+            <li class="pagination-next">
+                <a href="{% querystring pivot_page=t.page_obj.next_page_number print=None %}"
+                   aria-label="Następna strona">Następna</a>
+            </li>
+        {% else %}
+            <li class="pagination-next disabled">Następna</li>
+        {% endif %}
+    </ul>
+    <p class="multiseek-pivot-pager-info">
+        Wiersze {{ t.page_obj.start_index }}–{{ t.page_obj.end_index }}
+        z {{ t.wszystkich_wierszy }}
+        (strona {{ t.page_obj.number }} z {{ t.paginator.num_pages }}).
+    </p>
+</nav>
+{% endif %}

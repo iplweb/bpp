@@ -1175,3 +1175,11 @@
         break-inside: avoid;
     }
 }
+
+// Podswietlenie trafienia w wyszukiwarce rekordow powiazanych. Kolor
+// przeniesiony z inline'owego style="" — modul JS wstawia sam znacznik
+// <mark class="bpp-highlight">, bez atrybutow prezentacyjnych.
+.bpp-highlight {
+    background-color: #fff59d;
+    padding: 2px;
+}

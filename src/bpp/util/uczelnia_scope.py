@@ -31,6 +31,34 @@ def scope_rekord_do_uczelni(qs, uczelnia):
     return qs.filter(autorzy__jednostka__uczelnia=uczelnia).distinct()
 
 
+def scope_publikacje_do_uczelni(qs, uczelnia, lookup="autorzy_set__jednostka"):
+    """Zawęź queryset modelu źródłowego publikacji do uczelni oglądającego.
+
+    Odpowiednik ``scope_rekord_do_uczelni`` dla typowanych modeli
+    (``Wydawnictwo_Ciagle``, ``Patent``, ``Praca_Doktorska`` …) i ich modeli
+    podrzędnych — ta sama reguła atrybucji: publikacja należy do uczelni, gdy
+    którakolwiek jednostka zapisana na autorstwie należy do tej uczelni.
+
+    ``lookup`` to ścieżka ORM od modelu querysetu do ``Jednostka`` autorstwa,
+    np. ``"autorzy_set__jednostka"`` (wydawnictwa, patenty), ``"jednostka"``
+    (prace doktorskie/habilitacyjne), ``"rekord__autorzy_set__jednostka"``
+    (endpointy podrzędne).
+
+    Filtr idzie przez podzapytanie po ``pk``, a nie JOIN + ``DISTINCT`` —
+    nie mnoży wierszy i nie koliduje z ``order_by``/``prefetch_related``
+    querysetu wołającego.
+
+    No-op (zwraca ten sam qs) gdy brak uczelni albo gdy w systemie jest
+    dokładnie jedna uczelnia.
+    """
+    if uczelnia is None or tylko_jedna_uczelnia():
+        return qs
+    pasujace = qs.model._default_manager.filter(
+        **{f"{lookup}__uczelnia": uczelnia}
+    ).values("pk")
+    return qs.filter(pk__in=pasujace)
+
+
 def scope_autor_do_uczelni(qs, uczelnia):
     """Zawęź queryset ``Autor`` do uczelni oglądającego (multi-hosted).
 

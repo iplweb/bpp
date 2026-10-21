@@ -367,7 +367,10 @@ urlpatterns = [
     ),
     url(r"^zrodlo/(?P<slug>[\w-]+)/$", ZrodloView.as_view(), name="browse_zrodlo"),
     url(r"^lata/$", LataView.as_view(), name="browse_lata"),
-    url(r"^rok/(?P<rok>\d{4})/$", RokView.as_view(), name="browse_rok"),
+    # Dowolna liczba cyfr: w danych zdarzają się lata spoza 4 cyfr (np.
+    # literówka „212"), a ``lata.html`` linkuje każdy rok z bazy. Zakres
+    # i istnienie rekordów sprawdza ``RokView``.
+    url(r"^rok/(?P<rok>\d+)/$", RokView.as_view(), name="browse_rok"),
     url(
         r"^(?P<model>[\w_]+)/(?P<pk>[\d]+)/$",
         OldPracaView.as_view(),

@@ -19,8 +19,14 @@
             <p>
             Prosimy, postaraj się ograniczyć zapytanie do bazy danych w taki sposób, aby dawało w rezultacie maksymalnie
                 do 25 tysięcy rekordów - wówczas zostaną one wyświetlone w wybranym przez Ciebie formacie w tym miejscu.</p>
+        {# Wymieniamy tylko interfejsy, ktorymi DA SIE pobrac rekordy. #}
+        {# Sam api_v1_wlaczone nie wystarcza: przy odznaczonych danych #}
+        {# bibliograficznych root odpowiada, ale rekordow za nim nie ma, #}
+        {# a ten akapit obiecuje wlasnie rekordy. #}
+        {% if uczelnia.api_v1_wlaczone and uczelnia.api_v1_dane_bibliograficzne or uczelnia.oai_pmh_aktywny %}
         <p>Jeżeli potrzebujesz pobrać wszystkie rekordy z systemu BPP, skorzystaj z dostępu przez API. Obsługiwane
-            API to <a target="_blank" class="external-arrow-box" href="/api/v1/">JSON-REST</a> oraz <a target="_blank" class="external-arrow-box" href="/bpp/oai/?verb=ListSets">protokół OAI-PMH</a>.</p>
+            API to {% if uczelnia.api_v1_wlaczone and uczelnia.api_v1_dane_bibliograficzne %}<a target="_blank" class="external-arrow-box" href="/api/v1/">JSON-REST</a>{% if uczelnia.oai_pmh_aktywny %} oraz {% endif %}{% endif %}{% if uczelnia.oai_pmh_aktywny %}<a target="_blank" class="external-arrow-box" href="/bpp/oai/?verb=ListSets">protokół OAI-PMH</a>{% endif %}.</p>
+        {% endif %}
         </div>
     {% else %}
 

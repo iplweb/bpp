@@ -26,7 +26,7 @@ from django.db.models.query_utils import Q
 from django.http import Http404, HttpResponseForbidden, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect
 from django.views.generic import DetailView, ListView, RedirectView, TemplateView
-from multiseek.logic import AND, OR
+from multiseek.logic import AND, OR, get_ordering_key_name
 from multiseek.util import make_field
 from multiseek.views import MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED
 from siteblog.models import Article
@@ -50,6 +50,7 @@ from bpp.multiseek_registry import (
     WydzialQueryObject,
     ZakresLatQueryObject,
     ZrodloQueryObject,
+    registry,
 )
 from bpp.permissions import moze_wprowadzac_dane
 from bpp.util import sanitize_multiseek_title
@@ -799,7 +800,30 @@ class JednostkiView(Browser):
             if uczelnia.pokazuj_tylko_jednostki_nadrzedne:
                 qry = qry.filter(parent=None)
 
-        ret = qry.only("nazwa", "slug", "wydzial").select_related("wydzial")
+        # ``liczba_autorow`` liczona JEDNYM agregatem, a nie per wiersz w
+        # szablonie. Wcześniej `browse/jednostki.html` wołał
+        # ``item.aktualna_jednostka.count`` — relacja ODWROTNA (Autor →
+        # Jednostka), więc każde użycie to osobny ``COUNT(*)``, a szablon
+        # używał go 3–4 razy na wiersz. Przy 150 jednostkach na stronę dawało
+        # to ~514 zapytań na jedno wejście na indeks jednostek (zmierzone na
+        # bazie produkcyjnej: 514 → 3 zapytania, 137 ms → 20 ms).
+        #
+        # Ani cacheops, ani fetch modes z Django 6.1 tego NIE łapały:
+        # queryset dotyczy ``bpp.autor``, którego nie ma w regułach
+        # ``CACHEOPS``, a ``FETCH_PEERS`` obsługuje leniwe FK i pola
+        # odroczone — nie ``RelatedManager.count()``.
+        #
+        # Adnotacja jest tu bezpieczna (nie zawyża liczb przez zdublowane
+        # wiersze), bo — jak dokumentuje komentarz w ``Browser.get_queryset``
+        # — żadna ścieżka filtrowania ``JednostkiView`` nie mnoży wierszy:
+        # filtr literki to ``istartswith`` na własnej kolumnie, fulltext dla
+        # ``Jednostka`` to predykat na jednokolumnowym tsvectorze bez JOIN-a,
+        # a ``scope_jednostki_do_uczelni`` porównuje skalarny FK.
+        ret = (
+            qry.only("nazwa", "slug", "wydzial")
+            .select_related("wydzial")
+            .annotate(liczba_autorow=Count("aktualna_jednostka"))
+        )
 
         if ordering:
             ret = ret.order_by(*ordering)
@@ -885,6 +909,13 @@ class LataView(ListView):
         return context
 
 
+# Typowy zakres lat dla ``RokView`` — rok z tego przedziału renderuje się
+# zawsze (także pusty); spoza niego tylko wtedy, gdy są z niego rekordy.
+ROK_MIN = 1900
+ROK_MAX = 2100
+MAKS_INTEGER_W_BAZIE = 2**31 - 1
+
+
 @method_decorator(cache_publiczny(), name="dispatch")
 class RokView(ListView):
     template_name = "browse/rok.html"
@@ -893,21 +924,27 @@ class RokView(ListView):
     paginate_by = 50
 
     def get_queryset(self):
-        year = self.kwargs.get("rok")
-
-        # Validate year
         try:
-            year = int(year)
-            if year < 1900 or year > 2100:
-                raise ValueError
+            year = int(self.kwargs.get("rok"))
         except (ValueError, TypeError) as e:
             raise Http404("Nieprawidłowy rok") from e
 
-        # Get publications for this year
+        # Kolumna ``rok`` to ``integer`` — większa liczba i tak niczego nie
+        # znajdzie, a w zapytaniu skończyłaby się błędem bazy (500).
+        if year > MAKS_INTEGER_W_BAZIE:
+            raise Http404("Nieprawidłowy rok")
+
         uczelnia = Uczelnia.objects.get_for_request(self.request)
-        return scope_rekord_do_uczelni(
-            Rekord.objects.filter(rok=year), uczelnia
-        ).order_by("-ostatnio_zmieniony")
+        qs = scope_rekord_do_uczelni(Rekord.objects.filter(rok=year), uczelnia)
+
+        # Rok spoza typowego zakresu (np. literówka „212" w danych) wpuszczamy
+        # tylko, gdy są z niego rekordy — ``lata.html`` linkuje każdy rok
+        # z bazy. Pozostałe takie lata to 404, jak dotychczas (nie mnożymy
+        # pustych stron ani wpisów w ``cache_publiczny``).
+        if not (ROK_MIN <= year <= ROK_MAX) and not qs.exists():
+            raise Http404("Nieprawidłowy rok")
+
+        return qs.order_by("-ostatnio_zmieniony")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -953,7 +990,9 @@ def zrob_box_z_requestu(dct, name, qo):
     return []
 
 
-def zrob_formularz(*args):
+def zrob_formularz(*args, **extra):
+    """Zwraca JSON formularza multiseeka dla sesji. ``extra`` (np. ``ordering``,
+    ``report_type``) trafia obok ``form_data``."""
     ret = [None]
 
     prev_op = None
@@ -969,7 +1008,20 @@ def zrob_formularz(*args):
 
         prev_op = AND
 
-    return json.dumps({"form_data": ret})
+    return json.dumps({"form_data": ret, **extra})
+
+
+def ustawienia_najnowszych_prac(request):
+    """Rodzaj raportu „lista" + sortowanie po „utworzono" malejąco — dla
+    przycisku „Przeglądaj najnowsze prace" ze strony głównej. Indeksy liczymy
+    z rejestru (a nie na sztywno), bo lista raportów zależy od requestu."""
+    report_types = [x.id for x in registry.get_report_types(request)]
+    orderings = [x.field for x in registry.ordering]
+    key, key_dir = get_ordering_key_name(0)
+    return {
+        "report_type": str(report_types.index("list")),
+        "ordering": {key: str(orderings.index("utworzono")), key_dir: "1"},
+    }
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -1055,6 +1107,11 @@ class BuildSearch(RedirectView):
             jednostki_nadrzedne_box,
             lata_box,
             zakres_lat_box,
+            **(
+                ustawienia_najnowszych_prac(self.request)
+                if self.request.POST.get("najnowsze")
+                else {}
+            ),
         )
 
         self.request.session["MULTISEEK_TITLE"] = sanitize_multiseek_title(

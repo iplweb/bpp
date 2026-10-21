@@ -3,10 +3,6 @@
 This file provides guidance to Claude Code (claude.ai/code) when working
 with code in this repository.
 
-Code like a 4096-IQ programmer.
-Code better Python than a brain-child of Guido van Rossum and Glyph
-Lefkowitz, raised by Bruce Schneier.
-
 ## Project Overview
 
 BPP (Bibliografia Publikacji Pracownikow) is a Polish academic bibliography
@@ -23,20 +19,25 @@ Gdy w odpowiedzi pokazujesz ścieżkę do pliku `.md` (spec, dokument w
 `file://`**. NIE chowaj go pod etykietą markdown typu `[file://](...)` —
 pokaż całą ścieżkę jako goły URL.
 
-Transformacja: `/Users/mpasternak/<reszta>` →
-`file:///Volumes/mpasternak/<reszta>` (trzy ukośniki: `file://` + `/Volumes`).
+Repo jest widoczne pod dwiema ścieżkami — `/Users/mpasternak/Programowanie`
+to symlink na `/Volumes/SSD/Programowanie` — a każda ma inną transformację:
+
+| Ścieżka | Wariant `file://` |
+|---|---|
+| `/Volumes/SSD/<reszta>` (kanoniczna, tę zwraca `pwd`) | `file:///Volumes/SSD/<reszta>` — bez zmian |
+| `/Users/mpasternak/<reszta>` | `file:///Volumes/mpasternak/<reszta>` |
 
 Przykład:
-- `/Users/mpasternak/Programowanie/bpp/docs/foo.md`
-- `file:///Volumes/mpasternak/Programowanie/bpp/docs/foo.md`
+- `/Volumes/SSD/Programowanie/bpp/docs/foo.md`
+- `file:///Volumes/SSD/Programowanie/bpp/docs/foo.md`
 
-(`/Volumes/mpasternak` to lokalny mount SMB udziału `mpasternak` — pliki
-`.md` user otwiera w Typorze. `file://` działa tylko gdy wolumen jest
-zamontowany.)
+Pełna reguła (oba mounty, wyjaśnienie dlaczego `file://` a nie `smb://`)
+mieszka w globalnym `~/.claude/CLAUDE.md` — tu jest tylko skrót.
 
 ## Critical Rules
 
-- **Ask questions** if anything is unclear before taking on non-trivial tasks
+- Rozstrzygaj rutynowe niejasności sam; pytaj, gdy dwie sensowne
+  interpretacje prowadzą do istotnie różnej pracy
 - **NEVER modify existing migration files** in `src/*/migrations/`
 - **Max line length: 88 characters** (enforced by ruff)
 - **Worktrees NIGDY w `bpp/` (ani w `.claude/worktrees/`).** Wszystkie
@@ -45,8 +46,11 @@ zamontowany.)
   - ❌ `bpp/.claude/worktrees/<slug>` — zaśmieca repo, łatwo wpada do `find`,
     `grep`, edytora, snapshotów IDE.
   - ✅ `~/Programowanie/bpp-<slug>` — jako siostra `~/Programowanie/bpp`.
+  - Ta reguła **nadpisuje** wyjątek z globalnego `~/.claude/CLAUDE.md`,
+    który zwalnia harnessowe `.claude/worktrees/…` spod konwencji —
+    w tym repo wyjątek nie obowiązuje.
   - Domyślny `EnterWorktree name=<slug>` claude'a tworzy worktree w
-    `bpp/.claude/worktrees/` — to **NIE** jest akceptowalne. Zamiast tego:
+    `bpp/.claude/worktrees/` — to nie jest akceptowalne. Zamiast tego:
     ```bash
     git worktree add ~/Programowanie/bpp-<slug> -b worktree-<slug>
     ```
@@ -75,18 +79,9 @@ zamontowany.)
 
 ## Python and Django Execution
 
-**ALWAYS use `uv run` prefix for ALL Python commands. NEVER run `python`
-directly.**
-
-```bash
-# CORRECT:
-uv run python src/manage.py shell
-uv run pytest src/app_name/tests/
-
-# WRONG - missing uv run:
-python src/manage.py shell
-pytest src/app_name/tests/
-```
+Każde polecenie Pythona idzie przez `uv run` (`uv run python
+src/manage.py shell`, `uv run pytest …`). Gołe `python`/`pytest` trafia
+w interpreter spoza `.venv` projektu i widzi inny zestaw pakietów.
 
 ## Uruchamianie dev stack-u (preferowane dla agenta)
 
@@ -144,8 +139,10 @@ Co `run-site run` robi w jednej komendzie:
 - `--no-celery` — pomiń celery worker (szybciej, gdy nie testujesz
   background-jobów),
 - `--skip-assets` — pomiń `make assets` (gdy CSS/JS jest aktualny),
-- `--from-dump PATH` — odtwórz `.sql` / `.sql.gz` / `.dump` zamiast
-  baseline.
+- `--from-dump PATH` — odtwórz dump zamiast baseline. Rozpoznawane
+  rozszerzenia (`run_site/dumps.py`): `.sql`, `.sql.gz`/`.gz`,
+  `.dump`/`.pgdump`/`.pg_dump`; poza tym run-site klasyfikuje plik po
+  magic bytes, więc nietypowa nazwa też przejdzie.
 
 **Pobranie portu z bannera (gdy run-site w tle):**
 
@@ -158,6 +155,26 @@ Domyślny `docker compose up db redis -d` z Quick Reference jest
 dla **rzadszych przypadków**: testy z `PYTEST_TESTCONTAINERS_DISABLE=1`
 albo gdy potrzebujesz długożyjącej bazy niezależnie od `run-site`.
 Do oglądania samej strony — używaj `run-site`.
+
+## Testowanie pull requestów z GitHuba
+
+Gdy user prosi „przetestuj / odpal / pokaż PR #N", **nie przełączaj gałęzi
+w głównym checkoucie** (może mieć niezacommitowaną pracę) — użyj:
+
+```bash
+make pr PR=856 ARGS="--no-browser"   # w tle (run_in_background=true)
+make pr PR=856 DUMP=example          # z danymi: najnowszy backup ~/Backups/*example*/
+make pr PR=856 NO_RUN=1              # tylko worktree, np. żeby odpalić testy
+make pr-list                         # pobrane PR-y, run-site, backupy do DUMP=
+make pr-clean PR=856                 # sprzątanie po teście
+```
+
+Worktree ląduje w `~/Programowanie/bpp-pr-<N>` (gałąź `pr-<N>`), z własnym
+`.venv`; ponowne `make pr` dociąga nowe commity autora. Port i token
+autologinu czytasz z `.dev_helpers_*` **w worktree PR-a**, nie w głównym
+checkoucie. Przed klikaniem przeczytaj opis PR-a (`gh pr view N`) i odpal
+testy dotknięte zmianą w worktree PR-a. Szczegóły:
+[docs/deweloper/polecenia.md](docs/deweloper/polecenia.md#testowanie-pull-requestów).
 
 ## Key Commands (Quick Reference)
 
@@ -370,8 +387,9 @@ zalewa volume nowymi plikami z `.baked`.
 
 Jesli zmieniasz to: pamietaj ze `.baked` i `$STATIC_ROOT` to DWIE rozne
 rzeczy. Do `.baked` (w obrazie) pisze tylko `collectstatic` na buildzie.
-Do `$STATIC_ROOT` (volume/katalog runtime) pisze `cp -ru` + runtime
-`collectstatic` + ewentualne tenant tooling.
+Do `$STATIC_ROOT` (volume/katalog runtime) pisze `cp -rf` z entrypointa
++ ewentualne tenant tooling; runtime `collectstatic` leci wylacznie
+w fallbacku, gdy `.baked` w obrazie nie istnieje.
 
 ## Docker image publishing (staging-tag + Trivy gate)
 
@@ -384,8 +402,7 @@ przepina manifest pod kanoniczny tag podany przez wywolujacego. Produkcyjny
 Workflow nie uruchamia sie automatycznie na pushach ani PR-ach. Ma tylko dwa
 wejscia: `workflow_call` z `release-candidate.yml` oraz reczny
 `workflow_dispatch` (najwygodniej `make docker-images-on-ci` na wypchnietym,
-czystym branchu). Kazde uruchomienie przechodzi bezposrednio do jobu `docker` —
-nie ma juz guardu konczacego sie zielonym `docker: skipped`.
+czystym branchu). Kazde uruchomienie przechodzi bezposrednio do jobu `docker`.
 
 **Dlaczego nie prosty „build → push → scan"?**
 Docker Hub nie ma mechanizmu „un-push". Jesli Trivy znajdzie CRITICAL
@@ -399,7 +416,7 @@ publiczny technicznie, ale niekanoniczny — zadna dokumentacja, zadne
 deployment scripty nie referencuja `sha-*`, wiec w praktyce nikt go
 nie pullnie.
 
-**Faza 2 — Trivy gate (release-candidate / master legacy)**
+**Faza 2 — Trivy gate**
 Skan staging tagu. Polityka:
 - **CRITICAL** (z dostepnym fix-em) → hard fail, workflow sie wywala,
   promocja sie NIE wykonuje. Kanoniczny tag wersji nigdy nie powstaje.
@@ -465,24 +482,17 @@ usuwajacy tagi starsze niz N dni.
 
 ### Uruchamiaj testy LOKALNIE — nie spychaj wszystkiego na CI
 
-**Domyślnie odpalaj testy na swojej maszynie.** „Środowiskowo-ciężkie",
-„zostawmy to CI", „Playwright wymaga setupu" to NIE są powody, żeby pominąć
-lokalny przebieg — to najwyżej powód, żeby najpierw zrobić warunki wstępne
-(`make assets`, `make playwright-install`). Brak warunku wstępnego = wykonaj go,
-nie pomijaj testu.
+Testy odpalaj lokalnie. Brakujący warunek wstępny (`make assets`,
+`make playwright-install`) wykonaj, zamiast pomijać test. Jedyny powód, by
+czegoś nie odpalić, to fizyczny brak możliwości (np. nie działa Docker dla
+testcontainers) — wtedy powiedz to wprost.
 
-- **Praca nad zdalnym branchem / w PR:** odpalenie lokalnego `make tests`
-  **równolegle** z czekaniem na CI jest OK i **zalecane** — szybszy feedback,
-  łapiesz regresje zanim CI je zwróci, nie marnujesz rundy CI. Te dwa kanały się
-  nie wykluczają; rób oba.
-- Pełne `make tests` przerywa się na pierwszym błędnym kroku (`make` zwraca na
+- **Praca nad zdalnym branchem / w PR:** lokalne `make tests` **równolegle**
+  z czekaniem na CI jest zalecane — szybszy feedback, nie marnujesz rundy CI.
+- Pełne `make tests` przerywa się na pierwszym błędnym kroku (`make` zwraca
   Error 1), więc gdy `tests-without-playwright` padnie, kroki
   `tests-only-playwright` i `js-tests` się NIE wykonają. Po naprawie Pythona
-  **dokończ** pozostałe kroki (albo ponów całe `make tests`), zamiast uznać je
-  za „pominięte".
-- Jedyny akceptowalny powód, by czegoś nie odpalić lokalnie: fizyczny brak
-  możliwości (np. brak działającego Dockera dla testcontainers) — wtedy powiedz
-  to wprost, a nie „jest ciężkie".
+  dokończ pozostałe kroki albo ponów całe `make tests`.
 
 ### Testy Playwright (`src/integration_tests/`) lokalnie
 
@@ -535,8 +545,48 @@ Konfiguracja jest w `[tool.pytest-testcontainers-django]` w `pyproject.toml`.
   co „celuj po PID / po ścieżce worktree, nie `pkill`": komenda
   zbiorcza jest wygodna, ale na współdzielonym hoście ubija cudzą
   pracę.
+- **PUŁAPKA `REUSE`: fałszywe czerwone w testach danych referencyjnych.**
+  Reużyty kontener zachowuje bazę między przebiegami, ale słowniki
+  seedowane przez `post_migrate` (`seed_slowniki`, seed instytucji) NIE
+  są przy kolejnym uruchomieniu odtwarzane — schema jest już zmigrowana,
+  więc `post_migrate` nie leci. Tymczasem teardown `TransactionTestCase`
+  (`_fixture_teardown` → `TRUNCATE`) potrafi je w trakcie przebiegu
+  zmieść. Efekt: PIERWSZY przebieg na świeżym kontenerze przechodzi,
+  a KOLEJNE na tym samym kontenerze sypią testami sprawdzającymi
+  obecność słowników — np. `bpp/tests/test_seed_instytucji.py`,
+  `cerif_export/tests/test_mapowania.py`. Wygląda jak regresja w kodzie,
+  a jest stanem bazy.
+  - **Zanim ogłosisz regresję — powtórz BEZ `REUSE`.** Jeśli wtedy
+    przechodzi, to był stan kontenera, nie Twoja zmiana.
+  - Kontenery są nazywane PER GAŁĄŹ
+    (`bpp_iplweb-tc-{psql,redis}-<gałąź>-<hash>-master`), więc to NIE
+    jest kolizja z cudzym worktree — to carry-over między Twoimi
+    własnymi przebiegami. Reset: `docker rm -f` po tych dwóch nazwach
+    (tylko swoich — patrz UWAGA wyżej).
+- **PUŁAPKA `--timeout 90`: zimny start wygląda jak złamana asercja.**
+  Pierwszy przebieg w świeżym worktree płaci jednorazowy koszt zimnego
+  startu — kontener plus pierwsze renderowanie strony (zmierzone: 47 s
+  setupu i 95 s na jednym `client.get("/")`). Test, który przekroczy
+  `--timeout 90` z `pytest.ini`, ląduje w podsumowaniu jako zwykły
+  `FAILED`, więc łatwo wziąć go za regresję w kodzie.
+  - **Zanim ogłosisz regresję — zerknij na `--durations` i powtórz sam
+    test.** Czas ocierający się o 90 s to timeout, nie asercja; kolejny
+    przebieg schodzi do sekund.
+  - Auto-retry tego NIE łapie i nie da się go dopisać bezkarnie.
+    pytest-timeout podnosi `Failed`, a `--only-rerun` dopasowuje regex
+    do stringa `"{TypeName}: {value}"`, czyli tutaj
+    `"Failed: Timeout >90.0s"` — czego na liście w `pytest.ini` nie ma.
+    Dopisanie wzorca włączyłoby reruny, ale pytest-timeout NIE uzbraja
+    timera ponownie przy rerunie (sprawdzone: `sleep(3)` pod
+    `--timeout 1` przechodzi w drugiej próbie), więc zawieszony test
+    przestałby umierać po 90 s i wisiałby do timeoutu całego joba.
+  - Reruny są tu celowo markerowe, nie globalne: `flaky(reruns=1)`
+    dostają wyłącznie testy z fikstur `page`/`admin_page`/`zrodla_page`
+    (`src/fixtures/conftest.py`). Testy jednostkowe nie są ponawiane
+    z rozmysłem — ich niedeterminizm to bug do naprawy.
 - CI (`docker-compose.test.yml`) ma `PYTEST_TESTCONTAINERS_DISABLE=1` —
-  usługi dostarcza tam docker-compose.
+  usługi dostarcza tam docker-compose. Dlatego pułapka zimnego startu
+  dotyczy przebiegów lokalnych, nie CI.
 
 ### Baseline bazy (django-pg-baseline) — refresh po migracjach
 
@@ -582,11 +632,10 @@ w `Makefile` + commit `ef40b2b61`.
 
 ### Czytanie checków CI na PR-ach — co NAPRAWDĘ testuje
 
-**NIE ciesz się z zielonego, dopóki realne gejty nie przejdą.** Check
-kończący się w <1 min ze statusem „success" jest najczęściej **SKIPNIĘTY**,
-nie przetestowany — to NIE jest dowód, że cokolwiek działa. Zanim powiesz
-„zielono / działa", sprawdź że gejty niżej mają `conclusion: success`;
-inaczej milcz i czekaj.
+Check kończący się w <1 min ze statusem „success" jest zwykle SKIPNIĘTY,
+nie przetestowany. Zanim napiszesz „zielono / działa", sprawdź, że oba realne
+gejty (niżej) mają `conclusion: success`; dopóki któryś jest `in_progress`,
+powiedz że CI jeszcze biegnie.
 
 - **Dekoracyjne / pomocnicze (NIE walidują całego kodu):** `Docs`,
   `Lint changed files`, `Check baseline freshness`, CodeQL/GitGuardian.

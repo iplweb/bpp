@@ -1,114 +1,174 @@
 {% load i18n %}
 
-<div id="CookielawBanner" class="hide-for-print">
-    <div class="callout warning">
-        <h3 style="font-size: 1.4em;"><span class="cookie-icon"></span>Informacja o ciasteczkach (tych internetowych, nie tych słodkich i chrupiących...)</h3>
-        <p style="font-size: 1.1em; line-height: 1.4;">
-            Ta strona wykorzystuje pliki cookie do poprawy funkcjonalności i analizy ruchu.
-            Możesz zaakceptować wszystkie pliki cookie lub zarządzać swoimi preferencjami prywatności.
-            Nawet, jeżeli nie zgodzisz się na używanie plików cookie na tej stronie, to informację o tym musimy zapamiętać w formie... pliku cookie, zatem jeżeli chcesz zadbać o swoją prywatność w pełni, zapoznaj się z informacjami, jak <strong>zupełnie</strong> wyłączyć możliwości śledzenia Ciebie w internecie.
-        </p>
+{# Pasek zgody na ciasteczka. Uklad poziomy: tresc po lewej, przyciski po #}
+{# prawej; na waskich ekranach przechodzi w kolumne (patrz _cookie-banner). #}
+{# role="region" + aria-label, bo bez tego czytnik ekranu oglasza tylko #}
+{# "grupa" i uzytkownik nie wie, na co odpowiada. #}
+<div id="CookielawBanner" class="hide-for-print" role="region"
+     aria-label="Zgoda na pliki cookie">
+    <div class="cookie-pasek">
 
-        <div class="cookie-info-links" style="font-size: 1.05em;">
-            <strong style="font-size: 1.1em;">Chroń swoją prywatność:</strong><br/>
-            <div id="browser-specific-links"></div>
-            <a href="https://www.nask.pl/aktualnosci/slodka-nazwa-gorzkie-konsekwencje-co-tak-naprawde-robia-pliki-cookie" target="_blank" rel="noopener">
-                Słodka nazwa, gorzkie konsekwencje – co tak naprawdę robią pliki cookie? (NASK)
-            </a>
+        {# Lewa kolumna: zdanie, a za nim odnosniki w tym samym akapicie, #}
+        {# rozdzielone kropka srodkowa. #}
+        <div class="cookie-pasek__tresc">
+            <p class="cookie-pasek__tekst">
+                <span class="cookie-icon" aria-hidden="true"></span>
+                <strong>Ciasteczka.</strong> Używamy ich, żeby zapamiętać Twoje
+                ustawienia i policzyć odwiedziny. Odmowa też zostawia ciasteczko —
+                bez niego nie zapamiętalibyśmy Twojej decyzji.
+                {# Separatory dostaja aria-hidden: czytnik ekranu odczytalby #}
+                {# je jako "kropka srodkowa", co nic nie wnosi. #}
+                <span class="cookie-pasek__sep" aria-hidden="true">·</span>
+                <span id="browser-specific-links"></span>
+                <a href="https://www.nask.pl/aktualnosci/slodka-nazwa-gorzkie-konsekwencje-co-tak-naprawde-robia-pliki-cookie"
+                   target="_blank" rel="noopener">Co naprawdę robią pliki cookie?
+                    (NASK)<svg class="ikona-zewnetrzna" viewBox="0 0 12 12"
+                         width="12" height="12" aria-hidden="true"
+                         focusable="false"><path d="M4.5 1.5H1.5v9h9v-3"
+                        fill="none" stroke="currentColor" stroke-width="1.3"
+                        stroke-linecap="round"/><path d="M7 1.5h3.5V5"
+                        fill="none" stroke="currentColor" stroke-width="1.3"
+                        stroke-linecap="round" stroke-linejoin="round"/><path
+                        d="M10.5 1.5L6 6" fill="none" stroke="currentColor"
+                        stroke-width="1.3" stroke-linecap="round"/></svg><span
+                        class="show-for-sr">Otwiera się w nowej karcie</span></a>
+            </p>
         </div>
 
-        <script>
-        (function() {
-            // Browser detection function
-            function detectBrowser() {
-                const userAgent = navigator.userAgent.toLowerCase();
+        {# Prawa kolumna. Przyciski, nie linki: to akcja zmieniajaca stan, #}
+        {# a nie nawigacja. Poprzednie <a href="javascript:..."> bylo #}
+        {# nieosiagalne dla czesci czytnikow ekranu i lamalo WCAG 4.1.2. #}
+        <div class="cookie-pasek__akcje">
+            <button type="button" class="button cookie-pasek__btn cookie-pasek__btn--tak"
+                    onclick="Cookielaw.accept();">Zgadzam się</button>
+            <button type="button" class="button cookie-pasek__btn cookie-pasek__btn--nie"
+                    onclick="Cookielaw.reject();">Nie zgadzam się</button>
+        </div>
 
-                if (userAgent.includes('chrome') && !userAgent.includes('edge') && !userAgent.includes('edg')) {
-                    return 'chrome';
-                } else if (userAgent.includes('firefox')) {
-                    return 'firefox';
-                } else if (userAgent.includes('edge') || userAgent.includes('edg')) {
-                    return 'edge';
-                } else if (userAgent.includes('safari') && !userAgent.includes('chrome')) {
-                    return 'safari';
-                } else {
-                    return 'unknown';
-                }
-            }
+    </div>
 
-            // Browser-specific links
-            const browserLinks = {
-                chrome: {
-                    url: 'https://support.google.com/chrome/answer/95647',
-                    text: 'Zarządzaj cookies w Chrome'
-                },
-                firefox: {
-                    url: 'https://support.mozilla.org/pl/kb/usuwanie-ciasteczek-i-danych-stron-firefox',
-                    text: 'Zarządzaj cookies w Firefox'
-                },
-                edge: {
-                    url: 'https://support.microsoft.com/pl-pl/microsoft-edge/usuń-pliki-cookie-w-przeglądarce-microsoft-edge-63947406-40ac-c3b8-57b9-2a946a29ae09',
-                    text: 'Zarządzaj cookies w Edge'
-                },
-                safari: {
-                    url: 'https://support.apple.com/pl-pl/105082',
-                    text: 'Zarządzaj cookies w Safari'
-                }
-            };
+    <script>
+    (function() {
+        // Podpowiedz kierujemy do ustawien TEJ przegladarki — pelna lista
+        // czterech linkow w pasku bylaby dluzsza niz sam komunikat.
+        function wykryjPrzegladarke() {
+            var ua = navigator.userAgent.toLowerCase();
 
-            // Detect browser and create appropriate link
-            const browser = detectBrowser();
-            const linksContainer = document.getElementById('browser-specific-links');
+            // Kolejnosc ma znaczenie: Edge i Opera podaja sie tez za Chrome,
+            // wiec musza byc sprawdzone przed nim.
+            if (ua.indexOf('edg') !== -1) { return 'edge'; }
+            if (ua.indexOf('opr') !== -1 || ua.indexOf('opera') !== -1) { return 'opera'; }
+            if (ua.indexOf('firefox') !== -1) { return 'firefox'; }
+            if (ua.indexOf('chrome') !== -1) { return 'chrome'; }
+            if (ua.indexOf('safari') !== -1) { return 'safari'; }
+            return null;
+        }
 
-            if (browser !== 'unknown' && browserLinks[browser]) {
-                const link = browserLinks[browser];
-                linksContainer.innerHTML =
-                    '<a href="' + link.url + '" target="_blank" rel="noopener">' +
-                    link.text +
-                    '</a><br/>';
-            } else {
-                // Fallback: show all browser links if detection fails
-                let allLinksHtml = '';
-                for (const browserName in browserLinks) {
-                    const link = browserLinks[browserName];
-                    allLinksHtml +=
-                        '<a href="' + link.url + '" target="_blank" rel="noopener">' +
-                        link.text +
-                        '</a> ';
-                }
-                linksContainer.innerHTML = allLinksHtml + '<br/>';
-            }
-        })();
-
-        // Cookielaw JavaScript functions
-        window.Cookielaw = {
-            accept: function() {
-                // Set cookie to remember user's acceptance
-                document.cookie = 'cookielaw_accepted=1; max-age=31536000; path=/; SameSite=Lax';
-                // Hide the banner
-                document.getElementById('CookielawBanner').style.display = 'none';
-                // Reload page to reflect changes
-                window.location.reload();
+        var LINKI = {
+            chrome: {
+                url: 'https://support.google.com/chrome/answer/95647',
+                tekst: 'Ustawienia ciasteczek w Chrome'
             },
-
-            reject: function() {
-                // Set cookie to remember user's rejection
-                document.cookie = 'cookielaw_accepted=0; max-age=31536000; path=/; SameSite=Lax';
-                // Hide the banner
-                document.getElementById('CookielawBanner').style.display = 'none';
-                // Reload page to reflect changes
-                window.location.reload();
+            firefox: {
+                url: 'https://support.mozilla.org/pl/kb/usuwanie-ciasteczek-i-danych-stron-firefox',
+                tekst: 'Ustawienia ciasteczek w Firefoksie'
+            },
+            edge: {
+                // Adres kanoniczny (poprzedni, z polskimi znakami w sciezce,
+                // dzialal tylko przez przekierowanie).
+                url: 'https://support.microsoft.com/pl-PL/edge/manage-cookies-in-microsoft-edge-view-allow-block-delete-and-use',
+                tekst: 'Ustawienia ciasteczek w Edge'
+            },
+            opera: {
+                url: 'https://help.opera.com/pl/latest/web-preferences/',
+                tekst: 'Ustawienia ciasteczek w Operze'
+            },
+            safari: {
+                url: 'https://support.apple.com/pl-pl/105082',
+                tekst: 'Ustawienia ciasteczek w Safari'
             }
         };
-        </script>
 
-        <div style="margin-top: 15px;">
-            <a class="button success" href="javascript:Cookielaw.accept();" style="margin-right: 10px;">
-                <b>✓ Zgadzam się</b>
-            </a>
-            <a class="button secondary reject" href="javascript:Cookielaw.reject();">
-                <b>✗ Nie zgadzam się</b>
-            </a>
-        </div>
-    </div>
+        var kontener = document.getElementById('browser-specific-links');
+        if (!kontener) { return; }
+
+        var nazwa = wykryjPrzegladarke();
+        var link = nazwa ? LINKI[nazwa] : null;
+
+        if (link) {
+            var a = document.createElement('a');
+            a.href = link.url;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.textContent = link.tekst;
+
+            // Ta sama ikona odnosnika zewnetrznego co przy NASK. Klonujemy
+            // ja z gotowego elementu w szablonie zamiast sklejac druga kopie
+            // sciezek SVG — jedno zrodlo ksztaltu, zero rozjazdu.
+            var wzor = document.querySelector('.ikona-zewnetrzna');
+            if (wzor) {
+                a.appendChild(wzor.cloneNode(true));
+            }
+
+            var dlaCzytnika = document.createElement('span');
+            dlaCzytnika.className = 'show-for-sr';
+            dlaCzytnika.textContent = 'Otwiera się w nowej karcie';
+            a.appendChild(dlaCzytnika);
+
+            kontener.appendChild(a);
+
+            var sep = document.createElement('span');
+            sep.className = 'cookie-pasek__sep';
+            sep.setAttribute('aria-hidden', 'true');
+            sep.textContent = '·';
+            kontener.appendChild(sep);
+        }
+    })();
+
+    // Pasek jest `position: fixed`, wiec nie zajmuje miejsca w przeplywie —
+    // bez rezerwacji przykrywalby dol strony na stale i nie dalo by sie
+    // przewinac do stopki. Odstep liczymy z realnej wysokosci paska, bo ta
+    // zalezy od dlugosci tekstu, szerokosci okna i ustawien czcionki
+    // uzytkownika; stala wartosc rozjezdzalaby sie przy kazdej z tych zmian.
+    (function() {
+        var pasek = document.getElementById('CookielawBanner');
+        if (!pasek) { return; }
+
+        function dopasujOdstep() {
+            var wysokosc = pasek.offsetHeight;
+            document.body.style.paddingBottom = wysokosc + 'px';
+            // Ten sam zapas dla przewijania do elementu z focusem
+            // (WCAG 2.4.11 Focus Not Obscured).
+            document.documentElement.style.scrollPaddingBottom = wysokosc + 'px';
+        }
+
+        dopasujOdstep();
+
+        // Zawijanie tekstu zmienia wysokosc paska przy zmianie szerokosci
+        // okna i przy zmianie rozmiaru czcionki w przegladarce.
+        if (typeof ResizeObserver === 'function') {
+            new ResizeObserver(dopasujOdstep).observe(pasek);
+        } else {
+            window.addEventListener('resize', dopasujOdstep);
+        }
+    })();
+
+    window.Cookielaw = {
+        accept: function() {
+            document.cookie = 'cookielaw_accepted=1; max-age=31536000; path=/; SameSite=Lax';
+            document.getElementById('CookielawBanner').style.display = 'none';
+            document.body.style.paddingBottom = '';
+            document.documentElement.style.scrollPaddingBottom = '';
+            window.location.reload();
+        },
+
+        reject: function() {
+            document.cookie = 'cookielaw_accepted=0; max-age=31536000; path=/; SameSite=Lax';
+            document.getElementById('CookielawBanner').style.display = 'none';
+            document.body.style.paddingBottom = '';
+            document.documentElement.style.scrollPaddingBottom = '';
+            window.location.reload();
+        }
+    };
+    </script>
 </div>

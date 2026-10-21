@@ -56,7 +56,7 @@ jobs:
       # so the heavy toolchain the test jobs need is unnecessary for
       # linting. uv is only a fast launcher for pre-commit (via uvx).
       - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           # Patrz komentarz przy jobie `lock-check` — bez `version` setup-uv
           # bierze "latest", co czyni CI niedeterministycznym.
@@ -81,6 +81,22 @@ jobs:
             git fetch --no-tags --depth=100 origin dev
             echo "ref=origin/dev" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Assert ruff pins agree (pyproject vs .pre-commit-config)
+        # Krok POPRZEDZA lint, bo ustala CZYM lintujemy. Ruff ma dwa piny:
+        # `ruff==X` w extrze [dev] (pyproject.toml) i `rev: vX` przy
+        # astral-sh/ruff-pre-commit (.pre-commit-config.yaml). Krok niżej
+        # używa tego drugiego, `uv run ruff` u dewelopera — pierwszego.
+        # To dwa różne binaria, więc rozjazd pinów przywraca dokładnie ten
+        # tryb awarii, który krok niżej deklaruje jako niemożliwy ("one
+        # ruff, one config"): patrz komentarz przy rev w pre-commit config
+        # o układzie I001 przepuszczonym lokalnie i odrzuconym przez CI.
+        #
+        # Osobny krok, a nie hook w tamtym wywołaniu, bo krok niżej odpala
+        # hooki PO NAZWIE (`pre-commit run ruff`), więc lokalny hook
+        # `ruff-piny-zsynchronizowane` nigdy by się w CI nie uruchomił.
+        # Skrypt jest stdlib-only → goły `python3`, bez `uv sync`.
+        run: python3 bin/check-ruff-pin-sync.py
 
       - name: Ruff + ruff-format (via pre-commit — single source of truth)
         # Runs the SAME `ruff` and `ruff-format` hooks declared in
@@ -132,7 +148,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           # PIN OBOWIAZKOWY. Bez `version` setup-uv loguje "Could not
           # determine uv version from uv.toml or pyproject.toml. Falling back
@@ -174,7 +190,7 @@ jobs:
         xargs -a docker/bpp_base/build.txt sudo apt-get install -y
 
     - name: Install uv
-      uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
       with:
         # Patrz komentarz przy jobie `lock-check`. Tu dochodzi drugi powod:
         # `uv sync --frozen` czyta uv.lock, wiec plywajaca wersja uv czyni
@@ -231,12 +247,12 @@ jobs:
     # drifcie jest tanszy niz 37s na kazdym runie.
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       with:
         driver: docker-container
 
     - name: Log in to GHCR
-      uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
+      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
@@ -250,7 +266,7 @@ jobs:
         echo "image=${IMAGE_REPO}:sha-${SHA}" >> "$GITHUB_OUTPUT"
 
     - name: Build & push test-runner image
-      uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+      uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
       with:
         context: .
         file: docker/bpp_base/Dockerfile
@@ -347,7 +363,7 @@ jobs:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: Log in to GHCR
-      uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
+      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
@@ -448,7 +464,7 @@ jobs:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: Set up Node
-      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
         node-version: "20"
         cache: yarn
