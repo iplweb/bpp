@@ -845,6 +845,13 @@ class LataView(ListView):
         return context
 
 
+# Typowy zakres lat dla ``RokView`` — rok z tego przedziału renderuje się
+# zawsze (także pusty); spoza niego tylko wtedy, gdy są z niego rekordy.
+ROK_MIN = 1900
+ROK_MAX = 2100
+MAKS_INTEGER_W_BAZIE = 2**31 - 1
+
+
 @method_decorator(cache_publiczny(), name="dispatch")
 class RokView(ListView):
     template_name = "browse/rok.html"
@@ -853,21 +860,27 @@ class RokView(ListView):
     paginate_by = 50
 
     def get_queryset(self):
-        year = self.kwargs.get("rok")
-
-        # Validate year
         try:
-            year = int(year)
-            if year < 1900 or year > 2100:
-                raise ValueError
+            year = int(self.kwargs.get("rok"))
         except (ValueError, TypeError) as e:
             raise Http404("Nieprawidłowy rok") from e
 
-        # Get publications for this year
+        # Kolumna ``rok`` to ``integer`` — większa liczba i tak niczego nie
+        # znajdzie, a w zapytaniu skończyłaby się błędem bazy (500).
+        if year > MAKS_INTEGER_W_BAZIE:
+            raise Http404("Nieprawidłowy rok")
+
         uczelnia = Uczelnia.objects.get_for_request(self.request)
-        return scope_rekord_do_uczelni(
-            Rekord.objects.filter(rok=year), uczelnia
-        ).order_by("-ostatnio_zmieniony")
+        qs = scope_rekord_do_uczelni(Rekord.objects.filter(rok=year), uczelnia)
+
+        # Rok spoza typowego zakresu (np. literówka „212" w danych) wpuszczamy
+        # tylko, gdy są z niego rekordy — ``lata.html`` linkuje każdy rok
+        # z bazy. Pozostałe takie lata to 404, jak dotychczas (nie mnożymy
+        # pustych stron ani wpisów w ``cache_publiczny``).
+        if not (ROK_MIN <= year <= ROK_MAX) and not qs.exists():
+            raise Http404("Nieprawidłowy rok")
+
+        return qs.order_by("-ostatnio_zmieniony")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

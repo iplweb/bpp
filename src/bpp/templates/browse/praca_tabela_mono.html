@@ -723,7 +723,7 @@
                             {% comment %} Check if there are multiple authors with disciplines set {% endcomment %}
                             {% with authors_with_disciplines=rekord.punktacja_autora.select_related|length %}
                             {% if authors_with_disciplines > 0 %}
-                                {% if request.user.is_authenticated %}
+                                {% if request.user|moze_wprowadzac_dane %}
                                     <a href="{% url "ewaluacja_optymalizuj_publikacje:optymalizuj" rekord.slug %}"
                                        class="print-button print-button-header praca-mono__optimize-button"
                                        title="Optymalizuj przypisanie dyscyplin">
