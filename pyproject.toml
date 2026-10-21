@@ -139,7 +139,10 @@ dependencies = [
     "django-soft-delete>=1.0.23",
     "tqdm>=4.70.0",
     "xhtml2pdf>=0.2.18",
-    "isbnlib>=3.10.14",
+    # isbnlib2 = utrzymywany fork isbnlib (ten sam modul `isbnlib`, bez
+    # `pkg_resources`). Ciagnie go idutils (FD#480) - trzymanie obu
+    # dystrybucji naraz znaczy dwie paczki piszace do jednego katalogu.
+    "isbnlib2>=3.11.24",
     "chardet>=7.6.0",
     "python-dateutil>=2.9.0.post0",
     "thefuzz>=0.22.1",
@@ -189,6 +192,7 @@ dependencies = [
     "django-liveops[celery]>=0.4.1,<0.5",
     "django-oauth-toolkit==3.4.1",
     "django-altcha>=1.0.0",
+    "idutils>=1.7.0",
 ]
 
 [project.optional-dependencies]
@@ -323,12 +327,11 @@ environments = ["python_version >= '3.11' and python_version < '3.15' and platfo
 #
 #     UWAGA na przyszlosc: setuptools >=83 znaczy, ze `pkg_resources` NIE
 #     ISTNIEJE w runtime. Kod, ktory go importuje, wybucha dopiero przy
-#     wywolaniu, jesli import jest leniwy. Znany przypadek: `isbnlib`
+#     wywolaniu, jesli import jest leniwy. Znany przypadek byl `isbnlib`
 #     (isbnlib/registry.py) - `isbnlib.meta()` i formattery bibliograficzne
-#     rzucaja ModuleNotFoundError, upstream nie ma fixa. bpp uzywa dzis
-#     wylacznie `isbnlib.notisbn()` i `isbnlib.canonical()` (czyste funkcje
-#     z isbnlib._core, bez rejestru), wiec nic sie nie psuje - ale NIE
-#     siegaj po `isbnlib.meta()` bez wczesniejszej wymiany biblioteki.
+#     rzucaly ModuleNotFoundError. Od FD#480 zamiast `isbnlib` jest fork
+#     `isbnlib2` (ten sam modul, bez `pkg_resources`), wiec rejestr znow
+#     sie importuje.
 constraint-dependencies = [
     # Piny tranzytywne wymuszajace wersje z fixem CVE. Bez nich przyszly
     # `uv lock` moglby wrocic do podatnej wersji, a `pip-audit --gate on
