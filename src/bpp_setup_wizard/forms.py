@@ -89,6 +89,9 @@ class UczelniaSetupForm(forms.ModelForm):
         uczelnia.pbn_aktualizuj_na_biezaco = (
             True  # Włącz opcjonalną aktualizację przy edycji
         )
+        # Krok 3 kreatora (PBN) jest otwarty, dopóki admin nie odpowie na
+        # pytanie o integrację — zapisem albo świadomym pominięciem.
+        uczelnia.kreator_czeka_na_pbn = True
 
         if uczelnia.site_id is None and request is not None:
             from django.contrib.sites.shortcuts import get_current_site

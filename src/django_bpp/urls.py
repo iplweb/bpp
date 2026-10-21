@@ -63,8 +63,9 @@ def protected_media_serve(request, path, document_root=None):
 
 urlpatterns = (
     [
-        path(  # Krok 3 kreatora (PBN) — BPP-owy widok pod /setup/ (FD#499)
-            "setup/pbn/",
+        path(  # Krok 3 kreatora (PBN) — BPP-owy widok kroku silnika „pbn",
+            # przed include silnika, żeby przykryć generyczny widok (FD#499)
+            "setup/step/pbn/",
             include("bpp_setup_wizard.urls", namespace="bpp_setup_wizard"),
         ),
         path(  # Setup wizard URLs (engine from django-first-run-wizard;

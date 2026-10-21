@@ -3,7 +3,8 @@
 Krok zaczyna się od pytania „Czy masz już nazwę i token aplikacji z PBN?"
 z trzema odpowiedziami (parametr ``?odpowiedz=``). Formularz PBN widać tylko
 po „Tak"; „później" i „nie wiem" pozwalają pominąć krok. Każda ścieżka
-kończy kreator — brak danych PBN nie blokuje startu systemu.
+gasi ``Uczelnia.kreator_czeka_na_pbn`` i kończy kreator — brak danych PBN
+nie blokuje startu systemu. To widok kroku silnika ``PbnSetupStep``.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from first_run_wizard.registry import registry
 
 from bpp.models import Uczelnia
 from bpp_setup_wizard.forms import PbnSetupForm
+from bpp_setup_wizard.steps import PbnSetupStep
 
 ODPOWIEDZ_TAK = "tak"
 ODPOWIEDZ_POZNIEJ = "pozniej"
@@ -36,6 +38,9 @@ class PbnSetupView(FormView):
             # Kreator zamknięty (także po świadomym pominięciu PBN) — krok
             # nie wraca; dane PBN edytuje się w Administracja → Uczelnia.
             raise Http404
+        if registry.get(PbnSetupStep.name).is_complete():
+            # Na pytanie o PBN już odpowiedziano — middleware poprowadzi dalej.
+            return redirect("/")
         user = request.user
         if not (user.is_authenticated and user.is_superuser):
             return redirect("/")
@@ -86,8 +91,14 @@ class PbnSetupView(FormView):
         return self.zakoncz()
 
     def zakoncz(self):
+        # Odpowiedź (zapis albo pominięcie) zamyka krok PBN — dla wszystkich
+        # czekających uczelni, żeby krok nie utknął, gdyby uczelnia z requestu
+        # była inna niż ta utworzona w kroku 2.
+        Uczelnia.objects.filter(kreator_czeka_na_pbn=True).update(
+            kreator_czeka_na_pbn=False
+        )
         # Zapamiętaj zakończenie kreatora od razu, nie czekając na kolejny
-        # request przez middleware — pominięty krok PBN ma już nie wracać.
+        # request przez middleware.
         if registry.inspect().all_complete:
             FirstRunWizardState.mark_completed()
         return redirect("/")

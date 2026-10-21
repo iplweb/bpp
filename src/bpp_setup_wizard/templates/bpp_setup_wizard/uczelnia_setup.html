@@ -22,20 +22,6 @@
             <p class="bpp-setup-wizard__header-subtitle">{{ subtitle }}</p>
         </div>
 
-        <div class="bpp-setup-wizard__info">
-            <h3 class="bpp-setup-wizard__info-title">
-                <span class="fi-info"></span> Informacja
-            </h3>
-            <p class="bpp-setup-wizard__info-text">
-                Konfiguracja podstawowych danych uczelni jest wymagana do
-                prawidłowego działania systemu.
-            </p>
-            <p class="bpp-setup-wizard__info-text">
-                W następnym kroku zapytamy o integrację z PBN — tamten krok
-                można pominąć i uzupełnić później.
-            </p>
-        </div>
-
         <form method="post" novalidate>
             {% csrf_token %}
 

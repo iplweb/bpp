@@ -6,7 +6,8 @@ BPP-specific steps for the first-run setup wizard (3 kroki, FD#499):
    template override).
 2. Dane uczelni — `UczelniaSetupStep` (nazwa, dopełniacz, skrót,
    wydziały). Bez pól PBN.
-3. Integracja z PBN — `PbnSetupView` pod `/setup/pbn/`, opcjonalna.
+3. Integracja z PBN — `PbnSetupStep`, obsługiwany przez `PbnSetupView`
+   pod `/setup/step/pbn/`. Można go pominąć.
 
 The **wizard engine itself** (`SetupStep` base class, registry,
 middleware, generic views, built-in admin-user creation step) lives in
@@ -19,10 +20,10 @@ the external package [`django-first-run-wizard`][pkg].
 | Concern | Lives in |
 |---|---|
 | Plugin registry, `SetupStep` ABC | `first_run_wizard` (PyPI) |
-| Middleware that redirects on fresh install | `first_run_wizard.middleware.FirstRunWizardMiddleware` |
+| Middleware that redirects on fresh install | `first_run_wizard.middleware.FirstRunWizardMiddleware`, subclassed as `bpp_setup_wizard.middleware.BppFirstRunWizardMiddleware` |
 | Generic per-step `WizardStepView` + `StatusView` | `first_run_wizard.views` |
 | Built-in `AdminUserCreationStep` (first superuser) | `first_run_wizard.builtin_steps` |
-| **`UczelniaSetupStep`** (this app) | `bpp_setup_wizard.steps` |
+| **`UczelniaSetupStep`**, **`PbnSetupStep`** (this app) | `bpp_setup_wizard.steps` |
 | `UczelniaSetupForm` + PBN auto-config | `bpp_setup_wizard.forms` |
 | **`PbnSetupView`** + `PbnSetupForm` (krok 3) | `bpp_setup_wizard.views` / `.forms` |
 | BPP-branded template `uczelnia_setup.html` + CSS | `bpp_setup_wizard.templates` / `.static` |
@@ -43,21 +44,34 @@ the external package [`django-first-run-wizard`][pkg].
    - PBN integration flags are flipped on by default
      (`pbn_integracja`, `pbn_kasuj_dyscypliny_selektywnie`, etc. — see
      `forms.py:save()`)
-   - `UczelniaSetupStep.get_success_url()` redirects to `/setup/pbn/`.
-5. `/setup/pbn/` (`PbnSetupView`) asks „Czy masz już nazwę i token
+   - `Uczelnia.kreator_czeka_na_pbn` is set to `True`
+   - `UczelniaSetupStep.get_success_url()` redirects to `/setup/step/pbn/`.
+5. `/setup/step/pbn/` (`PbnSetupView`) asks „Czy masz już nazwę i token
    aplikacji z PBN?" (`?odpowiedz=tak|pozniej|nie-wiem`). Only „Tak"
    shows the PBN form; the other two answers explain where to fill the
    data later (Administracja → Uczelnia) and let the admin skip.
-   Every path stamps `FirstRunWizardState.completed_at` — the wizard,
-   including the PBN step, never comes back.
+   Every path clears `kreator_czeka_na_pbn` and stamps
+   `FirstRunWizardState.completed_at` — the wizard, including the PBN
+   step, never comes back.
 
-The PBN step is deliberately **not** a registered `SetupStep`: the engine
-sees the wizard as complete once an `Uczelnia` exists, so a skipped PBN
-step needs no persisted "skipped" flag (no migration) and existing
-installs/dumps without PBN credentials are never sent back into the
-wizard. `/setup/pbn/` is under the wizard prefix, so the middleware does
-not intercept it. If the admin leaves before answering, the next
-non-setup request closes the wizard — same effect as „uzupełnię później".
+`PbnSetupStep.is_complete()` is "no `Uczelnia` has
+`kreator_czeka_na_pbn=True`". The flag is persisted on purpose: an
+earlier version closed the wizard on the first non-`/setup/` request,
+and browsers fetch `/apple-touch-icon.png` / `/favicon.ico` on their own
+right after rendering the PBN question — the step was gone before the
+admin could click anything. Uczelnie created outside the wizard (admin,
+dumps, demo data, pre-migration rows) default to `False`, so the
+middleware's repair path never sends existing installs back into the
+PBN step. If the admin leaves before answering, the middleware keeps
+redirecting them to the PBN step until they answer.
+
+`PbnSetupView` is routed at `setup/step/pbn/` *before* the engine's
+`include`, so it shadows the generic `WizardStepView` for that step
+(the question with three answers does not fit a plain form view).
+
+Browser-initiated icon requests are also listed in
+`FIRST_RUN_WIZARD_SKIP_PREFIXES` (`settings/base.py`), so they are
+neither redirected to the wizard nor used to stamp completion.
 
 ## Configuration in `settings.py`
 
@@ -65,14 +79,14 @@ non-setup request closes the wizard — same effect as „uzupełnię później"
 INSTALLED_APPS = [
     # ...
     "first_run_wizard",  # engine
-    "bpp_setup_wizard",  # this app — registers UczelniaSetupStep
+    "bpp_setup_wizard",  # this app — registers Uczelnia + PBN steps
     # ...
 ]
 
 MIDDLEWARE = [
     # ...
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "first_run_wizard.middleware.FirstRunWizardMiddleware",
+    "bpp_setup_wizard.middleware.BppFirstRunWizardMiddleware",
     # ...
 ]
 ```
@@ -80,10 +94,16 @@ MIDDLEWARE = [
 And in `urls.py`:
 
 ```python
-(path("setup/", include("first_run_wizard.urls", namespace="first_run_wizard")),)
+(
+    path(
+        "setup/step/pbn/",
+        include("bpp_setup_wizard.urls", namespace="bpp_setup_wizard"),
+    ),
+    path("setup/", include("first_run_wizard.urls", namespace="first_run_wizard")),
+)
 ```
 
-The step is auto-registered in `apps.py`'s `ready()` hook — no manual
+The steps are auto-registered in `apps.py`'s `ready()` hook — no manual
 registration call required.
 
 ## PBN integration

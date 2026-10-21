@@ -5,11 +5,16 @@ generic admin-user creation step is provided by the package; this module
 adds the BPP-specific "configure the university" step that runs once an
 admin exists.
 
-Krok 3 (integracja z PBN) NIE jest krokiem silnika — to widok
-``bpp_setup_wizard.views.PbnSetupView``, na który ten krok przekierowuje po
-zapisie. Dzięki temu pominięcie PBN nie wymaga trzymania stanu w bazie:
-silnik uznaje kreator za ukończony, gdy istnieje uczelnia, a krok PBN jest
-opcjonalnym przystankiem, który nie wraca (FD#499).
+Krok 3 (integracja z PBN) jest pełnoprawnym krokiem silnika
+(``PbnSetupStep``), ale obsługuje go własny widok
+``bpp_setup_wizard.views.PbnSetupView`` — pytanie z trzema odpowiedziami nie
+mieści się w generycznym widoku formularza. Krok jest ukończony, gdy żadna
+uczelnia nie ma ustawionego ``kreator_czeka_na_pbn`` — flagę zapala krok 2
+przy tworzeniu uczelni, a gasi odpowiedź na pytanie o PBN (FD#499).
+
+Trwała flaga, a nie „kreator kończy się przy pierwszym requeście spoza
+/setup/": przeglądarka sama pobiera np. ``/apple-touch-icon.png`` zaraz po
+wyrenderowaniu pytania, co zamykało kreator, zanim admin cokolwiek kliknął.
 """
 
 from __future__ import annotations
@@ -18,7 +23,7 @@ from django.urls import reverse
 from first_run_wizard import SetupStep
 
 from bpp.models import Uczelnia
-from bpp_setup_wizard.forms import UczelniaSetupForm
+from bpp_setup_wizard.forms import PbnSetupForm, UczelniaSetupForm
 
 
 class UczelniaSetupStep(SetupStep):
@@ -43,6 +48,22 @@ class UczelniaSetupStep(SetupStep):
         return form.save(request=request)
 
     def get_success_url(self, request) -> str:
-        # Krok 3 z 3 — integracja z PBN. Leży pod /setup/, więc middleware
-        # kreatora go nie przechwytuje.
+        # Krok 3 z 3 — integracja z PBN.
+        return reverse("bpp_setup_wizard:pbn")
+
+
+class PbnSetupStep(SetupStep):
+    name = "pbn"
+    verbose_name = "Integracja z PBN"
+    order = 200  # after UczelniaSetupStep
+    form_class = PbnSetupForm
+    template_name = "bpp_setup_wizard/pbn_setup.html"
+    requires_superuser = True
+
+    def is_complete(self) -> bool:
+        # Uczelnie utworzone poza kreatorem (admin, dumpy, demo) mają flagę
+        # False, więc ścieżka naprawcza middleware'u nie otworzy im kroku PBN.
+        return not Uczelnia.objects.filter(kreator_czeka_na_pbn=True).exists()
+
+    def get_url(self) -> str:
         return reverse("bpp_setup_wizard:pbn")
