@@ -59,7 +59,11 @@ from .helpers import (
     sprawdz_duplikaty_www_doi,
 )
 from .helpers.constance_field_mixin import ConstanceScoringFieldsMixin
-from .helpers.mixins import OptionalPBNSaveMixin, RestrictDeletionWhenPBNUIDSetMixin
+from .helpers.mixins import (
+    BlokujRekordPrzedZapisemMixin,
+    OptionalPBNSaveMixin,
+    RestrictDeletionWhenPBNUIDSetMixin,
+)
 from .nagroda import NagrodaInline
 
 # Proste tabele
@@ -83,7 +87,9 @@ class Wydawnictwo_Zwarte_StreszczenieInline(
     fields = ["jezyk_streszczenia", "streszczenie"]
 
 
-class Wydawnictwo_ZwarteAdmin_Baza(BaseBppAdminMixin, admin.ModelAdmin):
+class Wydawnictwo_ZwarteAdmin_Baza(
+    BlokujRekordPrzedZapisemMixin, BaseBppAdminMixin, admin.ModelAdmin
+):
     formfield_overrides = {
         **helpers.widgets.NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,
         **COMMA_DECIMAL_FIELD_OVERRIDE,

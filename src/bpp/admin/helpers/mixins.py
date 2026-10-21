@@ -1,4 +1,7 @@
 from django import forms
+from django.contrib.admin.options import TO_FIELD_VAR
+from django.contrib.admin.utils import unquote
+from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.urls import reverse
 
 from bpp.models.system import Status_Korekty
@@ -90,3 +93,51 @@ class RestrictDeletionWhenPBNUIDSetMixin:
             if obj.pbn_uid_id is not None:
                 return False
         return super().has_delete_permission(request, obj)
+
+
+class BlokujRekordPrzedZapisemMixin:
+    """Przy edycji (POST na change view) blokuje wiersz rekordu
+    (``SELECT ... FOR UPDATE``) jako PIERWSZE zapytanie w transakcji admina.
+
+    Po co: zapis rekordu z denormem ``cached_punkty_dyscyplin`` liczy
+    ``pre_save`` PRZED ``UPDATE`` -- czyli najpierw DELETE/INSERT
+    w ``bpp_cache_punktacja_*``, dopiero potem blokada wiersza rodzica.
+    Flush denorm (celery) robi odwrotnie: ``select_for_update(skip_locked)``
+    na rodzicu, potem te same wiersze cache. Odwrotna kolejność blokad
+    = deadlock (ABBA, Rollbar #5363). Blokując rodzica na samym początku
+    ``_changeform_view`` (Django otwiera ``transaction.atomic`` w
+    ``changeform_view`` dla POST-a, więc jesteśmy już w transakcji),
+    obie ścieżki mają kolejność rodzic -> cache: flush albo pominie rekord
+    (``skip_locked``), albo admin poczeka, aż flush skończy.
+
+    Celowo BEZ retry na deadlock -- ma być widoczny, jeśli wróci.
+
+    ``select_for_update`` ustawia ``_for_write``, więc cacheops nie
+    obsługuje tego zapytania z cache (``_should_cache`` -> False).
+    """
+
+    def _zablokuj_rekord_do_edycji(self, request, object_id):
+        to_field = request.POST.get(TO_FIELD_VAR, request.GET.get(TO_FIELD_VAR))
+        opts = self.model._meta
+        try:
+            field = opts.get_field(to_field) if to_field else opts.pk
+        except FieldDoesNotExist:
+            return  # Django sam odrzuci niedozwolony to_field
+        try:
+            value = field.to_python(unquote(object_id))
+        except (ValidationError, ValueError):
+            return  # śmieciowe id -- Django zwróci standardowy redirect/404
+        list(
+            self.model._base_manager.select_for_update(of=("self",))
+            .filter(**{field.name: value})
+            .values_list("pk", flat=True)
+        )
+
+    def _changeform_view(self, request, object_id, form_url, extra_context):
+        if (
+            request.method == "POST"
+            and object_id is not None
+            and "_saveasnew" not in request.POST
+        ):
+            self._zablokuj_rekord_do_edycji(request, object_id)
+        return super()._changeform_view(request, object_id, form_url, extra_context)
