@@ -19,6 +19,9 @@ Do każdego zgłoszenia trafia adres strony, z której je wysłano (pole
 
 Zmienne ustawia się w pliku `.env` (patrz
 [Ustawienia zaawansowane](zaawansowane.md)) lub w środowisku kontenera.
+W instalacjach opartych o [bpp-deploy](https://github.com/iplweb/bpp-deploy)
+jest to plik `${BPP_CONFIGS_DIR}/.env` — trafia on zarówno do appservera, jak
+i do workerów; po zmianie wystarczy `make up`.
 
 | Zmienna | Domyślnie | Znaczenie |
 |---------|-----------|-----------|
@@ -44,6 +47,12 @@ DJANGO_BPP_FRESHDESK_WIDGET_JWT_SECRET=wklej-tu-shared-secret-z-freshdeska
     sekretach deploymentu, nigdy w repozytorium. Sekret nie trafia do HTML-a
     stron — tokeny są generowane po stronie serwera.
 
+    Sekret jest **jeden na całe konto Freshdesk**, a nie na instancję BPP.
+    Ustawienie go na wielu serwerach oznacza, że administrator dowolnego
+    z nich (każdy, kto czyta `.env`) może podszyć się pod użytkownika
+    dowolnej innej instancji. Włączaj JWT tylko na serwerach, nad którymi
+    masz pełną kontrolę.
+
 ## Uwierzytelnianie JWT użytkowników zalogowanych
 
 Gdy ustawiono `DJANGO_BPP_FRESHDESK_WIDGET_JWT_SECRET`, zalogowany użytkownik
@@ -62,6 +71,9 @@ settings** (w Freshdesk Omni: **Admin → Data and Security → Ticket Security*
 
 Uwagi:
 
+- Token poświadcza adres e-mail **zapisany w koncie BPP**. BPP nie weryfikuje
+  tego adresu (wpisuje go administrator albo import), więc „uwierzytelniony"
+  oznacza „zalogowany do BPP z takim adresem w profilu".
 - Użytkownik BPP **bez adresu e-mail** nie może być uwierzytelniony (Freshdesk
   wymaga e-maila w tokenie) — widget otworzy się bez uwierzytelnienia.
 - Po włączeniu JWT można w ustawieniach widgetu dla zalogowanych ograniczyć
@@ -74,4 +86,6 @@ Anonimowy widget jest osobnym widgetem w Freshdesku (inne ID). Włącz w nim
 captchę i ewentualnie ogranicz pola formularza — po stronie BPP nie jest
 potrzebna żadna dodatkowa konfiguracja poza `DJANGO_BPP_FRESHDESK_WIDGET_ID_ANON`.
 Zakładka dla anonimów pojawia się na stronach publicznych oraz na stronie
-logowania do modułu redagowania.
+logowania do modułu redagowania. Przy pustej zmiennej (domyślnie) anonimowi
+nie widzą zakładki „Pomoc" — tak jak w wersjach sprzed wprowadzenia
+osobnych widgetów.
