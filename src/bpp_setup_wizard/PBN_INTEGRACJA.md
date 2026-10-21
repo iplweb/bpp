@@ -44,7 +44,9 @@ Podstawowe kroki:
 
 ### 4. Konfiguracja w BPP
 
-Po uzyskaniu danych z PBN, wprowadź je podczas konfiguracji uczelni:
+Po uzyskaniu danych z PBN wprowadź je w kroku 3 kreatora pierwszego
+uruchomienia („Integracja z PBN" → „Tak, mam oba"). Jeśli krok został
+pominięty, dane wpiszesz później w panelu **Administracja → Uczelnia**:
 
 - **Środowisko PBN:** Wybierz testowe lub produkcyjne
 - **Nazwa aplikacji w PBN:** Wprowadź otrzymany identyfikator
