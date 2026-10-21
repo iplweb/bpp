@@ -14,6 +14,7 @@ DISTINCT neutralizuje duplikaty z joinu, a właściwy rozkład liczymy w Pythoni
 """
 
 from collections import Counter
+from decimal import Decimal
 
 from django.db.models import Q, Sum
 
@@ -25,6 +26,7 @@ from bpp.profil_autora import (
     KLUCZ_NAJNOWSZE_ARTYKULY,
     KLUCZ_NAJNOWSZE_ZWARTE,
     KLUCZ_OSTATNIO_EDYTOWANE,
+    KLUCZ_PODSUMOWANIE,
     KLUCZ_PUNKTY_LATA,
     KLUCZ_STATYSTYKI_CHARAKTER,
     KLUCZ_WSPOLAUTORZY,
@@ -129,6 +131,32 @@ def _wybrane_publikacje(autor, limit, request):
     )
     prace = [w.publikacja for w in wybrane if w.publikacja is not None]
     return {"prace": prace} if prace else None
+
+
+def _podsumowanie(autor, limit, request):
+    # Liczba prac + łączny IF i punkty MNiSW. DISTINCT z ``id`` neutralizuje
+    # duplikaty z joinu ``autorzy`` (por. docstring modułu); sumujemy w Pythonie.
+    wiersze = (
+        _prace(autor).values_list("id", "rok", "impact_factor", "punkty_kbn").distinct()
+    )
+    liczba = 0
+    impact_factor = punkty_kbn = Decimal(0)
+    lata = []
+    for _id, rok, if_, pk in wiersze:
+        liczba += 1
+        impact_factor += if_ or 0
+        punkty_kbn += pk or 0
+        if rok is not None:
+            lata.append(rok)
+    if not liczba:
+        return None
+    return {
+        "liczba": liczba,
+        "impact_factor": impact_factor,
+        "punkty_kbn": punkty_kbn,
+        "rok_od": min(lata, default=None),
+        "rok_do": max(lata, default=None),
+    }
 
 
 def _statystyki_charakter(autor, limit, request):
@@ -236,6 +264,7 @@ def _wspolautorzy(autor, limit, request):
 
 
 _BUILDERY = {
+    KLUCZ_PODSUMOWANIE: _podsumowanie,
     KLUCZ_NAJLEPSZE_PK: _najlepsze_pk,
     KLUCZ_NAJLEPSZE_IF: _najlepsze_if,
     KLUCZ_NAJNOWSZE_ARTYKULY: _najnowsze_artykuly,

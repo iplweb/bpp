@@ -19,6 +19,7 @@ from ..models import (  # Publikacja_Habilitacyjna
     Jednostka,
     WybranaPublikacjaAutora,
 )
+from ..util.identyfikatory import IdentyfikatoryProfiliFormMixin
 from ..util.obrazy import MAKS_ROZMIAR_PLIKU_ZDJECIA, przetworz_zdjecie_autora
 from .actions import ustaw_pokazuj_false, ustaw_pokazuj_true
 from .core import BaseBppAdminMixin
@@ -206,7 +207,7 @@ class Autor_JednostkaInline(admin.TabularInline):
 # Autorzy
 
 
-class AutorForm(forms.ModelForm):
+class AutorForm(IdentyfikatoryProfiliFormMixin, forms.ModelForm):
     pbn_uid = forms.ModelChoiceField(
         label="Odpowiednik w PBN",
         required=False,
@@ -245,6 +246,10 @@ class AutorForm(forms.ModelForm):
             "expertus_id",
             "system_kadrowy_id",
             "pbn_uid",
+            "wos_researcherid",
+            "scopus_author_id",
+            "google_scholar_id",
+            "url_profilu_uczelni",
             "adnotacje",
         ]
         widgets = {"imiona": CHARMAP_SINGLE_LINE, "nazwisko": CHARMAP_SINGLE_LINE}
@@ -436,6 +441,18 @@ class AutorAdmin(
                     "zmarl",
                     "poprzednie_nazwiska",
                     "pokazuj_poprzednie_nazwiska",
+                ),
+            },
+        ),
+        (
+            "Profile w serwisach zewnętrznych",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "wos_researcherid",
+                    "scopus_author_id",
+                    "google_scholar_id",
+                    "url_profilu_uczelni",
                 ),
             },
         ),

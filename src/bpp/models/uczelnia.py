@@ -400,6 +400,16 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         '{"klucz", "kolumna", "widoczna", "limit"}. Puste = układ domyślny.',
     )
 
+    etykieta_profilu_uczelni = models.CharField(
+        "Etykieta linku do profilu w portalu uczelni",
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Nazwa pokazywana przy linku z pola „Adres profilu "
+        "w portalu uczelni” autora, np. „PPM UML”. Puste = „Profil "
+        "w portalu uczelni”.",
+    )
+
     szerokosc_lewej_kolumny = models.SmallIntegerField(
         "Szerokość lewej kolumny profilu autora",
         choices=((4, "4 / 12"), (6, "6 / 12 (po połowie)"), (8, "8 / 12")),

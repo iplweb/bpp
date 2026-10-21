@@ -30,6 +30,14 @@ from bpp.models import LinkDoPBNMixin, ModelZAdnotacjami, ModelZNazwa, NazwaISkr
 from bpp.models.abstract import ModelZPBN_ID
 from bpp.util import FulltextSearchMixin, zaloguj_polkniety_wyjatek
 from bpp.util.biogram import FORMAT_MARKDOWN, FORMATY_BIOGRAMU
+from bpp.util.identyfikatory import (
+    GOOGLE_SCHOLAR_URL,
+    SCOPUS_URL,
+    WOS_URL,
+    google_scholar_id_validator,
+    scopus_author_id_validator,
+    wos_researcherid_validator,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -295,6 +303,41 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
         "pbn_api.Scientist", null=True, blank=True, on_delete=SET_NULL
     )
 
+    # Profile w zewnętrznych serwisach — przechowujemy identyfikatory, linki
+    # budują właściwości ``*_url`` (por. ``bpp.util.identyfikatory``).
+    wos_researcherid = models.CharField(
+        "Web of Science ResearcherID",
+        max_length=20,
+        blank=True,
+        default="",
+        validators=[wos_researcherid_validator],
+        help_text="Np. A-1234-2008. Można wkleić cały adres profilu w WoS.",
+    )
+    scopus_author_id = models.CharField(
+        "Scopus Author ID",
+        max_length=20,
+        blank=True,
+        default="",
+        validators=[scopus_author_id_validator],
+        help_text="Np. 7004212771. Można wkleić cały adres profilu w Scopus.",
+    )
+    google_scholar_id = models.CharField(
+        "Identyfikator Google Scholar",
+        max_length=12,
+        blank=True,
+        default="",
+        validators=[google_scholar_id_validator],
+        help_text="Np. qc6CJjYAAAAJ. Można wkleić cały adres profilu w Google Scholar.",
+    )
+    url_profilu_uczelni = models.URLField(
+        "Adres profilu w portalu uczelni",
+        max_length=1024,
+        blank=True,
+        default="",
+        help_text="Pełny adres profilu w uczelnianym portalu (np. PPM). "
+        "Etykietę linku ustawia się w konfiguracji uczelni.",
+    )
+
     search = VectorField()
 
     objects = AutorManager()
@@ -307,6 +350,20 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
 
     def get_absolute_url(self):
         return reverse("bpp:browse_autor", args=(self.slug,))
+
+    @property
+    def wos_url(self):
+        return WOS_URL.format(self.wos_researcherid) if self.wos_researcherid else ""
+
+    @property
+    def scopus_url(self):
+        return SCOPUS_URL.format(self.scopus_author_id) if self.scopus_author_id else ""
+
+    @property
+    def google_scholar_url(self):
+        if not self.google_scholar_id:
+            return ""
+        return GOOGLE_SCHOLAR_URL.format(self.google_scholar_id)
 
     @cached_property
     def biogram_html(self):

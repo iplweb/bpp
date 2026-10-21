@@ -38,6 +38,52 @@
                 </div>
             </div>
         {% endif %}
+        {% if autor.wos_researcherid %}
+            <div class="cell shrink">
+                <div class="callout autor-page__id-card">
+                    <div class="autor-page__id-label">Web of Science</div>
+                    <a href="{{ autor.wos_url }}"
+                       target="_blank"
+                       rel="noopener"
+                       class="autor-page__id-link">{{ autor.wos_researcherid }}</a>
+                </div>
+            </div>
+        {% endif %}
+        {% if autor.scopus_author_id %}
+            <div class="cell shrink">
+                <div class="callout autor-page__id-card">
+                    <div class="autor-page__id-label">Scopus</div>
+                    <a href="{{ autor.scopus_url }}"
+                       target="_blank"
+                       rel="noopener"
+                       class="autor-page__id-link">{{ autor.scopus_author_id }}</a>
+                </div>
+            </div>
+        {% endif %}
+        {% if autor.google_scholar_id %}
+            <div class="cell shrink">
+                <div class="callout autor-page__id-card">
+                    <div class="autor-page__id-label">Google Scholar</div>
+                    <a href="{{ autor.google_scholar_url }}"
+                       target="_blank"
+                       rel="noopener"
+                       class="autor-page__id-link">Profil <span class="fi-arrow-right"></span></a>
+                </div>
+            </div>
+        {% endif %}
+        {% if autor.url_profilu_uczelni %}
+            <div class="cell shrink">
+                <div class="callout autor-page__id-card">
+                    <div class="autor-page__id-label">
+                        {{ uczelnia.etykieta_profilu_uczelni|default:"Profil w portalu uczelni" }}
+                    </div>
+                    <a href="{{ autor.url_profilu_uczelni }}"
+                       target="_blank"
+                       rel="noopener"
+                       class="autor-page__id-link">Profil <span class="fi-arrow-right"></span></a>
+                </div>
+            </div>
+        {% endif %}
         {% if autor.pbn_id %}
             <div class="cell shrink">
                 <div class="callout autor-page__id-card">

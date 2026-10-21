@@ -54,6 +54,7 @@ KLUCZ_EKSPORT = "eksport"
 
 # --- Klucze sekcji: PRAWA kolumna (statystyki / wykresy / listy) ------------
 
+KLUCZ_PODSUMOWANIE = "podsumowanie"
 KLUCZ_STATYSTYKI_CHARAKTER = "statystyki_charakter"
 KLUCZ_WYKRES_LATA = "wykres_lata"
 KLUCZ_WYKRES_PK_LATA = "wykres_pk_lata"
@@ -137,6 +138,7 @@ KATALOG_SEKCJI = (
     TypSekcji(KLUCZ_RAPORT, "Raport autora", KOLUMNA_LEWA, template_only=True),
     TypSekcji(KLUCZ_EKSPORT, "Eksport publikacji", KOLUMNA_LEWA, template_only=True),
     # --- PRAWA kolumna (data-driven: builder w profil_autora_dane) ---
+    TypSekcji(KLUCZ_PODSUMOWANIE, "Podsumowanie dorobku", KOLUMNA_PRAWA),
     TypSekcji(KLUCZ_STATYSTYKI_CHARAKTER, "Statystyki wg charakteru", KOLUMNA_PRAWA),
     TypSekcji(KLUCZ_WYKRES_LATA, "Publikacje w latach", KOLUMNA_PRAWA),
     TypSekcji(KLUCZ_WYKRES_PK_LATA, "Punkty MNiSW w latach", KOLUMNA_PRAWA),
@@ -264,26 +266,45 @@ def waliduj_uklad(dane):
     return wynik
 
 
+def _doklej_brakujace(zapisany):
+    """Uzupełnij zapisany układ o sekcje katalogu, których w nim nie ma.
+
+    Brakująca sekcja trafia ZA swojego najbliższego poprzednika z katalogu
+    (z tej samej domyślnej kolumny), który jest już w układzie; gdy takiego
+    nie ma — na początek. Dzięki temu nowa sekcja dodana na górze kolumny
+    (np. podsumowanie dorobku) nie ląduje na samym dole stron uczelni, które
+    zapisały układ wcześniej. Kolejność pozycji w JEDNEJ kolumnie to kolejność
+    na liście, więc wstawienie w liście całego układu wystarcza.
+    """
+    domyslne_wg_klucza = {p["klucz"]: p for p in domyslny_uklad()}
+    pozycje = list(zapisany)
+    klucze = [p["klucz"] for p in pozycje]
+    poprzednik_w_kolumnie = {}
+    for typ in KATALOG_SEKCJI:
+        if typ.klucz not in klucze:
+            poprzednik = poprzednik_w_kolumnie.get(typ.kolumna)
+            idx = klucze.index(poprzednik) + 1 if poprzednik in klucze else 0
+            pozycje.insert(idx, domyslne_wg_klucza[typ.klucz])
+            klucze.insert(idx, typ.klucz)
+        poprzednik_w_kolumnie[typ.kolumna] = typ.klucz
+    return pozycje
+
+
 def rozwiaz_uklad(uczelnia):
     """Zwróć WIDOCZNE sekcje obu kolumn w docelowej kolejności.
 
     Czyta globalny układ z ``uczelnia.uklad_profilu_autora`` (``uczelnia`` może
     być ``None`` — wtedy używany jest układ domyślny). Sekcje nieobecne w
-    zapisanej konfiguracji dokleja na końcu — w ich DOMYŚLNEJ kolumnie — z
-    domyślnymi ustawieniami (forward-compat dla nowo dodanych typów sekcji).
+    zapisanej konfiguracji dokleja ``_doklej_brakujace`` — w ich DOMYŚLNEJ
+    kolumnie, z domyślnymi ustawieniami (forward-compat dla nowo dodanych
+    typów sekcji).
 
     Zwraca ``dict`` ``{"lewa": [...], "prawa": [...]}``; każda wartość to lista
     pozycji ``{klucz, nazwa, template, kolumna, limit, template_only}`` w
     kolejności renderowania.
     """
     zapisany = waliduj_uklad(getattr(uczelnia, "uklad_profilu_autora", None))
-    klucze_zapisane = {p["klucz"] for p in zapisany}
-
-    domyslne_wg_klucza = {p["klucz"]: p for p in domyslny_uklad()}
-    pozycje = list(zapisany)
-    for typ in KATALOG_SEKCJI:
-        if typ.klucz not in klucze_zapisane:
-            pozycje.append(domyslne_wg_klucza[typ.klucz])
+    pozycje = _doklej_brakujace(zapisany)
 
     wynik = {KOLUMNA_LEWA: [], KOLUMNA_PRAWA: []}
     for pozycja in pozycje:

@@ -93,11 +93,18 @@ Edytor działa następująco:
     wbudowany zestaw sekcji. Nie trzeba niczego konfigurować, jeśli domyślny
     układ jest wystarczający.
 
-Wśród dostępnych sekcji prawej kolumny znajdują się m.in.: statystyki wg
+Wśród dostępnych sekcji prawej kolumny znajdują się m.in.: podsumowanie
+dorobku (liczba publikacji, łączny Impact Factor, łączne punkty MNiSW),
+statystyki wg
 charakteru formalnego, wykresy roczne (liczba publikacji / suma punktów MNiSW /
 suma Impact Factor), najczęstsi współautorzy, najlepsze prace (wg punktacji
 oraz wg Impact Factor), najnowsze artykuły, najnowsze książki i rozdziały,
 ostatnio edytowane rekordy, dyscypliny, źródła oraz wyróżnione publikacje.
+
+W tej samej sekcji ustawisz **etykietę linku do profilu w portalu uczelni**
+(np. „PPM UML"). Pokazuje się ona przy linku z pola „Adres profilu w portalu
+uczelni" w rekordzie autora; gdy jest pusta, link opisany jest jako „Profil
+w portalu uczelni".
 
 !!! note "Zrzut ekranu"
     W tym miejscu można w przyszłości umieścić zrzut ekranu kafelkowego

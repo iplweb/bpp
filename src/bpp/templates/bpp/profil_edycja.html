@@ -14,7 +14,8 @@
     <div class="medium-10 medium-centered columns">
         <h2><span class="fi-pencil"></span> Edytuj swój profil</h2>
         <p class="lead">
-            Możesz zmienić swoje zdjęcie oraz biogram pokazywany na
+            Możesz zmienić swoje zdjęcie, biogram oraz linki do profili
+            w innych serwisach pokazywane na
             <a href="{% url 'bpp:browse_autor' object.pk %}">Twojej podstronie autora</a>.
         </p>
 
@@ -54,6 +55,22 @@
                              class="autor-page__biogram-tresc callout"></div>
                     </div>
                 </div>
+            </fieldset>
+
+            <fieldset class="fieldset">
+                <legend><span class="fi-link"></span> Profile w innych serwisach</legend>
+                <p class="help-text">
+                    Możesz wkleić cały adres swojego profilu — identyfikator
+                    zostanie z niego wyciągnięty automatycznie.
+                </p>
+                {% for pole in form %}
+                    {% if pole.name in pola_profili %}
+                        <label for="{{ pole.id_for_label }}">{{ pole.label }}</label>
+                        {{ pole }}
+                        <p class="help-text">{{ pole.help_text }}</p>
+                        {{ pole.errors }}
+                    {% endif %}
+                {% endfor %}
             </fieldset>
 
             <button type="submit" class="button primary large">

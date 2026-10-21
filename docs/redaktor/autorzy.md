@@ -40,15 +40,21 @@ bez pośrednictwa redaktora. Edycji podlegają:
 - **biogram** — wpisywany w języku Markdown lub w HTML, z **podglądem na żywo**
   (zmiany widać od razu obok pola edycji),
 - **zdjęcie** — wgrane zdjęcie jest automatycznie kadrowane do kwadratu
-  i skalowane, zapisywane w formacie WebP; maksymalny rozmiar pliku to 5 MB.
+  i skalowane, zapisywane w formacie WebP; maksymalny rozmiar pliku to 5 MB,
+- **profile w innych serwisach** — identyfikatory Web of Science
+  (ResearcherID), Scopus (Author ID) i Google Scholar oraz adres profilu
+  w portalu uczelni (np. PPM). W polach identyfikatorów można wkleić **cały
+  adres profilu** skopiowany z przeglądarki — system sam wyciągnie z niego
+  identyfikator i sprawdzi jego format.
 
 Wejście do edycji: na górnej belce wybierz **„Mój profil"**, a następnie
 **„Edytuj swoją stronę"** (adres `/bpp/profil/edycja/`).
 
 !!! note
-    Te same pola (zdjęcie i biogram) redaktor może ustawić w module
-    redagowania, w rekordzie autora — przydatne, gdy autor nie edytuje
-    swoich danych samodzielnie.
+    Te same pola redaktor może ustawić w module redagowania, w rekordzie
+    autora (zdjęcie i biogram — sekcja „Profil na podstronie autora",
+    identyfikatory — sekcja „Profile w serwisach zewnętrznych") — przydatne,
+    gdy autor nie edytuje swoich danych samodzielnie.
 
 ## Wyróżnione publikacje autora
 
@@ -68,4 +74,3 @@ Listę wyróżnionych prac edytuje się na stronie
 !!! note
     Wyszukiwarka podpowiada **wyłącznie własne prace autora** — autor może
     wyróżnić tylko publikacje, z którymi jest powiązany.
-

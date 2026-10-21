@@ -95,7 +95,9 @@ danych):
   w których autor pracował, wraz z okresami i pełnioną funkcją.
 - **Dyscypliny naukowe** przypisane autorowi.
 - **Identyfikatory zewnętrzne** — m.in. ORCID, PBN UID/ID, odnośnik
-  „Naukowiec z POL-on" oraz wewnętrzny identyfikator BPP.
+  „Naukowiec z POL-on", linki do profili w Web of Science, Scopus i Google
+  Scholar, link do profilu w portalu uczelni (np. PPM) oraz wewnętrzny
+  identyfikator BPP.
 - **Metryki ewaluacyjne**, **stopnie naukowe** (doktorat, habilitacja)
   oraz **liczba cytowań** (o ile uczelnia pobiera takie dane).
 - Formularz **„Wyszukaj publikacje autora"** — szybkie zawężenie listy prac
@@ -110,6 +112,8 @@ są widoczne i w jakiej kolejności**, ustala uczelnia (patrz
 [instrukcja administratora — układ podstrony autora](../administrator/ogolna.md#układ-podstrony-autora-profil-autora)).
 Do dyspozycji są m.in.:
 
+- **podsumowanie dorobku** — łączna liczba publikacji (z zakresem lat),
+  łączny Impact Factor oraz łączna suma punktów MNiSW,
 - **statystyki wg charakteru formalnego** (np. ile artykułów, ile rozdziałów),
 - **wykresy roczne** — liczba publikacji, suma punktów MNiSW oraz suma
   Impact Factor; domyślnie obejmują ostatnie 10 lat,

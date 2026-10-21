@@ -1,0 +1,1 @@
+Strona autora: nowa sekcja „Podsumowanie dorobku" (liczba publikacji, łączny Impact Factor, łączne punkty MNiSW) oraz linki do profili autora w Web of Science, Scopus, Google Scholar i w portalu uczelni (np. PPM) — z etykietą linku ustawianą per uczelnia. Identyfikatory może uzupełnić redaktor albo sam autor w „Mój profil", wklejając po prostu adres swojego profilu.

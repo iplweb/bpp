@@ -1,7 +1,9 @@
-"""Self-service edycja profilu autora (Faza 2, §3.8): biogram + zdjęcie.
+"""Self-service edycja profilu autora (Faza 2, §3.8): biogram, zdjęcie
+i linki do profili w serwisach zewnętrznych.
 
 Zalogowany użytkownik powiązany z rekordem ``Autor`` edytuje TYLKO własny
-biogram (Markdown/HTML + podgląd na żywo) oraz zdjęcie. Układ podstrony jest
+biogram (Markdown/HTML + podgląd na żywo), zdjęcie oraz identyfikatory
+profili WoS / Scopus / Google Scholar i adres profilu w portalu uczelni. Układ podstrony jest
 globalny per-Uczelnia i tu niedostępny (zarządza nim administrator).
 """
 
@@ -16,13 +18,26 @@ from django.views.generic import UpdateView, View
 
 from bpp.models import Autor
 from bpp.util.biogram import renderuj_biogram
+from bpp.util.identyfikatory import IdentyfikatoryProfiliFormMixin
 from bpp.util.obrazy import MAKS_ROZMIAR_PLIKU_ZDJECIA, przetworz_zdjecie_autora
 
+POLA_PROFILI_ZEWNETRZNYCH = (
+    "wos_researcherid",
+    "scopus_author_id",
+    "google_scholar_id",
+    "url_profilu_uczelni",
+)
 
-class AutorProfilForm(forms.ModelForm):
+
+class AutorProfilForm(IdentyfikatoryProfiliFormMixin, forms.ModelForm):
     class Meta:
         model = Autor
-        fields = ["zdjecie", "biogram", "biogram_format"]
+        fields = [
+            "zdjecie",
+            "biogram",
+            "biogram_format",
+            *POLA_PROFILI_ZEWNETRZNYCH,
+        ]
 
     def clean_zdjecie(self):
         """Waliduj rozmiar i przeskaluj świeżo wgrane zdjęcie (kwadrat WebP).
@@ -65,6 +80,11 @@ class ProfilEdycjaView(WymagajAutoraMixin, UpdateView):
 
     def get_object(self, queryset=None):
         return self.request.user.autor
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["pola_profili"] = POLA_PROFILI_ZEWNETRZNYCH
+        return context
 
     def form_valid(self, form):
         messages.success(self.request, "Zapisano zmiany w profilu.")

@@ -282,7 +282,11 @@ class UczelniaAdmin(
                     "dla list ustaw limit pozycji. Szerokość lewej kolumny "
                     "(prawa dopełnia do 12) ustawisz osobnym polem."
                 ),
-                "fields": ("szerokosc_lewej_kolumny", "uklad_profilu_autora"),
+                "fields": (
+                    "szerokosc_lewej_kolumny",
+                    "uklad_profilu_autora",
+                    "etykieta_profilu_uczelni",
+                ),
             },
         ),
         (
