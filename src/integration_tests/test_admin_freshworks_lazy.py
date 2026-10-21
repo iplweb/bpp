@@ -25,6 +25,7 @@ from integration_tests._freshworks_daphne_setup import (
     setup_freshworks_daphne,
     setup_freshworks_daphne_anon,
     setup_freshworks_daphne_jwt,
+    setup_freshworks_daphne_jwt_anon,
 )
 
 ADMIN_URL = "/admin/bpp/zrodlo/"
@@ -68,6 +69,12 @@ def freshworks_live_server(transactional_db):
 def freshworks_jwt_live_server(transactional_db):
     """Jak wyżej, plus ustawiony sekret JWT widgetu."""
     yield from _live_server(setup_freshworks_daphne_jwt)
+
+
+@pytest.fixture
+def freshworks_jwt_anon_live_server(transactional_db):
+    """Sekret JWT plus widget anonimowy (fallback, gdy brak tokenu)."""
+    yield from _live_server(setup_freshworks_daphne_jwt_anon)
 
 
 @pytest.fixture
@@ -383,6 +390,29 @@ def test_freshworks_widget_jwt_bez_tokenu_odsyla_do_supportu(
     assert requests == []
     queued = admin_page.evaluate("() => window.FreshworksWidget.q.map(a => a[0])")
     assert queued == ["hide", "prefill"]
+
+
+def test_freshworks_widget_jwt_bez_tokenu_laduje_widget_anonimowy(
+    freshworks_jwt_anon_live_server, admin_page: Page
+):
+    # Bez e-maila nie ma tokenu, ale skonfigurowano widget anonimowy —
+    # ładuje się on (z captchą po stronie Freshdeska) zamiast supportu.
+    user = admin_page.authorized_user
+    user.email = ""
+    user.save(update_fields=["email"])
+
+    requests = _track_freshworks(admin_page)
+    _open(admin_page, freshworks_jwt_anon_live_server)
+
+    admin_page.locator("#bppSupportButton").click()
+    admin_page.wait_for_function("() => (window.__fwCalls || []).length >= 3")
+
+    assert len(requests) == 1
+    assert requests[0].endswith(f"/widgets/{WIDGET_ID_ANON}.js")
+    assert admin_page.evaluate("() => window.fwSettings.widget_id") == int(
+        WIDGET_ID_ANON
+    )
+    assert [c[0] for c in _calls(admin_page)] == ["hide", "prefill", "open"]
 
 
 def test_anonim_dostaje_osobny_widget_bez_identify(

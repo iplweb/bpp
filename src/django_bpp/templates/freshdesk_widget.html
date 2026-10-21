@@ -25,6 +25,10 @@
             {% endif %}
             {% if FRESHDESK_WIDGET.jwt %}
             data-token-url="{% url 'freshdesk_widget_token' %}"
+            {% endif %}
+            {% if FRESHDESK_WIDGET.anon_widget_id %}
+            data-anon-widget-id="{{ FRESHDESK_WIDGET.anon_widget_id }}"
+            data-anon-widget-src="{{ FRESHDESK_WIDGET.anon_script_url }}"
             {% endif %}>
         <span class="support-text">Pomoc</span>
     </button>

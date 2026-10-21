@@ -22,8 +22,10 @@
 // - Zalogowany uzytkownik przy wlaczonym JWT (data-token-url) jest
 //   uwierzytelniany przez FreshworksWidget("authenticate") tokenem z serwera;
 //   token odnawia callback widgetu. Skrypt widgetu laduje sie dopiero PO
-//   tokenie; brak tokenu (brak e-maila w koncie, blad sieci) = stan bledu,
-//   czyli przejscie do support.iplweb.pl - nigdy niepodpisany formularz.
+//   tokenie; brak tokenu (brak e-maila w koncie, blad sieci) = widget
+//   anonimowy (data-anon-widget-*, z captcha), a gdy go nie skonfigurowano -
+//   stan bledu, czyli support.iplweb.pl. Nigdy niepodpisany formularz
+//   w widgecie dla zalogowanych.
 //   Bez JWT - tylko "identify" (imie i e-mail wpisane w formularz).
 //   Anonim (brak data-user-*) - ani jedno, ani drugie.
 (function () {
@@ -176,9 +178,22 @@
             });
             if (button.dataset.tokenUrl) {
                 authReady = fetchToken().then(function (token) {
+                    if (!token && button.dataset.anonWidgetSrc) {
+                        // Widget dla zalogowanych wymaga podpisanych danych -
+                        // bez tokenu ladujemy zamiast niego widget anonimowy.
+                        // fwSettings skrypt czyta dopiero przy ladowaniu.
+                        window.fwSettings.widget_id = Number(
+                            button.dataset.anonWidgetId
+                        );
+                        button.dataset.widgetSrc =
+                            button.dataset.anonWidgetSrc;
+                        identify();
+                        injectScript();
+                        return true;
+                    }
                     if (!token) {
-                        // Widget wymaga podpisanych danych - bez tokenu
-                        // nie ladujemy go wcale, tylko odsylamy do supportu.
+                        // Nie ma ani tokenu, ani widgetu anonimowego -
+                        // odsylamy do supportu.
                         var wasOpening = widgetOpen;
                         setError(
                             "Nie udało się potwierdzić Twojej tożsamości "

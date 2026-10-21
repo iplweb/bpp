@@ -49,3 +49,12 @@ def setup_freshworks_daphne_anon():
     from django.conf import settings
 
     settings.FRESHDESK_WIDGET_ID_ANON = WIDGET_ID_ANON
+
+
+def setup_freshworks_daphne_jwt_anon():
+    """JWT dla zalogowanych plus widget anonimowy (fallback bez tokenu)."""
+    setup_freshworks_daphne_jwt()
+
+    from django.conf import settings
+
+    settings.FRESHDESK_WIDGET_ID_ANON = WIDGET_ID_ANON

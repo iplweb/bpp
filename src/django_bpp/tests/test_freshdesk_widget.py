@@ -75,6 +75,24 @@ def test_context_processor_zalogowany_bez_sekretu_bez_jwt(rf, user_z_emailem):
     cfg = freshdesk_widget(_request(rf, user_z_emailem))["FRESHDESK_WIDGET"]
     assert cfg["widget_id"] == WIDGET_ID
     assert cfg["jwt"] is False
+    # Bez JWT nie ma fallbacku na widget anonimowy.
+    assert cfg["anon_widget_id"] is None
+
+
+@pytest.mark.django_db
+@override_settings(**FRESHDESK)
+def test_context_processor_zalogowany_z_jwt_dostaje_fallback_anon(rf, user_z_emailem):
+    cfg = freshdesk_widget(_request(rf, user_z_emailem))["FRESHDESK_WIDGET"]
+    assert cfg["anon_widget_id"] == WIDGET_ID_ANON
+    assert cfg["anon_script_url"].endswith(f"/widgets/{WIDGET_ID_ANON}.js")
+
+
+@pytest.mark.django_db
+@override_settings(**{**FRESHDESK, "FRESHDESK_WIDGET_ID_ANON": ""})
+def test_context_processor_zalogowany_z_jwt_bez_anon_brak_fallbacku(rf, user_z_emailem):
+    cfg = freshdesk_widget(_request(rf, user_z_emailem))["FRESHDESK_WIDGET"]
+    assert cfg["anon_widget_id"] is None
+    assert cfg["anon_script_url"] is None
 
 
 @pytest.mark.django_db
