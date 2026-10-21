@@ -1,0 +1,19 @@
+{# Strona /mcp/, gdy administrator odznaczył Uczelnia.mcp_wlaczone. #}
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block extratitle %}
+    {% trans "Bibliografia w Twoim asystencie AI" %}
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="large-12 columns">
+    <h1>{% trans "Bibliografia w Twoim asystencie AI" %}</h1>
+
+    <p>
+      {% trans "Serwer MCP jest wyłączony dla tej uczelni." %}
+    </p>
+  </div>
+</div>
+{% endblock %}

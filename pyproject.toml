@@ -1,6 +1,6 @@
 [project]
 name = "bpp_iplweb"
-version = "202608.1401"
+version = "202609.1402"
 description = ""
 authors = [
     { name = "Michał Pasternak", email = "michal.dtz@gmail.com" }
@@ -33,13 +33,13 @@ dependencies = [
     "Django>=5.2.17,<5.3",
     # Reużywalne pakiety PBN wydzielone na PyPI (github.com/iplweb/*).
     "django-pbn-client>=0.2,<0.3",
-    "pbn-client>=0.2.2,<0.3",
+    "pbn-client>=0.2.3,<0.3",
     "django-polish-inflection>=0.1.1,<0.2",
     "django-axes>=7.0,<9",
     "arrow>=1.3,<2",
     "numpy>=2.4.6",
     "pygad>=3.7.0",
-    "django-denorm-iplweb>=1.14.0",
+    "django-denorm-iplweb>=1.15.0",
     "django-tabular-permissions==2.9.3",
     "simplejson>=4.1.2,<5",
     "django-reversion>=6.3.0,<7",
@@ -84,6 +84,15 @@ dependencies = [
     "Pillow>=12.2,<14",
     "django-grappelli>=5.0.0,<6",
     "django-multiseek==0.10.3",
+    # Narzędzia MCP + szwy do hostowania ich w naszym procesie (spec §2.2).
+    # Ciągnie mcp>=2,<3, starlette i httpx — patrz spec §9.
+    # 0.4.1: BppError dziedziczy po ToolError — inaczej mcp>=2.1 ukrywa treść
+    # błędu przed modelem i loguje traceback przy każdym 404.
+    # 0.4.2: narzędzia mają readOnlyHint — bez tego ChatGPT każe potwierdzać
+    # każde wywołanie.
+    # 0.4.3: publikacje_* zwracają typ + pk (z rekord_url w recent_*), a anonim
+    # bez tokenu dostaje „wymaga zalogowania" zamiast „wygasły token".
+    "bpp-mcp>=0.4.3,<0.5",
     "django-braces>=1.15.0",
     "django-loginas==0.3.14",
     "django-webmaster-verification==0.4.3",
@@ -120,7 +129,9 @@ dependencies = [
     "django-celery-email>=3.0.0",
     "django-easy-audit>=1.3.9,<2",
     "crossrefapi>=1.7.0",
-    "urllib3>=2.7.0,<3.0.0",
+    # 2.8.0 zamyka PYSEC-2026-4175/4176/4177 (wszystkie z fixem, wiec
+    # `pip-audit --gate on fixable` na nich pada).
+    "urllib3>=2.8.0,<3.0.0",
     "pandas>=3.0.5",
     "django-tinymce>=5.0.0",
     "crispy-bootstrap5>=2026.9",
@@ -130,12 +141,15 @@ dependencies = [
     "django-soft-delete>=1.0.23",
     "tqdm>=4.70.0",
     "xhtml2pdf>=0.2.18",
-    "isbnlib>=3.10.14",
+    # isbnlib2 = utrzymywany fork isbnlib (ten sam modul `isbnlib`, bez
+    # `pkg_resources`). Ciagnie go idutils (FD#480) - trzymanie obu
+    # dystrybucji naraz znaczy dwie paczki piszace do jednego katalogu.
+    "isbnlib2>=3.11.24",
     "chardet>=7.6.0",
     "python-dateutil>=2.9.0.post0",
     "thefuzz>=0.22.1",
     "celery-singleton>=0.3.1",
-    "rollbar>=1.4.0",
+    "rollbar>=1.5.0",
     "django-prometheus>=2.5.0",
     "ortools>=9.15.6755",
     "psycopg2-binary>=2.9.12", # ZOSTAW psycopg2 dla django-denorm
@@ -151,7 +165,10 @@ dependencies = [
     # fixable, wiec `pip-audit --gate on fixable` na nich pada); 0.5.4 wnosil
     # wczesniejszy fix DoS w format_list_of_tuples.
     "sqlparse>=0.6.0",
-    "django-channels-broadcast>=0.3.0",
+    # 0.3.1 naprawia force_sync: nie łata już asyncio globalnie przez
+    # nest_asyncio (łatka była nieodwracalna dla procesu i zatruwała kolejne
+    # testy w workerze xdista — zakleszczenia i RuntimeError z asyncio.run).
+    "django-channels-broadcast>=0.3.1",
     "django-countdown>=0.4.0",
     "django-formdefaults>=0.6.3",
     # django-pg-baseline: zewnetrzny pakiet zarzadzajacy baseline.sql + monkey-patch
@@ -177,6 +194,7 @@ dependencies = [
     "django-liveops[celery]>=0.4.1,<0.5",
     "django-oauth-toolkit==3.4.1",
     "django-altcha>=1.0.0",
+    "idutils>=1.7.0",
 ]
 
 [project.optional-dependencies]
@@ -241,7 +259,7 @@ include = [
 ]
 
 [tool.bumpver]
-current_version = "v202608.1401"
+current_version = "v202609.1402"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -311,19 +329,41 @@ environments = ["python_version >= '3.11' and python_version < '3.15' and platfo
 #
 #     UWAGA na przyszlosc: setuptools >=83 znaczy, ze `pkg_resources` NIE
 #     ISTNIEJE w runtime. Kod, ktory go importuje, wybucha dopiero przy
-#     wywolaniu, jesli import jest leniwy. Znany przypadek: `isbnlib`
+#     wywolaniu, jesli import jest leniwy. Znany przypadek byl `isbnlib`
 #     (isbnlib/registry.py) - `isbnlib.meta()` i formattery bibliograficzne
-#     rzucaja ModuleNotFoundError, upstream nie ma fixa. bpp uzywa dzis
-#     wylacznie `isbnlib.notisbn()` i `isbnlib.canonical()` (czyste funkcje
-#     z isbnlib._core, bez rejestru), wiec nic sie nie psuje - ale NIE
-#     siegaj po `isbnlib.meta()` bez wczesniejszej wymiany biblioteki.
+#     rzucaly ModuleNotFoundError. Od FD#480 zamiast `isbnlib` jest fork
+#     `isbnlib2` (ten sam modul, bez `pkg_resources`), wiec rejestr znow
+#     sie importuje.
 constraint-dependencies = [
+    # Piny tranzytywne wymuszajace wersje z fixem CVE. Bez nich przyszly
+    # `uv lock` moglby wrocic do podatnej wersji, a `pip-audit --gate on
+    # fixable` (dependency-audit.yml) znow by padl. Partia 2026-10 zamyka
+    # 31 podatnosci zglaszanych na dev od 21 wrzesnia:
+    #   anyio     PYSEC-2026-4024/4025
+    #   oauthlib  PYSEC-2026-4114 (fix tylko w 4.0.0 — major; zgodnosc
+    #             z django-oauth-toolkit 3.4.1 i requests-oauthlib 2.0.0
+    #             sprawdzona testami oauth_mcp + mcp_server)
+    #   pyjwt     PYSEC-2026-4140..4152, 4183 (13 szt.)
+    #   pypdf     PYSEC-2026-4153..4160 (8 szt.)
+    #   soupsieve PYSEC-2026-4170/4171
+    #   urllib3   PYSEC-2026-4175/4176/4177 (pin w [dependencies])
+    "anyio>=4.14.2",
+    # >=26.10.1: zamyka CVE-2026-77528 (PYSEC-2026-4027, fix od 26.7.1),
+    # a zarazem pierwsza wersja z leniwym importem vendorowanych flatbuffers
+    # (crossbario/autobahn-python#1983). 25.12.2..26.7.1 importowaly je
+    # w `autobahn/__init__.py`, co ciagnelo numpy do KAZDEGO procesu
+    # (daphne importuje autobahn z AppConfig) — pilnuje tego
+    # test_lazy_heavy_imports. Nie cofac ponizej 26.10.1.
+    "autobahn>=26.10.1",
     "bleach>=6.4.0",
     "daphne>=4.2.2",
     "h2>=4.4.1",
+    "oauthlib>=4.0.0",
     "pyasn1>=0.6.4",
-    "pypdf>=6.13.3",
+    "pyjwt>=2.15.1",
+    "pypdf>=6.19.0",
     "setuptools>=83.0.0",
+    "soupsieve>=2.10",
 ]
 
 # Polityka: KAZDA NOWA zewnetrzna zaleznosc powinna miec prebuilt wheel dla
@@ -538,14 +578,14 @@ dev = [
     "bumpver>=2026.1132",
     "pytest-recording>=0.12.1",
     "vcrpy>=8.3.0,<9",
-    "towncrier>=22.8.0",
+    "towncrier>=26.9.0",
     # pytest-tqdm: jeden zagregowany pasek postepu na kontrolerze xdist
     # (zamiast rozjezdzajacych sie paskow pytest-sugar). Auto-on tylko w TTY
     # (CI / agent / pipe = non-TTY = no-op), sam wylacza sugara gdy aktywny.
     # https://github.com/mpasternak/pytest-tqdm
     "pytest-tqdm>=0.4.0",
     "pytest-rerunfailures>=16.6.1",
-    "django-debug-toolbar>=7.1.1",
+    "django-debug-toolbar>=8.0.0",
     "model-bakery>=1.24.0",
     "django-dynamic-fixture>=1.8.0",
     "django-webtest==1.9.14",
@@ -599,7 +639,7 @@ dev = [
     # django-run-site: CLI orchestrator dev stack-u. Dawniej `manage.py run_site`
     # + helpery w `_run_site_helpers/`. Instalowany w dev-deps zeby `uv run run-site`
     # mialo dostep do CLI bez globalnego `uv tool install`. Konfiguracja: runsite.toml.
-    "django-run-site>=0.20.2",
+    "django-run-site>=0.21.0",
     # django-dev-helpers: autologin endpoint + dotfiles dla agentow LLM. Dawniej
     # `src/django_bpp/views_run_site_autologin.py`. Aktywuje sie tylko gdy run-site
     # ustawi DJANGO_DEV_HELPERS_ENABLED=1 — w produkcji no-op.
@@ -610,7 +650,7 @@ dev = [
 
 [tool.towncrier]
 package = "bpp"
-version = "202608.1401"
+version = "202609.1402"
 package_dir = "src"
 filename = "HISTORY.md"
 start_string = "<!-- towncrier release notes start -->\n"

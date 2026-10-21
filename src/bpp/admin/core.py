@@ -23,6 +23,7 @@ from bpp.models import (
     Typ_Odpowiedzialnosci,
     Uczelnia,
 )
+from bpp.models.abstract.authors import KOMUNIKAT_DUPLIKAT_AUTORA, UNIQUE_AUTOR_TYP
 from bpp.util import zaloguj_polkniety_wyjatek
 
 logger = logging.getLogger(__name__)
@@ -341,6 +342,48 @@ def generuj_formularz_dla_autorow(  # noqa
     return baseModel_AutorForm
 
 
+KOMUNIKAT_POWTORZONA_KOLEJNOSC = (
+    "Dwóch autorów ma tę samą pozycję na liście. Przeładuj stronę i ustaw "
+    "kolejność autorów ponownie, przeciągając wiersze."
+)
+
+
+def sprawdz_powtorzona_kolejnosc(formset):
+    """Rzuca ``ValidationError``, gdy dwa wiersze inline'a autorów dostałyby
+    tę samą pozycję (``kolejnosc``).
+
+    Unikalności (rekord, kolejnosc) pilnuje w bazie odroczone ograniczenie
+    (migracja 0132), którego Django nie zna -- bez tego sprawdzenia powtórzona
+    pozycja kończy się IntegrityError na COMMIT. Sprawdzamy wartości DOCELOWE
+    ze wszystkich wierszy naraz, a nie każdy wiersz osobno względem bazy, żeby
+    zamiana dwóch wierszy miejscami przechodziła.
+    """
+    zajete = set()
+    for form in formset.forms:
+        if not form.is_valid() or form in formset.deleted_forms:
+            continue
+        kolejnosc = form.cleaned_data.get("kolejnosc")
+        if kolejnosc is None:
+            continue
+        if kolejnosc in zajete:
+            raise forms.ValidationError(KOMUNIKAT_POWTORZONA_KOLEJNOSC)
+        zajete.add(kolejnosc)
+
+    if not zajete or formset.instance.pk is None:
+        return
+
+    # Formularz pokazuje tylko pierwszych autorów (get_queryset formsetu tnie
+    # listę); pozostali są w bazie i też zajmują swoje pozycje.
+    w_formularzu = [form.instance.pk for form in formset.forms if form.instance.pk]
+    if (
+        formset.model.objects.filter(**{formset.fk.name: formset.instance})
+        .exclude(pk__in=w_formularzu)
+        .filter(kolejnosc__in=zajete)
+        .exists()
+    ):
+        raise forms.ValidationError(KOMUNIKAT_POWTORZONA_KOLEJNOSC)
+
+
 def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
     MAKSYMALNA_ILOSC_AUTOROW_W_FORMULARZU = 25
 
@@ -350,6 +393,14 @@ def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
             return qs[:MAKSYMALNA_ILOSC_AUTOROW_W_FORMULARZU]
 
         def clean(self):
+            # ``BaseModelFormSet.clean()`` to jedyne miejsce, z którego Django
+            # woła ``validate_unique()`` -- sprawdzenie unikalności MIĘDZY
+            # wierszami tego samego POST-a. Bez ``super()`` dwa nowe wiersze
+            # z tym samym autorem i typem odpowiedzialności przechodziły
+            # walidację, a drugi INSERT kończył się IntegrityError (500).
+            super().clean()
+            sprawdz_powtorzona_kolejnosc(self)
+
             # get forms that actually have valid data
             percent = Decimal("0.00")
             for form in self.forms:
@@ -366,6 +417,11 @@ def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
                 raise forms.ValidationError(
                     "Liczba podanych procent odpowiedzialności przekracza 100.0"
                 )
+
+        def get_unique_error_message(self, unique_check):
+            if frozenset(unique_check) | {self.fk.name} == UNIQUE_AUTOR_TYP:
+                return KOMUNIKAT_DUPLIKAT_AUTORA
+            return super().get_unique_error_message(unique_check)
 
     baseClass = admin.StackedInline
     extraRows = 0

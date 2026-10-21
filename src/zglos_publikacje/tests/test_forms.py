@@ -65,8 +65,10 @@ def test_help_text_strona_www_zalezny_od_kombinacji(rodzaj, forma_dostepu):
         assert "Pole wymagane" not in expected
     else:
         assert expected.startswith("Pole wymagane")
-    # Każda kombinacja zawiera podpowiedź o pełnym URL z prefiksem schema.
-    assert "https://" in expected and "http://" in expected
+    # Każda kombinacja podpowiada, że DOI można wkleić w dowolnej postaci
+    # (FD#480) — bez każenia doklejać prefiksu dx.doi.org.
+    assert "doi:10.1234/abcd" in expected
+    assert "dx.doi.org" not in expected
 
 
 @pytest.mark.django_db

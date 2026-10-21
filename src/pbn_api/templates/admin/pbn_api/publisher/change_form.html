@@ -1,7 +1,11 @@
 {% extends "admin/change_form.html" %}
+{% load prace %}
 
 {% block object-tools-items %}
-    <li><a target="_blank" href="{{ original.link_do_pbn }}">Zobacz w PBN</a></li>
+    {% link_do_pbn original as pbn_url %}
+    {% if pbn_url %}
+        <li><a target="_blank" href="{{ pbn_url }}">Zobacz w PBN</a></li>
+    {% endif %}
     {% if original.rekord_w_bpp %}
         <li><a target="_blank" href="/admin/bpp/wydawca/{{ original.rekord_w_bpp.pk }}/change/">Zobacz w BPP</a></li>
     {% else %}

@@ -1,6 +1,6 @@
 {
     "name": "bpp-iplweb",
-    "version": "v202608.1401",
+    "version": "v202609.1402",
     "license": "MIT",
     "devDependencies": {
         "esbuild": "^0.28.1",
@@ -10,13 +10,13 @@
         "grunt-sass": "^4.0.0",
         "grunt-shell": "^4.0.0",
         "jsdom": "^25.0.1",
-        "rollbar": "^3.1.0",
+        "rollbar": "^4.0.0",
         "sass": "~1.99.0",
         "vitest": "^4.1.11"
     },
     "dependencies": {
         "3d-force-graph": "^1.80.0",
-        "basic-ftp": "5.3.1",
+        "basic-ftp": "6.2.1",
         "chart.js": "^4.4.0",
         "cytoscape": "^3.34.0",
         "cytoscape-fcose": "^2.2.0",

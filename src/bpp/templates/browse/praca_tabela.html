@@ -1,4 +1,4 @@
-{% load prace user_in_group %}
+{% load prace user_in_group czy_pokazywac %}
 <table width="{{ width|default:"100%" }}"
        class="szczegolyRekordu {{ htmlclass|default:"naglowki_z_lewej" }}">
     <tr>
@@ -390,7 +390,7 @@
             </td>
         </tr>
     {% endif %}
-    {% if uczelnia.pokazuj_status_korekty == "always" or uczelnia.pokazuj_status_korekty == "logged-in" and not request.user.is_anonymous %}
+    {% czy_pokazywac status_korekty ignoruj_grupe %}
         <tr>
             <th>
                 Status:
@@ -399,7 +399,7 @@
                 {{ praca.status_korekty }}
             </td>
         </tr>
-    {% endif %}
+    {% end_czy_pokazywac %}
     {% if praca.wydawnictwa_powiazane_set.exists %}
         <tr>
             <th>Rekordy powiązane</th>
@@ -414,7 +414,7 @@
             </td>
         </tr>
     {% endif %}
-    {% if uczelnia.pokazuj_praca_recenzowana == "always" or uczelnia.pokazuj_praca_recenzowana == "logged-in" and not request.user.is_anonymous %}
+    {% czy_pokazywac praca_recenzowana ignoruj_grupe %}
         <tr>
             <th>
                 Praca recenzowana:
@@ -423,7 +423,7 @@
                 {{ praca.recenzowana|yesno }}
             </td>
         </tr>
-    {% endif %}
+    {% end_czy_pokazywac %}
     {% if praca.ma_procenty %}
         <tr>
             <th>Odpowiedzialność za powstanie pracy</th>
@@ -469,7 +469,7 @@
 </table>
 
 {% if rekord.ma_punktacje_sloty %}
-    {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}
+    {% czy_pokazywac tabele_slotow_na_stronie_rekordu ignoruj_grupe %}
         <h4>Punkty i sloty autorów
             {% if uczelnia.drukuj_oswiadczenia %}
                 {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
@@ -540,7 +540,7 @@
             {% endfor %}
         </table>
 
-    {% endif %}
+    {% end_czy_pokazywac %}
 {% endif %}
 
 <style type="text/css">
@@ -715,7 +715,7 @@
 </script>
 
 {% if rekord.ma_odpiete_dyscypliny %}
-    {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}
+    {% czy_pokazywac tabele_slotow_na_stronie_rekordu ignoruj_grupe %}
         <h4>"Odpięte" dyscypliny:</h4>
         <table>
             <tr>
@@ -729,5 +729,5 @@
                 </tr>
             {% endfor %}
         </table>
-    {% endif %}
+    {% end_czy_pokazywac %}
 {% endif %}

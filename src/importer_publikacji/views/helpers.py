@@ -8,6 +8,8 @@ Zawiera:
 - pomocnicze nakładki HTMX (HX-Push-Url, OOB breadcrumbs).
 """
 
+from urllib.parse import urlencode
+
 from django.shortcuts import render
 from django.template.loader import render_to_string
 
@@ -142,6 +144,23 @@ def _get_crossref_mapper(publication_type):
     return mapper
 
 
+def _kontekst_wejscia_qs(zgloszenie=None, zgloszenia_filtry=None, identifier=None):
+    """Querystring kontekstu, z którym operator wszedł do importera.
+
+    ``zgloszenie`` (wiązanie, FD#443), ``zgloszenia_filtry`` (powrót do
+    listy zgłoszeń, FD#482) i ``identifier`` muszą przeżyć przeskoki
+    „Wybierz inne źródło" → kafelek. Jeden ciąg, budowany tutaj, zamiast
+    sklejania parametrów warunkami w szablonach — tam właśnie gubiło się
+    wiązanie ze zgłoszeniem. Puste wartości pomijamy.
+    """
+    pary = [
+        ("zgloszenie", zgloszenie),
+        ("zgloszenia_filtry", zgloszenia_filtry),
+        ("identifier", identifier),
+    ]
+    return urlencode([(k, v) for k, v in pary if v])
+
+
 def _fetch_context(form=None, request=None, provider_name=None):
     """Kontekst kroku fetch dla POJEDYNCZEGO wybranego providera.
 
@@ -165,6 +184,11 @@ def _fetch_context(form=None, request=None, provider_name=None):
         "form": form,
         "provider_name": provider_name,
         "provider_meta": metadata.get(provider_name),
+        "kontekst_qs": _kontekst_wejscia_qs(
+            form["zgloszenie"].value(),
+            form["zgloszenia_filtry"].value(),
+            form["identifier"].value(),
+        ),
     }
 
 
@@ -269,4 +293,9 @@ def _landing_context(request):
         "providers": list(get_providers_metadata().values()),
         "in_progress_count": count,
         "in_progress_label": _polish_plural(count, "import", "importy", "importów"),
+        "kontekst_qs": _kontekst_wejscia_qs(
+            request.GET.get("zgloszenie"),
+            request.GET.get("zgloszenia_filtry"),
+            request.GET.get("identifier"),
+        ),
     }

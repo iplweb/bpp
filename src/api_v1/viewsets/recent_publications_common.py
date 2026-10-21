@@ -129,6 +129,10 @@ def odpowiedz_z_publikacjami(request, base_qs, naglowek):
         ]
     )
 
+    from api_v1.serializers.szukaj import zbuduj_rekord_url
+    from api_v1.viewsets.szukaj import mapa_contenttype_viewname
+
+    mapa = mapa_contenttype_viewname()
     wynik = [
         {
             "id": str(pub.id),
@@ -136,6 +140,9 @@ def odpowiedz_z_publikacjami(request, base_qs, naglowek):
             "rok": pub.rok,
             "ostatnio_zmieniony": pub.ostatnio_zmieniony,
             "url": _url_publikacji(pub, request),
+            # ``id`` niesie numer ContentType (per-baza), z którego konsument
+            # API nie wyprowadzi typu rekordu — stąd typowany detal obok.
+            "rekord_url": zbuduj_rekord_url(request, mapa, pub.id),
         }
         for pub in publikacje
     ]

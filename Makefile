@@ -902,13 +902,34 @@ test-package-from-vcs: check-git-clean uv-sync set-version-from-vcs ## Przetestu
 	ls -lash dist
 	git reset --hard
 
+##@ Testowanie pull requestów z GitHuba
+
+# Każdy PR dostaje własny worktree ~/Programowanie/bpp-pr-<N> (siostra
+# głównego checkoutu) z własnym .venv i node_modules, a run-site stawia mu
+# świeżą bazę na losowych portach — testowanie PR-a nie rusza bieżącej
+# gałęzi, niezacommitowanej pracy ani bazy innych PR-ów. Ponowne
+# `make pr PR=<N>` dociąga nowe commity autora. Logika: bin/pr-worktree.sh,
+# opis: docs/deweloper/polecenia.md (sekcja „Testowanie pull requestów").
+.PHONY: pr pr-list pr-clean
+
+pr: ## Pobierz PR do worktree bpp-pr-N i uruchom run-site [PR=856 DUMP=host|plik|none NO_RUN=1 ARGS=...]
+	@test -n "$(PR)" || { echo "Użycie: make pr PR=<numer> [DUMP=host|plik|none] [NO_RUN=1] [ARGS=...]"; exit 2; }
+	bin/pr-worktree.sh start $(PR) $(if $(NO_RUN),--no-run) $(if $(DUMP),--dump "$(DUMP)") -- $(ARGS)
+
+pr-list: ## Pokaż worktree PR-ów (+ działające run-site), backupy do DUMP= i otwarte PR-y
+	@bin/pr-worktree.sh list
+
+pr-clean: ## Usuń worktree bpp-pr-N i gałąź pr-N [PR=856 FORCE=1]
+	@test -n "$(PR)" || { echo "Użycie: make pr-clean PR=<numer> [FORCE=1]"; exit 2; }
+	bin/pr-worktree.sh clean $(PR) $(if $(FORCE),--force)
+
 ##@ Różne
 
 loc: clean ## Pokaż statystyki liczby linii (pygount)
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202608.1401
+DOCKER_VERSION=202609.1402
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)

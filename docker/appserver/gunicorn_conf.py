@@ -26,14 +26,67 @@ zostaje na ``uvicorn --reload``. Ten config dotyczy tylko gałęzi produkcyjnej.
 
 import logging
 import os
+import sys
+
+from uvicorn_worker import UvicornWorker
 
 # Liczba workerów. Domyślnie 1 — zachowuje dotychczasowe single-process
 # zachowanie uvicorna (mniejsze zużycie RAM). Override przez WEB_CONCURRENCY.
 # Master gunicorna jest lekki i recykluje każdego workera niezależnie.
 workers = int(os.environ.get("WEB_CONCURRENCY", "1"))
+
+# Limit równoległości — PER WORKER. Bez niego uvicorn przyjmuje dowolnie wiele
+# równoległych żądań, a każde trzyma własne połączenie z PostgreSQL: scraper
+# z ~7 tys. IP spiętrzył je ponad max_connections i baza odpowiadała
+# „too many clients" wszystkim, łącznie z celery (publikacje.up.lublin.pl,
+# 2026-09-27). Ponad limit uvicorn od razu oddaje 503 zamiast kolejkować.
+#
+# Liczone są POŁĄCZENIA, łącznie z tym, które właśnie przyszło — limit N
+# przepuszcza N-1 równoległych żądań (sprawdzone: przy 4 z 8 naraz przeszły 3).
+# Liczą się też otwarte WebSockety
+# (/asgi/notifications/), stąd zapas ponad globalny limit nginksa w bpp-deploy.
+# Sufit połączeń do bazy z appservera ≈ limit × WEB_CONCURRENCY; musi zostać
+# poniżej max_connections PostgreSQL z miejscem na celery/authserver.
+#
+# Nazwa celowo NIE ``UVICORN_LIMIT_CONCURRENCY``: CLI uvicorna (gałąź dev,
+# ``uvicorn --reload``) czyta zmienne ``UVICORN_*`` samo, więc „0 = wyłączony"
+# znaczyłoby tam limit zero, czyli 503 na wszystko.
+#
+# Puste / brak = 80, 0 = bez limitu. Śmieć NIE zatrzymuje startu — literówka
+# w .env nie może położyć serwisu; wracamy do domyślnej wartości z ostrzeżeniem.
+DOMYSLNY_LIMIT_CONCURRENCY = 80
+
+
+def _limit_concurrency(surowa):
+    surowa = (surowa or "").strip()
+    if not surowa:
+        return DOMYSLNY_LIMIT_CONCURRENCY
+    if not surowa.isdigit():
+        print(
+            f"OSTRZEZENIE: GUNICORN_LIMIT_CONCURRENCY={surowa!r} nie jest liczbą "
+            f"nieujemną — używam {DOMYSLNY_LIMIT_CONCURRENCY}.",
+            file=sys.stderr,
+        )
+        return DOMYSLNY_LIMIT_CONCURRENCY
+    return int(surowa) or None
+
+
+class BppUvicornWorker(UvicornWorker):
+    # uvicorn_worker nie przekłada żadnego ustawienia gunicorna na
+    # limit_concurrency; jedyną drogą jest CONFIG_KWARGS, doklejany do
+    # uvicorn.Config w __init__ workera. Klasę z pliku configu gunicorn przyjmuje
+    # wprost (validate_class), a workery są forkowane — bez importu po nazwie.
+    CONFIG_KWARGS = {
+        **UvicornWorker.CONFIG_KWARGS,
+        "limit_concurrency": _limit_concurrency(
+            os.environ.get("GUNICORN_LIMIT_CONCURRENCY")
+        ),
+    }
+
+
 # Pakiet ``uvicorn-worker`` (osobny od uvicorn): oficjalna kontynuacja dawnego
 # ``uvicorn.workers.UvicornWorker`` (deprecated i usuwany z samego uvicorn).
-worker_class = "uvicorn_worker.UvicornWorker"
+worker_class = BppUvicornWorker
 bind = "0.0.0.0:8000"
 
 # Recykling: po ~max_requests (+/- jitter) żądaniach gunicorn restartuje workera,

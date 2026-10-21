@@ -23,6 +23,33 @@ def test_dcr_dozwolony_redirect_201(client):
 
 
 @pytest.mark.django_db
+def test_dcr_chatgpt_redirect_201(client):
+    resp = client.post(
+        "/o/register/",
+        data=json.dumps(
+            {
+                "client_name": "ChatGPT",
+                "redirect_uris": [
+                    "https://chatgpt.com/connector_platform_oauth_redirect"
+                ],
+            }
+        ),
+        content_type="application/json",
+    )
+    assert resp.status_code == 201
+
+
+@pytest.mark.django_db
+def test_dcr_inna_sciezka_chatgpt_400(client):
+    resp = client.post(
+        "/o/register/",
+        data=json.dumps({"redirect_uris": ["https://chatgpt.com/evil"]}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.django_db
 def test_dcr_niedozwolony_redirect_400(client):
     resp = client.post(
         "/o/register/",

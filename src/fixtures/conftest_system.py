@@ -64,26 +64,87 @@ def tytuly():
 
 @pytest.fixture(scope="function")
 def jezyki():
-    pl, created = Jezyk.objects.get_or_create(
-        skrot="pol.", defaults=dict(nazwa="polski")
-    )
-    pl.skrot_dla_pbn = "PL"
-    pl.skrot_crossref = "pl"
-    pl.kod_bcp47 = "pl"
-    pl.save()
+    """Języki referencyjne — komplet, z ``kod_bcp47`` i ``skrot_crossref``.
 
-    ang, created = Jezyk.objects.get_or_create(
-        skrot="ang.", defaults=dict(nazwa="angielski")
-    )
-    ang.skrot_dla_pbn = "EN"
-    ang.skrot_crossref = "en"
-    ang.kod_bcp47 = "en"
-    ang.save()
+    Test, który potrzebuje języków, bierze tę fixturę. NIE zakładaj, że są
+    w bazie „same z siebie": owszem, sieją je migracje danych (``0022`` polski
+    i angielski, ``0035`` resztę z fixture ``jezyk.json``, ``0480`` kody
+    BCP 47), ale transakcyjny flush (``TransactionTestCase``) truncate'uje
+    tabele, a migracje już się nie powtórzą — kolejny test na tym workerze
+    zobaczyłby pustkę.
 
-    for elem in fixture("jezyk.json"):
-        Jezyk.objects.get_or_create(**elem["fields"])
+    ``pol.``/``ang.`` zakładamy po kluczu naturalnym (skrót), resztę bierzemy
+    z tego samego fixture co migracja, a kody BCP 47 z mapowania migracji
+    ``0480`` — żeby wartości nie dryfowały między testami a produkcją.
+    ``skrot_crossref`` ustawiamy tylko tutaj: kolumna jest ``unique``, a na
+    produkcji wypełnia ją wyłącznie migracja ``0410`` i tylko dla polskiego.
+    """
+    from importlib import import_module
+
+    for skrot, nazwa in (("pol.", "polski"), ("ang.", "angielski")):
+        Jezyk.objects.get_or_create(skrot=skrot, defaults={"nazwa": nazwa})
+
+    for pola in get_fixture("jezyk").values():
+        pola = dict(pola)
+        Jezyk.objects.get_or_create(skrot=pola.pop("skrot"), defaults=pola)
+
+    kody = import_module("bpp.migrations.0480_cerif_mapowania_slownikow")
+    kody._uzupelnij(Jezyk, "kod_bcp47", kody.JEZYKI)
+
+    for skrot, crossref in (("pol.", "pl"), ("ang.", "en")):
+        Jezyk.objects.filter(skrot=skrot).update(skrot_crossref=crossref)
 
     return {jezyk.skrot: jezyk for jezyk in Jezyk.objects.all()}
+
+
+@pytest.fixture(scope="function")
+def rodzaje_jednostek(db):
+    """Rodzaje jednostek zasiane migracjami danych: ``Standard``, ``Wydział``,
+    ``Koło naukowe`` — wraz z atrybutami dokładanymi przez kolejne migracje.
+
+    Test pytający o rodzaj po nazwie bierze tę fixturę. Wiersze są w baseline,
+    ale transakcyjny flush (``TransactionTestCase``) truncate'uje tabele,
+    a migracje lecą raz, przy zakładaniu bazy — kolejny test na tym samym
+    workerze zobaczyłby pustkę. Wołamy oryginalne, idempotentne funkcje
+    migracji, żeby wartości nie dryfowały między testami a produkcją.
+    """
+    from importlib import import_module
+
+    from django.apps import apps as django_apps
+
+    from bpp.models import RodzajJednostki
+
+    for modul, funkcja in (
+        ("bpp.migrations.0449_seed_rodzajjednostki", "seed"),
+        ("bpp.migrations.0454_faza_b_i1", "seed_pokazuj_strukture_podjednostek"),
+        (
+            "bpp.migrations.0464_rodzajjednostki_autor_moze_afiliowac",
+            "wydzial_bez_afiliacji",
+        ),
+    ):
+        getattr(import_module(modul), funkcja)(django_apps, None)
+
+    return {rodzaj.nazwa: rodzaj for rodzaj in RodzajJednostki.objects.all()}
+
+
+@pytest.fixture(scope="function")
+def instytucje_finansujace(db):
+    """Słownik instytucji finansujących (NCN, NCBR, MNiSW, …) z migracji 0486.
+
+    Ta sama klasa zależności co ``rodzaje_jednostek``: dane pochodzą z migracji
+    danych, więc po transakcyjnym flushu nie wracają same.
+    """
+    from importlib import import_module
+
+    from django.apps import apps as django_apps
+
+    from bpp.models import Instytucja_Finansujaca
+
+    import_module("bpp.migrations.0486_seed_instytucje_finansujace").seed(
+        django_apps, None
+    )
+
+    return {x.akronim: x for x in Instytucja_Finansujaca.objects.all()}
 
 
 @pytest.fixture(scope="function")

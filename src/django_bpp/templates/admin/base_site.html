@@ -1,6 +1,6 @@
 {% extends "admin/base.html" %}
 
-{% load compress i18n admin_tools_menu_tags crispy_forms_tags %}
+{% load compress i18n static admin_tools_menu_tags crispy_forms_tags %}
 
 {% block title %}{{ title }} - Bibliografia Publikacji Pracowników{% endblock %}
 
@@ -13,7 +13,7 @@
 
     <!-- HTMX for AJAX functionality -->
     {% load static %}
-    <script src="{% static 'htmx.org/dist/htmx.js' %}"></script>
+    <script src="{% static 'htmx.org/dist/htmx.min.js' %}"></script>
 
     <!-- Anti-FOUC: Hide page until fully loaded -->
     <style>
@@ -23,18 +23,27 @@
         }
     </style>
     <script>
-        // Show page after select2 and all scripts are loaded
+        // Pokaż stronę po DOMContentLoaded — wtedy DOM, CSS i wszystkie
+        // synchroniczne skrypty (w tym handlery jQuery ready inicjujące
+        // select2) są gotowe. NIE czekamy na window.load: ono czeka też na
+        // obrazki, skrypty async (widget Freshworks z zewnętrznego CDN)
+        // i leniwie doładowywane biblioteki (Plotly na dashboardzie), przez
+        // co cały admin wisiał biały, dopóki najwolniejszy zasób nie dojechał.
         (function() {
+            var shown = false;
             function showPage() {
+                if (shown) return;
+                shown = true;
                 document.documentElement.style.setProperty('visibility', 'visible', 'important');
                 document.documentElement.style.setProperty('opacity', '1', 'important');
             }
 
-            // Wait for window.load (all resources including scripts loaded)
-            window.addEventListener('load', function() {
-                // Give select2 extra 100ms to initialize
-                setTimeout(showPage, 100);
+            document.addEventListener('DOMContentLoaded', function() {
+                // Daj select2 chwilę na inicjalizację po jQuery ready
+                setTimeout(showPage, 50);
             });
+            // Siatka bezpieczeństwa, gdyby DOMContentLoaded już minął
+            window.addEventListener('load', showPage);
         })();
     </script>
 {% endblock %}
@@ -145,70 +154,7 @@
 {% block footer %}
     {{ block.super }}
 
-    {% if user.is_authenticated %}
-        {% if not TESTING %}
-        <!-- Freshworks Support Widget -->
-        <script>
-            window.fwSettings={
-                'widget_id':205000000433
-            };
-            !function(){if("function"!=typeof window.FreshworksWidget){var n=function(){n.q.push(arguments)};n.q=[],window.FreshworksWidget=n}}()
-        </script>
-        <script type='text/javascript' src='https://euc-widget.freshworks.com/widgets/205000000433.js' async defer></script>
-
-        <!-- Custom Support Button -->
-        <button class="bpp-support-button hide-on-print" id="bppSupportButton">
-            <span class="button-content">
-                <span class="support-symbols">!?!</span>
-                <span class="support-text">Support BPP</span>
-            </span>
-        </button>
-
-        <script type="text/javascript">
-            (function($){
-                $(document).ready(function() {
-                    // Hide the default Freshworks launcher
-                    FreshworksWidget('hide', 'launcher');
-
-                    setTimeout(function() {
-                        if (typeof FreshworksWidget !== 'undefined') {
-
-                            FreshworksWidget('prefill', 'ticketForm', {
-                                custom_fields: {
-                                    cf_adres_url: window.location.href
-                                }
-                            });
-
-
-                            // Identify user for Freshworks
-                            FreshworksWidget('identify', 'ticketForm', {
-                                name: '{{ request.user.get_full_name|default:request.user.username|escapejs }}',
-                                email: '{{ request.user.email|escapejs }}'
-                            });
-                        }
-                    }, 1000);
-
-                    // Track widget state
-                    var widgetOpen = false;
-
-                    // Handle custom support button click - toggle widget
-                    $('#bppSupportButton').on('click', function(e) {
-                        e.preventDefault();
-                        if (typeof FreshworksWidget !== 'undefined') {
-                            if (!widgetOpen) {
-                                FreshworksWidget('open');
-                                widgetOpen = true;
-                            } else {
-                                FreshworksWidget('close');
-                                widgetOpen = false;
-                            }
-                        }
-                    });
-                });
-            })(grp.jQuery);
-        </script>
-        {% endif %}
-    {% endif %}
+    {% include "freshdesk_widget.html" %}
 
     {% compress css %}
         <link rel="stylesheet" type="text/css" media="screen" href="{{ STATIC_URL }}bpp/css/admin-style.css"/>
@@ -247,43 +193,6 @@
         <script type="text/javascript" src="{{ STATIC_URL }}bpp/js/admin-table-enhancements.js"></script>
         <script type="text/javascript" src="{{ STATIC_URL }}bpp/js/admin-theme-switcher.js"></script>
     {% endcompress %}
-
-    <script type="text/javascript">
-        (function ($) {
-
-            $(document).ready(function () {
-
-                grp.jQuery('.charmap').keypad({
-                    keypadOnly: false,
-                    layout: [
-                        'αβγδεζ ©® àáâãäåæçß ъяшертыу',
-                        'ηθικλμ ™℠ èéêëìííî  иопющэас',
-                        'νξοπρσ €£ ïñòóôõöø  дфгчйкль',
-                        'τυφχψω ¥¢ ùúûüýÿðþ  жзхцвбнм',
-                        grp.jQuery.keypad.SHIFT + grp.jQuery.keypad.CLOSE
-                    ],
-                    showAnim: 'fadeIn',
-                    duration: 'fast',
-                    showOn: 'button',
-                    buttonText: '🌐'
-                });
-
-                // Przyciski jquery.keypad
-                $("button.keypad-trigger").each(
-                    function (no, tag) {
-                        var tag = $(tag);
-                        var first = tag.siblings().first();
-                        if (first.is("textarea"))
-                            tag.css("margin-left", "12px")
-                                .css("margin-top", "15px");
-
-                        tag.css("color", "black")
-                            .attr("tabindex", "-1");
-                    });
-            });
-
-        })(grp.jQuery);
-    </script>
 
     <script type="text/javascript">
         (function($){

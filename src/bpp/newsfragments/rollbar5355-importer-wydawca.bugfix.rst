@@ -1,0 +1,1 @@
+Importer publikacji nie kończy się już błędem 500 (``'QuerySet' object has no attribute 'pk'``) przy luźnym dopasowaniu wydawcy po początku nazwy — porównanie wydawcy zwraca teraz rekord wydawcy, a nie zapytanie do bazy.
