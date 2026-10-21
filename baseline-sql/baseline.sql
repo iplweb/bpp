@@ -16462,6 +16462,48 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+431	bpp	0336_jednostka_opis_html	2000-01-01 00:00:00+00
+432	bpp	0337_oswiadczenie_ken_cleanup	2000-01-01 00:00:00+00
+433	bpp	0338_wydzial_pokazuj_opis	2000-01-01 00:00:00+00
+435	bpp	0340_skasuj_anonimowe_zdarzenia	2000-01-01 00:00:00+00
+436	bpp	0341_dyscyplina_naukowa_pbn_uid	2000-01-01 00:00:00+00
+437	pbn_api	0040_tlumaczdyscyplinmanager	2000-01-01 00:00:00+00
+438	pbn_api	0041_alter_publisher_options	2000-01-01 00:00:00+00
+439	pbn_api	0042_delete_tlumaczdyscyplinmanager_and_more	2000-01-01 00:00:00+00
+440	pbn_api	0043_remove_oswiadczenieinstytucji_id_and_more	2000-01-01 00:00:00+00
+441	pbn_api	0044_oswiadczenieinstytucji_id_and_more	2000-01-01 00:00:00+00
+443	pbn_api	0046_alter_pbn_export_queue_options_and_more	2000-01-01 00:00:00+00
+444	pbn_api	0047_alter_pbn_export_queue_options_and_more	2000-01-01 00:00:00+00
+445	pbn_api	0048_remove_pbn_export_queue_retry_politics_and_more	2000-01-01 00:00:00+00
+446	taggit	0004_alter_taggeditem_content_type_alter_taggeditem_tag	2000-01-01 00:00:00+00
+449	bpp	0342_remove_dyscyplina_naukowa_pbn_uid	2000-01-01 00:00:00+00
+547	bpp	0431_search_index_gin	2000-01-01 00:00:00+00
+450	bpp	0343_alter_typ_kbn_options_alter_patent_kc_punkty_kbn_and_more	2000-01-01 00:00:00+00
+451	bpp	0344_uczelnia_pbn_wysylaj_bez_oswiadczen	2000-01-01 00:00:00+00
+452	bpp	0345_alter_wydzial_opis	2000-01-01 00:00:00+00
+453	bpp	0346_rename_multiseek_searchform_data	2000-01-01 00:00:00+00
+454	bpp	0347_uczelnia_deklaracja_dostepnosci_tekst_and_more	2000-01-01 00:00:00+00
+455	bpp	0348_remove_uczelnia_pokazuj_raport_dla_komisji_centralnej_and_more	2000-01-01 00:00:00+00
+456	bpp	0349_uczelnia_ranking_autorow_bez_kol_naukowych	2000-01-01 00:00:00+00
+457	bpp	0350_uczelnia_pokazuj_autorow_obcych_w_przegladaniu_danych	2000-01-01 00:00:00+00
+458	bpp	0351_uczelnia_pokazuj_autorow_bez_prac_w_przegladaniu_danych	2000-01-01 00:00:00+00
+459	bpp	0352_dyscyplina_zrodla_rok	2000-01-01 00:00:00+00
+460	bpp	0353_rekord_mat_kwartyle	2000-01-01 00:00:00+00
+461	bpp	0354_alter_dyscyplina_zrodla_options_and_more	2000-01-01 00:00:00+00
+462	bpp	0355_uczelnia_drukuj_oswiadczenia_and_more	2000-01-01 00:00:00+00
+463	bpp	0356_drop_kc_komisja_centralna	2000-01-01 00:00:00+00
+464	bpp	0357_openaccess_data_opublikowania	2000-01-01 00:00:00+00
+465	bpp	0358_nowe_sumy_view_add_pk	2000-01-01 00:00:00+00
+466	bpp	0359_patent_slowa_kluczowe_eng_and_more	2000-01-01 00:00:00+00
+467	bpp	0360_uczelnia_pokazuj_zrodla_bez_prac_w_przegladaniu_danych_and_more	2000-01-01 00:00:00+00
+468	bpp	0361_alter_patent_slowa_kluczowe_eng_and_more	2000-01-01 00:00:00+00
+470	bpp	0363_uczelnia_pokazuj_jednostki_na_pierwszej_stronie_and_more	2000-01-01 00:00:00+00
+471	bpp	0364_rzeczownik_uczelnie_pl	2000-01-01 00:00:00+00
+472	bpp	0365_bppuser_pbn_token_updated	2000-01-01 00:00:00+00
+473	bpp	0366_alter_uczelnia_pbn_api_afiliacja_zawsze_na_uczelnie	2000-01-01 00:00:00+00
+474	bpp	0367_bppuser_przedstawiaj_w_pbn_jako	2000-01-01 00:00:00+00
+475	bpp	0368_wydawnictwo_zwarte_wydawnictwo_nadrzedne_w_pbn	2000-01-01 00:00:00+00
+476	bpp	0369_wyd_zwarte_nadrzedne_w_pbn	2000-01-01 00:00:00+00
 482	bpp	0375_alter_autor_absencja_options_and_more	2000-01-01 00:00:00+00
 483	bpp	0376_alter_autor_dyscyplina_rodzaj_autora	2000-01-01 00:00:00+00
 484	bpp	0377_autor_dyscyplina_zatrudnienie_do_and_more	2000-01-01 00:00:00+00
@@ -17549,48 +17591,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 428	bpp	0333_autorzy_kierunek_studiow	2000-01-01 00:00:00+00
 429	bpp	0334_oswiadczenie_ken_modele	2000-01-01 00:00:00+00
 430	bpp	0335_autorzy_oswiadczenie_ken	2000-01-01 00:00:00+00
-431	bpp	0336_jednostka_opis_html	2000-01-01 00:00:00+00
-432	bpp	0337_oswiadczenie_ken_cleanup	2000-01-01 00:00:00+00
-433	bpp	0338_wydzial_pokazuj_opis	2000-01-01 00:00:00+00
-435	bpp	0340_skasuj_anonimowe_zdarzenia	2000-01-01 00:00:00+00
-436	bpp	0341_dyscyplina_naukowa_pbn_uid	2000-01-01 00:00:00+00
-437	pbn_api	0040_tlumaczdyscyplinmanager	2000-01-01 00:00:00+00
-438	pbn_api	0041_alter_publisher_options	2000-01-01 00:00:00+00
-439	pbn_api	0042_delete_tlumaczdyscyplinmanager_and_more	2000-01-01 00:00:00+00
-440	pbn_api	0043_remove_oswiadczenieinstytucji_id_and_more	2000-01-01 00:00:00+00
-441	pbn_api	0044_oswiadczenieinstytucji_id_and_more	2000-01-01 00:00:00+00
-443	pbn_api	0046_alter_pbn_export_queue_options_and_more	2000-01-01 00:00:00+00
-444	pbn_api	0047_alter_pbn_export_queue_options_and_more	2000-01-01 00:00:00+00
-445	pbn_api	0048_remove_pbn_export_queue_retry_politics_and_more	2000-01-01 00:00:00+00
-446	taggit	0004_alter_taggeditem_content_type_alter_taggeditem_tag	2000-01-01 00:00:00+00
-449	bpp	0342_remove_dyscyplina_naukowa_pbn_uid	2000-01-01 00:00:00+00
-547	bpp	0431_search_index_gin	2000-01-01 00:00:00+00
-450	bpp	0343_alter_typ_kbn_options_alter_patent_kc_punkty_kbn_and_more	2000-01-01 00:00:00+00
-451	bpp	0344_uczelnia_pbn_wysylaj_bez_oswiadczen	2000-01-01 00:00:00+00
-452	bpp	0345_alter_wydzial_opis	2000-01-01 00:00:00+00
-453	bpp	0346_rename_multiseek_searchform_data	2000-01-01 00:00:00+00
-454	bpp	0347_uczelnia_deklaracja_dostepnosci_tekst_and_more	2000-01-01 00:00:00+00
-455	bpp	0348_remove_uczelnia_pokazuj_raport_dla_komisji_centralnej_and_more	2000-01-01 00:00:00+00
-456	bpp	0349_uczelnia_ranking_autorow_bez_kol_naukowych	2000-01-01 00:00:00+00
-457	bpp	0350_uczelnia_pokazuj_autorow_obcych_w_przegladaniu_danych	2000-01-01 00:00:00+00
-458	bpp	0351_uczelnia_pokazuj_autorow_bez_prac_w_przegladaniu_danych	2000-01-01 00:00:00+00
-459	bpp	0352_dyscyplina_zrodla_rok	2000-01-01 00:00:00+00
-460	bpp	0353_rekord_mat_kwartyle	2000-01-01 00:00:00+00
-461	bpp	0354_alter_dyscyplina_zrodla_options_and_more	2000-01-01 00:00:00+00
-462	bpp	0355_uczelnia_drukuj_oswiadczenia_and_more	2000-01-01 00:00:00+00
-463	bpp	0356_drop_kc_komisja_centralna	2000-01-01 00:00:00+00
-464	bpp	0357_openaccess_data_opublikowania	2000-01-01 00:00:00+00
-465	bpp	0358_nowe_sumy_view_add_pk	2000-01-01 00:00:00+00
-466	bpp	0359_patent_slowa_kluczowe_eng_and_more	2000-01-01 00:00:00+00
-467	bpp	0360_uczelnia_pokazuj_zrodla_bez_prac_w_przegladaniu_danych_and_more	2000-01-01 00:00:00+00
-468	bpp	0361_alter_patent_slowa_kluczowe_eng_and_more	2000-01-01 00:00:00+00
-470	bpp	0363_uczelnia_pokazuj_jednostki_na_pierwszej_stronie_and_more	2000-01-01 00:00:00+00
-471	bpp	0364_rzeczownik_uczelnie_pl	2000-01-01 00:00:00+00
-472	bpp	0365_bppuser_pbn_token_updated	2000-01-01 00:00:00+00
-473	bpp	0366_alter_uczelnia_pbn_api_afiliacja_zawsze_na_uczelnie	2000-01-01 00:00:00+00
-474	bpp	0367_bppuser_przedstawiaj_w_pbn_jako	2000-01-01 00:00:00+00
-475	bpp	0368_wydawnictwo_zwarte_wydawnictwo_nadrzedne_w_pbn	2000-01-01 00:00:00+00
-476	bpp	0369_wyd_zwarte_nadrzedne_w_pbn	2000-01-01 00:00:00+00
 477	bpp	0370_alter_autor_dyscyplina_options_jezyk_widoczny	2000-01-01 00:00:00+00
 478	bpp	0371_usun_spacje_z_nazw_dyscyplin	2000-01-01 00:00:00+00
 479	bpp	0372_autor_dyscyplina_dni_absencji_and_more	2000-01-01 00:00:00+00
@@ -17968,21 +17968,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-283	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
-284	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
-285	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-286	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-287	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-288	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-289	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-290	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-291	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-292	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-293	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-294	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-295	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-296	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-297	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
