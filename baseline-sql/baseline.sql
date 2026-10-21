@@ -11206,7 +11206,8 @@ CREATE TABLE public.importer_publikacji_importsession (
     uczelnia_id integer,
     rodzaj_rekordu character varying(10) NOT NULL,
     zgloszenie_id bigint,
-    zgloszenie_odrzucone_przez_operatora boolean NOT NULL
+    zgloszenie_odrzucone_przez_operatora boolean NOT NULL,
+    powrot_do_zgloszen character varying(2000)
 );
 
 
@@ -16462,6 +16463,55 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+94	bpp	0017_typy_pbn	2000-01-01 00:00:00+00
+378	bpp	0285_auto_20210814_0103	2000-01-01 00:00:00+00
+379	bpp	0286_auto_20210814_0104	2000-01-01 00:00:00+00
+380	bpp	0287_trgrm_extnsn	2000-01-01 00:00:00+00
+381	bpp	0288_rekord_mat_isbn	2000-01-01 00:00:00+00
+382	bpp	0289_data_oswiadczenia	2000-01-01 00:00:00+00
+383	bpp	0290_bppmultiseekvis_detale	2000-01-01 00:00:00+00
+384	bpp	0291_kod_dyscypliny_field	2000-01-01 00:00:00+00
+385	bpp	0292_przypinanie_dyscyplin	2000-01-01 00:00:00+00
+386	bpp	0293_pbn_api_kasowanie_przed_nie_eksp_zero	2000-01-01 00:00:00+00
+387	bpp	0294_szablony_opisu_stron	2000-01-01 00:00:00+00
+389	bpp	0296_nulltest_szablonopisu	2000-01-01 00:00:00+00
+390	bpp	0297_wydawca_denorm	2000-01-01 00:00:00+00
+391	bpp	0298_wydawnictwo_zwarte_denorm	2000-01-01 00:00:00+00
+392	bpp	0299_wydawnictwo_ciagle_denorm	2000-01-01 00:00:00+00
+393	bpp	0300_patent_denorm	2000-01-01 00:00:00+00
+394	bpp	0301_doktorska_habilitacyjna_denorm	2000-01-01 00:00:00+00
+395	bpp	0302_denorm_autor_dyscyplina_new_trigger	2000-01-01 00:00:00+00
+396	bpp	0303_denorm_cleanup_cachequeue_gone	2000-01-01 00:00:00+00
+397	bpp	0304_auto_20211010_2247	2000-01-01 00:00:00+00
+398	bpp	0297_liczba_n_uczelni	2000-01-01 00:00:00+00
+399	bpp	0305_merge_20211010_2323	2000-01-01 00:00:00+00
+400	bpp	0306_delete_ewaluacja2021liczbandlauczelni	2000-01-01 00:00:00+00
+401	bpp	0307_streszczenia	2000-01-01 00:00:00+00
+402	bpp	0308_ewaluacja_upowaznienia_view	2000-01-01 00:00:00+00
+403	bpp	0309_auto_20211110_0000	2000-01-01 00:00:00+00
+404	bpp	0310_fix_refresh_cache_deadlocks	2000-01-01 00:00:00+00
+405	bpp	0311_wyd_ciagle_kwartyle	2000-01-01 00:00:00+00
+407	bpp	0313_meta_zewn_baza	2000-01-01 00:00:00+00
+408	bpp	0314_punktacja_zrodla_kwarty	2000-01-01 00:00:00+00
+409	bpp	0315_aktualna_jednostka_ostatnia_przypisana	2000-01-01 00:00:00+00
+410	bpp	0316_uczelnia_jednostek_na_strone	2000-01-01 00:00:00+00
+411	bpp	0317_uczelnia_pokaz_tylko_nadrzedne	2000-01-01 00:00:00+00
+412	bpp	0318_jedno_podstawowe_miejsce_pracy	2000-01-01 00:00:00+00
+413	bpp	0319_aktualna_jednostka_to_podstawowe_miejsce	2000-01-01 00:00:00+00
+414	bpp	0320_autor_aktualny_pole_znika	2000-01-01 00:00:00+00
+415	bpp	0321_aktualna_jednostka_moze_byc_zadna	2000-01-01 00:00:00+00
+416	bpp	0322_oplaty_za_publikacje	2000-01-01 00:00:00+00
+417	bpp	0323_jednostka_pokazuj_opis	2000-01-01 00:00:00+00
+419	bpp	0325_nullbooleanfield	2000-01-01 00:00:00+00
+420	bpp	0326_auto_20220818_0012	2000-01-01 00:00:00+00
+421	bpp	0327_uczelnia_pokazuj_formularz_zglaszania_publikacji	2000-01-01 00:00:00+00
+422	bpp	0328_charakter_formalny_charakter_crossref	2000-01-01 00:00:00+00
+424	bpp	0328_alter_uczelnia_wymagaj_informacji_o_oplatach	2000-01-01 00:00:00+00
+425	bpp	0330_merge_20220921_2152	2000-01-01 00:00:00+00
+426	bpp	0331_kierunek_studiow	2000-01-01 00:00:00+00
+427	bpp	0332_pbn_zawsze_uid_uczelni	2000-01-01 00:00:00+00
+428	bpp	0333_autorzy_kierunek_studiow	2000-01-01 00:00:00+00
+429	bpp	0334_oswiadczenie_ken_modele	2000-01-01 00:00:00+00
 431	bpp	0336_jednostka_opis_html	2000-01-01 00:00:00+00
 432	bpp	0337_oswiadczenie_ken_cleanup	2000-01-01 00:00:00+00
 433	bpp	0338_wydzial_pokazuj_opis	2000-01-01 00:00:00+00
@@ -16786,7 +16836,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 758	import_list_ministerialnych	0002_alter_wierszimportudyscyplinzrodel_nr_wiersza	2000-01-01 00:00:00+00
 759	import_list_ministerialnych	0003_rename_wierszimportudyscyplinzrodel_wierszimportulistyministerialnej	2000-01-01 00:00:00+00
 760	import_list_ministerialnych	0004_importlistministerialnych_ignoruj_zrodla_bez_odpowiednika	2000-01-01 00:00:00+00
-94	bpp	0017_typy_pbn	2000-01-01 00:00:00+00
 970	bpp	0417_ensure_uczelnia_site_not_null	2000-01-01 00:00:00+00
 704	favicon	0001_initial	2000-01-01 00:00:00+00
 761	import_list_ministerialnych	0005_add_duplicate_tracking_fields	2000-01-01 00:00:00+00
@@ -17542,54 +17591,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 374	bpp	0281_auto_20210725_2332	2000-01-01 00:00:00+00
 375	bpp	0282_auto_20210808_2334	2000-01-01 00:00:00+00
 377	bpp	0284_auto_20210814_0023	2000-01-01 00:00:00+00
-378	bpp	0285_auto_20210814_0103	2000-01-01 00:00:00+00
-379	bpp	0286_auto_20210814_0104	2000-01-01 00:00:00+00
-380	bpp	0287_trgrm_extnsn	2000-01-01 00:00:00+00
-381	bpp	0288_rekord_mat_isbn	2000-01-01 00:00:00+00
-382	bpp	0289_data_oswiadczenia	2000-01-01 00:00:00+00
-383	bpp	0290_bppmultiseekvis_detale	2000-01-01 00:00:00+00
-384	bpp	0291_kod_dyscypliny_field	2000-01-01 00:00:00+00
-385	bpp	0292_przypinanie_dyscyplin	2000-01-01 00:00:00+00
-386	bpp	0293_pbn_api_kasowanie_przed_nie_eksp_zero	2000-01-01 00:00:00+00
-387	bpp	0294_szablony_opisu_stron	2000-01-01 00:00:00+00
-389	bpp	0296_nulltest_szablonopisu	2000-01-01 00:00:00+00
-390	bpp	0297_wydawca_denorm	2000-01-01 00:00:00+00
-391	bpp	0298_wydawnictwo_zwarte_denorm	2000-01-01 00:00:00+00
-392	bpp	0299_wydawnictwo_ciagle_denorm	2000-01-01 00:00:00+00
-393	bpp	0300_patent_denorm	2000-01-01 00:00:00+00
-394	bpp	0301_doktorska_habilitacyjna_denorm	2000-01-01 00:00:00+00
-395	bpp	0302_denorm_autor_dyscyplina_new_trigger	2000-01-01 00:00:00+00
-396	bpp	0303_denorm_cleanup_cachequeue_gone	2000-01-01 00:00:00+00
-397	bpp	0304_auto_20211010_2247	2000-01-01 00:00:00+00
-398	bpp	0297_liczba_n_uczelni	2000-01-01 00:00:00+00
-399	bpp	0305_merge_20211010_2323	2000-01-01 00:00:00+00
-400	bpp	0306_delete_ewaluacja2021liczbandlauczelni	2000-01-01 00:00:00+00
-401	bpp	0307_streszczenia	2000-01-01 00:00:00+00
-402	bpp	0308_ewaluacja_upowaznienia_view	2000-01-01 00:00:00+00
-403	bpp	0309_auto_20211110_0000	2000-01-01 00:00:00+00
-404	bpp	0310_fix_refresh_cache_deadlocks	2000-01-01 00:00:00+00
-405	bpp	0311_wyd_ciagle_kwartyle	2000-01-01 00:00:00+00
-407	bpp	0313_meta_zewn_baza	2000-01-01 00:00:00+00
-408	bpp	0314_punktacja_zrodla_kwarty	2000-01-01 00:00:00+00
-409	bpp	0315_aktualna_jednostka_ostatnia_przypisana	2000-01-01 00:00:00+00
-410	bpp	0316_uczelnia_jednostek_na_strone	2000-01-01 00:00:00+00
-411	bpp	0317_uczelnia_pokaz_tylko_nadrzedne	2000-01-01 00:00:00+00
-412	bpp	0318_jedno_podstawowe_miejsce_pracy	2000-01-01 00:00:00+00
-413	bpp	0319_aktualna_jednostka_to_podstawowe_miejsce	2000-01-01 00:00:00+00
-414	bpp	0320_autor_aktualny_pole_znika	2000-01-01 00:00:00+00
-415	bpp	0321_aktualna_jednostka_moze_byc_zadna	2000-01-01 00:00:00+00
-416	bpp	0322_oplaty_za_publikacje	2000-01-01 00:00:00+00
-417	bpp	0323_jednostka_pokazuj_opis	2000-01-01 00:00:00+00
-419	bpp	0325_nullbooleanfield	2000-01-01 00:00:00+00
-420	bpp	0326_auto_20220818_0012	2000-01-01 00:00:00+00
-421	bpp	0327_uczelnia_pokazuj_formularz_zglaszania_publikacji	2000-01-01 00:00:00+00
-422	bpp	0328_charakter_formalny_charakter_crossref	2000-01-01 00:00:00+00
-424	bpp	0328_alter_uczelnia_wymagaj_informacji_o_oplatach	2000-01-01 00:00:00+00
-425	bpp	0330_merge_20220921_2152	2000-01-01 00:00:00+00
-426	bpp	0331_kierunek_studiow	2000-01-01 00:00:00+00
-427	bpp	0332_pbn_zawsze_uid_uczelni	2000-01-01 00:00:00+00
-428	bpp	0333_autorzy_kierunek_studiow	2000-01-01 00:00:00+00
-429	bpp	0334_oswiadczenie_ken_modele	2000-01-01 00:00:00+00
 430	bpp	0335_autorzy_oswiadczenie_ken	2000-01-01 00:00:00+00
 477	bpp	0370_alter_autor_dyscyplina_options_jezyk_widoczny	2000-01-01 00:00:00+00
 478	bpp	0371_usun_spacje_z_nazw_dyscyplin	2000-01-01 00:00:00+00
@@ -17597,6 +17598,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 480	bpp	0373_alter_praca_doktorska_jezyk_and_more	2000-01-01 00:00:00+00
 481	bpp	0374_remove_autor_dyscyplina_dni_absencji_and_more	2000-01-01 00:00:00+00
 1140	bpp	0490_usun_unique_autor_kolejnosc	2000-01-01 00:00:00+00
+1141	importer_publikacji	0021_importsession_powrot_do_zgloszen	2000-01-01 00:00:00+00
 \.
 
 
@@ -17968,6 +17970,21 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+298	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+299	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
+300	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+301	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+302	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+303	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+304	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+305	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+306	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+307	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+308	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+309	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+310	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+311	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+312	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -18222,7 +18239,7 @@ COPY public.importer_publikacji_importedauthor_candidate (id, pewnosc, powod, pu
 -- Data for Name: importer_publikacji_importsession; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.importer_publikacji_importsession (id, provider_name, identifier, status, raw_data, normalized_data, matched_data, jest_wydawnictwem_zwartym, created_record_id, created, modified, charakter_formalny_id, created_record_content_type_id, jezyk_id, typ_kbn_id, created_by_id, wydawca_id, zrodlo_id, modified_by_id, wydawnictwo_nadrzedne_id, wydawnictwo_nadrzedne_w_pbn_id, celery_task_id, last_error_message, last_error_traceback, last_failed_stage, uczelnia_id, rodzaj_rekordu, zgloszenie_id, zgloszenie_odrzucone_przez_operatora) FROM stdin;
+COPY public.importer_publikacji_importsession (id, provider_name, identifier, status, raw_data, normalized_data, matched_data, jest_wydawnictwem_zwartym, created_record_id, created, modified, charakter_formalny_id, created_record_content_type_id, jezyk_id, typ_kbn_id, created_by_id, wydawca_id, zrodlo_id, modified_by_id, wydawnictwo_nadrzedne_id, wydawnictwo_nadrzedne_w_pbn_id, celery_task_id, last_error_message, last_error_traceback, last_failed_stage, uczelnia_id, rodzaj_rekordu, zgloszenie_id, zgloszenie_odrzucone_przez_operatora, powrot_do_zgloszen) FROM stdin;
 \.
 
 
@@ -19584,7 +19601,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1140, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1141, true);
 
 
 --
@@ -19822,7 +19839,7 @@ SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 42,
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 297, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 312, true);
 
 
 --

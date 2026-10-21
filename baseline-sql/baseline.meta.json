@@ -1,5 +1,5 @@
 {
-  "git_sha": "7b64ebe48f0311cbf7345abe2f8ed007ddc48aa5",
+  "git_sha": "24dde09342cad4ca28487ad21ef768487acfdfe0",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
@@ -38,7 +38,7 @@
     "import_pracownikow": "0028_nadpisuj_daty_zatrudnienia",
     "import_punktacji_zrodel": "0002_alter_importpunktacjizrodel_options_and_more",
     "importer_autorow_pbn": "0002_add_cache_models",
-    "importer_publikacji": "0020_importsession_zgloszenie",
+    "importer_publikacji": "0021_importsession_powrot_do_zgloszen",
     "integrator2": "0006_move_files_to_protected",
     "komparator_pbn": "0003_delete_pbndownloadtask",
     "komparator_pbn_udzialy": "0003_remove_brakautorawpublikacji_komparator__autor_i_e007d7_idx_and_more",
