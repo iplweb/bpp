@@ -23,6 +23,7 @@ from bpp.models import (
     Typ_Odpowiedzialnosci,
     Uczelnia,
 )
+from bpp.models.abstract.authors import KOMUNIKAT_DUPLIKAT_AUTORA, UNIQUE_AUTOR_TYP
 from bpp.util import zaloguj_polkniety_wyjatek
 
 logger = logging.getLogger(__name__)
@@ -350,6 +351,13 @@ def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
             return qs[:MAKSYMALNA_ILOSC_AUTOROW_W_FORMULARZU]
 
         def clean(self):
+            # ``BaseModelFormSet.clean()`` to jedyne miejsce, z którego Django
+            # woła ``validate_unique()`` -- sprawdzenie unikalności MIĘDZY
+            # wierszami tego samego POST-a. Bez ``super()`` dwa nowe wiersze
+            # z tym samym autorem i typem odpowiedzialności przechodziły
+            # walidację, a drugi INSERT kończył się IntegrityError (500).
+            super().clean()
+
             # get forms that actually have valid data
             percent = Decimal("0.00")
             for form in self.forms:
@@ -366,6 +374,11 @@ def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
                 raise forms.ValidationError(
                     "Liczba podanych procent odpowiedzialności przekracza 100.0"
                 )
+
+        def get_unique_error_message(self, unique_check):
+            if frozenset(unique_check) | {self.fk.name} == UNIQUE_AUTOR_TYP:
+                return KOMUNIKAT_DUPLIKAT_AUTORA
+            return super().get_unique_error_message(unique_check)
 
     baseClass = admin.StackedInline
     extraRows = 0
