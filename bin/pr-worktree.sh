@@ -12,7 +12,7 @@
 # Wywoływane przez targety Makefile:
 #   make pr PR=856                  # pobierz/odśwież PR i uruchom run-site
 #   make pr PR=856 NO_RUN=1         # tylko przygotuj worktree
-#   make pr PR=856 DUMP=uafm        # run-site na najnowszym backupie hosta
+#   make pr PR=856 DUMP=example     # run-site na najnowszym backupie hosta
 #   make pr PR=856 DUMP=plik.sql.gz # ... albo na konkretnym pliku dumpa
 #   make pr PR=856 ARGS="--no-celery --no-browser"
 #   make pr-list                    # lokalne worktree PR-ów + otwarte PR-y
@@ -88,7 +88,7 @@ backup_host_dirs() {
 }
 
 # DUMP to ścieżka do pliku albo fragment nazwy hosta z $BACKUPS_DIR
-# (np. "uafm" -> najnowszy db-backup-* z ~/Backups/bpp.uafm.edu.pl/).
+# (np. "example" -> najnowszy db-backup-* z ~/Backups/bpp.example.edu.pl/).
 resolve_dump() {
     local spec=$1
     if [[ -e "$spec" ]]; then
@@ -171,7 +171,7 @@ cmd_start() {
         dump=$(resolve_dump "$dump") || exit 1
         echo "Dump: $dump ($(du -h "$dump" | cut -f1), $(date -r "$dump" '+%Y-%m-%d'))"
     else
-        echo "Dump: brak — goła baza z baseline (DUMP=uafm albo BPP_PR_DUMP, żeby mieć dane)"
+        echo "Dump: brak — goła baza z baseline (DUMP=<host> albo BPP_PR_DUMP, żeby mieć dane)"
     fi
 
     local wt branch sha base

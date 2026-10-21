@@ -116,7 +116,7 @@ maszyny) nie przełączaj gałęzi w głównym checkoucie — użyj:
 ```bash
 make pr PR=856                      # pobierz PR, przygotuj worktree, uruchom run-site
 make pr PR=856 ARGS="--no-celery"   # dodatkowe flagi dla `run-site run`
-make pr PR=856 DUMP=uafm            # na najnowszym backupie z ~/Backups/*uafm*/
+make pr PR=856 DUMP=example         # na najnowszym backupie z ~/Backups/*example*/
 make pr PR=856 DUMP=~/x.sql.gz      # ... albo na konkretnym pliku dumpa
 make pr PR=856 DUMP=none            # goła baza mimo ustawionego BPP_PR_DUMP
 make pr PR=856 NO_RUN=1             # tylko przygotuj worktree, bez run-site
@@ -148,7 +148,7 @@ Co robi `make pr` (`bin/pr-worktree.sh`):
 `.pg_dump`, `.sql.gz`…) z katalogu `~/Backups/*<host>*/` — run-site sam
 rozpakowuje te formaty i po odtworzeniu stosuje migracje (także te z PR-a),
 więc przy okazji widać, czy przechodzą na prawdziwych danych. Żeby zawsze
-startować z danymi, ustaw raz w `~/.zshrc` np. `export BPP_PR_DUMP=uafm`
+startować z danymi, ustaw raz w `~/.zshrc` np. `export BPP_PR_DUMP=example`
 (mały, w miarę świeży backup); `DUMP=none` wymusza wtedy gołą bazę.
 Inny katalog backupów: `BPP_BACKUPS_DIR`.
 

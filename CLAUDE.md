@@ -163,7 +163,7 @@ w głównym checkoucie** (może mieć niezacommitowaną pracę) — użyj:
 
 ```bash
 make pr PR=856 ARGS="--no-browser"   # w tle (run_in_background=true)
-make pr PR=856 DUMP=uafm             # z danymi: najnowszy backup ~/Backups/*uafm*/
+make pr PR=856 DUMP=example          # z danymi: najnowszy backup ~/Backups/*example*/
 make pr PR=856 NO_RUN=1              # tylko worktree, np. żeby odpalić testy
 make pr-list                         # pobrane PR-y, run-site, backupy do DUMP=
 make pr-clean PR=856                 # sprzątanie po teście
