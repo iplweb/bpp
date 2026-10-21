@@ -74,7 +74,9 @@ LIVEOPS = {**LIVEOPS, "RUNNER": "eager"}
 
 # Setup wizard middleware nie ma sensu w testach (i przeszkadza fixture'om).
 MIDDLEWARE = [
-    m for m in MIDDLEWARE if m != "first_run_wizard.middleware.FirstRunWizardMiddleware"
+    m
+    for m in MIDDLEWARE
+    if m != "bpp_setup_wizard.middleware.BppFirstRunWizardMiddleware"
 ]
 
 # Testy nie powinny korzystać z cacheops — paczka monkey-patchuje

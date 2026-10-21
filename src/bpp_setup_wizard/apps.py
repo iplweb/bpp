@@ -10,9 +10,10 @@ class BppSetupWizardConfig(AppConfig):
         from first_run_wizard import registry
         from first_run_wizard.registry import StepAlreadyRegistered
 
-        from bpp_setup_wizard.steps import UczelniaSetupStep
+        from bpp_setup_wizard.steps import PbnSetupStep, UczelniaSetupStep
 
-        try:
-            registry.register(UczelniaSetupStep())
-        except StepAlreadyRegistered:
-            pass
+        for step in (UczelniaSetupStep(), PbnSetupStep()):
+            try:
+                registry.register(step)
+            except StepAlreadyRegistered:
+                pass  # ready() bywa wołane ponownie (np. w testach)
