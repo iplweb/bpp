@@ -1,0 +1,1 @@
+Dwukolumnowe menu w adminie nie skacze już do jednej długiej kolumny po zjechaniu z niego kursorem i nie mruga przy wyjeździe przez dolną krawędź. Wszystkie rozwijane menu admina zanikają szybciej i w trakcie zanikania nie reagują już na kursor — powrót myszą w miejsce znikającego menu nie wywołuje go ponownie „znikąd".
