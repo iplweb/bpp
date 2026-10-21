@@ -1,13 +1,20 @@
-"""BPP-specific first-run wizard step: Uczelnia + PBN configuration.
+"""BPP-specific first-run wizard step: Uczelnia configuration.
 
 Built on top of django-first-run-wizard's `SetupStep` plugin API. The
 generic admin-user creation step is provided by the package; this module
 adds the BPP-specific "configure the university" step that runs once an
 admin exists.
+
+Krok 3 (integracja z PBN) NIE jest krokiem silnika — to widok
+``bpp_setup_wizard.views.PbnSetupView``, na który ten krok przekierowuje po
+zapisie. Dzięki temu pominięcie PBN nie wymaga trzymania stanu w bazie:
+silnik uznaje kreator za ukończony, gdy istnieje uczelnia, a krok PBN jest
+opcjonalnym przystankiem, który nie wraca (FD#499).
 """
 
 from __future__ import annotations
 
+from django.urls import reverse
 from first_run_wizard import SetupStep
 
 from bpp.models import Uczelnia
@@ -16,7 +23,7 @@ from bpp_setup_wizard.forms import UczelniaSetupForm
 
 class UczelniaSetupStep(SetupStep):
     name = "uczelnia"
-    verbose_name = "Konfiguracja uczelni"
+    verbose_name = "Dane uczelni"
     order = 100  # after AdminUserCreationStep (order=0)
     form_class = UczelniaSetupForm
     template_name = "bpp_setup_wizard/uczelnia_setup.html"
@@ -34,3 +41,8 @@ class UczelniaSetupStep(SetupStep):
         # uczelnia would land without a Site FK and fail the NOT NULL
         # constraint added in migration 0417.
         return form.save(request=request)
+
+    def get_success_url(self, request) -> str:
+        # Krok 3 z 3 — integracja z PBN. Leży pod /setup/, więc middleware
+        # kreatora go nie przechwytuje.
+        return reverse("bpp_setup_wizard:pbn")

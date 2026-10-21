@@ -1,0 +1,19 @@
+{# Pasek postępu kreatora pierwszego uruchomienia (FD#499). #}
+{# Użycie: {% include "bpp_setup_wizard/_postep.html" with numer=2 %} #}
+<nav class="bpp-setup-wizard__progress" aria-label="Postęp konfiguracji">
+    <p class="bpp-setup-wizard__progress-label">Krok {{ numer }} z 3</p>
+    <ol class="bpp-setup-wizard__progress-list">
+        <li class="bpp-setup-wizard__progress-item{% if numer == 1 %} bpp-setup-wizard__progress-item--current{% elif numer > 1 %} bpp-setup-wizard__progress-item--done{% endif %}"
+            {% if numer == 1 %}aria-current="step"{% endif %}>
+            Konto administratora
+        </li>
+        <li class="bpp-setup-wizard__progress-item{% if numer == 2 %} bpp-setup-wizard__progress-item--current{% elif numer > 2 %} bpp-setup-wizard__progress-item--done{% endif %}"
+            {% if numer == 2 %}aria-current="step"{% endif %}>
+            Dane uczelni
+        </li>
+        <li class="bpp-setup-wizard__progress-item{% if numer == 3 %} bpp-setup-wizard__progress-item--current{% endif %}"
+            {% if numer == 3 %}aria-current="step"{% endif %}>
+            Integracja z PBN
+        </li>
+    </ol>
+</nav>

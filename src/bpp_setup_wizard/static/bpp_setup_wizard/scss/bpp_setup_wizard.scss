@@ -236,4 +236,90 @@
         margin: 5px 0;
         font-size: 14px;
     }
+
+    // Pasek postępu („Krok N z 3", FD#499)
+    &__progress {
+        margin-bottom: 30px;
+    }
+
+    &__progress-label {
+        text-align: center;
+        font-weight: bold;
+        color: #0a7cb8;
+        margin: 0 0 10px 0;
+    }
+
+    &__progress-list {
+        display: flex;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        gap: 8px;
+    }
+
+    &__progress-item {
+        flex: 1;
+        text-align: center;
+        font-size: 13px;
+        color: #888;
+        padding-top: 8px;
+        border-top: 4px solid #e0e0e0;
+
+        &--done {
+            color: #2e7d32;
+            border-top-color: #4caf50;
+        }
+
+        &--current {
+            color: #0a7cb8;
+            font-weight: bold;
+            border-top-color: #0a7cb8;
+        }
+    }
+
+    // Krok PBN: pytanie z trzema odpowiedziami
+    &__question {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    &__question-title {
+        color: #333;
+        font-size: 22px;
+        margin-bottom: 20px;
+    }
+
+    &__choices {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        max-width: 480px;
+        margin: 0 auto;
+    }
+
+    &__choice {
+        display: block;
+        padding: 14px 20px;
+        border: 2px solid #0a7cb8;
+        border-radius: 4px;
+        color: #0a7cb8;
+        font-size: 16px;
+        text-align: left;
+
+        &:hover,
+        &:focus {
+            background: #0a7cb8;
+            color: white;
+        }
+
+        span {
+            margin-right: 8px;
+        }
+    }
+
+    &__back {
+        text-align: center;
+        margin-top: 15px;
+        font-size: 14px;
+    }
 }

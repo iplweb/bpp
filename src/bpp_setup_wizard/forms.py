@@ -5,15 +5,10 @@ from bpp.models import Uczelnia
 
 
 class UczelniaSetupForm(forms.ModelForm):
-    """Form for creating the initial Uczelnia (University) configuration."""
+    """Form for creating the initial Uczelnia (University) configuration.
 
-    PBN_API_CHOICES = [
-        (
-            "https://pbn-micro-alpha.opi.org.pl",
-            "Dostęp TESTOWY (https://pbn-micro-alpha.opi.org.pl)",
-        ),
-        ("https://pbn.nauka.gov.pl", "Dostęp PRODUKCYJNY (https://pbn.nauka.gov.pl)"),
-    ]
+    Tylko dane uczelni — dane PBN są w osobnym kroku (``PbnSetupForm``).
+    """
 
     nazwa = forms.CharField(
         max_length=512,
@@ -48,37 +43,6 @@ class UczelniaSetupForm(forms.ModelForm):
         ),
     )
 
-    pbn_api_root = forms.ChoiceField(
-        choices=PBN_API_CHOICES,
-        required=True,
-        label="Środowisko PBN",
-        help_text="Wybierz środowisko testowe lub produkcyjne",
-        widget=forms.Select(attrs={"class": "form-control"}),
-    )
-
-    pbn_app_name = forms.CharField(
-        max_length=128,
-        required=False,
-        label="Nazwa aplikacji w PBN",
-        help_text="Nazwa aplikacji zarejestrowanej w systemie PBN",
-        widget=forms.TextInput(
-            attrs={
-                "class": "form-control",
-                "placeholder": "Nazwa aplikacji otrzymana z PBN",
-            }
-        ),
-    )
-
-    pbn_app_token = forms.CharField(
-        max_length=128,
-        required=False,
-        label="Token aplikacji w PBN",
-        help_text="Token autoryzacyjny aplikacji w systemie PBN",
-        widget=forms.TextInput(
-            attrs={"class": "form-control", "placeholder": "Token otrzymany z PBN"}
-        ),
-    )
-
     uzywaj_wydzialow = forms.BooleanField(
         required=False,
         initial=True,
@@ -93,9 +57,6 @@ class UczelniaSetupForm(forms.ModelForm):
             "nazwa",
             "nazwa_dopelniacz_field",
             "skrot",
-            "pbn_api_root",
-            "pbn_app_name",
-            "pbn_app_token",
             "uzywaj_wydzialow",
         ]
 
@@ -138,3 +99,50 @@ class UczelniaSetupForm(forms.ModelForm):
             uczelnia.save()
 
         return uczelnia
+
+
+class PbnSetupForm(forms.ModelForm):
+    """Krok 3 kreatora: dane integracji z PBN (ścieżka „Tak, mam oba")."""
+
+    PBN_API_CHOICES = [
+        (
+            "https://pbn-micro-alpha.opi.org.pl",
+            "Dostęp TESTOWY (https://pbn-micro-alpha.opi.org.pl)",
+        ),
+        ("https://pbn.nauka.gov.pl", "Dostęp PRODUKCYJNY (https://pbn.nauka.gov.pl)"),
+    ]
+
+    pbn_api_root = forms.ChoiceField(
+        choices=PBN_API_CHOICES,
+        required=True,
+        label="Środowisko PBN",
+        help_text="Wybierz środowisko testowe lub produkcyjne",
+        widget=forms.Select(attrs={"class": "form-control"}),
+    )
+
+    pbn_app_name = forms.CharField(
+        max_length=128,
+        required=True,
+        label="Nazwa aplikacji w PBN",
+        help_text="Nazwa aplikacji zarejestrowanej w systemie PBN",
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Nazwa aplikacji otrzymana z PBN",
+            }
+        ),
+    )
+
+    pbn_app_token = forms.CharField(
+        max_length=128,
+        required=True,
+        label="Token aplikacji w PBN",
+        help_text="Token autoryzacyjny aplikacji w systemie PBN",
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "Token otrzymany z PBN"}
+        ),
+    )
+
+    class Meta:
+        model = Uczelnia
+        fields = ["pbn_api_root", "pbn_app_name", "pbn_app_token"]

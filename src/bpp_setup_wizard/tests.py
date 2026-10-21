@@ -1,4 +1,4 @@
-"""Tests for the BPP-specific UczelniaSetupStep.
+"""Tests for the BPP-specific wizard steps (Uczelnia + PBN).
 
 The generic admin-user step and middleware are tested in the
 django-first-run-wizard package itself; this module covers only the
@@ -86,8 +86,11 @@ def test_uczelnia_setup_form_display(admin_user):
     assert "Nazwa uczelni" in content
     assert "Nazwa w dopełniaczu" in content
     assert "Skrót uczelni" in content
-    assert "Środowisko PBN" in content
     assert "Używaj wydziałów" in content
+    # FD#499: krok „Dane uczelni" nie zawiera pól PBN.
+    assert "Środowisko PBN" not in content
+    assert 'name="pbn_app_token"' not in content
+    assert "Krok 2 z 3" in content
 
 
 @pytest.mark.django_db
@@ -102,15 +105,13 @@ def test_uczelnia_setup_creates_uczelnia(admin_user):
             "nazwa": "Uniwersytet Testowy",
             "nazwa_dopelniacz_field": "Uniwersytetu Testowego",
             "skrot": "UT",
-            "pbn_api_root": "https://pbn-micro-alpha.opi.org.pl",
-            "pbn_app_name": "test_app",
-            "pbn_app_token": "test_token",
             "uzywaj_wydzialow": True,
         },
     )
 
+    # FD#499: po danych uczelni kreator prowadzi do kroku 3 (PBN).
     assert response.status_code == 302
-    assert response.url == "/"
+    assert response.url == reverse("bpp_setup_wizard:pbn")
 
     assert Uczelnia.objects.count() == 1
     uczelnia = Uczelnia.objects.first()
@@ -118,9 +119,8 @@ def test_uczelnia_setup_creates_uczelnia(admin_user):
     assert uczelnia.nazwa_dopelniacz_field == "Uniwersytetu Testowego"
     assert uczelnia.nazwa_dopelniacz() == "Uniwersytetu Testowego"
     assert uczelnia.skrot == "UT"
-    assert uczelnia.pbn_api_root == "https://pbn-micro-alpha.opi.org.pl"
-    assert uczelnia.pbn_app_name == "test_app"
-    assert uczelnia.pbn_app_token == "test_token"
+    assert uczelnia.pbn_app_name == ""
+    assert uczelnia.pbn_app_token == ""
     assert uczelnia.uzywaj_wydzialow is True
 
     # Verify the automatically set fields
@@ -175,6 +175,7 @@ def test_admin_user_page_is_bpp_branded_and_hides_skip_link():
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert "bpp-setup-wizard" in body, "expected BPP-styled wrapper class"
+    assert "Krok 1 z 3" in body
     assert "Przejdź do głównej zawartości" not in body, (
         "skip-link from bare.html should be suppressed on wizard pages "
         "(empty {% block skip_link %}{% endblock %} override)"
@@ -245,7 +246,8 @@ def test_admin_user_post_via_bpp_override_creates_superuser():
 @pytest.mark.django_db
 def test_full_happy_path_empty_db_to_live_site():
     """E2E na pustej bazie: anonimowy GET / → admin_user form → POST →
-    middleware → uczelnia form → POST → site live (brak redirectu setup).
+    middleware → uczelnia form → POST → krok PBN → „uzupełnię później" →
+    site live (brak redirectu setup).
 
     Jeden Django test Client utrzymuje session przez całą ścieżkę,
     weryfikujemy że wszystkie redirecty i obie strony BPP-styled formularzy
@@ -299,30 +301,193 @@ def test_full_happy_path_empty_db_to_live_site():
     body = response.content.decode("utf-8")
     assert "Konfiguracja uczelni" in body
     assert 'name="nazwa"' in body
-    assert 'name="pbn_api_root"' in body
+    assert 'name="pbn_api_root"' not in body
 
-    # 6) POST uczelnia → tworzy Uczelnia z PBN flags + redirect na /.
+    # 6) POST uczelnia → tworzy Uczelnia z PBN flags + redirect na krok PBN.
     response = client.post(
         uczelnia_url,
         {
             "nazwa": "Uniwersytet E2E",
             "nazwa_dopelniacz_field": "Uniwersytetu E2E",
             "skrot": "UE2E",
-            "pbn_api_root": "https://pbn-micro-alpha.opi.org.pl",
             "uzywaj_wydzialow": True,
         },
     )
     assert response.status_code == 302
-    assert response.url == "/"
+    assert response.url == reverse("bpp_setup_wizard:pbn")
     uczelnia = Uczelnia.objects.get()
     assert uczelnia.nazwa == "Uniwersytet E2E"
     assert uczelnia.pbn_integracja is True
 
-    # 7) GET / nie przekierowuje już do setup — site live. Może być 200 albo
+    # 7) Krok 3 (PBN) zaczyna się od pytania; „uzupełnię później" → pomiń.
+    response = client.get(response.url)
+    assert response.status_code == 200
+    assert "Krok 3 z 3" in response.content.decode("utf-8")
+    response = client.post(_pbn_url("pozniej"), {"akcja": "pomin"})
+    assert response.status_code == 302
+    assert response.url == "/"
+
+    # 8) GET / nie przekierowuje już do setup — site live. Może być 200 albo
     # inny redirect zależnie od głównej routy BPP, ale NIE może być redirect
-    # do /setup/ (oba kroki ukończone).
+    # do /setup/ (wszystkie kroki ukończone).
+    _assert_site_live(client)
+
+
+# --- FD#499: krok 3 „Integracja z PBN" -------------------------------------
+
+
+PBN_TESTOWY = "https://pbn-micro-alpha.opi.org.pl"
+
+
+def _pbn_url(odpowiedz=None):
+    url = reverse("bpp_setup_wizard:pbn")
+    if odpowiedz:
+        url += f"?odpowiedz={odpowiedz}"
+    return url
+
+
+def _assert_site_live(client):
     response = client.get("/")
     if response.status_code in (301, 302):
         assert "/setup/" not in response.url, (
-            f"unexpected redirect to setup wizard after both steps done: {response.url}"
+            f"unexpected redirect to setup wizard after all steps: {response.url}"
         )
+
+
+@pytest.fixture
+def po_kroku_uczelni(request, admin_user, first_run_wizard_state):
+    """Stan po kroku 2: admin + uczelnia istnieją, kreator jeszcze otwarty.
+
+    Middleware kreatora powstaje przy pierwszym requeście klienta; gdyby
+    zbudował się już przy istniejącej uczelni, ścieżka naprawcza od razu
+    stemplowałaby ``completed_at``. W realnym przebiegu worker startuje
+    przed konfiguracją — odtwarzamy to: middleware ładujemy bez uczelni,
+    dopiero potem ją tworzymy.
+    """
+    from first_run_wizard.models import FirstRunWizardState
+
+    Uczelnia.objects.all().delete()
+    FirstRunWizardState.objects.filter(pk=1).update(completed_at=None)
+    client = Client()
+    client.force_login(admin_user)
+    client.handler.load_middleware()
+    request.getfixturevalue("uczelnia")
+    return client
+
+
+@pytest.mark.django_db
+def test_pbn_step_zaczyna_sie_od_pytania_bez_formularza(po_kroku_uczelni):
+    response = po_kroku_uczelni.get(_pbn_url())
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Krok 3 z 3" in body
+    assert "Czy masz już nazwę i token aplikacji z PBN?" in body
+    assert "Tak, mam oba" in body
+    assert "Jeszcze nie, uzupełnię to później" in body
+    assert "Nie wiem, o co chodzi" in body
+    assert 'name="pbn_app_token"' not in body
+
+
+@pytest.mark.django_db
+def test_pbn_step_tak_pokazuje_formularz(po_kroku_uczelni):
+    response = po_kroku_uczelni.get(_pbn_url("tak"))
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert 'name="pbn_api_root"' in body
+    assert 'name="pbn_app_name"' in body
+    assert 'name="pbn_app_token"' in body
+
+
+@pytest.mark.django_db
+def test_pbn_step_tak_zapisuje_dane_pbn(po_kroku_uczelni, uczelnia):
+    response = po_kroku_uczelni.post(
+        _pbn_url("tak"),
+        {
+            "akcja": "zapisz",
+            "pbn_api_root": PBN_TESTOWY,
+            "pbn_app_name": "test_app",
+            "pbn_app_token": "test_token",
+        },
+    )
+    assert response.status_code == 302
+    assert response.url == "/"
+
+    uczelnia.refresh_from_db()
+    assert uczelnia.pbn_api_root == PBN_TESTOWY
+    assert uczelnia.pbn_app_name == "test_app"
+    assert uczelnia.pbn_app_token == "test_token"
+    _assert_site_live(po_kroku_uczelni)
+
+
+@pytest.mark.django_db
+def test_pbn_step_tak_wymaga_nazwy_i_tokenu(po_kroku_uczelni, uczelnia):
+    response = po_kroku_uczelni.post(
+        _pbn_url("tak"),
+        {"akcja": "zapisz", "pbn_api_root": PBN_TESTOWY},
+    )
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert 'name="pbn_app_token"' in body
+    uczelnia.refresh_from_db()
+    assert uczelnia.pbn_app_name == ""
+
+
+@pytest.mark.django_db
+def test_pbn_step_pozniej_wskazuje_gdzie_uzupelnic(po_kroku_uczelni):
+    response = po_kroku_uczelni.get(_pbn_url("pozniej"))
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert 'name="pbn_app_token"' not in body
+    assert "Administracja → Uczelnia" in body
+    assert "uzyskanie-integracji-z-api-pbn" in body
+
+
+@pytest.mark.django_db
+def test_pbn_step_nie_wiem_wyjasnia_pbn(po_kroku_uczelni):
+    response = po_kroku_uczelni.get(_pbn_url("nie-wiem"))
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert 'name="pbn_app_token"' not in body
+    assert "Polska Bibliografia Naukowa" in body
+    assert "administrator instytucji w PBN" in body
+    assert "uzyskanie-integracji-z-api-pbn" in body
+    assert "Administracja → Uczelnia" in body
+    assert "Rozumiem, pomiń na razie" in body
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("odpowiedz", ["pozniej", "nie-wiem"])
+def test_pbn_step_pominiecie_konczy_kreator_i_nie_wraca(
+    po_kroku_uczelni, uczelnia, odpowiedz
+):
+    from first_run_wizard.models import FirstRunWizardState
+
+    response = po_kroku_uczelni.post(_pbn_url(odpowiedz), {"akcja": "pomin"})
+    assert response.status_code == 302
+    assert response.url == "/"
+
+    uczelnia.refresh_from_db()
+    assert uczelnia.pbn_app_name == ""
+    # Świadome pominięcie jest zapamiętane: kreator zamknięty na dobre,
+    # krok PBN nie wraca.
+    assert FirstRunWizardState.is_completed()
+    _assert_site_live(po_kroku_uczelni)
+    assert po_kroku_uczelni.get(_pbn_url()).status_code == 404
+
+
+@pytest.mark.django_db
+def test_pbn_step_wymaga_superusera(po_kroku_uczelni):
+    po_kroku_uczelni.logout()
+    response = po_kroku_uczelni.get(_pbn_url())
+    assert response.status_code == 302
+    assert response.url == "/"
+
+
+@pytest.mark.django_db
+def test_pbn_step_bez_uczelni_odsyla_do_kreatora(admin_user):
+    Uczelnia.objects.all().delete()
+    client = Client()
+    client.force_login(admin_user)
+    response = client.get(_pbn_url())
+    assert response.status_code == 302
+    assert response.url == "/"
