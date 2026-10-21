@@ -1,4 +1,4 @@
-{% load prace user_in_group dspace_links static %}
+{% load prace user_in_group dspace_links static czy_pokazywac %}
 {# Streszczenia pobierane RAZ: szablon odwołuje się do nich w kilku #}
 {# miejscach (warunki, pętla, licznik języków). Widok dodatkowo robi #}
 {# prefetch, więc całość to jedno zapytanie na stronę. #}
@@ -631,19 +631,19 @@
                             </tr>
                         {% endif %}
 
-                        {% if uczelnia.pokazuj_status_korekty == "always" or uczelnia.pokazuj_status_korekty == "logged-in" and not request.user.is_anonymous %}
+                        {% czy_pokazywac status_korekty ignoruj_grupe %}
                             <tr>
                                 <th class="praca-mono__table-cell">Status:</th>
                                 <td class="praca-mono__table-cell">{{ praca.status_korekty }}</td>
                             </tr>
-                        {% endif %}
+                        {% end_czy_pokazywac %}
 
-                        {% if uczelnia.pokazuj_praca_recenzowana == "always" or uczelnia.pokazuj_praca_recenzowana == "logged-in" and not request.user.is_anonymous %}
+                        {% czy_pokazywac praca_recenzowana ignoruj_grupe %}
                             <tr>
                                 <th class="praca-mono__table-cell">Praca recenzowana:</th>
                                 <td class="praca-mono__table-cell">{{ praca.recenzowana|yesno }}</td>
                             </tr>
-                        {% endif %}
+                        {% end_czy_pokazywac %}
 
                         {% if praca.ma_procenty %}
                             <tr>
@@ -713,7 +713,7 @@
 
     <!-- Points and Slots Tables -->
     {% if rekord.ma_punktacje_sloty %}
-        {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}
+        {% czy_pokazywac tabele_slotow_na_stronie_rekordu ignoruj_grupe %}
             <div class="praca-mono__slots-section">
                 <div class="praca-mono__card">
                     <h3 class="praca-mono__card-title">
@@ -832,7 +832,7 @@
                     </div>
                 </div>
             </div>
-        {% endif %}
+        {% end_czy_pokazywac %}
     {% endif %}
 
     <!-- Additional Information Card - Show here if there are abstracts -->
@@ -869,19 +869,19 @@
                             </tr>
                         {% endif %}
 
-                        {% if uczelnia.pokazuj_status_korekty == "always" or uczelnia.pokazuj_status_korekty == "logged-in" and not request.user.is_anonymous %}
+                        {% czy_pokazywac status_korekty ignoruj_grupe %}
                             <tr>
                                 <th class="praca-mono__table-cell">Status:</th>
                                 <td class="praca-mono__table-cell">{{ praca.status_korekty }}</td>
                             </tr>
-                        {% endif %}
+                        {% end_czy_pokazywac %}
 
-                        {% if uczelnia.pokazuj_praca_recenzowana == "always" or uczelnia.pokazuj_praca_recenzowana == "logged-in" and not request.user.is_anonymous %}
+                        {% czy_pokazywac praca_recenzowana ignoruj_grupe %}
                             <tr>
                                 <th class="praca-mono__table-cell">Praca recenzowana:</th>
                                 <td class="praca-mono__table-cell">{{ praca.recenzowana|yesno }}</td>
                             </tr>
-                        {% endif %}
+                        {% end_czy_pokazywac %}
 
                         {% if praca.ma_procenty %}
                             <tr>
@@ -951,7 +951,7 @@
 
     <!-- "Odpięte" dyscypliny -->
     {% if rekord.ma_odpiete_dyscypliny %}
-        {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}
+        {% czy_pokazywac tabele_slotow_na_stronie_rekordu ignoruj_grupe %}
             <div class="praca-mono__detached-section">
                 <div class="praca-mono__card praca-mono__card--detached">
                     <h3 class="praca-mono__card-title">
@@ -976,7 +976,7 @@
                     </table>
                 </div>
             </div>
-        {% endif %}
+        {% end_czy_pokazywac %}
     {% endif %}
 </div>
 
