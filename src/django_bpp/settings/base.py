@@ -1663,14 +1663,20 @@ TINYMCE_DEFAULT_CONFIG = {
     "height": "320px",
     "width": "780px",
     "promotion": False,
+    # TinyMCE 7 bez klucza licencyjnego działa w trybie ewaluacyjnym
+    # i ostrzega w konsoli -- korzystamy z licencji open source (GPL).
+    "license_key": "gpl",
     "menubar": "file edit view insert format tools table help",
-    "plugins": "advlist autolink lists link image charmap print preview anchor searchreplace visualblocks code "
-    "fullscreen insertdatetime media table paste code help wordcount spellchecker",
-    "toolbar": "undo redo | bold italic underline strikethrough | fontselect fontsizeselect formatselect | alignleft "
-    "aligncenter alignright alignjustify | outdent indent |  numlist bullist checklist | forecolor "
-    "backcolor casechange permanentpen formatpainter removeformat | pagebreak | charmap emoticons | "
-    "fullscreen  preview save print | insertfile image media pageembed template link anchor codesample | "
-    "a11ycheck ltr rtl | showcomments addcomment code",
+    # Od TinyMCE 6 "paste" i "print" są w rdzeniu edytora (nie ma ich
+    # jako wtyczek), a "spellchecker" usunięto -- przeglądarki mają własny.
+    "plugins": "advlist autolink lists link image charmap preview anchor "
+    "searchreplace visualblocks code fullscreen insertdatetime media table "
+    "help wordcount",
+    "browser_spellcheck": True,
+    "toolbar": "undo redo | bold italic underline strikethrough | fontfamily "
+    "fontsize blocks | alignleft aligncenter alignright alignjustify | "
+    "outdent indent | numlist bullist | forecolor backcolor removeformat | "
+    "charmap | fullscreen preview print | image media link anchor | code",
 }
 
 #
