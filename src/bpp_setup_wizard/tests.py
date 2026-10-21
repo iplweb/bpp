@@ -491,3 +491,26 @@ def test_pbn_step_bez_uczelni_odsyla_do_kreatora(admin_user):
     response = client.get(_pbn_url())
     assert response.status_code == 302
     assert response.url == "/"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/admin-dashboard/recent-logins/",
+        "/admin-dashboard/weekday-stats/",
+    ],
+)
+def test_middleware_does_not_redirect_admin_dashboard_widgets(admin_user, path):
+    """#873: widgety HTMX dashboardu admina (``/admin-dashboard/``) wołane
+    z ``/admin/`` przed dokończeniem kreatora nie mogą dostać 302 na krok
+    „Konfiguracja uczelni" — HTMX wstawiłby całą stronę kreatora w kafelek."""
+    Uczelnia.objects.all().delete()
+    client = Client()
+    client.force_login(admin_user)
+
+    response = client.get(path, HTTP_HX_REQUEST="true")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Konfiguracja uczelni" not in body
+    assert "bpp-setup-wizard" not in body

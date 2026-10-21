@@ -101,6 +101,16 @@
             Wróć do paczki ({{ batch_progress.imported }} z {{ batch_progress.total }})
         </a>
     {% else %}
+        {# Import zaczęty przyciskiem „Użyj importera” w module zgłoszeń: #}
+        {# powrót na listę zgłoszeń z jej filtrami (FD#482). #}
+        {% if powrot_do_zgloszen_url %}
+            <a href="{{ powrot_do_zgloszen_url }}"
+               id="wroc-do-zgloszen"
+               class="button">
+                <span class="fi-arrow-left"></span>
+                Wróć do zgłoszeń
+            </a>
+        {% endif %}
         <a href="{% url 'importer_publikacji:index' %}"
            class="button hollow secondary">
             <span class="fi-arrow-left"></span>

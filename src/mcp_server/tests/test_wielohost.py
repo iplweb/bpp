@@ -28,7 +28,16 @@ def _pobierz(host, sciezka="uczelnia/"):
 
 
 def test_kazdy_host_widzi_swoja_uczelnie(
-    settings, uczelnia1, uczelnia2, wydawnictwo_ciagle, przed_korekta
+    settings,
+    uczelnia1,
+    uczelnia2,
+    wydawnictwo_ciagle,
+    przed_korekta,
+    autor_uczelnia1,
+    jednostka_uczelnia1,
+    autor_uczelnia2,
+    jednostka_uczelnia2,
+    typy_odpowiedzialnosci,
 ):
     """``/api/v1/uczelnia/`` NIE jest tu użyty — ``UczelniaViewSet.queryset``
     to gołe ``Uczelnia.objects.all()``, bez scoping po Site/Host (jednostki
@@ -44,15 +53,22 @@ def test_kazdy_host_widzi_swoja_uczelnie(
     żądania. Ukrywamy status korekty rekordu WYŁĄCZNIE dla ``uczelnia1``:
     host ``uczelnia1.localhost`` musi rekord wykluczyć, a
     ``uczelnia2.localhost`` (inna uczelnia, inna konfiguracja) — nie.
+
+    Rekord ma autorów z OBU uczelni — od #808 typowane viewsety zawężają
+    wynik do uczelni z Host, więc rekord bez afiliacji danej uczelni i tak
+    by na jej hoście nie wyszedł.
     """
     settings.ALLOWED_HOSTS = ["uczelnia1.localhost", "uczelnia2.localhost"]
+    wydawnictwo_ciagle.dodaj_autora(autor_uczelnia1, jednostka_uczelnia1)
+    wydawnictwo_ciagle.dodaj_autora(autor_uczelnia2, jednostka_uczelnia2)
     wydawnictwo_ciagle.status_korekty = przed_korekta
     wydawnictwo_ciagle.save()
     uczelnia1.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
 
     a = _pobierz("uczelnia1.localhost", "wydawnictwo_ciagle/")
     b = _pobierz("uczelnia2.localhost", "wydawnictwo_ciagle/")
-    assert a["count"] != b["count"]
+    assert a["count"] == 0
+    assert b["count"] == 1
 
 
 def test_wylaczone_api_odmawia_takze_przez_mcp(settings, uczelnia1):

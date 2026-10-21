@@ -3,8 +3,10 @@
 {% block object-tools-items %}
     {# „Użyj importera" nie pokazuje się dla zgłoszeń już zaimportowanych — #}
     {# ``importer_url`` zwraca wtedy ``None`` (FD#443, §7 specyfikacji). #}
+    {# Bez target=_blank: import w tej samej karcie, a na końcu przycisk #}
+    {# „Wróć do zgłoszeń” wraca na listę z jej filtrami (FD#482). #}
     {% if importer_url %}
-        <li><a href="{{ importer_url }}" target="_blank" rel="noopener">📥 Użyj importera</a></li>
+        <li><a href="{{ importer_url }}">📥 Użyj importera</a></li>
     {% endif %}
     {% if original.moze_zostac_zwrocony %}
         <li><a href="../zwroc/">Zwróć do autora</a></li>

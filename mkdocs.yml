@@ -113,6 +113,7 @@ nav:
       - Integracja z DSpace: administrator/integracja-dspace.md
       - REST API: administrator/rest-api.md
       - Eksport CERIF / OpenAIRE: administrator/eksport-cerif.md
+      - Widget wsparcia Freshdesk: administrator/widget-wsparcia-freshdesk.md
       - Konfiguracja zaawansowana: administrator/zaawansowane.md
   - API: api/index.md
   - Dla deweloperów i agentów:

@@ -1,0 +1,1 @@
+Konfiguracja TinyMCE dostosowana do wersji 7: usunięto nieistniejące wtyczki (print, paste są teraz w rdzeniu, spellchecker zastąpiono sprawdzaniem pisowni przeglądarki), poprawiono nazwy przycisków paska narzędzi i ustawiono license_key: gpl — znikają błędy 404 i ostrzeżenia w konsoli w adminie.

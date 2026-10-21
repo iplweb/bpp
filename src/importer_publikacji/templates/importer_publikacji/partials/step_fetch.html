@@ -8,20 +8,20 @@
     <p class="importer-chosen-source">
         Źródło danych: <strong>{{ provider_meta.choice_label }}</strong>
         {# Zmiana dostawcy nie może gubić kontekstu: ?zgloszenie= (wiązanie #}
-        {# ze zgłoszeniem publikacji, FD#443) oraz ?identifier= jadą dalej #}
-        {# w URL-u, a kafelki na stronie wyboru przekazują je do formularza #}
-        {# nowego dostawcy. Bez tego realny scenariusz „CrossRef nie zna DOI #}
-        {# → przełącz na Pozostałe strony WWW" kasował wiązanie po cichu. #}
-        {% with zgl=form.zgloszenie.value ident=form.identifier.value %}
-            <a class="importer-change-source"
-               href="{% url 'importer_publikacji:index' %}{% if zgl %}?zgloszenie={{ zgl|urlencode }}{% if ident %}&amp;identifier={{ ident|urlencode }}{% endif %}{% elif ident %}?identifier={{ ident|urlencode }}{% endif %}"
-               hx-get="{% url 'importer_publikacji:index' %}{% if zgl %}?zgloszenie={{ zgl|urlencode }}{% if ident %}&amp;identifier={{ ident|urlencode }}{% endif %}{% elif ident %}?identifier={{ ident|urlencode }}{% endif %}"
-               hx-target="#importer-wizard"
-               hx-push-url="true">
-                <span class="fi-arrow-left"></span>
-                Wybierz inne źródło
-            </a>
-        {% endwith %}
+        {# ze zgłoszeniem publikacji, FD#443), ?zgloszenia_filtry= (powrót #}
+        {# do listy zgłoszeń, FD#482) oraz ?identifier= jadą dalej w URL-u, #}
+        {# a kafelki na stronie wyboru przekazują je do formularza nowego #}
+        {# dostawcy. Bez tego realny scenariusz „CrossRef nie zna DOI → #}
+        {# przełącz na Pozostałe strony WWW" kasował wiązanie po cichu. #}
+        {# ``kontekst_qs`` buduje ``helpers._kontekst_wejscia_qs``. #}
+        <a class="importer-change-source"
+           href="{% url 'importer_publikacji:index' %}{% if kontekst_qs %}?{{ kontekst_qs }}{% endif %}"
+           hx-get="{% url 'importer_publikacji:index' %}{% if kontekst_qs %}?{{ kontekst_qs }}{% endif %}"
+           hx-target="#importer-wizard"
+           hx-push-url="true">
+            <span class="fi-arrow-left"></span>
+            Wybierz inne źródło
+        </a>
     </p>
 
     <div class="formdefaults-wrap">{% bpp_formdefaults_button form %}</div>
@@ -34,6 +34,8 @@
         {# Sesję importu tworzy dopiero FetchView.post, więc bez tego pola #}
         {# kontekst zgłoszenia ginie na rundzie GET → render → POST. #}
         {{ form.zgloszenie }}
+        {# Filtry listy zgłoszeń dla „Wróć do zgłoszeń” (FD#482). #}
+        {{ form.zgloszenia_filtry }}
 
         {% if form.provider.errors %}
             {% for error in form.provider.errors %}
