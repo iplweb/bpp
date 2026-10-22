@@ -82,7 +82,8 @@ dependencies = [
     "cryptography",
     "django-extensions>=3.2,<5",
     "django-minify-html>=1.14,<2",
-    "Pillow>=12.2,<14",
+    # >=13.0.0: GHSA-8g5g-8vmr-9782 (critical) + 8 kolejnych advisories.
+    "Pillow>=13.0.0,<14",
     # UWAGA: linia wersji Grappelli jest przesunieta o jeden WSTECZ wzgledem
     # Django — Grappelli 5.0.x jest dla Django 6.x, a 4.0.x dla Django 5.x.
     # Nie "podbijaj" tego automatem bez sprawdzenia, na ktorym Django stoimy;
@@ -312,7 +313,12 @@ push = false
 # od Django 6.1).
 # Do 2026-09 stalo tu `>= '3.10'` - martwe, bo przeciecie z requires-python
 # i tak dawalo 3.11, ale mylnie sugerowalo wsparcie dla 3.10.
-environments = ["python_version >= '3.12' and python_version < '3.15' and platform_python_implementation != 'PyPy'"]
+#
+# `sys_platform != 'emscripten'` (2026-10, uv 0.13.5): nowsze uv rozwiazuje
+# osobny split dla Pyodide/emscripten, a ortools nie ma tam wheela ani
+# sdista -> kazde re-resolve (np. `uv lock` po podbiciu wersji w
+# promote.yml) konczylo sie "No solution found". Nigdy tam nie biegniemy.
+environments = ["python_version >= '3.12' and python_version < '3.15' and platform_python_implementation != 'PyPy' and sys_platform != 'emscripten'"]
 
 # Security floors dla zaleznosci TRANZYTYWNYCH (nie deklarujemy ich jako
 # direct deps - przychodza przez inne pakiety). constraint-dependencies
@@ -346,6 +352,15 @@ environments = ["python_version >= '3.12' and python_version < '3.15' and platfo
 #     rzucaly ModuleNotFoundError. Od FD#480 zamiast `isbnlib` jest fork
 #     `isbnlib2` (ten sam modul, bez `pkg_resources`), wiec rejestr znow
 #     sie importuje.
+# Override (nie constraint): django-favicon-plus-reloaded 1.2.4 (ostatnie
+# wydanie) deklaruje `pillow<13`, co blokuje Pillow 13.0.0 z fixem
+# GHSA-8g5g-8vmr-9782 (critical) + 8 innych. favicon uzywa z PIL tylko
+# Image.open / thumbnail / Image.LANCZOS — obecne w 13.x. USUN, gdy
+# favicon zdejmie cap (edugit.org/AlekSIS/libs/django-favicon-plus).
+override-dependencies = [
+    "pillow>=13.0.0,<14",
+]
+
 constraint-dependencies = [
     # Piny tranzytywne wymuszajace wersje z fixem CVE. Bez nich przyszly
     # `uv lock` moglby wrocic do podatnej wersji, a `pip-audit --gate on
@@ -360,6 +375,12 @@ constraint-dependencies = [
     #   soupsieve PYSEC-2026-4170/4171
     #   urllib3   PYSEC-2026-4175/4176/4177 (pin w [dependencies])
     "anyio>=4.14.2",
+    # Partia 2026-10-22 (merge dev do django-6.1, Dependabot):
+    #   certifi    GHSA-6q48-6c7w-9gw2 (critical, zdjete root CA emSign)
+    #   virtualenv GHSA-vxj4-q4g9-crj7 i 7 starszych (skrypty activate)
+    #   pypdf      GHSA-9mx8-4j7g-633p, GHSA-qfv9-64jg-mh7p (+2)
+    "certifi>=2026.10.19",
+    "virtualenv>=21.14.7",
     # >=26.10.1: zamyka CVE-2026-77528 (PYSEC-2026-4027, fix od 26.7.1),
     # a zarazem pierwsza wersja z leniwym importem vendorowanych flatbuffers
     # (crossbario/autobahn-python#1983). 25.12.2..26.7.1 importowaly je
@@ -373,7 +394,7 @@ constraint-dependencies = [
     "oauthlib>=4.0.0",
     "pyasn1>=0.6.4",
     "pyjwt>=2.15.1",
-    "pypdf>=6.19.0",
+    "pypdf>=6.20.1",
     "setuptools>=83.0.0",
     "soupsieve>=2.10",
 ]
@@ -606,7 +627,8 @@ dev = [
     "pytest>=9.1.1,<10",
     "pytest-django>=4.13.0",
     "pytest-httpserver>=1.1.5",
-    "werkzeug>=3.1.6", # Dependabot: transitive via pytest-httpserver, bump for safe_join() fixes
+    # Dependabot: transitive via pytest-httpserver; >=3.1.9 GHSA-g6x2-hccm-hh4m.
+    "werkzeug>=3.1.9",
     "pytest-cov>=7.1.0",  # lokalnie do `make coverage-ai`; CI nie wola --cov
     "pytest-mock>=3.7.0",
     "pytest-xdist>=2.3.0",

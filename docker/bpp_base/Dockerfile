@@ -36,7 +36,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 # to samo osobno, bo nie wywodzi się z `base`.
 ENV MALLOC_ARENA_MAX=2
 
-COPY --from=ghcr.io/astral-sh/uv:0.7 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.13.5 /uv /usr/local/bin/uv
+
+# Systemowy pip z obrazu bazowego: patrz komentarz w stage `runtime`.
+RUN python -m pip install --no-cache-dir --upgrade "pip>=26.2"
 
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy
@@ -364,9 +367,14 @@ ENV UV_COMPILE_BYTECODE=1 \
 ENV PATH="/opt/venv/bin:${PATH}"
 
 # uv potrzebne w runtime — CI wola `uv run pytest` (jak na pelnym obrazie).
-COPY --from=ghcr.io/astral-sh/uv:0.7 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.13.5 /uv /usr/local/bin/uv
 
 RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
+
+# Systemowy pip z obrazu python:*-slim (25.0.1 na 2026-10) ma otwarte
+# advisories (GHSA-qwm4-qh6w-59xr i in., fix w 26.2) — Trivy skanuje go
+# niezaleznie od .venv. Patrz analogiczny krok w stage `runtime`.
+RUN python -m pip install --no-cache-dir --upgrade "pip>=26.2"
 
 # Runtime liby wspoldzielone, ktorych potrzebuja skompilowane wheelsy +
 # narzedzia. runtime.txt: pango/cairo (weasyprint), libpq, gmp/lua (pandoc).
@@ -548,6 +556,12 @@ ARG BUILD_CACHE_EPOCH=manual
 
 RUN echo "Dependency cache epoch: ${BUILD_CACHE_EPOCH}" && \
     sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
+
+# Systemowy pip z obrazu python:*-slim (25.0.1 na 2026-10) ma otwarte
+# advisories (GHSA-qwm4-qh6w-59xr i in., fix w 26.2). Aplikacja go nie
+# uzywa (zaleznosci siedza w .venv), ale Trivy skanuje site-packages
+# systemowego Pythona, wiec podnosimy go do wersji z fixem.
+RUN python -m pip install --no-cache-dir --upgrade "pip>=26.2"
 
 COPY docker/bpp_base/runtime.txt /tmp/
 
