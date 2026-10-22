@@ -49,7 +49,9 @@ dependencies = [
     "channels-redis>=4,<5",
     # >=0.5.0 wnosi Report.set_order_by() — bez niego wybór sortowania w
     # formularzu raportów (FD467) nie ma jak nadpisać ColumnOrder tabeli.
-    "django-flexible-reports>=0.5.0",
+    # >=0.5.1: wieloliniowy {# #} nad przyciskiem „Klonuj" wyciekał jako
+    # tekst do formularza raportu w adminie.
+    "django-flexible-reports>=0.5.1",
     "django-dsl>=0.1.15",
     "django-group-by==0.3.1",
     "django-columns==0.1.0",

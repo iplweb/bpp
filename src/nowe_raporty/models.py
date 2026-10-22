@@ -62,6 +62,15 @@ class DefinicjaRaportu(models.Model):
         blank=True,
         help_text="Puste = pokazuj na wszystkich uczelniach.",
     )
+    # Bez ``choices`` na modelu: 283 ikony fontu wylądowałyby w każdej migracji
+    # ruszającej to pole. Listę (i walidację) trzyma formularz admina
+    # — patrz ``nowe_raporty.ikony``.
+    ikona = models.CharField(
+        "Ikona w menu",
+        max_length=50,
+        blank=True,
+        help_text="Puste = ikona zależna od poziomu raportu.",
+    )
 
     IKONY = {
         POZIOM_UCZELNIA: "fi-foundation",
@@ -71,8 +80,8 @@ class DefinicjaRaportu(models.Model):
     }
 
     class Meta:
-        verbose_name = "definicja raportu"
-        verbose_name_plural = "definicje raportów"
+        verbose_name = "raport w menu strony"
+        verbose_name_plural = "raporty w menu strony"
         ordering = ["kolejnosc", "nazwa"]
 
     def __str__(self):
@@ -80,7 +89,7 @@ class DefinicjaRaportu(models.Model):
 
     @property
     def ikona_menu(self):
-        return self.IKONY.get(self.poziom, "fi-graph-trend")
+        return self.ikona or self.IKONY.get(self.poziom, "fi-graph-trend")
 
     def _poziom_dostepu_ok(self, user):
         if self.poziom_dostepu == self.DOSTEP_WSZYSCY:

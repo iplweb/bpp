@@ -434,7 +434,9 @@ nav.sticky-header {
     .menu.vertical .fi-pencil,
     .menu.vertical .fi-torso-business,
     .menu.vertical .fi-graph-pie,
-    .menu.vertical .fi-x-circle {
+    .menu.vertical .fi-x-circle,
+    // Raporty z DefinicjaRaportu: ikona wybierana w adminie, dowolna z fontu.
+    .menu.vertical .ikona-raportu {
         font-size: 1.6rem;
         margin-right: 0.8rem;
     }
