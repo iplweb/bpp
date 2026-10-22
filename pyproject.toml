@@ -49,7 +49,9 @@ dependencies = [
     "channels-redis>=4,<5",
     # >=0.5.0 wnosi Report.set_order_by() — bez niego wybór sortowania w
     # formularzu raportów (FD467) nie ma jak nadpisać ColumnOrder tabeli.
-    "django-flexible-reports>=0.5.0",
+    # >=0.5.1: wieloliniowy {# #} nad przyciskiem „Klonuj" wyciekał jako
+    # tekst do formularza raportu w adminie.
+    "django-flexible-reports>=0.5.1",
     "django-dsl>=0.1.15",
     "django-group-by==0.3.1",
     "django-columns==0.1.0",
@@ -81,7 +83,7 @@ dependencies = [
     "cryptography",
     "django-extensions>=3.2,<5",
     "django-minify-html>=1.14,<2",
-    "Pillow>=12.2,<14",
+    "Pillow>=13.0,<14",
     "django-grappelli>=5.0.0,<6",
     "django-multiseek==0.10.3",
     # Narzędzia MCP + szwy do hostowania ich w naszym procesie (spec §2.2).
@@ -108,7 +110,7 @@ dependencies = [
     "django_redis_iplweb>=6.0.2,<6.1",
     "django-filter>=26.1,<26.2",
     "dbfread>=2.0.7",
-    "djangorestframework==3.18.0",
+    "djangorestframework==3.18.2",
     "Markdown>=3.7,<4",
     "django-admin-sortable2>=2.3.1,<3",
     "cssmin==0.2.0",
@@ -354,6 +356,12 @@ constraint-dependencies = [
     #   pypdf     PYSEC-2026-4153..4160 (8 szt.)
     #   soupsieve PYSEC-2026-4170/4171
     #   urllib3   PYSEC-2026-4175/4176/4177 (pin w [dependencies])
+    # Partia 2026-10-22 (48 podatnosci, pip-audit na PR #881):
+    #   certifi           PYSEC-2026-4320
+    #   opentelemetry-api CVE-2026-114603
+    #   pypdf             CVE-2026-113786..113795 (8 szt.)
+    #   djangorestframework i Pillow — piny w [dependencies]; Pillow 13
+    #   wymaga dodatkowo override-dependencies (patrz nizej)
     "anyio>=4.14.2",
     # >=26.10.1: zamyka CVE-2026-77528 (PYSEC-2026-4027, fix od 26.7.1),
     # a zarazem pierwsza wersja z leniwym importem vendorowanych flatbuffers
@@ -363,19 +371,27 @@ constraint-dependencies = [
     # test_lazy_heavy_imports. Nie cofac ponizej 26.10.1.
     "autobahn>=26.10.1",
     "bleach>=6.4.0",
-    # >=2026.10.19: usuwa z bundla CA skompromitowany emSign ECC Root
-    # CA - G3 (GHSA-6q48-6c7w-9gw2, critical, 2026-10-20). certifi daje
-    # zaufane CA dla requests, czyli dla KAZDEGO wychodzacego HTTPS (PBN,
-    # Freshdesk, ...). Nie cofac.
     "certifi>=2026.10.19",
     "daphne>=4.2.2",
     "h2>=4.4.1",
     "oauthlib>=4.0.0",
+    "opentelemetry-api>=1.45.1",
     "pyasn1>=0.6.4",
     "pyjwt>=2.15.1",
-    "pypdf>=6.19.0",
+    "pypdf>=6.21.2",
     "setuptools>=83.0.0",
     "soupsieve>=2.10",
+]
+
+# Pillow 13 zamyka 31 CVE (CVE-2026-96636..96778, CVE-2026-112390..112901,
+# GHSA-78g4-xqwv-q3g8), ale django-favicon-plus-reloaded 1.2.4 (ostatnie
+# wydanie, AlekSIS) deklaruje `pillow<13`. Sam constraint tego nie przebije
+# — override zastepuje deklaracje pakietu. Bezpieczne, bo favicon uzywa
+# z Pillow tylko Image.open / thumbnail(LANCZOS) / save(PNG) (favicon/
+# models.py) — pilnuje tego test_favicon_pillow. Zdjac, gdy favicon
+# wyda wersje dopuszczajaca Pillow 13.
+override-dependencies = [
+    "pillow>=13.0.0,<14",
 ]
 
 # Polityka: KAZDA NOWA zewnetrzna zaleznosc powinna miec prebuilt wheel dla
