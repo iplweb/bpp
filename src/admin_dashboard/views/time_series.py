@@ -84,9 +84,9 @@ def weekday_stats(request):
         {
             "data": data,
             "layout": {
-                "title": "Edycje w dni tygodnia (ostatni miesiąc)",
-                "xaxis": {"title": "Dzień tygodnia"},
-                "yaxis": {"title": "Liczba edycji"},
+                "title": {"text": "Edycje w dni tygodnia (ostatni miesiąc)"},
+                "xaxis": {"title": {"text": "Dzień tygodnia"}},
+                "yaxis": {"title": {"text": "Liczba edycji"}},
                 "legend": {
                     "orientation": "h",
                     "y": -0.2,
@@ -140,9 +140,11 @@ def day_of_month_activity_stats(request):
         {
             "data": data,
             "layout": {
-                "title": "Aktywność w dniach miesiąca<br>(ostatnie 6 miesięcy)",
-                "xaxis": {"title": "Dzień miesiąca"},
-                "yaxis": {"title": "Liczba operacji (dodane + wyedytowane)"},
+                "title": {
+                    "text": "Aktywność w dniach miesiąca<br>(ostatnie 6 miesięcy)"
+                },
+                "xaxis": {"title": {"text": "Dzień miesiąca"}},
+                "yaxis": {"title": {"text": "Liczba operacji (dodane + wyedytowane)"}},
                 "legend": {
                     "orientation": "h",
                     "y": -0.2,
@@ -218,9 +220,9 @@ def new_publications_stats(request):
         {
             "data": data,
             "layout": {
-                "title": "Nowo dodane prace (ostatnie 5 lat)",
-                "xaxis": {"title": "Miesiąc"},
-                "yaxis": {"title": "Liczba nowych publikacji"},
+                "title": {"text": "Nowo dodane prace (ostatnie 5 lat)"},
+                "xaxis": {"title": {"text": "Miesiąc"}},
+                "yaxis": {"title": {"text": "Liczba nowych publikacji"}},
                 "legend": {
                     "orientation": "h",
                     "y": -0.2,
@@ -269,9 +271,9 @@ def cumulative_publications_stats(request):
             {
                 "data": [],
                 "layout": {
-                    "title": "Prace w bazie (cumulative)",
-                    "xaxis": {"title": "Rok"},
-                    "yaxis": {"title": "Łączna liczba prac"},
+                    "title": {"text": "Prace w bazie (cumulative)"},
+                    "xaxis": {"title": {"text": "Rok"}},
+                    "yaxis": {"title": {"text": "Łączna liczba prac"}},
                     "height": 400,
                 },
             }
@@ -304,9 +306,9 @@ def cumulative_publications_stats(request):
         {
             "data": data,
             "layout": {
-                "title": "Prace w bazie (cumulative)",
-                "xaxis": {"title": "Rok"},
-                "yaxis": {"title": "Łączna liczba prac"},
+                "title": {"text": "Prace w bazie (cumulative)"},
+                "xaxis": {"title": {"text": "Rok"}},
+                "yaxis": {"title": {"text": "Łączna liczba prac"}},
                 "height": 400,
             },
         }
@@ -350,9 +352,9 @@ def cumulative_impact_factor_stats(request):
             {
                 "data": [],
                 "layout": {
-                    "title": "Łączny Impact Factor",
-                    "xaxis": {"title": "Rok"},
-                    "yaxis": {"title": "Suma IF"},
+                    "title": {"text": "Łączny Impact Factor"},
+                    "xaxis": {"title": {"text": "Rok"}},
+                    "yaxis": {"title": {"text": "Suma IF"}},
                     "height": 400,
                 },
             }
@@ -385,9 +387,9 @@ def cumulative_impact_factor_stats(request):
         {
             "data": data,
             "layout": {
-                "title": "Łączny Impact Factor",
-                "xaxis": {"title": "Rok"},
-                "yaxis": {"title": "Suma IF"},
+                "title": {"text": "Łączny Impact Factor"},
+                "xaxis": {"title": {"text": "Rok"}},
+                "yaxis": {"title": {"text": "Suma IF"}},
                 "height": 400,
             },
         }
@@ -431,9 +433,9 @@ def cumulative_points_kbn_stats(request):
             {
                 "data": [],
                 "layout": {
-                    "title": "Łączne punkty MNiSW",
-                    "xaxis": {"title": "Rok"},
-                    "yaxis": {"title": "Suma punktów"},
+                    "title": {"text": "Łączne punkty MNiSW"},
+                    "xaxis": {"title": {"text": "Rok"}},
+                    "yaxis": {"title": {"text": "Suma punktów"}},
                     "height": 400,
                 },
             }
@@ -466,9 +468,9 @@ def cumulative_points_kbn_stats(request):
         {
             "data": data,
             "layout": {
-                "title": "Łączne punkty MNiSW",
-                "xaxis": {"title": "Rok"},
-                "yaxis": {"title": "Suma punktów"},
+                "title": {"text": "Łączne punkty MNiSW"},
+                "xaxis": {"title": {"text": "Rok"}},
+                "yaxis": {"title": {"text": "Suma punktów"}},
                 "height": 400,
             },
         }

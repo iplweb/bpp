@@ -134,9 +134,9 @@ def database_stats(request):
             "type_distribution": type_distribution,
             "trend_data": trend_data,
             "trend_layout": {
-                "title": "Trend publikacji (ostatnie 12 miesięcy)",
-                "xaxis": {"title": "Miesiąc"},
-                "yaxis": {"title": "Liczba publikacji"},
+                "title": {"text": "Trend publikacji (ostatnie 12 miesięcy)"},
+                "xaxis": {"title": {"text": "Miesiąc"}},
+                "yaxis": {"title": {"text": "Liczba publikacji"}},
             },
         }
     )
