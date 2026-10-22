@@ -126,3 +126,33 @@ class DefinicjaRaportu(models.Model):
         if user.is_superuser:
             return True
         return self._poziom_dostepu_ok(user) and self._grupy_ok(user)
+
+
+def _wolny_slug(bazowy):
+    """``bazowy``, a gdy zajęty: ``bazowy-2``, ``-3``… (zawsze w max_length)."""
+    max_length = DefinicjaRaportu._meta.get_field("slug").max_length
+    kandydat = bazowy[:max_length]
+    numer = 1
+    while DefinicjaRaportu.objects.filter(slug=kandydat).exists():
+        numer += 1
+        przyrostek = f"-{numer}"
+        kandydat = bazowy[: max_length - len(przyrostek)] + przyrostek
+    return kandydat
+
+
+def utworz_definicje_dla(report):
+    """Zakłada NIEAKTYWNĄ definicję świeżo dodanego raportu flexible-reports.
+
+    Nieaktywna, bo ``Report`` nie mówi, jakiego poziomu (uczelnia/autor/…)
+    dotyczy ani komu ma być widoczny — redaktor ustawia to w definicji i dopiero
+    wtedy włącza raport do menu na stronie.
+    """
+    max_nazwa = DefinicjaRaportu._meta.get_field("nazwa").max_length
+    return DefinicjaRaportu.objects.create(
+        nazwa=report.title[:max_nazwa],
+        slug=_wolny_slug(report.slug),
+        poziom=DefinicjaRaportu.POZIOM_UCZELNIA,
+        report=report,
+        aktywny=False,
+        poziom_dostepu=DefinicjaRaportu.DOSTEP_ZALOGOWANI,
+    )
