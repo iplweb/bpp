@@ -28,11 +28,14 @@ authors = [
 classifiers = [
     "DoNotUpload :: Use this project via github.com/iplweb/bpp-deploy repo",
 ]
-requires-python = ">=3.11,<3.15"
+# Django 6.1 wymaga Pythona >= 3.12 (3.11 wypadlo razem z 6.0).
+requires-python = ">=3.12,<3.15"
 dependencies = [
-    "Django>=5.2.17,<5.3",
+    "Django>=6.1.2,<6.2",
     # Reużywalne pakiety PBN wydzielone na PyPI (github.com/iplweb/*).
-    "django-pbn-client>=0.2,<0.3",
+    # 0.2.3 to pierwsze wydanie bez capu `django<5.3` (PR iplweb/
+    # django-pbn-client#5) — poniżej niej Django 6.1 się nie rozwiąże.
+    "django-pbn-client>=0.2.3,<0.3",
     "pbn-client>=0.2.3,<0.3",
     "django-polish-inflection>=0.1.1,<0.2",
     "django-axes>=7.0,<9",
@@ -81,7 +84,13 @@ dependencies = [
     "cryptography",
     "django-extensions>=3.2,<5",
     "django-minify-html>=1.14,<2",
-    "Pillow>=12.2,<14",
+    # >=13.0.0: GHSA-8g5g-8vmr-9782 (critical) + 8 kolejnych advisories.
+    "Pillow>=13.0.0,<14",
+    # UWAGA: linia wersji Grappelli jest przesunieta o jeden WSTECZ wzgledem
+    # Django — Grappelli 5.0.x jest dla Django 6.x, a 4.0.x dla Django 5.x.
+    # Nie "podbijaj" tego automatem bez sprawdzenia, na ktorym Django stoimy;
+    # dependabot juz raz przeskoczyl 4.0.3 -> 5.0.0 (29f0ecd7b) zostawiajac
+    # skorke admina dla Django 6.x na Django 5.2.
     "django-grappelli>=5.0.0,<6",
     "django-multiseek==0.10.3",
     # Narzędzia MCP + szwy do hostowania ich w naszym procesie (spec §2.2).
@@ -105,9 +114,15 @@ dependencies = [
     "django-mptt>=0.16,<1",
     "wosclient==0.1.5",
     "MOAI-iplweb>=2.0.4",
-    "django_redis_iplweb>=6.0.2,<6.1",
+    # Powrot na upstream jazzband/django-redis: fork `django_redis_iplweb`
+    # byl czystym republishem (zero kodu iplweb, ten sam modul `django_redis`)
+    # i utknal na `Django<6.1`. Upstream 7.0.0 deklaruje `Django<7.0,>=5.2`,
+    # wiec obejmuje 6.1. Nazwa modulu w settings sie NIE zmienia.
+    "django-redis>=7,<8",
     "django-filter>=26.1,<26.2",
     "dbfread>=2.0.7",
+    # >=3.18: DRF <=3.17.2 importuje `cc_delim_re` z django.utils.cache,
+    # usuniete w Django 6.1 (ImportError przy imporcie rest_framework.views).
     "djangorestframework==3.18.0",
     "Markdown>=3.7,<4",
     "django-admin-sortable2>=2.3.1,<3",
@@ -150,7 +165,6 @@ dependencies = [
     "thefuzz>=0.22.1",
     "celery-singleton>=0.3.1",
     "rollbar>=1.5.0",
-    "django-prometheus>=2.5.0",
     "ortools>=9.15.6755",
     "psycopg2-binary>=2.9.12", # ZOSTAW psycopg2 dla django-denorm
     "python-docx>=1.1.0", # Post-processing DOCX dla page breaks
@@ -297,10 +311,16 @@ push = false
 # (cryptography, pynacl, uvicorn[standard]) odzyskuja markery PyPy na
 # krawedziach do cffi/uvloop - wiec lock i tak nie robi sie prostszy.
 #
-# Dolna granica trzymana rownolegle do `requires-python` wyzej (>=3.11).
+# Dolna granica trzymana rownolegle do `requires-python` wyzej (>=3.12,
+# od Django 6.1).
 # Do 2026-09 stalo tu `>= '3.10'` - martwe, bo przeciecie z requires-python
 # i tak dawalo 3.11, ale mylnie sugerowalo wsparcie dla 3.10.
-environments = ["python_version >= '3.11' and python_version < '3.15' and platform_python_implementation != 'PyPy'"]
+#
+# `sys_platform != 'emscripten'` (2026-10, uv 0.13.5): nowsze uv rozwiazuje
+# osobny split dla Pyodide/emscripten, a ortools nie ma tam wheela ani
+# sdista -> kazde re-resolve (np. `uv lock` po podbiciu wersji w
+# promote.yml) konczylo sie "No solution found". Nigdy tam nie biegniemy.
+environments = ["python_version >= '3.12' and python_version < '3.15' and platform_python_implementation != 'PyPy' and sys_platform != 'emscripten'"]
 
 # Security floors dla zaleznosci TRANZYTYWNYCH (nie deklarujemy ich jako
 # direct deps - przychodza przez inne pakiety). constraint-dependencies
@@ -334,6 +354,15 @@ environments = ["python_version >= '3.11' and python_version < '3.15' and platfo
 #     rzucaly ModuleNotFoundError. Od FD#480 zamiast `isbnlib` jest fork
 #     `isbnlib2` (ten sam modul, bez `pkg_resources`), wiec rejestr znow
 #     sie importuje.
+# Override (nie constraint): django-favicon-plus-reloaded 1.2.4 (ostatnie
+# wydanie) deklaruje `pillow<13`, co blokuje Pillow 13.0.0 z fixem
+# GHSA-8g5g-8vmr-9782 (critical) + 8 innych. favicon uzywa z PIL tylko
+# Image.open / thumbnail / Image.LANCZOS — obecne w 13.x. USUN, gdy
+# favicon zdejmie cap (edugit.org/AlekSIS/libs/django-favicon-plus).
+override-dependencies = [
+    "pillow>=13.0.0,<14",
+]
+
 constraint-dependencies = [
     # Piny tranzytywne wymuszajace wersje z fixem CVE. Bez nich przyszly
     # `uv lock` moglby wrocic do podatnej wersji, a `pip-audit --gate on
@@ -348,6 +377,12 @@ constraint-dependencies = [
     #   soupsieve PYSEC-2026-4170/4171
     #   urllib3   PYSEC-2026-4175/4176/4177 (pin w [dependencies])
     "anyio>=4.14.2",
+    # Partia 2026-10-22 (merge dev do django-6.1, Dependabot):
+    #   certifi    GHSA-6q48-6c7w-9gw2 (critical, zdjete root CA emSign)
+    #   virtualenv GHSA-vxj4-q4g9-crj7 i 7 starszych (skrypty activate)
+    #   pypdf      GHSA-9mx8-4j7g-633p, GHSA-qfv9-64jg-mh7p (+2)
+    "certifi>=2026.10.19",
+    "virtualenv>=21.14.7",
     # >=26.10.1: zamyka CVE-2026-77528 (PYSEC-2026-4027, fix od 26.7.1),
     # a zarazem pierwsza wersja z leniwym importem vendorowanych flatbuffers
     # (crossbario/autobahn-python#1983). 25.12.2..26.7.1 importowaly je
@@ -361,7 +396,7 @@ constraint-dependencies = [
     "oauthlib>=4.0.0",
     "pyasn1>=0.6.4",
     "pyjwt>=2.15.1",
-    "pypdf>=6.19.0",
+    "pypdf>=6.20.1",
     "setuptools>=83.0.0",
     "soupsieve>=2.10",
 ]
@@ -422,10 +457,6 @@ default = true
 # WYCOFAĆ gdy upstream wyda release z #2156 → wróć na PyPI `>=4.5`. Tracking: #280.
 [tool.uv.sources]
 django-import-export = { git = "https://github.com/mpasternak/django-import-export.git", rev = "d6ee0d39194fee31437affbdc6fee5ce549b4b8f" }
-# TYMCZASOWO: django-pbn-client 0.2.2 (sync_dictionary D3 + with_deleted_marker
-# A2) nie jest jeszcze na PyPI. Pin do commita gałęzi feat/deleted-marker
-# (stacked na feat/sync-dictionary). USUŃ po wydaniu 0.2.2 na PyPI.
-django-pbn-client = { git = "https://github.com/iplweb/django-pbn-client.git", rev = "bb952e98967a96f96cd3773e3dcfcaf4555c8690" }
 
 # Konfiguracja `pytest-testcontainers-django` — pluginu pytest, ktory
 # startuje kontenery PG/Redis przed importem Django settings i wstrzykuje
@@ -598,7 +629,8 @@ dev = [
     "pytest>=9.1.1,<10",
     "pytest-django>=4.13.0",
     "pytest-httpserver>=1.1.5",
-    "werkzeug>=3.1.6", # Dependabot: transitive via pytest-httpserver, bump for safe_join() fixes
+    # Dependabot: transitive via pytest-httpserver; >=3.1.9 GHSA-g6x2-hccm-hh4m.
+    "werkzeug>=3.1.9",
     "pytest-cov>=7.1.0",  # lokalnie do `make coverage-ai`; CI nie wola --cov
     "pytest-mock>=3.7.0",
     "pytest-xdist>=2.3.0",

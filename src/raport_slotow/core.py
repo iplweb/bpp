@@ -21,17 +21,34 @@ def autorzy_z_dyscyplinami(od_roku=None, do_roku=None) -> list[tuple[int, int, i
 
     kwargs = _get_kwargs(od_roku, do_roku)
 
+    # Puste ``.order_by()`` w TRZECH miejscach — na obu operandach UNION-a
+    # ORAZ na jego wyniku. To nie jest nadmiarowe: operandy wnoszą
+    # ``Meta.ordering`` do składowych SELECT-ów, a wynik UNION-a dziedziczy je
+    # jeszcze raz, jako sortowanie całości.
+    #
+    # Do Django 6.0 uchodziło to płazem. Od 6.1 aliasy SELECT-a są
+    # konsekwentnie cytowane, więc odziedziczone ``ORDER BY rok`` kompiluje się
+    # do ``ORDER BY "col2"`` (``rok`` to druga kolumna w ``values()``) —
+    # aliasu, którego złożony SELECT nie wystawia. Efekt:
+    # ``ProgrammingError: kolumna "col2" nie istnieje``.
+    #
+    # Sortowanie i tak nie miało tu znaczenia: wynik trafia do
+    # ``difference()`` w ``autorzy_zerowi()`` i dalej jest konsumowany jako
+    # zbiór krotek.
     return (
         Autor_Dyscyplina.objects.values("autor_id", "rok", "dyscyplina_naukowa_id")
         .filter(**kwargs)
         .exclude(dyscyplina_naukowa_id=None)
+        .order_by()
         .union(
             Autor_Dyscyplina.objects.values(
                 "autor_id", "rok", "subdyscyplina_naukowa_id"
             )
             .exclude(subdyscyplina_naukowa_id=None)
             .filter(**kwargs)
+            .order_by()
         )
+        .order_by()
     )
 
 
@@ -59,7 +76,11 @@ def autorzy_z_punktami(
     if uczelnia is not None:
         qs = qs.filter(uczelnia=uczelnia)
 
-    return qs.values("autor_id", "rekord__rok", "dyscyplina_id")
+    # ``.order_by()`` — jak wyżej. ``Meta.ordering`` tego modelu to
+    # ``rekord__tytul_oryginalny``/``dyscyplina__nazwa``, czyli kolumny spoza
+    # ``values()`` i zza JOIN-a; w ``difference()`` (patrz ``autorzy_zerowi``)
+    # to właśnie one wsadzały ORDER BY do składnika złożonego zapytania.
+    return qs.values("autor_id", "rekord__rok", "dyscyplina_id").order_by()
 
 
 def autorzy_zerowi(od_roku=None, do_roku=None, min_pk=None, uczelnia=None):
@@ -81,4 +102,9 @@ def autorzy_zerowi(od_roku=None, do_roku=None, min_pk=None, uczelnia=None):
         od_roku=od_roku, do_roku=do_roku, min_pk=min_pk, uczelnia=uczelnia
     )
 
-    return defined.difference(existent)
+    # Trzecie miejsce z pustym ``.order_by()`` (patrz komentarz w
+    # ``autorzy_z_dyscyplinami``): wynik ``difference()`` też niesie flagę
+    # domyślnego sortowania modelu, a konsumenci wołają na nim ``values_list()``
+    # (``raport_slotow/models/uczelnia.py``), co klonuje zapytanie razem z tą
+    # flagą — i ``Meta.ordering`` wraca przy kompilacji jako ``ORDER BY "col2"``.
+    return defined.difference(existent).order_by()
