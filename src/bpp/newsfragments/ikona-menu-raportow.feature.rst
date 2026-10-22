@@ -1,1 +1,1 @@
-W definicji raportu można wybrać ikonę wyświetlaną w menu „raporty” — dowolną z zestawu Foundation Icons, z podglądem w panelu administracyjnym. Bez wyboru raport dostaje, jak dotąd, ikonę zależną od poziomu.
+W „Raportach w menu strony” można wybrać ikonę wyświetlaną w menu „raporty” — dowolną z zestawu Foundation Icons, z podglądem w panelu administracyjnym. Bez wyboru raport dostaje, jak dotąd, ikonę zależną od poziomu.

@@ -53,11 +53,11 @@ def _child(menu, label):
 
 
 @pytest.mark.django_db
-def test_menu_raporty_zaczyna_sie_od_definicji_raportow():
+def test_menu_raporty_zaczyna_sie_od_raportow_w_menu_strony():
     u = baker.make("bpp.BppUser", is_superuser=True, is_staff=True)
     raporty = _child(_menu_for(u), "Raporty")
     pierwsza = raporty.children[0]
-    assert str(pierwsza.title) == "Definicje raportów"
+    assert str(pierwsza.title) == "Raporty w menu strony"
     assert pierwsza.url == "/admin/nowe_raporty/definicjaraportu/"
 
 

@@ -10,6 +10,14 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.AlterModelOptions(
+            name="definicjaraportu",
+            options={
+                "ordering": ["kolejnosc", "nazwa"],
+                "verbose_name": "raport w menu strony",
+                "verbose_name_plural": "raporty w menu strony",
+            },
+        ),
         migrations.AddField(
             model_name="definicjaraportu",
             name="ikona",

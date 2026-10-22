@@ -1,0 +1,1 @@
+„Definicje raportów” w panelu administracyjnym nazywają się teraz „Raporty w menu strony” — lepiej oddaje to, że chodzi o podpięcie raportu do menu strony WWW (poziom, dostęp, uczelnie, ikona), a nie o sam raport.

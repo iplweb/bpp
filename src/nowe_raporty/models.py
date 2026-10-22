@@ -80,8 +80,8 @@ class DefinicjaRaportu(models.Model):
     }
 
     class Meta:
-        verbose_name = "definicja raportu"
-        verbose_name_plural = "definicje raportów"
+        verbose_name = "raport w menu strony"
+        verbose_name_plural = "raporty w menu strony"
         ordering = ["kolejnosc", "nazwa"]
 
     def __str__(self):

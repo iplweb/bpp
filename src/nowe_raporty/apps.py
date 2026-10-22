@@ -39,6 +39,8 @@ def _polacz_inwalidacje_menu():
 
 class NoweRaportyConfig(AppConfig):
     name = "nowe_raporty"
+    # Tylko wyświetlana nazwa w adminie; app_label zostaje "nowe_raporty".
+    verbose_name = "Raporty"
 
     def ready(self):
         # Inwalidacja cache menu - zawsze (także w testach).
