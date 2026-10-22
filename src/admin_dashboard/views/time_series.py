@@ -85,7 +85,9 @@ def weekday_stats(request):
             "data": data,
             "layout": {
                 "title": {"text": "Edycje w dni tygodnia (ostatni miesiąc)"},
-                "xaxis": {"title": {"text": "Dzień tygodnia"}},
+                # plotly.js 4.x nie obraca już sam etykiet na wąskim
+                # wykresie, więc "Poniedziałek" nachodził na "Wtorek"
+                "xaxis": {"title": {"text": "Dzień tygodnia"}, "tickangle": 30},
                 "yaxis": {"title": {"text": "Liczba edycji"}},
                 "legend": {
                     "orientation": "h",
