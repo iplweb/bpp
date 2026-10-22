@@ -300,7 +300,14 @@ push = false
 # Dolna granica trzymana rownolegle do `requires-python` wyzej (>=3.11).
 # Do 2026-09 stalo tu `>= '3.10'` - martwe, bo przeciecie z requires-python
 # i tak dawalo 3.11, ale mylnie sugerowalo wsparcie dla 3.10.
-environments = ["python_version >= '3.11' and python_version < '3.15' and platform_python_implementation != 'PyPy'"]
+#
+# emscripten (Pyodide/WebAssembly) wykluczony od uv 0.13 (2026-10, przy
+# podbiciu uv po GHSA-hq85-5cpj-mr62): uv 0.13 rozbija lock takze na split
+# `sys_platform == 'emscripten'` i wymaga dla niego kompatybilnych wheeli.
+# ortools (via `baseline-rebuild`) nie publikuje wheeli emscripten, wiec
+# rezolucja padala ("No solution found ... split (markers: ... emscripten)").
+# BPP nigdy nie biegnie w przegladarce — split jest martwy.
+environments = ["python_version >= '3.11' and python_version < '3.15' and platform_python_implementation != 'PyPy' and sys_platform != 'emscripten'"]
 
 # Security floors dla zaleznosci TRANZYTYWNYCH (nie deklarujemy ich jako
 # direct deps - przychodza przez inne pakiety). constraint-dependencies
@@ -356,6 +363,11 @@ constraint-dependencies = [
     # test_lazy_heavy_imports. Nie cofac ponizej 26.10.1.
     "autobahn>=26.10.1",
     "bleach>=6.4.0",
+    # >=2026.10.19: usuwa z bundla CA skompromitowany emSign ECC Root
+    # CA - G3 (GHSA-6q48-6c7w-9gw2, critical, 2026-10-20). certifi daje
+    # zaufane CA dla requests, czyli dla KAZDEGO wychodzacego HTTPS (PBN,
+    # Freshdesk, ...). Nie cofac.
+    "certifi>=2026.10.19",
     "daphne>=4.2.2",
     "h2>=4.4.1",
     "oauthlib>=4.0.0",

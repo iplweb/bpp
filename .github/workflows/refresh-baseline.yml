@@ -46,7 +46,7 @@ jobs:
           # Pin jak w tests.yml (job `lock-check`). Tu szczegolnie wazny:
           # baseline commitowany do repo nie moze zalezec od tego, ktora
           # wersja uv akurat byla "latest" w dniu przebiegu.
-          version: "0.11.29"
+          version: "0.13.5"
 
       - name: Install system build deps
         # uv sync builds several wheels from source (pycairo via

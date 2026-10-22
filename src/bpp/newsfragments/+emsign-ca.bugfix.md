@@ -1,0 +1,1 @@
+Bezpieczeństwo: zaktualizowano pakiet `certifi` (zaufane certyfikaty dla połączeń HTTPS z serwera, m.in. do PBN) do wersji 2026.10.19, która usuwa skompromitowany urząd certyfikacji emSign ECC Root CA - G3 (GHSA-6q48-6c7w-9gw2). Przy okazji w obrazach Dockera i w CI podniesiono `uv` do 0.13.5 (GHSA-hq85-5cpj-mr62), a `pip` w obrazie do 26.2.2.

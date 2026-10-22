@@ -15,14 +15,14 @@ repos:
         - id: ruff-format
 
     - repo: https://github.com/astral-sh/uv-pre-commit
-      # Trzymaj z grubsza w parze z wersją uv w użyciu (obecnie 0.11.14).
+      # Trzymaj w parze z wersją uv w CI i w Dockerfile (obecnie 0.13.5).
       # Hook bundluje własne uv — nowszy pin potrafi przepisać uv.lock do
       # nowszego formatu wewnętrznego (churn), więc celowo pinujemy tag
       # najbliższy uv-owi z tego środowiska zamiast "latest". Domyślny
       # scope hooka to ^(uv\.lock|pyproject\.toml|uv\.toml)$ — NIE poszerzać.
       # Gwarantuje, że każdy commit dotykający deps ma spójny uv.lock;
       # autorytatywnym gate'em (nie do obejścia) jest job `lockfile` w CI.
-      rev: 0.11.15
+      rev: 0.13.5
       hooks:
         - id: uv-lock
 
