@@ -104,7 +104,7 @@ jobs:
           #
           # Pin wersji jak w tests.yml (job `lock-check`): bez `version`
           # setup-uv bierze "latest", czyniac przebieg funkcja daty.
-          version: "0.11.29"
+          version: "0.13.5"
           enable-cache: false
 
       - name: Bump RC (nowy cykl lub kolejne -rcN)

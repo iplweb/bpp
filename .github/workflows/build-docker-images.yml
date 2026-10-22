@@ -188,22 +188,26 @@ jobs:
 
           # Wywołanie reusable: tag i kanał z inputów (omija logikę ref-based).
           if [ -n "${INPUT_VERSION_TAG:-}" ]; then
-            echo "final_tag=${INPUT_VERSION_TAG}" >> "$GITHUB_OUTPUT"
-            echo "channel_tag=${INPUT_CHANNEL}" >> "$GITHUB_OUTPUT"
             # RC jest staging-flavored → stopka pokazuje wersję rcN + git SHA.
             # BPP_IMAGE_TAG (footer_image_tag) zostaje PUSTY: tag obrazu = ta
             # sama wersja rcN, więc duplikowałby "wersję" w stopce. Prod (po
             # promote) jest release-flavored i tak chowa image_tag.
-            echo "footer_image_tag=" >> "$GITHUB_OUTPUT"
+            {
+              echo "final_tag=${INPUT_VERSION_TAG}"
+              echo "channel_tag=${INPUT_CHANNEL}"
+              echo "footer_image_tag="
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           FINAL_TAG=$(echo "$REF_NAME" \
             | sed 's/[^a-zA-Z0-9._-]/-/g' \
             | tr '[:upper:]' '[:lower:]')
-          echo "final_tag=${FINAL_TAG}" >> "$GITHUB_OUTPUT"
-          echo "footer_image_tag=${FINAL_TAG}" >> "$GITHUB_OUTPUT"
-          echo "channel_tag=" >> "$GITHUB_OUTPUT"
+          {
+            echo "final_tag=${FINAL_TAG}"
+            echo "footer_image_tag=${FINAL_TAG}"
+            echo "channel_tag="
+          } >> "$GITHUB_OUTPUT"
 
       # -----------------------------------------------------------------
       # FAZA 1: Build → push do staging tagu
@@ -269,7 +273,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
-          version: "0.11.29"
+          version: "0.13.5"
           enable-cache: false
 
       - name: Install pinned CVE scanners

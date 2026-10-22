@@ -1,0 +1,1 @@
+Bezpieczeństwo: w obrazach Dockera i w CI podniesiono `uv` do 0.13.5 (GHSA-hq85-5cpj-mr62 — uv usuwa ze swojej listy zaufanych certyfikatów skompromitowany urząd certyfikacji emSign ECC Root CA - G3), a `pip` w obrazie do 26.2.2. Odpowiednik dla połączeń HTTPS z aplikacji (`certifi` 2026.10.19) wszedł osobno.
