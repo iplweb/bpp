@@ -1,0 +1,45 @@
+/* Siatka wyboru ikony raportu w adminie (DefinicjaRaportuAdmin). */
+.wybor-ikony {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+    gap: 0.25rem;
+    max-height: 22rem;
+    overflow-y: auto;
+}
+
+.wybor-ikony__kafelek {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.4rem 0.2rem;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+}
+
+.wybor-ikony__kafelek:has(input:checked) {
+    border-color: currentColor;
+    font-weight: bold;
+}
+
+.wybor-ikony__kafelek input {
+    position: absolute;
+    opacity: 0;
+}
+
+.wybor-ikony__kafelek input:focus-visible + * {
+    outline: 2px solid currentColor;
+}
+
+.wybor-ikony__kafelek i,
+.wybor-ikony__domyslna {
+    font-size: 1.8rem;
+    line-height: 1;
+}
+
+.wybor-ikony__nazwa {
+    font-size: 0.75rem;
+    word-break: break-word;
+}

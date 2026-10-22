@@ -1,8 +1,41 @@
+from django import forms
 from django.contrib import admin
 from flexible_reports.admin.report import ReportAdmin
 from flexible_reports.models import Report
 
+from . import ikony
 from .models import DefinicjaRaportu, utworz_definicje_dla
+
+
+class WyborIkonyWidget(forms.RadioSelect):
+    """Siatka ikon Foundation z podglądem — nazwa klasy sama nic nie mówi."""
+
+    template_name = "admin/nowe_raporty/wybor_ikony.html"
+    option_template_name = "admin/nowe_raporty/wybor_ikony_opcja.html"
+
+    class Media:
+        # Admin nie ładuje fontu ikon (ten jest tylko w ``bare.html`` strony).
+        css = {
+            "all": [
+                "foundation-datepicker/foundation/fonts/foundation-icons.css",
+                "nowe_raporty/wybor_ikony.css",
+            ]
+        }
+
+
+class DefinicjaRaportuForm(forms.ModelForm):
+    ikona = forms.ChoiceField(
+        label="Ikona w menu",
+        required=False,
+        choices=[("", "domyślna dla poziomu")] + ikony.WYBORY,
+        widget=WyborIkonyWidget,
+        help_text="Brak wyboru = ikona zależna od poziomu raportu.",
+    )
+
+    class Meta:
+        model = DefinicjaRaportu
+        # Admin i tak bierze listę pól z ``fieldsets``; tu tylko pole własne.
+        fields = ["ikona"]
 
 
 class BppReportAdmin(ReportAdmin):
@@ -26,6 +59,7 @@ admin.site.register(Report, BppReportAdmin)
 
 @admin.register(DefinicjaRaportu)
 class DefinicjaRaportuAdmin(admin.ModelAdmin):
+    form = DefinicjaRaportuForm
     list_display = [
         "nazwa",
         "poziom",
@@ -53,6 +87,7 @@ class DefinicjaRaportuAdmin(admin.ModelAdmin):
                 ]
             },
         ),
+        ("Ikona w menu", {"fields": ["ikona"]}),
         (
             "Uprawnienia i widoczność",
             {

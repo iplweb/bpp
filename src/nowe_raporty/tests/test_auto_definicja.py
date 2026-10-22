@@ -104,3 +104,15 @@ def test_raport_utworzony_poza_adminem_nie_dostaje_definicji():
     # Seeding i kod/testy tworzące Report programowo same decydują o definicji.
     report = baker.make(Report, slug="programowy")
     assert not DefinicjaRaportu.objects.filter(report=report).exists()
+
+
+@pytest.mark.django_db
+def test_formularz_raportu_w_adminie_nie_pokazuje_komentarza_szablonu(admin_client):
+    # django-flexible-reports <0.5.1 miał wieloliniowy {# #} nad "Klonuj",
+    # który renderował się jako tekst na stronie raportu.
+    report = baker.make(Report, title="Raport X", slug="raport-x")
+    res = admin_client.get(
+        reverse("admin:flexible_reports_report_change", args=(report.pk,))
+    )
+    assert res.status_code == 200
+    assert "Cloning changes the database" not in res.content.decode()

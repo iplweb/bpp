@@ -651,7 +651,7 @@ requires-dist = [
     { name = "django-favicon-plus-reloaded", specifier = ">=1.2,<2" },
     { name = "django-filter", specifier = ">=26.1,<26.2" },
     { name = "django-first-run-wizard", specifier = ">=0.2.1" },
-    { name = "django-flexible-reports", specifier = ">=0.5.0" },
+    { name = "django-flexible-reports", specifier = ">=0.5.1" },
     { name = "django-formdefaults", specifier = ">=0.6.3" },
     { name = "django-formtools", specifier = ">=2.7,<3" },
     { name = "django-fsm-2", specifier = ">=4,<5" },
@@ -1990,7 +1990,7 @@ wheels = [
 
 [[package]]
 name = "django-flexible-reports"
-version = "0.5.0"
+version = "0.5.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bleach", marker = "platform_python_implementation != 'PyPy'" },
@@ -2002,9 +2002,9 @@ dependencies = [
     { name = "pypandoc", marker = "platform_python_implementation != 'PyPy'" },
     { name = "tablib", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a1/50/704b363c4f2040f0ffd557f8e6e1e969a291aef073781a45bf20a73c6e5a/django_flexible_reports-0.5.0.tar.gz", hash = "sha256:181e9042d95de7282d1d94b09200a8ea2ae37a0eb0032d10693a2ab8ec07c4ec", size = 35580, upload-time = "2026-08-18T22:21:39.736Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b7/94/fd42e7d927ffd2b2acab28adfcf77d7b3d69f3c15ec3a5642c48f7b59ce0/django_flexible_reports-0.5.1.tar.gz", hash = "sha256:c8ff1d1f8eff1e95235c69e4984a232874f61609c5be001fede646df1177b7d1", size = 35597, upload-time = "2026-10-22T18:27:55.703Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/62/cf/9706122019a583c6238970657442edb10cc03ac933199a783421b2bbca0d/django_flexible_reports-0.5.0-py3-none-any.whl", hash = "sha256:e9cb14dcd1e61e3256f67b0dddbcd3399ba7c5c1d4e009ad1975713035e942b3", size = 53171, upload-time = "2026-08-18T22:21:38.241Z" },
+    { url = "https://files.pythonhosted.org/packages/43/83/b2f21b32220181f68e3f310ee704e3a1ec00d3f4ffa3bc1b608905af82bd/django_flexible_reports-0.5.1-py3-none-any.whl", hash = "sha256:42ecc67c51d2cada5b8d4453fa185e205a1b573b8e413050543254907fcff9ef", size = 53169, upload-time = "2026-10-22T18:27:54.298Z" },
 ]
 
 [[package]]
