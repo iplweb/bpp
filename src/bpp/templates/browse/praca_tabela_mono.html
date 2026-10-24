@@ -1,4 +1,4 @@
-{% load prace user_in_group dspace_links static czy_pokazywac %}
+{% load prace user_in_group dspace_links static czy_pokazywac bezpieczny_url %}
 {# Streszczenia pobierane RAZ: szablon odwołuje się do nich w kilku #}
 {# miejscach (warunki, pętla, licznik języków). Widok dodatkowo robi #}
 {# prefetch, więc całość to jedno zapytanie na stronę. #}
@@ -408,11 +408,14 @@
                                             title="Kopiuj adres">
                                         <i class="fi-clipboard"></i>
                                     </button>
+                                    {% if url|bezpieczny_url %}
                                     <button class="button open-button" type="button"
-                                            data-open-url="{{ url }}" data-target="_blank"
+                                            data-open-url="{{ url|bezpieczny_url }}"
+                                            data-target="_blank"
                                             title="Otwórz stronę">
                                         <i class="fi-arrow-right"></i> Otwórz
                                     </button>
+                                    {% endif %}
                                 </div>
                             </div>
                             {% endwith %}
