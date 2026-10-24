@@ -27,9 +27,25 @@ cyklicznego wymuszania zmiany hasła.
 
 - hasło ma co najmniej 15 znaków; nie musi zawierać cyfr, wielkich liter ani
   znaków specjalnych — dobrze sprawdza się kilka słów albo całe zdanie,
-- odrzucane są hasła z listy popularnych haseł, hasła podobne do loginu lub
-  adresu e-mail, ciągi typu `qwerty`/`12345` oraz więcej niż 3 jednakowe
-  znaki z rzędu,
+- odrzucane są hasła z listy słabych haseł (bez reguł złożoności):
+  - popularne hasła, hasła podobne do loginu lub adresu e-mail,
+  - powtórzenia jednego znaku, hasła z mniej niż 5 różnymi znakami, proste
+    sekwencje (`12345…`, `abcde…`, `qwerty…`, także malejąco) oraz więcej
+    niż 3 jednakowe znaki z rzędu,
+  - hasła zawierające słowa związane z serwisem: „bpp”, „bibliografia”,
+    nazwę lub skrót uczelni, nazwę domeny serwisu i słowa z
+    `DJANGO_BPP_PASSWORD_CONTEXT_WORDS` (bez rozróżniania wielkości liter
+    i polskich znaków; słowa krótsze niż 3 znaki są pomijane),
+  - hasła łatwe do odgadnięcia według oceny
+    [zxcvbn](https://github.com/dwolfhub/zxcvbn-python) liczonej na
+    serwerze (bez wysyłania hasła): złożone z popularnych haseł i słów,
+    powtórzeń, sekwencji, sąsiednich klawiszy, dat lub danych konta —
+    także w przeróbkach typu `P@ssw0rd`; słowniki zxcvbn są angielskie,
+    polskie słowa sprawdza się przez słowa kontekstowe i dane konta,
+  - hasła znane z wycieków danych — sprawdzane w serwisie
+    [Have I Been Pwned](https://haveibeenpwned.com/Passwords) metodą
+    k-anonimowości: do serwisu trafia tylko 5 pierwszych znaków skrótu
+    SHA-1 hasła, nigdy samo hasło,
 - nie można wrócić do żadnego z 12 ostatnich haseł.
 
 Istniejące krótsze hasła pozostają ważne — nowa długość obowiązuje przy
@@ -41,6 +57,18 @@ najbliższej zmianie lub resecie hasła.
 | `DJANGO_BPP_PASSWORD_DURATION_SECONDS` | `0` | co ile sekund wymuszać zmianę hasła; `0` = nigdy (np. `2592000` = 30 dni) |
 | `DJANGO_BPP_USE_PASSWORD_HISTORY` | `true` | czy pamiętać poprzednie hasła |
 | `DJANGO_BPP_PASSWORD_HISTORY_COUNT` | `12` | ile poprzednich haseł pamiętać |
+| `DJANGO_BPP_PASSWORD_CONTEXT_WORDS` | (puste) | dodatkowe słowa zakazane w hasłach, rozdzielone przecinkami (np. `umlub,lublin`) |
+| `DJANGO_BPP_PASSWORD_CHECK_PWNED` | `true` | sprawdzanie haseł w Have I Been Pwned; `false` wyłącza |
+| `DJANGO_BPP_PASSWORD_MIN_ZXCVBN_SCORE` | `3` | minimalna ocena siły hasła wg zxcvbn (0–4); `0` wyłącza |
+
+Sprawdzanie wycieków wymaga, żeby serwer aplikacji mógł łączyć się
+z `api.pwnedpasswords.com` na porcie 443 (HTTPS). Gdy serwis jest
+niedostępny (brak wyjścia do internetu, przekroczony czas 3 s, błąd po
+stronie serwisu), hasło **zostaje przyjęte**, a w logu pojawia się
+ostrzeżenie — awaria zewnętrznego serwisu nie blokuje zmiany haseł.
+W sieciach bez dostępu do internetu warto ustawić
+`DJANGO_BPP_PASSWORD_CHECK_PWNED=false`, żeby uniknąć opóźnienia przy
+każdej zmianie hasła.
 
 ### Wymuszenie zmiany hasła
 

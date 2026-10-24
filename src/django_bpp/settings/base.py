@@ -123,6 +123,9 @@ env = environ.Env(
     DJANGO_BPP_USE_PASSWORD_HISTORY=(bool, True),
     DJANGO_BPP_PASSWORD_HISTORY_COUNT=(int, 12),
     DJANGO_BPP_PASSWORD_MIN_LENGTH=(int, 15),
+    DJANGO_BPP_PASSWORD_CHECK_PWNED=(bool, True),
+    DJANGO_BPP_PASSWORD_CONTEXT_WORDS=(list, []),
+    DJANGO_BPP_PASSWORD_MIN_ZXCVBN_SCORE=(int, 3),
     #
     # Konfiguracja wygaszania sesji
     #
@@ -992,7 +995,27 @@ AUTH_PASSWORD_VALIDATORS = [
         "OPTIONS": {"min_length": PASSWORD_MIN_LENGTH},
     },
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {
+        "NAME": "django_bpp.password_validation.SimplePatternPasswordValidator",
+        "OPTIONS": {"min_unique_chars": 5},
+    },
+    {"NAME": "django_bpp.password_validation.ContextWordsPasswordValidator"},
+    {"NAME": "django_bpp.password_validation.ZxcvbnPasswordValidator"},
+    {"NAME": "django_bpp.password_validation.PwnedPasswordValidator"},
 ]
+
+# Dodatkowe słowa kontekstowe zakazane w hasłach (obok „bpp”, „bibliografia”,
+# nazwy/skrótu uczelni i domeny); lista rozdzielona przecinkami.
+BPP_HASLA_SLOWA_KONTEKSTOWE = env("DJANGO_BPP_PASSWORD_CONTEXT_WORDS")
+
+# Sprawdzanie haseł w Have I Been Pwned metodą k-anonimowości (wysyłany
+# jest tylko krótki prefiks skrótu). Wymaga dostępu HTTPS (port 443) do
+# serwisu Have I Been Pwned — szczegóły w docs/administrator/zaawansowane.md.
+BPP_HASLA_SPRAWDZAJ_WYCIEKI = env("DJANGO_BPP_PASSWORD_CHECK_PWNED")
+
+# Minimalna ocena siły hasła wg zxcvbn (0–4, liczona lokalnie; 0 wyłącza).
+# 3 ≈ hasło wymagające ok. 10^8–10^10 prób przy zgadywaniu offline.
+BPP_HASLA_MIN_SILA_ZXCVBN = env("DJANGO_BPP_PASSWORD_MIN_ZXCVBN_SCORE")
 
 # Rotacja haseł domyślnie wyłączona (0). Instalacja, która jej potrzebuje,
 # ustawia liczbę sekund, np. 2592000 = 30 dni.

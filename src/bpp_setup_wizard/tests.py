@@ -631,3 +631,29 @@ def test_niedokonczony_kreator_nie_przekierowuje_logowania_ani_healthchecku(
     Uczelnia.objects.all().delete()
     response = Client().get(path)
     assert response.status_code != 302, response.get("Location")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "haslo",
+    [
+        "1",
+        "111111111111111",
+        "aaaaaaaaaaaaaaa",
+        "123456789012345",
+        "bpp-administrator-glowny",
+    ],
+)
+def test_kreator_admin_user_odrzuca_slabe_haslo(haslo):
+    User = get_user_model()
+    User.objects.all().delete()
+    Uczelnia.objects.all().delete()
+
+    url = reverse("first_run_wizard:step", kwargs={"name": "admin_user"})
+    dane = dict.fromkeys(("password1", "password2"), haslo)
+    dane.update(username="bppadmin", email="admin@bpp.test")
+    response = Client().post(url, dane)
+
+    assert response.status_code == 200
+    assert response.context["form"].errors.get("password1")
+    assert not User.objects.exists()
