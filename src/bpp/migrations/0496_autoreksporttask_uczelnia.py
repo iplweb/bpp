@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('bpp', '0494_autor_opis_do_adnotacji'),
+        ('bpp', '0495_uczelnia_adresy_integracji_https'),
     ]
 
     operations = [
