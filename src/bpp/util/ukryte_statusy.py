@@ -1,4 +1,5 @@
-"""Wykluczanie rekordów o statusach korekty ukrytych dla danego kanału.
+"""Wykluczanie rekordów o statusach korekty ukrytych dla danego kanału
+(oraz autorów ukrytych, ``pokazuj=False``).
 
 Wspólny helper dla publicznych widoków, które listują rekordy (przeglądanie
 po latach, strona główna, autocomplete'y). Reguła jest ta sama, co na
@@ -77,17 +78,21 @@ def statusy_ukryte_w_dowolnej_uczelni(kanal="podglad"):
     )
 
 
-def wyklucz_ukrytych_autorow(qs, request):
-    """Zwróć queryset ``Autor`` bez autorów ukrytych przed oglądającym.
+def widoczni_autorzy(qs, request, lookup="pokazuj"):
+    """Zwróć ``qs`` zawężony do autorów widocznych dla oglądającego.
 
-    Autor z ``pokazuj=False`` jest niewidoczny dla wszystkich POZA
-    użytkownikami z uprawnieniami redaktorskimi (``moze_wprowadzac_dane``).
-    ``request=None`` = odbiorca publiczny. Jedna reguła dla strony autora
-    (``AutorView``) i eksportu jego prac.
+    Autor z ``pokazuj=False`` jest ukryty ze stron publicznych — widzi go
+    tylko użytkownik z uprawnieniami redaktorskimi (``moze_wprowadzac_dane``);
+    dla pozostałych (także ``request=None``) ``qs`` jest filtrowany do
+    ``pokazuj=True``. Wspólna reguła dla strony autora, eksportu, sieci
+    powiązań i autocomplete'ów.
+
+    ``lookup`` to ścieżka ORM do flagi ``pokazuj`` (np. ``"autor__pokazuj"``
+    dla modeli podrzędnych, jak ``Autor_Dyscyplina``).
     """
     from bpp.permissions import moze_wprowadzac_dane
 
     user = getattr(request, "user", None)
     if user is not None and moze_wprowadzac_dane(user):
         return qs
-    return qs.filter(pokazuj=True)
+    return qs.filter(**{lookup: True})

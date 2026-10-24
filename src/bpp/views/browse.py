@@ -61,8 +61,8 @@ from bpp.util.uczelnia_scope import (
 )
 from bpp.util.ukryte_statusy import (
     ukryte_statusy_dla,
+    widoczni_autorzy,
     wyklucz_ukryte_statusy,
-    wyklucz_ukrytych_autorow,
 )
 from bpp.views.cache_publiczny import DOMYSLNY_TTL, _generacja, cache_publiczny
 
@@ -254,9 +254,7 @@ class AutorView(DetailView):
         # Autor z ``pokazuj=False`` jest ukryty ze stron publicznych (listing
         # ``AutorzyView`` też go pomija) — pod bezpośrednim URL-em widzi go
         # tylko użytkownik z uprawnieniami redaktorskimi, reszta dostaje 404.
-        return wyklucz_ukrytych_autorow(
-            super().get_queryset(), getattr(self, "request", None)
-        )
+        return widoczni_autorzy(super().get_queryset(), getattr(self, "request", None))
 
     def get_context_data(self, **kwargs):
         from powiazania_autorow.models import AuthorConnection

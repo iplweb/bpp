@@ -4,8 +4,7 @@ from django.shortcuts import get_object_or_404
 from django.views.generic import TemplateView, View
 
 from bpp.models import Autor, Uczelnia
-from bpp.permissions import moze_wprowadzac_dane
-from bpp.util.ukryte_statusy import ukryte_statusy_dla
+from bpp.util.ukryte_statusy import ukryte_statusy_dla, widoczni_autorzy
 
 from .queries import (
     MAKS_GLEBOKOSC_FILTR,
@@ -42,9 +41,7 @@ def _autor_centralny(request, pk, select_related=()):
     qs = Autor.objects.all()
     if select_related:
         qs = qs.select_related(*select_related)
-    if not moze_wprowadzac_dane(request.user):
-        qs = qs.filter(pokazuj=True)
-    autor = get_object_or_404(qs, pk=pk)
+    autor = get_object_or_404(widoczni_autorzy(qs, request), pk=pk)
     if not siec_powiazan_wlaczona(autor, request):
         raise Http404("Sieć powiązań jest wyłączona dla tego autora.")
     return autor
