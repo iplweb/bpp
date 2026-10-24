@@ -79,6 +79,13 @@ def ukryte_statusy_podgladu(request, uczelnia=None):
 
 
 def _prace(autor, request=None):
+    """Prace autora do sekcji profilu — PEŁNY dorobek autora.
+
+    Celowo BEZ ``scope_rekord_do_uczelni``: profil (i eksport BibTeX/RIS,
+    który bierze ten sam zbiór) pokazuje cały dorobek osoby, także prace
+    afiliowane wyłącznie w innej uczelni tej samej instalacji (multi-hosted).
+    Decyzja: zgłoszenie #930, opis w docs/administrator/ogolna.md.
+    """
     from bpp.models import Rekord
 
     qs = Rekord.objects.prace_autora(autor)

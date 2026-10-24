@@ -74,6 +74,12 @@ zestawienie wszystkich jego publikacji w bazie wraz z podstawowymi danymi
 To najprostszy sposób, by zobaczyć dorobek jednej osoby bez budowania
 zapytania.
 
+Strona autora pokazuje **pełny dorobek autora** — także w instalacjach,
+w których jedna baza BPP obsługuje kilka uczelni: znajdziesz na niej również
+prace autora powstałe w innej uczelni tej samej instalacji (szczegóły
+w [instrukcji administratora](../administrator/ogolna.md#układ-podstrony-autora-profil-autora)).
+Ten sam zakres obejmuje [eksport do BibTeX i RIS](#eksport-publikacji-autora-bibtex-i-ris).
+
 Strona autora składa się z **pasów**: sekcja zajmuje całą szerokość strony
 albo dwie sekcje stoją obok siebie. Sekcje bez danych (np. autor bez
 zdjęcia i biogramu) po prostu się nie pokazują, a sąsiednia sekcja zajmuje

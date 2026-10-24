@@ -112,6 +112,24 @@ najnowsze książki i rozdziały, ostatnio edytowane, a także domyślnie
 wyłączone: udział dyscyplin, najczęstsze źródła, punkty/sloty w latach
 i wyróżnione publikacje.
 
+!!! note "Instalacja z kilkoma uczelniami: profil pokazuje pełny dorobek"
+    Gdy w jednej instalacji BPP działa kilka uczelni (każda pod własnym
+    adresem), część stron publicznych — m.in. przeglądanie, OAI-PMH i API —
+    pokazuje tylko prace przypisane do uczelni, pod której
+    adresem się je ogląda. **Podstrona autora i eksport jego publikacji
+    (BibTeX, RIS) są celowym wyjątkiem:** pokazują **pełny dorobek autora**,
+    także prace afiliowane wyłącznie w innej uczelni tej samej instalacji.
+
+    Powód: podstrona autora opisuje osobę, a nie uczelnię — autor
+    pracujący w dwóch uczelniach (albo zmieniający miejsce pracy) ma
+    widzieć i eksportować cały swój dorobek pod jednym adresem, a liczby
+    w podsumowaniu, wykresach i eksporcie są spójne niezależnie od tego,
+    przez którą uczelnię wszedł oglądający.
+
+    Prace o statusach korekty ukrytych przez uczelnię nadal nie są
+    pokazywane (ani na podstronie, ani w eksporcie). W instalacji z jedną
+    uczelnią ta uwaga nie ma znaczenia.
+
 W tej samej sekcji ustawisz **etykietę linku do profilu w portalu uczelni**
 (np. „PPM UML"). Pokazuje się ona przy linku z pola „Adres profilu w portalu
 uczelni" w rekordzie autora; gdy jest pusta, link opisany jest jako „Profil

@@ -306,6 +306,8 @@ def _zbuduj_tresc_eksportu_autora(autor, format: str, ukryte_statusy=()) -> str:
     from bpp.export.ris import export_to_ris
     from bpp.models import Rekord
 
+    # Pełny dorobek autora, bez zawężania do uczelni — celowo, spójnie
+    # z profilem autora (zgłoszenie #930).
     qs = Rekord.objects.prace_autora(autor)
     if ukryte_statusy:
         qs = qs.exclude(status_korekty_id__in=list(ukryte_statusy))
