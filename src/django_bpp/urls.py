@@ -79,7 +79,9 @@ urlpatterns = (
         path("test_403/", login_required(test_403_view)),
         path("test_500/", login_required(test_500_view)),
         path("test_exception/", login_required(test_exception_view)),
-        path("tinymce/", include("tinymce.urls")),
+        # tinymce.urls (compressor/linklist/filebrowser) celowo NIE jest
+        # montowane: widget HTMLField ładuje TinyMCE ze static, a
+        # TINYMCE_COMPRESSOR/TINYMCE_FILEBROWSER są wyłączone.
         url(
             # Auth (redaktor + POST/CSRF) egzekwuje WprowadzanieDanychRequiredMixin
             # w samym TozView — bez owijki login_required (dawniej GET-mutacja).
