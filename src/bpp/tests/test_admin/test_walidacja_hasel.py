@@ -26,6 +26,11 @@ SLABE_HASLA = [
     ("abcdefghijklmno", "password_simple_sequence"),
     ("onmlkjihgfedcba", "password_simple_sequence"),
     ("qwertyuiopasdfg", "password_simple_sequence"),
+    # Powtórzony fragment, także z urwaną ostatnią kopią (zxcvbn ocenia
+    # urwaną końcówkę jak losowe znaki i daje takiemu hasłu 4/4).
+    ("robak1robak1robak", "password_repeated_pattern"),
+    ("Robak1robak1ROBAK1", "password_repeated_pattern"),
+    ("pies1pies1pies1pi", "password_repeated_pattern"),
 ]
 
 

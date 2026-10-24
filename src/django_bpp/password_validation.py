@@ -54,9 +54,23 @@ def _jest_sekwencja(haslo):
     return False
 
 
+def _jest_powtorzeniem(haslo):
+    """Czy hasło to kopie krótszego fragmentu, np. „robak1robak1robak”.
+
+    Ostatnia kopia może być urwana; fragment mieści się w haśle co najmniej
+    dwa razy. zxcvbn wykrywa tylko pełne kopie — urwaną końcówkę wycenia jak
+    losowe znaki, przez co takie hasło dostaje u niego najwyższą ocenę.
+    """
+    haslo = haslo.lower()
+    return any(
+        all(haslo[i] == haslo[i % okres] for i in range(okres, len(haslo)))
+        for okres in range(1, len(haslo) // 2 + 1)
+    )
+
+
 class SimplePatternPasswordValidator:
-    """Odrzuca hasła z powtórzeń jednego znaku, o zbyt małej liczbie
-    różnych znaków albo będące prostą sekwencją znaków."""
+    """Odrzuca hasła z powtórzeń jednego znaku lub krótszego fragmentu,
+    o zbyt małej liczbie różnych znaków albo będące prostą sekwencją."""
 
     def __init__(self, min_unique_chars=5):
         self.min_unique_chars = min_unique_chars
@@ -74,6 +88,12 @@ class SimplePatternPasswordValidator:
                 code="password_too_few_unique_characters",
                 params={"min_unique_chars": self.min_unique_chars},
             )
+        if _jest_powtorzeniem(password):
+            raise ValidationError(
+                "Hasło nie może być powtórzeniem krótszego fragmentu "
+                "(np. robak1robak1robak…).",
+                code="password_repeated_pattern",
+            )
         if _jest_sekwencja(password):
             raise ValidationError(
                 "Hasło nie może być prostą sekwencją znaków "
@@ -84,8 +104,8 @@ class SimplePatternPasswordValidator:
     def get_help_text(self):
         return (
             f"Hasło musi zawierać co najmniej {self.min_unique_chars} różnych "
-            "znaków i nie może być powtórzeniem jednego znaku ani prostą "
-            "sekwencją (np. 12345…, abcde…, qwerty…)."
+            "znaków i nie może być powtórzeniem jednego znaku ani krótszego "
+            "fragmentu, ani prostą sekwencją (np. 12345…, abcde…, qwerty…)."
         )
 
 
