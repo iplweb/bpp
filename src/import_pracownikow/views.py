@@ -39,7 +39,11 @@ from bpp.models import (
     Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte_Autor,
 )
-from import_common.exceptions import BadNoOfSheetsException, HeaderNotFoundException
+from import_common.exceptions import (
+    BadNoOfSheetsException,
+    HeaderNotFoundException,
+    NiebezpiecznyPlikException,
+)
 from import_pracownikow.forms import MapowanieForm, NowyImportForm
 from import_pracownikow.mapping import dopasuj_profil, wybierz_profil_fallback
 from import_pracownikow.models import (
@@ -270,9 +274,10 @@ class MapowanieView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, FormView):
                 "zawiera kolumny takie jak nazwisko / imię / jednostka.",
             )
             return HttpResponseRedirect(reverse("import_pracownikow:index"))
-        except BadNoOfSheetsException as exc:
+        except (BadNoOfSheetsException, NiebezpiecznyPlikException) as exc:
             # „Jeden arkusz = jeden import" — plik wieloarkuszowy (np. dwie
-            # uczelnie w jednym skoroszycie) odrzucamy z czytelnym komunikatem.
+            # uczelnie w jednym skoroszycie) odrzucamy z czytelnym komunikatem;
+            # tak samo plik ponad limit rozmiaru / po dekompresji.
             messages.error(request, str(exc))
             return HttpResponseRedirect(reverse("import_pracownikow:index"))
         if not self._naglowki:
@@ -1788,7 +1793,7 @@ class RestartAnalizaView(_PkOwnerRestartMixin):
         # wywalić analizę w tle.
         try:
             obj.waliduj_liczbe_arkuszy()
-        except BadNoOfSheetsException as exc:
+        except (BadNoOfSheetsException, NiebezpiecznyPlikException) as exc:
             messages.error(request, str(exc))
             return HttpResponseRedirect(reverse("import_pracownikow:index"))
         obj.stan = ImportPracownikow.STAN_ZMAPOWANY

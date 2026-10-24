@@ -1,0 +1,1 @@
+Wzmocniono zabezpieczenia importów plików (XLSX/XLS/CSV): wszystkie importery sprawdzają przed przetwarzaniem limit rozmiaru pliku oraz rozmiar po dekompresji i zgłaszają czytelny komunikat o odrzuceniu pliku.

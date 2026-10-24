@@ -17,14 +17,22 @@ class InputDataError(Exception):
     pass
 
 
-class DecompressionBombException(Exception):
+class NiebezpiecznyPlikException(Exception):
+    """Wspólna baza dla plików importu odrzuconych przez bezpieczniki
+    rozmiaru (``sprawdz_plik_importu``) — pozwala widokom złapać jedną klasę
+    i pokazać użytkownikowi komunikat zamiast błędu 500."""
+
+    pass
+
+
+class DecompressionBombException(NiebezpiecznyPlikException):
     """Plik XLSX (archiwum ZIP) rozpakowuje się do rozmiaru przekraczającego
     bezpieczny limit — potencjalna bomba dekompresyjna (DoS przez OOM)."""
 
     pass
 
 
-class PlikZaDuzyException(Exception):
+class PlikZaDuzyException(NiebezpiecznyPlikException):
     """Wgrany plik przekracza dopuszczalny rozmiar na dysku — odrzucany PRZED
     załadowaniem do pamięci (obrona przed OOM workera importu na „grubym",
     formalnie legalnym pliku, który przechodzi bomb-check dekompresji)."""
