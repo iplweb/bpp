@@ -50,3 +50,10 @@ def test_jsonify_danych_wykresu_nie_wylamuje_sie_ze_script():
 
     assert wynik.count("</script>") == 1
     assert "\\u003c/script\\u003e" in wynik
+
+
+@pytest.mark.parametrize("skrot", [None, " "])
+def test_rodzaj_autora_label_brak_danych(skrot):
+    assert rodzaj_autora_label(skrot) == (
+        '<span class="label secondary" title="Brak danych">-</span>'
+    )
