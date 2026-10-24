@@ -7,9 +7,16 @@ class BppConfig(AppConfig):
 
     def ready(self):
         from django.apps import apps
+        from django.contrib.auth.signals import user_logged_in
         from django.db.models.signals import post_migrate, post_save
 
         from . import checks  # noqa: F401
+        from .konta_bez_uczelni import ostrzez_superusera_po_zalogowaniu
+
+        user_logged_in.connect(
+            ostrzez_superusera_po_zalogowaniu,
+            dispatch_uid="bpp.ostrzez_superusera_po_zalogowaniu",
+        )
 
         # Only register post_migrate signal when dbtemplates is available
         # (auth_server uses minimal INSTALLED_APPS without dbtemplates)

@@ -237,6 +237,8 @@ admin.site.register(Typ_Odpowiedzialnosci, Typ_OdpowiedzialnosciAdmin)
 
 from django.contrib.auth.admin import UserAdmin  # noqa
 
+from . import filters  # noqa: E402
+
 
 class BppUserCreationForm(AdminUserCreationForm):
     class Meta:
@@ -294,6 +296,8 @@ class BppUserAdmin(UserAdmin):
     )
 
     autocomplete_fields = ["autor"]
+
+    list_filter = (*UserAdmin.list_filter, filters.KontaStaffBezUczelniFilter)
 
     add_form = BppUserCreationForm
 

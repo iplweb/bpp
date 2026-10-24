@@ -25,22 +25,16 @@ def konta_staff_bez_uczelni_check(app_configs, databases=None, **kwargs):
     if not databases:
         return []
 
-    from bpp.models import BppUser, Uczelnia
+    from bpp.konta_bez_uczelni import jest_wiele_uczelni, konta_staff_bez_uczelni
 
     try:
-        if Uczelnia.objects.count() <= 1:
+        if not jest_wiele_uczelni():
             return []
 
         konta = (
-            BppUser.objects.filter(
-                is_active=True,
-                is_staff=True,
-                is_superuser=False,
-                accessible_uczelnie__isnull=True,
-            )
+            konta_staff_bez_uczelni()
             .order_by("username")
             .values_list("username", flat=True)
-            .distinct()
         )
         liczba = konta.count()
         if not liczba:

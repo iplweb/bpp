@@ -7,6 +7,11 @@ from django.db.models import Count, F, IntegerField, Max, Q
 from django.db.models.functions import Cast
 from pbn_client.const import ACTIVE, DELETED
 
+from bpp.konta_bez_uczelni import (
+    FILTR_PARAMETR,
+    FILTR_WARTOSC_BRAK,
+    konta_staff_bez_uczelni,
+)
 from bpp.models import BppUser, Uczelnia, Wydawnictwo_Zwarte
 from bpp.models.struktura import Jednostka
 
@@ -642,3 +647,21 @@ class JednostkaNadrzednaFilter(SimpleListFilter):
     @property
     def media(self):
         return self.get_form().media
+
+
+class KontaStaffBezUczelniFilter(SimpleListFilter):
+    """Konta staff (aktywne, bez superuserów) bez przypisanych uczelni.
+
+    Reguła: ``bpp.konta_bez_uczelni.konta_staff_bez_uczelni``.
+    """
+
+    parameter_name = FILTR_PARAMETR
+    title = "dostęp do uczelni"
+
+    def lookups(self, request, model_admin):
+        return [(FILTR_WARTOSC_BRAK, "brak przypisania (staff, aktywne)")]
+
+    def queryset(self, request, queryset):
+        if self.value() == FILTR_WARTOSC_BRAK:
+            return queryset.filter(pk__in=konta_staff_bez_uczelni().values("pk"))
+        return queryset
