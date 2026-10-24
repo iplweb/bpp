@@ -116,6 +116,7 @@ nav:
       - Eksport CERIF / OpenAIRE: administrator/eksport-cerif.md
       - Widget wsparcia Freshdesk: administrator/widget-wsparcia-freshdesk.md
       - Konfiguracja zaawansowana: administrator/zaawansowane.md
+      - Grupy uprawnień: administrator/grupy-uprawnien.md
   - API: api/index.md
   - Dla deweloperów i agentów:
       - deweloper/index.md
