@@ -215,7 +215,7 @@
                             <a class="close" data-dismiss="alert"
                                     {% if message.pk %}
                                close-href="{% url "messages_extends:message_mark_read" message.pk %}"{% endif %}> × </a>
-                            {{ message|safe }}
+                            {{ message }}
                         </li>
                     {% endfor %}
                 </ul>

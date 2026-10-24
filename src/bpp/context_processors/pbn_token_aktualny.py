@@ -15,6 +15,7 @@ def pbn_token_aktualny(request):
         if cnt:
             from django.contrib import messages
             from django.urls import reverse
+            from django.utils.html import format_html
 
             # Check if similar message already exists (ignoring the count value)
             existing_messages = messages.get_messages(request)
@@ -38,11 +39,18 @@ def pbn_token_aktualny(request):
                     authorize_url = reverse("pbn_api:authorize")
                     messages.info(
                         request,
-                        f"W kolejce na wysłanie do PBN czeka {cnt} wyedytowanych przez Ciebie rekord(y/ów), ale "
-                        f'nie jesteś zalogowany/a do PBN. <a href="{authorize_url}" '
-                        f"onclick=\"this.href='{authorize_url}?next=' + encodeURIComponent(window.location.pathname + "
-                        f'window.location.search + window.location.hash)">Kliknij tutaj, aby '
-                        f"autoryzować się w PBN</a>. ",
+                        format_html(
+                            "W kolejce na wysłanie do PBN czeka {} wyedytowanych "
+                            "przez Ciebie rekord(y/ów), ale nie jesteś "
+                            'zalogowany/a do PBN. <a href="{}" '
+                            "onclick=\"this.href='{}?next=' + encodeURIComponent("
+                            "window.location.pathname + window.location.search + "
+                            'window.location.hash)">Kliknij tutaj, aby '
+                            "autoryzować się w PBN</a>. ",
+                            cnt,
+                            authorize_url,
+                            authorize_url,
+                        ),
                     )
                 else:
                     messages.info(

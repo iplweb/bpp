@@ -223,7 +223,7 @@
             <td>
                 {% if elem.zrodlo %}
                 <a href="{% url 'admin:bpp_zrodlo_change' elem.zrodlo.pk %}">
-                    {{ elem.zrodlo.nazwa|safe }}
+                    {{ elem.zrodlo.nazwa }}
                 </a>
                 {% endif %}
             </td>
