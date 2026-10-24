@@ -20,6 +20,7 @@ from bpp.models import Autor
 from bpp.util.biogram import renderuj_biogram
 from bpp.util.identyfikatory import IdentyfikatoryProfiliFormMixin
 from bpp.util.obrazy import MAKS_ROZMIAR_PLIKU_ZDJECIA, przetworz_zdjecie_autora
+from bpp.wersjonowanie import zmiana_ze_strony
 
 POLA_PROFILI_ZEWNETRZNYCH = (
     "wos_researcherid",
@@ -88,7 +89,17 @@ class ProfilEdycjaView(WymagajAutoraMixin, UpdateView):
 
     def form_valid(self, form):
         messages.success(self.request, "Zapisano zmiany w profilu.")
-        return super().form_valid(form)
+        if not form.has_changed():
+            return super().form_valid(form)
+        zmienione = ", ".join(
+            str(form.fields[pole].label) for pole in form.changed_data
+        )
+        with zmiana_ze_strony(
+            self.request.user,
+            self.object,
+            f"Samodzielna edycja profilu przez stronę: {zmienione}.",
+        ):
+            return super().form_valid(form)
 
 
 class ProfilBiogramPodgladView(WymagajAutoraMixin, View):

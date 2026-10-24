@@ -99,3 +99,33 @@ Najwygodniej edytuje ją sam autor — z wyszukiwarką własnych prac (patrz
 Redaktor może to zrobić w tabeli **„Wybrane publikacje autora”** na dole
 formularza autora, ale tam wskazuje się pracę technicznie — typem rekordu
 (np. wydawnictwo ciągłe) i jego numerem ID — oraz kolejnością.
+
+## Historia zmian autora i przywracanie poprzedniej wersji
+
+Każda zmiana rekordu autora jest zapisywana jako **wersja** — zarówno edycja
+w module redagowania, jak i samodzielna edycja profilu przez autora na stronie
+(biogram, zdjęcie, linki do profili w serwisach zewnętrznych, wyróżnione
+publikacje). Wersja obejmuje dane autora i jego wyróżnione publikacje.
+
+Historię otwiera przycisk **„Historia”** w prawym górnym rogu formularza
+autora. Przy każdej wersji widać **kto i kiedy** wprowadził zmianę oraz
+**co zmieniono** (np. „Samodzielna edycja profilu przez stronę: Biogram,
+Zdjęcie” albo „…: wyróżniono pracę »Tytuł«”). Kliknięcie daty otwiera
+formularz autora w stanie z tej wersji — **zapisanie go przywraca tę wersję**
+(samo przywrócenie także trafia do historii, więc da się je cofnąć).
+
+Uwagi:
+
+- Pierwsza wersja autora, który nie był edytowany od włączenia wersjonowania,
+  powstaje automatycznie tuż przed pierwszą zmianą (komentarz „Stan sprzed
+  pierwszej zarejestrowanej zmiany”) — dzięki temu i tę zmianę można cofnąć.
+- Zmiany sprzed włączenia wersjonowania widać pod spodem, w tabeli
+  **„Wcześniejsza historia”** — tam jest tylko informacja kto i kiedy, bez
+  możliwości przywrócenia.
+- Przywrócenie wersji **nie cofa** miejsc pracy, dyscyplin ani absencji
+  (zmiany w nich widać w historii, ale poprawia się je ręcznie w tabelach
+  formularza) — przypisania dyscyplin wpływają na ewaluację, a miejsca pracy
+  mogą należeć do innej uczelni. Aktualna jednostka jest po przywróceniu
+  przeliczana z bieżących miejsc pracy. Nie zmieniają się też dane wyliczane
+  (liczba udziałów dla autora za rok).
+- Odzyskiwanie usuniętych autorów jest dostępne tylko dla superużytkownika.

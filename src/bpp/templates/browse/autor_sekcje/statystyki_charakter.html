@@ -33,9 +33,12 @@
                 </tr>
             {% endfor %}
         </tbody>
-        <tfoot>
-            <tr><th>Razem</th><th>{{ dane.suma }}</th></tr>
-        </tfoot>
+        {# Przy jednym charakterze „Razem” powtarzałoby jedyny wiersz. #}
+        {% if dane.wiersze|length > 1 %}
+            <tfoot>
+                <tr><th>Razem</th><th>{{ dane.suma }}</th></tr>
+            </tfoot>
+        {% endif %}
     </table>
 </div>
 <div class="shaded-hr-div-small"></div>

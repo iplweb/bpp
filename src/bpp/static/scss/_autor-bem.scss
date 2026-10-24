@@ -748,3 +748,24 @@
   margin-left: auto;
   margin-right: auto;
 }
+
+// Edytor wyróżnionych prac (profil autora): numer pozycji w środku karty,
+// nie jako marker <ol> wystający poza lewą krawędź panelu. Licznik CSS, bo
+// JS przestawia <li> (w górę/w dół) — numeracja nadąża bez przeliczania.
+#wpa-lista {
+  counter-reset: wpa;
+  list-style: none;
+  margin-left: 0;
+
+  // Globalna reguła stawia `list-style: decimal` na samym <li> — `no-bullet`
+  // na <ol> tego nie gasi.
+  > li {
+    counter-increment: wpa;
+    list-style: none;
+  }
+
+  .wpa-nr::before {
+    content: counter(wpa) ".";
+    font-weight: bold;
+  }
+}

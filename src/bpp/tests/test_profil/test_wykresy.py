@@ -1,5 +1,7 @@
 """Testy wykresów rocznych: agregacja po latach + próg liniowy/słupkowy."""
 
+from decimal import Decimal
+
 import pytest
 from django.template.loader import render_to_string
 
@@ -7,9 +9,39 @@ from bpp.profil_autora_dane import (
     OKNO_LAT_WYKRESU,
     _agreguj_po_latach,
     _ostatnie_lata,
+    _wykres_if_lata,
+    _wykres_pk_lata,
 )
 
 pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture
+def autor_z_pracami(autor_jan_nowak, jednostka, wydawnictwo_ciagle, wydawnictwo_zwarte):
+    def _ustaw(punkty_kbn, impact_factor):
+        for rok, praca in ((2019, wydawnictwo_ciagle), (2020, wydawnictwo_zwarte)):
+            praca.rok = rok
+            praca.punkty_kbn = punkty_kbn
+            praca.impact_factor = impact_factor
+            praca.save()
+            praca.dodaj_autora(autor_jan_nowak, jednostka)
+        return autor_jan_nowak
+
+    return _ustaw
+
+
+@pytest.mark.parametrize("builder", [_wykres_pk_lata, _wykres_if_lata])
+def test_wykres_ukryty_gdy_same_zera(autor_z_pracami, builder):
+    autor = autor_z_pracami(Decimal("0"), Decimal("0"))
+    assert builder(autor, None, None) is None
+
+
+@pytest.mark.parametrize("builder", [_wykres_pk_lata, _wykres_if_lata])
+def test_wykres_widoczny_gdy_niezerowe(autor_z_pracami, builder):
+    autor = autor_z_pracami(Decimal("20"), Decimal("1.5"))
+    dane = builder(autor, None, None)
+    assert dane is not None
+    assert [rok for rok, _w in dane["dane"]] == [2019, 2020]
 
 
 def test_ostatnie_lata_ogranicza_do_okna():

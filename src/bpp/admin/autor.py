@@ -1,9 +1,11 @@
 from dal import autocomplete
 from django import forms
 from django.contrib import admin
+from django.contrib.admin.utils import unquote
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.forms.models import BaseInlineFormSet
+from reversion.admin import VersionAdmin
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.admin.helpers.dynamic_columns import BppDynamicColumnsMixin
@@ -21,6 +23,7 @@ from ..models import (  # Publikacja_Habilitacyjna
 )
 from ..util.identyfikatory import IdentyfikatoryProfiliFormMixin
 from ..util.obrazy import MAKS_ROZMIAR_PLIKU_ZDJECIA, przetworz_zdjecie_autora
+from ..wersjonowanie import przelicz_aktualna_jednostke
 from .actions import ustaw_pokazuj_false, ustaw_pokazuj_true
 from .core import BaseBppAdminMixin
 from .filters import (
@@ -36,6 +39,7 @@ from .filters import (
 )
 from .helpers.fieldsets import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
 from .helpers.site_filtered import SiteFilteredAdminMixin
+from .helpers.wersje import HistoriaWersjiMixin
 from .helpers.widgets import CHARMAP_SINGLE_LINE
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
@@ -282,7 +286,8 @@ class AutorAdmin(
     EksportDanychMixin,
     BaseBppAdminMixin,
     BppDynamicColumnsMixin,
-    admin.ModelAdmin,
+    HistoriaWersjiMixin,
+    VersionAdmin,
 ):
     uczelnia_field_path = "aktualna_jednostka__uczelnia"
 
@@ -623,6 +628,14 @@ class AutorAdmin(
                 kwargs["initial"] = inline_initial_data
 
         return kwargs
+
+    def revision_view(self, request, object_id, version_id, extra_context=None):
+        response = super().revision_view(request, object_id, version_id, extra_context)
+        if request.method == "POST" and response.status_code == 302:
+            # Wersja niesie historyczną aktualną jednostkę — przelicz ją
+            # z bieżących wpisów zatrudnienia (te nie są przywracane).
+            przelicz_aktualna_jednostke(unquote(object_id))
+        return response
 
     def get_actions(self, request):
         """Override to customize action descriptions."""
