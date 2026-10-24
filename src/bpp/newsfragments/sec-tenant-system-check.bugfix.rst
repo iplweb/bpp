@@ -1,0 +1,1 @@
+Wzmocniono zabezpieczenia: dodano ostrzeżenie systemowe (`manage.py check --database default`) wskazujące aktywne konta z dostępem do panelu administracyjnego bez przypisanych uczelni w instalacjach z więcej niż jedną uczelnią.

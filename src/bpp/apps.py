@@ -9,6 +9,8 @@ class BppConfig(AppConfig):
         from django.apps import apps
         from django.db.models.signals import post_migrate, post_save
 
+        from . import checks  # noqa: F401
+
         # Only register post_migrate signal when dbtemplates is available
         # (auth_server uses minimal INSTALLED_APPS without dbtemplates)
         if apps.is_installed("dbtemplates"):
