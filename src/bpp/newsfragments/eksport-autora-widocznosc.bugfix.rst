@@ -1,0 +1,1 @@
+Eksport prac autora do BibTeX/RIS (synchroniczny i w tle) nie udostępnia już autorów ukrytych (``pokazuj`` wyłączone) ani prac o statusach korekty ukrytych na stronach publicznych, a plik z zadania w tle jest budowany i deduplikowany per uczelnia.

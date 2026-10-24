@@ -42,3 +42,20 @@ def wyklucz_ukryte_statusy(
     if not statusy:
         return qs
     return qs.exclude(**{f"{lookup}__in": statusy})
+
+
+def wyklucz_ukrytych_autorow(qs, request):
+    """Zwróć queryset ``Autor`` bez autorów ukrytych przed oglądającym.
+
+    Autor z ``pokazuj=False`` jest niewidoczny na stronach publicznych dla
+    wszystkich POZA użytkownikami z uprawnieniami redaktorskimi
+    (``moze_wprowadzac_dane``). ``request=None`` = odbiorca publiczny.
+    Ta sama reguła obowiązuje na stronie autora (``AutorView``) i w eksporcie
+    jego prac.
+    """
+    from bpp.permissions import moze_wprowadzac_dane
+
+    user = getattr(request, "user", None)
+    if user is not None and moze_wprowadzac_dane(user):
+        return qs
+    return qs.filter(pokazuj=True)
