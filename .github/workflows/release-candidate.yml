@@ -71,7 +71,7 @@ jobs:
       IMAGE_REPO: ghcr.io/iplweb/bpp-test-runner
       PYTHON_VERSION: "3.12"
       DEBIAN_VERSION: trixie
-      NODEJS_VERSION: "20"
+      NODEJS_VERSION: "24"
     outputs:
       version_tag: ${{ steps.bump.outputs.version_tag }}
       release_ref: ${{ steps.bump.outputs.release_ref }}
