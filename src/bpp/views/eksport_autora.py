@@ -17,6 +17,7 @@ from datetime import timedelta
 
 from django import forms
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.cache import cache
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -28,11 +29,41 @@ from django_sendfile import sendfile
 from bpp.export.bibtex import export_to_bibtex
 from bpp.export.ris import export_to_ris
 from bpp.models import Autor, AutorEksportTask, Rekord
+from bpp.permissions import moze_wprowadzac_dane
+from bpp.profil_autora_dane import ukryte_statusy_podgladu
 
 #: Maksymalna liczba eksportowanych rekordów. Zabezpiecza przed OOM przy
 #: autorach z gigantyczną liczbą prac (eksport materializuje instancje
 #: konkretnych modeli, więc jest N+1 — twardy limit jest tańszy niż ryzyko).
 MAKS_EKSPORT = 5000
+
+#: Limit synchronicznych eksportów na użytkownika w oknie ``OKNO_LIMITU_S``
+#: sekund. Nie dotyczy osób z uprawnieniami redakcyjnymi.
+LIMIT_EKSPORTOW_SYNC = 10
+OKNO_LIMITU_S = 60
+
+
+def _autor_dla_eksportu(request, pk):
+    """Autor do eksportu; ukryci (``pokazuj=False``) tylko dla redakcji."""
+    autor = get_object_or_404(Autor, pk=pk)
+    if not autor.pokazuj and not moze_wprowadzac_dane(request.user):
+        raise Http404
+    return autor
+
+
+def _przekroczono_limit(request) -> bool:
+    if moze_wprowadzac_dane(request.user):
+        return False
+    key = f"eksport-autora-sync:{request.user.pk}"
+    # ``add`` inicjuje licznik tylko gdy klucza nie ma; ``incr`` jest atomowy.
+    cache.add(key, 0, timeout=OKNO_LIMITU_S)
+    try:
+        licznik = cache.incr(key)
+    except ValueError:
+        # DummyCache (domyślny w dev/test) nic nie przechowuje — ``incr``
+        # zgłasza brak klucza; traktujemy to jak pierwsze wywołanie.
+        licznik = 1
+    return licznik > LIMIT_EKSPORTOW_SYNC
 
 
 class _BazaEksportuAutoraView(LoginRequiredMixin, View):
@@ -58,9 +89,19 @@ class _BazaEksportuAutoraView(LoginRequiredMixin, View):
         return ""
 
     def get(self, request, pk):
-        autor = get_object_or_404(Autor, pk=pk)
+        autor = _autor_dla_eksportu(request, pk)
+
+        if _przekroczono_limit(request):
+            return HttpResponse(
+                "Zbyt wiele żądań eksportu. Spróbuj ponownie za chwilę.",
+                status=429,
+                content_type="text/plain; charset=utf-8",
+            )
 
         qs = Rekord.objects.prace_autora(autor)
+        ukryte = ukryte_statusy_podgladu(request)
+        if ukryte:
+            qs = qs.exclude(status_korekty_id__in=ukryte)
         wszystkich = qs.count()
         oryginaly = [r.original for r in qs[:MAKS_EKSPORT]]
 
@@ -151,16 +192,21 @@ class StartEksportAutoraView(View):
         )
 
     def get(self, request, pk, format):
-        autor = get_object_or_404(Autor, pk=pk)
+        autor = _autor_dla_eksportu(request, pk)
         return self._render(request, autor, format, self._form(request))
 
     def post(self, request, pk, format):
         from bpp.tasks import generuj_eksport_autora
 
-        autor = get_object_or_404(Autor, pk=pk)
+        autor = _autor_dla_eksportu(request, pk)
         form = self._form(request, request.POST)
         if not form.is_valid():
             return self._render(request, autor, format, form)
+
+        # Zakres widoczności (ukryte statusy) zapisujemy w zadaniu — worker
+        # Celery nie ma requestu. Wchodzi też do deduplikacji, żeby zadania
+        # o różnym zakresie (redakcja vs. pozostali) nie były współdzielone.
+        ukryte = sorted(ukryte_statusy_podgladu(request))
 
         od = timezone.now() - timedelta(minutes=DEDUPE_MINUTES)
         istniejacy = (
@@ -168,6 +214,7 @@ class StartEksportAutoraView(View):
                 autor=autor,
                 format=format,
                 created_at__gte=od,
+                ukryte_statusy=ukryte,
             )
             .exclude(status="failed")
             .order_by("-created_at")
@@ -176,7 +223,9 @@ class StartEksportAutoraView(View):
         if istniejacy is not None:
             return redirect("bpp:autor_eksport_status", pk=istniejacy.pk)
 
-        task = AutorEksportTask.objects.create(autor=autor, format=format)
+        task = AutorEksportTask.objects.create(
+            autor=autor, format=format, ukryte_statusy=ukryte
+        )
         generuj_eksport_autora.delay(str(task.pk))
         return redirect("bpp:autor_eksport_status", pk=task.pk)
 
