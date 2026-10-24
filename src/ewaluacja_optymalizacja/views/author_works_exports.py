@@ -9,7 +9,11 @@ from bpp.models.cache import Cache_Punktacja_Autora_Query
 from bpp.models.patent import Patent_Autor
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
-from bpp.util import worksheet_columns_autosize, worksheet_create_table
+from bpp.util import (
+    sanitize_xlsx_row,
+    worksheet_columns_autosize,
+    worksheet_create_table,
+)
 from ewaluacja_metryki.models import MetrykaAutora
 
 from ..models import OptimizationRun
@@ -86,13 +90,15 @@ def _create_works_worksheet(ws, title, prace, include_points=True):
         for praca in prace:
             punkty_kbn = praca.rekord.punkty_kbn
             ws.append(
-                [
-                    praca.rekord.tytul_oryginalny,
-                    praca.rekord.rok,
-                    float(punkty_kbn) if punkty_kbn else None,
-                    float(praca.pkdaut),
-                    float(praca.slot),
-                ]
+                sanitize_xlsx_row(
+                    [
+                        praca.rekord.tytul_oryginalny,
+                        praca.rekord.rok,
+                        float(punkty_kbn) if punkty_kbn else None,
+                        float(praca.pkdaut),
+                        float(praca.slot),
+                    ]
+                )
             )
             suma_pkdaut += float(praca.pkdaut)
             suma_slot += float(praca.slot)
@@ -105,12 +111,14 @@ def _create_works_worksheet(ws, title, prace, include_points=True):
         for praca in prace:
             punkty_kbn = praca["rekord"].punkty_kbn
             ws.append(
-                [
-                    praca["rekord"].tytul_oryginalny,
-                    praca["rekord"].rok,
-                    float(punkty_kbn) if punkty_kbn else None,
-                    praca["typ"],
-                ]
+                sanitize_xlsx_row(
+                    [
+                        praca["rekord"].tytul_oryginalny,
+                        praca["rekord"].rok,
+                        float(punkty_kbn) if punkty_kbn else None,
+                        praca["typ"],
+                    ]
+                )
             )
 
     worksheet_columns_autosize(ws)

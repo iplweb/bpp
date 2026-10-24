@@ -577,6 +577,9 @@ class PublicationComparisonView(ListView):
 
         # Save to bytes buffer
         buffer = io.BytesIO()
+        from bpp.util import sanitize_xlsx_workbook
+
+        sanitize_xlsx_workbook(wb)
         wb.save(buffer)
         buffer.seek(0)
 

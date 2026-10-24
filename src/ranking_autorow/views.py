@@ -13,6 +13,7 @@ from django_tables2.export.views import ExportMixin
 from django_tables2.tables import Table
 from django_tables2.views import SingleTableView
 
+from bpp.export.tables2 import BezpiecznyTableExport
 from bpp.models import (
     Charakter_Formalny,
     Jednostka,
@@ -166,6 +167,7 @@ class RankingAutorowJednostkaWydzialTable(RankingAutorowTable):
 class RankingAutorow(ExportMixin, SingleTableView):
     template_name = "ranking_autorow/results.html"
     export_formats = ["csv", "json", "xls", "xlsx", "ods"]
+    export_class = BezpiecznyTableExport
 
     def get_export_filename(self, export_format):
         """Generate filename for exports"""

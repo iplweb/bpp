@@ -184,5 +184,8 @@ def export_duplicates_to_xlsx(request=None):
 
     # Zapisz do BytesIO
     stream = BytesIO()
+    from bpp.util import sanitize_xlsx_workbook
+
+    sanitize_xlsx_workbook(wb)
     wb.save(stream)
     return stream.getvalue()
