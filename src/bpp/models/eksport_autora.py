@@ -35,6 +35,13 @@ class AutorEksportTask(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     autor = models.ForeignKey("bpp.Autor", on_delete=models.CASCADE)
+    #: Uczelnia oglądającego, który zlecił eksport (multi-hosted: per Site).
+    #: Wyznacza statusy korekty ukryte w pliku i zakres deduplikacji —
+    #: plik zbudowany pod regułami jednej uczelni nie trafia do innej.
+    #: ``NULL`` tylko dla zadań sprzed wprowadzenia pola.
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia", on_delete=models.CASCADE, null=True, blank=True
+    )
     format = models.CharField(max_length=3, choices=FORMAT_CHOICES)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
 

@@ -27,12 +27,24 @@ from django_sendfile import sendfile
 
 from bpp.export.bibtex import export_to_bibtex
 from bpp.export.ris import export_to_ris
-from bpp.models import Autor, AutorEksportTask, Rekord
+from bpp.models import Autor, AutorEksportTask, Rekord, Uczelnia
+from bpp.util.ukryte_statusy import (
+    wyklucz_ukryte_statusy_bez_luk,
+    wyklucz_ukrytych_autorow,
+)
 
 #: Maksymalna liczba eksportowanych rekordów. Zabezpiecza przed OOM przy
 #: autorach z gigantyczną liczbą prac (eksport materializuje instancje
 #: konkretnych modeli, więc jest N+1 — twardy limit jest tańszy niż ryzyko).
 MAKS_EKSPORT = 5000
+
+
+def _widoczny_autor_or_404(request, pk):
+    """Autor pod tą samą regułą widoczności, co publiczna strona autora
+    (``AutorView``): ``pokazuj=False`` → 404 poza redaktorem."""
+    return get_object_or_404(
+        wyklucz_ukrytych_autorow(Autor.objects.all(), request), pk=pk
+    )
 
 
 class _BazaEksportuAutoraView(LoginRequiredMixin, View):
@@ -58,9 +70,16 @@ class _BazaEksportuAutoraView(LoginRequiredMixin, View):
         return ""
 
     def get(self, request, pk):
-        autor = get_object_or_404(Autor, pk=pk)
+        autor = _widoczny_autor_or_404(request, pk)
 
-        qs = Rekord.objects.prace_autora(autor)
+        # Odpowiedź jest per użytkownik, więc stosujemy regułę ze strony
+        # rekordu: statusy ukryte w kanale "podglad" widzi tylko redaktor.
+        # Bez ustalonej uczelni — wykluczamy statusy ukryte gdziekolwiek.
+        qs = wyklucz_ukryte_statusy_bez_luk(
+            Rekord.objects.prace_autora(autor),
+            request,
+            Uczelnia.objects.get_for_request(request),
+        )
         wszystkich = qs.count()
         oryginaly = [r.original for r in qs[:MAKS_EKSPORT]]
 
@@ -151,22 +170,26 @@ class StartEksportAutoraView(View):
         )
 
     def get(self, request, pk, format):
-        autor = get_object_or_404(Autor, pk=pk)
+        autor = _widoczny_autor_or_404(request, pk)
         return self._render(request, autor, format, self._form(request))
 
     def post(self, request, pk, format):
         from bpp.tasks import generuj_eksport_autora
 
-        autor = get_object_or_404(Autor, pk=pk)
+        autor = _widoczny_autor_or_404(request, pk)
         form = self._form(request, request.POST)
         if not form.is_valid():
             return self._render(request, autor, format, form)
 
+        # Plik z zadania jest publiczny (po UUID) i zawsze budowany pod
+        # regułami uczelni zlecającego — deduplikacja musi być per uczelnia.
+        uczelnia = Uczelnia.objects.get_for_request(request)
         od = timezone.now() - timedelta(minutes=DEDUPE_MINUTES)
         istniejacy = (
             AutorEksportTask.objects.filter(
                 autor=autor,
                 format=format,
+                uczelnia=uczelnia,
                 created_at__gte=od,
             )
             .exclude(status="failed")
@@ -176,7 +199,9 @@ class StartEksportAutoraView(View):
         if istniejacy is not None:
             return redirect("bpp:autor_eksport_status", pk=istniejacy.pk)
 
-        task = AutorEksportTask.objects.create(autor=autor, format=format)
+        task = AutorEksportTask.objects.create(
+            autor=autor, format=format, uczelnia=uczelnia
+        )
         generuj_eksport_autora.delay(str(task.pk))
         return redirect("bpp:autor_eksport_status", pk=task.pk)
 

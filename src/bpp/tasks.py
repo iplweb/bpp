@@ -287,17 +287,34 @@ def zaktualizuj_liczbe_cytowan():
 MAKS_EKSPORT_AUTORA = 5000
 
 
-def _zbuduj_tresc_eksportu_autora(autor, format: str) -> str:
-    """Zbuduj treść eksportu IDENTYCZNIE jak widok synchroniczny.
+def _prace_autora_do_publicznego_eksportu(autor, uczelnia):
+    """Prace autora bez statusów korekty ukrytych w kanale ``podglad``.
+
+    Plik z zadania jest serwowany PUBLICZNIE (autoryzacja wyłącznie po UUID
+    zadania) i współdzielony przez deduplikację, więc filtr stosujemy
+    bezwarunkowo — jak dla anonima (``request=None``), niezależnie od tego,
+    kto zlecił eksport. Zadanie bez uczelni (sprzed wprowadzenia pola)
+    wyklucza statusy ukryte w KTÓREJKOLWIEK uczelni.
+    """
+    from bpp.models import Rekord
+    from bpp.util.ukryte_statusy import wyklucz_ukryte_statusy_bez_luk
+
+    return wyklucz_ukryte_statusy_bez_luk(
+        Rekord.objects.prace_autora(autor), None, uczelnia
+    )
+
+
+def _zbuduj_tresc_eksportu_autora(autor, format: str, uczelnia=None) -> str:
+    """Zbuduj treść eksportu tak jak widok synchroniczny (dla anonima).
 
     Ten sam slice (``[:MAKS_EKSPORT]``), ten sam formater i ta sama notka
-    o obcięciu w BibTeX-ie — parytet bajt-w-bajt z dotychczasowym eksportem.
+    o obcięciu w BibTeX-ie. Zakres prac — patrz
+    :func:`_prace_autora_do_publicznego_eksportu`.
     """
     from bpp.export.bibtex import export_to_bibtex
     from bpp.export.ris import export_to_ris
-    from bpp.models import Rekord
 
-    qs = Rekord.objects.prace_autora(autor)
+    qs = _prace_autora_do_publicznego_eksportu(autor, uczelnia)
     wszystkich = qs.count()
     oryginaly = [r.original for r in qs[:MAKS_EKSPORT_AUTORA]]
 
@@ -334,7 +351,9 @@ def generuj_eksport_autora(self, task_id: str):
     task.save()
 
     try:
-        tekst = _zbuduj_tresc_eksportu_autora(task.autor, task.format)
+        tekst = _zbuduj_tresc_eksportu_autora(
+            task.autor, task.format, uczelnia=task.uczelnia
+        )
         task.result_file.save(task.nazwa_pliku, ContentFile(tekst.encode("utf-8")))
         task.status = "completed"
         task.completed_at = timezone.now()
