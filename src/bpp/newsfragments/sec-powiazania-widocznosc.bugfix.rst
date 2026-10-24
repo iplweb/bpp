@@ -1,0 +1,1 @@
+Wzmocniono kontrolę widoczności w grafie powiązań autora: autorzy ukryci są dostępni tylko dla redaktorów, a prace o ukrytych statusach korekty nie wchodzą do metryk, listy źródeł i powiązań liczonych z filtrem.
