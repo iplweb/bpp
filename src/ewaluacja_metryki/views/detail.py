@@ -173,7 +173,6 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
 
     def _get_chart_data_context(self, metryka):
         """Prepare data for visualization charts."""
-        import json
         from collections import defaultdict
 
         from bpp.models.cache import Cache_Punktacja_Autora_Query
@@ -244,10 +243,10 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
                 year_aggregates[rok]["sloty"] += slot
                 year_aggregates[rok]["liczba"] += 1
 
-            # Serializuj do JSON
-            context["chart_data_json"] = json.dumps(chart_data)
-            context["year_aggregates_json"] = json.dumps(dict(year_aggregates))
-            context["chart_data"] = chart_data  # Keep for template conditional
+            # Serializacja do JSON-a w szablonie filtrem ``jsonify``
+            # (escapuje ``<``, ``>``, ``&`` wewnątrz ``<script>``).
+            context["chart_data"] = chart_data
+            context["year_aggregates"] = dict(year_aggregates)
 
         return context
 

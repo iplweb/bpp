@@ -1,3 +1,5 @@
+import os
+
 from django.core.exceptions import ImproperlyConfigured
 from django_minify_html.middleware import MinifyHtmlMiddleware
 
@@ -18,12 +20,16 @@ from .base import (  # noqa
     ZGLOS_CAPTCHA_ENABLED,
     env,
 )
-from .secret_key_guard import secret_key_niebezpieczny_placeholder
+from .secret_key_guard import secret_key_niebezpieczny_placeholder, tryb_buildu
 
 # Fail-closed: produkcja NIE wstaje z placeholderem SECRET_KEY (patrz
 # secret_key_guard). Odpala się przy imporcie ustawień, więc gate'uje web,
 # celery i migrate — nie tylko komendy z system-checkami.
-if secret_key_niebezpieczny_placeholder(SECRET_KEY, unset_sentinel=SECRET_KEY_UNSET):
+if secret_key_niebezpieczny_placeholder(
+    SECRET_KEY,
+    unset_sentinel=SECRET_KEY_UNSET,
+    build_stage=tryb_buildu(os.environ),
+):
     raise ImproperlyConfigured(
         "DJANGO_BPP_SECRET_KEY nie jest ustawiony lub to placeholder — "
         "produkcja nie wystartuje z publicznie znanym kluczem (ryzyko "

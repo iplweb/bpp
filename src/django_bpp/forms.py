@@ -8,7 +8,9 @@ from crispy_forms_foundation.layout import (
     Submit,
 )
 from django.conf import settings
-from password_policies.forms import PasswordPoliciesChangeForm
+from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import is_password_usable
+from password_policies.forms import PasswordPoliciesChangeForm, PasswordResetForm
 
 
 class BppPasswordChangeForm(PasswordPoliciesChangeForm):
@@ -31,3 +33,25 @@ class BppPasswordChangeForm(PasswordPoliciesChangeForm):
             "zawierać cyfr ani znaków specjalnych — najłatwiej zapamiętać "
             "kilka słów, np. całe zdanie."
         )
+
+
+class BppPasswordResetForm(PasswordResetForm):
+    """Formularz resetu hasła, który NIE informuje, czy konto istnieje.
+
+    Bazowy formularz ``password_policies`` zgłasza błąd walidacji dla adresu
+    bez konta (lub z kontem bez używalnego hasła). Tutaj każdy poprawny
+    składniowo adres przechodzi walidację; wiadomość dostają wyłącznie aktywne
+    konta z używalnym hasłem, a pozostałe przypadki kończą się tą samą
+    odpowiedzią — zachowanie zgodne z ``django.contrib.auth``.
+    """
+
+    def clean_email(self):
+        email = self.cleaned_data["email"]
+        self.users_cache = [
+            user
+            for user in get_user_model().objects.filter(
+                email__iexact=email, is_active=True
+            )
+            if is_password_usable(user.password)
+        ]
+        return email

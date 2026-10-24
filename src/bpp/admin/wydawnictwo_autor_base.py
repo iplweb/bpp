@@ -10,7 +10,7 @@ from django.utils.text import Truncator
 
 from bpp.admin.core import DynamicAdminFilterMixin, generuj_formularz_dla_autorow
 from bpp.admin.helpers import get_rekord_id_from_GET_qs
-from bpp.util import zaloguj_polkniety_wyjatek
+from bpp.util import safe_tytul_html, zaloguj_polkniety_wyjatek
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,8 @@ class Wydawnictwo_Autor_Base(
 
     # @admin.display(description="Rekord", ordering="rekord__tytul_oryginalny")
     def rekord_short(self, obj):
-        return mark_safe(Truncator(obj.rekord.tytul_oryginalny).chars(100))
+        tytul = safe_tytul_html(obj.rekord.tytul_oryginalny or "")
+        return mark_safe(Truncator(tytul).chars(100, html=True))
 
     rekord_short.short_description = "Rekord"
     rekord_short.ordering = "rekord__tytul_oryginalny"

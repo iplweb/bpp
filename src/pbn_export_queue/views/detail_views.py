@@ -5,7 +5,6 @@ import logging
 import re
 
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.utils.safestring import mark_safe
 from django.views.generic import DetailView
 
 from bpp.util import zaloguj_polkniety_wyjatek
@@ -86,9 +85,6 @@ class PBNExportQueueDetailView(
             links["success"] = True
         else:
             links["success"] = False
-
-        # Make the komunikat HTML-safe but preserve existing HTML
-        links["formatted_komunikat"] = mark_safe(komunikat.replace("\n", "<br>"))
 
         return links
 

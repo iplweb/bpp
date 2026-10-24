@@ -2,10 +2,25 @@
 exceptions for Rollbar verification.
 """
 
+from functools import wraps
 from pathlib import Path
 
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
+
+
+def tylko_superuser(view_func):
+    """Anonim → logowanie; zalogowany nie-superuser → 403."""
+
+    @wraps(view_func)
+    @login_required
+    def _wrapped(request, *args, **kwargs):
+        if not request.user.is_superuser:
+            raise PermissionDenied("Tylko dla superużytkownika.")
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped
 
 
 def test_403_view(request):
