@@ -8,6 +8,7 @@ i co zmienił — oraz pozwalać wrócić do poprzedniej wersji.
 import json
 
 import pytest
+import reversion
 from django.contrib import admin as djadmin
 from django.contrib.admin.models import ADDITION, CHANGE, LogEntry
 from django.contrib.contenttypes.models import ContentType
@@ -20,7 +21,7 @@ from reversion.models import Version
 from reversion.revisions import _get_options
 
 from bpp.admin.autor import AutorAdmin
-from bpp.models import Autor, Rekord
+from bpp.models import Autor, Autor_Jednostka, Rekord, Uczelnia
 from bpp.models.wybrana_publikacja import WybranaPublikacjaAutora
 from bpp.wersjonowanie import KOMENTARZ_WERSJI_POCZATKOWEJ
 
@@ -44,10 +45,9 @@ def test_rejestracja_autora_w_reversion():
     opcje = _get_options(Autor)
     assert "search" not in opcje.fields
     assert "biogram" in opcje.fields
-    assert "wybrane_publikacje" in opcje.follow
-    assert "autor_jednostka_set" in opcje.follow
-    # Dane wyliczane — przywrócenie wersji nie może ich ruszać.
-    assert "iloscudzialowdlaautorazarok_set" not in opcje.follow
+    # Zatrudnienie/dyscypliny/absencje NIE są przywracane razem z autorem
+    # (cudze uczelnie, ewaluacja); dane wyliczane też nie.
+    assert opcje.follow == ("wybrane_publikacje",)
 
 
 def test_edycja_profilu_przez_strone_tworzy_wersje_i_logentry(
@@ -113,6 +113,8 @@ def test_przywrocenie_wersji_sprzed_edycji_przez_strone(client, django_user_mode
 
     autor.refresh_from_db()
     assert autor.biogram == "Oryginał"
+    # ``search`` nie jest w wersji — trigger musi go przeliczyć, nie wyzerować.
+    assert Autor.objects.filter(pk=autor.pk, search__isnull=False).exists()
 
 
 def test_historia_w_adminie_pokazuje_edycje_ze_strony(
@@ -153,17 +155,15 @@ def test_historia_w_adminie_pokazuje_logentry_sprzed_wersjonowania(
     assert "Dodano dawno temu" in tresc
 
 
-def test_edycja_w_adminie_tworzy_wersje_poczatkowa_i_wersje(admin_client, admin_user):
-    autor = baker.make(Autor, imiona="Jan", nazwisko="Przedzmianowy")
-    url = reverse("admin:bpp_autor_change", args=[autor.pk])
-    form = admin_client.get(url).context["adminform"].form
+def _dane_formularza_admina(response):
+    """Dane POST odtworzone z formularza autora w adminie (bez inline'ów)."""
+    form = response.context["adminform"].form
     dane = {}
     for nazwa, pole in form.fields.items():
         wartosc = form.initial.get(nazwa, pole.initial)
         if wartosc is None or nazwa == "zdjecie":
             continue
         dane[nazwa] = wartosc
-    dane["nazwisko"] = "Pozmianowy"
     for prefix in (
         "autor_jednostka_set",
         "autor_dyscyplina_set",
@@ -173,6 +173,14 @@ def test_edycja_w_adminie_tworzy_wersje_poczatkowa_i_wersje(admin_client, admin_
     ):
         dane[f"{prefix}-TOTAL_FORMS"] = "0"
         dane[f"{prefix}-INITIAL_FORMS"] = "0"
+    return dane
+
+
+def test_edycja_w_adminie_tworzy_wersje_poczatkowa_i_wersje(admin_client, admin_user):
+    autor = baker.make(Autor, imiona="Jan", nazwisko="Przedzmianowy")
+    url = reverse("admin:bpp_autor_change", args=[autor.pk])
+    dane = _dane_formularza_admina(admin_client.get(url))
+    dane["nazwisko"] = "Pozmianowy"
     resp = admin_client.post(url, dane)
     assert resp.status_code == 302, resp.context["adminform"].form.errors
 
@@ -180,6 +188,47 @@ def test_edycja_w_adminie_tworzy_wersje_poczatkowa_i_wersje(admin_client, admin_
     assert poczatkowa.field_dict["nazwisko"] == "Przedzmianowy"
     assert po_zmianie.field_dict["nazwisko"] == "Pozmianowy"
     assert po_zmianie.revision.user == admin_user
+
+
+def test_przywrocenie_w_adminie_przelicza_aktualna_jednostke(
+    client, admin_client, django_user_model, jednostka
+):
+    autor = baker.make(Autor, biogram="Przed")
+    assert autor.aktualna_jednostka is None
+    _zaloguj_jako_autora(client, django_user_model, autor)
+    client.post(reverse("bpp:profil-edycja"), {"biogram": "Po", "biogram_format": "md"})
+    poczatkowa = _wersje(autor)[0]
+
+    # Autor dostaje zatrudnienie PO zapisaniu wersji początkowej.
+    baker.make(Autor_Jednostka, autor=autor, jednostka=jednostka)
+    autor.refresh_from_db()
+    assert autor.aktualna_jednostka == jednostka
+
+    url = reverse("admin:bpp_autor_revision", args=[autor.pk, poczatkowa.pk])
+    resp = admin_client.post(url, _dane_formularza_admina(admin_client.get(url)))
+    assert resp.status_code == 302
+
+    autor.refresh_from_db()
+    assert autor.biogram == "Przed"
+    # Wersja niosła aktualna_jednostka=None; zatrudnienie nie jest cofane,
+    # więc aktualna jednostka musi zostać przeliczona z bieżących wpisów.
+    assert autor.aktualna_jednostka == jednostka
+
+
+def test_wersja_innego_modelu_w_url_autora_to_404(admin_client):
+    autor = baker.make(Autor)
+    uczelnia = baker.make(Uczelnia)
+    with reversion.create_revision():
+        reversion.add_to_revision(uczelnia)
+    wersja_uczelni = Version.objects.get_for_object(uczelnia).get()
+    # Ten sam object_id co autor — reversion sam typu modelu nie sprawdza.
+    wersja_uczelni.object_id = str(autor.pk)
+    wersja_uczelni.save()
+
+    resp = admin_client.get(
+        reverse("admin:bpp_autor_revision", args=[autor.pk, wersja_uczelni.pk])
+    )
+    assert resp.status_code == 404
 
 
 def _wiersz_wyroznienia(autor, wydawnictwo, jednostka, denorms):

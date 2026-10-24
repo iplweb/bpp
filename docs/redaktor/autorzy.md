@@ -105,8 +105,7 @@ formularza autora, ale tam wskazuje się pracę technicznie — typem rekordu
 Każda zmiana rekordu autora jest zapisywana jako **wersja** — zarówno edycja
 w module redagowania, jak i samodzielna edycja profilu przez autora na stronie
 (biogram, zdjęcie, linki do profili w serwisach zewnętrznych, wyróżnione
-publikacje). Wersja obejmuje też powiązane tabele: miejsca pracy, dyscypliny,
-absencje i wyróżnione publikacje.
+publikacje). Wersja obejmuje dane autora i jego wyróżnione publikacje.
 
 Historię otwiera przycisk **„Historia”** w prawym górnym rogu formularza
 autora. Przy każdej wersji widać **kto i kiedy** wprowadził zmianę oraz
@@ -123,6 +122,10 @@ Uwagi:
 - Zmiany sprzed włączenia wersjonowania widać pod spodem, w tabeli
   **„Wcześniejsza historia”** — tam jest tylko informacja kto i kiedy, bez
   możliwości przywrócenia.
-- Wyliczane dane (liczba udziałów dla autora za rok) nie są wersjonowane —
-  przywrócenie wersji ich nie zmienia.
+- Przywrócenie wersji **nie cofa** miejsc pracy, dyscyplin ani absencji
+  (zmiany w nich widać w historii, ale poprawia się je ręcznie w tabelach
+  formularza) — przypisania dyscyplin wpływają na ewaluację, a miejsca pracy
+  mogą należeć do innej uczelni. Aktualna jednostka jest po przywróceniu
+  przeliczana z bieżących miejsc pracy. Nie zmieniają się też dane wyliczane
+  (liczba udziałów dla autora za rok).
 - Odzyskiwanie usuniętych autorów jest dostępne tylko dla superużytkownika.

@@ -5,10 +5,11 @@ Stawiać w MRO tuż PRZED ``VersionAdmin``. Dokłada do widoków reversion:
 * zapis stanu sprzed pierwszej zmiany (rekordy sprzed włączenia
   wersjonowania nie mają wersji, więc inaczej pierwszej edycji nie dałoby
   się cofnąć),
-* kontrolę zakresu uczelni w podglądzie/przywracaniu wersji — reversion
-  odwraca rewizję ZANIM ``changeform_view`` sprawdzi ``get_queryset``,
-  a dla POST przekierowanie „brak obiektu" (302) uznałby za udany zapis,
-  więc bez tej kontroli personel uczelni A mógłby cofnąć rekord uczelni B,
+* kontrolę typu wersji i zakresu uczelni w podglądzie/przywracaniu
+  wersji — reversion odwraca rewizję ZANIM ``changeform_view`` sprawdzi
+  ``get_queryset``, a dla POST przekierowanie „brak obiektu" (302)
+  uznałby za udany zapis, więc bez tej kontroli personel uczelni A
+  mógłby cofnąć rekord uczelni B,
 * odzyskiwanie usuniętych rekordów tylko dla superużytkownika (usuniętego
   rekordu nie da się przypisać do uczelni przez queryset),
 * wpisy ``LogEntry`` sprzed włączenia wersjonowania na stronie „Historia"
@@ -34,6 +35,15 @@ class HistoriaWersjiMixin:
     def revision_view(self, request, object_id, version_id, extra_context=None):
         if self.get_object(request, unquote(object_id)) is None:
             raise Http404("Brak takiego rekordu w zakresie Twojej uczelni.")
+        # reversion szuka wersji po pk i object_id, ale NIE po typie modelu —
+        # bez tego przez URL autora dałoby się cofnąć rewizję innego modelu
+        # (np. uczelni) o tym samym numerze ID.
+        if (
+            not Version.objects.get_for_model(self.model)
+            .filter(pk=version_id, object_id=unquote(object_id))
+            .exists()
+        ):
+            raise Http404("Brak takiej wersji tego rekordu.")
         return super().revision_view(request, object_id, version_id, extra_context)
 
     def recoverlist_view(self, request, extra_context=None):
