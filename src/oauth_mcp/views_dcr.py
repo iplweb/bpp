@@ -24,6 +24,12 @@ _ALLOWED_REDIRECT_PATTERNS = [
 ]
 
 
+#: Limity metadanych klienta z DCR (RFC 7591): rejestracja jest otwarta, więc
+#: ograniczamy rozmiar tego, co trafia do bazy i na ekran zgody.
+MAX_REDIRECT_URIS = 5
+MAX_REDIRECT_URI_LENGTH = 512
+
+
 def dozwolony_redirect_uri(uri: str) -> bool:
     return any(p.match(uri) for p in _ALLOWED_REDIRECT_PATTERNS)
 
@@ -74,7 +80,9 @@ class DynamicClientRegistrationView(View):
         if (
             not isinstance(redirect_uris, list)
             or not redirect_uris
+            or len(redirect_uris) > MAX_REDIRECT_URIS
             or not all(isinstance(u, str) for u in redirect_uris)
+            or not all(len(u) <= MAX_REDIRECT_URI_LENGTH for u in redirect_uris)
             or not all(dozwolony_redirect_uri(u) for u in redirect_uris)
         ):
             return JsonResponse({"error": "invalid_redirect_uri"}, status=400)

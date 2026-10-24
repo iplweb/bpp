@@ -33,8 +33,13 @@ class ApiReadOnlyForBearerMiddleware:
         if not header.lower().startswith("bearer "):
             return False
         raw = header.split(" ", 1)[1].strip()
-        from oauth2_provider.models import get_access_token_model
+        if not raw:
+            return False
+        from oauth2_provider.settings import oauth2_settings
 
-        AccessToken = get_access_token_model()
-        tok = AccessToken.objects.filter(token=raw).first()
+        # Ten sam lookup co DRF i bramka MCP (``mcp_server.auth``): walidator
+        # DOT szuka po indeksowanym ``token_checksum`` i obsługuje tryb
+        # hashowania tokenów (COMPLIANT_BCP_RFC9700_TOKEN_STORAGE), w którym
+        # kolumna ``token`` jest pusta.
+        tok = oauth2_settings.OAUTH2_VALIDATOR_CLASS()._load_access_token(raw)
         return bool(tok and tok.is_valid())
