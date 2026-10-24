@@ -2,7 +2,7 @@ from functools import cache
 
 from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Q
+from django.db.models import IntegerField, Q
 from rest_framework import viewsets
 
 from api_v1.permissions import widzi_dane_osobowe
@@ -16,15 +16,18 @@ from bpp.models.nagroda import Nagroda
 
 @cache
 def _modele_rekordow():
-    """Zarządzane modele ``bpp`` z flagą ``nie_eksportuj_przez_api`` i/lub
-    statusem korekty — możliwe cele ``Nagroda.object``. Widoki
-    (``managed=False``, np. ``Rekord``) pomijamy: nagroda wskazuje zawsze
-    na konkretną tabelę."""
+    """Modele ``bpp`` z flagą ``nie_eksportuj_przez_api`` i/lub statusem
+    korekty — możliwe cele ``Nagroda.object``.
+
+    ``Nagroda.object_id`` to liczba całkowita, więc bierzemy tylko modele
+    z całkowitoliczbowym PK. Widoki/cache (np. ``Rekord`` z PK typu
+    ``TupleField``) odpadają tu niezależnie od ``_meta.managed`` — tej
+    flagi nie da się użyć, bo testy przełączają ją w locie."""
     return [
         model
         for model in apps.get_app_config("bpp").get_models()
-        if model._meta.managed
-        and not model._meta.proxy
+        if not model._meta.proxy
+        and isinstance(model._meta.pk, IntegerField)
         and issubclass(model, (ModelOpcjonalnieNieEksportowanyDoAPI, ModelZeStatusem))
     ]
 
