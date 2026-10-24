@@ -913,6 +913,32 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
         return Jednostka.objects.filter(uczelnia=self, wydzial__isnull=False).exists()
 
+    def _waliduj_adresy_i_pliki(self):
+        from bpp.util.bezpieczny_url import czy_bezpieczny_link
+        from bpp.util.pliki_uczelni import waliduj_favicon, waliduj_svg
+
+        if self.deklaracja_dostepnosci_url and not czy_bezpieczny_link(
+            self.deklaracja_dostepnosci_url
+        ):
+            raise ValidationError(
+                {
+                    "deklaracja_dostepnosci_url": "Adres musi zaczynać się "
+                    "od http:// lub https://."
+                }
+            )
+
+        # Sprawdzamy tylko świeżo wgrane pliki (jeszcze niezapisane).
+        for pole, walidator in (
+            ("logo_svg", waliduj_svg),
+            ("favicon_ico", waliduj_favicon),
+        ):
+            plik = getattr(self, pole)
+            if plik and not getattr(plik, "_committed", True):
+                try:
+                    walidator(plik)
+                except ValidationError as e:
+                    raise ValidationError({pole: e.messages}) from e
+
     def clean(self):
         # Oba pola są renderowane na publicznych stronach; ``save()`` woła
         # ``clean()``, więc sanityzacja obejmuje też zapis poza formularzem.
@@ -923,6 +949,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
             self.deklaracja_dostepnosci_tekst, safe_opis_html
         )
 
+        self._waliduj_adresy_i_pliki()
         if self.obca_jednostka is not None:
             if self.obca_jednostka.skupia_pracownikow:
                 raise ValidationError(
