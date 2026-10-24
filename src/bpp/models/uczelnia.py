@@ -25,7 +25,7 @@ from pbn_api.exceptions import WillNotExportError
 
 from .. import const
 from ..const import GR_RAPORTY_WYSWIETLANIE
-from ..util import year_last_month
+from ..util import safe_opis_html, sanityzuj_jesli_html, year_last_month
 from .fields import OpcjaWyswietlaniaField
 
 if TYPE_CHECKING:
@@ -913,6 +913,15 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         return Jednostka.objects.filter(uczelnia=self, wydzial__isnull=False).exists()
 
     def clean(self):
+        # Oba pola są renderowane na publicznych stronach; ``save()`` woła
+        # ``clean()``, więc sanityzacja obejmuje też zapis poza formularzem.
+        self.tytul_strony_glownej = sanityzuj_jesli_html(
+            self.tytul_strony_glownej, safe_opis_html
+        )
+        self.deklaracja_dostepnosci_tekst = sanityzuj_jesli_html(
+            self.deklaracja_dostepnosci_tekst, safe_opis_html
+        )
+
         if self.obca_jednostka is not None:
             if self.obca_jednostka.skupia_pracownikow:
                 raise ValidationError(

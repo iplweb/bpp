@@ -168,8 +168,8 @@
                                     {% endif %}
                                     {% if pbn_url %}<span class="fi-link-external praca-mono__external-link-icon"></span></a>{% endif %}
                             {% endif %}
-                            {{ praca.informacje|default:""|znak_na_koncu:", "|safe }}
-                            {{ praca.szczegoly|default:""|safe }}
+                            {{ praca.informacje|default:""|znak_na_koncu:", "|safe_szczegoly }}
+                            {{ praca.szczegoly|default:""|safe_szczegoly }}
                         </div>
                     </div>
                 {% endif %}

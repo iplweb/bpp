@@ -94,7 +94,7 @@ def test_uczelnia_pbn_client_injects_bpp_transport_policy(uczelnia):
 
 @pytest.mark.django_db
 def test_uczelnia_deklaracja_dostepnosci_tekst(uczelnia, client):
-    TEKST_Z_HTML = b"<h1>TEST</h1>"
+    TEKST_Z_HTML = "<h1>TEST</h1>"
     uczelnia.pokazuj_deklaracje_dostepnosci = (
         Uczelnia.DeklaracjaDostepnosciChoices.TEKST
     )
@@ -103,7 +103,7 @@ def test_uczelnia_deklaracja_dostepnosci_tekst(uczelnia, client):
 
     url_deklaracji_bpp = reverse("bpp:browse_deklaracja_dostepnosci")
     res = client.get(url_deklaracji_bpp)
-    assert TEKST_Z_HTML in res.content
+    assert TEKST_Z_HTML.encode() in res.content
 
     res = client.get("/", follow=True)
     assert bytes(url_deklaracji_bpp, "ascii") in res.content

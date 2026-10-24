@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load columns %}
 {% load cache %}
+{% load prace %}
 
 {% block extratitle %}
     {{ jednostka }}
@@ -39,7 +40,7 @@
 
                     {% if jednostka.pokazuj_opis and jednostka.opis %}
                         <div class="wydzial-description">
-                            {{ jednostka.opis|safe }}
+                            {{ jednostka.opis|safe_opis }}
                         </div>
                     {% endif %}
 
@@ -410,7 +411,7 @@
     <!-- Unit Description -->
     {% if jednostka.pokazuj_opis and jednostka.opis %}
         <div class="callout jednostka__description">
-            {{ jednostka.opis|safe }}
+            {{ jednostka.opis|safe_opis }}
         </div>
     {% endif %}
 
