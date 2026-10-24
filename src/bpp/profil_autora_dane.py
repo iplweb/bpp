@@ -176,33 +176,29 @@ def _wykres_lata(autor, limit, request):
     return {"dane": dane, "maks": maks, "etykieta": "prac"}
 
 
-def _wykres_pk_lata(autor, limit, request):
-    # Suma punktów MNiSW (punkty_kbn) na rok. DISTINCT z włączonym ``id``
-    # neutralizuje duplikaty z joinu ``autorzy`` (rok/punkty są funkcją id).
-    triple = _prace(autor).values_list("id", "rok", "punkty_kbn").distinct()
-    dane, _maks, _suma = _agreguj_po_latach((rok, pk) for _id, rok, pk in triple)
+def _wykres_sumy_lata(autor, pole, etykieta):
+    # Suma ``pole`` na rok. DISTINCT z włączonym ``id`` neutralizuje duplikaty
+    # z joinu ``autorzy`` (rok/wartość są funkcją id).
+    triple = _prace(autor).values_list("id", "rok", pole).distinct()
+    dane, _maks, _suma = _agreguj_po_latach((rok, w) for _id, rok, w in triple)
     if not dane:
         return None
     dane = _ostatnie_lata(dane)
+    # Auto-ukrycie liczone po OKNIE: same zera w ostatnich latach dają wykres
+    # z płaskimi słupkami „0” — nie ma czego pokazywać (starsze wartości
+    # i tak są poza wykresem).
+    if not sum(w for _rok, w in dane):
+        return None
     maks = max(w for _rok, w in dane)
-    return {"dane": dane, "maks": maks, "etykieta": "pkt"}
+    return {"dane": dane, "maks": maks, "etykieta": etykieta}
+
+
+def _wykres_pk_lata(autor, limit, request):
+    return _wykres_sumy_lata(autor, "punkty_kbn", "pkt")
 
 
 def _wykres_if_lata(autor, limit, request):
-    # Suma Impact Factor na rok; sekcja auto-ukrywana, gdy suma IF == 0
-    # (autorzy bez prac z IF nie powinni widzieć pustego wykresu).
-    triple = _prace(autor).values_list("id", "rok", "impact_factor").distinct()
-    dane, _maks, _suma = _agreguj_po_latach((rok, if_) for _id, rok, if_ in triple)
-    if not dane:
-        return None
-    dane = _ostatnie_lata(dane)
-    suma = sum(w for _rok, w in dane)
-    # Auto-ukrycie liczone po OKNIE: gdy w ostatnich latach IF == 0, nie ma
-    # czego pokazywać (starsze wartości i tak są poza wykresem).
-    if not suma:
-        return None
-    maks = max(w for _rok, w in dane)
-    return {"dane": dane, "maks": maks, "etykieta": "IF"}
+    return _wykres_sumy_lata(autor, "impact_factor", "IF")
 
 
 #: Wykresy pasa „Wykresy w latach” — (nazwa, builder), w kolejności na stronie.

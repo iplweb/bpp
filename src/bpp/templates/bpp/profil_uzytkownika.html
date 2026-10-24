@@ -40,6 +40,9 @@
                 <a href="{% url 'bpp:profil-edycja' %}" class="button">
                     <span class="fi-pencil"></span> Edytuj swoją stronę
                 </a>
+                <a href="{% url 'bpp:browse_autor' autor.pk %}" class="button hollow">
+                    <span class="fi-eye"></span> Zobacz swoją stronę
+                </a>
             </div>
 
             {% if metryki %}

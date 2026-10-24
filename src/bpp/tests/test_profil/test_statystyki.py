@@ -31,6 +31,25 @@ def test_statystyki_renderuja_formularz_po_charakterze():
     assert 'value="7"' in html
 
 
+@pytest.mark.parametrize(
+    "wiersze,jest_razem",
+    [
+        ([("Artykuł", 5)], False),
+        ([("Artykuł", 5), ("Książka", 2)], True),
+    ],
+)
+def test_statystyki_razem_tylko_przy_kilku_charakterach(wiersze, jest_razem):
+    html = render_to_string(
+        "browse/autor_sekcje/statystyki_charakter.html",
+        {
+            "nazwa": "Statystyki wg charakteru",
+            "dane": {"wiersze": wiersze, "suma": sum(n for _c, n in wiersze)},
+            "autor": SimpleNamespace(pk=7, __str__=lambda self: "Autor"),
+        },
+    )
+    assert ("<th>Razem</th>" in html) is jest_razem
+
+
 def test_build_search_buduje_box_dla_charakteru(client):
     autor = baker.make(Autor)
     baker.make(Charakter_Formalny, nazwa="Artykuł oryginalny")
