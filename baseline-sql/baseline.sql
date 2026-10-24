@@ -16545,6 +16545,45 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+471	bpp	0364_rzeczownik_uczelnie_pl	2000-01-01 00:00:00+00
+998	bpp	0455_faza_b_i2	2000-01-01 00:00:00+00
+80	bpp	0003_auto_20141023_1419	2000-01-01 00:00:00+00
+81	bpp	0004_auto_20141107_1101	2000-01-01 00:00:00+00
+82	bpp	0005_auto_20141107_1950	2000-01-01 00:00:00+00
+83	bpp	0006_auto_20141112_1531	2000-01-01 00:00:00+00
+84	bpp	0007_charakter_formalny_nazwa_w_primo	2000-01-01 00:00:00+00
+85	bpp	0008_auto_20141126_1802	2000-01-01 00:00:00+00
+86	bpp	0009_auto_20141126_1804	2000-01-01 00:00:00+00
+87	bpp	0010_auto_20141126_1825	2000-01-01 00:00:00+00
+88	bpp	0011_auto_20150212_2203	2000-01-01 00:00:00+00
+89	bpp	0012_auto_20150530_1733	2000-01-01 00:00:00+00
+90	bpp	0013_wydzial_zezwalaj_na_ranking_autorow	2000-01-01 00:00:00+00
+91	bpp	0014_auto_20150530_1942	2000-01-01 00:00:00+00
+92	bpp	0015_auto_20150617_2247	2000-01-01 00:00:00+00
+93	bpp	0016_auto_20150824_1051	2000-01-01 00:00:00+00
+95	bpp	0018_auto_20150824_1233	2000-01-01 00:00:00+00
+96	bpp	0019_charakter_formalny_charakter_pbn	2000-01-01 00:00:00+00
+97	bpp	0020_auto_20150824_1609	2000-01-01 00:00:00+00
+98	bpp	0021_auto_20150825_2301	2000-01-01 00:00:00+00
+99	bpp	0022_auto_20150825_2303	2000-01-01 00:00:00+00
+100	bpp	0023_auto_20150830_1704	2000-01-01 00:00:00+00
+101	bpp	0024_auto_20150830_1705	2000-01-01 00:00:00+00
+102	bpp	0025_auto_20150830_1740	2000-01-01 00:00:00+00
+103	bpp	0026_auto_20150902_2102	2000-01-01 00:00:00+00
+105	bpp	0028_openaccess	2000-01-01 00:00:00+00
+106	bpp	0029_auto_20150923_1343	2000-01-01 00:00:00+00
+107	bpp	0030_auto_20150923_1351	2000-01-01 00:00:00+00
+108	bpp	0031_zrodlo_openaccess_licencja	2000-01-01 00:00:00+00
+109	bpp	0032_auto_20151001_1413	2000-01-01 00:00:00+00
+110	bpp	0033_auto_20151001_1425	2000-01-01 00:00:00+00
+111	bpp	0034_auto_20151011_1514	2000-01-01 00:00:00+00
+112	bpp	0035_nomorefixtures_data_migration	2000-01-01 00:00:00+00
+147	bpp	0066_wydawnictwo_zwarte_calkowita_liczba_autorow	2000-01-01 00:00:00+00
+148	bpp	0067_typ_kbn_artykul_pbn	2000-01-01 00:00:00+00
+149	bpp	0068_indeks_liczba_znakow	2000-01-01 00:00:00+00
+150	bpp	0069_eksport_pbn_charaktery	2000-01-01 00:00:00+00
+151	bpp	0070_auto_20170220_1757	2000-01-01 00:00:00+00
+152	bpp	0071_fix_liczba_znakow_wyd	2000-01-01 00:00:00+00
 274	bpp	0187_auto_20191027_1141	2000-01-01 00:00:00+00
 689	ewaluacja_optymalizacja	0002_unpinningopportunity	2000-01-01 00:00:00+00
 857	pbn_import	0007_add_last_updated_field	2000-01-01 00:00:00+00
@@ -16875,7 +16914,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 467	bpp	0360_uczelnia_pokazuj_zrodla_bez_prac_w_przegladaniu_danych_and_more	2000-01-01 00:00:00+00
 468	bpp	0361_alter_patent_slowa_kluczowe_eng_and_more	2000-01-01 00:00:00+00
 470	bpp	0363_uczelnia_pokazuj_jednostki_na_pierwszej_stronie_and_more	2000-01-01 00:00:00+00
-471	bpp	0364_rzeczownik_uczelnie_pl	2000-01-01 00:00:00+00
 472	bpp	0365_bppuser_pbn_token_updated	2000-01-01 00:00:00+00
 473	bpp	0366_alter_uczelnia_pbn_api_afiliacja_zawsze_na_uczelnie	2000-01-01 00:00:00+00
 474	bpp	0367_bppuser_przedstawiaj_w_pbn_jako	2000-01-01 00:00:00+00
@@ -17512,7 +17550,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1110	zglos_publikacje	0027_zgloszenie_zaimportowane	2000-01-01 00:00:00+00
 1111	importer_publikacji	0020_importsession_zgloszenie	2000-01-01 00:00:00+00
 713	flexible_reports	0005_column_attrs	2000-01-01 00:00:00+00
-998	bpp	0455_faza_b_i2	2000-01-01 00:00:00+00
 1088	import_pracownikow	0026_importpracownikow_uczelnia	2000-01-01 00:00:00+00
 1090	bpp	0470_indeksy_gin_i_funkcyjne	2000-01-01 00:00:00+00
 1093	bpp	0471_deduplikuj_autor_jednostka_bez_daty	2000-01-01 00:00:00+00
@@ -17621,43 +17658,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 77	taggit	0002_auto_20150616_2121	2000-01-01 00:00:00+00
 78	taggit	0003_taggeditem_add_unique_index	2000-01-01 00:00:00+00
 79	bpp	0002_auto_20141020_1738	2000-01-01 00:00:00+00
-80	bpp	0003_auto_20141023_1419	2000-01-01 00:00:00+00
-81	bpp	0004_auto_20141107_1101	2000-01-01 00:00:00+00
-82	bpp	0005_auto_20141107_1950	2000-01-01 00:00:00+00
-83	bpp	0006_auto_20141112_1531	2000-01-01 00:00:00+00
-84	bpp	0007_charakter_formalny_nazwa_w_primo	2000-01-01 00:00:00+00
-85	bpp	0008_auto_20141126_1802	2000-01-01 00:00:00+00
-86	bpp	0009_auto_20141126_1804	2000-01-01 00:00:00+00
-87	bpp	0010_auto_20141126_1825	2000-01-01 00:00:00+00
-88	bpp	0011_auto_20150212_2203	2000-01-01 00:00:00+00
-89	bpp	0012_auto_20150530_1733	2000-01-01 00:00:00+00
-90	bpp	0013_wydzial_zezwalaj_na_ranking_autorow	2000-01-01 00:00:00+00
-91	bpp	0014_auto_20150530_1942	2000-01-01 00:00:00+00
-92	bpp	0015_auto_20150617_2247	2000-01-01 00:00:00+00
-93	bpp	0016_auto_20150824_1051	2000-01-01 00:00:00+00
-95	bpp	0018_auto_20150824_1233	2000-01-01 00:00:00+00
-96	bpp	0019_charakter_formalny_charakter_pbn	2000-01-01 00:00:00+00
-97	bpp	0020_auto_20150824_1609	2000-01-01 00:00:00+00
-98	bpp	0021_auto_20150825_2301	2000-01-01 00:00:00+00
-99	bpp	0022_auto_20150825_2303	2000-01-01 00:00:00+00
-100	bpp	0023_auto_20150830_1704	2000-01-01 00:00:00+00
-101	bpp	0024_auto_20150830_1705	2000-01-01 00:00:00+00
-102	bpp	0025_auto_20150830_1740	2000-01-01 00:00:00+00
-103	bpp	0026_auto_20150902_2102	2000-01-01 00:00:00+00
-105	bpp	0028_openaccess	2000-01-01 00:00:00+00
-106	bpp	0029_auto_20150923_1343	2000-01-01 00:00:00+00
-107	bpp	0030_auto_20150923_1351	2000-01-01 00:00:00+00
-108	bpp	0031_zrodlo_openaccess_licencja	2000-01-01 00:00:00+00
-109	bpp	0032_auto_20151001_1413	2000-01-01 00:00:00+00
-110	bpp	0033_auto_20151001_1425	2000-01-01 00:00:00+00
-111	bpp	0034_auto_20151011_1514	2000-01-01 00:00:00+00
-112	bpp	0035_nomorefixtures_data_migration	2000-01-01 00:00:00+00
-147	bpp	0066_wydawnictwo_zwarte_calkowita_liczba_autorow	2000-01-01 00:00:00+00
-148	bpp	0067_typ_kbn_artykul_pbn	2000-01-01 00:00:00+00
-149	bpp	0068_indeks_liczba_znakow	2000-01-01 00:00:00+00
-150	bpp	0069_eksport_pbn_charaktery	2000-01-01 00:00:00+00
-151	bpp	0070_auto_20170220_1757	2000-01-01 00:00:00+00
-152	bpp	0071_fix_liczba_znakow_wyd	2000-01-01 00:00:00+00
 153	bpp	0072_gist_to_gin	2000-01-01 00:00:00+00
 154	bpp	0073_auto_20170616_1709	2000-01-01 00:00:00+00
 156	bpp	0075_auto_20170622_0057	2000-01-01 00:00:00+00
@@ -17694,6 +17694,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1152	bpp	0492_autor_identyfikatory_profili	2000-01-01 00:00:00+00
 1153	bpp	0493_merge_20261024_0915	2000-01-01 00:00:00+00
 1154	bpp	0494_autor_opis_do_adnotacji	2000-01-01 00:00:00+00
+1155	bpp	0495_uczelnia_adresy_integracji_https	2000-01-01 00:00:00+00
 \.
 
 
@@ -18073,6 +18074,21 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 314	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 315	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 316	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+347	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+348	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
+349	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+350	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+351	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+352	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+353	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+354	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+355	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+356	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+357	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+358	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+359	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+360	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+361	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -19696,7 +19712,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1154, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1155, true);
 
 
 --
@@ -19934,7 +19950,7 @@ SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 46,
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 346, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 361, true);
 
 
 --

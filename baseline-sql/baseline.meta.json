@@ -1,11 +1,11 @@
 {
-  "git_sha": "45f1f577953d883e531a922955bd3a6f8a9dca5e",
+  "git_sha": "f9e0b540a781fbdca7f5209929973aa0dc855c7c",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
     "auth": "0012_alter_user_first_name_max_length",
     "axes": "0010_accessattemptexpiration",
-    "bpp": "0494_autor_opis_do_adnotacji",
+    "bpp": "0495_uczelnia_adresy_integracji_https",
     "channels_broadcast": "0001_initial",
     "constance": "0003_drop_pickle",
     "contenttypes": "0002_remove_content_type_name",
