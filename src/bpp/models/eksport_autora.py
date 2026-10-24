@@ -53,6 +53,10 @@ class AutorEksportTask(models.Model):
     #: zakresem (bez wykluczania ukrytych statusów). Status i plik takiego
     #: zadania widzi wyłącznie redakcja — dla pozostałych 404.
     tylko_dla_redakcji = models.BooleanField(default=False)
+    #: Zadanie zlecone przez niezalogowanego użytkownika — liczone do
+    #: globalnego limitu anonimowych zadań w kolejce
+    #: (``settings.EKSPORT_AUTORA_LIMIT_ANON_W_KOLEJCE``).
+    zlecone_anonimowo = models.BooleanField(default=False)
     error_message = models.TextField(blank=True, default="")
     celery_task_id = models.CharField(max_length=255, blank=True, default="")
 
