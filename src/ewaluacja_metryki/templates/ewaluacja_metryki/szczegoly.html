@@ -606,8 +606,8 @@ $(document).ready(function() {
 <script src="{% static 'plotly.js/dist/plotly-locale-pl.js' %}"></script>
 
 <script>
-// Set Polish locale as default for Plotly
-Plotly.setPlotConfig({locale: 'pl'});
+// Polski locale; bez przycisku "Upload to Cloud" (plotly.js 4.x wysyła wykres na cloud.plotly.com)
+Plotly.setPlotConfig({locale: 'pl', showSendToCloud: false});
 
 $(document).ready(function() {
     // Prepare data from Django context
@@ -647,11 +647,11 @@ $(document).ready(function() {
                 font: { size: 14 }
             },
             xaxis: {
-                title: 'Rok',
+                title: {text: 'Rok'},
                 dtick: 1
             },
             yaxis: {
-                title: 'Punkty PKDaut'
+                title: {text: 'Punkty PKDaut'}
             },
             hovermode: 'closest',
             showlegend: false,
@@ -705,19 +705,18 @@ $(document).ready(function() {
                 font: { size: 14 }
             },
             xaxis: {
-                title: 'Rok',
+                title: {text: 'Rok'},
                 dtick: 1
             },
             yaxis: {
-                title: 'Punkty PKDaut',
-                titlefont: { color: '#2196F3' },
+                title: {text: 'Punkty PKDaut', font: { color: '#2196F3' }},
                 tickfont: { color: '#2196F3' }
             },
             yaxis2: {
-                title: 'Sloty',
-                titlefont: { color: '#FF9800' },
+                title: {text: 'Sloty', font: { color: '#FF9800' }},
                 tickfont: { color: '#FF9800' },
                 overlaying: 'y',
+                tickmode: 'auto',
                 side: 'right'
             },
             hovermode: 'x unified',
@@ -753,7 +752,7 @@ $(document).ready(function() {
                 ],
                 showscale: true,
                 colorbar: {
-                    title: 'Rok',
+                    title: {text: 'Rok'},
                     thickness: 15,
                     len: 0.7
                 },
@@ -777,10 +776,10 @@ $(document).ready(function() {
                 font: { size: 14 }
             },
             xaxis: {
-                title: 'Slot'
+                title: {text: 'Slot'}
             },
             yaxis: {
-                title: 'Punkty PKDaut'
+                title: {text: 'Punkty PKDaut'}
             },
             hovermode: 'closest',
             margin: { l: 50, r: 80, t: 40, b: 50 }
@@ -860,7 +859,7 @@ $(document).ready(function() {
             hovertext: hoverText,
             hovertemplate: '%{hovertext}<extra></extra>',
             colorbar: {
-                title: 'PKDaut',
+                title: {text: 'PKDaut'},
                 thickness: 15,
                 len: 0.7
             }
@@ -872,11 +871,11 @@ $(document).ready(function() {
                 font: { size: 14 }
             },
             xaxis: {
-                title: 'Rok',
+                title: {text: 'Rok'},
                 side: 'bottom'
             },
             yaxis: {
-                title: 'Ranking (wg PKDaut/slot)',
+                title: {text: 'Ranking (wg PKDaut/slot)'},
                 autorange: 'reversed'
             },
             margin: { l: 50, r: 80, t: 40, b: 50 }
