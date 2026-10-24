@@ -4221,7 +4221,8 @@ CREATE TABLE public.bpp_autoreksporttask (
     created_at timestamp with time zone NOT NULL,
     started_at timestamp with time zone,
     completed_at timestamp with time zone,
-    autor_id integer NOT NULL
+    autor_id integer NOT NULL,
+    ukryte_statusy integer[] NOT NULL
 );
 
 
@@ -4792,7 +4793,7 @@ CREATE TABLE public.bpp_bppuser (
     per_page integer NOT NULL,
     multiseek_format character varying(200) NOT NULL,
     multiseek_order_1 character varying(200) NOT NULL,
-    pbn_token character varying(128) NOT NULL,
+    pbn_token text NOT NULL,
     pbn_token_updated timestamp with time zone,
     przedstawiaj_w_pbn_jako_id integer,
     autor_id integer,
@@ -7773,7 +7774,7 @@ CREATE TABLE public.bpp_uczelnia (
     pokazuj_status_korekty character varying(50) NOT NULL,
     pokazuj_ranking_autorow character varying(50) NOT NULL,
     pokazuj_praca_recenzowana character varying(50) NOT NULL,
-    clarivate_password character varying(50) NOT NULL,
+    clarivate_password text NOT NULL,
     clarivate_username character varying(50) NOT NULL,
     domyslnie_afiliuje boolean NOT NULL,
     pokazuj_liczbe_cytowan_w_rankingu character varying(50) NOT NULL,
@@ -7795,7 +7796,7 @@ CREATE TABLE public.bpp_uczelnia (
     pbn_uid_id character varying(32),
     pbn_api_root character varying(200) NOT NULL,
     pbn_app_name character varying(128) NOT NULL,
-    pbn_app_token character varying(128) NOT NULL,
+    pbn_app_token text NOT NULL,
     pbn_aktualizuj_na_biezaco boolean NOT NULL,
     pbn_integracja boolean NOT NULL,
     pbn_api_user_id integer,
@@ -7824,7 +7825,7 @@ CREATE TABLE public.bpp_uczelnia (
     wymagaj_logowania_zglos_publikacje boolean NOT NULL,
     nowy_autor_z_formularza_pokazuj boolean NOT NULL,
     orcid_client_id character varying(128) NOT NULL,
-    orcid_client_secret character varying(128) NOT NULL,
+    orcid_client_secret text NOT NULL,
     orcid_sandbox boolean NOT NULL,
     orcid_tylko_dla_pracownikow boolean NOT NULL,
     wymagaj_oplatach_artykul boolean NOT NULL,
@@ -13627,6 +13628,7 @@ COPY public.auth_group (id, name) FROM stdin;
 7	raporty
 8	zgłoszenia publikacji
 9	generowanie raportów
+10	eksport do DSpace
 \.
 
 
@@ -14063,6 +14065,14 @@ COPY public.auth_group_permissions (id, group_id, permission_id) FROM stdin;
 430	3	729
 431	3	730
 432	3	991
+433	10	587
+434	10	588
+435	10	589
+436	10	590
+437	10	591
+438	10	592
+439	10	593
+440	10	594
 \.
 
 
@@ -15244,7 +15254,7 @@ COPY public.bpp_autor_jednostka (id, rozpoczal_prace, zakonczyl_prace, autor_id,
 -- Data for Name: bpp_autoreksporttask; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_autoreksporttask (id, format, status, result_file, error_message, celery_task_id, created_at, started_at, completed_at, autor_id) FROM stdin;
+COPY public.bpp_autoreksporttask (id, format, status, result_file, error_message, celery_task_id, created_at, started_at, completed_at, autor_id, ukryte_statusy) FROM stdin;
 \.
 
 
@@ -16545,6 +16555,41 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+824	menu	0001_initial	2000-01-01 00:00:00+00
+986	bpp	0444_merge_20260616_1920	2000-01-01 00:00:00+00
+434	bpp	0339_autor_opis	2000-01-01 00:00:00+00
+43	pbn_api	0009_sentdata	2000-01-01 00:00:00+00
+44	pbn_api	0010_auto_20210504_0040	2000-01-01 00:00:00+00
+45	pbn_api	0011_auto_20210509_2339	2000-01-01 00:00:00+00
+46	pbn_api	0012_auto_20210621_0947	2000-01-01 00:00:00+00
+47	pbn_api	0013_oswiadczenieinstytucji_publikacjainstytucji	2000-01-01 00:00:00+00
+48	pbn_api	0014_auto_20210713_2229	2000-01-01 00:00:00+00
+49	pbn_api	0015_auto_20210713_2234	2000-01-01 00:00:00+00
+50	pbn_api	0016_auto_20210713_2235	2000-01-01 00:00:00+00
+51	pbn_api	0017_publikacjainstytucji_usertype	2000-01-01 00:00:00+00
+53	pbn_api	0019_auto_20210805_2306	2000-01-01 00:00:00+00
+54	pbn_api	0020_przemapuj	2000-01-01 00:00:00+00
+55	pbn_api	0021_auto_20210808_1204	2000-01-01 00:00:00+00
+56	pbn_api	0022_auto_20210809_0120	2000-01-01 00:00:00+00
+57	pbn_api	0023_auto_20210809_0122	2000-01-01 00:00:00+00
+58	pbn_api	0024_auto_20210809_0125	2000-01-01 00:00:00+00
+59	pbn_api	0025_auto_20210809_0149	2000-01-01 00:00:00+00
+60	pbn_api	0026_auto_20210816_0815	2000-01-01 00:00:00+00
+61	pbn_api	0027_przemapuj_rok_publikacji	2000-01-01 00:00:00+00
+62	pbn_api	0028_gist_idx_publications	2000-01-01 00:00:00+00
+63	pbn_api	0029_indeksy_gist_inne_tabele	2000-01-01 00:00:00+00
+64	pbn_api	0030_auto_20210818_2343	2000-01-01 00:00:00+00
+65	pbn_api	0031_auto_20210820_1544	2000-01-01 00:00:00+00
+66	pbn_api	0032_sent_data_pbn_uid	2000-01-01 00:00:00+00
+67	pbn_api	0033_sent_data_typ_rekordu	2000-01-01 00:00:00+00
+68	pbn_api	0034_auto_20211028_0341	2000-01-01 00:00:00+00
+70	pbn_api	0036_disciplinegroup_discipline	2000-01-01 00:00:00+00
+71	pbn_api	0037_alter_discipline_options_and_more	2000-01-01 00:00:00+00
+423	bpp	0329_auto_20220921_2030	2000-01-01 00:00:00+00
+72	pbn_api	0038_oswiadczenieinstytucji_disciplines	2000-01-01 00:00:00+00
+73	pbn_api	0039_alter_oswiadczenieinstytucji_area	2000-01-01 00:00:00+00
+74	sites	0001_initial	2000-01-01 00:00:00+00
+75	dbtemplates	0001_initial	2000-01-01 00:00:00+00
 471	bpp	0364_rzeczownik_uczelnie_pl	2000-01-01 00:00:00+00
 998	bpp	0455_faza_b_i2	2000-01-01 00:00:00+00
 80	bpp	0003_auto_20141023_1419	2000-01-01 00:00:00+00
@@ -16775,7 +16820,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 315	bpp	0225_auto_20201007_1002	2000-01-01 00:00:00+00
 316	bpp	0226_rekord_mat_status	2000-01-01 00:00:00+00
 317	bpp	0227_auto_20201011_0010	2000-01-01 00:00:00+00
-824	menu	0001_initial	2000-01-01 00:00:00+00
 233	bpp	0151_snip	2000-01-01 00:00:00+00
 282	bpp	0195_cc0	2000-01-01 00:00:00+00
 997	bpp	0454_faza_b_i1	2000-01-01 00:00:00+00
@@ -17433,7 +17477,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 983	bpp	0430_wydawnictwo_ciagle_tytul_wydawnictwo_zwarte_tytul	2000-01-01 00:00:00+00
 984	bpp	0431_merge_20260612_1504	2000-01-01 00:00:00+00
 985	bpp	0432_merge_0431_merge_20260612_1504_0431_search_index_gin	2000-01-01 00:00:00+00
-986	bpp	0444_merge_20260616_1920	2000-01-01 00:00:00+00
 987	bpp	0444_alter_uczelnia_wyszukiwanie_rekordy_na_strone_anonim_and_more	2000-01-01 00:00:00+00
 988	bpp	0445_merge_20260622_1134	2000-01-01 00:00:00+00
 989	bpp	0446_rzeczownik_tylko_mianownik	2000-01-01 00:00:00+00
@@ -17570,7 +17613,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1092	pbn_api	0077_constrainty_uuid_dyscyplin	2000-01-01 00:00:00+00
 448	multiseek	0001_initial	2000-01-01 00:00:00+00
 531	bpp	0418_merge_20260601_0954	2000-01-01 00:00:00+00
-434	bpp	0339_autor_opis	2000-01-01 00:00:00+00
 535	bpp	0421_cache_trigger_pk_filter	2000-01-01 00:00:00+00
 469	bpp	0362_rzeczownik	2000-01-01 00:00:00+00
 533	bpp	0419_merge_20260601_1319	2000-01-01 00:00:00+00
@@ -17623,38 +17665,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 40	pbn_api	0006_sciencist	2000-01-01 00:00:00+00
 41	pbn_api	0007_publication	2000-01-01 00:00:00+00
 42	pbn_api	0008_auto_20210406_0530	2000-01-01 00:00:00+00
-43	pbn_api	0009_sentdata	2000-01-01 00:00:00+00
-44	pbn_api	0010_auto_20210504_0040	2000-01-01 00:00:00+00
-45	pbn_api	0011_auto_20210509_2339	2000-01-01 00:00:00+00
-46	pbn_api	0012_auto_20210621_0947	2000-01-01 00:00:00+00
-47	pbn_api	0013_oswiadczenieinstytucji_publikacjainstytucji	2000-01-01 00:00:00+00
-48	pbn_api	0014_auto_20210713_2229	2000-01-01 00:00:00+00
-49	pbn_api	0015_auto_20210713_2234	2000-01-01 00:00:00+00
-50	pbn_api	0016_auto_20210713_2235	2000-01-01 00:00:00+00
-51	pbn_api	0017_publikacjainstytucji_usertype	2000-01-01 00:00:00+00
-53	pbn_api	0019_auto_20210805_2306	2000-01-01 00:00:00+00
-54	pbn_api	0020_przemapuj	2000-01-01 00:00:00+00
-55	pbn_api	0021_auto_20210808_1204	2000-01-01 00:00:00+00
-56	pbn_api	0022_auto_20210809_0120	2000-01-01 00:00:00+00
-57	pbn_api	0023_auto_20210809_0122	2000-01-01 00:00:00+00
-58	pbn_api	0024_auto_20210809_0125	2000-01-01 00:00:00+00
-59	pbn_api	0025_auto_20210809_0149	2000-01-01 00:00:00+00
-60	pbn_api	0026_auto_20210816_0815	2000-01-01 00:00:00+00
-61	pbn_api	0027_przemapuj_rok_publikacji	2000-01-01 00:00:00+00
-62	pbn_api	0028_gist_idx_publications	2000-01-01 00:00:00+00
-63	pbn_api	0029_indeksy_gist_inne_tabele	2000-01-01 00:00:00+00
-64	pbn_api	0030_auto_20210818_2343	2000-01-01 00:00:00+00
-65	pbn_api	0031_auto_20210820_1544	2000-01-01 00:00:00+00
-66	pbn_api	0032_sent_data_pbn_uid	2000-01-01 00:00:00+00
-67	pbn_api	0033_sent_data_typ_rekordu	2000-01-01 00:00:00+00
-68	pbn_api	0034_auto_20211028_0341	2000-01-01 00:00:00+00
-70	pbn_api	0036_disciplinegroup_discipline	2000-01-01 00:00:00+00
-71	pbn_api	0037_alter_discipline_options_and_more	2000-01-01 00:00:00+00
-423	bpp	0329_auto_20220921_2030	2000-01-01 00:00:00+00
-72	pbn_api	0038_oswiadczenieinstytucji_disciplines	2000-01-01 00:00:00+00
-73	pbn_api	0039_alter_oswiadczenieinstytucji_area	2000-01-01 00:00:00+00
-74	sites	0001_initial	2000-01-01 00:00:00+00
-75	dbtemplates	0001_initial	2000-01-01 00:00:00+00
 77	taggit	0002_auto_20150616_2121	2000-01-01 00:00:00+00
 78	taggit	0003_taggeditem_add_unique_index	2000-01-01 00:00:00+00
 79	bpp	0002_auto_20141020_1738	2000-01-01 00:00:00+00
@@ -17695,6 +17705,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1153	bpp	0493_merge_20261024_0915	2000-01-01 00:00:00+00
 1154	bpp	0494_autor_opis_do_adnotacji	2000-01-01 00:00:00+00
 1155	bpp	0495_uczelnia_adresy_integracji_https	2000-01-01 00:00:00+00
+1156	bpp	0496_autoreksporttask_ukryte_statusy	2000-01-01 00:00:00+00
+1157	bpp	0497_uczelnia_bppuser_szyfrowanie_sekretow	2000-01-01 00:00:00+00
 \.
 
 
@@ -18074,21 +18086,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 314	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 315	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 316	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-347	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
-348	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
-349	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-350	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-351	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-352	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-353	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-354	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-355	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-356	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-357	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-358	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-359	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-360	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-361	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -18956,14 +18953,14 @@ SELECT pg_catalog.setval('public.admin_tools_menu_bookmark_id_seq', 1, false);
 -- Name: auth_group_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_group_id_seq', 9, true);
+SELECT pg_catalog.setval('public.auth_group_id_seq', 10, true);
 
 
 --
 -- Name: auth_group_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 432, true);
+SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 440, true);
 
 
 --
@@ -19712,7 +19709,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1155, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1157, true);
 
 
 --
