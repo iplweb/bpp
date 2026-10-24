@@ -13,7 +13,11 @@ from django.utils.functional import lazy as _lazy
 from django.utils.translation import gettext_lazy as _
 from polish_inflection import MIANOWNIK, MNOGA, odmien_lub_wyraz
 
-from bpp.const import GR_WPROWADZANIE_DANYCH, GR_ZGLOSZENIA_PUBLIKACJI
+from bpp.const import (
+    GR_EKSPORT_DSPACE,
+    GR_WPROWADZANIE_DANYCH,
+    GR_ZGLOSZENIA_PUBLIKACJI,
+)
 from bpp.nazwy import lemat
 
 
@@ -55,12 +59,17 @@ PBN_MENU = [
 ]
 
 
+DSPACE_MENU = [
+    ("Mapowania DSpace", "/admin/dspace_api/mapowanie_dspace/"),
+    ("Wysyłki do DSpace", "/admin/dspace_api/senttodspace/"),
+]
+
+
 SYSTEM_MENU = [
     ("Charaktery formalne", "/admin/bpp/charakter_formalny/"),
     ("Crossref Mapper", "/admin/bpp/crossref_mapper/"),
     ("Charakter PBN", "/admin/bpp/charakter_pbn/"),
-    ("Mapowania DSpace", "/admin/dspace_api/mapowanie_dspace/"),
-    ("Wysyłki do DSpace", "/admin/dspace_api/senttodspace/"),
+    *DSPACE_MENU,
     ("Dyscypliny naukowe", "/admin/bpp/dyscyplina_naukowa/"),
     ("Formularze - wartości domyślne", "/admin/formdefaults/formrepresentation/"),
     ("Funkcje w jednostce", "/admin/bpp/funkcja_autora/"),
@@ -287,12 +296,17 @@ def _add_group_submenus(menu, user, groups, request):
     flt("dane systemowe", "PBN API", PBN_MENU, "menu-icon-api")
 
     # Combine "Dane" and "systemowe" into single 2-column menu
-    if user.is_superuser or "dane systemowe" in groups:
+    widzi_dane_systemowe = user.is_superuser or "dane systemowe" in groups
+    if widzi_dane_systemowe:
         menu.children += [
             submenu_multicolumn(
                 "Dane systemowe", SYSTEM_MENU, SYSTEM_MENU_2, "menu-icon-settings"
             ),
         ]
+    elif GR_EKSPORT_DSPACE in groups:
+        # Pozycje DSpace są w "Danych systemowych"; członek samej grupy
+        # eksportu do DSpace dostaje je w osobnym, małym poddrzewie.
+        menu.children += [submenu("DSpace", DSPACE_MENU, "menu-icon-api")]
 
     # Multi-host: decyzja o ukryciu wydziału jest per-host (get_for_request),
     # więc buduj LOKALNĄ kopię listy zamiast mutować globalne STRUKTURA_MENU —

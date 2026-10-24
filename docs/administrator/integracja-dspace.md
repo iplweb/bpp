@@ -26,7 +26,9 @@ Funkcje eksportu do DSpace w panelu administracyjnym są dostępne dla
   (np. z grupy „wprowadzanie danych"),
 - lista kolekcji pobierana na żywo z DSpace przy edycji mapowań
   (ograniczona do uczelni, do których użytkownik ma dostęp),
-- **Mapowania DSpace** i **Informacje o wysłaniu do DSpace**.
+- **Mapowania DSpace** i **Informacje o wysłaniu do DSpace** — członek
+  samej grupy „eksport do DSpace" znajdzie je w menu **DSpace**
+  (osoby z grupą „dane systemowe" — w menu **Dane systemowe**).
 
 Grupa jest tworzona automatycznie przy aktualizacji systemu (migracje),
 ale **nikt nie otrzymuje jej automatycznie** — superużytkownik musi ją

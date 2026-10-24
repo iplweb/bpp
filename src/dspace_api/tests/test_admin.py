@@ -293,6 +293,7 @@ MODELE_Z_AKCJAMI_DSPACE = [
     "wydawnictwo_zwarte",
     "praca_doktorska",
     "praca_habilitacyjna",
+    "patent",
 ]
 
 
