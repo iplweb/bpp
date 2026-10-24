@@ -12,6 +12,7 @@ import threading
 import unicodedata
 
 import requests
+import zxcvbn_pl
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import OperationalError, ProgrammingError
@@ -260,6 +261,9 @@ _ZXCVBN_BLOKADA = threading.Lock()
 _POWODY_SLOWNIKOWE = {
     "passwords": "popularne hasła",
     "user_inputs": "słowa związane z kontem lub serwisem",
+    "pl_common_words": "pospolite polskie słowa",
+    "pl_first_names": "imiona",
+    "pl_last_names": "nazwiska",
 }
 _POWODY_WZORCOW = {
     "repeat": "powtórzenia",
@@ -323,6 +327,10 @@ class ZxcvbnPasswordValidator:
             return
         slowa = [*slowa_kontekstowe(), *_slowa_uzytkownika(user)]
         with _ZXCVBN_BLOKADA:
+            # Słowniki zxcvbn są wyłącznie angielskie — zxcvbn-pl dokłada
+            # polskie pospolite słowa, imiona i nazwiska do jego globalnego
+            # rejestru. Idempotentne; pod blokadą nie ściga się z innym wątkiem.
+            zxcvbn_pl.register()
             wynik = zxcvbn(password[:ZXCVBN_MAKS_DLUGOSC], user_inputs=slowa)
         if wynik["score"] >= self.min_score:
             return

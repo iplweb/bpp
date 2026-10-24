@@ -1,0 +1,1 @@
+Ocena siły hasła (zxcvbn) zna teraz polskie pospolite słowa, imiona i nazwiska, także wpisane bez polskich znaków (pakiet zxcvbn-pl) — hasła złożone z jednego takiego słowa i cyfr (np. „słoneczko123456”, „Malgorzata12345”) są odrzucane jako łatwe do odgadnięcia, a frazy z kilku słów nadal przechodzą.

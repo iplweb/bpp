@@ -224,3 +224,28 @@ def test_zxcvbn_wylaczony_przy_min_score_zero():
 def test_zxcvbn_min_score_z_ustawien(settings):
     settings.BPP_HASLA_MIN_SILA_ZXCVBN = 0
     ZxcvbnPasswordValidator().validate("aaaaaaaaaaaaaaaa")
+
+
+# --- polski słownik zxcvbn -------------------------------------------------
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "haslo,powod",
+    [
+        ("słoneczko123456", "pospolite polskie słowa"),
+        ("pomidorowa123456", "pospolite polskie słowa"),
+        ("Malgorzata12345", "imiona"),
+        ("Wojciechowski77", "nazwiska"),
+    ],
+)
+def test_zxcvbn_odrzuca_polskie_slowo_imie_nazwisko_z_cyframi(haslo, powod):
+    with pytest.raises(ValidationError) as e:
+        ZxcvbnPasswordValidator().validate(haslo)
+    assert powod in str(e.value.message % e.value.params)
+
+
+@pytest.mark.django_db
+def test_zxcvbn_fraza_z_kilku_polskich_slow_przechodzi():
+    # Kilka słów to wg NIST dobre hasło — słownik nie może go odrzucać.
+    ZxcvbnPasswordValidator().validate("ptaszek-na-drzewie-gra")
