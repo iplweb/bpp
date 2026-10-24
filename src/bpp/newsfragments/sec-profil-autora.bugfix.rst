@@ -1,0 +1,1 @@
+Wzmocniono zabezpieczenia profilu autora i eksportu BibTeX/RIS: respektowanie ukrytych statusów korekty i ukrytych autorów, bramka sekcji slotów zgodna z raportem slotów, limit żądań eksportu, walidacja rozdzielczości zdjęcia oraz wybranych publikacji w panelu administracyjnym.

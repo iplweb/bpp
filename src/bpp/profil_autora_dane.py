@@ -43,10 +43,49 @@ def _lista(qs, limit):
     return {"prace": prace} if prace else None
 
 
-def _prace(autor):
+def _uczelnia(request):
+    from bpp.models import Uczelnia
+
+    return Uczelnia.objects.get_for_request(request)
+
+
+def ukryte_statusy_podgladu(request, uczelnia=None):
+    """Statusy korekty ukryte na poziomie „podglad" dla oglądającego.
+
+    Ten sam kanał i ta sama bramka (``moze_wprowadzac_dane``) co strona
+    szczegółów rekordu (``PracaViewMixin``) i globalne wyszukiwanie: osoby
+    z uprawnieniami redakcyjnymi widzą wszystko, pozostali (także
+    ``request=None``) — bez prac o ukrytych statusach. Zwraca listę (nie lazy
+    queryset), memoizowaną na ``request`` na czas żądania.
+    """
+    from bpp.permissions import moze_wprowadzac_dane
+
+    if request is not None:
+        zapamietane = getattr(request, "_profil_ukryte_podglad", None)
+        if zapamietane is not None:
+            return zapamietane
+
+    user = getattr(request, "user", None)
+    if user is not None and moze_wprowadzac_dane(user):
+        wynik = []
+    else:
+        if uczelnia is None:
+            uczelnia = _uczelnia(request)
+        wynik = [] if uczelnia is None else list(uczelnia.ukryte_statusy("podglad"))
+
+    if request is not None:
+        request._profil_ukryte_podglad = wynik
+    return wynik
+
+
+def _prace(autor, request=None):
     from bpp.models import Rekord
 
-    return Rekord.objects.prace_autora(autor)
+    qs = Rekord.objects.prace_autora(autor)
+    ukryte = ukryte_statusy_podgladu(request)
+    if ukryte:
+        qs = qs.exclude(status_korekty_id__in=ukryte)
+    return qs
 
 
 def _agreguj_po_latach(pary):
@@ -85,20 +124,23 @@ def _ostatnie_lata(dane):
 
 def _najlepsze_pk(autor, limit, request):
     return _lista(
-        _prace(autor).filter(punkty_kbn__gt=0).order_by("-punkty_kbn", "-rok"), limit
+        _prace(autor, request).filter(punkty_kbn__gt=0).order_by("-punkty_kbn", "-rok"),
+        limit,
     )
 
 
 def _najlepsze_if(autor, limit, request):
     return _lista(
-        _prace(autor).filter(impact_factor__gt=0).order_by("-impact_factor", "-rok"),
+        _prace(autor, request)
+        .filter(impact_factor__gt=0)
+        .order_by("-impact_factor", "-rok"),
         limit,
     )
 
 
 def _najnowsze_artykuly(autor, limit, request):
     return _lista(
-        _prace(autor)
+        _prace(autor, request)
         .filter(charakter_formalny__charakter_ogolny=const.CHARAKTER_OGOLNY_ARTYKUL)
         .order_by("-rok"),
         limit,
@@ -107,7 +149,7 @@ def _najnowsze_artykuly(autor, limit, request):
 
 def _najnowsze_zwarte(autor, limit, request):
     return _lista(
-        _prace(autor)
+        _prace(autor, request)
         .filter(
             charakter_formalny__charakter_ogolny__in=[
                 const.CHARAKTER_OGOLNY_KSIAZKA,
@@ -120,14 +162,20 @@ def _najnowsze_zwarte(autor, limit, request):
 
 
 def _ostatnio_edytowane(autor, limit, request):
-    return _lista(_prace(autor).order_by("-ostatnio_zmieniony"), limit)
+    return _lista(_prace(autor, request).order_by("-ostatnio_zmieniony"), limit)
 
 
 def _wybrane_publikacje(autor, limit, request):
     wybrane = list(
         autor.wybrane_publikacje.select_related("content_type").order_by("kolejnosc")
     )
-    prace = [w.publikacja for w in wybrane if w.publikacja is not None]
+    ukryte = set(ukryte_statusy_podgladu(request))
+    prace = [
+        w.publikacja
+        for w in wybrane
+        if w.publikacja is not None
+        and getattr(w.publikacja, "status_korekty_id", None) not in ukryte
+    ]
     return {"prace": prace} if prace else None
 
 
@@ -135,7 +183,9 @@ def _podsumowanie(autor, limit, request):
     # Liczba prac + łączny IF i punkty MNiSW. DISTINCT z ``id`` neutralizuje
     # duplikaty z joinu ``autorzy`` (por. docstring modułu); sumujemy w Pythonie.
     wiersze = (
-        _prace(autor).values_list("id", "rok", "impact_factor", "punkty_kbn").distinct()
+        _prace(autor, request)
+        .values_list("id", "rok", "impact_factor", "punkty_kbn")
+        .distinct()
     )
     liczba = 0
     impact_factor = punkty_kbn = Decimal(0)
@@ -158,7 +208,7 @@ def _podsumowanie(autor, limit, request):
 
 
 def _statystyki_charakter(autor, limit, request):
-    pary = _prace(autor).values_list("id", "charakter_formalny__nazwa")
+    pary = _prace(autor, request).values_list("id", "charakter_formalny__nazwa")
     licznik = Counter(nazwa for _id, nazwa in pary if nazwa)
     if not licznik:
         return None
@@ -167,7 +217,7 @@ def _statystyki_charakter(autor, limit, request):
 
 
 def _wykres_lata(autor, limit, request):
-    pary = _prace(autor).values_list("id", "rok")
+    pary = _prace(autor, request).values_list("id", "rok")
     licznik = Counter(rok for _id, rok in pary if rok is not None)
     if not licznik:
         return None
@@ -176,10 +226,10 @@ def _wykres_lata(autor, limit, request):
     return {"dane": dane, "maks": maks, "etykieta": "prac"}
 
 
-def _wykres_sumy_lata(autor, pole, etykieta):
+def _wykres_sumy_lata(autor, pole, etykieta, request):
     # Suma ``pole`` na rok. DISTINCT z włączonym ``id`` neutralizuje duplikaty
     # z joinu ``autorzy`` (rok/wartość są funkcją id).
-    triple = _prace(autor).values_list("id", "rok", pole).distinct()
+    triple = _prace(autor, request).values_list("id", "rok", pole).distinct()
     dane, _maks, _suma = _agreguj_po_latach((rok, w) for _id, rok, w in triple)
     if not dane:
         return None
@@ -194,11 +244,11 @@ def _wykres_sumy_lata(autor, pole, etykieta):
 
 
 def _wykres_pk_lata(autor, limit, request):
-    return _wykres_sumy_lata(autor, "punkty_kbn", "pkt")
+    return _wykres_sumy_lata(autor, "punkty_kbn", "pkt", request)
 
 
 def _wykres_if_lata(autor, limit, request):
-    return _wykres_sumy_lata(autor, "impact_factor", "IF")
+    return _wykres_sumy_lata(autor, "impact_factor", "IF", request)
 
 
 #: Wykresy pasa „Wykresy w latach” — (nazwa, builder), w kolejności na stronie.
@@ -220,12 +270,40 @@ def _wykresy(autor, limit, request):
     return {"wykresy": wykresy} if wykresy else None
 
 
+def _mozna_pokazac_sloty(request):
+    """Ta sama bramka co raport slotów autora (``pokazuj_raport_slotow_autor``
+    + grupa „raporty — wyświetlanie” dla opcji „zalogowanym”). Bez uczelni —
+    jak ``UczelniaSettingRequiredMixin`` — pokazujemy; bez requestu nie da się
+    ocenić uprawnień, więc (poza „pokazuj zawsze”) ukrywamy."""
+    from bpp.models import OpcjaWyswietlaniaField
+
+    uczelnia = _uczelnia(request)
+    if uczelnia is None:
+        return True
+    if request is None:
+        return (
+            uczelnia.pokazuj_raport_slotow_autor
+            == OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
+        )
+    return uczelnia.sprawdz_uprawnienie("raport_slotow_autor", request)
+
+
 def _punkty_lata(autor, limit, request):
     from bpp.models.cache.punktacja import Cache_Punktacja_Autora_Query
 
+    if not _mozna_pokazac_sloty(request):
+        return None
+
+    qs = Cache_Punktacja_Autora_Query.objects.filter(autor=autor)
+    uczelnia = _uczelnia(request)
+    ukryte = set(ukryte_statusy_podgladu(request))
+    if uczelnia is not None:
+        ukryte |= set(uczelnia.ukryte_statusy("sloty"))
+    if ukryte:
+        qs = qs.exclude(rekord__status_korekty_id__in=ukryte)
+
     wiersze = list(
-        Cache_Punktacja_Autora_Query.objects.filter(autor=autor)
-        .values("rekord__rok")
+        qs.values("rekord__rok")
         .annotate(pkd=Sum("pkdaut"), sloty=Sum("slot"))
         .order_by("rekord__rok")
     )
@@ -238,6 +316,7 @@ def _dyscypliny(autor, limit, request):
     pary = (
         Autorzy.objects.filter(autor=autor)
         .exclude(dyscyplina_naukowa=None)
+        .exclude(rekord__status_korekty_id__in=ukryte_statusy_podgladu(request))
         .values_list("rekord_id", "dyscyplina_naukowa__nazwa")
         .distinct()
     )
@@ -249,7 +328,9 @@ def _dyscypliny(autor, limit, request):
 
 
 def _zrodla(autor, limit, request):
-    pary = _prace(autor).exclude(zrodlo=None).values_list("id", "zrodlo__nazwa")
+    pary = (
+        _prace(autor, request).exclude(zrodlo=None).values_list("id", "zrodlo__nazwa")
+    )
     licznik = Counter(nazwa for _id, nazwa in pary if nazwa)
     if not licznik:
         return None
@@ -262,7 +343,8 @@ def _wspolautorzy(autor, limit, request):
 
     polaczenia = (
         AuthorConnection.objects.filter(
-            Q(primary_author=autor) | Q(secondary_author=autor)
+            (Q(primary_author=autor) & Q(secondary_author__pokazuj=True))
+            | (Q(secondary_author=autor) & Q(primary_author__pokazuj=True))
         )
         .select_related("primary_author", "secondary_author")
         .order_by("-shared_publications_count")[:limit]
