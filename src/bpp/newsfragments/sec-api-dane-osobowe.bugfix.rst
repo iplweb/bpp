@@ -1,0 +1,1 @@
+Wzmocniono ochronę danych osobowych w REST API: e-mail, data urodzenia i poprzednie nazwiska autorów, autorzy ukryci, ich powiązania z jednostkami oraz adnotacje nagród są widoczne wyłącznie dla redaktorów (grupa „wprowadzanie danych”) i superużytkowników — pozostali zalogowani widzą to samo co anonim.
