@@ -19,7 +19,14 @@
         <form method="post">
             {% csrf_token %}
             {% if form.non_field_errors %}
-                <div class="callout alert">{{ form.non_field_errors }}</div>
+                <div class="callout alert">
+                    {{ form.non_field_errors }}
+                    {% if zachec_do_logowania %}
+                        <p>
+                            <a class="button small" href="{% url "login_form" %}?next={{ request.get_full_path|urlencode }}">Zaloguj się</a>
+                        </p>
+                    {% endif %}
+                </div>
             {% endif %}
             {% if form.captcha %}
                 <div class="autor-eksport__captcha">

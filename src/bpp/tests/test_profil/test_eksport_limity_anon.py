@@ -75,7 +75,10 @@ def test_limit_ip_jedenasty_start_odrzucony(client, delay):
         assert _post(client, autor).status_code == 302
     resp = _post(client, autorzy[10])
     assert resp.status_code == 429
-    assert "Przekroczono limit eksportów" in resp.content.decode()
+    tresc = resp.content.decode()
+    assert "godzinny limit eksportów" in tresc
+    assert "zaloguj się" in tresc
+    assert reverse("login_form") in tresc
     assert AutorEksportTask.objects.count() == 10
     assert delay.call_count == 10
 
@@ -157,7 +160,10 @@ def test_kolejka_pelna_anonim_odrzucony(client, delay):
     autor = baker.make(Autor)
     resp = _post(client, autor)
     assert resp.status_code == 503
-    assert "Za dużo eksportów w toku" in resp.content.decode()
+    tresc = resp.content.decode()
+    assert "zbyt wiele eksportów" in tresc
+    assert "zaloguj się" in tresc
+    assert reverse("login_form") in tresc
     assert not AutorEksportTask.objects.filter(autor=autor).exists()
     delay.assert_not_called()
 

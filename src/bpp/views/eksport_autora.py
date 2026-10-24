@@ -78,9 +78,15 @@ OKNO_LIMITU_ANON_IP_S = 60 * 60
 ODCIECIE_WISZACYCH_ANON_MINUTES = 60
 
 KOMUNIKAT_LIMIT_ANON_IP = (
-    "Przekroczono limit eksportów na godzinę z tego adresu. Spróbuj ponownie później."
+    "Z tego adresu wykorzystano już godzinny limit eksportów dla osób "
+    "niezalogowanych. Spróbuj ponownie za godzinę albo zaloguj się — "
+    "zalogowani użytkownicy mają wyższy limit."
 )
-KOMUNIKAT_LIMIT_ANON_KOLEJKA = "Za dużo eksportów w toku, spróbuj za kilka minut."
+KOMUNIKAT_LIMIT_ANON_KOLEJKA = (
+    "Obecnie trwa zbyt wiele eksportów zleconych przez osoby niezalogowane. "
+    "Spróbuj ponownie za kilka minut albo zaloguj się — zalogowanych ten "
+    "limit nie dotyczy."
+)
 
 #: Klucz ``pg_advisory_xact_lock`` serializujący sprawdzenie limitu kolejki
 #: anonimowej z utworzeniem zadania (stała, dowolna liczba 64-bit).
@@ -195,7 +201,9 @@ class StartEksportAutoraView(View):
             data, captcha_wymagany=not request.user.is_authenticated
         )
 
-    def _render(self, request, autor, format, form, status=200):
+    def _render(
+        self, request, autor, format, form, status=200, zachec_do_logowania=False
+    ):
         return render(
             request,
             self.template_name,
@@ -203,6 +211,7 @@ class StartEksportAutoraView(View):
                 "autor": autor,
                 "nazwa_formatu": dict(AutorEksportTask.FORMAT_CHOICES)[format],
                 "form": form,
+                "zachec_do_logowania": zachec_do_logowania,
             },
             status=status,
         )
@@ -211,7 +220,14 @@ class StartEksportAutoraView(View):
         # Błąd jako non-field error nad przyciskiem; widget ALTCHA dostaje
         # nowe wyzwanie, więc kolejna próba wymaga ponownej weryfikacji.
         form.add_error(None, komunikat)
-        return self._render(request, autor, format, form, status=status)
+        return self._render(
+            request,
+            autor,
+            format,
+            form,
+            status=status,
+            zachec_do_logowania=not request.user.is_authenticated,
+        )
 
     def get(self, request, pk, format):
         autor = _autor_dla_eksportu(request, pk)
