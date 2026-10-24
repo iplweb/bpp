@@ -31,6 +31,10 @@ SLABE_HASLA = [
     ("robak1robak1robak", "password_repeated_pattern"),
     ("Robak1robak1ROBAK1", "password_repeated_pattern"),
     ("pies1pies1pies1pi", "password_repeated_pattern"),
+    # To samo słowo z licznikiem lub różnymi znakami między kopiami.
+    ("kopa1-kopa2-kopa3", "password_repeated_word"),
+    ("robak!robak@robak#", "password_repeated_word"),
+    ("Kopa1Kopa2Kopa3Kopa4", "password_repeated_word"),
 ]
 
 
@@ -138,6 +142,7 @@ def test_zmiana_hasla_odrzuca_slabe_haslo(haslo, kod):
         "ala ma kota i psa",  # pragma: allowlist secret
         "ŻółtaŁódźPłyniePoWiśle",  # pragma: allowlist secret
         "mostek-zebra-1987-pliszka",  # pragma: allowlist secret
+        "kot1-pies2-kot3-mysz4",  # pragma: allowlist secret
     ],
 )
 def test_walidator_wzorcow_przyjmuje_zwykle_hasla(haslo):

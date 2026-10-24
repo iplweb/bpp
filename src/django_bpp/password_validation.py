@@ -105,6 +105,15 @@ class SimplePatternPasswordValidator:
                 "(np. robak1robak1robak…).",
                 code="password_repeated_pattern",
             )
+        # Szkielet z samych liter: łapie to samo słowo z licznikiem albo
+        # różnymi separatorami („kopa1-kopa2-kopa3” → „kopakopakopa”), czego
+        # zxcvbn nie widzi jako powtórzenia.
+        if _jest_powtorzeniem("".join(z for z in password if z.isalpha())):
+            raise ValidationError(
+                "Hasło nie może być powtórzeniem tego samego słowa, nawet "
+                "z różnymi cyframi lub znakami (np. kopa1-kopa2-kopa3).",
+                code="password_repeated_word",
+            )
         if _jest_sekwencja(password):
             raise ValidationError(
                 "Hasło nie może być prostą sekwencją znaków "
