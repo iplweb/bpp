@@ -115,6 +115,10 @@ env = environ.Env(
     ZGLOS_LIMIT_NA_GODZINE=(int, 5),
     ZGLOS_LIMIT_NA_GODZINE_ZALOGOWANI=(int, 10),
     ZGLOS_MAX_LACZNY_ROZMIAR_MB=(int, 50),
+    # Eksport publikacji autora (BibTeX/RIS) zlecany przez anonimów:
+    # limit startów na IP na godzinę i limit zadań w kolejce (0 = brak).
+    DJANGO_BPP_EKSPORT_AUTORA_LIMIT_ANON_IP_NA_GODZINE=(int, 10),
+    DJANGO_BPP_EKSPORT_AUTORA_LIMIT_ANON_W_KOLEJCE=(int, 20),
     #
     # Widget wsparcia Freshdesk (Freshworks) — patrz
     # docs/administrator/widget-wsparcia-freshdesk.md
@@ -975,6 +979,15 @@ ZGLOS_CAPTCHA_ENABLED = env("ZGLOS_CAPTCHA_ENABLED")
 ZGLOS_LIMIT_NA_GODZINE = env("ZGLOS_LIMIT_NA_GODZINE")
 ZGLOS_LIMIT_NA_GODZINE_ZALOGOWANI = env("ZGLOS_LIMIT_NA_GODZINE_ZALOGOWANI")
 ZGLOS_MAX_LACZNY_ROZMIAR_MB = env("ZGLOS_MAX_LACZNY_ROZMIAR_MB")
+# Eksport publikacji autora zlecany przez anonimów: limit nowych zadań na IP
+# klienta na godzinę oraz limit jednocześnie oczekujących/przetwarzanych
+# zadań anonimowych (0 = brak limitu). Zalogowanych i redakcji nie dotyczy.
+EKSPORT_AUTORA_LIMIT_ANON_IP_NA_GODZINE = env(
+    "DJANGO_BPP_EKSPORT_AUTORA_LIMIT_ANON_IP_NA_GODZINE"
+)
+EKSPORT_AUTORA_LIMIT_ANON_W_KOLEJCE = env(
+    "DJANGO_BPP_EKSPORT_AUTORA_LIMIT_ANON_W_KOLEJCE"
+)
 INSTALLED_APPS += ["django_altcha"]
 
 # Widget wsparcia Freshdesk: osobne widgety dla zalogowanych i anonimów.

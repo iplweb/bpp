@@ -145,6 +145,30 @@ przez Microsoft lub ORCID nie są ruszane. Uruchomienie drugi raz jest
 bezpieczne. Wymuszenie dla pojedynczego użytkownika można też dodać i usunąć
 w panelu administracyjnym („Enforced password changes").
 
+## Limity eksportu publikacji autora dla niezalogowanych
+
+Eksport publikacji autora do BibTeX/RIS jest generowany w tle przez
+Celery. Niezalogowani użytkownicy (poza weryfikacją ALTCHA) podlegają
+dwóm limitom, które ustawia się zmiennymi środowiskowymi:
+
+| Zmienna | Domyślnie | Znaczenie |
+|---|---|---|
+| `DJANGO_BPP_EKSPORT_AUTORA_LIMIT_ANON_IP_NA_GODZINE` | `10` | ile nowych eksportów może zlecić niezalogowany użytkownik z jednego adresu IP w ciągu godziny; `0` = bez limitu |
+| `DJANGO_BPP_EKSPORT_AUTORA_LIMIT_ANON_W_KOLEJCE` | `20` | ile eksportów zleconych przez niezalogowanych może jednocześnie czekać lub być generowanych; `0` = bez limitu |
+
+- Ponowne zlecenie tego samego eksportu w ciągu kilku minut trafia do już
+  istniejącego zadania i nie zużywa limitu.
+- Po przekroczeniu limitu na IP strona eksportu pokazuje komunikat
+  (HTTP 429); po zapełnieniu kolejki — „Za dużo eksportów w toku, spróbuj
+  za kilka minut” (HTTP 503). Nowe zadanie nie jest wtedy tworzone.
+- Do limitu kolejki nie wliczają się zadania zakończone, zakończone
+  błędem ani starsze niż godzina (np. zawieszone po restarcie workera).
+- Adres IP klienta jest ustalany tak samo jak przy blokadzie logowania
+  i formularzu zgłoszeń publikacji (ostatni wpis `X-Forwarded-For`
+  dopisany przez nginx). Licznik startów trzymany jest w cache (Redis).
+- Limity nie dotyczą zalogowanych użytkowników — mają one własny,
+  stały limit startów, a redakcja nie ma limitu.
+
 ## Konfiguracja LDAP (ActiveDirectory)
 
 Konfiguracja LDAP (ActiveDirectory) odbywa się za pomocą zmiennych środowiskowych lub
