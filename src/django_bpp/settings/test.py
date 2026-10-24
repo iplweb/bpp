@@ -134,3 +134,7 @@ ALTCHA_HMAC_KEY = "test-altcha-hmac-key-deterministic-0123456789abcdef"
 # hasherów Django i działają z dowolnym z nich. MD5 jest tu WYŁĄCZNIE
 # testowy — produkcja bierze domyślną listę hasherów z base.py.
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
+# Walidator wycieków (HIBP) idzie do sieci — w testach wyłączony; testy
+# walidatora włączają go jawnie i mockują requests.
+BPP_HASLA_SPRAWDZAJ_WYCIEKI = False
