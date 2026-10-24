@@ -1,0 +1,1 @@
+Sekrety integracji (token aplikacji i tokeny użytkowników PBN, hasło Clarivate, sekret ORCID) są przechowywane w bazie w postaci zaszyfrowanej kluczem ``DJANGO_BPP_FIELD_ENCRYPTION_KEY`` (dotychczasowy ``DSPACE_CREDENTIALS_KEY`` nadal działa); doszło polecenie ``manage.py zaszyfruj_sekrety`` (z opcją ``--rotuj``) oraz ostrzeżenia systemowe o braku klucza.
