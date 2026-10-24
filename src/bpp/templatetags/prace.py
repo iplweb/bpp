@@ -118,6 +118,31 @@ def safe_streszczenie(value):
     return mark_safe(safe_streszczenie_html(value))
 
 
+@register.filter(name="safe_szczegoly")
+def safe_szczegoly(value):
+    """Wyrenderuj pole ``informacje``/``szczegoly``/``uwagi`` bezpiecznie.
+
+    Zamiennik dla ``|safe``: model sanityzuje te pola przy zapisie, ale
+    rekordy zapisane wcześniej (albo przez ``QuerySet.update()``) mogą nieść
+    niesanityzowany HTML — czyścimy go także przy renderze.
+    """
+    from bpp.util import safe_html, sanityzuj_jesli_html
+
+    return mark_safe(sanityzuj_jesli_html(value, safe_html) or "")
+
+
+@register.filter(name="safe_opis")
+def safe_opis(value):
+    """Wyrenderuj opis edytowany w TinyMCE (np. opis jednostki) bezpiecznie.
+
+    Zamiennik dla ``|safe``; obejmuje też dane zapisane przed wprowadzeniem
+    sanityzacji przy zapisie.
+    """
+    from bpp.util import safe_opis_html, sanityzuj_jesli_html
+
+    return mark_safe(sanityzuj_jesli_html(value, safe_opis_html) or "")
+
+
 @register.filter(name="safe_tytul")
 def safe_tytul(value):
     """Wyrenderuj tytuł publikacji bezpiecznie.

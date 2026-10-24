@@ -471,6 +471,64 @@ def safe_biogram_html(html):
     )
 
 
+class safe_opis_defaults:
+    # Opisy edytowane w TinyMCE (opis jednostki, tytuł strony głównej
+    # i deklaracja dostępności uczelni): te same tagi blokowe co biogram plus
+    # ``h1``, neutralne kontenery ``div``/``span`` oraz obrazki (wtyczka
+    # ``image`` edytora). ``style`` jest dopuszczony wyłącznie z bezpiecznymi
+    # właściwościami (wyrównanie, kolory, wcięcie); bez ``class``, bez
+    # ``iframe``/``video`` (wtyczka ``media``) i bez atrybutów zdarzeń.
+    ALLOWED_TAGS = safe_biogram_defaults.ALLOWED_TAGS + ("h1", "div", "span", "img")
+    ALLOWED_ATTRIBUTES = {
+        "*": ["style"],
+        "a": ["href", "title"],
+        "img": ["src", "alt", "title", "width", "height"],
+    }
+    ALLOWED_STYLE_PROPERTIES = (
+        "text-align",
+        "color",
+        "background-color",
+        "padding-left",
+        "text-decoration",
+    )
+
+
+def safe_opis_html(html):
+    """Zwróć bezpieczny HTML opisu edytowanego w TinyMCE.
+
+    Usuwa ``<script>``/``<style>`` wraz z treścią, atrybuty zdarzeń oraz
+    niedozwolone schematy URL (np. ``javascript:``) w ``href``/``src``.
+    """
+    html = html or ""
+
+    ALLOWED_TAGS = getattr(
+        settings, "OPIS_ALLOWED_TAGS", safe_opis_defaults.ALLOWED_TAGS
+    )
+    ALLOWED_ATTRIBUTES = getattr(
+        settings, "OPIS_ALLOWED_ATTRIBUTES", safe_opis_defaults.ALLOWED_ATTRIBUTES
+    )
+    return nh3.clean(
+        html,
+        tags=set(ALLOWED_TAGS),
+        attributes={k: set(v) for k, v in ALLOWED_ATTRIBUTES.items()},
+        filter_style_properties=set(safe_opis_defaults.ALLOWED_STYLE_PROPERTIES),
+        clean_content_tags={"script", "style"},
+        link_rel="nofollow noopener noreferrer",
+    )
+
+
+def sanityzuj_jesli_html(value, sanitizer=safe_html):
+    """Przepuść ``value`` przez ``sanitizer`` tylko, gdy zawiera znacznik.
+
+    Wartość bez ``<`` nie może nieść znacznika HTML, więc zwracamy ją bez
+    zmian (także ``None``) — tanio i bez zamiany ``&`` na ``&amp;`` przy
+    każdym zapisie (korupcja danych w eksporcie i wyszukiwaniu).
+    """
+    if not value or "<" not in value:
+        return value
+    return sanitizer(value)
+
+
 def safe_streszczenie_html(html):
     """Zwróć bezpieczny, zbalansowany HTML streszczenia.
 

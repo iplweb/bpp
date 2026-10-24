@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load prace %}
 
 {% block extratitle %}
     Deklaracja dostępności
@@ -20,7 +21,7 @@
     {% endif %}
 
     {% if uczelnia.pokazuj_deklaracje_dostepnosci == 2 %}
-    {{ uczelnia.deklaracja_dostepnosci_tekst|safe }}
+    {{ uczelnia.deklaracja_dostepnosci_tekst|safe_opis }}
     {% endif %}
 
 {% endblock %}
