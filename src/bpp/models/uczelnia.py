@@ -21,6 +21,7 @@ from bpp.fields import EncryptedTextField
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID, NazwaWDopelniaczu
 from bpp.util.ror import waliduj as waliduj_ror
+from bpp.util.ssrf import waliduj_url_integracji_offline
 from pbn_api.exceptions import WillNotExportError
 
 from .. import const
@@ -962,6 +963,40 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
                     "deklaracja_dostepnosci_tekst": "... ale nie został on wpisany poprawnie. Proszę skorygować.",
                 }
             )
+
+        self._waliduj_adresy_integracji()
+
+    #: Pola-adresy usług zewnętrznych, walidowane przy zmianie wartości.
+    POLA_ADRESOW_INTEGRACJI = ("pbn_api_root", "dspace_api_endpoint")
+
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        instance = super().from_db(db, field_names, values)
+        # Wartości adresów z bazy — do wykrycia zmiany w clean() bez
+        # dodatkowego zapytania.
+        instance._zapisane_adresy_integracji = {
+            pole: instance.__dict__[pole]
+            for pole in cls.POLA_ADRESOW_INTEGRACJI
+            if pole in instance.__dict__
+        }
+        return instance
+
+    def _waliduj_adresy_integracji(self):
+        """Walidacja (bez DNS) adresów integracji — tylko pól zmienionych
+        względem bazy, żeby istniejąca konfiguracja nie blokowała zapisu
+        innych pól. Rozwiązanie nazwy hosta robi formularz admina."""
+        zapisane = getattr(self, "_zapisane_adresy_integracji", {})
+        bledy = {}
+        for pole in self.POLA_ADRESOW_INTEGRACJI:
+            wartosc = getattr(self, pole)
+            if not wartosc or zapisane.get(pole) == wartosc:
+                continue
+            try:
+                waliduj_url_integracji_offline(wartosc)
+            except ValidationError as e:
+                bledy[pole] = e.messages
+        if bledy:
+            raise ValidationError(bledy)
 
     def save(self, *args, **kw):
         self.clean()
