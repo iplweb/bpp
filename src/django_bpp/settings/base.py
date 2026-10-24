@@ -13,6 +13,7 @@ import environ
 from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 
+from bpp.auth.microsoft_conf import normalize_microsoft_tenant_id
 from bpp.util import slugify_function
 from django_bpp.channels_prefix import get_channels_prefix
 from django_bpp.rollbar_filters import zbuduj_exception_level_filters
@@ -62,6 +63,8 @@ env = environ.Env(
     MICROSOFT_AUTH_CLIENT_SECRET=(str, None),
     MICROSOFT_AUTH_TENANT_ID=(str, None),
     MICROSOFT_AUTH_EXTRA_SCOPES=(str, ""),
+    MICROSOFT_AUTH_LINK_BY_EMAIL=(bool, False),
+    MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING=(bool, False),
     #
     # Email
     #
@@ -1375,7 +1378,20 @@ if MICROSOFT_AUTH_CLIENT_ID:
             )
         ) from e
     MICROSOFT_AUTH_CLIENT_SECRET = env("MICROSOFT_AUTH_CLIENT_SECRET")
-    MICROSOFT_AUTH_TENANT_ID = env("MICROSOFT_AUTH_TENANT_ID")
+    # Zalecany konkretny katalog Entra ID (GUID lub domena). Pusty ->
+    # "common" (tryb wielokatalogowy): start nie jest blokowany, ale system
+    # check bpp.W201 i komunikat dla superusera ostrzegają o konfiguracji.
+    MICROSOFT_AUTH_TENANT_ID = normalize_microsoft_tenant_id(
+        env("MICROSOFT_AUTH_TENANT_ID")
+    )
+    # Automatyczne wiązanie nowego konta Microsoft z istniejącym kontem BPP
+    # z uprawnieniami / hasłem lokalnym po samym e-mailu — domyślnie wyłączone.
+    MICROSOFT_AUTH_LINK_BY_EMAIL = env("MICROSOFT_AUTH_LINK_BY_EMAIL")
+    # Tryb wielokatalogowy: domyślnie logują się wyłącznie konta Microsoft już
+    # powiązane z BPP (bez wiązania po e-mailu i zakładania nowych kont).
+    MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING = env(
+        "MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING"
+    )
     MICROSOFT_AUTH_LOGIN_TYPE = "ma"
     MICROSOFT_AUTH_EXTRA_SCOPES = env("MICROSOFT_AUTH_EXTRA_SCOPES")
 
@@ -1392,7 +1408,7 @@ if MICROSOFT_AUTH_CLIENT_ID:
     # to avoid unnecessary network traffic on every page load
 
     AUTHENTICATION_BACKENDS = [
-        "microsoft_auth.backends.MicrosoftAuthenticationBackend",
+        "bpp.auth.microsoft.BppMicrosoftAuthenticationBackend",
         "django.contrib.auth.backends.ModelBackend",
     ]
 

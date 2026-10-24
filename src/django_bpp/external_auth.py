@@ -5,12 +5,16 @@ używać stałej bez ciągnięcia `password_policies` (lightweight auth_server
 nie ma password_policies w INSTALLED_APPS).
 """
 
-MICROSOFT_BACKEND = "microsoft_auth.backends.MicrosoftAuthenticationBackend"
+MICROSOFT_BACKEND = "bpp.auth.microsoft.BppMicrosoftAuthenticationBackend"
+# Ścieżka backendu z pakietu django-microsoft-auth, używana przed wprowadzeniem
+# BppMicrosoftAuthenticationBackend — nadal rozpoznawana jako zewnętrzna.
+MICROSOFT_LEGACY_BACKEND = "microsoft_auth.backends.MicrosoftAuthenticationBackend"
 ORCID_BACKEND = "orcid_integration.backends.OrcidAuthenticationBackend"
 OIDC_BACKEND = "oidc_integration.backends.BppOIDCBackend"
 
 EXTERNAL_AUTH_BACKENDS = {
     MICROSOFT_BACKEND,
+    MICROSOFT_LEGACY_BACKEND,
     ORCID_BACKEND,
     OIDC_BACKEND,
 }

@@ -4,6 +4,7 @@
   wielouczelniana).
 - ``bpp.W101``–``bpp.W104``: szyfrowanie sekretów integracji
   (EncryptedTextField).
+- ``bpp.W201``: logowanie Microsoft bez konkretnego katalogu (tenanta).
 
 Wszystkie są ostrzeżeniami (Warning) — nie blokują startu, ``migrate`` ani
 buildu. Checki zaglądające do bazy mają tag ``Tags.database`` i działają
@@ -165,3 +166,24 @@ def sekrety_w_bazie_check(app_configs, databases=None, **kwargs):
             )
         )
     return wynik
+
+
+@checks.register(checks.Tags.security)
+def microsoft_tenant_check(app_configs, **kwargs):
+    """Ostrzeż, gdy logowanie Microsoft nie wskazuje konkretnego katalogu."""
+    from django.conf import settings
+
+    from bpp.auth.microsoft_conf import (
+        TENANT_HINT,
+        W_TENANT_ID,
+        microsoft_tenant_warning,
+    )
+
+    tresc = microsoft_tenant_warning(
+        getattr(settings, "MICROSOFT_AUTH_CLIENT_ID", None),
+        getattr(settings, "MICROSOFT_AUTH_TENANT_ID", None),
+        getattr(settings, "MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING", False),
+    )
+    if not tresc:
+        return []
+    return [checks.Warning(tresc, hint=TENANT_HINT, id=W_TENANT_ID)]

@@ -193,3 +193,73 @@ inline.
 
 Jeżeli serwer WWW (np. nginx) sam ustawia nagłówek CSP, wyłącz nagłówek
 z aplikacji: `DJANGO_BPP_CSP_ENABLED=false`.
+
+## Logowanie przez Microsoft (Office 365 / Entra ID)
+
+Logowanie kontem Microsoft wymaga opcjonalnego pakietu `django_microsoft_auth`
+(`uv sync --extra office365`) i włącza się po ustawieniu w pliku `.env`
+zmiennych `MICROSOFT_AUTH_CLIENT_ID` oraz `MICROSOFT_AUTH_CLIENT_SECRET`.
+
+| Zmienna | Opis |
+|---------|------|
+| `MICROSOFT_AUTH_CLIENT_ID` | Identyfikator aplikacji zarejestrowanej w Entra ID. |
+| `MICROSOFT_AUTH_CLIENT_SECRET` | Sekret tej aplikacji. |
+| `MICROSOFT_AUTH_TENANT_ID` | **Zalecany.** Identyfikator katalogu (GUID) albo jego domena, np. `uczelnia.onmicrosoft.com`. |
+| `MICROSOFT_AUTH_LINK_BY_EMAIL` | Domyślnie `False`. Patrz niżej. |
+| `MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING` | Domyślnie `False`. Dotyczy tylko trybu bez konkretnego katalogu. Patrz niżej. |
+| `MICROSOFT_AUTH_EXTRA_SCOPES` | Dodatkowe zakresy OAuth (opcjonalnie). |
+
+### Zalecany konkretny katalog (tenant)
+
+Zalecamy ustawienie `MICROSOFT_AUTH_TENANT_ID` na katalog uczelni. Wtedy BPP
+przyjmuje wyłącznie tokeny wystawione przez ten katalog i sprawdza claimy
+`iss` i `tid` tokenu. Identyfikator katalogu znajdziesz w portalu Azure:
+*Microsoft Entra ID → Przegląd → Identyfikator dzierżawy*.
+
+Jeżeli ustawiono `MICROSOFT_AUTH_CLIENT_ID`, a `MICROSOFT_AUTH_TENANT_ID` jest
+pusty albo ma wartość `common`, `organizations` lub `consumers`, BPP
+**uruchomi się normalnie**, ale logowanie działa w trybie wielokatalogowym:
+
+- przez logowanie Microsoft przejdą konta z dowolnego katalogu Entra ID
+  (dla `common` i `consumers` także prywatne konta Microsoft), o ile
+  rejestracja aplikacji w Entra ID na to pozwala; BPP nie sprawdza, z którego
+  katalogu pochodzi token,
+- logują się **wyłącznie konta Microsoft już powiązane** z kontem BPP;
+  BPP nie zakłada nowych kont i nie wiąże kont po adresie e-mail (także
+  zwykłych kont bez uprawnień), bo w tym trybie adresu e-mail z tokenu nie da
+  się zweryfikować; użytkownik niepowiązanego konta zobaczy komunikat
+  „Konto Microsoft nie jest powiązane z kontem w BPP — skontaktuj się
+  z administratorem”, a administrator może powiązać konto ręcznie w module
+  administracyjnym (*Microsoft accounts*),
+- `MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING=True` przywraca w tym trybie
+  zakładanie nowych kont i wiązanie po e-mailu według zasad opisanych niżej
+  (konta z uprawnieniami lub hasłem lokalnym nadal nie są wiązane
+  automatycznie) — używaj tylko świadomie,
+- `manage.py check` zgłasza ostrzeżenie `bpp.W201`, a superuser po każdym
+  zalogowaniu widzi komunikat z tą samą podpowiedzią.
+
+Aby usunąć ostrzeżenie i przywrócić zwykłe zakładanie oraz wiązanie kont,
+ustaw `MICROSOFT_AUTH_TENANT_ID` (GUID albo domena katalogu) i zrestartuj
+serwer aplikacji.
+
+### Wiązanie kont Microsoft z istniejącymi kontami BPP
+
+Przy pierwszym logowaniu kontem Microsoft BPP szuka użytkownika o tym samym
+adresie e-mail (bez rozróżniania wielkości liter). Token bez adresu e-mail
+oraz adres pasujący do więcej niż jednego użytkownika powodują odrzucenie
+logowania. Domyślnie (`MICROSOFT_AUTH_LINK_BY_EMAIL=False`) **nie**
+powiąże automatycznie konta Microsoft z istniejącym użytkownikiem, który:
+
+- ma uprawnienia administracyjne (`is_staff` lub `is_superuser`), albo
+- ma ustawione lokalne hasło do BPP.
+
+Takie logowanie zostanie odrzucone. Administrator może powiązać konto ręcznie
+w module administracyjnym (*Microsoft accounts*), albo — jeżeli adresy e-mail
+w katalogu są w pełni zaufane — ustawić `MICROSOFT_AUTH_LINK_BY_EMAIL=True`.
+Przy skonfigurowanym konkretnym katalogu zwykłe konta bez hasła lokalnego oraz
+nowi użytkownicy są wiązani/zakładani automatycznie, jak dotychczas (w trybie
+wielokatalogowym — patrz wyżej).
+
+Konta Microsoft **już powiązane** z użytkownikiem BPP logują się bez zmian.
+Po aktualizacji użytkownicy zalogowani przez Microsoft muszą jednorazowo
+zalogować się ponownie (zmieniła się nazwa backendu uwierzytelniania).
