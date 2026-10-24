@@ -16545,6 +16545,44 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+274	bpp	0187_auto_20191027_1141	2000-01-01 00:00:00+00
+689	ewaluacja_optymalizacja	0002_unpinningopportunity	2000-01-01 00:00:00+00
+857	pbn_import	0007_add_last_updated_field	2000-01-01 00:00:00+00
+418	bpp	0324_django32	2000-01-01 00:00:00+00
+2	auth	0001_initial	2000-01-01 00:00:00+00
+113	bpp	0036_auto_20160117_2147	2000-01-01 00:00:00+00
+115	bpp	0038_auto_20160708_0732	2000-01-01 00:00:00+00
+116	bpp	0039_wydzial_archiwalny	2000-01-01 00:00:00+00
+117	bpp	0040_auto_20160802_2209	2000-01-01 00:00:00+00
+118	bpp	0041_auto_20160802_2211	2000-01-01 00:00:00+00
+119	bpp	0042_auto_20160802_2346	2000-01-01 00:00:00+00
+120	bpp	0043_auto_20160817_1151	2000-01-01 00:00:00+00
+121	bpp	0044_zaktualizuj_obce_archiwalne	2000-01-01 00:00:00+00
+122	bpp	0045_auto_20160809_0004	2000-01-01 00:00:00+00
+123	bpp	0046_ostatnia_jednostka_trigger	2000-01-01 00:00:00+00
+124	bpp	0038_autor_pesel_md5	2000-01-01 00:00:00+00
+125	bpp	0040_merge	2000-01-01 00:00:00+00
+126	bpp	0041_auto_20160722_2230	2000-01-01 00:00:00+00
+127	bpp	0047_merge	2000-01-01 00:00:00+00
+128	bpp	0048_wyczysc_nazwy_jednostek	2000-01-01 00:00:00+00
+129	bpp	0049_auto_20160920_0333	2000-01-01 00:00:00+00
+130	bpp	0050_usun_model_historyczny	2000-01-01 00:00:00+00
+131	bpp	0051_uczelnia_obca_jednostka	2000-01-01 00:00:00+00
+132	bpp	0052_skupia_pracownikow_zarzadzaj_automatycznie	2000-01-01 00:00:00+00
+133	bpp	0053_obiekt_jednostka_pole_uczelnia	2000-01-01 00:00:00+00
+134	bpp	0054_obiekt_jednostka_pole_aktualna	2000-01-01 00:00:00+00
+135	bpp	0055_jednostka_wydzial	2000-01-01 00:00:00+00
+136	bpp	0056_jednostka_trigger_jednostka_wydzial	2000-01-01 00:00:00+00
+137	bpp	0057_jednostka_wydzial_jest_opcjonalny	2000-01-01 00:00:00+00
+138	bpp	0058_auto_20161113_2332	2000-01-01 00:00:00+00
+139	bpp	0059_auto_20161114_0945	2000-01-01 00:00:00+00
+140	bpp	0060_auto_20161114_1905	2000-01-01 00:00:00+00
+141	bpp	0061_utworz_jednostka_wydzial	2000-01-01 00:00:00+00
+142	bpp	0062_auto_20161119_2207	2000-01-01 00:00:00+00
+143	bpp	0063_autor_aktualny	2000-01-01 00:00:00+00
+144	bpp	0064_autor_jednostka_aktualna	2000-01-01 00:00:00+00
+145	bpp	0051_auto_20161201_1137	2000-01-01 00:00:00+00
+146	bpp	0065_merge	2000-01-01 00:00:00+00
 52	pbn_api	0018_auto_20210714_0104	2000-01-01 00:00:00+00
 167	bpp	0086_calkowita_liczba_redaktorow	2000-01-01 00:00:00+00
 168	bpp	0087_pokazuj_ic_pkt_wew	2000-01-01 00:00:00+00
@@ -16657,7 +16695,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 270	bpp	0183_auto_20191020_1535	2000-01-01 00:00:00+00
 271	bpp	0184_autor_expertus_id	2000-01-01 00:00:00+00
 272	bpp	0185_auto_20191021_2008	2000-01-01 00:00:00+00
-274	bpp	0187_auto_20191027_1141	2000-01-01 00:00:00+00
 275	bpp	0188_auto_20191027_1737	2000-01-01 00:00:00+00
 276	bpp	0189_auto_20191027_2158	2000-01-01 00:00:00+00
 277	bpp	0190_auto_20191030_0532	2000-01-01 00:00:00+00
@@ -17052,7 +17089,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 686	ewaluacja_metryki	0005_alter_metrykaautora_rodzaj_autora_and_more	2000-01-01 00:00:00+00
 687	ewaluacja_metryki	0006_alter_metrykaautora_autor_and_more	2000-01-01 00:00:00+00
 688	ewaluacja_optymalizacja	0001_initial	2000-01-01 00:00:00+00
-689	ewaluacja_optymalizacja	0002_unpinningopportunity	2000-01-01 00:00:00+00
 690	ewaluacja_optymalizacja	0003_unpinningopportunity_punkty_roznica_b_and_more	2000-01-01 00:00:00+00
 691	ewaluacja_optymalizacja	0004_unpinningopportunity_punkty_roznica_a_and_more	2000-01-01 00:00:00+00
 692	ewaluacja_optymalizacja	0005_add_real_unpinning_values	2000-01-01 00:00:00+00
@@ -17234,10 +17270,10 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 854	pbn_import	0004_add_bpp_publication_content_type	2000-01-01 00:00:00+00
 855	pbn_import	0005_remove_importstatistics	2000-01-01 00:00:00+00
 856	pbn_import	0006_remove_importstep	2000-01-01 00:00:00+00
-857	pbn_import	0007_add_last_updated_field	2000-01-01 00:00:00+00
 858	pbn_import	0008_add_importsession_indexes	2000-01-01 00:00:00+00
 859	pbn_import	0009_fix_error_fields_default	2000-01-01 00:00:00+00
 860	pbn_import	0010_alter_importinconsistency_inconsistency_type	2000-01-01 00:00:00+00
+155	bpp	0074_django110	2000-01-01 00:00:00+00
 861	pbn_import	0011_alter_importinconsistency_session_and_more	2000-01-01 00:00:00+00
 862	pbn_komparator_zrodel	0001_initial	2000-01-01 00:00:00+00
 863	pbn_komparator_zrodel	0002_add_brakujaca_dyscyplina_pbn	2000-01-01 00:00:00+00
@@ -17453,7 +17489,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1115	ewaluacja_optymalizacja	0016_statusodpinaniawszystkich	2000-01-01 00:00:00+00
 1116	import_list_ministerialnych	0009_alter_importlistministerialnych_options_and_more	2000-01-01 00:00:00+00
 69	pbn_api	0035_django32	2000-01-01 00:00:00+00
-418	bpp	0324_django32	2000-01-01 00:00:00+00
 786	import_pracownikow	0007_django32	2000-01-01 00:00:00+00
 1072	oauth2_provider	0012_add_token_checksum	2000-01-01 00:00:00+00
 273	bpp	0186_auto_20191021_2008	2000-01-01 00:00:00+00
@@ -17513,7 +17548,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 35	pbn_api	0001_initial	2000-01-01 00:00:00+00
 36	pbn_api	0002_institution	2000-01-01 00:00:00+00
 1	contenttypes	0001_initial	2000-01-01 00:00:00+00
-2	auth	0001_initial	2000-01-01 00:00:00+00
 3	bpp	0001_initial	2000-01-01 00:00:00+00
 4	admin	0001_initial	2000-01-01 00:00:00+00
 5	admin	0002_logentry_remove_auto_add	2000-01-01 00:00:00+00
@@ -17618,39 +17652,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 110	bpp	0033_auto_20151001_1425	2000-01-01 00:00:00+00
 111	bpp	0034_auto_20151011_1514	2000-01-01 00:00:00+00
 112	bpp	0035_nomorefixtures_data_migration	2000-01-01 00:00:00+00
-113	bpp	0036_auto_20160117_2147	2000-01-01 00:00:00+00
-115	bpp	0038_auto_20160708_0732	2000-01-01 00:00:00+00
-116	bpp	0039_wydzial_archiwalny	2000-01-01 00:00:00+00
-117	bpp	0040_auto_20160802_2209	2000-01-01 00:00:00+00
-118	bpp	0041_auto_20160802_2211	2000-01-01 00:00:00+00
-119	bpp	0042_auto_20160802_2346	2000-01-01 00:00:00+00
-120	bpp	0043_auto_20160817_1151	2000-01-01 00:00:00+00
-121	bpp	0044_zaktualizuj_obce_archiwalne	2000-01-01 00:00:00+00
-122	bpp	0045_auto_20160809_0004	2000-01-01 00:00:00+00
-123	bpp	0046_ostatnia_jednostka_trigger	2000-01-01 00:00:00+00
-124	bpp	0038_autor_pesel_md5	2000-01-01 00:00:00+00
-125	bpp	0040_merge	2000-01-01 00:00:00+00
-126	bpp	0041_auto_20160722_2230	2000-01-01 00:00:00+00
-127	bpp	0047_merge	2000-01-01 00:00:00+00
-128	bpp	0048_wyczysc_nazwy_jednostek	2000-01-01 00:00:00+00
-129	bpp	0049_auto_20160920_0333	2000-01-01 00:00:00+00
-130	bpp	0050_usun_model_historyczny	2000-01-01 00:00:00+00
-131	bpp	0051_uczelnia_obca_jednostka	2000-01-01 00:00:00+00
-132	bpp	0052_skupia_pracownikow_zarzadzaj_automatycznie	2000-01-01 00:00:00+00
-133	bpp	0053_obiekt_jednostka_pole_uczelnia	2000-01-01 00:00:00+00
-134	bpp	0054_obiekt_jednostka_pole_aktualna	2000-01-01 00:00:00+00
-135	bpp	0055_jednostka_wydzial	2000-01-01 00:00:00+00
-136	bpp	0056_jednostka_trigger_jednostka_wydzial	2000-01-01 00:00:00+00
-137	bpp	0057_jednostka_wydzial_jest_opcjonalny	2000-01-01 00:00:00+00
-138	bpp	0058_auto_20161113_2332	2000-01-01 00:00:00+00
-139	bpp	0059_auto_20161114_0945	2000-01-01 00:00:00+00
-140	bpp	0060_auto_20161114_1905	2000-01-01 00:00:00+00
-141	bpp	0061_utworz_jednostka_wydzial	2000-01-01 00:00:00+00
-142	bpp	0062_auto_20161119_2207	2000-01-01 00:00:00+00
-143	bpp	0063_autor_aktualny	2000-01-01 00:00:00+00
-144	bpp	0064_autor_jednostka_aktualna	2000-01-01 00:00:00+00
-145	bpp	0051_auto_20161201_1137	2000-01-01 00:00:00+00
-146	bpp	0065_merge	2000-01-01 00:00:00+00
 147	bpp	0066_wydawnictwo_zwarte_calkowita_liczba_autorow	2000-01-01 00:00:00+00
 148	bpp	0067_typ_kbn_artykul_pbn	2000-01-01 00:00:00+00
 149	bpp	0068_indeks_liczba_znakow	2000-01-01 00:00:00+00
@@ -17659,7 +17660,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 152	bpp	0071_fix_liczba_znakow_wyd	2000-01-01 00:00:00+00
 153	bpp	0072_gist_to_gin	2000-01-01 00:00:00+00
 154	bpp	0073_auto_20170616_1709	2000-01-01 00:00:00+00
-155	bpp	0074_django110	2000-01-01 00:00:00+00
 156	bpp	0075_auto_20170622_0057	2000-01-01 00:00:00+00
 157	bpp	0076_auto_20170622_0058	2000-01-01 00:00:00+00
 158	bpp	0077_auto_20170624_0130	2000-01-01 00:00:00+00
@@ -18073,21 +18073,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 314	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 315	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 316	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-332	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
-333	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
-334	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-335	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-336	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-337	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-338	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-339	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-340	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-341	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-342	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-343	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-344	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-345	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-346	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
