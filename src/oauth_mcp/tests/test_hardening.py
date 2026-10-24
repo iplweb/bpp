@@ -184,6 +184,25 @@ def test_pkce_plain_odrzucone(client, django_user_model):
 
 
 @pytest.mark.django_db
+def test_pkce_bez_metody_odrzucone(client, django_user_model):
+    user, app = _aplikacja(django_user_model)
+    client.force_login(user)
+    resp = client.post(
+        "/o/authorize/",
+        {
+            "response_type": "code",
+            "client_id": app.client_id,
+            "redirect_uri": "https://claude.ai/cb",
+            "scope": "read",
+            "code_challenge": "a" * 64,
+            "allow": "Authorize",
+        },
+    )
+    assert "code=" not in resp.get("Location", "")
+    assert not get_grant_model().objects.filter(application=app).exists()
+
+
+@pytest.mark.django_db
 def test_pkce_s256_dalej_wydaje_kod(client, django_user_model):
     user, app = _aplikacja(django_user_model)
     client.force_login(user)
@@ -228,7 +247,7 @@ def test_ekran_zgody_host_redirect_i_escape_nazwy(client, django_user_model):
     tresc = resp.content.decode()
     assert "<b>Zaufana</b>" not in tresc
     assert "&lt;b&gt;Zaufana&lt;/b&gt;" in tresc
-    assert "claude.ai" in tresc
+    assert "<strong>claude.ai</strong>" in tresc
     assert "nazwa pochodzi od aplikacji" in tresc
 
 
