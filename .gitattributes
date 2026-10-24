@@ -1,2 +1,0 @@
-# Indeksy marisa-trie (np. słownik haseł) to binaria — bez diffów i merge.
-*.marisa binary

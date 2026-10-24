@@ -501,7 +501,6 @@ dependencies = [
     { name = "idutils" },
     { name = "isbnlib2" },
     { name = "langdetect" },
-    { name = "marisa-trie" },
     { name = "markdown" },
     { name = "moai-iplweb" },
     { name = "mozilla-django-oidc" },
@@ -540,6 +539,7 @@ dependencies = [
     { name = "xhtml2pdf" },
     { name = "xlrd" },
     { name = "zxcvbn" },
+    { name = "zxcvbn-pl" },
 ]
 
 [package.optional-dependencies]
@@ -690,7 +690,6 @@ requires-dist = [
     { name = "idutils", specifier = ">=1.7.0" },
     { name = "isbnlib2", specifier = ">=3.11.24" },
     { name = "langdetect", specifier = ">=1.0.9" },
-    { name = "marisa-trie", specifier = ">=1.2" },
     { name = "markdown", specifier = ">=3.7,<4" },
     { name = "moai-iplweb", specifier = ">=2.0.4" },
     { name = "mozilla-django-oidc", specifier = ">=5.0.2,<6" },
@@ -730,6 +729,7 @@ requires-dist = [
     { name = "xhtml2pdf", specifier = ">=0.2.18" },
     { name = "xlrd", specifier = "==2.0.2" },
     { name = "zxcvbn", specifier = ">=4.5.0,<5" },
+    { name = "zxcvbn-pl", specifier = ">=0.1.0,<1" },
 ]
 provides-extras = ["ldap", "office365", "baseline-rebuild"]
 
@@ -7260,4 +7260,17 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ae/40/9366940b1484fd4e9423c8decbbf34a73bf52badb36281e082fe02b57aca/zxcvbn-4.5.0.tar.gz", hash = "sha256:70392c0fff39459d7f55d0211151401e79e76fcc6e2c22b61add62900359c7c1", size = 411249, upload-time = "2025-02-19T19:03:02.699Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c2/16/7410f8e714a109d43d17f4e27c8eabb351557653a9b570db1bd7dfdfd822/zxcvbn-4.5.0-py2.py3-none-any.whl", hash = "sha256:2b6eed621612ce6d65e6e4c7455b966acee87d0280e257956b1f06ccc66bd5ff", size = 409397, upload-time = "2025-02-19T19:03:00.521Z" },
+]
+
+[[package]]
+name = "zxcvbn-pl"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "marisa-trie" },
+    { name = "zxcvbn" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/30/35/695307ee680efa34e7e6bbc097a0ce68a27d8fa50654e27ec1fa925eb22e/zxcvbn_pl-0.1.0.tar.gz", hash = "sha256:e58d1bab812e143f8247044b9818f4eb4a8bf4eb304f9758429b20f2e3c74dab", size = 539644, upload-time = "2026-10-24T18:06:00.173Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0f/7c/7720edaba8b4c2cb4a0ad8e2492d55ecd926788853e0ad7c71e25d395ec7/zxcvbn_pl-0.1.0-py3-none-any.whl", hash = "sha256:e56ca168a3c267bcaec961d281bc79e3c5632e26656a30fb56a97080c942206e", size = 537908, upload-time = "2026-10-24T18:05:54.544Z" },
 ]

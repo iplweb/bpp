@@ -41,9 +41,11 @@ cyklicznego wymuszania zmiany hasła.
     serwerze (bez wysyłania hasła): złożone z popularnych haseł i słów,
     powtórzeń, sekwencji, sąsiednich klawiszy, dat lub danych konta —
     także w przeróbkach typu `P@ssw0rd`; oprócz angielskich słowników
-    zxcvbn sprawdzanych jest ok. 50 000 najczęstszych polskich słów (także
-    bez polskich znaków) — hasło z kilku słów nadal jest dobre, ale jedno
-    pospolite słowo z cyframi (np. `słoneczko123456`) już nie,
+    zxcvbn sprawdzane są polskie pospolite słowa, imiona i nazwiska
+    (pakiet [zxcvbn-pl](https://pypi.org/project/zxcvbn-pl/), także bez
+    polskich znaków) — hasło z kilku słów nadal jest dobre, ale jedno
+    pospolite słowo, imię lub nazwisko z cyframi (np. `słoneczko123456`,
+    `Malgorzata12345`) już nie,
   - hasła znane z wycieków danych — sprawdzane w serwisie
     [Have I Been Pwned](https://haveibeenpwned.com/Passwords) metodą
     k-anonimowości: do serwisu trafia tylko 5 pierwszych znaków skrótu

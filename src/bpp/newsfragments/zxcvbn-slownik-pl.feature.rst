@@ -1,1 +1,1 @@
-Ocena siły hasła (zxcvbn) zna teraz ok. 50 000 najczęstszych polskich słów, także wpisanych bez polskich znaków — hasła złożone z jednego pospolitego polskiego słowa i cyfr (np. „słoneczko123456”) są odrzucane jako łatwe do odgadnięcia, a frazy z kilku słów nadal przechodzą.
+Ocena siły hasła (zxcvbn) zna teraz polskie pospolite słowa, imiona i nazwiska, także wpisane bez polskich znaków (pakiet zxcvbn-pl) — hasła złożone z jednego takiego słowa i cyfr (np. „słoneczko123456”, „Malgorzata12345”) są odrzucane jako łatwe do odgadnięcia, a frazy z kilku słów nadal przechodzą.
