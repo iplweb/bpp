@@ -2,6 +2,7 @@ import numpy
 import pandas
 
 from bpp.models import Dyscyplina_Naukowa
+from import_common.util import sprawdz_plik_importu
 
 
 def napraw_literowki_w_bazie():
@@ -20,6 +21,8 @@ def napraw_literowki_w_bazie():
 
 
 def wczytaj_plik_importu_dyscyplin_zrodel(fn):
+    # Limit rozmiaru + bomba dekompresji PRZED pandas (plik od użytkownika).
+    sprawdz_plik_importu(fn)
     try:
         data = pandas.read_excel(fn, header=1).replace({numpy.nan: None})
     except ValueError as e:

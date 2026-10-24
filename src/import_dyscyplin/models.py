@@ -14,6 +14,7 @@ from import_common.exceptions import (
     BadNoOfSheetsException,
     HeaderNotFoundException,
     ImproperFileException,
+    NiebezpiecznyPlikException,
 )
 from import_common.util import znajdz_naglowek
 
@@ -239,6 +240,10 @@ class Import_Dyscyplin(TimeStampedModel):
         except HeaderNotFoundException:
             self.bledny = True
             self.info = "Nagłówek nie został znaleziony"
+            return
+        except NiebezpiecznyPlikException as e:
+            self.bledny = True
+            self.info = f"niepoprawny plik - {e}"
             return
 
         self.kolumna_set.all().delete()

@@ -89,3 +89,20 @@ def test_csv_xlsx_parity(jcr_xlsx_path, jcr_csv_path):
     kx = {(z.issn, z.e_issn, z.nazwa) for z in x.czasopisma}
     kc = {(z.issn, z.e_issn, z.nazwa) for z in c.czasopisma}
     assert kx == kc
+
+
+def test_odrzuca_za_duzy_csv(jcr_csv_path, monkeypatch):
+    from import_common.exceptions import PlikZaDuzyException
+    from import_common.tests._pliki_limity import maly_limit_pliku
+
+    maly_limit_pliku(monkeypatch)
+    with pytest.raises(PlikZaDuzyException):
+        wczytaj_plik_jcr(jcr_csv_path)
+
+
+def test_odrzuca_male_bomby_przy_obnizonym_limicie(tmp_path, monkeypatch):
+    from import_common.tests._pliki_limity import maly_limit_dekompresji, zrob_bombe
+
+    maly_limit_dekompresji(monkeypatch)
+    with pytest.raises(DecompressionBombException):
+        wczytaj_plik_jcr(zrob_bombe(tmp_path / "b.xlsx"))

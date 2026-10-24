@@ -104,16 +104,16 @@ def _detect_rok(header: list[str], rows_before: list[list]) -> int | None:
 
 
 def wczytaj_plik_jcr(path: str) -> ParsedJCR:
+    # Oba warianty materializują wszystkie wiersze do listy niżej, więc limit
+    # rozmiaru dotyczy też CSV. XLSX to archiwum ZIP — mała bomba dekompresyjna
+    # (~KB → GB) rozłożyłaby workera importu (OOM). Odrzucamy plik PRZED
+    # otwarciem (wspólny bezpiecznik z pozostałymi importerami w BPP).
+    from import_common.util import sprawdz_plik_importu
+
+    sprawdz_plik_importu(path)
     if path.lower().endswith(".csv"):
         rows = list(_iter_rows_csv(path))
     else:
-        # XLSX to archiwum ZIP — mała bomba dekompresyjna (~KB → GB) rozłożyłaby
-        # workera importu (OOM) już przy materializacji wierszy do listy niżej.
-        # Odrzucamy ją PRZED otwarciem pliku przez openpyxl (wspólny bezpiecznik
-        # z pozostałymi importerami XLSX w BPP).
-        from import_common.util import sprawdz_bombe_dekompresji
-
-        sprawdz_bombe_dekompresji(path)
         rows = list(_iter_rows_xlsx(path))
 
     hidx = _find_header_index(rows)
