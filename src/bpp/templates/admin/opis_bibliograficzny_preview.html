@@ -5,7 +5,6 @@
 {% endblock %}
 
 {% block body %}
-    <p></p>
     <div class="grid-container">
         <div class="grid-x">
             <div class="large-12 cell">
@@ -14,7 +13,12 @@
                     <input type="button" data-action="close-window" value="Zamknij"/>
                 </div>
 
-                {% if template_okay %}
+                {% if brak_szablonu %}
+                    <p>
+                        Podgląd uruchamia się przyciskiem „Szybki podgląd” na stronie
+                        edycji szablonu.
+                    </p>
+                {% elif template_okay %}
                     <p>Szablon przeanalizowany poprawnie. Poniżej znajdziesz listę {{ ile_ostatnich_prac }} ostatnio zmienionych rekordów
                         w  BPP z opisem bibliograficznym wyrenderowanym za pomocą nowego szablonu. Po zweryfikowaniu,
                         czy wszystko działa zgodnie z zamierzeniami możesz zamknąć to okno i zapisać szablon --
