@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load bezpieczny_url %}
 
 {% block extratitle %}
     Deklaracja dostępności
@@ -12,11 +13,15 @@
 {% block content %}
 
     {% if uczelnia.pokazuj_deklaracje_dostepnosci == 1 %}
+    {% with url=uczelnia.deklaracja_dostepnosci_url|bezpieczny_url %}
+    {% if url %}
     Przekierowuję na stronę
-    <a href="{{ uczelnia.deklaracja_dostepnosci_url }}">{{ uczelnia.deklaracja_dostepnosci_url }}</a>
+    <a href="{{ url }}">{{ url }}</a>
     <script>
-        location.href = '{{ uczelnia.deklaracja_dostepnosci_url }}';
+        location.href = '{{ url|escapejs }}';
     </script>
+    {% endif %}
+    {% endwith %}
     {% endif %}
 
     {% if uczelnia.pokazuj_deklaracje_dostepnosci == 2 %}

@@ -1,4 +1,4 @@
-{% load static %}
+{% load static bezpieczny_url %}
 <div class="callout">
     <h4>
         <span class="fi-page-filled"></span>
@@ -181,11 +181,15 @@
                 <tr>
                     <th>URL</th>
                     <td>
-                        <a href="{{ data.url }}"
-                           target="_blank"
-                           rel="noopener">
+                        {% if data.url|bezpieczny_url %}
+                            <a href="{{ data.url|bezpieczny_url }}"
+                               target="_blank"
+                               rel="noopener">
+                                {{ data.url }}
+                            </a>
+                        {% else %}
                             {{ data.url }}
-                        </a>
+                        {% endif %}
                     </td>
                 </tr>
             {% endif %}
@@ -193,11 +197,15 @@
                 <tr>
                     <th>Licencja</th>
                     <td>
-                        <a href="{{ data.license_url }}"
-                           target="_blank"
-                           rel="noopener">
+                        {% if data.license_url|bezpieczny_url %}
+                            <a href="{{ data.license_url|bezpieczny_url }}"
+                               target="_blank"
+                               rel="noopener">
+                                {{ data.license_url }}
+                            </a>
+                        {% else %}
                             {{ data.license_url }}
-                        </a>
+                        {% endif %}
                     </td>
                 </tr>
             {% endif %}

@@ -1,4 +1,4 @@
-{% load importer_tags %}
+{% load importer_tags bezpieczny_url %}
 <div class="callout">
     <h4>
         <span class="fi-check"></span>
@@ -151,11 +151,15 @@
                 <tr>
                     <th>URL</th>
                     <td>
-                        <a href="{{ session.normalized_data.url }}"
-                           target="_blank"
-                           rel="noopener">
+                        {% if session.normalized_data.url|bezpieczny_url %}
+                            <a href="{{ session.normalized_data.url|bezpieczny_url }}"
+                               target="_blank"
+                               rel="noopener">
+                                {{ session.normalized_data.url }}
+                            </a>
+                        {% else %}
                             {{ session.normalized_data.url }}
-                        </a>
+                        {% endif %}
                     </td>
                 </tr>
             {% endif %}
@@ -163,11 +167,15 @@
                 <tr>
                     <th>Licencja</th>
                     <td>
-                        <a href="{{ session.normalized_data.license_url }}"
-                           target="_blank"
-                           rel="noopener">
+                        {% if session.normalized_data.license_url|bezpieczny_url %}
+                            <a href="{{ session.normalized_data.license_url|bezpieczny_url }}"
+                               target="_blank"
+                               rel="noopener">
+                                {{ session.normalized_data.license_url }}
+                            </a>
+                        {% else %}
                             {{ session.normalized_data.license_url }}
-                        </a>
+                        {% endif %}
                     </td>
                 </tr>
             {% endif %}

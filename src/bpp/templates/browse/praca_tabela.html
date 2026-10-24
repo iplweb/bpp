@@ -1,4 +1,4 @@
-{% load prace user_in_group czy_pokazywac %}
+{% load prace user_in_group czy_pokazywac bezpieczny_url %}
 <table width="{{ width|default:"100%" }}"
        class="szczegolyRekordu {{ htmlclass|default:"naglowki_z_lewej" }}">
     <tr>
@@ -131,10 +131,19 @@
             </th>
             <td>
                 {% if praca.public_www %}
-                    <a href="{{ praca.public_www }}">
-                        {{ praca.public_www|truncatechars:120 }}</a>
+                    {% if praca.public_www|bezpieczny_url %}
+                        <a href="{{ praca.public_www|bezpieczny_url }}">
+                            {{ praca.public_www|truncatechars:120 }}</a>
+                    {% else %}
+                        {{ praca.public_www|truncatechars:120 }}
+                    {% endif %}
                 {% elif praca.www %}
-                    <a href="{{ praca.www }}">{{ praca.www|truncatechars:120 }}</a>
+                    {% if praca.www|bezpieczny_url %}
+                        <a href="{{ praca.www|bezpieczny_url }}">
+                            {{ praca.www|truncatechars:120 }}</a>
+                    {% else %}
+                        {{ praca.www|truncatechars:120 }}
+                    {% endif %}
                 {% else %}
                     Brak danych
                 {% endif %}
