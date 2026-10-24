@@ -1,0 +1,1 @@
+Eksport synchroniczny prac autora do BibTeX/RIS zwraca osobom z uprawnieniami redakcyjnymi pełny dorobek (także prace o statusach korekty ukrytych na stronach publicznych); eksport w tle zachowuje zakres publiczny, a widoczność ukrytego autora sprawdza jedna reguła wspólna dla strony autora i eksportu.
