@@ -515,14 +515,14 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         verbose_name="Nazwa użytkownika", blank=True, default="", max_length=50
     )
 
-    clarivate_password = models.CharField(
+    clarivate_password = EncryptedTextField(
         verbose_name="Hasło", blank=True, default="", max_length=50
     )
 
     orcid_client_id = models.CharField(
         "ORCID Client ID", max_length=128, blank=True, default=""
     )
-    orcid_client_secret = models.CharField(
+    orcid_client_secret = EncryptedTextField(
         "ORCID Client Secret", max_length=128, blank=True, default=""
     )
     orcid_sandbox = models.BooleanField(
@@ -582,7 +582,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     pbn_app_name = models.CharField(
         "Nazwa aplikacji w PBN", blank=True, default="", max_length=128
     )
-    pbn_app_token = models.CharField(
+    pbn_app_token = EncryptedTextField(
         "Token aplikacji w PBN", blank=True, default="", max_length=128
     )
     kreator_czeka_na_pbn = models.BooleanField(

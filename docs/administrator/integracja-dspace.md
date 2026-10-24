@@ -48,7 +48,9 @@ i rozwiń sekcję **„DSpace"**. Ustaw:
 | **Domyślny język dc.language.iso** | Język wpisywany do metadanych Dublin Core, gdy rekord go nie określa (domyślnie `pl`). |
 
 !!! note "Bezpieczeństwo hasła"
-    Hasło API jest szyfrowane (Fernet) wspólnym kluczem instalacji.
+    Hasło API jest szyfrowane (Fernet) wspólnym kluczem instalacji
+    `DJANGO_BPP_FIELD_ENCRYPTION_KEY` — patrz
+    [Szyfrowanie sekretów integracji](zaawansowane.md#szyfrowanie-sekretow-integracji).
 
 ## 2. Mapowania kolekcji (Charakter formalny → kolekcja DSpace)
 

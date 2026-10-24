@@ -972,9 +972,15 @@ FRESHDESK_WIDGET_ID = env("DJANGO_BPP_FRESHDESK_WIDGET_ID")
 FRESHDESK_WIDGET_ID_ANON = env("DJANGO_BPP_FRESHDESK_WIDGET_ID_ANON")
 FRESHDESK_WIDGET_JWT_SECRET = env("DJANGO_BPP_FRESHDESK_WIDGET_JWT_SECRET")
 
-# Klucz Fernet do szyfrowania sekretów integracji (DSpace itd.).
+# Klucz Fernet do szyfrowania sekretów integracji w bazie (tokeny PBN,
+# hasło Clarivate, sekret ORCID, hasło DSpace) — pola EncryptedTextField.
 # Wygeneruj: python -c "from cryptography.fernet import Fernet;
 #   print(Fernet.generate_key().decode())"
+# Można podać kilka kluczy rozdzielonych przecinkami: pierwszy szyfruje,
+# kolejne tylko odszyfrowują (rotacja: manage.py zaszyfruj_sekrety --rotuj).
+FIELD_ENCRYPTION_KEY = env("DJANGO_BPP_FIELD_ENCRYPTION_KEY", default="")
+# Dawna nazwa klucza — nadal obsługiwana (odczyt; szyfruje, gdy brak
+# DJANGO_BPP_FIELD_ENCRYPTION_KEY).
 DSPACE_CREDENTIALS_KEY = env("DSPACE_CREDENTIALS_KEY", default="")
 
 SENDFILE_URL = MEDIA_URL

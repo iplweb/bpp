@@ -18,6 +18,55 @@ Zmienne można nadpisać.
 Jeżeli zainstalujemy BPP korzystając z pakietu [bpp-on-ansible](https://github.com/iplweb/bpp-on-ansible) ,
 to utworzy on domyślny plik `.env`. Za zmienne odpowiada plik [config.yml](https://github.com/iplweb/bpp-on-ansible/blob/develop/ansible/roles/bpp-site/tasks/config.yml#L13).
 
+## Szyfrowanie sekretów integracji {#szyfrowanie-sekretow-integracji}
+
+Sekrety integracji zapisywane w bazie danych — token aplikacji PBN, tokeny
+PBN użytkowników, hasło Clarivate, sekret klienta ORCID i hasło API DSpace —
+są szyfrowane (Fernet) kluczem podanym w zmiennej środowiskowej
+`DJANGO_BPP_FIELD_ENCRYPTION_KEY`.
+
+Wygenerowanie klucza:
+
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+# albo bez Pythona:
+openssl rand -base64 32 | tr '+/' '-_'
+```
+
+Klucz wpisz do pliku `.env` (instalacje przez `bpp-deploy` generują go
+automatycznie). Dawna zmienna `DSPACE_CREDENTIALS_KEY` jest nadal
+obsługiwana — wartości nią zaszyfrowane pozostają czytelne, a gdy nie ma
+`DJANGO_BPP_FIELD_ENCRYPTION_KEY`, to ona służy do szyfrowania.
+
+Zachowanie:
+
+- **Brak klucza** — system działa, ale sekrety są zapisywane jawnie;
+  `manage.py check` zgłasza ostrzeżenie `bpp.W101`.
+- **Dodanie klucza do działającej instalacji** — nowe zapisy są
+  szyfrowane, a już zapisane wartości jawne zaszyfruje polecenie
+  (idempotentne, można je uruchamiać wielokrotnie):
+
+  ```bash
+  python src/manage.py zaszyfruj_sekrety
+  ```
+
+  Wartości jawne pozostają do tego czasu czytelne. Ostrzeżenie `bpp.W104`
+  (`manage.py check --database default`) przypomina o niezaszyfrowanych
+  wartościach.
+- **Rotacja klucza** — w zmiennej można podać kilka kluczy rozdzielonych
+  przecinkami: pierwszy szyfruje, pozostałe służą tylko do odczytu.
+  Ustaw `DJANGO_BPP_FIELD_ENCRYPTION_KEY="nowy,stary"`, uruchom
+  `python src/manage.py zaszyfruj_sekrety --rotuj`, a po jego zakończeniu
+  usuń stary klucz z konfiguracji.
+
+!!! warning "Kopia zapasowa klucza"
+    Klucz trzeba archiwizować razem z plikiem `.env` (i oddzielnie od
+    kopii bazy danych). **Po utracie klucza zaszyfrowanych sekretów nie da
+    się odczytać** — system traktuje je jak puste (ostrzeżenie `bpp.W103`).
+    Trzeba wtedy ponownie wpisać w module Redagowania (Uczelnia) token
+    aplikacji PBN, hasło Clarivate, sekret ORCID i hasło DSpace, a
+    użytkownicy muszą jednorazowo ponownie zalogować się do PBN.
+
 ## Polityka haseł
 
 Polityka haseł użytkowników logujących się loginem i hasłem (nie dotyczy
