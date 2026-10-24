@@ -220,7 +220,9 @@ i `tid` tokenu. Identyfikator katalogu znajdziesz w portalu Azure:
 ### Wiązanie kont Microsoft z istniejącymi kontami BPP
 
 Przy pierwszym logowaniu kontem Microsoft BPP szuka użytkownika o tym samym
-adresie e-mail. Domyślnie (`MICROSOFT_AUTH_LINK_BY_EMAIL=False`) **nie**
+adresie e-mail (bez rozróżniania wielkości liter). Token bez adresu e-mail
+oraz adres pasujący do więcej niż jednego użytkownika powodują odrzucenie
+logowania. Domyślnie (`MICROSOFT_AUTH_LINK_BY_EMAIL=False`) **nie**
 powiąże automatycznie konta Microsoft z istniejącym użytkownikiem, który:
 
 - ma uprawnienia administracyjne (`is_staff` lub `is_superuser`), albo
