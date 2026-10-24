@@ -2,6 +2,8 @@ from django import forms
 from django.contrib import admin, messages
 from django.contrib.admin.sites import AlreadyRegistered
 from django.contrib.auth.forms import AdminUserCreationForm
+from django.contrib.auth.models import Permission
+from django.db.models import Q
 from multiseek.models import SearchForm
 
 from bpp.models import Rodzaj_Prawa_Patentowego, Zewnetrzna_Baza_Danych
@@ -338,6 +340,10 @@ class BppUserAdmin(UserAdmin):
         from axes.models import AccessAttempt
         from axes.utils import reset
 
+        if not request.user.is_superuser:
+            # Konta superużytkowników obsługują wyłącznie superużytkownicy.
+            queryset = queryset.filter(is_superuser=False)
+
         odblokowane_konta = 0
         usuniete_wpisy = 0
 
@@ -377,8 +383,63 @@ class BppUserAdmin(UserAdmin):
                 messages.WARNING,
             )
 
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
+        if request.user.is_superuser:
+            return fieldsets
+        # Status superużytkownika nadaje wyłącznie superużytkownik: pole znika
+        # z formularza, więc wartość przesłana POST-em jest ignorowana.
+        return [
+            (
+                nazwa,
+                {
+                    **opcje,
+                    "fields": tuple(
+                        pole for pole in opcje["fields"] if pole != "is_superuser"
+                    ),
+                },
+            )
+            for nazwa, opcje in fieldsets
+        ]
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        pole = form.base_fields.get("user_permissions")
+        if pole is None or request.user.is_superuser:
+            return form
+        # Nie-superużytkownik może nadawać tylko uprawnienia, które sam posiada
+        # (bezpośrednio lub przez grupy). Uprawnienia już przypisane edytowanemu
+        # kontu zostają na liście, żeby zapis formularza ich nie skasował.
+        dozwolone = Q(user=request.user) | Q(group__user=request.user)
+        if obj is not None and obj.pk is not None:
+            dozwolone |= Q(user=obj)
+        pole.queryset = pole.queryset.filter(
+            pk__in=Permission.objects.filter(dozwolone).values("pk")
+        )
+        return form
+
+    def has_change_permission(self, request, obj=None):
+        if obj is not None and obj.is_superuser and not request.user.is_superuser:
+            return False
+        return super().has_change_permission(request, obj)
+
+    def get_deleted_objects(self, objs, request):
+        deleted_objects, model_count, perms_needed, protected = (
+            super().get_deleted_objects(objs, request)
+        )
+        if not request.user.is_superuser and any(
+            getattr(o, "is_superuser", False) for o in objs
+        ):
+            # Zbiorcze usuwanie (akcja delete_selected) nie pyta o
+            # has_delete_permission per obiekt — blokujemy je tutaj.
+            perms_needed = set(perms_needed) | {"superużytkownik"}
+        return deleted_objects, model_count, perms_needed, protected
+
     def has_delete_permission(self, request, obj=None):
         if obj is not None:
+            if obj.is_superuser and not request.user.is_superuser:
+                return False
+
             # Nie pozwól na usunięcie obecnego konta
             if obj == request.user:
                 return False
