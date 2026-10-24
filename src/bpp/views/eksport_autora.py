@@ -30,7 +30,10 @@ from bpp.export.bibtex import export_to_bibtex
 from bpp.export.ris import export_to_ris
 from bpp.models import Autor, AutorEksportTask, Rekord
 from bpp.permissions import moze_wprowadzac_dane
-from bpp.util.ukryte_statusy import ukryte_statusy_eksportu
+from bpp.util.ukryte_statusy import (
+    ukryte_statusy_eksportu,
+    wyklucz_ukrytych_autorow,
+)
 
 #: Maksymalna liczba eksportowanych rekordów. Zabezpiecza przed OOM przy
 #: autorach z gigantyczną liczbą prac (eksport materializuje instancje
@@ -44,11 +47,22 @@ OKNO_LIMITU_S = 60
 
 
 def _autor_dla_eksportu(request, pk):
-    """Autor do eksportu; ukryci (``pokazuj=False``) tylko dla redakcji."""
-    autor = get_object_or_404(Autor, pk=pk)
-    if not autor.pokazuj and not moze_wprowadzac_dane(request.user):
-        raise Http404
-    return autor
+    """Autor do eksportu — ta sama reguła widoczności co ``AutorView``."""
+    return get_object_or_404(
+        wyklucz_ukrytych_autorow(Autor.objects.all(), request), pk=pk
+    )
+
+
+def _ukryte_statusy_eksportu_sync(request):
+    """Statusy wykluczane z eksportu SYNCHRONICZNEGO.
+
+    Redakcja (``moze_wprowadzac_dane``) dostaje pełny dorobek, jak na stronie
+    rekordu; pozostali — zakres publiczny (:func:`ukryte_statusy_eksportu`).
+    Eksport w tle ma zawsze zakres publiczny (patrz ``StartEksportAutoraView``).
+    """
+    if moze_wprowadzac_dane(request.user):
+        return []
+    return ukryte_statusy_eksportu(request)
 
 
 def _przekroczono_limit(request) -> bool:
@@ -99,8 +113,7 @@ class _BazaEksportuAutoraView(LoginRequiredMixin, View):
             )
 
         qs = Rekord.objects.prace_autora(autor)
-        # Plik wychodzi poza stronę — reguła publiczna także dla redakcji.
-        ukryte = ukryte_statusy_eksportu(request)
+        ukryte = _ukryte_statusy_eksportu_sync(request)
         if ukryte:
             qs = qs.exclude(status_korekty_id__in=ukryte)
         wszystkich = qs.count()

@@ -71,7 +71,13 @@ def ukryte_statusy_podgladu(request, uczelnia=None):
     else:
         if uczelnia is None:
             uczelnia = _uczelnia(request)
-        wynik = [] if uczelnia is None else list(uczelnia.ukryte_statusy("podglad"))
+        if uczelnia is None:
+            # Nieustalona uczelnia (multi-hosted) — fail-closed.
+            from bpp.util.ukryte_statusy import statusy_ukryte_w_dowolnej_uczelni
+
+            wynik = statusy_ukryte_w_dowolnej_uczelni("podglad")
+        else:
+            wynik = list(uczelnia.ukryte_statusy("podglad"))
 
     if request is not None:
         request._profil_ukryte_podglad = wynik

@@ -216,12 +216,12 @@ def test_eksport_sync_bez_ukrytych_dla_zwyklego_usera(
 
 
 @pytest.mark.parametrize("nazwa", ["autor_eksport_bibtex", "autor_eksport_ris"])
-def test_eksport_sync_redakcja_tez_bez_ukrytych(admin_client, dorobek_z_ukryta, nazwa):
-    """Plik wychodzi poza stronę — redakcja też nie dostaje ukrytych prac."""
+def test_eksport_sync_redakcja_widzi_ukryte(admin_client, dorobek_z_ukryta, nazwa):
+    """Eksport synchroniczny: redakcja dostaje pełny dorobek."""
     url = reverse(f"bpp:{nazwa}", args=(dorobek_z_ukryta.pk,))
     body = admin_client.get(url).content.decode("utf-8")
     assert "Praca widoczna" in body
-    assert "Praca ukryta" not in body
+    assert "Praca ukryta" in body
 
 
 def test_eksport_sync_bez_uczelni_bez_ukrytych(
@@ -231,9 +231,7 @@ def test_eksport_sync_bez_uczelni_bez_ukrytych(
     ukryte w dowolnej uczelni."""
     client.force_login(_zwykly_user(django_user_model))
     url = reverse("bpp:autor_eksport_bibtex", args=(dorobek_z_ukryta.pk,))
-    with mock.patch(
-        "bpp.models.Uczelnia.objects.get_for_request", return_value=None
-    ):
+    with mock.patch("bpp.models.Uczelnia.objects.get_for_request", return_value=None):
         body = client.get(url).content.decode("utf-8")
     assert "Praca widoczna" in body
     assert "Praca ukryta" not in body
@@ -295,8 +293,9 @@ def test_eksport_async_bez_uczelni_bez_ukrytych(admin_client, dorobek_z_ukryta):
     url = reverse(
         "bpp:autor_eksport_start", kwargs={"pk": dorobek_z_ukryta.pk, "format": "ris"}
     )
-    with mock.patch("bpp.tasks.generuj_eksport_autora.delay"), mock.patch(
-        "bpp.models.Uczelnia.objects.get_for_request", return_value=None
+    with (
+        mock.patch("bpp.tasks.generuj_eksport_autora.delay"),
+        mock.patch("bpp.models.Uczelnia.objects.get_for_request", return_value=None),
     ):
         admin_client.post(url)
     task = AutorEksportTask.objects.get(autor=dorobek_z_ukryta)

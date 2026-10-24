@@ -53,11 +53,21 @@ def ukryte_statusy_eksportu(request, kanal="podglad"):
     ustalić uczelni, nie jest fail-open — zwraca statusy ukryte w danym
     kanale w KTÓREJKOLWIEK uczelni.
     """
-    from bpp.models import Uczelnia, Ukryj_Status_Korekty
+    from bpp.models import Uczelnia
 
     uczelnia = Uczelnia.objects.get_for_request(request)
     if uczelnia is not None:
         return sorted(set(uczelnia.ukryte_statusy(kanal)))
+    return statusy_ukryte_w_dowolnej_uczelni(kanal)
+
+
+def statusy_ukryte_w_dowolnej_uczelni(kanal="podglad"):
+    """PK statusów korekty ukrytych w danym kanale w KTÓREJKOLWIEK uczelni.
+
+    Zakres fail-closed na wypadek, gdy uczelni nie da się ustalić.
+    """
+    from bpp.models import Ukryj_Status_Korekty
+
     return sorted(
         set(
             Ukryj_Status_Korekty.objects.filter(**{kanal: True}).values_list(
@@ -65,3 +75,19 @@ def ukryte_statusy_eksportu(request, kanal="podglad"):
             )
         )
     )
+
+
+def wyklucz_ukrytych_autorow(qs, request):
+    """Zwróć queryset ``Autor`` bez autorów ukrytych przed oglądającym.
+
+    Autor z ``pokazuj=False`` jest niewidoczny dla wszystkich POZA
+    użytkownikami z uprawnieniami redaktorskimi (``moze_wprowadzac_dane``).
+    ``request=None`` = odbiorca publiczny. Jedna reguła dla strony autora
+    (``AutorView``) i eksportu jego prac.
+    """
+    from bpp.permissions import moze_wprowadzac_dane
+
+    user = getattr(request, "user", None)
+    if user is not None and moze_wprowadzac_dane(user):
+        return qs
+    return qs.filter(pokazuj=True)
