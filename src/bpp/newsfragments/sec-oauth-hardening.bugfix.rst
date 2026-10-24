@@ -1,0 +1,1 @@
+Wzmocniono zabezpieczenia serwera OAuth/MCP: token dostępu jest przyjmowany wyłącznie w nagłówku ``Authorization`` (nie w adresie URL), PKCE wymaga metody S256, ekran zgody pokazuje host adresu przekierowania, a dynamiczna rejestracja klientów ogranicza liczbę i długość ``redirect_uris``.
