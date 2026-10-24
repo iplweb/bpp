@@ -19,6 +19,7 @@ Bezpieczeństwo jest tu krytyczne i egzekwowane SERWEROWO na każdej akcji:
 from dal_select2.widgets import ListSelect2
 from django import forms
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError
 from django.http import Http404, JsonResponse
 from django.utils.html import strip_tags
@@ -27,6 +28,7 @@ from django.views.generic import TemplateView, View
 from bpp.models import Rekord
 from bpp.models.wybrana_publikacja import WybranaPublikacjaAutora
 from bpp.views.profil_edycja import WymagajAutoraMixin
+from bpp.wersjonowanie import zmiana_ze_strony
 
 # Limit podpowiedzi w autouzupełnianiu — autor może mieć setki prac.
 LIMIT_AUTOCOMPLETE = 20
@@ -76,6 +78,16 @@ def _opis_rekordu(rekord):
     return strip_tags(
         rekord.opis_bibliograficzny_cache or rekord.tytul_oryginalny
     ).strip()
+
+
+def _opis_publikacji(content_type, object_id):
+    """Krótki opis wyróżnianej pracy do komentarza w historii zmian."""
+    try:
+        publikacja = content_type.get_object_for_this_type(pk=object_id)
+    except ObjectDoesNotExist:
+        return f"{content_type.name} #{object_id}"  # praca usunięta z bazy
+    tytul = strip_tags(getattr(publikacja, "tytul_oryginalny", "") or "")
+    return (tytul or str(publikacja)).strip()[:200]
 
 
 class ProfilWybranePublikacjeView(WymagajAutoraMixin, TemplateView):
@@ -163,13 +175,26 @@ class ProfilWybranePublikacjeAkcjaView(WymagajAutoraMixin, View):
             )
 
         nastepna = autor.wybrane_publikacje.count()
-        try:
-            wpa = WybranaPublikacjaAutora.objects.create(
-                autor=autor,
-                content_type=ContentType.objects.get_for_id(ct_id),
-                object_id=obj_id,
-                kolejnosc=nastepna,
+        content_type = ContentType.objects.get_for_id(ct_id)
+        if autor.wybrane_publikacje.filter(
+            content_type=content_type, object_id=obj_id
+        ).exists():
+            return JsonResponse(
+                {"ok": True, "duplikat": True, "info": "Praca jest już wyróżniona."}
             )
+        try:
+            with zmiana_ze_strony(
+                request.user,
+                autor,
+                "Samodzielna edycja profilu przez stronę: wyróżniono pracę "
+                f"„{_opis_publikacji(content_type, obj_id)}”.",
+            ):
+                wpa = WybranaPublikacjaAutora.objects.create(
+                    autor=autor,
+                    content_type=content_type,
+                    object_id=obj_id,
+                    kolejnosc=nastepna,
+                )
         except IntegrityError:
             # unique_together(autor, content_type, object_id) — duplikat to
             # przyjazny no-op, nie błąd serwera.
@@ -187,7 +212,13 @@ class ProfilWybranePublikacjeAkcjaView(WymagajAutoraMixin, View):
         wpa = autor.wybrane_publikacje.filter(pk=pk).first()
         if wpa is None:
             raise Http404("Brak takiego wiersza wśród Twoich wyróżnionych prac.")
-        wpa.delete()
+        with zmiana_ze_strony(
+            request.user,
+            autor,
+            "Samodzielna edycja profilu przez stronę: usunięto wyróżnienie pracy "
+            f"„{_opis_publikacji(wpa.content_type, wpa.object_id)}”.",
+        ):
+            wpa.delete()
         return JsonResponse({"ok": True})
 
     def _przesun(self, request, autor):
@@ -196,6 +227,7 @@ class ProfilWybranePublikacjeAkcjaView(WymagajAutoraMixin, View):
         # Operujemy WYŁĄCZNIE na własnych wierszach — cudze PK z payloadu są
         # niewidoczne dla tego querysetu, więc nie zostaną dotknięte.
         wlasne = {w.pk: w for w in autor.wybrane_publikacje.all()}
+        do_zapisu = []
         nowa = 0
         for surowy in kolejnosc_pk:
             try:
@@ -207,6 +239,15 @@ class ProfilWybranePublikacjeAkcjaView(WymagajAutoraMixin, View):
                 continue
             if wpa.kolejnosc != nowa:
                 wpa.kolejnosc = nowa
-                wpa.save(update_fields=["kolejnosc"])
+                do_zapisu.append(wpa)
             nowa += 1
+        if do_zapisu:
+            with zmiana_ze_strony(
+                request.user,
+                autor,
+                "Samodzielna edycja profilu przez stronę: zmieniono kolejność "
+                "wyróżnionych prac.",
+            ):
+                for wpa in do_zapisu:
+                    wpa.save(update_fields=["kolejnosc"])
         return JsonResponse({"ok": True})

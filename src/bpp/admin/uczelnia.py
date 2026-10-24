@@ -19,6 +19,7 @@ from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
 from .helpers.ror_field import czysc_ror
 from .helpers.site_filtered import SiteFilteredAdminMixin
+from .helpers.wersje import HistoriaWersjiMixin
 from .widgets.uklad_profilu import EdytorUkladuWidget
 
 
@@ -112,6 +113,7 @@ class UczelniaAdmin(
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
     BaseBppAdminMixin,
+    HistoriaWersjiMixin,
     VersionAdmin,
 ):
     form = UczelniaAdminForm
