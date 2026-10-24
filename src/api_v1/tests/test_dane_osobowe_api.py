@@ -286,3 +286,14 @@ def test_zapytanie_brak_filtrowania_po_danych_osobowych(sciezka, q):
     res = _superuser().get(sciezka, {"q": q})
 
     assert res.status_code == 400
+
+
+@pytest.mark.django_db
+def test_zapytanie_autorzy_kontrola_pozytywna():
+    """Kontrola: trawersacja ``autor.*`` istnieje w schemacie /autorzy/,
+    więc 400 dla pól osobowych wyżej nie wynika z braku relacji."""
+    res = _superuser().get(
+        "/api/v1/zapytanie/autorzy/", {"q": 'autor.nazwisko ~ "Kowal"'}
+    )
+
+    assert res.status_code == 200
