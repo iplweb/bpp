@@ -2037,6 +2037,12 @@ CONSTANCE_CONFIG_FIELDSETS = {}
 #
 OAUTH2_PROVIDER = {
     "PKCE_REQUIRED": True,
+    # RFC 9700: tylko PKCE S256 (``plain`` odrzucane) — zgodnie z metadanymi
+    # ``code_challenge_methods_supported`` w ``oauth_mcp.views_metadata``.
+    "COMPLIANT_BCP_RFC9700_PKCE_METHOD": True,
+    # RFC 9700 / RFC 6750 §5.3: token dostępu NIE w query stringu — tylko
+    # nagłówek ``Authorization: Bearer``.
+    "COMPLIANT_BCP_RFC9700_ACCESS_TOKEN_TRANSPORT": True,
     "DEFAULT_SCOPES": ["read"],
     "SCOPES": {"read": "Odczyt danych BPP w Twoim imieniu"},
     "ROTATE_REFRESH_TOKEN": True,
