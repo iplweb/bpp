@@ -267,6 +267,22 @@ def _start_import_session(
     return session
 
 
+def _invalid_identifier_message(provider, raw_input) -> str:
+    """Komunikat dla odrzuconego identyfikatora: konkretny powód od providera
+    (np. „tylko HTTPS na porcie 443”), a gdy go brak — ogólny opis formatu."""
+    explain = provider.identifier_error(raw_input)
+    if isinstance(explain, str) and explain:
+        return explain
+    help_hint = getattr(provider, "input_help_text", "")
+    placeholder = getattr(provider, "input_placeholder", "")
+    msg = f"Nie rozpoznano formatu dla dostawcy „{provider.name}”."
+    if help_hint:
+        msg += f" Oczekiwany format: {help_hint}"
+    if placeholder:
+        msg += f" Przykład: {placeholder}"
+    return msg
+
+
 class FetchView(ImporterPermissionMixin, View):
     """Walidacja identyfikatora + utworzenie sesji + enqueue Celery task-a."""
 
@@ -294,14 +310,9 @@ class FetchView(ImporterPermissionMixin, View):
 
         normalized = provider.validate_identifier(raw_input)
         if normalized is None:
-            help_hint = getattr(provider, "input_help_text", "")
-            placeholder = getattr(provider, "input_placeholder", "")
-            msg = f"Nie rozpoznano formatu dla dostawcy „{provider.name}”."
-            if help_hint:
-                msg += f" Oczekiwany format: {help_hint}"
-            if placeholder:
-                msg += f" Przykład: {placeholder}"
-            form.add_error(error_field, msg)
+            form.add_error(
+                error_field, _invalid_identifier_message(provider, raw_input)
+            )
             return render(
                 request,
                 STEP_FETCH,

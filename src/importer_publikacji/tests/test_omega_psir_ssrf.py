@@ -36,7 +36,7 @@ def test_omega_psir_fetch_blocks_internal_host(monkeypatch, ip):
     get = MagicMock()
     monkeypatch.setattr(network.requests, "get", get)
 
-    assert omega_psir._fetch_omega_psir_jsonld("http://repo.internal", IDENT) is None
+    assert omega_psir._fetch_omega_psir_jsonld("https://repo.internal", IDENT) is None
     get.assert_not_called()
 
 

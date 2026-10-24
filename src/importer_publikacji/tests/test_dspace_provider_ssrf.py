@@ -49,7 +49,7 @@ def test_dspace7_fetch_blocks_internal_host(monkeypatch, ip):
     get = _benign_get()
     monkeypatch.setattr(network.requests, "get", get)
 
-    assert dspace._fetch_dspace7("http://repo.internal", UUID) is None
+    assert dspace._fetch_dspace7("https://repo.internal", UUID) is None
     get.assert_not_called()
 
 
@@ -58,7 +58,7 @@ def test_dspace6_fetch_blocks_internal_host(monkeypatch):
     get = _benign_get()
     monkeypatch.setattr(network.requests, "get", get)
 
-    assert dspace._fetch_dspace6("http://repo.internal", "123456789/1") is None
+    assert dspace._fetch_dspace6("https://repo.internal", "123456789/1") is None
     get.assert_not_called()
 
 
@@ -70,7 +70,7 @@ def test_dspace_provider_fetch_rejects_internal_url(monkeypatch):
     get = _benign_get()
     monkeypatch.setattr(network.requests, "get", get)
 
-    url = f"http://127.0.0.1/items/{UUID}"
+    url = f"https://127.0.0.1/items/{UUID}"
     assert dspace.DSpaceProvider().fetch(url) is None
     get.assert_not_called()
 
