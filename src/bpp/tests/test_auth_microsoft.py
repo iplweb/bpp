@@ -269,3 +269,76 @@ def test_backend_authenticate_pelny_przeplyw(rf):
 
         klasa.return_value = _client(_claims(tid=OTHER_TENANT, iss=OTHER_ISSUER))
         assert BppMicrosoftAuthenticationBackend().authenticate(request, "kod") is None
+
+
+@pytest.mark.uruchom_tylko_z_microsoft_auth
+@pytest.mark.django_db
+@override_settings(MICROSOFT_AUTH_TENANT_ID=TENANT)
+@pytest.mark.parametrize("email", ["", "   ", None])
+def test_backend_pusty_email_nie_wiaze_z_kontem_bez_emaila(email):
+    from microsoft_auth.models import MicrosoftAccount
+
+    admin = baker.make(get_user_model(), email="", is_superuser=True, password="")
+    baker.make(get_user_model(), email="", password="")
+    liczba = get_user_model().objects.count()
+
+    backend = _backend(_claims(email=email))
+    assert backend._authenticate_microsoft_user() is None
+    assert not MicrosoftAccount.objects.filter(user=admin).exists()
+    assert get_user_model().objects.count() == liczba
+
+
+@pytest.mark.uruchom_tylko_z_microsoft_auth
+@pytest.mark.django_db
+@override_settings(MICROSOFT_AUTH_TENANT_ID=TENANT, MICROSOFT_AUTH_LINK_BY_EMAIL=False)
+def test_backend_email_innej_wielkosci_liter_nie_wiaze_z_superuserem():
+    from microsoft_auth.models import MicrosoftAccount
+
+    admin = baker.make(
+        get_user_model(), email="jan@example.com", is_superuser=True, password=""
+    )
+    backend = _backend(_claims(email="Jan@Example.COM"))
+    assert backend._authenticate_microsoft_user() is None
+    assert not MicrosoftAccount.objects.filter(user=admin).exists()
+    assert get_user_model().objects.filter(email__iexact="jan@example.com").count() == 1
+
+
+@pytest.mark.uruchom_tylko_z_microsoft_auth
+@pytest.mark.django_db
+@override_settings(MICROSOFT_AUTH_TENANT_ID=TENANT)
+def test_backend_zwykle_konto_wiazane_bez_wzgledu_na_wielkosc_liter():
+    user = baker.make(get_user_model(), email="jan@example.com", password="")
+    backend = _backend(_claims(email="JAN@example.com"))
+    assert backend._authenticate_microsoft_user() == user
+
+
+@pytest.mark.uruchom_tylko_z_microsoft_auth
+@pytest.mark.django_db
+@override_settings(MICROSOFT_AUTH_TENANT_ID=TENANT)
+def test_backend_odswieza_nieaktualny_dokument_discovery():
+    from microsoft_auth.models import MicrosoftAccount
+
+    from bpp.auth.microsoft import BppMicrosoftAuthenticationBackend
+
+    user = baker.make(get_user_model(), email="jan@example.com", password="")
+    baker.make(MicrosoftAccount, microsoft_id="ms-sub-1", user=user)
+
+    class _Client:
+        def __init__(self):
+            self.wywolania = 0
+
+        def get_claims(self):
+            return _claims()
+
+        @property
+        def openid_config(self):
+            self.wywolania += 1
+            if self.wywolania == 1:
+                return {"issuer": "https://login.microsoftonline.com/{tenantid}/v2.0"}
+            return {"issuer": ISSUER}
+
+    backend = BppMicrosoftAuthenticationBackend()
+    backend.microsoft = _Client()
+    with mock.patch("bpp.auth.microsoft.cache") as cache:
+        assert backend._authenticate_microsoft_user() == user
+    assert cache.delete.called
