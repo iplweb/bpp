@@ -90,7 +90,8 @@ cyklicznego wymuszania zmiany hasła.
     serwerze (bez wysyłania hasła): złożone z popularnych haseł i słów,
     powtórzeń, sekwencji, sąsiednich klawiszy, dat lub danych konta —
     także w przeróbkach typu `P@ssw0rd`; oprócz angielskich słowników
-    zxcvbn sprawdzane są polskie pospolite słowa, imiona i nazwiska
+    zxcvbn sprawdzane są polskie pospolite słowa, imiona, nazwiska
+    i nazwy miejscowości
     (pakiet [zxcvbn-pl](https://pypi.org/project/zxcvbn-pl/), także bez
     polskich znaków) — hasło z kilku słów nadal jest dobre, ale jedno
     pospolite słowo, imię lub nazwisko z cyframi (np. `słoneczko123456`,
