@@ -3,23 +3,23 @@ import base64
 import json
 import secrets
 import sys
+from urllib.parse import urlsplit
 
 import rollbar
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db import transaction
-from django.http import HttpResponseBadRequest
+from django.http import HttpResponseBadRequest, HttpResponseRedirect
+from django.shortcuts import render
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.views import View
 from django.views.generic import RedirectView
-from pbn_client.conf import settings as pbn_defaults
 
 from bpp.models import Uczelnia
 
+from .autoryzacja import zapisz_token_z_ott
 from .client import OAuthMixin
 from .exceptions import AuthenticationConfigurationError, AuthenticationResponseError
-from .signals import token_set_successfully
 
 # PBN wraca na callback wyłącznie z ``?ott=<uuid>`` — parametru ``state`` NIE
 # zwraca. Powiązanie callbacku z autoryzacją rozpoczętą przez tego samego
@@ -69,44 +69,58 @@ def _pop_pending_auth(request):
     return pending
 
 
-def _is_cross_site_request(request):
-    """Czy wejście na /pbn_api/authorize przyszło z obcej witryny.
+def _is_same_origin_request(request):
+    """Czy wejście na /pbn_api/authorize pochodzi z samego BPP.
 
-    Oczekująca autoryzacja w sesji ma sens tylko wtedy, gdy rozpoczął ją
-    sam użytkownik z poziomu BPP — nie strona trzecia, która przekierowała
-    do nas jego przeglądarkę. Linki "autoryzuj PBN API" są w BPP, więc
-    przeglądarka zgłasza ``Sec-Fetch-Site: same-origin`` (albo ``none`` przy
-    wpisaniu adresu ręcznie). Starsze przeglądarki bez Sec-Fetch-* sprawdzamy
-    po nagłówku Referer, jeżeli jest obecny."""
+    Oczekująca autoryzacja w sesji ma sens tylko wtedy, gdy rozpoczął ją sam
+    użytkownik z poziomu BPP. Bezpośrednio do PBN przepuszczamy wyłącznie
+    nawigację, którą przeglądarka oznacza jako ``Sec-Fetch-Site: same-origin``,
+    albo — w przeglądarkach bez nagłówków Sec-Fetch-* — z Refererem z tego
+    samego hosta. Każdy inny przypadek (w tym ``none``, czyli adres wpisany
+    ręcznie lub zakładka) przechodzi przez stronę pośrednią z formularzem
+    POST chronionym tokenem CSRF."""
     sec_fetch_site = request.META.get("HTTP_SEC_FETCH_SITE")
     if sec_fetch_site:
-        return sec_fetch_site == "cross-site"
+        return sec_fetch_site == "same-origin"
     referer = request.META.get("HTTP_REFERER")
-    if referer:
-        return not url_has_allowed_host_and_scheme(
-            referer, allowed_hosts={request.get_host()}
+    if not referer:
+        return False
+    return (
+        url_has_allowed_host_and_scheme(
+            referer,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
         )
-    return False
+        and urlsplit(referer).netloc == request.get_host()
+    )
 
 
-class TokenRedirectPage(LoginRequiredMixin, RedirectView):
-    def get_redirect_url(self, *args, **kwargs):
-        if _is_cross_site_request(self.request):
-            self.request.session.pop(PBN_PENDING_AUTH_SESSION_KEY, None)
-            messages.error(
-                self.request,
-                "Autoryzację w PBN API należy rozpocząć z poziomu BPP - "
-                "kliknij „autoryzuj PBN API”.",
-            )
-            return "/"
+class TokenRedirectPage(LoginRequiredMixin, View):
+    template_name = "pbn_api/autoryzacja_posrednia.html"
 
-        uczelnia = Uczelnia.objects.get_for_request(self.request)
-
+    def get(self, request, *args, **kwargs):
         # Get the original page from 'next' parameter or HTTP referer
-        next_url = self.request.GET.get("next")
+        next_url = request.GET.get("next")
         if not next_url:
             # Fall back to HTTP referer if no next parameter
-            next_url = self.request.META.get("HTTP_REFERER", "/")
+            next_url = request.META.get("HTTP_REFERER", "/")
+
+        if _is_same_origin_request(request):
+            return HttpResponseRedirect(self.get_redirect_url(next_url))
+
+        return render(
+            request,
+            self.template_name,
+            {"next_url": _safe_local_url(request, next_url)},
+        )
+
+    def post(self, request, *args, **kwargs):
+        # POST jest chroniony przez CsrfViewMiddleware.
+        next_url = request.POST.get("next") or "/"
+        return HttpResponseRedirect(self.get_redirect_url(next_url))
+
+    def get_redirect_url(self, next_url):
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
 
         nonce = _start_pending_auth(self.request, next_url)
 
@@ -143,30 +157,7 @@ class TokenLandingPage(LoginRequiredMixin, RedirectView):
         redirect_url = _safe_local_url(self.request, pending.get("originalPage"))
 
         try:
-            user_token = OAuthMixin.get_user_token(
-                uczelnia.pbn_api_root,
-                uczelnia.pbn_app_name,
-                uczelnia.pbn_app_token,
-                ott,
-                timeout=getattr(
-                    settings,
-                    "PBN_CLIENT_HTTP_TIMEOUT",
-                    pbn_defaults.PBN_CLIENT_HTTP_TIMEOUT,
-                ),
-            )
-            user = self.request.user
-            user.pbn_token = user_token
-            user.pbn_token_updated = timezone.now()
-            user.save()
-
-            transaction.on_commit(lambda: token_set_successfully.send(sender=user))
-            from pbn_export_queue.tasks import kolejka_ponow_wysylke_prac_po_zalogowaniu
-
-            transaction.on_commit(
-                lambda user_pk=user.pk: kolejka_ponow_wysylke_prac_po_zalogowaniu.delay(
-                    user_pk
-                )
-            )
+            zapisz_token_z_ott(self.request.user, uczelnia, ott)
 
             messages.info(
                 self.request, "Autoryzacja w PBN API przeprowadzona pomyślnie."

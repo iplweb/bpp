@@ -68,7 +68,13 @@ niż 10 minut (`PBN_PENDING_AUTH_MAX_AGE_SECONDS` w `src/pbn_api/views.py`).
 Wpis jest jednorazowy. Callback bez takiego wpisu jest odrzucany, zanim
 dojdzie do wymiany `ott` w PBN, więc `ott` pozostaje niewykorzystany.
 
-Procedura testu lokalnego:
+Wejście na `/pbn_api/authorize` z linku w BPP (nagłówek
+`Sec-Fetch-Site: same-origin` albo Referer z tego samego hosta) od razu
+przekierowuje do PBN. W każdym innym przypadku, także dla adresu wpisanego
+ręcznie, pojawia się strona pośrednia z przyciskiem (formularz POST
+z tokenem CSRF).
+
+Procedura testu lokalnego, wariant (a), przez przeglądarkę:
 
 1. Na lokalnej instancji (`uv run run-site run`) kliknij „autoryzuj PBN API”.
    W sesji lokalnej powstaje oczekujący wpis.
@@ -82,3 +88,25 @@ Procedura testu lokalnego:
 Jeżeli na serwerze docelowym w ciągu ostatnich 10 minut też kliknięto
 „autoryzuj PBN API” w tej samej przeglądarce, serwer ten przyjmie i zużyje
 `ott`. Wtedy zacznij od kroku 1 jeszcze raz.
+
+Wariant (b), bez przeglądarki i bez sesji. Wykonaj krok 2 (adres logowania
+PBN otworzysz też ze strony pośredniej `/pbn_api/authorize` na dowolnej
+instancji), skopiuj `ott` z paska adresu i na lokalnej instancji uruchom:
+
+```bash
+uv run python src/manage.py pbn_ott_na_token <ott> --user admin
+```
+
+Komenda wymienia `ott` na token tą samą ścieżką co callback
+(`pbn_api.autoryzacja.zapisz_token_z_ott`) i nie sprawdza sesji, bo wymaga
+dostępu do shella. Przy kilku uczelniach wskaż jedną przez
+`--uczelnia <ID|skrót>`.
+
+Przeniesienie tokenu z serwera na inną maszynę:
+
+```bash
+# na serwerze (token trafia na stdout, to SEKRET):
+uv run python src/manage.py pbn_ott_na_token <ott> --user X --pokaz-token
+# lokalnie, bez kontaktu z PBN:
+uv run python src/manage.py pbn_ott_na_token --user admin --token <wartość>
+```
