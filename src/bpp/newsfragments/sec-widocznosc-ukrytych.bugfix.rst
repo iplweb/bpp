@@ -1,0 +1,1 @@
+Wzmocniono kontrolę widoczności w publicznych widokach (BibTeX rekordu, strona autora, przeglądanie po latach, strona główna, podpowiedzi autocomplete) oraz dostępu do zapisanych formularzy wyszukiwania — rekordy o ukrytych statusach korekty, ukryci autorzy i cudze prywatne formularze nie są już dostępne dla osób bez uprawnień.

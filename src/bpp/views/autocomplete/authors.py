@@ -18,6 +18,8 @@ from bpp.models.autor import Autor, Autor_Jednostka
 from bpp.models.patent import Patent, Patent_Autor
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
+from bpp.permissions import moze_wprowadzac_dane
+from bpp.util.ukryte_statusy import wyklucz_ukryte_statusy
 from pbn_api.models import OsobaZInstytucji
 
 from .base import autocomplete_create_error
@@ -405,20 +407,41 @@ class PodrzednaPublikacjaHabilitacyjnaAutocomplete(
         if autor_id is None:
             return qs.none()
 
+        request = getattr(self, "request", None)
+        redaktor = request is not None and moze_wprowadzac_dane(request.user)
+
+        autorzy = (
+            Autor.objects.all() if redaktor else Autor.objects.filter(pokazuj=True)
+        )
         try:
-            autor = Autor.objects.get(pk=int(autor_id))
+            autor = autorzy.get(pk=int(autor_id))
         except (TypeError, ValueError, Autor.DoesNotExist):
             return qs.none()
 
-        wydawnictwa_zwarte = Wydawnictwo_Zwarte.objects.filter(
-            pk__in=Wydawnictwo_Zwarte_Autor.objects.filter(autor=autor).only("rekord")
+        # Rekordy o statusach ukrytych w kanale "podglad" — tylko dla
+        # redaktorów (spójnie ze stroną rekordu).
+        wydawnictwa_zwarte = wyklucz_ukryte_statusy(
+            Wydawnictwo_Zwarte.objects.filter(
+                pk__in=Wydawnictwo_Zwarte_Autor.objects.filter(autor=autor).values(
+                    "rekord"
+                )
+            ),
+            request,
         )
-        wydawnictwa_ciagle = Wydawnictwo_Ciagle.objects.filter(
-            pk__in=Wydawnictwo_Ciagle_Autor.objects.filter(autor=autor).only("rekord")
+        wydawnictwa_ciagle = wyklucz_ukryte_statusy(
+            Wydawnictwo_Ciagle.objects.filter(
+                pk__in=Wydawnictwo_Ciagle_Autor.objects.filter(autor=autor).values(
+                    "rekord"
+                )
+            ),
+            request,
         )
 
-        patenty = Patent.objects.filter(
-            pk__in=Patent_Autor.objects.filter(autor=autor).only("rekord")
+        patenty = wyklucz_ukryte_statusy(
+            Patent.objects.filter(
+                pk__in=Patent_Autor.objects.filter(autor=autor).values("rekord")
+            ),
+            request,
         )
 
         qs = QuerySetSequence(wydawnictwa_ciagle, wydawnictwa_zwarte, patenty)
@@ -434,7 +457,34 @@ class PodrzednaPublikacjaHabilitacyjnaAutocomplete(
 class Dyscyplina_Naukowa_PrzypisanieAutocomplete(
     SanitizedAutocompleteMixin, autocomplete.Select2ListView
 ):
-    """Autocomplete for discipline assignment based on author and year."""
+    """Autocomplete for discipline assignment based on author and year.
+
+    Używany w adminie i importerze (redaktorzy) oraz w publicznym formularzu
+    zgłaszania publikacji. Poza redaktorami dostęp ma tylko ten, komu
+    uczelnia udostępnia formularz zgłaszania (ta sama reguła, co
+    ``Zgloszenie_PublikacjiWizard``), i tylko dla autorów z ``pokazuj=True``.
+    """
+
+    def _redaktor(self):
+        request = getattr(self, "request", None)
+        return request is not None and moze_wprowadzac_dane(request.user)
+
+    def _dostep_dozwolony(self, request):
+        from bpp.models import Uczelnia
+
+        if moze_wprowadzac_dane(request.user):
+            return True
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        if uczelnia is None:
+            return True
+        return uczelnia.sprawdz_uprawnienie(
+            "formularz_zglaszania_publikacji", request, ignoruj_grupe="ignoruj_grupe"
+        )
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self._dostep_dozwolony(request):
+            return http.HttpResponseForbidden()
+        return super().dispatch(request, *args, **kwargs)
 
     def results(self, results):
         """Return data for the 'results' key of the response."""
@@ -470,8 +520,11 @@ class Dyscyplina_Naukowa_PrzypisanieAutocomplete(
 
     def _get_disciplines_for_autor(self, autor, rok):
         """Get disciplines for the given autor and rok."""
+        przypisania = Autor_Dyscyplina.objects.all()
+        if not self._redaktor():
+            przypisania = przypisania.filter(autor__pokazuj=True)
         try:
-            ad = Autor_Dyscyplina.objects.get(rok=rok, autor=autor)
+            ad = przypisania.get(rok=rok, autor=autor)
         except Autor_Dyscyplina.DoesNotExist:
             return None, f"Brak przypisania dla roku {rok}"
 
