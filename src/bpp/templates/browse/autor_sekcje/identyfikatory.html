@@ -1,117 +1,36 @@
-{# Identyfikatory zewnętrzne autora (lewa kolumna). BPP ID zawsze obecne, #}
-{# więc sekcja nigdy nie jest pusta — renderuje się zawsze. #}
+{# Identyfikatory zewnętrzne autora (część karty „afiliacja”). BPP ID zawsze #}
+{# obecne, więc sekcja nigdy nie jest pusta. Kafel: klik w link → strona #}
+{# docelowa; klik w resztę kafla → kopiuje wartość (autor-identyfikatory.js #}
+{# przekazuje klik do przycisku kopiowania — z klawiatury działa sam przycisk). #}
 <div class="author-info-section">
     <h3><i class="fi-link"></i> Identyfikatory</h3>
     <div class="grid-x grid-margin-x autor-page__grid-gap">
         {% if autor.orcid %}
-            <div class="cell shrink">
-                <div class="callout autor-page__id-card">
-                    <div class="autor-page__id-label">ORCID</div>
-                    <a href="https://orcid.org/{{ autor.orcid }}"
-                       target="_blank"
-                       class="autor-page__id-link">{{ autor.orcid }}</a>
-                </div>
-            </div>
+            {% include "browse/autor_sekcje/_identyfikator.html" with etykieta="ORCID" wartosc=autor.orcid url="https://orcid.org/"|add:autor.orcid tekst=autor.orcid only %}
         {% endif %}
-        {% if autor.pbn_uid_id %}
-            <div class="cell shrink">
-                <div class="callout autor-page__id-card">
-                    <div class="autor-page__id-label">PBN UID</div>
-                    <a href="{{ link_do_pbn }}"
-                       target="_blank"
-                       class="autor-page__id-link">{{ autor.pbn_uid_id }}</a>
-                </div>
-            </div>
-        {% endif %}
-        {% if autor.jest_w_polon %}
-            <div class="cell shrink">
-                <div class="callout autor-page__id-card autor-page__id-card--wide">
-                    <div class="autor-page__id-label">
-                        <span class="fi-shield"></span> Naukowiec z POL-on
-                    </div>
-                    <a href="{{ link_do_pbn }}"
-                       target="_blank"
-                       rel="noopener"
-                       class="autor-page__id-link">
-                        Zobacz w PBN <span class="fi-arrow-right"></span>
-                    </a>
-                </div>
-            </div>
+        {# PBN: jeden kafel zamiast „PBN UID” + „Naukowiec z POL-on” (prowadziły #}
+        {# do tej samej strony). Surowego UID nie pokazujemy — kopiuje się link. #}
+        {# Stary, numeryczny PBN ID (legacy) świadomie pominięty. #}
+        {% if link_do_pbn %}
+            {% include "browse/autor_sekcje/_identyfikator.html" with etykieta="PBN" wartosc=link_do_pbn url=link_do_pbn tekst="Profil w PBN" strzalka=True polon=autor.jest_w_polon only %}
         {% endif %}
         {% if autor.wos_researcherid %}
-            <div class="cell shrink">
-                <div class="callout autor-page__id-card">
-                    <div class="autor-page__id-label">Web of Science</div>
-                    <a href="{{ autor.wos_url }}"
-                       target="_blank"
-                       rel="noopener"
-                       class="autor-page__id-link">{{ autor.wos_researcherid }}</a>
-                </div>
-            </div>
+            {% include "browse/autor_sekcje/_identyfikator.html" with etykieta="Web of Science" wartosc=autor.wos_researcherid url=autor.wos_url tekst=autor.wos_researcherid only %}
         {% endif %}
         {% if autor.scopus_author_id %}
-            <div class="cell shrink">
-                <div class="callout autor-page__id-card">
-                    <div class="autor-page__id-label">Scopus</div>
-                    <a href="{{ autor.scopus_url }}"
-                       target="_blank"
-                       rel="noopener"
-                       class="autor-page__id-link">{{ autor.scopus_author_id }}</a>
-                </div>
-            </div>
+            {% include "browse/autor_sekcje/_identyfikator.html" with etykieta="Scopus" wartosc=autor.scopus_author_id url=autor.scopus_url tekst=autor.scopus_author_id only %}
         {% endif %}
         {% if autor.google_scholar_id %}
-            <div class="cell shrink">
-                <div class="callout autor-page__id-card">
-                    <div class="autor-page__id-label">Google Scholar</div>
-                    <a href="{{ autor.google_scholar_url }}"
-                       target="_blank"
-                       rel="noopener"
-                       class="autor-page__id-link">Profil <span class="fi-arrow-right"></span></a>
-                </div>
-            </div>
+            {% include "browse/autor_sekcje/_identyfikator.html" with etykieta="Google Scholar" wartosc=autor.google_scholar_id url=autor.google_scholar_url tekst="Profil" strzalka=True only %}
         {% endif %}
         {% if autor.url_profilu_uczelni %}
-            <div class="cell shrink">
-                <div class="callout autor-page__id-card">
-                    <div class="autor-page__id-label">
-                        {{ uczelnia.etykieta_profilu_uczelni|default:"Profil w portalu uczelni" }}
-                    </div>
-                    <a href="{{ autor.url_profilu_uczelni }}"
-                       target="_blank"
-                       rel="noopener"
-                       class="autor-page__id-link">Profil <span class="fi-arrow-right"></span></a>
-                </div>
-            </div>
+            {% include "browse/autor_sekcje/_identyfikator.html" with etykieta=uczelnia.etykieta_profilu_uczelni|default:"Profil w portalu uczelni" wartosc=autor.url_profilu_uczelni url=autor.url_profilu_uczelni tekst="Profil" strzalka=True only %}
         {% endif %}
-        {% if autor.pbn_id %}
-            <div class="cell shrink">
-                <div class="callout autor-page__id-card">
-                    <div class="autor-page__id-label">PBN ID</div>
-                    <div class="autor-page__id-value">{{ autor.pbn_id }}</div>
-                </div>
-            </div>
+        {# Wewnętrzny numer kadrowy — tylko dla zalogowanych. #}
+        {% if autor.system_kadrowy_id and request.user.is_authenticated %}
+            {% include "browse/autor_sekcje/_identyfikator.html" with etykieta="System kadrowy" wartosc=autor.system_kadrowy_id tekst=autor.system_kadrowy_id only %}
         {% endif %}
-        {% if autor.system_kadrowy_id %}
-            <div class="cell shrink">
-                <div class="callout autor-page__id-card">
-                    <div class="autor-page__id-label">System kadrowy</div>
-                    <div class="autor-page__id-value">{{ autor.system_kadrowy_id }}</div>
-                </div>
-            </div>
-        {% endif %}
-        <div class="cell shrink">
-            <div class="callout autor-page__id-card">
-                <div class="autor-page__id-label">BPP ID</div>
-                <span data-tooltip
-                      class="top autor-page__id-value"
-                      data-click-open="false"
-                      tabindex="2"
-                      title="Unikalny, wewnętrzny identyfikator autora w systemie BPP">
-                    {{ autor.pk }}
-                </span>
-            </div>
-        </div>
+        {% include "browse/autor_sekcje/_identyfikator.html" with etykieta="BPP ID" wartosc=autor.pk tekst=autor.pk opis="Unikalny, wewnętrzny identyfikator autora w systemie BPP" only %}
     </div>
 </div>
 <div class="shaded-hr-div-small"></div>

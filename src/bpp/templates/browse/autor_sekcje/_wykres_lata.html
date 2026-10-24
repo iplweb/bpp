@@ -52,15 +52,17 @@
                 <span>0</span>
             </div>
             <div class="autor-page__wykres-lata autor-page__wykres-lata--siatka">
-                {# Górna linia siatki na wysokości najwyższego słupka (120px). #}
+                {# Górna linia siatki na wysokości najwyższego słupka. #}
                 <span class="autor-page__wykres-siatka
                              autor-page__wykres-siatka--slupki"></span>
                 {% for rok, wartosc in dane.dane %}
                     <div class="autor-page__slupek"
                          title="{{ rok }}: {{ wartosc }} {{ dane.etykieta }}">
                         <div class="autor-page__slupek-liczba">{{ wartosc }}</div>
+                        {# Udział w maksimum (0–100); wysokość pola słupków daje CSS #}
+                        {# (--wykres-wys-slupkow) — mniejsza w połówce pary. #}
                         <div class="autor-page__slupek-bar"
-                             style="height: {% widthratio wartosc dane.maks 120 %}px"></div>
+                             style="--udzial: {% widthratio wartosc dane.maks 100 %}"></div>
                         <div class="autor-page__slupek-rok">{{ rok }}</div>
                     </div>
                 {% endfor %}

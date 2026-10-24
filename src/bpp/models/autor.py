@@ -22,7 +22,6 @@ from django.db.models import CASCADE, SET_NULL, Count, Func, Q, Sum
 from django.urls.base import reverse
 from django.utils import timezone
 from django.utils.functional import cached_property
-from tinymce.models import HTMLField
 
 from bpp import const
 from bpp.core import zbieraj_sloty
@@ -212,11 +211,6 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
 
     urodzony = models.DateField(blank=True, null=True)
     zmarl = models.DateField(blank=True, null=True)
-
-    opis = HTMLField(blank=True, null=True)  # models.TextField(blank=True, null=True)
-    pokazuj_opis = models.BooleanField(
-        default=False, help_text="""Czy pokazywać tekst z pola 'Opis' na stronie?"""
-    )
 
     zdjecie = models.ImageField(
         "Zdjęcie",

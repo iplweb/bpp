@@ -1,0 +1,1 @@
+Przycisk „Metryki ewaluacyjne” na stronie autora widzą tylko osoby uprawnione do oglądania metryk (pełne uprawnienia ewaluacji lub zalogowany autor na własnej stronie) — pozostałym prowadził do błędu 403.

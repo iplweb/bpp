@@ -9,16 +9,16 @@ import pytest
 from model_bakery import baker
 
 from bpp.models import Autor
-from bpp.profil_autora import KLUCZ_RADON, KOLUMNA_LEWA
+from bpp.profil_autora import KLUCZ_RADON
 from bpp.profil_autora_dane import przygotuj_sekcje
 
 pytestmark = pytest.mark.django_db
 
 
-def test_radon_w_katalogu_lewej_kolumny():
+def test_radon_w_domyslnym_ukladzie():
     autor = baker.make(Autor)
     sekcje = przygotuj_sekcje(autor, uczelnia=None, request=None)
-    klucze = [s["klucz"] for s in sekcje[KOLUMNA_LEWA]]
+    klucze = [s["klucz"] for s in sekcje]
     assert KLUCZ_RADON in klucze
 
 

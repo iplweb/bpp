@@ -253,10 +253,6 @@ class AutorView(DetailView):
         from bpp.profil_autora_dane import przygotuj_sekcje
 
         request = getattr(self, "request", None)
-        # Szerokość kolumn (Foundation, na 12): lewa z konfiguracji uczelni,
-        # prawa dopełnia do 12. Domyślnie 6/6 (jak dziś). getattr — uczelnia
-        # może być None (testy jednostkowe bez request).
-        szer_lewej = getattr(uczelnia, "szerokosc_lewej_kolumny", 6) or 6
         # Multi-homed: link do PBN musi znać uczelnię z requestu — szablon
         # nie umie przekazać argumentu do metody, więc liczymy go tu. Bez
         # tego ``autor.link_do_pbn`` (bezargumentowo) degraduje do
@@ -266,10 +262,9 @@ class AutorView(DetailView):
             ma_powiazania=ma_powiazania,
             link_do_pbn=self.object.link_do_pbn(uczelnia),
             sekcje_profilu=przygotuj_sekcje(self.object, uczelnia, request),
-            szer_lewej_kolumny=szer_lewej,
-            szer_prawej_kolumny=12 - szer_lewej,
             historia_zatrudnienia=self.object.historia_zatrudnienia(uczelnia),
             raport_links=self._raport_links(request),
+            pokazuj_metryki=self._pokazuj_metryki(request),
             **kwargs,
         )
         # NIE nadpisuj None-em sentinela ``NiezdefiniowanaUczelnia`` wstrzykiwanego
@@ -279,6 +274,17 @@ class AutorView(DetailView):
         if uczelnia is not None:
             context["uczelnia"] = uczelnia
         return context
+
+    def _pokazuj_metryki(self, request):
+        """Przycisk metryk ewaluacyjnych tylko dla tych, których wpuści
+        ``MetrykaDetailView`` — reszta dostałaby 403. Anonim → ``False``,
+        więc treść dla ``cache_publiczny`` (anonim-only) się nie zmienia."""
+        if request is None:
+            return False
+
+        from ewaluacja_metryki.views.mixins import moze_ogladac_metryki_autora
+
+        return moze_ogladac_metryki_autora(request.user, self.object)
 
     def _raport_links(self, request):
         """Linki do raportu autora — tylko gdy raport jest widoczny dla

@@ -71,6 +71,10 @@ import './bpp.js';
 import './form-handlers.js';
 // Sekcja „Osiągnięcia (RAD-on)" na podstronie autora — auto-wire przy załadowaniu.
 import './radon-profil.js';
+// Kafle identyfikatorów autora — klik w kafel kopiuje wartość do schowka.
+import './autor-identyfikatory.js';
+// Eksport BibTeX/RIS: „Generuj” dopiero po zakończonej weryfikacji ALTCHA.
+import './eksport-autora-altcha.js';
 import '../../../../../.venv/lib/python/site-packages/channels_broadcast/static/channels_broadcast/js/notifications.js';
 
 // ===== 11. GLOBAL EXPORTS =====

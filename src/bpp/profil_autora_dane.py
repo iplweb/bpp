@@ -31,9 +31,7 @@ from bpp.profil_autora import (
     KLUCZ_STATYSTYKI_CHARAKTER,
     KLUCZ_WSPOLAUTORZY,
     KLUCZ_WYBRANE_PUBLIKACJE,
-    KLUCZ_WYKRES_IF_LATA,
-    KLUCZ_WYKRES_LATA,
-    KLUCZ_WYKRES_PK_LATA,
+    KLUCZ_WYKRESY,
     KLUCZ_ZRODLA,
 )
 
@@ -207,6 +205,25 @@ def _wykres_if_lata(autor, limit, request):
     return {"dane": dane, "maks": maks, "etykieta": "IF"}
 
 
+#: Wykresy pasa „Wykresy w latach” — (nazwa, builder), w kolejności na stronie.
+_WYKRESY = (
+    ("Publikacje w latach", _wykres_lata),
+    ("Punkty MNiSW w latach", _wykres_pk_lata),
+    ("Impact Factor w latach", _wykres_if_lata),
+)
+
+
+def _wykresy(autor, limit, request):
+    # Wykresy stoją obok siebie w jednym pasie (równe wysokości z natury);
+    # pusty wykres (np. autor bez IF) odpada, a pozostałe dzielą szerokość.
+    wykresy = []
+    for nazwa, builder in _WYKRESY:
+        dane = builder(autor, limit, request)
+        if dane is not None:
+            wykresy.append({"nazwa": nazwa, "dane": dane})
+    return {"wykresy": wykresy} if wykresy else None
+
+
 def _punkty_lata(autor, limit, request):
     from bpp.models.cache.punktacja import Cache_Punktacja_Autora_Query
 
@@ -272,9 +289,7 @@ _BUILDERY = {
     KLUCZ_OSTATNIO_EDYTOWANE: _ostatnio_edytowane,
     KLUCZ_WYBRANE_PUBLIKACJE: _wybrane_publikacje,
     KLUCZ_STATYSTYKI_CHARAKTER: _statystyki_charakter,
-    KLUCZ_WYKRES_LATA: _wykres_lata,
-    KLUCZ_WYKRES_PK_LATA: _wykres_pk_lata,
-    KLUCZ_WYKRES_IF_LATA: _wykres_if_lata,
+    KLUCZ_WYKRESY: _wykresy,
     KLUCZ_PUNKTY_LATA: _punkty_lata,
     KLUCZ_DYSCYPLINY: _dyscypliny,
     KLUCZ_ZRODLA: _zrodla,
@@ -283,41 +298,42 @@ _BUILDERY = {
 
 
 def przygotuj_sekcje(autor, uczelnia=None, request=None):
-    """Zwróć sekcje OBU kolumn do wyrenderowania.
+    """Zwróć widoczne sekcje w kolejności renderowania, z danymi.
 
-    Układ pobierany jest globalnie z ``uczelnia`` (``rozwiaz_uklad`` → dict
-    ``{"lewa", "prawa"}``), dane — z ``autor``. Zwraca dict tej samej struktury;
-    każdy element to ``{"klucz", "nazwa", "template", "dane"}`` (``dane`` może
-    być ``None`` dla sekcji tylko-szablonowych — partial czyta wtedy ``autor``
-    itd. z kontekstu strony).
+    Układ pobierany jest z ``uczelnia`` (``rozwiaz_uklad``), dane — z
+    ``autor``. Każdy element to ``{"klucz", "nazwa", "template", "dane",
+    "szerokosc", "karta"}`` (``dane`` jest ``None`` dla sekcji
+    tylko-szablonowych — partial czyta wtedy ``autor`` itd. z kontekstu).
 
     Reguły pomijania:
-    - sekcja TYLKO-SZABLONOWA (``template_only``, np. bloki lewej kolumny) jest
-      ZAWSZE dołączana — partial sam się bramkuje (``{% if %}``);
+    - sekcja TYLKO-SZABLONOWA (``template_only``) jest ZAWSZE dołączana —
+      partial sam się bramkuje (``{% if %}``), a pusty wynik odrzuca dopiero
+      tag ``pasy_profilu`` (przed parowaniem w pasy);
     - sekcja DATA-DRIVEN jest pomijana, gdy jej builder zwrócił ``None`` (pusta)
       lub gdy buildera (jeszcze) nie ma.
     """
-    from bpp.profil_autora import KOLUMNA_LEWA, KOLUMNA_PRAWA, rozwiaz_uklad
+    from bpp.profil_autora import rozwiaz_uklad
 
-    uklad = rozwiaz_uklad(uczelnia)
-    wynik = {KOLUMNA_LEWA: [], KOLUMNA_PRAWA: []}
-    for kolumna, lista in uklad.items():
-        for s in lista:
-            if s["template_only"]:
-                dane = None
-            else:
-                builder = _BUILDERY.get(s["klucz"])
-                if builder is None:
-                    continue
-                dane = builder(autor, s["limit"], request)
-                if dane is None:
-                    continue
-            wynik[kolumna].append(
-                {
-                    "klucz": s["klucz"],
-                    "nazwa": s["nazwa"],
-                    "template": s["template"],
-                    "dane": dane,
-                }
-            )
+    wynik = []
+    for s in rozwiaz_uklad(uczelnia):
+        if s["template_only"]:
+            dane = None
+        else:
+            builder = _BUILDERY.get(s["klucz"])
+            if builder is None:
+                continue
+            dane = builder(autor, s["limit"], request)
+            if dane is None:
+                continue
+        wynik.append(
+            {
+                "klucz": s["klucz"],
+                "nazwa": s["nazwa"],
+                "template": s["template"],
+                "dane": dane,
+                "szerokosc": s["szerokosc"],
+                "karta": s["karta"],
+                "elastyczna": s["elastyczna"],
+            }
+        )
     return wynik

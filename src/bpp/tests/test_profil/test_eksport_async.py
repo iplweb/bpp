@@ -2,18 +2,31 @@
 
 Eksport BibTeX/RIS jest budowany w tle przez zadanie Celery
 ``generuj_eksport_autora`` i pobierany dopiero gdy gotowy. Strony są
-PUBLICZNE (anonimowe, bez logowania), a autoryzacja statusu/pobrania
+PUBLICZNE (anonim startuje po ALTCHA), a autoryzacja statusu/pobrania
 odbywa się wyłącznie przez nieodgadywalny UUID ``AutorEksportTask.pk``.
 """
+
+import base64
+import json
+from unittest import mock
 
 import pytest
 from django.core.files.base import ContentFile
 from django.urls import reverse
 
 from bpp.export.bibtex import export_to_bibtex
-from bpp.models import Autor, AutorEksportTask, Rekord
+from bpp.models import AutorEksportTask, Rekord
 
 pytestmark = pytest.mark.django_db
+
+
+def _fake_altcha_payload():
+    # django-altcha dekoduje payload nawet przy zamockowanym weryfikatorze.
+    return base64.b64encode(json.dumps({"challenge": "x"}).encode()).decode()
+
+
+def _altcha_ok():
+    return mock.patch("django_altcha.altcha.verify_solution", return_value=(True, None))
 
 
 def _zbuduj_autora_z_pracami(
@@ -99,42 +112,8 @@ def test_generuj_eksport_autora_ris(
     assert "ER  -" in body
 
 
-def test_start_view_tworzy_task_i_przekierowuje(
-    client,
-    transactional_db,
-    standard_data,
-    autor_jan_nowak,
-    mocker,
-):
-    delay = mocker.patch("bpp.tasks.generuj_eksport_autora.delay")
-
-    url = reverse("bpp:autor_eksport_start", args=(autor_jan_nowak.pk, "bib"))
-    resp = client.get(url)
-
-    assert resp.status_code == 302
-    task = AutorEksportTask.objects.get()
-    assert task.autor == autor_jan_nowak
-    assert task.format == "bib"
-    assert reverse("bpp:autor_eksport_status", args=(task.pk,)) in resp["Location"]
-    delay.assert_called_once_with(str(task.pk))
-
-
-def test_start_view_dedupes(
-    client,
-    transactional_db,
-    standard_data,
-    autor_jan_nowak,
-    mocker,
-):
-    delay = mocker.patch("bpp.tasks.generuj_eksport_autora.delay")
-
-    url = reverse("bpp:autor_eksport_start", args=(autor_jan_nowak.pk, "bib"))
-    resp1 = client.get(url)
-    resp2 = client.get(url)
-
-    assert AutorEksportTask.objects.count() == 1
-    assert resp1["Location"] == resp2["Location"]
-    delay.assert_called_once()
+# Start eksportu (GET → formularz, POST → zadanie, ALTCHA dla anonima,
+# deduplikacja) — testy w ``test_eksport_captcha.py``.
 
 
 def test_status_view_pending_pokazuje_postep(
@@ -244,9 +223,11 @@ def test_widoki_dzialaja_dla_anonima(
     """Wszystkie trzy widoki działają bez logowania (brak redirectu na login)."""
     mocker.patch("bpp.tasks.generuj_eksport_autora.delay")
 
-    start = client.get(
-        reverse("bpp:autor_eksport_start", args=(autor_jan_nowak.pk, "bib"))
-    )
+    with _altcha_ok():
+        start = client.post(
+            reverse("bpp:autor_eksport_start", args=(autor_jan_nowak.pk, "bib")),
+            {"captcha": _fake_altcha_payload()},
+        )
     assert start.status_code == 302
     assert "/login" not in start["Location"]
 

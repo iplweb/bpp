@@ -17,6 +17,10 @@
         <input type="hidden" name="suggested-title" value="{{ autor }}"/>
         <input type="hidden" name="autor" value="{{ autor.pk }}"/>
 
+        {# Pola w siatce 2×2 (typ | jednostki / lata | tytuł); na małych #}
+        {# ekranach jedno pod drugim. #}
+        <div class="grid-x grid-margin-x autor-page__search-pola">
+        <div class="cell medium-6">
         <div class="card autor-page__search-card">
             <div class="card-section">
                 <h6 class="autor-page__search-card-title">
@@ -25,10 +29,12 @@
                 {% include "browse/typy.html" %}
             </div>
         </div>
+        </div>
 
         {# Jednostki autora — jeden queryset na warunek i pętlę. #}
         {% with jednostki_autora=autor.jednostki_gdzie_ma_publikacje %}
         {% if jednostki_autora %}
+            <div class="cell medium-6">
             <div class="card autor-page__search-card">
                 <div class="card-section">
                     <h6 class="autor-page__search-card-title">
@@ -36,7 +42,7 @@
                     </h6>
                     <div class="grid-x grid-margin-x">
                         {% for jednostka in jednostki_autora %}
-                            <div class="cell medium-6 autor-page__checkbox-item">
+                            <div class="cell autor-page__checkbox-item">
                                 <input type="checkbox"
                                        name="jednostka"
                                        value="{{ jednostka.pk }}"
@@ -56,9 +62,11 @@
                     </div>
                 </div>
             </div>
+            </div>
         {% endif %}
         {% endwith %}
 
+        <div class="cell medium-6">
         <div class="card autor-page__search-card">
             <div class="card-section">
                 <h6 class="autor-page__search-card-title">
@@ -81,7 +89,9 @@
                 </div>
             </div>
         </div>
+        </div>
 
+        <div class="cell medium-6">
         <div class="card autor-page__search-card">
             <div class="card-section">
                 <h6 class="autor-page__search-card-title">
@@ -99,6 +109,8 @@
                     Tytuł wyszukiwania możesz zmienić, klikając go dwukrotnie.
                 </small>
             </div>
+        </div>
+        </div>
         </div>
 
         <div class="autor-page__search-button-section">

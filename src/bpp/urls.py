@@ -1,5 +1,6 @@
 from django.urls import path
 from django.urls import re_path as url
+from django_altcha import AltchaChallengeView
 
 import bpp
 from bpp.views.api import (
@@ -349,6 +350,13 @@ urlpatterns = [
         r"^autor/(?P<pk>\d+)/eksport/(?P<format>bib|ris)/$",
         StartEksportAutoraView.as_view(),
         name="autor_eksport_start",
+    ),
+    # Wyzwanie ALTCHA dla anonimowego startu eksportu (self-host, bez
+    # zewnętrznych usług). Własny endpoint — nie zależymy od zglos_publikacje.
+    url(
+        r"^eksport-autora/altcha-challenge/$",
+        AltchaChallengeView.as_view(),
+        name="autor_eksport_altcha",
     ),
     url(
         r"^eksport-autora/(?P<pk>[0-9a-f-]+)/$",

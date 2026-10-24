@@ -192,10 +192,17 @@ def test_strona_jednostki_podjednostki_bez_powtorzen(client, uczelnia):
 
 @pytest.mark.django_db
 def test_strona_autora_agregaty_liczone_raz(
-    client, uczelnia, autor_jan_kowalski, jednostka, typy_odpowiedzialnosci
+    client,
+    admin_user,
+    uczelnia,
+    autor_jan_kowalski,
+    jednostka,
+    typy_odpowiedzialnosci,
 ):
     """``liczba_cytowan`` i ``jednostki_gdzie_ma_publikacje`` — po jednym
     zapytaniu, a ``metryki.count`` nie może być liczone w pętli."""
+    # Blok metryk widzą tylko uprawnieni — anonim nie odpytałby metryk wcale.
+    client.force_login(admin_user)
     from ewaluacja_metryki.models import MetrykaAutora
 
     uczelnia.pokazuj_liczbe_cytowan_na_stronie_autora = (

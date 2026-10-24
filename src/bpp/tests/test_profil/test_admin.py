@@ -20,9 +20,10 @@ def test_edytor_ukladu_jest_na_uczelni():
     assert "uklad_profilu_autora" in _pola_fieldsetow(admin_obj)
 
 
-def test_szerokosc_lewej_kolumny_jest_na_uczelni():
+def test_szerokosc_lewej_kolumny_zniknela_z_admina_uczelni():
+    # Układ w pasy (pół / cała) zastąpił dwie kolumny o stałej szerokości.
     admin_obj = site._registry[Uczelnia]
-    assert "szerokosc_lewej_kolumny" in _pola_fieldsetow(admin_obj)
+    assert "szerokosc_lewej_kolumny" not in _pola_fieldsetow(admin_obj)
 
 
 def test_uklad_zniknal_z_admina_autora():

@@ -7,16 +7,22 @@ Dwa endpointy zwracają plik do pobrania:
 - ``/bpp/autor/<pk>/eksport.bib`` → BibTeX
 - ``/bpp/autor/<pk>/eksport.ris`` → RIS
 
-Obie strony są PUBLICZNE (bez logowania) — dane bibliograficzne i tak są
-widoczne na publicznej stronie autora.
+Oba generują plik SYNCHRONICZNIE w wątku requestu (do ``MAKS_EKSPORT`` prac,
+N+1), więc są tylko dla ZALOGOWANYCH — anonimowy bot mógłby nimi zająć
+workery. Publiczna ścieżka to eksport asynchroniczny (``StartEksportAutoraView``)
+z ALTCHA dla anonimów.
 """
 
 from datetime import timedelta
 
+from django import forms
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views import View
+from django_altcha import AltchaField
 from django_sendfile import sendfile
 
 from bpp.export.bibtex import export_to_bibtex
@@ -29,7 +35,7 @@ from bpp.models import Autor, AutorEksportTask, Rekord
 MAKS_EKSPORT = 5000
 
 
-class _BazaEksportuAutoraView(View):
+class _BazaEksportuAutoraView(LoginRequiredMixin, View):
     """
     Wspólna baza obu eksportów. Podklasy różnią się tylko formaterem,
     typem zawartości i rozszerzeniem pliku.
@@ -98,18 +104,63 @@ class AutorEksportRisView(_BazaEksportuAutoraView):
 DEDUPE_MINUTES = 5
 
 
+class StartEksportuForm(forms.Form):
+    """Formularz startu eksportu. Dla anonima dokłada pole ALTCHA."""
+
+    def __init__(self, *args, captcha_wymagany=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        if captcha_wymagany:
+            # `auto="onload"`: na tę stronę wchodzi się po to, żeby wygenerować
+            # eksport, więc PoW liczymy od razu — przycisk działa bez czekania.
+            self.fields["captcha"] = AltchaField(
+                label="Weryfikacja",
+                challengeurl=reverse_lazy("bpp:autor_eksport_altcha"),
+                auto="onload",
+            )
+
+
 class StartEksportAutoraView(View):
-    """Uruchom asynchroniczne zadanie eksportu (publiczny, anonimowy).
+    """Uruchom asynchroniczne zadanie eksportu (publiczny).
+
+    GET pokazuje stronę z przyciskiem „Generuj” i NIC nie kolejkuje —
+    crawler idący po linkach nie uruchomi zadań. Zadanie startuje POST,
+    a anonim musi przejść ALTCHA (proof-of-work), żeby boty nie zapchały
+    Celery. Zalogowany startuje bez captchy.
 
     Deduplikuje: jeśli istnieje świeże (ostatnie ``DEDUPE_MINUTES`` minut)
     zadanie dla tego samego autora i formatu w stanie innym niż ``failed``,
-    reużywa je zamiast kolejkować nowe — zapobiega spamowaniu Celery.
+    reużywa je zamiast kolejkować nowe.
     """
 
+    template_name = "browse/eksport_autora/start.html"
+
+    def _form(self, request, data=None):
+        return StartEksportuForm(
+            data, captcha_wymagany=not request.user.is_authenticated
+        )
+
+    def _render(self, request, autor, format, form):
+        return render(
+            request,
+            self.template_name,
+            {
+                "autor": autor,
+                "nazwa_formatu": dict(AutorEksportTask.FORMAT_CHOICES)[format],
+                "form": form,
+            },
+        )
+
     def get(self, request, pk, format):
+        autor = get_object_or_404(Autor, pk=pk)
+        return self._render(request, autor, format, self._form(request))
+
+    def post(self, request, pk, format):
         from bpp.tasks import generuj_eksport_autora
 
         autor = get_object_or_404(Autor, pk=pk)
+        form = self._form(request, request.POST)
+        if not form.is_valid():
+            return self._render(request, autor, format, form)
 
         od = timezone.now() - timedelta(minutes=DEDUPE_MINUTES)
         istniejacy = (

@@ -66,23 +66,26 @@
 
 <div class="shaded-hr-div-small"></div>
 
-{# === Układ 2-kolumnowy (Foundation grid w HTML; stackuje się na małych) === #}
-<div class="grid-x grid-margin-x autor-page__uklad">
-    {# --- LEWA kolumna: sekcje z rejestru (kolumna=lewa), kolejność i #}
-    {# widoczność z konfiguracji uczelni. Szerokość konfigurowalna. --- #}
-    <div class="cell large-{{ szer_lewej_kolumny }} autor-page__kolumna-lewa">
-        {% for sekcja in sekcje_profilu.lewa %}
-            {% include sekcja.template with dane=sekcja.dane nazwa=sekcja.nazwa klucz=sekcja.klucz %}
-        {% endfor %}
-    </div>
-
-    {# --- PRAWA kolumna: sekcje z rejestru (kolumna=prawa). Szerokość #}
-    {# dopełnia lewą do 12 kolumn Foundation. --- #}
-    <div class="cell large-{{ szer_prawej_kolumny }} autor-page__kolumna-prawa">
-        {% for sekcja in sekcje_profilu.prawa %}
-            {% include sekcja.template with dane=sekcja.dane nazwa=sekcja.nazwa klucz=sekcja.klucz %}
-        {% endfor %}
-    </div>
+{# === Pasy: na całą szerokość albo para sekcji obok siebie. Kolejność, #}
+{# szerokość (pół/cała) i widoczność z konfiguracji uczelni; puste sekcje #}
+{# odpadają przed parowaniem, a samotna połówka zajmuje cały pas. #}
+{# Pary stackują się na ekranach mniejszych niż large. #}
+{% load profil_autora_tags %}
+{% pasy_profilu sekcje_profilu as pasy %}
+<div class="autor-page__pasy">
+    {% for pas in pasy %}
+        <div class="grid-x grid-margin-x autor-page__pas">
+            {% for sekcja in pas %}
+                <div class="cell {% if pas|length == 2 %}large-6{% else %}large-12{% endif %} autor-page__pas-cela{% if pas|length == 2 %} autor-page__pas-cela--polowka{% endif %}" data-sekcja="{{ sekcja.klucz }}">
+                    {% if sekcja.karta %}
+                        <div class="autor-page__karta">{{ sekcja.html }}</div>
+                    {% else %}
+                        {{ sekcja.html }}
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% endfor %}
 </div>
 
 {# === Kod do osadzenia (full-width pod gridem) === #}

@@ -9,7 +9,6 @@ from django.utils import translation
 from bpp.profil_autora import (
     KLUCZ_PODSUMOWANIE,
     KLUCZ_STATYSTYKI_CHARAKTER,
-    KOLUMNA_PRAWA,
     rozwiaz_uklad,
 )
 from bpp.profil_autora_dane import _podsumowanie
@@ -61,21 +60,19 @@ def test_podsumowanie_bez_prac_ukrywa_sekcje(autor_jan_nowak):
     assert _podsumowanie(autor_jan_nowak, None, None) is None
 
 
-def test_podsumowanie_domyslnie_na_gorze_prawej_kolumny():
-    prawa = [s["klucz"] for s in rozwiaz_uklad(None)[KOLUMNA_PRAWA]]
-    assert prawa[0] == KLUCZ_PODSUMOWANIE
+def test_podsumowanie_domyslnie_pierwsze_na_stronie():
+    klucze = [s["klucz"] for s in rozwiaz_uklad(None)]
+    assert klucze[0] == KLUCZ_PODSUMOWANIE
 
 
 def test_nowa_sekcja_wstawiana_na_swoje_miejsce_w_zapisanym_ukladzie():
     # Uczelnia z układem zapisanym przed dodaniem podsumowania: sekcja nie
-    # ląduje na końcu prawej kolumny, tylko na swoim miejscu z katalogu.
+    # ląduje na końcu strony, tylko na swoim miejscu z katalogu.
     class Uczelnia:
-        uklad_profilu_autora = [
-            {"klucz": KLUCZ_STATYSTYKI_CHARAKTER, "kolumna": KOLUMNA_PRAWA},
-        ]
+        uklad_profilu_autora = [{"klucz": KLUCZ_STATYSTYKI_CHARAKTER}]
 
-    prawa = [s["klucz"] for s in rozwiaz_uklad(Uczelnia())[KOLUMNA_PRAWA]]
-    assert prawa[:2] == [KLUCZ_PODSUMOWANIE, KLUCZ_STATYSTYKI_CHARAKTER]
+    klucze = [s["klucz"] for s in rozwiaz_uklad(Uczelnia())]
+    assert klucze.index(KLUCZ_PODSUMOWANIE) < klucze.index(KLUCZ_STATYSTYKI_CHARAKTER)
 
 
 def test_szablon_podsumowania():
@@ -91,7 +88,7 @@ def _render_podsumowania():
     return render_to_string(
         "browse/autor_sekcje/podsumowanie.html",
         {
-            "nazwa": "Podsumowanie dorobku",
+            "nazwa": "Podsumowanie dorobku w bazie danych",
             "dane": {
                 "liczba": 12,
                 "impact_factor": Decimal("31.456"),
@@ -106,5 +103,5 @@ def _render_podsumowania():
 @pytest.mark.django_db
 def test_strona_autora_pokazuje_podsumowanie(client, dorobek):
     tresc = client.get(dorobek.get_absolute_url()).content.decode()
-    assert "Podsumowanie dorobku" in tresc
+    assert "Podsumowanie dorobku w bazie danych" in tresc
     assert "autor-page__podsumowanie" in tresc

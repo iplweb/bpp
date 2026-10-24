@@ -1,4 +1,8 @@
-"""Testy eksportu publikacji autora do BibTeX i RIS (§3.3)."""
+"""Testy eksportu publikacji autora do BibTeX i RIS (§3.3).
+
+Synchroniczne ``eksport.bib``/``eksport.ris`` są tylko dla zalogowanych
+(patrz ``test_eksport_captcha``), stąd ``admin_client``.
+"""
 
 import pytest
 from django.urls import reverse
@@ -34,7 +38,7 @@ def _zbuduj_autora_z_pracami(
 
 
 def test_eksport_bib_zwraca_bibtex(
-    client,
+    admin_client,
     transactional_db,
     standard_data,
     wydawnictwo_ciagle,
@@ -48,7 +52,7 @@ def test_eksport_bib_zwraca_bibtex(
     )
 
     url = reverse("bpp:autor_eksport_bibtex", args=(autor_jan_nowak.pk,))
-    resp = client.get(url)
+    resp = admin_client.get(url)
 
     assert resp.status_code == 200
     assert resp["Content-Type"].startswith("application/x-bibtex")
@@ -62,7 +66,7 @@ def test_eksport_bib_zwraca_bibtex(
 
 
 def test_eksport_ris_zwraca_ris(
-    client,
+    admin_client,
     transactional_db,
     standard_data,
     wydawnictwo_ciagle,
@@ -76,7 +80,7 @@ def test_eksport_ris_zwraca_ris(
     )
 
     url = reverse("bpp:autor_eksport_ris", args=(autor_jan_nowak.pk,))
-    resp = client.get(url)
+    resp = admin_client.get(url)
 
     assert resp.status_code == 200
     assert resp["Content-Type"].startswith("application/x-research-info-systems")
@@ -138,18 +142,18 @@ def test_export_to_ris_rozdzial_ma_typ_chap(
     assert "TY  - CHAP" in ris
 
 
-def test_eksport_pusty_autor_nie_wybucha(client, autor_jan_nowak):
+def test_eksport_pusty_autor_nie_wybucha(admin_client, autor_jan_nowak):
     url_bib = reverse("bpp:autor_eksport_bibtex", args=(autor_jan_nowak.pk,))
     url_ris = reverse("bpp:autor_eksport_ris", args=(autor_jan_nowak.pk,))
 
-    resp_bib = client.get(url_bib)
+    resp_bib = admin_client.get(url_bib)
     assert resp_bib.status_code == 200
 
-    resp_ris = client.get(url_ris)
+    resp_ris = admin_client.get(url_ris)
     assert resp_ris.status_code == 200
 
 
-def test_eksport_nieistniejacy_autor_404(client):
+def test_eksport_nieistniejacy_autor_404(admin_client):
     url = reverse("bpp:autor_eksport_bibtex", args=(999999,))
-    resp = client.get(url)
+    resp = admin_client.get(url)
     assert resp.status_code == 404

@@ -1,10 +1,10 @@
 """Testy kafelkowego edytora układu profilu autora (widget + form, §3.2).
 
 Edytor zastępuje surowy textarea JSON w ``UczelniaAdmin`` przyjaznym widgetem
-kafelkowym z DWIEMA połączonymi strefami (lewa / prawa, drag-drop między nimi).
-Unit-testy skupiają się na round-tripie danych: ``clean_uklad_profilu_autora``
-sanityzuje przez ``waliduj_uklad``, a ``render`` rysuje kafelek dla KAŻDEJ
-sekcji katalogu w jego kolumnie.
+kafelkowym: jedna lista w kolejności strony, przy każdym kafelku wybór
+szerokości (pół / cała). Unit-testy skupiają się na round-tripie danych:
+``clean_uklad_profilu_autora`` sanityzuje przez ``waliduj_uklad``, a ``render``
+rysuje kafelek dla KAŻDEJ sekcji katalogu.
 """
 
 import json
@@ -16,14 +16,14 @@ from bpp.admin.uczelnia import UczelniaAdminForm
 from bpp.admin.widgets.uklad_profilu import EdytorUkladuWidget
 from bpp.models import Uczelnia
 from bpp.profil_autora import (
-    DOMYSLNY_LIMIT,
     KATALOG_SEKCJI,
-    KLUCZ_BIOGRAM,
     KLUCZ_NAJLEPSZE_PK,
     KLUCZ_STATYSTYKI_CHARAKTER,
-    KLUCZ_WYKRES_LATA,
-    KOLUMNA_LEWA,
-    KOLUMNA_PRAWA,
+    KLUCZ_WIZYTOWKA,
+    KLUCZ_WYKRESY,
+    LIMIT_LIST_PRAC,
+    SZEROKOSC_CALA,
+    SZEROKOSC_POL,
     rozwiaz_uklad,
 )
 
@@ -46,7 +46,7 @@ def _clean_uklad(posted_value):
 def test_clean_parsuje_zserializowany_json_i_zachowuje_kolejnosc():
     posted = json.dumps(
         [
-            {"klucz": KLUCZ_WYKRES_LATA, "widoczna": False, "limit": None},
+            {"klucz": KLUCZ_WYKRESY, "widoczna": False, "limit": None},
             {"klucz": KLUCZ_NAJLEPSZE_PK, "widoczna": True, "limit": 30},
             {"klucz": KLUCZ_STATYSTYKI_CHARAKTER, "widoczna": True, "limit": None},
         ]
@@ -55,7 +55,7 @@ def test_clean_parsuje_zserializowany_json_i_zachowuje_kolejnosc():
 
     klucze = [p["klucz"] for p in wynik]
     assert klucze == [
-        KLUCZ_WYKRES_LATA,
+        KLUCZ_WYKRESY,
         KLUCZ_NAJLEPSZE_PK,
         KLUCZ_STATYSTYKI_CHARAKTER,
     ]
@@ -69,17 +69,17 @@ def test_clean_odrzuca_nieznany_klucz():
     posted = json.dumps(
         [
             {"klucz": "nieistniejaca_sekcja", "widoczna": True, "limit": None},
-            {"klucz": KLUCZ_WYKRES_LATA, "widoczna": True, "limit": None},
+            {"klucz": KLUCZ_WYKRESY, "widoczna": True, "limit": None},
         ]
     )
     klucze = [p["klucz"] for p in _clean_uklad(posted)]
     assert "nieistniejaca_sekcja" not in klucze
-    assert klucze == [KLUCZ_WYKRES_LATA]
+    assert klucze == [KLUCZ_WYKRESY]
 
 
 def test_clean_koryguje_niedozwolony_limit():
     posted = json.dumps([{"klucz": KLUCZ_NAJLEPSZE_PK, "widoczna": True, "limit": 7}])
-    assert _clean_uklad(posted)[0]["limit"] == DOMYSLNY_LIMIT
+    assert _clean_uklad(posted)[0]["limit"] == LIMIT_LIST_PRAC
 
 
 def test_clean_pustej_wartosci_nie_wywala_i_dziala_z_rozwiaz_uklad():
@@ -104,7 +104,7 @@ def test_render_zawiera_kafelek_dla_kazdej_sekcji_katalogu():
 @pytest.mark.django_db
 def test_render_zaznacza_widoczne_sekcje_z_wartosci():
     wartosc = [
-        {"klucz": KLUCZ_WYKRES_LATA, "widoczna": True, "limit": None},
+        {"klucz": KLUCZ_WYKRESY, "widoczna": True, "limit": None},
         {"klucz": KLUCZ_STATYSTYKI_CHARAKTER, "widoczna": False, "limit": None},
     ]
     widget = EdytorUkladuWidget()
@@ -118,7 +118,7 @@ def test_render_zaznacza_widoczne_sekcje_z_wartosci():
         assert m, f"brak checkboxa dla {klucz}"
         return "checked" in m.group(1)
 
-    assert _checkbox_checked(KLUCZ_WYKRES_LATA) is True
+    assert _checkbox_checked(KLUCZ_WYKRESY) is True
     assert _checkbox_checked(KLUCZ_STATYSTYKI_CHARAKTER) is False
 
 
@@ -130,19 +130,19 @@ def test_render_limit_select_tylko_dla_sekcji_z_limitem():
     html = widget.render("uklad_profilu_autora", None)
 
     def _ma_select(klucz):
-        wzorzec = rf'<select[^>]*data-klucz="{re.escape(klucz)}"'
+        wzorzec = rf'<select class="uklad-limit-select" data-klucz="{re.escape(klucz)}"'
         return bool(re.search(wzorzec, html))
 
     # KLUCZ_NAJLEPSZE_PK ma_limit=True → select obecny
     assert _ma_select(KLUCZ_NAJLEPSZE_PK) is True
-    # KLUCZ_WYKRES_LATA ma_limit=False → brak selecta
-    assert _ma_select(KLUCZ_WYKRES_LATA) is False
+    # KLUCZ_WYKRESY ma_limit=False → brak selecta limitu
+    assert _ma_select(KLUCZ_WYKRESY) is False
 
 
 @pytest.mark.django_db
 def test_render_dolacza_sekcje_spoza_zapisanej_wartosci():
     # wartość zawiera tylko jedną sekcję — reszta katalogu i tak ma się pojawić
-    wartosc = [{"klucz": KLUCZ_WYKRES_LATA, "widoczna": True, "limit": None}]
+    wartosc = [{"klucz": KLUCZ_WYKRESY, "widoczna": True, "limit": None}]
     widget = EdytorUkladuWidget()
     html = widget.render("uklad_profilu_autora", wartosc)
     for typ in KATALOG_SEKCJI:
@@ -151,18 +151,18 @@ def test_render_dolacza_sekcje_spoza_zapisanej_wartosci():
 
 @pytest.mark.django_db
 def test_round_trip_zapisuje_kanoniczny_schemat(uczelnia):
-    # symulacja POST-a tego, co JS zserializował do ukrytego inputa (z kolumną)
+    # symulacja POST-a tego, co JS zserializował do ukrytego inputa
     posted = json.dumps(
         [
             {
                 "klucz": KLUCZ_NAJLEPSZE_PK,
-                "kolumna": KOLUMNA_PRAWA,
+                "szerokosc": SZEROKOSC_CALA,
                 "widoczna": True,
                 "limit": 50,
             },
             {
-                "klucz": KLUCZ_WYKRES_LATA,
-                "kolumna": KOLUMNA_PRAWA,
+                "klucz": KLUCZ_WYKRESY,
+                "szerokosc": SZEROKOSC_POL,
                 "widoczna": False,
                 "limit": None,
             },
@@ -174,19 +174,19 @@ def test_round_trip_zapisuje_kanoniczny_schemat(uczelnia):
     uczelnia.refresh_from_db()
 
     zapis = uczelnia.uklad_profilu_autora
-    # każda pozycja ma DOKŁADNIE schemat {klucz, kolumna, widoczna, limit}
+    # każda pozycja ma DOKŁADNIE schemat {klucz, szerokosc, widoczna, limit}
     for poz in zapis:
-        assert set(poz.keys()) == {"klucz", "kolumna", "widoczna", "limit"}
+        assert set(poz.keys()) == {"klucz", "szerokosc", "widoczna", "limit"}
         assert isinstance(poz["widoczna"], bool)
     assert zapis[0] == {
         "klucz": KLUCZ_NAJLEPSZE_PK,
-        "kolumna": KOLUMNA_PRAWA,
+        "szerokosc": SZEROKOSC_CALA,
         "widoczna": True,
         "limit": 50,
     }
     assert zapis[1] == {
-        "klucz": KLUCZ_WYKRES_LATA,
-        "kolumna": KOLUMNA_PRAWA,
+        "klucz": KLUCZ_WYKRESY,
+        "szerokosc": SZEROKOSC_POL,
         "widoczna": False,
         "limit": None,
     }
@@ -194,27 +194,45 @@ def test_round_trip_zapisuje_kanoniczny_schemat(uczelnia):
     assert rozwiaz_uklad(uczelnia)
 
 
-def test_clean_round_trip_przeniesienia_kolumny(uczelnia):
-    # przeniesienie biogramu (domyślnie lewa) do prawej musi przetrwać clean
+def test_clean_round_trip_zmiany_szerokosci(uczelnia):
+    # wizytówka (domyślnie pół) ustawiona na całą szerokość przetrwa clean
     posted = json.dumps(
-        [{"klucz": KLUCZ_BIOGRAM, "kolumna": KOLUMNA_PRAWA, "widoczna": True}]
+        [{"klucz": KLUCZ_WIZYTOWKA, "szerokosc": SZEROKOSC_CALA, "widoczna": True}]
     )
     wynik = _clean_uklad(posted)
-    assert wynik[0]["klucz"] == KLUCZ_BIOGRAM
-    assert wynik[0]["kolumna"] == KOLUMNA_PRAWA
+    assert wynik[0]["szerokosc"] == SZEROKOSC_CALA
     uczelnia.uklad_profilu_autora = wynik
     uczelnia.save()
     uczelnia.refresh_from_db()
     res = rozwiaz_uklad(uczelnia)
-    assert KLUCZ_BIOGRAM in [s["klucz"] for s in res[KOLUMNA_PRAWA]]
+    wizytowka = next(s for s in res if s["klucz"] == KLUCZ_WIZYTOWKA)
+    assert wizytowka["szerokosc"] == SZEROKOSC_CALA
 
 
 @pytest.mark.django_db
-def test_render_ma_dwie_strefy_z_data_kolumna():
+def test_render_ma_select_szerokosci_dla_kazdej_sekcji():
+    import re
+
     widget = EdytorUkladuWidget()
     html = widget.render("uklad_profilu_autora", None)
-    assert f'data-kolumna="{KOLUMNA_LEWA}"' in html
-    assert f'data-kolumna="{KOLUMNA_PRAWA}"' in html
+    selecty = re.findall(r'<select class="uklad-szerokosc-select"', html)
+    assert len(selecty) == len(KATALOG_SEKCJI)
+
+
+@pytest.mark.django_db
+def test_render_zaznacza_szerokosc_z_wartosci():
+    import re
+
+    wartosc = [{"klucz": KLUCZ_WIZYTOWKA, "szerokosc": SZEROKOSC_CALA}]
+    html = EdytorUkladuWidget().render("uklad_profilu_autora", wartosc)
+    m = re.search(
+        rf'<select class="uklad-szerokosc-select" data-klucz="{KLUCZ_WIZYTOWKA}">'
+        r"(.*?)</select>",
+        html,
+        re.S,
+    )
+    assert m
+    assert re.search(rf'value="{SZEROKOSC_CALA}"\s+selected', m.group(1))
 
 
 @pytest.mark.django_db

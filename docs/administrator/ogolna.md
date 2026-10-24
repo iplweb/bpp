@@ -70,36 +70,47 @@ formularza, następnie zaznacz lub odznacz opcję "Publiczny" i zapisz rekord
 
 W rekordzie uczelni (Redagowanie➡Struktura➡Uczelnia, edycja rekordu) znajduje
 się zwijana sekcja **„Profil autora (podstrona)"**. Zawiera ona **kafelkowy
-edytor układu** prawej kolumny publicznych podstron autorów (patrz
+edytor układu** publicznych podstron autorów (patrz
 [opis strony autora w instrukcji użytkownika](../uzytkownik/przegladanie-i-wyszukiwanie.md#strona-autora)).
 Ustawienie jest **globalne dla całej uczelni** — obowiązuje na podstronach
 wszystkich autorów.
 
-Edytor działa następująco:
+Podstrona autora to ciąg **pasów**: sekcja na całą szerokość albo dwie
+sekcje obok siebie. Edytor to jedna lista kafelków w kolejności, w jakiej
+sekcje pojawią się na stronie:
 
-- każda dostępna sekcja prawej kolumny to osobny **kafelek**,
-- **przeciągnij** kafelki (ang. *drag and drop*), aby zmienić ich kolejność,
-- **odznacz checkbox** przy kafelku, aby ukryć daną sekcję,
-- dla sekcji listowych ustaw **limit** liczby wyświetlanych pozycji
-  (do wyboru 10, 20, 30 lub 50).
+- **przeciągnij** kafelek uchwytem ⠿ (ang. *drag and drop*), aby zmienić
+  kolejność,
+- przy każdym kafelku wybierz **szerokość**: „½” (pół) albo „cała
+  szerokość” — **dwie kolejne sekcje „½” stają obok siebie**, a sekcja „cała
+  szerokość” zajmuje własny pas,
+- **odznacz checkbox**, aby ukryć sekcję,
+- dla sekcji listowych ustaw **limit** liczby pozycji (5, 10, 20, 30 lub 50;
+  domyślnie listy prac mają 5 pozycji, współautorzy — 10).
 
-!!! note
-    Lewa kolumna podstrony autora (zdjęcie, biogram, identyfikatory,
-    historia zatrudnienia, formularz wyszukiwania, przyciski eksportu itd.)
-    jest **stała** i nie podlega konfiguracji w tym edytorze.
+Strona sama dba o to, by nie powstawały puste miejsca:
+
+- sekcja bez danych (np. autor bez zdjęcia i biogramu, bez cytowań) **nie
+  pokazuje się**, a sekcja „½”, która straciła przez to parę, zajmuje cały pas,
+- **wykresy w latach** są wyjątkiem: domyślnie zajmują cały pas (trzy obok
+  siebie), ale gdy tuż przed nimi została samotna sekcja „½”, stają obok niej
+  (jeden pod drugim, w niższej wersji).
 
 !!! tip
     **Pusty układ oznacza układ domyślny** — system pokaże rozsądny,
-    wbudowany zestaw sekcji. Nie trzeba niczego konfigurować, jeśli domyślny
-    układ jest wystarczający.
+    wbudowany zestaw sekcji: podsumowanie dorobku, zdjęcie z biogramem obok
+    afiliacji i identyfikatorów, wykresy, statystyki obok współautorów,
+    osiągnięcia z RAD-on, wyszukiwarkę prac, raport obok eksportu i listy
+    prac parami. Nie trzeba niczego konfigurować, jeśli taki układ wystarcza.
 
-Wśród dostępnych sekcji prawej kolumny znajdują się m.in.: podsumowanie
-dorobku (liczba publikacji, łączny Impact Factor, łączne punkty MNiSW),
-statystyki wg
-charakteru formalnego, wykresy roczne (liczba publikacji / suma punktów MNiSW /
-suma Impact Factor), najczęstsi współautorzy, najlepsze prace (wg punktacji
-oraz wg Impact Factor), najnowsze artykuły, najnowsze książki i rozdziały,
-ostatnio edytowane rekordy, dyscypliny, źródła oraz wyróżnione publikacje.
+Dostępne sekcje to m.in.: podsumowanie dorobku, zdjęcie i biogram,
+afiliacja i identyfikatory, wykresy w latach, statystyki wg charakteru
+formalnego, najczęstsi współautorzy, cytowania, metryki ewaluacyjne,
+osiągnięcia (RAD-on), wyszukiwarka prac, raport autora, eksport publikacji,
+najlepsze prace (wg punktacji oraz wg Impact Factor), najnowsze artykuły,
+najnowsze książki i rozdziały, ostatnio edytowane, a także domyślnie
+wyłączone: udział dyscyplin, najczęstsze źródła, punkty/sloty w latach
+i wyróżnione publikacje.
 
 W tej samej sekcji ustawisz **etykietę linku do profilu w portalu uczelni**
 (np. „PPM UML"). Pokazuje się ona przy linku z pola „Adres profilu w portalu

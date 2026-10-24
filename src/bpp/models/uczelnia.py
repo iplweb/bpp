@@ -410,15 +410,6 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         "w portalu uczelni”.",
     )
 
-    szerokosc_lewej_kolumny = models.SmallIntegerField(
-        "Szerokość lewej kolumny profilu autora",
-        choices=((4, "4 / 12"), (6, "6 / 12 (po połowie)"), (8, "8 / 12")),
-        default=6,
-        help_text="Szerokość lewej kolumny podstrony autora w jednostkach "
-        "siatki Foundation (na 12). Prawa kolumna dopełnia do 12. "
-        "Domyślnie 6/6 (po połowie).",
-    )
-
     pokazuj_raport_slotow_autor = OpcjaWyswietlaniaField(
         "Pokazuj raport slotów - autor",
         default=OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM,

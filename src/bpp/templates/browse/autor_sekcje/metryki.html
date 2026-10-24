@@ -1,6 +1,8 @@
 {# Metryki ewaluacyjne autora (lewa kolumna). Brak metryk → nic. #}
+{# Tylko dla uprawnionych (pokazuj_metryki z AutorView) — reszta dostałaby 403. #}
 {# Metryki pobierane RAZ — licznik był wcześniej liczony #}
 {# osobnym COUNT-em wewnątrz pętli po metrykach (N+1). #}
+{% if pokazuj_metryki %}
 {% with metryki=autor.metryki.all %}
 {% if metryki %}
     <div class="author-info-section">
@@ -23,3 +25,4 @@
     <div class="shaded-hr-div-small"></div>
 {% endif %}
 {% endwith %}
+{% endif %}

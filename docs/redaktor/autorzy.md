@@ -30,47 +30,72 @@ Algorytm ustalania aktualnego miejsca pracy działa w sposób następujący:
 
     dany autor może mieć tylko jedno powiązanie oznaczone jako *Podstawowe miejsce pracy*.
 
-## Zdjęcie i biogram autora (samodzielna edycja)
+## Profil autora (zdjęcie, biogram, linki do profili)
 
-Zalogowany użytkownik powiązany ze swoim rekordem autora może **samodzielnie**
-zredagować dane prezentowane na jego publicznej
+Dane prezentowane na publicznej
 [stronie autora](../uzytkownik/przegladanie-i-wyszukiwanie.md#strona-autora) —
-bez pośrednictwa redaktora. Edycji podlegają:
+**zdjęcie, biogram, linki do profili w innych serwisach** i **wyróżnione
+publikacje** — można uzupełnić na dwa sposoby:
 
-- **biogram** — wpisywany w języku Markdown lub w HTML, z **podglądem na żywo**
-  (zmiany widać od razu obok pola edycji),
-- **zdjęcie** — wgrane zdjęcie jest automatycznie kadrowane do kwadratu
-  i skalowane, zapisywane w formacie WebP; maksymalny rozmiar pliku to 5 MB,
-- **profile w innych serwisach** — identyfikatory Web of Science
-  (ResearcherID), Scopus (Author ID) i Google Scholar oraz adres profilu
-  w portalu uczelni (np. PPM). W polach identyfikatorów można wkleić **cały
-  adres profilu** skopiowany z przeglądarki — system sam wyciągnie z niego
-  identyfikator i sprawdzi jego format.
+- **autor sam**, po zalogowaniu — patrz
+  [Mój profil autora](../uzytkownik/moj-profil-autora.md),
+- **redaktor** w module redagowania — opisane niżej. Przydatne, gdy autor nie
+  edytuje swoich danych samodzielnie albo nie ma konta w BPP.
 
-Wejście do edycji: na górnej belce wybierz **„Mój profil"**, a następnie
-**„Edytuj swoją stronę"** (adres `/bpp/profil/edycja/`).
+Obie drogi zapisują te same pola rekordu autora — zmiana zrobiona w jednym
+miejscu jest od razu widoczna w drugim.
 
-!!! note
-    Te same pola redaktor może ustawić w module redagowania, w rekordzie
-    autora (zdjęcie i biogram — sekcja „Profil na podstronie autora",
-    identyfikatory — sekcja „Profile w serwisach zewnętrznych") — przydatne,
-    gdy autor nie edytuje swoich danych samodzielnie.
+### Edycja w module redagowania
+
+Otwórz rekord autora: **Redagowanie ➡ Wprowadzanie danych ➡ Autorzy**,
+wyszukaj autora i kliknij go. Pola profilu są w zwijanych sekcjach
+formularza (kliknij nagłówek sekcji, aby ją rozwinąć):
+
+| Sekcja formularza | Pola |
+|---|---|
+| **Profil na podstronie autora** | zdjęcie, biogram, format biogramu (Markdown / HTML) |
+| **Profile w serwisach zewnętrznych** | Web of Science (ResearcherID), Scopus (Author ID), Google Scholar, adres profilu w portalu uczelni |
+| identyfikatory (górna część formularza) | ORCID, „ORCID w PBN” |
+| **Wybrane publikacje autora** (tabela na dole) | wyróżnione prace i ich kolejność |
+
+Zasady są takie same jak przy samodzielnej edycji:
+
+- **zdjęcie** (do 5 MB) jest automatycznie kadrowane do kwadratu, skalowane
+  i zapisywane w formacie WebP,
+- **biogram** wpisuje się w Markdown albo HTML; przy wyświetlaniu usuwane są
+  skrypty i niebezpieczne znaczniki,
+- w polach **profili zewnętrznych** można wkleić cały adres profilu — system
+  sam wyciągnie identyfikator.
+
+!!! note "Dawne pole „Opis”"
+    Pole „Opis” (z przełącznikiem „Pokazuj opis”) zostało usunięte —
+    zastępuje je biogram. Jeśli autor miał wpisany opis, jego treść
+    przeniesiono do pola **„Adnotacje”** (pole wewnętrzne, niewidoczne na
+    stronie WWW). Treść, którą chcesz opublikować, przenieś do biogramu.
+
+### Powiązanie konta użytkownika z autorem {#powiązanie-konta-użytkownika-z-autorem}
+
+Autor może edytować swoją stronę tylko wtedy, gdy jego **konto w BPP jest
+powiązane z rekordem autora**. Zwykle dzieje się to samo — przy wejściu na
+stronę „Mój profil” system dopasowuje konto do autora po adresie e-mail,
+a gdy to się nie uda, po imieniu i nazwisku (tylko przy jednoznacznym
+dopasowaniu i tylko do autora niepowiązanego jeszcze z innym kontem).
+
+Gdy dopasowanie automatyczne zawiedzie (np. inny e-mail w koncie niż
+w rekordzie autora, albo dwóch autorów o tym samym nazwisku), powiązanie
+ustawia się ręcznie: **Redagowanie ➡ Administracja ➡ Użytkownicy**, wybierz
+konto, w sekcji **„Powiązanie z autorem”** wskaż autora i zapisz.
 
 ## Wyróżnione publikacje autora
 
 Autor może wskazać i uszeregować **wyróżnione prace**, które pojawią się na
-początku jego [strony autora](../uzytkownik/przegladanie-i-wyszukiwanie.md#strona-autora)
-— pod warunkiem, że uczelnia włączyła sekcję „wyróżnione publikacje" w układzie
+jego [stronie autora](../uzytkownik/przegladanie-i-wyszukiwanie.md#strona-autora)
+— pod warunkiem, że uczelnia włączyła sekcję „Wybrane publikacje” w układzie
 podstrony (patrz
 [układ podstrony autora](../administrator/ogolna.md#układ-podstrony-autora-profil-autora)).
 
-Listę wyróżnionych prac edytuje się na stronie
-`/bpp/profil/edycja/wybrane-publikacje/`:
-
-- wyszukiwarka podpowiada pozycje do dodania,
-- prace można **dodawać**, **usuwać** oraz **zmieniać ich kolejność**
-  (strzałkami).
-
-!!! note
-    Wyszukiwarka podpowiada **wyłącznie własne prace autora** — autor może
-    wyróżnić tylko publikacje, z którymi jest powiązany.
+Najwygodniej edytuje ją sam autor — z wyszukiwarką własnych prac (patrz
+[Mój profil autora](../uzytkownik/moj-profil-autora.md#wyróżnione-publikacje)).
+Redaktor może to zrobić w tabeli **„Wybrane publikacje autora”** na dole
+formularza autora, ale tam wskazuje się pracę technicznie — typem rekordu
+(np. wydawnictwo ciągłe) i jego numerem ID — oraz kolejnością.

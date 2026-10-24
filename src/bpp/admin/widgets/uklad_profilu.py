@@ -1,16 +1,16 @@
 """Kafelkowy (drag-drop) edytor układu profilu autora dla ``UczelniaAdmin``.
 
-Zastępuje surowy ``<textarea>`` JSON przyjaznym widgetem: DWIE połączone strefy
-(Lewa / Prawa) z kafelkami sekcji podstrony autora. Każdy kafelek ma checkbox
-widoczności, opcjonalny ``<select>`` limitu (tylko sekcje ``ma_limit``) i da się
-go przeciągnąć MIĘDZY kolumnami (jquery-ui ``.sortable({connectWith})``,
-dostarczane przez Grappelli).
+Zastępuje surowy ``<textarea>`` JSON przyjaznym widgetem: JEDNA lista kafelków
+sekcji podstrony autora w kolejności renderowania. Każdy kafelek ma uchwyt do
+przeciągania (jquery-ui ``.sortable``, dostarczane przez Grappelli), checkbox
+widoczności, ``<select>`` szerokości (pół / cała) i opcjonalny ``<select>``
+limitu (tylko sekcje ``ma_limit``). Dwie kolejne sekcje „pół” stają na stronie
+obok siebie, „cała” zajmuje własny pas.
 
 Na zapis serializuje do schematu JSON, który konsumuje reszta kodu: lista
-pozycji ``{"klucz": str, "kolumna": "lewa"|"prawa", "widoczna": bool, "limit":
-int|None}`` (``kolumna`` wynika z tego, w której strefie jest kafelek). JS
-re-serializuje kafelki do ukrytego inputa, a ``waliduj_uklad`` w ``clean``
-sanityzuje cokolwiek przyjdzie POST-em.
+pozycji ``{"klucz": str, "szerokosc": "pol"|"cala", "widoczna": bool, "limit":
+int|None}``. JS re-serializuje kafelki do ukrytego inputa, a ``waliduj_uklad``
+w ``clean`` sanityzuje cokolwiek przyjdzie POST-em.
 
 To jest admin (Grappelli) → ikony EMOJI, nie Foundation Icons.
 """
@@ -22,12 +22,17 @@ from django.template.loader import get_template
 
 from bpp.profil_autora import (
     DOZWOLONE_LIMITY,
-    KATALOG_SEKCJI,
     KATALOG_WG_KLUCZA,
-    KOLUMNA_LEWA,
-    KOLUMNA_PRAWA,
-    domyslny_uklad,
+    SZEROKOSC_CALA,
+    SZEROKOSC_POL,
+    doklej_brakujace,
     waliduj_uklad,
+)
+
+#: Opcje selecta szerokości (wartość, etykieta).
+OPCJE_SZEROKOSCI = (
+    (SZEROKOSC_POL, "½ — obok sąsiada"),
+    (SZEROKOSC_CALA, "▭ cała szerokość"),
 )
 
 
@@ -46,36 +51,23 @@ def _parsuj_wartosc(value):
 
 
 def _uporzadkuj_kafelki(value):
-    """Zbuduj kafelki rozdzielone na kolumny: ``{"lewa": [...], "prawa": [...]}``.
+    """Zbuduj listę kafelków w kolejności renderowania.
 
-    Każdy kafelek to dict ``{typ, kolumna, widoczna, limit}``. ``typ`` to
-    ``TypSekcji``. Kolejność: najpierw zapisane pozycje (w ich zapisanej
-    kolumnie), potem sekcje katalogu nieobecne w ``value`` — doklejane z
-    domyślnymi ustawieniami w ich DOMYŚLNEJ kolumnie (forward-compat, jak
-    ``rozwiaz_uklad``), więc nowo dodane sekcje zawsze pojawią się w edytorze.
+    Każdy kafelek to dict ``{typ, szerokosc, widoczna, limit}``. ``typ`` to
+    ``TypSekcji``. Sekcje katalogu nieobecne w ``value`` są doklejane tak samo
+    jak na stronie (``doklej_brakujace``), więc nowo dodane sekcje zawsze
+    pojawią się w edytorze — w tym miejscu, w którym pojawią się na stronie.
     """
-    zapisany = waliduj_uklad(_parsuj_wartosc(value))
-    wg_klucza = {p["klucz"]: p for p in zapisany}
-    domyslne = {p["klucz"]: p for p in domyslny_uklad()}
-
-    kolejnosc = [p["klucz"] for p in zapisany]
-    for typ in KATALOG_SEKCJI:
-        if typ.klucz not in wg_klucza:
-            kolejnosc.append(typ.klucz)
-
-    kafelki = {KOLUMNA_LEWA: [], KOLUMNA_PRAWA: []}
-    for klucz in kolejnosc:
-        pozycja = wg_klucza.get(klucz) or domyslne[klucz]
-        kolumna = pozycja["kolumna"]
-        kafelki[kolumna].append(
-            {
-                "typ": KATALOG_WG_KLUCZA[klucz],
-                "kolumna": kolumna,
-                "widoczna": pozycja["widoczna"],
-                "limit": pozycja["limit"],
-            }
-        )
-    return kafelki
+    pozycje = doklej_brakujace(waliduj_uklad(_parsuj_wartosc(value)))
+    return [
+        {
+            "typ": KATALOG_WG_KLUCZA[p["klucz"]],
+            "szerokosc": p["szerokosc"],
+            "widoczna": p["widoczna"],
+            "limit": p["limit"],
+        }
+        for p in pozycje
+    ]
 
 
 class EdytorUkladuWidget(forms.Widget):
@@ -93,26 +85,23 @@ class EdytorUkladuWidget(forms.Widget):
     def render(self, name, value, attrs=None, renderer=None):
         kafelki = _uporzadkuj_kafelki(value)
         # Kanoniczna wartość ukrytego inputa — to, co odczyta JS i ewentualny
-        # POST gdy JS nie wystartuje. Kolejność: lewa, potem prawa (JS i tak
-        # serializuje per-strefa, więc kolejność tu jest tylko fallbackiem).
+        # POST gdy JS nie wystartuje.
         serializowane = json.dumps(
             [
                 {
                     "klucz": k["typ"].klucz,
-                    "kolumna": k["kolumna"],
+                    "szerokosc": k["szerokosc"],
                     "widoczna": k["widoczna"],
                     "limit": k["limit"],
                 }
-                for k in kafelki[KOLUMNA_LEWA] + kafelki[KOLUMNA_PRAWA]
+                for k in kafelki
             ]
         )
         context = {
             "name": name,
             "value_json": serializowane,
-            "kafelki_lewa": kafelki[KOLUMNA_LEWA],
-            "kafelki_prawa": kafelki[KOLUMNA_PRAWA],
-            "kolumna_lewa": KOLUMNA_LEWA,
-            "kolumna_prawa": KOLUMNA_PRAWA,
+            "kafelki": kafelki,
+            "opcje_szerokosci": OPCJE_SZEROKOSCI,
             "dozwolone_limity": DOZWOLONE_LIMITY,
         }
         # get_template(...).render(context) — bez request, więc context
