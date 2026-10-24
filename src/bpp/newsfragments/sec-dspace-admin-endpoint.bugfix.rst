@@ -1,1 +1,1 @@
-Wzmocniono zabezpieczenia endpointu listy kolekcji DSpace w panelu administracyjnym oraz akcji wysyłki do DSpace (wymagane uprawnienia i zakres dostępnych uczelni).
+Wzmocniono zabezpieczenia endpointu listy kolekcji DSpace w panelu administracyjnym oraz akcji wysyłki do DSpace (wymagane uprawnienia i zakres dostępnych uczelni). Akcje wysyłki do DSpace i lista kolekcji DSpace są dostępne wyłącznie dla superużytkownika oraz członków nowej grupy uprawnień „eksport do DSpace”, którą superużytkownik nadaje ręcznie.

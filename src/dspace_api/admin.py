@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from django.urls import path, reverse
 from django.utils.html import format_html
 
+from dspace_api.admin_mixins import moze_eksportowac_do_dspace
 from dspace_api.links import public_url_for_sent
 from dspace_api.models import Mapowanie_DSpace, SentToDSpace
 
@@ -82,10 +83,10 @@ class Mapowanie_DSpaceAdmin(admin.ModelAdmin):
         statusem 200 + pustą listą — JS pokazuje wtedy fallback do ręcznego
         wpisania UUID, zamiast traktować to jak twardy błąd HTTP.
 
-        Wyjątki: brak uprawnienia ``bpp.change_uczelnia`` → 403; uczelnia
-        nieistniejąca lub spoza zakresu użytkownika → 404. W obu przypadkach
-        nie nawiązujemy żadnego połączenia z DSpace."""
-        if not request.user.has_perm("bpp.change_uczelnia"):
+        Wyjątki: użytkownik spoza grupy eksportu do DSpace (i nie superuser)
+        → 403; uczelnia nieistniejąca lub spoza zakresu użytkownika → 404.
+        W obu przypadkach nie nawiązujemy żadnego połączenia z DSpace."""
+        if not moze_eksportowac_do_dspace(request.user):
             return JsonResponse(
                 {"error": "Brak uprawnień.", "collections": []}, status=403
             )

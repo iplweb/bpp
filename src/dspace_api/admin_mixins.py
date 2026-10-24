@@ -1,10 +1,24 @@
 """Mixin admina dokładający link „zobacz w repozytorium" do change-formów
-rekordów publikacji wysłanych do DSpace."""
+rekordów publikacji wysłanych do DSpace oraz bramkę uprawnień do wysyłki."""
 
 from django.contrib import admin
 from django.utils.html import format_html_join
 
 FIELD_NAME = "dspace_repo_link"
+
+
+def moze_eksportowac_do_dspace(user):
+    """Czy użytkownik może korzystać z funkcji eksportu do DSpace w adminie.
+
+    Superuser — zawsze; pozostali — tylko członkowie grupy
+    ``GR_EKSPORT_DSPACE``."""
+    from bpp.const import GR_EKSPORT_DSPACE
+
+    if not getattr(user, "is_active", False):
+        return False
+    if user.is_superuser:
+        return True
+    return user.groups.filter(name=GR_EKSPORT_DSPACE).exists()
 
 
 def _fieldsets_contain(fieldsets, field_name):
@@ -28,6 +42,17 @@ class DSpaceLinkAdminMixin:
     Mixin musi stać jako **pierwszy** w liście baz danego ``ModelAdmin``,
     żeby jego ``get_fieldsets``/``get_readonly_fields`` opakowały metody
     admina przez ``super()``."""
+
+    def has_eksport_dspace_permission(self, request, obj=None):
+        """Bramka akcji „Wyślij do DSpace" (``allowed_permissions``).
+
+        Wymaga jednocześnie członkostwa w grupie eksportu do DSpace (lub
+        superusera) i prawa ``change`` do modelu. Django łączy pozycje
+        ``allowed_permissions`` przez OR, dlatego oba warunki sprawdzamy
+        tutaj, w jednej metodzie."""
+        return moze_eksportowac_do_dspace(request.user) and self.has_change_permission(
+            request, obj
+        )
 
     def _dspace_repo_links(self, obj):
         if obj is None or getattr(obj, "pk", None) is None:

@@ -36,7 +36,7 @@ def wyslij_do_dspace(modeladmin, request, queryset):
 
 
 wyslij_do_dspace.short_description = "Wyślij do DSpace"
-wyslij_do_dspace.allowed_permissions = ("change",)
+wyslij_do_dspace.allowed_permissions = ("eksport_dspace",)
 
 
 def wyslij_do_dspace_w_tle(modeladmin, request, queryset):
@@ -65,4 +65,4 @@ def wyslij_do_dspace_w_tle(modeladmin, request, queryset):
 
 
 wyslij_do_dspace_w_tle.short_description = "Wyślij do DSpace w tle"
-wyslij_do_dspace_w_tle.allowed_permissions = ("change",)
+wyslij_do_dspace_w_tle.allowed_permissions = ("eksport_dspace",)

@@ -118,7 +118,22 @@ def test_collections_endpoint_bez_parametru_uczelnia(mapowanie_admin, admin_user
     assert json.loads(resp.content)["collections"] == []
 
 
-def _staff_z_uprawnieniem(username, *uczelnie):
+def _staff_w_grupie_dspace(username, *uczelnie):
+    from django.contrib.auth.models import Group
+
+    from bpp.const import GR_EKSPORT_DSPACE
+    from bpp.models import BppUser
+
+    user = BppUser.objects.create_user(
+        username=username, password="test12345", is_staff=True
+    )
+    user.groups.add(Group.objects.get_or_create(name=GR_EKSPORT_DSPACE)[0])
+    for u in uczelnie:
+        user.accessible_uczelnie.add(u)
+    return user
+
+
+def _staff_z_uprawnieniami(username, *codenames):
     from django.contrib.auth.models import Permission
 
     from bpp.models import BppUser
@@ -126,13 +141,10 @@ def _staff_z_uprawnieniem(username, *uczelnie):
     user = BppUser.objects.create_user(
         username=username, password="test12345", is_staff=True
     )
-    user.user_permissions.add(
-        Permission.objects.get(
-            codename="change_uczelnia", content_type__app_label="bpp"
+    for codename in codenames:
+        user.user_permissions.add(
+            Permission.objects.get(codename=codename, content_type__app_label="bpp")
         )
-    )
-    for u in uczelnie:
-        user.accessible_uczelnie.add(u)
     return user
 
 
@@ -144,13 +156,12 @@ def _uczelnia_z_dspace():
 
 
 @pytest.mark.django_db
-def test_collections_endpoint_staff_bez_uprawnien_403(mapowanie_admin, fernet_key):
-    from bpp.models import BppUser
-
+@pytest.mark.parametrize("codenames", [(), ("change_uczelnia", "view_uczelnia")])
+def test_collections_endpoint_staff_bez_grupy_403(
+    mapowanie_admin, fernet_key, codenames
+):
     u = _uczelnia_z_dspace()
-    user = BppUser.objects.create_user(
-        username="staff", password="test12345", is_staff=True
-    )
+    user = _staff_z_uprawnieniami("staff", *codenames)
     req = RequestFactory().get("/collections/", {"uczelnia": u.pk})
     req.user = user
 
@@ -165,7 +176,7 @@ def test_collections_endpoint_staff_bez_uprawnien_403(mapowanie_admin, fernet_ke
 def test_collections_endpoint_uczelnia_spoza_zakresu_404(mapowanie_admin, fernet_key):
     uczelnia_a = _uczelnia_z_dspace()
     uczelnia_b = _uczelnia_z_dspace()
-    user = _staff_z_uprawnieniem("staff_a", uczelnia_a)
+    user = _staff_w_grupie_dspace("staff_a", uczelnia_a)
     req = RequestFactory().get("/collections/", {"uczelnia": uczelnia_b.pk})
     req.user = user
 
@@ -193,7 +204,7 @@ def test_collections_endpoint_uczelnia_w_zakresie_wola_klienta(
 ):
     uczelnia_a = _uczelnia_z_dspace()
     _uczelnia_z_dspace()
-    user = _staff_z_uprawnieniem("staff_a", uczelnia_a)
+    user = _staff_w_grupie_dspace("staff_a", uczelnia_a)
     req = RequestFactory().get("/collections/", {"uczelnia": uczelnia_a.pk})
     req.user = user
 
@@ -248,11 +259,137 @@ def test_collections_endpoint_przez_url_superuser(admin_client, fernet_key):
     ClientCls.assert_called_once_with(u)
 
 
-@pytest.mark.parametrize("akcja", ["wyslij_do_dspace", "wyslij_do_dspace_w_tle"])
-def test_akcje_dspace_wymagaja_uprawnienia_change(akcja):
+@pytest.mark.django_db
+def test_collections_endpoint_przez_url_staff_w_grupie(client, fernet_key):
+    from django.contrib.auth.models import Permission
+    from django.urls import reverse
+
+    u = _uczelnia_z_dspace()
+    user = _staff_w_grupie_dspace("staff_dspace")
+    user.user_permissions.add(
+        Permission.objects.get(
+            codename="change_mapowanie_dspace", content_type__app_label="dspace_api"
+        )
+    )
+    client.force_login(user)
+
+    with mock.patch("dspace_api.client.DSpaceClient") as ClientCls:
+        ClientCls.return_value.fetch_collections.return_value = []
+        resp = client.get(
+            reverse("admin:dspace_api_mapowanie_dspace_collections"),
+            {"uczelnia": u.pk},
+        )
+
+    assert resp.status_code == 200
+    ClientCls.assert_called_once_with(u)
+
+
+# --- Akcje „Wyślij do DSpace" — grupa eksportu + prawo change -----------------
+
+AKCJE_DSPACE = {"wyslij_do_dspace", "wyslij_do_dspace_w_tle"}
+
+MODELE_Z_AKCJAMI_DSPACE = [
+    "wydawnictwo_ciagle",
+    "wydawnictwo_zwarte",
+    "praca_doktorska",
+    "praca_habilitacyjna",
+]
+
+
+def _akcje_dla(user, model_name):
+    from django.apps import apps
+    from django.contrib import admin
+
+    model = apps.get_model("bpp", model_name)
+    model_admin = admin.site._registry[model]
+    req = RequestFactory().get("/admin/")
+    req.user = user
+    return set(model_admin.get_actions(req))
+
+
+@pytest.mark.parametrize("akcja", sorted(AKCJE_DSPACE))
+def test_akcje_dspace_wymagaja_uprawnienia_eksportu(akcja):
     from dspace_api import actions
 
-    assert getattr(actions, akcja).allowed_permissions == ("change",)
+    assert getattr(actions, akcja).allowed_permissions == ("eksport_dspace",)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("model_name", MODELE_Z_AKCJAMI_DSPACE)
+def test_akcje_dspace_widoczne_dla_grupy_z_prawem_change(model_name):
+    from django.contrib.auth.models import Permission
+
+    user = _staff_w_grupie_dspace("staff_dspace")
+    user.user_permissions.add(
+        *Permission.objects.filter(
+            codename__in=[f"change_{model_name}", f"view_{model_name}"],
+            content_type__app_label="bpp",
+        )
+    )
+    assert AKCJE_DSPACE <= _akcje_dla(user, model_name)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("model_name", MODELE_Z_AKCJAMI_DSPACE)
+def test_akcje_dspace_ukryte_dla_grupy_bez_prawa_change(model_name):
+    user = _staff_w_grupie_dspace("staff_dspace")
+    assert not (AKCJE_DSPACE & _akcje_dla(user, model_name))
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("model_name", MODELE_Z_AKCJAMI_DSPACE)
+def test_akcje_dspace_ukryte_dla_staff_bez_grupy(model_name):
+    user = _staff_z_uprawnieniami(
+        "staff", f"change_{model_name}", f"view_{model_name}", "change_uczelnia"
+    )
+    akcje = _akcje_dla(user, model_name)
+    assert "ustaw_po_korekcie" in akcje
+    assert not (AKCJE_DSPACE & akcje)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("model_name", MODELE_Z_AKCJAMI_DSPACE)
+def test_akcje_dspace_widoczne_dla_superusera(model_name, admin_user):
+    assert AKCJE_DSPACE <= _akcje_dla(admin_user, model_name)
+
+
+@pytest.mark.django_db
+def test_akcja_dspace_przez_post_bez_grupy_nie_wysyla(client):
+    from django.urls import reverse
+
+    rec = baker.make("bpp.Wydawnictwo_Ciagle")
+    user = _staff_z_uprawnieniami(
+        "staff", "change_wydawnictwo_ciagle", "view_wydawnictwo_ciagle"
+    )
+    client.force_login(user)
+
+    with mock.patch("dspace_api.actions.eksportuj_rekord") as eksport:
+        client.post(
+            reverse("admin:bpp_wydawnictwo_ciagle_changelist"),
+            {"action": "wyslij_do_dspace", "_selected_action": [rec.pk]},
+        )
+
+    eksport.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_odtworz_grupy_tworzy_grupe_eksportu_dspace():
+    from django.contrib.auth.models import Group
+
+    from bpp.const import GR_EKSPORT_DSPACE
+    from bpp.system import odtworz_grupy
+
+    Group.objects.filter(name=GR_EKSPORT_DSPACE).delete()
+    odtworz_grupy()
+
+    grupa = Group.objects.get(name=GR_EKSPORT_DSPACE)
+    assert set(
+        grupa.permissions.values_list("content_type__app_label", "codename")
+    ) == {
+        ("dspace_api", f"{akcja}_{model}")
+        for akcja in ("add", "change", "delete", "view")
+        for model in ("mapowanie_dspace", "senttodspace")
+    }
 
 
 # --- Feature C: link na change-formie rekordu (DSpaceLinkAdminMixin) --------
