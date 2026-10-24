@@ -150,6 +150,19 @@ def test_multiseek_export_requires_login(client):
 
 
 @pytest.mark.django_db
+def test_multiseek_export_tylko_get(logged_in_client):
+    """Trasa eksportu jest ``csrf_exempt`` w URLconf, co jest bezpieczne
+    wyłącznie dlatego, że widok przyjmuje tylko GET (bez efektów ubocznych
+    poza odczytem zapytania z własnej sesji). Gdyby dopuszczono POST —
+    trzeba zdjąć ``csrf_exempt``."""
+    from bpp.views.mymultiseek import MyMultiseekExport
+
+    assert MyMultiseekExport.http_method_names == ["get"]
+    url = reverse("multiseek-export", kwargs={"export_format": "csv"})
+    assert logged_in_client.post(url).status_code == 405
+
+
+@pytest.mark.django_db
 def test_multiseek_export_csv(logged_in_client, multiseek_export_rekord):
     _set_multiseek_title_filter(logged_in_client)
 

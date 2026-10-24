@@ -178,6 +178,7 @@ RUN /app/.venv/bin/python src/manage.py compilemessages -v0 -l pl --traceback
 # w prod 404 na .map pojawia sie w konsoli gdy user otworzy devtools —
 # bez wplywu na dzialanie aplikacji.
 RUN DJANGO_BPP_SECRET_KEY=build-time-only-not-used \
+    DJANGO_BPP_BUILD_STAGE=1 \
     STATIC_ROOT=/app/staticroot.baked \
     /app/.venv/bin/python src/manage.py collectstatic \
         --noinput -v0 --traceback \
@@ -531,6 +532,7 @@ RUN npx grunt build-non-interactive
 # wystarcza — collectstatic nie wymaga DB ani Redisa. Bez --ignore sinon/qunit/
 # *.map — zostawiamy w dev, latwiej debugowac.
 RUN DJANGO_BPP_SECRET_KEY=build-time-only-not-used \
+    DJANGO_BPP_BUILD_STAGE=1 \
     STATIC_ROOT=/app/staticroot.baked \
     python src/manage.py collectstatic \
         --noinput -v0 --traceback

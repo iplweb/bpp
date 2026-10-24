@@ -92,3 +92,46 @@ w panelu administracyjnym („Enforced password changes").
 Konfiguracja LDAP (ActiveDirectory) odbywa się za pomocą zmiennych środowiskowych lub
 konfiguracyjnych `AUTH_LDAP_SERVER_URI`, `AUTH_LDAP_BIND_DN`, `AUTH_LDAP_BIND_PASSWORD` oraz
 `AUTH_LDAP_USER_SEARCH`. Zmienne te należy ustawić w pliku `.env` w katalogu domowym użytkownika.
+
+## Content-Security-Policy (CSP)
+
+BPP wysyła nagłówek Content-Security-Policy, który mówi przeglądarce, skąd
+strona może ładować skrypty, style, obrazy i ramki. Domyślnie działa w trybie
+**Report-Only** (`Content-Security-Policy-Report-Only`). Przeglądarka tylko
+zgłasza naruszenia (w konsoli narzędzi deweloperskich i opcjonalnie pod adres
+raportów), ale **niczego nie blokuje**.
+
+Zmienne środowiskowe (plik `.env`):
+
+| Zmienna | Domyślnie | Znaczenie |
+|---|---|---|
+| `DJANGO_BPP_CSP_ENABLED` | `true` | wysyłanie nagłówka CSP |
+| `DJANGO_BPP_CSP_REPORT_ONLY` | `true` | `true` — tylko raportowanie, `false` — wymuszanie |
+| `DJANGO_BPP_CSP_POLICY` | (pusta) | własna polityka; pusta = polityka domyślna z `src/django_bpp/csp.py` |
+| `DJANGO_BPP_CSP_REPORT_URI` | (pusta) | adres, na który przeglądarki wysyłają raporty naruszeń |
+
+Domyślna polityka dopuszcza zasoby z własnej domeny. Z zewnątrz dopuszcza
+tylko Google Analytics, widget dostępności UserWay, widget wsparcia
+Freshworks/Freshdesk i wysyłkę błędów do Rollbara. Na razie zawiera też
+`'unsafe-inline'` i `'unsafe-eval'`, bo szablony używają skryptów i stylów
+inline.
+
+### Przejście na tryb wymuszający
+
+1. Zostaw tryb Report-Only na co najmniej kilka dni zwykłej pracy. Ustaw
+   `DJANGO_BPP_CSP_REPORT_URI` na adres zbierający raporty, np. własny
+   kolektor albo usługę typu report-uri.com. Możesz też przejrzeć konsolę
+   przeglądarki na najczęściej używanych stronach: publicznej, wyszukiwania,
+   rekordu, panelu administracyjnego i raportów.
+2. Jeżeli raporty wskazują zasoby potrzebne do działania strony (np. własny
+   skrypt statystyk), dopisz ich domeny. Pełną politykę ustawisz w
+   `DJANGO_BPP_CSP_POLICY`. Za punkt wyjścia weź `DOMYSLNA_POLITYKA`
+   z `src/django_bpp/csp.py`.
+3. Ustaw `DJANGO_BPP_CSP_REPORT_ONLY=false` i zrestartuj serwer aplikacji.
+   Nagłówek zmieni się na `Content-Security-Policy`, a przeglądarki zaczną
+   blokować zasoby spoza polityki.
+4. Po przełączeniu sprawdź najważniejsze strony. W razie problemów wróć do
+   `DJANGO_BPP_CSP_REPORT_ONLY=true`. Nie musisz wyłączać CSP całkowicie.
+
+Jeżeli serwer WWW (np. nginx) sam ustawia nagłówek CSP, wyłącz nagłówek
+z aplikacji: `DJANGO_BPP_CSP_ENABLED=false`.
