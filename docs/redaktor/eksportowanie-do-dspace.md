@@ -12,6 +12,11 @@ rekordów przez redaktora.
     wysyłka jest pomijana „z powodu braku konfiguracji", zgłoś się do
     administratora.
 
+!!! note "Uprawnienia"
+    Akcje wysyłki widzą tylko członkowie grupy **„eksport do DSpace"**
+    (z prawem edycji rekordów) oraz superużytkownik. Jeśli akcji nie ma
+    na liście, poproś administratora o nadanie tej grupy.
+
 ## Jak wysłać rekordy
 
 1. Wejdź na listę rekordów w **Redagowaniu**: Wydawnictwa ciągłe,

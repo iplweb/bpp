@@ -5,10 +5,27 @@ from django.http import JsonResponse
 from django.urls import path, reverse
 from django.utils.html import format_html
 
+from dspace_api.admin_mixins import moze_eksportowac_do_dspace
 from dspace_api.links import public_url_for_sent
 from dspace_api.models import Mapowanie_DSpace, SentToDSpace
 
 logger = logging.getLogger(__name__)
+
+
+def _uczelnie_dostepne_dla(user):
+    """Uczelnie, do których użytkownik ma dostęp w panelu administracyjnym.
+
+    Superuser — wszystkie. Puste ``accessible_uczelnie`` oznacza brak
+    ograniczenia (ta sama konwencja co w ``bpp.middleware.SiteResolutionMiddleware``)."""
+    from bpp.models import Uczelnia
+
+    qs = Uczelnia.objects.all()
+    if user.is_superuser:
+        return qs
+    dostepne = user.accessible_uczelnie.values_list("pk", flat=True)
+    if dostepne.exists():
+        qs = qs.filter(pk__in=dostepne)
+    return qs
 
 
 @admin.register(Mapowanie_DSpace)
@@ -64,17 +81,31 @@ class Mapowanie_DSpaceAdmin(admin.ModelAdmin):
 
         Błędy (timeout/auth/sieć/brak konfiguracji) zwracamy jako ``error`` ze
         statusem 200 + pustą listą — JS pokazuje wtedy fallback do ręcznego
-        wpisania UUID, zamiast traktować to jak twardy błąd HTTP."""
+        wpisania UUID, zamiast traktować to jak twardy błąd HTTP.
+
+        Wyjątki: użytkownik spoza grupy eksportu do DSpace (i nie superuser)
+        → 403; uczelnia nieistniejąca lub spoza zakresu użytkownika → 404.
+        W obu przypadkach nie nawiązujemy żadnego połączenia z DSpace."""
+        if not moze_eksportowac_do_dspace(request.user):
+            return JsonResponse(
+                {"error": "Brak uprawnień.", "collections": []}, status=403
+            )
+
         uczelnia_id = request.GET.get("uczelnia")
         if not uczelnia_id:
             return JsonResponse({"collections": []})
 
-        from bpp.models import Uczelnia
         from dspace_api.client import DSpaceClient
 
-        uczelnia = Uczelnia.objects.filter(pk=uczelnia_id).first()
+        uczelnia = None
+        if uczelnia_id.isdigit():
+            uczelnia = (
+                _uczelnie_dostepne_dla(request.user).filter(pk=uczelnia_id).first()
+            )
         if uczelnia is None:
-            return JsonResponse({"error": "Nie znaleziono uczelni.", "collections": []})
+            return JsonResponse(
+                {"error": "Nie znaleziono uczelni.", "collections": []}, status=404
+            )
         if not (uczelnia.dspace_api_endpoint or "").strip():
             return JsonResponse(
                 {
