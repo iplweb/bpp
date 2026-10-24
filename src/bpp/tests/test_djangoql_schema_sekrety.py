@@ -3,6 +3,7 @@ uwierzytelniania ani pól z poświadczeniami jako pól filtrowalnych. Model
 użytkownika jest dostępny wyłącznie z polami z białej listy i bez relacji."""
 
 import re
+from unittest import mock
 
 import pytest
 from django.contrib import admin
@@ -213,5 +214,40 @@ def test_zapytanie_po_nazwie_uczelni_dziala():
         Autor.objects.all(),
         'aktualna_jednostka.uczelnia.nazwa = "x"',
         schema=BppQLSchema,
+    )
+    assert list(wynik) == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "model,zapytanie",
+    [
+        (Uczelnia, "staff_users.per_page__sum > 0"),
+        (Uczelnia, "staff_users.zwijaj_dlugie_listy_autorow__max > 0"),
+        (Uczelnia, "staff_users.active_charmap_tab__avg > 0"),
+    ],
+)
+def test_agregat_po_polu_spoza_schematu_jest_odrzucony(model, zapytanie):
+    with pytest.raises(DjangoQLError):
+        list(apply_search(model.objects.all(), zapytanie, schema=BppQLSchema))
+
+
+def test_agregat_po_polu_z_nazwa_poswiadczenia_jest_odrzucony():
+    schema = BppQLSchema(Rekord)
+    rel = schema.models[schema.model_label(Rekord)]["autorzy"]
+    with (
+        mock.patch.object(schema, "_is_aggregatable_numeric", return_value=True),
+        mock.patch(
+            "bpp.djangoql_schema.pole_z_sekretem",
+            side_effect=lambda nazwa: nazwa == "kolejnosc",
+        ),
+    ):
+        assert schema.resolve_unknown(rel.related_model, rel, "kolejnosc__sum") is None
+
+
+@pytest.mark.django_db
+def test_agregat_po_dozwolonym_polu_dziala():
+    wynik = apply_search(
+        Rekord.objects.all(), "autorzy.kolejnosc__max > 0", schema=BppQLSchema
     )
     assert list(wynik) == []

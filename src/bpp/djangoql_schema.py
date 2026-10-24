@@ -319,6 +319,25 @@ class SekretyWykluczoneSchemaMixin:
             return True
         return super().excluded(model)
 
+    def resolve_unknown(self, model_cls, prev_relation, name_part):
+        """Agregaty w składni z kropką (``<rel>.<pole>__sum`` itp.) są
+        syntetyzowane przez djangoql poza ``get_fields()`` — dopuszczamy je
+        tylko po polach, które ``get_fields()`` modelu docelowego wystawia
+        (biała lista użytkownika, bez pól-poświadczeń, bez wykluczonych
+        modeli)."""
+        field = super().resolve_unknown(model_cls, prev_relation, name_part)
+        source = getattr(field, "source_field", None)
+        if source is None:
+            return field
+        related = getattr(field, "related_model", None)
+        if related is None or self.excluded(related):
+            return None
+        if pole_z_sekretem(source):
+            return None
+        if source not in {_field_name(f) for f in self.get_fields(related)}:
+            return None
+        return field
+
     def get_fields(self, model):
         if model is _model_uzytkownika():
             return [
