@@ -3,7 +3,7 @@ import json
 from django import forms
 from django.conf import settings
 from django.contrib import admin, messages
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from reversion.admin import VersionAdmin
 
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
@@ -11,6 +11,7 @@ from pbn_api.exceptions import PraceSerwisoweException
 
 from ..models import Uczelnia, Ukryj_Status_Korekty
 from ..profil_autora import waliduj_uklad
+from ..util.ssrf import waliduj_url_integracji
 
 # Uczelnia
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
@@ -55,6 +56,20 @@ class Ukryj_Status_KorektyInline(admin.StackedInline):
     extra = 0
 
 
+#: Fieldsety z konfiguracją integracji (adresy API, poświadczenia) —
+#: widoczne i edytowalne wyłącznie dla superużytkownika.
+FIELDSETY_INTEGRACJI = ("PBN API", "Clarivate Analytics API", "ORCID", "DSpace")
+
+#: Sekrety integracji — w formularzu write-only (wartość nie jest
+#: renderowana; puste pole przy zapisie zachowuje dotychczasową wartość).
+POLA_SEKRETOW = (
+    "pbn_app_token",
+    "clarivate_password",
+    "orcid_client_secret",
+    "dspace_api_password",
+)
+
+
 class UczelniaAdminForm(forms.ModelForm):
     # `theme_name` to na poziomie modelu zwykły CharField (bez `choices`),
     # więc deklarujemy je tu jako ChoiceField, a listę motywów pobieramy z
@@ -85,6 +100,50 @@ class UczelniaAdminForm(forms.ModelForm):
                 "multi-hosted to powiązanie z domeną wiąże uczelnię z jej "
                 "adresem — nie istnieje „uczelnia domyślna”."
             )
+
+        for pole in POLA_SEKRETOW:
+            if pole in self.fields:
+                self.fields[pole].widget = forms.PasswordInput(
+                    render_value=False, attrs={"autocomplete": "new-password"}
+                )
+                self.fields[pole].required = False
+                # Pusty submit = „bez zmian" — nie raportuj zmiany w historii.
+                self.fields[pole].has_changed = lambda initial, data: bool(data)
+                if self.instance.pk and getattr(self.instance, pole):
+                    self.fields[pole].help_text = (
+                        "Wartość jest zapisana i nie jest wyświetlana. "
+                        "Pozostaw puste, aby jej nie zmieniać."
+                    )
+
+    def _zachowaj_sekret(self, pole):
+        wartosc = self.cleaned_data.get(pole)
+        if not wartosc and self.instance.pk:
+            return getattr(self.instance, pole)
+        return wartosc
+
+    def clean_pbn_app_token(self):
+        return self._zachowaj_sekret("pbn_app_token")
+
+    def clean_clarivate_password(self):
+        return self._zachowaj_sekret("clarivate_password")
+
+    def clean_orcid_client_secret(self):
+        return self._zachowaj_sekret("orcid_client_secret")
+
+    def clean_dspace_api_password(self):
+        return self._zachowaj_sekret("dspace_api_password")
+
+    def _waliduj_adres(self, pole):
+        wartosc = self.cleaned_data.get(pole)
+        if wartosc and pole in self.changed_data:
+            waliduj_url_integracji(wartosc)
+        return wartosc
+
+    def clean_pbn_api_root(self):
+        return self._waliduj_adres("pbn_api_root")
+
+    def clean_dspace_api_endpoint(self):
+        return self._waliduj_adres("dspace_api_endpoint")
 
     def clean_uklad_profilu_autora(self):
         """Sanityzuj zserializowaną wartość edytora do poprawnej listy.
@@ -409,15 +468,51 @@ class UczelniaAdmin(
         LiczbaNDlaUczelniInline,
     ]
 
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
+        if request.user.is_superuser:
+            return fieldsets
+        # Konfiguracja integracji tylko dla superużytkownika. Admin buduje
+        # pola formularza z fieldsetów, więc usunięte pola nie są też
+        # nadpisywane przy zapisie.
+        return [fs for fs in fieldsets if fs[0] not in FIELDSETY_INTEGRACJI]
+
+    def _pola_integracji(self):
+        return [
+            pole
+            for nazwa, opcje in self.fieldsets
+            if nazwa in FIELDSETY_INTEGRACJI
+            for pole in opcje["fields"]
+        ]
+
+    # Przywracanie wersji z historii (django-reversion) odtwarza wszystkie
+    # pola, łącznie z konfiguracją integracji — tylko dla superużytkownika.
+    def revision_view(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            raise PermissionDenied
+        return super().revision_view(request, *args, **kwargs)
+
+    def recover_view(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            raise PermissionDenied
+        return super().recover_view(request, *args, **kwargs)
+
     def save_model(self, request, obj, form, change):
         if obj.site_id is None and not change:
             from django.contrib.sites.shortcuts import get_current_site
 
             obj.site = get_current_site(request)
 
+        if change and not request.user.is_superuser:
+            # Konfiguracja integracji zawsze taka, jak w bazie przed zapisem.
+            zapisana = type(obj).objects.get(pk=obj.pk)
+            for pole in self._pola_integracji():
+                attname = obj._meta.get_field(pole).attname
+                setattr(obj, attname, getattr(zapisana, attname))
+
         ret = super().save_model(request, obj, form, change)
 
-        if obj.pbn_integracja:
+        if obj.pbn_integracja and request.user.is_superuser:
             try:
                 client = obj.pbn_client()
             except ImproperlyConfigured as e:

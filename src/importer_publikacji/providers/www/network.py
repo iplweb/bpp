@@ -10,6 +10,8 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 
+from bpp.util.ssrf import ip_is_public
+
 FETCH_TIMEOUT = 15
 
 #: Ile przekierowań śledzimy ręcznie. Każdy hop jest walidowany osobno
@@ -109,23 +111,9 @@ def _resolve_ips(hostname: str) -> list[str]:
     return [info[4][0] for info in infos]
 
 
-def _ip_is_public(ip: ipaddress._BaseAddress) -> bool:
-    """False dla adresów, na które NIE wolno kierować importerowi:
-    prywatne (10/8, 172.16/12, 192.168/16, fc00::/7, CGNAT), loopback
-    (127/8, ::1), link-local (169.254/16 — w tym metadata cloud
-    169.254.169.254), multicast, zarezerwowane i ``0.0.0.0``.
-    """
-    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
-        # ::ffff:127.0.0.1 i pokrewne — oceniaj po zmapowanym adresie v4.
-        ip = ip.ipv4_mapped
-    return not (
-        ip.is_private
-        or ip.is_loopback
-        or ip.is_link_local
-        or ip.is_reserved
-        or ip.is_multicast
-        or ip.is_unspecified
-    )
+#: Ocena adresu IP wydzielona do ``bpp.util.ssrf`` (wspólna z walidacją
+#: adresów integracji w ``Uczelnia``); stara nazwa zachowana dla tego modułu.
+_ip_is_public = ip_is_public
 
 
 def _safe_resolve(hostname: str | None) -> list[str] | None:

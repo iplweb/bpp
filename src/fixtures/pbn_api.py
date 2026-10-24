@@ -248,8 +248,14 @@ def pbn_uczelnia(pbn_client) -> Uczelnia:
 
 @pytest.fixture
 def pbn_serwer(pbn_uczelnia, httpserver: HTTPServer):
+    # Lokalny serwer testowy działa po http://localhost — walidacja adresów
+    # integracji w ``Uczelnia.clean()`` (wymaga https) by go odrzuciła,
+    # więc zapis idzie z pominięciem ``save()``: w bazie (dla live servera
+    # i świeżych odczytów) oraz w obiekcie trzymanym przez klienta PBN.
     pbn_uczelnia.pbn_api_root = httpserver.url_for("/")
-    pbn_uczelnia.save()
+    Uczelnia.objects.filter(pk=pbn_uczelnia.pk).update(
+        pbn_api_root=pbn_uczelnia.pbn_api_root
+    )
     return httpserver
 
 
