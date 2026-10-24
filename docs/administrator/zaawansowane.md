@@ -193,3 +193,45 @@ inline.
 
 Jeżeli serwer WWW (np. nginx) sam ustawia nagłówek CSP, wyłącz nagłówek
 z aplikacji: `DJANGO_BPP_CSP_ENABLED=false`.
+
+## Logowanie przez Microsoft (Office 365 / Entra ID)
+
+Logowanie kontem Microsoft wymaga opcjonalnego pakietu `django_microsoft_auth`
+(`uv sync --extra office365`) i włącza się po ustawieniu w pliku `.env`
+zmiennych `MICROSOFT_AUTH_CLIENT_ID` oraz `MICROSOFT_AUTH_CLIENT_SECRET`.
+
+| Zmienna | Opis |
+|---------|------|
+| `MICROSOFT_AUTH_CLIENT_ID` | Identyfikator aplikacji zarejestrowanej w Entra ID. |
+| `MICROSOFT_AUTH_CLIENT_SECRET` | Sekret tej aplikacji. |
+| `MICROSOFT_AUTH_TENANT_ID` | **Wymagany.** Identyfikator katalogu (GUID) albo jego domena, np. `uczelnia.onmicrosoft.com`. |
+| `MICROSOFT_AUTH_LINK_BY_EMAIL` | Domyślnie `False`. Patrz niżej. |
+| `MICROSOFT_AUTH_EXTRA_SCOPES` | Dodatkowe zakresy OAuth (opcjonalnie). |
+
+### Wymagany konkretny katalog (tenant)
+
+Jeżeli ustawiono `MICROSOFT_AUTH_CLIENT_ID`, a `MICROSOFT_AUTH_TENANT_ID` jest
+pusty albo ma wartość `common`, `organizations` lub `consumers`, serwer BPP
+**nie wystartuje** (błąd `ImproperlyConfigured`). BPP przyjmuje wyłącznie
+tokeny wystawione przez skonfigurowany katalog — sprawdzane są claimy `iss`
+i `tid` tokenu. Identyfikator katalogu znajdziesz w portalu Azure:
+*Microsoft Entra ID → Przegląd → Identyfikator dzierżawy*.
+
+### Wiązanie kont Microsoft z istniejącymi kontami BPP
+
+Przy pierwszym logowaniu kontem Microsoft BPP szuka użytkownika o tym samym
+adresie e-mail. Domyślnie (`MICROSOFT_AUTH_LINK_BY_EMAIL=False`) **nie**
+powiąże automatycznie konta Microsoft z istniejącym użytkownikiem, który:
+
+- ma uprawnienia administracyjne (`is_staff` lub `is_superuser`), albo
+- ma ustawione lokalne hasło do BPP.
+
+Takie logowanie zostanie odrzucone. Administrator może powiązać konto ręcznie
+w module administracyjnym (*Microsoft accounts*), albo — jeżeli adresy e-mail
+w katalogu są w pełni zaufane — ustawić `MICROSOFT_AUTH_LINK_BY_EMAIL=True`.
+Zwykłe konta bez hasła lokalnego oraz nowi użytkownicy są wiązani/zakładani
+automatycznie, jak dotychczas.
+
+Konta Microsoft **już powiązane** z użytkownikiem BPP logują się bez zmian.
+Po aktualizacji użytkownicy zalogowani przez Microsoft muszą jednorazowo
+zalogować się ponownie (zmieniła się nazwa backendu uwierzytelniania).
