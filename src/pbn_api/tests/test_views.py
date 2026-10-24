@@ -1,8 +1,11 @@
 import base64
 import json
+from importlib import import_module
 from unittest.mock import MagicMock, patch
+from urllib.parse import urlencode
 
 import pytest
+from django.conf import settings
 from django.test import RequestFactory, override_settings
 from django.urls import reverse
 from model_bakery import baker
@@ -13,12 +16,62 @@ from pbn_api.exceptions import (
     AuthenticationConfigurationError,
     AuthenticationResponseError,
 )
-from pbn_api.views import TokenLandingPage, TokenRedirectPage
+from pbn_api.views import (
+    PBN_STATE_NONCES_SESSION_KEY,
+    TokenLandingPage,
+    TokenRedirectPage,
+    _issue_state_nonce,
+)
+
+
+class _SessionRequestFactory(RequestFactory):
+    """RequestFactory dokładający pustą sesję do każdego żądania."""
+
+    def request(self, **request):
+        req = super().request(**request)
+        req.session = _new_session()
+        return req
+
+
+def _new_session():
+    engine = import_module(settings.SESSION_ENGINE)
+    return engine.SessionStore()
 
 
 @pytest.fixture
 def rf():
-    return RequestFactory()
+    return _SessionRequestFactory()
+
+
+def _state(session, original_page="/admin/publications/", nonce=None):
+    """Zwraca ``state`` jak z TokenRedirectPage; nonce zapisany w ``session``
+    (chyba że podano ``nonce`` jawnie — wtedy sesja nie jest ruszana)."""
+    if nonce is None:
+        nonce = _issue_state_nonce(MagicMock(session=session))
+    state_data = {
+        "originalPage": original_page,
+        "timestamp": 1234567890.0,
+        "nonce": nonce,
+    }
+    return base64.b64encode(json.dumps(state_data).encode()).decode()
+
+
+def _callback_request(rf, user, *, ott="token123", state=None, session=None):
+    url = reverse("pbn_api:callback") + f"?ott={ott}"
+    if state is not None:
+        url += "&" + urlencode({"state": state})
+    request = rf.get(url)
+    if session is not None:
+        request.session = session
+    request.user = user
+    request._messages = MagicMock()
+    return request
+
+
+def _valid_callback_request(rf, user, original_page="/", **kw):
+    session = _new_session()
+    state = _state(session, original_page=original_page)
+    return _callback_request(rf, user, state=state, session=session, **kw)
 
 
 @pytest.fixture
@@ -159,184 +212,213 @@ def test_token_landing_page_missing_ott_parameter(rf, user, uczelnia):
         view.get_redirect_url()
 
 
+_DELAY = "pbn_export_queue.tasks.kolejka_ponow_wysylke_prac_po_zalogowaniu.delay"
+
+
+def _run_landing(request, token="pbn_user_token_123", side_effect=None):
+    view = TokenLandingPage()
+    view.request = request
+    with (
+        patch("pbn_api.views.OAuthMixin.get_user_token") as mock_get_token,
+        patch("pbn_api.views.token_set_successfully.send") as mock_signal,
+        patch(_DELAY) as mock_delay,
+        patch("pbn_api.views.rollbar.report_exc_info"),
+    ):
+        mock_get_token.return_value = token
+        if side_effect is not None:
+            mock_get_token.side_effect = side_effect
+        url = view.get_redirect_url()
+    return url, mock_get_token, mock_signal, mock_delay
+
+
 @pytest.mark.django_db
 @override_settings(PBN_CLIENT_HTTP_TIMEOUT="4,10")
 def test_token_landing_page_with_valid_ott(rf, user, uczelnia):
     """Test TokenLandingPage processes valid OTT token"""
-    request = rf.get(reverse("pbn_api:callback") + "?ott=validtoken123")
-    request.user = user
-    # Mock the messages framework
-    request._messages = MagicMock()
+    request = _valid_callback_request(rf, user, ott="validtoken123")
 
-    view = TokenLandingPage()
-    view.request = request
+    url, mock_get_token, _, _ = _run_landing(request)
 
-    with patch("pbn_api.views.OAuthMixin.get_user_token") as mock_get_token:
-        mock_get_token.return_value = "pbn_user_token_123"
-        with patch(
-            "pbn_export_queue.tasks.kolejka_ponow_wysylke_prac_po_zalogowaniu.delay"
-        ):
-            with patch("pbn_api.views.messages.info"):
-                url = view.get_redirect_url()
-
-        assert url == "/"
-        assert mock_get_token.call_args.kwargs["timeout"] == "4,10"
+    assert url == "/"
+    assert mock_get_token.call_args.kwargs["timeout"] == "4,10"
 
 
 @pytest.mark.django_db
 def test_token_landing_page_saves_pbn_token(rf, user, uczelnia):
     """Test TokenLandingPage saves pbn_token to user"""
-    request = rf.get(reverse("pbn_api:callback") + "?ott=validtoken123")
-    request.user = user
-    request._messages = MagicMock()
+    request = _valid_callback_request(rf, user, ott="validtoken123")
 
-    view = TokenLandingPage()
-    view.request = request
+    _run_landing(request)
 
-    with patch("pbn_api.views.OAuthMixin.get_user_token") as mock_get_token:
-        mock_get_token.return_value = "pbn_user_token_123"
-        with patch("pbn_api.views.token_set_successfully.send"):
-            with patch(
-                "pbn_export_queue.tasks.kolejka_ponow_wysylke_prac_po_zalogowaniu.delay"
-            ):
-                view.get_redirect_url()
-
-        # Refresh user from DB
-        user.refresh_from_db()
-        assert user.pbn_token == "pbn_user_token_123"
+    user.refresh_from_db()
+    assert user.pbn_token == "pbn_user_token_123"
 
 
 @pytest.mark.django_db
 def test_token_landing_page_with_state_parameter(rf, user, uczelnia):
     """Test TokenLandingPage decodes state parameter"""
-    state_data = {
-        "originalPage": "/admin/publications/",
-        "timestamp": 1234567890.0,
-    }
-    state = base64.b64encode(json.dumps(state_data).encode()).decode()
+    request = _valid_callback_request(rf, user, original_page="/admin/publications/")
 
-    request = rf.get(reverse("pbn_api:callback") + f"?ott=token123&state={state}")
-    request.user = user
-    request._messages = MagicMock()
+    url, _, _, _ = _run_landing(request)
 
-    view = TokenLandingPage()
-    view.request = request
+    assert url == "/admin/publications/"
 
-    with patch("pbn_api.views.OAuthMixin.get_user_token") as mock_get_token:
-        mock_get_token.return_value = "pbn_user_token_123"
-        with patch("pbn_api.views.token_set_successfully.send"):
-            with patch(
-                "pbn_export_queue.tasks.kolejka_ponow_wysylke_prac_po_zalogowaniu.delay"
-            ):
-                url = view.get_redirect_url()
 
-        # Should redirect to the original page
-        assert url == "/admin/publications/"
+@pytest.mark.django_db
+def test_token_landing_page_offhost_original_page_ignored(rf, user, uczelnia):
+    """originalPage spoza hosta nie jest używane do przekierowania."""
+    request = _valid_callback_request(
+        rf, user, original_page="https://example.org/inna-strona/"
+    )
+
+    url, _, _, _ = _run_landing(request)
+
+    assert url == "/"
+    user.refresh_from_db()
+    assert user.pbn_token == "pbn_user_token_123"
 
 
 @pytest.mark.django_db
 def test_token_landing_page_invalid_state_parameter(rf, user, uczelnia):
-    """Test TokenLandingPage handles invalid state parameter"""
-    request = rf.get(reverse("pbn_api:callback") + "?ott=token123&state=invalidbase64")
-    request.user = user
-    request._messages = MagicMock()
+    """Niedekodowalny state -> brak zapisu tokenu, przekierowanie na /."""
+    request = _callback_request(rf, user, state="invalidbase64")
 
-    view = TokenLandingPage()
+    url, mock_get_token, _, mock_delay = _run_landing(request)
+
+    assert url == "/"
+    mock_get_token.assert_not_called()
+    mock_delay.assert_not_called()
+    user.refresh_from_db()
+    assert not user.pbn_token
+
+
+@pytest.mark.django_db
+def test_token_landing_page_without_state_rejected(rf, user, uczelnia):
+    """Brak state -> token nie jest pobierany ani zapisywany."""
+    request = _callback_request(rf, user)
+
+    url, mock_get_token, mock_signal, mock_delay = _run_landing(request)
+
+    assert url == "/"
+    mock_get_token.assert_not_called()
+    mock_signal.assert_not_called()
+    mock_delay.assert_not_called()
+    user.refresh_from_db()
+    assert not user.pbn_token
+    request._messages.add.assert_called_once()
+
+
+@pytest.mark.django_db
+def test_token_landing_page_state_without_nonce_rejected(rf, user, uczelnia):
+    state_data = {"originalPage": "/admin/", "timestamp": 1234567890.0}
+    state = base64.b64encode(json.dumps(state_data).encode()).decode()
+    request = _callback_request(rf, user, state=state)
+
+    url, mock_get_token, _, _ = _run_landing(request)
+
+    assert url == "/"
+    mock_get_token.assert_not_called()
+    user.refresh_from_db()
+    assert not user.pbn_token
+
+
+@pytest.mark.django_db
+def test_token_landing_page_foreign_nonce_rejected(rf, user, uczelnia):
+    """Nonce wydany w innej sesji nie jest akceptowany."""
+    other_session = _new_session()
+    state = _state(other_session)
+    own_session = _new_session()
+    _issue_state_nonce(MagicMock(session=own_session))
+    request = _callback_request(rf, user, state=state, session=own_session)
+
+    url, mock_get_token, _, _ = _run_landing(request)
+
+    assert url == "/"
+    mock_get_token.assert_not_called()
+    user.refresh_from_db()
+    assert not user.pbn_token
+    # nonce tej sesji nie zostaje zużyty przez nieudaną próbę
+    assert len(own_session[PBN_STATE_NONCES_SESSION_KEY]) == 1
+
+
+@pytest.mark.django_db
+def test_token_landing_page_nonce_single_use(rf, user, uczelnia):
+    """Poprawny nonce działa raz; ponowne użycie tego samego state odpada."""
+    session = _new_session()
+    state = _state(session)
+
+    first = _callback_request(rf, user, state=state, session=session)
+    _, mock_get_token, _, _ = _run_landing(first)
+    mock_get_token.assert_called_once()
+    assert session[PBN_STATE_NONCES_SESSION_KEY] == []
+
+    user.pbn_token = ""
+    user.save()
+
+    second = _callback_request(rf, user, state=state, session=session)
+    url, mock_get_token, _, mock_delay = _run_landing(second, token="inny")
+    assert url == "/"
+    mock_get_token.assert_not_called()
+    mock_delay.assert_not_called()
+    user.refresh_from_db()
+    assert not user.pbn_token
+
+
+@pytest.mark.django_db
+def test_token_redirect_page_stores_nonce_in_session_and_state(rf, user, uczelnia):
+    request = rf.get("/pbn_api/authorize/?next=/admin/")
+    request.user = user
+    view = TokenRedirectPage()
     view.request = request
 
-    with patch("pbn_api.views.OAuthMixin.get_user_token") as mock_get_token:
-        mock_get_token.return_value = "pbn_user_token_123"
-        with patch("pbn_api.views.token_set_successfully.send"):
-            with patch(
-                "pbn_export_queue.tasks.kolejka_ponow_wysylke_prac_po_zalogowaniu.delay"
-            ):
-                url = view.get_redirect_url()
+    with patch("pbn_api.views.OAuthMixin.get_auth_url") as mock_get_auth:
+        mock_get_auth.return_value = "https://oauth.example.com/auth"
+        view.get_redirect_url()
 
-        # Should fall back to default redirect
-        assert url == "/"
+    state_data = json.loads(
+        base64.b64decode(mock_get_auth.call_args.kwargs["state"]).decode()
+    )
+    assert state_data["nonce"]
+    assert request.session[PBN_STATE_NONCES_SESSION_KEY] == [state_data["nonce"]]
+
+
+@pytest.mark.django_db
+def test_token_redirect_then_landing_roundtrip(rf, user, uczelnia):
+    """Pełny obieg: authorize -> callback z tym samym state w tej samej sesji."""
+    authorize = rf.get("/pbn_api/authorize/?next=/admin/")
+    authorize.user = user
+    view = TokenRedirectPage()
+    view.request = authorize
+    with patch("pbn_api.views.OAuthMixin.get_auth_url") as mock_get_auth:
+        mock_get_auth.return_value = "https://oauth.example.com/auth"
+        view.get_redirect_url()
+    state = mock_get_auth.call_args.kwargs["state"]
+
+    request = _callback_request(rf, user, state=state, session=authorize.session)
+    url, _, _, _ = _run_landing(request)
+
+    assert url == "/admin/"
+    user.refresh_from_db()
+    assert user.pbn_token == "pbn_user_token_123"
 
 
 @pytest.mark.django_db
 def test_token_landing_page_authentication_config_error(rf, user, uczelnia):
     """Test TokenLandingPage handles AuthenticationConfigurationError"""
-    request = rf.get(reverse("pbn_api:callback") + "?ott=token123")
-    request.user = user
-    request._messages = MagicMock()
+    request = _valid_callback_request(rf, user)
 
-    view = TokenLandingPage()
-    view.request = request
+    url, _, _, _ = _run_landing(
+        request, side_effect=AuthenticationConfigurationError("Config error")
+    )
 
-    with patch("pbn_api.views.OAuthMixin.get_user_token") as mock_get_token:
-        mock_get_token.side_effect = AuthenticationConfigurationError("Config error")
-        with patch("pbn_api.views.rollbar.report_exc_info"):
-            url = view.get_redirect_url()
-
-        assert url == "/"
+    assert url == "/"
 
 
 @pytest.mark.django_db
 def test_token_landing_page_authentication_response_error(rf, user, uczelnia):
     """Test TokenLandingPage handles AuthenticationResponseError"""
-    request = rf.get(reverse("pbn_api:callback") + "?ott=token123")
-    request.user = user
-    request._messages = MagicMock()
+    request = _valid_callback_request(rf, user)
 
-    view = TokenLandingPage()
-    view.request = request
+    url, _, _, _ = _run_landing(request, side_effect=AuthenticationResponseError())
 
-    with patch("pbn_api.views.OAuthMixin.get_user_token") as mock_get_token:
-        mock_get_token.side_effect = AuthenticationResponseError()
-        with patch("pbn_api.views.rollbar.report_exc_info"):
-            url = view.get_redirect_url()
-
-        assert url == "/"
-
-
-@pytest.mark.django_db
-def test_token_landing_page_sends_signal_on_success(rf, user, uczelnia):
-    """Test TokenLandingPage sends signal when token is set successfully"""
-    from django.dispatch import receiver
-
-    request = rf.get(reverse("pbn_api:callback") + "?ott=token123")
-    request.user = user
-    request._messages = MagicMock()
-
-    view = TokenLandingPage()
-    view.request = request
-
-    signal_sent = []
-
-    @receiver
-    def capture_signal(sender, **kwargs):
-        signal_sent.append(True)
-
-    with patch("pbn_api.views.OAuthMixin.get_user_token") as mock_get_token:
-        mock_get_token.return_value = "pbn_user_token_123"
-        with patch(
-            "pbn_api.views.token_set_successfully.send", side_effect=capture_signal
-        ):
-            with patch(
-                "pbn_export_queue.tasks.kolejka_ponow_wysylke_prac_po_zalogowaniu.delay"
-            ):
-                view.get_redirect_url()
-
-
-@pytest.mark.django_db
-def test_token_landing_page_default_redirect_without_state(rf, user, uczelnia):
-    """Test TokenLandingPage defaults to / when no state is provided"""
-    request = rf.get(reverse("pbn_api:callback") + "?ott=token123")
-    request.user = user
-    request._messages = MagicMock()
-
-    view = TokenLandingPage()
-    view.request = request
-
-    with patch("pbn_api.views.OAuthMixin.get_user_token") as mock_get_token:
-        mock_get_token.return_value = "pbn_user_token_123"
-        with patch("pbn_api.views.token_set_successfully.send"):
-            with patch(
-                "pbn_export_queue.tasks.kolejka_ponow_wysylke_prac_po_zalogowaniu.delay"
-            ):
-                url = view.get_redirect_url()
-
-        assert url == "/"
+    assert url == "/"
