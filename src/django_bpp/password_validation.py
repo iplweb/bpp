@@ -61,11 +61,22 @@ def _jest_powtorzeniem(haslo):
     dwa razy. zxcvbn wykrywa tylko pełne kopie — urwaną końcówkę wycenia jak
     losowe znaki, przez co takie hasło dostaje u niego najwyższą ocenę.
     """
+    # Najmniejszy okres z funkcji prefiksowej KMP (n - pi[n-1]) — liniowo,
+    # bo Django nie ogranicza długości hasła, a pętla po wszystkich okresach
+    # byłaby kwadratowa (DoS przez hasło rzędu megabajtów).
     haslo = haslo.lower()
-    return any(
-        all(haslo[i] == haslo[i % okres] for i in range(okres, len(haslo)))
-        for okres in range(1, len(haslo) // 2 + 1)
-    )
+    n = len(haslo)
+    if n < 2:
+        return False
+    pi = [0] * n
+    for i in range(1, n):
+        k = pi[i - 1]
+        while k and haslo[i] != haslo[k]:
+            k = pi[k - 1]
+        if haslo[i] == haslo[k]:
+            k += 1
+        pi[i] = k
+    return n - pi[-1] <= n // 2
 
 
 class SimplePatternPasswordValidator:
