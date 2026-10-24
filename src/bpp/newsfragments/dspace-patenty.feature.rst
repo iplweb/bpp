@@ -1,0 +1,1 @@
+Eksport patentów do DSpace przekazuje także numer zgłoszenia (``dc.identifier.other``) i datę zgłoszenia (``dc.date.submitted``); członkowie grupy „eksport do DSpace” mają w menu panelu administracyjnego osobną sekcję DSpace.

@@ -15,4 +15,12 @@ class PatentDSpaceAdapter(BaseDSpaceAdapter):
         )
         if numer:
             d["dc.identifier"] = self._val(numer)
+        # Gdy jest już numer prawa wyłącznego, numer zgłoszenia nie ginie —
+        # trafia do dc.identifier.other (pole z domyślnego rejestru DC DSpace).
+        numer_zgloszenia = getattr(rec, "numer_zgloszenia", "") or ""
+        if numer_zgloszenia and numer_zgloszenia != numer:
+            d["dc.identifier.other"] = self._val(numer_zgloszenia)
+        data_zgloszenia = getattr(rec, "data_zgloszenia", None)
+        if data_zgloszenia:
+            d["dc.date.submitted"] = self._val(data_zgloszenia.isoformat())
         return d

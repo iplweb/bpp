@@ -152,6 +152,30 @@ def test_grupa_web_dodaje_tylko_www():
     assert _labels(m) == ["BPP", "Dashboard", "WWW", "Mój profil"]
 
 
+@pytest.mark.django_db
+def test_grupa_eksport_dspace_dodaje_menu_dspace():
+    from bpp.const import GR_EKSPORT_DSPACE
+
+    u = baker.make("bpp.BppUser", is_superuser=False, is_staff=True, first_name="Dag")
+    u.groups.add(Group.objects.get_or_create(name=GR_EKSPORT_DSPACE)[0])
+    m = _menu_for(u)
+    assert _labels(m) == ["BPP", "Dashboard", "DSpace", "Mój profil"]
+    assert [c.url for c in _child(m, "DSpace").children] == [
+        "/admin/dspace_api/mapowanie_dspace/",
+        "/admin/dspace_api/senttodspace/",
+    ]
+
+
+@pytest.mark.django_db
+def test_dane_systemowe_i_eksport_dspace_bez_dubla_menu_dspace():
+    from bpp.const import GR_EKSPORT_DSPACE
+
+    u = baker.make("bpp.BppUser", is_superuser=False, is_staff=True, first_name="Ewa")
+    u.groups.add(Group.objects.get_or_create(name=GR_EKSPORT_DSPACE)[0])
+    u.groups.add(Group.objects.get_or_create(name="dane systemowe")[0])
+    assert "DSpace" not in _labels(_menu_for(u))
+
+
 def _struktura_links(menu):
     struktura = _child(menu, "Struktura")
     return [c.url for c in struktura.children]
