@@ -473,7 +473,6 @@ INSTALLED_APPS = [
     "dal_select2",
     "grappelli",
     "django_bpp.apps.BppAdminConfig",  # replaced `django.contrib.admin`
-    "tabular_permissions",
     "dj_pagination",
     "admin_tools",
     "admin_tools.theming",
@@ -1218,66 +1217,6 @@ CHANNELS_BROADCAST_SUBSCRIPTION_AUTHORIZER = (
 # Content-hash w nazwie pliku już gwarantuje bust dokładnie zmienionych plików,
 # więc katalog jest statyczny:
 COMPRESS_OUTPUT_DIR = "CACHE"
-
-# django-tabular-permissions
-
-TABULAR_PERMISSIONS_CONFIG = {
-    "exclude": {
-        "override": False,
-        "apps": [
-            "favicon",
-            "taggit",
-            "test_bpp",
-            "rozbieznosci",
-            "rozbieznosci_dyscyplin",
-            "sessions",
-            "sites",
-            "contenttypes",
-            "raport_slotow",
-            "multiseek",
-            "messages_extends",
-            "menu",
-            "sites",
-            "robots",
-            "pbn_api",
-            "admin",
-            "auth",
-            "password_policies",
-            "channels_broadcast",
-            "dashboard",
-            "django.contrib.contenttypes",
-            "egeria",
-            "eksport_pbn",
-            "import_dyscyplin",
-            "import_list_if",
-            "import_pracownikow",
-            "integrator2",
-            "admin_tools",
-        ],
-        "models": [
-            "bpp.cache_punktacja_autora",
-            "bpp.cache_punktacja_autora_query",
-            "bpp.cache_punktacja_autora_query_view",
-            "bpp.cache_punktacja_autora_sum",
-            "bpp.cache_punktacja_autora_sum_group_ponizej",
-            "bpp.cache_punktacja_autora_sum_gruop",
-            "bpp.cache_punktacja_autora_sum_ponizej",
-            "bpp.cache_punktacja_dyscypliny",
-            "bpp.sumy_wydawnictwo_zwarte_view",
-            "bpp.opi_2012_afiliacja_do_wydzialu",
-            "bpp.opi_2012_tytul_cache",
-            "bpp.nowe_sumy_view",
-            "bpp.autorzy",
-            "bpp.rekord",
-            "bpp.rekord_view",
-            "bpp.autorzy_view",
-        ],
-        "function": "tabular_permissions.helpers.dummy_permissions_exclude",
-    },
-}
-
-# PERMISSIONS_WIDGET_PATCH_GROUPADMIN = False
-# PERMISSIONS_WIDGET_PATCH_USERADMIN = True
 
 DBTEMPLATES_USE_REVERSION = True
 DBTEMPLATES_USE_REVERSION_COMPARE = True

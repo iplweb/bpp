@@ -40,7 +40,6 @@ dependencies = [
     "numpy>=2.4.6",
     "pygad>=3.7.0",
     "django-denorm-iplweb>=1.15.0",
-    "django-tabular-permissions==2.9.3",
     "simplejson>=4.1.2,<5",
     "django-reversion>=6.3.0,<7",
     "django-reversion-compare>=0.19.2",
@@ -412,7 +411,7 @@ override-dependencies = [
 #
 # Pre-existing exceptions (sdist-only, accepted risk - audit kwiecien 2026):
 # crispy-forms-foundation, cssmin, django-autocomplete-light, django-columns,
-# django-static-sitemaps, django-tabular-permissions, langdetect, pylatexenc,
+# django-static-sitemaps, langdetect, pylatexenc,
 # python-ldap, wsgiutils. Wymiana na wheel-publishing alternatywy
 # tracked w follow-up. Patrz docs/SECURITY_PRACTICES.md.
 #
