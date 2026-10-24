@@ -14,6 +14,7 @@ from django.views import View
 from django_bpp.external_auth import (
     EXTERNAL_AUTH_BACKENDS,
     MICROSOFT_BACKEND,
+    MICROSOFT_LEGACY_BACKEND,
     OIDC_BACKEND,
     ORCID_BACKEND,
 )
@@ -190,6 +191,10 @@ class MicrosoftLogoutView(View):
 
 EXTERNAL_PROVIDER_URLS = {
     MICROSOFT_BACKEND: (
+        "Microsoft",
+        "https://myaccount.microsoft.com/",
+    ),
+    MICROSOFT_LEGACY_BACKEND: (
         "Microsoft",
         "https://myaccount.microsoft.com/",
     ),
