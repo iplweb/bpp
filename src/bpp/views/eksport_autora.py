@@ -30,7 +30,7 @@ from bpp.export.bibtex import export_to_bibtex
 from bpp.export.ris import export_to_ris
 from bpp.models import Autor, AutorEksportTask, Rekord
 from bpp.permissions import moze_wprowadzac_dane
-from bpp.profil_autora_dane import ukryte_statusy_podgladu
+from bpp.util.ukryte_statusy import ukryte_statusy_eksportu
 
 #: Maksymalna liczba eksportowanych rekordów. Zabezpiecza przed OOM przy
 #: autorach z gigantyczną liczbą prac (eksport materializuje instancje
@@ -99,7 +99,8 @@ class _BazaEksportuAutoraView(LoginRequiredMixin, View):
             )
 
         qs = Rekord.objects.prace_autora(autor)
-        ukryte = ukryte_statusy_podgladu(request)
+        # Plik wychodzi poza stronę — reguła publiczna także dla redakcji.
+        ukryte = ukryte_statusy_eksportu(request)
         if ukryte:
             qs = qs.exclude(status_korekty_id__in=ukryte)
         wszystkich = qs.count()
@@ -204,9 +205,10 @@ class StartEksportAutoraView(View):
             return self._render(request, autor, format, form)
 
         # Zakres widoczności (ukryte statusy) zapisujemy w zadaniu — worker
-        # Celery nie ma requestu. Wchodzi też do deduplikacji, żeby zadania
-        # o różnym zakresie (redakcja vs. pozostali) nie były współdzielone.
-        ukryte = sorted(ukryte_statusy_podgladu(request))
+        # Celery nie ma requestu. Plik jest publiczny po UUID, więc zakres
+        # jest publiczny także dla redakcji; wchodzi do deduplikacji, żeby
+        # zadania różnych uczelni (inne ukryte statusy) nie były współdzielone.
+        ukryte = ukryte_statusy_eksportu(request)
 
         od = timezone.now() - timedelta(minutes=DEDUPE_MINUTES)
         istniejacy = (

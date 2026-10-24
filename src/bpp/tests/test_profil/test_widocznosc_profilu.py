@@ -215,10 +215,28 @@ def test_eksport_sync_bez_ukrytych_dla_zwyklego_usera(
     assert "Praca ukryta" not in body
 
 
-def test_eksport_sync_redakcja_widzi_ukryte(admin_client, dorobek_z_ukryta):
-    url = reverse("bpp:autor_eksport_bibtex", args=(dorobek_z_ukryta.pk,))
+@pytest.mark.parametrize("nazwa", ["autor_eksport_bibtex", "autor_eksport_ris"])
+def test_eksport_sync_redakcja_tez_bez_ukrytych(admin_client, dorobek_z_ukryta, nazwa):
+    """Plik wychodzi poza stronę — redakcja też nie dostaje ukrytych prac."""
+    url = reverse(f"bpp:{nazwa}", args=(dorobek_z_ukryta.pk,))
     body = admin_client.get(url).content.decode("utf-8")
-    assert "Praca ukryta" in body
+    assert "Praca widoczna" in body
+    assert "Praca ukryta" not in body
+
+
+def test_eksport_sync_bez_uczelni_bez_ukrytych(
+    client, django_user_model, dorobek_z_ukryta
+):
+    """Bez ustalonej uczelni eksport nie jest fail-open: wyklucza statusy
+    ukryte w dowolnej uczelni."""
+    client.force_login(_zwykly_user(django_user_model))
+    url = reverse("bpp:autor_eksport_bibtex", args=(dorobek_z_ukryta.pk,))
+    with mock.patch(
+        "bpp.models.Uczelnia.objects.get_for_request", return_value=None
+    ):
+        body = client.get(url).content.decode("utf-8")
+    assert "Praca widoczna" in body
+    assert "Praca ukryta" not in body
 
 
 def test_eksport_sync_ukryty_autor_404(client, admin_client, django_user_model):
@@ -250,10 +268,13 @@ def test_eksport_sync_limit_zadan(client, django_user_model):
 # --- eksport asynchroniczny --------------------------------------------------
 
 
-def test_eksport_async_zapisuje_zakres_i_rozdziela_deduplikacje(
+def test_eksport_async_zakres_publiczny_takze_dla_redakcji(
     client, admin_client, uczelnia, dorobek_z_ukryta
 ):
-    ukryte = list(uczelnia.ukryte_statusy("podglad"))
+    """Plik zadania jest publiczny po UUID — zlecenie redakcji dostaje ten
+    sam (publiczny) zakres, więc anonim reużywa tego samego zadania."""
+    ukryte = sorted(uczelnia.ukryte_statusy("podglad"))
+    assert ukryte
     url = reverse(
         "bpp:autor_eksport_start", kwargs={"pk": dorobek_z_ukryta.pk, "format": "bib"}
     )
@@ -265,7 +286,22 @@ def test_eksport_async_zapisuje_zakres_i_rozdziela_deduplikacje(
             client.post(url, {"captcha": "eyJjaGFsbGVuZ2UiOiAieCJ9"})
 
     zadania = AutorEksportTask.objects.filter(autor=dorobek_z_ukryta)
-    assert sorted(list(t.ukryte_statusy) for t in zadania) == sorted([[], ukryte])
+    assert [list(t.ukryte_statusy) for t in zadania] == [ukryte]
+
+
+def test_eksport_async_bez_uczelni_bez_ukrytych(admin_client, dorobek_z_ukryta):
+    """Bez ustalonej uczelni zadanie dostaje statusy ukryte w dowolnej
+    uczelni (nie pustą listę)."""
+    url = reverse(
+        "bpp:autor_eksport_start", kwargs={"pk": dorobek_z_ukryta.pk, "format": "ris"}
+    )
+    with mock.patch("bpp.tasks.generuj_eksport_autora.delay"), mock.patch(
+        "bpp.models.Uczelnia.objects.get_for_request", return_value=None
+    ):
+        admin_client.post(url)
+    task = AutorEksportTask.objects.get(autor=dorobek_z_ukryta)
+    ukryty = Status_Korekty.objects.get(nazwa="ukryty-test")
+    assert list(task.ukryte_statusy) == [ukryty.pk]
 
 
 def test_eksport_async_wyklucza_ukryte(dorobek_z_ukryta, uczelnia):

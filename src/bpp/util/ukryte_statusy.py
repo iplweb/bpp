@@ -42,3 +42,26 @@ def wyklucz_ukryte_statusy(
     if not statusy:
         return qs
     return qs.exclude(**{f"{lookup}__in": statusy})
+
+
+def ukryte_statusy_eksportu(request, kanal="podglad"):
+    """Lista PK statusów korekty wykluczanych z eksportu plików (BibTeX/RIS).
+
+    W odróżnieniu od :func:`ukryte_statusy_dla` reguła jest publiczna dla
+    KAŻDEGO, także redaktora: plik wychodzi poza stronę (można go przekazać
+    dalej, a plik z zadania w tle jest dostępny po UUID). Gdy nie da się
+    ustalić uczelni, nie jest fail-open — zwraca statusy ukryte w danym
+    kanale w KTÓREJKOLWIEK uczelni.
+    """
+    from bpp.models import Uczelnia, Ukryj_Status_Korekty
+
+    uczelnia = Uczelnia.objects.get_for_request(request)
+    if uczelnia is not None:
+        return sorted(set(uczelnia.ukryte_statusy(kanal)))
+    return sorted(
+        set(
+            Ukryj_Status_Korekty.objects.filter(**{kanal: True}).values_list(
+                "status_korekty_id", flat=True
+            )
+        )
+    )
