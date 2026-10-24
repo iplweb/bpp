@@ -1,0 +1,1 @@
+Wzmocniono zabezpieczenia konfiguracji integracji uczelni (PBN, DSpace, ORCID, Clarivate): sekcje z adresami API i poświadczeniami w panelu administracyjnym są dostępne wyłącznie dla superużytkownika, hasła i tokeny nie są wyświetlane w formularzu (puste pole zachowuje dotychczasową wartość), a adresy API PBN i DSpace muszą używać https i wskazywać na publicznie dostępny serwer.
