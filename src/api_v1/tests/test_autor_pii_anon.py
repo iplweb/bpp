@@ -14,6 +14,8 @@ from bpp.models import Autor
 
 
 def _staff_client():
+    # Superuser. Zwykły zalogowany (bez grupy „wprowadzanie danych") widzi
+    # to samo co anonim — patrz test_dane_osobowe_api.py.
     u = baker.make("bpp.BppUser", is_staff=True, is_superuser=True)
     c = APIClient()
     c.force_authenticate(user=u)
@@ -43,7 +45,7 @@ def test_anon_detal_ukrytego_autora_404():
 
 @pytest.mark.django_db
 def test_zalogowany_widzi_ukrytego_autora():
-    """Regresja w drugą stronę: zalogowany widzi ukrytego autora."""
+    """Regresja w drugą stronę: superuser widzi ukrytego autora."""
     autor = baker.make(Autor, nazwisko="Ukryty", imiona="Urban", pokazuj=False)
 
     res = _staff_client().get(reverse("api_v1:autor-detail", args=(autor.pk,)))
@@ -69,7 +71,7 @@ def test_anon_nie_widzi_emaila():
 
 @pytest.mark.django_db
 def test_zalogowany_widzi_email():
-    """Zalogowany nadal widzi e-mail autora."""
+    """Superuser nadal widzi e-mail autora."""
     autor = baker.make(
         Autor, nazwisko="Kowalski", imiona="Jan", email="jan.kowalski@example.com"
     )
@@ -97,7 +99,7 @@ def test_anon_nie_widzi_pelnej_daty_urodzenia():
 
 @pytest.mark.django_db
 def test_zalogowany_widzi_pelna_date_urodzenia():
-    """Zalogowany nadal widzi pełną datę urodzenia."""
+    """Superuser nadal widzi pełną datę urodzenia."""
     autor = baker.make(
         Autor, nazwisko="Kowalski", imiona="Jan", urodzony=date(1970, 3, 15)
     )
@@ -142,7 +144,7 @@ def test_anon_widzi_poprzednie_nazwiska_gdy_wlaczone():
 
 @pytest.mark.django_db
 def test_zalogowany_widzi_poprzednie_nazwiska_mimo_flagi():
-    """Zalogowany widzi poprzednie nazwiska nawet gdy flaga wyłączona."""
+    """Superuser widzi poprzednie nazwiska nawet gdy flaga wyłączona."""
     autor = baker.make(
         Autor,
         nazwisko="Nowak",
@@ -187,7 +189,7 @@ def test_anon_nie_widzi_zatrudnienia_ukrytego_autora():
 
 @pytest.mark.django_db
 def test_zalogowany_widzi_zatrudnienie_ukrytego_autora():
-    """Regresja w drugą stronę: zalogowany (redaktor) widzi powiązania
+    """Regresja w drugą stronę: superuser widzi powiązania
     zatrudnienia także autorów ukrytych."""
     from bpp.models import Autor_Jednostka, Jednostka
 
