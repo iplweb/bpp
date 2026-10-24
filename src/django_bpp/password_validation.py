@@ -5,17 +5,20 @@ hasła łatwe do odgadnięcia: powtórzenia, sekwencje, słowa związane
 z serwisem i hasła znane z wycieków (Have I Been Pwned).
 """
 
+import functools
 import hashlib
 import logging
 import re
 import threading
 import unicodedata
+from pathlib import Path
 
+import marisa_trie
 import requests
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import OperationalError, ProgrammingError
-from zxcvbn import zxcvbn
+from zxcvbn import matching, zxcvbn
 
 logger = logging.getLogger(__name__)
 
@@ -260,6 +263,7 @@ _ZXCVBN_BLOKADA = threading.Lock()
 _POWODY_SLOWNIKOWE = {
     "passwords": "popularne hasła",
     "user_inputs": "słowa związane z kontem lub serwisem",
+    "polskie_slowa": "pospolite polskie słowa",
 }
 _POWODY_WZORCOW = {
     "repeat": "powtórzenia",
@@ -267,6 +271,31 @@ _POWODY_WZORCOW = {
     "spatial": "sąsiednie klawisze",
     "date": "daty",
 }
+
+# Słowniki zxcvbn są wyłącznie angielskie — polskie słowo to dla niego losowe
+# litery. Dokładamy najczęstsze polskie słowa (wordfreq, CC-BY-SA 4.0; patrz
+# data/SLOWNIK_HASEL_PL_LICENCJA.txt). Indeks budowany skryptem
+# bin/zbuduj-slownik-hasel-pl.py.
+SLOWNIK_HASEL_PL = Path(__file__).parent / "data" / "slownik_hasel_pl.marisa"
+
+
+class _SlownikMarisa:
+    """Słownik ``słowo → pozycja`` w formie, jakiej oczekuje zxcvbn
+    (``in`` i ``[słowo]``), nad indeksem marisa-trie czytanym przez mmap."""
+
+    def __init__(self, sciezka):
+        self._trie = marisa_trie.RecordTrie("<I").mmap(str(sciezka))
+
+    def __contains__(self, slowo):
+        return slowo in self._trie
+
+    def __getitem__(self, slowo):
+        return self._trie[slowo][0][0]
+
+
+@functools.cache
+def slownik_hasel_pl():
+    return _SlownikMarisa(SLOWNIK_HASEL_PL)
 
 
 def _slowa_uzytkownika(user):
@@ -323,6 +352,9 @@ class ZxcvbnPasswordValidator:
             return
         slowa = [*slowa_kontekstowe(), *_slowa_uzytkownika(user)]
         with _ZXCVBN_BLOKADA:
+            # zxcvbn czyta słowniki z globalnego RANKED_DICTIONARIES; wpis
+            # jest idempotentny, a pod blokadą nie ściga się z innym wątkiem.
+            matching.RANKED_DICTIONARIES["polskie_slowa"] = slownik_hasel_pl()
             wynik = zxcvbn(password[:ZXCVBN_MAKS_DLUGOSC], user_inputs=slowa)
         if wynik["score"] >= self.min_score:
             return

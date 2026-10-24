@@ -78,6 +78,8 @@ dependencies = [
     "django-password-policies-iplweb==0.9.5",
     # Ocena siły hasła lokalnie (wzorce + słowniki), bez wysyłania hasła.
     "zxcvbn>=4.5.0,<5",
+    # Polski słownik haseł dla zxcvbn (src/django_bpp/data/*.marisa).
+    "marisa-trie>=1.2",
     "dj-pagination==2.5.0",
     "requests>=2.34.2",
     "dspace-rest-client>=0.1.12",

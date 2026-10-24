@@ -1,0 +1,31 @@
+slownik_hasel_pl.marisa — polski słownik haseł dla walidatora zxcvbn
+=====================================================================
+
+Plik zawiera ok. 50 000 najczęstszych polskich słów (wraz z wariantami
+bez polskich znaków diakrytycznych) z pozycją na liście częstości.
+Używa go django_bpp.password_validation.ZxcvbnPasswordValidator.
+
+LICENCJA DANYCH: Creative Commons Uznanie autorstwa — Na tych samych
+warunkach 4.0 (CC BY-SA 4.0), https://creativecommons.org/licenses/by-sa/4.0/
+— w odróżnieniu od reszty BPP (MIT). Zmienione wersje tego pliku muszą być
+udostępniane na tej samej licencji.
+
+Źródło: wordfreq 3.1.1, Robyn Speer, https://github.com/rspeer/wordfreq
+(kod: Apache 2.0, dane: CC BY-SA 4.0). Dane wordfreq dla języka polskiego
+pochodzą m.in. z:
+- Wikipedii (https://www.wikipedia.org),
+- OPUS OpenSubtitles 2018 (http://opus.nlpl.eu/OpenSubtitles.php), dane
+  projektu OpenSubtitles (http://www.opensubtitles.org/),
+- ParaCrawl (https://paracrawl.eu),
+- Leeds Internet Corpus, University of Leeds Centre for Translation Studies
+  (http://corpus.leeds.ac.uk/list.html),
+- statystyk słów z publicznego strumienia Twittera.
+
+Zmiany względem wordfreq: wybrano słowa z listy „large” dla języka
+polskiego, tylko litery, co najmniej 3 znaki; dodano warianty bez polskich
+znaków; zapisano jako indeks marisa-trie (słowo → pozycja).
+
+Odtworzenie pliku:
+
+    uv run --no-project --with wordfreq==3.1.1 --with marisa-trie \
+        python bin/zbuduj-slownik-hasel-pl.py

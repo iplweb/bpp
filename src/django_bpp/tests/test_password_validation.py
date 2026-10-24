@@ -17,6 +17,7 @@ from django_bpp.password_validation import (
     ContextWordsPasswordValidator,
     PwnedPasswordValidator,
     ZxcvbnPasswordValidator,
+    slownik_hasel_pl,
 )
 
 HASLO = "wrzos-kaktus-lipa-7"  # pragma: allowlist secret  # noqa: S105
@@ -224,3 +225,29 @@ def test_zxcvbn_wylaczony_przy_min_score_zero():
 def test_zxcvbn_min_score_z_ustawien(settings):
     settings.BPP_HASLA_MIN_SILA_ZXCVBN = 0
     ZxcvbnPasswordValidator().validate("aaaaaaaaaaaaaaaa")
+
+
+# --- polski słownik zxcvbn -------------------------------------------------
+
+
+def test_slownik_pl_istnieje_i_zawiera_slowa_z_wariantem_bez_znakow():
+    slownik = slownik_hasel_pl()
+    assert "kot" in slownik
+    assert "żółw" in slownik
+    assert slownik["zolw"] == slownik["żółw"]
+    assert slownik["kot"] < slownik["żółw"]  # częstsze słowo = niższa pozycja
+    assert "xqzvw" not in slownik
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("haslo", ["słoneczko123456", "pomidorowa123456"])
+def test_zxcvbn_odrzuca_polskie_slowo_z_cyframi(haslo):
+    with pytest.raises(ValidationError) as e:
+        ZxcvbnPasswordValidator().validate(haslo)
+    assert "polskie słowa" in str(e.value.message % e.value.params)
+
+
+@pytest.mark.django_db
+def test_zxcvbn_fraza_z_kilku_polskich_slow_przechodzi():
+    # Kilka słów to wg NIST dobre hasło — słownik nie może go odrzucać.
+    ZxcvbnPasswordValidator().validate("ptaszek-na-drzewie-gra")
