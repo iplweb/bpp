@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    Autoryzacja w PBN API
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li>Autoryzacja w PBN API</li>
+{% endblock %}
+
+{% block content %}
+    <div class="grid-container">
+        <div class="grid-x grid-padding-x align-center">
+            <div class="cell large-6 medium-8 small-12 text-center">
+                <h1>Za chwilę zalogujesz się w PBN</h1>
+                <p>
+                    Po kliknięciu przycisku zostaniesz przekierowany do PBN,
+                    aby zalogować się i autoryzować dostęp BPP do PBN API.
+                </p>
+                <form method="post" action="{% url "pbn_api:authorize" %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ next_url }}">
+                    <button type="submit" class="button">
+                        <span class="fi-key"></span> Przejdź do logowania w PBN
+                    </button>
+                    <a href="/" class="button secondary">Anuluj</a>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}
