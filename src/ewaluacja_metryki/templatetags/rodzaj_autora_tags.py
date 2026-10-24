@@ -10,7 +10,9 @@ register = template.Library()
 def rodzaj_autora_label(skrot):
     """Zwraca HTML label dla danego skrótu rodzaju autora"""
     if skrot == " " or skrot is None:
-        return format_html('<span class="label secondary" title="Brak danych">-</span>')
+        return format_html(
+            '<span class="label secondary" title="{}">-</span>', "Brak danych"
+        )
 
     try:
         rodzaj = Rodzaj_Autora.objects.get(skrot=skrot)
