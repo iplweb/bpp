@@ -17,7 +17,7 @@ True, ``disabled``/``ukryty``… = False). FK do modeli bez pola-etykiety
 pomijane.
 """
 
-from functools import lru_cache
+import re
 
 from django.core.exceptions import FieldDoesNotExist
 from django.db import models
@@ -27,16 +27,66 @@ from djangoql.extras import AutocompleteField, ExtrasSchema
 
 from bpp.models import Charakter_Formalny, Jednostka
 
+#: Jedyne pola modelu użytkownika (``settings.AUTH_USER_MODEL``) widoczne
+#: w schemacie DjangoQL — pozwalają filtrować po relacjach typu ``utworzyl``
+#: (np. ``utworzyl.username = "jan"``). Pozostałe pola (hasło, ``pbn_token``,
+#: ``email``, flagi uprawnień, daty logowania) oraz WSZYSTKIE relacje
+#: użytkownika są pomijane — użytkownik jest liściem grafu schematu, więc
+#: przez niego nie da się przejść do grup, uprawnień, tokenów ani sesji.
+POLA_UZYTKOWNIKA_W_SCHEMACIE = ("username", "first_name", "last_name")
 
-@lru_cache(maxsize=1)
-def _modele_wykluczone_z_schematu():
-    """Modele auth/credential twardo niedostępne w DjangoQL (lazy — bez
-    top-level importu ``get_user_model``, który przy ładowaniu modeli bywa
-    przedwczesny). ``BppUser`` niesie ``pbn_token`` (żywy credential PBN),
-    ``email``, ``is_superuser`` — nie mogą być filtrowalne."""
+
+def _model_uzytkownika():
+    """Model użytkownika (lazy — ``get_user_model`` przy ładowaniu modeli bywa
+    przedwczesny, więc nie wołamy go na poziomie modułu)."""
     from django.contrib.auth import get_user_model
 
-    return frozenset({get_user_model()})
+    return get_user_model()
+
+
+#: Aplikacje, których ŻADEN model nie może być osiągalny w DjangoQL: dane
+#: uwierzytelniania (tokeny, sesje, hasła, próby logowania), dziennik zdarzeń
+#: oraz zserializowane kopie obiektów (historia wersji, audyt CRUD, wyniki
+#: zadań, konfiguracja) — te ostatnie zawierają także wartości pól ukrytych
+#: niżej po nazwie. Cięcie po ``app_label`` łapie też modele dodane w
+#: przyszłych wersjach tych pakietów.
+APLIKACJE_WYKLUCZONE_Z_SCHEMATU = frozenset(
+    {
+        "admin",
+        "auth",
+        "authtoken",
+        "axes",
+        "constance",
+        "django_celery_results",
+        "easyaudit",
+        "oauth2_provider",
+        "password_policies",
+        "reversion",
+        "sessions",
+    }
+)
+
+#: Nazwy pól traktowanych jako poświadczenia — ukrywane na KAŻDYM modelu
+#: (np. ``Uczelnia.pbn_app_token``, ``Uczelnia.orcid_client_secret``,
+#: ``Uczelnia.dspace_api_password``, ``Uczelnia.clarivate_password``).
+#: Dopasowanie podciągu, bez rozróżniania wielkości liter; obejmuje też pola
+#: pochodne (``<pole>__year``, ``<pole>__rel``).
+_WZORZEC_POLA_Z_SEKRETEM = re.compile(
+    r"password|passwd|haslo|hasło|secret|token|api_key|apikey|klucz_api",
+    re.IGNORECASE,
+)
+
+
+def model_wykluczony_z_schematu(model):
+    """Czy ``model`` jest twardo wycięty z każdego schematu DjangoQL BPP."""
+    if model is None:
+        return False
+    return model._meta.app_label in APLIKACJE_WYKLUCZONE_Z_SCHEMATU
+
+
+def pole_z_sekretem(name):
+    """Czy nazwa pola wskazuje na poświadczenie (hasło, token, sekret…)."""
+    return bool(name) and bool(_WZORZEC_POLA_Z_SEKRETEM.search(name))
 
 
 #: Pola-etykiety wg priorytetu — czym opisać i po czym szukać obiekt w pickerze.
@@ -119,6 +169,8 @@ def _picker_fks(model):
         if not (f.is_relation and getattr(f, "many_to_one", False)):
             continue
         if f.related_model is None or f.name in _SKIP_FK:
+            continue
+        if model_wykluczony_z_schematu(f.related_model):
             continue
         if not _label_fields(f.related_model):
             continue
@@ -243,7 +295,65 @@ class RelPickerSchemaMixin:
         return super().get_field_instance(model, field_name)
 
 
-class BppQLSchema(RelPickerSchemaMixin, ExtrasSchema):
+class SekretyWykluczoneSchemaMixin:
+    """Twarde cięcie poświadczeń ze schematu DjangoQL.
+
+    1. ``excluded()`` — modele z :data:`APLIKACJE_WYKLUCZONE_Z_SCHEMATU` nie
+       są osiągalne żadną ścieżką (djangoql pomija relacje do wykluczonych
+       modeli).
+    2. ``get_fields()`` — model użytkownika wystawia WYŁĄCZNIE pola z
+       :data:`POLA_UZYTKOWNIKA_W_SCHEMACIE` (bez relacji, więc introspekcja
+       djangoql nie idzie od niego dalej); z KAŻDEGO modelu znikają pola
+       o nazwach poświadczeń (:func:`pole_z_sekretem`) oraz pola pochodne
+       wskazujące na wykluczony model (agregat ``<rel>__count``).
+
+    Musi być PIERWSZĄ bazą schematu, żeby filtrować finalną listę pól (już po
+    pickerach/agregatach/częściach dat dokładanych przez klasy niżej w MRO).
+    Wykluczenie robimy w ``excluded()``, a NIE przez atrybut ``exclude``, bo
+    schematy z allow-listą ustawiają ``include`` — a djangoql zabrania
+    ``include`` i ``exclude`` naraz.
+    """
+
+    def excluded(self, model):
+        if model_wykluczony_z_schematu(model):
+            return True
+        return super().excluded(model)
+
+    def resolve_unknown(self, model_cls, prev_relation, name_part):
+        """Agregaty w składni z kropką (``<rel>.<pole>__sum`` itp.) są
+        syntetyzowane przez djangoql poza ``get_fields()`` — dopuszczamy je
+        tylko po polach, które ``get_fields()`` modelu docelowego wystawia
+        (biała lista użytkownika, bez pól-poświadczeń, bez wykluczonych
+        modeli)."""
+        field = super().resolve_unknown(model_cls, prev_relation, name_part)
+        source = getattr(field, "source_field", None)
+        if source is None:
+            return field
+        related = getattr(field, "related_model", None)
+        if related is None or self.excluded(related):
+            return None
+        if pole_z_sekretem(source):
+            return None
+        if source not in {_field_name(f) for f in self.get_fields(related)}:
+            return None
+        return field
+
+    def get_fields(self, model):
+        if model is _model_uzytkownika():
+            return [
+                f
+                for f in super().get_fields(model)
+                if _field_name(f) in POLA_UZYTKOWNIKA_W_SCHEMACIE
+            ]
+        return [
+            f
+            for f in super().get_fields(model)
+            if not pole_z_sekretem(_field_name(f))
+            and not model_wykluczony_z_schematu(getattr(f, "related_model", None))
+        ]
+
+
+class BppQLSchema(SekretyWykluczoneSchemaMixin, RelPickerSchemaMixin, ExtrasSchema):
     """ExtrasSchema (agregaty + części dat) + auto-pickery ``<fk>__rel``.
 
     Wspólny dla widoku „Szukaj zapytaniem" i adminów (``djangoql_schema =
@@ -252,19 +362,8 @@ class BppQLSchema(RelPickerSchemaMixin, ExtrasSchema):
     Praca_Doktorska/Habilitacyjna, …).
     """
 
-    def excluded(self, model):
-        # Twarde odcięcie modelu użytkownika (BppUser) od CAŁEGO schematu.
-        # Bez tego reverse-relacja Autor.user wystawiała pbn_token/email/
-        # is_superuser jako pola filtrowalne — blind oracle pozwalający
-        # zalogowanemu redaktorowi wyeksfiltrować cudzy (nawet superusera)
-        # token PBN znak-po-znaku (``user.pbn_token startswith "…"``).
-        # Robimy to w excluded(), a NIE przez atrybut klasy ``exclude``, bo
-        # podklasa BppQLSchemaOgraniczony ustawia ``include`` — a djangoql
-        # zabrania include i exclude naraz. Cięcie na poziomie modelu łapie
-        # KAŻDĄ ścieżkę do BppUser (nie tylko Autor.user) oraz przyszłe pola.
-        if model in _modele_wykluczone_z_schematu():
-            return True
-        return super().excluded(model)
+    # Biała lista pól modelu użytkownika, wykluczenie modeli uwierzytelniania
+    # i pól z poświadczeniami: patrz ``SekretyWykluczoneSchemaMixin``.
 
 
 # ---------------------------------------------------------------------------
@@ -570,7 +669,9 @@ _LLM_HIDDEN_FIELDS_LABELS = {
 }
 
 
-class RekordLLMSchema(DeprecatedAndRestrictedFieldsMixin, ExtrasSchema):
+class RekordLLMSchema(
+    DeprecatedAndRestrictedFieldsMixin, SekretyWykluczoneSchemaMixin, ExtrasSchema
+):
     """Schemat dla eksportu opisu DjangoQL do promptu LLM.
 
     Baza ``ExtrasSchema`` (agregaty + części dat), **bez** pickerów

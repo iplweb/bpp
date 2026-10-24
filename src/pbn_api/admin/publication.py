@@ -7,8 +7,8 @@ from django.db import models, transaction
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.html import format_html
-from djangoql.admin import DjangoQLSearchMixin
 
+from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.models import Jednostka, Uczelnia
 from bpp.models.cache import Rekord
 from bpp.util import zaloguj_polkniety_wyjatek
@@ -49,7 +49,7 @@ class PublicationFromMongoIdForm(forms.ModelForm):
 
 @admin.register(Publication)
 class PublicationAdmin(
-    DjangoQLSearchMixin,
+    BppDjangoQLSearchMixin,
     BaseMongoDBAdmin,
 ):
     show_full_result_count = False

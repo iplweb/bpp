@@ -146,7 +146,7 @@ class StanObslugiFilter(SimpleListFilter):
     def _djangoql_aktywne(request) -> bool:
         """Czy operator pisze własne zapytanie DjangoQL?
 
-        Ten admin ma ``DjangoQLSearchMixin``, a zapytanie ląduje w ``q``
+        Ten admin ma ``BppDjangoQLSearchMixin``, a zapytanie ląduje w ``q``
         (marker trybu to ``q-l=on``) — czyli poza polem ``status``, którego
         pilnuje detekcja wyżej. Bez tego ``status = 5`` wpisane w DjangoQL
         wpadałoby w koniunkcję z domyślnym ``status__in=(0, 2, 3)`` i zawsze

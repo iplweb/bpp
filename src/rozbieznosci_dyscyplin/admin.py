@@ -6,12 +6,12 @@ from django.contrib import admin, messages
 from django.http import HttpResponseRedirect
 from django.urls import path, reverse
 from django.utils.html import format_html
-from djangoql.admin import DjangoQLSearchMixin
 from import_export import resources
 from import_export.fields import Field
 
 from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.admin.helpers import link_do_obiektu
+from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.admin.xlsx_export.mixins import EksportDanychMixin
 from bpp.util import site_url_for_request
 from rozbieznosci_dyscyplin.admin_utils import (
@@ -297,7 +297,7 @@ class RozbieznosciZrodelViewResource(resources.ModelResource):
 @admin.register(RozbieznosciView)
 class RozbieznosciViewAdmin(
     DynamicAdminFilterMixin,
-    DjangoQLSearchMixin,
+    BppDjangoQLSearchMixin,
     ReadonlyAdminMixin,
     EksportDanychMixin,
     admin.ModelAdmin,
@@ -393,7 +393,7 @@ class RozbieznosciViewAdmin(
 @admin.register(RozbieznosciZrodelView)
 class RozbieznosciZrodelViewAdmin(
     DynamicAdminFilterMixin,
-    DjangoQLSearchMixin,
+    BppDjangoQLSearchMixin,
     ReadonlyAdminMixin,
     EksportDanychMixin,
     admin.ModelAdmin,
