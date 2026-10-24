@@ -56,11 +56,12 @@ def test_initial_data_brak_uczelni_nie_wybucha(mapowanie_admin):
 
 
 @pytest.mark.django_db
-def test_collections_endpoint_zwraca_liste(mapowanie_admin, fernet_key):
+def test_collections_endpoint_zwraca_liste(mapowanie_admin, fernet_key, admin_user):
     u = baker.make("bpp.Uczelnia")
     u.dspace_api_endpoint = "https://repo/server/api"
     u.save()
     req = RequestFactory().get("/collections/", {"uczelnia": u.pk})
+    req.user = admin_user
 
     with mock.patch("dspace_api.client.DSpaceClient") as ClientCls:
         ClientCls.return_value.fetch_collections.return_value = [
@@ -75,11 +76,14 @@ def test_collections_endpoint_zwraca_liste(mapowanie_admin, fernet_key):
 
 
 @pytest.mark.django_db
-def test_collections_endpoint_blad_zwraca_error_i_200(mapowanie_admin, fernet_key):
+def test_collections_endpoint_blad_zwraca_error_i_200(
+    mapowanie_admin, fernet_key, admin_user
+):
     u = baker.make("bpp.Uczelnia")
     u.dspace_api_endpoint = "https://repo/server/api"
     u.save()
     req = RequestFactory().get("/collections/", {"uczelnia": u.pk})
+    req.user = admin_user
 
     with mock.patch("dspace_api.client.DSpaceClient") as ClientCls:
         ClientCls.return_value.fetch_collections.side_effect = RuntimeError("timeout")
@@ -92,9 +96,12 @@ def test_collections_endpoint_blad_zwraca_error_i_200(mapowanie_admin, fernet_ke
 
 
 @pytest.mark.django_db
-def test_collections_endpoint_bez_konfiguracji_zwraca_error(mapowanie_admin):
+def test_collections_endpoint_bez_konfiguracji_zwraca_error(
+    mapowanie_admin, admin_user
+):
     u = baker.make("bpp.Uczelnia")  # bez dspace_api_endpoint
     req = RequestFactory().get("/collections/", {"uczelnia": u.pk})
+    req.user = admin_user
     resp = mapowanie_admin.collections_json_view(req)
     assert resp.status_code == 200
     data = json.loads(resp.content)
@@ -103,11 +110,149 @@ def test_collections_endpoint_bez_konfiguracji_zwraca_error(mapowanie_admin):
 
 
 @pytest.mark.django_db
-def test_collections_endpoint_bez_parametru_uczelnia(mapowanie_admin):
+def test_collections_endpoint_bez_parametru_uczelnia(mapowanie_admin, admin_user):
     req = RequestFactory().get("/collections/")
+    req.user = admin_user
     resp = mapowanie_admin.collections_json_view(req)
     assert resp.status_code == 200
     assert json.loads(resp.content)["collections"] == []
+
+
+def _staff_z_uprawnieniem(username, *uczelnie):
+    from django.contrib.auth.models import Permission
+
+    from bpp.models import BppUser
+
+    user = BppUser.objects.create_user(
+        username=username, password="test12345", is_staff=True
+    )
+    user.user_permissions.add(
+        Permission.objects.get(
+            codename="change_uczelnia", content_type__app_label="bpp"
+        )
+    )
+    for u in uczelnie:
+        user.accessible_uczelnie.add(u)
+    return user
+
+
+def _uczelnia_z_dspace():
+    u = baker.make("bpp.Uczelnia")
+    u.dspace_api_endpoint = "https://repo/server/api"
+    u.save()
+    return u
+
+
+@pytest.mark.django_db
+def test_collections_endpoint_staff_bez_uprawnien_403(mapowanie_admin, fernet_key):
+    from bpp.models import BppUser
+
+    u = _uczelnia_z_dspace()
+    user = BppUser.objects.create_user(
+        username="staff", password="test12345", is_staff=True
+    )
+    req = RequestFactory().get("/collections/", {"uczelnia": u.pk})
+    req.user = user
+
+    with mock.patch("dspace_api.client.DSpaceClient") as ClientCls:
+        resp = mapowanie_admin.collections_json_view(req)
+
+    assert resp.status_code == 403
+    ClientCls.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_collections_endpoint_uczelnia_spoza_zakresu_404(mapowanie_admin, fernet_key):
+    uczelnia_a = _uczelnia_z_dspace()
+    uczelnia_b = _uczelnia_z_dspace()
+    user = _staff_z_uprawnieniem("staff_a", uczelnia_a)
+    req = RequestFactory().get("/collections/", {"uczelnia": uczelnia_b.pk})
+    req.user = user
+
+    with mock.patch("dspace_api.client.DSpaceClient") as ClientCls:
+        resp = mapowanie_admin.collections_json_view(req)
+
+    assert resp.status_code == 404
+    ClientCls.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_collections_endpoint_nieistniejaca_uczelnia_404(mapowanie_admin, admin_user):
+    for wartosc in ["999999", "abc"]:
+        req = RequestFactory().get("/collections/", {"uczelnia": wartosc})
+        req.user = admin_user
+        with mock.patch("dspace_api.client.DSpaceClient") as ClientCls:
+            resp = mapowanie_admin.collections_json_view(req)
+        assert resp.status_code == 404
+        ClientCls.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_collections_endpoint_uczelnia_w_zakresie_wola_klienta(
+    mapowanie_admin, fernet_key
+):
+    uczelnia_a = _uczelnia_z_dspace()
+    _uczelnia_z_dspace()
+    user = _staff_z_uprawnieniem("staff_a", uczelnia_a)
+    req = RequestFactory().get("/collections/", {"uczelnia": uczelnia_a.pk})
+    req.user = user
+
+    with mock.patch("dspace_api.client.DSpaceClient") as ClientCls:
+        ClientCls.return_value.fetch_collections.return_value = [
+            {"uuid": "u1", "name": "Artykuły"}
+        ]
+        resp = mapowanie_admin.collections_json_view(req)
+
+    assert resp.status_code == 200
+    ClientCls.assert_called_once_with(uczelnia_a)
+    assert json.loads(resp.content)["collections"] == [
+        {"uuid": "u1", "name": "Artykuły"}
+    ]
+
+
+@pytest.mark.django_db
+def test_collections_endpoint_przez_url_staff_bez_uprawnien(client, fernet_key):
+    from django.urls import reverse
+
+    from bpp.models import BppUser
+
+    u = _uczelnia_z_dspace()
+    user = BppUser.objects.create_user(
+        username="staff", password="test12345", is_staff=True
+    )
+    client.force_login(user)
+
+    with mock.patch("dspace_api.client.DSpaceClient") as ClientCls:
+        resp = client.get(
+            reverse("admin:dspace_api_mapowanie_dspace_collections"),
+            {"uczelnia": u.pk},
+        )
+
+    assert resp.status_code == 403
+    ClientCls.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_collections_endpoint_przez_url_superuser(admin_client, fernet_key):
+    from django.urls import reverse
+
+    u = _uczelnia_z_dspace()
+    with mock.patch("dspace_api.client.DSpaceClient") as ClientCls:
+        ClientCls.return_value.fetch_collections.return_value = []
+        resp = admin_client.get(
+            reverse("admin:dspace_api_mapowanie_dspace_collections"),
+            {"uczelnia": u.pk},
+        )
+
+    assert resp.status_code == 200
+    ClientCls.assert_called_once_with(u)
+
+
+@pytest.mark.parametrize("akcja", ["wyslij_do_dspace", "wyslij_do_dspace_w_tle"])
+def test_akcje_dspace_wymagaja_uprawnienia_change(akcja):
+    from dspace_api import actions
+
+    assert getattr(actions, akcja).allowed_permissions == ("change",)
 
 
 # --- Feature C: link na change-formie rekordu (DSpaceLinkAdminMixin) --------
