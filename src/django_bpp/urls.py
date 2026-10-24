@@ -37,6 +37,11 @@ from bpp.views.sentry_tester import (
     test_exception_view,
 )
 from django_bpp.freshdesk import widget_token_view
+from django_bpp.grappelli_lookup import (
+    BppAutocompleteLookup,
+    BppM2MLookup,
+    BppRelatedLookup,
+)
 from django_bpp.health import health_check
 from django_bpp.views import HTMXAwareLoginView
 
@@ -371,6 +376,23 @@ urlpatterns = (
             name="remove_from_removed_results",
         ),
         url(r"^admin_tools/", include("admin_tools.urls")),
+        # Lookupy grappelli z kontrolą uprawnień — muszą być PRZED
+        # ``grappelli.urls``, żeby przesłonić oryginalne widoki.
+        url(
+            r"^grappelli/lookup/related/$",
+            BppRelatedLookup.as_view(),
+            name="grp_related_lookup",
+        ),
+        url(
+            r"^grappelli/lookup/m2m/$",
+            BppM2MLookup.as_view(),
+            name="grp_m2m_lookup",
+        ),
+        url(
+            r"^grappelli/lookup/autocomplete/$",
+            BppAutocompleteLookup.as_view(),
+            name="grp_autocomplete_lookup",
+        ),
         url(r"^grappelli/", include("grappelli.urls")),
         path("health/", health_check, name="health"),
         path(
