@@ -138,7 +138,11 @@ dependencies = [
     "django-tinymce>=5.0.0",
     "crispy-bootstrap5>=2026.9",
     "crispy-bootstrap3>=2022.1",
-    "twisted[http2,tls]>=26.4.0",
+    # 26.10.0rc1 zamyka CVE-2026-115774..115778 i CVE-2026-115877 — fix jest
+    # na razie tylko w RC (stabilnej 26.10 jeszcze nie ma). Specyfikator
+    # wskazuje RC wprost, wiec uv dopuszcza prerelease tylko dla twisted.
+    # Po wydaniu 26.10.0 zmienic na ">=26.10.0".
+    "twisted[http2,tls]>=26.10.0rc1",
     "django-dbtemplates-iplweb>=4.4.1",
     "django-soft-delete>=1.0.23",
     "tqdm>=4.70.0",
@@ -362,6 +366,11 @@ constraint-dependencies = [
     #   pypdf             CVE-2026-113786..113795 (8 szt.)
     #   djangorestframework i Pillow — piny w [dependencies]; Pillow 13
     #   wymaga dodatkowo override-dependencies (patrz nizej)
+    # Partia 2026-10-24 (8 podatnosci, pip-audit na PR #892):
+    #   brotli     PYSEC-2026-4322, GHSA-9v8h-qqgm-4m35 (via fonttools[woff])
+    #   setuptools GHSA-xmj3-9gf7-h52w
+    #   twisted    CVE-2026-115774..115778, CVE-2026-115877 (pin w
+    #              [dependencies], na razie RC)
     "anyio>=4.14.2",
     # >=26.10.1: zamyka CVE-2026-77528 (PYSEC-2026-4027, fix od 26.7.1),
     # a zarazem pierwsza wersja z leniwym importem vendorowanych flatbuffers
@@ -371,6 +380,7 @@ constraint-dependencies = [
     # test_lazy_heavy_imports. Nie cofac ponizej 26.10.1.
     "autobahn>=26.10.1",
     "bleach>=6.4.0",
+    "brotli>=1.2.1",
     "certifi>=2026.10.19",
     "daphne>=4.2.2",
     "h2>=4.4.1",
@@ -379,7 +389,7 @@ constraint-dependencies = [
     "pyasn1>=0.6.4",
     "pyjwt>=2.15.1",
     "pypdf>=6.21.2",
-    "setuptools>=83.0.0",
+    "setuptools>=84.1.0",
     "soupsieve>=2.10",
 ]
 
@@ -592,7 +602,7 @@ precision = 1
 skip_empty = true
 
 [build-system]
-requires = ["setuptools>=84.0.0", "wheel"]
+requires = ["setuptools>=84.1.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [dependency-groups]
