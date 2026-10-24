@@ -34,6 +34,7 @@ class BppConfig(AppConfig):
                 dispatch_uid="bpp.invalidate_uczelnia_cache_on_article_change",
             )
 
+
         self._podepnij_inwalidacje_cache_publicznego()
 
         # Ensure BppUserAdmin takes precedence over microsoft_auth's UserAdmin

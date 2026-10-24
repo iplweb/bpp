@@ -20,12 +20,14 @@ setenv_default("DJANGO_BPP_SECRET_KEY", "0xdeadbeef 2")
 # run-site bez env → losowy klucz (widget działa, nic forgeable w repo); dev
 # docker compose ładuje .env.docker → setenv_default NIE nadpisze placeholdera.
 setenv_default("ALTCHA_HMAC_KEY", secrets.token_hex(32))
-# Staly dev-owy klucz Fernet dla EncryptedTextField (credentiale DSpace itd.).
-# Bez niego zapis pola EncryptedTextField wywala ImproperlyConfigured
-# (src/bpp/fields.py). Stala wartosc (nie generowana co restart), zeby
-# rekordy zaszyfrowane wczesniej dalo sie odszyfrowac po restarcie. Dev-only:
-# local.py nie laduje sie w produkcji — tam klucz przychodzi z prawdziwego
-# env/.env. Override: ustaw DSPACE_CREDENTIALS_KEY w srodowisku przed startem.
+# Staly dev-owy klucz Fernet dla EncryptedTextField (sekrety integracji).
+# Bez klucza pola EncryptedTextField zapisuja sie jawnie
+# (src/bpp/fields.py). Ustawiany pod dawna nazwa DSPACE_CREDENTIALS_KEY
+# (fallback dla DJANGO_BPP_FIELD_ENCRYPTION_KEY). Stala wartosc (nie
+# generowana co restart), zeby rekordy zaszyfrowane wczesniej dalo sie
+# odszyfrowac po restarcie. Dev-only: local.py nie laduje sie w produkcji —
+# tam klucz przychodzi z prawdziwego env/.env. Override: ustaw
+# DSPACE_CREDENTIALS_KEY w srodowisku przed startem.
 setenv_default("DSPACE_CREDENTIALS_KEY", "beRCn4RUNneKiOizMZEEZDjeZVwdOJ6m2etsvwC3wfs=")
 
 from .base import *  # noqa
