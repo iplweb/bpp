@@ -6,6 +6,7 @@ from openpyxl.workbook import Workbook
 from tablib.formats._xlsx import XLSXFormat
 
 from bpp.util import (
+    sanitize_tablib_dataset,
     worksheet_columns_autosize,
     worksheet_create_table,
     worksheet_create_urls,
@@ -21,6 +22,9 @@ class PrettyXLSXFormat(XLSXFormat):
         ws = wb.worksheets[0]
         ws.title = dataset.title if dataset.title else "Eksport z BPP"
 
+        # Tekst zaczynający się od =, +, -, @ itd. zapisujemy jako tekst, nie
+        # formułę. Kolumny *_url zamieniamy na HYPERLINK dopiero niżej.
+        sanitize_tablib_dataset(dataset)
         cls.dset_sheet(dataset, ws, freeze_panes=freeze_panes)
 
         worksheet_create_urls(ws)

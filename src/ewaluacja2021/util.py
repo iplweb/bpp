@@ -79,7 +79,15 @@ def output_table_to_xlsx(  # noqa: C901 — złożoność pre-existing, nie z te
     from openpyxl.utils import get_column_letter
     from openpyxl.worksheet.table import TableColumn
 
-    from bpp.util import worksheet_columns_autosize, worksheet_create_table
+    from bpp.util import (
+        sanitize_xlsx_row,
+        worksheet_columns_autosize,
+        worksheet_create_table,
+    )
+
+    def _q(value):
+        # Tekst wewnątrz literału formuły HYPERLINK — podwajamy cudzysłowy.
+        return str(value).replace('"', '""')
 
     ws.append(headers)
 
@@ -118,28 +126,29 @@ def output_table_to_xlsx(  # noqa: C901 — złożoność pre-existing, nie z te
     url = first_column_url.format(site_name=site_name)
     autor_url = f"https://{site_name}/bpp/autor/"
     for row in dataset:
-        ws.append(row)
+        ws.append(sanitize_xlsx_row(row))
 
         # URL dla pierwszej kolumny -- odnośnik do BPP
         id_for_url = row[0].replace(" ", "")
         if id_for_url.startswith("("):
             id_for_url = id_for_url[1:-1]
         ws.cell(row=ws.max_row, column=1).value = '=HYPERLINK("{}", "{}")'.format(
-            url + id_for_url + "/", row[0]
+            _q(url + id_for_url + "/"), _q(row[0])
         )
 
         if autor_column_link is not None:
             # Druga kolumna z ID autora -> bpp
             ws.cell(
                 row=ws.max_row, column=autor_column_link + 1
-            ).value = f'=HYPERLINK("{autor_url + str(row[autor_column_link])}", "{row[autor_column_link]}")'
+            ).value = f'=HYPERLINK("{_q(autor_url + str(row[autor_column_link]))}", "{_q(row[autor_column_link])}")'
 
         if autor_column_url is not None:
             # URL dla czwartej kolumny -- odnośnik do pliku autora
             ws.cell(
                 row=ws.max_row, column=autor_column_url + 1
             ).value = '=HYPERLINK("{}", "{}")'.format(
-                string2fn(row[autor_column_url]) + ".xlsx", row[autor_column_url]
+                _q(string2fn(row[autor_column_url]) + ".xlsx"),
+                _q(row[autor_column_url]),
             )
 
     if footer_row:
