@@ -7,15 +7,16 @@ from dbtemplates.models import Template
 from dbtemplates.utils.cache import remove_cached_template
 from dbtemplates.utils.template import check_template_syntax
 from django.contrib import admin, messages
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.template import Context, TemplateSyntaxError
 from django.template.engine import Engine
 from django.template.loaders.cached import Loader as CachedLoader
 from django.template.response import TemplateResponse
 from django.urls import re_path as url
 from django.utils import timezone
+from django.utils.safestring import mark_safe
 
-from bpp.util import rebuild_instances_of_models
+from bpp.util import rebuild_instances_of_models, safe_opis_bibliograficzny_html
 
 admin.site.unregister(Template)
 
@@ -120,21 +121,33 @@ class BppTemplateAdmin(TemplateAdmin):
 
     # Your view definition fn
     def opis_bibliograficzny_preview(self, request):
-        template = request.GET.get("template")
+        if not (
+            self.has_change_permission(request) or self.has_add_permission(request)
+        ):
+            raise PermissionDenied
 
         from django.template import Template as DjangoTemplate
 
+        template = None
         template_okay = True
         exception = None
         lista_prac = []
         tb = None
 
-        try:
-            django_template = DjangoTemplate(template)
-        except TemplateSyntaxError as e:
+        # Treść szablonu przyjmujemy wyłącznie z POST (chronionego CSRF przez
+        # ``admin_view`` i middleware).
+        if request.method == "POST":
+            template = request.POST.get("template")
+
+        if template is None:
             template_okay = False
-            exception = e
-            type, value, tb = sys.exc_info()
+        else:
+            try:
+                django_template = DjangoTemplate(template)
+            except TemplateSyntaxError as e:
+                template_okay = False
+                exception = e
+                type, value, tb = sys.exc_info()
 
         if template_okay:
             from bpp.models.cache import Rekord
@@ -145,12 +158,16 @@ class BppTemplateAdmin(TemplateAdmin):
 
             for elem in ostatnie_prace:
                 context = Context({"praca": elem.original})
-                lista_prac.append(django_template.render(context))
+                lista_prac.append(
+                    mark_safe(  # noqa: S308 - wynik po sanityzacji nh3
+                        safe_opis_bibliograficzny_html(django_template.render(context))
+                    )
+                )
 
             #
         context = dict(
             self.admin_site.each_context(request),
-            template=template,
+            brak_szablonu=template is None,
             lista_prac=lista_prac,
             template_okay=template_okay,
             exception=exception,
