@@ -1,6 +1,5 @@
 # Create your views here.
 import base64
-import binascii
 import json
 import secrets
 import sys
@@ -12,6 +11,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.http import HttpResponseBadRequest
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import RedirectView
 from pbn_client.conf import settings as pbn_defaults
 
@@ -21,53 +21,85 @@ from .client import OAuthMixin
 from .exceptions import AuthenticationConfigurationError, AuthenticationResponseError
 from .signals import token_set_successfully
 
-# Klucz sesji z listą jednorazowych nonce'ów wydanych przy rozpoczęciu
-# autoryzacji PBN. Lista (a nie pojedyncza wartość), żeby równoległa
-# autoryzacja z dwóch kart nie unieważniała się nawzajem.
-PBN_STATE_NONCES_SESSION_KEY = "pbn_api_state_nonces"
-PBN_STATE_NONCES_MAX = 5
+# PBN wraca na callback wyłącznie z ``?ott=<uuid>`` — parametru ``state`` NIE
+# zwraca. Powiązanie callbacku z autoryzacją rozpoczętą przez tego samego
+# użytkownika opiera się więc na sesji: /pbn_api/authorize zapisuje w niej
+# "oczekującą autoryzację", a callback ją zużywa (jednorazowo, z limitem
+# czasu). Trzymamy jeden wpis — ostatnio rozpoczętą autoryzację.
+PBN_PENDING_AUTH_SESSION_KEY = "pbn_api_pending_auth"
+PBN_PENDING_AUTH_MAX_AGE_SECONDS = 10 * 60
+
+PBN_AUTH_REJECTED_MESSAGE = (
+    "Nie można zakończyć autoryzacji w PBN API - nie znaleziono aktualnej "
+    "autoryzacji rozpoczętej w tej sesji (mogła wygasnąć albo została już "
+    "użyta). Kliknij ponownie „autoryzuj PBN API”."
+)
 
 
-def _issue_state_nonce(request):
+def _safe_local_url(request, url):
+    if isinstance(url, str) and url_has_allowed_host_and_scheme(
+        url, allowed_hosts={request.get_host()}
+    ):
+        return url
+    return "/"
+
+
+def _start_pending_auth(request, original_page):
     nonce = secrets.token_urlsafe(32)
-    nonces = list(request.session.get(PBN_STATE_NONCES_SESSION_KEY, []))
-    nonces.append(nonce)
-    request.session[PBN_STATE_NONCES_SESSION_KEY] = nonces[-PBN_STATE_NONCES_MAX:]
+    request.session[PBN_PENDING_AUTH_SESSION_KEY] = {
+        "nonce": nonce,
+        "started": timezone.now().timestamp(),
+        "originalPage": _safe_local_url(request, original_page),
+    }
     return nonce
 
 
-def _consume_state_nonce(request, nonce):
-    """Sprawdza nonce ze ``state`` z wartościami w sesji; zgodny usuwa
-    (jednorazowy). Zwraca True tylko przy zgodności."""
-    if not isinstance(nonce, str) or not nonce:
-        return False
-    nonces = list(request.session.get(PBN_STATE_NONCES_SESSION_KEY, []))
-    for stored in nonces:
-        if isinstance(stored, str) and secrets.compare_digest(
-            stored.encode(), nonce.encode()
-        ):
-            nonces.remove(stored)
-            request.session[PBN_STATE_NONCES_SESSION_KEY] = nonces
-            return True
+def _pop_pending_auth(request):
+    """Zdejmuje (jednorazowo) oczekującą autoryzację z sesji. Zwraca jej dane,
+    jeżeli istniała i nie wygasła; w przeciwnym razie None."""
+    pending = request.session.pop(PBN_PENDING_AUTH_SESSION_KEY, None)
+    if not isinstance(pending, dict):
+        return None
+    started = pending.get("started")
+    if not isinstance(started, (int, float)):
+        return None
+    age = timezone.now().timestamp() - started
+    if age < 0 or age > PBN_PENDING_AUTH_MAX_AGE_SECONDS:
+        return None
+    return pending
+
+
+def _is_cross_site_request(request):
+    """Czy wejście na /pbn_api/authorize przyszło z obcej witryny.
+
+    Oczekująca autoryzacja w sesji ma sens tylko wtedy, gdy rozpoczął ją
+    sam użytkownik z poziomu BPP — nie strona trzecia, która przekierowała
+    do nas jego przeglądarkę. Linki "autoryzuj PBN API" są w BPP, więc
+    przeglądarka zgłasza ``Sec-Fetch-Site: same-origin`` (albo ``none`` przy
+    wpisaniu adresu ręcznie). Starsze przeglądarki bez Sec-Fetch-* sprawdzamy
+    po nagłówku Referer, jeżeli jest obecny."""
+    sec_fetch_site = request.META.get("HTTP_SEC_FETCH_SITE")
+    if sec_fetch_site:
+        return sec_fetch_site == "cross-site"
+    referer = request.META.get("HTTP_REFERER")
+    if referer:
+        return not url_has_allowed_host_and_scheme(
+            referer, allowed_hosts={request.get_host()}
+        )
     return False
-
-
-def _decode_state(state):
-    if not state:
-        return None
-    # "+" z base64 bywa po drodze zamieniany na spację w query stringu.
-    state = state.replace(" ", "+")
-    try:
-        state_data = json.loads(base64.b64decode(state).decode())
-    except (ValueError, binascii.Error, UnicodeDecodeError):
-        return None
-    if not isinstance(state_data, dict):
-        return None
-    return state_data
 
 
 class TokenRedirectPage(LoginRequiredMixin, RedirectView):
     def get_redirect_url(self, *args, **kwargs):
+        if _is_cross_site_request(self.request):
+            self.request.session.pop(PBN_PENDING_AUTH_SESSION_KEY, None)
+            messages.error(
+                self.request,
+                "Autoryzację w PBN API należy rozpocząć z poziomu BPP - "
+                "kliknij „autoryzuj PBN API”.",
+            )
+            return "/"
+
         uczelnia = Uczelnia.objects.get_for_request(self.request)
 
         # Get the original page from 'next' parameter or HTTP referer
@@ -76,11 +108,14 @@ class TokenRedirectPage(LoginRequiredMixin, RedirectView):
             # Fall back to HTTP referer if no next parameter
             next_url = self.request.META.get("HTTP_REFERER", "/")
 
-        # Create state data
+        nonce = _start_pending_auth(self.request, next_url)
+
+        # PBN nie odsyła ``state`` z powrotem; wysyłamy go wyłącznie
+        # informacyjnie, nic po stronie callbacku od niego nie zależy.
         state_data = {
             "originalPage": next_url,
             "timestamp": timezone.now().timestamp(),
-            "nonce": _issue_state_nonce(self.request),
+            "nonce": nonce,
         }
 
         # Encode state as base64 JSON
@@ -93,38 +128,19 @@ class TokenRedirectPage(LoginRequiredMixin, RedirectView):
 
 class TokenLandingPage(LoginRequiredMixin, RedirectView):
     def get_redirect_url(self, *args, **kwargs):
-        from django.utils.http import url_has_allowed_host_and_scheme
-
         ott = self.request.GET.get("ott")
-        state = self.request.GET.get("state")
 
         if not ott:
             raise HttpResponseBadRequest("Brak parametru OTT lub pusty")
 
-        state_data = _decode_state(state)
-        if state_data is None or not _consume_state_nonce(
-            self.request, state_data.get("nonce")
-        ):
-            messages.error(
-                self.request,
-                "Nie można zakończyć autoryzacji w PBN API - odpowiedź nie "
-                "pochodzi z autoryzacji rozpoczętej w tej sesji. Rozpocznij "
-                "autoryzację ponownie.",
-            )
+        pending = _pop_pending_auth(self.request)
+        if pending is None:
+            messages.error(self.request, PBN_AUTH_REJECTED_MESSAGE)
             return "/"
 
         uczelnia = Uczelnia.objects.get_for_request(self.request)
 
-        # Default redirect URL
-        redirect_url = "/"
-
-        candidate = state_data.get("originalPage", "/")
-        # The state parameter round-trips through the browser and is
-        # therefore attacker-controllable; never redirect off-host.
-        if isinstance(candidate, str) and url_has_allowed_host_and_scheme(
-            candidate, allowed_hosts={self.request.get_host()}
-        ):
-            redirect_url = candidate
+        redirect_url = _safe_local_url(self.request, pending.get("originalPage"))
 
         try:
             user_token = OAuthMixin.get_user_token(
