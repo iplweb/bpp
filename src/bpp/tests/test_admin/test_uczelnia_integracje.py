@@ -123,9 +123,7 @@ def test_superuser_widzi_pola_ale_nie_wartosci_sekretow(
 
 
 @pytest.mark.django_db
-def test_superuser_pusty_sekret_zachowuje_wartosc(
-    uczelnia_z_integracjami, admin_app
-):
+def test_superuser_pusty_sekret_zachowuje_wartosc(uczelnia_z_integracjami, admin_app):
     res = admin_app.get(_url(uczelnia_z_integracjami))
     form = res.forms["uczelnia_form"]
     for pole in SEKRETY:
@@ -134,6 +132,15 @@ def test_superuser_pusty_sekret_zachowuje_wartosc(
     form["tytul_strony_glownej"] = "Tytul superusera"
     res2 = form.submit()
     assert res2.status_code == 302, res2.text[:2000]
+
+    from django.contrib.admin.models import LogEntry
+
+    wpis = LogEntry.objects.filter(object_id=str(uczelnia_z_integracjami.pk)).latest(
+        "action_time"
+    )
+    zmienione = wpis.get_change_message()
+    assert "Token aplikacji w PBN" not in zmienione
+    assert "ORCID Client Secret" in zmienione
 
     u = Uczelnia.objects.get(pk=uczelnia_z_integracjami.pk)
     assert u.tytul_strony_glownej == "Tytul superusera"
@@ -177,9 +184,7 @@ def test_superuser_adres_api_na_host_publiczny_zapisany(
 def test_struktura_zapis_nie_wykonuje_testu_polaczenia_pbn(
     uczelnia_z_integracjami, struktura_app, monkeypatch
 ):
-    Uczelnia.objects.filter(pk=uczelnia_z_integracjami.pk).update(
-        pbn_integracja=True
-    )
+    Uczelnia.objects.filter(pk=uczelnia_z_integracjami.pk).update(pbn_integracja=True)
 
     def _nie_wolno(self):
         raise AssertionError("pbn_client() nie powinien być wołany")
@@ -242,3 +247,83 @@ def test_waliduj_url_integracji_dns_fail_closed(monkeypatch):
     monkeypatch.setattr(ssrf, "resolve_ips", lambda h: ["93.184.216.34", "::1"])
     with pytest.raises(ValidationError):
         ssrf.waliduj_url_integracji("https://mieszany.example")
+
+
+@pytest.mark.parametrize(
+    "adres",
+    [
+        "100.64.0.1",
+        "::ffff:127.0.0.1",
+        "2002:7f00:1::",
+        "2002:a9fe:a9fe::",
+        "2001:0:4136:e378:8000:63bf:3fff:fdd2",
+        "64:ff9b::a9fe:a9fe",
+        "64:ff9b::a00:1",
+        "fe80::1",
+        "fc00::1",
+        "224.0.0.1",
+        "0.0.0.0",
+    ],
+)
+def test_ip_is_public_odrzuca_adresy_niepubliczne(adres):
+    import ipaddress
+
+    assert not ssrf.ip_is_public(ipaddress.ip_address(adres))
+
+
+@pytest.mark.parametrize(
+    "adres", ["93.184.216.34", "2606:4700::1111", "64:ff9b::5db8:d822"]
+)
+def test_ip_is_public_przyjmuje_adresy_globalne(adres):
+    import ipaddress
+
+    assert ssrf.ip_is_public(ipaddress.ip_address(adres))
+
+
+@pytest.mark.django_db
+def test_struktura_nie_przywraca_wersji_z_historii(
+    uczelnia_z_integracjami, struktura_app
+):
+    import reversion
+    from reversion.models import Version
+
+    with reversion.create_revision():
+        uczelnia_z_integracjami.save()
+    wersja = Version.objects.get_for_object(uczelnia_z_integracjami).first()
+
+    url = reverse(
+        "admin:bpp_uczelnia_revision",
+        args=(uczelnia_z_integracjami.pk, wersja.pk),
+    )
+    assert struktura_app.get(url, expect_errors=True).status_code == 403
+    url = reverse("admin:bpp_uczelnia_recover", args=(wersja.pk,))
+    assert struktura_app.get(url, expect_errors=True).status_code == 403
+
+
+@pytest.mark.django_db
+def test_save_model_nie_superuser_zachowuje_konfiguracje_integracji(
+    uczelnia_z_integracjami, rf, django_user_model
+):
+    from django.contrib import admin as django_admin
+
+    from bpp.admin.uczelnia import UczelniaAdmin
+
+    user = django_user_model.objects.create_user(
+        username="nie_superuser", password="x", is_staff=True
+    )
+    request = rf.post("/")
+    request.user = user
+    model_admin = UczelniaAdmin(Uczelnia, django_admin.site)
+
+    obj = Uczelnia.objects.get(pk=uczelnia_z_integracjami.pk)
+    obj.pbn_api_root = "https://inny.example.com"
+    obj.dspace_api_password = "NOWE"
+    obj.pbn_app_token = "NOWY"
+    obj.tytul_strony_glownej = "Nowy tytul"
+    model_admin.save_model(request, obj, form=None, change=True)
+
+    u = Uczelnia.objects.get(pk=uczelnia_z_integracjami.pk)
+    assert u.tytul_strony_glownej == "Nowy tytul"
+    assert u.pbn_api_root == "https://pbn.nauka.gov.pl"
+    assert u.dspace_api_password == SEKRETY["dspace_api_password"]
+    assert u.pbn_app_token == SEKRETY["pbn_app_token"]

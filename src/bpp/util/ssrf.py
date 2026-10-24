@@ -16,17 +16,39 @@ from urllib.parse import urlparse
 from django.conf import settings
 from django.core.exceptions import ValidationError
 
+_NAT64 = ipaddress.ip_network("64:ff9b::/96")
+_CGNAT = ipaddress.ip_network("100.64.0.0/10")
+
+
+def _osadzone_ipv4(ip: ipaddress.IPv6Address) -> list[ipaddress.IPv4Address]:
+    """Adresy IPv4 osadzone w adresie IPv6 (IPv4-mapped, 6to4, Teredo,
+    NAT64 ``64:ff9b::/96``) — oceniamy je tak, jak sam adres IPv4."""
+    if ip.ipv4_mapped is not None:
+        return [ip.ipv4_mapped]
+    if ip.sixtofour is not None:
+        return [ip.sixtofour]
+    if ip.teredo is not None:
+        return list(ip.teredo)
+    if ip in _NAT64:
+        return [ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)]
+    return []
+
 
 def ip_is_public(ip: ipaddress._BaseAddress) -> bool:
-    """False dla adresów, na które NIE wolno kierować żądań:
-    prywatne (10/8, 172.16/12, 192.168/16, fc00::/7, CGNAT), loopback
-    (127/8, ::1), link-local (169.254/16 — w tym metadata cloud
-    169.254.169.254), multicast, zarezerwowane i ``0.0.0.0``.
+    """True tylko dla adresów globalnych (``is_global``). False m.in. dla:
+    prywatnych (10/8, 172.16/12, 192.168/16, fc00::/7), CGNAT 100.64/10,
+    loopback (127/8, ::1), link-local (169.254/16 — w tym metadata cloud
+    169.254.169.254), multicast, zarezerwowanych i ``0.0.0.0``. Adresy IPv6
+    z osadzonym IPv4 (IPv4-mapped, 6to4, Teredo, NAT64) są oceniane po
+    osadzonym adresie IPv4.
     """
-    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
-        # ::ffff:127.0.0.1 i pokrewne — oceniaj po zmapowanym adresie v4.
-        ip = ip.ipv4_mapped
-    return not (
+    if isinstance(ip, ipaddress.IPv6Address):
+        osadzone = _osadzone_ipv4(ip)
+        if osadzone:
+            return all(ip_is_public(v4) for v4 in osadzone)
+    if isinstance(ip, ipaddress.IPv4Address) and ip in _CGNAT:
+        return False
+    return ip.is_global and not (
         ip.is_private
         or ip.is_loopback
         or ip.is_link_local

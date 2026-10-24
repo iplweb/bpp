@@ -3,7 +3,7 @@ import json
 from django import forms
 from django.conf import settings
 from django.contrib import admin, messages
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from reversion.admin import VersionAdmin
 
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
@@ -106,6 +106,8 @@ class UczelniaAdminForm(forms.ModelForm):
                     render_value=False, attrs={"autocomplete": "new-password"}
                 )
                 self.fields[pole].required = False
+                # Pusty submit = „bez zmian" — nie raportuj zmiany w historii.
+                self.fields[pole].has_changed = lambda initial, data: bool(data)
                 if self.instance.pk and getattr(self.instance, pole):
                     self.fields[pole].help_text = (
                         "Wartość jest zapisana i nie jest wyświetlana. "
@@ -473,11 +475,38 @@ class UczelniaAdmin(
         # nadpisywane przy zapisie.
         return [fs for fs in fieldsets if fs[0] not in FIELDSETY_INTEGRACJI]
 
+    def _pola_integracji(self):
+        return [
+            pole
+            for nazwa, opcje in self.fieldsets
+            if nazwa in FIELDSETY_INTEGRACJI
+            for pole in opcje["fields"]
+        ]
+
+    # Przywracanie wersji z historii (django-reversion) odtwarza wszystkie
+    # pola, łącznie z konfiguracją integracji — tylko dla superużytkownika.
+    def revision_view(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            raise PermissionDenied
+        return super().revision_view(request, *args, **kwargs)
+
+    def recover_view(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            raise PermissionDenied
+        return super().recover_view(request, *args, **kwargs)
+
     def save_model(self, request, obj, form, change):
         if obj.site_id is None and not change:
             from django.contrib.sites.shortcuts import get_current_site
 
             obj.site = get_current_site(request)
+
+        if change and not request.user.is_superuser:
+            # Konfiguracja integracji zawsze taka, jak w bazie przed zapisem.
+            zapisana = type(obj).objects.get(pk=obj.pk)
+            for pole in self._pola_integracji():
+                attname = obj._meta.get_field(pole).attname
+                setattr(obj, attname, getattr(zapisana, attname))
 
         ret = super().save_model(request, obj, form, change)
 
