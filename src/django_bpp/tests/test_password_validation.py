@@ -240,6 +240,9 @@ def test_zxcvbn_min_score_z_ustawien(settings):
         ("Wojciechowski77", "nazwiska"),
         ("ZielonaGora12345", "nazwy miejscowości"),
         ("Czestochowa2024!", "nazwy miejscowości"),
+        # Formy odmienione (zxcvbn-pl 0.3.0).
+        ("Kowalskiego1990", "nazwiska"),
+        ("ZielonejGorze2020", "nazwy miejscowości"),
     ],
 )
 def test_zxcvbn_odrzuca_polskie_slowo_imie_nazwisko_z_cyframi(haslo, powod):

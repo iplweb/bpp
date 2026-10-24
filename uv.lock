@@ -730,7 +730,7 @@ requires-dist = [
     { name = "xhtml2pdf", specifier = ">=0.2.18" },
     { name = "xlrd", specifier = "==2.0.2" },
     { name = "zxcvbn", specifier = ">=4.5.0,<5" },
-    { name = "zxcvbn-pl", specifier = ">=0.2.0,<1" },
+    { name = "zxcvbn-pl", specifier = ">=0.3.0,<1" },
 ]
 provides-extras = ["ldap", "office365", "baseline-rebuild"]
 
@@ -7277,13 +7277,13 @@ wheels = [
 
 [[package]]
 name = "zxcvbn-pl"
-version = "0.2.0"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "marisa-trie" },
     { name = "zxcvbn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/49/a6/0fee6510c0618885a52f14ec4df70ade1c73a9bc222844a3c6c7f2c59a54/zxcvbn_pl-0.2.0.tar.gz", hash = "sha256:7b3b52c3c67a8981ff3438ba8812b629f00d74df7253ef705fe5fd3c8b690bef", size = 1060192, upload-time = "2026-10-24T18:42:28.971Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b8/5c/00dd7690be532531091b16857a6c4a6d6180370c4056649f8675d2492c62/zxcvbn_pl-0.3.0.tar.gz", hash = "sha256:6d120f5c23ac95fad1f5c6279340d4557ef91891d4d8c3a7ab167fd277c3f6b3", size = 3207375, upload-time = "2026-10-24T19:55:31.178Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6c/6b/aeb5edd05c0a41d655f85dcfa088260d7afaf4a6faad7f96bb92f24fa288/zxcvbn_pl-0.2.0-py3-none-any.whl", hash = "sha256:c843445ce99c06a6d7824dcca9379f664b9d6435be559f72b3680b8f91e2d7a3", size = 1052918, upload-time = "2026-10-24T18:42:23.658Z" },
+    { url = "https://files.pythonhosted.org/packages/65/b1/300b828ad9e5851ee8d64d32117dede26263f3cf2e609b1c1e70936cb1fa/zxcvbn_pl-0.3.0-py3-none-any.whl", hash = "sha256:c05262b52916e03cf251f3023a95e27c9c7042d5763e7f30dcc82fd278f01c68", size = 3203815, upload-time = "2026-10-24T19:55:22.895Z" },
 ]

@@ -97,7 +97,7 @@ cyklicznego wymuszania zmiany hasła.
     zxcvbn sprawdzane są polskie pospolite słowa, imiona, nazwiska
     i nazwy miejscowości
     (pakiet [zxcvbn-pl](https://pypi.org/project/zxcvbn-pl/), także bez
-    polskich znaków) — hasło z kilku słów nadal jest dobre, ale jedno
+    polskich znaków i w formach odmienionych, np. `wrocławiu`, `kowalskiego`) — hasło z kilku słów nadal jest dobre, ale jedno
     pospolite słowo, imię lub nazwisko z cyframi (np. `słoneczko123456`,
     `Malgorzata12345`) już nie,
   - hasła znane z wycieków danych — sprawdzane w serwisie
