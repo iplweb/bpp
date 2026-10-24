@@ -4222,7 +4222,9 @@ CREATE TABLE public.bpp_autoreksporttask (
     started_at timestamp with time zone,
     completed_at timestamp with time zone,
     autor_id integer NOT NULL,
-    ukryte_statusy integer[] NOT NULL
+    ukryte_statusy integer[] NOT NULL,
+    tylko_dla_redakcji boolean NOT NULL,
+    zlecone_anonimowo boolean NOT NULL
 );
 
 
@@ -15254,7 +15256,7 @@ COPY public.bpp_autor_jednostka (id, rozpoczal_prace, zakonczyl_prace, autor_id,
 -- Data for Name: bpp_autoreksporttask; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_autoreksporttask (id, format, status, result_file, error_message, celery_task_id, created_at, started_at, completed_at, autor_id, ukryte_statusy) FROM stdin;
+COPY public.bpp_autoreksporttask (id, format, status, result_file, error_message, celery_task_id, created_at, started_at, completed_at, autor_id, ukryte_statusy, tylko_dla_redakcji, zlecone_anonimowo) FROM stdin;
 \.
 
 
@@ -16555,6 +16557,37 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+608	denorm	0016_not_parametrized_notify	2000-01-01 00:00:00+00
+269	bpp	0182_auto_20191013_2324	2000-01-01 00:00:00+00
+9	auth	0002_alter_permission_name_max_length	2000-01-01 00:00:00+00
+10	auth	0003_alter_user_email_max_length	2000-01-01 00:00:00+00
+11	auth	0004_alter_user_username_opts	2000-01-01 00:00:00+00
+12	auth	0005_alter_user_last_login_null	2000-01-01 00:00:00+00
+13	auth	0006_require_contenttypes_0002	2000-01-01 00:00:00+00
+14	auth	0007_alter_validators_add_error_messages	2000-01-01 00:00:00+00
+15	auth	0008_alter_user_username_max_length	2000-01-01 00:00:00+00
+16	auth	0009_alter_user_last_name_max_length	2000-01-01 00:00:00+00
+17	auth	0010_alter_group_name_max_length	2000-01-01 00:00:00+00
+18	auth	0011_update_proxy_permissions	2000-01-01 00:00:00+00
+19	auth	0012_alter_user_first_name_max_length	2000-01-01 00:00:00+00
+250	bpp	0167_auto_20190707_2029	2000-01-01 00:00:00+00
+21	axes	0002_auto_20151217_2044	2000-01-01 00:00:00+00
+22	axes	0003_auto_20160322_0929	2000-01-01 00:00:00+00
+23	axes	0004_auto_20181024_1538	2000-01-01 00:00:00+00
+24	axes	0005_remove_accessattempt_trusted	2000-01-01 00:00:00+00
+26	axes	0007_alter_accessattempt_unique_together	2000-01-01 00:00:00+00
+27	axes	0008_accessfailurelog	2000-01-01 00:00:00+00
+28	axes	0009_add_session_hash	2000-01-01 00:00:00+00
+29	axes	0010_accessattemptexpiration	2000-01-01 00:00:00+00
+30	dynamic_admin_columns	0001_initial	2000-01-01 00:00:00+00
+31	ewaluacja_common	0001_initial	2000-01-01 00:00:00+00
+32	ewaluacja_common	0002_populate_rodzaje_autorow	2000-01-01 00:00:00+00
+33	ewaluacja_common	0003_add_sort_field	2000-01-01 00:00:00+00
+34	ewaluacja_common	0004_alter_rodzaj_autora_options	2000-01-01 00:00:00+00
+37	pbn_api	0003_conference	2000-01-01 00:00:00+00
+38	pbn_api	0004_journal	2000-01-01 00:00:00+00
+264	bpp	0178_auto_20190905_2020	2000-01-01 00:00:00+00
+39	pbn_api	0005_auto_20210406_0436	2000-01-01 00:00:00+00
 824	menu	0001_initial	2000-01-01 00:00:00+00
 986	bpp	0444_merge_20260616_1920	2000-01-01 00:00:00+00
 434	bpp	0339_autor_opis	2000-01-01 00:00:00+00
@@ -16775,6 +16808,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 263	bpp	0177_cache_punktacja_autora_query	2000-01-01 00:00:00+00
 265	bpp	0179_auto_20190910_2147	2000-01-01 00:00:00+00
 267	bpp	0180_merge_20190910_2236	2000-01-01 00:00:00+00
+393	bpp	0300_patent_denorm	2000-01-01 00:00:00+00
 268	bpp	0181_cache_punktacja_autora_sum_cache_punktacja_autora_sum_gruop	2000-01-01 00:00:00+00
 270	bpp	0183_auto_20191020_1535	2000-01-01 00:00:00+00
 271	bpp	0184_autor_expertus_id	2000-01-01 00:00:00+00
@@ -16889,7 +16923,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 389	bpp	0296_nulltest_szablonopisu	2000-01-01 00:00:00+00
 391	bpp	0298_wydawnictwo_zwarte_denorm	2000-01-01 00:00:00+00
 392	bpp	0299_wydawnictwo_ciagle_denorm	2000-01-01 00:00:00+00
-393	bpp	0300_patent_denorm	2000-01-01 00:00:00+00
 394	bpp	0301_doktorska_habilitacyjna_denorm	2000-01-01 00:00:00+00
 395	bpp	0302_denorm_autor_dyscyplina_new_trigger	2000-01-01 00:00:00+00
 396	bpp	0303_denorm_cleanup_cachequeue_gone	2000-01-01 00:00:00+00
@@ -17082,7 +17115,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 605	denorm	0013_alter_dirtyinstance_success	2000-01-01 00:00:00+00
 606	denorm	0014_parametrized_notify	2000-01-01 00:00:00+00
 607	denorm	0015_remove_dirtyinstance_processing_finished_and_more	2000-01-01 00:00:00+00
-608	denorm	0016_not_parametrized_notify	2000-01-01 00:00:00+00
 609	denorm	0017_dirtyinstance_unique_index	2000-01-01 00:00:00+00
 610	django_celery_results	0001_initial	2000-01-01 00:00:00+00
 611	django_celery_results	0002_add_task_name_args_kwargs	2000-01-01 00:00:00+00
@@ -17541,7 +17573,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1051	importer_publikacji	0015_alter_importsession_status	2000-01-01 00:00:00+00
 1117	bpp	0476_jednostka_nie_eksportuj_przez_api	2000-01-01 00:00:00+00
 1118	import_pracownikow	0028_nadpisuj_daty_zatrudnienia	2000-01-01 00:00:00+00
-269	bpp	0182_auto_20191013_2324	2000-01-01 00:00:00+00
 388	bpp	0295_instaluj_szablony	2000-01-01 00:00:00+00
 1052	importer_publikacji	0016_alter_importsession_status	2000-01-01 00:00:00+00
 1053	pbn_api	0075_sentdata_fee_sent_sentdata_fee_uploaded_okay	2000-01-01 00:00:00+00
@@ -17633,35 +17664,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 6	admin	0003_logentry_add_action_flag_choices	2000-01-01 00:00:00+00
 7	admin_dashboard	0001_initial	2000-01-01 00:00:00+00
 8	contenttypes	0002_remove_content_type_name	2000-01-01 00:00:00+00
-9	auth	0002_alter_permission_name_max_length	2000-01-01 00:00:00+00
-10	auth	0003_alter_user_email_max_length	2000-01-01 00:00:00+00
-11	auth	0004_alter_user_username_opts	2000-01-01 00:00:00+00
-12	auth	0005_alter_user_last_login_null	2000-01-01 00:00:00+00
-13	auth	0006_require_contenttypes_0002	2000-01-01 00:00:00+00
-14	auth	0007_alter_validators_add_error_messages	2000-01-01 00:00:00+00
-15	auth	0008_alter_user_username_max_length	2000-01-01 00:00:00+00
-16	auth	0009_alter_user_last_name_max_length	2000-01-01 00:00:00+00
-17	auth	0010_alter_group_name_max_length	2000-01-01 00:00:00+00
-18	auth	0011_update_proxy_permissions	2000-01-01 00:00:00+00
-19	auth	0012_alter_user_first_name_max_length	2000-01-01 00:00:00+00
-250	bpp	0167_auto_20190707_2029	2000-01-01 00:00:00+00
-21	axes	0002_auto_20151217_2044	2000-01-01 00:00:00+00
-22	axes	0003_auto_20160322_0929	2000-01-01 00:00:00+00
-23	axes	0004_auto_20181024_1538	2000-01-01 00:00:00+00
-24	axes	0005_remove_accessattempt_trusted	2000-01-01 00:00:00+00
-26	axes	0007_alter_accessattempt_unique_together	2000-01-01 00:00:00+00
-27	axes	0008_accessfailurelog	2000-01-01 00:00:00+00
-28	axes	0009_add_session_hash	2000-01-01 00:00:00+00
-29	axes	0010_accessattemptexpiration	2000-01-01 00:00:00+00
-30	dynamic_admin_columns	0001_initial	2000-01-01 00:00:00+00
-31	ewaluacja_common	0001_initial	2000-01-01 00:00:00+00
-32	ewaluacja_common	0002_populate_rodzaje_autorow	2000-01-01 00:00:00+00
-33	ewaluacja_common	0003_add_sort_field	2000-01-01 00:00:00+00
-34	ewaluacja_common	0004_alter_rodzaj_autora_options	2000-01-01 00:00:00+00
-37	pbn_api	0003_conference	2000-01-01 00:00:00+00
-38	pbn_api	0004_journal	2000-01-01 00:00:00+00
-264	bpp	0178_auto_20190905_2020	2000-01-01 00:00:00+00
-39	pbn_api	0005_auto_20210406_0436	2000-01-01 00:00:00+00
 40	pbn_api	0006_sciencist	2000-01-01 00:00:00+00
 41	pbn_api	0007_publication	2000-01-01 00:00:00+00
 42	pbn_api	0008_auto_20210406_0530	2000-01-01 00:00:00+00
@@ -17707,6 +17709,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1155	bpp	0495_uczelnia_adresy_integracji_https	2000-01-01 00:00:00+00
 1156	bpp	0496_autoreksporttask_ukryte_statusy	2000-01-01 00:00:00+00
 1157	bpp	0497_uczelnia_bppuser_szyfrowanie_sekretow	2000-01-01 00:00:00+00
+1158	bpp	0498_autoreksporttask_tylko_dla_redakcji	2000-01-01 00:00:00+00
+1159	bpp	0499_autoreksporttask_zlecone_anonimowo	2000-01-01 00:00:00+00
 \.
 
 
@@ -18086,6 +18090,21 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 314	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 315	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 316	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+362	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+363	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
+364	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+365	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+366	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+367	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+368	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+369	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+370	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+371	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+372	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+373	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+374	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+375	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+376	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -19709,7 +19728,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1157, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1159, true);
 
 
 --
@@ -19947,7 +19966,7 @@ SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 46,
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 361, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 376, true);
 
 
 --
