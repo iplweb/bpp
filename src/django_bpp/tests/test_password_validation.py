@@ -16,6 +16,7 @@ from bpp.models import Uczelnia
 from django_bpp.password_validation import (
     ContextWordsPasswordValidator,
     PwnedPasswordValidator,
+    ZxcvbnPasswordValidator,
 )
 
 HASLO = "wrzos-kaktus-lipa-7"  # pragma: allowlist secret  # noqa: S105
@@ -161,3 +162,65 @@ def test_pwned_w_validate_password(pwned_wlaczony):
 def test_help_texty_po_polsku():
     assert "wycieków" in PwnedPasswordValidator().get_help_text()
     assert "uczelni" in ContextWordsPasswordValidator().get_help_text()
+    assert "odgadnięcia" in ZxcvbnPasswordValidator().get_help_text()
+
+
+# --- zxcvbn (siła hasła liczona lokalnie) -----------------------------------
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "haslo,podpowiedz",
+    [
+        ("qwertyuiop123456", "popularne"),
+        ("kochamcie1234567", "popularne"),
+        ("P@ssw0rdP@ssw0rd", "powtórz"),
+    ],
+)
+def test_zxcvbn_odrzuca_hasla_latwe_do_odgadniecia(haslo, podpowiedz):
+    with pytest.raises(ValidationError) as e:
+        ZxcvbnPasswordValidator().validate(haslo)
+    assert e.value.code == "password_too_guessable"
+    assert podpowiedz in str(e.value.message % e.value.params)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("haslo", [HASLO, "zielonaherbatazcytryna"])
+def test_zxcvbn_przyjmuje_mocne_haslo(haslo):
+    ZxcvbnPasswordValidator().validate(haslo)
+
+
+@pytest.mark.django_db
+def test_zxcvbn_uwzglednia_dane_uzytkownika():
+    # Nazwisko spoza słowników zxcvbn: bez danych konta hasło jest mocne,
+    # z nazwiskiem użytkownika (także po zdjęciu polskich znaków) — słabe.
+    haslo = "wrzeszczynski1987!"
+    ZxcvbnPasswordValidator().validate(haslo)
+    user = baker.prepare("bpp.BppUser", username="mw", last_name="Wrzeszczyński")
+    with pytest.raises(ValidationError):
+        ZxcvbnPasswordValidator().validate(haslo, user=user)
+
+
+@pytest.mark.django_db
+def test_zxcvbn_uwzglednia_slowa_uczelni():
+    haslo = "Przyrodniczy.2024"
+    ZxcvbnPasswordValidator().validate(haslo)
+    baker.make(Uczelnia, nazwa="Uniwersytet Przyrodniczy", skrot="UPRZ")
+    with pytest.raises(ValidationError) as e:
+        ZxcvbnPasswordValidator().validate(haslo)
+    assert e.value.code == "password_too_guessable"
+
+
+@pytest.mark.django_db
+def test_zxcvbn_dlugie_haslo_nie_wywala_walidacji():
+    # zxcvbn rzuca ValueError powyżej 72 znaków — oceniamy prefiks.
+    ZxcvbnPasswordValidator().validate("wrzos-kaktus-lipa-7-" * 10)
+
+
+def test_zxcvbn_wylaczony_przy_min_score_zero():
+    ZxcvbnPasswordValidator(min_score=0).validate("aaaaaaaaaaaaaaaa")
+
+
+def test_zxcvbn_min_score_z_ustawien(settings):
+    settings.BPP_HASLA_MIN_SILA_ZXCVBN = 0
+    ZxcvbnPasswordValidator().validate("aaaaaaaaaaaaaaaa")

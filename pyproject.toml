@@ -77,6 +77,8 @@ dependencies = [
     "nh3>=0.3.7",
     "django-session-security>=2.6.8",
     "django-password-policies-iplweb==0.9.5",
+    # Ocena siły hasła lokalnie (wzorce + słowniki), bez wysyłania hasła.
+    "zxcvbn>=4.5.0,<5",
     "dj-pagination==2.5.0",
     "requests>=2.34.2",
     "dspace-rest-client>=0.1.12",

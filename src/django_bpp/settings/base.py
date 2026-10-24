@@ -125,6 +125,7 @@ env = environ.Env(
     DJANGO_BPP_PASSWORD_MIN_LENGTH=(int, 15),
     DJANGO_BPP_PASSWORD_CHECK_PWNED=(bool, True),
     DJANGO_BPP_PASSWORD_CONTEXT_WORDS=(list, []),
+    DJANGO_BPP_PASSWORD_MIN_ZXCVBN_SCORE=(int, 3),
     #
     # Konfiguracja wygaszania sesji
     #
@@ -1000,6 +1001,7 @@ AUTH_PASSWORD_VALIDATORS = [
         "OPTIONS": {"min_unique_chars": 5},
     },
     {"NAME": "django_bpp.password_validation.ContextWordsPasswordValidator"},
+    {"NAME": "django_bpp.password_validation.ZxcvbnPasswordValidator"},
     {"NAME": "django_bpp.password_validation.PwnedPasswordValidator"},
 ]
 
@@ -1011,6 +1013,10 @@ BPP_HASLA_SLOWA_KONTEKSTOWE = env("DJANGO_BPP_PASSWORD_CONTEXT_WORDS")
 # jest tylko krótki prefiks skrótu). Wymaga dostępu HTTPS (port 443) do
 # serwisu Have I Been Pwned — szczegóły w docs/administrator/zaawansowane.md.
 BPP_HASLA_SPRAWDZAJ_WYCIEKI = env("DJANGO_BPP_PASSWORD_CHECK_PWNED")
+
+# Minimalna ocena siły hasła wg zxcvbn (0–4, liczona lokalnie; 0 wyłącza).
+# 3 ≈ hasło wymagające ok. 10^8–10^10 prób przy zgadywaniu offline.
+BPP_HASLA_MIN_SILA_ZXCVBN = env("DJANGO_BPP_PASSWORD_MIN_ZXCVBN_SCORE")
 
 # Rotacja haseł domyślnie wyłączona (0). Instalacja, która jej potrzebuje,
 # ustawia liczbę sekund, np. 2592000 = 30 dni.

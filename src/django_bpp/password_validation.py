@@ -7,12 +7,15 @@ z serwisem i hasła znane z wycieków (Have I Been Pwned).
 
 import hashlib
 import logging
+import re
+import threading
 import unicodedata
 
 import requests
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import OperationalError, ProgrammingError
+from zxcvbn import zxcvbn
 
 logger = logging.getLogger(__name__)
 
@@ -201,3 +204,98 @@ class PwnedPasswordValidator:
 
     def get_help_text(self):
         return "Hasło nie może pochodzić ze znanych wycieków danych."
+
+
+# zxcvbn rzuca ValueError dla dłuższych haseł; oceniamy prefiks — jego siła
+# nigdy nie przekracza siły całego hasła, więc nie przepuścimy słabszego.
+ZXCVBN_MAKS_DLUGOSC = 72
+
+# zxcvbn wpisuje ``user_inputs`` do globalnego słownika modułu, a potem
+# z niego czyta — równoległe wywołania (wątki ASGI/WSGI) widziałyby słowa
+# innego żądania. Stąd blokada wokół całego wywołania.
+_ZXCVBN_BLOKADA = threading.Lock()
+
+# Polskie podpowiedzi wg typu wzorca znalezionego przez zxcvbn (nazwy
+# wzorców to stabilne API; angielskie komunikaty zxcvbn pomijamy).
+_POWODY_SLOWNIKOWE = {
+    "passwords": "popularne hasła",
+    "user_inputs": "słowa związane z kontem lub serwisem",
+}
+_POWODY_WZORCOW = {
+    "repeat": "powtórzenia",
+    "sequence": "sekwencje znaków (abc, 123)",
+    "spatial": "sąsiednie klawisze",
+    "date": "daty",
+}
+
+
+def _slowa_uzytkownika(user):
+    if user is None:
+        return []
+    teksty = [
+        getattr(user, pole, "") or ""
+        for pole in ("username", "first_name", "last_name", "email")
+    ]
+    slowa = []
+    for tekst in teksty:
+        for slowo in re.split(r"[\s@._+-]+", tekst):
+            if len(slowo) >= MIN_DLUGOSC_SLOWA_KONTEKSTOWEGO:
+                slowa.extend({slowo.lower(), normalizuj(slowo)})
+    return slowa
+
+
+def _powody(sekwencja):
+    powody = []
+    for dopasowanie in sekwencja:
+        wzorzec = dopasowanie["pattern"]
+        if wzorzec == "dictionary":
+            powod = _POWODY_SLOWNIKOWE.get(
+                dopasowanie["dictionary_name"], "pospolite słowa lub imiona"
+            )
+        elif wzorzec == "regex" and dopasowanie.get("regex_name") == "recent_year":
+            powod = "lata"
+        else:
+            powod = _POWODY_WZORCOW.get(wzorzec)
+        if powod and powod not in powody:
+            powody.append(powod)
+    return powody
+
+
+class ZxcvbnPasswordValidator:
+    """Odrzuca hasła łatwe do odgadnięcia wg oceny zxcvbn (0–4), liczonej
+    lokalnie: popularne hasła i słowa, powtórzenia, sekwencje, klawiatura,
+    daty — także w przeróbkach (wspak, „P@ssw0rd”). Jako własne słowa
+    dostaje słowa kontekstowe serwisu i dane konta użytkownika.
+    Próg: ``DJANGO_BPP_PASSWORD_MIN_ZXCVBN_SCORE`` (0 wyłącza).
+    """
+
+    def __init__(self, min_score=None):
+        self._min_score = min_score
+
+    @property
+    def min_score(self):
+        if self._min_score is not None:
+            return self._min_score
+        return getattr(settings, "BPP_HASLA_MIN_SILA_ZXCVBN", 3)
+
+    def validate(self, password, user=None):
+        if not self.min_score:
+            return
+        slowa = [*slowa_kontekstowe(), *_slowa_uzytkownika(user)]
+        with _ZXCVBN_BLOKADA:
+            wynik = zxcvbn(password[:ZXCVBN_MAKS_DLUGOSC], user_inputs=slowa)
+        if wynik["score"] >= self.min_score:
+            return
+        powody = _powody(wynik["sequence"])
+        raise ValidationError(
+            "Hasło jest zbyt łatwe do odgadnięcia%(powody)s. Dodaj kilka "
+            "nieprzewidywalnych słów albo wybierz zupełnie inne hasło.",
+            code="password_too_guessable",
+            params={"powody": f" (zawiera: {', '.join(powody)})" if powody else ""},
+        )
+
+    def get_help_text(self):
+        return (
+            "Hasło nie może być łatwe do odgadnięcia — np. złożone z popularnych "
+            "haseł, powtórzeń, sekwencji, sąsiednich klawiszy czy dat."
+        )

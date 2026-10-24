@@ -36,6 +36,12 @@ cyklicznego wymuszania zmiany hasła.
     nazwę lub skrót uczelni, nazwę domeny serwisu i słowa z
     `DJANGO_BPP_PASSWORD_CONTEXT_WORDS` (bez rozróżniania wielkości liter
     i polskich znaków; słowa krótsze niż 3 znaki są pomijane),
+  - hasła łatwe do odgadnięcia według oceny
+    [zxcvbn](https://github.com/dwolfhub/zxcvbn-python) liczonej na
+    serwerze (bez wysyłania hasła): złożone z popularnych haseł i słów,
+    powtórzeń, sekwencji, sąsiednich klawiszy, dat lub danych konta —
+    także w przeróbkach typu `P@ssw0rd`; słowniki zxcvbn są angielskie,
+    polskie słowa sprawdza się przez słowa kontekstowe i dane konta,
   - hasła znane z wycieków danych — sprawdzane w serwisie
     [Have I Been Pwned](https://haveibeenpwned.com/Passwords) metodą
     k-anonimowości: do serwisu trafia tylko 5 pierwszych znaków skrótu
@@ -53,6 +59,7 @@ najbliższej zmianie lub resecie hasła.
 | `DJANGO_BPP_PASSWORD_HISTORY_COUNT` | `12` | ile poprzednich haseł pamiętać |
 | `DJANGO_BPP_PASSWORD_CONTEXT_WORDS` | (puste) | dodatkowe słowa zakazane w hasłach, rozdzielone przecinkami (np. `umlub,lublin`) |
 | `DJANGO_BPP_PASSWORD_CHECK_PWNED` | `true` | sprawdzanie haseł w Have I Been Pwned; `false` wyłącza |
+| `DJANGO_BPP_PASSWORD_MIN_ZXCVBN_SCORE` | `3` | minimalna ocena siły hasła wg zxcvbn (0–4); `0` wyłącza |
 
 Sprawdzanie wycieków wymaga, żeby serwer aplikacji mógł łączyć się
 z `api.pwnedpasswords.com` na porcie 443 (HTTPS). Gdy serwis jest
