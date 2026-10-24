@@ -18,7 +18,6 @@ pomijane.
 """
 
 import re
-from functools import lru_cache
 
 from django.core.exceptions import FieldDoesNotExist
 from django.db import models
@@ -28,16 +27,21 @@ from djangoql.extras import AutocompleteField, ExtrasSchema
 
 from bpp.models import Charakter_Formalny, Jednostka
 
+#: Jedyne pola modelu użytkownika (``settings.AUTH_USER_MODEL``) widoczne
+#: w schemacie DjangoQL — pozwalają filtrować po relacjach typu ``utworzyl``
+#: (np. ``utworzyl.username = "jan"``). Pozostałe pola (hasło, ``pbn_token``,
+#: ``email``, flagi uprawnień, daty logowania) oraz WSZYSTKIE relacje
+#: użytkownika są pomijane — użytkownik jest liściem grafu schematu, więc
+#: przez niego nie da się przejść do grup, uprawnień, tokenów ani sesji.
+POLA_UZYTKOWNIKA_W_SCHEMACIE = ("username", "first_name", "last_name")
 
-@lru_cache(maxsize=1)
-def _modele_wykluczone_z_schematu():
-    """Modele auth/credential twardo niedostępne w DjangoQL (lazy — bez
-    top-level importu ``get_user_model``, który przy ładowaniu modeli bywa
-    przedwczesny). ``BppUser`` niesie ``pbn_token`` (żywy credential PBN),
-    ``email``, ``is_superuser`` — nie mogą być filtrowalne."""
+
+def _model_uzytkownika():
+    """Model użytkownika (lazy — ``get_user_model`` przy ładowaniu modeli bywa
+    przedwczesny, więc nie wołamy go na poziomie modułu)."""
     from django.contrib.auth import get_user_model
 
-    return frozenset({get_user_model()})
+    return get_user_model()
 
 
 #: Aplikacje, których ŻADEN model nie może być osiągalny w DjangoQL: dane
@@ -77,10 +81,7 @@ def model_wykluczony_z_schematu(model):
     """Czy ``model`` jest twardo wycięty z każdego schematu DjangoQL BPP."""
     if model is None:
         return False
-    return (
-        model in _modele_wykluczone_z_schematu()
-        or model._meta.app_label in APLIKACJE_WYKLUCZONE_Z_SCHEMATU
-    )
+    return model._meta.app_label in APLIKACJE_WYKLUCZONE_Z_SCHEMATU
 
 
 def pole_z_sekretem(name):
@@ -297,12 +298,14 @@ class RelPickerSchemaMixin:
 class SekretyWykluczoneSchemaMixin:
     """Twarde cięcie poświadczeń ze schematu DjangoQL.
 
-    1. ``excluded()`` — model użytkownika oraz modele z
-       :data:`APLIKACJE_WYKLUCZONE_Z_SCHEMATU` nie są osiągalne żadną ścieżką
-       (djangoql pomija relacje do wykluczonych modeli).
-    2. ``get_fields()`` — z KAŻDEGO modelu znikają pola o nazwach
-       poświadczeń (:func:`pole_z_sekretem`) oraz pola pochodne wskazujące na
-       wykluczony model (agregat ``<rel>__count``).
+    1. ``excluded()`` — modele z :data:`APLIKACJE_WYKLUCZONE_Z_SCHEMATU` nie
+       są osiągalne żadną ścieżką (djangoql pomija relacje do wykluczonych
+       modeli).
+    2. ``get_fields()`` — model użytkownika wystawia WYŁĄCZNIE pola z
+       :data:`POLA_UZYTKOWNIKA_W_SCHEMACIE` (bez relacji, więc introspekcja
+       djangoql nie idzie od niego dalej); z KAŻDEGO modelu znikają pola
+       o nazwach poświadczeń (:func:`pole_z_sekretem`) oraz pola pochodne
+       wskazujące na wykluczony model (agregat ``<rel>__count``).
 
     Musi być PIERWSZĄ bazą schematu, żeby filtrować finalną listę pól (już po
     pickerach/agregatach/częściach dat dokładanych przez klasy niżej w MRO).
@@ -317,6 +320,12 @@ class SekretyWykluczoneSchemaMixin:
         return super().excluded(model)
 
     def get_fields(self, model):
+        if model is _model_uzytkownika():
+            return [
+                f
+                for f in super().get_fields(model)
+                if _field_name(f) in POLA_UZYTKOWNIKA_W_SCHEMACIE
+            ]
         return [
             f
             for f in super().get_fields(model)
@@ -334,8 +343,8 @@ class BppQLSchema(SekretyWykluczoneSchemaMixin, RelPickerSchemaMixin, ExtrasSche
     Praca_Doktorska/Habilitacyjna, …).
     """
 
-    # Wykluczenie modelu użytkownika, modeli uwierzytelniania i pól
-    # z poświadczeniami: patrz ``SekretyWykluczoneSchemaMixin``.
+    # Biała lista pól modelu użytkownika, wykluczenie modeli uwierzytelniania
+    # i pól z poświadczeniami: patrz ``SekretyWykluczoneSchemaMixin``.
 
 
 # ---------------------------------------------------------------------------

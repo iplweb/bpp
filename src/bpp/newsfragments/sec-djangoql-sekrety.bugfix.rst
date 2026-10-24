@@ -1,1 +1,1 @@
-Wzmocniono zabezpieczenia wyszukiwarki DjangoQL w panelu administracyjnym: schemat zapytań nie udostępnia już modeli uwierzytelniania ani pól z poświadczeniami, a wszystkie adminy z tą wyszukiwarką korzystają ze wspólnego schematu BPP.
+Wzmocniono zabezpieczenia wyszukiwarki DjangoQL w panelu administracyjnym: schemat zapytań nie udostępnia już modeli uwierzytelniania ani pól z poświadczeniami, użytkownika (np. ``utworzyl``) da się filtrować tylko po loginie, imieniu i nazwisku, a wszystkie adminy z tą wyszukiwarką korzystają ze wspólnego schematu BPP.
