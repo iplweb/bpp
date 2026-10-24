@@ -13,6 +13,7 @@ from django.utils import timezone
 from django.utils.functional import cached_property
 
 from bpp.const import PUSTY_ADRES_EMAIL
+from bpp.fields import EncryptedTextField
 from bpp.models import ModelZAdnotacjami
 
 
@@ -60,7 +61,7 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
         blank=True,
     )
 
-    pbn_token = models.CharField(max_length=128, default="", blank=True)
+    pbn_token = EncryptedTextField(max_length=128, default="", blank=True)
     pbn_token_updated = models.DateTimeField(null=True, blank=True)
 
     accessible_uczelnie = models.ManyToManyField(
