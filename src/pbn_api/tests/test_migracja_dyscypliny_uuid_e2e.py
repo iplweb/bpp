@@ -44,8 +44,28 @@ def _policz(sql, *params):
         return cursor.fetchone()[0]
 
 
+def _przywroc_pelny_stan_migracji():
+    """Doprowadź bazę z powrotem do najnowszych migracji (liści grafu).
+
+    Test cofa ``pbn_api`` do ``PRZED`` i podnosi tylko do ``PO`` — bez tego
+    późniejsze migracje (np. constraint trójki w ``PublikacjaInstytucji``,
+    0079) zostałyby niezaaplikowane do końca sesji na tym workerze xdist
+    i kolejne testy widziałyby okrojony schemat.
+    """
+    executor = MigrationExecutor(connection)
+    executor.loader.build_graph()
+    executor.migrate(executor.loader.graph.leaf_nodes())
+
+
 @pytest.mark.django_db(transaction=True)
 def test_migracja_przechodzi_na_bazie_z_duplikatami():
+    try:
+        _test_migracji_na_bazie_z_duplikatami()
+    finally:
+        _przywroc_pelny_stan_migracji()
+
+
+def _test_migracji_na_bazie_z_duplikatami():
     uuid_slownika, uuid_dyscypliny = uuid4(), uuid4()
 
     MigrationExecutor(connection).migrate([PRZED])
