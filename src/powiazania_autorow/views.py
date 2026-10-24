@@ -4,6 +4,8 @@ from django.shortcuts import get_object_or_404
 from django.views.generic import TemplateView, View
 
 from bpp.models import Autor, Uczelnia
+from bpp.permissions import moze_wprowadzac_dane
+from bpp.util.ukryte_statusy import ukryte_statusy_dla
 
 from .queries import (
     MAKS_GLEBOKOSC_FILTR,
@@ -24,8 +26,28 @@ from .queries import (
     _sasiedzi_cache,
     _uczelnia_zatrudnienia,
     _zakres_lat,
+    bez_ukrytych_statusow,
     siec_powiazan_wlaczona,
 )
+
+
+def _autor_centralny(request, pk, select_related=()):
+    """Autor centralny grafu albo 404.
+
+    Widoczność jak na stronie autora (``AutorView``): autor z
+    ``pokazuj=False`` jest dostępny tylko dla użytkowników z uprawnieniami
+    redaktorskimi. Dodatkowo 404, gdy sieć powiązań jest wyłączona
+    (per-autor / per-uczelnia). Wspólna bramka dla wszystkich widoków sieci.
+    """
+    qs = Autor.objects.all()
+    if select_related:
+        qs = qs.select_related(*select_related)
+    if not moze_wprowadzac_dane(request.user):
+        qs = qs.filter(pokazuj=True)
+    autor = get_object_or_404(qs, pk=pk)
+    if not siec_powiazan_wlaczona(autor, request):
+        raise Http404("Sieć powiązań jest wyłączona dla tego autora.")
+    return autor
 
 
 class GrafPowiazanView(TemplateView):
@@ -35,10 +57,7 @@ class GrafPowiazanView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        autor = get_object_or_404(Autor, pk=kwargs["pk"])
-        if not siec_powiazan_wlaczona(autor, self.request):
-            raise Http404("Sieć powiązań jest wyłączona dla tego autora.")
-        context["autor"] = autor
+        context["autor"] = _autor_centralny(self.request, kwargs["pk"])
         return context
 
 
@@ -54,10 +73,7 @@ class GrafPowiazan3DView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        autor = get_object_or_404(Autor, pk=kwargs["pk"])
-        if not siec_powiazan_wlaczona(autor, self.request):
-            raise Http404("Sieć powiązań jest wyłączona dla tego autora.")
-        context["autor"] = autor
+        context["autor"] = _autor_centralny(self.request, kwargs["pk"])
         return context
 
 
@@ -71,11 +87,11 @@ class GrafPowiazanDaneView(View):
     """
 
     def get(self, request, pk):
-        autor = get_object_or_404(Autor.objects.select_related("tytul"), pk=pk)
-        if not siec_powiazan_wlaczona(autor, request):
-            raise Http404("Sieć powiązań jest wyłączona dla tego autora.")
-        pbn_root = _pbn_root(Uczelnia.objects.get_for_request(request))
-        filtr = _filtr_z_request(request)
+        autor = _autor_centralny(request, pk, select_related=("tytul",))
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        pbn_root = _pbn_root(uczelnia)
+        ukryte = ukryte_statusy_dla(request, uczelnia=uczelnia)
+        filtr = _filtr_z_request(request, ukryte)
         uczelnia_zatr = _uczelnia_zatrudnienia(request)
 
         if filtr.aktywny():
@@ -95,7 +111,7 @@ class GrafPowiazanDaneView(View):
         else:
             wybrani = _sasiedzi_authorconnection(autor, uczelnia_zatr)
 
-        metryki = _metryki_prac([autor.pk] + [a.pk for a, _ in wybrani])
+        metryki = _metryki_prac([autor.pk] + [a.pk for a, _ in wybrani], ukryte)
 
         neighbors = [
             _autor_dict(a, pbn_root, shared=s, metryki=metryki.get(a.pk))
@@ -125,12 +141,12 @@ class GrafPowiazanSiecView(View):
     """
 
     def get(self, request, pk):
-        autor = get_object_or_404(Autor, pk=pk)
-        if not siec_powiazan_wlaczona(autor, request):
-            raise Http404("Sieć powiązań jest wyłączona dla tego autora.")
+        autor = _autor_centralny(request, pk)
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        ukryte = ukryte_statusy_dla(request, uczelnia=uczelnia)
         depth = _int_param(request, "depth", 2, 1, 10)
         topn = _int_param(request, "topn", 15, 1, 50)
-        filtr = _filtr_z_request(request)
+        filtr = _filtr_z_request(request, ukryte)
         uczelnia_zatr = _uczelnia_zatrudnienia(request)
         if filtr.aktywny():
             # przy liczeniu z cache tniemy głębokość (self-join jest droższy)
@@ -170,8 +186,8 @@ class GrafPowiazanSiecView(View):
             a.pk: a
             for a in Autor.objects.filter(id__in=visited).select_related("tytul")
         }
-        pbn_root = _pbn_root(Uczelnia.objects.get_for_request(request))
-        metryki = _metryki_prac(list(visited))
+        pbn_root = _pbn_root(uczelnia)
+        metryki = _metryki_prac(list(visited), ukryte)
 
         nodes = []
         for aid in visited:
@@ -185,7 +201,7 @@ class GrafPowiazanSiecView(View):
 
         edges = [{"source": a, "target": b, "shared": sh} for a, b, sh in krawedzie]
 
-        rok_min, rok_max = _zakres_lat(autor.pk)
+        rok_min, rok_max = _zakres_lat(autor.pk, ukryte)
 
         return JsonResponse(
             {
@@ -215,9 +231,8 @@ class GrafPowiazanZrodlaView(View):
     """
 
     def get(self, request, pk):
-        autor = get_object_or_404(Autor, pk=pk)
-        if not siec_powiazan_wlaczona(autor, request):
-            raise Http404("Sieć powiązań jest wyłączona dla tego autora.")
+        autor = _autor_centralny(request, pk)
+        ukryte = ukryte_statusy_dla(request)
 
         depth = _int_param(request, "depth", 2, 1, 10)
         topn = _int_param(request, "topn", 15, 1, 50)
@@ -225,7 +240,7 @@ class GrafPowiazanZrodlaView(View):
         rok_do = _int_or_none(request.GET.get("rok_do"))
         uczelnia_zatr = _uczelnia_zatrudnienia(request)
         # filtr tylko-rok (bez źródła/wydawcy) do wyznaczenia zbioru autorów
-        filtr_rok = Filtr(rok_od=rok_od, rok_do=rok_do)
+        filtr_rok = Filtr(rok_od=rok_od, rok_do=rok_do, ukryte_statusy=ukryte)
 
         # BFS po sieci + dwa GROUP BY mogą dotknąć do MAKS_WEZLOW_SIECI autorów
         # — twardy statement_timeout ubija patologiczny request (503) zamiast
@@ -235,7 +250,7 @@ class GrafPowiazanZrodlaView(View):
                 visible_ids = _autorzy_widocznej_sieci(
                     autor.pk, depth, topn, filtr_rok, uczelnia_zatr
                 )
-                dane = self._zrodla_wydawcy(visible_ids, rok_od, rok_do)
+                dane = self._zrodla_wydawcy(visible_ids, rok_od, rok_do, ukryte)
         except OperationalError:
             return JsonResponse(
                 {
@@ -248,14 +263,17 @@ class GrafPowiazanZrodlaView(View):
         return JsonResponse(dane)
 
     @staticmethod
-    def _zrodla_wydawcy(autor_ids, rok_od, rok_do):
+    def _zrodla_wydawcy(autor_ids, rok_od, rok_do, ukryte_statusy=None):
         """Top-100 źródeł i wydawców (>= MIN_PRAC_ZRODLO prac) wśród prac
-        autorów `autor_ids`, z filtrem roku. Zwraca gotowy dict do JSON-a."""
+        autorów `autor_ids`, z filtrem roku, bez prac o statusach z
+        `ukryte_statusy`. Zwraca gotowy dict do JSON-a."""
         from django.db.models import Count
 
         from bpp.models import Autorzy
 
-        base = Autorzy.objects.filter(autor_id__in=autor_ids)
+        base = bez_ukrytych_statusow(
+            Autorzy.objects.filter(autor_id__in=autor_ids), ukryte_statusy
+        )
         if rok_od:
             base = base.filter(rekord__rok__gte=rok_od)
         if rok_do:

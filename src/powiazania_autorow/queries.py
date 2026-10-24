@@ -57,19 +57,28 @@ class Filtr:
     indeksowane FK w bpp_rekord_mat). Źródła i wydawcy łączymy OR-em (praca z
     któregokolwiek zaznaczonego), rok to AND. `aktywny()` decyduje, czy w ogóle
     schodzimy ze ścieżki AuthorConnection na liczenie z cache.
+
+    `ukryte_statusy` (PK statusów korekty niewidocznych dla oglądającego) NIE
+    wpływa na `aktywny()` — samo ukrywanie statusów nie przełącza widoku na
+    droższą ścieżkę z cache; jest tylko dokładane do WHERE-ów, gdy ta ścieżka
+    i tak jest używana.
     """
 
-    def __init__(self, rok_od=None, rok_do=None, zrodla=None, wydawcy=None):
+    def __init__(
+        self, rok_od=None, rok_do=None, zrodla=None, wydawcy=None, ukryte_statusy=None
+    ):
         self.rok_od = rok_od
         self.rok_do = rok_do
         self.zrodla = zrodla or []
         self.wydawcy = wydawcy or []
+        self.ukryte_statusy = list(ukryte_statusy or [])
 
     def aktywny(self):
         return bool(self.rok_od or self.rok_do or self.zrodla or self.wydawcy)
 
     def zastosuj(self, qs):
         """Nakłada WHERE-y na queryset po `Autorzy` (przez relację rekord)."""
+        qs = bez_ukrytych_statusow(qs, self.ukryte_statusy)
         if self.rok_od:
             qs = qs.filter(rekord__rok__gte=self.rok_od)
         if self.rok_do:
@@ -82,6 +91,13 @@ class Filtr:
                 src |= Q(rekord__wydawca_id__in=self.wydawcy)
             qs = qs.filter(src)
         return qs
+
+
+def bez_ukrytych_statusow(qs, ukryte_statusy):
+    """Queryset po `Autorzy` bez rekordów o statusach z `ukryte_statusy`."""
+    if not ukryte_statusy:
+        return qs
+    return qs.exclude(rekord__status_korekty_id__in=ukryte_statusy)
 
 
 def _int_or_none(v):
@@ -101,13 +117,14 @@ def _ints(values):
     return out
 
 
-def _filtr_z_request(request):
+def _filtr_z_request(request, ukryte_statusy=None):
     return Filtr(
         rok_od=_int_or_none(request.GET.get("rok_od")),
         rok_do=_int_or_none(request.GET.get("rok_do")),
         # cap listy id, żeby nie zbudować gigantycznego `IN (...)`
         zrodla=_ints(request.GET.getlist("zrodlo"))[:MAKS_ZRODEL_WYDAWCOW],
         wydawcy=_ints(request.GET.getlist("wydawca"))[:MAKS_ZRODEL_WYDAWCOW],
+        ukryte_statusy=ukryte_statusy,
     )
 
 
@@ -195,18 +212,21 @@ def _autor_dict(autor, pbn_root, shared=None, metryki=None):
     return dane
 
 
-def _metryki_prac(autor_ids):
+def _metryki_prac(autor_ids, ukryte_statusy=None):
     """Per autor: liczba prac, sumaryczny IF i sumaryczny PK — jednym
     zapytaniem dla całej paczki, z joinu bpp_autorzy_mat → bpp_rekord_mat.
     Zwraca słownik autor_id -> {works, if_sum, pk_sum}; autorzy bez prac
-    w cache po prostu nie mają wpisu.
+    w cache po prostu nie mają wpisu. Prace o statusach z `ukryte_statusy`
+    nie są liczone.
     """
     from django.db.models import Count, Sum
 
     from bpp.models import Autorzy
 
     qs = (
-        Autorzy.objects.filter(autor_id__in=autor_ids)
+        bez_ukrytych_statusow(
+            Autorzy.objects.filter(autor_id__in=autor_ids), ukryte_statusy
+        )
         .values("autor_id")
         .annotate(
             works=Count("rekord_id", distinct=True),
@@ -514,13 +534,15 @@ def _sasiedzi_cache(autor, filtr, uczelnia_zatr=None):
     return [(autorzy[a], s) for a, s in pary if a in autorzy]
 
 
-def _zakres_lat(autor_id):
-    """(min, max) rok prac autora — do ustawienia granic suwaka lat w UI."""
+def _zakres_lat(autor_id, ukryte_statusy=None):
+    """(min, max) rok prac autora — do ustawienia granic suwaka lat w UI.
+    Prace o statusach z `ukryte_statusy` nie są brane pod uwagę."""
     from django.db.models import Max, Min
 
     from bpp.models import Autorzy
 
-    agg = Autorzy.objects.filter(autor_id=autor_id).aggregate(
-        mn=Min("rekord__rok"), mx=Max("rekord__rok")
+    qs = bez_ukrytych_statusow(
+        Autorzy.objects.filter(autor_id=autor_id), ukryte_statusy
     )
+    agg = qs.aggregate(mn=Min("rekord__rok"), mx=Max("rekord__rok"))
     return agg["mn"], agg["mx"]
