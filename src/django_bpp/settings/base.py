@@ -122,6 +122,7 @@ env = environ.Env(
     #
     DJANGO_BPP_USE_PASSWORD_HISTORY=(bool, True),
     DJANGO_BPP_PASSWORD_HISTORY_COUNT=(int, 12),
+    DJANGO_BPP_PASSWORD_MIN_LENGTH=(int, 15),
     #
     # Konfiguracja wygaszania sesji
     #
@@ -967,12 +968,36 @@ DSPACE_CREDENTIALS_KEY = env("DSPACE_CREDENTIALS_KEY", default="")
 
 SENDFILE_URL = MEDIA_URL
 
-# django-password-policies
+# Polityka haseł wg NIST SP 800-63B (rev. 4): długość zamiast reguł
+# złożoności, bez cyklicznej rotacji.
+PASSWORD_MIN_LENGTH = env("DJANGO_BPP_PASSWORD_MIN_LENGTH")
 
-# Zmiana hasla co 30 dni
-PASSWORD_DURATION_SECONDS = int(
-    os.getenv("DJANGO_BPP_PASSWORD_DURATION_SECONDS", str((60 * 60 * 24) * 30))
-)
+# django-password-policies: bez wymogu liter, cyfr i znaków specjalnych.
+# Zostają: zakaz >3 jednakowych znaków z rzędu, popularnych ciągów
+# (qwerty, 12345…), adresu e-mail jako hasła i historia haseł.
+PASSWORD_MIN_LETTERS = 0
+PASSWORD_MIN_NUMBERS = 0
+PASSWORD_MIN_SYMBOLS = 0
+PASSWORD_MIN_ENTROPY_SHORT = 0
+PASSWORD_MIN_ENTROPY_LONG = 0
+
+# Walidatory Django -- obowiązują tam, gdzie nie ma formularza
+# password_policies: admin, kreator pierwszego uruchomienia, createsuperuser.
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        "NAME": "django.contrib.auth.password_validation."
+        "UserAttributeSimilarityValidator"
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": PASSWORD_MIN_LENGTH},
+    },
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+]
+
+# Rotacja haseł domyślnie wyłączona (0). Instalacja, która jej potrzebuje,
+# ustawia liczbę sekund, np. 2592000 = 30 dni.
+PASSWORD_DURATION_SECONDS = int(os.getenv("DJANGO_BPP_PASSWORD_DURATION_SECONDS", "0"))
 
 PASSWORD_USE_HISTORY = env("DJANGO_BPP_USE_PASSWORD_HISTORY")
 

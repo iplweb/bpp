@@ -7,6 +7,7 @@ from crispy_forms_foundation.layout import (
     Row,
     Submit,
 )
+from django.conf import settings
 from password_policies.forms import PasswordPoliciesChangeForm
 
 
@@ -24,4 +25,9 @@ class BppPasswordChangeForm(PasswordPoliciesChangeForm):
             ButtonHolder(Submit("submit", "Zmień hasło", css_class="button white")),
         )
 
-        super(BppPasswordChangeForm, self).__init__(*args, **kw)
+        super().__init__(*args, **kw)
+        self.fields["new_password1"].help_text = (
+            f"Co najmniej {settings.PASSWORD_MIN_LENGTH} znaków. Nie musi "
+            "zawierać cyfr ani znaków specjalnych — najłatwiej zapamiętać "
+            "kilka słów, np. całe zdanie."
+        )

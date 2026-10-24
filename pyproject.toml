@@ -76,7 +76,7 @@ dependencies = [
     "django-compressor==4.6.0",
     "nh3>=0.3.7",
     "django-session-security>=2.6.8",
-    "django-password-policies-iplweb==0.9.4",
+    "django-password-policies-iplweb==0.9.5",
     "dj-pagination==2.5.0",
     "requests>=2.34.2",
     "dspace-rest-client>=0.1.12",

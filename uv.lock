@@ -661,7 +661,7 @@ requires-dist = [
     { name = "django-mptt", specifier = ">=0.16,<1" },
     { name = "django-multiseek", specifier = "==0.10.3" },
     { name = "django-oauth-toolkit", specifier = "==3.4.1" },
-    { name = "django-password-policies-iplweb", specifier = "==0.9.4" },
+    { name = "django-password-policies-iplweb", specifier = "==0.9.5" },
     { name = "django-pbn-client", git = "https://github.com/iplweb/django-pbn-client.git?rev=bb952e98967a96f96cd3773e3dcfcaf4555c8690" },
     { name = "django-pg-baseline", specifier = ">=0.3.1" },
     { name = "django-polish-inflection", specifier = ">=0.1.1,<0.2" },
@@ -2201,14 +2201,14 @@ wheels = [
 
 [[package]]
 name = "django-password-policies-iplweb"
-version = "0.9.4"
+version = "0.9.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b2/84/b8f652879a3913ca1555f023e8b3912c862e48fd7a00721924778037d3f6/django_password_policies_iplweb-0.9.4.tar.gz", hash = "sha256:e2c02f7f288db169af93574b30117eaccc61e9f7ddab5989254f30230de31c47", size = 98777, upload-time = "2026-08-07T12:50:52.813Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b7/33/4a77d39762fffa53dcc639e70d79febc9cf05f24f42f0508897fe9bbb90a/django_password_policies_iplweb-0.9.5.tar.gz", hash = "sha256:9ef611474c875f1c68c611acc1fd7ec8aa269e38ffb7951746041e1c99549bbc", size = 99998, upload-time = "2026-10-24T10:46:39.79Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/af/00/3887ed604d6693aff3c87901616f5b1fcbe93cf8a4ddb81bff30c24a7a37/django_password_policies_iplweb-0.9.4-py3-none-any.whl", hash = "sha256:f45efc494fb407182865957965e3677dfd00248210da5c7b4e8e5e848a6ae89a", size = 188644, upload-time = "2026-08-07T12:50:51.434Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/b2/d3cb0a168982069856365fe0216e126246cb95b7843e752dccf1bf1b8abc/django_password_policies_iplweb-0.9.5-py3-none-any.whl", hash = "sha256:31f7144b332d2adef839509d55221829585813dd3fc93791a3e827e083114cb8", size = 189100, upload-time = "2026-10-24T10:46:38.119Z" },
 ]
 
 [[package]]

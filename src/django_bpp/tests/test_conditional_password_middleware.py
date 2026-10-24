@@ -2,6 +2,7 @@ import pytest
 from django.contrib.auth import BACKEND_SESSION_KEY
 from django.contrib.sessions.backends.db import SessionStore
 from django.test import RequestFactory
+from password_policies.conf import settings as password_settings
 
 from django_bpp.external_auth import EXTERNAL_AUTH_BACKENDS
 from django_bpp.middleware import ConditionalPasswordChangeMiddleware
@@ -30,7 +31,12 @@ def test_skips_for_anonymous_user(middleware):
 
 
 @pytest.mark.django_db
-def test_enforces_for_model_backend(middleware, authenticated_request):
+def test_enforces_for_model_backend(middleware, authenticated_request, monkeypatch):
+    # Rotacja jest domyślnie wyłączona -- włączamy ją, jak instalacja,
+    # która ustawi DJANGO_BPP_PASSWORD_DURATION_SECONDS.
+    monkeypatch.setattr(
+        password_settings, "PASSWORD_DURATION_SECONDS", 30 * 24 * 60 * 60
+    )
     authenticated_request.session[BACKEND_SESSION_KEY] = (
         "django.contrib.auth.backends.ModelBackend"
     )
