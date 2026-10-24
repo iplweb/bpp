@@ -1,0 +1,1 @@
+Eksport publikacji autora do BibTeX/RIS jest generowany wyłącznie w tle (Celery) — dawne adresy ``eksport.bib``/``eksport.ris`` przekierowują na stronę eksportu; redakcja dostaje pełny dorobek w pliku dostępnym tylko dla niej.

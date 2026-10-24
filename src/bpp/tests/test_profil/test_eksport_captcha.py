@@ -4,8 +4,7 @@
   „Generuj” (crawler idący po linkach nic nie uruchomi).
 - Zadanie startuje dopiero POST-em.
 - Anonim musi przejść ALTCHA (proof-of-work); zalogowany — bez captchy.
-- Synchroniczne ``eksport.bib`` / ``eksport.ris`` (generowane w wątku
-  requestu) są tylko dla zalogowanych.
+- Zalogowany bez uprawnień redakcyjnych ma limit nowych zadań.
 
 Weryfikację PoW mockujemy jak w ``zglos_publikacje/tests/test_zglos_captcha``:
 django-altcha i tak dekoduje payload (base64→JSON z kluczem ``challenge``).
@@ -16,6 +15,7 @@ import json
 from unittest import mock
 
 import pytest
+from django.test import override_settings
 from django.urls import reverse
 from model_bakery import baker
 
@@ -118,11 +118,39 @@ def test_linki_eksportu_na_stronie_autora_sa_nofollow(client, autor):
         assert 'rel="nofollow"' in znacznik
 
 
-@pytest.mark.parametrize("nazwa", ["autor_eksport_bibtex", "autor_eksport_ris"])
-def test_eksport_synchroniczny_wymaga_logowania(client, autor, nazwa):
-    resp = client.get(reverse(f"bpp:{nazwa}", args=(autor.pk,)))
-    assert resp.status_code == 302
-    assert "login" in resp["Location"]
+@override_settings(
+    CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+)
+def test_post_zalogowany_limit_startow(client, delay, normal_django_user):
+    from django.core.cache import cache
+
+    from bpp.views.eksport_autora import LIMIT_STARTOW_EKSPORTU
+
+    cache.clear()
+    client.force_login(normal_django_user)
+    autorzy = baker.make(Autor, _quantity=LIMIT_STARTOW_EKSPORTU + 1)
+    for autor in autorzy[:-1]:
+        assert client.post(_url(autor)).status_code == 302
+    assert client.post(_url(autorzy[-1])).status_code == 429
+    assert AutorEksportTask.objects.count() == LIMIT_STARTOW_EKSPORTU
+    # Deduplikacja nadal działa (nie liczy się do limitu).
+    assert client.post(_url(autorzy[0])).status_code == 302
+    cache.clear()
+
+
+@override_settings(
+    CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+)
+def test_post_redakcja_bez_limitu_startow(client, delay, admin_user):
+    from django.core.cache import cache
+
+    from bpp.views.eksport_autora import LIMIT_STARTOW_EKSPORTU
+
+    cache.clear()
+    client.force_login(admin_user)
+    for autor in baker.make(Autor, _quantity=LIMIT_STARTOW_EKSPORTU + 1):
+        assert client.post(_url(autor)).status_code == 302
+    cache.clear()
 
 
 def test_anonim_przycisk_generuj_ukryty_do_weryfikacji(client, autor, delay):

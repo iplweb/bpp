@@ -90,10 +90,9 @@ from bpp.views.browse import (
     browse_wydzial_redirect,
 )
 from bpp.views.eksport_autora import (
-    AutorEksportBibtexView,
-    AutorEksportRisView,
     EksportAutoraDownloadView,
     EksportAutoraStatusView,
+    PrzekierowanieEksportuAutoraView,
     StartEksportAutoraView,
 )
 from bpp.views.microsoft_auth_redirect import MicrosoftAuthRedirectView
@@ -338,12 +337,12 @@ urlpatterns = [
     ),
     url(
         r"^autor/(?P<pk>\d+)/eksport\.bib$",
-        AutorEksportBibtexView.as_view(),
+        PrzekierowanieEksportuAutoraView.as_view(format="bib"),
         name="autor_eksport_bibtex",
     ),
     url(
         r"^autor/(?P<pk>\d+)/eksport\.ris$",
-        AutorEksportRisView.as_view(),
+        PrzekierowanieEksportuAutoraView.as_view(format="ris"),
         name="autor_eksport_ris",
     ),
     url(

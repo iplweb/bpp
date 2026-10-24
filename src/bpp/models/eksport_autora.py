@@ -2,8 +2,9 @@
 
 Eksport BibTeX/RIS jest budowany w tle przez Celery i pobierany dopiero
 gdy gotowy. Strony są PUBLICZNE (anonimowe) — dlatego klucz główny to
-nieodgadywalny UUID, a autoryzacja statusu/pobrania odbywa się wyłącznie
-przez ten klucz (nie przez właściciela; właściciela nie ma).
+nieodgadywalny UUID, a autoryzacja statusu/pobrania odbywa się przez ten
+klucz (nie przez właściciela; właściciela nie ma). Wyjątek: zadania
+``tylko_dla_redakcji`` (pełny dorobek) są dostępne wyłącznie dla redakcji.
 """
 
 import uuid
@@ -48,6 +49,10 @@ class AutorEksportTask(models.Model):
     #: w chwili startu (worker Celery nie ma requestu). Posortowane, bo
     #: wchodzą do deduplikacji zadań.
     ukryte_statusy = ArrayField(models.IntegerField(), default=list, blank=True)
+    #: Zadanie zlecone przez redakcję (``moze_wprowadzac_dane``) z pełnym
+    #: zakresem (bez wykluczania ukrytych statusów). Status i plik takiego
+    #: zadania widzi wyłącznie redakcja — dla pozostałych 404.
+    tylko_dla_redakcji = models.BooleanField(default=False)
     error_message = models.TextField(blank=True, default="")
     celery_task_id = models.CharField(max_length=255, blank=True, default="")
 

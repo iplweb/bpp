@@ -161,9 +161,17 @@ Po kliknięciu przycisku otwiera się strona eksportu:
 2. Kliknij **„Generuj plik …”** — plik przygotowuje się w tle; strona
    pokazuje postęp, a po zakończeniu odnośnik do pobrania.
 
-Zalogowani użytkownicy mogą też pobrać plik od razu, pod adresami
-`/bpp/autor/<id>/eksport.bib` (BibTeX) i `/bpp/autor/<id>/eksport.ris`
-(RIS), gdzie `<id>` to identyfikator autora.
+Plik jest zawsze generowany w tle — także dla zalogowanych — żeby eksport
+dużego dorobku nie spowalniał serwisu. Dawne adresy
+`/bpp/autor/<id>/eksport.bib` i `/bpp/autor/<id>/eksport.ris` (gdzie `<id>`
+to identyfikator autora) nadal działają: przekierowują na stronę eksportu
+w odpowiednim formacie.
+
+Osoby z uprawnieniami redakcyjnymi (wprowadzanie danych) dostają **pełny
+dorobek** autora, łącznie z pracami o statusach korekty ukrytych przed
+odwiedzającymi. Taki plik — oraz strona jego postępu — jest dostępny
+wyłącznie dla redakcji; pozostali użytkownicy otrzymują osobny plik
+z zakresem publicznym.
 
 !!! note
     Eksport obejmuje do 5000 prac jednego autora.

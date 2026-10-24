@@ -1,7 +1,8 @@
 """Testy eksportu publikacji autora do BibTeX i RIS (§3.3).
 
-Synchroniczne ``eksport.bib``/``eksport.ris`` są tylko dla zalogowanych
-(patrz ``test_eksport_captcha``), stąd ``admin_client``.
+Plik generuje wyłącznie zadanie Celery (``test_eksport_async``); dawne
+adresy ``eksport.bib``/``eksport.ris`` tylko przekierowują na stronę startu
+eksportu w tle.
 """
 
 import pytest
@@ -9,91 +10,36 @@ from django.urls import reverse
 from model_bakery import baker
 
 from bpp.export.ris import export_to_ris
-from bpp.models import Wydawnictwo_Zwarte
+from bpp.models import Autor, AutorEksportTask, Wydawnictwo_Zwarte
 
 pytestmark = pytest.mark.django_db
 
 
-def _zbuduj_autora_z_pracami(
-    wydawnictwo_ciagle,
-    wydawnictwo_zwarte,
-    autor_jan_nowak,
-    jednostka,
-    denorms,
+@pytest.mark.parametrize(
+    "nazwa,fmt", [("autor_eksport_bibtex", "bib"), ("autor_eksport_ris", "ris")]
+)
+@pytest.mark.parametrize("zalogowany", [False, True])
+def test_dawny_adres_eksportu_przekierowuje_na_start(
+    client, admin_user, mocker, nazwa, fmt, zalogowany
 ):
-    """Podpina jeden artykuł i jedno zwarte pod autora i odświeża cache."""
-    wydawnictwo_ciagle.tytul_oryginalny = "Artykuł testowy o eksporcie"
-    wydawnictwo_ciagle.doi = "10.1234/test.doi"
-    wydawnictwo_ciagle.tom = "12"
-    wydawnictwo_ciagle.nr_zeszytu = "3"
-    wydawnictwo_ciagle.strony = "100-110"
-    wydawnictwo_ciagle.save()
-    wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka)
+    delay = mocker.patch("bpp.tasks.generuj_eksport_autora.delay")
+    autor = baker.make(Autor)
+    if zalogowany:
+        client.force_login(admin_user)
 
-    wydawnictwo_zwarte.tytul_oryginalny = "Książka testowa o eksporcie"
-    wydawnictwo_zwarte.save()
-    wydawnictwo_zwarte.dodaj_autora(autor_jan_nowak, jednostka)
+    resp = client.get(reverse(f"bpp:{nazwa}", args=(autor.pk,)))
 
-    denorms.flush()
-
-
-def test_eksport_bib_zwraca_bibtex(
-    admin_client,
-    transactional_db,
-    standard_data,
-    wydawnictwo_ciagle,
-    wydawnictwo_zwarte,
-    autor_jan_nowak,
-    jednostka,
-    denorms,
-):
-    _zbuduj_autora_z_pracami(
-        wydawnictwo_ciagle, wydawnictwo_zwarte, autor_jan_nowak, jednostka, denorms
-    )
-
-    url = reverse("bpp:autor_eksport_bibtex", args=(autor_jan_nowak.pk,))
-    resp = admin_client.get(url)
-
-    assert resp.status_code == 200
-    assert resp["Content-Type"].startswith("application/x-bibtex")
-    disp = resp["Content-Disposition"]
-    assert "attachment" in disp
-    assert ".bib" in disp
-
-    body = resp.content.decode("utf-8")
-    assert "@article" in body
-    assert "Nowak" in body
+    assert resp.status_code == 302
+    assert resp["Location"] == reverse("bpp:autor_eksport_start", args=(autor.pk, fmt))
+    # Przekierowanie niczego nie generuje ani nie kolejkuje.
+    assert not resp.has_header("Content-Disposition")
+    assert not AutorEksportTask.objects.exists()
+    delay.assert_not_called()
 
 
-def test_eksport_ris_zwraca_ris(
-    admin_client,
-    transactional_db,
-    standard_data,
-    wydawnictwo_ciagle,
-    wydawnictwo_zwarte,
-    autor_jan_nowak,
-    jednostka,
-    denorms,
-):
-    _zbuduj_autora_z_pracami(
-        wydawnictwo_ciagle, wydawnictwo_zwarte, autor_jan_nowak, jednostka, denorms
-    )
-
-    url = reverse("bpp:autor_eksport_ris", args=(autor_jan_nowak.pk,))
-    resp = admin_client.get(url)
-
-    assert resp.status_code == 200
-    assert resp["Content-Type"].startswith("application/x-research-info-systems")
-    disp = resp["Content-Disposition"]
-    assert "attachment" in disp
-    assert ".ris" in disp
-
-    body = resp.content.decode("utf-8")
-    assert "TY  - JOUR" in body
-    assert "AU  - " in body
-    assert "ER  -" in body
-    assert "Artykuł testowy o eksporcie" in body
-    assert f"PY  - {wydawnictwo_ciagle.rok}" in body
+def test_dawny_adres_nieistniejacy_autor_404_na_starcie(client):
+    resp = client.get(reverse("bpp:autor_eksport_bibtex", args=(999999,)), follow=True)
+    assert resp.status_code == 404
 
 
 def test_export_to_ris_artykul_i_ksiazka(
@@ -142,18 +88,11 @@ def test_export_to_ris_rozdzial_ma_typ_chap(
     assert "TY  - CHAP" in ris
 
 
-def test_eksport_pusty_autor_nie_wybucha(admin_client, autor_jan_nowak):
-    url_bib = reverse("bpp:autor_eksport_bibtex", args=(autor_jan_nowak.pk,))
-    url_ris = reverse("bpp:autor_eksport_ris", args=(autor_jan_nowak.pk,))
+def test_eksport_pusty_autor_nie_wybucha(autor_jan_nowak):
+    from bpp.tasks import generuj_eksport_autora
 
-    resp_bib = admin_client.get(url_bib)
-    assert resp_bib.status_code == 200
-
-    resp_ris = admin_client.get(url_ris)
-    assert resp_ris.status_code == 200
-
-
-def test_eksport_nieistniejacy_autor_404(admin_client):
-    url = reverse("bpp:autor_eksport_bibtex", args=(999999,))
-    resp = admin_client.get(url)
-    assert resp.status_code == 404
+    for fmt in ("bib", "ris"):
+        task = AutorEksportTask.objects.create(autor=autor_jan_nowak, format=fmt)
+        generuj_eksport_autora(str(task.pk))
+        task.refresh_from_db()
+        assert task.status == "completed"

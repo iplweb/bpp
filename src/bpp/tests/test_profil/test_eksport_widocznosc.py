@@ -5,8 +5,9 @@ co publiczna strona autora i strony rekordów:
   (``moze_wprowadzac_dane``), jak w ``AutorView`` (wspólny helper
   ``widoczni_autorzy``);
 - prace o statusach korekty ukrytych w kanale ``podglad`` nie trafiają do
-  pliku z zadania w tle (zawsze zakres publiczny, niezależnie od
-  zlecającego);
+  pliku z zadania w tle zleconego przez anonima / zwykłego użytkownika;
+  redakcja dostaje pełny dorobek w zadaniu ``tylko_dla_redakcji``, którego
+  status i plik widzi wyłącznie redakcja;
 - profil autora przy nieustalonej uczelni wyklucza statusy ukryte
   w kanale ``podglad`` w dowolnej uczelni (fail-closed).
 """
@@ -84,22 +85,23 @@ def autor_z_ukryta_praca(
     return autor_jan_kowalski
 
 
-# --- ukryty autor: eksport synchroniczny ----------------------------------
+# --- ukryty autor: dawne adresy eksportu -----------------------------------
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("nazwa", ["autor_eksport_bibtex", "autor_eksport_ris"])
 @pytest.mark.parametrize(
-    "rola,oczekiwany", [("anonim", 302), ("zwykly", 404), ("redaktor", 200)]
+    "rola,oczekiwany", [("anonim", 404), ("zwykly", 404), ("redaktor", 200)]
 )
-def test_eksport_sync_ukryty_autor(
-    client, django_user_model, autor_ukryty, nazwa, rola, oczekiwany
+def test_dawny_adres_eksportu_ukryty_autor(
+    client, django_user_model, autor_ukryty, delay, nazwa, rola, oczekiwany
 ):
-    # Anonim dostaje przekierowanie do logowania (LoginRequiredMixin) zanim
-    # w ogóle dojdzie do autora.
+    # Przekierowanie prowadzi na stronę startu, która stosuje regułę
+    # widoczności autora.
     _zaloguj(client, django_user_model, rola)
-    res = client.get(reverse(f"bpp:{nazwa}", args=(autor_ukryty.pk,)))
+    res = client.get(reverse(f"bpp:{nazwa}", args=(autor_ukryty.pk,)), follow=True)
     assert res.status_code == oczekiwany
+    assert not AutorEksportTask.objects.exists()
 
 
 # --- ukryty autor: start eksportu asynchronicznego ------------------------
@@ -143,28 +145,27 @@ def test_start_eksportu_post_ukryty_autor_redaktor(
 # --- ukryte statusy: eksport w tle ---------------------------------------
 
 
-@pytest.mark.django_db
-@pytest.mark.parametrize("rola", ROLE)
-def test_start_eksportu_zawsze_zakres_publiczny(
-    client, django_user_model, autor_z_ukryta_praca, uczelnia, przed_korekta, rola
-):
-    """Plik z zadania jest publiczny po UUID — zakres nie zależy od tego,
-    kto zlecił eksport (także redaktor dostaje plik bez ukrytych prac)."""
+def _start(client, autor, fmt="bib"):
     from unittest import mock
 
+    url = reverse("bpp:autor_eksport_start", args=(autor.pk, fmt))
+    with mock.patch("django_altcha.altcha.verify_solution", return_value=(True, None)):
+        return client.post(url, {"captcha": "eyJjaGFsbGVuZ2UiOiAieCJ9"})
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("rola", ["anonim", "zwykly"])
+def test_start_eksportu_zakres_publiczny(
+    client, django_user_model, autor_z_ukryta_praca, przed_korekta, delay, rola
+):
     from bpp.tasks import generuj_eksport_autora
 
     _zaloguj(client, django_user_model, rola)
-    url = reverse("bpp:autor_eksport_start", args=(autor_z_ukryta_praca.pk, "bib"))
-    with (
-        mock.patch("bpp.tasks.generuj_eksport_autora.delay") as delay,
-        mock.patch("django_altcha.altcha.verify_solution", return_value=(True, None)),
-    ):
-        res = client.post(url, {"captcha": "eyJjaGFsbGVuZ2UiOiAieCJ9"})
-    assert res.status_code == 302
+    assert _start(client, autor_z_ukryta_praca).status_code == 302
 
     task = AutorEksportTask.objects.get()
     assert task.ukryte_statusy == [przed_korekta.pk]
+    assert task.tylko_dla_redakcji is False
     delay.assert_called_once_with(str(task.pk))
 
     generuj_eksport_autora(str(task.pk))
@@ -172,6 +173,103 @@ def test_start_eksportu_zawsze_zakres_publiczny(
     body = task.result_file.read().decode("utf-8")
     assert TOKEN_JAWNY in body
     assert TOKEN_UKRYTY not in body
+
+
+@pytest.mark.django_db
+def test_start_eksportu_redakcja_pelny_dorobek(
+    client, django_user_model, autor_z_ukryta_praca, delay
+):
+    from bpp.tasks import generuj_eksport_autora
+
+    _zaloguj(client, django_user_model, "redaktor")
+    assert _start(client, autor_z_ukryta_praca).status_code == 302
+
+    task = AutorEksportTask.objects.get()
+    assert task.ukryte_statusy == []
+    assert task.tylko_dla_redakcji is True
+    delay.assert_called_once_with(str(task.pk))
+
+    generuj_eksport_autora(str(task.pk))
+    task.refresh_from_db()
+    body = task.result_file.read().decode("utf-8")
+    assert TOKEN_JAWNY in body
+    assert TOKEN_UKRYTY in body
+
+
+@pytest.mark.django_db
+def test_start_eksportu_deduplikacja_rozdziela_redakcje(
+    client, django_user_model, autor_z_ukryta_praca, delay
+):
+    """Zadanie redakcji nigdy nie jest oddawane spoza redakcji i odwrotnie."""
+    anonim = client.__class__()
+    zwykly = client.__class__()
+    zwykly.force_login(_uzytkownik(django_user_model, "zwykly"))
+    redaktor = client.__class__()
+    redaktor.force_login(_uzytkownik(django_user_model, "redaktor"))
+
+    loc_anonim = _start(anonim, autor_z_ukryta_praca)["Location"]
+    loc_redaktor = _start(redaktor, autor_z_ukryta_praca)["Location"]
+    loc_zwykly = _start(zwykly, autor_z_ukryta_praca)["Location"]
+    loc_redaktor2 = _start(redaktor, autor_z_ukryta_praca)["Location"]
+
+    assert loc_redaktor != loc_anonim
+    assert loc_zwykly == loc_anonim
+    assert loc_redaktor2 == loc_redaktor
+    assert AutorEksportTask.objects.count() == 2
+    assert AutorEksportTask.objects.filter(tylko_dla_redakcji=True).count() == 1
+
+
+# --- status / pobranie zadania redakcji ---------------------------------
+
+
+@pytest.fixture
+def zadanie_redakcji(autor_z_ukryta_praca):
+    from django.core.files.base import ContentFile
+
+    task = AutorEksportTask.objects.create(
+        autor=autor_z_ukryta_praca,
+        format="bib",
+        status="completed",
+        tylko_dla_redakcji=True,
+    )
+    task.result_file.save("x.bib", ContentFile(b"@article{x}"))
+    return task
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("widok", ["autor_eksport_status", "autor_eksport_pobierz"])
+@pytest.mark.parametrize(
+    "rola,oczekiwany", [("anonim", 404), ("zwykly", 404), ("redaktor", 200)]
+)
+def test_zadanie_redakcji_tylko_dla_redakcji(
+    client, django_user_model, zadanie_redakcji, widok, rola, oczekiwany
+):
+    _zaloguj(client, django_user_model, rola)
+    res = client.get(reverse(f"bpp:{widok}", args=(zadanie_redakcji.pk,)))
+    assert res.status_code == oczekiwany
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("rola", ["anonim", "zwykly"])
+def test_zadanie_redakcji_htmx_status_404(
+    client, django_user_model, zadanie_redakcji, rola
+):
+    _zaloguj(client, django_user_model, rola)
+    url = reverse("bpp:autor_eksport_status", args=(zadanie_redakcji.pk,))
+    assert client.get(url, HTTP_HX_REQUEST="true").status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("widok", ["autor_eksport_status", "autor_eksport_pobierz"])
+@pytest.mark.parametrize("rola", ROLE)
+def test_zadanie_publiczne_dostepne_dla_kazdego(
+    client, django_user_model, zadanie_redakcji, widok, rola
+):
+    zadanie_redakcji.tylko_dla_redakcji = False
+    zadanie_redakcji.save()
+    _zaloguj(client, django_user_model, rola)
+    res = client.get(reverse(f"bpp:{widok}", args=(zadanie_redakcji.pk,)))
+    assert res.status_code == 200
 
 
 # --- ukryte_statusy_podgladu: fail-closed bez uczelni ---------------------
