@@ -187,6 +187,62 @@ class ContextWordsPasswordValidator:
         )
 
 
+# Ile liter musi zostać w haśle po wycięciu z niego danych konta.
+MIN_LITER_POZA_DANYMI_KONTA = 6
+
+
+def _slowa_konta(user):
+    """Imię, nazwisko, login i część lokalna e-maila (bez domeny), po słowie."""
+    teksty = [
+        getattr(user, "username", "") or "",
+        getattr(user, "first_name", "") or "",
+        getattr(user, "last_name", "") or "",
+        (getattr(user, "email", "") or "").partition("@")[0],
+    ]
+    slowa = {
+        slowo
+        for tekst in teksty
+        for slowo in re.split(r"[^a-z]+", normalizuj(tekst))
+        if len(slowo) >= MIN_DLUGOSC_SLOWA_KONTEKSTOWEGO
+    }
+    # Najdłuższe najpierw, żeby „zprzykladowska” wyciąć przed „przykladowska”.
+    return sorted(slowa, key=len, reverse=True)
+
+
+class PersonalDataPasswordValidator:
+    """Odrzuca hasła złożone głównie z danych konta: imienia, nazwiska,
+    loginu i e-maila — także przestawionych i z dopiskami, np.
+    „przykladowska-zofia” albo „ZofiaPrzykladowska1990” dla Zofii Przykładowskiej.
+
+    Atakujący celujący w konkretną osobę sprawdzi takie hasło od razu.
+    Walidator Django ``UserAttributeSimilarityValidator`` porównuje całe
+    hasło z każdym polem osobno, więc połączenia imienia z nazwiskiem nie
+    łapie; zxcvbn też nie, bo pospolite imię i nazwisko i tak ma nisko
+    w słownikach. Tu wycinamy dane konta i sprawdzamy, co zostało.
+    """
+
+    def validate(self, password, user=None):
+        if user is None:
+            return
+        litery = "".join(z for z in normalizuj(password) if z.isalpha())
+        reszta = litery
+        for slowo in _slowa_konta(user):
+            reszta = reszta.replace(slowo, "")
+        if reszta != litery and len(reszta) < MIN_LITER_POZA_DANYMI_KONTA:
+            raise ValidationError(
+                "Hasło nie może składać się głównie z Twoich danych (imię, "
+                "nazwisko, login, adres e-mail) — dodaj kilka słów, które "
+                "nie są z Tobą związane.",
+                code="password_personal_data",
+            )
+
+    def get_help_text(self):
+        return (
+            "Hasło nie może składać się głównie z Twojego imienia, nazwiska, "
+            "loginu ani adresu e-mail."
+        )
+
+
 class PwnedPasswordValidator:
     """Odrzuca hasła znane z wycieków (Have I Been Pwned, k-anonimowość).
 

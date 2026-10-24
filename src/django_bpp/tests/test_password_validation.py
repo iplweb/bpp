@@ -15,6 +15,7 @@ from model_bakery import baker
 from bpp.models import Uczelnia
 from django_bpp.password_validation import (
     ContextWordsPasswordValidator,
+    PersonalDataPasswordValidator,
     PwnedPasswordValidator,
     ZxcvbnPasswordValidator,
 )
@@ -249,3 +250,74 @@ def test_zxcvbn_odrzuca_polskie_slowo_imie_nazwisko_z_cyframi(haslo, powod):
 def test_zxcvbn_fraza_z_kilku_polskich_slow_przechodzi():
     # Kilka słów to wg NIST dobre hasło — słownik nie może go odrzucać.
     ZxcvbnPasswordValidator().validate("ptaszek-na-drzewie-gra")
+
+
+# --- dane konta (imię, nazwisko, login, e-mail) ------------------------------
+
+
+def _uzytkownik(**pola):
+    dane = {
+        "username": "zprzykladowska",
+        "first_name": "Zofia",
+        "last_name": "Przykładowska",
+        "email": "zofia.przykladowska@uczelnia.example",
+    }
+    dane.update(pola)
+    return baker.prepare("bpp.BppUser", **dane)
+
+
+@pytest.mark.parametrize(
+    "haslo",
+    [
+        "przykladowska-zofia",
+        "ZofiaPrzykladowska1990",
+        "Przykladowska.Zofia.2024!",
+        "zprzykladowska-zprzykladowska",
+        "zofia-przykladowska-pl",
+    ],
+)
+def test_dane_konta_odrzuca_haslo_z_wlasnego_imienia_i_nazwiska(haslo):
+    with pytest.raises(ValidationError) as e:
+        PersonalDataPasswordValidator().validate(haslo, user=_uzytkownik())
+    assert e.value.code == "password_personal_data"
+
+
+def test_dane_konta_bez_polskich_znakow_i_wielkosci_liter():
+    user = _uzytkownik(first_name="Łucja", last_name="Żółkiewska")
+    with pytest.raises(ValidationError):
+        PersonalDataPasswordValidator().validate("ZOLKIEWSKA-lucja-77", user=user)
+
+
+@pytest.mark.parametrize(
+    "haslo",
+    [
+        "przykladowska-zofia-zielony-rower",
+        "wrzos-kaktus-lipa-7",
+    ],
+)
+def test_dane_konta_przepuszcza_haslo_z_wlasnymi_slowami(haslo):
+    PersonalDataPasswordValidator().validate(haslo, user=_uzytkownik())
+
+
+def test_dane_konta_cudze_imie_i_nazwisko_nie_dotyczy():
+    # Cudze dane ocenia zxcvbn (słowniki imion i nazwisk), nie ten walidator.
+    PersonalDataPasswordValidator().validate("nowak-anna-1985", user=_uzytkownik())
+
+
+def test_dane_konta_bez_uzytkownika_nic_nie_sprawdza():
+    PersonalDataPasswordValidator().validate("przykladowska-zofia")
+
+
+def test_dane_konta_puste_pola_nie_przeszkadzaja():
+    user = _uzytkownik(first_name="", last_name="", email="")
+    with pytest.raises(ValidationError):
+        PersonalDataPasswordValidator().validate("zprzykladowska24", user=user)
+    PersonalDataPasswordValidator().validate("zielony-rower-jedzie", user=user)
+
+
+@pytest.mark.django_db
+def test_dane_konta_w_validate_password():
+    slabe = "przykladowska-zofia"  # ggignore — fikcyjne słabe hasło testowe
+    with pytest.raises(ValidationError) as e:
+        password_validation.validate_password(slabe, user=_uzytkownik())
+    assert "password_personal_data" in {err.code for err in e.value.error_list}

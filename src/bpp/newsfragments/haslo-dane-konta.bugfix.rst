@@ -1,0 +1,1 @@
+Hasło nie może już składać się głównie z własnych danych konta — imienia, nazwiska, loginu i adresu e-mail, także przestawionych i z dopiskami (np. „przykladowska-zofia” albo „ZofiaPrzykladowska1990” dla Zofii Przykładowskiej); wcześniej takie hasła przechodziły, bo walidator Django porównywał hasło z każdym polem osobno.
