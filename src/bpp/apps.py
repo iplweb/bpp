@@ -11,11 +11,16 @@ class BppConfig(AppConfig):
         from django.db.models.signals import post_migrate, post_save
 
         from . import checks  # noqa: F401
+        from .auth.microsoft_conf import ostrzez_superusera_o_tenancie_microsoft
         from .konta_bez_uczelni import ostrzez_superusera_po_zalogowaniu
 
         user_logged_in.connect(
             ostrzez_superusera_po_zalogowaniu,
             dispatch_uid="bpp.ostrzez_superusera_po_zalogowaniu",
+        )
+        user_logged_in.connect(
+            ostrzez_superusera_o_tenancie_microsoft,
+            dispatch_uid="bpp.ostrzez_superusera_o_tenancie_microsoft",
         )
 
         # Only register post_migrate signal when dbtemplates is available
@@ -33,7 +38,6 @@ class BppConfig(AppConfig):
                 sender=apps.get_model("siteblog", "Article"),
                 dispatch_uid="bpp.invalidate_uczelnia_cache_on_article_change",
             )
-
 
         self._podepnij_inwalidacje_cache_publicznego()
 

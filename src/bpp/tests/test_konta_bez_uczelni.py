@@ -89,7 +89,11 @@ def test_komunikat_przechodzi_przez_storage_jako_safestring(
         CookieStorage.cookie_name
     ].value
 
-    wiadomosci = list(CookieStorage(request))
+    # Filtr po treści: inne handlery user_logged_in (np. ostrzeżenie
+    # bpp.W201 o konfiguracji Microsoft) mogą dodać własne komunikaty.
+    wiadomosci = [
+        m for m in CookieStorage(request) if "Pokaż te konta" in str(m.message)
+    ]
 
     assert len(wiadomosci) == 1
     assert isinstance(wiadomosci[0].message, SafeData)

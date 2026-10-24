@@ -5,9 +5,10 @@ z ``settings/base.py`` zanim Django w pełni wstanie, a funkcje decyzyjne są
 testowalne bez zainstalowanej aplikacji ``microsoft_auth``.
 """
 
+import logging
 import re
 
-from django.core.exceptions import ImproperlyConfigured
+logger = logging.getLogger(__name__)
 
 # Wartości „tenant" Entra ID, które NIE wskazują jednej organizacji:
 # akceptują konta z dowolnego katalogu (lub konta prywatne Microsoft).
@@ -20,21 +21,80 @@ def is_guid(value):
     return bool(value) and bool(_GUID_RE.match(str(value).strip().lower()))
 
 
-def validate_microsoft_tenant_id(tenant_id):
-    """Zwróć znormalizowany ``tenant_id`` albo rzuć ``ImproperlyConfigured``.
+#: ID system checka ostrzegającego o braku konkretnego katalogu (tenanta).
+W_TENANT_ID = "bpp.W201"
 
-    Logowanie Microsoft wymaga wskazania konkretnej organizacji (GUID katalogu
-    albo jego domena, np. ``uczelnia.onmicrosoft.com``).
+#: Wartość używana przez ``django_microsoft_auth``, gdy tenant nie jest podany.
+DEFAULT_TENANT_ID = "common"
+
+
+def normalize_microsoft_tenant_id(tenant_id):
+    """Zwróć znormalizowany ``tenant_id``; pusty -> ``"common"``.
+
+    Brak konkretnego katalogu nie blokuje startu — logowanie działa wtedy
+    w trybie wielokatalogowym, a operator dostaje ostrzeżenie
+    (system check ``bpp.W201`` i komunikat dla superusera po zalogowaniu).
     """
     value = (tenant_id or "").strip()
-    if not value or value.lower() in MULTI_TENANT_VALUES:
-        raise ImproperlyConfigured(
-            "Zdefiniowano MICROSOFT_AUTH_CLIENT_ID, ale MICROSOFT_AUTH_TENANT_ID "
-            f"jest pusty lub ogólny ({value!r}). Ustaw MICROSOFT_AUTH_TENANT_ID "
-            "na identyfikator (GUID) lub domenę katalogu Entra ID uczelni — "
-            "wartości 'common', 'organizations' i 'consumers' są niedozwolone."
+    return value or DEFAULT_TENANT_ID
+
+
+def is_multi_tenant(tenant_id):
+    """Czy ``tenant_id`` NIE wskazuje jednego, konkretnego katalogu?"""
+    value = (tenant_id or "").strip().lower()
+    return not value or value in MULTI_TENANT_VALUES
+
+
+def microsoft_tenant_warning(client_id, tenant_id):
+    """Treść ostrzeżenia o braku konkretnego tenanta albo ``None``.
+
+    Ostrzeżenie dotyczy wyłącznie instalacji z włączonym logowaniem Microsoft
+    (ustawione ``MICROSOFT_AUTH_CLIENT_ID``).
+    """
+    if not client_id or not is_multi_tenant(tenant_id):
+        return None
+    shown = (tenant_id or "").strip() or "(pusty)"
+    return (
+        "Logowanie przez Microsoft działa w trybie wielokatalogowym: "
+        f"MICROSOFT_AUTH_TENANT_ID = {shown}. Konta Microsoft z dowolnego "
+        "katalogu Entra ID mogą przejść przez logowanie, a BPP nie sprawdza, "
+        "z którego katalogu pochodzi token."
+    )
+
+
+#: Podpowiedź dołączana do ostrzeżenia (system check i komunikat po logowaniu).
+TENANT_HINT = (
+    "Ustaw MICROSOFT_AUTH_TENANT_ID na identyfikator katalogu uczelni (GUID, "
+    "portal Azure: Microsoft Entra ID -> Przegląd -> Identyfikator dzierżawy) "
+    "albo jego domenę, np. uczelnia.onmicrosoft.com, i zrestartuj serwer."
+)
+
+
+def ostrzez_superusera_o_tenancie_microsoft(sender, request, user, **kwargs):
+    """Handler ``user_logged_in``: superuser dostaje komunikat, gdy logowanie
+    Microsoft jest włączone bez konkretnego katalogu (tenanta).
+
+    Nigdy nie przerywa logowania — błędy są logowane.
+    """
+    if request is None or not getattr(user, "is_superuser", False):
+        return
+
+    try:
+        from django.conf import settings
+        from django.contrib import messages
+
+        tresc = microsoft_tenant_warning(
+            getattr(settings, "MICROSOFT_AUTH_CLIENT_ID", None),
+            getattr(settings, "MICROSOFT_AUTH_TENANT_ID", None),
         )
-    return value
+        if tresc:
+            messages.warning(request, f"{tresc} {TENANT_HINT}", fail_silently=True)
+    except Exception:
+        # Komunikat jest informacyjny — żaden błąd nie może zablokować
+        # logowania. Pełny traceback trafia do logów.
+        logger.exception(
+            "Nieoczekiwany błąd przy sprawdzaniu konfiguracji tenanta Microsoft."
+        )
 
 
 def claims_match_tenant(claims, tenant_id, expected_issuer):

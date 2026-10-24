@@ -204,18 +204,31 @@ zmiennych `MICROSOFT_AUTH_CLIENT_ID` oraz `MICROSOFT_AUTH_CLIENT_SECRET`.
 |---------|------|
 | `MICROSOFT_AUTH_CLIENT_ID` | Identyfikator aplikacji zarejestrowanej w Entra ID. |
 | `MICROSOFT_AUTH_CLIENT_SECRET` | Sekret tej aplikacji. |
-| `MICROSOFT_AUTH_TENANT_ID` | **Wymagany.** Identyfikator katalogu (GUID) albo jego domena, np. `uczelnia.onmicrosoft.com`. |
+| `MICROSOFT_AUTH_TENANT_ID` | **Zalecany.** Identyfikator katalogu (GUID) albo jego domena, np. `uczelnia.onmicrosoft.com`. |
 | `MICROSOFT_AUTH_LINK_BY_EMAIL` | Domyślnie `False`. Patrz niżej. |
 | `MICROSOFT_AUTH_EXTRA_SCOPES` | Dodatkowe zakresy OAuth (opcjonalnie). |
 
-### Wymagany konkretny katalog (tenant)
+### Zalecany konkretny katalog (tenant)
+
+Zalecamy ustawienie `MICROSOFT_AUTH_TENANT_ID` na katalog uczelni. Wtedy BPP
+przyjmuje wyłącznie tokeny wystawione przez ten katalog i sprawdza claimy
+`iss` i `tid` tokenu. Identyfikator katalogu znajdziesz w portalu Azure:
+*Microsoft Entra ID → Przegląd → Identyfikator dzierżawy*.
 
 Jeżeli ustawiono `MICROSOFT_AUTH_CLIENT_ID`, a `MICROSOFT_AUTH_TENANT_ID` jest
-pusty albo ma wartość `common`, `organizations` lub `consumers`, serwer BPP
-**nie wystartuje** (błąd `ImproperlyConfigured`). BPP przyjmuje wyłącznie
-tokeny wystawione przez skonfigurowany katalog — sprawdzane są claimy `iss`
-i `tid` tokenu. Identyfikator katalogu znajdziesz w portalu Azure:
-*Microsoft Entra ID → Przegląd → Identyfikator dzierżawy*.
+pusty albo ma wartość `common`, `organizations` lub `consumers`, BPP
+**uruchomi się normalnie**, ale logowanie działa w trybie wielokatalogowym:
+
+- przez logowanie Microsoft przejdą konta z dowolnego katalogu Entra ID
+  (dla `common` i `consumers` także prywatne konta Microsoft), o ile
+  rejestracja aplikacji w Entra ID na to pozwala; BPP nie sprawdza, z którego
+  katalogu pochodzi token,
+- zasady wiązania kont opisane niżej obowiązują bez zmian,
+- `manage.py check` zgłasza ostrzeżenie `bpp.W201`, a superuser po każdym
+  zalogowaniu widzi komunikat z tą samą podpowiedzią.
+
+Aby usunąć ostrzeżenie, ustaw `MICROSOFT_AUTH_TENANT_ID` (GUID albo domena
+katalogu) i zrestartuj serwer aplikacji.
 
 ### Wiązanie kont Microsoft z istniejącymi kontami BPP
 

@@ -2,8 +2,13 @@
 
 Rozszerza ``microsoft_auth.backends.MicrosoftAuthenticationBackend``:
 
-* przyjmuje wyłącznie tokeny wystawione przez skonfigurowany katalog Entra ID
-  (claimy ``iss``/``tid``),
+* przy ustawionym konkretnym katalogu Entra ID (GUID lub domena) przyjmuje
+  wyłącznie tokeny wystawione przez ten katalog (claimy ``iss``/``tid``);
+  bez konkretnego katalogu (``common``/``organizations``/``consumers`` lub
+  pusty) działa w trybie wielokatalogowym, jak biblioteka — tę konfigurację
+  zgłasza system check ``bpp.W201``,
+* nie wiąże nowego konta Microsoft z kontem BPP, gdy token nie ma e-maila
+  albo e-mail pasuje do więcej niż jednego konta,
 * nie wiąże automatycznie nowego konta Microsoft z istniejącym kontem
   z uprawnieniami lub z lokalnym hasłem, chyba że
   ``MICROSOFT_AUTH_LINK_BY_EMAIL = True``.
@@ -22,6 +27,7 @@ from microsoft_auth.conf import CACHE_KEY_JWKS, CACHE_KEY_OPENID
 from bpp.auth.microsoft_conf import (
     claims_match_tenant,
     is_guid,
+    is_multi_tenant,
     may_link_existing_users,
 )
 
@@ -54,6 +60,12 @@ class BppMicrosoftAuthenticationBackend(MicrosoftAuthenticationBackend):
             return None
 
         tenant_id = getattr(settings, "MICROSOFT_AUTH_TENANT_ID", None)
+        if is_multi_tenant(tenant_id):
+            # Tryb wielokatalogowy: nie ma katalogu, względem którego można
+            # sprawdzić iss/tid (podpis i audience sprawdza biblioteka).
+            # Ostrożne wiązanie kont w _verify_microsoft_user obowiązuje dalej.
+            return self._get_user_from_microsoft(claims)
+
         expected_issuer = self._expected_issuer(tenant_id)
         if not claims_match_tenant(claims, tenant_id, expected_issuer):
             logger.warning(

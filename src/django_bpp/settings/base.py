@@ -13,7 +13,7 @@ import environ
 from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 
-from bpp.auth.microsoft_conf import validate_microsoft_tenant_id
+from bpp.auth.microsoft_conf import normalize_microsoft_tenant_id
 from bpp.util import slugify_function
 from django_bpp.channels_prefix import get_channels_prefix
 from django_bpp.rollbar_filters import zbuduj_exception_level_filters
@@ -1377,9 +1377,10 @@ if MICROSOFT_AUTH_CLIENT_ID:
             )
         ) from e
     MICROSOFT_AUTH_CLIENT_SECRET = env("MICROSOFT_AUTH_CLIENT_SECRET")
-    # Fail-closed: wymagany konkretny katalog Entra ID (GUID lub domena);
-    # "common"/"organizations"/"consumers" albo brak wartości -> błąd konfiguracji.
-    MICROSOFT_AUTH_TENANT_ID = validate_microsoft_tenant_id(
+    # Zalecany konkretny katalog Entra ID (GUID lub domena). Pusty ->
+    # "common" (tryb wielokatalogowy): start nie jest blokowany, ale system
+    # check bpp.W201 i komunikat dla superusera ostrzegają o konfiguracji.
+    MICROSOFT_AUTH_TENANT_ID = normalize_microsoft_tenant_id(
         env("MICROSOFT_AUTH_TENANT_ID")
     )
     # Automatyczne wiązanie nowego konta Microsoft z istniejącym kontem BPP

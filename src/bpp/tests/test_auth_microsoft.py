@@ -5,15 +5,19 @@ from unittest import mock
 
 import pytest
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ImproperlyConfigured
+from django.contrib.auth.signals import user_logged_in
+from django.contrib.messages import get_messages
+from django.core import checks
 from django.test import override_settings
 from model_bakery import baker
 
 from bpp.auth.microsoft_conf import (
+    W_TENANT_ID,
     claims_match_tenant,
     may_link_existing_users,
-    validate_microsoft_tenant_id,
+    normalize_microsoft_tenant_id,
 )
+from bpp.checks import microsoft_tenant_check
 from django_bpp.external_auth import EXTERNAL_AUTH_BACKENDS, MICROSOFT_BACKEND
 
 TENANT = "11111111-2222-3333-4444-555555555555"
@@ -38,17 +42,124 @@ def _claims(tid=TENANT, iss=ISSUER, **extra):
 # --- konfiguracja ---------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "value", [None, "", "  ", "common", "Common", "organizations", "consumers"]
+HASLO = "poprawne-haslo-testowe-123"
+OSTRZEZENIE = "trybie wielokatalogowym"
+WIELOKATALOGOWE = ["", "common", "Common", "organizations", "consumers"]
+
+
+@pytest.mark.parametrize("value", [None, "", "  "])
+def test_normalize_tenant_pusty_to_common(value):
+    assert normalize_microsoft_tenant_id(value) == "common"
+
+
+@pytest.mark.parametrize("value", [TENANT, "uczelnia.onmicrosoft.com", "common"])
+def test_normalize_tenant_zachowuje_wartosc(value):
+    assert normalize_microsoft_tenant_id(f" {value} ") == value
+
+
+@pytest.mark.parametrize("tenant", WIELOKATALOGOWE)
+def test_check_ostrzega_przy_braku_konkretnego_tenanta(tenant):
+    with override_settings(
+        MICROSOFT_AUTH_CLIENT_ID="client-id", MICROSOFT_AUTH_TENANT_ID=tenant
+    ):
+        wynik = microsoft_tenant_check(None)
+    assert len(wynik) == 1
+    assert wynik[0].id == W_TENANT_ID == "bpp.W201"
+    assert isinstance(wynik[0], checks.Warning)
+    assert "MICROSOFT_AUTH_TENANT_ID" in wynik[0].hint
+    assert "onmicrosoft.com" in wynik[0].hint
+
+
+@pytest.mark.parametrize("tenant", [TENANT, "uczelnia.onmicrosoft.com"])
+def test_check_brak_ostrzezenia_dla_konkretnego_tenanta(tenant):
+    with override_settings(
+        MICROSOFT_AUTH_CLIENT_ID="client-id", MICROSOFT_AUTH_TENANT_ID=tenant
+    ):
+        assert microsoft_tenant_check(None) == []
+
+
+def test_check_brak_ostrzezenia_bez_logowania_microsoft():
+    with override_settings(MICROSOFT_AUTH_CLIENT_ID="", MICROSOFT_AUTH_TENANT_ID=""):
+        assert microsoft_tenant_check(None) == []
+
+
+def test_check_zarejestrowany():
+    assert microsoft_tenant_check in checks.registry.registry.get_checks()
+
+
+# --- komunikat dla superusera po zalogowaniu --------------------------------
+
+
+def _zaloguj(client, username):
+    return client.post(
+        "/admin/login/",
+        {"username": username, "password": HASLO, "next": "/admin/"},
+        follow=True,
+    )
+
+
+def _komunikaty(response):
+    return [str(m) for m in get_messages(response.wsgi_request)]
+
+
+@pytest.mark.django_db
+@override_settings(
+    MICROSOFT_AUTH_CLIENT_ID="client-id", MICROSOFT_AUTH_TENANT_ID="common"
 )
-def test_validate_tenant_odrzuca_puste_i_wielotenantowe(value):
-    with pytest.raises(ImproperlyConfigured):
-        validate_microsoft_tenant_id(value)
+def test_superuser_po_zalogowaniu_dostaje_ostrzezenie(client):
+    get_user_model().objects.create_superuser(
+        username="szef", password=HASLO, email="szef@example.com"
+    )
+    komunikaty = _komunikaty(_zaloguj(client, "szef"))
+    assert any(OSTRZEZENIE in m and "onmicrosoft.com" in m for m in komunikaty), (
+        komunikaty
+    )
 
 
-@pytest.mark.parametrize("value", [TENANT, "uczelnia.onmicrosoft.com"])
-def test_validate_tenant_akceptuje_konkretny_katalog(value):
-    assert validate_microsoft_tenant_id(f" {value} ") == value
+@pytest.mark.django_db
+@override_settings(
+    MICROSOFT_AUTH_CLIENT_ID="client-id", MICROSOFT_AUTH_TENANT_ID="common"
+)
+def test_zwykly_staff_nie_dostaje_ostrzezenia(client):
+    user = baker.make(get_user_model(), username="staff1", is_staff=True)
+    user.set_password(HASLO)
+    user.save()
+    komunikaty = _komunikaty(_zaloguj(client, "staff1"))
+    assert not any(OSTRZEZENIE in m for m in komunikaty)
+
+
+@pytest.mark.django_db
+@override_settings(
+    MICROSOFT_AUTH_CLIENT_ID="client-id", MICROSOFT_AUTH_TENANT_ID=TENANT
+)
+def test_superuser_konkretny_tenant_brak_ostrzezenia(client):
+    get_user_model().objects.create_superuser(
+        username="szef", password=HASLO, email="szef@example.com"
+    )
+    komunikaty = _komunikaty(_zaloguj(client, "szef"))
+    assert not any(OSTRZEZENIE in m for m in komunikaty)
+
+
+@pytest.mark.django_db
+@override_settings(
+    MICROSOFT_AUTH_CLIENT_ID="client-id", MICROSOFT_AUTH_TENANT_ID="common"
+)
+def test_blad_przy_ostrzezeniu_nie_blokuje_logowania(client, caplog):
+    get_user_model().objects.create_superuser(
+        username="szef", password=HASLO, email="szef@example.com"
+    )
+    with mock.patch(
+        "bpp.auth.microsoft_conf.microsoft_tenant_warning",
+        side_effect=RuntimeError("awaria"),
+    ):
+        response = _zaloguj(client, "szef")
+    assert response.wsgi_request.user.is_authenticated
+    assert "tenanta Microsoft" in caplog.text
+
+
+def test_handler_podpiety_pod_user_logged_in():
+    klucze = [klucz for klucz, *_ in user_logged_in.receivers]
+    assert any(k[0] == "bpp.ostrzez_superusera_o_tenancie_microsoft" for k in klucze)
 
 
 def test_backend_bpp_rozpoznawany_jako_zewnetrzny():
@@ -342,3 +453,62 @@ def test_backend_odswieza_nieaktualny_dokument_discovery():
     with mock.patch("bpp.auth.microsoft.cache") as cache:
         assert backend._authenticate_microsoft_user() == user
     assert cache.delete.called
+
+
+# --- backend w trybie wielokatalogowym (brak konkretnego tenanta) -----------
+
+
+@pytest.mark.uruchom_tylko_z_microsoft_auth
+@pytest.mark.django_db
+@pytest.mark.parametrize("tenant", ["common", "organizations"])
+def test_backend_tryb_wielokatalogowy_loguje_powiazane_konto(tenant):
+    from microsoft_auth.models import MicrosoftAccount
+
+    user = baker.make(get_user_model(), email="jan@example.com", password="")
+    baker.make(MicrosoftAccount, microsoft_id="ms-sub-1", user=user)
+
+    backend = _backend(
+        _claims(tid=OTHER_TENANT, iss=OTHER_ISSUER),
+        issuer="https://login.microsoftonline.com/{tenantid}/v2.0",
+    )
+    with override_settings(MICROSOFT_AUTH_TENANT_ID=tenant):
+        assert backend._authenticate_microsoft_user() == user
+
+
+@pytest.mark.uruchom_tylko_z_microsoft_auth
+@pytest.mark.django_db
+@override_settings(
+    MICROSOFT_AUTH_TENANT_ID="common", MICROSOFT_AUTH_LINK_BY_EMAIL=False
+)
+@pytest.mark.parametrize("attrs", [{"is_staff": True}, {"is_superuser": True}])
+def test_backend_tryb_wielokatalogowy_nie_wiaze_konta_staff(attrs):
+    from microsoft_auth.models import MicrosoftAccount
+
+    konto = baker.make(get_user_model(), email="jan@example.com", password="", **attrs)
+    backend = _backend(_claims(tid=OTHER_TENANT, iss=OTHER_ISSUER))
+    assert backend._authenticate_microsoft_user() is None
+    assert not MicrosoftAccount.objects.filter(user=konto).exists()
+
+
+@pytest.mark.uruchom_tylko_z_microsoft_auth
+@pytest.mark.django_db
+@override_settings(
+    MICROSOFT_AUTH_TENANT_ID="common", MICROSOFT_AUTH_LINK_BY_EMAIL=False
+)
+def test_backend_tryb_wielokatalogowy_nie_wiaze_konta_z_haslem():
+    konto = baker.make(get_user_model(), email="jan@example.com")
+    konto.set_password(HASLO)
+    konto.save()
+    backend = _backend(_claims())
+    assert backend._authenticate_microsoft_user() is None
+
+
+@pytest.mark.uruchom_tylko_z_microsoft_auth
+@pytest.mark.django_db
+@override_settings(MICROSOFT_AUTH_TENANT_ID="common")
+def test_backend_tryb_wielokatalogowy_odmawia_przy_pustym_lub_wieloznacznym_emailu():
+    baker.make(get_user_model(), email="jan@example.com", password="", _quantity=2)
+    liczba = get_user_model().objects.count()
+    assert _backend(_claims(email=""))._authenticate_microsoft_user() is None
+    assert _backend(_claims(sub="ms-2"))._authenticate_microsoft_user() is None
+    assert get_user_model().objects.count() == liczba
