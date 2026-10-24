@@ -30,10 +30,7 @@ from bpp.export.bibtex import export_to_bibtex
 from bpp.export.ris import export_to_ris
 from bpp.models import Autor, AutorEksportTask, Rekord
 from bpp.permissions import moze_wprowadzac_dane
-from bpp.util.ukryte_statusy import (
-    ukryte_statusy_eksportu,
-    wyklucz_ukrytych_autorow,
-)
+from bpp.util.ukryte_statusy import ukryte_statusy_eksportu, widoczni_autorzy
 
 #: Maksymalna liczba eksportowanych rekordów. Zabezpiecza przed OOM przy
 #: autorach z gigantyczną liczbą prac (eksport materializuje instancje
@@ -47,10 +44,8 @@ OKNO_LIMITU_S = 60
 
 
 def _autor_dla_eksportu(request, pk):
-    """Autor do eksportu — ta sama reguła widoczności co ``AutorView``."""
-    return get_object_or_404(
-        wyklucz_ukrytych_autorow(Autor.objects.all(), request), pk=pk
-    )
+    """Autor do eksportu; ukryci (``pokazuj=False``) tylko dla redakcji."""
+    return get_object_or_404(widoczni_autorzy(Autor.objects.all(), request), pk=pk)
 
 
 def _ukryte_statusy_eksportu_sync(request):

@@ -3,7 +3,7 @@ co publiczna strona autora i strony rekordów:
 
 - autor z ``pokazuj=False`` — 404 dla wszystkich poza redaktorem
   (``moze_wprowadzac_dane``), jak w ``AutorView`` (wspólny helper
-  ``wyklucz_ukrytych_autorow``);
+  ``widoczni_autorzy``);
 - prace o statusach korekty ukrytych w kanale ``podglad`` nie trafiają do
   pliku z zadania w tle (zawsze zakres publiczny, niezależnie od
   zlecającego);

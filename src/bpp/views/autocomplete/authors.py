@@ -19,7 +19,7 @@ from bpp.models.patent import Patent, Patent_Autor
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
 from bpp.permissions import moze_wprowadzac_dane
-from bpp.util.ukryte_statusy import wyklucz_ukryte_statusy
+from bpp.util.ukryte_statusy import widoczni_autorzy, wyklucz_ukryte_statusy
 from pbn_api.models import OsobaZInstytucji
 
 from .base import autocomplete_create_error
@@ -408,13 +408,8 @@ class PodrzednaPublikacjaHabilitacyjnaAutocomplete(
             return qs.none()
 
         request = getattr(self, "request", None)
-        redaktor = request is not None and moze_wprowadzac_dane(request.user)
-
-        autorzy = (
-            Autor.objects.all() if redaktor else Autor.objects.filter(pokazuj=True)
-        )
         try:
-            autor = autorzy.get(pk=int(autor_id))
+            autor = widoczni_autorzy(Autor.objects.all(), request).get(pk=int(autor_id))
         except (TypeError, ValueError, Autor.DoesNotExist):
             return qs.none()
 
@@ -464,10 +459,6 @@ class Dyscyplina_Naukowa_PrzypisanieAutocomplete(
     uczelnia udostępnia formularz zgłaszania (ta sama reguła, co
     ``Zgloszenie_PublikacjiWizard``), i tylko dla autorów z ``pokazuj=True``.
     """
-
-    def _redaktor(self):
-        request = getattr(self, "request", None)
-        return request is not None and moze_wprowadzac_dane(request.user)
 
     def _dostep_dozwolony(self, request):
         from bpp.models import Uczelnia
@@ -520,9 +511,11 @@ class Dyscyplina_Naukowa_PrzypisanieAutocomplete(
 
     def _get_disciplines_for_autor(self, autor, rok):
         """Get disciplines for the given autor and rok."""
-        przypisania = Autor_Dyscyplina.objects.all()
-        if not self._redaktor():
-            przypisania = przypisania.filter(autor__pokazuj=True)
+        przypisania = widoczni_autorzy(
+            Autor_Dyscyplina.objects.all(),
+            getattr(self, "request", None),
+            lookup="autor__pokazuj",
+        )
         try:
             ad = przypisania.get(rok=rok, autor=autor)
         except Autor_Dyscyplina.DoesNotExist:
