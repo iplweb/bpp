@@ -14,6 +14,7 @@ from bpp.const import CHARAKTER_OGOLNY_KSIAZKA
 from bpp.models.wydawca import Wydawca
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.util.isbn import filtruj_tytul_lub_isbn
+from bpp.util.ukryte_statusy import wyklucz_ukryte_statusy
 from bpp.views.autocomplete.mixins import SanitizedAutocompleteMixin
 from pbn_api.models.publication import Publication as PBN_Publication
 from pbn_api.models.publisher import Publisher as PBN_Publisher
@@ -85,6 +86,7 @@ class PublicWydawnictwoNadrzedneAutocomplete(
         wz = Wydawnictwo_Zwarte.objects.filter(
             charakter_formalny__charakter_ogolny=(CHARAKTER_OGOLNY_KSIAZKA)
         )
+        wz = wyklucz_ukryte_statusy(wz, getattr(self, "request", None))
         pbn_pub = PBN_Publication.objects.all()
 
         if self.q:

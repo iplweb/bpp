@@ -25,9 +25,11 @@ from bpp.views.admin import (
 )
 from bpp.views.global_nav import global_nav_redir
 from bpp.views.mymultiseek import (
+    BppMultiseekSaveForm,
     MultiseekToDjangoQLView,
     MyMultiseekExport,
     MyMultiseekResults,
+    bpp_load_form,
     bpp_remove_by_hand,
     bpp_remove_from_removed_by_hand,
 )
@@ -345,6 +347,18 @@ urlpatterns = (
                 )
             ),
             name="multiseek-export",
+        ),
+        # Nadpisania upstreamowych load_form/save_form (kontrola właściciela
+        # zapisanego formularza) — MUSZĄ być PRZED include("multiseek.urls").
+        url(
+            r"^multiseek/load_form/(?P<search_form_pk>\d+)$",
+            bpp_load_form,
+            name="bpp-multiseek-load-form",
+        ),
+        url(
+            r"^multiseek/save_form/$",
+            BppMultiseekSaveForm.as_view(registry=settings.MULTISEEK_REGISTRY),
+            name="bpp-multiseek-save-form",
         ),
         url(
             r"^multiseek/",

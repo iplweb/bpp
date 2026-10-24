@@ -59,6 +59,7 @@ from bpp.util.uczelnia_scope import (
     scope_rekord_do_uczelni,
     tylko_jedna_uczelnia,
 )
+from bpp.util.ukryte_statusy import ukryte_statusy_dla, wyklucz_ukryte_statusy
 from bpp.views.cache_publiczny import DOMYSLNY_TTL, _generacja, cache_publiczny
 
 logger = logging.getLogger(__name__)
@@ -111,13 +112,24 @@ def get_uczelnia_context_data(uczelnia, article_slug=None):
         # ``scope_rekord_do_uczelni``: JOIN po M2M ``autorzy`` (jedyne źródło
         # duplikatów tutaj) istnieje wyłącznie w trybie multi-host i helper
         # dokłada tam ``.distinct()`` sam.
+        # Treść cache'owana wspólnie dla wszystkich (bez requestu) — statusy
+        # ukryte w kanale "podglad" wykluczamy bezwarunkowo.
+        widoczne_rekordy = wyklucz_ukryte_statusy(
+            Rekord.objects.all(), None, uczelnia=uczelnia
+        )
         context["recently_updated"] = scope_rekord_do_uczelni(
-            Rekord.objects.all(), uczelnia
+            widoczne_rekordy, uczelnia
         ).order_by("-ostatnio_zmieniony")[:12]
 
         recent_abstracts = Wydawnictwo_Ciagle_Streszczenie.objects.exclude(
             streszczenie__isnull=True
         ).exclude(streszczenie__exact="")
+        recent_abstracts = wyklucz_ukryte_statusy(
+            recent_abstracts,
+            None,
+            uczelnia=uczelnia,
+            lookup="rekord__status_korekty_id",
+        )
         # Ten sam guard co scope_rekord_do_uczelni, ale na querysecie Streszczeń
         # (helper przyjmuje qs Rekordów). Single-host / brak uczelni => bez filtra.
         # ``.distinct()`` TYLKO w tej gałęzi: ``rekord__autorzy_set__…`` to
@@ -135,7 +147,7 @@ def get_uczelnia_context_data(uczelnia, article_slug=None):
         # Bez ``.distinct()`` COUNT może pójść index-only scanem zamiast
         # hashować 49 kolumn na wiersz; dedup — jak wyżej — jest w helperze.
         context["total_rekord_count"] = scope_rekord_do_uczelni(
-            Rekord.objects.all(), uczelnia
+            widoczne_rekordy, uczelnia
         ).count()
         context["current_year"] = timezone.now().date().year
 
@@ -233,6 +245,16 @@ class JednostkaView(DetailView):
 class AutorView(DetailView):
     template_name = "browse/autor.html"
     model = Autor
+
+    def get_queryset(self):
+        # Autor z ``pokazuj=False`` jest ukryty ze stron publicznych (listing
+        # ``AutorzyView`` też go pomija) — pod bezpośrednim URL-em widzi go
+        # tylko użytkownik z uprawnieniami redaktorskimi, reszta dostaje 404.
+        qs = super().get_queryset()
+        request = getattr(self, "request", None)
+        if request is not None and moze_wprowadzac_dane(request.user):
+            return qs
+        return qs.filter(pokazuj=True)
 
     def get_context_data(self, **kwargs):
         from powiazania_autorow.models import AuthorConnection
@@ -876,7 +898,12 @@ class LataView(ListView):
 
     def get_queryset(self):
         uczelnia = Uczelnia.objects.get_for_request(self.request)
-        qs = scope_rekord_do_uczelni(Rekord.objects.all(), uczelnia)
+        qs = scope_rekord_do_uczelni(
+            wyklucz_ukryte_statusy(
+                Rekord.objects.all(), self.request, uczelnia=uczelnia
+            ),
+            uczelnia,
+        )
         # ``Count("id", distinct=True)``, NIE ``Count("*")``: w multi-host
         # ``scope_rekord_do_uczelni`` dokłada JOIN po M2M ``autorzy``, więc
         # ``Count("*")`` liczył wiersze złączenia — rekord z dwoma
@@ -941,7 +968,12 @@ class RokView(ListView):
             raise Http404("Nieprawidłowy rok")
 
         uczelnia = Uczelnia.objects.get_for_request(self.request)
-        qs = scope_rekord_do_uczelni(Rekord.objects.filter(rok=year), uczelnia)
+        qs = scope_rekord_do_uczelni(
+            wyklucz_ukryte_statusy(
+                Rekord.objects.filter(rok=year), self.request, uczelnia=uczelnia
+            ),
+            uczelnia,
+        )
 
         # Rok spoza typowego zakresu (np. literówka „212" w danych) wpuszczamy
         # tylko, gdy są z niego rekordy — ``lata.html`` linkuje każdy rok
@@ -964,7 +996,12 @@ class RokView(ListView):
         uczelnia = Uczelnia.objects.get_for_request(self.request)
         sasiednie_lata = set(
             scope_rekord_do_uczelni(
-                Rekord.objects.filter(rok__in=(year - 1, year + 1)), uczelnia
+                wyklucz_ukryte_statusy(
+                    Rekord.objects.filter(rok__in=(year - 1, year + 1)),
+                    self.request,
+                    uczelnia=uczelnia,
+                ),
+                uczelnia,
             )
             .values_list("rok", flat=True)
             .distinct()
@@ -1306,6 +1343,11 @@ def bibtex_view(request, model, pk):
             rekord = Rekord.objects.get(pk=[content_type_id, pk])
         except Rekord.DoesNotExist:
             return JsonResponse({"error": "Publication not found"}, status=404)
+
+        # Rekord o statusie ukrytym w kanale "podglad" — ta sama reguła,
+        # co na stronie rekordu (PracaViewMixin): 403 poza redaktorami.
+        if rekord.status_korekty_id in ukryte_statusy_dla(request):
+            return JsonResponse({"error": "Brak uprawnień do rekordu"}, status=403)
 
         # Get the actual publication object
         praca = rekord.original
