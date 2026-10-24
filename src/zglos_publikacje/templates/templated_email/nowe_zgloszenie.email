@@ -1,4 +1,4 @@
-{% block subject %}Zgłoszenie publikacji z dnia {{ object.utworzono }} - {{ object.tytul_oryginalny }}{% endblock %}
+{% block subject %}Zgłoszenie publikacji z dnia {{ object.utworzono }} - {{ tytul_w_temacie }}{% endblock %}
 {% block plain %}
   Dzień dobry,
 

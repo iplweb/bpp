@@ -1,5 +1,6 @@
 import logging
 import sys
+import unicodedata
 
 import rollbar
 from django.conf import settings
@@ -7,7 +8,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.core.files.storage import FileSystemStorage
 from django.db import transaction
-from django.http import Http404
+from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import render
 from django.utils.functional import cached_property
 from django.views.generic import TemplateView
@@ -37,6 +38,11 @@ from zglos_publikacje.forms import (
     Zgloszenie_Publikacji_DaneForm,
     Zgloszenie_Publikacji_KosztPublikacjiForm,
 )
+from zglos_publikacje.limity import (
+    KOMUNIKAT_LIMIT_ZGLOSZEN,
+    limit_wyczerpany,
+    zarezerwuj_zgloszenie,
+)
 from zglos_publikacje.models import (
     Obslugujacy_Zgloszenia_Wydzialow,
     Zgloszenie_Publikacji,
@@ -44,7 +50,28 @@ from zglos_publikacje.models import (
     skroc_nazwe_pliku,
 )
 from zglos_publikacje.storage import zglos_tmp_dir
-from zglos_publikacje.validators import MAX_LICZBA_PLIKOW, MAX_ROZMIAR_PLIKU
+from zglos_publikacje.validators import (
+    MAX_LICZBA_PLIKOW,
+    MAX_ROZMIAR_PLIKU,
+    max_laczny_rozmiar_plikow,
+)
+
+# Maksymalna długość tytułu w nagłówku Subject maila do zespołu.
+MAX_DLUGOSC_TYTULU_W_TEMACIE = 100
+
+
+def tytul_do_tematu(tytul, max_dlugosc=MAX_DLUGOSC_TYTULU_W_TEMACIE):
+    """Tytuł bezpieczny dla nagłówka Subject: jedna linia, bez znaków
+    sterujących/formatujących, przycięty do ``max_dlugosc`` znaków."""
+    tytul = "".join(
+        " " if unicodedata.category(c) in ("Cc", "Cf", "Zl", "Zp") else c
+        for c in (tytul or "")
+    )
+    tytul = " ".join(tytul.split())
+    if len(tytul) > max_dlugosc:
+        tytul = tytul[: max_dlugosc - 1].rstrip() + "…"
+    return tytul
+
 
 logger = logging.getLogger(__name__)
 
@@ -175,6 +202,7 @@ def _send_notification_email(publication_object, request):
             recipient_list=recipient_list,
             context={
                 "object": publication_object,
+                "tytul_w_temacie": tytul_do_tematu(publication_object.tytul_oryginalny),
                 "site_url": request.get_host(),
             },
         )
@@ -302,6 +330,10 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
             kwargs["pliki_juz_zapisane"] = bool(
                 self.storage.extra_data.get(self.PLIKI_EXTRA_KEY)
             )
+            # Limit zgłoszeń na godzinę: wyczerpany → krok 2 nieważny, więc
+            # pliki tymczasowe nie są zapisywane (process_step_files woła się
+            # tylko dla ważnego formularza).
+            kwargs["limit_przekroczony"] = limit_wyczerpany(self.request)
         if step == "4":
             # Krok opłat to też ModelForm na Zgloszenie_Publikacji → odpala
             # model.clean (walidacja opłat). Bez uczelni z requestu spada do
@@ -455,7 +487,8 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
     def _pliki_w_limicie(self, pliki):
         """Defensywny filtr: podlista mieszcząca się w limitach. NIE rzuca.
 
-        Odrzuca pliki > MAX_ROZMIAR_PLIKU, przycina do MAX_LICZBA_PLIKOW.
+        Odrzuca pliki > MAX_ROZMIAR_PLIKU, przycina do MAX_LICZBA_PLIKOW
+        i do łącznego limitu rozmiaru (``max_laczny_rozmiar_plikow``).
         Jeśli cokolwiek odrzuci/przytnie → alarmuje przez rollbar: to „nie
         powinno się zdarzyć", bo walidacja formularza (A2) już przepuściła
         dokładnie tę listę — rozjazd = błąd w warstwie walidacji.
@@ -464,7 +497,14 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
         w_limicie = [f for f in pliki if f.size <= MAX_ROZMIAR_PLIKU]
         odrzucone_rozmiar = len(pliki) - len(w_limicie)
 
-        przyciete = w_limicie[:MAX_LICZBA_PLIKOW]
+        przyciete = []
+        suma = 0
+        limit_laczny = max_laczny_rozmiar_plikow()
+        for f in w_limicie[:MAX_LICZBA_PLIKOW]:
+            if suma + f.size > limit_laczny:
+                break
+            suma += f.size
+            przyciete.append(f)
         odrzucone_liczba = len(w_limicie) - len(przyciete)
 
         if odrzucone_rozmiar or odrzucone_liczba:
@@ -594,8 +634,19 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
                 kwargs["wybrany_rodzaj_label"] = rodzaj_choices.get(rodzaj, rodzaj)
         return super().get_context_data(form, **kwargs)
 
-    @transaction.atomic
     def done(self, form_list, **kwargs):
+        # Atomowa rezerwacja w limicie zgłoszeń na godzinę (krok 2 sprawdza
+        # limit wcześniej; to domyka wyścig równoległych żądań). Po done()
+        # formtools resetuje storage, więc sprzątamy pliki tymczasowe od razu
+        # i wracamy na początek kreatora z komunikatem — bez zapisu i maila.
+        if not zarezerwuj_zgloszenie(self.request):
+            self._wyczysc_tmp_pliki()
+            messages.add_message(self.request, messages.ERROR, KOMUNIKAT_LIMIT_ZGLOSZEN)
+            return HttpResponseRedirect(self.request.path)
+        return self._zapisz_zgloszenie(form_list, **kwargs)
+
+    @transaction.atomic
+    def _zapisz_zgloszenie(self, form_list, **kwargs):
         form_list = list(form_list)
 
         # Krok 0: rodzaj publikacji

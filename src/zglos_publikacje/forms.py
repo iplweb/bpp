@@ -13,6 +13,7 @@ from django_altcha import AltchaField
 
 from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka, Uczelnia
 from zglos_publikacje.identyfikatory import normalizuj_identyfikator
+from zglos_publikacje.limity import KOMUNIKAT_LIMIT_ZGLOSZEN
 from zglos_publikacje.models import (
     Zgloszenie_Publikacji,
     Zgloszenie_Publikacji_Autor,
@@ -21,6 +22,7 @@ from zglos_publikacje.validators import (
     MAX_LICZBA_PLIKOW,
     validate_file_extension_pdf,
     validate_file_size,
+    validate_laczny_rozmiar,
 )
 
 
@@ -80,6 +82,7 @@ class MultipleFileField(forms.FileField):
             raise ValidationError(
                 f"Można załączyć maksymalnie {MAX_LICZBA_PLIKOW} plików."
             )
+        validate_laczny_rozmiar(znormalizowane)
         single_file_clean = super().clean
         if isinstance(data, (list, tuple)):
             return [single_file_clean(d, initial) for d in data]
@@ -368,9 +371,13 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
         forma_dostepu=None,
         pliki_juz_zapisane=False,
         email_zablokowany=False,
+        limit_przekroczony=False,
         **kw,
     ):
         self.rodzaj = rodzaj
+        # Limit zgłoszeń na godzinę już wyczerpany (liczony w widoku) → krok
+        # jest nieważny, więc wizard nie utrwala plików tymczasowych.
+        self.limit_przekroczony = limit_przekroczony
         self.forma_dostepu = forma_dostepu
         uczelnia = kw.pop("uczelnia", None)
         # Wizard zapisuje pliki kroku 2 poza storage formtools, więc przy
@@ -415,8 +422,14 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
 
         self._zbuduj_layout()
 
+    def _sprawdz_limit_zgloszen(self):
+        if self.limit_przekroczony:
+            raise ValidationError(KOMUNIKAT_LIMIT_ZGLOSZEN)
+
     def clean(self):
         cleaned = super().clean()
+
+        self._sprawdz_limit_zgloszen()
 
         # Dla rozdziału wymagane wyd. nadrzędne (FK lub tekst)
         if self.rodzaj == "ROZDZIAL":
