@@ -12,7 +12,7 @@
         "jsdom": "^25.0.1",
         "rollbar": "^4.0.0",
         "sass": "~1.99.0",
-        "vitest": "^4.1.11"
+        "vitest": "^4.1.12"
     },
     "dependencies": {
         "3d-force-graph": "^1.80.0",
@@ -47,7 +47,7 @@
     "resolutions": {
         "jquery": "^3.7.1",
         "minimatch": "^3.1.2",
-        "js-yaml": "^4.3.1",
+        "js-yaml": "^4.3.2",
         "esbuild": "^0.28.1"
     },
     "scripts": {

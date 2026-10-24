@@ -374,6 +374,10 @@ constraint-dependencies = [
     #   setuptools GHSA-xmj3-9gf7-h52w
     #   twisted    CVE-2026-115774..115778, CVE-2026-115877 (pin w
     #              [dependencies], na razie RC)
+    # Alerty Dependabota 2026-10-24:
+    #   brotlicffi >=1.2.1.0 (via fonttools[woff], tylko poza CPython —
+    #              w lockfile, choc `environments` wyklucza PyPy; Dependabot
+    #              czyta uv.lock i alarmuje)
     "anyio>=4.14.2",
     # >=26.10.1: zamyka CVE-2026-77528 (PYSEC-2026-4027, fix od 26.7.1),
     # a zarazem pierwsza wersja z leniwym importem vendorowanych flatbuffers
@@ -384,6 +388,7 @@ constraint-dependencies = [
     "autobahn>=26.10.1",
     "bleach>=6.4.0",
     "brotli>=1.2.1",
+    "brotlicffi>=1.2.1.0",
     "certifi>=2026.10.19",
     "daphne>=4.2.2",
     "h2>=4.4.1",
@@ -639,7 +644,7 @@ dev = [
     "pytest>=9.1.1,<10",
     "pytest-django>=4.13.0",
     "pytest-httpserver>=1.1.5",
-    "werkzeug>=3.1.6", # Dependabot: transitive via pytest-httpserver, bump for safe_join() fixes
+    "werkzeug>=3.1.9", # Dependabot: transitive via pytest-httpserver, bump for safe_join() fixes
     "pytest-cov>=7.1.0",  # lokalnie do `make coverage-ai`; CI nie wola --cov
     "pytest-mock>=3.7.0",
     "pytest-xdist>=2.3.0",
