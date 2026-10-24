@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.urls import reverse
+from django.utils.html import format_html
 
 from bpp.admin.helpers import link_do_obiektu
 from bpp.admin.helpers.pbn_api.common import (
@@ -25,17 +26,29 @@ def sprobuj_policzyc_sloty(request, obj):
             ISlot(obj)
             messages.success(
                 request,
-                f'Punkty dla dyscyplin dla "{link_do_obiektu(obj)}" będą mogły być obliczone.',
+                format_html(
+                    'Punkty dla dyscyplin dla "{}" będą mogły być obliczone.',
+                    link_do_obiektu(obj),
+                ),
             )
         except CannotAdapt as e:
             messages.error(
                 request,
-                f'Nie można obliczyć punktów dla dyscyplin dla "{link_do_obiektu(obj)}": {e}',
+                format_html(
+                    'Nie można obliczyć punktów dla dyscyplin dla "{}": {}',
+                    link_do_obiektu(obj),
+                    e,
+                ),
             )
     else:
         messages.warning(
             request,
-            f'Punkty dla dyscyplin dla "{link_do_obiektu(obj)}" nie będą liczone - rok poza zakresem ({obj.rok})',
+            format_html(
+                'Punkty dla dyscyplin dla "{}" nie będą liczone - '
+                "rok poza zakresem ({})",
+                link_do_obiektu(obj),
+                obj.rok,
+            ),
         )
 
 
@@ -48,8 +61,12 @@ def sprawdz_wysylke_do_pbn_w_parametrach_uczelni_gui(request, obj):
     except BrakZdefiniowanegoObiektuUczelniaWSystemieError:
         messages.info(
             request,
-            f'Rekord "{link_do_obiektu(obj)}" nie zostanie wyeksportowany do PBN, ponieważ w systemie brakuje '
-            'obiektu "Uczelnia", a co za tym idzie, jakchkolwiek ustawień',
+            format_html(
+                'Rekord "{}" nie zostanie wyeksportowany do PBN, ponieważ w '
+                'systemie brakuje obiektu "Uczelnia", a co za tym idzie, '
+                "jakchkolwiek ustawień",
+                link_do_obiektu(obj),
+            ),
         )
         return
 
@@ -62,8 +79,11 @@ def sprawdz_czy_ustawiono_wysylke_tego_charakteru_formalnego_gui(request, obj):
     except CharakterFormalnyNieobslugiwanyError:
         messages.info(
             request,
-            f'Rekord "{link_do_obiektu(obj)}" nie będzie eksportowany do PBN zgodnie z ustawieniem dla charakteru '
-            "formalnego.",
+            format_html(
+                'Rekord "{}" nie będzie eksportowany do PBN zgodnie z '
+                "ustawieniem dla charakteru formalnego.",
+                link_do_obiektu(obj),
+            ),
         )
         return False
     return True
@@ -104,8 +124,12 @@ def sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui(request, obj):
 
     messages.info(
         request,
-        f'Utworzono zlecenie wysyłki rekordu {obj} w tle do PBN. <a href="{link_do_kolejki}">'
-        f"Kliknij tutaj, aby śledzić stan.</a>",
+        format_html(
+            'Utworzono zlecenie wysyłki rekordu {} w tle do PBN. <a href="{}">'
+            "Kliknij tutaj, aby śledzić stan.</a>",
+            obj,
+            link_do_kolejki,
+        ),
     )
 
     task_sprobuj_wyslac_do_pbn.delay_on_commit(ret.pk)

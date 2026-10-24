@@ -89,6 +89,8 @@
     {# inline display:none (a nie tylko reguła w SCSS) jest celowy: gdy CSS #}
     {# serwisu się nie wczyta (np. wydruk / WeasyPrint), surowy szablon #}
     {# mustache nie może wyciec do treści — patrz FD#405. #}
+    {# ``html`` = treść już zescapowana po stronie serwera (SafeString bez zmian); #}
+    {# komunikaty bez ``html`` (websocket, JS) renderuje escapowane ``{{ text }}``. #}
     <div id="messageTemplate" style="display: none">
     {% verbatim messageTemplate %}
     <div data-closable
@@ -97,7 +99,7 @@
     {{#clickURL}}
         <a href="{{ clickURL }}">
         {{/clickURL}}
-        {{{ text }}}
+        {{#html}}{{{ html }}}{{/html}}{{^html}}{{ text }}{{/html}}
         {{#clickURL}}</a>{{/clickURL}}
             <button
                 type="button"
@@ -140,6 +142,8 @@
                             {% endif %}
                             pk: '{{ message.pk }}',
                             text: '{{ message.message|escapejs }}',
+                            {# html: escapowane przez autoescape, chyba że SafeString #}
+                            html: '{% filter escapejs %}{{ message.message }}{% endfilter %}',
                             sound: false
                         });
                     {% endfor %}
@@ -166,6 +170,8 @@
                             {% endif %}
                             pk: '{{ message.pk }}',
                             text: '{{ message.message|escapejs }}',
+                            {# html: escapowane przez autoescape, chyba że SafeString #}
+                            html: '{% filter escapejs %}{{ message.message }}{% endfilter %}',
                             sound: false
                         });
                     {% endfor %}

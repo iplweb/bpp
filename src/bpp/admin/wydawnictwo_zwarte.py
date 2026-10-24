@@ -2,6 +2,7 @@ from dal import autocomplete
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
+from django.utils.html import format_html
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
@@ -613,7 +614,11 @@ class Wydawnictwo_ZwarteAdmin(
         ):
             messages.warning(
                 request,
-                f'Punkty dla dyscyplin dla "{helpers.link_do_obiektu(obj)}" nie będą liczone, gdyż jest to ani książka, ani rozdział',
+                format_html(
+                    'Punkty dla dyscyplin dla "{}" nie będą liczone, gdyż jest '
+                    "to ani książka, ani rozdział",
+                    helpers.link_do_obiektu(obj),
+                ),
             )
         else:
             helpers.pbn_api.gui.sprobuj_policzyc_sloty(request, obj)

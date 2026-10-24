@@ -5,6 +5,7 @@ from json import JSONDecodeError
 from django.contrib import admin, messages
 from django.http import HttpResponseRedirect
 from django.urls import path, reverse
+from django.utils.html import format_html
 from djangoql.admin import DjangoQLSearchMixin
 from import_export import resources
 from import_export.fields import Field
@@ -81,9 +82,16 @@ def real_ustaw_dyscypline(pole, elements, notifier):
         docelowa = getattr(elem, pole)
         if docelowa is None:
             notifier.warning(
-                f"Dla rekordu {link_do_obiektu(elem.rekord.original)} nie ustawiono dyscypliny, ponieważ "
-                f"za rok {elem.rok} {pole.replace('_', ' ')} autora {link_do_obiektu(elem.autor)} jest żadna. "
-                f"Rozbieżność {link_do_obiektu(elem)} pozostaje nierozwiązana. ",
+                format_html(
+                    "Dla rekordu {} nie ustawiono dyscypliny, ponieważ za rok {} "
+                    "{} autora {} jest żadna. Rozbieżność {} pozostaje "
+                    "nierozwiązana. ",
+                    link_do_obiektu(elem.rekord.original),
+                    elem.rok,
+                    pole.replace("_", " "),
+                    link_do_obiektu(elem.autor),
+                    link_do_obiektu(elem),
+                ),
             )
             continue
 
@@ -92,8 +100,12 @@ def real_ustaw_dyscypline(pole, elements, notifier):
         wydawnictwo_xxx_autor.save()
 
         notifier.info(
-            f"Dla rekordu {link_do_obiektu(elem.rekord.original)} ustawiono dyscyplinę {docelowa.nazwa} "
-            f"dla {link_do_obiektu(elem.autor)}. ",
+            format_html(
+                "Dla rekordu {} ustawiono dyscyplinę {} dla {}. ",
+                link_do_obiektu(elem.rekord.original),
+                docelowa.nazwa,
+                link_do_obiektu(elem.autor),
+            ),
         )
 
 
@@ -109,12 +121,17 @@ def ustaw_dyscypline_task_or_instant(pole, request, elements):
 
     task_id = task_ustaw_dyscypline.delay(pole, elements)
 
-    link_do_zadania = f'<a target="_blank" href="/admin/django_celery_results/taskresult/?q={task_id}">'
-
     messages.info(
         request,
-        f"Rozpoczęto przetwarzanie w tle. ID zadania: {link_do_zadania}{task_id}</a>. Możesz kliknąc na ID zadania, "
-        f"aby zobaczyć, kiedy zostanie ukończone. Możesz tez odświeżyć tą stronę w oczekiwaniu na zmiany. ",
+        format_html(
+            "Rozpoczęto przetwarzanie w tle. ID zadania: "
+            '<a target="_blank" '
+            'href="/admin/django_celery_results/taskresult/?q={}">{}</a>. '
+            "Możesz kliknąc na ID zadania, aby zobaczyć, kiedy zostanie "
+            "ukończone. Możesz tez odświeżyć tą stronę w oczekiwaniu na zmiany. ",
+            task_id,
+            task_id,
+        ),
     )
 
     return task_id
