@@ -1025,6 +1025,7 @@ AUTH_PASSWORD_VALIDATORS = [
         "OPTIONS": {"min_unique_chars": 5},
     },
     {"NAME": "django_bpp.password_validation.ContextWordsPasswordValidator"},
+    {"NAME": "django_bpp.password_validation.PersonalDataPasswordValidator"},
     {"NAME": "django_bpp.password_validation.ZxcvbnPasswordValidator"},
     {"NAME": "django_bpp.password_validation.PwnedPasswordValidator"},
 ]

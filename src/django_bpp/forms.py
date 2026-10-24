@@ -31,7 +31,8 @@ class BppPasswordChangeForm(PasswordPoliciesChangeForm):
         self.fields["new_password1"].help_text = (
             f"Co najmniej {settings.PASSWORD_MIN_LENGTH} znaków. Nie musi "
             "zawierać cyfr ani znaków specjalnych — najłatwiej zapamiętać "
-            "kilka słów, np. całe zdanie."
+            "kilka słów, np. całe zdanie. Unikaj imion, nazwisk, nazw "
+            "miejscowości i dat z dopisanymi cyframi."
         )
 
 

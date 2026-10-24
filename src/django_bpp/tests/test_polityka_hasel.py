@@ -122,6 +122,15 @@ def test_formularz_podpowiada_minimalna_dlugosc(dawny_uzytkownik):
 
 
 @pytest.mark.django_db
+def test_formularz_podpowiada_czego_unikac_bez_gotowego_hasla(dawny_uzytkownik):
+    # Wzorce do unikania opisane słowami — bez przykładowego hasła, które
+    # ludzie przepisaliby jako własne.
+    form = BppPasswordChangeForm(dawny_uzytkownik)
+    help_text = form.fields["new_password1"].help_text
+    assert "Unikaj imion, nazwisk, nazw miejscowości i dat" in help_text
+
+
+@pytest.mark.django_db
 def test_formularz_odrzuca_haslo_krotsze_niz_15_znakow(dawny_uzytkownik):
     form = _formularz(dawny_uzytkownik, "Kr0tk!e-haslo1")  # 14 znaków
     assert not form.is_valid()

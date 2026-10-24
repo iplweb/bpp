@@ -78,6 +78,10 @@ cyklicznego wymuszania zmiany hasła.
   znaków specjalnych — dobrze sprawdza się kilka słów albo całe zdanie,
 - odrzucane są hasła z listy słabych haseł (bez reguł złożoności):
   - popularne hasła, hasła podobne do loginu lub adresu e-mail,
+  - hasła złożone głównie z własnych danych konta — imienia, nazwiska,
+    loginu, adresu e-mail — także przestawionych i z dopiskami (np.
+    `przykladowska-zofia`, `ZofiaPrzykladowska1990` dla Zofii Przykładowskiej);
+    po wycięciu tych danych musi zostać co najmniej 6 liter,
   - powtórzenia jednego znaku, hasła z mniej niż 5 różnymi znakami, proste
     sekwencje (`12345…`, `abcde…`, `qwerty…`, także malejąco) oraz więcej
     niż 3 jednakowe znaki z rzędu,
