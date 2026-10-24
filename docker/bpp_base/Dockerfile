@@ -2,7 +2,7 @@
 
 # Build arguments for version flexibility
 ARG PYTHON_VERSION=3.12
-ARG NODEJS_VERSION=20
+ARG NODEJS_VERSION=24
 ARG DEBIAN_VERSION=trixie
 # Pandoc installed via COPY --from= zamiast apt-get, bo apt-owy pandoc
 # ciagnie pandoc-data i transitive deps (~300 MB). Osobny pinned tag

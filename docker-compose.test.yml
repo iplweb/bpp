@@ -64,7 +64,7 @@ services:
       args:
         PYTHON_VERSION: ${PYTHON_VERSION:-3.12}
         DEBIAN_VERSION: ${DEBIAN_VERSION:-trixie}
-        NODEJS_VERSION: ${NODEJS_VERSION:-20}
+        NODEJS_VERSION: ${NODEJS_VERSION:-24}
     volumes:
       - .:/src
     working_dir: /src

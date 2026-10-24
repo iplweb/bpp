@@ -232,7 +232,7 @@ jobs:
     env:
       PYTHON_VERSION: "3.12"
       DEBIAN_VERSION: trixie
-      NODEJS_VERSION: "20"
+      NODEJS_VERSION: "24"
       # Lowercase repo owner, since GHCR rejects mixed-case namespaces.
       # GitHub Actions ${{ github.repository_owner }} preserves case.
       IMAGE_REPO: ghcr.io/iplweb/bpp-test-runner
@@ -466,7 +466,7 @@ jobs:
     - name: Set up Node
       uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
-        node-version: "20"
+        node-version: "24"
         cache: yarn
 
     - name: Install JS dependencies
