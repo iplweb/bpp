@@ -51,7 +51,7 @@ jobs:
         with:
           # Pin jak w tests.yml (job `lock-check`) — sciezka wydawnicza tym
           # bardziej nie moze zalezec od plywajacej wersji narzedzia.
-          version: "0.11.29"
+          version: "0.13.5"
           enable-cache: true
 
       - name: Wykryj gałąź wydania + odczytaj RC
@@ -153,7 +153,7 @@ jobs:
           # na spojnosc locka z pyproject.toml — wiec jedyna zmiana, jaka
           # moze wniesc, to ta jedna linia z wersja root-pakietu.
           #
-          # uv jest przypiete na 0.11.29 w kroku setup-uv wyzej. Wersja ma
+          # uv jest przypiete na 0.13.5 w kroku setup-uv wyzej. Wersja ma
           # znaczenie: `uv lock --check` na dev biegnie na tym samym pinie,
           # a rozne uv potrafia wygenerowac rozny (choc rownowazny) lock.
           uv lock

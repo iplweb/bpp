@@ -98,6 +98,9 @@ SYSTEM_MENU_2 = [
 ]
 
 RAPORTY_MENU = [
+    # "Raporty w menu strony" decydują, co i komu pokazuje menu "raporty" na
+    # stronie; reszta to "silnik" flexible-reports (szablon, dane, kolumny).
+    ("Raporty w menu strony", "/admin/nowe_raporty/definicjaraportu/"),
     ("Raporty", "/admin/flexible_reports/report/"),
     ("Źródła danych", "/admin/flexible_reports/datasource/"),
     ("Tabele", "/admin/flexible_reports/table/"),

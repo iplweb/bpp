@@ -37,7 +37,7 @@
         "jquery.cookie": "1.4.1",
         "jqueryui": "1.11.1",
         "picomatch": "2.3.2",
-        "plotly.js": "^2.35.2",
+        "plotly.js": "^4.1.2",
         "select2": "^4.1.0-rc.0",
         "select2-foundation-theme": "https://github.com/mpasternak/select2-foundation.git#modernize-foundation-6.9",
         "sigma": "^3.0.2",

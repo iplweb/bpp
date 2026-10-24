@@ -1,0 +1,202 @@
+{% extends "bare.html" %}
+{% load static %}
+
+{% block skip_link %}{% endblock %}
+
+{% block title %}{{ title }} - Konfiguracja uczelni{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet"
+          href="{% static 'bpp_setup_wizard/css/bpp_setup_wizard.css' %}">
+{% endblock %}
+
+{% block body %}
+    <div class="bpp-setup-wizard">
+        {% include "bpp_setup_wizard/_postep.html" with numer=3 %}
+        <div class="bpp-setup-wizard__header">
+            <div class="bpp-setup-wizard__icon">
+                <span class="fi-link"></span>
+            </div>
+            <h1 class="bpp-setup-wizard__header-title">{{ title }}</h1>
+            <p class="bpp-setup-wizard__header-subtitle">
+                Ten krok jest opcjonalny — można go pominąć
+            </p>
+        </div>
+
+        {% if odpowiedz is None %}
+            {# Ekran startowy: tylko pytanie z trzema odpowiedziami. #}
+            <div class="bpp-setup-wizard__question">
+                <h3 class="bpp-setup-wizard__question-title">
+                    Czy masz już nazwę i token aplikacji z PBN?
+                </h3>
+                <div class="bpp-setup-wizard__choices">
+                    <a href="{{ url_tak }}" class="bpp-setup-wizard__choice">
+                        <span class="fi-check"></span> Tak, mam oba
+                    </a>
+                    <a href="{{ url_pozniej }}" class="bpp-setup-wizard__choice">
+                        <span class="fi-clock"></span> Jeszcze nie, uzupełnię to później
+                    </a>
+                    <a href="{{ url_nie_wiem }}" class="bpp-setup-wizard__choice">
+                        <span class="fi-info"></span> Nie wiem, o co chodzi
+                    </a>
+                </div>
+            </div>
+
+        {% elif odpowiedz == "tak" %}
+            <form method="post" action="{{ url_tak }}" novalidate>
+                {% csrf_token %}
+                <input type="hidden" name="akcja" value="zapisz">
+
+                {% if form.non_field_errors %}
+                    <div class="bpp-setup-wizard__form-errors">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+                <div class="bpp-setup-wizard__form-section">
+                    <h4 class="bpp-setup-wizard__form-section-title">
+                        Dane aplikacji w PBN
+                    </h4>
+
+                    {% for field in form %}
+                        <div class="bpp-setup-wizard__form-group">
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% if field.help_text %}
+                                <span class="bpp-setup-wizard__help-text">
+                                    {{ field.help_text }}
+                                </span>
+                            {% endif %}
+                            {% if field.errors %}
+                                <div class="bpp-setup-wizard__error-message">
+                                    {{ field.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+
+                    <p class="bpp-setup-wizard__pbn-documentation-hint">
+                        <strong>Wskazówka:</strong> rozpocznij od środowiska
+                        testowego, aby bezpiecznie sprawdzić integrację przed
+                        przejściem na środowisko produkcyjne.
+                    </p>
+                </div>
+
+                <div class="bpp-setup-wizard__auto-configured">
+                    <h5 class="bpp-setup-wizard__auto-configured-title">
+                        <span class="fi-check"></span> Ustawienia automatycznie
+                        skonfigurowane
+                    </h5>
+                    <p class="bpp-setup-wizard__auto-configured-text">
+                        Dla optymalnej pracy z PBN włączyliśmy automatycznie:
+                    </p>
+                    <ul class="bpp-setup-wizard__auto-configured-list">
+                        <li class="bpp-setup-wizard__auto-configured-list-item">
+                            Selektywne kasowanie oświadczeń przed wysłaniem do PBN
+                        </li>
+                        <li class="bpp-setup-wizard__auto-configured-list-item">
+                            Niewysyłanie do PBN prac z PK=0
+                        </li>
+                        <li class="bpp-setup-wizard__auto-configured-list-item">
+                            Wysyłanie zawsze UID uczelni jako afiliacji
+                        </li>
+                        <li class="bpp-setup-wizard__auto-configured-list-item">
+                            Wysyłanie prac bez oświadczeń
+                        </li>
+                        <li class="bpp-setup-wizard__auto-configured-list-item">
+                            Używanie integracji z PBN
+                        </li>
+                        <li class="bpp-setup-wizard__auto-configured-list-item">
+                            Opcjonalna aktualizacja przy edycji
+                        </li>
+                    </ul>
+                </div>
+
+                <button type="submit" class="bpp-setup-wizard__submit-btn">
+                    <span class="fi-save"></span> Zapisz i zakończ konfigurację
+                </button>
+            </form>
+            <p class="bpp-setup-wizard__back">
+                <a href="{{ url_pytania }}">&larr; Wróć do pytania</a>
+            </p>
+
+        {% else %}
+            {% if odpowiedz == "nie-wiem" %}
+                <div class="bpp-setup-wizard__info">
+                    <h3 class="bpp-setup-wizard__info-title">
+                        <span class="fi-info"></span> Czym jest PBN?
+                    </h3>
+                    <p class="bpp-setup-wizard__info-text">
+                        PBN (Polska Bibliografia Naukowa) to ogólnopolski
+                        system Ministerstwa, w którym uczelnie raportują
+                        publikacje swoich pracowników.
+                    </p>
+                    <p class="bpp-setup-wizard__info-text">
+                        BPP łączy się z PBN, żeby wysyłać tam publikacje
+                        wprowadzone w BPP oraz pobierać z PBN dane autorów
+                        i źródeł (czasopism, wydawców).
+                    </p>
+                    <p class="bpp-setup-wizard__info-text">
+                        Do połączenia potrzebne są <strong>nazwa</strong>
+                        i <strong>token</strong> aplikacji. Wydaje je
+                        administrator instytucji w PBN — zwykle ktoś
+                        z działu nauki albo z biblioteki. Warto zapytać tę
+                        osobę o dane dla BPP.
+                    </p>
+                </div>
+            {% endif %}
+
+            <div class="bpp-setup-wizard__pbn-note">
+                <span class="fi-alert"></span>
+                <strong>Gdzie uzupełnić później:</strong> dane PBN wpiszesz
+                w panelu
+                <a href="{{ url_admin_uczelnia }}">Administracja → Uczelnia</a>
+                (pola „Adres API w PBN", „Nazwa aplikacji w PBN" i „Token
+                aplikacji w PBN"). System działa bez nich — integracja z PBN
+                zacznie działać, gdy je uzupełnisz.
+            </div>
+
+            <div class="bpp-setup-wizard__pbn-documentation">
+                <h5 class="bpp-setup-wizard__pbn-documentation-title">
+                    <span class="fi-info"></span> Jak uzyskać dane z PBN
+                </h5>
+                <ul class="bpp-setup-wizard__pbn-documentation-list">
+                    <li class="bpp-setup-wizard__pbn-documentation-list-item">
+                        <a href="https://pbn.nauka.gov.pl/centrum-pomocy/baza-wiedzy/uzyskanie-integracji-z-api-pbn/"
+                           target="_blank"
+                           rel="noopener"
+                           class="bpp-setup-wizard__pbn-documentation-link">
+                            Instrukcja PBN „Uzyskanie integracji z API PBN”
+                            <span class="fi-link bpp-setup-wizard__pbn-documentation-link-icon"></span>
+                        </a>
+                    </li>
+                    <li class="bpp-setup-wizard__pbn-documentation-list-item">
+                        <a href="https://iplweb.github.io/bpp/administrator/konfiguracja-pbn/"
+                           target="_blank"
+                           rel="noopener"
+                           class="bpp-setup-wizard__pbn-documentation-link">
+                            Dokumentacja BPP — konfiguracja PBN
+                            <span class="fi-link bpp-setup-wizard__pbn-documentation-link-icon"></span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <form method="post" action="{{ url_pytania }}">
+                {% csrf_token %}
+                <input type="hidden" name="akcja" value="pomin">
+                <button type="submit" class="bpp-setup-wizard__submit-btn">
+                    {% if odpowiedz == "nie-wiem" %}
+                        <span class="fi-check"></span> Rozumiem, pomiń na razie
+                    {% else %}
+                        <span class="fi-check"></span> Pomiń i zakończ konfigurację
+                    {% endif %}
+                </button>
+            </form>
+            <p class="bpp-setup-wizard__back">
+                <a href="{{ url_pytania }}">&larr; Wróć do pytania</a>
+            </p>
+        {% endif %}
+    </div>
+{% endblock %}

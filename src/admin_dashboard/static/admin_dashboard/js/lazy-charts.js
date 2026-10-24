@@ -16,7 +16,12 @@
 (function () {
     "use strict";
 
-    var PLOT_CONFIG = {responsive: true, displaylogo: false, locale: "pl"};
+    var PLOT_CONFIG = {
+        responsive: true,
+        displaylogo: false,
+        locale: "pl",
+        showSendToCloud: false,
+    };
     // Zaczynamy ładować trochę przed wjechaniem wykresu w ekran, żeby
     // przy normalnym przewijaniu dane były już gotowe.
     var ROOT_MARGIN = "300px 0px";
@@ -50,7 +55,7 @@
                 loadScript(wrapper.dataset.plotlySrc),
                 loadScript(wrapper.dataset.plotlyLocaleSrc),
             ]).then(function () {
-                window.Plotly.setPlotConfig({locale: "pl"});
+                window.Plotly.setPlotConfig({locale: "pl", showSendToCloud: false});
                 return window.Plotly;
             }, function (err) {
                 plotlyPromise = null; // pozwól na ponowienie

@@ -1,11 +1,11 @@
 {
-  "git_sha": "24dde09342cad4ca28487ad21ef768487acfdfe0",
+  "git_sha": "4689e3c81a786772d09a4fc8fc7949e1e93da55a",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
     "auth": "0012_alter_user_first_name_max_length",
     "axes": "0010_accessattemptexpiration",
-    "bpp": "0490_usun_unique_autor_kolejnosc",
+    "bpp": "0491_uczelnia_kreator_czeka_na_pbn",
     "channels_broadcast": "0001_initial",
     "constance": "0003_drop_pickle",
     "contenttypes": "0002_remove_content_type_name",
@@ -46,7 +46,7 @@
     "messages_extends": "0001_initial",
     "miniblog": "0004_migrate_to_siteblog_and_delete",
     "multiseek": "0001_initial",
-    "nowe_raporty": "0001_initial",
+    "nowe_raporty": "0002_definicjaraportu_ikona",
     "oauth2_provider": "0022_refreshtoken_token_family_index",
     "oidc_integration": "0001_initial",
     "orcid_integration": "0001_initial",

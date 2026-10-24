@@ -61,7 +61,7 @@
                         {% for raport in raporty_menu %}
                             <li>
                                 <a href="{% url "nowe_raporty:raport_form" raport.slug %}">
-                                    <i class="{{ raport.ikona_menu }}"></i> {{ raport.nazwa }}
+                                    <i class="{{ raport.ikona_menu }} ikona-raportu"></i> {{ raport.nazwa }}
                                 </a>
                             </li>
                         {% endfor %}

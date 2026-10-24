@@ -593,6 +593,14 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     pbn_app_token = models.CharField(
         "Token aplikacji w PBN", blank=True, default="", max_length=128
     )
+    kreator_czeka_na_pbn = models.BooleanField(
+        "Kreator pierwszego uruchomienia czeka na odpowiedź o PBN",
+        default=False,
+        editable=False,
+        help_text="Ustawiane przez kreator po utworzeniu uczelni, kasowane po "
+        "odpowiedzi na pytanie o integrację z PBN (zapis albo pominięcie). "
+        "Uczelnie spoza kreatora mają tu zawsze False.",
+    )
     dspace_aktywny = models.BooleanField(
         "Włącz eksport do DSpace",
         default=False,

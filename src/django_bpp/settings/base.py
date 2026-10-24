@@ -343,7 +343,9 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "bpp.middleware.SiteResolutionMiddleware",  # After auth - resolves Site/Uczelnia from hostname
     "django_countdown.middleware.CountdownBlockingMiddleware",  # After auth - needs request.user
-    "first_run_wizard.middleware.FirstRunWizardMiddleware",  # After auth middleware to have request.user
+    # After auth middleware to have request.user. BPP-owa podklasa: dopóki
+    # kreator niedokończony, kto nie ma dostępu do kroku → logowanie admina.
+    "bpp_setup_wizard.middleware.BppFirstRunWizardMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_bpp.middleware.ConditionalPasswordChangeMiddleware",
@@ -362,12 +364,21 @@ MIDDLEWARE = [
 # dociągają jednak treść z endpointów spoza tego prefiksu (widgety HTMX
 # dashboardu, menu admin_tools, grappelli, ping session_security) — bez tych
 # wyjątków dostawały 302 na krok kreatora i wstawiały jego stronę w kafelki
-# dashboardu (#873).
+# dashboardu (#873). Podobnie requesty, które przeglądarka wysyła sama
+# (ikony) — nie są „wyjściem z kreatora" (FD#499). Domyślne prefiksy silnika
+# (`/static/`, `/media/`, `/admin/`…) dokłada sam.
 FIRST_RUN_WIZARD_SKIP_PREFIXES = (
     "/admin-dashboard/",
     "/admin_tools/",
     "/grappelli/",
     "/session_security/",
+    "/favicon.ico",
+    "/apple-touch-icon",
+    # Healthcheck musi odpowiadać 200 także na niedokonfigurowanej instalacji.
+    "/health/",
+    # Endpointy dev-only django-dev-helpers (/__autologin__/, /__dev_reload__/)
+    # — autologin jest z definicji anonimowy, nie może trafić na logowanie.
+    "/__",
 )
 
 INTERNAL_IPS = ("127.0.0.1",)

@@ -1,0 +1,1 @@
+Zaktualizowano bibliotekę wykresów plotly.js z 2.x do 4.x (#883), co usuwa krytyczną podatność XSS w zależności ``maplibre-gl``. Wykresy w panelu administracyjnym oraz w metrykach i porównaniu dyscyplin ewaluacji przepisano na nowy format tytułów osi; z paska narzędzi wykresów wyłączono przycisk wysyłania danych do chmury Plotly.

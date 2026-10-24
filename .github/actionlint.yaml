@@ -14,8 +14,9 @@
 # Bez tego wyciszenia hook `actionlint` failuje na KAŻDYM commicie
 # dotykającym workflowa — findings są pre-existing (7 sztuk, identycznie
 # na dev), więc blokował każdą edycję .github/workflows/*.yml niezależnie
-# od jej treści. Wyciszenie jest zawężone do tests.yml; pozostałe
-# workflowy nadal dostają pełny shellcheck.
+# od jej treści. Wyciszenie jest zawężone do tests.yml i
+# release-candidate.yml (ten sam wzorzec `docker compose $COMPOSE_FILES`
+# w jobie testów RC); pozostałe workflowy nadal dostają pełny shellcheck.
 #
 # SC2086 ma severity `info`, a jedyne jego wystąpienia w tym pliku to
 # powyższy zamierzony wzorzec. Gdyby doszedł tu prawdziwy przypadek
@@ -23,5 +24,8 @@
 # przenieść flagi compose do tablicy w skrypcie i wyciszenie usunąć.
 paths:
   .github/workflows/tests.yml:
+    ignore:
+      - 'shellcheck reported issue in this script: SC2086:.*'
+  .github/workflows/release-candidate.yml:
     ignore:
       - 'shellcheck reported issue in this script: SC2086:.*'

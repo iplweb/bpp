@@ -7839,6 +7839,7 @@ CREATE TABLE public.bpp_uczelnia (
     api_v1_tylko_zalogowani boolean NOT NULL,
     api_v1_wyszukiwanie boolean NOT NULL,
     mcp_wlaczone boolean NOT NULL,
+    kreator_czeka_na_pbn boolean NOT NULL,
     CONSTRAINT bpp_uczelnia_ilosc_jednostek_na_strone_check CHECK ((ilosc_jednostek_na_strone >= 0)),
     CONSTRAINT bpp_uczelnia_pokazuj_deklaracje_dostepnosci_check CHECK ((pokazuj_deklaracje_dostepnosci >= 0))
 );
@@ -11484,6 +11485,7 @@ CREATE TABLE public.nowe_raporty_definicjaraportu (
     aktywny boolean NOT NULL,
     poziom_dostepu character varying(20) NOT NULL,
     report_id bigint NOT NULL,
+    ikona character varying(50) NOT NULL,
     CONSTRAINT nowe_raporty_definicjaraportu_kolejnosc_check CHECK ((kolejnosc >= 0))
 );
 
@@ -15852,7 +15854,7 @@ COPY public.bpp_tytul (id, nazwa, skrot) FROM stdin;
 -- Data for Name: bpp_uczelnia; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_uczelnia (id, ostatnio_zmieniony, adnotacje, nazwa, skrot, nazwa_dopelniacz_field, slug, logo_www, logo_svg, favicon_ico, pbn_id, obca_jednostka_id, pokazuj_index_copernicus, pokazuj_punktacje_wewnetrzna, pokazuj_status_korekty, pokazuj_ranking_autorow, pokazuj_praca_recenzowana, clarivate_password, clarivate_username, domyslnie_afiliuje, pokazuj_liczbe_cytowan_w_rankingu, pokazuj_liczbe_cytowan_na_stronie_autora, wydruk_logo, wydruk_parametry_zapytania, wydruk_logo_szerokosc, wyszukiwanie_rekordy_na_strone_anonim, wyszukiwanie_rekordy_na_strone_zalogowany, pokazuj_punktacja_snip, podpowiadaj_dyscypliny, pokazuj_tabele_slotow_na_stronie_rekordu, pokazuj_raport_slotow_autor, pokazuj_raport_slotow_uczelnia, ranking_autorow_rozbij_domyslnie, pokazuj_raport_slotow_zerowy, sortuj_jednostki_alfabetycznie, metoda_do_roku_formularze, pbn_uid_id, pbn_api_root, pbn_app_name, pbn_app_token, pbn_aktualizuj_na_biezaco, pbn_integracja, pbn_api_user_id, pbn_api_nie_wysylaj_prac_bez_pk, ilosc_jednostek_na_strone, pokazuj_tylko_jednostki_nadrzedne, wymagaj_informacji_o_oplatach, pokazuj_formularz_zglaszania_publikacji, pbn_api_afiliacja_zawsze_na_uczelnie, pbn_wysylaj_bez_oswiadczen, deklaracja_dostepnosci_tekst, deklaracja_dostepnosci_url, pokazuj_deklaracje_dostepnosci, ranking_autorow_bez_kol_naukowych, pokazuj_autorow_obcych_w_przegladaniu_danych, pokazuj_autorow_bez_prac_w_przegladaniu_danych, drukuj_alternatywne_oswiadczenia, drukuj_oswiadczenia, pokazuj_zrodla_bez_prac_w_przegladaniu_danych, pokazuj_jednostki_na_pierwszej_stronie, pokazuj_wydzialy_na_pierwszej_stronie, przydzielaj_1_slot_gdy_udzial_mniejszy, pytaj_o_zgode_na_publikacje_pelnego_tekstu, uzywaj_wydzialow, tytul_strony_glownej, wymagaj_logowania_zglos_publikacje, nowy_autor_z_formularza_pokazuj, orcid_client_id, orcid_client_secret, orcid_sandbox, orcid_tylko_dla_pracownikow, wymagaj_oplatach_artykul, wymagaj_oplatach_inne, wymagaj_oplatach_monografia, wymagaj_oplatach_rozdzial, pbn_kasuj_dyscypliny_selektywnie, pokazuj_siec_powiazan, dspace_aktywny, dspace_api_endpoint, dspace_api_password, dspace_api_username, dspace_domyslny_jezyk_dc, site_id, theme_name, google_analytics_property_id, google_verification_code, pokazuj_oswiadczenie_ken, skrot_wydzialu_w_nazwie_jednostki, wydruk_margines_dol, wydruk_margines_gora, wydruk_margines_lewo, wydruk_margines_prawo, zwijaj_dlugie_listy_autorow, oai_identyfikator_repozytorium, oai_pmh_aktywny, api_v1_wlaczone, eksport_cerif_wlaczony, ror_id, eksport_cerif_osoby, eksport_cerif_kwoty, api_v1_dane_bibliograficzne, api_v1_kafelki, api_v1_narzedzia_redaktorskie, api_v1_tylko_zalogowani, api_v1_wyszukiwanie, mcp_wlaczone) FROM stdin;
+COPY public.bpp_uczelnia (id, ostatnio_zmieniony, adnotacje, nazwa, skrot, nazwa_dopelniacz_field, slug, logo_www, logo_svg, favicon_ico, pbn_id, obca_jednostka_id, pokazuj_index_copernicus, pokazuj_punktacje_wewnetrzna, pokazuj_status_korekty, pokazuj_ranking_autorow, pokazuj_praca_recenzowana, clarivate_password, clarivate_username, domyslnie_afiliuje, pokazuj_liczbe_cytowan_w_rankingu, pokazuj_liczbe_cytowan_na_stronie_autora, wydruk_logo, wydruk_parametry_zapytania, wydruk_logo_szerokosc, wyszukiwanie_rekordy_na_strone_anonim, wyszukiwanie_rekordy_na_strone_zalogowany, pokazuj_punktacja_snip, podpowiadaj_dyscypliny, pokazuj_tabele_slotow_na_stronie_rekordu, pokazuj_raport_slotow_autor, pokazuj_raport_slotow_uczelnia, ranking_autorow_rozbij_domyslnie, pokazuj_raport_slotow_zerowy, sortuj_jednostki_alfabetycznie, metoda_do_roku_formularze, pbn_uid_id, pbn_api_root, pbn_app_name, pbn_app_token, pbn_aktualizuj_na_biezaco, pbn_integracja, pbn_api_user_id, pbn_api_nie_wysylaj_prac_bez_pk, ilosc_jednostek_na_strone, pokazuj_tylko_jednostki_nadrzedne, wymagaj_informacji_o_oplatach, pokazuj_formularz_zglaszania_publikacji, pbn_api_afiliacja_zawsze_na_uczelnie, pbn_wysylaj_bez_oswiadczen, deklaracja_dostepnosci_tekst, deklaracja_dostepnosci_url, pokazuj_deklaracje_dostepnosci, ranking_autorow_bez_kol_naukowych, pokazuj_autorow_obcych_w_przegladaniu_danych, pokazuj_autorow_bez_prac_w_przegladaniu_danych, drukuj_alternatywne_oswiadczenia, drukuj_oswiadczenia, pokazuj_zrodla_bez_prac_w_przegladaniu_danych, pokazuj_jednostki_na_pierwszej_stronie, pokazuj_wydzialy_na_pierwszej_stronie, przydzielaj_1_slot_gdy_udzial_mniejszy, pytaj_o_zgode_na_publikacje_pelnego_tekstu, uzywaj_wydzialow, tytul_strony_glownej, wymagaj_logowania_zglos_publikacje, nowy_autor_z_formularza_pokazuj, orcid_client_id, orcid_client_secret, orcid_sandbox, orcid_tylko_dla_pracownikow, wymagaj_oplatach_artykul, wymagaj_oplatach_inne, wymagaj_oplatach_monografia, wymagaj_oplatach_rozdzial, pbn_kasuj_dyscypliny_selektywnie, pokazuj_siec_powiazan, dspace_aktywny, dspace_api_endpoint, dspace_api_password, dspace_api_username, dspace_domyslny_jezyk_dc, site_id, theme_name, google_analytics_property_id, google_verification_code, pokazuj_oswiadczenie_ken, skrot_wydzialu_w_nazwie_jednostki, wydruk_margines_dol, wydruk_margines_gora, wydruk_margines_lewo, wydruk_margines_prawo, zwijaj_dlugie_listy_autorow, oai_identyfikator_repozytorium, oai_pmh_aktywny, api_v1_wlaczone, eksport_cerif_wlaczony, ror_id, eksport_cerif_osoby, eksport_cerif_kwoty, api_v1_dane_bibliograficzne, api_v1_kafelki, api_v1_narzedzia_redaktorskie, api_v1_tylko_zalogowani, api_v1_wyszukiwanie, mcp_wlaczone, kreator_czeka_na_pbn) FROM stdin;
 \.
 
 
@@ -16463,6 +16465,165 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+390	bpp	0297_wydawca_denorm	2000-01-01 00:00:00+00
+495	bpp	0388_uczelnia_uzywaj_wydzialow	2000-01-01 00:00:00+00
+594	denorm	0002_dirtyinstance_func_name	2000-01-01 00:00:00+00
+942	zglos_publikacje	0008_auto_20220816_1255	2000-01-01 00:00:00+00
+545	bpp	0429_cache_trigger_v3	2000-01-01 00:00:00+00
+211	bpp	0130_clarivate_analytics	2000-01-01 00:00:00+00
+212	bpp	0131_liczba_cytowan	2000-01-01 00:00:00+00
+213	bpp	0132_unique_rekord_id_kolejnosc	2000-01-01 00:00:00+00
+214	bpp	0133_liczba_autorow	2000-01-01 00:00:00+00
+215	bpp	0134_uczelnia_domyslnie_afiliuje	2000-01-01 00:00:00+00
+216	bpp	0134_liczba_cytowan_wyszukaj	2000-01-01 00:00:00+00
+217	bpp	0135_merge_20180612_2304	2000-01-01 00:00:00+00
+218	bpp	0136_ranking_liczba_cytowan	2000-01-01 00:00:00+00
+219	bpp	0137_auto_20180613_0015	2000-01-01 00:00:00+00
+220	bpp	0138_uczelnia_pokazuj_liczbe_cytowan_w_rankingu	2000-01-01 00:00:00+00
+221	bpp	0139_uczelnia_pokazuj_liczbe_cytowan_na_stronie_autora	2000-01-01 00:00:00+00
+222	bpp	0140_auto_20180624_1620	2000-01-01 00:00:00+00
+223	bpp	0141_konferencja_typ_konferencji	2000-01-01 00:00:00+00
+224	bpp	0142_auto_20180624_2245	2000-01-01 00:00:00+00
+339	bpp	0246_auto_20210312_1228	2000-01-01 00:00:00+00
+225	bpp	0143_uczelnia_wydruk_logo_szerokosc	2000-01-01 00:00:00+00
+226	bpp	0144_wyrzuc_w_z_informacji	2000-01-01 00:00:00+00
+227	bpp	0145_auto_20180629_1816	2000-01-01 00:00:00+00
+228	bpp	0146_auto_20180629_1835	2000-01-01 00:00:00+00
+229	bpp	0147_auto_20180707_1517	2000-01-01 00:00:00+00
+230	bpp	0148_charakter_formalny_nadrzedny	2000-01-01 00:00:00+00
+231	bpp	0149_ranking_afiliacje	2000-01-01 00:00:00+00
+232	bpp	0150_auto_20181125_1202	2000-01-01 00:00:00+00
+235	bpp	0153_django21	2000-01-01 00:00:00+00
+236	bpp	0154_auto_20190303_1029	2000-01-01 00:00:00+00
+237	bpp	0155_CASCADE	2000-01-01 00:00:00+00
+238	bpp	0156_auto_20190324_1828	2000-01-01 00:00:00+00
+239	bpp	0157_auto_20190324_1834	2000-01-01 00:00:00+00
+240	bpp	0156_auto_20190319_1648	2000-01-01 00:00:00+00
+241	bpp	0158_merge_20190325_2135	2000-01-01 00:00:00+00
+242	bpp	0159_auto_20190327_0028	2000-01-01 00:00:00+00
+243	bpp	0160_auto_20190627_0006	2000-01-01 00:00:00+00
+244	bpp	0161_dyscyplina_change_trigger	2000-01-01 00:00:00+00
+245	bpp	0162_auto_20190629_1239	2000-01-01 00:00:00+00
+246	bpp	0163_cachequeue	2000-01-01 00:00:00+00
+247	bpp	0164_auto_20190701_1303	2000-01-01 00:00:00+00
+248	bpp	0165_cache_punktacja_autora_cache_punktacja_dyscypliny	2000-01-01 00:00:00+00
+249	bpp	0166_auto_20190702_1200	2000-01-01 00:00:00+00
+251	bpp	0166_auto_20190708_0022	2000-01-01 00:00:00+00
+373	bpp	0280_auto_20210725_2217	2000-01-01 00:00:00+00
+376	bpp	0283_auto_20210809_0142	2000-01-01 00:00:00+00
+252	bpp	0167_dyscyplina_change_trigger_fix	2000-01-01 00:00:00+00
+253	bpp	0168_dyscyplina_w_autorzy_mat	2000-01-01 00:00:00+00
+254	bpp	0169_dyscyplina_change_trigger_cacher	2000-01-01 00:00:00+00
+255	bpp	0170_wydawnictwo_wydawca	2000-01-01 00:00:00+00
+256	bpp	0171_auto_20190806_2015	2000-01-01 00:00:00+00
+547	bpp	0431_search_index_gin	2000-01-01 00:00:00+00
+723	formdefaults	0001_initial	2000-01-01 00:00:00+00
+811	integrator2	0004_django32	2000-01-01 00:00:00+00
+263	bpp	0177_cache_punktacja_autora_query	2000-01-01 00:00:00+00
+265	bpp	0179_auto_20190910_2147	2000-01-01 00:00:00+00
+267	bpp	0180_merge_20190910_2236	2000-01-01 00:00:00+00
+268	bpp	0181_cache_punktacja_autora_sum_cache_punktacja_autora_sum_gruop	2000-01-01 00:00:00+00
+270	bpp	0183_auto_20191020_1535	2000-01-01 00:00:00+00
+271	bpp	0184_autor_expertus_id	2000-01-01 00:00:00+00
+272	bpp	0185_auto_20191021_2008	2000-01-01 00:00:00+00
+274	bpp	0187_auto_20191027_1141	2000-01-01 00:00:00+00
+275	bpp	0188_auto_20191027_1737	2000-01-01 00:00:00+00
+276	bpp	0189_auto_20191027_2158	2000-01-01 00:00:00+00
+277	bpp	0190_auto_20191030_0532	2000-01-01 00:00:00+00
+278	bpp	0191_wydawnictwo_zwarte_zewnetrzna_baza_danych	2000-01-01 00:00:00+00
+279	bpp	0192_auto_20191107_0853	2000-01-01 00:00:00+00
+280	bpp	0193_jednostka_dla_punktacji_dyscyplin	2000-01-01 00:00:00+00
+281	bpp	0194_auto_20200213_2148	2000-01-01 00:00:00+00
+283	bpp	0196_uczelnia_pokazuj_raport_slotow_zerowy	2000-01-01 00:00:00+00
+284	bpp	0197_auto_20200223_2142	2000-01-01 00:00:00+00
+285	bpp	0198_auto_20200229_1644	2000-01-01 00:00:00+00
+286	bpp	0199_alias_wydawcy_trigger	2000-01-01 00:00:00+00
+287	bpp	0200_auto_20200304_2253	2000-01-01 00:00:00+00
+288	bpp	0201_rekord_mat_z_www	2000-01-01 00:00:00+00
+289	bpp	0202_auto_20200308_2204	2000-01-01 00:00:00+00
+290	bpp	0203_auto_20200315_2021	2000-01-01 00:00:00+00
+291	bpp	0204_cache_punktacja_autora_query_view	2000-01-01 00:00:00+00
+292	bpp	0202_fix_autorzy_bez_nazwisk	2000-01-01 00:00:00+00
+293	bpp	0205_merge_20200315_2208	2000-01-01 00:00:00+00
+294	bpp	0206_auto_20200315_2212	2000-01-01 00:00:00+00
+295	bpp	0207_uczelnia_analiza_view	2000-01-01 00:00:00+00
+296	bpp	0208_auto_20200329_1719	2000-01-01 00:00:00+00
+297	bpp	0209_auto_20200421_0013	2000-01-01 00:00:00+00
+298	bpp	0210_uczelnia_sortuj_jednostki_alfabetycznie	2000-01-01 00:00:00+00
+299	bpp	0211_oznaczenie_wydania	2000-01-01 00:00:00+00
+300	bpp	0212_upowaznienie_pbn	2000-01-01 00:00:00+00
+301	bpp	0212_charakter_formalny_charakter_ogolny	2000-01-01 00:00:00+00
+302	bpp	0213_merge_20200607_2047	2000-01-01 00:00:00+00
+303	bpp	0214_auto_20200628_2344	2000-01-01 00:00:00+00
+304	bpp	0215_auto_20200727_1407	2000-01-01 00:00:00+00
+305	bpp	0216_element_repozytorium	2000-01-01 00:00:00+00
+306	bpp	0217_grant	2000-01-01 00:00:00+00
+307	bpp	0218_auto_20200727_2307	2000-01-01 00:00:00+00
+309	bpp	0220_auto_20200728_0011	2000-01-01 00:00:00+00
+310	bpp	0215_auto_20200806_0146	2000-01-01 00:00:00+00
+311	bpp	0221_merge_20200806_0851	2000-01-01 00:00:00+00
+312	bpp	0222_auto_20200812_1927	2000-01-01 00:00:00+00
+313	bpp	0223_auto_20200812_1930	2000-01-01 00:00:00+00
+314	bpp	0224_auto_20201007_0956	2000-01-01 00:00:00+00
+315	bpp	0225_auto_20201007_1002	2000-01-01 00:00:00+00
+316	bpp	0226_rekord_mat_status	2000-01-01 00:00:00+00
+317	bpp	0227_auto_20201011_0010	2000-01-01 00:00:00+00
+824	menu	0001_initial	2000-01-01 00:00:00+00
+233	bpp	0151_snip	2000-01-01 00:00:00+00
+282	bpp	0195_cc0	2000-01-01 00:00:00+00
+997	bpp	0454_faza_b_i1	2000-01-01 00:00:00+00
+318	bpp	0224_auto_20201111_1341	2000-01-01 00:00:00+00
+319	bpp	0225_charakter_sloty_referat	2000-01-01 00:00:00+00
+320	bpp	0228_merge_20201225_1931	2000-01-01 00:00:00+00
+321	bpp	0229_nowe_sumy_status_korekty	2000-01-01 00:00:00+00
+322	bpp	0230_metoda_do_roku_uczelnia	2000-01-01 00:00:00+00
+323	bpp	0231_ukryj_status_korekty	2000-01-01 00:00:00+00
+324	bpp	0232_auto_20210101_1751	2000-01-01 00:00:00+00
+325	bpp	0233_wiecej_doktoratow_dla_jednego	2000-01-01 00:00:00+00
+326	bpp	0234_rekord_mat_nadrzedne	2000-01-01 00:00:00+00
+327	bpp	0235_auto_20210201_1305	2000-01-01 00:00:00+00
+328	bpp	0235_auto_20210125_0042	2000-01-01 00:00:00+00
+330	bpp	0237_auto_20210223_2228	2000-01-01 00:00:00+00
+331	bpp	0238_drop_pesel_md5	2000-01-01 00:00:00+00
+332	bpp	0239_egeria_import_new_autor_flds	2000-01-01 00:00:00+00
+333	bpp	0240_auto_20210228_1739	2000-01-01 00:00:00+00
+334	bpp	0241_auto_20210228_1916	2000-01-01 00:00:00+00
+335	bpp	0242_auto_20210307_1110	2000-01-01 00:00:00+00
+336	bpp	0243_auto_20210307_1452	2000-01-01 00:00:00+00
+337	bpp	0244_auto_20210307_2329	2000-01-01 00:00:00+00
+338	bpp	0245_auto_20210308_1246	2000-01-01 00:00:00+00
+340	bpp	0247_funkcja_autora_pokazuj_za_nazwiskiem	2000-01-01 00:00:00+00
+341	bpp	0248_autorzy_mat_idx	2000-01-01 00:00:00+00
+342	bpp	0249_dyscyplina_zrodla	2000-01-01 00:00:00+00
+343	bpp	0250_auto_20210315_2104	2000-01-01 00:00:00+00
+344	bpp	0252_slug	2000-01-01 00:00:00+00
+345	bpp	0253_rekord_mat_slug	2000-01-01 00:00:00+00
+346	bpp	0254_uczelnia_pbn_uid	2000-01-01 00:00:00+00
+347	bpp	0255_auto_20210407_1138	2000-01-01 00:00:00+00
+348	bpp	0256_auto_20210407_1151	2000-01-01 00:00:00+00
+349	bpp	0257_wydawca_pbn_uid	2000-01-01 00:00:00+00
+350	bpp	0258_auto_20210407_2320	2000-01-01 00:00:00+00
+351	bpp	0259_auto_20210421_2323	2000-01-01 00:00:00+00
+352	bpp	0260_jednostka_pbn_uid	2000-01-01 00:00:00+00
+353	bpp	0261_auto_20210426_0124	2000-01-01 00:00:00+00
+354	bpp	0262_bppuser_pbn_token	2000-01-01 00:00:00+00
+355	bpp	0263_auto_20210427_2137	2000-01-01 00:00:00+00
+356	bpp	0264_auto_20210428_0011	2000-01-01 00:00:00+00
+357	bpp	0266_auto_20210504_0040	2000-01-01 00:00:00+00
+358	bpp	0265_rekord_mat_doi	2000-01-01 00:00:00+00
+359	bpp	0266_auto_20210519_0236	2000-01-01 00:00:00+00
+360	bpp	0267_auto_20210519_0237	2000-01-01 00:00:00+00
+361	bpp	0268_auto_20210519_0238	2000-01-01 00:00:00+00
+362	bpp	0269_wyzeruj_zrodlo_pbn_uid	2000-01-01 00:00:00+00
+363	bpp	0270_auto_20210530_0114	2000-01-01 00:00:00+00
+364	bpp	0271_auto_20210530_0225	2000-01-01 00:00:00+00
+365	bpp	0272_auto_20210605_2128	2000-01-01 00:00:00+00
+366	bpp	0273_jednostka_hier	2000-01-01 00:00:00+00
+367	bpp	0274_jednostka_hier	2000-01-01 00:00:00+00
+368	bpp	0275_jednostka_hier	2000-01-01 00:00:00+00
+369	bpp	0276_auto_20210607_0109	2000-01-01 00:00:00+00
+370	bpp	0277_lepsze_global_search	2000-01-01 00:00:00+00
+374	bpp	0281_auto_20210725_2332	2000-01-01 00:00:00+00
 94	bpp	0017_typy_pbn	2000-01-01 00:00:00+00
 378	bpp	0285_auto_20210814_0103	2000-01-01 00:00:00+00
 379	bpp	0286_auto_20210814_0104	2000-01-01 00:00:00+00
@@ -16475,7 +16636,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 386	bpp	0293_pbn_api_kasowanie_przed_nie_eksp_zero	2000-01-01 00:00:00+00
 387	bpp	0294_szablony_opisu_stron	2000-01-01 00:00:00+00
 389	bpp	0296_nulltest_szablonopisu	2000-01-01 00:00:00+00
-390	bpp	0297_wydawca_denorm	2000-01-01 00:00:00+00
 391	bpp	0298_wydawnictwo_zwarte_denorm	2000-01-01 00:00:00+00
 392	bpp	0299_wydawnictwo_ciagle_denorm	2000-01-01 00:00:00+00
 393	bpp	0300_patent_denorm	2000-01-01 00:00:00+00
@@ -16527,7 +16687,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 445	pbn_api	0048_remove_pbn_export_queue_retry_politics_and_more	2000-01-01 00:00:00+00
 446	taggit	0004_alter_taggeditem_content_type_alter_taggeditem_tag	2000-01-01 00:00:00+00
 449	bpp	0342_remove_dyscyplina_naukowa_pbn_uid	2000-01-01 00:00:00+00
-547	bpp	0431_search_index_gin	2000-01-01 00:00:00+00
 450	bpp	0343_alter_typ_kbn_options_alter_patent_kc_punkty_kbn_and_more	2000-01-01 00:00:00+00
 451	bpp	0344_uczelnia_pbn_wysylaj_bez_oswiadczen	2000-01-01 00:00:00+00
 452	bpp	0345_alter_wydzial_opis	2000-01-01 00:00:00+00
@@ -16565,7 +16724,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 491	bpp	0384_remove_charakter_formalny_charakter_crossref_and_more	2000-01-01 00:00:00+00
 493	bpp	0386_alter_crossref_mapper_charakter_crossref	2000-01-01 00:00:00+00
 494	bpp	0387_fix_refresh_cache_locking_deadlocks	2000-01-01 00:00:00+00
-495	bpp	0388_uczelnia_uzywaj_wydzialow	2000-01-01 00:00:00+00
 496	bpp	0389_alter_uczelnia_uzywaj_wydzialow	2000-01-01 00:00:00+00
 497	bpp	0390_add_filters_to_sumy_view	2000-01-01 00:00:00+00
 498	bpp	0391_migrate_rodzaj_autora_to_foreignkey	2000-01-01 00:00:00+00
@@ -16661,7 +16819,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 589	deduplikator_autorow	0012_alter_duplicatecandidate_main_autor_and_more	2000-01-01 00:00:00+00
 590	deduplikator_publikacji	0001_initial	2000-01-01 00:00:00+00
 591	deduplikator_publikacji	0002_remove_publicationduplicatecandidate_deduplikato_similar_17e420_idx_and_more	2000-01-01 00:00:00+00
-594	denorm	0002_dirtyinstance_func_name	2000-01-01 00:00:00+00
 595	denorm	0003_auto_20211002_1955	2000-01-01 00:00:00+00
 596	denorm	0004_alter_dirtyinstance_success	2000-01-01 00:00:00+00
 597	denorm	0005_dirtyinstance_created_on	2000-01-01 00:00:00+00
@@ -16755,6 +16912,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 678	ewaluacja_liczba_n	0006_alter_iloscudzialowdlaautorazacalosc_unique_together_and_more	2000-01-01 00:00:00+00
 679	ewaluacja_liczba_n	0007_alter_iloscudzialowdlaautorazacalosc_komentarz	2000-01-01 00:00:00+00
 680	ewaluacja_liczba_n	0008_add_sankcje	2000-01-01 00:00:00+00
+848	pbn_export_queue	0005_reclassify_old_validation_errors	2000-01-01 00:00:00+00
 681	ewaluacja_liczba_n	0009_alter_dyscyplinanieraportowana_uczelnia_and_more	2000-01-01 00:00:00+00
 682	ewaluacja_metryki	0001_initial	2000-01-01 00:00:00+00
 683	ewaluacja_metryki	0002_alter_metrykaautora_jednostka	2000-01-01 00:00:00+00
@@ -16795,11 +16953,11 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 716	flexible_reports	0008_auto_20171025_0553	2000-01-01 00:00:00+00
 717	flexible_reports	0009_auto_20171025_0558	2000-01-01 00:00:00+00
 718	flexible_reports	0010_auto_20171026_0340	2000-01-01 00:00:00+00
+805	importer_publikacji	0007_merge_20260421_1248	2000-01-01 00:00:00+00
 719	flexible_reports	0011_alter_reportelement_options_alter_column_attrs_and_more	2000-01-01 00:00:00+00
 720	flexible_reports	0012_add_query_language	2000-01-01 00:00:00+00
 721	flexible_reports	0013_add_sample_context	2000-01-01 00:00:00+00
 722	flexible_reports	0014_alter_datasource_sample_context	2000-01-01 00:00:00+00
-723	formdefaults	0001_initial	2000-01-01 00:00:00+00
 724	formdefaults	0002_django32	2000-01-01 00:00:00+00
 725	formdefaults	0003_formrepresentation_pre_registered	2000-01-01 00:00:00+00
 726	formdefaults	0004_unique_field_user	2000-01-01 00:00:00+00
@@ -16885,11 +17043,9 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 802	importer_publikacji	0009_importedauthor_candidate	2000-01-01 00:00:00+00
 803	importer_publikacji	0010_importedauthor_zapisany_jako	2000-01-01 00:00:00+00
 804	importer_publikacji	0006_merge_20260420_2212	2000-01-01 00:00:00+00
-805	importer_publikacji	0007_merge_20260421_1248	2000-01-01 00:00:00+00
 806	importer_publikacji	0011_merge_20260601_0632	2000-01-01 00:00:00+00
 807	importer_publikacji	0012_alter_importedauthor_session	2000-01-01 00:00:00+00
 810	integrator2	0003_django110_py3k	2000-01-01 00:00:00+00
-811	integrator2	0004_django32	2000-01-01 00:00:00+00
 812	integrator2	0005_nullbooleanfield	2000-01-01 00:00:00+00
 813	integrator2	0006_move_files_to_protected	2000-01-01 00:00:00+00
 814	komparator_pbn	0001_initial	2000-01-01 00:00:00+00
@@ -16903,7 +17059,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 822	komparator_pbn_udzialy	0002_add_brakautora_model	2000-01-01 00:00:00+00
 1017	ewaluacja_liczba_n	0010_merge_20260604_1952	2000-01-01 00:00:00+00
 823	komparator_pbn_udzialy	0003_remove_brakautorawpublikacji_komparator__autor_i_e007d7_idx_and_more	2000-01-01 00:00:00+00
-824	menu	0001_initial	2000-01-01 00:00:00+00
 825	messages_extends	0001_initial	2000-01-01 00:00:00+00
 826	siteblog	0001_initial	2000-01-01 00:00:00+00
 827	miniblog	0001_initial	2000-01-01 00:00:00+00
@@ -16940,7 +17095,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 845	pbn_export_queue	0002_initial	2000-01-01 00:00:00+00
 846	pbn_export_queue	0003_add_rodzaj_bledu	2000-01-01 00:00:00+00
 847	pbn_export_queue	0004_add_wykluczone_field	2000-01-01 00:00:00+00
-848	pbn_export_queue	0005_reclassify_old_validation_errors	2000-01-01 00:00:00+00
 849	pbn_export_queue	0006_reclassify_list_format_validation_errors	2000-01-01 00:00:00+00
 850	pbn_export_queue	0007_reclassify_doiorwwwmissing_errors	2000-01-01 00:00:00+00
 851	pbn_import	0001_initial	2000-01-01 00:00:00+00
@@ -16958,7 +17112,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 863	pbn_komparator_zrodel	0002_add_brakujaca_dyscyplina_pbn	2000-01-01 00:00:00+00
 864	pbn_komparator_zrodel	0003_remove_rozbieznosczrodlapbn_pbn_kompara_zrodlo__8665da_idx_and_more	2000-01-01 00:00:00+00
 865	pbn_wysylka_oswiadczen	0001_initial	2000-01-01 00:00:00+00
-233	bpp	0151_snip	2000-01-01 00:00:00+00
 866	pbn_wysylka_oswiadczen	0002_add_tytul_field	2000-01-01 00:00:00+00
 867	pbn_wysylka_oswiadczen	0003_add_synchronized_count	2000-01-01 00:00:00+00
 868	pbn_wysylka_oswiadczen	0004_alter_pbnwysylkalog_content_type_and_more	2000-01-01 00:00:00+00
@@ -17030,7 +17183,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 939	zglos_publikacje	0005_auto_20220807_2329	2000-01-01 00:00:00+00
 940	zglos_publikacje	0006_auto_20220815_1752	2000-01-01 00:00:00+00
 941	zglos_publikacje	0007_auto_20220816_1019	2000-01-01 00:00:00+00
-942	zglos_publikacje	0008_auto_20220816_1255	2000-01-01 00:00:00+00
 943	zglos_publikacje	0009_alter_zgloszenie_publikacji_status	2000-01-01 00:00:00+00
 944	zglos_publikacje	0010_auto_20220818_0012	2000-01-01 00:00:00+00
 945	zglos_publikacje	0011_auto_20220910_1646	2000-01-01 00:00:00+00
@@ -17050,7 +17202,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 959	zglos_publikacje	0025_alter_obslugujacy_zgloszenia_wydzialow_user	2000-01-01 00:00:00+00
 960	denorm	0001_squashed_0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
 1120	bpp	0478_uczelnia_oai_pmh_aktywny	2000-01-01 00:00:00+00
-282	bpp	0195_cc0	2000-01-01 00:00:00+00
 406	bpp	0312_przypieta	2000-01-01 00:00:00+00
 492	bpp	0385_alter_crossref_mapper_charakter_crossref_and_more	2000-01-01 00:00:00+00
 961	bpp	0165_cache_punktacja_autora_cache_punktacja_dyscypliny_squashed_0167_auto_20190707_2029	2000-01-01 00:00:00+00
@@ -17144,7 +17295,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1118	import_pracownikow	0028_nadpisuj_daty_zatrudnienia	2000-01-01 00:00:00+00
 269	bpp	0182_auto_20191013_2324	2000-01-01 00:00:00+00
 388	bpp	0295_instaluj_szablony	2000-01-01 00:00:00+00
-997	bpp	0454_faza_b_i1	2000-01-01 00:00:00+00
 1052	importer_publikacji	0016_alter_importsession_status	2000-01-01 00:00:00+00
 1053	pbn_api	0075_sentdata_fee_sent_sentdata_fee_uploaded_okay	2000-01-01 00:00:00+00
 1054	przemapuj_prace_autora	0003_przemapoaniepracautora_zrodlowy_import	2000-01-01 00:00:00+00
@@ -17216,13 +17366,13 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1091	pbn_api	0076_unikalne_uuid_dyscyplin	2000-01-01 00:00:00+00
 1092	pbn_api	0077_constrainty_uuid_dyscyplin	2000-01-01 00:00:00+00
 448	multiseek	0001_initial	2000-01-01 00:00:00+00
-545	bpp	0429_cache_trigger_v3	2000-01-01 00:00:00+00
 531	bpp	0418_merge_20260601_0954	2000-01-01 00:00:00+00
 434	bpp	0339_autor_opis	2000-01-01 00:00:00+00
 535	bpp	0421_cache_trigger_pk_filter	2000-01-01 00:00:00+00
 469	bpp	0362_rzeczownik	2000-01-01 00:00:00+00
 533	bpp	0419_merge_20260601_1319	2000-01-01 00:00:00+00
 329	bpp	0236_merge_20210202_0850	2000-01-01 00:00:00+00
+104	bpp	0027_auto_20150921_2304	2000-01-01 00:00:00+00
 442	pbn_api	0045_pbn_export_queue	2000-01-01 00:00:00+00
 447	taggit	0005_auto_20220424_2025	2000-01-01 00:00:00+00
 903	rozbieznosci_dyscyplin	0002_rok_2017_i_wyzej	2000-01-01 00:00:00+00
@@ -17330,7 +17480,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 101	bpp	0024_auto_20150830_1705	2000-01-01 00:00:00+00
 102	bpp	0025_auto_20150830_1740	2000-01-01 00:00:00+00
 103	bpp	0026_auto_20150902_2102	2000-01-01 00:00:00+00
-104	bpp	0027_auto_20150921_2304	2000-01-01 00:00:00+00
 105	bpp	0028_openaccess	2000-01-01 00:00:00+00
 106	bpp	0029_auto_20150923_1343	2000-01-01 00:00:00+00
 107	bpp	0030_auto_20150923_1351	2000-01-01 00:00:00+00
@@ -17436,159 +17585,12 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 208	bpp	0127_auto_20180416_1303	2000-01-01 00:00:00+00
 209	bpp	0128_zewnetrzne_bazy_view	2000-01-01 00:00:00+00
 210	bpp	0129_zewnetrznebazydanychview	2000-01-01 00:00:00+00
-211	bpp	0130_clarivate_analytics	2000-01-01 00:00:00+00
-212	bpp	0131_liczba_cytowan	2000-01-01 00:00:00+00
-213	bpp	0132_unique_rekord_id_kolejnosc	2000-01-01 00:00:00+00
-214	bpp	0133_liczba_autorow	2000-01-01 00:00:00+00
-215	bpp	0134_uczelnia_domyslnie_afiliuje	2000-01-01 00:00:00+00
-216	bpp	0134_liczba_cytowan_wyszukaj	2000-01-01 00:00:00+00
-217	bpp	0135_merge_20180612_2304	2000-01-01 00:00:00+00
-218	bpp	0136_ranking_liczba_cytowan	2000-01-01 00:00:00+00
-219	bpp	0137_auto_20180613_0015	2000-01-01 00:00:00+00
-220	bpp	0138_uczelnia_pokazuj_liczbe_cytowan_w_rankingu	2000-01-01 00:00:00+00
-221	bpp	0139_uczelnia_pokazuj_liczbe_cytowan_na_stronie_autora	2000-01-01 00:00:00+00
-222	bpp	0140_auto_20180624_1620	2000-01-01 00:00:00+00
-223	bpp	0141_konferencja_typ_konferencji	2000-01-01 00:00:00+00
-224	bpp	0142_auto_20180624_2245	2000-01-01 00:00:00+00
-339	bpp	0246_auto_20210312_1228	2000-01-01 00:00:00+00
-225	bpp	0143_uczelnia_wydruk_logo_szerokosc	2000-01-01 00:00:00+00
-226	bpp	0144_wyrzuc_w_z_informacji	2000-01-01 00:00:00+00
-227	bpp	0145_auto_20180629_1816	2000-01-01 00:00:00+00
-228	bpp	0146_auto_20180629_1835	2000-01-01 00:00:00+00
-229	bpp	0147_auto_20180707_1517	2000-01-01 00:00:00+00
-230	bpp	0148_charakter_formalny_nadrzedny	2000-01-01 00:00:00+00
-231	bpp	0149_ranking_afiliacje	2000-01-01 00:00:00+00
-232	bpp	0150_auto_20181125_1202	2000-01-01 00:00:00+00
-235	bpp	0153_django21	2000-01-01 00:00:00+00
-236	bpp	0154_auto_20190303_1029	2000-01-01 00:00:00+00
-237	bpp	0155_CASCADE	2000-01-01 00:00:00+00
-238	bpp	0156_auto_20190324_1828	2000-01-01 00:00:00+00
-239	bpp	0157_auto_20190324_1834	2000-01-01 00:00:00+00
-240	bpp	0156_auto_20190319_1648	2000-01-01 00:00:00+00
-241	bpp	0158_merge_20190325_2135	2000-01-01 00:00:00+00
-242	bpp	0159_auto_20190327_0028	2000-01-01 00:00:00+00
-243	bpp	0160_auto_20190627_0006	2000-01-01 00:00:00+00
-244	bpp	0161_dyscyplina_change_trigger	2000-01-01 00:00:00+00
-245	bpp	0162_auto_20190629_1239	2000-01-01 00:00:00+00
-246	bpp	0163_cachequeue	2000-01-01 00:00:00+00
-247	bpp	0164_auto_20190701_1303	2000-01-01 00:00:00+00
-248	bpp	0165_cache_punktacja_autora_cache_punktacja_dyscypliny	2000-01-01 00:00:00+00
-249	bpp	0166_auto_20190702_1200	2000-01-01 00:00:00+00
-251	bpp	0166_auto_20190708_0022	2000-01-01 00:00:00+00
-373	bpp	0280_auto_20210725_2217	2000-01-01 00:00:00+00
-376	bpp	0283_auto_20210809_0142	2000-01-01 00:00:00+00
-252	bpp	0167_dyscyplina_change_trigger_fix	2000-01-01 00:00:00+00
-253	bpp	0168_dyscyplina_w_autorzy_mat	2000-01-01 00:00:00+00
-254	bpp	0169_dyscyplina_change_trigger_cacher	2000-01-01 00:00:00+00
-255	bpp	0170_wydawnictwo_wydawca	2000-01-01 00:00:00+00
-256	bpp	0171_auto_20190806_2015	2000-01-01 00:00:00+00
 257	bpp	0172_auto_20190806_2052	2000-01-01 00:00:00+00
 258	bpp	0173_auto_20190812_1412	2000-01-01 00:00:00+00
 259	bpp	0174_uczelnia_podpowiadaj_dyscypliny_konfig	2000-01-01 00:00:00+00
 260	bpp	0174_rodzaj_pbn_dla_charakteru	2000-01-01 00:00:00+00
 261	bpp	0175_merge_20190824_0948	2000-01-01 00:00:00+00
 262	bpp	0176_auto_20190903_0108	2000-01-01 00:00:00+00
-263	bpp	0177_cache_punktacja_autora_query	2000-01-01 00:00:00+00
-265	bpp	0179_auto_20190910_2147	2000-01-01 00:00:00+00
-267	bpp	0180_merge_20190910_2236	2000-01-01 00:00:00+00
-268	bpp	0181_cache_punktacja_autora_sum_cache_punktacja_autora_sum_gruop	2000-01-01 00:00:00+00
-270	bpp	0183_auto_20191020_1535	2000-01-01 00:00:00+00
-271	bpp	0184_autor_expertus_id	2000-01-01 00:00:00+00
-272	bpp	0185_auto_20191021_2008	2000-01-01 00:00:00+00
-274	bpp	0187_auto_20191027_1141	2000-01-01 00:00:00+00
-275	bpp	0188_auto_20191027_1737	2000-01-01 00:00:00+00
-276	bpp	0189_auto_20191027_2158	2000-01-01 00:00:00+00
-277	bpp	0190_auto_20191030_0532	2000-01-01 00:00:00+00
-278	bpp	0191_wydawnictwo_zwarte_zewnetrzna_baza_danych	2000-01-01 00:00:00+00
-279	bpp	0192_auto_20191107_0853	2000-01-01 00:00:00+00
-280	bpp	0193_jednostka_dla_punktacji_dyscyplin	2000-01-01 00:00:00+00
-281	bpp	0194_auto_20200213_2148	2000-01-01 00:00:00+00
-283	bpp	0196_uczelnia_pokazuj_raport_slotow_zerowy	2000-01-01 00:00:00+00
-284	bpp	0197_auto_20200223_2142	2000-01-01 00:00:00+00
-285	bpp	0198_auto_20200229_1644	2000-01-01 00:00:00+00
-286	bpp	0199_alias_wydawcy_trigger	2000-01-01 00:00:00+00
-287	bpp	0200_auto_20200304_2253	2000-01-01 00:00:00+00
-288	bpp	0201_rekord_mat_z_www	2000-01-01 00:00:00+00
-289	bpp	0202_auto_20200308_2204	2000-01-01 00:00:00+00
-290	bpp	0203_auto_20200315_2021	2000-01-01 00:00:00+00
-291	bpp	0204_cache_punktacja_autora_query_view	2000-01-01 00:00:00+00
-292	bpp	0202_fix_autorzy_bez_nazwisk	2000-01-01 00:00:00+00
-293	bpp	0205_merge_20200315_2208	2000-01-01 00:00:00+00
-294	bpp	0206_auto_20200315_2212	2000-01-01 00:00:00+00
-295	bpp	0207_uczelnia_analiza_view	2000-01-01 00:00:00+00
-296	bpp	0208_auto_20200329_1719	2000-01-01 00:00:00+00
-297	bpp	0209_auto_20200421_0013	2000-01-01 00:00:00+00
-298	bpp	0210_uczelnia_sortuj_jednostki_alfabetycznie	2000-01-01 00:00:00+00
-299	bpp	0211_oznaczenie_wydania	2000-01-01 00:00:00+00
-300	bpp	0212_upowaznienie_pbn	2000-01-01 00:00:00+00
-301	bpp	0212_charakter_formalny_charakter_ogolny	2000-01-01 00:00:00+00
-302	bpp	0213_merge_20200607_2047	2000-01-01 00:00:00+00
-303	bpp	0214_auto_20200628_2344	2000-01-01 00:00:00+00
-304	bpp	0215_auto_20200727_1407	2000-01-01 00:00:00+00
-305	bpp	0216_element_repozytorium	2000-01-01 00:00:00+00
-306	bpp	0217_grant	2000-01-01 00:00:00+00
-307	bpp	0218_auto_20200727_2307	2000-01-01 00:00:00+00
-309	bpp	0220_auto_20200728_0011	2000-01-01 00:00:00+00
-310	bpp	0215_auto_20200806_0146	2000-01-01 00:00:00+00
-311	bpp	0221_merge_20200806_0851	2000-01-01 00:00:00+00
-312	bpp	0222_auto_20200812_1927	2000-01-01 00:00:00+00
-313	bpp	0223_auto_20200812_1930	2000-01-01 00:00:00+00
-314	bpp	0224_auto_20201007_0956	2000-01-01 00:00:00+00
-315	bpp	0225_auto_20201007_1002	2000-01-01 00:00:00+00
-316	bpp	0226_rekord_mat_status	2000-01-01 00:00:00+00
-317	bpp	0227_auto_20201011_0010	2000-01-01 00:00:00+00
-318	bpp	0224_auto_20201111_1341	2000-01-01 00:00:00+00
-319	bpp	0225_charakter_sloty_referat	2000-01-01 00:00:00+00
-320	bpp	0228_merge_20201225_1931	2000-01-01 00:00:00+00
-321	bpp	0229_nowe_sumy_status_korekty	2000-01-01 00:00:00+00
-322	bpp	0230_metoda_do_roku_uczelnia	2000-01-01 00:00:00+00
-323	bpp	0231_ukryj_status_korekty	2000-01-01 00:00:00+00
-324	bpp	0232_auto_20210101_1751	2000-01-01 00:00:00+00
-325	bpp	0233_wiecej_doktoratow_dla_jednego	2000-01-01 00:00:00+00
-326	bpp	0234_rekord_mat_nadrzedne	2000-01-01 00:00:00+00
-327	bpp	0235_auto_20210201_1305	2000-01-01 00:00:00+00
-328	bpp	0235_auto_20210125_0042	2000-01-01 00:00:00+00
-330	bpp	0237_auto_20210223_2228	2000-01-01 00:00:00+00
-331	bpp	0238_drop_pesel_md5	2000-01-01 00:00:00+00
-332	bpp	0239_egeria_import_new_autor_flds	2000-01-01 00:00:00+00
-333	bpp	0240_auto_20210228_1739	2000-01-01 00:00:00+00
-334	bpp	0241_auto_20210228_1916	2000-01-01 00:00:00+00
-335	bpp	0242_auto_20210307_1110	2000-01-01 00:00:00+00
-336	bpp	0243_auto_20210307_1452	2000-01-01 00:00:00+00
-337	bpp	0244_auto_20210307_2329	2000-01-01 00:00:00+00
-338	bpp	0245_auto_20210308_1246	2000-01-01 00:00:00+00
-340	bpp	0247_funkcja_autora_pokazuj_za_nazwiskiem	2000-01-01 00:00:00+00
-341	bpp	0248_autorzy_mat_idx	2000-01-01 00:00:00+00
-342	bpp	0249_dyscyplina_zrodla	2000-01-01 00:00:00+00
-343	bpp	0250_auto_20210315_2104	2000-01-01 00:00:00+00
-344	bpp	0252_slug	2000-01-01 00:00:00+00
-345	bpp	0253_rekord_mat_slug	2000-01-01 00:00:00+00
-346	bpp	0254_uczelnia_pbn_uid	2000-01-01 00:00:00+00
-347	bpp	0255_auto_20210407_1138	2000-01-01 00:00:00+00
-348	bpp	0256_auto_20210407_1151	2000-01-01 00:00:00+00
-349	bpp	0257_wydawca_pbn_uid	2000-01-01 00:00:00+00
-350	bpp	0258_auto_20210407_2320	2000-01-01 00:00:00+00
-351	bpp	0259_auto_20210421_2323	2000-01-01 00:00:00+00
-352	bpp	0260_jednostka_pbn_uid	2000-01-01 00:00:00+00
-353	bpp	0261_auto_20210426_0124	2000-01-01 00:00:00+00
-354	bpp	0262_bppuser_pbn_token	2000-01-01 00:00:00+00
-355	bpp	0263_auto_20210427_2137	2000-01-01 00:00:00+00
-356	bpp	0264_auto_20210428_0011	2000-01-01 00:00:00+00
-357	bpp	0266_auto_20210504_0040	2000-01-01 00:00:00+00
-358	bpp	0265_rekord_mat_doi	2000-01-01 00:00:00+00
-359	bpp	0266_auto_20210519_0236	2000-01-01 00:00:00+00
-360	bpp	0267_auto_20210519_0237	2000-01-01 00:00:00+00
-361	bpp	0268_auto_20210519_0238	2000-01-01 00:00:00+00
-362	bpp	0269_wyzeruj_zrodlo_pbn_uid	2000-01-01 00:00:00+00
-363	bpp	0270_auto_20210530_0114	2000-01-01 00:00:00+00
-364	bpp	0271_auto_20210530_0225	2000-01-01 00:00:00+00
-365	bpp	0272_auto_20210605_2128	2000-01-01 00:00:00+00
-366	bpp	0273_jednostka_hier	2000-01-01 00:00:00+00
-367	bpp	0274_jednostka_hier	2000-01-01 00:00:00+00
-368	bpp	0275_jednostka_hier	2000-01-01 00:00:00+00
-369	bpp	0276_auto_20210607_0109	2000-01-01 00:00:00+00
-370	bpp	0277_lepsze_global_search	2000-01-01 00:00:00+00
-374	bpp	0281_auto_20210725_2332	2000-01-01 00:00:00+00
 375	bpp	0282_auto_20210808_2334	2000-01-01 00:00:00+00
 377	bpp	0284_auto_20210814_0023	2000-01-01 00:00:00+00
 430	bpp	0335_autorzy_oswiadczenie_ken	2000-01-01 00:00:00+00
@@ -17599,6 +17601,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 481	bpp	0374_remove_autor_dyscyplina_dni_absencji_and_more	2000-01-01 00:00:00+00
 1140	bpp	0490_usun_unique_autor_kolejnosc	2000-01-01 00:00:00+00
 1141	importer_publikacji	0021_importsession_powrot_do_zgloszen	2000-01-01 00:00:00+00
+1142	bpp	0491_uczelnia_kreator_czeka_na_pbn	2000-01-01 00:00:00+00
+1143	nowe_raporty	0002_definicjaraportu_ikona	2000-01-01 00:00:00+00
 \.
 
 
@@ -17920,6 +17924,10 @@ COPY public.formdefaults_formfielddefaultvalue (id, value, field_id, parent_id, 
 40	\N	55	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow	\N	t
 41	\N	56	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow	\N	t
 42	\N	57	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow	\N	t
+43	"domyslne"	313	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni	\N	t
+44	"domyslne"	314	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow	\N	t
+45	"domyslne"	315	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek	\N	t
+46	"domyslne"	316	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow	\N	t
 \.
 
 
@@ -17940,51 +17948,40 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 17	dziel_na_jednostki_i_wydzialy	Dziel na jednostki i wydziały	django.forms.fields.BooleanField	5	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
 18	pokazuj_zerowych	Dołączaj autorów z zerowymi slotami	django.forms.fields.BooleanField	6	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
 21	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-22	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-23	punkty_mnisw_od	od	django.forms.fields.FloatField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-24	punkty_mnisw_do	do	django.forms.fields.FloatField	5	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-25	if_od	od	django.forms.fields.FloatField	6	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-26	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-27	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
 30	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-31	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-32	punkty_mnisw_od	od	django.forms.fields.FloatField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-33	punkty_mnisw_do	do	django.forms.fields.FloatField	5	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-34	if_od	od	django.forms.fields.FloatField	6	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-35	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-36	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-37	obiekt	Wydział	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 40	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-41	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-42	punkty_mnisw_od	od	django.forms.fields.FloatField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-43	punkty_mnisw_do	do	django.forms.fields.FloatField	5	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-44	if_od	od	django.forms.fields.FloatField	6	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-45	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-46	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-47	obiekt	Jednostka	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 50	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-51	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-52	punkty_mnisw_od	od	django.forms.fields.FloatField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-53	punkty_mnisw_do	do	django.forms.fields.FloatField	5	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-54	if_od	od	django.forms.fields.FloatField	6	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-298	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
-299	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
-300	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-301	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-302	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-303	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-304	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-305	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-306	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-307	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-308	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-309	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-310	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-311	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-312	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+22	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+23	punkty_mnisw_od	od	django.forms.fields.FloatField	5	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+24	punkty_mnisw_do	do	django.forms.fields.FloatField	6	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+25	if_od	od	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+26	if_do	do	django.forms.fields.FloatField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+27	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+31	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+32	punkty_mnisw_od	od	django.forms.fields.FloatField	5	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+33	punkty_mnisw_do	do	django.forms.fields.FloatField	6	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+34	if_od	od	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+35	if_do	do	django.forms.fields.FloatField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+36	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+37	obiekt	Wydział	django.forms.models.ModelChoiceField	10	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+41	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+42	punkty_mnisw_od	od	django.forms.fields.FloatField	5	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+43	punkty_mnisw_do	do	django.forms.fields.FloatField	6	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+44	if_od	od	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+45	if_do	do	django.forms.fields.FloatField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+46	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+47	obiekt	Jednostka	django.forms.models.ModelChoiceField	10	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+51	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+52	punkty_mnisw_od	od	django.forms.fields.FloatField	5	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+53	punkty_mnisw_do	do	django.forms.fields.FloatField	6	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+54	if_od	od	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+55	if_do	do	django.forms.fields.FloatField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+57	obiekt	Autor	django.forms.models.ModelChoiceField	10	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+313	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+314	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+315	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+316	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -19601,7 +19598,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1141, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1143, true);
 
 
 --
@@ -19832,14 +19829,14 @@ SELECT pg_catalog.setval('public.favicon_faviconimg_id_seq', 1, false);
 -- Name: formdefaults_formfielddefaultvalue_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 42, true);
+SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 46, true);
 
 
 --
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 312, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 331, true);
 
 
 --

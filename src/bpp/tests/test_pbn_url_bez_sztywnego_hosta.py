@@ -28,7 +28,7 @@ SRC = Path(__file__).resolve().parents[2]
 # ścieżka → powód, dla którego literał jest tu na miejscu
 DOZWOLONE = {
     "bpp_setup_wizard/forms.py": "wybór środowiska PBN w kreatorze (wartość do zapisania w Uczelnia.pbn_api_root)",
-    "bpp_setup_wizard/templates/bpp_setup_wizard/uczelnia_setup.html": "link do centrum pomocy PBN (instrukcja uzyskania API)",
+    "bpp_setup_wizard/templates/bpp_setup_wizard/pbn_setup.html": "link do centrum pomocy PBN (instrukcja uzyskania API)",
     "bpp/management/commands/debug_setup_initial_data.py": "domyślna wartość parametru komendy debugowej",
     "cerif_export/cerif/orgunit.py": "URI schematu identyfikatorów CERIF (stała nazwa, nie link do klikania)",
     "cerif_export/cerif/wspolne.py": "URI schematu identyfikatorów CERIF (stała nazwa, nie link do klikania)",
