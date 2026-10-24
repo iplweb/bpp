@@ -79,7 +79,7 @@ def test_generuj_eksport_autora_bibtex(
     assert "@article" in body
     assert "Nowak" in body
 
-    # Parytet z wyjściem synchronicznym (ten sam slice/formater).
+    # Ten sam slice/formater co bezpośrednie wywołanie eksportera.
     qs = Rekord.objects.prace_autora(autor_jan_nowak)
     oryginaly = [r.original for r in qs[:5000]]
     assert body == export_to_bibtex(oryginaly)

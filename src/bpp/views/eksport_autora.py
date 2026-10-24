@@ -1,22 +1,26 @@
 """
-Publiczne widoki eksportu wszystkich publikacji autora do formatów
-bibliograficznych (§3.3).
+Eksport wszystkich publikacji autora do formatów bibliograficznych (§3.3).
 
-Dwa endpointy zwracają plik do pobrania:
+Plik generuje WYŁĄCZNIE zadanie Celery (``generuj_eksport_autora``) —
+synchroniczne generowanie w wątku requestu przy dużym dorobku potrafiło
+zająć worker serwera WWW. Ścieżka:
 
-- ``/bpp/autor/<pk>/eksport.bib`` → BibTeX
-- ``/bpp/autor/<pk>/eksport.ris`` → RIS
+- ``StartEksportAutoraView`` — strona z przyciskiem „Generuj” (POST
+  kolejkuje zadanie; anonim przechodzi ALTCHA),
+- ``EksportAutoraStatusView`` — postęp,
+- ``EksportAutoraDownloadView`` — pobranie gotowego pliku.
 
-Oba generują plik SYNCHRONICZNIE w wątku requestu (do ``MAKS_EKSPORT`` prac,
-N+1), więc są tylko dla ZALOGOWANYCH — anonimowy bot mógłby nimi zająć
-workery. Publiczna ścieżka to eksport asynchroniczny (``StartEksportAutoraView``)
-z ALTCHA dla anonimów.
+Redakcja (``moze_wprowadzac_dane``) dostaje pełny dorobek (bez wykluczania
+ukrytych statusów korekty); takie zadanie jest oznaczone
+``tylko_dla_redakcji`` i jego status/plik widzi wyłącznie redakcja.
+
+Dawne adresy ``/bpp/autor/<pk>/eksport.bib`` i ``.ris`` przekierowują na
+stronę startu eksportu w odpowiednim formacie.
 """
 
 from datetime import timedelta
 
 from django import forms
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.cache import cache
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -26,20 +30,14 @@ from django.views import View
 from django_altcha import AltchaField
 from django_sendfile import sendfile
 
-from bpp.export.bibtex import export_to_bibtex
-from bpp.export.ris import export_to_ris
-from bpp.models import Autor, AutorEksportTask, Rekord
+from bpp.models import Autor, AutorEksportTask
 from bpp.permissions import moze_wprowadzac_dane
 from bpp.util.ukryte_statusy import ukryte_statusy_eksportu, widoczni_autorzy
 
-#: Maksymalna liczba eksportowanych rekordów. Zabezpiecza przed OOM przy
-#: autorach z gigantyczną liczbą prac (eksport materializuje instancje
-#: konkretnych modeli, więc jest N+1 — twardy limit jest tańszy niż ryzyko).
-MAKS_EKSPORT = 5000
-
-#: Limit synchronicznych eksportów na użytkownika w oknie ``OKNO_LIMITU_S``
-#: sekund. Nie dotyczy osób z uprawnieniami redakcyjnymi.
-LIMIT_EKSPORTOW_SYNC = 10
+#: Limit NOWYCH zadań eksportu zlecanych przez zalogowanego użytkownika bez
+#: uprawnień redakcyjnych w oknie ``OKNO_LIMITU_S`` sekund. Anonima chroni
+#: ALTCHA (proof-of-work), redakcji limit nie dotyczy.
+LIMIT_STARTOW_EKSPORTU = 10
 OKNO_LIMITU_S = 60
 
 
@@ -48,22 +46,11 @@ def _autor_dla_eksportu(request, pk):
     return get_object_or_404(widoczni_autorzy(Autor.objects.all(), request), pk=pk)
 
 
-def _ukryte_statusy_eksportu_sync(request):
-    """Statusy wykluczane z eksportu SYNCHRONICZNEGO.
-
-    Redakcja (``moze_wprowadzac_dane``) dostaje pełny dorobek, jak na stronie
-    rekordu; pozostali — zakres publiczny (:func:`ukryte_statusy_eksportu`).
-    Eksport w tle ma zawsze zakres publiczny (patrz ``StartEksportAutoraView``).
-    """
-    if moze_wprowadzac_dane(request.user):
-        return []
-    return ukryte_statusy_eksportu(request)
-
-
 def _przekroczono_limit(request) -> bool:
-    if moze_wprowadzac_dane(request.user):
+    """Czy zalogowany (nie-redaktor) przekroczył limit startów eksportu."""
+    if not request.user.is_authenticated or moze_wprowadzac_dane(request.user):
         return False
-    key = f"eksport-autora-sync:{request.user.pk}"
+    key = f"eksport-autora-start:{request.user.pk}"
     # ``add`` inicjuje licznik tylko gdy klucza nie ma; ``incr`` jest atomowy.
     cache.add(key, 0, timeout=OKNO_LIMITU_S)
     try:
@@ -72,84 +59,26 @@ def _przekroczono_limit(request) -> bool:
         # DummyCache (domyślny w dev/test) nic nie przechowuje — ``incr``
         # zgłasza brak klucza; traktujemy to jak pierwsze wywołanie.
         licznik = 1
-    return licznik > LIMIT_EKSPORTOW_SYNC
+    return licznik > LIMIT_STARTOW_EKSPORTU
 
 
-class _BazaEksportuAutoraView(LoginRequiredMixin, View):
-    """
-    Wspólna baza obu eksportów. Podklasy różnią się tylko formaterem,
-    typem zawartości i rozszerzeniem pliku.
-    """
+def _zadanie_dostepne(request, task) -> bool:
+    """Zadanie redakcji (pełny dorobek) widzi tylko redakcja."""
+    return not task.tylko_dla_redakcji or moze_wprowadzac_dane(request.user)
 
-    #: Funkcja ``(publications) -> str`` produkująca treść pliku.
-    formatter = None
-    #: Wartość nagłówka ``Content-Type``.
-    content_type = None
-    #: Rozszerzenie pliku (bez kropki), np. ``"bib"``.
-    extension = None
 
-    def naglowek_obciecia(self, wyeksportowano: int, wszystkich: int) -> str:
-        """
-        Zwraca prefiks dołączany do treści gdy nastąpiło obcięcie do
-        ``MAKS_EKSPORT``. Domyślnie pusty — RIS (format liniowy) nie ma
-        wygodnego sposobu na komentarz, więc tam polegamy wyłącznie na
-        samym limicie. BibTeX nadpisuje to komentarzem ``% ...``.
-        """
-        return ""
+class PrzekierowanieEksportuAutoraView(View):
+    """Dawne ``eksport.bib``/``eksport.ris`` → strona startu eksportu w tle."""
+
+    #: Format eksportu (``bib`` / ``ris``), ustawiany w ``urls.py``.
+    format = None
 
     def get(self, request, pk):
-        autor = _autor_dla_eksportu(request, pk)
-
-        if _przekroczono_limit(request):
-            return HttpResponse(
-                "Zbyt wiele żądań eksportu. Spróbuj ponownie za chwilę.",
-                status=429,
-                content_type="text/plain; charset=utf-8",
-            )
-
-        qs = Rekord.objects.prace_autora(autor)
-        ukryte = _ukryte_statusy_eksportu_sync(request)
-        if ukryte:
-            qs = qs.exclude(status_korekty_id__in=ukryte)
-        wszystkich = qs.count()
-        oryginaly = [r.original for r in qs[:MAKS_EKSPORT]]
-
-        tekst = self.formatter(oryginaly)
-
-        if wszystkich > MAKS_EKSPORT:
-            prefiks = self.naglowek_obciecia(len(oryginaly), wszystkich)
-            if prefiks:
-                tekst = prefiks + tekst
-
-        resp = HttpResponse(tekst, content_type=self.content_type)
-        nazwa = autor.slug or f"autor-{autor.pk}"
-        resp["Content-Disposition"] = f'attachment; filename="{nazwa}.{self.extension}"'
-        return resp
+        return redirect("bpp:autor_eksport_start", pk=pk, format=self.format)
 
 
-class AutorEksportBibtexView(_BazaEksportuAutoraView):
-    formatter = staticmethod(export_to_bibtex)
-    content_type = "application/x-bibtex; charset=utf-8"
-    extension = "bib"
-
-    def naglowek_obciecia(self, wyeksportowano: int, wszystkich: int) -> str:
-        return (
-            f"% Wyeksportowano pierwsze {wyeksportowano} z {wszystkich} prac "
-            f"(limit {MAKS_EKSPORT}).\n\n"
-        )
-
-
-class AutorEksportRisView(_BazaEksportuAutoraView):
-    formatter = staticmethod(export_to_ris)
-    content_type = "application/x-research-info-systems; charset=utf-8"
-    extension = "ris"
-    # RIS jest formatem czysto liniowym (każda linia = tag rekordu), więc nie
-    # ma czystego miejsca na komentarz o obcięciu jak `% ...` w BibTeX-ie.
-    # Świadomie pomijamy notkę i polegamy na samym limicie MAKS_EKSPORT.
-
-
-#: Okno deduplikacji: kolejne żądania startu tego samego eksportu (autor +
-#: format) w ciągu tylu minut reużywają istniejącego zadania zamiast kolejkować
+#: Okno deduplikacji: kolejne żądania startu tego samego eksportu (autor,
+#: format, zakres widoczności) w ciągu tylu minut reużywają istniejącego zadania zamiast kolejkować
 #: nowe. Chroni przed spamowaniem Celery przez anonimowych użytkowników.
 DEDUPE_MINUTES = 5
 
@@ -178,8 +107,10 @@ class StartEksportAutoraView(View):
     Celery. Zalogowany startuje bez captchy.
 
     Deduplikuje: jeśli istnieje świeże (ostatnie ``DEDUPE_MINUTES`` minut)
-    zadanie dla tego samego autora i formatu w stanie innym niż ``failed``,
-    reużywa je zamiast kolejkować nowe.
+    zadanie dla tego samego autora, formatu i zakresu widoczności w stanie
+    innym niż ``failed``, reużywa je zamiast kolejkować nowe. Zalogowany
+    użytkownik bez uprawnień redakcyjnych ma limit nowych zadań
+    (``LIMIT_STARTOW_EKSPORTU`` na ``OKNO_LIMITU_S`` s).
     """
 
     template_name = "browse/eksport_autora/start.html"
@@ -212,11 +143,15 @@ class StartEksportAutoraView(View):
         if not form.is_valid():
             return self._render(request, autor, format, form)
 
-        # Zakres widoczności (ukryte statusy) zapisujemy w zadaniu — worker
-        # Celery nie ma requestu. Plik jest publiczny po UUID, więc zakres
-        # jest publiczny także dla redakcji; wchodzi do deduplikacji, żeby
-        # zadania różnych uczelni (inne ukryte statusy) nie były współdzielone.
-        ukryte = ukryte_statusy_eksportu(request)
+        # Zakres widoczności zapisujemy w zadaniu — worker Celery nie ma
+        # requestu. Redakcja dostaje pełny dorobek w zadaniu oznaczonym
+        # ``tylko_dla_redakcji`` (status/plik widzi wyłącznie redakcja);
+        # pozostali — zakres publiczny (fail-closed). Oba pola wchodzą do
+        # deduplikacji: zadanie redakcji nigdy nie trafia do kogoś spoza niej
+        # i odwrotnie, a zadania uczelni o innych ukrytych statusach nie są
+        # współdzielone.
+        tylko_dla_redakcji = moze_wprowadzac_dane(request.user)
+        ukryte = [] if tylko_dla_redakcji else ukryte_statusy_eksportu(request)
 
         od = timezone.now() - timedelta(minutes=DEDUPE_MINUTES)
         istniejacy = (
@@ -225,6 +160,7 @@ class StartEksportAutoraView(View):
                 format=format,
                 created_at__gte=od,
                 ukryte_statusy=ukryte,
+                tylko_dla_redakcji=tylko_dla_redakcji,
             )
             .exclude(status="failed")
             .order_by("-created_at")
@@ -233,18 +169,31 @@ class StartEksportAutoraView(View):
         if istniejacy is not None:
             return redirect("bpp:autor_eksport_status", pk=istniejacy.pk)
 
+        if _przekroczono_limit(request):
+            return HttpResponse(
+                "Zbyt wiele żądań eksportu. Spróbuj ponownie za chwilę.",
+                status=429,
+                content_type="text/plain; charset=utf-8",
+            )
+
         task = AutorEksportTask.objects.create(
-            autor=autor, format=format, ukryte_statusy=ukryte
+            autor=autor,
+            format=format,
+            ukryte_statusy=ukryte,
+            tylko_dla_redakcji=tylko_dla_redakcji,
         )
         generuj_eksport_autora.delay(str(task.pk))
         return redirect("bpp:autor_eksport_status", pk=task.pk)
 
 
 class EksportAutoraStatusView(View):
-    """Strona statusu / partial HTMX (publiczny). Autoryzacja przez UUID."""
+    """Strona statusu / partial HTMX. Autoryzacja przez UUID; zadanie
+    ``tylko_dla_redakcji`` — dodatkowo tylko dla redakcji (inaczej 404)."""
 
     def get(self, request, pk):
         task = get_object_or_404(AutorEksportTask, pk=pk)
+        if not _zadanie_dostepne(request, task):
+            raise Http404
         context = {"task": task}
 
         if request.headers.get("HX-Request"):
@@ -253,10 +202,13 @@ class EksportAutoraStatusView(View):
 
 
 class EksportAutoraDownloadView(View):
-    """Pobranie gotowego pliku (publiczny). Autoryzacja przez UUID + status."""
+    """Pobranie gotowego pliku. Autoryzacja przez UUID + status; zadanie
+    ``tylko_dla_redakcji`` — dodatkowo tylko dla redakcji (inaczej 404)."""
 
     def get(self, request, pk):
         task = get_object_or_404(AutorEksportTask, pk=pk, status="completed")
+        if not _zadanie_dostepne(request, task):
+            raise Http404
         if not task.result_file:
             raise Http404("Plik nie został odnaleziony.")
 

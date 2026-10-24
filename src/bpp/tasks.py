@@ -282,8 +282,6 @@ def zaktualizuj_liczbe_cytowan():
 #: Maksymalna liczba eksportowanych rekordów. Zabezpiecza przed OOM przy
 #: autorach z gigantyczną liczbą prac (eksport materializuje instancje
 #: konkretnych modeli, więc jest N+1 — twardy limit jest tańszy niż ryzyko).
-#: Wartość musi być spójna z synchronicznym widokiem
-#: ``bpp.views.eksport_autora.MAKS_EKSPORT``.
 MAKS_EKSPORT_AUTORA = 5000
 
 
@@ -295,10 +293,9 @@ KOMUNIKAT_BLEDU_EKSPORTU_AUTORA = (
 
 
 def _zbuduj_tresc_eksportu_autora(autor, format: str, ukryte_statusy=()) -> str:
-    """Zbuduj treść eksportu IDENTYCZNIE jak widok synchroniczny.
+    """Zbuduj treść eksportu (do ``MAKS_EKSPORT_AUTORA`` prac; BibTeX dostaje
+    notkę o obcięciu).
 
-    Ten sam slice (``[:MAKS_EKSPORT]``), ten sam formater i ta sama notka
-    o obcięciu w BibTeX-ie — parytet bajt-w-bajt z dotychczasowym eksportem.
     ``ukryte_statusy`` — statusy korekty wykluczane z eksportu (zakres
     widoczności ustalony przy starcie zadania, patrz ``AutorEksportTask``).
     """
@@ -316,7 +313,7 @@ def _zbuduj_tresc_eksportu_autora(autor, format: str, ukryte_statusy=()) -> str:
 
     if format == "ris":
         # RIS jest formatem czysto liniowym — brak miejsca na komentarz o
-        # obcięciu, polegamy wyłącznie na samym limicie (jak widok sync).
+        # obcięciu, polegamy wyłącznie na samym limicie.
         return export_to_ris(oryginaly)
 
     tekst = export_to_bibtex(oryginaly)
