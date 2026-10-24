@@ -338,7 +338,7 @@ def generate_coins(praca, autorzy):  # noqa
     # Language
     if hasattr(praca, "jezyk") and praca.jezyk:
         lang = praca.jezyk.skrot if hasattr(praca.jezyk, "skrot") else "pl"
-        coins_data.append(f"rft.language={lang}")
+        coins_data.append(f"rft.language={quote(str(lang))}")
 
     # Join all parts with &
     coins_string = "&".join(coins_data)

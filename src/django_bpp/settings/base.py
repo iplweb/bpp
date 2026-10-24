@@ -116,6 +116,13 @@ env = environ.Env(
     DJANGO_BPP_FRESHDESK_WIDGET_ID=(str, "205000000433"),
     DJANGO_BPP_FRESHDESK_WIDGET_ID_ANON=(str, ""),
     DJANGO_BPP_FRESHDESK_WIDGET_JWT_SECRET=(str, ""),
+    #
+    # Content-Security-Policy — patrz docs/administrator/zaawansowane.md
+    #
+    DJANGO_BPP_CSP_ENABLED=(bool, True),
+    DJANGO_BPP_CSP_REPORT_ONLY=(bool, True),
+    DJANGO_BPP_CSP_POLICY=(str, ""),
+    DJANGO_BPP_CSP_REPORT_URI=(str, ""),
     DJANGO_BPP_MEDIA_ROOT=(str, os.path.join(os.getenv("HOME", "C:/"), "bpp-media")),
     #
     # Konfiguracja wymuszania zmiany haseł
@@ -337,6 +344,9 @@ TEMPLATES = [
 MIDDLEWARE = [
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # Zaraz po SecurityMiddleware: nagłówek CSP trafia też do odpowiedzi
+    # zwracanych wcześnie przez kolejne middleware (przekierowania, blokady).
+    "django_bpp.csp.ContentSecurityPolicyMiddleware",
     "bpp.middleware.MaliciousRequestBlockingMiddleware",  # Block malicious requests (pagination, PHP, .git, etc.) early
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -1762,6 +1772,14 @@ LANGUAGE_COOKIE_SECURE = True
 
 X_FRAME_OPTIONS = "SAMEORIGIN"
 
+# Content-Security-Policy (django_bpp.csp.ContentSecurityPolicyMiddleware).
+# Domyślnie WŁĄCZONE w trybie Report-Only — przeglądarka tylko raportuje
+# naruszenia, niczego nie blokuje. Pusta polityka = domyślna z django_bpp.csp.
+BPP_CSP_ENABLED = env("DJANGO_BPP_CSP_ENABLED")
+BPP_CSP_REPORT_ONLY = env("DJANGO_BPP_CSP_REPORT_ONLY")
+BPP_CSP_POLICY = env("DJANGO_BPP_CSP_POLICY")
+BPP_CSP_REPORT_URI = env("DJANGO_BPP_CSP_REPORT_URI")
+
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000
 
 # Twardy, parse-time limit liczby plików na jedno żądanie (Django default to
@@ -1873,6 +1891,16 @@ ROLLBAR_SCRUB_FIELDS = [
     "x-app-token",
     "cookie",
     "set-cookie",
+    "pbn_token",
+    # tokeny sesji/formularzy i jednorazowe:
+    "csrfmiddlewaretoken",
+    "sessionid",
+    "ott",
+    # sekrety integracji trzymane w modelu Uczelnia:
+    "pbn_app_token",
+    "orcid_client_secret",
+    "dspace_api_password",
+    "clarivate_password",
 ]
 
 ROLLBAR = {
