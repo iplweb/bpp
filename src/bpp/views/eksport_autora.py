@@ -28,7 +28,10 @@ from django_sendfile import sendfile
 from bpp.export.bibtex import export_to_bibtex
 from bpp.export.ris import export_to_ris
 from bpp.models import Autor, AutorEksportTask, Rekord, Uczelnia
-from bpp.util.ukryte_statusy import wyklucz_ukryte_statusy, wyklucz_ukrytych_autorow
+from bpp.util.ukryte_statusy import (
+    wyklucz_ukryte_statusy_bez_luk,
+    wyklucz_ukrytych_autorow,
+)
 
 #: Maksymalna liczba eksportowanych rekordów. Zabezpiecza przed OOM przy
 #: autorach z gigantyczną liczbą prac (eksport materializuje instancje
@@ -71,10 +74,11 @@ class _BazaEksportuAutoraView(LoginRequiredMixin, View):
 
         # Odpowiedź jest per użytkownik, więc stosujemy regułę ze strony
         # rekordu: statusy ukryte w kanale "podglad" widzi tylko redaktor.
-        qs = wyklucz_ukryte_statusy(
+        # Bez ustalonej uczelni — wykluczamy statusy ukryte gdziekolwiek.
+        qs = wyklucz_ukryte_statusy_bez_luk(
             Rekord.objects.prace_autora(autor),
             request,
-            uczelnia=Uczelnia.objects.get_for_request(request),
+            Uczelnia.objects.get_for_request(request),
         )
         wszystkich = qs.count()
         oryginaly = [r.original for r in qs[:MAKS_EKSPORT]]

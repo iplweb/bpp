@@ -25,7 +25,7 @@ ROLE = ["anonim", "zwykly", "redaktor"]
 def _zaloguj(client, django_user_model, rola):
     if rola == "anonim":
         return
-    user = django_user_model.objects.create_user(rola, password="haslo123")
+    user = django_user_model.objects.create_user(rola)
     if rola == "redaktor":
         grupa, _ = Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)
         user.groups.add(grupa)
@@ -132,6 +132,27 @@ def test_start_eksportu_post_ukryty_autor_redaktor(
 def test_eksport_sync_ukryte_statusy(
     client, django_user_model, autor_z_ukryta_praca, nazwa, rola
 ):
+    _zaloguj(client, django_user_model, rola)
+    res = client.get(reverse(f"bpp:{nazwa}", args=(autor_z_ukryta_praca.pk,)))
+    assert res.status_code == 200
+    body = res.content.decode("utf-8")
+    assert TOKEN_JAWNY in body
+    assert (TOKEN_UKRYTY in body) == (rola == "redaktor")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("nazwa", ["autor_eksport_bibtex", "autor_eksport_ris"])
+@pytest.mark.parametrize("rola", ["zwykly", "redaktor"])
+def test_eksport_sync_bez_uczelni_nie_wypuszcza_ukrytych(
+    client, django_user_model, autor_z_ukryta_praca, mocker, nazwa, rola
+):
+    """Gdy nie da się ustalić uczelni z requestu, ``wyklucz_ukryte_statusy``
+    niczego by nie ukryło — eksport odmawia wtedy ukrytych prac
+    (statusy ukryte w dowolnej uczelni); redaktor nadal widzi wszystko."""
+    mocker.patch(
+        "bpp.views.eksport_autora.Uczelnia.objects.get_for_request",
+        return_value=None,
+    )
     _zaloguj(client, django_user_model, rola)
     res = client.get(reverse(f"bpp:{nazwa}", args=(autor_z_ukryta_praca.pk,)))
     assert res.status_code == 200

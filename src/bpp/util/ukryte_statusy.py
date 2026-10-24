@@ -59,3 +59,27 @@ def wyklucz_ukrytych_autorow(qs, request):
     if user is not None and moze_wprowadzac_dane(user):
         return qs
     return qs.filter(pokazuj=True)
+
+
+def wyklucz_ukryte_statusy_bez_luk(qs, request, uczelnia, kanal="podglad"):
+    """Jak :func:`wyklucz_ukryte_statusy`, ale ODMAWIAJĄCE przy braku uczelni.
+
+    ``wyklucz_ukryte_statusy`` przy nieustalonej uczelni niczego nie ukrywa
+    (fail-open) — dla treści, które wychodzą poza stronę (eksport plików),
+    to za mało. Tu, gdy oglądający nie jest redaktorem, a ``uczelnia`` jest
+    ``None``, wykluczamy statusy ukryte w danym kanale w KTÓREJKOLWIEK
+    uczelni. ``request=None`` = odbiorca publiczny (np. zadanie w tle).
+    """
+    from bpp.models import Ukryj_Status_Korekty
+    from bpp.permissions import moze_wprowadzac_dane
+
+    if uczelnia is not None:
+        return wyklucz_ukryte_statusy(qs, request, kanal=kanal, uczelnia=uczelnia)
+    user = getattr(request, "user", None)
+    if user is not None and moze_wprowadzac_dane(user):
+        return qs
+    return qs.exclude(
+        status_korekty_id__in=Ukryj_Status_Korekty.objects.filter(
+            **{kanal: True}
+        ).values("status_korekty_id")
+    )

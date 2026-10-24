@@ -294,19 +294,13 @@ def _prace_autora_do_publicznego_eksportu(autor, uczelnia):
     zadania) i współdzielony przez deduplikację, więc filtr stosujemy
     bezwarunkowo — jak dla anonima (``request=None``), niezależnie od tego,
     kto zlecił eksport. Zadanie bez uczelni (sprzed wprowadzenia pola)
-    wyklucza statusy ukryte w KTÓREJKOLWIEK uczelni — lepiej za dużo
-    ukryć, niż wypuścić ukrytą pracę.
+    wyklucza statusy ukryte w KTÓREJKOLWIEK uczelni.
     """
-    from bpp.models import Rekord, Ukryj_Status_Korekty
-    from bpp.util.ukryte_statusy import wyklucz_ukryte_statusy
+    from bpp.models import Rekord
+    from bpp.util.ukryte_statusy import wyklucz_ukryte_statusy_bez_luk
 
-    qs = Rekord.objects.prace_autora(autor)
-    if uczelnia is not None:
-        return wyklucz_ukryte_statusy(qs, None, uczelnia=uczelnia)
-    return qs.exclude(
-        status_korekty_id__in=Ukryj_Status_Korekty.objects.filter(podglad=True).values(
-            "status_korekty_id"
-        )
+    return wyklucz_ukryte_statusy_bez_luk(
+        Rekord.objects.prace_autora(autor), None, uczelnia
     )
 
 
