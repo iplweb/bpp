@@ -264,6 +264,7 @@ _POWODY_SLOWNIKOWE = {
     "pl_common_words": "pospolite polskie słowa",
     "pl_first_names": "imiona",
     "pl_last_names": "nazwiska",
+    "pl_places": "nazwy miejscowości",
 }
 _POWODY_WZORCOW = {
     "repeat": "powtórzenia",
