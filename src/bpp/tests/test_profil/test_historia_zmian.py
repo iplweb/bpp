@@ -153,6 +153,20 @@ def test_historia_w_adminie_pokazuje_logentry_sprzed_wersjonowania(
     tresc = resp.content.decode()
     assert "Wcześniejsza historia" in tresc
     assert "Dodano dawno temu" in tresc
+    # Nad starą historią nie może stać „nie posiada historii zmian” ani
+    # zachęta do wyboru daty z (pustej) listy wersji.
+    assert "nie posiada historii zmian" not in tresc
+    assert "Wybierz datę" not in tresc
+    assert "Brak zapisanych wersji do przywrócenia" in tresc
+
+
+def test_historia_w_adminie_bez_zadnej_historii(admin_client):
+    autor = baker.make(Autor)
+    resp = admin_client.get(reverse("admin:bpp_autor_history", args=[autor.pk]))
+    tresc = resp.content.decode()
+    assert "Wcześniejsza historia" not in tresc
+    assert "Wybierz datę" not in tresc
+    assert "nie posiada historii zmian" in tresc
 
 
 def _dane_formularza_admina(response):
