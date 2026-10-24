@@ -79,7 +79,7 @@ dependencies = [
     # Ocena siły hasła lokalnie (wzorce + słowniki), bez wysyłania hasła.
     "zxcvbn>=4.5.0,<5",
     # Polskie słowniki dla zxcvbn: pospolite słowa, imiona, nazwiska.
-    "zxcvbn-pl>=0.2.0,<1",
+    "zxcvbn-pl>=0.3.0,<1",
     "dj-pagination==2.5.0",
     "requests>=2.34.2",
     "dspace-rest-client>=0.1.12",

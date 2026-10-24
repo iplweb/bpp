@@ -1,0 +1,1 @@
+Ocena siły hasła rozpoznaje teraz także formy odmienione nazw miejscowości, imion i nazwisk (zxcvbn-pl 0.3.0, dane SGJP) — np. „ZielonejGorze2020” czy „Kowalskiego1990” są odrzucane tak samo jak ich formy podstawowe.
