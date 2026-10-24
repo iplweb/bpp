@@ -369,5 +369,8 @@ def export_candidates_to_xlsx(candidates, request=None):
         worksheet_create_table(ws)
 
     stream = BytesIO()
+    from bpp.util import sanitize_xlsx_workbook
+
+    sanitize_xlsx_workbook(wb)
     wb.save(stream)
     return stream.getvalue()

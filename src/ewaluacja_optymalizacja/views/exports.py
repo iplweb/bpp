@@ -18,7 +18,11 @@ def _generate_author_sedn_workbook(author_result, run):
     from openpyxl import Workbook
 
     from bpp.models.cache import Cache_Punktacja_Autora_Query
-    from bpp.util import worksheet_columns_autosize, worksheet_create_table
+    from bpp.util import (
+        sanitize_xlsx_row,
+        worksheet_columns_autosize,
+        worksheet_create_table,
+    )
     from ewaluacja_metryki.models import MetrykaAutora
 
     autor_pk = author_result.autor_id
@@ -94,16 +98,18 @@ def _generate_author_sedn_workbook(author_result, run):
         rodzaj = rodzaj_map.get(rekord.charakter_formalny.rodzaj_pbn, "brak")
 
         ws.append(
-            [
-                pbn_uid,
-                rekord.tytul_oryginalny,
-                rodzaj,
-                rekord.rok,
-                float(rekord.punkty_kbn) if rekord.punkty_kbn else 0,
-                float(praca.slot),
-                float(praca.pkdaut),
-                status,
-            ]
+            sanitize_xlsx_row(
+                [
+                    pbn_uid,
+                    rekord.tytul_oryginalny,
+                    rodzaj,
+                    rekord.rok,
+                    float(rekord.punkty_kbn) if rekord.punkty_kbn else 0,
+                    float(praca.slot),
+                    float(praca.pkdaut),
+                    status,
+                ]
+            )
         )
 
     # Formatowanie
@@ -305,7 +311,11 @@ def export_sedn_report_1(request):
     from openpyxl import Workbook
 
     from bpp.models.cache import Cache_Punktacja_Autora_Query
-    from bpp.util import worksheet_columns_autosize, worksheet_create_table
+    from bpp.util import (
+        sanitize_xlsx_row,
+        worksheet_columns_autosize,
+        worksheet_create_table,
+    )
     from ewaluacja_metryki.models import MetrykaAutora
 
     # Pobierz najnowsze ukończone uruchomienia dla każdej dyscypliny
@@ -392,18 +402,20 @@ def export_sedn_report_1(request):
         is_selected = rekord_id_tuple in selected_works.get(key, set())
 
         ws.append(
-            [
-                pbn_uid,
-                rekord.tytul_oryginalny,
-                rodzaj,
-                rekord.rok,
-                autor.imiona,
-                autor.nazwisko,
-                float(praca.slot),
-                float(praca.pkdaut),
-                float(rekord.punkty_kbn) if rekord.punkty_kbn else 0,
-                "Tak" if is_selected else "Nie",
-            ]
+            sanitize_xlsx_row(
+                [
+                    pbn_uid,
+                    rekord.tytul_oryginalny,
+                    rodzaj,
+                    rekord.rok,
+                    autor.imiona,
+                    autor.nazwisko,
+                    float(praca.slot),
+                    float(praca.pkdaut),
+                    float(rekord.punkty_kbn) if rekord.punkty_kbn else 0,
+                    "Tak" if is_selected else "Nie",
+                ]
+            )
         )
 
     worksheet_columns_autosize(ws)
@@ -437,7 +449,11 @@ def export_sedn_report_2(request):
     from openpyxl import Workbook
 
     from bpp.models.cache import Cache_Punktacja_Autora_Query
-    from bpp.util import worksheet_columns_autosize, worksheet_create_table
+    from bpp.util import (
+        sanitize_xlsx_row,
+        worksheet_columns_autosize,
+        worksheet_create_table,
+    )
     from ewaluacja_metryki.models import MetrykaAutora
 
     # Pobierz najnowsze ukończone uruchomienia dla każdej dyscypliny
@@ -553,16 +569,18 @@ def export_sedn_report_2(request):
         osoby_str = "; ".join(data["osoby"])
 
         ws.append(
-            [
-                rekord.rok,
-                pbn_uid,
-                rekord.tytul_oryginalny,
-                rodzaj,
-                osoby_str,
-                float(rekord.punkty_kbn) if rekord.punkty_kbn else 0,
-                round(data["punktacja_ogolem"], 4),
-                round(data["punktacja_ewaluacji"], 4),
-            ]
+            sanitize_xlsx_row(
+                [
+                    rekord.rok,
+                    pbn_uid,
+                    rekord.tytul_oryginalny,
+                    rodzaj,
+                    osoby_str,
+                    float(rekord.punkty_kbn) if rekord.punkty_kbn else 0,
+                    round(data["punktacja_ogolem"], 4),
+                    round(data["punktacja_ewaluacji"], 4),
+                ]
+            )
         )
 
     worksheet_columns_autosize(ws)

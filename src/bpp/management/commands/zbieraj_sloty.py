@@ -121,8 +121,10 @@ class Command(BaseCommand):
 
         import openpyxl
 
+        from bpp.util import sanitize_xlsx_row
+
         wb = openpyxl.Workbook()
         s = wb.worksheets[0]
         for w in wiersze + prace:
-            s.append(w)
+            s.append(sanitize_xlsx_row(w))
         wb.save(xls)
