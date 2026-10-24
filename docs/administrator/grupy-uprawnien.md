@@ -16,16 +16,18 @@ jak konto administratora (superużytkownika).
 
 | Grupa | Co może | Dlaczego to uprawnienie równoważne administracyjnemu |
 |---|---|---|
-| „administracja” | Edytować użytkowników i grupy (w tym pole „status superużytkownika” i przynależność do grup), formularze wyszukiwania, kolumny modułu redagowania, obsługujących zgłoszenia. | Może nadać dowolnemu kontu — także własnemu — status superużytkownika albo członkostwo w każdej grupie. |
+| „administracja” | Edytować użytkowników i grupy (w tym przynależność do grup), formularze wyszukiwania, kolumny modułu redagowania, obsługujących zgłoszenia. | Może dopisać dowolne konto — także własne — do każdej grupy, w tym do grup uprzywilejowanych z tej tabeli. |
 | „web” | Edytować szablony przechowywane w bazie (dbtemplates), artykuły na stronie głównej, witryny (`Site`) i favicony. | Szablony z bazy mają pierwszeństwo przed szablonami z dysku, więc można nadpisać **dowolny** szablon serwisu, także stronę logowania i panel administracyjny. Treść artykułów jest wyświetlana jako surowy HTML. W obu przypadkach można wstrzyknąć JavaScript widoczny dla wszystkich użytkowników, w tym superużytkowników. Zmiana domeny witryny wpływa na rozpoznawanie uczelni po nazwie hosta i na adresy bezwzględne generowane przez system. |
 | „dane systemowe” | Edytować słowniki systemowe, w tym ustawienia formularzy (formdefaults) z polami „HTML przed” / „HTML po” (`html_before`, `html_after`). | Pola te są wstawiane do formularzy (m.in. raportów i importów) jako kod szablonu Django, bez filtrowania HTML — można w nich umieścić JavaScript wykonywany u każdego, kto otworzy formularz. |
 | „raporty” | Edytować definicje raportów (flexible-reports): szablon raportu, tabele, kolumny, źródła danych. | Szablon raportu jest renderowany jako szablon Django bez filtrowania HTML. Zmiana szablonu istniejącego raportu trafia do wszystkich jego odbiorców — zależnie od ustawień raportu także do niezalogowanych. |
-| „struktura” | Edytować dane uczelni i jednostek, m.in. tytuł strony głównej i opisy jednostek. | Tytuł strony głównej i opis jednostki są wyświetlane jako surowy HTML na publicznych stronach — można w nich umieścić JavaScript. W obecnej wersji grupa widzi i zmienia też konfigurację integracji uczelni (PBN, Clarivate, ORCID, DSpace) wraz z danymi dostępowymi do tych usług. |
 
-Grupy „wprowadzanie danych” i „indeks autorów” nie są na tej liście: pola
-z HTML-em, które redagują (tytuły, streszczenia, „informacje”,
-„szczegóły”, „uwagi”, biogram autora), są przy zapisie lub wyświetlaniu
-oczyszczane z niedozwolonych znaczników.
+Grupy „wprowadzanie danych”, „indeks autorów” i „struktura” nie są na tej
+liście: pola z HTML-em, które redagują (tytuły, streszczenia, „informacje”,
+„szczegóły”, „uwagi”, biogram autora, tytuł strony głównej, opisy jednostek,
+tekst deklaracji dostępności), są przy zapisie lub wyświetlaniu oczyszczane
+z niedozwolonych znaczników. Konfigurację integracji uczelni (PBN, Clarivate,
+ORCID, DSpace) wraz z danymi dostępowymi widzi i zmienia wyłącznie
+superużytkownik.
 
 ## Zalecenia
 
