@@ -2,10 +2,13 @@ import functools
 import itertools
 import operator
 
+from braces.views import GroupRequiredMixin
 from dal import autocomplete
 from django import http
+from django.core.cache import cache
 from django.db.models import Q
 
+from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Uczelnia
 from bpp.util.isbn import warianty_isbn, wyglada_jak_isbn
 from import_common.util import check_if_doi, strip_doi_urls
@@ -18,8 +21,27 @@ from .mixins import SanitizedAutocompleteMixin
 
 
 class Wydawnictwo_Nadrzedne_W_PBNAutocomplete(
-    SanitizedAutocompleteMixin, autocomplete.Select2QuerySetView
+    GroupRequiredMixin, SanitizedAutocompleteMixin, autocomplete.Select2QuerySetView
 ):
+    # Dostęp tylko dla redakcji (grupa „wprowadzanie danych") i superuserów.
+    # Niezalogowany → przekierowanie do logowania, zalogowany bez grupy → 403.
+    group_required = GR_WPROWADZANIE_DANYCH
+    raise_exception = True
+    redirect_unauthenticated_users = True
+
+    #: Uprawnienia, z których dowolne pozwala pobierać rekordy z PBN (POST).
+    #: Widżet służy do ustawiania wydawnictwa nadrzędnego w rekordach
+    #: ``Wydawnictwo_Zwarte`` (admin, importer publikacji).
+    ADD_PERMISSIONS = (
+        "bpp.add_wydawnictwo_zwarte",
+        "bpp.change_wydawnictwo_zwarte",
+        "pbn_api.add_publication",
+    )
+
+    #: Limit zapytań POST (pobrań z PBN) per użytkownik w oknie czasowym.
+    POST_RATELIMIT_MAX = 30
+    POST_RATELIMIT_WINDOW = 60  # sekundy
+
     # Ile rekordów maksymalnie ściągać z PBN?
     MAX_RECORDS_DOWNLOADED = 5
 
@@ -206,8 +228,39 @@ class Wydawnictwo_Nadrzedne_W_PBNAutocomplete(
             }
         )
 
+    def has_add_permission(self, request):
+        user = request.user
+        if not user.is_authenticated:
+            return False
+        return any(user.has_perm(perm) for perm in self.ADD_PERMISSIONS)
+
+    def _post_ratelimit_exceeded(self, request):
+        """Atomowy licznik POST-ów per użytkownik (cache: ``add`` + ``incr``).
+
+        Pod DummyCache (dev/test) ``incr`` rzuca ``ValueError`` — limit jest
+        wtedy no-op, spójnie z resztą throttlingu w projekcie.
+        """
+        key = f"pbn-nadrzedne-rl:{request.user.pk}"
+        cache.add(key, 0, self.POST_RATELIMIT_WINDOW)
+        try:
+            count = cache.incr(key)
+        except ValueError:
+            return False  # klucz wygasł między add a incr albo DummyCache
+        return count > self.POST_RATELIMIT_MAX
+
     def post(self, request, *args, **kwargs):
         """Create an object given a text after checking permissions."""
+        if not self.has_add_permission(request):
+            return http.HttpResponseForbidden()
+
+        if self._post_ratelimit_exceeded(request):
+            return http.JsonResponse(
+                {
+                    "id": "error",
+                    "text": "Zbyt wiele zapytań do PBN. Spróbuj ponownie za minutę.",
+                }
+            )
+
         uczelnia: Uczelnia = Uczelnia.objects.get_for_request(self.request)
         try:
             client: PBNClient = uczelnia.pbn_client()
