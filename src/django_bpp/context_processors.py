@@ -28,10 +28,8 @@ def conditional_password_status(request):
     from password_policies.models import PasswordChangeRequired
 
     # Rotacja wyłączona (0): liczy się tylko ręczne wymuszenie zmiany
-    # (PasswordChangeRequired). Wieku hasła nie sprawdzamy, bo
-    # django-password-policies-iplweb <= 0.9.4 liczy w `change_required`
-    # względem `now - timedelta(0)` i każde hasło wychodzi na przeterminowane
-    # (poprawka: iplweb/django-password-policies-iplweb#56).
+    # (PasswordChangeRequired), które biblioteka przy zerowym duration
+    # pomija -- symetrycznie do ConditionalPasswordChangeMiddleware.
     if not password_settings.PASSWORD_DURATION_SECONDS:
         required = request.session.get(
             password_settings.PASSWORD_POLICIES_CHANGE_REQUIRED_SESSION_KEY
