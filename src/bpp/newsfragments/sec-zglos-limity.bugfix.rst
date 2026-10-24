@@ -1,0 +1,1 @@
+Wzmocniono zabezpieczenia formularza zgłaszania publikacji: limit liczby zgłoszeń na godzinę (per IP lub konto), łączny limit rozmiaru załączników, oczyszczanie tematu powiadomienia e-mail oraz blokada startu produkcji z włączoną CAPTCHA i kluczem-placeholderem.
