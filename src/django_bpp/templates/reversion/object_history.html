@@ -109,10 +109,10 @@
         <div class="g-d-12 g-m-12">
             <div class="grp-module">
                 <h2>{% trans 'History' %}</h2>
-                <div class="grp-description">
-                    <p>{% blocktrans %}Choose a date from the list below to revert to a previous version of this object.{% endblocktrans %}</p>
-                </div>
                 {% if action_list %}
+                    <div class="grp-description">
+                        <p>{% blocktrans %}Choose a date from the list below to revert to a previous version of this object.{% endblocktrans %}</p>
+                    </div>
                     <table id="grp-change-history" class="grp-table bpp-historia-tabela">
                         <thead>
                             <tr>
@@ -152,6 +152,11 @@
                             {% endfor %}
                         </tbody>
                     </table>
+                {% elif historia_sprzed_wersjonowania %}
+                    {# Stara historia (LogEntry) jest niżej — komunikat „brak historii” by jej przeczył. #}
+                    <div class="grp-row">
+                        <p style="color: #999;">Brak zapisanych wersji do przywrócenia — pierwsza powstanie przy najbliższej zmianie rekordu. Wcześniejsze zmiany widać poniżej.</p>
+                    </div>
                 {% else %}
                     <div class="grp-row">
                         <p style="color: #999;">{% trans "This object doesn't have a change history. It probably wasn't added via this admin site." %}</p>
