@@ -109,6 +109,9 @@ env = environ.Env(
     DJANGO_BPP_SECRET_KEY=(str, SECRET_KEY_UNSET),
     ALTCHA_HMAC_KEY=(str, ALTCHA_HMAC_KEY_UNSET),
     ZGLOS_CAPTCHA_ENABLED=(bool, False),
+    ZGLOS_LIMIT_NA_GODZINE=(int, 5),
+    ZGLOS_LIMIT_NA_GODZINE_ZALOGOWANI=(int, 10),
+    ZGLOS_MAX_LACZNY_ROZMIAR_MB=(int, 50),
     #
     # Widget wsparcia Freshdesk (Freshworks) — patrz
     # docs/administrator/widget-wsparcia-freshdesk.md
@@ -953,6 +956,12 @@ SECRET_KEY = env("DJANGO_BPP_SECRET_KEY")
 # system-check WARNING (zglos_publikacje/checks.py) sygnalizuje placeholder.
 ALTCHA_HMAC_KEY = env("ALTCHA_HMAC_KEY")
 ZGLOS_CAPTCHA_ENABLED = env("ZGLOS_CAPTCHA_ENABLED")
+# Formularz zgłoszeń publikacji: limit zakończonych zgłoszeń na godzinę
+# (anonim — per IP klienta, zalogowany — per konto; 0 = brak limitu) oraz
+# łączny limit rozmiaru załączników jednego zgłoszenia (MB).
+ZGLOS_LIMIT_NA_GODZINE = env("ZGLOS_LIMIT_NA_GODZINE")
+ZGLOS_LIMIT_NA_GODZINE_ZALOGOWANI = env("ZGLOS_LIMIT_NA_GODZINE_ZALOGOWANI")
+ZGLOS_MAX_LACZNY_ROZMIAR_MB = env("ZGLOS_MAX_LACZNY_ROZMIAR_MB")
 INSTALLED_APPS += ["django_altcha"]
 
 # Widget wsparcia Freshdesk: osobne widgety dla zalogowanych i anonimów.
