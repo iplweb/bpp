@@ -1,0 +1,1 @@
+Eksport prac autora do BibTeX/RIS (synchroniczny i w tle) nie zawiera prac o statusach korekty ukrytych na stronach publicznych także wtedy, gdy zleca go redaktor (plik wychodzi poza stronę) oraz gdy nie da się ustalić uczelni.
