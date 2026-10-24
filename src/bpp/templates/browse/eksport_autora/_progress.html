@@ -37,13 +37,12 @@
                 })();
             </script>
         {% else %}
-            <p>{{ task.error_message }}</p>
+            <p>Nie udało się wygenerować pliku. Spróbuj ponownie później.</p>
         {% endif %}
     </div>
 {% elif task.status == "failed" %}
     <div class="callout alert">
         <h4><span class="fi-x"></span> Błąd!</h4>
-        <p>Wystąpił błąd podczas generowania pliku:</p>
-        <pre>{{ task.error_message }}</pre>
+        <p>Nie udało się wygenerować pliku. Spróbuj ponownie później.</p>
     </div>
 {% endif %}

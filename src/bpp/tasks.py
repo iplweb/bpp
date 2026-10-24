@@ -287,17 +287,28 @@ def zaktualizuj_liczbe_cytowan():
 MAKS_EKSPORT_AUTORA = 5000
 
 
-def _zbuduj_tresc_eksportu_autora(autor, format: str) -> str:
+#: Komunikat pokazywany publicznie, gdy generowanie eksportu się nie powiedzie.
+#: Szczegóły wyjątku trafiają wyłącznie do logu i Rollbara.
+KOMUNIKAT_BLEDU_EKSPORTU_AUTORA = (
+    "Nie udało się wygenerować pliku. Spróbuj ponownie później."
+)
+
+
+def _zbuduj_tresc_eksportu_autora(autor, format: str, ukryte_statusy=()) -> str:
     """Zbuduj treść eksportu IDENTYCZNIE jak widok synchroniczny.
 
     Ten sam slice (``[:MAKS_EKSPORT]``), ten sam formater i ta sama notka
     o obcięciu w BibTeX-ie — parytet bajt-w-bajt z dotychczasowym eksportem.
+    ``ukryte_statusy`` — statusy korekty wykluczane z eksportu (zakres
+    widoczności ustalony przy starcie zadania, patrz ``AutorEksportTask``).
     """
     from bpp.export.bibtex import export_to_bibtex
     from bpp.export.ris import export_to_ris
     from bpp.models import Rekord
 
     qs = Rekord.objects.prace_autora(autor)
+    if ukryte_statusy:
+        qs = qs.exclude(status_korekty_id__in=list(ukryte_statusy))
     wszystkich = qs.count()
     oryginaly = [r.original for r in qs[:MAKS_EKSPORT_AUTORA]]
 
@@ -334,15 +345,21 @@ def generuj_eksport_autora(self, task_id: str):
     task.save()
 
     try:
-        tekst = _zbuduj_tresc_eksportu_autora(task.autor, task.format)
+        tekst = _zbuduj_tresc_eksportu_autora(
+            task.autor, task.format, task.ukryte_statusy
+        )
         task.result_file.save(task.nazwa_pliku, ContentFile(tekst.encode("utf-8")))
         task.status = "completed"
         task.completed_at = timezone.now()
         task.save()
         return {"status": "success", "task_id": str(task_id)}
-    except Exception as e:
+    except Exception:
+        # Status zadania jest publiczny (UUID) — nie pokazujemy treści wyjątku.
+        # Szczegóły: log tutaj, Rollbar przez sygnał ``task_failure``
+        # (``django_bpp.celery_tasks``) po ponownym zgłoszeniu wyjątku niżej.
+        logger.exception("Błąd generowania eksportu autora (zadanie %s)", task_id)
         task.status = "failed"
-        task.error_message = str(e)
+        task.error_message = KOMUNIKAT_BLEDU_EKSPORTU_AUTORA
         task.completed_at = timezone.now()
         task.save()
         raise

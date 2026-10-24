@@ -17,6 +17,12 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 ROZMIAR_ZDJECIA_AUTORA = 400
 MAKS_ROZMIAR_PLIKU_ZDJECIA = 5 * 1024 * 1024  # 5 MB
 JAKOSC_WEBP = 85
+#: Maksymalna liczba pikseli (szerokość × wysokość) przyjmowanego obrazu.
+#: Sprawdzana z nagłówka, PRZED dekodowaniem — mały plik potrafi rozwinąć się
+#: do gigantycznej bitmapy.
+MAKS_PIKSELI_ZDJECIA = 40_000_000
+
+KOMUNIKAT_NIEODCZYTANY = "Nie udało się odczytać przesłanego pliku jako obrazu."
 
 
 def przetworz_zdjecie_autora(plik, nazwa=None, rozmiar=ROZMIAR_ZDJECIA_AUTORA):
@@ -26,11 +32,21 @@ def przetworz_zdjecie_autora(plik, nazwa=None, rozmiar=ROZMIAR_ZDJECIA_AUTORA):
     """
     try:
         obraz = Image.open(plik)
+        szerokosc, wysokosc = obraz.size
+        if szerokosc * wysokosc > MAKS_PIKSELI_ZDJECIA:
+            raise ValidationError(
+                "Obraz ma zbyt dużą rozdzielczość (maksymalnie "
+                f"{MAKS_PIKSELI_ZDJECIA // 1_000_000} Mpx)."
+            )
         obraz.load()
-    except (UnidentifiedImageError, OSError) as e:
+    except Image.DecompressionBombError as e:
+        # Nie jest podklasą OSError — Pillow zgłasza go już w ``open()``.
         raise ValidationError(
-            "Nie udało się odczytać przesłanego pliku jako obrazu."
+            "Obraz ma zbyt dużą rozdzielczość "
+            f"(maksymalnie {MAKS_PIKSELI_ZDJECIA // 1_000_000} Mpx)."
         ) from e
+    except (UnidentifiedImageError, OSError) as e:
+        raise ValidationError(KOMUNIKAT_NIEODCZYTANY) from e
 
     # Korekta orientacji wg EXIF (zdjęcia z telefonów bywają obrócone), a potem
     # spłaszczenie do RGB (WebP zapisujemy bez kanału alfa) i przycięcie+skala

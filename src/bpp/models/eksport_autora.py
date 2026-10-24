@@ -8,6 +8,7 @@ przez ten klucz (nie przez właściciela; właściciela nie ma).
 
 import uuid
 
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
 __all__ = ["AutorEksportTask"]
@@ -43,6 +44,10 @@ class AutorEksportTask(models.Model):
         null=True,
         blank=True,
     )
+    #: Statusy korekty wykluczane z eksportu — zakres widoczności ustalony
+    #: w chwili startu (worker Celery nie ma requestu). Posortowane, bo
+    #: wchodzą do deduplikacji zadań.
+    ukryte_statusy = ArrayField(models.IntegerField(), default=list, blank=True)
     error_message = models.TextField(blank=True, default="")
     celery_task_id = models.CharField(max_length=255, blank=True, default="")
 

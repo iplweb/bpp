@@ -269,14 +269,65 @@ class AutorForm(IdentyfikatoryProfiliFormMixin, forms.ModelForm):
         return przetworz_zdjecie_autora(plik, nazwa=plik.name)
 
 
+#: Modele publikacji (źródła ``Rekord``), które można wskazać jako wybraną
+#: publikację autora.
+MODELE_WYBRANYCH_PUBLIKACJI = [
+    "wydawnictwo_ciagle",
+    "wydawnictwo_zwarte",
+    "praca_doktorska",
+    "praca_habilitacyjna",
+    "patent",
+]
+
+
+class WybranaPublikacjaAutoraFormSet(BaseInlineFormSet):
+    """Każdy wiersz musi wskazywać pracę z dorobku edytowanego autora
+    (ta sama reguła co w self-service pickerze)."""
+
+    def clean(self):
+        super().clean()
+        from bpp.models import Rekord
+
+        for form in self.forms:
+            if not hasattr(form, "cleaned_data") or not form.cleaned_data:
+                continue
+            if self.can_delete and self._should_delete_form(form):
+                continue
+            ct = form.cleaned_data.get("content_type")
+            object_id = form.cleaned_data.get("object_id")
+            if ct is None or object_id is None:
+                continue
+            nalezy = (
+                self.instance.pk is not None
+                and Rekord.objects.prace_autora(self.instance)
+                .filter(pk=[ct.pk, object_id])
+                .exists()
+            )
+            if not nalezy:
+                form.add_error(
+                    "object_id",
+                    "Wskazana publikacja nie należy do dorobku tego autora.",
+                )
+
+
 class WybranaPublikacjaAutoraInline(admin.TabularInline):
     # Relacja do Autora to zwykły FK `autor`; content_type+object_id wskazują
     # polimorficzną publikację (GenericForeignKey). W Fazie 1 edycja ręczna;
     # przyjazny picker dostarcza self-service edytor z Fazy 2.
     model = WybranaPublikacjaAutora
+    formset = WybranaPublikacjaAutoraFormSet
     fk_name = "autor"
     extra = 0
     fields = ["content_type", "object_id", "kolejnosc"]
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "content_type":
+            from django.contrib.contenttypes.models import ContentType
+
+            kwargs["queryset"] = ContentType.objects.filter(
+                app_label="bpp", model__in=MODELE_WYBRANYCH_PUBLIKACJI
+            )
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
 class AutorAdmin(
