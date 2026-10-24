@@ -216,7 +216,7 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-center">
-                                    {{ rok_data.rodzaj_autora|rodzaj_autora_label|safe }}
+                                    {{ rok_data.rodzaj_autora|rodzaj_autora_label }}
                                 </td>
                             </tr>
                             {% empty %}
@@ -611,8 +611,8 @@ Plotly.setPlotConfig({locale: 'pl', showSendToCloud: false});
 
 $(document).ready(function() {
     // Prepare data from Django context
-    var chartData = {{ chart_data_json|safe }};
-    var yearAggregates = {{ year_aggregates_json|safe }};
+    var chartData = {{ chart_data|jsonify }};
+    var yearAggregates = {{ year_aggregates|jsonify }};
 
     // === Wykres 1: Bąbelkowy czasowy ===
     (function initBubbleTimeChart() {

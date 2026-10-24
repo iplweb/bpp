@@ -37,6 +37,7 @@ from bpp.views.sentry_tester import (
     test_403_view,
     test_500_view,
     test_exception_view,
+    tylko_superuser,
 )
 from django_bpp.freshdesk import widget_token_view
 from django_bpp.health import health_check
@@ -78,9 +79,9 @@ urlpatterns = (
         path("", include("oauth_mcp.urls")),
         path("mcp/", include("mcp_server.urls", namespace="mcp_server")),
         url(r"^favicon\.ico$", cache_page(60 * 60)(favicon)),
-        path("test_403/", login_required(test_403_view)),
-        path("test_500/", login_required(test_500_view)),
-        path("test_exception/", login_required(test_exception_view)),
+        path("test_403/", tylko_superuser(test_403_view)),
+        path("test_500/", tylko_superuser(test_500_view)),
+        path("test_exception/", tylko_superuser(test_exception_view)),
         path("tinymce/", include("tinymce.urls")),
         url(
             # Auth (redaktor + POST/CSRF) egzekwuje WprowadzanieDanychRequiredMixin
@@ -384,7 +385,10 @@ urlpatterns = (
             bpp_remove_from_removed_by_hand,
             name="remove_from_removed_results",
         ),
-        url(r"^admin_tools/", include("admin_tools.urls")),
+        # Z admin_tools montujemy tylko dashboard (zapis preferencji). Trasy
+        # zakładek menu (admin_tools.menu.urls) nie są podpięte — BPP nie
+        # używa zakładek (patrz django_bpp.menu.CustomMenu).
+        url(r"^admin_tools/dashboard/", include("admin_tools.dashboard.urls")),
         url(r"^grappelli/", include("grappelli.urls")),
         path("health/", health_check, name="health"),
         path(

@@ -78,3 +78,36 @@ def test_rollbar_maskuje_sekrety_oauth_w_zmiennych_lokalnych(zbuduj_payload, pol
     assert ATRAPA not in str(lokalne[pole]), (
         f"Rollbar nie maskuje pola {pole!r} w zmiennych lokalnych ramki"
     )
+
+
+#: Pola sekretów spoza OAuth: tokeny PBN/sesji/CSRF/jednorazowe oraz sekrety
+#: integracji trzymane w modelu ``Uczelnia``.
+POLA_WRAZLIWE_BPP = (
+    "pbn_token",
+    "csrfmiddlewaretoken",
+    "sessionid",
+    "ott",
+    "pbn_app_token",
+    "orcid_client_secret",
+    "dspace_api_password",
+    "clarivate_password",
+)
+
+
+@pytest.mark.parametrize("pole", POLA_WRAZLIWE_BPP)
+def test_rollbar_maskuje_sekrety_bpp_w_parametrach_zadania(zbuduj_payload, pole):
+    out = zbuduj_payload({"request": {"POST": {pole: ATRAPA}}})
+
+    assert ATRAPA not in str(out["request"]["POST"][pole]), (
+        f"Rollbar nie maskuje pola {pole!r} w request.POST"
+    )
+
+
+@pytest.mark.parametrize("pole", POLA_WRAZLIWE_BPP)
+def test_rollbar_maskuje_sekrety_bpp_w_zmiennych_lokalnych(zbuduj_payload, pole):
+    out = zbuduj_payload({"body": {"trace": {"frames": [{"locals": {pole: ATRAPA}}]}}})
+
+    lokalne = out["body"]["trace"]["frames"][0]["locals"]
+    assert ATRAPA not in str(lokalne[pole]), (
+        f"Rollbar nie maskuje pola {pole!r} w zmiennych lokalnych ramki"
+    )
