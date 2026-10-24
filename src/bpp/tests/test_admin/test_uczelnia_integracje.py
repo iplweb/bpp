@@ -7,6 +7,7 @@ from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.urls import reverse
+from model_bakery import baker
 
 from bpp.models import Uczelnia, Ukryj_Status_Korekty
 from bpp.util import ssrf
@@ -327,3 +328,28 @@ def test_save_model_nie_superuser_zachowuje_konfiguracje_integracji(
     assert u.pbn_api_root == "https://pbn.nauka.gov.pl"
     assert u.dspace_api_password == SEKRETY["dspace_api_password"]
     assert u.pbn_app_token == SEKRETY["pbn_app_token"]
+
+
+@pytest.mark.django_db
+def test_migracja_zamienia_http_na_https_w_adresach_integracji(uczelnia):
+    import importlib
+
+    from django.apps import apps
+
+    migracja = importlib.import_module(
+        "bpp.migrations.0495_uczelnia_adresy_integracji_https"
+    )
+    Uczelnia.objects.filter(pk=uczelnia.pk).update(
+        pbn_api_root="http://pbn.nauka.gov.pl",
+        dspace_api_endpoint="HTTP://repo.example.org/server/api",
+    )
+    druga = baker.make(Uczelnia, pbn_api_root="https://pbn.example.com")
+
+    migracja.http_na_https(apps, None)
+
+    u = Uczelnia.objects.get(pk=uczelnia.pk)
+    assert u.pbn_api_root == "https://pbn.nauka.gov.pl"
+    assert u.dspace_api_endpoint == "https://repo.example.org/server/api"
+    druga.refresh_from_db()
+    assert druga.pbn_api_root == "https://pbn.example.com"
+    assert druga.dspace_api_endpoint == ""
