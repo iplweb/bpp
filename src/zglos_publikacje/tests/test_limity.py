@@ -86,7 +86,7 @@ def test_limit_per_ip_uzywa_ostatniego_wpisu_xff(locmem_cache):
 
 
 @pytest.mark.django_db
-@override_settings(ZGLOS_LIMIT_NA_GODZINE=1)
+@override_settings(ZGLOS_LIMIT_NA_GODZINE=0, ZGLOS_LIMIT_NA_GODZINE_ZALOGOWANI=1)
 def test_limit_per_uzytkownik(locmem_cache):
     u1 = baker.make("bpp.BppUser")
     u2 = baker.make("bpp.BppUser")
@@ -95,6 +95,25 @@ def test_limit_per_uzytkownik(locmem_cache):
     assert limity.zarezerwuj_zgloszenie(_request(ip="10.0.0.2", user=u1)) is False
     # Inny użytkownik z tego samego IP — własny licznik.
     assert limity.zarezerwuj_zgloszenie(_request(ip="10.0.0.1", user=u2)) is True
+
+
+@pytest.mark.django_db
+@override_settings(ZGLOS_LIMIT_NA_GODZINE=2, ZGLOS_LIMIT_NA_GODZINE_ZALOGOWANI=3)
+def test_osobne_limity_anonim_i_zalogowany(locmem_cache):
+    anonim = _request(ip="10.0.0.1")
+    assert [limity.zarezerwuj_zgloszenie(anonim) for _ in range(3)] == [
+        True,
+        True,
+        False,
+    ]
+    # Zalogowany z tego samego IP ma własny, wyższy limit.
+    zalogowany = _request(ip="10.0.0.1", user=baker.make("bpp.BppUser"))
+    assert [limity.zarezerwuj_zgloszenie(zalogowany) for _ in range(4)] == [
+        True,
+        True,
+        True,
+        False,
+    ]
 
 
 @override_settings(ZGLOS_LIMIT_NA_GODZINE=0)

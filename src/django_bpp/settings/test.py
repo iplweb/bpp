@@ -117,6 +117,7 @@ ALTCHA_HMAC_KEY = "test-altcha-hmac-key-deterministic-0123456789abcdef"
 # Limit zgłoszeń na godzinę WYŁĄCZONY w testach (wszystkie żądania idą
 # z 127.0.0.1). Testy limitu włączają go przez @override_settings.
 ZGLOS_LIMIT_NA_GODZINE = 0
+ZGLOS_LIMIT_NA_GODZINE_ZALOGOWANI = 0
 
 # Szybki hasher haseł. Domyślny PBKDF2 kosztuje ~177 ms na JEDNO
 # `make_password` (zmierzone na tej bazie kodu) — a suitę zalewają fikstury
