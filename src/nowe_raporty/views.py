@@ -197,11 +197,14 @@ class GenerujRaportBase(DetailView):
             as_attachment=True, filename=filename
         )
 
+        from bpp.util import sanitize_tablib_dataset
+
         xlsx = as_tablib_databook(report, parent_context)
 
         # Patch dla błędu "Invlaid character / found in sheet title"
         for sheet in xlsx.sheets():
             sheet.title = sheet.title.replace("/", "-")
+            sanitize_tablib_dataset(sheet)
 
         data = xlsx.export(TableExport.XLSX)
         response["Content-Length"] = len(data)

@@ -5,6 +5,7 @@ from django.utils import timezone
 from openpyxl import Workbook
 
 from bpp.models import Wydawnictwo_Ciagle, Zrodlo
+from bpp.util.xlsx import sanitize_xlsx_cell
 
 
 def get_issns_from_last_5_years():
@@ -76,7 +77,7 @@ def generate_issn_xlsx_workbook(issns):
             items_in_current_col = 0
             max_rows_in_current_col = random.randint(450, 595)
 
-        ws.cell(row=row, column=col, value=issn)
+        ws.cell(row=row, column=col, value=sanitize_xlsx_cell(issn))
         row += 1
         items_in_current_col += 1
 
