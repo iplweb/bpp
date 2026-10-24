@@ -45,7 +45,7 @@ def is_multi_tenant(tenant_id):
     return not value or value in MULTI_TENANT_VALUES
 
 
-def microsoft_tenant_warning(client_id, tenant_id):
+def microsoft_tenant_warning(client_id, tenant_id, allow_linking=False):
     """Treść ostrzeżenia o braku konkretnego tenanta albo ``None``.
 
     Ostrzeżenie dotyczy wyłącznie instalacji z włączonym logowaniem Microsoft
@@ -54,11 +54,20 @@ def microsoft_tenant_warning(client_id, tenant_id):
     if not client_id or not is_multi_tenant(tenant_id):
         return None
     shown = (tenant_id or "").strip() or "(pusty)"
-    return (
-        "Logowanie przez Microsoft działa w trybie wielokatalogowym: "
-        f"MICROSOFT_AUTH_TENANT_ID = {shown}. Konta Microsoft z dowolnego "
-        "katalogu Entra ID mogą przejść przez logowanie, a BPP nie sprawdza, "
-        "z którego katalogu pochodzi token."
+    tresc = (
+        "Logowanie przez Microsoft działa w trybie wielokatalogowym "
+        f"(MICROSOFT_AUTH_TENANT_ID = {shown}): BPP nie sprawdza, z którego "
+        "katalogu Entra ID pochodzi token."
+    )
+    if allow_linking:
+        return tresc + (
+            " Włączono MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING — nowe konta "
+            "Microsoft są zakładane i wiązane po adresie e-mail, którego "
+            "w tym trybie nie da się zweryfikować."
+        )
+    return tresc + (
+        " Logują się wyłącznie konta Microsoft już powiązane z kontem BPP; "
+        "zakładanie nowych kont i wiązanie po adresie e-mail są wyłączone."
     )
 
 
@@ -66,7 +75,9 @@ def microsoft_tenant_warning(client_id, tenant_id):
 TENANT_HINT = (
     "Ustaw MICROSOFT_AUTH_TENANT_ID na identyfikator katalogu uczelni (GUID, "
     "portal Azure: Microsoft Entra ID -> Przegląd -> Identyfikator dzierżawy) "
-    "albo jego domenę, np. uczelnia.onmicrosoft.com, i zrestartuj serwer."
+    "albo jego domenę, np. uczelnia.onmicrosoft.com, i zrestartuj serwer — "
+    "wtedy działa pełna weryfikacja katalogu, a zakładanie i wiązanie kont "
+    "wracają do zwykłych reguł."
 )
 
 
@@ -86,6 +97,7 @@ def ostrzez_superusera_o_tenancie_microsoft(sender, request, user, **kwargs):
         tresc = microsoft_tenant_warning(
             getattr(settings, "MICROSOFT_AUTH_CLIENT_ID", None),
             getattr(settings, "MICROSOFT_AUTH_TENANT_ID", None),
+            getattr(settings, "MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING", False),
         )
         if tresc:
             messages.warning(request, f"{tresc} {TENANT_HINT}", fail_silently=True)

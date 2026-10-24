@@ -182,6 +182,7 @@ def microsoft_tenant_check(app_configs, **kwargs):
     tresc = microsoft_tenant_warning(
         getattr(settings, "MICROSOFT_AUTH_CLIENT_ID", None),
         getattr(settings, "MICROSOFT_AUTH_TENANT_ID", None),
+        getattr(settings, "MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING", False),
     )
     if not tresc:
         return []

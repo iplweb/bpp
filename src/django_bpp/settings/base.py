@@ -64,6 +64,7 @@ env = environ.Env(
     MICROSOFT_AUTH_TENANT_ID=(str, None),
     MICROSOFT_AUTH_EXTRA_SCOPES=(str, ""),
     MICROSOFT_AUTH_LINK_BY_EMAIL=(bool, False),
+    MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING=(bool, False),
     #
     # Email
     #
@@ -1386,6 +1387,11 @@ if MICROSOFT_AUTH_CLIENT_ID:
     # Automatyczne wiązanie nowego konta Microsoft z istniejącym kontem BPP
     # z uprawnieniami / hasłem lokalnym po samym e-mailu — domyślnie wyłączone.
     MICROSOFT_AUTH_LINK_BY_EMAIL = env("MICROSOFT_AUTH_LINK_BY_EMAIL")
+    # Tryb wielokatalogowy: domyślnie logują się wyłącznie konta Microsoft już
+    # powiązane z BPP (bez wiązania po e-mailu i zakładania nowych kont).
+    MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING = env(
+        "MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING"
+    )
     MICROSOFT_AUTH_LOGIN_TYPE = "ma"
     MICROSOFT_AUTH_EXTRA_SCOPES = env("MICROSOFT_AUTH_EXTRA_SCOPES")
 

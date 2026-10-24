@@ -206,6 +206,7 @@ zmiennych `MICROSOFT_AUTH_CLIENT_ID` oraz `MICROSOFT_AUTH_CLIENT_SECRET`.
 | `MICROSOFT_AUTH_CLIENT_SECRET` | Sekret tej aplikacji. |
 | `MICROSOFT_AUTH_TENANT_ID` | **Zalecany.** Identyfikator katalogu (GUID) albo jego domena, np. `uczelnia.onmicrosoft.com`. |
 | `MICROSOFT_AUTH_LINK_BY_EMAIL` | Domyślnie `False`. Patrz niżej. |
+| `MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING` | Domyślnie `False`. Dotyczy tylko trybu bez konkretnego katalogu. Patrz niżej. |
 | `MICROSOFT_AUTH_EXTRA_SCOPES` | Dodatkowe zakresy OAuth (opcjonalnie). |
 
 ### Zalecany konkretny katalog (tenant)
@@ -223,12 +224,23 @@ pusty albo ma wartość `common`, `organizations` lub `consumers`, BPP
   (dla `common` i `consumers` także prywatne konta Microsoft), o ile
   rejestracja aplikacji w Entra ID na to pozwala; BPP nie sprawdza, z którego
   katalogu pochodzi token,
-- zasady wiązania kont opisane niżej obowiązują bez zmian,
+- logują się **wyłącznie konta Microsoft już powiązane** z kontem BPP;
+  BPP nie zakłada nowych kont i nie wiąże kont po adresie e-mail (także
+  zwykłych kont bez uprawnień), bo w tym trybie adresu e-mail z tokenu nie da
+  się zweryfikować; użytkownik niepowiązanego konta zobaczy komunikat
+  „Konto Microsoft nie jest powiązane z kontem w BPP — skontaktuj się
+  z administratorem”, a administrator może powiązać konto ręcznie w module
+  administracyjnym (*Microsoft accounts*),
+- `MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING=True` przywraca w tym trybie
+  zakładanie nowych kont i wiązanie po e-mailu według zasad opisanych niżej
+  (konta z uprawnieniami lub hasłem lokalnym nadal nie są wiązane
+  automatycznie) — używaj tylko świadomie,
 - `manage.py check` zgłasza ostrzeżenie `bpp.W201`, a superuser po każdym
   zalogowaniu widzi komunikat z tą samą podpowiedzią.
 
-Aby usunąć ostrzeżenie, ustaw `MICROSOFT_AUTH_TENANT_ID` (GUID albo domena
-katalogu) i zrestartuj serwer aplikacji.
+Aby usunąć ostrzeżenie i przywrócić zwykłe zakładanie oraz wiązanie kont,
+ustaw `MICROSOFT_AUTH_TENANT_ID` (GUID albo domena katalogu) i zrestartuj
+serwer aplikacji.
 
 ### Wiązanie kont Microsoft z istniejącymi kontami BPP
 
@@ -244,8 +256,9 @@ powiąże automatycznie konta Microsoft z istniejącym użytkownikiem, który:
 Takie logowanie zostanie odrzucone. Administrator może powiązać konto ręcznie
 w module administracyjnym (*Microsoft accounts*), albo — jeżeli adresy e-mail
 w katalogu są w pełni zaufane — ustawić `MICROSOFT_AUTH_LINK_BY_EMAIL=True`.
-Zwykłe konta bez hasła lokalnego oraz nowi użytkownicy są wiązani/zakładani
-automatycznie, jak dotychczas.
+Przy skonfigurowanym konkretnym katalogu zwykłe konta bez hasła lokalnego oraz
+nowi użytkownicy są wiązani/zakładani automatycznie, jak dotychczas (w trybie
+wielokatalogowym — patrz wyżej).
 
 Konta Microsoft **już powiązane** z użytkownikiem BPP logują się bez zmian.
 Po aktualizacji użytkownicy zalogowani przez Microsoft muszą jednorazowo

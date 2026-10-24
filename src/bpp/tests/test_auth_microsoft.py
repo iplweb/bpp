@@ -68,6 +68,18 @@ def test_check_ostrzega_przy_braku_konkretnego_tenanta(tenant):
     assert isinstance(wynik[0], checks.Warning)
     assert "MICROSOFT_AUTH_TENANT_ID" in wynik[0].hint
     assert "onmicrosoft.com" in wynik[0].hint
+    assert "wiązanie po adresie e-mail są wyłączone" in wynik[0].msg
+
+
+def test_check_opt_in_wspomina_o_wlaczonym_wiazaniu():
+    with override_settings(
+        MICROSOFT_AUTH_CLIENT_ID="client-id",
+        MICROSOFT_AUTH_TENANT_ID="common",
+        MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING=True,
+    ):
+        wynik = microsoft_tenant_check(None)
+    assert [w.id for w in wynik] == ["bpp.W201"]
+    assert "MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING" in wynik[0].msg
 
 
 @pytest.mark.parametrize("tenant", [TENANT, "uczelnia.onmicrosoft.com"])
@@ -81,6 +93,21 @@ def test_check_brak_ostrzezenia_dla_konkretnego_tenanta(tenant):
 def test_check_brak_ostrzezenia_bez_logowania_microsoft():
     with override_settings(MICROSOFT_AUTH_CLIENT_ID="", MICROSOFT_AUTH_TENANT_ID=""):
         assert microsoft_tenant_check(None) == []
+
+
+@pytest.mark.uruchom_tylko_z_microsoft_auth
+def test_check_z_rzeczywistych_ustawien():
+    # Bez override_settings: ustawienia z env (MICROSOFT_AUTH_TENANT_ID)
+    # po normalizacji w settings/base.py.
+    from django.conf import settings
+
+    from bpp.auth.microsoft_conf import is_multi_tenant
+
+    wynik = microsoft_tenant_check(None)
+    if is_multi_tenant(settings.MICROSOFT_AUTH_TENANT_ID):
+        assert [w.id for w in wynik] == ["bpp.W201"]
+    else:
+        assert wynik == []
 
 
 def test_check_zarejestrowany():
@@ -111,9 +138,10 @@ def test_superuser_po_zalogowaniu_dostaje_ostrzezenie(client):
         username="szef", password=HASLO, email="szef@example.com"
     )
     komunikaty = _komunikaty(_zaloguj(client, "szef"))
-    assert any(OSTRZEZENIE in m and "onmicrosoft.com" in m for m in komunikaty), (
-        komunikaty
-    )
+    assert any(
+        OSTRZEZENIE in m and "onmicrosoft.com" in m and "są wyłączone" in m
+        for m in komunikaty
+    ), komunikaty
 
 
 @pytest.mark.django_db
@@ -457,6 +485,8 @@ def test_backend_odswieza_nieaktualny_dokument_discovery():
 
 # --- backend w trybie wielokatalogowym (brak konkretnego tenanta) -----------
 
+TEMPLATE_ISSUER = "https://login.microsoftonline.com/{tenantid}/v2.0"
+
 
 @pytest.mark.uruchom_tylko_z_microsoft_auth
 @pytest.mark.django_db
@@ -468,8 +498,7 @@ def test_backend_tryb_wielokatalogowy_loguje_powiazane_konto(tenant):
     baker.make(MicrosoftAccount, microsoft_id="ms-sub-1", user=user)
 
     backend = _backend(
-        _claims(tid=OTHER_TENANT, iss=OTHER_ISSUER),
-        issuer="https://login.microsoftonline.com/{tenantid}/v2.0",
+        _claims(tid=OTHER_TENANT, iss=OTHER_ISSUER), issuer=TEMPLATE_ISSUER
     )
     with override_settings(MICROSOFT_AUTH_TENANT_ID=tenant):
         assert backend._authenticate_microsoft_user() == user
@@ -477,36 +506,94 @@ def test_backend_tryb_wielokatalogowy_loguje_powiazane_konto(tenant):
 
 @pytest.mark.uruchom_tylko_z_microsoft_auth
 @pytest.mark.django_db
-@override_settings(
-    MICROSOFT_AUTH_TENANT_ID="common", MICROSOFT_AUTH_LINK_BY_EMAIL=False
+@override_settings(MICROSOFT_AUTH_TENANT_ID="common", MICROSOFT_AUTH_LINK_BY_EMAIL=True)
+@pytest.mark.parametrize(
+    "attrs",
+    [{}, {"is_staff": True}, {"is_superuser": True}],
+    ids=["zwykle", "staff", "superuser"],
 )
-@pytest.mark.parametrize("attrs", [{"is_staff": True}, {"is_superuser": True}])
-def test_backend_tryb_wielokatalogowy_nie_wiaze_konta_staff(attrs):
+def test_backend_tryb_wielokatalogowy_nie_wiaze_po_emailu(attrs):
     from microsoft_auth.models import MicrosoftAccount
 
     konto = baker.make(get_user_model(), email="jan@example.com", password="", **attrs)
+    liczba = get_user_model().objects.count()
+
     backend = _backend(_claims(tid=OTHER_TENANT, iss=OTHER_ISSUER))
     assert backend._authenticate_microsoft_user() is None
+    assert not MicrosoftAccount.objects.filter(user=konto).exists()
+    assert not MicrosoftAccount.objects.filter(microsoft_id="ms-sub-1").exists()
+    assert get_user_model().objects.count() == liczba
+
+
+@pytest.mark.uruchom_tylko_z_microsoft_auth
+@pytest.mark.django_db
+@override_settings(MICROSOFT_AUTH_TENANT_ID="common", MICROSOFT_AUTH_AUTO_CREATE=True)
+def test_backend_tryb_wielokatalogowy_nie_zaklada_nowego_konta():
+    from microsoft_auth.models import MicrosoftAccount
+
+    liczba = get_user_model().objects.count()
+    backend = _backend(_claims(email="nowy@example.com", sub="ms-sub-nowy"))
+    assert backend._authenticate_microsoft_user() is None
+    assert get_user_model().objects.count() == liczba
+    assert not MicrosoftAccount.objects.filter(microsoft_id="ms-sub-nowy").exists()
+
+
+@pytest.mark.uruchom_tylko_z_microsoft_auth
+@pytest.mark.django_db
+@override_settings(MICROSOFT_AUTH_TENANT_ID="common")
+def test_backend_tryb_wielokatalogowy_odmowa_z_neutralnym_komunikatem(rf):
+    from django.contrib.messages.storage.fallback import FallbackStorage
+
+    from bpp.auth.microsoft import KOMUNIKAT_NIEPOWIAZANE
+
+    request = rf.get("/microsoft/auth-callback/")
+    request.session = {}
+    request._messages = FallbackStorage(request)
+
+    backend = _backend(_claims(email="nowy@example.com", sub="ms-sub-nowy"))
+    backend._request = request
+    assert backend._authenticate_microsoft_user() is None
+    assert [str(m) for m in request._messages] == [KOMUNIKAT_NIEPOWIAZANE]
+
+
+@pytest.mark.uruchom_tylko_z_microsoft_auth
+@pytest.mark.django_db
+@override_settings(
+    MICROSOFT_AUTH_TENANT_ID="common", MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING=True
+)
+def test_backend_opt_in_zaklada_nowe_konto_i_wiaze_zwykle():
+    nowy = _backend(
+        _claims(email="nowy@example.com", sub="ms-sub-nowy")
+    )._authenticate_microsoft_user()
+    assert nowy is not None
+    assert nowy.email == "nowy@example.com"
+
+    zwykle = baker.make(get_user_model(), email="jan@example.com", password="")
+    assert _backend(_claims())._authenticate_microsoft_user() == zwykle
+
+
+@pytest.mark.uruchom_tylko_z_microsoft_auth
+@pytest.mark.django_db
+@override_settings(
+    MICROSOFT_AUTH_TENANT_ID="common",
+    MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING=True,
+    MICROSOFT_AUTH_LINK_BY_EMAIL=False,
+)
+@pytest.mark.parametrize("attrs", [{"is_staff": True}, {"is_superuser": True}])
+def test_backend_opt_in_nadal_nie_wiaze_konta_staff(attrs):
+    from microsoft_auth.models import MicrosoftAccount
+
+    konto = baker.make(get_user_model(), email="jan@example.com", password="", **attrs)
+    assert _backend(_claims())._authenticate_microsoft_user() is None
     assert not MicrosoftAccount.objects.filter(user=konto).exists()
 
 
 @pytest.mark.uruchom_tylko_z_microsoft_auth
 @pytest.mark.django_db
 @override_settings(
-    MICROSOFT_AUTH_TENANT_ID="common", MICROSOFT_AUTH_LINK_BY_EMAIL=False
+    MICROSOFT_AUTH_TENANT_ID="common", MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING=True
 )
-def test_backend_tryb_wielokatalogowy_nie_wiaze_konta_z_haslem():
-    konto = baker.make(get_user_model(), email="jan@example.com")
-    konto.set_password(HASLO)
-    konto.save()
-    backend = _backend(_claims())
-    assert backend._authenticate_microsoft_user() is None
-
-
-@pytest.mark.uruchom_tylko_z_microsoft_auth
-@pytest.mark.django_db
-@override_settings(MICROSOFT_AUTH_TENANT_ID="common")
-def test_backend_tryb_wielokatalogowy_odmawia_przy_pustym_lub_wieloznacznym_emailu():
+def test_backend_opt_in_odmawia_przy_pustym_lub_wieloznacznym_emailu():
     baker.make(get_user_model(), email="jan@example.com", password="", _quantity=2)
     liczba = get_user_model().objects.count()
     assert _backend(_claims(email=""))._authenticate_microsoft_user() is None
