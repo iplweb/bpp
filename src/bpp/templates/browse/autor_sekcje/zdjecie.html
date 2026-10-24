@@ -1,0 +1,34 @@
+{# Zdjęcie autora (pływa w lewo). Następna sekcja w tej samej kolumnie #}
+{# (domyślnie biogram) opływa je z prawej; float domyka kolumna (BFC) #}
+{# i klasa `autor-page__po-zdjeciu` na zamykającym HR biogramu. #}
+{% if autor.zdjecie %}
+    <div class="author-info-section autor-page__wizytowka">
+        {# Klik w zdjęcie → powiększenie w modalu (Foundation Reveal). #}
+        {# Bez JS <a href> otwiera pełny obraz. #}
+        <a href="{{ autor.zdjecie.url }}"
+           class="autor-page__avatar-link"
+           data-open="autor-zdjecie-modal"
+           title="Kliknij, aby powiększyć zdjęcie">
+            <img src="{{ autor.zdjecie.url }}"
+                 alt="{{ autor }}"
+                 class="autor-page__avatar"/>
+            <span class="autor-page__avatar-zoom" aria-hidden="true">
+                <span class="fi-magnifying-glass"></span>
+            </span>
+        </a>
+    </div>
+
+    <div class="reveal autor-page__avatar-modal"
+         id="autor-zdjecie-modal"
+         data-reveal>
+        <img src="{{ autor.zdjecie.url }}"
+             alt="{{ autor }}"
+             class="autor-page__avatar-pelne"/>
+        <button class="close-button"
+                data-close
+                aria-label="Zamknij powiększenie"
+                type="button">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+{% endif %}

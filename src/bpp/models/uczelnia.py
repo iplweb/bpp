@@ -390,6 +390,26 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         default=OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM,
     )
 
+    uklad_profilu_autora = models.JSONField(
+        "Układ profilu autora",
+        blank=True,
+        null=True,
+        default=None,
+        help_text="Kolejność, kolumna, widoczność i limity sekcji podstrony "
+        "autora (globalnie dla całej uczelni). Lista pozycji "
+        '{"klucz", "kolumna", "widoczna", "limit"}. Puste = układ domyślny.',
+    )
+
+    etykieta_profilu_uczelni = models.CharField(
+        "Etykieta linku do profilu w portalu uczelni",
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Nazwa pokazywana przy linku z pola „Adres profilu "
+        "w portalu uczelni” autora, np. „PPM UML”. Puste = „Profil "
+        "w portalu uczelni”.",
+    )
+
     pokazuj_raport_slotow_autor = OpcjaWyswietlaniaField(
         "Pokazuj raport slotów - autor",
         default=OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM,

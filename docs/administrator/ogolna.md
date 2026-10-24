@@ -66,6 +66,61 @@ Jeżeli chcesz później schować lub pokazać takie formularze, skorzystaj z op
 Redagowanie➡Administracja➡Formularze wyszukiwania. Kliknij nazwę takiego
 formularza, następnie zaznacz lub odznacz opcję "Publiczny" i zapisz rekord
 
+#### Układ podstrony autora (profil autora) {#układ-podstrony-autora-profil-autora}
+
+W rekordzie uczelni (Redagowanie➡Struktura➡Uczelnia, edycja rekordu) znajduje
+się zwijana sekcja **„Profil autora (podstrona)"**. Zawiera ona **kafelkowy
+edytor układu** publicznych podstron autorów (patrz
+[opis strony autora w instrukcji użytkownika](../uzytkownik/przegladanie-i-wyszukiwanie.md#strona-autora)).
+Ustawienie jest **globalne dla całej uczelni** — obowiązuje na podstronach
+wszystkich autorów.
+
+Podstrona autora to ciąg **pasów**: sekcja na całą szerokość albo dwie
+sekcje obok siebie. Edytor to jedna lista kafelków w kolejności, w jakiej
+sekcje pojawią się na stronie:
+
+- **przeciągnij** kafelek uchwytem ⠿ (ang. *drag and drop*), aby zmienić
+  kolejność,
+- przy każdym kafelku wybierz **szerokość**: „½” (pół) albo „cała
+  szerokość” — **dwie kolejne sekcje „½” stają obok siebie**, a sekcja „cała
+  szerokość” zajmuje własny pas,
+- **odznacz checkbox**, aby ukryć sekcję,
+- dla sekcji listowych ustaw **limit** liczby pozycji (5, 10, 20, 30 lub 50;
+  domyślnie listy prac mają 5 pozycji, współautorzy — 10).
+
+Strona sama dba o to, by nie powstawały puste miejsca:
+
+- sekcja bez danych (np. autor bez zdjęcia i biogramu, bez cytowań) **nie
+  pokazuje się**, a sekcja „½”, która straciła przez to parę, zajmuje cały pas,
+- **wykresy w latach** są wyjątkiem: domyślnie zajmują cały pas (trzy obok
+  siebie), ale gdy tuż przed nimi została samotna sekcja „½”, stają obok niej
+  (jeden pod drugim, w niższej wersji).
+
+!!! tip
+    **Pusty układ oznacza układ domyślny** — system pokaże rozsądny,
+    wbudowany zestaw sekcji: podsumowanie dorobku, zdjęcie z biogramem obok
+    afiliacji i identyfikatorów, wykresy, statystyki obok współautorów,
+    osiągnięcia z RAD-on, wyszukiwarkę prac, raport obok eksportu i listy
+    prac parami. Nie trzeba niczego konfigurować, jeśli taki układ wystarcza.
+
+Dostępne sekcje to m.in.: podsumowanie dorobku, zdjęcie i biogram,
+afiliacja i identyfikatory, wykresy w latach, statystyki wg charakteru
+formalnego, najczęstsi współautorzy, cytowania, metryki ewaluacyjne,
+osiągnięcia (RAD-on), wyszukiwarka prac, raport autora, eksport publikacji,
+najlepsze prace (wg punktacji oraz wg Impact Factor), najnowsze artykuły,
+najnowsze książki i rozdziały, ostatnio edytowane, a także domyślnie
+wyłączone: udział dyscyplin, najczęstsze źródła, punkty/sloty w latach
+i wyróżnione publikacje.
+
+W tej samej sekcji ustawisz **etykietę linku do profilu w portalu uczelni**
+(np. „PPM UML"). Pokazuje się ona przy linku z pola „Adres profilu w portalu
+uczelni" w rekordzie autora; gdy jest pusta, link opisany jest jako „Profil
+w portalu uczelni".
+
+!!! note "Zrzut ekranu"
+    W tym miejscu można w przyszłości umieścić zrzut ekranu kafelkowego
+    edytora układu podstrony autora.
+
 ## Sposób kalkulacji dyscyplin
 
 1.  Dyscyplina i subdyscyplina naukowa przypisana autorowi na dany rok zawiera się w rekordzie `Autor_Dyscyplina`.

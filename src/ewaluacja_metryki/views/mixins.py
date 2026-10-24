@@ -23,6 +23,17 @@ def ma_uprawnienia_ewaluacji(user):
     return getattr(user, "autor_id", None) is not None
 
 
+def moze_ogladac_metryki_autora(user, autor):
+    """Czy ``user`` może oglądać metryki konkretnego ``autor``-a — ten sam
+    warunek co w ``MetrykaDetailView``: pełne uprawnienia ewaluacji albo
+    zalogowany autor oglądający własne metryki."""
+    if not user.is_authenticated:
+        return False
+    if ma_pelne_uprawnienia_ewaluacji(user):
+        return True
+    return user.autor_id is not None and user.autor_id == autor.pk
+
+
 class EwaluacjaRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     """Mixin wymagający uprawnień do ewaluacji"""
 

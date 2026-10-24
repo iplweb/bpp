@@ -93,6 +93,7 @@ nav:
   - Start: index.md
   - Instrukcja użytkownika:
       - Przeglądanie i wyszukiwanie: uzytkownik/przegladanie-i-wyszukiwanie.md
+      - Mój profil autora: uzytkownik/moj-profil-autora.md
       - Raporty i rankingi: uzytkownik/raporty-rankingi.md
       - Widget publikacji na stronie WWW: uzytkownik/widget-publikacji.md
   - Instrukcja redaktora:

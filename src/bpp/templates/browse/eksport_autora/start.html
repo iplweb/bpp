@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Eksport publikacji autora
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="medium-8 medium-centered columns">
+        <h2>Eksport publikacji autora</h2>
+
+        <div class="callout">
+            <p><strong>Autor:</strong> {{ autor }}</p>
+            <p><strong>Format:</strong> {{ nazwa_formatu }}</p>
+        </div>
+
+        {# Zadanie startuje dopiero POST-em — GET (np. crawler idący po linkach) #}
+        {# niczego nie kolejkuje. Anonim dostaje dodatkowo pole ALTCHA. #}
+        <form method="post">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="callout alert">{{ form.non_field_errors }}</div>
+            {% endif %}
+            {% if form.captcha %}
+                <div class="autor-eksport__captcha">
+                    {{ form.captcha }}
+                    {% if form.captcha.errors %}
+                        <div class="callout alert">
+                            Weryfikacja nie powiodła się — poczekaj, aż się zakończy, i spróbuj ponownie.
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+            {# Z captchą przycisk startuje ukryty — eksport-autora-altcha.js pokazuje #}
+            {# go dopiero po zakończonej weryfikacji ALTCHA. #}
+            <button type="submit"
+                    class="button primary"
+                    {% if form.captcha %}hidden data-czeka-na-altcha{% endif %}>
+                <span class="fi-download"></span> Generuj plik {{ nazwa_formatu }}
+            </button>
+        </form>
+
+        <p>
+            <a href="{{ autor.get_absolute_url }}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrót do strony autora
+            </a>
+        </p>
+    </div>
+</div>
+{% endblock %}

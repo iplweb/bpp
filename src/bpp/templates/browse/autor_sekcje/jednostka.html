@@ -1,0 +1,8 @@
+{# Aktualna jednostka autora (lewa kolumna). Pusta / obca → nic. #}
+{% if autor.aktualna_jednostka and autor.aktualna_jednostka != uczelnia.obca_jednostka %}
+    <div class="author-info-section">
+        <h3><i class="fi-home"></i> Aktualna jednostka</h3>
+        <p><a href="{% url "bpp:browse_jednostka" autor.aktualna_jednostka.slug %}">{{ autor.aktualna_jednostka.nazwa }}</a></p>
+    </div>
+    <div class="shaded-hr-div-small"></div>
+{% endif %}

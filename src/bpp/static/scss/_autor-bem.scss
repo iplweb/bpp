@@ -63,10 +63,55 @@
     margin: 0;
     text-align: center;
     min-width: 120px;
+    // Klik w kafel (poza linkiem) kopiuje wartość — autor-identyfikatory.js.
+    position: relative;
+    cursor: copy;
+    transition: border-color 0.2s ease, background 0.2s ease;
+
+    &:hover {
+      border-color: #c5ccd3;
+    }
   }
 
-  &__id-card--wide {
-    min-width: 160px;
+  &__id-card--skopiowano {
+    border-color: #2e7d32;
+    background: #eef7ee;
+  }
+
+  &__id-polon {
+    font-weight: normal;
+    font-size: 0.75rem;
+    color: #2e7d32;
+    white-space: nowrap;
+  }
+
+  // Przycisk kopiowania w rogu kafla (dostępny z klawiatury).
+  &__id-kopiuj {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    color: #7f8c8d;
+    font-size: 0.85rem;
+    cursor: copy;
+
+    // Bez globalnego cienia/podskoku przycisków (_form-buttons.scss).
+    &:hover,
+    &:focus,
+    &:active {
+      color: #2c3e50;
+      box-shadow: none !important;
+      transform: none !important;
+    }
+  }
+
+  // Komunikat „Skopiowano” — obok ikony, znika po chwili.
+  &__id-kopiuj-status {
+    position: absolute;
+    right: 100%;
+    margin-right: 4px;
+    white-space: nowrap;
+    font-size: 0.7rem;
+    color: #2e7d32;
   }
 
   &__id-label {
@@ -77,7 +122,7 @@
   }
 
   &__id-link {
-    color: #3498db;
+    color: $anchor-color;
     text-decoration: none;
     font-family: monospace;
     font-size: 0.9rem;
@@ -91,7 +136,7 @@
 
   // Metrics button
   &__metrics-btn {
-    background: #3498db;
+    background: $primary-color;
     border: none;
     padding: 10px 16px;
     font-size: 0.9rem;
@@ -100,7 +145,7 @@
 
     &:hover,
     &:focus {
-      background-color: #2980b9;
+      background-color: $anchor-color-hover;
       transform: translateY(-2px);
     }
   }
@@ -142,12 +187,30 @@
   }
 
   // Checkbox items
+  // Jednostka w wyszukiwarce: checkbox obok nazwy, długa nazwa zawija się
+  // POD sobą (wcięta), a nie pod checkboxem.
   &__checkbox-item {
     margin-bottom: 8px;
+    display: flex;
+    align-items: baseline;
+
+    .autor-page__checkbox {
+      flex: 0 0 auto;
+    }
+
+    .autor-page__checkbox-label {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
   }
 
+  // Rok w wyszukiwarce: checkbox i rok ZAWSZE w jednej linii (flex + nowrap),
+  // nigdy checkbox nad rokiem — niezależnie od szerokości kolumny.
   &__checkbox-item--year {
     margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
   }
 
   &__checkbox {
@@ -161,7 +224,7 @@
 
   &__unit-link {
     margin-left: 5px;
-    color: #3498db;
+    color: $anchor-color;
     text-decoration: none;
   }
 
@@ -194,7 +257,7 @@
   }
 
   &__search-btn {
-    background: #3498db;
+    background: $primary-color;
     border: none;
     padding: 15px 30px;
     font-size: 1.1rem;
@@ -204,7 +267,7 @@
 
     &:hover,
     &:focus {
-      background-color: #2980b9;
+      background-color: $anchor-color-hover;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     }
   }
@@ -239,4 +302,449 @@
   &__icon--white {
     color: white;
   }
+
+  // Wizytówka: kontener pływającego zdjęcia. NIE ustanawia BFC (brak
+  // overflow:hidden) — dzięki temu pływające zdjęcie „wystaje" poza wizytówkę
+  // i opływa je biogram (sekcja zaraz pod spodem). Float domyka karta
+  // (flow-root) + `clear` na pozostałych sekcjach (patrz &__karta).
+  &__wizytowka {
+    margin-bottom: 0;
+  }
+
+  // --- Profil: zdjęcie/awatar (klikalne → powiększenie w modalu) ---
+  // Pływa w lewo — biogram opływa je z prawej i od dołu.
+  &__avatar-link {
+    position: relative;
+    float: left;
+    margin: 0 1rem 0.5rem 0;
+    cursor: zoom-in;
+    line-height: 0;
+
+    &:hover .autor-page__avatar-zoom,
+    &:focus .autor-page__avatar-zoom {
+      opacity: 1;
+    }
+  }
+
+  &__avatar {
+    width: 100%;
+    max-width: 220px;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 8px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25);
+  }
+
+  // Lupa w rogu miniatury — podpowiedź, że da się powiększyć.
+  &__avatar-zoom {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: rgba(44, 62, 80, 0.78);
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.15s ease-in-out;
+    line-height: 1;
+  }
+
+  // Pełne zdjęcie w modalu Reveal.
+  &__avatar-pelne {
+    display: block;
+    max-width: 100%;
+    max-height: 88vh;
+    width: auto;
+    height: auto;
+    margin: 0 auto;
+    border-radius: 12px;
+    box-shadow: 0 6px 28px rgba(0, 0, 0, 0.45);
+  }
+
+  // --- Profil: linki do raportu autora ---
+  &__raport-links {
+    margin: 1rem 0;
+  }
+
+  &__raport-links-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  // --- Profil: sekcje treści ---
+  &__sekcja {
+    margin-bottom: 1rem;
+  }
+
+  &__lista-prac {
+    line-height: 1.7;
+
+    li {
+      margin-bottom: 0.6rem;
+    }
+  }
+
+  // Pozycja listy prac — cała klikalna przez nakładkę „stretched link"
+  &__praca {
+    position: relative;
+    padding: 0.4rem 0.5rem;
+    border-radius: 4px;
+    transition: background-color 0.12s ease-in-out;
+
+    &:hover,
+    &:focus-within {
+      background-color: #f0f4f8;
+    }
+  }
+
+  // Pusty link pokrywający całą pozycję (nawigacja do szczegółów)
+  &__praca-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+
+  // Skracanie długich opisów bibliograficznych (~3 linie)
+  &__praca-opis {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+
+    // wewnętrzne linki (DOI itp.) ponad nakładką → klikalne samodzielnie
+    a {
+      position: relative;
+      z-index: 2;
+    }
+  }
+
+  &__biogram-tresc {
+    line-height: 1.6;
+  }
+
+  // Tabele statystyk (charakter / dyscypliny / źródła / punkty)
+  &__staty {
+    width: 100%;
+
+    td,
+    th {
+      padding: 4px 12px;
+    }
+
+    td:last-child,
+    th:last-child {
+      text-align: right;
+    }
+  }
+
+  // Podsumowanie dorobku — trzy kafelki z dużą liczbą i podpisem
+  &__podsumowanie-kafel {
+    height: 100%;
+    margin-bottom: 0.5rem;
+    text-align: center;
+    // Treść wyśrodkowana w pionie — kafle w rzędzie mają równą wysokość,
+    // a podpisy bywają różnej długości (zawijają się).
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  &__podsumowanie-wartosc {
+    font-size: 1.75rem;
+    font-weight: bold;
+    line-height: 1.2;
+  }
+
+  &__podsumowanie-etykieta {
+    font-size: 0.875rem;
+  }
+
+  // Pole wykresu: oś Y (HTML) obok obszaru kreślenia (SVG / słupki)
+  &__wykres-pole {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  // Oś Y: etykieta maks u góry, 0 u dołu (HTML, bez dystorsji SVG)
+  &__wykres-osY {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: #555;
+    text-align: right;
+    flex: 0 0 auto;
+    min-width: 1.5rem;
+
+    // Wariant liniowy: oś ma wysokość SVG (patrz --wykres-wys-linii).
+    height: var(--wykres-wys-linii, 220px);
+  }
+
+  // Oś Y dla wariantu słupkowego: pole słupków + miejsce na liczbę/rok.
+  &__wykres-osY--slupki {
+    height: auto;
+    justify-content: flex-start;
+    padding-top: 10px;
+
+    span:last-child {
+      margin-top: auto;
+      padding-bottom: 1.5rem;
+    }
+  }
+
+  // Linia siatki w SVG (wariant liniowy). Lekka szarość, bez dystorsji.
+  &__wykres-siatka {
+    stroke: #d0d0d0;
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+
+  // Wykres słupkowy publikacji w latach
+  &__wykres-lata {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    padding-top: 10px;
+  }
+
+  // Słupki z górną linią siatki na wysokości maks (najwyższego słupka).
+  &__wykres-lata--siatka {
+    position: relative;
+    flex: 1 1 auto;
+  }
+
+  // Górna linia siatki dla słupków: pozioma kreska na poziomie maks.
+  &__wykres-siatka--slupki {
+    position: absolute;
+    left: 0;
+    right: 0;
+    // 10px padding-top + ~0.85rem liczby; linia na szczycie obszaru słupków.
+    top: calc(10px + 0.85rem);
+    height: 0;
+    border-top: 1px solid #d0d0d0;
+    pointer-events: none;
+  }
+
+  &__slupek {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    // Słupki dzielą szerokość pola po równo — wykres wypełnia całą kolumnę.
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  &__slupek-bar {
+    // --udzial (0–100) ze szablonu; wysokość pola z --wykres-wys-slupkow.
+    height: calc(var(--wykres-wys-slupkow, 120px) * var(--udzial, 0) / 100);
+    width: 60%;
+    max-width: 48px;
+    min-height: 2px;
+    background: #2c3e50;
+    border-radius: 2px 2px 0 0;
+  }
+
+  &__slupek-rok {
+    font-size: 0.7rem;
+    margin-top: 3px;
+    transform: rotate(-45deg);
+  }
+
+  &__slupek-liczba {
+    font-size: 0.7rem;
+    color: #555;
+  }
+
+  // Lista współautorów
+  &__wspolautorzy {
+    list-style: none;
+    margin-left: 0;
+    columns: 2;
+
+    @media screen and (max-width: 39.99875em) {
+      columns: 1;
+    }
+  }
+
+  &__wspolautor-liczba {
+    color: #777;
+    font-size: 0.85em;
+  }
+
+  // --- Układ w pasy (grid robi Foundation w HTML) ---
+  // Pas = sekcja na całą szerokość albo para sekcji obok siebie.
+  &__pasy {
+    margin-top: 0.5rem;
+  }
+
+  &__pas {
+    margin-bottom: 1rem;
+  }
+
+  // Karta sekcji. W parze komórki gridu mają równą wysokość (flex stretch),
+  // a karta wypełnia komórkę — luz pod krótszą sekcją zostaje WEWNĄTRZ karty
+  // i wygląda na zamierzony, zamiast tworzyć dziurę w układzie strony.
+  // flow-root: pływające zdjęcie nie wycieka poza kartę.
+  &__karta {
+    display: flow-root;
+    height: 100%;
+    padding: 1rem 1.25rem;
+    background: #fff;
+    border: 1px solid #e3e6ea;
+    border-radius: 6px;
+
+    // Separatory między sekcjami są zbędne na końcu karty (ramka domyka).
+    > .shaded-hr-div-small:last-child {
+      display: none;
+    }
+
+    // Tylko biogram opływa pływające zdjęcie; reszta sekcji w karcie
+    // (np. opis) zaczyna się pod nim.
+    > .author-info-section,
+    > .shaded-hr-div-small {
+      clear: both;
+    }
+
+    > .autor-page__wizytowka,
+    > .autor-page__biogram-sekcja {
+      clear: none;
+    }
+  }
+
+  // Sekcje bez karty (wyszukiwarka, kafle) — bez końcowego separatora.
+  &__pas-cela > .shaded-hr-div-small:last-child {
+    display: none;
+  }
+
+  // Wykresy w latach: siatka auto-fit — obok siebie, gdy jest miejsce (pas
+  // na całą szerokość), jeden pod drugim w połówce pary i na małych ekranach.
+  &__wykresy {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: 1rem 1.5rem;
+
+    .shaded-hr-div-small {
+      display: none;
+    }
+  }
+
+  &__wykresy-pozycja {
+    min-width: 0;
+  }
+
+  // W połówce pary (wykresy dobrane do samotnej sekcji) — zawsze jeden pod
+  // drugim; obok siebie słupki z podpisami lat nie mieszczą się i wyjeżdżają.
+  // Niższe, bo trzy wykresy jeden pod drugim — inaczej para byłaby dużo
+  // wyższa niż sąsiednia karta.
+  &__pas-cela--polowka &__wykresy {
+    grid-template-columns: minmax(0, 1fr);
+    --wykres-wys-linii: 130px;
+    --wykres-wys-slupkow: 70px;
+  }
+
+  // --- Statystyki wg charakteru: wiersz jako link budujący wyszukiwanie ---
+  &__staty-form {
+    display: inline;
+    margin: 0;
+  }
+
+  // Wiersz statystyk to <button> POST-ujący wyszukiwanie, ale ma wyglądać
+  // i zachowywać się jak ZWYKŁY link serwisu: kolor motywu (anchor), brak
+  // ramki/cienia/outline (żadnej „kwadratowej ramki" na hover/focus),
+  // podkreślenie dopiero na hover/focus — dokładnie jak <a> Foundation.
+  &__staty-link {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: $anchor-color;
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
+    text-decoration: none;
+    box-shadow: none;
+
+    // Globalne `button:hover` (_form-buttons.scss) dokłada cień i podskok
+    // z !important — tu <button> udaje link, więc je wyłączamy.
+    &:hover,
+    &:focus,
+    &:focus-visible,
+    &:active {
+      color: $anchor-color-hover;
+      text-decoration: underline;
+      outline: none;
+      box-shadow: none !important;
+      transform: none !important;
+    }
+  }
+
+  // --- Wykres liniowy (SVG) dla długich serii ---
+  &__wykres-svg {
+    width: 100%;
+    height: var(--wykres-wys-linii, 220px);
+    overflow: visible;
+  }
+
+  &__wykres-linia {
+    stroke: #2c3e50;
+    stroke-width: 3;
+    vector-effect: non-scaling-stroke;
+  }
+
+  &__wykres-punkt {
+    fill: #2980b9;
+  }
+
+  &__wykres-osX {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: #555;
+    margin-top: 2px;
+  }
+
+  // --- Historia zatrudnienia (lewa kolumna) ---
+  &__historia-lista {
+    list-style: none;
+    margin-left: 0;
+  }
+
+  &__historia-pozycja {
+    margin-bottom: 0.4rem;
+    line-height: 1.4;
+  }
+
+  &__historia-okres {
+    color: #555;
+    font-size: 0.85em;
+    margin-left: 0.25rem;
+  }
+
+  &__historia-funkcja {
+    color: #777;
+    font-size: 0.85em;
+  }
+}
+
+// Modal powiększenia zdjęcia autora — pokazujemy SAMO zdjęcie, bez białego
+// marginesu/tła Foundation Reveal. Selektor dwuklasowy (.reveal.<modal>) bije
+// bazowe `.reveal` niezależnie od kolejności importów (Foundation ładuje się
+// po `_autor-bem`). Okno dopasowane do obrazu, zaokrąglenie daje samo zdjęcie.
+.reveal.autor-page__avatar-modal {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  width: auto;
+  max-width: 92vw;
+  margin-left: auto;
+  margin-right: auto;
 }

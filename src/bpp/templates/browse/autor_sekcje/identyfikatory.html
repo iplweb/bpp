@@ -1,0 +1,36 @@
+{# Identyfikatory zewnętrzne autora (część karty „afiliacja”). BPP ID zawsze #}
+{# obecne, więc sekcja nigdy nie jest pusta. Kafel: klik w link → strona #}
+{# docelowa; klik w resztę kafla → kopiuje wartość (autor-identyfikatory.js #}
+{# przekazuje klik do przycisku kopiowania — z klawiatury działa sam przycisk). #}
+<div class="author-info-section">
+    <h3><i class="fi-link"></i> Identyfikatory</h3>
+    <div class="grid-x grid-margin-x autor-page__grid-gap">
+        {% if autor.orcid %}
+            {% include "browse/autor_sekcje/_identyfikator.html" with etykieta="ORCID" wartosc=autor.orcid url="https://orcid.org/"|add:autor.orcid tekst=autor.orcid only %}
+        {% endif %}
+        {# PBN: jeden kafel zamiast „PBN UID” + „Naukowiec z POL-on” (prowadziły #}
+        {# do tej samej strony). Surowego UID nie pokazujemy — kopiuje się link. #}
+        {# Stary, numeryczny PBN ID (legacy) świadomie pominięty. #}
+        {% if link_do_pbn %}
+            {% include "browse/autor_sekcje/_identyfikator.html" with etykieta="PBN" wartosc=link_do_pbn url=link_do_pbn tekst="Profil w PBN" strzalka=True polon=autor.jest_w_polon only %}
+        {% endif %}
+        {% if autor.wos_researcherid %}
+            {% include "browse/autor_sekcje/_identyfikator.html" with etykieta="Web of Science" wartosc=autor.wos_researcherid url=autor.wos_url tekst=autor.wos_researcherid only %}
+        {% endif %}
+        {% if autor.scopus_author_id %}
+            {% include "browse/autor_sekcje/_identyfikator.html" with etykieta="Scopus" wartosc=autor.scopus_author_id url=autor.scopus_url tekst=autor.scopus_author_id only %}
+        {% endif %}
+        {% if autor.google_scholar_id %}
+            {% include "browse/autor_sekcje/_identyfikator.html" with etykieta="Google Scholar" wartosc=autor.google_scholar_id url=autor.google_scholar_url tekst="Profil" strzalka=True only %}
+        {% endif %}
+        {% if autor.url_profilu_uczelni %}
+            {% include "browse/autor_sekcje/_identyfikator.html" with etykieta=uczelnia.etykieta_profilu_uczelni|default:"Profil w portalu uczelni" wartosc=autor.url_profilu_uczelni url=autor.url_profilu_uczelni tekst="Profil" strzalka=True only %}
+        {% endif %}
+        {# Wewnętrzny numer kadrowy — tylko dla zalogowanych. #}
+        {% if autor.system_kadrowy_id and request.user.is_authenticated %}
+            {% include "browse/autor_sekcje/_identyfikator.html" with etykieta="System kadrowy" wartosc=autor.system_kadrowy_id tekst=autor.system_kadrowy_id only %}
+        {% endif %}
+        {% include "browse/autor_sekcje/_identyfikator.html" with etykieta="BPP ID" wartosc=autor.pk tekst=autor.pk opis="Unikalny, wewnętrzny identyfikator autora w systemie BPP" only %}
+    </div>
+</div>
+<div class="shaded-hr-div-small"></div>
