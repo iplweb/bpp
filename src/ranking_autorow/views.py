@@ -13,6 +13,7 @@ from django_tables2.export.views import ExportMixin
 from django_tables2.tables import Table
 from django_tables2.views import SingleTableView
 
+from bpp.const import GR_RAPORTY_WYSWIETLANIE
 from bpp.models import (
     Charakter_Formalny,
     Jednostka,
@@ -23,11 +24,25 @@ from bpp.models import (
     Uczelnia,
 )
 from bpp.util.uczelnia_scope import tylko_jedna_uczelnia
+from bpp.views.mixins import UczelniaSettingRequiredMixin
 
 from .forms import RankingAutorowForm
 
 
-class RankingAutorowFormularz(FormView):
+class RankingAutorowDostepMixin(UczelniaSettingRequiredMixin):
+    """Dostęp do rankingu wg ``Uczelnia.pokazuj_ranking_autorow`` — ta sama
+    semantyka co pozycja w menu (``{% czy_pokazywac ranking_autorow %}``,
+    czyli ``Uczelnia.sprawdz_uprawnienie``): zalogowani spoza grupy raportów
+    (poza superuserem) nie mają dostępu. Anonim → logowanie, zalogowany bez
+    uprawnień → 403, „nigdy" → 404. Obejmuje też eksport (``?_export=``)."""
+
+    uczelnia_attr = "pokazuj_ranking_autorow"
+    group_required = GR_RAPORTY_WYSWIETLANIE
+    raise_exception = True
+    redirect_unauthenticated_users = True
+
+
+class RankingAutorowFormularz(RankingAutorowDostepMixin, FormView):
     form_class = RankingAutorowForm
     nazwa_raportu = "Ranking autorów"
 
@@ -163,7 +178,7 @@ class RankingAutorowJednostkaWydzialTable(RankingAutorowTable):
     wydzial = Column("Wydział", accessor="jednostka__wydzial__nazwa")
 
 
-class RankingAutorow(ExportMixin, SingleTableView):
+class RankingAutorow(RankingAutorowDostepMixin, ExportMixin, SingleTableView):
     template_name = "ranking_autorow/results.html"
     export_formats = ["csv", "json", "xls", "xlsx", "ods"]
 
