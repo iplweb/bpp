@@ -1,7 +1,6 @@
 from datetime import timedelta
 from pathlib import Path
 
-import rollbar
 from celery import shared_task
 from celery.utils.log import get_task_logger
 from celery_singleton import Singleton
@@ -356,8 +355,9 @@ def generuj_eksport_autora(self, task_id: str):
         return {"status": "success", "task_id": str(task_id)}
     except Exception:
         # Status zadania jest publiczny (UUID) — nie pokazujemy treści wyjątku.
+        # Szczegóły: log tutaj, Rollbar przez sygnał ``task_failure``
+        # (``django_bpp.celery_tasks``) po ponownym zgłoszeniu wyjątku niżej.
         logger.exception("Błąd generowania eksportu autora (zadanie %s)", task_id)
-        rollbar.report_exc_info()
         task.status = "failed"
         task.error_message = KOMUNIKAT_BLEDU_EKSPORTU_AUTORA
         task.completed_at = timezone.now()

@@ -292,12 +292,12 @@ def test_eksport_async_blad_bez_szczegolow(client, autor_jan_nowak):
             "bpp.tasks._zbuduj_tresc_eksportu_autora",
             side_effect=RuntimeError("szczegol-wewnetrzny"),
         ),
-        mock.patch("bpp.tasks.rollbar.report_exc_info") as rollbar_mock,
+        mock.patch("bpp.tasks.logger.exception") as log_mock,
         pytest.raises(RuntimeError),
     ):
         generuj_eksport_autora(str(task.pk))
 
-    rollbar_mock.assert_called_once()
+    log_mock.assert_called_once()
     task.refresh_from_db()
     assert task.status == "failed"
     assert task.error_message == KOMUNIKAT_BLEDU_EKSPORTU_AUTORA
