@@ -1,0 +1,1 @@
+Menu użytkownika w górnym pasku nazywa się teraz „konto” (zamiast „wyloguj”) i zbiera „mój profil”, „zmianę hasła” oraz — dla superużytkownika — „zaloguj jako inny użytkownik”; „wyloguj” jest ostatnią pozycją, oddzieloną kreską, więc kliknięcie nagłówka menu nie wylogowuje już od razu.
