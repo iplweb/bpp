@@ -1,0 +1,1 @@
+Formularz zmiany hasła nie rozciąga się już na całą szerokość okna, a nad nim nie pojawia się nieprawdziwa informacja o wylogowaniu po zmianie hasła (sesja pozostaje aktywna, użytkownik widzi potwierdzenie zmiany).
