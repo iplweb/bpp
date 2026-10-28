@@ -281,10 +281,10 @@ jobs:
           # BUMP: podnieś wersję i wklej SHA256 z pliku checksums release'u.
           OSV_SCANNER_VERSION: "2.4.0"
           OSV_SCANNER_SHA256: "15314940c10d26af9c6649f150b8a47c1262e8fc7e17b1d1029b0e479e8ed8a0"
-          GRYPE_VERSION: "0.115.0"
-          GRYPE_SHA256: "3fad92940650e514c0aa2dad83526942a055e210cec09a8a59d9c024adc2b90e"
-          TRIVY_VERSION: "0.72.0"
-          TRIVY_SHA256: "bbb64b9695866ce4a7a8f5c9592002c5961cab378577fa3f8a040df362b9b2ea"
+          GRYPE_VERSION: "0.121.0"
+          GRYPE_SHA256: "64e07133d3486115de647a66581461dccf5c732748a0a3119077395565f15519"
+          TRIVY_VERSION: "0.76.1"
+          TRIVY_SHA256: "c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0"
         run: |
           set -euo pipefail
           TMP="$(mktemp -d)"
@@ -340,12 +340,12 @@ jobs:
     env:
       # Trivy PRZYPIĘTY do wersji + digestu (multi-arch index), NIE ruchomego
       # :latest — rejestr nie może podmienić zawartości pod niezmiennym
-      # digestem. Wersja 0.72.0 = ta sama co binarka trivy w
+      # digestem. Wersja 0.76.1 = ta sama co binarka trivy w
       # jobie dependency_scan — jeden Trivy w całym pipeline.
       # BUMP: podnieś wersję i digest z
       #   docker buildx imagetools inspect aquasec/trivy:<wersja>
       # (weź „Digest:" indeksu multi-arch, nie per-platform manifest).
-      TRIVY_IMAGE: "aquasec/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f"
+      TRIVY_IMAGE: "aquasec/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c"
     steps:
       # -----------------------------------------------------------------
       # Skanuje staging tag. CRITICAL z dostepnym fix-em → exit 1, cały job
