@@ -208,6 +208,10 @@ class MyMultiseekResults(MultiseekResults):
         # kazda zmiana formularza / wyrzucenie rekordu zmienia klucz.
         cache_key = self._aggregate_cache_key()
         agregaty = cache.get(cache_key)
+        # Wszystkie rekordy zniknely z wynikow w czasie zycia wpisu: pusta
+        # lista obok niezerowego licznika to widoczna sprzecznosc (FD#503).
+        if agregaty is not None and agregaty["paginator_count"] and not qset.exists():
+            agregaty = None
         if agregaty is None:
             if ctx["report_type"] in EXTRA_TYPES:
                 # Licznik i sumy jednym skanem — przy DISTINCT + join do
