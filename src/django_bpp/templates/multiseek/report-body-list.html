@@ -50,8 +50,10 @@
             </span>
         {% endif %}
         </li>
-        {% empty %}
-            <li style="text-align: center; color: #6c757d; padding: 20px;">{% trans "No elements" %}</li>
         {% endfor %}
     </ol>
+    {# Poza <ol>: każdy <li> dostaje z CSS numer, więc komunikat byłby pozycją „0.". #}
+    {% if not object_list %}
+        <p style="text-align: center; color: #6c757d; padding: 20px;">{% trans "No elements" %}</p>
+    {% endif %}
 </div>
