@@ -57,122 +57,21 @@ endif
 
 all:	prepare-developer-machine release ## UWAGA: pełna konfiguracja + release (uruchamia release!)
 
-# WeasyPrint (cffi.dlopen / ctypes.util.find_library) musi znalezc
-# libgobject-2.0 / pango / harfbuzz / fontconfig zainstalowane przez brew.
-# Na Apple Silicon te biblioteki siedza w /opt/homebrew/lib, ktorego dyld
-# nie konsultuje domyslnie (default search path to /usr/local/lib + /usr/lib).
-#
-# Probowalismy wczesniej (commit 3531fd2d4) DYLD_FALLBACK_LIBRARY_PATH —
-# nie sprawdza sie w praktyce: macOS SIP strippuje wszystkie zmienne DYLD_*
-# w momencie wywolania chronionej binarki (/usr/bin/*, /bin/sh, itp.), wiec
-# w lancuchach typu  make → sh → uv → python → pytest  zmienna regularnie
-# ginie po drodze. Z perspektywy pytest/uv vs. dlopen — niedeterministyczne.
-#
-# Wracamy do symlinkow w /usr/local/lib: filesystem-level, dyld konsultuje
-# te sciezke z automatu, SIP nic z tym nie zrobi. Wymaga sudo *raz*
-# przy setupie maszyny. Idempotent — recipe nie nadpisuje istniejacych
-# symlinkow wskazujacych na te same cele.
-#
-# UWAGA: To runtime fix dla dlopen. Nie pomaga przy *build-time* bledach
-# (np. wheel buduje sie z zrodla i nie znajduje cairo.h) — wtedy potrzeba
-# PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig + LDFLAGS=-L/opt/homebrew/lib
-# + CPPFLAGS=-I/opt/homebrew/include.
-prepare-developer-machine-macos: ## Zainstaluj zależności systemowe na macOS (brew + uv sync + playwright + symlinki)
-	@if ! command -v brew >/dev/null 2>&1; then \
-		echo ""; \
-		echo "BŁĄD: Homebrew (brew) nie jest zainstalowany."; \
-		echo ""; \
-		echo "Homebrew jest wymagany do zainstalowania zależności systemowych"; \
-		echo "(cairo, pango, gdk-pixbuf, libffi, gobject-introspection, gtk+3)."; \
-		echo ""; \
-		echo "Aby zainstalować Homebrew, uruchom w terminalu poniższe polecenie:"; \
-		echo ""; \
-		echo '  /bin/bash -c "$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'; \
-		echo ""; \
-		echo "Po zakończeniu instalacji wykonaj kroki dodające 'brew' do PATH"; \
-		echo "wypisane przez instalator (zwykle dla Apple Silicon: dopisanie"; \
-		echo "linii 'eval \"\$$(/opt/homebrew/bin/brew shellenv)\"' do ~/.zprofile)."; \
-		echo ""; \
-		echo "Pełna dokumentacja: https://brew.sh"; \
-		echo ""; \
-		echo "Po instalacji Homebrew uruchom ponownie:  make prepare-developer-machine"; \
-		echo ""; \
-		exit 1; \
-	fi
-	brew install cairo pango gdk-pixbuf libffi gobject-introspection gtk+3 node yarn
-	npm install -g grunt-cli
-	uv sync --frozen --no-install-project --all-extras
-	@# Symlinki w /usr/local/lib — dyld konsultuje te sciezke domyslnie,
-	@# wiec niezaleznie od stanu DYLD_* (SIP) WeasyPrint znajdzie libki.
-	@if [ ! -d /usr/local/lib ]; then \
-		echo "Tworze /usr/local/lib (wymagane sudo)..."; \
-		sudo mkdir -p /usr/local/lib; \
-	fi
-	@for pair in \
-		"/opt/homebrew/opt/glib/lib/libgobject-2.0.0.dylib:gobject-2.0" \
-		"/opt/homebrew/opt/pango/lib/libpango-1.0.dylib:pango-1.0" \
-		"/opt/homebrew/opt/harfbuzz/lib/libharfbuzz.dylib:harfbuzz" \
-		"/opt/homebrew/opt/fontconfig/lib/libfontconfig.1.dylib:fontconfig-1" \
-		"/opt/homebrew/opt/pango/lib/libpangoft2-1.0.dylib:pangoft2-1.0"; do \
-		src="$${pair%:*}"; dst="/usr/local/lib/$${pair##*:}"; \
-		if [ -L "$$dst" ] && [ "$$(readlink "$$dst")" = "$$src" ]; then \
-			echo "Symlink $$dst juz wskazuje na $$src — pomijam."; \
-		else \
-			echo "Tworze symlink $$dst -> $$src (wymagane sudo)..."; \
-			sudo ln -sf "$$src" "$$dst"; \
-		fi; \
-	done
-	@# Cleanup po poprzedniej probie z DYLD_FALLBACK_LIBRARY_PATH —
-	@# usun marker + linie export z ~/.zprofile, jesli zostaly.
-	@ZPROFILE="$$HOME/.zprofile"; \
-	MARKER='# bpp: weasyprint dlopen (Homebrew libs on Apple Silicon)'; \
-	if [ -f "$$ZPROFILE" ] && grep -qF "$$MARKER" "$$ZPROFILE"; then \
-		cp "$$ZPROFILE" "$$ZPROFILE.bpp-bak"; \
-		awk -v m="$$MARKER" 'BEGIN{skip=0} \
-			$$0==m {skip=1; next} \
-			skip>0 {skip--; next} \
-			{print}' "$$ZPROFILE.bpp-bak" > "$$ZPROFILE"; \
-		echo "Usunieto stary wpis DYLD_FALLBACK_LIBRARY_PATH z $$ZPROFILE (backup: $$ZPROFILE.bpp-bak)."; \
-	fi
-	$(MAKE) playwright-install
+# Właściwa logika (detekcja systemu i dystrybucji, pakiety, uv, Playwright)
+# siedzi w bin/prepare-developer-machine/.
+PREPARE_DEVELOPER_MACHINE := bin/prepare-developer-machine/prepare.sh
 
-prepare-developer-machine-linux: ## Zainstaluj zależności systemowe na Linuksie (apt + uv sync + playwright)
-	sudo apt update
-	sudo apt install -y yarnpkg nodejs npm python3-dev libpq-dev \
-		libcairo2-dev libpango1.0-dev libgdk-pixbuf2.0-dev libffi-dev \
-		libgirepository1.0-dev libgtk-3-dev
-	sudo npm install -g grunt-cli
-	uv sync --frozen --no-install-project --all-extras
-	$(MAKE) playwright-install
+prepare-developer-machine-macos: ## Zainstaluj zależności systemowe na macOS (brew + uv + uv sync + playwright + symlinki)
+	$(PREPARE_DEVELOPER_MACHINE) macos
 
-prepare-developer-machine: ## Zainstaluj zależności systemowe (auto-detekcja macOS/Linux)
-ifeq ($(OS),Darwin)
-	$(MAKE) prepare-developer-machine-macos
-else ifeq ($(OS),Linux)
-	$(MAKE) prepare-developer-machine-linux
-else
-	@echo "Unsupported platform: $(OS)"
-	@echo "Supported: Darwin (macOS), Linux"
-	@exit 1
-endif
+prepare-developer-machine-linux: ## Zainstaluj zależności systemowe na Linuksie (apt/dnf/pacman + uv + uv sync + playwright)
+	$(PREPARE_DEVELOPER_MACHINE) linux
 
-# Pobiera przeglądarki Playwright (chromium itd.) potrzebne do testów E2E.
-# Na Linuksie używa --with-deps, żeby playwright doinstalował systemowe
-# biblioteki (libnss3, libatk, libgtk-3...) przez apt — to wymaga sudo
-# i jest dokładnie tym, co opisuje README sekcja 2 ("uv run playwright
-# install" + "sudo playwright install-deps") tylko sklejone w jednej
-# komendzie. Na macOS install-deps to no-op (browsers są self-contained,
-# a brew już zainstalował systemowe libki w prepare-developer-machine-macos),
-# więc używamy gołego "playwright install".
-#
-# Wymaga, by uv sync --all-extras zostało wcześniej wykonane (playwright
-# CLI siedzi w grupie dev pyproject.toml). Stąd kolejność w prepare-*.
-playwright-install: ## Pobierz przeglądarki Playwright dla testów E2E (na Linuksie z --with-deps, sudo)
-ifeq ($(OS),Darwin)
-	uv run playwright install
-else
-	uv run playwright install --with-deps
-endif
+prepare-developer-machine: ## Zainstaluj zależności systemowe (auto-detekcja systemu i dystrybucji)
+	$(PREPARE_DEVELOPER_MACHINE)
+
+playwright-install: ## Pobierz przeglądarki Playwright dla testów E2E (na Debianie/Ubuntu z --with-deps, sudo)
+	$(PREPARE_DEVELOPER_MACHINE) playwright
 
 prepare-claude: ## Pokaż instrukcję instalacji wtyczki claude-mem w Claude Code
 	@echo "Setting up Claude Code with claude-mem plugin..."

@@ -18,13 +18,15 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import translation
-from multiseek.logic import STARTS_WITH
+from model_bakery import baker
+from multiseek.logic import EQUAL_NONE, STARTS_WITH
 from multiseek.views import MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED
 
-from bpp.models import Rekord
+from bpp.models import Autor, Rekord
 from bpp.tests.util import any_ciagle
 
 TYTUL_PREFIX = "CCache multiseek"
+LIST_REPORT_TYPE = "0"
 TABLE_REPORT_TYPE = "1"
 
 
@@ -136,3 +138,62 @@ def test_zalogowanie_ma_osobny_cache(client, admin_client, dwa_rekordy, locmem_c
     _ustaw_filtr(admin_client, TYTUL_PREFIX)
     res = admin_client.get(reverse("multiseek:results"))
     assert res.context["paginator_count"] == 2
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("report_type", [LIST_REPORT_TYPE, TABLE_REPORT_TYPE])
+def test_fd503_pusty_wynik_przelicza_nieaktualny_licznik(
+    client, standard_data, locmem_cache, report_type
+):
+    """FD#503: rekord zniknął z wyników w czasie życia wpisu cache — lista
+    była już pusta, a pasek dalej pokazywał „Razem: 1"."""
+    rekord = any_ciagle(tytul_oryginalny=f"{TYTUL_PREFIX} znika", rok=2024)
+    _ustaw_filtr(client, TYTUL_PREFIX, report_type)
+    assert client.get(reverse("multiseek:results")).context["paginator_count"] == 1
+
+    rekord.delete()
+
+    res = client.get(reverse("multiseek:results"))
+    assert res.context["paginator_count"] == 0
+    assert "Razem: 0" in res.content.decode()
+
+
+@pytest.mark.django_db
+def test_fd503_autor_bez_prac_ma_licznik_zero(client, standard_data):
+    """FD#503: bez cache autor bez prac daje 0 — rozjazd z ticketu nie
+    pochodzi z zapytania, tylko z nieaktualnego wpisu cache."""
+    autor = baker.make(Autor)
+    with translation.override(django_settings.LANGUAGE_CODE):
+        operator = str(EQUAL_NONE)
+
+    session = client.session
+    session[MULTISEEK_SESSION_KEY] = json.dumps(
+        {
+            "form_data": [
+                None,
+                {
+                    "field": "Nazwisko i imię",
+                    "operator": operator,
+                    "value": str(autor.pk),
+                    "prev_op": None,
+                },
+            ],
+            "ordering": {},
+            "report_type": LIST_REPORT_TYPE,
+        }
+    )
+    session.save()
+
+    assert client.get(reverse("multiseek:results")).context["paginator_count"] == 0
+
+
+@pytest.mark.django_db
+def test_fd503_brak_elementow_nie_jest_numerowana_pozycja(client, standard_data):
+    """FD#503: komunikat o braku wyników jako <li> dostawał z CSS numer „0."."""
+    _ustaw_filtr(client, f"{TYTUL_PREFIX} nie ma", LIST_REPORT_TYPE)
+
+    tresc = client.get(reverse("multiseek:results")).content.decode()
+
+    lista = tresc[tresc.index("<ol") : tresc.index("</ol>")]
+    assert "Brak elementów" in tresc
+    assert "Brak elementów" not in lista

@@ -14,6 +14,8 @@ bootstrap Freshworks (``widgetRenderComplete``) — odtwarza kolejkę ``.q``
 stuba i podmienia ``window.FreshworksWidget``.
 """
 
+import re
+
 import jwt
 import pytest
 from playwright.sync_api import Page
@@ -30,6 +32,10 @@ from integration_tests._freshworks_daphne_setup import (
 
 ADMIN_URL = "/admin/bpp/zrodlo/"
 FRESHWORKS_ROUTE = "**/euc-widget.freshworks.com/**"
+# Przy TESTING=False strona publiczna ładuje też obce skrypty (np. userway.org).
+# Zawieszony cudzy serwer blokowałby `load`/`networkidle`, więc poza domeną
+# Freshworks (stub) wszystko spoza localhosta jest odcinane.
+OBCE_ADRESY = re.compile(r"^https?://(?!localhost[:/]|127\.0\.0\.1[:/])")
 
 # Imitacja bootstrapu Freshworks: odtwórz kolejkę stuba, potem podmień
 # window.FreshworksWidget na funkcję, która tylko zapisuje wywołania.
@@ -98,6 +104,8 @@ def _track_freshworks(page: Page, abort=False):
                 body=STUB_WIDGET_JS,
             )
 
+    # Playwright sprawdza trasy od ostatnio dodanej — Freshworks ma pierwszeństwo.
+    page.route(OBCE_ADRESY, lambda route: route.abort())
     page.route(FRESHWORKS_ROUTE, handler)
     return requests
 

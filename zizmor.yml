@@ -27,7 +27,6 @@ rules:
   artipacked:
     ignore:
       - build-docker-images.yml
-      - claude.yml
       - coveralls-finish.yml
       - refresh-baseline.yml
       - sync-dockerhub.yml
@@ -41,7 +40,6 @@ rules:
   excessive-permissions:
     ignore:
       - build-docker-images.yml
-      - claude.yml
       - coveralls-finish.yml
       - refresh-baseline.yml
       - sync-dockerhub.yml

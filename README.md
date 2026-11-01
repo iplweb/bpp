@@ -141,32 +141,38 @@ uv run pytest -n auto             # testy równolegle (pytest-xdist)
 ```
 
 Wymagania: **Docker daemon** (do testcontainers), Homebrew (macOS) lub
-`apt` + `sudo` (Linux). Pierwszy bieg pobiera kilkaset MB do paru GB
-(pakiety npm, przeglądarki Playwright, obrazy Dockera dla testów).
+`sudo` (Linux). `uv` instaluje się samo, jeśli go nie ma. Pierwszy bieg
+pobiera kilkaset MB do paru GB (pakiety npm, przeglądarki Playwright,
+obrazy Dockera dla testów).
 
-Co robi `make prepare-developer-machine`:
+Co robi `make prepare-developer-machine` (skrypty:
+`bin/prepare-developer-machine/`; system i dystrybucję wykrywa sam,
+`bin/prepare-developer-machine/prepare.sh detect` pokazuje wynik detekcji):
 
-- **macOS** (Apple Silicon, Homebrew) — przez `brew`: `cairo`, `pango`,
-  `gdk-pixbuf`, `libffi`, `gobject-introspection`, `gtk+3`, `node`,
-  `yarn`; przez `npm` globalnie `grunt-cli`; tworzy `sudo`-symlinki
-  w `/usr/local/lib` na libki z `/opt/homebrew/lib`
+- **macOS** — przez `brew`: `cairo`, `pango`, `gdk-pixbuf`, `libffi`,
+  `gobject-introspection`, `gtk+3`, `node`, `yarn`; przez `npm` globalnie
+  `grunt-cli`; instaluje `uv`, jeśli go nie ma; na Apple Silicon tworzy
+  `sudo`-symlinki w `/usr/local/lib` na libki z `/opt/homebrew/lib`
   (`dyld` nie konsultuje brew-owej ścieżki domyślnie, a `DYLD_FALLBACK_LIBRARY_PATH`
   jest stripowana przez SIP w podprocesach — patrz
-  [docs/MACOS_WEASYPRINT.md](docs/MACOS_WEASYPRINT.md)); na końcu
-  `uv sync --frozen --no-install-project --all-extras` +
-  `uv run playwright install`.
-- **Linux** (Debian/Ubuntu, `apt`) — przez `sudo apt`: `yarnpkg`,
-  `nodejs`, `npm`, `python3-dev`, `libpq-dev`, `libcairo2-dev`,
-  `libpango1.0-dev`, `libgdk-pixbuf2.0-dev`, `libffi-dev`,
-  `libgirepository1.0-dev`, `libgtk-3-dev`; przez `sudo npm` globalnie
-  `grunt-cli`; na końcu `uv sync --frozen --no-install-project
-  --all-extras` + `uv run playwright install --with-deps` (z systemowymi
-  libkami chromium — wymaga sudo).
+  [docs/deweloper/weasyprint-macos.md](docs/deweloper/weasyprint-macos.md));
+  na końcu `uv sync --frozen --no-install-project --all-extras` +
+  `uv run playwright install --only-shell chromium`.
+- **Linux** — pakiety systemowe (kompilator, nagłówki LDAP/SASL/SSL dla
+  `python-ldap`, libki WeasyPrint, Node, yarn, gettext) i `grunt-cli`
+  przez menedżer pakietów dystrybucji: `apt` (Debian, Ubuntu i pochodne),
+  `dnf` (Fedora, RHEL i pochodne) albo `pacman` (Arch i pochodne); potem
+  `uv` w wersji przypiętej w projekcie (do `~/.local/bin`, jeśli go nie
+  ma; instalator przechodzi weryfikację SHA-256) i `uv sync --frozen --no-install-project --all-extras`. Na końcu
+  `uv run playwright install --with-deps --only-shell chromium`
+  (Debian/Ubuntu, wymaga sudo) albo to samo bez `--with-deps` — poza
+  Debianem/Ubuntu Playwright nie jest oficjalnie wspierany, a jego
+  biblioteki instaluje krok systemowy.
 
-Auto-detekcja systemu jest domyślna; aby wymusić wariant:
-`make prepare-developer-machine-macos` albo
-`make prepare-developer-machine-linux`. Cel **nie woła `make assets`** —
-frontend trzeba zbudować osobno.
+Aby wymusić wariant: `make prepare-developer-machine-macos` albo
+`make prepare-developer-machine-linux` (wariant niepasujący do systemu kończy
+się błędem). Cel **nie woła `make assets`** — frontend trzeba zbudować
+osobno.
 
 `pytest -n auto` (`pytest-xdist`) rozdziela testy między workery; każdy
 worker dostaje **własny** testcontainer PostgreSQL/Redis na losowym
@@ -194,23 +200,26 @@ cd bpp
 
 ```bash
 uv sync
-uv run playwright install
-sudo playwright install-deps
+uv run playwright install --only-shell chromium
+sudo uv run playwright install-deps chromium
 ```
 
 `uv sync` instaluje pakiety potrzebne do pracy i testów (pytest,
 pytest-django, model-bakery, ruff, pre-commit, …) — siedzą one w
 `[dependency-groups].dev`, którą `uv` aktywuje defaultowo (opt-out
-przez `--no-dev`). `uv run playwright install` pobiera przeglądarki
-używane w testach E2E (~500 MB). `sudo playwright install-deps`
-doinstalowuje systemowe biblioteki, których wymagają te przeglądarki
-(libnss3, libatk, libgtk-3, …) — wymaga sudo, bo używa `apt`.
+przez `--no-dev`). `uv run playwright install --only-shell chromium`
+pobiera Chromium Headless Shell używany w testach E2E (~350 MB) — testy
+nie korzystają z Firefoksa ani WebKita. Do `pytest --headed` potrzebny
+jest dodatkowo pełny Chromium: `uv run playwright install chromium`.
+`sudo uv run playwright install-deps chromium` doinstalowuje systemowe
+biblioteki, których wymaga przeglądarka (libnss3, libatk, libgtk-3, …)
+— wymaga sudo, bo używa `apt`.
 
 Aby uzyskać dodatkowe logowanie postępu:
 
 - `uv sync -v` — verbose output uv
-- `uv run playwright install --with-deps` — alternatywa, która sama
-  wywołuje `apt` (jeśli wolisz nie rozdzielać kroku z sudo)
+- `uv run playwright install --with-deps --only-shell chromium` —
+  alternatywa, która sama wywołuje `apt` (jeśli wolisz nie rozdzielać kroku z sudo)
 
 ### 3. Zbuduj assety frontendowe
 

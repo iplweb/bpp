@@ -377,11 +377,6 @@ nav.sticky-header {
     margin-right: 0.4rem;
 }
 
-// Hide dropdown arrow for specific menu items
-.dropdown.menu > li.no-dropdown-arrow > a::after {
-    display: none !important;
-}
-
 // Menu icon styling
 .top-bar .dropdown.menu {
     .fi-magnifying-glass,
@@ -392,6 +387,7 @@ nav.sticky-header {
     .fi-wrench,
     .fi-pencil,
     .fi-power,
+    .fi-torso,
     .fi-lock {
         font-size: 1.6rem;
         margin-right: 0.4rem;

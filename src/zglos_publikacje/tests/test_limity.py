@@ -187,34 +187,37 @@ def test_kreator_drugie_zgloszenie_odrzucone(
 @pytest.mark.django_db
 @override_settings(ZGLOS_LIMIT_NA_GODZINE=1)
 def test_kreator_limit_wyczerpany_nie_zapisuje_plikow_tmp(
-    webtest_app, uczelnia, settings, tmp_path, locmem_cache
+    webtest_app, uczelnia, tmp_path, locmem_cache
 ):
-    settings.MEDIA_ROOT = str(tmp_path)
-    _uzyj_ip(webtest_app)
-    # Wyczerp limit dla tego IP.
-    assert limity.zarezerwuj_zgloszenie(_request(ip="10.1.2.3")) is True
+    # Celowo `with override_settings`, NIE fixtura `settings`: jej cofnięcie
+    # biegnie PO zdjęciu dekoratora i `locmem_cache`, więc przywróciłoby ich
+    # stan — ZGLOS_LIMIT_NA_GODZINE=1 i LocMem wyciekałyby do kolejnych testów.
+    with override_settings(MEDIA_ROOT=str(tmp_path)):
+        _uzyj_ip(webtest_app)
+        # Wyczerp limit dla tego IP.
+        assert limity.zarezerwuj_zgloszenie(_request(ip="10.1.2.3")) is True
 
-    page = _do_kroku2(webtest_app, forma="OGRANICZONY")
-    fields = [
-        (n, v)
-        for n, v in page.forms[0].submit_fields()
-        if not (n and n.startswith("2-"))
-    ]
-    fields += [
-        ("2-tytul_oryginalny", "Test"),
-        ("2-rok", "2020"),
-        ("2-email", "test@test.pl"),
-        ("2-strona_www", "https://example.com/"),
-    ]
-    with open(PDF_PATH, "rb") as fh:
-        pdf = fh.read()
-    resp = webtest_app.post(
-        reverse("zglos_publikacje:nowe_zgloszenie"),
-        params=fields,
-        upload_files=[("2-pliki", "a.pdf", pdf)],
-    )
-    assert "Przekroczono limit zgłoszeń" in resp.text
-    assert _tmp_files(str(tmp_path)) == []
+        page = _do_kroku2(webtest_app, forma="OGRANICZONY")
+        fields = [
+            (n, v)
+            for n, v in page.forms[0].submit_fields()
+            if not (n and n.startswith("2-"))
+        ]
+        fields += [
+            ("2-tytul_oryginalny", "Test"),
+            ("2-rok", "2020"),
+            ("2-email", "test@test.pl"),
+            ("2-strona_www", "https://example.com/"),
+        ]
+        with open(PDF_PATH, "rb") as fh:
+            pdf = fh.read()
+        resp = webtest_app.post(
+            reverse("zglos_publikacje:nowe_zgloszenie"),
+            params=fields,
+            upload_files=[("2-pliki", "a.pdf", pdf)],
+        )
+        assert "Przekroczono limit zgłoszeń" in resp.text
+        assert _tmp_files(str(tmp_path)) == []
 
 
 @pytest.mark.django_db

@@ -1,0 +1,1 @@
+`make prepare-developer-machine` korzysta teraz ze skryptów w `bin/prepare-developer-machine/`: rozpoznaje wersję macOS, architekturę oraz dystrybucję Linuksa (apt, dnf, pacman), na Linuksie instaluje przypięte `uv` oraz nagłówki potrzebne do zbudowania `python-ldap` (brak `lber.h`).
