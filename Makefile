@@ -139,7 +139,7 @@ prepare-developer-machine-macos: ## Zainstaluj zależności systemowe na macOS (
 prepare-developer-machine-linux: ## Zainstaluj zależności systemowe na Linuksie (apt + uv sync + playwright)
 	sudo apt update
 	sudo apt install -y yarnpkg nodejs npm python3-dev libpq-dev \
-		libcairo2-dev libpango1.0-dev libgdk-pixbuf2.0-dev libffi-dev \
+		libcairo2-dev libpango1.0-dev libgdk-pixbuf-xlib-2.0-dev libffi-dev \
 		libgirepository1.0-dev libgtk-3-dev
 	sudo npm install -g grunt-cli
 	uv sync --frozen --no-install-project --all-extras
