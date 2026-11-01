@@ -40,11 +40,14 @@ install_packages_debian() {
 
     $SUDO apt-get install -y \
         build-essential ca-certificates curl gettext git \
-        nodejs npm yarnpkg python3-dev \
+        nodejs npm python3-dev \
         libcairo2-dev libffi-dev libgtk-3-dev libldap2-dev libpango1.0-dev \
         libpq-dev libsasl2-dev libssl-dev \
         "$gdk_pixbuf" "$girepository"
-    $SUDO npm install -g grunt-cli
+    # Yarn z npm, nie z apt: pakiet `yarnpkg` ma różne wersje główne między
+    # dystrybucjami (Ubuntu 26.04: 4.1.0). Binarka npm w /usr/local/bin
+    # przesłania też `yarnpkg` z apt zainstalowany wcześniej.
+    $SUDO npm install -g grunt-cli "yarn@$YARN_VERSION"
 }
 
 install_packages_fedora() {
@@ -76,6 +79,17 @@ install_packages_arch() {
     $SUDO npm install -g grunt-cli "yarn@$YARN_VERSION"
 }
 
+# Makefile wywołuje `yarnpkg` przez PATH, więc sprawdzamy tę samą binarkę.
+verify_yarnpkg() {
+    local current
+    current="$(yarnpkg --version)"
+    if [ "$current" != "$YARN_VERSION" ]; then
+        die "yarnpkg z PATH ($(command -v yarnpkg)) ma wersję $current," \
+            "a projekt wymaga $YARN_VERSION. Sprawdź kolejność katalogów w PATH."
+    fi
+    log "yarnpkg $current"
+}
+
 prepare_linux() {
     detect_linux
     log "Wykryto: $LINUX_NAME ($ARCH, rodzina: ${LINUX_FAMILY:-nieznana})"
@@ -90,6 +104,7 @@ prepare_linux() {
     log "Instaluję pakiety systemowe"
     "install_packages_$LINUX_FAMILY"
     warn_if_old_node
+    verify_yarnpkg
 
     ensure_uv
     sync_python_deps
