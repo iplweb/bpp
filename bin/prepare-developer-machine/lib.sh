@@ -149,6 +149,9 @@ warn_if_old_node() {
 # dev). `--with-deps` doinstalowuje biblioteki systemowe przez apt (sudo),
 # więc działa tylko na rodzinie Debiana. Na macOS przeglądarki są
 # samowystarczalne, a na Fedorze/Archu biblioteki instaluje linux.sh.
+# Tylko Chromium Headless Shell: testy nie używają Firefoksa ani WebKita, a CI
+# instaluje to samo (docker/bpp_base/Dockerfile). Pełny Chromium jest potrzebny
+# wyłącznie do `pytest --headed`: `uv run playwright install chromium`.
 install_playwright_browsers() {
     export PATH="$HOME/.local/bin:$PATH"
     detect_os
@@ -157,10 +160,10 @@ install_playwright_browsers() {
     if [ "$DETECTED_OS" = linux ]; then
         detect_linux
         if [ "$LINUX_FAMILY" = debian ]; then
-            uv run playwright install --with-deps
+            uv run playwright install --with-deps --only-shell chromium
             return
         fi
         warn "Playwright oficjalnie wspiera tylko Debiana i Ubuntu."
     fi
-    uv run playwright install
+    uv run playwright install --only-shell chromium
 }
