@@ -62,7 +62,7 @@ install_packages_fedora() {
         alsa-lib at-spi2-atk atk cups-libs libXcomposite libXdamage \
         libXrandr libdrm mesa-libgbm nss
     # npm daje też `yarnpkg`, którego szuka Makefile (YARN_CMD na Linuksie).
-    $SUDO npm install -g grunt-cli yarn
+    $SUDO npm install -g grunt-cli "yarn@$YARN_VERSION"
 }
 
 install_packages_arch() {
@@ -73,7 +73,7 @@ install_packages_arch() {
         libldap openssl pango postgresql-libs \
         alsa-lib at-spi2-core libcups libdrm libxcomposite libxdamage \
         libxrandr mesa nss
-    $SUDO npm install -g grunt-cli yarn
+    $SUDO npm install -g grunt-cli "yarn@$YARN_VERSION"
 }
 
 prepare_linux() {

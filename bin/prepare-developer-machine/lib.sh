@@ -10,6 +10,15 @@
 # potrafi uznać ten sam uv.lock za nieaktualny.
 UV_VERSION="0.13.5"
 
+# SHA-256 instalatora tej wersji uv (install.sh z astral.sh jest identyczny
+# z uv-installer.sh z GitHub Releases). Instalator ma wpisane sumy binarek,
+# więc jeden hash wystarcza na wszystkie platformy. Podbijając UV_VERSION,
+# policz nowy: curl -LsSf https://astral.sh/uv/<wersja>/install.sh | sha256sum
+UV_INSTALLER_SHA256="1c6e7f025499664633ac2dce43a210800510e9ef0625c52e034a8afdf8bf177a"
+
+# yarn.lock jest w formacie v1, czyli Yarn Classic.
+YARN_VERSION="1.22.22"
+
 # Node z obrazów Dockera to 24 (NODEJS_VERSION w docker/bpp_base/Dockerfile).
 MIN_NODE_MAJOR=20
 
@@ -67,6 +76,35 @@ detect_linux() {
     done
 }
 
+sha256_of() {
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$1" | awk '{print $1}'
+    else
+        shasum -a 256 "$1" | awk '{print $1}'
+    fi
+}
+
+# Pobiera instalator uv do pliku i uruchamia go dopiero po sprawdzeniu sumy.
+install_uv() {
+    local installer actual
+    installer="$(mktemp)"
+    if ! curl -LsSf --proto '=https' --tlsv1.2 -o "$installer" \
+        "https://astral.sh/uv/${UV_VERSION}/install.sh"; then
+        rm -f "$installer"
+        die "Nie udało się pobrać instalatora uv $UV_VERSION."
+    fi
+
+    actual="$(sha256_of "$installer")"
+    if [ "$actual" != "$UV_INSTALLER_SHA256" ]; then
+        rm -f "$installer"
+        die "Zła suma SHA-256 instalatora uv $UV_VERSION: $actual" \
+            "(oczekiwana: $UV_INSTALLER_SHA256). Instalator NIE został uruchomiony."
+    fi
+
+    sh "$installer"
+    rm -f "$installer"
+}
+
 # Przypina uv, gdy go nie ma; instalator z astral.sh trafia do ~/.local/bin.
 # Na PATH dokładamy ten katalog zawsze, żeby znaleźć uv z poprzedniego
 # uruchomienia, gdy shell nie wczytał jeszcze zmienionego profilu.
@@ -87,7 +125,7 @@ ensure_uv() {
 
     command -v curl >/dev/null 2>&1 || die "Do instalacji uv potrzebny jest curl."
     log "Instaluję uv $UV_VERSION"
-    curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" | sh
+    install_uv
     command -v uv >/dev/null 2>&1 ||
         die "uv zainstalowane, ale nie ma go na PATH (sprawdź ~/.local/bin)."
     warn "uv jest w ~/.local/bin — otwórz nowy shell, żeby było na PATH."

@@ -163,7 +163,7 @@ Co robi `make prepare-developer-machine` (skrypty:
   przez menedżer pakietów dystrybucji: `apt` (Debian, Ubuntu i pochodne),
   `dnf` (Fedora, RHEL i pochodne) albo `pacman` (Arch i pochodne); potem
   `uv` w wersji przypiętej w projekcie (do `~/.local/bin`, jeśli go nie
-  ma) i `uv sync --frozen --no-install-project --all-extras`. Na końcu
+  ma; instalator przechodzi weryfikację SHA-256) i `uv sync --frozen --no-install-project --all-extras`. Na końcu
   `uv run playwright install --with-deps` (Debian/Ubuntu, wymaga sudo)
   albo samo `uv run playwright install` — poza Debianem/Ubuntu Playwright
   nie jest oficjalnie wspierany, a jego biblioteki instaluje krok systemowy.
