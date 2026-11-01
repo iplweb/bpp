@@ -141,32 +141,37 @@ uv run pytest -n auto             # testy równolegle (pytest-xdist)
 ```
 
 Wymagania: **Docker daemon** (do testcontainers), Homebrew (macOS) lub
-`apt` + `sudo` (Linux). Pierwszy bieg pobiera kilkaset MB do paru GB
-(pakiety npm, przeglądarki Playwright, obrazy Dockera dla testów).
+`sudo` (Linux). `uv` instaluje się samo, jeśli go nie ma. Pierwszy bieg
+pobiera kilkaset MB do paru GB (pakiety npm, przeglądarki Playwright,
+obrazy Dockera dla testów).
 
-Co robi `make prepare-developer-machine`:
+Co robi `make prepare-developer-machine` (skrypty:
+`bin/prepare-developer-machine/`; system i dystrybucję wykrywa sam,
+`bin/prepare-developer-machine/prepare.sh detect` pokazuje wynik detekcji):
 
-- **macOS** (Apple Silicon, Homebrew) — przez `brew`: `cairo`, `pango`,
-  `gdk-pixbuf`, `libffi`, `gobject-introspection`, `gtk+3`, `node`,
-  `yarn`; przez `npm` globalnie `grunt-cli`; tworzy `sudo`-symlinki
-  w `/usr/local/lib` na libki z `/opt/homebrew/lib`
+- **macOS** — przez `brew`: `cairo`, `pango`, `gdk-pixbuf`, `libffi`,
+  `gobject-introspection`, `gtk+3`, `node`, `yarn`; przez `npm` globalnie
+  `grunt-cli`; instaluje `uv`, jeśli go nie ma; na Apple Silicon tworzy
+  `sudo`-symlinki w `/usr/local/lib` na libki z `/opt/homebrew/lib`
   (`dyld` nie konsultuje brew-owej ścieżki domyślnie, a `DYLD_FALLBACK_LIBRARY_PATH`
   jest stripowana przez SIP w podprocesach — patrz
-  [docs/MACOS_WEASYPRINT.md](docs/MACOS_WEASYPRINT.md)); na końcu
-  `uv sync --frozen --no-install-project --all-extras` +
+  [docs/deweloper/weasyprint-macos.md](docs/deweloper/weasyprint-macos.md));
+  na końcu `uv sync --frozen --no-install-project --all-extras` +
   `uv run playwright install`.
-- **Linux** (Debian/Ubuntu, `apt`) — przez `sudo apt`: `yarnpkg`,
-  `nodejs`, `npm`, `python3-dev`, `libpq-dev`, `libcairo2-dev`,
-  `libpango1.0-dev`, `libgdk-pixbuf2.0-dev`, `libffi-dev`,
-  `libgirepository1.0-dev`, `libgtk-3-dev`; przez `sudo npm` globalnie
-  `grunt-cli`; na końcu `uv sync --frozen --no-install-project
-  --all-extras` + `uv run playwright install --with-deps` (z systemowymi
-  libkami chromium — wymaga sudo).
+- **Linux** — pakiety systemowe (kompilator, nagłówki LDAP/SASL/SSL dla
+  `python-ldap`, libki WeasyPrint, Node, yarn, gettext) i `grunt-cli`
+  przez menedżer pakietów dystrybucji: `apt` (Debian, Ubuntu i pochodne),
+  `dnf` (Fedora, RHEL i pochodne) albo `pacman` (Arch i pochodne); potem
+  `uv` w wersji przypiętej w projekcie (do `~/.local/bin`, jeśli go nie
+  ma) i `uv sync --frozen --no-install-project --all-extras`. Na końcu
+  `uv run playwright install --with-deps` (Debian/Ubuntu, wymaga sudo)
+  albo samo `uv run playwright install` — poza Debianem/Ubuntu Playwright
+  nie jest oficjalnie wspierany, a jego biblioteki instaluje krok systemowy.
 
-Auto-detekcja systemu jest domyślna; aby wymusić wariant:
-`make prepare-developer-machine-macos` albo
-`make prepare-developer-machine-linux`. Cel **nie woła `make assets`** —
-frontend trzeba zbudować osobno.
+Aby wymusić wariant: `make prepare-developer-machine-macos` albo
+`make prepare-developer-machine-linux` (wariant niepasujący do systemu kończy
+się błędem). Cel **nie woła `make assets`** — frontend trzeba zbudować
+osobno.
 
 `pytest -n auto` (`pytest-xdist`) rozdziela testy między workery; każdy
 worker dostaje **własny** testcontainer PostgreSQL/Redis na losowym

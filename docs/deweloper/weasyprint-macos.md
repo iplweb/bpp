@@ -38,16 +38,21 @@ Próbowaliśmy tego podejścia w commicie `3531fd2d4`
 W praktyce zmienna „nie docierała" do procesów z `pytest`, mimo że była
 ustawiona w `~/.zprofile` i widoczna w shellu. Wróciliśmy do symlinków.
 
-## Co dokładnie robi recipe `prepare-developer-machine-macos`
+## Co dokładnie robi `make prepare-developer-machine-macos`
+
+Kod: `bin/prepare-developer-machine/macos.sh`.
 
 1. Sprawdza, czy `brew` jest zainstalowany. Jeśli nie — wypisuje
    instrukcję instalacji i wychodzi z kodem `1`.
 2. `brew install cairo pango gdk-pixbuf libffi gobject-introspection
    gtk+3 node yarn` — instaluje wszystkie natywne libki + Node/Yarn.
 3. `npm install -g grunt-cli` — globalny `grunt`.
-4. `uv sync --frozen --no-install-project --all-extras` — synchronizuje
+4. Instaluje `uv` w wersji przypiętej w projekcie, jeśli go nie ma, potem
+   `uv sync --frozen --no-install-project --all-extras` synchronizuje
    środowisko Pythona.
-5. **Idempotentnie tworzy symlinki** w `/usr/local/lib`:
+5. **Idempotentnie tworzy symlinki** w `/usr/local/lib` (tylko Apple Silicon;
+   przy Homebrew w `/usr/local` krok jest pomijany, a źródła symlinków
+   wynikają z `brew --prefix`):
 
    | Symlink (cel)                       | Źródło (Homebrew)                                       |
    | ----------------------------------- | ------------------------------------------------------- |
@@ -59,18 +64,18 @@ ustawiona w `~/.zprofile` i widoczna w shellu. Wróciliśmy do symlinków.
 
    Nazwy docelowe są bez prefiksu `lib` / suffiksu `.dylib` — taką
    formę woła `weasyprint` przez `ctypes.util.find_library('gobject-2.0')`
-   itd. Recipe nie nadpisuje symlinka, który już istnieje i wskazuje na
+   itd. Skrypt nie nadpisuje symlinka, który już istnieje i wskazuje na
    ten sam cel (loguje „pomijam").
-6. Jeśli `/usr/local/lib` nie istnieje, recipe go tworzy (`sudo mkdir -p`).
+6. Jeśli `/usr/local/lib` nie istnieje, skrypt go tworzy (`sudo mkdir -p`).
    Na świeżym Apple Silicon ten katalog często go nie ma (Homebrew Intel
    to `/usr/local`, Apple Silicon to `/opt/homebrew`).
 7. **Czyści stary wpis** `DYLD_FALLBACK_LIBRARY_PATH` z `~/.zprofile`
-   (jeśli wcześniej był dopisany przez poprzednią wersję recipe).
+   (jeśli wcześniej był dopisany przez poprzednią wersję przepisu).
    Backup zachowywany w `~/.zprofile.bpp-bak`.
-8. `make playwright-install` — instaluje przeglądarki Playwright.
+8. Instaluje przeglądarki Playwright (to samo co `make playwright-install`).
 
 `sudo` jest wymagane **raz, przy pierwszym setupie**. Kolejne uruchomienia
-recipe są no-op (symlinki istnieją, wpis z zprofile już skasowany).
+skryptu są no-op (symlinki istnieją, wpis z zprofile już skasowany).
 
 ## Cofnięcie obejścia
 
@@ -110,8 +115,9 @@ Jeśli się zdarzy — dopisz powyższe do shella i ponów `uv sync`.
 
 Na Linuksie nie ma tego problemu: `apt` instaluje libki do `/usr/lib`
 albo `/usr/lib/x86_64-linux-gnu`, czyli na default search path
-loadera (`ld.so`). Recipe `prepare-developer-machine-linux` instaluje
-`libcairo2-dev`, `libpango1.0-dev` etc. i kończy temat — żadnych
+loadera (`ld.so`). `make prepare-developer-machine-linux` instaluje
+`libcairo2-dev`, `libpango1.0-dev` etc. (albo ich odpowiedniki z `dnf`
+i `pacman`) i kończy temat — żadnych
 symlinków nie potrzeba.
 
 ## Co z Dockerem?
