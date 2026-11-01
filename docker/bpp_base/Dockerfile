@@ -13,7 +13,8 @@ ARG PANDOC_VERSION=3.5
 # produkcyjnym — podbijamy go jawnie do wersji bez znanych CVE. uv w
 # COPY --from= ponizej jest wpisany literalnie (0.13.5), bo BuildKit nie
 # rozwija ARG w `COPY --from=image:${VAR}`; podbijaj go razem z pinem
-# `version:` w setup-uv we wszystkich workflow-ach i z uv.lock.
+# `version:` w setup-uv we wszystkich workflow-ach, z uv.lock oraz z parą
+# UV_VERSION + UV_INSTALLER_SHA256 w bin/prepare-developer-machine/lib.sh.
 ARG PIP_VERSION=26.2.2
 
 ##############################################################################

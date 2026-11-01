@@ -15,7 +15,9 @@ repos:
         - id: ruff-format
 
     - repo: https://github.com/astral-sh/uv-pre-commit
-      # Trzymaj w parze z wersją uv w CI i w Dockerfile (obecnie 0.13.5).
+      # Trzymaj w parze z wersją uv w CI, w Dockerfile (obecnie 0.13.5) i w
+      # bin/prepare-developer-machine/lib.sh, gdzie razem z UV_VERSION trzeba
+      # zmienić UV_INSTALLER_SHA256.
       # Hook bundluje własne uv — nowszy pin potrafi przepisać uv.lock do
       # nowszego formatu wewnętrznego (churn), więc celowo pinujemy tag
       # najbliższy uv-owi z tego środowiska zamiast "latest". Domyślny
