@@ -623,7 +623,7 @@ build-backend = "setuptools.build_meta"
 dev = [
     "bumpver>=2026.1132",
     "pytest-recording>=0.14.0",
-    "vcrpy>=8.3.0,<9",
+    "vcrpy>=9.2.0,<10",
     "towncrier>=26.9.0",
     # pytest-tqdm: jeden zagregowany pasek postepu na kontrolerze xdist
     # (zamiast rozjezdzajacych sie paskow pytest-sugar). Auto-on tylko w TTY
