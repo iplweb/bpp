@@ -145,7 +145,7 @@ dependencies = [
     # na razie tylko w RC (stabilnej 26.10 jeszcze nie ma). Specyfikator
     # wskazuje RC wprost, wiec uv dopuszcza prerelease tylko dla twisted.
     # Po wydaniu 26.10.0 zmienic na ">=26.10.0".
-    "twisted[http2,tls]>=26.10.0rc1",
+    "twisted[http2,tls]>=26.10.0rc2",
     "django-dbtemplates-iplweb>=4.4.1",
     "django-soft-delete>=1.0.23",
     "tqdm>=4.70.1",
