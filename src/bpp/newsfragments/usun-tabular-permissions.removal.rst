@@ -1,1 +1,0 @@
-Usunięto rozbudowaną tabelkę uprawnień (pakiet ``django-tabular-permissions``) wyświetlaną w adminie pod listami uprawnień użytkownika i grupy — do nadawania uprawnień służy standardowy widget Django z dwiema listami.

@@ -1,1 +1,0 @@
-Nadawanie statusu superużytkownika oraz edycja i usuwanie kont superużytkowników w panelu administracyjnym są dostępne wyłącznie dla superużytkowników; pozostali administratorzy mogą nadawać tylko uprawnienia, które sami posiadają.

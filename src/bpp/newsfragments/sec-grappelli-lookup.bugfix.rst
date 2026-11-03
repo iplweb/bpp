@@ -1,1 +1,0 @@
-Wzmocniono kontrolę uprawnień w podpowiedziach pól powiązanych w panelu administracyjnym (lookupy grappelli) — dostępne są wyłącznie modele, do których użytkownik ma uprawnienie podglądu, a filtry ograniczono do prostych warunków na polach danego modelu.

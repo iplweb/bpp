@@ -1,1 +1,0 @@
-Przycisk „Przeglądaj najnowsze prace" na stronie głównej otwiera wyszukiwanie zaawansowane w formacie „lista", posortowane malejąco po dacie utworzenia rekordu; formularz nie jest już pusty — od razu zawiera domyślne pole do wpisania warunku.

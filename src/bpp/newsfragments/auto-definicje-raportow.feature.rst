@@ -1,1 +1,0 @@
-Dodanie raportu we flexible-reports (formularzem albo przez „Klonuj”) zakłada mu automatycznie nieaktywną definicję raportu — wystarczy ustawić w niej poziom, dostęp i uczelnie, i włączyć, by raport pojawił się w menu „raporty” na stronie. „Definicje raportów” są teraz pierwszą pozycją sekcji „Raporty” w menu panelu administracyjnego.
