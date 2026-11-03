@@ -2,6 +2,220 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202610.1403 (2026-11-03)
+
+### Naprawione
+
+- Pole wyszukiwania DjangoQL w adminie (np. lista zgłoszeń publikacji) nie jest już nienaturalnie niskie — ma tę samą wysokość co zwykłe pole wyszukiwania Grappelli. ([#admin-djangoql-wysokosc-pola](https://github.com/iplweb/bpp/issues/admin-djangoql-wysokosc-pola))
+- Dwukolumnowe menu w adminie nie skacze już do jednej długiej kolumny po zjechaniu z niego kursorem i nie mruga przy wyjeździe przez dolną krawędź. Wszystkie rozwijane menu admina zanikają szybciej i w trakcie zanikania nie reagują już na kursor — powrót myszą w miejsce znikającego menu nie wywołuje go ponownie „znikąd". ([#admin-menu-dwukolumnowe-mruganie](https://github.com/iplweb/bpp/issues/admin-menu-dwukolumnowe-mruganie))
+- Eksport prac autora do BibTeX/RIS (synchroniczny i w tle) nie zawiera prac o statusach korekty ukrytych na stronach publicznych także wtedy, gdy zleca go redaktor (plik wychodzi poza stronę) oraz gdy nie da się ustalić uczelni. ([#eksport-autora-widocznosc](https://github.com/iplweb/bpp/issues/eksport-autora-widocznosc))
+- Na stronie raportu w panelu administracyjnym nie wyświetla się już angielski komentarz techniczny nad przyciskiem „Klonuj” (django-flexible-reports 0.5.1). ([#flexible-reports-komentarz-klonuj](https://github.com/iplweb/bpp/issues/flexible-reports-komentarz-klonuj))
+- Hasło nie może już składać się głównie z własnych danych konta — imienia, nazwiska, loginu i adresu e-mail, także przestawionych i z dopiskami (np. „przykladowska-zofia” albo „ZofiaPrzykladowska1990” dla Zofii Przykładowskiej); wcześniej takie hasła przechodziły, bo walidator Django porównywał hasło z każdym polem osobno. ([#haslo-dane-konta](https://github.com/iplweb/bpp/issues/haslo-dane-konta))
+- Historia zmian w adminie: gdy rekord ma tylko wpisy sprzed włączenia
+  wersjonowania, nad nimi nie pojawia się już mylący komunikat „Ten obiekt nie
+  posiada historii zmian” ani zachęta do wyboru daty z pustej listy wersji. ([#historia-komunikat-starej-historii](https://github.com/iplweb/bpp/issues/historia-komunikat-starej-historii))
+- Importer publikacji: przyciski „Spróbuj ponownie” i „Wróć do początku” w oknie błędu są teraz wyrównane w jednej linii. ([#importer-task-error-przyciski](https://github.com/iplweb/bpp/issues/importer-task-error-przyciski))
+- W module redagowania zamiana miejscami dwóch wierszy tej samej osoby na liście autorów (np. jako autora i redaktora) nie kończy się już fałszywym błędem „Istnieje już instancja modelu…”, a powtórzona pozycja autora daje czytelny komunikat zamiast błędu serwera — dotyczy wydawnictw ciągłych, zwartych i patentów. ([#kolejnosc-autorow-inline](https://github.com/iplweb/bpp/issues/kolejnosc-autorow-inline))
+- Przyciski „PBN" / „Zobacz w PBN" / „PI" nad formularzem edycji w module redagowania (wydawnictwa ciągłe i zwarte, autorzy, źródła, kopie danych PBN) oraz linki do PBN w deduplikatorze autorów, przemapowaniu źródeł, komparatorze i importerze publikacji nie prowadzą już do adresu „None" w instalacjach z więcej niż jedną uczelnią — link powstaje dla uczelni z adresu strony. Test pilnuje, by żaden szablon nie wołał tych linków bez uczelni. ([#link-do-pbn-admin-none](https://github.com/iplweb/bpp/issues/link-do-pbn-admin-none))
+- Strona ``/mcp/`` podaje poprawną instrukcję podłączenia ChatGPT (Ustawienia →
+  Wtyczki → Dodaj → Serwer MCP, transport Streamable HTTP, potem
+  „Uwierzytelnij”) bez włączania trybu deweloperskiego i sugeruje pracę
+  z konektorem w trybie Work; ChatGPT może się logować przez adres ``/mcp/auth``. ([#mcp-chatgpt-wtyczki](https://github.com/iplweb/bpp/issues/mcp-chatgpt-wtyczki))
+- Linki do PBN w eksporcie duplikatów źródeł, na stronie wpisu kolejki eksportu PBN oraz w modalu wyboru autora w importerze publikacji powstają teraz z adresu PBN skonfigurowanego dla uczelni, a nie z wpisanego na sztywno adresu produkcyjnego. W instalacji z kilkoma uczelniami prowadziły wcześniej do cudzego systemu, a link do źródła dodatkowo trafiał pod nieistniejącą już ścieżkę. Test pilnuje, by adres PBN nie wracał do kodu ani do szablonów jako wpisany na sztywno. ([#pbn-url-z-konfiguracji-uczelni](https://github.com/iplweb/bpp/issues/pbn-url-z-konfiguracji-uczelni))
+- Strona autora: wykres „Punkty MNiSW w latach” nie jest rysowany, gdy w
+  pokazywanych latach są same zera (tak jak już działo się z Impact Factor);
+  w „Statystykach wg charakteru” przy jednym charakterze formalnym nie ma
+  wiersza „Razem”; w edytorze wyróżnionych prac numery pozycji nie wychodzą
+  poza lewą krawędź panelu. ([#profil-autora-wykresy-zera](https://github.com/iplweb/bpp/issues/profil-autora-wykresy-zera))
+- Wzmocniono ochronę danych osobowych w REST API: e-mail, data urodzenia i poprzednie nazwiska autorów, autorzy ukryci, ich powiązania z jednostkami oraz adnotacje nagród są widoczne wyłącznie dla redaktorów (grupa „wprowadzanie danych”) i superużytkowników — pozostali zalogowani widzą to samo co anonim. ([#sec-api-dane-osobowe](https://github.com/iplweb/bpp/issues/sec-api-dane-osobowe))
+- Wzmocniono kontrolę widoczności nagród w REST API: nagrody przypięte do rekordów lub autorów niewidocznych w API są dostępne wyłącznie dla redakcji. ([#sec-api-nagrody-widocznosc](https://github.com/iplweb/bpp/issues/sec-api-nagrody-widocznosc))
+- Wzmocniono zabezpieczenia wyszukiwarki DjangoQL w panelu administracyjnym: schemat zapytań nie udostępnia już modeli uwierzytelniania ani pól z poświadczeniami, użytkownika (np. ``utworzyl``) da się filtrować tylko po loginie, imieniu i nazwisku, a wszystkie adminy z tą wyszukiwarką korzystają ze wspólnego schematu BPP. ([#sec-djangoql-sekrety](https://github.com/iplweb/bpp/issues/sec-djangoql-sekrety))
+- Wzmocniono zabezpieczenia w kilku miejscach: trasy testowe stron błędów są dostępne tylko dla superużytkownika, reset hasła ma dodatkowy limit per adres e-mail i nie informuje o istnieniu konta, rozszerzono maskowanie sekretów w raportach Rollbara, poprawiono uprawnienia modułu dwudyscyplinowców i podglądu kolejki denorm, uzupełniono escapowanie w kilku szablonach, odpięto nieużywane trasy zakładek menu admina oraz dodano nagłówek Content-Security-Policy w trybie raportowania. ([#sec-drobne-hardening](https://github.com/iplweb/bpp/issues/sec-drobne-hardening))
+- Wzmocniono zabezpieczenia endpointu listy kolekcji DSpace w panelu administracyjnym oraz akcji wysyłki do DSpace (wymagane uprawnienia i zakres dostępnych uczelni). Akcje wysyłki do DSpace i lista kolekcji DSpace są dostępne wyłącznie dla superużytkownika oraz członków nowej grupy uprawnień „eksport do DSpace”, którą superużytkownik nadaje ręcznie. ([#sec-dspace-admin-endpoint](https://github.com/iplweb/bpp/issues/sec-dspace-admin-endpoint))
+- Wzmocniono zabezpieczenia eksportów do arkuszy (XLSX/CSV): wartości tekstowe zaczynające się od znaków interpretowanych przez arkusz kalkulacyjny jako formuła są zapisywane jako zwykły tekst. ([#sec-eksport-formuly](https://github.com/iplweb/bpp/issues/sec-eksport-formuly))
+- Wzmocniono zabezpieczenia wyświetlania komunikatów systemowych: treść komunikatów jest escapowana, a HTML renderowany jest tylko dla komunikatów jawnie oznaczonych jako bezpieczne. ([#sec-escapowanie-komunikatow](https://github.com/iplweb/bpp/issues/sec-escapowanie-komunikatow))
+- Wzmocniono kontrolę uprawnień w podpowiedziach pól powiązanych w panelu administracyjnym (lookupy grappelli) — dostępne są wyłącznie modele, do których użytkownik ma uprawnienie podglądu, a filtry ograniczono do prostych warunków na polach danego modelu. ([#sec-grappelli-lookup](https://github.com/iplweb/bpp/issues/sec-grappelli-lookup))
+- Wzmocniono zabezpieczenia importera publikacji: dane z adresów WWW, DSpace i Omega-PSIR są pobierane wyłącznie przez HTTPS na porcie 443 (adresy „http://” są automatycznie zamieniane na „https://”). ([#sec-importer-tylko-https](https://github.com/iplweb/bpp/issues/sec-importer-tylko-https))
+- Wzmocniono zabezpieczenia importów plików (XLSX/XLS/CSV): wszystkie importery sprawdzają przed przetwarzaniem limit rozmiaru pliku oraz rozmiar po dekompresji i zgłaszają czytelny komunikat o odrzuceniu pliku. ([#sec-limity-importow](https://github.com/iplweb/bpp/issues/sec-limity-importow))
+- Wzmocniono zabezpieczenia logowania przez Microsoft (Office 365): przy ustawionym konkretnym katalogu Entra ID (``MICROSOFT_AUTH_TENANT_ID``) weryfikowane są claimy ``iss``/``tid`` tokenu; bez konkretnego katalogu (pusty, ``common``, ``organizations``, ``consumers``) serwer startuje, ale zgłaszane jest ostrzeżenie ``bpp.W201`` i komunikat dla superusera po zalogowaniu, a logować mogą się wyłącznie konta Microsoft już powiązane z kontem BPP (bez zakładania nowych kont i wiązania po e-mailu, chyba że ``MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING=True``); nowe konto Microsoft nie jest automatycznie wiązane po adresie e-mail z istniejącym kontem administracyjnym lub posiadającym hasło lokalne (chyba że ``MICROSOFT_AUTH_LINK_BY_EMAIL=True``). ([#sec-microsoft-tenant](https://github.com/iplweb/bpp/issues/sec-microsoft-tenant))
+- Wzmocniono zabezpieczenia serwera OAuth/MCP: token dostępu jest przyjmowany wyłącznie w nagłówku ``Authorization`` (nie w adresie URL), PKCE wymaga metody S256, ekran zgody pokazuje host adresu przekierowania, a dynamiczna rejestracja klientów ogranicza liczbę i długość ``redirect_uris``. ([#sec-oauth-hardening](https://github.com/iplweb/bpp/issues/sec-oauth-hardening))
+- Wzmocniono zabezpieczenia podpowiedzi wydawnictwa nadrzędnego z PBN: dostęp tylko dla redakcji, sprawdzanie uprawnień przy pobieraniu z PBN oraz limit liczby zapytań na użytkownika. ([#sec-pbn-autocomplete-auth](https://github.com/iplweb/bpp/issues/sec-pbn-autocomplete-auth))
+- Wzmocniono zabezpieczenia autoryzacji w PBN API: powrót z PBN jest akceptowany tylko wtedy, gdy autoryzację rozpoczęto z poziomu BPP w tej samej sesji użytkownika w ciągu ostatnich 10 minut. ([#sec-pbn-callback-state](https://github.com/iplweb/bpp/issues/sec-pbn-callback-state))
+- Wzmocniono zabezpieczenia podglądu szablonu opisu bibliograficznego w adminie: wymaga on uprawnienia do edycji szablonów, przyjmuje treść tylko metodą POST z tokenem CSRF, a wynik jest sanityzowany. ([#sec-podglad-szablonu](https://github.com/iplweb/bpp/issues/sec-podglad-szablonu))
+- Wzmocniono kontrolę widoczności w grafie powiązań autora: autorzy ukryci są dostępni tylko dla redaktorów, a prace o ukrytych statusach korekty nie wchodzą do metryk, listy źródeł i powiązań liczonych z filtrem. ([#sec-powiazania-widocznosc](https://github.com/iplweb/bpp/issues/sec-powiazania-widocznosc))
+- Wzmocniono zabezpieczenia profilu autora i eksportu BibTeX/RIS: respektowanie ukrytych statusów korekty i ukrytych autorów, bramka sekcji slotów zgodna z raportem slotów, limit żądań eksportu, walidacja rozdzielczości zdjęcia oraz wybranych publikacji w panelu administracyjnym. ([#sec-profil-autora](https://github.com/iplweb/bpp/issues/sec-profil-autora))
+- Wzmocniono zabezpieczenia rankingu autorów: ustawienie „Pokazuj ranking autorów” jest teraz egzekwowane po stronie serwera także dla formularza, wyników i eksportu raportu, nie tylko w menu. ([#sec-ranking-widocznosc](https://github.com/iplweb/bpp/issues/sec-ranking-widocznosc))
+- Wzmocniono zabezpieczenia pól HTML (szczegóły i informacje rekordów, opis jednostki, teksty uczelni na stronie głównej i w deklaracji dostępności) — treść jest czyszczona przy każdym zapisie oraz przy wyświetlaniu. ([#sec-sanityzacja-pol-html](https://github.com/iplweb/bpp/issues/sec-sanityzacja-pol-html))
+- Nadawanie statusu superużytkownika oraz edycja i usuwanie kont superużytkowników w panelu administracyjnym są dostępne wyłącznie dla superużytkowników; pozostali administratorzy mogą nadawać tylko uprawnienia, które sami posiadają. ([#sec-superuser-tylko-dla-superuserow](https://github.com/iplweb/bpp/issues/sec-superuser-tylko-dla-superuserow))
+- Wzmocniono zabezpieczenia: dodano ostrzeżenie systemowe (`manage.py check --database default`) wskazujące aktywne konta z dostępem do panelu administracyjnego bez przypisanych uczelni w instalacjach z więcej niż jedną uczelnią. Superużytkownik po zalogowaniu dostaje komunikat z liczbą takich kont i linkiem do listy użytkowników przefiltrowanej filtrem „dostęp do uczelni: brak przypisania”. ([#sec-tenant-system-check](https://github.com/iplweb/bpp/issues/sec-tenant-system-check))
+- Wzmocniono zabezpieczenia: usunięto nieużywane pomocnicze trasy django-tinymce (`/tinymce/…`); edytor TinyMCE w panelu administracyjnym działa bez zmian. ([#sec-tinymce-trasy](https://github.com/iplweb/bpp/issues/sec-tinymce-trasy))
+- Wzmocniono zabezpieczenia konfiguracji integracji uczelni (PBN, DSpace, ORCID, Clarivate): sekcje „PBN API”, „Clarivate Analytics API”, „ORCID” i „DSpace” w edycji uczelni (łącznie z zawartymi w nich przełącznikami) oraz przywracanie wersji uczelni z historii są dostępne wyłącznie dla superużytkownika, a nie dla pozostałych ról (np. grupy „struktura”); hasła i tokeny nie są wyświetlane w formularzu (puste pole zachowuje dotychczasową wartość), a nowo wpisywane adresy API PBN i DSpace muszą używać https i wskazywać na publicznie dostępny serwer. ([#sec-uczelnia-integracje](https://github.com/iplweb/bpp/issues/sec-uczelnia-integracje))
+- Wzmocniono zabezpieczenia adresów WWW publikacji i deklaracji dostępności (dozwolone tylko adresy http/https w linkach) oraz walidację plików logo SVG i favicony wgrywanych w ustawieniach uczelni. ([#sec-url-schemat-logo](https://github.com/iplweb/bpp/issues/sec-url-schemat-logo))
+- Włączono walidację siły haseł zgodnie z NIST SP 800-63B: odrzucane są hasła z listy słabych haseł — powtórzenia jednego znaku, hasła o mniej niż 5 różnych znakach, proste sekwencje (np. 12345…, abcde…, qwerty…), hasła zawierające słowa związane z serwisem (nazwa systemu, nazwa lub skrót uczelni, domena, słowa z `DJANGO_BPP_PASSWORD_CONTEXT_WORDS`) hasła łatwe do odgadnięcia według oceny zxcvbn liczonej lokalnie na serwerze (próg `DJANGO_BPP_PASSWORD_MIN_ZXCVBN_SCORE`, domyślnie 3) oraz hasła znane z wycieków (Have I Been Pwned, wyłącznik `DJANGO_BPP_PASSWORD_CHECK_PWNED`). Obowiązuje także w kreatorze pierwszego uruchomienia. ([#sec-walidatory-hasel](https://github.com/iplweb/bpp/issues/sec-walidatory-hasel))
+- Wzmocniono kontrolę widoczności w publicznych widokach (BibTeX rekordu, strona autora, przeglądanie po latach, strona główna, podpowiedzi autocomplete) oraz dostępu do zapisanych formularzy wyszukiwania — rekordy o ukrytych statusach korekty, ukryci autorzy i cudze prywatne formularze nie są już dostępne dla osób bez uprawnień. ([#sec-widocznosc-ukrytych](https://github.com/iplweb/bpp/issues/sec-widocznosc-ukrytych))
+- Wzmocniono zabezpieczenia formularza zgłaszania publikacji: limit liczby zgłoszeń na godzinę (osobny dla niezalogowanych per IP i dla zalogowanych per konto), łączny limit rozmiaru załączników, oczyszczanie tematu powiadomienia e-mail oraz blokada startu produkcji z włączoną CAPTCHA i kluczem-placeholderem. ([#sec-zglos-limity](https://github.com/iplweb/bpp/issues/sec-zglos-limity))
+- Formularz zmiany hasła nie rozciąga się już na całą szerokość okna, a nad nim nie pojawia się nieprawdziwa informacja o wylogowaniu po zmianie hasła (sesja pozostaje aktywna, użytkownik widzi potwierdzenie zmiany). ([#zmiana-hasla-szerokosc](https://github.com/iplweb/bpp/issues/zmiana-hasla-szerokosc))
+- Podbito autobahn do 26.10.1: zamyka CVE-2026-77528 bez wciągania numpy do każdego procesu (leniwy import flatbuffers, crossbario/autobahn-python#1983); zdjęto wyjątek z whitelisty pip-audit. ([#autobahn-26-10-1](https://github.com/iplweb/bpp/issues/autobahn-26-10-1))
+- Powiadomienia WebSocket wysyłane z kontekstu asynchronicznego (ASGI) nie
+  przewracają się już o błąd ``asyncio.run() cannot be called from a running
+  event loop``. Przyczyna była w pakiecie ``django-channels-broadcast``, który
+  łatał asyncio globalnie dla całego procesu; poprawka weszła w jego wersji
+  0.3.1 i BPP jej teraz wymaga. ([#channels-broadcast-0-3-1](https://github.com/iplweb/bpp/issues/channels-broadcast-0-3-1))
+- Zaktualizowano biblioteki, od których zależy BPP, zamykając 30 znanych
+  podatności bezpieczeństwa: ``pyjwt`` (13), ``pypdf`` (8), ``urllib3`` (3),
+  ``anyio`` (2), ``soupsieve`` (2) i ``oauthlib`` (1). Dla ``oauthlib``
+  oznaczało to przejście na nową wersję główną — zgodność warstwy OAuth
+  (logowanie do serwera MCP, integracja Microsoft) została sprawdzona testami. ([#cve-bump-2026-10](https://github.com/iplweb/bpp/issues/cve-bump-2026-10))
+- Zaktualizowano zależności z poprawkami bezpieczeństwa (48 podatności): Pillow 13.0, djangorestframework 3.18.2, pypdf 6.21, certifi 2026.10.19, opentelemetry-api 1.45.1. ([#deps-audit-2026-10-22](https://github.com/iplweb/bpp/issues/deps-audit-2026-10-22))
+- Zaktualizowano zależności z poprawkami bezpieczeństwa (8 podatności): Twisted 26.10.0rc1 (poprawki są na razie tylko w wersji kandydującej), brotli 1.2.1, setuptools 84.2.1. ([#deps-audit-2026-10-24](https://github.com/iplweb/bpp/issues/deps-audit-2026-10-24))
+- Zaktualizowano zależności z poprawkami bezpieczeństwa zgłoszonymi przez Dependabota: brotlicffi 1.2.1.0, werkzeug 3.1.9 (narzędzia testowe), js-yaml 4.3.2 i vitest 4.1.12 (narzędzia deweloperskie). ([#deps-dependabot-2026-10-24](https://github.com/iplweb/bpp/issues/deps-dependabot-2026-10-24))
+- Zaktualizowano bibliotekę wykresów plotly.js z 2.x do 4.x (#883), co usuwa krytyczną podatność XSS w zależności ``maplibre-gl``. Wykresy w panelu administracyjnym oraz w metrykach i porównaniu dyscyplin ewaluacji przepisano na nowy format tytułów osi; z paska narzędzi wykresów wyłączono przycisk wysyłania danych do chmury Plotly. ([#gh883-plotly-4](https://github.com/iplweb/bpp/issues/gh883-plotly-4))
+- Obrazy Dockera i CI budują frontend na Node.js 24 LTS zamiast 20 (EOL) — plotly.js 4 wymaga Node.js 22 lub nowszego, przez co po #885 nie budował się obraz testowy ani testy JS. ([#node-24](https://github.com/iplweb/bpp/issues/node-24))
+- Zapis rekordu w module redagowania, w którym ten sam autor z tym samym typem odpowiedzialności został wpisany w dwóch wierszach (np. dwa nowe wiersze albo istniejący wiersz zmieniony na autora z nowego wiersza), kończył się błędem serwera. Teraz formularz pokazuje komunikat „Ten autor z tym typem odpowiedzialności jest już przypisany do rekordu.” — dotyczy wydawnictw ciągłych, zwartych i patentów. ([#rollbar-5321-duplikat-autora](https://github.com/iplweb/bpp/issues/rollbar-5321-duplikat-autora))
+- Pobieranie rekordu z PBN po UID w polach autouzupełniania (publikacje, autorzy, źródła, wydawcy) pokazuje teraz czytelny komunikat, gdy w PBN nie ma rekordu o podanym UID albo PBN zwróci błąd HTTP, zamiast surowego błędu i zgłoszenia w Rollbarze. ([#rollbar5366-autocomplete-pbn-brak-rekordu](https://github.com/iplweb/bpp/issues/rollbar5366-autocomplete-pbn-brak-rekordu))
+- Opis tekstowy przypisania autor-dyscyplina, którego autor lub dyscyplina zostały już usunięte, nie zgłasza już fałszywego błędu do Rollbara. ([#rollbar5357-autor-dyscyplina-str](https://github.com/iplweb/bpp/issues/rollbar5357-autor-dyscyplina-str))
+- Zapis wydawnictwa ciągłego, zwartego lub patentu w module redagowania nie kończy się już sporadycznie zakleszczeniem bazy danych (deadlock) z równoległym przeliczaniem punktów dla dyscyplin w tle — edytowany rekord jest blokowany na początku zapisu, zanim zmienione zostaną tabele punktacji. ([#rollbar5363-deadlock-admin](https://github.com/iplweb/bpp/issues/rollbar5363-deadlock-admin))
+- Importer publikacji nie kończy się już błędem 500 (``'QuerySet' object has no attribute 'pk'``) przy luźnym dopasowaniu wydawcy po początku nazwy — porównanie wydawcy zwraca teraz rekord wydawcy, a nie zapytanie do bazy. ([#rollbar5355-importer-wydawca](https://github.com/iplweb/bpp/issues/rollbar5355-importer-wydawca))
+- Link „Optymalizuj" na stronie rekordu widzą tylko użytkownicy z uprawnieniami do wprowadzania danych, a nie każdy zalogowany (wcześniej kończył się błędem 403). ([#rollbar5364-link-optymalizuj](https://github.com/iplweb/bpp/issues/rollbar5364-link-optymalizuj))
+- Zapis wydawnictwa ciągłego, zwartego lub patentu w module redagowania nie przelicza już punktów dla dyscyplin na starej liście autorów (sprzed zapisu autorów z formularza) — tabele punktacji są przebudowywane po zapisaniu autorów, a zbiorcze pole z punktami dyscyplin przelicza się w tle (odroczone przez ``denorm.deferred`` z django-denorm-iplweb 1.15.0). Zmniejsza to też ryzyko zakleszczeń bazy danych przy zapisie. ([#rollbar5363-odroczenie-punktow-dyscyplin](https://github.com/iplweb/bpp/issues/rollbar5363-odroczenie-punktow-dyscyplin))
+- Przy wysyłce do PBN z nieważnym lub unieważnionym tokenem użytkownika system pokazuje teraz prośbę o ponowną autoryzację w PBN (z linkiem), zamiast niezrozumiałego komunikatu o błędzie dekodowania JSON; wartość tokena nie trafia już do komunikatów, logów ani raportów błędów (pbn-client 0.2.3). ([#rollbar5336-pbn-403-token](https://github.com/iplweb/bpp/issues/rollbar5336-pbn-403-token))
+- Zaktualizowano monitoring błędów Rollbar: biblioteka serwerowa ``pyrollbar``
+  do wersji 1.5.0, a przeglądarkowa ``rollbar.js`` do 4.0.0. Nowe wydanie
+  przeglądarkowe ogranicza rozrost danych telemetrycznych na długo otwartych
+  kartach; porzucone w nim wsparcie dla Node 18 nie ma wpływu na BPP, bo statyki
+  budowane są na Node 20. Konfiguracja nie wymagała zmian — filtr zgłoszeń
+  ``checkIgnore`` oraz własne transformy zamazujące kod autoryzacyjny OAuth
+  działają bez modyfikacji. ([#rollbar-pyrollbar-1-5-0-js-4-0-0](https://github.com/iplweb/bpp/issues/rollbar-pyrollbar-1-5-0-js-4-0-0))
+- Strona „Lata" nie kończy się już błędem 500, gdy w danych jest rekord z rokiem spoza czterech cyfr (np. 212) — taki rok ma własną stronę z listą publikacji. ([#rollbar5358-rok-trzycyfrowy](https://github.com/iplweb/bpp/issues/rollbar5358-rok-trzycyfrowy))
+- Scalanie duplikatów autorów zapisuje uczelnię na wpisach kolejki eksportu do PBN — w instalacji z kilkoma uczelniami wysyłka nie kończy się już błędem ``MultipleObjectsReturned``. Rekord, który już czeka w kolejce, nie przerywa scalania. Stare wpisy kolejki bez uczelni (przy kilku uczelniach w systemie) kończą się czytelnym komunikatem z prośbą o ponowne zlecenie wysyłki z panelu właściwej uczelni. ([#rollbar5359-scalanie-autorow-kolejka-pbn-uczelnia](https://github.com/iplweb/bpp/issues/rollbar5359-scalanie-autorow-kolejka-pbn-uczelnia))
+- Konfiguracja TinyMCE dostosowana do wersji 7: usunięto nieistniejące wtyczki (print, paste są teraz w rdzeniu, spellchecker zastąpiono sprawdzaniem pisowni przeglądarki), poprawiono nazwy przycisków paska narzędzi i ustawiono license_key: gpl — znikają błędy 404 i ostrzeżenia w konsoli w adminie. ([#tinymce-7-config](https://github.com/iplweb/bpp/issues/tinymce-7-config))
+- REST API (``/api/v1/``): w instalacji wielouczelnianej endpointy publikacji (``wydawnictwo_ciagle``, ``wydawnictwo_zwarte``, ``patent``, ``praca_doktorska``, ``praca_habilitacyjna`` oraz ich autorstwa, streszczenia i identyfikatory zewnętrznych baz) zwracają już tylko publikacje uczelni, pod której adresem wysłano zapytanie — tak samo jak ``/api/v1/szukaj/`` i ``/api/v1/zapytanie/rekord/``. Wcześniej oddawały rekordy wszystkich uczelni (#808). W instalacji jednouczelnianej nic się nie zmienia. ([#808](https://github.com/iplweb/bpp/issues/808))
+- Dashboard admina przed dokończeniem kreatora pierwszego uruchomienia nie pokazuje już w kafelkach strony „Konfiguracja uczelni” — endpointy `/admin-dashboard/` (oraz admin_tools, grappelli, session_security) są pomijane przez middleware kreatora (#873). ([#873](https://github.com/iplweb/bpp/issues/873))
+- Bezpieczeństwo: w obrazach Dockera i w CI podniesiono `uv` do 0.13.5 (GHSA-hq85-5cpj-mr62 — uv usuwa ze swojej listy zaufanych certyfikatów skompromitowany urząd certyfikacji emSign ECC Root CA - G3), a `pip` w obrazie do 26.2.2. Odpowiednik dla połączeń HTTPS z aplikacji (`certifi` 2026.10.19) wszedł osobno.
+- Przycisk „Metryki ewaluacyjne” na stronie autora widzą tylko osoby uprawnione do oglądania metryk (pełne uprawnienia ewaluacji lub zalogowany autor na własnej stronie) — pozostałym prowadził do błędu 403.
+- Ustawienie „tylko dla zespołu” dla pól „Status” i „Praca recenzowana” oraz tabeli
+  punktów i slotów na stronie rekordu działa zgodnie z nazwą — wcześniej ukrywało
+  te informacje przed wszystkimi, także przed zespołem (FD#497).
+- W instalacji obsługującej kilka uczelni kolejka eksportu do PBN
+  (``/pbn_export_queue/``) pokazuje, liczy, ponawia i usuwa wyłącznie
+  wpisy uczelni, na której domenie jest zalogowany użytkownik — także
+  superuser. Wcześniej redaktor jednej uczelni widział kolejkę pozostałych
+  i mógł zlecić ponowną wysyłkę ich prac, choć i tak trafiłyby tylko na
+  profil instytucji, do której jest zalogowany w PBN. Pełny podgląd
+  kolejki wszystkich uczelni pozostaje w panelu administracyjnym.
+- Wyszukiwanie bez wyników pokazuje teraz „Razem: 0" zamiast nieaktualnego licznika, a komunikat „Brak elementów" nie jest już numerowany jako pozycja „0." (FD#503).
+- `make prepare-developer-machine` na Debianie i Ubuntu instaluje Yarn Classic 1.22.22 z npm zamiast pakietu `yarnpkg` z apt, który na Ubuntu 26.04 dawał Yarn 4.1.0.
+
+### Dokumentacja
+
+- Nowy rozdział instrukcji administratora „Grupy uprawnień” — które grupy
+  uprawnień należy traktować jak konto administratora, dlaczego, oraz
+  zalecenia dotyczące nadawania ich, logowania z MFA, przeglądu członków
+  i historii zmian. ([#sec-docs-role-uprzywilejowane](https://github.com/iplweb/bpp/issues/sec-docs-role-uprzywilejowane))
+- Dokumentacja: podstrona autora i eksport BibTeX/RIS celowo pokazują pełny dorobek autora, także w instalacjach z kilkoma uczelniami (#930). ([#930-pelny-dorobek-autora](https://github.com/iplweb/bpp/issues/930-pelny-dorobek-autora))
+- Nowy rozdział instrukcji użytkownika „Mój profil autora” — jak po
+  zalogowaniu samodzielnie uzupełnić zdjęcie, biogram, linki do profili
+  i wyróżnione publikacje. Instrukcja redaktora opisuje, gdzie te same pola
+  są w rekordzie autora i jak powiązać konto użytkownika z autorem;
+  zaktualizowano też opis strony autora i edytora jej układu.
+
+### Usprawnienie
+
+- Panel sterowania admina ładuje wykresy leniwie — dane i biblioteka Plotly pobierają się dopiero, gdy wykres pojawia się na ekranie (z animowanym szkieletem i możliwością ponowienia przy błędzie). Strony admina pokazują się od razu po wczytaniu treści, zamiast czekać na wszystkie zasoby (m.in. zewnętrzny widget wsparcia), a htmx jest ładowany raz, w wersji zminifikowanej. ([#admin-dashboard-lazy-charts](https://github.com/iplweb/bpp/issues/admin-dashboard-lazy-charts))
+- Widget wsparcia Freshworks w module redagowania wczytuje się dopiero po kliknięciu przycisku „Support BPP", zamiast przy każdym otwarciu strony. ([#admin-freshworks-leniwy](https://github.com/iplweb/bpp/issues/admin-freshworks-leniwy))
+- Klawiatura znaków specjalnych (kbw-keypad, ok. 43 KB JS/CSS) ładuje się w panelu administracyjnym już tylko na formularzach z polami, które jej używają (wydawnictwa, autor, źródło, praca doktorska), a nie na każdej stronie admina. ([#admin-keypad-tylko-na-formularzach](https://github.com/iplweb/bpp/issues/admin-keypad-tylko-na-formularzach))
+- Dodanie raportu we flexible-reports (formularzem albo przez „Klonuj”) zakłada mu automatycznie nieaktywną definicję raportu — wystarczy ustawić w niej poziom, dostęp i uczelnie, i włączyć, by raport pojawił się w menu „raporty” na stronie. „Definicje raportów” są teraz pierwszą pozycją sekcji „Raporty” w menu panelu administracyjnego. ([#auto-definicje-raportow](https://github.com/iplweb/bpp/issues/auto-definicje-raportow))
+- Eksport patentów do DSpace przekazuje także numer zgłoszenia (``dc.identifier.other``) i datę zgłoszenia (``dc.date.submitted``); członkowie grupy „eksport do DSpace” mają w menu panelu administracyjnego osobną sekcję DSpace. ([#dspace-patenty](https://github.com/iplweb/bpp/issues/dspace-patenty))
+- Eksport publikacji autora zlecany przez niezalogowanych użytkowników ma
+  limit startów na adres IP (domyślnie 10 na godzinę) oraz limit eksportów
+  jednocześnie oczekujących w kolejce (domyślnie 20); oba limity ustawia się
+  zmiennymi ``DJANGO_BPP_EKSPORT_AUTORA_LIMIT_ANON_IP_NA_GODZINE`` i
+  ``DJANGO_BPP_EKSPORT_AUTORA_LIMIT_ANON_W_KOLEJCE``. ([#eksport-autora-limity-anon](https://github.com/iplweb/bpp/issues/eksport-autora-limity-anon))
+- Eksport synchroniczny prac autora do BibTeX/RIS zwraca osobom z uprawnieniami redakcyjnymi pełny dorobek (także prace o statusach korekty ukrytych na stronach publicznych); eksport w tle zachowuje zakres publiczny, a widoczność ukrytego autora sprawdza jedna reguła wspólna dla strony autora i eksportu. ([#eksport-autora-redakcja-pelny](https://github.com/iplweb/bpp/issues/eksport-autora-redakcja-pelny))
+- Eksport publikacji autora do BibTeX/RIS jest generowany wyłącznie w tle (Celery) — dawne adresy ``eksport.bib``/``eksport.ris`` przekierowują na stronę eksportu; redakcja dostaje pełny dorobek w pliku dostępnym tylko dla niej. ([#eksport-autora-tylko-celery](https://github.com/iplweb/bpp/issues/eksport-autora-tylko-celery))
+- Widget wsparcia Freshdesk: osobne widgety dla zalogowanych i anonimowych użytkowników (zmienne ``DJANGO_BPP_FRESHDESK_WIDGET_ID`` / ``DJANGO_BPP_FRESHDESK_WIDGET_ID_ANON``), a zalogowani są uwierzytelniani w widgecie tokenem JWT, gdy ustawiono ``DJANGO_BPP_FRESHDESK_WIDGET_JWT_SECRET``. Przy włączonym JWT widget dla zalogowanych nie otwiera się bez tokenu — zamiast niego ładuje się widget anonimowy, a gdy go nie skonfigurowano, zakładka „Pomoc” kieruje do support.iplweb.pl. ([#freshdesk-widget-jwt-anon](https://github.com/iplweb/bpp/issues/freshdesk-widget-jwt-anon))
+- Historia zmian autora z możliwością przywrócenia poprzedniej wersji: każda
+  zmiana — w module redagowania i samodzielna edycja profilu przez autora na
+  stronie (biogram, zdjęcie, profile zewnętrzne, wyróżnione publikacje) — jest
+  zapisywana jako wersja z informacją kto, kiedy i co zmienił. Przycisk
+  „Historia” w formularzu autora pokazuje wersje i pozwala wrócić do dowolnej
+  z nich (bez cofania miejsc pracy, dyscyplin i absencji); starsze wpisy sprzed
+  wersjonowania są widoczne pod spodem. Podgląd i przywracanie wersji (także
+  uczelni) respektuje zakres uczelni w trybie multi-hosted, a odzyskiwanie
+  usuniętych rekordów jest tylko dla superużytkownika. ([#historia-zmian-autora](https://github.com/iplweb/bpp/issues/historia-zmian-autora))
+- W „Raportach w menu strony” można wybrać ikonę wyświetlaną w menu „raporty” — dowolną z zestawu Foundation Icons, z podglądem w panelu administracyjnym. Bez wyboru raport dostaje, jak dotąd, ikonę zależną od poziomu. ([#ikona-menu-raportow](https://github.com/iplweb/bpp/issues/ikona-menu-raportow))
+- Strona ``/mcp/`` i sekcja „Serwer MCP dla asystentów AI” w ustawieniach
+  uczelni wskazują prawidłowy certyfikat SSL z kompletnym łańcuchem jako warunek
+  konieczny podłączenia asystenta AI — przeglądarka ukrywa brak certyfikatu
+  pośredniego, ale klienci MCP się wtedy nie łączą. ([#mcp-certyfikat-ssl](https://github.com/iplweb/bpp/issues/mcp-certyfikat-ssl))
+- Strona ``/mcp/`` jest czytelniejsza: przycisk „Dodaj serwer” poprzedza zdanie
+  mówiące, co się po kliknięciu stanie i co zrobić, gdy nic się nie stanie;
+  ścieżki plików konfiguracyjnych (Cursor, Windsurf, Codex) pokazują się
+  w wariancie pasującym do systemu czytelnika — na Windows z ``%USERPROFILE%``
+  zamiast ``~``; wklejki kopiuje się kliknięciem w całe pole (osobny przycisk
+  „Kopiuj” zniknął), a po skopiowaniu pole potwierdza to zieloną ramką. ([#mcp-strona-uzytecznosc](https://github.com/iplweb/bpp/issues/mcp-strona-uzytecznosc))
+- Menu użytkownika w górnym pasku nazywa się teraz „konto” (zamiast „wyloguj”) i zbiera „mój profil”, „zmianę hasła” oraz — dla superużytkownika — „zaloguj jako inny użytkownik”; „wyloguj” jest ostatnią pozycją, oddzieloną kreską, więc kliknięcie nagłówka menu nie wylogowuje już od razu. ([#menu-konto](https://github.com/iplweb/bpp/issues/menu-konto))
+- Przycisk „Przeglądaj najnowsze prace" na stronie głównej otwiera wyszukiwanie zaawansowane w formacie „lista", posortowane malejąco po dacie utworzenia rekordu; formularz nie jest już pusty — od razu zawiera domyślne pole do wpisania warunku. ([#najnowsze-prace-multiseek](https://github.com/iplweb/bpp/issues/najnowsze-prace-multiseek))
+- Polecenie `pbn_ott_na_token` zamienia jednorazowy kod OTT z PBN na token PBN użytkownika (albo ustawia gotowy token przez `--token`) bez użycia przeglądarki. ([#pbn-ott-na-token](https://github.com/iplweb/bpp/issues/pbn-ott-na-token))
+- Nowa polityka haseł zgodna z NIST SP 800-63B: hasło ma co najmniej 15 znaków,
+  ale nie musi już zawierać cyfr ani znaków specjalnych, a system przestał
+  wymuszać zmianę hasła co 30 dni (rotację można przywrócić zmienną
+  `DJANGO_BPP_PASSWORD_DURATION_SECONDS`). Te same wymagania obowiązują teraz
+  także przy zakładaniu konta w panelu administracyjnym i w kreatorze
+  pierwszego uruchomienia. Istniejące hasła pozostają ważne.
+
+  Nowa komenda `manage.py wymus_zmiane_hasel` wymusza zmianę hasła przy
+  najbliższym wejściu na stronę wszystkim użytkownikom logującym się hasłem BPP
+  (albo tylko wskazanym loginom lub członkom grup; `--dry-run` pokazuje, kogo
+  obejmie). ([#polityka-hasel-nist](https://github.com/iplweb/bpp/issues/polityka-hasel-nist))
+- Strona autora: nowa sekcja „Podsumowanie dorobku" (liczba publikacji, łączny Impact Factor, łączne punkty MNiSW) oraz linki do profili autora w Web of Science, Scopus, Google Scholar i w portalu uczelni (np. PPM) — z etykietą linku ustawianą per uczelnia. Identyfikatory może uzupełnić redaktor albo sam autor w „Mój profil", wklejając po prostu adres swojego profilu. ([#profil-autora-podsumowanie-linki](https://github.com/iplweb/bpp/issues/profil-autora-podsumowanie-linki))
+- „Mój profil”: obok „Edytuj swoją stronę” jest przycisk „Zobacz swoją stronę”
+  prowadzący do publicznej strony autora. ([#profil-autora-zobacz-strone](https://github.com/iplweb/bpp/issues/profil-autora-zobacz-strone))
+- „Definicje raportów” w panelu administracyjnym nazywają się teraz „Raporty w menu strony” — lepiej oddaje to, że chodzi o podpięcie raportu do menu strony WWW (poziom, dostęp, uczelnie, ikona), a nie o sam raport. ([#raporty-w-menu-strony](https://github.com/iplweb/bpp/issues/raporty-w-menu-strony))
+- Sekrety integracji (token aplikacji i tokeny użytkowników PBN, hasło Clarivate, sekret ORCID) są przechowywane w bazie w postaci zaszyfrowanej kluczem ``DJANGO_BPP_FIELD_ENCRYPTION_KEY`` (dotychczasowy ``DSPACE_CREDENTIALS_KEY`` nadal działa); doszło polecenie ``manage.py zaszyfruj_sekrety`` (z opcją ``--rotuj``) oraz ostrzeżenia systemowe o braku klucza. ([#sec-szyfrowanie-sekretow](https://github.com/iplweb/bpp/issues/sec-szyfrowanie-sekretow))
+- Przycisk „Support BPP" w adminie i na stronie publicznej zastąpiła zakładka „Pomoc" w prawym dolnym rogu ekranu: nie zasłania rozwijanych menu, a w adminie wystaje znad dolnej belki z przyciskami (Zapisz, Usuń) zamiast na nią nachodzić. Okno zgłoszenia wyskakuje z zakładki i do niej się chowa, a zwykle otwiera się od razu, bo ładuje się już po najechaniu na zakładkę. Zakładkę można przeciągnąć w lewo lub w prawo (pozycja jest zapamiętywana), a okno otwiera też klawisz „?" naciśnięty poza polem tekstowym. Na stronie publicznej widget wsparcia ładuje się dopiero, gdy jest potrzebny. ([#support-zakladka](https://github.com/iplweb/bpp/issues/support-zakladka))
+- Ocena siły hasła zna teraz także polskie nazwy miejscowości (zxcvbn-pl 0.2.0) — hasła z nazwy miasta i przewidywalnego dopisku (np. „Czestochowa2024!”) są odrzucane jako łatwe do odgadnięcia. ([#zxcvbn-pl-miejscowosci](https://github.com/iplweb/bpp/issues/zxcvbn-pl-miejscowosci))
+- Ocena siły hasła rozpoznaje teraz także formy odmienione nazw miejscowości, imion i nazwisk (zxcvbn-pl 0.3.0, dane SGJP) — np. „ZielonejGorze2020” czy „Kowalskiego1990” są odrzucane tak samo jak ich formy podstawowe. ([#zxcvbn-pl-odmiany](https://github.com/iplweb/bpp/issues/zxcvbn-pl-odmiany))
+- Ocena siły hasła (zxcvbn) zna teraz polskie pospolite słowa, imiona i nazwiska, także wpisane bez polskich znaków (pakiet zxcvbn-pl) — hasła złożone z jednego takiego słowa i cyfr (np. „słoneczko123456”, „Malgorzata12345”) są odrzucane jako łatwe do odgadnięcia, a frazy z kilku słów nadal przechodzą. ([#zxcvbn-slownik-pl](https://github.com/iplweb/bpp/issues/zxcvbn-slownik-pl))
+- Listy rekordów w panelu admina (autorzy, wydawnictwa ciągłe i zwarte) czytają konfigurację wybieralnych kolumn raz na wyświetlenie zamiast kilkanaście razy, a pierwsze wyświetlenie w procesie nie odtwarza już układu kolumn zapytaniem na każdą kolumnę (np. lista wydawnictw ciągłych: 132 → 45 zapytań SQL przy pierwszym, 51 → 42 przy kolejnych wyświetleniach). ([#admin-dynamic-columns-n1](https://github.com/iplweb/bpp/issues/admin-dynamic-columns-n1))
+- Formularz raportów (autora, jednostki, wydziału, uczelni) ma nowe pole
+  "Sortowanie". Obok dotychczasowego porządku (rok malejąco, potem opis
+  bibliograficzny) można wybrać uporządkowanie alfabetyczne wg nazwisk autorów —
+  przydatne przy spisach do sprawozdań rocznych. Wybór dotyczy także eksportu do
+  MS Word i MS Excel. Domyślną wartość pola dla swojej instalacji można ustawić
+  w panelu domyślnych wartości formularzy. ([#fd467](https://github.com/iplweb/bpp/issues/fd467))
+- Importer publikacji uruchomiony przyciskiem „Użyj importera” ze zgłoszenia publikacji otwiera się teraz w tej samej karcie, a po zakończonym imporcie pokazuje przycisk „Wróć do zgłoszeń”, który wraca na listę zgłoszeń z tymi samymi filtrami. ([#fd482](https://github.com/iplweb/bpp/issues/fd482))
+- Eksport publikacji autora do BibTeX/RIS jest chroniony przed botami:
+  link prowadzi na stronę z przyciskiem „Generuj”, a niezalogowany
+  użytkownik musi najpierw przejść weryfikację ALTCHA.
+- Formularz zgłaszania publikacji przyjmuje w polu „Link do publikacji lub DOI"
+  identyfikator DOI w dowolnej postaci (`10.xxxx/…`, `doi:10.xxxx/…`,
+  `doi.org/…`, `http(s)://dx.doi.org/…`), a także PMID, PMCID i identyfikator
+  arXiv — system sam zamienia go na poprawny adres; adres strony bez `https://`
+  również jest akceptowany (FD#480).
+- Kreator pierwszego uruchomienia ma teraz 3 kroki z paskiem postępu: konto administratora, dane uczelni oraz osobny, opcjonalny krok integracji z PBN. Krok PBN zaczyna się od pytania, czy instalujący ma już nazwę i token aplikacji. Można go pominąć („uzupełnię później" albo „nie wiem, o co chodzi" z krótkim wyjaśnieniem, czym jest PBN). Kreator wskazuje wtedy, gdzie uzupełnić dane później. Dopóki kreator nie jest dokończony, strona nie pokazuje się nikomu — kto nie jest administratorem, trafia na logowanie, a po nim z powrotem do kreatora (FD#499).
+- Nowy układ strony autora: zamiast dwóch kolumn o nierównej długości
+  strona składa się z pasów — sekcji na całą szerokość albo par sekcji
+  obok siebie. Puste sekcje znikają, a ich sąsiad zajmuje cały pas, więc
+  na stronie nie powstają duże puste miejsca. Zdjęcie z biogramem oraz
+  afiliacja z identyfikatorami tworzą osobne karty, wykresy w latach stoją
+  obok siebie, a wyszukiwarka prac autora jest pod sekcjami. Kolejność,
+  szerokość (pół / cała) i widoczność sekcji ustawia się w adminie uczelni.
+  Kliknięcie kafla identyfikatora kopiuje go do schowka.
+- `make prepare-developer-machine` i `make playwright-install` pobierają już tylko Chromium Headless Shell (jak CI), zamiast wszystkich przeglądarek Playwright.
+- `make prepare-developer-machine` korzysta teraz ze skryptów w `bin/prepare-developer-machine/`: rozpoznaje wersję macOS, architekturę oraz dystrybucję Linuksa (apt, dnf, pacman), na Linuksie instaluje przypięte `uv` oraz nagłówki potrzebne do zbudowania `python-ldap` (brak `lber.h`).
+- `make prepare-developer-machine` sprawdza sumę SHA-256 instalatora `uv` przed jego uruchomieniem, a na Fedorze/RHEL i Archu instaluje przypiętą wersję `yarn`.
+
+### Usunięto
+
+- Usunięto rozbudowaną tabelkę uprawnień (pakiet ``django-tabular-permissions``) wyświetlaną w adminie pod listami uprawnień użytkownika i grupy — do nadawania uprawnień służy standardowy widget Django z dwiema listami. ([#usun-tabular-permissions](https://github.com/iplweb/bpp/issues/usun-tabular-permissions))
+- Usunięto pole „Opis” (i „Pokazuj opis”) autora — zastępuje je biogram.
+  Dotychczasowa treść opisu, o ile była wpisana, została przeniesiona do
+  wewnętrznych adnotacji autora (niewidocznych na stronie WWW). Usunięto
+  też ustawienie szerokości lewej kolumny strony autora, zbędne po
+  przejściu na układ w pasy.
+
+
 ## bpp 202609.1402 (2026-09-13)
 
 ### Naprawione

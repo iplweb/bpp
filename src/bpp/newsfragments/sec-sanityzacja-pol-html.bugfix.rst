@@ -1,1 +1,0 @@
-Wzmocniono zabezpieczenia pól HTML (szczegóły i informacje rekordów, opis jednostki, teksty uczelni na stronie głównej i w deklaracji dostępności) — treść jest czyszczona przy każdym zapisie oraz przy wyświetlaniu.

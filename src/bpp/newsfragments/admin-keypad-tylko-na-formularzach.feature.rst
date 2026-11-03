@@ -1,1 +1,0 @@
-Klawiatura znaków specjalnych (kbw-keypad, ok. 43 KB JS/CSS) ładuje się w panelu administracyjnym już tylko na formularzach z polami, które jej używają (wydawnictwa, autor, źródło, praca doktorska), a nie na każdej stronie admina.
