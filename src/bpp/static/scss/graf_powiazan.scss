@@ -1,0 +1,107 @@
+// Nakladka nawigacji po grafie powiazan (WCAG 2.5.7) oraz pierscien focusa
+// kontenera grafu (2.4.7). Aplikacja powiazania_autorow nie ma wlasnego
+// katalogu SCSS — graf.html opisuje wyglad atrybutami style="" — ale
+// :focus-visible wymaga arkusza, wiec komponent siedzi w calosci tutaj.
+
+.graf-nawigacja {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    z-index: 1001;
+
+    // Krzyz kierunkowy, nie kolejnosc czytania: "w gore" ma lezec NAD
+    // srodkiem, a nie obok "w lewo". Dla pomocy nawigacyjnej afordans jest
+    // istotny — uzytkownik trafia w przycisk bez czytania etykiet. Zoom
+    // stoi osobno, oddzielony pusta kolumna, zeby nie wpadal w krzyz.
+    //
+    // Kolejnosc w DOM (gora, lewo, dopasuj, prawo, dol, zoom+, zoom-) jest
+    // CELOWO nietknieta — daje sensowna kolejnosc Taba, a grid rozstawia
+    // przyciski niezaleznie od niej.
+    display: grid;
+    grid-template-columns: auto auto auto 8px auto;
+    grid-template-areas:
+        ".    gora     .      . zoom-in"
+        "lewo dopasuj  prawo  . zoom-out"
+        ".    dol      .      . .";
+    gap: 2px;
+
+    padding: 6px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+#graf-nav-gora { grid-area: gora; }
+#graf-nav-lewo { grid-area: lewo; }
+#graf-nav-dopasuj { grid-area: dopasuj; }
+#graf-nav-prawo { grid-area: prawo; }
+#graf-nav-dol { grid-area: dol; }
+#graf-nav-zoom-in { grid-area: zoom-in; }
+#graf-nav-zoom-out { grid-area: zoom-out; }
+
+.graf-nawigacja__btn {
+    // WCAG 2.5.8 (Target Size Minimum): cel dotykowy nie mniejszy niz
+    // 24x24 px CSS. Naprawiajac 2.5.7 nie wolno zlamac sasiedniego
+    // kryterium.
+    min-width: 28px;
+    min-height: 28px;
+
+    padding: 0;
+    margin: 0;
+    font-size: 15px;
+    line-height: 1;
+
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    color: #333;
+    cursor: pointer;
+
+    &:hover {
+        background: #f0f0f0;
+    }
+
+    &:focus-visible {
+        outline: 2px solid #2c6cb0;
+        outline-offset: 1px;
+    }
+}
+
+// WCAG 2.4.7: uzytkownik klawiatury musi widziec, ze graf przejal focus —
+// inaczej nie wie, ze strzalki zaczely dzialac.
+#cytoscape-container:focus-visible {
+    outline: 3px solid #2c6cb0;
+    outline-offset: -3px;
+}
+
+// Waskie ekrany (Foundation small-only, ponizej 640 px).
+//
+// Graf ma CZTERY nakladki w naroznikach: #graf-panel (lewy gorny),
+// #graf-legenda (prawy gorny), #graf-notka (lewy dolny) i nawigacja (prawy
+// dolny). Przy 390 px legenda o szerokosci 260 px zaslaniala wiekszosc
+// obszaru rysowania, a notka (max-width 320 px inline) stykala sie
+// z nawigacja.
+//
+// Nakladek nie da sie przestawic z arkusza: `max-width` i `bottom` siedza
+// w atrybutach `style=""` w graf.html, a styl inline wygrywa. Zamiast
+// rozsiewac `!important` — wyprowadzamy nawigacje SPOD nakladek: na malych
+// ekranach przestaje byc pozycjonowana absolutnie i lezy pod grafem. Znika
+// kolizja ze wszystkimi czterema naroznikami naraz, a cele dotykowe robia
+// sie latwiejsze do trafienia niz przyciski nad plotnem.
+@media screen and (max-width: 39.9375em) {
+    // Legenda opisuje interakcje myszy ("Najedz na wezel…"), ktorych na
+    // ekranie dotykowym nie ma. Chowamy ja, zamiast sciskac.
+    #graf-legenda {
+        display: none;
+    }
+
+    .graf-nawigacja {
+        position: static;
+        margin-top: 8px;
+        justify-content: center;
+
+        background: none;
+        border: none;
+        padding: 0;
+    }
+}
