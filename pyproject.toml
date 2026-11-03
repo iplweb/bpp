@@ -82,7 +82,15 @@ dependencies = [
     "zxcvbn-pl>=0.3.0,<1",
     "dj-pagination==2.5.0",
     "requests>=2.34.2",
-    "dspace-rest-client>=0.1.12",
+    # Świadomie <0.1.16: od 0.1.16 paczka ma twardą zależność
+    # smart_open[all] (~20 paczek: boto3/botocore, azure-*, google-cloud-*,
+    # paramiko...) tylko po to, by create_bitstream() czytało też s3:// itp.
+    # My wgrywamy wyłącznie lokalne pliki (FileField.path), więc to zbędne,
+    # a botocore blokuje python-dateutil<3. 0.1.14 ma te same sygnatury
+    # metod, których używa src/dspace_api/client.py. Tracimy z 0.1.17
+    # m.in. auto-reauth/ponawianie XSRF przy wygasłym tokenie.
+    # Zdejmij limit, gdy upstream przeniesie smart_open do extras.
+    "dspace-rest-client>=0.1.12,<0.1.16",
     "cryptography",
     "django-extensions>=3.2,<5",
     "django-minify-html>=1.14,<2",

@@ -542,7 +542,7 @@ requires-dist = [
     { name = "django-webmaster-verification", specifier = "==0.4.3" },
     { name = "djangoql-iplweb", specifier = ">=0.31.2" },
     { name = "djangorestframework", specifier = "==3.18.3" },
-    { name = "dspace-rest-client", specifier = ">=0.1.12" },
+    { name = "dspace-rest-client", specifier = ">=0.1.12,<0.1.16" },
     { name = "gunicorn", specifier = ">=26.2.0" },
     { name = "idutils", specifier = ">=1.7.1" },
     { name = "isbnlib2", specifier = ">=3.11.24" },
