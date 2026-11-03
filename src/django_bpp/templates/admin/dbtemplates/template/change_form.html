@@ -1,5 +1,43 @@
 {% extends "admin/change_form.html" %}
 
+{% block extrahead %}
+    {{ block.super }}
+    <script>
+    document.addEventListener('click', function(e) {
+        var link = e.target.closest('[data-action="open-preview-window"]');
+        if (!link) {
+            return;
+        }
+        e.preventDefault();
+        var contentElement = document.querySelector(link.dataset.contentSelector);
+        var csrfElement = document.querySelector(
+            'input[name="csrfmiddlewaretoken"]'
+        );
+        if (!contentElement || !csrfElement) {
+            return;
+        }
+        var form = document.createElement('form');
+        form.method = 'post';
+        form.action = link.dataset.previewUrl;
+        form.target = 'preview';
+        [
+            ['csrfmiddlewaretoken', csrfElement.value],
+            ['template', contentElement.value]
+        ].forEach(function(pair) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = pair[0];
+            input.value = pair[1];
+            form.appendChild(input);
+        });
+        document.body.appendChild(form);
+        window.open('', 'preview', 'width=600,height=400');
+        form.submit();
+        document.body.removeChild(form);
+    });
+    </script>
+{% endblock %}
+
 {% block object-tools-items %}
     {% if original.name == "opis_bibliograficzny.html" %}
         <li>
@@ -9,18 +47,3 @@
     {% endif %}
     {{ block.super }}
 {% endblock %}
-<script>
-document.addEventListener('click', function(e) {
-    var link = e.target.closest('[data-action="open-preview-window"]');
-    if (link) {
-        e.preventDefault();
-        var previewUrl = link.dataset.previewUrl;
-        var contentSelector = link.dataset.contentSelector;
-        var contentElement = document.querySelector(contentSelector);
-        if (contentElement) {
-            var template = encodeURIComponent(contentElement.value);
-            window.open(previewUrl + '?template=' + template, 'preview', 'width=600,height=400');
-        }
-    }
-});
-</script>

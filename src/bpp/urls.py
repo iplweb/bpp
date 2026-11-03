@@ -1,5 +1,6 @@
 from django.urls import path
 from django.urls import re_path as url
+from django_altcha import AltchaChallengeView
 
 import bpp
 from bpp.views.api import (
@@ -88,8 +89,20 @@ from bpp.views.browse import (
     bibtex_view,
     browse_wydzial_redirect,
 )
+from bpp.views.eksport_autora import (
+    EksportAutoraDownloadView,
+    EksportAutoraStatusView,
+    PrzekierowanieEksportuAutoraView,
+    StartEksportAutoraView,
+)
 from bpp.views.microsoft_auth_redirect import MicrosoftAuthRedirectView
 from bpp.views.oai import OAIView
+from bpp.views.profil_edycja import ProfilBiogramPodgladView, ProfilEdycjaView
+from bpp.views.profil_wybrane_publikacje import (
+    ProfilWybranePublikacjeAkcjaView,
+    ProfilWybranePublikacjeAutocompleteView,
+    ProfilWybranePublikacjeView,
+)
 from bpp.views.profile import ProfilUzytkownikaView
 from bpp.views.xlsx_issn_chunks import xlsx_issn_chunks
 from bpp.views.zapytanie import (
@@ -144,6 +157,31 @@ urlpatterns = [
         "profil/",
         ProfilUzytkownikaView.as_view(),
         name="profil-uzytkownika",
+    ),
+    path(
+        "profil/edycja/",
+        ProfilEdycjaView.as_view(),
+        name="profil-edycja",
+    ),
+    path(
+        "profil/edycja/podglad-biogramu/",
+        ProfilBiogramPodgladView.as_view(),
+        name="profil-biogram-podglad",
+    ),
+    path(
+        "profil/edycja/wybrane-publikacje/",
+        ProfilWybranePublikacjeView.as_view(),
+        name="profil-wybrane-publikacje",
+    ),
+    path(
+        "profil/edycja/wybrane-publikacje/akcja/",
+        ProfilWybranePublikacjeAkcjaView.as_view(),
+        name="profil-wybrane-publikacje-akcja",
+    ),
+    path(
+        "profil/edycja/wybrane-publikacje/autocomplete/",
+        ProfilWybranePublikacjeAutocompleteView.as_view(),
+        name="profil-wybrane-publikacje-autocomplete",
     ),
     url(
         r"^microsoft-auth-redirect/$",
@@ -297,6 +335,38 @@ urlpatterns = [
         GrafPowiazanZrodlaView.as_view(),
         name="browse_autor_powiazania_zrodla",
     ),
+    url(
+        r"^autor/(?P<pk>\d+)/eksport\.bib$",
+        PrzekierowanieEksportuAutoraView.as_view(format="bib"),
+        name="autor_eksport_bibtex",
+    ),
+    url(
+        r"^autor/(?P<pk>\d+)/eksport\.ris$",
+        PrzekierowanieEksportuAutoraView.as_view(format="ris"),
+        name="autor_eksport_ris",
+    ),
+    url(
+        r"^autor/(?P<pk>\d+)/eksport/(?P<format>bib|ris)/$",
+        StartEksportAutoraView.as_view(),
+        name="autor_eksport_start",
+    ),
+    # Wyzwanie ALTCHA dla anonimowego startu eksportu (self-host, bez
+    # zewnętrznych usług). Własny endpoint — nie zależymy od zglos_publikacje.
+    url(
+        r"^eksport-autora/altcha-challenge/$",
+        AltchaChallengeView.as_view(),
+        name="autor_eksport_altcha",
+    ),
+    url(
+        r"^eksport-autora/(?P<pk>[0-9a-f-]+)/$",
+        EksportAutoraStatusView.as_view(),
+        name="autor_eksport_status",
+    ),
+    url(
+        r"^eksport-autora/(?P<pk>[0-9a-f-]+)/pobierz/$",
+        EksportAutoraDownloadView.as_view(),
+        name="autor_eksport_pobierz",
+    ),
     url(r"^autor/(?P<slug>[\w-]+)/$", AutorView.as_view(), name="browse_autor"),
     url(r"^zrodla/$", ZrodlaView.as_view(), name="browse_zrodla"),
     url(
@@ -304,7 +374,10 @@ urlpatterns = [
     ),
     url(r"^zrodlo/(?P<slug>[\w-]+)/$", ZrodloView.as_view(), name="browse_zrodlo"),
     url(r"^lata/$", LataView.as_view(), name="browse_lata"),
-    url(r"^rok/(?P<rok>\d{4})/$", RokView.as_view(), name="browse_rok"),
+    # Dowolna liczba cyfr: w danych zdarzają się lata spoza 4 cyfr (np.
+    # literówka „212"), a ``lata.html`` linkuje każdy rok z bazy. Zakres
+    # i istnienie rekordów sprawdza ``RokView``.
+    url(r"^rok/(?P<rok>\d+)/$", RokView.as_view(), name="browse_rok"),
     url(
         r"^(?P<model>[\w_]+)/(?P<pk>[\d]+)/$",
         OldPracaView.as_view(),

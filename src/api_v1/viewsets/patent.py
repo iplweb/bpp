@@ -6,6 +6,7 @@ from api_v1.viewsets.common import (
     UkryjNieEksportowaneMixin,
     UkryjStatusyKorektyMixin,
     UkryjStatusyKorektyRekorduMixin,
+    ZawezDoUczelniMixin,
 )
 from bpp.models import Patent, Patent_Autor
 
@@ -19,8 +20,11 @@ class Patent_AutorFilterSet(django_filters.rest_framework.FilterSet):
 class Patent_AutorViewSet(
     UkryjNieEksportowaneMixin,
     UkryjStatusyKorektyRekorduMixin,
+    ZawezDoUczelniMixin,
     viewsets.ReadOnlyModelViewSet,
 ):
+    uczelnia_lookup = "rekord__autorzy_set__jednostka"
+
     # typ_odpowiedzialnosci to StringRelatedField (Wydawnictwo_AutorSerializerMixin)
     # — bez select_related jedno zapytanie NA WIERSZ.
     queryset = Patent_Autor.objects.all().select_related("typ_odpowiedzialnosci")
@@ -37,7 +41,9 @@ class PatentFilterSet(django_filters.rest_framework.FilterSet):
         model = Patent
 
 
-class PatentViewSet(UkryjStatusyKorektyMixin, viewsets.ReadOnlyModelViewSet):
+class PatentViewSet(
+    UkryjStatusyKorektyMixin, ZawezDoUczelniMixin, viewsets.ReadOnlyModelViewSet
+):
     # Lista musi być posortowana po PK aby nie było duplikatów
     queryset = (
         Patent.objects.exclude(nie_eksportuj_przez_api=True)

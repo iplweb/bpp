@@ -29,21 +29,27 @@ form#grp-changelist-search-form .dql-highlight {
     display: block;
 }
 
-/* Pole wyszukiwania (textarea pod nakładką):
-   - color/background: transparent — grappelli koloruje pole
-     (`textarea{color:#555;background:#fdfdfd;font-weight:bold}`), więc bez tego
-     własny tekst+tło malowały się NAD kolorowym backdropem i gasiły
-     podświetlanie;
-   - box-sizing: content-box — djangoql autoResize liczy wysokość wg modelu
-     content-box (scrollHeight − padding), a grappelli wymusza border-box → pole
-     wychodziło za niskie i UCINAŁO ostatnią linię po przeładowaniu. Wracamy do
-     content-box i odejmujemy od szerokości poziomy padding+border (25+30+2=57),
-     żeby pole nie wyszło poza pigułkę. */
+/* Pole wyszukiwania (textarea tworzona przez completion_admin.js):
+   box-sizing: content-box — djangoql autoResize liczy wysokość wg modelu
+   content-box (scrollHeight − padding), a grappelli wymusza border-box → pole
+   wychodziło za niskie (15 px łącznie z paddingiem, gdy nakładka highlight
+   jest wyłączona: admin bez BppDjangoQLSearchMixin albo przełącznik QL
+   odznaczony) i UCINAŁO ostatnią linię po przeładowaniu. Wracamy do
+   content-box i odejmujemy od szerokości poziomy padding+border (25+30+2=57),
+   żeby pole nie wyszło poza pigułkę. Reguła MUSI dotyczyć każdej textarei,
+   nie tylko `.dql-highlight-input`. */
+form#grp-changelist-search-form textarea[name=q] {
+    box-sizing: content-box;
+    width: calc(100% - 57px);
+}
+
+/* Textarea pod nakładką highlight: color/background: transparent — grappelli
+   koloruje pole (`textarea{color:#555;background:#fdfdfd;font-weight:bold}`),
+   więc bez tego własny tekst+tło malowały się NAD kolorowym backdropem
+   i gasiły podświetlanie. */
 form#grp-changelist-search-form textarea.dql-highlight-input {
     color: transparent !important;
     background: transparent !important;
-    box-sizing: content-box;
-    width: calc(100% - 57px);
 }
 
 /* Backdrop dostaje NIEPRZEZROCZYSTE tło pola — inaczej całe pole jest

@@ -15,6 +15,14 @@ from bpp.models.util import dodaj_autora
 
 logger = logging.getLogger(__name__)
 
+KOMUNIKAT_DUPLIKAT_AUTORA = (
+    "Ten autor z tym typem odpowiedzialności jest już przypisany do rekordu."
+)
+
+# Krotka ``unique_together`` modeli *_Autor, dla której podajemy czytelny
+# komunikat zamiast ogólnikowego „Istnieje już instancja modelu…".
+UNIQUE_AUTOR_TYP = frozenset({"rekord", "autor", "typ_odpowiedzialnosci"})
+
 
 class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     """Bazowa klasa dla odpowiedzialności autorów (czyli dla przypisania
@@ -142,6 +150,15 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
             # olewamy refresh_from_db i autor.aktualna_jednostka
 
         return super().save(*args, **kw)
+
+    def unique_error_message(self, model_class, unique_check):
+        if frozenset(unique_check) == UNIQUE_AUTOR_TYP:
+            return ValidationError(
+                KOMUNIKAT_DUPLIKAT_AUTORA,
+                code="unique_together",
+                params={"unique_check": unique_check},
+            )
+        return super().unique_error_message(model_class, unique_check)
 
     def rodzaj_autora_uwzgledniany_w_kalkulacjach_slotow(self):
         from ewaluacja_common.models import Rodzaj_Autora

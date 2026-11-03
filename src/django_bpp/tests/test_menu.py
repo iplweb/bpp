@@ -53,6 +53,15 @@ def _child(menu, label):
 
 
 @pytest.mark.django_db
+def test_menu_raporty_zaczyna_sie_od_raportow_w_menu_strony():
+    u = baker.make("bpp.BppUser", is_superuser=True, is_staff=True)
+    raporty = _child(_menu_for(u), "Raporty")
+    pierwsza = raporty.children[0]
+    assert str(pierwsza.title) == "Raporty w menu strony"
+    assert pierwsza.url == "/admin/nowe_raporty/definicjaraportu/"
+
+
+@pytest.mark.django_db
 def test_superuser_widzi_pelne_menu():
     u = baker.make("bpp.BppUser", is_superuser=True, is_staff=True, first_name="Jan")
     m = _menu_for(u)
@@ -141,6 +150,30 @@ def test_grupa_web_dodaje_tylko_www():
     u.groups.add(Group.objects.get_or_create(name="web")[0])
     m = _menu_for(u)
     assert _labels(m) == ["BPP", "Dashboard", "WWW", "Mój profil"]
+
+
+@pytest.mark.django_db
+def test_grupa_eksport_dspace_dodaje_menu_dspace():
+    from bpp.const import GR_EKSPORT_DSPACE
+
+    u = baker.make("bpp.BppUser", is_superuser=False, is_staff=True, first_name="Dag")
+    u.groups.add(Group.objects.get_or_create(name=GR_EKSPORT_DSPACE)[0])
+    m = _menu_for(u)
+    assert _labels(m) == ["BPP", "Dashboard", "DSpace", "Mój profil"]
+    assert [c.url for c in _child(m, "DSpace").children] == [
+        "/admin/dspace_api/mapowanie_dspace/",
+        "/admin/dspace_api/senttodspace/",
+    ]
+
+
+@pytest.mark.django_db
+def test_dane_systemowe_i_eksport_dspace_bez_dubla_menu_dspace():
+    from bpp.const import GR_EKSPORT_DSPACE
+
+    u = baker.make("bpp.BppUser", is_superuser=False, is_staff=True, first_name="Ewa")
+    u.groups.add(Group.objects.get_or_create(name=GR_EKSPORT_DSPACE)[0])
+    u.groups.add(Group.objects.get_or_create(name="dane systemowe")[0])
+    assert "DSpace" not in _labels(_menu_for(u))
 
 
 def _struktura_links(menu):

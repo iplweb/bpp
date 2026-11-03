@@ -34,7 +34,9 @@ def _session(importer_user):
 
 
 @pytest.mark.django_db
-def test_import_angielskiej_pracy_ustawia_jezyk_bez_dosypywania_danych(importer_user):
+def test_import_angielskiej_pracy_ustawia_jezyk_bez_dosypywania_danych(
+    importer_user, jezyki
+):
     """Sedno zgłoszenia: dane referencyjne BPP wystarczają, żeby ``en``
     z CrossRef trafiło na rekord „angielski" — bez ręcznego ustawiania
     ``skrot_crossref`` w Danych systemowych."""
@@ -67,7 +69,7 @@ def test_resolve_jezyk_dopasowuje_po_kod_bcp47():
 
 
 @pytest.mark.django_db
-def test_resolve_jezyk_woli_skrot_crossref_od_kod_bcp47():
+def test_resolve_jezyk_woli_skrot_crossref_od_kod_bcp47(jezyki):
     """``skrot_crossref`` to jawna decyzja redakcji — ma pierwszeństwo przed
     kodem BCP 47, gdy oba wskazują na różne rekordy."""
     from bpp.models import Jezyk
@@ -105,7 +107,7 @@ def test_resolve_jezyk_nieznany_kod_zwraca_none():
 
 @pytest.mark.django_db
 def test_krok_weryfikacji_pokazuje_wykryty_jezyk_jako_wybrany(
-    importer_user, importer_client
+    importer_user, importer_client, jezyki
 ):
     """Domknięcie ścieżki: nie wystarczy ustawić ``session.jezyk`` — krok
     „Weryfikacja" musi wyrenderować ten język jako ``selected`` w liście

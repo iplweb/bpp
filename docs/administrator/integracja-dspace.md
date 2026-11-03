@@ -16,6 +16,24 @@ wysyłkę rekordów przez redaktora opisuje rozdział
 - Konto użytkownika DSpace z prawem tworzenia itemów w docelowych
   kolekcjach (login + hasło do API).
 
+## Uprawnienia — grupa „eksport do DSpace"
+
+Funkcje eksportu do DSpace w panelu administracyjnym są dostępne dla
+**superużytkownika** oraz dla członków grupy **„eksport do DSpace"**:
+
+- akcje **„Wyślij do DSpace"** i **„Wyślij do DSpace w tle"** na listach
+  rekordów — dodatkowo wymagane jest prawo edycji danego typu rekordu
+  (np. z grupy „wprowadzanie danych"),
+- lista kolekcji pobierana na żywo z DSpace przy edycji mapowań
+  (ograniczona do uczelni, do których użytkownik ma dostęp),
+- **Mapowania DSpace** i **Informacje o wysłaniu do DSpace** — członek
+  samej grupy „eksport do DSpace" znajdzie je w menu **DSpace**
+  (osoby z grupą „dane systemowe" — w menu **Dane systemowe**).
+
+Grupa jest tworzona automatycznie przy aktualizacji systemu (migracje),
+ale **nikt nie otrzymuje jej automatycznie** — superużytkownik musi ją
+nadać wybranym redaktorom w **Administracja → Użytkownicy**.
+
 ## 1. Konfiguracja połączenia na obiekcie Uczelnia
 
 Przejdź do **Redagowanie → Struktura → Uczelnia**, otwórz obiekt uczelni
@@ -30,7 +48,9 @@ i rozwiń sekcję **„DSpace"**. Ustaw:
 | **Domyślny język dc.language.iso** | Język wpisywany do metadanych Dublin Core, gdy rekord go nie określa (domyślnie `pl`). |
 
 !!! note "Bezpieczeństwo hasła"
-    Hasło API jest szyfrowane (Fernet) wspólnym kluczem instalacji.
+    Hasło API jest szyfrowane (Fernet) wspólnym kluczem instalacji
+    `DJANGO_BPP_FIELD_ENCRYPTION_KEY` — patrz
+    [Szyfrowanie sekretów integracji](zaawansowane.md#szyfrowanie-sekretow-integracji).
 
 ## 2. Mapowania kolekcji (Charakter formalny → kolekcja DSpace)
 

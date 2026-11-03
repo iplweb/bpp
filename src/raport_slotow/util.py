@@ -10,6 +10,8 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.filters import AutoFilter
 from openpyxl.worksheet.table import Table, TableColumn, TableStyleInfo
 
+from bpp.util.xlsx import sanitize_xlsx_cell, sanitize_xlsx_row
+
 # Limit wierszy synchronicznego eksportu XLSX (ochrona przed OOM/DoS). Eksport
 # leci w cyklu request/response i openpyxl trzyma cały arkusz w RAM, więc bez
 # górnej granicy duży raport (np. cała uczelnia) może wyczerpać pamięć procesu
@@ -93,7 +95,8 @@ def _write_export_description(ws, export_description):
     pogrubioną, wyrównaną do prawej etykietę i wyrównaną do lewej wartość."""
     for elem in export_description:
         if isinstance(elem, Iterable):
-            ws.append(elem)
+            # str przekazujemy bez zmian — openpyxl zgłosi TypeError (jak dotąd).
+            ws.append(elem if isinstance(elem, str) else sanitize_xlsx_row(elem))
             if len(elem) == 2:
                 ws[ws.max_row][0].font = openpyxl.styles.Font(bold=True)
                 ws[ws.max_row][0].alignment = openpyxl.styles.Alignment(
@@ -103,7 +106,7 @@ def _write_export_description(ws, export_description):
                     horizontal="left"
                 )
         else:
-            ws.append([elem])
+            ws.append([sanitize_xlsx_cell(elem)])
 
     ws.append([])
 
@@ -265,7 +268,8 @@ class MyTableExport(TableExport):
         first_table_row = ws.max_row
         data_rows = 0
         for row in rows:
-            ws.append(row)
+            # Stopka (footer_row) celowo bez sanityzacji — zawiera formuły.
+            ws.append(sanitize_xlsx_row(row))
             data_rows += 1
         ws.append(footer_row)
 

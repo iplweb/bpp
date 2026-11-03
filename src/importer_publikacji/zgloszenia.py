@@ -30,13 +30,54 @@ wyścig transakcji.
 """
 
 import logging
+from urllib.parse import urlencode
 
 from django.db.models import Q
+from django.http import QueryDict
+from django.urls import reverse
 from django.utils import timezone
 
 from import_common.normalization import extract_doi_from_url, normalize_doi
 
 logger = logging.getLogger(__name__)
+
+#: Limit długości zapamiętanych filtrów listy zgłoszeń — zgodny
+#: z ``ImportSession.powrot_do_zgloszen.max_length``.
+MAKS_DLUGOSC_FILTROW = 2000
+
+
+def normalizuj_filtry_listy_zgloszen(surowe):
+    """Querystring filtrów listy zgłoszeń, przepisany na nowo (FD#482).
+
+    Wartość przyjeżdża z ukrytego pola formularza, więc jest niezaufana.
+    Rozbieramy ją na pary klucz–wartość i kodujemy od zera: wynik jest
+    zawsze samym querystringiem (``/``, ``#`` i ``?`` lądują zakodowane),
+    a :func:`url_powrotu_do_zgloszen` dokleja go do adresu z ``reverse()``
+    — przekierowania poza listę zgłoszeń nie da się nim zbudować.
+
+    Za długie filtry dają ``""`` (lista bez filtrów): powrót ma działać,
+    a nie wywracać import.
+    """
+    if not surowe:
+        return ""
+    wynik = urlencode(list(QueryDict(surowe).lists()), doseq=True)
+    if len(wynik) > MAKS_DLUGOSC_FILTROW:
+        logger.info(
+            "Filtry listy zgłoszeń za długie (%d znaków) — powrót bez filtrów.",
+            len(wynik),
+        )
+        return ""
+    return wynik
+
+
+def url_powrotu_do_zgloszen(session):
+    """Adres „Wróć do zgłoszeń" dla sesji importu albo ``None`` (FD#482)."""
+    if session.powrot_do_zgloszen is None:
+        return None
+    url = reverse("admin:zglos_publikacje_zgloszenie_publikacji_changelist")
+    if session.powrot_do_zgloszen:
+        url += "?" + session.powrot_do_zgloszen
+    return url
 
 
 def _wykluczone_statusy():

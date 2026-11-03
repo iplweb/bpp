@@ -11,6 +11,7 @@ from api_v1.viewsets.common import (
     UkryjNieEksportowaneMixin,
     UkryjStatusyKorektyMixin,
     UkryjStatusyKorektyRekorduMixin,
+    ZawezDoUczelniMixin,
 )
 from bpp.models import (
     Wydawnictwo_Zwarte,
@@ -28,8 +29,11 @@ class Wydawnictwo_Zwarte_AutorFilterSet(django_filters.rest_framework.FilterSet)
 class Wydawnictwo_Zwarte_AutorViewSet(
     UkryjNieEksportowaneMixin,
     UkryjStatusyKorektyRekorduMixin,
+    ZawezDoUczelniMixin,
     viewsets.ReadOnlyModelViewSet,
 ):
+    uczelnia_lookup = "rekord__autorzy_set__jednostka"
+
     # Gołe select_related() ciągnęło WSZYSTKIE non-null FK (w tym te, których
     # serializer w ogóle nie dotyka — hyperlinki czytają samo FK id). Jedyne
     # pole wymagające joina to StringRelatedField typ_odpowiedzialnosci.
@@ -50,7 +54,7 @@ class Wydawnictwo_ZwarteFilterSet(django_filters.rest_framework.FilterSet):
 
 
 class Wydawnictwo_ZwarteViewSet(
-    UkryjStatusyKorektyMixin, viewsets.ReadOnlyModelViewSet
+    UkryjStatusyKorektyMixin, ZawezDoUczelniMixin, viewsets.ReadOnlyModelViewSet
 ):
     # Lista musi być posortowana po PK aby nie było duplikatów
     queryset = (
@@ -73,8 +77,11 @@ class Wydawnictwo_ZwarteViewSet(
 class Wydawnictwo_Zwarte_StreszczenieViewSet(
     UkryjNieEksportowaneMixin,
     UkryjStatusyKorektyRekorduMixin,
+    ZawezDoUczelniMixin,
     viewsets.ReadOnlyModelViewSet,
 ):
+    uczelnia_lookup = "rekord__autorzy_set__jednostka"
+
     queryset = Wydawnictwo_Zwarte_Streszczenie.objects.all()
     serializer_class = Wydawnictwo_Zwarte_StreszczenieSerializer
     pagination_class = StreszczeniaPagination

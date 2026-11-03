@@ -1,10 +1,14 @@
 import pytest
 from dbtemplates.models import Template
+from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
+from model_bakery import baker
 
 from bpp.models import Wydawnictwo_Ciagle
 from bpp.models.szablondlaopisubibliograficznego import SzablonDlaOpisuBibliograficznego
+
+PREVIEW_URL = "/admin/dbtemplates/template/preview/"
 
 
 @pytest.mark.django_db
@@ -106,20 +110,89 @@ def test_dbtemplates_TemplateAdmin_preview_good(
     typowy_szablon_opisu, admin_client, wydawnictwo_ciagle
 ):
 
-    TEST_STR = b"456"
-    res = admin_client.get(
-        "/admin/dbtemplates/template/preview/", {"template": TEST_STR}, follow=True
-    )
-    assert TEST_STR in res.content
+    TEST_STR = "456"
+    res = admin_client.post(PREVIEW_URL, {"template": TEST_STR}, follow=True)
+    assert TEST_STR.encode() in res.content
 
 
 @pytest.mark.django_db
 def test_dbtemplates_TemplateAdmin_preview_bad(typowy_szablon_opisu, admin_client):
 
-    res = admin_client.get(
-        "/admin/dbtemplates/template/preview/", {"template": "{% if foobar %}"}
-    )
+    res = admin_client.post(PREVIEW_URL, {"template": "{% if foobar %}"})
     assert "Wystąpił błąd" in res.rendered_content
+
+
+@pytest.mark.django_db
+def test_dbtemplates_TemplateAdmin_preview_wymaga_uprawnienia(
+    typowy_szablon_opisu, client, django_user_model, wydawnictwo_ciagle
+):
+    user = baker.make(django_user_model, is_staff=True, is_active=True)
+    client.force_login(user)
+
+    res = client.post(PREVIEW_URL, {"template": "456"})
+    assert res.status_code == 403
+
+    res = client.get(PREVIEW_URL)
+    assert res.status_code == 403
+
+
+@pytest.mark.django_db
+def test_dbtemplates_TemplateAdmin_preview_z_uprawnieniem(
+    typowy_szablon_opisu, client, django_user_model, wydawnictwo_ciagle
+):
+    user = baker.make(django_user_model, is_staff=True, is_active=True)
+    user.user_permissions.add(
+        Permission.objects.get(
+            content_type__app_label="dbtemplates", codename="change_template"
+        )
+    )
+    client.force_login(user)
+
+    res = client.post(
+        PREVIEW_URL, {"template": "456<script>alert(1)</script><i>ok</i>"}
+    )
+    assert res.status_code == 200
+    content = res.content.decode()
+    assert "456" in content
+    assert "<i>ok</i>" in content
+    assert "<script>alert(1)</script>" not in content
+
+
+@pytest.mark.django_db
+def test_dbtemplates_TemplateAdmin_preview_get_nie_renderuje(
+    typowy_szablon_opisu, admin_client, wydawnictwo_ciagle
+):
+    res = admin_client.get(PREVIEW_URL, {"template": "ZNACZNIK{{ 1|add:41 }}"})
+    assert res.status_code == 200
+    assert b"ZNACZNIK42" not in res.content
+    assert "Podgląd uruchamia się" in res.content.decode()
+
+
+@pytest.mark.django_db
+def test_dbtemplates_TemplateAdmin_preview_wymaga_csrf(
+    typowy_szablon_opisu, admin_user, wydawnictwo_ciagle
+):
+    from django.test import Client
+
+    client = Client(enforce_csrf_checks=True)
+    client.force_login(admin_user)
+    res = client.post(PREVIEW_URL, {"template": "456"})
+    assert res.status_code == 403
+
+
+@pytest.mark.django_db
+def test_dbtemplates_TemplateAdmin_preview_sanityzuje_wynik(
+    typowy_szablon_opisu, admin_client, wydawnictwo_ciagle
+):
+    res = admin_client.post(
+        PREVIEW_URL,
+        {"template": "<i>ok</i><script>alert(1)</script><b onclick=x()>b</b>"},
+    )
+    assert res.status_code == 200
+    content = res.content.decode()
+    assert "<i>ok</i>" in content
+    assert "<script>alert(1)</script>" not in content
+    assert "onclick" not in content
 
 
 @pytest.mark.django_db
@@ -133,3 +206,14 @@ def test_szablon_admin_changelist_dziala(admin_client):
     )
     resp = admin_client.get("/admin/bpp/szablondlaopisubibliograficznego/")
     assert resp.status_code == 200
+
+
+@pytest.mark.django_db
+def test_dbtemplates_change_form_podglad_wysyla_post(
+    typowy_szablon_opisu, admin_client
+):
+    url = reverse("admin:dbtemplates_template_change", args=(typowy_szablon_opisu.pk,))
+    content = admin_client.get(url).content.decode()
+    assert 'data-action="open-preview-window"' in content
+    assert "form.method = 'post'" in content
+    assert "csrfmiddlewaretoken" in content

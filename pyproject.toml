@@ -1,6 +1,6 @@
 [project]
 name = "bpp_iplweb"
-version = "202609.1402"
+version = "202610.1403"
 description = ""
 authors = [
     { name = "Michał Pasternak", email = "michal.dtz@gmail.com" }
@@ -33,21 +33,24 @@ dependencies = [
     "Django>=5.2.17,<5.3",
     # Reużywalne pakiety PBN wydzielone na PyPI (github.com/iplweb/*).
     "django-pbn-client>=0.2,<0.3",
-    "pbn-client>=0.2.2,<0.3",
+    "pbn-client>=0.2.3,<0.3",
     "django-polish-inflection>=0.1.1,<0.2",
     "django-axes>=7.0,<9",
     "arrow>=1.3,<2",
     "numpy>=2.4.6",
-    "pygad>=3.7.0",
-    "django-denorm-iplweb>=1.14.0",
-    "django-tabular-permissions==2.9.3",
-    "simplejson>=4.1.2,<5",
-    "django-reversion>=6.3.0,<7",
+    "pygad>=3.9.2",
+    "django-denorm-iplweb>=1.15.0",
+    "simplejson>=4.2.0,<5",
+    "django-reversion>=6.5.0,<7",
     "django-reversion-compare>=0.19.2",
     "channels[daphne]>=4.3.2,<5",
-    "uvicorn[standard]>=0.52.4",
+    "uvicorn[standard]>=0.54.0",
     "channels-redis>=4,<5",
-    "django-flexible-reports>=0.5.0",
+    # >=0.5.0 wnosi Report.set_order_by() — bez niego wybór sortowania w
+    # formularzu raportów (FD467) nie ma jak nadpisać ColumnOrder tabeli.
+    # >=0.5.1: wieloliniowy {# #} nad przyciskiem „Klonuj" wyciekał jako
+    # tekst do formularza raportu w adminie.
+    "django-flexible-reports>=0.5.1",
     "django-dsl>=0.1.15",
     "django-group-by==0.3.1",
     "django-columns==0.1.0",
@@ -72,15 +75,27 @@ dependencies = [
     "django-compressor==4.6.0",
     "nh3>=0.3.7",
     "django-session-security>=2.6.8",
-    "django-password-policies-iplweb==0.9.4",
+    "django-password-policies-iplweb==0.9.5",
+    # Ocena siły hasła lokalnie (wzorce + słowniki), bez wysyłania hasła.
+    "zxcvbn>=4.5.0,<5",
+    # Polskie słowniki dla zxcvbn: pospolite słowa, imiona, nazwiska.
+    "zxcvbn-pl>=0.3.0,<1",
     "dj-pagination==2.5.0",
     "requests>=2.34.2",
-    "dspace-rest-client>=0.1.12",
+    # Świadomie <0.1.16: od 0.1.16 paczka ma twardą zależność
+    # smart_open[all] (~20 paczek: boto3/botocore, azure-*, google-cloud-*,
+    # paramiko...) tylko po to, by create_bitstream() czytało też s3:// itp.
+    # My wgrywamy wyłącznie lokalne pliki (FileField.path), więc to zbędne,
+    # a botocore blokuje python-dateutil<3. 0.1.14 ma te same sygnatury
+    # metod, których używa src/dspace_api/client.py. Tracimy z 0.1.17
+    # m.in. auto-reauth/ponawianie XSRF przy wygasłym tokenie.
+    # Zdejmij limit, gdy upstream przeniesie smart_open do extras.
+    "dspace-rest-client>=0.1.12,<0.1.16",
     "cryptography",
     "django-extensions>=3.2,<5",
     "django-minify-html>=1.14,<2",
-    "Pillow>=12.2,<14",
-    "django-grappelli>=5.0.0,<6",
+    "Pillow>=13.0,<14",
+    "django-grappelli>=5.0.1,<6",
     "django-multiseek==0.10.3",
     # Narzędzia MCP + szwy do hostowania ich w naszym procesie (spec §2.2).
     # Ciągnie mcp>=2,<3, starlette i httpx — patrz spec §9.
@@ -99,27 +114,27 @@ dependencies = [
     "pypandoc>=1.13,<2",
     "django-static-sitemaps>=5.0.0",
     "django-model-utils==5.0.0",
-    "django-fsm-2>=4,<5",
-    "django-mptt>=0.16,<1",
+    "django-fsm-2>=4.3.0,<5",
+    "django-mptt>=0.21.0,<1",
     "wosclient==0.1.5",
     "MOAI-iplweb>=2.0.4",
     "django_redis_iplweb>=6.0.2,<6.1",
-    "django-filter>=26.1,<26.2",
+    "django-filter>=26.2,<26.3",
     "dbfread>=2.0.7",
-    "djangorestframework==3.18.0",
+    "djangorestframework==3.18.3",
     "Markdown>=3.7,<4",
     "django-admin-sortable2>=2.3.1,<3",
     "cssmin==0.2.0",
-    "rjsmin>=1.2.1",
+    "rjsmin>=1.3.0",
     "django-import-export>=4.4.1,<5",
     "pymed-iplweb==0.8.11",
     "django-taggit>=5,<7",
     "weasyprint>=70.0",
     "requests-oauthlib==2.0.0",
     "django-cacheops>=7.2,<8",
-    "django-constance>=4.3.5",
+    "django-constance>=4.5.0",
     "djangoql-iplweb>=0.31.2",
-    "django-weasyprint>=2.5.0",
+    "django-weasyprint>=2.6.0",
     "django-templated-email>=3.0.0",
     "django-formtools>=2.7,<3",
     "pathspec>=1.1.1",
@@ -127,28 +142,37 @@ dependencies = [
     "django-celery-email>=3.0.0",
     "django-easy-audit>=1.3.9,<2",
     "crossrefapi>=1.7.0",
-    "urllib3>=2.7.0,<3.0.0",
-    "pandas>=3.0.5",
+    # 2.8.0 zamyka PYSEC-2026-4175/4176/4177 (wszystkie z fixem, wiec
+    # `pip-audit --gate on fixable` na nich pada).
+    "urllib3>=2.8.0,<3.0.0",
+    "pandas>=3.1.0",
     "django-tinymce>=5.0.0",
     "crispy-bootstrap5>=2026.9",
     "crispy-bootstrap3>=2022.1",
-    "twisted[http2,tls]>=26.4.0",
+    # 26.10.0rc1 zamyka CVE-2026-115774..115778 i CVE-2026-115877 — fix jest
+    # na razie tylko w RC (stabilnej 26.10 jeszcze nie ma). Specyfikator
+    # wskazuje RC wprost, wiec uv dopuszcza prerelease tylko dla twisted.
+    # Po wydaniu 26.10.0 zmienic na ">=26.10.0".
+    "twisted[http2,tls]>=26.10.0rc2",
     "django-dbtemplates-iplweb>=4.4.1",
     "django-soft-delete>=1.0.23",
-    "tqdm>=4.70.0",
-    "xhtml2pdf>=0.2.18",
-    "isbnlib>=3.10.14",
-    "chardet>=7.6.0",
-    "python-dateutil>=2.9.0.post0",
+    "tqdm>=4.70.1",
+    "xhtml2pdf>=0.2.28",
+    # isbnlib2 = utrzymywany fork isbnlib (ten sam modul `isbnlib`, bez
+    # `pkg_resources`). Ciagnie go idutils (FD#480) - trzymanie obu
+    # dystrybucji naraz znaczy dwie paczki piszace do jednego katalogu.
+    "isbnlib2>=3.11.24",
+    "chardet>=7.7.0",
+    "python-dateutil>=3.0.0",
     "thefuzz>=0.22.1",
     "celery-singleton>=0.3.1",
-    "rollbar>=1.4.0",
+    "rollbar>=1.5.0",
     "django-prometheus>=2.5.0",
     "ortools>=9.15.6755",
-    "psycopg2-binary>=2.9.12", # ZOSTAW psycopg2 dla django-denorm
+    "psycopg2-binary>=2.9.13", # ZOSTAW psycopg2 dla django-denorm
     "python-docx>=1.1.0", # Post-processing DOCX dla page breaks
     "questionary>=2.0.0", # Interactive CLI menus
-    "bibtexparser>=2.0.0b7", # BibTeX import
+    "bibtexparser>=2.1.0", # BibTeX import
     "langdetect>=1.0.9", # Language detection for imports
     "beautifulsoup4>=4.15.0", # importer_publikacji.providers.www imports at app-ready time
     "gunicorn>=26.2.0", # authserver WSGI runner (moved from docker/authserver build-time uv pip install)
@@ -158,7 +182,10 @@ dependencies = [
     # fixable, wiec `pip-audit --gate on fixable` na nich pada); 0.5.4 wnosil
     # wczesniejszy fix DoS w format_list_of_tuples.
     "sqlparse>=0.6.0",
-    "django-channels-broadcast>=0.3.0",
+    # 0.3.1 naprawia force_sync: nie łata już asyncio globalnie przez
+    # nest_asyncio (łatka była nieodwracalna dla procesu i zatruwała kolejne
+    # testy w workerze xdista — zakleszczenia i RuntimeError z asyncio.run).
+    "django-channels-broadcast>=0.3.1",
     "django-countdown>=0.4.0",
     "django-formdefaults>=0.6.3",
     # django-pg-baseline: zewnetrzny pakiet zarzadzajacy baseline.sql + monkey-patch
@@ -184,10 +211,11 @@ dependencies = [
     "django-liveops[celery]>=0.4.1,<0.5",
     "django-oauth-toolkit==3.4.1",
     "django-altcha>=1.0.0",
+    "idutils>=1.7.1",
 ]
 
 [project.optional-dependencies]
-ldap = ["django-auth-ldap>=5.3.0"]
+ldap = ["django-auth-ldap>=5.4.0"]
 office365 = ["django-microsoft-auth>=3.0.1"]
 baseline-rebuild = ["testcontainers[postgres]>=4.15.0"]
 
@@ -248,7 +276,7 @@ include = [
 ]
 
 [tool.bumpver]
-current_version = "v202609.1402"
+current_version = "v202610.1403"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -289,7 +317,14 @@ push = false
 # Dolna granica trzymana rownolegle do `requires-python` wyzej (>=3.11).
 # Do 2026-09 stalo tu `>= '3.10'` - martwe, bo przeciecie z requires-python
 # i tak dawalo 3.11, ale mylnie sugerowalo wsparcie dla 3.10.
-environments = ["python_version >= '3.11' and python_version < '3.15' and platform_python_implementation != 'PyPy'"]
+#
+# emscripten (Pyodide/WebAssembly) wykluczony od uv 0.13 (2026-10, przy
+# podbiciu uv po GHSA-hq85-5cpj-mr62): uv 0.13 rozbija lock takze na split
+# `sys_platform == 'emscripten'` i wymaga dla niego kompatybilnych wheeli.
+# ortools (via `baseline-rebuild`) nie publikuje wheeli emscripten, wiec
+# rezolucja padala ("No solution found ... split (markers: ... emscripten)").
+# BPP nigdy nie biegnie w przegladarce — split jest martwy.
+environments = ["python_version >= '3.11' and python_version < '3.15' and platform_python_implementation != 'PyPy' and sys_platform != 'emscripten'"]
 
 # Security floors dla zaleznosci TRANZYTYWNYCH (nie deklarujemy ich jako
 # direct deps - przychodza przez inne pakiety). constraint-dependencies
@@ -318,19 +353,71 @@ environments = ["python_version >= '3.11' and python_version < '3.15' and platfo
 #
 #     UWAGA na przyszlosc: setuptools >=83 znaczy, ze `pkg_resources` NIE
 #     ISTNIEJE w runtime. Kod, ktory go importuje, wybucha dopiero przy
-#     wywolaniu, jesli import jest leniwy. Znany przypadek: `isbnlib`
+#     wywolaniu, jesli import jest leniwy. Znany przypadek byl `isbnlib`
 #     (isbnlib/registry.py) - `isbnlib.meta()` i formattery bibliograficzne
-#     rzucaja ModuleNotFoundError, upstream nie ma fixa. bpp uzywa dzis
-#     wylacznie `isbnlib.notisbn()` i `isbnlib.canonical()` (czyste funkcje
-#     z isbnlib._core, bez rejestru), wiec nic sie nie psuje - ale NIE
-#     siegaj po `isbnlib.meta()` bez wczesniejszej wymiany biblioteki.
+#     rzucaly ModuleNotFoundError. Od FD#480 zamiast `isbnlib` jest fork
+#     `isbnlib2` (ten sam modul, bez `pkg_resources`), wiec rejestr znow
+#     sie importuje.
 constraint-dependencies = [
+    # Piny tranzytywne wymuszajace wersje z fixem CVE. Bez nich przyszly
+    # `uv lock` moglby wrocic do podatnej wersji, a `pip-audit --gate on
+    # fixable` (dependency-audit.yml) znow by padl. Partia 2026-10 zamyka
+    # 31 podatnosci zglaszanych na dev od 21 wrzesnia:
+    #   anyio     PYSEC-2026-4024/4025
+    #   oauthlib  PYSEC-2026-4114 (fix tylko w 4.0.0 — major; zgodnosc
+    #             z django-oauth-toolkit 3.4.1 i requests-oauthlib 2.0.0
+    #             sprawdzona testami oauth_mcp + mcp_server)
+    #   pyjwt     PYSEC-2026-4140..4152, 4183 (13 szt.)
+    #   pypdf     PYSEC-2026-4153..4160 (8 szt.)
+    #   soupsieve PYSEC-2026-4170/4171
+    #   urllib3   PYSEC-2026-4175/4176/4177 (pin w [dependencies])
+    # Partia 2026-10-22 (48 podatnosci, pip-audit na PR #881):
+    #   certifi           PYSEC-2026-4320
+    #   opentelemetry-api CVE-2026-114603
+    #   pypdf             CVE-2026-113786..113795 (8 szt.)
+    #   djangorestframework i Pillow — piny w [dependencies]; Pillow 13
+    #   wymaga dodatkowo override-dependencies (patrz nizej)
+    # Partia 2026-10-24 (8 podatnosci, pip-audit na PR #892):
+    #   brotli     PYSEC-2026-4322, GHSA-9v8h-qqgm-4m35 (via fonttools[woff])
+    #   setuptools GHSA-xmj3-9gf7-h52w
+    #   twisted    CVE-2026-115774..115778, CVE-2026-115877 (pin w
+    #              [dependencies], na razie RC)
+    # Alerty Dependabota 2026-10-24:
+    #   brotlicffi >=1.2.1.0 (via fonttools[woff], tylko poza CPython —
+    #              w lockfile, choc `environments` wyklucza PyPy; Dependabot
+    #              czyta uv.lock i alarmuje)
+    "anyio>=4.14.2",
+    # >=26.10.1: zamyka CVE-2026-77528 (PYSEC-2026-4027, fix od 26.7.1),
+    # a zarazem pierwsza wersja z leniwym importem vendorowanych flatbuffers
+    # (crossbario/autobahn-python#1983). 25.12.2..26.7.1 importowaly je
+    # w `autobahn/__init__.py`, co ciagnelo numpy do KAZDEGO procesu
+    # (daphne importuje autobahn z AppConfig) — pilnuje tego
+    # test_lazy_heavy_imports. Nie cofac ponizej 26.10.1.
+    "autobahn>=26.10.1",
     "bleach>=6.4.0",
+    "brotli>=1.2.1",
+    "brotlicffi>=1.2.1.0",
+    "certifi>=2026.10.19",
     "daphne>=4.2.2",
     "h2>=4.4.1",
+    "oauthlib>=4.0.0",
+    "opentelemetry-api>=1.45.1",
     "pyasn1>=0.6.4",
-    "pypdf>=6.13.3",
-    "setuptools>=83.0.0",
+    "pyjwt>=2.15.1",
+    "pypdf>=6.21.2",
+    "setuptools>=84.1.0",
+    "soupsieve>=2.10",
+]
+
+# Pillow 13 zamyka 31 CVE (CVE-2026-96636..96778, CVE-2026-112390..112901,
+# GHSA-78g4-xqwv-q3g8), ale django-favicon-plus-reloaded 1.2.4 (ostatnie
+# wydanie, AlekSIS) deklaruje `pillow<13`. Sam constraint tego nie przebije
+# — override zastepuje deklaracje pakietu. Bezpieczne, bo favicon uzywa
+# z Pillow tylko Image.open / thumbnail(LANCZOS) / save(PNG) (favicon/
+# models.py) — pilnuje tego test_favicon_pillow. Zdjac, gdy favicon
+# wyda wersje dopuszczajaca Pillow 13.
+override-dependencies = [
+    "pillow>=13.0.0,<14",
 ]
 
 # Polityka: KAZDA NOWA zewnetrzna zaleznosc powinna miec prebuilt wheel dla
@@ -341,7 +428,7 @@ constraint-dependencies = [
 #
 # Pre-existing exceptions (sdist-only, accepted risk - audit kwiecien 2026):
 # crispy-forms-foundation, cssmin, django-autocomplete-light, django-columns,
-# django-static-sitemaps, django-tabular-permissions, langdetect, pylatexenc,
+# django-static-sitemaps, langdetect, pylatexenc,
 # python-ldap, wsgiutils. Wymiana na wheel-publishing alternatywy
 # tracked w follow-up. Patrz docs/SECURITY_PRACTICES.md.
 #
@@ -531,7 +618,7 @@ precision = 1
 skip_empty = true
 
 [build-system]
-requires = ["setuptools>=84.0.0", "wheel"]
+requires = ["setuptools>=84.1.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [dependency-groups]
@@ -543,50 +630,50 @@ build-backend = "setuptools.build_meta"
 # docker stage builderowym).
 dev = [
     "bumpver>=2026.1132",
-    "pytest-recording>=0.12.1",
-    "vcrpy>=8.3.0,<9",
-    "towncrier>=22.8.0",
+    "pytest-recording>=0.14.0",
+    "vcrpy>=9.2.0,<10",
+    "towncrier>=26.9.0",
     # pytest-tqdm: jeden zagregowany pasek postepu na kontrolerze xdist
     # (zamiast rozjezdzajacych sie paskow pytest-sugar). Auto-on tylko w TTY
     # (CI / agent / pipe = non-TTY = no-op), sam wylacza sugara gdy aktywny.
     # https://github.com/mpasternak/pytest-tqdm
     "pytest-tqdm>=0.4.0",
-    "pytest-rerunfailures>=16.6.1",
-    "django-debug-toolbar>=7.1.1",
-    "model-bakery>=1.24.0",
+    "pytest-rerunfailures>=16.7",
+    "django-debug-toolbar>=8.0.0",
+    "model-bakery>=1.24.2",
     "django-dynamic-fixture>=1.8.0",
-    "django-webtest==1.9.14",
+    "django-webtest==1.9.15",
     "WebTest==3.0.0",
     "psutil>=7.2.2",
     # pytest-testcontainers-django >=0.2.4 podniosl upstream cap do pytest<10
     # (poprzednie 0.2.3 deklarowalo pytest<9 i blokowalo resolver na 8.x).
     # Dolna granica 9.0.3 zamyka GHSA-... (vulnerable tmpdir handling, fixed
     # w 9.0.3). Patrz pytest-env constraint nizej.
-    "pytest>=9.1.1,<10",
+    "pytest>=9.2.0,<10",
     "pytest-django>=4.13.0",
-    "pytest-httpserver>=1.1.5",
-    "werkzeug>=3.1.6", # Dependabot: transitive via pytest-httpserver, bump for safe_join() fixes
+    "pytest-httpserver>=1.2.0",
+    "werkzeug>=3.1.9", # Dependabot: transitive via pytest-httpserver, bump for safe_join() fixes
     "pytest-cov>=7.1.0",  # lokalnie do `make coverage-ai`; CI nie wola --cov
-    "pytest-mock>=3.7.0",
+    "pytest-mock>=3.17.0",
     "pytest-xdist>=2.3.0",
     "pytest-split>=0.9.0",
     "pytest-timeout>=2.1.0",
-    "pyparsing>=3.3.2",
+    "pyparsing>=3.3.3",
     # Pinned exact, kept in sync with the `ruff-pre-commit` rev in
     # .pre-commit-config.yaml. CI lints via pre-commit (that rev is the
     # source of truth); this `==` pin only keeps ad-hoc `uv run ruff`
     # producing identical output. Bump both together, never one alone.
-    "ruff==0.16.6",
-    "djlint>=1.45.2,<2",
-    "pre-commit>=4.6.2",
+    "ruff==0.17.3",
+    "djlint>=1.47.1,<2",
+    "pre-commit>=4.7.0",
     "twine>=7.0.0",
     "ipdb>=0.13.9",
     "ipython>=8.2.0",
-    "playwright>=1.62.0,<2",
-    "pytest-playwright>=0.9.0",
+    "playwright>=1.64.1,<2",
+    "pytest-playwright>=0.10.0",
     # pytest-env 1.3.0+ wymaga pytest>=9.0.2 — spelnione, bo jestesmy na
     # pytest 9.x. Usage bez zmian (env=DJANGO_ALLOW_ASYNC_UNSAFE=1 etc.).
-    "pytest-env>=1.7.0",
+    "pytest-env>=1.8.3",
     "nest-asyncio>=1.6.0",
     "testcontainers[postgres]>=4.15.0",
     # pytest-testcontainers + bridge: dawniej wewnetrzny `src/testcontainers_bpp/`.
@@ -617,7 +704,7 @@ dev = [
 
 [tool.towncrier]
 package = "bpp"
-version = "202609.1402"
+version = "202610.1403"
 package_dir = "src"
 filename = "HISTORY.md"
 start_string = "<!-- towncrier release notes start -->\n"

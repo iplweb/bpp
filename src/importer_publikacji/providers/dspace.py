@@ -28,6 +28,7 @@ from .dspace_common import (
     _parse_year,
     _resolve_url,
 )
+from .www.network import _https_only, url_transport_error
 
 UUID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}"
@@ -71,6 +72,10 @@ def _parse_dspace7_url(
     if "://" not in url:
         url = "https://" + url
 
+    url = _https_only(url)
+    if url is None:
+        return None
+
     try:
         parsed = urlparse(url)
     except ValueError:
@@ -111,6 +116,10 @@ def _parse_handle_url(
 
     if "://" not in url:
         url = "https://" + url
+
+    url = _https_only(url)
+    if url is None:
+        return None
 
     try:
         parsed = urlparse(url)
@@ -314,7 +323,8 @@ class DSpaceProvider(DataProvider):
     @property
     def input_help_text(self) -> str:
         return (
-            "Wklej URL publikacji z repozytorium DSpace. "
+            "Wklej URL publikacji z repozytorium DSpace (tylko https, "
+            "port 443). "
             "Obsługiwane formaty: "
             "/items/{uuid} (DSpace 7+) oraz "
             "/handle/{prefix}/{suffix} (DSpace 6)"
@@ -328,6 +338,9 @@ class DSpaceProvider(DataProvider):
         if version == "7":
             return f"{base_url}/items/{ident}"
         return f"{base_url}/handle/{ident}"
+
+    def identifier_error(self, identifier: str) -> str | None:
+        return url_transport_error(identifier)
 
     def fetch(self, identifier: str) -> FetchedPublication | None:
         parsed = _parse_dspace_url(identifier)

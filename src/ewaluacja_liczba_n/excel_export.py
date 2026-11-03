@@ -123,6 +123,9 @@ class LiczbaNExcelExporter:
 
         # Save to buffer
         virtual_workbook = BytesIO()
+        from bpp.util import sanitize_xlsx_workbook
+
+        sanitize_xlsx_workbook(wb)
         wb.save(virtual_workbook)
         virtual_workbook.seek(0)
         response.write(virtual_workbook.getvalue())

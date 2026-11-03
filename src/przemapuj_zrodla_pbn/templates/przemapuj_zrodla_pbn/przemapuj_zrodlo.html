@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load prace %}
 {% load crispy_forms_tags bpp_formdefaults %}
 
 {% block title %}Przemapowanie źródła - {{ zrodlo }}{% endblock %}
@@ -86,12 +87,15 @@
                                                 </div>
                                                 {% if zrodlo_item.pbn_uid_id %}
                                                 <div class="source-item-meta-item">
-                                                    <a href="{{ zrodlo_item.link_do_pbn }}"
+                                                    {% link_do_pbn zrodlo_item as pbn_url %}
+                                                    {% if pbn_url %}
+                                                    <a href="{{ pbn_url }}"
                                                        target="_blank"
                                                        class="button"
                                                        data-stop-propagation="true">
                                                         <span class="fi-eye"></span> Zobacz w PBN
                                                     </a>
+                                                    {% endif %}
                                                 </div>
                                                 {% endif %}
                                             </div>
@@ -137,12 +141,15 @@
                                                 </div>
                                                 {% if zrodlo_item.pbn_uid_id %}
                                                 <div class="source-item-meta-item">
-                                                    <a href="{{ zrodlo_item.link_do_pbn }}"
+                                                    {% link_do_pbn zrodlo_item as pbn_url %}
+                                                    {% if pbn_url %}
+                                                    <a href="{{ pbn_url }}"
                                                        target="_blank"
                                                        class="button"
                                                        data-stop-propagation="true">
                                                         <span class="fi-eye"></span> Zobacz w PBN
                                                     </a>
+                                                    {% endif %}
                                                 </div>
                                                 {% endif %}
                                             </div>
@@ -193,12 +200,15 @@
                                                     </div>
                                                     {% if zrodlo_item.pbn_uid_id %}
                                                     <div class="source-item-meta-item">
-                                                        <a href="{{ zrodlo_item.link_do_pbn }}"
+                                                        {% link_do_pbn zrodlo_item as pbn_url %}
+                                                        {% if pbn_url %}
+                                                        <a href="{{ pbn_url }}"
                                                            target="_blank"
                                                            class="button"
                                                            data-stop-propagation="true">
                                                             <span class="fi-eye"></span> Zobacz w PBN
                                                         </a>
+                                                        {% endif %}
                                                     </div>
                                                     {% endif %}
                                                 </div>
@@ -259,12 +269,15 @@
                                                     {% endif %}
                                                 </div>
                                                 <div class="source-item-meta-item">
-                                                    <a href="{{ journal.link_do_pbn }}"
+                                                    {% link_do_pbn journal as pbn_url %}
+                                                    {% if pbn_url %}
+                                                    <a href="{{ pbn_url }}"
                                                        target="_blank"
                                                        class="button"
                                                        data-stop-propagation="true">
                                                         <span class="fi-eye"></span> Zobacz w PBN
                                                     </a>
+                                                    {% endif %}
                                                 </div>
                                             </div>
                                         </li>
@@ -309,12 +322,15 @@
                                                     {% endif %}
                                                 </div>
                                                 <div class="source-item-meta-item">
-                                                    <a href="{{ journal.link_do_pbn }}"
+                                                    {% link_do_pbn journal as pbn_url %}
+                                                    {% if pbn_url %}
+                                                    <a href="{{ pbn_url }}"
                                                        target="_blank"
                                                        class="button"
                                                        data-stop-propagation="true">
                                                         <span class="fi-eye"></span> Zobacz w PBN
                                                     </a>
+                                                    {% endif %}
                                                 </div>
                                             </div>
                                         </li>
@@ -364,12 +380,15 @@
                                                         {% endif %}
                                                     </div>
                                                     <div class="source-item-meta-item">
-                                                        <a href="{{ journal.link_do_pbn }}"
+                                                        {% link_do_pbn journal as pbn_url %}
+                                                        {% if pbn_url %}
+                                                        <a href="{{ pbn_url }}"
                                                            target="_blank"
                                                            class="button"
                                                            data-stop-propagation="true">
                                                             <span class="fi-eye"></span> Zobacz w PBN
                                                         </a>
+                                                        {% endif %}
                                                     </div>
                                                 </div>
                                             </li>
@@ -455,9 +474,12 @@
                                 {% if zrodlo.pbn_uid_id %}
                                     <dt>Link PBN:</dt>
                                     <dd>
-                                        <a href="{{ zrodlo.link_do_pbn }}" target="_blank" class="button tiny">
+                                        {% link_do_pbn zrodlo as pbn_url %}
+                                        {% if pbn_url %}
+                                        <a href="{{ pbn_url }}" target="_blank" class="button tiny">
                                             <span class="fi-eye"></span> Zobacz w PBN
                                         </a>
+                                        {% endif %}
                                     </dd>
                                 {% endif %}
                             {% endif %}
@@ -493,9 +515,12 @@
                                     {% if zrodlo_nowe.pbn_uid_id %}
                                         <dt>Link PBN:</dt>
                                         <dd>
-                                            <a href="{{ zrodlo_nowe.link_do_pbn }}" target="_blank" class="button tiny">
+                                            {% link_do_pbn zrodlo_nowe as pbn_url %}
+                                            {% if pbn_url %}
+                                            <a href="{{ pbn_url }}" target="_blank" class="button tiny">
                                                 <span class="fi-eye"></span> Zobacz w PBN
                                             </a>
+                                            {% endif %}
                                         </dd>
                                     {% endif %}
                                 {% endif %}
@@ -525,9 +550,12 @@
 
                                 <dt>Link PBN:</dt>
                                 <dd>
-                                    <a href="{{ journal_docelowy.link_do_pbn }}" target="_blank" class="button tiny">
+                                    {% link_do_pbn journal_docelowy as pbn_url %}
+                                    {% if pbn_url %}
+                                    <a href="{{ pbn_url }}" target="_blank" class="button tiny">
                                         <span class="fi-eye"></span> Zobacz w PBN
                                     </a>
+                                    {% endif %}
                                 </dd>
                             </dl>
                         {% else %}

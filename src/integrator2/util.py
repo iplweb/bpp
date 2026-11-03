@@ -80,9 +80,9 @@ def read_xls_data(  # noqa: C901 — złożoność pre-existing, nie z tego PR
     """
     import openpyxl
 
-    from import_common.util import sprawdz_bombe_dekompresji
+    from import_common.util import sprawdz_plik_importu
 
-    sprawdz_bombe_dekompresji(filename)
+    sprawdz_plik_importu(filename)
     book = openpyxl.load_workbook(filename=filename)
     sheets = book.worksheets
     if limit_sheets:

@@ -1,95 +1,69 @@
 @use "sass:color";
 
-// Custom Support Button for Freshworks Widget
+// Zakladka "Pomoc" wystajaca znad dolnej krawedzi, w prawym dolnym
+// rogu. Pozycje w poziomie (`right`) ustawia support-tab.js - zakladke mozna
+// przeciagac w lewo/prawo, a pozycja jest zapamietywana.
 .bpp-support-button {
   position: fixed;
-  bottom: 30px;
-  right: 30px;
-  z-index: 9999;
+  right: 24px; // zanim JS ustawi zapamietana pozycje
+  bottom: 0;
+  // Ponizej rozwijanych menu (dropdowny top-bara maja 975+) - zakladka
+  // nie moze ich zaslaniac.
+  z-index: 790;
 
-  // Button styling
   background-color: $primary-color;
   color: white;
   border: none;
-  border-radius: 50px;
-  padding: 15px 20px;
-  font-size: 18px;
+  border-radius: 6px 6px 0 0;
+  margin: 0;
+  padding: 8px 14px 6px;
+  font-size: 13px;
   font-weight: bold;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transition: all 0.3s ease;
-  min-width: 60px;
-  text-align: center;
+  line-height: 1;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  cursor: grab;
+  user-select: none;
+  touch-action: none; // pointermove przy przeciaganiu palcem
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
+  transition: padding 0.2s ease, background-color 0.2s ease,
+    box-shadow 0.2s ease;
 
-  // Content containers
-  .button-content {
-    position: relative;
-    display: inline-block;
-  }
-
-  // Default state - showing symbols
-  .support-symbols {
-    display: inline-block;
-    opacity: 1;
-    transition: opacity 0.3s ease;
-    letter-spacing: 1px;
-  }
-
-  // Hover state - showing text
-  .support-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    white-space: nowrap;
-    pointer-events: none;
-  }
-
-  // Hover effects
+  // Wysun lekko zakladke spod krawedzi
   &:hover {
     background-color: color.adjust($primary-color, $lightness: -10%);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-    padding: 15px 46px;  // Increased width on hover by ~15%
+    padding-bottom: 10px;
+    box-shadow: 0 -3px 12px rgba(0, 0, 0, 0.2);
+  }
 
-    .support-symbols {
-      opacity: 0;
-    }
+  &.is-dragging {
+    cursor: grabbing;
+    transition: none;
+  }
 
-    .support-text {
-      opacity: 1;
-      font-size: 16px;  // Normal font size instead of inheriting 18px
+  // Skrypt widgetu Freshworks jest ladowany leniwie po kliknieciu
+  &.is-loading {
+    cursor: progress;
+    opacity: 0.8;
+  }
+
+  // Nie udalo sie zaladowac widgetu - klik prowadzi do support.iplweb.pl
+  &.is-error {
+    background-color: #b5332e;
+
+    &:hover {
+      background-color: color.adjust(#b5332e, $lightness: -10%);
     }
   }
 
-  // Active state
-  &:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  }
-
-  // Focus state for accessibility
-  &:focus {
+  &:focus-visible {
     outline: 2px solid color.adjust($primary-color, $lightness: 20%);
     outline-offset: 2px;
   }
 
-  // Mobile responsive adjustments
   @media screen and (max-width: 640px) {
-    bottom: 20px;
-    right: 20px;
-    font-size: 16px;
-    padding: 12px 16px;
-
-    &:hover {
-      padding: 12px 37px;  // Wider on mobile hover too (increased by ~15%)
-
-      .support-text {
-        font-size: 14px;  // Slightly smaller on mobile
-      }
-    }
+    font-size: 12px;
+    padding: 6px 10px 5px;
   }
 }
 

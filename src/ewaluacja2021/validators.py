@@ -11,6 +11,14 @@ def validate_xlsx(obj: models.FileField):
     import openpyxl
     from openpyxl.utils.exceptions import InvalidFileException
 
+    from import_common.exceptions import NiebezpiecznyPlikException
+    from import_common.util import sprawdz_plik_importu
+
+    try:
+        sprawdz_plik_importu(obj)
+    except NiebezpiecznyPlikException as e:
+        raise ValidationError(str(e)) from e
+
     try:
         return openpyxl.load_workbook(obj)
     except InvalidFileException as e:

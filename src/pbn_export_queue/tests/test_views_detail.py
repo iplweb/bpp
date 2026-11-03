@@ -345,3 +345,12 @@ def test_build_ai_prompt_fallback_endpoint_z_uczelni(
     result = view._build_ai_prompt(sent_data, "Test Title", "{}")
 
     assert "https://pbn-fallback.example.org/api/v1/repositorium/publications" in result
+
+
+def test_parse_komunikat_links_nie_zwraca_html_komunikatu():
+    from pbn_export_queue.views.detail_views import PBNExportQueueDetailView
+
+    links = PBNExportQueueDetailView().parse_komunikat_links("linia 1\nlinia 2")
+
+    assert "formatted_komunikat" not in links
+    assert links["success"] is False

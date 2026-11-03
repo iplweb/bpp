@@ -5,7 +5,6 @@ import logging
 import re
 
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.utils.safestring import mark_safe
 from django.views.generic import DetailView
 
 from bpp.util import zaloguj_polkniety_wyjatek
@@ -37,6 +36,27 @@ class PBNExportQueueDetailView(
     def get_queryset(self):
         return super().get_queryset().select_related("zamowil", "content_type")
 
+    def _link_do_publikacji_w_pbn(self, pbn_uid_id):
+        """Link do publikacji w PBN — root z konfiguracji uczelni.
+
+        Adres był wpisany na sztywno (``https://pbn.nauka.gov.pl/works/
+        publication/{id}``): ignorował ``pbn_api_root`` uczelni (multi-hosted →
+        cudzy PBN) i używał niekanonicznej ścieżki. Pierwszeństwo ma uczelnia
+        WPISU kolejki (to ONA wysyłała rekord tym tokenem), potem uczelnia
+        oglądającego z requestu. Bez uczelni nie linkujemy.
+        """
+        from bpp import const
+        from bpp.models import Uczelnia
+
+        uczelnia = self.object.uczelnia or Uczelnia.objects.get_for_request(
+            self.request
+        )
+        if uczelnia is None:
+            return None
+        return const.LINK_PBN_DO_PUBLIKACJI.format(
+            pbn_api_root=uczelnia.pbn_api_root, pbn_uid_id=pbn_uid_id
+        )
+
     def parse_komunikat_links(self, komunikat):
         """Parse the komunikat field to extract and format links"""
         if not komunikat:
@@ -56,18 +76,15 @@ class PBNExportQueueDetailView(
             pbn_match = re.search(r"publication/([a-f0-9-]+)", komunikat)
             if pbn_match:
                 links["pbn_uid"] = pbn_match.group(1)
-                links["pbn_url"] = (
-                    f"https://pbn.nauka.gov.pl/works/publication/{pbn_match.group(1)}"
-                )
+                pbn_url = self._link_do_publikacji_w_pbn(pbn_match.group(1))
+                if pbn_url:
+                    links["pbn_url"] = pbn_url
 
         # Check if this was successful
         if "Wysłano poprawnie" in komunikat:
             links["success"] = True
         else:
             links["success"] = False
-
-        # Make the komunikat HTML-safe but preserve existing HTML
-        links["formatted_komunikat"] = mark_safe(komunikat.replace("\n", "<br>"))
 
         return links
 
@@ -231,8 +248,8 @@ class PBNExportQueueDetailView(
         context["sent_data"] = sent_data
 
         if sent_data.pbn_uid_id:
-            context["pbn_publication_url"] = (
-                f"https://pbn.nauka.gov.pl/works/publication/{sent_data.pbn_uid_id}"
+            context["pbn_publication_url"] = self._link_do_publikacji_w_pbn(
+                sent_data.pbn_uid_id
             )
 
         # Parse PBN API error if this was a failed submission

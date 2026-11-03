@@ -78,7 +78,7 @@ def test_fetch_blocks_direct_internal(monkeypatch):
     called = MagicMock()
     monkeypatch.setattr(network.requests, "get", called)
 
-    assert network._fetch_page("http://127.0.0.1:8000/") is None
+    assert network._fetch_page("https://127.0.0.1/") is None
     called.assert_not_called()
 
 
@@ -95,7 +95,7 @@ def test_fetch_blocks_redirect_to_internal(monkeypatch):
 
     redirect = MagicMock()
     redirect.status_code = 302
-    redirect.headers = {"Location": "http://169.254.169.254/latest/meta-data/"}
+    redirect.headers = {"Location": "https://169.254.169.254/latest/meta-data/"}
 
     get = MagicMock(return_value=redirect)
     monkeypatch.setattr(network.requests, "get", get)
@@ -111,5 +111,5 @@ def test_provider_fetch_rejects_internal_identifier(monkeypatch):
     get = MagicMock()
     monkeypatch.setattr(network.requests, "get", get)
 
-    assert WWWProvider().fetch("http://127.0.0.1/") is None
+    assert WWWProvider().fetch("https://127.0.0.1/") is None
     get.assert_not_called()

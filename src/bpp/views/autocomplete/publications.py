@@ -7,6 +7,7 @@ from bpp.const import CHARAKTER_OGOLNY_KSIAZKA
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.util.isbn import filtruj_tytul_lub_isbn
+from bpp.util.ukryte_statusy import wyklucz_ukryte_statusy
 
 from .mixins import SanitizedAutocompleteMixin
 
@@ -24,6 +25,7 @@ class Wydawnictwo_NadrzedneAutocomplete(
         qs = Wydawnictwo_Zwarte.objects.filter(
             charakter_formalny__charakter_ogolny=CHARAKTER_OGOLNY_KSIAZKA
         ).order_by("tytul_oryginalny", "pk")
+        qs = wyklucz_ukryte_statusy(qs, getattr(self, "request", None))
 
         if self.q:
             qs = filtruj_tytul_lub_isbn(
@@ -77,6 +79,7 @@ class PublicWydawnictwo_NadrzedneAutocomplete(Wydawnictwo_NadrzedneAutocomplete)
             .values_list("wydawnictwo_nadrzedne_id")
             .distinct()
         ).order_by("tytul_oryginalny", "pk")
+        qs = wyklucz_ukryte_statusy(qs, getattr(self, "request", None))
 
         if self.q:
             qs = filtruj_tytul_lub_isbn(

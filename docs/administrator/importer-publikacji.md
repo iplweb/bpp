@@ -86,6 +86,12 @@ użytkownik klika przycisk "Pobierz". System:
 7.  Uzupełnia brakujące dyscypliny z danych zgłoszeń publikacji (jeśli istnieje
     pasujące zgłoszenie).
 
+Dostawcy pobierający dane z adresu podanego przez użytkownika (strony WWW,
+repozytoria DSpace, Omega-PSIR) łączą się **wyłącznie przez HTTPS na
+standardowym porcie 443** — także przy przekierowaniach. Adres zaczynający
+się od `http://` (bez numeru portu) jest automatycznie zamieniany na
+`https://`; adres z innym portem (np. `:8080`, `:8443`) zostanie odrzucony.
+
 Na stronie głównej importera widoczna jest także lista ostatnich sesji importu
 danego użytkownika, umożliwiając kontynuację przerwanych importów.
 

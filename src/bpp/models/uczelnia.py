@@ -21,11 +21,12 @@ from bpp.fields import EncryptedTextField
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID, NazwaWDopelniaczu
 from bpp.util.ror import waliduj as waliduj_ror
+from bpp.util.ssrf import waliduj_url_integracji_offline
 from pbn_api.exceptions import WillNotExportError
 
 from .. import const
 from ..const import GR_RAPORTY_WYSWIETLANIE
-from ..util import year_last_month
+from ..util import safe_opis_html, sanityzuj_jesli_html, year_last_month
 from .fields import OpcjaWyswietlaniaField
 
 if TYPE_CHECKING:
@@ -390,6 +391,26 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         default=OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM,
     )
 
+    uklad_profilu_autora = models.JSONField(
+        "Układ profilu autora",
+        blank=True,
+        null=True,
+        default=None,
+        help_text="Kolejność, kolumna, widoczność i limity sekcji podstrony "
+        "autora (globalnie dla całej uczelni). Lista pozycji "
+        '{"klucz", "kolumna", "widoczna", "limit"}. Puste = układ domyślny.',
+    )
+
+    etykieta_profilu_uczelni = models.CharField(
+        "Etykieta linku do profilu w portalu uczelni",
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Nazwa pokazywana przy linku z pola „Adres profilu "
+        "w portalu uczelni” autora, np. „PPM UML”. Puste = „Profil "
+        "w portalu uczelni”.",
+    )
+
     pokazuj_raport_slotow_autor = OpcjaWyswietlaniaField(
         "Pokazuj raport slotów - autor",
         default=OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM,
@@ -494,14 +515,14 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         verbose_name="Nazwa użytkownika", blank=True, default="", max_length=50
     )
 
-    clarivate_password = models.CharField(
+    clarivate_password = EncryptedTextField(
         verbose_name="Hasło", blank=True, default="", max_length=50
     )
 
     orcid_client_id = models.CharField(
         "ORCID Client ID", max_length=128, blank=True, default=""
     )
-    orcid_client_secret = models.CharField(
+    orcid_client_secret = EncryptedTextField(
         "ORCID Client Secret", max_length=128, blank=True, default=""
     )
     orcid_sandbox = models.BooleanField(
@@ -561,8 +582,16 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     pbn_app_name = models.CharField(
         "Nazwa aplikacji w PBN", blank=True, default="", max_length=128
     )
-    pbn_app_token = models.CharField(
+    pbn_app_token = EncryptedTextField(
         "Token aplikacji w PBN", blank=True, default="", max_length=128
+    )
+    kreator_czeka_na_pbn = models.BooleanField(
+        "Kreator pierwszego uruchomienia czeka na odpowiedź o PBN",
+        default=False,
+        editable=False,
+        help_text="Ustawiane przez kreator po utworzeniu uczelni, kasowane po "
+        "odpowiedzi na pytanie o integrację z PBN (zapis albo pominięcie). "
+        "Uczelnie spoza kreatora mają tu zawsze False.",
     )
     dspace_aktywny = models.BooleanField(
         "Włącz eksport do DSpace",
@@ -884,7 +913,43 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
         return Jednostka.objects.filter(uczelnia=self, wydzial__isnull=False).exists()
 
+    def _waliduj_adresy_i_pliki(self):
+        from bpp.util.bezpieczny_url import czy_bezpieczny_link
+        from bpp.util.pliki_uczelni import waliduj_favicon, waliduj_svg
+
+        if self.deklaracja_dostepnosci_url and not czy_bezpieczny_link(
+            self.deklaracja_dostepnosci_url
+        ):
+            raise ValidationError(
+                {
+                    "deklaracja_dostepnosci_url": "Adres musi zaczynać się "
+                    "od http:// lub https://."
+                }
+            )
+
+        # Sprawdzamy tylko świeżo wgrane pliki (jeszcze niezapisane).
+        for pole, walidator in (
+            ("logo_svg", waliduj_svg),
+            ("favicon_ico", waliduj_favicon),
+        ):
+            plik = getattr(self, pole)
+            if plik and not getattr(plik, "_committed", True):
+                try:
+                    walidator(plik)
+                except ValidationError as e:
+                    raise ValidationError({pole: e.messages}) from e
+
     def clean(self):
+        # Oba pola są renderowane na publicznych stronach; ``save()`` woła
+        # ``clean()``, więc sanityzacja obejmuje też zapis poza formularzem.
+        self.tytul_strony_glownej = sanityzuj_jesli_html(
+            self.tytul_strony_glownej, safe_opis_html
+        )
+        self.deklaracja_dostepnosci_tekst = sanityzuj_jesli_html(
+            self.deklaracja_dostepnosci_tekst, safe_opis_html
+        )
+
+        self._waliduj_adresy_i_pliki()
         if self.obca_jednostka is not None:
             if self.obca_jednostka.skupia_pracownikow:
                 raise ValidationError(
@@ -925,6 +990,40 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
                     "deklaracja_dostepnosci_tekst": "... ale nie został on wpisany poprawnie. Proszę skorygować.",
                 }
             )
+
+        self._waliduj_adresy_integracji()
+
+    #: Pola-adresy usług zewnętrznych, walidowane przy zmianie wartości.
+    POLA_ADRESOW_INTEGRACJI = ("pbn_api_root", "dspace_api_endpoint")
+
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        instance = super().from_db(db, field_names, values)
+        # Wartości adresów z bazy — do wykrycia zmiany w clean() bez
+        # dodatkowego zapytania.
+        instance._zapisane_adresy_integracji = {
+            pole: instance.__dict__[pole]
+            for pole in cls.POLA_ADRESOW_INTEGRACJI
+            if pole in instance.__dict__
+        }
+        return instance
+
+    def _waliduj_adresy_integracji(self):
+        """Walidacja (bez DNS) adresów integracji — tylko pól zmienionych
+        względem bazy, żeby istniejąca konfiguracja nie blokowała zapisu
+        innych pól. Rozwiązanie nazwy hosta robi formularz admina."""
+        zapisane = getattr(self, "_zapisane_adresy_integracji", {})
+        bledy = {}
+        for pole in self.POLA_ADRESOW_INTEGRACJI:
+            wartosc = getattr(self, pole)
+            if not wartosc or zapisane.get(pole) == wartosc:
+                continue
+            try:
+                waliduj_url_integracji_offline(wartosc)
+            except ValidationError as e:
+                bledy[pole] = e.messages
+        if bledy:
+            raise ValidationError(bledy)
 
     def save(self, *args, **kw):
         self.clean()

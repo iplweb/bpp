@@ -12,14 +12,22 @@ from oauth2_provider.models import get_application_model
 from django_bpp.client_ip import get_client_ip
 from oauth_mcp.tasks import DCR_CLIENT_ID_PREFIX
 
-# Allowlista wzorców redirect_uri (spec §5.6): callbacki Claude + lokalne.
+# Allowlista wzorców redirect_uri (spec §5.6): callbacki Claude, ChatGPT
+# i lokalne. ChatGPT — tylko jego jedyny callback konektorów, nie cała domena.
 _ALLOWED_REDIRECT_PATTERNS = [
     re.compile(r"^https://claude\.ai/[^\s]*\Z"),
     re.compile(r"^https://[a-z0-9.-]+\.claude\.ai/[^\s]*\Z"),
     re.compile(r"^https://claude\.com/[^\s]*\Z"),
+    re.compile(r"^https://chatgpt\.com/connector_platform_oauth_redirect\Z"),
     re.compile(r"^http://localhost(:\d+)?/[^\s]*\Z"),
     re.compile(r"^http://127\.0\.0\.1(:\d+)?/[^\s]*\Z"),
 ]
+
+
+#: Limity metadanych klienta z DCR (RFC 7591): rejestracja jest otwarta, więc
+#: ograniczamy rozmiar tego, co trafia do bazy i na ekran zgody.
+MAX_REDIRECT_URIS = 5
+MAX_REDIRECT_URI_LENGTH = 512
 
 
 def dozwolony_redirect_uri(uri: str) -> bool:
@@ -72,7 +80,9 @@ class DynamicClientRegistrationView(View):
         if (
             not isinstance(redirect_uris, list)
             or not redirect_uris
+            or len(redirect_uris) > MAX_REDIRECT_URIS
             or not all(isinstance(u, str) for u in redirect_uris)
+            or not all(len(u) <= MAX_REDIRECT_URI_LENGTH for u in redirect_uris)
             or not all(dozwolony_redirect_uri(u) for u in redirect_uris)
         ):
             return JsonResponse({"error": "invalid_redirect_uri"}, status=400)

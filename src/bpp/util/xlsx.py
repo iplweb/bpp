@@ -1,3 +1,5 @@
+import re
+
 import openpyxl.worksheet.worksheet
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.filters import AutoFilter
@@ -87,13 +89,58 @@ def sanitize_xlsx_cell(value):
     if not isinstance(value, str):
         return value
     if value.startswith(_XLSX_FORMULA_INJECTION_LEAD):
+        if _XLSX_BEZPIECZNY_TEKST_RE.match(value):
+            return value
         return "'" + value
     return value
+
+
+# Teksty zaczynające się od +/-, które nie mogą być formułą: sama liczba
+# (np. „-12,5", „+3") albo pojedynczy myślnik używany jako „brak danych".
+_XLSX_BEZPIECZNY_TEKST_RE = re.compile(r"\A(?:[+-]?\d+(?:[.,]\d+)?%?|-)\Z")
 
 
 def sanitize_xlsx_row(row):
     """Wersja `sanitize_xlsx_cell` dla całego wiersza (`ws.append(row)`)."""
     return [sanitize_xlsx_cell(c) for c in row]
+
+
+def sanitize_xlsx_worksheet(ws):
+    """Sanityzuje w miejscu wszystkie komórki tekstowe arkusza.
+
+    Do wołania przed zapisem skoroszytu, w eksportach, które NIE wstawiają
+    celowo formuł (każda komórka zaczynająca się od „=" zostanie zamieniona
+    na tekst). Eksporty z formułami (HYPERLINK, SUBTOTAL) sanityzują wartości
+    przy zapisie (`sanitize_xlsx_row` / `sanitize_xlsx_cell`).
+    """
+    for row in ws.iter_rows():
+        for cell in row:
+            if isinstance(cell.value, str):
+                nowa = sanitize_xlsx_cell(cell.value)
+                if nowa is not cell.value:
+                    cell.value = nowa
+    return ws
+
+
+def sanitize_xlsx_workbook(wb):
+    """`sanitize_xlsx_worksheet` dla wszystkich arkuszy skoroszytu."""
+    for ws in wb.worksheets:
+        sanitize_xlsx_worksheet(ws)
+    return wb
+
+
+def sanitize_tablib_dataset(dataset):
+    """Sanityzuje w miejscu nagłówki i wiersze ``tablib.Dataset``.
+
+    Odpowiednik `sanitize_xlsx_row` dla eksportów idących przez tablib
+    (django-import-export, django-tables2, flexible_reports). Typy inne niż
+    ``str`` (liczby, daty, None) zostają bez zmian. Zwraca ten sam obiekt.
+    """
+    if dataset.headers:
+        dataset.headers = sanitize_xlsx_row(dataset.headers)
+    for i in range(len(dataset)):
+        dataset[i] = sanitize_xlsx_row(dataset[i])
+    return dataset
 
 
 def auto_fit_columns(

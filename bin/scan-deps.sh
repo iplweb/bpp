@@ -349,9 +349,16 @@ if $RUN_PIPAUDIT; then
             --quiet -o "$PIPAUDIT_REQ"
     fi
 
-    # Brak whitelisty CVE. Gdyby trzeba bylo wyciszyc znany non-impact
-    # CVE bez fixa, dodaj PIPAUDIT_IGNORE=(--ignore-vuln <ID>) z komentarzem
-    # i zsynchronizuj z .github/workflows/dependency-audit.yml.
+    # Whitelist CVE — MUSI byc zsynchronizowana z
+    # .github/workflows/dependency-audit.yml, inaczej lokalny pre-release
+    # guard i gate CI rozjada sie (jeden przepusci, drugi zablokuje).
+    PIPAUDIT_IGNORE=(
+        # CVE-2026-106454 / GHSA-8pqf-f4m5-798g: ReDoS w serwerze IMAP
+        # twisted (twisted.mail.imap4) — nie uzywamy IMAP na twisted, a fixu
+        # nie ma w zadnym wydaniu. Uzasadnienie w dependency-audit.yml.
+        --ignore-vuln CVE-2026-106454
+        --ignore-vuln GHSA-8pqf-f4m5-798g
+    )
     # NIE tłumimy stderr: pip-audit odpytuje serwis podatności PyPI dla
     # każdego z ~270 pakietów (stąd potrafi „wisieć" parę–kilkanaście s) i
     # pokazuje na stderr spinner „Collecting known vulnerabilities…". Raport
@@ -364,6 +371,7 @@ if $RUN_PIPAUDIT; then
         --requirement "$PIPAUDIT_REQ" \
         --disable-pip \
         --no-deps \
+        "${PIPAUDIT_IGNORE[@]}" \
         --format json \
         --output "$PIPAUDIT_REPORT"
     pipaudit_exit=$?

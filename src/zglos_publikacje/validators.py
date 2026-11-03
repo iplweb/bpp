@@ -1,5 +1,6 @@
 import os
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 
 # Limity uploadu formularza zgłaszania publikacji (finding #2 z review
@@ -26,4 +27,23 @@ def validate_file_size(value):
         raise ValidationError(
             f"Plik jest za duży (maksymalny rozmiar to "
             f"{MAX_ROZMIAR_PLIKU // (1024 * 1024)} MB)."
+        )
+
+
+def max_laczny_rozmiar_plikow():
+    """Łączny limit rozmiaru załączników jednego zgłoszenia (bajty).
+
+    Czytany w runtime z ``settings.ZGLOS_MAX_LACZNY_ROZMIAR_MB`` (env), żeby
+    ``@override_settings`` działał w testach.
+    """
+    return getattr(settings, "ZGLOS_MAX_LACZNY_ROZMIAR_MB", 50) * 1024 * 1024
+
+
+def validate_laczny_rozmiar(pliki):
+    """Odrzuć listę plików, której łączny rozmiar przekracza limit."""
+    limit = max_laczny_rozmiar_plikow()
+    if sum(getattr(f, "size", 0) or 0 for f in pliki) > limit:
+        raise ValidationError(
+            f"Łączny rozmiar plików jest za duży (maksymalnie "
+            f"{limit // (1024 * 1024)} MB na jedno zgłoszenie)."
         )

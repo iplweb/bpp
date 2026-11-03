@@ -214,12 +214,11 @@ body.theme-mario-bros {
     .bpp-support-button {
         background: linear-gradient(180deg, #e52521 0%, #c91e1a 100%) !important;
         color: #ffffff !important;
-        border-radius: 50px !important;
+        border-radius: 12px 12px 0 0 !important;
         font-weight: bold !important;
 
         &:hover {
             background: linear-gradient(180deg, #ff4d4a 0%, #e52521 100%) !important;
-            transform: translateY(-2px);
         }
 
         &:focus {

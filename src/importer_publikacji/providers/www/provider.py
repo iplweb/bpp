@@ -12,7 +12,7 @@ from .body_abstracts import _extract_body_abstracts
 from .citation_meta import _extract_citation_meta
 from .dublin_core import _extract_dublin_core
 from .merge import _merge_sources
-from .network import _fetch_page, _validate_url
+from .network import _fetch_page, _validate_url, url_transport_error
 from .omega_psir import (
     _detect_omega_psir,
     _fetch_omega_psir_jsonld,
@@ -54,8 +54,8 @@ class WWWProvider(DataProvider):
     @property
     def input_help_text(self) -> str:
         return (
-            "Wklej adres strony z danymi publikacji. "
-            "Obsługiwane źródła danych: "
+            "Wklej adres strony z danymi publikacji (tylko https, "
+            "port 443). Obsługiwane źródła danych: "
             "citation_* meta tagi, Dublin Core, "
             "Schema.org JSON-LD, Omega-PSIR, "
             "OpenGraph."
@@ -63,6 +63,9 @@ class WWWProvider(DataProvider):
 
     def validate_identifier(self, identifier: str) -> str | None:
         return _validate_url(identifier)
+
+    def identifier_error(self, identifier: str) -> str | None:
+        return url_transport_error(identifier)
 
     def fetch(self, identifier: str) -> FetchedPublication | None:
         url = _validate_url(identifier)

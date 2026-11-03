@@ -1,6 +1,6 @@
 {
     "name": "bpp-iplweb",
-    "version": "v202609.1402",
+    "version": "v202610.1403",
     "license": "MIT",
     "devDependencies": {
         "esbuild": "^0.28.1",
@@ -10,13 +10,14 @@
         "grunt-sass": "^4.0.0",
         "grunt-shell": "^4.0.0",
         "jsdom": "^25.0.1",
-        "rollbar": "^3.1.0",
+        "rollbar": "^4.0.0",
         "sass": "~1.99.0",
-        "vitest": "^4.1.11"
+        "vitest": "^4.1.12"
     },
     "dependencies": {
         "3d-force-graph": "^1.80.0",
-        "basic-ftp": "5.3.1",
+        "@iplweb/radon-opendata": "^0.1.1",
+        "basic-ftp": "6.2.1",
         "chart.js": "^4.4.0",
         "cytoscape": "^3.34.0",
         "cytoscape-fcose": "^2.2.0",
@@ -36,7 +37,7 @@
         "jquery.cookie": "1.4.1",
         "jqueryui": "1.11.1",
         "picomatch": "2.3.2",
-        "plotly.js": "^2.35.2",
+        "plotly.js": "^4.1.2",
         "select2": "^4.1.0-rc.0",
         "select2-foundation-theme": "https://github.com/mpasternak/select2-foundation.git#modernize-foundation-6.9",
         "sigma": "^3.0.2",
@@ -46,7 +47,7 @@
     "resolutions": {
         "jquery": "^3.7.1",
         "minimatch": "^3.1.2",
-        "js-yaml": "^4.3.1",
+        "js-yaml": "^4.3.2",
         "esbuild": "^0.28.1"
     },
     "scripts": {

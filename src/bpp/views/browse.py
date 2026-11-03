@@ -26,7 +26,7 @@ from django.db.models.query_utils import Q
 from django.http import Http404, HttpResponseForbidden, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect
 from django.views.generic import DetailView, ListView, RedirectView, TemplateView
-from multiseek.logic import AND, OR
+from multiseek.logic import AND, OR, get_ordering_key_name
 from multiseek.util import make_field
 from multiseek.views import MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED
 from siteblog.models import Article
@@ -41,6 +41,7 @@ from bpp.models import (
 )
 from bpp.models.util import prefetch_dane_strony_rekordu
 from bpp.multiseek_registry import (
+    CharakterFormalnyQueryObject,
     JednostkaNadrzednaQueryObject,
     JednostkaQueryObject,
     NazwiskoIImieQueryObject,
@@ -49,6 +50,7 @@ from bpp.multiseek_registry import (
     WydzialQueryObject,
     ZakresLatQueryObject,
     ZrodloQueryObject,
+    registry,
 )
 from bpp.permissions import moze_wprowadzac_dane
 from bpp.util import sanitize_multiseek_title
@@ -56,6 +58,11 @@ from bpp.util.uczelnia_scope import (
     scope_jednostki_do_uczelni,
     scope_rekord_do_uczelni,
     tylko_jedna_uczelnia,
+)
+from bpp.util.ukryte_statusy import (
+    ukryte_statusy_dla,
+    widoczni_autorzy,
+    wyklucz_ukryte_statusy,
 )
 from bpp.views.cache_publiczny import DOMYSLNY_TTL, _generacja, cache_publiczny
 
@@ -109,13 +116,24 @@ def get_uczelnia_context_data(uczelnia, article_slug=None):
         # ``scope_rekord_do_uczelni``: JOIN po M2M ``autorzy`` (jedyne źródło
         # duplikatów tutaj) istnieje wyłącznie w trybie multi-host i helper
         # dokłada tam ``.distinct()`` sam.
+        # Treść cache'owana wspólnie dla wszystkich (bez requestu) — statusy
+        # ukryte w kanale "podglad" wykluczamy bezwarunkowo.
+        widoczne_rekordy = wyklucz_ukryte_statusy(
+            Rekord.objects.all(), None, uczelnia=uczelnia
+        )
         context["recently_updated"] = scope_rekord_do_uczelni(
-            Rekord.objects.all(), uczelnia
+            widoczne_rekordy, uczelnia
         ).order_by("-ostatnio_zmieniony")[:12]
 
         recent_abstracts = Wydawnictwo_Ciagle_Streszczenie.objects.exclude(
             streszczenie__isnull=True
         ).exclude(streszczenie__exact="")
+        recent_abstracts = wyklucz_ukryte_statusy(
+            recent_abstracts,
+            None,
+            uczelnia=uczelnia,
+            lookup="rekord__status_korekty_id",
+        )
         # Ten sam guard co scope_rekord_do_uczelni, ale na querysecie Streszczeń
         # (helper przyjmuje qs Rekordów). Single-host / brak uczelni => bez filtra.
         # ``.distinct()`` TYLKO w tej gałęzi: ``rekord__autorzy_set__…`` to
@@ -133,7 +151,7 @@ def get_uczelnia_context_data(uczelnia, article_slug=None):
         # Bez ``.distinct()`` COUNT może pójść index-only scanem zamiast
         # hashować 49 kolumn na wiersz; dedup — jak wyżej — jest w helperze.
         context["total_rekord_count"] = scope_rekord_do_uczelni(
-            Rekord.objects.all(), uczelnia
+            widoczne_rekordy, uczelnia
         ).count()
         context["current_year"] = timezone.now().date().year
 
@@ -232,6 +250,12 @@ class AutorView(DetailView):
     template_name = "browse/autor.html"
     model = Autor
 
+    def get_queryset(self):
+        # Autor z ``pokazuj=False`` jest ukryty ze stron publicznych (listing
+        # ``AutorzyView`` też go pomija) — pod bezpośrednim URL-em widzi go
+        # tylko użytkownik z uprawnieniami redaktorskimi, reszta dostaje 404.
+        return widoczni_autorzy(super().get_queryset(), getattr(self, "request", None))
+
     def get_context_data(self, **kwargs):
         from powiazania_autorow.models import AuthorConnection
 
@@ -247,16 +271,85 @@ class AutorView(DetailView):
                 Q(primary_author=self.object) | Q(secondary_author=self.object)
             ).exists()
         )
+
+        from bpp.profil_autora_dane import przygotuj_sekcje
+
+        request = getattr(self, "request", None)
         # Multi-homed: link do PBN musi znać uczelnię z requestu — szablon
         # nie umie przekazać argumentu do metody, więc liczymy go tu. Bez
         # tego ``autor.link_do_pbn`` (bezargumentowo) degraduje do
         # ``get_single_uczelnia_or_none() → None`` przy >1 uczelni (FD#390).
-        return super().get_context_data(
+        context = super().get_context_data(
             typy=TYPY,
             ma_powiazania=ma_powiazania,
             link_do_pbn=self.object.link_do_pbn(uczelnia),
+            sekcje_profilu=przygotuj_sekcje(self.object, uczelnia, request),
+            historia_zatrudnienia=self.object.historia_zatrudnienia(uczelnia),
+            raport_links=self._raport_links(request),
+            pokazuj_metryki=self._pokazuj_metryki(request),
             **kwargs,
         )
+        # NIE nadpisuj None-em sentinela ``NiezdefiniowanaUczelnia`` wstrzykiwanego
+        # przez context-processor: przy braku uczelni (pusta baza) szablon i tak
+        # potrzebuje obiektu z ``.skrot`` (breadcrumb w base.html rozwiązuje
+        # ``uczelnia.skrot`` twardo). Gdy uczelnia istnieje — przekaż ją jawnie.
+        if uczelnia is not None:
+            context["uczelnia"] = uczelnia
+        return context
+
+    def _pokazuj_metryki(self, request):
+        """Przycisk metryk ewaluacyjnych tylko dla tych, których wpuści
+        ``MetrykaDetailView`` — reszta dostałaby 403. Anonim → ``False``,
+        więc treść dla ``cache_publiczny`` (anonim-only) się nie zmienia."""
+        if request is None:
+            return False
+
+        from ewaluacja_metryki.views.mixins import moze_ogladac_metryki_autora
+
+        return moze_ogladac_metryki_autora(request.user, self.object)
+
+    def _raport_links(self, request):
+        """Linki do raportu autora — tylko gdy raport jest widoczny dla
+        oglądającego (reużycie ``DefinicjaRaportu.widoczny_dla``). Trzy linki:
+        bieżący rok, ostatnie 4 lata oraz szczegółowy formularz."""
+        if request is None:
+            return []
+
+        from nowe_raporty.models import DefinicjaRaportu
+
+        for definicja in DefinicjaRaportu.objects.filter(slug="raport-autorow"):
+            if definicja.widoczny_dla(request):
+                break
+        else:
+            return []
+
+        rok = timezone.now().date().year
+        pk = self.object.pk
+        return [
+            {
+                "label": f"Raport za rok {rok}",
+                "url": reverse(
+                    "nowe_raporty:raport_generuj",
+                    args=["raport-autorow", pk, rok, rok],
+                ),
+            },
+            {
+                "label": "Raport za ostatnie 4 lata",
+                "url": reverse(
+                    "nowe_raporty:raport_generuj",
+                    args=["raport-autorow", pk, rok - 3, rok],
+                ),
+            },
+            {
+                "label": "Raport szczegółowy…",
+                # ?obiekt=<pk> → formularz raportu od razu z wybranym autorem
+                # (RaportFormView.get_initial czyta ten parametr).
+                "url": (
+                    reverse("nowe_raporty:raport_form", args=["raport-autorow"])
+                    + f"?obiekt={pk}"
+                ),
+            },
+        ]
 
 
 LITERKI = "ABCDEFGHIJKLMNOPQRSTUVWYXZ"
@@ -805,7 +898,12 @@ class LataView(ListView):
 
     def get_queryset(self):
         uczelnia = Uczelnia.objects.get_for_request(self.request)
-        qs = scope_rekord_do_uczelni(Rekord.objects.all(), uczelnia)
+        qs = scope_rekord_do_uczelni(
+            wyklucz_ukryte_statusy(
+                Rekord.objects.all(), self.request, uczelnia=uczelnia
+            ),
+            uczelnia,
+        )
         # ``Count("id", distinct=True)``, NIE ``Count("*")``: w multi-host
         # ``scope_rekord_do_uczelni`` dokłada JOIN po M2M ``autorzy``, więc
         # ``Count("*")`` liczył wiersze złączenia — rekord z dwoma
@@ -844,6 +942,13 @@ class LataView(ListView):
         return context
 
 
+# Typowy zakres lat dla ``RokView`` — rok z tego przedziału renderuje się
+# zawsze (także pusty); spoza niego tylko wtedy, gdy są z niego rekordy.
+ROK_MIN = 1900
+ROK_MAX = 2100
+MAKS_INTEGER_W_BAZIE = 2**31 - 1
+
+
 @method_decorator(cache_publiczny(), name="dispatch")
 class RokView(ListView):
     template_name = "browse/rok.html"
@@ -852,21 +957,32 @@ class RokView(ListView):
     paginate_by = 50
 
     def get_queryset(self):
-        year = self.kwargs.get("rok")
-
-        # Validate year
         try:
-            year = int(year)
-            if year < 1900 or year > 2100:
-                raise ValueError
+            year = int(self.kwargs.get("rok"))
         except (ValueError, TypeError) as e:
             raise Http404("Nieprawidłowy rok") from e
 
-        # Get publications for this year
+        # Kolumna ``rok`` to ``integer`` — większa liczba i tak niczego nie
+        # znajdzie, a w zapytaniu skończyłaby się błędem bazy (500).
+        if year > MAKS_INTEGER_W_BAZIE:
+            raise Http404("Nieprawidłowy rok")
+
         uczelnia = Uczelnia.objects.get_for_request(self.request)
-        return scope_rekord_do_uczelni(
-            Rekord.objects.filter(rok=year), uczelnia
-        ).order_by("-ostatnio_zmieniony")
+        qs = scope_rekord_do_uczelni(
+            wyklucz_ukryte_statusy(
+                Rekord.objects.filter(rok=year), self.request, uczelnia=uczelnia
+            ),
+            uczelnia,
+        )
+
+        # Rok spoza typowego zakresu (np. literówka „212" w danych) wpuszczamy
+        # tylko, gdy są z niego rekordy — ``lata.html`` linkuje każdy rok
+        # z bazy. Pozostałe takie lata to 404, jak dotychczas (nie mnożymy
+        # pustych stron ani wpisów w ``cache_publiczny``).
+        if not (ROK_MIN <= year <= ROK_MAX) and not qs.exists():
+            raise Http404("Nieprawidłowy rok")
+
+        return qs.order_by("-ostatnio_zmieniony")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -880,7 +996,12 @@ class RokView(ListView):
         uczelnia = Uczelnia.objects.get_for_request(self.request)
         sasiednie_lata = set(
             scope_rekord_do_uczelni(
-                Rekord.objects.filter(rok__in=(year - 1, year + 1)), uczelnia
+                wyklucz_ukryte_statusy(
+                    Rekord.objects.filter(rok__in=(year - 1, year + 1)),
+                    self.request,
+                    uczelnia=uczelnia,
+                ),
+                uczelnia,
             )
             .values_list("rok", flat=True)
             .distinct()
@@ -912,7 +1033,9 @@ def zrob_box_z_requestu(dct, name, qo):
     return []
 
 
-def zrob_formularz(*args):
+def zrob_formularz(*args, **extra):
+    """Zwraca JSON formularza multiseeka dla sesji. ``extra`` (np. ``ordering``,
+    ``report_type``) trafia obok ``form_data``."""
     ret = [None]
 
     prev_op = None
@@ -928,7 +1051,20 @@ def zrob_formularz(*args):
 
         prev_op = AND
 
-    return json.dumps({"form_data": ret})
+    return json.dumps({"form_data": ret, **extra})
+
+
+def ustawienia_najnowszych_prac(request):
+    """Rodzaj raportu „lista" + sortowanie po „utworzono" malejąco — dla
+    przycisku „Przeglądaj najnowsze prace" ze strony głównej. Indeksy liczymy
+    z rejestru (a nie na sztywno), bo lista raportów zależy od requestu."""
+    report_types = [x.id for x in registry.get_report_types(request)]
+    orderings = [x.field for x in registry.ordering]
+    key, key_dir = get_ordering_key_name(0)
+    return {
+        "report_type": str(report_types.index("list")),
+        "ordering": {key: str(orderings.index("utworzono")), key_dir: "1"},
+    }
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -978,6 +1114,13 @@ class BuildSearch(RedirectView):
             self.request.POST, "autor", NazwiskoIImieQueryObject
         )
 
+        # Klik w „Statystyki wg charakteru" na podstronie autora POST-uje nazwę
+        # charakteru — CharakterFormalnyQueryObject.value_from_web rozwiązuje ją
+        # po `nazwa` (z potomkami MPTT).
+        charakter_box = zrob_box_z_requestu(
+            self.request.POST, "charakter_formalny", CharakterFormalnyQueryObject
+        )
+
         zakres_lat_box = zrob_box_z_requestu(
             self.request.POST, "zakres_lat", ZakresLatQueryObject
         )
@@ -1001,11 +1144,17 @@ class BuildSearch(RedirectView):
             zrodla_box,
             autorzy_box,
             typy_box,
+            charakter_box,
             jednostki_box,
             wydzialy_box,
             jednostki_nadrzedne_box,
             lata_box,
             zakres_lat_box,
+            **(
+                ustawienia_najnowszych_prac(self.request)
+                if self.request.POST.get("najnowsze")
+                else {}
+            ),
         )
 
         self.request.session["MULTISEEK_TITLE"] = sanitize_multiseek_title(
@@ -1194,6 +1343,11 @@ def bibtex_view(request, model, pk):
             rekord = Rekord.objects.get(pk=[content_type_id, pk])
         except Rekord.DoesNotExist:
             return JsonResponse({"error": "Publication not found"}, status=404)
+
+        # Rekord o statusie ukrytym w kanale "podglad" — ta sama reguła,
+        # co na stronie rekordu (PracaViewMixin): 403 poza redaktorami.
+        if rekord.status_korekty_id in ukryte_statusy_dla(request):
+            return JsonResponse({"error": "Brak uprawnień do rekordu"}, status=403)
 
         # Get the actual publication object
         praca = rekord.original

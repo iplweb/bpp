@@ -1,0 +1,5 @@
+<label class="wybor-ikony__kafelek"{% if widget.attrs.id %} for="{{ widget.attrs.id }}"{% endif %} title="{{ widget.value|default:"domyślna dla poziomu" }}">
+  {% include "django/forms/widgets/input.html" %}
+  {% if widget.value %}<i class="{{ widget.value }}" aria-hidden="true"></i>{% else %}<span class="wybor-ikony__domyslna">—</span>{% endif %}
+  <span class="wybor-ikony__nazwa">{{ widget.label }}</span>
+</label>

@@ -2,7 +2,7 @@ import sys
 
 import rollbar
 from django.urls import reverse
-from django.utils.html import escape
+from django.utils.html import format_html, format_html_join
 
 from bpp.admin.helpers import link_do_obiektu
 from import_common.normalization import normalize_isbn
@@ -138,18 +138,29 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
     ):
         url = reverse("admin:bpp_autor_change", args=(autor.autor_id,))
         notificator.warning(
-            f"Autor {autor} ma w tej pracy przypiętą dyscyplinę i afiluje, ale nie "
-            f"zostanie oświadczona w PBN, gdyż autor nie posiada odpowiednika w PBN. <a href={url} target=_blank>"
-            f"Kliknij tutaj</a> aby wyedytować tego autora. "
+            format_html(
+                "Autor {} ma w tej pracy przypiętą dyscyplinę i afiluje, ale nie "
+                "zostanie oświadczona w PBN, gdyż autor nie posiada odpowiednika "
+                'w PBN. <a href="{}" target="_blank">Kliknij tutaj</a> aby '
+                "wyedytować tego autora. ",
+                autor,
+                url,
+            )
         )
 
     open_in_pbn_link = ""
     if obj.pbn_uid_id:
-        open_in_pbn_link = f'<a target=_blank href="{obj.link_do_pbn(uczelnia=uczelnia)}">Otwórz w PBN</a>. '
+        open_in_pbn_link = format_html(
+            '<a target="_blank" href="{}">Otwórz w PBN</a>. ',
+            obj.link_do_pbn(uczelnia=uczelnia),
+        )
 
     open_in_pi_link = obj.link_do_pi(uczelnia=uczelnia) or ""
     if open_in_pi_link:
-        open_in_pi_link = f'<a target=_blank href="{open_in_pi_link}">Otwórz w Profilu Instytucji</a>. '
+        open_in_pi_link = format_html(
+            '<a target="_blank" href="{}">Otwórz w Profilu Instytucji</a>. ',
+            open_in_pi_link,
+        )
 
     try:
         pbn_client.sync_publication(
@@ -166,10 +177,16 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
 
         # Być moze obj.pbn_uid_id uległ zmianie. Jeżeli tak -- zregeneruj link:
         if obj.pbn_uid_id:
-            open_in_pbn_link = f'<a target=_blank href="{obj.link_do_pbn(uczelnia=uczelnia)}">Kliknij tutaj, aby otworzyć w PBN</a>. '
+            open_in_pbn_link = format_html(
+                '<a target="_blank" href="{}">Kliknij tutaj, aby otworzyć w PBN</a>. ',
+                obj.link_do_pbn(uczelnia=uczelnia),
+            )
         open_in_pi_link = obj.link_do_pi(uczelnia=uczelnia) or ""
         if open_in_pi_link:
-            open_in_pi_link = f'<a target=_blank href="{open_in_pi_link}">Otwórz w Profilu Instytucji</a>. '
+            open_in_pi_link = format_html(
+                '<a target="_blank" href="{}">Otwórz w Profilu Instytucji</a>. ',
+                open_in_pi_link,
+            )
 
     except SameDataUploadedRecently as e:
         link_do_wyslanych = reverse(
@@ -178,11 +195,19 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
         )
 
         notificator.info(
-            f'Identyczne dane rekordu "{link_do_obiektu(obj)}" zostały wgrane do PBN w dniu {e}. '
-            f"Nie aktualizuję w PBN API. Jeżeli chcesz wysłać ten rekord do PBN, musisz dokonać jakiejś zmiany "
-            f"danych rekodu lub "
-            f'usunąć informacje o <a target=_blank href="{link_do_wyslanych}">wcześniej wysłanych danych do PBN</a> '
-            f"(Redagowanie -> PBN API -> Wysłane informacje). {open_in_pbn_link}{open_in_pi_link}"
+            format_html(
+                'Identyczne dane rekordu "{}" zostały wgrane do PBN w dniu {}. '
+                "Nie aktualizuję w PBN API. Jeżeli chcesz wysłać ten rekord do "
+                "PBN, musisz dokonać jakiejś zmiany danych rekodu lub usunąć "
+                'informacje o <a target="_blank" href="{}">wcześniej wysłanych '
+                "danych do PBN</a> (Redagowanie -> PBN API -> Wysłane "
+                "informacje). {}{}",
+                link_do_obiektu(obj),
+                e,
+                link_do_wyslanych,
+                open_in_pbn_link,
+                open_in_pi_link,
+            )
         )
         if raise_exceptions:
             raise e
@@ -191,9 +216,15 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
 
     except AccessDeniedException as e:
         notificator.warning(
-            f'Nie można zsynchronizować obiektu "{link_do_obiektu(obj)}" z PBN pod adresem '
-            f"API {e.url}. Brak dostępu -- najprawdopodobniej użytkownik nie posiada odpowiednich uprawnień "
-            f"po stronie PBN/POLON. {open_in_pbn_link}{open_in_pi_link}",
+            format_html(
+                'Nie można zsynchronizować obiektu "{}" z PBN pod adresem API {}. '
+                "Brak dostępu -- najprawdopodobniej użytkownik nie posiada "
+                "odpowiednich uprawnień po stronie PBN/POLON. {}{}",
+                link_do_obiektu(obj),
+                e.url,
+                open_in_pbn_link,
+                open_in_pi_link,
+            ),
         )
         if raise_exceptions:
             raise e
@@ -202,8 +233,12 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
 
     except PKZeroExportDisabled as e:
         notificator.warning(
-            f"Eksport prac z PK=0 jest wyłączony w konfiguracji. Próba wysyłki do PBN rekordu "
-            f'"{link_do_obiektu(obj)}" nie została podjęta z uwagi na konfigurację systemu. ',
+            format_html(
+                "Eksport prac z PK=0 jest wyłączony w konfiguracji. Próba "
+                'wysyłki do PBN rekordu "{}" nie została podjęta z uwagi na '
+                "konfigurację systemu. ",
+                link_do_obiektu(obj),
+            ),
         )
         if raise_exceptions:
             raise e
@@ -212,10 +247,17 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
 
     except NeedsPBNAuthorisationException as e:
         notificator.warning(
-            f'Nie można zsynchronizować obiektu "{link_do_obiektu(obj)}" z PBN pod adresem '
-            f"API {e.url}. Brak dostępu z powodu nieprawidłowego tokena -- wymagana autoryzacja w PBN. "
-            f'<a target=_blank href="{reverse("pbn_api:authorize")}">Kliknij tutaj, aby autoryzować sesję</a>. '
-            f"{open_in_pbn_link}{open_in_pi_link}",
+            format_html(
+                'Nie można zsynchronizować obiektu "{}" z PBN pod adresem API {}. '
+                "Brak dostępu z powodu nieprawidłowego tokena -- wymagana "
+                'autoryzacja w PBN. <a target="_blank" href="{}">Kliknij tutaj, '
+                "aby autoryzować sesję</a>. {}{}",
+                link_do_obiektu(obj),
+                e.url,
+                reverse("pbn_api:authorize"),
+                open_in_pbn_link,
+                open_in_pi_link,
+            ),
         )
         if raise_exceptions:
             raise e
@@ -224,9 +266,15 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
 
     except ResourceLockedException as e:
         notificator.warning(
-            f'Nie można zsynchronizować obiektu "{link_do_obiektu(obj)}" z PBN pod adresem '
-            f"API {e.url}, ponieważ obiekt po stronie serwera PBN jest zablokowany. Spróbuj ponownie za jakiś czas. "
-            f"{open_in_pbn_link}{open_in_pi_link}",
+            format_html(
+                'Nie można zsynchronizować obiektu "{}" z PBN pod adresem API {}, '
+                "ponieważ obiekt po stronie serwera PBN jest zablokowany. "
+                "Spróbuj ponownie za jakiś czas. {}{}",
+                link_do_obiektu(obj),
+                e.url,
+                open_in_pbn_link,
+                open_in_pi_link,
+            ),
         )
 
         if raise_exceptions:
@@ -235,12 +283,19 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
         return
 
     except PBNValidationError as e:
-        komunikaty = "".join(f"<li>{escape(m)}</li>" for m in e.user_messages())
+        komunikaty = format_html_join(
+            "", "<li>{}</li>", ((m,) for m in e.user_messages())
+        )
         notificator.warning(
-            f'Rekord "{link_do_obiektu(obj)}" został odrzucony przez PBN '
-            f"z powodu błędów walidacji danych: <ul>{komunikaty}</ul>"
-            f"Popraw dane rekordu i spróbuj ponownie. "
-            f"{open_in_pbn_link}{open_in_pi_link}"
+            format_html(
+                'Rekord "{}" został odrzucony przez PBN z powodu błędów '
+                "walidacji danych: <ul>{}</ul>Popraw dane rekordu i spróbuj "
+                "ponownie. {}{}",
+                link_do_obiektu(obj),
+                komunikaty,
+                open_in_pbn_link,
+                open_in_pi_link,
+            )
         )
         if raise_exceptions:
             raise e
@@ -268,9 +323,14 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
         # inny, konfiguracyjny komunikat. Pilnuje tego parametryzacja
         # testu `..._will_not_export_czytelny_komunikat_bez_rollbar`.
         notificator.warning(
-            f'Rekord "{link_do_obiektu(obj)}" nie zostanie wysłany do PBN: {escape(e)}. '
-            f"Popraw dane rekordu lub konfigurację i spróbuj ponownie. "
-            f"{open_in_pbn_link}{open_in_pi_link}"
+            format_html(
+                'Rekord "{}" nie zostanie wysłany do PBN: {}. '
+                "Popraw dane rekordu lub konfigurację i spróbuj ponownie. {}{}",
+                link_do_obiektu(obj),
+                e,
+                open_in_pbn_link,
+                open_in_pi_link,
+            )
         )
         if raise_exceptions:
             raise e
@@ -288,14 +348,21 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
 
         extra = ""
         if link_do_wyslanych:
-            extra = (
-                f'<a target=_blank href="{link_do_wyslanych}">'
-                f"Kliknij, aby otworzyć widok wysłanych danych</a>."
+            extra = format_html(
+                '<a target="_blank" href="{}">'
+                "Kliknij, aby otworzyć widok wysłanych danych</a>.",
+                link_do_wyslanych,
             )
 
         notificator.warning(
-            f'Nie można zsynchronizować obiektu "{link_do_obiektu(obj)}" z PBN. '
-            f"Kod błędu: {e}. {extra} {open_in_pbn_link}{open_in_pi_link}"
+            format_html(
+                'Nie można zsynchronizować obiektu "{}" z PBN. Kod błędu: {}. {} {}{}',
+                link_do_obiektu(obj),
+                e,
+                extra,
+                open_in_pbn_link,
+                open_in_pi_link,
+            )
         )
 
         # Zaloguj problem do Rollbar, bo w sumie nie wiadomo, co to za problem na tym etapie...
@@ -319,8 +386,14 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
     )
 
     notificator.success(
-        f"Dane w PBN dla rekordu {link_do_obiektu(obj)} zostały zaktualizowane. "
-        f"{open_in_pbn_link}{open_in_pi_link}{sent_data_link}{publication_link}",
+        format_html(
+            "Dane w PBN dla rekordu {} zostały zaktualizowane. {}{}{}{}",
+            link_do_obiektu(obj),
+            open_in_pbn_link,
+            open_in_pi_link,
+            sent_data_link,
+            publication_link,
+        ),
     )
 
     return sent_data

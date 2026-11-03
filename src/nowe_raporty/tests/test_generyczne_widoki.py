@@ -42,6 +42,28 @@ def test_generyczny_formularz_renderuje_sie(webtest_app, uczelnia):
 
 
 @pytest.mark.django_db
+def test_formularz_prefiluje_obiekt_z_querystringu(webtest_app):
+    # „Raport szczegółowy" ze strony autora przekazuje ?obiekt=<pk> — pole
+    # Select2 musi pokazać wybranego autora (DAL renderuje wybraną opcję).
+    seed_default_reports()
+    autor = baker.make(Autor, nazwisko="Wybralski", imiona="Jan")
+    url = reverse("nowe_raporty:raport_form", args=["raport-autorow"])
+    res = webtest_app.get(url + f"?obiekt={autor.pk}")
+    assert res.status_code == 200
+    # Wybrana opcja w <select> obiektu: value=pk + nazwisko autora.
+    assert f'value="{autor.pk}"' in res.text
+    assert "Wybralski" in res.text
+
+
+@pytest.mark.django_db
+def test_formularz_zly_obiekt_w_querystringu_nie_wywala(webtest_app):
+    seed_default_reports()
+    url = reverse("nowe_raporty:raport_form", args=["raport-autorow"])
+    res = webtest_app.get(url + "?obiekt=999999")
+    assert res.status_code == 200
+
+
+@pytest.mark.django_db
 def test_kilka_raportow_na_tym_samym_poziomie(webtest_app, uczelnia):
     seed_default_reports()
     report = DefinicjaRaportu.objects.get(slug="raport-autorow").report

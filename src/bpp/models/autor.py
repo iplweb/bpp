@@ -21,13 +21,22 @@ from django.db import IntegrityError, models, transaction
 from django.db.models import CASCADE, SET_NULL, Count, Func, Q, Sum
 from django.urls.base import reverse
 from django.utils import timezone
-from tinymce.models import HTMLField
+from django.utils.functional import cached_property
 
 from bpp import const
 from bpp.core import zbieraj_sloty
 from bpp.models import LinkDoPBNMixin, ModelZAdnotacjami, ModelZNazwa, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID
 from bpp.util import FulltextSearchMixin, zaloguj_polkniety_wyjatek
+from bpp.util.biogram import FORMAT_MARKDOWN, FORMATY_BIOGRAMU
+from bpp.util.identyfikatory import (
+    GOOGLE_SCHOLAR_URL,
+    SCOPUS_URL,
+    WOS_URL,
+    google_scholar_id_validator,
+    scopus_author_id_validator,
+    wos_researcherid_validator,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -203,9 +212,25 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
     urodzony = models.DateField(blank=True, null=True)
     zmarl = models.DateField(blank=True, null=True)
 
-    opis = HTMLField(blank=True, null=True)  # models.TextField(blank=True, null=True)
-    pokazuj_opis = models.BooleanField(
-        default=False, help_text="""Czy pokazywać tekst z pola 'Opis' na stronie?"""
+    zdjecie = models.ImageField(
+        "Zdjęcie",
+        upload_to="autor_zdjecia",
+        blank=True,
+        null=True,
+        help_text="Zdjęcie profilowe autora. Przy zapisie przez formularz "
+        "jest przeskalowane do kwadratu.",
+    )
+    biogram = models.TextField(
+        "Biogram",
+        blank=True,
+        default="",
+        help_text="Notka biograficzna pokazywana na podstronie autora.",
+    )
+    biogram_format = models.CharField(
+        "Format biogramu",
+        max_length=4,
+        choices=FORMATY_BIOGRAMU,
+        default=FORMAT_MARKDOWN,
     )
     poprzednie_nazwiska = models.CharField(
         max_length=1024,
@@ -272,6 +297,41 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
         "pbn_api.Scientist", null=True, blank=True, on_delete=SET_NULL
     )
 
+    # Profile w zewnętrznych serwisach — przechowujemy identyfikatory, linki
+    # budują właściwości ``*_url`` (por. ``bpp.util.identyfikatory``).
+    wos_researcherid = models.CharField(
+        "Web of Science ResearcherID",
+        max_length=20,
+        blank=True,
+        default="",
+        validators=[wos_researcherid_validator],
+        help_text="Np. A-1234-2008. Można wkleić cały adres profilu w WoS.",
+    )
+    scopus_author_id = models.CharField(
+        "Scopus Author ID",
+        max_length=20,
+        blank=True,
+        default="",
+        validators=[scopus_author_id_validator],
+        help_text="Np. 7004212771. Można wkleić cały adres profilu w Scopus.",
+    )
+    google_scholar_id = models.CharField(
+        "Identyfikator Google Scholar",
+        max_length=12,
+        blank=True,
+        default="",
+        validators=[google_scholar_id_validator],
+        help_text="Np. qc6CJjYAAAAJ. Można wkleić cały adres profilu w Google Scholar.",
+    )
+    url_profilu_uczelni = models.URLField(
+        "Adres profilu w portalu uczelni",
+        max_length=1024,
+        blank=True,
+        default="",
+        help_text="Pełny adres profilu w uczelnianym portalu (np. PPM). "
+        "Etykietę linku ustawia się w konfiguracji uczelni.",
+    )
+
     search = VectorField()
 
     objects = AutorManager()
@@ -284,6 +344,27 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
 
     def get_absolute_url(self):
         return reverse("bpp:browse_autor", args=(self.slug,))
+
+    @property
+    def wos_url(self):
+        return WOS_URL.format(self.wos_researcherid) if self.wos_researcherid else ""
+
+    @property
+    def scopus_url(self):
+        return SCOPUS_URL.format(self.scopus_author_id) if self.scopus_author_id else ""
+
+    @property
+    def google_scholar_url(self):
+        if not self.google_scholar_id:
+            return ""
+        return GOOGLE_SCHOLAR_URL.format(self.google_scholar_id)
+
+    @cached_property
+    def biogram_html(self):
+        """Bezpieczny HTML biogramu (Markdown/HTML wg ``biogram_format``)."""
+        from bpp.util.biogram import renderuj_biogram
+
+        return renderuj_biogram(self.biogram, self.biogram_format)
 
     def czy_pokazywac_siec_powiazan(self, uczelnia):
         """Efektywne ustawienie "pokazuj sieć powiązań" dla tego autora.
@@ -536,6 +617,24 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
             .values("jednostka_id")
             .distinct()
         )
+
+    def historia_zatrudnienia(self, uczelnia=None):
+        """Historia powiązań autora z jednostkami (podstrona autora).
+
+        Najnowsze rozpoczęcia pracy na górze. ``select_related`` na jednostce
+        i funkcji eliminuje N+1 przy renderze listy. Pomijamy wiersze bez daty
+        rozpoczęcia (żeby nie pokazywać „?") oraz — gdy znamy uczelnię —
+        sztuczną „Obcą jednostkę" (afiliacje spoza uczelni nie są historią
+        zatrudnienia).
+        """
+        qs = (
+            Autor_Jednostka.objects.filter(autor=self, rozpoczal_prace__isnull=False)
+            .select_related("jednostka", "funkcja")
+            .order_by("-rozpoczal_prace")
+        )
+        if uczelnia is not None and uczelnia.obca_jednostka_id is not None:
+            qs = qs.exclude(jednostka_id=uczelnia.obca_jednostka_id)
+        return qs
 
     def zbieraj_sloty(
         self,

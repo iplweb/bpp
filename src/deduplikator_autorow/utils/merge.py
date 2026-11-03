@@ -18,6 +18,30 @@ from .analysis import analiza_duplikatow
 logger = logging.getLogger(__name__)
 
 
+def _dodaj_do_kolejki_pbn(rekord, user, uczelnia, results):
+    """Dodaj przemapowany rekord do kolejki eksportu PBN.
+
+    Wpis niesie uczelnię (multi-hosted: wysyłka w tle musi wiedzieć, do
+    którego PBN-a wysłać — Rollbar #5359). ``sprobuj_utowrzyc_wpis`` zamiast
+    surowego ``create``: rekord już aktywnie czekający w kolejce łamał
+    częściowy unikat (jeden aktywny wpis na rekord) i ``IntegrityError``
+    wywracał całe scalanie. Taki rekord i tak zostanie wysłany (z aktualnymi
+    danymi, czytanymi w chwili wysyłki), więc tylko ostrzegamy.
+    """
+    from pbn_api.exceptions import AlreadyEnqueuedError
+    from pbn_export_queue.models import PBN_Export_Queue
+
+    try:
+        PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(user, rekord, uczelnia=uczelnia)
+    except AlreadyEnqueuedError:
+        results["warnings"].append(
+            f"Publikacja {rekord} jest już w kolejce eksportu do PBN — "
+            "nie dodano ponownie."
+        )
+        return
+    results["publications_queued_for_pbn"].append(str(rekord))
+
+
 def _assign_discipline_if_missing(
     autor_record, glowny_autor, rok, auto_assign_discipline, use_subdiscipline, warnings
 ):
@@ -125,6 +149,7 @@ def _transfer_authorship_record(
     log_publication,
     log_ctx,
     results,
+    uczelnia=None,
 ):
     """
     Przenosi pojedynczy rekord autorstwa (Wydawnictwo_*_Autor / Patent_Autor)
@@ -135,7 +160,6 @@ def _transfer_authorship_record(
     """
     from bpp.models import Autor_Dyscyplina
     from deduplikator_autorow.models import LogScalania
-    from pbn_export_queue.models import PBN_Export_Queue
 
     model = type(record)
 
@@ -214,13 +238,7 @@ def _transfer_authorship_record(
 
     # Dodaj do kolejki PBN
     if not skip_pbn and record.rekord:
-        content_type = ContentType.objects.get_for_model(record.rekord)
-        PBN_Export_Queue.objects.create(
-            content_type=content_type,
-            object_id=record.rekord.pk,
-            zamowil=user,
-        )
-        results["publications_queued_for_pbn"].append(str(record.rekord))
+        _dodaj_do_kolejki_pbn(record.rekord, user, uczelnia, results)
 
     results["updated_records"].append(f"{model_label}: {record.rekord}")
     results["total_updated"] += 1
@@ -228,14 +246,19 @@ def _transfer_authorship_record(
 
 
 def _transfer_simple_authorship(
-    model, model_label, glowny_autor, autor_duplikat, user, skip_pbn, results
+    model,
+    model_label,
+    glowny_autor,
+    autor_duplikat,
+    user,
+    skip_pbn,
+    results,
+    uczelnia=None,
 ):
     """
     Przenosi proste rekordy autorstwa (Praca_Habilitacyjna / Praca_Doktorska),
     gdzie sam obiekt jest publikacją — przemapowuje autora i kolejkuje do PBN.
     """
-    from pbn_export_queue.models import PBN_Export_Queue
-
     for praca in model.objects.filter(autor=autor_duplikat):
         # Przemapuj autora
         praca.autor = glowny_autor
@@ -243,13 +266,7 @@ def _transfer_simple_authorship(
 
         # Dodaj do kolejki PBN
         if not skip_pbn:
-            content_type = ContentType.objects.get_for_model(praca)
-            PBN_Export_Queue.objects.create(
-                content_type=content_type,
-                object_id=praca.pk,
-                zamowil=user,
-            )
-            results["publications_queued_for_pbn"].append(str(praca))
+            _dodaj_do_kolejki_pbn(praca, user, uczelnia, results)
 
         results["updated_records"].append(f"{model_label}: {praca}")
         results["total_updated"] += 1
@@ -262,6 +279,7 @@ def scal_autora(
     skip_pbn=False,
     auto_assign_discipline=False,
     use_subdiscipline=False,
+    uczelnia=None,
 ):
     """
     Scala duplikat autora na głównego autora.
@@ -275,6 +293,8 @@ def scal_autora(
             do prac bez dyscypliny
         use_subdiscipline: Jeśli True, użyj subdyscypliny autora jako
             dyscypliny dla prac bez dyscypliny
+        uczelnia: Uczelnia (z requestu), zapisywana na wpisach kolejki PBN —
+            w instalacji wielouczelnianej wymagana do wysyłki w tle
 
     Returns:
         dict: Wynik operacji scalania zawierający szczegóły przemapowań
@@ -349,6 +369,7 @@ def scal_autora(
                         log_publication,
                         log_ctx,
                         results,
+                        uczelnia=uczelnia,
                     )
 
             # 4-5. Prace doktorskie / habilitacyjne
@@ -361,6 +382,7 @@ def scal_autora(
                     user,
                     skip_pbn,
                     results,
+                    uczelnia=uczelnia,
                 )
 
             autor_duplikat.delete()
@@ -382,6 +404,7 @@ def scal_autorow(
     skip_pbn: bool = False,
     auto_assign_discipline: bool = False,
     use_subdiscipline: bool = False,
+    uczelnia=None,
 ) -> dict:
     """
     Scala automatycznie duplikaty autorów.
@@ -395,6 +418,7 @@ def scal_autorow(
             do prac bez dyscypliny
         use_subdiscipline: Jeśli True, użyj subdyscypliny autora jako
             dyscypliny dla prac bez dyscypliny
+        uczelnia: Uczelnia zapisywana na wpisach kolejki PBN (multi-hosted)
 
     Returns:
         dict: Wynik operacji scalania
@@ -451,6 +475,7 @@ def scal_autorow(
             skip_pbn=skip_pbn,
             auto_assign_discipline=auto_assign_discipline,
             use_subdiscipline=use_subdiscipline,
+            uczelnia=uczelnia,
         )
 
         # Dodaj informacje o autorach do wyniku

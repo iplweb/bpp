@@ -145,7 +145,7 @@ def charakter_formalny_stats_top90(request):
         {
             "data": data,
             "layout": {
-                "title": "Charaktery formalne - Top 90%",
+                "title": {"text": "Charaktery formalne - Top 90%"},
                 "height": 500,
                 "showlegend": False,
             },
@@ -182,7 +182,7 @@ def charakter_formalny_stats_remaining10(request):
             {
                 "data": [],
                 "layout": {
-                    "title": "Charaktery formalne - Pozostałe 10%",
+                    "title": {"text": "Charaktery formalne - Pozostałe 10%"},
                     "height": 500,
                     "showlegend": False,
                     "annotations": [
@@ -245,7 +245,7 @@ def charakter_formalny_stats_remaining10(request):
         {
             "data": data,
             "layout": {
-                "title": "Charaktery formalne - Pozostałe 10%",
+                "title": {"text": "Charaktery formalne - Pozostałe 10%"},
                 "height": 500,
                 "showlegend": False,
             },
@@ -281,7 +281,7 @@ def charakter_formalny_stats_remaining1(request):
             {
                 "data": [],
                 "layout": {
-                    "title": "Charaktery formalne - Ostatni 1%",
+                    "title": {"text": "Charaktery formalne - Ostatni 1%"},
                     "height": 500,
                     "showlegend": False,
                     "annotations": [
@@ -318,7 +318,7 @@ def charakter_formalny_stats_remaining1(request):
             {
                 "data": [],
                 "layout": {
-                    "title": "Charaktery formalne - Ostatni 1%",
+                    "title": {"text": "Charaktery formalne - Ostatni 1%"},
                     "height": 500,
                     "showlegend": False,
                     "annotations": [
@@ -359,7 +359,7 @@ def charakter_formalny_stats_remaining1(request):
         {
             "data": data,
             "layout": {
-                "title": "Charaktery formalne - Ostatni 1%",
+                "title": {"text": "Charaktery formalne - Ostatni 1%"},
                 "height": 500,
                 "showlegend": False,
             },

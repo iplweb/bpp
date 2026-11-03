@@ -28,14 +28,33 @@ MAX_ROZMIAR_PO_DEKOMPRESJI = 500 * 1024 * 1024
 MAX_ROZMIAR_PLIKU = 100 * 1024 * 1024
 
 
-def sprawdz_rozmiar_pliku(sciezka, max_bajtow=MAX_ROZMIAR_PLIKU):
-    """Odrzuca plik większy niż ``max_bajtow`` PRZED załadowaniem do pamięci."""
+def _rozmiar(plik):
+    """Rozmiar pliku na dysku: ścieżka (str/Path) albo obiekt plikowy Django
+    (``UploadedFile``/``FieldFile`` z atrybutem ``size``). ``None`` = nie da
+    się ustalić (brak pliku) — nie ten wektor, niech padnie dalej."""
     import os
 
+    if isinstance(plik, (str, os.PathLike)):
+        try:
+            return os.path.getsize(plik)
+        except OSError:
+            return None
     try:
-        rozmiar = os.path.getsize(sciezka)
-    except OSError:
-        return  # nie ma pliku / nie-ścieżka — nie ten wektor, niech padnie dalej
+        return plik.size
+    except (AttributeError, OSError, ValueError):
+        return None
+
+
+def sprawdz_rozmiar_pliku(sciezka, max_bajtow=None):
+    """Odrzuca plik większy niż ``max_bajtow`` PRZED załadowaniem do pamięci.
+
+    ``sciezka`` może być ścieżką albo obiektem plikowym Django (``.size``).
+    Domyślny limit (``MAX_ROZMIAR_PLIKU``) jest czytany w chwili wywołania."""
+    if max_bajtow is None:
+        max_bajtow = MAX_ROZMIAR_PLIKU
+    rozmiar = _rozmiar(sciezka)
+    if rozmiar is None:
+        return
     if rozmiar > max_bajtow:
         raise PlikZaDuzyException(
             f"Rozmiar pliku ({rozmiar} B) przekracza bezpieczny limit "
@@ -43,7 +62,7 @@ def sprawdz_rozmiar_pliku(sciezka, max_bajtow=MAX_ROZMIAR_PLIKU):
         )
 
 
-def sprawdz_bombe_dekompresji(sciezka, max_rozpakowany=MAX_ROZMIAR_PO_DEKOMPRESJI):
+def sprawdz_bombe_dekompresji(sciezka, max_rozpakowany=None):
     """Odrzuca XLSX-owe (ZIP) bomby dekompresyjne PRZED załadowaniem do pamięci.
 
     XLSX to archiwum ZIP; złośliwy plik ~KB może rozpakować się do GB i zabić
@@ -51,14 +70,27 @@ def sprawdz_bombe_dekompresji(sciezka, max_rozpakowany=MAX_ROZMIAR_PO_DEKOMPRESJ
     centralnego katalogu ZIP (bez faktycznego rozpakowywania) i odrzucamy plik
     przekraczający ``max_rozpakowany``. Pliki nie-ZIP (stary .xls OLE, .csv)
     nie są bombami tego typu → cicho przepuszczamy (inny wektor).
+
+    ``sciezka`` może być ścieżką albo obiektem plikowym (pozycja odczytu jest
+    przywracana, bo zaraz po nas ten sam obiekt czyta openpyxl). Domyślny
+    limit (``MAX_ROZMIAR_PO_DEKOMPRESJI``) jest czytany w chwili wywołania.
     """
     import zipfile
 
+    if max_rozpakowany is None:
+        max_rozpakowany = MAX_ROZMIAR_PO_DEKOMPRESJI
+
+    pozycja = None
+    if hasattr(sciezka, "seek") and hasattr(sciezka, "tell"):
+        pozycja = sciezka.tell()
     try:
         with zipfile.ZipFile(sciezka) as zf:
             rozpakowany = sum(info.file_size for info in zf.infolist())
     except zipfile.BadZipFile:
         return  # nie-ZIP (np. .xls / .csv) — nie ten wektor
+    finally:
+        if pozycja is not None:
+            sciezka.seek(pozycja)
 
     if rozpakowany > max_rozpakowany:
         raise DecompressionBombException(
@@ -66,6 +98,15 @@ def sprawdz_bombe_dekompresji(sciezka, max_rozpakowany=MAX_ROZMIAR_PO_DEKOMPRESJ
             f"bezpieczny limit ({max_rozpakowany} B) — plik odrzucony jako "
             f"potencjalna bomba dekompresyjna."
         )
+
+
+def sprawdz_plik_importu(sciezka, max_bajtow=None, max_rozpakowany=None):
+    """Wspólny bezpiecznik dla plików importu wgrywanych przez użytkownika:
+    limit rozmiaru na dysku + (dla XLSX/ZIP) limit rozmiaru po dekompresji.
+    Wołać PRZED parsowaniem (openpyxl/pandas/csv). Rzuca podklasę
+    ``NiebezpiecznyPlikException`` z czytelnym komunikatem."""
+    sprawdz_rozmiar_pliku(sciezka, max_bajtow=max_bajtow)
+    sprawdz_bombe_dekompresji(sciezka, max_rozpakowany=max_rozpakowany)
 
 
 # openpyxl importujemy LOKALNIE (nie na poziomie modułu): ten moduł jest

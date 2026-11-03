@@ -1,0 +1,29 @@
+{# Kafel identyfikatora. Parametry: etykieta, wartosc (to, co się kopiuje), #}
+{# tekst (to, co widać), url (opcjonalny link), strzalka (link „Profil →”), #}
+{# polon (plakietka „POL-on”), opis (title kafla). #}
+<div class="cell shrink">
+    <div class="callout autor-page__id-card" data-id-kafel {% if opis %}title="{{ opis }}"{% endif %}>
+        <div class="autor-page__id-label">
+            {{ etykieta }}
+            {% if polon %}
+                <span class="autor-page__id-polon" title="Naukowiec z POL-on"><span class="fi-shield"></span> POL-on</span>
+            {% endif %}
+        </div>
+        {% if url %}
+            <a href="{{ url }}"
+               target="_blank"
+               rel="noopener"
+               class="autor-page__id-link">{{ tekst }}{% if strzalka %} <span class="fi-arrow-right"></span>{% endif %}</a>
+        {% else %}
+            <span class="autor-page__id-value">{{ tekst }}</span>
+        {% endif %}
+        <button type="button"
+                class="autor-page__id-kopiuj"
+                data-kopiuj="{{ wartosc }}"
+                aria-label="Kopiuj: {{ etykieta }}"
+                title="Kopiuj">
+            <span class="fi-page-copy" aria-hidden="true"></span>
+            <span class="autor-page__id-kopiuj-status" aria-live="polite"></span>
+        </button>
+    </div>
+</div>

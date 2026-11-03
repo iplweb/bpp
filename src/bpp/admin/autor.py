@@ -1,11 +1,14 @@
 from dal import autocomplete
 from django import forms
 from django.contrib import admin
+from django.contrib.admin.utils import unquote
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import UploadedFile
 from django.forms.models import BaseInlineFormSet
-from dynamic_admin_columns.mixins import DynamicColumnsMixin
+from reversion.admin import VersionAdmin
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
+from bpp.admin.helpers.dynamic_columns import BppDynamicColumnsMixin
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok
 from pbn_api.models import Scientist
 
@@ -16,7 +19,11 @@ from ..models import (  # Publikacja_Habilitacyjna
     Autor_Jednostka,
     Dyscyplina_Naukowa,
     Jednostka,
+    WybranaPublikacjaAutora,
 )
+from ..util.identyfikatory import IdentyfikatoryProfiliFormMixin
+from ..util.obrazy import MAKS_ROZMIAR_PLIKU_ZDJECIA, przetworz_zdjecie_autora
+from ..wersjonowanie import przelicz_aktualna_jednostke
 from .actions import ustaw_pokazuj_false, ustaw_pokazuj_true
 from .core import BaseBppAdminMixin
 from .filters import (
@@ -32,6 +39,7 @@ from .filters import (
 )
 from .helpers.fieldsets import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
 from .helpers.site_filtered import SiteFilteredAdminMixin
+from .helpers.wersje import HistoriaWersjiMixin
 from .helpers.widgets import CHARMAP_SINGLE_LINE
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
@@ -203,7 +211,7 @@ class Autor_JednostkaInline(admin.TabularInline):
 # Autorzy
 
 
-class AutorForm(forms.ModelForm):
+class AutorForm(IdentyfikatoryProfiliFormMixin, forms.ModelForm):
     pbn_uid = forms.ModelChoiceField(
         label="Odpowiednik w PBN",
         required=False,
@@ -230,8 +238,9 @@ class AutorForm(forms.ModelForm):
             "plec",
             "urodzony",
             "zmarl",
-            "opis",
-            "pokazuj_opis",
+            "zdjecie",
+            "biogram",
+            "biogram_format",
             "poprzednie_nazwiska",
             "pokazuj_poprzednie_nazwiska",
             "orcid",
@@ -239,9 +248,86 @@ class AutorForm(forms.ModelForm):
             "expertus_id",
             "system_kadrowy_id",
             "pbn_uid",
+            "wos_researcherid",
+            "scopus_author_id",
+            "google_scholar_id",
+            "url_profilu_uczelni",
             "adnotacje",
         ]
         widgets = {"imiona": CHARMAP_SINGLE_LINE, "nazwisko": CHARMAP_SINGLE_LINE}
+
+    def clean_zdjecie(self):
+        """Waliduj rozmiar i przeskaluj świeżo wgrane zdjęcie do kwadratu WebP.
+
+        Istniejący (niezmieniony) plik przechodzi bez przetwarzania.
+        """
+        plik = self.cleaned_data.get("zdjecie")
+        if not isinstance(plik, UploadedFile):
+            return plik
+        if plik.size > MAKS_ROZMIAR_PLIKU_ZDJECIA:
+            raise forms.ValidationError("Maksymalny rozmiar pliku zdjęcia to 5 MB.")
+        return przetworz_zdjecie_autora(plik, nazwa=plik.name)
+
+
+#: Modele publikacji (źródła ``Rekord``), które można wskazać jako wybraną
+#: publikację autora.
+MODELE_WYBRANYCH_PUBLIKACJI = [
+    "wydawnictwo_ciagle",
+    "wydawnictwo_zwarte",
+    "praca_doktorska",
+    "praca_habilitacyjna",
+    "patent",
+]
+
+
+class WybranaPublikacjaAutoraFormSet(BaseInlineFormSet):
+    """Każdy wiersz musi wskazywać pracę z dorobku edytowanego autora
+    (ta sama reguła co w self-service pickerze)."""
+
+    def clean(self):
+        super().clean()
+        from bpp.models import Rekord
+
+        for form in self.forms:
+            if not hasattr(form, "cleaned_data") or not form.cleaned_data:
+                continue
+            if self.can_delete and self._should_delete_form(form):
+                continue
+            ct = form.cleaned_data.get("content_type")
+            object_id = form.cleaned_data.get("object_id")
+            if ct is None or object_id is None:
+                continue
+            nalezy = (
+                self.instance.pk is not None
+                and Rekord.objects.prace_autora(self.instance)
+                .filter(pk=[ct.pk, object_id])
+                .exists()
+            )
+            if not nalezy:
+                form.add_error(
+                    "object_id",
+                    "Wskazana publikacja nie należy do dorobku tego autora.",
+                )
+
+
+class WybranaPublikacjaAutoraInline(admin.TabularInline):
+    # Relacja do Autora to zwykły FK `autor`; content_type+object_id wskazują
+    # polimorficzną publikację (GenericForeignKey). W Fazie 1 edycja ręczna;
+    # przyjazny picker dostarcza self-service edytor z Fazy 2.
+    model = WybranaPublikacjaAutora
+    formset = WybranaPublikacjaAutoraFormSet
+    fk_name = "autor"
+    extra = 0
+    fields = ["content_type", "object_id", "kolejnosc"]
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "content_type":
+            from django.contrib.contenttypes.models import ContentType
+
+            kwargs["queryset"] = ContentType.objects.filter(
+                app_label="bpp", model__in=MODELE_WYBRANYCH_PUBLIKACJI
+            )
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
 class AutorAdmin(
@@ -250,8 +336,9 @@ class AutorAdmin(
     ZapiszZAdnotacjaMixin,
     EksportDanychMixin,
     BaseBppAdminMixin,
-    DynamicColumnsMixin,
-    admin.ModelAdmin,
+    BppDynamicColumnsMixin,
+    HistoriaWersjiMixin,
+    VersionAdmin,
 ):
     uczelnia_field_path = "aktualna_jednostka__uczelnia"
 
@@ -345,6 +432,7 @@ class AutorAdmin(
         Autor_DyscyplinaInline,
         Autor_AbsencjaInline,
         IloscUdzialowDlaAutoraZaRokInline,
+        WybranaPublikacjaAutoraInline,
     ]
     list_filter = [
         JednostkaFilter,
@@ -407,6 +495,29 @@ class AutorAdmin(
                     "zmarl",
                     "poprzednie_nazwiska",
                     "pokazuj_poprzednie_nazwiska",
+                ),
+            },
+        ),
+        (
+            "Profile w serwisach zewnętrznych",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "wos_researcherid",
+                    "scopus_author_id",
+                    "google_scholar_id",
+                    "url_profilu_uczelni",
+                ),
+            },
+        ),
+        (
+            "Profil na podstronie autora",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "zdjecie",
+                    "biogram",
+                    "biogram_format",
                 ),
             },
         ),
@@ -568,6 +679,14 @@ class AutorAdmin(
                 kwargs["initial"] = inline_initial_data
 
         return kwargs
+
+    def revision_view(self, request, object_id, version_id, extra_context=None):
+        response = super().revision_view(request, object_id, version_id, extra_context)
+        if request.method == "POST" and response.status_code == 302:
+            # Wersja niesie historyczną aktualną jednostkę — przelicz ją
+            # z bieżących wpisów zatrudnienia (te nie są przywracane).
+            przelicz_aktualna_jednostke(unquote(object_id))
+        return response
 
     def get_actions(self, request):
         """Override to customize action descriptions."""

@@ -46,10 +46,12 @@ class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
         verbose_name_plural = "powiązania autorów z patentami"
         app_label = "bpp"
         ordering = ("kolejnosc",)
+        # Unikalność (rekord, kolejnosc) pilnuje w bazie odroczone ograniczenie
+        # (migracja 0132) -- celowo NIE ma go tutaj, bo Django sprawdzałoby je
+        # wierszami osobno i blokowało zamianę autorów miejscami w adminie.
+        # W formsecie inline'a sprawdza je ``_sprawdz_powtorzona_kolejnosc``.
         unique_together = [
             ("rekord", "autor", "typ_odpowiedzialnosci"),
-            # Tu musi być autor, inaczej admin nie pozwoli wyedytować
-            ("rekord", "autor", "kolejnosc"),
         ]
 
 

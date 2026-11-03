@@ -1,3 +1,4 @@
+import logging
 import sys
 from abc import abstractmethod
 
@@ -11,12 +12,37 @@ from django.utils.translation import gettext_lazy as _
 from bpp import const
 from bpp.const import PBN_UID_LEN
 from bpp.models import Uczelnia
+from bpp.util.wyjatki import zaloguj_polkniety_wyjatek
 from pbn_api.client import PBNClient
-from pbn_api.exceptions import AccessDeniedException
+from pbn_api.exceptions import (
+    AccessDeniedException,
+    HttpException,
+    NeedsPBNAuthorisationException,
+    PraceSerwisoweException,
+    PublicationNotFound,
+)
 from pbn_api.models import Journal, Publication, Publisher, Scientist
 from pbn_integrator.utils import zapisz_mongodb
 
 from .mixins import SanitizedAutocompleteMixin
+
+logger = logging.getLogger(__name__)
+
+KOMUNIKAT_BRAK_AUTORYZACJI = (
+    "Brak dostępu. Autoryzuj się w PBN API za pomocą opcji na głównej stronie. "
+)
+
+
+def _odpowiedz_bledem(text):
+    """Odpowiedź dla widgetu select2 — brak utworzonego obiektu + komunikat."""
+    return http.JsonResponse({"id": None, "text": text})
+
+
+def _komunikat_pbn(exc: HttpException):
+    """Wyciągnij czytelny komunikat z odpowiedzi PBN (pole ``message``)."""
+    if isinstance(exc.json, dict) and exc.json.get("message"):
+        return str(exc.json["message"])
+    return ""
 
 
 class BasePBNAutocomplete(
@@ -95,16 +121,45 @@ class BasePBNAutocomplete(
 
         try:
             result = self.create_object(text)
-        except AccessDeniedException:
-            return http.JsonResponse(
-                {
-                    "id": None,
-                    "text": "Brak dostępu. Autoryzuj się w PBN API za pomocą opcji na głównej stronie. ",
-                }
+        except PublicationNotFound:
+            # Użytkownik wpisał UID, którego w PBN nie ma (PBN: 422 „was not
+            # exists!"). To nie błąd aplikacji — bez Rollbara (#5366).
+            logger.info("Brak w PBN rekordu o UID %r", text)
+            return _odpowiedz_bledem(
+                f'W PBN nie ma rekordu o UID "{text}". Sprawdź, czy UID jest poprawny.'
             )
+        except (AccessDeniedException, NeedsPBNAuthorisationException):
+            return _odpowiedz_bledem(KOMUNIKAT_BRAK_AUTORYZACJI)
+        except PraceSerwisoweException as e:
+            return _odpowiedz_bledem(str(e))
+        except HttpException as e:
+            komunikat = _komunikat_pbn(e)
+            tekst = (
+                f'Nie udało się pobrać z PBN rekordu o UID "{text}" '
+                f"(PBN zwrócił błąd HTTP {e.status_code}"
+                + (f": {komunikat}" if komunikat else "")
+                + ")."
+            )
+            if e.status_code >= 500:
+                # Awaria po stronie PBN — warto wiedzieć, raportujemy.
+                zaloguj_polkniety_wyjatek(
+                    f"Pobieranie rekordu {text!r} z PBN w autocomplete",
+                    logger=logger,
+                )
+            else:
+                # 4xx dla UID wpisanego ręcznie to zwykle „nie ma takiego
+                # rekordu" (np. dla autorów/źródeł/wydawców pbn_client nie
+                # ma dedykowanego wyjątku) — logujemy, bez Rollbara.
+                logger.warning(
+                    "PBN zwrócił HTTP %s dla UID %r: %s",
+                    e.status_code,
+                    text,
+                    komunikat or e.content,
+                )
+            return _odpowiedz_bledem(tekst)
 
         except Exception as e:
-            # Zaloguj wyjątek do Sentry
+            # Zaloguj wyjątek do Rollbara
             rollbar.report_exc_info(sys.exc_info())
             return http.HttpResponseBadRequest(str(e))
 

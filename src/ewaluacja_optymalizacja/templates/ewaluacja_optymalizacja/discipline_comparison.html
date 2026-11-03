@@ -119,8 +119,8 @@
 
 {% if discipline_stats %}
 <script>
-// Set Polish locale as default for Plotly
-Plotly.setPlotConfig({locale: 'pl'});
+// Polski locale; bez przycisku "Upload to Cloud" (plotly.js 4.x wysyła wykres na cloud.plotly.com)
+Plotly.setPlotConfig({locale: 'pl', showSendToCloud: false});
 
 // Prepare data for charts
 const disciplines = [
@@ -199,12 +199,12 @@ const nonNPoints = [
     var layout = {
         barmode: 'stack',
         yaxis: {
-            title: 'Procent',
+            title: {text: 'Procent'},
             ticksuffix: '%',
             range: [0, 100]
         },
         xaxis: {
-            title: 'Dyscypliny'
+            title: {text: 'Dyscypliny'}
         },
         showlegend: true,
         legend: {
@@ -297,11 +297,11 @@ const nonNPoints = [
     var layout = {
         barmode: 'stack',
         yaxis: {
-            title: 'Punkty',
+            title: {text: 'Punkty'},
             tickformat: ',.0f'
         },
         xaxis: {
-            title: 'Dyscypliny'
+            title: {text: 'Dyscypliny'}
         },
         showlegend: true,
         legend: {
@@ -344,12 +344,12 @@ const nonNPoints = [
 
     var layout = {
         yaxis: {
-            title: 'Procent publikacji LOW-MONO',
+            title: {text: 'Procent publikacji LOW-MONO'},
             ticksuffix: '%',
             range: [0, 50]
         },
         xaxis: {
-            title: 'Dyscypliny'
+            title: {text: 'Dyscypliny'}
         },
         showlegend: false,
         margin: {

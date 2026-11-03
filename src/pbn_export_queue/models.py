@@ -31,7 +31,33 @@ from pbn_api.exceptions import (
 logger = logging.getLogger(__name__)
 
 
-class PBN_Export_QueueManager(models.Manager):
+class PBN_Export_QueueQuerySet(models.QuerySet):
+    def dla_uczelni(self, uczelnia):
+        """Wpisy kolejki należące do danej uczelni (multi-hosted).
+
+        Uczelnia wysyła do PBN wyłącznie na profil własnej instytucji, więc
+        wpisy innych uczelni są dla niej bezużyteczne — a ich podgląd czy
+        ponowna wysyłka to wyciek między uczelniami.
+
+        - 0 lub 1 uczelnia w systemie: cała kolejka (także legacy ``NULL``)
+          należy do niej — bez filtra,
+        - >1 uczelnia: ściśle ``uczelnia=U``; wpisy ``NULL`` nie dają się
+          przypisać, więc nikt ich tu nie widzi (zostają w adminie),
+        - >1 uczelnia i ``uczelnia is None`` (domena bez mapowania): pusto.
+        """
+        from bpp.models import Uczelnia
+
+        inne = Uczelnia.objects.all()
+        if uczelnia is not None:
+            inne = inne.exclude(pk=uczelnia.pk)
+        if not inne.exists():
+            return self.all()
+        if uczelnia is None:
+            return self.none()
+        return self.filter(uczelnia=uczelnia)
+
+
+class PBN_Export_QueueManager(models.Manager.from_queryset(PBN_Export_QueueQuerySet)):
     def filter_rekord_do_wysylki(self, rekord):
         return self.filter(
             content_type=ContentType.objects.get_for_model(rekord),
@@ -453,6 +479,12 @@ class PBN_Export_Queue(models.Model):
         self.refresh_from_db()
         return True
 
+    @staticmethod
+    def _wiele_uczelni_w_systemie():
+        from bpp.models import Uczelnia
+
+        return Uczelnia.objects.all()[:2].count() > 1
+
     def send_to_pbn(self):
         """:return: SendStatus"""
         self.refresh_from_db()
@@ -463,6 +495,31 @@ class PBN_Export_Queue(models.Model):
         if not self.check_if_record_still_exists():
             return self.error(
                 "Rekord został usunięty nim wysyłka była możliwa.",
+                rodzaj=RodzajBledu.TECHNICZNY,
+            )
+
+        if self.uczelnia_id is None and self._wiele_uczelni_w_systemie():
+            # Wpis sprzed przekazywania uczelni (np. ze scalania autorów,
+            # Rollbar #5359). Przy >1 uczelni nie ma jednoznacznego,
+            # bezpiecznego sposobu ustalenia docelowego PBN-a (zgadnięcie
+            # wysłałoby rekord na profil innej instytucji) — kończymy wpis
+            # czytelnym błędem zamiast MultipleObjectsReturned z warstwy niżej.
+            logger.error(
+                "PBN_Export_Queue pk=%s bez uczelni w instalacji "
+                "wielouczelnianej — nie wysyłam",
+                self.pk,
+            )
+            # Jeden zgrupowany, czytelny item zamiast tracebacku.
+            rollbar.report_message(
+                "Wpis kolejki PBN bez uczelni w instalacji wielouczelnianej",
+                level="warning",
+                extra_data={"pbn_export_queue_pk": self.pk},
+            )
+            return self.error(
+                "Wpis kolejki nie ma przypisanej uczelni, a w systemie jest "
+                "kilka uczelni — nie wiadomo, do którego PBN wysłać rekord. "
+                "Zleć wysyłkę ponownie z panelu właściwej uczelni (np. "
+                "przyciskiem wysyłki do PBN przy rekordzie).",
                 rodzaj=RodzajBledu.TECHNICZNY,
             )
 

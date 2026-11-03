@@ -5,10 +5,12 @@ import socket
 import threading
 import time
 from contextlib import contextmanager
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlunparse
 
 import requests
 from bs4 import BeautifulSoup
+
+from bpp.util.ssrf import ip_is_public
 
 FETCH_TIMEOUT = 15
 
@@ -109,23 +111,9 @@ def _resolve_ips(hostname: str) -> list[str]:
     return [info[4][0] for info in infos]
 
 
-def _ip_is_public(ip: ipaddress._BaseAddress) -> bool:
-    """False dla adresów, na które NIE wolno kierować importerowi:
-    prywatne (10/8, 172.16/12, 192.168/16, fc00::/7, CGNAT), loopback
-    (127/8, ::1), link-local (169.254/16 — w tym metadata cloud
-    169.254.169.254), multicast, zarezerwowane i ``0.0.0.0``.
-    """
-    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
-        # ::ffff:127.0.0.1 i pokrewne — oceniaj po zmapowanym adresie v4.
-        ip = ip.ipv4_mapped
-    return not (
-        ip.is_private
-        or ip.is_loopback
-        or ip.is_link_local
-        or ip.is_reserved
-        or ip.is_multicast
-        or ip.is_unspecified
-    )
+#: Ocena adresu IP wydzielona do ``bpp.util.ssrf`` (wspólna z walidacją
+#: adresów integracji w ``Uczelnia``); stara nazwa zachowana dla tego modułu.
+_ip_is_public = ip_is_public
 
 
 def _safe_resolve(hostname: str | None) -> list[str] | None:
@@ -168,6 +156,69 @@ def _host_is_safe(hostname: str | None) -> bool:
     return _safe_resolve(hostname) is not None
 
 
+#: Komunikat dla użytkownika, gdy URL ma niedozwolony schemat albo port.
+HTTPS_ONLY_MESSAGE = (
+    "Importer pobiera dane wyłącznie przez HTTPS na standardowym porcie 443. "
+    "Podaj adres zaczynający się od „https://” bez numeru portu "
+    "(adresy „http://” bez portu są automatycznie zamieniane na „https://”)."
+)
+
+
+def _is_https_443(parsed) -> bool:
+    """True gdy sparsowany URL to ``https`` na porcie 443 (domyślnym albo
+    jawnym). Niepoprawny port (``:abc``, ``:99999``) → False."""
+    if parsed.scheme != "https":
+        return False
+    try:
+        port = parsed.port
+    except ValueError:
+        return False
+    return port in (None, 443)
+
+
+def _https_only(url: str) -> str | None:
+    """Znormalizuj URL do ``https`` na porcie 443 albo zwróć ``None``.
+
+    * ``https://host/…`` lub ``https://host:443/…`` → bez zmian;
+    * ``http://host/…`` lub ``http://host:80/…`` → ``https://host/…``
+      (wygoda dla wklejanych starych linków);
+    * każdy inny schemat albo port → ``None``.
+    """
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return None
+    if _is_https_443(parsed):
+        return url
+    if parsed.scheme != "http":
+        return None
+    try:
+        port = parsed.port
+    except ValueError:
+        return None
+    if port not in (None, 80) or not parsed.hostname:
+        return None
+    host = parsed.hostname
+    if ":" in host:
+        host = f"[{host}]"  # IPv6 — przywróć nawiasy
+    netloc = host
+    if "@" in parsed.netloc:
+        netloc = parsed.netloc.rsplit("@", 1)[0] + "@" + host
+    return urlunparse(parsed._replace(scheme="https", netloc=netloc))
+
+
+def url_transport_error(url: str) -> str | None:
+    """Czytelny komunikat, gdy URL (z jawnym schematem) nie da się sprowadzić
+    do ``https`` na porcie 443; ``None`` gdy schemat/port są w porządku albo
+    URL nie ma schematu (o reszcie decyduje zwykła walidacja)."""
+    url = (url or "").strip()
+    if "://" not in url:
+        return None
+    if _https_only(url) is None:
+        return HTTPS_ONLY_MESSAGE
+    return None
+
+
 def safe_get(
     url: str,
     *,
@@ -179,8 +230,10 @@ def safe_get(
     Waliduje host przed każdym requestem i po każdym przekierowaniu (śledzenie
     RĘCZNE, ``allow_redirects=False``), więc redirect ``https://public →
     http://127.0.0.1`` nie omija guardu. ``None`` gdy: host nie-publiczny,
-    schemat inny niż http/https, błąd sieci, odpowiedź 4xx/5xx albo
-    przekroczony limit przekierowań.
+    schemat/port inny niż ``https`` na 443 (na dowolnym hopie — bez
+    downgrade'u do http), błąd sieci, odpowiedź 4xx/5xx albo przekroczony
+    limit przekierowań. Przepisanie ``http://`` → ``https://`` robi wyłącznie
+    walidacja wejścia (``_https_only``), nie ten klient.
 
     Utwardzenia poza samą walidacją hosta:
 
@@ -201,7 +254,9 @@ def safe_get(
     try:
         for _ in range(MAX_REDIRECTS + 1):
             parsed = urlparse(current)
-            if parsed.scheme not in ("http", "https"):
+            # Każdy hop (także przekierowanie) wyłącznie https na porcie 443
+            # — bez downgrade'u do http i bez innych portów.
+            if not _is_https_443(parsed):
                 return None
             ips = _safe_resolve(parsed.hostname)
             if ips is None:
@@ -312,8 +367,10 @@ def _validate_url(url: str) -> str | None:
     if not parsed.scheme or not parsed.netloc:
         return None
 
-    if parsed.scheme not in ("http", "https"):
+    url = _https_only(url)
+    if url is None:
         return None
+    parsed = urlparse(url)
 
     if not _host_is_safe(parsed.hostname):
         return None

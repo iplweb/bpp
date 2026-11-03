@@ -924,8 +924,8 @@
 <script src="{% static 'plotly.js/dist/plotly-locale-pl.js' %}"></script>
 
 <script>
-// Set Polish locale as default for Plotly
-Plotly.setPlotConfig({locale: 'pl'});
+// Polski locale; bez przycisku "Upload to Cloud" (plotly.js 4.x wysyła wykres na cloud.plotly.com)
+Plotly.setPlotConfig({locale: 'pl', showSendToCloud: false});
 
 // Inicjalizacja Foundation
 $(document).foundation();
@@ -1184,8 +1184,7 @@ $(document).ready(function() {
                 ],
                 showscale: true,
                 colorbar: {
-                    title: 'PKDaut/slot',
-                    titleside: 'right',
+                    title: {text: 'PKDaut/slot', side: 'right'},
                     thickness: 20,
                     len: 0.7
                 },
@@ -1213,13 +1212,13 @@ $(document).ready(function() {
                 }
             },
             xaxis: {
-                title: 'Slot nazbierany',
+                title: {text: 'Slot nazbierany'},
                 range: [0, 4.2],
                 dtick: 0.5,
                 gridcolor: '#e0e0e0'
             },
             yaxis: {
-                title: 'Punkty nazbierane (PKDaut)',
+                title: {text: 'Punkty nazbierane (PKDaut)'},
                 range: [0, 820],
                 dtick: 100,
                 gridcolor: '#e0e0e0'
@@ -1294,8 +1293,7 @@ $(document).ready(function() {
                 [1.0, '#ff0844']     // Hot red
             ],
             colorbar: {
-                title: 'Liczba<br>autorów',
-                titleside: 'right',
+                title: {text: 'Liczba<br>autorów', side: 'right'},
                 thickness: 20,
                 len: 0.7
             },
@@ -1320,13 +1318,13 @@ $(document).ready(function() {
                 }
             },
             xaxis: {
-                title: 'Slot nazbierany',
+                title: {text: 'Slot nazbierany'},
                 range: [0, 4.2],
                 dtick: 0.5,
                 gridcolor: '#e0e0e0'
             },
             yaxis: {
-                title: 'Punkty nazbierane (PKDaut)',
+                title: {text: 'Punkty nazbierane (PKDaut)'},
                 range: [0, 820],
                 dtick: 100,
                 gridcolor: '#e0e0e0'
@@ -1384,8 +1382,7 @@ $(document).ready(function() {
                 [1.0, '#ff0844']     // Hot red
             ],
             colorbar: {
-                title: 'Gęstość',
-                titleside: 'right',
+                title: {text: 'Gęstość', side: 'right'},
                 thickness: 20,
                 len: 0.7
             },
@@ -1418,13 +1415,13 @@ $(document).ready(function() {
                 }
             },
             xaxis: {
-                title: 'Slot nazbierany',
+                title: {text: 'Slot nazbierany'},
                 range: [0, 4.2],
                 dtick: 0.5,
                 gridcolor: '#e0e0e0'
             },
             yaxis: {
-                title: 'Punkty nazbierane (PKDaut)',
+                title: {text: 'Punkty nazbierane (PKDaut)'},
                 range: [0, 820],
                 dtick: 100,
                 gridcolor: '#e0e0e0'
@@ -1496,8 +1493,7 @@ $(document).ready(function() {
                 ],
                 showscale: true,
                 colorbar: {
-                    title: 'PKDaut/slot',
-                    titleside: 'right',
+                    title: {text: 'PKDaut/slot', side: 'right'},
                     thickness: 20,
                     len: 0.7
                 },
@@ -1527,13 +1523,13 @@ $(document).ready(function() {
                 }
             },
             xaxis: {
-                title: 'Slot nazbierany',
+                title: {text: 'Slot nazbierany'},
                 range: [0, 4.2],
                 dtick: 0.5,
                 gridcolor: '#e0e0e0'
             },
             yaxis: {
-                title: 'Punkty nazbierane (PKDaut)',
+                title: {text: 'Punkty nazbierane (PKDaut)'},
                 range: [0, 820],
                 dtick: 100,
                 gridcolor: '#e0e0e0'
@@ -1656,8 +1652,7 @@ $(document).ready(function() {
                 ],
                 showscale: true,
                 colorbar: {
-                    title: 'PKDaut/slot',
-                    titleside: 'right',
+                    title: {text: 'PKDaut/slot', side: 'right'},
                     thickness: 20,
                     len: 0.7
                 },
@@ -1686,13 +1681,13 @@ $(document).ready(function() {
                 }
             },
             xaxis: {
-                title: 'Slot nazbierany',
+                title: {text: 'Slot nazbierany'},
                 range: [0, 4.2],
                 dtick: 0.5,
                 gridcolor: '#e0e0e0'
             },
             yaxis: {
-                title: 'Punkty nazbierane (PKDaut)',
+                title: {text: 'Punkty nazbierane (PKDaut)'},
                 range: [0, 820],
                 dtick: 100,
                 gridcolor: '#e0e0e0'
@@ -1782,8 +1777,7 @@ $(document).ready(function() {
                 ],
                 showscale: true,
                 colorbar: {
-                    title: 'PKDaut/slot',
-                    titleside: 'right',
+                    title: {text: 'PKDaut/slot', side: 'right'},
                     thickness: 20,
                     len: 0.7
                 },
@@ -1812,13 +1806,13 @@ $(document).ready(function() {
                 }
             },
             xaxis: {
-                title: 'Procent wypełnienia slotów (%)',
+                title: {text: 'Procent wypełnienia slotów (%)'},
                 range: [0, 105],
                 dtick: 10,
                 gridcolor: '#e0e0e0'
             },
             yaxis: {
-                title: 'Średnia PKDaut/slot',
+                title: {text: 'Średnia PKDaut/slot'},
                 range: [0, 250],
                 dtick: 25,
                 gridcolor: '#e0e0e0'
@@ -1933,8 +1927,7 @@ $(document).ready(function() {
                 [1.0, '#ff0844']     // Hot red
             ],
             colorbar: {
-                title: 'Liczba<br>autorów',
-                titleside: 'right',
+                title: {text: 'Liczba<br>autorów', side: 'right'},
                 thickness: 20,
                 len: 0.7
             },
@@ -1959,13 +1952,13 @@ $(document).ready(function() {
                 }
             },
             xaxis: {
-                title: 'Procent wypełnienia slotów (%)',
+                title: {text: 'Procent wypełnienia slotów (%)'},
                 range: [0, 105],
                 dtick: 10,
                 gridcolor: '#e0e0e0'
             },
             yaxis: {
-                title: 'Średnia PKDaut/slot',
+                title: {text: 'Średnia PKDaut/slot'},
                 range: [0, 250],
                 dtick: 25,
                 gridcolor: '#e0e0e0'

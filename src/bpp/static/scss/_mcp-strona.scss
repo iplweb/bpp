@@ -13,9 +13,10 @@
   font-weight: bold;
 }
 
-.mcp-strona__bez-konta {
-  max-width: 48rem;
-
+// Panele (callouty) na pełną szerokość, jak sekcje pod nimi — węższy
+// panel odstawał od reszty strony. Limit 48rem mają tylko akapity tekstu.
+.mcp-strona__bez-konta,
+.mcp-strona__certyfikat {
   p:last-child {
     margin-bottom: 0;
   }
@@ -36,8 +37,33 @@
   background-color: rgba($primary-color, 0.06);
 }
 
+// Kopiuje całe pole — bez przycisku. Osobny przycisk albo krzyczał
+// (zielony, pod ramką), albo ginął (ikonka w rogu); klikalne pole nie ma
+// tego problemu, a podpowiedź pokazuje się przy najechaniu.
 .mcp-strona__kopiowalny {
+  position: relative;
   margin-bottom: 1rem;
+  cursor: pointer;
+
+  &:hover .mcp-strona__kod,
+  &:focus .mcp-strona__kod {
+    border-color: $primary-color;
+    background-color: darken($code-background, 3%);
+  }
+
+  &:hover .mcp-strona__podpowiedz,
+  &:focus .mcp-strona__podpowiedz {
+    opacity: 1;
+  }
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible .mcp-strona__kod {
+    outline: 2px solid $primary-color;
+    outline-offset: 1px;
+  }
 }
 
 .mcp-strona__kod {
@@ -49,21 +75,46 @@
   font-size: 0.875rem;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
-.mcp-strona__akcje {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
+// Podpowiedź w rogu pola — tekst, nie przycisk: nie da się w nią
+// „nie trafić”, bo klikalne jest i tak całe pole.
+.mcp-strona__podpowiedz {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.75rem;
+  color: $dark-gray;
+  font-size: 0.75rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
 
-  .button {
-    margin-bottom: 0;
+  // Bez kursora nie ma najechania, a i miejsca mniej — podpowiedź znika.
+  @media (hover: none) {
+    display: none;
   }
 }
 
+// Po skopiowaniu pole na chwilę zielenieje (klasa dokładana z JS).
+.mcp-strona__kopiowalny--skopiowano .mcp-strona__kod {
+  border-color: $success-color;
+}
+
 .mcp-strona__komunikat {
+  display: block;
+  min-height: 1.25rem;
+  margin-top: 0.25rem;
   font-size: 0.875rem;
+  color: $dark-gray;
+}
+
+.mcp-strona__komunikat--ok {
+  color: $success-color;
+}
+
+.mcp-strona__komunikat--blad {
+  color: $alert-color;
 }
 
 .mcp-strona__tabela {

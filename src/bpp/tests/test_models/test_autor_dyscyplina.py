@@ -404,3 +404,38 @@ def test_autor_dyscyplina_cacher_skasowanie(
     # denorm_dirtyinstance_unique — identyczny (content_type_id, object_id,
     # func_name) jest wstawiany raz. Wczesniej duplikat dawal 3 wiersze.
     assert DirtyInstance.objects.count() == 2
+
+
+@pytest.mark.django_db
+def test_autor_dyscyplina_str_usuniety_autor_bez_raportu(dyscyplina1, mocker):
+    """Rollbar #5357: ``__str__`` dla przypisania, którego autor został już
+    usunięty (np. przy kaskadowym kasowaniu), nie raportuje wyjątku."""
+    zaloguj = mocker.patch("bpp.models.dyscyplina_naukowa.zaloguj_polkniety_wyjatek")
+    ad = Autor_Dyscyplina(autor_id=999999999, rok=2022, dyscyplina_naukowa=dyscyplina1)
+
+    tekst = str(ad)
+
+    assert "999999999" in tekst
+    assert "2022" in tekst
+    assert dyscyplina1.nazwa in tekst
+    zaloguj.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_autor_dyscyplina_str_usunieta_dyscyplina_bez_raportu(
+    autor_jan_kowalski, mocker
+):
+    zaloguj = mocker.patch("bpp.models.dyscyplina_naukowa.zaloguj_polkniety_wyjatek")
+    ad = Autor_Dyscyplina(
+        autor=autor_jan_kowalski,
+        rok=2022,
+        dyscyplina_naukowa_id=999999998,
+        subdyscyplina_naukowa_id=999999997,
+    )
+
+    tekst = str(ad)
+
+    assert "Kowalski" in tekst
+    assert "999999998" in tekst
+    assert "999999997" in tekst
+    zaloguj.assert_not_called()

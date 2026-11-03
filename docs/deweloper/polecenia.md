@@ -108,6 +108,56 @@ Worktree działa out-of-the-box — testy używają `testcontainers_bpp`
 w worktree, pamiętaj że porty 5432/6379/8000 są współdzielone z
 innymi worktree — odpalaj dev-stack tylko w jednym na raz.
 
+## Testowanie pull requestów
+
+Do ręcznego przeklikania PR-a z GitHuba (cudzego albo własnego z innej
+maszyny) nie przełączaj gałęzi w głównym checkoucie — użyj:
+
+```bash
+make pr PR=856                      # pobierz PR, przygotuj worktree, uruchom run-site
+make pr PR=856 ARGS="--no-celery"   # dodatkowe flagi dla `run-site run`
+make pr PR=856 DUMP=example         # na najnowszym backupie z ~/Backups/*example*/
+make pr PR=856 DUMP=~/x.sql.gz      # ... albo na konkretnym pliku dumpa
+make pr PR=856 DUMP=none            # goła baza mimo ustawionego BPP_PR_DUMP
+make pr PR=856 NO_RUN=1             # tylko przygotuj worktree, bez run-site
+make pr-list                        # worktree PR-ów, backupy do DUMP=, otwarte PR-y
+make pr-clean PR=856                # usuń worktree i gałąź pr-856 [FORCE=1]
+```
+
+Co robi `make pr` (`bin/pr-worktree.sh`):
+
+1. `git fetch origin pull/<N>/head` — działa też dla PR-ów z forków.
+2. Tworzy worktree `~/Programowanie/bpp-pr-<N>` na gałęzi `pr-<N>`
+   (siostra głównego checkoutu, zgodnie z regułą o worktree). Gdy worktree
+   już istnieje, resetuje go do najnowszego commita PR-a — czyli ponowne
+   `make pr PR=<N>` dociąga poprawki autora. Odmawia, jeśli w worktree są
+   lokalne zmiany.
+3. Pokazuje tytuł PR-a (przez `gh`, jeśli jest), listę zmienionych plików
+   względem `dev` i ostrzega, gdy PR zawiera migracje.
+4. `node_modules` klonuje z głównego checkoutu (APFS `cp -c`, bez kosztu
+   miejsca), o ile PR nie zmienia `package.json`/`yarn.lock`; inaczej
+   `make assets` zrobi `yarn install`.
+5. `uv sync --frozen` — każdy worktree ma własne `.venv` (wspólne `.venv`
+   przez symlink psuje editable install głównego checkoutu).
+6. `uv run run-site run` — losowe porty i świeże testcontainers, więc
+   można to odpalić obok własnego dev-stacka, a baza po migracjach PR-a
+   nie przecieka nigdzie dalej. `make assets` robi hook run-site.
+
+**Dane do testowania.** Bez `DUMP` run-site stawia gołą bazę z baseline.
+`DUMP=<host>` bierze najnowszy `db-backup-*` (`.tar.gz` z `pg_dump -Fd`,
+`.pg_dump`, `.sql.gz`…) z katalogu `~/Backups/*<host>*/` — run-site sam
+rozpakowuje te formaty i po odtworzeniu stosuje migracje (także te z PR-a),
+więc przy okazji widać, czy przechodzą na prawdziwych danych. Żeby zawsze
+startować z danymi, ustaw raz w `~/.zshrc` np. `export BPP_PR_DUMP=example`
+(mały, w miarę świeży backup); `DUMP=none` wymusza wtedy gołą bazę.
+Inny katalog backupów: `BPP_BACKUPS_DIR`.
+
+Celowo **bez** `--reuse`: kontenery `--reuse` mają stałe nazwy, więc
+schemat po migracjach jednego PR-a trafiłby do następnego.
+
+Testy dotknięte przez PR odpalasz zwyczajnie w jego worktree, np.
+`cd ~/Programowanie/bpp-pr-856 && uv run pytest src/integration_tests/...`.
+
 ## Changelog Management
 
 - `towncrier create <name>.feature.rst` - Create feature changelog entry (in Polish)

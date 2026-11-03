@@ -338,3 +338,56 @@ def test_handle_backfill_przy_aktualizacji_starego_rekordu(fernet_key):
         )
 
     assert SentToDSpace.objects.get_for_rec(rec, u).dspace_handle == "11089/backfilled"
+
+
+@pytest.mark.django_db
+def test_eksport_patentu_do_kolekcji_z_mapowania(fernet_key):
+    from bpp.models import Charakter_Formalny, Jezyk
+    from bpp.models.patent import _Patent_PropertyCache
+    from dspace_api.eksport import eksportuj_rekord
+    from dspace_api.models import Mapowanie_DSpace
+
+    # Patent bierze charakter/język przez cache na poziomie modułu — wyczyść
+    # go, żeby nie trzymał obiektów z innego testu.
+    _Patent_PropertyCache.__dict__.pop("charakter_formalny", None)
+    _Patent_PropertyCache.__dict__.pop("jezyk", None)
+    charakter = Charakter_Formalny.objects.filter(skrot="PAT").first()
+    if charakter is None:
+        charakter = baker.make("bpp.Charakter_Formalny", skrot="PAT")
+    if not Jezyk.objects.filter(nazwa__icontains="polski").exists():
+        baker.make("bpp.Jezyk", nazwa="polski")
+
+    u = baker.make("bpp.Uczelnia", dspace_aktywny=True)
+    u.dspace_api_endpoint = "https://repo/server/api"
+    u.save()
+    j = baker.make("bpp.Jednostka", uczelnia=u)
+    rec = baker.make(
+        "bpp.Patent",
+        tytul_oryginalny="Wynalazek",
+        rok=2023,
+        numer_prawa_wylacznego="PL999",
+    )
+    baker.make("bpp.Patent_Autor", rekord=rec, jednostka=j, kolejnosc=0)
+    Mapowanie_DSpace.objects.create(
+        uczelnia=u,
+        charakter_formalny=charakter,
+        collection_uuid="88888888-8888-8888-8888-888888888888",
+    )
+
+    with mock.patch("dspace_api.eksport.DSpaceClient") as ClientCls:
+        client = ClientCls.return_value
+        client.create_item.return_value = (
+            "99999999-9999-9999-9999-999999999999",
+            "11089/99",
+        )
+        wyniki = eksportuj_rekord(rec)
+
+    _Patent_PropertyCache.__dict__.pop("charakter_formalny", None)
+    _Patent_PropertyCache.__dict__.pop("jezyk", None)
+
+    assert [w["status"] for w in wyniki] == ["wyslano"]
+    args = client.create_item.call_args.args
+    assert "88888888-8888-8888-8888-888888888888" in [str(a) for a in args]
+    dc = next(a for a in args if isinstance(a, dict))
+    assert dc["dc.type"][0]["value"] == "patent"
+    assert dc["dc.identifier"][0]["value"] == "PL999"

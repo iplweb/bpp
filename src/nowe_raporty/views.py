@@ -24,6 +24,7 @@ from .docx_export import as_docx
 from .forms import form_class_dla
 from .models import DefinicjaRaportu
 from .poziomy import POZIOMY
+from .sortowanie import pola_dla
 
 
 def zastosuj_filtry_zaawansowane(queryset, params):
@@ -154,6 +155,14 @@ class GenerujRaportBase(DetailView):
                 }
             )
 
+            # Wariant sortowania z formularza (FD467). Wołamy setter TYLKO dla
+            # wariantu nadpisującego — dla domyślnego zostawiamy ``ColumnOrder``
+            # tabeli nietknięty, żeby instalacje, które go sobie przestawiły,
+            # zachowały swoją kolejność.
+            pola_sortowania = pola_dla(self.request.GET.get("sortowanie"))
+            if pola_sortowania:
+                report.set_order_by(*pola_sortowania)
+
         kwargs["report"] = report
         kwargs["od_roku"] = self.kwargs["od_roku"]
         kwargs["do_roku"] = self.kwargs["do_roku"]
@@ -188,11 +197,14 @@ class GenerujRaportBase(DetailView):
             as_attachment=True, filename=filename
         )
 
+        from bpp.util import sanitize_tablib_dataset
+
         xlsx = as_tablib_databook(report, parent_context)
 
         # Patch dla błędu "Invlaid character / found in sheet title"
         for sheet in xlsx.sheets():
             sheet.title = sheet.title.replace("/", "-")
+            sanitize_tablib_dataset(sheet)
 
         data = xlsx.export(TableExport.XLSX)
         response["Content-Length"] = len(data)
@@ -257,18 +269,29 @@ class RaportFormView(RaportDostepMixin, FormDefaultsMixin, FormView):
         initial = super().get_initial()
         cfg = POZIOMY[self.definicja.poziom]
         if cfg.ma_pk and not initial.get("obiekt"):
-            # #438: liczymy z zawężonego querysetu poziomu (dla „wydziału" =
+            # #438: pracujemy na zawężonym querysecie poziomu (dla „wydziału" =
             # widoczne korzenie), nie ``cfg.model.objects.all()`` — inaczej
             # instalacja z 1 wydziałem, ale wieloma jednostkami, gubiła
             # auto-preselekcję ``obiekt`` (count liczył WSZYSTKIE jednostki).
             queryset = cfg.obiekt_queryset()
-            if queryset.count() == 1:
+
+            # Wstępny wybór z querystringu — np. „Raport szczegółowy" ze
+            # strony autora przekazuje ?obiekt=<pk>, dzięki czemu pole Select2
+            # od razu pokazuje wybrany obiekt (autora/jednostkę/wydział).
+            # Szukamy w ``queryset``, nie w ``cfg.model`` — pk podrzucony w URL
+            # spoza poziomu nie ma prawa przemycić obiektu, którego formularz
+            # i tak by nie przyjął (ta sama zasada co w ``get_object``).
+            pk = self.request.GET.get("obiekt")
+            if pk:
+                initial["obiekt"] = queryset.filter(pk=pk).first()
+
+            if not initial.get("obiekt") and queryset.count() == 1:
                 initial["obiekt"] = queryset.first()
         return initial
 
     def form_valid(self, form):
         return _redirect_do_generuj(
-            form.cleaned_data, getattr(form, "POLA_ZAAWANSOWANE", [])
+            form.cleaned_data, getattr(form, "POLA_PRZEKAZYWANE", [])
         )
 
     def get_context_data(self, **kwargs):

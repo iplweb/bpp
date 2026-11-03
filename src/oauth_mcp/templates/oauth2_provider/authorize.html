@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {# nadpisuje domyślny szablon zgody django-oauth-toolkit #}
-{% load i18n %}
+{% load i18n oauth_mcp_tags %}
 {% block content %}
 <div class="row">
   <div class="column">
@@ -9,6 +9,17 @@
     <p>
       {% blocktrans with name=application.name %}Aplikacja <strong>{{ name }}</strong>
       prosi o <strong>ODCZYT</strong> danych BPP w Twoim imieniu.{% endblocktrans %}
+    </p>
+    <p>
+      {% trans "Adres przekierowania (dokąd trafi autoryzacja):" %}
+      <strong>{{ redirect_uri|host_z_uri|default:"?" }}</strong>
+    </p>
+    <p class="help-text">
+      {% blocktrans trimmed %}
+        Uwaga: nazwa pochodzi od aplikacji klienckiej, która sama się
+        zarejestrowała — BPP jej nie weryfikuje. Zezwól tylko wtedy, gdy
+        rozpoznajesz powyższy adres.
+      {% endblocktrans %}
     </p>
     <p>{% trans "Zakres:" %}</p>
     <ul>

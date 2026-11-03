@@ -1,8 +1,13 @@
+import os
+
 from django.core.exceptions import ImproperlyConfigured
 from django_minify_html.middleware import MinifyHtmlMiddleware
 
+from .altcha_key_guard import altcha_klucz_niebezpieczny_placeholder
 from .base import *  # noqa
 from .base import (  # noqa
+    ALTCHA_HMAC_KEY,
+    ALTCHA_HMAC_KEY_UNSET,
     DJANGO_BPP_ENABLE_TEST_CONFIGURATION,
     DJANGO_BPP_HOSTNAMES,
     INSTALLED_APPS,
@@ -12,19 +17,36 @@ from .base import (  # noqa
     ROLLBAR,
     SECRET_KEY,
     SECRET_KEY_UNSET,
+    ZGLOS_CAPTCHA_ENABLED,
     env,
 )
-from .secret_key_guard import secret_key_niebezpieczny_placeholder
+from .secret_key_guard import secret_key_niebezpieczny_placeholder, tryb_buildu
 
 # Fail-closed: produkcja NIE wstaje z placeholderem SECRET_KEY (patrz
 # secret_key_guard). Odpala się przy imporcie ustawień, więc gate'uje web,
 # celery i migrate — nie tylko komendy z system-checkami.
-if secret_key_niebezpieczny_placeholder(SECRET_KEY, unset_sentinel=SECRET_KEY_UNSET):
+if secret_key_niebezpieczny_placeholder(
+    SECRET_KEY,
+    unset_sentinel=SECRET_KEY_UNSET,
+    build_stage=tryb_buildu(os.environ),
+):
     raise ImproperlyConfigured(
         "DJANGO_BPP_SECRET_KEY nie jest ustawiony lub to placeholder — "
         "produkcja nie wystartuje z publicznie znanym kluczem (ryzyko "
         "forgowania sesji i tokenów resetu hasła). Ustaw realny klucz "
         "(auto-gen w bpp-deploy; ręcznie: `openssl rand -hex 50`)."
+    )
+
+# Fail-closed: włączona CAPTCHA z publicznie znanym kluczem HMAC nie chroni
+# formularza — produkcja w takiej konfiguracji nie wstaje. Przy wyłączonej
+# CAPTCHA (domyślnie, także w buildzie obrazu) klucz nie jest używany.
+if ZGLOS_CAPTCHA_ENABLED and altcha_klucz_niebezpieczny_placeholder(
+    ALTCHA_HMAC_KEY, unset_sentinel=ALTCHA_HMAC_KEY_UNSET
+):
+    raise ImproperlyConfigured(
+        "ZGLOS_CAPTCHA_ENABLED jest włączone, ale ALTCHA_HMAC_KEY nie jest "
+        "ustawiony lub to placeholder. Ustaw realny klucz (auto-gen "
+        "w bpp-deploy; ręcznie: `openssl rand -hex 32`) albo wyłącz CAPTCHA."
     )
 
 DEBUG = False

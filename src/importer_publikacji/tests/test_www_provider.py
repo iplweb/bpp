@@ -70,9 +70,9 @@ def test_validate_url_invalid():
     assert _validate_url("ftp://example.com") is None
 
 
-def test_validate_url_http():
+def test_validate_url_http_upgraded_to_https():
     result = _validate_url("http://example.com/article")
-    assert result == "http://example.com/article"
+    assert result == "https://example.com/article"
 
 
 # --- validate_identifier (provider-level) ---

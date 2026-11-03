@@ -25,9 +25,11 @@ from bpp.views.admin import (
 )
 from bpp.views.global_nav import global_nav_redir
 from bpp.views.mymultiseek import (
+    BppMultiseekSaveForm,
     MultiseekToDjangoQLView,
     MyMultiseekExport,
     MyMultiseekResults,
+    bpp_load_form,
     bpp_remove_by_hand,
     bpp_remove_from_removed_by_hand,
 )
@@ -35,6 +37,13 @@ from bpp.views.sentry_tester import (
     test_403_view,
     test_500_view,
     test_exception_view,
+    tylko_superuser,
+)
+from django_bpp.freshdesk import widget_token_view
+from django_bpp.grappelli_lookup import (
+    BppAutocompleteLookup,
+    BppM2MLookup,
+    BppRelatedLookup,
 )
 from django_bpp.health import health_check
 from django_bpp.views import HTMXAwareLoginView
@@ -62,6 +71,11 @@ def protected_media_serve(request, path, document_root=None):
 
 urlpatterns = (
     [
+        path(  # Krok 3 kreatora (PBN) — BPP-owy widok kroku silnika „pbn",
+            # przed include silnika, żeby przykryć generyczny widok (FD#499)
+            "setup/step/pbn/",
+            include("bpp_setup_wizard.urls", namespace="bpp_setup_wizard"),
+        ),
         path(  # Setup wizard URLs (engine from django-first-run-wizard;
             "setup/",
             include("first_run_wizard.urls", namespace="first_run_wizard"),
@@ -70,10 +84,12 @@ urlpatterns = (
         path("", include("oauth_mcp.urls")),
         path("mcp/", include("mcp_server.urls", namespace="mcp_server")),
         url(r"^favicon\.ico$", cache_page(60 * 60)(favicon)),
-        path("test_403/", login_required(test_403_view)),
-        path("test_500/", login_required(test_500_view)),
-        path("test_exception/", login_required(test_exception_view)),
-        path("tinymce/", include("tinymce.urls")),
+        path("test_403/", tylko_superuser(test_403_view)),
+        path("test_500/", tylko_superuser(test_500_view)),
+        path("test_exception/", tylko_superuser(test_exception_view)),
+        # tinymce.urls (compressor/linklist/filebrowser) celowo NIE jest
+        # montowane: widget HTMLField ładuje TinyMCE ze static, a
+        # TINYMCE_COMPRESSOR/TINYMCE_FILEBROWSER są wyłączone.
         url(
             # Auth (redaktor + POST/CSRF) egzekwuje WprowadzanieDanychRequiredMixin
             # w samym TozView — bez owijki login_required (dawniej GET-mutacja).
@@ -340,6 +356,18 @@ urlpatterns = (
             ),
             name="multiseek-export",
         ),
+        # Nadpisania upstreamowych load_form/save_form (kontrola właściciela
+        # zapisanego formularza) — MUSZĄ być PRZED include("multiseek.urls").
+        url(
+            r"^multiseek/load_form/(?P<search_form_pk>\d+)$",
+            bpp_load_form,
+            name="bpp-multiseek-load-form",
+        ),
+        url(
+            r"^multiseek/save_form/$",
+            BppMultiseekSaveForm.as_view(registry=settings.MULTISEEK_REGISTRY),
+            name="bpp-multiseek-save-form",
+        ),
         url(
             r"^multiseek/",
             include(("multiseek.urls", "multiseek"), namespace="multiseek"),
@@ -364,9 +392,34 @@ urlpatterns = (
             bpp_remove_from_removed_by_hand,
             name="remove_from_removed_results",
         ),
-        url(r"^admin_tools/", include("admin_tools.urls")),
+        # Z admin_tools montujemy tylko dashboard (zapis preferencji). Trasy
+        # zakładek menu (admin_tools.menu.urls) nie są podpięte — BPP nie
+        # używa zakładek (patrz django_bpp.menu.CustomMenu).
+        url(r"^admin_tools/dashboard/", include("admin_tools.dashboard.urls")),
+        # Lookupy grappelli z kontrolą uprawnień — muszą być PRZED
+        # ``grappelli.urls``, żeby przesłonić oryginalne widoki.
+        url(
+            r"^grappelli/lookup/related/$",
+            BppRelatedLookup.as_view(),
+            name="grp_related_lookup",
+        ),
+        url(
+            r"^grappelli/lookup/m2m/$",
+            BppM2MLookup.as_view(),
+            name="grp_m2m_lookup",
+        ),
+        url(
+            r"^grappelli/lookup/autocomplete/$",
+            BppAutocompleteLookup.as_view(),
+            name="grp_autocomplete_lookup",
+        ),
         url(r"^grappelli/", include("grappelli.urls")),
         path("health/", health_check, name="health"),
+        path(
+            "freshdesk/widget-token/",
+            widget_token_view,
+            name="freshdesk_widget_token",
+        ),
         url(r"^$", root, name="root"),
         url(
             r"^messages/",

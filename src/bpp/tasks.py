@@ -1,6 +1,7 @@
 from datetime import timedelta
 from pathlib import Path
 
+from celery import shared_task
 from celery.utils.log import get_task_logger
 from celery_singleton import Singleton
 from django.conf import settings
@@ -276,3 +277,102 @@ def zaktualizuj_liczbe_cytowan():
     odpytałyby WoS API zdublowanie. Lock w Redisie zapewnia że tylko jeden
     worker wykonuje task naraz (cluster-wide)."""
     _zaktualizuj_liczbe_cytowan()
+
+
+#: Maksymalna liczba eksportowanych rekordów. Zabezpiecza przed OOM przy
+#: autorach z gigantyczną liczbą prac (eksport materializuje instancje
+#: konkretnych modeli, więc jest N+1 — twardy limit jest tańszy niż ryzyko).
+MAKS_EKSPORT_AUTORA = 5000
+
+
+#: Komunikat pokazywany publicznie, gdy generowanie eksportu się nie powiedzie.
+#: Szczegóły wyjątku trafiają wyłącznie do logu i Rollbara.
+KOMUNIKAT_BLEDU_EKSPORTU_AUTORA = (
+    "Nie udało się wygenerować pliku. Spróbuj ponownie później."
+)
+
+
+def _zbuduj_tresc_eksportu_autora(autor, format: str, ukryte_statusy=()) -> str:
+    """Zbuduj treść eksportu (do ``MAKS_EKSPORT_AUTORA`` prac; BibTeX dostaje
+    notkę o obcięciu).
+
+    ``ukryte_statusy`` — statusy korekty wykluczane z eksportu (zakres
+    widoczności ustalony przy starcie zadania, patrz ``AutorEksportTask``).
+    """
+    from bpp.export.bibtex import export_to_bibtex
+    from bpp.export.ris import export_to_ris
+    from bpp.models import Rekord
+
+    # Pełny dorobek autora, bez zawężania do uczelni — celowo, spójnie
+    # z profilem autora (zgłoszenie #930).
+    qs = Rekord.objects.prace_autora(autor)
+    if ukryte_statusy:
+        qs = qs.exclude(status_korekty_id__in=list(ukryte_statusy))
+    wszystkich = qs.count()
+    oryginaly = [r.original for r in qs[:MAKS_EKSPORT_AUTORA]]
+
+    if format == "ris":
+        # RIS jest formatem czysto liniowym — brak miejsca na komentarz o
+        # obcięciu, polegamy wyłącznie na samym limicie.
+        return export_to_ris(oryginaly)
+
+    tekst = export_to_bibtex(oryginaly)
+    if wszystkich > MAKS_EKSPORT_AUTORA:
+        tekst = (
+            f"% Wyeksportowano pierwsze {len(oryginaly)} z {wszystkich} prac "
+            f"(limit {MAKS_EKSPORT_AUTORA}).\n\n" + tekst
+        )
+    return tekst
+
+
+@shared_task(bind=True)
+def generuj_eksport_autora(self, task_id: str):
+    """Zbuduj plik eksportu BibTeX/RIS dla autora i zapisz go w zadaniu.
+
+    Args:
+        task_id: UUID rekordu ``AutorEksportTask`` (jako str).
+    """
+    from django.core.files.base import ContentFile
+    from django.utils import timezone
+
+    from bpp.models import AutorEksportTask
+
+    task = AutorEksportTask.objects.get(pk=task_id)
+    task.status = "running"
+    task.started_at = timezone.now()
+    task.celery_task_id = self.request.id or ""
+    task.save()
+
+    try:
+        tekst = _zbuduj_tresc_eksportu_autora(
+            task.autor, task.format, task.ukryte_statusy
+        )
+        task.result_file.save(task.nazwa_pliku, ContentFile(tekst.encode("utf-8")))
+        task.status = "completed"
+        task.completed_at = timezone.now()
+        task.save()
+        return {"status": "success", "task_id": str(task_id)}
+    except Exception:
+        # Status zadania jest publiczny (UUID) — nie pokazujemy treści wyjątku.
+        # Szczegóły: log tutaj, Rollbar przez sygnał ``task_failure``
+        # (``django_bpp.celery_tasks``) po ponownym zgłoszeniu wyjątku niżej.
+        logger.exception("Błąd generowania eksportu autora (zadanie %s)", task_id)
+        task.status = "failed"
+        task.error_message = KOMUNIKAT_BLEDU_EKSPORTU_AUTORA
+        task.completed_at = timezone.now()
+        task.save()
+        raise
+
+
+@shared_task
+def usun_stare_eksporty_autora():
+    """Usuń rekordy AutorEksportTask i ich pliki starsze niż 7 dni."""
+    from bpp.models import AutorEksportTask
+    from bpp.util import remove_old_objects
+
+    return remove_old_objects(
+        AutorEksportTask,
+        file_field="result_file",
+        field_name="created_at",
+        days=7,
+    )

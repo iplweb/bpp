@@ -12,6 +12,7 @@ from api_v1.viewsets.common import (
     UkryjNieEksportowaneMixin,
     UkryjStatusyKorektyMixin,
     UkryjStatusyKorektyRekorduMixin,
+    ZawezDoUczelniMixin,
 )
 from bpp.models import (
     Wydawnictwo_Ciagle,
@@ -30,8 +31,11 @@ class Wydawnictwo_Ciagle_AutorFilterSet(django_filters.rest_framework.FilterSet)
 class Wydawnictwo_Ciagle_AutorViewSet(
     UkryjNieEksportowaneMixin,
     UkryjStatusyKorektyRekorduMixin,
+    ZawezDoUczelniMixin,
     viewsets.ReadOnlyModelViewSet,
 ):
+    uczelnia_lookup = "rekord__autorzy_set__jednostka"
+
     # typ_odpowiedzialnosci to StringRelatedField (Wydawnictwo_AutorSerializerMixin)
     # — bez select_related jedno zapytanie NA WIERSZ. Pozostałe relacje
     # serializera są hyperlinkowane (DRF czyta same FK id z wiersza).
@@ -52,7 +56,7 @@ class Wydawnictwo_CiagleFilterSet(django_filters.rest_framework.FilterSet):
 
 
 class Wydawnictwo_CiagleViewSet(
-    UkryjStatusyKorektyMixin, viewsets.ReadOnlyModelViewSet
+    UkryjStatusyKorektyMixin, ZawezDoUczelniMixin, viewsets.ReadOnlyModelViewSet
 ):
     # Lista musi być posortowana po PK aby nie było duplikatów
     queryset = (
@@ -81,8 +85,11 @@ class Wydawnictwo_CiagleViewSet(
 class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychViewSet(
     UkryjNieEksportowaneMixin,
     UkryjStatusyKorektyRekorduMixin,
+    ZawezDoUczelniMixin,
     viewsets.ReadOnlyModelViewSet,
 ):
+    uczelnia_lookup = "rekord__autorzy_set__jednostka"
+
     queryset = Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych.objects.all()
     serializer_class = Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychSerializer
 
@@ -90,8 +97,11 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychViewSet(
 class Wydawnictwo_Ciagle_StreszczenieViewSet(
     UkryjNieEksportowaneMixin,
     UkryjStatusyKorektyRekorduMixin,
+    ZawezDoUczelniMixin,
     viewsets.ReadOnlyModelViewSet,
 ):
+    uczelnia_lookup = "rekord__autorzy_set__jednostka"
+
     queryset = Wydawnictwo_Ciagle_Streszczenie.objects.all()
     serializer_class = Wydawnictwo_Ciagle_StreszczenieSerializer
     pagination_class = StreszczeniaPagination

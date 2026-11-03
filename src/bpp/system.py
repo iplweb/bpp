@@ -17,6 +17,7 @@ from multiseek.models import SearchForm
 from siteblog.models import Article
 
 from bpp.const import (
+    GR_EKSPORT_DSPACE,
     GR_RAPORTY_WYSWIETLANIE,
     GR_WPROWADZANIE_DANYCH,
     GR_ZGLOSZENIA_PUBLIKACJI,
@@ -86,6 +87,7 @@ from bpp.models.struktura import Jednostka_Rodzic
 from bpp.models.system import Charakter_PBN
 from bpp.models.wydawca import Poziom_Wydawcy, Wydawca
 from deduplikator_autorow.models import IgnoredScientist, LogScalania, NotADuplicate
+from dspace_api.models import Mapowanie_DSpace, SentToDSpace
 from ewaluacja_common.models import Rodzaj_Autora
 from ewaluacja_liczba_n.models import (
     IloscUdzialowDlaAutoraZaCalosc,
@@ -237,6 +239,10 @@ groups = {
     ],
     GR_ZGLOSZENIA_PUBLIKACJI: [Zgloszenie_Publikacji, Zgloszenie_Publikacji_Autor],
     GR_RAPORTY_WYSWIETLANIE: [],
+    # Wysyłka rekordów do repozytorium DSpace (akcje admina) i konfiguracja
+    # mapowań kolekcji. Grupy nie nadaje się automatycznie — przydziela ją
+    # superuser.
+    GR_EKSPORT_DSPACE: [Mapowanie_DSpace, SentToDSpace],
 }
 
 # Słownik na podstawie którego dodajemy użytkowników z danej grupy automatycznie

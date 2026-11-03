@@ -13,26 +13,13 @@
 
 {% block body %}
     <div class="bpp-setup-wizard">
+        {% include "bpp_setup_wizard/_postep.html" with numer=2 %}
         <div class="bpp-setup-wizard__header">
             <div class="bpp-setup-wizard__icon">
                 <span class="fi-foundation"></span>
             </div>
             <h1 class="bpp-setup-wizard__header-title">{{ title }}</h1>
             <p class="bpp-setup-wizard__header-subtitle">{{ subtitle }}</p>
-        </div>
-
-        <div class="bpp-setup-wizard__info">
-            <h3 class="bpp-setup-wizard__info-title">
-                <span class="fi-info"></span> Informacja
-            </h3>
-            <p class="bpp-setup-wizard__info-text">
-                Konfiguracja podstawowych danych uczelni jest wymagana do
-                prawidlowego dzialania systemu.
-            </p>
-            <p class="bpp-setup-wizard__info-text">
-                Po wypelnieniu formularza system zostanie w pelni skonfigurowany
-                i gotowy do uzycia.
-            </p>
         </div>
 
         <form method="post" novalidate>
@@ -97,108 +84,6 @@
 
             <div class="bpp-setup-wizard__form-section">
                 <h4 class="bpp-setup-wizard__form-section-title">
-                    Integracja z PBN
-                </h4>
-
-                <div class="bpp-setup-wizard__form-group">
-                    {{ form.pbn_api_root.label_tag }}
-                    {{ form.pbn_api_root }}
-                    {% if form.pbn_api_root.help_text %}
-                        <span class="bpp-setup-wizard__help-text">
-                            {{ form.pbn_api_root.help_text }}
-                        </span>
-                    {% endif %}
-                    {% if form.pbn_api_root.errors %}
-                        <div class="bpp-setup-wizard__error-message">
-                            {{ form.pbn_api_root.errors }}
-                        </div>
-                    {% endif %}
-                </div>
-
-                <div class="bpp-setup-wizard__form-group">
-                    {{ form.pbn_app_name.label_tag }}
-                    {{ form.pbn_app_name }}
-                    {% if form.pbn_app_name.help_text %}
-                        <span class="bpp-setup-wizard__help-text">
-                            {{ form.pbn_app_name.help_text }}
-                        </span>
-                    {% endif %}
-                    {% if form.pbn_app_name.errors %}
-                        <div class="bpp-setup-wizard__error-message">
-                            {{ form.pbn_app_name.errors }}
-                        </div>
-                    {% endif %}
-                </div>
-
-                <div class="bpp-setup-wizard__form-group">
-                    {{ form.pbn_app_token.label_tag }}
-                    {{ form.pbn_app_token }}
-                    {% if form.pbn_app_token.help_text %}
-                        <span class="bpp-setup-wizard__help-text">
-                            {{ form.pbn_app_token.help_text }}
-                        </span>
-                    {% endif %}
-                    {% if form.pbn_app_token.errors %}
-                        <div class="bpp-setup-wizard__error-message">
-                            {{ form.pbn_app_token.errors }}
-                        </div>
-                    {% endif %}
-                </div>
-
-                <div class="bpp-setup-wizard__pbn-note">
-                    <span class="fi-alert"></span>
-                    <strong>Uwaga:</strong> Dane do integracji z PBN mozna
-                    uzyskac po zarejestrowaniu aplikacji w systemie PBN.
-                    Jesli nie posiadasz jeszcze tych danych, mozesz je
-                    uzupelnic pozniej w panelu administracyjnym.
-                </div>
-
-                <div class="bpp-setup-wizard__pbn-documentation">
-                    <h5 class="bpp-setup-wizard__pbn-documentation-title">
-                        <span class="fi-info"></span> Dokumentacja integracji
-                        z PBN
-                    </h5>
-                    <p class="bpp-setup-wizard__pbn-documentation-text">
-                        Aby uzyskac dane do integracji, zapoznaj sie z
-                        dokumentacja:
-                    </p>
-                    <ul class="bpp-setup-wizard__pbn-documentation-list">
-                        <li class="bpp-setup-wizard__pbn-documentation-list-item">
-                            <a href="https://pbn.nauka.gov.pl/centrum-pomocy/baza-wiedzy/uzyskanie-integracji-z-api-pbn/"
-                               target="_blank"
-                               class="bpp-setup-wizard__pbn-documentation-link">
-                                Oficjalna instrukcja PBN - Uzyskanie integracji
-                                z API PBN
-                                <span class="fi-link bpp-setup-wizard__pbn-documentation-link-icon"></span>
-                            </a>
-                        </li>
-                        <li class="bpp-setup-wizard__pbn-documentation-list-item">
-                            <a href="https://bpp.readthedocs.io/pl/latest/konfiguracja_pbn.html"
-                               target="_blank"
-                               class="bpp-setup-wizard__pbn-documentation-link">
-                                Dokumentacja BPP - Konfiguracja PBN
-                                <span class="fi-link bpp-setup-wizard__pbn-documentation-link-icon"></span>
-                            </a>
-                        </li>
-                        <li class="bpp-setup-wizard__pbn-documentation-list-item">
-                            <a href="https://bpp.iplweb.pl/zrodla"
-                               target="_blank"
-                               class="bpp-setup-wizard__pbn-documentation-link">
-                                Przyklady i dodatkowe zasoby BPP
-                                <span class="fi-link bpp-setup-wizard__pbn-documentation-link-icon"></span>
-                            </a>
-                        </li>
-                    </ul>
-                    <p class="bpp-setup-wizard__pbn-documentation-hint">
-                        <strong>Wskazowka:</strong> Rozpocznij od srodowiska
-                        testowego, aby bezpiecznie przetestowac integracje
-                        przed przejsciem na srodowisko produkcyjne.
-                    </p>
-                </div>
-            </div>
-
-            <div class="bpp-setup-wizard__form-section">
-                <h4 class="bpp-setup-wizard__form-section-title">
                     Struktura organizacyjna
                 </h4>
 
@@ -221,39 +106,8 @@
                 </div>
             </div>
 
-            <div class="bpp-setup-wizard__auto-configured">
-                <h5 class="bpp-setup-wizard__auto-configured-title">
-                    <span class="fi-check"></span> Ustawienia automatycznie
-                    skonfigurowane
-                </h5>
-                <p class="bpp-setup-wizard__auto-configured-text">
-                    Nastepujace opcje zostana wlaczone automatycznie dla
-                    optymalnej pracy z PBN:
-                </p>
-                <ul class="bpp-setup-wizard__auto-configured-list">
-                    <li class="bpp-setup-wizard__auto-configured-list-item">
-                        Kasowanie oswiadczen przed wyslaniem do PBN
-                    </li>
-                    <li class="bpp-setup-wizard__auto-configured-list-item">
-                        Niewysylanie do PBN prac z PK=0
-                    </li>
-                    <li class="bpp-setup-wizard__auto-configured-list-item">
-                        Wysylanie zawsze UID uczelni jako afiliacje
-                    </li>
-                    <li class="bpp-setup-wizard__auto-configured-list-item">
-                        Wysylanie prac bez oswiadczen
-                    </li>
-                    <li class="bpp-setup-wizard__auto-configured-list-item">
-                        Uzywanie integracji z PBN
-                    </li>
-                    <li class="bpp-setup-wizard__auto-configured-list-item">
-                        Opcjonalna aktualizacja przy edycji
-                    </li>
-                </ul>
-            </div>
-
             <button type="submit" class="bpp-setup-wizard__submit-btn">
-                <span class="fi-save"></span> Zapisz konfiguracje uczelni
+                <span class="fi-arrow-right"></span> Zapisz i przejdź dalej
             </button>
         </form>
     </div>

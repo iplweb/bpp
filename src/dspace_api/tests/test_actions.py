@@ -42,3 +42,22 @@ def test_akcja_limit_10():
     wyslij_do_dspace(modeladmin, request, qs)
     args, kwargs = modeladmin.message_user.call_args
     assert messages.ERROR in args
+
+
+@pytest.mark.django_db
+def test_akcja_w_tle_kolejkuje_patenty():
+    from bpp.models import Patent
+    from dspace_api.actions import wyslij_do_dspace_w_tle
+
+    p1, p2 = baker.make("bpp.Patent", _quantity=2)
+    modeladmin = mock.Mock()
+    request = mock.Mock()
+    request.user.id = 7
+
+    with mock.patch("dspace_api.actions.queue_dspace_export_batch") as task:
+        wyslij_do_dspace_w_tle(modeladmin, request, Patent.objects.all())
+
+    kwargs = task.delay.call_args.kwargs
+    assert kwargs["app_label"] == "bpp"
+    assert kwargs["model_name"] == "patent"
+    assert sorted(kwargs["record_ids"]) == sorted([p1.pk, p2.pk])

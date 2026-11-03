@@ -56,98 +56,74 @@ button.keypad-trigger {
   border-radius: 3px;
 }
 
-// Admin Support Button - fixed colors for admin theme
+// Admin Support Button - zakladka w prawym dolnym rogu, kolory admina.
+// support-tab.js ustawia `right` (przeciaganie + zapamietana pozycja)
+// i `bottom` (zakladka wystaje znad stalej belki z przyciskami, jesli jest).
 .bpp-support-button {
   position: fixed;
-  bottom: 70px;
-  right: 25px;
-  z-index: 9999;
+  right: 24px; // zanim JS ustawi zapamietana pozycje
+  bottom: 0;
+  // Ponizej wszystkiego, co sie rozwija: #grp-filters (800), stala belka
+  // z przyciskami (900), pulldowny (910), menu nawigacji (1000+).
+  z-index: 790;
   background-color: #417690;
+  color: white;
   border: none;
-  border-radius: 5px;
-  padding: 0 20px !important;
+  // Grappelli stylizuje KAZDY <button>: height: 28px, overflow: hidden,
+  // border-radius: 5px !important - nadpisujemy, zeby zakladka miala
+  // wlasna wysokosc i ksztalt.
+  height: auto;
+  width: auto;
+  overflow: visible;
+  box-sizing: content-box;
+  vertical-align: baseline;
+  border-radius: 6px 6px 0 0 !important;
+  margin: 0;
+  padding: 8px 14px 6px !important;
+  font-size: 13px;
   font-weight: bold;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transition: all 0.3s ease;
-  min-width: 60px;
-  text-align: center;
-
-  .button-content {
-    position: relative;
-    display: inline-block;
-  }
-
-  .support-symbols {
-    display: inline-block;
-    opacity: 1;
-    transition: opacity 0.3s ease;
-    letter-spacing: 1px;
-  }
-
-  .support-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    white-space: nowrap;
-    pointer-events: none;
-  }
+  line-height: 1;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
+  transition: padding 0.2s ease, background-color 0.2s ease,
+    box-shadow 0.2s ease;
 
   &:hover {
     background-color: #205067;
     color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-    padding: 0 !important;
-    width: 150px;
-    height: 40px;
+    padding-bottom: 10px !important;
+    box-shadow: 0 -3px 12px rgba(0, 0, 0, 0.2);
+  }
 
-    .support-symbols {
-      opacity: 0;
-    }
+  &.is-dragging {
+    cursor: grabbing;
+    transition: none;
+  }
 
-    .support-text {
-      opacity: 1;
+  &.is-loading {
+    cursor: progress;
+    opacity: 0.8;
+  }
+
+  &.is-error {
+    background-color: #b5332e;
+
+    &:hover {
+      background-color: #8f2824;
     }
   }
 
-  &:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  }
-
-  &:focus {
+  &:focus-visible {
     outline: 2px solid #79aec8;
     outline-offset: 2px;
   }
 
-  @media screen and (max-width: 640px) {
-    bottom: 20px;
-    right: 20px;
-    font-size: 16px;
-    padding: 0;
-
-    &:hover {
-      padding: 0;
-
-      .support-text {
-        font-size: 14px;
-      }
-    }
-  }
-
   @media print {
     display: none;
-  }
-}
-
-// Przesun przycisk nizej gdy brak fixed footer
-body:not(:has(footer.grp-module.grp-submit-row.grp-fixed-footer)) {
-  .bpp-support-button {
-    bottom: 20px;
   }
 }
 
@@ -215,3 +191,6 @@ body:not(:has(footer.grp-module.grp-submit-row.grp-fixed-footer)) {
   padding: 10px;
   color: #666;
 }
+
+// Okno widgetu wsparcia wyskakuje z zakladki - wspolne ze strona publiczna.
+@import '../../scss/support_widget';

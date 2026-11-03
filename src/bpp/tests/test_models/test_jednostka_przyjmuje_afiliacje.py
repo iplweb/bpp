@@ -21,7 +21,9 @@ def test_zwykla_jednostka_przyjmuje_afiliacje(jednostka):
 
 
 @pytest.mark.django_db
-def test_jednostka_rodzaju_wydzial_nie_przyjmuje_afiliacji(jednostka):
+def test_jednostka_rodzaju_wydzial_nie_przyjmuje_afiliacji(
+    jednostka, rodzaje_jednostek
+):
     rodzaj = RodzajJednostki.objects.get(nazwa="Wydział")
     assert rodzaj.autor_moze_afiliowac is False
     jednostka.rodzaj = rodzaj

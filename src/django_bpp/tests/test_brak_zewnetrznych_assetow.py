@@ -41,7 +41,7 @@ SRC = Path(__file__).resolve().parents[2]
 # Oba są `async`, więc nie blokują parsera. Dopisanie czegokolwiek tutaj wymaga
 # uzasadnienia w komentarzu — to jest wyjątek od reguły, nie wygodna furtka.
 DOZWOLONE_HOSTY = (
-    # Widget zgłoszeń Freshworks — base.html, admin/base_site.html
+    # Widget zgłoszeń Freshworks — django_bpp/freshdesk.py (WIDGET_SCRIPT_URL)
     "euc-widget.freshworks.com",
     # Google Analytics (gtag) — google_analytics.html, tylko gdy skonfigurowane
     "www.googletagmanager.com",

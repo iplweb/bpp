@@ -6,6 +6,7 @@ from django.db import models
 from django.urls.base import reverse
 
 from bpp import const
+from bpp.util.bezpieczny_url import oczysc_url_do_zapisu
 
 
 class ModelZWWW(models.Model):
@@ -39,6 +40,13 @@ class ModelZWWW(models.Model):
 
     class Meta:
         abstract = True
+
+    def save(self, *args, **kwargs):
+        # Importy tworzą rekordy bez full_clean(), więc walidator URLField
+        # nie działa; czyścimy adresy z niedozwolonym schematem.
+        self.www = oczysc_url_do_zapisu(self.www)
+        self.public_www = oczysc_url_do_zapisu(self.public_www)
+        return super().save(*args, **kwargs)
 
 
 class ModelZAbsolutnymUrl:

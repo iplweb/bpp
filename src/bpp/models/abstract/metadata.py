@@ -5,7 +5,7 @@ Modele abstrakcyjne związane z metadanymi rekordów.
 from django.db import models
 from django.db.models import CASCADE, SET_NULL
 
-from bpp.util import safe_html
+from bpp.util import sanityzuj_jesli_html
 
 
 class ModelZAdnotacjami(models.Model):
@@ -106,14 +106,23 @@ class ModelZeSzczegolami(models.Model):
     class Meta:
         abstract = True
 
+    def save(self, *args, **kwargs):
+        # Egzekwowane też w ``save()``, bo ``objects.create()`` i importery
+        # NIE wołają ``full_clean()`` (wzorzec jak w ``DwaTytuly``).
+        self._sanityzuj_pola_szczegolow()
+        return super().save(*args, **kwargs)
+
     def clean(self):
+        self._sanityzuj_pola_szczegolow()
+
+    def _sanityzuj_pola_szczegolow(self):
         # Pola renderowane w opisie bibliograficznym przez |safe (także przez
         # zdenormalizowany opis_bibliograficzny_cache na publicznych stronach
-        # i w globalnej wyszukiwarce). Sanityzujemy na wejściu tak jak tytuły
-        # (DwaTytuly.clean), inaczej redaktor wstrzykuje stored XSS.
-        self.informacje = safe_html(self.informacje)
-        self.szczegoly = safe_html(self.szczegoly)
-        self.uwagi = safe_html(self.uwagi)
+        # i w globalnej wyszukiwarce). Sanityzujemy na wejściu tak jak tytuły.
+        # Wartości bez ``<`` zostają nietknięte (tanio, bez ``&`` → ``&amp;``).
+        self.informacje = sanityzuj_jesli_html(self.informacje)
+        self.szczegoly = sanityzuj_jesli_html(self.szczegoly)
+        self.uwagi = sanityzuj_jesli_html(self.uwagi)
 
     def pierwsza_strona(self):
         return self.strony.split("-")[0]

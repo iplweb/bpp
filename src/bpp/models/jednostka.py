@@ -26,7 +26,7 @@ from tinymce.models import HTMLField
 from bpp.models import ModelZAdnotacjami, ModelZPBN_UID
 from bpp.models.abstract import ModelOpcjonalnieNieEksportowanyDoAPI, ModelZPBN_ID
 from bpp.models.autor import Autor, Autor_Jednostka
-from bpp.util import FulltextSearchMixin
+from bpp.util import FulltextSearchMixin, safe_opis_html, sanityzuj_jesli_html
 from bpp.util.ror import waliduj as waliduj_ror
 
 from .uczelnia import Uczelnia
@@ -232,6 +232,16 @@ class Jednostka(
 
     class MPTTMeta:
         order_insertion_by = ["kolejnosc", "nazwa"]
+
+    def save(self, *args, **kwargs):
+        # Opis jest renderowany na publicznej stronie jednostki; sanityzujemy
+        # także przy zapisie poza formularzem (import, ``objects.create()``).
+        self.opis = sanityzuj_jesli_html(self.opis, safe_opis_html)
+        return super().save(*args, **kwargs)
+
+    def clean(self):
+        super().clean()
+        self.opis = sanityzuj_jesli_html(self.opis, safe_opis_html)
 
     def get_absolute_url(self):
         return reverse("bpp:browse_jednostka", args=(self.slug,))

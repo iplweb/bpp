@@ -18,8 +18,9 @@ def test_bug_on_user_add(admin_page: Page, channels_live_server):
     """Test that user creation in admin works without errors (regression test)."""
     admin_page.goto(channels_live_server.url + reverse("admin:bpp_bppuser_add"))
     admin_page.fill('input[name="username"]', "as")
-    admin_page.fill('input[name="password1"]', "as")
-    admin_page.fill('input[name="password2"]', "as")
+    haslo = "dluga-fraza-hasla-testowego"  # noqa: S105  # pragma: allowlist secret
+    admin_page.fill('input[name="password1"]', haslo)
+    admin_page.fill('input[name="password2"]', haslo)
     admin_page.click('input[name="_continue"]')
 
     # Wait for navigation and check the new page contains the expected text

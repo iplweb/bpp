@@ -9,7 +9,7 @@ IDENTITY``) and the test username is constant. Without a per-worker prefix,
 consumers spawned by different workers land in the *same* Redis group, so one
 worker's ``group_send`` fans out to another worker's channels and the
 WebSocket message is probabilistically lost (see
-``docs/CHANNELS_BROADCAST_FLAKE.md``).
+``docs/deweloper/testy-channels-broadcast.md``).
 
 Two cooperating processes must agree on the prefix byte-for-byte:
 

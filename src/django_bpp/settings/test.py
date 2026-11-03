@@ -74,7 +74,9 @@ LIVEOPS = {**LIVEOPS, "RUNNER": "eager"}
 
 # Setup wizard middleware nie ma sensu w testach (i przeszkadza fixture'om).
 MIDDLEWARE = [
-    m for m in MIDDLEWARE if m != "first_run_wizard.middleware.FirstRunWizardMiddleware"
+    m
+    for m in MIDDLEWARE
+    if m != "bpp_setup_wizard.middleware.BppFirstRunWizardMiddleware"
 ]
 
 # Testy nie powinny korzystać z cacheops — paczka monkey-patchuje
@@ -112,6 +114,10 @@ ZGLOS_CAPTCHA_ENABLED = False
 # Stały test-key (nie efemeryczny z local.py) — dla testów captchy, które
 # włączają ZGLOS_CAPTCHA_ENABLED przez @override_settings.
 ALTCHA_HMAC_KEY = "test-altcha-hmac-key-deterministic-0123456789abcdef"
+# Limit zgłoszeń na godzinę WYŁĄCZONY w testach (wszystkie żądania idą
+# z 127.0.0.1). Testy limitu włączają go przez @override_settings.
+ZGLOS_LIMIT_NA_GODZINE = 0
+ZGLOS_LIMIT_NA_GODZINE_ZALOGOWANI = 0
 
 # Szybki hasher haseł. Domyślny PBKDF2 kosztuje ~177 ms na JEDNO
 # `make_password` (zmierzone na tej bazie kodu) — a suitę zalewają fikstury
@@ -132,3 +138,7 @@ ALTCHA_HMAC_KEY = "test-altcha-hmac-key-deterministic-0123456789abcdef"
 # hasherów Django i działają z dowolnym z nich. MD5 jest tu WYŁĄCZNIE
 # testowy — produkcja bierze domyślną listę hasherów z base.py.
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
+# Walidator wycieków (HIBP) idzie do sieci — w testach wyłączony; testy
+# walidatora włączają go jawnie i mockują requests.
+BPP_HASLA_SPRAWDZAJ_WYCIEKI = False

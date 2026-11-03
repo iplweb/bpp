@@ -5,13 +5,22 @@ import logging
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.cache import cache
 from django.db.models import Count, Sum
-from django.http import HttpResponseBadRequest, JsonResponse
+from django.http import (
+    HttpResponseBadRequest,
+    HttpResponseForbidden,
+    HttpResponseNotFound,
+    JsonResponse,
+)
+from django.shortcuts import redirect
 from django.views.decorators.cache import never_cache
 from django.views.generic import View
 from multiseek.logic import get_registry
+from multiseek.models import SearchForm
 from multiseek.views import (
+    MULTISEEK_SESSION_KEY,
     MULTISEEK_SESSION_KEY_REMOVED,
     MultiseekResults,
+    MultiseekSaveForm,
     manually_add_or_remove,
 )
 
@@ -199,6 +208,10 @@ class MyMultiseekResults(MultiseekResults):
         # kazda zmiana formularza / wyrzucenie rekordu zmienia klucz.
         cache_key = self._aggregate_cache_key()
         agregaty = cache.get(cache_key)
+        # Wszystkie rekordy zniknely z wynikow w czasie zycia wpisu: pusta
+        # lista obok niezerowego licznika to widoczna sprzecznosc (FD#503).
+        if agregaty is not None and agregaty["paginator_count"] and not qset.exists():
+            agregaty = None
         if agregaty is None:
             if ctx["report_type"] in EXTRA_TYPES:
                 # Licznik i sumy jednym skanem — przy DISTINCT + join do
@@ -374,6 +387,51 @@ def bpp_remove_from_removed_by_hand(request, pk):
     pk = tuple(int(x) for x in pk.split("_"))
     _normalize_session_removed(request)
     return manually_add_or_remove(request, pk, add=False)
+
+
+def _moze_uzyc_formularza(user, sf):
+    """Zapisany formularz multiseek: publiczny dla wszystkich, prywatny tylko
+    dla właściciela (superuser — każdy)."""
+    if sf.public:
+        return True
+    if not user.is_authenticated:
+        return False
+    return user.is_superuser or sf.owner_id == user.pk
+
+
+@never_cache
+def bpp_load_form(request, search_form_pk):
+    """Nadpisanie ``multiseek.views.load_form``: prywatny formularz może
+    wczytać wyłącznie jego właściciel (lub superuser)."""
+    try:
+        sf = SearchForm.objects.get(pk=search_form_pk)
+    except SearchForm.DoesNotExist:
+        return HttpResponseNotFound()
+
+    if not _moze_uzyc_formularza(request.user, sf):
+        return HttpResponseForbidden()
+
+    request.session[MULTISEEK_SESSION_KEY] = sf.data
+    return redirect("..")
+
+
+BLAD_FORMULARZ_INNEGO_UZYTKOWNIKA = (
+    "Formularz o tej nazwie należy do innego użytkownika — wybierz inną nazwę."
+)
+
+
+class BppMultiseekSaveForm(MultiseekSaveForm):
+    """Nadpisanie ``MultiseekSaveForm``: nie pozwala nadpisać (ani przejąć)
+    formularza należącego do innego użytkownika."""
+
+    def get_context_data(self):
+        name = self.request.POST.get("name")
+        user = self.request.user
+        if name and not user.is_superuser:
+            istniejacy = SearchForm.objects.filter(name=name).first()
+            if istniejacy is not None and istniejacy.owner_id != user.pk:
+                return dict(result=BLAD_FORMULARZ_INNEGO_UZYTKOWNIKA)
+        return super().get_context_data()
 
 
 class MultiseekToDjangoQLView(WprowadzanieDanychOrSuperuserMixin, View):

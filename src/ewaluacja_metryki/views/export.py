@@ -53,6 +53,9 @@ class ExportStatystykiXLSX(View):
             f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
         )
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        from bpp.util import sanitize_xlsx_workbook
+
+        sanitize_xlsx_workbook(wb)
         wb.save(response)
         return response
 
@@ -615,6 +618,9 @@ class ExportListaXLSX(View):
         )
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
 
+        from bpp.util import sanitize_xlsx_workbook
+
+        sanitize_xlsx_workbook(wb)
         wb.save(response)
         return response
 

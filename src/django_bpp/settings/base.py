@@ -13,6 +13,7 @@ import environ
 from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 
+from bpp.auth.microsoft_conf import normalize_microsoft_tenant_id
 from bpp.util import slugify_function
 from django_bpp.channels_prefix import get_channels_prefix
 from django_bpp.rollbar_filters import zbuduj_exception_level_filters
@@ -62,6 +63,8 @@ env = environ.Env(
     MICROSOFT_AUTH_CLIENT_SECRET=(str, None),
     MICROSOFT_AUTH_TENANT_ID=(str, None),
     MICROSOFT_AUTH_EXTRA_SCOPES=(str, ""),
+    MICROSOFT_AUTH_LINK_BY_EMAIL=(bool, False),
+    MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING=(bool, False),
     #
     # Email
     #
@@ -109,12 +112,37 @@ env = environ.Env(
     DJANGO_BPP_SECRET_KEY=(str, SECRET_KEY_UNSET),
     ALTCHA_HMAC_KEY=(str, ALTCHA_HMAC_KEY_UNSET),
     ZGLOS_CAPTCHA_ENABLED=(bool, False),
+    ZGLOS_LIMIT_NA_GODZINE=(int, 5),
+    ZGLOS_LIMIT_NA_GODZINE_ZALOGOWANI=(int, 10),
+    ZGLOS_MAX_LACZNY_ROZMIAR_MB=(int, 50),
+    # Eksport publikacji autora (BibTeX/RIS) zlecany przez anonimów:
+    # limit startów na IP na godzinę i limit zadań w kolejce (0 = brak).
+    DJANGO_BPP_EKSPORT_AUTORA_LIMIT_ANON_IP_NA_GODZINE=(int, 10),
+    DJANGO_BPP_EKSPORT_AUTORA_LIMIT_ANON_W_KOLEJCE=(int, 20),
+    #
+    # Widget wsparcia Freshdesk (Freshworks) — patrz
+    # docs/administrator/widget-wsparcia-freshdesk.md
+    #
+    DJANGO_BPP_FRESHDESK_WIDGET_ID=(str, "205000000433"),
+    DJANGO_BPP_FRESHDESK_WIDGET_ID_ANON=(str, ""),
+    DJANGO_BPP_FRESHDESK_WIDGET_JWT_SECRET=(str, ""),
+    #
+    # Content-Security-Policy — patrz docs/administrator/zaawansowane.md
+    #
+    DJANGO_BPP_CSP_ENABLED=(bool, True),
+    DJANGO_BPP_CSP_REPORT_ONLY=(bool, True),
+    DJANGO_BPP_CSP_POLICY=(str, ""),
+    DJANGO_BPP_CSP_REPORT_URI=(str, ""),
     DJANGO_BPP_MEDIA_ROOT=(str, os.path.join(os.getenv("HOME", "C:/"), "bpp-media")),
     #
     # Konfiguracja wymuszania zmiany haseł
     #
     DJANGO_BPP_USE_PASSWORD_HISTORY=(bool, True),
     DJANGO_BPP_PASSWORD_HISTORY_COUNT=(int, 12),
+    DJANGO_BPP_PASSWORD_MIN_LENGTH=(int, 15),
+    DJANGO_BPP_PASSWORD_CHECK_PWNED=(bool, True),
+    DJANGO_BPP_PASSWORD_CONTEXT_WORDS=(list, []),
+    DJANGO_BPP_PASSWORD_MIN_ZXCVBN_SCORE=(int, 3),
     #
     # Konfiguracja wygaszania sesji
     #
@@ -317,6 +345,7 @@ TEMPLATES = [
                 "bpp.context_processors.oidc.oidc_auth_status",
                 "bpp.context_processors.external_auth.external_auth_status",
                 "bpp.context_processors.testing.testing",
+                "bpp.context_processors.freshdesk.freshdesk_widget",
                 "cookielaw.context_processors.cookielaw",
                 "django_countdown.context_processors.countdown_context",
                 "nowe_raporty.menu.raporty_menu",
@@ -328,6 +357,9 @@ TEMPLATES = [
 MIDDLEWARE = [
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # Zaraz po SecurityMiddleware: nagłówek CSP trafia też do odpowiedzi
+    # zwracanych wcześnie przez kolejne middleware (przekierowania, blokady).
+    "django_bpp.csp.ContentSecurityPolicyMiddleware",
     "bpp.middleware.MaliciousRequestBlockingMiddleware",  # Block malicious requests (pagination, PHP, .git, etc.) early
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -335,7 +367,9 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "bpp.middleware.SiteResolutionMiddleware",  # After auth - resolves Site/Uczelnia from hostname
     "django_countdown.middleware.CountdownBlockingMiddleware",  # After auth - needs request.user
-    "first_run_wizard.middleware.FirstRunWizardMiddleware",  # After auth middleware to have request.user
+    # After auth middleware to have request.user. BPP-owa podklasa: dopóki
+    # kreator niedokończony, kto nie ma dostępu do kroku → logowanie admina.
+    "bpp_setup_wizard.middleware.BppFirstRunWizardMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_bpp.middleware.ConditionalPasswordChangeMiddleware",
@@ -349,6 +383,27 @@ MIDDLEWARE = [
     # z backendu logowania i renderuje odpowiedź "konto zablokowane".
     "axes.middleware.AxesMiddleware",
 ]
+
+# Kreator pierwszego uruchomienia przepuszcza tylko `/admin/`. Strony admina
+# dociągają jednak treść z endpointów spoza tego prefiksu (widgety HTMX
+# dashboardu, menu admin_tools, grappelli, ping session_security) — bez tych
+# wyjątków dostawały 302 na krok kreatora i wstawiały jego stronę w kafelki
+# dashboardu (#873). Podobnie requesty, które przeglądarka wysyła sama
+# (ikony) — nie są „wyjściem z kreatora" (FD#499). Domyślne prefiksy silnika
+# (`/static/`, `/media/`, `/admin/`…) dokłada sam.
+FIRST_RUN_WIZARD_SKIP_PREFIXES = (
+    "/admin-dashboard/",
+    "/admin_tools/",
+    "/grappelli/",
+    "/session_security/",
+    "/favicon.ico",
+    "/apple-touch-icon",
+    # Healthcheck musi odpowiadać 200 także na niedokonfigurowanej instalacji.
+    "/health/",
+    # Endpointy dev-only django-dev-helpers (/__autologin__/, /__dev_reload__/)
+    # — autologin jest z definicji anonimowy, nie może trafić na logowanie.
+    "/__",
+)
 
 INTERNAL_IPS = ("127.0.0.1",)
 
@@ -441,7 +496,6 @@ INSTALLED_APPS = [
     "dal_select2",
     "grappelli",
     "django_bpp.apps.BppAdminConfig",  # replaced `django.contrib.admin`
-    "tabular_permissions",
     "dj_pagination",
     "admin_tools",
     "admin_tools.theming",
@@ -793,6 +847,10 @@ CELERYBEAT_SCHEDULE = {
         "task": "oswiadczenia.tasks.remove_old_oswiadczenia_export_files",
         "schedule": timedelta(days=1),
     },
+    "cleanup-eksport-autora-files": {
+        "task": "bpp.tasks.usun_stare_eksporty_autora",
+        "schedule": timedelta(days=1),
+    },
     # Retencja porzuconych plików tmp kreatora zgłoszeń publikacji (anonimowy
     # formularz — porzucone uploady zostałyby na wolumenie media bez ograniczeń;
     # anty-DoS na dysk, bpp #551). Kasuje sieroty >24h z osobnego katalogu tmp,
@@ -915,21 +973,95 @@ SECRET_KEY = env("DJANGO_BPP_SECRET_KEY")
 # system-check WARNING (zglos_publikacje/checks.py) sygnalizuje placeholder.
 ALTCHA_HMAC_KEY = env("ALTCHA_HMAC_KEY")
 ZGLOS_CAPTCHA_ENABLED = env("ZGLOS_CAPTCHA_ENABLED")
+# Formularz zgłoszeń publikacji: limit zakończonych zgłoszeń na godzinę
+# (anonim — per IP klienta, zalogowany — per konto; 0 = brak limitu) oraz
+# łączny limit rozmiaru załączników jednego zgłoszenia (MB).
+ZGLOS_LIMIT_NA_GODZINE = env("ZGLOS_LIMIT_NA_GODZINE")
+ZGLOS_LIMIT_NA_GODZINE_ZALOGOWANI = env("ZGLOS_LIMIT_NA_GODZINE_ZALOGOWANI")
+ZGLOS_MAX_LACZNY_ROZMIAR_MB = env("ZGLOS_MAX_LACZNY_ROZMIAR_MB")
+# Eksport publikacji autora zlecany przez anonimów: limit nowych zadań na IP
+# klienta na godzinę oraz limit jednocześnie oczekujących/przetwarzanych
+# zadań anonimowych (0 = brak limitu). Zalogowanych i redakcji nie dotyczy.
+EKSPORT_AUTORA_LIMIT_ANON_IP_NA_GODZINE = env(
+    "DJANGO_BPP_EKSPORT_AUTORA_LIMIT_ANON_IP_NA_GODZINE"
+)
+EKSPORT_AUTORA_LIMIT_ANON_W_KOLEJCE = env(
+    "DJANGO_BPP_EKSPORT_AUTORA_LIMIT_ANON_W_KOLEJCE"
+)
 INSTALLED_APPS += ["django_altcha"]
 
-# Klucz Fernet do szyfrowania sekretów integracji (DSpace itd.).
+# Widget wsparcia Freshdesk: osobne widgety dla zalogowanych i anonimów.
+# Pusty ID = brak widgetu dla danej grupy. Gdy ustawiony jest sekret JWT
+# (Freshdesk: Admin > Security > Widget settings), zalogowany użytkownik jest
+# uwierzytelniany w widgecie tokenem z /freshdesk/widget-token/.
+FRESHDESK_WIDGET_ID = env("DJANGO_BPP_FRESHDESK_WIDGET_ID")
+FRESHDESK_WIDGET_ID_ANON = env("DJANGO_BPP_FRESHDESK_WIDGET_ID_ANON")
+FRESHDESK_WIDGET_JWT_SECRET = env("DJANGO_BPP_FRESHDESK_WIDGET_JWT_SECRET")
+
+# Klucz Fernet do szyfrowania sekretów integracji w bazie (tokeny PBN,
+# hasło Clarivate, sekret ORCID, hasło DSpace) — pola EncryptedTextField.
 # Wygeneruj: python -c "from cryptography.fernet import Fernet;
 #   print(Fernet.generate_key().decode())"
+# Można podać kilka kluczy rozdzielonych przecinkami: pierwszy szyfruje,
+# kolejne tylko odszyfrowują (rotacja: manage.py zaszyfruj_sekrety --rotuj).
+FIELD_ENCRYPTION_KEY = env("DJANGO_BPP_FIELD_ENCRYPTION_KEY", default="")
+# Dawna nazwa klucza — nadal obsługiwana (odczyt; szyfruje, gdy brak
+# DJANGO_BPP_FIELD_ENCRYPTION_KEY).
 DSPACE_CREDENTIALS_KEY = env("DSPACE_CREDENTIALS_KEY", default="")
 
 SENDFILE_URL = MEDIA_URL
 
-# django-password-policies
+# Polityka haseł wg NIST SP 800-63B (rev. 4): długość zamiast reguł
+# złożoności, bez cyklicznej rotacji.
+PASSWORD_MIN_LENGTH = env("DJANGO_BPP_PASSWORD_MIN_LENGTH")
 
-# Zmiana hasla co 30 dni
-PASSWORD_DURATION_SECONDS = int(
-    os.getenv("DJANGO_BPP_PASSWORD_DURATION_SECONDS", str((60 * 60 * 24) * 30))
-)
+# django-password-policies: bez wymogu liter, cyfr i znaków specjalnych.
+# Zostają: zakaz >3 jednakowych znaków z rzędu, popularnych ciągów
+# (qwerty, 12345…), adresu e-mail jako hasła i historia haseł.
+PASSWORD_MIN_LETTERS = 0
+PASSWORD_MIN_NUMBERS = 0
+PASSWORD_MIN_SYMBOLS = 0
+PASSWORD_MIN_ENTROPY_SHORT = 0
+PASSWORD_MIN_ENTROPY_LONG = 0
+
+# Walidatory Django -- obowiązują tam, gdzie nie ma formularza
+# password_policies: admin, kreator pierwszego uruchomienia, createsuperuser.
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        "NAME": "django.contrib.auth.password_validation."
+        "UserAttributeSimilarityValidator"
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": PASSWORD_MIN_LENGTH},
+    },
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {
+        "NAME": "django_bpp.password_validation.SimplePatternPasswordValidator",
+        "OPTIONS": {"min_unique_chars": 5},
+    },
+    {"NAME": "django_bpp.password_validation.ContextWordsPasswordValidator"},
+    {"NAME": "django_bpp.password_validation.PersonalDataPasswordValidator"},
+    {"NAME": "django_bpp.password_validation.ZxcvbnPasswordValidator"},
+    {"NAME": "django_bpp.password_validation.PwnedPasswordValidator"},
+]
+
+# Dodatkowe słowa kontekstowe zakazane w hasłach (obok „bpp”, „bibliografia”,
+# nazwy/skrótu uczelni i domeny); lista rozdzielona przecinkami.
+BPP_HASLA_SLOWA_KONTEKSTOWE = env("DJANGO_BPP_PASSWORD_CONTEXT_WORDS")
+
+# Sprawdzanie haseł w Have I Been Pwned metodą k-anonimowości (wysyłany
+# jest tylko krótki prefiks skrótu). Wymaga dostępu HTTPS (port 443) do
+# serwisu Have I Been Pwned — szczegóły w docs/administrator/zaawansowane.md.
+BPP_HASLA_SPRAWDZAJ_WYCIEKI = env("DJANGO_BPP_PASSWORD_CHECK_PWNED")
+
+# Minimalna ocena siły hasła wg zxcvbn (0–4, liczona lokalnie; 0 wyłącza).
+# 3 ≈ hasło wymagające ok. 10^8–10^10 prób przy zgadywaniu offline.
+BPP_HASLA_MIN_SILA_ZXCVBN = env("DJANGO_BPP_PASSWORD_MIN_ZXCVBN_SCORE")
+
+# Rotacja haseł domyślnie wyłączona (0). Instalacja, która jej potrzebuje,
+# ustawia liczbę sekund, np. 2592000 = 30 dni.
+PASSWORD_DURATION_SECONDS = int(os.getenv("DJANGO_BPP_PASSWORD_DURATION_SECONDS", "0"))
 
 PASSWORD_USE_HISTORY = env("DJANGO_BPP_USE_PASSWORD_HISTORY")
 
@@ -1034,7 +1166,7 @@ YARN_FILE_PATTERNS = {
     "jquery-circle-progress": ["dist/circle-progress.min.js"],
     "select2-foundation-theme": ["dist/select2-foundation-theme.css"],
     "plotly.js": ["dist/plotly.min.js", "dist/plotly-locale-pl.js"],
-    "htmx.org": ["dist/htmx.js"],
+    "htmx.org": ["dist/htmx.min.js"],
     # Wykresy w ewaluacja_optymalizacja (dawniej ładowane z cdn.jsdelivr.net).
     "chart.js": ["dist/chart.umd.min.js"],
     "tone": ["build/Tone.js", "build/Tone.js.map"],
@@ -1081,7 +1213,8 @@ ASGI_APPLICATION = "django_bpp.asgi.application"
 # Channel-layer key prefix (get_channels_prefix imported at top). Production:
 # "asgi" (channels_redis default). Under pytest-xdist: "asgi-test-<worker>" so
 # colliding per-user group names cannot cross-talk between workers sharing one
-# Redis. See django_bpp.channels_prefix and docs/CHANNELS_BROADCAST_FLAKE.md.
+# Redis. See django_bpp.channels_prefix and
+# docs/deweloper/testy-channels-broadcast.md.
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
@@ -1149,66 +1282,6 @@ CHANNELS_BROADCAST_SUBSCRIPTION_AUTHORIZER = (
 # Content-hash w nazwie pliku już gwarantuje bust dokładnie zmienionych plików,
 # więc katalog jest statyczny:
 COMPRESS_OUTPUT_DIR = "CACHE"
-
-# django-tabular-permissions
-
-TABULAR_PERMISSIONS_CONFIG = {
-    "exclude": {
-        "override": False,
-        "apps": [
-            "favicon",
-            "taggit",
-            "test_bpp",
-            "rozbieznosci",
-            "rozbieznosci_dyscyplin",
-            "sessions",
-            "sites",
-            "contenttypes",
-            "raport_slotow",
-            "multiseek",
-            "messages_extends",
-            "menu",
-            "sites",
-            "robots",
-            "pbn_api",
-            "admin",
-            "auth",
-            "password_policies",
-            "channels_broadcast",
-            "dashboard",
-            "django.contrib.contenttypes",
-            "egeria",
-            "eksport_pbn",
-            "import_dyscyplin",
-            "import_list_if",
-            "import_pracownikow",
-            "integrator2",
-            "admin_tools",
-        ],
-        "models": [
-            "bpp.cache_punktacja_autora",
-            "bpp.cache_punktacja_autora_query",
-            "bpp.cache_punktacja_autora_query_view",
-            "bpp.cache_punktacja_autora_sum",
-            "bpp.cache_punktacja_autora_sum_group_ponizej",
-            "bpp.cache_punktacja_autora_sum_gruop",
-            "bpp.cache_punktacja_autora_sum_ponizej",
-            "bpp.cache_punktacja_dyscypliny",
-            "bpp.sumy_wydawnictwo_zwarte_view",
-            "bpp.opi_2012_afiliacja_do_wydzialu",
-            "bpp.opi_2012_tytul_cache",
-            "bpp.nowe_sumy_view",
-            "bpp.autorzy",
-            "bpp.rekord",
-            "bpp.rekord_view",
-            "bpp.autorzy_view",
-        ],
-        "function": "tabular_permissions.helpers.dummy_permissions_exclude",
-    },
-}
-
-# PERMISSIONS_WIDGET_PATCH_GROUPADMIN = False
-# PERMISSIONS_WIDGET_PATCH_USERADMIN = True
 
 DBTEMPLATES_USE_REVERSION = True
 DBTEMPLATES_USE_REVERSION_COMPARE = True
@@ -1318,7 +1391,20 @@ if MICROSOFT_AUTH_CLIENT_ID:
             )
         ) from e
     MICROSOFT_AUTH_CLIENT_SECRET = env("MICROSOFT_AUTH_CLIENT_SECRET")
-    MICROSOFT_AUTH_TENANT_ID = env("MICROSOFT_AUTH_TENANT_ID")
+    # Zalecany konkretny katalog Entra ID (GUID lub domena). Pusty ->
+    # "common" (tryb wielokatalogowy): start nie jest blokowany, ale system
+    # check bpp.W201 i komunikat dla superusera ostrzegają o konfiguracji.
+    MICROSOFT_AUTH_TENANT_ID = normalize_microsoft_tenant_id(
+        env("MICROSOFT_AUTH_TENANT_ID")
+    )
+    # Automatyczne wiązanie nowego konta Microsoft z istniejącym kontem BPP
+    # z uprawnieniami / hasłem lokalnym po samym e-mailu — domyślnie wyłączone.
+    MICROSOFT_AUTH_LINK_BY_EMAIL = env("MICROSOFT_AUTH_LINK_BY_EMAIL")
+    # Tryb wielokatalogowy: domyślnie logują się wyłącznie konta Microsoft już
+    # powiązane z BPP (bez wiązania po e-mailu i zakładania nowych kont).
+    MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING = env(
+        "MICROSOFT_AUTH_MULTI_TENANT_ALLOW_LINKING"
+    )
     MICROSOFT_AUTH_LOGIN_TYPE = "ma"
     MICROSOFT_AUTH_EXTRA_SCOPES = env("MICROSOFT_AUTH_EXTRA_SCOPES")
 
@@ -1335,7 +1421,7 @@ if MICROSOFT_AUTH_CLIENT_ID:
     # to avoid unnecessary network traffic on every page load
 
     AUTHENTICATION_BACKENDS = [
-        "microsoft_auth.backends.MicrosoftAuthenticationBackend",
+        "bpp.auth.microsoft.BppMicrosoftAuthenticationBackend",
         "django.contrib.auth.backends.ModelBackend",
     ]
 
@@ -1646,14 +1732,20 @@ TINYMCE_DEFAULT_CONFIG = {
     "height": "320px",
     "width": "780px",
     "promotion": False,
+    # TinyMCE 7 bez klucza licencyjnego działa w trybie ewaluacyjnym
+    # i ostrzega w konsoli -- korzystamy z licencji open source (GPL).
+    "license_key": "gpl",
     "menubar": "file edit view insert format tools table help",
-    "plugins": "advlist autolink lists link image charmap print preview anchor searchreplace visualblocks code "
-    "fullscreen insertdatetime media table paste code help wordcount spellchecker",
-    "toolbar": "undo redo | bold italic underline strikethrough | fontselect fontsizeselect formatselect | alignleft "
-    "aligncenter alignright alignjustify | outdent indent |  numlist bullist checklist | forecolor "
-    "backcolor casechange permanentpen formatpainter removeformat | pagebreak | charmap emoticons | "
-    "fullscreen  preview save print | insertfile image media pageembed template link anchor codesample | "
-    "a11ycheck ltr rtl | showcomments addcomment code",
+    # Od TinyMCE 6 "paste" i "print" są w rdzeniu edytora (nie ma ich
+    # jako wtyczek), a "spellchecker" usunięto -- przeglądarki mają własny.
+    "plugins": "advlist autolink lists link image charmap preview anchor "
+    "searchreplace visualblocks code fullscreen insertdatetime media table "
+    "help wordcount",
+    "browser_spellcheck": True,
+    "toolbar": "undo redo | bold italic underline strikethrough | fontfamily "
+    "fontsize blocks | alignleft aligncenter alignright alignjustify | "
+    "outdent indent | numlist bullist | forecolor backcolor removeformat | "
+    "charmap | fullscreen preview print | image media link anchor | code",
 }
 
 #
@@ -1686,6 +1778,14 @@ SESSION_COOKIE_SECURE = True
 LANGUAGE_COOKIE_SECURE = True
 
 X_FRAME_OPTIONS = "SAMEORIGIN"
+
+# Content-Security-Policy (django_bpp.csp.ContentSecurityPolicyMiddleware).
+# Domyślnie WŁĄCZONE w trybie Report-Only — przeglądarka tylko raportuje
+# naruszenia, niczego nie blokuje. Pusta polityka = domyślna z django_bpp.csp.
+BPP_CSP_ENABLED = env("DJANGO_BPP_CSP_ENABLED")
+BPP_CSP_REPORT_ONLY = env("DJANGO_BPP_CSP_REPORT_ONLY")
+BPP_CSP_POLICY = env("DJANGO_BPP_CSP_POLICY")
+BPP_CSP_REPORT_URI = env("DJANGO_BPP_CSP_REPORT_URI")
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000
 
@@ -1798,6 +1898,16 @@ ROLLBAR_SCRUB_FIELDS = [
     "x-app-token",
     "cookie",
     "set-cookie",
+    "pbn_token",
+    # tokeny sesji/formularzy i jednorazowe:
+    "csrfmiddlewaretoken",
+    "sessionid",
+    "ott",
+    # sekrety integracji trzymane w modelu Uczelnia:
+    "pbn_app_token",
+    "orcid_client_secret",
+    "dspace_api_password",
+    "clarivate_password",
 ]
 
 ROLLBAR = {
@@ -1991,6 +2101,12 @@ CONSTANCE_CONFIG_FIELDSETS = {}
 #
 OAUTH2_PROVIDER = {
     "PKCE_REQUIRED": True,
+    # RFC 9700: tylko PKCE S256 (``plain`` odrzucane) — zgodnie z metadanymi
+    # ``code_challenge_methods_supported`` w ``oauth_mcp.views_metadata``.
+    "COMPLIANT_BCP_RFC9700_PKCE_METHOD": True,
+    # RFC 9700 / RFC 6750 §5.3: token dostępu NIE w query stringu — tylko
+    # nagłówek ``Authorization: Bearer``.
+    "COMPLIANT_BCP_RFC9700_ACCESS_TOKEN_TRANSPORT": True,
     "DEFAULT_SCOPES": ["read"],
     "SCOPES": {"read": "Odczyt danych BPP w Twoim imieniu"},
     "ROTATE_REFRESH_TOKEN": True,

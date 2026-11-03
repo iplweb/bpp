@@ -135,8 +135,14 @@ class _ChannelsLiveServer:
         return f"ws://{self.host}:{self.port}"
 
 
-def _spawn_daphne():
+def _spawn_daphne(setup=None):
     """Start a Daphne process serving the project's ASGI app on a random port.
+
+    ``setup`` — callable wykonywany W SUBPROCESIE Daphne przed startem
+    serwera (domyślnie ``set_database_connection``). Musi być funkcją
+    top-level w lekkim module bez importów Django na poziomie modułu
+    (macOS "spawn" pickluje ją po nazwie — patrz
+    ``integration_tests/_captcha_daphne_setup.py``).
 
     Returns ``(server_object, server_process, modified_settings)`` so the
     caller can stop the process and restore settings during teardown.
@@ -166,7 +172,7 @@ def _spawn_daphne():
     server_process = DaphneProcess(
         host,
         get_application,
-        setup=set_database_connection,
+        setup=setup or set_database_connection,
     )
     server_process.start()
 

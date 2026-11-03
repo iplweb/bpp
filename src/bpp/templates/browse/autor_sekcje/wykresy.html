@@ -1,0 +1,11 @@
+{# Wykresy w latach. Siatka CSS (auto-fit) sama dopasowuje się do szerokości: #}
+{# w pasie na całą szerokość stoją obok siebie, w połówce pary (sekcja #}
+{# elastyczna) i na małych ekranach — jeden pod drugim. #}
+{# Oczekuje: dane.wykresy (lista {nazwa, dane}). #}
+<div class="autor-page__wykresy">
+    {% for wykres in dane.wykresy %}
+        <div class="autor-page__wykresy-pozycja">
+            {% include "browse/autor_sekcje/_wykres_lata.html" with dane=wykres.dane nazwa=wykres.nazwa %}
+        </div>
+    {% endfor %}
+</div>

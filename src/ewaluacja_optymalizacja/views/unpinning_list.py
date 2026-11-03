@@ -490,6 +490,8 @@ def _get_export_opportunities(request, uczelnia):
 
 def _write_export_sheet(ws, opportunities):
     """Zapisz nagłówki i wiersze danych do arkusza; zwróć numer ostatniego wiersza."""
+    from bpp.util import sanitize_xlsx_cell
+
     header_font = Font(bold=True, color="FFFFFF")
     header_fill = PatternFill(
         start_color="366092", end_color="366092", fill_type="solid"
@@ -524,7 +526,11 @@ def _write_export_sheet(ws, opportunities):
         lp = row_idx - 1
 
         for col, column in enumerate(columns, 1):
-            cell = ws.cell(row=row_idx, column=col, value=column.getter(opp, lp))
+            cell = ws.cell(
+                row=row_idx,
+                column=col,
+                value=sanitize_xlsx_cell(column.getter(opp, lp)),
+            )
             cell.border = thin_border
             if column.number_format:
                 cell.number_format = column.number_format
@@ -540,7 +546,7 @@ def _write_export_footer(ws, last_data_row, n_columns, count, filter_info):
     """Auto-filtr, zamrożenie nagłówka, podsumowanie i opis filtrów."""
     from openpyxl.utils import get_column_letter
 
-    from bpp.util import auto_fit_columns
+    from bpp.util import auto_fit_columns, sanitize_xlsx_cell
 
     if last_data_row > 1:
         last_col_letter = get_column_letter(n_columns)
@@ -559,7 +565,9 @@ def _write_export_footer(ws, last_data_row, n_columns, count, filter_info):
     ws.cell(
         row=filters_row + 1,
         column=1,
-        value="; ".join(filter_info) if filter_info else "Brak filtrów",
+        value=sanitize_xlsx_cell("; ".join(filter_info))
+        if filter_info
+        else "Brak filtrów",
     )
 
 

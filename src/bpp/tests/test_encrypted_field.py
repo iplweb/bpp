@@ -7,6 +7,7 @@ from bpp.fields import EncryptedTextField
 
 @pytest.fixture
 def fernet_key(settings):
+    settings.FIELD_ENCRYPTION_KEY = ""
     settings.DSPACE_CREDENTIALS_KEY = Fernet.generate_key().decode()
     return settings.DSPACE_CREDENTIALS_KEY
 

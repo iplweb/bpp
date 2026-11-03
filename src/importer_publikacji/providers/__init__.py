@@ -138,6 +138,12 @@ class DataProvider(ABC):
         Zwraca znormalizowaną formę lub None jeśli
         niepoprawny."""
 
+    def identifier_error(self, identifier: str) -> str | None:
+        """Opcjonalny, czytelny powód odrzucenia identyfikatora (po polsku),
+        pokazywany zamiast ogólnego „Nie rozpoznano formatu". ``None`` →
+        komunikat ogólny."""
+        return None
+
 
 _providers: dict[str, type[DataProvider]] = {}
 

@@ -93,6 +93,7 @@ nav:
   - Start: index.md
   - Instrukcja użytkownika:
       - Przeglądanie i wyszukiwanie: uzytkownik/przegladanie-i-wyszukiwanie.md
+      - Mój profil autora: uzytkownik/moj-profil-autora.md
       - Raporty i rankingi: uzytkownik/raporty-rankingi.md
       - Widget publikacji na stronie WWW: uzytkownik/widget-publikacji.md
   - Instrukcja redaktora:
@@ -113,7 +114,9 @@ nav:
       - Integracja z DSpace: administrator/integracja-dspace.md
       - REST API: administrator/rest-api.md
       - Eksport CERIF / OpenAIRE: administrator/eksport-cerif.md
+      - Widget wsparcia Freshdesk: administrator/widget-wsparcia-freshdesk.md
       - Konfiguracja zaawansowana: administrator/zaawansowane.md
+      - Grupy uprawnień: administrator/grupy-uprawnien.md
   - API: api/index.md
   - Dla deweloperów i agentów:
       - deweloper/index.md

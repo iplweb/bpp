@@ -1,4 +1,5 @@
 from django import template
+from django.utils.html import format_html
 
 from ewaluacja_common.models import Rodzaj_Autora
 
@@ -9,7 +10,9 @@ register = template.Library()
 def rodzaj_autora_label(skrot):
     """Zwraca HTML label dla danego skrótu rodzaju autora"""
     if skrot == " " or skrot is None:
-        return '<span class="label secondary" title="Brak danych">-</span>'
+        return format_html(
+            '<span class="label secondary" title="{}">-</span>', "Brak danych"
+        )
 
     try:
         rodzaj = Rodzaj_Autora.objects.get(skrot=skrot)
@@ -22,9 +25,16 @@ def rodzaj_autora_label(skrot):
         else:
             css_class = "secondary"
 
-        return f'<span class="label {css_class}" title="{rodzaj.nazwa}">{skrot}</span>'
+        return format_html(
+            '<span class="label {}" title="{}">{}</span>',
+            css_class,
+            rodzaj.nazwa,
+            skrot,
+        )
     except Rodzaj_Autora.DoesNotExist:
-        return f'<span class="label secondary" title="{skrot}">{skrot}</span>'
+        return format_html(
+            '<span class="label secondary" title="{}">{}</span>', skrot, skrot
+        )
 
 
 @register.filter

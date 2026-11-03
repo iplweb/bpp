@@ -8,21 +8,23 @@ repos:
       # A lower pin here caused pre-commit to accept an I001 layout that
       # ruff 0.15.x (used by CI) rejected — the diff was invisible
       # locally until GitHub Actions failed.
-      rev: v0.16.6
+      rev: v0.17.3
       hooks:
         - id: ruff
           args: ["--fix", "--exit-non-zero-on-fix"]
         - id: ruff-format
 
     - repo: https://github.com/astral-sh/uv-pre-commit
-      # Trzymaj z grubsza w parze z wersją uv w użyciu (obecnie 0.11.14).
+      # Trzymaj w parze z wersją uv w CI, w Dockerfile (obecnie 0.13.5) i w
+      # bin/prepare-developer-machine/lib.sh, gdzie razem z UV_VERSION trzeba
+      # zmienić UV_INSTALLER_SHA256.
       # Hook bundluje własne uv — nowszy pin potrafi przepisać uv.lock do
       # nowszego formatu wewnętrznego (churn), więc celowo pinujemy tag
       # najbliższy uv-owi z tego środowiska zamiast "latest". Domyślny
       # scope hooka to ^(uv\.lock|pyproject\.toml|uv\.toml)$ — NIE poszerzać.
       # Gwarantuje, że każdy commit dotykający deps ma spójny uv.lock;
       # autorytatywnym gate'em (nie do obejścia) jest job `lockfile` w CI.
-      rev: 0.11.15
+      rev: 0.13.5
       hooks:
         - id: uv-lock
 

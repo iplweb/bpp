@@ -73,6 +73,11 @@ wpływają na bezpieczeństwo):
 - **PostgreSQL/Redis** dostępne wyłącznie z sieci wewnętrznej.
 - Aktualizacje obrazów Docker w cyklu zgodnym z polityką organizacji
   (zob. `iplweb/bpp_appserver:latest` — Trivy gate na CRITICAL CVE).
+- **Grupy uprzywilejowane** („administracja”, „web”, „dane systemowe”,
+  „raporty”, „struktura”) nadawane tylko zaufanym osobom, jak konto
+  administratora: pozwalają wstawiać wykonywalny HTML/JavaScript albo
+  zmieniać konfigurację serwisu. Szczegóły i zalecenia:
+  [Grupy uprawnień](../administrator/grupy-uprawnien.md#grupy-uprzywilejowane).
 
 ---
 

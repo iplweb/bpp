@@ -123,13 +123,13 @@ jobs:
       channel_tag: ${{ steps.tag.outputs.channel_tag }}
     steps:
       - name: Log in to Docker Hub
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           username: ${{ vars.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PAT }}
 
       - name: Set up Docker Buildx Action
-        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         with:
           # PRZYPIĘTE do konkretnej wersji lab (buildx-desktop) zamiast ruchomego
           # "lab:latest". "lab:latest" ściąga binarkę buildx z kanału lab, którego
@@ -188,22 +188,26 @@ jobs:
 
           # Wywołanie reusable: tag i kanał z inputów (omija logikę ref-based).
           if [ -n "${INPUT_VERSION_TAG:-}" ]; then
-            echo "final_tag=${INPUT_VERSION_TAG}" >> "$GITHUB_OUTPUT"
-            echo "channel_tag=${INPUT_CHANNEL}" >> "$GITHUB_OUTPUT"
             # RC jest staging-flavored → stopka pokazuje wersję rcN + git SHA.
             # BPP_IMAGE_TAG (footer_image_tag) zostaje PUSTY: tag obrazu = ta
             # sama wersja rcN, więc duplikowałby "wersję" w stopce. Prod (po
             # promote) jest release-flavored i tak chowa image_tag.
-            echo "footer_image_tag=" >> "$GITHUB_OUTPUT"
+            {
+              echo "final_tag=${INPUT_VERSION_TAG}"
+              echo "channel_tag=${INPUT_CHANNEL}"
+              echo "footer_image_tag="
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           FINAL_TAG=$(echo "$REF_NAME" \
             | sed 's/[^a-zA-Z0-9._-]/-/g' \
             | tr '[:upper:]' '[:lower:]')
-          echo "final_tag=${FINAL_TAG}" >> "$GITHUB_OUTPUT"
-          echo "footer_image_tag=${FINAL_TAG}" >> "$GITHUB_OUTPUT"
-          echo "channel_tag=" >> "$GITHUB_OUTPUT"
+          {
+            echo "final_tag=${FINAL_TAG}"
+            echo "footer_image_tag=${FINAL_TAG}"
+            echo "channel_tag="
+          } >> "$GITHUB_OUTPUT"
 
       # -----------------------------------------------------------------
       # FAZA 1: Build → push do staging tagu
@@ -267,9 +271,9 @@ jobs:
           persist-credentials: false
 
       - name: Install uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
-          version: "0.11.29"
+          version: "0.13.5"
           enable-cache: false
 
       - name: Install pinned CVE scanners
@@ -277,10 +281,10 @@ jobs:
           # BUMP: podnieś wersję i wklej SHA256 z pliku checksums release'u.
           OSV_SCANNER_VERSION: "2.4.0"
           OSV_SCANNER_SHA256: "15314940c10d26af9c6649f150b8a47c1262e8fc7e17b1d1029b0e479e8ed8a0"
-          GRYPE_VERSION: "0.115.0"
-          GRYPE_SHA256: "3fad92940650e514c0aa2dad83526942a055e210cec09a8a59d9c024adc2b90e"
-          TRIVY_VERSION: "0.72.0"
-          TRIVY_SHA256: "bbb64b9695866ce4a7a8f5c9592002c5961cab378577fa3f8a040df362b9b2ea"
+          GRYPE_VERSION: "0.121.0"
+          GRYPE_SHA256: "64e07133d3486115de647a66581461dccf5c732748a0a3119077395565f15519"
+          TRIVY_VERSION: "0.76.1"
+          TRIVY_SHA256: "c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0"
         run: |
           set -euo pipefail
           TMP="$(mktemp -d)"
@@ -336,12 +340,12 @@ jobs:
     env:
       # Trivy PRZYPIĘTY do wersji + digestu (multi-arch index), NIE ruchomego
       # :latest — rejestr nie może podmienić zawartości pod niezmiennym
-      # digestem. Wersja 0.72.0 = ta sama co binarka trivy w
+      # digestem. Wersja 0.76.1 = ta sama co binarka trivy w
       # jobie dependency_scan — jeden Trivy w całym pipeline.
       # BUMP: podnieś wersję i digest z
       #   docker buildx imagetools inspect aquasec/trivy:<wersja>
       # (weź „Digest:" indeksu multi-arch, nie per-platform manifest).
-      TRIVY_IMAGE: "aquasec/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f"
+      TRIVY_IMAGE: "aquasec/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c"
     steps:
       # -----------------------------------------------------------------
       # Skanuje staging tag. CRITICAL z dostepnym fix-em → exit 1, cały job
@@ -496,13 +500,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Log in to Docker Hub
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           username: ${{ vars.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PAT }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Promote staging tag to canonical tag(s)
         env:

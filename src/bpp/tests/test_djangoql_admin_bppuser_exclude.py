@@ -1,8 +1,9 @@
 """Regresja bezpieczeństwa (#1 z security review): adminowa wyszukiwarka
-DjangoQL (``BppQLSchema``) nie może odsłaniać modelu użytkownika (``BppUser``)
-przez reverse-relację ``Autor.user``.
+DjangoQL (``BppQLSchema``) odsłania model użytkownika (``BppUser``, np. przez
+reverse-relację ``Autor.user``) wyłącznie z polami z białej listy
+(``username``, ``first_name``, ``last_name``) i bez dalszych relacji.
 
-Bez wykluczenia pola ``pbn_token`` (żywy token PBN), ``email`` i ``is_superuser``
+Bez tego ograniczenia pola ``pbn_token`` (żywy token PBN), ``email`` i ``is_superuser``
 stają się filtrowalne → blind oracle: zalogowany redaktor eksfiltruje cudzy
 (nawet superusera) token PBN znak-po-znaku (``user.pbn_token startswith "…"``).
 API i publiczny ``/zapytanie/`` używają schematu z allow-listą i NIE były
@@ -15,20 +16,23 @@ from djangoql.exceptions import DjangoQLError
 from djangoql.queryset import apply_search
 from model_bakery import baker
 
-from bpp.djangoql_schema import BppQLSchema
+from bpp.djangoql_schema import POLA_UZYTKOWNIKA_W_SCHEMACIE, BppQLSchema
 from bpp.models import Autor
 
 
-def test_schemat_admina_wyklucza_model_uzytkownika():
-    """BppUser jest wykluczony z BppQLSchema niezależnie od modelu bazowego."""
-    assert BppQLSchema(Autor).excluded(get_user_model()) is True
+def test_schemat_admina_ogranicza_pola_modelu_uzytkownika():
+    """BppUser w BppQLSchema ma wyłącznie pola z białej listy."""
+    schema = BppQLSchema(Autor)
+    pola = schema.models[schema.model_label(get_user_model())]
+    assert set(pola) == set(POLA_UZYTKOWNIKA_W_SCHEMACIE)
 
 
-def test_relacja_user_autora_nie_istnieje_w_schemacie():
-    """Reverse-relacja ``Autor.user`` jest wycięta → 'user' to nieznane pole."""
+def test_relacja_user_autora_prowadzi_do_ograniczonego_modelu():
+    """Reverse-relacja ``Autor.user`` istnieje, ale wskazuje na model
+    użytkownika z białą listą pól."""
     schema = BppQLSchema(Autor)
     pola_autora = schema.models[schema.model_label(Autor)]
-    assert "user" not in pola_autora
+    assert pola_autora["user"].related_model is get_user_model()
 
 
 @pytest.mark.django_db

@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.shortcuts import redirect, render
+from django.utils.html import format_html
 from django.views.decorators.http import require_POST
 
 from bpp.models import Uczelnia
@@ -215,10 +216,13 @@ def start_bulk_optimization(request):
         if liczba_n_count == 0:
             messages.error(
                 request,
-                "Brak danych liczby N dla uczelni! Przed optymalizacją musisz "
-                "najpierw policzyć liczbę N. "
-                'Przejdź do <a href="/ewaluacja_liczba_n/">modułu Liczba N</a> '
-                "lub uruchom polecenie: python src/manage.py przelicz_n",
+                format_html(
+                    "Brak danych liczby N dla uczelni! Przed optymalizacją musisz "
+                    "najpierw policzyć liczbę N. "
+                    'Przejdź do <a href="{}">modułu Liczba N</a> '
+                    "lub uruchom polecenie: python src/manage.py przelicz_n",
+                    "/ewaluacja_liczba_n/",
+                ),
             )
             return redirect("ewaluacja_optymalizacja:index")
 

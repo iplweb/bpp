@@ -4,6 +4,7 @@ from rest_framework.permissions import BasePermission
 from bpp.const import GR_RAPORTY_WYSWIETLANIE
 from bpp.models import Uczelnia
 from bpp.models.uczelnia import GrupaApiV1
+from bpp.permissions import moze_wprowadzac_dane
 from bpp.views.zapytanie import user_can_use_query_editor
 
 KOMUNIKAT_GLOWNY = "REST API tego serwisu zostało wyłączone przez administratora."
@@ -158,3 +159,24 @@ class MoznaUzywacZapytania(BasePermission):
 
     def has_permission(self, request, view):
         return user_can_use_query_editor(request.user)
+
+
+def widzi_dane_osobowe(request) -> bool:
+    """Czy pytający widzi dane osobowe autorów i autorów ukrytych
+    (``pokazuj=False``) w ``/api/v1/``.
+
+    Tak — wyłącznie superuser albo członek grupy ``GR_WPROWADZANIE_DANYCH``
+    (:func:`bpp.permissions.moze_wprowadzac_dane`). Samo zalogowanie nie
+    wystarcza: konta zakładane automatycznie (np. przez OIDC) nie mają
+    dostępu szerszego niż anonim.
+
+    Wynik jest zapamiętywany na obiekcie żądania — serializer listy woła to
+    per wiersz, a predykat robi zapytanie o grupy.
+    """
+    if request is None:
+        return False
+    wynik = getattr(request, "_bpp_widzi_dane_osobowe", None)
+    if wynik is None:
+        wynik = moze_wprowadzac_dane(request.user)
+        request._bpp_widzi_dane_osobowe = wynik
+    return wynik

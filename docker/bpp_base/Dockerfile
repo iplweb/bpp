@@ -2,13 +2,20 @@
 
 # Build arguments for version flexibility
 ARG PYTHON_VERSION=3.12
-ARG NODEJS_VERSION=20
+ARG NODEJS_VERSION=24
 ARG DEBIAN_VERSION=trixie
 # Pandoc installed via COPY --from= zamiast apt-get, bo apt-owy pandoc
 # ciagnie pandoc-data i transitive deps (~300 MB). Osobny pinned tag
 # pozwala trzymac pandoc w stabilnej warstwie cache, niezaleznej od
 # rebuildow bpp. Update pandoc = zmiana tego jednego arg.
 ARG PANDOC_VERSION=3.5
+# pip z obrazu python:* bywa stary (3.12-slim: 25.0.1) i zostaje w obrazie
+# produkcyjnym — podbijamy go jawnie do wersji bez znanych CVE. uv w
+# COPY --from= ponizej jest wpisany literalnie (0.13.5), bo BuildKit nie
+# rozwija ARG w `COPY --from=image:${VAR}`; podbijaj go razem z pinem
+# `version:` w setup-uv we wszystkich workflow-ach, z uv.lock oraz z parą
+# UV_VERSION + UV_INSTALLER_SHA256 w bin/prepare-developer-machine/lib.sh.
+ARG PIP_VERSION=26.2.2
 
 ##############################################################################
 # PANDOC-SRC: pinned pandoc binary source
@@ -23,6 +30,9 @@ FROM python:${PYTHON_VERSION}-${DEBIAN_VERSION} AS base
 
 ARG NODEJS_VERSION
 ARG BUILD_CACHE_EPOCH=manual
+ARG PIP_VERSION
+
+RUN python -m pip install --no-cache-dir --upgrade "pip==${PIP_VERSION}"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -36,7 +46,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # to samo osobno, bo nie wywodzi się z `base`.
 ENV MALLOC_ARENA_MAX=2
 
-COPY --from=ghcr.io/astral-sh/uv:0.7 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.13.5 /uv /usr/local/bin/uv
 
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy
@@ -169,6 +179,7 @@ RUN /app/.venv/bin/python src/manage.py compilemessages -v0 -l pl --traceback
 # w prod 404 na .map pojawia sie w konsoli gdy user otworzy devtools —
 # bez wplywu na dzialanie aplikacji.
 RUN DJANGO_BPP_SECRET_KEY=build-time-only-not-used \
+    DJANGO_BPP_BUILD_STAGE=1 \
     STATIC_ROOT=/app/staticroot.baked \
     /app/.venv/bin/python src/manage.py collectstatic \
         --noinput -v0 --traceback \
@@ -354,6 +365,9 @@ ARG PYTHON_VERSION
 ARG DEBIAN_VERSION
 FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} AS test-runner
 
+ARG PIP_VERSION
+RUN python -m pip install --no-cache-dir --upgrade "pip==${PIP_VERSION}"
+
 ENV DEBIAN_FRONTEND=noninteractive
 # MALLOC_ARENA_MAX: patrz komentarz w stage `base` (slim nie dziedziczy).
 ENV MALLOC_ARENA_MAX=2
@@ -364,7 +378,7 @@ ENV UV_COMPILE_BYTECODE=1 \
 ENV PATH="/opt/venv/bin:${PATH}"
 
 # uv potrzebne w runtime — CI wola `uv run pytest` (jak na pelnym obrazie).
-COPY --from=ghcr.io/astral-sh/uv:0.7 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.13.5 /uv /usr/local/bin/uv
 
 RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
 
@@ -405,6 +419,8 @@ COPY --from=test-assets-builder /src/src/ /src/src/
 COPY baseline-sql/ /src/baseline-sql/
 COPY conftest.py pytest.ini Makefile pyproject.toml uv.lock docker-bake.hcl /src/
 COPY docker/bpp_base/Dockerfile /src/docker/bpp_base/Dockerfile
+# test_gunicorn_conf.py laduje prawdziwy config appservera (limit_concurrency).
+COPY docker/appserver/gunicorn_conf.py /src/docker/appserver/gunicorn_conf.py
 COPY .github/workflows/build-docker-images.yml \
      .github/workflows/refresh-baseline.yml \
      .github/workflows/release-candidate.yml \
@@ -517,6 +533,7 @@ RUN npx grunt build-non-interactive
 # wystarcza — collectstatic nie wymaga DB ani Redisa. Bez --ignore sinon/qunit/
 # *.map — zostawiamy w dev, latwiej debugowac.
 RUN DJANGO_BPP_SECRET_KEY=build-time-only-not-used \
+    DJANGO_BPP_BUILD_STAGE=1 \
     STATIC_ROOT=/app/staticroot.baked \
     python src/manage.py collectstatic \
         --noinput -v0 --traceback
@@ -543,6 +560,9 @@ ARG DEBIAN_VERSION
 FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} AS runtime
 
 ARG BUILD_CACHE_EPOCH=manual
+ARG PIP_VERSION
+
+RUN python -m pip install --no-cache-dir --upgrade "pip==${PIP_VERSION}"
 
 RUN echo "Dependency cache epoch: ${BUILD_CACHE_EPOCH}" && \
     sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources

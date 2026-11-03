@@ -3,7 +3,6 @@ from django import forms
 from django.contrib import admin
 from django.forms.utils import flatatt
 from django.utils.safestring import mark_safe
-from dynamic_admin_columns.mixins import DynamicColumnsMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
@@ -19,6 +18,7 @@ from bpp.admin.filters import (
     ZrodloUsunieteWPBNFilter,
 )
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
+from bpp.admin.helpers.dynamic_columns import BppDynamicColumnsMixin
 from bpp.admin.helpers.fieldsets import (
     ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
     DWA_TYTULY,
@@ -33,7 +33,11 @@ from bpp.admin.helpers.fieldsets import (
     PRZED_PO_LISCIE_AUTOROW_FIELDSET,
     AdnotacjeZDatamiOrazPBNMixin,
 )
-from bpp.admin.helpers.mixins import DomyslnyStatusKorektyMixin
+from bpp.admin.helpers.mixins import (
+    BlokujRekordPrzedZapisemMixin,
+    DomyslnyStatusKorektyMixin,
+    OdroczPunktyDyscyplinMixin,
+)
 from bpp.admin.helpers.pbn_api.gui import sprobuj_policzyc_sloty
 from bpp.admin.helpers.widgets import (
     COMMA_DECIMAL_FIELD_OVERRIDE,
@@ -271,6 +275,8 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
 
 
 class Wydawnictwo_CiagleAdmin(
+    OdroczPunktyDyscyplinMixin,
+    BlokujRekordPrzedZapisemMixin,
     DSpaceLinkAdminMixin,
     ConstanceScoringFieldsMixin,
     BppDjangoQLSearchMixin,
@@ -284,7 +290,7 @@ class Wydawnictwo_CiagleAdmin(
     AdminCrossrefPBNAPIMixin,
     EksportDanychZFormatowanieMixin,
     ExportActionsMixin,
-    DynamicColumnsMixin,
+    BppDynamicColumnsMixin,
     RestrictDeletionWhenPBNUIDSetMixin,
     admin.ModelAdmin,
 ):

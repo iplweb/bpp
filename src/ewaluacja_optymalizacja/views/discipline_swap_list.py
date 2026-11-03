@@ -257,7 +257,9 @@ def _get_row_fill(opp, row_idx, styles):
 
 def _write_xlsx_cell(ws, row, col, value, styles, row_fill, alignment=None, fmt=None):
     """Write a cell with styling."""
-    cell = ws.cell(row=row, column=col, value=value)
+    from bpp.util import sanitize_xlsx_cell
+
+    cell = ws.cell(row=row, column=col, value=sanitize_xlsx_cell(value))
     cell.border = styles["thin_border"]
     if row_fill:
         cell.fill = row_fill

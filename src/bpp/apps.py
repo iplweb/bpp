@@ -7,7 +7,21 @@ class BppConfig(AppConfig):
 
     def ready(self):
         from django.apps import apps
+        from django.contrib.auth.signals import user_logged_in
         from django.db.models.signals import post_migrate, post_save
+
+        from . import checks  # noqa: F401
+        from .auth.microsoft_conf import ostrzez_superusera_o_tenancie_microsoft
+        from .konta_bez_uczelni import ostrzez_superusera_po_zalogowaniu
+
+        user_logged_in.connect(
+            ostrzez_superusera_po_zalogowaniu,
+            dispatch_uid="bpp.ostrzez_superusera_po_zalogowaniu",
+        )
+        user_logged_in.connect(
+            ostrzez_superusera_o_tenancie_microsoft,
+            dispatch_uid="bpp.ostrzez_superusera_o_tenancie_microsoft",
+        )
 
         # Only register post_migrate signal when dbtemplates is available
         # (auth_server uses minimal INSTALLED_APPS without dbtemplates)
@@ -15,16 +29,6 @@ class BppConfig(AppConfig):
             from bpp.system import odtworz_grupy
 
             post_migrate.connect(odtworz_grupy, sender=self)
-
-        # Odtwarzaj słowniki referencyjne po każdym ``migrate`` ORAZ po
-        # transakcyjnym flushu testów (``TransactionTestCase._fixture_teardown``
-        # emituje ``post_migrate``). Bez tego ``TRUNCATE`` zmiata słowniki
-        # zaseedowane migracjami danych (0449, …) i kolejne testy na tym
-        # samym workerze widzą pustą tabelę → flake. Wzorzec jak
-        # ``odtworz_grupy``. Idempotentne, w produkcji no-op na zdrowej bazie.
-        from bpp.seed_slowniki import seed_slowniki
-
-        post_migrate.connect(seed_slowniki, sender=self)
 
         if apps.is_installed("siteblog"):
             from bpp.views.browse import invalidate_uczelnia_cache_on_article_change

@@ -539,9 +539,13 @@ class Komparator:
             ret = matchuj_wydawce(wartosc, similarity=0.65)
 
             if ret is None:
-                t = Wydawca.objects.filter(nazwa__istartswith=wartosc).filter()
+                t = Wydawca.objects.filter(nazwa__istartswith=wartosc)
                 if t.count() == 1:
-                    mozliwe_wartosci.add(t)
+                    # Instancja, nie QuerySet: ``rekord_po_stronie_bpp`` musi
+                    # zwrócić obiekt z ``.pk``, a set ma deduplikować tego
+                    # samego wydawcę trafionego z kilku wariantów nazwy "A/B"
+                    # (Rollbar #5355).
+                    mozliwe_wartosci.add(t.get())
                 continue
 
             return WynikPorownania(

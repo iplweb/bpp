@@ -16,9 +16,7 @@
 
 {% block extrahead %}
     {{ block.super }}
-    <script src="{% static 'plotly.js/dist/plotly.min.js' %}"></script>
-    <script src="{% static 'plotly.js/dist/plotly-locale-pl.js' %}"></script>
-    <script src="{% static 'htmx.org/dist/htmx.js' %}"></script>
+    {# htmx ładuje już base_site.html — drugi raz inicjował go podwójnie. #}
     <style>
         #welcome-message {
             transition: opacity 1.5s ease-in-out;
@@ -119,6 +117,63 @@
             min-height: 400px;
             margin: 0;
         }
+        .chart-container--tall {
+            min-height: 500px;
+        }
+        /* Leniwe wykresy: skeleton z shimmerem o docelowej wysokości */
+        /* (bez skakania layoutu), potem płynne pojawienie się wykresu. */
+        .lazy-chart {
+            position: relative;
+            border-radius: 4px;
+            background: #f3f3f3;
+        }
+        .lazy-chart.is-loading::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+                90deg, transparent 0%, rgba(255, 255, 255, 0.7) 50%,
+                transparent 100%);
+            background-size: 200% 100%;
+            animation: lazy-chart-shimmer 1.4s ease-in-out infinite;
+        }
+        .lazy-chart.is-loading::after {
+            content: "Ładowanie wykresu…";
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: #999;
+            font-size: 0.9em;
+        }
+        .lazy-chart.is-loaded {
+            background: transparent;
+            animation: lazy-chart-fade-in 0.4s ease-out;
+        }
+        .lazy-chart.is-error {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .lazy-chart__error {
+            color: #a33;
+            text-align: center;
+        }
+        @keyframes lazy-chart-shimmer {
+            from { background-position: 200% 0; }
+            to { background-position: -200% 0; }
+        }
+        @keyframes lazy-chart-fade-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .lazy-chart.is-loading::before,
+            .lazy-chart.is-loaded {
+                animation: none;
+            }
+        }
         .chart-module {
             width: 100%;
         }
@@ -130,7 +185,9 @@
 {% endblock %}
 
 {% block content %}
-    <div class="dashboard-grid">
+    <div class="dashboard-grid lazy-chart-wrapper"
+         data-plotly-src="{% static 'plotly.js/dist/plotly.min.js' %}"
+         data-plotly-locale-src="{% static 'plotly.js/dist/plotly-locale-pl.js' %}">
         {# LEWA KOLUMNA - Ostatnio edytowane #}
         <div class="dashboard-column">
             <div class="grp-module">
@@ -165,7 +222,7 @@
                 <div
                     id="recent-logins"
                     hx-get="{% url 'admin_dashboard:recent_logins' %}"
-                    hx-trigger="load, every 30s"
+                    hx-trigger="load, every 30s[document.visibilityState === 'visible']"
                     hx-swap="innerHTML">
                     <p>Ładowanie...</p>
                 </div>
@@ -197,12 +254,14 @@
 
             <div class="grp-module chart-module">
                 <h2>Prace w bazie</h2>
-                <div id="cumulative-publications-chart" class="chart-container"></div>
+                <div id="cumulative-publications-chart" class="chart-container lazy-chart"
+                     data-chart-url="{% url 'admin_dashboard:cumulative_publications_stats' %}"></div>
             </div>
 
             <div class="grp-module chart-module">
                 <h2>Łączne punkty MNiSW</h2>
-                <div id="cumulative-points-chart" class="chart-container"></div>
+                <div id="cumulative-points-chart" class="chart-container lazy-chart"
+                     data-chart-url="{% url 'admin_dashboard:cumulative_points_kbn_stats' %}"></div>
             </div>
         </div>
 
@@ -210,37 +269,47 @@
         <div class="dashboard-column">
             <div class="grp-module chart-module">
                 <h2>Edycje w dni tygodnia</h2>
-                <div id="weekday-chart" class="chart-container"></div>
+                <div id="weekday-chart" class="chart-container lazy-chart chart-container--tall"
+                     data-chart-url="{% url 'admin_dashboard:weekday_stats' %}"></div>
             </div>
 
             <div class="grp-module chart-module">
                 <h2>Aktywność w dniach miesiąca</h2>
-                <div id="day-of-month-chart" class="chart-container"></div>
+                <div id="day-of-month-chart" class="chart-container lazy-chart chart-container--tall"
+                     data-chart-url="{% url 'admin_dashboard:day_of_month_activity_stats' %}"></div>
             </div>
 
             <div class="grp-module chart-module">
                 <h2>Łączny Impact Factor</h2>
-                <div id="cumulative-if-chart" class="chart-container"></div>
+                <div id="cumulative-if-chart" class="chart-container lazy-chart"
+                     data-chart-url="{% url 'admin_dashboard:cumulative_impact_factor_stats' %}"></div>
             </div>
 
             <div class="grp-module chart-module">
                 <h2>Nowo dodane prace</h2>
-                <div id="new-publications-chart" class="chart-container"></div>
+                <div id="new-publications-chart" class="chart-container lazy-chart chart-container--tall"
+                     data-chart-url="{% url 'admin_dashboard:new_publications_stats' %}"></div>
             </div>
 
             <div class="grp-module chart-module">
                 <h2>Charaktery formalne - Top 90%</h2>
-                <div id="charakter-formalny-chart-top90" class="chart-container"></div>
+                <div id="charakter-formalny-chart-top90" class="chart-container lazy-chart chart-container--tall"
+                     data-chart-url="{% url 'admin_dashboard:charakter_formalny_stats_top90' %}"
+                     data-chart-clickable></div>
             </div>
 
             <div class="grp-module chart-module">
                 <h2>Charaktery formalne - Pozostałe 10%</h2>
-                <div id="charakter-formalny-chart-remaining10" class="chart-container"></div>
+                <div id="charakter-formalny-chart-remaining10" class="chart-container lazy-chart chart-container--tall"
+                     data-chart-url="{% url 'admin_dashboard:charakter_formalny_stats_remaining10' %}"
+                     data-chart-clickable></div>
             </div>
 
             <div class="grp-module chart-module">
                 <h2>Charaktery formalne - Ostatni 1%</h2>
-                <div id="charakter-formalny-chart-remaining1" class="chart-container"></div>
+                <div id="charakter-formalny-chart-remaining1" class="chart-container lazy-chart chart-container--tall"
+                     data-chart-url="{% url 'admin_dashboard:charakter_formalny_stats_remaining1' %}"
+                     data-chart-clickable></div>
             </div>
         </div>
 
@@ -315,222 +384,10 @@
 
 {% block javascripts %}
     {{ block.super }}
+    <script src="{% static 'admin_dashboard/js/lazy-charts.js' %}" defer></script>
     <script type="text/javascript">
         (function($) {
             $(document).ready(function() {
-                // Set Polish locale as default for Plotly
-                Plotly.setPlotConfig({locale: 'pl'});
-
-                // Load weekday chart
-                function loadWeekdayChart() {
-                    fetch('{% url "admin_dashboard:weekday_stats" %}')
-                        .then(response => response.json())
-                        .then(data => {
-                            Plotly.newPlot('weekday-chart', data.data, data.layout, {responsive: true, displaylogo: false, locale: 'pl'});
-                        })
-                        .catch(error => console.error('Error loading weekday chart:', error));
-                }
-
-                // Load day of month activity chart
-                function loadDayOfMonthChart() {
-                    fetch('{% url "admin_dashboard:day_of_month_activity_stats" %}')
-                        .then(response => response.json())
-                        .then(data => {
-                            Plotly.newPlot('day-of-month-chart', data.data, data.layout, {responsive: true, displaylogo: false, locale: 'pl'});
-                        })
-                        .catch(error => console.error('Error loading day of month chart:', error));
-                }
-
-                // Load new publications chart
-                function loadNewPublicationsChart() {
-                    fetch('{% url "admin_dashboard:new_publications_stats" %}')
-                        .then(response => response.json())
-                        .then(data => {
-                            Plotly.newPlot('new-publications-chart', data.data, data.layout, {responsive: true, displaylogo: false, locale: 'pl'});
-                        })
-                        .catch(error => console.error('Error loading new publications chart:', error));
-                }
-
-                // Load cumulative publications chart
-                function loadCumulativePublicationsChart() {
-                    fetch('{% url "admin_dashboard:cumulative_publications_stats" %}')
-                        .then(response => response.json())
-                        .then(data => {
-                            Plotly.newPlot('cumulative-publications-chart', data.data, data.layout, {responsive: true, displaylogo: false, locale: 'pl'});
-                        })
-                        .catch(error => console.error('Error loading cumulative publications chart:', error));
-                }
-
-                // Load cumulative IF chart
-                function loadCumulativeIFChart() {
-                    fetch('{% url "admin_dashboard:cumulative_impact_factor_stats" %}')
-                        .then(response => response.json())
-                        .then(data => {
-                            Plotly.newPlot('cumulative-if-chart', data.data, data.layout, {responsive: true, displaylogo: false, locale: 'pl'});
-                        })
-                        .catch(error => console.error('Error loading cumulative IF chart:', error));
-                }
-
-                // Load cumulative points chart
-                function loadCumulativePointsChart() {
-                    fetch('{% url "admin_dashboard:cumulative_points_kbn_stats" %}')
-                        .then(response => response.json())
-                        .then(data => {
-                            Plotly.newPlot('cumulative-points-chart', data.data, data.layout, {responsive: true, displaylogo: false, locale: 'pl'});
-                        })
-                        .catch(error => console.error('Error loading cumulative points chart:', error));
-                }
-
-                // Load charakter formalny charts
-                function loadCharakterFormalnyChartTop90() {
-                    fetch('{% url "admin_dashboard:charakter_formalny_stats_top90" %}')
-                        .then(response => response.json())
-                        .then(data => {
-                            Plotly.newPlot('charakter-formalny-chart-top90', data.data, data.layout, {responsive: true, displaylogo: false, locale: 'pl'});
-
-                            var chartElement = document.getElementById('charakter-formalny-chart-top90');
-
-                            // Zmiana kursora na pointer przy najechaniu
-                            chartElement.on('plotly_hover', function(eventData) {
-                                var url = eventData.points[0].customdata;
-                                if (url) {
-                                    chartElement.style.cursor = 'pointer';
-                                } else {
-                                    chartElement.style.cursor = 'default';
-                                }
-                            });
-
-                            // Przywróć domyślny kursor po opuszczeniu
-                            chartElement.on('plotly_unhover', function() {
-                                chartElement.style.cursor = 'default';
-                            });
-
-                            // Obsługa kliknięcia
-                            chartElement.on('plotly_click', function(eventData) {
-                                var point = eventData.points[0];
-                                var url = point.customdata;
-                                var label = point.label;
-
-                                console.log('Kliknięto wykres Top 90%:', label, 'URL:', url);
-
-                                // Najpierw sprawdź czy to "Inne"
-                                if (label === 'Inne') {
-                                    alert('Te charaktery formalne pokazane są na innym wykresie');
-                                    return;
-                                }
-
-                                // Potem przekieruj jeśli jest URL
-                                if (url) {
-                                    window.location.href = url;
-                                }
-                            });
-                        })
-                        .catch(error => console.error('Error loading charakter formalny top90 chart:', error));
-                }
-
-                function loadCharakterFormalnyChartRemaining10() {
-                    fetch('{% url "admin_dashboard:charakter_formalny_stats_remaining10" %}')
-                        .then(response => response.json())
-                        .then(data => {
-                            Plotly.newPlot('charakter-formalny-chart-remaining10', data.data, data.layout, {responsive: true, displaylogo: false, locale: 'pl'});
-
-                            var chartElement = document.getElementById('charakter-formalny-chart-remaining10');
-
-                            // Zmiana kursora na pointer przy najechaniu
-                            chartElement.on('plotly_hover', function(eventData) {
-                                var url = eventData.points[0].customdata;
-                                if (url) {
-                                    chartElement.style.cursor = 'pointer';
-                                } else {
-                                    chartElement.style.cursor = 'default';
-                                }
-                            });
-
-                            // Przywróć domyślny kursor po opuszczeniu
-                            chartElement.on('plotly_unhover', function() {
-                                chartElement.style.cursor = 'default';
-                            });
-
-                            // Obsługa kliknięcia
-                            chartElement.on('plotly_click', function(eventData) {
-                                var point = eventData.points[0];
-                                var url = point.customdata;
-                                var label = point.label;
-
-                                console.log('Kliknięto wykres Pozostałe 10%:', label, 'URL:', url);
-
-                                // Najpierw sprawdź czy to "Inne"
-                                if (label === 'Inne') {
-                                    alert('Te charaktery formalne pokazane są na innym wykresie');
-                                    return;
-                                }
-
-                                // Potem przekieruj jeśli jest URL
-                                if (url) {
-                                    window.location.href = url;
-                                }
-                            });
-                        })
-                        .catch(error => console.error('Error loading charakter formalny remaining10 chart:', error));
-                }
-
-                function loadCharakterFormalnyChartRemaining1() {
-                    fetch('{% url "admin_dashboard:charakter_formalny_stats_remaining1" %}')
-                        .then(response => response.json())
-                        .then(data => {
-                            Plotly.newPlot('charakter-formalny-chart-remaining1', data.data, data.layout, {responsive: true, displaylogo: false, locale: 'pl'});
-
-                            var chartElement = document.getElementById('charakter-formalny-chart-remaining1');
-
-                            // Zmiana kursora na pointer przy najechaniu
-                            chartElement.on('plotly_hover', function(eventData) {
-                                var url = eventData.points[0].customdata;
-                                if (url) {
-                                    chartElement.style.cursor = 'pointer';
-                                } else {
-                                    chartElement.style.cursor = 'default';
-                                }
-                            });
-
-                            // Przywróć domyślny kursor po opuszczeniu
-                            chartElement.on('plotly_unhover', function() {
-                                chartElement.style.cursor = 'default';
-                            });
-
-                            // Obsługa kliknięcia
-                            chartElement.on('plotly_click', function(eventData) {
-                                var point = eventData.points[0];
-                                var url = point.customdata;
-                                var label = point.label;
-
-                                console.log('Kliknięto wykres Ostatni 1%:', label, 'URL:', url);
-
-                                // Najpierw sprawdź czy to "Inne"
-                                if (label === 'Inne') {
-                                    alert('Te charaktery formalne pokazane są na innym wykresie');
-                                    return;
-                                }
-
-                                // Potem przekieruj jeśli jest URL
-                                if (url) {
-                                    window.location.href = url;
-                                }
-                            });
-                        })
-                        .catch(error => console.error('Error loading charakter formalny remaining1 chart:', error));
-                }
-
-                // Initial load
-                loadWeekdayChart();
-                loadDayOfMonthChart();
-                loadNewPublicationsChart();
-                loadCumulativePublicationsChart();
-                loadCumulativeIFChart();
-                loadCumulativePointsChart();
-                loadCharakterFormalnyChartTop90();
-                loadCharakterFormalnyChartRemaining10();
-                loadCharakterFormalnyChartRemaining1();
-
                 // Search functionality for apps/models
                 $('#app-list-search').on('input', function() {
                     const searchTerm = $(this).val().toLowerCase();

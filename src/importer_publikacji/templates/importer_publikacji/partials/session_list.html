@@ -1,4 +1,4 @@
-{% load i18n static %}
+{% load i18n static bezpieczny_url %}
 
 <div id="session-list-container">
 
@@ -105,11 +105,15 @@
                             {% if s.normalized_data.doi %}
                                 {{ s.normalized_data.doi }}
                             {% elif s.normalized_data.url %}
-                                <a href="{{ s.normalized_data.url }}"
-                                   target="_blank"
-                                   title="{{ s.normalized_data.url }}">
+                                {% if s.normalized_data.url|bezpieczny_url %}
+                                    <a href="{{ s.normalized_data.url|bezpieczny_url }}"
+                                       target="_blank"
+                                       title="{{ s.normalized_data.url }}">
+                                        {{ s.normalized_data.url|truncatechars:40 }}
+                                    </a>
+                                {% else %}
                                     {{ s.normalized_data.url|truncatechars:40 }}
-                                </a>
+                                {% endif %}
                             {% elif s.identifier %}
                                 {{ s.identifier|truncatechars:40 }}
                             {% endif %}
