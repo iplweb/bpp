@@ -33,9 +33,9 @@ from .queries import (
 def _autor_centralny(request, pk, select_related=()):
     """Autor centralny grafu albo 404.
 
-    Widoczność jak na stronie autora (``AutorView``): autor z
-    ``pokazuj=False`` jest dostępny tylko dla użytkowników z uprawnieniami
-    redaktorskimi. Dodatkowo 404, gdy sieć powiązań jest wyłączona
+    Widoczność jak na stronie autora (``AutorView``): autor ze schowaną
+    stroną (``pokazuj_strone_autora=False``) jest dostępny tylko dla
+    użytkowników z uprawnieniami redaktorskimi. Dodatkowo 404, gdy sieć powiązań jest wyłączona
     (per-autor / per-uczelnia). Wspólna bramka dla wszystkich widoków sieci.
     """
     qs = Autor.objects.all()
@@ -78,7 +78,7 @@ class GrafPowiazanDaneView(View):
     """JSON z sąsiadami (współautorami) danego autora.
 
     Ten sam endpoint obsługuje węzeł centralny i każde rozwinięcie po stronie
-    klienta. Sąsiedzi filtrowani do pokazuj=True, sortowani malejąco po liczbie
+    klienta. Sąsiedzi filtrowani do ``pokazuj_strone_autora=True``, sortowani malejąco po liczbie
     wspólnych publikacji. Każdy autor (centrum i sąsiad) niesie tytuł naukowy,
     ORCID i URL do PBN — UI buduje z tego tooltip i menu akcji.
     """

@@ -27,7 +27,7 @@ BASE_URL = "https://cerif.example.org/cerif-oai/"
 def pelne_dane(uczelnia, jednostka, fabryka_autorow, fabryka_wydawnictw, status_ok):
     """Po jednym rekordzie każdego eksportowanego typu, z powiązaniami."""
     autor = fabryka_autorow("Kowalski", orcid="0000-0002-1825-0097")
-    ukryty = fabryka_autorow("Ukryty", pokazuj=False)
+    ukryty = fabryka_autorow("Ukryty", pokazuj_w_api=False)
 
     zrodlo = baker.make(Zrodlo, nazwa="Czasopismo", skrot="Czas.", issn="1234-5678")
     konferencja = baker.make(

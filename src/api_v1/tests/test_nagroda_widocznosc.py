@@ -1,6 +1,6 @@
 """Widoczność nagród w ``/api/v1/nagroda/`` zależna od obiektu, do którego
 nagroda jest przypięta (status korekty, ``nie_eksportuj_przez_api``,
-``Autor.pokazuj``)."""
+``Autor.pokazuj_w_api``)."""
 
 import pytest
 from django.contrib.auth.models import Group
@@ -57,7 +57,7 @@ def _nie_eksportowany(uczelnia, przed_korekta):
 
 
 def _ukryty_autor(uczelnia, przed_korekta):
-    return baker.make("bpp.Autor", pokazuj=False)
+    return baker.make("bpp.Autor", pokazuj_w_api=False)
 
 
 UKRYTE_OBIEKTY = [
@@ -120,7 +120,7 @@ def test_nagrody_widocznych_obiektow_dla_wszystkich(
         for obj in (
             baker.make("bpp.Wydawnictwo_Ciagle", status_korekty=po_korekcie),
             baker.make("bpp.Wydawnictwo_Zwarte", nie_eksportuj_przez_api=False),
-            baker.make("bpp.Autor", pokazuj=True),
+            baker.make("bpp.Autor", pokazuj_w_api=True),
         )
     }
 

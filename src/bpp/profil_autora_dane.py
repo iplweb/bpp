@@ -355,9 +355,11 @@ def _wspolautorzy(autor, limit, request):
     from powiazania_autorow.models import AuthorConnection
 
     polaczenia = (
+        # Współautor zostaje na liście niezależnie od flag ``pokazuj_*``
+        # (to fakt bibliograficzny); szablon linkuje go tylko, gdy ma
+        # publiczną stronę (``pokazuj_strone_autora``).
         AuthorConnection.objects.filter(
-            (Q(primary_author=autor) & Q(secondary_author__pokazuj=True))
-            | (Q(secondary_author=autor) & Q(primary_author__pokazuj=True))
+            Q(primary_author=autor) | Q(secondary_author=autor)
         )
         .select_related("primary_author", "secondary_author")
         .order_by("-shared_publications_count")[:limit]

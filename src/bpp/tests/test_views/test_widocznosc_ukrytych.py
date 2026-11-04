@@ -1,5 +1,5 @@
 """Publiczne widoki nie pokazują rekordów o statusach korekty ukrytych w kanale
-``podglad`` ani autorów z ``pokazuj=False`` — spójnie ze stroną rekordu.
+``podglad`` ani autorów z ``pokazuj_strone_autora=False`` — spójnie ze stroną rekordu.
 Użytkownik z uprawnieniami redaktorskimi widzi wszystko."""
 
 import json
@@ -92,7 +92,14 @@ def test_bibtex_ukryty_rekord_dostepny_dla_redaktora(
 
 @pytest.fixture
 def autor_ukryty(uczelnia):
-    return baker.make(Autor, imiona="Ukryty", nazwisko=f"Autor{TOKEN}", pokazuj=False)
+    return baker.make(
+        Autor,
+        imiona="Ukryty",
+        nazwisko=f"Autor{TOKEN}",
+        pokazuj_strone_autora=False,
+        pokazuj_w_wyszukiwaniu=False,
+        pokazuj_w_indeksie=False,
+    )
 
 
 @pytest.mark.django_db

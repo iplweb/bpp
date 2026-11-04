@@ -1,7 +1,7 @@
 """Eksport prac autora (BibTeX/RIS) stosuje te same reguły widoczności,
 co publiczna strona autora i strony rekordów:
 
-- autor z ``pokazuj=False`` — 404 dla wszystkich poza redaktorem
+- autor z ``pokazuj_strone_autora=False`` — 404 dla wszystkich poza redaktorem
   (``moze_wprowadzac_dane``), jak w ``AutorView`` (wspólny helper
   ``widoczni_autorzy``);
 - prace o statusach korekty ukrytych w kanale ``podglad`` nie trafiają do
@@ -57,7 +57,14 @@ def delay(mocker):
 
 @pytest.fixture
 def autor_ukryty(uczelnia):
-    return baker.make(Autor, imiona="Ukryty", nazwisko="Autorukryty", pokazuj=False)
+    return baker.make(
+        Autor,
+        imiona="Ukryty",
+        nazwisko="Autorukryty",
+        pokazuj_strone_autora=False,
+        pokazuj_w_wyszukiwaniu=False,
+        pokazuj_w_indeksie=False,
+    )
 
 
 @pytest.fixture

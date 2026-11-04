@@ -159,12 +159,13 @@ def siec_powiazan_wlaczona(autor, request):
 
 
 def _widoczni_autorzy(ids, uczelnia_zatr=None):
-    """Zbiór id autorów z `ids`, którzy są widoczni (pokazuj=True). Gdy podano
+    """Zbiór id autorów z `ids`, którzy mają publiczną stronę
+    (``pokazuj_strone_autora=True``). Gdy podano
     `uczelnia_zatr`, dodatkowo zawęża do aktualnie zatrudnionych w tej uczelni
     (`aktualna_jednostka__uczelnia_id` == uczelnia_zatr) — jeden indeksowany
     JOIN do Jednostki.
     """
-    qs = Autor.objects.filter(id__in=ids, pokazuj=True)
+    qs = Autor.objects.filter(id__in=ids, pokazuj_strone_autora=True)
     if uczelnia_zatr is not None:
         qs = qs.filter(aktualna_jednostka__uczelnia_id=uczelnia_zatr)
     return set(qs.values_list("id", flat=True))
@@ -501,7 +502,7 @@ def _sasiedzi_authorconnection(autor, uczelnia_zatr=None):
         inny = (
             c.secondary_author if c.primary_author_id == autor.pk else c.primary_author
         )
-        if not inny.pokazuj:
+        if not inny.pokazuj_strone_autora:
             continue
         if uczelnia_zatr is not None and (
             inny.aktualna_jednostka_id is None

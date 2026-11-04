@@ -1,9 +1,9 @@
 """Widoczność danych na profilu autora i w eksportach BibTeX/RIS.
 
 Prace o statusach korekty ukrytych (kanał „podglad”) nie trafiają do sekcji
-profilu ani do eksportów dla osób bez uprawnień redakcyjnych; ukryci autorzy
-(``pokazuj=False``) nie są pokazywani; sekcja slotów podlega tej samej
-bramce co raport slotów autora.
+profilu ani do eksportów dla osób bez uprawnień redakcyjnych; autorzy ze
+schowaną stroną (``pokazuj_strone_autora=False``) nie są linkowani; sekcja
+slotów podlega tej samej bramce co raport slotów autora.
 """
 
 import io
@@ -128,12 +128,23 @@ def test_wybrane_publikacje_bez_ukrytych(dorobek_z_ukryta, wydawnictwo_zwarte):
 # --- współautorzy ------------------------------------------------------------
 
 
-def test_wspolautorzy_bez_ukrytych_autorow():
+def test_wspolautorzy_ze_schowana_strona_bez_linku():
+    """Współautor ze schowaną stroną zostaje na liście (fakt bibliograficzny),
+    ale jego nazwisko nie linkuje do strony zwracającej 404."""
+    from django.template.loader import render_to_string
+
     from powiazania_autorow.models import AuthorConnection
 
     autor = baker.make(Autor)
-    widoczny = baker.make(Autor, pokazuj=True)
-    ukryty = baker.make(Autor, pokazuj=False)
+    widoczny = baker.make(Autor, nazwisko="Widoczna", imiona="Zofia")
+    ukryty = baker.make(
+        Autor,
+        nazwisko="Przykladowska",
+        imiona="Zofia",
+        pokazuj_strone_autora=False,
+        pokazuj_w_wyszukiwaniu=False,
+        pokazuj_w_indeksie=False,
+    )
     baker.make(
         AuthorConnection,
         primary_author=autor,
@@ -146,8 +157,16 @@ def test_wspolautorzy_bez_ukrytych_autorow():
         secondary_author=autor,
         shared_publications_count=5,
     )
-    dane = _wspolautorzy(autor, 1, None)
-    assert [w["autor"] for w in dane["wspolautorzy"]] == [widoczny]
+    dane = _wspolautorzy(autor, 2, None)
+    assert [w["autor"] for w in dane["wspolautorzy"]] == [ukryty, widoczny]
+
+    html = render_to_string(
+        "browse/autor_sekcje/wspolautorzy.html",
+        {"dane": dane, "nazwa": "Współautorzy", "autor": autor},
+    )
+    assert f'href="{widoczny.get_absolute_url()}"' in html
+    assert ukryty.get_absolute_url() not in html
+    assert "Przykladowska" in html
 
 
 # --- sekcja slotów -----------------------------------------------------------

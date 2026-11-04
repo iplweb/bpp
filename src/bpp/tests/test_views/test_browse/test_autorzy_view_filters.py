@@ -49,7 +49,7 @@ def _jednostka_bledna(uczelnia):
 
 
 def _autor(nazwisko, *jednostki, aktualna=None):
-    a = baker.make(Autor, imiona="Jan", nazwisko=nazwisko, pokazuj=True)
+    a = baker.make(Autor, imiona="Jan", nazwisko=nazwisko)
     for j in jednostki:
         Autor_Jednostka.objects.create(autor=a, jednostka=j)
     Autor.objects.filter(pk=a.pk).update(aktualna_jednostka=aktualna)

@@ -79,6 +79,13 @@ class AutorSerializer(
     def _widzi_dane_osobowe(self):
         return widzi_dane_osobowe(self.context.get("request"))
 
+    def to_representation(self, instance):
+        # Autor z ``pokazuj_w_api=False``: poza redakcją tylko identyfikator
+        # i informacja, że dane są ukryte — bez nazwiska, slugów i linków.
+        if not instance.pokazuj_w_api and not self._widzi_dane_osobowe():
+            return {"id": instance.pk, "dane_ukryte": True}
+        return super().to_representation(instance)
+
     def get_email(self, obj):
         return obj.email if self._widzi_dane_osobowe() else ""
 

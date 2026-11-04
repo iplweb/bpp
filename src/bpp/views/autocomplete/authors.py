@@ -409,7 +409,9 @@ class PodrzednaPublikacjaHabilitacyjnaAutocomplete(
 
         request = getattr(self, "request", None)
         try:
-            autor = widoczni_autorzy(Autor.objects.all(), request).get(pk=int(autor_id))
+            autor = widoczni_autorzy(
+                Autor.objects.all(), request, lookup="pokazuj_w_wyszukiwaniu"
+            ).get(pk=int(autor_id))
         except (TypeError, ValueError, Autor.DoesNotExist):
             return qs.none()
 
@@ -457,7 +459,7 @@ class Dyscyplina_Naukowa_PrzypisanieAutocomplete(
     Używany w adminie i importerze (redaktorzy) oraz w publicznym formularzu
     zgłaszania publikacji. Poza redaktorami dostęp ma tylko ten, komu
     uczelnia udostępnia formularz zgłaszania (ta sama reguła, co
-    ``Zgloszenie_PublikacjiWizard``), i tylko dla autorów z ``pokazuj=True``.
+    ``Zgloszenie_PublikacjiWizard``), i tylko dla autorów z ``pokazuj_w_wyszukiwaniu=True``.
     """
 
     def _dostep_dozwolony(self, request):
@@ -514,7 +516,7 @@ class Dyscyplina_Naukowa_PrzypisanieAutocomplete(
         przypisania = widoczni_autorzy(
             Autor_Dyscyplina.objects.all(),
             getattr(self, "request", None),
-            lookup="autor__pokazuj",
+            lookup="autor__pokazuj_w_wyszukiwaniu",
         )
         try:
             ad = przypisania.get(rok=rok, autor=autor)

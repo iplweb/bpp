@@ -341,7 +341,7 @@ def dodaj_link_do_orgunit(rodzic, nazwa, jednostka, ctx):
 def osadz_osobe(rodzic, autor, ctx):
     """Dopisz skrócony ``Person`` (``PersonName`` + ``ORCID``).
 
-    Nazwisko autora z ``pokazuj=False`` pozostaje — bez niego lista autorów
+    Nazwisko autora z ``pokazuj_w_api=False`` pozostaje — bez niego lista autorów
     publikacji byłaby po prostu nieprawdziwa, a to opis bibliograficzny,
     który i tak widnieje na okładce czasopisma.
 

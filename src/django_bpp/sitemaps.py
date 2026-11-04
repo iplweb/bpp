@@ -75,6 +75,13 @@ class AutorSitemap(AlphabeticBppSitemap):
     url_obj_field = "slug"
     title_field = "nazwisko"
 
+    def items(self):
+        # Autor ze schowaną stroną zwraca 404 — nie podsuwamy go robotom.
+        qs = Autor.objects.filter(pokazuj_strone_autora=True)
+        if self.litera:
+            qs = qs.filter(nazwisko__istartswith=self.litera)
+        return list(qs)
+
 
 class PracaBppSitemap(AlphabeticBppSitemap):
     def location(self, obj):

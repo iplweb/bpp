@@ -15,6 +15,16 @@
     gap: 0.5rem;
   }
 
+  // Marker strony schowanej (pokazuj_strone_autora=False) — widzi go
+  // tylko redakcja, reszta dostaje 404.
+  &__ukryta-strona {
+    margin-top: 0.75rem;
+
+    .fi-lock {
+      margin-right: 0.35rem;
+    }
+  }
+
   // Quick actions section — przyciski "Pokaż wszystkie prace" oraz
   // "Zobacz sieć powiązań" obok siebie, wyśrodkowane, z odstępem.
   // Flex + gap daje odstęp w poziomie ORAZ pionie (gdy zawiną się na

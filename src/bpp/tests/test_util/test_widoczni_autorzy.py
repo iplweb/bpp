@@ -1,4 +1,4 @@
-"""Wspólna reguła widoczności autora (``pokazuj=False``) — helper
+"""Wspólna reguła widoczności autora (``pokazuj_strone_autora=False``) — helper
 :func:`bpp.util.ukryte_statusy.widoczni_autorzy`."""
 
 import pytest
@@ -14,8 +14,14 @@ from bpp.util.ukryte_statusy import widoczni_autorzy
 @pytest.fixture
 def autorzy(db):
     return (
-        baker.make(Autor, nazwisko="Widoczny", pokazuj=True),
-        baker.make(Autor, nazwisko="Ukryty", pokazuj=False),
+        baker.make(Autor, nazwisko="Widoczny"),
+        baker.make(
+            Autor,
+            nazwisko="Ukryty",
+            pokazuj_strone_autora=False,
+            pokazuj_w_wyszukiwaniu=False,
+            pokazuj_w_indeksie=False,
+        ),
     )
 
 
@@ -89,10 +95,14 @@ def test_widoczni_autorzy_lookup_model_podrzedny(autorzy, django_user_model):
     ad_ukryty = baker.make(Autor_Dyscyplina, autor=ukryty, rok=2030)
     qs = Autor_Dyscyplina.objects.filter(pk__in=[ad_widoczny.pk, ad_ukryty.pk])
 
-    anonim = widoczni_autorzy(qs, _request(AnonymousUser()), lookup="autor__pokazuj")
+    anonim = widoczni_autorzy(
+        qs, _request(AnonymousUser()), lookup="autor__pokazuj_strone_autora"
+    )
     assert list(anonim) == [ad_widoczny]
 
     redaktor = widoczni_autorzy(
-        qs, _request(_redaktor(django_user_model)), lookup="autor__pokazuj"
+        qs,
+        _request(_redaktor(django_user_model)),
+        lookup="autor__pokazuj_strone_autora",
     )
     assert set(redaktor) == {ad_widoczny, ad_ukryty}

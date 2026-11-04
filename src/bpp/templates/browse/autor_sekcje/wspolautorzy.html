@@ -4,7 +4,7 @@
     <ul class="autor-page__wspolautorzy">
         {% for w in dane.wspolautorzy %}
             <li class="autor-page__wspolautor">
-                <a href="{{ w.autor.get_absolute_url }}">{{ w.autor }}</a>
+                {% if w.autor.pokazuj_strone_autora %}<a href="{{ w.autor.get_absolute_url }}">{{ w.autor }}</a>{% else %}{{ w.autor }}{% endif %}
                 <span class="autor-page__wspolautor-liczba">({{ w.liczba }})</span>
             </li>
         {% endfor %}

@@ -51,8 +51,10 @@ def zbuduj_jednostke(uczelnia, nazwa, skrot):
     return Jednostka.objects.create(nazwa=nazwa, skrot=skrot, uczelnia=uczelnia)
 
 
-def zbuduj_autora(nazwisko, pokazuj=True):
-    return baker.make(Autor, nazwisko=nazwisko, imiona="Jan", pokazuj=pokazuj)
+def zbuduj_autora(nazwisko, pokazuj_w_api=True):
+    return baker.make(
+        Autor, nazwisko=nazwisko, imiona="Jan", pokazuj_w_api=pokazuj_w_api
+    )
 
 
 def ustaw_datestamp(model, pk, wartosc):

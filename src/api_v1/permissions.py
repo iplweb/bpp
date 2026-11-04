@@ -163,7 +163,7 @@ class MoznaUzywacZapytania(BasePermission):
 
 def widzi_dane_osobowe(request) -> bool:
     """Czy pytający widzi dane osobowe autorów i autorów ukrytych
-    (``pokazuj=False``) w ``/api/v1/``.
+    (``pokazuj_w_api=False``) w ``/api/v1/``.
 
     Tak — wyłącznie superuser albo członek grupy ``GR_WPROWADZANIE_DANYCH``
     (:func:`bpp.permissions.moze_wprowadzac_dane`). Samo zalogowanie nie
