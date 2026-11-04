@@ -98,3 +98,15 @@ def test_rest_api_autor_filtr_nie_dopasowuje_ukrytych(client):
     baker.make("bpp.Autor", nazwisko="Przykladowska", pokazuj_w_api=False)
     res = client.get(reverse("api_v1:autor-list"), {"nazwisko": "Przykladowska"})
     assert res.json()["count"] == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "parametr", ["ostatnio_zmieniony_after", "ostatnio_zmieniony_before", "cokolwiek"]
+)
+def test_rest_api_autor_filtr_zakresowy_nie_dopasowuje_ukrytych(client, parametr):
+    # Filtry zakresowe mają w URL-u klucze inne niż nazwa filtra.
+    baker.make("bpp.Autor", pokazuj_w_api=False)
+    wartosc = "2100-01-01" if parametr.endswith("before") else "2000-01-01"
+    res = client.get(reverse("api_v1:autor-list"), {parametr: wartosc})
+    assert res.json()["count"] == 0

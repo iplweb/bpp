@@ -11,6 +11,10 @@ from api_v1.serializers.autor import (
 from api_v1.throttling import SearchAnonThrottle, SearchUserThrottle
 from bpp.models import Autor, Autor_Jednostka, Funkcja_Autora, Tytul
 
+#: Parametry żądania, które NIE zawężają wyniku — przy nich lista może
+#: zawierać okrojone obiekty autorów ukrytych w API.
+PARAMETRY_NIEFILTRUJACE = frozenset({"limit", "offset", "page", "format"})
+
 
 class AutorFilterSet(django_filters.rest_framework.FilterSet):
     ostatnio_zmieniony = django_filters.DateTimeFromToRangeFilter("ostatnio_zmieniony")
@@ -44,7 +48,10 @@ class AutorViewSet(viewsets.ReadOnlyModelViewSet):
         qs = super().get_queryset()
         if widzi_dane_osobowe(self.request):
             return qs
-        if set(self.request.query_params) & set(AutorFilterSet.base_filters):
+        # Detekcja po DOWOLNYM parametrze spoza stronicowania/formatu, a nie
+        # po nazwach filtrów: filtry zakresowe (``ostatnio_zmieniony``) mają
+        # w URL-u inne klucze (``ostatnio_zmieniony_after`` / ``_before``).
+        if set(self.request.query_params) - PARAMETRY_NIEFILTRUJACE:
             return qs.filter(pokazuj_w_api=True)
         return qs
 
