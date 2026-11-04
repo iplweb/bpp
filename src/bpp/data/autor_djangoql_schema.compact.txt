@@ -44,10 +44,15 @@ bpp.autor:
   patent_autor                 -> bpp.patent_autor?
   pbn_uid                      -> pbn_api.scientist?
   plec                         -> bpp.plec?  match nazwa
-  pokazuj                      bool
-  pokazuj_opis                 bool
-  pokazuj_poprzednie_nazwiska  bool
-  pokazuj_siec_powiazan        bool?  "Pokazuj sieć powiązań" — Czy udostępniać sieć współautorstwa dla tego autora. Puste = użyj ustawienia uczelni; TAK/NIE nadpisuje je dla tego autora.
+  pokazuj_na_stronie_jednostki  bool
+  pokazuj_opis                  bool
+  pokazuj_poprzednie_nazwiska   bool
+  pokazuj_siec_powiazan         bool?  "Pokazuj sieć powiązań" — Czy udostępniać sieć współautorstwa dla tego autora. Puste = użyj ustawienia uczelni; TAK/NIE nadpisuje je dla tego autora.
+  pokazuj_strone_autora         bool  "Pokazuj stronę autora" — Gdy odznaczone, publiczna strona autora nie istnieje (404), a jego nazwisko nie jest nigdzie linkowane. Wymaga wcześniejszego wyłączenia pokazywania w wyszukiwaniu i w indeksie.
+  pokazuj_w_api                 bool
+  pokazuj_w_indeksie            bool  "Pokazuj w indeksie autorów" — Pokazuj autora na alfabetycznej liście autorów.
+  pokazuj_w_rankingu            bool
+  pokazuj_w_wyszukiwaniu        bool
   poprzednie_nazwiska          str
   praca_doktorska              -> bpp.praca_doktorska?
   praca_habilitacyjna          -> bpp.praca_habilitacyjna?

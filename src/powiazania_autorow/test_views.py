@@ -8,9 +8,9 @@ from powiazania_autorow.models import AuthorConnection
 
 @pytest.mark.django_db
 def test_dane_zwraca_centrum_i_sasiadow_posortowanych(client):
-    centrum = baker.make(Autor, imiona="Jan", nazwisko="Kowalski", pokazuj=True)
-    a = baker.make(Autor, imiona="Anna", nazwisko="Nowak", pokazuj=True)
-    b = baker.make(Autor, imiona="Bob", nazwisko="Zet", pokazuj=True)
+    centrum = baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
+    a = baker.make(Autor, imiona="Anna", nazwisko="Nowak")
+    b = baker.make(Autor, imiona="Bob", nazwisko="Zet")
     AuthorConnection.objects.create(
         primary_author=centrum, secondary_author=a, shared_publications_count=2
     )
@@ -35,12 +35,11 @@ def test_dane_zawiera_tytul_orcid_pbn(client):
     from bpp.models import Tytul
 
     tytul = baker.make(Tytul, skrot="prof. dr hab.")
-    centrum = baker.make(Autor, pokazuj=True)
+    centrum = baker.make(Autor)
     sasiad = baker.make(
         Autor,
         imiona="Anna",
         nazwisko="Nowak",
-        pokazuj=True,
         tytul=tytul,
         orcid="0000-0002-1825-0097",
     )
@@ -70,8 +69,8 @@ def test_dane_zawiera_tytul_orcid_pbn(client):
 
 @pytest.mark.django_db
 def test_dane_dziala_gdy_autor_jest_secondary(client):
-    centrum = baker.make(Autor, imiona="Jan", nazwisko="Kowalski", pokazuj=True)
-    inny = baker.make(Autor, imiona="Ewa", nazwisko="Lis", pokazuj=True)
+    centrum = baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
+    inny = baker.make(Autor, imiona="Ewa", nazwisko="Lis")
     AuthorConnection.objects.create(
         primary_author=inny, secondary_author=centrum, shared_publications_count=4
     )
@@ -84,8 +83,15 @@ def test_dane_dziala_gdy_autor_jest_secondary(client):
 
 @pytest.mark.django_db
 def test_dane_pomija_autorow_z_pokazuj_false(client):
-    centrum = baker.make(Autor, pokazuj=True)
-    ukryty = baker.make(Autor, imiona="X", nazwisko="Ukryty", pokazuj=False)
+    centrum = baker.make(Autor)
+    ukryty = baker.make(
+        Autor,
+        imiona="X",
+        nazwisko="Ukryty",
+        pokazuj_strone_autora=False,
+        pokazuj_w_wyszukiwaniu=False,
+        pokazuj_w_indeksie=False,
+    )
     AuthorConnection.objects.create(
         primary_author=centrum, secondary_author=ukryty, shared_publications_count=3
     )
@@ -98,7 +104,7 @@ def test_dane_pomija_autorow_z_pokazuj_false(client):
 
 @pytest.mark.django_db
 def test_dane_pusty_gdy_brak_powiazan(client):
-    centrum = baker.make(Autor, pokazuj=True)
+    centrum = baker.make(Autor)
     url = reverse("bpp:browse_autor_powiazania_dane", args=[centrum.pk])
     resp = client.get(url)
     assert resp.status_code == 200
@@ -113,9 +119,9 @@ def test_dane_404_dla_nieistniejacego_autora(client):
 
 @pytest.mark.django_db
 def test_siec_bfs_dwa_poziomy(client):
-    centrum = baker.make(Autor, pokazuj=True)
-    a = baker.make(Autor, pokazuj=True)
-    b = baker.make(Autor, pokazuj=True)
+    centrum = baker.make(Autor)
+    a = baker.make(Autor)
+    b = baker.make(Autor)
     AuthorConnection.objects.create(
         primary_author=centrum, secondary_author=a, shared_publications_count=5
     )
@@ -142,9 +148,9 @@ def test_siec_bfs_dwa_poziomy(client):
 
 @pytest.mark.django_db
 def test_siec_depth1_to_tylko_pierscien(client):
-    centrum = baker.make(Autor, pokazuj=True)
-    a = baker.make(Autor, pokazuj=True)
-    b = baker.make(Autor, pokazuj=True)
+    centrum = baker.make(Autor)
+    a = baker.make(Autor)
+    b = baker.make(Autor)
     AuthorConnection.objects.create(
         primary_author=centrum, secondary_author=a, shared_publications_count=5
     )
@@ -162,8 +168,13 @@ def test_siec_depth1_to_tylko_pierscien(client):
 
 @pytest.mark.django_db
 def test_siec_pomija_ukrytych_autorow(client):
-    centrum = baker.make(Autor, pokazuj=True)
-    ukryty = baker.make(Autor, pokazuj=False)
+    centrum = baker.make(Autor)
+    ukryty = baker.make(
+        Autor,
+        pokazuj_strone_autora=False,
+        pokazuj_w_wyszukiwaniu=False,
+        pokazuj_w_indeksie=False,
+    )
     AuthorConnection.objects.create(
         primary_author=centrum, secondary_author=ukryty, shared_publications_count=5
     )
@@ -177,9 +188,9 @@ def test_siec_pomija_ukrytych_autorow(client):
 
 @pytest.mark.django_db
 def test_siec_extra_edges_poprzeczne(client):
-    centrum = baker.make(Autor, pokazuj=True)
-    a = baker.make(Autor, pokazuj=True)
-    b = baker.make(Autor, pokazuj=True)
+    centrum = baker.make(Autor)
+    a = baker.make(Autor)
+    b = baker.make(Autor)
     # trójkąt: centrum-A, centrum-B (drzewo) oraz A-B (krawędź poprzeczna)
     AuthorConnection.objects.create(
         primary_author=centrum, secondary_author=a, shared_publications_count=5
@@ -214,9 +225,9 @@ def test_siec_404_dla_nieistniejacego_autora(client):
 def test_siec_filtr_roku(client, jednostka, typy_odpowiedzialnosci):
     from bpp.models import Wydawnictwo_Ciagle
 
-    centrum = baker.make(Autor, imiona="Jan", nazwisko="Centralny", pokazuj=True)
-    a_stary = baker.make(Autor, imiona="Adam", nazwisko="Stary", pokazuj=True)
-    a_nowy = baker.make(Autor, imiona="Ewa", nazwisko="Nowa", pokazuj=True)
+    centrum = baker.make(Autor, imiona="Jan", nazwisko="Centralny")
+    a_stary = baker.make(Autor, imiona="Adam", nazwisko="Stary")
+    a_nowy = baker.make(Autor, imiona="Ewa", nazwisko="Nowa")
 
     w1 = baker.make(Wydawnictwo_Ciagle, rok=2005)
     w1.dodaj_autora(centrum, jednostka)
@@ -246,8 +257,8 @@ def test_siec_filtr_roku_happy_path_mimo_statement_timeout(
     # w limicie) nadal zwraca 200 i poprawny payload, mimo owinięcia.
     from bpp.models import Wydawnictwo_Ciagle
 
-    centrum = baker.make(Autor, imiona="Jan", nazwisko="Centralny", pokazuj=True)
-    a_nowy = baker.make(Autor, imiona="Ewa", nazwisko="Nowa", pokazuj=True)
+    centrum = baker.make(Autor, imiona="Jan", nazwisko="Centralny")
+    a_nowy = baker.make(Autor, imiona="Ewa", nazwisko="Nowa")
 
     w = baker.make(Wydawnictwo_Ciagle, rok=2020)
     w.dodaj_autora(centrum, jednostka)
@@ -271,9 +282,9 @@ def test_siec_filtr_roku_happy_path_mimo_statement_timeout(
 def test_siec_filtr_zrodla(client, jednostka, typy_odpowiedzialnosci):
     from bpp.models import Wydawnictwo_Ciagle, Zrodlo
 
-    centrum = baker.make(Autor, imiona="Jan", nazwisko="Centralny", pokazuj=True)
-    a_blood = baker.make(Autor, imiona="Adam", nazwisko="Bloodowy", pokazuj=True)
-    a_inne = baker.make(Autor, imiona="Ewa", nazwisko="Innawska", pokazuj=True)
+    centrum = baker.make(Autor, imiona="Jan", nazwisko="Centralny")
+    a_blood = baker.make(Autor, imiona="Adam", nazwisko="Bloodowy")
+    a_inne = baker.make(Autor, imiona="Ewa", nazwisko="Innawska")
     blood = baker.make(Zrodlo, nazwa="Blood")
     inne = baker.make(Zrodlo, nazwa="Inne czasopismo")
 
@@ -297,10 +308,10 @@ def test_siec_filtr_zrodla(client, jednostka, typy_odpowiedzialnosci):
 def test_siec_filtr_wiele_zrodel(client, jednostka, typy_odpowiedzialnosci):
     from bpp.models import Wydawnictwo_Ciagle, Zrodlo
 
-    centrum = baker.make(Autor, imiona="Jan", nazwisko="Centralny", pokazuj=True)
-    a_blood = baker.make(Autor, imiona="Adam", nazwisko="Bloodowy", pokazuj=True)
-    a_hema = baker.make(Autor, imiona="Ewa", nazwisko="Hemowska", pokazuj=True)
-    a_inne = baker.make(Autor, imiona="Tom", nazwisko="Innowski", pokazuj=True)
+    centrum = baker.make(Autor, imiona="Jan", nazwisko="Centralny")
+    a_blood = baker.make(Autor, imiona="Adam", nazwisko="Bloodowy")
+    a_hema = baker.make(Autor, imiona="Ewa", nazwisko="Hemowska")
+    a_inne = baker.make(Autor, imiona="Tom", nazwisko="Innowski")
     blood = baker.make(Zrodlo, nazwa="Blood")
     hema = baker.make(Zrodlo, nazwa="Hematologia")
     inne = baker.make(Zrodlo, nazwa="Inne")
@@ -324,19 +335,17 @@ def test_dane_filtr_tylko_zatrudnieni(client, jednostka):
     # jednostka.uczelnia jest jedyną (więc domyślną) uczelnią — pracownik
     # liczy się jako "aktualnie zatrudniony", gdy jego aktualna_jednostka
     # należy do tej uczelni.
-    centrum = baker.make(Autor, pokazuj=True, aktualna_jednostka=None)
+    centrum = baker.make(Autor, aktualna_jednostka=None)
     zatrudniony = baker.make(
         Autor,
         imiona="Anna",
         nazwisko="Nowak",
-        pokazuj=True,
         aktualna_jednostka=jednostka,
     )
     obcy = baker.make(
         Autor,
         imiona="Bob",
         nazwisko="Obcy",
-        pokazuj=True,
         aktualna_jednostka=None,
     )
     for s in (zatrudniony, obcy):
@@ -360,9 +369,9 @@ def test_dane_filtr_tylko_zatrudnieni(client, jednostka):
 def test_siec_filtr_tylko_zatrudnieni_centrum_zawsze(client, jednostka):
     # Centrum NIE jest zatrudnione (aktualna_jednostka=None) — i tak musi
     # zostać korzeniem sieci przy aktywnym filtrze.
-    centrum = baker.make(Autor, pokazuj=True, aktualna_jednostka=None)
-    zatrudniony = baker.make(Autor, pokazuj=True, aktualna_jednostka=jednostka)
-    obcy = baker.make(Autor, pokazuj=True, aktualna_jednostka=None)
+    centrum = baker.make(Autor, aktualna_jednostka=None)
+    zatrudniony = baker.make(Autor, aktualna_jednostka=jednostka)
+    obcy = baker.make(Autor, aktualna_jednostka=None)
     AuthorConnection.objects.create(
         primary_author=centrum,
         secondary_author=zatrudniony,
@@ -395,9 +404,9 @@ def test_siec_filtr_zatrudnieni_pomija_obca_uczelnie(client, jednostka):
         parent=obcy_wydzial,
     )
 
-    centrum = baker.make(Autor, pokazuj=True, aktualna_jednostka=jednostka)
-    nasz = baker.make(Autor, pokazuj=True, aktualna_jednostka=jednostka)
-    obcy = baker.make(Autor, pokazuj=True, aktualna_jednostka=obca_jednostka)
+    centrum = baker.make(Autor, aktualna_jednostka=jednostka)
+    nasz = baker.make(Autor, aktualna_jednostka=jednostka)
+    obcy = baker.make(Autor, aktualna_jednostka=obca_jednostka)
     AuthorConnection.objects.create(
         primary_author=centrum, secondary_author=nasz, shared_publications_count=5
     )
@@ -418,7 +427,7 @@ def test_siec_filtr_zatrudnieni_pomija_obca_uczelnie(client, jednostka):
 def test_zrodla_json_liczy_prace(client, jednostka, typy_odpowiedzialnosci):
     from bpp.models import Wydawnictwo_Ciagle, Zrodlo
 
-    centrum = baker.make(Autor, imiona="Jan", nazwisko="Centralny", pokazuj=True)
+    centrum = baker.make(Autor, imiona="Jan", nazwisko="Centralny")
     blood = baker.make(Zrodlo, nazwa="Blood")
     rzadkie = baker.make(Zrodlo, nazwa="Rzadkie czasopismo")
     for _ in range(4):  # >= MIN_PRAC_ZRODLO (4) -> w combobox
@@ -438,7 +447,7 @@ def test_zrodla_json_liczy_prace(client, jednostka, typy_odpowiedzialnosci):
 
 @pytest.mark.django_db
 def test_strona_grafu_renderuje_kontener(client):
-    autor = baker.make(Autor, imiona="Jan", nazwisko="Kowalski", pokazuj=True)
+    autor = baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
     url = reverse("bpp:browse_autor_powiazania", args=[autor.pk])
     resp = client.get(url)
     assert resp.status_code == 200
@@ -455,7 +464,7 @@ def test_strona_grafu_404_dla_nieistniejacego_autora(client):
 
 @pytest.mark.django_db
 def test_strona_grafu_3d_renderuje_kontener(client):
-    autor = baker.make(Autor, imiona="Jan", nazwisko="Kowalski", pokazuj=True)
+    autor = baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
     url = reverse("bpp:browse_autor_powiazania_3d", args=[autor.pk])
     resp = client.get(url)
     assert resp.status_code == 200
@@ -477,7 +486,7 @@ def test_strona_grafu_3d_podaje_link_awaryjny_do_2d(client):
     ``2``, więc klucz wyszedłby ``dataset["url-2d"]`` i JS by go nie
     znalazł. Test pilnuje obu stron tej pułapki.
     """
-    autor = baker.make(Autor, imiona="Jan", nazwisko="Kowalski", pokazuj=True)
+    autor = baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
     resp = client.get(reverse("bpp:browse_autor_powiazania_3d", args=[autor.pk]))
     tresc = resp.content.decode("utf-8")
 
@@ -490,7 +499,7 @@ def test_strona_grafu_3d_podaje_link_awaryjny_do_2d(client):
 def test_strona_grafu_3d_404_gdy_siec_wylaczona(client, uczelnia):
     uczelnia.pokazuj_siec_powiazan = False
     uczelnia.save()
-    autor = baker.make(Autor, pokazuj=True, pokazuj_siec_powiazan=None)
+    autor = baker.make(Autor, pokazuj_siec_powiazan=None)
     url = reverse("bpp:browse_autor_powiazania_3d", args=[autor.pk])
     assert client.get(url).status_code == 404
 
@@ -503,8 +512,8 @@ def test_strona_grafu_3d_404_dla_nieistniejacego_autora(client):
 
 @pytest.mark.django_db
 def test_strona_autora_ma_flage_powiazan_true(client):
-    centrum = baker.make(Autor, pokazuj=True)
-    sasiad = baker.make(Autor, pokazuj=True)
+    centrum = baker.make(Autor)
+    sasiad = baker.make(Autor)
     AuthorConnection.objects.create(
         primary_author=centrum, secondary_author=sasiad, shared_publications_count=1
     )
@@ -515,7 +524,7 @@ def test_strona_autora_ma_flage_powiazan_true(client):
 
 @pytest.mark.django_db
 def test_strona_autora_ma_flage_powiazan_false(client):
-    centrum = baker.make(Autor, pokazuj=True)
+    centrum = baker.make(Autor)
     resp = client.get(reverse("bpp:browse_autor", args=[centrum.pk]))
     assert resp.context["ma_powiazania"] is False
 
@@ -526,9 +535,9 @@ def test_zrodla_obejmuje_cala_widoczna_siec(client, jednostka, typy_odpowiedzial
     # które ma wyłącznie autor z poziomu 2, pojawia się dopiero przy depth=2.
     from bpp.models import Wydawnictwo_Ciagle, Zrodlo
 
-    centrum = baker.make(Autor, imiona="Jan", nazwisko="Centralny", pokazuj=True)
-    wspolautor = baker.make(Autor, imiona="Anna", nazwisko="Bliska", pokazuj=True)
-    daleki = baker.make(Autor, imiona="Bob", nazwisko="Daleki", pokazuj=True)
+    centrum = baker.make(Autor, imiona="Jan", nazwisko="Centralny")
+    wspolautor = baker.make(Autor, imiona="Anna", nazwisko="Bliska")
+    daleki = baker.make(Autor, imiona="Bob", nazwisko="Daleki")
 
     bliskie = baker.make(Zrodlo, nazwa="Bliskie")
     posrednie = baker.make(Zrodlo, nazwa="Pośrednie")
@@ -601,7 +610,7 @@ def test_czy_pokazywac_siec_powiazan_bez_uczelni_domyslnie_true():
 def test_siec_404_dla_wszystkich_endpointow_gdy_uczelnia_wylacza(client, uczelnia):
     uczelnia.pokazuj_siec_powiazan = False
     uczelnia.save()
-    autor = baker.make(Autor, pokazuj=True, pokazuj_siec_powiazan=None)
+    autor = baker.make(Autor, pokazuj_siec_powiazan=None)
     for name in (
         "browse_autor_powiazania",
         "browse_autor_powiazania_dane",
@@ -615,7 +624,7 @@ def test_siec_404_dla_wszystkich_endpointow_gdy_uczelnia_wylacza(client, uczelni
 @pytest.mark.django_db
 def test_siec_404_gdy_autor_wylacza_mimo_wlaczonej_uczelni(client, uczelnia):
     # uczelnia domyślnie pokazuje, ale autor jawnie wyłącza
-    autor = baker.make(Autor, pokazuj=True, pokazuj_siec_powiazan=False)
+    autor = baker.make(Autor, pokazuj_siec_powiazan=False)
     url = reverse("bpp:browse_autor_powiazania", args=[autor.pk])
     assert client.get(url).status_code == 404
 
@@ -624,7 +633,7 @@ def test_siec_404_gdy_autor_wylacza_mimo_wlaczonej_uczelni(client, uczelnia):
 def test_siec_dostepna_gdy_autor_wlacza_mimo_wylaczonej_uczelni(client, uczelnia):
     uczelnia.pokazuj_siec_powiazan = False
     uczelnia.save()
-    autor = baker.make(Autor, pokazuj=True, pokazuj_siec_powiazan=True)
+    autor = baker.make(Autor, pokazuj_siec_powiazan=True)
     url = reverse("bpp:browse_autor_powiazania", args=[autor.pk])
     assert client.get(url).status_code == 200
 
@@ -633,8 +642,8 @@ def test_siec_dostepna_gdy_autor_wlacza_mimo_wylaczonej_uczelni(client, uczelnia
 def test_ma_powiazania_false_gdy_siec_wylaczona(client, uczelnia):
     uczelnia.pokazuj_siec_powiazan = False
     uczelnia.save()
-    centrum = baker.make(Autor, pokazuj=True, pokazuj_siec_powiazan=None)
-    sasiad = baker.make(Autor, pokazuj=True)
+    centrum = baker.make(Autor, pokazuj_siec_powiazan=None)
+    sasiad = baker.make(Autor)
     AuthorConnection.objects.create(
         primary_author=centrum, secondary_author=sasiad, shared_publications_count=1
     )

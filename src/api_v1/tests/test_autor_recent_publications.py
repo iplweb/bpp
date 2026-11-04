@@ -245,10 +245,10 @@ def test_autor_recent_publications_zawiera_rok():
 
 @pytest.mark.django_db
 def test_autor_recent_publications_niewidoczny_autor_404():
-    """Autor oznaczony jako niewidoczny (pokazuj=False) nie ma embedu → 404."""
+    """Autor oznaczony jako niewidoczny (pokazuj_w_api=False) nie ma embedu → 404."""
     client = APIClient()
 
-    autor = baker.make(Autor, nazwisko="Ukryty", imiona="Urban", pokazuj=False)
+    autor = baker.make(Autor, nazwisko="Ukryty", imiona="Urban", pokazuj_w_api=False)
     publikacja = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Niewidoczna")
     baker.make(Wydawnictwo_Ciagle_Autor, rekord=publikacja, autor=autor)
 

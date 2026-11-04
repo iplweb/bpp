@@ -78,9 +78,9 @@ def czysta_kolejka_on_commit(db):
 
 @pytest.fixture
 def autorzy(db):
-    baker.make(Autor, nazwisko="Abacki", imiona="Jan", pokazuj=True)
-    baker.make(Autor, nazwisko="Babacki", imiona="Ewa", pokazuj=True)
-    baker.make(Autor, nazwisko="Cabacki", imiona="Zoja", pokazuj=True)
+    baker.make(Autor, nazwisko="Abacki", imiona="Jan")
+    baker.make(Autor, nazwisko="Babacki", imiona="Ewa")
+    baker.make(Autor, nazwisko="Cabacki", imiona="Zoja")
 
 
 @pytest.mark.django_db
@@ -95,7 +95,7 @@ def test_distinct_literek_nie_wciaga_kolumny_sortujacej(autorzy, uczelnia):
     from bpp.views.browse import get_available_letters
 
     with CaptureQueriesContext(connection) as ctx:
-        get_available_letters(Autor.objects.filter(pokazuj=True), "nazwisko")
+        get_available_letters(Autor.objects.filter(pokazuj_w_indeksie=True), "nazwisko")
 
     (sql,) = zapytania_o_literki(ctx)
     assert "sort" not in sql.lower(), (
@@ -152,7 +152,7 @@ def test_zapis_autora_uniewaznia_zapamietane_zliczenia(
     assert "Z" not in pierwsza.context["available_letters"]
 
     with django_capture_on_commit_callbacks(execute=True):
-        baker.make(Autor, nazwisko="Zabacki", imiona="Olga", pokazuj=True)
+        baker.make(Autor, nazwisko="Zabacki", imiona="Olga")
 
     druga = logged_in_client.get(url)
     assert druga.context["paginator"].count == 4, (

@@ -111,7 +111,6 @@ def test_strona_jednostki_pracownicy_bez_powtorzen(client, uczelnia):
             imiona="Imię",
             aktualna_jednostka=jednostka,
             aktualna_funkcja=funkcja,
-            pokazuj=True,
         )
         baker.make(
             Autor_Jednostka,

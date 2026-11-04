@@ -390,7 +390,7 @@ class Jednostka(
     def autorzy_na_strone_jednostki(self):
         """ "Stara" funkcja, wyswietlajaca autorow przypisanych do tej jednostki,
         w przypadku, gdy nikt nie ma 'Podstawowe miejsce pracy' ustawione na TRUE"""
-        return self.obecni_autorzy().filter(pokazuj=True)
+        return self.obecni_autorzy().filter(pokazuj_na_stronie_jednostki=True)
 
     def aktualni_autorzy(self):
         """
@@ -448,7 +448,7 @@ class Jednostka(
         # select_related: strona jednostki wypisuje przy nazwisku
         # 'aktualna_funkcja' — bez tego wychodzi N+1 po liście pracowników.
         return Autor.objects.filter(
-            pk__in=self.aktualni_autorzy(), pokazuj=True
+            pk__in=self.aktualni_autorzy(), pokazuj_na_stronie_jednostki=True
         ).select_related("aktualna_funkcja")
 
     def wspolpracowali(self):
@@ -460,7 +460,7 @@ class Jednostka(
             pk__in=Autorzy.objects.filter(jednostka=self)
             .exclude(autor_id__in=self.aktualni_autorzy())
             .values_list("autor", flat=True),
-            pokazuj=True,
+            pokazuj_na_stronie_jednostki=True,
         )
 
     def kierownik(self):

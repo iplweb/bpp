@@ -242,16 +242,16 @@ def test_create_from_string_honoruje_podana_uczelnie(uczelnia1, uczelnia2):
 
     # uczelnia2 (wyższy pk) NIE jest first() — first() to uczelnia1 (False).
     autor = Autor.objects.create_from_string("Kowalski Jan", uczelnia=uczelnia2)
-    assert autor.pokazuj is True
+    assert autor.pokazuj_na_stronie_jednostki is True
 
     autor2 = Autor.objects.create_from_string("Nowak Anna", uczelnia=uczelnia1)
-    assert autor2.pokazuj is False
+    assert autor2.pokazuj_na_stronie_jednostki is False
 
 
 @pytest.mark.django_db
 def test_create_from_string_bez_uczelni_wiele_uczelni_nie_zgaduje(uczelnia1, uczelnia2):
     """Bez podanej uczelni i przy >1 uczelni: get_single_uczelnia_or_none → None
-    → ``pokazuj=False`` (bezpieczny default), bez zgadywania pierwszej-z-brzegu.
+    → autor ukryty na stronach jednostek i w rankingu (bezpieczny default), bez zgadywania pierwszej-z-brzegu.
     """
     from bpp.models import Autor
 
@@ -259,14 +259,14 @@ def test_create_from_string_bez_uczelni_wiele_uczelni_nie_zgaduje(uczelnia1, ucz
     uczelnia1.save()
 
     autor = Autor.objects.create_from_string("Bezuczelni Ktos")
-    assert autor.pokazuj is False
+    assert autor.pokazuj_na_stronie_jednostki is False
 
 
 @pytest.mark.django_db
 def test_autor_autocomplete_create_object_uzywa_uczelni_z_requestu(
     uczelnia1, uczelnia2, site2, settings
 ):
-    """``AutorAutocomplete.create_object`` ustala ``pokazuj`` nowego autora z
+    """``AutorAutocomplete.create_object`` ustala widoczność nowego autora z
     uczelni Z REQUESTU (host), nie z pierwszej-z-brzegu.
     """
     settings.ALLOWED_HOSTS = ["*"]
@@ -286,7 +286,9 @@ def test_autor_autocomplete_create_object_uzywa_uczelni_z_requestu(
     obj = view.create_object("Iksinski Piotr")
 
     assert isinstance(obj, Autor)
-    assert obj.pokazuj is True  # z uczelni2 (request), nie z first()=uczelnia1
+    assert (
+        obj.pokazuj_na_stronie_jednostki is True
+    )  # z uczelni2 (request), nie z first()=uczelnia1
 
 
 @pytest.mark.django_db

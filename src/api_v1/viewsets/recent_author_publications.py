@@ -25,7 +25,7 @@ class RecentAuthorPublicationsViewSet(CorsNaBledachMixin, viewsets.ViewSet):
     permission_classes = [AllowAny]
 
     def retrieve(self, request, pk=None):
-        autor = pobierz_encje_lub_404(Autor, pk, pokazuj=True)
+        autor = pobierz_encje_lub_404(Autor, pk, pokazuj_w_api=True)
         base = queryset_rekordow().filter(autorzy__autor=autor)
         return odpowiedz_z_publikacjami(
             request,
@@ -33,8 +33,13 @@ class RecentAuthorPublicationsViewSet(CorsNaBledachMixin, viewsets.ViewSet):
             {
                 "autor_id": autor.pk,
                 "autor_nazwa": str(autor),
-                "profil_url": request.build_absolute_uri(
-                    reverse("bpp:browse_autor", args=[autor.slug])
+                # Autor ze schowaną stroną — brak linku (strona zwraca 404).
+                "profil_url": (
+                    request.build_absolute_uri(
+                        reverse("bpp:browse_autor", args=[autor.slug])
+                    )
+                    if autor.pokazuj_strone_autora
+                    else None
                 ),
             },
         )

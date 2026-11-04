@@ -209,7 +209,13 @@ class GlobalNavigationAutocomplete(
 
         querysets = []
         globalne_wyszukiwanie_jednostki(querysets, self.q, uczelnia=uczelnia)
-        globalne_wyszukiwanie_autora(querysets, self.q, uczelnia=uczelnia)
+        user = getattr(getattr(self, "request", None), "user", None)
+        globalne_wyszukiwanie_autora(
+            querysets,
+            self.q,
+            uczelnia=uczelnia,
+            tylko_wyszukiwalni=user is None or not moze_wprowadzac_dane(user),
+        )
         globalne_wyszukiwanie_zrodla(querysets, self.q)
         querysets.extend(self._rekord_querysets(uczelnia))
 

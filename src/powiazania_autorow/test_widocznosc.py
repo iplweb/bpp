@@ -48,8 +48,15 @@ def jawny_status():
 
 
 def _ukryty_autor_z_sasiadem():
-    autor = baker.make(Autor, imiona="Jan", nazwisko="Ukryty", pokazuj=False)
-    sasiad = baker.make(Autor, imiona="Ewa", nazwisko="Jawna", pokazuj=True)
+    autor = baker.make(
+        Autor,
+        imiona="Jan",
+        nazwisko="Ukryty",
+        pokazuj_strone_autora=False,
+        pokazuj_w_wyszukiwaniu=False,
+        pokazuj_w_indeksie=False,
+    )
+    sasiad = baker.make(Autor, imiona="Ewa", nazwisko="Jawna")
     AuthorConnection.objects.create(
         primary_author=autor, secondary_author=sasiad, shared_publications_count=3
     )
@@ -106,7 +113,7 @@ def test_ukryty_autor_wylaczona_siec_404_takze_dla_redaktora(
 @pytest.mark.django_db
 @pytest.mark.parametrize("trasa", TRASY)
 def test_jawny_autor_200_dla_anonima(client, uczelnia, trasa):
-    autor = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko1", pokazuj=True)
+    autor = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko1")
     url = reverse(f"bpp:{trasa}", args=[autor.pk])
     assert client.get(url).status_code == 200
 
@@ -129,8 +136,8 @@ def test_metryki_bez_prac_o_ukrytym_statusie(
     ukryty_status,
     jawny_status,
 ):
-    centrum = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko2", pokazuj=True)
-    sasiad = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko3", pokazuj=True)
+    centrum = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko2")
+    sasiad = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko3")
     _praca(jawny_status, [centrum, sasiad], jednostka, rok=2020, impact_factor=1)
     _praca(ukryty_status, [centrum, sasiad], jednostka, rok=2021, impact_factor=5)
     AuthorConnection.objects.create(
@@ -169,7 +176,7 @@ def test_lista_zrodel_bez_prac_o_ukrytym_statusie(
 ):
     from bpp.models import Zrodlo
 
-    centrum = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko4", pokazuj=True)
+    centrum = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko4")
     zrodlo = baker.make(Zrodlo, nazwa="Czasopismo testowe")
     for rok in range(2010, 2014):
         _praca(jawny_status, [centrum], jednostka, rok=rok, zrodlo=zrodlo)
@@ -195,7 +202,7 @@ def test_lista_zrodel_ukryte_ponizej_progu_dla_anonima(
 ):
     from bpp.models import Zrodlo
 
-    centrum = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko5", pokazuj=True)
+    centrum = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko5")
     zrodlo = baker.make(Zrodlo, nazwa="Czasopismo ukryte")
     for rok in range(2010, 2014):
         _praca(ukryty_status, [centrum], jednostka, rok=rok, zrodlo=zrodlo)
@@ -217,9 +224,9 @@ def test_krawedzie_z_filtrem_bez_prac_o_ukrytym_statusie(
     ukryty_status,
     jawny_status,
 ):
-    centrum = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko6", pokazuj=True)
-    jawny = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko7", pokazuj=True)
-    przez_ukryta = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko8", pokazuj=True)
+    centrum = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko6")
+    jawny = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko7")
+    przez_ukryta = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko8")
     _praca(jawny_status, [centrum, jawny], jednostka, rok=2020)
     _praca(ukryty_status, [centrum, przez_ukryta], jednostka, rok=2020)
     filtr = {"rok_od": 2018, "rok_do": 2025, "depth": 1}
@@ -249,9 +256,9 @@ def test_krawedzie_poprzeczne_z_filtrem_bez_prac_o_ukrytym_statusie(
     ukryty_status,
     jawny_status,
 ):
-    centrum = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko9", pokazuj=True)
-    a = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko10", pokazuj=True)
-    b = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko11", pokazuj=True)
+    centrum = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko9")
+    a = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko10")
+    b = baker.make(Autor, imiona="Imie", nazwisko="Nazwisko11")
     _praca(jawny_status, [centrum, a], jednostka, rok=2020)
     _praca(jawny_status, [centrum, b], jednostka, rok=2020)
     _praca(ukryty_status, [a, b], jednostka, rok=2020)

@@ -4,7 +4,7 @@ Najważniejszy test w tym pliku to ``test_ukryty_autor_nie_wycieka_*``.
 Przełącznik ``Uczelnia.eksport_cerif_wlaczony`` jest domyślnie WŁĄCZONY,
 a set ``openaire_cris_persons`` wystawia imię, nazwisko, ORCID, płeć
 i historię zatrudnienia do publicznego endpointu agregowanego przez
-OpenAIRE. Jedynym zabezpieczeniem jest ``Autor.pokazuj`` — i ono musi
+OpenAIRE. Jedynym zabezpieczeniem jest ``Autor.pokazuj_w_api`` — i ono musi
 działać na OBU drogach: przez własny set i przez encję osadzoną
 w publikacji.
 """
@@ -52,13 +52,13 @@ def zserializuj(uczelnia, rekord):
 
 @pytest.mark.django_db
 def test_ukryty_autor_nie_wychodzi_w_secie_persons(uczelnia, fabryka_autorow):
-    widoczny = fabryka_autorow("Widoczny", pokazuj=True)
-    ukryty = fabryka_autorow("Ukryty", pokazuj=False)
+    widoczny = fabryka_autorow("Widoczny", pokazuj_w_api=True)
+    ukryty = fabryka_autorow("Ukryty", pokazuj_w_api=False)
 
     obecni = pki(provider_dla_setu(const.SET_PERSONS), uczelnia)
 
     assert widoczny.pk in obecni
-    assert ukryty.pk not in obecni, "autor z pokazuj=False trafił do eksportu"
+    assert ukryty.pk not in obecni, "autor z pokazuj_w_api=False trafił do eksportu"
 
 
 @pytest.mark.django_db
@@ -72,7 +72,7 @@ def test_ukryty_autor_nie_wycieka_jako_id_w_publikacji(
     którego w secie ``persons`` nie ma. To i psuje integralność
     referencyjną, i publikuje powiązanie, którego autor sobie nie życzy.
     """
-    ukryty = fabryka_autorow("Ukryty", pokazuj=False)
+    ukryty = fabryka_autorow("Ukryty", pokazuj_w_api=False)
     rekord = fabryka_wydawnictw(Wydawnictwo_Ciagle, autor=ukryty)
 
     element = zserializuj(uczelnia, rekord)
@@ -93,7 +93,7 @@ def test_widoczny_autor_dostaje_id_w_publikacji(
     uczelnia, fabryka_autorow, fabryka_wydawnictw
 ):
     """Kontrola pozytywna — inaczej test wycieku przechodziłby na pusto."""
-    autor = fabryka_autorow("Widoczny", pokazuj=True)
+    autor = fabryka_autorow("Widoczny", pokazuj_w_api=True)
     rekord = fabryka_wydawnictw(Wydawnictwo_Ciagle, autor=autor)
 
     element = zserializuj(uczelnia, rekord)
@@ -109,7 +109,7 @@ def test_widoczny_autor_dostaje_id_w_publikacji(
 @pytest.mark.django_db
 def test_autor_bez_powiazania_z_uczelnia_nie_wychodzi(uczelnia, fabryka_autorow):
     """Autor spoza uczelni nie jest „nasz" — nie eksportujemy go."""
-    obcy = fabryka_autorow("Obcy", pokazuj=True, powiaz=False)
+    obcy = fabryka_autorow("Obcy", pokazuj_w_api=True, powiaz=False)
 
     assert obcy.pk not in pki(provider_dla_setu(const.SET_PERSONS), uczelnia)
 
@@ -123,7 +123,7 @@ def test_autor_innego_tenanta_nie_wychodzi(uczelnia, fabryka_autorow):
     inne_site = Site.objects.create(domain="inna.example.org", name="inna")
     inna = Uczelnia.objects.create(nazwa="Inna", skrot="INN", site=inne_site)
     jednostka_obca = Jednostka.objects.create(nazwa="Obca", skrot="OBC", uczelnia=inna)
-    obcy = baker.make("bpp.Autor", nazwisko="Obcy", imiona="Jan", pokazuj=True)
+    obcy = baker.make("bpp.Autor", nazwisko="Obcy", imiona="Jan", pokazuj_w_api=True)
     Autor_Jednostka.objects.create(autor=obcy, jednostka=jednostka_obca)
 
     assert obcy.pk not in pki(provider_dla_setu(const.SET_PERSONS), uczelnia)
@@ -378,7 +378,7 @@ def test_orcid_ukrytego_autora_nie_wycieka(
     ORCID to trwały globalny identyfikator osoby — jego publikacja wiąże
     ukrytego autora z profilem w całym ekosystemie OpenAIRE.
     """
-    ukryty = fabryka_autorow("Ukryty", pokazuj=False, orcid="0000-0002-1825-0097")
+    ukryty = fabryka_autorow("Ukryty", pokazuj_w_api=False, orcid="0000-0002-1825-0097")
     rekord = fabryka_wydawnictw(Wydawnictwo_Ciagle, autor=ukryty)
 
     xml = etree.tostring(zserializuj(uczelnia, rekord)).decode()

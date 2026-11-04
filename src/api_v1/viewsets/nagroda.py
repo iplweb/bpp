@@ -34,7 +34,7 @@ def _modele_rekordow():
 
 def warunek_ukrytych_nagrod(ukryte_statusy):
     """``Q`` dopasowujące nagrody przypięte do obiektów niewidocznych w API
-    (autor z ``pokazuj=False``, rekord z ``nie_eksportuj_przez_api`` albo
+    (autor z ``pokazuj_w_api=False``, rekord z ``nie_eksportuj_przez_api`` albo
     ze statusem korekty z ``ukryte_statusy``).
 
     Jedno podzapytanie ``object_id IN (SELECT pk …)`` na typ obiektu — bez
@@ -42,7 +42,7 @@ def warunek_ukrytych_nagrod(ukryte_statusy):
     """
     warunek = Q(
         content_type=ContentType.objects.get_for_model(Autor),
-        object_id__in=Autor.objects.filter(pokazuj=False).values("pk"),
+        object_id__in=Autor.objects.filter(pokazuj_w_api=False).values("pk"),
     )
 
     for model in _modele_rekordow():
