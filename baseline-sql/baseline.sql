@@ -16563,6 +16563,31 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+319	bpp	0225_charakter_sloty_referat	2000-01-01 00:00:00+00
+996	bpp	0453_zrodlo_trigram_indexes	2000-01-01 00:00:00+00
+1078	pbn_export_queue	0010_atomowa_kolejka_pbn	2000-01-01 00:00:00+00
+1079	bpp	0468_stopien_sluzbowy_stanowisko_dydaktyczne	2000-01-01 00:00:00+00
+1080	first_run_wizard	0001_initial	2000-01-01 00:00:00+00
+1081	import_pracownikow	0022_alter_importpracownikowrow_confidence	2000-01-01 00:00:00+00
+1082	import_pracownikow	0023_slowniki_stopnie_stanowiska	2000-01-01 00:00:00+00
+1083	bpp	0469_przyszle_daty_zakonczenia_zatrudnienia	2000-01-01 00:00:00+00
+1084	import_pracownikow	0024_importpracownikowrow_stany_pol_snapshot	2000-01-01 00:00:00+00
+1085	oidc_integration	0001_initial	2000-01-01 00:00:00+00
+1086	orcid_integration	0001_initial	2000-01-01 00:00:00+00
+1087	import_pracownikow	0025_importpracownikow_plik_po_imporcie	2000-01-01 00:00:00+00
+1108	bpp	0473_szablon_nazwa_szablonu	2000-01-01 00:00:00+00
+1109	bpp	0474_merge_20260724_1635	2000-01-01 00:00:00+00
+1110	zglos_publikacje	0027_zgloszenie_zaimportowane	2000-01-01 00:00:00+00
+1111	importer_publikacji	0020_importsession_zgloszenie	2000-01-01 00:00:00+00
+713	flexible_reports	0005_column_attrs	2000-01-01 00:00:00+00
+1088	import_pracownikow	0026_importpracownikow_uczelnia	2000-01-01 00:00:00+00
+1090	bpp	0470_indeksy_gin_i_funkcyjne	2000-01-01 00:00:00+00
+1093	bpp	0471_deduplikuj_autor_jednostka_bez_daty	2000-01-01 00:00:00+00
+1094	bpp	0472_constraint_autor_jednostka_bez_daty	2000-01-01 00:00:00+00
+1095	bpp	0466_faza_c_backfill_poprzednie_nazwy	2000-01-01 00:00:00+00
+1096	bpp	0467_faza_c_drop_wydzial	2000-01-01 00:00:00+00
+1097	bpp	0468_faza_c_drop_legacy_markery	2000-01-01 00:00:00+00
+1098	bpp	0469_faza_c_czysc_contenttype_wydzial	2000-01-01 00:00:00+00
 476	bpp	0369_wyd_zwarte_nadrzedne_w_pbn	2000-01-01 00:00:00+00
 372	bpp	0279_usun_ost_akt_pbn	2000-01-01 00:00:00+00
 1104	import_polon	0017_liveops	2000-01-01 00:00:00+00
@@ -16895,7 +16920,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 282	bpp	0195_cc0	2000-01-01 00:00:00+00
 997	bpp	0454_faza_b_i1	2000-01-01 00:00:00+00
 318	bpp	0224_auto_20201111_1341	2000-01-01 00:00:00+00
-319	bpp	0225_charakter_sloty_referat	2000-01-01 00:00:00+00
 320	bpp	0228_merge_20201225_1931	2000-01-01 00:00:00+00
 321	bpp	0229_nowe_sumy_status_korekty	2000-01-01 00:00:00+00
 322	bpp	0230_metoda_do_roku_uczelnia	2000-01-01 00:00:00+00
@@ -17553,7 +17577,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 993	bpp	0450_jednostka_rodzaj	2000-01-01 00:00:00+00
 994	bpp	0451_backfill_jednostka_rodzaj	2000-01-01 00:00:00+00
 995	bpp	0452_jednostka_pola_faza_a	2000-01-01 00:00:00+00
-996	bpp	0453_zrodlo_trigram_indexes	2000-01-01 00:00:00+00
 999	bpp	0456_faza_b_i3	2000-01-01 00:00:00+00
 1000	bpp	0457_faza_b_i4	2000-01-01 00:00:00+00
 1002	bpp	0444_charakter_formalny_ukryty_charakter_pbn_ukryty_and_more	2000-01-01 00:00:00+00
@@ -17644,29 +17667,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1075	import_pracownikow	0020_confidence_status_reczny	2000-01-01 00:00:00+00
 1076	import_pracownikow	0021_pola_data_zmian_i_przepnij_wszystkie	2000-01-01 00:00:00+00
 1077	importer_publikacji	0019_multipleworksimport_uczelnia	2000-01-01 00:00:00+00
-1078	pbn_export_queue	0010_atomowa_kolejka_pbn	2000-01-01 00:00:00+00
-1079	bpp	0468_stopien_sluzbowy_stanowisko_dydaktyczne	2000-01-01 00:00:00+00
-1080	first_run_wizard	0001_initial	2000-01-01 00:00:00+00
-1081	import_pracownikow	0022_alter_importpracownikowrow_confidence	2000-01-01 00:00:00+00
-1082	import_pracownikow	0023_slowniki_stopnie_stanowiska	2000-01-01 00:00:00+00
-1083	bpp	0469_przyszle_daty_zakonczenia_zatrudnienia	2000-01-01 00:00:00+00
-1084	import_pracownikow	0024_importpracownikowrow_stany_pol_snapshot	2000-01-01 00:00:00+00
-1085	oidc_integration	0001_initial	2000-01-01 00:00:00+00
-1086	orcid_integration	0001_initial	2000-01-01 00:00:00+00
-1087	import_pracownikow	0025_importpracownikow_plik_po_imporcie	2000-01-01 00:00:00+00
-1108	bpp	0473_szablon_nazwa_szablonu	2000-01-01 00:00:00+00
-1109	bpp	0474_merge_20260724_1635	2000-01-01 00:00:00+00
-1110	zglos_publikacje	0027_zgloszenie_zaimportowane	2000-01-01 00:00:00+00
-1111	importer_publikacji	0020_importsession_zgloszenie	2000-01-01 00:00:00+00
-713	flexible_reports	0005_column_attrs	2000-01-01 00:00:00+00
-1088	import_pracownikow	0026_importpracownikow_uczelnia	2000-01-01 00:00:00+00
-1090	bpp	0470_indeksy_gin_i_funkcyjne	2000-01-01 00:00:00+00
-1093	bpp	0471_deduplikuj_autor_jednostka_bez_daty	2000-01-01 00:00:00+00
-1094	bpp	0472_constraint_autor_jednostka_bez_daty	2000-01-01 00:00:00+00
-1095	bpp	0466_faza_c_backfill_poprzednie_nazwy	2000-01-01 00:00:00+00
-1096	bpp	0467_faza_c_drop_wydzial	2000-01-01 00:00:00+00
-1097	bpp	0468_faza_c_drop_legacy_markery	2000-01-01 00:00:00+00
-1098	bpp	0469_faza_c_czysc_contenttype_wydzial	2000-01-01 00:00:00+00
 1099	bpp	0470_merge_20260708_1616	2000-01-01 00:00:00+00
 1100	bpp	0473_merge_20260722_1632	2000-01-01 00:00:00+00
 1101	ewaluacja_metryki	0010_dedup_statusgenerowania_bez_uczelni	2000-01-01 00:00:00+00
@@ -18098,6 +18098,21 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 314	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 315	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 316	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+377	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+378	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
+379	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+380	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+381	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+382	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+383	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+384	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+385	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+386	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+387	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+388	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+389	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+390	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+391	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -19959,7 +19974,7 @@ SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 46,
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 376, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 391, true);
 
 
 --
