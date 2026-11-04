@@ -41,6 +41,18 @@
     </div>
 </div>
 
+{# Strona schowana (pokazuj_strone_autora=False): dociera tu tylko redakcja, #}
+{# reszta dostaje 404 — pokaż wyraźnie, że to widok niedostępny publicznie. #}
+{% if not autor.pokazuj_strone_autora %}
+    <div class="callout warning autor-page__ukryta-strona" role="status">
+        <span class="fi-lock" aria-hidden="true"></span>
+        <strong>Strona tego autora jest ukryta.</strong>
+        Widzisz ją, bo masz uprawnienia redakcyjne. Pozostali użytkownicy
+        (także zalogowani bez uprawnień redakcyjnych) dostają błąd 404, a nazwisko
+        autora nie jest nigdzie linkowane.
+    </div>
+{% endif %}
+
 {# Quick Actions (full-width): pokaż wszystkie prace + sieć powiązań #}
 <div class="autor-page__quick-actions">
     <form method="post"
