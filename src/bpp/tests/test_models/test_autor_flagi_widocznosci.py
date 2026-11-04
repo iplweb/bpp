@@ -107,6 +107,30 @@ def test_schowana_strona_autora_widoczna_dla_redakcji(client, django_user_model)
     assert res.status_code == 200
 
 
+def _zaloguj_redaktora(client, django_user_model):
+    user = django_user_model.objects.create_user("redaktor2", password="x")
+    grupa, _ = Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)
+    user.groups.add(grupa)
+    client.force_login(user)
+
+
+@pytest.mark.django_db
+def test_redaktor_widzi_marker_ukrytej_strony(client, django_user_model):
+    autor = _schowany()
+    _zaloguj_redaktora(client, django_user_model)
+    tresc = client.get(reverse("bpp:browse_autor", args=(autor.slug,))).content
+    assert b"autor-page__ukryta-strona" in tresc
+    assert b"Strona tego autora jest ukryta" in tresc
+
+
+@pytest.mark.django_db
+def test_brak_markera_na_widocznej_stronie(client, django_user_model):
+    autor = baker.make(Autor, pokazuj_w_rankingu=False)
+    _zaloguj_redaktora(client, django_user_model)
+    tresc = client.get(reverse("bpp:browse_autor", args=(autor.slug,))).content
+    assert b"autor-page__ukryta-strona" not in tresc
+
+
 # --- linki do strony autora --------------------------------------------------
 
 
