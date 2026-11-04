@@ -1,4 +1,5 @@
-"""Dane osobowe autorów i autorzy ukryci (``pokazuj=False``) w ``/api/v1/``.
+"""Dane osobowe autorów i autorzy ukryci (``pokazuj_w_api=False``) w
+``/api/v1/``.
 
 Kontrakt: widzą je wyłącznie użytkownicy z uprawnieniem do wprowadzania
 danych (grupa ``GR_WPROWADZANIE_DANYCH``) oraz superuser. Pozostali
@@ -62,7 +63,6 @@ def _autor(**kw):
     dane = dict(
         nazwisko="Kowalski",
         imiona="Jan",
-        pokazuj=True,
         email=EMAIL,
         urodzony=URODZONY,
         poprzednie_nazwiska=POPRZEDNIE,
@@ -141,24 +141,29 @@ def test_autor_detal_z_danymi_osobowymi(fabryka):
 @pytest.mark.parametrize("fabryka", BEZ_UPRAWNIEN)
 def test_autor_ukryty_niewidoczny(fabryka):
     widoczny = _autor(nazwisko="Widoczny")
-    ukryty = _autor(nazwisko="Ukryty", pokazuj=False)
+    ukryty = _autor(nazwisko="Ukryty", pokazuj_w_api=False)
     klient = fabryka()
 
     ids = _ids(_lista(klient))
 
+    # Ukryty zostaje na liście, ale wyłącznie jako okrojony obiekt.
     assert widoczny.pk in ids
-    assert ukryty.pk not in ids
-    assert _detal(klient, ukryty).status_code == 404
+    assert ukryty.pk in ids
+    res = _detal(klient, ukryty)
+    assert res.status_code == 200
+    assert res.json() == {"id": ukryty.pk, "dane_ukryte": True}
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("fabryka", Z_UPRAWNIENIAMI)
 def test_autor_ukryty_widoczny_dla_uprawnionych(fabryka):
-    ukryty = _autor(nazwisko="Ukryty", pokazuj=False)
+    ukryty = _autor(nazwisko="Ukryty", pokazuj_w_api=False)
     klient = fabryka()
 
     assert ukryty.pk in _ids(_lista(klient))
-    assert _detal(klient, ukryty).status_code == 200
+    res = _detal(klient, ukryty)
+    assert res.status_code == 200
+    assert res.json()["nazwisko"] == "Ukryty"
 
 
 @pytest.mark.django_db
@@ -206,7 +211,7 @@ def test_autor_brak_sortowania_po_danych_osobowych(fabryka, ordering):
 def test_autor_jednostka_bez_ukrytych(fabryka):
     jednostka = baker.make(Jednostka)
     widoczny = _autor(nazwisko="Widoczny")
-    ukryty = _autor(nazwisko="Ukryty", pokazuj=False)
+    ukryty = _autor(nazwisko="Ukryty", pokazuj_w_api=False)
     aj_widoczny = baker.make(Autor_Jednostka, autor=widoczny, jednostka=jednostka)
     aj_ukryty = baker.make(Autor_Jednostka, autor=ukryty, jednostka=jednostka)
     klient = fabryka()
@@ -223,7 +228,7 @@ def test_autor_jednostka_bez_ukrytych(fabryka):
 @pytest.mark.parametrize("fabryka", Z_UPRAWNIENIAMI)
 def test_autor_jednostka_ukryci_widoczni_dla_uprawnionych(fabryka):
     jednostka = baker.make(Jednostka)
-    ukryty = _autor(nazwisko="Ukryty", pokazuj=False)
+    ukryty = _autor(nazwisko="Ukryty", pokazuj_w_api=False)
     aj_ukryty = baker.make(Autor_Jednostka, autor=ukryty, jednostka=jednostka)
 
     ids = _ids(fabryka().get(reverse("api_v1:autor_jednostka-list")))

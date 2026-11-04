@@ -251,9 +251,10 @@ class AutorView(DetailView):
     model = Autor
 
     def get_queryset(self):
-        # Autor z ``pokazuj=False`` jest ukryty ze stron publicznych (listing
-        # ``AutorzyView`` też go pomija) — pod bezpośrednim URL-em widzi go
-        # tylko użytkownik z uprawnieniami redaktorskimi, reszta dostaje 404.
+        # Autor ze schowaną stroną (``pokazuj_strone_autora=False``) — pod
+        # bezpośrednim URL-em widzi go tylko użytkownik z uprawnieniami
+        # redaktorskimi, reszta dostaje 404. Pozostałe flagi ``pokazuj_*``
+        # (jednostka, ranking, indeks, …) NIE wpływają na tę stronę.
         return widoczni_autorzy(super().get_queryset(), getattr(self, "request", None))
 
     def get_context_data(self, **kwargs):
@@ -727,7 +728,7 @@ class AutorzyView(Browser):
         return queryset
 
     def get_queryset(self):
-        ret = super().get_queryset().filter(pokazuj=True)
+        ret = super().get_queryset().filter(pokazuj_w_indeksie=True)
         ret = self._apply_uczelnia_filters(ret)
         return (
             ret.select_related("aktualna_jednostka", "aktualna_jednostka__wydzial")
@@ -744,7 +745,7 @@ class AutorzyView(Browser):
 
     def get_context_data(self, *args, **kw):
         context = super().get_context_data(*args, **kw)
-        base_qry = Autor.objects.filter(pokazuj=True)
+        base_qry = Autor.objects.filter(pokazuj_w_indeksie=True)
         base_qry = self._apply_uczelnia_filters(base_qry)
         context["available_letters"] = self.zapamietane_literki(base_qry)
         return context

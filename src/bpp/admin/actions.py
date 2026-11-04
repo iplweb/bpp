@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.db.models import Q
 from django.utils.translation import ngettext
 
 from bpp.admin.helpers.pbn_api.gui import (
@@ -108,22 +109,31 @@ wyslij_do_pbn_w_tle.short_description = "Wyślij do PBN w tle"
 
 
 def ustaw_pokazuj_true(modeladmin, request, queryset):
-    updated = queryset.filter(pokazuj=False).update(pokazuj=True)
+    # „Widoczność” w sensie dawnego ``pokazuj``: strona jednostki + ranking.
+    updated = queryset.filter(
+        Q(pokazuj_na_stronie_jednostki=False) | Q(pokazuj_w_rankingu=False)
+    ).update(pokazuj_na_stronie_jednostki=True, pokazuj_w_rankingu=True)
     modeladmin.message_user(
         request,
         f"Ustawiono {updated} {ngettext('autora', 'autorów', updated)} jako widocznych",
     )
 
 
-ustaw_pokazuj_true.short_description = "Pokaż wybranych autorów"
+ustaw_pokazuj_true.short_description = (
+    "Pokaż wybranych autorów na stronach jednostek i w rankingu"
+)
 
 
 def ustaw_pokazuj_false(modeladmin, request, queryset):
-    updated = queryset.filter(pokazuj=True).update(pokazuj=False)
+    updated = queryset.filter(
+        Q(pokazuj_na_stronie_jednostki=True) | Q(pokazuj_w_rankingu=True)
+    ).update(pokazuj_na_stronie_jednostki=False, pokazuj_w_rankingu=False)
     modeladmin.message_user(
         request,
         f"Ustawiono {updated} {ngettext('autora', 'autorów', updated)} jako ukrytych",
     )
 
 
-ustaw_pokazuj_false.short_description = "Ukryj wybranych autorów"
+ustaw_pokazuj_false.short_description = (
+    "Ukryj wybranych autorów na stronach jednostek i w rankingu"
+)

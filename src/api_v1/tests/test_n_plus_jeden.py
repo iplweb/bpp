@@ -157,7 +157,7 @@ def test_autor_lista_bez_n_plus_jeden(api_client, uczelnia, jednostka):
     cache.clear()
 
     def fabryka():
-        autor = baker.make(Autor, pokazuj=True)
+        autor = baker.make(Autor, pokazuj_w_api=True)
         baker.make(Autor_Jednostka, autor=autor, jednostka=jednostka)
         return autor
 

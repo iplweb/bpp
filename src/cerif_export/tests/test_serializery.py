@@ -213,7 +213,7 @@ def test_niewidoczna_encja_osadzona_bez_identyfikatora(
     To jest dokładnie ten przypadek, na którym łatwo złamać integralność
     referencyjną: kusi, żeby wypisać identyfikator, bo obiekt jest pod ręką.
     """
-    ukryty = fabryka_autorow("Ukryty", pokazuj=False)
+    ukryty = fabryka_autorow("Ukryty", pokazuj_w_api=False)
     fabryka_wydawnictw(Wydawnictwo_Ciagle, autor=ukryty)
 
     obiekty, kontekst = kontekst_setu(uczelnia, const.SET_PUBLICATIONS)

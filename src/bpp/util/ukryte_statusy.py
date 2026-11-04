@@ -1,5 +1,5 @@
 """Wykluczanie rekordów o statusach korekty ukrytych dla danego kanału
-(oraz autorów ukrytych, ``pokazuj=False``).
+(oraz autorów ukrytych flagami ``Autor.pokazuj_*``).
 
 Wspólny helper dla publicznych widoków, które listują rekordy (przeglądanie
 po latach, strona główna, autocomplete'y). Reguła jest ta sama, co na
@@ -78,17 +78,15 @@ def statusy_ukryte_w_dowolnej_uczelni(kanal="podglad"):
     )
 
 
-def widoczni_autorzy(qs, request, lookup="pokazuj"):
+def widoczni_autorzy(qs, request, lookup="pokazuj_strone_autora"):
     """Zwróć ``qs`` zawężony do autorów widocznych dla oglądającego.
 
-    Autor z ``pokazuj=False`` jest ukryty ze stron publicznych — widzi go
-    tylko użytkownik z uprawnieniami redaktorskimi (``moze_wprowadzac_dane``);
-    dla pozostałych (także ``request=None``) ``qs`` jest filtrowany do
-    ``pokazuj=True``. Wspólna reguła dla strony autora, eksportu, sieci
-    powiązań i autocomplete'ów.
-
-    ``lookup`` to ścieżka ORM do flagi ``pokazuj`` (np. ``"autor__pokazuj"``
-    dla modeli podrzędnych, jak ``Autor_Dyscyplina``).
+    ``lookup`` to ścieżka ORM do jednej z flag widoczności autora
+    (``pokazuj_strone_autora``, ``pokazuj_w_wyszukiwaniu``, ``pokazuj_w_api``
+    …; dla modeli podrzędnych z prefiksem, np. ``"autor__pokazuj_w_api"``).
+    Użytkownik z uprawnieniami redaktorskimi (``moze_wprowadzac_dane``) widzi
+    wszystkich; dla pozostałych (także ``request=None``) ``qs`` jest
+    filtrowany do ``lookup=True``.
     """
     from bpp.permissions import moze_wprowadzac_dane
 

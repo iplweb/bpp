@@ -390,7 +390,7 @@ def test_autorzy_view_empty_page_redirects(client, setup_group):
     """Test: AutorzyView redirects to page 1 when EmptyPage occurs."""
     # Create test data - need 100+ authors for 2+ pages (paginate_by=50)
     any_uczelnia(nazwa="Test University", skrot="TU")
-    baker.make(Autor, nazwisko="Test", imiona="Autor", pokazuj=True, _quantity=100)
+    baker.make(Autor, nazwisko="Test", imiona="Autor", _quantity=100)
 
     # Try to access non-existent page (we have 2 pages, try page 10)
     url = reverse("bpp:browse_autorzy") + "?page=10"
@@ -411,7 +411,7 @@ def test_autorzy_view_empty_page_redirects(client, setup_group):
 def test_autorzy_view_empty_page_preserves_search(client, setup_group):
     """Test: Redirect preserves search parameter."""
     any_uczelnia(nazwa="Test University", skrot="TU")
-    baker.make(Autor, nazwisko="Test", imiona="Autor", pokazuj=True, _quantity=100)
+    baker.make(Autor, nazwisko="Test", imiona="Autor", _quantity=100)
 
     url = reverse("bpp:browse_autorzy") + "?page=10&search=Test"
     response = client.get(url, follow=True)
@@ -427,7 +427,7 @@ def test_autorzy_view_empty_page_preserves_literka_in_path(client, setup_group):
     """Test: Redirect preserves literka in URL path."""
     any_uczelnia(nazwa="Test University", skrot="TU")
     # Create 100 authors starting with 'A'
-    baker.make(Autor, nazwisko="Atest", imiona="Autor", pokazuj=True, _quantity=100)
+    baker.make(Autor, nazwisko="Atest", imiona="Autor", _quantity=100)
 
     url = reverse("bpp:browse_autorzy_literka", kwargs={"literka": "A"}) + "?page=10"
     response = client.get(url, follow=True)
@@ -442,7 +442,7 @@ def test_autorzy_view_empty_page_preserves_literka_in_path(client, setup_group):
 def test_autorzy_view_page_not_integer_redirects(client, setup_group):
     """Test: Non-integer page values redirect to page 1."""
     any_uczelnia(nazwa="Test University", skrot="TU")
-    baker.make(Autor, nazwisko="Test", imiona="Autor", pokazuj=True, _quantity=100)
+    baker.make(Autor, nazwisko="Test", imiona="Autor", _quantity=100)
 
     url = reverse("bpp:browse_autorzy") + "?page=abc"
     response = client.get(url, follow=True)
@@ -465,10 +465,10 @@ def test_autorzy_view_page_not_integer_redirects(client, setup_group):
 def test_get_available_letters_polish_diacritics_canonical():
     """Polskie znaki diakrytyczne mapują się na kanoniczną literkę."""
     any_uczelnia(nazwa="X", skrot="X")
-    baker.make(Autor, nazwisko="Ąbrowski", pokazuj=True)
-    baker.make(Autor, nazwisko="ćwiek", pokazuj=True)
-    baker.make(Autor, nazwisko="Łyk", pokazuj=True)
-    baker.make(Autor, nazwisko="Ñowak", pokazuj=True)  # nie z LITERKI
+    baker.make(Autor, nazwisko="Ąbrowski")
+    baker.make(Autor, nazwisko="ćwiek")
+    baker.make(Autor, nazwisko="Łyk")
+    baker.make(Autor, nazwisko="Ñowak")  # nie z LITERKI
 
     letters = get_available_letters(Autor.objects.all(), "nazwisko")
 
@@ -483,9 +483,9 @@ def test_get_available_letters_polish_diacritics_canonical():
 def test_get_available_letters_runs_single_query(django_assert_num_queries):
     """Regresja: jedno zapytanie, niezależnie od liczby liter."""
     any_uczelnia(nazwa="X", skrot="X")
-    baker.make(Autor, nazwisko="Adam", pokazuj=True)
-    baker.make(Autor, nazwisko="Bartek", pokazuj=True)
-    baker.make(Autor, nazwisko="Cezary", pokazuj=True)
+    baker.make(Autor, nazwisko="Adam")
+    baker.make(Autor, nazwisko="Bartek")
+    baker.make(Autor, nazwisko="Cezary")
 
     with django_assert_num_queries(1):
         letters = get_available_letters(Autor.objects.all(), "nazwisko")
@@ -497,8 +497,10 @@ def test_get_available_letters_runs_single_query(django_assert_num_queries):
 def test_get_available_letters_respects_queryset_filter():
     """Pre-filtry queryseta są zachowane (nie pokazujemy ukrytych autorów)."""
     any_uczelnia(nazwa="X", skrot="X")
-    baker.make(Autor, nazwisko="Adam", pokazuj=True)
-    baker.make(Autor, nazwisko="Bartek", pokazuj=False)
+    baker.make(Autor, nazwisko="Adam")
+    baker.make(Autor, nazwisko="Bartek", pokazuj_w_indeksie=False)
 
-    letters = get_available_letters(Autor.objects.filter(pokazuj=True), "nazwisko")
+    letters = get_available_letters(
+        Autor.objects.filter(pokazuj_w_indeksie=True), "nazwisko"
+    )
     assert letters == {"A"}

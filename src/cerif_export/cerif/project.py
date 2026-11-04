@@ -90,7 +90,7 @@ def dodaj_zespol(el, projekt, ctx):
 
     Do zespołu wchodzą wyłącznie osoby, które faktycznie wyjdą w secie
     ``openaire_cris_persons`` (``ctx.id_dla`` zwraca identyfikator). Osoba
-    z ``pokazuj=False`` albo cała lista przy wyłączonym
+    z ``pokazuj_w_api=False`` albo cała lista przy wyłączonym
     ``eksport_cerif_osoby`` znika bez śladu — razem z kontenerem, żeby nie
     zostawiać pustego ``<Team/>``.
     """

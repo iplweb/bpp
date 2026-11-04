@@ -64,7 +64,7 @@ def test_rest_api_autor_filter_nazwisko_brak(api_client, autor_jan_kowalski):
 def test_rest_api_autor_list_nie_ujawnia_emaila_anonimowi(client):
     # RODO: adres e-mail autora to dane osobowe i nie może wyciekać
     # anonimowemu klientowi API (harvesting adresów).
-    baker.make("bpp.Autor", email="sekret@example.com", pokazuj=True)
+    baker.make("bpp.Autor", email="sekret@example.com")
     res = client.get(reverse("api_v1:autor-list"))
     assert res.status_code == 200
     assert "sekret@example.com" not in res.content.decode()
@@ -72,19 +72,29 @@ def test_rest_api_autor_list_nie_ujawnia_emaila_anonimowi(client):
 
 
 @pytest.mark.django_db
-def test_rest_api_autor_list_pomija_autorow_ukrytych(client):
-    # Autor z pokazuj=False jest świadomie ukryty ze stron publicznych —
-    # nie może wyciekać przez listę API.
-    baker.make("bpp.Autor", nazwisko="Widoczny", pokazuj=True)
-    baker.make("bpp.Autor", nazwisko="Ukryty", pokazuj=False)
+def test_rest_api_autor_list_ukrywa_dane_autorow_ukrytych(client):
+    # Autor z pokazuj_w_api=False zostaje na liście (hiperłącza z publikacji
+    # nie mogą prowadzić do 404), ale tylko jako okrojony obiekt.
+    baker.make("bpp.Autor", nazwisko="Widoczny")
+    ukryty = baker.make("bpp.Autor", nazwisko="Ukryty", pokazuj_w_api=False)
     res = client.get(reverse("api_v1:autor-list"))
-    nazwiska = {r["nazwisko"] for r in res.json()["results"]}
-    assert "Widoczny" in nazwiska
-    assert "Ukryty" not in nazwiska
+    wyniki = res.json()["results"]
+    assert {r.get("nazwisko") for r in wyniki} == {"Widoczny", None}
+    assert {"id": ukryty.pk, "dane_ukryte": True} in wyniki
+    assert "Ukryty" not in res.content.decode()
 
 
 @pytest.mark.django_db
-def test_rest_api_autor_detail_ukryty_niedostepny(client):
-    ukryty = baker.make("bpp.Autor", pokazuj=False)
+def test_rest_api_autor_detail_ukryty_dane_ukryte(client):
+    ukryty = baker.make("bpp.Autor", nazwisko="Ukryty", pokazuj_w_api=False)
     res = client.get(reverse("api_v1:autor-detail", args=(ukryty.pk,)))
-    assert res.status_code == 404
+    assert res.status_code == 200
+    assert res.json() == {"id": ukryty.pk, "dane_ukryte": True}
+
+
+@pytest.mark.django_db
+def test_rest_api_autor_filtr_nie_dopasowuje_ukrytych(client):
+    # Dopasowanie okrojonego obiektu po ?nazwisko= ujawniałoby tożsamość.
+    baker.make("bpp.Autor", nazwisko="Przykladowska", pokazuj_w_api=False)
+    res = client.get(reverse("api_v1:autor-list"), {"nazwisko": "Przykladowska"})
+    assert res.json()["count"] == 0

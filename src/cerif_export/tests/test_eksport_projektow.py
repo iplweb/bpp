@@ -497,7 +497,7 @@ def test_team_znika_przy_wylaczonym_eksporcie_osob(uczelnia, projekt, fabryka_au
 def test_autor_z_pokazuj_false_nie_trafia_do_zespolu(
     uczelnia, projekt, fabryka_autorow
 ):
-    ukryty = fabryka_autorow("Ukryta", pokazuj=False)
+    ukryty = fabryka_autorow("Ukryta", pokazuj_w_api=False)
     Projekt_Autor.objects.create(
         projekt=projekt, autor=ukryty, rola=Projekt_Autor.ROLA_WYKONAWCA
     )

@@ -437,7 +437,8 @@ def autor_nazwa(autor, links="", pokaz_pozycje=False):
             reverse("admin:bpp_autor_change", args=[autor.autor.pk]),
             nazwa,
         )
-    elif links == "normal":
+    elif links == "normal" and autor.autor.pokazuj_strone_autora:
+        # Autor ze schowaną stroną: samo nazwisko, bez linku do 404.
         nazwa = format_html(
             '<a href="{}">{}</a>',
             reverse("bpp:browse_autor", args=[autor.autor.slug]),

@@ -482,11 +482,13 @@
                                             <label for="autor_{{ autor.pk }}" class="jednostka__label">
                                                 {{ autor }}{% if autor.aktualna_funkcja.pokazuj_za_nazwiskiem %},
                                                 <span class="jednostka__function-text">{{ autor.aktualna_funkcja }}</span>{% endif %}
+                                                {% if autor.pokazuj_strone_autora %}
                                                 <a href="{% url "bpp:browse_autor" autor.slug %}"
                                                    class="jednostka__author-link"
                                                    title="Zobacz profil autora">
                                                     <i class="fi-torso jednostka__author-icon"></i>
                                                 </a>
+                                                {% endif %}
                                             </label>
                                         </div>
                                     {% endfor %}
@@ -519,10 +521,12 @@
                                                                    class="jednostka__checkbox--former"/>
                                                             <label for="autor_{{ autor.pk }}" class="jednostka__label">
                                                                 {{ autor }}
+                                                                {% if autor.pokazuj_strone_autora %}
                                                                 <a href="{% url "bpp:browse_autor" autor.slug %}"
                                                                    class="jednostka__author-link"
                                                                    title="Zobacz profil autora">
                                                                     <i class="fi-torso jednostka__author-icon"></i></a>
+                                                                {% endif %}
                                                             </label>
                                                         </div>
                                                     {% endfor %}
@@ -553,10 +557,12 @@
                                                        />
                                                 <label for="autor_{{ autor.pk }}" class="jednostka__label">
                                                     {{ autor }}
+                                                    {% if autor.pokazuj_strone_autora %}
                                                     <a href="{% url "bpp:browse_autor" autor.slug %}"
                                                        class="jednostka__author-link"
                                                        title="Zobacz profil autora">
                                                         <i class="fi-torso jednostka__author-icon"></i></a>
+                                                    {% endif %}
                                                 </label>
                                             </div>
                                         {% endfor %}

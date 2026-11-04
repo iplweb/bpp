@@ -1,6 +1,6 @@
 """Testy regresyjne luki bezpieczeństwa: publiczne API autorów nie może
 ujawniać danych osobowych (PII) ani autorów oznaczonych jako ukryci
-(``pokazuj=False``) użytkownikom niezalogowanym.
+(``pokazuj_w_api=False``) użytkownikom niezalogowanym.
 """
 
 from datetime import date
@@ -23,30 +23,32 @@ def _staff_client():
 
 
 @pytest.mark.django_db
-def test_anon_lista_nie_zawiera_ukrytego_autora():
-    """Autor z ``pokazuj=False`` nie może pojawić się na publicznej liście."""
-    baker.make(Autor, nazwisko="Widoczny", imiona="Wiktor", pokazuj=True)
-    baker.make(Autor, nazwisko="Ukryty", imiona="Urban", pokazuj=False)
+def test_anon_lista_nie_zawiera_danych_ukrytego_autora():
+    """Autor z ``pokazuj_w_api=False`` jest na publicznej liście wyłącznie
+    jako okrojony obiekt — bez nazwiska."""
+    baker.make(Autor, nazwisko="Widoczny", imiona="Wiktor")
+    ukryty = baker.make(Autor, nazwisko="Ukryty", imiona="Urban", pokazuj_w_api=False)
 
     res = APIClient().get(reverse("api_v1:autor-list"))
-    nazwiska = {row["nazwisko"] for row in res.json()["results"]}
-    assert "Widoczny" in nazwiska
-    assert "Ukryty" not in nazwiska
+    wyniki = res.json()["results"]
+    assert {row.get("nazwisko") for row in wyniki} == {"Widoczny", None}
+    assert {"id": ukryty.pk, "dane_ukryte": True} in wyniki
 
 
 @pytest.mark.django_db
-def test_anon_detal_ukrytego_autora_404():
-    """Detal autora z ``pokazuj=False`` jest niedostępny anonimowo (404)."""
-    autor = baker.make(Autor, nazwisko="Ukryty", imiona="Urban", pokazuj=False)
+def test_anon_detal_ukrytego_autora_dane_ukryte():
+    """Detal autora z ``pokazuj_w_api=False`` anonimowo: tylko „dane ukryte”."""
+    autor = baker.make(Autor, nazwisko="Ukryty", imiona="Urban", pokazuj_w_api=False)
 
     res = APIClient().get(reverse("api_v1:autor-detail", args=(autor.pk,)))
-    assert res.status_code == 404
+    assert res.status_code == 200
+    assert res.json() == {"id": autor.pk, "dane_ukryte": True}
 
 
 @pytest.mark.django_db
 def test_zalogowany_widzi_ukrytego_autora():
     """Regresja w drugą stronę: superuser widzi ukrytego autora."""
-    autor = baker.make(Autor, nazwisko="Ukryty", imiona="Urban", pokazuj=False)
+    autor = baker.make(Autor, nazwisko="Ukryty", imiona="Urban", pokazuj_w_api=False)
 
     res = _staff_client().get(reverse("api_v1:autor-detail", args=(autor.pk,)))
     assert res.status_code == 200
@@ -59,7 +61,6 @@ def test_anon_nie_widzi_emaila():
         Autor,
         nazwisko="Kowalski",
         imiona="Jan",
-        pokazuj=True,
         email="jan.kowalski@example.com",
     )
 
@@ -87,7 +88,6 @@ def test_anon_nie_widzi_pelnej_daty_urodzenia():
         Autor,
         nazwisko="Kowalski",
         imiona="Jan",
-        pokazuj=True,
         urodzony=date(1970, 3, 15),
     )
 
@@ -115,7 +115,6 @@ def test_anon_nie_widzi_poprzednich_nazwisk_gdy_ukryte():
         Autor,
         nazwisko="Nowak",
         imiona="Anna",
-        pokazuj=True,
         poprzednie_nazwiska="Kowalska",
         pokazuj_poprzednie_nazwiska=False,
     )
@@ -133,7 +132,6 @@ def test_anon_widzi_poprzednie_nazwiska_gdy_wlaczone():
         Autor,
         nazwisko="Nowak",
         imiona="Anna",
-        pokazuj=True,
         poprzednie_nazwiska="Kowalska",
         pokazuj_poprzednie_nazwiska=True,
     )
@@ -167,14 +165,14 @@ def test_anon_filtrowanie_po_nazwisku_dziala(autor_jan_kowalski):
 @pytest.mark.django_db
 def test_anon_nie_widzi_zatrudnienia_ukrytego_autora():
     """``/api/v1/autor_jednostka/`` nie może ujawniać powiązań zatrudnienia
-    autora ukrytego (``pokazuj=False``). Inaczej jednostka, daty pracy oraz
-    PK autora wyciekają anonimowi, obchodząc ``pokazuj=False`` egzekwowane
+    autora ukrytego (``pokazuj_w_api=False``). Inaczej jednostka, daty pracy oraz
+    PK autora wyciekają anonimowi, obchodząc ``pokazuj_w_api=False`` egzekwowane
     przez ``AutorViewSet``."""
     from bpp.models import Autor_Jednostka, Jednostka
 
     jednostka = baker.make(Jednostka)
-    widoczny = baker.make(Autor, nazwisko="Widoczny", pokazuj=True)
-    ukryty = baker.make(Autor, nazwisko="Ukryty", pokazuj=False)
+    widoczny = baker.make(Autor, nazwisko="Widoczny")
+    ukryty = baker.make(Autor, nazwisko="Ukryty", pokazuj_w_api=False)
     baker.make(Autor_Jednostka, autor=widoczny, jednostka=jednostka)
     baker.make(Autor_Jednostka, autor=ukryty, jednostka=jednostka)
 
@@ -194,7 +192,7 @@ def test_zalogowany_widzi_zatrudnienie_ukrytego_autora():
     from bpp.models import Autor_Jednostka, Jednostka
 
     jednostka = baker.make(Jednostka)
-    ukryty = baker.make(Autor, nazwisko="Ukryty", pokazuj=False)
+    ukryty = baker.make(Autor, nazwisko="Ukryty", pokazuj_w_api=False)
     baker.make(Autor_Jednostka, autor=ukryty, jednostka=jednostka)
 
     res = _staff_client().get(reverse("api_v1:autor_jednostka-list"))

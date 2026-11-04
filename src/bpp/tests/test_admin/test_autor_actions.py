@@ -1,7 +1,11 @@
-"""Testy dla akcji w AutorAdmin."""
+"""Testy dla akcji w AutorAdmin.
+
+„Widoczny/ukryty” = ``pokazuj_na_stronie_jednostki`` + ``pokazuj_w_rankingu``
+(następczynie dawnego ``Autor.pokazuj``).
+"""
+
 import pytest
 from django.contrib.admin.sites import AdminSite
-from django.contrib.auth.models import Group
 from django.test import RequestFactory
 from model_bakery import baker
 
@@ -22,8 +26,8 @@ def mock_request(admin_user):
     request.user.cached_groups = list(request.user.groups.all())
 
     # Dodaj message storage aby akcje mogły dodawać komunikaty
-    setattr(request, "session", {})
-    setattr(request, "_messages", FallbackStorage(request))
+    request.session = {}
+    request._messages = FallbackStorage(request)
 
     return request
 
@@ -47,27 +51,34 @@ def test_ustaw_pokazuj_true_respects_queryset_filter(mock_request, autor_admin):
     Oczekiwany rezultat: zmienione są tylko autorzy z odfiltrowanego queryset.
     """
     # Przygotuj dane testowe
-    # Jednostka A - 5 autorów (wszyscy pokazuj=False)
+    # Jednostka A - 5 autorów (wszyscy ukryci)
     jednostka_a = baker.make("bpp.Jednostka", nazwa="Jednostka A")
-    autorzy_a = baker.make(
+    baker.make(
         Autor,
         aktualna_jednostka=jednostka_a,
-        pokazuj=False,
-        _quantity=5
+        pokazuj_na_stronie_jednostki=False,
+        pokazuj_w_rankingu=False,
+        _quantity=5,
     )
 
-    # Jednostka B - 3 autorów (wszyscy pokazuj=False)
+    # Jednostka B - 3 autorów (wszyscy ukryci)
     jednostka_b = baker.make("bpp.Jednostka", nazwa="Jednostka B")
-    autorzy_b = baker.make(
+    baker.make(
         Autor,
         aktualna_jednostka=jednostka_b,
-        pokazuj=False,
-        _quantity=3
+        pokazuj_na_stronie_jednostki=False,
+        pokazuj_w_rankingu=False,
+        _quantity=3,
     )
 
-    # Razem: 8 autorów, wszyscy z pokazuj=False
+    # Razem: 8 autorów, wszyscy ukryci
     assert Autor.objects.count() == 8
-    assert Autor.objects.filter(pokazuj=False).count() == 8
+    assert (
+        Autor.objects.filter(
+            pokazuj_na_stronie_jednostki=False, pokazuj_w_rankingu=False
+        ).count()
+        == 8
+    )
 
     # Symuluj filtrowanie: użytkownik filtruje listę aby zobaczyć tylko autorów z Jednostki A
     # Django admin przekazuje do akcji queryset z zastosowanymi filtrami
@@ -78,92 +89,162 @@ def test_ustaw_pokazuj_true_respects_queryset_filter(mock_request, autor_admin):
 
     # Wykonaj akcję (to co robi Django admin gdy użytkownik klika akcję)
     from bpp.admin.actions import ustaw_pokazuj_true
+
     ustaw_pokazuj_true(autor_admin, mock_request, queryset_odfiltrowany)
 
-    # WERYFIKACJA: Tylko autorzy z Jednostki A powinni mieć pokazuj=True
-    assert Autor.objects.filter(
-        aktualna_jednostka=jednostka_a,
-        pokazuj=True
-    ).count() == 5
+    # WERYFIKACJA: Tylko autorzy z Jednostki A powinni być widoczni
+    assert (
+        Autor.objects.filter(
+            aktualna_jednostka=jednostka_a,
+            pokazuj_na_stronie_jednostki=True,
+            pokazuj_w_rankingu=True,
+        ).count()
+        == 5
+    )
 
-    # WERYFIKACJA: Autorzy z Jednostki B nadal powinni mieć pokazuj=False
-    assert Autor.objects.filter(
-        aktualna_jednostka=jednostka_b,
-        pokazuj=False
-    ).count() == 3
+    # WERYFIKACJA: Autorzy z Jednostki B nadal powinni być ukryci
+    assert (
+        Autor.objects.filter(
+            aktualna_jednostka=jednostka_b,
+            pokazuj_na_stronie_jednostki=False,
+            pokazuj_w_rankingu=False,
+        ).count()
+        == 3
+    )
 
-    # WERYFIKACJA: W sumie tylko 5 autorów powinno mieć pokazuj=True
-    assert Autor.objects.filter(pokazuj=True).count() == 5
-    assert Autor.objects.filter(pokazuj=False).count() == 3
+    # WERYFIKACJA: W sumie tylko 5 autorów powinno być widocznych
+    assert (
+        Autor.objects.filter(
+            pokazuj_na_stronie_jednostki=True, pokazuj_w_rankingu=True
+        ).count()
+        == 5
+    )
+    assert (
+        Autor.objects.filter(
+            pokazuj_na_stronie_jednostki=False, pokazuj_w_rankingu=False
+        ).count()
+        == 3
+    )
 
 
 @pytest.mark.django_db
 def test_ustaw_pokazuj_true_skips_already_visible(mock_request, autor_admin):
-    """Test weryfikujący że akcja zmienia tylko autorów z pokazuj=False."""
-    # Utwórz 10 autorów: 6 z pokazuj=False, 4 z pokazuj=True
-    autorzy_do_zmiany = baker.make(Autor, pokazuj=False, _quantity=6)
-    autorzy_juz_widoczni = baker.make(Autor, pokazuj=True, _quantity=4)
+    """Test weryfikujący że akcja zmienia tylko ukrytych autorów."""
+    # Utwórz 10 autorów: 6 ukrytych, 4 widocznych
+    baker.make(
+        Autor, pokazuj_na_stronie_jednostki=False, pokazuj_w_rankingu=False, _quantity=6
+    )
+    baker.make(
+        Autor, pokazuj_na_stronie_jednostki=True, pokazuj_w_rankingu=True, _quantity=4
+    )
 
     # Sprawdź stan początkowy
-    assert Autor.objects.filter(pokazuj=False).count() == 6
-    assert Autor.objects.filter(pokazuj=True).count() == 4
+    assert (
+        Autor.objects.filter(
+            pokazuj_na_stronie_jednostki=False, pokazuj_w_rankingu=False
+        ).count()
+        == 6
+    )
+    assert (
+        Autor.objects.filter(
+            pokazuj_na_stronie_jednostki=True, pokazuj_w_rankingu=True
+        ).count()
+        == 4
+    )
 
     # Wykonaj akcję na WSZYSTKICH autorach
     queryset_wszystkich = Autor.objects.all()
     assert queryset_wszystkich.count() == 10
 
     from bpp.admin.actions import ustaw_pokazuj_true
+
     ustaw_pokazuj_true(autor_admin, mock_request, queryset_wszystkich)
 
-    # WERYFIKACJA: Wszyscy autorzy powinni mieć pokazuj=True
-    assert Autor.objects.filter(pokazuj=True).count() == 10
-    assert Autor.objects.filter(pokazuj=False).count() == 0
+    # WERYFIKACJA: Wszyscy autorzy powinni być widoczni
+    assert (
+        Autor.objects.filter(
+            pokazuj_na_stronie_jednostki=True, pokazuj_w_rankingu=True
+        ).count()
+        == 10
+    )
+    assert (
+        Autor.objects.filter(
+            pokazuj_na_stronie_jednostki=False, pokazuj_w_rankingu=False
+        ).count()
+        == 0
+    )
 
 
 @pytest.mark.django_db
 def test_ustaw_pokazuj_false_respects_queryset_filter(mock_request, autor_admin):
     """Test weryfikujący czy akcja ustaw_pokazuj_false używa tylko otrzymanego queryset."""
-    # Jednostka A - 5 autorów (wszyscy pokazuj=True)
+    # Jednostka A - 5 autorów (wszyscy widoczni)
     jednostka_a = baker.make("bpp.Jednostka", nazwa="Jednostka A")
-    autorzy_a = baker.make(
+    baker.make(
         Autor,
         aktualna_jednostka=jednostka_a,
-        pokazuj=True,
-        _quantity=5
+        pokazuj_na_stronie_jednostki=True,
+        pokazuj_w_rankingu=True,
+        _quantity=5,
     )
 
-    # Jednostka B - 3 autorów (wszyscy pokazuj=True)
+    # Jednostka B - 3 autorów (wszyscy widoczni)
     jednostka_b = baker.make("bpp.Jednostka", nazwa="Jednostka B")
-    autorzy_b = baker.make(
+    baker.make(
         Autor,
         aktualna_jednostka=jednostka_b,
-        pokazuj=True,
-        _quantity=3
+        pokazuj_na_stronie_jednostki=True,
+        pokazuj_w_rankingu=True,
+        _quantity=3,
     )
 
-    # Razem: 8 autorów, wszyscy z pokazuj=True
+    # Razem: 8 autorów, wszyscy widoczni
     assert Autor.objects.count() == 8
-    assert Autor.objects.filter(pokazuj=True).count() == 8
+    assert (
+        Autor.objects.filter(
+            pokazuj_na_stronie_jednostki=True, pokazuj_w_rankingu=True
+        ).count()
+        == 8
+    )
 
     # Symuluj filtrowanie: użytkownik filtruje listę aby zobaczyć tylko autorów z Jednostki A
     queryset_odfiltrowany = Autor.objects.filter(aktualna_jednostka=jednostka_a)
 
     # Wykonaj akcję
     from bpp.admin.actions import ustaw_pokazuj_false
+
     ustaw_pokazuj_false(autor_admin, mock_request, queryset_odfiltrowany)
 
-    # WERYFIKACJA: Tylko autorzy z Jednostki A powinni mieć pokazuj=False
-    assert Autor.objects.filter(
-        aktualna_jednostka=jednostka_a,
-        pokazuj=False
-    ).count() == 5
+    # WERYFIKACJA: Tylko autorzy z Jednostki A powinni być ukryci
+    assert (
+        Autor.objects.filter(
+            aktualna_jednostka=jednostka_a,
+            pokazuj_na_stronie_jednostki=False,
+            pokazuj_w_rankingu=False,
+        ).count()
+        == 5
+    )
 
-    # WERYFIKACJA: Autorzy z Jednostki B nadal powinni mieć pokazuj=True
-    assert Autor.objects.filter(
-        aktualna_jednostka=jednostka_b,
-        pokazuj=True
-    ).count() == 3
+    # WERYFIKACJA: Autorzy z Jednostki B nadal powinni być widoczni
+    assert (
+        Autor.objects.filter(
+            aktualna_jednostka=jednostka_b,
+            pokazuj_na_stronie_jednostki=True,
+            pokazuj_w_rankingu=True,
+        ).count()
+        == 3
+    )
 
-    # WERYFIKACJA: W sumie tylko 3 autorów powinno mieć pokazuj=True
-    assert Autor.objects.filter(pokazuj=True).count() == 3
-    assert Autor.objects.filter(pokazuj=False).count() == 5
+    # WERYFIKACJA: W sumie tylko 3 autorów powinno być widocznych
+    assert (
+        Autor.objects.filter(
+            pokazuj_na_stronie_jednostki=True, pokazuj_w_rankingu=True
+        ).count()
+        == 3
+    )
+    assert (
+        Autor.objects.filter(
+            pokazuj_na_stronie_jednostki=False, pokazuj_w_rankingu=False
+        ).count()
+        == 5
+    )

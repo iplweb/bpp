@@ -2,7 +2,8 @@
 
 Reguła widoczności autora ma dwa człony i **oba są konieczne**:
 
-1. ``pokazuj=True`` — redakcyjny opt-out osoby; autor z ``pokazuj=False`` nie
+1. ``pokazuj_w_api=True`` — redakcyjny opt-out osoby; autor z
+   ``pokazuj_w_api=False`` nie
    ma prawa wyjść ani jako rekord w secie, ani jako ``Person/@id`` osadzony
    przy publikacji (test wycieku osób w ``tests/test_widocznosc.py``);
 2. istnieje ``Autor_Jednostka`` do jednostki tej uczelni — ``Autor`` nie ma FK
@@ -47,7 +48,7 @@ def widoczni_autorzy(uczelnia):
     if not uczelnia.eksport_cerif_osoby:
         return Autor.objects.none()
 
-    return Autor.objects.filter(pokazuj=True).filter(
+    return Autor.objects.filter(pokazuj_w_api=True).filter(
         pk__in=Autor_Jednostka.objects.filter(jednostka__uczelnia=uczelnia).values(
             "autor_id"
         )

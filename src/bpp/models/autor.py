@@ -135,7 +135,8 @@ class AutorManager(FulltextSearchMixin, models.Manager.from_queryset(AutorQueryS
 
         ``uczelnia`` (multi-hosted): uczelnia z requestu wołającego — z niej
         czytamy ``nowy_autor_z_formularza_pokazuj``. Bez niej próbujemy
-        JEDYNEJ w systemie (single → ona; 0/>1 → None → ``pokazuj=False``).
+        JEDYNEJ w systemie (single → ona; 0/>1 → None → autor ukryty na stronach
+        jednostek i w rankingu).
         NIE zgadujemy pierwszej-z-brzegu (dawny footgun ``.first()`` na
         managerze Uczelni).
         """
@@ -150,7 +151,10 @@ class AutorManager(FulltextSearchMixin, models.Manager.from_queryset(AutorQueryS
         pokazuj = uczelnia.nowy_autor_z_formularza_pokazuj if uczelnia else False
 
         return self.create(
-            **dict(nazwisko=text[0].title(), imiona=text[1].title(), pokazuj=pokazuj)
+            nazwisko=text[0].title(),
+            imiona=text[1].title(),
+            pokazuj_na_stronie_jednostki=pokazuj,
+            pokazuj_w_rankingu=pokazuj,
         )
 
     def fulltext_annotate(self, search_query, normalization):
@@ -191,8 +195,40 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
         related_name="aktualna_funkcja",
     )
 
-    pokazuj = models.BooleanField(
-        default=True, help_text="Pokazuj autora na stronach jednostek oraz w rankingu. "
+    pokazuj_na_stronie_jednostki = models.BooleanField(
+        "Pokazuj na stronie jednostki",
+        default=True,
+        help_text="Pokazuj autora na liście autorów na stronach jednostek.",
+    )
+    pokazuj_w_rankingu = models.BooleanField(
+        "Pokazuj w rankingu",
+        default=True,
+        help_text="Pokazuj autora w rankingu autorów.",
+    )
+    pokazuj_w_wyszukiwaniu = models.BooleanField(
+        "Pokazuj w wyszukiwaniu",
+        default=True,
+        help_text="Autor jest wyszukiwalny w publicznym wyszukiwaniu globalnym "
+        "oraz w publicznych listach wyboru (autocomplete).",
+    )
+    pokazuj_w_indeksie = models.BooleanField(
+        "Pokazuj w indeksie autorów",
+        default=True,
+        help_text="Pokazuj autora na alfabetycznej liście autorów.",
+    )
+    pokazuj_w_api = models.BooleanField(
+        "Pokazuj w API",
+        default=True,
+        help_text="Udostępniaj dane autora przez API oraz eksport CERIF/OAI. "
+        "Gdy odznaczone, API zwraca dla autora jedynie informację "
+        "„dane ukryte”.",
+    )
+    pokazuj_strone_autora = models.BooleanField(
+        "Pokazuj stronę autora",
+        default=True,
+        help_text="Gdy odznaczone, publiczna strona autora nie istnieje (404), "
+        "a jego nazwisko nie jest nigdzie linkowane. Wymaga wcześniejszego "
+        "wyłączenia pokazywania w wyszukiwaniu i w indeksie.",
     )
 
     pokazuj_siec_powiazan = models.BooleanField(
@@ -381,11 +417,35 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
             return True
         return bool(uczelnia.pokazuj_siec_powiazan)
 
+    KOMUNIKAT_STRONA_AUTORA = (
+        "Aby schować stronę autora, najpierw wyłącz pokazywanie autora "
+        "w wyszukiwaniu i w indeksie autorów."
+    )
+
+    def clean(self):
+        super().clean()
+        if not self.pokazuj_strone_autora and (
+            self.pokazuj_w_wyszukiwaniu or self.pokazuj_w_indeksie
+        ):
+            raise ValidationError(
+                {"pokazuj_strone_autora": self.KOMUNIKAT_STRONA_AUTORA}
+            )
+
     class Meta:
         verbose_name = "autor"
         verbose_name_plural = "autorzy"
         ordering = ["sort"]
         app_label = "bpp"
+        constraints = [
+            # Schowana strona autora nie może być linkowana z wyszukiwania ani
+            # z indeksu — inaczej te miejsca prowadziłyby do 404. Constraint
+            # w bazie pilnuje reguły także przy ``update()`` / akcjach masowych.
+            models.CheckConstraint(
+                condition=Q(pokazuj_strone_autora=True)
+                | Q(pokazuj_w_wyszukiwaniu=False, pokazuj_w_indeksie=False),
+                name="bpp_autor_strona_schowana_wymaga_ukrycia",
+            ),
+        ]
 
     def aktualna_dyscyplina(self, pole="dyscyplina_naukowa"):
         from bpp.models import Autor_Dyscyplina

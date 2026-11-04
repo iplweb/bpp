@@ -372,8 +372,8 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     nowy_autor_z_formularza_pokazuj = models.BooleanField(
         "Nowy autor tworzony przez autocomplete jest widoczny",
         help_text="""Gdy zaznaczone, autorzy tworzeni automatycznie przez formularze z rozwijaną listą wyboru
-        (autocomplete) będą mieli ustawione pole 'pokazuj' na PRAWDA, co oznacza że będą widoczni na stronach
-        jednostek oraz w rankingach. Gdy odznaczone (domyślnie), nowi autorzy będą ukryci.""",
+        (autocomplete) będą widoczni na stronach jednostek oraz w rankingach
+        (pola 'Pokazuj na stronie jednostki' i 'Pokazuj w rankingu'). Gdy odznaczone (domyślnie), nowi autorzy będą ukryci.""",
         default=False,
     )
 

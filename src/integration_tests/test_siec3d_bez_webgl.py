@@ -48,7 +48,7 @@ def test_widok_3d_bez_webgl_pokazuje_komunikat_zamiast_wyjatku(
     page: Page,
     transactional_db,
 ):
-    autor = baker.make(Autor, imiona="Jan", nazwisko="Kowalski", pokazuj=True)
+    autor = baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
 
     bledy_strony = []
     page.on("pageerror", lambda e: bledy_strony.append(str(e)))

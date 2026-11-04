@@ -39,7 +39,7 @@ def jest_pbn_uid(s):
     return jest_czyms(s, const.PBN_UID_LEN)
 
 
-def globalne_wyszukiwanie_autora(querysets, q, uczelnia=None):
+def globalne_wyszukiwanie_autora(querysets, q, uczelnia=None, tylko_wyszukiwalni=False):
     """Add author search querysets.
 
     Gdy podano ``uczelnia`` (multi-hosted, publiczny global-search), zawęża do
@@ -47,9 +47,14 @@ def globalne_wyszukiwanie_autora(querysets, q, uczelnia=None):
     ``AutorQuerySet.kiedykolwiek_zwiazani``). ``uczelnia=None`` → globalnie
     (admin search): tu None znaczy „bez zawężenia", więc NIE delegujemy go do
     metody (która fail-closuje na None), tylko zwracamy qs bez zmian.
+
+    ``tylko_wyszukiwalni=True`` (publiczne wyszukiwanie, odbiorca spoza
+    redakcji) pomija autorów z ``pokazuj_w_wyszukiwaniu=False``.
     """
 
     def _scope(qs):
+        if tylko_wyszukiwalni:
+            qs = qs.filter(pokazuj_w_wyszukiwaniu=True)
         if uczelnia is None:
             return qs
         return qs.kiedykolwiek_zwiazani(uczelnia)

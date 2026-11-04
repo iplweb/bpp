@@ -148,6 +148,8 @@ class RankingAutorowTable(Table):
         return f"{next(self.lp_counter)}."
 
     def render_autor(self, record):
+        if not record.autor.pokazuj_strone_autora:
+            return str(record.autor)
         url = reverse("bpp:browse_autor", args=(record.autor.slug,))
         # format_html escapuje {record.autor} — nazwisko autora (potencjalnie
         # z importu bez sanityzacji) nie może wstrzyknąć markupu na publiczną,
@@ -290,7 +292,7 @@ class RankingAutorow(RankingAutorowDostepMixin, ExportMixin, SingleTableView):
 
     def _apply_exclusions(self, qset):
         qset = qset.exclude(impact_factor_sum=0, liczba_cytowan_sum=0, punkty_kbn_sum=0)
-        qset = qset.exclude(autor__pokazuj=False)
+        qset = qset.exclude(autor__pokazuj_w_rankingu=False)
 
         if self.bez_kol_naukowych:
             # Faza B (#438): wykluczenie kół po fladze FK ``rodzaj`` (spójnie z

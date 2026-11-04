@@ -115,7 +115,7 @@ def prawa_patentowe(db):
 def fabryka_autorow(jednostka, typ_autor):
     """Autor powiązany z jednostką uczelni — czyli kandydat do eksportu.
 
-    Samo ``pokazuj=True`` nie wystarcza: reguła widoczności wymaga też
+    Samo ``pokazuj_w_api=True`` nie wystarcza: reguła widoczności wymaga też
     powiązania ``Autor_Jednostka`` z jednostką TEJ uczelni, inaczej każdy
     tenant eksportowałby cudzych autorów.
 
@@ -129,9 +129,13 @@ def fabryka_autorow(jednostka, typ_autor):
     zależnie od tego, co się przed nim wykonało.
     """
 
-    def zbuduj(nazwisko="Kowalski", pokazuj=True, powiaz=True, **kwargs):
+    def zbuduj(nazwisko="Kowalski", pokazuj_w_api=True, powiaz=True, **kwargs):
         autor = baker.make(
-            Autor, nazwisko=nazwisko, imiona="Jan", pokazuj=pokazuj, **kwargs
+            Autor,
+            nazwisko=nazwisko,
+            imiona="Jan",
+            pokazuj_w_api=pokazuj_w_api,
+            **kwargs,
         )
         if powiaz:
             Autor_Jednostka.objects.create(autor=autor, jednostka=jednostka)

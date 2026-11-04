@@ -49,7 +49,7 @@ OKNO_LIMITU_S = 60
 
 
 def _autor_dla_eksportu(request, pk):
-    """Autor do eksportu; ukryci (``pokazuj=False``) tylko dla redakcji."""
+    """Autor do eksportu; ze schowaną stroną tylko dla redakcji."""
     return get_object_or_404(widoczni_autorzy(Autor.objects.all(), request), pk=pk)
 
 

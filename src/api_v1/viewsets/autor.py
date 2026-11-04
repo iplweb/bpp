@@ -22,10 +22,8 @@ class AutorFilterSet(django_filters.rest_framework.FilterSet):
 
 
 class AutorViewSet(viewsets.ReadOnlyModelViewSet):
-    # Bazowy queryset BEZ filtra widoczności — zawężenie do pokazuj=True robi
-    # get_queryset() dla każdego bez uprawnień (``widzi_dane_osobowe``). Autor
-    # z pokazuj=False jest świadomie ukryty ze stron publicznych, ale redaktor
-    # musi go widzieć.
+    # Bazowy queryset BEZ filtra widoczności — zawężenie robi get_queryset()
+    # dla każdego bez uprawnień (``widzi_dane_osobowe``).
     # ``jednostki`` to M2M serializowane many=True — bez prefetcha jedno
     # zapytanie NA AUTORA. Pozostałe relacje serializera są hyperlinkowane
     # (DRF czyta samo FK id z wiersza, ``use_pk_only_optimization``).
@@ -37,13 +35,18 @@ class AutorViewSet(viewsets.ReadOnlyModelViewSet):
     throttle_classes = [SearchAnonThrottle, SearchUserThrottle]
 
     def get_queryset(self):
-        # Bez uprawnień redaktorskich (anonim, zwykły zalogowany) nie widać
-        # autorów oznaczonych jako ukryci (pokazuj=False) — ani na liście,
-        # ani (dzięki temu) w detalu (404). Redaktor/superuser widzi wszystkich.
+        # Autor z ``pokazuj_w_api=False`` NIE znika z API (hiperłącza
+        # z publikacji nie mogą prowadzić do 404) — serializer zwraca dla
+        # niego okrojony obiekt „dane ukryte”. Ale gdy w żądaniu jest
+        # filtr (np. ``?nazwisko=``), ukryci są wykluczani: dopasowanie
+        # okrojonego obiektu po nazwisku ujawniałoby tożsamość ukrytego.
+        # Redaktor/superuser widzi wszystkich, w pełnej postaci.
         qs = super().get_queryset()
         if widzi_dane_osobowe(self.request):
             return qs
-        return qs.filter(pokazuj=True)
+        if set(self.request.query_params) & set(AutorFilterSet.base_filters):
+            return qs.filter(pokazuj_w_api=True)
+        return qs
 
 
 class Funkcja_AutoraViewSet(viewsets.ReadOnlyModelViewSet):
@@ -59,13 +62,13 @@ class Autor_JednostkaViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         # Bez uprawnień redaktorskich nie widać powiązań zatrudnienia autora
-        # ukrytego (autor.pokazuj=False) — jednostka, daty pracy i PK autora
-        # byłyby widoczne mimo że AutorViewSet ukrywa samego autora.
+        # ukrytego w API (autor.pokazuj_w_api=False) — jednostka, daty pracy
+        # i PK autora byłyby widoczne mimo że AutorViewSet ukrywa jego dane.
         # Redaktor/superuser widzi wszystkich.
         qs = super().get_queryset()
         if widzi_dane_osobowe(self.request):
             return qs
-        return qs.filter(autor__pokazuj=True)
+        return qs.filter(autor__pokazuj_w_api=True)
 
 
 class TytulViewSet(viewsets.ReadOnlyModelViewSet):
