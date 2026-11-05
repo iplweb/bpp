@@ -657,3 +657,27 @@ def test_kreator_admin_user_odrzuca_slabe_haslo(haslo):
     assert response.status_code == 200
     assert response.context["form"].errors.get("password1")
     assert not User.objects.exists()
+
+
+@pytest.mark.django_db
+def test_admin_user_bledy_formularza_nad_informacja():
+    """Gdy formularz admina ma błędy (np. za słabe hasło), zbiorcze
+    podsumowanie z kotwicą #bledy-formularza pojawia się NAD ramką
+    "Informacja", a formularz wysyła się na tę kotwicę."""
+    get_user_model().objects.all().delete()
+    url = reverse("first_run_wizard:step", kwargs={"name": "admin_user"})
+    response = Client().post(
+        url,
+        {
+            "username": "bppadmin",
+            "email": "admin@bpp.test",
+            "password1": "123",
+            "password2": "123",
+        },
+    )
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert 'id="bledy-formularza"' in body
+    assert 'action="#bledy-formularza"' in body
+    assert body.index('id="bledy-formularza"') < body.index("Informacja")
+    assert 'href="#id_password1"' in body

@@ -26,6 +26,8 @@
             </p>
         </div>
 
+        {% include "bpp_setup_wizard/_bledy_formularza.html" %}
+
         <div class="bpp-setup-wizard__info">
             <h3 class="bpp-setup-wizard__info-title">
                 <span class="fi-info"></span> Informacja
@@ -41,14 +43,8 @@
             </p>
         </div>
 
-        <form method="post" novalidate>
+        <form method="post" action="#bledy-formularza" novalidate>
             {% csrf_token %}
-
-            {% if form.non_field_errors %}
-                <div class="bpp-setup-wizard__form-errors">
-                    {{ form.non_field_errors }}
-                </div>
-            {% endif %}
 
             <div class="bpp-setup-wizard__form-section">
                 <h4 class="bpp-setup-wizard__form-section-title">
