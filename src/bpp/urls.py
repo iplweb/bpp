@@ -346,7 +346,7 @@ urlpatterns = [
         name="autor_eksport_ris",
     ),
     url(
-        r"^autor/(?P<pk>\d+)/eksport/(?P<format>bib|ris)/$",
+        r"^autor/(?P<pk>\d+)/eksport/(?P<format>bib|ris|xlsx)/$",
         StartEksportAutoraView.as_view(),
         name="autor_eksport_start",
     ),

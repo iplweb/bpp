@@ -1,5 +1,6 @@
 """
-Eksport wszystkich publikacji autora do formatów bibliograficznych (§3.3).
+Eksport wszystkich publikacji autora do formatów bibliograficznych (§3.3)
+i do XLSX z punktacją.
 
 Plik generuje WYŁĄCZNIE zadanie Celery (``generuj_eksport_autora``) —
 synchroniczne generowanie w wątku requestu przy dużym dorobku potrafiło
@@ -140,6 +141,24 @@ def _kolejka_anon_pelna() -> bool:
     return w_toku >= limit
 
 
+def _parametry_punktacji(request, format) -> dict:
+    """Pola zadania XLSX decydujące o kolumnach punktacji autora.
+
+    Bramka jak sekcja „Punkty i sloty w latach” na stronie autora
+    (``pokazuj_raport_slotow_autor``); ukryte statusy w kanale „sloty”
+    fail-closed (``ukryte_statusy_eksportu``). Dla BibTeX/RIS — puste
+    wartości domyślne, więc deduplikacja tych formatów się nie zmienia.
+    """
+    from bpp.profil_autora_dane import _mozna_pokazac_sloty
+
+    if format != "xlsx" or not _mozna_pokazac_sloty(request):
+        return {"z_punktacja_autora": False, "ukryte_statusy_slotow": []}
+    return {
+        "z_punktacja_autora": True,
+        "ukryte_statusy_slotow": ukryte_statusy_eksportu(request, kanal="sloty"),
+    }
+
+
 def _zadanie_dostepne(request, task) -> bool:
     """Zadanie redakcji (pełny dorobek) widzi tylko redakcja."""
     return not task.tylko_dla_redakcji or moze_wprowadzac_dane(request.user)
@@ -250,6 +269,7 @@ class StartEksportAutoraView(View):
         # współdzielone.
         tylko_dla_redakcji = moze_wprowadzac_dane(request.user)
         ukryte = [] if tylko_dla_redakcji else ukryte_statusy_eksportu(request)
+        punktacja = _parametry_punktacji(request, format)
 
         od = timezone.now() - timedelta(minutes=DEDUPE_MINUTES)
         istniejacy = (
@@ -259,6 +279,7 @@ class StartEksportAutoraView(View):
                 created_at__gte=od,
                 ukryte_statusy=ukryte,
                 tylko_dla_redakcji=tylko_dla_redakcji,
+                **punktacja,
             )
             .exclude(status="failed")
             .order_by("-created_at")
@@ -277,7 +298,7 @@ class StartEksportAutoraView(View):
         anonim = not request.user.is_authenticated
         if anonim:
             task, odmowa = self._utworz_zadanie_anonima(
-                request, autor, format, form, ukryte
+                request, autor, format, form, ukryte, punktacja
             )
             if odmowa is not None:
                 return odmowa
@@ -287,11 +308,12 @@ class StartEksportAutoraView(View):
                 format=format,
                 ukryte_statusy=ukryte,
                 tylko_dla_redakcji=tylko_dla_redakcji,
+                **punktacja,
             )
         generuj_eksport_autora.delay(str(task.pk))
         return redirect("bpp:autor_eksport_status", pk=task.pk)
 
-    def _utworz_zadanie_anonima(self, request, autor, format, form, ukryte):
+    def _utworz_zadanie_anonima(self, request, autor, format, form, ukryte, punktacja):
         """Utwórz zadanie anonima po sprawdzeniu limitów.
 
         Zwraca ``(zadanie, None)`` albo — przy przekroczonym limicie —
@@ -322,6 +344,7 @@ class StartEksportAutoraView(View):
                 ukryte_statusy=ukryte,
                 tylko_dla_redakcji=False,
                 zlecone_anonimowo=True,
+                **punktacja,
             )
         return zadanie, None
 

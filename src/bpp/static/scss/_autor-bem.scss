@@ -542,6 +542,8 @@
     pointer-events: none;
   }
 
+  // Słupek to <button> (klik → multiseek z pracami z danego roku); zdejmujemy
+  // wygląd przycisku i globalny podskok/cień z `button:hover`.
   &__slupek {
     display: flex;
     flex-direction: column;
@@ -550,9 +552,30 @@
     // Słupki dzielą szerokość pola po równo — wykres wypełnia całą kolumnę.
     flex: 1 1 0;
     min-width: 0;
+    background: none;
+    border: none;
+    border-radius: 3px;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+      background: rgba(41, 128, 185, 0.1);
+      box-shadow: none !important;
+      transform: none !important;
+    }
+
+    &:hover .autor-page__slupek-bar,
+    &:focus-visible .autor-page__slupek-bar {
+      background: #2980b9;
+    }
   }
 
   &__slupek-bar {
+    display: block;
     // --udzial (0–100) ze szablonu; wysokość pola z --wykres-wys-slupkow.
     height: calc(var(--wykres-wys-slupkow, 120px) * var(--udzial, 0) / 100);
     width: 60%;
@@ -563,12 +586,14 @@
   }
 
   &__slupek-rok {
+    display: block;
     font-size: 0.7rem;
     margin-top: 3px;
     transform: rotate(-45deg);
   }
 
   &__slupek-liczba {
+    display: block;
     font-size: 0.7rem;
     color: #555;
   }
@@ -581,6 +606,17 @@
 
     @media screen and (max-width: 39.99875em) {
       columns: 1;
+    }
+  }
+
+  // Ludzik obok nazwiska współautora — link do jego strony.
+  &__wspolautor-strona {
+    margin-left: 0.2rem;
+    color: #777;
+
+    &:hover,
+    &:focus {
+      color: $anchor-color-hover;
     }
   }
 
@@ -696,11 +732,94 @@
     }
   }
 
+  // --- „Rozwiń” długiej tabeli statystyk (checkbox + label, bez JS) ---
+  // Checkbox stoi PRZED tabelą i etykietą (rodzeństwo), więc `~` sięga obu.
+  &__rozwin-przelacznik {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &__rozwin-wiersz,
+  &__rozwin-zwin {
+    display: none;
+  }
+
+  &__rozwin-przelacznik:checked ~ table &__rozwin-wiersz {
+    display: table-row;
+  }
+
+  &__rozwin-przelacznik:checked ~ label &__rozwin-zwin {
+    display: inline;
+  }
+
+  &__rozwin-przelacznik:checked ~ label &__rozwin-pokaz {
+    display: none;
+  }
+
+  &__rozwin-etykieta {
+    display: inline-block;
+    margin-top: 0.25rem;
+    color: $anchor-color;
+    cursor: pointer;
+    font-size: 0.9rem;
+
+    &:hover {
+      color: $anchor-color-hover;
+      text-decoration: underline;
+    }
+  }
+
+  &__rozwin-przelacznik:focus-visible ~ &__rozwin-etykieta {
+    outline: 2px solid $anchor-color;
+    outline-offset: 2px;
+  }
+
   // --- Wykres liniowy (SVG) dla długich serii ---
   &__wykres-svg {
     width: 100%;
     height: var(--wykres-wys-linii, 220px);
     overflow: visible;
+  }
+
+  // Obszar kreślenia wariantu liniowego: SVG + nakładka z przyciskami lat.
+  &__wykres-obszar {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  &__wykres-form {
+    display: none;
+  }
+
+  // Kolumny-przyciski wyśrodkowane na punktach: punkt i leży na i/ostatni
+  // szerokości, więc nakładka wystaje o pół kolumny (50% / ostatni) z boków.
+  &__wykres-klik {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(-50% / var(--ostatni, 1));
+    right: calc(-50% / var(--ostatni, 1));
+    display: flex;
+  }
+
+  &__wykres-kolumna {
+    flex: 1 1 0;
+    min-width: 0;
+    background: none;
+    border: none;
+    border-radius: 3px;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+      background: rgba(41, 128, 185, 0.12);
+      box-shadow: none !important;
+      transform: none !important;
+    }
   }
 
   &__wykres-linia {
