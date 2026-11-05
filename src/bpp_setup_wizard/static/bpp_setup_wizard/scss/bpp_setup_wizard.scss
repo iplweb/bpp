@@ -148,6 +148,22 @@
         color: #c62828;
     }
 
+    &__form-errors-title {
+        margin: 0 0 10px 0;
+        font-size: 18px;
+        color: #c62828;
+    }
+
+    &__form-errors-list {
+        margin: 0 0 0 20px;
+
+        a {
+            color: #c62828;
+            font-weight: 600;
+            text-decoration: underline;
+        }
+    }
+
     // PBN note
     &__pbn-note {
         background: #fff3cd;

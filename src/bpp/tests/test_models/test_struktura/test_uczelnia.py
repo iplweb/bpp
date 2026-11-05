@@ -439,7 +439,25 @@ LOCMEM_UCZELNIA = {
 }
 
 
-def test_zapis_uczelni_inwaliduje_cache_strony_glownej(uczelnia, settings, mocker):
+def _zatwierdz_oczekujace_on_commit():
+    """Symuluj COMMIT transakcji, w której fixture'y zapisały obiekty.
+
+    Test siedzi w jednej transakcji, której nikt nie zatwierdza. Zapis
+    w fixture (np. ``uczelnia``) zaplanował już bump generacji, a
+    ``uniewaznij_strone_glowna`` celowo planuje go najwyżej raz na
+    transakcję — bez tego kolejny zapis w teście nie dodałby nowego
+    callbacku i niczego nie dałoby się zaobserwować.
+    """
+    from django.db import connection
+
+    oczekujace, connection.run_on_commit = connection.run_on_commit, []
+    for _sids, funkcja, _robust in oczekujace:
+        funkcja()
+
+
+def test_zapis_uczelni_inwaliduje_cache_strony_glownej(
+    uczelnia, settings, django_capture_on_commit_callbacks
+):
     """Zapis Uczelni FAKTYCZNIE unieważnia cache kontekstu strony głównej.
 
     Poprzednia wersja mockowała ``cache.delete`` — dowodziła tylko, że sygnał
@@ -454,8 +472,12 @@ def test_zapis_uczelni_inwaliduje_cache_strony_glownej(uczelnia, settings, mocke
     (``@cached`` cacheops) — jest w testach globalnie wyłączona (INSTALLED_APPS
     bez ``cacheops`` + ``CACHEOPS_ENABLED=False``, patrz ``settings/test.py``),
     a włączanie cacheopsa per-test to landmine (globalny monkey-patch, cross-
-    worker leak w Redisie pod xdist). Jej podpięcie pilnujemy osobno: ``spy``
-    potwierdza, że sygnał woła ``.invalidate()``.
+    worker leak w Redisie pod xdist). Jej unieważnienie sprawdzamy więc na
+    KLUCZU: ``get_uczelnia_context_data.key(uczelnia)`` (liczony tak samo jak
+    przy odczycie, z generacją w ``extra``) musi się zmienić po zapisie.
+    Poprzednio test pilnował jedynie, że sygnał woła bezargumentowe
+    ``.invalidate()`` — co kasowało nieistniejący klucz i niczego nie
+    unieważniało (patrz ``bpp.cache_strony_glownej``).
     """
     from django.core.cache import cache
     from django.test import RequestFactory
@@ -467,10 +489,6 @@ def test_zapis_uczelni_inwaliduje_cache_strony_glownej(uczelnia, settings, mocke
     # Override autouse ``disable_cache_for_tests`` (DummyCache) na realny LocMem.
     settings.CACHES = {**settings.CACHES, **LOCMEM_UCZELNIA}
     cache.clear()
-
-    # Spy (nie mock): przepuszcza prawdziwe wywołanie, tylko je liczy — pilnuje
-    # podpięcia inwalidacji warstwy cacheopsa (w testach będącej no-opem).
-    spy_invalidate = mocker.spy(get_uczelnia_context_data, "invalidate")
 
     site = uczelnia.site
 
@@ -502,17 +520,95 @@ def test_zapis_uczelni_inwaliduje_cache_strony_glownej(uczelnia, settings, mocke
 
     # 3. Zapis przez ``save()`` → sygnał ``invalidate_uczelnia_caches`` →
     #    ``cache.delete(klucz)``. Kolejne żądanie MUSI dostać świeżą nazwę.
+    _zatwierdz_oczekujace_on_commit()
+    klucz_cacheops_przed = get_uczelnia_context_data.key(uczelnia)
+    assert get_uczelnia_context_data.key(uczelnia) == klucz_cacheops_przed, (
+        "klucz cacheops niestabilny bez zapisu — porównanie niczego nie dowodzi"
+    )
+
     uczelnia.nazwa = "Nazwa po zapisie"
-    uczelnia.save()
+    # Bump generacji leci w ``on_commit`` — test siedzi w transakcji.
+    with django_capture_on_commit_callbacks(execute=True):
+        uczelnia.save()
 
     assert cache.get(klucz) is None, (
         "zapis Uczelni nie usunął klucza cache context-procesora — "
         "inwalidacja NIE działa"
     )
-    spy_invalidate.assert_called_once_with()
+    assert get_uczelnia_context_data.key(uczelnia) != klucz_cacheops_przed, (
+        "zapis Uczelni nie zmienił klucza cache strony głównej (cacheops) — "
+        "kontekst sprzed zapisu byłby serwowany do końca TTL"
+    )
 
     ctx2 = uczelnia_ctx(swiezy_request())
     assert ctx2["uczelnia"].nazwa == "Nazwa po zapisie", (
         "po zapisie Uczelni strona główna nadal serwuje starą nazwę z cache "
         "— inwalidacja context-procesora nie działa"
     )
+
+
+def test_zapis_uczelni_czysci_cache_top_bara_innego_site(
+    uczelnia, settings, django_capture_on_commit_callbacks
+):
+    """Strona oglądana pod domeną, której ``Site`` nie ma uczelni, dostaje
+    „jedyną uczelnię" pod kluczem CUDZEGO site'u. Zapis uczelni musi
+    wyczyścić także ten klucz, nie tylko ``bpp_uczelnia_{uczelnia.site}``."""
+    from django.contrib.sites.models import Site
+    from django.core.cache import cache
+    from django.test import RequestFactory
+
+    from bpp.context_processors.uczelnia import uczelnia as uczelnia_ctx
+
+    settings.CACHES = {**settings.CACHES, **LOCMEM_UCZELNIA}
+    cache.clear()
+
+    obcy_site = Site.objects.create(domain="inna-domena.test", name="inna")
+    request = RequestFactory().get("/", HTTP_HOST=obcy_site.domain)
+    request.site = obcy_site
+    request._uczelnia = uczelnia  # „jedyna uczelnia" z fallbacku middleware
+
+    assert uczelnia_ctx(request)["uczelnia"].nazwa == "Testowa uczelnia"
+    assert cache.get(f"bpp_uczelnia_{obcy_site.pk}") is not None
+
+    uczelnia.nazwa = "Nazwa po zapisie"
+    with django_capture_on_commit_callbacks(execute=True):
+        uczelnia.save()
+
+    assert cache.get(f"bpp_uczelnia_{obcy_site.pk}") is None, (
+        "klucz top-bara dla domeny bez własnej uczelni przeżył zapis Uczelni"
+    )
+
+
+def test_zapis_jednostki_zmienia_generacje_strony_glownej(
+    uczelnia, django_capture_on_commit_callbacks, settings
+):
+    """Sygnał ``Jednostka`` unieważnia kontekst strony głównej przez
+    generację (wcześniej: bezargumentowe ``.invalidate()`` = no-op)."""
+    from django.core.cache import cache
+    from model_bakery import baker
+
+    from bpp.views.browse import get_uczelnia_context_data
+
+    settings.CACHES = {**settings.CACHES, **LOCMEM_UCZELNIA}
+    cache.clear()
+
+    _zatwierdz_oczekujace_on_commit()
+    klucz_przed = get_uczelnia_context_data.key(uczelnia)
+    with django_capture_on_commit_callbacks(execute=True):
+        baker.make("bpp.Jednostka", uczelnia=uczelnia)
+    assert get_uczelnia_context_data.key(uczelnia) != klucz_przed
+
+
+def test_uniewaznij_strone_glowna_raz_na_transakcje(
+    django_capture_on_commit_callbacks,
+):
+    """Wiele zapisów w jednej transakcji = jeden bump (importery)."""
+    from bpp.cache_strony_glownej import uniewaznij_strone_glowna
+
+    _zatwierdz_oczekujace_on_commit()
+
+    with django_capture_on_commit_callbacks() as callbacks:
+        uniewaznij_strone_glowna()
+        uniewaznij_strone_glowna()
+        uniewaznij_strone_glowna()
+    assert len(callbacks) == 1

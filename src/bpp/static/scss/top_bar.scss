@@ -157,7 +157,12 @@ nav.sticky-header {
         border-radius: 12px;  // More rounded corners
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         padding: 0;  // No padding on wrapper
-        min-width: 600px;
+        // Szerokość wg treści zamiast sztywnych 600px: menu z jedną
+        // (niepustą) kolumną albo krótkimi pozycjami nie rozciąga się
+        // na pół ekranu. max-content, bo przy position:absolute
+        // shrink-to-fit liczyłby się od wąskiego <li> rodzica.
+        width: max-content;
+        max-width: calc(100vw - 2rem);
         display: flex !important;  // Keep flex for two columns
         gap: 0;  // No gap, use border instead
 
@@ -194,9 +199,18 @@ nav.sticky-header {
             }
         }
 
+        // Tylko jedna niepusta kolumna → zachowuj się jak zwykłe menu
+        // jednokolumnowe: bez separatora, zaokrąglone wszystkie rogi.
+        &:not(:has(> ul.menu.vertical:has(li) ~ ul.menu.vertical:has(li))) {
+            > ul.menu.vertical.column-1,
+            > ul.menu.vertical.column-2 {
+                border-right: none;
+                border-radius: 12px;
+            }
+        }
+
         ul.menu.vertical {
-            flex: 1;
-            min-width: 280px;
+            flex: 1 1 auto;
             background: transparent;
             border: none;
             box-shadow: none;
@@ -254,6 +268,19 @@ nav.sticky-header {
                     }
                 }
             }
+        }
+    }
+
+    // Kolumny menu wielokolumnowego — selektor musi przebić ogólne
+    // `.dropdown.menu ul.menu.vertical` (min-width: 280px,
+    // display: block !important) dla zwykłych menu jednokolumnowych.
+    .dropdown.menu .menu-columns-wrapper ul.menu.vertical {
+        min-width: 220px;
+
+        // Kolumna bez pozycji (np. sekcja ukryta przez uprawnienia albo
+        // {% czy_pokazywac %}) nie zajmuje miejsca.
+        &:not(:has(li)) {
+            display: none !important;
         }
     }
 

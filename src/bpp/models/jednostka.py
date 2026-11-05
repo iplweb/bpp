@@ -935,6 +935,6 @@ def invalidate_uczelnia_cache_on_jednostka_change(sender, instance, **kwargs):
     Invalidate main page cache when jednostka is saved.
     This ensures the homepage is updated immediately.
     """
-    from bpp.views.browse import get_uczelnia_context_data
+    from bpp.cache_strony_glownej import uniewaznij_strone_glowna
 
-    get_uczelnia_context_data.invalidate()
+    uniewaznij_strone_glowna()

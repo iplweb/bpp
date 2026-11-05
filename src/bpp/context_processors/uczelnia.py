@@ -4,6 +4,7 @@ from django.core.cache import cache
 from django.db.models.signals import post_save
 from django.dispatch.dispatcher import receiver
 
+from bpp.cache_strony_glownej import uniewaznij_strone_glowna
 from bpp.models.rzeczownik import Rzeczownik
 from bpp.models.struktura import Uczelnia
 from bpp.nazwy import lemat
@@ -57,39 +58,16 @@ def uczelnia(request):
     return value
 
 
-@receiver(post_save, sender=Uczelnia)
-def invalidate_uczelnia_caches(sender, instance, **kw):
-    """Wyczyść cache zależne od ustawień uczelni po jej zapisie.
+def _wyczysc_cache_kontekstu():
+    """Usuń zapamiętany kontekst top-bara dla WSZYSTKICH site'ów.
 
-    Dwie niezależne warstwy trzymają migawkę obiektu ``Uczelnia``:
-
-    * cache context processora (górny pasek) — kluczowany per-site
-      (``bpp_uczelnia_{site_pk}``), plus legacy klucz ``b"bpp_uczelnia"``,
-    * ``get_uczelnia_context_data`` — ``@cached`` z cacheops, kontekst
-      strony głównej. To cache *funkcji*, więc cacheops NIE czyści go
-      automatycznie przy zapisie modelu (robi to tylko dla zapytań ORM) —
-      trzeba wołać ``.invalidate()`` ręcznie, analogicznie do sygnałów
-      na ``Wydzial``/``Jednostka``/``Article``.
-
-    Import lokalny, żeby uniknąć cyklu context_processors -> views.
-    """
-    from bpp.views.browse import get_uczelnia_context_data
-
-    site = getattr(instance, "site", None)
-    site_pk = getattr(site, "pk", 0)
-    cache.delete(f"bpp_uczelnia_{site_pk}")
-    # Legacy klucz (sprzed kluczowania per-site) — backward compatibility.
-    cache.delete(b"bpp_uczelnia")
-    get_uczelnia_context_data.invalidate()
-
-
-@receiver(post_save, sender=Rzeczownik)
-def invalidate_lematy_cache(*args, **kw):
-    """Zmiana nazwy w Rzeczowniku odświeża lematy w kontekście.
-
-    Lematy są globalne (tabela ``Rzeczownik``), ale trafiają do cache'u
-    context processora kluczowanego per-site (``bpp_uczelnia_{site_pk}``),
-    więc trzeba wyczyścić klucze wszystkich site'ów (plus brak-site i legacy).
+    Klucz przy odczycie pochodzi z ``request.site`` (host → ``Site``, potem
+    ``SITE_ID``), a NIE z ``uczelnia.site``. Gdy strona jest oglądana pod
+    domeną, której ``Site`` nie ma przypiętej uczelni, middleware i tak
+    podstawia „jedyną uczelnię" — wtedy obiekt ``Uczelnia`` siedzi pod
+    kluczem cudzego site'u i kasowanie samego ``bpp_uczelnia_{instance.site}``
+    go nie dosięga (stara wartość żyje do TTL, 1h). Site'ów jest kilka-
+    kilkanaście, więc czyścimy wszystkie, plus brak-site i legacy.
     """
     from django.contrib.sites.models import Site
 
@@ -97,3 +75,30 @@ def invalidate_lematy_cache(*args, **kw):
     cache.delete("bpp_uczelnia_0")  # brak request.site (single-host)
     for site_pk in Site.objects.values_list("pk", flat=True):
         cache.delete(f"bpp_uczelnia_{site_pk}")
+
+
+@receiver(post_save, sender=Uczelnia)
+def invalidate_uczelnia_caches(sender, instance, **kw):
+    """Wyczyść cache zależne od ustawień uczelni po jej zapisie.
+
+    Dwie niezależne warstwy trzymają migawkę obiektu ``Uczelnia``:
+
+    * cache context processora (górny pasek) — kluczowany per-site
+      (``bpp_uczelnia_{site_pk}``), patrz ``_wyczysc_cache_kontekstu``,
+    * ``get_uczelnia_context_data`` — ``@cached`` z cacheops, kontekst
+      strony głównej (także jej top-bara: kontekst widoku nadpisuje ten
+      z context processora). Unieważniany zmianą generacji — patrz
+      ``bpp.cache_strony_glownej``.
+    """
+    _wyczysc_cache_kontekstu()
+    uniewaznij_strone_glowna()
+
+
+@receiver(post_save, sender=Rzeczownik)
+def invalidate_lematy_cache(*args, **kw):
+    """Zmiana nazwy w Rzeczowniku odświeża lematy w kontekście.
+
+    Lematy są globalne (tabela ``Rzeczownik``), ale trafiają do cache'u
+    context processora kluczowanego per-site, więc czyścimy wszystkie.
+    """
+    _wyczysc_cache_kontekstu()

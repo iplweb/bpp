@@ -1,0 +1,29 @@
+{# Zbiorcze podsumowanie błędów formularza kreatora — wyświetlane NA GÓRZE #}
+{# strony (nad ramką "Informacja"), żeby np. odrzucone hasło nie było #}
+{# widoczne tylko czerwonym tekstem na dole formularza. Formularz wysyła #}
+{# się z action="#bledy-formularza", więc po POST-cie z błędami przeglądarka #}
+{# przewija do tej ramki. Linki prowadzą do konkretnych pól. #}
+{# Użycie: {% include "bpp_setup_wizard/_bledy_formularza.html" %} #}
+{% if form.errors %}
+    <div class="bpp-setup-wizard__form-errors"
+         id="bledy-formularza"
+         role="alert"
+         tabindex="-1">
+        <h3 class="bpp-setup-wizard__form-errors-title">
+            <span class="fi-alert"></span> Formularz wymaga poprawek
+        </h3>
+        <ul class="bpp-setup-wizard__form-errors-list">
+            {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+            {% for field in form %}
+                {% for error in field.errors %}
+                    <li>
+                        <a href="#{{ field.id_for_label }}">{{ field.label }}</a>:
+                        {{ error }}
+                    </li>
+                {% endfor %}
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}

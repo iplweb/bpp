@@ -44,15 +44,11 @@
             </div>
 
         {% elif odpowiedz == "tak" %}
-            <form method="post" action="{{ url_tak }}" novalidate>
+            {% include "bpp_setup_wizard/_bledy_formularza.html" %}
+
+            <form method="post" action="{{ url_tak }}#bledy-formularza" novalidate>
                 {% csrf_token %}
                 <input type="hidden" name="akcja" value="zapisz">
-
-                {% if form.non_field_errors %}
-                    <div class="bpp-setup-wizard__form-errors">
-                        {{ form.non_field_errors }}
-                    </div>
-                {% endif %}
 
                 <div class="bpp-setup-wizard__form-section">
                     <h4 class="bpp-setup-wizard__form-section-title">

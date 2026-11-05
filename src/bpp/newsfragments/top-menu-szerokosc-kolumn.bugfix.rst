@@ -1,0 +1,1 @@
+Menu wielokolumnowe w górnym pasku (np. „ewaluacja", „PBN", „operacje") dopasowują szerokość do treści: menu, w którym widoczna jest tylko jedna pozycja albo jedna kolumna, otwiera się jako wąskie menu jednokolumnowe, a puste kolumny są ukrywane.
