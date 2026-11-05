@@ -40,7 +40,7 @@ install_packages_debian() {
 
     $SUDO apt-get install -y \
         build-essential ca-certificates curl gettext git \
-        nodejs npm python3-dev \
+        nodejs npm pandoc python3-dev \
         libcairo2-dev libffi-dev libgtk-3-dev libldap2-dev libpango1.0-dev \
         libpq-dev libsasl2-dev libssl-dev \
         "$gdk_pixbuf" "$girepository"
@@ -55,6 +55,12 @@ install_packages_fedora() {
     if [ "$LINUX_ID" != fedora ]; then
         $SUDO dnf install -y dnf-plugins-core
         $SUDO dnf config-manager --set-enabled crb
+    fi
+    # pandoc (eksport DOCX) jest w repozytoriach Fedory; na RHEL i
+    # pochodnych tylko w EPEL, więc tam brak pakietu nie przerywa instalacji.
+    if ! $SUDO dnf install -y pandoc; then
+        warn "Nie udało się zainstalować pandoc (na RHEL włącz EPEL)." \
+            "Bez niego eksport DOCX przejdzie na fallback html2docx."
     fi
     $SUDO dnf install -y \
         ca-certificates curl gcc gcc-c++ gettext git make \
@@ -71,7 +77,7 @@ install_packages_fedora() {
 install_packages_arch() {
     $SUDO pacman -Syu --needed --noconfirm \
         base-devel ca-certificates curl gettext git \
-        nodejs npm python \
+        nodejs npm pandoc-cli python \
         cairo cyrus-sasl gdk-pixbuf2 gobject-introspection gtk3 libffi \
         libldap openssl pango postgresql-libs \
         alsa-lib at-spi2-core libcups libdrm libxcomposite libxdamage \

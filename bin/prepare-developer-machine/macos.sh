@@ -99,7 +99,7 @@ prepare_macos() {
     require_homebrew
 
     log "Instaluję pakiety systemowe"
-    brew install cairo pango gdk-pixbuf libffi gobject-introspection gtk+3 node yarn
+    brew install cairo pango gdk-pixbuf libffi gobject-introspection gtk+3 node pandoc yarn
     npm install -g grunt-cli
     warn_if_old_node
 
