@@ -1,0 +1,1 @@
+Podbito ``cssselect2`` do 0.10 — znikają ostrzeżenia WeasyPrint „Invalid or unsupported selector, '::note-call'” (oraz ``::note-marker``, ``::note-callback``) wypisywane przy starcie każdego polecenia ``manage.py``.

@@ -130,6 +130,7 @@ dependencies = [
     "pymed-iplweb==0.8.11",
     "django-taggit>=5,<7",
     "weasyprint>=70.0",
+    "cssselect2>=0.10",
     "requests-oauthlib==2.0.0",
     "django-cacheops>=7.2,<8",
     "django-constance>=4.5.0",
