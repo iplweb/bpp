@@ -16565,6 +16565,30 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+27	axes	0008_accessfailurelog	2000-01-01 00:00:00+00
+306	bpp	0217_grant	2000-01-01 00:00:00+00
+593	denorm	0001_initial	2000-01-01 00:00:00+00
+682	ewaluacja_metryki	0001_initial	2000-01-01 00:00:00+00
+851	pbn_import	0001_initial	2000-01-01 00:00:00+00
+406	bpp	0312_przypieta	2000-01-01 00:00:00+00
+1044	import_pracownikow	0011_row_nullable_diff	2000-01-01 00:00:00+00
+1045	import_pracownikow	0012_mapowanie_profile	2000-01-01 00:00:00+00
+1046	import_pracownikow	0013_confidence_kandydaci	2000-01-01 00:00:00+00
+1047	import_pracownikow	0014_utworz_nowego_odpiecie	2000-01-01 00:00:00+00
+1048	import_pracownikow	0015_przepnij_prace	2000-01-01 00:00:00+00
+1049	import_punktacji_zrodel	0002_alter_importpunktacjizrodel_options_and_more	2000-01-01 00:00:00+00
+1050	importer_publikacji	0014_importedauthor_typ_ogolny	2000-01-01 00:00:00+00
+1051	importer_publikacji	0015_alter_importsession_status	2000-01-01 00:00:00+00
+1117	bpp	0476_jednostka_nie_eksportuj_przez_api	2000-01-01 00:00:00+00
+1118	import_pracownikow	0028_nadpisuj_daty_zatrudnienia	2000-01-01 00:00:00+00
+388	bpp	0295_instaluj_szablony	2000-01-01 00:00:00+00
+1052	importer_publikacji	0016_alter_importsession_status	2000-01-01 00:00:00+00
+1053	pbn_api	0075_sentdata_fee_sent_sentdata_fee_uploaded_okay	2000-01-01 00:00:00+00
+1054	przemapuj_prace_autora	0003_przemapoaniepracautora_zrodlowy_import	2000-01-01 00:00:00+00
+1055	import_pracownikow	0016_importpracownikow_tworz_brakujace_jednostki_and_more	2000-01-01 00:00:00+00
+1056	import_pracownikow	0017_importpracownikow_tworz_brakujace_tytuly_and_more	2000-01-01 00:00:00+00
+1057	import_pracownikow	0018_importpracownikow_zakres_integracji	2000-01-01 00:00:00+00
+1061	oauth2_provider	0001_initial	2000-01-01 00:00:00+00
 969	bpp	0416_merge_20260428_1806	2000-01-01 00:00:00+00
 1065	oauth2_provider	0005_auto_20211222_2352	2000-01-01 00:00:00+00
 1066	oauth2_provider	0006_alter_application_client_secret	2000-01-01 00:00:00+00
@@ -16663,7 +16687,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 23	axes	0004_auto_20181024_1538	2000-01-01 00:00:00+00
 24	axes	0005_remove_accessattempt_trusted	2000-01-01 00:00:00+00
 26	axes	0007_alter_accessattempt_unique_together	2000-01-01 00:00:00+00
-27	axes	0008_accessfailurelog	2000-01-01 00:00:00+00
 28	axes	0009_add_session_hash	2000-01-01 00:00:00+00
 29	axes	0010_accessattemptexpiration	2000-01-01 00:00:00+00
 30	dynamic_admin_columns	0001_initial	2000-01-01 00:00:00+00
@@ -16930,7 +16953,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 303	bpp	0214_auto_20200628_2344	2000-01-01 00:00:00+00
 304	bpp	0215_auto_20200727_1407	2000-01-01 00:00:00+00
 305	bpp	0216_element_repozytorium	2000-01-01 00:00:00+00
-306	bpp	0217_grant	2000-01-01 00:00:00+00
 307	bpp	0218_auto_20200727_2307	2000-01-01 00:00:00+00
 309	bpp	0220_auto_20200728_0011	2000-01-01 00:00:00+00
 310	bpp	0215_auto_20200806_0146	2000-01-01 00:00:00+00
@@ -17219,7 +17241,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 625	django_countdown	0001_initial	2000-01-01 00:00:00+00
 626	django_countdown	0002_alter_sitecountdown_countdown_time	2000-01-01 00:00:00+00
 1136	bpp	0488_purge_praca_tabela_dbtemplate	2000-01-01 00:00:00+00
-593	denorm	0001_initial	2000-01-01 00:00:00+00
 20	axes	0001_initial	2000-01-01 00:00:00+00
 76	taggit	0001_initial	2000-01-01 00:00:00+00
 627	django_countdown	0003_sitecountdown_maintenance_until	2000-01-01 00:00:00+00
@@ -17281,7 +17302,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 680	ewaluacja_liczba_n	0008_add_sankcje	2000-01-01 00:00:00+00
 848	pbn_export_queue	0005_reclassify_old_validation_errors	2000-01-01 00:00:00+00
 681	ewaluacja_liczba_n	0009_alter_dyscyplinanieraportowana_uczelnia_and_more	2000-01-01 00:00:00+00
-682	ewaluacja_metryki	0001_initial	2000-01-01 00:00:00+00
 683	ewaluacja_metryki	0002_alter_metrykaautora_jednostka	2000-01-01 00:00:00+00
 684	ewaluacja_metryki	0003_add_liczba_do_przetworzenia	2000-01-01 00:00:00+00
 685	ewaluacja_metryki	0004_metrykaautora_rodzaj_autora	2000-01-01 00:00:00+00
@@ -17462,7 +17482,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 847	pbn_export_queue	0004_add_wykluczone_field	2000-01-01 00:00:00+00
 849	pbn_export_queue	0006_reclassify_list_format_validation_errors	2000-01-01 00:00:00+00
 850	pbn_export_queue	0007_reclassify_doiorwwwmissing_errors	2000-01-01 00:00:00+00
-851	pbn_import	0001_initial	2000-01-01 00:00:00+00
 852	pbn_import	0002_add_task_id_field	2000-01-01 00:00:00+00
 853	pbn_import	0003_add_import_inconsistency	2000-01-01 00:00:00+00
 854	pbn_import	0004_add_bpp_publication_content_type	2000-01-01 00:00:00+00
@@ -17567,7 +17586,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 959	zglos_publikacje	0025_alter_obslugujacy_zgloszenia_wydzialow_user	2000-01-01 00:00:00+00
 960	denorm	0001_squashed_0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
 1120	bpp	0478_uczelnia_oai_pmh_aktywny	2000-01-01 00:00:00+00
-406	bpp	0312_przypieta	2000-01-01 00:00:00+00
 492	bpp	0385_alter_crossref_mapper_charakter_crossref_and_more	2000-01-01 00:00:00+00
 961	bpp	0165_cache_punktacja_autora_cache_punktacja_dyscypliny_squashed_0167_auto_20190707_2029	2000-01-01 00:00:00+00
 962	easyaudit	0004_auto_20170620_1354_squashed_0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
@@ -17645,27 +17663,9 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1041	bpp	0466_bppuser_zwijaj_dlugie_listy_autorow_and_more	2000-01-01 00:00:00+00
 1042	bpp	0467_seed_crossref_mapper_rows	2000-01-01 00:00:00+00
 1043	import_pracownikow	0010_liveops	2000-01-01 00:00:00+00
-1044	import_pracownikow	0011_row_nullable_diff	2000-01-01 00:00:00+00
-1045	import_pracownikow	0012_mapowanie_profile	2000-01-01 00:00:00+00
-1046	import_pracownikow	0013_confidence_kandydaci	2000-01-01 00:00:00+00
-1047	import_pracownikow	0014_utworz_nowego_odpiecie	2000-01-01 00:00:00+00
-1048	import_pracownikow	0015_przepnij_prace	2000-01-01 00:00:00+00
-1049	import_punktacji_zrodel	0002_alter_importpunktacjizrodel_options_and_more	2000-01-01 00:00:00+00
-1050	importer_publikacji	0014_importedauthor_typ_ogolny	2000-01-01 00:00:00+00
-1051	importer_publikacji	0015_alter_importsession_status	2000-01-01 00:00:00+00
-1117	bpp	0476_jednostka_nie_eksportuj_przez_api	2000-01-01 00:00:00+00
-1118	import_pracownikow	0028_nadpisuj_daty_zatrudnienia	2000-01-01 00:00:00+00
-388	bpp	0295_instaluj_szablony	2000-01-01 00:00:00+00
-1052	importer_publikacji	0016_alter_importsession_status	2000-01-01 00:00:00+00
-1053	pbn_api	0075_sentdata_fee_sent_sentdata_fee_uploaded_okay	2000-01-01 00:00:00+00
-1054	przemapuj_prace_autora	0003_przemapoaniepracautora_zrodlowy_import	2000-01-01 00:00:00+00
-1055	import_pracownikow	0016_importpracownikow_tworz_brakujace_jednostki_and_more	2000-01-01 00:00:00+00
-1056	import_pracownikow	0017_importpracownikow_tworz_brakujace_tytuly_and_more	2000-01-01 00:00:00+00
-1057	import_pracownikow	0018_importpracownikow_zakres_integracji	2000-01-01 00:00:00+00
 1058	import_pracownikow	0019_alter_importpracownikow_stan	2000-01-01 00:00:00+00
 1059	importer_publikacji	0017_multiple_works_import	2000-01-01 00:00:00+00
 1060	importer_publikacji	0018_importsession_rodzaj_rekordu	2000-01-01 00:00:00+00
-1061	oauth2_provider	0001_initial	2000-01-01 00:00:00+00
 1062	oauth2_provider	0002_auto_20190406_1805	2000-01-01 00:00:00+00
 1063	oauth2_provider	0003_auto_20201211_1314	2000-01-01 00:00:00+00
 1064	oauth2_provider	0004_auto_20200902_2022	2000-01-01 00:00:00+00
@@ -18101,6 +18101,21 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 314	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 315	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 316	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+392	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+393	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
+394	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+395	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+396	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+397	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+398	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+399	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+400	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+401	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+402	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+403	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+404	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+405	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+406	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -19962,7 +19977,7 @@ SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 46,
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 391, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 406, true);
 
 
 --
