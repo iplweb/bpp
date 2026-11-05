@@ -1,5 +1,5 @@
 {# Eksport publikacji autora do formatów bibliograficznych (§3.3). #}
-{# Asynchroniczne starty BibTeX/RIS (Celery). Zawsze obecne. Link prowadzi na #}
+{# Asynchroniczne starty BibTeX/RIS/XLSX (Celery). Zawsze obecne. Link prowadzi na #}
 {# stronę z przyciskiem (POST + ALTCHA dla anonima); nofollow — boty nie chodzą. #}
 <div class="autor-page__raport-links hide-for-print">
     <h3 class="autor-page__raport-links-title">
@@ -15,6 +15,12 @@
            rel="nofollow"
            class="button primary">
             <i class="fi-download"></i> RIS
+        </a>
+        <a href="{% url 'bpp:autor_eksport_start' autor.pk 'xlsx' %}"
+           rel="nofollow"
+           class="button primary"
+           title="Arkusz z listą publikacji i punktacją (IF, PK, sumy w latach)">
+            <i class="fi-page-export-csv"></i> XLSX z punktacją
         </a>
     </div>
 </div>

@@ -598,7 +598,7 @@ dev = [
     { name = "django-debug-toolbar", specifier = ">=8.0.0" },
     { name = "django-dev-helpers", specifier = ">=0.2.0" },
     { name = "django-dynamic-fixture", specifier = ">=1.8.0" },
-    { name = "django-run-site", specifier = ">=0.21.0" },
+    { name = "django-run-site", specifier = ">=0.22.0" },
     { name = "django-webtest", specifier = "==1.9.15" },
     { name = "djlint", specifier = ">=1.47.1,<2" },
     { name = "ipdb", specifier = ">=0.13.9" },
@@ -2234,15 +2234,15 @@ wheels = [
 
 [[package]]
 name = "django-run-site"
-version = "0.21.0"
+version = "0.22.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docker" },
     { name = "testcontainers", extra = ["redis"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b5/f2/c77b23b66aedad65ec764ecd082f882a2979bf7967c6fb78da8f216a0d5f/django_run_site-0.21.0.tar.gz", hash = "sha256:3b35548d432ac32bdcd0f6aefd14e62b16a16b3700f0c38cf4e812f3f192a88f", size = 251284, upload-time = "2026-09-13T14:19:28.87Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d7/99/3503f4176814ee63beabd2a7b250fbadac662e51ae9194bb601ff5e08e9b/django_run_site-0.22.0.tar.gz", hash = "sha256:d231f79eedbc95808ceda111b26ee1beebf667325ee0bef8ae5c7dcdd9e07cf5", size = 252171, upload-time = "2026-11-05T21:01:15.603Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/55/bf/057c7212137c197f1498544fa35d0281a4835209b16916c614e6424811c0/django_run_site-0.21.0-py3-none-any.whl", hash = "sha256:b3de9be7a9e6dc0b06733c797aa23b734bc4b3afb685ed736f4f48219e76bd0f", size = 115884, upload-time = "2026-09-13T14:19:27.428Z" },
+    { url = "https://files.pythonhosted.org/packages/af/2d/c5c8232a4e0b513934bb5a5766a1e8d19e30f8309ea95c353812bb8ca16d/django_run_site-0.22.0-py3-none-any.whl", hash = "sha256:1a101c179e14e6da07c4d894ae1ae1eced9f3b1e526c0e088ffaeff383651fd3", size = 116078, upload-time = "2026-11-05T21:01:14.302Z" },
 ]
 
 [[package]]

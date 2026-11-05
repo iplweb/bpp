@@ -40,7 +40,7 @@ def test_buildSearch(settings):
 
     class mydct(dict):
         def getlist(self, value):
-            return self.get(value)
+            return self.get(value, [])  # jak QueryDict.getlist
 
     class request:
         POST = mydct(dct)
@@ -105,7 +105,7 @@ def test_buildSearch_jednostka_nadrzedna_honorowana(settings):
 
     class mydct(dict):
         def getlist(self, value):
-            return self.get(value)
+            return self.get(value, [])  # jak QueryDict.getlist
 
     class request:
         POST = mydct(dct)

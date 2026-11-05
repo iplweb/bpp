@@ -1,11 +1,11 @@
 {
-  "git_sha": "c7b39cefe484b5f4804a22ccaaa110f944691b40",
+  "git_sha": "e21026bd7af950cace9a8f290c5f09efc6433510",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
     "auth": "0012_alter_user_first_name_max_length",
     "axes": "0010_accessattemptexpiration",
-    "bpp": "0501_autor_usun_pokazuj",
+    "bpp": "0502_autoreksporttask_xlsx",
     "channels_broadcast": "0001_initial",
     "constance": "0003_drop_pickle",
     "contenttypes": "0002_remove_content_type_name",
