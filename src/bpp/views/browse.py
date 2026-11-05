@@ -31,6 +31,10 @@ from multiseek.util import make_field
 from multiseek.views import MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED
 from siteblog.models import Article
 
+from bpp.cache_strony_glownej import (
+    generacja_strony_glownej,
+    uniewaznij_strone_glowna,
+)
 from bpp.models import (
     Autor,
     Jednostka,
@@ -82,10 +86,12 @@ def invalidate_uczelnia_cache_on_article_change(sender, instance, **kwargs):
     BPP's cache, so the receiver lives here.
     """
     if instance.status == sender.STATUS.published:
-        get_uczelnia_context_data.invalidate()
+        uniewaznij_strone_glowna()
 
 
-@cached(timeout=60 * 60)  # Cache for 1 hour
+# ``extra`` = generacja: unieważnianie przez ``uniewaznij_strone_glowna``,
+# NIE przez ``.invalidate()`` (patrz docstring ``bpp.cache_strony_glownej``).
+@cached(timeout=60 * 60, extra=generacja_strony_glownej)  # Cache for 1 hour
 def get_uczelnia_context_data(uczelnia, article_slug=None):
     """Shared function to get context data for uczelnia view."""
     context = {"object": uczelnia, "uczelnia": uczelnia}
