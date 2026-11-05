@@ -6,7 +6,7 @@ pamiec, nie CPU: `pytest -n auto` na 14 rdzeniach / 14 GB RAM wpedzil
 system w thrashing swapu i wymagal twardego resetu. Workery xdist ROSNA
 w trakcie przebiegu, jesli GC nie sprzata cykli referencji (zmierzone bez
 okresowego ``gc.collect()``: 400 MB -> 1,75 GB w 3 minuty; z nim, patrz
-``pytest_runtest_logfinish`` w src/conftest.py: ~450-650 MB). Kazdy worker
+pytest-gc-steward w pytest.ini: ~450-650 MB). Kazdy worker
 doklada tez backend PostgreSQL w testcontainerze.
 
 Podkomendy:

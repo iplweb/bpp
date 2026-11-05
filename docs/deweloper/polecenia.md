@@ -66,9 +66,12 @@ Note: The script requires `expect` to be installed on the system.
 **Test execution notes:**
 - Full test suite takes **UP TO 10 MINUTES** - never use timeout restrictions
 - Tests use `--reuse-db` option by default for faster execution
-- `src/conftest.py` robi `gc.freeze()` + `gc.collect()` co 25 testów
-  (`BPP_TEST_GC_EVERY`, `0` wyłącza) — bez tego na Pythonie 3.14 cykle
-  referencji z requestów test clienta zalegają i worker puchnie do ~1,8 GB
+- plugin [pytest-gc-steward](https://github.com/iplweb/pytest-gc-steward)
+  (`pytest.ini`: `gc_steward_freeze`, `gc_steward_every = 25`) robi
+  `gc.freeze()` + `gc.collect()` co 25 testów — response test clienta Django
+  jest w cyklu referencji i bez tego na Pythonie 3.14.0–3.14.4 worker puchł
+  do ~1,8 GB. Raport, co zbiera GC (typy / testy / moduły):
+  `uv run pytest --gc-report gc.json <ścieżki>`. Wyłączenie: `-p no:gc_steward`.
 - Tests automatically rerun on TimeoutError, ElementClickInterceptedException,
   ElementDoesNotExist, and TimeoutException
 - Default Django settings: `django_bpp.settings.local` (configured in pytest.ini)
