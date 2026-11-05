@@ -14,7 +14,7 @@ import os
 import tempfile
 
 from .local import *  # noqa
-from .local import CACHES, INSTALLED_APPS, LIVEOPS, MIDDLEWARE  # noqa
+from .local import CACHES, INSTALLED_APPS, LIVEOPS, MIDDLEWARE, TEMPLATES  # noqa
 
 # MEDIA_ROOT per-proces (worker xdist). Domyślnie testy dziedziczyły
 # MEDIA_ROOT = <repo>/src/media z local.py — JEDEN wspólny katalog w drzewie
@@ -97,6 +97,27 @@ INSTALLED_APPS = [app for app in INSTALLED_APPS if app != "cacheops"]
 # w no-op (cacheops/simple.py:54) i propaguje się też na `invalidate_*`,
 # które same sprawdzają tę flagę.
 CACHEOPS_ENABLED = False
+
+# Loadery szablonów jak na produkcji (base.py): dyskowe w ``cached.Loader``.
+# local.py zdejmuje cache, żeby w dev szablony przeładowywały się po edycji,
+# a test.py dziedziczy po local.py — więc w testach KAŻDY render parsował
+# szablon od nowa (np. ``admin_tools/menu/item.html`` ~100x na stronę admina,
+# raz na pozycję menu). Skompilowane drzewo węzłów ma cykle referencji, więc
+# lądowało w śmieciach dla cyklicznego GC: ~85% obiektów zbieranych po
+# testach to były węzły szablonów, a worker xdist puchł do ~1,8 GB.
+# admin_tools i dbtemplates zostają bez cache (jak w base.py): dbtemplates
+# czyta z bazy, a testy zmieniają szablony w DB w trakcie przebiegu.
+TEMPLATES[0]["OPTIONS"]["loaders"] = [
+    "admin_tools.template_loaders.Loader",
+    "dbtemplates.loader.Loader",
+    (
+        "django.template.loaders.cached.Loader",
+        [
+            "django.template.loaders.filesystem.Loader",
+            "django.template.loaders.app_directories.Loader",
+        ],
+    ),
+]
 
 # django-axes wyłączone w testach: Client.login() woła authenticate() bez
 # `request`, na co AxesStandaloneBackend reaguje AxesBackendRequestParameterRequired

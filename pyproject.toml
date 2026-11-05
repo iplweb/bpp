@@ -657,6 +657,9 @@ dev = [
     "pytest-cov>=7.1.0",  # lokalnie do `make coverage-ai`; CI nie wola --cov
     "pytest-mock>=3.17.0",
     "pytest-xdist>=2.3.0",
+    # gc.freeze() + gc.collect() co N testow (pytest.ini: gc_steward_*), zeby
+    # workery xdist nie puchly od cykli referencji z test clienta.
+    "pytest-gc-steward>=0.1.0",
     "pytest-split>=0.9.0",
     "pytest-timeout>=2.1.0",
     "pyparsing>=3.3.3",
@@ -694,7 +697,7 @@ dev = [
     # django-run-site: CLI orchestrator dev stack-u. Dawniej `manage.py run_site`
     # + helpery w `_run_site_helpers/`. Instalowany w dev-deps zeby `uv run run-site`
     # mialo dostep do CLI bez globalnego `uv tool install`. Konfiguracja: runsite.toml.
-    "django-run-site>=0.21.0",
+    "django-run-site>=0.22.0",
     # django-dev-helpers: autologin endpoint + dotfiles dla agentow LLM. Dawniej
     # `src/django_bpp/views_run_site_autologin.py`. Aktywuje sie tylko gdy run-site
     # ustawi DJANGO_DEV_HELPERS_ENABLED=1 — w produkcji no-op.

@@ -52,7 +52,13 @@ Note: The script requires `expect` to be installed on the system.
 - `uv run pytest --ds=django_bpp.settings.local` - Specific Django settings (rarely needed)
 
 **Alternative make commands (internally use `uv run pytest`):**
-- `make tests-without-playwright` - Tests excluding Playwright with parallelization (fast)
+- `make tests-without-playwright` - Tests excluding Playwright with parallelization (fast).
+  Poza CI liczba workerów xdist jest liczona z wolnego RAM-u (`make xdist-calc`),
+  a na Linuksie test leci pod `systemd-run ... MemoryMax`, żeby przekroczenie
+  zabiło pytest, a nie zamroziło maszynę. Nadpisanie: `make tests-without-playwright
+  XDIST_N=6`; wyłączenie limitu: `XDIST_GUARD=`.
+- `make xdist-measure` - zmierz RAM workerów na tej maszynie (próbka, `-n 2`) →
+  `.xdist-mem-profile.json`; `make xdist-calc` - pokaż bezpieczne `-n`
 - `make tests-only-playwright` - Only Playwright tests with parallelization (slow)
 - `make tests` - Full test suite
 - `make full-tests` - Complete test suite
@@ -60,6 +66,12 @@ Note: The script requires `expect` to be installed on the system.
 **Test execution notes:**
 - Full test suite takes **UP TO 10 MINUTES** - never use timeout restrictions
 - Tests use `--reuse-db` option by default for faster execution
+- plugin [pytest-gc-steward](https://github.com/iplweb/pytest-gc-steward)
+  (`pytest.ini`: `gc_steward_freeze`, `gc_steward_every = 25`) robi
+  `gc.freeze()` + `gc.collect()` co 25 testów — response test clienta Django
+  jest w cyklu referencji i bez tego na Pythonie 3.14.0–3.14.4 worker puchł
+  do ~1,8 GB. Raport, co zbiera GC (typy / testy / moduły):
+  `uv run pytest --gc-report gc.json <ścieżki>`. Wyłączenie: `-p no:gc_steward`.
 - Tests automatically rerun on TimeoutError, ElementClickInterceptedException,
   ElementDoesNotExist, and TimeoutException
 - Default Django settings: `django_bpp.settings.local` (configured in pytest.ini)

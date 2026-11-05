@@ -56,6 +56,7 @@ from bpp.multiseek_registry import (
     ZrodloQueryObject,
     registry,
 )
+from bpp.multiseek_registry.fields.constants import UNION_NONE
 from bpp.permissions import moze_wprowadzac_dane
 from bpp.util import sanitize_multiseek_title
 from bpp.util.uczelnia_scope import (
@@ -1025,18 +1026,18 @@ class RokView(ListView):
         return context
 
 
-def zrob_box(values, name, qo):
+def zrob_box(values, name, qo, op=None):
     ret = []
     po = None
     for value in values:
-        ret.append(make_field(qo, qo.ops[0], value, prev_op=po))
+        ret.append(make_field(qo, op or qo.ops[0], value, prev_op=po))
         po = OR
     return ret
 
 
-def zrob_box_z_requestu(dct, name, qo):
+def zrob_box_z_requestu(dct, name, qo, op=None):
     if dct.get(name):
-        return zrob_box(dct.getlist(name), name, qo)
+        return zrob_box(dct.getlist(name), name, qo, op=op)
     return []
 
 
@@ -1059,6 +1060,18 @@ def zrob_formularz(*args, **extra):
         prev_op = AND
 
     return json.dumps({"form_data": ret, **extra})
+
+
+def ustawienia_typu_raportu(request, raport):
+    """``{"report_type": <indeks>}`` dla typu raportu o id ``raport`` — tylko
+    gdy ten typ jest dostępny dla requestu (np. raporty niepubliczne
+    anonim nie dostanie); w przeciwnym razie ``{}`` (domyślny typ)."""
+    if not raport:
+        return {}
+    report_types = [x.id for x in registry.get_report_types(request)]
+    if raport not in report_types:
+        return {}
+    return {"report_type": str(report_types.index(raport))}
 
 
 def ustawienia_najnowszych_prac(request):
@@ -1124,6 +1137,22 @@ class BuildSearch(RedirectView):
         # Klik w „Statystyki wg charakteru" na podstronie autora POST-uje nazwę
         # charakteru — CharakterFormalnyQueryObject.value_from_web rozwiązuje ją
         # po `nazwa` (z potomkami MPTT).
+        # Klik w nazwisko współautora na podstronie autora: WSPÓLNE prace
+        # (autor AND współautor). Każdy współautor to osobny box łączony AND;
+        # operator „równe+wspólne” (podzapytanie ``pk__in``) — dwa warunki
+        # „równe” na tej samej relacji ``autorzy`` w jednym ``filter()``
+        # dzieliłyby JOIN i wymagałyby tego samego wiersza (pusty wynik).
+        wspolautorzy_boxy = [
+            zrob_box(
+                [wartosc],
+                "wspolautor",
+                NazwiskoIImieQueryObject,
+                op=UNION_NONE,
+            )
+            for wartosc in self.request.POST.getlist("wspolautor")
+            if wartosc
+        ]
+
         charakter_box = zrob_box_z_requestu(
             self.request.POST, "charakter_formalny", CharakterFormalnyQueryObject
         )
@@ -1147,9 +1176,19 @@ class BuildSearch(RedirectView):
             self.request.POST, "jednostka_nadrzedna", JednostkaNadrzednaQueryObject
         )
 
+        # Klik w wykres punktów na podstronie autora prosi o raport „tabela”
+        # (kolumny IF/PK) — o ile użytkownik ma go do wyboru. „Najnowsze”
+        # (strona główna) ma pierwszeństwo — słownik, nie podwójny kwarg.
+        ustawienia = ustawienia_typu_raportu(
+            self.request, self.request.POST.get("raport")
+        )
+        if self.request.POST.get("najnowsze"):
+            ustawienia.update(ustawienia_najnowszych_prac(self.request))
+
         self.request.session[MULTISEEK_SESSION_KEY] = zrob_formularz(
             zrodla_box,
             autorzy_box,
+            *wspolautorzy_boxy,
             typy_box,
             charakter_box,
             jednostki_box,
@@ -1157,11 +1196,7 @@ class BuildSearch(RedirectView):
             jednostki_nadrzedne_box,
             lata_box,
             zakres_lat_box,
-            **(
-                ustawienia_najnowszych_prac(self.request)
-                if self.request.POST.get("najnowsze")
-                else {}
-            ),
+            **ustawienia,
         )
 
         self.request.session["MULTISEEK_TITLE"] = sanitize_multiseek_title(
