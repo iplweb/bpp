@@ -2,6 +2,14 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202611.1405 (2026-11-05)
+
+### Naprawione
+
+- `make prepare-developer-machine` instaluje teraz `pandoc` (apt, dnf, pacman i brew), potrzebny do eksportu DOCX; wcześniej trzeba było doinstalować go ręcznie. ([#prepare-developer-machine-pandoc](https://github.com/iplweb/bpp/issues/prepare-developer-machine-pandoc))
+- Podbito ``cssselect2`` do 0.10 — znikają ostrzeżenia WeasyPrint „Invalid or unsupported selector, '::note-call'” (oraz ``::note-marker``, ``::note-callback``) wypisywane przy starcie każdego polecenia ``manage.py``. ([#cssselect2-note-call](https://github.com/iplweb/bpp/issues/cssselect2-note-call))
+
+
 ## bpp 202611.1404 (2026-11-04)
 
 ### Usprawnienie
