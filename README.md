@@ -150,7 +150,7 @@ Co robi `make prepare-developer-machine` (skrypty:
 `bin/prepare-developer-machine/prepare.sh detect` pokazuje wynik detekcji):
 
 - **macOS** — przez `brew`: `cairo`, `pango`, `gdk-pixbuf`, `libffi`,
-  `gobject-introspection`, `gtk+3`, `node`, `yarn`; przez `npm` globalnie
+  `gobject-introspection`, `gtk+3`, `node`, `pandoc`, `yarn`; przez `npm` globalnie
   `grunt-cli`; instaluje `uv`, jeśli go nie ma; na Apple Silicon tworzy
   `sudo`-symlinki w `/usr/local/lib` na libki z `/opt/homebrew/lib`
   (`dyld` nie konsultuje brew-owej ścieżki domyślnie, a `DYLD_FALLBACK_LIBRARY_PATH`
@@ -159,7 +159,7 @@ Co robi `make prepare-developer-machine` (skrypty:
   na końcu `uv sync --frozen --no-install-project --all-extras` +
   `uv run playwright install --only-shell chromium`.
 - **Linux** — pakiety systemowe (kompilator, nagłówki LDAP/SASL/SSL dla
-  `python-ldap`, libki WeasyPrint, Node, yarn, gettext) i `grunt-cli`
+  `python-ldap`, libki WeasyPrint, Node, yarn, gettext, pandoc) i `grunt-cli`
   przez menedżer pakietów dystrybucji: `apt` (Debian, Ubuntu i pochodne),
   `dnf` (Fedora, RHEL i pochodne) albo `pacman` (Arch i pochodne); potem
   `uv` w wersji przypiętej w projekcie (do `~/.local/bin`, jeśli go nie
