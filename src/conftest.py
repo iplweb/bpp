@@ -729,6 +729,41 @@ def _audit_wipe_once(django_db_setup, django_db_blocker):
     yield
 
 
+# Co ile testow wymusic pelne ``gc.collect()``; 0 wylacza. Patrz
+# ``pytest_runtest_logfinish``.
+_GC_CO_ILE_TESTOW = int(os.environ.get("BPP_TEST_GC_EVERY", "25"))
+_gc_licznik = 0
+
+
+def pytest_runtest_logfinish(nodeid, location):
+    """Okresowe sprzatanie cykli referencji, zeby worker nie puchl.
+
+    Requesty test clienta zostawiaja duzo smieci z cyklami referencji
+    (request <-> response, konteksty szablonow, tracebacki). Na Pythonie 3.14
+    pelne przejscie GC po starszych generacjach odpala sie tak rzadko, ze
+    nieosiagalne obiekty zalegaja: zmierzone (test_admin + test_views, -n 0,
+    1266 testow) RSS 359 -> 1801 MB, z ``gc.collect()`` po kazdym tescie
+    359 -> 581 MB. Kilkanascie workerow xdist po ~1,8 GB zamrozilo laptop.
+
+    ``gc.collect()`` po kazdym tescie kosztuje ~0,4 s (przeglada cala sterte,
+    lacznie z ~2 mln obiektow zaladowanego Django), wiec: raz, przed
+    pierwszym sprzataniem, ``gc.freeze()`` przenosi obiekty startowe do
+    generacji permanentnej (GC ich wiecej nie przeglada), a potem zbieramy
+    co ``BPP_TEST_GC_EVERY`` testow.
+    """
+    global _gc_licznik
+    if _GC_CO_ILE_TESTOW <= 0:
+        return
+    import gc
+
+    if _gc_licznik == 0:
+        gc.collect()
+        gc.freeze()
+    _gc_licznik += 1
+    if _gc_licznik % _GC_CO_ILE_TESTOW == 0:
+        gc.collect()
+
+
 def pytest_sessionfinish(session, exitstatus):
     """Drukuje raporty guarda (V1/V2) na KONIEC sesji — poza per-test capture
     pytest-a, więc widoczne w logach CI (per worker xdist)."""
