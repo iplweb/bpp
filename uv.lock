@@ -432,6 +432,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "pytest-django" },
     { name = "pytest-env" },
+    { name = "pytest-gc-steward" },
     { name = "pytest-httpserver" },
     { name = "pytest-mock" },
     { name = "pytest-playwright" },
@@ -613,6 +614,7 @@ dev = [
     { name = "pytest-cov", specifier = ">=7.1.0" },
     { name = "pytest-django", specifier = ">=4.13.0" },
     { name = "pytest-env", specifier = ">=1.8.3" },
+    { name = "pytest-gc-steward", specifier = ">=0.1.0" },
     { name = "pytest-httpserver", specifier = ">=1.2.0" },
     { name = "pytest-mock", specifier = ">=3.17.0" },
     { name = "pytest-playwright", specifier = ">=0.10.0" },
@@ -4704,6 +4706,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/71/10/fb9c10b886bf04070ee4152a54a8319ac9327eecea9a6804e5930fc3c64f/pytest_env-1.8.3.tar.gz", hash = "sha256:50fbdd23c64406bdc51ddd0cd17977b8f642b497b1ce0cd5a9ae39dd3cdbe16f", size = 49380, upload-time = "2026-10-27T17:36:40.699Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a8/a7/43081d5f61b102a3801bfb748d00b157ef00e47fd924f5d402cceb5fdf6a/pytest_env-1.8.3-py3-none-any.whl", hash = "sha256:b3f26d04140b0ffaca3b7dc7765386291ba03dced58f2a58221a0597bc59824c", size = 9962, upload-time = "2026-10-27T17:36:39.541Z" },
+]
+
+[[package]]
+name = "pytest-gc-steward"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/97/c0/8331785b0516a3bf38feb594f008ce70412920567e82c0eaf4127943bb3e/pytest_gc_steward-0.1.0.tar.gz", hash = "sha256:d7bea527961f821cc93e5b78c0931cdd2472b448d190dbfe1856f844805daaa8", size = 10974, upload-time = "2026-11-05T20:57:44.942Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/83/84/95c1ffd5fb56140f8b390876ede42e69a6bc5dee2a09a6bba53a9267acc7/pytest_gc_steward-0.1.0-py3-none-any.whl", hash = "sha256:e784c8e41437d7747291b4b4a823196963694ad2512caa9f5aeb33df26531d18", size = 11476, upload-time = "2026-11-05T20:57:43.557Z" },
 ]
 
 [[package]]
