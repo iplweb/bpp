@@ -53,12 +53,12 @@ import psutil
 REPO = Path(__file__).resolve().parent.parent
 MB = 1024 * 1024
 
-# Domyslne wartosci, gdy nie ma profilu -- z pomiaru 2026-11-05 na
-# thinkpad14s (src/bpp/tests/test_{models,admin,views}, -n 4, z okresowym
-# gc.collect() w src/conftest.py).
-DEFAULT_WORKER_MB = 640
-DEFAULT_CONTROLLER_MB = 230
-DEFAULT_PG_PER_WORKER_MB = 150
+# Domyslne wartosci, gdy nie ma profilu -- z pomiaru 2026-11-06 na
+# thinkpad14s (src/bpp/tests/test_{models,admin,views}, -n 2, PSS calego
+# poddrzewa workera, pytest-gc-steward wlaczony).
+DEFAULT_WORKER_MB = 910
+DEFAULT_CONTROLLER_MB = 215
+DEFAULT_PG_PER_WORKER_MB = 220
 
 DEFAULT_SAMPLE_PATHS = [
     "src/bpp/tests/test_models",
