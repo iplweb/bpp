@@ -387,6 +387,8 @@ constraint-dependencies = [
     #   brotlicffi >=1.2.1.0 (via fonttools[woff], tylko poza CPython —
     #              w lockfile, choc `environments` wyklucza PyPy; Dependabot
     #              czyta uv.lock i alarmuje)
+    # 2026-11-06 (bramka CVE w release-candidate.yml, osv-scanner + pip-audit):
+    #   oauthlib   GHSA-3jp2-3mrg-2vxc / CVE-2026-49272 (HIGH), fix w 4.0.1
     "anyio>=4.14.2",
     # >=26.10.1: zamyka CVE-2026-77528 (PYSEC-2026-4027, fix od 26.7.1),
     # a zarazem pierwsza wersja z leniwym importem vendorowanych flatbuffers
@@ -401,7 +403,7 @@ constraint-dependencies = [
     "certifi>=2026.10.19",
     "daphne>=4.2.2",
     "h2>=4.4.1",
-    "oauthlib>=4.0.0",
+    "oauthlib>=4.0.1",
     "opentelemetry-api>=1.45.1",
     "pyasn1>=0.6.4",
     "pyjwt>=2.15.1",
