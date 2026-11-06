@@ -239,3 +239,4 @@ demo_data_manifest_*.json
 
 # Profil pamieci workerow xdist (per maszyna, bin/xdist_workers.py)
 .xdist-mem-profile.json
+.xdist-mem-profile-playwright.json
