@@ -167,3 +167,26 @@ install_playwright_browsers() {
     fi
     uv run playwright install --only-shell chromium
 }
+
+# Czy przeglądarki dla zainstalowanej wersji Playwrighta są na dysku. Bez
+# sudo, apt i pobierania: `--dry-run` tylko wypisuje docelowe katalogi
+# (z numerem rewizji), więc po podbiciu Playwrighta check też to wyłapie.
+check_playwright_browsers() {
+    local locations missing=0 dir
+    if ! locations="$(uv run --quiet playwright install --dry-run --only-shell \
+        chromium 2>/dev/null | sed -n 's/^ *Install location: *//p')" ||
+        [ -z "$locations" ]; then
+        warn "Nie udało się odpytać Playwrighta (uv sync --all-extras?)."
+        return 1
+    fi
+    while IFS= read -r dir; do
+        if [ ! -d "$dir" ]; then
+            warn "Brak przeglądarki Playwright: $dir"
+            missing=1
+        fi
+    done <<<"$locations"
+    if [ "$missing" -ne 0 ]; then
+        warn "Zainstaluj (jednorazowo): make playwright-install"
+        return 1
+    fi
+}
