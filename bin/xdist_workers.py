@@ -54,13 +54,18 @@ REPO = Path(__file__).resolve().parent.parent
 MB = 1024 * 1024
 
 # Domyslne wartosci, gdy nie ma profilu -- z pomiaru 2026-11-06 na
-# thinkpad14s (src/bpp/tests/test_{models,admin,views}, -n 2, PSS calego
-# poddrzewa workera, pytest-gc-steward wlaczony).
-DEFAULT_WORKER_MB = 910
-DEFAULT_CONTROLLER_MB = 215
-DEFAULT_PG_PER_WORKER_MB = 220
+# thinkpad14s (src/bpp/tests/test_{models,admin,views} bez testow
+# Playwright, -n 2, PSS calego poddrzewa workera, pytest-gc-steward).
+DEFAULT_WORKER_MB = 485
+DEFAULT_CONTROLLER_MB = 201
+DEFAULT_PG_PER_WORKER_MB = 201
 
+# `src/fixtures` musi byc na liscie: marker `playwright` dokleja hook
+# z src/fixtures/conftest.py, ladowany tylko gdy ten katalog jest zbierany.
+# Bez niego `-m "not playwright"` NIE odfiltruje testow przegladarkowych
+# (np. w test_admin) i Chromium zawyzy szczyt workera.
 DEFAULT_SAMPLE_PATHS = [
+    "src/fixtures",
     "src/bpp/tests/test_models",
     "src/bpp/tests/test_admin",
     "src/bpp/tests/test_views",
