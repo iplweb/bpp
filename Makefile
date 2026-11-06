@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: help clean distclean tests test-durations release tests-without-playwright tests-only-playwright docker destroy-test-databases cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-app-services build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-testserver build-production build-production-force build-all check-not-pushing build-servers docker-images-on-ci check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux prepare-developer-machine-macos playwright-install
+.PHONY: help clean distclean tests test-durations release tests-without-playwright tests-only-playwright docker destroy-test-databases cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-app-services build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-testserver build-production build-production-force build-all check-not-pushing build-servers docker-images-on-ci check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux prepare-developer-machine-macos playwright-install playwright-check xdist-measure xdist-calc xdist-measure-playwright xdist-calc-playwright
 
 .DEFAULT_GOAL := help
 
@@ -72,6 +72,12 @@ prepare-developer-machine: ## Zainstaluj zależności systemowe (auto-detekcja s
 
 playwright-install: ## Pobierz przeglądarki Playwright dla testów E2E (na Debianie/Ubuntu z --with-deps, sudo)
 	$(PREPARE_DEVELOPER_MACHINE) playwright
+
+# Tani check (bez sudo/apt/sieci) przed testami Playwright. Instalacja to krok
+# jednorazowy (`make prepare-developer-machine` / `make playwright-install`),
+# wiec targety testowe tylko sprawdzaja, czy przegladarka jest na miejscu.
+playwright-check: ## Sprawdź, czy przeglądarki Playwright są zainstalowane (nic nie instaluje)
+	@$(PREPARE_DEVELOPER_MACHINE) playwright-check
 
 prepare-claude: ## Pokaż instrukcję instalacji wtyczki claude-mem w Claude Code
 	@echo "Setting up Claude Code with claude-mem plugin..."
@@ -242,9 +248,12 @@ disable-microsoft-auth: ## Wyłącz django_microsoft_auth
 # `make test-durations` wlaczaja zapis przez target-specific STORE_DURATIONS.
 STORE_DURATIONS ?=
 # Liczba workerow xdist dla suity Playwright — patrz komentarz przy
-# `tests-only-playwright`. Kolejnosc fallbackow: rdzenie wydajnosciowe
-# (Apple Silicon) -> nproc (Linux) -> hw.ncpu (Intel Mac) -> 4.
-PLAYWRIGHT_WORKERS ?= $(shell sysctl -n hw.perflevel0.logicalcpu 2>/dev/null || nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+# `tests-only-playwright`. Poza CI: z RAM-u wg profilu Playwrighta
+# (`make xdist-measure-playwright`), z gornym limitem CPU (na Apple Silicon
+# tylko rdzenie wydajnosciowe). Na CI: rdzenie wydajnosciowe -> nproc ->
+# hw.ncpu -> 4.
+_cpu_workers = $(shell sysctl -n hw.perflevel0.logicalcpu 2>/dev/null || nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+PLAYWRIGHT_WORKERS ?= $(if $(CI),$(_cpu_workers),$(shell uv run --quiet python bin/xdist_workers.py calc --suite playwright --quiet 2>/dev/null || echo 2))
 _store_durations = $(if $(STORE_DURATIONS),--store-durations --durations-path .test_durations,)
 # Po zapisie zaokraglij+posortuj plik (maly, stabilny diff). `&&` —
 # normalizujemy tylko po udanym przebiegu; przy STORE_DURATIONS pustym
@@ -267,6 +276,12 @@ xdist-measure: ## Zmierz RAM workerow xdist na tej maszynie (probka testow, -n 2
 
 xdist-calc: ## Pokaz, ile workerow xdist zmiesci sie teraz w RAM-ie
 	uv run python bin/xdist_workers.py calc
+
+xdist-measure-playwright: playwright-check ## Zmierz RAM workerow Playwright (worker+Chromium+Daphne, -n 2, ~4 min)
+	uv run python bin/xdist_workers.py measure --suite playwright
+
+xdist-calc-playwright: ## Pokaz, ile workerow Playwright zmiesci sie teraz w RAM-ie
+	uv run python bin/xdist_workers.py calc --suite playwright
 
 tests-without-playwright: ## Szybkie testy bez Playwright (xdist -n wg RAM, maxfail=50)
 	$(XDIST_GUARD) uv run pytest -n $(XDIST_N) -m "not playwright" --maxfail 50 $(_store_durations) $(_normalize_durations)
@@ -434,9 +449,12 @@ cerif-validate: ## Waliduj endpoint CERIF (URL=...) walidatorem euroCRIS
 # instancje Chromium + Daphne, wiec dokladaja tylko rywalizacje o pamiec i I/O.
 # Zmierzone na 12P+4E (154 testy): -n auto/16 ~94 s, -n 10 ~94 s, -n 8 ~89 s,
 # -n 12 ~87 s. Stad domyslnie tyle workerow, ile rdzeni WYDAJNOSCIOWYCH.
+# Na laptopie z Linuksem waskim gardlem jest RAM (worker + Chromium + Daphne
+# to wielokrotnosc zwyklego workera), wiec poza CI -n liczy sie z profilu
+# pamieci (`make xdist-calc-playwright`), a przebieg leci pod XDIST_GUARD.
 # Nadpisanie: `make tests-only-playwright PLAYWRIGHT_WORKERS=8`.
-tests-only-playwright: playwright-install ## Tylko testy Playwright (wolne)
-	uv run pytest -n $(PLAYWRIGHT_WORKERS) -m "playwright" $(_store_durations) $(_normalize_durations)
+tests-only-playwright: playwright-check ## Tylko testy Playwright (wolne; -n wg RAM-u)
+	$(XDIST_GUARD) uv run pytest -n $(PLAYWRIGHT_WORKERS) -m "playwright" $(_store_durations) $(_normalize_durations)
 
 uv-sync: ## uv sync --all-extras (synchronizacja zależności Pythona)
 	uv sync --no-install-project --all-extras

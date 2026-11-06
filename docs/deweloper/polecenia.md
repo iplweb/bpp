@@ -59,7 +59,13 @@ Note: The script requires `expect` to be installed on the system.
   XDIST_N=6`; wyłączenie limitu: `XDIST_GUARD=`.
 - `make xdist-measure` - zmierz RAM workerów na tej maszynie (próbka, `-n 2`) →
   `.xdist-mem-profile.json`; `make xdist-calc` - pokaż bezpieczne `-n`
-- `make tests-only-playwright` - Only Playwright tests with parallelization (slow)
+- `make tests-only-playwright` - Only Playwright tests with parallelization (slow).
+  Nic nie instaluje — tylko sprawdza (`make playwright-check`), czy przeglądarki
+  są na dysku; instalacja to jednorazowe `make playwright-install`. Poza CI `-n`
+  liczy się z RAM-u wg osobnego profilu Playwrighta (worker + Chromium + Daphne)
+  i leci pod tym samym `systemd-run ... MemoryMax`. Pomiar:
+  `make xdist-measure-playwright` → `.xdist-mem-profile-playwright.json`;
+  podgląd: `make xdist-calc-playwright`; nadpisanie: `PLAYWRIGHT_WORKERS=4`.
 - `make tests` - Full test suite
 - `make full-tests` - Complete test suite
 
