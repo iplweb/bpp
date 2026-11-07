@@ -662,6 +662,9 @@ dev = [
     # gc.freeze() + gc.collect() co N testow (pytest.ini: gc_steward_*), zeby
     # workery xdist nie puchly od cykli referencji z test clienta.
     "pytest-gc-steward>=0.1.0",
+    # -n auto wg wolnego RAM-u (pomiar workerow z Chromium/Daphne/PG), patrz
+    # XDIST_MEMORY w Makefile i xdist_memory_* w pytest.ini.
+    "pytest-xdist-memory>=0.1.0",
     "pytest-split>=0.9.0",
     "pytest-timeout>=2.1.0",
     "pyparsing>=3.3.3",
