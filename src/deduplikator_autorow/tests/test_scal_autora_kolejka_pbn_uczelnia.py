@@ -44,8 +44,12 @@ def test_scal_autora_zapisuje_uczelnie_na_wpisie_kolejki(
 
 
 def test_scal_autora_praca_doktorska_zapisuje_uczelnie(
-    main_dup, user, jednostka, uczelnia
+    main_dup, user, jednostka, uczelnia, typy_odpowiedzialnosci
 ):
+    # ``typy_odpowiedzialnosci``: zapis doktoratu liczy slug przez
+    # ``autorzy_set`` -> ``Typ_Odpowiedzialnosci.objects.get(skrot="aut.")``.
+    # Bez fixtury test zależał od tego, czy słownik przetrwał poprzednie
+    # testy na workerze (TRUNCATE testów transakcyjnych) — flake na CI.
     glowny, duplikat = main_dup
     praca = baker.make(Praca_Doktorska, autor=duplikat, jednostka=jednostka)
 
