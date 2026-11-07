@@ -9,13 +9,23 @@ okresowego ``gc.collect()``: 400 MB -> 1,75 GB w 3 minuty; z nim, patrz
 pytest-gc-steward w pytest.ini: ~450-650 MB). Kazdy worker
 doklada tez backend PostgreSQL w testcontainerze.
 
+Workery suity Playwright sa duzo ciezsze: kazdy ciagnie za soba wlasne
+Chromium (kilka procesow) i podproces Daphne (`channels_live_server`).
+Dlatego pamiec workera liczymy razem z CALYM jego poddrzewem procesow,
+a Playwright ma osobny profil (`--suite playwright`).
+
 Podkomendy:
 
-    measure  -- puszcza probke testow z `-n 2`, probkuje RSS drzewa
+    measure  -- puszcza probke testow z `-n 2`, probkuje pamiec drzewa
                 procesow pytest i PG w kontenerze, zapisuje profil do
-                `.xdist-mem-profile.json` (gitignored, per maszyna).
+                `.xdist-mem-profile.json` (`--suite playwright`:
+                `.xdist-mem-profile-playwright.json`; gitignored, per
+                maszyna).
     calc     -- z profilu + aktualnie dostepnej pamieci liczy bezpieczne
                 `-n`. `--quiet` drukuje sama liczbe (dla Makefile).
+                Dla `--suite playwright` na Apple Silicon gorny limit to
+                liczba rdzeni wydajnosciowych (E-cores nie uciagaja
+                Chromium + Daphne).
     guard    -- drukuje prefiks `systemd-run ... MemoryMax=...` (Linux),
                 zeby przekroczenie zabilo testy, a nie zamrozilo maszyne.
                 Pusty wynik, gdy systemd-run niedostepny (np. macOS).
@@ -41,21 +51,56 @@ from pathlib import Path
 import psutil
 
 REPO = Path(__file__).resolve().parent.parent
-PROFILE = REPO / ".xdist-mem-profile.json"
 MB = 1024 * 1024
 
-# Domyslne wartosci, gdy nie ma profilu -- z pomiaru 2026-11-05 na
-# thinkpad14s (src/bpp/tests/test_{models,admin,views}, -n 4, z okresowym
-# gc.collect() w src/conftest.py).
-DEFAULT_WORKER_MB = 640
-DEFAULT_CONTROLLER_MB = 230
-DEFAULT_PG_PER_WORKER_MB = 150
+# Domyslne wartosci, gdy nie ma profilu -- z pomiaru 2026-11-06 na
+# thinkpad14s (src/bpp/tests/test_{models,admin,views} bez testow
+# Playwright, -n 2, PSS calego poddrzewa workera, pytest-gc-steward).
+DEFAULT_WORKER_MB = 485
+DEFAULT_CONTROLLER_MB = 201
+DEFAULT_PG_PER_WORKER_MB = 201
 
+# `src/fixtures` musi byc na liscie: marker `playwright` dokleja hook
+# z src/fixtures/conftest.py, ladowany tylko gdy ten katalog jest zbierany.
+# Bez niego `-m "not playwright"` NIE odfiltruje testow przegladarkowych
+# (np. w test_admin) i Chromium zawyzy szczyt workera.
 DEFAULT_SAMPLE_PATHS = [
+    "src/fixtures",
     "src/bpp/tests/test_models",
     "src/bpp/tests/test_admin",
     "src/bpp/tests/test_views",
 ]
+
+# Suita Playwright: worker + Chromium + Daphne. Wartosci domyslne (gdy na
+# maszynie nie ma jeszcze profilu) z pomiaru 2026-11-06 na thinkpad14s
+# (150 testow, -n 2, PSS): worker 1380 MB, PG 465 MB/worker.
+SUITES = {
+    "default": {
+        "profile": REPO / ".xdist-mem-profile.json",
+        "marker": "not playwright",
+        "paths": DEFAULT_SAMPLE_PATHS,
+        "worker_mb": DEFAULT_WORKER_MB,
+        "controller_mb": DEFAULT_CONTROLLER_MB,
+        "pg_per_worker_mb": DEFAULT_PG_PER_WORKER_MB,
+        "make_measure": "make xdist-measure",
+    },
+    "playwright": {
+        "profile": REPO / ".xdist-mem-profile-playwright.json",
+        "marker": "playwright",
+        # `src/fixtures` musi byc na liscie: marker `playwright` dokleja
+        # hook z src/fixtures/conftest.py, ladowany tylko gdy ten katalog
+        # jest zbierany -- bez niego `-m playwright` lapie kilka testow.
+        "paths": [
+            "src/fixtures",
+            "src/bpp/tests/test_playwright/test_admin",
+            "src/integration_tests",
+        ],
+        "worker_mb": 1380,
+        "controller_mb": DEFAULT_CONTROLLER_MB,
+        "pg_per_worker_mb": 465,
+        "make_measure": "make xdist-measure-playwright",
+    },
+}
 
 
 def _reserve_mb() -> int:
@@ -68,6 +113,18 @@ def _safety() -> float:
 
 def _available_mb() -> int:
     return psutil.virtual_memory().available // MB
+
+
+def _mem_mb(proc: psutil.Process) -> int:
+    """PSS na Linuksie (sprawiedliwy udzial w pamieci wspoldzielonej --
+    procesy Chromium dziela miedzy soba sporo stron, wiec suma RSS
+    zawyzalaby wynik kilkukrotnie), RSS gdzie indziej."""
+    if sys.platform.startswith("linux"):
+        try:
+            return proc.memory_full_info().pss // MB
+        except psutil.AccessDenied:
+            pass  # brak dostepu do smaps -- spadamy do RSS ponizej
+    return proc.memory_info().rss // MB
 
 
 def _classify(proc: psutil.Process) -> str:
@@ -138,8 +195,40 @@ def guard_prefix(limit_mb: int) -> list[str]:
     ]
 
 
+def _snapshot(root: psutil.Process) -> tuple[int, int, dict[int, int]] | None:
+    """Jedna probka: (suma drzewa, kontroler, {pid workera: poddrzewo}).
+
+    Pamiec workera to suma jego i WSZYSTKICH potomkow (dla Playwrighta:
+    Chromium + Daphne). None, gdy proces glowny juz nie zyje."""
+    try:
+        procs = [root, *root.children(recursive=True)]
+    except psutil.NoSuchProcess:
+        return None
+    mem: dict[int, int] = {}
+    for p in procs:
+        try:
+            mem[p.pid] = _mem_mb(p)
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+    controller = 0
+    per_worker: dict[int, int] = {}
+    for p in procs:
+        kind = _classify(p)
+        if kind == "controller":
+            controller = max(controller, mem.get(p.pid, 0))
+        elif kind == "worker":
+            try:
+                sub = p.children(recursive=True)
+            except psutil.NoSuchProcess:
+                continue
+            per_worker[p.pid] = mem.get(p.pid, 0) + sum(mem.get(c.pid, 0) for c in sub)
+    return sum(mem.values()), controller, per_worker
+
+
 def cmd_measure(args) -> int:
+    suite = SUITES[args.suite]
     workers = args.workers
+    paths = args.paths or suite["paths"]
     pg_before = _docker_pg_names()
     limit = max(_available_mb() - _reserve_mb(), 1024)
     cmd = guard_prefix(limit) + [
@@ -149,37 +238,33 @@ def cmd_measure(args) -> int:
         "-n",
         str(workers),
         "-m",
-        "not playwright",
+        suite["marker"],
         "-q",
         "-p",
         "no:cacheprovider",
-        *args.paths,
+        *paths,
     ]
     print(f"Pomiar: {' '.join(cmd)}", file=sys.stderr)
-    peaks: dict[int, tuple[str, int]] = {}
+    # Szczyt per worker = szczyt sumy pamieci CALEGO poddrzewa workera
+    # (dla Playwrighta: Chromium + Daphne), mierzonej w jednej probce.
+    worker_peaks: dict[int, int] = {}
+    controller = 0
     pg_peak = 0
     tree_peak = 0
     stop = threading.Event()
 
     def sample(root_pid: int):
-        nonlocal pg_peak, tree_peak
+        nonlocal pg_peak, tree_peak, controller
         root = psutil.Process(root_pid)
         while not stop.is_set():
-            total = 0
-            try:
-                procs = [root, *root.children(recursive=True)]
-            except psutil.NoSuchProcess:
+            snap = _snapshot(root)
+            if snap is None:
                 break
-            for p in procs:
-                try:
-                    rss = p.memory_info().rss // MB
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    continue
-                total += rss
-                kind = _classify(p)
-                if rss > peaks.get(p.pid, ("", 0))[1]:
-                    peaks[p.pid] = (kind, rss)
+            total, ctrl, per_worker = snap
             tree_peak = max(tree_peak, total)
+            controller = max(controller, ctrl)
+            for pid, mb in per_worker.items():
+                worker_peaks[pid] = max(worker_peaks.get(pid, 0), mb)
             pg = _docker_pg_mb(pg_before)
             if pg:
                 pg_peak = max(pg_peak, pg)
@@ -194,30 +279,28 @@ def cmd_measure(args) -> int:
     t.join()
     duration = int(time.monotonic() - started)
 
-    worker_peaks = sorted(
-        (rss for kind, rss in peaks.values() if kind == "worker"), reverse=True
-    )
-    controller = max(
-        (rss for kind, rss in peaks.values() if kind == "controller"), default=0
-    )
-    if not worker_peaks:
+    peaks = sorted(worker_peaks.values(), reverse=True)
+    if not peaks:
         print("Nie znalazlem procesow workerow xdist -- pomiar nieudany.")
         return 1
     profile = {
         "measured_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "host": os.uname().nodename,
+        "suite": args.suite,
+        "metric": "pss" if sys.platform.startswith("linux") else "rss",
         "workers": workers,
-        "paths": args.paths,
+        "paths": paths,
         "duration_s": duration,
         "pytest_exit_code": rc,
-        "worker_peak_mb": worker_peaks[0],
-        "worker_peaks_mb": worker_peaks,
+        "worker_peak_mb": peaks[0],
+        "worker_peaks_mb": peaks,
         "controller_peak_mb": controller,
         "tree_peak_mb": tree_peak,
         "pg_peak_mb": pg_peak or None,
         "pg_per_worker_mb": (pg_peak // workers) if pg_peak else None,
     }
-    PROFILE.write_text(json.dumps(profile, indent=2, ensure_ascii=False) + "\n")
+    path = suite["profile"]
+    path.write_text(json.dumps(profile, indent=2, ensure_ascii=False) + "\n")
     print(json.dumps(profile, indent=2, ensure_ascii=False))
     if rc != 0:
         print(
@@ -225,28 +308,49 @@ def cmd_measure(args) -> int:
             "wczesnie, szczyty moga byc zanizone.",
             file=sys.stderr,
         )
-    print(f"Zapisano {PROFILE.name}. Teraz: make xdist-calc", file=sys.stderr)
+    print(f"Zapisano {path.name}.", file=sys.stderr)
     return 0
 
 
-def _load_profile() -> dict | None:
-    if PROFILE.exists():
-        return json.loads(PROFILE.read_text())
+def _load_profile(suite: str) -> dict | None:
+    path = SUITES[suite]["profile"]
+    if path.exists():
+        return json.loads(path.read_text())
     return None
 
 
-def calc() -> tuple[int, dict]:
-    prof = _load_profile() or {}
-    worker = prof.get("worker_peak_mb") or DEFAULT_WORKER_MB
-    controller = prof.get("controller_peak_mb") or DEFAULT_CONTROLLER_MB
-    pg = prof.get("pg_per_worker_mb") or DEFAULT_PG_PER_WORKER_MB
+def _cpu_cap(suite: str) -> int:
+    """Gorny limit workerow z CPU. Dla Playwrighta na Apple Silicon:
+    tylko rdzenie wydajnosciowe (zmierzone na 12P+4E: -n 16 nie jest
+    szybsze od -n 12, E-cores dokladaja tylko rywalizacje)."""
+    cpus = os.cpu_count() or 1
+    if suite == "playwright" and sys.platform == "darwin":
+        out = subprocess.run(
+            ["sysctl", "-n", "hw.perflevel0.logicalcpu"],
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        if out.isdigit():
+            return int(out)
+    return cpus
+
+
+def calc(suite: str = "default") -> tuple[int, dict]:
+    conf = SUITES[suite]
+    prof = _load_profile(suite) or {}
+    worker = prof.get("worker_peak_mb") or conf["worker_mb"]
+    controller = prof.get("controller_peak_mb") or conf["controller_mb"]
+    pg = prof.get("pg_per_worker_mb") or conf["pg_per_worker_mb"]
     avail = _available_mb()
     reserve = _reserve_mb()
     per_worker = int(worker * _safety()) + pg
     budget = avail - reserve - controller
-    n = max(1, min(budget // per_worker, os.cpu_count() or 1))
+    cpu = _cpu_cap(suite)
+    n = max(1, min(budget // per_worker, cpu))
     info = {
-        "profil": PROFILE.name if prof else "brak (wartosci domyslne)",
+        "suite": suite,
+        "profil": conf["profile"].name if prof else "brak (wartosci domyslne)",
+        "make_measure": conf["make_measure"],
         "dostepne_mb": avail,
         "rezerwa_mb": reserve,
         "kontroler_mb": controller,
@@ -255,17 +359,18 @@ def calc() -> tuple[int, dict]:
         "pg_na_workera_mb": pg,
         "na_workera_mb": per_worker,
         "budzet_mb": budget,
-        "cpu": os.cpu_count(),
+        "cpu": cpu,
         "n": n,
     }
     return n, info
 
 
 def cmd_calc(args) -> int:
-    n, info = calc()
+    n, info = calc(args.suite)
     if args.quiet:
         print(n)
         return 0
+    print(f"Suita:             {info['suite']}")
     print(f"Profil:            {info['profil']}")
     print(f"Dostepna pamiec:   {info['dostepne_mb']} MB")
     print(f"- rezerwa:         {info['rezerwa_mb']} MB (XDIST_RESERVE_MB)")
@@ -277,7 +382,7 @@ def cmd_calc(args) -> int:
     )
     print(f"Bezpieczne -n:     {info['n']}  (CPU: {info['cpu']})")
     if info["profil"].startswith("brak"):
-        print("Brak profilu -- zmierz na tej maszynie: make xdist-measure")
+        print(f"Brak profilu -- zmierz na tej maszynie: {info['make_measure']}")
     return 0
 
 
@@ -292,10 +397,12 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     m = sub.add_parser("measure", help="zmierz zuzycie RAM workerow xdist")
     m.add_argument("-n", "--workers", type=int, default=2)
-    m.add_argument("paths", nargs="*", default=DEFAULT_SAMPLE_PATHS)
+    m.add_argument("--suite", choices=SUITES, default="default")
+    m.add_argument("paths", nargs="*", help="domyslnie: probka wlasciwa dla suity")
     m.set_defaults(func=cmd_measure)
     c = sub.add_parser("calc", help="policz bezpieczne -n")
     c.add_argument("-q", "--quiet", action="store_true")
+    c.add_argument("--suite", choices=SUITES, default="default")
     c.set_defaults(func=cmd_calc)
     g = sub.add_parser("guard", help="prefiks systemd-run z limitem pamieci")
     g.set_defaults(func=cmd_guard)
