@@ -624,7 +624,7 @@ dev = [
     { name = "pytest-rerunfailures", specifier = ">=16.7" },
     { name = "pytest-split", specifier = ">=0.9.0" },
     { name = "pytest-testcontainers", specifier = ">=0.3.2" },
-    { name = "pytest-testcontainers-django", specifier = ">=0.4.0" },
+    { name = "pytest-testcontainers-django", specifier = ">=0.5.0" },
     { name = "pytest-timeout", specifier = ">=2.1.0" },
     { name = "pytest-tqdm", specifier = ">=0.4.0" },
     { name = "pytest-xdist", specifier = ">=2.3.0" },
@@ -4826,7 +4826,7 @@ wheels = [
 
 [[package]]
 name = "pytest-testcontainers-django"
-version = "0.4.0"
+version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pytest" },
@@ -4834,9 +4834,9 @@ dependencies = [
     { name = "pytest-testcontainers" },
     { name = "testcontainers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/eb/ee/7ba14022f31969cd40fbd3e50ff326dbefd958325afdc122509e1599b483/pytest_testcontainers_django-0.4.0.tar.gz", hash = "sha256:e3b309363d337b5b3f303067e93a0acf4672a56a200bb8666daf01e39c8a4337", size = 37104, upload-time = "2026-11-08T17:02:26.366Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c7/07/edfa15e1f670aaef8527eb879da2cf2a434f79241c51f3e2815767cdd79e/pytest_testcontainers_django-0.5.0.tar.gz", hash = "sha256:6e213c89eeca85a954477b039a9aaa9d1831b4c239be406786aa1bc24cc5c26e", size = 40370, upload-time = "2026-11-08T18:21:18.366Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/72/54/a3929dfec20b87adb740d2dc684229d4a8730ae8012f77b758085170c925/pytest_testcontainers_django-0.4.0-py3-none-any.whl", hash = "sha256:9b590bcb15342f45483be40aa01bd89ad6da684ffd11522c6ccd7ea4cb4a374d", size = 25991, upload-time = "2026-11-08T17:02:25.107Z" },
+    { url = "https://files.pythonhosted.org/packages/94/e6/474dd33e8094690931ef2f2a7cc819f457e9d5bb7b8c506d4fd58e001819/pytest_testcontainers_django-0.5.0-py3-none-any.whl", hash = "sha256:fe7f9cc8bcfc3108b1fa9bdaf8dce571143cacb495866db3228f043a1dc59e7d", size = 27802, upload-time = "2026-11-08T18:21:16.813Z" },
 ]
 
 [[package]]
