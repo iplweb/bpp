@@ -17,7 +17,8 @@ def test_get_lista_prac_zakres_lat(
     """Sprawdza, czy lista prac odrzuca prace spoza zakresu 2022-2026"""
     from bpp.models import Charakter_Formalny
 
-    # Zrob dane testowe od 2015 do 2026
+    # Dane testowe 2020-2026: dwa lata przed zakresem wystarczą, żeby
+    # sprawdzić odcięcie dolnej granicy (wcześniej od 2015).
 
     LiczbaNDlaUczelni.objects.create(
         dyscyplina_naukowa=dyscyplina1, uczelnia=uczelnia, liczba_n=100
@@ -28,7 +29,7 @@ def test_get_lista_prac_zakres_lat(
         charakter_ogolny__isnull=False
     ).first()
 
-    for ROK in range(2015, 2027):
+    for ROK in range(2020, 2027):
         Autor_Dyscyplina.objects.create(
             autor=autor_jan_nowak, rok=ROK, dyscyplina_naukowa=dyscyplina1
         )

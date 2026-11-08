@@ -3,6 +3,7 @@
 import pytest
 from model_bakery import baker
 
+from deduplikator_autorow.utils import search_general
 from deduplikator_autorow.utils.meta import build_autor_meta, build_buckets
 from deduplikator_autorow.utils.search_general import (
     BUCKET_MAX_SIZE,
@@ -65,15 +66,22 @@ def test_notadup_excluded():
 
 
 @pytest.mark.django_db
-def test_oversized_bucket_skipped():
+@pytest.mark.parametrize("ponad_limit,sa_pary", [(0, True), (1, False)])
+def test_oversized_bucket_skipped(monkeypatch, ponad_limit, sa_pary):
     """Bucket > BUCKET_MAX_SIZE jest pomijany."""
+    assert BUCKET_MAX_SIZE == 200
+    # ``generate_pairs`` czyta limit z globalnej modułu przy każdym wywołaniu;
+    # mały limit sprawdza tę samą granicę bez tworzenia 201 autorów.
+    monkeypatch.setattr(search_general, "BUCKET_MAX_SIZE", 5)
     baker.make(
         "bpp.Autor",
         nazwisko="PopularName",
-        _quantity=BUCKET_MAX_SIZE + 1,
+        imiona="Jan",
+        _quantity=5 + ponad_limit,
     )
     meta = build_autor_meta()
     buckets = build_buckets(meta)
     pairs = list(generate_pairs(buckets, meta, ignored_pks=set(), notadup_pks=set()))
-    # Dla tego bucketu (PopularName) — żadne pary nie powinny zostać wyemitowane
-    assert pairs == []
+    # Dla bucketu ponad limit (PopularName) — żadne pary nie powinny zostać
+    # wyemitowane; na samej granicy pary (identyczne imiona) są.
+    assert bool(pairs) is sa_pary

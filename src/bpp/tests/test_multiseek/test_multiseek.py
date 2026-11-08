@@ -31,8 +31,10 @@ def test_multiseek_paging_template(
     client,
     admin_client,
 ):
-    for _ in range(100):
-        mommy.make(Wydawnictwo_Ciagle)
+    # results.html stronicuje po 20 (``paging=20``) — 25 rekordów daje dwie
+    # strony, czyli renderuje pagination.html, w którym siedział błąd.
+    mommy.make(Wydawnictwo_Ciagle, _quantity=25)
 
     res = client.get(reverse("multiseek:results"))
     assert res.status_code == 200
+    assert b"?page_object_list=2" in res.content

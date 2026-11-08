@@ -7,6 +7,7 @@ powinna mieć link kanoniczny, opis (meta description) i tagi Open Graph.
 """
 
 import pytest
+from denorm import denorms
 from django.urls import reverse
 from model_bakery import baker
 
@@ -43,7 +44,7 @@ def rekord_publikacji(db):
         rekord=c, autor=a, jednostka=j, typ_odpowiedzialnosci=aut
     )
 
-    Rekord.objects.full_refresh()
+    denorms.flush()
     return Rekord.objects.get(tytul_oryginalny="Badanie wpływu czegoś na coś")
 
 
@@ -75,7 +76,7 @@ def test_dublin_core_w_head(client, rekord_publikacji):
 def test_json_ld_obecny(client, rekord_publikacji):
     res = client.get(rekord_publikacji.get_absolute_url(), follow=True)
     html = res.content.decode("utf-8")
-    assert 'application/ld+json' in html
+    assert "application/ld+json" in html
     assert '"@type": "ScholarlyArticle"' in html
 
 
@@ -108,7 +109,7 @@ def test_json_ld_poprawny_json_przy_groznych_znakach(client, db):
     Wydawnictwo_Ciagle_Autor.objects.create(
         rekord=c, autor=a, jednostka=j, typ_odpowiedzialnosci=aut
     )
-    Rekord.objects.full_refresh()
+    denorms.flush()
     rekord = Rekord.objects.first()
 
     html = client.get(rekord.get_absolute_url(), follow=True).content.decode("utf-8")

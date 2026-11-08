@@ -10,6 +10,7 @@ przy współdzielonych Django trafiałby w cache instancji i N+1 by się ukrył.
 """
 
 import pytest
+from denorm import denorms
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.db import connection
@@ -247,9 +248,8 @@ def test_zapytanie_rekord_nie_ciagnie_search_index():
     """``/zapytanie/rekord/`` używa tego samego wąskiego ``only()`` co
     ``/szukaj/`` — tsvector ``search_index`` nie może trafiać do SELECT-a."""
     _wydawnictwo_ciagle()
-    from bpp.models import Rekord
 
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     user = baker.make("bpp.BppUser", is_staff=True, is_superuser=True)
     client = APIClient()

@@ -1,3 +1,5 @@
+import time
+
 import pytest
 from django.contrib.messages import get_messages
 from model_bakery import baker
@@ -480,9 +482,15 @@ def test_sprobuj_wyslac_do_pbn_przychodzi_inny_pbn_uid_dla_starego_rekordu(
     pbn_client,
     rf,
     pbn_uczelnia,
+    monkeypatch,
 ):
     """Ten test sprawdza, jak zachowa się system w przypadku wysyłki nowego rekordu, gdy przyjdzie PBN UID
     takiego rekordu, który już istnieje"""
+
+    # GET oświadczeń dla nowego objectId nie jest zamockowany, więc
+    # ``_get_pbn_statements_with_retry`` (pbn_client) ponawia go z backoffem
+    # 2 s + 4 s. Ta sama ścieżka, tylko bez czekania.
+    monkeypatch.setattr(time, "sleep", lambda *_: None)
 
     req = rf.get("/")
 

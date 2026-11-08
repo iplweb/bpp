@@ -208,25 +208,37 @@ def test_pivot_report_type_na_koncu_listy():
 # --- stronicowanie i sortowanie macierzy (multiseek) ------------------------
 
 
+@pytest.fixture
+def mala_strona_pivota(monkeypatch):
+    """Dopisuje 5 do whitelisty rozmiarów strony pivota, żeby testy
+    stronicowania nie musiały budować 26+ rekordów (lat) na drugą stronę."""
+    from bpp.pivot import core
+
+    monkeypatch.setattr(
+        core, "DOZWOLONE_NA_STRONIE", (5, *core.DOZWOLONE_NA_STRONIE)
+    )
+    return 5
+
+
 @pytest.mark.django_db
 def test_pivot_multiseek_stronicuje_wiersze(
-    logged_in_client, test_user, standard_data, denorms
+    logged_in_client, test_user, standard_data, denorms, mala_strona_pivota
 ):
     """Ta sama funkcja co na /zapytanie/ — body pivota to WSPÓLNY partial,
     ale kontekst (pivot_widok/pivot_table) buduje każdy widok osobno."""
-    for rok in range(2000, 2030):
+    for rok in range(2000, 2008):
         any_ciagle(tytul_oryginalny=f"{PIVOT_TITLE_PREFIX} - {rok}", rok=rok)
     denorms.flush()
     _set_multiseek_pivot_filter(logged_in_client, test_user)
 
     resp = logged_in_client.get(
         reverse("multiseek:results")
-        + "?pivot_row=rok&pivot_val=liczba&pivot_per_page=25"
+        + f"?pivot_row=rok&pivot_val=liczba&pivot_per_page={mala_strona_pivota}"
     )
 
     t = resp.context["pivot_table"]
-    assert t["wszystkich_wierszy"] == 30
-    assert len(t["rows"]) == 25
+    assert t["wszystkich_wierszy"] == 8
+    assert len(t["rows"]) == mala_strona_pivota
     assert t["is_paginated"] is True
     assert "pivot_page=2" in resp.content.decode().replace("&amp;", "&")
 
@@ -301,18 +313,19 @@ def test_pivot_multiseek_linki_sortowania_gasza_tryb_wydruku(
 
 @pytest.mark.django_db
 def test_pivot_multiseek_eksport_ignoruje_strone(
-    logged_in_client, test_user, standard_data, denorms
+    logged_in_client, test_user, standard_data, denorms, mala_strona_pivota
 ):
-    for rok in range(2000, 2030):
+    for rok in range(2000, 2008):
         any_ciagle(tytul_oryginalny=f"{PIVOT_TITLE_PREFIX} - {rok}", rok=rok)
     denorms.flush()
     _set_multiseek_pivot_filter(logged_in_client, test_user)
 
     resp = logged_in_client.get(
         reverse("multiseek-export", args=["csv"])
-        + "?pivot_row=rok&pivot_val=liczba&pivot_per_page=25&pivot_page=2"
+        + f"?pivot_row=rok&pivot_val=liczba&pivot_per_page={mala_strona_pivota}"
+        + "&pivot_page=2"
     )
 
     wiersze = list(csv.reader(io.StringIO(resp.content.decode())))
-    # nagłówek + 30 lat + RAZEM
-    assert len(wiersze) == 32
+    # nagłówek + 8 lat + RAZEM
+    assert len(wiersze) == 10

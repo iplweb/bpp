@@ -1,6 +1,7 @@
 import json
 
 import pytest
+from denorm import denorms
 from django.contrib.contenttypes.models import ContentType
 from django.http.response import HttpResponseNotAllowed, HttpResponseRedirect
 from django.urls import reverse
@@ -80,7 +81,7 @@ def test_admin_nav_znajduje_prace_po_slowie_z_tytulu_i_nazwisku_autora(
     autor = baker.make(Autor, nazwisko="Kowalczykiewicz", imiona="Jan")
     praca.dodaj_autora(autor, jednostka, zapisany_jako="Kowalczykiewicz Jan")
 
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     url = reverse("bpp:admin-navigation-autocomplete")
     url += "?" + urlencode({"q": "Teleportacja Kowalczykiewicz"})

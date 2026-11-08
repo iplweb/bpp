@@ -9,6 +9,7 @@ import io
 from decimal import Decimal
 
 import pytest
+from denorm import denorms
 from django.urls import reverse
 from model_bakery import baker
 from openpyxl import load_workbook
@@ -85,7 +86,7 @@ def _make_opportunity(
     """Zbuduj kompletny ``UnpinningOpportunity`` z prawdziwym wpisem Rekord."""
     wydawnictwo_zwarte.punkty_kbn = Decimal(punkty_kbn)
     wydawnictwo_zwarte.save()
-    Rekord.objects.full_refresh()
+    denorms.flush()
     rekord = Rekord.objects.get_for_model(wydawnictwo_zwarte)
 
     jednostka_a = baker.make(Jednostka, nazwa="Jednostka A")

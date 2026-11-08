@@ -8,6 +8,7 @@ ograniczenie tylko wobec anonima — zwykłe zalogowane konto (bez
 """
 
 import pytest
+from denorm import denorms
 from django.contrib.auth.models import Group
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
@@ -15,7 +16,7 @@ from django.utils.http import urlencode
 from model_bakery import baker
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
-from bpp.models import Rekord, Wydawnictwo_Ciagle
+from bpp.models import Wydawnictwo_Ciagle
 
 TOKEN = "neurodetektorpodgladowy"
 
@@ -31,7 +32,7 @@ def rekord_ukryty_podglad(
         status_korekty=przed_korekta,
     )
     pub.dodaj_autora(autor_jan_kowalski, jednostka, zapisany_jako="Kowalski Jan")
-    Rekord.objects.full_refresh()
+    denorms.flush()
     # oznacz status jako ukryty na poziomie "podglad" dla tej uczelni
     uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
     return pub

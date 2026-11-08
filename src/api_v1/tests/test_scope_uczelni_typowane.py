@@ -9,12 +9,13 @@ widoczności nie może zależeć od wyboru endpointu.
 """
 
 import pytest
+from denorm import denorms
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 from django.urls import reverse
 from model_bakery import baker
 
-from bpp.models import Autor, Jednostka, Rekord, Uczelnia, Wydawnictwo_Ciagle
+from bpp.models import Autor, Jednostka, Uczelnia, Wydawnictwo_Ciagle
 from fixtures.conftest_publications import _wydawnictwo_ciagle_maker
 
 
@@ -166,7 +167,7 @@ def test_typowany_viewset_zgodny_z_szukaj(api_client, pary_publikacji):
     for publikacja in publikacje:
         publikacja.tytul_oryginalny = f"{token} {publikacja.pk}"
         publikacja.save()
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     res = api_client.get(reverse("api_v1:szukaj-list"), {"q": token})
     assert res.status_code == 200

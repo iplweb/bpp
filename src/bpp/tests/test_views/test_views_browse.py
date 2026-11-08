@@ -4,6 +4,7 @@ except ImportError:
     from django.urls import reverse
 
 import pytest
+from denorm import denorms
 from django.contrib.auth.models import Group
 from model_bakery import baker
 
@@ -345,7 +346,7 @@ def oai_data(db, logged_in_client):
             rekord=rekord, autor=a, jednostka=j, typ_odpowiedzialnosci=aut
         )
 
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     cnt = Rekord.objects.all().count()
     assert cnt == 2

@@ -200,7 +200,8 @@ def test_autor_recent_publications_limit_param():
     client = APIClient()
 
     autor = baker.make(Autor, nazwisko="Limit", imiona="Leon")
-    for i in range(30):
+    # Domyślny limit to 25 — 26 prac wystarcza, żeby go przekroczyć.
+    for i in range(26):
         publikacja = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny=f"Praca {i}")
         baker.make(Wydawnictwo_Ciagle_Autor, rekord=publikacja, autor=autor)
 
