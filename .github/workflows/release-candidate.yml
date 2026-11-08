@@ -273,6 +273,24 @@ jobs:
         run: |
           echo "image=${IMAGE_REPO}:sha-${RC_SHA}" >> "$GITHUB_OUTPUT"
 
+      - name: Wybierz zrodlo cache test-runnera
+        id: cache
+        if: ${{ !inputs.skip_tests && steps.bump.outputs.should_test == 'true' }}
+        # Jedno zrodlo `cache-from` (pierwszy istniejacy z: `:cache-release`,
+        # `:cache-dev`, stary `:cache`) — dlaczego nie kilka naraz: patrz
+        # krok "Compute cache tag" w tests.yml.
+        run: |
+          from="${IMAGE_REPO}:cache-release"
+          for ref in "${IMAGE_REPO}:cache-release" "${IMAGE_REPO}:cache-dev" \
+                     "${IMAGE_REPO}:cache"; do
+            if docker buildx imagetools inspect --raw "$ref" >/dev/null 2>&1; then
+              from="$ref"
+              break
+            fi
+          done
+          echo "cache-from: ${from}"
+          echo "from=${from}" >> "$GITHUB_OUTPUT"
+
       - name: Build & push obrazu test-runner
         if: ${{ !inputs.skip_tests && steps.bump.outputs.should_test == 'true' }}
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -295,15 +313,10 @@ jobs:
             GIT_SHA=${{ steps.bump.outputs.rc_sha }}
           # Rejestrowy cache w tym samym IMAGE_REPO co tests.yml, ale z
           # własnym tagiem `:cache-release` (RC-y idą sekwencyjnie —
-          # concurrency `release`). Odczyt najpierw z niego, potem z
-          # `:cache-dev` (push na dev w tests.yml — RC startuje z dev, więc
-          # to zwykle prawie pełny hit) i starego `:cache` (fallback
-          # przejściowy). Nie piszemy do `:cache-dev`, żeby RC nie nadpisywał
-          # cache'u gałęzi dev (patrz krok "Compute cache tag" w tests.yml).
-          cache-from: |
-            type=registry,ref=${{ env.IMAGE_REPO }}:cache-release
-            type=registry,ref=${{ env.IMAGE_REPO }}:cache-dev
-            type=registry,ref=${{ env.IMAGE_REPO }}:cache
+          # concurrency `release`). Nie piszemy do `:cache-dev`, żeby RC nie
+          # nadpisywał cache'u gałęzi dev. Odczyt: krok wyżej (zwykle
+          # `:cache-release`, przy pierwszym RC `:cache-dev`).
+          cache-from: type=registry,ref=${{ steps.cache.outputs.from }}
           cache-to: type=registry,ref=${{ env.IMAGE_REPO }}:cache-release,mode=max
 
       - name: Push gałęzi wydania
