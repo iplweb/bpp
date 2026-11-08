@@ -65,6 +65,34 @@ def _bez_n_plus_jeden(client, url, fabryka):
     )
 
 
+@pytest.fixture
+def slowniki_rekordu(charaktery_formalne, jezyki):
+    """Słowniki, po które ``Patent``/``Praca_Doktorska`` sięgają same.
+
+    Oba modele biorą ``charakter_formalny`` (i ``Patent`` także ``jezyk``) nie
+    z kolumny, tylko zapytaniem do słownika (``skrot="D"``/``"PAT"``, język
+    „polski"), zapamiętanym w cache na poziomie modułu. Wiersze pochodzą
+    z migracji danych w baseline — test transakcyjny wcześniej na tym samym
+    workerze robi TRUNCATE i ich już nie ma, więc serializer wywala się
+    ``DoesNotExist``. Dlatego jawnie siejemy słowniki i czyścimy cache
+    modułu (przed i po), żeby nie trzymał obiektów z innego testu.
+    """
+    from bpp.models.patent import _Patent_PropertyCache
+    from bpp.models.praca_doktorska import _Praca_Doktorska_PropertyCache
+
+    def wyczysc():
+        for cache_modulu, nazwy in (
+            (_Patent_PropertyCache, ("charakter_formalny", "jezyk")),
+            (_Praca_Doktorska_PropertyCache, ("charakter_formalny",)),
+        ):
+            for nazwa in nazwy:
+                cache_modulu.__dict__.pop(nazwa, None)
+
+    wyczysc()
+    yield
+    wyczysc()
+
+
 def _openaccess_ciagle():
     """Własne obiekty OpenAccess dla jednego wydawnictwa ciągłego."""
     return {
@@ -105,7 +133,9 @@ def test_wydawnictwo_zwarte_lista_bez_n_plus_jeden(api_client):
 
 
 @pytest.mark.django_db
-def test_praca_doktorska_lista_bez_n_plus_jeden(api_client, uczelnia, jednostka):
+def test_praca_doktorska_lista_bez_n_plus_jeden(
+    api_client, uczelnia, jednostka, slowniki_rekordu
+):
     # Praca_Doktorska nie dziedziczy pól openaccess_* (są tylko zadeklarowane
     # w serializerze) — jedyną relacją tekstową jest status_korekty.
     _bez_n_plus_jeden(
@@ -116,7 +146,7 @@ def test_praca_doktorska_lista_bez_n_plus_jeden(api_client, uczelnia, jednostka)
 
 
 @pytest.mark.django_db
-def test_patent_lista_bez_n_plus_jeden(api_client):
+def test_patent_lista_bez_n_plus_jeden(api_client, slowniki_rekordu):
     _bez_n_plus_jeden(
         api_client,
         reverse("api_v1:patent-list"),
