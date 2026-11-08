@@ -708,8 +708,11 @@ dev = [
     # zamiast wisiec ~60 s po niej, a `--testcontainers-clean` szuka po etykiecie
     # org.testcontainers=true, wiec zastepuje `make clean-testcontainers`.
     # SIGKILL nadal spada na Ryuka — tego nie da sie przechwycic.
+    # 0.4.0: `poll_interval` (domyslnie 0,1 s zamiast 1 s testcontainers) —
+    # gotowosc PG/Redis sprawdzana 10x czesciej, timeout startu bez zmian;
+    # ~1 s mniej na KAZDYM uruchomieniu pytest.
     "pytest-testcontainers>=0.3.2",
-    "pytest-testcontainers-django>=0.3.2",
+    "pytest-testcontainers-django>=0.4.0",
     # django-run-site: CLI orchestrator dev stack-u. Dawniej `manage.py run_site`
     # + helpery w `_run_site_helpers/`. Instalowany w dev-deps zeby `uv run run-site`
     # mialo dostep do CLI bez globalnego `uv tool install`. Konfiguracja: runsite.toml.
