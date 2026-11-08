@@ -25,6 +25,7 @@ from bpp.models.abstract import (
     RekordBPPBaza,
 )
 from bpp.models.autor import Autor
+from bpp.models.slowniki_stale import cached_if_found, wpis_slownika
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.util import safe_tytul_html
 
@@ -56,13 +57,14 @@ class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
 
 
 class _Patent_PropertyCache:
-    @cached_property
+    # Brak wpisu w słowniku -> None (nie DoesNotExist); patrz slowniki_stale.
+    @cached_if_found
     def charakter_formalny(self):
-        return Charakter_Formalny.objects.get(skrot="PAT")
+        return wpis_slownika(Charakter_Formalny, skrot="PAT")
 
-    @cached_property
+    @cached_if_found
     def jezyk(self):
-        return Jezyk.objects.get(nazwa__icontains="polski")
+        return wpis_slownika(Jezyk, nazwa__icontains="polski")
 
 
 _Patent_PropertyCache = _Patent_PropertyCache()
