@@ -318,7 +318,7 @@ push = false
 # Dolna granica trzymana rownolegle do `requires-python` wyzej (>=3.11) -
 # te dwie wartosci zmieniamy razem. Do 2026-09 stalo tu `>= '3.10'` - martwe,
 # bo przeciecie z requires-python i tak dawalo 3.11, ale mylnie sugerowalo
-# wsparcie dla 3.10.
+# wsparcie dla Pythona 3.10.
 #
 # emscripten (Pyodide/WebAssembly) wykluczony od uv 0.13 (2026-10, przy
 # podbiciu uv po GHSA-hq85-5cpj-mr62): uv 0.13 rozbija lock takze na split
