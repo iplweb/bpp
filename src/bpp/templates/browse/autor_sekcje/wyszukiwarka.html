@@ -1,129 +1,107 @@
 {# Sekcja obowiązkowa: formularz wyszukiwania prac autora (POST → multiseek). #}
-<div class="search-container autor-page__search-container">
+{# Cel przycisku „Pokaż wszystkie prace” z nagłówka strony (id niżej). #}
+<div class="search-container autor-page__search-container"
+     id="wyszukaj-publikacje-autora">
     <div class="search-header autor-page__search-header">
-        <h3 class="autor-page__search-title">
+        <h3 class="autor-page__search-title" tabindex="-1">
             <i class="fi-magnifying-glass autor-page__icon--mr-xl"></i>Wyszukaj publikacje autora
         </h3>
         <p class="autor-page__search-subtitle">
-            Znajdź publikacje powiązane z autorem {{ autor }}
+            Bez zaznaczonych filtrów wyszukiwanie pokaże wszystkie prace autora.
+            Zaznacz typy, lata lub jednostki, żeby zawęzić wyniki.
         </p>
     </div>
 
     <form method="post"
           action="{% url "bpp:browse_build_search" %}"
-          class="browserForm">
+          class="browserForm autor-page__search-form">
         {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt. #}
         {# Token w formularzu blokowałby cache_publiczny (_ZAWIERA_CSRF). #}
-        <input type="hidden" name="suggested-title" value="{{ autor }}"/>
         <input type="hidden" name="autor" value="{{ autor.pk }}"/>
 
-        {# Pola w siatce 2×2 (typ | jednostki / lata | tytuł); na małych #}
-        {# ekranach jedno pod drugim. #}
-        <div class="grid-x grid-margin-x autor-page__search-pola">
-        <div class="cell medium-6">
-        <div class="card autor-page__search-card">
-            <div class="card-section">
-                <h6 class="autor-page__search-card-title">
-                    <i class="fi-list autor-page__icon--mr-sm"></i>Typ publikacji:
-                </h6>
-                {% include "browse/typy.html" %}
+        {# Typ publikacji — przełączniki („chipy”): checkbox w etykiecie, ukryty #}
+        {# wizualnie, ale fokusowalny; stan pokazuje <span> obok niego. #}
+        {# Grupy to div[role=group], nie fieldset — globalne style BPP #}
+        {# rysują ramkę wokół fieldset/legend. #}
+        <div class="autor-page__filtr" role="group" aria-labelledby="filtr-typ">
+            <div class="autor-page__filtr-tytul" id="filtr-typ">
+                <i class="fi-list autor-page__icon--mr-sm"></i>Typ publikacji
             </div>
-        </div>
+            <div class="autor-page__chipy">
+                {% for typ in typy %}
+                    <label class="autor-page__chip">
+                        <input type="checkbox" name="typ" value="{{ typ }}"/>
+                        <span>{{ typ }}</span>
+                    </label>
+                {% endfor %}
+            </div>
         </div>
 
-        {# Jednostki autora — jeden queryset na warunek i pętlę. #}
-        {% with jednostki_autora=autor.jednostki_gdzie_ma_publikacje %}
-        {% if jednostki_autora %}
-            <div class="cell medium-6">
-            <div class="card autor-page__search-card">
-                <div class="card-section">
-                    <h6 class="autor-page__search-card-title">
-                        <i class="fi-home autor-page__icon--mr-sm"></i>Opracowane w jednostkach:
-                    </h6>
-                    <div class="grid-x grid-margin-x">
-                        {% for jednostka in jednostki_autora %}
-                            <div class="cell autor-page__checkbox-item">
-                                <input type="checkbox"
-                                       name="jednostka"
-                                       value="{{ jednostka.pk }}"
-                                       id="jednostka_{{ jednostka.pk }}"
-                                       class="autor-page__checkbox"/>
-                                <label for="jednostka_{{ jednostka.pk }}"
-                                       class="autor-page__checkbox-label">
-                                    {{ jednostka.nazwa }}
-                                    <a href="{% url "bpp:browse_jednostka" jednostka.slug %}"
-                                       class="autor-page__unit-link"
-                                       title="Zobacz jednostkę">
-                                        <i class="fi-home autor-page__unit-icon"></i>
-                                    </a>
-                                </label>
-                            </div>
-                        {% endfor %}
-                    </div>
+        {% with lata=autor.prace_w_latach %}
+        {% if lata %}
+            <div class="autor-page__filtr" role="group" aria-labelledby="filtr-lata">
+                <div class="autor-page__filtr-tytul" id="filtr-lata">
+                    <i class="fi-calendar autor-page__icon--mr-sm"></i>Lata
                 </div>
-            </div>
+                <div class="autor-page__chipy autor-page__chipy--lata">
+                    {% for rok in lata reversed %}
+                        <label class="autor-page__chip">
+                            <input type="checkbox" name="rok" value="{{ rok }}"/>
+                            <span>{{ rok }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
             </div>
         {% endif %}
         {% endwith %}
 
-        <div class="cell medium-6">
-        <div class="card autor-page__search-card">
-            <div class="card-section">
-                <h6 class="autor-page__search-card-title">
-                    <i class="fi-calendar autor-page__icon--mr-sm"></i>Opracowane w latach:
-                </h6>
-                <div class="grid-x grid-margin-x">
-                    {% for rok in autor.prace_w_latach reversed %}
-                        <div class="cell small-6 medium-4 large-4 autor-page__checkbox-item--year">
+        {# Jednostki autora — jeden queryset na warunek i pętlę. Lista w #}
+        {# kolumnach: długie nazwy zawijają się pod sobą, nie pod checkboxem. #}
+        {% with jednostki_autora=autor.jednostki_gdzie_ma_publikacje %}
+        {% if jednostki_autora %}
+            <div class="autor-page__filtr" role="group" aria-labelledby="filtr-jednostki">
+                <div class="autor-page__filtr-tytul" id="filtr-jednostki">
+                    <i class="fi-home autor-page__icon--mr-sm"></i>Jednostki
+                </div>
+                <ul class="no-bullet autor-page__jednostki">
+                    {% for jednostka in jednostki_autora %}
+                        <li class="autor-page__checkbox-item">
                             <input type="checkbox"
-                                   name="rok"
-                                   id="rok_{{ rok }}"
-                                   value="{{ rok }}"
+                                   name="jednostka"
+                                   value="{{ jednostka.pk }}"
+                                   id="jednostka_{{ jednostka.pk }}"
                                    class="autor-page__checkbox"/>
-                            <label for="rok_{{ rok }}"
+                            <label for="jednostka_{{ jednostka.pk }}"
                                    class="autor-page__checkbox-label">
-                                {{ rok }}
+                                {{ jednostka.nazwa }}
+                                <a href="{% url "bpp:browse_jednostka" jednostka.slug %}"
+                                   class="autor-page__unit-link"
+                                   title="Zobacz jednostkę">
+                                    <i class="fi-home autor-page__unit-icon"></i>
+                                </a>
                             </label>
-                        </div>
+                        </li>
                     {% endfor %}
-                </div>
+                </ul>
             </div>
-        </div>
-        </div>
+        {% endif %}
+        {% endwith %}
 
-        <div class="cell medium-6">
-        <div class="card autor-page__search-card">
-            <div class="card-section">
-                <h6 class="autor-page__search-card-title">
-                    <i class="fi-page-edit autor-page__icon--mr-sm"></i>Tytuł raportu:
-                </h6>
-                <div class="grid-x grid-margin-x align-middle">
-                    <div class="cell auto">
-                        <input type="text"
-                               name="suggested-title"
-                               value="{{ autor }}"
-                               class="autor-page__title-input"/>
-                    </div>
-                </div>
-                <small class="autor-page__title-hint">
-                    Tytuł wyszukiwania możesz zmienić, klikając go dwukrotnie.
-                </small>
-            </div>
-        </div>
-        </div>
-        </div>
-
-        <div class="autor-page__search-button-section">
+        {# Tytuł raportu + przycisk w jednym rzędzie (na wąskim ekranie pod sobą). #}
+        <div class="autor-page__search-stopka">
+            <label class="autor-page__title-pole">
+                <span class="autor-page__filtr-tytul">
+                    <i class="fi-page-edit autor-page__icon--mr-sm"></i>Tytuł wyników
+                </span>
+                <input type="text"
+                       name="suggested-title"
+                       value="{{ autor }}"
+                       class="autor-page__title-input"/>
+            </label>
             <button type="submit"
                     class="button primary large autor-page__search-btn">
                 <i class="fi-magnifying-glass autor-page__icon--mr-lg autor-page__icon--white"></i>Szukaj publikacji
             </button>
-            {% if ma_powiazania %}
-                <a href="{% url 'bpp:browse_autor_powiazania' autor.pk %}"
-                   class="button primary large autor-page__search-btn autor-page__network-btn">
-                    <i class="fi-share autor-page__icon--mr-lg autor-page__icon--white"></i>Zobacz sieć powiązań
-                </a>
-            {% endif %}
         </div>
     </form>
 </div>
