@@ -539,6 +539,13 @@ Konfiguracja jest w `[tool.pytest-testcontainers-django]` w `pyproject.toml`.
   (i hosty/hasła) do `os.environ` **przed**
   załadowaniem Django settings, oraz `DJANGO_BPP_SKIP_DOTENV=1`, żeby
   `.env` nie nadpisał wstrzykniętych wartości.
+- **Django ↔ PG przez Unix socket** (`postgres_connect = "auto"`): na
+  Linuksie z natywnym Dockerem `DJANGO_BPP_DB_HOST` to katalog
+  `/tmp/tcpg-*` z socketem PG (nie `localhost`), a `DJANGO_BPP_DB_PORT`
+  to 5432 — omija `docker-proxy`, pełna suita ~12% szybsza. Na macOS
+  i w trybie `REUSE` plugin zostaje przy porcie TCP. Kod, który składa
+  URL bazy z hosta i portu, musi to uwzględniać (libpq: host z `/` na
+  początku = katalog socketu).
 - Wyłączenie (gdy sam odpaliłeś usługi przez docker-compose):
   `PYTEST_TESTCONTAINERS_DISABLE=1 uv run pytest` lub flag `--no-testcontainers`.
 - Reuse kontenerów między runs (znacznie szybciej):
