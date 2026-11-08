@@ -47,7 +47,7 @@ def test_analyze_excel_file_import_polon_plik_bez_dyscyplin(
 
 
 def test_analyze_excel_file_import_polon(
-    transactional_db,
+    db,
     fn_test_import_polon,
     dyscyplina1,
     zwarte_z_dyscyplinami: Wydawnictwo_Zwarte,
@@ -216,7 +216,7 @@ def test_analyze_file_import_polon_with_valid_zatrudnienie(tmp_path, uczelnia):
 
 @pytest.mark.django_db
 def test_analyze_excel_file_import_polon_badawczy_type(
-    transactional_db,
+    db,
     fn_test_import_polon,
     dyscyplina1,
     uczelnia,

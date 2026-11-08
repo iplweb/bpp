@@ -85,7 +85,7 @@ def setup(slowniki, tmp_manifest_path):
     return m, a, wyd, theme
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_creates_n_prac(setup):
     m, autorzy, wydawcy, theme = setup
     prace = create_wz(
@@ -104,7 +104,7 @@ def test_creates_n_prac(setup):
     assert len(prace) == 20
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_doi_format(setup):
     m, autorzy, wydawcy, theme = setup
     create_wz(
@@ -124,7 +124,7 @@ def test_doi_format(setup):
         assert pattern.match(praca.doi)
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_rozdzialy_have_nadrzedne(setup):
     m, autorzy, wydawcy, theme = setup
     create_wz(
@@ -148,7 +148,7 @@ def test_rozdzialy_have_nadrzedne(setup):
     assert nadrzedne.count() >= 1
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_procent_rozdzialy_validates_range(setup):
     m, autorzy, wydawcy, theme = setup
     for invalid in (-1, 101, 150):
@@ -167,7 +167,7 @@ def test_procent_rozdzialy_validates_range(setup):
             )
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_pbn_uid_zawsze_puste(setup):
     m, autorzy, wydawcy, theme = setup
     create_wz(

@@ -90,7 +90,7 @@ def test_user_bez_autora_przekierowany_na_profil(client, django_user_model):
 def test_widok_pokazuje_wybrane_publikacje(
     client,
     django_user_model,
-    transactional_db,
+    db,
     standard_data,
     wydawnictwo_zwarte,
     autor_jan_nowak,
@@ -116,7 +116,7 @@ def test_widok_pokazuje_wybrane_publikacje(
 def test_dodaj_wlasna_prace(
     client,
     django_user_model,
-    transactional_db,
+    db,
     standard_data,
     wydawnictwo_zwarte,
     autor_jan_nowak,
@@ -146,7 +146,7 @@ def test_dodaj_wlasna_prace(
 def test_dodaj_duplikat_nie_wybucha(
     client,
     django_user_model,
-    transactional_db,
+    db,
     standard_data,
     wydawnictwo_zwarte,
     autor_jan_nowak,
@@ -172,7 +172,7 @@ def test_dodaj_duplikat_nie_wybucha(
 def test_dodaj_cudza_prace_odrzucone(
     client,
     django_user_model,
-    transactional_db,
+    db,
     standard_data,
     wydawnictwo_zwarte,
     autor_jan_nowak,
@@ -208,7 +208,7 @@ def test_dodaj_cudza_prace_odrzucone(
 def test_usun_wlasny_wiersz(
     client,
     django_user_model,
-    transactional_db,
+    db,
     standard_data,
     wydawnictwo_zwarte,
     autor_jan_nowak,
@@ -231,7 +231,7 @@ def test_usun_wlasny_wiersz(
 def test_usun_cudzy_wiersz_odrzucone(
     client,
     django_user_model,
-    transactional_db,
+    db,
     standard_data,
     wydawnictwo_zwarte,
     autor_jan_nowak,
@@ -260,7 +260,7 @@ def test_usun_cudzy_wiersz_odrzucone(
 def test_przesun_zmienia_kolejnosc_i_kolejnosc_w_sekcji(
     client,
     django_user_model,
-    transactional_db,
+    db,
     standard_data,
     wydawnictwo_zwarte,
     autor_jan_nowak,
@@ -303,7 +303,7 @@ def test_przesun_zmienia_kolejnosc_i_kolejnosc_w_sekcji(
 def test_przesun_cudzych_wierszy_ignorowane(
     client,
     django_user_model,
-    transactional_db,
+    db,
     standard_data,
     wydawnictwo_zwarte,
     autor_jan_nowak,
@@ -332,7 +332,7 @@ def test_przesun_cudzych_wierszy_ignorowane(
 def test_autocomplete_zwraca_wlasne_prace(
     client,
     django_user_model,
-    transactional_db,
+    db,
     standard_data,
     wydawnictwo_zwarte,
     autor_jan_nowak,
@@ -370,7 +370,7 @@ def test_autocomplete_zwraca_wlasne_prace(
 def test_autocomplete_szuka_po_wspolautorze(
     client,
     django_user_model,
-    transactional_db,
+    db,
     standard_data,
     wydawnictwo_zwarte,
     autor_jan_nowak,

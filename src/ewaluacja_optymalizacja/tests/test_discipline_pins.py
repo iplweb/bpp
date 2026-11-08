@@ -284,7 +284,7 @@ def test_reset_discipline_pins_task_creates_snapshot_and_resets(uczelnia, admin_
     assert result["optymalizacja_uruchomiona"] is False
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_reset_discipline_pins_no_unpinned_shows_warning(client, admin_user):
     """Test że reset bez odpiętych rekordów pokazuje warning."""
     dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Testowa", kod="1.1")

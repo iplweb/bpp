@@ -63,7 +63,7 @@ def test_clean_schowana_strona_po_wylaczeniu_wyszukiwania_i_indeksu():
     Autor(nazwisko="Przykladowska", imiona="Zofia", **SCHOWANA_STRONA).clean()
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_constraint_blokuje_masowe_obejscie_walidacji():
     autor = baker.make(Autor)
     with pytest.raises(IntegrityError), transaction.atomic():

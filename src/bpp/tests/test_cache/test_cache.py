@@ -42,7 +42,7 @@ def test_Autorzy_original(wydawnictwo_ciagle_z_dwoma_autorami):
 
 
 def test_opis_bibliograficzny_wydawnictwo_ciagle(
-    transactional_db, standard_data, denorms, autor_jan_kowalski, jednostka
+    db, standard_data, denorms, autor_jan_kowalski, jednostka
 ):
     wc = baker.make(Wydawnictwo_Ciagle, szczegoly="Sz", uwagi="U")
 

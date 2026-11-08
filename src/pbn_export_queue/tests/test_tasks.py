@@ -16,7 +16,7 @@ from pbn_export_queue.tasks import (
 )
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_kolejka_wyczysc_wpisy_bez_rekordow():
     # Jeżeli NIE damy content_type i nie wpiszemy klasy, to losowo dostaniemy klase np bpp.cache.Autorzy
     # albo bpp.cache.Rekord, a tam klucz jest złożony i będzie, że nie może castnąć int do int[],
@@ -31,7 +31,7 @@ def test_kolejka_wyczysc_wpisy_bez_rekordow():
     assert PBN_Export_Queue.objects.count() == 0
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_kolejka_wyczysc_wpisy_bez_rekordow_missing_table():
     """Test that the function handles missing database tables gracefully."""
     from bpp.models.cache.punktacja import Cache_Punktacja_Autora_Sum
@@ -235,7 +235,7 @@ def test_kolejka_ponow_wysylke_prac_po_zalogowaniu_with_other_users(
     task_sprobuj_wyslac_do_pbn.delay.assert_called()
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_queue_pbn_export_batch(mocker):
     """Test batch queueing of PBN exports."""
     from django.contrib.auth import get_user_model
@@ -286,7 +286,7 @@ def test_queue_pbn_export_batch(mocker):
     assert mock_task_delay.call_count == 3
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_queue_pbn_export_batch_skips_duplicates(mocker):
     """Test that batch queueing skips records already in queue."""
     from django.contrib.auth import get_user_model
@@ -325,7 +325,7 @@ def test_queue_pbn_export_batch_skips_duplicates(mocker):
     mock_task_delay.assert_not_called()
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_queue_pbn_export_batch_invalid_user(mocker):
     """Test batch queueing with non-existent user."""
     # Mock the task
@@ -348,7 +348,7 @@ def test_queue_pbn_export_batch_invalid_user(mocker):
     mock_task_delay.assert_not_called()
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_queue_pbn_export_batch_invalid_records(mocker):
     """Test batch queueing with non-existent records."""
     from django.contrib.auth import get_user_model

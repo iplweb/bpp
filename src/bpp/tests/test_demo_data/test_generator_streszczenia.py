@@ -18,14 +18,14 @@ from bpp.models import (
 
 
 @pytest.fixture
-def prace(transactional_db):
+def prace(db):
     Jezyk.objects.get_or_create(nazwa="polski", defaults={"skrot": "pol."})
     wc = [baker.make(Wydawnictwo_Ciagle) for _ in range(4)]
     wz = [baker.make(Wydawnictwo_Zwarte) for _ in range(4)]
     return wc, wz
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_streszczenia_100_percent(prace, tmp_manifest_path):
     wc, wz = prace
     m = Manifest(path=tmp_manifest_path, database="db", command_args={})
@@ -47,7 +47,7 @@ def test_streszczenia_100_percent(prace, tmp_manifest_path):
     assert m.objects_for("bpp.Wydawnictwo_Ciagle_Streszczenie")
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_streszczenia_0_percent(prace, tmp_manifest_path):
     wc, wz = prace
     m = Manifest(path=tmp_manifest_path, database="db", command_args={})
@@ -65,7 +65,7 @@ def test_streszczenia_0_percent(prace, tmp_manifest_path):
     assert Wydawnictwo_Zwarte_Streszczenie.objects.count() == 0
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_streszczenia_jezyk_none_when_no_polski(tmp_manifest_path, db):
     # Brak Jezyka 'polski' → fallback None (pole nullable), bez crashu.
     # Baseline test-DB zawiera 'polski' (migracja 0022), więc usuwamy go

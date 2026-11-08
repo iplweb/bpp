@@ -19,7 +19,7 @@ def test_kasowanie_calosci(
     test4_kasowanie_xlsx,
     normal_django_user,
     mocker,
-    transactional_db,
+    db,
     autor_jan_kowalski,
     rok,
     dyscyplina1,
@@ -55,7 +55,7 @@ def test_kasowanie_subdyscypliny(
     test5_kasowanie_subdyscypliny,
     normal_django_user,
     mocker,
-    transactional_db,
+    db,
     autor_jan_kowalski,
     rok,
     dyscyplina1,
@@ -91,9 +91,7 @@ def test_kasowanie_subdyscypliny(
     assert ad.subdyscyplina_naukowa is None
 
 
-def test_przeanalizuj_import_dyscyplin(
-    test1_xlsx, normal_django_user, mocker, transactional_db
-):
+def test_przeanalizuj_import_dyscyplin(test1_xlsx, normal_django_user, mocker, db):
 
     web_page_uid = "foobar_uid"
 
@@ -128,7 +126,7 @@ def test_przeanalizuj_import_dyscyplin(
     [stworz_kolumny, przeanalizuj_import_dyscyplin, integruj_import_dyscyplin],
 )
 def test_taski_import_dyscyplin_uzywaja_realnego_locka(
-    task_callable, test1_xlsx, normal_django_user, mocker, transactional_db
+    task_callable, test1_xlsx, normal_django_user, mocker, db
 ):
     """Każdy z trzech tasków musi wykonać `SELECT ... FOR UPDATE` — inaczej
     równoczesne uruchomienia mogą się zdeptać przy zmianie pól FSM."""

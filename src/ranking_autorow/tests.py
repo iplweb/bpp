@@ -67,7 +67,7 @@ def test_ranking_autorow_get_queryset_prace_sa(
     assert r.get_queryset().count() == 0
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_ranking_autorow_po_typie_kbn(
     wydawnictwo_ciagle_z_autorem,
     rf,
@@ -111,7 +111,7 @@ def test_ranking_autorow_po_charakterze_formalnym(
     assert r.get_queryset().count() == 0
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_ranking_autorow_bez_kol_naukowych(
     wydawnictwo_ciagle_z_autorem,
     admin_client,
@@ -149,7 +149,7 @@ def test_ranking_autorow_bez_kol_naukowych(
     assert "Kowalski" in res.rendered_content
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_ranking_autorow_bez_nieaktualnych(
     wydawnictwo_ciagle_z_autorem,
     admin_client,
