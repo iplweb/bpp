@@ -130,3 +130,20 @@ def test_oficjalny_build_uzywa_kontrolowanego_cache_warstw():
     assert builder_stage.index("\nARG GIT_SHA=unknown\n") < builder_stage.index(
         "\nCOPY . .\n"
     )
+
+
+def test_ci_cache_test_runnera_jest_per_galaz():
+    for path in (TESTS_WORKFLOW_PATH, RELEASE_CANDIDATE_WORKFLOW_PATH):
+        workflow = path.read_text(encoding="utf-8")
+        assert "ref=${{ env.IMAGE_REPO }}:cache,mode=max" not in workflow
+        assert "ref=${{ env.IMAGE_REPO }}:cache-dev" in workflow
+
+
+def test_etapy_testowe_nie_zaleza_od_calego_venv():
+    dockerfile = DOCKERFILE_PATH.read_text(encoding="utf-8")
+
+    assert "FROM base AS test-assets-builder\n" in dockerfile
+    assert "FROM base AS test-browser-builder\n" in dockerfile
+    assert "FROM test-venv-builder AS" not in dockerfile
+    for plik in ("test-venv.txt", "playwright.txt", "assets.txt"):
+        assert f"COPY --from=lock-pins /pins/{plik}" in dockerfile

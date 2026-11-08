@@ -207,9 +207,9 @@ jobs:
       run: uv run python src/manage.py baseline_check --max-delta 50
 
   prepare-image:
-    # Build the test-runner image once and push it to GHCR with two
-    # tags: `:sha-<commit>` (consumed by downstream test jobs) and
-    # `:cache` (registry-mode buildx cache, auto-merged across builds).
+    # Build the test-runner image once and push it to GHCR as
+    # `:sha-<commit>` (consumed by downstream test jobs), with the
+    # registry-mode buildx cache in a per-branch `:cache-<slug>` tag.
     # All test jobs `needs:` this step so the image is built once per
     # workflow run instead of N times per matrix runner.
     name: Build test-runner image
@@ -265,6 +265,24 @@ jobs:
       run: |
         echo "image=${IMAGE_REPO}:sha-${SHA}" >> "$GITHUB_OUTPUT"
 
+    - name: Compute cache tag (per galaz)
+      # Cache BuildKita jest PER GALAZ: `:cache-<slug>`. Wczesniej wszystkie
+      # buildy (PR-y z roznymi uv.lock, push na dev) pisaly do JEDNEGO tagu
+      # `:cache`, wiec rownolegle galezie wyrzucaly sobie nawzajem warstwy —
+      # PR zmieniajacy jeden plik .py potrafil przebudowac grunta (55 s).
+      # Odczyt: wlasny tag, potem `:cache-dev` (cieply cache bazowej galezi,
+      # pisany przez push na dev), na koncu stary `:cache` jako fallback
+      # przejsciowy (do usuniecia, gdy `:cache-dev` juz istnieje).
+      # Slug: male litery, [a-z0-9._-], max 120 znakow (+ "cache-" < 128 —
+      # limit dlugosci tagu Dockera). head_ref dla PR-ow, ref_name dla pushy.
+      id: cache
+      env:
+        BRANCH: ${{ github.head_ref || github.ref_name }}
+      run: |
+        slug=$(printf '%s' "$BRANCH" | tr '[:upper:]' '[:lower:]' \
+          | sed -E 's/[^a-z0-9._-]+/-/g' | cut -c1-120)
+        echo "ref=${IMAGE_REPO}:cache-${slug:-unknown}" >> "$GITHUB_OUTPUT"
+
     - name: Build & push test-runner image
       uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
       with:
@@ -274,8 +292,7 @@ jobs:
         # Zstd zmniejsza transfer obrazu pullowanego rownolegle przez 12
         # shardow. `outputs: type=registry` jest odpowiednikiem push=true.
         outputs: type=registry,compression=zstd,compression-level=3,force-compression=true
-        # Two tags: immutable sha-pinned (consumed by tests jobs) and
-        # the registry-cache helper used to seed `cache-from` next time.
+        # Immutable sha-pinned tag consumed by the tests jobs.
         tags: |
           ${{ steps.tag.outputs.image }}
         build-args: |
@@ -291,8 +308,12 @@ jobs:
         # unchanged finish in seconds. The first run after rolling out
         # this workflow has no cache and pays the full ~3 min build —
         # warm cache afterwards.
-        cache-from: type=registry,ref=${{ env.IMAGE_REPO }}:cache
-        cache-to: type=registry,ref=${{ env.IMAGE_REPO }}:cache,mode=max
+        # Per-galaz: patrz krok "Compute cache tag" wyzej.
+        cache-from: |
+          type=registry,ref=${{ steps.cache.outputs.ref }}
+          type=registry,ref=${{ env.IMAGE_REPO }}:cache-dev
+          type=registry,ref=${{ env.IMAGE_REPO }}:cache
+        cache-to: type=registry,ref=${{ steps.cache.outputs.ref }},mode=max
 
   tests:
     # Single sharded job covering the full suite (playwright +

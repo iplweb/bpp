@@ -66,8 +66,8 @@ jobs:
       # actions:read (bez tego gh zwróci 403 → fallback na testowanie).
       actions: read
     env:
-      # Ten sam obraz-cache co tests.yml — RC grzeje się z tego samego
-      # rejestrowego cache'u i odwrotnie.
+      # To samo repo obrazów co tests.yml; cache RC czyta m.in. z
+      # `:cache-dev` (szczegóły przy kroku build&push niżej).
       IMAGE_REPO: ghcr.io/iplweb/bpp-test-runner
       PYTHON_VERSION: "3.12"
       DEBIAN_VERSION: trixie
@@ -293,9 +293,18 @@ jobs:
             # obraz zawierał zbumpowane źródła RC (uv.lock = dev-owy,
             # niezmieniony — patrz krok bump: RC nie re-lockuje).
             GIT_SHA=${{ steps.bump.outputs.rc_sha }}
-          # Rejestrowy cache współdzielony z tests.yml (ten sam IMAGE_REPO).
-          cache-from: type=registry,ref=${{ env.IMAGE_REPO }}:cache
-          cache-to: type=registry,ref=${{ env.IMAGE_REPO }}:cache,mode=max
+          # Rejestrowy cache w tym samym IMAGE_REPO co tests.yml, ale z
+          # własnym tagiem `:cache-release` (RC-y idą sekwencyjnie —
+          # concurrency `release`). Odczyt najpierw z niego, potem z
+          # `:cache-dev` (push na dev w tests.yml — RC startuje z dev, więc
+          # to zwykle prawie pełny hit) i starego `:cache` (fallback
+          # przejściowy). Nie piszemy do `:cache-dev`, żeby RC nie nadpisywał
+          # cache'u gałęzi dev (patrz krok "Compute cache tag" w tests.yml).
+          cache-from: |
+            type=registry,ref=${{ env.IMAGE_REPO }}:cache-release
+            type=registry,ref=${{ env.IMAGE_REPO }}:cache-dev
+            type=registry,ref=${{ env.IMAGE_REPO }}:cache
+          cache-to: type=registry,ref=${{ env.IMAGE_REPO }}:cache-release,mode=max
 
       - name: Push gałęzi wydania
         # Bez `if:` → biegnie gdy poprzednie kroki OK (bump + opcjonalny build).
