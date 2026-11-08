@@ -304,3 +304,33 @@ Wynik (pełna suita bez Playwright, `-n 12`, PG18, 11241 passed):
 |---|---|---|---|
 | przed (3 przebiegi) | 147,3 / 150,5 / 151,9 s | 158–162 s | 585–664 MB |
 | po (2 przebiegi) | 137,5 / 125,7 s | 149 / 138 s | 602–698 MB |
+
+## Leniwe importy ciężkich bibliotek (2026-11-08)
+
+Korekta: zbieranie testów to ~6,7% czasu workerów (~5 s na workera), nie
+~15% — pierwszy klasyfikator profilu liczył do „zbierania" także GC. Samo
+zbieranie to w większości praca pytest (budowa 11 tys. obiektów testów),
+nie do urwania po stronie projektu.
+
+Za to start aplikacji (`django.setup()` + URLconf + Celery z taskami,
+`-X importtime`) wciągał biblioteki potrzebne pojedynczym widokom/taskom.
+Przeniesione do funkcji, które ich używają:
+
+| Biblioteka | Koszt | Gdzie był import |
+|---|---|---|
+| OR-Tools (+ pandas) | ~0,23 s | `ewaluacja_optymalizacja/tasks/optimization.py` |
+| WeasyPrint (`django_weasyprint`) | ~0,22 s | `raport_slotow/views/autor.py` |
+| pandas + numpy | ~0,19 s | `import_polon/utils.py` |
+| xhtml2pdf (+ reportlab, pypdf, fontTools) | ~0,10 s | `oswiadczenia/tasks.py` (`_pisa()`) |
+| idutils | ~0,09 s | `zglos_publikacje/identyfikatory.py` |
+
+Start aplikacji: 1,70 s → 1,18 s, modułów 5022 → 4182. Strażnik:
+`src/django_bpp/tests/test_leniwe_importy.py` (start w osobnym procesie,
+`sys.modules` nie może zawierać tych pakietów). Ścieżki z leniwym importem
+mają testy, które je faktycznie wykonują (PDF oświadczeń: nowe testy w
+`src/oswiadczenia/tests.py`). Zostaje openpyxl (+ numpy, ~0,08 s):
+importowany na górze 18 modułów, w tym zawsze ładowanych — za duży diff
+jak na zysk.
+
+Pełna suita (`-n 12`): 127,7 s — w szumie względem 125,7–137,5 s, bo na
+workera to ~0,5 s. Zysk jest na starcie procesów, nie w czasie testów.

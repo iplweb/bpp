@@ -1,0 +1,1 @@
+Szybszy start serwera aplikacji i workerów Celery (ok. 1,7 s → 1,2 s): ciężkie biblioteki (OR-Tools, pandas, WeasyPrint, xhtml2pdf, idutils) są ładowane dopiero przy pierwszym użyciu, a nie przy każdym starcie procesu.

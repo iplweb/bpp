@@ -289,3 +289,57 @@ def test_remove_old_oswiadczenia_export_files():
     remove_old_oswiadczenia_export_files()
 
     assert OswiadczeniaExportTask.objects.count() == 1
+
+
+# --- Ścieżki PDF (xhtml2pdf importowany leniwie przez ``tasks._pisa``) -----
+# Bez tych testów zepsuty leniwy import (literówka, brak pakietu w obrazie)
+# wyszedłby dopiero przy pierwszym eksporcie PDF na produkcji.
+
+
+def _fake_decl():
+    from types import SimpleNamespace
+
+    return {
+        "autor": SimpleNamespace(nazwisko="Kowalski", imiona="Jan"),
+        "rekord": SimpleNamespace(pk=(1, 2), tytul_oryginalny="Tytuł pracy"),
+        "dyscyplina_pracy": "nauki medyczne",
+    }
+
+
+def test_pisa_import_leniwy():
+    from oswiadczenia.tasks import _pisa
+
+    pisa = _pisa()
+    assert pisa is not None
+    assert hasattr(pisa, "CreatePDF")
+
+
+def test_generate_declaration_content_pdf(monkeypatch):
+    from oswiadczenia import tasks
+
+    monkeypatch.setattr(
+        tasks, "render_declaration_html", lambda decl, uczelnia: "<p>Zażółć</p>"
+    )
+    filename, content = tasks.generate_declaration_content(
+        _fake_decl(), uczelnia=None, export_format="pdf"
+    )
+    assert filename.endswith(".pdf")
+    assert content.startswith(b"%PDF")
+
+
+def test_generate_combined_pdf(monkeypatch):
+    from types import SimpleNamespace
+
+    from oswiadczenia import tasks
+
+    monkeypatch.setattr(
+        tasks,
+        "render_declaration_content_only",
+        lambda decl, uczelnia: "<p>Oświadczenie</p>",
+    )
+    task = SimpleNamespace(processed_items=0, current_item="", save=lambda: None)
+    content = tasks.generate_combined_pdf(
+        [_fake_decl(), _fake_decl()], uczelnia=None, task=task
+    )
+    assert content.startswith(b"%PDF")
+    assert task.processed_items == 2

@@ -10,7 +10,6 @@ from django.utils import timezone
 from django.utils.functional import cached_property
 from django.views.generic import FormView, TemplateView
 from django_tables2 import MultiTableMixin, RequestConfig
-from django_weasyprint.utils import DjangoURLFetcher
 from formdefaults.helpers import FormDefaultsMixin
 
 from bpp.models import Cache_Punktacja_Autora_Query_View, Dyscyplina_Naukowa
@@ -107,7 +106,9 @@ class RaportSlotow(BaseRaportAuthMixin, MyExportMixin, MultiTableMixin, Template
                 filename=self.get_export_filename(export_format, n)
             )
         except ExportRowLimitExceeded:
-            logger.exception("Export autora odrzucony z powodu przekroczenia limitu wierszy.")
+            logger.exception(
+                "Export autora odrzucony z powodu przekroczenia limitu wierszy."
+            )
             return HttpResponseBadRequest(
                 "Nie można wygenerować eksportu: przekroczono dopuszczalny limit wierszy."
             )
@@ -238,6 +239,9 @@ class RaportSlotow(BaseRaportAuthMixin, MyExportMixin, MultiTableMixin, Template
                     request=self.request,
                 )
 
+                # Leniwie: django_weasyprint ciągnie weasyprint (~0,22 s
+                # przy starcie appservera), a PDF to rzadka ścieżka.
+                from django_weasyprint.utils import DjangoURLFetcher
                 from weasyprint import HTML
 
                 # disable host and certificate check
