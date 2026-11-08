@@ -460,12 +460,16 @@ uv-sync: ## uv sync --all-extras (synchronizacja zależności Pythona)
 # `make tests-without-playwright` pozostaje OFF — bez churnu w pliku.
 tests: STORE_DURATIONS = 1
 tests: clean-pycache uv-sync tests-without-playwright tests-only-playwright js-tests ## Pełny test suite (Playwright + JS) + odśwież .test_durations
+	uv run python bin/prune_test_durations.py
 
 # Sam regen `.test_durations` bez js-tests — pelny przebieg pytest (oba
 # markery) z zapisem czasow. Uzyj gdy chcesz tylko odswiezyc plik splitu
 # CI (np. po dodaniu wolnych testow) bez reszty `make tests`.
+# Na koniec oba targety wycinaja z pliku wpisy testow, ktorych juz nie ma
+# (pytest-split merge'uje i sam ich nie usuwa) — bin/prune_test_durations.py.
 test-durations: STORE_DURATIONS = 1
 test-durations: clean-pycache uv-sync tests-without-playwright tests-only-playwright ## Regeneruj .test_durations (split CI), bez js-tests
+	uv run python bin/prune_test_durations.py
 
 # Wygeneruj raport pokrycia w formacie zoptymalizowanym pod AI/LLM:
 # sortowany od najgorszego, z zakresami linii missing, bez śmieci
