@@ -145,6 +145,11 @@ def test_ci_cache_test_runnera_jest_per_galaz():
 
 
 def test_etapy_testowe_nie_zaleza_od_calego_venv():
+    """Assety i przegladarki nie moga dziedziczyc z test-venv-buildera.
+
+    Inaczej kazda zmiana pyproject.toml/uv.lock przebudowuje grunta
+    i pobiera Playwrighta od nowa (patrz etap `lock-pins` w Dockerfile).
+    """
     dockerfile = DOCKERFILE_PATH.read_text(encoding="utf-8")
 
     assert "FROM base AS test-assets-builder\n" in dockerfile
