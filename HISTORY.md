@@ -2,6 +2,23 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202611.1406 (2026-11-08)
+
+### Naprawione
+
+- Zapis uczelni, jednostki lub opublikowanego artykułu natychmiast odświeża stronę główną wraz z jej górnym paskiem — wcześniej unieważnianie cache'u strony głównej nie działało i zmiany (np. przełączniki widoczności menu) pojawiały się dopiero po godzinie. Cache górnego paska jest też czyszczony dla wszystkich domen, nie tylko domeny przypiętej do uczelni. ([#inwalidacja-strony-glownej](https://github.com/iplweb/bpp/issues/inwalidacja-strony-glownej))
+- Kreator pierwszego uruchomienia pokazuje błędy formularza (np. za słabe hasło administratora) w zbiorczej ramce na górze strony, nad sekcją „Informacja", z linkami do błędnych pól; po wysłaniu formularza z błędami strona przewija się do tej ramki. ([#kreator-bledy-na-gorze](https://github.com/iplweb/bpp/issues/kreator-bledy-na-gorze))
+- Menu wielokolumnowe w górnym pasku (np. „ewaluacja", „PBN", „operacje") dopasowują szerokość do treści: menu, w którym widoczna jest tylko jedna pozycja albo jedna kolumna, otwiera się jako wąskie menu jednokolumnowe, a puste kolumny są ukrywane. ([#top-menu-szerokosc-kolumn](https://github.com/iplweb/bpp/issues/top-menu-szerokosc-kolumn))
+- Aktualizacja Django do 5.2.19 (poprawki bezpieczeństwa). ([#django-5-2-19](https://github.com/iplweb/bpp/issues/django-5-2-19))
+- Aktualizacja oauthlib do 4.0.1 (poprawka bezpieczeństwa GHSA-3jp2-3mrg-2vxc / CVE-2026-49272). ([#oauthlib-4-0-1](https://github.com/iplweb/bpp/issues/oauthlib-4-0-1))
+
+### Usprawnienie
+
+- Podstrona autora: kliknięcie słupka (lub punktu) na wykresach w latach otwiera wyszukiwarkę z pracami autora z danego roku — z wykresów punktów i IF w formacie tabeli (gdy użytkownik ma go do wyboru); kliknięcie nazwiska współautora pokazuje ich wspólne prace, a ikonka ludzika obok prowadzi na stronę współautora; statystyki wg charakteru powyżej 8 pozycji zwijają się pod „Rozwiń”. Do eksportu publikacji (BibTeX, RIS) doszedł plik XLSX z punktacją (IF, PK, dyscyplina, sumy w latach; PKdAut i sloty — gdy uczelnia pokazuje raport slotów autora). ([#autor-klikalne-wykresy-wspolautorzy](https://github.com/iplweb/bpp/issues/autor-klikalne-wykresy-wspolautorzy))
+- Testy: okresowe sprzątanie GC przeniesione z `src/conftest.py` do pluginu pytest-gc-steward (konfiguracja w `pytest.ini`); `--gc-report` pokazuje, z czego składają się śmieci zbierane przez GC. ([#pytest-gc-steward](https://github.com/iplweb/bpp/issues/pytest-gc-steward))
+- Testy: okresowe sprzątanie GC (worker xdist nie puchnie już do ~1,8 GB), a `make tests-without-playwright` poza CI dobiera liczbę workerów do wolnego RAM-u i uruchamia testy z limitem pamięci. ([#testy-gc-xdist-ram](https://github.com/iplweb/bpp/issues/testy-gc-xdist-ram))
+
+
 ## bpp 202611.1405 (2026-11-05)
 
 ### Naprawione
