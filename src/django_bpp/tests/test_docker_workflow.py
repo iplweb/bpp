@@ -148,6 +148,16 @@ def test_ci_cache_test_runnera_jest_per_galaz():
         )
 
 
+def test_ci_cache_test_runnera_pisze_do_wlasnego_tagu_galezi():
+    workflow = TESTS_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+    assert (
+        "cache-to: type=registry,ref=${{ steps.cache.outputs.to }},mode=max\n"
+        in workflow
+    )
+    assert "BRANCH: ${{ github.head_ref || github.ref_name }}" in workflow
+
+
 def test_etapy_testowe_nie_zaleza_od_calego_venv():
     """Assety i przegladarki nie moga dziedziczyc z test-venv-buildera.
 
