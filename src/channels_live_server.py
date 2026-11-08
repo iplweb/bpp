@@ -135,6 +135,20 @@ class _ChannelsLiveServer:
         return f"ws://{self.host}:{self.port}"
 
 
+def _preload_django_in_forkserver():
+    """Każ forkserverowi zaimportować Django raz, zamiast w każdym Daphne.
+
+    Szczegóły i uzasadnienie: docstring ``_daphne_forkserver_preload``.
+    Działa tylko przy metodzie ``forkserver`` (Linux, Python >= 3.14) i tylko
+    zanim forkserver workera wystartuje — później wywołanie jest no-opem.
+    Przy ``spawn`` (macOS) i ``fork`` niczego nie zmienia.
+    """
+    import multiprocessing
+
+    if multiprocessing.get_start_method() == "forkserver":
+        multiprocessing.set_forkserver_preload(["_daphne_forkserver_preload"])
+
+
 def _spawn_daphne(setup=None):
     """Start a Daphne process serving the project's ASGI app on a random port.
 
@@ -167,6 +181,8 @@ def _spawn_daphne(setup=None):
 
     modified_settings = modify_settings(ALLOWED_HOSTS={"append": host})
     modified_settings.enable()
+
+    _preload_django_in_forkserver()
 
     get_application = partial(make_application, static_wrapper=static_wrapper)
     server_process = DaphneProcess(
