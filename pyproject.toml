@@ -518,6 +518,10 @@ postgres_init_scripts = [
     "baseline-sql/baseline.sql",
 ]
 postgres_template = "bpp"
+# Django <-> PG przez Unix socket podmontowany z hosta (~9 us/zapytanie zamiast
+# ~27 us przez docker-proxy); "auto" = na Linuksie z natywnym Dockerem, inaczej
+# (macOS, reuse) zwykly port TCP.
+postgres_connect = "auto"
 postgres_env = { POSTGRES_INITDB_ARGS = "--locale-provider=icu --icu-locale=pl-PL --no-sync --no-data-checksums", POSTGRES_HOST_AUTH_METHOD = "trust" }
 db_host_env = "DJANGO_BPP_DB_HOST"
 db_port_env = "DJANGO_BPP_DB_PORT"
@@ -712,7 +716,10 @@ dev = [
     # gotowosc PG/Redis sprawdzana 10x czesciej, timeout startu bez zmian;
     # ~1 s mniej na KAZDYM uruchomieniu pytest.
     "pytest-testcontainers>=0.3.2",
-    "pytest-testcontainers-django>=0.4.0",
+    # 0.5.0: `postgres_connect` — Django <-> PG przez Unix socket podmontowany
+    # z hosta zamiast portu przez docker-proxy (~9 us zamiast ~27 us na
+    # zapytanie; pelna suita -12%). Konfiguracja w [tool.pytest-testcontainers-django].
+    "pytest-testcontainers-django>=0.5.0",
     # django-run-site: CLI orchestrator dev stack-u. Dawniej `manage.py run_site`
     # + helpery w `_run_site_helpers/`. Instalowany w dev-deps zeby `uv run run-site`
     # mialo dostep do CLI bez globalnego `uv tool install`. Konfiguracja: runsite.toml.
