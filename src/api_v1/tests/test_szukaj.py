@@ -1,12 +1,9 @@
 """Testy endpointu wyszukiwania ``GET /api/v1/szukaj/`` (Faza 0)."""
 
 import pytest
+from denorm import denorms
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
-
-from bpp.models import (
-    Rekord,
-)
 
 # Rzadki, wymyślony token — nie wystąpi w danych referencyjnych baseline.
 TOKEN = "kwakwahita"
@@ -46,7 +43,7 @@ def piec_typow(
     praca_habilitacyjna.tytul_oryginalny = f"{TOKEN} habilitacyjna"
     praca_habilitacyjna.save()
 
-    Rekord.objects.full_refresh()
+    denorms.flush()
     return {
         "ciagle": wydawnictwo_ciagle,
         "zwarte": wydawnictwo_zwarte,
@@ -93,7 +90,7 @@ def test_szukaj_rok_od_do(api_client, piec_typow):
     ciagle = piec_typow["ciagle"]
     ciagle.rok = 1999
     ciagle.save()
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     res = api_client.get(reverse("api_v1:szukaj-list") + f"?q={TOKEN}&rok_do=2000")
     ids = _ids_from(res)
@@ -139,7 +136,7 @@ def test_szukaj_nie_eksportuj_przez_api_per_typ(api_client, piec_typow):
     ciagle = piec_typow["ciagle"]
     ciagle.nie_eksportuj_przez_api = True
     ciagle.save()
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     res = api_client.get(reverse("api_v1:szukaj-list") + f"?q={TOKEN}")
     ids = _ids_from(res)
@@ -156,7 +153,7 @@ def test_szukaj_wyklucza_ukryte_statusy(
     ciagle = piec_typow["ciagle"]
     ciagle.status_korekty = przed_korekta
     ciagle.save()
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     res = api_client.get(reverse("api_v1:szukaj-list") + f"?q={TOKEN}")
     assert _rekord_id(ciagle) in _ids_from(res)
@@ -213,7 +210,7 @@ def test_szukaj_websearch_minus_i_cudzyslow(
     zwarte = zwarte_maker(tytul_oryginalny=f"{TOKEN} gamma")
     zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
 
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     # Minus (websearch) — wyklucz rekordy z "gamma".
     res = api_client.get(reverse("api_v1:szukaj-list") + f"?q={TOKEN} -gamma")
@@ -259,7 +256,7 @@ def test_szukaj_brak_mapowania_site_uczelnia(
     wydawnictwo_ciagle.tytul_oryginalny = f"{TOKEN} bezscope"
     wydawnictwo_ciagle.save()
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     res = api_client.get(reverse("api_v1:szukaj-list") + f"?q={TOKEN}")
     assert res.status_code == 200
@@ -302,7 +299,7 @@ def test_szukaj_scope_dwie_uczelnie(
     rekord_b = zwarte_maker(tytul_oryginalny=f"{TOKEN} wB")
     rekord_b.dodaj_autora(autor_jan_nowak, jednostka_b)
 
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     # Request na "testserver" → uczelnia A. Scope aktywny (2 uczelnie).
     res = api_client.get(reverse("api_v1:szukaj-list") + f"?q={TOKEN}")

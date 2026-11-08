@@ -13,6 +13,7 @@ co publiczna strona autora i strony rekordów:
 """
 
 import pytest
+from denorm import denorms
 from django.contrib.auth.models import AnonymousUser, Group
 from django.test import RequestFactory
 from django.urls import reverse
@@ -22,7 +23,6 @@ from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import (
     Autor,
     AutorEksportTask,
-    Rekord,
     Status_Korekty,
     Uczelnia,
     Ukryj_Status_Korekty,
@@ -87,7 +87,7 @@ def autor_z_ukryta_praca(
             status_korekty=status,
         )
         pub.dodaj_autora(autor_jan_kowalski, jednostka, zapisany_jako="Kowalski Jan")
-    Rekord.objects.full_refresh()
+    denorms.flush()
     uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
     return autor_jan_kowalski
 

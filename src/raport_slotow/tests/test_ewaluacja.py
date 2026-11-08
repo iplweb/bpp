@@ -21,7 +21,12 @@ def test_raport_ewaluacja_no_queries(
         rok=rok, autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina1
     )
 
-    for a in range(100):
+    # 20 rekordów wystarcza: N+1 dałoby >= 20 dodatkowych zapytań przy limicie 16.
+    # UWAGA: zapytanie niżej filtruje lata 2017-2021, a rekordy są z ``rok``
+    # (bieżący), więc eksport XLSX jest pusty. Przy ``od_roku=do_roku=rok``
+    # widok robi 2 zapytania na wiersz (``Rekord.openaccess_licencja_id``
+    # i ``Autor.system_kadrowy_id`` doczytywane leniwie) i ten test pada.
+    for a in range(20):
         wydawnictwo = _wydawnictwo_ciagle_maker()
         wydawnictwo.dodaj_autora(autor_jan_kowalski, jednostka)
 
@@ -35,7 +40,7 @@ def test_raport_ewaluacja_no_queries(
 
     r = ewaluacja.RaportSlotowEwaluacja()
     r.data = dict(od_roku=rok, do_roku=rok, _export="html")
-    assert r.get_queryset().count() == 100
+    assert r.get_queryset().count() == 20
 
     # UWAGA UWAGA UWAGA
     # Jeżeli nagle z jakichś powodów ten raport zacznie generować więcej zapytań, to proszę

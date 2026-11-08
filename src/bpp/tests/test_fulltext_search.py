@@ -1,4 +1,5 @@
 import pytest
+from denorm import denorms
 from django.urls.base import reverse
 from django.utils.http import urlencode
 from model_bakery import baker
@@ -55,7 +56,7 @@ def test_publication_fulltext_search_uses_weighted_cached_fields(
         zapisany_jako="Kowalski Jan",
     )
 
-    Rekord.objects.full_refresh()
+    denorms.flush()
     record = Rekord.objects.get_for_model(publication)
 
     queries = [
