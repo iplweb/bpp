@@ -314,9 +314,11 @@ FROM base AS test-venv-builder
 # przebudowuja. Zestaw pakietow jest ten sam co przy `uv sync --frozen
 # --all-extras --all-groups --no-install-project --no-editable`; uv
 # weryfikuje hashe z eksportu (git-owe zaleznosci sa przypiete do SHA).
+# `--prompt bpp-iplweb` = to, co ustawia `uv sync` (nazwa projektu), zeby
+# /opt/venv/pyvenv.cfg byl identyczny jak przy dawnym `uv sync`.
 COPY --from=lock-pins /pins/test-venv.txt /tmp/test-venv.txt
 RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
-    uv venv --python /usr/local/bin/python --prompt bpp /opt/venv && \
+    uv venv --python /usr/local/bin/python --prompt bpp-iplweb /opt/venv && \
     uv pip sync --python /opt/venv/bin/python /tmp/test-venv.txt
 
 # Browser i assety sa osobnymi galeziami od venv-buildera, zeby BuildKit mogl
