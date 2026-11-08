@@ -161,7 +161,7 @@ def test_etapy_testowe_nie_zaleza_od_calego_venv():
     assert "FROM test-venv-builder AS" not in dockerfile
     for plik in ("test-venv.txt", "playwright.txt", "assets.txt"):
         assert f"COPY --from=lock-pins /pins/{plik}" in dockerfile
-    # Zrodla Grunta: jeden COPY --parents + jeden COPY --from; lancuch kilku
-    # COPY przed RUN-em gubil cache (patrz komentarz przy test-assets-src).
-    assert "FROM scratch AS test-assets-src\n\nCOPY --parents \\\n" in dockerfile
-    assert "COPY --from=test-assets-src / ./\n" in dockerfile
+    # test-runner bierze assety z malego etapu scratch, nie z buildera
+    # (patrz komentarz przy etapie test-assets).
+    assert "FROM scratch AS test-assets\n" in dockerfile
+    assert "COPY --from=test-assets / /src/src/\n" in dockerfile

@@ -340,40 +340,6 @@ RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
 
 
 ##############################################################################
-# TEST-ASSETS-SRC: same zrodla dla Grunta, zebrane JEDNYM `COPY --parents`
-# (zachowuje sciezki) w etapie `scratch`; test-assets-builder kopiuje je
-# jednym `COPY --from` przed `grunt build`. Dlaczego nie kilkanascie COPY
-# (jak w `builder`): zmierzone na CI z registry cache — przy zmianie
-# dowolnego pliku w src/ wszystkie te COPY byly CACHED, a `RUN npx grunt`
-# i tak sie wykonywal (~45 s): BuildKit gubi trafienie RUN-a za lancuchem
-# kilku COPY z kontekstu. Jeden COPY z kontekstu + RUN trafia stabilnie
-# (jak w lock-pins). Dodajac nowy task SCSS/JS do Gruntfile.js, dopisz jego
-# zrodla tutaj (theme/admin SCSS, JS bundli esbuild, SCSS aplikacji).
-##############################################################################
-FROM scratch AS test-assets-src
-
-COPY --parents \
-     Gruntfile.js \
-     src/bpp/static/scss/ \
-     src/bpp/static/bpp/scss/ \
-     src/bpp/static/bpp/js/ \
-     src/powiazania_autorow/static/powiazania_autorow/js/ \
-     src/bpp_setup_wizard/static/bpp_setup_wizard/scss/ \
-     src/deduplikator_autorow/static/deduplikator_autorow/scss/ \
-     src/deduplikator_zrodel/static/deduplikator_zrodel/scss/ \
-     src/ewaluacja_dwudyscyplinowcy/static/ewaluacja_dwudyscyplinowcy/scss/ \
-     src/ewaluacja_liczba_n/static/ewaluacja_liczba_n/scss/ \
-     src/ewaluacja_optymalizuj_publikacje/static/ewaluacja_optymalizuj_publikacje/scss/ \
-     src/komparator_publikacji_pbn/static/komparator_publikacji_pbn/scss/ \
-     src/pbn_downloader_app/static/pbn_downloader_app/scss/ \
-     src/pbn_export_queue/static/pbn_export_queue/scss/ \
-     src/pbn_import/static/pbn_import/scss/ \
-     src/pbn_komparator_zrodel/static/pbn_komparator_zrodel/scss/ \
-     src/przemapuj_prace_autora/static/przemapuj_prace_autora/scss/ \
-     src/przemapuj_zrodla_pbn/static/przemapuj_zrodla_pbn/scss/ \
-     /
-
-##############################################################################
 # TEST-ASSETS-BUILDER: kompiluje CSS/JS poza finalnym obrazem test-runner.
 # Node pochodzi z `base`. Gruntfile (shell:linkSitePackages) tworzy symlink
 # .venv/lib/python -> site-packages venv-a z UV_PROJECT_ENVIRONMENT, bo
@@ -400,9 +366,56 @@ RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
     npx yarn install --dev --ignore-optional && \
     npx yarn add grunt
 
-COPY --from=test-assets-src / ./
+COPY Gruntfile.js ./
+# Asset-source COPYs przed Gruntem utrzymuja cache-hit, gdy zmienia sie tylko
+# Python. Dodajac nowy task SCSS/JS do Gruntfile.js, dopisz jego zrodla tutaj.
+# Theme and admin SCSS
+COPY src/bpp/static/scss/ src/bpp/static/scss/
+COPY src/bpp/static/bpp/scss/ src/bpp/static/bpp/scss/
+# JS for esbuild bundle
+COPY src/bpp/static/bpp/js/ src/bpp/static/bpp/js/
+# JS for esbuild bundle eksploratora powiazan (cytoscape-entry + moduly ES)
+COPY src/powiazania_autorow/static/powiazania_autorow/js/ \
+     src/powiazania_autorow/static/powiazania_autorow/js/
+# App-specific SCSS (keep alphabetical, mirror `builder`)
+COPY src/bpp_setup_wizard/static/bpp_setup_wizard/scss/ \
+     src/bpp_setup_wizard/static/bpp_setup_wizard/scss/
+COPY src/deduplikator_autorow/static/deduplikator_autorow/scss/ \
+     src/deduplikator_autorow/static/deduplikator_autorow/scss/
+COPY src/deduplikator_zrodel/static/deduplikator_zrodel/scss/ \
+     src/deduplikator_zrodel/static/deduplikator_zrodel/scss/
+COPY src/ewaluacja_dwudyscyplinowcy/static/ewaluacja_dwudyscyplinowcy/scss/ \
+     src/ewaluacja_dwudyscyplinowcy/static/ewaluacja_dwudyscyplinowcy/scss/
+COPY src/ewaluacja_liczba_n/static/ewaluacja_liczba_n/scss/ \
+     src/ewaluacja_liczba_n/static/ewaluacja_liczba_n/scss/
+COPY src/ewaluacja_optymalizuj_publikacje/static/ewaluacja_optymalizuj_publikacje/scss/ \
+     src/ewaluacja_optymalizuj_publikacje/static/ewaluacja_optymalizuj_publikacje/scss/
+COPY src/komparator_publikacji_pbn/static/komparator_publikacji_pbn/scss/ \
+     src/komparator_publikacji_pbn/static/komparator_publikacji_pbn/scss/
+COPY src/pbn_downloader_app/static/pbn_downloader_app/scss/ \
+     src/pbn_downloader_app/static/pbn_downloader_app/scss/
+COPY src/pbn_export_queue/static/pbn_export_queue/scss/ \
+     src/pbn_export_queue/static/pbn_export_queue/scss/
+COPY src/pbn_import/static/pbn_import/scss/ \
+     src/pbn_import/static/pbn_import/scss/
+COPY src/pbn_komparator_zrodel/static/pbn_komparator_zrodel/scss/ \
+     src/pbn_komparator_zrodel/static/pbn_komparator_zrodel/scss/
+COPY src/przemapuj_prace_autora/static/przemapuj_prace_autora/scss/ \
+     src/przemapuj_prace_autora/static/przemapuj_prace_autora/scss/
+COPY src/przemapuj_zrodla_pbn/static/przemapuj_zrodla_pbn/scss/ \
+     src/przemapuj_zrodla_pbn/static/przemapuj_zrodla_pbn/scss/
 
 RUN npx grunt build-non-interactive
+
+# TEST-ASSETS: sam wynik Grunta (drzewo /src/src: zrodla assetow + CSS/JS)
+# w jednej malej warstwie. test-runner kopiuje stad, a nie wprost z
+# test-assets-builder: przy kazdej zmianie w src/ krok `COPY --from` w
+# test-runnerze wykonuje sie od nowa i BuildKit musi miec lokalnie snapshot
+# zrodla. Z test-assets-builder oznaczalo to sciaganie z cache calego
+# python:trixie + node_modules (~35 s na CI, zmierzone), mimo ze Grunt byl
+# CACHED; z tego etapu — kilka MB.
+FROM scratch AS test-assets
+COPY --from=test-assets-builder /src/src/ /
 
 
 ##############################################################################
@@ -468,7 +481,7 @@ WORKDIR /src
 # Pelne zrodlo oraz gotowe CSS/JS z osobnego buildera. Drugi COPY nadpisuje
 # tylko poddrzewa assetow i dodaje gitignored wyniki Grunta.
 COPY src/ /src/src/
-COPY --from=test-assets-builder /src/src/ /src/src/
+COPY --from=test-assets / /src/src/
 COPY baseline-sql/ /src/baseline-sql/
 COPY conftest.py pytest.ini Makefile pyproject.toml uv.lock docker-bake.hcl /src/
 COPY docker/bpp_base/Dockerfile /src/docker/bpp_base/Dockerfile
