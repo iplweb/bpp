@@ -28,7 +28,7 @@ from ewaluacja_optymalizacja.models.status import (
 )
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_zakoncz_nie_gubi_wspolbieznej_zmiany_task_id():
     """Po naprawie: ``zakoncz()`` nie nadpisuje współbieżnie zmienionego
     ``task_id``, bo zapisuje tylko własne pola."""
@@ -56,7 +56,7 @@ def test_zakoncz_nie_gubi_wspolbieznej_zmiany_task_id():
     assert fresh.data_zakonczenia is not None
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_stara_implementacja_calego_wiersza_gubilaby_task_id():
     """Test kontrolny: stara implementacja (``save()`` całego wiersza)
     zgubiłaby współbieżną zmianę ``task_id``. Odtwarzamy tu jej zachowanie
@@ -82,7 +82,7 @@ def test_stara_implementacja_calego_wiersza_gubilaby_task_id():
     assert fresh.task_id == "TASK-ORIGINAL"
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_zakoncz_ustawia_timestamp_jawnie():
     """Brak ``auto_now`` na modelu → ``.update()`` nie odświeżyłby żadnego
     timestampu automatycznie. Dowód, że ``data_zakonczenia`` jest ustawiany
@@ -102,7 +102,7 @@ def test_zakoncz_ustawia_timestamp_jawnie():
     assert status.data_zakonczenia is not None
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_rozpocznij_zapisuje_wlasne_pola():
     """``rozpocznij()`` po naprawie nadal poprawnie ustawia swój zestaw pól
     (w bazie i w instancji)."""

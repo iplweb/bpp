@@ -12,7 +12,7 @@ from pbn_export_queue.models import PBN_Export_Queue
 from pbn_export_queue.tasks import queue_pbn_export_batch
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_queue_pbn_export_batch_stores_uczelnia(mocker, uczelnia):
     """Batch zapisuje uczelnię (z entrypointu) na wpisach kolejki."""
     from django.contrib.auth import get_user_model

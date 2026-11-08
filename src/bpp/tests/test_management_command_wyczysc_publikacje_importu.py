@@ -25,7 +25,7 @@ def _confirm_db():
     return f"--confirm-db={connection.settings_dict['NAME']}"
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_wyczysc_publikacje_importu_deletes_publications_and_children():
     ciagle = baker.make(Wydawnictwo_Ciagle)
     zwarte = baker.make(Wydawnictwo_Zwarte)
@@ -71,7 +71,7 @@ def test_wyczysc_publikacje_importu_deletes_publications_and_children():
     assert OplatyPublikacjiLog.objects.count() == 0
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_wyczysc_publikacje_importu_dry_run_does_not_delete():
     baker.make(Wydawnictwo_Ciagle)
 
@@ -80,7 +80,7 @@ def test_wyczysc_publikacje_importu_dry_run_does_not_delete():
     assert Wydawnictwo_Ciagle.objects.count() == 1
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_wyczysc_publikacje_importu_can_clean_only_ciagle():
     baker.make(Wydawnictwo_Ciagle)
     zwarte = baker.make(Wydawnictwo_Zwarte)
@@ -96,7 +96,7 @@ def test_wyczysc_publikacje_importu_can_clean_only_ciagle():
     assert list(Wydawnictwo_Zwarte.objects.values_list("pk", flat=True)) == [zwarte.pk]
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_wyczysc_publikacje_importu_reports_progress():
     baker.make(Wydawnictwo_Ciagle, _quantity=2)
     stdout = StringIO()

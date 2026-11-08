@@ -18,7 +18,7 @@ def setup_rodzaje(db):
         baker.make(Rodzaj_Zrodla, nazwa=nazwa)
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_create_zrodla(setup_rodzaje, tmp_manifest_path):
     m = Manifest(path=tmp_manifest_path, database="db", command_args={})
     zrodla = create_zrodla(
@@ -50,7 +50,7 @@ def test_create_zrodla(setup_rodzaje, tmp_manifest_path):
     assert sorted(m.objects_for("bpp.Zrodlo")) == sorted([z.pk for z in zrodla])
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_create_wydawcy(tmp_manifest_path):
     m = Manifest(path=tmp_manifest_path, database="db", command_args={})
     wydawcy = create_wydawcy(
@@ -68,7 +68,7 @@ def test_create_wydawcy(tmp_manifest_path):
     assert Wydawca.objects.count() == 3
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_zrodla_have_synthetic_issn(setup_rodzaje, tmp_manifest_path):
     import re
 
@@ -87,7 +87,7 @@ def test_zrodla_have_synthetic_issn(setup_rodzaje, tmp_manifest_path):
         assert re.match(r"^\d{4}-\d{3}[\dX]$", z.issn)
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_zrodla_no_slug_collision_at_scale(setup_rodzaje, tmp_manifest_path):
     """AutoSlugField populate_from='nazwa' + bulk_create:
     find_unique() nie widzi instancji ze swojego batcha. Nazwa

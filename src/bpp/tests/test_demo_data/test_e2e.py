@@ -28,7 +28,7 @@ def fixtures_loaded(db):
             baker.make(model)
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_e2e_medium_scale(fixtures_loaded, tmp_path):
     """E2E srednia skala: 2 wydz × 3 jedn × 20 aut × 30 WC × 30 WZ × 3 lata."""
     manifest = tmp_path / "m.json"
@@ -68,7 +68,7 @@ def test_e2e_medium_scale(fixtures_loaded, tmp_path):
     assert Wydawnictwo_Zwarte_Autor.objects.count() >= 30
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_e2e_maly_motyw_wymusza_cyklowanie_nazw(fixtures_loaded, tmp_path):
     """E2E dla motywu z MAŁĄ pulą (wiedzmin: 6 dziedzin wydziału, 7×8=56
     kombinacji jednostek) przy skali, która wymusza cyklowanie obu pul:

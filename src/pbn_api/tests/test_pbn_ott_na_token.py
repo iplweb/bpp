@@ -72,11 +72,16 @@ def test_token_bez_kontaktu_z_pbn(uzytkownik):
     assert "przeniesiony-token" not in out
 
 
-@pytest.mark.django_db(transaction=True)
-def test_kolejka_uruchomiona_po_zapisie(uzytkownik, uczelnia):
+@pytest.mark.django_db
+def test_kolejka_uruchomiona_po_zapisie(
+    uzytkownik, uczelnia, django_capture_on_commit_callbacks
+):
+    # Kolejka startuje w ``transaction.on_commit`` — wykonujemy przechwycone
+    # callbacki zamiast prawdziwego COMMIT-u.
     with (
         patch(GET_USER_TOKEN, return_value="tajny-token-123"),
         patch(DELAY) as mock_delay,
+        django_capture_on_commit_callbacks(execute=True),
     ):
         _run("ott-1", "--user", "redaktor")
 

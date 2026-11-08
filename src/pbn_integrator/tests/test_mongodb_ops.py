@@ -338,7 +338,7 @@ class TestZapiszMongodb:
             "versions": [{"version": 1, "current": True}],
         }
 
-    @pytest.mark.django_db(transaction=True)
+    @pytest.mark.django_db
     def test_creates_new_record(self, sample_elem):
         """Should create a new record when it doesn't exist"""
         from pbn_api.models import Publication
@@ -357,7 +357,7 @@ class TestZapiszMongodb:
         # Clean up
         result.delete()
 
-    @pytest.mark.django_db(transaction=True)
+    @pytest.mark.django_db
     def test_updates_existing_record_when_versions_differ(self, sample_elem):
         """Should update existing record when versions differ"""
         from pbn_api.models import Publication

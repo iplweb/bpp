@@ -24,7 +24,7 @@ from import_dyscyplin.tests.test_views import wyslij
 # ---------------------------------------------------------------------------
 
 
-def test_usun_get_nie_kasuje(csrf_exempt_wd_app, test1_xlsx, transactional_db):
+def test_usun_get_nie_kasuje(csrf_exempt_wd_app, test1_xlsx, db):
     """GET na endpoint usuwania NIE może kasować rekordu (405)."""
     wyslij(csrf_exempt_wd_app, test1_xlsx)
     i = Import_Dyscyplin.objects.first()
@@ -37,7 +37,7 @@ def test_usun_get_nie_kasuje(csrf_exempt_wd_app, test1_xlsx, transactional_db):
     assert Import_Dyscyplin.objects.filter(pk=i.pk).exists()
 
 
-def test_usun_post_kasuje(csrf_exempt_wd_app, test1_xlsx, transactional_db):
+def test_usun_post_kasuje(csrf_exempt_wd_app, test1_xlsx, db):
     """POST (z CSRF) usuwa rekord jak dawniej."""
     wyslij(csrf_exempt_wd_app, test1_xlsx)
     i = Import_Dyscyplin.objects.first()
@@ -50,9 +50,7 @@ def test_usun_post_kasuje(csrf_exempt_wd_app, test1_xlsx, transactional_db):
     assert not Import_Dyscyplin.objects.filter(pk=i.pk).exists()
 
 
-def test_usun_post_cudzy_rekord_niewidoczny(
-    csrf_exempt_wd_app, django_user_model, transactional_db
-):
+def test_usun_post_cudzy_rekord_niewidoczny(csrf_exempt_wd_app, django_user_model, db):
     """TylkoMojeMixin: cudzy rekord jest niewidoczny (404), nie kasuje się."""
     obcy = django_user_model.objects.create_user(
         username="obcy_wlasciciel", password="x"
@@ -67,9 +65,7 @@ def test_usun_post_cudzy_rekord_niewidoczny(
     assert Import_Dyscyplin.objects.filter(pk=rec.pk).exists()
 
 
-def test_usun_post_non_member_odmowa(
-    django_app_factory, normal_django_user, transactional_db
-):
+def test_usun_post_non_member_odmowa(django_app_factory, normal_django_user, db):
     """Regresja autoryzacji: użytkownik spoza grupy dostaje odmowę."""
     app = django_app_factory(csrf_checks=False)
     app = _webtest_login(app, NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD)

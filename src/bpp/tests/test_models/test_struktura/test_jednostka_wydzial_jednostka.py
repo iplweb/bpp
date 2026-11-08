@@ -2,6 +2,7 @@ from datetime import date, datetime, timedelta
 
 import pytest
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.utils import IntegrityError
 from model_bakery import baker
 
@@ -97,7 +98,7 @@ def test_jednostka_wydzial_aktualna():
     assert j.aktualna is True
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_jednostka_before_insert():
     """Faza B (#438): trigger walidacyjny bpp_jednostka_sprawdz_uczelnia_id
     został zdjęty (federacja, Zasada #4 — bez zamiennika). Przypisanie
@@ -123,7 +124,7 @@ def test_jednostka_before_insert():
         elem.delete()
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_jednostka_wydzial_before_insert():
     """Faza B (#438): trigger bpp_jednostka_wydzial_sprawdz_uczelnia_id
     zdjęty (federacja — bez zamiennika). Przypisanie jednostki do wydziału
@@ -153,7 +154,7 @@ def test_jednostka_wydzial_before_insert():
         elem.delete()
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_jednostka_wydzial_time_trigger():
     """Sprawdź, czy nie da się przypisać jednej tej samej jednostki do dwóch
     wydziałów w tym samym czasie"""
@@ -170,18 +171,18 @@ def test_jednostka_wydzial_time_trigger():
     )
 
     jw2 = Jednostka_Rodzic(jednostka=j1, parent=w2, od=date(2001, 1, 1))
-    with pytest.raises(IntegrityError):
+    with pytest.raises(IntegrityError), transaction.atomic():
         jw2.save()
 
     jw2 = Jednostka_Rodzic(jednostka=j1, parent=w2, do=date(2001, 1, 1))
-    with pytest.raises(IntegrityError):
+    with pytest.raises(IntegrityError), transaction.atomic():
         jw2.save()
 
     for elem in u1, w1, j1, jw1:
         elem.delete()
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_jednostka_wydzial_bez_dat_do_w_przyszlosci_constraint():
     """Sprawdź, czy przypisanie daty 'do' w przyszłości da błąd"""
     u1 = baker.make(Uczelnia)
@@ -194,14 +195,14 @@ def test_jednostka_wydzial_bez_dat_do_w_przyszlosci_constraint():
         do=date.today(),
     )
 
-    with pytest.raises(IntegrityError):
+    with pytest.raises(IntegrityError), transaction.atomic():
         jw.save()
 
     for elem in u1, w1, j1:
         elem.delete()
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_jednostka_wydzial_time_trigger_delete_1():
     """Faza B (#438): stary trigger bpp_jednostka_ustaw_wydzial_aktualna
     rzucał wyjątek DB przy zmianie jednostka_id. Trigger zdjęty — zapis na

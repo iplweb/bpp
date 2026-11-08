@@ -43,7 +43,7 @@ def test_dawny_adres_nieistniejacy_autor_404_na_starcie(client):
 
 
 def test_export_to_ris_artykul_i_ksiazka(
-    transactional_db,
+    db,
     standard_data,
     wydawnictwo_ciagle,
     wydawnictwo_zwarte,
@@ -75,7 +75,7 @@ def test_export_to_ris_artykul_i_ksiazka(
 
 
 def test_export_to_ris_rozdzial_ma_typ_chap(
-    transactional_db,
+    db,
     standard_data,
     wydawnictwo_zwarte,
     denorms,

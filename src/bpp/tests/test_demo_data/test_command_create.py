@@ -29,7 +29,7 @@ def fixtures_loaded(db):
             baker.make(model)
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_command_smoke_minimal(fixtures_loaded, tmp_path):
     """Minimalny end-to-end: 1 wydz / 1 jedn / 3 aut / 3 WC / 3 WZ."""
     manifest = tmp_path / "m.json"
@@ -59,7 +59,7 @@ def test_command_smoke_minimal(fixtures_loaded, tmp_path):
     assert Wydawnictwo_Zwarte.objects.count() >= 3
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_command_preflight_fails_when_no_dyscyplina():
     """Preflight musi zlapac brak Dyscyplin_Naukowych ZANIM cokolwiek
     stworzy."""
@@ -90,7 +90,7 @@ def test_command_preflight_fails_when_no_dyscyplina():
     assert Jednostka.objects.filter(parent__isnull=True).count() == 0
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_command_aborts_without_flags_non_tty(fixtures_loaded, tmp_path):
     """Bez --yes-i-am-sure i bez TTY → SystemExit (pytest stdin non-tty)."""
     with pytest.raises(SystemExit):
@@ -108,7 +108,7 @@ def test_command_aborts_without_flags_non_tty(fixtures_loaded, tmp_path):
     assert Jednostka.objects.filter(parent__isnull=True).count() == 0
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_command_aborts_wrong_db_name(fixtures_loaded):
     """--confirm-db != rzeczywista nazwa bazy → SystemExit."""
     with pytest.raises(SystemExit):
@@ -128,7 +128,7 @@ def test_command_aborts_wrong_db_name(fixtures_loaded):
     assert Jednostka.objects.filter(parent__isnull=True).count() == 0
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_command_with_theme_and_streszczenia(fixtures_loaded, tmp_path):
     """Motyw wiedzmin + streszczenia 100% + bez prefiksu."""
     from model_bakery import baker
@@ -164,7 +164,7 @@ def test_command_with_theme_and_streszczenia(fixtures_loaded, tmp_path):
     assert Wydawnictwo_Ciagle_Streszczenie.objects.count() == 3
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_cleanup_removes_streszczenia(fixtures_loaded, tmp_path):
     from model_bakery import baker
 

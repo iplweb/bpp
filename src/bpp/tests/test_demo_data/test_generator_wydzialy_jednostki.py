@@ -10,7 +10,7 @@ from bpp.demo_data.themes.registry import get_theme
 from bpp.models import Jednostka, Uczelnia
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_create_wydzialy_creates_n_records(tmp_manifest_path, rng):
     uczelnia = baker.make(Uczelnia, nazwa="Demo — Uczelnia", skrot="DEMO")
     m = Manifest(path=tmp_manifest_path, database="db", command_args={})
@@ -36,7 +36,7 @@ def test_create_wydzialy_creates_n_records(tmp_manifest_path, rng):
     assert sorted(m.objects_for("bpp.Jednostka")) == sorted(w.pk for w in wydzialy)
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_create_wydzialy_wiecej_niz_pula_zachowuje_unikalne_nazwy(
     tmp_manifest_path, rng
 ):
@@ -67,7 +67,7 @@ def test_create_wydzialy_wiecej_niz_pula_zachowuje_unikalne_nazwy(
     assert len({w.nazwa for w in wydzialy}) == 10
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_create_jednostki_per_wydzial(tmp_manifest_path, rng):
     uczelnia = baker.make(Uczelnia, nazwa="Demo — Uczelnia", skrot="DEMO")
     m = Manifest(path=tmp_manifest_path, database="db", command_args={})
@@ -113,7 +113,7 @@ def test_create_jednostki_per_wydzial(tmp_manifest_path, rng):
     )
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_create_jednostki_wiecej_niz_pula_zachowuje_unikalne_nazwy(
     tmp_manifest_path, rng
 ):
@@ -152,7 +152,7 @@ def test_create_jednostki_wiecej_niz_pula_zachowuje_unikalne_nazwy(
     assert len({j.nazwa for j in jednostki}) == 75  # wszystkie unikalne
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_jednostki_mptt_rebuild_called(tmp_manifest_path, rng):
     uczelnia = baker.make(Uczelnia, nazwa="Demo — Uczelnia", skrot="DEMO")
     m = Manifest(path=tmp_manifest_path, database="db", command_args={})

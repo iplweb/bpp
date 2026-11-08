@@ -255,7 +255,7 @@ def _wiersz_wyroznienia(autor, wydawnictwo, jednostka, denorms):
 def test_wyroznienie_i_usuniecie_pracy_trafia_do_historii(
     client,
     django_user_model,
-    transactional_db,
+    db,
     standard_data,
     wydawnictwo_zwarte,
     autor_jan_nowak,
@@ -289,7 +289,7 @@ def test_wyroznienie_i_usuniecie_pracy_trafia_do_historii(
 
 
 def test_przesun_bez_zmiany_kolejnosci_nie_tworzy_wersji(
-    client, django_user_model, transactional_db, standard_data, autor_jan_nowak
+    client, django_user_model, db, standard_data, autor_jan_nowak
 ):
     _zaloguj_jako_autora(client, django_user_model, autor_jan_nowak)
     resp = client.post(

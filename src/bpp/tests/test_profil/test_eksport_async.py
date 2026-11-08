@@ -53,7 +53,7 @@ def _zbuduj_autora_z_pracami(
 
 
 def test_generuj_eksport_autora_bibtex(
-    transactional_db,
+    db,
     standard_data,
     wydawnictwo_ciagle,
     wydawnictwo_zwarte,
@@ -86,7 +86,7 @@ def test_generuj_eksport_autora_bibtex(
 
 
 def test_generuj_eksport_autora_ris(
-    transactional_db,
+    db,
     standard_data,
     wydawnictwo_ciagle,
     wydawnictwo_zwarte,
@@ -118,7 +118,7 @@ def test_generuj_eksport_autora_ris(
 
 def test_status_view_pending_pokazuje_postep(
     client,
-    transactional_db,
+    db,
     standard_data,
     autor_jan_nowak,
 ):
@@ -134,7 +134,7 @@ def test_status_view_pending_pokazuje_postep(
 
 def test_status_view_completed_pokazuje_link_pobierania(
     client,
-    transactional_db,
+    db,
     standard_data,
     autor_jan_nowak,
 ):
@@ -152,7 +152,7 @@ def test_status_view_completed_pokazuje_link_pobierania(
 
 def test_status_view_hx_request_zwraca_partial(
     client,
-    transactional_db,
+    db,
     standard_data,
     autor_jan_nowak,
 ):
@@ -169,7 +169,7 @@ def test_status_view_hx_request_zwraca_partial(
 
 def test_download_view_completed(
     client,
-    transactional_db,
+    db,
     standard_data,
     autor_jan_nowak,
 ):
@@ -189,7 +189,7 @@ def test_download_view_completed(
 
 def test_download_view_niezakonczony_404(
     client,
-    transactional_db,
+    db,
     standard_data,
     autor_jan_nowak,
 ):
@@ -203,7 +203,7 @@ def test_download_view_niezakonczony_404(
 
 def test_download_view_nieznany_pk_404(
     client,
-    transactional_db,
+    db,
     standard_data,
 ):
     import uuid
@@ -215,7 +215,7 @@ def test_download_view_nieznany_pk_404(
 
 def test_widoki_dzialaja_dla_anonima(
     client,
-    transactional_db,
+    db,
     standard_data,
     autor_jan_nowak,
     mocker,

@@ -29,7 +29,7 @@ def fixtures_loaded(db):
             baker.make(model)
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_roundtrip_create_then_cleanup(fixtures_loaded, tmp_path):
     """Tworzymy demo, kasujemy, sprawdzamy ze swiadek przezyl."""
     manifest = tmp_path / "m.json"
@@ -79,7 +79,7 @@ def test_roundtrip_create_then_cleanup(fixtures_loaded, tmp_path):
     assert len(applied) == 1
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_cleanup_aborts_when_manifest_database_mismatch(fixtures_loaded, tmp_path):
     """Manifest z innej bazy → SystemExit zanim cokolwiek skasujemy."""
     from bpp.demo_data.manifest import Manifest
@@ -110,7 +110,7 @@ def test_cleanup_aborts_when_manifest_database_mismatch(fixtures_loaded, tmp_pat
     assert fake_manifest.path.exists()  # manifest NIE zostal przeniesiony
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_cleanup_aborts_wrong_db(fixtures_loaded, tmp_path):
     """Zla nazwa bazy w --confirm-db → SystemExit, manifest NIE
     renamowany, dane NIE usuniete."""

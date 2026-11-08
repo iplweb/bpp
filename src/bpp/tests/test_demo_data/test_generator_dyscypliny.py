@@ -55,7 +55,7 @@ def setup(tmp_manifest_path, db):
     return m, a
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_100_percent_full_coverage(setup):
     m, autorzy = setup
     create_autor_dyscypliny(
@@ -81,7 +81,7 @@ def test_100_percent_full_coverage(setup):
     )
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_50_percent_coverage(setup):
     m, autorzy = setup  # 20 autorow
     create_autor_dyscypliny(
@@ -100,7 +100,7 @@ def test_50_percent_coverage(setup):
     assert 5 <= autorzy_z_dysc <= 15
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_subdyscyplina_assigned(setup):
     m, autorzy = setup
     create_autor_dyscypliny(
@@ -121,7 +121,7 @@ def test_subdyscyplina_assigned(setup):
     )
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_zmiana_dyscypliny_w_2022(setup):
     m, autorzy = setup
     create_autor_dyscypliny(
@@ -143,7 +143,7 @@ def test_zmiana_dyscypliny_w_2022(setup):
             assert d_przed.dyscyplina_naukowa_id != d_po.dyscyplina_naukowa_id
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_manifest_pks_match(setup):
     m, autorzy = setup
     create_autor_dyscypliny(
