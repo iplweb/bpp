@@ -7,10 +7,12 @@ from bpp.tests import normalize_html
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("klass", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
-def test_changelist_no_argument(klass, channels_live_server, admin_page: Page):
+def test_changelist_no_argument(klass, admin_client):
+    # Komunikat renderuje szablon change_list.html po stronie serwera, więc
+    # przeglądarka (Playwright + Daphne) nie jest tu potrzebna.
     url = f"admin:bpp_{klass}_autor_changelist"
-    admin_page.goto(channels_live_server.url + reverse(url))
-    assert "Musisz wejść w edycję" in normalize_html(admin_page.content())
+    res = admin_client.get(reverse(url))
+    assert "Musisz wejść w edycję" in normalize_html(res.content.decode())
 
 
 @pytest.mark.django_db
