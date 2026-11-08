@@ -488,26 +488,37 @@ django-pbn-client = { git = "https://github.com/iplweb/django-pbn-client.git", r
 # startuje kontenery PG/Redis przed importem Django settings i wstrzykuje
 # host:port do os.environ. Zastepuje wewnetrzny `src/testcontainers_bpp/`.
 #
-# - `postgres_image`: zachowujemy wlasny obraz BPP (ma plpython3u i locale
-#   pl_PL.UTF-8) zamiast vanilla `postgres:16` — schemat i dane zaleza
-#   od tego.
+# - `postgres_image`: stockowy postgres, wersja przypieta (zmiana minor =
+#   swiadomy bump). Testy nie potrzebuja plpython3u (usuniety w 0442) ani
+#   locale pl_PL (0443) — polskie sortowanie daje ICU. Ta sama wersja
+#   w docker-compose.test.yml (CI). Obraz iplweb/bpp_dbserver zostaje
+#   tylko do budowy baseline od zera (PG_BASELINE w settings/base.py).
 # - `postgres_init_scripts`: baseline.sql jest mountowany do
 #   /docker-entrypoint-initdb.d/, dzieki czemu jest replayowany przez
 #   entrypoint Postgresa zanim TCP zacznie akceptowac polaczenia. Razem
 #   z `db_test_template_env` daje "instant" tworzenie test-DB przez
 #   CREATE DATABASE WITH TEMPLATE.
+# - `docker/test-db/test-fast.sql` leci PRZED baseline (plugin numeruje
+#   skrypty wg kolejnosci na liscie) i przez ALTER SYSTEM ustawia caly
+#   tuning testowy (fsync=off, shared_buffers=1GB, jit=off, locki...).
+# - `postgres_env`: ICU pl-PL (sortowanie), `--no-sync` (initdb bez fsync),
+#   `--no-data-checksums` (PG18+ domyslnie wlacza checksumy), `trust`
+#   (stockowy obraz bez hasla/trust nie wystartuje; kontener jest ulotny).
 # - `db_*_env`: nazwy zmiennych srodowiskowych ktore plugin pisze do
 #   os.environ. Pasuja do tych, ktore Django settings (`base.py`) czyta
 #   przez `env(...)`.
 # - `redis_enabled`: BPP wymaga Redisa do testow (channels, cacheops).
 [tool.pytest-testcontainers-django]
-postgres_image = "iplweb/bpp_dbserver:psql-16.13"
+postgres_image = "postgres:18.6"
 postgres_user = "bpp"
 postgres_password = "password"
 postgres_database = "bpp"
-postgres_init_scripts = ["baseline-sql/baseline.sql"]
+postgres_init_scripts = [
+    "docker/test-db/test-fast.sql",
+    "baseline-sql/baseline.sql",
+]
 postgres_template = "bpp"
-postgres_env = { POSTGRESQL_UNSAFE_BUT_FAST = "1", POSTGRESQL_MAX_LOCKS_PER_TRANSACTION = "512" }
+postgres_env = { POSTGRES_INITDB_ARGS = "--locale-provider=icu --icu-locale=pl-PL --no-sync --no-data-checksums", POSTGRES_HOST_AUTH_METHOD = "trust" }
 db_host_env = "DJANGO_BPP_DB_HOST"
 db_port_env = "DJANGO_BPP_DB_PORT"
 db_name_env = "DJANGO_BPP_DB_NAME"
