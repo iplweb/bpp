@@ -25,11 +25,10 @@ from bpp.models import (
 
 @pytest.fixture
 def slowniki(db):
-    # Baseline migracji 0035 ladujac fixtures (charakter_formalny.json,
-    # jezyk.json, status_korekty.json) — wiec uzywamy get_or_create po
-    # unikalnym kluczu (skrot/nazwa) zeby nie kolidowac. Typ_KBN i
-    # Typ_Odpowiedzialnosci NIE sa w baseline (komentarze w 0035.py
-    # wskazuja ze sa ladowane pozniej / przez migracje 0067).
+    # Baseline (baseline-sql/baseline.sql) zawiera juz slowniki, w tym
+    # Charakter_Formalny, Jezyk, Status_Korekty, Typ_KBN i
+    # Typ_Odpowiedzialnosci — wiec uzywamy get_or_create po unikalnym
+    # kluczu (skrot/nazwa), zeby nie kolidowac z istniejacymi wierszami.
     Charakter_Formalny.objects.get_or_create(skrot="KS", defaults={"nazwa": "Książka"})
     Charakter_Formalny.objects.get_or_create(
         skrot="ROZ", defaults={"nazwa": "Rozdział książki"}

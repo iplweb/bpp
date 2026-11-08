@@ -65,6 +65,36 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
     apt-get install -y nodejs
 
 ##############################################################################
+# LOCK-PINS: wyciaga z pyproject.toml + uv.lock TYLKO to, czego potrzebuja
+# etapy testowe, jako male pliki tekstowe. Sam ten etap przebudowuje sie przy
+# kazdej zmianie pyproject.toml/uv.lock (to tanie: zero sieci, ~1 s), ale
+# BuildKit liczy cache `COPY --from=lock-pins` po TRESCI kopiowanego pliku —
+# wiec gdy wynik jest bajt-w-bajt taki sam, etapy ponizej zostaja CACHED:
+#  - test-venv.txt — `uv export` (wszystkie extras + grupy, z hashami): zmiana
+#    komentarza / konfiguracji ruff, towncrier, pytest w pyproject.toml nie
+#    przebudowuje testowego venv-a,
+#  - playwright.txt — sama wersja Playwrighta: przegladarki pobieraja sie
+#    ponownie tylko przy podbiciu Playwrighta, nie przy kazdej zmianie locka,
+#  - assets.txt — paczki Pythona, z ktorych esbuild bierze pliki JS
+#    (importy `.venv/lib/python/site-packages/...` w bundle-entry.js): Grunt
+#    nie zalezy od calego venv-a. Dodajac w bundle-entry.js import z nowej
+#    paczki, dopisz ja tutaj (inaczej esbuild padnie z "Could not resolve").
+# Etap NIE jest uzywany przez obrazy produkcyjne (builder/runtime).
+##############################################################################
+FROM base AS lock-pins
+
+WORKDIR /lock
+COPY pyproject.toml uv.lock docker/bpp_base/lock-pins.py ./
+RUN mkdir /pins && \
+    python lock-pins.py uv.lock playwright > /pins/playwright.txt && \
+    python lock-pins.py uv.lock \
+        django-autocomplete-light django-channels-broadcast \
+        django-cookie-law django-session-security > /pins/assets.txt && \
+    uv export --quiet --frozen --all-extras --all-groups --no-emit-project \
+        --no-editable --no-header --no-annotate \
+        --output-file /pins/test-venv.txt
+
+##############################################################################
 # BUILDER: production build (bakes source into image)
 ##############################################################################
 FROM base AS builder
@@ -278,39 +308,67 @@ RUN find /app/.venv -type d -name __pycache__ -exec rm -rf {} + \
 # w obrazie testowym.
 FROM base AS test-venv-builder
 
-ENV UV_PROJECT_ENVIRONMENT=/opt/venv
-
-WORKDIR /build
-COPY pyproject.toml uv.lock ./
+# Instalacja z `uv export` (etap lock-pins), a nie `uv sync` z pyproject.toml:
+# venv zalezy wylacznie od listy zaleznosci z hashami, wiec zmiany w
+# pyproject.toml niebedace zaleznosciami (komentarze, [tool.*]) go nie
+# przebudowuja. Zestaw pakietow jest ten sam co przy `uv sync --frozen
+# --all-extras --all-groups --no-install-project --no-editable`; uv
+# weryfikuje hashe z eksportu (git-owe zaleznosci sa przypiete do SHA).
+# `--prompt bpp-iplweb` = to, co ustawia `uv sync` (nazwa projektu), zeby
+# /opt/venv/pyvenv.cfg byl identyczny jak przy dawnym `uv sync`.
+COPY --from=lock-pins /pins/test-venv.txt /tmp/test-venv.txt
 RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
-    uv sync --frozen --all-extras \
-        --all-groups --no-install-project --no-editable
+    uv venv --python /usr/local/bin/python --prompt bpp-iplweb /opt/venv && \
+    uv pip sync --python /opt/venv/bin/python /tmp/test-venv.txt
 
 # Browser i assety sa osobnymi galeziami od venv-buildera, zeby BuildKit mogl
-# pobierac Playwrighta i kompilowac frontend rownolegle.
-FROM test-venv-builder AS test-browser-builder
+# pobierac Playwrighta i kompilowac frontend rownolegle. Oba startuja z `base`
+# (nie z test-venv-builder) i dostaja z lock-pins tylko swoje kilka pakietow.
+#
+# Przegladarki zaleza wylacznie od wersji Playwrighta (ta sama, co w /opt/venv
+# test-runnera — oba pochodza z tego samego uv.lock). Playwright do samego
+# `install` nie potrzebuje swoich zaleznosci (greenlet, pyee), stad --no-deps.
+FROM base AS test-browser-builder
 
+COPY --from=lock-pins /pins/playwright.txt /tmp/playwright.txt
 # Playwright w CI zawsze dziala headless. `--only-shell` nie pobiera pelnego
 # Chromium (~setki MB), tylko Chromium Headless Shell uzywany przez pytest.
-RUN PLAYWRIGHT_BROWSERS_PATH=/opt/playwright \
-    /opt/venv/bin/playwright install --only-shell chromium
+RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
+    uv venv --python /usr/local/bin/python /opt/playwright-cli && \
+    uv pip install --python /opt/playwright-cli/bin/python \
+        --no-deps --require-hashes -r /tmp/playwright.txt && \
+    PLAYWRIGHT_BROWSERS_PATH=/opt/playwright \
+    /opt/playwright-cli/bin/playwright install --only-shell chromium
 
 
 ##############################################################################
 # TEST-ASSETS-BUILDER: kompiluje CSS/JS poza finalnym obrazem test-runner.
-# Dziedziczy Node z `base` i venv z `test-venv-builder`, bo Gruntfile tworzy
-# symlink do site-packages dla bundle-entry.js. Do finalnego obrazu kopiujemy
-# tylko gotowe pliki z /src/src — bez Node, Yarn, Grunta i node_modules.
+# Node pochodzi z `base`. Gruntfile (shell:linkSitePackages) tworzy symlink
+# .venv/lib/python -> site-packages venv-a z UV_PROJECT_ENVIRONMENT, bo
+# bundle-entry.js importuje pliki JS z kilku paczek Pythona — dlatego budujemy
+# minimalny venv TYLKO z tymi paczkami (assets.txt z lock-pins), pod ta sama
+# sciezka /opt/venv co pelny venv (identyczne sciezki = identyczne bundle i
+# source mapy). Do finalnego obrazu kopiujemy tylko gotowe pliki z /src/src —
+# bez Node, Yarn, Grunta i node_modules.
 ##############################################################################
-FROM test-venv-builder AS test-assets-builder
+FROM base AS test-assets-builder
+
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
+
+COPY --from=lock-pins /pins/assets.txt /tmp/assets.txt
+RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
+    uv venv --python /usr/local/bin/python /opt/venv && \
+    uv pip install --python /opt/venv/bin/python \
+        --no-deps --require-hashes -r /tmp/assets.txt
 
 WORKDIR /src
-COPY package.json yarn.lock Gruntfile.js ./
+COPY package.json yarn.lock ./
 RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
     --mount=type=cache,target=/root/.yarn,id=yarn-cache \
     npx yarn install --dev --ignore-optional && \
     npx yarn add grunt
 
+COPY Gruntfile.js ./
 # Asset-source COPYs przed Gruntem utrzymuja cache-hit, gdy zmienia sie tylko
 # Python. Dodajac nowy task SCSS/JS do Gruntfile.js, dopisz jego zrodla tutaj.
 # Theme and admin SCSS
@@ -350,6 +408,16 @@ COPY src/przemapuj_zrodla_pbn/static/przemapuj_zrodla_pbn/scss/ \
      src/przemapuj_zrodla_pbn/static/przemapuj_zrodla_pbn/scss/
 
 RUN npx grunt build-non-interactive
+
+# TEST-ASSETS: sam wynik Grunta (drzewo /src/src: zrodla assetow + CSS/JS)
+# w jednej malej warstwie. test-runner kopiuje stad, a nie wprost z
+# test-assets-builder: przy kazdej zmianie w src/ krok `COPY --from` w
+# test-runnerze wykonuje sie od nowa i BuildKit musi miec lokalnie snapshot
+# zrodla. Z test-assets-builder oznaczalo to sciaganie z cache calego
+# python:trixie + node_modules (~35 s na CI, zmierzone), mimo ze Grunt byl
+# CACHED; z tego etapu — kilka MB.
+FROM scratch AS test-assets
+COPY --from=test-assets-builder /src/src/ /
 
 
 ##############################################################################
@@ -415,7 +483,7 @@ WORKDIR /src
 # Pelne zrodlo oraz gotowe CSS/JS z osobnego buildera. Drugi COPY nadpisuje
 # tylko poddrzewa assetow i dodaje gitignored wyniki Grunta.
 COPY src/ /src/src/
-COPY --from=test-assets-builder /src/src/ /src/src/
+COPY --from=test-assets / /src/src/
 COPY baseline-sql/ /src/baseline-sql/
 COPY conftest.py pytest.ini Makefile pyproject.toml uv.lock docker-bake.hcl /src/
 COPY docker/bpp_base/Dockerfile /src/docker/bpp_base/Dockerfile

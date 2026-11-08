@@ -66,8 +66,8 @@ jobs:
       # actions:read (bez tego gh zwróci 403 → fallback na testowanie).
       actions: read
     env:
-      # Ten sam obraz-cache co tests.yml — RC grzeje się z tego samego
-      # rejestrowego cache'u i odwrotnie.
+      # To samo repo obrazów co tests.yml; cache RC czyta m.in. z
+      # `:cache-dev` (szczegóły przy kroku build&push niżej).
       IMAGE_REPO: ghcr.io/iplweb/bpp-test-runner
       PYTHON_VERSION: "3.12"
       DEBIAN_VERSION: trixie
@@ -273,6 +273,24 @@ jobs:
         run: |
           echo "image=${IMAGE_REPO}:sha-${RC_SHA}" >> "$GITHUB_OUTPUT"
 
+      - name: Wybierz zrodlo cache test-runnera
+        id: cache
+        if: ${{ !inputs.skip_tests && steps.bump.outputs.should_test == 'true' }}
+        # Jedno zrodlo `cache-from` (pierwszy istniejacy z: `:cache-release`,
+        # `:cache-dev`, stary `:cache`) — dlaczego nie kilka naraz: patrz
+        # krok "Compute cache tag" w tests.yml.
+        run: |
+          from="${IMAGE_REPO}:cache-release"
+          for ref in "${IMAGE_REPO}:cache-release" "${IMAGE_REPO}:cache-dev" \
+                     "${IMAGE_REPO}:cache"; do
+            if docker buildx imagetools inspect --raw "$ref" >/dev/null 2>&1; then
+              from="$ref"
+              break
+            fi
+          done
+          echo "cache-from: ${from}"
+          echo "from=${from}" >> "$GITHUB_OUTPUT"
+
       - name: Build & push obrazu test-runner
         if: ${{ !inputs.skip_tests && steps.bump.outputs.should_test == 'true' }}
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -293,9 +311,13 @@ jobs:
             # obraz zawierał zbumpowane źródła RC (uv.lock = dev-owy,
             # niezmieniony — patrz krok bump: RC nie re-lockuje).
             GIT_SHA=${{ steps.bump.outputs.rc_sha }}
-          # Rejestrowy cache współdzielony z tests.yml (ten sam IMAGE_REPO).
-          cache-from: type=registry,ref=${{ env.IMAGE_REPO }}:cache
-          cache-to: type=registry,ref=${{ env.IMAGE_REPO }}:cache,mode=max
+          # Rejestrowy cache w tym samym IMAGE_REPO co tests.yml, ale z
+          # własnym tagiem `:cache-release` (RC-y idą sekwencyjnie —
+          # concurrency `release`). Nie piszemy do `:cache-dev`, żeby RC nie
+          # nadpisywał cache'u gałęzi dev. Odczyt: krok wyżej (zwykle
+          # `:cache-release`, przy pierwszym RC `:cache-dev`).
+          cache-from: type=registry,ref=${{ steps.cache.outputs.from }}
+          cache-to: type=registry,ref=${{ env.IMAGE_REPO }}:cache-release,mode=max
 
       - name: Push gałęzi wydania
         # Bez `if:` → biegnie gdy poprzednie kroki OK (bump + opcjonalny build).
