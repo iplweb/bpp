@@ -279,3 +279,28 @@ Zrzut konfiguracji z Fazy 0 (`pg_settings`, zamrożony obraz):
 `max_parallel_workers_per_gather=4`, `jit=on`, `autovacuum=on`,
 `fsync/synchronous_commit/full_page_writes=off`. Baza `bpp`: ICU `pl-PL`,
 32 MB, języki: `internal, c, sql, plpgsql` (bez `plpython3u`).
+
+## Profil pełnej suity i poprawki po stronie testów (2026-11-08)
+
+Profil: py-spy na wszystkich workerach (`-n 12`, PG18) + `pg_stat_statements`.
+Udział w czasie aktywnej pracy workerów (inclusive, nakładają się):
+
+| Pozycja | Udział | Co zrobiono |
+|---------|--------|-------------|
+| fixture `charaktery_formalne` (delete + ponowne wstawienie 27 rekordów MPTT w każdym teście) | ~13% | aktualizacja w miejscu jednym `bulk_update`; stara ścieżka tylko gdy rekordów brakuje (po TRUNCATE) |
+| zbieranie testów w każdym workerze | ~15% | — (do zbadania: importy na poziomie modułów) |
+| flush po testach transakcyjnych (196 × TRUNCATE ~266 ms + reinstalacja triggerów denorm: 34 tys. DROP TRIGGER, 32 tys. CREATE) | ~10% | reinstalacja triggerów denorm odpięta na czas flusha (`src/conftest.py`) |
+| easyaudit (sygnały `pre_save`/`post_save`) | ~9% | **zostaje** — bez niego w testach psuły się rzeczy, które potem padały na produkcji |
+| GC (`gc-steward` co 25 testów + `gc_collect_harder` pytesta) | ~8% | `gc_steward_every = 100` |
+| roundtripy do PG przez `docker-proxy` (1,65 mln zapytań, w tym 566 tys. SAVEPOINT/RELEASE) | ~2 s suity | — (za mały zysk) |
+| Redis | 1234 komendy na całą suitę | — |
+
+Przy okazji: fixture ustawiał `charakter_ogolny = ROZDZIAL` na obiekcie
+książki (KSP, już zapisanym) zamiast rozdziału (ROZ) — naprawione.
+
+Wynik (pełna suita bez Playwright, `-n 12`, PG18, 11241 passed):
+
+| | pytest | wall | RSS workerów (peak) |
+|---|---|---|---|
+| przed (3 przebiegi) | 147,3 / 150,5 / 151,9 s | 158–162 s | 585–664 MB |
+| po (2 przebiegi) | 137,5 / 125,7 s | 149 / 138 s | 602–698 MB |
