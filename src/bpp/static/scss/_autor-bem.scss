@@ -38,10 +38,6 @@
     margin-bottom: 30px;
   }
 
-  &__quick-actions-form {
-    display: inline;
-  }
-
   // Show all works button
   &__show-all-btn {
     background: #27ae60;
@@ -165,17 +161,25 @@
     background: white;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    padding: 30px;
+    padding: 1.5rem 1.75rem;
+    // Wejście wprost z #wyszukaj-publikacje-autora: nie chowaj pod sticky belką.
+    scroll-margin-top: 8rem;
     margin-bottom: 30px;
   }
 
   &__search-header {
-    margin-bottom: 25px;
+    margin-bottom: 1.25rem;
   }
 
   &__search-title {
     color: #2c3e50;
     margin-bottom: 5px;
+
+    // Fokus ustawia skrypt po skoku z „Pokaż wszystkie prace” (dla czytników
+    // ekranu i klawiatury) — obwódka wokół nagłówka byłaby tu tylko szumem.
+    &:focus {
+      outline: none;
+    }
   }
 
   &__search-subtitle {
@@ -184,16 +188,91 @@
     font-size: 0.9rem;
   }
 
-  // Search card
-  &__search-card {
-    margin-bottom: 20px;
-    border: 1px solid #e9ecef;
+  // Formularz wyszukiwania: kolejne filtry (fieldsety) jeden pod drugim,
+  // każdy z tytułem w jednej linii z ikoną.
+  &__filtr {
+    margin: 0 0 1.25rem;
   }
 
-  &__search-card-title {
+  &__filtr-tytul {
+    display: block;
+    margin-bottom: 0.5rem;
     color: #2c3e50;
-    margin-bottom: 15px;
+    font-size: 0.9rem;
     font-weight: 600;
+  }
+
+  // „Chipy”: <label> z ukrytym (ale fokusowalnym) checkboxem i <span>-em,
+  // który jest widoczną pigułką i pokazuje stan zaznaczenia.
+  &__chipy {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  // Lata: równa siatka — rok pod rokiem, bez poszarpanych rzędów.
+  &__chipy--lata {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  }
+
+  &__chip {
+    position: relative;
+    margin: 0;
+
+    // [type] podbija specyficzność ponad globalne input[type=checkbox]
+    // (position: relative), które inaczej wygrywa kolejnością w CSS.
+    input[type="checkbox"] {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1px;
+      height: 1px;
+      margin: 0;
+      opacity: 0;
+    }
+
+    span {
+      display: block;
+      padding: 0.3rem 0.85rem;
+      border: 1px solid #ced4da;
+      border-radius: 999px;
+      background: #fff;
+      color: #2c3e50;
+      font-size: 0.875rem;
+      line-height: 1.4;
+      text-align: center;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    &:hover span {
+      border-color: $primary-color;
+    }
+
+    input:checked + span {
+      background: $primary-color;
+      border-color: $primary-color;
+      color: #fff;
+    }
+
+    input:focus-visible + span {
+      outline: 2px solid $anchor-color;
+      outline-offset: 2px;
+    }
+  }
+
+  // Jednostki: lista w kolumnach (na szerokim ekranie dwie).
+  &__jednostki {
+    margin: 0;
+    columns: 2 22rem;
+    column-gap: 2rem;
+
+    > li {
+      break-inside: avoid;
+    }
   }
 
   // Checkbox items
@@ -212,15 +291,6 @@
       flex: 1 1 auto;
       min-width: 0;
     }
-  }
-
-  // Rok w wyszukiwarce: checkbox i rok ZAWSZE w jednej linii (flex + nowrap),
-  // nigdy checkbox nad rokiem — niezależnie od szerokości kolumny.
-  &__checkbox-item--year {
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    white-space: nowrap;
   }
 
   &__checkbox {
@@ -242,31 +312,30 @@
     font-size: 0.9rem;
   }
 
-  // Report title input
-  &__title-input {
-    margin-bottom: 0;
-    border: 1px solid #e9ecef;
-    border-radius: 4px;
-  }
-
-  &__title-hint {
-    color: #7f8c8d;
-    font-style: italic;
-  }
-
-  // Search button section
-  &__search-button-section {
+  // Stopka formularza: tytuł wyników (rozciągnięty) + przycisk „Szukaj”.
+  &__search-stopka {
     display: flex;
     flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-    gap: 0.75rem;
-    margin-top: 25px;
-    padding-top: 20px;
+    align-items: flex-end;
+    gap: 0.75rem 1rem;
+    margin-top: 0.5rem;
+    padding-top: 1.25rem;
     border-top: 1px solid #e9ecef;
   }
 
+  &__title-pole {
+    flex: 1 1 18rem;
+    margin: 0;
+  }
+
+  &__title-input {
+    margin-bottom: 0;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+  }
+
   &__search-btn {
+    margin-bottom: 0;
     background: $primary-color;
     border: none;
     padding: 15px 30px;
@@ -453,10 +522,21 @@
     }
   }
 
-  // Podsumowanie dorobku — trzy kafelki z dużą liczbą i podpisem
+  // Podsumowanie dorobku — trzy kafelki z dużą liczbą i podpisem.
+  // CSS grid zamiast grid-margin-x Foundation: bez ujemnych marginesów
+  // i height:100%, na których Firefox pod Linuksem (szersze fonty)
+  // wypychał kafle poza kolumnę. minmax(0, 1fr) + min-width: 0 — kafel
+  // nigdy nie rośnie ponad swoją kolumnę, za długa liczba się zawinie.
+  &__podsumowanie {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+    gap: 0.75rem;
+  }
+
   &__podsumowanie-kafel {
-    height: 100%;
-    margin-bottom: 0.5rem;
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
     text-align: center;
     // Treść wyśrodkowana w pionie — kafle w rzędzie mają równą wysokość,
     // a podpisy bywają różnej długości (zawijają się).

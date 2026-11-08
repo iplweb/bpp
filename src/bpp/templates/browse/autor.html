@@ -53,21 +53,16 @@
     </div>
 {% endif %}
 
-{# Quick Actions (full-width): pokaż wszystkie prace + sieć powiązań #}
+{# Quick Actions (full-width): skok do wyszukiwarki prac + sieć powiązań. #}
+{# „Pokaż wszystkie prace” przewija do sekcji „Wyszukaj publikacje autora” #}
+{# (sekcja obowiązkowa profilu) — tam „Szukaj” bez filtrów = wszystkie prace. #}
+{# Przewijanie z poprawką na sticky header: autor-strona.js. #}
 <div class="autor-page__quick-actions">
-    <form method="post"
-          action="{% url "bpp:browse_build_search" %}"
-          class="autor-page__quick-actions-form">
-        {# Brak {% csrf_token %} celowo: BuildSearch jest @csrf_exempt (zapis #}
-        {# tylko do własnej sesji), dzięki czemu ta strona wchodzi do #}
-        {# cache_publiczny. Patrz docstring BuildSearch w views/browse.py. #}
-        <input type="hidden" name="autor" value="{{ autor.pk }}"/>
-        <input type="hidden" name="suggested-title" value="{{ autor }}"/>
-        <button type="submit"
-                class="button primary large autor-page__show-all-btn">
-            <i class="fi-list-bullet autor-page__icon--mr-lg"></i>Pokaż wszystkie prace
-        </button>
-    </form>
+    <a href="#wyszukaj-publikacje-autora"
+       data-przewin-do="wyszukaj-publikacje-autora"
+       class="button primary large autor-page__show-all-btn">
+        <i class="fi-list-bullet autor-page__icon--mr-lg"></i>Pokaż wszystkie prace
+    </a>
     {% if ma_powiazania %}
         <a href="{% url 'bpp:browse_autor_powiazania' autor.pk %}"
            class="button primary large autor-page__show-all-btn autor-page__network-btn">
