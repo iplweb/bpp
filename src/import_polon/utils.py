@@ -1,8 +1,6 @@
 import os.path
 import sys
 
-import numpy as np
-import pandas as pd
 import rollbar
 
 # Znak wstawiany w miejsce wyciętego środka nazwy pliku.
@@ -46,6 +44,11 @@ def skroc_nazwe_pliku(sciezka, limit=36):
 
 
 def read_excel_or_csv_dataframe_guess_encoding(fn, header=0, nrows=None):
+    # Leniwie: pandas+numpy to ~0,2 s importu przy KAŻDYM starcie appservera
+    # (formularz importu POLON ładuje się z URLconf), a potrzebne tylko tu.
+    import numpy as np
+    import pandas as pd
+
     from import_common.util import sprawdz_plik_importu
 
     fn = str(fn)

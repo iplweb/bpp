@@ -12,7 +12,6 @@ from celery_singleton import Singleton
 from django.utils import timezone
 
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
-from ewaluacja_optymalizacja.core import solve_discipline
 
 from .helpers import (
     _collect_ids_to_unpin,
@@ -78,7 +77,11 @@ def solve_single_discipline_task(
                 f"Deleted {deleted_count} old optimization runs for {dyscyplina_nazwa}"
             )
 
-        # Uruchom optymalizację dla tej dyscypliny
+        # Uruchom optymalizację dla tej dyscypliny. Import leniwy: core
+        # wciąga OR-Tools (a ten pandas) — ~0,23 s przy KAŻDYM starcie
+        # workera Celery/appservera, choć potrzebne tylko tutaj.
+        from ewaluacja_optymalizacja.core import solve_discipline
+
         optimization_results = solve_discipline(
             dyscyplina_nazwa=dyscyplina_nazwa,
             verbose=False,

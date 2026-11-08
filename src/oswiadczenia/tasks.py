@@ -1,3 +1,4 @@
+import functools
 import os
 import tempfile
 import zipfile
@@ -14,10 +15,21 @@ from django.utils import timezone
 
 from bpp.models import Autor_Dyscyplina, Autorzy, Uczelnia
 
-try:
-    from xhtml2pdf import pisa
-except ImportError:
-    pisa = None
+
+@functools.cache
+def _pisa():
+    """``xhtml2pdf.pisa`` albo ``None``, gdy biblioteka nie jest zainstalowana.
+
+    Import leniwy: xhtml2pdf wciąga reportlab, pypdf i fontTools (~0,1 s
+    przy KAŻDYM starcie workera Celery i appservera), a PDF oświadczeń to
+    rzadka ścieżka.
+    """
+    try:
+        from xhtml2pdf import pisa
+    except ImportError:
+        return None
+    return pisa
+
 
 # Font paths for DejaVuSans (supports Polish characters)
 DEJAVU_FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
@@ -227,7 +239,7 @@ def generate_declaration_content(decl, uczelnia, export_format):
 
     if export_format == "pdf":
         result = BytesIO()
-        pisa_status = pisa.CreatePDF(full_html, dest=result, encoding="utf-8")
+        pisa_status = _pisa().CreatePDF(full_html, dest=result, encoding="utf-8")
         if pisa_status.err:
             raise Exception(f"PDF generation failed for {decl['autor']}")
         pdf_content = result.getvalue()
@@ -479,7 +491,7 @@ def generate_combined_pdf(declarations, uczelnia, task):
 </html>"""
 
     result = BytesIO()
-    pisa_status = pisa.CreatePDF(full_html, dest=result, encoding="utf-8")
+    pisa_status = _pisa().CreatePDF(full_html, dest=result, encoding="utf-8")
     if pisa_status.err:
         raise Exception("PDF generation failed")
     return result.getvalue()
@@ -586,7 +598,7 @@ def generate_oswiadczenia_zip(self, task_id: int, uczelnia_id=None):
 
         # Check PDF generation dependencies
         if task.export_format in ("pdf", "pdf_single"):
-            if pisa is None:
+            if _pisa() is None:
                 task.status = "failed"
                 task.error_message = "xhtml2pdf nie jest zainstalowany."
                 task.completed_at = timezone.now()

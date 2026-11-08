@@ -13,8 +13,6 @@ więc dla PMID i arXiv wymagamy jawnego prefiksu.
 
 import re
 
-import idutils
-
 # Znaki, które przy kopiowaniu z cytowania lub zdania „doklejają się" na końcu
 # DOI, a do niego nie należą.
 _OGONY = ".,;"
@@ -41,6 +39,10 @@ def normalizuj_identyfikator(wartosc: str) -> str:
     s = wartosc.strip()
     if not s:
         return wartosc
+
+    # Leniwie: idutils kosztuje ~0,09 s importu przy starcie appservera
+    # (formularz zgłoszeń ładuje się z URLconf), a potrzebny tylko tutaj.
+    import idutils
 
     if "doi" in idutils.detect_identifier_schemes(s):
         doi = idutils.normalize_doi(s).rstrip(_OGONY)
