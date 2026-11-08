@@ -46,10 +46,29 @@ def typ_odpowiedzialnosci_redaktor(db):
 
 @pytest.fixture(scope="function")
 def typy_odpowiedzialnosci(db):
-    Typ_Odpowiedzialnosci.objects.all().delete()
-    for elem in fixture("typ_odpowiedzialnosci_v2.json"):
-        Typ_Odpowiedzialnosci.objects.get_or_create(pk=elem["pk"], **elem["fields"])
-    return {x.skrot: x for x in Typ_Odpowiedzialnosci.objects.all()}
+    """Typy odpowiedzialności z ``typ_odpowiedzialnosci_v2.json``.
+
+    Szybka ścieżka: baseline ma dokładnie te same wiersze (pk + wszystkie
+    pola), więc wystarczy jeden SELECT i porównanie. Dawne bezwarunkowe
+    ``delete()`` + 9 × ``get_or_create`` to było 97 zapytań (z savepointami
+    easyaudit) na KAŻDE wywołanie — ~19 s czasu workerów w pełnej suicie —
+    i przy okazji kaskadowo kasowało rekordy innych fixtures wskazujące na
+    te typy. Pełne odtworzenie zostaje, gdy stan bazy różni się od wzorca
+    (np. po TRUNCATE testu transakcyjnego albo gdy test coś zmienił).
+    """
+    pola = ("skrot", "nazwa", "typ_ogolny")
+    wzorzec = {
+        (elem["pk"], *(elem["fields"][f] for f in pola))
+        for elem in fixture("typ_odpowiedzialnosci_v2.json")
+    }
+    obiekty = list(Typ_Odpowiedzialnosci.objects.all())
+    stan = {(o.pk, *(getattr(o, f) for f in pola)) for o in obiekty}
+    if stan != wzorzec:
+        Typ_Odpowiedzialnosci.objects.all().delete()
+        for elem in fixture("typ_odpowiedzialnosci_v2.json"):
+            Typ_Odpowiedzialnosci.objects.get_or_create(pk=elem["pk"], **elem["fields"])
+        obiekty = list(Typ_Odpowiedzialnosci.objects.all())
+    return {x.skrot: x for x in obiekty}
 
 
 @pytest.fixture(scope="function")
