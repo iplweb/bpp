@@ -200,29 +200,89 @@ def first_run_wizard_state(db):
     return FirstRunWizardState.load()
 
 
-@pytest.fixture(scope="function")
-def charaktery_formalne():
-    Charakter_Formalny.objects.all().delete()
-    # Lookup po kluczu naturalnym (skrot jest unique), NIGDY po pk (w JSON-ie
-    # pk bywa null) — inaczej wiersz o tym samym skrocie/nazwie pod innym pk
-    # => INSERT => IntegrityError.
+_CHF_POLA_POMIJANE = {"skrot", "lft", "rght", "tree_id", "level"}
+
+
+def _charaktery_formalne_stan_docelowy():
+    """Stan docelowy tabeli: ``{skrot: {attname: wartosc}}``.
+
+    Wartości z ``charakter_formalny.json``, a dla pól, których JSON nie ma,
+    wartości domyślne modelu. To jest dokładnie to, co dawało dawne
+    ``delete()`` + ``get_or_create(defaults=...)`` — testy są pisane pod ten
+    stan, a NIE pod stan z baseline, gdzie migracje danych ustawiły np.
+    ``rodzaj_pbn``/``charakter_ogolny`` także innym charakterom.
+    """
+    domyslne = {
+        f.attname: f.get_default()
+        for f in Charakter_Formalny._meta.concrete_fields
+        if not f.primary_key and f.name not in _CHF_POLA_POMIJANE
+    }
+    cel = {}
     for elem in fixture("charakter_formalny.json"):
         fields = dict(elem["fields"])
         skrot = fields.pop("skrot")
-        Charakter_Formalny.objects.get_or_create(skrot=skrot, defaults=fields)
+        cel[skrot] = {**domyslne, **fields}
 
-    chf_ksp = Charakter_Formalny.objects.get(skrot="KSP")
-    chf_ksp.rodzaj_pbn = const.RODZAJ_PBN_KSIAZKA
-    chf_ksp.charakter_ogolny = const.CHARAKTER_OGOLNY_KSIAZKA
-    chf_ksp.charakter_sloty = const.CHARAKTER_SLOTY_KSIAZKA
-    chf_ksp.nazwa_w_primo = "Książka"
-    chf_ksp.save()
+    cel["KSP"].update(
+        rodzaj_pbn=const.RODZAJ_PBN_KSIAZKA,
+        charakter_ogolny=const.CHARAKTER_OGOLNY_KSIAZKA,
+        charakter_sloty=const.CHARAKTER_SLOTY_KSIAZKA,
+        nazwa_w_primo="Książka",
+    )
+    cel["ROZ"].update(
+        rodzaj_pbn=const.RODZAJ_PBN_ROZDZIAL,
+        charakter_ogolny=const.CHARAKTER_OGOLNY_ROZDZIAL,
+        charakter_sloty=const.CHARAKTER_SLOTY_ROZDZIAL,
+    )
+    return cel
 
-    chf_roz = Charakter_Formalny.objects.get(skrot="ROZ")
-    chf_roz.rodzaj_pbn = const.RODZAJ_PBN_ROZDZIAL
-    chf_ksp.charakter_ogolny = const.CHARAKTER_OGOLNY_ROZDZIAL
-    chf_roz.charakter_sloty = const.CHARAKTER_SLOTY_ROZDZIAL
-    chf_roz.save()
+
+@pytest.fixture(scope="function")
+def charaktery_formalne():
+    """Charaktery formalne z ``charakter_formalny.json``.
+
+    Szybka ścieżka: baseline ma już te same 27 rekordów (wszystkie jako
+    korzenie drzewa MPTT), więc tylko dopasowujemy ich pola jednym
+    ``bulk_update`` — bez kasowania i ponownego wstawiania, które przy
+    MPTT przestawiało drzewo (``UPDATE ... tree_id = tree_id + 1``) przy
+    każdym rekordzie. W profilu pełnej suity dawna wersja zjadała ~13%
+    czasu workerów (spec-testcontainers-pg-szybciej-2026-11.md).
+
+    Wolna ścieżka (dawne zachowanie): gdy zestaw skrótów się nie zgadza
+    (np. tabela wymieciona przez TRUNCATE testu transakcyjnego) albo
+    któryś rekord ma rodzica.
+    """
+    cel = _charaktery_formalne_stan_docelowy()
+    istniejace = {c.skrot: c for c in Charakter_Formalny.objects.all()}
+
+    if set(istniejace) == set(cel) and all(
+        c.parent_id is None for c in istniejace.values()
+    ):
+        do_zapisu = []
+        pola = set()
+        for skrot, obj in istniejace.items():
+            rozne = {
+                attname: wartosc
+                for attname, wartosc in cel[skrot].items()
+                if getattr(obj, attname) != wartosc
+            }
+            if rozne:
+                for attname, wartosc in rozne.items():
+                    setattr(obj, attname, wartosc)
+                do_zapisu.append(obj)
+                pola |= rozne.keys()
+        if do_zapisu:
+            meta = Charakter_Formalny._meta
+            Charakter_Formalny.objects.bulk_update(
+                do_zapisu, sorted(meta.get_field(a).name for a in pola)
+            )
+    else:
+        Charakter_Formalny.objects.all().delete()
+        # Lookup po kluczu naturalnym (skrot jest unique), NIGDY po pk (w
+        # JSON-ie pk bywa null) — inaczej wiersz o tym samym skrocie/nazwie
+        # pod innym pk => INSERT => IntegrityError.
+        for skrot, wartosci in cel.items():
+            Charakter_Formalny.objects.get_or_create(skrot=skrot, defaults=wartosci)
 
     return {x.skrot: x for x in Charakter_Formalny.objects.all()}
 

@@ -1,3 +1,4 @@
+import contextlib
 import os
 import random
 import time
@@ -10,6 +11,7 @@ from django.contrib import auth
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import connections
+from django.db.models.signals import post_migrate
 from django.db.utils import OperationalError
 from django.test import TransactionTestCase
 from django.test.client import Client, RequestFactory
@@ -89,6 +91,33 @@ pytest_plugins = [
 # =============================================================================
 
 
+@contextlib.contextmanager
+def _bez_reinstalacji_triggerow_denorm():
+    """Wylacz reinstalacje triggerow denorm na czas flush-a po tescie.
+
+    ``flush`` emituje ``post_migrate`` (zeby odtworzyc slowniki wymiecione
+    przez TRUNCATE), a denorm podpina pod ten sygnal ``install_triggers`` —
+    przy kazdym tescie transakcyjnym leciala pelna reinstalacja (~170 x
+    DROP TRIGGER + CREATE FUNCTION + CREATE TRIGGER; w pelnej suicie
+    34 tys. DROP-ow i 32 tys. CREATE-ow). Zbedne: TRUNCATE nie rusza
+    triggerow, a triggery denorm rozwiazuja ``content_type_id`` w momencie
+    wywolania (``denorm.helpers.content_type_select_sql``), wiec renumeracja
+    ``django_content_type`` przy flush-u ich nie psuje. Pozostale handlery
+    ``post_migrate`` (seedy slownikow) dzialaja normalnie.
+    """
+    from denorm.apps import denorm_install_triggers_after_migrate
+
+    sender = apps.get_app_config("denorm")
+    odlaczony = post_migrate.disconnect(
+        denorm_install_triggers_after_migrate, sender=sender
+    )
+    try:
+        yield
+    finally:
+        if odlaczony:
+            post_migrate.connect(denorm_install_triggers_after_migrate, sender=sender)
+
+
 def _fixture_teardown(self):
     # Allow TRUNCATE ... CASCADE and don't emit the post_migrate signal
     # when flushing only a subset of the apps
@@ -105,16 +134,17 @@ def _fixture_teardown(self):
         max_retries = 5
         for attempt in range(max_retries):
             try:
-                call_command(
-                    "flush",
-                    verbosity=0,
-                    interactive=False,
-                    database=db_name,
-                    reset_sequences=False,
-                    # In the real TransactionTestCase this is conditionally set to False.
-                    allow_cascade=True,
-                    inhibit_post_migrate=inhibit_post_migrate,
-                )
+                with _bez_reinstalacji_triggerow_denorm():
+                    call_command(
+                        "flush",
+                        verbosity=0,
+                        interactive=False,
+                        database=db_name,
+                        reset_sequences=False,
+                        # W prawdziwym TransactionTestCase bywa False.
+                        allow_cascade=True,
+                        inhibit_post_migrate=inhibit_post_migrate,
+                    )
                 break  # Success, exit retry loop
             except (OperationalError, CommandError) as e:
                 # Check for deadlock in both the exception and its cause
