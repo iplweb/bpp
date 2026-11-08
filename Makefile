@@ -845,7 +845,7 @@ loc: clean ## Pokaż statystyki liczby linii (pygount)
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202611.1406rc3
+DOCKER_VERSION=202611.1406
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)
