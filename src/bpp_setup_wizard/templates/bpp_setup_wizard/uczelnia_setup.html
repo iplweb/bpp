@@ -22,14 +22,10 @@
             <p class="bpp-setup-wizard__header-subtitle">{{ subtitle }}</p>
         </div>
 
-        <form method="post" novalidate>
-            {% csrf_token %}
+        {% include "bpp_setup_wizard/_bledy_formularza.html" %}
 
-            {% if form.non_field_errors %}
-                <div class="bpp-setup-wizard__form-errors">
-                    {{ form.non_field_errors }}
-                </div>
-            {% endif %}
+        <form method="post" action="#bledy-formularza" novalidate>
+            {% csrf_token %}
 
             <div class="bpp-setup-wizard__form-section">
                 <h4 class="bpp-setup-wizard__form-section-title">

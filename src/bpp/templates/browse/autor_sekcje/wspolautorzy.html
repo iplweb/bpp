@@ -1,10 +1,37 @@
 {# Najczęstsi współautorzy + CTA do wizualnej sieci powiązań (gdy dostępna). #}
+{# Klik w nazwisko → multiseek ze WSPÓLNYMI pracami (autor AND współautor); #}
+{# ludzik obok → strona współautora (tylko gdy ma publiczną stronę). #}
+{# Nazwisko klikalne tylko dla autorów z pokazuj_w_wyszukiwaniu. #}
 <div class="author-info-section autor-page__sekcja">
     <h3><i class="fi-torsos-all autor-page__icon--mr-sm"></i>{{ nazwa }}</h3>
     <ul class="autor-page__wspolautorzy">
         {% for w in dane.wspolautorzy %}
             <li class="autor-page__wspolautor">
-                {% if w.autor.pokazuj_strone_autora %}<a href="{{ w.autor.get_absolute_url }}">{{ w.autor }}</a>{% else %}{{ w.autor }}{% endif %}
+                {% if w.autor.pokazuj_w_wyszukiwaniu %}
+                {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt, #}
+                {# a token blokowałby cache_publiczny strony (_ZAWIERA_CSRF). #}
+                <form method="post"
+                      action="{% url "bpp:browse_build_search" %}"
+                      class="autor-page__staty-form">
+                    <input type="hidden" name="autor" value="{{ autor.pk }}"/>
+                    <input type="hidden" name="wspolautor" value="{{ w.autor.pk }}"/>
+                    <input type="hidden"
+                           name="suggested-title"
+                           value="{{ autor }} i {{ w.autor }} — wspólne prace"/>
+                    <button type="submit"
+                            class="autor-page__staty-link"
+                            title="Pokaż wspólne prace: {{ autor }} i {{ w.autor }}">{{ w.autor }}</button>
+                </form>
+                {% else %}
+                    {# Autor ukryty w wyszukiwaniu — bez linku do multiseeka. #}
+                    {{ w.autor }}
+                {% endif %}
+                {% if w.autor.pokazuj_strone_autora %}
+                    <a href="{{ w.autor.get_absolute_url }}"
+                       class="autor-page__wspolautor-strona"
+                       title="Strona autora: {{ w.autor }}"
+                       aria-label="Strona autora: {{ w.autor }}"><i class="fi-torso"></i></a>
+                {% endif %}
                 <span class="autor-page__wspolautor-liczba">({{ w.liczba }})</span>
             </li>
         {% endfor %}

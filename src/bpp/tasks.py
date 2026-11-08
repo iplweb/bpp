@@ -327,7 +327,7 @@ def _zbuduj_tresc_eksportu_autora(autor, format: str, ukryte_statusy=()) -> str:
 
 @shared_task(bind=True)
 def generuj_eksport_autora(self, task_id: str):
-    """Zbuduj plik eksportu BibTeX/RIS dla autora i zapisz go w zadaniu.
+    """Zbuduj plik eksportu BibTeX/RIS/XLSX dla autora i zapisz go w zadaniu.
 
     Args:
         task_id: UUID rekordu ``AutorEksportTask`` (jako str).
@@ -344,10 +344,21 @@ def generuj_eksport_autora(self, task_id: str):
     task.save()
 
     try:
-        tekst = _zbuduj_tresc_eksportu_autora(
-            task.autor, task.format, task.ukryte_statusy
-        )
-        task.result_file.save(task.nazwa_pliku, ContentFile(tekst.encode("utf-8")))
+        if task.format == "xlsx":
+            from bpp.export.xlsx_autora import zbuduj_xlsx_autora
+
+            tresc = zbuduj_xlsx_autora(
+                task.autor,
+                ukryte_statusy=task.ukryte_statusy,
+                z_punktacja_autora=task.z_punktacja_autora,
+                ukryte_statusy_slotow=task.ukryte_statusy_slotow,
+                limit=MAKS_EKSPORT_AUTORA,
+            )
+        else:
+            tresc = _zbuduj_tresc_eksportu_autora(
+                task.autor, task.format, task.ukryte_statusy
+            ).encode("utf-8")
+        task.result_file.save(task.nazwa_pliku, ContentFile(tresc))
         task.status = "completed"
         task.completed_at = timezone.now()
         task.save()

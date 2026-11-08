@@ -1,8 +1,8 @@
 """System data fixtures: typy_odpowiedzialnosci, jezyki, charaktery_formalne, etc."""
 
+import itertools
 import json
 import os
-import random
 
 import pytest
 from model_bakery import baker
@@ -331,10 +331,25 @@ def baza_wos():
     )[0]
 
 
+_kod_dyscypliny_seq = itertools.count()
+
+
 def gen_kod_dyscypliny_func():
-    top = random.randint(1, 8)
-    bottom = random.randint(1, 500)
-    return f"{top}.{bottom}"
+    """Unikalny ``kod`` dla ``baker.make(Dyscyplina_Naukowa)``.
+
+    ``kod`` jest ``unique``. Losowanie (dawniej ``randint(1, 8).randint(1, 500)``)
+    kolidowało z kodami już zapisanymi w bazie testu (IntegrityError na
+    ``bpp_dyscyplina_naukowa_kod_key``, flake na CI). Teraz: sekwencja po
+    końcówkach 500-999 (jawne kody w testach kończą się najwyżej na .232),
+    z pominięciem kodów, które już istnieją w bazie.
+    """
+    from bpp.models import Dyscyplina_Naukowa
+
+    while True:
+        n = next(_kod_dyscypliny_seq) % (8 * 500)
+        kod = f"{n % 8 + 1}.{500 + n // 8}"
+        if not Dyscyplina_Naukowa.objects.filter(kod=kod).exists():
+            return kod
 
 
 baker.generators.add(

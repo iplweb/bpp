@@ -3,13 +3,21 @@
 {# (nazwa, liczba)), dane.suma oraz `autor` (z kontekstu strony). #}
 <div class="author-info-section autor-page__sekcja">
     <h3><i class="fi-graph-pie autor-page__icon--mr-sm"></i>{{ nazwa }}</h3>
+    {# Powyżej 8 charakterów reszta wierszy jest zwinięta; „Rozwiń” to #}
+    {# checkbox + label (czysty CSS, bez JS) — :checked pokazuje wiersze. #}
+    {% with zwijaj=dane.wiersze|length|add:"-8" %}
+    {% if zwijaj > 0 %}
+        <input type="checkbox"
+               id="staty-charakter-rozwin"
+               class="autor-page__rozwin-przelacznik"/>
+    {% endif %}
     <table class="autor-page__staty">
         <thead>
             <tr><th>Charakter formalny</th><th>Liczba prac</th></tr>
         </thead>
         <tbody>
             {% for nazwa_charakteru, liczba in dane.wiersze %}
-                <tr>
+                <tr{% if forloop.counter > 8 %} class="autor-page__rozwin-wiersz"{% endif %}>
                     <td>
                         <form method="post"
                               action="{% url 'bpp:browse_build_search' %}"
@@ -40,5 +48,12 @@
             </tfoot>
         {% endif %}
     </table>
+    {% if zwijaj > 0 %}
+        <label for="staty-charakter-rozwin" class="autor-page__rozwin-etykieta">
+            <span class="autor-page__rozwin-pokaz"><i class="fi-plus"></i> Rozwiń (jeszcze {{ zwijaj }})</span>
+            <span class="autor-page__rozwin-zwin"><i class="fi-minus"></i> Zwiń</span>
+        </label>
+    {% endif %}
+    {% endwith %}
 </div>
 <div class="shaded-hr-div-small"></div>

@@ -251,11 +251,28 @@ _store_durations = $(if $(STORE_DURATIONS),--store-durations --durations-path .t
 # rozwija sie do `true` (no-op).
 _normalize_durations = $(if $(STORE_DURATIONS),&& uv run python bin/normalize_test_durations.py,)
 
-tests-without-playwright: ## Szybkie testy bez Playwright (xdist -n auto, maxfail=50)
-	uv run pytest -n auto -m "not playwright" --maxfail 50 $(_store_durations) $(_normalize_durations)
+# Liczba workerow xdist dla suity bez Playwrighta. Na maszynie interaktywnej
+# ograniczeniem jest RAM, nie CPU (worker ~450-650 MB + backend PG; `-n auto`
+# na 14 rdzeniach / 14 GB zamrozil laptopa) -- liczymy -n z profilu pamieci
+# (`make xdist-measure`) i aktualnie dostepnego RAM-u (`make xdist-calc`).
+# Na CI (zmienna CI ustawiona) zostaje `auto`. Nadpisanie: `XDIST_N=6`.
+XDIST_N ?= $(if $(CI),auto,$(shell uv run --quiet python bin/xdist_workers.py calc --quiet 2>/dev/null || echo 4))
+# Twardy limit pamieci (systemd-run, tylko Linux, poza CI): przekroczenie
+# zabija pytest zamiast wpedzac maszyne w swap. Pusty na macOS / CI.
+# Wylaczenie: `XDIST_GUARD=`.
+XDIST_GUARD ?= $(if $(CI),,$(shell uv run --quiet python bin/xdist_workers.py guard 2>/dev/null))
+
+xdist-measure: ## Zmierz RAM workerow xdist na tej maszynie (probka testow, -n 2, ~3 min)
+	uv run python bin/xdist_workers.py measure
+
+xdist-calc: ## Pokaz, ile workerow xdist zmiesci sie teraz w RAM-ie
+	uv run python bin/xdist_workers.py calc
+
+tests-without-playwright: ## Szybkie testy bez Playwright (xdist -n wg RAM, maxfail=50)
+	$(XDIST_GUARD) uv run pytest -n $(XDIST_N) -m "not playwright" --maxfail 50 $(_store_durations) $(_normalize_durations)
 
 tests-without-playwright-with-microsoft-auth: ## tests-without-playwright z aktywnym Microsoft Auth
-	uv run pytest -n auto -m "not playwright" --maxfail 50
+	$(XDIST_GUARD) uv run pytest -n $(XDIST_N) -m "not playwright" --maxfail 50
 
 tests-with-microsoft-auth: enable-microsoft-auth tests-without-playwright-with-microsoft-auth disable-microsoft-auth ## Włącz MS Auth, uruchom testy, wyłącz
 
@@ -546,7 +563,7 @@ baseline-update: ## Zaktualizuj baseline.sql IN-PLACE (load+migrate+dump; mały 
 
 # Run tests against pre-existing docker-compose containers (no testcontainers).
 tests-no-containers: ## Testy przeciwko istniejącym kontenerom docker-compose (bez testcontainers)
-	uv run pytest --no-testcontainers -n auto -m "not playwright" --maxfail 50
+	$(XDIST_GUARD) uv run pytest --no-testcontainers -n $(XDIST_N) -m "not playwright" --maxfail 50
 
 # Stop reusable testcontainers (bpp-tc-pg, bpp-tc-redis).
 tests-stop-containers: ## Zatrzymaj i usuń reużywalne testcontainers (bpp-tc-*)
@@ -563,7 +580,7 @@ clean-testcontainers: ## Usuń wszystkie osierocone testcontainers (PG/Redis/Ryu
 
 # Run tests with ephemeral containers (destroyed after run).
 tests-ephemeral: ## Testy w efemerycznych testcontainers (usuwane po teście)
-	PYTEST_TESTCONTAINERS_REUSE=0 uv run pytest -n auto -m "not playwright" --maxfail 50
+	PYTEST_TESTCONTAINERS_REUSE=0 $(XDIST_GUARD) uv run pytest -n $(XDIST_N) -m "not playwright" --maxfail 50
 
 tests-in-docker: ## Testy w pełni w Dockerze (docker-compose.test.yml)
 	docker compose -f docker-compose.test.yml build test-runner
@@ -828,7 +845,7 @@ loc: clean ## Pokaż statystyki liczby linii (pygount)
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202611.1405
+DOCKER_VERSION=202611.1406
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)

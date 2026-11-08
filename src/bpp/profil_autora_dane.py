@@ -264,11 +264,13 @@ def _wykres_if_lata(autor, limit, request):
     return _wykres_sumy_lata(autor, "impact_factor", "IF", request)
 
 
-#: Wykresy pasa „Wykresy w latach” — (nazwa, builder), w kolejności na stronie.
+#: Wykresy pasa „Wykresy w latach” — (nazwa, builder, typ raportu multiseeka
+#: po kliknięciu roku), w kolejności na stronie. Wykresy punktowe otwierają
+#: raport „tabela” (kolumny IF/PK); ``None`` — domyślny raport (lista).
 _WYKRESY = (
-    ("Publikacje w latach", _wykres_lata),
-    ("Punkty MNiSW w latach", _wykres_pk_lata),
-    ("Impact Factor w latach", _wykres_if_lata),
+    ("Publikacje w latach", _wykres_lata, None),
+    ("Punkty MNiSW w latach", _wykres_pk_lata, "table"),
+    ("Impact Factor w latach", _wykres_if_lata, "table"),
 )
 
 
@@ -276,10 +278,10 @@ def _wykresy(autor, limit, request):
     # Wykresy stoją obok siebie w jednym pasie (równe wysokości z natury);
     # pusty wykres (np. autor bez IF) odpada, a pozostałe dzielą szerokość.
     wykresy = []
-    for nazwa, builder in _WYKRESY:
+    for nazwa, builder, raport in _WYKRESY:
         dane = builder(autor, limit, request)
         if dane is not None:
-            wykresy.append({"nazwa": nazwa, "dane": dane})
+            wykresy.append({"nazwa": nazwa, "dane": dane, "raport": raport})
     return {"wykresy": wykresy} if wykresy else None
 
 

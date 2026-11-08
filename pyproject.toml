@@ -1,6 +1,6 @@
 [project]
 name = "bpp_iplweb"
-version = "202611.1405"
+version = "202611.1406"
 description = ""
 authors = [
     { name = "Michał Pasternak", email = "michal.dtz@gmail.com" }
@@ -30,7 +30,7 @@ classifiers = [
 ]
 requires-python = ">=3.11,<3.15"
 dependencies = [
-    "Django>=5.2.17,<5.3",
+    "Django>=5.2.19,<5.3",
     # Reużywalne pakiety PBN wydzielone na PyPI (github.com/iplweb/*).
     "django-pbn-client>=0.2,<0.3",
     "pbn-client>=0.2.3,<0.3",
@@ -277,7 +277,7 @@ include = [
 ]
 
 [tool.bumpver]
-current_version = "v202611.1405"
+current_version = "v202611.1406"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -387,6 +387,8 @@ constraint-dependencies = [
     #   brotlicffi >=1.2.1.0 (via fonttools[woff], tylko poza CPython —
     #              w lockfile, choc `environments` wyklucza PyPy; Dependabot
     #              czyta uv.lock i alarmuje)
+    # 2026-11-06 (bramka CVE w release-candidate.yml, osv-scanner + pip-audit):
+    #   oauthlib   GHSA-3jp2-3mrg-2vxc / CVE-2026-49272 (HIGH), fix w 4.0.1
     "anyio>=4.14.2",
     # >=26.10.1: zamyka CVE-2026-77528 (PYSEC-2026-4027, fix od 26.7.1),
     # a zarazem pierwsza wersja z leniwym importem vendorowanych flatbuffers
@@ -401,7 +403,7 @@ constraint-dependencies = [
     "certifi>=2026.10.19",
     "daphne>=4.2.2",
     "h2>=4.4.1",
-    "oauthlib>=4.0.0",
+    "oauthlib>=4.0.1",
     "opentelemetry-api>=1.45.1",
     "pyasn1>=0.6.4",
     "pyjwt>=2.15.1",
@@ -657,6 +659,9 @@ dev = [
     "pytest-cov>=7.1.0",  # lokalnie do `make coverage-ai`; CI nie wola --cov
     "pytest-mock>=3.17.0",
     "pytest-xdist>=2.3.0",
+    # gc.freeze() + gc.collect() co N testow (pytest.ini: gc_steward_*), zeby
+    # workery xdist nie puchly od cykli referencji z test clienta.
+    "pytest-gc-steward>=0.1.0",
     "pytest-split>=0.9.0",
     "pytest-timeout>=2.1.0",
     "pyparsing>=3.3.3",
@@ -694,7 +699,7 @@ dev = [
     # django-run-site: CLI orchestrator dev stack-u. Dawniej `manage.py run_site`
     # + helpery w `_run_site_helpers/`. Instalowany w dev-deps zeby `uv run run-site`
     # mialo dostep do CLI bez globalnego `uv tool install`. Konfiguracja: runsite.toml.
-    "django-run-site>=0.21.0",
+    "django-run-site>=0.22.0",
     # django-dev-helpers: autologin endpoint + dotfiles dla agentow LLM. Dawniej
     # `src/django_bpp/views_run_site_autologin.py`. Aktywuje sie tylko gdy run-site
     # ustawi DJANGO_DEV_HELPERS_ENABLED=1 — w produkcji no-op.
@@ -705,7 +710,7 @@ dev = [
 
 [tool.towncrier]
 package = "bpp"
-version = "202611.1405"
+version = "202611.1406"
 package_dir = "src"
 filename = "HISTORY.md"
 start_string = "<!-- towncrier release notes start -->\n"
