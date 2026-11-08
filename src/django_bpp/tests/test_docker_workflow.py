@@ -133,6 +133,10 @@ def test_oficjalny_build_uzywa_kontrolowanego_cache_warstw():
 
 
 def test_ci_cache_test_runnera_jest_per_galaz():
+    """Cache test-runnera: tag per galaz, odczyt z jednego zrodla.
+
+    Wspolny tag `:cache` byl nadpisywany przez rownolegle galezie.
+    """
     for path in (TESTS_WORKFLOW_PATH, RELEASE_CANDIDATE_WORKFLOW_PATH):
         workflow = path.read_text(encoding="utf-8")
         assert "ref=${{ env.IMAGE_REPO }}:cache,mode=max" not in workflow
