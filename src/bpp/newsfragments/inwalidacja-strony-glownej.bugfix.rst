@@ -1,1 +1,0 @@
-Zapis uczelni, jednostki lub opublikowanego artykułu natychmiast odświeża stronę główną wraz z jej górnym paskiem — wcześniej unieważnianie cache'u strony głównej nie działało i zmiany (np. przełączniki widoczności menu) pojawiały się dopiero po godzinie. Cache górnego paska jest też czyszczony dla wszystkich domen, nie tylko domeny przypiętej do uczelni.

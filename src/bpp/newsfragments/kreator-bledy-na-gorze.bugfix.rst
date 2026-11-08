@@ -1,1 +1,0 @@
-Kreator pierwszego uruchomienia pokazuje błędy formularza (np. za słabe hasło administratora) w zbiorczej ramce na górze strony, nad sekcją „Informacja", z linkami do błędnych pól; po wysłaniu formularza z błędami strona przewija się do tej ramki.
