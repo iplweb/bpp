@@ -1,4 +1,4 @@
-"""Kontrakt uruchamiania workflow oficjalnych obrazów Docker."""
+"""Kontrakty workflow-ow CI i Dockerfile (obrazy oficjalne + test-runner)."""
 
 from pathlib import Path
 
