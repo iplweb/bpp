@@ -6,6 +6,7 @@ from django.utils.functional import cached_property
 
 from bpp.models import Autor, Charakter_Formalny, DwaTytuly, ModelZOplataZaPublikacje
 from bpp.models.praca_doktorska import Praca_Doktorska_Baza
+from bpp.models.slowniki_stale import cached_if_found, wpis_slownika
 
 
 class Publikacja_Habilitacyjna(models.Model):
@@ -35,9 +36,10 @@ class Publikacja_Habilitacyjna(models.Model):
 
 
 class _Praca_Habilitacyjna_PropertyCache:
-    @cached_property
+    # Brak wpisu w słowniku -> None (nie DoesNotExist); patrz slowniki_stale.
+    @cached_if_found
     def charakter_formalny(self):
-        return Charakter_Formalny.objects.get(skrot="H")
+        return wpis_slownika(Charakter_Formalny, skrot="H")
 
 
 _Praca_Habilitacyjna_PropertyCache = _Praca_Habilitacyjna_PropertyCache()

@@ -11,6 +11,7 @@ from bpp.models import (
     NieMaProcentowMixin,
 )
 from bpp.models.abstract import DwaTytuly
+from bpp.models.slowniki_stale import cached_if_found, wpis_slownika
 
 from .autor import Autor
 from .struktura import Jednostka
@@ -137,13 +138,14 @@ class Praca_Doktorska_Baza(
 
 
 class _Praca_Doktorska_PropertyCache:
-    @cached_property
+    # Brak wpisu w słowniku -> None (nie DoesNotExist); patrz slowniki_stale.
+    @cached_if_found
     def charakter_formalny(self):
-        return Charakter_Formalny.objects.get(skrot="D")
+        return wpis_slownika(Charakter_Formalny, skrot="D")
 
-    @cached_property
+    @cached_if_found
     def typ_odpowiedzialnosci_autor(self):
-        return Typ_Odpowiedzialnosci.objects.get(skrot="aut.")
+        return wpis_slownika(Typ_Odpowiedzialnosci, skrot="aut.")
 
 
 _Praca_Doktorska_PropertyCache = _Praca_Doktorska_PropertyCache()
