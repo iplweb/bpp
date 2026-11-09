@@ -27,14 +27,7 @@
             <div class="autor-page__filtr-tytul" id="filtr-typ">
                 <i class="fi-list autor-page__icon--mr-sm"></i>Typ publikacji
             </div>
-            <div class="autor-page__chipy">
-                {% for typ in typy %}
-                    <label class="autor-page__chip">
-                        <input type="checkbox" name="typ" value="{{ typ }}"/>
-                        <span>{{ typ }}</span>
-                    </label>
-                {% endfor %}
-            </div>
+            {% include "browse/_typy_chipy.html" %}
         </div>
 
         {% with lata=autor.prace_w_latach %}
@@ -43,14 +36,7 @@
                 <div class="autor-page__filtr-tytul" id="filtr-lata">
                     <i class="fi-calendar autor-page__icon--mr-sm"></i>Lata
                 </div>
-                <div class="autor-page__chipy autor-page__chipy--lata">
-                    {% for rok in lata reversed %}
-                        <label class="autor-page__chip">
-                            <input type="checkbox" name="rok" value="{{ rok }}"/>
-                            <span>{{ rok }}</span>
-                        </label>
-                    {% endfor %}
-                </div>
+                {% include "browse/_selektor_lat.html" %}
             </div>
         {% endif %}
         {% endwith %}

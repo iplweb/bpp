@@ -1,0 +1,1 @@
+Lista najczęstszych współautorów na stronie autora: tytuł naukowy w osobnej, mniejszej linii pod nazwiskiem, a ludzik i liczba wspólnych prac wyrównane do prawej — długie tytuły nie rozbijają już wierszy.

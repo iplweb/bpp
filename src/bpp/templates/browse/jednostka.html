@@ -431,6 +431,14 @@
         </form>
     </div>
 
+    {# Wykresy w latach (wspólne ze stroną autora); klik w rok → wyszukiwanie #}
+    {# z tego roku. Dane i pola formularza: wykresy_lat.wykresy_w_latach. #}
+    {% if wykresy %}
+        <div class="bpp-wykresy-lat">
+            {% include "browse/autor_sekcje/wykresy.html" with dane=wykresy %}
+        </div>
+    {% endif %}
+
     <!-- Modern Search Form -->
     <div class="search-container jednostka__search-container">
         <div class="search-header jednostka__search-header">
@@ -457,7 +465,7 @@
                     <h6 class="jednostka__card-title">
                         <i class="fi-list jednostka__icon--mr-xs"></i>Typ publikacji:
                     </h6>
-                    {% include "browse/typy.html" %}
+                    {% include "browse/_typy_chipy.html" %}
                 </div>
             </div>
 
@@ -581,18 +589,7 @@
                     <h6 class="jednostka__card-title">
                         <i class="fi-calendar jednostka__icon--mr-xs"></i>Opracowane w latach:
                     </h6>
-                    <div class="grid-x grid-margin-x">
-                        {% for rok in jednostka.prace_w_latach reversed %}
-                            <div class="cell small-6 medium-4 large-2 jednostka__checkbox-item--year">
-                                <input type="checkbox" name="rok"
-                                       id="rok_{{ rok }}" value="{{ rok }}"
-                                       class="jednostka__checkbox"/>
-                                <label for="rok_{{ rok }}" class="jednostka__label">
-                                    {{ rok }}
-                                </label>
-                            </div>
-                        {% endfor %}
-                    </div>
+                    {% include "browse/_selektor_lat.html" with lata=jednostka.prace_w_latach %}
                 </div>
             </div>
 

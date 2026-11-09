@@ -67,6 +67,14 @@
         </form>
     </div>
 
+    {# Wykresy w latach (wspólne ze stroną autora); klik w rok → wyszukiwanie #}
+    {# z tego roku. Dane i pola formularza: wykresy_lat.wykresy_w_latach. #}
+    {% if wykresy %}
+        <div class="bpp-wykresy-lat">
+            {% include "browse/autor_sekcje/wykresy.html" with dane=wykresy %}
+        </div>
+    {% endif %}
+
     <!-- Main Content Layout -->
     <div class="grid-x grid-margin-x">
         <!-- Left Column - Search Form -->
@@ -93,17 +101,7 @@
                     <h6>
                         <i class="fi-calendar"></i>Opracowane w latach:
                     </h6>
-                    <div class="grid-x grid-margin-x">
-                        {% for rok in zrodlo.prace_w_latach reversed %}
-                            <div class="cell small-6 medium-4 large-2">
-                                <input type="checkbox" name="rok"
-                                       id="rok_{{ rok }}" value="{{ rok }}"/>
-                                <label for="rok_{{ rok }}">
-                                    {{ rok }}
-                                </label>
-                            </div>
-                        {% endfor %}
-                    </div>
+                    {% include "browse/_selektor_lat.html" with lata=zrodlo.prace_w_latach %}
                 </div>
             </div>
 

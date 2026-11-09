@@ -1,0 +1,1 @@
+Wyszukiwarka prac na stronie autora: lata zaznacza się jako zakres „od–do” (klik w pierwszy i ostatni rok, z podglądem pod kursorem); pojedyncze lata dodaje się lub odznacza z wciśniętym Ctrl (⌘ na Macu).
