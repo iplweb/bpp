@@ -120,6 +120,9 @@ class RaportSlotowEwaluacja(
                 "autorzy__jednostka__wydzial",
                 "autor_dyscyplina__dyscyplina_naukowa",
                 "autor_dyscyplina__subdyscyplina_naukowa",
+                # Kolumna „Licencja OpenAccess" — bez tego licencja (i samo
+                # ``openaccess_licencja_id``) doczytywały się per wiersz.
+                "rekord__openaccess_licencja",
             )
             .prefetch_related(
                 "rekord__zrodlo__punktacja_zrodla_set",
@@ -192,6 +195,14 @@ class RaportSlotowEwaluacja(
                 "autorzy__dyscyplina_naukowa__widoczna",
                 "autorzy__autor",
                 "autorzy__autor__tytul",
+                # Kolumny „Licencja OpenAccess" i „System kadrowy ID" —
+                # pominięte w ``only`` doczytywały się leniwie per wiersz (N+1).
+                "rekord__openaccess_licencja_id",
+                "rekord__openaccess_licencja__id",
+                "rekord__openaccess_licencja__nazwa",
+                "rekord__openaccess_licencja__skrot",
+                "rekord__openaccess_licencja__uri",
+                "autorzy__autor__system_kadrowy_id",
             )
         )
 

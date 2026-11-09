@@ -3,21 +3,19 @@ from urllib.parse import urlencode
 
 from django.http import HttpResponseRedirect
 from django.urls import reverse
+from django.utils import timezone
 from django.views.generic import FormView
 from django_filters.views import FilterView
 from django_tables2 import SingleTableMixin
-
 from formdefaults.helpers import FormDefaultsMixin
+
+from django_bpp.version import VERSION
 from nowe_raporty.views import BaseRaportAuthMixin
 from raport_slotow.filters import RaportSlotowUczelniaEwaluacjaFilter
 from raport_slotow.forms.ewaluacja import ParametryRaportSlotowEwaluacjaForm
 from raport_slotow.models import RaportEwaluacjaUpowaznieniaView
 from raport_slotow.tables import RaportEwaluacjaUpowaznieniaTable
 from raport_slotow.util import MyExportMixin
-
-from django.utils import timezone
-
-from django_bpp.version import VERSION
 
 
 class ParametryRaportEwaluacjaUpowaznienia(
@@ -107,6 +105,11 @@ class RaportEwaluacjaUpowaznienia(
             "autorzy__autor",
             "autor_dyscyplina__dyscyplina_naukowa",
             "autor_dyscyplina__subdyscyplina_naukowa",
+            # Kolumny „Afiliowana jednostka", „Funkcja" i „Licencja
+            # OpenAccess" — bez tego doczytywały się per wiersz (N+1).
+            "autorzy__jednostka",
+            "autorzy__autor__aktualna_funkcja",
+            "rekord__openaccess_licencja",
         )
 
     def get_context_data(self, *, object_list=None, **kwargs):
