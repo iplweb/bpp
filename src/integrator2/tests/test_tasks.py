@@ -8,7 +8,7 @@ from integrator2.models import ListaMinisterialnaIntegration
 from integrator2.tasks import analyze_file, remove_old_integrator_files
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_analyze_file(lmi):
     # Wait_for_object używany przez analyze_file wymaga kontekstu
     # celery (current_task.retry), dlatego zadanie wołamy przez

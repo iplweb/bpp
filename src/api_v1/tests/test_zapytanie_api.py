@@ -1,6 +1,7 @@
 from unittest import mock
 
 import pytest
+from denorm import denorms
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.contenttypes.models import ContentType
 from model_bakery import baker
@@ -119,9 +120,8 @@ def test_zapytanie_autorzy_happy(
     wydawnictwo_ciagle.tytul_oryginalny = "Praca X"
     wydawnictwo_ciagle.save()
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
-    from bpp.models import Rekord
 
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     resp = _staff_client().get("/api/v1/zapytanie/autorzy/", {"q": "rekord.rok = 2023"})
     assert resp.status_code == 200
@@ -158,17 +158,25 @@ def test_zapytanie_timeout_daje_503():
 def test_zapytanie_rekord_wyklucza_nie_eksportuj_przez_api(
     wydawnictwo_ciagle, autor_jan_kowalski, jednostka, typy_odpowiedzialnosci
 ):
-    from bpp.models import Rekord
-
     wydawnictwo_ciagle.tytul_oryginalny = f"{ZTOKEN} ciagle"
-    wydawnictwo_ciagle.nie_eksportuj_przez_api = True
     wydawnictwo_ciagle.save()
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
-    resp = _staff_client().get(
-        "/api/v1/zapytanie/rekord/", {"q": f'tytul_oryginalny ~ "{ZTOKEN}"'}
-    )
+    q = {"q": f'tytul_oryginalny ~ "{ZTOKEN}"'}
+
+    # Kontrola pozytywna: bez flagi rekord MUSI być w wynikach — inaczej
+    # asercja niżej przeszłaby także wtedy, gdy rekord w ogóle nie trafił
+    # do cache'u (np. po nieudanym przeliczeniu denorm).
+    resp = _staff_client().get("/api/v1/zapytanie/rekord/", q)
+    assert resp.status_code == 200
+    assert _rekord_id(wydawnictwo_ciagle) in _ids(resp)
+
+    wydawnictwo_ciagle.nie_eksportuj_przez_api = True
+    wydawnictwo_ciagle.save()
+    denorms.flush()
+
+    resp = _staff_client().get("/api/v1/zapytanie/rekord/", q)
     assert resp.status_code == 200
     assert _rekord_id(wydawnictwo_ciagle) not in _ids(resp)
 
@@ -182,13 +190,12 @@ def test_zapytanie_rekord_wyklucza_ukryte_statusy(
     uczelnia,
     przed_korekta,
 ):
-    from bpp.models import Rekord
 
     wydawnictwo_ciagle.tytul_oryginalny = f"{ZTOKEN} ciagle"
     wydawnictwo_ciagle.status_korekty = przed_korekta
     wydawnictwo_ciagle.save()
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     q = {"q": f'tytul_oryginalny ~ "{ZTOKEN}"'}
     assert _rekord_id(wydawnictwo_ciagle) in _ids(
@@ -212,7 +219,6 @@ def test_zapytanie_rekord_scope_dwie_uczelnie(
     autor_jan_nowak,
     typy_odpowiedzialnosci,
 ):
-    from bpp.models import Rekord
 
     jednostka_b = _druga_uczelnia_z_jednostka()
 
@@ -223,7 +229,7 @@ def test_zapytanie_rekord_scope_dwie_uczelnie(
 
     rekord_b = zwarte_maker(tytul_oryginalny=f"{ZTOKEN} wB")
     rekord_b.dodaj_autora(autor_jan_nowak, jednostka_b)
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     resp = _staff_client().get(
         "/api/v1/zapytanie/rekord/", {"q": f'tytul_oryginalny ~ "{ZTOKEN}"'}
@@ -244,7 +250,6 @@ def test_zapytanie_autorzy_scope_dwie_uczelnie(
     autor_jan_nowak,
     typy_odpowiedzialnosci,
 ):
-    from bpp.models import Rekord
 
     jednostka_b = _druga_uczelnia_z_jednostka()
 
@@ -255,7 +260,7 @@ def test_zapytanie_autorzy_scope_dwie_uczelnie(
 
     rekord_b = zwarte_maker(tytul_oryginalny=f"{ZTOKEN} wB", rok=2023)
     rekord_b.dodaj_autora(autor_jan_nowak, jednostka_b)
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     resp = _staff_client().get("/api/v1/zapytanie/autorzy/", {"q": "rekord.rok = 2023"})
     assert resp.status_code == 200

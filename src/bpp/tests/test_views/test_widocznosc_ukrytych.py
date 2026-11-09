@@ -5,6 +5,7 @@ Użytkownik z uprawnieniami redaktorskimi widzi wszystko."""
 import json
 
 import pytest
+from denorm import denorms
 from django.contrib.auth.models import Group
 from django.urls import reverse
 from model_bakery import baker
@@ -14,7 +15,6 @@ from bpp.models import (
     Autor,
     Autor_Dyscyplina,
     Charakter_Formalny,
-    Rekord,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
@@ -35,7 +35,7 @@ def rekord_ukryty(
         status_korekty=przed_korekta,
     )
     pub.dodaj_autora(autor_jan_kowalski, jednostka, zapisany_jako="Kowalski Jan")
-    Rekord.objects.full_refresh()
+    denorms.flush()
     uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
     return pub
 

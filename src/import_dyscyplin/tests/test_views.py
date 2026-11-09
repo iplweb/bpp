@@ -32,7 +32,7 @@ def wyslij_i_przeanalizuj(wd_app, plik):
     return i
 
 
-def test_CreateImport_DyscyplinView_bledny_plik(wd_app, zly_plik, transactional_db):
+def test_CreateImport_DyscyplinView_bledny_plik(wd_app, zly_plik, db):
     with transaction.atomic():
         wyslij_i_przeanalizuj(wd_app, zly_plik)
 
@@ -42,7 +42,7 @@ def test_CreateImport_DyscyplinView_bledny_plik(wd_app, zly_plik, transactional_
     assert i.stan == Import_Dyscyplin.STAN.BLEDNY
 
 
-def test_CreateImport_DyscyplinView_dobry_plik(wd_app, test1_xlsx, transactional_db):
+def test_CreateImport_DyscyplinView_dobry_plik(wd_app, test1_xlsx, db):
     with transaction.atomic():
         wyslij_i_przeanalizuj(wd_app, test1_xlsx)
 
@@ -71,7 +71,7 @@ def test_UruchomPrzetwarzanieImport_Dyscyplin(csrf_exempt_wd_app, test1_xlsx):
     assert g.json["status"] == "ok"
 
 
-def test_UsunImport_Dyscyplin(csrf_exempt_wd_app, test1_xlsx, transactional_db):
+def test_UsunImport_Dyscyplin(csrf_exempt_wd_app, test1_xlsx, db):
     wyslij(csrf_exempt_wd_app, test1_xlsx)
     assert Import_Dyscyplin.objects.all().count() == 1
     i = Import_Dyscyplin.objects.all().first()

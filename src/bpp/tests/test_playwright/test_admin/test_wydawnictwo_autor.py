@@ -5,49 +5,6 @@ from playwright.sync_api import Page, expect
 from bpp.tests import normalize_html
 
 
-@pytest.mark.django_db
-@pytest.mark.parametrize("klass", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
-def test_changelist_no_argument(klass, channels_live_server, admin_page: Page):
-    url = f"admin:bpp_{klass}_autor_changelist"
-    admin_page.goto(channels_live_server.url + reverse(url))
-    assert "Musisz wejść w edycję" in normalize_html(admin_page.content())
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize("klass", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
-def test_edit_btn_invisible(klass, channels_live_server, admin_page: Page):
-    # Przy dodawaniu publikacji -- brak przycisku "edytuj autorów"
-    url = f"admin:bpp_{klass}_add"
-    admin_page.goto(channels_live_server.url + reverse(url))
-    assert "Edytuj autorów" not in normalize_html(admin_page.content())
-
-
-@pytest.mark.parametrize(
-    "klass,model",
-    [
-        ("wydawnictwo_ciagle", "Wydawnictwo_Ciagle"),
-        ("wydawnictwo_zwarte", "Wydawnictwo_Zwarte"),
-    ],
-)
-def test_edit_btn_appears(klass, model, channels_live_server, admin_page: Page):
-    # Przy edytowaniu publikacji -- przycisk "edytuj autorów" jest
-    from model_bakery import baker
-
-    from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
-
-    model_class = (
-        Wydawnictwo_Ciagle if model == "Wydawnictwo_Ciagle" else Wydawnictwo_Zwarte
-    )
-    res = baker.make(model_class)
-
-    url = f"admin:bpp_{klass}_change"
-    admin_page.goto(channels_live_server.url + reverse(url, args=(res.pk,)))
-
-    baker.make(model_class)
-
-    assert "Autorzy" in normalize_html(admin_page.content())
-
-
 @pytest.mark.parametrize(
     "klass,model",
     [

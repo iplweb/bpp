@@ -208,13 +208,15 @@ def test_lista_rozdziela_braki_wymagane_od_warunkowych(admin_client):
 
 
 @pytest.mark.django_db
-def test_lista_stronicuje_autorow(admin_client):
+def test_lista_stronicuje_autorow(admin_client, monkeypatch):
     """W realnej instalacji prawie każdy pracownik ma jakiś brak wymagany.
 
     Pola ``pbn_czy_*`` i ``opl_pub_*`` mają ``default=None``, a ``przypieta``
     domyślnie ``True``, więc bez paginacji tabela urosłaby do wiersza na
     każdego autora uczelni.
     """
+    # Mniejsza strona = mniej rekordów do zbudowania; mechanizm ten sam.
+    monkeypatch.setattr(ListaKompletnosciView, "autorow_na_stronie", 4)
     jednostka = _jednostka()
     ilu = ListaKompletnosciView.autorow_na_stronie + 3
     for _ in range(ilu):

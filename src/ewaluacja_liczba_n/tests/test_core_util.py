@@ -1,6 +1,11 @@
 from model_bakery import baker
 
-from bpp.models import Autor_Dyscyplina, Wydawnictwo_Ciagle
+from bpp.models import (
+    Autor_Dyscyplina,
+    Cache_Punktacja_Autora_Query,
+    Charakter_Formalny,
+    Wydawnictwo_Ciagle,
+)
 from ewaluacja_common.utils import get_lista_prac
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok, LiczbaNDlaUczelni
 
@@ -13,11 +18,12 @@ def test_get_lista_prac_zakres_lat(
     denorms,
     typy_odpowiedzialnosci,
     charaktery_formalne,
+    rodzaj_autora_n,
 ):
     """Sprawdza, czy lista prac odrzuca prace spoza zakresu 2022-2026"""
-    from bpp.models import Charakter_Formalny
 
-    # Zrob dane testowe od 2015 do 2026
+    # Dane testowe 2020-2026: dwa lata przed zakresem wystarczą, żeby
+    # sprawdzić odcięcie dolnej granicy (wcześniej od 2015).
 
     LiczbaNDlaUczelni.objects.create(
         dyscyplina_naukowa=dyscyplina1, uczelnia=uczelnia, liczba_n=100
@@ -28,9 +34,16 @@ def test_get_lista_prac_zakres_lat(
         charakter_ogolny__isnull=False
     ).first()
 
-    for ROK in range(2015, 2027):
+    for ROK in range(2020, 2027):
+        # ``rodzaj_autora`` z ``licz_sloty=True`` jest niezbędny: bez niego
+        # autor nie wchodzi do kalkulacji slotów, ``IPunktacjaCacher`` nie
+        # zapisuje ``Cache_Punktacja_Autora`` i ``get_lista_prac`` nie ma
+        # czego zwrócić.
         Autor_Dyscyplina.objects.create(
-            autor=autor_jan_nowak, rok=ROK, dyscyplina_naukowa=dyscyplina1
+            autor=autor_jan_nowak,
+            rok=ROK,
+            dyscyplina_naukowa=dyscyplina1,
+            rodzaj_autora=rodzaj_autora_n,
         )
 
         # Create IloscUdzialowDlaAutoraZaRok only for years 2022-2026
@@ -54,19 +67,14 @@ def test_get_lista_prac_zakres_lat(
 
     denorms.flush()
 
-    # Debug: Check if cache entries were created
-    from bpp.models import Cache_Punktacja_Autora_Query
-
-    cache_entries = Cache_Punktacja_Autora_Query.objects.filter(
-        dyscyplina__nazwa=dyscyplina1.nazwa, autor=autor_jan_nowak
+    # Cache musi obejmować WSZYSTKIE lata 2020-2026 — inaczej test nie
+    # sprawdzałby odcięcia zakresu, bo prac spoza zakresu i tak by nie było.
+    lata_w_cache = set(
+        Cache_Punktacja_Autora_Query.objects.filter(
+            dyscyplina=dyscyplina1, autor=autor_jan_nowak
+        ).values_list("rekord__rok", flat=True)
     )
-    # If no cache entries, the test cannot pass
-    if cache_entries.count() == 0:
-        # The cache was not properly populated, skip this test for now
-        import pytest
+    assert lata_w_cache == set(range(2020, 2027))
 
-        pytest.skip(
-            "Cache_Punktacja_Autora_Query not populated - this appears to be a test infrastructure issue"
-        )
-
-    assert (len(list(get_lista_prac(dyscyplina1.nazwa)))) == 5
+    lista = list(get_lista_prac(dyscyplina1.nazwa))
+    assert sorted(praca.rok for praca in lista) == [2022, 2023, 2024, 2025, 2026]

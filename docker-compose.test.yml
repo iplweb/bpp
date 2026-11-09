@@ -8,22 +8,29 @@
 
 services:
   db:
-    # Obraz budowany w osobnym repo: https://github.com/iplweb/bpp-dbserver
-    image: iplweb/bpp_dbserver:psql-16.13
+    # Stockowy postgres — ta sama wersja co testcontainers w pyproject.toml
+    # ([tool.pytest-testcontainers-django]). Testy nie potrzebuja plpython
+    # (migracja 0442); obraz iplweb/bpp_dbserver zostaje tylko do budowy
+    # baseline od zera (PG_BASELINE["REBUILD_IMAGE"]).
+    image: postgres:18.6
     environment:
       - PGPORT=${DJANGO_BPP_DB_PORT:-5432}
       - POSTGRES_DB=${DJANGO_BPP_DB_NAME:-bpp}
       - POSTGRES_USER=${DJANGO_BPP_DB_USER:-bpp}
-      - POSTGRESQL_UNSAFE_BUT_FAST=1
-      # Zachowawczo — CI zwykle nie odpala tak wielu workerów jak lokal.
-      - POSTGRESQL_MAX_LOCKS_PER_TRANSACTION=128
-    # PGDATA na tmpfs — z fsync=off i tak prawie nic nie jest zapisywane
-    # synchronicznie, ale tmpfs eliminuje całą ścieżkę kernel writeback.
-    # Dane bazy testowej są ulotne (czyszczone przez `compose down -v`),
-    # więc trwałość nie jest potrzebna.
+      # Siec compose jest izolowana (brak wystawionych portow).
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      # ICU pl-PL (polskie sortowanie), initdb bez fsync, bez checksumow.
+      - POSTGRES_INITDB_ARGS=--locale-provider=icu --icu-locale=pl-PL --no-sync --no-data-checksums
+    # PGDATA na tmpfs — dane bazy testowej sa ulotne. PG18+ trzyma PGDATA
+    # w /var/lib/postgresql/18/docker, wiec tmpfs idzie na caly
+    # /var/lib/postgresql (mount na .../data obraz 18+ odrzuca jako stary
+    # layout).
     tmpfs:
-      - /var/lib/postgresql/data
+      - /var/lib/postgresql
     volumes:
+      # Tuning testowy (fsync=off, shared_buffers, jit=off, locki...) —
+      # ten sam plik co w testcontainers; leci PRZED baseline.
+      - ./docker/test-db/test-fast.sql:/docker-entrypoint-initdb.d/00-test-fast.sql:ro
       # Baseline pg_dump ładowany przez postgresowy entrypoint przy
       # pierwszej inicjalizacji bazy (tj. zawsze, bo PGDATA na tmpfs).
       # Połączone z DJANGO_BPP_TEST_TEMPLATE=bpp poniżej daje template-clone

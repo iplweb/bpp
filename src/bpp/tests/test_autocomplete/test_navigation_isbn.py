@@ -9,10 +9,9 @@ rekord zapisano jako ISBN-13, a wpisano ISBN-10 (albo odwrotnie).
 import json
 
 import pytest
+from denorm import denorms
 from django.urls import reverse
 from django.utils.http import urlencode
-
-from bpp.models import Rekord
 
 # ISBN-13 i jego odpowiednik ISBN-10 (poprawne sumy kontrolne).
 ISBN13_Z_MYSLNIKAMI = "978-83-7430-700-0"
@@ -47,7 +46,7 @@ def zwarte_z_isbn(wydawnictwo_zwarte):
         wydawnictwo_zwarte.isbn = isbn
         wydawnictwo_zwarte.e_isbn = e_isbn
         wydawnictwo_zwarte.save()
-        Rekord.objects.full_refresh()
+        denorms.flush()
         return wydawnictwo_zwarte
 
     return ustaw

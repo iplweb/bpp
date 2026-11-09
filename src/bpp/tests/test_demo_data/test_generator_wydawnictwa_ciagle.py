@@ -88,7 +88,7 @@ def setup(slowniki, tmp_manifest_path):
     return m, a, z, theme
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_creates_n_prac(setup):
     m, autorzy, zrodla, theme = setup
     prace = create_wc(
@@ -106,7 +106,7 @@ def test_creates_n_prac(setup):
     assert len(prace) == 20
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_each_praca_has_authors(setup):
     m, autorzy, zrodla, theme = setup
     create_wc(
@@ -125,7 +125,7 @@ def test_each_praca_has_authors(setup):
         assert 1 <= count <= 8
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_doi_format(setup):
     m, autorzy, zrodla, theme = setup
     create_wc(
@@ -144,7 +144,7 @@ def test_doi_format(setup):
         assert pattern.match(praca.doi)
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_pbn_uid_always_empty(setup):
     m, autorzy, zrodla, theme = setup
     create_wc(
@@ -162,7 +162,7 @@ def test_pbn_uid_always_empty(setup):
         assert praca.pbn_uid_id is None
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_lata_w_zakresie(setup):
     m, autorzy, zrodla, theme = setup
     create_wc(
@@ -180,7 +180,7 @@ def test_lata_w_zakresie(setup):
     assert lata_w_bazie.issubset({2018, 2019, 2020})
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_manifest_includes_powiazania(setup):
     m, autorzy, zrodla, theme = setup
     create_wc(

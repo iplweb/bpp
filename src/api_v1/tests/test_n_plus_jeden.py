@@ -10,6 +10,7 @@ przy współdzielonych Django trafiałby w cache instancji i N+1 by się ukrył.
 """
 
 import pytest
+from denorm import denorms
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.db import connection
@@ -65,6 +66,34 @@ def _bez_n_plus_jeden(client, url, fabryka):
     )
 
 
+@pytest.fixture
+def slowniki_rekordu(charaktery_formalne, jezyki):
+    """Słowniki, po które ``Patent``/``Praca_Doktorska`` sięgają same.
+
+    Oba modele biorą ``charakter_formalny`` (i ``Patent`` także ``jezyk``) nie
+    z kolumny, tylko zapytaniem do słownika (``skrot="D"``/``"PAT"``, język
+    „polski"), zapamiętanym w cache na poziomie modułu. Wiersze pochodzą
+    z migracji danych w baseline — test transakcyjny wcześniej na tym samym
+    workerze robi TRUNCATE i ich już nie ma, więc serializer wywala się
+    ``DoesNotExist``. Dlatego jawnie siejemy słowniki i czyścimy cache
+    modułu (przed i po), żeby nie trzymał obiektów z innego testu.
+    """
+    from bpp.models.patent import _Patent_PropertyCache
+    from bpp.models.praca_doktorska import _Praca_Doktorska_PropertyCache
+
+    def wyczysc():
+        for cache_modulu, nazwy in (
+            (_Patent_PropertyCache, ("charakter_formalny", "jezyk")),
+            (_Praca_Doktorska_PropertyCache, ("charakter_formalny",)),
+        ):
+            for nazwa in nazwy:
+                cache_modulu.__dict__.pop(nazwa, None)
+
+    wyczysc()
+    yield
+    wyczysc()
+
+
 def _openaccess_ciagle():
     """Własne obiekty OpenAccess dla jednego wydawnictwa ciągłego."""
     return {
@@ -105,7 +134,9 @@ def test_wydawnictwo_zwarte_lista_bez_n_plus_jeden(api_client):
 
 
 @pytest.mark.django_db
-def test_praca_doktorska_lista_bez_n_plus_jeden(api_client, uczelnia, jednostka):
+def test_praca_doktorska_lista_bez_n_plus_jeden(
+    api_client, uczelnia, jednostka, slowniki_rekordu
+):
     # Praca_Doktorska nie dziedziczy pól openaccess_* (są tylko zadeklarowane
     # w serializerze) — jedyną relacją tekstową jest status_korekty.
     _bez_n_plus_jeden(
@@ -116,7 +147,7 @@ def test_praca_doktorska_lista_bez_n_plus_jeden(api_client, uczelnia, jednostka)
 
 
 @pytest.mark.django_db
-def test_patent_lista_bez_n_plus_jeden(api_client):
+def test_patent_lista_bez_n_plus_jeden(api_client, slowniki_rekordu):
     _bez_n_plus_jeden(
         api_client,
         reverse("api_v1:patent-list"),
@@ -217,9 +248,8 @@ def test_zapytanie_rekord_nie_ciagnie_search_index():
     """``/zapytanie/rekord/`` używa tego samego wąskiego ``only()`` co
     ``/szukaj/`` — tsvector ``search_index`` nie może trafiać do SELECT-a."""
     _wydawnictwo_ciagle()
-    from bpp.models import Rekord
 
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     user = baker.make("bpp.BppUser", is_staff=True, is_superuser=True)
     client = APIClient()

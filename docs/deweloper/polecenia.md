@@ -53,13 +53,21 @@ Note: The script requires `expect` to be installed on the system.
 
 **Alternative make commands (internally use `uv run pytest`):**
 - `make tests-without-playwright` - Tests excluding Playwright with parallelization (fast).
-  Poza CI liczba workerów xdist jest liczona z wolnego RAM-u (`make xdist-calc`),
-  a na Linuksie test leci pod `systemd-run ... MemoryMax`, żeby przekroczenie
-  zabiło pytest, a nie zamroziło maszynę. Nadpisanie: `make tests-without-playwright
-  XDIST_N=6`; wyłączenie limitu: `XDIST_GUARD=`.
-- `make xdist-measure` - zmierz RAM workerów na tej maszynie (próbka, `-n 2`) →
-  `.xdist-mem-profile.json`; `make xdist-calc` - pokaż bezpieczne `-n`
-- `make tests-only-playwright` - Only Playwright tests with parallelization (slow)
+  Poza CI `-n auto` liczy plugin [pytest-xdist-memory](https://github.com/iplweb/pytest-xdist-memory)
+  z wolnego RAM-u: każdy przebieg mierzy szczyt pamięci workera (z procesami
+  potomnymi i kontenerem PG) i zapisuje go w `.pytest-xdist-memory.json`
+  (gitignored, osobno dla każdego `-m`); podsumowanie `xdist-memory` na końcu
+  przebiegu pokazuje rachunek. Na Linuksie test leci pod `systemd-run ...
+  MemoryMax` (`bin/memory_guard.sh`), żeby przekroczenie zabiło pytest, a nie
+  zamroziło maszynę; na macOS zamiast tego watchdog pluginu. Nadpisanie:
+  `XDIST_N=6`; wyłączenie limitu: `XDIST_GUARD=`; wyłączenie pluginu:
+  `XDIST_MEMORY=`.
+- `make tests-only-playwright` - Only Playwright tests with parallelization (slow).
+  Nic nie instaluje — tylko sprawdza (`make playwright-check`), czy przeglądarki
+  są na dysku; instalacja to jednorazowe `make playwright-install`. Poza CI `-n`
+  liczy pytest-xdist-memory z osobnego profilu `-m playwright` (worker +
+  Chromium + Daphne), z limitem CPU do rdzeni wydajnościowych; nadpisanie:
+  `PLAYWRIGHT_WORKERS=4`.
 - `make tests` - Full test suite
 - `make full-tests` - Complete test suite
 

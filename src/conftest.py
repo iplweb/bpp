@@ -1,3 +1,5 @@
+import contextlib
+import logging
 import os
 import random
 import time
@@ -10,7 +12,8 @@ from django.contrib import auth
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import connections
-from django.db.utils import OperationalError
+from django.db.models.signals import post_migrate
+from django.db.utils import DatabaseError, OperationalError
 from django.test import TransactionTestCase
 from django.test.client import Client, RequestFactory
 from model_bakery import baker
@@ -29,6 +32,8 @@ from channels_live_server import (  # noqa: F401
     channels_live_server,
     channels_live_server_per_test,
 )
+
+logger = logging.getLogger(__name__)
 
 # pytest_plugins: rejestrujemy fixture'owe moduły jako pluginy, żeby
 # pytest zastosował assert-rewriting zanim je zaimportuje. Bez tej
@@ -89,9 +94,87 @@ pytest_plugins = [
 # =============================================================================
 
 
+@contextlib.contextmanager
+def _bez_reinstalacji_triggerow_denorm():
+    """Wylacz reinstalacje triggerow denorm na czas flush-a po tescie.
+
+    ``flush`` emituje ``post_migrate`` (zeby odtworzyc slowniki wymiecione
+    przez TRUNCATE), a denorm podpina pod ten sygnal ``install_triggers`` —
+    przy kazdym tescie transakcyjnym leciala pelna reinstalacja (~170 x
+    DROP TRIGGER + CREATE FUNCTION + CREATE TRIGGER; w pelnej suicie
+    34 tys. DROP-ow i 32 tys. CREATE-ow). Zbedne: TRUNCATE nie rusza
+    triggerow, a triggery denorm rozwiazuja ``content_type_id`` w momencie
+    wywolania (``denorm.helpers.content_type_select_sql``), wiec renumeracja
+    ``django_content_type`` przy flush-u ich nie psuje. Pozostale handlery
+    ``post_migrate`` (seedy slownikow) dzialaja normalnie.
+    """
+    from denorm.apps import denorm_install_triggers_after_migrate
+
+    sender = apps.get_app_config("denorm")
+    odlaczony = post_migrate.disconnect(
+        denorm_install_triggers_after_migrate, sender=sender
+    )
+    try:
+        yield
+    finally:
+        if odlaczony:
+            post_migrate.connect(denorm_install_triggers_after_migrate, sender=sender)
+
+
+def _pelny_flush(db_name, inhibit_post_migrate):
+    """``flush`` jak w Django (TRUNCATE ... CASCADE + post_migrate) z retry
+    przy deadlocku."""
+    # Add retry logic for deadlock handling
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            with _bez_reinstalacji_triggerow_denorm():
+                call_command(
+                    "flush",
+                    verbosity=0,
+                    interactive=False,
+                    database=db_name,
+                    reset_sequences=False,
+                    # W prawdziwym TransactionTestCase bywa False.
+                    allow_cascade=True,
+                    inhibit_post_migrate=inhibit_post_migrate,
+                )
+            break  # Success, exit retry loop
+        except (OperationalError, CommandError) as e:
+            # Check for deadlock in both the exception and its cause
+            error_msg = str(e).lower()
+            is_deadlock = (
+                "deadlock detected" in error_msg or "zakleszczenie" in error_msg
+            )
+
+            # Also check the chained exception (CommandError wraps OperationalError)
+            if not is_deadlock and hasattr(e, "__cause__") and e.__cause__:
+                cause_msg = str(e.__cause__).lower()
+                is_deadlock = (
+                    "deadlock detected" in cause_msg or "zakleszczenie" in cause_msg
+                )
+
+            if is_deadlock and attempt < max_retries - 1:
+                # Exponential backoff with jitter
+                base_delay = 0.5 * (2**attempt)
+                jitter = random.uniform(0, base_delay)
+                time.sleep(base_delay + jitter)
+                continue
+            else:
+                # Re-raise if not a deadlock or max retries exceeded
+                raise
+
+
 def _fixture_teardown(self):
     # Allow TRUNCATE ... CASCADE and don't emit the post_migrate signal
-    # when flushing only a subset of the apps
+    # when flushing only a subset of the apps.
+    #
+    # Zamiast pełnego flush-a po KAŻDYM teście próbujemy selektywnego
+    # sprzątania (``fixtures/selektywny_flush.py``): przywraca stan po
+    # ostatnim pełnym flushu, czyszcząc DELETE-em tylko tabele, które ktoś
+    # zmienił. Przy jakiejkolwiek niepewności — pełny flush jak dawniej.
+    from fixtures import selektywny_flush as sf
+
     for db_name in self._databases_names(include_mirrors=False):
         # Flush the database
         inhibit_post_migrate = self.available_apps is not None or (
@@ -100,45 +183,44 @@ def _fixture_teardown(self):
             self.serialized_rollback
             and hasattr(connections[db_name], "_test_serialized_contents")
         )
+        start = sf.zmierz()
 
-        # Add retry logic for deadlock handling
-        max_retries = 5
-        for attempt in range(max_retries):
-            try:
-                call_command(
-                    "flush",
-                    verbosity=0,
-                    interactive=False,
-                    database=db_name,
-                    reset_sequences=False,
-                    # In the real TransactionTestCase this is conditionally set to False.
-                    allow_cascade=True,
-                    inhibit_post_migrate=inhibit_post_migrate,
-                )
-                break  # Success, exit retry loop
-            except (OperationalError, CommandError) as e:
-                # Check for deadlock in both the exception and its cause
-                error_msg = str(e).lower()
-                is_deadlock = (
-                    "deadlock detected" in error_msg or "zakleszczenie" in error_msg
-                )
+        if inhibit_post_migrate or not sf.wlaczony():
+            # Poza naszym kontraktem (S0 zakłada post_migrate po flushu).
+            sf.zapomnij(db_name)
+            _pelny_flush(db_name, inhibit_post_migrate)
+            sf.zapisz_statystyke("pelny", "wylaczony", sf.zmierz() - start)
+            continue
 
-                # Also check the chained exception (CommandError wraps OperationalError)
-                if not is_deadlock and hasattr(e, "__cause__") and e.__cause__:
-                    cause_msg = str(e.__cause__).lower()
-                    is_deadlock = (
-                        "deadlock detected" in cause_msg or "zakleszczenie" in cause_msg
-                    )
+        powod = None
+        try:
+            ile = sf.sprzataj(db_name)
+        except sf.PotrzebnyPelnyFlush as e:
+            powod = str(e)
+        except DatabaseError as e:
+            # Nie wiemy, w jakim stanie jest baza — pełny flush to przywróci.
+            logger.warning("Selektywny flush padł (%r) — pełny flush", e)
+            powod = f"blad: {type(e).__name__}"
 
-                if is_deadlock and attempt < max_retries - 1:
-                    # Exponential backoff with jitter
-                    base_delay = 0.5 * (2**attempt)
-                    jitter = random.uniform(0, base_delay)
-                    time.sleep(base_delay + jitter)
-                    continue
-                else:
-                    # Re-raise if not a deadlock or max retries exceeded
-                    raise
+        if powod is None and sf.weryfikacja():
+            tabele, przed = sf.zweryfikuj_przed_flushem(db_name)
+            _pelny_flush(db_name, False)
+            sf.zweryfikuj_po_flushu(db_name, tabele, przed)
+            powod = "weryfikacja"
+            sf.zapisz_statystyke(f"selektywny:{ile}", powod, sf.zmierz() - start)
+        elif powod is None:
+            sf.zapisz_statystyke(f"selektywny:{ile}", "", sf.zmierz() - start)
+            continue
+        else:
+            sf.zapomnij(db_name)
+            _pelny_flush(db_name, False)
+            sf.zapisz_statystyke("pelny", powod, sf.zmierz() - start)
+        try:
+            sf.zbuduj_stan(db_name)
+        except DatabaseError as e:
+            # Bez S0 następny teardown po prostu zrobi pełny flush.
+            logger.warning("Nie udało się zapamiętać stanu po flushu: %r", e)
+            sf.zapomnij(db_name)
 
 
 TransactionTestCase._fixture_teardown = _fixture_teardown

@@ -20,10 +20,12 @@ def test_guess_rodzaj():
 
 
 def test_Import_Dyscyplin_post_delete_handler(
-    test1_xlsx, normal_django_user, transactional_db
+    test1_xlsx, normal_django_user, db, django_capture_on_commit_callbacks
 ):
     path = None
-    with transaction.atomic():
+    # ``Import_Dyscyplin.delete`` kasuje plik w ``on_commit`` — wykonujemy
+    # przechwycone callbacki zamiast prawdziwego COMMIT-u.
+    with django_capture_on_commit_callbacks(execute=True), transaction.atomic():
         i = Import_Dyscyplin.objects.create(
             owner=normal_django_user,
         )

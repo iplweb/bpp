@@ -1,16 +1,9 @@
 """Browser and webtest fixtures."""
 
-import pytest
-from django.apps import apps
-from django_webtest import DjangoTestApp
-
-try:
-    from django.core.urlresolvers import reverse
-except ImportError:
-    from django.urls import reverse
-
 import django_webtest
+import pytest
 import webtest
+from django_webtest import DjangoTestApp
 
 from .const import NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
 
@@ -40,19 +33,31 @@ def webtest_app(request):
     return django_webtest.DjangoTestApp()
 
 
-def _webtest_login(webtest_app, username, password, login_form="login_form"):
-    if apps.is_installed("microsoft_auth"):
-        # Z microsoft_auth standardowy login_form to redirect do Microsoft.
-        # Używamy local_login_form (dostępny zawsze pod /accounts/login/local/).
-        form = webtest_app.get(reverse("local_login_form")).form
-    else:
-        form = webtest_app.get(reverse(login_form)).form
+def _webtest_login(webtest_app, username, password):
+    """Zaloguj ``webtest_app`` jako ``username``.
 
-    form["username"] = username
-    form["password"] = password
-    res = form.submit().maybe_follow()
+    Zamiast przechodzić formularz logowania (GET formularza + POST +
+    przekierowanie na stronę startową = 3 pełne requesty na KAŻDY test
+    z ``admin_app``/``wd_app``) tworzymy sesję przez ``Client.force_login``
+    i przekazujemy jej ciasteczko do webtesta. ``force_login`` woła
+    ``django.contrib.auth.login``, więc sygnał ``user_logged_in`` i rotacja
+    sesji działają jak przy zwykłym logowaniu. Sam formularz logowania
+    testują osobne testy (``bpp/tests/test_views/test_auth.py`` i in.).
+    """
+    from django.conf import settings
+    from django.contrib.auth import get_user_model
+    from django.test import Client
 
-    assert res.context["user"].username == username
+    user = get_user_model().objects.get(username=username)
+    # Fikstury podają hasło — pilnujemy, że jest prawdziwe, jak formularz.
+    assert user.check_password(password), f"złe hasło testowe dla {username}"
+
+    client = Client()
+    client.force_login(user)
+    webtest_app.set_cookie(
+        settings.SESSION_COOKIE_NAME,
+        client.cookies[settings.SESSION_COOKIE_NAME].value,
+    )
     return webtest_app
 
 

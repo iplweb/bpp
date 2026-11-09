@@ -43,7 +43,7 @@ def jednostki_fixture(tmp_manifest_path, db):
     return m, j
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_create_autorzy_creates_n_records(jednostki_fixture, tmp_manifest_path):
     m, jednostki = jednostki_fixture
 
@@ -62,7 +62,7 @@ def test_create_autorzy_creates_n_records(jednostki_fixture, tmp_manifest_path):
     assert sorted(m.objects_for("bpp.Autor")) == sorted([a.pk for a in autorzy])
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_each_autor_has_one_jednostka(jednostki_fixture, tmp_manifest_path):
     m, jednostki = jednostki_fixture
     autorzy = create_autorzy(
@@ -82,7 +82,7 @@ def test_each_autor_has_one_jednostka(jednostki_fixture, tmp_manifest_path):
         assert aj_for[a.pk].jednostka_id in {j.pk for j in jednostki}
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_autorzy_have_polish_names(jednostki_fixture, tmp_manifest_path):
     from bpp.demo_data.themes.registry import get_theme
 
@@ -102,7 +102,7 @@ def test_autorzy_have_polish_names(jednostki_fixture, tmp_manifest_path):
         assert a.nazwisko in theme.autor_nazwiska
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_no_slug_collision_at_scale(jednostki_fixture, tmp_manifest_path):
     """Birthday-paradox guard: 50 autorow musi miec 50 unikalnych slugow,
     nawet jesli losowe imiona/nazwiska sie powtarzaja."""
@@ -124,7 +124,7 @@ def test_no_slug_collision_at_scale(jednostki_fixture, tmp_manifest_path):
     )
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_seed_determinism(jednostki_fixture, tmp_manifest_path):
     m, jednostki = jednostki_fixture
     autorzy_1 = create_autorzy(

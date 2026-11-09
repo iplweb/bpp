@@ -25,11 +25,10 @@ from bpp.models import (
 
 @pytest.fixture
 def slowniki(db):
-    # Baseline migracji 0035 ladujac fixtures (charakter_formalny.json,
-    # jezyk.json, status_korekty.json) — wiec uzywamy get_or_create po
-    # unikalnym kluczu (skrot/nazwa) zeby nie kolidowac. Typ_KBN i
-    # Typ_Odpowiedzialnosci NIE sa w baseline (komentarze w 0035.py
-    # wskazuja ze sa ladowane pozniej / przez migracje 0067).
+    # Baseline (baseline-sql/baseline.sql) zawiera juz slowniki, w tym
+    # Charakter_Formalny, Jezyk, Status_Korekty, Typ_KBN i
+    # Typ_Odpowiedzialnosci — wiec uzywamy get_or_create po unikalnym
+    # kluczu (skrot/nazwa), zeby nie kolidowac z istniejacymi wierszami.
     Charakter_Formalny.objects.get_or_create(skrot="KS", defaults={"nazwa": "Książka"})
     Charakter_Formalny.objects.get_or_create(
         skrot="ROZ", defaults={"nazwa": "Rozdział książki"}
@@ -86,7 +85,7 @@ def setup(slowniki, tmp_manifest_path):
     return m, a, wyd, theme
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_creates_n_prac(setup):
     m, autorzy, wydawcy, theme = setup
     prace = create_wz(
@@ -105,7 +104,7 @@ def test_creates_n_prac(setup):
     assert len(prace) == 20
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_doi_format(setup):
     m, autorzy, wydawcy, theme = setup
     create_wz(
@@ -125,7 +124,7 @@ def test_doi_format(setup):
         assert pattern.match(praca.doi)
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_rozdzialy_have_nadrzedne(setup):
     m, autorzy, wydawcy, theme = setup
     create_wz(
@@ -149,7 +148,7 @@ def test_rozdzialy_have_nadrzedne(setup):
     assert nadrzedne.count() >= 1
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_procent_rozdzialy_validates_range(setup):
     m, autorzy, wydawcy, theme = setup
     for invalid in (-1, 101, 150):
@@ -168,7 +167,7 @@ def test_procent_rozdzialy_validates_range(setup):
             )
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_pbn_uid_zawsze_puste(setup):
     m, autorzy, wydawcy, theme = setup
     create_wz(

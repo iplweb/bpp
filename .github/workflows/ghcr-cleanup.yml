@@ -1,0 +1,87 @@
+name: Sprzątanie GHCR (bpp-test-runner)
+
+# Pakiet ghcr.io/iplweb/bpp-test-runner rośnie bez końca: każdy run tests.yml
+# pushuje obraz `sha-<commit>` i cache BuildKita `cache-<gałąź>` (mode=max,
+# więc stare wersje cache zostają jako wersje BEZ tagu). Stan 2026-11-09:
+# 7470 wersji (1926 `sha-*`, 5529 bez tagu, 15 `cache-*`), najstarsza z 2026-04.
+#
+# Dwa tryby:
+# - `delete` gałęzi → od razu kasujemy jej `cache-<slug>` (ten sam slug, co
+#   liczy tests.yml w kroku „Cache per gałąź").
+# - co tydzień (i ręcznie) → `sha-*` i `cache-*` starsze niż 14 dni + wersje
+#   bez tagu starsze niż 14 dni. Zostają zawsze: `cache-dev` (cache bazowy dla
+#   wszystkich PR-ów) i stary `cache` (ostatni fallback w tests.yml).
+#
+# Akcja rozumie manifesty wieloplatformowe i atestacje (podmanifesty są
+# wersjami BEZ tagu — ręczne kasowanie „untagged" psułoby otagowane obrazy).
+# `validate: true` po sprzątaniu sprawdza, że żadnemu obrazowi nie brakuje
+# dzieci. Ręczne uruchomienie domyślnie w trybie próbnym (`dry-run`).
+
+on:
+  delete:
+  schedule:
+    - cron: "17 3 * * 1"  # poniedziałek 03:17 UTC
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Tryb próbny — tylko wypisz, co zostałoby usunięte"
+        type: boolean
+        default: true
+
+permissions: {}
+
+concurrency:
+  group: ghcr-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cache-usunietej-galezi:
+    name: Cache usuniętej gałęzi
+    if: github.event_name == 'delete' && github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Slug gałęzi (jak w tests.yml)
+        id: slug
+        env:
+          BRANCH: ${{ github.event.ref }}
+        run: |
+          slug=$(printf '%s' "$BRANCH" | tr '[:upper:]' '[:lower:]' \
+            | sed -E 's/[^a-z0-9._-]+/-/g' | cut -c1-120)
+          case "$slug" in
+            ""|dev|master)
+              echo "Pomijam chroniony slug: '${slug}'"
+              exit 0
+              ;;
+          esac
+          echo "tag=cache-${slug}" >> "$GITHUB_OUTPUT"
+
+      - name: Usuń cache-<gałąź>
+        if: steps.slug.outputs.tag != ''
+        uses: dataaxiom/ghcr-cleanup-action@d52806a0dc70b430571a37da1fde39733ffd640f # v1.2.2
+        with:
+          package: bpp-test-runner
+          delete-tags: ${{ steps.slug.outputs.tag }}
+          exclude-tags: cache-dev,cache
+          validate: true
+
+  okresowe:
+    name: Okresowe sprzątanie
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Stare sha-*, cache-* i wersje bez tagu
+        uses: dataaxiom/ghcr-cleanup-action@d52806a0dc70b430571a37da1fde39733ffd640f # v1.2.2
+        with:
+          package: bpp-test-runner
+          delete-tags: sha-*,cache-*
+          exclude-tags: cache-dev,cache
+          delete-untagged: true
+          older-than: 14 days
+          validate: true
+          # schedule → realne kasowanie; workflow_dispatch → wg inputu
+          # (domyślnie próbnie).
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}

@@ -3,6 +3,7 @@ from django.urls import reverse
 from model_bakery import baker
 
 from bpp.models import Wydawnictwo_Ciagle
+from bpp.views.zapytanie import ZapytanieView
 
 # Znacznik tabeli redakcyjnej ("postac=rekordy") w wyrenderowanym HTML-u.
 # MUSI zawierac prefiks '<td class=' — sama nazwa klasy "rekord-id-cell"
@@ -18,6 +19,14 @@ TABELA_REDAKCYJNA = b'<td class="rekord-id-cell">'
 def zalogowany_redaktor(client, admin_user):
     client.force_login(admin_user)
     return client
+
+
+@pytest.fixture
+def mala_strona_zapytania(monkeypatch):
+    """Strona /zapytanie/ na 3 wiersze — testy stronicowania nie muszą
+    budować 26+ rekordów, żeby dostać drugą stronę."""
+    monkeypatch.setattr(ZapytanieView, "paginate_by", 3)
+    return 3
 
 
 @pytest.mark.django_db
@@ -251,12 +260,13 @@ def test_multiseek_bibtex_nadal_pokazuje_przycisk_kopiowania(
 
 
 @pytest.mark.django_db
-def test_pager_zachowuje_postac_na_kolejnej_stronie(zalogowany_redaktor, denorms):
+def test_pager_zachowuje_postac_na_kolejnej_stronie(
+    zalogowany_redaktor, denorms, mala_strona_zapytania
+):
     """Regresja na `_zapytanie_pager.html`: bez `&postac=` link „następna
     strona" resetowałby wybraną postać z powrotem na „rekordy"."""
     rok = 2031
-    for _ in range(30):
-        baker.make(Wydawnictwo_Ciagle, rok=rok)
+    baker.make(Wydawnictwo_Ciagle, rok=rok, _quantity=mala_strona_zapytania + 1)
     denorms.flush()
 
     res = zalogowany_redaktor.get(
@@ -413,12 +423,13 @@ def test_przy_pivocie_eksport_tylko_pod_macierza(
 
 
 @pytest.mark.django_db
-def test_tabela_suma_tylko_na_ostatniej_stronie(zalogowany_redaktor, denorms):
+def test_tabela_suma_tylko_na_ostatniej_stronie(
+    zalogowany_redaktor, denorms, mala_strona_zapytania
+):
     """Regresja na `page_obj=results` w include'u tabeli: bez tego stopka
     "Suma:" renderowałaby się na KAŻDEJ stronie, nie tylko ostatniej."""
     rok = 2032
-    for _ in range(30):
-        baker.make(Wydawnictwo_Ciagle, rok=rok)
+    baker.make(Wydawnictwo_Ciagle, rok=rok, _quantity=mala_strona_zapytania + 1)
     denorms.flush()
 
     pierwsza = zalogowany_redaktor.get(

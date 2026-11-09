@@ -1,6 +1,6 @@
 [project]
 name = "bpp_iplweb"
-version = "202611.1406"
+version = "202611.1407"
 description = ""
 authors = [
     { name = "Michał Pasternak", email = "michal.dtz@gmail.com" }
@@ -277,7 +277,7 @@ include = [
 ]
 
 [tool.bumpver]
-current_version = "v202611.1406"
+current_version = "v202611.1407"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -315,9 +315,10 @@ push = false
 # (cryptography, pynacl, uvicorn[standard]) odzyskuja markery PyPy na
 # krawedziach do cffi/uvloop - wiec lock i tak nie robi sie prostszy.
 #
-# Dolna granica trzymana rownolegle do `requires-python` wyzej (>=3.11).
-# Do 2026-09 stalo tu `>= '3.10'` - martwe, bo przeciecie z requires-python
-# i tak dawalo 3.11, ale mylnie sugerowalo wsparcie dla 3.10.
+# Dolna granica trzymana rownolegle do `requires-python` wyzej (>=3.11) -
+# te dwie wartosci zmieniamy razem. Do 2026-09 stalo tu `>= '3.10'` - martwe,
+# bo przeciecie z requires-python i tak dawalo 3.11, ale mylnie sugerowalo
+# wsparcie dla Pythona 3.10.
 #
 # emscripten (Pyodide/WebAssembly) wykluczony od uv 0.13 (2026-10, przy
 # podbiciu uv po GHSA-hq85-5cpj-mr62): uv 0.13 rozbija lock takze na split
@@ -488,26 +489,41 @@ django-pbn-client = { git = "https://github.com/iplweb/django-pbn-client.git", r
 # startuje kontenery PG/Redis przed importem Django settings i wstrzykuje
 # host:port do os.environ. Zastepuje wewnetrzny `src/testcontainers_bpp/`.
 #
-# - `postgres_image`: zachowujemy wlasny obraz BPP (ma plpython3u i locale
-#   pl_PL.UTF-8) zamiast vanilla `postgres:16` — schemat i dane zaleza
-#   od tego.
+# - `postgres_image`: stockowy postgres, wersja przypieta (zmiana minor =
+#   swiadomy bump). Testy nie potrzebuja plpython3u (usuniety w 0442) ani
+#   locale pl_PL (0443) — polskie sortowanie daje ICU. Ta sama wersja
+#   w docker-compose.test.yml (CI). Obraz iplweb/bpp_dbserver zostaje
+#   tylko do budowy baseline od zera (PG_BASELINE w settings/base.py).
 # - `postgres_init_scripts`: baseline.sql jest mountowany do
 #   /docker-entrypoint-initdb.d/, dzieki czemu jest replayowany przez
 #   entrypoint Postgresa zanim TCP zacznie akceptowac polaczenia. Razem
 #   z `db_test_template_env` daje "instant" tworzenie test-DB przez
 #   CREATE DATABASE WITH TEMPLATE.
+# - `docker/test-db/test-fast.sql` leci PRZED baseline (plugin numeruje
+#   skrypty wg kolejnosci na liscie) i przez ALTER SYSTEM ustawia caly
+#   tuning testowy (fsync=off, shared_buffers=1GB, jit=off, locki...).
+# - `postgres_env`: ICU pl-PL (sortowanie), `--no-sync` (initdb bez fsync),
+#   `--no-data-checksums` (PG18+ domyslnie wlacza checksumy), `trust`
+#   (stockowy obraz bez hasla/trust nie wystartuje; kontener jest ulotny).
 # - `db_*_env`: nazwy zmiennych srodowiskowych ktore plugin pisze do
 #   os.environ. Pasuja do tych, ktore Django settings (`base.py`) czyta
 #   przez `env(...)`.
 # - `redis_enabled`: BPP wymaga Redisa do testow (channels, cacheops).
 [tool.pytest-testcontainers-django]
-postgres_image = "iplweb/bpp_dbserver:psql-16.13"
+postgres_image = "postgres:18.6"
 postgres_user = "bpp"
 postgres_password = "password"
 postgres_database = "bpp"
-postgres_init_scripts = ["baseline-sql/baseline.sql"]
+postgres_init_scripts = [
+    "docker/test-db/test-fast.sql",
+    "baseline-sql/baseline.sql",
+]
 postgres_template = "bpp"
-postgres_env = { POSTGRESQL_UNSAFE_BUT_FAST = "1", POSTGRESQL_MAX_LOCKS_PER_TRANSACTION = "512" }
+# Django <-> PG przez Unix socket podmontowany z hosta (~9 us/zapytanie zamiast
+# ~27 us przez docker-proxy); "auto" = na Linuksie z natywnym Dockerem, inaczej
+# (macOS, reuse) zwykly port TCP.
+postgres_connect = "auto"
+postgres_env = { POSTGRES_INITDB_ARGS = "--locale-provider=icu --icu-locale=pl-PL --no-sync --no-data-checksums", POSTGRES_HOST_AUTH_METHOD = "trust" }
 db_host_env = "DJANGO_BPP_DB_HOST"
 db_port_env = "DJANGO_BPP_DB_PORT"
 db_name_env = "DJANGO_BPP_DB_NAME"
@@ -662,6 +678,9 @@ dev = [
     # gc.freeze() + gc.collect() co N testow (pytest.ini: gc_steward_*), zeby
     # workery xdist nie puchly od cykli referencji z test clienta.
     "pytest-gc-steward>=0.1.0",
+    # -n auto wg wolnego RAM-u (pomiar workerow z Chromium/Daphne/PG), patrz
+    # XDIST_MEMORY w Makefile i xdist_memory_* w pytest.ini.
+    "pytest-xdist-memory>=0.1.0",
     "pytest-split>=0.9.0",
     "pytest-timeout>=2.1.0",
     "pyparsing>=3.3.3",
@@ -694,8 +713,14 @@ dev = [
     # zamiast wisiec ~60 s po niej, a `--testcontainers-clean` szuka po etykiecie
     # org.testcontainers=true, wiec zastepuje `make clean-testcontainers`.
     # SIGKILL nadal spada na Ryuka — tego nie da sie przechwycic.
+    # 0.4.0: `poll_interval` (domyslnie 0,1 s zamiast 1 s testcontainers) —
+    # gotowosc PG/Redis sprawdzana 10x czesciej, timeout startu bez zmian;
+    # ~1 s mniej na KAZDYM uruchomieniu pytest.
     "pytest-testcontainers>=0.3.2",
-    "pytest-testcontainers-django>=0.3.2",
+    # 0.5.0: `postgres_connect` — Django <-> PG przez Unix socket podmontowany
+    # z hosta zamiast portu przez docker-proxy (~9 us zamiast ~27 us na
+    # zapytanie; pelna suita -12%). Konfiguracja w [tool.pytest-testcontainers-django].
+    "pytest-testcontainers-django>=0.5.0",
     # django-run-site: CLI orchestrator dev stack-u. Dawniej `manage.py run_site`
     # + helpery w `_run_site_helpers/`. Instalowany w dev-deps zeby `uv run run-site`
     # mialo dostep do CLI bez globalnego `uv tool install`. Konfiguracja: runsite.toml.
@@ -710,7 +735,7 @@ dev = [
 
 [tool.towncrier]
 package = "bpp"
-version = "202611.1406"
+version = "202611.1407"
 package_dir = "src"
 filename = "HISTORY.md"
 start_string = "<!-- towncrier release notes start -->\n"

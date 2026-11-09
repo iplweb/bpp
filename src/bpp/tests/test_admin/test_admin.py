@@ -3,7 +3,6 @@ from unittest.mock import Mock
 import pytest
 from django.contrib import admin
 from django.contrib.auth.models import Group
-from django.contrib.contenttypes.models import ContentType
 from django.test import RequestFactory
 from django.urls.base import reverse
 from model_bakery import baker
@@ -12,7 +11,6 @@ from bpp.admin import Wydawnictwo_ZwarteAdmin
 from bpp.admin.filters import CalkowitaLiczbaAutorowFilter, LiczbaZnakowFilter
 from bpp.models import (
     Autor,
-    Charakter_Formalny,
     Jednostka,
     Praca_Doktorska,
     Praca_Habilitacyjna,
@@ -146,8 +144,11 @@ _ADMIN_MODELS = sorted(
 )
 @pytest.mark.django_db
 def test_widok_admina(admin_client, admin_user, model):
-    """Wejdź na podstrony 'changelist' oraz 'add' KAŻDEGO modelu zarejestrowanego
-    w adminie.
+    """Wejdź na podstrony 'changelist' (także z wyszukiwaniem ``?q=``) oraz
+    'add' KAŻDEGO modelu zarejestrowanego w adminie.
+
+    Jedyne miejsce sondujące changelisty i add-formy całego registry — patrz
+    docstring ``test_admin_home_links.py``.
     """
 
     app_label = model._meta.app_label
@@ -164,11 +165,15 @@ def test_widok_admina(admin_client, admin_user, model):
 
     request = RequestFactory().get("/")
     request.user = admin_user
-    if not model_admin.has_add_permission(request):
-        return
-
     url = reverse(f"admin:{app_label}_{model_name}_add")
     res = admin_client.get(url)
+    if not model_admin.has_add_permission(request):
+        # Dodawanie celowo wyłączone: 403 (albo własny widok, jak constance)
+        # — ale nie 404/500.
+        assert res.status_code < 400 or res.status_code == 403, (
+            f"add (wyłączony) -> HTTP {res.status_code} dla {model!r}"
+        )
+        return
     assert res.status_code == 200, f"add failed for {model!r}"
 
 
@@ -271,26 +276,6 @@ def test_admin_custom_app_index(superuser_client):
     response = superuser_client.get("/admin/bpp/")
     assert response.status_code == 200
     assert "Użytkownicy" in response.content.decode()
-
-
-@pytest.mark.django_db
-def test_admin_wyszukiwanie(superuser_client):
-    """Dla wielu różnych modeli spróbuj wyszukiwać w tabelce."""
-    for model in [
-        Jednostka,
-        Autor,
-        Zrodlo,
-        Wydawnictwo_Ciagle,
-        Wydawnictwo_Zwarte,
-        Praca_Doktorska,
-        Praca_Habilitacyjna,
-        Patent,
-        Charakter_Formalny,
-    ]:
-        content_type = ContentType.objects.get_for_model(model)
-        url = reverse(f"admin:{content_type.app_label}_{content_type.model}_changelist")
-        res = superuser_client.get(url, data={"q": "wtf"})
-        assert res.status_code == 200
 
 
 @pytest.mark.django_db

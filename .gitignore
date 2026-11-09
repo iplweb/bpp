@@ -237,5 +237,5 @@ test-results/
 # create_demo_data: ulotne manifesty (domyślnie zapisywane w CWD)
 demo_data_manifest_*.json
 
-# Profil pamieci workerow xdist (per maszyna, bin/xdist_workers.py)
-.xdist-mem-profile.json
+# Profil pamieci workerow xdist (per maszyna, pytest-xdist-memory)
+.pytest-xdist-memory.json

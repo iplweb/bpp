@@ -271,21 +271,27 @@ def test_log_menu_click_requires_menu_url(client, staff_user):
 
 
 @pytest.mark.django_db
-def test_log_menu_click_max_1000_per_user(client, staff_user):
-    """Test weryfikujący, że użytkownik ma maksymalnie 1000 wpisów."""
+def test_log_menu_click_max_1000_per_user(client, staff_user, monkeypatch):
+    """Test weryfikujący, że użytkownik ma maksymalnie MAX_CLICKS_PER_USER
+    (w produkcji 1000) wpisów."""
     from admin_dashboard.models import MenuClick
+
+    assert MenuClick.MAX_CLICKS_PER_USER == 1000
+    # Sygnał czyta limit z klasy w chwili zapisu — mniejszy limit sprawdza
+    # ten sam mechanizm bez tworzenia 1001 wierszy.
+    monkeypatch.setattr(MenuClick, "MAX_CLICKS_PER_USER", 10)
 
     client.force_login(staff_user)
 
-    # Utwórz 1001 kliknięć (signal powinien usunąć najstarsze)
-    for i in range(1001):
+    # Utwórz limit + 1 kliknięć (signal powinien usunąć najstarsze)
+    for i in range(11):
         MenuClick.objects.create(
             user=staff_user, menu_label=f"Menu{i}", menu_url=f"/url{i}/"
         )
 
-    # Sprawdź, że jest dokładnie 1000 wpisów
+    # Sprawdź, że jest dokładnie tyle wpisów, ile wynosi limit
     count = MenuClick.objects.filter(user=staff_user).count()
-    assert count == 1000
+    assert count == 10
 
 
 @pytest.mark.django_db

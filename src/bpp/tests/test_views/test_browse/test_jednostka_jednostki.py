@@ -9,7 +9,6 @@ try:
 except ImportError:
     from django.urls import reverse
 
-from django.conf import settings
 from model_bakery import baker
 
 from bpp.models import Autor_Jednostka, Uczelnia
@@ -30,12 +29,18 @@ def test_browse_jednostka_link_osadzania(jednostka, client):
 
 
 @pytest.mark.django_db
-def test_jednostka_nie_wyswietlaj_autorow_gdy_wielu(client, jednostka):
-    for _n in range(settings.MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE + 1):
+@pytest.mark.parametrize("ponad_prog,widac_liste", [(-1, True), (0, False)])
+def test_jednostka_nie_wyswietlaj_autorow_gdy_wielu(
+    client, jednostka, settings, ponad_prog, widac_liste
+):
+    # Próg zmniejszony z 500: sprawdzamy zachowanie szablonu na granicy
+    # (``pracownicy|length < MAX``), a nie wartość samego ustawienia.
+    settings.MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE = 5
+    for _n in range(settings.MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE + ponad_prog):
         jednostka.dodaj_autora(baker.make(Autor))
 
     res = client.get(reverse("bpp:browse_jednostka", args=(jednostka.slug,)))
-    assert "... napisane przez" not in res.rendered_content
+    assert ("Obecni pracownicy:" in res.rendered_content) is widac_liste
 
 
 def test_browse_jednostka_nadrzedna(jednostka, jednostka_podrzedna, client):

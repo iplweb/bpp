@@ -23,9 +23,9 @@ def test_oblicz_liczby_n_dla_ewaluacji_2022_2025_prosty(
     zaokraglaj,
     rodzaj_autora_n,
 ):
-    # Musimy utworzyc tu 12 autorow * 5 aby sprawic, ze dyscyplina1 bedzie
-    # miała liczbę N większą od 12. W ten sposób nie zostanie usunięta z wykazu
-    # dyscyplin raportowanych.
+    # Po 12 autorów na rok — dokładnie próg raportowania (dyscyplina jest
+    # nieraportowana, gdy suma udziałów za 2025 < 12). Wcześniej 12 * 5;
+    # większy zapas niczego więcej nie sprawdzał, a kosztował 96 autorów.
     # WAŻNE: Tworzymy dane dla roku 2022 i 2025, aby dyscyplina miała N >= 12 na koniec 2025
     # Jednostka musi skupiać pracowników żeby autorzy byli uwzględniani w pipeline
     jednostka.skupia_pracownikow = True
@@ -38,7 +38,7 @@ def test_oblicz_liczby_n_dla_ewaluacji_2022_2025_prosty(
             rodzaj_autora=rodzaj_autora_n,
             rok=rok,
         )
-        for _elem in range(12 * 5):
+        for _elem in range(12):
             autor = baker.make(Autor, aktualna_jednostka=jednostka)
             Autor_Dyscyplina.objects.create(autor=autor, **ad_kwargs)
 
@@ -65,11 +65,11 @@ def test_oblicz_liczby_n_dla_ewaluacji_2022_2025_prosty(
     )
 
     # Liczba N:
-    # - 2022: 60 autorów + Jan Nowak = 61
-    # - 2025: 60 autorów (bez Jana Nowaka)
-    # Średnia: (61 + 60) / 4 lata = 30.25
+    # - 2022: 12 autorów + Jan Nowak = 13
+    # - 2025: 12 autorów (bez Jana Nowaka)
+    # Średnia: (13 + 12) / 4 lata = 6.25
     assert (
-        LiczbaNDlaUczelni.objects.get(dyscyplina_naukowa=dyscyplina1).liczba_n == 30.25
+        LiczbaNDlaUczelni.objects.get(dyscyplina_naukowa=dyscyplina1).liczba_n == 6.25
     )
 
 

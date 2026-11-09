@@ -132,3 +132,15 @@ def test_komorka_pary_oznaczona_jako_polowka(client):
         r'data-sekcja="afiliacja"',
         tresc,
     )
+
+
+@pytest.mark.django_db
+def test_pokaz_wszystkie_prace_przewija_do_wyszukiwarki(client):
+    """„Pokaż wszystkie prace” to kotwica do sekcji wyszukiwarki na tej samej
+    stronie (nie osobny formularz POST) — a sekcja ma docelowe id."""
+    autor = baker.make(Autor)
+    tresc = client.get(autor.get_absolute_url()).content.decode()
+    przycisk = re.search(r'<a [^>]*href="#wyszukaj-publikacje-autora"[^>]*>', tresc)
+    assert przycisk is not None
+    assert 'data-przewin-do="wyszukaj-publikacje-autora"' in przycisk.group(0)
+    assert 'id="wyszukaj-publikacje-autora"' in tresc

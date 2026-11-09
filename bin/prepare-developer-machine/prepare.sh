@@ -9,6 +9,7 @@
 #   make prepare-developer-machine-macos  # wymuszenie wariantu
 #   make prepare-developer-machine-linux
 #   make playwright-install               # tylko przeglądarki Playwright
+#   make playwright-check                 # czy przeglądarki są (bez instalacji)
 #
 # Zmienne środowiskowe:
 #   OS_RELEASE_FILE  plik zamiast /etc/os-release (testy detekcji dystrybucji)
@@ -20,12 +21,16 @@ usage() {
 Użycie:
   bin/prepare-developer-machine/prepare.sh [auto|macos|linux]
   bin/prepare-developer-machine/prepare.sh playwright
+  bin/prepare-developer-machine/prepare.sh playwright-check
   bin/prepare-developer-machine/prepare.sh detect
 
 auto        Rozpoznaje system i uruchamia właściwy wariant (domyślnie).
 macos       Homebrew + uv + uv sync + symlinki dla WeasyPrint + Playwright.
 linux       apt/dnf/pacman + uv + uv sync + Playwright.
 playwright  Tylko przeglądarki Playwright (po wcześniejszym uv sync).
+playwright-check
+            Sprawdza, czy przeglądarki Playwright są zainstalowane
+            (bez sudo i sieci); kod 1 + podpowiedź, gdy ich brak.
 detect      Wypisuje rozpoznany system i niczego nie instaluje.
 EOF
 }
@@ -70,6 +75,7 @@ main() {
     case "$command" in
         auto | macos | linux) run_variant "$command" ;;
         playwright) install_playwright_browsers ;;
+        playwright-check) check_playwright_browsers ;;
         detect) print_detected ;;
         -h | --help | help) usage ;;
         *)

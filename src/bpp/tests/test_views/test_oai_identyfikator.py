@@ -7,11 +7,11 @@ dzięki czemu każda uczelnia ma własną, rozłączną przestrzeń identyfikato
 """
 
 import pytest
+from denorm import denorms
 from django.contrib.sites.models import Site
 from django.urls import reverse
 
 from bpp.models import Uczelnia
-from bpp.models.cache import Rekord
 from bpp.models.system import Charakter_Formalny, Typ_Odpowiedzialnosci
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.tests.util import any_autor, any_ciagle, any_jednostka
@@ -96,7 +96,7 @@ def test_oai_list_records_uzywa_identyfikatora_uczelni(client, oai_url, settings
     settings.ALLOWED_HOSTS = ["*"]
     uczelnia = _uczelnia_na_domenie("bpp.przyklad.edu.pl", "Przykładowa", "PRZ")
     _rekord_dla_uczelni(uczelnia, "Publikacja przykładowa")
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     res = client.get(
         oai_url,
@@ -119,7 +119,7 @@ def test_oai_list_records_jawne_pole_wygrywa_z_domena(client, oai_url, settings)
         identyfikator_oai="stara.przyklad.edu.pl",
     )
     _rekord_dla_uczelni(uczelnia, "Publikacja przykładowa")
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     res = client.get(
         oai_url,
@@ -140,7 +140,7 @@ def test_oai_list_records_dwie_uczelnie_maja_rozne_namespace(client, oai_url, se
     druga = _uczelnia_na_domenie("druga.example.com", "Druga", "DRU")
     _rekord_dla_uczelni(pierwsza, "Praca pierwszej uczelni")
     _rekord_dla_uczelni(druga, "Praca drugiej uczelni")
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     res = client.get(
         oai_url,
@@ -179,7 +179,7 @@ def test_oai_bez_uczelni_to_404(client, oai_url, settings):
         typ_odpowiedzialnosci=aut,
     )
     Uczelnia.objects.all().delete()
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     res = client.get(
         oai_url,
@@ -197,7 +197,7 @@ def test_oai_wylaczony_dla_uczelni_to_404(client, oai_url, settings):
         "bpp.przyklad.edu.pl", "Przykładowa", "PRZ", oai_pmh_aktywny=False
     )
     _rekord_dla_uczelni(uczelnia, "Publikacja przykładowa")
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     res = client.get(
         oai_url,
@@ -218,7 +218,7 @@ def test_oai_wylaczenie_dotyczy_tylko_swojej_uczelni(client, oai_url, settings):
     gadatliwa = _uczelnia_na_domenie("gadatliwa.example.com", "Gadatliwa", "GAD")
     _rekord_dla_uczelni(milczaca, "Praca milczącej")
     _rekord_dla_uczelni(gadatliwa, "Praca gadatliwej")
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     dane = {"verb": "ListRecords", "metadataPrefix": "oai_dc"}
     assert (
@@ -239,7 +239,7 @@ def test_oai_get_record_wlasny_namespace_zwraca_rekord(client, oai_url, settings
     settings.ALLOWED_HOSTS = ["*"]
     uczelnia = _uczelnia_na_domenie("bpp.przyklad.edu.pl", "Przykładowa", "PRZ")
     praca = _rekord_dla_uczelni(uczelnia, "Publikacja szukana")
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     res = client.get(
         oai_url,
@@ -261,7 +261,7 @@ def test_oai_get_record_obcy_namespace_to_blad_protokolu(client, oai_url, settin
     settings.ALLOWED_HOSTS = ["*"]
     uczelnia = _uczelnia_na_domenie("bpp.przyklad.edu.pl", "Przykładowa", "PRZ")
     praca = _rekord_dla_uczelni(uczelnia, "Publikacja szukana")
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     res = client.get(
         oai_url,
@@ -298,7 +298,7 @@ def test_oai_get_record_zepsuty_identyfikator_nie_wybucha(
     settings.ALLOWED_HOSTS = ["*"]
     uczelnia = _uczelnia_na_domenie("bpp.przyklad.edu.pl", "Przykładowa", "PRZ")
     _rekord_dla_uczelni(uczelnia, "Publikacja szukana")
-    Rekord.objects.full_refresh()
+    denorms.flush()
 
     res = client.get(
         oai_url,

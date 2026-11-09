@@ -36,7 +36,7 @@ def test_solve_single_discipline_task_success(uczelnia, dyscyplina1):
     mock_results.authors = {}
 
     with patch(
-        "ewaluacja_optymalizacja.tasks.optimization.solve_discipline",
+        "ewaluacja_optymalizacja.core.solve_discipline",
         return_value=mock_results,
     ):
         result = solve_single_discipline_task.apply(
@@ -76,7 +76,7 @@ def test_solve_single_discipline_task_deletes_old_runs(uczelnia, dyscyplina1):
     mock_results.authors = {}
 
     with patch(
-        "ewaluacja_optymalizacja.tasks.optimization.solve_discipline",
+        "ewaluacja_optymalizacja.core.solve_discipline",
         return_value=mock_results,
     ):
         solve_single_discipline_task.apply(
@@ -90,7 +90,7 @@ def test_solve_single_discipline_task_deletes_old_runs(uczelnia, dyscyplina1):
 def test_solve_single_discipline_task_handles_error(uczelnia, dyscyplina1):
     """Test solve_single_discipline_task handles errors gracefully."""
     with patch(
-        "ewaluacja_optymalizacja.tasks.optimization.solve_discipline",
+        "ewaluacja_optymalizacja.core.solve_discipline",
         side_effect=Exception("Solver error"),
     ):
         result = solve_single_discipline_task.apply(
@@ -111,7 +111,7 @@ def test_solve_single_discipline_task_timeout(uczelnia, dyscyplina1):
     from celery.exceptions import SoftTimeLimitExceeded
 
     with patch(
-        "ewaluacja_optymalizacja.tasks.optimization.solve_discipline",
+        "ewaluacja_optymalizacja.core.solve_discipline",
         side_effect=SoftTimeLimitExceeded(),
     ):
         result = solve_single_discipline_task.apply(

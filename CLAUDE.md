@@ -519,15 +519,33 @@ uv run pytest src/integration_tests/test_global_search.py::test_global_search_us
 Testy używają plugin-ow `pytest-testcontainers` + `pytest-testcontainers-django`
 (zewnetrzne pakiety na PyPI; dawniej wewnetrzny `src/testcontainers_bpp/`),
 ktore domyślnie startują na losowych portach **własne** kontenery PostgreSQL
-(`iplweb/bpp_dbserver`) i Redis. Dev-owe `docker compose up db redis`
+(stockowy `postgres:18.6`) i Redis. Dev-owe `docker compose up db redis`
 **nie jest wymagane** do uruchomienia testów i nie koliduje z nimi.
 Konfiguracja jest w `[tool.pytest-testcontainers-django]` w `pyproject.toml`.
 
 - Wymaganie: działający Docker daemon.
+- **Tuning serwera testowego** (fsync=off, shared_buffers=1GB, jit=off,
+  locki…) siedzi w `docker/test-db/test-fast.sql`: pierwszy skrypt init,
+  `ALTER SYSTEM` → `postgresql.auto.conf`. Ten sam plik montuje CI
+  (`docker-compose.test.yml`). Skrypty init lecą **tylko na pustym
+  PGDATA** — kontener z `REUSE` nie zobaczy zmian w tym pliku, dopóki go
+  nie usuniesz (`docker rm -f` po nazwie). Spec + pomiary:
+  `docs/deweloper/spec-testcontainers-pg-szybciej-2026-11.md`.
+- Testy nie potrzebują `plpython3u` (usunięty w migracji 0442), ale
+  **budowa baseline od zera** tak (migracje 0001–0439) — dlatego
+  `PG_BASELINE["REBUILD_IMAGE"]` zostaje na zamrożonym
+  `iplweb/bpp_dbserver:psql-16.13` (repo `bpp-dbserver` zarchiwizowane).
 - Plugin wstrzykuje `DJANGO_BPP_DB_PORT` i `DJANGO_BPP_REDIS_PORT`
   (i hosty/hasła) do `os.environ` **przed**
   załadowaniem Django settings, oraz `DJANGO_BPP_SKIP_DOTENV=1`, żeby
   `.env` nie nadpisał wstrzykniętych wartości.
+- **Django ↔ PG przez Unix socket** (`postgres_connect = "auto"`): na
+  Linuksie z natywnym Dockerem `DJANGO_BPP_DB_HOST` to katalog
+  `/tmp/tcpg-*` z socketem PG (nie `localhost`), a `DJANGO_BPP_DB_PORT`
+  to 5432 — omija `docker-proxy`, pełna suita ~12% szybsza. Na macOS
+  i w trybie `REUSE` plugin zostaje przy porcie TCP. Kod, który składa
+  URL bazy z hosta i portu, musi to uwzględniać (libpq: host z `/` na
+  początku = katalog socketu).
 - Wyłączenie (gdy sam odpaliłeś usługi przez docker-compose):
   `PYTEST_TESTCONTAINERS_DISABLE=1 uv run pytest` lub flag `--no-testcontainers`.
 - Reuse kontenerów między runs (znacznie szybciej):

@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: help clean distclean tests test-durations release tests-without-playwright tests-only-playwright docker destroy-test-databases cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-app-services build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-testserver build-production build-production-force build-all check-not-pushing build-servers docker-images-on-ci check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux prepare-developer-machine-macos playwright-install
+.PHONY: help clean distclean tests test-durations release tests-without-playwright tests-only-playwright docker destroy-test-databases cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-app-services build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-testserver build-production build-production-force build-all check-not-pushing build-servers docker-images-on-ci check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux prepare-developer-machine-macos playwright-install playwright-check
 
 .DEFAULT_GOAL := help
 
@@ -72,6 +72,12 @@ prepare-developer-machine: ## Zainstaluj zależności systemowe (auto-detekcja s
 
 playwright-install: ## Pobierz przeglądarki Playwright dla testów E2E (na Debianie/Ubuntu z --with-deps, sudo)
 	$(PREPARE_DEVELOPER_MACHINE) playwright
+
+# Tani check (bez sudo/apt/sieci) przed testami Playwright. Instalacja to krok
+# jednorazowy (`make prepare-developer-machine` / `make playwright-install`),
+# wiec targety testowe tylko sprawdzaja, czy przegladarka jest na miejscu.
+playwright-check: ## Sprawdź, czy przeglądarki Playwright są zainstalowane (nic nie instaluje)
+	@$(PREPARE_DEVELOPER_MACHINE) playwright-check
 
 prepare-claude: ## Pokaż instrukcję instalacji wtyczki claude-mem w Claude Code
 	@echo "Setting up Claude Code with claude-mem plugin..."
@@ -242,37 +248,39 @@ disable-microsoft-auth: ## Wyłącz django_microsoft_auth
 # `make test-durations` wlaczaja zapis przez target-specific STORE_DURATIONS.
 STORE_DURATIONS ?=
 # Liczba workerow xdist dla suity Playwright — patrz komentarz przy
-# `tests-only-playwright`. Kolejnosc fallbackow: rdzenie wydajnosciowe
-# (Apple Silicon) -> nproc (Linux) -> hw.ncpu (Intel Mac) -> 4.
-PLAYWRIGHT_WORKERS ?= $(shell sysctl -n hw.perflevel0.logicalcpu 2>/dev/null || nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+# `tests-only-playwright`. Poza CI: `auto`, ktore pytest-xdist-memory liczy
+# z RAM-u (patrz XDIST_MEMORY nizej). Na CI: rdzenie wydajnosciowe -> nproc
+# -> hw.ncpu -> 4.
+_cpu_workers = $(shell sysctl -n hw.perflevel0.logicalcpu 2>/dev/null || nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+PLAYWRIGHT_WORKERS ?= $(if $(CI),$(_cpu_workers),auto)
 _store_durations = $(if $(STORE_DURATIONS),--store-durations --durations-path .test_durations,)
 # Po zapisie zaokraglij+posortuj plik (maly, stabilny diff). `&&` —
 # normalizujemy tylko po udanym przebiegu; przy STORE_DURATIONS pustym
 # rozwija sie do `true` (no-op).
 _normalize_durations = $(if $(STORE_DURATIONS),&& uv run python bin/normalize_test_durations.py,)
 
-# Liczba workerow xdist dla suity bez Playwrighta. Na maszynie interaktywnej
-# ograniczeniem jest RAM, nie CPU (worker ~450-650 MB + backend PG; `-n auto`
-# na 14 rdzeniach / 14 GB zamrozil laptopa) -- liczymy -n z profilu pamieci
-# (`make xdist-measure`) i aktualnie dostepnego RAM-u (`make xdist-calc`).
-# Na CI (zmienna CI ustawiona) zostaje `auto`. Nadpisanie: `XDIST_N=6`.
-XDIST_N ?= $(if $(CI),auto,$(shell uv run --quiet python bin/xdist_workers.py calc --quiet 2>/dev/null || echo 4))
+# Liczba workerow xdist. Na maszynie interaktywnej ograniczeniem jest RAM,
+# nie CPU (`-n auto` na 14 rdzeniach / 14 GB zamrozil laptopa), wiec poza CI
+# `-n auto` liczy plugin pytest-xdist-memory: kazdy przebieg mierzy szczyt
+# pamieci workera (razem z Chromium/Daphne i kontenerem PG) i zapisuje go
+# w `.pytest-xdist-memory.json` osobno dla kazdego `-m`; kolejne `-n auto`
+# bierze tyle workerow, ile miesci sie w aktualnie wolnym RAM-ie. Podsumowanie
+# na koncu przebiegu pokazuje rachunek. Nadpisanie: `XDIST_N=6`.
+XDIST_N ?= auto
 # Twardy limit pamieci (systemd-run, tylko Linux, poza CI): przekroczenie
 # zabija pytest zamiast wpedzac maszyne w swap. Pusty na macOS / CI.
 # Wylaczenie: `XDIST_GUARD=`.
-XDIST_GUARD ?= $(if $(CI),,$(shell uv run --quiet python bin/xdist_workers.py guard 2>/dev/null))
-
-xdist-measure: ## Zmierz RAM workerow xdist na tej maszynie (probka testow, -n 2, ~3 min)
-	uv run python bin/xdist_workers.py measure
-
-xdist-calc: ## Pokaz, ile workerow xdist zmiesci sie teraz w RAM-ie
-	uv run python bin/xdist_workers.py calc
+XDIST_GUARD ?= $(if $(CI),,$(shell bin/memory_guard.sh 2>/dev/null))
+# Opcje pytest-xdist-memory (poza CI). Bez cgroup-owego XDIST_GUARD (macOS)
+# wlaczamy watchdog pluginu: slabsza gwarancja (reaguje co 2 s), ale
+# przenosna. Kontener PG testcontainers wlicza sie do workera (pytest.ini).
+XDIST_MEMORY ?= $(if $(CI),,--xdist-memory $(if $(XDIST_GUARD),,--xdist-memory-watchdog))
 
 tests-without-playwright: ## Szybkie testy bez Playwright (xdist -n wg RAM, maxfail=50)
-	$(XDIST_GUARD) uv run pytest -n $(XDIST_N) -m "not playwright" --maxfail 50 $(_store_durations) $(_normalize_durations)
+	$(XDIST_GUARD) uv run pytest -n $(XDIST_N) $(XDIST_MEMORY) -m "not playwright" --maxfail 50 $(_store_durations) $(_normalize_durations)
 
 tests-without-playwright-with-microsoft-auth: ## tests-without-playwright z aktywnym Microsoft Auth
-	$(XDIST_GUARD) uv run pytest -n $(XDIST_N) -m "not playwright" --maxfail 50
+	$(XDIST_GUARD) uv run pytest -n $(XDIST_N) $(XDIST_MEMORY) -m "not playwright" --maxfail 50
 
 tests-with-microsoft-auth: enable-microsoft-auth tests-without-playwright-with-microsoft-auth disable-microsoft-auth ## Włącz MS Auth, uruchom testy, wyłącz
 
@@ -434,9 +442,14 @@ cerif-validate: ## Waliduj endpoint CERIF (URL=...) walidatorem euroCRIS
 # instancje Chromium + Daphne, wiec dokladaja tylko rywalizacje o pamiec i I/O.
 # Zmierzone na 12P+4E (154 testy): -n auto/16 ~94 s, -n 10 ~94 s, -n 8 ~89 s,
 # -n 12 ~87 s. Stad domyslnie tyle workerow, ile rdzeni WYDAJNOSCIOWYCH.
+# Na laptopie waskim gardlem jest RAM (worker + Chromium + Daphne to
+# wielokrotnosc zwyklego workera), wiec poza CI -n liczy pytest-xdist-memory
+# z osobnego profilu dla `-m playwright` (limit CPU: rdzenie wydajnosciowe),
+# a przebieg leci pod XDIST_GUARD. Przed pierwszym pomiarem plugin zaklada
+# 1900 MB na workera (zmierzone: 1380 MB + PG 465 MB).
 # Nadpisanie: `make tests-only-playwright PLAYWRIGHT_WORKERS=8`.
-tests-only-playwright: playwright-install ## Tylko testy Playwright (wolne)
-	uv run pytest -n $(PLAYWRIGHT_WORKERS) -m "playwright" $(_store_durations) $(_normalize_durations)
+tests-only-playwright: playwright-check ## Tylko testy Playwright (wolne; -n wg RAM-u)
+	$(XDIST_GUARD) uv run pytest -n $(PLAYWRIGHT_WORKERS) $(XDIST_MEMORY) $(if $(XDIST_MEMORY),--xdist-memory-performance-cores --xdist-memory-default-worker 1900) -m "playwright" $(_store_durations) $(_normalize_durations)
 
 uv-sync: ## uv sync --all-extras (synchronizacja zależności Pythona)
 	uv sync --no-install-project --all-extras
@@ -447,12 +460,16 @@ uv-sync: ## uv sync --all-extras (synchronizacja zależności Pythona)
 # `make tests-without-playwright` pozostaje OFF — bez churnu w pliku.
 tests: STORE_DURATIONS = 1
 tests: clean-pycache uv-sync tests-without-playwright tests-only-playwright js-tests ## Pełny test suite (Playwright + JS) + odśwież .test_durations
+	uv run python bin/prune_test_durations.py
 
 # Sam regen `.test_durations` bez js-tests — pelny przebieg pytest (oba
 # markery) z zapisem czasow. Uzyj gdy chcesz tylko odswiezyc plik splitu
 # CI (np. po dodaniu wolnych testow) bez reszty `make tests`.
+# Na koniec oba targety wycinaja z pliku wpisy testow, ktorych juz nie ma
+# (pytest-split merge'uje i sam ich nie usuwa) — bin/prune_test_durations.py.
 test-durations: STORE_DURATIONS = 1
 test-durations: clean-pycache uv-sync tests-without-playwright tests-only-playwright ## Regeneruj .test_durations (split CI), bez js-tests
+	uv run python bin/prune_test_durations.py
 
 # Wygeneruj raport pokrycia w formacie zoptymalizowanym pod AI/LLM:
 # sortowany od najgorszego, z zakresami linii missing, bez śmieci
@@ -563,7 +580,7 @@ baseline-update: ## Zaktualizuj baseline.sql IN-PLACE (load+migrate+dump; mały 
 
 # Run tests against pre-existing docker-compose containers (no testcontainers).
 tests-no-containers: ## Testy przeciwko istniejącym kontenerom docker-compose (bez testcontainers)
-	$(XDIST_GUARD) uv run pytest --no-testcontainers -n $(XDIST_N) -m "not playwright" --maxfail 50
+	$(XDIST_GUARD) uv run pytest --no-testcontainers -n $(XDIST_N) $(XDIST_MEMORY) -m "not playwright" --maxfail 50
 
 # Stop reusable testcontainers (bpp-tc-pg, bpp-tc-redis).
 tests-stop-containers: ## Zatrzymaj i usuń reużywalne testcontainers (bpp-tc-*)
@@ -580,7 +597,7 @@ clean-testcontainers: ## Usuń wszystkie osierocone testcontainers (PG/Redis/Ryu
 
 # Run tests with ephemeral containers (destroyed after run).
 tests-ephemeral: ## Testy w efemerycznych testcontainers (usuwane po teście)
-	PYTEST_TESTCONTAINERS_REUSE=0 $(XDIST_GUARD) uv run pytest -n $(XDIST_N) -m "not playwright" --maxfail 50
+	PYTEST_TESTCONTAINERS_REUSE=0 $(XDIST_GUARD) uv run pytest -n $(XDIST_N) $(XDIST_MEMORY) -m "not playwright" --maxfail 50
 
 tests-in-docker: ## Testy w pełni w Dockerze (docker-compose.test.yml)
 	docker compose -f docker-compose.test.yml build test-runner
@@ -845,7 +862,7 @@ loc: clean ## Pokaż statystyki liczby linii (pygount)
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202611.1406
+DOCKER_VERSION=202611.1407
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)

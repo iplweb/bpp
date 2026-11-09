@@ -1,4 +1,4 @@
-"""Kontrakt uruchamiania workflow oficjalnych obrazów Docker."""
+"""Kontrakty workflow-ow CI i Dockerfile (obrazy oficjalne + test-runner)."""
 
 from pathlib import Path
 
@@ -130,3 +130,48 @@ def test_oficjalny_build_uzywa_kontrolowanego_cache_warstw():
     assert builder_stage.index("\nARG GIT_SHA=unknown\n") < builder_stage.index(
         "\nCOPY . .\n"
     )
+
+
+def test_ci_cache_test_runnera_jest_per_galaz():
+    """Cache test-runnera: tag per galaz, odczyt z jednego zrodla.
+
+    Wspolny tag `:cache` byl nadpisywany przez rownolegle galezie.
+    """
+    for path in (TESTS_WORKFLOW_PATH, RELEASE_CANDIDATE_WORKFLOW_PATH):
+        workflow = path.read_text(encoding="utf-8")
+        assert "ref=${{ env.IMAGE_REPO }}:cache,mode=max" not in workflow
+        assert '"${IMAGE_REPO}:cache-dev"' in workflow
+        # Jedno zrodlo cache-from (kilka naraz gubilo trafienia BuildKita).
+        assert (
+            "cache-from: type=registry,ref=${{ steps.cache.outputs.from }}\n"
+            in workflow
+        )
+
+
+def test_ci_cache_test_runnera_pisze_do_wlasnego_tagu_galezi():
+    workflow = TESTS_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+    assert (
+        "cache-to: type=registry,ref=${{ steps.cache.outputs.to }},mode=max\n"
+        in workflow
+    )
+    assert "BRANCH: ${{ github.head_ref || github.ref_name }}" in workflow
+
+
+def test_etapy_testowe_nie_zaleza_od_calego_venv():
+    """Assety i przegladarki nie moga dziedziczyc z test-venv-buildera.
+
+    Inaczej kazda zmiana pyproject.toml/uv.lock przebudowuje grunta
+    i pobiera Playwrighta od nowa (patrz etap `lock-pins` w Dockerfile).
+    """
+    dockerfile = DOCKERFILE_PATH.read_text(encoding="utf-8")
+
+    assert "FROM base AS test-assets-builder\n" in dockerfile
+    assert "FROM base AS test-browser-builder\n" in dockerfile
+    assert "FROM test-venv-builder AS" not in dockerfile
+    for plik in ("test-venv.txt", "playwright.txt", "assets.txt"):
+        assert f"COPY --from=lock-pins /pins/{plik}" in dockerfile
+    # test-runner bierze assety z malego etapu scratch, nie z buildera
+    # (patrz komentarz przy etapie test-assets).
+    assert "FROM scratch AS test-assets\n" in dockerfile
+    assert "COPY --from=test-assets / /src/src/\n" in dockerfile

@@ -592,7 +592,10 @@ INSTALLED_APPS = [
 
 PG_BASELINE = {
     "BASELINE_DIR": os.path.abspath(os.path.join(SITE_ROOT, "..", "baseline-sql")),
-    # Our image has plpython3u + pl_PL.UTF-8 locale — vanilla postgres doesn't.
+    # Budowa baseline od zera przechodzi przez migracje 0001-0439, ktore
+    # tworza funkcje w plpython3u — stockowy postgres go nie ma. Testy i CI
+    # chodza na stockowym postgres:18.6 (pyproject.toml), bo plpython
+    # zniknal w 0442. Obraz zamrozony: repo iplweb/bpp-dbserver archiwalne.
     "REBUILD_IMAGE": "iplweb/bpp_dbserver:psql-16.13",
     # bpp-specific exclusions on top of the generic django_session default.
     "PG_DUMP_EXTRA_EXCLUDE_TABLE_DATA": [

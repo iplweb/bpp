@@ -4,19 +4,14 @@
 ``dynamic_columns`` → ``dynamic_admin_columns``), a w menu / dashboardzie
 został wpisany stary URL → 404 dla superusera klikającego z home page.
 
-Podział na trzy testy (świadomy, pod CI):
+Changelisty i add-formy KAŻDEGO zarejestrowanego ModelAdmin sonduje
+``bpp/tests/test_admin/test_admin.py::test_widok_admina[<model>]`` — jeden
+case na model (pytest-split rozkłada je po shardach), z ostrzejszą asercją
+(200; dla modeli bez prawa dodawania add-forma: 403 albo < 400). Wcześniej to
+samo sondowały tu ``test_admin_changelist_reachable`` i
+``test_admin_add_form_reachable`` — ten sam zestaw URL-i renderowany drugi
+raz (~22 s CPU na przebieg), więc zostały usunięte.
 
-* ``test_admin_changelist_reachable[<url>]`` — JEDEN case na zarejestrowany
-  ModelAdmin, lista URL-i policzona w collection-time z ``admin.site._registry``
-  (bez bazy). To jest ciężki bulk (rendering changelist), a parametryzacja
-  pozwala pytest-split rozrzucić te ~N case'ów po wszystkich shardach i xdist
-  po workerach. Wcześniej całe sondowanie siedziało w jednym ``transaction=True``
-  teście (~116s wg ``.test_durations``) — pytest-split nigdy nie rozdzieli
-  pojedynczego testu, więc był on twardą podłogą swojego sharda niezależnie od
-  liczby shardów (305s na shardzie 0 przy 8 i przy 12 shardach).
-* ``test_admin_add_form_reachable[<url>]`` — analogicznie JEDEN case na model
-  dla add-formy (też potrafi być ciężka: autocomplete / inline widgety), też
-  rozłożone po shardach. Akceptuje 403 (model z wyłączonym dodawaniem).
 * ``test_admin_home_links_resolve_and_custom_reachable`` — lekki: pobiera
   /admin/ RAZ, a każdy wyrenderowany link MUSI się resolvować do widoku (to
   łapie stale URL po przemianowaniu aplikacji — ``resolve()`` jest in-process,
@@ -102,8 +97,7 @@ def _registry_urls(action):
     Liczone w collection-time, BEZ bazy danych — ``reverse()`` potrzebuje tylko
     załadowanego URLconf-u (pytest-django robi ``django.setup()`` + admin
     autodiscover zanim collection ruszy), a ``admin.site._registry`` jest wtedy
-    już wypełniony. Dzięki temu pytest-split widzi N osobnych param-case'ów
-    i rozkłada je po shardach.
+    już wypełniony.
     """
     from django.contrib import admin
     from django.urls import NoReverseMatch, reverse
@@ -141,49 +135,14 @@ def test_registry_admin_urls_nonempty():
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("url", _REGISTRY_CHANGELIST_URLS)
-def test_admin_changelist_reachable(admin_user, url):
-    """Changelist zarejestrowanego ModelAdmin otwiera się bez 4xx/5xx.
-
-    Jeden case na model → pytest-split rozkłada renderowanie changelist po
-    shardach. ``transaction=True`` (jak w starym monolicie) jest NIEpotrzebne:
-    tu jest jeden klient w jednym wątku, więc standardowy TX-rollback testu
-    wystarcza i jest szybszy niż flush bazy per case.
-    """
-    client = Client()
-    client.force_login(admin_user)
-    response = client.get(url)
-    assert response.status_code < 400, f"{url} -> HTTP {response.status_code}"
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize("url", _REGISTRY_ADD_URLS)
-def test_admin_add_form_reachable(admin_user, url):
-    """Add-forma zarejestrowanego ModelAdmin renderuje się (lub jest celowo
-    wyłączona).
-
-    Też rozłożone po shardach (add-formy potrafią być ciężkie: autocomplete /
-    inline widgety). Akceptujemy 403 — to znaczy, że ``has_add_permission``
-    celowo wyłącza dodawanie dla tego modelu (taki model po prostu nie pokazuje
-    linku „+ Dodaj" w menu); 404/500 to realna regresja i ma failować.
-    """
-    client = Client()
-    client.force_login(admin_user)
-    response = client.get(url)
-    assert response.status_code < 400 or response.status_code == 403, (
-        f"{url} -> HTTP {response.status_code}"
-    )
-
-
-@pytest.mark.django_db
 def test_admin_home_links_resolve_and_custom_reachable(admin_user):
     """Każdy link ze strony /admin/ resolvuje się; custom/add-linki też 200.
 
     Łapie regresje typu: stale URL w menu po przemianowaniu aplikacji
     (``resolve()`` rzuca ``Resolver404`` → fail). Changelisty i add-formy
-    zarejestrowanych modeli NIE są tu ponownie sondowane HTTP-em — pokrywają je
-    rozłożone po shardach ``test_admin_changelist_reachable[...]`` i
-    ``test_admin_add_form_reachable[...]`` — więc ten test zostaje tani (jeden
+    zarejestrowanych modeli NIE są tu ponownie sondowane HTTP-em — pokrywa je
+    rozłożony po shardach ``test_admin.py::test_widok_admina[...]`` — więc
+    ten test zostaje tani (jeden
     GET /admin/ + resolve in-process + sondowanie tylko nielicznych linków
     spoza registry, czyli realnie custom admin views).
 

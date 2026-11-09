@@ -7,6 +7,7 @@ powinna mieć link kanoniczny, opis (meta description) i tagi Open Graph.
 """
 
 import pytest
+from denorm import denorms
 from django.urls import reverse
 from model_bakery import baker
 
@@ -20,7 +21,7 @@ from bpp.util import rebuild_contenttypes
 
 
 @pytest.fixture
-def rekord_publikacji(db, transactional_db):
+def rekord_publikacji(db):
     rebuild_contenttypes()
 
     aut, _ = Typ_Odpowiedzialnosci.objects.get_or_create(
@@ -43,7 +44,7 @@ def rekord_publikacji(db, transactional_db):
         rekord=c, autor=a, jednostka=j, typ_odpowiedzialnosci=aut
     )
 
-    Rekord.objects.full_refresh()
+    denorms.flush()
     return Rekord.objects.get(tytul_oryginalny="Badanie wpływu czegoś na coś")
 
 
@@ -53,7 +54,7 @@ def _head(response):
     return html.split("<body", 1)[0]
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_citation_tags_w_head(client, rekord_publikacji):
     """Tagi citation_* Google Scholar muszą być w <head>, nie w <body>."""
     res = client.get(rekord_publikacji.get_absolute_url(), follow=True)
@@ -64,23 +65,23 @@ def test_citation_tags_w_head(client, rekord_publikacji):
     assert 'name="citation_doi"' in head
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_dublin_core_w_head(client, rekord_publikacji):
     res = client.get(rekord_publikacji.get_absolute_url(), follow=True)
     head = _head(res)
     assert 'name="DC.title"' in head
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_json_ld_obecny(client, rekord_publikacji):
     res = client.get(rekord_publikacji.get_absolute_url(), follow=True)
     html = res.content.decode("utf-8")
-    assert 'application/ld+json' in html
+    assert "application/ld+json" in html
     assert '"@type": "ScholarlyArticle"' in html
 
 
-@pytest.mark.django_db(transaction=True)
-def test_json_ld_poprawny_json_przy_groznych_znakach(client, db, transactional_db):
+@pytest.mark.django_db
+def test_json_ld_poprawny_json_przy_groznych_znakach(client, db):
     """JSON-LD musi być poprawnym JSON-em nawet gdy dane mają " < & </script>.
 
     Regresja: autoescaping zamieniał cudzysłowy z `jsonify` na `&quot;`, a
@@ -108,7 +109,7 @@ def test_json_ld_poprawny_json_przy_groznych_znakach(client, db, transactional_d
     Wydawnictwo_Ciagle_Autor.objects.create(
         rekord=c, autor=a, jednostka=j, typ_odpowiedzialnosci=aut
     )
-    Rekord.objects.full_refresh()
+    denorms.flush()
     rekord = Rekord.objects.first()
 
     html = client.get(rekord.get_absolute_url(), follow=True).content.decode("utf-8")
@@ -122,21 +123,21 @@ def test_json_ld_poprawny_json_przy_groznych_znakach(client, db, transactional_d
     assert "<" not in payload
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_link_kanoniczny(client, rekord_publikacji):
     res = client.get(rekord_publikacji.get_absolute_url(), follow=True)
     head = _head(res)
     assert 'rel="canonical"' in head
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_meta_description(client, rekord_publikacji):
     res = client.get(rekord_publikacji.get_absolute_url(), follow=True)
     head = _head(res)
     assert 'name="description"' in head
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_open_graph(client, rekord_publikacji):
     res = client.get(rekord_publikacji.get_absolute_url(), follow=True)
     head = _head(res)

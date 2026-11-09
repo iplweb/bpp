@@ -1,3 +1,5 @@
+import time
+
 import pytest
 from django.contrib.messages import get_messages
 from model_bakery import baker
@@ -28,7 +30,7 @@ from pbn_api.exceptions import (
     PBNValidationError,
     PKZeroExportDisabled,
 )
-from pbn_api.models import Publication, SentData
+from pbn_api.models import PBNOdpowiedziNiepozadane, Publication, SentData
 from pbn_api.tests.utils import middleware
 
 
@@ -480,43 +482,69 @@ def test_sprobuj_wyslac_do_pbn_przychodzi_inny_pbn_uid_dla_starego_rekordu(
     pbn_client,
     rf,
     pbn_uczelnia,
+    monkeypatch,
 ):
-    """Ten test sprawdza, jak zachowa się system w przypadku wysyłki nowego rekordu, gdy przyjdzie PBN UID
-    takiego rekordu, który już istnieje"""
+    """Ponowna wysyłka rekordu, który MA już PBN UID, a PBN odpowiada INNYM UID.
+
+    Oczekiwane: ostrzeżenie dla użytkownika, wpis ``PBNOdpowiedziNiepozadane``
+    (ZMIANA_UID, stary → nowy), rekord przepięty na nowy UID, a oświadczenia
+    zsynchronizowane już pod nowym UID — bez ścieżki błędów/ponowień.
+    """
+
+    # Zapamiętujemy zamiast czekać: przy poprawnym mocku nie powinno być
+    # ŻADNEGO ponowienia (backoff 2 s + 4 s), co sprawdzamy na końcu.
+    spanie = []
+    monkeypatch.setattr(time, "sleep", spanie.append)
 
     req = rf.get("/")
 
-    # To jest istniejące w bazie wydawnictwo ciągłe z PBN UID = MOCK_MONGO_ID ("123")
-    publikacja = baker.make(Publication, pk=MOCK_MONGO_ID)
-    publikacja2 = baker.make(Publication, pk="123123")  # noqa
-    # To jest wydawnictwo ciągłe, które ma PBN UID
+    stary_uid = MOCK_MONGO_ID  # "123"
+    nowy_uid = MOCK_MONGO_ID * 2  # "123123"
+
+    # Wysyłany rekord ma już PBN UID = stary_uid.
+    publikacja = baker.make(Publication, pk=stary_uid)
     pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid = publikacja
     pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save(update_fields=["pbn_uid"])
 
-    # Praca z dyscypliną → /v1/publications. Odpowiedź: objectId = MOCK_MONGO_ID*2.
+    # Praca z dyscypliną → /v1/publications. PBN odpowiada INNYM objectId,
+    # a wszystkie kolejne odpowiedzi (publikacja, V2, oświadczenia) dotyczą
+    # konsekwentnie tego nowego UID.
     pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
-        "objectId": MOCK_MONGO_ID * 2
+        "objectId": nowy_uid
     }
     pbn_client.transport.return_values[
-        PBN_GET_PUBLICATION_BY_ID_URL.format(id=MOCK_MONGO_ID * 2)
-    ] = MOCK_RETURNED_MONGODB_DATA
-    pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=456)] = (
-        MOCK_RETURNED_MONGODB_DATA
+        PBN_GET_PUBLICATION_BY_ID_URL.format(id=nowy_uid)
+    ] = dict(MOCK_RETURNED_MONGODB_DATA, mongoId=nowy_uid)
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_PUBLICATIONS_V2 + f"?publicationId={nowy_uid}&size=10"
+    ] = pbn_pageable_json(
+        [dict(MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA[0], objectId=nowy_uid)]
     )
     pbn_client.transport.return_values[
-        PBN_GET_INSTITUTION_STATEMENTS + f"?publicationId={MOCK_MONGO_ID}&size=5120"
+        PBN_GET_INSTITUTION_STATEMENTS + f"?publicationId={nowy_uid}&size=5120"
     ] = pbn_pageable_json([])
-    pbn_client.transport.return_values[
-        PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123123&size=10"
-    ] = pbn_pageable_json(MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA)
+    pbn_client.transport.return_values[PBN_POST_INSTITUTION_STATEMENTS_URL] = {}
 
     with middleware(req):
         sprobuj_wyslac_do_pbn_gui(
             req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_client=pbn_client
         )
 
-    msg = get_messages(req)
-    assert "Wg danych z PBN zmodyfikowano PBN UID tego rekordu " in list(msg)[0].message
+    msg = [m.message for m in get_messages(req)]
+    assert "Wg danych z PBN zmodyfikowano PBN UID tego rekordu " in msg[0]
+    assert f"z wartości {stary_uid} na {nowy_uid}" in msg[0]
+
+    zdarzenie = PBNOdpowiedziNiepozadane.objects.get()
+    assert zdarzenie.rodzaj_zdarzenia == PBNOdpowiedziNiepozadane.ZMIANA_UID
+    assert (zdarzenie.stary_uid, zdarzenie.nowy_uid) == (stary_uid, nowy_uid)
+
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.refresh_from_db()
+    assert pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid_id == nowy_uid
+
+    # Oświadczenia poszły pod nowym UID, bez ostrzeżeń i bez ponowień.
+    assert PBN_POST_INSTITUTION_STATEMENTS_URL in pbn_client.transport.input_values
+    assert not any("Nie mogę zsynchronizować" in m for m in msg), msg
+    assert spanie == []
 
 
 @pytest.mark.django_db
