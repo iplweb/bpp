@@ -37,17 +37,26 @@ def test_usun_get_nie_kasuje(csrf_exempt_wd_app, test1_xlsx, db):
     assert Import_Dyscyplin.objects.filter(pk=i.pk).exists()
 
 
-def test_usun_post_kasuje(csrf_exempt_wd_app, test1_xlsx, db):
-    """POST (z CSRF) usuwa rekord jak dawniej."""
+def test_usun_post_kasuje(
+    csrf_exempt_wd_app, test1_xlsx, db, django_capture_on_commit_callbacks
+):
+    """POST (z CSRF) usuwa rekord jak dawniej — razem z wgranym plikiem."""
     wyslij(csrf_exempt_wd_app, test1_xlsx)
     i = Import_Dyscyplin.objects.first()
+    storage, nazwa_pliku = i.plik.storage, i.plik.name
+    assert storage.exists(nazwa_pliku)
 
-    res = csrf_exempt_wd_app.post(
-        reverse("import_dyscyplin:usun", args=(i.pk,))
-    ).maybe_follow()
+    # ``Import_Dyscyplin.delete`` kasuje plik w ``transaction.on_commit``;
+    # test chodzi w transakcji z rollbackiem, więc wykonujemy przechwycone
+    # callbacki zamiast prawdziwego COMMIT-u.
+    with django_capture_on_commit_callbacks(execute=True):
+        res = csrf_exempt_wd_app.post(
+            reverse("import_dyscyplin:usun", args=(i.pk,))
+        ).maybe_follow()
 
     assert res.status_code == 200
     assert not Import_Dyscyplin.objects.filter(pk=i.pk).exists()
+    assert not storage.exists(nazwa_pliku)
 
 
 def test_usun_post_cudzy_rekord_niewidoczny(csrf_exempt_wd_app, django_user_model, db):

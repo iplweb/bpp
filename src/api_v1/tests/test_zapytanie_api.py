@@ -158,16 +158,25 @@ def test_zapytanie_timeout_daje_503():
 def test_zapytanie_rekord_wyklucza_nie_eksportuj_przez_api(
     wydawnictwo_ciagle, autor_jan_kowalski, jednostka, typy_odpowiedzialnosci
 ):
-
     wydawnictwo_ciagle.tytul_oryginalny = f"{ZTOKEN} ciagle"
-    wydawnictwo_ciagle.nie_eksportuj_przez_api = True
     wydawnictwo_ciagle.save()
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
     denorms.flush()
 
-    resp = _staff_client().get(
-        "/api/v1/zapytanie/rekord/", {"q": f'tytul_oryginalny ~ "{ZTOKEN}"'}
-    )
+    q = {"q": f'tytul_oryginalny ~ "{ZTOKEN}"'}
+
+    # Kontrola pozytywna: bez flagi rekord MUSI być w wynikach — inaczej
+    # asercja niżej przeszłaby także wtedy, gdy rekord w ogóle nie trafił
+    # do cache'u (np. po nieudanym przeliczeniu denorm).
+    resp = _staff_client().get("/api/v1/zapytanie/rekord/", q)
+    assert resp.status_code == 200
+    assert _rekord_id(wydawnictwo_ciagle) in _ids(resp)
+
+    wydawnictwo_ciagle.nie_eksportuj_przez_api = True
+    wydawnictwo_ciagle.save()
+    denorms.flush()
+
+    resp = _staff_client().get("/api/v1/zapytanie/rekord/", q)
     assert resp.status_code == 200
     assert _rekord_id(wydawnictwo_ciagle) not in _ids(resp)
 

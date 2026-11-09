@@ -1,7 +1,38 @@
 import pytest
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 
 from bpp.models import BppUser
+from fixtures.const import NORMAL_DJANGO_USER_PASSWORD
+
+
+def _url_formularza_hasla():
+    """Formularz logowania hasłem BPP: przy logowaniu instytucjonalnym
+    (microsoft_auth / OIDC) siedzi pod ``local_login_form``, bez niego —
+    pod ``login_form``."""
+    try:
+        return reverse("local_login_form")
+    except NoReverseMatch:
+        return reverse("login_form")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("haslo_poprawne", [True, False])
+def test_logowanie_formularzem_hasla(webtest_app, normal_django_user, haslo_poprawne):
+    """Logowanie przez formularz od początku do końca (GET + POST + redirect).
+
+    Fikstury ``app``/``wd_app``/``admin_app`` logują przez ``force_login``,
+    więc to jest test pilnujący samego formularza — w każdej konfiguracji
+    logowania, także z microsoft_auth (``local_login_form``)."""
+    form = webtest_app.get(_url_formularza_hasla()).form
+    form["username"] = normal_django_user.username
+    form["password"] = NORMAL_DJANGO_USER_PASSWORD if haslo_poprawne else "zle-haslo"
+    res = form.submit().maybe_follow()
+
+    user = res.context["user"]
+    if haslo_poprawne:
+        assert user.username == normal_django_user.username
+    else:
+        assert not user.is_authenticated
 
 
 def test_logout(admin_client):
