@@ -41,7 +41,7 @@ dependencies = [
     "pygad>=3.9.2",
     "django-denorm-iplweb>=1.15.0",
     "simplejson>=4.2.0,<5",
-    "django-reversion>=6.5.0,<7",
+    "django-reversion>=6.5.1,<7",
     "django-reversion-compare>=0.19.2",
     "channels[daphne]>=4.3.2,<5",
     "uvicorn[standard]>=0.54.0",
@@ -61,7 +61,7 @@ dependencies = [
     "django-messages-extends==0.6.3",
     "django-autoslug==1.9.9",
     "django-autocomplete-light==5.0.0",
-    "django-admin-tools==0.9.3",
+    "django-admin-tools==0.9.4",
     "xlrd==2.0.2",
     "celery>=5.6.3",
     "django-celery-results==2.6.0",
@@ -115,7 +115,7 @@ dependencies = [
     "django-static-sitemaps>=5.0.0",
     "django-model-utils==5.0.0",
     "django-fsm-2>=4.3.0,<5",
-    "django-mptt>=0.21.0,<1",
+    "django-mptt>=0.21.1,<1",
     "wosclient==0.1.5",
     "MOAI-iplweb>=2.0.4",
     "django_redis_iplweb>=6.0.2,<6.1",
@@ -146,7 +146,7 @@ dependencies = [
     # 2.8.0 zamyka PYSEC-2026-4175/4176/4177 (wszystkie z fixem, wiec
     # `pip-audit --gate on fixable` na nich pada).
     "urllib3>=2.8.0,<3.0.0",
-    "pandas>=3.1.0",
+    "pandas>=3.1.1",
     "django-tinymce>=5.0.0",
     "crispy-bootstrap5>=2026.9",
     "crispy-bootstrap3>=2022.1",
@@ -182,7 +182,7 @@ dependencies = [
     # CVE-2026-71491, CVE-2026-59894, CVE-2026-59893 i CVE-2026-54284 (wszystkie
     # fixable, wiec `pip-audit --gate on fixable` na nich pada); 0.5.4 wnosil
     # wczesniejszy fix DoS w format_list_of_tuples.
-    "sqlparse>=0.6.0",
+    "sqlparse>=0.6.1",
     # 0.3.1 naprawia force_sync: nie łata już asyncio globalnie przez
     # nest_asyncio (łatka była nieodwracalna dla procesu i zatruwała kolejne
     # testy w workerze xdista — zakleszczenia i RuntimeError z asyncio.run).
@@ -201,7 +201,7 @@ dependencies = [
     # Nie podmieniaj jej na dostarczane przez pakiet `baseline_info` — to
     # komenda czysto informacyjna, ZAWSZE konczy sie zerem, wiec zamienilaby
     # gate w dekoracje.
-    "django-pg-baseline>=0.3.1",
+    "django-pg-baseline>=0.3.2",
     "django-site-blog>=0.2.2",
     "django-first-run-wizard>=0.2.1",
     "uvicorn-worker>=0.4.0",
@@ -649,8 +649,8 @@ build-backend = "setuptools.build_meta"
 # docker stage builderowym).
 dev = [
     "bumpver>=2026.1132",
-    "pytest-recording>=0.14.0",
-    "vcrpy>=9.2.0,<10",
+    "pytest-recording>=0.14.1",
+    "vcrpy>=9.4.2,<10",
     "towncrier>=26.9.0",
     # pytest-tqdm: jeden zagregowany pasek postepu na kontrolerze xdist
     # (zamiast rozjezdzajacych sie paskow pytest-sugar). Auto-on tylko w TTY
@@ -688,8 +688,8 @@ dev = [
     # .pre-commit-config.yaml. CI lints via pre-commit (that rev is the
     # source of truth); this `==` pin only keeps ad-hoc `uv run ruff`
     # producing identical output. Bump both together, never one alone.
-    "ruff==0.17.3",
-    "djlint>=1.47.1,<2",
+    "ruff==0.17.4",
+    "djlint>=1.49.9,<2",
     "pre-commit>=4.7.0",
     "twine>=7.0.0",
     "ipdb>=0.13.9",
@@ -698,7 +698,7 @@ dev = [
     "pytest-playwright>=0.10.0",
     # pytest-env 1.3.0+ wymaga pytest>=9.0.2 — spelnione, bo jestesmy na
     # pytest 9.x. Usage bez zmian (env=DJANGO_ALLOW_ASYNC_UNSAFE=1 etc.).
-    "pytest-env>=1.8.3",
+    "pytest-env>=1.8.5",
     "nest-asyncio>=1.6.0",
     "testcontainers[postgres]>=4.15.0",
     # pytest-testcontainers + bridge: dawniej wewnetrzny `src/testcontainers_bpp/`.
