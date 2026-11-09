@@ -37,7 +37,8 @@ import asyncio
 import django_bpp.asgi as m
 from mcp_server.routing import LifespanMcp, RouterHttp
 
-mapowanie = m.application.application_mapping
+# application = ZamykajPolaczeniaWPuli(ProtocolTypeRouter(...)) — router pod spodem
+mapowanie = m.application.aplikacja.application_mapping
 assert isinstance(mapowanie["http"], RouterHttp), (
     f"'http' to {type(mapowanie['http'])!r}, nie RouterHttp — MCP nie jest "
     "zamontowane obok Django."
