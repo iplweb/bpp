@@ -1,0 +1,1 @@
+Szybszy raport slotów — ewaluacja oraz raport upoważnień PBN (HTML i eksport XLSX): licencja OpenAccess, identyfikator z systemu kadrowego, afiliowana jednostka i funkcja autora nie są już doczytywane osobnym zapytaniem dla każdego wiersza.
