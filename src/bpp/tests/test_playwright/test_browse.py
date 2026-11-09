@@ -73,12 +73,6 @@ def zrodla_page(page: Page, live_server):
 
 
 @pytest.mark.django_db
-@pytest.mark.serial
-def test_zrodla_index(zrodla_page: Page):
-    expect(zrodla_page.locator("body")).to_contain_text("Atest")
-
-
-@pytest.mark.django_db
 def test_zrodla_literki(zrodla_page: Page):
     page = zrodla_page
 

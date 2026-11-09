@@ -4,6 +4,8 @@ import pytest
 from django.urls import reverse
 from model_bakery import baker
 
+from bpp.models import Zrodlo
+
 
 def test_zrodlo_browser_pokazuj_zrodla_bez_prac(client, zrodlo, uczelnia):
     uczelnia.pokazuj_zrodla_bez_prac_w_przegladaniu_danych = True
@@ -78,3 +80,16 @@ def test_zrodlo_view_pokazuje_dyscypliny_najnowszego_roku_z_bazy(
     # ...a poprzednie lata zwinięte (brak twardego dowiązania do 2025).
     assert "is-active" not in items["2025"]
     assert "is-active" not in items["2024"]
+
+
+@pytest.mark.django_db
+def test_zrodla_index(client):
+    """Lista źródeł renderuje źródła na pierwszej stronie paginacji."""
+    for i in range(80):
+        baker.make(Zrodlo, nazwa=f"Atest{i}")
+    for i in range(80):
+        baker.make(Zrodlo, nazwa=f"Btest{i}")
+
+    res = client.get(reverse("bpp:browse_zrodla"))
+    assert res.status_code == 200
+    assert "Atest" in res.content.decode()

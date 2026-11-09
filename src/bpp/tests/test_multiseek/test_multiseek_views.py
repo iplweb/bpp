@@ -91,3 +91,25 @@ def test_save_form_post_using_page_rendered_token_is_allowed():
         "save_form zwrocil 403 — token CSRF ze strony (window.multiseekCSRFToken) "
         "nie dotarl do POST-a. To bug z FreshDesk #378."
     )
+
+
+@pytest.mark.django_db
+def test_index_copernicus_schowany(client, uczelnia):
+    """Pole „Index Copernicus" znika z multiseeka, gdy uczelnia go nie pokazuje."""
+    uczelnia.pokazuj_index_copernicus = False
+    uczelnia.save()
+
+    res = client.get(reverse("multiseek:index"))
+    assert res.status_code == 200
+    assert "Index Copernicus" not in res.content.decode()
+
+
+@pytest.mark.django_db
+def test_index_copernicus_widoczny(client, uczelnia):
+    """Pole „Index Copernicus" jest w multiseeku, gdy uczelnia je pokazuje."""
+    uczelnia.pokazuj_index_copernicus = True
+    uczelnia.save()
+
+    res = client.get(reverse("multiseek:index"))
+    assert res.status_code == 200
+    assert "Index Copernicus" in res.content.decode()

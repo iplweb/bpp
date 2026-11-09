@@ -131,30 +131,6 @@ def test_multiseek_tabelka_wyswietlanie(page: Page, live_server):
 
 
 @pytest.mark.django_db
-def test_index_copernicus_schowany(page: Page, live_server, uczelnia):
-    """Test that Index Copernicus is hidden when uczelnia setting is False."""
-    uczelnia.pokazuj_index_copernicus = False
-    uczelnia.save()
-
-    page.goto(live_server.url + reverse("multiseek:index"))
-    page.wait_for_load_state("domcontentloaded")
-
-    assert "Index Copernicus" not in page.content()
-
-
-@pytest.mark.django_db
-def test_index_copernicus_widoczny(page: Page, live_server, uczelnia):
-    """Test that Index Copernicus is visible when uczelnia setting is True."""
-    uczelnia.pokazuj_index_copernicus = True
-    uczelnia.save()
-
-    page.goto(live_server.url + reverse("multiseek:index"))
-    page.wait_for_load_state("domcontentloaded")
-
-    assert "Index Copernicus" in page.content()
-
-
-@pytest.mark.django_db
 def test_save_form_csrf(page: Page, live_server):
     """Reprodukcja FreshDesk #378: zalogowany staff zapisuje formularz.
 
