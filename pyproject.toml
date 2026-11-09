@@ -128,7 +128,7 @@ dependencies = [
     "rjsmin>=1.3.0",
     "django-import-export>=4.4.1,<5",
     "pymed-iplweb==0.8.11",
-    "django-taggit>=5,<7",
+    "django-taggit>=7.0.0,<8",
     "weasyprint>=70.0",
     "cssselect2>=0.10",
     "requests-oauthlib==2.0.0",
