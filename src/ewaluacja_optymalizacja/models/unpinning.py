@@ -8,6 +8,7 @@ from django.db import models
 
 from bpp.models import Autor
 from bpp.models.fields import TupleField
+from ewaluacja_optymalizacja.okres import domyslny_okres_pk
 
 
 class UnpinningOpportunity(models.Model):
@@ -36,6 +37,12 @@ class UnpinningOpportunity(models.Model):
         db_index=False,
     )
 
+    okres = models.ForeignKey(
+        "ewaluacja_common.OkresEwaluacji",
+        on_delete=models.PROTECT,
+        default=domyslny_okres_pk,
+        verbose_name="Okres ewaluacji",
+    )
     dyscyplina_naukowa = models.ForeignKey(
         "bpp.Dyscyplina_Naukowa",
         on_delete=models.CASCADE,

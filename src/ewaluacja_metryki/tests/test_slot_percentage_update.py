@@ -18,7 +18,9 @@ from ewaluacja_metryki.utils import oblicz_metryki_dla_autora
 
 
 @pytest.mark.django_db
-def test_procent_wykorzystania_slotow_updates_correctly(denorms, rodzaj_autora_n):
+def test_procent_wykorzystania_slotow_updates_correctly(
+    denorms, rodzaj_autora_n, okres_2022
+):
     """Test that slot utilization percentage is correctly calculated and updated"""
 
     # Create test data — jednostka musi należeć do uczelni,
@@ -42,6 +44,7 @@ def test_procent_wykorzystania_slotow_updates_correctly(denorms, rodzaj_autora_n
         IloscUdzialowDlaAutoraZaCalosc,
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
+        okres=okres_2022,
         uczelnia=uczelnia,
         ilosc_udzialow=Decimal("4"),  # Maximum 4 slots
         ilosc_udzialow_monografie=Decimal("1"),  # Required field
@@ -166,7 +169,7 @@ def test_procent_wykorzystania_handles_zero_slot_maksymalny(rodzaj_autora_n):
 
 
 @pytest.mark.django_db
-def test_averages_calculated_correctly(rodzaj_autora_n):
+def test_averages_calculated_correctly(rodzaj_autora_n, okres_2022):
     """Test that average points per slot are calculated correctly"""
 
     # jednostka musi należeć do uczelni — zbieraj_sloty filtruje po uczelnia_id
@@ -188,6 +191,7 @@ def test_averages_calculated_correctly(rodzaj_autora_n):
         IloscUdzialowDlaAutoraZaCalosc,
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
+        okres=okres_2022,
         uczelnia=uczelnia,
         ilosc_udzialow=Decimal("4"),
         ilosc_udzialow_monografie=Decimal("2"),

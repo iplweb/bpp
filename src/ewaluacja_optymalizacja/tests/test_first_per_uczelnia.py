@@ -157,7 +157,7 @@ def test_bulk_optimization_kasuje_runy_uczelni_z_requestu(dwie_uczelnie):
 
 
 @pytest.mark.django_db
-def test_browser_toggle_pin_enqueue_dla_uczelni_z_requestu(dwie_uczelnie):
+def test_browser_toggle_pin_enqueue_dla_uczelni_z_requestu(dwie_uczelnie, okres_2022):
     """``browser_toggle_pin`` (mutujący/enqueue) scope'uje przeliczanie do
     uczelni z requestu (U2) — NIE do pierwszej-z-brzegu (U1).
 
@@ -200,7 +200,7 @@ def test_browser_toggle_pin_enqueue_dla_uczelni_z_requestu(dwie_uczelnie):
     ):
         browser_toggle_pin(request, "ciagle", autor_rekord.pk)
 
-    mock_delay.assert_called_once_with(u2.pk)
+    mock_delay.assert_called_once_with(u2.pk, okres_pk=okres_2022.pk)
     assert mock_delay.call_args.args != (u1.pk,), (
         "Przeliczanie poszło do U1 (first()-of-arbitrary) zamiast U2 z requestu."
     )

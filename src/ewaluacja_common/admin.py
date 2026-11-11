@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Rodzaj_Autora
+from .models import OkresEwaluacji, Rodzaj_Autora
 
 
 @admin.register(Rodzaj_Autora)
@@ -20,3 +20,9 @@ class Rodzaj_AutoraAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+
+@admin.register(OkresEwaluacji)
+class OkresEwaluacjiAdmin(admin.ModelAdmin):
+    list_display = ["__str__", "rok_od", "rok_do", "uwagi"]
+    ordering = ["rok_od"]

@@ -12,6 +12,7 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
 from ewaluacja_metryki.models import MetrykaAutora
 
 from ..models import OptimizationRun
+from ..okres import filtr_lat
 
 
 @login_required
@@ -25,16 +26,21 @@ def author_works_detail(request, run_pk, autor_pk):
     - Prace z odpiętą dyscypliną (przypieta=False)
     """
     run = get_object_or_404(
-        OptimizationRun.objects.select_related("dyscyplina_naukowa", "uczelnia"),
+        OptimizationRun.objects.select_related(
+            "dyscyplina_naukowa", "uczelnia", "okres"
+        ),
         pk=run_pk,
     )
     autor = get_object_or_404(Autor, pk=autor_pk)
+    # Okres ewaluacji wyznacza run (nie sesja) — link do runa jest stały
+    lata_okresu = filtr_lat(run.okres, "rekord__")
 
     # Get metryka for this author and discipline
     metryka = get_object_or_404(
         MetrykaAutora.objects.select_related("dyscyplina_naukowa"),
         autor=autor,
         dyscyplina_naukowa=run.dyscyplina_naukowa,
+        okres_id=run.okres_id,
     )
 
     # Get works collected (nazbierane)
@@ -76,6 +82,7 @@ def author_works_detail(request, run_pk, autor_pk):
             autor=autor,
             dyscyplina_naukowa=run.dyscyplina_naukowa,
             przypieta=False,
+            **lata_okresu,
         )
         .select_related("rekord")
         .order_by("-rekord__rok", "rekord__tytul_oryginalny")
@@ -94,6 +101,7 @@ def author_works_detail(request, run_pk, autor_pk):
             autor=autor,
             dyscyplina_naukowa=run.dyscyplina_naukowa,
             przypieta=False,
+            **lata_okresu,
         )
         .select_related("rekord")
         .order_by("-rekord__rok", "rekord__tytul_oryginalny")
@@ -112,6 +120,7 @@ def author_works_detail(request, run_pk, autor_pk):
             autor=autor,
             dyscyplina_naukowa=run.dyscyplina_naukowa,
             przypieta=False,
+            **lata_okresu,
         )
         .select_related("rekord")
         .order_by("-rekord__rok", "rekord__tytul_oryginalny")
@@ -133,11 +142,10 @@ def author_works_detail(request, run_pk, autor_pk):
     inna_dyscyplina = None
     inny_run = None
 
-    # Get author's disciplines in 2022-2025
+    # Get author's disciplines in the run's evaluation period
     autor_dyscypliny = Autor_Dyscyplina.objects.filter(
         autor=autor,
-        rok__gte=2022,
-        rok__lte=2025,
+        **filtr_lat(run.okres),
     ).select_related("dyscyplina_naukowa", "subdyscyplina_naukowa")
 
     # Collect all disciplines for this author
@@ -156,6 +164,7 @@ def author_works_detail(request, run_pk, autor_pk):
         inny_run = (
             OptimizationRun.objects.filter(
                 dyscyplina_naukowa_id__in=wszystkie_dyscypliny,
+                okres=run.okres,
                 status="completed",
             )
             .select_related("dyscyplina_naukowa")

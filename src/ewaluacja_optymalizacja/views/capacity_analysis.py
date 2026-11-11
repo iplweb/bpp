@@ -9,6 +9,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from bpp.models import Dyscyplina_Naukowa
+from ewaluacja_common.okres import okres_dla_request
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 
 from ..tasks.unpinning.capacity_analysis import (
@@ -19,12 +20,12 @@ from ..tasks.unpinning.capacity_analysis import (
 logger = logging.getLogger(__name__)
 
 
-def _get_reportable_disciplines():
-    """Pobierz dyscypliny raportowane (liczba N >= 12)."""
+def _get_reportable_disciplines(okres):
+    """Pobierz dyscypliny raportowane (liczba N >= 12) w okresie ewaluacji."""
     reportable = []
     for liczba_n in LiczbaNDlaUczelni.objects.select_related(
         "dyscyplina_naukowa"
-    ).all():
+    ).filter(okres=okres):
         if liczba_n.liczba_n and liczba_n.liczba_n >= 12:
             reportable.append(liczba_n.dyscyplina_naukowa)
     return reportable
@@ -35,14 +36,15 @@ def capacity_analysis_list(request):
     """
     Wyświetla listę dyscyplin z możliwością uruchomienia analizy capacity-based.
     """
+    okres = okres_dla_request(request)
     # Pobierz dyscypliny raportowane
-    reportable_disciplines = _get_reportable_disciplines()
+    reportable_disciplines = _get_reportable_disciplines(okres)
 
     # Dla każdej dyscypliny pobierz liczbę kandydatów (szybka analiza)
     discipline_stats = []
     for dyscyplina in reportable_disciplines:
         try:
-            candidates = identify_unpinning_candidates(dyscyplina)
+            candidates = identify_unpinning_candidates(dyscyplina, okres=okres)
             total_slot_gain = sum(c.slot_gain for c in candidates)
             total_point_gain = sum(c.estimated_point_gain for c in candidates)
             total_to_unpin = sum(len(c.unpin_author_ids) for c in candidates)
@@ -96,6 +98,7 @@ def capacity_analysis_detail(request, dyscyplina_pk):
     """
     Wyświetla szczegółową analizę capacity-based dla wybranej dyscypliny.
     """
+    okres = okres_dla_request(request)
     try:
         dyscyplina = Dyscyplina_Naukowa.objects.get(pk=dyscyplina_pk)
     except Dyscyplina_Naukowa.DoesNotExist:
@@ -103,7 +106,7 @@ def capacity_analysis_detail(request, dyscyplina_pk):
         return redirect("ewaluacja_optymalizacja:capacity-analysis-list")
 
     # Uruchom analizę
-    candidates = identify_unpinning_candidates(dyscyplina)
+    candidates = identify_unpinning_candidates(dyscyplina, okres=okres)
 
     # Oblicz podsumowanie
     total_slot_gain = sum(c.slot_gain for c in candidates)
@@ -134,6 +137,7 @@ def capacity_analysis_apply(request, dyscyplina_pk):
     """
     Zastosuj rekomendacje capacity-based unpinning dla wybranej dyscypliny.
     """
+    okres = okres_dla_request(request)
     from denorm import denorms
 
     try:
@@ -143,7 +147,7 @@ def capacity_analysis_apply(request, dyscyplina_pk):
         return redirect("ewaluacja_optymalizacja:capacity-analysis-list")
 
     # Uruchom analizę
-    candidates = identify_unpinning_candidates(dyscyplina)
+    candidates = identify_unpinning_candidates(dyscyplina, okres=okres)
 
     if not candidates:
         messages.warning(request, "Brak kandydatów do odpięcia.")
@@ -182,9 +186,10 @@ def capacity_analysis_apply_all(request):
     """
     Zastosuj rekomendacje capacity-based unpinning dla WSZYSTKICH dyscyplin.
     """
+    okres = okres_dla_request(request)
     from denorm import denorms
 
-    reportable_disciplines = _get_reportable_disciplines()
+    reportable_disciplines = _get_reportable_disciplines(okres)
 
     total_unpinned = 0
     total_candidates = 0
@@ -193,7 +198,7 @@ def capacity_analysis_apply_all(request):
     with transaction.atomic():
         for dyscyplina in reportable_disciplines:
             try:
-                candidates = identify_unpinning_candidates(dyscyplina)
+                candidates = identify_unpinning_candidates(dyscyplina, okres=okres)
                 if candidates:
                     result = apply_unpinning(candidates, dyscyplina, dry_run=False)
                     total_unpinned += result["unpinned_count"]

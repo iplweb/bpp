@@ -17,6 +17,7 @@ from bpp.models import Dyscyplina_Naukowa, Uczelnia
 from bpp.util import zaloguj_polkniety_wyjatek
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 from ewaluacja_optymalizacja.core import solve_discipline
+from ewaluacja_optymalizacja.okres import okres_z_roku
 from ewaluacja_optymalizacja.solve_helpers import (
     display_author_results,
     display_institution_statistics,
@@ -122,6 +123,15 @@ class Command(BaseCommand):
             ),
         )
         parser.add_argument(
+            "--okres",
+            type=int,
+            default=None,
+            help=(
+                "Dowolny rok z okresu ewaluacji (np. 2022 → 2022–2025); "
+                "domyślnie okres zawierający bieżący rok"
+            ),
+        )
+        parser.add_argument(
             "--uczelnia",
             type=int,
             default=None,
@@ -171,6 +181,8 @@ class Command(BaseCommand):
         **options,
     ):
         uczelnia_obj = self._resolve_uczelnia(uczelnia)
+        okres = okres_z_roku(options.get("okres"))
+        self.stdout.write(f"Okres ewaluacji: {okres}")
 
         def log_callback(msg, style=None):
             if style == "ERROR":
@@ -182,7 +194,7 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(msg)
 
-        liczba_n = self._lookup_liczba_n(dyscyplina, uczelnia_obj)
+        liczba_n = self._lookup_liczba_n(dyscyplina, uczelnia_obj, okres)
 
         # Pre-optimization: capacity-based unpinning analysis / application
         if analyze_unpinning or auto_unpin:
@@ -192,6 +204,7 @@ class Command(BaseCommand):
                 self.style,
                 dyscyplina_obj,
                 dry_run=not auto_unpin,
+                okres=okres,
             )
 
             if analyze_unpinning and not auto_unpin:
@@ -211,6 +224,7 @@ class Command(BaseCommand):
                 log_callback=log_callback,
                 liczba_n=liczba_n,
                 algorithm_mode=algorithm_mode,
+                okres=okres,
             )
         except Exception as e:
             zaloguj_polkniety_wyjatek(
@@ -234,7 +248,9 @@ class Command(BaseCommand):
         self.stdout.write("Saving results to database...")
         self.stdout.write("=" * 80)
 
-        save_optimization_to_database(self.stdout, self.style, results, dyscyplina)
+        save_optimization_to_database(
+            self.stdout, self.style, results, dyscyplina, okres=okres
+        )
 
         (
             authors,
@@ -279,6 +295,7 @@ class Command(BaseCommand):
                 rekords,
                 sorted_unselected,
                 author_slot_limits,
+                okres=okres,
             )
 
         if analyze_pinning or enable_pinning:
@@ -295,6 +312,7 @@ class Command(BaseCommand):
                 rerun_after_pinning=enable_pinning,
                 algorithm_mode=algorithm_mode,
                 verbose=verbose,
+                okres=okres,
             )
 
         if unpin_not_selected:
@@ -310,9 +328,10 @@ class Command(BaseCommand):
                 output,
                 verbose,
                 algorithm_mode,
+                okres=okres,
             )
 
-    def _lookup_liczba_n(self, dyscyplina, uczelnia):
+    def _lookup_liczba_n(self, dyscyplina, uczelnia, okres):
         """Look up the institutional N-limit (3N - sankcje) for the discipline.
 
         ``uczelnia`` to JAWNIE rozstrzygnięta uczelnia (single-or-fail /
@@ -325,7 +344,7 @@ class Command(BaseCommand):
             dyscyplina_obj = Dyscyplina_Naukowa.objects.get(nazwa=dyscyplina)
             if dyscyplina_obj:
                 liczba_n_obj = LiczbaNDlaUczelni.objects.get(
-                    uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina_obj
+                    uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina_obj, okres=okres
                 )
                 liczba_n = float(liczba_n_obj.liczba_n_ostateczna)
                 self.stdout.write(

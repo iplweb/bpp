@@ -13,6 +13,7 @@ from django.utils import timezone
 
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 
+from ..okres import filtr_lat, pobierz_okres
 from .helpers import (
     _collect_ids_to_unpin,
     _create_optimization_snapshot,
@@ -29,7 +30,7 @@ logger = logging.getLogger(__name__)
     time_limit=660,  # 11 minutes - hard kill
 )
 def solve_single_discipline_task(
-    uczelnia_id, dyscyplina_id, liczba_n, algorithm_mode="two-phase"
+    uczelnia_id, dyscyplina_id, liczba_n, algorithm_mode="two-phase", okres_pk=None
 ):
     """
     Uruchamia optymalizację dla pojedynczej dyscypliny.
@@ -41,6 +42,7 @@ def solve_single_discipline_task(
         dyscyplina_id: ID dyscypliny naukowej
         liczba_n: wartość liczby N dla tej dyscypliny
         algorithm_mode: "two-phase" (default) or "single-phase"
+        okres_pk: PK okresu ewaluacji (``None`` = okres domyślny)
 
     Returns:
         Dictionary z wynikami optymalizacji dla tej dyscypliny
@@ -57,6 +59,7 @@ def solve_single_discipline_task(
     uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
     dyscyplina = Dyscyplina_Naukowa.objects.get(pk=dyscyplina_id)
     dyscyplina_nazwa = dyscyplina.nazwa
+    okres = pobierz_okres(okres_pk)
 
     discipline_result = {
         "dyscyplina_id": dyscyplina.pk,
@@ -68,9 +71,9 @@ def solve_single_discipline_task(
     try:
         logger.info(f"Starting optimization for discipline: {dyscyplina_nazwa}")
 
-        # Usuń stare optymalizacje dla tej dyscypliny
+        # Usuń stare optymalizacje dla tej dyscypliny (tylko z tego okresu)
         deleted_count = OptimizationRun.objects.filter(
-            dyscyplina_naukowa=dyscyplina
+            dyscyplina_naukowa=dyscyplina, okres=okres
         ).delete()[0]
         if deleted_count > 0:
             logger.info(
@@ -88,6 +91,7 @@ def solve_single_discipline_task(
             log_callback=None,
             liczba_n=float(liczba_n),
             algorithm_mode=algorithm_mode,
+            okres=okres,
         )
 
         logger.info(
@@ -100,6 +104,7 @@ def solve_single_discipline_task(
         opt_run = OptimizationRun.objects.create(
             dyscyplina_naukowa=dyscyplina,
             uczelnia=uczelnia,
+            okres=okres,
             status="completed",
             total_points=Decimal(str(optimization_results.total_points)),
             total_slots=Decimal(str(optimization_results.total_slots)),
@@ -129,7 +134,7 @@ def solve_single_discipline_task(
             # Pobierz rodzaj_autora dla tego autora (może być wiele rekordów - bierzemy pierwszy)
             record = (
                 IloscUdzialowDlaAutoraZaCalosc.objects.filter(
-                    autor_id=author_id, dyscyplina_naukowa=dyscyplina
+                    autor_id=author_id, dyscyplina_naukowa=dyscyplina, okres=okres
                 )
                 .order_by("-ilosc_udzialow")
                 .first()
@@ -186,6 +191,7 @@ def solve_single_discipline_task(
             OptimizationRun.objects.create(
                 dyscyplina_naukowa=dyscyplina,
                 uczelnia=uczelnia,
+                okres=okres,
                 status="failed",
                 notes="Przekroczono limit czasu obliczeń (10 minut). "
                 "Spróbuj ponownie lub sprawdź logi systemu.",
@@ -214,6 +220,7 @@ def solve_single_discipline_task(
             OptimizationRun.objects.create(
                 dyscyplina_naukowa=dyscyplina,
                 uczelnia=uczelnia,
+                okres=okres,
                 status="failed",
                 notes=f"Error: {type(e).__name__}: {str(e)}\n\nTraceback:\n{tb}",
                 finished_at=timezone.now(),
@@ -253,7 +260,9 @@ def finalize_browser_recalc(results, uczelnia_id):
 
 
 @shared_task(base=Singleton, unique_on=["uczelnia_id"], lock_expiry=3600, bind=True)
-def solve_all_reported_disciplines(self, uczelnia_id, algorithm_mode="two-phase"):
+def solve_all_reported_disciplines(
+    self, uczelnia_id, algorithm_mode="two-phase", okres_pk=None
+):
     """
     Uruchamia optymalizację dla wszystkich dyscyplin raportowanych (>= 12 slotów).
 
@@ -270,6 +279,7 @@ def solve_all_reported_disciplines(self, uczelnia_id, algorithm_mode="two-phase"
     Args:
         uczelnia_id: ID uczelni dla której wykonać optymalizację
         algorithm_mode: "two-phase" (default) or "single-phase"
+        okres_pk: PK okresu ewaluacji (``None`` = okres domyślny)
 
     Returns:
         Dictionary z podstawowymi informacjami o uruchomionych zadaniach
@@ -277,10 +287,11 @@ def solve_all_reported_disciplines(self, uczelnia_id, algorithm_mode="two-phase"
     from bpp.models import Uczelnia
 
     uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
+    okres = pobierz_okres(okres_pk)
 
     # Pobierz wszystkie dyscypliny raportowane (>= 12 slotów)
     raportowane_dyscypliny = LiczbaNDlaUczelni.objects.filter(
-        uczelnia=uczelnia, liczba_n__gte=12
+        uczelnia=uczelnia, okres=okres, liczba_n__gte=12
     ).select_related("dyscyplina_naukowa")
 
     discipline_count = raportowane_dyscypliny.count()
@@ -312,6 +323,7 @@ def solve_all_reported_disciplines(self, uczelnia_id, algorithm_mode="two-phase"
             dyscyplina.pk,
             float(liczba_n_obj.liczba_n_ostateczna),
             algorithm_mode,
+            okres.pk,
         )
         tasks.append(task)
 
@@ -351,8 +363,9 @@ def _run_bulk_optimization(
     meta_extra,
     logger_func,
     algorithm_mode="two-phase",
+    okres=None,
 ):
-    """Run bulk optimization for all disciplines."""
+    """Run bulk optimization for all disciplines (w danym okresie)."""
     from time import sleep
 
     from ewaluacja_optymalizacja.models import (
@@ -361,14 +374,21 @@ def _run_bulk_optimization(
         OptimizationRun,
     )
 
-    # Delete existing OptimizationRun records
-    logger_func(f"Deleting existing OptimizationRun records for uczelnia {uczelnia.pk}")
-    deleted_count = OptimizationRun.objects.filter(uczelnia=uczelnia).delete()[0]
+    okres = pobierz_okres(okres)
+
+    # Delete existing OptimizationRun records (tylko z tego okresu)
+    logger_func(
+        f"Deleting existing OptimizationRun records for uczelnia {uczelnia.pk}, "
+        f"okres {okres}"
+    )
+    deleted_count = OptimizationRun.objects.filter(
+        uczelnia=uczelnia, okres=okres
+    ).delete()[0]
     logger_func(f"Deleted {deleted_count} OptimizationRun records")
 
     # Launch parallel optimization tasks
     raportowane_dyscypliny = LiczbaNDlaUczelni.objects.filter(
-        uczelnia=uczelnia, liczba_n__gte=12
+        uczelnia=uczelnia, okres=okres, liczba_n__gte=12
     ).select_related("dyscyplina_naukowa")
 
     tasks = []
@@ -380,6 +400,7 @@ def _run_bulk_optimization(
             dyscyplina.pk,
             float(liczba_n_obj.liczba_n_ostateczna),
             algorithm_mode,
+            okres.pk,
         )
         tasks.append(task_obj)
 
@@ -399,12 +420,14 @@ def _run_bulk_optimization(
     while waited < max_wait:
         completed_count = OptimizationRun.objects.filter(
             uczelnia=uczelnia,
+            okres=okres,
             dyscyplina_naukowa_id__in=dyscypliny_ids,
             status="completed",
         ).count()
 
         running_count = OptimizationRun.objects.filter(
             uczelnia=uczelnia,
+            okres=okres,
             dyscyplina_naukowa_id__in=dyscypliny_ids,
             status="running",
         ).count()
@@ -444,6 +467,7 @@ def _run_bulk_optimization(
                 opt_run = (
                     OptimizationRun.objects.filter(
                         uczelnia=uczelnia,
+                        okres=okres,
                         dyscyplina_naukowa=liczba_n_obj.dyscyplina_naukowa,
                         status="completed",
                     )
@@ -490,7 +514,9 @@ def _run_bulk_optimization(
     bind=True,
     time_limit=3600,
 )
-def optimize_and_unpin_task(self, uczelnia_id, algorithm_mode="two-phase"):
+def optimize_and_unpin_task(
+    self, uczelnia_id, algorithm_mode="two-phase", okres_pk=None
+):
     """
     Zadanie które:
     1. Sprawdza czy wszystkie dyscypliny raportowane są przeliczone
@@ -501,6 +527,8 @@ def optimize_and_unpin_task(self, uczelnia_id, algorithm_mode="two-phase"):
     Args:
         uczelnia_id: ID uczelni dla której wykonać optymalizację
         algorithm_mode: "two-phase" (default) or "single-phase"
+        okres_pk: PK okresu ewaluacji (``None`` = okres domyślny). Odpinane są
+            wyłącznie przypisania z prac z lat tego okresu.
 
     Returns:
         Dictionary z informacją o wykonanych operacjach
@@ -533,29 +561,31 @@ def optimize_and_unpin_task(self, uczelnia_id, algorithm_mode="two-phase"):
         }
 
     uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
+    okres = pobierz_okres(okres_pk)
+    lata_okresu = filtr_lat(okres, "rekord__")
 
-    logger.info(f"Starting optimize_and_unpin_task for {uczelnia}")
+    logger.info(f"Starting optimize_and_unpin_task for {uczelnia}, okres {okres}")
 
     # Update task state
     self.update_state(state="PROGRESS", meta={"step": "validation", "progress": 0})
 
     # 1. Validation
-    _validate_all_disciplines_optimized(uczelnia, logger.info)
+    _validate_all_disciplines_optimized(uczelnia, logger.info, okres=okres)
 
     # Update task state
     self.update_state(state="PROGRESS", meta={"step": "snapshot", "progress": 10})
 
     # 2. Create snapshot
     snapshot, suma_punktow_przed, suma_slotow_przed = _create_optimization_snapshot(
-        uczelnia, logger.info
+        uczelnia, logger.info, okres=okres
     )
 
     # Get initial pinned counts for progress tracking
     total_pinned_ciagle = Wydawnictwo_Ciagle_Autor.objects.filter(
-        przypieta=True
+        przypieta=True, **lata_okresu
     ).count()
     total_pinned_zwarte = Wydawnictwo_Zwarte_Autor.objects.filter(
-        przypieta=True
+        przypieta=True, **lata_okresu
     ).count()
 
     # Update task state
@@ -572,14 +602,16 @@ def optimize_and_unpin_task(self, uczelnia_id, algorithm_mode="two-phase"):
     # 3. Collect IDs to unpin
     autorzy_z_wynikami = set(
         OptimizationAuthorResult.objects.filter(
-            optimization_run__uczelnia=uczelnia, optimization_run__status="completed"
+            optimization_run__uczelnia=uczelnia,
+            optimization_run__okres=okres,
+            optimization_run__status="completed",
         ).values_list("autor_id", flat=True)
     )
 
     logger.info(f"Found {len(autorzy_z_wynikami)} authors with optimization results")
 
     ids_to_unpin_ciagle, ids_to_unpin_zwarte = _collect_ids_to_unpin(
-        uczelnia, autorzy_z_wynikami, logger.warning
+        uczelnia, autorzy_z_wynikami, logger.warning, okres=okres
     )
 
     # 4. Perform batch unpinning (with progress tracking)
@@ -589,10 +621,10 @@ def optimize_and_unpin_task(self, uczelnia_id, algorithm_mode="two-phase"):
 
     # Get current pinned counts after unpinning
     current_pinned_ciagle = Wydawnictwo_Ciagle_Autor.objects.filter(
-        przypieta=True
+        przypieta=True, **lata_okresu
     ).count()
     current_pinned_zwarte = Wydawnictwo_Zwarte_Autor.objects.filter(
-        przypieta=True
+        przypieta=True, **lata_okresu
     ).count()
 
     # 5. Wait for denormalization
@@ -616,7 +648,7 @@ def optimize_and_unpin_task(self, uczelnia_id, algorithm_mode="two-phase"):
     logger.info("Starting bulk optimization recalculation")
 
     liczba_n_raportowane = LiczbaNDlaUczelni.objects.filter(
-        uczelnia=uczelnia, liczba_n__gte=12
+        uczelnia=uczelnia, okres=okres, liczba_n__gte=12
     ).select_related("dyscyplina_naukowa")
 
     discipline_count = liczba_n_raportowane.count()
@@ -656,20 +688,21 @@ def optimize_and_unpin_task(self, uczelnia_id, algorithm_mode="two-phase"):
         },
         logger_func=logger.info,
         algorithm_mode=algorithm_mode,
+        okres=okres,
     )
 
     # 7. Calculate final results (after optimization)
     suma_punktow_po = (
-        OptimizationRun.objects.filter(uczelnia=uczelnia, status="completed").aggregate(
-            suma=Sum("total_points")
-        )["suma"]
+        OptimizationRun.objects.filter(
+            uczelnia=uczelnia, okres=okres, status="completed"
+        ).aggregate(suma=Sum("total_points"))["suma"]
         or 0
     )
 
     suma_slotow_po = (
-        OptimizationRun.objects.filter(uczelnia=uczelnia, status="completed").aggregate(
-            suma=Sum("total_slots")
-        )["suma"]
+        OptimizationRun.objects.filter(
+            uczelnia=uczelnia, okres=okres, status="completed"
+        ).aggregate(suma=Sum("total_slots"))["suma"]
         or 0
     )
 

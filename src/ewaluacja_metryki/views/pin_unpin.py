@@ -1,6 +1,7 @@
 from django.core.exceptions import PermissionDenied
 from django.views import View
 
+from ewaluacja_common.okres import okres_dla_request
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
 from ..uczelnia_scope import scope_metryki
@@ -81,6 +82,7 @@ class PrzypnijDyscyplineView(
                 autor_id=autor_id, dyscyplina_naukowa_id=dyscyplina_id
             ),
             uczelnia_dla_odczytu(request),
+            okres_dla_request(request),
         ).first()
 
         if metryka:
@@ -159,6 +161,7 @@ class OdepnijDyscyplineView(
                 autor_id=autor_id, dyscyplina_naukowa_id=dyscyplina_id
             ),
             uczelnia_dla_odczytu(request),
+            okres_dla_request(request),
         ).first()
 
         if metryka:

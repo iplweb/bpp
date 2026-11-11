@@ -14,6 +14,7 @@
     <div class="large-12 columns">
         <h1>
             <span class="fi-list"></span> Lista wszystkich kalkulacji
+            <small>okres {{ okres_ewaluacji }}</small>
         </h1>
 
         <div class="button-group">
@@ -101,7 +102,7 @@
 
 Ta operacja:
 1. Utworzy snapshot obecnego stanu
-2. Ustawi przypieta=True dla wszystkich {{ run.pin_stats.total }} rekordów z lat 2022-2025
+2. Ustawi przypieta=True dla wszystkich {{ run.pin_stats.total }} rekordów z lat {{ okres_ewaluacji.rok_od }}-{{ okres_ewaluacji.rok_do }}
 3. Automatycznie przeliczy punktację
 
 Proces może potrwać kilka minut.">

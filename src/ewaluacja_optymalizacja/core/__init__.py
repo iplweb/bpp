@@ -12,6 +12,7 @@ import traceback
 from bpp.models import Dyscyplina_Naukowa
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 
+from ..okres import pobierz_okres
 from .data_loader import generate_pub_data, load_author_slot_limits
 from .data_structures import (
     SCALE,
@@ -127,6 +128,7 @@ def solve_discipline(
     log_callback=None,
     liczba_n: float | None = None,
     algorithm_mode: str = "two-phase",
+    okres=None,
 ) -> OptimizationResults:
     """
     Solve optimization for a single discipline.
@@ -139,6 +141,7 @@ def solve_discipline(
         algorithm_mode: "two-phase" (default) or "single-phase"
             - "two-phase": Phase 1 per-author optimization, Phase 2 institution constraints
             - "single-phase": Global CP-SAT with all constraints from start
+        okres: OkresEwaluacji (albo pk); ``None`` = okres domyślny
 
     Returns:
         OptimizationResults object with complete results
@@ -158,7 +161,8 @@ def solve_discipline(
             "Must be 'two-phase' or 'single-phase'."
         )
 
-    log(f"Algorithm mode: {algorithm_mode}")
+    okres = pobierz_okres(okres)
+    log(f"Algorithm mode: {algorithm_mode}, evaluation period: {okres}")
 
     # Log solver configuration
     cpu_count = os.cpu_count() or 8
@@ -176,7 +180,7 @@ def solve_discipline(
 
     # Generate publication data from database
     try:
-        pubs = generate_pub_data(dyscyplina_nazwa, verbose=verbose)
+        pubs = generate_pub_data(dyscyplina_nazwa, verbose=verbose, okres=okres)
     except ValueError as e:
         log(str(e), "ERROR")
         raise
@@ -184,7 +188,7 @@ def solve_discipline(
     if not pubs:
         log(
             f"No publications found for discipline '{dyscyplina_nazwa}' "
-            "in years 2022-2025",
+            f"in evaluation period {okres}",
             "WARNING",
         )
         return _empty_results(dyscyplina_nazwa)
@@ -199,7 +203,9 @@ def solve_discipline(
     dyscyplina_obj = Dyscyplina_Naukowa.objects.get(nazwa=dyscyplina_nazwa)
 
     # Load per-author slot limits
-    author_slot_limits = load_author_slot_limits(authors, dyscyplina_obj, log)
+    author_slot_limits = load_author_slot_limits(
+        authors, dyscyplina_obj, log, okres=okres
+    )
 
     # Run optimization based on selected algorithm mode
     gap_percent = None
@@ -369,7 +375,7 @@ def apply_pinning_candidates(
     }
 
 
-def solve_uczelnia(uczelnia_id: int | None = None, min_liczba_n: int = 12):
+def solve_uczelnia(uczelnia_id: int | None = None, min_liczba_n: int = 12, okres=None):
     """
     Solve optimization for all disciplines in university with liczba_n >= min_liczba_n.
 
@@ -377,6 +383,7 @@ def solve_uczelnia(uczelnia_id: int | None = None, min_liczba_n: int = 12):
         uczelnia_id: University ID (if None, uses the sole university;
             raises if zero or multiple exist — multi-hosted fail-loud)
         min_liczba_n: Minimum liczba N threshold (default: 12)
+        okres: OkresEwaluacji (albo pk); ``None`` = okres domyślny
 
     Yields:
         (dyscyplina_nazwa, OptimizationResults) tuples
@@ -395,8 +402,9 @@ def solve_uczelnia(uczelnia_id: int | None = None, min_liczba_n: int = 12):
             raise ValueError("No university found in database") from e
 
     # Get disciplines with liczba_n >= min_liczba_n
+    okres = pobierz_okres(okres)
     liczba_n_query = LiczbaNDlaUczelni.objects.filter(
-        uczelnia=uczelnia, liczba_n__gte=min_liczba_n
+        uczelnia=uczelnia, okres=okres, liczba_n__gte=min_liczba_n
     ).select_related("dyscyplina_naukowa")
 
     disciplines = list(liczba_n_query)
@@ -426,6 +434,7 @@ def solve_uczelnia(uczelnia_id: int | None = None, min_liczba_n: int = 12):
                 dyscyplina.nazwa,
                 verbose=False,
                 liczba_n=float(liczba_n_obj.liczba_n),
+                okres=okres,
             )
             yield (dyscyplina.nazwa, results)
         except Exception as e:

@@ -19,6 +19,7 @@ from ewaluacja_optymalizacja.models import (
     OptimizationPublication,
     OptimizationRun,
 )
+from ewaluacja_optymalizacja.okres import okres_z_roku
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,15 @@ class Command(BaseCommand):
             type=int,
             default=None,
             help="University ID (wymagane gdy w systemie jest >1 uczelnia)",
+        )
+        parser.add_argument(
+            "--okres",
+            type=int,
+            default=None,
+            help=(
+                "Dowolny rok z okresu ewaluacji (np. 2022 → 2022–2025); "
+                "domyślnie okres zawierający bieżący rok"
+            ),
         )
         parser.add_argument(
             "--min-liczba-n",
@@ -80,8 +90,10 @@ class Command(BaseCommand):
         self.stdout.write("=" * 80)
 
         uczelnia_obj = self._resolve_uczelnia(uczelnia)
+        okres = okres_z_roku(options.get("okres"))
 
         self.stdout.write(f"University: {uczelnia_obj}")
+        self.stdout.write(f"Okres ewaluacji: {okres}")
         self.stdout.write(f"Minimum liczba N: {min_liczba_n}")
         self.stdout.write(f"Save to database: {save_to_db}")
         self.stdout.write("")
@@ -91,12 +103,15 @@ class Command(BaseCommand):
         errors_count = 0
 
         for dyscyplina_nazwa, results in solve_uczelnia(
-            uczelnia_id=uczelnia_obj.pk, min_liczba_n=min_liczba_n
+            uczelnia_id=uczelnia_obj.pk, min_liczba_n=min_liczba_n, okres=okres
         ):
             try:
                 if save_to_db:
                     self._save_results(
-                        results, dyscyplina_nazwa, uczelnia_obj=uczelnia_obj
+                        results,
+                        dyscyplina_nazwa,
+                        uczelnia_obj=uczelnia_obj,
+                        okres=okres,
                     )
                 results_count += 1
             except Exception as e:
@@ -122,16 +137,19 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("Optimization complete!"))
 
     @transaction.atomic
-    def _save_results(self, results, dyscyplina_nazwa, uczelnia_obj):
+    def _save_results(self, results, dyscyplina_nazwa, uczelnia_obj, okres):
         """Save optimization results to database"""
         dyscyplina_obj = Dyscyplina_Naukowa.objects.get(nazwa=dyscyplina_nazwa)
 
-        # Usuń stare optymalizacje dla tej dyscypliny
-        OptimizationRun.objects.filter(dyscyplina_naukowa=dyscyplina_obj).delete()
+        # Usuń stare optymalizacje dla tej dyscypliny (w tym okresie)
+        OptimizationRun.objects.filter(
+            dyscyplina_naukowa=dyscyplina_obj, okres=okres
+        ).delete()
 
         # Create OptimizationRun
         opt_run = OptimizationRun.objects.create(
             dyscyplina_naukowa=dyscyplina_obj,
+            okres=okres,
             uczelnia=uczelnia_obj,
             status="completed",
             total_points=Decimal(str(results.total_points)),
@@ -151,7 +169,9 @@ class Command(BaseCommand):
             # Get rodzaj_autora for this author (może być wiele rekordów - bierzemy pierwszy)
             record = (
                 IloscUdzialowDlaAutoraZaCalosc.objects.filter(
-                    autor_id=author_id, dyscyplina_naukowa=dyscyplina_obj
+                    autor_id=author_id,
+                    dyscyplina_naukowa=dyscyplina_obj,
+                    okres=okres,
                 )
                 .order_by("-ilosc_udzialow")
                 .first()

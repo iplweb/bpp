@@ -3,6 +3,7 @@ from django.shortcuts import redirect
 from django.views.generic import DetailView
 
 from ewaluacja_common.models import Rodzaj_Autora
+from ewaluacja_common.okres import okres_dla_request
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
 from ..models import MetrykaAutora
@@ -42,7 +43,11 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
 
         # Ogranicz do uczelni oglądającego (defense-in-depth: przy multi-install
         # ta sama para autor+dyscyplina może istnieć w >1 uczelni).
-        queryset = scope_metryki(queryset, uczelnia_dla_odczytu(self.request))
+        queryset = scope_metryki(
+            queryset,
+            uczelnia_dla_odczytu(self.request),
+            okres_dla_request(self.request),
+        )
 
         try:
             obj = queryset.get(
@@ -87,7 +92,8 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
             Autor_Dyscyplina.objects.filter(
                 autor=metryka.autor,
                 dyscyplina_naukowa=metryka.dyscyplina_naukowa,
-                rok__in=[2022, 2023, 2024, 2025],
+                rok__gte=metryka.rok_min,
+                rok__lte=metryka.rok_max,
             )
             .select_related("dyscyplina_naukowa", "subdyscyplina_naukowa")
             .order_by("rok")
@@ -378,6 +384,7 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
                     jednostka=metryka.jednostka,
                     dyscyplina_naukowa=metryka.dyscyplina_naukowa,
                     uczelnia=metryka.uczelnia,
+                    okres=metryka.okres_id,
                     srednia_za_slot_nazbierana__gt=metryka.srednia_za_slot_nazbierana,
                 ).count()
                 + 1
@@ -387,6 +394,7 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
                 jednostka=metryka.jednostka,
                 dyscyplina_naukowa=metryka.dyscyplina_naukowa,
                 uczelnia=metryka.uczelnia,
+                okres=metryka.okres_id,
             ).count()
 
         return context
@@ -404,6 +412,7 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
             MetrykaAutora.objects.filter(
                 autor=metryka.autor,
                 uczelnia=metryka.uczelnia,
+                okres=metryka.okres_id,
             )
             .exclude(pk=metryka.pk)
             .select_related("dyscyplina_naukowa")

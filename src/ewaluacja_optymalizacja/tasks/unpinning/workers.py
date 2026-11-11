@@ -216,7 +216,9 @@ def analyze_unpinning_worker_task(  # noqa: C901
 
 
 @shared_task(bind=True)
-def collect_unpinning_results(self, worker_results, uczelnia_id, dyscyplina_id=None):
+def collect_unpinning_results(
+    self, worker_results, uczelnia_id, dyscyplina_id=None, okres_pk=None
+):
     """
     Zbiera wyniki ze wszystkich workerów i zapisuje do bazy.
 
@@ -224,6 +226,7 @@ def collect_unpinning_results(self, worker_results, uczelnia_id, dyscyplina_id=N
         worker_results: Lista wyników z analyze_unpinning_worker_task
         uczelnia_id: ID uczelni
         dyscyplina_id: ID dyscypliny (opcjonalnie)
+        okres_pk: PK okresu ewaluacji (``None`` = okres domyślny)
 
     Returns:
         dict: Podsumowanie wyników
@@ -231,18 +234,20 @@ def collect_unpinning_results(self, worker_results, uczelnia_id, dyscyplina_id=N
     from bpp.models import Uczelnia
 
     from ...models import UnpinningOpportunity
+    from ...okres import pobierz_okres
 
     uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
+    okres = pobierz_okres(okres_pk)
 
     logger.info(f"Collecting results from {len(worker_results)} workers for {uczelnia}")
 
     # Usuń stare wyniki
     if dyscyplina_id:
         UnpinningOpportunity.objects.filter(
-            uczelnia=uczelnia, dyscyplina_naukowa_id=dyscyplina_id
+            uczelnia=uczelnia, okres=okres, dyscyplina_naukowa_id=dyscyplina_id
         ).delete()
     else:
-        UnpinningOpportunity.objects.filter(uczelnia=uczelnia).delete()
+        UnpinningOpportunity.objects.filter(uczelnia=uczelnia, okres=okres).delete()
 
     # Zbierz wszystkie opportunities
     all_opportunities = []
@@ -265,16 +270,19 @@ def collect_unpinning_results(self, worker_results, uczelnia_id, dyscyplina_id=N
         metryka_a = MetrykaAutora.objects.filter(
             autor_id=opp["autor_a"]["autor_id"],
             dyscyplina_naukowa_id=opp["autor_a"]["dyscyplina_id"],
+            okres=okres,
         ).first()
         metryka_b = MetrykaAutora.objects.filter(
             autor_id=opp["autor_b"]["autor_id"],
             dyscyplina_naukowa_id=opp["autor_b"]["dyscyplina_id"],
+            okres=okres,
         ).first()
 
         if metryka_a and metryka_b:
             unpinning_objs.append(
                 UnpinningOpportunity(
                     uczelnia=uczelnia,
+                    okres=okres,
                     dyscyplina_naukowa_id=opp["autor_a"]["dyscyplina_id"],
                     rekord_id=tuple(opp["rekord_id"]),
                     rekord_tytul=opp["rekord_tytul"][:500],

@@ -30,14 +30,53 @@ def get_default_rodzaje_autora():
     )
 
 
+def rozstrzygnij_okres(okres=None, rok_min=None, rok_max=None):
+    """Ustal okres ewaluacji i lata, dla których liczymy metryki.
+
+    - ``okres`` (obiekt ``OkresEwaluacji`` albo jego pk) — lata brane z okresu,
+      o ile nie podano ich jawnie;
+    - bez ``okres``, ale z ``rok_min`` — okres zawierający podane lata
+      (``ValueError``, gdy żaden ich nie obejmuje);
+    - bez niczego — okres domyślny (zawierający bieżący rok).
+
+    Zwraca krotkę ``(okres, rok_min, rok_max)``.
+    """
+    from ewaluacja_common.models import OkresEwaluacji
+    from ewaluacja_common.okres import okres_domyslny
+
+    if okres is not None and not isinstance(okres, OkresEwaluacji):
+        okres = OkresEwaluacji.objects.get(pk=okres)
+
+    if okres is None:
+        if rok_min is not None or rok_max is not None:
+            od = rok_min if rok_min is not None else rok_max
+            do = rok_max if rok_max is not None else rok_min
+            okres = OkresEwaluacji.objects.filter(
+                rok_od__lte=od, rok_do__gte=do
+            ).first()
+            if okres is None:
+                raise ValueError(f"Brak okresu ewaluacji obejmującego lata {od}–{do}")
+        else:
+            okres = okres_domyslny()
+            if okres is None:
+                raise ValueError("Brak zdefiniowanych okresów ewaluacji")
+
+    if rok_min is None:
+        rok_min = okres.rok_od
+    if rok_max is None:
+        rok_max = okres.rok_do
+    return okres, rok_min, rok_max
+
+
 def oblicz_metryki_dla_autora(
     autor,
     dyscyplina,
     uczelnia,
-    rok_min=2022,
-    rok_max=2025,
+    rok_min=None,
+    rok_max=None,
     minimalny_pk=Decimal("0.01"),
     slot_maksymalny=None,
+    okres=None,
 ):
     """
     Oblicza metryki ewaluacyjne dla pojedynczego autora i dyscypliny.
@@ -46,21 +85,24 @@ def oblicz_metryki_dla_autora(
         autor: Obiekt Autor
         dyscyplina: Obiekt Dyscyplina_Naukowa
         uczelnia: Obiekt Uczelnia (wymagany - metryki są per uczelnia)
-        rok_min: Początkowy rok okresu ewaluacji
-        rok_max: Końcowy rok okresu ewaluacji
+        rok_min: Początkowy rok okresu ewaluacji (domyślnie początek okresu)
+        rok_max: Końcowy rok okresu ewaluacji (domyślnie koniec okresu)
         minimalny_pk: Minimalny próg punktów
+        okres: OkresEwaluacji (domyślnie wg lat albo okres domyślny)
         slot_maksymalny: Maksymalny slot dla autora (jeśli None, pobierany z IloscUdzialowDlaAutoraZaCalosc)
 
     Returns:
         Tuple (metryka, created) - obiekt MetrykaAutora i bool czy został utworzony
     """
+    okres, rok_min, rok_max = rozstrzygnij_okres(okres, rok_min, rok_max)
+
     # Jeśli nie podano slot_maksymalny, pobierz z IloscUdzialowDlaAutoraZaCalosc
     if slot_maksymalny is None:
         from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
         # Agreguj slot limits dla danej uczelni (fix: nie sumuj wszystkich uczelni)
         aggregated = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
-            autor=autor, dyscyplina_naukowa=dyscyplina, uczelnia=uczelnia
+            autor=autor, dyscyplina_naukowa=dyscyplina, uczelnia=uczelnia, okres=okres
         ).aggregate(total_slots=Sum("ilosc_udzialow"))
 
         if aggregated["total_slots"] is not None:
@@ -175,13 +217,14 @@ def oblicz_metryki_dla_autora(
     # update_or_create() doesn't reliably detect changes in JSONField (prace_nazbierane)
     with transaction.atomic():
         MetrykaAutora.objects.filter(
-            autor=autor, dyscyplina_naukowa=dyscyplina, uczelnia=uczelnia
+            autor=autor, dyscyplina_naukowa=dyscyplina, uczelnia=uczelnia, okres=okres
         ).delete()
 
         metryka = MetrykaAutora.objects.create(
             autor=autor,
             dyscyplina_naukowa=dyscyplina,
             uczelnia=uczelnia,
+            okres=okres,
             jednostka=jednostka,
             slot_maksymalny=slot_maksymalny,
             slot_nazbierany=slot_nazbierany_decimal,
@@ -203,7 +246,17 @@ def oblicz_metryki_dla_autora(
     return metryka, created
 
 
-def przelicz_metryki_dla_publikacji(publikacja, rok_min=2022, rok_max=2025):
+def _okres_dla_publikacji(publikacja, okres, rok_min, rok_max):
+    """Jak ``rozstrzygnij_okres``, ale bez żadnych wskazówek bierze okres,
+    do którego należy rok publikacji (zamiast okresu domyślnego)."""
+    if okres is None and rok_min is None and rok_max is None:
+        from ewaluacja_common.okres import okres_domyslny
+
+        okres = okres_domyslny(rok=getattr(publikacja, "rok", None))
+    return rozstrzygnij_okres(okres, rok_min, rok_max)
+
+
+def przelicz_metryki_dla_publikacji(publikacja, rok_min=None, rok_max=None, okres=None):
     """
     Przelicza metryki dla wszystkich autorów danej publikacji z przypisanymi dyscyplinami.
 
@@ -213,12 +266,16 @@ def przelicz_metryki_dla_publikacji(publikacja, rok_min=2022, rok_max=2025):
 
     Args:
         publikacja: Obiekt publikacji (Wydawnictwo_Ciagle, Wydawnictwo_Zwarte)
-        rok_min: Początkowy rok okresu ewaluacji
-        rok_max: Końcowy rok okresu ewaluacji
+        rok_min: Początkowy rok okresu ewaluacji (domyślnie początek okresu)
+        rok_max: Końcowy rok okresu ewaluacji (domyślnie koniec okresu)
+        okres: OkresEwaluacji; domyślnie okres, do którego należy rok
+            publikacji (a gdy publikacja nie ma roku — okres domyślny)
 
     Returns:
         Lista tuple (autor, dyscyplina, metryka) dla przeliczonych metryk
     """
+    okres, rok_min, rok_max = _okres_dla_publikacji(publikacja, okres, rok_min, rok_max)
+
     results = []
 
     # Zbierz wszystkich unikalnych AUTORÓW z tej publikacji (bez dyscyplin na razie)
@@ -256,6 +313,7 @@ def przelicz_metryki_dla_publikacji(publikacja, rok_min=2022, rok_max=2025):
                 uczelnia=uczelnia,
                 rok_min=rok_min,
                 rok_max=rok_max,
+                okres=okres,
             )
             results.append((autor, dyscyplina, metryka))
         except Exception as e:
@@ -282,19 +340,24 @@ def _prepare_rodzaje_autora(rodzaje_autora):
     return rodzaje_autora
 
 
-def _get_ilosc_udzialow_queryset(ilosc_udzialow_queryset, uczelnia=None):
-    """Pobiera queryset IloscUdzialowDlaAutoraZaCalosc."""
+def _get_ilosc_udzialow_queryset(ilosc_udzialow_queryset, uczelnia=None, okres=None):
+    """Pobiera queryset IloscUdzialowDlaAutoraZaCalosc — zawsze zawężony do
+    okresu ``okres`` (gdy podany), także gdy wywołujący podał własny queryset:
+    udziały z innego okresu dałyby metryce błędny ``slot_maksymalny``."""
     from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
     if ilosc_udzialow_queryset is not None:
-        return ilosc_udzialow_queryset
-    qs = IloscUdzialowDlaAutoraZaCalosc.objects.all()
-    if uczelnia is not None:
-        qs = qs.filter(uczelnia=uczelnia)
+        qs = ilosc_udzialow_queryset
+    else:
+        qs = IloscUdzialowDlaAutoraZaCalosc.objects.all()
+        if uczelnia is not None:
+            qs = qs.filter(uczelnia=uczelnia)
+    if okres is not None:
+        qs = qs.filter(okres=okres)
     return qs
 
 
-def _should_skip_author(autor, dyscyplina, rodzaje_autora, rok_min=2022, rok_max=2025):
+def _should_skip_author(autor, dyscyplina, rodzaje_autora, rok_min, rok_max):
     """
     Sprawdza czy autor powinien być pominięty na podstawie rodzaju_autora.
 
@@ -305,8 +368,8 @@ def _should_skip_author(autor, dyscyplina, rodzaje_autora, rok_min=2022, rok_max
         autor: Obiekt Autor
         dyscyplina: Obiekt Dyscyplina_Naukowa
         rodzaje_autora: Lista akceptowalnych skrótów rodzajów autorów
-        rok_min: Początkowy rok okresu ewaluacji (domyślnie 2022)
-        rok_max: Końcowy rok okresu ewaluacji (domyślnie 2025)
+        rok_min: Początkowy rok okresu ewaluacji
+        rok_max: Końcowy rok okresu ewaluacji
 
     Returns:
         Tuple (bool, Autor_Dyscyplina): (czy_pominąć, najnowszy_rekord_w_okresie)
@@ -415,12 +478,14 @@ def _create_or_update_metryka(
     rok_min,
     rok_max,
     rodzaj_autora_skrot,
+    okres,
 ):
-    """Tworzy lub aktualizuje metrykę autora."""
+    """Tworzy lub aktualizuje metrykę autora (w danym okresie ewaluacji)."""
     return MetrykaAutora.objects.update_or_create(
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         uczelnia=uczelnia,
+        okres=okres,
         defaults={
             "jednostka": jednostka,
             "slot_maksymalny": slot_maksymalny,
@@ -449,8 +514,10 @@ def _process_single_author(
     minimalny_pk,
     progress_callback,
     logger_output,
+    okres=None,
 ):
     """Przetwarza pojedynczego autora i zwraca wynik."""
+    okres, rok_min, rok_max = rozstrzygnij_okres(okres, rok_min, rok_max)
     autor = ilosc_udzialow.autor
     dyscyplina = ilosc_udzialow.dyscyplina_naukowa
     uczelnia = ilosc_udzialow.uczelnia
@@ -527,6 +594,7 @@ def _process_single_author(
                 rok_min,
                 rok_max,
                 rodzaj_autora_skrot,
+                okres,
             )
 
             action = "utworzono" if created else "zaktualizowano"
@@ -547,8 +615,8 @@ def _process_single_author(
 
 
 def generuj_metryki(
-    rok_min=2022,
-    rok_max=2025,
+    rok_min=None,
+    rok_max=None,
     minimalny_pk=Decimal("0.01"),
     nadpisz=True,
     rodzaje_autora=None,
@@ -556,6 +624,7 @@ def generuj_metryki(
     logger_output=None,
     ilosc_udzialow_queryset=None,
     uczelnia=None,
+    okres=None,
 ):
     """
     Generuje metryki ewaluacyjne dla autorów.
@@ -571,6 +640,9 @@ def generuj_metryki(
         progress_callback: Funkcja callback do raportowania postępu (opcjonalne)
         logger_output: Obiekt do logowania wiadomości (opcjonalne, np. self.stdout z komendy)
         ilosc_udzialow_queryset: Opcjonalny queryset IloscUdzialowDlaAutoraZaCalosc (domyślnie wszystkie)
+        uczelnia: Uczelnia (zawęża źródłowy queryset i kasowanie przy nadpisz)
+        okres: OkresEwaluacji (domyślnie wg lat albo okres domyślny); przy
+            ``nadpisz`` kasowane są tylko metryki tego okresu
 
     Returns:
         Dict z kluczami:
@@ -579,8 +651,11 @@ def generuj_metryki(
             - errors: liczba błędów
             - total: całkowita liczba autorów do przetworzenia
     """
+    okres, rok_min, rok_max = rozstrzygnij_okres(okres, rok_min, rok_max)
     rodzaje_autora = _prepare_rodzaje_autora(rodzaje_autora)
-    ilosc_udzialow_qs = _get_ilosc_udzialow_queryset(ilosc_udzialow_queryset, uczelnia)
+    ilosc_udzialow_qs = _get_ilosc_udzialow_queryset(
+        ilosc_udzialow_queryset, uczelnia, okres
+    )
 
     total = ilosc_udzialow_qs.count()
 
@@ -589,7 +664,7 @@ def generuj_metryki(
         logger_output.write(f"Znaleziono {total} autorów do przetworzenia")
 
     if nadpisz:
-        qs = MetrykaAutora.objects.all()
+        qs = MetrykaAutora.objects.filter(okres=okres)
         if uczelnia is not None:
             qs = qs.filter(uczelnia=uczelnia)
         qs.delete()
@@ -613,6 +688,7 @@ def generuj_metryki(
             minimalny_pk,
             progress_callback,
             logger_output,
+            okres=okres,
         )
 
         if result == "processed":

@@ -124,6 +124,10 @@ urlpatterns = (
             ),
         ),
         path(
+            "ewaluacja_common/",
+            include("ewaluacja_common.urls"),
+        ),
+        path(
             "ewaluacja_metryki/",
             include(
                 "ewaluacja_metryki.urls",

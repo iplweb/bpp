@@ -862,3 +862,23 @@ html.global-search-scrollbar-gutter {
             0 0 1px rgba(0, 0, 0, 0.15);
     }
 }
+
+// Przełącznik okresu ewaluacji (ewaluacja_common/_wybor_okresu.html):
+// opcje to przyciski POST, wyglądające jak pozycje menu.
+.wybor-okresu__opcja {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+
+  &:hover,
+  &:focus {
+    background: rgba(0, 0, 0, 0.05);
+  }
+}
+
+.wybor-okresu__opcja--aktywna {
+  font-weight: 600;
+}

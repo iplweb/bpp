@@ -102,16 +102,20 @@ class ProfilUzytkownikaView(LoginRequiredMixin, TemplateView):
         context["autor"] = autor
 
         if autor:
+            from ewaluacja_common.okres import okres_dla_request
             from ewaluacja_metryki.models import MetrykaAutora
             from ewaluacja_metryki.uczelnia_scope import scope_metryki
             from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
             # Metryki pokazujemy z JEDNEJ uczelni — tej z requestu. Autor
             # afiliowany do wielu uczelni nie może widzieć tu metryk obcej
-            # uczelni (no-op przy single-install).
+            # uczelni (no-op przy single-install). Tylko z jednego okresu
+            # ewaluacji (wybranego albo domyślnego) — inaczej dyscypliny
+            # dublowałyby się dla kolejnych okresów.
             context["metryki"] = scope_metryki(
                 MetrykaAutora.objects.filter(autor=autor),
                 uczelnia_dla_odczytu(self.request),
+                okres_dla_request(self.request),
             ).select_related("dyscyplina_naukowa")
 
         return context
