@@ -22,7 +22,7 @@
                 <h1>{{ wydawca.nazwa }}</h1>
                 <p class="wydawca__podsumowanie">
                     <i class="fi-page-multiple"></i>
-                    {{ liczba_prac }} {% if liczba_prac == 1 %}publikacja{% elif liczba_prac < 5 %}publikacje{% else %}publikacji{% endif %} w bazie{% if podzial %}:
+                    {% load polish_inflection %}{{ liczba_prac }} {% odmiana_liczebnikowa "publikacja" liczba_prac %} w bazie{% if podzial %}:
                     {% for kategoria in podzial %}<strong>{{ kategoria.opis }}</strong>{% if not forloop.last %} · {% endif %}{% endfor %}{% endif %}
                 </p>
 

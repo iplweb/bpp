@@ -792,6 +792,19 @@ class AutorzyView(Browser):
         return context
 
 
+def _liczba_prac_zrodla():
+    """Podzapytanie: liczba rekordów źródła — to samo co
+    ``zrodlo.rekord_set.count()``, ale jednym zapytaniem dla całej strony.
+    ``COUNT(1)`` przez ``Func`` z tego samego powodu co w
+    ``_liczba_prac_wydawcy``: ``Rekord`` ma klucz złożony."""
+    return Subquery(
+        Rekord.objects.filter(zrodlo_id=OuterRef("pk"))
+        .order_by()
+        .values(liczba=Func(Value(1), function="COUNT")),
+        output_field=IntegerField(),
+    )
+
+
 @method_decorator(cache_publiczny(), name="dispatch")
 class ZrodlaView(Browser):
     template_name = "browse/zrodla.html"
@@ -805,6 +818,9 @@ class ZrodlaView(Browser):
             super()
             .get_queryset()
             .only("nazwa", "poprzednia_nazwa", "slug", "pbn_uid__status")
+            # Podzapytanie skalarne (nie JOIN) — wierszy nie mnoży, więc bez
+            # ``.distinct()``; zastępuje ``item.rekord_set.count`` (N+1).
+            .annotate(liczba_prac=_liczba_prac_zrodla())
             .order_by("nazwa")
         )
 
@@ -930,13 +946,9 @@ class ZrodloView(DetailView):
             zrodlo=self.object
         ).exists()
         if context["has_publications"]:
-            from bpp.models import Rekord
-            from bpp.wykresy_lat import wykresy_w_latach
+            from bpp.wykresy_lat import wykresy_zrodla
 
-            wykresy = wykresy_w_latach(
-                Rekord.objects.filter(zrodlo=self.object),
-                getattr(self, "request", None),
-            )
+            wykresy = wykresy_zrodla(self.object, getattr(self, "request", None))
             if wykresy:
                 context["wykresy"] = {"wykresy": wykresy}
                 context["szukaj_pola"] = [("zrodlo", self.object.pk)]
@@ -982,7 +994,7 @@ class WydawcyView(Browser):
         )
 
     def get_queryset(self):
-        qry = self._baza().only("nazwa").order_by("nazwa")
+        qry = self._baza().only("nazwa", "slug").order_by("nazwa")
         sstr = self.get_search_string()
         if sstr:
             qry = qry.filter(nazwa__icontains=sstr)
@@ -1007,8 +1019,10 @@ class WydawcaView(DetailView):
 
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
-        # Alias nie ma własnej strony — jego prace są na stronie wydawcy.
-        if self.object.alias_dla_id is not None:
+        # Stary adres po pk → 301 na kanoniczny adres ze slugiem. Alias nie
+        # ma własnej strony — jego prace są na stronie wydawcy głównego
+        # (``get_absolute_url`` wskazuje slug toplevelu).
+        if "pk" in kwargs or self.object.alias_dla_id is not None:
             return redirect(self.object.get_absolute_url(), permanent=True)
         return self.render_to_response(self.get_context_data(object=self.object))
 

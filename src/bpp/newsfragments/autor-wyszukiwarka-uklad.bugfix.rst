@@ -1,1 +1,0 @@
-Strona autora: kafelki podsumowania dorobku nie rozjeżdżają się już w Firefoksie pod Linuksem, przycisk „Pokaż wszystkie prace” przewija do sekcji „Wyszukaj publikacje autora”, a sam formularz wyszukiwania ma czytelniejszy układ (typy i lata jako przełączniki, jednostki w kolumnach, tytuł i przycisk w jednym rzędzie).

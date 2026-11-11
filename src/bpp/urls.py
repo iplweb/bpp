@@ -382,7 +382,11 @@ urlpatterns = [
         WydawcyView.as_view(),
         name="browse_wydawcy_literka",
     ),
-    url(r"^wydawca/(?P<pk>\d+)/$", WydawcaView.as_view(), name="browse_wydawca"),
+    # Stary adres po pk (same cyfry) → 301 na adres ze slugiem. Musi być PRZED
+    # wzorcem sluga; slug wydawcy nigdy nie jest z samych cyfr
+    # (``bpp.util.text.slugify_wydawca``), więc wzorce się nie gryzą.
+    url(r"^wydawca/(?P<pk>\d+)/$", WydawcaView.as_view(), name="browse_wydawca_pk"),
+    url(r"^wydawca/(?P<slug>[\w-]+)/$", WydawcaView.as_view(), name="browse_wydawca"),
     url(r"^lata/$", LataView.as_view(), name="browse_lata"),
     # Dowolna liczba cyfr: w danych zdarzają się lata spoza 4 cyfr (np.
     # literówka „212"), a ``lata.html`` linkuje każdy rok z bazy. Zakres

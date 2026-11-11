@@ -1,1 +1,0 @@
-Liczbę workerów xdist w ``make tests-*`` poza CI liczy teraz plugin ``pytest-xdist-memory``: mierzy pamięć workerów przy każdym przebiegu (z Chromium, Daphne i kontenerem PG) i dobiera ``-n auto`` do wolnego RAM-u; ``bin/xdist_workers.py`` i targety ``xdist-measure``/``xdist-calc`` usunięto.

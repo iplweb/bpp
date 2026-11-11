@@ -29,16 +29,24 @@ from mcp_server.routing import LifespanMcp, RouterHttp  # noqa: E402
 
 _mcp_app, _mcp_start = build_application()
 
-application = ProtocolTypeRouter(
-    {
-        "http": RouterHttp(_mcp_app, django_asgi_app, _mcp_start),
-        "websocket": AllowedHostsOriginValidator(
-            AuthMiddlewareStack(URLRouter(websocket_urlpatterns))
-        ),
-        # ProtocolTypeRouter nie „nie obsługuje" lifespanu — po prostu nie ma
-        # dla niego klucza i rzuca ValueError, który uvicorn loguje jako
-        # „appears unsupported" i ignoruje. Menedżer sesji MCP nigdy wtedy nie
-        # wstaje (spec §2.4, §5.1).
-        "lifespan": LifespanMcp(_mcp_start),
-    }
+from django_bpp.asgi_polaczenia import ZamykajPolaczeniaWPuli  # noqa: E402
+
+# ZamykajPolaczeniaWPuli: połączenia z bazą otwarte w wątkach domyślnego
+# executora pętli (sync_to_async(thread_sensitive=False) — m.in. Django renderuje
+# tak 404/500) są zamykane po każdym zadaniu. Bez tego wisiały jako `idle` do
+# końca życia workera i zapychały pulę pgbouncera. Szczegóły w module.
+application = ZamykajPolaczeniaWPuli(
+    ProtocolTypeRouter(
+        {
+            "http": RouterHttp(_mcp_app, django_asgi_app, _mcp_start),
+            "websocket": AllowedHostsOriginValidator(
+                AuthMiddlewareStack(URLRouter(websocket_urlpatterns))
+            ),
+            # ProtocolTypeRouter nie „nie obsługuje" lifespanu — po prostu nie
+            # ma dla niego klucza i rzuca ValueError, który uvicorn loguje jako
+            # „appears unsupported" i ignoruje. Menedżer sesji MCP nigdy wtedy
+            # nie wstaje (spec §2.4, §5.1).
+            "lifespan": LifespanMcp(_mcp_start),
+        }
+    )
 )

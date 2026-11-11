@@ -34,7 +34,7 @@ def _render_wykres(dane):
         "browse/autor_sekcje/_wykres_lata.html",
         {
             "nazwa": "Publikacje w latach",
-            "dane": {"dane": dane, "maks": maks, "etykieta": "prac"},
+            "dane": {"dane": dane, "maks": maks, "etykieta": "prac", "miejsca": 0},
             "autor": AUTOR,
         },
     )
@@ -167,7 +167,12 @@ def test_wykres_punktow_prosi_o_raport_tabela():
         "browse/autor_sekcje/_wykres_lata.html",
         {
             "nazwa": "Punkty MNiSW w latach",
-            "dane": {"dane": [(2020, 5)], "maks": 5, "etykieta": "pkt"},
+            "dane": {
+                "dane": [(2020, 5)],
+                "maks": 5,
+                "etykieta": "pkt",
+                "miejsca": 0,
+            },
             "autor": AUTOR,
             "raport": "table",
         },

@@ -89,3 +89,93 @@ def test_strona_zrodla_bez_prac_bez_wykresow(client, zrodlo):
     url = reverse("bpp:browse_zrodlo", args=(zrodlo.slug,))
     html = client.get(url).content.decode()
     assert "Publikacje w latach" not in html
+
+
+@pytest.mark.django_db
+def test_wykresy_zrodla_z_punktacji_czasopisma(zrodlo, standard_data, denorms):
+    from bpp.models import Punktacja_Zrodla
+    from bpp.wykresy_lat import wykresy_zrodla
+
+    # Dwie prace po 10 pkt w 2021 — suma prac (20) NIE może trafić na wykres.
+    _praca(2021, zrodlo=zrodlo)
+    _praca(2021, zrodlo=zrodlo)
+    denorms.flush()
+    baker.make(
+        Punktacja_Zrodla,
+        zrodlo=zrodlo,
+        rok=2020,
+        punkty_kbn=Decimal("70"),
+        impact_factor=Decimal("1.234"),
+    )
+    baker.make(
+        Punktacja_Zrodla,
+        zrodlo=zrodlo,
+        rok=2021,
+        punkty_kbn=Decimal("100"),
+        impact_factor=Decimal("0"),
+    )
+
+    wykresy = wykresy_zrodla(zrodlo)
+    po_nazwie = {w["nazwa"]: w for w in wykresy}
+
+    assert list(po_nazwie) == [
+        "Publikacje w latach",
+        "Punkty MNiSW czasopisma w latach",
+        "Impact Factor czasopisma w latach",
+    ]
+    assert po_nazwie["Publikacje w latach"]["dane"]["dane"] == [(2021, 2)]
+    punkty = po_nazwie["Punkty MNiSW czasopisma w latach"]
+    assert punkty["dane"]["dane"] == [(2020, Decimal("70")), (2021, Decimal("100"))]
+    assert punkty["dane"]["miejsca"] == 0
+    assert punkty["raport"] == "table"
+    impact = po_nazwie["Impact Factor czasopisma w latach"]
+    assert impact["dane"]["miejsca"] == 2
+    assert impact["raport"] == "table"
+
+
+@pytest.mark.django_db
+def test_wykresy_zrodla_bez_punktacji_tylko_publikacje(zrodlo, standard_data, denorms):
+    from bpp.models import Punktacja_Zrodla
+    from bpp.wykresy_lat import wykresy_zrodla
+
+    _praca(2021, zrodlo=zrodlo)
+    denorms.flush()
+    # Same zera punktacji — wykresy punktacji się nie pokazują.
+    baker.make(
+        Punktacja_Zrodla,
+        zrodlo=zrodlo,
+        rok=2021,
+        punkty_kbn=Decimal("0"),
+        impact_factor=Decimal("0"),
+    )
+
+    nazwy = [w["nazwa"] for w in wykresy_zrodla(zrodlo)]
+    assert nazwy == ["Publikacje w latach"]
+
+
+@pytest.mark.django_db
+def test_strona_zrodla_pokazuje_punktacje_czasopisma(
+    client, zrodlo, standard_data, denorms
+):
+    from bpp.models import Punktacja_Zrodla
+
+    _praca(2021, zrodlo=zrodlo, punkty="5303")
+    denorms.flush()
+    baker.make(
+        Punktacja_Zrodla,
+        zrodlo=zrodlo,
+        rok=2021,
+        punkty_kbn=Decimal("140"),
+        impact_factor=Decimal("3.5"),
+    )
+
+    url = reverse("bpp:browse_zrodlo", args=(zrodlo.slug,))
+    html = client.get(url).content.decode()
+
+    assert "Punkty MNiSW czasopisma w latach" in html
+    assert "Impact Factor czasopisma w latach" in html
+    # Sumy punktów prac na stronie źródła już nie ma.
+    assert "Punkty MNiSW w latach" not in html
+    assert "5303" not in html
+    assert ">140<" in html
+    assert ">3,50<" in html
