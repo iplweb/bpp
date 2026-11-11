@@ -303,3 +303,26 @@ def test_strona_autora_pokazuje_metryki_wybranego_okresu(
 
     assert response.status_code == 200
     assert list(response.context["metryki_autora"]) == [wybrana]
+
+
+def test_update_or_create_zapisuje_przeliczone_srednie(dwie_metryki):
+    """Ponowne generowanie aktualizuje metrykę przez ``update_or_create``,
+    który zapisuje tylko pola z ``defaults`` — średnie i procent liczone
+    w ``save()`` też muszą trafić do bazy."""
+    m2022, _m2026 = dwie_metryki
+    MetrykaAutora.objects.update_or_create(
+        autor=m2022.autor,
+        dyscyplina_naukowa=m2022.dyscyplina_naukowa,
+        uczelnia=m2022.uczelnia,
+        okres=m2022.okres,
+        defaults={
+            "slot_nazbierany": Decimal("1.0"),
+            "punkty_nazbierane": Decimal("80"),
+            "slot_wszystkie": Decimal("1.0"),
+            "punkty_wszystkie": Decimal("80"),
+        },
+    )
+    m2022.refresh_from_db()
+    assert m2022.srednia_za_slot_nazbierana == Decimal("80")
+    assert m2022.srednia_za_slot_wszystkie == Decimal("80")
+    assert m2022.procent_wykorzystania_slotow == Decimal("25")

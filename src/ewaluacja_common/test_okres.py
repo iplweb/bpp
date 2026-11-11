@@ -62,3 +62,12 @@ def test_wybierz_okres_wymaga_logowania(client):
     resp = client.post(reverse("ewaluacja_common:wybierz_okres"), {"okres": okres.pk})
     assert resp.status_code == 302
     assert KLUCZ_SESJI not in client.session
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("wartosc", ["", "abc", "999999"])
+def test_wybierz_okres_zla_wartosc_404(admin_client, wartosc):
+    resp = admin_client.post(
+        reverse("ewaluacja_common:wybierz_okres"), {"okres": wartosc}
+    )
+    assert resp.status_code == 404

@@ -189,6 +189,19 @@ class MetrykaAutora(models.Model):
         else:
             self.procent_wykorzystania_slotow = 0
 
+        # ``update_or_create`` (Django ≥ 4.2) zapisuje z ``update_fields`` =
+        # klucze ``defaults`` — bez tego wyliczone wyżej pola zostałyby
+        # w bazie ze starymi wartościami po ponownym generowaniu metryk.
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None:
+            kwargs["update_fields"] = set(update_fields) | {
+                "srednia_za_slot_nazbierana",
+                "srednia_za_slot_wszystkie",
+                "procent_wykorzystania_slotow",
+                "rok_min",
+                "rok_max",
+            }
+
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
