@@ -22,7 +22,8 @@
                 <h1>{{ wydawca.nazwa }}</h1>
                 <p class="wydawca__podsumowanie">
                     <i class="fi-page-multiple"></i>
-                    {% load polish_inflection %}{{ liczba_prac }} {% odmiana_liczebnikowa "publikacja" liczba_prac %} w bazie
+                    {% load polish_inflection %}{{ liczba_prac }} {% odmiana_liczebnikowa "publikacja" liczba_prac %} w bazie{% if podzial %}:
+                    {% for kategoria in podzial %}<strong>{{ kategoria.opis }}</strong>{% if not forloop.last %} · {% endif %}{% endfor %}{% endif %}
                 </p>
 
                 {# Znaczek: poziom z najnowszego roku wykazu (tabela lat w panelu). #}
@@ -50,6 +51,19 @@
                 <button type="submit" class="button button-show-all">
                     <i class="fi-list-bullet"></i>Pokaż wszystkie publikacje
                 </button>
+                {# Książki / rozdziały osobno — gdy wydawca ma więcej niż jeden rodzaj. #}
+                {% if podzial|length > 1 %}
+                    {% for kategoria in podzial %}
+                        {% if kategoria.wartosc == "książka" or kategoria.wartosc == "rozdział" %}
+                            <button type="submit"
+                                    name="charakter_ogolny"
+                                    value="{{ kategoria.wartosc }}"
+                                    class="button hollow button-show-all">
+                                <i class="fi-book autor-page__icon--mr-sm"></i>Pokaż {{ kategoria.opis }}
+                            </button>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
             </form>
         </div>
     {% else %}
@@ -71,7 +85,7 @@
             {% if lata %}
             {# Wyszukiwarka w stylu strony autora (wspólne częściowe szablony). #}
             <div class="search-container autor-page__search-container">
-                {% include "browse/_wyszukiwarka_naglowek.html" with tytul="Wyszukaj u wydawcy" podtytul="Bez zaznaczonych filtrów wyszukiwanie pokaże wszystkie prace wydawcy (także wydane pod innymi nazwami). Zaznacz typy lub lata, żeby zawęzić wyniki." %}
+                {% include "browse/_wyszukiwarka_naglowek.html" with tytul="Wyszukaj u wydawcy" podtytul="Bez zaznaczonych filtrów wyszukiwanie pokaże wszystkie prace wydawcy (także wydane pod innymi nazwami). Zaznacz rodzaj lub lata, żeby zawęzić wyniki." %}
 
                 <form method="post"
                       action="{% url "bpp:browse_build_search" %}"
@@ -79,7 +93,11 @@
                     {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt. #}
                     <input type="hidden" name="wydawca" value="{{ wydawca.pk }}"/>
 
-                    {% include "browse/_filtr_typy.html" %}
+                    {% if podzial|length > 1 %}
+                        {% include "browse/_filtr_charakter.html" %}
+                    {% else %}
+                        {% include "browse/_filtr_typy.html" %}
+                    {% endif %}
                     {% include "browse/_filtr_lata.html" %}
                     {% include "browse/_wyszukiwarka_stopka.html" with tytul_wynikow=wydawca %}
                 </form>

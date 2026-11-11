@@ -28,6 +28,10 @@
         {# Typ raportu multiseeka (np. „table” dla punktów); BuildSearch #}
         {# ustawia go tylko, gdy użytkownik ma ten raport do wyboru. #}
         {% if raport %}<input type="hidden" name="raport" value="{{ raport }}"/>{% endif %}
+        {# Dodatkowe filtry wykresu (np. „Książki w latach” u wydawcy). #}
+        {% for nazwa_pola, wartosc_pola in pola %}
+            <input type="hidden" name="{{ nazwa_pola }}" value="{{ wartosc_pola }}"/>
+        {% endfor %}
     </form>
     {% if dane.dane|length > 10 %}
         {# --- Wariant liniowy (SVG). Oś Y odwrócona przez transform, więc #}
