@@ -119,14 +119,13 @@ def partition_works_into_chunks(rekord_ids, chunk_size=50):
 def _analyze_discipline_swap_impl(  # noqa: C901
     task,
     uczelnia_id,
-    rok_min=2022,
-    rok_max=2025,
+    okres=None,
 ):
     """
     Implementacja analizy możliwości zamiany dyscyplin.
 
     Algorytm:
-    1. Pobierz publikacje z lat rok_min do rok_max
+    1. Pobierz publikacje z lat okresu ewaluacji
     2. Dla każdej publikacji z >= 2 autorami (afiliuje=True, zatrudniony=True):
        a) Sprawdź czy któryś autor ma dwie_dyscypliny() w Autor_Dyscyplina
        b) Symuluj zamianę dyscypliny (primary <-> sub)
@@ -137,8 +136,7 @@ def _analyze_discipline_swap_impl(  # noqa: C901
     Args:
         task: Celery task object (self) do aktualizacji statusu
         uczelnia_id: ID uczelni
-        rok_min: Minimalny rok analizy (domyślnie 2022)
-        rok_max: Maksymalny rok analizy (domyślnie 2025)
+        okres: OkresEwaluacji (albo pk); ``None`` = okres domyślny
 
     Returns:
         Dictionary z wynikami analizy
@@ -146,8 +144,11 @@ def _analyze_discipline_swap_impl(  # noqa: C901
     from bpp.models import Uczelnia, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 
     from ...models import DisciplineSwapOpportunity
+    from ...okres import pobierz_okres
 
     uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
+    okres = pobierz_okres(okres)
+    rok_min, rok_max = okres.rok_od, okres.rok_do
 
     logger.info(
         f"Starting discipline swap analysis for {uczelnia}, years {rok_min}-{rok_max}"
@@ -163,8 +164,8 @@ def _analyze_discipline_swap_impl(  # noqa: C901
         },
     )
 
-    # Usuń stare wyniki dla tej uczelni
-    DisciplineSwapOpportunity.objects.filter(uczelnia=uczelnia).delete()
+    # Usuń stare wyniki dla tej uczelni (w tym okresie)
+    DisciplineSwapOpportunity.objects.filter(uczelnia=uczelnia, okres=okres).delete()
 
     # Pobierz publikacje z zakresu lat
     ciagle_qs = Wydawnictwo_Ciagle.objects.filter(
@@ -231,6 +232,7 @@ def _analyze_discipline_swap_impl(  # noqa: C901
         ad_data=ad_data,
         rok_min=rok_min,
         rok_max=rok_max,
+        okres_pk=okres.pk,
     )
 
 
@@ -243,6 +245,7 @@ def _run_parallel_analysis(  # noqa: C901
     ad_data,
     rok_min,
     rok_max,
+    okres_pk=None,
 ):
     """
     Uruchamia równoległą analizę discipline swap.
@@ -310,7 +313,7 @@ def _run_parallel_analysis(  # noqa: C901
     logger.info(f"Launching {len(worker_tasks)} chunk tasks")
 
     workflow = chord(worker_tasks)(
-        collect_discipline_swap_results.s(uczelnia_id=uczelnia_id)
+        collect_discipline_swap_results.s(uczelnia_id=uczelnia_id, okres_pk=okres_pk)
     )
 
     logger.info(f"Chord workflow created: id={workflow.id}")

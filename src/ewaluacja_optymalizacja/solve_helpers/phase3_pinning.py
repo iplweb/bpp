@@ -25,6 +25,7 @@ def handle_phase3_pinning(
     rerun_after_pinning=False,
     algorithm_mode="two-phase",
     verbose=False,
+    okres=None,
 ):
     """Analyze and optionally apply capacity-based pinning.
 
@@ -106,6 +107,8 @@ def handle_phase3_pinning(
             "enable_pinning": False,
             "show_publications": False,
         }
+        if okres is not None:
+            rerun_kwargs["okres"] = okres.rok_od
 
         old_points = results.total_points
 

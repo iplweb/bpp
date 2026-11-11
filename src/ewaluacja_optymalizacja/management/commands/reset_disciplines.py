@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = """Reset (pin) all disciplines in 2022-2025 records and wait for denorm flush.
+    help = """Reset (pin) all disciplines in evaluation-period records and wait for
+    denorm flush (domyślnie lata okresu ewaluacji zawierającego bieżący rok).
 
     This command sets przypieta=True for all author-publication associations
     in the given year range, then monitors denorm dirty items until flushed.
@@ -32,10 +33,16 @@ class Command(BaseCommand):
             help="Don't wait for denorm flush after resetting",
         )
         parser.add_argument(
-            "--year-from", type=int, default=2022, help="Starting year (default: 2022)"
+            "--year-from",
+            type=int,
+            default=None,
+            help="Starting year (default: pierwszy rok okresu domyślnego)",
         )
         parser.add_argument(
-            "--year-to", type=int, default=2025, help="Ending year (default: 2025)"
+            "--year-to",
+            type=int,
+            default=None,
+            help="Ending year (default: ostatni rok okresu domyślnego)",
         )
 
     def get_dirty_count(self):
@@ -55,6 +62,13 @@ class Command(BaseCommand):
             return 0
 
     def handle(self, dry_run, no_wait, year_from, year_to, *args, **options):
+        if year_from is None or year_to is None:
+            from ewaluacja_optymalizacja.okres import pobierz_okres
+
+            okres = pobierz_okres(None)
+            year_from = okres.rok_od if year_from is None else year_from
+            year_to = okres.rok_do if year_to is None else year_to
+
         self.stdout.write(
             f"Resetting (pinning) disciplines for years {year_from}-{year_to}"
         )

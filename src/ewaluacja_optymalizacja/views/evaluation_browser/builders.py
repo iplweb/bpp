@@ -107,7 +107,7 @@ def _build_publication_list(
     return publications
 
 
-def _get_filtered_publications(uczelnia, filters, reported_ids):
+def _get_filtered_publications(uczelnia, filters, reported_ids, okres=None):
     """
     Pobierz publikacje z filtrami.
 
@@ -121,7 +121,7 @@ def _get_filtered_publications(uczelnia, filters, reported_ids):
     tytul = (filters.get("tytul") or "").strip()
 
     # Bazowe filtrowanie
-    base_filter = _build_base_filter(filters)
+    base_filter = _build_base_filter(filters, okres)
     author_filter = _build_author_filter(filters, reported_ids)
 
     # Pobierz publikacje obu typow
@@ -145,7 +145,7 @@ def _get_filtered_publications(uczelnia, filters, reported_ids):
 
     # Filtr po dyscyplinie nieprzypisanej
     ciagle_qs, zwarte_qs = _apply_dyscyplina_nieprzypisana_filter(
-        ciagle_qs, zwarte_qs, filters
+        ciagle_qs, zwarte_qs, filters, okres
     )
 
     # Pobierz content types

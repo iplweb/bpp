@@ -3,6 +3,7 @@
 from bpp.models import Dyscyplina_Naukowa
 
 from ...models import OptimizationRun
+from ...okres import pobierz_okres
 
 
 def _get_reported_disciplines(uczelnia):
@@ -12,33 +13,38 @@ def _get_reported_disciplines(uczelnia):
     return list(
         LiczbaNDlaUczelni.objects.filter(
             uczelnia=uczelnia, liczba_n__gte=12
-        ).values_list("dyscyplina_naukowa_id", flat=True)
+        ).values_list(
+            "dyscyplina_naukowa_id", flat=True
+        )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
     )
 
 
-def _snapshot_discipline_points(uczelnia):
+def _snapshot_discipline_points(uczelnia, okres=None):
     """Zapisz aktualną punktację dyscyplin do obliczenia diff."""
     result = {}
     for opt_run in OptimizationRun.objects.filter(
         uczelnia=uczelnia,
+        okres=pobierz_okres(okres),
         status="completed",
     ):
         result[str(opt_run.dyscyplina_naukowa_id)] = float(opt_run.total_points)
     return result
 
 
-def _get_discipline_summary(uczelnia, punkty_przed=None, show_diff=True):
+def _get_discipline_summary(uczelnia, punkty_przed=None, show_diff=True, okres=None):
     """Pobierz podsumowanie dyscyplin z punktacją i opcjonalnym diff.
 
     Args:
         uczelnia: Instancja Uczelni
         punkty_przed: Dict {discipline_id: points} przed zmianą
         show_diff: Czy pokazywać diff (False gdy przeliczanie w trakcie)
+        okres: OkresEwaluacji (``None`` = okres domyślny)
     """
     from django.db.models import OuterRef, Subquery
 
     from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 
+    okres = pobierz_okres(okres)
     punkty_przed = punkty_przed or {}
     # Obliczaj diff tylko gdy show_diff=True (czyli po zakończeniu wszystkich tasków)
     calculate_diff = show_diff and bool(punkty_przed)
@@ -47,7 +53,7 @@ def _get_discipline_summary(uczelnia, punkty_przed=None, show_diff=True):
         LiczbaNDlaUczelni.objects.filter(
             uczelnia=uczelnia,
             liczba_n__gte=12,
-        )
+        )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
         .select_related("dyscyplina_naukowa")
         .order_by("dyscyplina_naukowa__nazwa")
     )
@@ -60,6 +66,7 @@ def _get_discipline_summary(uczelnia, punkty_przed=None, show_diff=True):
     latest_run_subquery = (
         OptimizationRun.objects.filter(
             uczelnia=uczelnia,
+            okres=okres,
             dyscyplina_naukowa_id=OuterRef("dyscyplina_naukowa_id"),
             status="completed",
         )
@@ -69,11 +76,13 @@ def _get_discipline_summary(uczelnia, punkty_przed=None, show_diff=True):
 
     opt_runs = OptimizationRun.objects.filter(
         uczelnia=uczelnia,
+        okres=okres,
         status="completed",
         dyscyplina_naukowa_id__in=reported_disc_ids,
         pk__in=Subquery(
             OptimizationRun.objects.filter(
                 uczelnia=uczelnia,
+                okres=okres,
                 status="completed",
                 dyscyplina_naukowa_id__in=reported_disc_ids,
             )
@@ -123,7 +132,7 @@ def _get_discipline_summary(uczelnia, punkty_przed=None, show_diff=True):
     }
 
 
-def _get_filter_options(uczelnia):
+def _get_filter_options(uczelnia, okres=None):
     """Pobierz opcje dla filtrów."""
     reported_ids = _get_reported_disciplines(uczelnia)
 
@@ -133,5 +142,5 @@ def _get_filter_options(uczelnia):
 
     return {
         "dyscypliny": dyscypliny,
-        "lata": [2022, 2023, 2024, 2025],
+        "lata": pobierz_okres(okres).lata,
     }

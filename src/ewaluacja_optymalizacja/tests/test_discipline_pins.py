@@ -176,7 +176,7 @@ def test_get_discipline_pin_stats_filters_by_autor_dyscyplina():
 
 @pytest.mark.django_db
 def test_reset_discipline_pins_dispatches_task_and_redirects(
-    client, admin_user, uczelnia
+    client, admin_user, uczelnia, okres_2022
 ):
     """Widok NIE wykonuje resetu synchronicznie — zleca zadanie i przekierowuje
     na stronę statusu (wcześniej request blokował się do 10 minut)."""
@@ -218,7 +218,9 @@ def test_reset_discipline_pins_dispatches_task_and_redirects(
         mock_task.delay.return_value = MagicMock(id="test-task-id")
         response = client.get(url)
 
-    mock_task.delay.assert_called_once_with(uczelnia.pk, dyscyplina.pk, admin_user.pk)
+    mock_task.delay.assert_called_once_with(
+        uczelnia.pk, dyscyplina.pk, admin_user.pk, okres_pk=okres_2022.pk
+    )
     assert response.status_code == 302
     assert response.url == reverse(
         "ewaluacja_optymalizacja:reset-all-pins-status",
