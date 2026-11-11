@@ -71,6 +71,8 @@ def test_oblicz_metryki_command_basic(rodzaj_autora_n):
         call_command(
             "oblicz_metryki",
             "--bez-liczby-n",
+            "--okres",
+            "2022",
             "--uczelnia-id",
             str(uczelnia.pk),
             stdout=out,
@@ -177,6 +179,8 @@ def test_oblicz_metryki_command_filters(rodzaj_autora_n):
         call_command(
             "oblicz_metryki",
             "--bez-liczby-n",
+            "--okres",
+            "2022",
             "--uczelnia-id",
             str(uczelnia.pk),
             autor_id=autor1.pk,
@@ -190,6 +194,8 @@ def test_oblicz_metryki_command_filters(rodzaj_autora_n):
         call_command(
             "oblicz_metryki",
             "--bez-liczby-n",
+            "--okres",
+            "2022",
             "--uczelnia-id",
             str(uczelnia.pk),
             dyscyplina_id=dyscyplina2.pk,
@@ -203,6 +209,8 @@ def test_oblicz_metryki_command_filters(rodzaj_autora_n):
         call_command(
             "oblicz_metryki",
             "--bez-liczby-n",
+            "--okres",
+            "2022",
             "--uczelnia-id",
             str(uczelnia.pk),
             jednostka_id=jednostka1.pk,
@@ -244,6 +252,8 @@ def test_oblicz_metryki_command_error_handling(rodzaj_autora_n):
         call_command(
             "oblicz_metryki",
             "--bez-liczby-n",
+            "--okres",
+            "2022",
             "--uczelnia-id",
             str(uczelnia.pk),
             stdout=out,
@@ -276,13 +286,13 @@ def test_oblicz_metryki_command_parameters(rodzaj_autora_n):
         uczelnia=uczelnia,
     )
 
-    # Stwórz Autor_Dyscyplina z rodzajem 'N' w zakresie lat testowanych (2020-2023)
+    # Stwórz Autor_Dyscyplina z rodzajem 'N' w zakresie lat testowanych (2023-2024)
     baker.make(
         Autor_Dyscyplina,
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         rodzaj_autora=rodzaj_autora_n,
-        rok=2022,
+        rok=2023,
     )
 
     # For this test we need to mock zbieraj_sloty to verify parameters
@@ -302,10 +312,12 @@ def test_oblicz_metryki_command_parameters(rodzaj_autora_n):
         call_command(
             "oblicz_metryki",
             "--bez-liczby-n",
+            "--okres",
+            "2022",
             "--uczelnia-id",
             str(uczelnia.pk),
-            rok_min=2020,
-            rok_max=2023,
+            rok_min=2023,
+            rok_max=2024,
             minimalny_pk=5.0,
         )
 
@@ -313,8 +325,8 @@ def test_oblicz_metryki_command_parameters(rodzaj_autora_n):
         calls = mock_zbieraj.call_args_list
 
         # Pierwsze wywołanie (algorytm plecakowy)
-        assert calls[0][1]["rok_min"] == 2020
-        assert calls[0][1]["rok_max"] == 2023
+        assert calls[0][1]["rok_min"] == 2023
+        assert calls[0][1]["rok_max"] == 2024
         assert calls[0][1]["minimalny_pk"] == Decimal("5.0")
         assert calls[0][1]["dyscyplina_id"] == dyscyplina.pk
 
@@ -323,8 +335,9 @@ def test_oblicz_metryki_command_parameters(rodzaj_autora_n):
 
     # Sprawdź że metryka zapisała parametry
     metryka = MetrykaAutora.objects.first()
-    assert metryka.rok_min == 2020
-    assert metryka.rok_max == 2023
+    assert metryka.rok_min == 2023
+    assert metryka.rok_max == 2024
+    assert metryka.okres.rok_od == 2022
 
 
 @pytest.mark.django_db
@@ -405,6 +418,8 @@ def test_oblicz_metryki_command_rodzaj_autora_filter(
         call_command(
             "oblicz_metryki",
             "--bez-liczby-n",
+            "--okres",
+            "2022",
             "--uczelnia-id",
             str(uczelnia.pk),
             stdout=out,
@@ -425,6 +440,8 @@ def test_oblicz_metryki_command_rodzaj_autora_filter(
         call_command(
             "oblicz_metryki",
             "--bez-liczby-n",
+            "--okres",
+            "2022",
             "--uczelnia-id",
             str(uczelnia.pk),
             "--rodzaje-autora",
@@ -448,6 +465,8 @@ def test_oblicz_metryki_command_rodzaj_autora_filter(
         call_command(
             "oblicz_metryki",
             "--bez-liczby-n",
+            "--okres",
+            "2022",
             "--uczelnia-id",
             str(uczelnia.pk),
             "--rodzaje-autora",

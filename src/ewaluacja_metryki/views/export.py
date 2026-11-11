@@ -5,6 +5,7 @@ from django.views import View
 
 from bpp.models import Jednostka
 from ewaluacja_common.models import Rodzaj_Autora
+from ewaluacja_common.okres import okres_dla_request
 
 from ..models import MetrykaAutora
 from .mixins import ma_pelne_uprawnienia_ewaluacji
@@ -100,7 +101,9 @@ class ExportStatystykiXLSX(View):
         )
 
         uczelnia = uczelnia_dla_odczytu(request)
-        base_qs = scope_metryki(MetrykaAutora.objects.all(), uczelnia)
+        base_qs = scope_metryki(
+            MetrykaAutora.objects.all(), uczelnia, okres_dla_request(request)
+        )
 
         # Call the appropriate handler
         handler = table_handlers[table_type]
@@ -275,7 +278,9 @@ class ExportListaXLSX(View):
         uzywa_wydzialow = uczelnia.uzywaj_wydzialow if uczelnia else False
 
         scoped_disc_ids = (
-            scope_metryki(MetrykaAutora.objects.all(), uczelnia)
+            scope_metryki(
+                MetrykaAutora.objects.all(), uczelnia, okres_dla_request(request)
+            )
             .values_list("dyscyplina_naukowa_id", flat=True)
             .distinct()
         )
@@ -643,6 +648,7 @@ class ExportListaXLSX(View):
             MetrykaAutora.objects.filter(
                 autor=OuterRef("autor"),
                 uczelnia=OuterRef("uczelnia"),
+                okres=OuterRef("okres"),
             )
             .values("autor")
             .annotate(count=Count("dyscyplina_naukowa"))
@@ -654,6 +660,7 @@ class ExportListaXLSX(View):
                 "autor", "dyscyplina_naukowa", "jednostka", "jednostka__wydzial"
             ).annotate(autor_discipline_count=Subquery(discipline_count)),
             uczelnia,
+            okres_dla_request(request),
         )
 
         # Apply filters and sorting

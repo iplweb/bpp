@@ -137,6 +137,8 @@ def test_command_oblicz_metryki_scope_uczelnia(
         call_command(
             "oblicz_metryki",
             "--bez-liczby-n",
+            "--okres",
+            "2022",
             "--nadpisz",
             "--uczelnia-id",
             str(u1.pk),

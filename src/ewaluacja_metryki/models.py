@@ -6,6 +6,16 @@ from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
 from bpp.models.jednostka import Jednostka
 
 
+def _domyslny_okres_pk():
+    """Domyślny okres ewaluacji dla nowej metryki (okres zawierający bieżący
+    rok). Kod generujący metryki zawsze podaje okres jawnie — ta wartość
+    domyślna chroni tylko ręcznie tworzone wiersze (admin, testy)."""
+    from ewaluacja_common.okres import okres_domyslny
+
+    okres = okres_domyslny()
+    return okres.pk if okres is not None else None
+
+
 class MetrykaAutora(models.Model):
     """Model przechowujący metryki ewaluacyjne dla autora"""
 
@@ -39,6 +49,14 @@ class MetrykaAutora(models.Model):
         help_text="Uczelnia, dla której policzono metrykę (multi-hosted)",
     )
 
+    okres = models.ForeignKey(
+        "ewaluacja_common.OkresEwaluacji",
+        on_delete=models.PROTECT,
+        default=_domyslny_okres_pk,
+        related_name="metryki_autorow",
+        help_text="Okres ewaluacji, za który policzono metrykę",
+    )
+
     # Dane z algorytmu plecakowego (nazbierane optymalne)
     slot_maksymalny = models.DecimalField(
         max_digits=10,
@@ -69,7 +87,7 @@ class MetrykaAutora(models.Model):
         help_text="Średnia punktów PKDaut za slot (nazbierane)",
     )
 
-    # Dane za wszystkie prace autora w okresie 2022-2025
+    # Dane za wszystkie prace autora w okresie ewaluacji
     slot_wszystkie = models.DecimalField(
         max_digits=10, decimal_places=4, help_text="Suma slotów za wszystkie prace"
     )
@@ -129,7 +147,7 @@ class MetrykaAutora(models.Model):
     class Meta:
         verbose_name = "Metryka autora"
         verbose_name_plural = "Metryki autorów"
-        unique_together = [("autor", "dyscyplina_naukowa", "uczelnia")]
+        unique_together = [("autor", "dyscyplina_naukowa", "uczelnia", "okres")]
         ordering = ["-srednia_za_slot_nazbierana", "autor__nazwisko", "autor__imiona"]
         indexes = [
             models.Index(fields=["-srednia_za_slot_nazbierana"]),
@@ -142,6 +160,14 @@ class MetrykaAutora(models.Model):
         return f"{self.autor} - {self.dyscyplina_naukowa.nazwa}"
 
     def save(self, *args, **kwargs):
+        # Lata metryki muszą mieścić się w jej okresie — gdy nie (np. wiersz
+        # utworzony bez jawnych lat), przyjmij granice okresu.
+        if self.okres_id is not None and not (
+            self.okres.zawiera(self.rok_min) and self.okres.zawiera(self.rok_max)
+        ):
+            self.rok_min = self.okres.rok_od
+            self.rok_max = self.okres.rok_do
+
         # Wylicz średnie przed zapisem
         if self.slot_nazbierany and self.slot_nazbierany > 0:
             self.srednia_za_slot_nazbierana = (
@@ -247,6 +273,18 @@ class StatusGenerowania(models.Model):
         help_text="Uczelnia, której dotyczy ten status (multi-hosted)",
     )
 
+    # Status jest per uczelnia (jedno generowanie naraz na uczelnię, bo i tak
+    # przelicza wspólną liczbę N); tu zapamiętujemy, dla którego okresu
+    # uruchomiono ostatnie generowanie.
+    okres = models.ForeignKey(
+        "ewaluacja_common.OkresEwaluacji",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        help_text="Okres ewaluacji ostatniego (lub trwającego) generowania",
+    )
+
     class Meta:
         verbose_name = "Status generowania metryk"
         verbose_name_plural = "Status generowania metryk"
@@ -286,8 +324,10 @@ class StatusGenerowania(models.Model):
         obj, created = cls.objects.get_or_create(uczelnia=uczelnia)
         return obj
 
-    def rozpocznij_generowanie(self, task_id="", liczba_do_przetworzenia=0):
+    def rozpocznij_generowanie(self, task_id="", liczba_do_przetworzenia=0, okres=None):
         """Oznacz rozpoczęcie generowania"""
+        if okres is not None:
+            self.okres = okres
         self.data_rozpoczecia = timezone.now()
         self.data_zakonczenia = None
         self.w_trakcie = True

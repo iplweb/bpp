@@ -7,7 +7,7 @@ from bpp.models import Uczelnia
 from bpp.util import zaloguj_polkniety_wyjatek
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
-from ewaluacja_metryki.utils import generuj_metryki
+from ewaluacja_metryki.utils import generuj_metryki, rozstrzygnij_okres
 
 logger = logging.getLogger(__name__)
 
@@ -26,16 +26,25 @@ class Command(BaseCommand):
             "--jednostka-id", type=int, help="ID konkretnej jednostki do przeliczenia"
         )
         parser.add_argument(
+            "--okres",
+            type=int,
+            default=None,
+            help=(
+                "Pierwszy rok okresu ewaluacji, np. 2022 dla 2022–2025 "
+                "(domyślnie: okres obejmujący bieżący rok)"
+            ),
+        )
+        parser.add_argument(
             "--rok-min",
             type=int,
-            default=2022,
-            help="Początkowy rok okresu ewaluacji (domyślnie 2022)",
+            default=None,
+            help="Początkowy rok (domyślnie: pierwszy rok okresu)",
         )
         parser.add_argument(
             "--rok-max",
             type=int,
-            default=2025,
-            help="Końcowy rok okresu ewaluacji (domyślnie 2025)",
+            default=None,
+            help="Końcowy rok (domyślnie: ostatni rok okresu)",
         )
         parser.add_argument(
             "--minimalny-pk",
@@ -71,8 +80,23 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        rok_min = options["rok_min"]
-        rok_max = options["rok_max"]
+        from django.core.management.base import CommandError
+
+        from ewaluacja_common.models import OkresEwaluacji
+
+        okres = None
+        if options["okres"] is not None:
+            okres = OkresEwaluacji.objects.filter(rok_od=options["okres"]).first()
+            if okres is None:
+                raise CommandError(
+                    f"Brak okresu ewaluacji zaczynającego się w {options['okres']}"
+                )
+        try:
+            okres, rok_min, rok_max = rozstrzygnij_okres(
+                okres, options["rok_min"], options["rok_max"]
+            )
+        except ValueError as e:
+            raise CommandError(str(e)) from e
         minimalny_pk = Decimal(str(options["minimalny_pk"]))
         nadpisz = options["nadpisz"]
         bez_liczby_n = options["bez_liczby_n"]
@@ -95,7 +119,9 @@ class Command(BaseCommand):
                 self.style.WARNING("Krok 1/2: Przeliczanie liczby N dla uczelni...")
             )
             try:
-                oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia=uczelnia)
+                oblicz_liczby_n_dla_ewaluacji_2022_2025(
+                    uczelnia=uczelnia, rok_min=okres.rok_od, rok_max=okres.rok_do
+                )
                 self.stdout.write(
                     self.style.SUCCESS("✓ Przeliczono liczby N pomyślnie")
                 )
@@ -124,7 +150,8 @@ class Command(BaseCommand):
         # Krok 2: Oblicz metryki
         self.stdout.write(
             self.style.WARNING(
-                f"Krok 2/2: Obliczanie metryk dla okresu {rok_min}-{rok_max}"
+                f"Krok 2/2: Obliczanie metryk dla okresu {okres} "
+                f"(lata {rok_min}-{rok_max})"
             )
         )
         self.stdout.write(f"Minimalny próg punktów: {minimalny_pk}")
@@ -173,6 +200,7 @@ class Command(BaseCommand):
             logger_output=self.stdout,
             ilosc_udzialow_queryset=ilosc_udzialow_qs,
             uczelnia=uczelnia,
+            okres=okres,
         )
 
         # Wyświetl podsumowanie
