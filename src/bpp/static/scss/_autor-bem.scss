@@ -1056,3 +1056,17 @@
 .bpp-wykresy-lat {
   margin-bottom: 1.5rem;
 }
+
+// Strona wydawcy (browse/wydawca.html) — reszta układu ze strony źródła.
+.wydawca__podsumowanie {
+  margin: 0.25rem 0 0;
+  color: #666;
+}
+
+.wydawca__poziomy-tabela {
+  margin: 0;
+
+  td {
+    padding: 0.25rem 0.5rem;
+  }
+}

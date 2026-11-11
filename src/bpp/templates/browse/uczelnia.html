@@ -204,7 +204,7 @@
                 <i class="fi-compass"></i> Przeglądaj bazę publikacji
             </h2>
             <div class="grid-x grid-margin-x">
-                <div class="small-12 medium-6 large-3 cell">
+                <div class="small-12 medium-4 large-auto cell">
                     <a href="/bpp/autorzy/" class="browse-tile">
                         <div class="uczelnia__tile">
                             <i class="fi-torsos-all uczelnia__tile-icon uczelnia__tile-icon--blue"></i>
@@ -213,16 +213,25 @@
                         </div>
                     </a>
                 </div>
-                <div class="small-12 medium-6 large-3 cell">
+                <div class="small-12 medium-4 large-auto cell">
                     <a href="/bpp/zrodla/" class="browse-tile">
                         <div class="uczelnia__tile">
                             <i class="fi-book uczelnia__tile-icon uczelnia__tile-icon--green"></i>
                             <h4 class="uczelnia__tile-title">Źródła</h4>
-                            <p class="uczelnia__tile-description">Przeglądaj czasopisma i wydawnictwa</p>
+                            <p class="uczelnia__tile-description">Przeglądaj czasopisma</p>
                         </div>
                     </a>
                 </div>
-                <div class="small-12 medium-6 large-3 cell">
+                <div class="small-12 medium-4 large-auto cell">
+                    <a href="{% url 'bpp:browse_wydawcy' %}" class="browse-tile">
+                        <div class="uczelnia__tile">
+                            <i class="fi-print uczelnia__tile-icon uczelnia__tile-icon--purple"></i>
+                            <h4 class="uczelnia__tile-title">Wydawcy</h4>
+                            <p class="uczelnia__tile-description">Przeglądaj książki według wydawcy</p>
+                        </div>
+                    </a>
+                </div>
+                <div class="small-12 medium-4 large-auto cell">
                     <a href="{% url 'bpp:browse_lata' %}" class="browse-tile">
                         <div class="uczelnia__tile">
                             <i class="fi-calendar uczelnia__tile-icon uczelnia__tile-icon--yellow"></i>
@@ -231,7 +240,7 @@
                         </div>
                     </a>
                 </div>
-                <div class="small-12 medium-6 large-3 cell">
+                <div class="small-12 medium-4 large-auto cell">
                     <a href="/bpp/jednostki/" class="browse-tile">
                         <div class="uczelnia__tile">
                             <i class="fi-home uczelnia__tile-icon uczelnia__tile-icon--red"></i>

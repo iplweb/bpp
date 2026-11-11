@@ -110,6 +110,7 @@ from .string_fields import (
     SzczegolyQueryObject,
     TytulPracyQueryObject,
     UwagiQueryObject,
+    WydawcaQueryObject,
     ZrodloQueryObject,
 )
 
@@ -148,6 +149,7 @@ multiseek_fields = [
     CharakterOgolnyQueryObject(),
     TypKBNQueryObject(),
     ZrodloQueryObject(),
+    WydawcaQueryObject(),
     WydawnictwoNadrzedneQueryObject(),
     PierwszeNazwiskoIImie(),
     PierwszaJednostkaQueryObject(),
@@ -227,6 +229,7 @@ __all__ = [
     "UwagiQueryObject",
     "ORCIDQueryObject",
     "ZrodloQueryObject",
+    "WydawcaQueryObject",
     # Date fields
     "DataUtworzeniaQueryObject",
     "OstatnioZmieniony",

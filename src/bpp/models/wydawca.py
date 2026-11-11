@@ -46,6 +46,41 @@ class Wydawca(ModelZNazwa, ModelZPBN_UID):
             return self.alias_dla.get_toplevel()
         return self
 
+    def wszystkie_pk(self):
+        """PK tego wydawcy i wszystkich jego aliasów (także pośrednich —
+        alias aliasu). Prace wydane pod aliasem należą do wydawcy, więc
+        strona wydawcy i pole „Wydawca” w multiseeku łapią je razem."""
+        pks = {self.pk}
+        fala = [self.pk]
+        while fala:
+            fala = list(
+                Wydawca.objects.filter(alias_dla_id__in=fala)
+                .exclude(pk__in=pks)
+                .values_list("pk", flat=True)
+            )
+            pks.update(fala)
+        return sorted(pks)
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse("bpp:browse_wydawca", args=(self.get_toplevel().pk,))
+
+    def prace(self):
+        """Rekordy wydane przez wydawcę (z aliasami)."""
+        from bpp.models.cache import Rekord
+
+        return Rekord.objects.filter(wydawca_id__in=self.wszystkie_pk())
+
+    def prace_w_latach(self):
+        return (
+            self.prace()
+            .exclude(rok=None)
+            .values_list("rok", flat=True)
+            .distinct()
+            .order_by("rok")
+        )
+
     def get_tier(self, rok):
         toplevel = self.get_toplevel()
 

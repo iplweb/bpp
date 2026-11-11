@@ -1,0 +1,1 @@
+Nowe przeglądanie wydawców: indeks A–Z (kafel na stronie głównej i pozycja w menu „przeglądaj”) oraz strona wydawcy z wykresami w latach, wyszukiwarką z wyborem zakresu lat, poziomami wydawcy i aliasami; w wyszukiwarce nowe pole „Wydawca” (obejmuje prace zapisane pod aliasami).

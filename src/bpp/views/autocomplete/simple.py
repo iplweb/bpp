@@ -155,6 +155,17 @@ class WydawcaAutocomplete(
         return self.get_queryset().create(nazwa=text.strip())
 
 
+class PublicWydawcaAutocomplete(
+    SanitizedAutocompleteMixin, NazwaTrigramMixin, autocomplete.Select2QuerySetView
+):
+    """Publiczny autocomplete wydawców (pole „Wydawca” w multiseeku).
+
+    Bez logowania i bez tworzenia rekordów. Tylko wydawcy „główni” — alias
+    i tak jest rozwijany przez ``WydawcaQueryObject`` do wydawcy z aliasami."""
+
+    qset = Wydawca.objects.filter(alias_dla=None)
+
+
 class PublisherAutocomplete(
     SanitizedAutocompleteMixin,
     NazwaTrigramMixin,

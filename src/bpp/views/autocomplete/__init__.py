@@ -79,6 +79,7 @@ from .simple import (  # noqa: F401
     PublicKonferencjaAutocomplete,
     PublicStatusKorektyAutocomplete,
     PublicTaggitTagAutocomplete,
+    PublicWydawcaAutocomplete,
     PublicZrodloAutocomplete,
     PublisherAutocomplete,
     Seria_WydawniczaAutocomplete,
