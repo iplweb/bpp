@@ -171,8 +171,8 @@ def optimize_with_unpinning(request):
 
     # Sprawdź czy wszystkie dyscypliny raportowane są przeliczone
     liczba_n_raportowane = LiczbaNDlaUczelni.objects.filter(
-        uczelnia=uczelnia, liczba_n__gte=12
-    )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
+        uczelnia=uczelnia, okres=okres, liczba_n__gte=12
+    )
 
     if liczba_n_raportowane.count() == 0:
         messages.error(
@@ -380,10 +380,8 @@ def optimize_unpin_status(request, task_id):
 
     # KROK 3: Monitoruj postęp przez bazę danych TYLKO dla fazy optimization
     raportowane_dyscypliny = LiczbaNDlaUczelni.objects.filter(
-        uczelnia=uczelnia, liczba_n__gte=12
-    ).select_related(
-        "dyscyplina_naukowa"
-    )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
+        uczelnia=uczelnia, okres=okres, liczba_n__gte=12
+    ).select_related("dyscyplina_naukowa")
 
     discipline_count = raportowane_dyscypliny.count()
     dyscypliny_ids = list(

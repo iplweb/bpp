@@ -102,7 +102,7 @@ def oblicz_metryki_dla_autora(
 
         # Agreguj slot limits dla danej uczelni (fix: nie sumuj wszystkich uczelni)
         aggregated = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
-            autor=autor, dyscyplina_naukowa=dyscyplina, uczelnia=uczelnia
+            autor=autor, dyscyplina_naukowa=dyscyplina, uczelnia=uczelnia, okres=okres
         ).aggregate(total_slots=Sum("ilosc_udzialow"))
 
         if aggregated["total_slots"] is not None:
@@ -340,15 +340,20 @@ def _prepare_rodzaje_autora(rodzaje_autora):
     return rodzaje_autora
 
 
-def _get_ilosc_udzialow_queryset(ilosc_udzialow_queryset, uczelnia=None):
-    """Pobiera queryset IloscUdzialowDlaAutoraZaCalosc."""
+def _get_ilosc_udzialow_queryset(ilosc_udzialow_queryset, uczelnia=None, okres=None):
+    """Pobiera queryset IloscUdzialowDlaAutoraZaCalosc — zawsze zawężony do
+    okresu ``okres`` (gdy podany), także gdy wywołujący podał własny queryset:
+    udziały z innego okresu dałyby metryce błędny ``slot_maksymalny``."""
     from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
     if ilosc_udzialow_queryset is not None:
-        return ilosc_udzialow_queryset
-    qs = IloscUdzialowDlaAutoraZaCalosc.objects.all()
-    if uczelnia is not None:
-        qs = qs.filter(uczelnia=uczelnia)
+        qs = ilosc_udzialow_queryset
+    else:
+        qs = IloscUdzialowDlaAutoraZaCalosc.objects.all()
+        if uczelnia is not None:
+            qs = qs.filter(uczelnia=uczelnia)
+    if okres is not None:
+        qs = qs.filter(okres=okres)
     return qs
 
 
@@ -648,7 +653,9 @@ def generuj_metryki(
     """
     okres, rok_min, rok_max = rozstrzygnij_okres(okres, rok_min, rok_max)
     rodzaje_autora = _prepare_rodzaje_autora(rodzaje_autora)
-    ilosc_udzialow_qs = _get_ilosc_udzialow_queryset(ilosc_udzialow_queryset, uczelnia)
+    ilosc_udzialow_qs = _get_ilosc_udzialow_queryset(
+        ilosc_udzialow_queryset, uczelnia, okres
+    )
 
     total = ilosc_udzialow_qs.count()
 

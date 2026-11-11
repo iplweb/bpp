@@ -209,8 +209,8 @@ def reset_discipline_pins_task(
 
     # Optymalizacja tej dyscypliny (jeśli ma zdefiniowaną liczbę N).
     liczba_n_obj = LiczbaNDlaUczelni.objects.filter(
-        uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina
-    ).first()  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
+        uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina, okres=okres
+    ).first()
 
     optymalizacja_uruchomiona = False
     if liczba_n_obj is not None:
@@ -362,10 +362,8 @@ def reset_all_pins_task(self, uczelnia_id, algorithm_mode="two-phase", okres_pk=
     logger.info("Starting bulk optimization recalculation after reset")
 
     liczba_n_raportowane = LiczbaNDlaUczelni.objects.filter(
-        uczelnia=uczelnia, liczba_n__gte=12
-    ).select_related(
-        "dyscyplina_naukowa"
-    )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
+        uczelnia=uczelnia, okres=okres, liczba_n__gte=12
+    ).select_related("dyscyplina_naukowa")
 
     discipline_count = liczba_n_raportowane.count()
     dyscypliny_ids = list(

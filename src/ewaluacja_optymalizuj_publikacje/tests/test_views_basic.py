@@ -18,7 +18,7 @@ from ewaluacja_metryki.models import MetrykaAutora
 
 @pytest.mark.django_db
 def test_optymalizuj_publikacje_view_without_metryka_autora(
-    admin_client, denorms, rodzaj_autora_n
+    admin_client, denorms, rodzaj_autora_n, okres_2022
 ):
     """Test that the view handles missing MetrykaAutora gracefully"""
     # Create necessary objects
@@ -112,7 +112,7 @@ def test_optymalizuj_publikacje_view_without_metryka_autora(
 
 @pytest.mark.django_db
 def test_optymalizuj_publikacje_view_with_metryka_autora(
-    admin_client, denorms, rodzaj_autora_n
+    admin_client, denorms, rodzaj_autora_n, okres_2022
 ):
     """Test that the view works correctly when MetrykaAutora exists"""
     # Create necessary objects
@@ -132,6 +132,7 @@ def test_optymalizuj_publikacje_view_with_metryka_autora(
     # Create MetrykaAutora
     metryka = baker.make(
         MetrykaAutora,
+        okres=okres_2022,
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         jednostka=jednostka,
@@ -215,7 +216,7 @@ def test_optymalizuj_publikacje_view_with_metryka_autora(
 
 @pytest.mark.django_db
 def test_optymalizuj_publikacje_htmx_request_without_metryka(
-    admin_client, denorms, rodzaj_autora_n
+    admin_client, denorms, rodzaj_autora_n, okres_2022
 ):
     """Test HTMX request handling when MetrykaAutora doesn't exist"""
     # Create minimal test data
@@ -273,7 +274,7 @@ def test_optymalizuj_publikacje_htmx_request_without_metryka(
 
 @pytest.mark.django_db
 def test_optymalizuj_publikacje_multiple_authors_mixed_metryka(
-    admin_client, denorms, rodzaj_autora_n
+    admin_client, denorms, rodzaj_autora_n, okres_2022
 ):
     """Test view with multiple authors where some have MetrykaAutora and some don't"""
     jednostka = baker.make(Jednostka, skupia_pracownikow=True)
@@ -295,6 +296,7 @@ def test_optymalizuj_publikacje_multiple_authors_mixed_metryka(
     # Provide explicit values to prevent overflow in procent_wykorzystania_slotow field
     metryka1 = baker.make(
         MetrykaAutora,
+        okres=okres_2022,
         autor=autor1,
         dyscyplina_naukowa=dyscyplina,
         jednostka=jednostka,

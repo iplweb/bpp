@@ -15,8 +15,8 @@ def _validate_all_disciplines_optimized(uczelnia, logger_func, okres=None):
 
     okres = pobierz_okres(okres)
     liczba_n_raportowane = LiczbaNDlaUczelni.objects.filter(
-        uczelnia=uczelnia, liczba_n__gte=12
-    )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
+        uczelnia=uczelnia, okres=okres, liczba_n__gte=12
+    )
 
     if liczba_n_raportowane.count() == 0:
         raise ValueError("Brak dyscyplin raportowanych (liczba N >= 12)")
@@ -109,8 +109,7 @@ def _collect_ids_to_unpin(uczelnia, autorzy_z_wynikami, logger_func, okres=None)
         # Pobierz prace nazbierane dla tego autora (z wszystkich dyscyplin)
         # Te prace NIE powinny być odpinane, nawet jeśli mają slot < 1.0
         autor_prace_nazbierane = set()
-        # TODO(okres): MetrykaAutora — zawęzić do okresu, gdy dostanie FK okres
-        for metryka in MetrykaAutora.objects.filter(autor_id=autor_id):
+        for metryka in MetrykaAutora.objects.filter(autor_id=autor_id, okres=okres):
             if metryka.prace_nazbierane:
                 for praca_id in metryka.prace_nazbierane:
                     # JSONField może zwrócić list zamiast tuple - konwertuj

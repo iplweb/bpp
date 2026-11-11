@@ -35,6 +35,8 @@ def run_unpinning_after_metrics_wrapper(
     """
     from ewaluacja_metryki.models import MetrykaAutora
 
+    from ...okres import pobierz_okres
+
     logger.info(
         f"Metrics task completed with result: {metrics_result}. "
         f"Starting unpinning analysis for uczelnia_id={uczelnia_id}, "
@@ -42,7 +44,7 @@ def run_unpinning_after_metrics_wrapper(
     )
 
     # Sprawdź ile metryk zostało utworzonych
-    metrics_count = MetrykaAutora.objects.count()
+    metrics_count = MetrykaAutora.objects.filter(okres=pobierz_okres(okres_pk)).count()
     logger.info(f"Found {metrics_count} metrics in database")
 
     if metrics_count == 0:

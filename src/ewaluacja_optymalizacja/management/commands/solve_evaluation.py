@@ -194,7 +194,7 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(msg)
 
-        liczba_n = self._lookup_liczba_n(dyscyplina, uczelnia_obj)
+        liczba_n = self._lookup_liczba_n(dyscyplina, uczelnia_obj, okres)
 
         # Pre-optimization: capacity-based unpinning analysis / application
         if analyze_unpinning or auto_unpin:
@@ -331,7 +331,7 @@ class Command(BaseCommand):
                 okres=okres,
             )
 
-    def _lookup_liczba_n(self, dyscyplina, uczelnia):
+    def _lookup_liczba_n(self, dyscyplina, uczelnia, okres):
         """Look up the institutional N-limit (3N - sankcje) for the discipline.
 
         ``uczelnia`` to JAWNIE rozstrzygnięta uczelnia (single-or-fail /
@@ -344,8 +344,8 @@ class Command(BaseCommand):
             dyscyplina_obj = Dyscyplina_Naukowa.objects.get(nazwa=dyscyplina)
             if dyscyplina_obj:
                 liczba_n_obj = LiczbaNDlaUczelni.objects.get(
-                    uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina_obj
-                )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
+                    uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina_obj, okres=okres
+                )
                 liczba_n = float(liczba_n_obj.liczba_n_ostateczna)
                 self.stdout.write(
                     self.style.SUCCESS(

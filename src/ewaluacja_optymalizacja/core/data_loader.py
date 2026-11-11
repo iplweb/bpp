@@ -67,7 +67,8 @@ def generate_pub_data(
             IloscUdzialowDlaAutoraZaCalosc.objects.filter(
                 autor_id=autor_id,
                 dyscyplina_naukowa=dyscyplina,
-            )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
+                okres=okres,
+            )
             .select_related("rodzaj_autora")
             .order_by("-ilosc_udzialow")
             .first()
@@ -137,10 +138,10 @@ def load_author_slot_limits(
 
     for author_id in authors:
         # Aggregate slot limits across all rodzaj_autora types for this author
-        # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
         aggregated = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
             autor_id=author_id,
             dyscyplina_naukowa=dyscyplina_obj,
+            okres=okres,
         ).aggregate(
             total_slots=Sum("ilosc_udzialow"),
             total_mono_slots=Sum("ilosc_udzialow_monografie"),

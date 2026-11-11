@@ -19,7 +19,7 @@ from ewaluacja_metryki.models import MetrykaAutora
 
 
 @pytest.mark.django_db
-def test_oblicz_metryki_command_basic(rodzaj_autora_n):
+def test_oblicz_metryki_command_basic(rodzaj_autora_n, okres_2022):
     """Test podstawowego działania komendy oblicz_metryki"""
 
     # Stwórz dane testowe
@@ -40,6 +40,7 @@ def test_oblicz_metryki_command_basic(rodzaj_autora_n):
         IloscUdzialowDlaAutoraZaCalosc,
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
+        okres=okres_2022,
         ilosc_udzialow=Decimal("4.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
         uczelnia=uczelnia,
@@ -102,7 +103,7 @@ def test_oblicz_metryki_command_basic(rodzaj_autora_n):
 
 
 @pytest.mark.django_db
-def test_oblicz_metryki_command_filters(rodzaj_autora_n):
+def test_oblicz_metryki_command_filters(rodzaj_autora_n, okres_2022):
     """Test filtrowania po autorze, dyscyplinie i jednostce"""
     uczelnia = baker.make(Uczelnia)
 
@@ -136,6 +137,7 @@ def test_oblicz_metryki_command_filters(rodzaj_autora_n):
         IloscUdzialowDlaAutoraZaCalosc,
         autor=autor1,
         dyscyplina_naukowa=dyscyplina1,
+        okres=okres_2022,
         ilosc_udzialow=Decimal("4.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
         uczelnia=uczelnia,
@@ -144,6 +146,7 @@ def test_oblicz_metryki_command_filters(rodzaj_autora_n):
         IloscUdzialowDlaAutoraZaCalosc,
         autor=autor2,
         dyscyplina_naukowa=dyscyplina2,
+        okres=okres_2022,
         ilosc_udzialow=Decimal("4.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
         uczelnia=uczelnia,
@@ -220,7 +223,7 @@ def test_oblicz_metryki_command_filters(rodzaj_autora_n):
 
 
 @pytest.mark.django_db
-def test_oblicz_metryki_command_error_handling(rodzaj_autora_n):
+def test_oblicz_metryki_command_error_handling(rodzaj_autora_n, okres_2022):
     """Test obsługi błędów w komendzie"""
     uczelnia = baker.make(Uczelnia)
     autor = baker.make(Autor, nazwisko="Błędny")
@@ -230,6 +233,7 @@ def test_oblicz_metryki_command_error_handling(rodzaj_autora_n):
         IloscUdzialowDlaAutoraZaCalosc,
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
+        okres=okres_2022,
         ilosc_udzialow=Decimal("4.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
         uczelnia=uczelnia,
@@ -271,7 +275,7 @@ def test_oblicz_metryki_command_error_handling(rodzaj_autora_n):
 
 
 @pytest.mark.django_db
-def test_oblicz_metryki_command_parameters(rodzaj_autora_n):
+def test_oblicz_metryki_command_parameters(rodzaj_autora_n, okres_2022):
     """Test parametrów rok_min, rok_max i minimalny_pk"""
     uczelnia = baker.make(Uczelnia)
     autor = baker.make(Autor)
@@ -281,6 +285,7 @@ def test_oblicz_metryki_command_parameters(rodzaj_autora_n):
         IloscUdzialowDlaAutoraZaCalosc,
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
+        okres=okres_2022,
         ilosc_udzialow=Decimal("4.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
         uczelnia=uczelnia,
@@ -342,7 +347,7 @@ def test_oblicz_metryki_command_parameters(rodzaj_autora_n):
 
 @pytest.mark.django_db
 def test_oblicz_metryki_command_rodzaj_autora_filter(
-    rodzaj_autora_n, rodzaj_autora_b, rodzaj_autora_d, rodzaj_autora_z
+    rodzaj_autora_n, rodzaj_autora_b, rodzaj_autora_d, rodzaj_autora_z, okres_2022
 ):
     """Test filtrowania po rodzaju autora"""
     uczelnia = baker.make(Uczelnia)
@@ -359,6 +364,7 @@ def test_oblicz_metryki_command_rodzaj_autora_filter(
         IloscUdzialowDlaAutoraZaCalosc,
         autor=autor_n,
         dyscyplina_naukowa=dyscyplina,
+        okres=okres_2022,
         ilosc_udzialow=Decimal("4.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
         uczelnia=uczelnia,
@@ -367,6 +373,7 @@ def test_oblicz_metryki_command_rodzaj_autora_filter(
         IloscUdzialowDlaAutoraZaCalosc,
         autor=autor_d,
         dyscyplina_naukowa=dyscyplina,
+        okres=okres_2022,
         ilosc_udzialow=Decimal("4.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
         uczelnia=uczelnia,
@@ -375,6 +382,7 @@ def test_oblicz_metryki_command_rodzaj_autora_filter(
         IloscUdzialowDlaAutoraZaCalosc,
         autor=autor_b,
         dyscyplina_naukowa=dyscyplina,
+        okres=okres_2022,
         ilosc_udzialow=Decimal("4.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
         uczelnia=uczelnia,

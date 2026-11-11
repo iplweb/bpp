@@ -6,16 +6,15 @@ from ...models import OptimizationRun
 from ...okres import pobierz_okres
 
 
-def _get_reported_disciplines(uczelnia):
-    """Pobierz ID raportowanych dyscyplin (liczba_n >= 12)."""
+def _get_reported_disciplines(uczelnia, okres=None):
+    """Pobierz ID raportowanych dyscyplin (liczba_n >= 12) w okresie
+    ewaluacji (``None`` = okres domyślny)."""
     from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 
     return list(
         LiczbaNDlaUczelni.objects.filter(
-            uczelnia=uczelnia, liczba_n__gte=12
-        ).values_list(
-            "dyscyplina_naukowa_id", flat=True
-        )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
+            uczelnia=uczelnia, okres=pobierz_okres(okres), liczba_n__gte=12
+        ).values_list("dyscyplina_naukowa_id", flat=True)
     )
 
 
@@ -52,8 +51,9 @@ def _get_discipline_summary(uczelnia, punkty_przed=None, show_diff=True, okres=N
     raportowane = (
         LiczbaNDlaUczelni.objects.filter(
             uczelnia=uczelnia,
+            okres=okres,
             liczba_n__gte=12,
-        )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
+        )
         .select_related("dyscyplina_naukowa")
         .order_by("dyscyplina_naukowa__nazwa")
     )
@@ -134,7 +134,7 @@ def _get_discipline_summary(uczelnia, punkty_przed=None, show_diff=True, okres=N
 
 def _get_filter_options(uczelnia, okres=None):
     """Pobierz opcje dla filtrów."""
-    reported_ids = _get_reported_disciplines(uczelnia)
+    reported_ids = _get_reported_disciplines(uczelnia, okres)
 
     dyscypliny = Dyscyplina_Naukowa.objects.filter(pk__in=reported_ids).order_by(
         "nazwa"

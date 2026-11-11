@@ -336,7 +336,23 @@ class AutorView(DetailView):
         # ``uczelnia.skrot`` twardo). Gdy uczelnia istnieje — przekaż ją jawnie.
         if uczelnia is not None:
             context["uczelnia"] = uczelnia
+        if context["pokazuj_metryki"]:
+            context["metryki_autora"] = self._metryki_autora(request)
         return context
+
+    def _metryki_autora(self, request):
+        """Metryki autora z uczelni oglądającego i wybranego okresu ewaluacji
+        — tego samego, który pokaże ``MetrykaDetailView`` po kliknięciu (przy
+        kilku okresach dyscypliny inaczej by się dublowały)."""
+        from ewaluacja_common.okres import okres_dla_request
+        from ewaluacja_metryki.uczelnia_scope import scope_metryki
+        from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
+
+        return scope_metryki(
+            self.object.metryki.all(),
+            uczelnia_dla_odczytu(request),
+            okres_dla_request(request),
+        ).select_related("dyscyplina_naukowa", "jednostka")
 
     def _pokazuj_metryki(self, request):
         """Przycisk metryk ewaluacyjnych tylko dla tych, których wpuści

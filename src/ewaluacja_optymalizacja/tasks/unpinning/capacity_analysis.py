@@ -71,9 +71,8 @@ def calculate_author_slot_usage(
     aggregated = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
         autor_id=author_id,
         dyscyplina_naukowa=dyscyplina,
-    ).aggregate(
-        total_slots=Sum("ilosc_udzialow")
-    )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
+        okres=okres,
+    ).aggregate(total_slots=Sum("ilosc_udzialow"))
 
     if aggregated["total_slots"] is not None:
         max_slots = min(float(aggregated["total_slots"]), limit_regulaminowy)

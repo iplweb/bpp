@@ -75,7 +75,9 @@ def run_detail(request, pk):
     autor_ids = [ar.autor_id for ar in author_results]
     existing_metrics = set(
         MetrykaAutora.objects.filter(
-            autor_id__in=autor_ids, dyscyplina_naukowa=run.dyscyplina_naukowa
+            autor_id__in=autor_ids,
+            dyscyplina_naukowa=run.dyscyplina_naukowa,
+            okres_id=run.okres_id,
         ).values_list("autor_id", flat=True)
     )
 

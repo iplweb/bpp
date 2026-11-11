@@ -157,12 +157,12 @@ def analyze_unpinning_opportunities(request):
 
     okres = okres_dla_request(request)
 
-    # Usuń stare metryki
-    # TODO(okres): MetrykaAutora — zawęzić do okresu, gdy dostanie FK okres
-    metryki_count = MetrykaAutora.objects.count()
+    # Usuń stare metryki — tylko wybranego okresu (inne okresy zostają)
+    stare_metryki = MetrykaAutora.objects.filter(okres=okres)
+    metryki_count = stare_metryki.count()
     if metryki_count > 0:
         logger.info(f"Deleting {metryki_count} old metrics before recalculation...")
-        MetrykaAutora.objects.all().delete()
+        stare_metryki.delete()
         logger.info("Deleted old metrics")
 
     # Stwórz Celery chain: metryki -> unpinning
@@ -174,6 +174,7 @@ def analyze_unpinning_opportunities(request):
             rodzaje_autora=get_default_rodzaje_autora(),
             nadpisz=True,
             przelicz_liczbe_n=True,
+            okres_pk=okres.pk,
         ),  # Przelicz metryki z jawnymi parametrami
         run_unpinning_after_metrics_wrapper.s(  # Potem uruchom unpinning
             uczelnia_id=uczelnia.pk,

@@ -103,7 +103,8 @@ def browser_table(request):
     if not uczelnia:
         return HttpResponseBadRequest("Nie znaleziono uczelni")
 
-    reported_ids = _get_reported_disciplines(uczelnia)
+    okres = okres_dla_request(request)
+    reported_ids = _get_reported_disciplines(uczelnia, okres)
 
     filters = {
         "rok": request.GET.get("rok"),
@@ -116,7 +117,7 @@ def browser_table(request):
     }
 
     publications = _get_filtered_publications(
-        uczelnia, filters, reported_ids, okres=okres_dla_request(request)
+        uczelnia, filters, reported_ids, okres=okres
     )
 
     page = request.GET.get("page", 1)
@@ -283,8 +284,9 @@ def browser_recalc_status(request):
     # Policz postęp
     raportowane = LiczbaNDlaUczelni.objects.filter(
         uczelnia=uczelnia,
+        okres=okres,
         liczba_n__gte=12,
-    ).count()  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
+    ).count()
 
     completed = OptimizationRun.objects.filter(
         uczelnia=uczelnia,

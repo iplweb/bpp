@@ -402,9 +402,9 @@ def solve_uczelnia(uczelnia_id: int | None = None, min_liczba_n: int = 12, okres
             raise ValueError("No university found in database") from e
 
     # Get disciplines with liczba_n >= min_liczba_n
-    # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
+    okres = pobierz_okres(okres)
     liczba_n_query = LiczbaNDlaUczelni.objects.filter(
-        uczelnia=uczelnia, liczba_n__gte=min_liczba_n
+        uczelnia=uczelnia, okres=okres, liczba_n__gte=min_liczba_n
     ).select_related("dyscyplina_naukowa")
 
     disciplines = list(liczba_n_query)

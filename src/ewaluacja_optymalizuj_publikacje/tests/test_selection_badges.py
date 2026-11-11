@@ -20,7 +20,7 @@ from ewaluacja_metryki.models import MetrykaAutora
 
 @pytest.mark.django_db
 def test_wybrana_do_ewaluacji_badge_shows_correctly(
-    admin_client, denorms, rodzaj_autora_n
+    admin_client, denorms, rodzaj_autora_n, okres_2022
 ):
     """Test that 'wybrana do ewaluacji' badge only shows for publications actually selected by knapsack algorithm"""
     jednostka = baker.make(Jednostka, skupia_pracownikow=True)
@@ -102,6 +102,7 @@ def test_wybrana_do_ewaluacji_badge_shows_correctly(
     # Simulating that the knapsack algorithm selected only the high-value publication
     metryka = baker.make(  # noqa
         MetrykaAutora,
+        okres=okres_2022,
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         jednostka=jednostka,
@@ -139,7 +140,9 @@ def test_wybrana_do_ewaluacji_badge_shows_correctly(
 
 
 @pytest.mark.django_db
-def test_wybrana_do_ewaluacji_no_metryka(admin_client, denorms, rodzaj_autora_n):
+def test_wybrana_do_ewaluacji_no_metryka(
+    admin_client, denorms, rodzaj_autora_n, okres_2022
+):
     """Test that publications show as not selected when no MetrykaAutora exists"""
     jednostka = baker.make(Jednostka, skupia_pracownikow=True)
     autor = baker.make(Autor, nazwisko="NoMetryka", imiona="Test")
@@ -202,7 +205,7 @@ def test_wybrana_do_ewaluacji_no_metryka(admin_client, denorms, rodzaj_autora_n)
 
 @pytest.mark.django_db
 def test_author_with_multiple_disciplines_shows_correct_metric(
-    admin_client, denorms, rodzaj_autora_n
+    admin_client, denorms, rodzaj_autora_n, okres_2022
 ):
     """Test that view shows correct MetrykaAutora when author has metrics for multiple disciplines"""
     jednostka = baker.make(Jednostka, skupia_pracownikow=True)
@@ -229,6 +232,7 @@ def test_author_with_multiple_disciplines_shows_correct_metric(
     # Create MetrykaAutora for BOTH disciplines with different values
     metryka_informatyka = baker.make(
         MetrykaAutora,
+        okres=okres_2022,
         autor=autor,
         dyscyplina_naukowa=dyscyplina_informatyka,
         jednostka=jednostka,
@@ -242,6 +246,7 @@ def test_author_with_multiple_disciplines_shows_correct_metric(
 
     metryka_matematyka = baker.make(
         MetrykaAutora,
+        okres=okres_2022,
         autor=autor,
         dyscyplina_naukowa=dyscyplina_matematyka,
         jednostka=jednostka,
@@ -329,7 +334,7 @@ def test_author_with_multiple_disciplines_shows_correct_metric(
 
 @pytest.mark.django_db
 def test_author_without_wymiar_etatu_no_default_4_slots(
-    admin_client, denorms, rodzaj_autora_n
+    admin_client, denorms, rodzaj_autora_n, okres_2022
 ):
     """Test that authors without wymiar_etatu don't get default 4 slots assigned"""
     jednostka = baker.make(Jednostka, skupia_pracownikow=True)

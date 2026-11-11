@@ -4,6 +4,7 @@ from bpp.models import Autor_Dyscyplina
 from bpp.models.cache import Cache_Punktacja_Autora
 
 from ...models import OptimizationPublication
+from ...okres import pobierz_okres
 
 
 def _build_rekord_ids(ciagle_list, zwarte_list, ct_ciagle, ct_zwarte):
@@ -80,8 +81,9 @@ def _prefetch_autor_dyscypliny(autor_rok_pairs):
     return autor_dyscypliny
 
 
-def _prefetch_autor_max_slots(autor_dysc_pairs):
-    """Pobierz maksymalne sloty dla par (autor_id, dyscyplina_id)."""
+def _prefetch_autor_max_slots(autor_dysc_pairs, okres=None):
+    """Pobierz maksymalne sloty dla par (autor_id, dyscyplina_id) w okresie
+    ewaluacji (``None`` = okres domyślny)."""
     from django.db.models import Sum
 
     from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
@@ -97,7 +99,8 @@ def _prefetch_autor_max_slots(autor_dysc_pairs):
         IloscUdzialowDlaAutoraZaCalosc.objects.filter(
             autor_id__in=autor_ids,
             dyscyplina_naukowa_id__in=dysc_ids,
-        )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
+            okres=pobierz_okres(okres),
+        )
         .values("autor_id", "dyscyplina_naukowa_id")
         .annotate(total=Sum("ilosc_udzialow"))
     )
@@ -107,8 +110,9 @@ def _prefetch_autor_max_slots(autor_dysc_pairs):
     return max_slots
 
 
-def _prefetch_autor_slot_nazbierany(autor_dysc_pairs):
-    """Pobierz nazbierane sloty dla par (autor_id, dyscyplina_id)."""
+def _prefetch_autor_slot_nazbierany(autor_dysc_pairs, okres=None):
+    """Pobierz nazbierane sloty dla par (autor_id, dyscyplina_id) w okresie
+    ewaluacji (``None`` = okres domyślny)."""
     from ewaluacja_metryki.models import MetrykaAutora
 
     nazbierane = {}
@@ -121,6 +125,7 @@ def _prefetch_autor_slot_nazbierany(autor_dysc_pairs):
     qs = MetrykaAutora.objects.filter(
         autor_id__in=autor_ids,
         dyscyplina_naukowa_id__in=dysc_ids,
+        okres=pobierz_okres(okres),
     ).values("autor_id", "dyscyplina_naukowa_id", "slot_nazbierany")
 
     for row in qs:

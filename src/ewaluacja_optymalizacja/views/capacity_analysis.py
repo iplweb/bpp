@@ -20,13 +20,12 @@ from ..tasks.unpinning.capacity_analysis import (
 logger = logging.getLogger(__name__)
 
 
-def _get_reportable_disciplines():
-    """Pobierz dyscypliny raportowane (liczba N >= 12)."""
+def _get_reportable_disciplines(okres):
+    """Pobierz dyscypliny raportowane (liczba N >= 12) w okresie ewaluacji."""
     reportable = []
-    # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
     for liczba_n in LiczbaNDlaUczelni.objects.select_related(
         "dyscyplina_naukowa"
-    ).all():
+    ).filter(okres=okres):
         if liczba_n.liczba_n and liczba_n.liczba_n >= 12:
             reportable.append(liczba_n.dyscyplina_naukowa)
     return reportable
@@ -39,7 +38,7 @@ def capacity_analysis_list(request):
     """
     okres = okres_dla_request(request)
     # Pobierz dyscypliny raportowane
-    reportable_disciplines = _get_reportable_disciplines()
+    reportable_disciplines = _get_reportable_disciplines(okres)
 
     # Dla każdej dyscypliny pobierz liczbę kandydatów (szybka analiza)
     discipline_stats = []
@@ -190,7 +189,7 @@ def capacity_analysis_apply_all(request):
     okres = okres_dla_request(request)
     from denorm import denorms
 
-    reportable_disciplines = _get_reportable_disciplines()
+    reportable_disciplines = _get_reportable_disciplines(okres)
 
     total_unpinned = 0
     total_candidates = 0

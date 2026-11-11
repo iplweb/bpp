@@ -267,14 +267,15 @@ def collect_unpinning_results(
     for opp in all_opportunities:
         from ewaluacja_metryki.models import MetrykaAutora
 
-        # TODO(okres): MetrykaAutora — zawęzić do okresu, gdy dostanie FK okres
         metryka_a = MetrykaAutora.objects.filter(
             autor_id=opp["autor_a"]["autor_id"],
             dyscyplina_naukowa_id=opp["autor_a"]["dyscyplina_id"],
+            okres=okres,
         ).first()
         metryka_b = MetrykaAutora.objects.filter(
             autor_id=opp["autor_b"]["autor_id"],
             dyscyplina_naukowa_id=opp["autor_b"]["dyscyplina_id"],
+            okres=okres,
         ).first()
 
         if metryka_a and metryka_b:

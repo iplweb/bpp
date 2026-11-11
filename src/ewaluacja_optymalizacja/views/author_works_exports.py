@@ -27,11 +27,11 @@ def _get_author_works_data(run_pk, autor_pk):
         pk=run_pk,
     )
     autor = get_object_or_404(Autor, pk=autor_pk)
-    # TODO(okres): MetrykaAutora — zawęzić do okresu, gdy dostanie FK okres
     metryka = get_object_or_404(
         MetrykaAutora,
         autor=autor,
         dyscyplina_naukowa=run.dyscyplina_naukowa,
+        okres_id=run.okres_id,
     )
 
     prace_nazbierane_ids = metryka.prace_nazbierane or []

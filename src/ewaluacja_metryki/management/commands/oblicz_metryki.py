@@ -119,9 +119,7 @@ class Command(BaseCommand):
                 self.style.WARNING("Krok 1/2: Przeliczanie liczby N dla uczelni...")
             )
             try:
-                oblicz_liczby_n_dla_ewaluacji_2022_2025(
-                    uczelnia=uczelnia, rok_min=okres.rok_od, rok_max=okres.rok_do
-                )
+                oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia=uczelnia, okres=okres)
                 self.stdout.write(
                     self.style.SUCCESS("✓ Przeliczono liczby N pomyślnie")
                 )
@@ -167,9 +165,9 @@ class Command(BaseCommand):
         rodzaje_str = ", ".join([rodzaje_nazwy.get(r, r) for r in rodzaje_autora])
         self.stdout.write(f"Rodzaje autorów: {rodzaje_str}")
 
-        # Filtruj IloscUdzialowDlaAutoraZaCalosc — scope per uczelnia od razu
+        # Filtruj IloscUdzialowDlaAutoraZaCalosc — scope per uczelnia i okres
         ilosc_udzialow_qs = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
-            uczelnia=uczelnia
+            uczelnia=uczelnia, okres=okres
         )
 
         if options["autor_id"]:

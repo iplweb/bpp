@@ -169,8 +169,10 @@ class Command(BaseCommand):
             # Get rodzaj_autora for this author (może być wiele rekordów - bierzemy pierwszy)
             record = (
                 IloscUdzialowDlaAutoraZaCalosc.objects.filter(
-                    autor_id=author_id, dyscyplina_naukowa=dyscyplina_obj
-                )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
+                    autor_id=author_id,
+                    dyscyplina_naukowa=dyscyplina_obj,
+                    okres=okres,
+                )
                 .order_by("-ilosc_udzialow")
                 .first()
             )

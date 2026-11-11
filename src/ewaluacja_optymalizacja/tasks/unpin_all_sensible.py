@@ -270,6 +270,7 @@ def _unpin_all_sensible(  # noqa: C901
             rodzaje_autora=get_default_rodzaje_autora(),
             nadpisz=True,
             przelicz_liczbe_n=True,
+            okres_pk=okres.pk,
         ),
         run_unpinning_after_metrics_wrapper.s(
             uczelnia_id=uczelnia.pk,

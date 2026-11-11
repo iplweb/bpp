@@ -31,8 +31,10 @@ def _add_run_statistics(run, uczelnia):
     # Pobierz liczbę N dla dyscypliny i oblicz 3*N oraz procent wypełnienia slotów
     try:
         liczba_n_obj = LiczbaNDlaUczelni.objects.get(
-            uczelnia=uczelnia, dyscyplina_naukowa=run.dyscyplina_naukowa
-        )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
+            uczelnia=uczelnia,
+            dyscyplina_naukowa=run.dyscyplina_naukowa,
+            okres_id=run.okres_id,
+        )
         run.liczba_3n = liczba_n_obj.liczba_n_ostateczna
         if run.liczba_3n > 0:
             run.slots_fill_pct = (run.total_slots / run.liczba_3n) * 100

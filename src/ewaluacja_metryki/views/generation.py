@@ -78,12 +78,10 @@ class UruchomGenerowanieView(View):
         # Oblicz liczbę autorów do przetworzenia (aby ustawić status od razu)
         from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
+        udzialy = IloscUdzialowDlaAutoraZaCalosc.objects.filter(okres=okres)
         if uczelnia:
-            total_count = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
-                uczelnia=uczelnia
-            ).count()
-        else:
-            total_count = IloscUdzialowDlaAutoraZaCalosc.objects.count()
+            udzialy = udzialy.filter(uczelnia=uczelnia)
+        total_count = udzialy.count()
 
         # Uruchom równoległy task (z domyślnym przeliczaniem liczby N)
         result = generuj_metryki_task_parallel.delay(

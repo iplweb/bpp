@@ -111,6 +111,7 @@ def test_generuj_metryki_nadpisz_tylko_w_okresie(
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         uczelnia=uczelnia,
+        okres=okres_2026,
         ilosc_udzialow=Decimal("4.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
     )
@@ -131,6 +132,53 @@ def test_generuj_metryki_nadpisz_tylko_w_okresie(
     assert MetrykaAutora.objects.filter(pk=stara.pk).exists()
     nowa = MetrykaAutora.objects.get(autor=autor, okres=okres_2026)
     assert (nowa.rok_min, nowa.rok_max) == (2026, 2030)
+
+
+def test_generuj_metryki_bierze_udzialy_tylko_z_okresu(
+    okres_2022, okres_2026, rodzaj_autora_n
+):
+    """Udziały autora z dwóch okresów: metryka okresu dostaje
+    ``slot_maksymalny`` z udziałów SWOJEGO okresu, także gdy wywołujący
+    (komenda ``oblicz_metryki``) podaje własny queryset udziałów."""
+    uczelnia = baker.make(Uczelnia)
+    autor = baker.make(Autor)
+    dyscyplina = baker.make(Dyscyplina_Naukowa)
+    for okres, udzialy in [(okres_2022, "2.0"), (okres_2026, "3.0")]:
+        baker.make(
+            IloscUdzialowDlaAutoraZaCalosc,
+            autor=autor,
+            dyscyplina_naukowa=dyscyplina,
+            uczelnia=uczelnia,
+            okres=okres,
+            ilosc_udzialow=Decimal(udzialy),
+            ilosc_udzialow_monografie=Decimal("1.0"),
+        )
+    for rok in (2023, 2027):
+        baker.make(
+            Autor_Dyscyplina,
+            autor=autor,
+            dyscyplina_naukowa=dyscyplina,
+            rodzaj_autora=rodzaj_autora_n,
+            rok=rok,
+        )
+
+    with patch.object(Autor, "zbieraj_sloty", return_value=PUSTE_SLOTY):
+        for okres in (okres_2022, okres_2026):
+            wynik = generuj_metryki(
+                nadpisz=True,
+                rodzaje_autora=["N"],
+                uczelnia=uczelnia,
+                okres=okres,
+                ilosc_udzialow_queryset=IloscUdzialowDlaAutoraZaCalosc.objects.filter(
+                    uczelnia=uczelnia
+                ),
+            )
+            assert wynik["total"] == 1
+
+    assert {
+        (m.okres_id, m.slot_maksymalny)
+        for m in MetrykaAutora.objects.filter(autor=autor)
+    } == {(okres_2022.pk, Decimal("2.0")), (okres_2026.pk, Decimal("3.0"))}
 
 
 @pytest.mark.parametrize("ktory", [0, 1])
@@ -239,3 +287,19 @@ def test_przeliczenie_publikacji_w_okresie_jej_roku(
     )
     assert okres.rok_od == rok_od
     assert (rok_min, rok_max) == (okres.rok_od, okres.rok_do)
+
+
+@pytest.mark.parametrize("ktory", [0, 1])
+def test_strona_autora_pokazuje_metryki_wybranego_okresu(
+    admin_user, client, dwie_metryki, ktory
+):
+    """Przyciski metryk na stronie autora — tylko z okresu wybranego w sesji
+    (tego, który pokaże widok szczegółów), bez dublowania dyscypliny."""
+    wybrana = dwie_metryki[ktory]
+    client.force_login(admin_user)
+    wybierz_okres(client, wybrana.okres)
+
+    response = client.get(reverse("bpp:browse_autor", args=(wybrana.autor.slug,)))
+
+    assert response.status_code == 200
+    assert list(response.context["metryki_autora"]) == [wybrana]

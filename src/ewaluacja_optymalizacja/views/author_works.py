@@ -36,11 +36,11 @@ def author_works_detail(request, run_pk, autor_pk):
     lata_okresu = filtr_lat(run.okres, "rekord__")
 
     # Get metryka for this author and discipline
-    # TODO(okres): MetrykaAutora — zawęzić do okresu, gdy dostanie FK okres
     metryka = get_object_or_404(
         MetrykaAutora.objects.select_related("dyscyplina_naukowa"),
         autor=autor,
         dyscyplina_naukowa=run.dyscyplina_naukowa,
+        okres_id=run.okres_id,
     )
 
     # Get works collected (nazbierane)

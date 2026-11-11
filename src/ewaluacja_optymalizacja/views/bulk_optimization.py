@@ -222,10 +222,11 @@ def start_bulk_optimization(request):
         okres = okres_dla_request(request)
 
         # WALIDACJA: Sprawdź czy istnieją dane liczby N dla uczelni
-        # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
-        liczba_n_count = LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia).count()
+        liczba_n_count = LiczbaNDlaUczelni.objects.filter(
+            uczelnia=uczelnia, okres=okres
+        ).count()
         liczba_n_raportowane = LiczbaNDlaUczelni.objects.filter(
-            uczelnia=uczelnia, liczba_n__gte=12
+            uczelnia=uczelnia, okres=okres, liczba_n__gte=12
         ).count()
 
         if liczba_n_count == 0:
@@ -320,10 +321,8 @@ def bulk_optimization_status(request, uczelnia_id, task_id):
 
     # Pobierz listę dyscyplin raportowanych dla uczelni
     raportowane_dyscypliny = LiczbaNDlaUczelni.objects.filter(
-        uczelnia=uczelnia, liczba_n__gte=12
-    ).select_related(
-        "dyscyplina_naukowa"
-    )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
+        uczelnia=uczelnia, okres=okres, liczba_n__gte=12
+    ).select_related("dyscyplina_naukowa")
 
     total_disciplines = raportowane_dyscypliny.count()
 

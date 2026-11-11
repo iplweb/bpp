@@ -69,10 +69,10 @@ def _analyze_multi_author_works_impl(  # noqa: C901
 
     # Filtruj metryki - szukamy autorów z PEŁNYMI slotami (>=80% wypełnienia)
     # Wykluczamy metryki gdzie slot_maksymalny = 0 (autor nie ma przypisanych slotów)
-    # TODO(okres): MetrykaAutora — zawęzić do okresu, gdy dostanie FK okres
     metryki_qs = MetrykaAutora.objects.select_related(
         "autor", "dyscyplina_naukowa"
     ).filter(
+        okres=okres,
         slot_maksymalny__gt=0,
         slot_nazbierany__gte=F("slot_maksymalny") * Decimal(str(min_slot_filled)),
     )

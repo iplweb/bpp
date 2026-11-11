@@ -134,8 +134,8 @@ def solve_single_discipline_task(
             # Pobierz rodzaj_autora dla tego autora (może być wiele rekordów - bierzemy pierwszy)
             record = (
                 IloscUdzialowDlaAutoraZaCalosc.objects.filter(
-                    autor_id=author_id, dyscyplina_naukowa=dyscyplina
-                )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
+                    autor_id=author_id, dyscyplina_naukowa=dyscyplina, okres=okres
+                )
                 .order_by("-ilosc_udzialow")
                 .first()
             )
@@ -291,10 +291,8 @@ def solve_all_reported_disciplines(
 
     # Pobierz wszystkie dyscypliny raportowane (>= 12 slotów)
     raportowane_dyscypliny = LiczbaNDlaUczelni.objects.filter(
-        uczelnia=uczelnia, liczba_n__gte=12
-    ).select_related(
-        "dyscyplina_naukowa"
-    )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
+        uczelnia=uczelnia, okres=okres, liczba_n__gte=12
+    ).select_related("dyscyplina_naukowa")
 
     discipline_count = raportowane_dyscypliny.count()
     started_at = datetime.now().isoformat()
@@ -390,10 +388,8 @@ def _run_bulk_optimization(
 
     # Launch parallel optimization tasks
     raportowane_dyscypliny = LiczbaNDlaUczelni.objects.filter(
-        uczelnia=uczelnia, liczba_n__gte=12
-    ).select_related(
-        "dyscyplina_naukowa"
-    )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
+        uczelnia=uczelnia, okres=okres, liczba_n__gte=12
+    ).select_related("dyscyplina_naukowa")
 
     tasks = []
     for liczba_n_obj in raportowane_dyscypliny:
@@ -652,10 +648,8 @@ def optimize_and_unpin_task(
     logger.info("Starting bulk optimization recalculation")
 
     liczba_n_raportowane = LiczbaNDlaUczelni.objects.filter(
-        uczelnia=uczelnia, liczba_n__gte=12
-    ).select_related(
-        "dyscyplina_naukowa"
-    )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
+        uczelnia=uczelnia, okres=okres, liczba_n__gte=12
+    ).select_related("dyscyplina_naukowa")
 
     discipline_count = liczba_n_raportowane.count()
     dyscypliny_ids = list(

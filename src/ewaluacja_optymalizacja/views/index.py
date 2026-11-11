@@ -68,10 +68,11 @@ def index(request):
     liczba_n_raportowane = 0
 
     if uczelnia:
-        # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
-        liczba_n_count = LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia).count()
+        liczba_n_count = LiczbaNDlaUczelni.objects.filter(
+            uczelnia=uczelnia, okres=okres
+        ).count()
         liczba_n_raportowane = LiczbaNDlaUczelni.objects.filter(
-            uczelnia=uczelnia, liczba_n__gte=12
+            uczelnia=uczelnia, okres=okres, liczba_n__gte=12
         ).count()
 
     # Oblicz agregacje dla ostatnich 10 wierszy (dla podsumowania w tabeli)

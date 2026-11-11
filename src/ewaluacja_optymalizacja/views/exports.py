@@ -31,9 +31,10 @@ def _generate_author_sedn_workbook(author_result, run):
     autor_pk = author_result.autor_id
 
     # Pobierz MetrykaAutora
-    # TODO(okres): MetrykaAutora — zawęzić do okresu, gdy dostanie FK okres
     metryka = MetrykaAutora.objects.filter(
-        autor_id=autor_pk, dyscyplina_naukowa=run.dyscyplina_naukowa
+        autor_id=autor_pk,
+        dyscyplina_naukowa=run.dyscyplina_naukowa,
+        okres_id=run.okres_id,
     ).first()
 
     if not metryka or not metryka.prace_wszystkie:
@@ -370,9 +371,8 @@ def export_sedn_report_1(request):
     discipline_ids = [run.dyscyplina_naukowa_id for run in latest_runs]
 
     # Pobierz wszystkie metryki dla tych dyscyplin aby zbudować zbiór wybranych prac per autor
-    # TODO(okres): MetrykaAutora — zawęzić do okresu, gdy dostanie FK okres
     metryki = MetrykaAutora.objects.filter(
-        dyscyplina_naukowa_id__in=discipline_ids
+        dyscyplina_naukowa_id__in=discipline_ids, okres=okres
     ).values("autor_id", "dyscyplina_naukowa_id", "prace_nazbierane")
 
     # Buduj lookup: (autor_id, dyscyplina_id) -> set of selected rekord_ids
@@ -489,9 +489,8 @@ def export_sedn_report_2(request):
     discipline_ids = [run.dyscyplina_naukowa_id for run in latest_runs]
 
     # Buduj lookup wybranych prac
-    # TODO(okres): MetrykaAutora — zawęzić do okresu, gdy dostanie FK okres
     metryki = MetrykaAutora.objects.filter(
-        dyscyplina_naukowa_id__in=discipline_ids
+        dyscyplina_naukowa_id__in=discipline_ids, okres=okres
     ).values("autor_id", "dyscyplina_naukowa_id", "prace_nazbierane")
 
     selected_works = {}

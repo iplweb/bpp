@@ -3,7 +3,7 @@
 {# Metryki pobierane RAZ — licznik był wcześniej liczony #}
 {# osobnym COUNT-em wewnątrz pętli po metrykach (N+1). #}
 {% if pokazuj_metryki %}
-{% with metryki=autor.metryki.all %}
+{% with metryki=metryki_autora %}
 {% if metryki %}
     <div class="author-info-section">
         <h3><i class="fi-graph-trend"></i> Metryki ewaluacyjne</h3>

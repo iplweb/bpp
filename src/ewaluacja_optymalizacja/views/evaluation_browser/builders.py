@@ -192,8 +192,8 @@ def _get_filtered_publications(uczelnia, filters, reported_ids, okres=None):
         autor_dysc_pairs.add((ar.autor_id, ar.dyscyplina_naukowa_id))
     for ar in zwarte_autorzy:
         autor_dysc_pairs.add((ar.autor_id, ar.dyscyplina_naukowa_id))
-    autor_max_slots = _prefetch_autor_max_slots(autor_dysc_pairs)
-    autor_slot_nazbierany = _prefetch_autor_slot_nazbierany(autor_dysc_pairs)
+    autor_max_slots = _prefetch_autor_max_slots(autor_dysc_pairs, okres)
+    autor_slot_nazbierany = _prefetch_autor_slot_nazbierany(autor_dysc_pairs, okres)
 
     # Phase 6: Zbuduj wyniki
     publications = _build_publication_list(
