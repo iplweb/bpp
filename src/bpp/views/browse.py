@@ -55,6 +55,7 @@ from bpp.models import (
 from bpp.models.util import prefetch_dane_strony_rekordu
 from bpp.multiseek_registry import (
     CharakterFormalnyQueryObject,
+    CharakterOgolnyQueryObject,
     JednostkaNadrzednaQueryObject,
     JednostkaQueryObject,
     NazwiskoIImieQueryObject,
@@ -1012,6 +1013,7 @@ class WydawcaView(DetailView):
         return self.render_to_response(self.get_context_data(object=self.object))
 
     def get_context_data(self, **kwargs):
+        from bpp.podzial_wydawcy import podzial_wydawcy
         from bpp.wykresy_lat import wykresy_w_latach
 
         context = super().get_context_data(**kwargs)
@@ -1020,15 +1022,24 @@ class WydawcaView(DetailView):
         context["liczba_prac"] = prace.count()
         context["aliasy"] = Wydawca.objects.filter(alias_dla=wydawca).order_by("nazwa")
         context["poziomy"] = wydawca.poziom_wydawcy_set.order_by("-rok")
+        request = getattr(self, "request", None)
         if context["liczba_prac"]:
-            wykresy = wykresy_w_latach(prace, getattr(self, "request", None))
+            # Książki i rozdziały osobno (licznik, przyciski, chipy, wykresy).
+            podzial = podzial_wydawcy(prace, request)
+            context["podzial"] = podzial["podzial"]
+            wykresy = wykresy_w_latach(prace, request)
+            if podzial["wykresy_kategorii"]:
+                # „Książki/Rozdziały w latach” zastępują wspólny wykres prac.
+                wykresy = podzial["wykresy_kategorii"] + [
+                    w for w in wykresy if w["nazwa"] != "Publikacje w latach"
+                ]
             if wykresy:
                 context["wykresy"] = {"wykresy": wykresy}
                 context["szukaj_pola"] = [("wydawca", wydawca.pk)]
                 context["szukaj_tytul"] = str(wydawca)
         # Sekcje autorów/jednostek, znaczek poziomu, chipy typów publikacji.
         context["typy"] = TYPY
-        context.update(sekcje_wydawcy(wydawca, getattr(self, "request", None)))
+        context.update(sekcje_wydawcy(wydawca, request))
         return context
 
 
@@ -1328,6 +1339,10 @@ class BuildSearch(RedirectView):
             self.request.POST, "wydawca", WydawcaQueryObject
         )
         typy_box = zrob_box_z_requestu(self.request.POST, "typ", TypRekorduObject)
+        # Strona wydawcy: „książka” / „rozdział” / … (charakter ogólny).
+        charakter_ogolny_box = zrob_box_z_requestu(
+            self.request.POST, "charakter_ogolny", CharakterOgolnyQueryObject
+        )
         lata_box = zrob_box_lat(self.request)
         jednostki_box = zrob_box_z_requestu(
             self.request.POST, "jednostka", JednostkaQueryObject
@@ -1389,6 +1404,7 @@ class BuildSearch(RedirectView):
             autorzy_box,
             *wspolautorzy_boxy,
             typy_box,
+            charakter_ogolny_box,
             charakter_box,
             jednostki_box,
             wydzialy_box,
