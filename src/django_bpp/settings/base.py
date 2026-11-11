@@ -334,6 +334,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "django_bpp.context_processors.conditional_password_status",
                 "bpp.context_processors.uczelnia.uczelnia",
+                "ewaluacja_common.context_processors.okres_ewaluacji",
                 "bpp.context_processors.config.bpp_configuration",
                 "bpp.context_processors.constance_config.constance_config",
                 "bpp.context_processors.global_nav.user",

@@ -467,6 +467,10 @@
 
             {% endif %}
 
+            {# Wybór okresu ewaluacji — tylko na stronach metryk, liczby N i optymalizacji. #}
+            {% if pokaz_wybor_okresu and request.user.is_authenticated %}
+                {% include "ewaluacja_common/_wybor_okresu.html" %}
+            {% endif %}
 
         </ul>
     </div>

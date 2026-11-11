@@ -1,0 +1,28 @@
+{# Przełącznik okresu ewaluacji w górnej belce (ewaluacja_common.okres). #}
+{# Każdy okres to osobny przycisk POST — wybór trafia do sesji. #}
+<!-- djlint:disable=H025 -->
+<li class="has-submenu wybor-okresu">
+    <a href="#" data-toggle aria-haspopup="menu" title="Okres ewaluacji, dla którego liczone są dane">
+        <i class="fi-calendar" aria-hidden="true"></i> okres {{ okres_ewaluacji|default:"—" }}
+    </a>
+    <div class="menu-columns-wrapper" data-submenu>
+        <form method="post" action="{% url "ewaluacja_common:wybierz_okres" %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}"/>
+            <ul class="menu vertical column-1">
+                {% for okres in okresy_ewaluacji %}
+                    <li>
+                        <button type="submit" name="okres" value="{{ okres.pk }}"
+                                class="wybor-okresu__opcja{% if okres.pk == okres_ewaluacji.pk %} wybor-okresu__opcja--aktywna{% endif %}">
+                            {% if okres.pk == okres_ewaluacji.pk %}<i class="fi-check"></i>{% endif %}
+                            {{ okres }}
+                        </button>
+                    </li>
+                {% empty %}
+                    <li>Brak zdefiniowanych okresów — dodaj je w panelu administracyjnym.</li>
+                {% endfor %}
+            </ul>
+        </form>
+    </div>
+</li>
+<!-- djlint:enable=H025 -->
