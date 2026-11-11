@@ -16565,10 +16565,32 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+999	bpp	0456_faza_b_i3	2000-01-01 00:00:00+00
+647	easyaudit	0014_auto_20200513_0008	2000-01-01 00:00:00+00
+928	sessions	0001_initial	2000-01-01 00:00:00+00
+1007	bpp	0463_faza_b_iv2_multiseek_values	2000-01-01 00:00:00+00
+1008	bpp	0464_rodzajjednostki_autor_moze_afiliowac	2000-01-01 00:00:00+00
+1009	bpp	0454_merge_20260706_0727	2000-01-01 00:00:00+00
+1010	bpp	0444_deferred_podstawowe_miejsce_pracy	2000-01-01 00:00:00+00
+1011	bpp	0445_merge_20260621_0640	2000-01-01 00:00:00+00
+1012	bpp	0465_merge_20260707_0736	2000-01-01 00:00:00+00
+1013	deduplikator_zrodel	0002_scanzrodelforduplicates_sourceduplicatecandidate	2000-01-01 00:00:00+00
+1014	denorm	0018_alter_dirtyinstance_content_type_and_more	2000-01-01 00:00:00+00
+1015	denorm	0019_conditional_notify_during_flush	2000-01-01 00:00:00+00
+1016	ewaluacja_liczba_n	0009_iloscudzialow_uczelnia	2000-01-01 00:00:00+00
+1018	ewaluacja_metryki	0006_metrykaautora_uczelnia	2000-01-01 00:00:00+00
+1019	ewaluacja_metryki	0007_statusgenerowania_uczelnia	2000-01-01 00:00:00+00
+1020	ewaluacja_metryki	0008_metrykaautora_uczelnia_notnull	2000-01-01 00:00:00+00
+1021	ewaluacja_metryki	0009_merge_20260604_1952	2000-01-01 00:00:00+00
+1022	import_dyscyplin	0024_faza_b_ii2_repoint_wydzial	2000-01-01 00:00:00+00
+1023	import_polon	0016_importplikupolon_uczelnia	2000-01-01 00:00:00+00
+1024	import_punktacji_zrodel	0001_initial	2000-01-01 00:00:00+00
+831	nowe_raporty	0001_initial	2000-01-01 00:00:00+00
+1025	importer_publikacji	0012_importsession_uczelnia	2000-01-01 00:00:00+00
+1060	importer_publikacji	0018_importsession_rodzaj_rekordu	2000-01-01 00:00:00+00
 348	bpp	0256_auto_20210407_1151	2000-01-01 00:00:00+00
 576	pbn_api	0065_make_uzytkownik_nullable	2000-01-01 00:00:00+00
 1130	oauth2_provider	0018_resource_indicators	2000-01-01 00:00:00+00
-999	bpp	0456_faza_b_i3	2000-01-01 00:00:00+00
 1026	importer_publikacji	0013_merge_20260604_1952	2000-01-01 00:00:00+00
 1027	pbn_api	0069_add_uczelnia_fk	2000-01-01 00:00:00+00
 1028	pbn_api	0070_link_pbn_to_uczelnia	2000-01-01 00:00:00+00
@@ -17285,7 +17307,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 644	easyaudit	0011_auto_20181101_1339	2000-01-01 00:00:00+00
 645	easyaudit	0012_auto_20181018_0012	2000-01-01 00:00:00+00
 646	easyaudit	0013_auto_20190723_0126	2000-01-01 00:00:00+00
-647	easyaudit	0014_auto_20200513_0008	2000-01-01 00:00:00+00
 648	easyaudit	0015_auto_20201019_1217	2000-01-01 00:00:00+00
 649	easyaudit	0016_alter_crudevent_event_type	2000-01-01 00:00:00+00
 650	easyaudit	0017_alter_requestevent_datetime	2000-01-01 00:00:00+00
@@ -17576,7 +17597,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 920	rozbieznosci_dyscyplin	0019_recreate	2000-01-01 00:00:00+00
 921	rozbieznosci_dyscyplin	0020_recreate	2000-01-01 00:00:00+00
 922	rozbieznosci_dyscyplin	0021_alter_rozbieznosciview_options	2000-01-01 00:00:00+00
-928	sessions	0001_initial	2000-01-01 00:00:00+00
 929	snapshot_odpiec	0001_initial	2000-01-01 00:00:00+00
 930	snapshot_odpiec	0002_alter_snapshotodpiec_owner	2000-01-01 00:00:00+00
 931	taggit	0006_rename_taggeditem_content_type_object_id_taggit_tagg_content_8fc721_idx	2000-01-01 00:00:00+00
@@ -17647,26 +17667,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1004	bpp	0460_faza_b_ii2_repoint	2000-01-01 00:00:00+00
 1005	bpp	0461_faza_b_iii1_usun_rodzaj_jednostki	2000-01-01 00:00:00+00
 1006	bpp	0462_faza_b_iv1_przelicz_aktualna	2000-01-01 00:00:00+00
-1007	bpp	0463_faza_b_iv2_multiseek_values	2000-01-01 00:00:00+00
-1008	bpp	0464_rodzajjednostki_autor_moze_afiliowac	2000-01-01 00:00:00+00
-1009	bpp	0454_merge_20260706_0727	2000-01-01 00:00:00+00
-1010	bpp	0444_deferred_podstawowe_miejsce_pracy	2000-01-01 00:00:00+00
-1011	bpp	0445_merge_20260621_0640	2000-01-01 00:00:00+00
-1012	bpp	0465_merge_20260707_0736	2000-01-01 00:00:00+00
-1013	deduplikator_zrodel	0002_scanzrodelforduplicates_sourceduplicatecandidate	2000-01-01 00:00:00+00
-1014	denorm	0018_alter_dirtyinstance_content_type_and_more	2000-01-01 00:00:00+00
-1015	denorm	0019_conditional_notify_during_flush	2000-01-01 00:00:00+00
-1016	ewaluacja_liczba_n	0009_iloscudzialow_uczelnia	2000-01-01 00:00:00+00
-1018	ewaluacja_metryki	0006_metrykaautora_uczelnia	2000-01-01 00:00:00+00
-1019	ewaluacja_metryki	0007_statusgenerowania_uczelnia	2000-01-01 00:00:00+00
-1020	ewaluacja_metryki	0008_metrykaautora_uczelnia_notnull	2000-01-01 00:00:00+00
-1021	ewaluacja_metryki	0009_merge_20260604_1952	2000-01-01 00:00:00+00
-1022	import_dyscyplin	0024_faza_b_ii2_repoint_wydzial	2000-01-01 00:00:00+00
-1023	import_polon	0016_importplikupolon_uczelnia	2000-01-01 00:00:00+00
-1024	import_punktacji_zrodel	0001_initial	2000-01-01 00:00:00+00
-831	nowe_raporty	0001_initial	2000-01-01 00:00:00+00
-1025	importer_publikacji	0012_importsession_uczelnia	2000-01-01 00:00:00+00
-1060	importer_publikacji	0018_importsession_rodzaj_rekordu	2000-01-01 00:00:00+00
 1062	oauth2_provider	0002_auto_20190406_1805	2000-01-01 00:00:00+00
 1063	oauth2_provider	0003_auto_20201211_1314	2000-01-01 00:00:00+00
 1064	oauth2_provider	0004_auto_20200902_2022	2000-01-01 00:00:00+00
@@ -18103,6 +18103,21 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 314	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 315	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 316	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+407	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+408	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
+409	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+410	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+411	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+412	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+413	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+414	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+415	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+416	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+417	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+418	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+419	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+420	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+421	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -19964,7 +19979,7 @@ SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 46,
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 406, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 421, true);
 
 
 --
