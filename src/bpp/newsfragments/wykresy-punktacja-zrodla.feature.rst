@@ -1,0 +1,1 @@
+Strona źródła pokazuje na wykresach punktację MNiSW i Impact Factor samego czasopisma w latach zamiast sum punktów jego prac, a wszystkie wykresy „w latach” wyświetlają punkty i liczby prac jako liczby całkowite, a IF z dwoma miejscami po przecinku.

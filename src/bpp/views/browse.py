@@ -928,13 +928,9 @@ class ZrodloView(DetailView):
             zrodlo=self.object
         ).exists()
         if context["has_publications"]:
-            from bpp.models import Rekord
-            from bpp.wykresy_lat import wykresy_w_latach
+            from bpp.wykresy_lat import wykresy_zrodla
 
-            wykresy = wykresy_w_latach(
-                Rekord.objects.filter(zrodlo=self.object),
-                getattr(self, "request", None),
-            )
+            wykresy = wykresy_zrodla(self.object, getattr(self, "request", None))
             if wykresy:
                 context["wykresy"] = {"wykresy": wykresy}
                 context["szukaj_pola"] = [("zrodlo", self.object.pk)]

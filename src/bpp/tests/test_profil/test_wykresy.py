@@ -4,6 +4,7 @@ from decimal import Decimal
 
 import pytest
 from django.template.loader import render_to_string
+from django.utils import translation
 
 from bpp.profil_autora_dane import (
     OKNO_LAT_WYKRESU,
@@ -77,11 +78,7 @@ def test_agreguj_pusty():
 
 
 def _render(dane):
-    maks = max((w for _r, w in dane), default=0)
-    return render_to_string(
-        "browse/autor_sekcje/_wykres_lata.html",
-        {"nazwa": "Wykres", "dane": {"dane": dane, "maks": maks, "etykieta": "prac"}},
-    )
+    return _render_z_miejscami(dane, "prac", 0)
 
 
 def test_do_10_lat_slupkowy():
@@ -118,3 +115,41 @@ def test_slupkowy_ma_os_Y_z_maks_i_siatka():
     assert "autor-page__wykres-osY" in html
     assert str(maks) in html
     assert "autor-page__wykres-siatka" in html
+
+
+def _render_z_miejscami(dane, etykieta, miejsca):
+    maks = max((w for _r, w in dane), default=0)
+    return render_to_string(
+        "browse/autor_sekcje/_wykres_lata.html",
+        {
+            "nazwa": "Wykres",
+            "dane": {
+                "dane": dane,
+                "maks": maks,
+                "etykieta": etykieta,
+                "miejsca": miejsca,
+            },
+        },
+    )
+
+
+@pytest.mark.parametrize("lat", [5, 12])
+def test_punkty_bez_miejsc_po_przecinku(lat):
+    # Słupki (<=10 lat) i wariant liniowy: etykiety, oś Y, title — całkowite.
+    dane = [(2000 + i, Decimal("5303.00") + i) for i in range(lat)]
+    html = _render_z_miejscami(dane, "pkt", 0)
+    assert ",00" not in html
+    assert ".00" not in html
+    assert f"{5303 + lat - 1}" in html
+    assert "5303 pkt" in html
+
+
+@pytest.mark.parametrize("lat", [5, 12])
+def test_impact_factor_dwa_miejsca(lat):
+    dane = [(2000 + i, Decimal("1.5") + i) for i in range(lat)]
+    # Strony renderują się po polsku (przecinek dziesiętny).
+    with translation.override("pl"):
+        html = _render_z_miejscami(dane, "IF", 2)
+    assert "1,50 IF" in html
+    assert f"{lat},50<" in html  # oś Y: maks
+    assert "1.5 " not in html
