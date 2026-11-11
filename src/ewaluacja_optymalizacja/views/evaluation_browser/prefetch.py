@@ -97,7 +97,7 @@ def _prefetch_autor_max_slots(autor_dysc_pairs):
         IloscUdzialowDlaAutoraZaCalosc.objects.filter(
             autor_id__in=autor_ids,
             dyscyplina_naukowa_id__in=dysc_ids,
-        )
+        )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
         .values("autor_id", "dyscyplina_naukowa_id")
         .annotate(total=Sum("ilosc_udzialow"))
     )

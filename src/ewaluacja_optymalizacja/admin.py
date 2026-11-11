@@ -52,6 +52,7 @@ class OptimizationRunAdmin(admin.ModelAdmin):
         "id",
         "dyscyplina_naukowa",
         "uczelnia",
+        "okres",
         "started_at",
         "status",
         "total_points",
@@ -59,11 +60,12 @@ class OptimizationRunAdmin(admin.ModelAdmin):
         "low_mono_percentage",
         "view_results_link",
     )
-    list_filter = ("status", "dyscyplina_naukowa", "uczelnia", "started_at")
+    list_filter = ("okres", "status", "dyscyplina_naukowa", "uczelnia", "started_at")
     search_fields = ("dyscyplina_naukowa__nazwa", "uczelnia__nazwa")
     readonly_fields = (
         "dyscyplina_naukowa",
         "uczelnia",
+        "okres",
         "started_at",
         "finished_at",
         "status",
@@ -172,6 +174,7 @@ class DisciplineSwapOpportunityAdmin(admin.ModelAdmin):
         "created_at",
     )
     list_filter = (
+        "okres",
         "makes_sense",
         "zrodlo_discipline_match",
         "rekord_typ",

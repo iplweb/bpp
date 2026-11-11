@@ -42,6 +42,7 @@ class UnpinningCandidate:
 def calculate_author_slot_usage(
     author_id: int,
     dyscyplina: "Dyscyplina_Naukowa",
+    okres=None,
 ) -> tuple[float, float]:
     """
     Oblicz obecne użycie slotów dla autora w danej dyscyplinie.
@@ -49,6 +50,7 @@ def calculate_author_slot_usage(
     Args:
         author_id: ID autora
         dyscyplina: Obiekt Dyscyplina_Naukowa
+        okres: OkresEwaluacji (albo pk); ``None`` = okres domyślny
 
     Returns:
         Tuple (current_slots, max_slots) gdzie:
@@ -60,23 +62,29 @@ def calculate_author_slot_usage(
     from bpp.models import Cache_Punktacja_Autora_Query
     from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
+    from ...okres import filtr_lat, limity_slotow_autora, pobierz_okres
+
+    okres = pobierz_okres(okres)
+    limit_regulaminowy, _ = limity_slotow_autora(okres)
+
     # Pobierz limit slotów z IloscUdzialowDlaAutoraZaCalosc
     aggregated = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
         autor_id=author_id,
         dyscyplina_naukowa=dyscyplina,
-    ).aggregate(total_slots=Sum("ilosc_udzialow"))
+    ).aggregate(
+        total_slots=Sum("ilosc_udzialow")
+    )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
 
     if aggregated["total_slots"] is not None:
-        max_slots = min(float(aggregated["total_slots"]), 4.0)
+        max_slots = min(float(aggregated["total_slots"]), limit_regulaminowy)
     else:
-        max_slots = 4.0
+        max_slots = limit_regulaminowy
 
     # Oblicz obecne użycie slotów z cache (publikacje z przypiętą dyscypliną)
     current_slots_agg = Cache_Punktacja_Autora_Query.objects.filter(
         autor_id=author_id,
         dyscyplina=dyscyplina,
-        rekord__rok__gte=2022,
-        rekord__rok__lte=2025,
+        **filtr_lat(okres, "rekord__"),
     ).aggregate(total=Sum("slot"))
 
     current_slots = (
@@ -91,6 +99,7 @@ def calculate_author_slot_usage(
 def calculate_author_capacity(
     author_id: int,
     dyscyplina: "Dyscyplina_Naukowa",
+    okres=None,
 ) -> float:
     """
     Oblicz pozostałą pojemność slotów dla autora (4.0 - użyte sloty).
@@ -102,12 +111,15 @@ def calculate_author_capacity(
     Returns:
         Pozostała pojemność (może być ujemna jeśli autor przekroczył limit)
     """
-    current_slots, max_slots = calculate_author_slot_usage(author_id, dyscyplina)
+    current_slots, max_slots = calculate_author_slot_usage(
+        author_id, dyscyplina, okres=okres
+    )
     return max_slots - current_slots
 
 
 def identify_unpinning_candidates(  # noqa: C901
     dyscyplina: "Dyscyplina_Naukowa",
+    okres=None,
 ) -> list[UnpinningCandidate]:
     """
     Analizuj wszystkie publikacje wieloautorskie i zidentyfikuj optymalne unpinning.
@@ -116,6 +128,7 @@ def identify_unpinning_candidates(  # noqa: C901
 
     Args:
         dyscyplina: Obiekt Dyscyplina_Naukowa do analizy
+        okres: OkresEwaluacji (albo pk); ``None`` = okres domyślny
 
     Returns:
         Lista obiektów UnpinningCandidate z rekomendacjami
@@ -124,14 +137,17 @@ def identify_unpinning_candidates(  # noqa: C901
 
     from bpp.models import Autor, Cache_Punktacja_Autora_Query, Rekord
 
+    from ...okres import filtr_lat, pobierz_okres
+
+    okres = pobierz_okres(okres)
+
     logger.info(f"Rozpoczynam analizę capacity-based unpinning dla {dyscyplina.nazwa}")
 
     # Pobierz wszystkie publikacje dla tej dyscypliny
     cache_entries = (
         Cache_Punktacja_Autora_Query.objects.filter(
             dyscyplina=dyscyplina,
-            rekord__rok__gte=2022,
-            rekord__rok__lte=2025,
+            **filtr_lat(okres, "rekord__"),
         )
         .select_related("autor", "rekord")
         .exclude(pkdaut=0)
@@ -172,7 +188,9 @@ def identify_unpinning_candidates(  # noqa: C901
     ) -> tuple[float, float, float]:
         """Returns (current_slots, max_slots, remaining_capacity)"""
         if author_id not in author_capacity_cache:
-            current, max_slots = calculate_author_slot_usage(author_id, dyscyplina)
+            current, max_slots = calculate_author_slot_usage(
+                author_id, dyscyplina, okres=okres
+            )
             author_capacity_cache[author_id] = (current, max_slots)
         current, max_slots = author_capacity_cache[author_id]
         return current, max_slots, max_slots - current

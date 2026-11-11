@@ -17,15 +17,17 @@ from bpp.util import (
 from ewaluacja_metryki.models import MetrykaAutora
 
 from ..models import OptimizationRun
+from ..okres import filtr_lat
 
 
 def _get_author_works_data(run_pk, autor_pk):
     """Helper to get author works data for exports."""
     run = get_object_or_404(
-        OptimizationRun.objects.select_related("dyscyplina_naukowa"),
+        OptimizationRun.objects.select_related("dyscyplina_naukowa", "okres"),
         pk=run_pk,
     )
     autor = get_object_or_404(Autor, pk=autor_pk)
+    # TODO(okres): MetrykaAutora — zawęzić do okresu, gdy dostanie FK okres
     metryka = get_object_or_404(
         MetrykaAutora,
         autor=autor,
@@ -67,6 +69,7 @@ def _get_author_works_data(run_pk, autor_pk):
             autor=autor,
             dyscyplina_naukowa=run.dyscyplina_naukowa,
             przypieta=False,
+            **filtr_lat(run.okres, "rekord__"),
         ).select_related("rekord")
         for wa in odpiete:
             prace_odpiete.append({"rekord": wa.rekord, "typ": typ})

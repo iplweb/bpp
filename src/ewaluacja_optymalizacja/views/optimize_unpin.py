@@ -9,6 +9,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from bpp.models import Uczelnia
+from ewaluacja_common.okres import okres_dla_request
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
 from ..models import (
@@ -22,12 +23,13 @@ from .helpers import _format_time_remaining
 logger = logging.getLogger(__name__)
 
 
-def _verify_optimization_data_complete(raportowane_dyscypliny, uczelnia):
+def _verify_optimization_data_complete(raportowane_dyscypliny, uczelnia, okres=None):
     """Verify that all optimization data is fully saved to database."""
     for liczba_n_obj in raportowane_dyscypliny:
         opt_run = (
             OptimizationRun.objects.filter(
                 uczelnia=uczelnia,
+                okres=okres,
                 dyscyplina_naukowa=liczba_n_obj.dyscyplina_naukowa,
                 status="completed",
             )
@@ -165,10 +167,12 @@ def optimize_with_unpinning(request):
         messages.error(request, "Nie znaleziono uczelni w systemie.")
         return redirect("ewaluacja_optymalizacja:index")
 
+    okres = okres_dla_request(request)
+
     # Sprawdź czy wszystkie dyscypliny raportowane są przeliczone
     liczba_n_raportowane = LiczbaNDlaUczelni.objects.filter(
         uczelnia=uczelnia, liczba_n__gte=12
-    )
+    )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
 
     if liczba_n_raportowane.count() == 0:
         messages.error(
@@ -183,6 +187,7 @@ def optimize_with_unpinning(request):
         if not OptimizationRun.objects.filter(
             dyscyplina_naukowa=liczba_n_obj.dyscyplina_naukowa,
             uczelnia=uczelnia,
+            okres=okres,
             status="completed",
         ).exists():
             messages.error(
@@ -192,13 +197,13 @@ def optimize_with_unpinning(request):
             )
             return redirect("ewaluacja_optymalizacja:index")
 
-    logger.info(f"Starting optimization with unpinning for {uczelnia}")
+    logger.info(f"Starting optimization with unpinning for {uczelnia}, okres {okres}")
 
     # Uruchom zadanie Celery
     from celery_singleton import DuplicateTaskError
 
     try:
-        task = optimize_and_unpin_task.delay(uczelnia.pk)
+        task = optimize_and_unpin_task.delay(uczelnia.pk, okres_pk=okres.pk)
         # Zapisz status w modelu singleton
         status.rozpocznij(task_id=str(task.id))
     except DuplicateTaskError:
@@ -345,10 +350,12 @@ def optimize_unpin_status(request, task_id):
 
     task = AsyncResult(task_id)
     uczelnia = uczelnia_dla_odczytu(request)
+    okres = okres_dla_request(request)
 
     context = {
         "task_id": task_id,
         "dirty_count": DirtyInstance.objects.count(),
+        "okres": okres,
     }
 
     # KROK 1: Sprawdź fazę zadania z task.info (dla faz przed optymalizacją)
@@ -374,7 +381,9 @@ def optimize_unpin_status(request, task_id):
     # KROK 3: Monitoruj postęp przez bazę danych TYLKO dla fazy optimization
     raportowane_dyscypliny = LiczbaNDlaUczelni.objects.filter(
         uczelnia=uczelnia, liczba_n__gte=12
-    ).select_related("dyscyplina_naukowa")
+    ).select_related(
+        "dyscyplina_naukowa"
+    )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
 
     discipline_count = raportowane_dyscypliny.count()
     dyscypliny_ids = list(
@@ -383,12 +392,14 @@ def optimize_unpin_status(request, task_id):
 
     completed_count = OptimizationRun.objects.filter(
         uczelnia=uczelnia,
+        okres=okres,
         dyscyplina_naukowa_id__in=dyscypliny_ids,
         status="completed",
     ).count()
 
     running_count = OptimizationRun.objects.filter(
         uczelnia=uczelnia,
+        okres=okres,
         dyscyplina_naukowa_id__in=dyscypliny_ids,
         status="running",
     ).count()
@@ -409,7 +420,7 @@ def optimize_unpin_status(request, task_id):
             "All OptimizationRun records completed, verifying data integrity..."
         )
         all_data_complete = _verify_optimization_data_complete(
-            raportowane_dyscypliny, uczelnia
+            raportowane_dyscypliny, uczelnia, okres
         )
 
     # KROK 5: Określ stan na podstawie task.ready() i all_data_complete

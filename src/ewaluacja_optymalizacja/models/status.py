@@ -150,6 +150,14 @@ class StatusOptymalizacjiBulk(models.Model):
         blank=True,
         verbose_name="Uczelnia",
     )
+    okres = models.ForeignKey(
+        "ewaluacja_common.OkresEwaluacji",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        verbose_name="Okres ewaluacji",
+        help_text="Okres, którego dotyczy ostatnio uruchomione zadanie",
+    )
     data_rozpoczecia = models.DateTimeField(
         null=True,
         blank=True,
@@ -196,7 +204,7 @@ class StatusOptymalizacjiBulk(models.Model):
         obj, created = cls.objects.get_or_create(pk=1)
         return obj
 
-    def rozpocznij(self, task_id, uczelnia):
+    def rozpocznij(self, task_id, uczelnia, okres=None):
         """Oznacz rozpoczęcie zadania bulk optimization."""
         # Usuń stary plik ZIP przed nową optymalizacją
         if self.plik_zip_wszystkie_xls:
@@ -205,6 +213,7 @@ class StatusOptymalizacjiBulk(models.Model):
         self.w_trakcie = True
         self.task_id = task_id
         self.uczelnia = uczelnia
+        self.okres = okres
         self.data_rozpoczecia = timezone.now()
         self.data_zakonczenia = None
         self.ostatni_komunikat = "Rozpoczęto optymalizację całej ewaluacji"
@@ -215,6 +224,7 @@ class StatusOptymalizacjiBulk(models.Model):
             w_trakcie=self.w_trakcie,
             task_id=self.task_id,
             uczelnia=self.uczelnia,
+            okres=self.okres,
             data_rozpoczecia=self.data_rozpoczecia,
             data_zakonczenia=self.data_zakonczenia,
             ostatni_komunikat=self.ostatni_komunikat,
@@ -256,6 +266,14 @@ class StatusUnpinningAnalyzy(models.Model):
         default="",
         verbose_name="ID zadania Celery",
     )
+    okres = models.ForeignKey(
+        "ewaluacja_common.OkresEwaluacji",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        verbose_name="Okres ewaluacji",
+        help_text="Okres, którego dotyczy ostatnio uruchomione zadanie",
+    )
     data_rozpoczecia = models.DateTimeField(
         null=True,
         blank=True,
@@ -295,10 +313,11 @@ class StatusUnpinningAnalyzy(models.Model):
         obj, created = cls.objects.get_or_create(pk=1)
         return obj
 
-    def rozpocznij(self, task_id):
+    def rozpocznij(self, task_id, okres=None):
         """Oznacz rozpoczęcie zadania analizy unpinning."""
         self.w_trakcie = True
         self.task_id = task_id
+        self.okres = okres
         self.data_rozpoczecia = timezone.now()
         self.data_zakonczenia = None
         self.ostatni_komunikat = "Rozpoczęto analizę możliwości odpinania"
@@ -306,6 +325,7 @@ class StatusUnpinningAnalyzy(models.Model):
         type(self).objects.filter(pk=1).update(
             w_trakcie=self.w_trakcie,
             task_id=self.task_id,
+            okres=self.okres,
             data_rozpoczecia=self.data_rozpoczecia,
             data_zakonczenia=self.data_zakonczenia,
             ostatni_komunikat=self.ostatni_komunikat,
@@ -342,6 +362,14 @@ class StatusDisciplineSwapAnalysis(models.Model):
         blank=True,
         default="",
         verbose_name="ID zadania Celery",
+    )
+    okres = models.ForeignKey(
+        "ewaluacja_common.OkresEwaluacji",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        verbose_name="Okres ewaluacji",
+        help_text="Okres, którego dotyczy ostatnio uruchomione zadanie",
     )
     data_rozpoczecia = models.DateTimeField(
         null=True,
@@ -382,10 +410,11 @@ class StatusDisciplineSwapAnalysis(models.Model):
         obj, created = cls.objects.get_or_create(pk=1)
         return obj
 
-    def rozpocznij(self, task_id):
+    def rozpocznij(self, task_id, okres=None):
         """Oznacz rozpoczęcie zadania analizy zamiany dyscyplin."""
         self.w_trakcie = True
         self.task_id = task_id
+        self.okres = okres
         self.data_rozpoczecia = timezone.now()
         self.data_zakonczenia = None
         self.ostatni_komunikat = "Rozpoczęto analizę możliwości zamiany dyscyplin"
@@ -393,6 +422,7 @@ class StatusDisciplineSwapAnalysis(models.Model):
         type(self).objects.filter(pk=1).update(
             w_trakcie=self.w_trakcie,
             task_id=self.task_id,
+            okres=self.okres,
             data_rozpoczecia=self.data_rozpoczecia,
             data_zakonczenia=self.data_zakonczenia,
             ostatni_komunikat=self.ostatni_komunikat,
@@ -435,6 +465,14 @@ class StatusPrzegladarkaRecalc(models.Model):
         null=True,
         blank=True,
         verbose_name="Uczelnia",
+    )
+    okres = models.ForeignKey(
+        "ewaluacja_common.OkresEwaluacji",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        verbose_name="Okres ewaluacji",
+        help_text="Okres, którego dotyczy ostatnio uruchomione zadanie",
     )
     data_rozpoczecia = models.DateTimeField(
         null=True,
@@ -481,11 +519,12 @@ class StatusPrzegladarkaRecalc(models.Model):
         obj, created = cls.objects.get_or_create(pk=1)
         return obj
 
-    def rozpocznij(self, task_id, uczelnia, punkty_przed):
+    def rozpocznij(self, task_id, uczelnia, punkty_przed, okres=None):
         """Oznacz rozpoczęcie przeliczania z przeglądarki."""
         self.w_trakcie = True
         self.task_id = task_id
         self.uczelnia = uczelnia
+        self.okres = okres
         self.data_rozpoczecia = timezone.now()
         self.data_zakonczenia = None
         self.punkty_przed = punkty_przed
@@ -495,6 +534,7 @@ class StatusPrzegladarkaRecalc(models.Model):
             w_trakcie=self.w_trakcie,
             task_id=self.task_id,
             uczelnia=self.uczelnia,
+            okres=self.okres,
             data_rozpoczecia=self.data_rozpoczecia,
             data_zakonczenia=self.data_zakonczenia,
             punkty_przed=self.punkty_przed,

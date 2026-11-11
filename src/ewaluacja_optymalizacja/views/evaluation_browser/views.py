@@ -14,6 +14,7 @@ from bpp.models import (
     Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte_Autor,
 )
+from ewaluacja_common.okres import okres_dla_request
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
 from ...models import (
@@ -30,6 +31,14 @@ from .discipline_summary import (
 )
 
 
+def _punkty_przed(status, okres):
+    """Punkty „przed" z singletonu statusu — tylko gdy dotyczą tego okresu
+    (diff z innego okresu nie ma sensu)."""
+    if status.okres_id is not None and status.okres_id != okres.pk:
+        return {}
+    return status.punkty_przed
+
+
 @login_required
 def evaluation_browser(request):
     """
@@ -41,15 +50,17 @@ def evaluation_browser(request):
         messages.error(request, "Nie znaleziono uczelni.")
         return redirect("ewaluacja_optymalizacja:index")
 
+    okres = okres_dla_request(request)
     status = StatusPrzegladarkaRecalc.get_or_create()
     # Pokazuj diff tylko gdy przeliczanie zakończone (w_trakcie=False)
     show_diff = not status.w_trakcie
     discipline_summary = _get_discipline_summary(
-        uczelnia, status.punkty_przed, show_diff
+        uczelnia, _punkty_przed(status, okres), show_diff, okres=okres
     )
-    filters = _get_filter_options(uczelnia)
+    filters = _get_filter_options(uczelnia, okres)
 
     context = {
+        "okres": okres,
         "uczelnia": uczelnia,
         "discipline_summary": discipline_summary,
         "filters": filters,
@@ -70,11 +81,12 @@ def browser_summary(request):
     if not uczelnia:
         return HttpResponseBadRequest("Nie znaleziono uczelni")
 
+    okres = okres_dla_request(request)
     status = StatusPrzegladarkaRecalc.get_or_create()
     # Pokazuj diff tylko gdy przeliczanie zakończone (w_trakcie=False)
     show_diff = not status.w_trakcie
     discipline_summary = _get_discipline_summary(
-        uczelnia, status.punkty_przed, show_diff
+        uczelnia, _punkty_przed(status, okres), show_diff, okres=okres
     )
 
     return render(
@@ -103,7 +115,9 @@ def browser_table(request):
         "punkty_do": request.GET.get("punkty_do"),
     }
 
-    publications = _get_filtered_publications(uczelnia, filters, reported_ids)
+    publications = _get_filtered_publications(
+        uczelnia, filters, reported_ids, okres=okres_dla_request(request)
+    )
 
     page = request.GET.get("page", 1)
     paginator = Paginator(publications, 50)
@@ -149,7 +163,8 @@ def browser_toggle_pin(request, model_type, pk):
     autor_rekord.save()
 
     # Zapisz punkty przed przeliczeniem
-    punkty_przed = _snapshot_discipline_points(uczelnia)
+    okres = okres_dla_request(request)
+    punkty_przed = _snapshot_discipline_points(uczelnia, okres)
 
     # Uruchom przeliczanie
     with transaction.atomic():
@@ -159,8 +174,8 @@ def browser_toggle_pin(request, model_type, pk):
                 "Przeliczanie już trwa. Poczekaj na zakończenie."
             )
 
-        task = solve_all_reported_disciplines.delay(uczelnia.pk)
-        status.rozpocznij(str(task.id), uczelnia, punkty_przed)
+        task = solve_all_reported_disciplines.delay(uczelnia.pk, okres_pk=okres.pk)
+        status.rozpocznij(str(task.id), uczelnia, punkty_przed, okres=okres)
 
     action = "przypięto" if autor_rekord.przypieta else "odpięto"
 
@@ -228,7 +243,8 @@ def browser_swap_discipline(request, model_type, pk):
     autor_rekord.save()
 
     # Zapisz punkty i uruchom przeliczanie
-    punkty_przed = _snapshot_discipline_points(uczelnia)
+    okres = okres_dla_request(request)
+    punkty_przed = _snapshot_discipline_points(uczelnia, okres)
 
     with transaction.atomic():
         status = StatusPrzegladarkaRecalc.get_or_create()
@@ -237,8 +253,8 @@ def browser_swap_discipline(request, model_type, pk):
                 "Przeliczanie już trwa. Poczekaj na zakończenie."
             )
 
-        task = solve_all_reported_disciplines.delay(uczelnia.pk)
-        status.rozpocznij(str(task.id), uczelnia, punkty_przed)
+        task = solve_all_reported_disciplines.delay(uczelnia.pk, okres_pk=okres.pk)
+        status.rozpocznij(str(task.id), uczelnia, punkty_przed, okres=okres)
 
     return render(
         request,
@@ -262,15 +278,17 @@ def browser_recalc_status(request):
         return HttpResponseBadRequest("Nie znaleziono uczelni")
 
     status = StatusPrzegladarkaRecalc.get_or_create()
+    okres = status.okres if status.okres_id else okres_dla_request(request)
 
     # Policz postęp
     raportowane = LiczbaNDlaUczelni.objects.filter(
         uczelnia=uczelnia,
         liczba_n__gte=12,
-    ).count()
+    ).count()  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
 
     completed = OptimizationRun.objects.filter(
         uczelnia=uczelnia,
+        okres=okres,
         status="completed",
     ).count()
 

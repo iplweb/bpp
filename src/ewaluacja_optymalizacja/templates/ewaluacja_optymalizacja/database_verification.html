@@ -49,7 +49,7 @@
         </div>
 
         <!-- Tabela z problemowymi rekordami -->
-        <h3>Problematyczne przypisania (lata 2022-2025)</h3>
+        <h3>Problematyczne przypisania (lata {{ okres_ewaluacji.rok_od }}-{{ okres_ewaluacji.rok_do }})</h3>
         <table>
             <thead>
                 <tr>
@@ -100,7 +100,7 @@
         <div class="callout success">
             <h4><span class="fi-check"></span> Brak prac ze slotami poniżej 0.1</h4>
             <p class="ewaluacja-optymalizacja__no-margin-bottom">
-                Nie znaleziono prac ze slotami poniżej 0.1 w latach 2022-2025.
+                Nie znaleziono prac ze slotami poniżej 0.1 w latach {{ okres_ewaluacji.rok_od }}-{{ okres_ewaluacji.rok_do }}.
             </p>
         </div>
 
@@ -115,7 +115,7 @@
         <hr class="ewaluacja-optymalizacja__section-separator">
         <h2><span class="fi-calendar"></span> Brak daty oświadczenia</h2>
         <p>
-            Poniższe liczby pokazują publikacje od roku 2022, gdzie autor ma ustawioną dyscyplinę naukową,
+            Poniższe liczby pokazują publikacje z lat {{ okres_ewaluacji.rok_od }}-{{ okres_ewaluacji.rok_do }}, gdzie autor ma ustawioną dyscyplinę naukową,
             ale nie ma uzupełnionej daty oświadczenia.
         </p>
 
@@ -128,14 +128,14 @@
 
         <div class="button-group">
             {% if brak_oswiadczenia_ciagle_count > 0 %}
-            <a href="{% url 'admin:bpp_wydawnictwo_ciagle_changelist' %}?rok__gte=2022&autorzy_set__dyscyplina_naukowa__isnull=False&autorzy_set__data_oswiadczenia__isnull=True"
+            <a href="{% url 'admin:bpp_wydawnictwo_ciagle_changelist' %}?rok__gte={{ okres_ewaluacji.rok_od }}&rok__lte={{ okres_ewaluacji.rok_do }}&autorzy_set__dyscyplina_naukowa__isnull=False&autorzy_set__data_oswiadczenia__isnull=True"
                class="button"
                target="_blank">
                 <span class="fi-page-multiple"></span> Wydawnictwa ciągłe w admin
             </a>
             {% endif %}
             {% if brak_oswiadczenia_zwarte_count > 0 %}
-            <a href="{% url 'admin:bpp_wydawnictwo_zwarte_changelist' %}?rok__gte=2022&autorzy_set__dyscyplina_naukowa__isnull=False&autorzy_set__data_oswiadczenia__isnull=True"
+            <a href="{% url 'admin:bpp_wydawnictwo_zwarte_changelist' %}?rok__gte={{ okres_ewaluacji.rok_od }}&rok__lte={{ okres_ewaluacji.rok_do }}&autorzy_set__dyscyplina_naukowa__isnull=False&autorzy_set__data_oswiadczenia__isnull=True"
                class="button"
                target="_blank">
                 <span class="fi-page-multiple"></span> Wydawnictwa zwarte w admin

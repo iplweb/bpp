@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
 from bpp.models import Uczelnia
+from ewaluacja_common.okres import okres_dla_request
 
 from .helpers import _get_discipline_pin_stats
 
@@ -16,7 +17,8 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def reset_discipline_pins(request, pk):
-    """Zleca reset przypięć dyscypliny (2022-2025) + optymalizację w tle.
+    """Zleca reset przypięć dyscypliny (w latach wybranego okresu ewaluacji)
+    + optymalizację w tle.
 
     Widok jest lekki: waliduje wejście, sprawdza czy jest co resetować, po
     czym uruchamia zadanie Celery i przekierowuje na stronę statusu. Cała
@@ -31,14 +33,15 @@ def reset_discipline_pins(request, pk):
     from ..tasks import reset_discipline_pins_task
 
     dyscyplina = get_object_or_404(Dyscyplina_Naukowa, pk=pk)
+    okres = okres_dla_request(request)
 
     # Sprawdź czy jest w ogóle co resetować (szybki warunek, w requeście).
-    stats = _get_discipline_pin_stats(dyscyplina)
+    stats = _get_discipline_pin_stats(dyscyplina, okres)
     if stats["unpinned"] == 0:
         messages.warning(
             request,
             f"Dyscyplina '{dyscyplina.nazwa}' nie ma odpiętych rekordów "
-            "w latach 2022-2025.",
+            f"w latach {okres}.",
         )
         return redirect("ewaluacja_optymalizacja:index")
 
@@ -49,7 +52,7 @@ def reset_discipline_pins(request, pk):
 
     try:
         task = reset_discipline_pins_task.delay(
-            uczelnia.pk, dyscyplina.pk, request.user.pk
+            uczelnia.pk, dyscyplina.pk, request.user.pk, okres_pk=okres.pk
         )
     except DuplicateTaskError:
         messages.error(
@@ -75,7 +78,8 @@ def reset_discipline_pins(request, pk):
 def reset_all_pins(request):
     """
     Uruchamia zadanie Celery do resetowania przypięć dla wszystkich autorów uczelni.
-    Resetuje przypięcia dla rekordów 2022-2025 gdzie autor ma dyscyplinę.
+    Resetuje przypięcia dla rekordów z lat wybranego okresu ewaluacji, gdzie
+    autor ma dyscyplinę.
     """
     from celery_singleton import DuplicateTaskError
 
@@ -87,12 +91,13 @@ def reset_all_pins(request):
         messages.error(request, "Nie znaleziono uczelni w systemie.")
         return redirect("ewaluacja_optymalizacja:index")
 
-    logger.info(f"Starting reset all pins for {uczelnia}")
+    okres = okres_dla_request(request)
+    logger.info(f"Starting reset all pins for {uczelnia}, okres {okres}")
 
     # Uruchom zadanie Celery
     # Sprawdź czy nie ma już uruchomionego zadania
     try:
-        task = reset_all_pins_task.delay(uczelnia.pk)
+        task = reset_all_pins_task.delay(uczelnia.pk, okres_pk=okres.pk)
     except DuplicateTaskError:
         messages.error(
             request,
@@ -118,6 +123,7 @@ def reset_all_pins_status(request, task_id):
     context = {
         "task_id": task_id,
         "dirty_count": DirtyInstance.objects.count(),
+        "okres": okres_dla_request(request),
     }
 
     # Pobierz informacje o zadaniu

@@ -10,6 +10,7 @@ from django.urls import reverse
 from bpp.models import Autor, Dyscyplina_Naukowa, Uczelnia
 from bpp.models.fields import TupleField
 from ewaluacja_common.models import Rodzaj_Autora
+from ewaluacja_optymalizacja.okres import domyslny_okres_pk
 
 
 class OptimizationRun(models.Model):
@@ -41,6 +42,12 @@ class OptimizationRun(models.Model):
         help_text="Uczelnia dla której wykonano optymalizację (opcjonalne dla pojedynczych dyscyplin)",
     )
 
+    okres = models.ForeignKey(
+        "ewaluacja_common.OkresEwaluacji",
+        on_delete=models.PROTECT,
+        default=domyslny_okres_pk,
+        verbose_name="Okres ewaluacji",
+    )
     started_at = models.DateTimeField(auto_now_add=True, verbose_name="Rozpoczęto")
     finished_at = models.DateTimeField(null=True, blank=True, verbose_name="Zakończono")
 

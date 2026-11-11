@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
 from bpp.models import Uczelnia
+from ewaluacja_common.okres import okres_dla_request
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +155,10 @@ def analyze_unpinning_opportunities(request):
         )
         return redirect("ewaluacja_optymalizacja:index")
 
+    okres = okres_dla_request(request)
+
     # Usuń stare metryki
+    # TODO(okres): MetrykaAutora — zawęzić do okresu, gdy dostanie FK okres
     metryki_count = MetrykaAutora.objects.count()
     if metryki_count > 0:
         logger.info(f"Deleting {metryki_count} old metrics before recalculation...")
@@ -165,12 +169,17 @@ def analyze_unpinning_opportunities(request):
     # Pierwszy task (metryki) zwraca wynik, który jest przekazywany do drugiego (unpinning wrapper)
     workflow = chain(
         generuj_metryki_task_parallel.s(
+            rok_min=okres.rok_od,
+            rok_max=okres.rok_do,
             rodzaje_autora=get_default_rodzaje_autora(),
             nadpisz=True,
             przelicz_liczbe_n=True,
         ),  # Przelicz metryki z jawnymi parametrami
         run_unpinning_after_metrics_wrapper.s(  # Potem uruchom unpinning
-            uczelnia_id=uczelnia.pk, dyscyplina_id=None, min_slot_filled=0.8
+            uczelnia_id=uczelnia.pk,
+            dyscyplina_id=None,
+            min_slot_filled=0.8,
+            okres_pk=okres.pk,
         ),
     )
 
@@ -183,7 +192,7 @@ def analyze_unpinning_opportunities(request):
     )
 
     # Zapisz status w modelu singleton
-    status_unpinning.rozpocznij(task_id=str(result.id))
+    status_unpinning.rozpocznij(task_id=str(result.id), okres=okres)
 
     messages.info(
         request,

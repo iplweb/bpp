@@ -8,14 +8,16 @@ from celery_singleton import Singleton
 
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 
+from ..okres import filtr_lat, pobierz_okres
 from .helpers import _wait_for_denorm
 from .optimization import _run_bulk_optimization
 
 logger = logging.getLogger(__name__)
 
 
-def _reset_pins_for_authors(autorzy_ids, task, snapshot_pk, logger_func):
-    """Reset pins for all authors in years 2022-2025."""
+def _reset_pins_for_authors(autorzy_ids, task, snapshot_pk, logger_func, okres=None):
+    """Przypnij wszystkie przypisania autorów w pracach z lat okresu ewaluacji
+    (``None`` = okres domyślny). Prac spoza okresu NIE dotyka."""
     from django.db.models import Q
 
     from bpp.models import (
@@ -24,9 +26,8 @@ def _reset_pins_for_authors(autorzy_ids, task, snapshot_pk, logger_func):
         Wydawnictwo_Zwarte_Autor,
     )
 
-    base_filter = Q(
-        rekord__rok__gte=2022, rekord__rok__lte=2025, autor_id__in=autorzy_ids
-    )
+    okres = pobierz_okres(okres)
+    base_filter = Q(**filtr_lat(okres, "rekord__"), autor_id__in=autorzy_ids)
 
     updated_count = 0
 
@@ -108,9 +109,15 @@ def _reset_pins_for_authors(autorzy_ids, task, snapshot_pk, logger_func):
     time_limit=1800,
 )
 def reset_discipline_pins_task(
-    self, uczelnia_id, dyscyplina_id, owner_id=None, algorithm_mode="two-phase"
+    self,
+    uczelnia_id,
+    dyscyplina_id,
+    owner_id=None,
+    algorithm_mode="two-phase",
+    okres_pk=None,
 ):
-    """Reset przypięć JEDNEJ dyscypliny (2022-2025) + optymalizacja — w tle.
+    """Reset przypięć JEDNEJ dyscypliny w latach okresu ewaluacji
+    (``okres_pk``; ``None`` = okres domyślny) + optymalizacja — w tle.
 
     Wydzielone z widoku ``reset_discipline_pins``: wcześniej request wisiał
     do 10 minut, śpiąc w pętli i odpytując globalne ``DirtyInstance.count()``
@@ -138,6 +145,7 @@ def reset_discipline_pins_task(
 
     uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
     dyscyplina = Dyscyplina_Naukowa.objects.get(pk=dyscyplina_id)
+    okres = pobierz_okres(okres_pk)
     owner = (
         get_user_model().objects.filter(pk=owner_id).first()
         if owner_id is not None
@@ -148,7 +156,7 @@ def reset_discipline_pins_task(
 
     autorzy_ids = set(
         Autor_Dyscyplina.objects.filter(
-            rok__gte=2022, rok__lte=2025, dyscyplina_naukowa=dyscyplina
+            **filtr_lat(okres), dyscyplina_naukowa=dyscyplina
         )
         .values_list("autor_id", flat=True)
         .distinct()
@@ -162,7 +170,7 @@ def reset_discipline_pins_task(
     with transaction.atomic():
         snapshot = SnapshotOdpiec.objects.create(
             owner=owner,
-            comment=f"przed resetem przypięć - {dyscyplina.nazwa}",
+            comment=f"przed resetem przypięć - {dyscyplina.nazwa} ({okres})",
         )
 
     self.update_state(
@@ -171,8 +179,7 @@ def reset_discipline_pins_task(
     )
 
     base_filter = Q(
-        rekord__rok__gte=2022,
-        rekord__rok__lte=2025,
+        **filtr_lat(okres, "rekord__"),
         dyscyplina_naukowa=dyscyplina,
         autor_id__in=autorzy_ids,
     )
@@ -203,7 +210,7 @@ def reset_discipline_pins_task(
     # Optymalizacja tej dyscypliny (jeśli ma zdefiniowaną liczbę N).
     liczba_n_obj = LiczbaNDlaUczelni.objects.filter(
         uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina
-    ).first()
+    ).first()  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
 
     optymalizacja_uruchomiona = False
     if liczba_n_obj is not None:
@@ -223,6 +230,7 @@ def reset_discipline_pins_task(
             dyscyplina.pk,
             float(liczba_n_obj.liczba_n),
             algorithm_mode=algorithm_mode,
+            okres_pk=okres.pk,
         )
         optymalizacja_uruchomiona = True
     else:
@@ -250,14 +258,16 @@ def reset_discipline_pins_task(
     bind=True,
     time_limit=1800,
 )
-def reset_all_pins_task(self, uczelnia_id, algorithm_mode="two-phase"):
+def reset_all_pins_task(self, uczelnia_id, algorithm_mode="two-phase", okres_pk=None):
     """
-    Resetuje przypięcia dla wszystkich rekordów 2022-2025 gdzie autor ma dyscyplinę,
-    jest zatrudniony i afiliuje.
+    Resetuje przypięcia dla wszystkich rekordów z lat okresu ewaluacji, gdzie
+    autor ma dyscyplinę, jest zatrudniony i afiliuje.
 
     Args:
         uczelnia_id: ID uczelni dla której resetować przypięcia
         algorithm_mode: "two-phase" (default) or "single-phase"
+        okres_pk: PK okresu ewaluacji (``None`` = okres domyślny); rekordy
+            spoza lat okresu NIE są ruszane
 
     Returns:
         Dictionary z informacją o wykonanych operacjach
@@ -271,22 +281,23 @@ def reset_all_pins_task(self, uczelnia_id, algorithm_mode="two-phase"):
     from snapshot_odpiec.models import SnapshotOdpiec
 
     uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
+    okres = pobierz_okres(okres_pk)
 
-    logger.info(f"Starting reset_all_pins_task for {uczelnia}")
+    logger.info(f"Starting reset_all_pins_task for {uczelnia}, okres {okres}")
 
     # Update task state
     self.update_state(state="PROGRESS", meta={"step": "collecting", "progress": 10})
 
-    # Pobierz wszystkich autorów którzy mają Autor_Dyscyplina w latach 2022-2025
+    # Pobierz wszystkich autorów którzy mają Autor_Dyscyplina w latach okresu
     # dla dowolnej dyscypliny
     autorzy_ids = set(
-        Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+        Autor_Dyscyplina.objects.filter(**filtr_lat(okres))
         .values_list("autor_id", flat=True)
         .distinct()
     )
 
     logger.info(
-        f"Found {len(autorzy_ids)} authors with Autor_Dyscyplina in years 2022-2025"
+        f"Found {len(autorzy_ids)} authors with Autor_Dyscyplina in okres {okres}"
     )
 
     # Update task state
@@ -303,7 +314,10 @@ def reset_all_pins_task(self, uczelnia_id, algorithm_mode="two-phase"):
         # Utwórz snapshot przed resetowaniem
         snapshot = SnapshotOdpiec.objects.create(
             owner=None,  # System tworzy snapshot
-            comment=f"przed resetem przypięć - wszystkie dyscypliny uczelni {uczelnia}",
+            comment=(
+                f"przed resetem przypięć - wszystkie dyscypliny uczelni {uczelnia} "
+                f"({okres})"
+            ),
         )
 
         logger.info(
@@ -324,7 +338,7 @@ def reset_all_pins_task(self, uczelnia_id, algorithm_mode="two-phase"):
 
     # Reset pins for all models
     count_ciagle, count_zwarte, count_patent, updated_count = _reset_pins_for_authors(
-        autorzy_ids, self, snapshot.pk, logger.info
+        autorzy_ids, self, snapshot.pk, logger.info, okres=okres
     )
 
     # Wait for denormalization
@@ -349,7 +363,9 @@ def reset_all_pins_task(self, uczelnia_id, algorithm_mode="two-phase"):
 
     liczba_n_raportowane = LiczbaNDlaUczelni.objects.filter(
         uczelnia=uczelnia, liczba_n__gte=12
-    ).select_related("dyscyplina_naukowa")
+    ).select_related(
+        "dyscyplina_naukowa"
+    )  # TODO(okres): + okres=okres po dodaniu FK w ewaluacja_liczba_n
 
     discipline_count = liczba_n_raportowane.count()
     dyscypliny_ids = list(
@@ -378,6 +394,7 @@ def reset_all_pins_task(self, uczelnia_id, algorithm_mode="two-phase"):
             },
             logger_func=logger.info,
             algorithm_mode=algorithm_mode,
+            okres=okres,
         )
 
     result = {

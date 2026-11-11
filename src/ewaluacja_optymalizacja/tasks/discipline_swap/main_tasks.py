@@ -20,8 +20,7 @@ logger = logging.getLogger(__name__)
 def analyze_discipline_swap_task(
     self,
     uczelnia_id,
-    rok_min=2022,
-    rok_max=2025,
+    okres_pk=None,
 ):
     """
     Analizuje publikacje pod kątem możliwości zamiany dyscyplin.
@@ -33,29 +32,30 @@ def analyze_discipline_swap_task(
 
     Args:
         uczelnia_id: ID uczelni
-        rok_min: Minimalny rok analizy (domyślnie 2022)
-        rok_max: Maksymalny rok analizy (domyślnie 2025)
+        okres_pk: PK okresu ewaluacji (``None`` = okres domyślny); analizowane
+            są publikacje z lat tego okresu
 
     Returns:
         Dictionary z wynikami analizy
     """
     from ...models import StatusDisciplineSwapAnalysis
+    from ...okres import pobierz_okres
 
+    okres = pobierz_okres(okres_pk)
     logger.info(
         f"Starting discipline swap analysis for uczelnia_id={uczelnia_id}, "
-        f"years {rok_min}-{rok_max}"
+        f"okres {okres}"
     )
 
     # Oznacz status jako w trakcie
     status = StatusDisciplineSwapAnalysis.get_or_create()
-    status.rozpocznij(task_id=str(self.request.id))
+    status.rozpocznij(task_id=str(self.request.id), okres=okres)
 
     try:
         result = _analyze_discipline_swap_impl(
             self,
             uczelnia_id,
-            rok_min=rok_min,
-            rok_max=rok_max,
+            okres=okres,
         )
         return result
 

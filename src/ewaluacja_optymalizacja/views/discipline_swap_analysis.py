@@ -11,6 +11,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 
 from bpp.models import Uczelnia
+from ewaluacja_common.okres import okres_dla_request
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ def analyze_discipline_swap_opportunities(request):
     """
     Uruchamia zadanie analizy możliwości zamiany dyscyplin.
 
-    Analizuje publikacje z lat 2022-2025 gdzie zamiana dyscypliny
+    Analizuje publikacje z lat wybranego okresu ewaluacji, gdzie zamiana dyscypliny
     autora z głównej na subdyscyplinę (lub odwrotnie) zwiększa
     całkowitą punktację.
     """
@@ -60,7 +61,9 @@ def analyze_discipline_swap_opportunities(request):
 
     # Uruchom zadanie
     try:
-        task = analyze_discipline_swap_task.delay(uczelnia.pk)
+        task = analyze_discipline_swap_task.delay(
+            uczelnia.pk, okres_pk=okres_dla_request(request).pk
+        )
     except DuplicateTaskError:
         messages.error(
             request, "Zadanie analizy zamiany dyscyplin jest już uruchomione."
