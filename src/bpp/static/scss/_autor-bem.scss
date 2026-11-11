@@ -1109,6 +1109,51 @@
   background: #b8860b;
 }
 
+// Ramka „Ewaluacja 2022–2025” na stronach źródła i wydawcy: ile punktów
+// daje publikacja jednego autora (bpp.punkty_ewaluacji).
+.callout.punkty-ewaluacji {
+  border-left: 4px solid #b8860b;
+  background: #fffaf0;
+  margin: 1rem 0;
+}
+
+.punkty-ewaluacji__naglowek {
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 0.25rem;
+}
+
+.punkty-ewaluacji__glowne {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.punkty-ewaluacji__liczba {
+  font-size: 1.25rem;
+  color: #8a5a00;
+  white-space: nowrap;
+}
+
+.punkty-ewaluacji__lata {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  font-size: 0.9rem;
+  color: #555;
+
+  span {
+    font-weight: 600;
+  }
+}
+
+.punkty-ewaluacji__przypis {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: #777;
+}
+
 // Sekcje „Najczęściej publikujący autorzy” / „Jednostki” pod wyszukiwarką
 // na stronach źródła i wydawcy.
 .bpp-sekcje-top {
