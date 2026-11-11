@@ -1,0 +1,1 @@
+Strony przeglądania (źródła, wydawcy, lata, rok) odmieniają liczebniki poprawnie (np. „12 publikacji”, „22 publikacje”), a lista źródeł liczy prace jednym zapytaniem zamiast osobnych zapytań dla każdej karty.
