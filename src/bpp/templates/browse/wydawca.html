@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{# Strona wydawcy — układ jak strona źródła (browse/zrodlo.html): nagłówek, #}
+{# „Pokaż wszystkie publikacje”, wykresy w latach, wyszukiwarka z selektorem #}
+{# lat, po prawej identyfikator PBN, poziomy wydawcy i aliasy. #}
+{# Prace aliasów należą do wydawcy (Wydawca.wszystkie_pk). #}
+
+{% block extratitle %}
+    {{ wydawca.nazwa }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "bpp:browse_wydawcy" %}">Wydawcy</a></li>
+    <li class="current">{{ wydawca.nazwa }}</li>
+{% endblock %}
+
+{% block content %}
+    <div class="source-header">
+        <div class="grid-x grid-margin-x align-middle">
+            <div class="cell auto">
+                <h1>{{ wydawca.nazwa }}</h1>
+                <p class="wydawca__podsumowanie">
+                    <i class="fi-page-multiple"></i>
+                    {{ liczba_prac }} {% if liczba_prac == 1 %}publikacja{% elif liczba_prac < 5 %}publikacje{% else %}publikacji{% endif %} w bazie
+                </p>
+            </div>
+            <div class="cell shrink">
+                {% include "browse/go_to_admin_change.html" with url="admin:bpp_wydawca_change" pk=wydawca.pk group="wprowadzanie danych" %}
+            </div>
+        </div>
+    </div>
+
+    {% if liczba_prac %}
+        <div class="source-quick-actions">
+            <form method="post" action="{% url "bpp:browse_build_search" %}" style="display: inline;">
+                {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt #}
+                {# (zapis tylko do własnej sesji), by strona weszła do cache. #}
+                <input type="hidden" name="wydawca" value="{{ wydawca.pk }}"/>
+                <input type="hidden" name="suggested-title" value="{{ wydawca }}"/>
+                <button type="submit" class="button button-show-all">
+                    <i class="fi-list-bullet"></i>Pokaż wszystkie publikacje
+                </button>
+            </form>
+        </div>
+    {% else %}
+        <div class="callout warning">
+            <p><strong>Brak publikacji</strong> — w bazie nie ma jeszcze prac tego wydawcy.</p>
+        </div>
+    {% endif %}
+
+    {# Wykresy w latach (wspólne ze stroną autora, jednostki i źródła). #}
+    {% if wykresy %}
+        <div class="bpp-wykresy-lat">
+            {% include "browse/autor_sekcje/wykresy.html" with dane=wykresy %}
+        </div>
+    {% endif %}
+
+    <div class="grid-x grid-margin-x">
+        {% with lata=wydawca.prace_w_latach %}
+        <div class="cell {% if wydawca.pbn_uid_id or poziomy or aliasy %}large-8{% else %}large-12{% endif %} medium-12">
+            {% if lata %}
+            <div class="search-container">
+                <div class="search-header">
+                    <h3>
+                        <i class="fi-magnifying-glass"></i>Wyszukaj u wydawcy
+                    </h3>
+                    <p>Znajdź publikacje wydawcy „{{ wydawca.nazwa }}”</p>
+                </div>
+
+                <form method="post" action="{% url "bpp:browse_build_search" %}" class="browserForm">
+                    {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt. #}
+                    <input type="hidden" name="wydawca" value="{{ wydawca.pk }}"/>
+
+                    <div class="card">
+                        <div class="card-section">
+                            <h6><i class="fi-calendar"></i>Wydane w latach:</h6>
+                            {% include "browse/_selektor_lat.html" %}
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-section">
+                            <h6><i class="fi-page-edit"></i>Tytuł raportu:</h6>
+                            <input type="text" name="suggested-title" value="{{ wydawca }}"/>
+                        </div>
+                    </div>
+
+                    <div class="search-button-wrapper">
+                        <button type="submit" class="button button-search">
+                            <i class="fi-magnifying-glass"></i>Szukaj publikacji
+                        </button>
+                    </div>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+        {% endwith %}
+
+        {% if wydawca.pbn_uid_id or poziomy or aliasy %}
+        <div class="cell large-4 medium-12 source-sidebar">
+            {% if wydawca.pbn_uid_id %}
+                <div class="callout external-ids-panel">
+                    <h6><i class="fi-link"></i>Identyfikatory zewnętrzne</h6>
+                    <div class="callout id-badge">
+                        <div class="id-label">PBN UID</div>
+                        <a href="{{ uczelnia.pbn_api_root }}/core/#/publisher/view/{{ wydawca.pbn_uid_id }}/current"
+                           target="_blank"
+                           rel="noopener"
+                           title="PBN UID: {{ wydawca.pbn_uid_id }}">{{ wydawca.pbn_uid_id }}</a>
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if poziomy %}
+                <div class="callout secondary wydawca__poziomy">
+                    <h6><i class="fi-star"></i>Poziom wydawcy (wykaz MNiSW)</h6>
+                    <table class="unstriped wydawca__poziomy-tabela">
+                        <tbody>
+                            {% for p in poziomy %}
+                                <tr>
+                                    <td>{{ p.rok }}</td>
+                                    <td>{{ p.get_poziom_display }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+
+            {% if aliasy %}
+                <div class="callout secondary wydawca__aliasy">
+                    <h6><i class="fi-tags"></i>Także jako</h6>
+                    <ul class="no-bullet">
+                        {% for alias in aliasy %}
+                            <li>{{ alias.nazwa }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+{% endblock %}

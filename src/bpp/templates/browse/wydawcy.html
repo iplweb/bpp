@@ -1,0 +1,208 @@
+{# Indeks wydawców A–Z — kopia układu indeksu źródeł (browse/zrodla.html). #}
+{% extends "base.html" %}
+
+{% load columns %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li {% if wybrana == None %}class="current"{% endif %}>
+        {% if wybrana != None %}<a href="{% url "bpp:browse_wydawcy" %}">{% endif %}
+        Wydawcy
+        {% if wybrana != None %}</a>{% endif %}
+    </li>
+    {% if wybrana != None %}
+        <li class="current">Litera {{ wybrana }}</li>
+    {% endif %}
+{% endblock %}
+
+{% block extratitle %}
+    Indeks wydawców{% if wybrana != None %} - litera {{ wybrana }}{% endif %}
+{% endblock %}
+
+{% block content %}
+    {% url "bpp:browse_wydawcy" as browse_wydawcy %}
+
+    <!-- Modern Header Section -->
+    <div class="modern-header">
+        <div class="grid-x grid-margin-x align-middle">
+            <div class="cell auto">
+                <h2>
+                    <i class="fi-print"></i>Indeks wydawców
+                    {% if wybrana %} - litera {{ wybrana }}{% endif %}
+                </h2>
+                {% if paginator %}
+                    <p class="zrodla__summary">
+                        {% if object_list %}
+                            Wyświetlono {{ object_list|length }} z {{ paginator.count }} wydawców
+                        {% else %}
+                            Brak wydawców do wyświetlenia
+                        {% endif %}
+                    </p>
+                {% endif %}
+            </div>
+            <div class="cell shrink">
+                {% include "browse/go_to_admin_list.html" with url="admin:bpp_wydawca_changelist" group="wprowadzanie danych" text="<i class='fi-page-edit'></i> Otwórz do edycji" %}
+            </div>
+        </div>
+
+        <!-- Centered Search -->
+        {% if paginator.num_pages > 1 %}
+        <div class="text-center zrodla__search-section">
+            <form method="get" action="{{ browse_wydawcy }}" class="zrodla__search-form">
+                <div class="input-group zrodla__search-group">
+                    <span class="input-group-label zrodla__search-icon">
+                        <i class="fi-magnifying-glass"></i>
+                    </span>
+                    <input type="text"
+                           name="search"
+                           placeholder="Wpisz część nazwy i wciśnij ENTER..."
+                           value="{{ flt|default:'' }}"
+                           class="input-group-field zrodla__search-input"
+                           id="search_form_input"/>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Modern Letter Index -->
+    {% if paginator.num_pages > 1 %}
+    <div class="letter-index">
+        <div class="grid-x grid-margin-x align-center">
+            <div class="cell auto text-center">
+                <div class="letter-pills">
+                    <!-- All Button -->
+                    <a href="{{ browse_wydawcy }}"
+                       class="letter-pill {% if wybrana == None %}active{% endif %}">
+                        Wszystkie
+                    </a>
+
+                    <!-- Letter Buttons -->
+                    {% for literka in literki %}
+                        {% if literka in available_letters %}
+                            <a href="{{ browse_wydawcy }}{{ literka }}/"
+                               class="letter-pill letter-single {% if literka == wybrana %}active{% endif %}">
+                                {{ literka }}
+                            </a>
+                        {% else %}
+                            <span class="letter-pill letter-single disabled">
+                                {{ literka }}
+                            </span>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Siatka kafli wydawców — style kart źródeł (zrodlo-card). #}
+    {% if object_list %}
+        <div class="grid-x grid-margin-x">
+            {% for col in object_list|columns:3 %}
+                <div class="large-4 medium-6 small-12 cell">
+                    {% for item in col %}
+                                                <div class="zrodlo-card">
+
+                                                        <div class="zrodlo-icon">
+                                <i class="fi-print"></i>
+                            </div>
+
+                            <div class="zrodlo-name">
+                                <a href="{% url "bpp:browse_wydawca" item.pk %}">
+                                    {{ item }}
+                                </a>
+                            </div>
+
+                            <div class="zrodlo-details">
+                                <div class="zrodla__publication-count">
+                                    <i class="fi-page-multiple"></i>
+                                    {{ item.liczba_prac }} {% if item.liczba_prac == 1 %}publikacja{% elif item.liczba_prac < 5 %}publikacje{% else %}publikacji{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="callout warning zrodla__empty-callout">
+            <h4 class="zrodla__empty-title">
+                <i class="fi-alert zrodla__empty-icon"></i>Nie znaleziono wydawców
+            </h4>
+            <p class="zrodla__empty-text">
+                Brak wydawców spełniających podane kryteria wyszukiwania.
+            </p>
+            <a href="{% url "bpp:browse_wydawcy" %}" class="button zrodla__empty-button">
+                <i class="fi-arrow-left zrodla__empty-button-icon"></i>Pokaż wszystkich wydawców
+            </a>
+        </div>
+    {% endif %}
+
+    <!-- Modern Pagination -->
+    {% if is_paginated %}
+        <div class="modern-pagination">
+            <div class="pagination-info">
+                Strona {{ page_obj.number }} z {{ paginator.num_pages }}
+                ({{ paginator.count }} {% if paginator.count == 1 %}wydawca{% else %}wydawców{% endif %})
+            </div>
+
+            <ul class="pagination" role="navigation" aria-label="Pagination">
+                {% if page_obj.has_previous %}
+                    <li>
+                        <a href="?page={{ page_obj.previous_page_number }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}"
+                           class="zrodla__pagination-nav">
+                            <i class="fi-arrow-left zrodla__pagination-nav-icon--left"></i>Poprzednia
+                        </a>
+                    </li>
+                {% endif %}
+
+                {% if page_obj.number >= 5 %}
+                    <li><a href="?page=1{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn zrodla__page-btn">1</a></li>
+                    <li class="zrodla__pagination-ellipsis">...</li>
+                {% endif %}
+
+                {% if page_obj.number|add:"-2" >= 1 %}
+                    <li><a href="?page={{ page_obj.number|add:"-2" }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn zrodla__page-btn">{{ page_obj.number|add:"-2" }}</a></li>
+                {% endif %}
+                {% if page_obj.number|add:"-1" >= 1 %}
+                    <li><a href="?page={{ page_obj.number|add:"-1" }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn zrodla__page-btn">{{ page_obj.number|add:"-1" }}</a></li>
+                {% endif %}
+
+                <li>
+                    <span class="zrodla__pagination-current">
+                        {{ page_obj.number }}
+                    </span>
+                </li>
+
+                {% if page_obj.number|add:"1" <= paginator.num_pages %}
+                    <li><a href="?page={{ page_obj.number|add:"1" }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn zrodla__page-btn">{{ page_obj.number|add:"1" }}</a></li>
+                {% endif %}
+                {% if page_obj.number|add:"2" <= paginator.num_pages %}
+                    <li><a href="?page={{ page_obj.number|add:"2" }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn zrodla__page-btn">{{ page_obj.number|add:"2" }}</a></li>
+                {% endif %}
+
+                {% if page_obj.number|add:"2" <= paginator.num_pages|add:"-2" %}
+                    <li class="zrodla__pagination-ellipsis">...</li>
+                    <li><a href="?page={{ paginator.num_pages }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn zrodla__page-btn">{{ paginator.num_pages }}</a></li>
+                {% endif %}
+
+                {% if page_obj.has_next %}
+                    <li>
+                        <a href="?page={{ page_obj.next_page_number }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}"
+                           class="zrodla__pagination-nav">
+                            Następna<i class="fi-arrow-right zrodla__pagination-nav-icon--right"></i>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <script type="text/javascript">
+        $(document).ready(function(){
+            $("#search_form_input").focus();
+        });
+    </script>
+
+{% endblock %}

@@ -49,6 +49,7 @@ from bpp.views.autocomplete import (
     PublicKonferencjaAutocomplete,
     PublicStatusKorektyAutocomplete,
     PublicTaggitTagAutocomplete,
+    PublicWydawcaAutocomplete,
     PublicWydawnictwo_NadrzedneAutocomplete,
     PublicZrodloAutocomplete,
     PublisherAutocomplete,
@@ -83,6 +84,8 @@ from bpp.views.browse import (
     RekordToPracaView,
     RokView,
     UczelniaView,
+    WydawcaView,
+    WydawcyView,
     WyswietlDeklaracjeDostepnosci,
     ZrodlaView,
     ZrodloView,
@@ -373,6 +376,13 @@ urlpatterns = [
         r"^zrodla/(?P<literka>.)/$", ZrodlaView.as_view(), name="browse_zrodla_literka"
     ),
     url(r"^zrodlo/(?P<slug>[\w-]+)/$", ZrodloView.as_view(), name="browse_zrodlo"),
+    url(r"^wydawcy/$", WydawcyView.as_view(), name="browse_wydawcy"),
+    url(
+        r"^wydawcy/(?P<literka>.)/$",
+        WydawcyView.as_view(),
+        name="browse_wydawcy_literka",
+    ),
+    url(r"^wydawca/(?P<pk>\d+)/$", WydawcaView.as_view(), name="browse_wydawca"),
     url(r"^lata/$", LataView.as_view(), name="browse_lata"),
     # Dowolna liczba cyfr: w danych zdarzają się lata spoza 4 cyfr (np.
     # literówka „212"), a ``lata.html`` linkuje każdy rok z bazy. Zakres
@@ -509,6 +519,11 @@ urlpatterns = [
         r"^dyscyplina-autocomplete/$",
         Dyscyplina_NaukowaAutocomplete.as_view(),
         name="dyscyplina-autocomplete",
+    ),
+    url(
+        r"^public-wydawca-autocomplete/$",
+        PublicWydawcaAutocomplete.as_view(),
+        name="public-wydawca-autocomplete",
     ),
     url(
         r"^zrodlo-autocomplete/$",

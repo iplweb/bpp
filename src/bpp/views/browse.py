@@ -8,7 +8,15 @@ from django.contrib import messages
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.core.paginator import Paginator
-from django.db.models import Count, Exists, OuterRef
+from django.db.models import (
+    Count,
+    Exists,
+    Func,
+    IntegerField,
+    OuterRef,
+    Subquery,
+    Value,
+)
 from django.db.models.functions import Substr
 from django.http import JsonResponse
 from django.utils import timezone
@@ -40,6 +48,7 @@ from bpp.models import (
     Jednostka,
     Rekord,
     Uczelnia,
+    Wydawca,
     Wydawnictwo_Ciagle_Streszczenie,
     Zrodlo,
 )
@@ -51,6 +60,7 @@ from bpp.multiseek_registry import (
     NazwiskoIImieQueryObject,
     RokQueryObject,
     TypRekorduObject,
+    WydawcaQueryObject,
     WydzialQueryObject,
     ZakresLatQueryObject,
     ZrodloQueryObject,
@@ -932,6 +942,89 @@ class ZrodloView(DetailView):
         return context
 
 
+def _liczba_prac_wydawcy():
+    """Podzapytanie: liczba rekordów wydawcy razem z jego aliasami
+    (bezpośrednimi — tak są wprowadzane w praktyce). ``COUNT(1)`` przez
+    ``Func``, bo ``Rekord`` ma klucz złożony, a zwykły ``Count`` w podzapytaniu
+    dołożyłby ``GROUP BY``."""
+    return Subquery(
+        Rekord.objects.filter(
+            Q(wydawca_id=OuterRef("pk")) | Q(wydawca__alias_dla_id=OuterRef("pk"))
+        )
+        .order_by()
+        .values(liczba=Func(Value(1), function="COUNT")),
+        output_field=IntegerField(),
+    )
+
+
+@method_decorator(cache_publiczny(), name="dispatch")
+class WydawcyView(Browser):
+    """Indeks wydawców A–Z — jak indeks źródeł. Tylko wydawcy „główni”
+    (aliasy wchodzą do wydawcy, któremu odpowiadają) z co najmniej jedną
+    pracą w bazie."""
+
+    template_name = "browse/wydawcy.html"
+    model = Wydawca
+    param = "search"
+    literka_field = "nazwa"
+    paginate_by = 70
+
+    def _baza(self):
+        return (
+            Wydawca.objects.filter(alias_dla=None)
+            .annotate(liczba_prac=_liczba_prac_wydawcy())
+            .filter(liczba_prac__gt=0)
+        )
+
+    def get_queryset(self):
+        qry = self._baza().only("nazwa").order_by("nazwa")
+        sstr = self.get_search_string()
+        if sstr:
+            qry = qry.filter(nazwa__icontains=sstr)
+        literka = self.get_literka()
+        if literka:
+            qobj = Q()
+            for x in PODWOJNE.get(literka, [literka]):
+                qobj |= Q(nazwa__istartswith=x)
+            qry = qry.filter(qobj)
+        return qry
+
+    def get_context_data(self, *args, **kw):
+        context = super().get_context_data(*args, **kw)
+        context["available_letters"] = self.zapamietane_literki(self._baza())
+        return context
+
+
+@method_decorator(cache_publiczny(), name="dispatch")
+class WydawcaView(DetailView):
+    model = Wydawca
+    template_name = "browse/wydawca.html"
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        # Alias nie ma własnej strony — jego prace są na stronie wydawcy.
+        if self.object.alias_dla_id is not None:
+            return redirect(self.object.get_absolute_url(), permanent=True)
+        return self.render_to_response(self.get_context_data(object=self.object))
+
+    def get_context_data(self, **kwargs):
+        from bpp.wykresy_lat import wykresy_w_latach
+
+        context = super().get_context_data(**kwargs)
+        wydawca = self.object
+        prace = wydawca.prace()
+        context["liczba_prac"] = prace.count()
+        context["aliasy"] = Wydawca.objects.filter(alias_dla=wydawca).order_by("nazwa")
+        context["poziomy"] = wydawca.poziom_wydawcy_set.order_by("-rok")
+        if context["liczba_prac"]:
+            wykresy = wykresy_w_latach(prace, getattr(self, "request", None))
+            if wykresy:
+                context["wykresy"] = {"wykresy": wykresy}
+                context["szukaj_pola"] = [("wydawca", wydawca.pk)]
+                context["szukaj_tytul"] = str(wydawca)
+        return context
+
+
 @method_decorator(cache_publiczny(), name="dispatch")
 class LataView(ListView):
     template_name = "browse/lata.html"
@@ -1224,6 +1317,9 @@ class BuildSearch(RedirectView):
 
     def post(self, *args, **kw):
         zrodla_box = zrob_box_z_requestu(self.request.POST, "zrodlo", ZrodloQueryObject)
+        wydawcy_box = zrob_box_z_requestu(
+            self.request.POST, "wydawca", WydawcaQueryObject
+        )
         typy_box = zrob_box_z_requestu(self.request.POST, "typ", TypRekorduObject)
         lata_box = zrob_box_lat(self.request)
         jednostki_box = zrob_box_z_requestu(
@@ -1282,6 +1378,7 @@ class BuildSearch(RedirectView):
 
         self.request.session[MULTISEEK_SESSION_KEY] = zrob_formularz(
             zrodla_box,
+            wydawcy_box,
             autorzy_box,
             *wspolautorzy_boxy,
             typy_box,
