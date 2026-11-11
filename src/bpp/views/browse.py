@@ -989,7 +989,7 @@ class WydawcyView(Browser):
         )
 
     def get_queryset(self):
-        qry = self._baza().only("nazwa").order_by("nazwa")
+        qry = self._baza().only("nazwa", "slug").order_by("nazwa")
         sstr = self.get_search_string()
         if sstr:
             qry = qry.filter(nazwa__icontains=sstr)
@@ -1014,8 +1014,10 @@ class WydawcaView(DetailView):
 
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
-        # Alias nie ma własnej strony — jego prace są na stronie wydawcy.
-        if self.object.alias_dla_id is not None:
+        # Stary adres po pk → 301 na kanoniczny adres ze slugiem. Alias nie
+        # ma własnej strony — jego prace są na stronie wydawcy głównego
+        # (``get_absolute_url`` wskazuje slug toplevelu).
+        if "pk" in kwargs or self.object.alias_dla_id is not None:
             return redirect(self.object.get_absolute_url(), permanent=True)
         return self.render_to_response(self.get_context_data(object=self.object))
 

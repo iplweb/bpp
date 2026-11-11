@@ -1,3 +1,4 @@
+from autoslug import AutoSlugField
 from denorm import CountField, denormalized, depend_on_related
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -5,6 +6,7 @@ from django.db.models import JSONField
 
 from bpp.fields import YearField
 from bpp.models import ModelZNazwa, ModelZPBN_UID
+from bpp.util.text import slugify_wydawca
 
 
 class Wydawca(ModelZNazwa, ModelZPBN_UID):
@@ -18,6 +20,11 @@ class Wydawca(ModelZNazwa, ModelZPBN_UID):
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
+    )
+
+    # Slug nigdy nie składa się z samych cyfr — patrz ``slugify_wydawca``.
+    slug = AutoSlugField(
+        populate_from="nazwa", unique=True, max_length=512, slugify=slugify_wydawca
     )
 
     class Meta:
@@ -64,7 +71,7 @@ class Wydawca(ModelZNazwa, ModelZPBN_UID):
     def get_absolute_url(self):
         from django.urls import reverse
 
-        return reverse("bpp:browse_wydawca", args=(self.get_toplevel().pk,))
+        return reverse("bpp:browse_wydawca", args=(self.get_toplevel().slug,))
 
     def prace(self):
         """Rekordy wydane przez wydawcę (z aliasami)."""

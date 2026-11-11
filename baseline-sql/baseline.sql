@@ -8011,6 +8011,7 @@ CREATE TABLE public.bpp_wydawca (
     pbn_uid_id character varying(32),
     ile_aliasow integer NOT NULL,
     lista_poziomow jsonb,
+    slug character varying(512) NOT NULL,
     CONSTRAINT bpp_wydawca_ile_aliasow_check CHECK ((ile_aliasow >= 0))
 );
 
@@ -15979,7 +15980,7 @@ COPY public.bpp_wybranapublikacjaautora (id, object_id, kolejnosc, autor_id, con
 -- Data for Name: bpp_wydawca; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_wydawca (id, nazwa, alias_dla_id, pbn_uid_id, ile_aliasow, lista_poziomow) FROM stdin;
+COPY public.bpp_wydawca (id, nazwa, alias_dla_id, pbn_uid_id, ile_aliasow, lista_poziomow, slug) FROM stdin;
 \.
 
 
@@ -16566,6 +16567,28 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
 999	bpp	0456_faza_b_i3	2000-01-01 00:00:00+00
+180	bpp	0099_nagrody	2000-01-01 00:00:00+00
+288	bpp	0201_rekord_mat_z_www	2000-01-01 00:00:00+00
+1103	import_list_if	0005_liveops	2000-01-01 00:00:00+00
+978	bpp	0425_per_uczelnia_cache_view	2000-01-01 00:00:00+00
+979	bpp	0426_cache_punktacja_autora_view_uczelnia	2000-01-01 00:00:00+00
+980	bpp	0427_cpd_index_rekord_uczelnia_dyscyplina	2000-01-01 00:00:00+00
+981	bpp	0428_cpd_uczelnia_not_null	2000-01-01 00:00:00+00
+982	bpp	0429_merge_20260604_1952	2000-01-01 00:00:00+00
+983	bpp	0430_wydawnictwo_ciagle_tytul_wydawnictwo_zwarte_tytul	2000-01-01 00:00:00+00
+984	bpp	0431_merge_20260612_1504	2000-01-01 00:00:00+00
+985	bpp	0432_merge_0431_merge_20260612_1504_0431_search_index_gin	2000-01-01 00:00:00+00
+987	bpp	0444_alter_uczelnia_wyszukiwanie_rekordy_na_strone_anonim_and_more	2000-01-01 00:00:00+00
+988	bpp	0445_merge_20260622_1134	2000-01-01 00:00:00+00
+989	bpp	0446_rzeczownik_tylko_mianownik	2000-01-01 00:00:00+00
+990	bpp	0447_fd390_aktualna_jednostka_demote_obca	2000-01-01 00:00:00+00
+1119	bpp	0477_uczelnia_oai_identyfikator_repozytorium	2000-01-01 00:00:00+00
+992	bpp	0449_seed_rodzajjednostki	2000-01-01 00:00:00+00
+993	bpp	0450_jednostka_rodzaj	2000-01-01 00:00:00+00
+994	bpp	0451_backfill_jednostka_rodzaj	2000-01-01 00:00:00+00
+995	bpp	0452_jednostka_pola_faza_a	2000-01-01 00:00:00+00
+1000	bpp	0457_faza_b_i4	2000-01-01 00:00:00+00
+1002	bpp	0444_charakter_formalny_ukryty_charakter_pbn_ukryty_and_more	2000-01-01 00:00:00+00
 647	easyaudit	0014_auto_20200513_0008	2000-01-01 00:00:00+00
 928	sessions	0001_initial	2000-01-01 00:00:00+00
 1007	bpp	0463_faza_b_iv2_multiseek_values	2000-01-01 00:00:00+00
@@ -16872,7 +16895,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 177	bpp	0096_adnotacje_not_null	2000-01-01 00:00:00+00
 178	bpp	0097_nagrody	2000-01-01 00:00:00+00
 179	bpp	0098_wybitnosc	2000-01-01 00:00:00+00
-180	bpp	0099_nagrody	2000-01-01 00:00:00+00
 181	bpp	0100_init_nagrody	2000-01-01 00:00:00+00
 182	bpp	0101_openaccess_w_multiseek	2000-01-01 00:00:00+00
 183	bpp	0102_auto_20170723_2318	2000-01-01 00:00:00+00
@@ -16983,7 +17005,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 285	bpp	0198_auto_20200229_1644	2000-01-01 00:00:00+00
 286	bpp	0199_alias_wydawcy_trigger	2000-01-01 00:00:00+00
 287	bpp	0200_auto_20200304_2253	2000-01-01 00:00:00+00
-288	bpp	0201_rekord_mat_z_www	2000-01-01 00:00:00+00
 289	bpp	0202_auto_20200308_2204	2000-01-01 00:00:00+00
 290	bpp	0203_auto_20200315_2021	2000-01-01 00:00:00+00
 291	bpp	0204_cache_punktacja_autora_query_view	2000-01-01 00:00:00+00
@@ -17376,7 +17397,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 714	flexible_reports	0006_default_ordering	2000-01-01 00:00:00+00
 715	flexible_reports	0007_sort_desc	2000-01-01 00:00:00+00
 1135	bpp	0487_api_v1_przelaczniki	2000-01-01 00:00:00+00
-1103	import_list_if	0005_liveops	2000-01-01 00:00:00+00
 554	constance	0001_initial	2000-01-01 00:00:00+00
 808	integrator2	0001_initial	2000-01-01 00:00:00+00
 716	flexible_reports	0008_auto_20171025_0553	2000-01-01 00:00:00+00
@@ -17644,25 +17664,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 975	bpp	0422_alter_uczelnia_theme_name	2000-01-01 00:00:00+00
 976	bpp	0423_merge_20260602_1430	2000-01-01 00:00:00+00
 977	bpp	0424_cache_punktacja_dyscypliny_uczelnia_and_more	2000-01-01 00:00:00+00
-978	bpp	0425_per_uczelnia_cache_view	2000-01-01 00:00:00+00
-979	bpp	0426_cache_punktacja_autora_view_uczelnia	2000-01-01 00:00:00+00
-980	bpp	0427_cpd_index_rekord_uczelnia_dyscyplina	2000-01-01 00:00:00+00
-981	bpp	0428_cpd_uczelnia_not_null	2000-01-01 00:00:00+00
-982	bpp	0429_merge_20260604_1952	2000-01-01 00:00:00+00
-983	bpp	0430_wydawnictwo_ciagle_tytul_wydawnictwo_zwarte_tytul	2000-01-01 00:00:00+00
-984	bpp	0431_merge_20260612_1504	2000-01-01 00:00:00+00
-985	bpp	0432_merge_0431_merge_20260612_1504_0431_search_index_gin	2000-01-01 00:00:00+00
-987	bpp	0444_alter_uczelnia_wyszukiwanie_rekordy_na_strone_anonim_and_more	2000-01-01 00:00:00+00
-988	bpp	0445_merge_20260622_1134	2000-01-01 00:00:00+00
-989	bpp	0446_rzeczownik_tylko_mianownik	2000-01-01 00:00:00+00
-990	bpp	0447_fd390_aktualna_jednostka_demote_obca	2000-01-01 00:00:00+00
-1119	bpp	0477_uczelnia_oai_identyfikator_repozytorium	2000-01-01 00:00:00+00
-992	bpp	0449_seed_rodzajjednostki	2000-01-01 00:00:00+00
-993	bpp	0450_jednostka_rodzaj	2000-01-01 00:00:00+00
-994	bpp	0451_backfill_jednostka_rodzaj	2000-01-01 00:00:00+00
-995	bpp	0452_jednostka_pola_faza_a	2000-01-01 00:00:00+00
-1000	bpp	0457_faza_b_i4	2000-01-01 00:00:00+00
-1002	bpp	0444_charakter_formalny_ukryty_charakter_pbn_ukryty_and_more	2000-01-01 00:00:00+00
 1003	bpp	0459_faza_b_ii1_retarget	2000-01-01 00:00:00+00
 1004	bpp	0460_faza_b_ii2_repoint	2000-01-01 00:00:00+00
 1005	bpp	0461_faza_b_iii1_usun_rodzaj_jednostki	2000-01-01 00:00:00+00
@@ -17724,6 +17725,9 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1162	bpp	0502_autoreksporttask_xlsx	2000-01-01 00:00:00+00
 1163	bpp	0503_charakter_ogolny_rozdzialy_ksiazki	2000-01-01 00:00:00+00
 1164	taggit	0007_alter_taggeditem_options	2000-01-01 00:00:00+00
+1165	bpp	0504_wydawca_slug	2000-01-01 00:00:00+00
+1166	bpp	0505_wydawca_slug_dane	2000-01-01 00:00:00+00
+1167	bpp	0506_wydawca_slug_unique	2000-01-01 00:00:00+00
 \.
 
 
@@ -18103,21 +18107,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 314	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 315	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 316	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-407	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
-408	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
-409	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-410	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-411	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-412	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-413	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-414	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-415	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-416	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-417	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-418	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-419	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-420	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-421	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -19741,7 +19730,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1164, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1167, true);
 
 
 --
@@ -21961,6 +21950,14 @@ ALTER TABLE ONLY public.bpp_wydawca
 
 ALTER TABLE ONLY public.bpp_wydawca
     ADD CONSTRAINT bpp_wydawca_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: bpp_wydawca bpp_wydawca_slug_966f7806_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_wydawca
+    ADD CONSTRAINT bpp_wydawca_slug_966f7806_uniq UNIQUE (slug);
 
 
 --
@@ -26867,6 +26864,13 @@ CREATE INDEX bpp_wydawca_pbn_uid_id_7b43a324 ON public.bpp_wydawca USING btree (
 --
 
 CREATE INDEX bpp_wydawca_pbn_uid_id_7b43a324_like ON public.bpp_wydawca USING btree (pbn_uid_id varchar_pattern_ops);
+
+
+--
+-- Name: bpp_wydawca_slug_966f7806_like; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_wydawca_slug_966f7806_like ON public.bpp_wydawca USING btree (slug varchar_pattern_ops);
 
 
 --
@@ -33186,14 +33190,14 @@ CREATE TRIGGER d_aft_row_upd_on_bpp_typ_kbn_wydawnictwo_zwarte_opis_b6bb3 AFTER 
 -- Name: bpp_wydawca d_aft_row_upd_on_bpp_wydawca; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_wydawca AFTER UPDATE ON public.bpp_wydawca FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR ((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text) OR (old.alias_dla_id IS DISTINCT FROM new.alias_dla_id) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR (old.lista_poziomow IS DISTINCT FROM new.lista_poziomow) OR (old.ile_aliasow IS DISTINCT FROM new.ile_aliasow))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawca();
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawca AFTER UPDATE ON public.bpp_wydawca FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR ((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text) OR (old.alias_dla_id IS DISTINCT FROM new.alias_dla_id) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text) OR (old.lista_poziomow IS DISTINCT FROM new.lista_poziomow) OR (old.ile_aliasow IS DISTINCT FROM new.ile_aliasow))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawca();
 
 
 --
 -- Name: bpp_wydawca d_aft_row_upd_on_bpp_wydawca_wydawca_lista_poziomow_self; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_wydawca_wydawca_lista_poziomow_self AFTER UPDATE ON public.bpp_wydawca FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR ((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text) OR (old.alias_dla_id IS DISTINCT FROM new.alias_dla_id) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR (old.ile_aliasow IS DISTINCT FROM new.ile_aliasow))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawca_wydawca_lista_poziomow_self();
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawca_wydawca_lista_poziomow_self AFTER UPDATE ON public.bpp_wydawca FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR ((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text) OR (old.alias_dla_id IS DISTINCT FROM new.alias_dla_id) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text) OR (old.ile_aliasow IS DISTINCT FROM new.ile_aliasow))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawca_wydawca_lista_poziomow_self();
 
 
 --

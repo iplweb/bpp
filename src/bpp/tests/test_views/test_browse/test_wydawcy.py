@@ -1,15 +1,18 @@
 """Przeglądanie wydawców: indeks A–Z, strona wydawcy, pole „Wydawca”
 w multiseeku (razem z aliasami) i kafel na stronie głównej."""
 
+import importlib
 import json
 
 import pytest
+from django.apps import apps
 from django.urls import reverse
 from model_bakery import baker
 from multiseek.views import MULTISEEK_SESSION_KEY
 
 from bpp.models import Wydawca, Wydawnictwo_Zwarte
 from bpp.multiseek_registry import registry
+from bpp.util.text import slugify_wydawca
 
 
 @pytest.fixture
@@ -58,7 +61,7 @@ def test_indeks_wydawcow_literka_i_szukanie(client, wydawcy):
 
 def test_strona_wydawcy(client, wydawcy):
     glowny, alias, _pusty = wydawcy
-    resp = client.get(reverse("bpp:browse_wydawca", args=(glowny.pk,)))
+    resp = client.get(reverse("bpp:browse_wydawca", args=(glowny.slug,)))
     html = resp.content.decode()
     assert resp.status_code == 200
     assert "2 publikacje w bazie" in html
@@ -68,11 +71,83 @@ def test_strona_wydawcy(client, wydawcy):
     assert alias.nazwa in html  # sekcja „Także jako”
 
 
+def test_get_absolute_url_po_slugu_toplevelu(wydawcy):
+    glowny, alias, _pusty = wydawcy
+    url = reverse("bpp:browse_wydawca", args=(glowny.slug,))
+    assert glowny.get_absolute_url() == url
+    assert alias.get_absolute_url() == url
+
+
+def test_indeks_wydawcow_linkuje_po_slugu(client, wydawcy):
+    glowny, _alias, _pusty = wydawcy
+    html = client.get(reverse("bpp:browse_wydawcy")).content.decode()
+    assert f'href="{glowny.get_absolute_url()}"' in html
+
+
 def test_alias_przekierowuje_na_wydawce(client, wydawcy):
     glowny, alias, _pusty = wydawcy
-    resp = client.get(reverse("bpp:browse_wydawca", args=(alias.pk,)))
+    resp = client.get(reverse("bpp:browse_wydawca", args=(alias.slug,)))
     assert resp.status_code == 301
-    assert resp["Location"] == reverse("bpp:browse_wydawca", args=(glowny.pk,))
+    assert resp["Location"] == reverse("bpp:browse_wydawca", args=(glowny.slug,))
+
+
+def test_stary_adres_po_pk_przekierowuje_na_slug(client, wydawcy):
+    glowny, alias, _pusty = wydawcy
+    oczekiwany = reverse("bpp:browse_wydawca", args=(glowny.slug,))
+    for wydawca in (glowny, alias):
+        resp = client.get(f"/bpp/wydawca/{wydawca.pk}/")
+        assert resp.status_code == 301
+        assert resp["Location"] == oczekiwany
+
+
+def test_nieistniejacy_wydawca_404(client, db):
+    assert client.get("/bpp/wydawca/999999999/").status_code == 404
+    assert client.get("/bpp/wydawca/nie-ma-takiego/").status_code == 404
+
+
+@pytest.mark.parametrize(
+    "nazwa,slug",
+    [
+        ("1984", "wydawca-1984"),
+        ("Wydawnictwo Naukowe PWN", "Wydawnictwo-Naukowe-PWN"),
+        ("Łódź 2000", "Lodz-2000"),
+        ("", ""),
+    ],
+)
+def test_slugify_wydawca(nazwa, slug):
+    assert slugify_wydawca(nazwa) == slug
+    assert slugify_wydawca(slugify_wydawca(nazwa)) == slug
+
+
+@pytest.mark.django_db
+def test_slug_wydawcy_z_samych_cyfr_i_unikalny(client):
+    a = Wydawca.objects.create(nazwa="1984")
+    b = Wydawca.objects.create(nazwa="1984.")  # ten sam slug bazowy
+    assert a.slug == "wydawca-1984"
+    assert b.slug == "wydawca-1984-2"
+    assert client.get(a.get_absolute_url()).status_code == 200
+    # Adres po pk nadal przekierowuje, nie jest brany za slug.
+    resp = client.get(f"/bpp/wydawca/{a.pk}/")
+    assert resp.status_code == 301
+    assert resp["Location"] == a.get_absolute_url()
+
+
+@pytest.mark.django_db
+def test_migracja_wypelnia_unikalne_slugi():
+    migracja = importlib.import_module("bpp.migrations.0505_wydawca_slug_dane")
+    a = Wydawca.objects.create(nazwa="2001")
+    b = Wydawca.objects.create(nazwa="2001!")
+    c = Wydawca.objects.create(nazwa="Inne Wydawnictwo", alias_dla=a)
+    for w in (a, b, c):  # „stare” wartości, które migracja nadpisze
+        Wydawca.objects.filter(pk=w.pk).update(slug=f"stary-{w.pk}")
+
+    migracja.wypelnij_slugi(apps, None)
+
+    slugi = dict(Wydawca.objects.values_list("pk", "slug"))
+    assert slugi[a.pk] == "wydawca-2001"
+    assert slugi[b.pk] == "wydawca-2001-2"
+    assert slugi[c.pk] == "Inne-Wydawnictwo"
+    assert len(set(slugi.values())) == len(slugi)
 
 
 def test_build_search_wydawca_lapie_prace_aliasow(client, wydawcy):
