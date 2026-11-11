@@ -790,6 +790,19 @@ class AutorzyView(Browser):
         return context
 
 
+def _liczba_prac_zrodla():
+    """Podzapytanie: liczba rekordów źródła — to samo co
+    ``zrodlo.rekord_set.count()``, ale jednym zapytaniem dla całej strony.
+    ``COUNT(1)`` przez ``Func`` z tego samego powodu co w
+    ``_liczba_prac_wydawcy``: ``Rekord`` ma klucz złożony."""
+    return Subquery(
+        Rekord.objects.filter(zrodlo_id=OuterRef("pk"))
+        .order_by()
+        .values(liczba=Func(Value(1), function="COUNT")),
+        output_field=IntegerField(),
+    )
+
+
 @method_decorator(cache_publiczny(), name="dispatch")
 class ZrodlaView(Browser):
     template_name = "browse/zrodla.html"
@@ -803,6 +816,9 @@ class ZrodlaView(Browser):
             super()
             .get_queryset()
             .only("nazwa", "poprzednia_nazwa", "slug", "pbn_uid__status")
+            # Podzapytanie skalarne (nie JOIN) — wierszy nie mnoży, więc bez
+            # ``.distinct()``; zastępuje ``item.rekord_set.count`` (N+1).
+            .annotate(liczba_prac=_liczba_prac_zrodla())
             .order_by("nazwa")
         )
 

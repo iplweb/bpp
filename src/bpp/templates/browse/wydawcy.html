@@ -1,5 +1,6 @@
 {# Indeks wydawców A–Z — kopia układu indeksu źródeł (browse/zrodla.html). #}
 {% extends "base.html" %}
+{% load polish_inflection %}
 
 {% load columns %}
 
@@ -117,7 +118,7 @@
                             <div class="zrodlo-details">
                                 <div class="zrodla__publication-count">
                                     <i class="fi-page-multiple"></i>
-                                    {{ item.liczba_prac }} {% if item.liczba_prac == 1 %}publikacja{% elif item.liczba_prac < 5 %}publikacje{% else %}publikacji{% endif %}
+                                    {{ item.liczba_prac }} {% odmiana_liczebnikowa "publikacja" item.liczba_prac %}
                                 </div>
                             </div>
                         </div>
@@ -144,7 +145,7 @@
         <div class="modern-pagination">
             <div class="pagination-info">
                 Strona {{ page_obj.number }} z {{ paginator.num_pages }}
-                ({{ paginator.count }} {% if paginator.count == 1 %}wydawca{% else %}wydawców{% endif %})
+                ({{ paginator.count }} {% odmiana_liczebnikowa "wydawca" paginator.count %})
             </div>
 
             <ul class="pagination" role="navigation" aria-label="Pagination">
