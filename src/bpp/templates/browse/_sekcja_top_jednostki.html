@@ -1,0 +1,19 @@
+{# „Jednostki” z największą liczbą prac w tym źródle / u wydawcy (tylko #}
+{# widoczne jednostki uczelni). Oczekuje: jednostki (lista {pk, nazwa, #}
+{# slug, liczba}). Nazwa → strona jednostki. #}
+<div class="author-info-section autor-page__sekcja">
+    <h3><i class="fi-home autor-page__icon--mr-sm"></i>Jednostki</h3>
+    <ul class="autor-page__wspolautorzy">
+        {% for j in jednostki %}
+            <li class="autor-page__wspolautor">
+                <span class="autor-page__wspolautor-osoba">
+                    <a href="{% url "bpp:browse_jednostka" j.slug %}"
+                       title="Strona jednostki: {{ j.nazwa }}">{{ j.nazwa }}</a>
+                </span>
+                <span class="autor-page__wspolautor-meta">
+                    <span class="autor-page__wspolautor-liczba">({{ j.liczba }})</span>
+                </span>
+            </li>
+        {% endfor %}
+    </ul>
+</div>

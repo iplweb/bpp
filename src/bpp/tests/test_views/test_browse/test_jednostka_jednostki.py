@@ -40,7 +40,7 @@ def test_jednostka_nie_wyswietlaj_autorow_gdy_wielu(
         jednostka.dodaj_autora(baker.make(Autor))
 
     res = client.get(reverse("bpp:browse_jednostka", args=(jednostka.slug,)))
-    assert ("Obecni pracownicy:" in res.rendered_content) is widac_liste
+    assert ("Obecni pracownicy" in res.rendered_content) is widac_liste
 
 
 def test_browse_jednostka_nadrzedna(jednostka, jednostka_podrzedna, client):

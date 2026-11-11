@@ -302,8 +302,10 @@
     }
   }
 
-  // Jednostki: lista w kolumnach (na szerokim ekranie dwie).
-  &__jednostki {
+  // Jednostki (u autora) / autorzy (u jednostki): lista w kolumnach
+  // (na szerokim ekranie dwie).
+  &__jednostki,
+  &__kolumny {
     margin: 0;
     columns: 2 22rem;
     column-gap: 2rem;
@@ -348,6 +350,27 @@
 
   &__unit-icon {
     font-size: 0.9rem;
+  }
+
+  // Zwijana grupa filtra (<details>), np. „Byli pracownicy” u jednostki.
+  &__zwijane-tytul {
+    cursor: pointer;
+
+    // Znacznik rozwinięcia przeglądarki zostaje (dostępność), tylko
+    // wyrównany z ikoną.
+    i {
+      margin-left: 0.25rem;
+    }
+  }
+
+  &__zwijane[open] > summary {
+    margin-bottom: 0.75rem;
+  }
+
+  &__zwijane-liczba {
+    color: #777;
+    font-weight: normal;
+    font-size: 0.85em;
   }
 
   // Stopka formularza: tytuł wyników (rozciągnięty) + przycisk „Szukaj”.
@@ -1069,4 +1092,25 @@
   td {
     padding: 0.25rem 0.5rem;
   }
+}
+
+// Znaczek aktualnego poziomu wydawcy w nagłówku (najnowszy rok wykazu).
+.wydawca__poziom {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  border-radius: 999px;
+
+  .fi-star {
+    margin-right: 0.25rem;
+  }
+}
+
+.wydawca__poziom--2 {
+  background: #b8860b;
+}
+
+// Sekcje „Najczęściej publikujący autorzy” / „Jednostki” pod wyszukiwarką
+// na stronach źródła i wydawcy.
+.bpp-sekcje-top {
+  margin-top: 1.5rem;
 }

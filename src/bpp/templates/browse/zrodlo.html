@@ -79,56 +79,26 @@
     <div class="grid-x grid-margin-x">
         <!-- Left Column - Search Form -->
         <div class="cell {% if zrodlo.pbn_uid_id or zrodlo.issn or zrodlo.e_issn or zrodlo.dyscypliny_aktualna_ewaluacja.exists %}large-8{% else %}large-12{% endif %} medium-12">
-            <!-- Modern Search Form -->
-            <div class="search-container">
-        <div class="search-header">
-            <h3>
-                <i class="fi-magnifying-glass"></i>Wyszukaj w źródle
-            </h3>
-            <p>
-                Znajdź publikacje w źródle "{{ zrodlo.nazwa }}"
-            </p>
-        </div>
+            {# Wyszukiwarka w stylu strony autora (wspólne częściowe szablony). #}
+            <div class="search-container autor-page__search-container">
+                {% include "browse/_wyszukiwarka_naglowek.html" with tytul="Wyszukaj w źródle" podtytul="Bez zaznaczonych filtrów wyszukiwanie pokaże wszystkie prace w tym źródle. Zaznacz typy lub lata, żeby zawęzić wyniki." %}
 
-        <form method="post" action="{% url "bpp:browse_build_search" %}" class="browserForm">
-            {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt. #}
-            <input type="hidden" name="suggested-title" value="{{ zrodlo }}"/>
-            <input type="hidden" name="zrodlo" value="{{ zrodlo.pk }}"/>
+                <form method="post"
+                      action="{% url "bpp:browse_build_search" %}"
+                      class="browserForm autor-page__search-form">
+                    {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt. #}
+                    <input type="hidden" name="zrodlo" value="{{ zrodlo.pk }}"/>
 
-            <!-- Years Selection Card -->
-            <div class="card">
-                <div class="card-section">
-                    <h6>
-                        <i class="fi-calendar"></i>Opracowane w latach:
-                    </h6>
-                    {% include "browse/_selektor_lat.html" with lata=zrodlo.prace_w_latach %}
-                </div>
-            </div>
+                    {% include "browse/_filtr_typy.html" %}
 
-            <!-- Report Title Card -->
-            <div class="card">
-                <div class="card-section">
-                    <h6>
-                        <i class="fi-page-edit"></i>Tytuł raportu:
-                    </h6>
-                    <div class="grid-x grid-margin-x align-middle">
-                        <div class="cell auto">
-                            <input type="text" name="suggested-title" value="{{ zrodlo }}"/>
-                        </div>
-                    </div>
-                    <small class="form-hint">
-                        Tytuł wyszukiwania możesz zmienić, klikając go dwukrotnie.
-                    </small>
-                </div>
-            </div>
+                    {% with lata=zrodlo.prace_w_latach %}
+                    {% if lata %}
+                        {% include "browse/_filtr_lata.html" %}
+                    {% endif %}
+                    {% endwith %}
 
-            <!-- Search Button -->
-            <div class="search-button-wrapper">
-                <button type="submit" class="button button-search">
-                    <i class="fi-magnifying-glass"></i>Szukaj publikacji
-                </button>
-            </div>
-        </form>
+                    {% include "browse/_wyszukiwarka_stopka.html" with tytul_wynikow=zrodlo %}
+                </form>
             </div>
         </div>
 
@@ -226,5 +196,8 @@
         </div>
         {% endif %}
     </div>
+
+    {# Najczęściej publikujący autorzy i jednostki (bpp.sekcje_zrodla_wydawcy). #}
+    {% include "browse/_sekcje_top.html" with pole="zrodlo" wartosc=zrodlo.pk kontekst=zrodlo.nazwa %}
 
 {% endblock %}

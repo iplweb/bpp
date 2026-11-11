@@ -1,0 +1,21 @@
+{# Pas sekcji „Najczęściej publikujący autorzy” + „Jednostki” (strona #}
+{# źródła i wydawcy). Oczekuje: top_autorzy, top_jednostki, pole, wartosc, #}
+{# kontekst. Każda sekcja w karcie na całą szerokość (lista w 2 kolumnach). #}
+{% if top_autorzy or top_jednostki %}
+    <div class="autor-page__pasy bpp-sekcje-top">
+        {% if top_autorzy %}
+            <div class="autor-page__pas">
+                <div class="autor-page__karta">
+                    {% include "browse/_sekcja_top_autorzy.html" with autorzy=top_autorzy %}
+                </div>
+            </div>
+        {% endif %}
+        {% if top_jednostki %}
+            <div class="autor-page__pas">
+                <div class="autor-page__karta">
+                    {% include "browse/_sekcja_top_jednostki.html" with jednostki=top_jednostki %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+{% endif %}

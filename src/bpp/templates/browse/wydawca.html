@@ -24,6 +24,15 @@
                     <i class="fi-page-multiple"></i>
                     {% load polish_inflection %}{{ liczba_prac }} {% odmiana_liczebnikowa "publikacja" liczba_prac %} w bazie
                 </p>
+
+                {# Znaczek: poziom z najnowszego roku wykazu (tabela lat w panelu). #}
+                {% if aktualny_poziom %}
+                    <span class="label wydawca__poziom wydawca__poziom--{{ aktualny_poziom.poziom }}"
+                          title="Poziom wydawcy w wykazie MNiSW za rok {{ aktualny_poziom.rok }}">
+                        <i class="fi-star"></i>
+                        Poziom {{ aktualny_poziom.rzymski }} ({{ aktualny_poziom.rok }})
+                    </span>
+                {% endif %}
             </div>
             <div class="cell shrink">
                 {% include "browse/go_to_admin_change.html" with url="admin:bpp_wydawca_change" pk=wydawca.pk group="wprowadzanie danych" %}
@@ -60,37 +69,19 @@
         {% with lata=wydawca.prace_w_latach %}
         <div class="cell {% if wydawca.pbn_uid_id or poziomy or aliasy %}large-8{% else %}large-12{% endif %} medium-12">
             {% if lata %}
-            <div class="search-container">
-                <div class="search-header">
-                    <h3>
-                        <i class="fi-magnifying-glass"></i>Wyszukaj u wydawcy
-                    </h3>
-                    <p>Znajdź publikacje wydawcy „{{ wydawca.nazwa }}”</p>
-                </div>
+            {# Wyszukiwarka w stylu strony autora (wspólne częściowe szablony). #}
+            <div class="search-container autor-page__search-container">
+                {% include "browse/_wyszukiwarka_naglowek.html" with tytul="Wyszukaj u wydawcy" podtytul="Bez zaznaczonych filtrów wyszukiwanie pokaże wszystkie prace wydawcy (także wydane pod innymi nazwami). Zaznacz typy lub lata, żeby zawęzić wyniki." %}
 
-                <form method="post" action="{% url "bpp:browse_build_search" %}" class="browserForm">
+                <form method="post"
+                      action="{% url "bpp:browse_build_search" %}"
+                      class="browserForm autor-page__search-form">
                     {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt. #}
                     <input type="hidden" name="wydawca" value="{{ wydawca.pk }}"/>
 
-                    <div class="card">
-                        <div class="card-section">
-                            <h6><i class="fi-calendar"></i>Wydane w latach:</h6>
-                            {% include "browse/_selektor_lat.html" %}
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-section">
-                            <h6><i class="fi-page-edit"></i>Tytuł raportu:</h6>
-                            <input type="text" name="suggested-title" value="{{ wydawca }}"/>
-                        </div>
-                    </div>
-
-                    <div class="search-button-wrapper">
-                        <button type="submit" class="button button-search">
-                            <i class="fi-magnifying-glass"></i>Szukaj publikacji
-                        </button>
-                    </div>
+                    {% include "browse/_filtr_typy.html" %}
+                    {% include "browse/_filtr_lata.html" %}
+                    {% include "browse/_wyszukiwarka_stopka.html" with tytul_wynikow=wydawca %}
                 </form>
             </div>
             {% endif %}
@@ -141,4 +132,7 @@
         </div>
         {% endif %}
     </div>
+
+    {# Najczęściej publikujący autorzy i jednostki (bpp.sekcje_zrodla_wydawcy). #}
+    {% include "browse/_sekcje_top.html" with pole="wydawca" wartosc=wydawca.pk kontekst=wydawca.nazwa %}
 {% endblock %}
