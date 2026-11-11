@@ -32,7 +32,7 @@ class Migration(migrations.Migration):
     """Krok 2/3: wypełnienie slugów istniejących wydawców."""
 
     dependencies = [
-        ("bpp", "0503_wydawca_slug"),
+        ("bpp", "0504_wydawca_slug"),
     ]
 
     operations = [

@@ -8,7 +8,7 @@ class Migration(migrations.Migration):
     """Krok 3/3: slug wydawcy jako ``AutoSlugField`` — NOT NULL + UNIQUE."""
 
     dependencies = [
-        ("bpp", "0504_wydawca_slug_dane"),
+        ("bpp", "0505_wydawca_slug_dane"),
     ]
 
     operations = [

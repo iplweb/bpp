@@ -134,7 +134,7 @@ def test_slug_wydawcy_z_samych_cyfr_i_unikalny(client):
 
 @pytest.mark.django_db
 def test_migracja_wypelnia_unikalne_slugi():
-    migracja = importlib.import_module("bpp.migrations.0504_wydawca_slug_dane")
+    migracja = importlib.import_module("bpp.migrations.0505_wydawca_slug_dane")
     a = Wydawca.objects.create(nazwa="2001")
     b = Wydawca.objects.create(nazwa="2001!")
     c = Wydawca.objects.create(nazwa="Inne Wydawnictwo", alias_dla=a)

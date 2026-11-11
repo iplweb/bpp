@@ -6,7 +6,7 @@ class Migration(migrations.Migration):
     wypełnia ją 0504, ograniczenia zakłada 0505."""
 
     dependencies = [
-        ("bpp", "0502_autoreksporttask_xlsx"),
+        ("bpp", "0503_charakter_ogolny_rozdzialy_ksiazki"),
     ]
 
     operations = [
