@@ -1,0 +1,1 @@
+Generator danych demo (`create_demo_data`) tworzy teraz dane do ewaluacji: rodzaje autorów (ok. 60% N, 30% B, 10% doktorantów), dyscypliny autorów publikacji, punktację czasopism i poziomy wydawców wg rozporządzenia, a na końcu przelicza sloty, liczbę N i metryki dla okresów ewaluacji (do pominięcia flagą `--bez-ewaluacji`).

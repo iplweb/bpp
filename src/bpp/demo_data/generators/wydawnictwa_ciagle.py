@@ -9,9 +9,16 @@ from dataclasses import dataclass
 from bpp.demo_data.db import bulk_create_retry
 from bpp.demo_data.generators._publikacje_common import (
     apply_denorm_pre_save_cache,
+    autor_dyscyplina_mapping,
     autor_jednostka_mapping,
+    charaktery_wg,
     make_doi,
     make_tytul,
+    typy_kbn_liczone,
+)
+from bpp.demo_data.generators.punktacja import (
+    PUNKTY_SPOZA_WYKAZU,
+    punktacja_zrodel_mapping,
 )
 from bpp.demo_data.manifest import Manifest
 from bpp.demo_data.progress import make_progress
@@ -78,8 +85,9 @@ def _load_slowniki() -> _Slowniki:
     if aut_typ is None:
         raise ValueError("Brak Typ_Odpowiedzialnosci w bazie.")
     return _Slowniki(
-        charaktery=charaktery,
-        typy_kbn=list(Typ_KBN.objects.all()),
+        # Artykuly: charakter „art" — inaczej kalkulator slotow nie dopasuje.
+        charaktery=charaktery_wg(charaktery, charakter_ogolny="art"),
+        typy_kbn=typy_kbn_liczone(list(Typ_KBN.objects.all())),
         jezyki=list(Jezyk.objects.all()),
         statusy=list(Status_Korekty.objects.all()),
         aut_typ=aut_typ,
@@ -94,9 +102,11 @@ def _build_praca(
     zrodla: list[Zrodlo],
     s: _Slowniki,
     theme: Theme,
+    punktacja: dict,
     marker: str = "",
 ) -> Wydawnictwo_Ciagle:
     tytul = make_tytul(theme, rng, idx, marker=marker)
+    zrodlo = rng.choice(zrodla)
     praca = Wydawnictwo_Ciagle(
         tytul_oryginalny=tytul,
         rok=rok,
@@ -104,9 +114,10 @@ def _build_praca(
         typ_kbn=rng.choice(s.typy_kbn) if s.typy_kbn else None,
         jezyk=rng.choice(s.jezyki) if s.jezyki else None,
         status_korekty=rng.choice(s.statusy) if s.statusy else None,
-        zrodlo=rng.choice(zrodla),
+        zrodlo=zrodlo,
         doi=make_doi(rng, rok, idx),
-        punkty_kbn=rng.randint(5, 200),
+        # Punkty = punktacja czasopisma za rok publikacji; spoza wykazu → 5.
+        punkty_kbn=punktacja.get((zrodlo.pk, rok), PUNKTY_SPOZA_WYKAZU),
         **_maybe_openaccess(rng),
     )
     apply_denorm_pre_save_cache(praca, tytul=tytul, kind="wc", idx=idx)
@@ -120,8 +131,12 @@ def _build_powiazania(
     autor_to_jednostka: dict[int, int],
     aut_typ: Typ_Odpowiedzialnosci,
     rng: random.Random,
+    autor_dyscyplina: dict[tuple[int, int], int] | None = None,
 ) -> list[Wydawnictwo_Ciagle_Autor]:
-    """Buduje liste Wydawnictwo_Ciagle_Autor: 1–8 autorow per praca."""
+    """Buduje liste Wydawnictwo_Ciagle_Autor: 1–8 autorow per praca.
+
+    Autor z Autor_Dyscyplina za rok pracy dostaje te dyscypline (przypieta)."""
+    autor_dyscyplina = autor_dyscyplina or {}
     powiazania: list[Wydawnictwo_Ciagle_Autor] = []
     for praca in created:
         liczba_autorow = rng.randint(1, min(8, len(autorzy_z_jednostka)))
@@ -135,6 +150,9 @@ def _build_powiazania(
                     typ_odpowiedzialnosci=aut_typ,
                     kolejnosc=kolejnosc,
                     zapisany_jako=f"{autor.imiona} {autor.nazwisko}",
+                    afiliuje=True,
+                    dyscyplina_naukowa_id=autor_dyscyplina.get((autor.pk, praca.rok)),
+                    przypieta=True,
                 )
             )
     return powiazania
@@ -166,6 +184,7 @@ def create_wc(
         raise ValueError("Brak lat — pusty zakres.")
 
     s = _load_slowniki()
+    punktacja = punktacja_zrodel_mapping(z.pk for z in zrodla)
     autor_to_jednostka = autor_jednostka_mapping(autorzy)
     autorzy_z_jednostka = [a for a in autorzy if a.pk in autor_to_jednostka]
     if not autorzy_z_jednostka:
@@ -182,6 +201,7 @@ def create_wc(
             zrodla=zrodla,
             s=s,
             theme=theme,
+            punktacja=punktacja,
             marker=prefix,
         )
         for i in range(n)
@@ -207,6 +227,7 @@ def create_wc(
         autor_to_jednostka=autor_to_jednostka,
         aut_typ=s.aut_typ,
         rng=rng,
+        autor_dyscyplina=autor_dyscyplina_mapping(autorzy_z_jednostka),
     )
 
     pbar2 = make_progress(
