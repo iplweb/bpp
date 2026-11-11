@@ -2,15 +2,7 @@
 {# Cel przycisku „Pokaż wszystkie prace” z nagłówka strony (id niżej). #}
 <div class="search-container autor-page__search-container"
      id="wyszukaj-publikacje-autora">
-    <div class="search-header autor-page__search-header">
-        <h3 class="autor-page__search-title" tabindex="-1">
-            <i class="fi-magnifying-glass autor-page__icon--mr-xl"></i>Wyszukaj publikacje autora
-        </h3>
-        <p class="autor-page__search-subtitle">
-            Bez zaznaczonych filtrów wyszukiwanie pokaże wszystkie prace autora.
-            Zaznacz typy, lata lub jednostki, żeby zawęzić wyniki.
-        </p>
-    </div>
+    {% include "browse/_wyszukiwarka_naglowek.html" with tytul="Wyszukaj publikacje autora" podtytul="Bez zaznaczonych filtrów wyszukiwanie pokaże wszystkie prace autora. Zaznacz typy, lata lub jednostki, żeby zawęzić wyniki." %}
 
     <form method="post"
           action="{% url "bpp:browse_build_search" %}"
@@ -19,25 +11,11 @@
         {# Token w formularzu blokowałby cache_publiczny (_ZAWIERA_CSRF). #}
         <input type="hidden" name="autor" value="{{ autor.pk }}"/>
 
-        {# Typ publikacji — przełączniki („chipy”): checkbox w etykiecie, ukryty #}
-        {# wizualnie, ale fokusowalny; stan pokazuje <span> obok niego. #}
-        {# Grupy to div[role=group], nie fieldset — globalne style BPP #}
-        {# rysują ramkę wokół fieldset/legend. #}
-        <div class="autor-page__filtr" role="group" aria-labelledby="filtr-typ">
-            <div class="autor-page__filtr-tytul" id="filtr-typ">
-                <i class="fi-list autor-page__icon--mr-sm"></i>Typ publikacji
-            </div>
-            {% include "browse/_typy_chipy.html" %}
-        </div>
+        {% include "browse/_filtr_typy.html" %}
 
         {% with lata=autor.prace_w_latach %}
         {% if lata %}
-            <div class="autor-page__filtr" role="group" aria-labelledby="filtr-lata">
-                <div class="autor-page__filtr-tytul" id="filtr-lata">
-                    <i class="fi-calendar autor-page__icon--mr-sm"></i>Lata
-                </div>
-                {% include "browse/_selektor_lat.html" %}
-            </div>
+            {% include "browse/_filtr_lata.html" %}
         {% endif %}
         {% endwith %}
 
@@ -73,22 +51,7 @@
         {% endif %}
         {% endwith %}
 
-        {# Tytuł raportu + przycisk w jednym rzędzie (na wąskim ekranie pod sobą). #}
-        <div class="autor-page__search-stopka">
-            <label class="autor-page__title-pole">
-                <span class="autor-page__filtr-tytul">
-                    <i class="fi-page-edit autor-page__icon--mr-sm"></i>Tytuł wyników
-                </span>
-                <input type="text"
-                       name="suggested-title"
-                       value="{{ autor }}"
-                       class="autor-page__title-input"/>
-            </label>
-            <button type="submit"
-                    class="button primary large autor-page__search-btn">
-                <i class="fi-magnifying-glass autor-page__icon--mr-lg autor-page__icon--white"></i>Szukaj publikacji
-            </button>
-        </div>
+        {% include "browse/_wyszukiwarka_stopka.html" with tytul_wynikow=autor %}
     </form>
 </div>
 <div class="shaded-hr-div-small"></div>

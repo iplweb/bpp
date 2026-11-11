@@ -1,0 +1,17 @@
+{# Stopka wyszukiwarki: tytuł wyników + przycisk w jednym rzędzie (na wąskim #}
+{# ekranie pod sobą). Oczekuje: tytul_wynikow (wartość pola suggested-title). #}
+<div class="autor-page__search-stopka">
+    <label class="autor-page__title-pole">
+        <span class="autor-page__filtr-tytul">
+            <i class="fi-page-edit autor-page__icon--mr-sm"></i>Tytuł wyników
+        </span>
+        <input type="text"
+               name="suggested-title"
+               value="{{ tytul_wynikow }}"
+               class="autor-page__title-input"/>
+    </label>
+    <button type="submit"
+            class="button primary large autor-page__search-btn">
+        <i class="fi-magnifying-glass autor-page__icon--mr-lg autor-page__icon--white"></i>Szukaj publikacji
+    </button>
+</div>
