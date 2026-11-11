@@ -41,6 +41,9 @@
         </div>
     </div>
 
+    {# Punkty za monografię/rozdział/redakcję w ewaluacji (bpp.punkty_ewaluacji). #}
+    {% include "browse/_punkty_ewaluacji_wydawcy.html" %}
+
     {% if liczba_prac %}
         <div class="source-quick-actions">
             <form method="post" action="{% url "bpp:browse_build_search" %}" style="display: inline;">
