@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from braces.views import GroupRequiredMixin
 from django.contrib import messages
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, Q
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.views import View
@@ -11,7 +11,8 @@ from django.views.generic import TemplateView
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Autor_Dyscyplina, Uczelnia
 from ewaluacja_common.models import Rodzaj_Autora
-from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok
+from ewaluacja_common.okres import okres_dla_request
+from ewaluacja_liczba_n.utils import oblicz_dyscypliny_nieraportowane
 
 
 class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
@@ -24,14 +25,15 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
 
         uczelnia = Uczelnia.objects.get_for_request(self.request)
+        okres = okres_dla_request(self.request)
         ad_qs = Autor_Dyscyplina.objects.filter(
-            rok__gte=2022,
-            rok__lte=2025,
+            rok__gte=okres.rok_od,
+            rok__lte=okres.rok_do,
             autor__aktualna_jednostka__uczelnia=uczelnia,
             autor__aktualna_jednostka__skupia_pracownikow=True,
         )
 
-        # 1. Total by rodzaj_pracownika for 2022-2025
+        # 1. Total by rodzaj_pracownika for the selected period
         context["rodzaje_pracownika"] = (
             ad_qs.values("rodzaj_autora")
             .annotate(liczba=Count("id"))
@@ -182,49 +184,38 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
 
         # Generate DjangoQL queries and admin filter URLs
         # DjangoQL needs to reference the related object now
+        lata = f"rok >= {okres.rok_od} and rok <= {okres.rok_do}"
         context["djangoql_queries"] = {
-            "bez_wymiaru": (
-                "rok >= 2022 and rok <= 2025 and "
-                "(wymiar_etatu = None or wymiar_etatu = 0)"
-            ),
+            "bez_wymiaru": (f"{lata} and (wymiar_etatu = None or wymiar_etatu = 0)"),
             "bez_procent_n_sloty": (
-                "rok >= 2022 and rok <= 2025 and "
+                f"{lata} and "
                 "(rodzaj_autora.jest_w_n = True or rodzaj_autora.licz_sloty = True) "
                 "and (procent_dyscypliny = None or procent_dyscypliny = 0 or "
                 "(subdyscyplina_naukowa != None and "
                 "(procent_subdyscypliny = None or procent_subdyscypliny = 0)))"
             ),
             "bez_procent_dowolny": (
-                "rok >= 2022 and rok <= 2025 and "
+                f"{lata} and "
                 "(procent_dyscypliny = None or procent_dyscypliny = 0 or "
                 "(subdyscyplina_naukowa != None and "
                 "(procent_subdyscypliny = None or procent_subdyscypliny = 0)))"
             ),
-            "rodzaj_n": 'rok >= 2022 and rok <= 2025 and rodzaj_autora.skrot = "N"',
-            "rodzaj_d": 'rok >= 2022 and rok <= 2025 and rodzaj_autora.skrot = "D"',
-            "rodzaj_b": 'rok >= 2022 and rok <= 2025 and rodzaj_autora.skrot = "B"',
-            "rodzaj_z": 'rok >= 2022 and rok <= 2025 and rodzaj_autora.skrot = "Z"',
-            "brak_danych": "rok >= 2022 and rok <= 2025 and rodzaj_autora = None",
+            "rodzaj_n": f'{lata} and rodzaj_autora.skrot = "N"',
+            "rodzaj_d": f'{lata} and rodzaj_autora.skrot = "D"',
+            "rodzaj_b": f'{lata} and rodzaj_autora.skrot = "B"',
+            "rodzaj_z": f'{lata} and rodzaj_autora.skrot = "Z"',
+            "brak_danych": f"{lata} and rodzaj_autora = None",
         }
 
         # URL for custom filter (suma != 100%) - uses custom admin filter instead of DjangoQL
         context["zla_suma_url"] = (
-            "suma_procent=nieprawidlowa&rok__gte=2022&rok__lte=2025"
+            "suma_procent=nieprawidlowa"
+            f"&rok__gte={okres.rok_od}&rok__lte={okres.rok_do}"
         )
 
         # 5. Autorzy z obiema dyscyplinami nie-raportowanymi
-        # Oblicz nie-raportowane dyscypliny na podstawie sumy udziałów w 2025
-        # (suma < 12); reuse the uczelnia already fetched above.
-        sumy_2025 = (
-            IloscUdzialowDlaAutoraZaRok.objects.filter(uczelnia=uczelnia, rok=2025)
-            .values("dyscyplina_naukowa_id")
-            .annotate(suma=Sum("ilosc_udzialow"))
-        )
-        nieraportowane_ids = {
-            item["dyscyplina_naukowa_id"]
-            for item in sumy_2025
-            if item["suma"] is not None and item["suma"] < 12
-        }
+        # Nie-raportowane dyscypliny: suma udziałów w ostatnim roku okresu < 12
+        nieraportowane_ids = oblicz_dyscypliny_nieraportowane(uczelnia, okres=okres)
 
         # Znajdź autorów z dwoma dyscyplinami gdzie obie są nie-raportowane
         autorzy_obie_nieraportowane = []
@@ -260,10 +251,11 @@ class UstawWymiarEtatuView(GroupRequiredMixin, View):
 
     def post(self, request):
         uczelnia = Uczelnia.objects.get_for_request(request)
+        okres = okres_dla_request(request)
         updated = (
             Autor_Dyscyplina.objects.filter(
-                rok__gte=2022,
-                rok__lte=2025,
+                rok__gte=okres.rok_od,
+                rok__lte=okres.rok_do,
                 autor__aktualna_jednostka__uczelnia=uczelnia,
                 autor__aktualna_jednostka__skupia_pracownikow=True,
             )
@@ -285,11 +277,12 @@ class UstawProcentDyscyplinyNSlotyView(GroupRequiredMixin, View):
 
     def post(self, request):
         uczelnia = Uczelnia.objects.get_for_request(request)
+        okres = okres_dla_request(request)
         # Only update records without subdyscyplina (single discipline)
         updated = (
             Autor_Dyscyplina.objects.filter(
-                rok__gte=2022,
-                rok__lte=2025,
+                rok__gte=okres.rok_od,
+                rok__lte=okres.rok_do,
                 autor__aktualna_jednostka__uczelnia=uczelnia,
                 autor__aktualna_jednostka__skupia_pracownikow=True,
             )
@@ -316,11 +309,12 @@ class UstawProcentDyscyplinyDowolnyView(GroupRequiredMixin, View):
 
     def post(self, request):
         uczelnia = Uczelnia.objects.get_for_request(request)
+        okres = okres_dla_request(request)
         # Only update records without subdyscyplina (single discipline)
         updated = (
             Autor_Dyscyplina.objects.filter(
-                rok__gte=2022,
-                rok__lte=2025,
+                rok__gte=okres.rok_od,
+                rok__lte=okres.rok_do,
                 autor__aktualna_jednostka__uczelnia=uczelnia,
                 autor__aktualna_jednostka__skupia_pracownikow=True,
             )
@@ -364,11 +358,12 @@ class UstawRodzajAutoraView(GroupRequiredMixin, View):
         )
 
         uczelnia = Uczelnia.objects.get_for_request(request)
+        okres = okres_dla_request(request)
         # Update records without rodzaj_autora or with unknown rodzaj_autora
         updated = (
             Autor_Dyscyplina.objects.filter(
-                rok__gte=2022,
-                rok__lte=2025,
+                rok__gte=okres.rok_od,
+                rok__lte=okres.rok_do,
                 autor__aktualna_jednostka__uczelnia=uczelnia,
                 autor__aktualna_jednostka__skupia_pracownikow=True,
             )

@@ -7,6 +7,7 @@ from django.views.generic import ListView
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Autor_Dyscyplina, Dyscyplina_Naukowa, Uczelnia
 from ewaluacja_common.models import Rodzaj_Autora
+from ewaluacja_common.okres import okres_dla_request
 
 from ..models import IloscUdzialowDlaAutoraZaCalosc, IloscUdzialowDlaAutoraZaRok
 from ..utils import oblicz_dyscypliny_nieraportowane
@@ -30,8 +31,9 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
         if rok:
             ad_filter["rok"] = rok
         else:
-            ad_filter["rok__gte"] = 2022
-            ad_filter["rok__lte"] = 2025
+            okres = okres_dla_request(self.request)
+            ad_filter["rok__gte"] = okres.rok_od
+            ad_filter["rok__lte"] = okres.rok_do
 
         # Pobierz pary (autor_id, rok) z danym rodzajem autora
         autorzy_z_rodzajem = (
@@ -111,7 +113,9 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
         raportowana = self.request.GET.get("raportowana")
         if raportowana:
             uczelnia = Uczelnia.objects.get_for_request(self.request)
-            nieraportowane_ids = oblicz_dyscypliny_nieraportowane(uczelnia)
+            nieraportowane_ids = oblicz_dyscypliny_nieraportowane(
+                uczelnia, okres=okres_dla_request(self.request)
+            )
             if raportowana == "tak":
                 queryset = queryset.exclude(
                     dyscyplina_naukowa_id__in=nieraportowane_ids
@@ -182,9 +186,10 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
 
     def get_queryset(self):
         uczelnia = Uczelnia.objects.get_for_request(self.request)
-        # Pobierz wszystkie udziały dla autorów tej uczelni
+        okres = okres_dla_request(self.request)
+        # Pobierz wszystkie udziały dla autorów tej uczelni w wybranym okresie
         queryset = IloscUdzialowDlaAutoraZaRok.objects.filter(
-            uczelnia=uczelnia, rok__gte=2022, rok__lte=2025
+            uczelnia=uczelnia, rok__gte=okres.rok_od, rok__lte=okres.rok_do
         ).select_related(
             "autor",
             "dyscyplina_naukowa",
@@ -208,11 +213,12 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         uczelnia = Uczelnia.objects.get_for_request(self.request)
+        okres = okres_dla_request(self.request)
 
         # Pobierz ID dyscyplin które mają faktyczne dane dla tej uczelni
         dyscypliny_z_danymi = (
             IloscUdzialowDlaAutoraZaRok.objects.filter(
-                uczelnia=uczelnia, rok__gte=2022, rok__lte=2025
+                uczelnia=uczelnia, rok__gte=okres.rok_od, rok__lte=okres.rok_do
             )
             .values_list("dyscyplina_naukowa_id", flat=True)
             .distinct()
@@ -226,7 +232,7 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
         # Pobierz tylko lata które faktycznie są w bazie dla tej uczelni
         lata_z_danymi = (
             IloscUdzialowDlaAutoraZaRok.objects.filter(
-                uczelnia=uczelnia, rok__gte=2022, rok__lte=2025
+                uczelnia=uczelnia, rok__gte=okres.rok_od, rok__lte=okres.rok_do
             )
             .values_list("rok", flat=True)
             .distinct()
@@ -247,7 +253,9 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
         context["current_sort"] = self.request.GET.get("sort", "autor")
 
         # Oblicz dyscypliny nieraportowane do wyświetlania w template
-        context["nieraportowane_ids"] = oblicz_dyscypliny_nieraportowane(uczelnia)
+        context["nieraportowane_ids"] = oblicz_dyscypliny_nieraportowane(
+            uczelnia, okres=okres
+        )
 
         # Oblicz sumy dla przefiltrowanych danych (przed paginacją)
         queryset_for_sum = self.get_queryset()
@@ -335,9 +343,10 @@ class UdzialyZaCaloscListView(GroupRequiredMixin, ListView):
 
     def get_queryset(self):
         uczelnia = Uczelnia.objects.get_for_request(self.request)
-        # Pobierz wszystkie udziały za cały okres dla tej uczelni
+        okres = okres_dla_request(self.request)
+        # Pobierz wszystkie udziały za wybrany okres dla tej uczelni
         queryset = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
-            uczelnia=uczelnia
+            uczelnia=uczelnia, okres=okres
         ).select_related("autor", "dyscyplina_naukowa", "rodzaj_autora")
 
         # Filtrowanie po nazwisku/imieniu autora
@@ -362,7 +371,7 @@ class UdzialyZaCaloscListView(GroupRequiredMixin, ListView):
         # Filtrowanie po statusie raportowana/nieraportowana
         raportowana = self.request.GET.get("raportowana")
         if raportowana:
-            nieraportowane_ids = oblicz_dyscypliny_nieraportowane(uczelnia)
+            nieraportowane_ids = oblicz_dyscypliny_nieraportowane(uczelnia, okres=okres)
             if raportowana == "tak":
                 # Tylko dyscypliny raportowane (nie są w zbiorze nieraportowanych)
                 queryset = queryset.exclude(
@@ -396,10 +405,13 @@ class UdzialyZaCaloscListView(GroupRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         uczelnia = Uczelnia.objects.get_for_request(self.request)
+        okres = okres_dla_request(self.request)
 
         # Pobierz ID dyscyplin które mają faktyczne dane dla tej uczelni
         dyscypliny_z_danymi = (
-            IloscUdzialowDlaAutoraZaCalosc.objects.filter(uczelnia=uczelnia)
+            IloscUdzialowDlaAutoraZaCalosc.objects.filter(
+                uczelnia=uczelnia, okres=okres
+            )
             .values_list("dyscyplina_naukowa_id", flat=True)
             .distinct()
         )
@@ -420,7 +432,9 @@ class UdzialyZaCaloscListView(GroupRequiredMixin, ListView):
         context["current_sort"] = self.request.GET.get("sort", "autor")
 
         # Oblicz dyscypliny nieraportowane do wyświetlania w template
-        context["nieraportowane_ids"] = oblicz_dyscypliny_nieraportowane(uczelnia)
+        context["nieraportowane_ids"] = oblicz_dyscypliny_nieraportowane(
+            uczelnia, okres=okres
+        )
 
         # Oblicz sumy dla przefiltrowanych danych (przed paginacją)
         queryset_for_sum = self.get_queryset()

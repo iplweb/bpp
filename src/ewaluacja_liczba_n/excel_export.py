@@ -8,9 +8,10 @@ from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from bpp.models import Uczelnia
+from ewaluacja_common.okres import okres_dla_request
 
 from .models import LiczbaNDlaUczelni
-from .utils import oblicz_liczbe_n_na_koniec_2025
+from .utils import oblicz_liczbe_n_na_koniec_okresu
 
 
 class LiczbaNExcelExporter:
@@ -22,7 +23,12 @@ class LiczbaNExcelExporter:
     Subclasses should implement:
     - _create_detail_worksheet(wb, request): Create the main detail worksheet
     - get_filename(): Return the export filename
+
+    Okres ewaluacji (``self.okres``) ustawia ``export(request)`` na podstawie
+    wyboru w sesji (``okres_dla_request``).
     """
+
+    okres = None
 
     def _create_summary_worksheet(self, wb: Workbook, uczelnia: Uczelnia) -> None:
         """Create summary worksheet with Liczba N data."""
@@ -40,7 +46,7 @@ class LiczbaNExcelExporter:
 
         # Data
         liczby_n = (
-            LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia)
+            LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia, okres=self.okres)
             .select_related("dyscyplina_naukowa")
             .order_by("dyscyplina_naukowa__nazwa")
         )
@@ -70,7 +76,12 @@ class LiczbaNExcelExporter:
         """Create non-reported disciplines worksheet."""
         ws_nieraportowane = wb.create_sheet("Dyscypliny Nieraportowane")
 
-        headers = ["Dyscyplina", "Kod", "Liczba N - średnia", "Liczba N - koniec 2025"]
+        headers = [
+            "Dyscyplina",
+            "Kod",
+            "Liczba N - średnia",
+            f"Liczba N - koniec {self.okres.rok_do}",
+        ]
         for col_num, header in enumerate(headers, 1):
             cell = ws_nieraportowane.cell(row=1, column=col_num, value=header)
             cell.font = Font(bold=True)
@@ -78,19 +89,19 @@ class LiczbaNExcelExporter:
                 start_color="CCCCCC", end_color="CCCCCC", fill_type="solid"
             )
 
-        # Get all disciplines and calculate N values for end of 2025
+        # Liczby N dla dyscyplin i liczba N na koniec okresu
         wszystkie_liczby_n = (
-            LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia)
+            LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia, okres=self.okres)
             .select_related("dyscyplina_naukowa")
             .order_by("dyscyplina_naukowa__nazwa")
         )
-        liczby_n_2025 = oblicz_liczbe_n_na_koniec_2025(uczelnia)
+        liczby_n_koniec = oblicz_liczbe_n_na_koniec_okresu(uczelnia, okres=self.okres)
 
-        # Filter only non-reported (N < 12 at end of 2025)
+        # Tylko nieraportowane (N < 12 na koniec okresu)
         row_num = 2
         for liczba in wszystkie_liczby_n:
-            liczba_n_2025 = liczby_n_2025.get(liczba.dyscyplina_naukowa_id, 0)
-            if liczba_n_2025 < 12:
+            liczba_n_koniec = liczby_n_koniec.get(liczba.dyscyplina_naukowa_id, 0)
+            if liczba_n_koniec < 12:
                 ws_nieraportowane.cell(
                     row=row_num, column=1, value=liczba.dyscyplina_naukowa.nazwa
                 )
@@ -101,7 +112,7 @@ class LiczbaNExcelExporter:
                     row=row_num, column=3, value=float(liczba.liczba_n)
                 )
                 ws_nieraportowane.cell(
-                    row=row_num, column=4, value=float(liczba_n_2025)
+                    row=row_num, column=4, value=float(liczba_n_koniec)
                 )
                 row_num += 1
 
@@ -143,6 +154,7 @@ class LiczbaNExcelExporter:
     def export(self, request) -> HttpResponse:
         """Generate and return the Excel export response."""
         uczelnia = Uczelnia.objects.get_for_request(request)
+        self.okres = okres_dla_request(request)
         wb = Workbook()
 
         # Sheet 1: Summary of Liczba N for institution

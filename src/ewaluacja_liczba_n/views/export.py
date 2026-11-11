@@ -17,13 +17,13 @@ class AutorzyLiczbaNExporter(LiczbaNExcelExporter):
     """Exporter for author N-number data with yearly breakdown."""
 
     def get_filename(self) -> str:
-        return "liczba_n_ewaluacja_2022_2025.xlsx"
+        return f"liczba_n_ewaluacja_{self.okres.rok_od}_{self.okres.rok_do}.xlsx"
 
     def _get_filtered_udzialy_queryset(self, request):
         """Get filtered queryset based on request parameters."""
         uczelnia = Uczelnia.objects.get_for_request(request)
         udzialy = IloscUdzialowDlaAutoraZaRok.objects.filter(
-            uczelnia=uczelnia, rok__gte=2022, rok__lte=2025
+            uczelnia=uczelnia, rok__gte=self.okres.rok_od, rok__lte=self.okres.rok_do
         )
 
         # Apply filters from URL
@@ -202,12 +202,16 @@ class UdzialyZaCaloscExporter(LiczbaNExcelExporter):
     """Exporter for full evaluation period share data."""
 
     def get_filename(self) -> str:
-        return "udzialy_za_calosc_ewaluacja_2022_2025.xlsx"
+        return (
+            f"udzialy_za_calosc_ewaluacja_{self.okres.rok_od}_{self.okres.rok_do}.xlsx"
+        )
 
     def _get_filtered_udzialy_calosc_queryset(self, request):
         """Get filtered udzialy za calosc queryset."""
         uczelnia = Uczelnia.objects.get_for_request(request)
-        udzialy = IloscUdzialowDlaAutoraZaCalosc.objects.filter(uczelnia=uczelnia)
+        udzialy = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
+            uczelnia=uczelnia, okres=self.okres
+        )
 
         search = request.GET.get("search")
         if search:
@@ -266,7 +270,7 @@ class UdzialyZaCaloscExporter(LiczbaNExcelExporter):
             "Dyscyplina",
             "Kod Dyscypliny",
             "Rodzaj autora",
-            "Ilość Udziałów (2022-2025)",
+            f"Ilość Udziałów ({self.okres})",
             "Ilość Udziałów - Monografie",
             "Komentarz",
         ]

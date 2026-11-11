@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load humanize url_helpers static %}
 
-{% block title %}Liczba N - Ewaluacja 2022-2025{% endblock %}
+{% block title %}Liczba N - Ewaluacja {{ okres_ewaluacji }}{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'ewaluacja_liczba_n/css/ewaluacja_liczba_n.css' %}">
@@ -15,11 +15,11 @@
 {% block content %}
 <div class="row">
     <div class="large-12 columns">
-        <h1><i class="fi-list-number"></i> Liczba N - Ewaluacja 2022-2025</h1>
+        <h1><i class="fi-list-number"></i> Liczba N - Ewaluacja {{ okres_ewaluacji }}</h1>
 
         <div class="callout primary">
             <h4>Obliczanie liczby N</h4>
-            <p>Kliknij poniższy przycisk, aby obliczyć liczbę N dla ewaluacji 2022-2025.</p>
+            <p>Kliknij poniższy przycisk, aby obliczyć liczbę N dla ewaluacji {{ okres_ewaluacji }}.</p>
             <form method="post" action="{% url 'ewaluacja_liczba_n:oblicz' %}" id="obliczLiczbeNForm">
                 {% csrf_token %}
                 <button type="submit" class="button large success" id="obliczLiczbeNButton">
@@ -82,7 +82,7 @@
                             <th class="text-right">Liczba N - średnia</th>
                             <th class="text-right">Sankcje</th>
                             <th class="text-right">Liczba 3N - ostateczna</th>
-                            <th class="text-right">Liczba N - koniec 2025</th>
+                            <th class="text-right">Liczba N - koniec {{ okres_ewaluacji.rok_do }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -99,7 +99,7 @@
                                 {% endwith %}
                             </td>
                             <td class="text-right">{{ liczba.liczba_n_ostateczna|floatformat:2 }}</td>
-                            <td class="text-right">{{ liczba.liczba_n_2025|floatformat:2 }}</td>
+                            <td class="text-right">{{ liczba.liczba_n_koniec|floatformat:2 }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -109,7 +109,7 @@
                             <th class="text-right">{{ suma_liczby_n|floatformat:2 }}</th>
                             <th class="text-right">{{ suma_sankcji|floatformat:2 }}</th>
                             <th class="text-right">{{ suma_liczby_n_ostatecznej|floatformat:2 }}</th>
-                            <th class="text-right">{{ suma_liczby_n_2025|floatformat:2 }}</th>
+                            <th class="text-right">{{ suma_liczby_n_koniec|floatformat:2 }}</th>
                         </tr>
                     </tfoot>
                 </table>
@@ -128,7 +128,7 @@
         {% if dyscypliny_nieraportowane %}
         <h3>Dyscypliny nieraportowane</h3>
         <div class="callout alert">
-            <p>Poniższe dyscypliny nie są raportowane w ewaluacji ze względu na liczbę N na koniec 2025 roku poniżej progu 12:</p>
+            <p>Poniższe dyscypliny nie są raportowane w ewaluacji ze względu na liczbę N na koniec {{ okres_ewaluacji.rok_do }} roku poniżej progu 12:</p>
             <table class="hover stack">
                 <thead>
                     <tr>
@@ -136,7 +136,7 @@
                         <th>Dyscyplina</th>
                         <th>Kod</th>
                         <th class="text-right">Liczba N - średnia</th>
-                        <th class="text-right">Liczba N - koniec 2025</th>
+                        <th class="text-right">Liczba N - koniec {{ okres_ewaluacji.rok_do }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -149,7 +149,7 @@
                             {{ dn.liczba_n|floatformat:2 }}
                         </td>
                         <td class="text-right">
-                            {{ dn.liczba_n_2025|floatformat:2 }}
+                            {{ dn.liczba_n_koniec|floatformat:2 }}
                         </td>
                     </tr>
                     {% endfor %}
