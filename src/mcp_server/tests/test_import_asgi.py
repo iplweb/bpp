@@ -40,7 +40,7 @@ def test_zawezenie_hostow_w_tescie_nie_zamraza_galezi_websocketow(settings, ucze
     # Sprawdzone mutacyjnie.
     import django_bpp.asgi
 
-    walidator = django_bpp.asgi.application.application_mapping["websocket"]
+    walidator = django_bpp.asgi.application.aplikacja.application_mapping["websocket"]
     assert "localhost" in walidator.allowed_origins, (
         "gałąź WebSocketów zamrożona z zawężoną listą hostów — live-serwer "
         "będzie odrzucał handshake origin-em localhost z 403"

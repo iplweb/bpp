@@ -1,1 +1,0 @@
-API (/api/v1/patent/, /api/v1/praca_doktorska/, /api/v1/praca_habilitacyjna/) i strony rekordów nie zwracają już błędu 500, gdy w słowniku brakuje stałego wpisu (charakter formalny PAT/D/H, język „polski", typ odpowiedzialności „aut.") — pole jest wtedy puste, a brak trafia do logu jako ostrzeżenie.

@@ -1,1 +1,0 @@
-``make tests-only-playwright`` nie instaluje już przeglądarek przy każdym uruchomieniu (wcześniej wywoływało ``sudo apt``), tylko sprawdza ich obecność; liczbę workerów poza CI liczy z wolnego RAM-u według osobnego profilu pamięci Playwrighta (``make xdist-measure-playwright``) i uruchamia testy pod limitem pamięci, żeby nie zamrozić laptopa.

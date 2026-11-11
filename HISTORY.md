@@ -2,6 +2,31 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202611.1407 (2026-11-09)
+
+### Naprawione
+
+- Strona autora: kafelki podsumowania dorobku nie rozjeżdżają się już w Firefoksie pod Linuksem, przycisk „Pokaż wszystkie prace” przewija do sekcji „Wyszukaj publikacje autora”, a sam formularz wyszukiwania ma czytelniejszy układ (typy i lata jako przełączniki, jednostki w kolumnach, tytuł i przycisk w jednym rzędzie). ([#autor-wyszukiwarka-uklad](https://github.com/iplweb/bpp/issues/autor-wyszukiwarka-uklad))
+- Komunikat na liście autorów publikacji (bez wybranego rekordu) wskazuje właściwy przycisk „Autorzy" zamiast nieistniejącego „Edytuj autorów". ([#komunikat-przycisk-autorzy](https://github.com/iplweb/bpp/issues/komunikat-przycisk-autorzy))
+- Szybszy raport slotów — ewaluacja oraz raport upoważnień PBN (HTML i eksport XLSX): licencja OpenAccess, identyfikator z systemu kadrowego, afiliowana jednostka i funkcja autora nie są już doczytywane osobnym zapytaniem dla każdego wiersza. ([#raport-ewaluacji-n-plus-jeden](https://github.com/iplweb/bpp/issues/raport-ewaluacji-n-plus-jeden))
+- API (/api/v1/patent/, /api/v1/praca_doktorska/, /api/v1/praca_habilitacyjna/) i strony rekordów nie zwracają już błędu 500, gdy w słowniku brakuje stałego wpisu (charakter formalny PAT/D/H, język „polski", typ odpowiedzialności „aut.") — pole jest wtedy puste, a brak trafia do logu jako ostrzeżenie. ([#slowniki-stale-bez-500](https://github.com/iplweb/bpp/issues/slowniki-stale-bez-500))
+- Naprawiono wyciek połączeń z bazą danych w serwerze aplikacji (ASGI).
+  Część kodu wykonywanego poza wątkiem żądania — m.in. strony błędów
+  404/500 oraz middleware ``easyaudit`` — otwierała połączenia, których
+  nikt nie zamykał; wisiały jako bezczynne aż do restartu procesu
+  i przy większym ruchu zapychały pulę ``pgbouncer``, co kończyło się
+  błędami „server closed the connection unexpectedly”. Usunięto
+  przestarzałą globalną podmianę ``sync_to_async``
+  (``thread_sensitive=False``), a połączenia otwarte w wątkach puli
+  pętli ASGI są teraz zamykane po każdym zadaniu.
+
+### Usprawnienie
+
+- Szybszy start serwera aplikacji i workerów Celery (ok. 1,7 s → 1,2 s): ciężkie biblioteki (OR-Tools, pandas, WeasyPrint, xhtml2pdf, idutils) są ładowane dopiero przy pierwszym użyciu, a nie przy każdym starcie procesu. ([#leniwe-importy-start](https://github.com/iplweb/bpp/issues/leniwe-importy-start))
+- ``make tests-only-playwright`` nie instaluje już przeglądarek przy każdym uruchomieniu (wcześniej wywoływało ``sudo apt``), tylko sprawdza ich obecność; liczbę workerów poza CI liczy z wolnego RAM-u według osobnego profilu pamięci Playwrighta (``make xdist-measure-playwright``) i uruchamia testy pod limitem pamięci, żeby nie zamrozić laptopa. ([#playwright-workers-ram](https://github.com/iplweb/bpp/issues/playwright-workers-ram))
+- Liczbę workerów xdist w ``make tests-*`` poza CI liczy teraz plugin ``pytest-xdist-memory``: mierzy pamięć workerów przy każdym przebiegu (z Chromium, Daphne i kontenerem PG) i dobiera ``-n auto`` do wolnego RAM-u; ``bin/xdist_workers.py`` i targety ``xdist-measure``/``xdist-calc`` usunięto. ([#xdist-memory-plugin](https://github.com/iplweb/bpp/issues/xdist-memory-plugin))
+
+
 ## bpp 202611.1406 (2026-11-08)
 
 ### Naprawione
