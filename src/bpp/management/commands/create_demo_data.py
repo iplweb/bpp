@@ -45,6 +45,12 @@ class Command(BaseCommand):
         )
         parser.add_argument("--procent-ze-streszczeniem", type=int, default=70)
         parser.add_argument("--bez-prefiksu", action="store_true")
+        parser.add_argument(
+            "--bez-ewaluacji",
+            action="store_true",
+            help="Nie przeliczaj cache punktów/slotów, liczby N ani metryk "
+            "na końcu generowania.",
+        )
 
     def handle(self, *args, **options):
         manifest_out = options.get("manifest_out")
@@ -73,6 +79,7 @@ class Command(BaseCommand):
             motyw=options["motyw"],
             procent_ze_streszczeniem=options["procent_ze_streszczeniem"],
             bez_prefiksu=options["bez_prefiksu"],
+            bez_ewaluacji=options["bez_ewaluacji"],
         )
         # BaseCommand ma self.stdout (OutputWrapper) ale NIE ma self.stdin —
         # passujemy sys.stdin explicit (potrzebne dla double_confirm w trybie
