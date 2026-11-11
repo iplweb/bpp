@@ -1,0 +1,4 @@
+{# Nazwisko i imiona w pierwszej linii, tytuł naukowy w drugiej (mniejszy). #}
+{# Odpowiednik Autor.__str__ rozbity na dwie części — żeby długie tytuły #}
+{# nie łamały wiersza listy współautorów w przypadkowym miejscu. #}
+<span class="autor-page__wspolautor-nazwisko">{{ a.nazwisko }} {{ a.imiona }}{% if a.poprzednie_nazwiska and a.pokazuj_poprzednie_nazwiska %} ({{ a.poprzednie_nazwiska }}){% endif %}{% if a.pseudonim %} ({{ a.pseudonim }}){% endif %}</span>{% if a.tytul %}<span class="autor-page__wspolautor-tytul">{{ a.tytul.skrot }}</span>{% endif %}

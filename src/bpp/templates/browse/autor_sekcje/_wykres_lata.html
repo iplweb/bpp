@@ -1,7 +1,8 @@
 {# Wspólny wykres roczny. Oczekuje: nazwa, dane.dane (lista (rok, wartosc)), #}
 {# dane.maks, dane.etykieta. Powyżej 10 punktów → liniowy SVG (zwarty dla #}
 {# długich serii), do 10 → słupki. Bez zależności (czysty SVG/HTML). #}
-{# Klik w słupek / kolumnę roku → multiseek z pracami autora z tego roku. #}
+{# Klik w słupek / kolumnę roku → multiseek z pracami z tego roku #}
+{# (autora, a z szukaj_pola — jednostki lub źródła). #}
 {# Przyciski leżą poza formularzem (atrybut form=), każdy niesie name=rok. #}
 {% with form_id="wykres-szukaj-"|add:nazwa|slugify %}
 <div class="author-info-section autor-page__sekcja autor-page__wykres">
@@ -12,8 +13,17 @@
           class="autor-page__wykres-form">
         {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt, #}
         {# a token blokowałby cache_publiczny strony autora (_ZAWIERA_CSRF). #}
-        <input type="hidden" name="autor" value="{{ autor.pk }}"/>
-        <input type="hidden" name="suggested-title" value="{{ autor }}"/>
+        {# Strona autora: filtr po autorze. Jednostka/źródło przekazują #}
+        {# szukaj_pola (lista par nazwa–wartość) i szukaj_tytul. #}
+        {% if szukaj_pola %}
+            {% for nazwa_pola, wartosc_pola in szukaj_pola %}
+                <input type="hidden" name="{{ nazwa_pola }}" value="{{ wartosc_pola }}"/>
+            {% endfor %}
+            <input type="hidden" name="suggested-title" value="{{ szukaj_tytul }}"/>
+        {% else %}
+            <input type="hidden" name="autor" value="{{ autor.pk }}"/>
+            <input type="hidden" name="suggested-title" value="{{ autor }}"/>
+        {% endif %}
         {# Typ raportu multiseeka (np. „table” dla punktów); BuildSearch #}
         {# ustawia go tylko, gdy użytkownik ma ten raport do wyboru. #}
         {% if raport %}<input type="hidden" name="raport" value="{{ raport }}"/>{% endif %}

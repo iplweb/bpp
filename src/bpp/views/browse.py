@@ -247,9 +247,31 @@ class JednostkaView(DetailView):
         return self.render_to_response(context)
 
     def get_context_data(self, **kwargs):
-        return super().get_context_data(
-            typy=TYPY, **(self.podjednostki or {}), **kwargs
+        ctx = super().get_context_data(typy=TYPY, **(self.podjednostki or {}), **kwargs)
+        if self.podjednostki is None:
+            # Wykresy w latach tylko w zwykłym widoku jednostki — styl
+            # strukturalny (wydział) nie pokazuje własnych prac.
+            ctx.update(self._wykresy())
+        return ctx
+
+    def _wykresy(self):
+        from bpp.models import Rekord
+        from bpp.wykresy_lat import wykresy_w_latach
+
+        jednostka = self.object
+        wykresy = wykresy_w_latach(
+            Rekord.objects.prace_jednostki(jednostka), getattr(self, "request", None)
         )
+        if not wykresy:
+            return {}
+        # Klik w rok = te same filtry co formularz „Wyszukaj publikacje”
+        # (jednostka + potomkowie) plus ten rok.
+        pks = jednostka.get_descendants(include_self=True).values_list("pk", flat=True)
+        return {
+            "wykresy": {"wykresy": wykresy},
+            "szukaj_pola": [("jednostka", pk) for pk in pks],
+            "szukaj_tytul": str(jednostka),
+        }
 
 
 @method_decorator(cache_publiczny(), name="dispatch")
@@ -895,6 +917,18 @@ class ZrodloView(DetailView):
         context["has_publications"] = Wydawnictwo_Ciagle.objects.filter(
             zrodlo=self.object
         ).exists()
+        if context["has_publications"]:
+            from bpp.models import Rekord
+            from bpp.wykresy_lat import wykresy_w_latach
+
+            wykresy = wykresy_w_latach(
+                Rekord.objects.filter(zrodlo=self.object),
+                getattr(self, "request", None),
+            )
+            if wykresy:
+                context["wykresy"] = {"wykresy": wykresy}
+                context["szukaj_pola"] = [("zrodlo", self.object.pk)]
+                context["szukaj_tytul"] = str(self.object)
         return context
 
 
@@ -1041,6 +1075,71 @@ def zrob_box_z_requestu(dct, name, qo, op=None):
     return []
 
 
+#: Zakres szerszy niż tyle lat to śmieci z POST — nie rozwijamy go na pola.
+MAKS_ROZPIETOSC_ZAKRESU_LAT = 300
+
+
+def _przedzialy_lat(request, zakres_qo):
+    """``rok`` i ``zakres_lat`` z POST → posortowane przedziały ``(od, do)``.
+
+    Przedziały nakładające się albo stykające scalamy: 2020 + 2022–2025
+    + 2021 → 2020–2025. Niepoprawne wartości pomijamy (jak multiseek)."""
+    przedzialy = []
+    for rok in request.POST.getlist("rok"):
+        try:
+            przedzialy.append((int(rok), int(rok)))
+        except ValueError:
+            continue
+    for z in request.POST.getlist("zakres_lat"):
+        try:
+            wartosc = zakres_qo.value_from_web(z)
+        except ValueError:  # json.loads na śmieciach z POST
+            wartosc = None
+        if wartosc is None:
+            continue
+        od, do = sorted(wartosc)
+        if do - od <= MAKS_ROZPIETOSC_ZAKRESU_LAT:
+            przedzialy.append((od, do))
+
+    scalone = []
+    for od, do in sorted(przedzialy):
+        if scalone and od <= scalone[-1][1] + 1:
+            scalone[-1] = (scalone[-1][0], max(scalone[-1][1], do))
+        else:
+            scalone.append((od, do))
+    return scalone
+
+
+def zrob_box_lat(request):
+    """Lata z POST (pojedyncze ``rok`` + zakresy ``zakres_lat=[od,do]``) jako
+    JEDNA grupa łączona OR, chronologicznie — „2017 lub 2020–2024”, nie AND
+    (pusty wynik). Kolejne lata i stykające się zakresy są „kompresowane” do
+    jednego pola „Zakres lat”; samotny rok zostaje polem „Rok”.
+
+    Zakresy produkuje selektor lat (zakres-lat.js) na stronach autora,
+    jednostki i źródła. Gdy pole „Zakres lat” jest dla użytkownika ukryte
+    w multiseeku, wszystko idzie jako pojedyncze lata — formularz
+    z niewidocznym polem by się nie wczytał."""
+    zakres_qo = ZakresLatQueryObject()
+    przedzialy = _przedzialy_lat(request, zakres_qo)
+    # Widoczność pola (zapytanie do bazy) sprawdzamy tylko, gdy jest zakres.
+    zakres_widoczny = any(od != do for od, do in przedzialy) and zakres_qo.enabled(
+        request
+    )
+
+    pola = []
+    for od, do in przedzialy:
+        if od == do or not zakres_widoczny:
+            pola.extend((RokQueryObject, str(rok)) for rok in range(od, do + 1))
+        else:
+            pola.append((ZakresLatQueryObject, f"[{od},{do}]"))
+
+    ret = []
+    for qo, wartosc in pola:
+        ret.append(make_field(qo, qo.ops[0], wartosc, prev_op=OR if ret else None))
+    return ret
+
+
 def zrob_formularz(*args, **extra):
     """Zwraca JSON formularza multiseeka dla sesji. ``extra`` (np. ``ordering``,
     ``report_type``) trafia obok ``form_data``."""
@@ -1126,7 +1225,7 @@ class BuildSearch(RedirectView):
     def post(self, *args, **kw):
         zrodla_box = zrob_box_z_requestu(self.request.POST, "zrodlo", ZrodloQueryObject)
         typy_box = zrob_box_z_requestu(self.request.POST, "typ", TypRekorduObject)
-        lata_box = zrob_box_z_requestu(self.request.POST, "rok", RokQueryObject)
+        lata_box = zrob_box_lat(self.request)
         jednostki_box = zrob_box_z_requestu(
             self.request.POST, "jednostka", JednostkaQueryObject
         )
@@ -1155,10 +1254,6 @@ class BuildSearch(RedirectView):
 
         charakter_box = zrob_box_z_requestu(
             self.request.POST, "charakter_formalny", CharakterFormalnyQueryObject
-        )
-
-        zakres_lat_box = zrob_box_z_requestu(
-            self.request.POST, "zakres_lat", ZakresLatQueryObject
         )
 
         # #438: oba pola „poddrzewowe" (Wydział / Jednostka nadrzędna) budujemy
@@ -1195,7 +1290,6 @@ class BuildSearch(RedirectView):
             wydzialy_box,
             jednostki_nadrzedne_box,
             lata_box,
-            zakres_lat_box,
             **ustawienia,
         )
 
