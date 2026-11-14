@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Build arguments for version flexibility
-ARG PYTHON_VERSION=3.12
+ARG PYTHON_VERSION=3.14
 ARG NODEJS_VERSION=24
 ARG DEBIAN_VERSION=trixie
 # Pandoc installed via COPY --from= zamiast apt-get, bo apt-owy pandoc
@@ -280,7 +280,7 @@ RUN find /app/.venv -type d -name tests -not -path "*/django/*" \
 # R8: strip debug symbols z .so w venv (~180 MB .so total, ~30-50 MB zysku).
 # `--strip-unneeded` zachowuje symbole potrzebne do dynamic linking
 # (inaczej `--strip-all` dalby ImportError), wycina tylko debug info i
-# local symbols. binutils (strip) jest juz w python:3.12-trixie. Warning
+# local symbols. binutils (strip) jest juz w python:3.14-trixie. Warning
 # swallowing: niektore wheels moga miec non-ELF .so (fallback Python
 # impl, np. w setuptools).
 RUN find /app/.venv -name "*.so" -exec strip --strip-unneeded {} + \
