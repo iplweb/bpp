@@ -1,0 +1,1 @@
+Demon ``denorm-queue`` zgłasza do Rollbara przedłużającą się niedostępność bazy danych (po 15 minutach, potem co 30 minut); krótkie restarty bazy są tylko ostrzeżeniem w logu. Wymaga ``django-denorm-iplweb`` w wersji z obsługą okresu karencji.

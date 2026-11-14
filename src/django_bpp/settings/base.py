@@ -820,8 +820,13 @@ IMPORT_PRACOWNIKOW_RETENCJA_DNI = env(
     "IMPORT_PRACOWNIKOW_RETENCJA_DNI", default=90, cast=int
 )
 
+# All denorm tasks (flush_via_queue, flush_batch, _flush_requeue and the legacy
+# flush_single) go to the dedicated "denorm" queue. Previously only the legacy
+# flush_single was routed here, so the actual recomputation ran on the default
+# "celery" queue. Every worker that should process denorm MUST consume both
+# queues (production: CELERY_QUEUE=celery,denorm; run-site: worker_extra_args).
 CELERY_ROUTES = [
-    {"denorm.tasks.flush_single": {"queue": "denorm"}},
+    {"denorm.tasks.*": {"queue": "denorm"}},
 ]
 
 CELERYBEAT_SCHEDULE = {
@@ -1991,6 +1996,14 @@ LOGGING = {
             "stream": "ext://sys.stderr",
             "formatter": "pbn_import",
         },
+        # Sends ERROR+ records to Rollbar through the already initialized
+        # rollbar module (bpp.rollbar_config.configure_rollbar() in
+        # BppConfig.ready); no token here. Attached only to loggers whose
+        # errors have no other path to Rollbar (see denorm_queue below).
+        "rollbar": {
+            "class": "rollbar.logger.RollbarHandler",
+            "level": "ERROR",
+        },
     },
     "loggers": {
         # Eventy bezpieczeństwa Django (DisallowedHost, SuspiciousOperation,
@@ -2062,6 +2075,18 @@ LOGGING = {
         "weasyprint": {
             "handlers": ["console"],
             "level": "WARNING",
+            "propagate": False,
+        },
+        # denorm_queue daemon (the LISTEN/NOTIFY -> Celery bridge). It is a
+        # plain management command, not a Celery task or a request, so its
+        # errors reach Rollbar only through this handler. It reconnects on its
+        # own after a database restart and only WARNs; it logs an ERROR when
+        # the database stays unreachable longer than DENORM_QUEUE_OUTAGE_GRACE
+        # (django-denorm-iplweb, default 15 min), then every
+        # DENORM_QUEUE_OUTAGE_REPEAT (default 30 min).
+        "denorm.management.commands.denorm_queue": {
+            "handlers": ["console", "rollbar"],
+            "level": "INFO",
             "propagate": False,
         },
     },
