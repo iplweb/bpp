@@ -28,7 +28,7 @@ authors = [
 classifiers = [
     "DoNotUpload :: Use this project via github.com/iplweb/bpp-deploy repo",
 ]
-requires-python = ">=3.11,<3.15"
+requires-python = ">=3.11.5,<3.15"
 dependencies = [
     "Django>=5.2.19,<5.3",
     # Reużywalne pakiety PBN wydzielone na PyPI (github.com/iplweb/*).
@@ -315,7 +315,7 @@ push = false
 # (cryptography, pynacl, uvicorn[standard]) odzyskuja markery PyPy na
 # krawedziach do cffi/uvloop - wiec lock i tak nie robi sie prostszy.
 #
-# Dolna granica trzymana rownolegle do `requires-python` wyzej (>=3.11) -
+# Dolna granica trzymana rownolegle do `requires-python` wyzej (>=3.11.5) -
 # te dwie wartosci zmieniamy razem. Do 2026-09 stalo tu `>= '3.10'` - martwe,
 # bo przeciecie z requires-python i tak dawalo 3.11, ale mylnie sugerowalo
 # wsparcie dla Pythona 3.10.
@@ -326,7 +326,7 @@ push = false
 # ortools (via `baseline-rebuild`) nie publikuje wheeli emscripten, wiec
 # rezolucja padala ("No solution found ... split (markers: ... emscripten)").
 # BPP nigdy nie biegnie w przegladarce — split jest martwy.
-environments = ["python_version >= '3.11' and python_version < '3.15' and platform_python_implementation != 'PyPy' and sys_platform != 'emscripten'"]
+environments = ["python_full_version >= '3.11.5' and python_version < '3.15' and platform_python_implementation != 'PyPy' and sys_platform != 'emscripten'"]
 
 # Security floors dla zaleznosci TRANZYTYWNYCH (nie deklarujemy ich jako
 # direct deps - przychodza przez inne pakiety). constraint-dependencies
@@ -390,6 +390,10 @@ constraint-dependencies = [
     #              czyta uv.lock i alarmuje)
     # 2026-11-06 (bramka CVE w release-candidate.yml, osv-scanner + pip-audit):
     #   oauthlib   GHSA-3jp2-3mrg-2vxc / CVE-2026-49272 (HIGH), fix w 4.0.1
+    # 2026-11-14 (pip-audit na PR #1015):
+    #   opentelemetry-api CVE-2026-126360, fix w 1.45.2
+    #   soupsieve  CVE-2026-126190/126191/126193, fix w 4.0.0 / 3.0.2 —
+    #              wymagaja Pythona >=3.11.5, stad requires-python >=3.11.5
     "anyio>=4.14.2",
     # >=26.10.1: zamyka CVE-2026-77528 (PYSEC-2026-4027, fix od 26.7.1),
     # a zarazem pierwsza wersja z leniwym importem vendorowanych flatbuffers
@@ -405,12 +409,12 @@ constraint-dependencies = [
     "daphne>=4.2.2",
     "h2>=4.4.1",
     "oauthlib>=4.0.1",
-    "opentelemetry-api>=1.45.1",
+    "opentelemetry-api>=1.45.2",
     "pyasn1>=0.6.4",
     "pyjwt>=2.15.1",
     "pypdf>=6.21.2",
     "setuptools>=84.1.0",
-    "soupsieve>=2.10",
+    "soupsieve>=4.1",
 ]
 
 # Pillow 13 zamyka 31 CVE (CVE-2026-96636..96778, CVE-2026-112390..112901,

@@ -82,7 +82,7 @@ graph TB
 
 | Component | Technology |
 |-----------|------------|
-| **Backend** | Python 3.10-3.14, Django |
+| **Backend** | Python 3.11.5-3.14, Django |
 | **Database** | PostgreSQL with custom SQL functions |
 | **Cache** | Redis (sessions, ORM caching, locks) |
 | **Task Queue** | Celery + Redis |

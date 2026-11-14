@@ -6,7 +6,7 @@ with code in this repository.
 ## Project Overview
 
 BPP (Bibliografia Publikacji Pracownikow) is a Polish academic bibliography
-management system built with Django. Python >=3.10,<3.15.
+management system built with Django. Python >=3.11.5,<3.15 (production and CI: 3.12).
 
 - Architecture: [docs/deweloper/mapa-kodu.md](docs/deweloper/mapa-kodu.md)
 - Commands reference: [docs/deweloper/polecenia.md](docs/deweloper/polecenia.md)

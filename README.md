@@ -310,7 +310,7 @@ tylko podczas trwania komendy (chyba że `--reuse`).
 
 | | |
 |---|---|
-| **Backend** | Python 3.10+, Django 4.2, Celery, Django Channels |
+| **Backend** | Python 3.11.5+, Django 5.2, Celery, Django Channels |
 | **Baza danych** | PostgreSQL |
 | **Cache / broker** | Redis |
 | **Frontend** | Foundation CSS, jQuery, HTMX, Select2 |
