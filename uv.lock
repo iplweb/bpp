@@ -498,7 +498,7 @@ requires-dist = [
     { name = "django-countdown", specifier = ">=0.4.0" },
     { name = "django-crispy-forms", specifier = ">=2.7,<3" },
     { name = "django-dbtemplates-iplweb", specifier = ">=4.4.1" },
-    { name = "django-denorm-iplweb", specifier = ">=1.15.0" },
+    { name = "django-denorm-iplweb", specifier = ">=1.16.0" },
     { name = "django-dirtyfields", specifier = "==1.9.9" },
     { name = "django-dsl", specifier = ">=0.1.15" },
     { name = "django-dynamic-admin-columns", specifier = ">=0.6.0" },
@@ -1753,7 +1753,7 @@ wheels = [
 
 [[package]]
 name = "django-denorm-iplweb"
-version = "1.15.0"
+version = "1.16.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "celery" },
@@ -1761,9 +1761,9 @@ dependencies = [
     { name = "django" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3a/30/05e464e6c014eb369d7f707d0eb8bd2018b558766c9ceb5e48a2498c7d2d/django_denorm_iplweb-1.15.0.tar.gz", hash = "sha256:af02ab2dc3b4d3d095492f5edc8f5ec141b74917f2e3c837a9cc172dd2b72df2", size = 107509, upload-time = "2026-10-18T20:30:48.08Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/33/0d/81cea5ac1565d53a3d0f51c27635539defc92f42105b2f736188a7bd6b38/django_denorm_iplweb-1.16.0.tar.gz", hash = "sha256:36e5b772cd7b9edb2f05b214896dcf1c48ed26dfdbb8792aea3ebd1ec49b268a", size = 111233, upload-time = "2026-11-14T16:56:29.063Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cd/e8/0650b3625fe2eb3a53193c3ef7b2bb6038607d4cf39cedbb56bc80ba7795/django_denorm_iplweb-1.15.0-py3-none-any.whl", hash = "sha256:9563fc338ff6de5ec4927bdfbef987630001b95cfecd92261765091fb47955dd", size = 85366, upload-time = "2026-10-18T20:30:45.059Z" },
+    { url = "https://files.pythonhosted.org/packages/fc/fa/2f1bcabc32c865c5e0c3f9397f67c2a6698a16a1aea90e75d25b1246f453/django_denorm_iplweb-1.16.0-py3-none-any.whl", hash = "sha256:a643725696a3a8b5bf963e0c713c19f6f13834ca6b0f3f02f407cc4d60739c61", size = 87698, upload-time = "2026-11-14T16:56:27.294Z" },
 ]
 
 [[package]]
