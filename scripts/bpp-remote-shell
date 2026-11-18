@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Run a LOCAL Python script inside the Django shell of a REMOTE BPP deployment.
+#
+#   scripts/bpp-remote-shell SSH_HOST SCRIPT.py [script args...]
+#
+# The script is streamed over SSH stdin into
+#   docker compose exec -T appserver python src/manage.py shell
+# so nothing is copied to the server and no secrets (PBN app token, user PBN
+# tokens, DB credentials) ever leave it. Script arguments are injected as
+# `sys.argv` (JSON-encoded, so no shell-quoting issues on the way).
+#
+# Env overrides:
+#   BPP_REMOTE_DEPLOY_PATH  (default: ~/bpp-deploy)
+#   BPP_REMOTE_SERVICE      (default: appserver)
+set -euo pipefail
+
+if [[ $# -lt 2 ]]; then
+    echo "usage: $0 SSH_HOST SCRIPT.py [script args...]" >&2
+    exit 2
+fi
+
+host="$1"
+script="$2"
+shift 2
+
+if [[ ! -f "$script" ]]; then
+    echo "error: script not found: $script" >&2
+    exit 2
+fi
+
+deploy_path="${BPP_REMOTE_DEPLOY_PATH:-~/bpp-deploy}"
+service="${BPP_REMOTE_SERVICE:-appserver}"
+
+argv_json=$(python3 -I -c 'import json, sys; print(json.dumps(sys.argv[1:]))' "$(basename "$script")" "$@")
+
+{
+    echo "import sys; sys.argv = ${argv_json}"
+    cat "$script"
+} | ssh "$host" "cd ${deploy_path} && docker compose exec -T ${service} python src/manage.py shell"
