@@ -39,7 +39,7 @@ install_packages_debian() {
     girepository="$(apt_first_available libgirepository1.0-dev libgirepository-2.0-dev)"
 
     $SUDO apt-get install -y \
-        build-essential ca-certificates curl gettext git \
+        build-essential ca-certificates curl gettext git jq \
         nodejs npm pandoc python3-dev \
         libcairo2-dev libffi-dev libgtk-3-dev libldap2-dev libpango1.0-dev \
         libpq-dev libsasl2-dev libssl-dev \
@@ -63,7 +63,7 @@ install_packages_fedora() {
             "Bez niego eksport DOCX przejdzie na fallback html2docx."
     fi
     $SUDO dnf install -y \
-        ca-certificates curl gcc gcc-c++ gettext git make \
+        ca-certificates curl gcc gcc-c++ gettext git jq make \
         nodejs npm python3-devel \
         cairo-devel cyrus-sasl-devel gdk-pixbuf2-devel \
         gobject-introspection-devel gtk3-devel libffi-devel libpq-devel \
@@ -76,7 +76,7 @@ install_packages_fedora() {
 
 install_packages_arch() {
     $SUDO pacman -Syu --needed --noconfirm \
-        base-devel ca-certificates curl gettext git \
+        base-devel ca-certificates curl gettext git jq \
         nodejs npm pandoc-cli python \
         cairo cyrus-sasl gdk-pixbuf2 gobject-introspection gtk3 libffi \
         libldap openssl pango postgresql-libs \
@@ -113,6 +113,7 @@ prepare_linux() {
     verify_yarnpkg
 
     ensure_uv
+    install_security_tools_linux
     sync_python_deps
     install_playwright_browsers
 }
