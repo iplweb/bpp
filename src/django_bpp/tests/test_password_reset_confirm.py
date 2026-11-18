@@ -30,3 +30,5 @@ def test_password_reset_confirm_has_password_manager_hints(client):
     assert response.status_code == 200
     assert response.context["validlink"]
     assert html.count('autocomplete="new-password"') == 2
+    assert 'autocomplete="username"' in html
+    assert f'value="{user.get_username()}"' in html
