@@ -11,7 +11,24 @@ from crispy_forms_foundation.layout import (
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import is_password_usable
-from password_policies.forms import PasswordPoliciesChangeForm, PasswordResetForm
+from password_policies.forms import (
+    PasswordPoliciesChangeForm,
+    PasswordPoliciesForm,
+    PasswordResetForm,
+)
+
+
+class BppSetPasswordForm(PasswordPoliciesForm):
+    """Set a new password after following a reset link.
+
+    Marks both fields as ``new-password`` so password managers (Bitwarden
+    etc.) offer a generated password and update the saved login.
+    """
+
+    def __init__(self, *args, **kw):
+        super().__init__(*args, **kw)
+        for name in ("new_password1", "new_password2"):
+            self.fields[name].widget.attrs["autocomplete"] = "new-password"
 
 
 class BppPasswordChangeForm(PasswordPoliciesChangeForm):
