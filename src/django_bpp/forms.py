@@ -1,5 +1,6 @@
 from crispy_forms.helper import FormHelper
 from crispy_forms_foundation.layout import (
+    HTML,
     ButtonHolder,
     Column,
     Fieldset,
@@ -14,12 +15,24 @@ from password_policies.forms import PasswordPoliciesChangeForm, PasswordResetFor
 
 
 class BppPasswordChangeForm(PasswordPoliciesChangeForm):
+    AUTOCOMPLETE = {
+        "old_password": "current-password",
+        "new_password1": "new-password",
+        "new_password2": "new-password",
+    }
+
     def __init__(self, *args, **kw):
         self.helper = FormHelper()
         self.helper.form_method = "post"
         self.helper.layout = Layout(
             Fieldset(
                 "Zmień hasło",
+                # Hidden username lets password managers (Bitwarden etc.) tell
+                # which saved login the new password belongs to.
+                HTML(
+                    '<input type="text" name="username" autocomplete="username"'
+                    ' value="{{ form.user.get_username }}" hidden>'
+                ),
                 Row(Column("old_password")),
                 Row(Column("new_password1")),
                 Row(Column("new_password2")),
@@ -28,6 +41,10 @@ class BppPasswordChangeForm(PasswordPoliciesChangeForm):
         )
 
         super().__init__(*args, **kw)
+        # Without autocomplete hints password managers do not recognise this
+        # as a "change password" form and offer no generated password.
+        for name, hint in self.AUTOCOMPLETE.items():
+            self.fields[name].widget.attrs["autocomplete"] = hint
         self.fields["new_password1"].help_text = (
             f"Co najmniej {settings.PASSWORD_MIN_LENGTH} znaków. Nie musi "
             "zawierać cyfr ani znaków specjalnych — najłatwiej zapamiętać "
