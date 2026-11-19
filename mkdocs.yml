@@ -127,6 +127,7 @@ nav:
       - Budowanie CSS/SCSS: deweloper/budowanie-css.md
       - Rozwijanie projektu: deweloper/rozwijanie-projektu.md
       - Dane demo: deweloper/dane-demo.md
+      - Zrzuty ekranu do dokumentacji: deweloper/zrzuty-ekranu.md
       - WeasyPrint na macOS: deweloper/weasyprint-macos.md
       - Channels broadcast (flake): deweloper/testy-channels-broadcast.md
   - Bezpieczeństwo:
