@@ -1,0 +1,1 @@
+Dokumentacja importera publikacji opisuje wszystkich dostawców danych (CrossRef, PBN, BibTeX z importem wielu prac, DSpace, pozostałe strony WWW), kroki „Punktacja” i „Sprawdź w PBN” oraz powiązanie ze zgłoszeniami publikacji.
