@@ -93,11 +93,13 @@ dopiero na obrazku.
     a = Autor.objects.filter(imiona='Yennefer', nazwisko='Merigold').first()
     u, _ = BppUser.objects.get_or_create(username='yennefer', defaults=dict(
         email='yennefer@example.com', first_name='Yennefer', last_name='z Vengerbergu'))
-    u.set_password('demo-yen-2026'); u.autor = a; u.save()
+    u.set_password('yennefer'); u.autor = a; u.save()
     PasswordHistory.objects.create(user=u, password=u.password)
     "
     ```
 
+    Hasło = login (`yennefer`) — to lokalna baza demo, a hasło o wyglądzie
+    „prawdziwego” zatrzymuje PR na skanerze sekretów (GitGuardian).
     Wpis w `PasswordHistory` jest potrzebny, inaczej polityka haseł
     przekierowuje świeże konto na zmianę hasła i zrzut pokazuje zły ekran.
 

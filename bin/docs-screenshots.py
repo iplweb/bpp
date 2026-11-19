@@ -27,7 +27,8 @@ IMAGES = REPO / "docs" / "images"
 # Demo account created per docs/deweloper/zrzuty-ekranu.md — an ordinary
 # author (no staff/superuser), so screenshots show what a typical user sees.
 DEMO_USER = "yennefer"
-DEMO_PASSWORD = "demo-yen-2026"
+# Local throwaway demo DB only; password == username keeps secret scanners quiet.
+DEMO_PASSWORD = DEMO_USER
 
 VIEWPORT = {"width": 1280, "height": 800}
 
