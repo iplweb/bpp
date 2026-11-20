@@ -225,6 +225,9 @@ Najczęstsze przyczyny różnic:
 - **Zmiany po stronie POL-on** — nowe oświadczenia, korekty etatów, które
   zrobiono w POL-on po eksporcie pliku.
 
+Pełne omówienie, z przykładami i zrzutami, jest w artykule
+[Liczba N — najczęstsze pytania](liczba-n-faq.md).
+
 **Kiedy przeliczyć liczbę N:** po każdym zapisanym imporcie z POL-on, po
 imporcie pracowników i jednostek, po ręcznej zmianie dyscyplin, etatów albo
 rodzaju autora i po poprawkach z **„Weryfikuj poprawność bazy”**. BPP nie
@@ -294,6 +297,8 @@ przy liczeniu liczby N — zgłoś to administratorowi BPP.
 
 ## Zobacz też
 
+- [Liczba N — najczęstsze pytania](liczba-n-faq.md) — dlaczego
+  liczba N w BPP różni się od SEDN
 - [Import pracowników](../administrator/import-pracownikow.md) — miejsca
   pracy, które decydują, kto liczy się do liczby N
 - [Obliczanie slotów](sloty.md) — rodzaje autorów (N, B, Z, D) i jak import
