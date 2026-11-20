@@ -1089,6 +1089,28 @@ def import_polon_liczba_n(page: Page, base: str, out: Path) -> None:
     red.goto(f"{base}/")
     red.wait_for_load_state("networkidle")
     li = open_top_menu(red, "fi-wrench")
+# Demo submissions created for this page (docs/redaktor/obsluga-zgloszen.md):
+# an article with a DOI, a book with a PDF and no link, one closed by the importer.
+ZGL_ARTYKUL = "Wpływ fazy księżyca na skuteczność eliksiru Jaskółka"
+ZGL_KSIAZKA = "Bestiariusz porównawczy potworów Velen i Temerii"
+ZGL_ZAIMPORTOWANE = "Perspektywy rozwoju bestii w lochach Novigradu (nr 10)"
+AUTORZY_ZGL = "#zgloszenie_publikacji_autor_set-group"  # authors inline
+
+
+def obsluga_zgloszen(page: Page, base: str, out: Path) -> None:
+    """docs/redaktor/obsluga-zgloszen.md: handling submissions (editor in "zgłoszenia publikacji")."""
+    red = new_session(page, base, DEMO_USER_REDAKTOR)
+    lista = f"{base}/admin/zglos_publikacje/zgloszenie_publikacji/"
+    w = VIEWPORT["width"]
+
+    def otworz(tytul: str) -> None:
+        red.goto(lista + "?stan_obslugi=wszystkie")
+        red.wait_for_load_state("networkidle")
+        red.locator("#result_list a", has_text=tytul).first.click()
+        red.wait_for_load_state("networkidle")
+
+    # 1. top bar: "redagowanie" -> "Zgłoszenia publikacji"
+    li = open_top_menu(red, "fi-pencil")
     mark(
         red,
         [
@@ -1151,6 +1173,23 @@ def import_polon_liczba_n(page: Page, base: str, out: Path) -> None:
     # 3. progress page -> finished panel
     red.click("#id_submit")
     czekaj_na_koniec()
+                "sel": f"{li} > ul a",
+                "text": "Zgłoszenia publikacji",
+                "arrow": "left",
+                "label": "Zgłoszenia publikacji",
+                "dy": -60,
+            },
+        ],
+    )
+    red.screenshot(
+        path=out / "01-menu-redagowanie.png",
+        clip={"x": 0, "y": 0, "width": w, "height": 560},
+    )
+
+    # 2. the list ("Do obsługi" by default)
+    red.mouse.move(5, 700)
+    red.goto(lista)
+    red.wait_for_load_state("networkidle")
     mark(
         red,
         [
@@ -1340,6 +1379,214 @@ def import_polon_liczba_n(page: Page, base: str, out: Path) -> None:
         h["y"] - 20,
         nier["y"] + nier["height"] + 30 - (h["y"] - 20),
     )
+                "sel": "#result_list a",
+                "text": ZGL_ARTYKUL,
+                "arrow": "below",
+                "label": "kliknij tytuł",
+                "dx": 40,
+                "dy": 50,
+            },
+            {
+                "sel": "th.column-status",
+                "arrow": "below",
+                "label": "status",
+                "dx": 40,
+                "dy": 85,
+            },
+            {
+                "sel": "#filter-panel-toggle",
+                "arrow": "left",
+                "label": "filtry",
+                "dy": -85,
+            },
+        ],
+    )
+    shot(red, out / "02-lista.png", 0, 500)
+
+    # 3. filter panel, "stan obsługi" expanded
+    red.click("#filter-panel-toggle")
+    red.wait_for_timeout(800)
+    red.locator(".filter-title", has_text="stan obsługi").click()
+    red.wait_for_timeout(800)
+    mark(
+        red,
+        [
+            {
+                "sel": ".filter-group",
+                "text": "stan obsługi",
+                "arrow": "left",
+                "label": "Do obsługi / Załatwione / Wszystkie",
+                "dy": 60,
+            },
+        ],
+    )
+    red.screenshot(
+        path=out / "03-filtry.png", clip={"x": 0, "y": 0, "width": w, "height": 480}
+    )
+
+    # Tall viewport for the submission page: the fixed "Usuń" footer bar
+    # would otherwise cut through the middle of the form.
+    red.set_viewport_size({"width": w, "height": 1600})
+
+    # 4. an article with a DOI: the buttons above the form
+    otworz(ZGL_ARTYKUL)
+    tools = "ul.grp-object-tools a"
+    mark(
+        red,
+        [
+            {
+                "sel": tools,
+                "text": "Użyj importera",
+                "arrow": "below",
+                "label": "importer",
+                "dx": -100,
+            },
+            {
+                "sel": tools,
+                "text": "Zwróć do autora",
+                "arrow": "below",
+                "label": "zwrot",
+                "dx": -20,
+            },
+            {
+                "sel": tools,
+                "text": "Dodaj wyd. ciągłe",
+                "arrow": "below",
+                "label": "ręcznie",
+                "dx": 20,
+            },
+        ],
+    )
+    shot(red, out / "04-zgloszenie-przyciski.png", 0, 400)
+
+    # 5. a book without a link: the PDF attachment, no importer button.
+    # The attachment is far below the buttons - top + torn edge + that part.
+    otworz(ZGL_KSIAZKA)
+    mark(
+        red,
+        [
+            {
+                "sel": "div.forma_dostepu .grp-readonly",
+                "arrow": "right",
+                "label": "dostęp ograniczony",
+                "dx": 60,
+                "dy": -30,
+            },
+            {
+                "sel": tools,
+                "text": "Dodaj wyd. zwarte",
+                "arrow": "below",
+                "label": "książka: wyd. zwarte",
+                "dx": -160,
+                "dy": -20,
+            },
+            {"sel": "div.strona_www .grp-readonly"},
+            {
+                "sel": "div.pliki_do_pobrania a",
+                "arrow": "right",
+                "label": "pobierz plik",
+                "dx": 60,
+                "dy": -40,
+            },
+            {
+                "sel": AUTORZY_ZGL + " > h2",
+                "arrow": "below",
+                "label": "autorzy, jednostki, dyscypliny",
+                "dx": 150,
+                "dy": -40,
+            },
+        ],
+    )
+    top = shot(red, None, 0, bottom_of(red, "div.forma_dostepu", 10))
+    box = page_box(red, "div.strona_www")
+    dol = shot(
+        red,
+        None,
+        box["y"] - 10,
+        bottom_of(red, "div.pliki_do_pobrania", 10) - box["y"] + 10,
+    )
+    box = page_box(red, AUTORZY_ZGL)
+    autorzy = shot(red, None, box["y"] - 10, box["height"] + 20)
+    stitch(
+        red,
+        [top, dol, autorzy],
+        out / "05-zgloszenie-plik.png",
+        "niżej w formularzu",
+    )
+
+    # 6. return to the author: the reason form (not submitted - keeps the demo DB reusable)
+    red.set_viewport_size(VIEWPORT)
+    otworz(ZGL_ARTYKUL)
+    red.locator(tools, has_text="Zwróć do autora").click()
+    red.wait_for_load_state("networkidle")
+    red.fill(
+        "textarea[name=przyczyna_zwrotu]",
+        "Proszę uzupełnić drugiego autora z Aretuzy i dyscyplinę.",
+    )
+    mark(
+        red,
+        [
+            {
+                "sel": "textarea[name=przyczyna_zwrotu]",
+                "arrow": "below",
+                "label": "1. powód zwrotu",
+                "dx": 100,
+                "dy": 30,
+            },
+            {
+                "sel": "footer.grp-fixed-footer input[type=submit]",
+                "arrow": "above",
+                "label": "2. zapisz",
+                "dx": -260,
+                "dy": 20,
+            },
+        ],
+    )
+    red.screenshot(path=out / "06-zwrot.png")
+
+    # 7. importer, first step, opened from the submission
+    otworz(ZGL_ARTYKUL)
+    red.locator(tools, has_text="Użyj importera").click()
+    red.wait_for_load_state("networkidle")
+    close_cookie_banner(red)
+    mark(
+        red,
+        [
+            {
+                "sel": "input[name=identifier]",
+                "arrow": "below",
+                "label": "DOI ze zgłoszenia",
+                "dx": 40,
+                "dy": -10,
+            },
+            {
+                "sel": "button[type=submit], input[type=submit]",
+                "arrow": "below",
+                "label": "dalej",
+                "dx": 20,
+                "dy": -10,
+            },
+        ],
+    )
+    red.screenshot(
+        path=out / "07-importer.png", clip={"x": 0, "y": 0, "width": w, "height": 440}
+    )
+
+    # 8. a submission closed by the importer
+    otworz(ZGL_ZAIMPORTOWANE)
+    mark(
+        red,
+        [
+            {
+                "sel": "#panel-zgloszenie-zaimportowane",
+                "arrow": "below",
+                "label": "kto, kiedy, który rekord",
+                "dx": 100,
+                "dy": 10,
+            },
+        ],
+    )
+    shot(red, out / "08-zaimportowane.png", 0, 330)
     red.context.close()
 
 
@@ -1608,6 +1855,7 @@ SCENARIOS = {
     "punkty-i-sloty": ("uzytkownik/punkty-i-sloty", punkty_i_sloty),
     "raporty": ("uzytkownik/raporty", raporty),
     "import-polon-liczba-n": ("redaktor/import-polon-liczba-n", import_polon_liczba_n),
+    "obsluga-zgloszen": ("redaktor/obsluga-zgloszen", obsluga_zgloszen),
 }
 
 
