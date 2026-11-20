@@ -92,13 +92,9 @@ z rozbieżnością pojawi się trzy razy. Kolumny:
    [Nowy rok w BPP](nowy-rok.md)) albo — jeśli autor naprawdę nie ma
    dyscypliny — usuń ją z pracy w formularzu pracy.
 
-!!! warning "Rozbieżności trzeciego rodzaju mogą nie być widoczne na liście"
-    W obecnej wersji BPP wiersze, w których autor **nie ma** dyscypliny
-    w roku pracy, są liczone w „N wyników”, ale **nie pojawiają się**
-    w tabeli. Jeśli licznik pokazuje więcej wierszy, niż widzisz na
-    liście, chodzi właśnie o takie przypadki. Znajdziesz je w raporcie
-    [kompletności danych POL-on](#kompletnosc-polon) (od 2026 roku) albo
-    sprawdzając dyscypliny autora na dany rok.
+Rozbieżności trzeciego rodzaju łatwo wyłowić: w kolumnie **dyscyplina
+autora** mają pusty wpis „-”. Szerszy przegląd braków daje raport
+[kompletności danych POL-on](#kompletnosc-polon) (od 2026 roku).
 
 ### Filtrowanie {#filtrowanie}
 
@@ -124,7 +120,8 @@ w języku zapytań (jak `rok>=2022` z menu). Aby zobaczyć wszystkie lata,
 wyczyść pole wyszukiwania i kliknij lupę.
 
 **Eksport** (prawy górny róg) zapisuje bieżącą listę do pliku XLSX:
-tytuł pracy, nazwisko i imiona autora, jego dyscypliny i link do pracy.
+tytuł pracy, rok, nazwisko i imiona autora, dyscyplinę zapisaną w pracy,
+dyscypliny autora i link do pracy.
 Działa, gdy lista ma mniej niż 10 000 wierszy — przy większej najpierw
 zawęź ją filtrami.
 
@@ -167,8 +164,8 @@ znikną z listy:
 
 ![Komunikaty „Dla rekordu … ustawiono dyscyplinę archeologia dla …”](../images/redaktor/rozbieznosci-dyscyplin/06-komunikaty.png)
 
-Po akcji lista wraca **bez filtrów** — ustaw je ponownie, zanim
-przejdziesz do następnej partii. Punkty i sloty poprawionych prac BPP
+Po akcji wracasz na listę z tymi samymi filtrami, więc możesz od razu
+zająć się następną partią. Punkty i sloty poprawionych prac BPP
 przelicza sam, w tle; nie trzeba otwierać i zapisywać każdej pracy.
 
 **Cała lista naraz.** Gdy zaznaczysz wszystkie wiersze na stronie, na
@@ -180,9 +177,10 @@ wiersze pasujące do filtrów**, ze wszystkich stron listy.
 
 Przy **20 i więcej** zaznaczonych wierszach (także gdy zaznaczysz całą
 25-wierszową stronę) operacja idzie w tle. Zamiast listy
-komunikatów zobaczysz: „Rozpoczęto przetwarzanie w tle. ID zadania: …”.
-Odśwież listę po chwili — poprawione wiersze znikną. (Link z ID zadania
-prowadzi do panelu zadań, który zwykle widzi tylko administrator.)
+komunikatów zobaczysz: „Rozpoczęto przetwarzanie N rekordów w tle. Zobacz
+postęp i wynik”. Link otwiera stronę, która sama się odświeża, a po
+zakończeniu pokazuje komunikat dla każdej pracy — te same, które przy
+mniejszej liczbie wierszy pojawiają się od razu nad listą.
 
 !!! warning "Akcja nie sprawdza, czy dyscyplina jest właściwa"
     Akcja przepisuje dyscyplinę autora do pracy bez pytania. Jeśli w pracy
@@ -239,23 +237,25 @@ rozbieżności nie traktuje jako błąd.
 
 ## Co może pójść nie tak {#co-moze-pojsc-nie-tak}
 
-**„Dla rekordu … nie ustawiono dyscypliny, ponieważ za rok … subdyscyplina
-autora autora … jest żadna. Rozbieżność … pozostaje nierozwiązana.”**
+**„Dla rekordu … nie ustawiono dyscypliny, ponieważ autor … nie ma drugiej
+dyscypliny za rok …. Rozbieżność … pozostaje nierozwiązana.”**
 Wybrano akcję „Ustaw drugą…”, a autor ma w tym roku tylko jedną dyscyplinę
 (albo „Ustaw pierwszą…” dla autora bez dyscypliny w tym roku — wtedy
-w komunikacie jest „dyscyplina autora”). Ta praca nie została zmieniona,
+w komunikacie jest „pierwszej dyscypliny”). Ta praca nie została zmieniona,
 pozostałe zaznaczone — tak. Użyj drugiej akcji albo uzupełnij dane autora.
 
-![Komunikat „… nie ustawiono dyscypliny, ponieważ za rok 2024 subdyscyplina autora autora … jest żadna”](../images/redaktor/rozbieznosci-dyscyplin/07-ostrzezenie.png)
+![Komunikat „… nie ustawiono dyscypliny, ponieważ autor … nie ma drugiej dyscypliny za rok 2024”](../images/redaktor/rozbieznosci-dyscyplin/07-ostrzezenie.png)
 
 **„Lista rekordów zmieniła się podczas operacji. Zakończono przetwarzanie,
 zalecane ponowne uruchomienie.”** W trakcie akcji ktoś inny (albo import)
 zmienił dane i jedna z zaznaczonych rozbieżności zniknęła. Część prac mogła
 zostać poprawiona — odśwież listę i powtórz akcję dla pozostałych.
 
-**Licznik „N wyników” większy niż liczba wierszy.** Na liście są
-rozbieżności „autor bez dyscypliny w tym roku”, których tabela nie
-wyświetla — patrz [ostrzeżenie wyżej](#rodzaje).
+**„Dla rekordu … nie ustawiono dyscypliny …: rekord nie przechodzi
+walidacji (…). Popraw go ręcznie.”** Praca ma stare dane, których BPP dziś
+nie przyjmuje (np. procent udziału albo afiliację). Otwórz pracę,
+popraw wskazane pole i zapisz — potem powtórz akcję albo ustaw dyscyplinę
+w formularzu. Pozostałe zaznaczone prace zostały poprawione.
 
 **Po akcji rozbieżność wraca.** Najczęściej po imporcie z POL-on, który
 zmienił autorowi dyscyplinę — BPP przepisał ją w pracach. Sprawdź dane
