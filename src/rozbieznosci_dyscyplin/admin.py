@@ -1,4 +1,5 @@
 import json
+import time
 from collections.abc import Iterable
 from json import JSONDecodeError
 
@@ -62,13 +63,20 @@ class RequestNotifier:
 
 
 class ResultNotifier:
+    """Collects messages of a background run as ``[level, html]`` pairs.
+
+    The pairs go through the Celery result backend (JSON), and the status page
+    uses the level to tell skipped records from changed ones.
+    """
+
     def __init__(self):
         self.retbuf = []
 
     def info(self, msg):
-        self.retbuf.append(msg)
+        self.retbuf.append(["info", str(msg)])
 
-    warning = info
+    def warning(self, msg):
+        self.retbuf.append(["warning", str(msg)])
 
 
 NAZWA_POLA = {
@@ -148,10 +156,20 @@ SESSION_KEY_ZADANIA = "rozbieznosci_dyscyplin_zadania"
 
 
 def zapamietaj_zadanie(request, task_id):
-    """Remember the task in the session, so only its owner can see the result."""
-    zadania = request.session.get(SESSION_KEY_ZADANIA, [])
-    zadania = ([str(task_id)] + zadania)[:20]
-    request.session[SESSION_KEY_ZADANIA] = zadania
+    """Remember the task in the session, so only its owner can see the result.
+
+    Also stores when it started (to detect a lost or expired result) and the
+    list URL with the editor's filters (for the "back to the list" link).
+    """
+    zadania = [
+        z for z in request.session.get(SESSION_KEY_ZADANIA, []) if isinstance(z, dict)
+    ]
+    wpis = {
+        "id": str(task_id),
+        "start": time.time(),
+        "powrot": request.get_full_path(),
+    }
+    request.session[SESSION_KEY_ZADANIA] = ([wpis] + zadania)[:20]
 
 
 def ustaw_dyscypline_task_or_instant(pole, request, elements):
@@ -185,7 +203,13 @@ def ustaw_dyscypline(pole, admin, request, qset):
         elements = list(qset.values_list("pk", flat=True))
     else:
         items = request.POST.getlist("_selected_action")
-        elements = [parse_object_id(elem) for elem in items]
+        elements = [e for e in map(parse_object_id, items) if e is not None]
+        if admin is not None:
+            # The IDs come straight from the form: keep only rows this user
+            # may see in the list (get_queryset() limits it to their
+            # university).
+            widoczne = admin.get_queryset(request)
+            elements = [e for e in elements if widoczne.filter(pk=tuple(e)).exists()]
 
     if not elements:
         messages.warning(

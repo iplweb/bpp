@@ -1,30 +1,45 @@
 {% extends "admin/base_site.html" %}
 {% block extrahead %}{{ block.super }}
-    {% if not gotowe %}<meta http-equiv="refresh" content="3">{% endif %}
+    {% if w_toku %}<meta http-equiv="refresh" content="3">{% endif %}
 {% endblock %}
 {% block breadcrumbs %}
     <div class="breadcrumbs">
         <a href="{% url "admin:index" %}">Początek</a>
-        &rsaquo; <a href="{% url "admin:rozbieznosci_dyscyplin_rozbieznosciview_changelist" %}">Rozbieżności dyscyplin</a>
+        &rsaquo; <a href="{{ powrot }}">Rozbieżności dyscyplin</a>
         &rsaquo; {{ title }}
     </div>
 {% endblock %}
 {% block content %}
     <p>Stan: <strong>{{ stan }}</strong>.</p>
-    {% if not gotowe %}
+    {% if w_toku %}
         <p>Strona odświeża się sama co kilka sekund.</p>
+    {% elif zagubione %}
+        <p class="errornote">Wynik tego zadania jest niedostępny: wygasł albo
+            zadanie nie zostało wykonane (np. po restarcie serwera). Wróć do
+            listy rozbieżności — wiersze, które nadal na niej są, nie zostały
+            poprawione.</p>
     {% elif blad %}
         <p class="errornote">Przetwarzanie przerwał błąd. Część rekordów mogła
             zostać zmieniona — wróć do listy rozbieżności i uruchom akcję
             ponownie dla pozostałych.</p>
+    {% elif sukces %}
+        <p>Ustawiono dyscyplinę: <strong>{{ zmienione|length }}</strong>,
+            pominięto: <strong>{{ pominiete|length }}</strong>.</p>
+        {# Messages are built with format_html(), so they are already escaped. #}
+        {% if pominiete %}
+            <h2>Pominięte — wymagają uwagi</h2>
+            <ul class="messagelist">
+                {% for k in pominiete %}<li class="warning">{{ k|safe }}</li>{% endfor %}
+            </ul>
+        {% endif %}
+        {% if zmienione %}
+            <h2>Zmienione</h2>
+            <ul class="messagelist">
+                {% for k in zmienione %}<li class="info">{{ k|safe }}</li>{% endfor %}
+            </ul>
+        {% endif %}
     {% else %}
-        <p>Przetworzono {{ komunikaty|length }} pozycji.</p>
-        <ul class="messagelist">
-            {% for k in komunikaty %}
-                {# Messages are built with format_html(), so they are already escaped. #}
-                <li class="info">{{ k|safe }}</li>
-            {% endfor %}
-        </ul>
+        <p>Zadanie nie zostało wykonane.</p>
     {% endif %}
-    <p><a href="{% url "admin:rozbieznosci_dyscyplin_rozbieznosciview_changelist" %}?q-l=on&q=rok%3E%3D2022&pracuje_na_uczelni=tak">Wróć do listy rozbieżności</a></p>
+    <p><a href="{{ powrot }}">Wróć do listy rozbieżności</a></p>
 {% endblock %}

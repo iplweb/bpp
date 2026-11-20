@@ -100,7 +100,7 @@ def test_real_ustaw_dyscypline_handles_missing_record(rf):
     real_ustaw_dyscypline(DYSCYPLINA_AUTORA, [[999, 999, 999]], notifier)
 
     assert len(notifier.retbuf) == 1
-    assert "zmieniła się podczas operacji" in notifier.retbuf[0]
+    assert "zmieniła się podczas operacji" in notifier.retbuf[0][1]
 
 
 @pytest.mark.django_db
@@ -135,6 +135,6 @@ def test_real_ustaw_dyscypline_validation_error(zle_przypisana_praca, mocker):
     real_ustaw_dyscypline(DYSCYPLINA_AUTORA, [pk], notifier)
 
     assert len(notifier.retbuf) == 1
-    assert "nie przechodzi walidacji" in notifier.retbuf[0]
-    assert "Zły procent udziału" in notifier.retbuf[0]
+    assert "nie przechodzi walidacji" in notifier.retbuf[0][1]
+    assert "Zły procent udziału" in notifier.retbuf[0][1]
     assert RozbieznosciView.objects.count() == 1
