@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 
 from playwright.sync_api import Page, sync_playwright
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 REPO = Path(__file__).resolve().parent.parent
 IMAGES = REPO / "docs" / "images"
@@ -34,6 +35,7 @@ DEMO_PASSWORD = DEMO_USER
 DEMO_USER_BEZ_AUTORA = "jaskier"
 # Third demo account in the group "generowanie raportów" (reports, slots).
 DEMO_USER_RAPORTY = "filippa"
+DEMO_USER_REDAKTOR = "vesemir"  # demo editor: is_staff + "wprowadzanie danych"
 
 VIEWPORT = {"width": 1280, "height": 800}
 
@@ -1054,6 +1056,424 @@ def raporty(page: Page, base: str, out: Path) -> None:
     rap.context.close()
 
 
+# A made-up Witcher article for the importer walkthrough: one author matched
+# exactly, one with two namesakes (pick by unit), one not in BPP at all.
+IMPORTER_BIBTEX = """@article{vesemir2025jaskolka,
+  title    = {Stabilność eliksiru Jaskółka w warunkach górskich},
+  author   = {Merigold, Yennefer and Merigold, Leo and Chivay, Zoltan},
+  journal  = {Acta Wiedźmińska},
+  year     = {2025},
+  volume   = {12},
+  number   = {3},
+  pages    = {45--58},
+  doi      = {10.99999/aw.2025.0312},
+  language = {pl}
+}"""
+
+
+def importer_publikacji(page: Page, base: str, out: Path) -> None:
+    """docs/redaktor/importer-publikacji.md: importer walkthrough with a pasted BibTeX entry.
+
+    Needs a FRESH demo DB (re-run = restore the dump) plus, in that DB: account
+    vesemir (is_staff + "wprowadzanie danych"), Uczelnia.obca_jednostka set,
+    Punktacja_Zrodla for "Acta Wiedźmińska" 2025 and the CrossRef mapper
+    journal-article -> "Artykuł w czasopismie". No external service is called.
+    """
+    red = new_session(page, base, DEMO_USER_REDAKTOR)
+    red.on("dialog", lambda d: d.accept())  # hx-confirm prompts
+    wizard = "#importer-wizard"
+
+    def czekaj(ms: int = 1500) -> None:
+        red.wait_for_load_state("networkidle")
+        red.wait_for_timeout(ms)
+
+    def wyrownaj_nakladke() -> None:
+        # An open Foundation reveal pins the page, so the overlay (absolute,
+        # page coordinates) drifts by the scroll offset - shift it back.
+        red.evaluate(
+            """() => { const ov = document.getElementById('kb-overlay');
+            const o = ov.getBoundingClientRect();
+            ov.style.top = (-scrollY - o.top) + 'px'; }"""
+        )
+
+    def dalej(text: str) -> None:
+        red.locator(f"{wizard} button", has_text=text).last.click()
+        czekaj()
+        # htmx swaps the step in place: drop the previous step's marks
+        red.evaluate("document.getElementById('kb-overlay')?.remove()")
+
+    # 1. top bar "redagowanie" -> "Import publikacji"
+    li = open_top_menu(red, "fi-pencil")
+    mark(
+        red,
+        [
+            {
+                "sel": f"{li} > ul a",
+                "text": "Import publikacji",
+            }
+        ],
+    )
+    menu = page_box(red, f"{li} > ul")
+    shot(red, out / "01-menu-redagowanie.png", 0, menu["y"] + menu["height"] + 30)
+
+    # 2. the same from the admin: "Wprowadzanie danych" -> "Importer publikacji"
+    red.goto(f"{base}/admin/")
+    czekaj(500)
+    red.locator("li.menu-icon-edit > a").hover()
+    red.wait_for_timeout(800)
+    mark(
+        red,
+        [
+            {
+                "sel": "li.menu-icon-edit li a",
+                "text": "Importer publikacji",
+                "arrow": "right",
+                "label": "Importer publikacji",
+                "dx": 40,
+            }
+        ],
+    )
+    menu = page_box(red, "li.menu-icon-edit > ul")
+    shot(red, out / "02-menu-admin.png", 0, menu["y"] + menu["height"] + 90)
+
+    # 3. provider tiles
+    red.goto(f"{base}/importer_publikacji/")
+    czekaj(500)
+    mark(
+        red,
+        [
+            {
+                "sel": "a.tile-card[data-provider=BibTeX]",
+                "arrow": "above",
+                "label": "masz opis BibTeX",
+                "dy": 40,
+            },
+            {
+                "sel": "a.tile-card[data-provider=CrossRef]",
+                "arrow": "above",
+                "label": "masz DOI",
+                "dy": 40,
+            },
+            {
+                "sel": "a.tile-card[data-provider=PBN]",
+                "arrow": "right",
+                "label": "praca jest w PBN",
+            },
+        ],
+    )
+    shot(red, out / "03-zrodla-danych.png", 0, bottom_of(red, "#import-progress-bar"))
+
+    # 4. CrossRef: the first (and only) screen we show - no call to CrossRef
+    red.click("a.tile-card[data-provider=CrossRef]")
+    czekaj(500)
+    red.fill("#input-identifier input", "10.99999/aw.2025.0312")
+    mark(
+        red,
+        [
+            {
+                "sel": "#input-identifier input",
+                "arrow": "below",
+                "label": "wklej DOI",
+                "dx": 60,
+                "dy": -20,
+            },
+            {
+                "sel": "#input-identifier button",
+                "arrow": "below",
+                "label": "Pobierz dane",
+                "dx": -40,
+                "dy": -20,
+            },
+        ],
+    )
+    shot(red, out / "04-doi.png", 0, bottom_of(red, wizard, 150))
+
+    # 5. PBN: first screen too
+    red.goto(f"{base}/importer_publikacji/?provider=PBN")
+    czekaj(500)
+    mark(
+        red,
+        [
+            {
+                "sel": "#input-identifier input",
+                "arrow": "below",
+                "label": "PBN UID albo adres pracy w PBN",
+                "dx": 60,
+                "dy": -20,
+            }
+        ],
+    )
+    shot(red, out / "05-pbn.png", 0, bottom_of(red, wizard, 150))
+
+    # 6. BibTeX: paste and "Importuj"
+    red.goto(f"{base}/importer_publikacji/?provider=BibTeX")
+    czekaj(500)
+    red.fill("textarea", IMPORTER_BIBTEX)
+    mark(
+        red,
+        [
+            {
+                "sel": "#input-text textarea",
+                "arrow": "right",
+                "label": "wklej wpis BibTeX",
+                "dx": -330,
+                "dy": -60,
+            },
+            {
+                "sel": "#input-text button[type=submit]",
+                "arrow": "right",
+                "label": "Importuj",
+                "dx": 0,
+                "dy": -40,
+            },
+        ],
+    )
+    shot(red, out / "06-bibtex.png", 0, bottom_of(red, "#input-text"))
+    red.click("#input-text button[type=submit]")
+    red.wait_for_url("**/verify/", timeout=60000)
+    czekaj()
+
+    # 7. verify: data from BibTeX + record kind, type, language
+    red.select_option("#id_typ_kbn", label="Praca Oryginalna")
+    mark(
+        red,
+        [
+            {
+                "sel": f"{wizard} table",
+                "arrow": "right",
+                "label": "sprawdź dane",
+                "dx": -330,
+                "dy": -170,
+            },
+            {
+                "sel": "#id_charakter_formalny",
+                "arrow": "below",
+                "label": "uzupełnij pola z gwiazdką",
+                "dx": 420,
+                "dy": -60,
+            },
+            {
+                "sel": f"{wizard} button[type=submit]",
+                "text": "Dalej",
+                "arrow": "right",
+                "label": "Dalej",
+                "dx": 0,
+                "dy": -40,
+            },
+        ],
+    )
+    btn = page_box(red, f"{wizard} button[type=submit]", "Dalej")
+    shot(red, out / "07-weryfikacja.png", 0, btn["y"] + btn["height"] + 50)
+    dalej("Dalej")
+
+    # 8. source matched by the journal title
+    mark(
+        red,
+        [
+            {
+                "sel": "#id_zrodlo + .select2",
+                "arrow": "right",
+                "label": "dopasowane po tytule czasopisma — sprawdź",
+                "dx": 0,
+            }
+        ],
+    )
+    shot(red, out / "08-zrodlo.png", 0, bottom_of(red, wizard, 0))
+    dalej("Dalej")
+
+    # 9. authors: exact, loose (two namesakes), unmatched
+    red.mouse.move(5, 5)
+    mark(
+        red,
+        [
+            {"sel": "#authors-table tbody tr:nth-child(1) td:nth-child(4) .label"},
+            {"sel": "#authors-table tbody tr:nth-child(2) td:nth-child(4) .label"},
+            {"sel": "#authors-table tbody tr:nth-child(3) td:nth-child(4) .label"},
+            {"sel": "#authors-table tbody tr:nth-child(2) .btn-edit-author"},
+        ],
+    )
+    shot(red, out / "09-autorzy.png", 0, bottom_of(red, "#unmatched-warning", 80))
+
+    # 10. two namesakes: pick the one from the right unit
+    # a tall viewport so the whole modal (with "Zapisz") fits on the shot
+    red.set_viewport_size({"width": VIEWPORT["width"], "height": 1150})
+    red.evaluate("window.scrollTo(0, 0)")
+    red.locator("#authors-table tbody tr:nth-child(2) .btn-edit-author").click()
+    red.wait_for_selector("#author-edit-modal .modal-candidate-button")
+    red.wait_for_timeout(1500)
+    red.locator(
+        "#author-edit-modal .modal-candidate-button", has_text="Klinika Eliksirologii"
+    ).click()
+    red.wait_for_timeout(1500)
+    red.evaluate("window.scrollTo(0, 0)")
+    mark(
+        red,
+        [
+            {
+                "sel": "#author-edit-modal .modal-candidate-button",
+                "text": "Klinika Eliksirologii",
+                "arrow": "left",
+                "label": "kliknij właściwą osobę",
+                "dy": 60,
+            },
+            {
+                "sel": "#modal-author-form button[type=submit]",
+                "arrow": "below",
+                "label": "Zapisz",
+                "dx": -40,
+                "dy": -50,
+            },
+        ],
+    )
+    wyrownaj_nakladke()
+    red.screenshot(path=out / "10-kandydaci.png")
+    red.locator("#modal-author-form button[type=submit]").click()
+    czekaj()
+
+    # 11. author not in BPP: create a new one
+    red.evaluate("window.scrollTo(0, 0)")
+    red.locator("#authors-table tbody tr:nth-child(3) .btn-edit-author").click()
+    red.wait_for_selector("#modal-create-new-author", state="visible")
+    red.wait_for_timeout(1500)
+    mark(
+        red,
+        [
+            {
+                "sel": "#modal-create-new-author",
+                "arrow": "left",
+                "label": "nowy autor",
+                "dx": 0,
+                "dy": -40,
+            }
+        ],
+    )
+    wyrownaj_nakladke()
+    red.screenshot(path=out / "11-nowy-autor.png")
+    red.click("#modal-create-new-author")
+    nowy = red.locator("#authors-table tbody tr", has_text="Obca jednostka")
+    try:
+        nowy.wait_for(timeout=8000)
+    except PlaywrightTimeoutError:
+        # the modal button occasionally fires before its handler is bound -
+        # the bulk button above the table does the same thing
+        red.keyboard.press("Escape")
+        red.locator("button", has_text="Utwórz niedopasowanego autora").click()
+        nowy.wait_for()
+    czekaj()
+    red.set_viewport_size(VIEWPORT)
+    red.goto(red.url)  # fresh counters and an enabled "Potwierdź i przejdź dalej"
+    czekaj()
+    red.mouse.move(5, 5)
+    mark(
+        red,
+        [
+            {
+                "sel": "#authors-table tbody tr:nth-child(2) td:nth-child(4) .label",
+            },
+            {
+                "sel": f"{wizard} button[type=submit]",
+                "text": "Potwierdź i przejdź dalej",
+                "arrow": "right",
+                "label": "Potwierdź i przejdź dalej",
+                "dx": 0,
+                "dy": -40,
+            },
+        ],
+    )
+    btn = page_box(red, f"{wizard} button[type=submit]", "Potwierdź i przejdź dalej")
+    shot(red, out / "12-autorzy-gotowe.png", 0, btn["y"] + btn["height"] + 40)
+    dalej("Potwierdź i przejdź dalej")
+
+    # 12. points suggested from the journal
+    mark(
+        red,
+        [
+            {
+                "sel": "input[name=punkty_kbn]",
+            }
+        ],
+    )
+    shot(red, out / "13-punktacja.png", 0, bottom_of(red, wizard, 0))
+    dalej("Dalej")
+
+    # 13. "Sprawdź w PBN" (optional; not logged in to PBN here)
+    mark(
+        red,
+        [
+            {
+                "sel": f"{wizard} a, {wizard} button",
+                "text": "Pomiń",
+                "arrow": "right",
+                "label": "krok opcjonalny — Pomiń",
+                "dx": 0,
+                "dy": -40,
+            }
+        ],
+    )
+    shot(red, out / "14-pbn-sprawdz.png", 0, bottom_of(red, wizard, 0))
+    dalej("Dalej")
+
+    # 14. review + "Utwórz publikację" far below
+    top = shot(red, None, 0, 520)
+    mark(
+        red,
+        [
+            {
+                "sel": f"{wizard} button[type=submit]",
+                "text": "Utwórz publikację",
+                "arrow": "right",
+                "label": "Utwórz publikację",
+                "dx": 0,
+                "dy": -40,
+            }
+        ],
+    )
+    btn = page_box(red, f"{wizard} button[type=submit]", "Utwórz publikację")
+    dol = shot(red, None, btn["y"] - 220, 300)
+    stitch(red, [top, dol], out / "15-przeglad.png", "przewiń na dół strony")
+    red.locator(f"{wizard} button[type=submit]", has_text="Utwórz publikację").click()
+    red.wait_for_url("**/done/", timeout=60000)
+    czekaj()
+
+    # 15. done
+    mark(
+        red,
+        [
+            {
+                "sel": f"{wizard} a",
+                "text": "Edytuj w module redagowania",
+                "arrow": "right",
+                "label": "popraw szczegóły rekordu",
+                "dx": 100,
+                "dy": 0,
+            }
+        ],
+    )
+    shot(red, out / "16-gotowe.png", 0, bottom_of(red, wizard, 0))
+
+    # 16. what can go wrong: the same entry again -> duplicate warning
+    red.goto(f"{base}/importer_publikacji/?provider=BibTeX")
+    czekaj(500)
+    red.fill("textarea", IMPORTER_BIBTEX)
+    red.click("#input-text button[type=submit]")
+    red.wait_for_url("**/verify/", timeout=60000)
+    czekaj()
+    mark(red, [{"sel": f"{wizard} .callout.alert"}])
+    shot(red, out / "17-duplikat.png", 0, bottom_of(red, f"{wizard} .callout.alert"))
+    red.locator(f"{wizard} button", has_text="Anuluj import").click()
+    czekaj()
+
+    # 17. what can go wrong: a malformed PBN identifier (checked before any call)
+    red.goto(f"{base}/importer_publikacji/?provider=PBN")
+    czekaj(500)
+    red.fill("#input-identifier input", "5e709189878c28a0")
+    red.click("#input-identifier button")
+    czekaj()
+    mark(red, [{"sel": "#input-identifier .help-text[style]"}])
+    shot(red, out / "18-zly-identyfikator.png", 0, bottom_of(red, wizard, 0))
+    red.context.close()
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -1318,6 +1738,7 @@ SCENARIOS = {
     "logowanie": ("uzytkownik/logowanie", logowanie),
     "punkty-i-sloty": ("uzytkownik/punkty-i-sloty", punkty_i_sloty),
     "raporty": ("uzytkownik/raporty", raporty),
+    "importer-publikacji": ("redaktor/importer-publikacji", importer_publikacji),
 }
 
 
