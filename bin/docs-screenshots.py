@@ -1161,6 +1161,22 @@ def impact_factor_i_punktacja(page: Page, base: str, out: Path) -> None:
     # 1. "operacje" menu: the three entries used on this page
     li = open_top_menu(red, "fi-wrench")
     kol = f"{li} .column-2"
+# Demo article whose type is sent to PBN (bin/docs-demo-pbn.py maps it).
+PBN_REKORD = 1097
+
+
+def pbn_wysylka_i_synchronizacja(page: Page, base: str, out: Path) -> None:
+    """docs/redaktor/pbn-wysylka-i-synchronizacja.md: PBN menu, sending, export queue, import, comparators.
+
+    Needs the PBN demo state: uv run python src/manage.py shell < bin/docs-demo-pbn.py
+    (re-run it before every run: step 5 adds a queue entry). No PBN behind it.
+    """
+    red = new_session(page, base, DEMO_USER_REDAKTOR)
+    w = VIEWPORT["width"]
+
+    # 1. the PBN menu: authorise, import/download, queue, comparators
+    li = open_top_menu(red, "fi-link")
+    col1 = f"{li} .column-1 a"
     mark(
         red,
         [
@@ -1630,6 +1646,134 @@ def nowy_rok(page: Page, base: str, out: Path) -> None:
 
     # 4. all authors' disciplines, filtered by year
     red.goto(f"{base}/admin/bpp/autor_dyscyplina/?rok=2026")
+                "sel": col1,
+                "text": "autoryzuj PBN API",
+                "arrow": "left",
+                "label": "1. autoryzacja",
+            },
+            {
+                "sel": col1,
+                "text": "kolejka eksportu",
+                "arrow": "left",
+                "label": "stan wysyłek",
+            },
+            {
+                "sel": f"{li} .column-2",
+                "arrow": "below",
+                "label": "porównanie BPP z PBN",
+                "dx": -330,
+                "dy": -20,
+            },
+        ],
+    )
+    menu = page_box(red, f"{li} > .menu-columns-wrapper")
+    shot(red, out / "01-menu-pbn.png", 0, menu["y"] + menu["height"] + 135)
+
+    # 2. typed/bookmarked address: the page before leaving for PBN
+    red.goto(f"{base}/pbn_api/authorize?next=/")
+    red.wait_for_load_state("networkidle")
+    btn = "form[action*='authorize'] button[type=submit]"
+    mark(red, [{"sel": btn, "arrow": "below", "label": "2. logowanie w PBN"}])
+    shot(red, out / "02-autoryzacja.png", 0, bottom_of(red, btn, 170))
+
+    # 3. record form: the two PBN buttons in the bottom bar
+    rekord = f"{base}/admin/bpp/wydawnictwo_ciagle/{PBN_REKORD}/change/"
+    red.goto(rekord)
+    red.wait_for_load_state("networkidle")
+    teraz = "input[name=_continue_and_pbn]"
+    w_tle = "input[name=_continue_and_pbn_later]"
+    mark(
+        red,
+        [
+            {"sel": teraz, "arrow": "above", "label": "od razu", "dx": 0},
+            {"sel": w_tle, "arrow": "above", "label": "w tle", "dx": -140},
+        ],
+    )
+    red.screenshot(
+        path=out / "03-przyciski-wyslij.png",
+        clip={"x": 0, "y": 590, "width": w, "height": 210},
+    )
+
+    # 4. "Zapisz i wyślij do PBN": the messages come back at the top.
+    # Messages span the full width - boxes only, the text explains them.
+    red.click(teraz)
+    red.wait_for_load_state("networkidle")
+    msgs = "ul.grp-messagelist"
+    li_msg = f"{msgs} li"
+    mark(
+        red,
+        [
+            {"sel": li_msg, "text": "nie posiada odpowiednika"},
+            {"sel": li_msg, "text": "nie zostanie wysłany"},
+            {"sel": li_msg, "text": "W kolejce na wysłanie"},
+        ],
+    )
+    shot(red, out / "04-komunikaty-wysylki.png", 0, bottom_of(red, msgs, 20))
+
+    # 5. "... w tle": only a queue entry is created
+    red.click(w_tle)
+    red.wait_for_load_state("networkidle")
+    mark(red, [{"sel": f"{li_msg} a", "text": "śledzić stan"}])
+    shot(red, out / "05-wyslij-w-tle.png", 0, bottom_of(red, msgs, 20))
+
+    # 6. many records at once: admin action at the bottom of the list
+    red.goto(f"{base}/admin/bpp/wydawnictwo_ciagle/?rok=2024")
+    red.wait_for_load_state("networkidle")
+    for box in red.locator("input.action-select").all()[:3]:
+        box.check()
+    red.select_option("select[name=action]", label="Wyślij do PBN w tle")
+    marks = [
+        {"sel": f"#result_list tbody tr:nth-child({n}) input.action-select"}
+        for n in (1, 2, 3)
+    ]
+    marks += [
+        {
+            "sel": "select[name=action]",
+            "arrow": "above",
+            "label": "akcja",
+            "dx": 40,
+            "dy": 20,
+        },
+        {
+            "sel": ".grp-changelist-actions button, button[name=index]",
+            "arrow": "above",
+            "label": "Wykonaj",
+            "dx": 60,
+            "dy": 20,
+        },
+    ]
+    mark(red, marks)
+    red.screenshot(path=out / "06-akcja-zbiorcza.png")
+
+    # 7. the export queue: counters, filters, bulk retry buttons
+    red.goto(f"{base}/pbn_export_queue/")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {"sel": ".pbn-export-queue__page-actions"},
+            {"sel": ".pbn-export-queue__filter-buttons"},
+        ],
+    )
+    shot(
+        red,
+        out / "07-kolejka-lista.png",
+        0,
+        bottom_of(red, ".pbn-export-queue__send-section", 10),
+    )
+
+    # 8. error rows under the list entries
+    red.goto(f"{base}/pbn_export_queue/?zakonczono_pomyslnie=false")
+    red.wait_for_load_state("networkidle")
+    mark(red, [{"sel": "#export-queue-table tbody tr", "text": "Wpływ szlaku"}])
+    tab = page_box(red, "#export-queue-table")
+    shot(red, out / "08-kolejka-bledy.png", tab["y"] - 10, tab["height"] + 20)
+
+    # 9. details of one failed send
+    # (queue ids change with every seed run - open it from the list)
+    red.locator("#export-queue-table tr", has_text="Wpływ szlaku").locator(
+        "a.button"
+    ).click()
     red.wait_for_load_state("networkidle")
     mark(
         red,
@@ -2059,6 +2203,27 @@ def nowy_rok(page: Page, base: str, out: Path) -> None:
                 "label": "bez tego tylko podgląd",
                 "dx": 40,
             },
+            {
+                "sel": ".pbn-export-queue__error-section",
+                "arrow": "left",
+                "label": "1. powód",
+                "dx": 20,
+                "dy": -150,
+            },
+            {
+                "sel": "a.button",
+                "text": "Edytuj w admin",
+                "arrow": "right",
+                "label": "2. popraw rekord",
+            },
+            {
+                "sel": ".pbn-export-queue__header form",
+                "text": "Wyslij do PBN",
+                "arrow": "below",
+                "label": "3. wyślij ponownie",
+                "dx": -110,
+                "dy": -20,
+            },
         ],
     )
     shot(
@@ -2090,6 +2255,45 @@ def nowy_rok(page: Page, base: str, out: Path) -> None:
     b = page_box(red, btn)
     shot(red, out / "10-rekord-uzupelnij-punktacje.png", b["y"] - 400, 500)
 
+        out / "09-kolejka-szczegoly.png",
+        0,
+        bottom_of(red, ".pbn-export-queue__error-section", 30),
+    )
+
+    # 10. Import z PBN: one-off import, needs an active PBN session
+    red.goto(f"{base}/pbn_import/")
+    red.wait_for_load_state("networkidle")
+    red.wait_for_function("document.body.innerText.includes('Aktualizacja')")
+    mark(red, [{"sel": "a.button", "text": "Zaloguj się do PBN"}])
+    hist = page_box(red, "h2", "Historia importów")
+    shot(red, out / "10-import-z-pbn.png", 0, hist["y"] - 40)
+
+    # 11. Pobieranie danych z PBN: refreshes the local copy
+    red.goto(f"{base}/pbn_downloader_app/")
+    red.wait_for_load_state("networkidle")
+    mark(red, [{"sel": "#download-btn"}])
+    shot(red, out / "11-pobieranie-danych.png", 0, bottom_of(red, "#download-btn", 150))
+
+    # 12. Komparator PBN: what is missing on either side
+    red.goto(f"{base}/komparator_pbn/")
+    red.wait_for_load_state("networkidle")
+    sekcja = "h3"
+    roz = page_box(red, sekcja, "rozbieżności między PBN a BPP")
+    mark(
+        red,
+        [
+            {"sel": "h4", "text": "Publikacje PBN nieistniejące w BPP"},
+            {"sel": "h4", "text": "Publikacje skasowane w PBN"},
+        ],
+    )
+    top = shot(red, None, 0, 470)
+    dol = shot(red, None, roz["y"] - 20, 420)
+    stitch(
+        red,
+        [top, dol],
+        out / "12-komparator-pbn.png",
+        "przewiń do „Publikacje - rozbieżności między PBN a BPP”",
+    )
     red.context.close()
 
 
@@ -2364,6 +2568,10 @@ SCENARIOS = {
         impact_factor_i_punktacja,
     ),
     "nowy-rok": ("redaktor/nowy-rok", nowy_rok),
+    "pbn-wysylka-i-synchronizacja": (
+        "redaktor/pbn-wysylka-i-synchronizacja",
+        pbn_wysylka_i_synchronizacja,
+    ),
 }
 
 
