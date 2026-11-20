@@ -56,8 +56,12 @@ OVERLAY_JS = r"""
   document.body.appendChild(svg);  // must be in the DOM before getBBox()
   const set = (el, attrs) => Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
   for (const m of marks) {
-    const el = document.querySelector(m.sel);
-    if (!el) throw new Error('no element: ' + m.sel);
+    // m.text: pick the first m.sel element whose text contains it (for
+    // sections that only differ by their heading).
+    const el = m.text
+      ? [...document.querySelectorAll(m.sel)].find(e => e.textContent.includes(m.text))
+      : document.querySelector(m.sel);
+    if (!el) throw new Error('no element: ' + m.sel + (m.text ? ' / ' + m.text : ''));
     const r = el.getBoundingClientRect();
     const x = r.left + scrollX - 6, y = r.top + scrollY - 6, w = r.width + 12, h = r.height + 12;
     const rect = document.createElementNS(ns, 'rect');
@@ -96,7 +100,7 @@ OVERLAY_JS = r"""
 
 
 def mark(page: Page, marks: list[dict]) -> None:
-    """Draw highlight boxes/arrows/labels. Each mark: sel, arrow?, label?, dx?, dy?"""
+    """Draw highlight boxes/arrows/labels. Each mark: sel, text?, arrow?, label?, dx?, dy?"""
     page.evaluate(OVERLAY_JS, [marks])
 
 
@@ -238,13 +242,16 @@ zaklęciami ochronnymi i teleportacją.</p>
 </article></main></body></html>"""
 
 
-def page_box(page: Page, sel: str) -> dict:
+def page_box(page: Page, sel: str, text: str | None = None) -> dict:
     """Element box in *page* coordinates (bounding_box() is viewport-relative,
     which is wrong for full_page clips once the page has scrolled)."""
     return page.evaluate(
-        """(sel) => { const r = document.querySelector(sel).getBoundingClientRect();
+        """([sel, text]) => {
+        const el = text ? [...document.querySelectorAll(sel)].find(e => e.textContent.includes(text))
+                        : document.querySelector(sel);
+        const r = el.getBoundingClientRect();
         return {x: r.left + scrollX, y: r.top + scrollY, width: r.width, height: r.height}; }""",
-        sel,
+        [sel, text],
     )
 
 
@@ -415,10 +422,285 @@ def widget_publikacji(page: Page, base: str, out: Path) -> None:
     page.screenshot(path=out / "03-na-stronie-www.png", full_page=True)
 
 
+TOP_MENU = "li:has(> a > .{icon})"  # top-bar dropdown by its icon class
+
+
+def open_top_menu(page: Page, icon: str) -> str:
+    """Hover a top-bar dropdown ("szukaj" = fi-magnifying-glass, ...) and
+    wait for its fade-in. Returns the selector of the menu's <li>."""
+    li = TOP_MENU.format(icon=icon)
+    page.hover(f"{li} > a")
+    page.wait_for_selector(f"{li} > ul", state="visible")
+    page.wait_for_timeout(800)
+    return li
+
+
+def shot(page: Page, path: Path | None, y: float, height: float) -> bytes:
+    """Full-width slice of the page, in page coordinates."""
+    # Scroll home first: a sticky top bar is painted where the viewport is,
+    # so after a click lower down it would show up in the middle of the slice.
+    page.evaluate("window.scrollTo(0, 0)")
+    return page.screenshot(
+        path=path,
+        full_page=True,
+        clip={"x": 0, "y": max(0, y), "width": VIEWPORT["width"], "height": height},
+    )
+
+
+def wyszukiwanie(page: Page, base: str, out: Path) -> None:
+    """docs/uzytkownik/przegladanie-i-wyszukiwanie.md: menus, quick search, author and record pages."""
+    page.goto(f"{base}/")
+    page.wait_for_load_state("networkidle")
+
+    # 1. "szukaj" menu: two ways of searching
+    li = open_top_menu(page, "fi-magnifying-glass")
+    mark(
+        page,
+        [
+            {
+                "sel": f"{li} a[data-action=open-global-search]",
+                "arrow": "right",
+                "label": "szybko — tytuł, nazwisko, DOI",
+                "dy": -30,
+            },
+            {
+                "sel": f"{li} a[href$='/multiseek/']",
+                "arrow": "right",
+                "label": "precyzyjnie — wiele warunków",
+                "dy": 20,
+            },
+        ],
+    )
+    shot(page, out / "01-menu-szukaj.png", 0, 300)
+
+    # 2. quick search window (key "/")
+    page.mouse.move(640, 700)
+    page.goto(f"{base}/")
+    page.wait_for_load_state("networkidle")
+    page.keyboard.press("/")
+    page.wait_for_selector("#globalSearchInput", state="visible")
+    page.click("#globalSearchInput")
+    page.keyboard.type("eliksir", delay=60)
+    page.get_by_text("Wydział Magii i").first.wait_for()
+    page.wait_for_timeout(800)
+    mark(
+        page,
+        [
+            {
+                "sel": "#globalSearchInput",
+                "arrow": "above",
+                "label": "tytuł, nazwisko, jednostka, DOI…",
+                "dx": -100,
+                "dy": 60,
+            }
+        ],
+    )
+    page.screenshot(
+        path=out / "02-szukaj-szybko.png",
+        clip={"x": 0, "y": 0, "width": VIEWPORT["width"], "height": 670},
+    )
+    page.keyboard.press("Escape")
+
+    # 3. "przeglądaj" menu
+    page.goto(f"{base}/")
+    page.wait_for_load_state("networkidle")
+    li = open_top_menu(page, "fi-list")
+    mark(
+        page,
+        [
+            {
+                "sel": f"{li} > ul",
+                "arrow": "right",
+                "label": "lista jednostek, autorów, czasopism…",
+                "dy": -60,
+            }
+        ],
+    )
+    menu = page_box(page, f"{li} > ul")
+    shot(page, out / "03-menu-przegladaj.png", 0, menu["y"] + menu["height"] + 30)
+
+    # 4. author page at a glance: top, search form, export (stitched)
+    page.mouse.move(640, 700)
+    page.goto(f"{base}/bpp/autor/Yennefer-Merigold/")
+    page.wait_for_load_state("networkidle")
+    sekcja = ".autor-page__pas-cela"
+    mark(
+        page,
+        [
+            {
+                "sel": "a.autor-page__show-all-btn",
+                "arrow": "right",
+                "label": "wszystkie prace autora",
+                "dx": 60,
+                "dy": -20,
+            },
+            {"sel": sekcja, "text": "Podsumowanie dorobku"},
+        ],
+    )
+    top = shot(page, None, 0, 700)
+    mark(page, [{"sel": sekcja, "text": "Wyszukaj publikacje autora"}])
+    box = page_box(page, sekcja, "Wyszukaj publikacje autora")
+    middle = shot(page, None, box["y"] - 12, box["height"] + 24)
+    mark(
+        page,
+        [
+            {
+                "sel": sekcja,
+                "text": "Eksport publikacji",
+                "arrow": "left",
+                "label": "pobierz plik",
+                "dx": 60,
+                "dy": -100,
+            }
+        ],
+    )
+    box = page_box(page, sekcja, "Eksport publikacji")
+    bottom = shot(page, None, box["y"] - 20, box["height"] + 40)
+    stitch(
+        page,
+        [top, middle, bottom],
+        out / "04-strona-autora.png",
+        "dalej na tej samej stronie",
+    )
+
+    # 5. record (publication) page
+    # pick the first listed publication that has a DOI (the "Otwórz" button)
+    hrefs = page.eval_on_selector_all(
+        "a[href*='/bpp/rekord/']", "els => [...new Set(els.map(e => e.href))]"
+    )
+    for href in hrefs:
+        page.goto(href)
+        page.wait_for_load_state("networkidle")
+        if page.locator("button[title='Otwórz stronę DOI']").count():
+            break
+    mark(
+        page,
+        [
+            {
+                "sel": "button[title='Otwórz stronę DOI']",
+                "arrow": "above",
+                "label": "pełny tekst (DOI)",
+                "dx": -200,
+                "dy": -110,
+            },
+            {
+                "sel": ".praca-mono__card",
+                "text": "Metryki",
+                "arrow": "left",
+                "label": "punkty",
+                "dy": 200,
+            },
+            {
+                "sel": "#bibtex-toggle-btn",
+                "arrow": "left",
+                "label": "do Zotero / Mendeley",
+            },
+        ],
+    )
+    page.screenshot(path=out / "05-strona-publikacji.png", full_page=True)
+
+
+def pobieranie_listy(page: Page, base: str, out: Path) -> None:
+    """docs/uzytkownik/pobieranie-listy-publikacji.md: export one's own publication list."""
+    page.goto(f"{base}/bpp/autor/Yennefer-Merigold/")
+    page.wait_for_load_state("networkidle")
+    sekcja = ".autor-page__pas-cela"
+    w = "Wyszukaj publikacje autora"
+
+    # 1. author page search form: tick the years, then "Szukaj publikacji"
+    top = shot(page, None, 0, 420)
+    for rok in ("2024", "2025"):
+        page.locator(f"label.autor-page__chip:has(input[value='{rok}'])").click()
+    page.mouse.move(5, 5)  # no hover highlight on the last clicked chip
+    mark(
+        page,
+        [
+            {
+                "sel": "label.autor-page__chip:has(input[value='2025'])",
+                "arrow": "above",
+                "label": "1. zaznacz lata",
+                "dx": 300,
+                "dy": 30,
+            },
+            {
+                "sel": "button.autor-page__search-btn",
+                "arrow": "above",
+                "label": "2. Szukaj publikacji",
+                "dx": -300,
+                "dy": 30,
+            },
+        ],
+    )
+    box = page_box(page, sekcja, w)
+    bottom = shot(page, None, box["y"] - 20, box["height"] + 40)
+    stitch(
+        page,
+        [top, bottom],
+        out / "01-strona-autora-szukaj.png",
+        "przewiń do sekcji „Wyszukaj publikacje autora”",
+    )
+
+    # 2. results with the "Eksport" menu open
+    page.click("button.autor-page__search-btn")
+    page.wait_for_load_state("networkidle")
+    page.click("#multiseek-szukaj")
+    page.wait_for_load_state("networkidle")
+    page.click("button.dropdown[data-toggle='multiseek-export-menu']")
+    page.wait_for_selector("#multiseek-export-menu", state="visible")
+    page.wait_for_timeout(500)
+    mark(
+        page,
+        [
+            {
+                "sel": "button.dropdown[data-toggle='multiseek-export-menu']",
+                "arrow": "left",
+                "label": "3. Eksport",
+                "dx": -20,
+            },
+            {
+                "sel": "#multiseek-export-menu a",
+                "text": "DOCX",
+                "arrow": "right",
+                "label": "4. Word",
+                "dy": 10,
+            },
+            {
+                "sel": "#multiseek-export-menu a",
+                "text": "XLS: opis",
+                "arrow": "right",
+                "label": "albo Excel",
+                "dy": -60,
+            },
+        ],
+    )
+    menu = page_box(page, "#multiseek-export-menu")
+    shot(page, out / "02-wyniki-eksport.png", 0, menu["y"] + menu["height"] + 80)
+
+    # 3. the ready-made export buttons on the author page
+    page.goto(f"{base}/bpp/autor/Yennefer-Merigold/")
+    page.wait_for_load_state("networkidle")
+    mark(
+        page,
+        [
+            {
+                "sel": "a[href*='/eksport/xlsx']",
+                "arrow": "below",
+                "label": "wszystkie prace z punktacją (Excel)",
+                "dx": -250,
+                "dy": -60,
+            },
+        ],
+    )
+    box = page_box(page, sekcja, "Eksport publikacji")
+    shot(page, out / "03-strona-autora-eksport.png", box["y"] - 20, box["height"] + 110)
+
+
 # name -> (docs/images subdirectory, function)
 SCENARIOS = {
     "moj-profil-autora": ("uzytkownik/moj-profil-autora", moj_profil_autora),
     "widget-publikacji": ("uzytkownik/widget-publikacji", widget_publikacji),
+    "wyszukiwanie": ("uzytkownik/wyszukiwanie", wyszukiwanie),
+    "pobieranie-listy": ("uzytkownik/pobieranie-listy-publikacji", pobieranie_listy),
 }
 
 
@@ -447,6 +729,14 @@ def main() -> int:
         )
         ctx = browser.new_context(
             viewport=VIEWPORT, device_scale_factor=2, locale="pl-PL"
+        )
+        # The Freshdesk "Pomoc" launcher floats over whatever we're explaining.
+        ctx.add_init_script(
+            "document.addEventListener('DOMContentLoaded', () => {"
+            " const s = document.createElement('style');"
+            " s.textContent = '#freshworks-container, #launcher-frame"
+            " { display: none !important }';"
+            " document.head.appendChild(s); });"
         )
         page = ctx.new_page()
         login(page, base)
