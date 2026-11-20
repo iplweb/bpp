@@ -18,7 +18,7 @@ rekordów) opisuje osobna [Instrukcja redaktora](../redaktor/uczelnia.md).
 | wszystkie prace z danego roku | **przeglądaj → wg roku** |
 | DOI, punkty, licencję, dane bibliograficzne jednej pracy | [strona publikacji](#strona-publikacji) |
 | listę swoich prac do sprawozdania lub wniosku (Word, Excel) | [Jak pobrać listę publikacji](pobieranie-listy-publikacji.md) |
-| zestawienia i rankingi | menu **raporty** — patrz [Raporty i rankingi](raporty-rankingi.md) |
+| zestawienia, rankingi, punkty i sloty | menu **raporty** i **ewaluacja** — patrz [Raporty krok po kroku](raporty-krok-po-kroku.md) |
 
 ## Dwa tryby wyszukiwania
 

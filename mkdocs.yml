@@ -94,8 +94,12 @@ nav:
   - Instrukcja użytkownika:
       - Przeglądanie i wyszukiwanie: uzytkownik/przegladanie-i-wyszukiwanie.md
       - Jak pobrać listę publikacji: uzytkownik/pobieranie-listy-publikacji.md
+      - Jak zgłosić nową publikację: uzytkownik/zgloszenie-publikacji.md
+      - Gdzie sprawdzić punkty i sloty: uzytkownik/punkty-i-sloty.md
+      - Raporty krok po kroku: uzytkownik/raporty-krok-po-kroku.md
+      - "Raporty i rankingi: co się liczy": uzytkownik/raporty-rankingi.md
       - Mój profil autora: uzytkownik/moj-profil-autora.md
-      - Raporty i rankingi: uzytkownik/raporty-rankingi.md
+      - Nie mogę się zalogować: uzytkownik/logowanie.md
       - Widget publikacji na stronie WWW: uzytkownik/widget-publikacji.md
   - Instrukcja redaktora:
       - Wyszukiwanie i redagowanie: redaktor/wyszukiwanie-redagowanie.md

@@ -16,11 +16,18 @@ Dokumentacja jest podzielona według odbiorcy.
 
 ### 📘 Instrukcja użytkownika
 
-To, co widzi każdy odwiedzający stronę — wyszukiwanie i przeglądanie
-publikacji, bez logowania.
+Dla autorów, czytelników i osób przygotowujących zestawienia —
+wyszukiwanie, własny dorobek, punkty, raporty.
 
 - [Przeglądanie i wyszukiwanie](uzytkownik/przegladanie-i-wyszukiwanie.md)
-- [Raporty i rankingi](uzytkownik/raporty-rankingi.md)
+- [Jak pobrać listę publikacji](uzytkownik/pobieranie-listy-publikacji.md)
+- [Jak zgłosić nową publikację](uzytkownik/zgloszenie-publikacji.md)
+- [Gdzie sprawdzić punkty i sloty](uzytkownik/punkty-i-sloty.md)
+- [Raporty krok po kroku](uzytkownik/raporty-krok-po-kroku.md)
+- [Raporty i rankingi: co się liczy](uzytkownik/raporty-rankingi.md)
+- [Mój profil autora](uzytkownik/moj-profil-autora.md)
+- [Nie mogę się zalogować](uzytkownik/logowanie.md)
+- [Widget publikacji na stronie WWW](uzytkownik/widget-publikacji.md)
 
 ### ✏️ Instrukcja redaktora
 
