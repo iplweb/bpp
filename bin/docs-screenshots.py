@@ -34,6 +34,7 @@ DEMO_PASSWORD = DEMO_USER
 DEMO_USER_BEZ_AUTORA = "jaskier"
 # Third demo account in the group "generowanie raportów" (reports, slots).
 DEMO_USER_RAPORTY = "filippa"
+DEMO_USER_REDAKTOR = "vesemir"  # demo editor: is_staff + "wprowadzanie danych"
 
 VIEWPORT = {"width": 1280, "height": 800}
 
@@ -1054,6 +1055,503 @@ def raporty(page: Page, base: str, out: Path) -> None:
     rap.context.close()
 
 
+def duplikaty(page: Page, base: str, out: Path) -> None:
+    """docs/redaktor/duplikaty.md: merging duplicate authors and sources (editor).
+
+    Needs the duplicates from bin/docs-demo-duplikaty.py and a Celery worker
+    (both scans run in the background). Merges and remaps for real, so run it
+    on a fresh copy of the demo DB."""
+    d = new_session(page, base, DEMO_USER_REDAKTOR)
+    d.on("dialog", lambda dialog: dialog.accept())  # "Czy na pewno…?" prompts
+    dedup = f"{base}/deduplikator_autorow/duplicate-authors/"
+
+    def card(autor: str) -> str:
+        return f"[data-author-name='{autor}']"
+
+    # 1. "operacje" menu: author and source deduplicators
+    li = open_top_menu(d, "fi-wrench")
+    links = f"{li} .menu-columns-wrapper a"
+    mark(
+        d,
+        [
+            {
+                "sel": links,
+                "text": "deduplikator autorów",
+                "arrow": "right",
+                "label": "autorzy",
+                "dx": 60,
+                "dy": -40,
+            },
+            {
+                "sel": links,
+                "text": "deduplikator źródeł",
+                "arrow": "right",
+                "label": "źródła",
+                "dx": 60,
+                "dy": 0,
+            },
+        ],
+    )
+    shot(
+        d, out / "01-menu-operacje.png", 0, bottom_of(d, f"{li} .menu-columns-wrapper")
+    )
+
+    # 2. First visit: no scan yet -> start one (runs in the background)
+    d.goto(dedup)
+    d.wait_for_load_state("networkidle")
+    start = d.get_by_role("button", name="Uruchom skanowanie duplikatów")
+    if start.count():
+        d.mouse.move(5, 5)
+        mark(
+            d,
+            [
+                {
+                    "sel": ".deduplikator-autorow__callout-centered button",
+                    "arrow": "below",
+                    "label": "uruchom skanowanie",
+                    "dx": 120,
+                    "dy": -30,
+                }
+            ],
+        )
+        shot(
+            d,
+            out / "02-uruchom-skanowanie.png",
+            0,
+            bottom_of(d, ".deduplikator-autorow__callout-centered", 90),
+        )
+        start.click()
+        d.wait_for_load_state("networkidle")
+        for _ in range(100):
+            d.wait_for_timeout(3000)
+            d.goto(dedup)
+            d.wait_for_load_state("networkidle")
+            if not d.locator("#scan-progress-container").count():
+                break
+
+    # 3. Search by surname, "Następny" to the next main author
+    d.fill("#search_lastname", "Rivii")
+    d.locator(".deduplikator-autorow__top-search button[type=submit]").click()
+    d.wait_for_load_state("networkidle")
+    d.mouse.move(5, 5)
+    mark(
+        d,
+        [
+            {
+                "sel": ".deduplikator-autorow__top-search-group",
+                "arrow": "above",
+                "label": "1. nazwisko",
+                "dx": -60,
+                "dy": 45,
+            },
+            {
+                "sel": ".deduplikator-autorow__header .button-group",
+                "arrow": "left",
+                "label": "2. kolejny autor",
+                "dx": 0,
+                "dy": -60,
+            },
+        ],
+    )
+    shot(
+        d,
+        out / "03-wyszukiwanie.png",
+        0,
+        bottom_of(d, ".deduplikator-autorow__header", 30),
+    )
+    d.locator("a.button", has_text="Następny").click()
+    d.wait_for_load_state("networkidle")
+
+    # 4. Main record (kept) — top of the blue card
+    main = page_box(d, ".callout.primary", "Główny rekord autora")
+    mark(
+        d,
+        [{"sel": ".deduplikator-autorow__main-record-title > span"}],
+    )
+    table = page_box(d, ".callout.primary table")
+    shot(
+        d,
+        out / "04-glowny-rekord.png",
+        main["y"] - 20,
+        table["y"] + table["height"] - main["y"] + 40,
+    )
+
+    # 5. One candidate card: confidence, reasons, decision, merge buttons
+    g = card("z Rivii G.")
+    box = page_box(d, g)
+    d.evaluate("document.getElementById('kb-overlay')?.remove()")
+    mark(
+        d,
+        [
+            {
+                "sel": f"{g} .label",
+                "arrow": "right",
+                "label": "pewność",
+                "dx": 80,
+                "dy": -70,
+            },
+            {
+                "sel": f"{g} .deduplikator-autorow__reasons-section",
+                "arrow": "below",
+                "label": "powody",
+                "dx": -380,
+                "dy": -50,
+            },
+            {
+                "sel": f"{g} .deduplikator-autorow__action-group",
+                "text": "Decyzja",
+                "arrow": "left",
+                "label": "to inna osoba",
+                "dx": -10,
+                "dy": -185,
+            },
+            {
+                "sel": f"{g} .deduplikator-autorow__action-group",
+                "text": "Scalanie",
+                "arrow": "left",
+                "label": "to ta sama osoba",
+                "dx": -10,
+                "dy": 40,
+            },
+        ],
+    )
+    reasons = page_box(d, f"{g} .deduplikator-autorow__action-group", "Scalanie")
+    shot(
+        d,
+        out / "05-karta-duplikatu.png",
+        box["y"] - 20,
+        reasons["y"] + reasons["height"] - box["y"] + 50,
+    )
+
+    # 6. "Scal wszystkie…" for the whole group
+    d.evaluate("document.getElementById('kb-overlay')?.remove()")
+    head = page_box(d, ".deduplikator-autorow__duplicates-title")
+    mark(
+        d,
+        [
+            {
+                "sel": "#merge-all-btn",
+                "arrow": "below",
+                "label": "wszystkie naraz",
+                "dx": -260,
+                "dy": -60,
+            },
+            {"sel": "#merge-all-no-pbn-btn"},
+        ],
+    )
+    shot(d, out / "06-scal-wszystkie.png", head["y"] - 60, 210)
+
+    # 7. Merge one candidate ("Scal, nie wysyłaj do PBN"): card disappears
+    d.evaluate("document.getElementById('kb-overlay')?.remove()")
+    d.locator(f"{g} [data-merge-action=no-pbn]").click()
+    d.wait_for_selector(g, state="detached", timeout=60000)
+    d.wait_for_timeout(1500)
+    msg = d.locator(".callout.success", has_text="pomyślnie scaleni")
+    if msg.count():
+        mark(d, [{"sel": ".callout.success", "text": "pomyślnie scaleni"}])
+        mbox = page_box(d, ".callout.success", "pomyślnie scaleni")
+        shot(d, out / "07-scalono.png", 0, mbox["y"] + mbox["height"] + 30)
+
+    # 8. Sidebar: recent merges (history)
+    d.goto(f"{dedup}?search_lastname=Rivii&mode=both&skip_count=1")
+    d.wait_for_load_state("networkidle")
+    # The sidebar is position:fixed - a full-page shot would cut it at the
+    # viewport height, so let it scroll with the page.
+    d.add_style_tag(
+        content=".left-menu-sidebar{position:absolute!important;"
+        "height:auto!important;overflow:visible!important}"
+    )
+    d.locator(".accordion-title", has_text="Ostatnie scalenia").click()
+    d.wait_for_timeout(2000)
+    d.mouse.move(5, 5)
+    mark(
+        d,
+        [
+            {
+                "sel": ".deduplikator-autorow__merge-list",
+                "arrow": "right",
+                "label": "co i kiedy",
+                "dx": -10,
+                "dy": -40,
+            },
+            {
+                "sel": ".accordion-content a.button",
+                "text": "Zobacz wszystkie",
+                "arrow": "right",
+                "label": "pełna historia",
+                "dx": -10,
+                "dy": -20,
+            },
+        ],
+    )
+    top = page_box(d, ".accordion-title", "Ostatnie scalenia")
+    d.evaluate("window.scrollTo(0, 0)")
+    d.screenshot(
+        path=out / "08-ostatnie-scalenia.png",
+        full_page=True,
+        clip={
+            "x": 0,
+            "y": top["y"] - 20,
+            "width": 700,
+            "height": bottom_of(d, ".accordion-content a.button[href*=logscalania]", 30)
+            - top["y"]
+            + 20,
+        },
+    )
+
+    # 9. "Nie jest duplikatem" on another pair -> "Nie-duplikaty" panel
+    d.goto(f"{dedup}?search_lastname=Rivii&mode=both")
+    d.wait_for_load_state("networkidle")
+    d.locator("[data-mark-not-duplicate]").first.click()
+    d.wait_for_timeout(2500)
+    d.goto(dedup)
+    d.wait_for_load_state("networkidle")
+    d.add_style_tag(
+        content=".left-menu-sidebar{position:absolute!important;"
+        "height:auto!important;overflow:visible!important}"
+    )
+    d.mouse.move(5, 5)
+    nd = ".accordion-item:has(#not-duplicate-count)"
+    mark(
+        d,
+        [{"sel": f"{nd} a.button"}],
+    )
+    shot(d, out / "09-nie-duplikaty.png", 0, bottom_of(d, nd, 30))
+
+    # 10. Author page: "Przemapuj prace" (works between units)
+    d.goto(f"{base}/bpp/autor/166/")
+    d.wait_for_load_state("networkidle")
+    d.mouse.move(5, 5)
+    mark(
+        d,
+        [
+            {
+                "sel": ".jednostka-remap-button",
+                "arrow": "left",
+                "label": "Przemapuj prace",
+                "dx": 0,
+                "dy": -60,
+            }
+        ],
+    )
+    shot(d, out / "10-strona-autora.png", 0, bottom_of(d, ".author-header", 90))
+
+    # 11. Remap form: works sit in two units after the merge
+    d.goto(f"{base}/przemapuj_prace_autora/autor/166/")
+    d.wait_for_load_state("networkidle")
+    zly = d.evaluate(
+        """[...document.querySelectorAll('select[name=jednostka_z] option')]
+        .find(o => o.textContent.includes('Pracownia')).value"""
+    )
+    d.select_option("select[name=jednostka_z]", zly)
+    dobra = d.evaluate(
+        """[...document.querySelectorAll('select[name=jednostka_do] option')]
+        .find(o => o.textContent.startsWith('Zakład Bestiariuszu')).value"""
+    )
+    d.select_option("select[name=jednostka_do]", dobra)
+    d.mouse.move(5, 5)
+    mark(
+        d,
+        [
+            {"sel": "table tbody tr", "text": "Pracownia"},
+            {
+                "sel": "select[name=jednostka_z]",
+                "arrow": "below",
+                "label": "1. skąd",
+                "dx": 60,
+                "dy": -30,
+            },
+            {
+                "sel": "select[name=jednostka_do]",
+                "arrow": "below",
+                "label": "2. dokąd",
+                "dx": -100,
+                "dy": -30,
+            },
+            {
+                "sel": "button[name=preview]",
+                "arrow": "below",
+                "label": "3. podgląd",
+                "dx": -60,
+                "dy": -40,
+            },
+        ],
+    )
+    shot(
+        d, out / "11-przemapuj-prace.png", 0, bottom_of(d, "button[name=preview]", 110)
+    )
+
+    # 12. Preview -> confirm; 13. result with "Historia przemapowań" + "Cofnij"
+    d.locator("button[name=preview]").click()
+    d.wait_for_load_state("networkidle")
+    d.locator("button[name=confirm]").click()
+    d.wait_for_load_state("networkidle")
+    d.mouse.move(5, 5)
+    mark(
+        d,
+        [
+            {"sel": ".callout.success"},
+            {
+                "sel": "form[action*=cofnij] button",
+                "arrow": "below",
+                "label": "cofnij",
+                "dx": -200,
+                "dy": -40,
+            },
+        ],
+    )
+    # Short page: message and history fit in one shot.
+    hist = page_box(d, "h3", "Historia przemapowań")
+    shot(d, out / "12-przemapowano-prace.png", 0, hist["y"] + 280)
+
+    # 14. Source deduplicator: scan (django-liveops), then the list of pairs
+    zr = f"{base}/deduplikator-zrodel/"
+    d.goto(zr)
+    d.wait_for_load_state("networkidle")
+    skan = d.get_by_role("button", name="Skanuj bazę")
+    if skan.count() and not d.locator("table tbody tr td a").count():
+        skan.click()
+        d.wait_for_load_state("networkidle")
+        # Live progress page. When done it shows "Zobacz listę duplikatów"
+        # (or liveops.js redirects to the list by itself).
+        lista = d.get_by_role("link", name="Zobacz listę duplikatów")
+        for _ in range(100):
+            if "/live/" not in d.url or lista.count():
+                break
+            d.wait_for_timeout(3000)
+        if lista.count():
+            d.mouse.move(5, 5)
+            mark(
+                d,
+                [
+                    {
+                        "sel": ".callout.success a.button",
+                        "arrow": "right",
+                        "label": "lista par",
+                        "dx": 0,
+                        "dy": -40,
+                    }
+                ],
+            )
+            shot(d, out / "13-skan-zrodel.png", 0, bottom_of(d, ".callout.success", 90))
+            lista.click()
+        d.wait_for_load_state("networkidle")
+    para = "table tbody tr"
+    przemapuj = "a.button[href*='/przemapuj-zrodlo/ACTA-OXENFURCKA/']"
+    mark(
+        d,
+        [
+            {"sel": para, "text": "ACTA OXENFURCKA"},
+            {
+                "sel": przemapuj,
+                "arrow": "below",
+                "label": "1. Przemapuj",
+                "dx": -200,
+                "dy": -20,
+            },
+            {
+                "sel": "form[action*=skanuj] button",
+                "arrow": "above",
+                "label": "nowy skan",
+                "dx": 300,
+                "dy": 20,
+            },
+        ],
+    )
+    row = page_box(d, para, "ACTA OXENFURCKA")
+    shot(d, out / "14-deduplikator-zrodel.png", 0, row["y"] + row["height"] + 140)
+
+    # 15. "Przemapuj źródło" form, target prefilled from the pair
+    d.locator(przemapuj).click()
+    d.wait_for_load_state("networkidle")
+    d.wait_for_timeout(1000)  # target panel is filled by fetch
+    d.uncheck("input[name=wyslac_do_pbn]")
+    d.check("input[name=potwierdzenie]")
+    d.mouse.move(5, 5)
+    mark(
+        d,
+        [
+            {"sel": "#przemapuj-panels"},
+            {"sel": "#id_zrodlo_docelowe + .select2"},
+            {"sel": "#div_id_wyslac_do_pbn"},
+            {"sel": "#div_id_potwierdzenie"},
+            {"sel": "#przemapuj-form button[type=submit]"},
+        ],
+    )
+    shot(
+        d,
+        out / "15-przemapuj-zrodlo.png",
+        0,
+        bottom_of(d, "#przemapuj-form .button-group", 30),
+    )
+
+    # 16. Submit -> target source page with the result message
+    d.evaluate("document.getElementById('kb-overlay')?.remove()")
+    d.locator("#przemapuj-form button[type=submit]").click()
+    d.wait_for_load_state("networkidle")
+    mark(d, [{"sel": ".callout.success", "text": "przemapowano"}])
+    shot(d, out / "16-przemapowano-zrodlo.png", 0, bottom_of(d, ".callout.success", 30))
+
+    # 17. History of source remaps with "Cofnij" (admin)
+    d.goto(f"{base}/admin/przemapuj_zrodlo/przemapowazrodla/")
+    d.wait_for_load_state("networkidle")
+    mark(
+        d,
+        [
+            {
+                "sel": "#result_list a.admin-action-btn--warning",
+                "arrow": "left",
+                "label": "cofnij",
+                "dx": -10,
+                "dy": 40,
+            }
+        ],
+    )
+    shot(
+        d,
+        out / "17-historia-przemapowan-zrodel.png",
+        0,
+        bottom_of(d, "#result_list", 140),
+    )
+
+    # 18. Sources without publications: filter + bulk action (admin).
+    # The filters sit behind "Filtruj"; the action bar is fixed at the bottom
+    # of the window, so this one is a plain viewport screenshot.
+    d.goto(f"{base}/admin/bpp/zrodlo/?ma_publikacje=nie")
+    d.wait_for_load_state("networkidle")
+    d.locator("#result_list tbody input.action-select").first.check()
+    d.select_option("select[name=action]", "usun_zrodla_bez_publikacji_action")
+    d.mouse.move(5, 5)
+    mark(
+        d,
+        [
+            {
+                "sel": "#filter-panel-toggle",
+                "arrow": "below",
+                "label": "1. Filtruj: „nie ma publikacji”",
+                "dx": -420,
+                "dy": -20,
+            },
+            {
+                "sel": "#result_list tbody input.action-select",
+                "arrow": "below",
+                "label": "2. zaznacz",
+                "dx": 20,
+                "dy": -20,
+            },
+            {
+                "sel": "select[name=action]",
+                "arrow": "above",
+                "label": "3. akcja i „Wykonaj”",
+                "dx": 0,
+                "dy": 20,
+            },
+        ],
+    )
+    d.screenshot(path=out / "18-zrodla-bez-publikacji.png")
+    d.context.close()
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -1318,6 +1816,7 @@ SCENARIOS = {
     "logowanie": ("uzytkownik/logowanie", logowanie),
     "punkty-i-sloty": ("uzytkownik/punkty-i-sloty", punkty_i_sloty),
     "raporty": ("uzytkownik/raporty", raporty),
+    "duplikaty": ("redaktor/duplikaty", duplikaty),
 }
 
 
