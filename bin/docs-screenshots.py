@@ -36,6 +36,12 @@ DEMO_PASSWORD = DEMO_USER
 DEMO_USER_BEZ_AUTORA = "jaskier"
 # Third demo account in the group "generowanie raportów" (reports, slots).
 DEMO_USER_RAPORTY = "filippa"
+# Demo work by an author with two disciplines in 2023 (bin/docs-demo-oswiadczenia.py).
+OSW_REKORD = 1130
+OSW_REKORD_SLUG = (
+    "Modelowanie-eliksirow-wiedzminskich-z-wykorzystaniem-tolerancje-eliksirow"
+    "-nr-530-Folia-Kaedwenica-z-Roggeveen-T-z-Cintry-R-var-Emreis-C-6-1130"
+)
 LISTA_ROZBIEZNOSCI = "/admin/rozbieznosci_dyscyplin/rozbieznosciview/"
 # A made-up ministerial journal list ("wykaz czasopism") in the layout the
 # import reads: two header rows (discipline NAMES in the first, codes in the
@@ -4174,6 +4180,349 @@ def rozbieznosci_dyscyplin(page: Page, base: str, out: Path) -> None:
     red.context.close()
 
 
+def oswiadczenia(page: Page, base: str, out: Path) -> None:
+    """docs/redaktor/oswiadczenia.md: statements on a record, printing them, sending them to PBN.
+
+    Needs the demo state: uv run python src/manage.py shell < bin/docs-demo-oswiadczenia.py
+    and a Celery worker (step 6 generates a file in the background). No PBN behind it.
+    """
+    red = new_session(page, base, DEMO_USER_REDAKTOR)
+    w = VIEWPORT["width"]
+
+    # 1. the record form: discipline, "przypięta", statement date
+    red.goto(f"{base}/admin/bpp/wydawnictwo_ciagle/{OSW_REKORD}/change/")
+    red.wait_for_load_state("networkidle")
+    f = "#id_autorzy_set-1-"
+    mark(
+        red,
+        [
+            {
+                "sel": f"{f}dyscyplina_naukowa + .select2",
+                "arrow": "right",
+                "label": "1. dyscyplina",
+                "dx": 40,
+                "dy": -40,
+            },
+            {
+                "sel": f"label[for={f[1:]}przypieta]",
+                "arrow": "right",
+                "label": "2. przypięta",
+                "dx": 560,
+                "dy": -40,
+            },
+            {
+                "sel": f"{f}data_oswiadczenia",
+                "arrow": "right",
+                "label": "3. data oświadczenia",
+                "dx": 60,
+                "dy": -40,
+            },
+        ],
+    )
+    top = page_box(red, f"{f}autor + .select2")["y"] - 52
+    shot(
+        red,
+        out / "01-formularz-autora.png",
+        top,
+        bottom_of(red, f"{f}data_oswiadczenia", 60) - top,
+    )
+
+    # 2. the record page: print icons next to "Punkty i sloty autorów"
+    red.goto(f"{base}/bpp/rekord/{OSW_REKORD_SLUG}/")
+    red.wait_for_load_state("networkidle")
+    wiele = "a[href*='/oswiadczenia/wiele/']"
+    alt = "a[href*='/oswiadczenia/pojedyncze-alternatywna/']"
+    jedno = "a[href*='/oswiadczenia/pojedyncze/'][href*='/149/']"
+    mark(
+        red,
+        [
+            {
+                "sel": wiele,
+                "arrow": "above",
+                "label": "wszystkie naraz",
+                "dx": -330,
+                "dy": 50,
+            },
+            {
+                "sel": jedno,
+                "arrow": "left",
+                "label": "jedno oświadczenie",
+                "dx": -400,
+                "dy": 0,
+            },
+            {
+                "sel": alt,
+                "arrow": "below",
+                "label": "druga dyscyplina",
+                "dx": -100,
+                "dy": -20,
+            },
+        ],
+    )
+    head = shot(red, None, 0, 260)
+    y = page_box(red, wiele)["y"] - 90
+    tabela = shot(red, None, y, bottom_of(red, alt, 170) - y)
+    stitch(red, [head, tabela], out / "02-strona-rekordu.png", "przewiń na dół strony")
+
+    # 3. one statement, ready to print
+    href = red.get_attribute(jedno, "href")
+    druk = red.context.new_page()
+    druk.goto(f"{base}{href}")
+    druk.wait_for_load_state("load")
+    druk.wait_for_timeout(500)
+    druk.screenshot(
+        path=out / "03-oswiadczenie.png",
+        clip={"x": 0, "y": 0, "width": w, "height": 560},
+    )
+    druk.close()
+
+    # 4. menu "ewaluacja" -> "wydruk oświadczeń 2022-25"
+    red.goto(f"{base}/")
+    red.wait_for_load_state("networkidle")
+    li = open_top_menu(red, "fi-graph-bar")
+    mark(
+        red,
+        [
+            {
+                "sel": f"{li} .column-1 a",
+                "text": "wydruk oświadczeń",
+                "arrow": "right",
+                "label": "wydruk oświadczeń",
+                "dx": 0,
+                "dy": -20,
+            }
+        ],
+    )
+    menu = page_box(red, f"{li} > .menu-columns-wrapper")
+    shot(red, out / "04-menu-wydruk.png", 0, menu["y"] + menu["height"] + 40)
+
+    # 5. the list: filter, then download or print
+    red.goto(f"{base}/oswiadczenia/wydruk-2022-25/")
+    red.wait_for_load_state("networkidle")
+    red.fill("input[name=rok_od]", "2023")
+    red.fill("input[name=rok_do]", "2023")
+    red.fill("input[name=szukaj_autor]", "Cintry")
+    red.select_option("select[name=dyscyplina]", label="nauki teologiczne (7.2)")
+    red.click("button:has-text('Filtruj')")
+    red.wait_for_load_state("networkidle")
+    # three rows are enough to show the columns; the label goes below them
+    red.evaluate(
+        "document.querySelectorAll('table tbody tr:nth-child(n+4)')"
+        ".forEach(r => r.remove())"
+    )
+    druk_alt = "tr:nth-child(3) a.button.warning[href*='pojedyncze-alternatywna']"
+    mark(
+        red,
+        [
+            {"sel": "form.callout"},
+            {
+                "sel": "form.callout button[type=submit]",
+                "arrow": "left",
+                "label": "1. zawęź listę",
+                "dx": -100,
+                "dy": -10,
+            },
+            {
+                "sel": "fieldset",
+                "text": "Jeden plik",
+                "arrow": "above",
+                "label": "2. pobierz wszystkie",
+                "dx": -600,
+                "dy": 40,
+            },
+            {
+                "sel": druk_alt,
+                "arrow": "below",
+                "label": "albo wydrukuj jedno",
+                "dx": -380,
+                "dy": -20,
+            },
+        ],
+    )
+    tabela = page_box(red, "table")
+    shot(
+        red, out / "05-wydruk-lista.png", 80, tabela["y"] + tabela["height"] + 140 - 80
+    )
+
+    # 6. "Jeden plik" -> PDF: generated in the background
+    with red.expect_download(timeout=120_000):
+        red.click("fieldset:has-text('Jeden plik') button:has-text('PDF')")
+        red.wait_for_selector("#download-link", timeout=120_000)
+    mark(
+        red,
+        [
+            {
+                "sel": "#download-link",
+                "arrow": "right",
+                "label": "jeśli nie pobrało się samo",
+                "dx": 20,
+                "dy": -40,
+            }
+        ],
+    )
+    shot(red, out / "06-generowanie.png", 80, bottom_of(red, "#download-link", 90) - 80)
+
+    # 7. menu "PBN" -> "wysylka oswiadczen do PBN"
+    red.goto(f"{base}/")
+    red.wait_for_load_state("networkidle")
+    li = open_top_menu(red, "fi-link")
+    mark(
+        red,
+        [
+            {
+                "sel": f"{li} .column-1 a",
+                "text": "wysylka oswiadczen",
+                "arrow": "left",
+                "label": "wysyłka oświadczeń",
+                "dx": 0,
+                "dy": 0,
+            },
+            {
+                "sel": f"{li} .column-1 a",
+                "text": "autoryzuj PBN API",
+                "arrow": "left",
+                "label": "najpierw: logowanie w PBN",
+                "dx": 0,
+                "dy": -30,
+            },
+        ],
+    )
+    menu = page_box(red, f"{li} > .menu-columns-wrapper")
+    shot(red, out / "07-menu-pbn.png", 0, menu["y"] + menu["height"] + 60)
+
+    # 8. the sending page: range, counts, last task
+    red.goto(f"{base}/pbn-wysylka-oswiadczen/")
+    red.wait_for_load_state("networkidle")
+    start = "#start-fresh-btn"
+    mark(
+        red,
+        [
+            {"sel": "#filter-form"},
+            {
+                "sel": "#rok_od",
+                "arrow": "above",
+                "label": "1. zakres",
+                "dx": 160,
+                "dy": 40,
+            },
+            {
+                "sel": start,
+                "arrow": "below",
+                "label": "2. wyślij",
+                "dx": 300,
+                "dy": -40,
+            },
+            {
+                "sel": "#task-status-panel",
+                "arrow": "below",
+                "label": "ostatnie zadanie",
+                "dx": 0,
+                "dy": -40,
+            },
+        ],
+    )
+    shot(red, out / "08-wysylka.png", 80, bottom_of(red, start, 120) - 80)
+
+    # 9. without a PBN login the task does not start
+    red.evaluate("document.getElementById('kb-overlay')?.remove()")
+    red.click(start)
+    red.wait_for_selector("#start-error", state="visible")
+    mark(
+        red,
+        [
+            {
+                "sel": "#start-error",
+                "arrow": "right",
+                "label": "brak logowania w PBN",
+                "dx": 0,
+                "dy": -40,
+            }
+        ],
+    )
+    y = page_box(red, "#start-error")["y"] - 260
+    shot(red, out / "09-brak-logowania-pbn.png", y, bottom_of(red, start, 120) - y)
+
+    # 10. "Tylko odpięte": the preview with the unpinned work
+    red.check("input[name=tylko_odpiete]")
+    red.click("#filter-form button[type=submit]")
+    red.wait_for_load_state("networkidle")
+    red.wait_for_selector("#publication-list table")
+    mark(
+        red,
+        [
+            {
+                "sel": "#filter-form label:has(input[name=tylko_odpiete])",
+                "arrow": "below",
+                "label": "1. tylko odpięte",
+                "dx": 50,
+                "dy": -50,
+            },
+            {
+                "sel": "#publication-list tbody tr td:nth-child(7)",
+                "arrow": "below",
+                "label": "2. 0 przypiętych",
+                "dx": -330,
+                "dy": -30,
+            },
+        ],
+    )
+    y = page_box(red, "#filter-form")["y"] - 60
+    shot(
+        red,
+        out / "10-tylko-odpiete.png",
+        y,
+        bottom_of(red, "#publication-list table", 120) - y,
+    )
+
+    # 11. the log of the last task: errors only
+    red.goto(f"{base}/pbn-wysylka-oswiadczen/")
+    red.wait_for_load_state("networkidle")
+    red.click("a:has-text('Zobacz błędy')")
+    red.wait_for_load_state("networkidle")
+    szczeg = "a:has-text('Szczegoly')"
+    mark(
+        red,
+        [
+            {"sel": "form.inline-form"},
+            {
+                "sel": "table.stack tbody tr:last-child a.button",
+                "arrow": "below",
+                "label": "co poszło nie tak",
+                "dx": -400,
+                "dy": -20,
+            },
+        ],
+    )
+    shot(red, out / "11-logi.png", 80, bottom_of(red, "table.stack", 110) - 80)
+
+    # 12. one log entry: error, what was sent, what PBN answered
+    red.locator(szczeg).first.click()
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": ".panel.callout.alert",
+                "arrow": "below",
+                "label": "komunikat błędu",
+                "dx": 40,
+                "dy": -20,
+            },
+            {
+                "sel": ".panel pre",
+                "text": "'message'",
+                "arrow": "above",
+                "label": "odpowiedź PBN",
+                "dx": 300,
+                "dy": 80,
+            },
+        ],
+    )
+    odp = page_box(red, ".panel", "Odpowiedz z PBN")
+    shot(red, out / "12-log-szczegoly.png", 80, odp["y"] + odp["height"] - 40)
+    red.context.close()
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -4461,6 +4810,7 @@ SCENARIOS = {
         "redaktor/rozbieznosci-dyscyplin",
         rozbieznosci_dyscyplin,
     ),
+    "oswiadczenia": ("redaktor/oswiadczenia", oswiadczenia),
 }
 
 
