@@ -3281,6 +3281,234 @@ def duplikaty(page: Page, base: str, out: Path) -> None:
     d.context.close()
 
 
+def metryki_ewaluacyjne(page: Page, base: str, out: Path) -> None:
+    """docs/redaktor/metryki-ewaluacyjne.md: evaluation metrics of authors (editor).
+
+    Needs a Celery worker: "Uruchom generowanie" recomputes N and the metrics
+    in the background. The scenario starts a real recompute."""
+    m = new_session(page, base, DEMO_USER_REDAKTOR)
+    lista = f"{base}/ewaluacja_metryki/"
+
+    # 1. "ewaluacja" menu -> metryki ewaluacyjne
+    li = open_top_menu(m, "fi-graph-bar")
+    mark(
+        m,
+        [
+            {
+                "sel": f"{li} a[href$='/ewaluacja_metryki/']",
+                "arrow": "right",
+                "label": "metryki ewaluacyjne",
+                "dx": 40,
+                "dy": -20,
+            }
+        ],
+    )
+    shot(
+        m,
+        out / "01-menu-ewaluacja.png",
+        0,
+        bottom_of(m, f"{li} .menu-columns-wrapper"),
+    )
+
+    # 2. Disclaimer (shown until closed) + status box with "Uruchom generowanie"
+    m.goto(lista)
+    m.wait_for_load_state("networkidle")
+    m.wait_for_timeout(500)  # disclaimer fades in
+    if m.locator("#ewaluacja-disclaimer").is_visible():
+        mark(
+            m,
+            [
+                {
+                    "sel": "#ewaluacja-disclaimer .close-button",
+                    "arrow": "above",
+                    "label": "zamknij (wróci po 14 dniach)",
+                    "dx": -560,
+                    "dy": -120,
+                }
+            ],
+        )
+        shot(
+            m,
+            out / "02-zastrzezenie.png",
+            0,
+            bottom_of(m, "#ewaluacja-disclaimer", 20),
+        )
+        m.locator("[data-action=close-disclaimer]").click()
+        m.wait_for_timeout(600)
+    m.mouse.move(5, 5)
+    mark(
+        m,
+        [
+            {
+                "sel": "#status-box button[data-open=generowanie-modal]",
+                "arrow": "left",
+                "label": "uruchom generowanie",
+                "dx": -60,
+                "dy": -40,
+            },
+        ],
+    )
+    shot(m, out / "03-status-uruchom.png", 0, bottom_of(m, "#status-box", 20))
+
+    # 3. The dialog: period, threshold, author types. Taller window, or the
+    # dialog's heading hides under the top bar.
+    m.evaluate("document.getElementById('kb-overlay')?.remove()")
+    m.set_viewport_size({"width": VIEWPORT["width"], "height": 1060})
+    m.click("#status-box button[data-open=generowanie-modal]")
+    m.wait_for_selector("#generowanie-modal", state="visible")
+    m.wait_for_timeout(800)  # reveal animation
+    box = m.locator("#generowanie-modal").bounding_box()
+    m.screenshot(
+        path=out / "04-okno-generowania.png",
+        clip={
+            "x": box["x"] - 20,
+            "y": max(0, box["y"] - 20),
+            "width": box["width"] + 40,
+            "height": box["height"] + 40,
+        },
+    )
+
+    # 4. Submit, catch the progress box, wait until done
+    m.click("#generowanie-form button[type=submit]")
+    m.wait_for_selector("#status-box.warning", timeout=10000)
+    m.wait_for_timeout(1000)
+    m.set_viewport_size(VIEWPORT)
+    m.mouse.move(5, 5)
+    sb = page_box(m, "#status-box")
+    shot(m, out / "05-postep.png", sb["y"] - 8, sb["height"] + 28)
+    for _ in range(150):
+        m.wait_for_timeout(2000)
+        m.goto(lista)
+        m.wait_for_load_state("networkidle")
+        if m.locator("#status-box.success").count():
+            break
+    m.wait_for_timeout(1500)  # circular progress animates
+
+    # 5. Filters, export and statistics buttons
+    m.mouse.move(5, 5)
+    mark(
+        m,
+        [
+            {"sel": "#filter-form"},
+            {
+                "sel": "#filter-form a[href*='export-lista-xlsx']",
+                "arrow": "above",
+                "label": "Excel z filtrami",
+                "dx": -420,
+                "dy": 95,
+            },
+        ],
+    )
+    fb = page_box(m, "#status-box")
+    shot(
+        m,
+        out / "06-filtry.png",
+        fb["y"] - 10,
+        bottom_of(m, "#filter-form", 20) - fb["y"],
+    )
+
+    # 6. Summary + the table
+    m.evaluate("document.getElementById('kb-overlay')?.remove()")
+    th = "table.hover thead th"
+    mark(
+        m,
+        [
+            {
+                "sel": th,
+                "text": "Średnia PKDaut/slot",
+                "arrow": "above",
+                "label": "punkty na slot",
+                "dx": -420,
+                "dy": 30,
+            },
+            {
+                "sel": th,
+                "text": "Wykorzystanie slotów",
+                "arrow": "above",
+                "label": "zebrane / dostępne sloty",
+                "dx": -200,
+                "dy": 30,
+            },
+            {"sel": "table.hover tbody tr:first-child td:last-child"},
+        ],
+    )
+    st = page_box(m, ".callout.secondary")
+    shot(
+        m,
+        out / "07-tabela.png",
+        st["y"] - 10,
+        bottom_of(m, "table.hover tbody tr:nth-child(3)") - st["y"],
+    )
+
+    # 7. Detail page of one author/discipline
+    m.goto(f"{lista}?nazwisko=Yennefer")
+    m.wait_for_load_state("networkidle")
+    m.locator("table.hover tbody tr:first-child td:first-child a").click()
+    m.wait_for_load_state("networkidle")
+    m.wait_for_timeout(1500)  # charts and progress circle animate
+    mark(
+        m,
+        [
+            {
+                "sel": "th",
+                "text": "Slot maksymalny",
+                "arrow": "above",
+                "label": "limit slotów autora",
+                "dx": -183,
+                "dy": 90,
+            }
+        ],
+    )
+    h = page_box(m, "h4", "Informacje podstawowe")
+    shot(m, out / "08-szczegoly.png", 0, h["y"] + 420)
+
+    # 8. Collected works with the "Odepnij" button, far down the page
+    m.evaluate("document.getElementById('kb-overlay')?.remove()")
+    m.mouse.move(5, 5)
+    top = shot(m, None, 0, 330)
+    mark(
+        m,
+        [
+            {"sel": "h4", "text": "Szczegóły prac nazbieranych"},
+            {
+                "sel": "button[title='Odepnij dyscyplinę']",
+                "arrow": "left",
+                "label": "odepnij",
+                "dx": -260,
+                "dy": 30,
+            },
+        ],
+    )
+    h = page_box(m, "h4", "Szczegóły prac nazbieranych")
+    bottom = shot(m, None, h["y"] - 20, 330)
+    stitch(
+        m,
+        [top, bottom],
+        out / "09-prace-nazbierane.png",
+        "przewiń do sekcji „Szczegóły prac nazbieranych”",
+    )
+
+    # 9. Statistics page
+    m.goto(f"{base}/ewaluacja_metryki/statystyki/")
+    m.wait_for_load_state("networkidle")
+    m.wait_for_timeout(1000)
+    mark(
+        m,
+        [
+            {
+                "sel": "a[href$='export-xlsx/top-autorzy/']",
+                "arrow": "left",
+                "label": "każda tabela do Excela",
+                "dx": -60,
+                "dy": -40,
+            }
+        ],
+    )
+    h = page_box(m, "h4", "Top 20 autorów PKDaut/slot")
+    shot(m, out / "10-statystyki.png", 0, h["y"] + 330)
+    m.context.close()
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -3558,6 +3786,7 @@ SCENARIOS = {
     ),
     "importer-publikacji": ("redaktor/importer-publikacji", importer_publikacji),
     "duplikaty": ("redaktor/duplikaty", duplikaty),
+    "metryki-ewaluacyjne": ("redaktor/metryki-ewaluacyjne", metryki_ewaluacyjne),
 }
 
 
