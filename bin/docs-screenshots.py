@@ -3281,6 +3281,191 @@ def duplikaty(page: Page, base: str, out: Path) -> None:
     d.context.close()
 
 
+LISTA_ROZBIEZNOSCI = "/admin/rozbieznosci_dyscyplin/rozbieznosciview/"
+
+
+def rozbieznosci_dyscyplin(page: Page, base: str, out: Path) -> None:
+    """docs/redaktor/rozbieznosci-dyscyplin.md: discipline discrepancies (authors, sources).
+
+    Needs bin/docs-demo-rozbieznosci-dyscyplin.py (re-run it before each run:
+    the scenario fixes three records and the script puts them back).
+    """
+    red = new_session(page, base, DEMO_USER_REDAKTOR)
+    lista = f"{base}{LISTA_ROZBIEZNOSCI}"
+
+    # 1. operacje menu: both discrepancy reports
+    red.goto(f"{base}/")
+    red.wait_for_load_state("networkidle")
+    li = open_top_menu(red, "fi-wrench")
+    mark(
+        red,
+        [
+            {"sel": f"{li} a[href*='rozbieznosciview'] i"},
+            {"sel": f"{li} a[href*='rozbieznoscizrodelview'] i"},
+        ],
+    )
+    menu = page_box(red, f"{li} > .menu-columns-wrapper")
+    shot(red, out / "01-menu-operacje.png", 0, menu["y"] + menu["height"] + 30)
+
+    # 2. the list as opened from the menu: columns and the ready-made query
+    red.goto(f"{lista}?q-l=on&q=rok%3E%3D2022&pracuje_na_uczelni=tak")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": "#result_list thead th.column-dyscyplina_rekordu",
+                "arrow": "below",
+                "label": "dyscyplina przy autorze w pracy",
+                "dx": -560,
+                "dy": 40,
+            },
+            {
+                "sel": "#result_list thead th.column-dyscyplina_autora",
+                "arrow": "below",
+                "label": "dyscypliny autora w tym roku",
+                "dx": -420,
+                "dy": 150,
+            },
+            {"sel": "#result_list thead th.column-subdyscyplina_autora"},
+            {"sel": "#grp-changelist-search-form"},
+        ],
+    )
+    shot(red, out / "02-lista.png", 0, 520)
+
+    # 3. the filter panel: "Dyscyplina rekordu ustawiona" opened
+    red.goto(f"{lista}?rok=2024")
+    red.wait_for_load_state("networkidle")
+    red.click("#filter-panel-toggle")
+    red.wait_for_timeout(800)
+    tytul = ".filter-title"
+    red.locator(tytul, has_text="Dyscyplina rekordu ustawiona").click()
+    red.wait_for_timeout(800)
+    mark(
+        red,
+        [
+            {"sel": ".filter-group", "text": "Dyscyplina rekordu ustawiona"},
+            {"sel": ".filter-group", "text": "Autor pracuje na uczelni"},
+            {"sel": ".filter-group", "text": "rok"},
+        ],
+    )
+    red.screenshot(path=out / "03-filtry.png")
+
+    # 4. one discrepancy: buttons to the record and the author
+    red.goto(f"{lista}?rok=2024&dyscyplina_rekordu_id=jest&q=Regis")
+    red.wait_for_load_state("networkidle")
+    red.locator("#result_list tbody tr a").first.click()
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": ".grp-object-tools",
+                "arrow": "below",
+                "label": "otwórz pracę lub autora",
+                "dx": -330,
+                "dy": 40,
+            }
+        ],
+    )
+    shot(red, out / "04-szczegoly.png", 0, 470)
+
+    # 5. fix a few: tick the rows, pick the action, run
+    red.goto(f"{lista}?rok=2024&dyscyplina_rekordu_id=jest&q=Regis")
+    red.wait_for_load_state("networkidle")
+    for box in red.locator("#result_list tbody input.action-select").all():
+        box.check()
+    red.select_option("select[name=action]", "ustaw_druga")
+    red.mouse.move(5, 5)
+    akcja = ".grp-changelist-actions button, button[name=index]"
+    pierwszy = "#result_list tbody tr:first-child"
+    mark(
+        red,
+        [
+            {
+                "sel": "#action-toggle",
+                "arrow": "above",
+                "label": "1. zaznacz (tu: wszystkie)",
+                "dx": 180,
+                "dy": 10,
+            },
+            {"sel": f"{pierwszy} td.field-dyscyplina_rekordu"},
+            {"sel": f"{pierwszy} td.field-subdyscyplina_autora"},
+            {
+                "sel": "select[name=action]",
+                "arrow": "above",
+                "label": "2. akcja",
+                "dx": 40,
+                "dy": 20,
+            },
+            {
+                "sel": akcja,
+                "arrow": "above",
+                "label": "3. Wykonaj",
+                "dx": 60,
+                "dy": 20,
+            },
+        ],
+    )
+    red.screenshot(path=out / "05-akcja.png")
+
+    # 6. the result messages
+    red.click(akcja)
+    red.wait_for_load_state("networkidle")
+    msgs = ".grp-messagelist"
+    mark(red, [{"sel": msgs}])
+    shot(red, out / "06-komunikaty.png", 0, bottom_of(red, msgs, 120))
+
+    # 7. "second discipline" for an author who has only one: a warning
+    red.goto(
+        f"{lista}?rok=2024&dyscyplina_rekordu_id=brak&subdyscyplina_autora__isnull=True"
+    )
+    red.wait_for_load_state("networkidle")
+    red.locator("#result_list tbody input.action-select").first.check()
+    red.select_option("select[name=action]", "ustaw_druga")
+    red.click(akcja)
+    red.wait_for_load_state("networkidle")
+    mark(red, [{"sel": f"{msgs} li", "text": "nie ustawiono"}])
+    shot(red, out / "07-ostrzezenie.png", 0, bottom_of(red, msgs, 120))
+
+    # 8. all rows of the filtered list: "Wybierz wszystkie..." (not run)
+    red.goto(f"{lista}?rok=2024")
+    red.wait_for_load_state("networkidle")
+    red.locator("#action-toggle").check()
+    red.wait_for_timeout(500)
+    red.mouse.move(5, 5)
+    mark(
+        red,
+        [
+            {"sel": "#action-toggle"},
+            {
+                "sel": ".grp-question a",
+                "arrow": "above",
+                "label": "cała lista po filtrach",
+                "dx": -40,
+                "dy": 20,
+            },
+        ],
+    )
+    red.screenshot(path=out / "08-zaznacz-wszystkie.png")
+
+    # 9. sources: work discipline outside the journal's disciplines
+    red.goto(
+        f"{base}/admin/rozbieznosci_dyscyplin/rozbieznoscizrodelview/"
+        "?rok=2024&pracuje_na_uczelni=tak"
+    )
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {"sel": "#result_list thead th.column-zrodlo"},
+            {"sel": "#result_list thead th.column-dyscyplina_naukowa"},
+        ],
+    )
+    shot(red, out / "09-zrodla.png", 0, 520)
+    red.context.close()
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -3558,6 +3743,10 @@ SCENARIOS = {
     ),
     "importer-publikacji": ("redaktor/importer-publikacji", importer_publikacji),
     "duplikaty": ("redaktor/duplikaty", duplikaty),
+    "rozbieznosci-dyscyplin": (
+        "redaktor/rozbieznosci-dyscyplin",
+        rozbieznosci_dyscyplin,
+    ),
 }
 
 
