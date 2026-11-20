@@ -3281,6 +3281,292 @@ def duplikaty(page: Page, base: str, out: Path) -> None:
     d.context.close()
 
 
+def optymalizacja_ewaluacji(page: Page, base: str, out: Path) -> None:
+    """docs/redaktor/optymalizacja-ewaluacji.md: choosing works for the evaluation slots.
+
+    Needs run-site WITH celery, the "vesemir" editor, and liczba N plus author
+    metrics computed on the demo DB (`manage.py oblicz_metryki`). The scenario
+    really runs "Policz całą ewaluację" and "Optymalizuj, odpinając sloty";
+    the latter unpins works, so restore the dump before running it again.
+    """
+    red = new_session(page, base, DEMO_USER_REDAKTOR)
+    red.on("dialog", lambda d: d.accept())  # the buttons' "Czy na pewno…?" prompts
+    idx = f"{base}/ewaluacja_optymalizacja/"
+
+    def czekaj_na_przyciski() -> None:
+        # buttons unlock once the "points recalculation" poll reports 0 dirty records
+        red.wait_for_selector("#bulk-optimization-btn:not([disabled])", timeout=120_000)
+        red.wait_for_timeout(500)
+
+    # 1. ewaluacja menu -> optymalizacja ewaluacji
+    red.goto(f"{base}/")
+    red.wait_for_load_state("networkidle")
+    li = open_top_menu(red, "fi-graph-bar")
+    mark(
+        red,
+        [
+            {
+                "sel": f"{li} a[href$='/ewaluacja_optymalizacja/']",
+                "arrow": "right",
+                "label": "optymalizacja ewaluacji",
+                "dx": 40,
+            }
+        ],
+    )
+    menu = page_box(red, f"{li} > .menu-columns-wrapper")
+    shot(red, out / "01-menu-ewaluacja.png", 0, menu["y"] + menu["height"] + 40)
+
+    # 2. main page: N-number check, solver mode, the start button
+    red.goto(idx)
+    red.wait_for_load_state("networkidle")
+    czekaj_na_przyciski()
+    mark(
+        red,
+        [
+            {"sel": ".callout h4", "text": "Gotowe do optymalizacji"},
+            {
+                "sel": "label[for=algo-two-phase]",
+                "arrow": "right",
+                "label": "1. zostaw „Dwufazowy”",
+                "dx": 120,
+                "dy": 10,
+            },
+            {
+                "sel": "#bulk-optimization-btn",
+                "arrow": "below",
+                "label": "2. Policz całą ewaluację",
+                "dx": 40,
+                "dy": -50,
+            },
+        ],
+    )
+    shot(
+        red,
+        out / "02-strona-glowna.png",
+        0,
+        bottom_of(red, "#bulk-optimization-form", 30),
+    )
+
+    # 3. the status page while the background task runs
+    red.click("#bulk-optimization-btn")
+    red.wait_for_url("**/bulk/status/**")
+    red.wait_for_load_state("domcontentloaded")
+    mark(
+        red,
+        [
+            {
+                "sel": "button",
+                "text": "Anuluj zadanie",
+                "arrow": "below",
+                "label": "przerwanie obliczeń",
+                "dx": 60,
+                "dy": -40,
+            }
+        ],
+    )
+    shot(
+        red,
+        out / "03-status.png",
+        0,
+        bottom_of(red, "button.alert, .button.alert", 110),
+    )
+
+    # 4. back on the main page: one row per discipline
+    red.wait_for_url(idx, timeout=600_000)
+    red.wait_for_load_state("networkidle")
+    czekaj_na_przyciski()
+    tabela = page_box(red, "table")
+    mark(
+        red,
+        [
+            {"sel": "th", "text": "3N ost."},
+            {"sel": "th", "text": "Sloty %"},
+            {
+                "sel": "tbody tr",
+                "text": "filozofia",
+            },
+        ],
+    )
+    top = shot(red, None, 0, 200)
+    bottom = shot(red, None, tabela["y"] - 60, tabela["height"] + 150)
+    stitch(
+        red,
+        [top, bottom],
+        out / "04-wyniki-lista.png",
+        "przewiń do „Ostatnie kalkulacje”",
+    )
+
+    # 5. one discipline: totals, then the per-author table
+    red.locator("tbody tr", has_text="filozofia").get_by_text(
+        "Zobacz szczegóły"
+    ).click()
+    red.wait_for_load_state("networkidle")
+    red.wait_for_timeout(1500)  # charts animate in
+    top = shot(red, None, 0, 560)
+    h = page_box(red, "h2", "Wyniki autorów")
+    wiersz = page_box(red, "tbody tr:nth-child(5)")
+    mark(
+        red,
+        [
+            {"sel": "th:nth-child(4)"},
+            {"sel": "th:nth-child(5)"},
+            {"sel": "th:nth-child(6)"},
+            {
+                "sel": "a",
+                "text": "Pobierz archiwum ZIP",
+                "arrow": "right",
+                "label": "Excel dla wszystkich autorów",
+                "dx": 280,
+                "dy": -70,
+            },
+        ],
+    )
+    bottom = shot(red, None, h["y"] - 20, wiersz["y"] + wiersz["height"] - h["y"] + 40)
+    stitch(
+        red,
+        [top, bottom],
+        out / "05-wyniki-dyscypliny.png",
+        "przewiń do „Wyniki autorów”",
+    )
+
+    # 6. one author: works chosen and not chosen
+    red.locator("tbody tr", has_text="Merigold Yennefer").locator("a").first.click()
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {"sel": ".callout", "text": "Prace nazbierane"},
+            {"sel": ".callout", "text": "Sloty nazbierane"},
+        ],
+    )
+    h = page_box(red, "h2", "Prace nazbierane")
+    shot(red, out / "06-prace-autora.png", 0, h["y"] + 330)
+
+    # 7. exports on the main page
+    red.goto(idx)
+    red.wait_for_load_state("networkidle")
+    czekaj_na_przyciski()
+    mark(
+        red,
+        [
+            {"sel": "a", "text": "Pobierz wszystkie XLS (ZIP)"},
+            {"sel": "a", "text": "Raport SEDN #1"},
+            {
+                "sel": "a",
+                "text": "Raport SEDN #2",
+                "arrow": "right",
+                "label": "eksport do Excela",
+                "dx": 0,
+                "dy": 30,
+            },
+            {
+                "sel": "#optimize-unpin-btn",
+                "arrow": "below",
+                "label": "zastosuj wynik",
+                "dx": 0,
+                "dy": -20,
+            },
+        ],
+    )
+    shot(red, out / "07-eksporty.png", 0, bottom_of(red, "#bulk-optimization-form", 30))
+
+    # 8. one record: pin / unpin a discipline by hand
+    red.goto(f"{base}/bpp/rekord/{REKORD_ZE_SLOTAMI}/")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": ".praca-mono__optimize-button",
+                "arrow": "left",
+                "label": "Optymalizuj",
+                "dy": -40,
+            }
+        ],
+    )
+    h = page_box(red, "h3", "Punkty i sloty autorów")
+    top = shot(red, None, 0, 380)
+    bottom = shot(red, None, h["y"] - 20, 360)
+    stitch(
+        red,
+        [top, bottom],
+        out / "08-rekord-optymalizuj.png",
+        "przewiń do „Punkty i sloty autorów”",
+    )
+
+    red.locator(".praca-mono__optimize-button").click()
+    red.wait_for_load_state("networkidle")
+    red.wait_for_timeout(800)
+    karta = page_box(red, ".author-card")
+    mark(
+        red,
+        [
+            {"sel": "#summary-section"},
+            {
+                "sel": ".ewaluacja-optymalizuj__unpin-button",
+                "arrow": "right",
+                "label": "odepnij / przypnij",
+                "dx": 40,
+                "dy": -40,
+            },
+        ],
+    )
+    shot(red, out / "09-optymalizuj-rekord.png", 0, karta["y"] + karta["height"] + 30)
+
+    # 9. apply: unpin works that did not make it into the evaluation
+    red.goto(idx)
+    red.wait_for_load_state("networkidle")
+    czekaj_na_przyciski()
+    red.click("#optimize-unpin-btn")
+    red.wait_for_url("**/optimize-unpin-status/**")
+    red.wait_for_load_state("domcontentloaded")
+    shot(
+        red,
+        out / "10-odpinanie-status.png",
+        0,
+        bottom_of(red, "#progress-container", 10),
+    )
+
+    # when done, back on the main page: the message and the "Odpięte" column
+    red.wait_for_url(idx, timeout=600_000)
+    red.wait_for_load_state("networkidle")
+    czekaj_na_przyciski()
+    mark(
+        red,
+        [
+            {"sel": ".callout", "text": "Odpiętych publikacji"},
+            {"sel": "th", "text": "Odpięte"},
+        ],
+    )
+    tabela = page_box(red, "table")
+    top = shot(red, None, 0, 200)
+    bottom = shot(red, None, tabela["y"] - 60, tabela["height"] + 80)
+    stitch(
+        red,
+        [top, bottom],
+        out / "11-odpinanie-wynik.png",
+        "przewiń do „Ostatnie kalkulacje”",
+    )
+
+    # 10. snapshots: the way back
+    red.goto(f"{base}/snapshot_odpiec/")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": "a[href*='/aplikuj/']",
+                "arrow": "below",
+                "label": "przywróć stan sprzed odpinania",
+                "dx": 200,
+                "dy": -30,
+            }
+        ],
+    )
+    shot(red, out / "12-snapshoty.png", 0, bottom_of(red, "table", 110))
+    red.context.close()
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -3558,6 +3844,10 @@ SCENARIOS = {
     ),
     "importer-publikacji": ("redaktor/importer-publikacji", importer_publikacji),
     "duplikaty": ("redaktor/duplikaty", duplikaty),
+    "optymalizacja-ewaluacji": (
+        "redaktor/optymalizacja-ewaluacji",
+        optymalizacja_ewaluacji,
+    ),
 }
 
 
