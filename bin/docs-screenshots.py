@@ -37,6 +37,51 @@ DEMO_USER_BEZ_AUTORA = "jaskier"
 # Third demo account in the group "generowanie raportów" (reports, slots).
 DEMO_USER_RAPORTY = "filippa"
 DEMO_USER_REDAKTOR = "vesemir"  # demo editor: is_staff + "wprowadzanie danych"
+# The fake POL-on export of the demo university (docs/deweloper/dane-demo.md,
+# "Plik POL-on do importu"); generate it with
+# `manage.py generuj_plik_polon_demo --out <dir>` and point this at it.
+PLIK_POLON = os.environ.get("BPP_DOCS_PLIK_POLON", "")
+# Demo submissions created for this page (docs/redaktor/obsluga-zgloszen.md):
+# an article with a DOI, a book with a PDF and no link, one closed by the importer.
+ZGL_ARTYKUL = "Wpływ fazy księżyca na skuteczność eliksiru Jaskółka"
+ZGL_KSIAZKA = "Bestiariusz porównawczy potworów Velen i Temerii"
+ZGL_ZAIMPORTOWANE = "Perspektywy rozwoju bestii w lochach Novigradu (nr 10)"
+AUTORZY_ZGL = "#zgloszenie_publikacji_autor_set-group"  # authors inline
+# A made-up journal list in the layout of a JCR export (header row with
+# "Journal name", "<year> JIF", "JIF Quartile"), for the demo journals. One
+# journal is listed under two categories (the import keeps the better
+# quartile), one has "N/A" and one does not exist in BPP.
+JCR_DEMO_ROK = 2024
+JCR_DEMO_WIERSZE = [
+    ("Acta Wiedźmińska", "6746-8071", "MULTIDISCIPLINARY SCIENCES", "2.417", "Q2"),
+    ("Annales Aretuzańska", "9770-3482", "CHEMISTRY, APPLIED", "4.105", "Q1"),
+    ("Folia Temerska", "7109-3248", "HISTORY", "1.032", "Q3"),
+    ("Folia Temerska", "7109-3248", "AREA STUDIES", "1.032", "Q2"),
+    ("Studia Aretuzańska", "4990-913X", "ZOOLOGY", "3.250", "Q1"),
+    ("Przegląd Novigradzka", "7444-3135", "HUMANITIES", "N/A", "N/A"),
+    ("Journal of Applied Monsterology", "2049-3630", "ZOOLOGY", "0.874", "Q4"),
+]
+# Demo data for the "nowy rok" page (docs/redaktor/nowy-rok.md): an author
+# with disciplines for 2020-2026, a source with points/disciplines up to 2026
+# and a 2027 article - i.e. "January, the new year has no data yet".
+AUTOR_NOWY_ROK = 210  # Yennefer Merigold
+ZRODLO_NOWY_ROK = 40  # Folia Temerska
+REKORD_2027 = 1201
+# Demo article whose type is sent to PBN (bin/docs-demo-pbn.py maps it).
+PBN_REKORD = 1097
+# A made-up Witcher article for the importer walkthrough: one author matched
+# exactly, one with two namesakes (pick by unit), one not in BPP at all.
+IMPORTER_BIBTEX = """@article{vesemir2025jaskolka,
+  title    = {Stabilność eliksiru Jaskółka w warunkach górskich},
+  author   = {Merigold, Yennefer and Merigold, Leo and Chivay, Zoltan},
+  journal  = {Acta Wiedźmińska},
+  year     = {2025},
+  volume   = {12},
+  number   = {3},
+  pages    = {45--58},
+  doi      = {10.99999/aw.2025.0312},
+  language = {pl}
+}"""
 
 VIEWPORT = {"width": 1280, "height": 800}
 
@@ -1057,12 +1102,6 @@ def raporty(page: Page, base: str, out: Path) -> None:
     rap.context.close()
 
 
-# The fake POL-on export of the demo university (docs/deweloper/dane-demo.md,
-# "Plik POL-on do importu"); generate it with
-# `manage.py generuj_plik_polon_demo --out <dir>` and point this at it.
-PLIK_POLON = os.environ.get("BPP_DOCS_PLIK_POLON", "")
-
-
 def import_polon_liczba_n(page: Page, base: str, out: Path) -> None:
     """docs/redaktor/import-polon-liczba-n.md: POL-on import (preview, save) and the N number.
 
@@ -1090,12 +1129,258 @@ def import_polon_liczba_n(page: Page, base: str, out: Path) -> None:
     red.goto(f"{base}/")
     red.wait_for_load_state("networkidle")
     li = open_top_menu(red, "fi-wrench")
-# Demo submissions created for this page (docs/redaktor/obsluga-zgloszen.md):
-# an article with a DOI, a book with a PDF and no link, one closed by the importer.
-ZGL_ARTYKUL = "Wpływ fazy księżyca na skuteczność eliksiru Jaskółka"
-ZGL_KSIAZKA = "Bestiariusz porównawczy potworów Velen i Temerii"
-ZGL_ZAIMPORTOWANE = "Perspektywy rozwoju bestii w lochach Novigradu (nr 10)"
-AUTORZY_ZGL = "#zgloszenie_publikacji_autor_set-group"  # authors inline
+    mark(
+        red,
+        [
+            {
+                "sel": f"{li} a[href*='/import_polon/dane/']",
+                "arrow": "right",
+                "label": "import z POLON",
+                "dx": 60,
+            }
+        ],
+    )
+    menu = page_box(red, f"{li} > .menu-columns-wrapper")
+    shot(red, out / "01-menu-operacje.png", 0, menu["y"] + menu["height"] + 40)
+
+    # 2. the form: year, unmatched authors shown, "save" left unchecked
+    importuj("2025", zapisz=False, ukryj=False)
+    red.mouse.move(5, 5)
+    mark(
+        red,
+        [
+            {
+                "sel": "#id_rok",
+                "arrow": "above",
+                "label": "1. rok",
+                "dx": 100,
+                "dy": 0,
+            },
+            {
+                "sel": "label[for=id_ukryj_niezmatchowanych_autorow]",
+                "arrow": "right",
+                "label": "2. odznacz, by widzieć błędy",
+                "dx": 300,
+                "dy": -40,
+            },
+            {
+                "sel": "label[for=id_zapisz_zmiany_do_bazy]",
+                "arrow": "right",
+                "label": "3. puste = tylko podgląd",
+                "dx": 300,
+                "dy": -40,
+            },
+            {
+                "sel": "#id_plik",
+                "arrow": "below",
+                "label": "4. plik .xlsx z POL-on",
+                "dx": 200,
+                "dy": -60,
+            },
+            {
+                "sel": "#id_submit",
+                "arrow": "right",
+                "label": "5. Utwórz import",
+                "dx": 20,
+                "dy": -20,
+            },
+        ],
+    )
+    shot(red, out / "02-formularz.png", 0, bottom_of(red, "#id_submit", 60))
+
+    # 3. progress page -> finished panel
+    red.click("#id_submit")
+    czekaj_na_koniec()
+    mark(
+        red,
+        [
+            {
+                "sel": "#op-result a",
+                "text": "Zobacz wyniki",
+                "arrow": "below",
+                "label": "najpierw przejrzyj wyniki",
+                "dx": 0,
+                "dy": -20,
+            },
+        ],
+    )
+    shot(red, out / "03-import-zakonczony.png", 0, bottom_of(red, "#op-result", 160))
+    wyniki = red.locator("#op-result a", has_text="Zobacz wyniki").get_attribute("href")
+    wyniki = base + wyniki
+    zapisz_url = red.locator(
+        "#op-result a", has_text="Zapisz ten import"
+    ).get_attribute("href")
+
+    # 4. results: preview warning, people missing from the file, filters
+    red.goto(wyniki)
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {"sel": ".callout.warning h2"},
+            {
+                "sel": "#toggle-unmatched",
+                "arrow": "right",
+                "label": "osoby spoza pliku",
+                "dx": 40,
+                "dy": -20,
+            },
+            {"sel": ".filter-checkbox-label"},
+        ],
+    )
+    shot(red, out / "04-wyniki-podglad.png", 0, bottom_of(red, "#filter-form", 30))
+
+    # The results table is wider than 1280 px: shoot it in a wider window,
+    # clipped to the full page width.
+    tabela_sel = "a[name=pager] ~ table.compact-table"
+    red.set_viewport_size({"width": 1600, "height": 800})
+
+    def szeroki(path: Path, box: dict, height: float) -> None:
+        """Slice of the page as wide as the results table."""
+        red.evaluate("window.scrollTo(0, 0)")
+        red.screenshot(
+            path=path,
+            full_page=True,
+            clip={
+                "x": max(0, box["x"] - 16),
+                "y": max(0, box["y"] - 20),
+                "width": box["width"] + 32,
+                "height": height,
+            },
+        )
+
+    # 5. only the differences
+    red.check("input[name=pokaz_tylko_roznice]")
+    red.wait_for_load_state("networkidle")
+    red.wait_for_selector(f"{tabela_sel} tbody tr")
+    mark(red, [{"sel": "th", "text": "Rezultat importu"}])
+    tabela = page_box(red, tabela_sel)
+    szeroki(out / "05-tylko-roznice.png", tabela, 700)
+
+    # 6. the four broken rows of the demo file. The "nie" search narrows the
+    # list to one page; rows without an error are hidden only to keep the
+    # picture short - every row shown is real.
+    red.goto(f"{wyniki}?autor_wiersz=nie")
+    red.wait_for_load_state("networkidle")
+    red.evaluate(
+        """(sel) => {
+        const bledy = /REKORD ZIGNOROWANY|Nie udało|nie może być puste/;
+        for (const tr of document.querySelectorAll(sel + ' tbody tr'))
+          if (!bledy.test(tr.lastElementChild.textContent)) tr.style.display = 'none';
+        }""",
+        tabela_sel,
+    )
+    mark(red, [{"sel": "th", "text": "Rezultat importu"}])
+    tabela = page_box(red, tabela_sel)
+    szeroki(out / "06-wiersze-z-bledami.png", tabela, tabela["height"] + 40)
+    red.set_viewport_size(VIEWPORT)
+
+    # 7. authors with a discipline in BPP who are not in the file
+    red.goto(wyniki)
+    red.wait_for_load_state("networkidle")
+    red.click("#toggle-unmatched")
+    red.wait_for_timeout(300)
+    panel = page_box(red, ".callout.secondary", "nie byli w pliku Excel")
+    shot(red, out / "07-osoby-spoza-pliku.png", panel["y"] - 10, 520)
+
+    # 8. confirm saving
+    red.goto(base + zapisz_url)
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": "#id_submit",
+                "arrow": "below",
+                "label": "zapis do bazy",
+                "dx": 100,
+                "dy": -40,
+            }
+        ],
+    )
+    shot(red, out / "08-potwierdzenie-zapisu.png", 0, bottom_of(red, "#id_submit", 150))
+    red.click("#id_submit")
+    czekaj_na_koniec()
+
+    # the remaining years, saved straight away
+    for rok in ("2022", "2023", "2024"):
+        importuj(rok, zapisz=True)
+        red.click("#id_submit")
+        czekaj_na_koniec()
+
+    # 9. list of imports with their statistics
+    red.goto(f"{base}/import_polon/dane/")
+    red.wait_for_load_state("networkidle")
+    mark(red, [{"sel": ".importy-table"}])
+    shot(red, out / "09-lista-importow.png", 0, bottom_of(red, ".importy-legenda", 20))
+
+    # 10. ewaluacja -> liczba N
+    red.goto(f"{base}/")
+    red.wait_for_load_state("networkidle")
+    li = open_top_menu(red, "fi-graph-bar")
+    mark(
+        red,
+        [
+            {
+                "sel": f"{li} a[href*='ewaluacja_liczba_n']",
+                "arrow": "right",
+                "label": "liczba N",
+                "dx": 60,
+            }
+        ],
+    )
+    menu = page_box(red, f"{li} > .menu-columns-wrapper")
+    shot(red, out / "10-menu-ewaluacja.png", 0, menu["y"] + menu["height"] + 40)
+
+    # 11. compute and look at the result
+    red.goto(f"{base}/ewaluacja_liczba_n/")
+    red.wait_for_load_state("networkidle")
+    red.click("#obliczLiczbeNButton")
+    red.wait_for_load_state("networkidle")
+    red.wait_for_selector("#sankcjeForm")
+    mark(
+        red,
+        [
+            {
+                "sel": "#obliczLiczbeNButton",
+                "arrow": "right",
+                "label": "1. Oblicz liczbę N",
+                "dx": 40,
+                "dy": -20,
+            },
+            {
+                "sel": "a",
+                "text": "Weryfikuj poprawność bazy",
+                "arrow": "left",
+                "label": "kontrola danych",
+                "dx": 0,
+                "dy": 0,
+            },
+        ],
+    )
+    shot(
+        red,
+        out / "11-liczba-n-gora.png",
+        0,
+        bottom_of(red, ".ewaluacja-liczba-n__actions-callout", 60),
+    )
+
+    mark(
+        red,
+        [
+            {"sel": "#sankcjeForm table"},
+            {"sel": ".callout.alert"},
+        ],
+    )
+    h = page_box(red, "h3", "Liczba N dla poszczególnych dyscyplin")
+    nier = page_box(red, ".callout.alert")
+    shot(
+        red,
+        out / "12-liczba-n-tabela.png",
+        h["y"] - 20,
+        nier["y"] + nier["height"] + 30 - (h["y"] - 20),
+    )
+    red.context.close()
 
 
 def obsluga_zgloszen(page: Page, base: str, out: Path) -> None:
@@ -1112,20 +1397,240 @@ def obsluga_zgloszen(page: Page, base: str, out: Path) -> None:
 
     # 1. top bar: "redagowanie" -> "Zgłoszenia publikacji"
     li = open_top_menu(red, "fi-pencil")
-# A made-up journal list in the layout of a JCR export (header row with
-# "Journal name", "<year> JIF", "JIF Quartile"), for the demo journals. One
-# journal is listed under two categories (the import keeps the better
-# quartile), one has "N/A" and one does not exist in BPP.
-JCR_DEMO_ROK = 2024
-JCR_DEMO_WIERSZE = [
-    ("Acta Wiedźmińska", "6746-8071", "MULTIDISCIPLINARY SCIENCES", "2.417", "Q2"),
-    ("Annales Aretuzańska", "9770-3482", "CHEMISTRY, APPLIED", "4.105", "Q1"),
-    ("Folia Temerska", "7109-3248", "HISTORY", "1.032", "Q3"),
-    ("Folia Temerska", "7109-3248", "AREA STUDIES", "1.032", "Q2"),
-    ("Studia Aretuzańska", "4990-913X", "ZOOLOGY", "3.250", "Q1"),
-    ("Przegląd Novigradzka", "7444-3135", "HUMANITIES", "N/A", "N/A"),
-    ("Journal of Applied Monsterology", "2049-3630", "ZOOLOGY", "0.874", "Q4"),
-]
+    mark(
+        red,
+        [
+            {
+                "sel": f"{li} > ul a",
+                "text": "Zgłoszenia publikacji",
+                "arrow": "left",
+                "label": "Zgłoszenia publikacji",
+                "dy": -60,
+            },
+        ],
+    )
+    red.screenshot(
+        path=out / "01-menu-redagowanie.png",
+        clip={"x": 0, "y": 0, "width": w, "height": 560},
+    )
+
+    # 2. the list ("Do obsługi" by default)
+    red.mouse.move(5, 700)
+    red.goto(lista)
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": "#result_list a",
+                "text": ZGL_ARTYKUL,
+                "arrow": "below",
+                "label": "kliknij tytuł",
+                "dx": 40,
+                "dy": 50,
+            },
+            {
+                "sel": "th.column-status",
+                "arrow": "below",
+                "label": "status",
+                "dx": 40,
+                "dy": 85,
+            },
+            {
+                "sel": "#filter-panel-toggle",
+                "arrow": "left",
+                "label": "filtry",
+                "dy": -85,
+            },
+        ],
+    )
+    shot(red, out / "02-lista.png", 0, 500)
+
+    # 3. filter panel, "stan obsługi" expanded
+    red.click("#filter-panel-toggle")
+    red.wait_for_timeout(800)
+    red.locator(".filter-title", has_text="stan obsługi").click()
+    red.wait_for_timeout(800)
+    mark(
+        red,
+        [
+            {
+                "sel": ".filter-group",
+                "text": "stan obsługi",
+                "arrow": "left",
+                "label": "Do obsługi / Załatwione / Wszystkie",
+                "dy": 60,
+            },
+        ],
+    )
+    red.screenshot(
+        path=out / "03-filtry.png", clip={"x": 0, "y": 0, "width": w, "height": 480}
+    )
+
+    # Tall viewport for the submission page: the fixed "Usuń" footer bar
+    # would otherwise cut through the middle of the form.
+    red.set_viewport_size({"width": w, "height": 1600})
+
+    # 4. an article with a DOI: the buttons above the form
+    otworz(ZGL_ARTYKUL)
+    tools = "ul.grp-object-tools a"
+    mark(
+        red,
+        [
+            {
+                "sel": tools,
+                "text": "Użyj importera",
+                "arrow": "below",
+                "label": "importer",
+                "dx": -100,
+            },
+            {
+                "sel": tools,
+                "text": "Zwróć do autora",
+                "arrow": "below",
+                "label": "zwrot",
+                "dx": -20,
+            },
+            {
+                "sel": tools,
+                "text": "Dodaj wyd. ciągłe",
+                "arrow": "below",
+                "label": "ręcznie",
+                "dx": 20,
+            },
+        ],
+    )
+    shot(red, out / "04-zgloszenie-przyciski.png", 0, 400)
+
+    # 5. a book without a link: the PDF attachment, no importer button.
+    # The attachment is far below the buttons - top + torn edge + that part.
+    otworz(ZGL_KSIAZKA)
+    mark(
+        red,
+        [
+            {
+                "sel": "div.forma_dostepu .grp-readonly",
+                "arrow": "right",
+                "label": "dostęp ograniczony",
+                "dx": 60,
+                "dy": -30,
+            },
+            {
+                "sel": tools,
+                "text": "Dodaj wyd. zwarte",
+                "arrow": "below",
+                "label": "książka: wyd. zwarte",
+                "dx": -160,
+                "dy": -20,
+            },
+            {"sel": "div.strona_www .grp-readonly"},
+            {
+                "sel": "div.pliki_do_pobrania a",
+                "arrow": "right",
+                "label": "pobierz plik",
+                "dx": 60,
+                "dy": -40,
+            },
+            {
+                "sel": AUTORZY_ZGL + " > h2",
+                "arrow": "below",
+                "label": "autorzy, jednostki, dyscypliny",
+                "dx": 150,
+                "dy": -40,
+            },
+        ],
+    )
+    top = shot(red, None, 0, bottom_of(red, "div.forma_dostepu", 10))
+    box = page_box(red, "div.strona_www")
+    dol = shot(
+        red,
+        None,
+        box["y"] - 10,
+        bottom_of(red, "div.pliki_do_pobrania", 10) - box["y"] + 10,
+    )
+    box = page_box(red, AUTORZY_ZGL)
+    autorzy = shot(red, None, box["y"] - 10, box["height"] + 20)
+    stitch(
+        red,
+        [top, dol, autorzy],
+        out / "05-zgloszenie-plik.png",
+        "niżej w formularzu",
+    )
+
+    # 6. return to the author: the reason form (not submitted - keeps the demo DB reusable)
+    red.set_viewport_size(VIEWPORT)
+    otworz(ZGL_ARTYKUL)
+    red.locator(tools, has_text="Zwróć do autora").click()
+    red.wait_for_load_state("networkidle")
+    red.fill(
+        "textarea[name=przyczyna_zwrotu]",
+        "Proszę uzupełnić drugiego autora z Aretuzy i dyscyplinę.",
+    )
+    mark(
+        red,
+        [
+            {
+                "sel": "textarea[name=przyczyna_zwrotu]",
+                "arrow": "below",
+                "label": "1. powód zwrotu",
+                "dx": 100,
+                "dy": 30,
+            },
+            {
+                "sel": "footer.grp-fixed-footer input[type=submit]",
+                "arrow": "above",
+                "label": "2. zapisz",
+                "dx": -260,
+                "dy": 20,
+            },
+        ],
+    )
+    red.screenshot(path=out / "06-zwrot.png")
+
+    # 7. importer, first step, opened from the submission
+    otworz(ZGL_ARTYKUL)
+    red.locator(tools, has_text="Użyj importera").click()
+    red.wait_for_load_state("networkidle")
+    close_cookie_banner(red)
+    mark(
+        red,
+        [
+            {
+                "sel": "input[name=identifier]",
+                "arrow": "below",
+                "label": "DOI ze zgłoszenia",
+                "dx": 40,
+                "dy": -10,
+            },
+            {
+                "sel": "button[type=submit], input[type=submit]",
+                "arrow": "below",
+                "label": "dalej",
+                "dx": 20,
+                "dy": -10,
+            },
+        ],
+    )
+    red.screenshot(
+        path=out / "07-importer.png", clip={"x": 0, "y": 0, "width": w, "height": 440}
+    )
+
+    # 8. a submission closed by the importer
+    otworz(ZGL_ZAIMPORTOWANE)
+    mark(
+        red,
+        [
+            {
+                "sel": "#panel-zgloszenie-zaimportowane",
+                "arrow": "below",
+                "label": "kto, kiedy, który rekord",
+                "dx": 100,
+                "dy": 10,
+            },
+        ],
+    )
+    shot(red, out / "08-zaimportowane.png", 0, 330)
+    red.context.close()
 
 
 def plik_jcr_demo(path: Path) -> Path:
@@ -1162,8 +1667,503 @@ def impact_factor_i_punktacja(page: Page, base: str, out: Path) -> None:
     # 1. "operacje" menu: the three entries used on this page
     li = open_top_menu(red, "fi-wrench")
     kol = f"{li} .column-2"
-# Demo article whose type is sent to PBN (bin/docs-demo-pbn.py maps it).
-PBN_REKORD = 1097
+    mark(
+        red,
+        [
+            {
+                "sel": f"{kol} a",
+                "text": "eksport ISSNów",
+                "arrow": "left",
+                "label": "1. eksport ISSNów",
+                "dx": -10,
+                "dy": -7,
+            },
+            {
+                "sel": f"{kol} a",
+                "text": "import punktacji źródeł",
+                "arrow": "left",
+                "label": "2. import punktacji źródeł",
+                "dx": -10,
+                "dy": -13,
+            },
+            {
+                "sel": f"{kol} a",
+                "text": "rozbieżności punktacji/kwartyli",
+                "arrow": "left",
+                "label": "3. rozbieżności punktacji/kwartyli",
+                "dx": -10,
+                "dy": -50,
+            },
+        ],
+    )
+    menu = page_box(red, f"{li} .menu-columns-wrapper")
+    shot(red, out / "01-menu-operacje.png", 0, menu["y"] + menu["height"] + 30)
+
+    # 2. list of imports -> "Nowy import"
+    red.goto(f"{base}/import_punktacji_zrodel/")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": "a.button",
+                "text": "Nowy import",
+                "arrow": "right",
+                "label": "Nowy import",
+                "dx": 20,
+            }
+        ],
+    )
+    shot(red, out / "02-nowy-import.png", 0, bottom_of(red, "table", 60))
+
+    # 3. the form: file, preview first (save unchecked)
+    red.goto(f"{base}/import_punktacji_zrodel/new/")
+    red.wait_for_load_state("networkidle")
+    plik = plik_jcr_demo(Path(tempfile.mkdtemp()) / f"jcr-{rok}-demo.xlsx")
+    red.set_input_files("input[name=plik]", str(plik))
+    mark(
+        red,
+        [
+            {
+                "sel": "label[for=id_zapisz_zmiany_do_bazy]",
+                "arrow": "right",
+                "label": "1. bez zaznaczenia = tylko podgląd",
+                "dx": 300,
+                "dy": -40,
+            },
+            {
+                "sel": "input[name=plik]",
+                "arrow": "below",
+                "label": "2. plik z JCR",
+                "dx": 200,
+            },
+            {
+                "sel": "#id_submit",
+                "arrow": "right",
+                "label": "3. Wczytaj i pokaż podgląd",
+                "dx": 20,
+                "dy": -40,
+            },
+        ],
+    )
+    form = page_box(red, "form:has(#id_submit)")
+    shot(
+        red,
+        out / "03-formularz-importu.png",
+        form["y"] - 80,
+        form["height"] + 220,
+    )
+
+    # 4. live page: preview finished
+    red.click("#id_submit")
+    red.wait_for_selector("text=Podgląd gotowy", timeout=60000)
+    red.wait_for_timeout(500)
+    mark(
+        red,
+        [
+            {
+                "sel": "a.button",
+                "text": "Zobacz pełne wyniki importu",
+                "arrow": "right",
+                "label": "pełne wyniki",
+                "dx": 20,
+            }
+        ],
+    )
+    wynik = page_box(red, ".panel.callout")
+    shot(red, out / "04-podglad-gotowy.png", 0, wynik["y"] + wynik["height"] + 30)
+
+    # 5. full preview results + "Zatwierdź i zapisz do bazy"
+    red.click("text=Zobacz pełne wyniki importu")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": "button",
+                "text": "Zatwierdź i zapisz do bazy",
+                "arrow": "right",
+                "label": "zapisz, gdy podgląd się zgadza",
+                "dx": 20,
+            },
+            {"sel": "tbody tr", "text": "Folia Temerska"},
+        ],
+    )
+    shot(red, out / "05-wyniki-podgladu.png", 0, bottom_of(red, "table", 30))
+
+    # 6. after saving: links to the discrepancy pages
+    red.click("button:has-text('Zatwierdź i zapisz do bazy')")
+    red.wait_for_selector("text=Import zakończony", timeout=60000)
+    red.click("text=Zobacz pełne wyniki importu")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": ".callout.success a.button",
+                "text": "IF",
+                "arrow": "below",
+                "label": "przenieś IF na prace",
+                "dx": 40,
+                "dy": -20,
+            },
+            {
+                "sel": ".callout.success a.button",
+                "text": "kwartyla",
+                "arrow": "right",
+                "label": "przenieś kwartyle",
+                "dx": 30,
+                "dy": -40,
+            },
+        ],
+    )
+    box = page_box(red, ".callout.success")
+    shot(red, out / "06-import-zapisany.png", 0, box["y"] + box["height"] + 140)
+
+    # 7. where the values live: the source's "punktacja źródła" rows
+    red.goto(f"{base}/admin/bpp/zrodlo/37/change/")
+    red.wait_for_load_state("networkidle")
+    top = shot(red, None, 0, 300)
+    sekcja = "#punktacja_zrodla_set-group"
+    mark(
+        red,
+        [
+            {"sel": "#id_punktacja_zrodla_set-0-rok"},
+            {"sel": "#id_punktacja_zrodla_set-0-impact_factor"},
+            {"sel": "#id_punktacja_zrodla_set-0-kwartyl_w_wos"},
+        ],
+    )
+    box = page_box(red, sekcja)
+    dol = shot(red, None, box["y"] - 20, box["height"] + 300)
+    stitch(
+        red,
+        [top, dol],
+        out / "07-zrodlo-punktacja.png",
+        "przewiń do „punktacja źródła”",
+    )
+
+    # 8. one record: "Uzupełnij punktację" on the publication form
+    red.goto(f"{base}/admin/bpp/wydawnictwo_ciagle/731/change/")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": "#id_wypelnij_pola_punktacji_button",
+                "arrow": "below",
+                "label": "kopiuje punktację źródła za rok pracy",
+                "dx": 250,
+            },
+            {
+                "sel": "#id_dodaj_punktacje_do_zrodla_button",
+                "arrow": "above",
+                "label": "odwrotnie: zapisuje do źródła",
+                "dx": 40,
+            },
+        ],
+    )
+    box = page_box(red, "fieldset", "Punktacja")
+    top = shot(red, None, 0, 260)
+    dol = shot(red, None, box["y"] - 140, box["height"] + 300)
+    stitch(
+        red,
+        [top, dol],
+        out / "08-rekord-uzupelnij.png",
+        "przewiń do sekcji „Punktacja”",
+    )
+
+    # 9. all records at once: rozbieżności IF for the year
+    red.goto(f"{base}/rozbieznosci/if/?rok_od={rok}&rok_do={rok}")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {"sel": ".tabs"},
+            {"sel": "td button", "text": "ustaw wg źródła"},
+            {
+                "sel": "button",
+                "text": "Ustaw wszystkie wg źródła",
+                "arrow": "left",
+                "label": "wszystkie z listy",
+                "dx": -10,
+                "dy": -40,
+            },
+        ],
+    )
+    shot(red, out / "09-rozbieznosci-if.png", 0, bottom_of(red, "tbody tr", 20))
+
+    # 10. confirmation page
+    red.click("button:has-text('Ustaw wszystkie wg źródła')")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": "form button",
+                "text": "Tak, przejdź",
+                "arrow": "below",
+                "label": "potwierdź",
+                "dx": 60,
+                "dy": -30,
+            }
+        ],
+    )
+    shot(red, out / "10-ustaw-wszystkie.png", 0, bottom_of(red, "form button", 120))
+
+    # 11. result message
+    red.click("form button:has-text('Tak, przejdź')")
+    red.wait_for_load_state("networkidle")
+    red.wait_for_selector("#messagesPlaceholder >> text=Zaktualizowano")
+    red.wait_for_timeout(800)
+    mark(red, [{"sel": "#messagesPlaceholder"}])
+    msg = page_box(red, "#messagesPlaceholder")
+    shot(red, out / "11-ustawiono.png", 0, msg["y"] + msg["height"] + 260)
+
+    # 12. ministerial lists: the form
+    red.goto(f"{base}/import_list_ministerialnych/nowy/")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": "label[for=id_zapisz_zmiany_do_bazy]",
+                "arrow": "right",
+                "label": "bez zaznaczenia = tylko podgląd",
+                "dx": 20,
+            },
+        ],
+    )
+    shot(red, out / "12-listy-ministerialne.png", 0, bottom_of(red, "#id_submit", 30))
+    red.context.close()
+
+
+def nowy_rok(page: Page, base: str, out: Path) -> None:
+    """docs/redaktor/nowy-rok.md: per-year data (author/source disciplines, source points) for a new year."""
+    red = new_session(page, base, DEMO_USER_REDAKTOR)
+    rekord = f"{base}/admin/bpp/wydawnictwo_ciagle/{REKORD_2027}/change/"
+
+    # 1. a 2027 record saved: the "rok poza zakresem" warning
+    red.goto(rekord)
+    red.wait_for_load_state("networkidle")
+    red.click("input[name=_continue]")
+    red.wait_for_load_state("networkidle")
+    mark(red, [{"sel": ".grp-messagelist li", "text": "rok poza zakresem"}])
+    shot(
+        red,
+        out / "01-rekord-rok-poza-zakresem.png",
+        0,
+        bottom_of(red, ".grp-messagelist", 30),
+    )
+
+    # 2. the discipline list of an author in a 2027 record
+    sel = "select[name=autorzy_set-0-dyscyplina_naukowa]"
+    red.locator(f"{sel} + .select2 .select2-selection").scroll_into_view_if_needed()
+    red.locator(f"{sel} + .select2 .select2-selection").click()
+    red.wait_for_selector(".select2-results__option", state="visible")
+    red.wait_for_timeout(800)
+    mark(
+        red,
+        [
+            {
+                "sel": ".select2-results__option",
+                "arrow": "right",
+                "label": "brak dyscypliny na 2027",
+                "dx": -40,
+            }
+        ],
+    )
+    box = page_box(red, ".select2-container--open .select2-dropdown")
+    red.screenshot(
+        path=out / "02-rekord-brak-przypisania.png",
+        clip={
+            "x": 0,
+            "y": max(0, box["y"] - 250),
+            "width": VIEWPORT["width"],
+            "height": 400,
+        },
+        full_page=True,
+    )
+    red.keyboard.press("Escape")
+
+    # 3. author: disciplines per year, new row for 2027
+    red.goto(f"{base}/admin/bpp/autor/{AUTOR_NOWY_ROK}/change/")
+    red.wait_for_load_state("networkidle")
+    grp = "#autor_dyscyplina_set-group"
+    n = int(red.input_value("#id_autor_dyscyplina_set-TOTAL_FORMS")) - 1
+    row = f"autor_dyscyplina_set-{n}"  # field names; the row <div> id has no dash
+    red.fill(f"[name={row}-rok]", "2027")
+    red.select_option(
+        f"[name={row}-rodzaj_autora]", label="N - pracownik naukowy w liczbie N"
+    )
+    red.fill(f"[name={row}-wymiar_etatu]", "1")
+    select2(red, f"select[name={row}-dyscyplina_naukowa]", "filozofia")
+    red.fill(f"[name={row}-procent_dyscypliny]", "100")
+    red.mouse.move(5, 5)
+    mark(
+        red,
+        [
+            {"sel": f"{grp} > h2"},
+            {
+                "sel": f"#autor_dyscyplina_set{n}",
+                "arrow": "below",
+                "label": "nowy wiersz: rok 2027",
+                "dy": -10,
+            },
+        ],
+    )
+    top = shot(red, None, 0, 300)
+    g = page_box(red, grp)
+    bottom = shot(red, None, g["y"] - 20, g["height"] + 160)
+    stitch(
+        red,
+        [top, bottom],
+        out / "03-autor-dyscypliny.png",
+        "przewiń do „Powiązania autor-dyscyplina”",
+    )
+
+    # 4. all authors' disciplines, filtered by year
+    red.goto(f"{base}/admin/bpp/autor_dyscyplina/?rok=2026")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {"sel": "#result_list th", "text": "Rok"},
+            {
+                "sel": "a",
+                "text": "Eksport",
+                "arrow": "left",
+                "label": "eksport do Excela",
+                "dx": -60,
+                "dy": -95,
+            },
+        ],
+    )
+    shot(red, out / "04-lista-autor-dyscyplina.png", 0, 520)
+
+    # 5. operacje menu: the imports and the discrepancy reports
+    red.goto(f"{base}/")
+    red.wait_for_load_state("networkidle")
+    li = open_top_menu(red, "fi-wrench")
+    mark(
+        red,
+        [
+            {"sel": f"{li} li:has(> a[href*='import_polon/dane'])"},
+            {"sel": f"{li} li:has(> a[href*='import_list_ministerialnych'])"},
+            {"sel": f"{li} li:has(> a[href*='import_dyscyplin'])"},
+            {"sel": f"{li} li:has(> a[href*='rozbieznosciview'])"},
+        ],
+    )
+    menu = page_box(red, f"{li} > .menu-columns-wrapper")
+    shot(red, out / "05-menu-operacje.png", 0, menu["y"] + menu["height"] + 30)
+
+    # 6. import dyscyplin: the file and the year
+    red.goto(f"{base}/import_dyscyplin/create/")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": "[name=rok]",
+                "arrow": "below",
+                "label": "rok, którego dotyczy plik",
+                "dx": 40,
+                "dy": -30,
+            }
+        ],
+    )
+    shot(red, out / "06-import-dyscyplin.png", 0, bottom_of(red, "[name=rok]", 190))
+
+    # 7. source: points per year, a new row for 2027
+    red.goto(f"{base}/admin/bpp/zrodlo/{ZRODLO_NOWY_ROK}/change/")
+    red.wait_for_load_state("networkidle")
+    red.add_style_tag(content=".grp-fixed-footer{display:none!important}")
+    grp = "#punktacja_zrodla_set-group"
+    n = int(red.input_value("#id_punktacja_zrodla_set-TOTAL_FORMS")) - 1
+    red.fill(f"[name=punktacja_zrodla_set-{n}-rok]", "2027")
+    red.fill(f"[name=punktacja_zrodla_set-{n}-punkty_kbn]", "140")
+    red.mouse.move(5, 5)
+    mark(
+        red,
+        [
+            {"sel": f"{grp} > h2"},
+            {
+                "sel": f"#punktacja_zrodla_set{n}",
+                "arrow": "below",
+                "label": "nowy wiersz: rok 2027",
+                "dx": -100,
+                "dy": -85,
+            },
+        ],
+    )
+    top = shot(red, None, 0, 260)
+    g = page_box(red, grp)
+    bottom = shot(red, None, g["y"] - 20, g["height"] + 50)
+    stitch(
+        red,
+        [top, bottom],
+        out / "07-zrodlo-punktacja.png",
+        "przewiń do „Punktacja źródła”",
+    )
+
+    # 8. source: disciplines per year (a collapsed section - open it)
+    grp = "#dyscyplina_zrodla_set-group"
+    red.click(f"{grp} > h2")
+    red.wait_for_timeout(600)
+    mark(red, [{"sel": f"{grp} > h2"}])
+    g = page_box(red, grp)
+    shot(red, out / "08-zrodlo-dyscypliny.png", g["y"] - 20, g["height"] + 40)
+
+    # 9. import list ministerialnych
+    red.goto(f"{base}/import_list_ministerialnych/")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": "[name=rok]",
+                "arrow": "below",
+                "label": "rok listy",
+                "dx": 300,
+                "dy": -40,
+            },
+            {
+                "sel": "label[for=id_zapisz_zmiany_do_bazy]",
+                "arrow": "right",
+                "label": "bez tego tylko podgląd",
+                "dx": 40,
+            },
+        ],
+    )
+    shot(
+        red,
+        out / "09-import-list-ministerialnych.png",
+        0,
+        bottom_of(red, "#id_submit", 30),
+    )
+
+    # 10. a record: copy the source's points for the record's year
+    red.goto(rekord)
+    red.wait_for_load_state("networkidle")
+    red.add_style_tag(content=".grp-fixed-footer{display:none!important}")
+    btn = "#id_wypelnij_pola_punktacji_button"
+    red.locator(btn).scroll_into_view_if_needed()
+    mark(
+        red,
+        [
+            {
+                "sel": btn,
+                "arrow": "below",
+                "label": "punkty ze źródła za rok rekordu",
+                "dx": 300,
+                "dy": -80,
+            },
+            {"sel": "#id_dodaj_punktacje_do_zrodla_button"},
+        ],
+    )
+    b = page_box(red, btn)
+    shot(red, out / "10-rekord-uzupelnij-punktacje.png", b["y"] - 400, 500)
+
+    red.context.close()
 
 
 def pbn_wysylka_i_synchronizacja(page: Page, base: str, out: Path) -> None:
@@ -1178,19 +2178,207 @@ def pbn_wysylka_i_synchronizacja(page: Page, base: str, out: Path) -> None:
     # 1. the PBN menu: authorise, import/download, queue, comparators
     li = open_top_menu(red, "fi-link")
     col1 = f"{li} .column-1 a"
-# A made-up Witcher article for the importer walkthrough: one author matched
-# exactly, one with two namesakes (pick by unit), one not in BPP at all.
-IMPORTER_BIBTEX = """@article{vesemir2025jaskolka,
-  title    = {Stabilność eliksiru Jaskółka w warunkach górskich},
-  author   = {Merigold, Yennefer and Merigold, Leo and Chivay, Zoltan},
-  journal  = {Acta Wiedźmińska},
-  year     = {2025},
-  volume   = {12},
-  number   = {3},
-  pages    = {45--58},
-  doi      = {10.99999/aw.2025.0312},
-  language = {pl}
-}"""
+    mark(
+        red,
+        [
+            {
+                "sel": col1,
+                "text": "autoryzuj PBN API",
+                "arrow": "left",
+                "label": "1. autoryzacja",
+            },
+            {
+                "sel": col1,
+                "text": "kolejka eksportu",
+                "arrow": "left",
+                "label": "stan wysyłek",
+            },
+            {
+                "sel": f"{li} .column-2",
+                "arrow": "below",
+                "label": "porównanie BPP z PBN",
+                "dx": -330,
+                "dy": -20,
+            },
+        ],
+    )
+    menu = page_box(red, f"{li} > .menu-columns-wrapper")
+    shot(red, out / "01-menu-pbn.png", 0, menu["y"] + menu["height"] + 135)
+
+    # 2. typed/bookmarked address: the page before leaving for PBN
+    red.goto(f"{base}/pbn_api/authorize?next=/")
+    red.wait_for_load_state("networkidle")
+    btn = "form[action*='authorize'] button[type=submit]"
+    mark(red, [{"sel": btn, "arrow": "below", "label": "2. logowanie w PBN"}])
+    shot(red, out / "02-autoryzacja.png", 0, bottom_of(red, btn, 170))
+
+    # 3. record form: the two PBN buttons in the bottom bar
+    rekord = f"{base}/admin/bpp/wydawnictwo_ciagle/{PBN_REKORD}/change/"
+    red.goto(rekord)
+    red.wait_for_load_state("networkidle")
+    teraz = "input[name=_continue_and_pbn]"
+    w_tle = "input[name=_continue_and_pbn_later]"
+    mark(
+        red,
+        [
+            {"sel": teraz, "arrow": "above", "label": "od razu", "dx": 0},
+            {"sel": w_tle, "arrow": "above", "label": "w tle", "dx": -140},
+        ],
+    )
+    red.screenshot(
+        path=out / "03-przyciski-wyslij.png",
+        clip={"x": 0, "y": 590, "width": w, "height": 210},
+    )
+
+    # 4. "Zapisz i wyślij do PBN": the messages come back at the top.
+    # Messages span the full width - boxes only, the text explains them.
+    red.click(teraz)
+    red.wait_for_load_state("networkidle")
+    msgs = "ul.grp-messagelist"
+    li_msg = f"{msgs} li"
+    mark(
+        red,
+        [
+            {"sel": li_msg, "text": "nie posiada odpowiednika"},
+            {"sel": li_msg, "text": "nie zostanie wysłany"},
+            {"sel": li_msg, "text": "W kolejce na wysłanie"},
+        ],
+    )
+    shot(red, out / "04-komunikaty-wysylki.png", 0, bottom_of(red, msgs, 20))
+
+    # 5. "... w tle": only a queue entry is created
+    red.click(w_tle)
+    red.wait_for_load_state("networkidle")
+    mark(red, [{"sel": f"{li_msg} a", "text": "śledzić stan"}])
+    shot(red, out / "05-wyslij-w-tle.png", 0, bottom_of(red, msgs, 20))
+
+    # 6. many records at once: admin action at the bottom of the list
+    red.goto(f"{base}/admin/bpp/wydawnictwo_ciagle/?rok=2024")
+    red.wait_for_load_state("networkidle")
+    for box in red.locator("input.action-select").all()[:3]:
+        box.check()
+    red.select_option("select[name=action]", label="Wyślij do PBN w tle")
+    marks = [
+        {"sel": f"#result_list tbody tr:nth-child({n}) input.action-select"}
+        for n in (1, 2, 3)
+    ]
+    marks += [
+        {
+            "sel": "select[name=action]",
+            "arrow": "above",
+            "label": "akcja",
+            "dx": 40,
+            "dy": 20,
+        },
+        {
+            "sel": ".grp-changelist-actions button, button[name=index]",
+            "arrow": "above",
+            "label": "Wykonaj",
+            "dx": 60,
+            "dy": 20,
+        },
+    ]
+    mark(red, marks)
+    red.screenshot(path=out / "06-akcja-zbiorcza.png")
+
+    # 7. the export queue: counters, filters, bulk retry buttons
+    red.goto(f"{base}/pbn_export_queue/")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {"sel": ".pbn-export-queue__page-actions"},
+            {"sel": ".pbn-export-queue__filter-buttons"},
+        ],
+    )
+    shot(
+        red,
+        out / "07-kolejka-lista.png",
+        0,
+        bottom_of(red, ".pbn-export-queue__send-section", 10),
+    )
+
+    # 8. error rows under the list entries
+    red.goto(f"{base}/pbn_export_queue/?zakonczono_pomyslnie=false")
+    red.wait_for_load_state("networkidle")
+    mark(red, [{"sel": "#export-queue-table tbody tr", "text": "Wpływ szlaku"}])
+    tab = page_box(red, "#export-queue-table")
+    shot(red, out / "08-kolejka-bledy.png", tab["y"] - 10, tab["height"] + 20)
+
+    # 9. details of one failed send
+    # (queue ids change with every seed run - open it from the list)
+    red.locator("#export-queue-table tr", has_text="Wpływ szlaku").locator(
+        "a.button"
+    ).click()
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": ".pbn-export-queue__error-section",
+                "arrow": "left",
+                "label": "1. powód",
+                "dx": 20,
+                "dy": -150,
+            },
+            {
+                "sel": "a.button",
+                "text": "Edytuj w admin",
+                "arrow": "right",
+                "label": "2. popraw rekord",
+            },
+            {
+                "sel": ".pbn-export-queue__header form",
+                "text": "Wyslij do PBN",
+                "arrow": "below",
+                "label": "3. wyślij ponownie",
+                "dx": -110,
+                "dy": -20,
+            },
+        ],
+    )
+    shot(
+        red,
+        out / "09-kolejka-szczegoly.png",
+        0,
+        bottom_of(red, ".pbn-export-queue__error-section", 30),
+    )
+
+    # 10. Import z PBN: one-off import, needs an active PBN session
+    red.goto(f"{base}/pbn_import/")
+    red.wait_for_load_state("networkidle")
+    red.wait_for_function("document.body.innerText.includes('Aktualizacja')")
+    mark(red, [{"sel": "a.button", "text": "Zaloguj się do PBN"}])
+    hist = page_box(red, "h2", "Historia importów")
+    shot(red, out / "10-import-z-pbn.png", 0, hist["y"] - 40)
+
+    # 11. Pobieranie danych z PBN: refreshes the local copy
+    red.goto(f"{base}/pbn_downloader_app/")
+    red.wait_for_load_state("networkidle")
+    mark(red, [{"sel": "#download-btn"}])
+    shot(red, out / "11-pobieranie-danych.png", 0, bottom_of(red, "#download-btn", 150))
+
+    # 12. Komparator PBN: what is missing on either side
+    red.goto(f"{base}/komparator_pbn/")
+    red.wait_for_load_state("networkidle")
+    sekcja = "h3"
+    roz = page_box(red, sekcja, "rozbieżności między PBN a BPP")
+    mark(
+        red,
+        [
+            {"sel": "h4", "text": "Publikacje PBN nieistniejące w BPP"},
+            {"sel": "h4", "text": "Publikacje skasowane w PBN"},
+        ],
+    )
+    top = shot(red, None, 0, 470)
+    dol = shot(red, None, roz["y"] - 20, 420)
+    stitch(
+        red,
+        [top, dol],
+        out / "12-komparator-pbn.png",
+        "przewiń do „Publikacje - rozbieżności między PBN a BPP”",
+    )
+    red.context.close()
 
 
 def importer_publikacji(page: Page, base: str, out: Path) -> None:
@@ -1230,40 +2418,6 @@ def importer_publikacji(page: Page, base: str, out: Path) -> None:
         red,
         [
             {
-                "sel": f"{li} a[href*='/import_polon/dane/']",
-                "arrow": "right",
-                "label": "import z POLON",
-                "dx": 60,
-            }
-        ],
-    )
-    menu = page_box(red, f"{li} > .menu-columns-wrapper")
-    shot(red, out / "01-menu-operacje.png", 0, menu["y"] + menu["height"] + 40)
-
-    # 2. the form: year, unmatched authors shown, "save" left unchecked
-    importuj("2025", zapisz=False, ukryj=False)
-    red.mouse.move(5, 5)
-                "sel": f"{kol} a",
-                "text": "eksport ISSNów",
-                "arrow": "left",
-                "label": "1. eksport ISSNów",
-                "dx": -10,
-                "dy": -7,
-            },
-            {
-                "sel": f"{kol} a",
-                "text": "import punktacji źródeł",
-                "arrow": "left",
-                "label": "2. import punktacji źródeł",
-                "dx": -10,
-                "dy": -13,
-            },
-            {
-                "sel": f"{kol} a",
-                "text": "rozbieżności punktacji/kwartyli",
-                "arrow": "left",
-                "label": "3. rozbieżności punktacji/kwartyli",
-                "dx": -10,
                 "sel": f"{li} > ul a",
                 "text": "Import publikacji",
             }
@@ -1481,12 +2635,6 @@ def importer_publikacji(page: Page, base: str, out: Path) -> None:
             },
         ],
     )
-    menu = page_box(red, f"{li} .menu-columns-wrapper")
-    shot(red, out / "01-menu-operacje.png", 0, menu["y"] + menu["height"] + 30)
-
-    # 2. list of imports -> "Nowy import"
-    red.goto(f"{base}/import_punktacji_zrodel/")
-    red.wait_for_load_state("networkidle")
     wyrownaj_nakladke()
     red.screenshot(path=out / "10-kandydaci.png")
     red.locator("#modal-author-form button[type=submit]").click()
@@ -1501,398 +2649,6 @@ def importer_publikacji(page: Page, base: str, out: Path) -> None:
         red,
         [
             {
-                "sel": "a.button",
-                "text": "Nowy import",
-                "arrow": "right",
-                "label": "Nowy import",
-                "dx": 20,
-            }
-        ],
-    )
-    shot(red, out / "02-nowy-import.png", 0, bottom_of(red, "table", 60))
-
-    # 3. the form: file, preview first (save unchecked)
-    red.goto(f"{base}/import_punktacji_zrodel/new/")
-    red.wait_for_load_state("networkidle")
-    plik = plik_jcr_demo(Path(tempfile.mkdtemp()) / f"jcr-{rok}-demo.xlsx")
-    red.set_input_files("input[name=plik]", str(plik))
-    mark(
-        red,
-        [
-            {
-                "sel": "#id_rok",
-                "arrow": "above",
-                "label": "1. rok",
-                "dx": 100,
-                "dy": 0,
-            },
-            {
-                "sel": "label[for=id_ukryj_niezmatchowanych_autorow]",
-                "arrow": "right",
-                "label": "2. odznacz, by widzieć błędy",
-                "dx": 300,
-                "dy": -40,
-            },
-            {
-                "sel": "label[for=id_zapisz_zmiany_do_bazy]",
-                "arrow": "right",
-                "label": "3. puste = tylko podgląd",
-                "sel": "label[for=id_zapisz_zmiany_do_bazy]",
-                "arrow": "right",
-                "label": "1. bez zaznaczenia = tylko podgląd",
-                "dx": 300,
-                "dy": -40,
-            },
-            {
-                "sel": "#id_plik",
-                "arrow": "below",
-                "label": "4. plik .xlsx z POL-on",
-                "dx": 200,
-                "dy": -60,
-                "sel": "input[name=plik]",
-                "arrow": "below",
-                "label": "2. plik z JCR",
-                "dx": 200,
-            },
-            {
-                "sel": "#id_submit",
-                "arrow": "right",
-                "label": "5. Utwórz import",
-                "dx": 20,
-                "dy": -20,
-            },
-        ],
-    )
-    shot(red, out / "02-formularz.png", 0, bottom_of(red, "#id_submit", 60))
-
-    # 3. progress page -> finished panel
-    red.click("#id_submit")
-    czekaj_na_koniec()
-                "sel": f"{li} > ul a",
-                "text": "Zgłoszenia publikacji",
-                "arrow": "left",
-                "label": "Zgłoszenia publikacji",
-                "dy": -60,
-            },
-        ],
-    )
-    red.screenshot(
-        path=out / "01-menu-redagowanie.png",
-        clip={"x": 0, "y": 0, "width": w, "height": 560},
-    )
-
-    # 2. the list ("Do obsługi" by default)
-    red.mouse.move(5, 700)
-    red.goto(lista)
-    red.wait_for_load_state("networkidle")
-    mark(
-        red,
-        [
-            {
-                "sel": "#op-result a",
-                "text": "Zobacz wyniki",
-                "arrow": "below",
-                "label": "najpierw przejrzyj wyniki",
-                "dx": 0,
-                "dy": -20,
-            },
-        ],
-    )
-    shot(red, out / "03-import-zakonczony.png", 0, bottom_of(red, "#op-result", 160))
-    wyniki = red.locator("#op-result a", has_text="Zobacz wyniki").get_attribute("href")
-    wyniki = base + wyniki
-    zapisz_url = red.locator(
-        "#op-result a", has_text="Zapisz ten import"
-    ).get_attribute("href")
-
-    # 4. results: preview warning, people missing from the file, filters
-    red.goto(wyniki)
-    red.wait_for_load_state("networkidle")
-    mark(
-        red,
-        [
-            {"sel": ".callout.warning h2"},
-            {
-                "sel": "#toggle-unmatched",
-                "arrow": "right",
-                "label": "osoby spoza pliku",
-                "dx": 40,
-                "dy": -20,
-            },
-            {"sel": ".filter-checkbox-label"},
-        ],
-    )
-    shot(red, out / "04-wyniki-podglad.png", 0, bottom_of(red, "#filter-form", 30))
-
-    # The results table is wider than 1280 px: shoot it in a wider window,
-    # clipped to the full page width.
-    tabela_sel = "a[name=pager] ~ table.compact-table"
-    red.set_viewport_size({"width": 1600, "height": 800})
-
-    def szeroki(path: Path, box: dict, height: float) -> None:
-        """Slice of the page as wide as the results table."""
-        red.evaluate("window.scrollTo(0, 0)")
-        red.screenshot(
-            path=path,
-            full_page=True,
-            clip={
-                "x": max(0, box["x"] - 16),
-                "y": max(0, box["y"] - 20),
-                "width": box["width"] + 32,
-                "height": height,
-            },
-        )
-
-    # 5. only the differences
-    red.check("input[name=pokaz_tylko_roznice]")
-    red.wait_for_load_state("networkidle")
-    red.wait_for_selector(f"{tabela_sel} tbody tr")
-    mark(red, [{"sel": "th", "text": "Rezultat importu"}])
-    tabela = page_box(red, tabela_sel)
-    szeroki(out / "05-tylko-roznice.png", tabela, 700)
-
-    # 6. the four broken rows of the demo file. The "nie" search narrows the
-    # list to one page; rows without an error are hidden only to keep the
-    # picture short - every row shown is real.
-    red.goto(f"{wyniki}?autor_wiersz=nie")
-    red.wait_for_load_state("networkidle")
-    red.evaluate(
-        """(sel) => {
-        const bledy = /REKORD ZIGNOROWANY|Nie udało|nie może być puste/;
-        for (const tr of document.querySelectorAll(sel + ' tbody tr'))
-          if (!bledy.test(tr.lastElementChild.textContent)) tr.style.display = 'none';
-        }""",
-        tabela_sel,
-    )
-    mark(red, [{"sel": "th", "text": "Rezultat importu"}])
-    tabela = page_box(red, tabela_sel)
-    szeroki(out / "06-wiersze-z-bledami.png", tabela, tabela["height"] + 40)
-    red.set_viewport_size(VIEWPORT)
-
-    # 7. authors with a discipline in BPP who are not in the file
-    red.goto(wyniki)
-    red.wait_for_load_state("networkidle")
-    red.click("#toggle-unmatched")
-    red.wait_for_timeout(300)
-    panel = page_box(red, ".callout.secondary", "nie byli w pliku Excel")
-    shot(red, out / "07-osoby-spoza-pliku.png", panel["y"] - 10, 520)
-
-    # 8. confirm saving
-    red.goto(base + zapisz_url)
-    red.wait_for_load_state("networkidle")
-    mark(
-        red,
-        [
-            {
-                "sel": "#id_submit",
-                "arrow": "below",
-                "label": "zapis do bazy",
-                "dx": 100,
-                "dy": -40,
-            }
-        ],
-    )
-    shot(red, out / "08-potwierdzenie-zapisu.png", 0, bottom_of(red, "#id_submit", 150))
-    red.click("#id_submit")
-    czekaj_na_koniec()
-
-    # the remaining years, saved straight away
-    for rok in ("2022", "2023", "2024"):
-        importuj(rok, zapisz=True)
-        red.click("#id_submit")
-        czekaj_na_koniec()
-
-    # 9. list of imports with their statistics
-    red.goto(f"{base}/import_polon/dane/")
-    red.wait_for_load_state("networkidle")
-    mark(red, [{"sel": ".importy-table"}])
-    shot(red, out / "09-lista-importow.png", 0, bottom_of(red, ".importy-legenda", 20))
-
-    # 10. ewaluacja -> liczba N
-    red.goto(f"{base}/")
-    red.wait_for_load_state("networkidle")
-    li = open_top_menu(red, "fi-graph-bar")
-                "label": "3. Wczytaj i pokaż podgląd",
-                "dx": 20,
-                "dy": -40,
-            },
-        ],
-    )
-    form = page_box(red, "form:has(#id_submit)")
-    shot(
-        red,
-        out / "03-formularz-importu.png",
-        form["y"] - 80,
-        form["height"] + 220,
-    )
-
-    # 4. live page: preview finished
-    red.click("#id_submit")
-    red.wait_for_selector("text=Podgląd gotowy", timeout=60000)
-    red.wait_for_timeout(500)
-# Demo data for the "nowy rok" page (docs/redaktor/nowy-rok.md): an author
-# with disciplines for 2020-2026, a source with points/disciplines up to 2026
-# and a 2027 article - i.e. "January, the new year has no data yet".
-AUTOR_NOWY_ROK = 210  # Yennefer Merigold
-ZRODLO_NOWY_ROK = 40  # Folia Temerska
-REKORD_2027 = 1201
-
-
-def nowy_rok(page: Page, base: str, out: Path) -> None:
-    """docs/redaktor/nowy-rok.md: per-year data (author/source disciplines, source points) for a new year."""
-    red = new_session(page, base, DEMO_USER_REDAKTOR)
-    rekord = f"{base}/admin/bpp/wydawnictwo_ciagle/{REKORD_2027}/change/"
-
-    # 1. a 2027 record saved: the "rok poza zakresem" warning
-    red.goto(rekord)
-    red.wait_for_load_state("networkidle")
-    red.click("input[name=_continue]")
-    red.wait_for_load_state("networkidle")
-    mark(red, [{"sel": ".grp-messagelist li", "text": "rok poza zakresem"}])
-    shot(
-        red,
-        out / "01-rekord-rok-poza-zakresem.png",
-        0,
-        bottom_of(red, ".grp-messagelist", 30),
-    )
-
-    # 2. the discipline list of an author in a 2027 record
-    sel = "select[name=autorzy_set-0-dyscyplina_naukowa]"
-    red.locator(f"{sel} + .select2 .select2-selection").scroll_into_view_if_needed()
-    red.locator(f"{sel} + .select2 .select2-selection").click()
-    red.wait_for_selector(".select2-results__option", state="visible")
-    red.wait_for_timeout(800)
-    mark(
-        red,
-        [
-            {
-                "sel": "a.button",
-                "text": "Zobacz pełne wyniki importu",
-                "arrow": "right",
-                "label": "pełne wyniki",
-                "dx": 20,
-            }
-        ],
-    )
-    wynik = page_box(red, ".panel.callout")
-    shot(red, out / "04-podglad-gotowy.png", 0, wynik["y"] + wynik["height"] + 30)
-
-    # 5. full preview results + "Zatwierdź i zapisz do bazy"
-    red.click("text=Zobacz pełne wyniki importu")
-    red.wait_for_load_state("networkidle")
-    mark(
-        red,
-        [
-            {
-                "sel": f"{li} a[href*='ewaluacja_liczba_n']",
-                "arrow": "right",
-                "label": "liczba N",
-                "dx": 60,
-            }
-        ],
-    )
-    menu = page_box(red, f"{li} > .menu-columns-wrapper")
-    shot(red, out / "10-menu-ewaluacja.png", 0, menu["y"] + menu["height"] + 40)
-
-    # 11. compute and look at the result
-    red.goto(f"{base}/ewaluacja_liczba_n/")
-    red.wait_for_load_state("networkidle")
-    red.click("#obliczLiczbeNButton")
-    red.wait_for_load_state("networkidle")
-    red.wait_for_selector("#sankcjeForm")
-    mark(
-        red,
-        [
-            {
-                "sel": "#obliczLiczbeNButton",
-                "arrow": "right",
-                "label": "1. Oblicz liczbę N",
-                "dx": 40,
-                "dy": -20,
-            },
-            {
-                "sel": "a",
-                "text": "Weryfikuj poprawność bazy",
-                "arrow": "left",
-                "label": "kontrola danych",
-                "dx": 0,
-                "dy": 0,
-            },
-        ],
-    )
-    shot(
-        red,
-        out / "11-liczba-n-gora.png",
-        0,
-        bottom_of(red, ".ewaluacja-liczba-n__actions-callout", 60),
-    )
-
-    mark(
-        red,
-        [
-            {"sel": "#sankcjeForm table"},
-            {"sel": ".callout.alert"},
-        ],
-    )
-    h = page_box(red, "h3", "Liczba N dla poszczególnych dyscyplin")
-    nier = page_box(red, ".callout.alert")
-    shot(
-        red,
-        out / "12-liczba-n-tabela.png",
-        h["y"] - 20,
-        nier["y"] + nier["height"] + 30 - (h["y"] - 20),
-    )
-                "sel": "#result_list a",
-                "text": ZGL_ARTYKUL,
-                "arrow": "below",
-                "label": "kliknij tytuł",
-                "dx": 40,
-                "dy": 50,
-            },
-            {
-                "sel": "th.column-status",
-                "arrow": "below",
-                "label": "status",
-                "dx": 40,
-                "dy": 85,
-            },
-            {
-                "sel": "#filter-panel-toggle",
-                "arrow": "left",
-                "label": "filtry",
-                "sel": ".select2-results__option",
-                "arrow": "right",
-                "label": "brak dyscypliny na 2027",
-                "dx": -40,
-            }
-        ],
-    )
-    box = page_box(red, ".select2-container--open .select2-dropdown")
-    red.screenshot(
-        path=out / "02-rekord-brak-przypisania.png",
-        clip={
-            "x": 0,
-            "y": max(0, box["y"] - 250),
-            "width": VIEWPORT["width"],
-            "height": 400,
-        },
-        full_page=True,
-    )
-    red.keyboard.press("Escape")
-
-    # 3. author: disciplines per year, new row for 2027
-    red.goto(f"{base}/admin/bpp/autor/{AUTOR_NOWY_ROK}/change/")
-    red.wait_for_load_state("networkidle")
-    grp = "#autor_dyscyplina_set-group"
-    n = int(red.input_value("#id_autor_dyscyplina_set-TOTAL_FORMS")) - 1
-    row = f"autor_dyscyplina_set-{n}"  # field names; the row <div> id has no dash
-    red.fill(f"[name={row}-rok]", "2027")
-    red.select_option(
-        f"[name={row}-rodzaj_autora]", label="N - pracownik naukowy w liczbie N"
-    )
-    red.fill(f"[name={row}-wymiar_etatu]", "1")
-    select2(red, f"select[name={row}-dyscyplina_naukowa]", "filozofia")
-    red.fill(f"[name={row}-procent_dyscypliny]", "100")
                 "sel": "#modal-create-new-author",
                 "arrow": "left",
                 "label": "nowy autor",
@@ -1921,191 +2677,6 @@ def nowy_rok(page: Page, base: str, out: Path) -> None:
     mark(
         red,
         [
-            {"sel": f"{grp} > h2"},
-            {
-                "sel": f"#autor_dyscyplina_set{n}",
-                "arrow": "below",
-                "label": "nowy wiersz: rok 2027",
-                "dy": -10,
-            },
-        ],
-    )
-    top = shot(red, None, 0, 300)
-    g = page_box(red, grp)
-    bottom = shot(red, None, g["y"] - 20, g["height"] + 160)
-    stitch(
-        red,
-        [top, bottom],
-        out / "03-autor-dyscypliny.png",
-        "przewiń do „Powiązania autor-dyscyplina”",
-    )
-
-    # 4. all authors' disciplines, filtered by year
-    red.goto(f"{base}/admin/bpp/autor_dyscyplina/?rok=2026")
-                "sel": col1,
-                "text": "autoryzuj PBN API",
-                "arrow": "left",
-                "label": "1. autoryzacja",
-            },
-            {
-                "sel": col1,
-                "text": "kolejka eksportu",
-                "arrow": "left",
-                "label": "stan wysyłek",
-            },
-            {
-                "sel": f"{li} .column-2",
-                "arrow": "below",
-                "label": "porównanie BPP z PBN",
-                "dx": -330,
-                "dy": -20,
-            },
-        ],
-    )
-    menu = page_box(red, f"{li} > .menu-columns-wrapper")
-    shot(red, out / "01-menu-pbn.png", 0, menu["y"] + menu["height"] + 135)
-
-    # 2. typed/bookmarked address: the page before leaving for PBN
-    red.goto(f"{base}/pbn_api/authorize?next=/")
-    red.wait_for_load_state("networkidle")
-    btn = "form[action*='authorize'] button[type=submit]"
-    mark(red, [{"sel": btn, "arrow": "below", "label": "2. logowanie w PBN"}])
-    shot(red, out / "02-autoryzacja.png", 0, bottom_of(red, btn, 170))
-
-    # 3. record form: the two PBN buttons in the bottom bar
-    rekord = f"{base}/admin/bpp/wydawnictwo_ciagle/{PBN_REKORD}/change/"
-    red.goto(rekord)
-    red.wait_for_load_state("networkidle")
-    teraz = "input[name=_continue_and_pbn]"
-    w_tle = "input[name=_continue_and_pbn_later]"
-    mark(
-        red,
-        [
-            {"sel": teraz, "arrow": "above", "label": "od razu", "dx": 0},
-            {"sel": w_tle, "arrow": "above", "label": "w tle", "dx": -140},
-        ],
-    )
-    red.screenshot(
-        path=out / "03-przyciski-wyslij.png",
-        clip={"x": 0, "y": 590, "width": w, "height": 210},
-    )
-
-    # 4. "Zapisz i wyślij do PBN": the messages come back at the top.
-    # Messages span the full width - boxes only, the text explains them.
-    red.click(teraz)
-    red.wait_for_load_state("networkidle")
-    msgs = "ul.grp-messagelist"
-    li_msg = f"{msgs} li"
-    mark(
-        red,
-        [
-            {"sel": li_msg, "text": "nie posiada odpowiednika"},
-            {"sel": li_msg, "text": "nie zostanie wysłany"},
-            {"sel": li_msg, "text": "W kolejce na wysłanie"},
-        ],
-    )
-    shot(red, out / "04-komunikaty-wysylki.png", 0, bottom_of(red, msgs, 20))
-
-    # 5. "... w tle": only a queue entry is created
-    red.click(w_tle)
-    red.wait_for_load_state("networkidle")
-    mark(red, [{"sel": f"{li_msg} a", "text": "śledzić stan"}])
-    shot(red, out / "05-wyslij-w-tle.png", 0, bottom_of(red, msgs, 20))
-
-    # 6. many records at once: admin action at the bottom of the list
-    red.goto(f"{base}/admin/bpp/wydawnictwo_ciagle/?rok=2024")
-    red.wait_for_load_state("networkidle")
-    for box in red.locator("input.action-select").all()[:3]:
-        box.check()
-    red.select_option("select[name=action]", label="Wyślij do PBN w tle")
-    marks = [
-        {"sel": f"#result_list tbody tr:nth-child({n}) input.action-select"}
-        for n in (1, 2, 3)
-    ]
-    marks += [
-        {
-            "sel": "select[name=action]",
-            "arrow": "above",
-            "label": "akcja",
-            "dx": 40,
-            "dy": 20,
-        },
-        {
-            "sel": ".grp-changelist-actions button, button[name=index]",
-            "arrow": "above",
-            "label": "Wykonaj",
-            "dx": 60,
-            "dy": 20,
-        },
-    ]
-    mark(red, marks)
-    red.screenshot(path=out / "06-akcja-zbiorcza.png")
-
-    # 7. the export queue: counters, filters, bulk retry buttons
-    red.goto(f"{base}/pbn_export_queue/")
-    red.wait_for_load_state("networkidle")
-    mark(
-        red,
-        [
-            {"sel": ".pbn-export-queue__page-actions"},
-            {"sel": ".pbn-export-queue__filter-buttons"},
-        ],
-    )
-    shot(
-        red,
-        out / "07-kolejka-lista.png",
-        0,
-        bottom_of(red, ".pbn-export-queue__send-section", 10),
-    )
-
-    # 8. error rows under the list entries
-    red.goto(f"{base}/pbn_export_queue/?zakonczono_pomyslnie=false")
-    red.wait_for_load_state("networkidle")
-    mark(red, [{"sel": "#export-queue-table tbody tr", "text": "Wpływ szlaku"}])
-    tab = page_box(red, "#export-queue-table")
-    shot(red, out / "08-kolejka-bledy.png", tab["y"] - 10, tab["height"] + 20)
-
-    # 9. details of one failed send
-    # (queue ids change with every seed run - open it from the list)
-    red.locator("#export-queue-table tr", has_text="Wpływ szlaku").locator(
-        "a.button"
-    ).click()
-    red.wait_for_load_state("networkidle")
-    mark(
-        red,
-        [
-            {"sel": "#result_list th", "text": "Rok"},
-            {
-                "sel": "a",
-                "text": "Eksport",
-                "arrow": "left",
-                "label": "eksport do Excela",
-                "dx": -60,
-                "dy": -95,
-            },
-        ],
-    )
-    shot(red, out / "04-lista-autor-dyscyplina.png", 0, 520)
-
-    # 5. operacje menu: the imports and the discrepancy reports
-    red.goto(f"{base}/")
-    red.wait_for_load_state("networkidle")
-    li = open_top_menu(red, "fi-wrench")
-    mark(
-        red,
-        [
-            {"sel": f"{li} li:has(> a[href*='import_polon/dane'])"},
-            {"sel": f"{li} li:has(> a[href*='import_list_ministerialnych'])"},
-            {"sel": f"{li} li:has(> a[href*='import_dyscyplin'])"},
-            {"sel": f"{li} li:has(> a[href*='rozbieznosciview'])"},
-        ],
-    )
-    menu = page_box(red, f"{li} > .menu-columns-wrapper")
-    shot(red, out / "05-menu-operacje.png", 0, menu["y"] + menu["height"] + 30)
-
-    # 6. import dyscyplin: the file and the year
-    red.goto(f"{base}/import_dyscyplin/create/")
-    red.wait_for_load_state("networkidle")
             {
                 "sel": "#authors-table tbody tr:nth-child(2) td:nth-child(4) .label",
             },
@@ -2128,45 +2699,6 @@ def nowy_rok(page: Page, base: str, out: Path) -> None:
         red,
         [
             {
-                "sel": "[name=rok]",
-                "arrow": "below",
-                "label": "rok, którego dotyczy plik",
-                "dx": 40,
-                "dy": -30,
-            }
-        ],
-    )
-    shot(red, out / "06-import-dyscyplin.png", 0, bottom_of(red, "[name=rok]", 190))
-
-    # 7. source: points per year, a new row for 2027
-    red.goto(f"{base}/admin/bpp/zrodlo/{ZRODLO_NOWY_ROK}/change/")
-    red.wait_for_load_state("networkidle")
-    red.add_style_tag(content=".grp-fixed-footer{display:none!important}")
-    grp = "#punktacja_zrodla_set-group"
-    n = int(red.input_value("#id_punktacja_zrodla_set-TOTAL_FORMS")) - 1
-    red.fill(f"[name=punktacja_zrodla_set-{n}-rok]", "2027")
-    red.fill(f"[name=punktacja_zrodla_set-{n}-punkty_kbn]", "140")
-    red.mouse.move(5, 5)
-    mark(
-        red,
-        [
-            {"sel": f"{grp} > h2"},
-            {
-                "sel": f"#punktacja_zrodla_set{n}",
-                "arrow": "below",
-                "label": "nowy wiersz: rok 2027",
-                "dx": -100,
-                "dy": -85,
-            },
-        ],
-    )
-    shot(red, out / "02-lista.png", 0, 500)
-
-    # 3. filter panel, "stan obsługi" expanded
-    red.click("#filter-panel-toggle")
-    red.wait_for_timeout(800)
-    red.locator(".filter-title", has_text="stan obsługi").click()
-    red.wait_for_timeout(800)
                 "sel": "input[name=punkty_kbn]",
             }
         ],
@@ -2179,327 +2711,6 @@ def nowy_rok(page: Page, base: str, out: Path) -> None:
         red,
         [
             {
-                "sel": ".filter-group",
-                "text": "stan obsługi",
-                "arrow": "left",
-                "label": "Do obsługi / Załatwione / Wszystkie",
-                "dy": 60,
-            },
-        ],
-    )
-    red.screenshot(
-        path=out / "03-filtry.png", clip={"x": 0, "y": 0, "width": w, "height": 480}
-    )
-
-    # Tall viewport for the submission page: the fixed "Usuń" footer bar
-    # would otherwise cut through the middle of the form.
-    red.set_viewport_size({"width": w, "height": 1600})
-
-    # 4. an article with a DOI: the buttons above the form
-    otworz(ZGL_ARTYKUL)
-    tools = "ul.grp-object-tools a"
-    mark(
-        red,
-        [
-            {
-                "sel": tools,
-                "text": "Użyj importera",
-                "arrow": "below",
-                "label": "importer",
-                "dx": -100,
-            },
-            {
-                "sel": tools,
-                "text": "Zwróć do autora",
-                "arrow": "below",
-                "label": "zwrot",
-                "dx": -20,
-            },
-            {
-                "sel": tools,
-                "text": "Dodaj wyd. ciągłe",
-                "arrow": "below",
-                "label": "ręcznie",
-                "dx": 20,
-            },
-        ],
-    )
-    shot(red, out / "04-zgloszenie-przyciski.png", 0, 400)
-
-    # 5. a book without a link: the PDF attachment, no importer button.
-    # The attachment is far below the buttons - top + torn edge + that part.
-    otworz(ZGL_KSIAZKA)
-                "sel": "button",
-                "text": "Zatwierdź i zapisz do bazy",
-                "arrow": "right",
-                "label": "zapisz, gdy podgląd się zgadza",
-                "dx": 20,
-            },
-            {"sel": "tbody tr", "text": "Folia Temerska"},
-        ],
-    )
-    shot(red, out / "05-wyniki-podgladu.png", 0, bottom_of(red, "table", 30))
-
-    # 6. after saving: links to the discrepancy pages
-    red.click("button:has-text('Zatwierdź i zapisz do bazy')")
-    red.wait_for_selector("text=Import zakończony", timeout=60000)
-    red.click("text=Zobacz pełne wyniki importu")
-    red.wait_for_load_state("networkidle")
-    mark(
-        red,
-        [
-            {
-                "sel": "div.forma_dostepu .grp-readonly",
-                "arrow": "right",
-                "label": "dostęp ograniczony",
-                "dx": 60,
-                "dy": -30,
-            },
-            {
-                "sel": tools,
-                "text": "Dodaj wyd. zwarte",
-                "arrow": "below",
-                "label": "książka: wyd. zwarte",
-                "dx": -160,
-                "dy": -20,
-            },
-            {"sel": "div.strona_www .grp-readonly"},
-            {
-                "sel": "div.pliki_do_pobrania a",
-                "arrow": "right",
-                "label": "pobierz plik",
-                "dx": 60,
-                "dy": -40,
-            },
-            {
-                "sel": AUTORZY_ZGL + " > h2",
-                "arrow": "below",
-                "label": "autorzy, jednostki, dyscypliny",
-                "dx": 150,
-                "sel": ".callout.success a.button",
-                "text": "IF",
-                "arrow": "below",
-                "label": "przenieś IF na prace",
-                "dx": 40,
-                "dy": -20,
-            },
-            {
-                "sel": ".callout.success a.button",
-                "text": "kwartyla",
-                "arrow": "right",
-                "label": "przenieś kwartyle",
-                "dx": 30,
-                "dy": -40,
-            },
-        ],
-    )
-    top = shot(red, None, 0, bottom_of(red, "div.forma_dostepu", 10))
-    box = page_box(red, "div.strona_www")
-    dol = shot(
-        red,
-        None,
-        box["y"] - 10,
-        bottom_of(red, "div.pliki_do_pobrania", 10) - box["y"] + 10,
-    )
-    box = page_box(red, AUTORZY_ZGL)
-    autorzy = shot(red, None, box["y"] - 10, box["height"] + 20)
-    stitch(
-        red,
-        [top, dol, autorzy],
-        out / "05-zgloszenie-plik.png",
-        "niżej w formularzu",
-    )
-
-    # 6. return to the author: the reason form (not submitted - keeps the demo DB reusable)
-    red.set_viewport_size(VIEWPORT)
-    otworz(ZGL_ARTYKUL)
-    red.locator(tools, has_text="Zwróć do autora").click()
-    red.wait_for_load_state("networkidle")
-    red.fill(
-        "textarea[name=przyczyna_zwrotu]",
-        "Proszę uzupełnić drugiego autora z Aretuzy i dyscyplinę.",
-    )
-    box = page_box(red, ".callout.success")
-    shot(red, out / "06-import-zapisany.png", 0, box["y"] + box["height"] + 140)
-
-    # 7. where the values live: the source's "punktacja źródła" rows
-    red.goto(f"{base}/admin/bpp/zrodlo/37/change/")
-    red.wait_for_load_state("networkidle")
-    top = shot(red, None, 0, 300)
-    sekcja = "#punktacja_zrodla_set-group"
-    mark(
-        red,
-        [
-            {"sel": "#id_punktacja_zrodla_set-0-rok"},
-            {"sel": "#id_punktacja_zrodla_set-0-impact_factor"},
-            {"sel": "#id_punktacja_zrodla_set-0-kwartyl_w_wos"},
-        ],
-    )
-    box = page_box(red, sekcja)
-    dol = shot(red, None, box["y"] - 20, box["height"] + 300)
-    stitch(
-        red,
-        [top, dol],
-        out / "07-zrodlo-punktacja.png",
-        "przewiń do „punktacja źródła”",
-    )
-
-    # 8. one record: "Uzupełnij punktację" on the publication form
-    red.goto(f"{base}/admin/bpp/wydawnictwo_ciagle/731/change/")
-    red.wait_for_load_state("networkidle")
-    mark(
-        red,
-        [
-            {
-                "sel": "textarea[name=przyczyna_zwrotu]",
-                "arrow": "below",
-                "label": "1. powód zwrotu",
-                "dx": 100,
-                "dy": 30,
-            },
-            {
-                "sel": "footer.grp-fixed-footer input[type=submit]",
-                "arrow": "above",
-                "label": "2. zapisz",
-                "dx": -260,
-                "dy": 20,
-            },
-        ],
-    )
-    red.screenshot(path=out / "06-zwrot.png")
-
-    # 7. importer, first step, opened from the submission
-    otworz(ZGL_ARTYKUL)
-    red.locator(tools, has_text="Użyj importera").click()
-    red.wait_for_load_state("networkidle")
-    close_cookie_banner(red)
-    mark(
-        red,
-        [
-            {
-                "sel": "input[name=identifier]",
-                "arrow": "below",
-                "label": "DOI ze zgłoszenia",
-                "dx": 40,
-                "dy": -10,
-            },
-            {
-                "sel": "button[type=submit], input[type=submit]",
-                "arrow": "below",
-                "label": "dalej",
-                "dx": 20,
-                "dy": -10,
-            },
-        ],
-    )
-    red.screenshot(
-        path=out / "07-importer.png", clip={"x": 0, "y": 0, "width": w, "height": 440}
-    )
-
-    # 8. a submission closed by the importer
-    otworz(ZGL_ZAIMPORTOWANE)
-                "sel": "#id_wypelnij_pola_punktacji_button",
-                "arrow": "below",
-                "label": "kopiuje punktację źródła za rok pracy",
-                "dx": 250,
-            },
-            {
-                "sel": "#id_dodaj_punktacje_do_zrodla_button",
-                "arrow": "above",
-                "label": "odwrotnie: zapisuje do źródła",
-                "dx": 40,
-            },
-        ],
-    )
-    box = page_box(red, "fieldset", "Punktacja")
-    top = shot(red, None, 0, 260)
-    dol = shot(red, None, box["y"] - 140, box["height"] + 300)
-    stitch(
-        red,
-        [top, dol],
-        out / "08-rekord-uzupelnij.png",
-        "przewiń do sekcji „Punktacja”",
-    )
-
-    # 9. all records at once: rozbieżności IF for the year
-    red.goto(f"{base}/rozbieznosci/if/?rok_od={rok}&rok_do={rok}")
-    top = shot(red, None, 0, 260)
-    g = page_box(red, grp)
-    bottom = shot(red, None, g["y"] - 20, g["height"] + 50)
-    stitch(
-        red,
-        [top, bottom],
-        out / "07-zrodlo-punktacja.png",
-        "przewiń do „Punktacja źródła”",
-    )
-
-    # 8. source: disciplines per year (a collapsed section - open it)
-    grp = "#dyscyplina_zrodla_set-group"
-    red.click(f"{grp} > h2")
-    red.wait_for_timeout(600)
-    mark(red, [{"sel": f"{grp} > h2"}])
-    g = page_box(red, grp)
-    shot(red, out / "08-zrodlo-dyscypliny.png", g["y"] - 20, g["height"] + 40)
-
-    # 9. import list ministerialnych
-    red.goto(f"{base}/import_list_ministerialnych/")
-    red.wait_for_load_state("networkidle")
-    mark(
-        red,
-        [
-            {"sel": ".tabs"},
-            {"sel": "td button", "text": "ustaw wg źródła"},
-            {
-                "sel": "button",
-                "text": "Ustaw wszystkie wg źródła",
-                "arrow": "left",
-                "label": "wszystkie z listy",
-                "dx": -10,
-                "dy": -40,
-            },
-        ],
-    )
-    shot(red, out / "09-rozbieznosci-if.png", 0, bottom_of(red, "tbody tr", 20))
-
-    # 10. confirmation page
-    red.click("button:has-text('Ustaw wszystkie wg źródła')")
-    red.wait_for_load_state("networkidle")
-    mark(
-        red,
-        [
-            {
-                "sel": "#panel-zgloszenie-zaimportowane",
-                "arrow": "below",
-                "label": "kto, kiedy, który rekord",
-                "dx": 100,
-                "dy": 10,
-            },
-        ],
-    )
-    shot(red, out / "08-zaimportowane.png", 0, 330)
-                "sel": "form button",
-                "text": "Tak, przejdź",
-                "arrow": "below",
-                "label": "potwierdź",
-                "dx": 60,
-                "dy": -30,
-            }
-        ],
-    )
-    shot(red, out / "10-ustaw-wszystkie.png", 0, bottom_of(red, "form button", 120))
-
-    # 11. result message
-    red.click("form button:has-text('Tak, przejdź')")
-    red.wait_for_load_state("networkidle")
-    red.wait_for_selector("#messagesPlaceholder >> text=Zaktualizowano")
-    red.wait_for_timeout(800)
-    mark(red, [{"sel": "#messagesPlaceholder"}])
-    msg = page_box(red, "#messagesPlaceholder")
-    shot(red, out / "11-ustawiono.png", 0, msg["y"] + msg["height"] + 260)
-
-    # 12. ministerial lists: the form
-    red.goto(f"{base}/import_list_ministerialnych/nowy/")
-    red.wait_for_load_state("networkidle")
                 "sel": f"{wizard} a, {wizard} button",
                 "text": "Pomiń",
                 "arrow": "right",
@@ -2518,63 +2729,6 @@ def nowy_rok(page: Page, base: str, out: Path) -> None:
         red,
         [
             {
-                "sel": "label[for=id_zapisz_zmiany_do_bazy]",
-                "arrow": "right",
-                "label": "bez zaznaczenia = tylko podgląd",
-                "dx": 20,
-            },
-        ],
-    )
-    shot(red, out / "12-listy-ministerialne.png", 0, bottom_of(red, "#id_submit", 30))
-            {
-                "sel": "[name=rok]",
-                "arrow": "below",
-                "label": "rok listy",
-                "dx": 300,
-                "dy": -40,
-            },
-            {
-                "sel": "label[for=id_zapisz_zmiany_do_bazy]",
-                "arrow": "right",
-                "label": "bez tego tylko podgląd",
-                "dx": 40,
-            },
-            {
-                "sel": ".pbn-export-queue__error-section",
-                "arrow": "left",
-                "label": "1. powód",
-                "dx": 20,
-                "dy": -150,
-            },
-            {
-                "sel": "a.button",
-                "text": "Edytuj w admin",
-                "arrow": "right",
-                "label": "2. popraw rekord",
-            },
-            {
-                "sel": ".pbn-export-queue__header form",
-                "text": "Wyslij do PBN",
-                "arrow": "below",
-                "label": "3. wyślij ponownie",
-                "dx": -110,
-                "dy": -20,
-            },
-        ],
-    )
-    shot(
-        red,
-        out / "09-import-list-ministerialnych.png",
-        0,
-        bottom_of(red, "#id_submit", 30),
-    )
-
-    # 10. a record: copy the source's points for the record's year
-    red.goto(rekord)
-    red.wait_for_load_state("networkidle")
-    red.add_style_tag(content=".grp-fixed-footer{display:none!important}")
-    btn = "#id_wypelnij_pola_punktacji_button"
-    red.locator(btn).scroll_into_view_if_needed()
                 "sel": f"{wizard} button[type=submit]",
                 "text": "Utwórz publikację",
                 "arrow": "right",
@@ -2596,57 +2750,6 @@ def nowy_rok(page: Page, base: str, out: Path) -> None:
         red,
         [
             {
-                "sel": btn,
-                "arrow": "below",
-                "label": "punkty ze źródła za rok rekordu",
-                "dx": 300,
-                "dy": -80,
-            },
-            {"sel": "#id_dodaj_punktacje_do_zrodla_button"},
-        ],
-    )
-    b = page_box(red, btn)
-    shot(red, out / "10-rekord-uzupelnij-punktacje.png", b["y"] - 400, 500)
-
-        out / "09-kolejka-szczegoly.png",
-        0,
-        bottom_of(red, ".pbn-export-queue__error-section", 30),
-    )
-
-    # 10. Import z PBN: one-off import, needs an active PBN session
-    red.goto(f"{base}/pbn_import/")
-    red.wait_for_load_state("networkidle")
-    red.wait_for_function("document.body.innerText.includes('Aktualizacja')")
-    mark(red, [{"sel": "a.button", "text": "Zaloguj się do PBN"}])
-    hist = page_box(red, "h2", "Historia importów")
-    shot(red, out / "10-import-z-pbn.png", 0, hist["y"] - 40)
-
-    # 11. Pobieranie danych z PBN: refreshes the local copy
-    red.goto(f"{base}/pbn_downloader_app/")
-    red.wait_for_load_state("networkidle")
-    mark(red, [{"sel": "#download-btn"}])
-    shot(red, out / "11-pobieranie-danych.png", 0, bottom_of(red, "#download-btn", 150))
-
-    # 12. Komparator PBN: what is missing on either side
-    red.goto(f"{base}/komparator_pbn/")
-    red.wait_for_load_state("networkidle")
-    sekcja = "h3"
-    roz = page_box(red, sekcja, "rozbieżności między PBN a BPP")
-    mark(
-        red,
-        [
-            {"sel": "h4", "text": "Publikacje PBN nieistniejące w BPP"},
-            {"sel": "h4", "text": "Publikacje skasowane w PBN"},
-        ],
-    )
-    top = shot(red, None, 0, 470)
-    dol = shot(red, None, roz["y"] - 20, 420)
-    stitch(
-        red,
-        [top, dol],
-        out / "12-komparator-pbn.png",
-        "przewiń do „Publikacje - rozbieżności między PBN a BPP”",
-    )
                 "sel": f"{wizard} a",
                 "text": "Edytuj w module redagowania",
                 "arrow": "right",
