@@ -251,7 +251,7 @@ podział punktów i slotów między pozostałych), po czym wraca do szczegółó
 Pełnego przeliczenia nie trzeba uruchamiać.
 
 Szersze planowanie, które prace przypiąć, a które odpiąć, żeby uczelnia
-zebrała jak najwięcej punktów, opisuje strona o optymalizacji ewaluacji
+zebrała jak najwięcej punktów, opisuje strona [Optymalizacja ewaluacji](optymalizacja-ewaluacji.md)
 (menu **ewaluacja → optymalizacja ewaluacji**); stan odpięć można
 zapamiętać i przywrócić w **ewaluacja → snapshoty odpięć**.
 
