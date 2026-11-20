@@ -36,6 +36,49 @@ DEMO_PASSWORD = DEMO_USER
 DEMO_USER_BEZ_AUTORA = "jaskier"
 # Third demo account in the group "generowanie raportów" (reports, slots).
 DEMO_USER_RAPORTY = "filippa"
+# A made-up ministerial journal list ("wykaz czasopism") in the layout the
+# import reads: two header rows (discipline NAMES in the first, codes in the
+# second), columns Lp. / identifier / "Tytuł 1" issn e-issn / "Tytuł 2" issn
+# e-issn / points, then one column per discipline with "x". Run
+# bin/docs-demo-import-list-ministerialnych.py first (seeds what it compares to).
+WYKAZ_DEMO_ROK = 2025
+WYKAZ_DEMO_DYSCYPLINY = [
+    ("101", "archeologia"),
+    ("103", "filozofia"),
+    ("104", "historia"),
+    ("602", "biotechnologia"),
+    ("605", "nauki biologiczne"),
+    ("606", "nauki chemiczne"),
+    ("702", "nauki teologiczne"),
+]
+WYKAZ_DEMO_WIERSZE = [
+    (201001, "Acta Wiedźmińska", "6746-8071", 100, "filozofia, nauki teologiczne"),
+    (
+        201002,
+        "Annales Aretuzańska",
+        "9770-3482",
+        140,
+        "biotechnologia, nauki chemiczne",
+    ),
+    (201003, "Folia Temerska", "7109-3248", 40, "archeologia, historia"),
+    (
+        201004,
+        "Studia Aretuzańska",
+        "4990-913X",
+        70,
+        "biotechnologia, nauki biologiczne",
+    ),
+    (201005, "Acta Oxenfurcka", "4936-183X", 20, "filozofia"),
+    (201006, "Przegląd Temerska", "9938-6774", 100, "historia"),
+    (
+        201007,
+        "Zoologia Brokilońska",
+        "1111-2228",
+        70,
+        "nauki biologiczne",
+    ),  # not in BPP
+    (201001, "Acta Wiedźmińska", "6746-8071", 100, "filozofia, nauki teologiczne"),
+]
 DEMO_USER_REDAKTOR = "vesemir"  # demo editor: is_staff + "wprowadzanie danych"
 # The fake POL-on export of the demo university (docs/deweloper/dane-demo.md,
 # "Plik POL-on do importu"); generate it with
@@ -3675,6 +3718,279 @@ def liczba_n_faq(page: Page, base: str, out: Path) -> None:
     red.context.close()
 
 
+def plik_wykazu_demo(path: Path) -> Path:
+    """Write the made-up ministerial-list XLSX used by the import-list-ministerialnych scenario."""
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    naglowek = [
+        "Lp.",
+        "Unikatowy Identyfikator Czasopisma",
+        "Tytuł 1",
+        "issn",
+        "e-issn",
+    ]
+    naglowek += ["Tytuł 2", "issn", "e-issn", "Punktacja"]
+    ws.append(naglowek + [nazwa for _, nazwa in WYKAZ_DEMO_DYSCYPLINY])
+    ws.append(naglowek + [kod for kod, _ in WYKAZ_DEMO_DYSCYPLINY])
+    for lp, (ident, tytul, issn, punkty, dyscypliny) in enumerate(
+        WYKAZ_DEMO_WIERSZE, 1
+    ):
+        x = [
+            "x" if n in dyscypliny.split(", ") else None
+            for _, n in WYKAZ_DEMO_DYSCYPLINY
+        ]
+        ws.append([lp, ident, tytul, issn, None, None, None, None, punkty] + x)
+    wb.save(path)
+    return path
+
+
+def import_list_ministerialnych(page: Page, base: str, out: Path) -> None:
+    """docs/redaktor/import-list-ministerialnych.md: ministerial journal list import (preview, save, errors); run bin/docs-demo-import-list-ministerialnych.py first."""
+    import tempfile
+
+    red = new_session(page, base, DEMO_USER_REDAKTOR)
+    rok = WYKAZ_DEMO_ROK
+    tmp = Path(tempfile.mkdtemp())
+    plik = plik_wykazu_demo(tmp / f"wykaz-czasopism-{rok}.xlsx")
+
+    # 1. "operacje" menu
+    li = open_top_menu(red, "fi-wrench")
+    mark(
+        red,
+        [
+            {"sel": f"{li} .column-1 a", "text": "import list"},
+        ],
+    )
+    menu = page_box(red, f"{li} .menu-columns-wrapper")
+    shot(red, out / "01-menu-operacje.png", 0, menu["y"] + menu["height"] + 30)
+
+    # 2. the form: preview run, unmatched journals listed too
+    def formularz(zapisz: bool, ignoruj: bool) -> None:
+        red.goto(f"{base}/import_list_ministerialnych/nowy/")
+        red.wait_for_load_state("networkidle")
+        red.fill("input[name=rok]", str(rok))
+        red.set_checked("#id_ignoruj_zrodla_bez_odpowiednika", ignoruj)
+        red.set_checked("#id_zapisz_zmiany_do_bazy", zapisz)
+        red.set_input_files("input[name=plik]", str(plik))
+
+    formularz(zapisz=False, ignoruj=False)
+    mark(
+        red,
+        [
+            {
+                "sel": "#id_rok",
+                "arrow": "below",
+                "label": "1. rok wykazu",
+                "dx": 400,
+                "dy": -80,
+            },
+            {
+                "sel": "label[for=id_ignoruj_zrodla_bez_odpowiednika]",
+                "arrow": "right",
+                "label": "2. odznacz: pokaż też czasopisma spoza BPP",
+                "dx": 60,
+                "dy": -40,
+            },
+            {
+                "sel": "label[for=id_zapisz_zmiany_do_bazy]",
+                "arrow": "right",
+                "label": "3. bez zaznaczenia = tylko podgląd",
+                "dx": 60,
+                "dy": -40,
+            },
+            {
+                "sel": "input[name=plik]",
+                "arrow": "below",
+                "label": "4. plik XLSX z wykazem",
+                "dx": 250,
+                "dy": -60,
+            },
+            {
+                "sel": "#id_submit",
+                "arrow": "right",
+                "label": "5. Przeprowadź import",
+                "dx": 20,
+            },
+        ],
+    )
+    shot(
+        red,
+        out / "02-formularz-podglad.png",
+        100,
+        bottom_of(red, "#id_submit", 40) - 100,
+    )
+
+    # 3. live page: finished
+    red.click("#id_submit")
+    red.wait_for_selector("text=Import zakończony", timeout=60000)
+    red.reload()  # drop the stale "Operacja w toku…" status line
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": "#op-result a.button",
+                "arrow": "right",
+                "label": "pełne wyniki",
+                "dx": 20,
+            }
+        ],
+    )
+    wynik = page_box(red, "#op-result")
+    shot(red, out / "03-import-zakonczony.png", 0, wynik["y"] + wynik["height"] + 30)
+
+    # 4. preview results: warning, statistics, filters, table
+    red.click("#op-result a.button")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {"sel": ".panel.callout.warning"},
+            {
+                "sel": "#filter-form .button-group",
+                "arrow": "below",
+                "label": "filtry",
+                "dx": 120,
+                "dy": -50,
+            },
+            {"sel": "tbody tr", "text": "Brak takiego źródła"},
+            {"sel": "tbody tr.duplicate-row"},
+        ],
+    )
+    shot(red, out / "04-wyniki-podgladu.png", 0, bottom_of(red, "table", 30))
+
+    # 5. one row in detail
+    red.click("tbody tr >> nth=0 >> a")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {"sel": ".panel tr", "text": "Rezultat importu"},
+        ],
+    )
+    box = page_box(red, ".panel", "Informacje o wierszu")
+    shot(red, out / "05-szczegoly-wiersza.png", 0, box["y"] + box["height"] + 30)
+
+    # 6. the real run: same file, "Zapisz zmiany do bazy" ticked
+    formularz(zapisz=True, ignoruj=True)
+    mark(
+        red,
+        [
+            {
+                "sel": "label[for=id_zapisz_zmiany_do_bazy]",
+                "arrow": "right",
+                "label": "teraz zaznacz: zapisz",
+                "dx": 60,
+                "dy": -10,
+            },
+        ],
+    )
+    red.click("#id_submit")
+    red.wait_for_selector("text=Import zakończony", timeout=60000)
+    red.click("#op-result a.button")
+    red.wait_for_load_state("networkidle")
+    mark(red, [{"sel": ".panel.callout.success"}])
+    shot(red, out / "06-zapisano.png", 0, bottom_of(red, "table", 30))
+
+    # 7. where the values live: the source's points and disciplines
+    red.goto(f"{base}/admin/bpp/zrodlo/37/change/")  # Acta Wiedźmińska
+    red.wait_for_load_state("networkidle")
+    top = shot(red, None, 0, 300)
+    mark(
+        red,
+        [
+            {"sel": "#id_punktacja_zrodla_set-0-rok"},
+            {"sel": "#id_punktacja_zrodla_set-0-punkty_kbn"},
+        ],
+    )
+    box = page_box(red, "#punktacja_zrodla_set-group")
+    srodek = shot(red, None, box["y"] - 20, box["height"] + 40)
+    red.click("#dyscyplina_zrodla_set-group > h2")  # the inline starts collapsed
+    red.wait_for_timeout(500)
+    mark(
+        red,
+        [
+            {"sel": "#dyscyplina_zrodla_set-group .grp-table"},
+        ],
+    )
+    box = page_box(red, "#dyscyplina_zrodla_set-group")
+    dol = shot(red, None, box["y"] - 20, box["height"] + 40)
+    stitch(
+        red,
+        [top, srodek, dol],
+        out / "07-zrodlo-punktacja-dyscypliny.png",
+        "przewiń w dół",
+    )
+
+    # 8. points to records: rozbieżności, "Punkty MNiSW" tab
+    red.goto(f"{base}/rozbieznosci/mnisw/?rok_od={rok}&rok_do={rok}")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": ".tabs .is-active, .tabs .active, .tabs li",
+                "text": "Punkty MNiSW",
+            },
+            {
+                "sel": "button",
+                "text": "Ustaw wszystkie wg źródła",
+                "arrow": "left",
+                "label": "przenieś punkty na prace",
+                "dx": -10,
+                "dy": -40,
+            },
+        ],
+    )
+    shot(red, out / "08-rozbieznosci-mnisw.png", 0, bottom_of(red, "tbody tr", 20))
+
+    # 9. wrong file type: form error
+    red.goto(f"{base}/import_list_ministerialnych/nowy/")
+    red.wait_for_load_state("networkidle")
+    zly = tmp / f"wykaz-czasopism-{rok}.csv"
+    zly.write_text("Lp.;Tytuł 1;issn\n1;Acta Wiedźmińska;6746-8071\n", encoding="utf-8")
+    red.fill("input[name=rok]", str(rok))
+    red.set_input_files("input[name=plik]", str(zly))
+    red.click("#id_submit")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": "#error_1_id_plik, .error, small.error",
+                "text": "Niewłaściwy format",
+            }
+        ],
+    )
+    shot(red, out / "09-blad-formatu.png", 100, bottom_of(red, "#id_submit", 40) - 100)
+
+    # 10. an Excel file with other columns (e.g. a JCR export): import fails
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(
+        ["Journal name", "ISSN", "eISSN", "Category", f"{rok} JIF", "JIF Quartile"]
+    )
+    ws.append(["Acta Wiedźmińska", "6746-8071", "N/A", "ZOOLOGY", "2.417", "Q2"])
+    ws.append(["Folia Temerska", "7109-3248", "N/A", "HISTORY", "1.032", "Q3"])
+    jcr = tmp / f"jcr-{rok}.xlsx"
+    wb.save(jcr)
+    red.goto(f"{base}/import_list_ministerialnych/nowy/")
+    red.wait_for_load_state("networkidle")
+    red.fill("input[name=rok]", str(rok))
+    red.set_input_files("input[name=plik]", str(jcr))
+    red.click("#id_submit")
+    red.wait_for_selector("text=Wystąpił błąd", timeout=60000)
+    red.reload()  # the page as you find it later: "Ponów" instead of "Anuluj"
+    red.wait_for_load_state("networkidle")
+    mark(red, [{"sel": "#op-result .error"}])
+    shot(red, out / "10-blad-importu.png", 0, 300)
+    red.context.close()
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -3954,6 +4270,10 @@ SCENARIOS = {
     "duplikaty": ("redaktor/duplikaty", duplikaty),
     "metryki-ewaluacyjne": ("redaktor/metryki-ewaluacyjne", metryki_ewaluacyjne),
     "liczba-n-faq": ("redaktor/liczba-n-faq", liczba_n_faq),
+    "import-list-ministerialnych": (
+        "redaktor/import-list-ministerialnych",
+        import_list_ministerialnych,
+    ),
 }
 
 
