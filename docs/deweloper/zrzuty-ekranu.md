@@ -58,6 +58,11 @@ zamykamy przed zrzutem.
   (`arrow`: `left`/`right`/`above`/`below`) i przesunięcie podpisu
   (`dx`/`dy`) dobieramy tak, żeby podpis stał w pustym miejscu.
 
+**Adresy.** Na zrzutach nie może być `localhost:PORT`. Skrypt podstawia
+lokalny BPP pod adres `https://bpp.twoja-uczelnia.pl` (`PUBLIC_BPP`,
+funkcja `proxy_public_bpp`) wszędzie tam, gdzie adres serwera widać na
+ekranie — np. w kodzie do wklejenia.
+
 **Strona „u klienta”.** Gdy trzeba pokazać efekt na zewnętrznej stronie
 (np. widget publikacji), używamy wymyślonej strony z motywu demo
 (`EXAMPLE_PAGE` w skrypcie, adres `https://katedra.example`), nigdy strony

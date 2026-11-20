@@ -206,6 +206,9 @@ def moj_profil_autora(page: Page, base: str, out: Path) -> None:
 # screenshots. Served by page.route() under a fake https:// origin, so the
 # widget really runs cross-origin, exactly as on a customer site.
 EXAMPLE_SITE = "https://katedra.example"
+# What readers should see as "your university's BPP" in URLs and code snippets.
+# Requests to it are proxied to the local stack (see proxy_public_bpp).
+PUBLIC_BPP = "https://bpp.twoja-uczelnia.pl"
 EXAMPLE_PAGE = """<!doctype html><html lang="pl"><head><meta charset="utf-8">
 <title>dr Yennefer z Vengerbergu — Katedra Magii Stosowanej</title>
 <style>
@@ -242,6 +245,21 @@ def page_box(page: Page, sel: str) -> dict:
         return {x: r.left + scrollX, y: r.top + scrollY, width: r.width, height: r.height}; }""",
         sel,
     )
+
+
+def proxy_public_bpp(page: Page, base: str) -> None:
+    """Answer PUBLIC_BPP requests from the local stack, so screenshots show a
+    realistic address instead of http://localhost:PORT. It also keeps every
+    request same-scheme (https page -> https "server"), so Chromium's
+    mixed-content and local-network checks never trigger."""
+
+    def handle(route):
+        local = base + route.request.url[len(PUBLIC_BPP) :]
+        resp = route.fetch(url=local)
+        body = resp.body().replace(base.encode(), PUBLIC_BPP.encode())
+        route.fulfill(response=resp, body=body)
+
+    page.route(PUBLIC_BPP + "/**", handle)
 
 
 def serve_docs_locally(page: Page) -> None:
@@ -296,7 +314,8 @@ def widget_publikacji(page: Page, base: str, out: Path) -> None:
 
     # 2. the code generator, pre-filled from the link
     serve_docs_locally(page)
-    page.goto(href)
+    proxy_public_bpp(page, base)
+    page.goto(href.replace(base, PUBLIC_BPP))
     page.wait_for_load_state("networkidle")
     page.fill("#g-limit", "5")
     # the preview re-renders 600 ms after input; wait for the 5-item version
@@ -332,7 +351,7 @@ def widget_publikacji(page: Page, base: str, out: Path) -> None:
 
     # 3. the result on "your" website
     autor = href.split("autor=")[1].split("&")[0]
-    html = EXAMPLE_PAGE.replace("__BASE__", base).replace("__AUTOR__", autor)
+    html = EXAMPLE_PAGE.replace("__BASE__", PUBLIC_BPP).replace("__AUTOR__", autor)
     page.route(
         EXAMPLE_SITE + "/**",
         lambda route: route.fulfill(body=html, content_type="text/html; charset=utf-8"),
@@ -380,11 +399,9 @@ def main() -> int:
     with sync_playwright() as pw:
         # channel="chromium" = full Chromium (not the headless shell), which
         # honours --lang, so native widgets read "Wybierz plik", not "Choose File".
-        # LocalNetworkAccessChecks: the widget scenarios load the local BPP
-        # (loopback) from https:// pages; Chromium would block that.
         browser = pw.chromium.launch(
             channel="chromium",
-            args=["--lang=pl", "--disable-features=LocalNetworkAccessChecks"],
+            args=["--lang=pl"],
         )
         ctx = browser.new_context(
             viewport=VIEWPORT, device_scale_factor=2, locale="pl-PL"
