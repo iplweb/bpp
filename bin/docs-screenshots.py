@@ -1442,6 +1442,38 @@ def impact_factor_i_punktacja(page: Page, base: str, out: Path) -> None:
     red.click("#id_submit")
     red.wait_for_selector("text=Podgląd gotowy", timeout=60000)
     red.wait_for_timeout(500)
+# Demo data for the "nowy rok" page (docs/redaktor/nowy-rok.md): an author
+# with disciplines for 2020-2026, a source with points/disciplines up to 2026
+# and a 2027 article - i.e. "January, the new year has no data yet".
+AUTOR_NOWY_ROK = 210  # Yennefer Merigold
+ZRODLO_NOWY_ROK = 40  # Folia Temerska
+REKORD_2027 = 1201
+
+
+def nowy_rok(page: Page, base: str, out: Path) -> None:
+    """docs/redaktor/nowy-rok.md: per-year data (author/source disciplines, source points) for a new year."""
+    red = new_session(page, base, DEMO_USER_REDAKTOR)
+    rekord = f"{base}/admin/bpp/wydawnictwo_ciagle/{REKORD_2027}/change/"
+
+    # 1. a 2027 record saved: the "rok poza zakresem" warning
+    red.goto(rekord)
+    red.wait_for_load_state("networkidle")
+    red.click("input[name=_continue]")
+    red.wait_for_load_state("networkidle")
+    mark(red, [{"sel": ".grp-messagelist li", "text": "rok poza zakresem"}])
+    shot(
+        red,
+        out / "01-rekord-rok-poza-zakresem.png",
+        0,
+        bottom_of(red, ".grp-messagelist", 30),
+    )
+
+    # 2. the discipline list of an author in a 2027 record
+    sel = "select[name=autorzy_set-0-dyscyplina_naukowa]"
+    red.locator(f"{sel} + .select2 .select2-selection").scroll_into_view_if_needed()
+    red.locator(f"{sel} + .select2 .select2-selection").click()
+    red.wait_for_selector(".select2-results__option", state="visible")
+    red.wait_for_timeout(800)
     mark(
         red,
         [
@@ -1540,6 +1572,132 @@ def impact_factor_i_punktacja(page: Page, base: str, out: Path) -> None:
                 "sel": "#filter-panel-toggle",
                 "arrow": "left",
                 "label": "filtry",
+                "sel": ".select2-results__option",
+                "arrow": "right",
+                "label": "brak dyscypliny na 2027",
+                "dx": -40,
+            }
+        ],
+    )
+    box = page_box(red, ".select2-container--open .select2-dropdown")
+    red.screenshot(
+        path=out / "02-rekord-brak-przypisania.png",
+        clip={
+            "x": 0,
+            "y": max(0, box["y"] - 250),
+            "width": VIEWPORT["width"],
+            "height": 400,
+        },
+        full_page=True,
+    )
+    red.keyboard.press("Escape")
+
+    # 3. author: disciplines per year, new row for 2027
+    red.goto(f"{base}/admin/bpp/autor/{AUTOR_NOWY_ROK}/change/")
+    red.wait_for_load_state("networkidle")
+    grp = "#autor_dyscyplina_set-group"
+    n = int(red.input_value("#id_autor_dyscyplina_set-TOTAL_FORMS")) - 1
+    row = f"autor_dyscyplina_set-{n}"  # field names; the row <div> id has no dash
+    red.fill(f"[name={row}-rok]", "2027")
+    red.select_option(
+        f"[name={row}-rodzaj_autora]", label="N - pracownik naukowy w liczbie N"
+    )
+    red.fill(f"[name={row}-wymiar_etatu]", "1")
+    select2(red, f"select[name={row}-dyscyplina_naukowa]", "filozofia")
+    red.fill(f"[name={row}-procent_dyscypliny]", "100")
+    red.mouse.move(5, 5)
+    mark(
+        red,
+        [
+            {"sel": f"{grp} > h2"},
+            {
+                "sel": f"#autor_dyscyplina_set{n}",
+                "arrow": "below",
+                "label": "nowy wiersz: rok 2027",
+                "dy": -10,
+            },
+        ],
+    )
+    top = shot(red, None, 0, 300)
+    g = page_box(red, grp)
+    bottom = shot(red, None, g["y"] - 20, g["height"] + 160)
+    stitch(
+        red,
+        [top, bottom],
+        out / "03-autor-dyscypliny.png",
+        "przewiń do „Powiązania autor-dyscyplina”",
+    )
+
+    # 4. all authors' disciplines, filtered by year
+    red.goto(f"{base}/admin/bpp/autor_dyscyplina/?rok=2026")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {"sel": "#result_list th", "text": "Rok"},
+            {
+                "sel": "a",
+                "text": "Eksport",
+                "arrow": "left",
+                "label": "eksport do Excela",
+                "dx": -60,
+                "dy": -95,
+            },
+        ],
+    )
+    shot(red, out / "04-lista-autor-dyscyplina.png", 0, 520)
+
+    # 5. operacje menu: the imports and the discrepancy reports
+    red.goto(f"{base}/")
+    red.wait_for_load_state("networkidle")
+    li = open_top_menu(red, "fi-wrench")
+    mark(
+        red,
+        [
+            {"sel": f"{li} li:has(> a[href*='import_polon/dane'])"},
+            {"sel": f"{li} li:has(> a[href*='import_list_ministerialnych'])"},
+            {"sel": f"{li} li:has(> a[href*='import_dyscyplin'])"},
+            {"sel": f"{li} li:has(> a[href*='rozbieznosciview'])"},
+        ],
+    )
+    menu = page_box(red, f"{li} > .menu-columns-wrapper")
+    shot(red, out / "05-menu-operacje.png", 0, menu["y"] + menu["height"] + 30)
+
+    # 6. import dyscyplin: the file and the year
+    red.goto(f"{base}/import_dyscyplin/create/")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": "[name=rok]",
+                "arrow": "below",
+                "label": "rok, którego dotyczy plik",
+                "dx": 40,
+                "dy": -30,
+            }
+        ],
+    )
+    shot(red, out / "06-import-dyscyplin.png", 0, bottom_of(red, "[name=rok]", 190))
+
+    # 7. source: points per year, a new row for 2027
+    red.goto(f"{base}/admin/bpp/zrodlo/{ZRODLO_NOWY_ROK}/change/")
+    red.wait_for_load_state("networkidle")
+    red.add_style_tag(content=".grp-fixed-footer{display:none!important}")
+    grp = "#punktacja_zrodla_set-group"
+    n = int(red.input_value("#id_punktacja_zrodla_set-TOTAL_FORMS")) - 1
+    red.fill(f"[name=punktacja_zrodla_set-{n}-rok]", "2027")
+    red.fill(f"[name=punktacja_zrodla_set-{n}-punkty_kbn]", "140")
+    red.mouse.move(5, 5)
+    mark(
+        red,
+        [
+            {"sel": f"{grp} > h2"},
+            {
+                "sel": f"#punktacja_zrodla_set{n}",
+                "arrow": "below",
+                "label": "nowy wiersz: rok 2027",
+                "dx": -100,
                 "dy": -85,
             },
         ],
@@ -1799,6 +1957,26 @@ def impact_factor_i_punktacja(page: Page, base: str, out: Path) -> None:
 
     # 9. all records at once: rozbieżności IF for the year
     red.goto(f"{base}/rozbieznosci/if/?rok_od={rok}&rok_do={rok}")
+    top = shot(red, None, 0, 260)
+    g = page_box(red, grp)
+    bottom = shot(red, None, g["y"] - 20, g["height"] + 50)
+    stitch(
+        red,
+        [top, bottom],
+        out / "07-zrodlo-punktacja.png",
+        "przewiń do „Punktacja źródła”",
+    )
+
+    # 8. source: disciplines per year (a collapsed section - open it)
+    grp = "#dyscyplina_zrodla_set-group"
+    red.click(f"{grp} > h2")
+    red.wait_for_timeout(600)
+    mark(red, [{"sel": f"{grp} > h2"}])
+    g = page_box(red, grp)
+    shot(red, out / "08-zrodlo-dyscypliny.png", g["y"] - 20, g["height"] + 40)
+
+    # 9. import list ministerialnych
+    red.goto(f"{base}/import_list_ministerialnych/")
     red.wait_for_load_state("networkidle")
     mark(
         red,
@@ -1868,6 +2046,50 @@ def impact_factor_i_punktacja(page: Page, base: str, out: Path) -> None:
         ],
     )
     shot(red, out / "12-listy-ministerialne.png", 0, bottom_of(red, "#id_submit", 30))
+            {
+                "sel": "[name=rok]",
+                "arrow": "below",
+                "label": "rok listy",
+                "dx": 300,
+                "dy": -40,
+            },
+            {
+                "sel": "label[for=id_zapisz_zmiany_do_bazy]",
+                "arrow": "right",
+                "label": "bez tego tylko podgląd",
+                "dx": 40,
+            },
+        ],
+    )
+    shot(
+        red,
+        out / "09-import-list-ministerialnych.png",
+        0,
+        bottom_of(red, "#id_submit", 30),
+    )
+
+    # 10. a record: copy the source's points for the record's year
+    red.goto(rekord)
+    red.wait_for_load_state("networkidle")
+    red.add_style_tag(content=".grp-fixed-footer{display:none!important}")
+    btn = "#id_wypelnij_pola_punktacji_button"
+    red.locator(btn).scroll_into_view_if_needed()
+    mark(
+        red,
+        [
+            {
+                "sel": btn,
+                "arrow": "below",
+                "label": "punkty ze źródła za rok rekordu",
+                "dx": 300,
+                "dy": -80,
+            },
+            {"sel": "#id_dodaj_punktacje_do_zrodla_button"},
+        ],
+    )
+    b = page_box(red, btn)
+    shot(red, out / "10-rekord-uzupelnij-punktacje.png", b["y"] - 400, 500)
+
     red.context.close()
 
 
@@ -2141,6 +2363,7 @@ SCENARIOS = {
         "redaktor/impact-factor-i-punktacja",
         impact_factor_i_punktacja,
     ),
+    "nowy-rok": ("redaktor/nowy-rok", nowy_rok),
 }
 
 
