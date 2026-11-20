@@ -45,6 +45,7 @@ zalogowaniu.
 - [Metryki ewaluacyjne autorów](redaktor/metryki-ewaluacyjne.md)
 - [Liczba N — najczęstsze pytania](redaktor/liczba-n-faq.md)
 - [Import list ministerialnych i punktacji czasopism](redaktor/import-list-ministerialnych.md)
+- [Rozbieżności dyscyplin — jak je znaleźć i poprawić](redaktor/rozbieznosci-dyscyplin.md)
 - [Uczelnia](redaktor/uczelnia.md)
 - [Jednostki](redaktor/jednostki.md)
 - [Autorzy](redaktor/autorzy.md)
