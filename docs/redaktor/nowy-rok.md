@@ -74,7 +74,7 @@ przy autorze, zamiast listy dyscyplin zobaczysz:
 Dyscypliny, rodzaj autora i wymiar etatu najlepiej wczytać z eksportu
 POL-on: menu **operacje → import z POLON**, w formularzu podajesz **rok**,
 którego dotyczy plik. Import tworzy wpisy na ten rok i od razu przelicza
-prace autorów. Szczegóły: [Import z POL-on i liczba N](https://iplweb.github.io/bpp/redaktor/import-polon-liczba-n/).
+prace autorów. Szczegóły: [Import z POL-on i liczba N](import-polon-liczba-n.md).
 
 ![Menu „operacje”: import z POLON, import list ministerialnych, import dyscyplin, rozbieżności dyscyplin autorów](../images/redaktor/nowy-rok/05-menu-operacje.png)
 
@@ -245,7 +245,7 @@ okres ewaluacji 2022–2025 — prac z 2026 r. i późniejszych tam nie ma.
 
 ## Zobacz też
 
-- [Import z POL-on i liczba N](https://iplweb.github.io/bpp/redaktor/import-polon-liczba-n/) — wczytywanie
+- [Import z POL-on i liczba N](import-polon-liczba-n.md) — wczytywanie
   dyscyplin, rodzaju autora i wymiaru etatu z POL-on.
 - [Sloty](sloty.md) — reguły liczenia slotów i rodzaje autorów.
 - [Autorzy](autorzy.md) — redagowanie autorów.

@@ -35,6 +35,12 @@ Codzienne czynności redakcyjne — dla bibliotekarzy i redaktorów po
 zalogowaniu.
 
 - [Wyszukiwanie i redagowanie](redaktor/wyszukiwanie-redagowanie.md)
+- [Jak dodać publikację importerem](redaktor/importer-publikacji.md)
+- [Obsługa zgłoszeń publikacji](redaktor/obsluga-zgloszen.md)
+- [Import danych z POL-on i liczba N](redaktor/import-polon-liczba-n.md)
+- [Nowy rok w BPP — lista kontrolna](redaktor/nowy-rok.md)
+- [PBN: wysyłanie prac, kolejka i porównanie](redaktor/pbn-wysylka-i-synchronizacja.md)
+- [Impact Factor, kwartyle i punktacja źródeł](redaktor/impact-factor-i-punktacja.md)
 - [Uczelnia](redaktor/uczelnia.md)
 - [Jednostki](redaktor/jednostki.md)
 - [Autorzy](redaktor/autorzy.md)

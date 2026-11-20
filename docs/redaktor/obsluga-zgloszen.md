@@ -108,7 +108,7 @@ Odpowiedź na wiadomość („Odpowiedz”) trafia prosto do zgłaszającego.
    otworzy się z wybranym źródłem i wypełnionym identyfikatorem: przy DOI
    — **CrossRef** (DOI wyłuskany z linku), przy zwykłym adresie —
    **Pozostałe strony WWW**. Kliknij **„Pobierz dane”** i przejdź kolejne
-   kroki importera (opis: [Importer publikacji](../administrator/importer-publikacji.md)).
+   kroki importera (opis: [Importer publikacji](importer-publikacji.md)).
 
     ![Importer otwarty ze zgłoszenia: CrossRef, DOI i przycisk „Pobierz dane”](../images/redaktor/obsluga-zgloszen/07-importer.png)
 
@@ -199,5 +199,5 @@ Odpowiedź na wiadomość („Odpowiedz”) trafia prosto do zgłaszającego.
 
 - [Jak zgłosić nową publikację](../uzytkownik/zgloszenie-publikacji.md) — strona autora
 - [Zgłaszanie publikacji — administrator](../administrator/zglaszanie-publikacji.md) — włączanie formularza, logowanie, opłaty, przypisanie do wydziałów
-- [Importer publikacji](../administrator/importer-publikacji.md)
+- [Importer publikacji](importer-publikacji.md)
 - [Wydawnictwa ciągłe i zwarte](wydawnictwa.md)

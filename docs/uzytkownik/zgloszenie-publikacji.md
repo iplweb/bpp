@@ -62,13 +62,12 @@ punktacji ani opisu bibliograficznego: wystarczy tytuł, rok i link albo plik.
 
 ## Co dalej
 
-- Redaktor BPP sprawdza zgłoszenie. Gdy praca zostanie dopisana do bazy,
-  dostaniesz **e-mail z linkiem do jej opisu w BPP**.
+- Redaktor BPP sprawdza zgłoszenie i dopisuje pracę do bazy. Gdy się pojawi,
+  znajdziesz ją na swojej stronie autora albo w wyszukiwarce.
 - Jeśli czegoś brakuje, redaktor **zwróci zgłoszenie** — w mailu będzie
   powód i link do poprawienia formularza. Po poprawce zgłoszenie wraca do
   redaktora samo.
 - W ciągu godziny można wysłać ograniczoną liczbę zgłoszeń. Jeśli zobaczysz
   komunikat o przekroczonym limicie, spróbuj ponownie później.
 
-Jak zgłoszenia obsługuje redakcja (powiadomienia, zwracanie, ustawienia
-formularza): [Zgłaszanie publikacji — administrator](../administrator/zglaszanie-publikacji.md).
+Jak zgłoszenia obsługuje redakcja: [Obsługa zgłoszeń publikacji (dla redaktora)](../redaktor/obsluga-zgloszen.md); ustawienia formularza: [Zgłaszanie publikacji — administrator](../administrator/zglaszanie-publikacji.md).
