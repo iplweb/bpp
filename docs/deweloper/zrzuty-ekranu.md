@@ -68,10 +68,28 @@ ekranie — np. w kodzie do wklejenia.
 (`EXAMPLE_PAGE` w skrypcie, adres `https://katedra.example`), nigdy strony
 prawdziwej uczelni.
 
+**Element daleko na stronie.** Gdy klikany element jest np. na samym dole
+długiej strony, sam wycinek nie mówi, *gdzie* go szukać. Robimy wtedy jeden
+obrazek z dwóch kadrów — góra strony (żeby było wiadomo, jaka to strona),
+„rozdarcie” z podpisem (np. „przewiń na sam dół strony”), potem fragment
+z oznaczonym elementem. Służy do tego funkcja `stitch()` w skrypcie.
+
 **Kadr.** Tylko fragment, o którym mowa w tekście (`clip=`), chyba że zrzut
 pokazuje cały formularz. Każdy zrzut **obejrzyj** po wygenerowaniu —
 nakładające się podpisy i niedokończone animacje (rozwijane menu) widać
 dopiero na obrazku.
+
+## Artykuły w bazie wiedzy (Freshdesk)
+
+Artykuł we Freshdesku to **skrót** strony z `docs/`, nie jej kopia. Widżet
+pomocy wyświetla go w małym okienku, więc:
+
+- zostaje tylko: **gdzie kliknąć**, **skąd skopiować**, co się stanie,
+- obrazki te same co w `docs/` (adres z GitHub Pages), w krokach, których
+  dotyczą,
+- **bez uwag technicznych** — parametrów, klas CSS, stylów, szczegółów
+  konfiguracji; te zostają w `docs/`,
+- na końcu odnośnik **„Szczegóły”** do strony w dokumentacji.
 
 ## Jak wygenerować
 
