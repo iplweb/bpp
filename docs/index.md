@@ -41,6 +41,7 @@ zalogowaniu.
 - [Nowy rok w BPP — lista kontrolna](redaktor/nowy-rok.md)
 - [PBN: wysyłanie prac, kolejka i porównanie](redaktor/pbn-wysylka-i-synchronizacja.md)
 - [Impact Factor, kwartyle i punktacja źródeł](redaktor/impact-factor-i-punktacja.md)
+- [Duplikaty autorów i źródeł](redaktor/duplikaty.md)
 - [Uczelnia](redaktor/uczelnia.md)
 - [Jednostki](redaktor/jednostki.md)
 - [Autorzy](redaktor/autorzy.md)
