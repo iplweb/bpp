@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import os
 import sys
 from pathlib import Path
 
@@ -34,6 +35,7 @@ DEMO_PASSWORD = DEMO_USER
 DEMO_USER_BEZ_AUTORA = "jaskier"
 # Third demo account in the group "generowanie raportów" (reports, slots).
 DEMO_USER_RAPORTY = "filippa"
+DEMO_USER_REDAKTOR = "vesemir"  # demo editor: is_staff + "wprowadzanie danych"
 
 VIEWPORT = {"width": 1280, "height": 800}
 
@@ -1054,6 +1056,293 @@ def raporty(page: Page, base: str, out: Path) -> None:
     rap.context.close()
 
 
+# The fake POL-on export of the demo university (docs/deweloper/dane-demo.md,
+# "Plik POL-on do importu"); generate it with
+# `manage.py generuj_plik_polon_demo --out <dir>` and point this at it.
+PLIK_POLON = os.environ.get("BPP_DOCS_PLIK_POLON", "")
+
+
+def import_polon_liczba_n(page: Page, base: str, out: Path) -> None:
+    """docs/redaktor/import-polon-liczba-n.md: POL-on import (preview, save) and the N number.
+
+    Needs BPP_DOCS_PLIK_POLON (the generated .xlsx) and a freshly restored demo
+    dump: the scenario saves the import for 2022-2025, so a second run on the
+    same DB shows no differences.
+    """
+    if not PLIK_POLON:
+        raise SystemExit("Set BPP_DOCS_PLIK_POLON to the demo POL-on .xlsx file.")
+    red = new_session(page, base, DEMO_USER_REDAKTOR)
+
+    def czekaj_na_koniec() -> None:
+        red.wait_for_selector("#op-result .callout", state="visible", timeout=180_000)
+        red.wait_for_timeout(500)
+
+    def importuj(rok: str, zapisz: bool, ukryj: bool = True) -> None:
+        red.goto(f"{base}/import_polon/dane/nowy/")
+        red.wait_for_load_state("networkidle")
+        red.fill("#id_rok", rok)
+        red.set_checked("#id_ukryj_niezmatchowanych_autorow", ukryj)
+        red.set_checked("#id_zapisz_zmiany_do_bazy", zapisz)
+        red.set_input_files("#id_plik", PLIK_POLON)
+
+    # 1. operacje -> import z POLON
+    red.goto(f"{base}/")
+    red.wait_for_load_state("networkidle")
+    li = open_top_menu(red, "fi-wrench")
+    mark(
+        red,
+        [
+            {
+                "sel": f"{li} a[href*='/import_polon/dane/']",
+                "arrow": "right",
+                "label": "import z POLON",
+                "dx": 60,
+            }
+        ],
+    )
+    menu = page_box(red, f"{li} > .menu-columns-wrapper")
+    shot(red, out / "01-menu-operacje.png", 0, menu["y"] + menu["height"] + 40)
+
+    # 2. the form: year, unmatched authors shown, "save" left unchecked
+    importuj("2025", zapisz=False, ukryj=False)
+    red.mouse.move(5, 5)
+    mark(
+        red,
+        [
+            {
+                "sel": "#id_rok",
+                "arrow": "above",
+                "label": "1. rok",
+                "dx": 100,
+                "dy": 0,
+            },
+            {
+                "sel": "label[for=id_ukryj_niezmatchowanych_autorow]",
+                "arrow": "right",
+                "label": "2. odznacz, by widzieć błędy",
+                "dx": 300,
+                "dy": -40,
+            },
+            {
+                "sel": "label[for=id_zapisz_zmiany_do_bazy]",
+                "arrow": "right",
+                "label": "3. puste = tylko podgląd",
+                "dx": 300,
+                "dy": -40,
+            },
+            {
+                "sel": "#id_plik",
+                "arrow": "below",
+                "label": "4. plik .xlsx z POL-on",
+                "dx": 200,
+                "dy": -60,
+            },
+            {
+                "sel": "#id_submit",
+                "arrow": "right",
+                "label": "5. Utwórz import",
+                "dx": 20,
+                "dy": -20,
+            },
+        ],
+    )
+    shot(red, out / "02-formularz.png", 0, bottom_of(red, "#id_submit", 60))
+
+    # 3. progress page -> finished panel
+    red.click("#id_submit")
+    czekaj_na_koniec()
+    mark(
+        red,
+        [
+            {
+                "sel": "#op-result a",
+                "text": "Zobacz wyniki",
+                "arrow": "below",
+                "label": "najpierw przejrzyj wyniki",
+                "dx": 0,
+                "dy": -20,
+            },
+        ],
+    )
+    shot(red, out / "03-import-zakonczony.png", 0, bottom_of(red, "#op-result", 160))
+    wyniki = red.locator("#op-result a", has_text="Zobacz wyniki").get_attribute("href")
+    wyniki = base + wyniki
+    zapisz_url = red.locator(
+        "#op-result a", has_text="Zapisz ten import"
+    ).get_attribute("href")
+
+    # 4. results: preview warning, people missing from the file, filters
+    red.goto(wyniki)
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {"sel": ".callout.warning h2"},
+            {
+                "sel": "#toggle-unmatched",
+                "arrow": "right",
+                "label": "osoby spoza pliku",
+                "dx": 40,
+                "dy": -20,
+            },
+            {"sel": ".filter-checkbox-label"},
+        ],
+    )
+    shot(red, out / "04-wyniki-podglad.png", 0, bottom_of(red, "#filter-form", 30))
+
+    # The results table is wider than 1280 px: shoot it in a wider window,
+    # clipped to the full page width.
+    tabela_sel = "a[name=pager] ~ table.compact-table"
+    red.set_viewport_size({"width": 1600, "height": 800})
+
+    def szeroki(path: Path, box: dict, height: float) -> None:
+        """Slice of the page as wide as the results table."""
+        red.evaluate("window.scrollTo(0, 0)")
+        red.screenshot(
+            path=path,
+            full_page=True,
+            clip={
+                "x": max(0, box["x"] - 16),
+                "y": max(0, box["y"] - 20),
+                "width": box["width"] + 32,
+                "height": height,
+            },
+        )
+
+    # 5. only the differences
+    red.check("input[name=pokaz_tylko_roznice]")
+    red.wait_for_load_state("networkidle")
+    red.wait_for_selector(f"{tabela_sel} tbody tr")
+    mark(red, [{"sel": "th", "text": "Rezultat importu"}])
+    tabela = page_box(red, tabela_sel)
+    szeroki(out / "05-tylko-roznice.png", tabela, 700)
+
+    # 6. the four broken rows of the demo file. The "nie" search narrows the
+    # list to one page; rows without an error are hidden only to keep the
+    # picture short - every row shown is real.
+    red.goto(f"{wyniki}?autor_wiersz=nie")
+    red.wait_for_load_state("networkidle")
+    red.evaluate(
+        """(sel) => {
+        const bledy = /REKORD ZIGNOROWANY|Nie udało|nie może być puste/;
+        for (const tr of document.querySelectorAll(sel + ' tbody tr'))
+          if (!bledy.test(tr.lastElementChild.textContent)) tr.style.display = 'none';
+        }""",
+        tabela_sel,
+    )
+    mark(red, [{"sel": "th", "text": "Rezultat importu"}])
+    tabela = page_box(red, tabela_sel)
+    szeroki(out / "06-wiersze-z-bledami.png", tabela, tabela["height"] + 40)
+    red.set_viewport_size(VIEWPORT)
+
+    # 7. authors with a discipline in BPP who are not in the file
+    red.goto(wyniki)
+    red.wait_for_load_state("networkidle")
+    red.click("#toggle-unmatched")
+    red.wait_for_timeout(300)
+    panel = page_box(red, ".callout.secondary", "nie byli w pliku Excel")
+    shot(red, out / "07-osoby-spoza-pliku.png", panel["y"] - 10, 520)
+
+    # 8. confirm saving
+    red.goto(base + zapisz_url)
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": "#id_submit",
+                "arrow": "below",
+                "label": "zapis do bazy",
+                "dx": 100,
+                "dy": -40,
+            }
+        ],
+    )
+    shot(red, out / "08-potwierdzenie-zapisu.png", 0, bottom_of(red, "#id_submit", 150))
+    red.click("#id_submit")
+    czekaj_na_koniec()
+
+    # the remaining years, saved straight away
+    for rok in ("2022", "2023", "2024"):
+        importuj(rok, zapisz=True)
+        red.click("#id_submit")
+        czekaj_na_koniec()
+
+    # 9. list of imports with their statistics
+    red.goto(f"{base}/import_polon/dane/")
+    red.wait_for_load_state("networkidle")
+    mark(red, [{"sel": ".importy-table"}])
+    shot(red, out / "09-lista-importow.png", 0, bottom_of(red, ".importy-legenda", 20))
+
+    # 10. ewaluacja -> liczba N
+    red.goto(f"{base}/")
+    red.wait_for_load_state("networkidle")
+    li = open_top_menu(red, "fi-graph-bar")
+    mark(
+        red,
+        [
+            {
+                "sel": f"{li} a[href*='ewaluacja_liczba_n']",
+                "arrow": "right",
+                "label": "liczba N",
+                "dx": 60,
+            }
+        ],
+    )
+    menu = page_box(red, f"{li} > .menu-columns-wrapper")
+    shot(red, out / "10-menu-ewaluacja.png", 0, menu["y"] + menu["height"] + 40)
+
+    # 11. compute and look at the result
+    red.goto(f"{base}/ewaluacja_liczba_n/")
+    red.wait_for_load_state("networkidle")
+    red.click("#obliczLiczbeNButton")
+    red.wait_for_load_state("networkidle")
+    red.wait_for_selector("#sankcjeForm")
+    mark(
+        red,
+        [
+            {
+                "sel": "#obliczLiczbeNButton",
+                "arrow": "right",
+                "label": "1. Oblicz liczbę N",
+                "dx": 40,
+                "dy": -20,
+            },
+            {
+                "sel": "a",
+                "text": "Weryfikuj poprawność bazy",
+                "arrow": "left",
+                "label": "kontrola danych",
+                "dx": 0,
+                "dy": 0,
+            },
+        ],
+    )
+    shot(
+        red,
+        out / "11-liczba-n-gora.png",
+        0,
+        bottom_of(red, ".ewaluacja-liczba-n__actions-callout", 60),
+    )
+
+    mark(
+        red,
+        [
+            {"sel": "#sankcjeForm table"},
+            {"sel": ".callout.alert"},
+        ],
+    )
+    h = page_box(red, "h3", "Liczba N dla poszczególnych dyscyplin")
+    nier = page_box(red, ".callout.alert")
+    shot(
+        red,
+        out / "12-liczba-n-tabela.png",
+        h["y"] - 20,
+        nier["y"] + nier["height"] + 30 - (h["y"] - 20),
+    )
+    red.context.close()
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -1318,6 +1607,7 @@ SCENARIOS = {
     "logowanie": ("uzytkownik/logowanie", logowanie),
     "punkty-i-sloty": ("uzytkownik/punkty-i-sloty", punkty_i_sloty),
     "raporty": ("uzytkownik/raporty", raporty),
+    "import-polon-liczba-n": ("redaktor/import-polon-liczba-n", import_polon_liczba_n),
 }
 
 
