@@ -3281,6 +3281,172 @@ def duplikaty(page: Page, base: str, out: Path) -> None:
     d.context.close()
 
 
+def liczba_n_faq(page: Page, base: str, out: Path) -> None:
+    """docs/redaktor/liczba-n-faq.md: where to check why BPP's N differs from SEDN/POL-on.
+
+    Needs the demo state from bin/docs-demo-liczba-n-faq.py (part-time
+    contracts, a two-discipline split, a doctoral student, missing data).
+    """
+    red = new_session(page, base, DEMO_USER_REDAKTOR)
+
+    # 1. the N table: average vs end of 2025, non-reported disciplines
+    red.goto(f"{base}/ewaluacja_liczba_n/")
+    red.wait_for_load_state("networkidle")
+    red.click("#obliczLiczbeNButton")
+    red.wait_for_load_state("networkidle")
+    red.wait_for_selector("#sankcjeForm")
+    mark(
+        red,
+        [
+            {
+                "sel": "#sankcjeForm th",
+                "text": "Liczba N - średnia",
+                "arrow": "above",
+                "label": "średnia z 4 lat",
+                "dx": 40,
+                "dy": 75,
+            },
+            {
+                "sel": "#sankcjeForm th",
+                "text": "Liczba N - koniec 2025",
+                "arrow": "above",
+                "label": "sam rok 2025",
+                "dx": -300,
+                "dy": 75,
+            },
+            {"sel": "h3", "text": "Dyscypliny nieraportowane"},
+        ],
+    )
+    h = page_box(red, "h3", "Liczba N dla poszczególnych dyscyplin")
+    nier = page_box(red, ".callout.alert")
+    shot(
+        red,
+        out / "01-tabela-liczby-n.png",
+        h["y"] - 20,
+        nier["y"] + nier["height"] + 30 - (h["y"] - 20),
+    )
+
+    # 2. one year, one discipline, only "N": the number to compare with SEDN
+    red.goto(f"{base}/ewaluacja_liczba_n/autorzy/")
+    red.wait_for_load_state("networkidle")
+    red.select_option("select[name=rok]", "2024")
+    red.wait_for_load_state("networkidle")
+    for name, text in (
+        ("rodzaj_autora", "pracownik naukowy w liczbie N"),
+        ("dyscyplina", "biotechnologia"),
+    ):
+        opt = red.locator(f"select[name={name}] option", has_text=text).first
+        red.select_option(f"select[name={name}]", opt.get_attribute("value"))
+        red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {"sel": "select[name=rok]"},
+            {"sel": "select[name=rodzaj_autora]"},
+            {"sel": "select[name=dyscyplina]"},
+            {
+                "sel": ".callout.primary .label.success",
+                "arrow": "right",
+                "label": "liczba N za 2024",
+                "dx": 40,
+                "dy": 10,
+            },
+        ],
+    )
+    tab = page_box(red, "#pager tbody tr:nth-child(4)")
+    shot(red, out / "02-udzialy-za-rok.png", 0, tab["y"] + tab["height"] + 10)
+
+    # 3. the author's disciplines: type, contract, percent
+    red.goto(f"{base}/admin/bpp/autor/160/change/")
+    red.wait_for_load_state("networkidle")
+    grp = "#autor_dyscyplina_set-group"
+    mark(
+        red,
+        [
+            {
+                "sel": f"{grp} .grp-th.rodzaj-autora",
+                "arrow": "above",
+                "label": "N, D, B, Z",
+                "dx": -100,
+                "dy": 20,
+            },
+            {
+                "sel": f"{grp} .grp-th.wymiar-etatu",
+                "arrow": "above",
+                "label": "etat",
+                "dx": 0,
+                "dy": 20,
+            },
+            {
+                "sel": f"{grp} .grp-th.procent-dyscypliny",
+                "arrow": "above",
+                "label": "75% przy jednej dyscyplinie",
+                "dx": -330,
+                "dy": 20,
+            },
+        ],
+    )
+    top = shot(red, None, 0, 300)
+    g = page_box(red, grp)
+    bottom = shot(red, None, g["y"] - 130, g["height"] + 150)
+    stitch(
+        red,
+        [top, bottom],
+        out / "03-dyscypliny-autora.png",
+        "przewiń do „Powiązania autor-dyscyplina”",
+    )
+
+    # 4. a person with data only for 2024-2025
+    # the search box takes one word (surname OR first name); the discipline
+    # filter narrows it down to the one person
+    red.goto(f"{base}/ewaluacja_liczba_n/autorzy/?search=Regis")
+    red.wait_for_load_state("networkidle")
+    opt = red.locator("select[name=dyscyplina] option", has_text="biotechnologia")
+    red.select_option("select[name=dyscyplina]", opt.first.get_attribute("value"))
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {"sel": "input[name=search]"},
+            {"sel": "select[name=dyscyplina]"},
+            {"sel": "#pager tbody tr:nth-child(1) td:nth-child(2)"},
+        ],
+    )
+    tab = page_box(red, "#pager")
+    h1 = page_box(red, "h1")
+    shot(
+        red,
+        out / "04-osoba-od-2024.png",
+        h1["y"] - 20,
+        tab["y"] + tab["height"] + 20 - (h1["y"] - 20),
+    )
+
+    # 5. "Weryfikuj poprawność bazy": author types, missing contract size
+    red.goto(f"{base}/ewaluacja_liczba_n/weryfikuj-baze/")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {"sel": "td", "text": "doktorant"},
+            {"sel": "td", "text": "brak danych"},
+            {
+                "sel": "button",
+                "text": "Ustaw wymiar etatu 1.0 wszystkim",
+                "arrow": "left",
+                "label": "uwaga: zawsze 1,0",
+                "dx": -20,
+                "dy": -10,
+            },
+        ],
+    )
+    h1 = page_box(red, "h1")
+    s2 = page_box(red, "h3", "2. Autor_Dyscyplina bez informacji")
+    shot(
+        red, out / "05-weryfikuj-baze.png", h1["y"] - 20, s2["y"] + 230 - (h1["y"] - 20)
+    )
+    red.context.close()
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -3558,6 +3724,7 @@ SCENARIOS = {
     ),
     "importer-publikacji": ("redaktor/importer-publikacji", importer_publikacji),
     "duplikaty": ("redaktor/duplikaty", duplikaty),
+    "liczba-n-faq": ("redaktor/liczba-n-faq", liczba_n_faq),
 }
 
 
