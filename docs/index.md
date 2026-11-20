@@ -42,6 +42,7 @@ zalogowaniu.
 - [PBN: wysyłanie prac, kolejka i porównanie](redaktor/pbn-wysylka-i-synchronizacja.md)
 - [Impact Factor, kwartyle i punktacja źródeł](redaktor/impact-factor-i-punktacja.md)
 - [Duplikaty autorów i źródeł](redaktor/duplikaty.md)
+- [Metryki ewaluacyjne autorów](redaktor/metryki-ewaluacyjne.md)
 - [Uczelnia](redaktor/uczelnia.md)
 - [Jednostki](redaktor/jednostki.md)
 - [Autorzy](redaktor/autorzy.md)
