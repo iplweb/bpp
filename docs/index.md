@@ -47,6 +47,7 @@ zalogowaniu.
 - [Import list ministerialnych i punktacji czasopism](redaktor/import-list-ministerialnych.md)
 - [Rozbieżności dyscyplin — jak je znaleźć i poprawić](redaktor/rozbieznosci-dyscyplin.md)
 - [Oświadczenia autorów i ich wysyłka do PBN](redaktor/oswiadczenia.md)
+- [Optymalizacja ewaluacji — wybór prac do slotów](redaktor/optymalizacja-ewaluacji.md)
 - [Uczelnia](redaktor/uczelnia.md)
 - [Jednostki](redaktor/jednostki.md)
 - [Autorzy](redaktor/autorzy.md)

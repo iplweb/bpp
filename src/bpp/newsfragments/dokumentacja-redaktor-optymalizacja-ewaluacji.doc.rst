@@ -1,0 +1,1 @@
+Dokumentacja: nowa strona dla redaktorów „Optymalizacja ewaluacji — wybór prac do slotów” (uruchamianie optymalizacji, czytanie wyników, eksport do Excela, odpinanie prac niewykazanych i powrót ze snapshotu).
