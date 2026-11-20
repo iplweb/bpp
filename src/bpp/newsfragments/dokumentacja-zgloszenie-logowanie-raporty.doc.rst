@@ -1,0 +1,1 @@
+Dokumentacja dla użytkowników: nowe strony ze zrzutami ekranu — „Jak zgłosić nową publikację”, „Nie mogę się zalogować”, „Gdzie sprawdzić punkty i sloty” oraz przewodnik „Raporty krok po kroku” dla osób przygotowujących zestawienia. Strona „Raporty i rankingi” opisuje aktualne zasady rankingu autorów.

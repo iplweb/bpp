@@ -131,17 +131,30 @@ pomocy wyświetla go w małym okienku, więc:
     Wpis w `PasswordHistory` jest potrzebny, inaczej polityka haseł
     przekierowuje świeże konto na zmianę hasła i zrzut pokazuje zły ekran.
 
-3. Gotową bazę warto zrzucić (`pg_dump -Fc`) i następnym razem startować z
-   niej: `uv run run-site run --from-dump <plik>` — kroki 1–2 odpadają.
+    Dwa kolejne konta tak samo (hasło = login, wpis w `PasswordHistory`):
+    **`jaskier`** — bez powiązanego autora (zrzut „Brak powiązania
+    z autorem”), **`filippa`** — w grupie **„generowanie raportów”**
+    (menu raporty/ewaluacja, raporty slotów).
 
-4. Raz na maszynie: `uv run playwright install chromium`.
+3. Sloty. Generator danych demo nie wpisuje dyscyplin przy autorach prac,
+   więc raporty slotów byłyby puste. Uzupełnia to skrypt:
+
+    ```bash
+    uv run python src/manage.py shell < bin/docs-demo-sloty.py
+    uv run python src/manage.py denorm_flush
+    ```
+
+4. Gotową bazę warto zrzucić (`pg_dump -Fc`) i następnym razem startować z
+   niej: `uv run run-site run --from-dump <plik>` — kroki 1–3 odpadają.
+
+5. Raz na maszynie: `uv run playwright install chromium`.
    Scenariusze, które przechodzą na stronę dokumentacji (np.
    `widget-publikacji` — generator kodu mieszka na GitHub Pages), wymagają
    zbudowanej dokumentacji: `mkdocs build` (katalog `site/`). Skrypt podstawia
    ją pod adres `https://iplweb.github.io/bpp/`, bo z prawdziwej strony HTTPS
    przeglądarka nie pozwoliłaby wczytać widgetu z lokalnego BPP po `http`.
 
-5. Wygeneruj i obejrzyj:
+6. Wygeneruj i obejrzyj:
 
     ```bash
     uv run python bin/docs-screenshots.py --list

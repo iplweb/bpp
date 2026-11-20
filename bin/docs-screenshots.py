@@ -30,8 +30,21 @@ IMAGES = REPO / "docs" / "images"
 DEMO_USER = "yennefer"
 # Local throwaway demo DB only; password == username keeps secret scanners quiet.
 DEMO_PASSWORD = DEMO_USER
+# Second demo account with NO linked author, for "Brak powiązania z autorem".
+DEMO_USER_BEZ_AUTORA = "jaskier"
+# Third demo account in the group "generowanie raportów" (reports, slots).
+DEMO_USER_RAPORTY = "filippa"
 
 VIEWPORT = {"width": 1280, "height": 800}
+
+# The Freshdesk "Pomoc" launcher floats over whatever we're explaining.
+HIDE_HELP_LAUNCHER = (
+    "document.addEventListener('DOMContentLoaded', () => {"
+    " const s = document.createElement('style');"
+    " s.textContent = '#freshworks-container, #launcher-frame, #bppSupportButton"
+    " { display: none !important }';"
+    " document.head.appendChild(s); });"
+)
 
 # One shared look for every screenshot: red (#e8173c) 4px highlight box,
 # 5px curved arrow, bold label in a white rounded pill, drop shadow on both
@@ -104,18 +117,22 @@ def mark(page: Page, marks: list[dict]) -> None:
     page.evaluate(OVERLAY_JS, [marks])
 
 
-def login(page: Page, base: str) -> None:
+def login(page: Page, base: str, user: str = DEMO_USER) -> None:
     page.goto(f"{base}/accounts/login/")
-    page.fill("input[name=username]", DEMO_USER)
-    page.fill("input[name=password]", DEMO_PASSWORD)
+    page.fill("input[name=username]", user)
+    page.fill("input[name=password]", user)  # demo accounts: password == login
     page.locator("form [type=submit]").first.click()
     page.wait_for_load_state("networkidle")
     if "/accounts/login/" in page.url:
         raise SystemExit(
-            f"Login as {DEMO_USER!r} failed - create the demo account first "
+            f"Login as {user!r} failed - create the demo account first "
             "(docs/deweloper/zrzuty-ekranu.md)."
         )
-    # The cookie banner would cover the lower part of every full-page shot.
+    close_cookie_banner(page)
+
+
+def close_cookie_banner(page: Page) -> None:
+    """The cookie banner would cover the lower part of every full-page shot."""
     agree = page.get_by_role("button", name="Zgadzam się")
     if agree.count():
         agree.first.click()
@@ -253,6 +270,11 @@ def page_box(page: Page, sel: str, text: str | None = None) -> dict:
         return {x: r.left + scrollX, y: r.top + scrollY, width: r.width, height: r.height}; }""",
         [sel, text],
     )
+
+
+# A demo record by Yennefer with points and slots (after the slot fix-up of
+# the demo DB, docs/deweloper/zrzuty-ekranu.md).
+REKORD_ZE_SLOTAMI = "szlaku-wiedzminskiego-studium-przypadku-sile-znakow-nr-271-Acta-Oxenfurcka-Merigold-Y-6-871"
 
 
 # "Torn paper" gap between two parts of one long page, so a single image can
@@ -430,7 +452,8 @@ def open_top_menu(page: Page, icon: str) -> str:
     wait for its fade-in. Returns the selector of the menu's <li>."""
     li = TOP_MENU.format(icon=icon)
     page.hover(f"{li} > a")
-    page.wait_for_selector(f"{li} > ul", state="visible")
+    # plain dropdowns are a <ul>; "ewaluacja" is a two-column wrapper
+    page.wait_for_selector(f"{li} > ul, {li} > .menu-columns-wrapper", state="visible")
     page.wait_for_timeout(800)
     return li
 
@@ -695,12 +718,604 @@ def pobieranie_listy(page: Page, base: str, out: Path) -> None:
     shot(page, out / "03-strona-autora-eksport.png", box["y"] - 20, box["height"] + 110)
 
 
+def new_session(page: Page, base: str, user: str | None = None) -> Page:
+    """A separate browser session: anonymous (user=None) or logged in as user."""
+    ctx = page.context.browser.new_context(
+        viewport=VIEWPORT, device_scale_factor=2, locale="pl-PL"
+    )
+    ctx.add_init_script(HIDE_HELP_LAUNCHER)
+    other = ctx.new_page()
+    if user:
+        login(other, base, user)
+    else:
+        other.goto(f"{base}/")
+        other.wait_for_load_state("networkidle")
+        close_cookie_banner(other)
+    return other
+
+
+def bottom_of(page: Page, sel: str, margin: float = 20) -> float:
+    box = page_box(page, sel)
+    return box["y"] + box["height"] + margin
+
+
+def select2(page: Page, select: str, szukaj: str, wybierz: str | None = None) -> None:
+    """Pick an option in a select2 autocomplete next to the given <select>."""
+    page.locator(f"{select} + .select2 .select2-selection").click()
+    # Fill the search box only once it exists - typing right after the click
+    # loses the first letters.
+    page.locator(".select2-container--open .select2-search__field").fill(szukaj)
+    page.locator(".select2-results__option", has_text=wybierz or szukaj).first.click()
+    page.wait_for_timeout(500)
+
+
+def punkty_i_sloty(page: Page, base: str, out: Path) -> None:
+    """docs/uzytkownik/punkty-i-sloty.md: points and slots on the author and record pages, author slot report."""
+    rap = new_session(page, base, DEMO_USER_RAPORTY)
+
+    # 1. author page: the points chart is a few screens down
+    rap.goto(f"{base}/bpp/autor/Yennefer-Merigold/")
+    rap.wait_for_load_state("networkidle")
+    rap.wait_for_timeout(1500)  # charts animate in
+    top = shot(rap, None, 0, 420)
+    mark(rap, [{"sel": "h3", "text": "Punkty MNiSW w latach"}])
+    h = page_box(rap, "h3", "Punkty MNiSW w latach")
+    bottom = shot(rap, None, h["y"] - 20, 420)
+    stitch(
+        rap,
+        [top, bottom],
+        out / "01-strona-autora-punkty.png",
+        "przewiń do sekcji „Punkty MNiSW w latach”",
+    )
+
+    # 2. record page: who got how many points and slots, per discipline
+    rap.goto(f"{base}/bpp/rekord/{REKORD_ZE_SLOTAMI}/")
+    rap.wait_for_load_state("networkidle")
+    mark(rap, [{"sel": "h3", "text": "Punkty i sloty autorów"}])
+    h = page_box(rap, "h3", "Punkty i sloty autorów")
+    top = shot(rap, None, 0, 330)
+    bottom = shot(rap, None, h["y"] - 20, 260)
+    stitch(
+        rap,
+        [top, bottom],
+        out / "02-strona-pracy-sloty.png",
+        "przewiń do tabeli „Punkty i sloty autorów”",
+    )
+
+    # 3. ewaluacja menu -> raport slotów - autor
+    rap.goto(f"{base}/")
+    rap.wait_for_load_state("networkidle")
+    li = open_top_menu(rap, "fi-graph-bar")
+    mark(
+        rap,
+        [
+            {
+                "sel": f"{li} a[href*='raport-slotow-autor']",
+                "arrow": "right",
+                "label": "punkty i sloty jednej osoby",
+                "dx": 40,
+            }
+        ],
+    )
+    menu = page_box(rap, f"{li} > .menu-columns-wrapper")
+    shot(rap, out / "03-menu-ewaluacja.png", 0, menu["y"] + menu["height"] + 40)
+
+    # 4. the form
+    rap.goto(f"{base}/raport_slotow/raport-slotow-autor/")
+    rap.wait_for_load_state("networkidle")
+    select2(rap, "select[name=obiekt]", "Merigold Yennefer")
+    rap.fill("[name=od_roku]", "2022")
+    rap.fill("[name=do_roku]", "2025")
+    rap.mouse.move(5, 5)
+    mark(
+        rap,
+        [
+            {
+                "sel": "select[name=obiekt] + .select2",
+                "arrow": "right",
+                "label": "1. autor",
+                "dx": 0,
+                "dy": -40,
+            },
+            {
+                "sel": "[name=do_roku]",
+                "arrow": "right",
+                "label": "2. lata",
+                "dx": 0,
+                "dy": -40,
+            },
+            {
+                "sel": "input[type=submit][value='Pobierz raport']",
+                "arrow": "right",
+                "label": "3. Pobierz raport",
+                "dx": 20,
+                "dy": -40,
+            },
+        ],
+    )
+    shot(
+        rap,
+        out / "04-raport-slotow-autor-formularz.png",
+        0,
+        bottom_of(rap, "input[type=submit][value='Pobierz raport']", 40),
+    )
+
+    # 5. the result: one table per discipline
+    rap.click("input[type=submit][value='Pobierz raport']")
+    rap.wait_for_load_state("networkidle")
+    mark(
+        rap,
+        [
+            {"sel": "a", "text": "pobierz XLS"},
+            {
+                "sel": "a",
+                "text": "pobierz PDF",
+                "arrow": "right",
+                "label": "Excel albo PDF",
+                "dx": 40,
+                "dy": -40,
+            },
+        ],
+    )
+    shot(rap, out / "05-raport-slotow-autor-wynik.png", 0, 760)
+    rap.context.close()
+
+
+def raporty(page: Page, base: str, out: Path) -> None:
+    """docs/uzytkownik/raporty-krok-po-kroku.md: the report guide (account in "generowanie raportów")."""
+    rap = new_session(page, base, DEMO_USER_RAPORTY)
+    submit = "input[type=submit]"
+
+    def lata(od: str = "2022", do: str = "2025") -> None:
+        rap.fill("[name=od_roku]", od)
+        rap.fill("[name=do_roku]", do)
+
+    # 1. "raporty" menu
+    li = open_top_menu(rap, "fi-graph-trend")
+    mark(
+        rap,
+        [
+            {
+                "sel": f"{li} > ul a",
+                "text": "Raport jednostek",
+                "arrow": "right",
+                "label": "listy prac: wydział, jednostka, autor",
+                "dx": 40,
+            },
+            {
+                "sel": f"{li} > ul a",
+                "text": "ranking",
+                "arrow": "right",
+                "label": "ranking autorów",
+                "dx": 40,
+                "dy": 10,
+            },
+        ],
+    )
+    menu = page_box(rap, f"{li} > ul")
+    shot(rap, out / "01-menu-raporty.png", 0, menu["y"] + menu["height"] + 40)
+
+    # 2. Raport jednostek: unit + years
+    rap.goto(f"{base}/nowe_raporty/raport-jednostek/")
+    rap.wait_for_load_state("networkidle")
+    select2(rap, "select[name=obiekt]", "Klinika Szermierki")
+    lata()
+    rap.mouse.move(5, 5)
+    mark(
+        rap,
+        [
+            {
+                "sel": "select[name=obiekt] + .select2",
+                "arrow": "right",
+                "label": "1. jednostka",
+                "dx": 0,
+                "dy": -40,
+            },
+            {
+                "sel": "[name=do_roku]",
+                "arrow": "right",
+                "label": "2. lata",
+                "dx": 0,
+                "dy": -40,
+            },
+            {
+                "sel": "select[name=_export]",
+                "arrow": "below",
+                "label": "ekran, Word albo Excel",
+                "dx": 100,
+                "dy": -50,
+            },
+            {
+                "sel": f"{submit}[value='Pobierz raport']",
+                "arrow": "right",
+                "label": "3. Pobierz raport",
+                "dx": 20,
+                "dy": -40,
+            },
+        ],
+    )
+    shot(
+        rap,
+        out / "02-raport-jednostek-formularz.png",
+        0,
+        bottom_of(rap, f"{submit}[value='Pobierz raport']", 40),
+    )
+
+    # 3. its result, with Word/Excel downloads
+    rap.click(f"{submit}[value='Pobierz raport']")
+    rap.wait_for_load_state("networkidle")
+    mark(
+        rap,
+        [
+            {
+                "sel": "a",
+                "text": "pobierz jako MS Word",
+                "arrow": "left",
+                "label": "pobierz plik",
+                "dx": 0,
+                "dy": -40,
+            },
+            {"sel": "a", "text": "pobierz jako XLSX"},
+        ],
+    )
+    shot(rap, out / "03-raport-jednostek-wynik.png", 0, 700)
+
+    # 4. Ranking autorów
+    rap.goto(f"{base}/bpp/raporty/ranking-autorow/wybierz/")
+    rap.wait_for_load_state("networkidle")
+    lata()
+    rap.mouse.move(5, 5)
+    mark(
+        rap,
+        [
+            {
+                "sel": "[name=do_roku]",
+                "arrow": "right",
+                "label": "1. lata",
+                "dx": 0,
+                "dy": -40,
+            },
+            {
+                "sel": f"{submit}[value='Otwórz']",
+                "arrow": "right",
+                "label": "2. Otwórz",
+                "dx": 20,
+                "dy": -40,
+            },
+        ],
+    )
+    box = page_box(rap, f"{submit}[value='Otwórz']")
+    top = shot(rap, None, 0, 520)
+    bottom = shot(rap, None, box["y"] - 200, 280)
+    stitch(
+        rap,
+        [top, bottom],
+        out / "04-ranking-formularz.png",
+        "niżej: filtry (opcjonalne) — przewiń do przycisku „Otwórz”",
+    )
+
+    # 5. ranking result
+    rap.click(f"{submit}[value='Otwórz']")
+    rap.wait_for_load_state("networkidle")
+    mark(
+        rap,
+        [
+            {
+                "sel": "a",
+                "text": "Pobierz XLSX",
+                "arrow": "left",
+                "label": "do Excela",
+                "dx": 0,
+                "dy": -40,
+            }
+        ],
+    )
+    shot(rap, out / "05-ranking-wynik.png", 0, 700)
+
+    # 6. Raport slotów - zerowy: who has a discipline but no slots
+    rap.goto(f"{base}/raport_slotow/raport-slotow-zerowy/")
+    rap.wait_for_load_state("networkidle")
+    lata()
+    rap.click(f"{submit}[value='Wyślij formularz']")
+    rap.wait_for_load_state("networkidle")
+    mark(
+        rap,
+        [
+            {
+                "sel": "input[value='Pobierz XLS']",
+                "arrow": "above",
+                "label": "do Excela",
+                "dx": -200,
+                "dy": 50,
+            }
+        ],
+    )
+    shot(rap, out / "06-raport-zerowy-wynik.png", 0, 700)
+
+    # 7. Raport slotów - ewaluacja: every author x work x discipline
+    rap.goto(f"{base}/raport_slotow/raport-slotow-ewaluacja/")
+    rap.wait_for_load_state("networkidle")
+    lata()
+    rap.click(f"{submit}[value='Pobierz raport']")
+    rap.wait_for_load_state("networkidle")
+    mark(
+        rap,
+        [
+            {
+                "sel": "input[value='Pobierz XLS']",
+                "arrow": "above",
+                "label": "do Excela",
+                "dx": -200,
+                "dy": 50,
+            }
+        ],
+    )
+    shot(rap, out / "07-raport-ewaluacja-wynik.png", 0, 700)
+    rap.context.close()
+
+
+def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
+    """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
+    nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
+
+    # 1. the only entry point: the big button on the home page
+    page.goto(f"{base}/")
+    page.wait_for_load_state("networkidle")
+    mark(
+        page,
+        [
+            {
+                "sel": "a.main-page-button-primary",
+                "arrow": "below",
+                "label": "zgłoś nową publikację",
+                "dx": -200,
+                "dy": -55,
+            }
+        ],
+    )
+    shot(page, out / "01-strona-glowna.png", 0, 560)
+
+    # 2. step "Rodzaj": a click on a tile moves on by itself
+    page.goto(f"{base}/zglos_publikacje/nowe_zgloszenie/")
+    page.wait_for_load_state("networkidle")
+    mark(
+        page,
+        [
+            {
+                "sel": "label.tile-card[data-value=ARTYKUL]",
+                "arrow": "above",
+                "label": "kliknij rodzaj",
+                "dx": 300,
+                "dy": 40,
+            }
+        ],
+    )
+    shot(page, out / "02-rodzaj.png", 0, bottom_of(page, "#form-container"))
+    page.click("label.tile-card[data-value=ARTYKUL]")
+    page.wait_for_load_state("networkidle")
+
+    # 3. step "Dostęp"
+    mark(
+        page,
+        [
+            {
+                "sel": "label.tile-card[data-value=OTWARTY]",
+                "arrow": "right",
+                "label": "jest w internecie — podasz link lub DOI",
+                "dx": -560,
+                "dy": -40,
+            },
+            {
+                "sel": "label.tile-card[data-value=OGRANICZONY]",
+                "arrow": "right",
+                "label": "nie ma — dołączysz PDF",
+                "dx": -400,
+                "dy": -40,
+            },
+        ],
+    )
+    shot(page, out / "03-dostep.png", 0, bottom_of(page, "#form-container"))
+    page.click("label.tile-card[data-value=OTWARTY]")
+    page.wait_for_load_state("networkidle")
+
+    # 4. step "Dane"
+    page.fill(
+        "[name='2-tytul_oryginalny']",
+        "Wpływ fazy księżyca na skuteczność eliksiru Jaskółka",
+    )
+    page.fill("[name='2-rok']", "2024")
+    page.fill("[name='2-strona_www']", "10.1234/aretuza.2024.017")
+    mark(
+        page,
+        [
+            {
+                "sel": "[name='2-strona_www']",
+                "arrow": "above",
+                "label": "adres strony albo sam DOI",
+                "dx": 250,
+                "dy": 102,
+            },
+            {
+                "sel": nastepny,
+                "arrow": "left",
+                "label": "dalej",
+                "dx": 0,
+                "dy": -30,
+            },
+        ],
+    )
+    shot(page, out / "04-dane.png", 0, bottom_of(page, ".wizard-nav"))
+    page.click(nastepny)
+    page.wait_for_load_state("networkidle")
+
+    # 5. step "Autorzy": the unit fills itself in once the author is picked
+    def wybierz(pole: str, szukaj: str) -> None:
+        page.locator(f"select[name='3-0-{pole}'] + .select2 .select2-selection").click()
+        # Type into the search box only once it exists - typing right after
+        # the click loses the first letters ("Yennefer" -> "ennefer").
+        page.locator(".select2-container--open .select2-search__field").fill(szukaj)
+        page.locator(".select2-results__option", has_text=szukaj).first.click()
+        page.wait_for_timeout(500)
+
+    wybierz("autor", "Merigold Yennefer")
+    # The list holds only the author's disciplines for that year; take the first.
+    page.locator(
+        "select[name='3-0-dyscyplina_naukowa'] + .select2 .select2-selection"
+    ).click()
+    page.locator(".select2-results__option:not(.loading-results)").first.click()
+    page.wait_for_timeout(500)
+    page.mouse.move(5, 5)
+    mark(
+        page,
+        [
+            {
+                "sel": "select[name='3-0-autor'] + .select2",
+                "arrow": "above",
+                "label": "wpisz nazwisko i wybierz z listy",
+                "dx": 120,
+                "dy": 60,
+            },
+            {
+                "sel": "#add-form",
+                "arrow": "right",
+                "label": "kolejni współautorzy z uczelni",
+                "dx": 40,
+            },
+        ],
+    )
+    shot(page, out / "05-autorzy.png", 0, bottom_of(page, ".wizard-nav"))
+    page.click(nastepny)
+    page.wait_for_load_state("networkidle")
+
+    # 6. step "Płatności" (only for some kinds): "Publikacja bezkosztowa" must be answered
+    page.select_option("[name='4-opl_pub_cost_free']", label="Tak")
+    mark(
+        page,
+        [
+            {
+                "sel": "[name='4-opl_pub_cost_free']",
+                "arrow": "right",
+                "label": "wymagane: Tak albo Nie",
+                "dx": -330,
+                "dy": -95,
+            },
+            {
+                "sel": nastepny,
+                "arrow": "above",
+                "label": "Zakończ i wyślij",
+                "dx": -200,
+                "dy": 40,
+            },
+        ],
+    )
+    shot(page, out / "06-platnosci.png", 0, bottom_of(page, ".wizard-nav"))
+    page.click(nastepny)
+    page.wait_for_load_state("networkidle")
+    page.wait_for_selector("text=Dziękujemy!")
+
+    # 7. confirmation
+    shot(page, out / "07-sukces.png", 0, bottom_of(page, "a.submit.button", 40))
+
+
+def logowanie(page: Page, base: str, out: Path) -> None:
+    """docs/uzytkownik/logowanie.md: logging in, password reset, lockout, account without an author."""
+    anon = new_session(page, base)
+
+    # 1. "zaloguj" menu (anonymous visitor)
+    li = open_top_menu(anon, "fi-lock")
+    mark(
+        anon,
+        [
+            {
+                "sel": f"{li} > ul a[href*='login']",
+                "arrow": "right",
+                "label": "konto w BPP",
+                "dx": 60,
+            },
+        ],
+    )
+    menu = page_box(anon, f"{li} > ul")
+    shot(anon, out / "01-menu-zaloguj.png", 0, menu["y"] + menu["height"] + 40)
+
+    # 2. login form with the "forgot password" link
+    anon.goto(f"{base}/accounts/login/")
+    anon.wait_for_load_state("networkidle")
+    mark(
+        anon,
+        [
+            {
+                "sel": "a[href*='password_reset']",
+                "arrow": "right",
+                "label": "nie pamiętam hasła",
+                "dx": 40,
+            },
+        ],
+    )
+    shot(
+        anon,
+        out / "02-logowanie.png",
+        0,
+        bottom_of(anon, "a[href*='password_reset']", 60),
+    )
+
+    # 3. password reset form
+    anon.click("a[href*='password_reset']")
+    anon.wait_for_load_state("networkidle")
+    mark(
+        anon,
+        [
+            {
+                "sel": "input[type=email]",
+                "arrow": "left",
+                "label": "adres e-mail z konta BPP",
+                "dx": 40,
+                "dy": 30,
+            },
+        ],
+    )
+    shot(anon, out / "03-reset-hasla.png", 150, 420)
+
+    # 4. lockout after too many failed attempts. Axes locks the (login, IP)
+    # pair, so a made-up login leaves the demo accounts usable.
+    for _ in range(11):
+        anon.goto(f"{base}/accounts/login/")
+        anon.fill("input[name=username]", "geralt")
+        anon.fill("input[name=password]", "zle-haslo")
+        anon.locator("form [type=submit]").first.click()
+        anon.wait_for_load_state("networkidle")
+        if anon.locator("text=Konto tymczasowo zablokowane").count():
+            break
+    anon.wait_for_selector("h1:has-text('Konto tymczasowo zablokowane')")
+    shot(
+        anon,
+        out / "04-blokada.png",
+        0,
+        bottom_of(anon, "a.button.secondary[href='/']", 60),
+    )
+    anon.context.close()
+
+    # 5. logged in, but the account is not linked to an author
+    bez = new_session(page, base, DEMO_USER_BEZ_AUTORA)
+    bez.goto(f"{base}/bpp/profil/")
+    bez.wait_for_load_state("networkidle")
+    mark(bez, [{"sel": ".callout.warning", "text": "Brak powiązania"}])
+    shot(bez, out / "05-brak-powiazania.png", 0, bottom_of(bez, ".callout.warning", 16))
+    bez.context.close()
+
+
 # name -> (docs/images subdirectory, function)
 SCENARIOS = {
     "moj-profil-autora": ("uzytkownik/moj-profil-autora", moj_profil_autora),
     "widget-publikacji": ("uzytkownik/widget-publikacji", widget_publikacji),
     "wyszukiwanie": ("uzytkownik/wyszukiwanie", wyszukiwanie),
     "pobieranie-listy": ("uzytkownik/pobieranie-listy-publikacji", pobieranie_listy),
+    "zgloszenie-publikacji": (
+        "uzytkownik/zgloszenie-publikacji",
+        zgloszenie_publikacji,
+    ),
+    "logowanie": ("uzytkownik/logowanie", logowanie),
+    "punkty-i-sloty": ("uzytkownik/punkty-i-sloty", punkty_i_sloty),
+    "raporty": ("uzytkownik/raporty", raporty),
 }
 
 
@@ -730,14 +1345,7 @@ def main() -> int:
         ctx = browser.new_context(
             viewport=VIEWPORT, device_scale_factor=2, locale="pl-PL"
         )
-        # The Freshdesk "Pomoc" launcher floats over whatever we're explaining.
-        ctx.add_init_script(
-            "document.addEventListener('DOMContentLoaded', () => {"
-            " const s = document.createElement('style');"
-            " s.textContent = '#freshworks-container, #launcher-frame"
-            " { display: none !important }';"
-            " document.head.appendChild(s); });"
-        )
+        ctx.add_init_script(HIDE_HELP_LAUNCHER)
         page = ctx.new_page()
         login(page, base)
         for name in args.scenario or list(SCENARIOS):
