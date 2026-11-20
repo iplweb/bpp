@@ -1280,7 +1280,9 @@ def logowanie(page: Page, base: str, out: Path) -> None:
     for _ in range(11):
         anon.goto(f"{base}/accounts/login/")
         anon.fill("input[name=username]", "geralt")
-        anon.fill("input[name=password]", "zle-haslo")
+        anon.fill(
+            "input[name=password]", "geralt"
+        )  # wrong on purpose (no such account)
         anon.locator("form [type=submit]").first.click()
         anon.wait_for_load_state("networkidle")
         if anon.locator("text=Konto tymczasowo zablokowane").count():
