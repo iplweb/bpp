@@ -26,6 +26,59 @@ uv run python src/manage.py create_demo_data \
 - `--od-roku 2020 --do-roku 2026` — zakres lat prac
 - `--seed 123` — deterministyczny wynik
 
+## Plik POL-on do importu (`--polon-plik`)
+
+Generator potrafi zapisać fałszywy eksport POL-on „Rozszerzone zestawienie
+pracowników podmiotu" dla uczelni demo — do przećwiczenia „operacje → import
+z POLON" i „ewaluacja → liczba N" na bazie demo.
+
+Przy tworzeniu danych (plik powstaje na samym końcu):
+
+```bash
+uv run python src/manage.py create_demo_data --motyw wiedzmin --seed 42 \
+    --polon-plik /tmp/ \
+    --yes-i-am-sure --confirm-db <NAZWA_BAZY>
+```
+
+Na istniejącej bazie demo (wygenerowanej albo odtworzonej z dumpa; baza
+jest tylko czytana):
+
+```bash
+uv run python src/manage.py generuj_plik_polon_demo --out /tmp/
+```
+
+Podanie katalogu daje nazwę jak w prawdziwym eksporcie
+(`rozszerzone_zestawienie_pracownikow_podmiotu_na_dzien_wygenerowania_raportu_<RRRR-MM-DD>.xlsx`).
+
+Domyślnie plik zawiera cztery dyscypliny z celem FTE N na rok: filozofia (16),
+nauki teologiczne (5), biotechnologia (15), archeologia (14) — po imporcie
+liczba N wychodzi ≥ 12 w trzech z nich, a „nauki teologiczne" są
+nieraportowane (< 12). Własne dyscypliny i cele:
+`--dyscypliny filozofia=16 "nauki teologiczne=5"` (w `create_demo_data`:
+`--polon-dyscypliny`); nazwy muszą być dokładnie takie jak w słowniku
+dyscyplin.
+
+Zawartość pliku:
+
+- ok. 75% wierszy to osoby w liczbie N (kilka w dwóch dyscyplinach, 60/40),
+  po ok. 10% pracowników badawczo-dydaktycznych spoza N (B) i dydaktycznych (Z);
+- do pliku trafiają tylko autorzy uczelni o **unikalnym** imieniu i nazwisku
+  (importer nie rozstrzygnie imienników); brakujący ORCID dostaje fałszywy,
+  poprawny numer (wyłączenie w `generuj_plik_polon_demo`: `--bez-orcid`);
+- cztery celowo błędne wiersze: zatrudnienie w innej uczelni (pominięty),
+  osoba spoza BPP, dyscyplina spoza słownika („eliksirologia stosowana") i
+  osoba w N bez wymiaru etatu. Wyłączenie: `--bez-blednych-wierszy`
+  (w `create_demo_data`: `--polon-bez-blednych-wierszy`).
+
+Plik nie ma roku — zaimportuj go cztery razy, z polem „Rok" 2022, 2023, 2024
+i 2025 (z „Zapisz zmiany do bazy"), a potem „Oblicz liczbę N". Plik ma
+własny generator losowy, więc `--polon-plik` nie zmienia pozostałych danych
+dla danego `--seed`.
+
+> Skrypt `bin/docs-demo-sloty.py` oznacza **wszystkich** autorów jako „N" —
+> po nim „nauki teologiczne" nie zejdą poniżej 12. Do pokazania dyscypliny
+> nieraportowanej importuj plik na bazie bez tego skryptu.
+
 ## Sprzątanie
 
 Manifest zapisany przy tworzeniu (np. `demo_data_manifest_*.json`):
