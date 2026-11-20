@@ -16,6 +16,7 @@ elements, so re-running after a UI change re-places them automatically.
 from __future__ import annotations
 
 import argparse
+import base64
 import sys
 from pathlib import Path
 
@@ -247,6 +248,45 @@ def page_box(page: Page, sel: str) -> dict:
     )
 
 
+# "Torn paper" gap between two parts of one long page, so a single image can
+# show both where you are (top) and what to click (far below).
+STITCH_HTML = """<!doctype html><html><head><meta charset="utf-8"><style>
+ body{margin:0;background:#fff;width:__W__px}
+ img{display:block;width:__W__px}
+ .cut{position:relative;height:64px;background:#e9e9ee;
+   display:flex;align-items:center;justify-content:center;
+   font:600 18px system-ui,sans-serif;color:#555}
+ .cut svg{position:absolute;left:0;width:100%;height:14px}
+ .cut .t{top:0} .cut .b{bottom:0;transform:scaleY(-1)}
+</style></head><body>__PARTS__</body></html>"""
+CUT = (
+    '<div class="cut">'
+    + "".join(
+        f'<svg class="{c}" viewBox="0 0 100 14" preserveAspectRatio="none">'
+        '<polygon fill="#fff" points="0,0 100,0 '
+        + " ".join(f"{100 - i},{10 if i % 4 else 2}" for i in range(0, 101, 2))
+        + '"/></svg>'
+        for c in ("t", "b")
+    )
+    + "✂&nbsp; __LABEL__ &nbsp;✂</div>"
+)
+
+
+def stitch(page: Page, parts: list[bytes], path: Path, label: str) -> None:
+    """Save parts (PNG bytes, top to bottom) as one image joined by torn-edge gaps."""
+    imgs = [
+        f'<img src="data:image/png;base64,{base64.b64encode(b).decode()}">'
+        for b in parts
+    ]
+    html = STITCH_HTML.replace("__W__", str(VIEWPORT["width"])).replace(
+        "__PARTS__", CUT.replace("__LABEL__", label).join(imgs)
+    )
+    tmp = page.context.new_page()
+    tmp.set_content(html)
+    tmp.screenshot(path=path, full_page=True)
+    tmp.close()
+
+
 def proxy_public_bpp(page: Page, base: str) -> None:
     """Answer PUBLIC_BPP requests from the local stack, so screenshots show a
     realistic address instead of http://localhost:PORT. It also keeps every
@@ -295,20 +335,22 @@ def widget_publikacji(page: Page, base: str, out: Path) -> None:
     page.click("a[href*='/bpp/autor/']")  # "Powiązany autor" -> own author page
     page.wait_for_load_state("networkidle")
     link = ".autor-page__embed-link a"
+    w = VIEWPORT["width"]
+    top = page.screenshot(clip={"x": 0, "y": 0, "width": w, "height": 420})
     page.locator(link).scroll_into_view_if_needed()
     mark(
         page, [{"sel": link, "arrow": "above", "label": "kliknij", "dx": 40, "dy": 40}]
     )
     box = page_box(page, ".autor-page__embed-link")
-    page.screenshot(
-        path=out / "01-strona-autora-osadz.png",
+    bottom = page.screenshot(
         full_page=True,
-        clip={
-            "x": 0,
-            "y": max(0, box["y"] - 170),
-            "width": VIEWPORT["width"],
-            "height": box["height"] + 210,
-        },
+        clip={"x": 0, "y": box["y"] - 170, "width": w, "height": box["height"] + 190},
+    )
+    stitch(
+        page,
+        [top, bottom],
+        out / "01-strona-autora-osadz.png",
+        "przewiń na sam dół strony",
     )
     href = page.locator(link).get_attribute("href")
 
