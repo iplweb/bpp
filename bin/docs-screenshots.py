@@ -129,12 +129,26 @@ def moj_profil_autora(page: Page, base: str, out: Path) -> None:
     page.hover("#konto-menu-item > a")
     page.wait_for_selector("#konto-submenu a[href*='profil']", state="visible")
     page.wait_for_timeout(800)  # let the dropdown finish its fade-in
-    mark(page, [
-        {"sel": "#konto-menu-item > a", "arrow": "right", "label": "1. konto", "dy": -40},
-        {"sel": "#konto-submenu a[href*='profil']", "arrow": "right", "label": "2. mój profil"},
-    ])
-    page.screenshot(path=out / "01-menu-konto.png",
-                    clip={"x": 0, "y": 0, "width": VIEWPORT["width"], "height": 300})
+    mark(
+        page,
+        [
+            {
+                "sel": "#konto-menu-item > a",
+                "arrow": "right",
+                "label": "1. konto",
+                "dy": -40,
+            },
+            {
+                "sel": "#konto-submenu a[href*='profil']",
+                "arrow": "right",
+                "label": "2. mój profil",
+            },
+        ],
+    )
+    page.screenshot(
+        path=out / "01-menu-konto.png",
+        clip={"x": 0, "y": 0, "width": VIEWPORT["width"], "height": 300},
+    )
 
     # 2. profile page: "Edytuj swoją stronę"
     page.mouse.move(5, 700)
@@ -144,27 +158,206 @@ def moj_profil_autora(page: Page, base: str, out: Path) -> None:
     page.locator(edit).first.scroll_into_view_if_needed()
     mark(page, [{"sel": edit, "arrow": "left", "label": "kliknij"}])
     box = page.locator("div.callout.success").first.bounding_box()
-    page.screenshot(path=out / "02-profil-edytuj.png", full_page=True,
-                    clip={"x": 0, "y": max(0, box["y"] - 30), "width": VIEWPORT["width"],
-                          "height": box["height"] + 150})
+    page.screenshot(
+        path=out / "02-profil-edytuj.png",
+        full_page=True,
+        clip={
+            "x": 0,
+            "y": max(0, box["y"] - 30),
+            "width": VIEWPORT["width"],
+            "height": box["height"] + 150,
+        },
+    )
 
     # 3. the edit form
     page.click(edit)
     page.wait_for_load_state("networkidle")
-    mark(page, [
-        {"sel": "fieldset:nth-of-type(1) legend", "arrow": "right", "label": "zdjęcie"},
-        {"sel": "fieldset:nth-of-type(2) legend", "arrow": "right", "label": "biogram"},
-        {"sel": "fieldset:nth-of-type(3) legend", "arrow": "right",
-         "label": "profile w innych serwisach"},
-        {"sel": "button.button.primary.large[type=submit]", "arrow": "above",
-         "label": "na koniec zapisz", "dx": 260, "dy": 75},
-    ])
+    mark(
+        page,
+        [
+            {
+                "sel": "fieldset:nth-of-type(1) legend",
+                "arrow": "right",
+                "label": "zdjęcie",
+            },
+            {
+                "sel": "fieldset:nth-of-type(2) legend",
+                "arrow": "right",
+                "label": "biogram",
+            },
+            {
+                "sel": "fieldset:nth-of-type(3) legend",
+                "arrow": "right",
+                "label": "profile w innych serwisach",
+            },
+            {
+                "sel": "button.button.primary.large[type=submit]",
+                "arrow": "above",
+                "label": "na koniec zapisz",
+                "dx": 260,
+                "dy": 75,
+            },
+        ],
+    )
     page.screenshot(path=out / "03-formularz-edycji.png", full_page=True)
+
+
+# A made-up department page standing in for "your own website" in the widget
+# screenshots. Served by page.route() under a fake https:// origin, so the
+# widget really runs cross-origin, exactly as on a customer site.
+EXAMPLE_SITE = "https://katedra.example"
+EXAMPLE_PAGE = """<!doctype html><html lang="pl"><head><meta charset="utf-8">
+<title>dr Yennefer z Vengerbergu — Katedra Magii Stosowanej</title>
+<style>
+ body{margin:0;font:16px/1.5 Georgia,serif;color:#2b2233;background:#f6f3ee}
+ header{background:#3b1f4a;color:#fff;padding:18px 40px}
+ header b{font-size:22px} header span{opacity:.75;margin-left:14px}
+ nav{background:#5a3570;padding:8px 40px} nav a{color:#fff;margin-right:22px;
+   text-decoration:none;font:14px system-ui,sans-serif}
+ main{display:flex;gap:40px;padding:30px 40px 170px;max-width:1100px}
+ aside{flex:0 0 220px} .foto{width:200px;height:200px;border-radius:8px;
+   background:linear-gradient(135deg,#7b4b94,#2b1638)}
+ article{flex:1} h1{margin:0 0 4px} .rola{color:#6d5a78;margin:0 0 18px}
+ h2{border-bottom:2px solid #c9b8d4;padding-bottom:4px}
+</style></head><body>
+<header><b>Aretuza — Akademia Magii</b><span>Katedra Magii Stosowanej</span></header>
+<nav><a href="#">Aktualności</a><a href="#">Pracownicy</a><a href="#">Dydaktyka</a>
+<a href="#">Badania</a><a href="#">Kontakt</a></nav>
+<main><aside><div class="foto"></div><p>pok. 12, Wieża Wschodnia<br>
+dyżur: wtorek 10–12</p></aside>
+<article><h1>dr Yennefer z Vengerbergu</h1><p class="rola">adiunkt</p>
+<p>Zajmuje się teorią i praktyką magii stosowanej, w szczególności
+zaklęciami ochronnymi i teleportacją.</p>
+<h2>Najnowsze publikacje</h2>
+<script src="__BASE__/static/embed/bpp-publikacje.js"
+        data-autor="__AUTOR__" data-limit="5" async></script>
+</article></main></body></html>"""
+
+
+def page_box(page: Page, sel: str) -> dict:
+    """Element box in *page* coordinates (bounding_box() is viewport-relative,
+    which is wrong for full_page clips once the page has scrolled)."""
+    return page.evaluate(
+        """(sel) => { const r = document.querySelector(sel).getBoundingClientRect();
+        return {x: r.left + scrollX, y: r.top + scrollY, width: r.width, height: r.height}; }""",
+        sel,
+    )
+
+
+def serve_docs_locally(page: Page) -> None:
+    """Serve the GitHub Pages docs from a local `mkdocs build` (REPO/site).
+
+    The author page links to the code generator on iplweb.github.io. That page
+    is HTTPS and our local BPP is plain http, so the browser would block the
+    live preview as mixed content — hence the local copy, at the same URL.
+    """
+    site = REPO / "site"
+    if not (site / "index.html").exists():
+        raise SystemExit("Build the docs first: mkdocs build  (writes ./site)")
+    prefix = "https://iplweb.github.io/bpp/"
+
+    def handle(route):
+        rel = route.request.url.split("?")[0].split("#")[0][len(prefix) :]
+        path = site / rel
+        if path.is_dir():
+            path = path / "index.html"
+        if path.is_file():
+            route.fulfill(path=str(path))
+        else:
+            route.fulfill(status=404, body="not found")
+
+    page.route(prefix + "**", handle)
+
+
+def widget_publikacji(page: Page, base: str, out: Path) -> None:
+    """docs/uzytkownik/widget-publikacji.md + KB 'Jak wstawić listę swoich publikacji na stronę WWW'."""
+    # 1. author page: the "Osadź publikacje…" link at the bottom
+    page.goto(f"{base}/bpp/profil/")
+    page.wait_for_load_state("networkidle")
+    page.click("a[href*='/bpp/autor/']")  # "Powiązany autor" -> own author page
+    page.wait_for_load_state("networkidle")
+    link = ".autor-page__embed-link a"
+    page.locator(link).scroll_into_view_if_needed()
+    mark(
+        page, [{"sel": link, "arrow": "above", "label": "kliknij", "dx": 40, "dy": 40}]
+    )
+    box = page_box(page, ".autor-page__embed-link")
+    page.screenshot(
+        path=out / "01-strona-autora-osadz.png",
+        full_page=True,
+        clip={
+            "x": 0,
+            "y": max(0, box["y"] - 170),
+            "width": VIEWPORT["width"],
+            "height": box["height"] + 210,
+        },
+    )
+    href = page.locator(link).get_attribute("href")
+
+    # 2. the code generator, pre-filled from the link
+    serve_docs_locally(page)
+    page.goto(href)
+    page.wait_for_load_state("networkidle")
+    page.fill("#g-limit", "5")
+    # the preview re-renders 600 ms after input; wait for the 5-item version
+    page.wait_for_function(
+        "document.querySelectorAll('#bpp-podglad .bpp-publikacje__item').length === 5"
+    )
+    page.wait_for_timeout(500)
+    mark(
+        page,
+        [
+            {
+                "sel": "#bpp-gen p:has(#g-limit)",
+                "arrow": "right",
+                "label": "1. opcje",
+                "dy": 10,
+            },
+            {"sel": "#g-copy", "arrow": "right", "label": "2. Kopiuj kod"},
+            {"sel": "#bpp-podglad", "arrow": "right", "label": "podgląd", "dy": -60},
+        ],
+    )
+    top = page_box(page, "h2#generator-kodu")
+    end = page_box(page, "#bpp-podglad")
+    page.screenshot(
+        path=out / "02-generator-kodu.png",
+        full_page=True,
+        clip={
+            "x": 0,
+            "y": top["y"] - 20,
+            "width": VIEWPORT["width"],
+            "height": end["y"] + end["height"] - top["y"] + 28,
+        },
+    )
+
+    # 3. the result on "your" website
+    autor = href.split("autor=")[1].split("&")[0]
+    html = EXAMPLE_PAGE.replace("__BASE__", base).replace("__AUTOR__", autor)
+    page.route(
+        EXAMPLE_SITE + "/**",
+        lambda route: route.fulfill(body=html, content_type="text/html; charset=utf-8"),
+    )
+    page.goto(EXAMPLE_SITE + "/pracownicy/yennefer/")
+    page.wait_for_selector(".bpp-publikacje__item")
+    page.wait_for_timeout(300)
+    mark(
+        page,
+        [
+            {
+                "sel": ".bpp-publikacje",
+                "arrow": "below",
+                "label": "lista z BPP — aktualizuje się sama",
+                "dy": -20,
+            }
+        ],
+    )
+    page.screenshot(path=out / "03-na-stronie-www.png", full_page=True)
 
 
 # name -> (docs/images subdirectory, function)
 SCENARIOS = {
     "moj-profil-autora": ("uzytkownik/moj-profil-autora", moj_profil_autora),
+    "widget-publikacji": ("uzytkownik/widget-publikacji", widget_publikacji),
 }
 
 
@@ -187,8 +380,15 @@ def main() -> int:
     with sync_playwright() as pw:
         # channel="chromium" = full Chromium (not the headless shell), which
         # honours --lang, so native widgets read "Wybierz plik", not "Choose File".
-        browser = pw.chromium.launch(channel="chromium", args=["--lang=pl"])
-        ctx = browser.new_context(viewport=VIEWPORT, device_scale_factor=2, locale="pl-PL")
+        # LocalNetworkAccessChecks: the widget scenarios load the local BPP
+        # (loopback) from https:// pages; Chromium would block that.
+        browser = pw.chromium.launch(
+            channel="chromium",
+            args=["--lang=pl", "--disable-features=LocalNetworkAccessChecks"],
+        )
+        ctx = browser.new_context(
+            viewport=VIEWPORT, device_scale_factor=2, locale="pl-PL"
+        )
         page = ctx.new_page()
         login(page, base)
         for name in args.scenario or list(SCENARIOS):

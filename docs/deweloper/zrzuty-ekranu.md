@@ -58,6 +58,11 @@ zamykamy przed zrzutem.
   (`arrow`: `left`/`right`/`above`/`below`) i przesunięcie podpisu
   (`dx`/`dy`) dobieramy tak, żeby podpis stał w pustym miejscu.
 
+**Strona „u klienta”.** Gdy trzeba pokazać efekt na zewnętrznej stronie
+(np. widget publikacji), używamy wymyślonej strony z motywu demo
+(`EXAMPLE_PAGE` w skrypcie, adres `https://katedra.example`), nigdy strony
+prawdziwej uczelni.
+
 **Kadr.** Tylko fragment, o którym mowa w tekście (`clip=`), chyba że zrzut
 pokazuje cały formularz. Każdy zrzut **obejrzyj** po wygenerowaniu —
 nakładające się podpisy i niedokończone animacje (rozwijane menu) widać
@@ -107,6 +112,11 @@ dopiero na obrazku.
    niej: `uv run run-site run --from-dump <plik>` — kroki 1–2 odpadają.
 
 4. Raz na maszynie: `uv run playwright install chromium`.
+   Scenariusze, które przechodzą na stronę dokumentacji (np.
+   `widget-publikacji` — generator kodu mieszka na GitHub Pages), wymagają
+   zbudowanej dokumentacji: `mkdocs build` (katalog `site/`). Skrypt podstawia
+   ją pod adres `https://iplweb.github.io/bpp/`, bo z prawdziwej strony HTTPS
+   przeglądarka nie pozwoliłaby wczytać widgetu z lokalnego BPP po `http`.
 
 5. Wygeneruj i obejrzyj:
 
