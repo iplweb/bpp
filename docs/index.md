@@ -43,6 +43,7 @@ zalogowaniu.
 - [Impact Factor, kwartyle i punktacja źródeł](redaktor/impact-factor-i-punktacja.md)
 - [Duplikaty autorów i źródeł](redaktor/duplikaty.md)
 - [Metryki ewaluacyjne autorów](redaktor/metryki-ewaluacyjne.md)
+- [Liczba N — najczęstsze pytania](redaktor/liczba-n-faq.md)
 - [Uczelnia](redaktor/uczelnia.md)
 - [Jednostki](redaktor/jednostki.md)
 - [Autorzy](redaktor/autorzy.md)
