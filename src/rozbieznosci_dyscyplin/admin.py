@@ -3,8 +3,9 @@ from collections.abc import Iterable
 from json import JSONDecodeError
 
 from django.contrib import admin, messages
+from django.core.exceptions import ValidationError
 from django.http import HttpResponseRedirect
-from django.urls import path, reverse
+from django.urls import reverse
 from django.utils.html import format_html
 from import_export import resources
 from import_export.fields import Field
@@ -70,6 +71,12 @@ class ResultNotifier:
     warning = info
 
 
+NAZWA_POLA = {
+    "dyscyplina_autora": "pierwszej dyscypliny",
+    "subdyscyplina_autora": "drugiej dyscypliny",
+}
+
+
 def real_ustaw_dyscypline(pole, elements, notifier):
     for elem in (RozbieznosciView.objects.filter(pk=elem).first() for elem in elements):
         if elem is None:
@@ -83,21 +90,47 @@ def real_ustaw_dyscypline(pole, elements, notifier):
         if docelowa is None:
             notifier.warning(
                 format_html(
-                    "Dla rekordu {} nie ustawiono dyscypliny, ponieważ za rok {} "
-                    "{} autora {} jest żadna. Rozbieżność {} pozostaje "
+                    "Dla rekordu {} nie ustawiono dyscypliny, ponieważ autor {} "
+                    "nie ma {} za rok {}. Rozbieżność {} pozostaje "
                     "nierozwiązana. ",
                     link_do_obiektu(elem.rekord.original),
-                    elem.rok,
-                    pole.replace("_", " "),
                     link_do_obiektu(elem.autor),
+                    NAZWA_POLA.get(pole, pole),
+                    elem.rok,
                     link_do_obiektu(elem),
                 ),
             )
             continue
 
         wydawnictwo_xxx_autor = elem.get_wydawnictwo_autor_obj()
+        if wydawnictwo_xxx_autor is None:
+            notifier.warning(
+                format_html(
+                    "Rekord {} nie ma już autora {} — pominięto. ",
+                    link_do_obiektu(elem.rekord.original),
+                    link_do_obiektu(elem.autor),
+                ),
+            )
+            continue
+
         wydawnictwo_xxx_autor.dyscyplina_naukowa = docelowa
-        wydawnictwo_xxx_autor.save()
+        try:
+            wydawnictwo_xxx_autor.save()  # save() runs clean()
+        except ValidationError as e:
+            # Old records may hold data that today's validation rejects
+            # (percent share, affiliation, statement flags). Skip the record
+            # and tell the editor what to fix instead of failing the batch.
+            notifier.warning(
+                format_html(
+                    "Dla rekordu {} nie ustawiono dyscypliny {} dla {}: rekord "
+                    "nie przechodzi walidacji ({}). Popraw go ręcznie. ",
+                    link_do_obiektu(elem.rekord.original),
+                    docelowa.nazwa,
+                    link_do_obiektu(elem.autor),
+                    "; ".join(e.messages),
+                ),
+            )
+            continue
 
         notifier.info(
             format_html(
@@ -111,6 +144,15 @@ def real_ustaw_dyscypline(pole, elements, notifier):
 
 OFFLOAD_TASKS_WITH_THIS_ELEMENTS_OR_MORE = 20
 
+SESSION_KEY_ZADANIA = "rozbieznosci_dyscyplin_zadania"
+
+
+def zapamietaj_zadanie(request, task_id):
+    """Remember the task in the session, so only its owner can see the result."""
+    zadania = request.session.get(SESSION_KEY_ZADANIA, [])
+    zadania = ([str(task_id)] + zadania)[:20]
+    request.session[SESSION_KEY_ZADANIA] = zadania
+
 
 def ustaw_dyscypline_task_or_instant(pole, request, elements):
     if len(elements) < OFFLOAD_TASKS_WITH_THIS_ELEMENTS_OR_MORE:
@@ -121,16 +163,14 @@ def ustaw_dyscypline_task_or_instant(pole, request, elements):
 
     task_id = task_ustaw_dyscypline.delay(pole, elements)
 
+    zapamietaj_zadanie(request, task_id)
     messages.info(
         request,
         format_html(
-            "Rozpoczęto przetwarzanie w tle. ID zadania: "
-            '<a target="_blank" '
-            'href="/admin/django_celery_results/taskresult/?q={}">{}</a>. '
-            "Możesz kliknąc na ID zadania, aby zobaczyć, kiedy zostanie "
-            "ukończone. Możesz tez odświeżyć tą stronę w oczekiwaniu na zmiany. ",
-            task_id,
-            task_id,
+            "Rozpoczęto przetwarzanie {} rekordów w tle. "
+            '<a target="_blank" href="{}">Zobacz postęp i wynik</a>. ',
+            len(elements),
+            reverse("rozbieznosci_dyscyplin:status-zadania", args=[str(task_id)]),
         ),
     )
 
@@ -161,14 +201,15 @@ DYSCYPLINA_AUTORA = "dyscyplina_autora"
 SUBDYSCYPLINA_AUTORA = "subdyscyplina_autora"
 
 
-def ustaw_pierwsza_dyscypline(*args, **kw):
-    ustaw_dyscypline(DYSCYPLINA_AUTORA, *args, **kw)
-    return HttpResponseRedirect(".")
+def ustaw_pierwsza_dyscypline(admin, request, qset):
+    ustaw_dyscypline(DYSCYPLINA_AUTORA, admin, request, qset)
+    # get_full_path() keeps the query string, i.e. the editor's filters.
+    return HttpResponseRedirect(request.get_full_path())
 
 
-def ustaw_druga_dyscypline(*args, **kw):
-    ustaw_dyscypline(SUBDYSCYPLINA_AUTORA, *args, **kw)
-    return HttpResponseRedirect(".")
+def ustaw_druga_dyscypline(admin, request, qset):
+    ustaw_dyscypline(SUBDYSCYPLINA_AUTORA, admin, request, qset)
+    return HttpResponseRedirect(request.get_full_path())
 
 
 class ReadonlyAdminMixin:
@@ -186,6 +227,7 @@ class RozbieznosciViewResource(resources.ModelResource):
     rekord_tytul_oryginalny = Field(attribute="rekord__tytul_oryginalny")
     autor_nazwisko = Field(attribute="autor__nazwisko")
     autor_imiona = Field(attribute="autor__imiona")
+    nazwa_dyscypliny_rekordu = Field(attribute="dyscyplina_rekordu__nazwa")
     nazwa_dyscypliny_autora = Field(attribute="dyscyplina_autora__nazwa")
     nazwa_subdyscypliny_autora = Field(attribute="subdyscyplina_autora__nazwa")
     bpp_strona_url = Field()
@@ -194,16 +236,20 @@ class RozbieznosciViewResource(resources.ModelResource):
         model = RozbieznosciView
         fields = (
             "rekord_tytul_oryginalny",
+            "rok",
             "autor_nazwisko",
             "autor_imiona",
+            "nazwa_dyscypliny_rekordu",
             "nazwa_dyscypliny_autora",
             "nazwa_subdyscypliny_autora",
             "bpp_strona_url",
         )
         export_order = (
             "rekord_tytul_oryginalny",
+            "rok",
             "autor_nazwisko",
             "autor_imiona",
+            "nazwa_dyscypliny_rekordu",
             "nazwa_dyscypliny_autora",
             "nazwa_subdyscypliny_autora",
             "bpp_strona_url",
@@ -361,33 +407,6 @@ class RozbieznosciViewAdmin(
                 "Ustaw drugą dyscyplinę autora jako dyscyplinę rekordu",
             ),
         }
-
-    def przypisz_wszystkim(self, request, dyscyplina_autora=DYSCYPLINA_AUTORA):
-        elements = list(RozbieznosciView.objects.all().values_list("pk", flat=True))
-        if elements:
-            ustaw_dyscypline_task_or_instant(
-                dyscyplina_autora,
-                request,
-                elements,
-            )
-            return HttpResponseRedirect("..")
-
-        messages.warning(
-            request,
-            "Nie dokonano żadnych modyfikacji - nie stwierdzono rekordów z rozbieżnymi dyscyplinami. ",
-        )
-        return HttpResponseRedirect("..")
-
-    def przypisz_druga_wszystkim(self, request):
-        return self.przypisz_wszystkim(request, SUBDYSCYPLINA_AUTORA)
-
-    def get_urls(self):
-        urls = super().get_urls()
-        my_urls = [
-            path("przypisz-wszystkim-pierwsza/", self.przypisz_wszystkim),
-            path("przypisz-wszystkim-druga/", self.przypisz_druga_wszystkim),
-        ]
-        return my_urls + urls
 
 
 @admin.register(RozbieznosciZrodelView)

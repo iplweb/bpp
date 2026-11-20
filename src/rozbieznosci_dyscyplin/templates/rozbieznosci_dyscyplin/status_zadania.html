@@ -1,0 +1,30 @@
+{% extends "admin/base_site.html" %}
+{% block extrahead %}{{ block.super }}
+    {% if not gotowe %}<meta http-equiv="refresh" content="3">{% endif %}
+{% endblock %}
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url "admin:index" %}">Początek</a>
+        &rsaquo; <a href="{% url "admin:rozbieznosci_dyscyplin_rozbieznosciview_changelist" %}">Rozbieżności dyscyplin</a>
+        &rsaquo; {{ title }}
+    </div>
+{% endblock %}
+{% block content %}
+    <p>Stan: <strong>{{ stan }}</strong>.</p>
+    {% if not gotowe %}
+        <p>Strona odświeża się sama co kilka sekund.</p>
+    {% elif blad %}
+        <p class="errornote">Przetwarzanie przerwał błąd. Część rekordów mogła
+            zostać zmieniona — wróć do listy rozbieżności i uruchom akcję
+            ponownie dla pozostałych.</p>
+    {% else %}
+        <p>Przetworzono {{ komunikaty|length }} pozycji.</p>
+        <ul class="messagelist">
+            {% for k in komunikaty %}
+                {# Messages are built with format_html(), so they are already escaped. #}
+                <li class="info">{{ k|safe }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    <p><a href="{% url "admin:rozbieznosci_dyscyplin_rozbieznosciview_changelist" %}?q-l=on&q=rok%3E%3D2022&pracuje_na_uczelni=tak">Wróć do listy rozbieżności</a></p>
+{% endblock %}
