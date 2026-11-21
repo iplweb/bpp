@@ -794,7 +794,8 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         "stronie głównej kafel „Jednostki” zastąpić kafelkiem prowadzącym do "
         "indeksu wydziałów (jednostek najwyższego poziomu tej uczelni). "
         "Nazwa kafla to nazwa wydziału w liczbie mnogiej, wg nazewnictwa "
-        "ustawionego w systemie.",
+        "ustawionego w systemie. Działa niezależnie od opcji „Używaj "
+        "wydziałów”.",
     )
 
     pokazuj_siec_powiazan = models.BooleanField(

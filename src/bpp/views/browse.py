@@ -955,9 +955,10 @@ class WydzialyView(JednostkiView):
 
     def get_context_data(self, *args, **kw):
         context = super().get_context_data(*args, **kw)
-        # Kontekst widoku przykrywa ten z context processora, więc szablon
-        # indeksu odmienia w nagłówkach nazwę wydziału zamiast jednostki.
-        context["nazwa_jednostki"] = lemat("WYDZIAL")
+        # Osobna zmienna, NIE nadpisanie ``nazwa_jednostki`` z context
+        # processora — tę czyta też menu „przeglądaj” (top_bar.html), którego
+        # pozycja „jednostki” ma zostać „jednostkami” także na tej stronie.
+        context["nazwa_indeksu"] = lemat("WYDZIAL")
         return context
 
 

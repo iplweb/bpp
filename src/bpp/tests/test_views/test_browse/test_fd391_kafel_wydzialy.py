@@ -16,7 +16,6 @@ from django.urls import reverse
 from model_bakery import baker
 
 from bpp.models import Jednostka, Rzeczownik, Uczelnia
-from bpp.views.browse import get_uczelnia_context_data
 
 KAFEL_JEDNOSTKI = '<h4 class="uczelnia__tile-title">Jednostki</h4>'
 KAFEL_JEDNOSTKI_LINK = '<a href="/bpp/jednostki/" class="browse-tile">'
@@ -27,7 +26,6 @@ def _kafel(tytul):
 
 
 def _strona_glowna(client, uczelnia, **kw):
-    get_uczelnia_context_data.invalidate()
     url = reverse("bpp:browse_uczelnia", args=(uczelnia.slug,))
     res = client.get(url, **kw)
     assert res.status_code == 200
@@ -166,3 +164,16 @@ def test_fd391_multi_hosted(client, settings):
     content = res.content.decode("utf-8")
     assert "Wydział A" in content
     assert "Wydział B" not in content
+
+
+@pytest.mark.django_db
+def test_fd391_indeks_wydzialow_menu_przegladaj_bez_zmian(client, uczelnia):
+    """Na /bpp/wydzialy/ pozycja menu „przeglądaj” prowadząca do indeksu
+    jednostek nadal nazywa się „jednostki” (nie „wydziały”)."""
+    res = client.get(reverse("bpp:browse_wydzialy"))
+    content = res.content.decode("utf-8")
+
+    assert (
+        '<a href="/bpp/jednostki/"><i class="fi-results-demographics" '
+        'aria-hidden="true"></i> jednostki</a>'
+    ) in content
