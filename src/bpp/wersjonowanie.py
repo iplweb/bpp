@@ -187,3 +187,35 @@ def zmiana_ze_strony(user, obj, komentarz):
             change_message=komentarz,
             single_object=True,
         )
+
+
+def zapisz_wersje_utworzenia(model, pks, *, user, komentarz, select_related=()):
+    """Zapisz wersję „utworzenia” rekordów ``model`` o kluczach ``pks``,
+    stworzonych z pominięciem ``save()`` (np. ``bulk_create`` w generatorze
+    danych demo) — dzięki niej strona „Historia" pokazuje, kto i czym
+    utworzył rekord.
+
+    KAŻDY rekord dostaje WŁASNĄ rewizję. Rewizja zbiorcza byłaby tańsza,
+    ale przywrócenie wersji w adminie odwraca CAŁĄ rewizję
+    (``revision.revert``) — cofnięcie jednego rekordu po cichu cofnęłoby
+    wszystkie pozostałe z tej samej paczki. Koszt to kilka zapytań na
+    rekord; śledzone relacje i ``select_related`` (relacje potrzebne do
+    ``__str__``) są pobierane hurtowo, raz na wywołanie.
+
+    Jak ``zapewnij_wersje_poczatkowe`` — nie wolno wołać wewnątrz aktywnej
+    rewizji.
+    """
+    if reversion.is_active():
+        raise WersjaPoczatkowaWAktywnejRewizji(
+            "Wersję utworzenia trzeba zapisać poza aktywną rewizją reversion."
+        )
+    obiekty = list(
+        model._default_manager.filter(pk__in=list(pks))
+        .select_related(*select_related)
+        .prefetch_related(*sledzone_relacje(model))
+    )
+    for obiekt in obiekty:
+        with transaction.atomic(), reversion.create_revision():
+            reversion.add_to_revision(obiekt)
+            reversion.set_user(user)
+            reversion.set_comment(komentarz)
