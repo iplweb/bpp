@@ -1,3 +1,5 @@
+import re
+
 from crispy_forms.helper import FormHelper
 from crispy_forms_foundation.layout import (
     HTML,
@@ -222,6 +224,18 @@ class BaseRaportForm(forms.Form):
         return elementy
 
 
+#: Moduł, pod którym "mieszkają" dynamiczne klasy formularzy raportów. Moduł
+#: istnieje naprawdę (``nowe_raporty/forms_dynamiczne.py``) i odtwarza klasę
+#: z nazwy — formdefaults importuje klasę po ``full_name`` w oknie
+#: „Moje wartości domyślne" (FD#528).
+MODUL_FORMULARZY_DYNAMICZNYCH = "nowe_raporty.forms_dynamiczne"
+
+
+def nazwa_klasy_formularza(slug):
+    """Nazwa dynamicznej klasy formularza dla ``DefinicjaRaportu.slug``."""
+    return "RaportForm_" + re.sub(r"\W", "_", slug)
+
+
 def form_class_dla(definicja):
     """Dynamiczna klasa formularza per DefinicjaRaportu.
 
@@ -230,14 +244,12 @@ def form_class_dla(definicja):
     kolizja defaultów między raportami. Dlatego budujemy klasę o STABILNYM,
     unikalnym ``__name__``/``__module__`` wyprowadzonym ze sluga.
     """
-    import re
-
     from .poziomy import POZIOMY
 
     cfg = POZIOMY[definicja.poziom]
     pole = cfg.pole_obiektu()
     attrs = {
-        "__module__": "nowe_raporty.forms_dynamiczne",
+        "__module__": MODUL_FORMULARZY_DYNAMICZNYCH,
         "POZIOM": definicja.poziom,
     }
     if pole is not None:
@@ -246,7 +258,7 @@ def form_class_dla(definicja):
     else:
         attrs["OBJ_FIELD"] = ""
 
-    nazwa = "RaportForm_" + re.sub(r"\W", "_", definicja.slug)
+    nazwa = nazwa_klasy_formularza(definicja.slug)
     # użyj metaklasy formularza (DeclarativeFieldsMetaclass), nie gołego type -
     # inaczej "metaclass conflict" i pole 'obiekt' nie trafiłoby do base_fields.
     metaklasa = type(BaseRaportForm)

@@ -44,7 +44,12 @@ KOLUMNY = [
         position=1,
         sortable=True,
         attr_name="tytul_oryginalny",
-        template="{{ record.opis_bibliograficzny_cache|safe }}",
+        # FD#525: opis jest linkiem do strony rekordu. W eksporcie link
+        # znika (XLSX: strip_html_on_export, DOCX: nh3 nie przepuszcza <a>).
+        template=(
+            '<a href="{{ record.get_absolute_url }}">'
+            "{{ record.opis_bibliograficzny_cache|safe }}</a>"
+        ),
         attrs=None,
         display_totals=True,
         strip_html_on_export=True,
