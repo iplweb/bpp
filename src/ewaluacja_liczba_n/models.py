@@ -90,6 +90,16 @@ class LiczbaNDlaUczelni(models.Model):
         return max(Decimal("0"), (self.liczba_n * 3) - (self.sankcje or Decimal("0")))
 
 
+class UdzialyBezAutorowZKoszaManager(models.Manager):
+    """Udziały autorów z kosza NIE liczą się do liczby N (decyzja
+    właściciela, listopad 2026). Autor w koszu zachowuje dane kadrowe
+    (``Autor_Dyscyplina``), więc bez tego filtra jego wyliczone wcześniej
+    udziały dalej podbijałyby N i kalkulator."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(autor__deleted_at__isnull=True)
+
+
 class IloscUdzialowDlaAutoraBase(models.Model):
     """Abstract base model for author share calculations"""
 
@@ -101,6 +111,8 @@ class IloscUdzialowDlaAutoraBase(models.Model):
     dyscyplina_naukowa = models.ForeignKey(Dyscyplina_Naukowa, on_delete=models.CASCADE)
     ilosc_udzialow = LiczbaNField()
     ilosc_udzialow_monografie = LiczbaNField()
+
+    objects = UdzialyBezAutorowZKoszaManager()
 
     class Meta:
         abstract = True
