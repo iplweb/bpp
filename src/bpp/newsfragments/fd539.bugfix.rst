@@ -1,0 +1,1 @@
+Przycisk „Usuń” na rekordzie, który ma odpowiednik w PBN (PBN UID), nie znika już bez słowa — jest wyszarzony z wyjaśnieniem, dlaczego rekordu nie można usunąć. Akcje kosza w adminie sprawdzają uprawnienia do usuwania (i zmiany — przy przywracaniu) dla każdego rekordu. Utworzenie autora o tym samym imieniu i nazwisku co autor w koszu nie kończy się już błędem.
