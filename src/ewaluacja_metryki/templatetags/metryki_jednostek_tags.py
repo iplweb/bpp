@@ -1,8 +1,8 @@
-"""Tagi szablonu raportu ewaluacyjnego jednostki (FD#617)."""
+"""Tagi szablonu zestawienia „Metryki jednostki” (FD#617)."""
 
 from django import template
 
-from .. import raport_jednostki_svg as svg
+from .. import metryki_jednostek_svg as svg
 
 register = template.Library()
 

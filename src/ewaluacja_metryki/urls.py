@@ -23,14 +23,14 @@ urlpatterns = [
     ),
     path("statystyki/", views.StatystykiView.as_view(), name="statystyki"),
     path(
-        "raport-jednostki/",
-        views.RaportJednostkiListaView.as_view(),
-        name="raport_jednostki_lista",
+        "jednostki/",
+        views.MetrykiJednostekListaView.as_view(),
+        name="metryki_jednostek",
     ),
     path(
-        "raport-jednostki/<int:jednostka_pk>/",
-        views.RaportJednostkiView.as_view(),
-        name="raport_jednostki",
+        "jednostki/<int:jednostka_pk>/",
+        views.MetrykiJednostkiView.as_view(),
+        name="metryki_jednostki",
     ),
     path(
         "uruchom-generowanie/",

@@ -1,4 +1,4 @@
-"""Dane raportu ewaluacyjnego jednostki (FD#617).
+"""Metryki jednostki — dane zestawienia PDF dla kierownika (FD#617).
 
 Raport ma być doradcą dla kierownika jednostki (np. kliniki): na bazie
 ``MetrykaAutora`` pokazuje, kto wypełnia sloty, kto pisze lepsze prace na tle
@@ -7,7 +7,7 @@ punktacji prac. Wszystko liczone osobno dla każdej dyscypliny — średnie za s
 w różnych dyscyplinach nie są porównywalne.
 
 Moduł nie zna HTML-a ani PDF-a: zwraca czyste struktury danych, które szablon
-(i generator SVG w ``raport_jednostki_svg``) zamienia na wydruk.
+(i generator SVG w ``metryki_jednostek_svg``) zamienia na wydruk.
 """
 
 from __future__ import annotations
@@ -91,6 +91,9 @@ ZALECENIE_DLA_GRUPY = {
 
 ZERO = Decimal("0")
 
+MIN_OSOB_NA_WYKRES = 3
+MIN_OSOB_NOWA_STRONA = 6
+
 
 def _d(wartosc) -> Decimal:
     return wartosc if wartosc is not None else ZERO
@@ -168,6 +171,27 @@ class GrupaDyscypliny:
         ][:10]
 
     @property
+    def osoby_z_pracami(self):
+        return sum(1 for w in self.wiersze if w.kwadrant != KWADRANT_BRAK)
+
+    @property
+    def pokaz_wykres(self):
+        """Wykres bąbelkowy ma sens dopiero od kilku osób z pracami."""
+        return self.osoby_z_pracami >= MIN_OSOB_NA_WYKRES
+
+    @property
+    def mala(self):
+        """Mała dyscyplina (1–2 osoby): zwarty układ — karty osób mówią
+        wszystko, kafelki i tabela tylko by je powtarzały."""
+        return self.liczba_autorow < MIN_OSOB_NA_WYKRES
+
+    @property
+    def duza(self):
+        """Duża dyscyplina zaczyna się od nowej strony; małe płyną dalej,
+        żeby nie zostawiać stron z dwiema linijkami."""
+        return self.liczba_autorow >= MIN_OSOB_NOWA_STRONA
+
+    @property
     def zalecenia_wg_grup(self):
         """[(opis grupy, zalecenie, [wiersze]), …] — tylko niepuste grupy."""
         wynik = []
@@ -187,7 +211,7 @@ class GrupaDyscypliny:
 
 
 @dataclass
-class RaportJednostki:
+class MetrykiJednostki:
     jednostka: object
     okres: object
     grupy: list[GrupaDyscypliny]
@@ -199,6 +223,40 @@ class RaportJednostki:
     @property
     def pusty(self):
         return not self.grupy
+
+    @property
+    def wiele_dyscyplin(self):
+        return len(self.grupy) > 1
+
+    @property
+    def punkty(self):
+        return sum((g.punkty for g in self.grupy), ZERO)
+
+    @property
+    def slot_maksymalny(self):
+        return sum((g.slot_maksymalny for g in self.grupy), ZERO)
+
+    @property
+    def slot_nazbierany(self):
+        return sum((g.slot_nazbierany for g in self.grupy), ZERO)
+
+    @property
+    def wypelnienie(self):
+        if not self.slot_maksymalny:
+            return None
+        return self.slot_nazbierany / self.slot_maksymalny * 100
+
+    @property
+    def status_wypelnienia(self):
+        return status_wypelnienia_procent(self.wypelnienie)
+
+    @property
+    def potencjal_punktow(self):
+        return sum((g.potencjal_punktow for g in self.grupy), ZERO)
+
+    @property
+    def brakujace_sloty(self):
+        return sum((g.brakujace_sloty for g in self.grupy), ZERO)
 
 
 def status_wypelnienia_procent(procent: Decimal | None) -> str:
@@ -319,11 +377,15 @@ def _wnioski(grupa: GrupaDyscypliny) -> list[str]:
 
     if grupa.srednia is not None and grupa.srednia_uczelni:
         roznica = (grupa.srednia / grupa.srednia_uczelni - 1) * 100
-        kierunek = "powyżej" if roznica >= 0 else "poniżej"
+        if abs(roznica) < 2:
+            porownanie = "na poziomie średniej"
+        else:
+            kierunek = "powyżej" if roznica > 0 else "poniżej"
+            porownanie = f"{_fmt(abs(roznica))}% {kierunek} średniej"
         wnioski.append(
             f"Średnia za slot w jednostce ({_fmt(grupa.srednia, 1)} pkt) jest "
-            f"{_fmt(abs(roznica))}% {kierunek} średniej całej uczelni "
-            f"w tej dyscyplinie ({_fmt(grupa.srednia_uczelni, 1)} pkt)."
+            f"{porownanie} całej uczelni w tej dyscyplinie "
+            f"({_fmt(grupa.srednia_uczelni, 1)} pkt)."
         )
 
     if (
@@ -429,7 +491,7 @@ def _grupa(metryki, uczelnia, okres) -> GrupaDyscypliny:
     return grupa
 
 
-def zbuduj_raport(jednostka, uczelnia, okres) -> RaportJednostki:
+def zbuduj_metryki_jednostki(jednostka, uczelnia, okres) -> MetrykiJednostki:
     """Zbuduj raport dla ``jednostka`` w ``okres`` (zawężony do ``uczelnia``)."""
     metryki = scope_metryki(
         MetrykaAutora.objects.filter(jednostka=jednostka).select_related(
@@ -445,4 +507,4 @@ def zbuduj_raport(jednostka, uczelnia, okres) -> RaportJednostki:
 
     grupy = [_grupa(lista, uczelnia, okres) for lista in wg_dyscypliny.values()]
     grupy.sort(key=lambda g: (-g.punkty, g.dyscyplina.nazwa))
-    return RaportJednostki(jednostka=jednostka, okres=okres, grupy=grupy)
+    return MetrykiJednostki(jednostka=jednostka, okres=okres, grupy=grupy)

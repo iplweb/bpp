@@ -1,4 +1,4 @@
-"""Raport ewaluacyjny jednostki — PDF dla kierownika (FD#617)."""
+"""Metryki jednostki — zestawienie PDF dla kierownika (FD#617)."""
 
 from decimal import Decimal
 
@@ -8,10 +8,10 @@ from model_bakery import baker
 
 from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka, Uczelnia
 from bpp.models.profile import BppUser
-from ewaluacja_metryki import raport_jednostki as r
-from ewaluacja_metryki import raport_jednostki_svg as svg
+from ewaluacja_metryki import metryki_jednostek as r
+from ewaluacja_metryki import metryki_jednostek_svg as svg
+from ewaluacja_metryki.metryki_jednostek import zbuduj_metryki_jednostki
 from ewaluacja_metryki.models import MetrykaAutora
-from ewaluacja_metryki.raport_jednostki import zbuduj_raport
 
 from .conftest import wybierz_okres
 
@@ -68,7 +68,7 @@ def _wiersz(raport, nazwisko):
 @pytest.mark.django_db
 def test_raport_przypisuje_cwiartki_i_statusy(klinika, okres_2022):
     jednostka, _, _ = klinika
-    raport = zbuduj_raport(jednostka, jednostka.uczelnia, okres_2022)
+    raport = zbuduj_metryki_jednostki(jednostka, jednostka.uczelnia, okres_2022)
 
     (grupa,) = raport.grupy
     assert {w.autor.nazwisko for w in grupa.wiersze} == {
@@ -97,7 +97,7 @@ def test_raport_przypisuje_cwiartki_i_statusy(klinika, okres_2022):
 @pytest.mark.django_db
 def test_raport_liczy_sumy_i_potencjal(klinika, okres_2022):
     jednostka, _, _ = klinika
-    (grupa,) = zbuduj_raport(jednostka, jednostka.uczelnia, okres_2022).grupy
+    (grupa,) = zbuduj_metryki_jednostki(jednostka, jednostka.uczelnia, okres_2022).grupy
 
     assert grupa.slot_maksymalny == Decimal(20)
     assert grupa.slot_nazbierany == Decimal(10)
@@ -122,7 +122,7 @@ def test_raport_liczy_sumy_i_potencjal(klinika, okres_2022):
 @pytest.mark.django_db
 def test_raport_pomija_inne_okresy(klinika, okres_2022, okres_2026):
     jednostka, _, _ = klinika
-    assert zbuduj_raport(jednostka, jednostka.uczelnia, okres_2026).pusty
+    assert zbuduj_metryki_jednostki(jednostka, jednostka.uczelnia, okres_2026).pusty
 
 
 def _uzytkownik(client, **kwargs):
@@ -136,8 +136,8 @@ def test_raport_wymaga_pelnych_uprawnien(client, klinika):
     jednostka, _, _ = klinika
     _uzytkownik(client)
     for url in (
-        reverse("ewaluacja_metryki:raport_jednostki_lista"),
-        reverse("ewaluacja_metryki:raport_jednostki", args=[jednostka.pk]),
+        reverse("ewaluacja_metryki:metryki_jednostek"),
+        reverse("ewaluacja_metryki:metryki_jednostki", args=[jednostka.pk]),
     ):
         assert client.get(url).status_code in (302, 403)
 
@@ -147,7 +147,7 @@ def test_raport_html_i_pdf(client, klinika, okres_2022):
     jednostka, _, _ = klinika
     _uzytkownik(client, is_superuser=True, is_staff=True)
     wybierz_okres(client, okres_2022)
-    url = reverse("ewaluacja_metryki:raport_jednostki", args=[jednostka.pk])
+    url = reverse("ewaluacja_metryki:metryki_jednostki", args=[jednostka.pk])
 
     html = client.get(url, {"format": "html"})
     assert html.status_code == 200
@@ -161,7 +161,7 @@ def test_raport_html_i_pdf(client, klinika, okres_2022):
     assert pdf.status_code == 200
     assert pdf["Content-Type"] == "application/pdf"
     assert pdf.content.startswith(b"%PDF")
-    assert "raport_ewaluacyjny_" in pdf["Content-Disposition"]
+    assert "metryki_jednostki_" in pdf["Content-Disposition"]
 
 
 @pytest.mark.django_db
@@ -170,7 +170,7 @@ def test_raport_jednostki_bez_metryk_to_404(client, klinika, okres_2022):
     pusta = baker.make(Jednostka, uczelnia=jednostka.uczelnia)
     _uzytkownik(client, is_superuser=True, is_staff=True)
     wybierz_okres(client, okres_2022)
-    url = reverse("ewaluacja_metryki:raport_jednostki", args=[pusta.pk])
+    url = reverse("ewaluacja_metryki:metryki_jednostki", args=[pusta.pk])
     assert client.get(url).status_code == 404
 
 
@@ -179,11 +179,11 @@ def test_lista_jednostek_do_raportu(client, klinika, okres_2022):
     jednostka, _, _ = klinika
     _uzytkownik(client, is_superuser=True, is_staff=True)
     wybierz_okres(client, okres_2022)
-    res = client.get(reverse("ewaluacja_metryki:raport_jednostki_lista"))
+    res = client.get(reverse("ewaluacja_metryki:metryki_jednostek"))
     assert res.status_code == 200
     tresc = res.content.decode()
     assert "Klinika Testowa" in tresc
-    assert reverse("ewaluacja_metryki:raport_jednostki", args=[jednostka.pk]) in tresc
+    assert reverse("ewaluacja_metryki:metryki_jednostki", args=[jednostka.pk]) in tresc
 
 
 def test_pierscien_pelny_czesciowy_i_pusty():
@@ -199,7 +199,7 @@ def test_wykres_babelkowy_escapuje_nazwiska(klinika, okres_2022):
     autor = metryki["Filarowa"].autor
     autor.nazwisko = "<script>x</script>"
     autor.save()
-    (grupa,) = zbuduj_raport(jednostka, jednostka.uczelnia, okres_2022).grupy
+    (grupa,) = zbuduj_metryki_jednostki(jednostka, jednostka.uczelnia, okres_2022).grupy
     wykres = svg.wykres_babelkowy(grupa)
     assert "<script>" not in wykres
     assert "&lt;script&gt;" in wykres
@@ -255,7 +255,7 @@ def test_struktura_punktacji_z_tabeli_cache(klinika, okres_2022):
     metryka.prace_nazbierane = prace
     metryka.save()
 
-    (grupa,) = zbuduj_raport(jednostka, jednostka.uczelnia, okres_2022).grupy
+    (grupa,) = zbuduj_metryki_jednostki(jednostka, jednostka.uczelnia, okres_2022).grupy
 
     liczby = {p.etykieta: p.liczba_prac for p in grupa.struktura}
     assert liczby["140–199"] == 1
@@ -267,8 +267,8 @@ def test_struktura_punktacji_z_tabeli_cache(klinika, okres_2022):
 def test_niezalogowany_trafia_na_logowanie(client, klinika):
     jednostka, _, _ = klinika
     for url in (
-        reverse("ewaluacja_metryki:raport_jednostki_lista"),
-        reverse("ewaluacja_metryki:raport_jednostki", args=[jednostka.pk]),
+        reverse("ewaluacja_metryki:metryki_jednostek"),
+        reverse("ewaluacja_metryki:metryki_jednostki", args=[jednostka.pk]),
     ):
         res = client.get(url)
         assert res.status_code == 302

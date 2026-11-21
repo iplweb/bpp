@@ -1,4 +1,4 @@
-"""Wykresy SVG raportu ewaluacyjnego jednostki (FD#617).
+"""Wykresy SVG zestawienia „Metryki jednostki” (FD#617).
 
 Generowane po stronie serwera jako inline SVG: WeasyPrint renderuje je
 wektorowo do PDF-a, a podgląd HTML pokazuje to samo. Bez zależności od
@@ -16,7 +16,7 @@ from decimal import Decimal
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
-from . import raport_jednostki as r
+from . import metryki_jednostek as r
 
 TLO_PIERSCIENIA = "#e1e0d9"
 OS = "#c3c2b7"
@@ -76,6 +76,7 @@ def pierscien(procent, kolor, tekst, rozmiar=54, grubosc=6):
     czesci = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{rozmiar}" '
         f'height="{rozmiar}" viewBox="0 0 {rozmiar} {rozmiar}" '
+        f'font-family="Inter, DejaVu Sans, Arial" '
         f'role="img" aria-label="{escape(tekst)}">',
         f'<circle cx="{_f(c)}" cy="{_f(c)}" r="{_f(promien)}" fill="none" '
         f'stroke="{TLO_PIERSCIENIA}" stroke-width="{grubosc}"/>',
@@ -161,7 +162,7 @@ def wykres_babelkowy(grupa, szerokosc=760, wysokosc=400):
 
     s = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="100%" '
-        f'viewBox="0 0 {szerokosc} {wysokosc}" font-family="DejaVu Sans, Arial" '
+        f'viewBox="0 0 {szerokosc} {wysokosc}" font-family="Inter, DejaVu Sans, Arial" '
         f'role="img" aria-label="Wykres efektywności autorów w dyscyplinie '
         f'{escape(grupa.dyscyplina.nazwa)}">'
     ]
@@ -313,7 +314,7 @@ def pasek_struktury(grupa, szerokosc=760, wysokosc=26):
             tekst_kolor = "#ffffff" if kolor in KOLORY_PRZEDZIALOW[:4] else TEKST
             s.append(
                 f'<text x="{_f(x + dlugosc / 2)}" y="{wysokosc / 2 + 4}" '
-                f'text-anchor="middle" font-size="10" font-family="DejaVu Sans" '
+                f'text-anchor="middle" font-size="10" font-family="Inter, DejaVu Sans" '
                 f'fill="{tekst_kolor}">{float(przedzial.procent_slotow):.0f}%</text>'
             )
         x += dlugosc

@@ -14,13 +14,13 @@ from .generation import (
     UruchomGenerowanieView,
 )
 from .list import MetrykiListView
+from .metryki_jednostek import MetrykiJednostekListaView, MetrykiJednostkiView
 from .mixins import (
     EwaluacjaRequiredMixin,
     ma_pelne_uprawnienia_ewaluacji,
     ma_uprawnienia_ewaluacji,
 )
 from .pin_unpin import OdepnijDyscyplineView, PrzypnijDyscyplineView
-from .raport_jednostki import RaportJednostkiListaView, RaportJednostkiView
 from .statistics import StatystykiView
 
 __all__ = [
@@ -38,8 +38,8 @@ __all__ = [
     # Statistics view
     "StatystykiView",
     # Raport ewaluacyjny jednostki (FD#617)
-    "RaportJednostkiListaView",
-    "RaportJednostkiView",
+    "MetrykiJednostekListaView",
+    "MetrykiJednostkiView",
     # Generation views
     "UruchomGenerowanieView",
     "StatusGenerowaniaView",
