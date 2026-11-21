@@ -22,12 +22,17 @@ Rejestracja jest jawna (a nie automatyczna przez ``VersionAdmin``), bo:
 (``przelicz_aktualna_jednostke``), bo wersja zawiera wartości historyczne.
 """
 
+import getpass
+import os
+import re
 from contextlib import contextmanager
+from contextvars import ContextVar
 from types import SimpleNamespace
 
 import reversion
 from django.contrib.admin.models import ADDITION, CHANGE, LogEntry
-from django.db import transaction
+from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
 from django.db.models import F
 from reversion.models import Version
 
@@ -84,6 +89,93 @@ def zapewnij_wersje_poczatkowa(obj):
         reversion.set_comment(KOMENTARZ_WERSJI_POCZATKOWEJ)
 
 
+# Użytkownik, któremu przypisuje się historię rekordów tworzonych poza
+# adminem (importy, zadania Celery). Ustawiany przez ``jako_uzytkownik``
+# na wejściu do importu, w którym znamy operatora (widok, sesja importu,
+# właściciel pliku). Gdy nie jest ustawiony — konto systemowe.
+_uzytkownik_historii = ContextVar("uzytkownik_historii", default=None)
+
+ZNACZNIK_KONTA_SYSTEMOWEGO = (
+    "Konto systemowe: autor wpisów historii rekordów utworzonych przez "
+    "importy uruchomione bez zalogowanego użytkownika (polecenia "
+    "manage.py, zadania w tle). Utworzone automatycznie; nie służy do "
+    "logowania."
+)
+
+
+@contextmanager
+def jako_uzytkownik(user):
+    """Przypisz historię rekordów tworzonych w bloku do ``user``.
+
+    ``user=None`` nic nie zmienia (zostaje wartość zewnętrzna albo konto
+    systemowe) — wygodne, gdy wołający ma użytkownika tylko czasem."""
+    if user is None:
+        yield
+        return
+    token = _uzytkownik_historii.set(user)
+    try:
+        yield
+    finally:
+        _uzytkownik_historii.reset(token)
+
+
+def _login_systemowy():
+    """Login konta systemu operacyjnego, z którego uruchomiono proces."""
+    try:
+        login = getpass.getuser()
+    except OSError:
+        # Brak LOGNAME/USER i wpisu w passwd — np. kontener uruchomiony
+        # z dowolnym UID.
+        login = f"uid{os.getuid()}"
+    return re.sub(r"[^\w.@+-]", "_", login)[:100] or "nieznany"
+
+
+def konto_systemowe():
+    """Konto, któremu przypisuje się historię, gdy nie znamy operatora.
+
+    Tworzone leniwie (dopiero przy pierwszym rekordzie, który trzeba
+    zapisać w historii), nazwane od loginu systemowego, z którego
+    uruchomiono import: ``system-user-<login>``. Gdy ta nazwa jest zajęta
+    przez zwykłe konto, dokłada kolejny numer (``system-user-<login>-2``…).
+    Konto jest nieaktywne i bez hasła — nie da się na nie zalogować.
+    """
+    User = get_user_model()
+    baza = f"system-user-{_login_systemowy()}"
+    numer = 1
+    while True:
+        nazwa = baza if numer == 1 else f"{baza}-{numer}"
+        istniejace = User.objects.filter(username=nazwa).first()
+        if istniejace is not None:
+            if istniejace.adnotacje == ZNACZNIK_KONTA_SYSTEMOWEGO:
+                return istniejace
+            numer += 1
+            continue
+        konto = User(
+            username=nazwa,
+            first_name="Import",
+            last_name="(konto systemowe)",
+            is_active=False,
+            adnotacje=ZNACZNIK_KONTA_SYSTEMOWEGO,
+        )
+        konto.set_unusable_password()
+        try:
+            with transaction.atomic():
+                konto.save()
+        except IntegrityError:
+            # Równoległy import utworzył to konto w międzyczasie — następny
+            # obieg pętli je odczyta (i użyje, jeśli to konto systemowe).
+            # Jeśli konta nadal nie ma, błąd dotyczył czegoś innego.
+            if not User.objects.filter(username=nazwa).exists():
+                raise
+            continue
+        return konto
+
+
+def uzytkownik_historii():
+    """Operator ustawiony przez ``jako_uzytkownik`` albo konto systemowe."""
+    return _uzytkownik_historii.get() or konto_systemowe()
+
+
 def _zapisz_wersje(user, obj, komentarz):
     """Nowa wersja ``obj`` w reversion (dla modeli wersjonowanych), ze
     świeżego odczytu z bazy — żeby zawierała pola wyliczane przez triggery
@@ -107,9 +199,12 @@ def zarejestruj_utworzenie(user, obj, komentarz):
     pusta, nie wiadomo kto i kiedy go dodał. Wołać PO zapisie (i po zapisie
     powiązań, które mają być w wersji).
 
+    ``user=None`` — operator z ``jako_uzytkownik`` albo konto systemowe.
+
     Nie wołać wewnątrz aktywnego bloku ``reversion.create_revision`` —
     zagnieżdżony blok scaliłby się z zewnętrznym (jedna rewizja z
     użytkownikiem i komentarzem ostatniego wywołania)."""
+    user = user or uzytkownik_historii()
     _zapisz_wersje(user, obj, komentarz)
     LogEntry.objects.log_actions(
         user.pk,
@@ -134,13 +229,16 @@ def zmiana_rekordu(user, obj, komentarz):
 
     Blok dostaje obiekt z polem ``pomin``; ustaw ``pomin = True``, gdy
     okazało się, że nic się nie zmieniło — wtedy nic nie zostanie zapisane.
+    ``user=None`` — operator z ``jako_uzytkownik`` albo konto systemowe.
     Nie wołać wewnątrz aktywnego ``reversion.create_revision``.
     """
-    zapewnij_wersje_poczatkowa(obj)
+    if reversion.is_registered(type(obj)):
+        zapewnij_wersje_poczatkowa(obj)
     zmiana = SimpleNamespace(pomin=False)
     yield zmiana
     if zmiana.pomin:
         return
+    user = user or uzytkownik_historii()
     _zapisz_wersje(user, obj, komentarz)
     LogEntry.objects.log_actions(
         user.pk,

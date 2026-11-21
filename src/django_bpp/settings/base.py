@@ -366,6 +366,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "bpp.middleware.SiteResolutionMiddleware",  # After auth - resolves Site/Uczelnia from hostname
+    "bpp.middleware.UzytkownikHistoriiMiddleware",  # After auth - author of history entries
     "django_countdown.middleware.CountdownBlockingMiddleware",  # After auth - needs request.user
     # After auth middleware to have request.user. BPP-owa podklasa: dopóki
     # kreator niedokończony, kto nie ma dostępu do kroku → logowanie admina.

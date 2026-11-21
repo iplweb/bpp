@@ -14,6 +14,7 @@ from bpp.models import (
     Wydawnictwo_Zwarte_Tytul,
 )
 from bpp.util import safe_tytul_html
+from bpp.wersjonowanie import zarejestruj_utworzenie
 from pbn_api.client import PBNClient
 from pbn_api.models import Publication
 
@@ -177,6 +178,7 @@ def importuj_rozdzial(
     )
 
     ret.save()
+    zarejestruj_utworzenie(None, ret, "Zaimportowano z PBN.")
 
     przetworz_tytuly(pbn_json, ret, Wydawnictwo_Zwarte_Tytul)
 

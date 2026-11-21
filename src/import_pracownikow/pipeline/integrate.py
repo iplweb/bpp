@@ -38,6 +38,7 @@ from bpp.models import (
     Tytul,
     Wymiar_Etatu,
 )
+from bpp.wersjonowanie import zarejestruj_utworzenie, zmiana_rekordu
 from import_common.core.jednostka import unikalny_skrot, zaproponuj_skrot
 from import_common.core.stanowisko import zaproponuj_skrot_stanowiska
 from import_common.core.stopien import zaproponuj_skrot_stopnia
@@ -62,6 +63,11 @@ from import_pracownikow.pewnosc import (
     odtworz_autor_jednostka,
 )
 from przemapuj_prace_autora import service as przemapuj_service
+
+
+def _opis_importu(import_pracownikow):
+    """Komentarz do historii rekordu (``LogEntry``) — skąd rekord przyszedł."""
+    return f"Import pracowników nr {import_pracownikow.pk}"
 
 
 def _materializuj_diff(row):
@@ -115,13 +121,20 @@ def _materializuj_diff(row):
         )
         created = aj is None
         if created:
-            aj = Autor_Jednostka.objects.create(
-                autor_id=d["autor"],
-                jednostka_id=d["jednostka"],
-                rozpoczal_prace=rozpoczal,
-                funkcja=row.funkcja_autora,
-                stanowisko=row.stanowisko_dydaktyczne,
-            )
+            jednostka = Jednostka.objects.get(pk=d["jednostka"])
+            with zmiana_rekordu(
+                None,
+                Autor.objects.get(pk=d["autor"]),
+                f"Dodano zatrudnienie: {jednostka} od {rozpoczal}. "
+                f"{_opis_importu(row.parent)}",
+            ):
+                aj = Autor_Jednostka.objects.create(
+                    autor_id=d["autor"],
+                    jednostka=jednostka,
+                    rozpoczal_prace=rozpoczal,
+                    funkcja=row.funkcja_autora,
+                    stanowisko=row.stanowisko_dydaktyczne,
+                )
         row.autor_jednostka = aj
     return created
 
@@ -470,6 +483,9 @@ def _przygotuj_nowego_autora(row, cache):
         odtworz_autor_jednostka(row, autor)
         if utworzono:
             row.diff_do_utworzenia["nowy_autor"] = str(autor)
+            zarejestruj_utworzenie(
+                None, autor, f"Utworzono autora. {_opis_importu(row.parent)}"
+            )
         row.save(
             update_fields=[
                 "autor",
@@ -534,6 +550,9 @@ def _rozstrzygnij_jedna_decyzje(
         skrot=skrot,
         uczelnia=uczelnia,
         parent=parent_jed,
+    )
+    zarejestruj_utworzenie(
+        None, nowa, f"Utworzono jednostkę. {_opis_importu(dec.parent)}"
     )
     return nowa, True
 

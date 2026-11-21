@@ -112,3 +112,28 @@ def test_apply_idempotent_update(
         Patent.objects.get(numer_prawa_wylacznego="Pat.1").tytul_oryginalny
         == "Nowy tytuł"
     )
+
+
+@pytest.mark.django_db
+def test_apply_nowy_zapisuje_historie(
+    ctx, typ_odpowiedzialnosci_aut, charakter_pat, jezyk_polski, monkeypatch
+):
+    """Autor NOWY i patent mają wpis w historii admina (konto systemowe)."""
+    import getpass
+
+    from django.contrib.admin.models import ADDITION, LogEntry
+
+    from bpp.models import Autor, Patent
+
+    monkeypatch.setattr(getpass, "getuser", lambda: "biblio")
+    apply_patent(_pd(), {"Anna Wawruszak": "NOWY"}, ctx)
+
+    for obj in (
+        Autor.objects.get(nazwisko="Wawruszak"),
+        Patent.objects.get(numer_prawa_wylacznego="Pat.1"),
+    ):
+        wpis = LogEntry.objects.get(
+            content_type__model=obj._meta.model_name, object_id=str(obj.pk)
+        )
+        assert wpis.action_flag == ADDITION
+        assert wpis.user.username == "system-user-biblio"

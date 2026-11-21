@@ -26,6 +26,7 @@ from import_export.widgets import ForeignKeyWidget
 
 from bpp.models.jednostka import Jednostka
 from bpp.models.uczelnia import Uczelnia
+from bpp.wersjonowanie import zarejestruj_utworzenie
 
 COLUMN_UCZELNIA = "Uczelnia"
 COLUMN_WYDZIAL = "Wydział"
@@ -128,12 +129,18 @@ class WydzialGetOrCreateWidget(ForeignKeyWidget):
 
         used_skroty = set(Jednostka.objects.values_list("skrot", flat=True))
         skrot = unique_skrot(abbreviate_wydzial(nazwa), used_skroty, max_len=128)
-        return Jednostka.objects.create(
+        wydzial = Jednostka.objects.create(
             uczelnia=uczelnia,
             nazwa=nazwa,
             skrot=skrot,
             parent=None,
         )
+        # import-export loguje wiersze importu, ale nie ten wydział tworzony
+        # w locie — bez wpisu wyglądałby w historii, jakby wziął się znikąd.
+        zarejestruj_utworzenie(
+            None, wydzial, "Utworzono jako wydział podczas importu jednostek."
+        )
+        return wydzial
 
 
 class JednostkaImportResource(resources.ModelResource):
