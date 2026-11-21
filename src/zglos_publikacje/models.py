@@ -416,13 +416,19 @@ class Obslugujacy_Zgloszenia_Wydzialow(models.Model):
         db_index=False,
     )
     # Faza B (#438) II-2: FK→Jednostka (korzeń drzewa, mirror dawnego
-    # Wydzial). Nazwa pola i ``verbose_name`` zostają — patrz brief II-2.
-    wydzial = models.ForeignKey("bpp.Jednostka", models.CASCADE, verbose_name="Wydział")
+    # Wydzial). Nazwa pola zostaje — patrz brief II-2. ``verbose_name`` jest
+    # zgodny z etykietą formularza w adminie: przypisanie obejmuje jednostkę
+    # razem z jej jednostkami podrzędnymi.
+    wydzial = models.ForeignKey(
+        "bpp.Jednostka", models.CASCADE, verbose_name="Jednostka (i podrzędne)"
+    )
 
     objects = Obslugujacy_Zgloszenia_WydzialowManager()
 
     class Meta:
-        verbose_name = "obsługujący zgłoszenia dla wydziału"
-        verbose_name_plural = "obsługujący zgłoszenia dla wydziałów"
+        # Rzeczownik o bierniku równym mianownikowi — admin buduje z tego
+        # „Dodaj …" / „Zmień …", więc „przydział" czyta się poprawnie.
+        verbose_name = "przydział obsługi zgłoszeń"
+        verbose_name_plural = "przydziały obsługi zgłoszeń"
         ordering = ("user__username", "wydzial__nazwa")
         unique_together = [("user", "wydzial")]

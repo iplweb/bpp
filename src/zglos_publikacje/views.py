@@ -172,9 +172,13 @@ def _send_notification_email(publication_object, request):
     for zpa in publication_object.zgloszenie_publikacji_autor_set.all().select_related(
         "jednostka"
     ):
-        if zpa.jednostka_id is not None:
-            jednostka_do_powiadomienia = zpa.jednostka
+        if zpa.jednostka_id is None:
+            # Autor bez jednostki nie wskazuje wydziału — pomijamy go; gdy
+            # żaden autor nie ma jednostki, poniżej idzie powiadomienie do
+            # grupy obsługi zgłoszeń.
+            continue
 
+        jednostka_do_powiadomienia = zpa.jednostka
         if jednostka_do_powiadomienia.skupia_pracownikow:
             break
 

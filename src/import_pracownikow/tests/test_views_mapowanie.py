@@ -136,3 +136,38 @@ def test_mapowanie_post_na_zintegrowanym_nie_kasuje_wierszy(admin_client, admin_
     imp.refresh_from_db()
     assert imp.stan == ImportPracownikow.STAN_ZINTEGROWANY  # niezmieniony
     assert imp.importpracownikowrow_set.count() == 1  # audyt zachowany
+
+
+def test_mapowanieform_pola_nie_sa_wymagane_bo_mozna_pominac():
+    """„— pomiń —" jest zawsze dozwolone — pole nie ma gwiazdki „wymagane",
+    a brak wartości to po prostu pominięcie kolumny."""
+    naglowki = ["nazwisko", "imię", "jedn_org", "uwagi"]
+    f = MapowanieForm(
+        naglowki=naglowki,
+        data=_dane(
+            naglowki[:3],
+            {"nazwisko": "nazwisko", "imię": "imię", "jedn_org": "nazwa_jednostki"},
+        ),
+    )
+    assert not f.fields["kol__uwagi"].required
+    assert f.is_valid(), f.errors
+    assert f.mapowanie()["uwagi"] == POLE_POMIN
+
+
+@pytest.mark.django_db
+def test_mapowanie_probka_pusta_komorka_bez_none(rf, admin_user):
+    from django.template.loader import render_to_string
+
+    request = rf.get("/")
+    request.user = admin_user
+    request.session = {}
+    html = render_to_string(
+        "import_pracownikow/mapowanie.html",
+        {
+            "form": MapowanieForm(naglowki=["nazwisko", "uwagi"]),
+            "probka_rows": [["Kowalski", None]],
+        },
+        request=request,
+    )
+    assert "<td>Kowalski</td><td></td>" in html
+    assert "<td>None</td>" not in html

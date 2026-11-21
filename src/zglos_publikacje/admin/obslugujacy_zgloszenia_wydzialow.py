@@ -13,5 +13,4 @@ class Obslugujacy_Zgloszenia_WydzialowAdmin(admin.ModelAdmin):
             from bpp.models import Jednostka
 
             kwargs["queryset"] = Jednostka.objects.filter(parent__isnull=True)
-            kwargs["label"] = "Jednostka (i podrzędne)"
         return super().formfield_for_foreignkey(db_field, request, **kwargs)

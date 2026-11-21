@@ -131,7 +131,7 @@ i wyróżnione publikacje.
     uczelnią ta uwaga nie ma znaczenia.
 
 W tej samej sekcji ustawisz **etykietę linku do profilu w portalu uczelni**
-(np. „PPM UML"). Pokazuje się ona przy linku z pola „Adres profilu w portalu
+(np. „Portal Pracowników"). Pokazuje się ona przy linku z pola „Adres profilu w portalu
 uczelni" w rekordzie autora; gdy jest pusta, link opisany jest jako „Profil
 w portalu uczelni".
 
