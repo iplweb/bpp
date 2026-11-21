@@ -361,3 +361,7 @@ W sekcji pomocy nad formularzem znajdują się gotowe **presety** —
 linki, które od razu dokładają wiersz/kolumnę/miarę do bieżącego
 zapytania i przełączają postać wyniku na tabelę krzyżową. Samą macierz
 (bez surowych wyników) można wyeksportować do CSV i XLSX.
+
+Jak budować i czytać tabelę krzyżową w wyszukiwaniu precyzyjnym,
+z przykładami, opisuje strona
+[Tabela krzyżowa](../uzytkownik/tabela-krzyzowa.md).

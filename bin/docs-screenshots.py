@@ -6429,6 +6429,234 @@ def import_pracownikow(page: Page, base: str, out: Path) -> None:
     red.context.close()
 
 
+def pivot_ustaw(page: Page, **wybor: str) -> None:
+    """Set the cross-table selects (pivot_row/pivot_col/pivot_val) one by one;
+    each change reloads the results."""
+    for name, label in wybor.items():
+        sel = f"select[name={name}]"
+        if page.locator(f"{sel} option:checked").inner_text().strip() == label:
+            continue
+        with page.expect_navigation():
+            page.select_option(sel, label=label)
+        page.wait_for_load_state("networkidle")
+
+
+def zaznacz_lata(page: Page, od: str, do: str) -> None:
+    """Pick a year range on the author/unit page: first year, then last."""
+    for rok in (od, do):
+        page.locator(f"label.autor-page__chip:has(input[value='{rok}'])").click()
+    page.mouse.move(5, 5)  # no hover highlight on the last clicked chip
+
+
+def tabela_krzyzowa(page: Page, base: str, out: Path) -> None:
+    """docs/uzytkownik/tabela-krzyzowa.md: cross table (pivot) in the multiseek search."""
+    sekcja = ".autor-page__pas-cela"
+
+    # 1. author page: years 2002-2025, then "Szukaj publikacji"
+    page.goto(f"{base}/bpp/autor/Yennefer-Merigold/")
+    page.wait_for_load_state("networkidle")
+    zaznacz_lata(page, "2002", "2025")
+    mark(
+        page,
+        [
+            {"sel": "label.autor-page__chip:has(input[value='2025'])"},
+            {
+                "sel": "label.autor-page__chip:has(input[value='2002'])",
+                "arrow": "below",
+                "label": "1. kliknij pierwszy i ostatni rok",
+                "dx": -550,
+                "dy": -45,
+            },
+            {
+                "sel": "button.autor-page__search-btn",
+                "arrow": "above",
+                "label": "2. Szukaj publikacji",
+                "dx": -300,
+                "dy": 30,
+            },
+        ],
+    )
+    box = page_box(page, sekcja, "Wyszukaj publikacje autora")
+    shot(page, out / "01-strona-autora-lata.png", box["y"] - 20, box["height"] + 40)
+
+    # 2. the form with the conditions; pick "tabela krzyżowa"
+    page.click("button.autor-page__search-btn")
+    page.wait_for_load_state("networkidle")
+    page.select_option("#id_report_type", label="tabela krzyżowa")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(1500)
+    mark(
+        page,
+        [
+            {"sel": "#frame-0"},
+            {
+                "sel": "#id_report_type",
+                "arrow": "above",
+                "label": "3. Rodzaj raportu: tabela krzyżowa",
+                "dx": 150,
+                "dy": 47,
+            },
+            {
+                "sel": "#multiseek-szukaj",
+                "arrow": "below",
+                "label": "4. Wyświetl wyniki wyszukiwania",
+                "dx": 175,
+                "dy": -60,
+            },
+        ],
+    )
+    shot(
+        page,
+        out / "02-formularz-rodzaj-raportu.png",
+        0,
+        bottom_of(page, "#multiseek-szukaj", 110),
+    )
+
+    # 3. results: rows / columns / value
+    page.click("#multiseek-szukaj")
+    page.wait_for_load_state("networkidle")
+    pivot_ustaw(
+        page,
+        pivot_row="Jednostka",
+        pivot_col="Charakter formalny",
+        pivot_val="Σ punkty PK",
+    )
+    mark(
+        page,
+        [
+            {
+                "sel": "select[name=pivot_row]",
+                "arrow": "above",
+                "label": "5. Wiersze",
+                "dx": 200,
+                "dy": 25,
+            },
+            {
+                "sel": "select[name=pivot_col]",
+                "arrow": "above",
+                "label": "6. Kolumny",
+                "dx": 190,
+                "dy": 25,
+            },
+            {
+                "sel": "select[name=pivot_val]",
+                "arrow": "above",
+                "label": "7. W komórce",
+                "dx": 195,
+                "dy": 25,
+            },
+        ],
+    )
+    ctrl = page_box(page, ".multiseek-pivot-controls")
+    shot(
+        page,
+        out / "03-wiersze-kolumny-wartosc.png",
+        ctrl["y"] - 150,
+        ctrl["height"] + 190,
+    )
+
+    # 4. the result, RAZEM row and column, the note below the table
+    mark(
+        page,
+        [
+            {
+                "sel": "table.multiseek-pivot tbody tr:first-child td:not(.pivot-total)",
+                "arrow": "below",
+                "label": "punkty jednostki za artykuły",
+                "dx": -300,
+                "dy": 80,
+            },
+            {
+                "sel": "table.multiseek-pivot thead th.pivot-total",
+                "arrow": "right",
+                "label": "suma wiersza",
+                "dy": -30,
+            },
+            {
+                "sel": "table.multiseek-pivot tfoot tr",
+                "arrow": "right",
+                "label": "suma kolumny",
+                "dy": -40,
+            },
+        ],
+    )
+    tabela = page_box(page, ".multiseek-pivot-scroll")
+    shot(page, out / "04-wynik-razem.png", tabela["y"] - 20, tabela["height"] + 210)
+
+    # 5. export (logged-in users only)
+    mark(
+        page,
+        [
+            {
+                "sel": ".multiseek-pivot-export",
+                "arrow": "below",
+                "label": "pobierz: Excel (XLSX) lub CSV",
+                "dx": -130,
+                "dy": -20,
+            }
+        ],
+    )
+    shot(page, out / "05-eksport.png", ctrl["y"] - 20, ctrl["height"] + 170)
+
+    # 6. example: year x kind of work, number of works, same search
+    pivot_ustaw(page, pivot_row="Rok", pivot_val="Liczba prac")
+    mark(
+        page,
+        [
+            {"sel": "select[name=pivot_row]"},
+            {"sel": "select[name=pivot_col]"},
+            {"sel": "select[name=pivot_val]"},
+        ],
+    )
+    # top rows, then the last three years and the RAZEM row
+    koniec = bottom_of(page, "table.multiseek-pivot tbody tr:nth-child(12)", 0)
+    gora = shot(page, None, ctrl["y"] - 20, koniec - ctrl["y"] + 20)
+    od = page_box(page, "table.multiseek-pivot tbody tr:nth-last-child(3)")["y"]
+    dol = shot(page, None, od, bottom_of(page, "table.multiseek-pivot", 20) - od)
+    stitch(page, [gora, dol], out / "06-rok-charakter.png", "kolejne lata, aż do 2002")
+
+    # 7. example: a unit's works - authors x years, sorted by RAZEM
+    page.goto(f"{base}/bpp/jednostka/Klinika-Szermierki/")
+    page.wait_for_load_state("networkidle")
+    zaznacz_lata(page, "2020", "2025")
+    page.click("button.autor-page__search-btn")
+    page.wait_for_load_state("networkidle")
+    page.select_option("#id_report_type", label="tabela krzyżowa")
+    page.wait_for_load_state("networkidle")
+    page.click("#multiseek-szukaj")
+    page.wait_for_load_state("networkidle")
+    pivot_ustaw(
+        page,
+        pivot_row="Autor",
+        pivot_col="Rok",
+        pivot_val="Liczba prac",
+        pivot_per_page="25",
+    )
+    with page.expect_navigation():
+        page.click("table.multiseek-pivot thead th.pivot-total a")
+    page.wait_for_load_state("networkidle")
+    mark(
+        page,
+        [
+            {
+                "sel": "table.multiseek-pivot thead th.pivot-total",
+                "arrow": "right",
+                "label": "posortowane wg RAZEM ▼",
+                "dx": 20,
+                "dy": -20,
+            },
+        ],
+    )
+    ctrl = page_box(page, ".multiseek-pivot-controls")
+    dol = bottom_of(page, ".multiseek-pivot-note", 20)
+    shot(
+        page,
+        out / "07-jednostka-autorzy-lata.png",
+        ctrl["y"] - 20,
+        dol - ctrl["y"] + 20,
+    )
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -6740,6 +6968,7 @@ SCENARIOS = {
     "panel-uczelnia-autorzy": ("redaktor/autorzy", panel_uczelnia_autorzy),
     "panel-uczelnia-wydawnictwa": ("redaktor/wydawnictwa", panel_uczelnia_wydawnictwa),
     "import-pracownikow": ("administrator/import-pracownikow", import_pracownikow),
+    "tabela-krzyzowa": ("uzytkownik/tabela-krzyzowa", tabela_krzyzowa),
 }
 
 
