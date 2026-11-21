@@ -4,8 +4,8 @@ from datetime import timedelta
 from urllib.parse import urlencode
 
 import pytest
-from model_bakery import baker
 from django.urls import reverse
+from model_bakery import baker
 
 
 @pytest.mark.django_db
