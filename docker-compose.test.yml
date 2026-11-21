@@ -3,7 +3,7 @@
 #
 # Usage:
 #   make tests-in-docker
-#   PYTHON_VERSION=3.12 make tests-in-docker
+#   PYTHON_VERSION=3.14 make tests-in-docker
 #   make tests-in-docker-down
 
 services:
@@ -69,7 +69,7 @@ services:
       # assets. CI pulls the slimmer `test-runner` target instead.
       target: test-runner-local
       args:
-        PYTHON_VERSION: ${PYTHON_VERSION:-3.12}
+        PYTHON_VERSION: ${PYTHON_VERSION:-3.14}
         DEBIAN_VERSION: ${DEBIAN_VERSION:-trixie}
         NODEJS_VERSION: ${NODEJS_VERSION:-24}
     volumes:

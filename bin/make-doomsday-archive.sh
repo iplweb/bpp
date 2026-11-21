@@ -24,7 +24,7 @@
 #   bin/make-doomsday-archive.sh --verify DIR   # zweryfikuj MANIFEST.sha256
 #
 # ZMIENNE ŚRODOWISKOWE:
-#   BPP_PYVER=3.12                  wersja Pythona dla wheeli linux-prod
+#   BPP_PYVER=3.14                  wersja Pythona dla wheeli linux-prod
 #   BPP_IMAGES="img:tag img2:tag"   obrazy Docker do docker save
 #   BPP_NO_DOCKER=1  /  --no-docker pomiń warstwę 5
 #   BPP_NO_TARBALL=1 /  --no-tar    nie pakuj na końcu w .tar.zst
@@ -40,8 +40,8 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-PYVER="${BPP_PYVER:-3.12}"
-PYTAG="cp${PYVER//./}"                    # 3.12 → cp312
+PYVER="${BPP_PYVER:-3.14}"
+PYTAG="cp${PYVER//./}"                    # 3.14 → cp314
 DEFAULT_IMAGES="iplweb/bpp_appserver:latest iplweb/bpp_dbserver:latest"
 IMAGES="${BPP_IMAGES:-$DEFAULT_IMAGES}"
 

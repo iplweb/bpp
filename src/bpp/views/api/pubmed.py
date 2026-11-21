@@ -15,7 +15,7 @@ from django_bpp.version import VERSION
 
 
 def get_data_from_ncbi(title):
-    pubmed = pymed.PubMed(tool=f"BPP {VERSION}", email=settings.ADMINS[0][0])
+    pubmed = pymed.PubMed(tool=f"BPP {VERSION}", email=settings.ADMINS[0][1])
     title = (
         title.lower()
         .replace(" and ", " ")

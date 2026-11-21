@@ -18,18 +18,40 @@ def _extract_title(z: dict):
     return normalize_title(title)
 
 
-def _extract_zrodlo(z: dict):
-    """PK źródła dopasowanego po container-title (albo None)."""
+def _extract_container_title(z: dict):
+    """Pierwszy ``container-title`` z CrossRef (albo None)."""
     try:
-        tytul_kontenera = z.get("container-title")[0]
+        return z.get("container-title")[0] or None
     except (IndexError, TypeError):
         # IndexError: pusta lista; TypeError: brak klucza (z.get(...) → None)
         return None
 
-    if not tytul_kontenera:
-        return None
 
-    zrodlo = Komparator.porownaj_container_title(tytul_kontenera).rekord_po_stronie_bpp
+def extract_issn_pair(z: dict):
+    """(issn, e_issn) z CrossRef: ``issn-type`` z fallbackiem na ``ISSN``."""
+    e_issn, issn = _extract_issn_isbn_typed(z, "issn-type")
+    issn = _fallback_identifier(z, "ISSN", issn, e_issn)
+    return issn, e_issn
+
+
+def porownaj_zrodlo_crossref(z: dict):
+    """Dopasuj źródło po ISSN/e-ISSN, a dopiero potem po container-title.
+
+    Zwraca ``WynikPorownania`` albo None, gdy brak tytułu i ISSN-u.
+    """
+    tytul_kontenera = _extract_container_title(z)
+    issn, e_issn = extract_issn_pair(z)
+    if not (tytul_kontenera or issn or e_issn):
+        return None
+    return Komparator.porownaj_zrodlo(tytul_kontenera, issn=issn, e_issn=e_issn)
+
+
+def _extract_zrodlo(z: dict):
+    """PK źródła dopasowanego po ISSN/e-ISSN lub container-title (albo None)."""
+    wynik = porownaj_zrodlo_crossref(z)
+    if wynik is None:
+        return None
+    zrodlo = wynik.rekord_po_stronie_bpp
     return zrodlo.pk if zrodlo is not None else None
 
 
@@ -101,9 +123,8 @@ def convert_crossref_to_changeform_initial_data(z: dict) -> dict:
 
     wydawca_idx, wydawca_txt = _extract_wydawca(z)
 
-    e_issn, issn = _extract_issn_isbn_typed(z, "issn-type")
+    issn, e_issn = extract_issn_pair(z)
     e_isbn, isbn = _extract_issn_isbn_typed(z, "isbn-type")
-    issn = _fallback_identifier(z, "ISSN", issn, e_issn)
     isbn = _fallback_identifier(z, "ISBN", isbn, e_isbn)
 
     licencja_pk, licencja_ilosc_miesiecy = _extract_license(z)

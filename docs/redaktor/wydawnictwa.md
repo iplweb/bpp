@@ -2,20 +2,26 @@
 
 ## Dodawanie autorów do rekordów
 
-Aby dodać autora do rekordu, podczas dodawania lub edycji nowego rekordu kliknij
-"Dodaj kolejne powiązanie autora z wyd. ciągłym / wyd. zwartym / patentem ...".
+Aby dodać autora do rekordu, podczas dodawania lub edycji rekordu kliknij
+„Dodaj kolejne(go)(-ną)(-ny) powiązanie autora z wyd. ciągłym” (w wydawnictwie
+zwartym — „…z wyd. zwartym”, w patencie — „…z patentem”) pod listą autorów.
+
+W formularzu rekordu można w ten sposób wpisać do 25 autorów. Przy dłuższej
+liście autorów skorzystaj z przycisku **Autorzy** u góry formularza rekordu.
 
 ## Zmiana kolejności autorów
 
-Aby zmienić kolejność autorów, skorzystaj z przycisku przeciągania oraz techniki
-"przeciągnij i upuść". Po prostu kliknij i przytrzymaj lewym przyciskiem myszy na
-przycisku przeciągania i przeciągnij dane powiązanie autora z rekordem w górę
-lub w dół. Przycisk przeciągania wygląda w następujący sposób:
+Kolejność autorów zmienia się techniką „przeciągnij i upuść”:
 
-![Przycisk przeciągania](../images/editor/przycisk_przeciagania.png)
+1. Zwiń powiązania autorów — ikoną ⇑ („zwiń wszystkie”) na pasku
+   „Powiązania autorów z rekordem” albo klikając nagłówek pojedynczego
+   powiązania. Zwinięta lista mieści się na ekranie, co ma znaczenie
+   zwłaszcza na mniejszych monitorach.
+2. Chwyć lewym przyciskiem myszy przycisk przeciągania (ikona ⇕ po prawej
+   stronie nagłówka powiązania) i przeciągnij powiązanie w górę lub w dół.
+3. Zapisz rekord.
 
-Możesz "zwinąć" formularz powiązania autora z rekordem aby zmiana kolejności autorów
-była łatwiejsza, co ma szczególne znaczenie na monitorach o niewielkiej rozdzielczości.
+![Zwinięta lista autorów rekordu z zaznaczonym przyciskiem przeciągania i odnośnikiem dodawania autora](../images/redaktor/wydawnictwa/01-kolejnosc-autorow.png)
 
 Działania te również prezentuje film [Zmiana kolejności autorów](https://www.youtube.com/embed/oruEX3CykH8) .
 

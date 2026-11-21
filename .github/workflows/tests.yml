@@ -230,7 +230,7 @@ jobs:
       image: ${{ steps.tag.outputs.image }}
 
     env:
-      PYTHON_VERSION: "3.12"
+      PYTHON_VERSION: "3.14"
       DEBIAN_VERSION: trixie
       NODEJS_VERSION: "24"
       # Lowercase repo owner, since GHCR rejects mixed-case namespaces.
@@ -379,7 +379,7 @@ jobs:
       fail-fast: false
       max-parallel: 12
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.14"]
         # 0-indexed; MUSI byc spojne z NUM_SHARDS nizej. Duration-split
         # (pytest-split, .test_durations) balansuje dowolne N po czasie, wiec
         # bump jest tani: 8 -> 12 tnie czas testow najwolniejszego sharda

@@ -51,7 +51,7 @@ Knowledge finds its home.
                         <p><strong>Przydatne linki / Useful links:</strong></p>
                         <ul>
                             <li><span class="fi-book"></span> <strong>Dokumentacja / Documentation:</strong>
-                                <a href="https://bpp.readthedocs.io" target="_blank">bpp.readthedocs.io</a>
+                                <a href="https://iplweb.github.io/bpp/api/" target="_blank">iplweb.github.io/bpp/api</a>
                             </li>
                             <li><span class="fi-social-github"></span> <strong>Kod źródłowy / Source code:</strong>
                                 <a href="https://github.com/iplweb/bpp/" target="_blank">github.com/iplweb/bpp</a>

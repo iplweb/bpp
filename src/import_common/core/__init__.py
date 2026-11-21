@@ -82,6 +82,7 @@ from .zrodlo import (
     _try_match_zrodlo_by_mnisw_id,
     _try_match_zrodlo_by_title_single,
     matchuj_zrodlo,
+    zrodla_po_tytule_bez_diakrytykow,
 )
 
 __all__ = [
@@ -146,4 +147,5 @@ __all__ = [
     "_try_match_zrodlo_by_issn",
     "_try_match_zrodlo_by_mnisw_id",
     "_try_match_zrodlo_by_title_single",
+    "zrodla_po_tytule_bez_diakrytykow",
 ]

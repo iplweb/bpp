@@ -87,7 +87,7 @@ Pełna lista z wersjami — [bpp-deploy/docker-compose.yml](https://github.com/i
 
 | | |
 |---|---|
-| **Backend** | Python 3.12+, Django 4.2, Celery, Django Channels |
+| **Backend** | Python 3.14, Django 5.2, Celery, Django Channels |
 | **Baza danych** | PostgreSQL 16/17/18 (via `iplweb/bpp_dbserver`) |
 | **Cache / broker** | Redis |
 | **Frontend** | Foundation CSS, jQuery, HTMX, Select2 |

@@ -39,10 +39,8 @@
         {# NIE udajemy pełnego sukcesu (uwaga reviewera #3). #}
         <h3><span class="fi-alert"></span> Import zakończony częściowo</h3>
         <p>
-            Zintegrowano wierszy: <strong>{{ zintegrowano }}</strong>
-            {% if pominieto_nieaktualne %},
-                pominięto (nieaktualne): <strong>{{ pominieto_nieaktualne }}</strong>
-            {% endif %}.
+            Zintegrowano wierszy: <strong>{{ zintegrowano }}</strong>{% if pominieto_nieaktualne %},
+                pominięto (nieaktualne): <strong>{{ pominieto_nieaktualne }}</strong>{% endif %}.
         </p>
         {% if pominieto_niedopasowane %}
             <p>Pominięto osoby bez rozstrzygniętego dopasowania autora:
@@ -85,10 +83,8 @@
     {% else %}
         <h3><span class="fi-check"></span> Import zakończony</h3>
         <p>
-            Zintegrowano wierszy: <strong>{{ zintegrowano }}</strong>
-            {% if pominieto_nieaktualne %},
-                pominięto (nieaktualne): <strong>{{ pominieto_nieaktualne }}</strong>
-            {% endif %}.
+            Zintegrowano wierszy: <strong>{{ zintegrowano }}</strong>{% if pominieto_nieaktualne %},
+                pominięto (nieaktualne): <strong>{{ pominieto_nieaktualne }}</strong>{% endif %}.
         </p>
         {% if odpieto %}
             <p>Zakończono zatrudnień (odpięcia):
