@@ -20,10 +20,17 @@ uda, powiązanie ustawia redaktor (patrz
 ## Jak wejść do edycji
 
 1. Zaloguj się do BPP.
-2. Na górnej belce rozwiń menu **„wyloguj”** i wybierz **„mój profil”**.
+2. Na górnej belce rozwiń menu **„konto”** (ikona ludzika) i wybierz
+   **„mój profil”**. W starszych wersjach BPP to menu nazywało się
+   **„wyloguj”**.
+
+    ![Menu „konto” na górnej belce z pozycją „mój profil”](../images/uzytkownik/moj-profil-autora/01-menu-konto.png)
+
 3. Jeśli konto jest powiązane z autorem, zobaczysz ramkę **„Powiązany autor”**
    z odnośnikiem do Twojej strony autora oraz przyciskiem
    **„Edytuj swoją stronę”** — kliknij go.
+
+    ![Ramka „Powiązany autor” z przyciskiem „Edytuj swoją stronę”](../images/uzytkownik/moj-profil-autora/02-profil-edytuj.png)
 
 Strona edycji ma adres `/bpp/profil/edycja/`.
 
@@ -33,6 +40,8 @@ Strona edycji ma adres `/bpp/profil/edycja/`.
     o ustawienie powiązania.
 
 ## Co można zmienić
+
+![Formularz edycji profilu: zdjęcie, biogram, profile w innych serwisach i przycisk „Zapisz zmiany”](../images/uzytkownik/moj-profil-autora/03-formularz-edycji.png)
 
 ### Zdjęcie
 

@@ -1,0 +1,1 @@
+Instrukcja użytkownika: tabela „gdzie szukać jakich danych”, zrzuty ekranu wyszukiwania, przeglądania, strony autora i strony publikacji oraz nowa strona „Jak pobrać listę publikacji” (np. do sprawozdania).

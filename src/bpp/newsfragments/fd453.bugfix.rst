@@ -1,0 +1,1 @@
+Rekord utworzony importerem publikacji ze zgłoszenia przejmuje teraz zadeklarowane przez autora informacje o opłacie za publikację (bezkosztowość, źródła finansowania, kwota brutto) — wcześniej były gubione.

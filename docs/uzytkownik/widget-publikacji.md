@@ -16,6 +16,26 @@ Skrypt sam pobierze publikacje i wyświetli je w miejscu wklejenia. Ponieważ ko
 mieszka na serwerze BPP, wszelkie poprawki i ulepszenia widgetu docierają do
 Twojej strony automatycznie — bez ponownego wklejania.
 
+## Najprościej: ze strony autora
+
+1. Wejdź na swoją **stronę autora** w BPP (albo na stronę jednostki). Na
+   samym dole jest odnośnik **„Osadź publikacje tego autora na swojej stronie
+   WWW — kliknij tutaj”**.
+
+    ![Odnośnik „Osadź publikacje tego autora na swojej stronie WWW” na dole strony autora](../images/uzytkownik/widget-publikacji/01-strona-autora-osadz.png)
+
+2. Otworzy się generator kodu (poniżej) z już wpisanym adresem BPP Twojej
+   uczelni i Twoim identyfikatorem. W razie potrzeby ustaw opcje (liczba
+   pozycji, lata, styl), sprawdź **podgląd** i kliknij **„Kopiuj kod”**.
+
+    ![Generator kodu: opcje, przycisk „Kopiuj kod” i podgląd na żywo](../images/uzytkownik/widget-publikacji/02-generator-kodu.png)
+
+3. Wklej kod na swojej stronie w miejscu, gdzie ma się pojawić lista — albo
+   przekaż go osobie, która prowadzi stronę. Lista sama się aktualizuje, gdy
+   w BPP przybywa publikacji.
+
+    ![Przykładowa strona pracownika katedry z listą publikacji pobraną z BPP](../images/uzytkownik/widget-publikacji/03-na-stronie-www.png)
+
 ## Generator kodu
 
 Wpisz swoje dane (autora po **slugu** z adresu profilu, np.

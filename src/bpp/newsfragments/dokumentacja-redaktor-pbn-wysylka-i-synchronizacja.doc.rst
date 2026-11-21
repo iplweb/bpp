@@ -1,0 +1,1 @@
+Dodano przewodnik dla redaktorów „PBN: wysyłanie prac, kolejka i porównanie z BPP” ze zrzutami ekranu (autoryzacja, wysyłka pojedyncza i zbiorcza, kolejka eksportu, import, pobieranie danych, komparatory i tabela komunikatów błędów).
