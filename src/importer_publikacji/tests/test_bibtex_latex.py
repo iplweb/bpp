@@ -139,3 +139,10 @@ def test_fetch_abstract_keeps_line_breaks_other_fields_do_not():
     assert pub.abstract == (
         "Background: Ukraine.\n\nMethods: “survey”.\nResults: 50% — done."
     )
+
+
+def test_fetch_skips_keywords_empty_after_cleaning():
+    pub = BibTeXProvider().fetch(
+        "@article{x,\n  title = {T},\n  keywords = {{}, \\-, x},\n  year = {2024},\n}\n"
+    )
+    assert pub.keywords == ["x"]

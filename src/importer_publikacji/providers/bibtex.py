@@ -181,11 +181,11 @@ class BibTeXProvider(DataProvider):
         pages = _clean_pages(_get_field(fields, "pages", ""))
 
         keywords_raw = _get_field(fields, "keywords", "")
-        keywords = (
-            [_clean_latex(k) for k in keywords_raw.split(",") if k.strip()]
-            if keywords_raw
-            else []
-        )
+        # Czyscimy PRZED filtrem pustych: ``{}`` czy ``\-`` po konwersji
+        # LaTeX-a to pusty napis.
+        keywords = [
+            cleaned for k in keywords_raw.split(",") if (cleaned := _clean_latex(k))
+        ]
 
         bibtex_type = entry.entry_type.lower()
         publication_type = BIBTEX_TYPE_MAP.get(bibtex_type)
