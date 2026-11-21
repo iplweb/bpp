@@ -68,7 +68,15 @@ from bpp.multiseek_registry import (
     registry,
 )
 from bpp.multiseek_registry.fields.constants import UNION_NONE
+from bpp.nazwy import lemat
 from bpp.permissions import moze_wprowadzac_dane
+from bpp.punkty_ewaluacji import punkty_ewaluacji_wydawcy, punkty_ewaluacji_zrodla
+from bpp.rekord_usuniety import (
+    RekordUsunietyDetailMixin,
+    kosz_modelu,
+    rzuc_jesli_obiekt_w_koszu,
+    rzuc_jesli_publikacja_w_koszu_po_slugu,
+)
 from bpp.sekcje_zrodla_wydawcy import sekcje_wydawcy, sekcje_zrodla
 from bpp.util import sanitize_multiseek_title
 from bpp.util.uczelnia_scope import (
@@ -159,9 +167,16 @@ def get_uczelnia_context_data(uczelnia, article_slug=None):
         # JOIN po relacji wielowartościowej (rekord z N autorstwami tej samej
         # uczelni dałby N kopii streszczenia). W single-install filtru nie ma,
         # więc nie ma czego deduplikować.
+        #
+        # ``rekord__deleted_at__isnull=True``: ten JOIN idzie po
+        # SUROWEJ tabeli ``bpp_wydawnictwo_ciagle_autor`` (manager soft-delete
+        # nie jest pytany przy lookupie przez relację), więc bez predykatu
+        # skasowane autorstwo nadal atrybuowałoby streszczenie do uczelni —
+        # czyli publikowałoby je na cudzym hoście.
         if uczelnia is not None and not tylko_jedna_uczelnia():
             recent_abstracts = recent_abstracts.filter(
-                rekord__autorzy_set__jednostka__uczelnia=uczelnia
+                rekord__autorzy_set__jednostka__uczelnia=uczelnia,
+                rekord__deleted_at__isnull=True,
             ).distinct()
         context["recent_abstracts"] = recent_abstracts.order_by(
             "-rekord__ostatnio_zmieniony"
@@ -188,7 +203,7 @@ def conditional(**kwargs):
 
 
 @method_decorator(cache_publiczny(), name="dispatch")
-class UczelniaView(DetailView):
+class UczelniaView(RekordUsunietyDetailMixin, DetailView):
     model = Uczelnia
     template_name = "browse/uczelnia.html"
 
@@ -287,7 +302,7 @@ class JednostkaView(DetailView):
 
 
 @method_decorator(cache_publiczny(), name="dispatch")
-class AutorView(DetailView):
+class AutorView(RekordUsunietyDetailMixin, DetailView):
     template_name = "browse/autor.html"
     model = Autor
 
@@ -297,6 +312,11 @@ class AutorView(DetailView):
         # redaktorskimi, reszta dostaje 404. Pozostałe flagi ``pokazuj_*``
         # (jednostka, ranking, indeks, …) NIE wpływają na tę stronę.
         return widoczni_autorzy(super().get_queryset(), getattr(self, "request", None))
+
+    def get_queryset_kosza(self):
+        # Te same reguły widoczności co dla żywego autora: schowana strona
+        # zostaje 404 także w koszu (410 zdradziłby, że autor istniał).
+        return widoczni_autorzy(kosz_modelu(Autor), getattr(self, "request", None))
 
     def get_context_data(self, **kwargs):
         from powiazania_autorow.models import AuthorConnection
@@ -337,7 +357,22 @@ class AutorView(DetailView):
         # ``uczelnia.skrot`` twardo). Gdy uczelnia istnieje — przekaż ją jawnie.
         if uczelnia is not None:
             context["uczelnia"] = uczelnia
+        if context["pokazuj_metryki"]:
+            context["metryki_autora"] = self._metryki_autora(request)
         return context
+
+    def _metryki_autora(self, request):
+        """Metryki autora z uczelni oglądającego ze WSZYSTKICH okresów
+        ewaluacji, najnowszy okres pierwszy (szablon grupuje po okresie);
+        link każdej metryki ma okres w adresie (``get_absolute_url``)."""
+        from ewaluacja_metryki.uczelnia_scope import scope_metryki
+        from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
+
+        return (
+            scope_metryki(self.object.metryki.all(), uczelnia_dla_odczytu(request))
+            .select_related("dyscyplina_naukowa", "jednostka", "okres", "autor")
+            .order_by("-okres__rok_od", "dyscyplina_naukowa__nazwa")
+        )
 
     def _pokazuj_metryki(self, request):
         """Przycisk metryk ewaluacyjnych tylko dla tych, których wpuści
@@ -583,7 +618,8 @@ class Browser(ListView):
         # * ``fulltext_filter`` dla ``Autor`` — UWAGA, tu JOIN JEST:
         #   ``AutorManager.fulltext_annotate`` (``bpp/models/autor.py``)
         #   nadpisuje wersję z ``FulltextSearchMixin`` i zwraca
-        #   ``Count("wydawnictwo_ciagle")``, co dokłada ``LEFT OUTER JOIN
+        #   ``Count("wydawnictwo_ciagle_autor", filter=Q(…deleted_at
+        #   __isnull=True))``, co dokłada ``LEFT OUTER JOIN
         #   bpp_wydawnictwo_ciagle_autor``. Wierszy nie mnoży wyłącznie
         #   dlatego, że agregat wymusza ``GROUP BY`` po pk — deduplikacja
         #   pochodzi stamtąd, nie z braku złączenia. Zmiana tej adnotacji na
@@ -865,6 +901,10 @@ class JednostkiView(Browser):
     param = "search"
     literka_field = "nazwa"
     paginate_by = 150
+    browse_url_name = "bpp:browse_jednostki"
+
+    def tylko_jednostki_nadrzedne(self, uczelnia):
+        return bool(uczelnia and uczelnia.pokazuj_tylko_jednostki_nadrzedne)
 
     def get_paginate_by(self, queryset):
         uczelnia = Uczelnia.objects.get_for_request(getattr(self, "request", None))
@@ -883,8 +923,8 @@ class JednostkiView(Browser):
             if uczelnia.sortuj_jednostki_alfabetycznie:
                 ordering = ("nazwa",)
 
-            if uczelnia.pokazuj_tylko_jednostki_nadrzedne:
-                qry = qry.filter(parent=None)
+        if self.tylko_jednostki_nadrzedne(uczelnia):
+            qry = qry.filter(parent=None)
 
         # ``liczba_autorow`` liczona JEDNYM agregatem, a nie per wiersz w
         # szablonie. Wcześniej `browse/jednostki.html` wołał
@@ -925,15 +965,39 @@ class JednostkiView(Browser):
 
         uczelnia = Uczelnia.objects.get_for_request(self.request)
         base_qry = scope_jednostki_do_uczelni(base_qry, uczelnia)
-        if uczelnia and uczelnia.pokazuj_tylko_jednostki_nadrzedne:
+        if self.tylko_jednostki_nadrzedne(uczelnia):
             base_qry = base_qry.filter(parent=None)
 
         context["available_letters"] = self.zapamietane_literki(base_qry)
+        context["browse_url_name"] = self.browse_url_name
+        return context
+
+
+# ``dispatch`` z cache'em publicznym dziedziczy po ``JednostkiView`` (klucz
+# cache'a zawiera ścieżkę żądania, więc indeksy się nie mieszają).
+class WydzialyView(JednostkiView):
+    """Indeks wydziałów — widoczne jednostki najwyższego poziomu
+    (``parent=None``) uczelni bieżącego hosta. Cel kafla „Wydziały” na
+    stronie głównej (opcja ``Uczelnia.kafel_wydzialy_zamiast_jednostek``,
+    FD#391). Ten sam szablon co indeks jednostek, tylko z nazwą wydziału
+    (lemat ``WYDZIAL``) w nagłówkach i z własnymi adresami literek."""
+
+    browse_url_name = "bpp:browse_wydzialy"
+
+    def tylko_jednostki_nadrzedne(self, uczelnia):
+        return True
+
+    def get_context_data(self, *args, **kw):
+        context = super().get_context_data(*args, **kw)
+        # Osobna zmienna, NIE nadpisanie ``nazwa_jednostki`` z context
+        # processora — tę czyta też menu „przeglądaj” (top_bar.html), którego
+        # pozycja „jednostki” ma zostać „jednostkami” także na tej stronie.
+        context["nazwa_indeksu"] = lemat("WYDZIAL")
         return context
 
 
 @method_decorator(cache_publiczny(), name="dispatch")
-class ZrodloView(DetailView):
+class ZrodloView(RekordUsunietyDetailMixin, DetailView):
     model = Zrodlo
     template_name = "browse/zrodlo.html"
 
@@ -953,6 +1017,7 @@ class ZrodloView(DetailView):
                 context["wykresy"] = {"wykresy": wykresy}
                 context["szukaj_pola"] = [("zrodlo", self.object.pk)]
                 context["szukaj_tytul"] = str(self.object)
+        context["ewaluacja"] = punkty_ewaluacji_zrodla(self.object)
         # Sekcje „Najczęściej publikujący autorzy” / „Jednostki” + chipy typów.
         context["typy"] = TYPY
         context.update(sekcje_zrodla(self.object, getattr(self, "request", None)))
@@ -1013,7 +1078,7 @@ class WydawcyView(Browser):
 
 
 @method_decorator(cache_publiczny(), name="dispatch")
-class WydawcaView(DetailView):
+class WydawcaView(RekordUsunietyDetailMixin, DetailView):
     model = Wydawca
     template_name = "browse/wydawca.html"
 
@@ -1054,6 +1119,7 @@ class WydawcaView(DetailView):
         # Sekcje autorów/jednostek, znaczek poziomu, chipy typów publikacji.
         context["typy"] = TYPY
         context.update(sekcje_wydawcy(wydawca, request))
+        context["ewaluacja"] = punkty_ewaluacji_wydawcy(wydawca)
         return context
 
 
@@ -1515,11 +1581,16 @@ class PracaViewBySlug(PracaViewMixin, DetailView):
                     try:
                         obj = Rekord.objects.get(pk=[content_type_id, object_id])
                     except Rekord.DoesNotExist as e:
+                        rzuc_jesli_publikacja_w_koszu_po_slugu(self.kwargs["slug"])
+                        rzuc_jesli_obiekt_w_koszu(content_type_id, object_id)
                         raise Http404 from e
                     except Rekord.MultipleObjectsReturned as e:
                         raise NotImplementedError("This should never happen") from e
 
                     return obj
+
+            # Rekordu nie ma w ``bpp_rekord_mat`` — może jest w koszu (410).
+            rzuc_jesli_publikacja_w_koszu_po_slugu(self.kwargs["slug"])
 
         raise Http404
 
@@ -1543,6 +1614,7 @@ class PracaView(PracaViewMixin, DetailView):
         try:
             obj = Rekord.objects.get(pk=[model, self.kwargs["pk"]])
         except Rekord.DoesNotExist as e:
+            rzuc_jesli_obiekt_w_koszu(model, self.kwargs["pk"])
             raise Http404 from e
 
         return obj

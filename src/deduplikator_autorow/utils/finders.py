@@ -7,18 +7,22 @@ from deduplikator_autorow.models import IgnoredScientist
 from pbn_api.models import OsobaZInstytucji, Scientist
 
 from .analysis import autor_ma_publikacje_z_lat
+from .constants import DOMYSLNE_LATA_PRIORYTETU
 from .search import szukaj_kopii
 
 
-def _ma_nowe_publikacje(rekord_w_bpp, duplikaty, limit: int) -> bool:
+def _ma_nowe_publikacje(
+    rekord_w_bpp, duplikaty, limit: int, lata=DOMYSLNE_LATA_PRIORYTETU
+) -> bool:
     """
     Czy główny autor (rekord_w_bpp) lub którykolwiek z pierwszych ``limit``
-    duplikatów ma publikacje z lat 2022-2025.
+    duplikatów ma publikacje z lat ``lata`` (``(rok_od, rok_do)`` okresu
+    ewaluacji).
     """
-    if autor_ma_publikacje_z_lat(rekord_w_bpp):
+    if autor_ma_publikacje_z_lat(rekord_w_bpp, *lata):
         return True
     for duplikat in duplikaty[:limit]:
-        if autor_ma_publikacje_z_lat(duplikat):
+        if autor_ma_publikacje_z_lat(duplikat, *lata):
             return True
     return False
 
@@ -46,10 +50,11 @@ def _osoby_z_instytucji_query(excluded_authors: list[Scientist]):
 
 def znajdz_pierwszego_autora_z_duplikatami(
     excluded_authors: list[Scientist] | None = None,
+    lata: tuple[int, int] = DOMYSLNE_LATA_PRIORYTETU,
 ) -> Scientist | None:
     """
     Znajduje pierwszego autora (Scientist), który ma możliwe duplikaty w systemie BPP.
-    Priorytetyzuje autorów z publikacjami z lat 2022-2025.
+    Priorytetyzuje autorów z publikacjami z lat ``lata`` (okres ewaluacji).
 
     Funkcja iteruje przez wszystkie rekordy OsobaZInstytucji i dla każdego sprawdza,
     czy istnieją potencjalne duplikaty używając funkcji szukaj_kopii().
@@ -57,6 +62,7 @@ def znajdz_pierwszego_autora_z_duplikatami(
     Args:
         excluded_authors: Lista autorów (Scientist), którzy mają być wykluczeni
                          z wyszukiwania duplikatów. Domyślnie None.
+        lata: ``(rok_od, rok_do)`` okresu ewaluacji do priorytetyzacji.
 
     Returns:
         Optional[Scientist]: Pierwszy znaleziony autor z duplikatami lub None,
@@ -91,8 +97,8 @@ def znajdz_pierwszego_autora_z_duplikatami(
             continue
 
         # Sprawdź czy główny autor lub któryś z pierwszych 10 duplikatów ma
-        # publikacje z lat 2022-2025 i dodaj do odpowiedniej grupy
-        if _ma_nowe_publikacje(scientist.rekord_w_bpp, duplikaty, 10):
+        # publikacje z lat okresu i dodaj do odpowiedniej grupy
+        if _ma_nowe_publikacje(scientist.rekord_w_bpp, duplikaty, 10, lata):
             autorzy_z_nowymi_publikacjami.append(scientist)
         else:
             autorzy_bez_nowych_publikacji.append(scientist)
@@ -127,14 +133,17 @@ def _osoba_z_instytucji_autora(autor) -> OsobaZInstytucji | None:
         return None
 
 
-def search_author_by_lastname(search_term, excluded_authors=None):
+def search_author_by_lastname(
+    search_term, excluded_authors=None, lata=DOMYSLNE_LATA_PRIORYTETU
+):
     """
     Wyszukuje pierwszego autora z duplikatami według części nazwiska.
-    Priorytetyzuje autorów z publikacjami z lat 2022-2025.
+    Priorytetyzuje autorów z publikacjami z lat ``lata`` (okres ewaluacji).
 
     Args:
         search_term: część nazwiska do wyszukania
         excluded_authors: lista autorów do wykluczenia
+        lata: ``(rok_od, rok_do)`` okresu ewaluacji do priorytetyzacji
 
     Returns:
         Scientist object lub None jeśli nie znaleziono
@@ -168,8 +177,8 @@ def search_author_by_lastname(search_term, excluded_authors=None):
         if not duplikaty.exists():
             continue
 
-        # Sprawdź czy autor lub pierwszych 5 duplikatów ma publikacje 2022-2025
-        if _ma_nowe_publikacje(autor, duplikaty, 5):
+        # Sprawdź czy autor lub pierwszych 5 duplikatów ma publikacje z okresu
+        if _ma_nowe_publikacje(autor, duplikaty, 5, lata):
             autorzy_z_nowymi_publikacjami.append(autor.pbn_uid)
         else:
             autorzy_bez_nowych_publikacji.append(autor.pbn_uid)

@@ -17,6 +17,7 @@
                         <br><small>Przeliczanie liczby N i przygotowanie danych...</small>
                     {% else %}
                         <strong>Generowanie metryk w trakcie...</strong>
+                        {% if status_generowania.okres %}(okres {{ status_generowania.okres }}){% endif %}
                         Przetworzono: <span id="liczba-przetworzonych">{{ status_generowania.liczba_przetworzonych }}</span> autorów
                     {% endif %}
                 </p>
@@ -30,7 +31,7 @@
                 <p>
                     <span class="fi-check"></span>
                     <strong>Wizualizacja wygenerowana w dniu {{ status_generowania.data_zakonczenia|date:"Y-m-d" }} o godzinie {{ status_generowania.data_zakonczenia|date:"H:i:s" }}</strong><br>
-                    Przetworzono: {{ status_generowania.liczba_przetworzonych }} autorów
+                    {% if status_generowania.okres %}Okres {{ status_generowania.okres }} | {% endif %}Przetworzono: {{ status_generowania.liczba_przetworzonych }} autorów
                     {% if status_generowania.liczba_bledow > 0 %}
                         | Błędy: {{ status_generowania.liczba_bledow }}
                     {% endif %}

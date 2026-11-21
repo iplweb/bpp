@@ -92,7 +92,37 @@ class SentDataManager(models.Manager):
         sd.pbn_uid_id = pbn_uid_id
         sd.api_response_status = api_response_status
         sd.exception = ""
+        # Symetria wycofania (faza 05 soft-delete): udana wysyłka znaczy, że
+        # oświadczenia znów są w PBN, więc ślad wycofania przestaje być
+        # prawdziwy. Czyścimy go DOPIERO tutaj, a nie w
+        # ``create_or_update_before_upload`` — gdyby wysyłka po restore
+        # padła, rekord zostałby jednocześnie „niewycofany" i bez
+        # oświadczeń w PBN, czyli w stanie, którego nikt by nie wykrył.
+        sd.withdrawn_at = None
         sd.save()
+
+    def mark_as_withdrawn(self, rec, api_response_status="", uczelnia=None):
+        """Oznacza rekord jako wycofany z PBN (oświadczenia usunięte).
+
+        ``uczelnia`` jest w praktyce obowiązkowa (multi-hosted): wycofanie
+        dotyczy profilu KONKRETNEJ uczelni, a przy ≥2 wierszach
+        ``get_for_rec`` bez niej rzuci ``MultipleObjectsReturned``. Default
+        ``None`` istnieje wyłącznie dla zgodności z konwencją reszty
+        managera (``uczelnia`` jako ostatni kwarg).
+
+        Wiersza SentData NIE kasujemy — zostaje dla audytu i re-matchingu
+        przy przywróceniu rekordu. ``submitted_successfully=False``, bo
+        rekord nie jest już wystawiony w profilu instytucji; samo to pole
+        nie odróżniłoby jednak „nigdy nie wysłane" od „wysłane i wycofane",
+        stąd osobny znacznik czasu.
+        """
+        sd = self.get_for_rec(rec, uczelnia)
+        sd.submitted_successfully = False
+        sd.withdrawn_at = timezone.now()
+        if api_response_status:
+            sd.api_response_status = api_response_status
+        sd.save()
+        return sd
 
     def mark_as_failed(self, rec, exception="", api_response_status="", uczelnia=None):
         """Mark existing record as failed after API call"""
@@ -242,6 +272,15 @@ class SentData(LinkDoPBNMixin, models.Model):
         null=True,
         blank=True,
         help_text="Kiedy dane zostały wysłane do PBN",
+    )
+
+    withdrawn_at = models.DateTimeField(
+        "Data wycofania oświadczeń",
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Ustawiane po udanym wycofaniu oświadczeń dyscyplin z PBN "
+        "(soft-delete publikacji). Zerowane przy ponownej udanej wysyłce.",
     )
     api_response_status = models.TextField(
         "Status odpowiedzi API",

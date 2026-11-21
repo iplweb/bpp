@@ -79,7 +79,7 @@ class IloscUdzialowDlaAutoraZaCaloscResource(resources.ModelResource):
         return (
             super()
             .get_queryset()
-            .select_related("autor", "dyscyplina_naukowa", "rodzaj_autora")
+            .select_related("autor", "dyscyplina_naukowa", "rodzaj_autora", "okres")
         )
 
     def dehydrate_autor__pbn_uid_id(self, ad):
@@ -99,6 +99,8 @@ class IloscUdzialowDlaAutoraZaCaloscResource(resources.ModelResource):
             "dyscyplina_naukowa__kod",
             "rodzaj_autora__nazwa",
             "rodzaj_autora__skrot",
+            "okres__rok_od",
+            "okres__rok_do",
             "ilosc_udzialow",
             "ilosc_udzialow_monografie",
             "komentarz",
@@ -111,6 +113,8 @@ class LiczbaNDlaUczelniResource(resources.ModelResource):
         model = LiczbaNDlaUczelni
         fields = (
             "uczelnia__nazwa",
+            "okres__rok_od",
+            "okres__rok_do",
             "dyscyplina_naukowa__nazwa",
             "dyscyplina_naukowa__kod",
             "liczba_n",
@@ -153,6 +157,7 @@ class IloscUdzialowDlaAutoraZaCaloscAdmin(
     resource_classes = [IloscUdzialowDlaAutoraZaCaloscResource]
     list_display = [
         "uczelnia",
+        "okres",
         "autor",
         "dyscyplina_naukowa",
         "rodzaj_autora",
@@ -171,7 +176,13 @@ class IloscUdzialowDlaAutoraZaCaloscAdmin(
         "dyscyplina_naukowa__kod",
         "dyscyplina_naukowa__nazwa",
     ]
-    list_filter = ["uczelnia", "dyscyplina_naukowa", "rodzaj_autora", "ilosc_udzialow"]
+    list_filter = [
+        "okres",
+        "uczelnia",
+        "dyscyplina_naukowa",
+        "rodzaj_autora",
+        "ilosc_udzialow",
+    ]
     ordering = ("autor__nazwisko", "autor__imiona", "dyscyplina_naukowa__nazwa")
 
 
@@ -184,11 +195,12 @@ class LiczbaNDlaUczelniAdmin(
 
     list_display = [
         "uczelnia",
+        "okres",
         "dyscyplina_naukowa",
         "liczba_n",
     ]
 
-    list_filter = ["dyscyplina_naukowa"]
+    list_filter = ["okres", "dyscyplina_naukowa"]
 
     raw_id_fields = ["uczelnia", "dyscyplina_naukowa"]
 
@@ -197,9 +209,10 @@ class LiczbaNDlaUczelniAdmin(
 class DyscyplinaNieRaportowanaAdmin(admin.ModelAdmin):
     list_display = [
         "uczelnia",
+        "okres",
         "dyscyplina_naukowa",
     ]
 
-    list_filter = ["dyscyplina_naukowa"]
+    list_filter = ["okres", "dyscyplina_naukowa"]
 
     raw_id_fields = ["uczelnia", "dyscyplina_naukowa"]

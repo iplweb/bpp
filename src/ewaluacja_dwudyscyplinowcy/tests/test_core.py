@@ -69,8 +69,18 @@ def test_pobierz_autorow_agreguje_lata(dyscyplina1, dyscyplina2):
 
 
 @pytest.mark.django_db
-def test_pobierz_autorow_lata_default_to_2022_2025(dyscyplina1, dyscyplina2):
-    """Bez argumentu — domyślnie 2022-2025 (włącznie)."""
+def test_pobierz_autorow_lata_default_to_okres_domyslny(
+    dyscyplina1, dyscyplina2, monkeypatch
+):
+    """Bez argumentu — lata domyślnego okresu ewaluacji (tu: 2022–2025)."""
+    from ewaluacja_common import okres as okres_mod
+    from ewaluacja_common.models import OkresEwaluacji
+
+    monkeypatch.setattr(
+        okres_mod,
+        "okres_domyslny",
+        lambda rok=None: OkresEwaluacji.objects.get(rok_od=2022),
+    )
     autor = baker.make(Autor)
     Autor_Dyscyplina.objects.create(
         autor=autor,

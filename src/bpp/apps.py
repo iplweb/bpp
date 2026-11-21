@@ -50,6 +50,23 @@ class BppConfig(AppConfig):
         if apps.is_installed("favicon"):
             self._patch_favicon_save_per_site()
 
+        # django-easy-audit pobiera poprzednia wersje wiersza przez
+        # `sender.objects`, wiec na modelach soft-delete wywraca `restore()`
+        # (wiersz jest wtedy jeszcze skasowany -> DoesNotExist). Podmieniamy
+        # handler na wersje uzywajaca `_base_manager`. Pelne uzasadnienie,
+        # zakres bledu i stan zgloszenia upstream: bpp/easyaudit_shim.py.
+        if apps.is_installed("easyaudit"):
+            from bpp.easyaudit_shim import zainstaluj
+
+            zainstaluj()
+
+        # Receivery soft-delete -> SoftDeleteLog + kolejka PBN (faza 06).
+        # Podpięte bez `sender=`, czyli obejmują KAŻDY model soft-delete —
+        # dodanie kolejnego nie wymaga dopisywania nic tutaj.
+        from bpp.receivers import soft_delete as soft_delete_receivers
+
+        soft_delete_receivers.register()
+
         # Initialize Rollbar with global hostname handler
         from bpp.rollbar_config import configure_rollbar
 

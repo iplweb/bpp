@@ -3,7 +3,7 @@ Modele abstrakcyjne związane z metadanymi rekordów.
 """
 
 from django.db import models
-from django.db.models import CASCADE, SET_NULL
+from django.db.models import PROTECT, SET_NULL
 
 from bpp.util import sanityzuj_jesli_html
 
@@ -45,7 +45,7 @@ class ModelZeStatusem(models.Model):
     """Model zawierający pole statusu korekty, oraz informację, czy
     punktacja została zweryfikowana."""
 
-    status_korekty = models.ForeignKey("Status_Korekty", CASCADE)
+    status_korekty = models.ForeignKey("Status_Korekty", PROTECT)
 
     class Meta:
         abstract = True
@@ -54,7 +54,7 @@ class ModelZeStatusem(models.Model):
 class ModelZCharakterem(models.Model):
     charakter_formalny = models.ForeignKey(
         "bpp.Charakter_Formalny",
-        CASCADE,
+        PROTECT,
         verbose_name="Charakter formalny",
         limit_choices_to={"ukryty": False},
     )

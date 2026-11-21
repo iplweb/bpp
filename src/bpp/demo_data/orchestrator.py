@@ -8,12 +8,17 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from django.core.exceptions import FieldDoesNotExist
 from django.db import connection
 
 from bpp.demo_data.confirm import ConfirmAborted, double_confirm
 from bpp.demo_data.generators.autorzy import create_autorzy
 from bpp.demo_data.generators.dyscypliny import create_autor_dyscypliny
 from bpp.demo_data.generators.jednostki import create_jednostki
+from bpp.demo_data.generators.punktacja import (
+    create_poziomy_wydawcow,
+    create_punktacja_zrodel,
+)
 from bpp.demo_data.generators.uczelnia import ensure_uczelnia
 from bpp.demo_data.generators.wydawcy import create_wydawcy
 from bpp.demo_data.generators.wydawnictwa_ciagle import create_wc
@@ -23,6 +28,7 @@ from bpp.demo_data.generators.zrodla import create_zrodla
 from bpp.demo_data.manifest import Manifest
 from bpp.demo_data.preflight import check_required
 from bpp.demo_data.progress import make_progress
+from bpp.models.soft_delete import manager_z_koszem
 
 
 @dataclass
@@ -48,6 +54,29 @@ class CreateOptions:
     procent_ze_streszczeniem: int = 70
     bez_prefiksu: bool = False
     disable_progress: bool = False
+    # Opcjonalny plik POL-on (import_polon) dla uczelni demo:
+    polon_plik: Path | None = None
+    polon_dyscypliny: list[str] | None = None
+    polon_bez_blednych_wierszy: bool = False
+    bez_ewaluacji: bool = False
+    zgloszen: int = 40
+    # Login uzytkownika, któremu przypisujemy wpisy „utworzono" w historii
+    # (admin „Historia"). None → konto techniczne ``bpp-system``.
+    uzytkownik: str | None = None
+    # Dodatki (kazdy z wlasnym RNG „<seed>-<nazwa>", wiec nie zmieniaja
+    # danych powyzej dla danego --seed):
+    dwudyscyplinowcow: int = 8
+    bez_rzadkich_typow: bool = False
+    bez_brudow: bool = False
+    bez_pbn: bool = False
+    konta_demo: bool = False
+
+
+def rng_dodatku(seed: int | None, nazwa: str) -> random.Random:
+    """Osobny RNG dla dodatku — deterministyczny przy podanym --seed."""
+    if seed is None:
+        return random.Random()
+    return random.Random(f"{seed}-{nazwa}")
 
 
 def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
@@ -58,8 +87,13 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
        co i tak sie nie wykona).
     3. Manifest + RNG init.
     4. Generatory w sztywnej kolejnosci dependency: uczelnia → wydzialy →
-       jednostki → autorzy → dyscypliny → zrodla → wydawcy → WC → WZ.
-    5. Manifest save + summary do stdout.
+       jednostki → autorzy → dyscypliny → zrodla (+ punktacja) → wydawcy
+       (+ poziomy) → WC → WZ → streszczenia → zgloszenia publikacji.
+    5. Dodatki zmieniajace dane ewaluacji: rzadsze typy rekordow,
+       dwudyscyplinowcy, celowe brudy. Potem przeliczenie ewaluacji (cache
+       punktow/slotow, liczba N, metryki) — pomijane z `--bez-ewaluacji`.
+    6. Konta demo (opt-in), lustro PBN.
+    7. Manifest save + summary do stdout (i opcjonalny plik POL-on).
     """
     stdin = stdin or sys.stdin
     stdout = stdout or sys.stdout
@@ -79,7 +113,8 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         f"Stworzy: {opts.wydzialow} wydz., "
         f"{opts.wydzialow * opts.jednostek_na_wydzial} jedn., "
         f"{opts.autorow} aut., {opts.ile_ciaglych} prac ciaglych, "
-        f"{opts.ile_zwartych} prac zwartych w bazie '{db_name}'."
+        f"{opts.ile_zwartych} prac zwartych, {opts.zgloszen} zgloszen "
+        f"publikacji w bazie '{db_name}'."
     )
     try:
         double_confirm(
@@ -93,6 +128,9 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
     except ConfirmAborted as e:
         stdout.write(f"[ABORT] {e}\n")
         raise SystemExit(1) from None
+
+    # PRZED generatorami — bledny --uzytkownik nie moze zostawic polowy demo:
+    autor_historii = _autor_historii(opts.uzytkownik, stdout)
 
     # 3. Manifest + RNG:
     rng = random.Random(opts.seed)
@@ -145,7 +183,7 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         batch_size=opts.batch_size,
         disable_progress=opts.disable_progress,
     )
-    create_autor_dyscypliny(
+    autor_dyscypliny = create_autor_dyscypliny(
         autorzy=autorzy,
         lata=range(opts.od_roku, opts.do_roku + 1),
         procent_z_dyscyplina=opts.procent_z_dyscyplina,
@@ -171,6 +209,24 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         manifest=manifest,
         rng=rng,
         prefix=prefix,
+        batch_size=opts.batch_size,
+        disable_progress=opts.disable_progress,
+    )
+    lata = range(opts.od_roku, opts.do_roku + 1)
+    create_punktacja_zrodel(
+        zrodla=zrodla,
+        lata=lata,
+        dyscypliny_preferowane=[ad.dyscyplina_naukowa for ad in autor_dyscypliny],
+        manifest=manifest,
+        rng=rng,
+        batch_size=opts.batch_size,
+        disable_progress=opts.disable_progress,
+    )
+    create_poziomy_wydawcow(
+        wydawcy=wydawcy,
+        lata=lata,
+        manifest=manifest,
+        rng=rng,
         batch_size=opts.batch_size,
         disable_progress=opts.disable_progress,
     )
@@ -209,6 +265,83 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         disable_progress=opts.disable_progress,
     )
 
+    from bpp.demo_data.generators.zgloszenia import create_zgloszenia
+
+    create_zgloszenia(
+        n=opts.zgloszen,
+        autorzy=autorzy,
+        prace_wc=wc,
+        prace_wz=wz,
+        lata=lata,
+        theme=theme,
+        prefix=prefix,
+        manifest=manifest,
+        rng=rng,
+        batch_size=opts.batch_size,
+        disable_progress=opts.disable_progress,
+    )
+
+    # 5. Dodatki zmieniajace dane liczone w slotach/liczbie N:
+    dwu_autorzy, dwu_prace = _dodatki_przed_ewaluacja(
+        opts,
+        autorzy=autorzy,
+        jednostki=jednostki,
+        zrodla=zrodla,
+        wc=wc,
+        wz=wz,
+        theme=theme,
+        prefix=prefix,
+        manifest=manifest,
+        stdout=stdout,
+    )
+
+    if not opts.bez_ewaluacji:
+        from bpp.demo_data.ewaluacja import przelicz_ewaluacje
+
+        przelicz_ewaluacje(
+            uczelnia=uczelnia,
+            prace_wc=wc + dwu_prace,
+            prace_wz=wz,
+            od_roku=opts.od_roku,
+            do_roku=opts.do_roku,
+            manifest=manifest,
+            stdout=stdout,
+            disable_progress=opts.disable_progress,
+        )
+
+    # 6. Konta (opt-in), lustro PBN:
+    _dodatki_po_ewaluacji(
+        opts,
+        uczelnia=uczelnia,
+        autorzy=autorzy + dwu_autorzy,
+        zrodla=zrodla,
+        wydawcy=wydawcy,
+        wc=wc + dwu_prace,
+        wz=wz,
+        theme=theme,
+        prefix=prefix,
+        manifest=manifest,
+        stdout=stdout,
+    )
+
+    # 7. Ślad w historii (admin „Historia") — bulk_create go nie zostawia;
+    # PO wszystkich dodatkach, żeby objął też ich rekordy:
+    from bpp.demo_data.historia import (
+        komentarz_utworzenia,
+        zapisz_historie_utworzenia,
+    )
+
+    wpisy_historii = zapisz_historie_utworzenia(
+        manifest,
+        user=autor_historii,
+        komentarz=komentarz_utworzenia(seed=opts.seed, motyw=opts.motyw),
+        batch_size=opts.batch_size,
+    )
+    stdout.write(
+        f'[OK] Historia: {sum(wpisy_historii.values())} wpisow „utworzono" '
+        f"(uzytkownik: {autor_historii.username}).\n"
+    )
+
     manifest.save()
     stdout.write(
         f"\n[OK] Motyw: {theme.label}. "
@@ -222,6 +355,178 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         f"slowa_kluczowe_z_autorow_cache)\nsa puste. Zeby je wypelnic, "
         f"uruchom: uv run python src/manage.py denorm_flush\n"
     )
+
+    # 6. Opcjonalnie plik POL-on — NA SAMYM KONCU, z wlasnym RNG
+    # (random.Random(f"{seed}-polon")), wiec nie zmienia niczego powyzej.
+    if opts.polon_plik is not None:
+        from bpp.demo_data.generators.polon import parsuj_dyscypliny, write_polon_file
+
+        podsumowanie = write_polon_file(
+            opts.polon_plik,
+            uczelnia=uczelnia,
+            dyscypliny=parsuj_dyscypliny(opts.polon_dyscypliny),
+            seed=opts.seed,
+            bledne_wiersze=not opts.polon_bez_blednych_wierszy,
+            theme=theme,
+        )
+        stdout.write("\n" + podsumowanie.tekst())
+
+
+def _dodatki_przed_ewaluacja(
+    opts: CreateOptions,
+    *,
+    autorzy,
+    jednostki,
+    zrodla,
+    wc,
+    wz,
+    theme,
+    prefix,
+    manifest,
+    stdout,
+):
+    """Rzadsze typy rekordow, dwudyscyplinowcy, celowe brudy.
+
+    Zwraca (dwudyscyplinowcy, ich prace)."""
+    lata_lista = list(range(opts.od_roku, opts.do_roku + 1))
+    if not opts.bez_rzadkich_typow:
+        from bpp.demo_data.generators.rzadkie_typy import create_rzadkie_typy
+
+        rzadkie = create_rzadkie_typy(
+            autorzy=autorzy,
+            prace_wc=wc,
+            prace_wz=wz,
+            lata=lata_lista,
+            theme=theme,
+            manifest=manifest,
+            rng=rng_dodatku(opts.seed, "rzadkie"),
+            prefix=prefix,
+            batch_size=opts.batch_size,
+            disable_progress=opts.disable_progress,
+        )
+        stdout.write(rzadkie.tekst())
+
+    dwu_autorzy, dwu_prace = [], []
+    if opts.dwudyscyplinowcow > 0:
+        from bpp.demo_data.generators.dwudyscyplinowcy import create_dwudyscyplinowcy
+
+        dwu_autorzy, dwu_prace = create_dwudyscyplinowcy(
+            n=opts.dwudyscyplinowcow,
+            jednostki=jednostki,
+            zrodla=zrodla,
+            wspolautorzy=autorzy,
+            lata=lata_lista,
+            theme=theme,
+            manifest=manifest,
+            rng=rng_dodatku(opts.seed, "dwudyscyplinowcy"),
+            idx_start=len(wc),
+            marker=prefix,
+            batch_size=opts.batch_size,
+            disable_progress=opts.disable_progress,
+        )
+        stdout.write(
+            f"[OK] Dwudyscyplinowcy: {len(dwu_autorzy)} autorów "
+            f"(pseudonim „dwudyscyplinowy”), {len(dwu_prace)} artykułów.\n"
+        )
+
+    if not opts.bez_brudow:
+        from bpp.demo_data.generators.brudy import create_brudy
+
+        brudy = create_brudy(
+            autorzy=autorzy,
+            zrodla=zrodla,
+            prace_wc=wc,
+            idx_start=len(wc) + len(dwu_prace),
+            manifest=manifest,
+            rng=rng_dodatku(opts.seed, "brudy"),
+            batch_size=opts.batch_size,
+            disable_progress=opts.disable_progress,
+        )
+        stdout.write(brudy.tekst())
+    return dwu_autorzy, dwu_prace
+
+
+def _dodatki_po_ewaluacji(
+    opts: CreateOptions,
+    *,
+    uczelnia,
+    autorzy,
+    zrodla,
+    wydawcy,
+    wc,
+    wz,
+    theme,
+    prefix,
+    manifest,
+    stdout,
+):
+    """Konta demo (opt-in), lustro PBN.
+
+    Generator tylko tworzy dane. Porownania BPP-PBN i skany deduplikatorow
+    uruchamia uzytkownik (przyciski na ich ekranach)."""
+    lata_lista = list(range(opts.od_roku, opts.do_roku + 1))
+    if opts.konta_demo:
+        from bpp.demo_data.generators.konta import create_konta
+
+        create_konta(autorzy=autorzy, manifest=manifest, stdout=stdout)
+
+    if not opts.bez_pbn:
+        from bpp.demo_data.generators.pbn import create_lustro_pbn
+
+        lustro = create_lustro_pbn(
+            uczelnia=uczelnia,
+            autorzy=autorzy,
+            zrodla=zrodla,
+            wydawcy=wydawcy,
+            prace_wc=wc,
+            prace_wz=wz,
+            lata=lata_lista,
+            theme=theme,
+            manifest=manifest,
+            rng=rng_dodatku(opts.seed, "pbn"),
+            batch_size=opts.batch_size,
+            disable_progress=opts.disable_progress,
+        )
+        stdout.write(lustro.tekst())
+
+
+def _autor_historii(username: str | None, stdout):
+    """Użytkownik, któremu przypisujemy wpisy „utworzono" w historii:
+    podany ``--uzytkownik`` albo konto techniczne ``bpp-system`` (to samo,
+    które podpisuje inne operacje systemowe)."""
+    if username is None:
+        from pbn_export_queue.operacje import pobierz_konto_techniczne
+
+        return pobierz_konto_techniczne()
+
+    from django.contrib.auth import get_user_model
+
+    try:
+        return get_user_model().objects.get(username=username)
+    except get_user_model().DoesNotExist:
+        stdout.write(f"[BLAD] Nie ma uzytkownika '{username}' (--uzytkownik).\n")
+        raise SystemExit(1) from None
+
+
+def _odepnij_rozdzialy(manager, pks: list[int], batch_size: int) -> None:
+    """Zeruje self-FK `wydawnictwo_nadrzedne` rozdzialow demo przed kasowaniem.
+
+    Pole jest PROTECT (soft-delete, #1054), a `hard_delete()` na modelu
+    soft-delete kasuje wiersz po wierszu w kolejnosci `Meta.ordering`, NIE
+    po pk. Ksiazka-matka bywa wiec kasowana przed swoim rozdzialem i kolektor
+    Django rzuca `ProtectedError`. Odpinamy rozdzialy UPDATE-em na paczke,
+    zamiast polegac na kolejnosci (jak
+    `wyczysc_publikacje_importu._odepnij_rozdzialy`).
+    """
+    try:
+        manager.model._meta.get_field("wydawnictwo_nadrzedne")
+    except FieldDoesNotExist:
+        return
+    for start in range(0, len(pks), batch_size):
+        manager.filter(
+            pk__in=pks[start : start + batch_size],
+            wydawnictwo_nadrzedne__isnull=False,
+        ).update(wydawnictwo_nadrzedne=None)
 
 
 @dataclass
@@ -238,10 +543,9 @@ def run_cleanup(opts: CleanupOptions, *, stdin=None, stdout=None):
     usuwa obiekty w bezpiecznej kolejnosci, renamuje manifest do
     `.applied.<TS>`.
 
-    Wewnatrz jednego modelu PK sortowane DESC — dla
-    `bpp.Wydawnictwo_Zwarte` rozdzialy zazwyczaj maja wyzsze PK niz
-    ich nadrzedne (sa tworzone po), wiec usuwajac od konca nie
-    zlamiemy FK `wydawnictwo_nadrzedne`.
+    Przed kasowaniem `bpp.Wydawnictwo_Zwarte` rozdzialy sa odpinane od
+    ksiazek nadrzednych (`_odepnij_rozdzialy`) — FK `wydawnictwo_nadrzedne`
+    jest PROTECT, a kolejnosc kasowania per-instancja nie jest gwarantowana.
     """
     stdin = stdin or sys.stdin
     stdout = stdout or sys.stdout
@@ -282,6 +586,18 @@ def run_cleanup(opts: CleanupOptions, *, stdin=None, stdout=None):
     from django.apps import apps
     from django.db import transaction
 
+    from bpp.demo_data.ewaluacja import (
+        przelicz_liczbe_n_po_cleanup,
+        usun_cache_punktacji,
+    )
+    from bpp.demo_data.historia import usun_historie
+
+    # Cache punktacji nie ma FK do rekordu (klucz-krotka) — kasujemy jawnie
+    # PRZED rekordami.
+    usunieto = usun_cache_punktacji(manifest)
+    if usunieto:
+        stdout.write(f"[OK] Usunięto {usunieto} wierszy cache punktacji.\n")
+
     for label, pks in manifest.objects_in_cleanup_order():
         app_label, model_name = label.split(".")
         try:
@@ -302,10 +618,30 @@ def run_cleanup(opts: CleanupOptions, *, stdin=None, stdout=None):
             total=n_batches,
             disable=opts.disable_progress,
         )
+        # Manager widzący RÓWNIEŻ kosz i kasowanie NIEODWRACALNE — patrz
+        # komentarz niżej. `getattr` zamiast `isinstance`, bo lista modeli
+        # przychodzi z manifestu i miesza modele soft-delete z resztą.
+        manager = manager_z_koszem(model)
+        _odepnij_rozdzialy(manager, sorted_pks, opts.batch_size)
+
         for start in pbar:
             chunk = sorted_pks[start : start + opts.batch_size]
             with transaction.atomic():
-                model.objects.filter(pk__in=chunk).delete()
+                qs = manager.filter(pk__in=chunk)
+                # ⚠️ Na modelu soft-delete `QuerySet.delete()` jest MIĘKKIE:
+                # wiersz zostaje. Cleanup danych demo musi kasować trwale,
+                # i to z dwóch powodów. Po pierwsze zostawione publikacje
+                # trzymają FK z PROTECT (np. `Wydawnictwo_Zwarte.wydawca`),
+                # więc kasowanie słowników dalej w manifeście wywala się na
+                # `ProtectedError`. Po drugie „posprzątane" dane demo, które
+                # nadal siedzą w bazie, mijają się z celem komendy.
+                hard = getattr(qs, "hard_delete", None)
+                (hard or qs.delete)()
+                # Historia (LogEntry + wersje reversion) skasowanych obiektów
+                # — inaczej zostałaby osierocona:
+                usun_historie(model, chunk)
+
+    przelicz_liczbe_n_po_cleanup(manifest, stdout)
 
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     applied = opts.manifest.with_suffix(opts.manifest.suffix + f".applied.{ts}")

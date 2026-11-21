@@ -3,6 +3,7 @@
 import json
 
 from ewaluacja_optymalizacja.core import is_low_mono
+from ewaluacja_optymalizacja.okres import limity_slotow_autora, pobierz_okres
 
 
 def save_results_to_json_file(
@@ -18,17 +19,22 @@ def save_results_to_json_file(
     rekords,
     sorted_unselected,
     author_slot_limits,
+    okres=None,
 ):
     """Write a structured JSON dump of the optimization to ``output``."""
+    okres = pobierz_okres(okres)
     sel_total = len(all_selected)
     sel_low = len([p for p in all_selected if is_low_mono(p)])
     share = (100.0 * sel_low / sel_total) if sel_total > 0 else 0.0
     total_slots_used = sum(p.base_slots for p in all_selected)
     points_per_slot = total_points / total_slots_used if total_slots_used > 0 else 0
 
+    max_total, max_mono = limity_slotow_autora(okres)
+    domyslne_limity = {"total": max_total, "mono": max_mono}
+
     results_dict = {
         "discipline": dyscyplina,
-        "year_range": "2022-2025",
+        "year_range": f"{okres.rok_od}-{okres.rok_do}",
         "total_points": round(total_points, 2),
         "total_publications": sel_total,
         "total_slots_used": round(total_slots_used, 2),
@@ -84,7 +90,7 @@ def save_results_to_json_file(
             unselected_efficiency = (
                 details["points"] / details["slots"] if details["slots"] > 0 else 0
             )
-            limits = author_slot_limits.get(author_id, {"total": 4.0, "mono": 2.0})
+            limits = author_slot_limits.get(author_id, domyslne_limity)
             slot_percentage = (
                 (selected_slots / limits["total"] * 100) if limits["total"] > 0 else 0
             )

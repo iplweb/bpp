@@ -118,7 +118,7 @@ def test_walidacja_odrzuca_bledny_format(pole, wartosc):
 
 @pytest.mark.django_db
 def test_strona_autora_pokazuje_linki_profili(client, uczelnia):
-    uczelnia.etykieta_profilu_uczelni = "PPM UML"
+    uczelnia.etykieta_profilu_uczelni = "Portal Pracowników"
     uczelnia.save()
     autor = baker.make(
         Autor,
@@ -132,7 +132,7 @@ def test_strona_autora_pokazuje_linki_profili(client, uczelnia):
     assert autor.scopus_url in tresc
     assert autor.google_scholar_url in tresc
     assert "https://ppm.example.edu.pl/info/author/X1/" in tresc
-    assert "PPM UML" in tresc
+    assert "Portal Pracowników" in tresc
 
 
 @pytest.mark.django_db

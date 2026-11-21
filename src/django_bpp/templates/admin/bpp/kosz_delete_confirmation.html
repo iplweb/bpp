@@ -1,0 +1,45 @@
+{% extends "admin/delete_confirmation.html" %}
+{% load i18n admin_urls %}
+
+{% block content %}
+{# Potwierdzenie „Usuń” dla modeli z koszem (BppSoftDeleteAdminMixin). #}
+{# Rekord NIE jest kasowany trwale — trafia do kosza (operacja odwracalna). #}
+{# Markup Grappelli (grp-module / grp-row / grp-submit-row) jak w change_form. #}
+{% url opts|admin_urlname:'change' object.pk|admin_urlquote as object_url %}
+<div class="g-d-c">
+  {% if kosz_blokada %}
+    {% include "admin/bpp/kosz_blokada.html" %}
+    <div class="grp-module grp-submit-row grp-fixed-footer">
+      <ul>
+        <li class="grp-float-left"><a href="{% add_preserved_filters object_url %}" class="grp-button grp-cancel-link">Wróć do rekordu</a></li>
+      </ul>
+    </div>
+  {% elif protected or perms_lacking %}
+    {{ block.super }}
+  {% else %}
+    <form action="" method="post" novalidate>{% csrf_token %}
+      <fieldset class="module grp-module">
+        <h2>🗑️ Przenieść „{{ object }}” do kosza?</h2>
+        <div class="grp-row">
+          <p class="grp-description">Rekord zniknie z serwisu, wyszukiwarki, raportów i ewaluacji. Powiązane dane (autorzy, streszczenia, bazy zewnętrzne) zostaną ukryte razem z nim. Operacja jest odwracalna — rekord wróci akcją „♻️ Przywróć zaznaczone” na liście z filtrem <em>Kosz → 🗑️ Tylko skasowane</em>.</p>
+        </div>
+        {% if kosz_pbn.wycofanie %}
+          <div class="grp-row">
+            <p class="grp-description"><strong>⚠️ Rekord zostanie wycofany z PBN:</strong> oświadczenia naszej instytucji dla tej publikacji zostaną usunięte z profilu instytucji w PBN (samej publikacji w repozytorium PBN nie da się usunąć). Przywrócenie z kosza zleci ponowną wysyłkę do PBN.</p>
+          </div>
+        {% endif %}
+        {% include "admin/bpp/kosz_pole_powod.html" with pomoc="Trafi do dziennika operacji kosza i do historii rekordu." %}
+      </fieldset>
+      <div class="grp-module grp-submit-row grp-fixed-footer">
+        <ul>
+          <li class="grp-float-left"><a href="{% add_preserved_filters object_url %}" class="grp-button grp-cancel-link">{% trans "No, take me back" %}</a></li>
+          <li><input type="submit" value="🗑️ Tak, przenieś do kosza" class="grp-button grp-default" /></li>
+        </ul>
+        <input type="hidden" name="post" value="yes" />
+        {% if is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1" />{% endif %}
+        {% if to_field %}<input type="hidden" name="{{ to_field_var }}" value="{{ to_field }}" />{% endif %}
+      </div>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

@@ -28,6 +28,8 @@ from bpp.admin.helpers.fieldsets import (
     MODEL_Z_ROKIEM,
     MODEL_ZE_SZCZEGOLAMI,
     OPENACCESS_FIELDSET,
+    OPENACCESS_HELP_TEXTS,
+    OPENACCESS_LABELS,
     POZOSTALE_MODELE_WYDAWNICTWO_CIAGLE_FIELDSET,
     PRACA_WYBITNA_FIELDSET,
     PRZED_PO_LISCIE_AUTOROW_FIELDSET,
@@ -90,7 +92,11 @@ from .helpers.fieldsets import (
     MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
     MODEL_Z_POLAMI_EWALUACJI_PBN_FIELDSET,
 )
-from .helpers.mixins import OptionalPBNSaveMixin, RestrictDeletionWhenPBNUIDSetMixin
+from .helpers.mixins import (
+    BppSoftDeleteAdminMixin,
+    OptionalPBNSaveMixin,
+    RestrictDeletionWhenPBNUIDSetMixin,
+)
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychZFormatowanieMixin, ExportActionsMixin
 from .zglos_publikacje_helpers import UzupelniajWstepneDanePoNumerzeZgloszeniaMixin
@@ -247,6 +253,8 @@ class Wydawnictwo_CiagleForm(CleanDOIWWWPublicWWWMixin, forms.ModelForm):
             "nr_zeszytu": forms.TextInput(attrs={"class": "bpp-input-narrow"}),
             "slowa_kluczowe": TextareaTagWidget(attrs={"rows": 2}),
         }
+        labels = OPENACCESS_LABELS
+        help_texts = OPENACCESS_HELP_TEXTS
 
 
 class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychForm(forms.ModelForm):
@@ -292,6 +300,8 @@ class Wydawnictwo_CiagleAdmin(
     ExportActionsMixin,
     BppDynamicColumnsMixin,
     RestrictDeletionWhenPBNUIDSetMixin,
+    # OSTATNI przed ModelAdmin — patrz docstring BppSoftDeleteAdminMixin.
+    BppSoftDeleteAdminMixin,
     admin.ModelAdmin,
 ):
     change_list_template = "admin/bpp/wydawnictwo_ciagle/change_list.html"

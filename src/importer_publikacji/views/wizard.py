@@ -877,7 +877,7 @@ class AuthorCreateNewView(ImporterPermissionMixin, View):
         if zapisany_jako:
             imported_author.zapisany_jako = zapisany_jako
 
-        _create_single_author(imported_author, obca, user=request.user)
+        _create_single_author(imported_author, obca, request.user)
 
         return render(
             request,
@@ -1050,7 +1050,7 @@ class CreateUnmatchedAuthorsView(ImporterPermissionMixin, View):
                 ),
             )
 
-        _create_unmatched_authors(session, obca, user=request.user)
+        _create_unmatched_authors(session, obca, request.user)
         return _render_authors_step(request, session)
 
 

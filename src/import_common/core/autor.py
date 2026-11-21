@@ -415,10 +415,14 @@ def _publikacji_counts_bulk(pks: list[int]) -> dict[int, int]:
     Count("zwarte") + Count("patent")`` w jednym querysecie Django robi
     cross-JOIN i kardynalności się mnożą. Tu mamy 3 round-tripy na cały
     request, niezależnie od liczby kandydatów.
+
+    ``filter=Q(…__rekord__deleted_at__isnull=True)``: agregat idzie JOIN-em
+    po surowej tabeli ``*_autor`` (menedżer nie jest pytany), więc bez
+    predykatu publikacje z kosza liczyłyby się do dorobku kandydata.
     """
     from collections import defaultdict
 
-    from django.db.models import Count
+    from django.db.models import Count, Q
 
     totals: dict[int, int] = defaultdict(int)
     for relation in (
@@ -428,7 +432,12 @@ def _publikacji_counts_bulk(pks: list[int]) -> dict[int, int]:
     ):
         rows = (
             Autor.objects.filter(pk__in=pks)
-            .annotate(_n=Count(relation))
+            .annotate(
+                _n=Count(
+                    relation,
+                    filter=Q(**{f"{relation}__rekord__deleted_at__isnull": True}),
+                )
+            )
             .values_list("pk", "_n")
         )
         for pk, n in rows:

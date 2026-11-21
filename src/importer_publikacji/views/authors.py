@@ -10,10 +10,17 @@ from django.db import transaction
 from django.db.models import Count, Q
 
 from bpp.models import Autor, Autor_Jednostka
-from bpp.wersjonowanie import zarejestruj_utworzenie, zmiana_rekordu
+from bpp.wersjonowanie import zapewnij_wersje_poczatkowa
 from crossref_bpp.core import Komparator, StatusPorownania
 from import_common.normalization import normalize_doi
 
+from ..historia import (
+    komunikat_orcid,
+    komunikat_utworzenia,
+    komunikat_zatrudnienia,
+    zapisz_utworzenie,
+    zapisz_zmiane,
+)
 from ..models import ImportedAuthor, ImportedAuthor_Candidate
 
 
@@ -202,7 +209,9 @@ def _zgloszenie_dla_prefilla(session):
     ich zachowanie jest bez zmian.
     """
     if session.zgloszenie_id:
-        return session.zgloszenie
+        # FK access goes through ``_base_manager``, which keeps trashed rows.
+        zgloszenie = session.zgloszenie
+        return zgloszenie if zgloszenie.deleted_at is None else None
     return _find_matching_zgloszenie(session)
 
 
@@ -243,34 +252,15 @@ def _prefill_dyscypliny_z_zgloszen(session):
         imported.save()
 
 
-def _opis_importu(session):
-    """Komentarz do historii rekordu (``LogEntry``/reversion) — skąd rekord
-    trafił do systemu."""
-    return (
-        f"Importer publikacji ({session.provider_name}), sesja importu nr {session.pk}"
-    )
-
-
-def _zatrudnienia(autor):
-    return set(
-        Autor_Jednostka.objects.filter(autor=autor).values_list(
-            "pk", "jednostka_id", "rozpoczal_prace", "zakonczyl_prace"
-        )
-    )
-
-
 @transaction.atomic
 def _ustaw_orcid_autora(imported, user):
     """Przepisz ORCID z danych dostawcy dopasowanemu autorowi BPP — z wpisem
-    w historii autora (inaczej ORCID zmieniałby się po cichu)."""
+    w historii autora (inaczej ORCID zmieniałby się bez śladu)."""
     autor = imported.matched_autor
-    with zmiana_rekordu(
-        user,
-        autor,
-        f"Ustawiono ORCID {imported.orcid}. {_opis_importu(imported.session)}",
-    ):
-        autor.orcid = imported.orcid
-        autor.save(update_fields=["orcid"])
+    zapewnij_wersje_poczatkowa(autor)
+    autor.orcid = imported.orcid
+    autor.save(update_fields=["orcid"])
+    zapisz_zmiane(user, autor, komunikat_orcid(imported.session, imported.orcid))
 
 
 @transaction.atomic
@@ -286,31 +276,26 @@ def _create_single_author(imported, obca, user=None):
     Jeśli dostawca podał ORCID i istnieje już ``Autor`` z tym ORCID-em,
     dopasowuje istniejącego zamiast tworzyć duplikat.
 
-    Utworzenie autora (i dopisanie zatrudnienia istniejącemu) trafia do
-    historii w adminie — inaczej autor „pojawiał się znikąd". ``user`` to
-    operator wykonujący akcję; domyślnie twórca sesji importu.
+    Nowo utworzony ``Autor`` dostaje wpis w historii zmian (FD#441) w imieniu
+    ``user`` (domyślnie twórcy sesji importu).
     """
-    session = imported.session
-    if user is None:
-        user = session.created_by
     orcid = imported.orcid.strip() or None
 
     if orcid:
         existing = Autor.objects.filter(orcid=orcid).first()
         if existing:
-            with zmiana_rekordu(
-                user,
-                existing,
-                f"Dopisano jednostkę „{obca}” (dopasowanie po ORCID). "
-                f"{_opis_importu(session)}",
-            ) as zmiana:
-                # Logujemy tylko faktyczną zmianę zatrudnień. Wartości
-                # zwracanej przez ``dodaj_jednostke`` nie da się tu użyć: bywa
-                # istniejącym wierszem (okres już pokryty), ``None`` (wyścig)
-                # albo wierszem, który ``defragmentuj`` zaraz scalił i usunął.
-                przed = _zatrudnienia(existing)
-                existing.dodaj_jednostke(obca)
-                zmiana.pomin = _zatrudnienia(existing) == przed
+            # Zatrudnienie dopisane istniejącemu autorowi też ma być widać
+            # w jego historii: kto, kiedy, przy którym imporcie (FD#600).
+            zatrudnienia = Autor_Jednostka.objects.filter(autor=existing)
+            przed = zatrudnienia.count()
+            zapewnij_wersje_poczatkowa(existing)
+            existing.dodaj_jednostke(obca)
+            if zatrudnienia.count() != przed:
+                zapisz_zmiane(
+                    user or imported.session.created_by,
+                    existing,
+                    komunikat_zatrudnienia(imported.session, obca),
+                )
             imported.matched_autor = existing
             imported.matched_jednostka = obca
             imported.match_status = ImportedAuthor.MatchStatus.MANUAL
@@ -323,7 +308,11 @@ def _create_single_author(imported, obca, user=None):
         orcid=orcid,
     )
     autor.dodaj_jednostke(obca)
-    zarejestruj_utworzenie(user, autor, f"Utworzono autora. {_opis_importu(session)}")
+    zapisz_utworzenie(
+        user or imported.session.created_by,
+        autor,
+        komunikat_utworzenia(imported.session),
+    )
 
     imported.matched_autor = autor
     imported.matched_jednostka = obca
@@ -340,4 +329,4 @@ def _create_unmatched_authors(session, obca, user=None):
         match_status=(ImportedAuthor.MatchStatus.UNMATCHED)
     )
     for imported in unmatched:
-        _create_single_author(imported, obca, user=user)
+        _create_single_author(imported, obca, user)

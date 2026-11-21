@@ -23,7 +23,7 @@ from bpp.models.szablondlaopisubibliograficznego import (
 
 
 @pytest.fixture
-def praca_z_autorem(db):
+def praca_z_autorem(db, typ_odpowiedzialnosci_autor):
     jednostka = baker.make(Jednostka, skupia_pracownikow=True)
     autor = baker.make(Autor, nazwisko="Kowalski", imiona="Jan")
     praca = baker.make(Wydawnictwo_Zwarte)

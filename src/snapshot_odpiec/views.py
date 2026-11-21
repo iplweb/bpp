@@ -1,10 +1,12 @@
 from braces.views import GroupRequiredMixin
 from django.contrib import messages
+from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.views import View
 from django.views.generic import DetailView, ListView
 
+from ewaluacja_common.okres import okres_dla_request
 from snapshot_odpiec.tasks import suma_odpietych_dyscyplin, suma_przypietych_dyscyplin
 
 from .models import SnapshotOdpiec
@@ -16,10 +18,22 @@ class ListaSnapshotow(GroupRequiredMixin, ListView):
     ordering = "-created_on"
     paginate_by = 20
 
+    def get_queryset(self):
+        """Snapshoty wybranego okresu ewaluacji oraz stare snapshoty sprzed
+        podziału na okresy (obejmujące wszystkie lata)."""
+        okres = okres_dla_request(self.request)
+        return (
+            super()
+            .get_queryset()
+            .filter(Q(okres=okres) | Q(okres=None))
+            .select_related("okres", "owner")
+        )
+
     def get_context_data(self, **kwargs):
+        okres = okres_dla_request(self.request)
         return super().get_context_data(
-            przypiete=suma_przypietych_dyscyplin(),
-            odpiete=suma_odpietych_dyscyplin(),
+            przypiete=suma_przypietych_dyscyplin(okres),
+            odpiete=suma_odpietych_dyscyplin(okres),
             **kwargs,
         )
 
@@ -52,6 +66,9 @@ class NowySnapshot(GroupRequiredMixin, View):
         return render(request, self.template_name)
 
     def post(self, request, *args, **kw):
-        SnapshotOdpiec.objects.create(owner=request.user, comment="utworzony ręcznie")
-        messages.info(request, "Utworzono snapshot odpięć")
+        okres = okres_dla_request(request)
+        SnapshotOdpiec.objects.create(
+            owner=request.user, comment="utworzony ręcznie", okres=okres
+        )
+        messages.info(request, f"Utworzono snapshot odpięć dla okresu {okres}")
         return HttpResponseRedirect(reverse("snapshot_odpiec:index"))

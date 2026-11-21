@@ -8,6 +8,32 @@ import os
 from pathlib import Path
 
 CLEANUP_ORDER = (
+    # Lustro PBN — historia wysylki i oswiadczenia (wyniki porownan
+    # BPP-PBN, jesli user je uruchomil, kasuja sie z nimi kaskadowo),
+    # znaczniki pobrania:
+    "pbn_api.SentData",
+    "pbn_api.OswiadczenieInstytucji",
+    "pbn_downloader_app.PbnDownloadTask",
+    "pbn_downloader_app.PbnInstitutionPeopleTask",
+    "pbn_downloader_app.PbnJournalsDownloadTask",
+    # Rzadsze typy: powiazania generyczne i autorzy patentow, potem rekordy
+    # (jednostka/autor PROTECT):
+    "bpp.Grant_Rekordu",
+    "bpp.Nagroda",
+    "bpp.Patent_Autor",
+    "bpp.Patent",
+    "bpp.Praca_Doktorska",
+    "bpp.Praca_Habilitacyjna",
+    # Wyniki ewaluacji dla autorow demo (kaskadowalyby z Autor, ale
+    # kasujemy jawnie, zeby manifest byl kompletny):
+    "ewaluacja_metryki.MetrykaAutora",
+    "ewaluacja_liczba_n.IloscUdzialowDlaAutoraZaCalosc",
+    "ewaluacja_liczba_n.IloscUdzialowDlaAutoraZaRok",
+    # Zgloszenia publikacji: autor zgloszenia ma PROTECT na Autor/Jednostka,
+    # wiec musi zniknac przed nimi; zgloszenie wskazuje prace przez
+    # GenericFK / SET_NULL, wiec moze isc pierwsze.
+    "zglos_publikacje.Zgloszenie_Publikacji_Autor",
+    "zglos_publikacje.Zgloszenie_Publikacji",
     # Najpierw M2M-through:
     "bpp.Wydawnictwo_Ciagle_Autor",
     "bpp.Wydawnictwo_Zwarte_Autor",
@@ -21,6 +47,13 @@ CLEANUP_ORDER = (
     # command (T14) implementuje to przez `sorted(pks, reverse=True)`.
     "bpp.Wydawnictwo_Ciagle",
     "bpp.Wydawnictwo_Zwarte",
+    # Slowniki podpinane do prac (PROTECT z WC/WZ) i reszta rzadszych typow:
+    "bpp.Konferencja",
+    "bpp.Seria_Wydawnicza",
+    "bpp.Grant",
+    "bpp.OrganPrzyznajacyNagrody",
+    # Konta demo (przed autorem — konto „user" jest z nim powiazane):
+    "bpp.BppUser",
     # Powiazania autorow:
     "bpp.Autor_Dyscyplina",
     "bpp.Autor_Jednostka",
@@ -29,9 +62,19 @@ CLEANUP_ORDER = (
     # Faza C (#438): „wydziały" to jednostki top-level — wszystkie (rooty +
     # dzieci) idą jako bpp.Jednostka; jeden delete() kaskaduje po MPTT parent.
     "bpp.Jednostka",
+    # Punktacja/dyscypliny zrodel i poziomy wydawcow (przed slownikami):
+    "bpp.Punktacja_Zrodla",
+    "bpp.Dyscyplina_Zrodla",
+    "bpp.Poziom_Wydawcy",
     # Slowniki "Demo —":
     "bpp.Zrodlo",
     "bpp.Wydawca",
+    # Lustro PBN (pbn_uid w BPP to SET_NULL):
+    "pbn_api.Publication",
+    "pbn_api.Scientist",
+    "pbn_api.Journal",
+    "pbn_api.Publisher",
+    "pbn_api.Institution",
     # Singleton tylko jesli stworzony przez nas:
     "bpp.Uczelnia",
 )

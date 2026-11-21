@@ -12,7 +12,7 @@ from django.utils import timezone
 from django_bpp.celery_tasks import GlobalSingleton
 from django_bpp.db_locks import advisory_lock_id
 
-from .utils.constants import MAX_PEWNOSC, MIN_PEWNOSC
+from .utils.constants import DOMYSLNE_LATA_PRIORYTETU, MAX_PEWNOSC, MIN_PEWNOSC
 
 logger = get_task_logger(__name__)
 
@@ -105,44 +105,97 @@ def _get_user_by_id(user_id):
         return None
 
 
-def _calculate_priority_from_meta(meta_entry: dict) -> int:
+def okres_skanu(okres_pk=None):
+    """Okres ewaluacji, dla którego skan liczy priorytet kandydatów.
+
+    - ``okres_pk`` podany (skan uruchomiony ze strony — okres z paska): ten
+      okres;
+    - bez ``okres_pk`` (np. nocny skan z beata): okres ostatniego skanu, który
+      go miał — żeby nocny przebieg nie przestawiał okresu wybranego przez
+      użytkownika przy ręcznym uruchomieniu;
+    - w ostateczności okres domyślny (wg bieżącego roku).
+
+    Zwraca ``None`` tylko wtedy, gdy tabela okresów jest pusta.
+    """
+    from ewaluacja_common.models import OkresEwaluacji
+    from ewaluacja_common.okres import okres_domyslny
+
+    from .models import DuplicateScanRun
+
+    if okres_pk is not None:
+        okres = OkresEwaluacji.objects.filter(pk=okres_pk).first()
+        if okres is not None:
+            return okres
+        logger.warning(
+            "Okres ewaluacji pk=%s nie istnieje — skan użyje okresu domyślnego",
+            okres_pk,
+        )
+    else:
+        poprzedni = (
+            DuplicateScanRun.objects.filter(okres__isnull=False)
+            .select_related("okres")
+            .order_by("-started_at")
+            .first()
+        )
+        if poprzedni is not None:
+            return poprzedni.okres
+    return okres_domyslny()
+
+
+def lata_skanu(scan_run):
+    """``(rok_od, rok_do)`` okresu, dla którego liczymy priorytet w skanie
+    ``scan_run`` (okres zapisany w skanie, a gdy go brak — domyślny)."""
+    from ewaluacja_common.okres import okres_domyslny
+
+    okres = getattr(scan_run, "okres", None)
+    if okres is None:
+        okres = okres_domyslny()
+    if okres is None:
+        return DOMYSLNE_LATA_PRIORYTETU
+    return okres.rok_od, okres.rok_do
+
+
+def _calculate_priority_from_meta(meta_entry: dict, rok_od: int, rok_do: int) -> int:
     """Computes priority from meta dict (no SQL).
 
     Mirrors :func:`calculate_author_priority` but uses cached fields
     from the meta dict produced by ``build_autor_meta``. Avoids
     per-candidate SQL on the hot path of ``_run_general_phase``.
 
-    Priority values:
-        100 - has 2022-2025 publications WITH disciplines
-        50 - has 2022-2025 publications (any)
-        0 - no recent publications
+    Priority values (``rok_od``–``rok_do`` = okres ewaluacji skanu):
+        100 - has publications from the period WITH disciplines
+        50 - has publications from the period (any)
+        0 - no publications from the period
 
     TODO: ``calculate_author_priority`` checks disciplines specifically
-    in 2022-2025 (``Autor_Dyscyplina.objects.filter(rok__gte=2022,
-    rok__lte=2025)``). The meta-cache only stores ``ma_dyscypline``
+    in the period (``Autor_Dyscyplina.objects.filter(rok__gte=rok_od,
+    rok__lte=rok_do)``). The meta-cache only stores ``ma_dyscypline``
     (any year), so this is an approximation. Acceptable for v1 since
     priority is a sort hint, not a correctness invariant. To achieve
     exact parity, store year-filtered discipline data in meta.
     """
-    recent_lata = {rok for rok in meta_entry["lata_publikacji"] if 2022 <= rok <= 2025}
-    if not recent_lata:
+    lata_z_okresu = {
+        rok for rok in meta_entry["lata_publikacji"] if rok_od <= rok <= rok_do
+    }
+    if not lata_z_okresu:
         return 0
     if meta_entry["ma_dyscypline"]:
         return 100
     return 50
 
 
-def calculate_author_priority(autor):
+def calculate_author_priority(autor, rok_od: int, rok_do: int):
     """
     Calculate priority based on publication dates and disciplines.
 
-    Priority values:
-        100 - has 2022-2025 publications WITH disciplines assigned
-        50 - has 2022-2025 publications (any)
-        0 - no recent publications
+    Priority values (``rok_od``–``rok_do`` = okres ewaluacji skanu):
+        100 - has publications from the period WITH disciplines assigned
+        50 - has publications from the period (any)
+        0 - no publications from the period
 
     Args:
         autor: Autor instance
+        rok_od, rok_do: lata okresu ewaluacji
 
     Returns:
         int: Priority value (0, 50, or 100)
@@ -150,17 +203,17 @@ def calculate_author_priority(autor):
     from bpp.models import Autor_Dyscyplina
     from bpp.models.cache import Rekord
 
-    # Check for 2022-2025 publications
+    # Czy autor ma publikacje z okresu?
     recent_pubs = Rekord.objects.prace_autora(autor).filter(
-        rok__gte=2022, rok__lte=2025
+        rok__gte=rok_od, rok__lte=rok_do
     )
 
     if not recent_pubs.exists():
         return 0
 
-    # Check if author has disciplines in 2022-2025 period
+    # Czy autor ma dyscypliny w latach okresu?
     has_disciplines = Autor_Dyscyplina.objects.filter(
-        autor=autor, rok__gte=2022, rok__lte=2025
+        autor=autor, rok__gte=rok_od, rok__lte=rok_do
     ).exists()
 
     if has_disciplines:
@@ -197,6 +250,7 @@ def _process_duplicate_info(
     osoba_z_instytucji,
     main_pub_count,
     min_confidence,
+    lata=None,
 ):
     """
     Process a single duplicate info entry and create a DuplicateCandidate if valid.
@@ -208,6 +262,7 @@ def _process_duplicate_info(
         osoba_z_instytucji: The OsobaZInstytucji instance
         main_pub_count: Publication count for main author
         min_confidence: Minimum confidence threshold
+        lata: ``(rok_od, rok_do)`` okresu priorytetu; domyślnie z ``scan_run``
 
     Returns:
         DuplicateCandidate instance or None
@@ -227,8 +282,10 @@ def _process_duplicate_info(
 
     dup_pub_count = Rekord.objects.prace_autora(duplicate_autor).count()
 
-    # Calculate priority based on duplicate author's recent works
-    priority = calculate_author_priority(duplicate_autor)
+    # Priorytet wg prac duplikatu z okresu ewaluacji skanu
+    if lata is None:
+        lata = lata_skanu(scan_run)
+    priority = calculate_author_priority(duplicate_autor, *lata)
 
     return DuplicateCandidate(
         scan_run=scan_run,
@@ -246,7 +303,7 @@ def _process_duplicate_info(
     )
 
 
-def _process_author_duplicates(osoba_z_instytucji, scan_run, min_confidence):
+def _process_author_duplicates(osoba_z_instytucji, scan_run, min_confidence, lata=None):
     """
     Process duplicates for a single author.
 
@@ -254,6 +311,7 @@ def _process_author_duplicates(osoba_z_instytucji, scan_run, min_confidence):
         osoba_z_instytucji: OsobaZInstytucji instance to check
         scan_run: The DuplicateScanRun instance
         min_confidence: Minimum confidence threshold
+        lata: ``(rok_od, rok_do)`` okresu priorytetu; domyślnie z ``scan_run``
 
     Returns:
         List of DuplicateCandidate instances to create
@@ -286,6 +344,7 @@ def _process_author_duplicates(osoba_z_instytucji, scan_run, min_confidence):
             osoba_z_instytucji,
             main_pub_count,
             min_confidence,
+            lata,
         )
         if candidate:
             candidates.append(candidate)
@@ -317,6 +376,8 @@ def _run_general_phase(scan_run, min_confidence=MIN_CONFIDENCE_TO_STORE):
     from .utils.main_selection import pick_main_pk
     from .utils.meta import build_autor_meta, build_buckets
     from .utils.search_general import generate_pairs
+
+    rok_od, rok_do = lata_skanu(scan_run)
 
     logger.info("General phase: building meta cache...")
     meta = build_autor_meta()
@@ -359,7 +420,9 @@ def _run_general_phase(scan_run, min_confidence=MIN_CONFIDENCE_TO_STORE):
                     confidence_score=score,
                     confidence_percent=normalize_confidence(score),
                     reasons=reasons,
-                    priority=_calculate_priority_from_meta(meta[dup_pk]),
+                    priority=_calculate_priority_from_meta(
+                        meta[dup_pk], rok_od, rok_do
+                    ),
                     main_autor_name=str(main_obj),
                     duplicate_autor_name=str(dup_obj),
                     main_publications_count=meta[main_pk]["publikacje_count"],
@@ -414,6 +477,8 @@ def _run_pbn_phase(scan_run, min_confidence=MIN_CONFIDENCE_TO_STORE):
     if ignored_scientist_ids:
         osoby_query = osoby_query.exclude(personId__pk__in=ignored_scientist_ids)
 
+    lata = lata_skanu(scan_run)
+
     total_count = osoby_query.count()
     scan_run.total_authors_to_scan = total_count
     scan_run.save(update_fields=["total_authors_to_scan"])
@@ -441,7 +506,7 @@ def _run_pbn_phase(scan_run, min_confidence=MIN_CONFIDENCE_TO_STORE):
         authors_scanned += 1
 
         new_candidates = _process_author_duplicates(
-            osoba_z_instytucji, scan_run, min_confidence
+            osoba_z_instytucji, scan_run, min_confidence, lata
         )
         candidates_to_create.extend(new_candidates)
         duplicates_found += len(new_candidates)
@@ -478,7 +543,7 @@ def _run_pbn_phase(scan_run, min_confidence=MIN_CONFIDENCE_TO_STORE):
     )
 
 
-def _przejmij_slot_skanu(user, celery_task_id):
+def _przejmij_slot_skanu(user, celery_task_id, okres=None):
     """Atomowo zajmij „slot" skanu: zwróć nowy DuplicateScanRun albo None.
 
     Druga — NIEZALEŻNA OD REDISA — warstwa ochrony przed równoległymi
@@ -491,6 +556,7 @@ def _przejmij_slot_skanu(user, celery_task_id):
     `DuplicateCandidate.objects.all().delete()` i skasował wyniki pierwszego.
 
     Zwraca None, gdy trwa już świeży skan (wołający ma się wycofać).
+    ``okres`` — okres ewaluacji zapisywany w nowym skanie (priorytet).
 
     Wpisy RUNNING starsze niż SCAN_STALE_AFTER są przeterminowywane na FAILED
     — inaczej jeden SIGKILL workera zakleszczyłby skanowanie na zawsze.
@@ -553,6 +619,7 @@ def _przejmij_slot_skanu(user, celery_task_id):
             status=DuplicateScanRun.Status.RUNNING,
             created_by=user,
             celery_task_id=celery_task_id,
+            okres=okres,
         )
 
 
@@ -576,8 +643,14 @@ def _przejmij_slot_skanu(user, celery_task_id):
     time_limit=SCAN_TIME_LIMIT,
     soft_time_limit=int(0.95 * SCAN_TIME_LIMIT),
 )
-def scan_for_duplicates(self, user_id=None, min_confidence=MIN_CONFIDENCE_TO_STORE):
+def scan_for_duplicates(
+    self, user_id=None, min_confidence=MIN_CONFIDENCE_TO_STORE, okres_pk=None
+):
     """Combined task: faza PBN + faza general w jednym przebiegu.
+
+    ``okres_pk`` — okres ewaluacji (wybrany na pasku okresu), wg którego
+    liczony jest priorytet kandydatów (prace z lat okresu). Bez niego — patrz
+    :func:`okres_skanu`. Zadanie NIE czyta sesji: okres przychodzi jako pk.
 
     Statusy końcowe:
     - COMPLETED: obie fazy ukończone.
@@ -591,7 +664,9 @@ def scan_for_duplicates(self, user_id=None, min_confidence=MIN_CONFIDENCE_TO_STO
     logger.info("Starting duplicate scan task (combined PBN + general)...")
 
     user = _get_user_by_id(user_id)
-    scan_run = _przejmij_slot_skanu(user, self.request.id or "")
+    scan_run = _przejmij_slot_skanu(
+        user, self.request.id or "", okres=okres_skanu(okres_pk)
+    )
     if scan_run is None:
         # Inny przebieg trwa — wycofujemy się PRZED skasowaniem kandydatów.
         return {"status": "already_running"}

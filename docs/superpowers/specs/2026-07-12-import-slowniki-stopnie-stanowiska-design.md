@@ -42,7 +42,7 @@ Dwa dodatkowe wymagania (runda 2):
   przy kolejnym imporcie proponuj ostatnio użyty schemat.
 
 **Zasada nadrzędna:** wszystko jest **opt-in przez ekran mapowania kolumn**.
-Żaden istniejący format (IHIT, standard BPP) nie zmienia zachowania — nowe cele
+Żaden istniejący format (plik klienta, standard BPP) nie zmienia zachowania — nowe cele
 mapowania aktywują się tylko, gdy użytkownik zmapuje na nie kolumnę. To realizuje
 wymóg „kompatybilne z innymi formatami importu".
 
@@ -136,6 +136,7 @@ class StopienSluzbowy(NazwaISkrot):
         verbose_name_plural = "stopnie służbowe"
         ordering = ["nazwa"]
         app_label = "bpp"
+
 
 class StanowiskoDydaktyczne(NazwaISkrot):
     class Meta:

@@ -176,12 +176,12 @@ Steps can be disabled via config keys:
 
 ```python
 config = {
-    'disable_initial': False,      # Keep initial setup
-    'disable_zrodla': True,        # Skip source import
-    'disable_autorzy': False,      # Keep author import
-    'disable_publikacje': False,   # Keep publication import
-    'delete_existing': False,      # Don't delete existing data
-    'wydzial_domyslny': 'Wydział Domyślny',
+    "disable_initial": False,  # Keep initial setup
+    "disable_zrodla": True,  # Skip source import
+    "disable_autorzy": False,  # Keep author import
+    "disable_publikacje": False,  # Keep publication import
+    "delete_existing": False,  # Don't delete existing data
+    "wydzial_domyslny": "Wydział Domyślny",
 }
 ```
 
@@ -265,7 +265,7 @@ class ImportStepBase:
 @shared_task(bind=True)
 def run_pbn_import(self, session_id):
     session = ImportSession.objects.get(pk=session_id)
-    session.status = 'running'
+    session.status = "running"
     session.task_id = self.request.id
     session.save()
 

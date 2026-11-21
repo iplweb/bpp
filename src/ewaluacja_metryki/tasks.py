@@ -6,10 +6,10 @@ from celery import chord, group, shared_task
 from django.utils import timezone
 
 from bpp.models import Uczelnia
-from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
+from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_okresu
 
 from .models import StatusGenerowania
-from .utils import generuj_metryki
+from .utils import generuj_metryki, rozstrzygnij_okres
 
 logger = logging.getLogger(__name__)
 
@@ -34,11 +34,12 @@ def _resolve_uczelnia(uczelnia_id):
 def oblicz_metryki_dla_autora_task(
     self,
     ilosc_udzialow_id,
-    rok_min=2022,
-    rok_max=2025,
+    rok_min=None,
+    rok_max=None,
     minimalny_pk=0.01,
     rodzaje_autora=None,
     uczelnia_id=None,
+    okres_pk=None,
 ):
     """
     Celery task do obliczania metryki dla pojedynczego autora-dyscypliny.
@@ -50,6 +51,7 @@ def oblicz_metryki_dla_autora_task(
         minimalny_pk: Minimalny próg punktów
         rodzaje_autora: Lista rodzajów autorów do przetworzenia
         uczelnia_id: ID uczelni — używane do per-uczelnia scope StatusGenerowania
+        okres_pk: ID OkresEwaluacji (domyślnie wg lat albo okres domyślny)
 
     Returns:
         Dict z kluczami: status ("processed"/"skipped"/"error"), autor, dyscyplina
@@ -83,12 +85,13 @@ def oblicz_metryki_dla_autora_task(
             minimalny_pk=Decimal(str(minimalny_pk)),
             progress_callback=None,  # No callback in parallel mode
             logger_output=None,
+            okres=okres_pk,
         )
 
-        # Atomowo zwiększ licznik przetworzonych tasków (per uczelnia)
-        StatusGenerowania.objects.filter(uczelnia_id=uczelnia_id).update(
-            liczba_przetworzonych=F("liczba_przetworzonych") + 1
-        )
+        # Atomowo zwiększ licznik przetworzonych tasków (per uczelnia i okres)
+        StatusGenerowania.objects.filter(
+            uczelnia_id=uczelnia_id, okres_id=okres_pk
+        ).update(liczba_przetworzonych=F("liczba_przetworzonych") + 1)
 
         return {
             "status": result,
@@ -102,10 +105,10 @@ def oblicz_metryki_dla_autora_task(
             f"IloscUdzialowDlaAutoraZaCalosc o ID {ilosc_udzialow_id} nie istnieje"
         )
         logger.error(error_msg)
-        # Atomowo zwiększ licznik przetworzonych tasków (per uczelnia)
-        StatusGenerowania.objects.filter(uczelnia_id=uczelnia_id).update(
-            liczba_przetworzonych=F("liczba_przetworzonych") + 1
-        )
+        # Atomowo zwiększ licznik przetworzonych tasków (per uczelnia i okres)
+        StatusGenerowania.objects.filter(
+            uczelnia_id=uczelnia_id, okres_id=okres_pk
+        ).update(liczba_przetworzonych=F("liczba_przetworzonych") + 1)
         return {
             "status": "error",
             "autor": "Unknown",
@@ -116,10 +119,10 @@ def oblicz_metryki_dla_autora_task(
         error_msg = f"Błąd przy przetwarzaniu ID {ilosc_udzialow_id}: {str(e)}"
         logger.error(error_msg)
         rollbar.report_exc_info(sys.exc_info())
-        # Atomowo zwiększ licznik przetworzonych tasków (per uczelnia)
-        StatusGenerowania.objects.filter(uczelnia_id=uczelnia_id).update(
-            liczba_przetworzonych=F("liczba_przetworzonych") + 1
-        )
+        # Atomowo zwiększ licznik przetworzonych tasków (per uczelnia i okres)
+        StatusGenerowania.objects.filter(
+            uczelnia_id=uczelnia_id, okres_id=okres_pk
+        ).update(liczba_przetworzonych=F("liczba_przetworzonych") + 1)
         return {
             "status": "error",
             "autor": "Unknown",
@@ -129,19 +132,20 @@ def oblicz_metryki_dla_autora_task(
 
 
 @shared_task
-def finalizuj_generowanie_metryk(results, uczelnia_id=None):
+def finalizuj_generowanie_metryk(results, uczelnia_id=None, okres_pk=None):
     """
     Callback task wywoływany po zakończeniu wszystkich tasków obliczania metryk.
 
     Args:
         results: Lista wyników z tasków oblicz_metryki_dla_autora_task
         uczelnia_id: ID uczelni — per-uczelnia scope StatusGenerowania
+        okres_pk: ID okresu ewaluacji — status jest per (uczelnia, okres)
 
     Returns:
         Dict z podsumowaniem: processed, skipped, errors, total
     """
     uczelnia = _resolve_uczelnia(uczelnia_id)
-    status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
+    status = StatusGenerowania.get_or_create(uczelnia=uczelnia, okres=okres_pk)
 
     # Odśwież status z bazy danych aby pobrać aktualną wartość liczba_przetworzonych
     # zaktualizowaną atomowo przez poszczególne taski
@@ -192,13 +196,14 @@ def finalizuj_generowanie_metryk(results, uczelnia_id=None):
 @shared_task(bind=True)
 def generuj_metryki_task_parallel(
     self,
-    rok_min=2022,
-    rok_max=2025,
+    rok_min=None,
+    rok_max=None,
     minimalny_pk=0.01,
     nadpisz=True,
     przelicz_liczbe_n=True,
     rodzaje_autora=None,
     uczelnia_id=None,
+    okres_pk=None,
 ):
     """
     Celery task do równoległego generowania metryk ewaluacyjnych.
@@ -213,6 +218,8 @@ def generuj_metryki_task_parallel(
         nadpisz: Czy nadpisywać istniejące metryki
         przelicz_liczbe_n: Czy przeliczać liczbę N przed generowaniem metryk (domyślnie True)
         rodzaje_autora: Lista rodzajów autorów do przetworzenia (domyślnie pobierana z Rodzaj_Autora.filter(licz_sloty=True))
+        okres_pk: ID OkresEwaluacji — okres, dla którego liczymy metryki
+            (domyślnie okres obejmujący rok_min/rok_max albo okres domyślny)
     """
     if rodzaje_autora is None:
         from .utils import get_default_rodzaje_autora
@@ -228,7 +235,16 @@ def generuj_metryki_task_parallel(
             "message": f"Nie można rozstrzygnąć uczelni: {e}",
             "error": str(e),
         }
-    status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
+    try:
+        okres, rok_min, rok_max = rozstrzygnij_okres(okres_pk, rok_min, rok_max)
+    except ValueError as e:
+        logger.error(f"Nie można ustalić okresu ewaluacji: {e}")
+        return {
+            "success": False,
+            "message": f"Nie można ustalić okresu ewaluacji: {e}",
+            "error": str(e),
+        }
+    status = StatusGenerowania.get_or_create(uczelnia=uczelnia, okres=okres)
 
     try:
         # Krok 1: Przelicz liczby N jeśli włączone
@@ -237,7 +253,7 @@ def generuj_metryki_task_parallel(
             status.ostatni_komunikat = "Przeliczanie liczby N..."
             status.save()
 
-            oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia=uczelnia)
+            oblicz_liczby_n_dla_okresu(uczelnia=uczelnia, okres=okres)
             logger.info("Przeliczono liczby N pomyślnie")
 
         # Krok 2: Pobierz wszystkie IDs autorów-dyscyplin do przetworzenia
@@ -246,7 +262,11 @@ def generuj_metryki_task_parallel(
         from .models import MetrykaAutora
 
         # Filtruj wpisy dla tej uczelni oraz (opcjonalnie) rodzajów autorów
-        queryset = IloscUdzialowDlaAutoraZaCalosc.objects.filter(uczelnia=uczelnia)
+        # Autor z kosza nie dostaje metryk (do przeliczenia N wiersze
+        # udziałów mogą go jeszcze zawierać).
+        queryset = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
+            uczelnia=uczelnia, okres=okres, autor__deleted_at__isnull=True
+        )
         if rodzaje_autora:
             queryset = queryset.filter(rodzaj_autora__skrot__in=rodzaje_autora)
 
@@ -258,16 +278,18 @@ def generuj_metryki_task_parallel(
             f"(task_id: {self.request.id})"
         )
 
-        # Krok 3: Usuń stare metryki tej uczelni jeśli nadpisz=True
+        # Krok 3: Usuń stare metryki tej uczelni (w tym okresie) jeśli nadpisz=True
         if nadpisz:
-            qs = MetrykaAutora.objects.filter(uczelnia=uczelnia)
+            qs = MetrykaAutora.objects.filter(uczelnia=uczelnia, okres=okres)
             deleted_count = qs.count()
             qs.delete()
             logger.info(f"Usunięto {deleted_count} starych metryk")
 
         # Krok 4: Zainicjuj status generowania
         status.rozpocznij_generowanie(
-            task_id=self.request.id, liczba_do_przetworzenia=total_count
+            task_id=self.request.id,
+            liczba_do_przetworzenia=total_count,
+            okres=okres,
         )
 
         # Krok 5: Utwórz group pojedynczych tasków
@@ -280,13 +302,16 @@ def generuj_metryki_task_parallel(
                     minimalny_pk=minimalny_pk,
                     rodzaje_autora=rodzaje_autora,
                     uczelnia_id=uczelnia.pk,
+                    okres_pk=okres.pk,
                 )
                 for autor_id in ids_list
             ]
         )
 
         # Krok 6: Uruchom chord (group + callback) i zapisz group_id
-        job = chord(task_group)(finalizuj_generowanie_metryk.s(uczelnia_id=uczelnia.pk))
+        job = chord(task_group)(
+            finalizuj_generowanie_metryk.s(uczelnia_id=uczelnia.pk, okres_pk=okres.pk)
+        )
 
         # Group ID jest dostępny w job.parent
         group_id = job.parent.id if hasattr(job, "parent") and job.parent else None
@@ -328,13 +353,14 @@ def generuj_metryki_task_parallel(
 @shared_task(bind=True)
 def generuj_metryki_task(
     self,
-    rok_min=2022,
-    rok_max=2025,
+    rok_min=None,
+    rok_max=None,
     minimalny_pk=0.01,
     nadpisz=True,
     przelicz_liczbe_n=True,
     rodzaje_autora=None,
     uczelnia_id=None,
+    okres_pk=None,
 ):
     """
     Celery task do generowania metryk ewaluacyjnych.
@@ -346,6 +372,8 @@ def generuj_metryki_task(
         nadpisz: Czy nadpisywać istniejące metryki
         przelicz_liczbe_n: Czy przeliczać liczbę N przed generowaniem metryk (domyślnie True)
         rodzaje_autora: Lista rodzajów autorów do przetworzenia (domyślnie pobierana z Rodzaj_Autora.filter(licz_sloty=True))
+        okres_pk: ID OkresEwaluacji — okres, dla którego liczymy metryki
+            (domyślnie okres obejmujący rok_min/rok_max albo okres domyślny)
     """
     if rodzaje_autora is None:
         from .utils import get_default_rodzaje_autora
@@ -361,7 +389,16 @@ def generuj_metryki_task(
             "message": f"Nie można rozstrzygnąć uczelni: {e}",
             "error": str(e),
         }
-    status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
+    try:
+        okres, rok_min, rok_max = rozstrzygnij_okres(okres_pk, rok_min, rok_max)
+    except ValueError as e:
+        logger.error(f"Nie można ustalić okresu ewaluacji: {e}")
+        return {
+            "success": False,
+            "message": f"Nie można ustalić okresu ewaluacji: {e}",
+            "error": str(e),
+        }
+    status = StatusGenerowania.get_or_create(uczelnia=uczelnia, okres=okres)
 
     # NOTE: Sprawdzanie w_trakcie przeniesione do widoku UruchomGenerowanie
     # Status jest ustawiany w widoku przed uruchomieniem taska, więc tutaj nie sprawdzamy
@@ -373,7 +410,7 @@ def generuj_metryki_task(
             status.ostatni_komunikat = "Przeliczanie liczby N..."
             status.save()
 
-            oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia=uczelnia)
+            oblicz_liczby_n_dla_okresu(uczelnia=uczelnia, okres=okres)
             logger.info("Przeliczono liczby N pomyślnie")
 
         # Krok 2: Oblicz metryki używając wspólnej funkcji
@@ -382,14 +419,19 @@ def generuj_metryki_task(
         from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
         # Policz tylko wpisy tej uczelni z odpowiednimi rodzajami autorów
-        queryset = IloscUdzialowDlaAutoraZaCalosc.objects.filter(uczelnia=uczelnia)
+        # Autor z kosza nie dostaje metryk (do przeliczenia N wiersze
+        # udziałów mogą go jeszcze zawierać).
+        queryset = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
+            uczelnia=uczelnia, okres=okres, autor__deleted_at__isnull=True
+        )
         if rodzaje_autora:
             queryset = queryset.filter(rodzaj_autora__skrot__in=rodzaje_autora)
         total_count = queryset.count()
 
         # Status już jest ustawiony przez widok, tylko zaktualizuj liczbę jeśli się zmieniła
-        if status.liczba_do_przetworzenia != total_count:
+        if status.liczba_do_przetworzenia != total_count or status.okres_id != okres.pk:
             status.liczba_do_przetworzenia = total_count
+            status.okres = okres
             status.save()
 
         logger.info(
@@ -424,6 +466,7 @@ def generuj_metryki_task(
             rodzaje_autora=rodzaje_autora,
             progress_callback=update_progress,
             uczelnia=uczelnia,
+            okres=okres,
         )
 
         _liczba_przetworzonych = wynik["processed"]

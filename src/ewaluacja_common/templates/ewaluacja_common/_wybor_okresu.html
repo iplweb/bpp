@@ -1,0 +1,23 @@
+{# Pasek wyboru okresu ewaluacji pod breadcrumbs (ewaluacja_common.okres). #}
+{# Na całą szerokość ekranu: od wybranego okresu zależy wszystko poniżej. #}
+{# Okres jest w adresie strony (ewaluacja_common.url_okres) — każdy okres #}
+{# to zwykły link do tej samej strony w innym okresie; adres można wysłać. #}
+<nav class="pasek-okresu" aria-label="Okres ewaluacji">
+    <div class="pasek-okresu__formularz">
+        <span class="pasek-okresu__etykieta">
+            <i class="fi-calendar" aria-hidden="true"></i> Okres ewaluacji
+        </span>
+        <span class="pasek-okresu__opcje" role="group" aria-label="Wybierz okres ewaluacji">
+            {% for okres, adres in linki_okresow %}
+                <a href="{{ adres }}"
+                   class="pasek-okresu__opcja{% if okres.pk == okres_ewaluacji.pk %} pasek-okresu__opcja--aktywna{% endif %}"
+                   {% if okres.pk == okres_ewaluacji.pk %}aria-current="page"{% endif %}>
+                    {{ okres }}
+                </a>
+            {% empty %}
+                <span>Brak zdefiniowanych okresów ewaluacji.</span>
+            {% endfor %}
+        </span>
+        <span class="pasek-okresu__opis">dane na tej stronie dotyczą wybranego okresu</span>
+    </div>
+</nav>

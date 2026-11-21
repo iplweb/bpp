@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import FieldDoesNotExist
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, transaction
 from django.db.models import Q
@@ -18,6 +19,7 @@ from bpp.models import (
     Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Autor,
 )
+from bpp.models.soft_delete import manager_z_koszem
 
 
 @dataclass(frozen=True)
@@ -286,16 +288,64 @@ class Command(BaseCommand):
             for model in publication_models
         ]
 
+    @staticmethod
+    def _wszystkie_wiersze(model):
+        """Manager widzący RÓWNIEŻ kosz.
+
+        Od fazy 02 soft-delete ``model.objects`` ukrywa wiersze z
+        ``deleted_at``. Ta komenda ma CZYŚCIĆ, a nie chować — pominięcie kosza
+        zostawiłoby publikacje, które operator uznał już za usunięte, a które
+        przy kolejnym imporcie kolidowałyby jako niewidoczne duplikaty.
+        """
+        return manager_z_koszem(model)
+
+    @staticmethod
+    def _skasuj_trwale(queryset):
+        """Kasowanie NIEODWRACALNE, także gdy model jest soft-delete.
+
+        ``QuerySet.delete()`` na modelu soft-delete jest MIĘKKIE — wiersze
+        zostają, a razem z nimi ich dzieci (bo CASCADE nie ma czego kasować).
+        Dla komendy czyszczącej to nie byłoby kasowanie, tylko oznaczanie.
+        """
+        hard = getattr(queryset, "hard_delete", None)
+        return hard() if hard is not None else queryset.delete()
+
+    def _odepnij_rozdzialy(self, model):
+        """Zeruje self-FK ``wydawnictwo_nadrzedne`` przed kasowaniem.
+
+        Od fazy 04 to pole jest ``PROTECT``: książki-matki nie da się usunąć,
+        dopóki wisi na niej rozdział. Ta komenda i tak kasuje WSZYSTKO, więc
+        powiązanie rozdział→książka nie ma czego chronić — ale kolektor
+        Django sprawdza ``PROTECT`` zanim zauważy, że dziecko również jest
+        w zbiorze do usunięcia, i przerywa całą operację.
+
+        Zerujemy hurtem, jednym ``UPDATE``, zamiast sortować kasowanie od
+        liści w górę: działa dla dowolnego zagnieżdżenia i nie zależy od
+        kolejności ``pk`` (rozdział bywa starszy od książki, np. po imporcie
+        z PBN). Gate na ``update()`` z fazy 01 blokuje wyłącznie
+        ``deleted_at``/``restored_at``, więc ta ścieżka jest dozwolona.
+        """
+        try:
+            model._meta.get_field("wydawnictwo_nadrzedne")
+        except FieldDoesNotExist:
+            return
+
+        self._wszystkie_wiersze(model).filter(
+            wydawnictwo_nadrzedne__isnull=False
+        ).update(wydawnictwo_nadrzedne=None)
+
     def _delete_publications(self, publication_models, batch_size):
         deleted = {}
         for model in publication_models:
-            pks = list(model.objects.order_by("pk").values_list("pk", flat=True))
+            self._odepnij_rozdzialy(model)
+            manager = self._wszystkie_wiersze(model)
+            pks = list(manager.order_by("pk").values_list("pk", flat=True))
             total = len(pks)
             self._progress(f"  - {model._meta.label}: usuwam {total} rekordow")
 
             for start in range(0, total, batch_size):
                 batch = pks[start : start + batch_size]
-                _, details = model.objects.filter(pk__in=batch).delete()
+                _, details = self._skasuj_trwale(manager.filter(pk__in=batch))
                 for model_label, count in details.items():
                     deleted[model_label] = deleted.get(model_label, 0) + count
 
@@ -323,7 +373,7 @@ class Command(BaseCommand):
                 f"    [{index}/{len(grouped_queries)}] {model._meta.label}: "
                 f"usuwam {planned_count}"
             )
-            count, _ = queryset.delete()
+            count, _ = self._skasuj_trwale(queryset)
             results.append(GenericReferenceResult(model._meta.label, "usunieto", count))
         return results
 

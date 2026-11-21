@@ -6,17 +6,40 @@ from django.core.management import BaseCommand
 from bpp.models import Wydawca
 from bpp.models.wydawca import Poziom_Wydawcy
 from bpp.wersjonowanie import zarejestruj_utworzenie
+from pbn_integrator.kosz import pomin_jesli_koliduje
 
 logger = logging.getLogger("django")
 
 
-def _pobierz_lub_utworz_wydawce(nazwa):
+def _wydawca_spoza_kosza(nazwa):
+    """Wydawca o tej nazwie (utworzony w razie braku) albo ``None``, gdy
+    nazwa należy do wydawcy z kosza (pominięcie zgłoszone)."""
+    if pomin_jesli_koliduje(
+        Wydawca, "import_wydawca_poziom", nazwa, skad="pliku", nazwa=nazwa
+    ):
+        return None
     w, utworzono = Wydawca.objects.get_or_create(nazwa=nazwa)
     if utworzono:
         zarejestruj_utworzenie(
             None, w, "Utworzono poleceniem manage.py import_wydawca_poziom."
         )
     return w
+
+
+def _dodatkowi_wydawcy(w, przypisuj_dodatkowych):
+    """Loguje wydawców o nazwie zaczynającej się od nazwy ``w``; zwraca ich
+    listę do przypisania poziomów (gdy ``przypisuj_dodatkowych``)."""
+    dodatkowi = []
+    nazwa_logged = False
+    for dw in Wydawca.objects.filter(nazwa__istartswith=w.nazwa).exclude(pk=w.pk):
+        if not nazwa_logged:
+            logger.info(w.nazwa)
+            nazwa_logged = True
+        logger.info(f"-> pasuje też do {dw.nazwa}")
+
+        if przypisuj_dodatkowych:
+            dodatkowi.append(dw)
+    return dodatkowi
 
 
 def _ustaw_poziom(w, poziom):
@@ -72,24 +95,13 @@ class Command(BaseCommand):
             wydawca, poziom = (cell.value for cell in cells)
 
             poziom = int(poziom)
-            w = _pobierz_lub_utworz_wydawce(wydawca.strip())
+            w = _wydawca_spoza_kosza(wydawca.strip())
+            if w is None:
+                continue  # wydawca z kosza — pominięty i zgłoszony
 
-            wydawcy_do_przypisania = [
-                w,
-            ]
-
+            wydawcy_do_przypisania = [w]
             if proponuj_dodatkowych:
-                nazwa_logged = False
-                for dw in Wydawca.objects.filter(nazwa__istartswith=w.nazwa).exclude(
-                    pk=w.pk
-                ):
-                    if not nazwa_logged:
-                        logger.info(w.nazwa)
-                        nazwa_logged = True
-                    logger.info(f"-> pasuje też do {dw.nazwa}")
-
-                    if przypisuj_dodatkowych:
-                        wydawcy_do_przypisania.append(dw)
+                wydawcy_do_przypisania += _dodatkowi_wydawcy(w, przypisuj_dodatkowych)
 
             for w in wydawcy_do_przypisania:
                 _ustaw_poziom(w, poziom)

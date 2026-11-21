@@ -267,7 +267,7 @@ def create_publication_task(self, session_id, request_user_id, also_pbn):
     try:
         report_progress(self, "prepare", stages=CREATE_STAGES)
         report_progress(self, "create_record", stages=CREATE_STAGES)
-        record = _create_publication(session, user=request_user)
+        record = _create_publication(session, request_user)
 
         if also_pbn:
             report_progress(self, "link_pbn", stages=CREATE_STAGES)
@@ -352,7 +352,7 @@ def _create_publication(session, user=None):
     """
     from .views.publikacja import _create_publication as _impl
 
-    return _impl(session, user=user)
+    return _impl(session, user)
 
 
 class _NoopMessageStorage:

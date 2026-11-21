@@ -60,7 +60,9 @@ def _autor(nazwisko, **kw):
 
 
 @pytest.fixture
-def dorobek_zrodla(uczelnia, zrodlo, jednostka, jednostka_podrzedna, denorms):
+def dorobek_zrodla(
+    uczelnia, zrodlo, jednostka, jednostka_podrzedna, denorms, typy_odpowiedzialnosci
+):
     """Kowalski: 3 prace, Nowak: 2, Wiśniewski: 1; praca w innym źródle
     się nie liczy."""
     kowalski = _autor("Kowalski")
@@ -111,7 +113,7 @@ def test_top_autorzy_pomija_ukrytych_w_rankingu(dorobek_zrodla, zrodlo, admin_us
 
 
 def test_top_pomija_prace_o_ukrytym_statusie(
-    uczelnia, zrodlo, jednostka, denorms, admin_user
+    uczelnia, zrodlo, jednostka, denorms, admin_user, typy_odpowiedzialnosci
 ):
     ukryty = baker.make(Status_Korekty, nazwa="ukryty-test")
     Ukryj_Status_Korekty.objects.create(
@@ -209,7 +211,7 @@ def test_build_search_autor_w_zrodle(client, dorobek_zrodla, zrodlo):
 
 
 @pytest.fixture
-def wydawca_z_aliasem(uczelnia, jednostka, denorms):
+def wydawca_z_aliasem(uczelnia, jednostka, denorms, typy_odpowiedzialnosci):
     glowny = baker.make(Wydawca, nazwa="Wydawnictwo Główne")
     alias = baker.make(Wydawca, nazwa="Wyd. Gł.", alias_dla=glowny)
     autor = _autor("Zwarty")
@@ -280,7 +282,12 @@ def test_formularz_zrodla_nowy_styl(client, dorobek_zrodla, zrodlo):
 
 
 def test_formularz_jednostki_nowy_styl(
-    client, jednostka, jednostka_podrzedna, autor_jan_kowalski, autor_jan_nowak
+    client,
+    jednostka,
+    jednostka_podrzedna,
+    autor_jan_kowalski,
+    autor_jan_nowak,
+    typy_odpowiedzialnosci,
 ):
     from bpp.models import Autor_Jednostka
 

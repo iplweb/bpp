@@ -74,7 +74,9 @@ env = environ.Env(
     #
     # Administratorzy
     #
-    ADMINS=(str, "Michał Pasternak <michal.dtz@gmail.com>"),
+    # Placeholder only: set ADMINS in .env. The default is public (e.g. as
+    # adminEmail in /cerif-oai/?verb=Identify), so it must not be a real address.
+    ADMINS=(str, "Administrator BPP <ustaw-email-admina@example.invalid>"),
     #
     #
     # Theme
@@ -334,6 +336,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "django_bpp.context_processors.conditional_password_status",
                 "bpp.context_processors.uczelnia.uczelnia",
+                "ewaluacja_common.context_processors.okres_ewaluacji",
                 "bpp.context_processors.config.bpp_configuration",
                 "bpp.context_processors.constance_config.constance_config",
                 "bpp.context_processors.global_nav.user",
@@ -355,6 +358,10 @@ TEMPLATES = [
 ]
 
 MIDDLEWARE = [
+    # First (outermost): fixes Content-Length of X-Accel-Redirect responses
+    # from django-sendfile as the very last step; under ASGI a mismatch makes
+    # uvicorn raise "Response content shorter than Content-Length".
+    "django_bpp.middleware.OffloadedFileContentLengthMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.security.SecurityMiddleware",
     # Zaraz po SecurityMiddleware: nagłówek CSP trafia też do odpowiedzi
@@ -365,8 +372,14 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Right after auth (needs request.user), outside every middleware that may
+    # redirect to a login page: anonymous HTMX requests get HX-Redirect to the
+    # login page instead of a login form swapped into a fragment.
+    "django_bpp.middleware.HtmxLoginRedirectMiddleware",
     "bpp.middleware.SiteResolutionMiddleware",  # After auth - resolves Site/Uczelnia from hostname
     "bpp.middleware.UzytkownikHistoriiMiddleware",  # After auth - author of history entries
+    # After auth: okres ewaluacji z adresu URL (/ewaluacja_metryki/2026-2030/...)
+    "ewaluacja_common.url_okres.OkresWUrlMiddleware",
     "django_countdown.middleware.CountdownBlockingMiddleware",  # After auth - needs request.user
     # After auth middleware to have request.user. BPP-owa podklasa: dopóki
     # kreator niedokończony, kto nie ma dostępu do kroku → logowanie admina.
@@ -380,6 +393,9 @@ MIDDLEWARE = [
     # 'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
     "bpp.middleware.CustomRollbarNotifierMiddleware",
     "oauth_mcp.middleware.ApiReadOnlyForBearerMiddleware",
+    # Trashed record -> 410 Gone page. Below Rollbar so its process_exception
+    # runs first (an expected signal, not an error to report).
+    "bpp.middleware.RekordUsunietyMiddleware",
     # AxesMiddleware MUSI być ostatnie — przechwytuje AxesBackendPermissionDenied
     # z backendu logowania i renderuje odpowiedź "konto zablokowane".
     "axes.middleware.AxesMiddleware",
@@ -694,7 +710,7 @@ BPP_THEMES = [
     ("app-orange", "Pomarańczowy"),
     ("app-vizja", "Bursztynowo-granatowy (VIZJA)"),
     ("app-mwsl", "Pomarańczowo-granatowy (MWSL)"),
-    ("app-uafm", "Czerwono-błękitny (UAFM)"),
+    ("app-uafm", "Czerwono-błękitny"),
 ]
 
 COMPRESS_OFFLINE_CONTEXT = [

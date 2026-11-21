@@ -35,7 +35,11 @@ from .helpers.fieldsets import (
     MODEL_ZE_SZCZEGOLAMI,
     POZOSTALE_MODELE_FIELDSET,
 )
-from .helpers.mixins import DomyslnyStatusKorektyMixin, Wycinaj_W_z_InformacjiMixin
+from .helpers.mixins import (
+    BppSoftDeleteAdminMixin,
+    DomyslnyStatusKorektyMixin,
+    Wycinaj_W_z_InformacjiMixin,
+)
 from .praca_doktorska import Praca_Doktorska_Habilitacyjna_Admin_Base
 
 #
@@ -98,8 +102,41 @@ class Publikacja_Habilitacyjna_Inline(admin.TabularInline):
 class Praca_HabilitacyjnaForm(forms.ModelForm):
     autor = forms.ModelChoiceField(
         queryset=Autor.objects.all(),
-        widget=autocomplete.ModelSelect2(url="bpp:autor-z-uczelni-autocomplete"),
+        widget=autocomplete.ModelSelect2(url="bpp:autor-autocomplete"),
     )
+
+    def clean_autor(self):
+        """Jeden autor — jedna ŻYWA praca habilitacyjna.
+
+        Do fazy 03 pilnował tego `validate_unique()`, bo `Praca_Habilitacyjna.
+        autor` było `OneToOneField`. Faza 03 zamieniła je na `ForeignKey`
+        z warunkowym `phab_uniq_autor_zywy` (żeby habilitacja w koszu nie
+        blokowała scalania autorów), a to przenosi walidację do
+        `Model.validate_constraints()` — który dla constraintu z `condition`
+        CICHO POMIJA sprawdzenie, gdy pole warunku (`deleted_at`) jest
+        wykluczone z walidacji. A jest: `_get_validation_exclusions()` wyklucza
+        wszystko spoza `Meta.fields`, a te admin nadpisuje spłaszczonymi
+        `fieldsets`.
+
+        `bpp/admin/core.py` obchodzi to ukrytym polem `deleted_at` na liście
+        `fields`. Tam to działa, bo chodzi o inline; tutaj `fieldsets` sterują
+        renderowaniem, więc pole wyprodukowałoby widoczny, pusty wiersz
+        „Deleted at" w formularzu. Stąd jawne sprawdzenie — czytelniejsze niż
+        walka z wykluczeniami, i daje komunikat przy właściwym polu.
+
+        Ograniczenie w bazie zostaje ostateczną gwarancją (to jest walidacja
+        formularza, nie blokada wyścigu).
+        """
+        autor = self.cleaned_data["autor"]
+
+        istniejace = Praca_Habilitacyjna.objects.filter(autor=autor)
+        if self.instance.pk is not None:
+            istniejace = istniejace.exclude(pk=self.instance.pk)
+
+        if istniejace.exists():
+            raise forms.ValidationError("Ten autor ma już pracę habilitacyjną.")
+
+        return autor
 
     jednostka = forms.ModelChoiceField(
         queryset=Jednostka.objects.all(),
@@ -175,6 +212,8 @@ class Praca_HabilitacyjnaAdmin(
     ConstanceScoringFieldsMixin,
     EksportDanychZFormatowanieMixin,
     ExportActionsMixin,
+    # OSTATNI przed baza terminalna — patrz docstring BppSoftDeleteAdminMixin.
+    BppSoftDeleteAdminMixin,
     Praca_Doktorska_Habilitacyjna_Admin_Base,
 ):
     resource_classes = [Praca_HabilitacyjnaResource]

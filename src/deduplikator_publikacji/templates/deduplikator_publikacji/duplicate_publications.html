@@ -152,7 +152,7 @@
                         <label>&nbsp;</label>
                         <button type="submit" class="button primary expanded"
                                 {% if running_scan %}disabled{% endif %}
-                                data-confirm="{% if completed_scan %}Czy na pewno chcesz uruchomić nowe skanowanie? Poprzednie wyniki zostaną zastąpione.{% endif %}">
+                                {% if completed_scan %}data-confirm="Czy na pewno chcesz uruchomić nowe skanowanie? Poprzednie wyniki zostaną zastąpione."{% endif %}>
                             <span class="fi-magnifying-glass"></span>
                             {% if running_scan %}Skanowanie w toku...{% else %}Uruchom skanowanie{% endif %}
                         </button>
@@ -201,12 +201,12 @@
                                 {% if candidate.similarity_score >= 0.95 %}deduplikator-publikacji__similarity-badge--high
                                 {% elif candidate.similarity_score >= 0.85 %}deduplikator-publikacji__similarity-badge--medium
                                 {% else %}deduplikator-publikacji__similarity-badge--low{% endif %}">
-                                {{ candidate.similarity_score|floatformat:0 }}%
+                                {% widthratio candidate.similarity_score 1 100 %}%
                             </span>
                         </td>
                         <td>
                             <div class="deduplikator-publikacji__pub-info">
-                                <span class="deduplikator-publikacji__pub-type">{{ candidate.original_type }}</span>
+                                <span class="deduplikator-publikacji__pub-type">{{ candidate.original_content_type.name|capfirst }}</span>
                                 <a href="{% url 'bpp:browse_rekord' candidate.original_content_type.pk candidate.original_object_id %}"
                                    target="_blank" title="{{ candidate.original_title }}">
                                     {{ candidate.original_title|truncatechars:80 }}
@@ -218,7 +218,7 @@
                         </td>
                         <td>
                             <div class="deduplikator-publikacji__pub-info">
-                                <span class="deduplikator-publikacji__pub-type">{{ candidate.duplicate_type }}</span>
+                                <span class="deduplikator-publikacji__pub-type">{{ candidate.duplicate_content_type.name|capfirst }}</span>
                                 <a href="{% url 'bpp:browse_rekord' candidate.duplicate_content_type.pk candidate.duplicate_object_id %}"
                                    target="_blank" title="{{ candidate.duplicate_title }}">
                                     {{ candidate.duplicate_title|truncatechars:80 }}

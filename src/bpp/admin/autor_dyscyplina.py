@@ -5,6 +5,8 @@ from django import forms
 from django.contrib import admin
 from django.db.models import DecimalField, ExpressionWrapper, F, Value
 from django.db.models.functions import Coalesce
+from django.urls import reverse
+from django.utils.html import format_html
 from import_export import resources
 
 from bpp.admin.core import DynamicAdminFilterMixin
@@ -162,6 +164,7 @@ class Autor_DyscyplinaAdmin(
     ]
     list_display = [
         "autor",
+        "link_do_autora",
         "rok",
         "rodzaj_autora",
         "wymiar_etatu",
@@ -173,6 +176,26 @@ class Autor_DyscyplinaAdmin(
         "procent_subdyscypliny",
     ]
     ordering = ("autor", "rok")
+
+    def get_readonly_fields(self, request, obj=None):
+        ret = list(super().get_readonly_fields(request, obj))
+        if obj is not None:
+            # Na formularzu zmiany pokaż link do autora tuż pod polem "autor".
+            ret.append("link_do_autora")
+        return ret
+
+    def get_fields(self, request, obj=None):
+        fields = [f for f in super().get_fields(request, obj) if f != "link_do_autora"]
+        if obj is not None and "autor" in fields:
+            fields.insert(fields.index("autor") + 1, "link_do_autora")
+        return fields
+
+    @admin.display(description="Link do autora")
+    def link_do_autora(self, obj):
+        if obj is None or obj.autor_id is None:
+            return "-"
+        url = reverse("admin:bpp_autor_change", args=[obj.autor_id])
+        return format_html('<a href="{}">👤 przejdź do autora</a>', url)
 
     def orcid(self, obj):
         return obj.autor.orcid

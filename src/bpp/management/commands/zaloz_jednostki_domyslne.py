@@ -30,15 +30,15 @@ class Command(BaseCommand):
         "domyślną' i kasuje pozostałe (puste) jednostki tego wydziału. "
         "Jeżeli któraś jednostka nie jest pusta — przerywa z błędem.\n\n"
         "Przykłady:\n"
-        "  python manage.py zaloz_jednostki_domyslne UAFM --dry-run\n"
-        "  python manage.py zaloz_jednostki_domyslne UAFM"
+        "  python manage.py zaloz_jednostki_domyslne UCZELNIA --dry-run\n"
+        "  python manage.py zaloz_jednostki_domyslne UCZELNIA"
     )
 
     def add_arguments(self, parser):
         parser.add_argument(
             "skrot_uczelni",
             type=str,
-            help="Skrót uczelni (Uczelnia.skrot), np. UAFM",
+            help="Skrót uczelni (Uczelnia.skrot), np. UCZELNIA",
         )
         parser.add_argument(
             "--dry-run",
@@ -191,7 +191,8 @@ class Command(BaseCommand):
             self.stdout.write(
                 f"  usuwam: [{jednostka.pk}] {jednostka.nazwa} ({jednostka.skrot})"
             )
-        ile_usunieto, _ = do_usuniecia.delete()
+        # Kasowanie serwisowe — zwykłe ``delete()`` jednostek jest zablokowane.
+        ile_usunieto, _ = do_usuniecia.hard_delete()
         self.stdout.write(self.style.SUCCESS(f"\nUsunięto jednostek: {ile_usunieto}."))
 
         if dry_run:

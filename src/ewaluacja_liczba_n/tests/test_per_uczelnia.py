@@ -5,6 +5,7 @@ from model_bakery import baker
 
 from bpp.models import Autor, Jednostka, Uczelnia
 from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
+from ewaluacja_common.okres import KLUCZ_SESJI
 from ewaluacja_liczba_n.models import (
     IloscUdzialowDlaAutoraZaCalosc,
     IloscUdzialowDlaAutoraZaRok,
@@ -75,7 +76,7 @@ def test_pipeline_izolacja_dwie_uczelnie(db):
         IloscUdzialowDlaAutoraZaRok,
         LiczbaNDlaUczelni,
     )
-    from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
+    from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_okresu
 
     u1 = baker.make(Uczelnia, skrot="U1", nazwa="U1")
     u2 = baker.make(Uczelnia, skrot="U2", nazwa="U2")
@@ -88,8 +89,10 @@ def test_pipeline_izolacja_dwie_uczelnie(db):
         for rok in (2022, 2023, 2024, 2025):
             _make_autor_dyscyplina(autor, rok, dyscyplina)
 
-    oblicz_liczby_n_dla_ewaluacji_2022_2025(u1)
-    oblicz_liczby_n_dla_ewaluacji_2022_2025(u2)  # second run must NOT wipe u1
+    oblicz_liczby_n_dla_okresu(u1, rok_min=2022, rok_max=2025)
+    oblicz_liczby_n_dla_okresu(
+        u2, rok_min=2022, rok_max=2025
+    )  # second run must NOT wipe u1
 
     assert IloscUdzialowDlaAutoraZaRok.objects.filter(uczelnia=u1, autor=a1).exists()
     assert IloscUdzialowDlaAutoraZaRok.objects.filter(uczelnia=u2, autor=a2).exists()
@@ -108,7 +111,7 @@ def test_pipeline_pomija_nieprzypisanych(db):
     from bpp.models import Autor, Jednostka, Uczelnia
     from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
     from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok
-    from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
+    from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_okresu
 
     u1 = baker.make(Uczelnia, skrot="U1", nazwa="U1")
     obca = baker.make(Jednostka, uczelnia=u1, skupia_pracownikow=False)
@@ -118,14 +121,14 @@ def test_pipeline_pomija_nieprzypisanych(db):
     for autor in (a_null, a_obca):
         _make_autor_dyscyplina(autor, 2022, dyscyplina)
 
-    oblicz_liczby_n_dla_ewaluacji_2022_2025(u1)
+    oblicz_liczby_n_dla_okresu(u1, rok_min=2022, rok_max=2025)
 
     assert not IloscUdzialowDlaAutoraZaRok.objects.filter(autor=a_null).exists()
     assert not IloscUdzialowDlaAutoraZaRok.objects.filter(autor=a_obca).exists()
 
 
 @pytest.mark.django_db
-def test_autorzy_list_view_filtruje_po_uczelni(rf, db):
+def test_autorzy_list_view_filtruje_po_uczelni(rf, db, okres_2022_2025):
     """AutorzyLiczbaNListView.get_queryset zwraca tylko wiersze uczelni z requestu."""
     from decimal import Decimal
 
@@ -165,6 +168,7 @@ def test_autorzy_list_view_filtruje_po_uczelni(rf, db):
     request = rf.get("/")
     request.user = user
     request._uczelnia = u1
+    request.session = {KLUCZ_SESJI: okres_2022_2025.pk}
 
     view = AutorzyLiczbaNListView()
     view.request = request
@@ -228,7 +232,7 @@ def _setup_two_universities_with_bad_ad(dyscyplina):
 
 
 @pytest.mark.django_db
-def test_weryfikuj_baze_view_bez_wymiaru_etatu_per_uczelnia(rf, db):
+def test_weryfikuj_baze_view_bez_wymiaru_etatu_per_uczelnia(rf, db, okres_2022_2025):
     """
     WeryfikujBazeView.get_context_data with request._uczelnia=U1 must report
     bez_wymiaru_etatu == 1 (only U1's bad record), not 2.
@@ -242,6 +246,7 @@ def test_weryfikuj_baze_view_bez_wymiaru_etatu_per_uczelnia(rf, db):
     request = rf.get("/")
     request.user = user
     request._uczelnia = u1
+    request.session = {KLUCZ_SESJI: okres_2022_2025.pk}
 
     view = WeryfikujBazeView()
     view.request = request
@@ -256,7 +261,7 @@ def test_weryfikuj_baze_view_bez_wymiaru_etatu_per_uczelnia(rf, db):
 
 
 @pytest.mark.django_db
-def test_ustaw_wymiar_etatu_view_post_per_uczelnia(rf, db):
+def test_ustaw_wymiar_etatu_view_post_per_uczelnia(rf, db, okres_2022_2025):
     """
     UstawWymiarEtatuView.post with request._uczelnia=U1 must update only U1's
     Autor_Dyscyplina records; U2's record must stay None.
@@ -272,6 +277,7 @@ def test_ustaw_wymiar_etatu_view_post_per_uczelnia(rf, db):
     request = rf.post("/")
     request.user = user
     request._uczelnia = u1
+    request.session = {KLUCZ_SESJI: okres_2022_2025.pk}
 
     view = UstawWymiarEtatuView()
     view.request = request

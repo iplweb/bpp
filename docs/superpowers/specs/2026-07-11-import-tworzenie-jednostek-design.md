@@ -16,7 +16,7 @@ przez `matchuj_jednostke`. Gdy jednostki nie ma, `_matchuj_jednostke_lub_wyjatek
 `LiveOperation.run` → runner liveops. Efekt: cała operacja pada na pierwszym
 niedopasowanym wierszu (`stage -1`, ~1 s), traceback tylko w kolumnie `traceback`.
 
-Zaobserwowane na zrzucie IHIT (`63d66aae-…`, `pracownicy IHIT 31_12_2025
+Zaobserwowane na zrzucie pliku klienta (`63d66aae-…`, `pracownicy 31_12_2025
 afiliacje.csv`): baza po `--from-dump` ma tylko 3 jednostki (`Wydział Domyślny`
 [root, `jest_lustrem=True`, `legacy_wydzial_id=1`], `Jednostka Domyślna`, `Obca
 jednostka`), więc prawie każdy wiersz to brak dopasowania; pierwszy (`Zakład
@@ -102,7 +102,7 @@ Deduplikacja po znormalizowanej nazwie (wzorzec `ImportPracownikowOdpiecie`):
 `ordering = ["nazwa_zrodlowa"]`.
 
 **Uwaga o gating:** default `decyzja="akceptuj"` z bezpiecznym auto-umiejscowieniem
-oznacza, że import może iść **bez** interakcji usera (kluczowe dla IHIT: setki
+oznacza, że import może iść **bez** interakcji usera (kluczowe dla pliku klienta: setki
 jednostek — nie wymuszamy ręcznej akceptacji każdej). Ekran §5 to **opcjonalna
 korekta**, nie twarda bramka. Panel wyników pokazuje wyraźne podsumowanie + link
 (§5.5). (Twardej bramki nie ma — istniejący flow autora też jej nie ma;
@@ -291,7 +291,7 @@ Integracja:
 - `iexact` re-match tuż przed create (wariant wielkości liter nie tworzy duplikatu).
 
 Regresja bugu:
-- fixture z niedopasowaną jednostką (plik typu IHIT) przechodzi analizę bez
+- fixture z niedopasowaną jednostką (plik typu pliku klienta) przechodzi analizę bez
   `XLSMatchError`.
 
 Widok/escaping:

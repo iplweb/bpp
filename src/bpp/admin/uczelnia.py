@@ -17,7 +17,7 @@ from ..util.ssrf import waliduj_url_integracji
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers.constance_field_mixin import ConstanceUczelniaFieldsMixin
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
-from .helpers.mixins import ZapiszZAdnotacjaMixin
+from .helpers.mixins import BppSoftDeleteAdminMixin, ZapiszZAdnotacjaMixin
 from .helpers.ror_field import czysc_ror
 from .helpers.site_filtered import SiteFilteredAdminMixin
 from .helpers.wersje import HistoriaWersjiMixin
@@ -172,6 +172,7 @@ class UczelniaAdmin(
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
     BaseBppAdminMixin,
+    BppSoftDeleteAdminMixin,
     HistoriaWersjiMixin,
     VersionAdmin,
 ):
@@ -324,6 +325,7 @@ class UczelniaAdmin(
                     "uzywaj_wydzialow",
                     "pokazuj_jednostki_na_pierwszej_stronie",
                     "pokazuj_wydzialy_na_pierwszej_stronie",
+                    "kafel_wydzialy_zamiast_jednostek",
                     "pokazuj_siec_powiazan",
                     "wyszukiwanie_rekordy_na_strone_anonim",
                     "wyszukiwanie_rekordy_na_strone_zalogowany",
@@ -520,7 +522,7 @@ class UczelniaAdmin(
                     request,
                     f"Integracja z PBN jest włączona, ale konfiguracja jest niekompletna: {e}. "
                     f"Uzupełnij brakujące dane (nazwa aplikacji i token) lub wyłącz "
-                    f"integrację z PBN w sekcji „Integracja z PBN API”.",
+                    f"integrację z PBN w sekcji „PBN API”.",
                 )
                 return ret
 

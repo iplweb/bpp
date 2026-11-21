@@ -60,6 +60,7 @@ from bpp.views.autocomplete import (
     Wydawnictwo_Nadrzedne_W_PBNAutocomplete,
     Wydawnictwo_NadrzedneAutocomplete,
     Wydawnictwo_ZwarteAdminAutocomplete,
+    WyszukiwarkaAutorAutocomplete,
     ZapisanyJakoAutocomplete,
     Zewnetrzna_Baza_DanychAutocomplete,
     ZrodloAutocomplete,
@@ -86,6 +87,7 @@ from bpp.views.browse import (
     UczelniaView,
     WydawcaView,
     WydawcyView,
+    WydzialyView,
     WyswietlDeklaracjeDostepnosci,
     ZrodlaView,
     ZrodloView,
@@ -292,6 +294,12 @@ urlpatterns = [
         r"^jednostki/(?P<literka>.)/$",
         JednostkiView.as_view(),
         name="browse_jednostki_literka",
+    ),
+    url(r"^wydzialy/$", WydzialyView.as_view(), name="browse_wydzialy"),
+    url(
+        r"^wydzialy/(?P<literka>.)/$",
+        WydzialyView.as_view(),
+        name="browse_wydzialy_literka",
     ),
     url(
         r"^wydzial/(?P<slug>[\w-]+)/$",
@@ -558,6 +566,11 @@ urlpatterns = [
         r"^public-autor-autocomplete/$",
         PublicAutorAutocomplete.as_view(),
         name="public-autor-autocomplete",
+    ),
+    url(
+        r"^wyszukiwarka-autor-autocomplete/$",
+        WyszukiwarkaAutorAutocomplete.as_view(),
+        name="wyszukiwarka-autor-autocomplete",
     ),
     url(
         r"^import-autor-autocomplete/$",

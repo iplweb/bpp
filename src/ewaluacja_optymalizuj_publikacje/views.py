@@ -11,6 +11,7 @@ from bpp.models import (
 )
 from bpp.models.sloty.core import CannotAdapt, IPunktacjaCacher, ISlot
 from bpp.permissions import WprowadzanieDanychRequiredMixin
+from ewaluacja_common.okres import okres_domyslny
 from ewaluacja_metryki.models import MetrykaAutora
 from ewaluacja_metryki.utils import przelicz_metryki_dla_publikacji
 
@@ -33,6 +34,11 @@ class OptymalizujPublikacjeView(WprowadzanieDanychRequiredMixin, View):
             # Build cache punktacja lookup
             cache_punktacja_lookup = self._build_cache_punktacja_lookup(publikacja)
 
+            # Metryki i udziały czytamy z okresu ewaluacji, do którego należy
+            # rok publikacji — tego samego, który przelicza
+            # ``przelicz_metryki_dla_publikacji`` po zmianie przypięć.
+            okres = okres_domyslny(rok=publikacja.original.rok)
+
             # Process all author assignments
             autorzy_data_dict = {}
             stale_data_error = False
@@ -42,7 +48,7 @@ class OptymalizujPublikacjeView(WprowadzanieDanychRequiredMixin, View):
             ):
                 try:
                     autor_info = self._process_autor_assignment(
-                        autor_assignment, publikacja, cache_punktacja_lookup
+                        autor_assignment, publikacja, cache_punktacja_lookup, okres
                     )
                 except TypeError:
                     # Old data format detected in metryka.prace_nazbierane
@@ -311,14 +317,15 @@ class OptymalizujPublikacjeView(WprowadzanieDanychRequiredMixin, View):
         # Sprawdź czy dyscyplina autora jest w dyscyplinach źródła
         return dyscyplina.id in list(dyscypliny_zrodla)
 
-    def _get_metryka_data(self, autor, dyscyplina, przypieta, cpaq):
-        """Get MetrykaAutora data and check if publication is selected for evaluation"""
+    def _get_metryka_data(self, autor, dyscyplina, przypieta, cpaq, okres):
+        """Get MetrykaAutora data (w okresie ``okres``) and check if publication
+        is selected for evaluation"""
         metryka_data = None
         wybrana_do_ewaluacji = False
 
         try:
             metryka = MetrykaAutora.objects.get(
-                autor=autor, dyscyplina_naukowa=dyscyplina
+                autor=autor, dyscyplina_naukowa=dyscyplina, okres=okres
             )
             metryka_data = {
                 "punkty_nazbierane": metryka.punkty_nazbierane,
@@ -341,9 +348,12 @@ class OptymalizujPublikacjeView(WprowadzanieDanychRequiredMixin, View):
         return metryka_data, wybrana_do_ewaluacji
 
     def _process_autor_assignment(
-        self, autor_assignment, publikacja, cache_punktacja_lookup
+        self, autor_assignment, publikacja, cache_punktacja_lookup, okres
     ):
-        """Process a single autor assignment and return autor info dict"""
+        """Process a single autor assignment and return autor info dict.
+
+        ``okres`` — okres ewaluacji publikacji (metryki i udziały z tego okresu).
+        """
         autor = autor_assignment.autor
         dyscyplina = autor_assignment.dyscyplina_naukowa
         przypieta = autor_assignment.przypieta
@@ -364,7 +374,7 @@ class OptymalizujPublikacjeView(WprowadzanieDanychRequiredMixin, View):
         metryka_id = None
         try:
             metryka_autor = MetrykaAutora.objects.get(
-                autor_id=autor.id, dyscyplina_naukowa=dyscyplina
+                autor_id=autor.id, dyscyplina_naukowa=dyscyplina, okres=okres
             )
             metryka_id = metryka_autor.pk
         except MetrykaAutora.DoesNotExist:
@@ -378,7 +388,7 @@ class OptymalizujPublikacjeView(WprowadzanieDanychRequiredMixin, View):
             from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
             has_ilosc_udzialow = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
-                autor=autor, dyscyplina_naukowa=dyscyplina
+                autor=autor, dyscyplina_naukowa=dyscyplina, okres=okres
             ).exists()
 
             autor_dyscyplina_missing_data = (
@@ -430,7 +440,7 @@ class OptymalizujPublikacjeView(WprowadzanieDanychRequiredMixin, View):
 
         # Get MetrykaAutora data
         metryka_data, wybrana_do_ewaluacji = self._get_metryka_data(
-            autor, dyscyplina, przypieta, cpaq
+            autor, dyscyplina, przypieta, cpaq, okres
         )
         autor_info["metryka"] = metryka_data
         if wybrana_do_ewaluacji:

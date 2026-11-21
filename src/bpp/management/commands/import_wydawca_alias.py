@@ -6,6 +6,7 @@ from django.core.management import BaseCommand
 
 from bpp.models import Wydawca
 from bpp.wersjonowanie import zarejestruj_utworzenie
+from pbn_integrator.kosz import pomin_jesli_koliduje
 
 logger = logging.getLogger("django")
 
@@ -40,6 +41,14 @@ class Command(BaseCommand):
                 logger.info(f"{wydawca} zdefiniowany w pliku XLS nie istnieje")
                 continue
 
+            if pomin_jesli_koliduje(
+                Wydawca,
+                "import_wydawca_alias",
+                alias,
+                skad="pliku",
+                nazwa=alias.strip(),
+            ):
+                continue  # wydawca z kosza — pominięty i zgłoszony
             a, utworzono = Wydawca.objects.get_or_create(nazwa=alias.strip())
             if utworzono:
                 zarejestruj_utworzenie(

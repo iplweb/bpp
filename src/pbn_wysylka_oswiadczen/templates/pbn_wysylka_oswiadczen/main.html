@@ -39,11 +39,11 @@
                 <div class="row">
                     <div class="medium-6 columns">
                         <label for="rok_od">Rok od:</label>
-                        <input type="number" id="rok_od" name="rok_od" value="{{ rok_od }}" min="2000" max="2100">
+                        <input type="number" id="rok_od" name="rok_od" value="{{ rok_od }}" min="{{ okres_ewaluacji.rok_od }}" max="{{ okres_ewaluacji.rok_do }}">
                     </div>
                     <div class="medium-6 columns">
                         <label for="rok_do">Rok do:</label>
-                        <input type="number" id="rok_do" name="rok_do" value="{{ rok_do }}" min="2000" max="2100">
+                        <input type="number" id="rok_do" name="rok_do" value="{{ rok_do }}" min="{{ okres_ewaluacji.rok_od }}" max="{{ okres_ewaluacji.rok_do }}">
                     </div>
                 </div>
                 <div class="row">

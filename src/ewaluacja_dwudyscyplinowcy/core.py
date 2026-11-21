@@ -18,7 +18,8 @@ def pobierz_autorow_z_dwiema_dyscyplinami(lata=None):
     Pobiera autorów z dokładnie dwiema dyscyplinami dla podanych lat.
 
     Args:
-        lata: Lista lat do sprawdzenia. Domyślnie 2022-2025.
+        lata: Lista lat do sprawdzenia. Domyślnie lata domyślnego okresu
+            ewaluacji (``ewaluacja_common.okres.okres_domyslny``).
 
     Returns:
         Słownik {autor_id: {
@@ -34,7 +35,10 @@ def pobierz_autorow_z_dwiema_dyscyplinami(lata=None):
         }}
     """
     if lata is None:
-        lata = range(2022, 2026)  # 2022-2025
+        from ewaluacja_common.okres import okres_domyslny
+
+        okres = okres_domyslny()
+        lata = okres.lata if okres is not None else []
 
     autorzy_dict = defaultdict(lambda: {"autor": None, "lata": {}})
 

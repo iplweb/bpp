@@ -8,6 +8,8 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
 from bpp.models import Uczelnia
+from ewaluacja_common.okres import okres_dla_request
+from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +27,9 @@ def _format_estimated_time(seconds):
         return "< 1 min"
 
 
-def _handle_unpinning_task_in_progress(context, task_info, current_stage, current_step):
+def _handle_unpinning_task_in_progress(
+    request, context, task_info, current_stage, current_step
+):
     """Handle unpinning task that is still in progress."""
     from ewaluacja_metryki.models import StatusGenerowania
 
@@ -36,7 +40,9 @@ def _handle_unpinning_task_in_progress(context, task_info, current_stage, curren
     context["info"]["step"] = current_step
 
     # Check if metrics generation is running and add real progress
-    status = StatusGenerowania.get_or_create()
+    status = StatusGenerowania.get_or_create(
+        uczelnia=uczelnia_dla_odczytu(request), okres=okres_dla_request(request)
+    )
     if status.w_trakcie and current_stage == "unknown":
         # Metrics are still running, update stage info
         context["info"]["stage"] = "metrics"
@@ -145,7 +151,9 @@ def analyze_unpinning_opportunities(request):
         )
 
     # Sprawdź czy przeliczanie metryk już trwa
-    status = StatusGenerowania.get_or_create()
+    status = StatusGenerowania.get_or_create(
+        uczelnia=uczelnia_dla_odczytu(request), okres=okres_dla_request(request)
+    )
 
     if status.w_trakcie:
         messages.info(
@@ -154,23 +162,32 @@ def analyze_unpinning_opportunities(request):
         )
         return redirect("ewaluacja_optymalizacja:index")
 
-    # Usuń stare metryki
-    metryki_count = MetrykaAutora.objects.count()
+    okres = okres_dla_request(request)
+
+    # Usuń stare metryki — tylko wybranego okresu (inne okresy zostają)
+    stare_metryki = MetrykaAutora.objects.filter(okres=okres)
+    metryki_count = stare_metryki.count()
     if metryki_count > 0:
         logger.info(f"Deleting {metryki_count} old metrics before recalculation...")
-        MetrykaAutora.objects.all().delete()
+        stare_metryki.delete()
         logger.info("Deleted old metrics")
 
     # Stwórz Celery chain: metryki -> unpinning
     # Pierwszy task (metryki) zwraca wynik, który jest przekazywany do drugiego (unpinning wrapper)
     workflow = chain(
         generuj_metryki_task_parallel.s(
+            rok_min=okres.rok_od,
+            rok_max=okres.rok_do,
             rodzaje_autora=get_default_rodzaje_autora(),
             nadpisz=True,
             przelicz_liczbe_n=True,
+            okres_pk=okres.pk,
         ),  # Przelicz metryki z jawnymi parametrami
         run_unpinning_after_metrics_wrapper.s(  # Potem uruchom unpinning
-            uczelnia_id=uczelnia.pk, dyscyplina_id=None, min_slot_filled=0.8
+            uczelnia_id=uczelnia.pk,
+            dyscyplina_id=None,
+            min_slot_filled=0.8,
+            okres_pk=okres.pk,
         ),
     )
 
@@ -183,7 +200,7 @@ def analyze_unpinning_opportunities(request):
     )
 
     # Zapisz status w modelu singleton
-    status_unpinning.rozpocznij(task_id=str(result.id))
+    status_unpinning.rozpocznij(task_id=str(result.id), okres=okres)
 
     messages.info(
         request,
@@ -222,7 +239,7 @@ def unpinning_combined_status(request, task_id):
     # Jeśli zadanie się nie zakończyło
     if not task.ready():
         _handle_unpinning_task_in_progress(
-            context, task_info, current_stage, current_step
+            request, context, task_info, current_stage, current_step
         )
 
     # Sprawdź czy zadanie zakończyło się błędem

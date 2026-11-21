@@ -16,6 +16,12 @@ repozytorium. Poniższe strony rozwijają wybrane tematy:
   zarządzanie).
 - [Pakiety klienckie PBN](pakiety-pbn.md) — pakiety `pbn-client` /
   `django-pbn-client` (PyPI), podział odpowiedzialności i aktualizacja wersji.
+- [Soft-delete (kosz)](soft-delete.md) — co jest kasowane miękko
+  (`deleted_at`), a co nie, i co dzieje się z danymi powiązanymi, PBN
+  i historią wersji przy usunięciu i przywróceniu.
+- [Historia zmian (reversion)](historia-zmian-reversion.md) — spec historii
+  edycji rekordów (django-reversion), kontrakty z koszem i plan rejestracji
+  kolejnych modeli.
 - [Budowanie CSS/SCSS](budowanie-css.md) — pipeline frontendu (Grunt,
   Foundation).
 - [euroCRIS — co jeszcze zostało](eurocris-co-jeszcze.md) — stan eksportu

@@ -62,6 +62,7 @@ from .helpers import (
 from .helpers.constance_field_mixin import ConstanceScoringFieldsMixin
 from .helpers.mixins import (
     BlokujRekordPrzedZapisemMixin,
+    BppSoftDeleteAdminMixin,
     OdroczPunktyDyscyplinMixin,
     OptionalPBNSaveMixin,
     RestrictDeletionWhenPBNUIDSetMixin,
@@ -472,6 +473,8 @@ class Wydawnictwo_ZwarteForm(
             "tom": forms.TextInput(attrs={"class": "bpp-input-narrow"}),
             "slowa_kluczowe": TextareaTagWidget(attrs={"rows": 2}),
         }
+        labels = fieldsets.OPENACCESS_LABELS
+        help_texts = fieldsets.OPENACCESS_HELP_TEXTS
 
     class Media:
         # Freshdesk #385: podświetlenie wymaganego pola "wydawca" przy
@@ -507,6 +510,8 @@ class Wydawnictwo_ZwarteAdmin(
     AdminCrossrefAPIMixin,
     AdminCrossrefPBNAPIMixin,
     RestrictDeletionWhenPBNUIDSetMixin,
+    # OSTATNI przed baza terminalna — patrz docstring BppSoftDeleteAdminMixin.
+    BppSoftDeleteAdminMixin,
     Wydawnictwo_ZwarteAdmin_Baza,
 ):
     change_list_template = "admin/bpp/wydawnictwo_zwarte/change_list.html"

@@ -1,6 +1,6 @@
 """Reguła „jeden arkusz = jeden import".
 
-Plik wieloarkuszowy (np. ``Pracownicy_..._UAFM_x_MWSL.xlsx`` — dwie uczelnie
+Plik wieloarkuszowy (np. ``Pracownicy_..._UCZELNIA_x_MWSL.xlsx`` — dwie uczelnie
 w jednym skoroszycie) jest ODRZUCANY z czytelnym błędem. Świadomie NIE
 obsługujemy takich plików (ani auto-sklejenia, ani auto-podziału — arkusze to
 rozłączne, nieporównywalne zbiory). Użytkownik dzieli plik na osobne pliki
@@ -19,7 +19,7 @@ from import_pracownikow.models import ImportPracownikow
 def _plik_dwa_arkusze(tmp_path):
     wb = openpyxl.Workbook()
     ws0 = wb.active
-    ws0.title = "UAFM"
+    ws0.title = "UCZELNIA"
     ws0.append(["Nazwisko", "Imię", "Stanowisko"])
     ws0.append(["Kowalski", "Jan", "Adiunkt"])
     ws1 = wb.create_sheet("MWSL")

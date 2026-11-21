@@ -107,7 +107,7 @@
                             <li><a href="{% url "kompletnosc_polon:lista" %}"><i class="fi-clipboard-notes"></i> kompletność danych POL-on</a></li>
                             <li><a href="{% url "ewaluacja_optymalizacja:index" %}"><i class="fi-target-two"></i> optymalizacja ewaluacji</a></li>
                             <li><a href="{% url "snapshot_odpiec:index" %}"><i class="fi-camera"></i> snapshoty odpięć</a></li>
-                            <li><a href="{% url "oswiadczenia:wydruk-2022-25" %}"><i class="fi-print"></i> wydruk oświadczeń 2022-25</a></li>
+                            <li><a href="{% url "oswiadczenia:wydruk" %}"><i class="fi-print"></i> wydruk oświadczeń</a></li>
                         </ul>
                     {% endif %}
                     {% load czy_pokazywac %}
@@ -466,7 +466,6 @@
                 {% endif %}
 
             {% endif %}
-
 
         </ul>
     </div>

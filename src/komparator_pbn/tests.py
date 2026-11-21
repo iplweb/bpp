@@ -16,6 +16,10 @@ from pbn_api.models import Publication
 
 User = get_user_model()
 
+# Strona komparatora w okresie 2022–2025 (okres w adresie URL). Bez okresu
+# w adresie widok liczy dla okresu domyślnego (wg bieżącego roku).
+URL_MAIN_2022_2025 = "/komparator_pbn/2022-2025/"
+
 
 @pytest.fixture
 def staff_user():
@@ -89,7 +93,7 @@ def test_komparator_main_view_staff_access(client_logged_in_staff, basic_setup):
 @pytest.mark.django_db
 def test_komparator_main_view_context_basic(client_logged_in_staff, basic_setup):
     """Test that KomparatorMainView provides basic context data."""
-    url = reverse("komparator_pbn:main")
+    url = URL_MAIN_2022_2025
     response = client_logged_in_staff.get(url)
 
     assert response.status_code == 200
@@ -163,7 +167,7 @@ def test_komparator_main_view_publication_counts(client_logged_in_staff, basic_s
         punkty_kbn=25,
     )
 
-    url = reverse("komparator_pbn:main")
+    url = URL_MAIN_2022_2025
     response = client_logged_in_staff.get(url)
 
     context = response.context
@@ -318,7 +322,7 @@ def test_evaluation_period_filtering(client_logged_in_staff, basic_setup):
         title="Old PBN Publication",
     )
 
-    url = reverse("komparator_pbn:main")
+    url = URL_MAIN_2022_2025
     response = client_logged_in_staff.get(url)
 
     assert response.status_code == 200
@@ -380,3 +384,60 @@ def test_djangoql_links_in_komparator_main_view_work(admin_app, basic_setup):
         assert b"changelist" in response.content or b"results" in response.content, (
             f"Expected admin changelist page for {admin_url}"
         )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "slug,rok_od,rok_do",
+    [("2022-2025", 2022, 2025), ("2026-2030", 2026, 2030)],
+)
+def test_komparator_main_view_lata_wybranego_okresu(
+    client_logged_in_staff, basic_setup, slug, rok_od, rok_do
+):
+    """Statystyki i linki do modułu redagowania liczą się dla okresu
+    z paska okresu (z adresu URL), nie dla lat 2022–2025 na sztywno."""
+    baker.make(
+        Wydawnictwo_Ciagle,
+        rok=2023,
+        charakter_formalny=basic_setup["charakter_exportable"],
+        doi="10.1000/okres",
+        pbn_uid_id=None,
+        punkty_kbn=20,
+    )
+
+    response = client_logged_in_staff.get(f"/komparator_pbn/{slug}/")
+
+    assert response.status_code == 200
+    assert response.context["evaluation_start_year"] == rok_od
+    assert response.context["evaluation_end_year"] == rok_do
+    assert response.context["ciagle_not_sent"] == (1 if rok_od == 2022 else 0)
+
+    tresc = response.content.decode()
+    assert f"rok+%3E%3D+{rok_od}+and+rok+%3C%3D+{rok_do}+" in tresc
+    assert f"year+%3E%3D+{rok_od}+and+year+%3C%3D+{rok_do}+" in tresc
+    inny_od = 2026 if rok_od == 2022 else 2022
+    assert f"rok+%3E%3D+{inny_od}+" not in tresc
+
+
+@pytest.mark.django_db
+def test_bpp_missing_in_pbn_view_lata_wybranego_okresu(
+    client_logged_in_staff, basic_setup
+):
+    response = client_logged_in_staff.get(
+        "/komparator_pbn/2026-2030/bpp-missing-in-pbn/"
+    )
+    assert response.status_code == 200
+    assert response.context["evaluation_start_year"] == 2026
+    assert response.context["evaluation_end_year"] == 2030
+
+
+@pytest.mark.django_db
+def test_pbn_missing_in_bpp_view_lata_wybranego_okresu(
+    client_logged_in_staff, basic_setup
+):
+    response = client_logged_in_staff.get(
+        "/komparator_pbn/2026-2030/pbn-missing-in-bpp/"
+    )
+    assert response.status_code == 200
+    assert response.context["evaluation_start_year"] == 2026
+    assert response.context["evaluation_end_year"] == 2030

@@ -10,12 +10,13 @@ from django.views import View
 from bpp.models import Wydawnictwo_Ciagle
 
 from ..models import RozbieznoscZrodlaPBN
-from .constants import (
-    DEFAULT_ROK_DO,
-    DEFAULT_ROK_OD,
-    OFFLOAD_TASKS_WITH_THIS_ELEMENTS_OR_MORE,
-)
+from .constants import OFFLOAD_TASKS_WITH_THIS_ELEMENTS_OR_MORE
 from .forms import DyscyplinyFilterForm, FilterForm
+from .okres import (
+    filtruj_publikacje_w_okresie,
+    lata_okresu,
+    tylko_z_publikacjami_w_okresie,
+)
 
 
 class AktualizujPojedynczyView(GroupRequiredMixin, View):
@@ -63,10 +64,11 @@ class AktualizujWszystkieView(GroupRequiredMixin, View):
     def get_filter_params(self):
         """Pobiera parametry filtrów z request."""
         # Przy pierwszym wejściu (brak GET params) domyślnie checkbox zaznaczony
+        okres_od, okres_do = lata_okresu(self.request)
         if not self.request.GET:
-            return DEFAULT_ROK_OD, DEFAULT_ROK_DO, "", "", True
+            return okres_od, okres_do, "", "", True
 
-        form = FilterForm(self.request.GET)
+        form = FilterForm(self.request.GET, domyslne_lata=(okres_od, okres_do))
         if form.is_valid():
             tylko_rozbieznosci = "tylko_rozbieznosci" in self.request.GET
             return (
@@ -76,7 +78,7 @@ class AktualizujWszystkieView(GroupRequiredMixin, View):
                 form.cleaned_data["dyscyplina"],
                 tylko_rozbieznosci,
             )
-        return DEFAULT_ROK_OD, DEFAULT_ROK_DO, "", "", True
+        return okres_od, okres_do, "", "", True
 
     def post(self, request):
         from ..tasks import aktualizuj_wszystkie_task
@@ -155,26 +157,29 @@ class AktualizujWszystkieDyscyplinyView(GroupRequiredMixin, View):
 
     def get_filter_params(self):
         """Pobiera parametry filtrów z request."""
+        okres_od, okres_do = lata_okresu(self.request)
         if not self.request.GET:
-            return DEFAULT_ROK_OD, DEFAULT_ROK_DO, "", True, False, True
+            return okres_od, okres_do, "", True, False, True
 
-        form = DyscyplinyFilterForm(self.request.GET)
+        form = DyscyplinyFilterForm(
+            self.request.GET, domyslne_lata=(okres_od, okres_do)
+        )
         if form.is_valid():
             rok_od = form.cleaned_data["rok_od"]
             rok_do = form.cleaned_data["rok_do"]
             search = form.cleaned_data["search"]
             tylko_rozbieznosci = "tylko_rozbieznosci" in self.request.GET
             bez_publikacji = "bez_publikacji" in self.request.GET
-            bez_publikacji_2022_2025 = "bez_publikacji_2022_2025" in self.request.GET
+            z_publikacjami_w_okresie = tylko_z_publikacjami_w_okresie(self.request)
             return (
                 rok_od,
                 rok_do,
                 search,
                 tylko_rozbieznosci,
                 bez_publikacji,
-                bez_publikacji_2022_2025,
+                z_publikacjami_w_okresie,
             )
-        return DEFAULT_ROK_OD, DEFAULT_ROK_DO, "", True, False, True
+        return okres_od, okres_do, "", True, False, True
 
     def post(self, request):
         from ..tasks import aktualizuj_wszystkie_task
@@ -185,7 +190,7 @@ class AktualizujWszystkieDyscyplinyView(GroupRequiredMixin, View):
             search,
             tylko_rozbieznosci,
             bez_publikacji,
-            bez_publikacji_2022_2025,
+            z_publikacjami_w_okresie,
         ) = self.get_filter_params()
 
         # Buduj queryset z filtrami
@@ -209,12 +214,11 @@ class AktualizujWszystkieDyscyplinyView(GroupRequiredMixin, View):
             )
             queryset = queryset.filter(Exists(has_publications))
 
-        # Filtr tylko źródła z publikacjami 2022-2025
-        if bez_publikacji_2022_2025:
-            has_publications_2022_2025 = Wydawnictwo_Ciagle.objects.filter(
-                zrodlo_id=OuterRef("zrodlo_id"), rok__gte=2022, rok__lte=2025
+        # Filtr tylko źródła z publikacjami z lat wybranego okresu ewaluacji
+        if z_publikacjami_w_okresie:
+            queryset = filtruj_publikacje_w_okresie(
+                queryset, *lata_okresu(self.request)
             )
-            queryset = queryset.filter(Exists(has_publications_2022_2025))
 
         # Tylko te z rozbieżnościami dyscyplin
         queryset = queryset.filter(ma_rozbieznosc_dyscyplin=True)

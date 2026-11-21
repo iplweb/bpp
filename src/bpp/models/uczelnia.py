@@ -20,6 +20,7 @@ from tinymce.models import HTMLField
 from bpp.fields import EncryptedTextField
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID, NazwaWDopelniaczu
+from bpp.models.soft_delete import BppSoftDeleteManager, BppSoftDeleteSlownikMixin
 from bpp.util.ror import waliduj as waliduj_ror
 from bpp.util.ssrf import waliduj_url_integracji_offline
 from pbn_api.exceptions import WillNotExportError
@@ -33,7 +34,7 @@ if TYPE_CHECKING:
     import pbn_api  # noqa
 
 
-class UczelniaManager(models.Manager):
+class UczelniaManager(BppSoftDeleteManager):
     # Multi-hosted: NIE MA „uczelni domyślnej". Realne stany systemu to:
     # brak uczelni (pusta baza / setup_wizard), jedna uczelnia (zwykle) albo
     # wiele uczelni (1 instalacja, kilka uczelni). Uczelnię ustala się z
@@ -113,9 +114,14 @@ class UczelniaManager(models.Manager):
         if site is None:
             return None
         try:
-            return site.uczelnia
+            uczelnia = site.uczelnia
         except ObjectDoesNotExist:
             return None
+        # Odwrotny OneToOne idzie przez ``_base_manager`` (widzi kosz) —
+        # uczelnia w koszu nie obsługuje swojej domeny.
+        if uczelnia.deleted_at is not None:
+            return None
+        return uczelnia
 
     def uczelnia_dla_site(self, site):
         """Uczelnia dla Site, a gdy się nie da — jedyna-albo-None.
@@ -218,7 +224,55 @@ class GrupaApiV1(models.TextChoices):
     NARZEDZIA_REDAKTORSKIE = "narzedzia_redaktorskie", "narzędzia redaktorskie"
 
 
-class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
+class Uczelnia(
+    BppSoftDeleteSlownikMixin,
+    ModelZAdnotacjami,
+    ModelZPBN_ID,
+    NazwaISkrot,
+    NazwaWDopelniaczu,
+):
+    """Uczelnia (tenant). Kosz: tylko uczelnia bez jednostek (także w koszu)
+    i bez użytkowników z dostępem do niej; konfiguracja, dane wyliczane
+    i logi zostają przy niej (``pomijane_relacje_kosza``).
+
+    Uczelnia w koszu NIE obsługuje swojej domeny (``get_for_site``), ale
+    dalej trzyma ``site`` (OneToOne NOT NULL) — żeby podpiąć domenę pod inną
+    uczelnię, trzeba ją najpierw usunąć trwale z kosza.
+    """
+
+    pomijane_relacje_kosza = frozenset(
+        {
+            "import_pracownikow.ImportPracownikow.uczelnia",
+            "import_pracownikow.ProfilMapowania.uczelnia",
+            "bpp.Cache_Punktacja_Dyscypliny.uczelnia",
+            "bpp.Ukryj_Status_Korekty.uczelnia",
+            "pbn_api.OsobaZInstytucji.uczelnia",
+            "pbn_api.OswiadczenieInstytucji.uczelnia",
+            "pbn_api.PublikacjaInstytucji.uczelnia",
+            "pbn_api.PublikacjaInstytucji_V2.uczelnia",
+            "pbn_api.SentData.uczelnia",
+            "cerif_export.OdpietaPrzynaleznosc.uczelnia",
+            "dspace_api.Mapowanie_DSpace.uczelnia",
+            "dspace_api.SentToDSpace.uczelnia",
+            "pbn_export_queue.PBN_Export_Queue.uczelnia",
+            "nowe_raporty.DefinicjaRaportu_uczelnie.uczelnia",
+            "ewaluacja_liczba_n.LiczbaNDlaUczelni.uczelnia",
+            "ewaluacja_liczba_n.IloscUdzialowDlaAutoraZaRok.uczelnia",
+            "ewaluacja_liczba_n.IloscUdzialowDlaAutoraZaCalosc.uczelnia",
+            "ewaluacja_liczba_n.DyscyplinaNieRaportowana.uczelnia",
+            "ewaluacja_metryki.MetrykaAutora.uczelnia",
+            "ewaluacja_metryki.StatusGenerowania.uczelnia",
+            "ewaluacja_optymalizacja.DisciplineSwapOpportunity.uczelnia",
+            "ewaluacja_optymalizacja.OptimizationRun.uczelnia",
+            "ewaluacja_optymalizacja.StatusOptymalizacjiBulk.uczelnia",
+            "ewaluacja_optymalizacja.StatusPrzegladarkaRecalc.uczelnia",
+            "ewaluacja_optymalizacja.UnpinningOpportunity.uczelnia",
+            "import_polon.ImportPlikuPolon.uczelnia",
+            "importer_publikacji.ImportSession.uczelnia",
+            "importer_publikacji.MultipleWorksImport.uczelnia",
+        }
+    )
+
     site = models.OneToOneField(
         "sites.Site",
         verbose_name="Strona (domena)",
@@ -255,7 +309,9 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         # zmiana listy motywów nie generowała migracji.
     )
 
-    slug = AutoSlugField(populate_from="skrot", unique=True)
+    slug = AutoSlugField(
+        populate_from="skrot", unique=True, manager_name="global_objects"
+    )
     logo_www = models.ImageField(
         "Logo na stronę WWW",
         upload_to="logo",
@@ -407,7 +463,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         blank=True,
         default="",
         help_text="Nazwa pokazywana przy linku z pola „Adres profilu "
-        "w portalu uczelni” autora, np. „PPM UML”. Puste = „Profil "
+        "w portalu uczelni” autora, np. „Portal Pracowników”. Puste = „Profil "
         "w portalu uczelni”.",
     )
 
@@ -715,13 +771,12 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         "Kasuj oświadczenia selektywnie (per osoba)",
         default=True,
         help_text=(
-            "Gdy zaznaczone: ``sync_publication`` usuwa oświadczenia "
-            "selektywnie per-osoba (DELETE ``/publications/{id}`` z "
-            "``{personId, role}``) i wysyła tylko brakujące. Gdy "
-            "odznaczone: usuwa wszystkie oświadczenia publikacji jednym "
-            "DELETE (``{all: True}``), a następnie wysyła wszystkie "
-            "lokalne jako batch. Wariant selektywny zachowuje metadata "
-            "PBN (``addedTimestamp`` itd.) dla identycznych rekordów."
+            "Gdy zaznaczone: przy wysyłce pracy do PBN usuwane są tylko te "
+            "oświadczenia, które w BPP zmieniły się albo zniknęły, a "
+            "wysyłane tylko brakujące. Oświadczenia bez zmian zostają w PBN "
+            "nietknięte (zachowują m.in. datę dodania). Gdy odznaczone: przy "
+            "każdej wysyłce wszystkie oświadczenia pracy są w PBN usuwane i "
+            "wysyłane od nowa."
         ),
     )
     pbn_api_nie_wysylaj_prac_bez_pk = models.BooleanField(
@@ -788,6 +843,16 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
     pokazuj_jednostki_na_pierwszej_stronie = models.BooleanField(default=False)
     pokazuj_wydzialy_na_pierwszej_stronie = models.BooleanField(default=True)
+    kafel_wydzialy_zamiast_jednostek = models.BooleanField(
+        verbose_name="Kafel „Wydziały” zamiast „Jednostki” na stronie głównej",
+        default=False,
+        help_text="Zaznacz, aby w sekcji „Przeglądaj bazę publikacji” na "
+        "stronie głównej kafel „Jednostki” zastąpić kafelkiem prowadzącym do "
+        "indeksu wydziałów (jednostek najwyższego poziomu tej uczelni). "
+        "Nazwa kafla to nazwa wydziału w liczbie mnogiej, wg nazewnictwa "
+        "ustawionego w systemie. Działa niezależnie od opcji „Używaj "
+        "wydziałów”.",
+    )
 
     pokazuj_siec_powiazan = models.BooleanField(
         verbose_name="Pokazuj sieć powiązań autorów",
@@ -1061,7 +1126,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
                 if not pbn_user_token:
                     raise WillNotExportError(
                         "Najpierw wykonaj autoryzację w PBN API za pomocą menu dostępnego "
-                        "na głównej stronie (operacje -> autoryzuj w PBN)"
+                        "na głównej stronie (PBN → autoryzuj PBN API)"
                     )
                 self.access_token = pbn_user_token
                 return True

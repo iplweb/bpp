@@ -188,6 +188,9 @@ def _wybrane_publikacje(autor, limit, request):
         for w in wybrane
         if w.publikacja is not None
         and getattr(w.publikacja, "status_korekty_id", None) not in ukryte
+        # GenericFK rozwiązuje się przez ``_base_manager`` (widzi kosz) —
+        # wyróżniona praca z kosza znika z profilu (i wraca po restore).
+        and getattr(w.publikacja, "deleted_at", None) is None
     ]
     return {"prace": prace} if prace else None
 

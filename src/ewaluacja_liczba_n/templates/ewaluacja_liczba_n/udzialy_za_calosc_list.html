@@ -13,7 +13,7 @@
 {% block content %}
 <div class="row">
     <div class="large-12 columns">
-        <h1><i class="fi-list"></i> Lista udziałów za cały okres (2022-2025)</h1>
+        <h1><i class="fi-list"></i> Lista udziałów za cały okres ({{ okres_ewaluacji }})</h1>
 
         <div class="row">
             <div class="medium-8 columns">
@@ -139,7 +139,7 @@
                         <th class="text-center">
                             <a href="{% get_sort_url 'udzialy' %}"
                                class="sort-link">
-                                Ilość udziałów<br>(2022-2025)
+                                Ilość udziałów<br>({{ okres_ewaluacji }})
                                 {% if current_sort == 'udzialy' %}
                                     <i class="fi-arrow-down"></i>
                                 {% elif current_sort == '-udzialy' %}

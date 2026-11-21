@@ -21,6 +21,7 @@ from django.core.exceptions import PermissionDenied
 
 from bpp.models import Autor
 from bpp.models.cache import Rekord
+from ewaluacja_common.okres import okres_dla_request
 from pbn_api.models import Scientist
 
 from ..models import DuplicateCandidate, DuplicateScanRun
@@ -29,6 +30,7 @@ from ..utils import (
     search_author_by_lastname,
     znajdz_pierwszego_autora_z_duplikatami,
 )
+from ..utils.constants import DOMYSLNE_LATA_PRIORYTETU
 from ..utils.reason_display import enrich_reasons
 
 # Minimalny próg pewności do wyświetlania duplikatów
@@ -65,9 +67,11 @@ def _get_excluded_authors_from_session(request):
     return []
 
 
-def _handle_search_request(search_lastname):
+def _handle_search_request(search_lastname, lata=DOMYSLNE_LATA_PRIORYTETU):
     """Handle search request and return scientist and count."""
-    scientist = search_author_by_lastname(search_lastname, excluded_authors=None)
+    scientist = search_author_by_lastname(
+        search_lastname, excluded_authors=None, lata=lata
+    )
     search_results_count = count_authors_with_lastname(search_lastname)
     return scientist, search_results_count
 
@@ -83,8 +87,9 @@ def _clear_navigation_session(request):
 
 def _handle_go_previous(request, navigation_history, excluded_authors):
     """Handle 'go previous' navigation action."""
+    lata = lata_okresu(request)
     if not navigation_history:
-        return znajdz_pierwszego_autora_z_duplikatami(excluded_authors)
+        return znajdz_pierwszego_autora_z_duplikatami(excluded_authors, lata)
 
     previous_scientist_id = navigation_history.pop()
     request.session["navigation_history"] = navigation_history
@@ -93,7 +98,7 @@ def _handle_go_previous(request, navigation_history, excluded_authors):
     try:
         return Scientist.objects.get(pk=previous_scientist_id)
     except Scientist.DoesNotExist:
-        return znajdz_pierwszego_autora_z_duplikatami(excluded_authors)
+        return znajdz_pierwszego_autora_z_duplikatami(excluded_authors, lata)
 
 
 def _handle_skip_current(request, scientist, excluded_authors):
@@ -115,7 +120,9 @@ def _handle_skip_current(request, scientist, excluded_authors):
 
     # Find next author
     excluded_authors.append(scientist)
-    return znajdz_pierwszego_autora_z_duplikatami(excluded_authors)
+    return znajdz_pierwszego_autora_z_duplikatami(
+        excluded_authors, lata_okresu(request)
+    )
 
 
 def _calculate_year_range(queryset):
@@ -145,14 +152,29 @@ def _build_duplicate_publication_data(autor, metryka):
     }
 
 
-def _add_dyscypliny_to_duplicates(duplikaty_z_publikacjami):
-    """Add discipline information to duplicate authors."""
+def okres_pk_dla_skanu(request):
+    """pk okresu ewaluacji wybranego na pasku okresu — przekazywany do zadania
+    skanu (zadanie Celery nie czyta sesji). ``None``, gdy brak okresów."""
+    okres = okres_dla_request(request)
+    return okres.pk if okres is not None else None
+
+
+def lata_okresu(request):
+    """``(rok_od, rok_do)`` okresu ewaluacji wybranego na pasku okresu."""
+    okres = okres_dla_request(request)
+    if okres is None:
+        return DOMYSLNE_LATA_PRIORYTETU
+    return okres.rok_od, okres.rok_do
+
+
+def _add_dyscypliny_to_duplicates(duplikaty_z_publikacjami, rok_od, rok_do):
+    """Dyscypliny duplikatów z lat ``rok_od``–``rok_do`` (wybrany okres)."""
     from bpp.models import Autor_Dyscyplina
 
     for duplikat_data in duplikaty_z_publikacjami:
         duplikat_data["dyscypliny"] = (
             Autor_Dyscyplina.objects.filter(
-                autor=duplikat_data["autor"], rok__gte=2022, rok__lte=2025
+                autor=duplikat_data["autor"], rok__gte=rok_od, rok__lte=rok_do
             )
             .select_related("dyscyplina_naukowa", "subdyscyplina_naukowa")
             .order_by("rok")

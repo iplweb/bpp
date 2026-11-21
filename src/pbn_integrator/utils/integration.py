@@ -50,6 +50,25 @@ def ustaw_pbn_uid_jesli_brak(elem, bpp_rekord):
             return
 
         if bpp_rekord.pbn_uid_id is None:
+            from pbn_integrator.kosz import (
+                rekord_w_koszu_po_pbn_uid,
+                zglos_rekord_w_koszu,
+            )
+
+            # PBN UID trzyma rekord z kosza (duplikat usunięty w BPP) — nie
+            # przepinamy go (bezwarunkowe UNIQUE → IntegrityError), tylko
+            # pomijamy i raportujemy, jak import (``pbn_integrator/kosz.py``).
+            w_koszu = rekord_w_koszu_po_pbn_uid(elem.pk)
+            if w_koszu is not None:
+                zglos_rekord_w_koszu(
+                    w_koszu,
+                    elem,
+                    "integracja:ustaw-pbn-uid",
+                    dopisek=f"Rekord „{bpp_rekord}” pasuje do tej publikacji, "
+                    f"ale PBN UID trzyma rekord z kosza — przywróć tamten rekord "
+                    f"albo scal je ręcznie. ",
+                )
+                return
             p = bpp_rekord.original
             p.pbn_uid_id = elem.pk
             p.save(update_fields=["pbn_uid_id"])

@@ -1,1 +1,0 @@
-„Rozdział książki” (i inne charaktery formalne o nazwie zaczynającej się od „Rozdział”) miał błędnie charakter ogólny „książka”, a „Podręcznik akademicki” i „Skrypt” — „inne”; migracja to poprawia (tylko tam, gdzie wartości nie zmieniono ręcznie), co poprawia też opisy bibliograficzne tych prac.

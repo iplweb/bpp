@@ -1,4 +1,4 @@
-<body onload="window.print()" onfocus="window.close()">
+{% load oswiadczenia_tags %}<body onload="window.print()" onfocus="window.close()">
 <style>
     @media print {
         footer {
@@ -8,12 +8,12 @@
 </style>
 {% for punktacja in punktacje %}
     {% if punktacja.czy_autor_ma_alternatywna_dyscypline and uczelnia.drukuj_alternatywne_oswiadczenia %}
-        {% include "oswiadczenia/tresc_jednego_oswiadczenia.html" with autor=punktacja.autor dyscyplina_naukowa=punktacja.dyscypliny_autora.dyscyplina_naukowa subdyscyplina_naukowa=punktacja.dyscypliny_autora.subdyscyplina_naukowa uczelnia=uczelnia object=object dyscyplina_pracy=punktacja.dyscypliny_autora.dyscyplina_naukowa %}
-        <footer></footer>
-        {% include "oswiadczenia/tresc_jednego_oswiadczenia.html" with autor=punktacja.autor dyscyplina_naukowa=punktacja.dyscypliny_autora.dyscyplina_naukowa subdyscyplina_naukowa=punktacja.dyscypliny_autora.subdyscyplina_naukowa uczelnia=uczelnia object=object dyscyplina_pracy=punktacja.dyscypliny_autora.subdyscyplina_naukowa %}
+        {% include object.rok|szablon_oswiadczenia with autor=punktacja.autor dyscyplina_naukowa=punktacja.dyscypliny_autora.dyscyplina_naukowa subdyscyplina_naukowa=punktacja.dyscypliny_autora.subdyscyplina_naukowa uczelnia=uczelnia object=object dyscyplina_pracy=punktacja.dyscypliny_autora.dyscyplina_naukowa %}
+        {# djlint:off H020 #}<footer></footer>{# djlint:on #}
+        {% include object.rok|szablon_oswiadczenia with autor=punktacja.autor dyscyplina_naukowa=punktacja.dyscypliny_autora.dyscyplina_naukowa subdyscyplina_naukowa=punktacja.dyscypliny_autora.subdyscyplina_naukowa uczelnia=uczelnia object=object dyscyplina_pracy=punktacja.dyscypliny_autora.subdyscyplina_naukowa %}
     {% else %}
-        {% include "oswiadczenia/tresc_jednego_oswiadczenia.html" with autor=punktacja.autor dyscyplina_naukowa=punktacja.dyscypliny_autora.dyscyplina_naukowa subdyscyplina_naukowa=punktacja.dyscypliny_autora.subdyscyplina_naukowa uczelnia=uczelnia object=object dyscyplina_pracy=punktacja.dyscyplina_pracy %}
+        {% include object.rok|szablon_oswiadczenia with autor=punktacja.autor dyscyplina_naukowa=punktacja.dyscypliny_autora.dyscyplina_naukowa subdyscyplina_naukowa=punktacja.dyscypliny_autora.subdyscyplina_naukowa uczelnia=uczelnia object=object dyscyplina_pracy=punktacja.dyscyplina_pracy %}
     {% endif %}
-    <footer></footer>
+    {# djlint:off H020 #}<footer></footer>{# djlint:on #}
 {% endfor %}
 </body>

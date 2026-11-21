@@ -8,6 +8,7 @@ from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from ..models.konferencja import Konferencja
 from .core import BaseBppAdminMixin
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
+from .helpers.mixins import BppSoftDeleteAdminMixin
 
 
 class Wydawnictwo_Zwarte_Konferencja_Form(forms.ModelForm):
@@ -54,7 +55,7 @@ class Wydawnictwo_Ciagle_KonferencjaInline(admin.TabularInline):
     extra = 0
 
 
-class KonferencjaAdmin(BaseBppAdminMixin, admin.ModelAdmin):
+class KonferencjaAdmin(BaseBppAdminMixin, BppSoftDeleteAdminMixin, admin.ModelAdmin):
     list_display = [
         "nazwa",
         "typ_konferencji",

@@ -6,7 +6,7 @@
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li><a href="{% url 'oswiadczenia:wydruk-2022-25' %}">Wydruk oświadczeń 2022-2025</a></li>
+    <li><a href="{% url 'oswiadczenia:wydruk' %}">Wydruk oświadczeń</a></li>
     <li class="current">Status generowania</li>
 {% endblock %}
 
@@ -34,7 +34,7 @@
         </div>
 
         <p style="margin-top: 1rem;">
-            <a href="{% url 'oswiadczenia:wydruk-2022-25' %}" class="button secondary">
+            <a href="{% url 'oswiadczenia:wydruk' %}" class="button secondary">
                 <span class="fi-arrow-left"></span> Powrot do listy
             </a>
         </p>

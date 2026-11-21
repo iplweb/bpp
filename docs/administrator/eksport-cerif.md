@@ -56,8 +56,11 @@ puste — BPP nie prowadzi takich rejestrów.
 
 ## 1. Włączenie i konfiguracja na obiekcie Uczelnia
 
-Przejdź do **Redagowanie → Struktura → Uczelnia**, otwórz obiekt uczelni
-i rozwiń sekcję **„Eksport CERIF / OpenAIRE (/cerif-oai/)"**:
+W module redagowania wybierz z górnego menu **Struktura → Uczelnia**,
+otwórz obiekt uczelni i rozwiń sekcję **„Eksport CERIF / OpenAIRE
+(/cerif-oai/)"**:
+
+![Sekcja „Eksport CERIF / OpenAIRE” w formularzu uczelni](../images/administrator/eksport-cerif/01-sekcja-cerif.png)
 
 | Pole | Znaczenie |
 |---|---|
@@ -84,7 +87,7 @@ zawisają bez powiązania z uczelnią.
 
 - **Uczelnia** — pole *Identyfikator ROR* w sekcji CERIF (patrz wyżej).
 - **Jednostki** — analogiczne pole na każdej jednostce
-  (**Redagowanie → Struktura → Jednostki**). Puste = jednostka wychodzi
+  (**Struktura → Jednostki** w module redagowania). Puste = jednostka wychodzi
   bez identyfikatora zewnętrznego, co jest dopuszczalne.
 
 Pole ma walidację sumy kontrolnej (ISO 7064), więc literówka zostanie
@@ -307,9 +310,7 @@ while True:
                 osoba.findtext(f"{CERIF}ORCID", ""),
                 "; ".join(
                     jednostka.findtext(f"{CERIF}Name", "")
-                    for jednostka in osoba.findall(
-                        f"{CERIF}Affiliation/{CERIF}OrgUnit"
-                    )
+                    for jednostka in osoba.findall(f"{CERIF}Affiliation/{CERIF}OrgUnit")
                 ),
             ]
         )

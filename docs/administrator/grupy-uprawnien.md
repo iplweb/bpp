@@ -42,10 +42,8 @@ superużytkownik.
   przy tym dostępne, więc dla kont uprzywilejowanych warto korzystać
   wyłącznie z logowania przez dostawcę z MFA i stosować
   [politykę haseł](zaawansowane.md#polityka-haseł).
-- **Okresowo przeglądaj członków grup.** W panelu administracyjnym:
-  „Użytkownicy” — kolumna z listą grup oraz filtr „grupy” w panelu bocznym
-  (pokazuje wszystkich członków wybranej grupy); filtr „status
-  superużytkownika” pokazuje konta z pełnymi uprawnieniami.
+- **Okresowo przeglądaj członków grup** — patrz
+  [Przegląd członków grup](#przegląd-członków-grup) niżej.
 - **Historia zmian.**
     - Szablony z bazy (dbtemplates) mają historię wersji z porównaniem
       zmian (django-reversion) — przycisk „Historia” na stronie szablonu.
@@ -70,3 +68,17 @@ superużytkownik.
   automatycznie przy pierwszym takim rekordzie, jest nieaktywne i nie ma
   hasła — nie da się na nie zalogować. Nie usuwaj go: usunięcie skasuje
   powiązane wpisy historii.
+
+## Przegląd członków grup
+
+1. W module redagowania wybierz z górnego menu **Administracja →
+   Użytkownicy**. Kolumna **Lista grup** pokazuje grupy każdego konta,
+   a kolumna **Status superużytkownika** — konta z pełnymi uprawnieniami.
+
+    ![Lista użytkowników z kolumnami „Status superużytkownika” i „Lista grup”](../images/administrator/grupy-uprawnien/01-lista-uzytkownikow.png)
+
+2. Kliknij **Filtruj** i rozwiń filtr **grupy**. Wybranie grupy pokazuje
+   wszystkich jej członków; filtr **status superużytkownika** pokazuje konta
+   z pełnymi uprawnieniami.
+
+    ![Panel filtrów z rozwiniętym filtrem „grupy”](../images/administrator/grupy-uprawnien/02-filtr-grupy.png)

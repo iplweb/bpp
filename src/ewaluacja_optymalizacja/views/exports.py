@@ -8,7 +8,10 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect
 
+from ewaluacja_common.okres import okres_dla_request
+
 from ..models import OptimizationRun
+from ..okres import filtr_lat, pobierz_okres
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +32,9 @@ def _generate_author_sedn_workbook(author_result, run):
 
     # Pobierz MetrykaAutora
     metryka = MetrykaAutora.objects.filter(
-        autor_id=autor_pk, dyscyplina_naukowa=run.dyscyplina_naukowa
+        autor_id=autor_pk,
+        dyscyplina_naukowa=run.dyscyplina_naukowa,
+        okres_id=run.okres_id,
     ).first()
 
     if not metryka or not metryka.prace_wszystkie:
@@ -213,9 +218,12 @@ def generate_all_disciplines_zip_file(status_bulk):
 
     from ..models import OptimizationAuthorResult
 
+    # Okres zadania bulk zapisany w statusie (gdy brak — okres domyślny)
+    okres = status_bulk.okres if status_bulk.okres_id else pobierz_okres(None)
+
     # Pobierz najnowsze ukończone uruchomienia dla każdej dyscypliny
     latest_runs = (
-        OptimizationRun.objects.filter(status="completed")
+        OptimizationRun.objects.filter(status="completed", okres=okres)
         .order_by("dyscyplina_naukowa", "-started_at")
         .distinct("dyscyplina_naukowa")
     )
@@ -318,9 +326,11 @@ def export_sedn_report_1(request):
     )
     from ewaluacja_metryki.models import MetrykaAutora
 
+    okres = okres_dla_request(request)
+
     # Pobierz najnowsze ukończone uruchomienia dla każdej dyscypliny
     latest_runs = (
-        OptimizationRun.objects.filter(status="completed")
+        OptimizationRun.objects.filter(status="completed", okres=okres)
         .order_by("dyscyplina_naukowa", "-started_at")
         .distinct("dyscyplina_naukowa")
     )
@@ -362,7 +372,7 @@ def export_sedn_report_1(request):
 
     # Pobierz wszystkie metryki dla tych dyscyplin aby zbudować zbiór wybranych prac per autor
     metryki = MetrykaAutora.objects.filter(
-        dyscyplina_naukowa_id__in=discipline_ids
+        dyscyplina_naukowa_id__in=discipline_ids, okres=okres
     ).values("autor_id", "dyscyplina_naukowa_id", "prace_nazbierane")
 
     # Buduj lookup: (autor_id, dyscyplina_id) -> set of selected rekord_ids
@@ -371,12 +381,11 @@ def export_sedn_report_1(request):
         key = (m["autor_id"], m["dyscyplina_naukowa_id"])
         selected_works[key] = set(tuple(x) for x in (m["prace_nazbierane"] or []))
 
-    # Pobierz wszystkie Cache_Punktacja_Autora_Query dla tych dyscyplin (lata 2022-2025)
+    # Pobierz wszystkie Cache_Punktacja_Autora_Query dla tych dyscyplin (lata okresu)
     prace = (
         Cache_Punktacja_Autora_Query.objects.filter(
             dyscyplina_id__in=discipline_ids,
-            rekord__rok__gte=2022,
-            rekord__rok__lte=2025,
+            **filtr_lat(okres, "rekord__"),
         )
         .select_related(
             "rekord",
@@ -456,9 +465,11 @@ def export_sedn_report_2(request):
     )
     from ewaluacja_metryki.models import MetrykaAutora
 
+    okres = okres_dla_request(request)
+
     # Pobierz najnowsze ukończone uruchomienia dla każdej dyscypliny
     latest_runs = (
-        OptimizationRun.objects.filter(status="completed")
+        OptimizationRun.objects.filter(status="completed", okres=okres)
         .order_by("dyscyplina_naukowa", "-started_at")
         .distinct("dyscyplina_naukowa")
     )
@@ -479,7 +490,7 @@ def export_sedn_report_2(request):
 
     # Buduj lookup wybranych prac
     metryki = MetrykaAutora.objects.filter(
-        dyscyplina_naukowa_id__in=discipline_ids
+        dyscyplina_naukowa_id__in=discipline_ids, okres=okres
     ).values("autor_id", "dyscyplina_naukowa_id", "prace_nazbierane")
 
     selected_works = {}
@@ -503,12 +514,11 @@ def export_sedn_report_2(request):
         }
     )
 
-    # Pobierz prace z lat 2022-2025
+    # Pobierz prace z lat okresu ewaluacji
     prace = (
         Cache_Punktacja_Autora_Query.objects.filter(
             dyscyplina_id__in=discipline_ids,
-            rekord__rok__gte=2022,
-            rekord__rok__lte=2025,
+            **filtr_lat(okres, "rekord__"),
         )
         .select_related(
             "rekord",

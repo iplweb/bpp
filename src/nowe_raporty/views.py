@@ -6,6 +6,7 @@ from django.http import Http404
 from django.http.response import FileResponse, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.template.context import RequestContext
+from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.functional import cached_property
 from django.utils.http import content_disposition_header, urlencode
@@ -24,6 +25,7 @@ from .docx_export import as_docx
 from .forms import form_class_dla
 from .models import DefinicjaRaportu
 from .poziomy import POZIOMY
+from .query_backends import BladZapytaniaZrodlaDanych
 from .sortowanie import pola_dla
 
 
@@ -212,6 +214,23 @@ class GenerujRaportBase(DetailView):
         return response
 
     def render_to_response(self, context, **response_kwargs):
+        # Raport jest liczony leniwie, przy renderowaniu szablonu/eksportu —
+        # dopiero wtedy wykonują się zapytania źródeł danych. Zapytanie, którego
+        # nie da się wykonać (FD#523), pokazujemy jako komunikat, nie 500.
+        try:
+            response = self._render_raport(context, **response_kwargs)
+            if hasattr(response, "render"):
+                response.render()
+        except BladZapytaniaZrodlaDanych as e:
+            context["blad_zrodla_danych"] = e
+            return TemplateResponse(
+                self.request,
+                "nowe_raporty/blad_zrodla_danych.html",
+                context,
+            )
+        return response
+
+    def _render_raport(self, context, **response_kwargs):
         _export = self.request.GET.get("_export")
 
         # Bez definicji raportu nie ma czego eksportowac - pokaz strone z

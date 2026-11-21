@@ -281,11 +281,27 @@ def utworz_wpis_dla_jednego_autora(person):
     if not orcid:
         orcid = None
 
+    pbn_id = pbn_json_wez_pbn_id_stare(person)
+
+    # ORCID / PBN ID / PBN UID autora z KOSZA → pomiń i zgłoś (nie tworzymy
+    # duplikatu, nie wskrzeszamy).
+    from pbn_integrator.kosz import pomin_jesli_koliduje
+
+    if pomin_jesli_koliduje(
+        Autor,
+        "scientists",
+        f"autor {person.pk} (ORCID {orcid})",
+        orcid=orcid,
+        pbn_id=pbn_id,
+        pbn_uid=person,
+    ):
+        return None
+
     autor = Autor.objects.create(
         imiona=cv["object"].pop("name", "[brak danych]"),
         nazwisko=cv["object"].pop("lastName", "[brak danych]"),
         orcid=orcid,
-        pbn_id=pbn_json_wez_pbn_id_stare(person),
+        pbn_id=pbn_id,
         pbn_uid_id=person.pk,
         tytul=bpp_tytul,
     )
