@@ -21,6 +21,7 @@ from django.utils import timezone
 from mptt.fields import TreeForeignKey
 from mptt.managers import TreeManager
 from mptt.models import MPTTModel
+from mptt.querysets import TreeQuerySet
 from tinymce.models import HTMLField
 
 from bpp.models import ModelZAdnotacjami, ModelZPBN_UID
@@ -36,7 +37,44 @@ SORTUJ_RECZNIE = ("kolejnosc", "nazwa")
 SORTUJ_ALFABETYCZNIE = ("nazwa",)
 
 
-class JednostkaManager(FulltextSearchMixin, TreeManager):
+class JednostkaQuerySet(TreeQuerySet):
+    """QuerySet jednostek świadomy kosza.
+
+    ``delete()`` na querysecie przenosi DO KOSZA per instancja (guard,
+    ``SoftDeleteLog``, historia) — dotąd zbiorcze kasowanie jednostek szło
+    twardo, z pominięciem kosza. ``update(deleted_at=...)`` jest zablokowane
+    jak w ``BppSoftDeleteQuerySet``; ``hard_delete()`` — per instancja.
+    """
+
+    def delete(self):
+        ile = 0
+        for obj in list(self):
+            n, _ = obj.delete()
+            ile += n
+        return ile, {self.model._meta.label: ile}
+
+    delete.alters_data = True
+    delete.queryset_only = True
+
+    def hard_delete(self):
+        from bpp.models.soft_delete import hard_delete_per_instancja
+
+        return hard_delete_per_instancja(self)
+
+    hard_delete.alters_data = True
+
+    def update(self, **kwargs):
+        if "deleted_at" in kwargs or "restored_at" in kwargs:
+            raise RuntimeError(
+                "Nie ustawiaj deleted_at/restored_at przez .update() — "
+                "użyj .delete()/.restore()."
+            )
+        return super().update(**kwargs)
+
+
+class JednostkaManager(
+    FulltextSearchMixin, TreeManager.from_queryset(JednostkaQuerySet)
+):
     # Faza B (#438): usunięto kompat-kwarg ``wydzial=`` z ``create()`` —
     # ``wydzial`` jest teraz zdenormalizowanym self-FK (denorm nadpisuje przy
     # zapisie), więc nie da się (i nie należy) go podać ręcznie. Wołający
@@ -155,7 +193,12 @@ class Jednostka(
         default=True,
         help_text="Gdy to pole jest zaznaczone, system wyświetli pole 'Opis' na podstronie jednostki.",
     )
-    slug = AutoSlugField(populate_from="nazwa", max_length=512, unique=True)
+    slug = AutoSlugField(
+        populate_from="nazwa",
+        max_length=512,
+        unique=True,
+        manager_name="global_objects",
+    )
 
     widoczna = models.BooleanField(default=True, db_index=True)
     wchodzi_do_rankingu_autorow = models.BooleanField(
@@ -364,9 +407,6 @@ class Jednostka(
     def czy_mozna_skasowac(self):
         """True ⇔ jednostka jest w pełni pusta (brak przeszkód w kasowaniu)."""
         return not self.przeszkody_w_kasowaniu()
-
-    #: Kosz: ``nazwa``/``skrot``/``slug`` mają bezwarunkowe UNIQUE.
-    pola_unikalne_kosza = ("slug", "nazwa", "skrot")
 
     def sprawdz_czy_mozna_do_kosza(self, *args, **kwargs):
         """Do kosza — tylko jednostka PUSTA (ta sama reguła „ściśle zero",

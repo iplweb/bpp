@@ -13,8 +13,6 @@ class Konferencja(BppSoftDeleteSlownikMixin, ModelZNazwa, ModelZAdnotacjami):
     (FK ``CASCADE``) — dziś FK jest ``PROTECT``, a guard pilnuje kosza.
     """
 
-    pola_unikalne_kosza = ("nazwa",)
-
     nazwa = models.CharField(max_length=512, db_index=True)
 
     # noqa: DJ001 - pre-existing null=True na CharField (sprzed naszego brancha).
@@ -84,14 +82,6 @@ class Konferencja(BppSoftDeleteSlownikMixin, ModelZNazwa, ModelZAdnotacjami):
         ordering = ("-rozpoczecie", "nazwa")
         verbose_name = "konferencja"
         verbose_name_plural = "konferencje"
-
-    def relacje_chronione_kosza(self):
-        from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
-
-        return [
-            (Wydawnictwo_Ciagle, "konferencja"),
-            (Wydawnictwo_Zwarte, "konferencja"),
-        ]
 
     def __str__(self):
         ret = self.nazwa

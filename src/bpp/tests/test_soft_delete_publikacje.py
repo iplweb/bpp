@@ -32,7 +32,10 @@ MODELE_PUBLIKACJI = [
 def test_soft_delete_publikacji_ukrywa_autorstwa_bez_ich_kasowania():
     wc = baker.make(Wydawnictwo_Ciagle)
     a1 = baker.make(Wydawnictwo_Ciagle_Autor, rekord=wc, kolejnosc=0)
-    a2 = baker.make(Wydawnictwo_Ciagle_Autor, rekord=wc, kolejnosc=1)
+    # Ta sama jednostka — praca kilku uczelni nie trafia do kosza.
+    a2 = baker.make(
+        Wydawnictwo_Ciagle_Autor, rekord=wc, kolejnosc=1, jednostka=a1.jednostka
+    )
 
     wc.delete()
 

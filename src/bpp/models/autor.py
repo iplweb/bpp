@@ -34,10 +34,12 @@ from bpp.models.abstract import ModelZPBN_ID
 from bpp.models.soft_delete import (
     BppPkPrzedHardDeleteMixin,
     BppSoftDeleteQuerySet,
+    BppUnikalnoscZKoszemMixin,
     dopisz_znacznik_zmiany,
-    odzyskaj_pola_unikalne,
     raise_if_has_protected_children,
-    zwolnij_pola_unikalne,
+    relacje_przychodzace,
+    sprawdz_stan_kosza,
+    zapisz_przywrocenie,
 )
 from bpp.models.soft_delete_context import soft_delete_context
 from bpp.util import FulltextSearchMixin, zaloguj_polkniety_wyjatek
@@ -239,41 +241,63 @@ class AutorDeletedManager(DeletedManager):
         )
 
 
-#: Relacje, których istnienie BLOKUJE skasowanie autora (faza 04).
+#: Relacje przychodzące do ``Autor``, które NIE blokują kosza. Wszystkie
+#: inne (autorstwa, doktoraty — także jako promotor — habilitacje, projekty,
+#: redakcje źródeł, autorzy zgłoszeń, konto użytkownika, …) blokują: rekord
+#: wskazywany przez żywy rekord nie trafia do kosza. Lista jest JAWNA, a guard
+#: wyprowadzany generycznie z ``_meta`` (``relacje_przychodzace``) — nowa
+#: relacja jest chroniona domyślnie.
 #:
-#: Autor bez prac to „husk" — pusta skorupa po scaleniu duplikatów, którą
-#: wolno schować do kosza. Autor z jakąkolwiek pracą schować się nie da, bo
-#: praca zostałaby bez autora.
-#:
-#: ``Projekt_Autor`` jest tu mimo że NIE jest modelem soft-delete: to pole
-#: ma ``PROTECT`` od dawna, więc już dziś ``autor.delete()`` na uczestniku
-#: projektu jest odmawiane. Pominięcie go zamieniłoby istniejącą gwarancję
-#: w ciche powodzenie — a scalanie autorów zaczęłoby zostawiać projekty
-#: wskazujące na husk.
-#:
-#: Krotki, nie nazwy relacji odwrotnych: helper liczy przez
-#: ``Model.global_objects``, a reverse manager takiego menedżera nie wystawia.
-def _relacje_chronione_autora():
-    from bpp.models import (
-        Patent_Autor,
-        Praca_Doktorska,
-        Praca_Habilitacyjna,
-        Wydawnictwo_Ciagle_Autor,
-        Wydawnictwo_Zwarte_Autor,
-    )
-    from bpp.models.projekt import Projekt_Autor
+#: Pomijane: dane kadrowe żyjące z autorem (ukryte razem z nim), dane
+#: wyliczane (cache, liczba N, metryki, optymalizacja), logi/historia oraz
+#: wiersze importów i deduplikacji (scalanie autorów wyrzuca duplikat do
+#: kosza, a kandydaci na duplikat wskazują na niego).
+POMIJANE_RELACJE_KOSZA_AUTORA = frozenset(
+    {
+        "bpp.Autor_Dyscyplina.autor",
+        "bpp.Autor_Absencja.autor",
+        "bpp.Autor_Jednostka.autor",
+        "bpp.WybranaPublikacjaAutora.autor",
+        "bpp.Cache_Punktacja_Autora.autor",
+        "bpp.AutorEksportTask.autor",
+        "bpp.Opi_2012_Afiliacja_Do_Wydzialu.autor",
+        "import_pracownikow.ImportPracownikowRow.autor",
+        "import_pracownikow.ImportPracownikowRow.wybrany_kandydat",
+        "import_pracownikow.ImportPracownikowRowKandydat.autor",
+        "powiazania_autorow.AuthorConnection.primary_author",
+        "powiazania_autorow.AuthorConnection.secondary_author",
+        "import_dyscyplin.Import_Dyscyplin_Row.autor",
+        "ewaluacja_liczba_n.IloscUdzialowDlaAutoraZaRok.autor",
+        "ewaluacja_liczba_n.IloscUdzialowDlaAutoraZaCalosc.autor",
+        "ewaluacja_metryki.MetrykaAutora.autor",
+        "ewaluacja_optymalizacja.DisciplineSwapOpportunity.autor",
+        "ewaluacja_optymalizacja.OptimizationAuthorResult.autor",
+        "ewaluacja_optymalizacja.UnpinningOpportunity.autor_could_benefit",
+        "ewaluacja_optymalizacja.UnpinningOpportunity.autor_currently_using",
+        "ewaluacja_optymalizuj_publikacje.HistoriaZmianDyscypliny.autor",
+        "import_polon.WierszImportuPlikuAbsencji.autor",
+        "import_polon.WierszImportuPlikuPolon.autor",
+        "deduplikator_autorow.NotADuplicate.autor",
+        "deduplikator_autorow.IgnoredScientist.autor",
+        "deduplikator_autorow.IgnoredAuthor.autor",
+        "deduplikator_autorow.LogScalania.main_autor",
+        "deduplikator_autorow.DuplicateCandidate.main_autor",
+        "deduplikator_autorow.DuplicateCandidate.duplicate_autor",
+        "importer_autorow_pbn.CachedScientistMatch.matched_autor",
+        "przemapuj_prace_autora.PrzemapoaniePracAutora.autor",
+        "komparator_pbn_udzialy.BrakAutoraWPublikacji.autor",
+        "importer_publikacji.ImportedAuthor.matched_autor",
+        "importer_publikacji.ImportedAuthor_Candidate.autor",
+    }
+)
 
-    return [
-        (Wydawnictwo_Ciagle_Autor, "autor"),
-        (Wydawnictwo_Zwarte_Autor, "autor"),
-        (Patent_Autor, "autor"),
-        (Praca_Doktorska, "autor"),
-        (Praca_Habilitacyjna, "autor"),
-        (Projekt_Autor, "autor"),
-    ]
+
+def _relacje_chronione_autora():
+    return relacje_przychodzace(Autor, POMIJANE_RELACJE_KOSZA_AUTORA)
 
 
 class Autor(
+    BppUnikalnoscZKoszemMixin,
     BppPkPrzedHardDeleteMixin,
     LinkDoPBNMixin,
     ModelZAdnotacjami,
@@ -284,8 +308,9 @@ class Autor(
 
     Soft-delete (kosz) obejmuje WYŁĄCZNIE autora bez prac — duplikaty,
     literówki, husk po scaleniu. ``delete()`` odmawia (``ProtectedError``),
-    gdy autor ma jakiekolwiek autorstwo (także w koszu), doktorat,
-    habilitację albo udział w projekcie (``_relacje_chronione_autora``).
+    gdy wskazuje na niego jakikolwiek rekord (autorstwo — także w koszu —
+    doktorat, promotorstwo, habilitacja, projekt, redakcja źródła, zgłoszenie,
+    konto użytkownika; ``POMIJANE_RELACJE_KOSZA_AUTORA``).
     Dane kadrowe autora (``Autor_Jednostka``, ``Autor_Dyscyplina``,
     ``Autor_Absencja``, udziały do liczby N) NIE są ruszane — zostają przy
     autorze w koszu i wracają z nim. Pola kosza nie są wersjonowane przez
@@ -510,7 +535,14 @@ class Autor(
     global_objects = AutorGlobalManager()
     deleted_objects = AutorDeletedManager()
 
-    slug = AutoSlugField(populate_from="get_full_name", unique=True, max_length=1024)
+    # ``manager_name="global_objects"``: unikalność sluga sprawdzana RAZEM
+    # z koszem — autor w koszu zachowuje slug, nowy dostaje kolejny wariant.
+    slug = AutoSlugField(
+        populate_from="get_full_name",
+        unique=True,
+        max_length=1024,
+        manager_name="global_objects",
+    )
 
     sort = models.TextField()
 
@@ -780,15 +812,11 @@ class Autor(
 
         txid = kwargs.pop("transaction_id", None) or uuid.uuid4()
         with soft_delete_context(user=user, reason=reason), transaction.atomic():
-            # Slug ma bezwarunkowe UNIQUE — zwalniamy go dla nowego autora
-            # o tym samym nazwisku (``jan-kowalski-unexistent-1``).
-            pola = zwolnij_pola_unikalne(self, ("slug",))
+            sprawdz_stan_kosza(self, ma_byc_w_koszu=False)
             self.deleted_at = timezone.now()
             self.restored_at = None
             self.transaction_id = txid
-            self.save(
-                update_fields=["deleted_at", "restored_at", "transaction_id", *pola]
-            )
+            self.save(update_fields=["deleted_at", "restored_at", "transaction_id"])
             post_soft_delete.send(sender=self.__class__, instance=self)
         return 1, {self._meta.label: 1}
 
@@ -808,16 +836,13 @@ class Autor(
         Nie przywracamy niczego „razem z autorem": jego skasowanie niczego
         nie zabrało, więc nie ma czego wskrzeszać.
         """
-        txid = self.transaction_id
         with soft_delete_context(user=user), transaction.atomic():
-            # Oryginalny slug wraca, jeśli wolny; inaczej autoslug generuje nowy.
-            pola = odzyskaj_pola_unikalne(self, ("slug",))
+            sprawdz_stan_kosza(self, ma_byc_w_koszu=True)
+            txid = self.transaction_id
             self.deleted_at = None
             self.restored_at = timezone.now()
             self.transaction_id = None
-            self.save(
-                update_fields=["deleted_at", "restored_at", "transaction_id", *pola]
-            )
+            zapisz_przywrocenie(self, ["deleted_at", "restored_at", "transaction_id"])
             post_restore.send(sender=self.__class__, instance=self, transaction_id=txid)
 
     restore.alters_data = True

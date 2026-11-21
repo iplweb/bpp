@@ -232,6 +232,23 @@ def forward(apps, schema_editor):
             cur.execute(
                 _funkcja_z_galezia_kasujaca(cur, tabela, model, autor_na_wierszu)
             )
+        # 4) jednorazowe sprzątanie _mat po rekordach JUŻ w koszu (no-op na
+        #    świeżej kolumnie; chroni przed migracjami stosowanymi etapami).
+        for tabela, model, autor_na_wierszu in REKORD_SITES:
+            mats = [("bpp_rekord_mat", "id")]
+            if autor_na_wierszu:
+                mats.append(("bpp_autorzy_mat", "rekord_id"))
+            for mat, kolumna in mats:
+                cur.execute(
+                    f"""
+                    DELETE FROM {mat} m
+                    USING django_content_type ct, {tabela} p
+                    WHERE ct.app_label = 'bpp' AND ct.model = %s
+                      AND m.{kolumna}[1] = ct.id AND m.{kolumna}[2] = p.id
+                      AND p.deleted_at IS NOT NULL
+                    """,
+                    [model],
+                )
     _regeneruj_bramke()  # 3) bramka
 
 

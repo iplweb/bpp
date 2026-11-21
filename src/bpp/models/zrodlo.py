@@ -148,6 +148,32 @@ class Zrodlo(BppSoftDeleteSlownikMixin, LinkDoPBNMixin, ModelZAdnotacjami, Model
     """Źródło (czasopismo). Kosz: tylko źródło bez publikacji (także
     w koszu); punktacja, dyscypliny i redakcja zostają przy nim."""
 
+    #: Dane „przy źródle", logi, wiersze importów, deduplikacja.
+    pomijane_relacje_kosza = frozenset(
+        {
+            "bpp.Redakcja_Zrodla.zrodlo",
+            "bpp.Punktacja_Zrodla.zrodlo",
+            "bpp.Dyscyplina_Zrodla.zrodlo",
+            "import_list_if.ImportListIfRow.zrodlo",
+            "pbn_komparator_zrodel.RozbieznoscZrodlaPBN.zrodlo",
+            "pbn_komparator_zrodel.LogAktualizacjiZrodla.zrodlo",
+            "integrator2.ListaMinisterialnaElement.zrodlo",
+            "rozbieznosci.RozbieznoscLog.zrodlo",
+            "import_list_ministerialnych.WierszImportuListyMinisterialnej.zrodlo",
+            "import_punktacji_zrodel.WierszImportuPunktacjiZrodel.zrodlo",
+            "deduplikator_zrodel.NotADuplicate.zrodlo",
+            "deduplikator_zrodel.NotADuplicate.duplikat",
+            "deduplikator_zrodel.IgnoredSource.zrodlo",
+            "deduplikator_zrodel.SourceDuplicateCandidate.main_zrodlo",
+            "deduplikator_zrodel.SourceDuplicateCandidate.duplicate_zrodlo",
+            "przemapuj_zrodla_pbn.PrzeMapowanieZrodla.zrodlo_stare",
+            "przemapuj_zrodla_pbn.PrzeMapowanieZrodla.zrodlo_nowe",
+            "przemapuj_zrodlo.PrzemapowaZrodla.zrodlo_z",
+            "przemapuj_zrodlo.PrzemapowaZrodla.zrodlo_do",
+            "importer_publikacji.ImportSession.zrodlo",
+        }
+    )
+
     url_do_pbn = const.LINK_PBN_DO_ZRODLA
 
     nazwa = models.CharField(max_length=1024, db_index=True)
@@ -211,7 +237,9 @@ class Zrodlo(BppSoftDeleteSlownikMixin, LinkDoPBNMixin, ModelZAdnotacjami, Model
         on_delete=models.SET_NULL,
     )
 
-    slug = AutoSlugField(populate_from="nazwa", unique=True)
+    slug = AutoSlugField(
+        populate_from="nazwa", unique=True, manager_name="global_objects"
+    )
 
     def get_absolute_url(self):
         return reverse("bpp:browse_zrodlo", args=(self.slug,))
@@ -237,11 +265,6 @@ class Zrodlo(BppSoftDeleteSlownikMixin, LinkDoPBNMixin, ModelZAdnotacjami, Model
             models.Index(issn_norm_expr("issn"), name="zrodlo_issn_norm"),
             models.Index(issn_norm_expr("e_issn"), name="zrodlo_e_issn_norm"),
         ]
-
-    def relacje_chronione_kosza(self):
-        from bpp.models import Wydawnictwo_Ciagle
-
-        return [(Wydawnictwo_Ciagle, "zrodlo")]
 
     def prace_w_latach(self):
         from bpp.models import Wydawnictwo_Ciagle

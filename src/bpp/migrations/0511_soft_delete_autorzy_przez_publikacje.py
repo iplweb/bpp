@@ -132,6 +132,29 @@ def forward(apps, schema_editor):
             _filtruj_widok(cur, tabela, through, widok)
         for tabela, model, _through, widok in SITES:
             cur.execute(_funkcja(cur, tabela, model, widok))
+        _sprzataj_kosz(cur)
+
+
+def _sprzataj_kosz(cur):
+    """Jednorazowe sprzątanie: wiersze ``_mat`` publikacji, które JUŻ są
+    w koszu. Na świeżo dodanej kolumnie ``deleted_at`` to no-op; chroni
+    przed stanem po migracjach stosowanych etapami (rekord skasowany
+    między ``0509`` a tą migracją zostałby w ``_mat``)."""
+    for tabela, model, _through, _widok in SITES:
+        for mat, kolumna in (
+            ("bpp_rekord_mat", "id"),
+            ("bpp_autorzy_mat", "rekord_id"),
+        ):
+            cur.execute(
+                f"""
+                DELETE FROM {mat} m
+                USING django_content_type ct, {tabela} p
+                WHERE ct.app_label = 'bpp' AND ct.model = %s
+                  AND m.{kolumna}[1] = ct.id AND m.{kolumna}[2] = p.id
+                  AND p.deleted_at IS NOT NULL
+                """,
+                [model],
+            )
 
 
 def backward(apps, schema_editor):

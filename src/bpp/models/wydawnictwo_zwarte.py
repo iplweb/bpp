@@ -293,24 +293,6 @@ class Wydawnictwo_Zwarte(
             ),
         ]
 
-    def sprawdz_czy_mozna_do_kosza(self, *args, **kwargs):
-        """Książka z rozdziałami NIE trafia do kosza.
-
-        Guard jest metodą TEGO modelu (self-FK ``wydawnictwo_nadrzedne``),
-        a nie wspólnego mixinu — dla innych typów publikacji zapytanie byłoby
-        międzytypowe. Rozdział w koszu też blokuje (``_base_manager``):
-        inaczej książkę dałoby się usunąć w dwóch krokach, a przywrócenie
-        rozdziału zostawiłoby go bez książki-matki.
-        """
-        from bpp.models.soft_delete import raise_if_has_protected_children
-
-        raise_if_has_protected_children(
-            self,
-            [(Wydawnictwo_Zwarte, "wydawnictwo_nadrzedne")],
-            label="książki (ma rozdziały)",
-        )
-        return super().sprawdz_czy_mozna_do_kosza(*args, **kwargs)
-
     def wydawnictwa_powiazane_posortowane(self):
         """
         Sortowanie wydawnictw powiązanych wg pierwszej liczby dziesiętnej występującej w polu 'Strony'

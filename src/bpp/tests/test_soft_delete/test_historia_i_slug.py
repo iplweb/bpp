@@ -1,12 +1,12 @@
-"""Kosz zostawia ślad w historii rekordu; kosz zwalnia unikalne pola.
+"""Kosz zostawia ślad w historii rekordu; unikalność a kosz.
 
 Historia: model w django-reversion (``Autor``) dostaje rewizję
 „Przeniesiono do kosza" / „Przywrócono z kosza" z userem i powodem;
 model spoza reversion (publikacje, słowniki) — wpis ``LogEntry`` CHANGE.
 
-Slug: rekord w koszu fizycznie zostaje, a ``slug`` ma bezwarunkowe UNIQUE.
-Kosz zmienia go na ``…-unexistent-N``; przywrócenie oddaje oryginał albo
-generuje nowy, gdy oryginał zajęto.
+Unikalność: rekord w koszu ZACHOWUJE slug i nazwy. Nowy rekord dostaje
+kolejny wariant sluga; wpisanie unikalnej wartości trzymanej przez rekord
+z kosza to błąd walidacji („przywróć tamten rekord").
 """
 
 import pytest
@@ -24,7 +24,6 @@ from bpp.models import (
     Wydawnictwo_Ciagle,
     Zrodlo,
 )
-from bpp.models.soft_delete import KonfliktPrzywracania
 
 
 @pytest.mark.django_db
@@ -68,70 +67,56 @@ def test_kosz_publikacji_to_logentry(admin_user, bez_celery):
 @pytest.mark.django_db
 def test_nowy_autor_o_tym_samym_nazwisku_po_koszu_bez_integrityerror():
     """Regresja: kosz Jana Kowalskiego + nowy Jan Kowalski -> IntegrityError
-    na ``bpp_autor_slug_key`` (autoslug sprawdza unikalność przez domyślny
-    menedżer, który kosza nie widzi)."""
+    na ``bpp_autor_slug_key``. Teraz rekord w koszu ZACHOWUJE slug, a nowy
+    dostaje kolejny wariant (autoslug sprawdza unikalność razem z koszem)."""
     stary = Autor.objects.create(imiona="Jan", nazwisko="Kowalski")
     oryginal = stary.slug
 
     stary.delete()
     stary = Autor.global_objects.get(pk=stary.pk)
-    assert stary.slug == f"{oryginal}-unexistent-1"
+    assert stary.slug == oryginal  # link /jan-kowalski/ zostaje
 
     nowy = Autor.objects.create(imiona="Jan", nazwisko="Kowalski")
-    assert nowy.slug == oryginal
+    assert nowy.slug != oryginal
+    assert nowy.slug.startswith(oryginal)
 
-    # Przywrócenie: oryginał zajęty -> nowy, wolny slug; bez kolizji.
+    # Przywrócenie niczego nie zmienia i nie koliduje.
     stary.restore()
     stary.refresh_from_db()
-    assert stary.slug != oryginal
-    assert "unexistent" not in stary.slug
-
-
-@pytest.mark.django_db
-def test_kolejne_kosze_dostaja_kolejne_numery_i_oryginal_wraca():
-    a1 = Autor.objects.create(imiona="Anna", nazwisko="Nowak")
-    oryginal = a1.slug
-    a1.delete()
-    a2 = Autor.objects.create(imiona="Anna", nazwisko="Nowak")
-    a2.delete()
-
-    sl = set(
-        Autor.global_objects.filter(pk__in=[a1.pk, a2.pk]).values_list(
-            "slug", flat=True
-        )
-    )
-    assert sl == {f"{oryginal}-unexistent-1", f"{oryginal}-unexistent-2"}
-
-    a1 = Autor.global_objects.get(pk=a1.pk)
-    a1.restore()
-    a1.refresh_from_db()
-    assert a1.slug == oryginal
+    assert stary.slug == oryginal
+    assert stary.deleted_at is None
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "model,pole",
-    [(Seria_Wydawnicza, "nazwa"), (Wydawca, "nazwa"), (Konferencja, "nazwa")],
+    [(Seria_Wydawnicza, "nazwa"), (Wydawca, "nazwa")],
 )
-def test_slownik_w_koszu_zwalnia_nazwe(model, pole):
+def test_nazwa_rekordu_z_kosza_daje_blad_walidacji(model, pole):
+    """Unikalna nazwa zostaje przy rekordzie w koszu; wpisanie jej ponownie
+    to błąd WALIDACJI formularza wskazujący rekord do przywrócenia, a nie
+    ``IntegrityError``."""
+    from django import forms
+
     obj = baker.make(model, **{pole: "Taka sama"})
     obj.delete()
     obj = model.global_objects.get(pk=obj.pk)
-    assert getattr(obj, pole) == "Taka sama [kosz-1]"
+    assert getattr(obj, pole) == "Taka sama"
 
-    baker.make(model, **{pole: "Taka sama"})  # bez IntegrityError
-
-    with pytest.raises(KonfliktPrzywracania):
-        obj.restore()
+    F = forms.modelform_factory(model, fields=[pole])
+    form = F(data={pole: "Taka sama"})
+    assert not form.is_valid()
+    assert "przywróć tamten rekord" in str(form.errors[pole])
 
 
 @pytest.mark.django_db
-def test_zrodlo_w_koszu_zwalnia_slug():
+def test_zrodlo_w_koszu_zachowuje_slug_nowe_dostaje_inny():
     z = baker.make(Zrodlo, nazwa="Czasopismo Testowe", slug="")
     oryginal = z.slug
     z.delete()
     nowe = baker.make(Zrodlo, nazwa="Czasopismo Testowe", slug="")
-    assert nowe.slug == oryginal
+    assert nowe.slug != oryginal
+    assert Zrodlo.global_objects.get(pk=z.pk).slug == oryginal
 
 
 @pytest.mark.django_db
@@ -139,7 +124,23 @@ def test_jednostka_pusta_do_kosza_i_z_powrotem(uczelnia):
     j = baker.make(Jednostka, nazwa="Katedra Pusta", skrot="KP", uczelnia=uczelnia)
     j.delete()
     assert not Jednostka.objects.filter(pk=j.pk).exists()
-    baker.make(Jednostka, nazwa="Katedra Pusta", skrot="KP", uczelnia=uczelnia)
     j = Jednostka.global_objects.get(pk=j.pk)
-    with pytest.raises(KonfliktPrzywracania):
-        j.restore()
+    j.restore()
+    assert Jednostka.objects.filter(pk=j.pk, nazwa="Katedra Pusta").exists()
+
+
+@pytest.mark.django_db
+def test_konferencja_coroczna_przywrocenie_bez_konfliktu():
+    """Regresja (recenzja #6): ``unique_together(nazwa, rozpoczecie)`` —
+    edycja 2023 w koszu i żywa edycja 2024 o tej samej nazwie: przywrócenie
+    2023 nie może być konfliktem."""
+    import datetime
+
+    k23 = Konferencja.objects.create(
+        nazwa="Konf X", rozpoczecie=datetime.date(2023, 5, 1)
+    )
+    Konferencja.objects.create(nazwa="Konf X", rozpoczecie=datetime.date(2024, 5, 1))
+    k23.delete()
+    k23 = Konferencja.global_objects.get(pk=k23.pk)
+    k23.restore()
+    assert Konferencja.objects.filter(pk=k23.pk).exists()

@@ -231,14 +231,46 @@ class Uczelnia(
     NazwaISkrot,
     NazwaWDopelniaczu,
 ):
-    """Uczelnia (tenant). Kosz: tylko uczelnia bez jednostek (także w koszu).
+    """Uczelnia (tenant). Kosz: tylko uczelnia bez jednostek (także w koszu)
+    i bez użytkowników z dostępem do niej; konfiguracja, dane wyliczane
+    i logi zostają przy niej (``pomijane_relacje_kosza``).
 
     Uczelnia w koszu NIE obsługuje swojej domeny (``get_for_site``), ale
     dalej trzyma ``site`` (OneToOne NOT NULL) — żeby podpiąć domenę pod inną
     uczelnię, trzeba ją najpierw usunąć trwale z kosza.
     """
 
-    pola_unikalne_kosza = ("slug", "nazwa", "skrot")
+    pomijane_relacje_kosza = frozenset(
+        {
+            "import_pracownikow.ImportPracownikow.uczelnia",
+            "import_pracownikow.ProfilMapowania.uczelnia",
+            "bpp.Cache_Punktacja_Dyscypliny.uczelnia",
+            "bpp.Ukryj_Status_Korekty.uczelnia",
+            "pbn_api.OsobaZInstytucji.uczelnia",
+            "pbn_api.OswiadczenieInstytucji.uczelnia",
+            "pbn_api.PublikacjaInstytucji.uczelnia",
+            "pbn_api.PublikacjaInstytucji_V2.uczelnia",
+            "pbn_api.SentData.uczelnia",
+            "dspace_api.Mapowanie_DSpace.uczelnia",
+            "dspace_api.SentToDSpace.uczelnia",
+            "pbn_export_queue.PBN_Export_Queue.uczelnia",
+            "nowe_raporty.DefinicjaRaportu_uczelnie.uczelnia",
+            "ewaluacja_liczba_n.LiczbaNDlaUczelni.uczelnia",
+            "ewaluacja_liczba_n.IloscUdzialowDlaAutoraZaRok.uczelnia",
+            "ewaluacja_liczba_n.IloscUdzialowDlaAutoraZaCalosc.uczelnia",
+            "ewaluacja_liczba_n.DyscyplinaNieRaportowana.uczelnia",
+            "ewaluacja_metryki.MetrykaAutora.uczelnia",
+            "ewaluacja_metryki.StatusGenerowania.uczelnia",
+            "ewaluacja_optymalizacja.DisciplineSwapOpportunity.uczelnia",
+            "ewaluacja_optymalizacja.OptimizationRun.uczelnia",
+            "ewaluacja_optymalizacja.StatusOptymalizacjiBulk.uczelnia",
+            "ewaluacja_optymalizacja.StatusPrzegladarkaRecalc.uczelnia",
+            "ewaluacja_optymalizacja.UnpinningOpportunity.uczelnia",
+            "import_polon.ImportPlikuPolon.uczelnia",
+            "importer_publikacji.ImportSession.uczelnia",
+            "importer_publikacji.MultipleWorksImport.uczelnia",
+        }
+    )
 
     site = models.OneToOneField(
         "sites.Site",
@@ -276,7 +308,9 @@ class Uczelnia(
         # zmiana listy motywów nie generowała migracji.
     )
 
-    slug = AutoSlugField(populate_from="skrot", unique=True)
+    slug = AutoSlugField(
+        populate_from="skrot", unique=True, manager_name="global_objects"
+    )
     logo_www = models.ImageField(
         "Logo na stronę WWW",
         upload_to="logo",
@@ -906,11 +940,6 @@ class Uczelnia(
         verbose_name = "uczelnia"
         verbose_name_plural = "uczelnie"
         app_label = "bpp"
-
-    def relacje_chronione_kosza(self):
-        from bpp.models import Jednostka
-
-        return [(Jednostka, "uczelnia")]
 
     def get_absolute_url(self):
         return reverse("bpp:browse_uczelnia", args=(self.slug,))

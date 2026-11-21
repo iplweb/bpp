@@ -11,10 +11,16 @@ from bpp.util.text import slugify_wydawca
 
 
 class Wydawca(BppSoftDeleteSlownikMixin, ModelZNazwa, ModelZPBN_UID):
-    """Wydawca. Kosz: tylko wydawca bez publikacji i bez aliasów (także
-    w koszu); poziomy wydawcy zostają przy nim."""
+    """Wydawca. Kosz: tylko wydawca, na którego nic nie wskazuje (publikacje
+    — także doktoraty i habilitacje — aliasy, zgłoszenia); poziomy wydawcy
+    zostają przy nim."""
 
-    pola_unikalne_kosza = ("slug", "nazwa")
+    pomijane_relacje_kosza = frozenset(
+        {
+            "bpp.Poziom_Wydawcy.wydawca",
+            "importer_publikacji.ImportSession.wydawca",
+        }
+    )
 
     alias_dla = models.ForeignKey(
         "self", on_delete=models.CASCADE, null=True, blank=True
@@ -30,18 +36,17 @@ class Wydawca(BppSoftDeleteSlownikMixin, ModelZNazwa, ModelZPBN_UID):
 
     # Slug nigdy nie składa się z samych cyfr — patrz ``slugify_wydawca``.
     slug = AutoSlugField(
-        populate_from="nazwa", unique=True, max_length=512, slugify=slugify_wydawca
+        populate_from="nazwa",
+        unique=True,
+        max_length=512,
+        slugify=slugify_wydawca,
+        manager_name="global_objects",
     )
 
     class Meta:
         verbose_name_plural = "wydawcy"
         verbose_name = "wydawca"
         ordering = ("nazwa",)
-
-    def relacje_chronione_kosza(self):
-        from bpp.models import Wydawnictwo_Zwarte
-
-        return [(Wydawnictwo_Zwarte, "wydawca"), (Wydawca, "alias_dla")]
 
     def clean(self):
         if self.pk:
