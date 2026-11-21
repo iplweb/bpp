@@ -147,7 +147,7 @@ def sprawdz_pojedynczy_arkusz(zrodlo):
     """Wymusza regułę „jeden arkusz = jeden import".
 
     Plik z więcej niż jednym arkuszem z danymi (np. dwie uczelnie w jednym
-    skoroszycie — jak ``Pracownicy_..._UAFM_x_MWSL.xlsx``) jest ODRZUCANY:
+    skoroszycie — jak ``Pracownicy_..._UCZELNIA_x_MWSL.xlsx``) jest ODRZUCANY:
     auto-sklejenie mieszałoby rozłączne zbiory, a auto-podział na osobne
     importy zakładałby, że arkusze są porównywalne (nie są — inne kolumny,
     inna uczelnia). Świadomie NIE obsługujemy plików wieloarkuszowych —
