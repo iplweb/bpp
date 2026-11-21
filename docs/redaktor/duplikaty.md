@@ -5,6 +5,9 @@ czasopismo pod dwiema nazwami („Acta Oxenfurcka” i „ACTA OXENFURCKA”) �
 takie duplikaty powstają najczęściej przy imporcie danych. Rozbijają dorobek
 na dwa rekordy, więc raporty, sloty i eksport do PBN widzą tylko część prac.
 
+Prace wpisane dwa razy wyszukuje osobne narzędzie — opisuje je strona
+[Duplikaty publikacji (deduplikator)](duplikaty-publikacji.md).
+
 Ta strona prowadzi po kolei przez:
 
 - [deduplikator autorów](#deduplikator-autorow) — wyszukanie par, ocenę
@@ -261,7 +264,8 @@ Scalenie nie zmienia jednostki przy pracach — prace duplikatu zostają
 przypisane do jednostki, którą miał duplikat (po imporcie często
 niewłaściwej). Do przeniesienia ich hurtem służy **„Przemapuj prace”**.
 To narzędzie przenosi prace **jednego autora** między **jednostkami** —
-nie łączy dwóch autorów.
+nie łączy dwóch autorów. Pełny opis (co się zmienia, cofanie, historia):
+[Przemapowanie prac autora](przemapowanie-prac-autora.md).
 
 1. Na stronie autora kliknij **„Przemapuj prace”**.
 

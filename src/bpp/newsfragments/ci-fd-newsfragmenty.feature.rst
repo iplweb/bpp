@@ -1,0 +1,1 @@
+CI sprawdza, czy pull request z numerem zgłoszenia Freshdesk w tytule (``FD#<numer>``) zawiera opis zmiany do historii wydań (``src/bpp/newsfragments/fd<numer>.<typ>.rst``); świadomy wyjątek oznacza się etykietą ``bez-newsfragmentu``.

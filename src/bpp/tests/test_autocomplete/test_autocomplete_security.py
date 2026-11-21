@@ -45,6 +45,7 @@ VALUES = [
 
 AUTOCOMPLETES = [
     "bpp:public-autor-autocomplete",
+    "bpp:wyszukiwarka-autor-autocomplete",
     "bpp:jednostka-widoczna-autocomplete",
     "bpp:dyscyplina-autocomplete",
 ]
@@ -208,6 +209,7 @@ def test_autocomplete_normal_queries_unchanged():
     "autocomplete_name",
     [
         "bpp:public-autor-autocomplete",
+        "bpp:wyszukiwarka-autor-autocomplete",
         "bpp:jednostka-widoczna-autocomplete",
         "bpp:dyscyplina-autocomplete",
         "bpp:public-konferencja-autocomplete",

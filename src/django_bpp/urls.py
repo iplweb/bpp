@@ -23,6 +23,7 @@ from bpp.views.admin import (
     WydawnictwoCiagleTozView,
     WydawnictwoZwarteTozView,
 )
+from bpp.views.formdefaults import BppSystemFormDefaultsView, BppUserFormDefaultsView
 from bpp.views.global_nav import global_nav_redir
 from bpp.views.mymultiseek import (
     BppMultiseekSaveForm,
@@ -80,7 +81,28 @@ urlpatterns = (
             "setup/",
             include("first_run_wizard.urls", namespace="first_run_wizard"),
         ),
-        path("formdefaults/", include("formdefaults.urls")),
+        # Własne widoki zamiast ``formdefaults.urls``: 404 zamiast 500 dla
+        # nieaktualnej klasy formularza (FD#528). Te same nazwy URL-i.
+        path(
+            "formdefaults/",
+            include(
+                (
+                    [
+                        path(
+                            "edit/<path:form_full_name>/",
+                            BppUserFormDefaultsView.as_view(),
+                            name="user-edit",
+                        ),
+                        path(
+                            "system-edit/<path:form_full_name>/",
+                            BppSystemFormDefaultsView.as_view(),
+                            name="system-edit",
+                        ),
+                    ],
+                    "formdefaults",
+                )
+            ),
+        ),
         path("", include("oauth_mcp.urls")),
         path("mcp/", include("mcp_server.urls", namespace="mcp_server")),
         url(r"^favicon\.ico$", cache_page(60 * 60)(favicon)),

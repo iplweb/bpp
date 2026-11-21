@@ -695,7 +695,7 @@ BPP_THEMES = [
     ("app-orange", "Pomarańczowy"),
     ("app-vizja", "Bursztynowo-granatowy (VIZJA)"),
     ("app-mwsl", "Pomarańczowo-granatowy (MWSL)"),
-    ("app-uafm", "Czerwono-błękitny (UAFM)"),
+    ("app-uafm", "Czerwono-błękitny"),
 ]
 
 COMPRESS_OFFLINE_CONTEXT = [

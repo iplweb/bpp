@@ -12,6 +12,21 @@ management system built with Django. Python >=3.11.5,<3.15 (production and CI: 3
 - Commands reference: [docs/deweloper/polecenia.md](docs/deweloper/polecenia.md)
 - CSS/SCSS build: [docs/deweloper/budowanie-css.md](docs/deweloper/budowanie-css.md)
 
+## Polityka języka
+
+BPP to polski produkt — **nowe** teksty piszemy po polsku:
+
+- komunikaty programu i teksty interfejsu (UI, komunikaty błędów, e-maile),
+- komentarze w kodzie i docstringi,
+- opisy commitów i pull requestów,
+- dokumentacja (`docs/`), newsfragmenty.
+
+Nazwy w kodzie (zmienne, funkcje, klasy) — zgodnie z konwencją danego modułu.
+
+**Nie przepisujemy istniejących tekstów** tylko po to, żeby zmienić język:
+angielskie komentarze i commity zostają, dopóki i tak nie zmieniasz danego
+fragmentu z innego powodu.
+
 ## Pokazywanie ścieżek do plików `.md` (linki `file://`)
 
 Gdy w odpowiedzi pokazujesz ścieżkę do pliku `.md` (spec, dokument w
@@ -256,6 +271,11 @@ Nazwa pliku: `<slug>.<typ>.rst` (albo `.md`), gdzie `<typ>`:
 
 Treść po polsku, zwięźle (jedno zdanie/akapit). Numer zgłoszenia w slugu
 dla ticketów (np. `fd407.bugfix.rst`); `#443` linkuje się do GitHub Issues.
+
+CI (workflow `Newsfragments`, `bin/check-fd-newsfragments.py`) wymaga
+fragmentu `fd<N>.<typ>.rst` dla każdego `FD#<N>` w tytule PR-a. Świadomy
+wyjątek: etykieta `bez-newsfragmentu`. Dla ticketów opis ma być dokładny
+(co było źle, co jest teraz, gdzie to widać w UI) — trafia do klientów.
 
 ## Autologin dla agentów (WebFetch / curl bez logowania)
 

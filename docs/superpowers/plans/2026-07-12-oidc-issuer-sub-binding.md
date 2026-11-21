@@ -69,8 +69,7 @@ def test_oidc_identity_unique_issuer_sub():
     u2 = baker.make("bpp.BppUser")
     OIDCIdentity.objects.create(user=u1, issuer="https://kc/realms/x", sub="a")
     with pytest.raises(IntegrityError):
-        OIDCIdentity.objects.create(
-            user=u2, issuer="https://kc/realms/x", sub="a")
+        OIDCIdentity.objects.create(user=u2, issuer="https://kc/realms/x", sub="a")
 
 
 @pytest.mark.django_db
@@ -157,9 +156,11 @@ from oidc_integration.conf import _get_bool  # nowy helper
 
 
 def test_get_bool_prefers_skrot_variant():
-    env = {"DJANGO_BPP_OIDC_UAFM_GRACE_BIND": "1",
-           "DJANGO_BPP_OIDC_GRACE_BIND": "0"}
-    assert _get_bool(env, "GRACE_BIND", "UAFM", default=False) is True
+    env = {
+        "DJANGO_BPP_OIDC_UCZELNIA_GRACE_BIND": "1",
+        "DJANGO_BPP_OIDC_GRACE_BIND": "0",
+    }
+    assert _get_bool(env, "GRACE_BIND", "UCZELNIA", default=False) is True
 
 
 def test_get_bool_default_when_absent():
@@ -245,8 +246,7 @@ from model_bakery import baker
 @pytest.mark.django_db
 def test_match_email_false_skips_email_matching():
     autor = baker.make("bpp.Autor", email="jan@x.pl")
-    user = baker.make("bpp.BppUser", email="jan@x.pl",
-                      first_name="", last_name="")
+    user = baker.make("bpp.BppUser", email="jan@x.pl", first_name="", last_name="")
     user.sprobuj_dopasowac_autora(match_email=False)
     user.refresh_from_db()
     assert user.autor_id is None
@@ -254,10 +254,8 @@ def test_match_email_false_skips_email_matching():
 
 @pytest.mark.django_db
 def test_match_names_false_skips_name_matching():
-    autor = baker.make("bpp.Autor", imiona="Jan", nazwisko="Kowalski",
-                       email="")
-    user = baker.make("bpp.BppUser", first_name="Jan", last_name="Kowalski",
-                      email="")
+    autor = baker.make("bpp.Autor", imiona="Jan", nazwisko="Kowalski", email="")
+    user = baker.make("bpp.BppUser", first_name="Jan", last_name="Kowalski", email="")
     user.sprobuj_dopasowac_autora(match_names=False)
     user.refresh_from_db()
     assert user.autor_id is None
@@ -303,21 +301,32 @@ git commit -m "feat(bpp): sprobuj_dopasowac_autora — flagi match_email/match_n
 # dopisz do src/oidc_integration/tests/test_backends.py
 def test_email_trusted_requires_verified_and_matching_email():
     b = _backend()
-    payload = {"iss": "https://kc/", "email": "jan@x.pl",
-               "email_verified": True}
+    payload = {"iss": "https://kc/", "email": "jan@x.pl", "email_verified": True}
     claims = b._normalized(
-        {"mail": "jan@x.pl", "sub": "1", "iss": "https://kc/",
-         "email": "jan@x.pl", "email_verified": True})
+        {
+            "mail": "jan@x.pl",
+            "sub": "1",
+            "iss": "https://kc/",
+            "email": "jan@x.pl",
+            "email_verified": True,
+        }
+    )
     assert claims["_bpp_email_trusted"] is True
-    assert claims["iss"] == "https://kc"   # rstrip('/')
+    assert claims["iss"] == "https://kc"  # rstrip('/')
 
 
 def test_email_trusted_false_on_mail_first_mismatch():
     b = _backend()
     # mail (rozwiązany) != email (poświadczony przez email_verified)
     claims = b._normalized(
-        {"mail": "inst@x.pl", "email": "prywatny@x.pl",
-         "email_verified": True, "sub": "1", "iss": "iss"})
+        {
+            "mail": "inst@x.pl",
+            "email": "prywatny@x.pl",
+            "email_verified": True,
+            "sub": "1",
+            "iss": "iss",
+        }
+    )
     assert claims["_bpp_email_trusted"] is False
 ```
 
@@ -345,36 +354,31 @@ def test_email_trusted_false_on_mail_first_mismatch():
 Keep `_resolve_email` as thin wrapper (`return cls._resolve_email_with_source(claims)[0]`) for backward compat. Extend `_normalized`:
 
 ```python
-    @classmethod
-    def _normalized(cls, claims):
-        email, from_fallback = cls._resolve_email_with_source(claims)
-        verified = bool(claims.get("email_verified") is True)
-        payload_email = (claims.get("email") or "").lower()
-        trusted = (
-            verified
-            and not from_fallback
-            and email.lower() == payload_email
-        )
-        iss = (claims.get("iss") or "").rstrip("/")
-        out = dict(claims)
-        out["email"] = email
-        out["email_verified"] = verified
-        out["_bpp_email_trusted"] = trusted
-        out["iss"] = iss
-        return out
+@classmethod
+def _normalized(cls, claims):
+    email, from_fallback = cls._resolve_email_with_source(claims)
+    verified = bool(claims.get("email_verified") is True)
+    payload_email = (claims.get("email") or "").lower()
+    trusted = verified and not from_fallback and email.lower() == payload_email
+    iss = (claims.get("iss") or "").rstrip("/")
+    out = dict(claims)
+    out["email"] = email
+    out["email_verified"] = verified
+    out["_bpp_email_trusted"] = trusted
+    out["iss"] = iss
+    return out
 ```
 
 Add `verify_token` override (issuer validation; call super first):
 
 ```python
-    def verify_token(self, token, **kwargs):
-        payload = super().verify_token(token, **kwargs)
-        expected = (getattr(settings, "OIDC_OP_ISSUER", "") or "").rstrip("/")
-        got = (payload.get("iss") or "").rstrip("/")
-        if expected and got != expected:
-            raise SuspiciousOperation(
-                f"OIDC: iss={got!r} != oczekiwany {expected!r}")
-        return payload
+def verify_token(self, token, **kwargs):
+    payload = super().verify_token(token, **kwargs)
+    expected = (getattr(settings, "OIDC_OP_ISSUER", "") or "").rstrip("/")
+    got = (payload.get("iss") or "").rstrip("/")
+    if expected and got != expected:
+        raise SuspiciousOperation(f"OIDC: iss={got!r} != oczekiwany {expected!r}")
+    return payload
 ```
 
 Note: `get_userinfo` already calls `_normalized`; ensure `payload["iss"]`/`email_verified` reach `_normalized` — in `get_userinfo`, merge `payload` id_token claims into userinfo before normalizing:
@@ -415,6 +419,7 @@ git commit -m "feat(oidc): anotacja claims (iss, email_verified, trusted) + wali
 ```python
 def test_filter_matches_only_by_linked_sub(db):
     from oidc_integration.models import OIDCIdentity
+
     u = baker.make("bpp.BppUser", email="jan@x.pl")
     OIDCIdentity.objects.create(user=u, issuer="https://kc", sub="S1")
     b = _backend()
@@ -475,9 +480,14 @@ def test_create_user_refuses_on_email_collision(db, settings):
     settings.OIDC_GRACE_BIND_ENABLED = False
     baker.make("bpp.BppUser", email="admin@x.pl", is_superuser=True)
     b = _backend()
-    claims = {"sub": "S9", "iss": "https://kc", "email": "admin@x.pl",
-              "email_verified": True, "_bpp_email_trusted": True,
-              "preferred_username": "attacker"}
+    claims = {
+        "sub": "S9",
+        "iss": "https://kc",
+        "email": "admin@x.pl",
+        "email_verified": True,
+        "_bpp_email_trusted": True,
+        "preferred_username": "attacker",
+    }
     with pytest.raises(SuspiciousOperation):
         b.create_user(claims)
 
@@ -485,9 +495,16 @@ def test_create_user_refuses_on_email_collision(db, settings):
 def test_create_user_new_person_binds_sub(db, settings):
     settings.OIDC_REQUIRE_EMAIL_VERIFIED = True
     b = _backend()
-    claims = {"sub": "S10", "iss": "https://kc", "email": "nowy@x.pl",
-              "email_verified": True, "_bpp_email_trusted": True,
-              "preferred_username": "nowy", "given_name": "N", "family_name": "X"}
+    claims = {
+        "sub": "S10",
+        "iss": "https://kc",
+        "email": "nowy@x.pl",
+        "email_verified": True,
+        "_bpp_email_trusted": True,
+        "preferred_username": "nowy",
+        "given_name": "N",
+        "family_name": "X",
+    }
     user = b.create_user(claims)
     assert user.oidc_identities.filter(issuer="https://kc", sub="S10").exists()
     assert user.is_staff is False
@@ -496,9 +513,14 @@ def test_create_user_new_person_binds_sub(db, settings):
 def test_create_user_rejects_untrusted_email_when_required(db, settings):
     settings.OIDC_REQUIRE_EMAIL_VERIFIED = True
     b = _backend()
-    claims = {"sub": "S11", "iss": "https://kc", "email": "x@x.pl",
-              "email_verified": False, "_bpp_email_trusted": False,
-              "preferred_username": "x"}
+    claims = {
+        "sub": "S11",
+        "iss": "https://kc",
+        "email": "x@x.pl",
+        "email_verified": False,
+        "_bpp_email_trusted": False,
+        "preferred_username": "x",
+    }
     with pytest.raises(SuspiciousOperation):
         b.create_user(claims)
 ```
@@ -508,68 +530,66 @@ def test_create_user_rejects_untrusted_email_when_required(db, settings):
 - [ ] **Step 3: Implement.** Rewrite `create_user` (Grace Bind hook w Task 7 — tu zostaw `# Grace Bind: Task 7` placeholder ustawiony jako no-op wywołanie `self._try_grace_bind(claims)` zwracające `None`, dodane w Task 7; na razie zdefiniuj metodę zwracającą `None`):
 
 ```python
-    def _try_grace_bind(self, claims):
-        return None  # rozszerzone w Task 7
+def _try_grace_bind(self, claims):
+    return None  # rozszerzone w Task 7
 
-    def create_user(self, claims):
-        email = claims.get("email") or ""
-        issuer = claims.get("iss") or ""
-        sub = claims.get("sub") or ""
 
-        graced = self._try_grace_bind(claims)
-        if graced is not None:
-            return graced
+def create_user(self, claims):
+    email = claims.get("email") or ""
+    issuer = claims.get("iss") or ""
+    sub = claims.get("sub") or ""
 
-        if self.UserModel.objects.filter(email__iexact=email).exists():
-            raise SuspiciousOperation(
-                "OIDC: konto z tym adresem już istnieje — połącz je z SSO "
-                "przez profil (re-auth hasłem), nie tworzę konta."
-            )
+    graced = self._try_grace_bind(claims)
+    if graced is not None:
+        return graced
 
-        require = getattr(settings, "OIDC_REQUIRE_EMAIL_VERIFIED", True)
-        if require and not claims.get("_bpp_email_trusted"):
-            raise SuspiciousOperation(
-                "OIDC: e-mail niezweryfikowany (email_verified) — "
-                "odrzucam założenie konta."
-            )
+    if self.UserModel.objects.filter(email__iexact=email).exists():
+        raise SuspiciousOperation(
+            "OIDC: konto z tym adresem już istnieje — połącz je z SSO "
+            "przez profil (re-auth hasłem), nie tworzę konta."
+        )
 
-        base_username = _first_claim(claims, _username_claim_keys())
-        trusted = bool(claims.get("_bpp_email_trusted"))
+    require = getattr(settings, "OIDC_REQUIRE_EMAIL_VERIFIED", True)
+    if require and not claims.get("_bpp_email_trusted"):
+        raise SuspiciousOperation(
+            "OIDC: e-mail niezweryfikowany (email_verified) — odrzucam założenie konta."
+        )
 
-        for _ in range(5):  # retry na wyścig username
-            username = self._unique_username(base_username)
-            try:
-                with transaction.atomic():
-                    user = self.UserModel.objects.create_user(
-                        username=username, email=email)
-                    user.first_name = claims.get("given_name") or ""
-                    user.last_name = claims.get("family_name") or ""
-                    user.is_staff = False
-                    user.is_superuser = False
-                    user.is_active = True
-                    user.set_unusable_password()
-                    user.save()
-                    with transaction.atomic():  # savepoint
-                        OIDCIdentity.objects.create(
-                            user=user, issuer=issuer, sub=sub)
-                break
-            except IntegrityError:
-                # albo username zajęty (retry), albo (issuer,sub) zajęte
-                existing = OIDCIdentity.objects.filter(
-                    issuer=issuer, sub=sub).first()
-                if existing is not None:
-                    return existing.user  # przegrany wyścig na sub
-                continue
-        else:
-            raise SuspiciousOperation("OIDC: nie udało się utworzyć konta")
+    base_username = _first_claim(claims, _username_claim_keys())
+    trusted = bool(claims.get("_bpp_email_trusted"))
 
-        self._assign_uczelnia(user)
-        user.sprobuj_dopasowac_autora(
-            match_email=trusted, match_names=trusted)
-        logger.info(
-            "OIDC: utworzono konto username=%s (bez is_staff), sub związany",
-            username)
-        return user
+    for _ in range(5):  # retry na wyścig username
+        username = self._unique_username(base_username)
+        try:
+            with transaction.atomic():
+                user = self.UserModel.objects.create_user(
+                    username=username, email=email
+                )
+                user.first_name = claims.get("given_name") or ""
+                user.last_name = claims.get("family_name") or ""
+                user.is_staff = False
+                user.is_superuser = False
+                user.is_active = True
+                user.set_unusable_password()
+                user.save()
+                with transaction.atomic():  # savepoint
+                    OIDCIdentity.objects.create(user=user, issuer=issuer, sub=sub)
+            break
+        except IntegrityError:
+            # albo username zajęty (retry), albo (issuer,sub) zajęte
+            existing = OIDCIdentity.objects.filter(issuer=issuer, sub=sub).first()
+            if existing is not None:
+                return existing.user  # przegrany wyścig na sub
+            continue
+    else:
+        raise SuspiciousOperation("OIDC: nie udało się utworzyć konta")
+
+    self._assign_uczelnia(user)
+    user.sprobuj_dopasowac_autora(match_email=trusted, match_names=trusted)
+    logger.info(
+        "OIDC: utworzono konto username=%s (bez is_staff), sub związany", username
+    )
+    return user
 ```
 
 Add imports at top: `from django.db import IntegrityError, transaction` and `from oidc_integration.models import OIDCIdentity` (lokalny import w metodzie, jeśli wolisz uniknąć cyklu — użyj lokalnego importu w każdej metodzie jak `_assign_uczelnia` robi z `Uczelnia`).
@@ -577,12 +597,11 @@ Add imports at top: `from django.db import IntegrityError, transaction` and `fro
 Update `update_user` to pass trust flags:
 
 ```python
-    def update_user(self, user, claims):
-        self._assign_uczelnia(user)
-        trusted = bool(claims.get("_bpp_email_trusted"))
-        user.sprobuj_dopasowac_autora(
-            match_email=trusted, match_names=trusted)
-        return user
+def update_user(self, user, claims):
+    self._assign_uczelnia(user)
+    trusted = bool(claims.get("_bpp_email_trusted"))
+    user.sprobuj_dopasowac_autora(match_email=trusted, match_names=trusted)
+    return user
 ```
 
 - [ ] **Step 4: Run — expect pass** `uv run pytest src/oidc_integration/tests/test_backends.py -k create_user -v` → PASS.
@@ -610,16 +629,28 @@ git commit -m "feat(oidc): create_user atomowo + fail-closed na kolizję e-maila
 
 ```python
 def _grace_claims():
-    return {"sub": "G1", "iss": "https://kc", "email": "old@x.pl",
-            "email_verified": True, "_bpp_email_trusted": True,
-            "preferred_username": "old"}
+    return {
+        "sub": "G1",
+        "iss": "https://kc",
+        "email": "old@x.pl",
+        "email_verified": True,
+        "_bpp_email_trusted": True,
+        "preferred_username": "old",
+    }
 
 
 def test_grace_binds_pure_oidc_account(db, settings):
     settings.OIDC_GRACE_BIND_ENABLED = True
-    u = baker.make("bpp.BppUser", email="old@x.pl", is_staff=False,
-                   is_superuser=False, is_active=True, pbn_token="")
-    u.set_unusable_password(); u.save()
+    u = baker.make(
+        "bpp.BppUser",
+        email="old@x.pl",
+        is_staff=False,
+        is_superuser=False,
+        is_active=True,
+        pbn_token="",
+    )
+    u.set_unusable_password()
+    u.save()
     b = _backend()
     out = b._try_grace_bind(_grace_claims())
     assert out == u
@@ -628,9 +659,9 @@ def test_grace_binds_pure_oidc_account(db, settings):
 
 def test_grace_skips_account_with_group(db, settings):
     settings.OIDC_GRACE_BIND_ENABLED = True
-    u = baker.make("bpp.BppUser", email="old@x.pl", is_staff=False,
-                   pbn_token="")
-    u.set_unusable_password(); u.save()
+    u = baker.make("bpp.BppUser", email="old@x.pl", is_staff=False, pbn_token="")
+    u.set_unusable_password()
+    u.save()
     u.groups.add(baker.make("auth.Group"))
     b = _backend()
     assert b._try_grace_bind(_grace_claims()) is None
@@ -645,10 +676,11 @@ def test_grace_skips_when_disabled(db, settings):
 
 def test_grace_skips_cross_realm_linked(db, settings):
     from oidc_integration.models import OIDCIdentity
+
     settings.OIDC_GRACE_BIND_ENABLED = True
-    u = baker.make("bpp.BppUser", email="old@x.pl", is_staff=False,
-                   pbn_token="")
-    u.set_unusable_password(); u.save()
+    u = baker.make("bpp.BppUser", email="old@x.pl", is_staff=False, pbn_token="")
+    u.set_unusable_password()
+    u.save()
     OIDCIdentity.objects.create(user=u, issuer="https://other", sub="Z")
     b = _backend()
     assert b._try_grace_bind(_grace_claims()) is None
@@ -659,40 +691,38 @@ def test_grace_skips_cross_realm_linked(db, settings):
 - [ ] **Step 3: Implement**
 
 ```python
-    def _try_grace_bind(self, claims):
-        if not getattr(settings, "OIDC_GRACE_BIND_ENABLED", False):
-            return None
-        if not claims.get("_bpp_email_trusted"):
-            return None
-        email = claims.get("email") or ""
-        issuer = claims.get("iss") or ""
-        sub = claims.get("sub") or ""
-        qs = self.UserModel.objects.filter(email__iexact=email)
-        if qs.count() != 1:
-            return None
-        user = qs.first()
-        eligible = (
-            not user.is_staff
-            and not user.is_superuser
-            and user.is_active
-            and not user.has_usable_password()
-            and not user.groups.exists()
-            and not user.user_permissions.exists()
-            and not (user.pbn_token or "")
-            and not user.oidc_identities.exists()
-        )
-        if not eligible:
-            return None
-        try:
-            with transaction.atomic():
-                OIDCIdentity.objects.create(
-                    user=user, issuer=issuer, sub=sub)
-        except IntegrityError:
-            existing = OIDCIdentity.objects.filter(
-                issuer=issuer, sub=sub).first()
-            return existing.user if existing else None
-        logger.info("OIDC: grace-bind sub dla konta %s", user.username)
-        return user
+def _try_grace_bind(self, claims):
+    if not getattr(settings, "OIDC_GRACE_BIND_ENABLED", False):
+        return None
+    if not claims.get("_bpp_email_trusted"):
+        return None
+    email = claims.get("email") or ""
+    issuer = claims.get("iss") or ""
+    sub = claims.get("sub") or ""
+    qs = self.UserModel.objects.filter(email__iexact=email)
+    if qs.count() != 1:
+        return None
+    user = qs.first()
+    eligible = (
+        not user.is_staff
+        and not user.is_superuser
+        and user.is_active
+        and not user.has_usable_password()
+        and not user.groups.exists()
+        and not user.user_permissions.exists()
+        and not (user.pbn_token or "")
+        and not user.oidc_identities.exists()
+    )
+    if not eligible:
+        return None
+    try:
+        with transaction.atomic():
+            OIDCIdentity.objects.create(user=user, issuer=issuer, sub=sub)
+    except IntegrityError:
+        existing = OIDCIdentity.objects.filter(issuer=issuer, sub=sub).first()
+        return existing.user if existing else None
+    logger.info("OIDC: grace-bind sub dla konta %s", user.username)
+    return user
 ```
 
 - [ ] **Step 4: Run — expect pass** `uv run pytest src/oidc_integration/tests/test_backends.py -k grace -v` → PASS.
@@ -721,17 +751,22 @@ git commit -m "feat(oidc): Grace Bind opt-in dla starych kont czysto-OIDC (zawę
 ```python
 def test_link_mode_binds_without_email_failclosed(db):
     from django.contrib.sessions.backends.db import SessionStore
+
     u = baker.make("bpp.BppUser", email="me@x.pl")
     b = _backend()
     req = RequestFactory().get("/oidc/callback/")
-    req.session = SessionStore(); req.user = u
+    req.session = SessionStore()
+    req.user = u
     req.session["oidc_link_mode"] = True
     req.session["oidc_link_target"] = u.pk
     b.request = req
     # własne konto koliduje z samym sobą — nie może być SuspiciousOperation
     b.get_userinfo = lambda *a, **k: {
-        "sub": "L1", "iss": "https://kc", "email": "me@x.pl",
-        "_bpp_email_trusted": True}
+        "sub": "L1",
+        "iss": "https://kc",
+        "email": "me@x.pl",
+        "_bpp_email_trusted": True,
+    }
     out = b.get_or_create_user("at", "it", {"iss": "https://kc"})
     assert out == u
     assert u.oidc_identities.filter(sub="L1").exists()
@@ -745,34 +780,36 @@ def test_link_mode_binds_without_email_failclosed(db):
 - [ ] **Step 3: Implement override**
 
 ```python
-    def get_or_create_user(self, access_token, id_token, payload):
-        session = getattr(getattr(self, "request", None), "session", None)
-        if session and session.get("oidc_link_mode"):
-            user_info = self.get_userinfo(access_token, id_token, payload)
-            target_pk = session.get("oidc_link_target")
-            if not target_pk or self.request.user.pk != target_pk:
-                self._clear_link_session(session)
-                raise SuspiciousOperation("OIDC: cel linkowania niezgodny")
-            issuer = user_info.get("iss") or ""
-            sub = user_info.get("sub") or ""
-            try:
-                with transaction.atomic():
-                    OIDCIdentity.objects.get_or_create(
-                        issuer=issuer, sub=sub,
-                        defaults={"user": self.request.user})
-            except IntegrityError:
-                self._clear_link_session(session)
-                raise SuspiciousOperation(
-                    "OIDC: ta tożsamość SSO jest już powiązana z innym kontem")
+def get_or_create_user(self, access_token, id_token, payload):
+    session = getattr(getattr(self, "request", None), "session", None)
+    if session and session.get("oidc_link_mode"):
+        user_info = self.get_userinfo(access_token, id_token, payload)
+        target_pk = session.get("oidc_link_target")
+        if not target_pk or self.request.user.pk != target_pk:
             self._clear_link_session(session)
-            return self.request.user
-        return super().get_or_create_user(access_token, id_token, payload)
+            raise SuspiciousOperation("OIDC: cel linkowania niezgodny")
+        issuer = user_info.get("iss") or ""
+        sub = user_info.get("sub") or ""
+        try:
+            with transaction.atomic():
+                OIDCIdentity.objects.get_or_create(
+                    issuer=issuer, sub=sub, defaults={"user": self.request.user}
+                )
+        except IntegrityError:
+            self._clear_link_session(session)
+            raise SuspiciousOperation(
+                "OIDC: ta tożsamość SSO jest już powiązana z innym kontem"
+            )
+        self._clear_link_session(session)
+        return self.request.user
+    return super().get_or_create_user(access_token, id_token, payload)
 
-    @staticmethod
-    def _clear_link_session(session):
-        session.pop("oidc_link_mode", None)
-        session.pop("oidc_link_target", None)
-        session.save()
+
+@staticmethod
+def _clear_link_session(session):
+    session.pop("oidc_link_mode", None)
+    session.pop("oidc_link_target", None)
+    session.save()
 ```
 
 - [ ] **Step 4: Run — expect pass** `uv run pytest src/oidc_integration/tests/test_backends.py -k link_mode -v` → PASS.
@@ -812,10 +849,10 @@ from model_bakery import baker
 def test_link_init_requires_password(client, settings):
     settings.OIDC_LOGIN_ENABLED = True
     u = baker.make("bpp.BppUser", username="u1")
-    u.set_password("secret"); u.save()
+    u.set_password("secret")
+    u.save()
     client.force_login(u)
-    resp = client.post(reverse("oidc_integration:polacz"),
-                       {"password": "zle"})
+    resp = client.post(reverse("oidc_integration:polacz"), {"password": "zle"})
     assert resp.status_code == 200
     assert "oidc_link_mode" not in client.session
 
@@ -824,10 +861,10 @@ def test_link_init_requires_password(client, settings):
 def test_link_init_sets_session_and_redirects(client, settings):
     settings.OIDC_LOGIN_ENABLED = True
     u = baker.make("bpp.BppUser", username="u2")
-    u.set_password("secret"); u.save()
+    u.set_password("secret")
+    u.save()
     client.force_login(u)
-    resp = client.post(reverse("oidc_integration:polacz"),
-                       {"password": "secret"})
+    resp = client.post(reverse("oidc_integration:polacz"), {"password": "secret"})
     assert resp.status_code == 302
     assert client.session["oidc_link_mode"] is True
     assert client.session["oidc_link_target"] == u.pk
@@ -837,10 +874,10 @@ def test_link_init_sets_session_and_redirects(client, settings):
 def test_link_init_denies_unusable_password(client, settings):
     settings.OIDC_LOGIN_ENABLED = True
     u = baker.make("bpp.BppUser", username="u3")
-    u.set_unusable_password(); u.save()
+    u.set_unusable_password()
+    u.save()
     client.force_login(u)
-    resp = client.post(reverse("oidc_integration:polacz"),
-                       {"password": "x"})
+    resp = client.post(reverse("oidc_integration:polacz"), {"password": "x"})
     assert resp.status_code == 200
     assert "oidc_link_mode" not in client.session
 ```
@@ -873,7 +910,8 @@ class SSOLinkInitView(LoginRequiredMixin, View):
         password = request.POST.get("password", "")
         if not user.has_usable_password() or not user.check_password(password):
             return render(
-                request, self.template_name,
+                request,
+                self.template_name,
                 {"error": "Nieprawidłowe hasło lub konto bez hasła lokalnego."},
             )
         request.session["oidc_link_mode"] = True
@@ -889,11 +927,13 @@ Create minimal template `src/oidc_integration/templates/oidc_integration/polacz.
   - Inside the `if settings.OIDC_LOGIN_ENABLED:` block add:
 
 ```python
-    from oidc_integration.views import SSOLinkInitView
-    urlpatterns += [
-        path("oidc/polacz/", SSOLinkInitView.as_view(),
-             name="polacz"),  # namespace via include or app_name
-    ]
+from oidc_integration.views import SSOLinkInitView
+
+urlpatterns += [
+    path(
+        "oidc/polacz/", SSOLinkInitView.as_view(), name="polacz"
+    ),  # namespace via include or app_name
+]
 ```
 
   Prefer defining `app_name = "oidc_integration"` + a small `oidc_integration/urls.py`, included under `include(("oidc_integration.urls", "oidc_integration"))`, so `reverse("oidc_integration:polacz")` works. Ensure `oidc_authentication_init` name comes from `mozilla_django_oidc.urls` (already included).
@@ -929,13 +969,19 @@ git commit -m "feat(oidc): /oidc/polacz/ (re-auth hasłem) + gate routingu po OI
 ```python
 def test_failclosed_sets_session_message(db):
     from django.contrib.sessions.backends.db import SessionStore
+
     baker.make("bpp.BppUser", email="a@x.pl")
     b = _backend()
     req = RequestFactory().get("/oidc/callback/")
     req.session = SessionStore()
     b.request = req
-    claims = {"sub": "S", "iss": "https://kc", "email": "a@x.pl",
-              "_bpp_email_trusted": True, "preferred_username": "p"}
+    claims = {
+        "sub": "S",
+        "iss": "https://kc",
+        "email": "a@x.pl",
+        "_bpp_email_trusted": True,
+        "preferred_username": "p",
+    }
     with pytest.raises(SuspiciousOperation):
         b.create_user(claims)
     assert "oidc_error_message" in req.session
@@ -991,8 +1037,11 @@ from model_bakery import baker
 @pytest.mark.django_db
 def test_profile_lists_identities(client, settings):
     settings.OIDC_LOGIN_ENABLED = True
-    u = baker.make("bpp.BppUser"); u.set_password("x"); u.save()
+    u = baker.make("bpp.BppUser")
+    u.set_password("x")
+    u.save()
     from oidc_integration.models import OIDCIdentity
+
     OIDCIdentity.objects.create(user=u, issuer="https://kc", sub="S")
     client.force_login(u)
     resp = client.get(reverse("bpp:profil-uzytkownika"))
@@ -1001,12 +1050,14 @@ def test_profile_lists_identities(client, settings):
 
 @pytest.mark.django_db
 def test_unlink_blocked_on_self_lockout(client):
-    u = baker.make("bpp.BppUser"); u.set_unusable_password(); u.save()
+    u = baker.make("bpp.BppUser")
+    u.set_unusable_password()
+    u.save()
     from oidc_integration.models import OIDCIdentity
+
     ident = OIDCIdentity.objects.create(user=u, issuer="kc", sub="S")
     client.force_login(u)
-    resp = client.post(reverse("bpp:profil-uzytkownika"),
-                       {"unlink_identity": ident.pk})
+    resp = client.post(reverse("bpp:profil-uzytkownika"), {"unlink_identity": ident.pk})
     assert OIDCIdentity.objects.filter(pk=ident.pk).exists()
 ```
 

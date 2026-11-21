@@ -101,8 +101,12 @@ nav:
       - Mój profil autora: uzytkownik/moj-profil-autora.md
       - Nie mogę się zalogować: uzytkownik/logowanie.md
       - Widget publikacji na stronie WWW: uzytkownik/widget-publikacji.md
-      - Sieć powiązań autorów: uzytkownik/powiazania-autorow.md
+      - Wyszukiwanie precyzyjne — podstawy: uzytkownik/wyszukiwanie-precyzyjne.md
+      - Wyszukiwanie precyzyjne — przykłady zapytań: uzytkownik/wyszukiwanie-precyzyjne-przyklady.md
+      - Wyszukiwanie precyzyjne — praca z wynikami: uzytkownik/wyszukiwanie-precyzyjne-wyniki.md
+      - Wyszukiwanie precyzyjne — zapisane formularze: uzytkownik/wyszukiwanie-precyzyjne-zapisane.md
       - Tabela krzyżowa (zestawienia): uzytkownik/tabela-krzyzowa.md
+      - Sieć powiązań autorów: uzytkownik/powiazania-autorow.md
       - Bibliografia w asystencie AI: uzytkownik/asystent-ai.md
   - Instrukcja redaktora:
       - Wyszukiwanie i redagowanie: redaktor/wyszukiwanie-redagowanie.md
@@ -126,6 +130,8 @@ nav:
       - Sloty: redaktor/sloty.md
       - Eksportowanie do DSpace: redaktor/eksportowanie-do-dspace.md
       - Dwudyscyplinowcy: redaktor/dwudyscyplinowcy.md
+      - Przemapowanie prac autora: redaktor/przemapowanie-prac-autora.md
+      - Duplikaty publikacji: redaktor/duplikaty-publikacji.md
   - Instrukcja administratora:
       - Konfiguracja ogólna: administrator/ogolna.md
       - Importer publikacji: administrator/importer-publikacji.md

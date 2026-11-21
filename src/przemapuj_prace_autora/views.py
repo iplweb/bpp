@@ -198,12 +198,19 @@ def przemapuj_prace(request, autor_id):
         "jednostka_z", "jednostka_do", "utworzono_przez"
     )[:10]
 
+    # Link do szczegółów w adminie tylko dla tych, którzy mogą go otworzyć.
+    user = request.user
+    moze_otworzyc_szczegoly = user.is_staff and user.has_perm(
+        "przemapuj_prace_autora.view_przemapoaniepracautora"
+    )
+
     context = {
         "autor": autor,
         "form": form,
         "jednostki_stats": jednostki_stats,
         "historia": historia,
         "preview": False,
+        "moze_otworzyc_szczegoly": moze_otworzyc_szczegoly,
     }
     return render(request, "przemapuj_prace_autora/przemapuj_prace.html", context)
 

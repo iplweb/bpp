@@ -125,6 +125,9 @@ W module redagowania **Wprowadzanie danych → Powiązania autorów
 z dyscyplinami** pokazuje przypisania wszystkich autorów.
 Kliknij **„Filtruj”** i wybierz rok — porównaj liczbę wyników dla
 starego i nowego roku. Przycisk **„Eksport”** zapisze listę do Excela.
+Kolumna **„Link do autora”** (👤 **przejdź do autora**) otwiera kartę
+autora w module redagowania — ten sam link jest na formularzu edycji
+pojedynczego przypisania, tuż pod polem **„Autor”**.
 
 ![Lista „Powiązania autor-dyscyplina” z kolumną „Rok” i przyciskiem „Eksport”](../images/redaktor/nowy-rok/04-lista-autor-dyscyplina.png)
 

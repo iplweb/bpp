@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load user_in_group %}
+
+{% block extratitle %}
+    {{ title }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{{ form_link_url }}">{{ form_title }}</a></li>
+    <li class="current">{{ title }} &nbsp;</li>
+{% endblock %}
+
+{% block content %}
+    {# Zapytanie źródła danych raportu nie daje się wykonać (FD#523). #}
+    <div class="callout alert" data-blad-zrodla-danych>
+        <h4>
+            <i class="fi-alert" aria-hidden="true" style="margin-right: 6px;"></i>
+            Nie udało się wygenerować raportu
+        </h4>
+        <p>
+            Zapytanie w jednym ze źródeł danych tego raportu jest niepoprawne.
+        </p>
+        {% if request.user.is_superuser or request.user|has_group:"raporty" %}
+            <p>Popraw je w module redagowania („Źródła danych”). Szczegóły błędu:</p>
+            <pre>{{ blad_zrodla_danych.blad }}</pre>
+            <p>Zapytanie:</p>
+            <pre>{{ blad_zrodla_danych.query }}</pre>
+            {% if report %}
+                <a class="button primary"
+                   target="_blank"
+                   href="{% url "admin:flexible_reports_report_change" report.pk %}">
+                    <i class="fi-page-edit" aria-hidden="true" style="margin-right: 4px;"></i>
+                    otwórz do edycji
+                </a>
+            {% endif %}
+        {% else %}
+            <p>Skontaktuj się z administratorem lub redaktorem systemu.</p>
+        {% endif %}
+    </div>
+{% endblock %}
