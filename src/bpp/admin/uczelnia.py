@@ -324,6 +324,7 @@ class UczelniaAdmin(
                     "uzywaj_wydzialow",
                     "pokazuj_jednostki_na_pierwszej_stronie",
                     "pokazuj_wydzialy_na_pierwszej_stronie",
+                    "kafel_wydzialy_zamiast_jednostek",
                     "pokazuj_siec_powiazan",
                     "wyszukiwanie_rekordy_na_strone_anonim",
                     "wyszukiwanie_rekordy_na_strone_zalogowany",

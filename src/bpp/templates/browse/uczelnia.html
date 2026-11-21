@@ -217,13 +217,26 @@
                     </a>
                 </div>
                 <div class="uczelnia__kafel">
-                    <a href="/bpp/jednostki/" class="browse-tile">
-                        <div class="uczelnia__tile">
-                            <i class="fi-home uczelnia__tile-icon uczelnia__tile-icon--red"></i>
-                            <h4 class="uczelnia__tile-title">Jednostki</h4>
-                            <p class="uczelnia__tile-description">Przeglądaj wg jednostki</p>
-                        </div>
-                    </a>
+                    {# FD#391: opcja uczelni zamienia kafel „Jednostki” na „Wydziały” #}
+                    {# (indeks jednostek najwyższego poziomu tej uczelni). #}
+                    {% if uczelnia.kafel_wydzialy_zamiast_jednostek %}
+                        {% odmien nazwa_wydzialu "mianownik" liczba="mnoga" as kafel_wydzialy_tytul %}
+                        <a href="{% url 'bpp:browse_wydzialy' %}" class="browse-tile">
+                            <div class="uczelnia__tile">
+                                <i class="fi-foundation uczelnia__tile-icon uczelnia__tile-icon--red"></i>
+                                <h4 class="uczelnia__tile-title">{{ kafel_wydzialy_tytul|capfirst }}</h4>
+                                <p class="uczelnia__tile-description">Przeglądaj wg {% odmien nazwa_wydzialu "dopelniacz" %}</p>
+                            </div>
+                        </a>
+                    {% else %}
+                        <a href="/bpp/jednostki/" class="browse-tile">
+                            <div class="uczelnia__tile">
+                                <i class="fi-home uczelnia__tile-icon uczelnia__tile-icon--red"></i>
+                                <h4 class="uczelnia__tile-title">Jednostki</h4>
+                                <p class="uczelnia__tile-description">Przeglądaj wg jednostki</p>
+                            </div>
+                        </a>
+                    {% endif %}
                 </div>
                 <div class="uczelnia__kafel">
                     <a href="/bpp/zrodla/" class="browse-tile">

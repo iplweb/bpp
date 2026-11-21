@@ -34,6 +34,26 @@ ORCID) i ich konfigurację opisuje strona [Metody logowania](metody-logowania.md
 - pozostałe części serwisu dla użytkowników niezalogowanych wyświetlają
   dane w formacie kolumnowym, posortowane alfabetycznie.
 
+#### Kafel „Wydziały” zamiast „Jednostki” na stronie głównej
+
+Na stronie głównej, w sekcji „Przeglądaj bazę publikacji”, domyślnie jest
+kafel **„Jednostki”**, prowadzący do indeksu wszystkich jednostek uczelni
+(wydziałów, katedr, zakładów itd.). Uczelnia z wydziałami może zamiast niego
+pokazać kafel **„Wydziały”**:
+
+1. otwórz Redagowanie ➡ Struktura ➡ Uczelnia i kliknij swoją uczelnię,
+2. w sekcji „Strona wizualna” zaznacz pole **„Kafel „Wydziały” zamiast
+   „Jednostki” na stronie głównej”**,
+3. zapisz rekord.
+
+Kafel prowadzi do indeksu wydziałów (adres `/bpp/wydzialy/`) — listy
+widocznych jednostek najwyższego poziomu **tej** uczelni; w instalacji
+z kilkoma uczelniami każda widzi tylko swoje wydziały. Nazwa kafla to
+nazwa wydziału w liczbie mnogiej, zgodna z nazewnictwem ustawionym
+w systemie (np. „Instytuty”, jeśli wydział nazywa się u Was „instytut”).
+Pozostałe kafle, menu „przeglądaj” i indeks jednostek (`/bpp/jednostki/`)
+się nie zmieniają. Opcja jest domyślnie wyłączona.
+
 #### Ukrywanie autorów na stronach jednostek
 
 Aby ukryć autora na liście autorów na stronie jednostki (np. doktoranta albo
