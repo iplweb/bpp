@@ -6484,22 +6484,21 @@ def asystent_ai(page: Page, base: str, out: Path) -> None:
     mark(
         zal,
         [
-            {"sel": ".mcp-strona__wariant"},
             {
-                "sel": "[data-mcp-kopiuj=mcp-prompt]",
-                "arrow": "above",
+                "sel": "#mcp-prompt",
+                "arrow": "below",
                 "label": "kliknij w pole, aby skopiować",
-                "dx": 120,
-                "dy": -45,
+                "dx": 40,
+                "dy": -78,
             },
         ],
     )
-    top = page_box(zal, ".mcp-strona__wariant")["y"] - 20
+    top = page_box(zal, "#mcp-najprosciej")["y"] - 30
     shot(
         zal,
         out / "02-wiadomosc-dla-asystenta.png",
         top,
-        bottom_of(zal, "[data-mcp-kopiuj=mcp-prompt]", 15) - top,
+        bottom_of(zal, "#mcp-prompt", 68) - top,
     )
 
     zal.locator("#mcp-klient-claude summary").click()
@@ -6508,14 +6507,11 @@ def asystent_ai(page: Page, base: str, out: Path) -> None:
         zal,
         [
             {
-                "sel": "[data-mcp-kopiuj=mcp-adres]",
+                "sel": "#mcp-adres",
                 "arrow": "above",
                 "label": "1. adres serwera — kliknij, aby skopiować",
                 "dx": -120,
                 "dy": 50,
-            },
-            {
-                "sel": "#mcp-klient-claude summary",
             },
             {
                 "sel": "#mcp-klient-claude a.mcp-strona__instaluj",
