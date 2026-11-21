@@ -58,6 +58,7 @@ class CreateOptions:
     polon_dyscypliny: list[str] | None = None
     polon_bez_blednych_wierszy: bool = False
     bez_ewaluacji: bool = False
+    zgloszen: int = 40
 
 
 def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
@@ -69,7 +70,7 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
     3. Manifest + RNG init.
     4. Generatory w sztywnej kolejnosci dependency: uczelnia → wydzialy →
        jednostki → autorzy → dyscypliny → zrodla (+ punktacja) → wydawcy
-       (+ poziomy) → WC → WZ.
+       (+ poziomy) → WC → WZ → streszczenia → zgloszenia publikacji.
     5. Przeliczenie ewaluacji (cache punktow/slotow, liczba N, metryki) —
        pomijane z `--bez-ewaluacji`.
     6. Manifest save + summary do stdout.
@@ -92,7 +93,8 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         f"Stworzy: {opts.wydzialow} wydz., "
         f"{opts.wydzialow * opts.jednostek_na_wydzial} jedn., "
         f"{opts.autorow} aut., {opts.ile_ciaglych} prac ciaglych, "
-        f"{opts.ile_zwartych} prac zwartych w bazie '{db_name}'."
+        f"{opts.ile_zwartych} prac zwartych, {opts.zgloszen} zgloszen "
+        f"publikacji w bazie '{db_name}'."
     )
     try:
         double_confirm(
@@ -234,6 +236,22 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         prace_wz=wz,
         theme=theme,
         procent=opts.procent_ze_streszczeniem,
+        manifest=manifest,
+        rng=rng,
+        batch_size=opts.batch_size,
+        disable_progress=opts.disable_progress,
+    )
+
+    from bpp.demo_data.generators.zgloszenia import create_zgloszenia
+
+    create_zgloszenia(
+        n=opts.zgloszen,
+        autorzy=autorzy,
+        prace_wc=wc,
+        prace_wz=wz,
+        lata=lata,
+        theme=theme,
+        prefix=prefix,
         manifest=manifest,
         rng=rng,
         batch_size=opts.batch_size,

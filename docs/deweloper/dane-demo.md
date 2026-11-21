@@ -25,6 +25,24 @@ uv run python src/manage.py create_demo_data \
 - `--procent-ze-streszczeniem 70` — odsetek prac ze streszczeniem
 - `--od-roku 2020 --do-roku 2026` — zakres lat prac
 - `--seed 123` — deterministyczny wynik
+- `--zgloszen 40` — liczba zgłoszeń publikacji (`zglos_publikacje`);
+  `0` wyłącza ich generowanie
+
+## Zgłoszenia publikacji (`--zgloszen`)
+
+Generator tworzy zgłoszenia publikacji rozłożone po wszystkich statusach
+obiegu (nowe, wymaga zmian, po zmianach, zaakceptowane, zaimportowane,
+odrzucone, spam) — przy `--zgloszen` ≥ 7 każdy status występuje co
+najmniej raz:
+
+- zaakceptowane i zaimportowane są podpięte (`odpowiednik_w_bpp`) do
+  wygenerowanych prac WC/WZ i przejmują ich tytuł, rok, DOI i autorów;
+- pozostałe mają tytuły z wybranego motywu i 1–5 autorów demo
+  z jednostkami i dyscyplinami;
+- część ma DOI, adres „Dostępna w sieci pod adresem", formę dostępu
+  i informację o opłatach; zwrócone mają przyczynę zwrotu i kod edycji;
+- adresy e-mail zgłaszających są w domenie `demo.example.org`;
+- pliki załączników nie są tworzone.
 
 ## Plik POL-on do importu (`--polon-plik`)
 

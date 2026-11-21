@@ -18,7 +18,7 @@ from bpp.demo_data.themes.registry import THEMES
 class Command(BaseCommand):
     help = (
         "Generuje syntetyczne dane demo (wydzialy, jednostki, autorzy, "
-        "prace WC+WZ). Wymaga PODWOJNEGO potwierdzenia interaktywnie "
+        "prace WC+WZ, zgloszenia publikacji). Wymaga PODWOJNEGO potwierdzenia interaktywnie "
         "(prompt + exact DB name) lub flag --yes-i-am-sure + --confirm-db."
     )
 
@@ -45,6 +45,13 @@ class Command(BaseCommand):
         )
         parser.add_argument("--procent-ze-streszczeniem", type=int, default=70)
         parser.add_argument("--bez-prefiksu", action="store_true")
+        parser.add_argument(
+            "--zgloszen",
+            type=int,
+            default=40,
+            help="Ile zgloszen publikacji (zglos_publikacje) utworzyc; "
+            "0 = bez zgloszen.",
+        )
         parser.add_argument(
             "--polon-plik",
             type=str,
@@ -111,6 +118,7 @@ class Command(BaseCommand):
             polon_dyscypliny=options.get("polon_dyscypliny"),
             polon_bez_blednych_wierszy=options.get("polon_bez_blednych_wierszy", False),
             bez_ewaluacji=options["bez_ewaluacji"],
+            zgloszen=options["zgloszen"],
         )
         # BaseCommand ma self.stdout (OutputWrapper) ale NIE ma self.stdin —
         # passujemy sys.stdin explicit (potrzebne dla double_confirm w trybie
