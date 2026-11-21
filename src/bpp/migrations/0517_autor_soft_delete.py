@@ -2,6 +2,8 @@
 
 from django.db import migrations, models
 
+from bpp.migration_util import nieodwracalna
+
 
 class Migration(migrations.Migration):
     dependencies = [
@@ -33,4 +35,5 @@ class Migration(migrations.Migration):
                 name="autor_deleted_at_idx",
             ),
         ),
+        nieodwracalna(),
     ]

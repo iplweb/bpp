@@ -220,10 +220,9 @@ def test_restore_przy_aktywnym_wycofaniu_jest_zablokowany(
     _z_pbn_uid(wydawnictwo_ciagle)
     wydawnictwo_ciagle.delete(user=superuser)
 
-    with pytest.raises(RekordWKolejcePBN) as exc:
+    with pytest.raises(RekordWKolejcePBN):
         wydawnictwo_ciagle.restore(user=superuser)
 
-    assert exc.value.powod == "wycofanie"
     wydawnictwo_ciagle.refresh_from_db()
     assert wydawnictwo_ciagle.deleted_at is not None
     assert not _logi(wydawnictwo_ciagle, SoftDeleteLog.Akcja.RESTORE).exists()

@@ -19,12 +19,27 @@ NIEODWRACALNE = [
     ("bpp", "0512_soft_delete_autorzy_przez_publikacje"),
     ("bpp", "0513_nowe_sumy_bez_skasowanych_publikacji"),
     ("bpp", "0514_drop_kronika_views"),
+    ("bpp", "0515_praca_habilitacyjna_warunkowy_unique_autora"),
+    ("bpp", "0516_soft_delete_protect_fk"),
+    ("bpp", "0517_autor_soft_delete"),
+    ("bpp", "0518_softdeletelog"),
+    ("bpp", "0519_soft_delete_struktura_i_slowniki"),
+    ("bpp", "0520_slug_unikalny_razem_z_koszem"),
     ("bpp", "0521_kasowanie_prac_dyplomowych_z_autorzy_mat"),
     ("bpp", "0522_kosz_zamrozony_trigger"),
+    ("cerif_export", "0001_odpieta_przynaleznosc"),
     ("pbn_api", "0080_sentdata_withdrawn_at"),
     ("pbn_export_queue", "0011_pbn_export_queue_operacja"),
-    ("pbn_export_queue", "0012_kolejka_a_kosz"),
+    ("pbn_export_queue", "0012_zamowil_protect"),
+    ("pbn_integrator", "0001_initial"),
     ("rozbieznosci_dyscyplin", "0022_rozbieznosci_zrodel_bez_skasowanych_publikacji"),
+    ("zglos_publikacje", "0029_zgloszenie_autor_protect"),
+]
+
+#: Jedyna migracja tego PR-a, która ZOSTAJE odwracalna: zmienia tylko
+#: ``choices`` (cofnięcie nic nie gubi).
+ODWRACALNE = [
+    ("pbn_import", "0013_alter_importinconsistency_inconsistency_type"),
 ]
 
 
@@ -39,6 +54,11 @@ def test_migracja_soft_delete_jest_nieodwracalna(graf, klucz):
     assert any(not op.reversible for op in migracja.operations), (
         f"{klucz} da się cofnąć — łańcuch soft-delete ma być nieodwracalny"
     )
+
+
+@pytest.mark.parametrize("klucz", ODWRACALNE, ids="/".join)
+def test_odwracalne_tylko_te_ktore_nic_nie_gubia(graf, klucz):
+    assert all(op.reversible for op in graf.nodes[klucz].operations)
 
 
 def test_cofniecie_ponizej_0510_blokuje_juz_najwyzsza_migracja(graf):

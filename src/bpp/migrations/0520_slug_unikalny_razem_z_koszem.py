@@ -9,6 +9,8 @@ o tej samej nazwie dostaje kolejny wariant (``jan-kowalski-2``).
 import autoslug.fields
 from django.db import migrations
 
+from bpp.migration_util import nieodwracalna
+
 import bpp.util.text
 
 
@@ -80,4 +82,5 @@ class Migration(migrations.Migration):
                 ),
             ],
         ),
+        nieodwracalna(),
     ]

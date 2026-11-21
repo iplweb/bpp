@@ -92,11 +92,13 @@ def test_akcje_kosza_wymagaja_uprawnienia_delete(rf):
 
 
 @pytest.mark.django_db
-def test_potwierdzenie_pyta_o_wycofanie_z_kolejki_pbn(
+def test_potwierdzenie_odmawia_gdy_rekord_w_kolejce_pbn(
     superuser, superuser_client, bez_celery
 ):
+    from pbn_export_queue.operacje import KOMUNIKAT_REKORD_W_KOLEJCE
+
     wc = baker.make(Wydawnictwo_Ciagle)
-    wysylka = baker.make(
+    baker.make(
         PBN_Export_Queue,
         rekord_do_wysylki=wc,
         zamowil=superuser,
@@ -106,18 +108,12 @@ def test_potwierdzenie_pyta_o_wycofanie_z_kolejki_pbn(
     url = reverse("admin:bpp_wydawnictwo_ciagle_delete", args=[wc.pk])
 
     tresc = superuser_client.get(url).content.decode("utf-8")
-    assert "jest w kolejce wysyłki do PBN" in tresc
-    assert "Nie — nie usuwaj" in tresc
+    assert KOMUNIKAT_REKORD_W_KOLEJCE in tresc
+    assert "Tak, przenieś do kosza" not in tresc
 
-    # „Nie" (POST bez zgody) — rekord zostaje.
+    # Ręcznie spreparowany POST też nie przechodzi.
     superuser_client.post(url, {"post": "yes"})
     assert Wydawnictwo_Ciagle.objects.filter(pk=wc.pk).exists()
-
-    # „Tak" — wysyłka anulowana, rekord w koszu.
-    superuser_client.post(url, {"post": "yes", "anuluj_wysylke_pbn": "1"})
-    assert not Wydawnictwo_Ciagle.objects.filter(pk=wc.pk).exists()
-    wysylka.refresh_from_db()
-    assert wysylka.wykluczone
 
 
 @pytest.mark.django_db
@@ -130,7 +126,7 @@ def test_stan_pbn_przed_koszem_zglasza_wycofanie():
     wc = _z_pbn_uid(baker.make(Wydawnictwo_Ciagle))
     stan = BppSoftDeleteAdminMixin().stan_pbn_przed_koszem(wc)
     assert stan["wycofanie"] is True
-    assert stan["wysylka"] is None
+    assert stan["blokada"] is None
 
 
 @pytest.mark.django_db

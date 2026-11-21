@@ -1,26 +1,24 @@
-"""Kosz a kolejka eksportu do PBN — proste reguły pod blokadami.
+"""Kosz a kolejka eksportu do PBN — JEDNA reguła pod wspólną blokadą.
 
-KOSZ: aktywny wpis blokuje kosz, dopóki kolejka z nim nie skończy; wyjątek:
-czekającą wysyłkę operator może jawnie ANULOWAĆ. „W trakcie" = worker
-trzyma blokadę doradczą rekordu — wtedy kosz i przywrócenie odmawiają;
-wysyłki czekające na ponowienie (RETRY_*) nie są „w trakcie". Wysyłka po
-PRZYWRÓCENIU blokuje kosz do końca. Worker tuż przed wysyłką czyta stan
-rekordu od nowa (wysyłka rekordu z kosza / wycofanie żywego — pomijane).
-
-PRZYWRÓCENIE: aktywne wycofanie (podjęte czy nie) blokuje przywrócenie;
-po zakończonym wycofaniu — od razu wysyłka. Żadnych flag „wyślij później".
+Rekord z jakimkolwiek niezakończonym wpisem kolejki (czeka, podjęty,
+czeka na ponowienie; wysyłka czy wycofanie) nie trafia do kosza ani z niego
+nie wraca. Kolejkowanie (każda ścieżka) i kosz/przywrócenie biorą tę samą
+transakcyjną blokadę rekordu; kolejkowanie odmawia rekordowi z kosza.
+Worker tuż przed wysyłką czyta stan rekordu od nowa.
 """
 
-from contextlib import contextmanager
+import threading
+import time
 from unittest import mock
 
 import pytest
+from django.db import connection
 from django.utils import timezone
 from model_bakery import baker
 
 from bpp.models import Wydawnictwo_Ciagle
-from pbn_export_queue.models import PBN_Export_Queue
-from pbn_export_queue.operacje import RekordWKolejcePBN
+from pbn_export_queue.models import PBN_Export_Queue, RekordWKoszuPBN
+from pbn_export_queue.operacje import KOMUNIKAT_REKORD_W_KOLEJCE, RekordWKolejcePBN
 
 
 def _z_pbn_uid(rekord):
@@ -32,12 +30,12 @@ def _z_pbn_uid(rekord):
 
 
 def _wysylka(rekord, user, **kw):
+    kw.setdefault("wysylke_zakonczono", None)
     return baker.make(
         PBN_Export_Queue,
         rekord_do_wysylki=rekord,
         zamowil=user,
         operacja=PBN_Export_Queue.Operacja.WYSYLKA,
-        wysylke_zakonczono=None,
         **kw,
     )
 
@@ -62,126 +60,132 @@ def _aktywny(rekord):
 
 
 @pytest.mark.django_db
-def test_kosz_z_aktywna_wysylka_bez_zgody_odmawia(
-    wydawnictwo_ciagle, admin_user, bez_celery
+@pytest.mark.parametrize(
+    "stan",
+    [
+        {},
+        {"wysylke_podjeto": timezone.now()},
+        {"wysylke_podjeto": timezone.now(), "retry_after_user_authorised": True},
+    ],
+    ids=["czeka", "podjety", "czeka_na_ponowienie"],
+)
+def test_niezakonczony_wpis_blokuje_kosz(
+    wydawnictwo_ciagle, admin_user, bez_celery, stan
 ):
-    _wysylka(wydawnictwo_ciagle, admin_user)
+    _wysylka(wydawnictwo_ciagle, admin_user, **stan)
 
     with pytest.raises(RekordWKolejcePBN) as exc:
         wydawnictwo_ciagle.delete(user=admin_user)
 
-    assert exc.value.powod == "oczekuje"
+    assert str(exc.value) == KOMUNIKAT_REKORD_W_KOLEJCE
     assert Wydawnictwo_Ciagle.objects.filter(pk=wydawnictwo_ciagle.pk).exists()
 
 
 @pytest.mark.django_db
-def test_kosz_ze_zgoda_anuluje_wysylke_i_zleca_wycofanie(
+def test_wiszaca_wysylke_mozna_usunac_z_kolejki_i_wtedy_kosz_przechodzi(
     wydawnictwo_ciagle, admin_user, bez_celery
 ):
-    _z_pbn_uid(wydawnictwo_ciagle)
-    wysylka = _wysylka(wydawnictwo_ciagle, admin_user)
+    wysylka = _wysylka(wydawnictwo_ciagle, admin_user, wysylke_podjeto=timezone.now())
+    wysylka.delete()
 
-    wydawnictwo_ciagle.delete(user=admin_user, anuluj_wysylke_pbn=True)
+    wydawnictwo_ciagle.delete(user=admin_user)
 
-    wysylka.refresh_from_db()
-    assert wysylka.wysylke_zakonczono is not None
-    assert wysylka.wykluczone
-    assert "Anulowano" in wysylka.komunikat
+    assert not Wydawnictwo_Ciagle.objects.filter(pk=wydawnictwo_ciagle.pk).exists()
+
+
+@pytest.mark.django_db
+def test_kolejkowanie_odmawia_rekordowi_z_kosza(
+    wydawnictwo_ciagle, admin_user, bez_celery
+):
+    zakonczona = _wysylka(
+        wydawnictwo_ciagle, admin_user, wysylke_zakonczono=timezone.now()
+    )
+    wydawnictwo_ciagle.delete(user=admin_user)
+
+    with pytest.raises(RekordWKoszuPBN):
+        PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(admin_user, wydawnictwo_ciagle)
+    with pytest.raises(RekordWKoszuPBN):
+        zakonczona.prepare_for_resend(user=admin_user)
+    assert _aktywny(wydawnictwo_ciagle) is None
+
+
+@pytest.mark.django_db
+def test_kosz_czyta_pbn_uid_z_bazy_a_nie_z_instancji(
+    wydawnictwo_ciagle, pbn_publication, admin_user, bez_celery
+):
+    """Regresja: instancja wczytana przed pierwszą udaną wysyłką nie ma
+    ``pbn_uid``; wysyłka (zakończona) go dopisała. Kosz musi to zobaczyć
+    i zlecić wycofanie."""
+    nieaktualna = Wydawnictwo_Ciagle.objects.get(pk=wydawnictwo_ciagle.pk)
+    assert nieaktualna.pbn_uid_id is None
+    Wydawnictwo_Ciagle.objects.filter(pk=wydawnictwo_ciagle.pk).update(
+        pbn_uid=pbn_publication
+    )
+
+    nieaktualna.delete(user=admin_user)
+
     assert _aktywny(wydawnictwo_ciagle).operacja == PBN_Export_Queue.Operacja.WYCOFANIE
 
 
-@contextmanager
-def _worker_trzyma_blokade(rekord):
-    """Symuluje workera w trakcie wysyłki: sesyjna blokada doradcza rekordu
-    trzymana z OSOBNEGO połączenia (blokady doradcze są reentrantne w obrębie
-    jednej sesji, więc z tego samego połączenia test niczego by nie sprawdził).
-    """
-    import psycopg2
-    from django.contrib.contenttypes.models import ContentType
-    from django.db import connection
+@pytest.mark.django_db(transaction=True)
+def test_kolejkowanie_i_kosz_sa_szeregowane(admin_user, monkeypatch):
+    """Regresja: kolejkowanie trzyma blokadę rekordu, kosz na nią CZEKA,
+    a po commicie widzi nowy wpis i odmawia (zamiast wyrzucić rekord,
+    którego wysyłka właśnie trafiła do kolejki)."""
+    from django.db import connections
 
-    from pbn_export_queue.models import klucz_blokady_rekordu
-
-    ustawienia = connection.settings_dict
-    inne = psycopg2.connect(
-        dbname=ustawienia["NAME"],
-        user=ustawienia["USER"],
-        password=ustawienia["PASSWORD"],
-        host=ustawienia["HOST"],
-        port=ustawienia["PORT"],
+    monkeypatch.setattr(
+        "pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn", mock.Mock()
     )
-    klucz = klucz_blokady_rekordu(
-        ContentType.objects.get_for_model(rekord).pk, rekord.pk
-    )
-    try:
-        with inne.cursor() as cur:
-            # try_ — nigdy nie wisimy (np. gdy transakcja testu trzyma już
-            # blokadę xact po wcześniejszym koszu/przywróceniu).
-            cur.execute("SELECT pg_try_advisory_lock(%s)", [klucz])
-            assert cur.fetchone()[0], "test: blokada rekordu już zajęta"
-        yield
-    finally:
-        inne.close()
+    rekord = baker.make(Wydawnictwo_Ciagle)
+    ma_blokade, puszczaj = threading.Event(), threading.Event()
+    oryginal = PBN_Export_Queue.objects._utworz_wpis
 
+    def _utworz_powoli(*args, **kwargs):
+        ma_blokade.set()
+        assert puszczaj.wait(30)
+        return oryginal(*args, **kwargs)
 
-@pytest.mark.django_db
-def test_kosz_odmawia_gdy_worker_trzyma_blokade(
-    wydawnictwo_ciagle, admin_user, bez_celery
-):
-    _wysylka(wydawnictwo_ciagle, admin_user, wysylke_podjeto=timezone.now())
+    monkeypatch.setattr(PBN_Export_Queue.objects, "_utworz_wpis", _utworz_powoli)
+    wyniki = {}
 
-    with _worker_trzyma_blokade(wydawnictwo_ciagle):
-        with pytest.raises(RekordWKolejcePBN) as exc:
-            wydawnictwo_ciagle.delete(user=admin_user, anuluj_wysylke_pbn=True)
-    assert exc.value.powod == "w_trakcie"
-    assert Wydawnictwo_Ciagle.objects.filter(pk=wydawnictwo_ciagle.pk).exists()
+    def _kolejkuj():
+        try:
+            PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(admin_user, rekord)
+        finally:
+            connections.close_all()
 
-    # Worker skończył (blokada zwolniona) — anulowanie i kosz przechodzą.
-    wydawnictwo_ciagle.delete(user=admin_user, anuluj_wysylke_pbn=True)
-    assert not Wydawnictwo_Ciagle.objects.filter(pk=wydawnictwo_ciagle.pk).exists()
+    def _kosz():
+        try:
+            Wydawnictwo_Ciagle.objects.get(pk=rekord.pk).delete(user=admin_user)
+            wyniki["kosz"] = "przeszedl"
+        except RekordWKolejcePBN:
+            wyniki["kosz"] = "odmowa"
+        finally:
+            connections.close_all()
 
+    t1 = threading.Thread(target=_kolejkuj)
+    t1.start()
+    assert ma_blokade.wait(30)
+    t2 = threading.Thread(target=_kosz)
+    t2.start()
+    time.sleep(0.5)
+    assert t2.is_alive(), "kosz nie czekał na blokadę kolejkowania"
+    puszczaj.set()
+    t1.join(30)
+    t2.join(30)
 
-@pytest.mark.django_db
-def test_przywrocenie_odmawia_gdy_worker_trzyma_blokade(
-    wydawnictwo_ciagle, admin_user, bez_celery
-):
-    # Do kosza BEZ ``delete()`` — ``delete()`` wziąłby blokadę xact rekordu
-    # na resztę transakcji testu i „worker" nie mógłby jej zająć.
-    _do_kosza_bez_delete(wydawnictwo_ciagle)
-    w = Wydawnictwo_Ciagle.global_objects.get(pk=wydawnictwo_ciagle.pk)
-
-    with _worker_trzyma_blokade(w):
-        with pytest.raises(RekordWKolejcePBN) as exc:
-            w.restore(user=admin_user)
-    assert exc.value.powod == "w_trakcie"
-
-
-@pytest.mark.django_db
-def test_wysylka_czekajaca_na_ponowienie_daje_sie_anulowac(
-    wydawnictwo_ciagle, admin_user, bez_celery
-):
-    """Recenzja #7: wpis z ``wysylke_podjeto`` (RETRY_*) bez blokady workera
-    NIE jest „w trakcie" — da się go anulować."""
-    wysylka = _wysylka(
-        wydawnictwo_ciagle,
-        admin_user,
-        wysylke_podjeto=timezone.now(),
-        retry_after_user_authorised=True,
-    )
-
-    wydawnictwo_ciagle.delete(user=admin_user, anuluj_wysylke_pbn=True)
-
-    wysylka.refresh_from_db()
-    assert wysylka.wysylke_zakonczono is not None
-    assert not Wydawnictwo_Ciagle.objects.filter(pk=wydawnictwo_ciagle.pk).exists()
+    assert wyniki["kosz"] == "odmowa"
+    assert Wydawnictwo_Ciagle.objects.filter(pk=rekord.pk).exists()
+    connection.close()
 
 
 @pytest.mark.django_db
 def test_wycofanie_blokuje_przywrocenie_do_konca(
     wydawnictwo_ciagle, pbn_publication, admin_user, bez_celery, monkeypatch
 ):
-    """Regresja (recenzja, „lost update"): przywrócenie jest zablokowane,
-    dopóki wycofanie trwa; po jego zakończeniu przechodzi i zleca wysyłkę."""
+    """Przywrócenie jest zablokowane, dopóki wycofanie trwa; po jego
+    zakończeniu przechodzi i zleca wysyłkę — która z kolei blokuje kosz."""
     wydawnictwo_ciagle.pbn_uid = pbn_publication
     wydawnictwo_ciagle.save()
     wydawnictwo_ciagle.delete(user=admin_user)
@@ -189,9 +193,8 @@ def test_wycofanie_blokuje_przywrocenie_do_konca(
     assert wpis.operacja == PBN_Export_Queue.Operacja.WYCOFANIE
 
     w = Wydawnictwo_Ciagle.global_objects.get(pk=wydawnictwo_ciagle.pk)
-    with pytest.raises(RekordWKolejcePBN) as exc:
+    with pytest.raises(RekordWKolejcePBN):
         w.restore(user=admin_user)
-    assert exc.value.powod == "wycofanie"
 
     monkeypatch.setattr(
         PBN_Export_Queue, "_pozyskaj_klienta_pbn", lambda s: mock.Mock()
@@ -202,9 +205,14 @@ def test_wycofanie_blokuje_przywrocenie_do_konca(
 
     w = Wydawnictwo_Ciagle.global_objects.get(pk=w.pk)
     w.restore(user=admin_user)
-    nowy = _aktywny(w)
-    assert nowy.operacja == PBN_Export_Queue.Operacja.WYSYLKA
-    assert nowy.po_przywroceniu
+    wysylka = _aktywny(w)
+    assert wysylka.operacja == PBN_Export_Queue.Operacja.WYSYLKA
+
+    with pytest.raises(RekordWKolejcePBN):
+        w.delete(user=admin_user)
+    wysylka.error("test")
+    w.delete(user=admin_user)
+    assert not Wydawnictwo_Ciagle.objects.filter(pk=w.pk).exists()
 
 
 @pytest.mark.django_db
@@ -258,34 +266,6 @@ def test_aktywne_wycofanie_nie_do_usuniecia_ani_ponowienia(
     with pytest.raises(WycofanieZablokowane):
         wpis.prepare_for_resend(user=admin_user)
     assert PBN_Export_Queue.objects.filter(pk=wpis.pk).exists()
-
-
-@pytest.mark.django_db
-def test_po_przywroceniu_rekordu_nie_da_sie_usunac_do_konca_wysylki(
-    wydawnictwo_ciagle, pbn_publication, admin_user, bez_celery
-):
-    wydawnictwo_ciagle.delete(user=admin_user)
-    # PBN UID dopisany „w koszu" (z flagą) — bez wycofania w kolejce, żeby
-    # przywrócenie od razu zleciło wysyłkę.
-    from bpp.models.soft_delete import operacja_kosza
-
-    with operacja_kosza():
-        Wydawnictwo_Ciagle.global_objects.filter(pk=wydawnictwo_ciagle.pk).update(
-            pbn_uid=pbn_publication
-        )
-    wydawnictwo_ciagle.refresh_from_db()
-    wydawnictwo_ciagle.restore(user=admin_user)
-    wysylka = _aktywny(wydawnictwo_ciagle)
-    assert wysylka.po_przywroceniu
-
-    with pytest.raises(RekordWKolejcePBN) as exc:
-        wydawnictwo_ciagle.delete(user=admin_user, anuluj_wysylke_pbn=True)
-    assert exc.value.powod == "po_przywroceniu"
-
-    # Wysyłka się zakończyła (choćby błędem) — kosz znów możliwy.
-    wysylka.error("test")
-    wydawnictwo_ciagle.delete(user=admin_user)
-    assert not Wydawnictwo_Ciagle.objects.filter(pk=wydawnictwo_ciagle.pk).exists()
 
 
 @pytest.mark.django_db

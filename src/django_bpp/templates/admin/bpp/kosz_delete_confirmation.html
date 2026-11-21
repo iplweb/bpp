@@ -21,9 +21,6 @@
       {% if kosz_pbn.wycofanie %}
         <p><strong>⚠️ Rekord zostanie wycofany z PBN:</strong> oświadczenia naszej instytucji dla tej publikacji zostaną usunięte z profilu instytucji w PBN (samej publikacji w repozytorium PBN nie da się usunąć). Przywrócenie z kosza zleci ponowną wysyłkę do PBN.</p>
       {% endif %}
-      {% if kosz_pbn.wysylka %}
-        <p><strong>📤 Rekord jest w kolejce wysyłki do PBN</strong> (zlecono {{ kosz_pbn.wysylka.zamowiono|date:"Y-m-d H:i" }}) — trzeba go z niej wycofać. Wycofać rekord z kolejki wysyłki do PBN i przenieść go do kosza?</p>
-      {% endif %}
     </div>
     <form action="" method="post" novalidate>{% csrf_token %}
       <p>
@@ -32,11 +29,10 @@
       </p>
       <div class="grp-module grp-submit-row grp-fixed-footer">
         <ul>
-          <li class="grp-float-left"><a href="{% add_preserved_filters object_url %}" class="grp-button grp-cancel-link">{% if kosz_pbn.wysylka %}Nie — nie usuwaj{% else %}{% trans "No, take me back" %}{% endif %}</a></li>
-          <li><input type="submit" value="{% if kosz_pbn.wysylka %}Tak — wycofaj z kolejki PBN i przenieś do kosza{% else %}🗑️ Tak, przenieś do kosza{% endif %}" class="grp-button grp-default" /></li>
+          <li class="grp-float-left"><a href="{% add_preserved_filters object_url %}" class="grp-button grp-cancel-link">{% trans "No, take me back" %}</a></li>
+          <li><input type="submit" value="🗑️ Tak, przenieś do kosza" class="grp-button grp-default" /></li>
         </ul>
         <input type="hidden" name="post" value="yes" />
-        {% if kosz_pbn.wysylka %}<input type="hidden" name="anuluj_wysylke_pbn" value="1" />{% endif %}
         {% if is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1" />{% endif %}
         {% if to_field %}<input type="hidden" name="{{ to_field_var }}" value="{{ to_field }}" />{% endif %}
       </div>

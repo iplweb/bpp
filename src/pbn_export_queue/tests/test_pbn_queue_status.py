@@ -98,18 +98,14 @@ class TestCheckIfRecordStillExists:
         self, wydawnictwo_ciagle, admin_user
     ):
         """Test that method returns False when record is deleted"""
+        # Rekord w koszu, a wpis (sprzed reguły „wpis blokuje kosz")
+        # mimo to wisi jako aktywny.
+        wydawnictwo_ciagle.delete()
         queue_item = baker.make(
             PBN_Export_Queue,
             rekord_do_wysylki=wydawnictwo_ciagle,
             zamowil=admin_user,
         )
-        # Delete the record (zgoda na anulowanie aktywnej wysyłki), potem
-        # symulujemy wpis, który mimo to wisi jako aktywny.
-        wydawnictwo_ciagle.delete(anuluj_wysylke_pbn=True)
-        PBN_Export_Queue.objects.filter(pk=queue_item.pk).update(
-            wysylke_zakonczono=None
-        )
-        queue_item.refresh_from_db()
 
         assert queue_item.check_if_record_still_exists() is False
 

@@ -819,11 +819,11 @@ class BppPublikacjaSoftDeleteMixin(
                 [],
             )
 
-    def delete(self, *args, user=None, reason="", anuluj_wysylke_pbn=False, **kwargs):
+    def delete(self, *args, user=None, reason="", **kwargs):
         """Soft-delete publikacji. BEZ kaskady na dzieci.
 
-        ``anuluj_wysylke_pbn=True`` — zgoda operatora na anulowanie
-        aktywnego zlecenia wysyłki do PBN (patrz ``RekordWKolejcePBN``).
+        Rekord z niezakończonym wpisem kolejki PBN NIE trafia do kosza
+        (``RekordWKolejcePBN``).
 
         Pakietowy ``SoftDeleteModel.delete()`` przechodzi po wszystkich
         relacjach odwrotnych i dzieci spoza soft-delete kasowałby TWARDO
@@ -837,17 +837,13 @@ class BppPublikacjaSoftDeleteMixin(
         """
         txid = kwargs.pop("transaction_id", None) or uuid.uuid4()
         with soft_delete_context(user=user, reason=reason), transaction.atomic():
-            from pbn_export_queue.operacje import przygotuj_kolejke_do_kosza
+            from pbn_export_queue.operacje import sprawdz_kolejke_przed_koszem
 
             sprawdz_stan_kosza(self, ma_byc_w_koszu=False)
             self.sprawdz_czy_mozna_do_kosza()
-            # Aktywne zlecenie WYSYŁKI do PBN blokuje kosz, chyba że operator
-            # świadomie zgodził się je anulować — wtedy wpis jest zamykany,
-            # a receiver zleca wycofanie oświadczeń. Bez tej bramki zlecenie
-            # wycofania ginęłoby po cichu (jeden aktywny wpis na rekord).
-            przygotuj_kolejke_do_kosza(
-                self, anuluj_wysylke_pbn=anuluj_wysylke_pbn, user=user
-            )
+            # Blokada kolejki rekordu + reguła „niezakończony wpis blokuje"
+            # + świeży ``pbn_uid`` (decyduje o wycofaniu w receiverze).
+            sprawdz_kolejke_przed_koszem(self)
             self.deleted_at = timezone.now()
             self.restored_at = None
             self.transaction_id = txid
@@ -865,15 +861,14 @@ class BppPublikacjaSoftDeleteMixin(
         ścieżki queryset-owe; ``super().restore()`` nie jest wołane, więc
         pakietowy ``SoftDeleteException`` nie ma jak polecieć.
         """
-        from pbn_export_queue.operacje import przygotuj_kolejke_do_przywrocenia
+        from pbn_export_queue.operacje import sprawdz_kolejke_przed_koszem
 
         with soft_delete_context(user=user), transaction.atomic():
             sprawdz_stan_kosza(self, ma_byc_w_koszu=True)
             txid = self.transaction_id
-            # Aktywne wycofanie z PBN (podjęte czy nie) blokuje przywrócenie
-            # (``RekordWKolejcePBN``). Pod blokadą wiersza kolejki, w tej samej
-            # transakcji co zlecenie wysyłki przez receiver.
-            przygotuj_kolejke_do_przywrocenia(self, user=user)
+            # Ta sama reguła co przy koszu (np. wycofanie jeszcze trwa), pod
+            # blokadą kolejki, w tej samej transakcji co zlecenie wysyłki.
+            sprawdz_kolejke_przed_koszem(self)
             self.deleted_at = None
             self.restored_at = timezone.now()
             self.transaction_id = None

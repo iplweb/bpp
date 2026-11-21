@@ -22,15 +22,31 @@
    rozmową z PBN czyta rekord od nowa: wysyłka rekordu z kosza i wycofanie
    rekordu żywego kończą się bez wysyłania („rekord w koszu" / „rekord
    przywrócony").
-3. **„W trakcie" = blokada doradcza.** Worker trzyma sesyjną
-   `pg_advisory_lock` na kluczu rekordu (`klucz_blokady_rekordu` —
-   jednoargumentowy `bigint`, rozłączny z blokadami triggerów cache) przez
-   całą próbę; padnięcie workera ją zwalnia. Kosz i przywrócenie biorą
-   `pg_try_advisory_xact_lock` — zajęta → „trwa wysyłka/wycofywanie w PBN,
-   spróbuj za chwilę".
-4. **Bez trwałego usuwania z kosza w adminie** (wyłączone; w przyszłości
+3. **Jedna reguła kolejki PBN, bez wyjątków.** Rekord z JAKIMKOLWIEK
+   niezakończonym wpisem kolejki (czeka, podjęty, czeka na ponowienie;
+   wysyłka czy wycofanie) **nie trafia do kosza i nie wraca z niego**:
+   „Rekord jest w kolejce PBN — poczekaj, aż kolejka zakończy jego
+   przetwarzanie." Wiszącą wysyłkę operator może usunąć z kolejki ręcznie
+   (wpisy wysyłki są usuwalne; wpisy wycofania — nie). Kolejkowanie (każda
+   ścieżka: admin, „Wyślij do PBN w tle", sygnały, przywrócenie, „wyślij
+   ponownie") i kosz/przywrócenie biorą tę samą transakcyjną blokadę
+   rekordu (`PBN_Export_Queue.objects.zablokuj_rekord`,
+   `pg_advisory_xact_lock`) i pod nią sprawdzają stan: kolejkowanie odmawia
+   rekordowi z kosza (`RekordWKoszuPBN`), kosz — rekordowi z wpisem; kosz
+   czyta `pbn_uid` z bazy (o wycofaniu nie decyduje nieaktualna instancja).
+   Worker osobno trzyma sesyjną blokadę rekordu (`klucz_blokady_rekordu`),
+   żeby dwa workery nie wysłały go naraz.
+4. **Konta z wpisami kolejki nie da się usunąć** (`zamowil` =
+   `PROTECT`) — kto zlecił wysyłkę/wycofanie, to ślad audytu; konto się
+   dezaktywuje. Admin pokazuje stronę „chronione obiekty".
+5. **Wszystkie migracje tego PR-a są nieodwracalne** (poza
+   `pbn_import/0013`, która zmienia tylko `choices`) — przed wdrożeniem
+   kopia bazy, powrót tylko z kopii (patrz „Wdrożenie").
+6. **Bez trwałego usuwania z kosza w adminie** (wyłączone; w przyszłości
    — patrz „Etap 2"). `hard_delete()` zostaje dla kodu (np. czyszczenie
    przed pełnym re-importem z PBN).
+7. **Akcje masowe admina** (`zmien_hurtowo_z_historia`) pomijają rekordy
+   z kosza (są zamrożone).
 
 ## Mechanizm w jednym akapicie
 
@@ -184,26 +200,20 @@ PBN UID, `pbn_id`, `expertus_id`, `system_kadrowy_id` — też.
 
 ## PBN a kosz
 
-Twarde niezmienniki egzekwowane w warstwie modelu i bazy (nie tylko w adminie):
-dopóki rekord ma aktywny wpis kolejki (wysyłka lub wycofanie, podjęty czy
-nie), **nie trafi do kosza** (wyjątek: jawnie anulowana, niepodjęta
-wysyłka) i **nie zostanie przywrócony**, dopóki wycofanie się nie
-zakończy. Sprawdzenie idzie pod blokadą wiersza kolejki (`select_for_update`) i pod
-blokadą doradczą rekordu, w tej samej transakcji co zapis
-kosza/przywrócenia (`pbn_export_queue/operacje.py`). Aktywnego zlecenia
-WYCOFANIA nie da się usunąć z kolejki ani wysłać ponownie ręcznie
-(`WycofanieZablokowane`) — „kolejka blokuje rekord". Ręczne „wyślij
-ponownie" innych wpisów przechodzi przez ten sam test stanu w workerze.
+Egzekwowane w warstwie modelu (nie tylko w adminie): reguła z punktu 3
+„Zasad" — niezakończony wpis kolejki blokuje kosz i przywrócenie
+(`RekordWKolejcePBN`), sprawdzana pod wspólną blokadą rekordu w tej samej
+transakcji co zapis kosza/przywrócenia (`pbn_export_queue/operacje.py`).
+Aktywnego zlecenia WYCOFANIA nie da się usunąć z kolejki ani wysłać
+ponownie ręcznie (`WycofanieZablokowane`); wpis wysyłki — można usunąć.
 
 | Sytuacja | Co się dzieje |
 |---|---|
 | Kosz publikacji z PBN UID | Receiver zleca `WYCOFANIE` — usuwa **oświadczenia naszej instytucji** (profil instytucji). Obiektu publikacji w repozytorium PBN nie da się usunąć (jest współdzielony). Strona potwierdzenia mówi o tym wprost. |
-| Kosz, gdy czeka **niepodjęta** wysyłka (także czekająca na ponowienie: RETRY_LATER / RETRY_MUCH_LATER / po zalogowaniu do PBN) | Admin pyta: „rekord jest w kolejce wysyłki do PBN — trzeba go wycofać. Wycofać? Tak / Nie". **Nie** → rekord NIE trafia do kosza. **Tak** (`anuluj_wysylke_pbn=True`) → wpis zamknięty jako anulowany, zlecone wycofanie, rekord w koszu. Bez zgody: `RekordWKolejcePBN`. |
-| Kosz, gdy worker **właśnie wysyła** (trzyma blokadę doradczą) | Zablokowany także ze zgodą — „trwa przetwarzanie, spróbuj za chwilę". |
-| Kosz żywego rekordu z aktywnym wycofaniem | Zablokowany do końca wycofania. |
-| Kosz, gdy trwa wysyłka zlecona przy **przywróceniu** (`po_przywroceniu`) | Zablokowany do końca tej wysyłki (sukces albo błąd); jej anulować nie można. |
-| Przywrócenie, gdy wycofanie **jeszcze się nie zakończyło** (podjęte czy nie) | Zablokowane, dopóki się nie zakończy (`RekordWKolejcePBN`). Żadnych flag „wyślij później". |
-| Przywrócenie po **zakończonym** wycofaniu | Od razu zlecana wysyłka (`po_przywroceniu=True`) — **tylko gdy rekord ma PBN UID**. Rekord nigdy niewysłany nie dostaje żadnego zlecenia. |
+| Kosz, gdy rekord ma **jakikolwiek niezakończony wpis** kolejki (czeka, podjęty, czeka na ponowienie, wysyłka po przywróceniu, wycofanie) | Odmowa: „Rekord jest w kolejce PBN — poczekaj, aż kolejka zakończy jego przetwarzanie." Wiszącą wysyłkę można usunąć z kolejki ręcznie. |
+| Kolejkowanie rekordu z kosza (dowolna ścieżka, także „wyślij ponownie") | Odmowa (`RekordWKoszuPBN`). Wycofanie zleca sam kosz. |
+| Przywrócenie, gdy wycofanie **jeszcze się nie zakończyło** | Odmowa (ta sama reguła). |
+| Przywrócenie po **zakończonym** wycofaniu | Od razu zlecana wysyłka — **tylko gdy rekord ma PBN UID**. Do jej końca rekord znów nie trafi do kosza (ta sama reguła). |
 | Import z PBN trafia na rekord, który u nas jest w koszu | **Pomija i raportuje** (decyzja właściciela): „W PBN jest rekord X, ale u nas jest usunięty (w koszu)". Raport: admin `RekordWKoszuPominietyPrzezImport` (jeden wpis na rekord i ścieżkę, z licznikiem), log (`WARNING`), nieścisłość `record_in_trash` w raporcie sesji `pbn_import`. Rekordów z kosza import **nie wskrzesza**. Rozdział książki z kosza też jest pomijany. |
 | Rekord z PBN UID w adminie (FD#539) | Usuwanie zablokowane (`RestrictDeletionWhenPBNUIDSetMixin`), ale przycisk „Usuń" jest **wyszarzony z wyjaśnieniem** zamiast znikać. Akcje masowe sprawdzają to uprawnienie per rekord. |
 
@@ -270,9 +280,11 @@ nie są migrowane wcale.
 
 ### Migracje nieodwracalne — przed wdrożeniem zrób kopię bazy; powrót tylko z kopii
 
-Łańcuch `bpp/0510`–`0522` oraz `pbn_api/0080`,
-`pbn_export_queue/0011`–`0012` i `rozbieznosci_dyscyplin/0022` **nie mają
-kroku wstecz** (decyzja właściciela). `migrate` w tył przez którąkolwiek
+Wszystkie migracje tego PR-a — `bpp/0510`–`0522`, `cerif_export/0001`,
+`pbn_api/0080`, `pbn_export_queue/0011`–`0012`, `pbn_integrator/0001`,
+`rozbieznosci_dyscyplin/0022`, `zglos_publikacje/0029` — **nie mają kroku
+wstecz** (decyzja właściciela). Wyjątek: `pbn_import/0013` zmienia tylko
+`choices` (cofnięcie nic nie gubi). `migrate` w tył przez którąkolwiek
 z nich rzuca `IrreversibleError`, zanim cokolwiek zmieni w bazie.
 Migracje z kodem (`RunPython`/`RunSQL`) po prostu nie mają
 `reverse_code`/`reverse_sql`; czysto schematowe kończą się operacją

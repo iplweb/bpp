@@ -3,6 +3,8 @@
 import django.db.models.deletion
 from django.db import migrations, models
 
+from bpp.migration_util import nieodwracalna
+
 
 class Migration(migrations.Migration):
 
@@ -116,4 +118,5 @@ class Migration(migrations.Migration):
             name='seria_wydawnicza',
             field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, to='bpp.seria_wydawnicza'),
         ),
+        nieodwracalna(),
     ]

@@ -409,30 +409,21 @@ class BppSoftDeleteAdminMixin:
 
     def stan_pbn_przed_koszem(self, obj):
         """Co kosz zrobi z PBN — do strony potwierdzenia (bez efektów
-        ubocznych).
-
-        ``wycofanie``: rekord ma odpowiednik w PBN, więc receiver zleci
-        wycofanie oświadczeń instytucji. ``wysylka``: niepodjęta wysyłka,
-        którą operator może anulować (pytanie „tak/nie"). ``blokada``:
-        komunikat, gdy kolejka blokuje kosz (wpis w trakcie przetwarzania
-        albo wysyłka po przywróceniu z kosza). ``w_toku`` — zgodność wstecz.
-        """
+        ubocznych). ``wycofanie``: rekord ma odpowiednik w PBN, więc
+        receiver zleci wycofanie oświadczeń instytucji. ``blokada``:
+        komunikat, gdy rekord ma niezakończony wpis kolejki PBN."""
         from bpp.models.soft_delete import BppPublikacjaSoftDeleteMixin
         from pbn_export_queue.operacje import (
-            RekordWKolejcePBN,
-            stan_kolejki_przed_koszem,
+            KOMUNIKAT_REKORD_W_KOLEJCE,
+            aktywny_wpis,
         )
 
-        stan = {"wycofanie": False, "wysylka": None, "w_toku": False, "blokada": None}
+        stan = {"wycofanie": False, "blokada": None}
         if not isinstance(obj, BppPublikacjaSoftDeleteMixin):
             return stan
         stan["wycofanie"] = bool(getattr(obj, "pbn_uid_id", None))
-        wpis, powod = stan_kolejki_przed_koszem(obj)
-        if powod == "oczekuje":
-            stan["wysylka"] = wpis
-        elif powod is not None:
-            stan["w_toku"] = powod == "w_trakcie"
-            stan["blokada"] = str(RekordWKolejcePBN(wpis, powod))
+        if aktywny_wpis(obj) is not None:
+            stan["blokada"] = KOMUNIKAT_REKORD_W_KOLEJCE
         return stan
 
     def blokada_kosza(self, obj):
@@ -463,16 +454,13 @@ class BppSoftDeleteAdminMixin:
             [],
         )
 
-    def _soft_delete_jeden(self, request, obj, powod, anuluj_wysylke_pbn=False):
+    def _soft_delete_jeden(self, request, obj, powod):
         """Soft-delete jednego rekordu; ``False`` gdy nie wolno/zablokowano.
 
         Per instancja: jeden zablokowany rekord nie przewraca całego
         zaznaczenia. Uprawnienie sprawdzane PER REKORD (FD#539 itd.).
         """
-        from bpp.models.soft_delete import (
-            BppPublikacjaSoftDeleteMixin,
-            NiedozwolonaZmianaKosza,
-        )
+        from bpp.models.soft_delete import NiedozwolonaZmianaKosza
         from pbn_export_queue.operacje import RekordWKolejcePBN
 
         if getattr(obj, "deleted_at", None) is not None:
@@ -488,11 +476,8 @@ class BppSoftDeleteAdminMixin:
                 level=messages.ERROR,
             )
             return False
-        kwargs = {"user": request.user, "reason": powod}
-        if isinstance(obj, BppPublikacjaSoftDeleteMixin):
-            kwargs["anuluj_wysylke_pbn"] = anuluj_wysylke_pbn
         try:
-            obj.delete(**kwargs)
+            obj.delete(user=request.user, reason=powod)
             return True
         except (ProtectedError, RekordWKolejcePBN, NiedozwolonaZmianaKosza) as e:
             self.message_user(request, e.args[0], level=messages.ERROR)
@@ -503,31 +488,22 @@ class BppSoftDeleteAdminMixin:
             return " (ma odpowiednik w PBN — patrz przycisk „Usuń” na rekordzie)"
         return ""
 
-    def _anuluj_wysylke_z_requestu(self, request):
-        return request.method == "POST" and bool(request.POST.get("anuluj_wysylke_pbn"))
-
     def delete_view(self, request, object_id, extra_context=None):
         """„Usuń" na rekordzie = kosz, ze stroną potwierdzenia, która:
 
         - pokazuje, że rekord zostanie WYCOFANY z PBN (gdy ma odpowiednik),
-        - pyta „wycofać z kolejki wysyłki? tak/nie", gdy rekord czeka
-          w kolejce eksportu do PBN (bez zgody rekord NIE trafia do kosza),
         - odmawia od razu, gdy guard blokuje (autor z pracami, książka
-          z rozdziałami, używany słownik).
+          z rozdziałami, używany słownik) albo rekord jest w kolejce PBN.
         """
         obj = self.get_object(request, unquote(object_id))
         if obj is not None and self.has_delete_permission(request, obj):
             blokada = self.blokada_kosza(obj)
-            stan = self.stan_pbn_przed_koszem(obj)
             extra_context = {
                 **(extra_context or {}),
                 "kosz_blokada": blokada,
-                "kosz_pbn": stan,
+                "kosz_pbn": self.stan_pbn_przed_koszem(obj),
             }
-            if request.method == "POST" and (
-                blokada
-                or (stan["wysylka"] and not self._anuluj_wysylke_z_requestu(request))
-            ):
+            if request.method == "POST" and blokada:
                 # POST bez spełnionych warunków (np. ręcznie spreparowany)
                 # — nie wołamy super(), żeby Django nie zameldowało
                 # „usunięto pomyślnie".
@@ -555,22 +531,14 @@ class BppSoftDeleteAdminMixin:
         return None
 
     def delete_model(self, request, obj):
-        """Przycisk „Usuń" na changeformie przenosi do kosza (z userem,
-        powodem i decyzją o kolejce PBN ze strony potwierdzenia)."""
+        """Przycisk „Usuń" na changeformie przenosi do kosza (z userem
+        i powodem ze strony potwierdzenia)."""
         with self._soft_delete_user_context(request):
-            self._soft_delete_jeden(
-                request,
-                obj,
-                self._powod_z_requestu(request),
-                anuluj_wysylke_pbn=self._anuluj_wysylke_z_requestu(request),
-            )
+            self._soft_delete_jeden(request, obj, self._powod_z_requestu(request))
 
     def delete_queryset(self, request, queryset):
-        """Akcja ``delete_selected`` — kosz PER INSTANCJA (nigdy zbiorczo).
-
-        Bez zgody na anulowanie wysyłki do PBN — rekordy z aktywnym
-        zleceniem zostają (komunikat); do nich służy „Usuń" na rekordzie.
-        """
+        """Akcja ``delete_selected`` — kosz PER INSTANCJA (nigdy zbiorczo);
+        rekordy zablokowane (np. w kolejce PBN) zostają z komunikatem."""
         with self._soft_delete_user_context(request):
             powod = self._powod_z_requestu(request)
             for obj in queryset:
@@ -629,18 +597,14 @@ class BppSoftDeleteAdminMixin:
         """Kosz z powodem podanym na stronie pośredniej (``SoftDeleteLog.powod``).
 
         Strona pośrednia pokazuje też, które rekordy zostaną wycofane
-        z PBN i które czekają w kolejce wysyłki (zgoda na anulowanie —
-        checkbox; bez niej te rekordy zostają).
+        z PBN i które są zablokowane (np. w kolejce PBN).
         """
         if request.POST.get("powod_potwierdzony"):
             with self._soft_delete_user_context(request):
                 powod = self._powod_z_requestu(request)
-                anuluj = self._anuluj_wysylke_z_requestu(request)
                 usunieto = 0
                 for obj in queryset:
-                    if self._soft_delete_jeden(
-                        request, obj, powod, anuluj_wysylke_pbn=anuluj
-                    ):
+                    if self._soft_delete_jeden(request, obj, powod):
                         usunieto += 1
             if usunieto:
                 self.message_user(
@@ -669,7 +633,6 @@ class BppSoftDeleteAdminMixin:
             **self.admin_site.each_context(request),
             "title": "Usuń do kosza",
             "wiersze": wiersze,
-            "jest_wysylka_pbn": any(w["pbn"]["wysylka"] for w in wiersze),
             "ile_obiektow": ile,
             "ile_ukrytych": max(0, ile - len(podglad)),
             "wybrane_pk": request.POST.getlist(admin_helpers.ACTION_CHECKBOX_NAME),

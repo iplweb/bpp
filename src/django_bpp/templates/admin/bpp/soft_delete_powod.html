@@ -19,7 +19,6 @@
       {{ w.obj }}
       {% if w.blokada %}<br><strong>⛔ Nie trafi do kosza:</strong> {{ w.blokada }}{% endif %}
       {% if w.pbn.wycofanie %}<br>⚠️ Zostanie wycofany z PBN (oświadczenia instytucji); przywrócenie zleci ponowną wysyłkę.{% endif %}
-      {% if w.pbn.wysylka and not w.blokada %}<br>📤 Jest w kolejce wysyłki do PBN — trzeba go z niej wycofać (patrz pytanie niżej).{% endif %}
     </li>
   {% endfor %}
 </ul>
@@ -44,15 +43,6 @@
     <br>
     <textarea name="powod" id="id_powod" rows="3" cols="60"></textarea>
   </p>
-
-  {% if jest_wysylka_pbn %}
-    <p>
-      <strong>📤 Część rekordów jest w kolejce wysyłki do PBN.</strong>
-      Wycofać je z kolejki i przenieść do kosza?<br>
-      <label><input type="checkbox" name="anuluj_wysylke_pbn" value="1">
-        Tak — wycofaj z kolejki PBN (bez zaznaczenia te rekordy NIE zostaną usunięte)</label>
-    </p>
-  {% endif %}
 
   <input type="submit" value="🗑️ Przenieś do kosza">
   <a href="{% url opts|admin_urlname:'changelist' %}">Anuluj</a>

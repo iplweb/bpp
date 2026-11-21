@@ -50,7 +50,7 @@ def pobierz_konto_techniczne():
     return user
 
 
-def _zakolejkuj(instance, operacja, user=None, uczelnia=None, **dodatkowe):
+def _zakolejkuj(instance, operacja, user=None, uczelnia=None):
     from pbn_api.exceptions import AlreadyEnqueuedError
 
     # `tasks` importuje `models`, więc import na poziomie modułu zrobiłby
@@ -63,7 +63,6 @@ def _zakolejkuj(instance, operacja, user=None, uczelnia=None, **dodatkowe):
             instance,
             uczelnia=uczelnia,
             operacja=operacja,
-            **dodatkowe,
         )
     except AlreadyEnqueuedError:
         # Rekord czeka już w kolejce — idempotencja, nie błąd.
@@ -73,7 +72,7 @@ def _zakolejkuj(instance, operacja, user=None, uczelnia=None, **dodatkowe):
     return wpis
 
 
-def zakolejkuj_wysylke(instance, user=None, uczelnia=None, po_przywroceniu=False):
+def zakolejkuj_wysylke(instance, user=None, uczelnia=None):
     """Tworzy wpis WYSYLKA i uruchamia wysyłkę w tle.
 
     Wołane m.in. przy przywróceniu publikacji z kosza (faza 06).
@@ -92,7 +91,6 @@ def zakolejkuj_wysylke(instance, user=None, uczelnia=None, po_przywroceniu=False
         PBN_Export_Queue.Operacja.WYSYLKA,
         user=user,
         uczelnia=uczelnia,
-        po_przywroceniu=po_przywroceniu,
     )
 
 
@@ -120,147 +118,53 @@ def zakolejkuj_wycofanie(instance, user=None, uczelnia=None):
 
 # --- kosz a kolejka PBN ---------------------------------------------------
 #
-# Proste reguły (decyzja właściciela, listopad 2026):
+# JEDNA reguła (decyzja właściciela, listopad 2026): rekord z JAKIMKOLWIEK
+# niezakończonym wpisem kolejki (czeka, podjęty, czeka na ponowienie —
+# wysyłka czy wycofanie) NIE może trafić do kosza ani z niego wrócić.
+# Wiszącą wysyłkę operator może usunąć z kolejki ręcznie (wpisy wysyłki są
+# usuwalne; wpisy wycofania — nie).
 #
-# - „W TRAKCIE" = worker trzyma sesyjną blokadę doradczą rekordu
-#   (``klucz_blokady_rekordu``) przez całą próbę wysyłki/wycofania. Kosz
-#   i przywrócenie biorą ``pg_try_advisory_xact_lock`` na tym samym kluczu —
-#   zajęty → „trwa wysyłka/wycofywanie w PBN, spróbuj za chwilę".
-# - KOSZ: aktywny wpis rekordu blokuje kosz, dopóki kolejka z nim nie
-#   skończy. Wyjątek: czekającą WYSYŁKĘ operator może jawnie ANULOWAĆ
-#   (``anuluj_wysylke_pbn=True``) — wtedy rekord idzie do kosza, a receiver
-#   zleca wycofanie. Wysyłka zlecona przy PRZYWRÓCENIU blokuje do końca.
-# - PRZYWRÓCENIE: aktywne wycofanie blokuje przywrócenie do jego końca;
-#   potem receiver zleca wysyłkę — tylko gdy rekord ma PBN UID.
-# - WORKER tuż przed wysyłką (pod blokadą) czyta stan rekordu od nowa:
-#   wysyłka rekordu z kosza / wycofanie rekordu żywego kończą się bez
-#   rozmowy z PBN (``PBN_Export_Queue._stan_rekordu_wyklucza``).
+# Serializacja: zakolejkowanie (każda ścieżka — przez
+# ``sprobuj_utowrzyc_wpis`` / ``prepare_for_resend``) i kosz/przywrócenie
+# biorą TĘ SAMĄ blokadę transakcyjną rekordu
+# (``PBN_Export_Queue.objects.zablokuj_rekord``) i sprawdzają stan pod nią.
+
+
+KOMUNIKAT_REKORD_W_KOLEJCE = (
+    "Rekord jest w kolejce PBN — poczekaj, aż kolejka zakończy jego przetwarzanie."
+)
 
 
 class RekordWKolejcePBN(Exception):
-    """Rekordu nie można teraz przenieść do kosza / przywrócić z powodu
-    kolejki PBN. ``powod``: ``oczekuje`` (czekająca wysyłka — można ją
-    anulować), ``w_trakcie`` (worker właśnie wysyła/wycofuje),
-    ``po_przywroceniu`` (wysyłka po przywróceniu z kosza — trzeba poczekać),
-    ``wycofanie`` (czeka wycofanie z PBN — trzeba poczekać).
-    """
+    """Rekord ma niezakończony wpis kolejki PBN — kosz/przywrócenie
+    niemożliwe, dopóki kolejka go nie przetworzy."""
 
-    def __init__(self, wpis, powod, rekord=None):
+    def __init__(self, wpis=None):
         self.wpis = wpis
-        self.powod = powod
-        rekord = rekord if rekord is not None else wpis.rekord_do_wysylki
-        komunikaty = {
-            "oczekuje": (
-                f"Rekord „{rekord}” jest w kolejce wysyłki do PBN — trzeba go "
-                f"z niej wycofać, zanim trafi do kosza."
-            ),
-            "w_trakcie": (
-                f"Trwa wysyłka/wycofywanie rekordu „{rekord}” w PBN — spróbuj "
-                f"za chwilę."
-            ),
-            "po_przywroceniu": (
-                f"Rekord „{rekord}” czeka na ponowną wysyłkę do PBN po "
-                f"przywróceniu z kosza — można go usunąć dopiero, gdy ta "
-                f"wysyłka się zakończy."
-            ),
-            "wycofanie": (
-                f"Rekord „{rekord}” jest wycofywany z PBN — operacja będzie "
-                f"możliwa po zakończeniu wycofania (kolejka eksportu do PBN)."
-            ),
-        }
-        super().__init__(komunikaty[powod])
-
-    @property
-    def w_toku(self):
-        return self.powod == "w_trakcie"
-
-
-def _klucz(instance):
-    from django.contrib.contenttypes.models import ContentType
-
-    from pbn_export_queue.models import klucz_blokady_rekordu
-
-    ct = ContentType.objects.get_for_model(instance)
-    return klucz_blokady_rekordu(ct.pk, instance.pk)
-
-
-def rekord_w_trakcie_pbn(instance):
-    """Czy worker właśnie wysyła/wycofuje ten rekord (bez efektów ubocznych
-    — sprawdza ``pg_locks``)."""
-    from django.db import connection
-
-    klucz = _klucz(instance)
-    with connection.cursor() as cur:
-        cur.execute(
-            "SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' "
-            "AND objsubid = 1 AND granted "
-            "AND ((classid::bigint << 32) | objid::bigint) = %s)",
-            [klucz],
-        )
-        return cur.fetchone()[0]
-
-
-def _zablokuj_rekord_pbn(instance, wpis):
-    """``pg_try_advisory_xact_lock`` na kluczu rekordu — zajęty znaczy, że
-    worker właśnie go wysyła/wycofuje."""
-    from django.db import connection
-
-    with connection.cursor() as cur:
-        cur.execute("SELECT pg_try_advisory_xact_lock(%s)", [_klucz(instance)])
-        if not cur.fetchone()[0]:
-            raise RekordWKolejcePBN(wpis, "w_trakcie", rekord=instance)
-
-
-def _aktywny_wpis(instance, zablokuj=False):
-    qs = PBN_Export_Queue.objects.filter_rekord_do_wysylki(instance)
-    if zablokuj:
-        qs = qs.select_for_update()
-    return qs.first()
+        super().__init__(KOMUNIKAT_REKORD_W_KOLEJCE)
 
 
 def aktywny_wpis(instance):
-    """Aktywny (niezakończony) wpis kolejki dla rekordu albo ``None``."""
-    return _aktywny_wpis(instance)
+    """Niezakończony wpis kolejki dla rekordu albo ``None``."""
+    return PBN_Export_Queue.objects.filter_rekord_do_wysylki(instance).first()
 
 
-def stan_kolejki_przed_koszem(instance):
-    """Bez efektów ubocznych (strona potwierdzenia): ``(wpis, powod)`` —
-    ``powod`` jak w ``RekordWKolejcePBN`` albo ``None``."""
-    wpis = _aktywny_wpis(instance)
-    if rekord_w_trakcie_pbn(instance):
-        return wpis, "w_trakcie"
-    if wpis is None:
-        return None, None
-    if wpis.operacja == PBN_Export_Queue.Operacja.WYCOFANIE:
-        return wpis, "wycofanie"
-    if wpis.po_przywroceniu:
-        return wpis, "po_przywroceniu"
-    return wpis, "oczekuje"
+def sprawdz_kolejke_przed_koszem(instance):
+    """Kosz/przywrócenie: blokada rekordu, potem reguła i świeży ``pbn_uid``.
 
-
-def przygotuj_kolejke_do_kosza(instance, anuluj_wysylke_pbn=False, user=None):
-    """Przed przeniesieniem do kosza (wołać w transakcji zapisu kosza)."""
-    wpis = _aktywny_wpis(instance, zablokuj=True)
-    _zablokuj_rekord_pbn(instance, wpis)
-    if wpis is None:
-        return
-    if wpis.operacja == PBN_Export_Queue.Operacja.WYCOFANIE:
-        raise RekordWKolejcePBN(wpis, "wycofanie")
-    if wpis.po_przywroceniu:
-        raise RekordWKolejcePBN(wpis, "po_przywroceniu")
-    if not anuluj_wysylke_pbn:
-        raise RekordWKolejcePBN(wpis, "oczekuje")
-    kto = f" przez: {user}" if user is not None else ""
-    wpis.anuluj(f"Anulowano: rekord przeniesiony do kosza{kto}. ")
-
-
-def przygotuj_kolejke_do_przywrocenia(instance, user=None):
-    """Przed przywróceniem (wołać w transakcji przywracania): worker
-    w trakcie albo aktywny wpis (wycofanie) → ``RekordWKolejcePBN``."""
-    wpis = _aktywny_wpis(instance, zablokuj=True)
-    _zablokuj_rekord_pbn(instance, wpis)
-    if wpis is None:
-        return
-    if wpis.operacja == PBN_Export_Queue.Operacja.WYCOFANIE:
-        raise RekordWKolejcePBN(wpis, "wycofanie")
-    raise RekordWKolejcePBN(wpis, "oczekuje")
+    Wołać w transakcji kosza/przywrócenia. Pod blokadą żadna ścieżka nie
+    zakolejkuje rekordu, a ``pbn_uid`` czytamy z bazy — o wycofaniu (kosz)
+    i wysyłce (przywrócenie) decyduje receiver na podstawie tej wartości,
+    nie nieaktualnej instancji (np. sprzed pierwszej udanej wysyłki).
+    """
+    PBN_Export_Queue.objects.zablokuj_rekord(instance)
+    wpis = aktywny_wpis(instance)
+    if wpis is not None:
+        raise RekordWKolejcePBN(wpis)
+    if hasattr(instance, "pbn_uid_id"):
+        instance.pbn_uid_id = (
+            type(instance)
+            ._base_manager.filter(pk=instance.pk)
+            .values_list("pbn_uid_id", flat=True)
+            .get()
+        )

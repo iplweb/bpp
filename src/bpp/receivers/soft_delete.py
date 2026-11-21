@@ -170,10 +170,9 @@ def on_post_soft_delete(sender, instance, **kwargs):
 def on_post_restore(sender, instance, **kwargs):
     """Przywrócenie → ponowna wysyłka do PBN, punktacja i wpis audytu.
 
-    Aktywne wycofanie blokuje przywrócenie (``restore()`` rzuca
-    ``RekordWKolejcePBN``), więc tutaj kolejka jest wolna. Wysyłka po
-    przywróceniu ma ``po_przywroceniu=True`` — do jej końca rekordu nie da
-    się znów usunąć.
+    Niezakończony wpis kolejki blokuje przywrócenie (``restore()`` rzuca
+    ``RekordWKolejcePBN``), więc tutaj kolejka jest wolna. Do końca tej
+    wysyłki rekordu nie da się znów usunąć (ta sama reguła).
 
     Punktację PRZELICZAMY, a nie odtwarzamy z kopii: wiersze
     ``Cache_Punktacja_*`` zostały skasowane, a przez czas pobytu w koszu
@@ -196,7 +195,7 @@ def on_post_restore(sender, instance, **kwargs):
         # nigdy niewysłany nie dostaje po przywróceniu żadnego zlecenia.
         wpis, status = _kolejkuj_pbn(
             instance,
-            lambda obj, **kw: zakolejkuj_wysylke(obj, po_przywroceniu=True, **kw),
+            zakolejkuj_wysylke,
             STATUS_WYSYLKA,
         )
     _utworz_log(

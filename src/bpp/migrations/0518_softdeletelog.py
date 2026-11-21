@@ -4,6 +4,8 @@ import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
 
+from bpp.migration_util import nieodwracalna
+
 
 class Migration(migrations.Migration):
 
@@ -34,4 +36,5 @@ class Migration(migrations.Migration):
                 'indexes': [models.Index(fields=['content_type', 'object_id'], name='bpp_softdel_content_e5d237_idx')],
             },
         ),
+        nieodwracalna(),
     ]

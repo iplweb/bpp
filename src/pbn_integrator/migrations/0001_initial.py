@@ -3,6 +3,8 @@
 import django.db.models.deletion
 from django.db import migrations, models
 
+from bpp.migration_util import nieodwracalna
+
 
 class Migration(migrations.Migration):
 
@@ -33,4 +35,5 @@ class Migration(migrations.Migration):
                 'constraints': [models.UniqueConstraint(fields=('content_type', 'object_id', 'zrodlo_importu'), name='pbnint_kosz_jeden_wpis_na_rekord')],
             },
         ),
+        nieodwracalna(),
     ]

@@ -88,9 +88,45 @@ class PBN_Export_QueueManager(models.Manager.from_queryset(PBN_Export_QueueQuery
             wysylke_zakonczono=None,
         )
 
-    def sprobuj_utowrzyc_wpis(
-        self, user, rekord, uczelnia=None, operacja=None, **dodatkowe
-    ):
+    def zablokuj_rekord(self, rekord):
+        """Transakcyjna blokada doradcza rekordu, wspólna dla WSZYSTKICH
+        ścieżek kolejkowania i dla kosza/przywrócenia (``operacje.py``).
+
+        Blokująca (krótkie sekcje). Wołać w ``transaction.atomic()`` —
+        w autocommicie blokada puściłaby od razu. Klucz z nazwy
+        (``advisory_lock_id``) — rozłączny z sesyjną blokadą workera
+        i z dwuargumentowymi blokadami triggerów cache.
+        """
+        from django_bpp.db_locks import advisory_lock_id
+
+        ct = ContentType.objects.get_for_model(rekord)
+        klucz = advisory_lock_id(f"pbn_export_queue.rekord:{ct.pk}:{rekord.pk}")
+        with connection.cursor() as cur:
+            cur.execute("SELECT pg_advisory_xact_lock(%s)", [klucz])
+
+    def sprawdz_czy_nie_w_koszu(self, rekord):
+        """Pod ``zablokuj_rekord``: rekordu z kosza nie wysyłamy do PBN
+        (stan czytany z bazy, nie z instancji)."""
+        model = type(rekord)
+        if not hasattr(model, "deleted_objects"):
+            return
+        w_koszu = model._base_manager.filter(
+            pk=rekord.pk, deleted_at__isnull=False
+        ).exists()
+        if w_koszu:
+            raise RekordWKoszuPBN(
+                f"Rekord „{rekord}” jest w koszu — nie wysyła się go do PBN."
+            )
+
+    def sprobuj_utowrzyc_wpis(self, user, rekord, uczelnia=None, operacja=None):
+        with transaction.atomic():
+            self.zablokuj_rekord(rekord)
+            if operacja != PBN_Export_Queue.Operacja.WYCOFANIE:
+                # Wycofanie zleca sam kosz — rekord jest wtedy w koszu.
+                self.sprawdz_czy_nie_w_koszu(rekord)
+            return self._utworz_wpis(user, rekord, uczelnia, operacja)
+
+    def _utworz_wpis(self, user, rekord, uczelnia, operacja):
         # Szybka ścieżka (przyjazny błąd bez trafiania w constraint bazy).
         if self.filter_rekord_do_wysylki(rekord).exists():
             raise AlreadyEnqueuedError("ten rekord jest już w kolejce do wysyłki")
@@ -104,7 +140,6 @@ class PBN_Export_QueueManager(models.Manager.from_queryset(PBN_Export_QueueQuery
             # Pominięcie zostawia default modelu (WYSYLKA), więc wszystkie
             # dotychczasowe wywołania działają bez zmian.
             kwargs["operacja"] = operacja
-        kwargs.update(dodatkowe)
 
         # Właściwe zabezpieczenie przed wyścigiem: między exists() a create()
         # inny proces mógł dodać aktywny wpis. Częściowy unikat
@@ -133,6 +168,10 @@ class PBN_Export_QueueManager(models.Manager.from_queryset(PBN_Export_QueueQuery
 #: wysyłka do PBN nie blokuje edycji rekordu.
 def klucz_blokady_rekordu(content_type_id, object_id):
     return (int(content_type_id) << 32) | int(object_id)
+
+
+class RekordWKoszuPBN(AlreadyEnqueuedError):
+    """Rekordu z kosza nie kolejkuje się do wysyłki do PBN."""
 
 
 class WycofanieZablokowane(AlreadyEnqueuedError):
@@ -175,7 +214,9 @@ class PBN_Export_Queue(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     rekord_do_wysylki = GenericForeignKey()
 
-    zamowil = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE)
+    # PROTECT: konta z wpisami kolejki nie da się usunąć (dezaktywuje się
+    # je) — kto zlecił wysyłkę/wycofanie w PBN jest śladem audytu.
+    zamowil = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT)
 
     uczelnia = models.ForeignKey(
         "bpp.Uczelnia",
@@ -229,14 +270,6 @@ class PBN_Export_Queue(models.Model):
         "publikacji w PBN — ten jest współdzielony między instytucjami.",
     )
 
-    po_przywroceniu = models.BooleanField(
-        default=False,
-        verbose_name="Wysyłka po przywróceniu z kosza",
-        help_text="Wysyłka zlecona przy przywróceniu rekordu z kosza. Dopóki "
-        "się nie zakończy, rekordu nie można ponownie przenieść do kosza "
-        "(ani anulować tej wysyłki).",
-    )
-
     objects = PBN_Export_QueueManager()
 
     class Meta:
@@ -270,23 +303,6 @@ class PBN_Export_Queue(models.Model):
                 "Aktywnego zlecenia wycofania z PBN nie można usunąć z kolejki."
             )
         return super().delete(*args, **kwargs)
-
-    def anuluj(self, msg):
-        """Zamyka NIEPODJĘTY wpis jako anulowany (wykluczony z eksportu).
-
-        Wołać wyłącznie z zablokowanym wierszem (``select_for_update``)
-        i z blokadą doradczą rekordu (``zablokuj_rekord_pbn``) — worker
-        wysyła tylko pod tą samą blokadą i po niej czyta stan wpisu od nowa,
-        więc anulowanego wpisu już nie wyśle.
-        """
-        type(self).objects.filter(pk=self.pk).update(
-            wysylke_zakonczono=timezone.now(),
-            zakonczono_pomyslnie=False,
-            wykluczone=True,
-            rodzaj_bledu=None,
-            komunikat=(self.komunikat or "") + msg,
-        )
-        self.refresh_from_db()
 
     @property
     def ostatnia_aktualizacja(self):
@@ -344,6 +360,9 @@ class PBN_Export_Queue(models.Model):
     def prepare_for_resend(self, user=None, message_suffix=""):
         """Przygotowuje obiekt do ponownej wysyłki.
 
+        Pod tą samą blokadą rekordu co kosz (``zablokuj_rekord``): rekordu
+        z kosza nie wysyłamy ponownie (``RekordWKoszuPBN``).
+
         :raises AlreadyEnqueuedError: gdy wpis jest już zakończony, a dla tego
             samego rekordu istnieje INNY aktywny wpis — uaktywnienie tego
             złamałoby częściowy unikat (jeden aktywny wpis na rekord). Rekord
@@ -357,34 +376,39 @@ class PBN_Export_Queue(models.Model):
                 "kolejka obsługuje je sama."
             )
 
-        if self.wysylke_zakonczono is not None:
-            istnieje_inny_aktywny = (
-                type(self)
-                .objects.filter_rekord_do_wysylki(self.rekord_do_wysylki)
-                .exclude(pk=self.pk)
-                .exists()
-            )
-            if istnieje_inny_aktywny:
-                raise AlreadyEnqueuedError(
-                    "dla tego rekordu istnieje już aktywny wpis w kolejce"
+        with transaction.atomic():
+            rekord = self.rekord_do_wysylki
+            if rekord is not None:
+                type(self).objects.zablokuj_rekord(rekord)
+                type(self).objects.sprawdz_czy_nie_w_koszu(rekord)
+            if self.wysylke_zakonczono is not None:
+                istnieje_inny_aktywny = (
+                    type(self)
+                    .objects.filter_rekord_do_wysylki(rekord)
+                    .exclude(pk=self.pk)
+                    .exists()
                 )
+                if istnieje_inny_aktywny:
+                    raise AlreadyEnqueuedError(
+                        "dla tego rekordu istnieje już aktywny wpis w kolejce"
+                    )
 
-        self.wysylke_zakonczono = None
-        self.zakonczono_pomyslnie = None
-        self.retry_after_user_authorised = None
-        self.rodzaj_bledu = None
-        self.wykluczone = False
+            self.wysylke_zakonczono = None
+            self.zakonczono_pomyslnie = None
+            self.retry_after_user_authorised = None
+            self.rodzaj_bledu = None
+            self.wykluczone = False
 
-        msg = "Ponownie wysłano"
-        if user is not None:
-            self.zamowil = user
-            msg += f" przez użytkownika: {user}"
-        if message_suffix is not None:
-            msg += f"{message_suffix}"
-        msg += ". "
-        self.dopisz_komunikat(msg)
+            msg = "Ponownie wysłano"
+            if user is not None:
+                self.zamowil = user
+                msg += f" przez użytkownika: {user}"
+            if message_suffix is not None:
+                msg += f"{message_suffix}"
+            msg += ". "
+            self.dopisz_komunikat(msg)
 
-        self.save()
+            self.save()
 
     def sprobuj_wyslac_do_pbn(self):
         from pbn_export_queue.tasks import task_sprobuj_wyslac_do_pbn
@@ -692,10 +716,9 @@ class PBN_Export_Queue(models.Model):
         """:return: SendStatus
 
         Cała próba idzie pod SESYJNĄ blokadą doradczą rekordu
-        (``klucz_blokady_rekordu``) — to ona znaczy „wysyłka/wycofanie
-        w trakcie": kosz i przywrócenie rekordu sprawdzają ją
-        (``pg_try_advisory_xact_lock``) i odmawiają, gdy jest zajęta.
-        Blokada znika sama, gdy worker padnie (koniec sesji bazy).
+        (``klucz_blokady_rekordu``) — dwa workery nie wyślą tego samego
+        rekordu naraz. Blokada znika sama, gdy worker padnie (koniec sesji
+        bazy).
         """
         self.refresh_from_db()
 
@@ -703,17 +726,27 @@ class PBN_Export_Queue(models.Model):
             return SendStatus.FINISHED_OKAY
 
         klucz = klucz_blokady_rekordu(self.content_type_id, self.object_id)
-        with connection.cursor() as cur:
-            cur.execute("SELECT pg_try_advisory_lock(%s)", [klucz])
-            if not cur.fetchone()[0]:
-                # Inny worker wysyła ten rekord albo trwa właśnie jego kosz /
-                # przywrócenie — spróbujemy za chwilę.
-                return SendStatus.RETRY_SOON
+        zablokowano = False
         try:
+            with connection.cursor() as cur:
+                cur.execute("SELECT pg_try_advisory_lock(%s)", [klucz])
+                zablokowano = cur.fetchone()[0]
+            if not zablokowano:
+                # Inny worker wysyła ten rekord — spróbujemy za chwilę.
+                return SendStatus.RETRY_SOON
             return self._send_to_pbn_pod_blokada()
         finally:
-            with connection.cursor() as cur:
-                cur.execute("SELECT pg_advisory_unlock(%s)", [klucz])
+            if zablokowano:
+                with connection.cursor() as cur:
+                    cur.execute("SELECT pg_advisory_unlock(%s)", [klucz])
+                    if not cur.fetchone()[0]:
+                        logger.error(
+                            "pg_advisory_unlock(%s) zwrócił false — blokada "
+                            "rekordu kolejki PBN (wpis pk=%s) nie była "
+                            "trzymana przez tę sesję",
+                            klucz,
+                            self.pk,
+                        )
 
     def _stan_rekordu_wyklucza(self):
         """Stan rekordu czytany od nowa pod blokadą, tuż przed wysyłką.
@@ -744,7 +777,6 @@ class PBN_Export_Queue(models.Model):
     def _send_to_pbn_pod_blokada(self):
         self.refresh_from_db()
         if self.wysylke_zakonczono is not None:
-            # Np. anulowany przy przenoszeniu rekordu do kosza.
             return SendStatus.FINISHED_OKAY
 
         status = self._stan_rekordu_wyklucza()

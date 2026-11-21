@@ -22,6 +22,8 @@ prawdę), baza nie dostaje nic.
 import django.db.models.deletion
 from django.db import migrations, models
 
+from bpp.migration_util import nieodwracalna
+
 
 class Migration(migrations.Migration):
     dependencies = [
@@ -79,4 +81,5 @@ class Migration(migrations.Migration):
                 ),
             ],
         ),
+        nieodwracalna(),
     ]

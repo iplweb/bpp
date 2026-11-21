@@ -38,10 +38,10 @@ def _policz(sql, *params):
 
 @pytest.mark.django_db(transaction=True)
 def test_migracja_przechodzi_na_bazie_z_duplikatami():
-    # zdejmij constraint — dopiero wtedy baza wpuści duplikaty
-    cofnij_tylko(CONSTRAINT, DEDUPLIKACJA)
-
     try:
+        # zdejmij constraint — dopiero wtedy baza wpuści duplikaty
+        cofnij_tylko(CONSTRAINT, DEDUPLIKACJA)
+
         trojka = {
             "institutionId": baker.make(Institution),
             "publicationId": baker.make(Publication),
