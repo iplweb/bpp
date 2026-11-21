@@ -6565,31 +6565,38 @@ def powiazania_autorow(page: Page, base: str, out: Path) -> None:
     czekaj_na_graf(page)
     centrum = AUTOR_NOWY_ROK
     silny = page.evaluate(NAJSILNIEJSZY_JS, centrum)
-    page.evaluate(PIN_CY_JS, ["kb-centrum", "node", centrum, 0, -2])
+    # pad -8: the box hugs the inside of the node, so the name under it stays readable
+    page.evaluate(PIN_CY_JS, ["kb-centrum", "node", centrum, 0, -8])
     page.evaluate(PIN_CY_JS, ["kb-krawedz", "edge", centrum, silny, 6])
+    k = page_box(page, "#kb-krawedz")
+    graf = page_box(page, "#graf-wrapper")
     mark(
         page,
         [
             {
+                # short label in the gap left of the centre, right of the
+                # "Gaunter ze Stygga" node; nearly level arrow
                 "sel": "#kb-centrum",
                 "arrow": "left",
-                "label": "1. autor, od którego zaczynasz",
-                "dx": -100,
-                "dy": -200,
+                "label": "1. ten autor",
+                "dx": 60,
+                "dy": -30,
             },
             {
+                # label in the empty band right of the graph, arrow passes
+                # between the node labels
                 "sel": "#kb-krawedz",
-                "arrow": "below",
+                "arrow": "right",
                 "label": "2. więcej wspólnych prac",
-                "dx": 92,
-                "dy": 92,
+                "dx": graf["x"] + graf["width"] - 300 - (k["x"] + k["width"] + 6 + 110),
+                "dy": -48,
             },
             {
                 "sel": "#graf-legenda",
                 "arrow": "below",
                 "label": "3. legenda",
                 "dx": -20,
-                "dy": 0,
+                "dy": -50,
             },
         ],
     )
@@ -6789,22 +6796,24 @@ def powiazania_autorow(page: Page, base: str, out: Path) -> None:
         page,
         [
             {
+                # label on the "Widok 2D" row, right below the checkbox:
+                # a short hook up to it, clear of "Etykiety" and the help text
                 "sel": "label:has(#siec3d-etykiety-chk)",
                 "arrow": "below",
-                "label": "nazwiska najważniejszych autorów",
-                "dx": -380,
-                "dy": 30,
+                "label": "nazwiska 25 najważniejszych",
+                "dx": -20,
+                "dy": -86,
             },
             {
                 "sel": "a[href$='/powiazania/'].button",
-                "arrow": "below",
+                "arrow": "right",
                 "label": "powrót do 2D",
-                "dx": -20,
-                "dy": 40,
+                "dx": -60,
+                "dy": -40,
             },
         ],
     )
-    shot(page, out / "09-widok-3d.png", 110, 760)
+    shot(page, out / "09-widok-3d.png", 100, 770)
 
 
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
