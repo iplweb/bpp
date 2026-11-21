@@ -277,9 +277,25 @@ wersję" jest zablokowane (najpierw „Przywróć" z kosza).
 
 ## Admin
 
-- Lista nad `global_objects` z filtrem „Kosz" (domyślnie: tylko żywe).
+- Lista nad `global_objects` z filtrem „♻️ Kosz" (domyślnie: tylko żywe),
+  zawsze **ostatnim** w panelu filtrów.
 - „Usuń" na rekordzie → strona potwierdzenia kosza (powód, PBN, pytanie
   o kolejkę); guard daje komunikat zamiast 500.
+- Strona „Nie można przenieść do kosza" **wylicza blokujące rekordy**:
+  guard rzuca `BlokadaKosza` (podklasa `ProtectedError`) z listą
+  `GrupaBlokady` per relacja (`grupa_blokady` — jedno zapytanie na relację:
+  próbka `LIMIT_POZYCJI_BLOKADY` = 15 wierszy, najpierw te w koszu, plus
+  `COUNT(*) OVER ()` całości i rekordów w koszu). Pozycje linkują do strony
+  rekordu w adminie (wiersze `*_Autor` — do publikacji), rekordy z kosza są
+  oznaczone „🗑️ w koszu"; reszta to „…i jeszcze N". Etykiety grup:
+  `ETYKIETY_RELACJI_KOSZA`, poza nimi — z `_meta`. Tak samo pokazywane są
+  autorzy per uczelnia (praca wielouczelniana), habilitacje wskazujące
+  publikację i wpis kolejki PBN (`grupa_blokady_kolejki`).
+- Strony kosza (potwierdzenie, blokada, akcja z powodem) używają markupu
+  Grappelli (`grp-module`, `grp-row`, `grp-submit-row`), bez własnego CSS.
+- Rekord z kosza ma na dole przycisk „♻️ Przywróć" (`<pk>/przywroc/`,
+  tylko POST; te same uprawnienia `delete` + `change` i reguły co akcja
+  „Przywróć zaznaczone", w tym blokada kolejki PBN).
 - Akcje: „🗑️ Usuń do kosza (z powodem)" (uprawnienie `delete`),
   „♻️ Przywróć zaznaczone" (`delete` + `change`). Uprawnienie sprawdzane
   per rekord. Trwałego usuwania z kosza w adminie nie ma.
