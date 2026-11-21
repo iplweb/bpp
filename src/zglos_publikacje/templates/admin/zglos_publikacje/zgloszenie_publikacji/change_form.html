@@ -8,6 +8,8 @@
     {% if importer_url %}
         <li><a href="{{ importer_url }}">📥 Użyj importera</a></li>
     {% endif %}
+    {# Zgłoszenie z kosza: tylko do odczytu, bez zwrotu i dodawania rekordu. #}
+    {% if not original.deleted_at %}
     {% if original.moze_zostac_zwrocony %}
         <li><a href="../zwroc/">Zwróć do autora</a></li>
     {% endif %}
@@ -20,6 +22,7 @@
             <li><a href="{% url "admin:bpp_wydawnictwo_ciagle_add" %}?numer_zgloszenia={{ original.pk }}">Dodaj wyd. ciągłe</a></li>
             <li><a href="{% url "admin:bpp_wydawnictwo_zwarte_add" %}?numer_zgloszenia={{ original.pk }}">Dodaj wyd. zwarte</a></li>
         {% endif %}
+    {% endif %}
     {% endif %}
     {{ block.super }}
 {% endblock %}

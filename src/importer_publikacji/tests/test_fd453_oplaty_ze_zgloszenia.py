@@ -10,7 +10,6 @@ that submission, the declaration must end up on the created
 from decimal import Decimal
 
 import pytest
-from django.utils import timezone
 from model_bakery import baker
 
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
@@ -133,8 +132,8 @@ def test_bez_zwiazanego_zgloszenia_oplaty_puste(sesja):
 def test_soft_usuniete_zgloszenie_nie_przekazuje_oplat(sesja):
     zgl = _zgl(opl_pub_cost_free=True)
     session = sesja(zgloszenie=zgl)
-    # A bulk UPDATE bypasses the ``on_delete`` emulation: the FK stays.
-    Zgloszenie_Publikacji.objects.filter(pk=zgl.pk).update(deleted_at=timezone.now())
+    # The trash does not cascade: the session still points at the submission.
+    zgl.delete(reason="test")
     session = ImportSession.objects.get(pk=session.pk)
 
     record = _create_publication(session)

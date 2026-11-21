@@ -16677,6 +16677,27 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+314	bpp	0224_auto_20201007_0956	2000-01-01 00:00:00+00
+744	import_dyscyplin	0015_auto_20190326_0553	2000-01-01 00:00:00+00
+1166	bpp	0505_wydawca_slug_dane	2000-01-01 00:00:00+00
+1167	bpp	0506_wydawca_slug_unique	2000-01-01 00:00:00+00
+1168	bpp	0507_zrodlo_issn_norm_indexes	2000-01-01 00:00:00+00
+1169	bpp	0508_uczelnia_help_texty_pbn_profil	2000-01-01 00:00:00+00
+1170	zglos_publikacje	0028_obslugujacy_verbose_name	2000-01-01 00:00:00+00
+1171	nowe_raporty	0003_opis_bibliograficzny_link	2000-01-01 00:00:00+00
+1172	bpp	0509_uczelnia_kafel_wydzialy	2000-01-01 00:00:00+00
+1173	ewaluacja_common	0005_okres_ewaluacji	2000-01-01 00:00:00+00
+1174	ewaluacja_common	0006_okresy_ewaluacji_dane	2000-01-01 00:00:00+00
+1175	ewaluacja_liczba_n	0011_okres_ewaluacji	2000-01-01 00:00:00+00
+1176	ewaluacja_liczba_n	0012_okres_ewaluacji_wymagany	2000-01-01 00:00:00+00
+1177	ewaluacja_metryki	0012_metrykaautora_okres	2000-01-01 00:00:00+00
+1178	ewaluacja_metryki	0013_metrykaautora_okres_notnull	2000-01-01 00:00:00+00
+1179	ewaluacja_optymalizacja	0017_okres_ewaluacji	2000-01-01 00:00:00+00
+1180	ewaluacja_optymalizacja	0018_okres_ewaluacji_dane	2000-01-01 00:00:00+00
+1181	ewaluacja_optymalizacja	0019_okres_ewaluacji_wymagany	2000-01-01 00:00:00+00
+1182	ewaluacja_common	0007_wybrany_okres_ewaluacji	2000-01-01 00:00:00+00
+1183	bpp	0510_slowniki_protect	2000-01-01 00:00:00+00
+1184	zglos_publikacje	0029_autor_slowniki_protect	2000-01-01 00:00:00+00
 344	bpp	0252_slug	2000-01-01 00:00:00+00
 472	bpp	0365_bppuser_pbn_token_updated	2000-01-01 00:00:00+00
 1004	bpp	0460_faza_b_ii2_repoint	2000-01-01 00:00:00+00
@@ -17291,7 +17312,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 310	bpp	0215_auto_20200806_0146	2000-01-01 00:00:00+00
 311	bpp	0221_merge_20200806_0851	2000-01-01 00:00:00+00
 313	bpp	0223_auto_20200812_1930	2000-01-01 00:00:00+00
-314	bpp	0224_auto_20201007_0956	2000-01-01 00:00:00+00
 315	bpp	0225_auto_20201007_1002	2000-01-01 00:00:00+00
 316	bpp	0226_rekord_mat_status	2000-01-01 00:00:00+00
 317	bpp	0227_auto_20201011_0010	2000-01-01 00:00:00+00
@@ -17673,7 +17693,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 741	import_dyscyplin	0012_import_dyscyplin_row_dyscyplina_ostateczna	2000-01-01 00:00:00+00
 742	import_dyscyplin	0013_auto_20190324_1826	2000-01-01 00:00:00+00
 743	import_dyscyplin	0014_auto_20190324_1906	2000-01-01 00:00:00+00
-744	import_dyscyplin	0015_auto_20190326_0553	2000-01-01 00:00:00+00
 745	import_dyscyplin	0016_auto_20190327_0129	2000-01-01 00:00:00+00
 746	import_dyscyplin	0017_auto_20190327_2246	2000-01-01 00:00:00+00
 747	import_dyscyplin	0018_auto_20200329_1719	2000-01-01 00:00:00+00
@@ -17858,25 +17877,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1163	bpp	0503_charakter_ogolny_rozdzialy_ksiazki	2000-01-01 00:00:00+00
 1164	taggit	0007_alter_taggeditem_options	2000-01-01 00:00:00+00
 1165	bpp	0504_wydawca_slug	2000-01-01 00:00:00+00
-1166	bpp	0505_wydawca_slug_dane	2000-01-01 00:00:00+00
-1167	bpp	0506_wydawca_slug_unique	2000-01-01 00:00:00+00
-1168	bpp	0507_zrodlo_issn_norm_indexes	2000-01-01 00:00:00+00
-1169	bpp	0508_uczelnia_help_texty_pbn_profil	2000-01-01 00:00:00+00
-1170	zglos_publikacje	0028_obslugujacy_verbose_name	2000-01-01 00:00:00+00
-1171	nowe_raporty	0003_opis_bibliograficzny_link	2000-01-01 00:00:00+00
-1172	bpp	0509_uczelnia_kafel_wydzialy	2000-01-01 00:00:00+00
-1173	ewaluacja_common	0005_okres_ewaluacji	2000-01-01 00:00:00+00
-1174	ewaluacja_common	0006_okresy_ewaluacji_dane	2000-01-01 00:00:00+00
-1175	ewaluacja_liczba_n	0011_okres_ewaluacji	2000-01-01 00:00:00+00
-1176	ewaluacja_liczba_n	0012_okres_ewaluacji_wymagany	2000-01-01 00:00:00+00
-1177	ewaluacja_metryki	0012_metrykaautora_okres	2000-01-01 00:00:00+00
-1178	ewaluacja_metryki	0013_metrykaautora_okres_notnull	2000-01-01 00:00:00+00
-1179	ewaluacja_optymalizacja	0017_okres_ewaluacji	2000-01-01 00:00:00+00
-1180	ewaluacja_optymalizacja	0018_okres_ewaluacji_dane	2000-01-01 00:00:00+00
-1181	ewaluacja_optymalizacja	0019_okres_ewaluacji_wymagany	2000-01-01 00:00:00+00
-1182	ewaluacja_common	0007_wybrany_okres_ewaluacji	2000-01-01 00:00:00+00
-1183	bpp	0510_slowniki_protect	2000-01-01 00:00:00+00
-1184	zglos_publikacje	0029_autor_slowniki_protect	2000-01-01 00:00:00+00
+1206	zglos_publikacje	0031_zgloszenie_kosz_zamrozony_trigger	2000-01-01 00:00:00+00
 \.
 
 
@@ -19948,7 +19949,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1205, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1206, true);
 
 
 --
@@ -34092,6 +34093,13 @@ CREATE TRIGGER ts_post_bpp_wydawnictwo_zwarte_search BEFORE INSERT OR UPDATE ON 
 --
 
 CREATE TRIGGER ts_post_bpp_zrodlo_search BEFORE INSERT OR UPDATE ON public.bpp_zrodlo FOR EACH ROW EXECUTE FUNCTION public.ts_post_bpp_zrodlo_search();
+
+
+--
+-- Name: zglos_publikacje_zgloszenie_publikacji zglos_publikacje_zgloszenie_publikacji_kosz_straznik; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER zglos_publikacje_zgloszenie_publikacji_kosz_straznik BEFORE DELETE OR UPDATE ON public.zglos_publikacje_zgloszenie_publikacji FOR EACH ROW EXECUTE FUNCTION public.bpp_kosz_straznik();
 
 
 --
