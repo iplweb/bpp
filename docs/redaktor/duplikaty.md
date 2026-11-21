@@ -264,7 +264,8 @@ Scalenie nie zmienia jednostki przy pracach — prace duplikatu zostają
 przypisane do jednostki, którą miał duplikat (po imporcie często
 niewłaściwej). Do przeniesienia ich hurtem służy **„Przemapuj prace”**.
 To narzędzie przenosi prace **jednego autora** między **jednostkami** —
-nie łączy dwóch autorów.
+nie łączy dwóch autorów. Pełny opis (co się zmienia, cofanie, historia):
+[Przemapowanie prac autora](przemapowanie-prac-autora.md).
 
 1. Na stronie autora kliknij **„Przemapuj prace”**.
 

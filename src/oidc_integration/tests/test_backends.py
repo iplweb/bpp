@@ -27,7 +27,7 @@ def _backend():
 
 
 def test_verify_claims_przepuszcza_gdy_jest_email():
-    assert _backend().verify_claims({"email": "jan@uafm.edu.pl"}) is True
+    assert _backend().verify_claims({"email": "jan@uczelnia.example.org"}) is True
 
 
 def test_verify_claims_odrzuca_bez_emaila():
@@ -36,17 +36,17 @@ def test_verify_claims_odrzuca_bez_emaila():
 
 
 def test_verify_claims_przepuszcza_znormalizowane_claimy_z_mail():
-    # Keycloak realmu KA wystawia `mail`; po normalizacji (get_userinfo)
+    # Keycloak realmu uczelni wystawia `mail`; po normalizacji (get_userinfo)
     # claimy mają `email` i weryfikacja przechodzi.
     backend = _backend()
-    claims = backend._normalized({"mail": "jan@uafm.edu.pl", "sub": "123"})
+    claims = backend._normalized({"mail": "jan@uczelnia.example.org", "sub": "123"})
     assert backend.verify_claims(claims) is True
 
 
 def test_verify_claims_loguje_klucze_na_debug(caplog):
     with caplog.at_level(logging.DEBUG, logger="oidc_integration.backends"):
         _backend().verify_claims(
-            {"email": "jan@uafm.edu.pl", "sub": "123", "person_id": "999"}
+            {"email": "jan@uczelnia.example.org", "sub": "123", "person_id": "999"}
         )
     debug = [r for r in caplog.records if r.levelno == logging.DEBUG]
     joined = " ".join(r.getMessage() for r in debug)
@@ -58,7 +58,7 @@ def test_verify_claims_redaguje_wartosci_claimow_domyslnie(caplog):
     with caplog.at_level(logging.DEBUG, logger="oidc_integration.backends"):
         _backend().verify_claims(
             {
-                "email": "jan@uafm.edu.pl",
+                "email": "jan@uczelnia.example.org",
                 "sub": "123",
                 "realm_access": {"roles": ["pracownik", "student"]},
             }
@@ -69,7 +69,7 @@ def test_verify_claims_redaguje_wartosci_claimow_domyslnie(caplog):
     # Nazwy claimów widoczne...
     assert "email" in joined and "realm_access" in joined
     # ...ale NIE identyfikujące wartości:
-    assert "jan@uafm.edu.pl" not in joined
+    assert "jan@uczelnia.example.org" not in joined
     assert "pracownik" not in joined
     # Zamiast tego zredagowany kształt:
     assert "<str len=" in joined
@@ -80,86 +80,92 @@ def test_verify_claims_surowe_wartosci_tylko_na_optin(caplog, monkeypatch):
     """DJANGO_BPP_OIDC_DEBUG_CLAIM_VALUES=1 odblokowuje surowe wartości."""
     monkeypatch.setenv("DJANGO_BPP_OIDC_DEBUG_CLAIM_VALUES", "1")
     with caplog.at_level(logging.DEBUG, logger="oidc_integration.backends"):
-        _backend().verify_claims({"email": "jan@uafm.edu.pl", "sub": "123"})
+        _backend().verify_claims({"email": "jan@uczelnia.example.org", "sub": "123"})
     joined = " ".join(
         r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG
     )
-    assert "jan@uafm.edu.pl" in joined
+    assert "jan@uczelnia.example.org" in joined
 
 
 def test_verify_claims_nie_pisze_bannera_na_stderr(capsys):
-    _backend().verify_claims({"email": "jan@uafm.edu.pl", "sub": "123"})
+    _backend().verify_claims({"email": "jan@uczelnia.example.org", "sub": "123"})
     assert "[OIDC]" not in capsys.readouterr().err
 
 
 def test_normalized_uzupelnia_email_z_mail():
-    out = _backend()._normalized({"mail": "jan@uafm.edu.pl", "sub": "1"})
-    assert out["email"] == "jan@uafm.edu.pl"
+    out = _backend()._normalized({"mail": "jan@uczelnia.example.org", "sub": "1"})
+    assert out["email"] == "jan@uczelnia.example.org"
     # oryginalny `mail` zachowany
-    assert out["mail"] == "jan@uafm.edu.pl"
+    assert out["mail"] == "jan@uczelnia.example.org"
 
 
 def test_normalized_mail_wygrywa_z_email():
     # Default mail-first: `mail` (instytucjonalny) ma pierwszeństwo nad `email`
-    # (prywatny). UAFM: email='...@kowalczewski.pl', mail='...@uafm.edu.pl'.
+    # (prywatny). Realm uczelni: email='...@prywatny.example.com',
+    # mail='...@uczelnia.example.org'.
     out = _backend()._normalized(
-        {"email": "prywatny@kowalczewski.pl", "mail": "instytut@uafm.edu.pl"}
+        {
+            "email": "prywatny@prywatny.example.com",
+            "mail": "instytut@uczelnia.example.org",
+        }
     )
-    assert out["email"] == "instytut@uafm.edu.pl"
+    assert out["email"] == "instytut@uczelnia.example.org"
     # oryginalny prywatny `email` zachowany pod swoim kluczem
-    assert out["mail"] == "instytut@uafm.edu.pl"
+    assert out["mail"] == "instytut@uczelnia.example.org"
 
 
 def test_normalized_email_jako_fallback_gdy_brak_mail():
     # `email` używany tylko, gdy brak `mail`.
-    out = _backend()._normalized({"email": "prywatny@kowalczewski.pl", "sub": "1"})
-    assert out["email"] == "prywatny@kowalczewski.pl"
+    out = _backend()._normalized({"email": "prywatny@prywatny.example.com", "sub": "1"})
+    assert out["email"] == "prywatny@prywatny.example.com"
 
 
 @override_settings(OIDC_EMAIL_CLAIMS=["email", "mail"])
 def test_normalized_kolejnosc_emaila_konfigurowalna():
     # Override przez settings: gdy realm woli `email`, można przestawić.
     out = _backend()._normalized(
-        {"email": "wlasny@uafm.edu.pl", "mail": "inny@uafm.edu.pl"}
+        {"email": "wlasny@uczelnia.example.org", "mail": "inny@uczelnia.example.org"}
     )
-    assert out["email"] == "wlasny@uafm.edu.pl"
+    assert out["email"] == "wlasny@uczelnia.example.org"
 
 
 def test_normalized_uzupelnia_email_z_e_mail_z_myslnikiem():
-    out = _backend()._normalized({"e-mail": "jan@uafm.edu.pl", "sub": "1"})
-    assert out["email"] == "jan@uafm.edu.pl"
+    out = _backend()._normalized({"e-mail": "jan@uczelnia.example.org", "sub": "1"})
+    assert out["email"] == "jan@uczelnia.example.org"
 
 
 def test_normalized_uzupelnia_email_z_e_mail_z_podkresleniem():
-    out = _backend()._normalized({"e_mail": "jan@uafm.edu.pl", "sub": "1"})
-    assert out["email"] == "jan@uafm.edu.pl"
+    out = _backend()._normalized({"e_mail": "jan@uczelnia.example.org", "sub": "1"})
+    assert out["email"] == "jan@uczelnia.example.org"
 
 
 def test_normalized_priorytet_mail_przed_wszystkimi():
     # Default mail-first: `mail` wygrywa ze wszystkimi wariantami.
     out = _backend()._normalized(
         {
-            "email": "a@uafm.edu.pl",
-            "e-mail": "b@uafm.edu.pl",
-            "e_mail": "c@uafm.edu.pl",
-            "mail": "d@uafm.edu.pl",
+            "email": "a@uczelnia.example.org",
+            "e-mail": "b@uczelnia.example.org",
+            "e_mail": "c@uczelnia.example.org",
+            "mail": "d@uczelnia.example.org",
         }
     )
-    assert out["email"] == "d@uafm.edu.pl"
+    assert out["email"] == "d@uczelnia.example.org"
 
 
 def test_normalized_priorytet_email_przed_e_mail_gdy_brak_mail():
     # brak `mail`; dalsza kolejność: email → e-mail → e_mail.
-    out = _backend()._normalized({"email": "a@uafm.edu.pl", "e-mail": "b@uafm.edu.pl"})
-    assert out["email"] == "a@uafm.edu.pl"
+    out = _backend()._normalized(
+        {"email": "a@uczelnia.example.org", "e-mail": "b@uczelnia.example.org"}
+    )
+    assert out["email"] == "a@uczelnia.example.org"
 
 
 def test_normalized_fallback_na_preferred_username_z_domena():
     # brak claimów e-mail; preferred_username wygląda jak adres → użyj go
     out = _backend()._normalized(
-        {"preferred_username": "99999@student-afm.edu.pl", "sub": "1"}
+        {"preferred_username": "99999@student.uczelnia.example.org", "sub": "1"}
     )
-    assert out["email"] == "99999@student-afm.edu.pl"
+    assert out["email"] == "99999@student.uczelnia.example.org"
 
 
 def test_normalized_odrzuca_gdy_username_bez_domeny():
@@ -181,7 +187,7 @@ def test_create_user_zaklada_zwykle_konto_bez_is_staff():
     user = backend.create_user(
         {
             "preferred_username": "jkowalski",
-            "email": "jan@uafm.edu.pl",
+            "email": "jan@uczelnia.example.org",
             "email_verified": True,
             "_bpp_email_trusted": True,
             "given_name": "Jan",
@@ -191,7 +197,7 @@ def test_create_user_zaklada_zwykle_konto_bez_is_staff():
     )
 
     assert user.username == "jkowalski"
-    assert user.email == "jan@uafm.edu.pl"
+    assert user.email == "jan@uczelnia.example.org"
     assert user.first_name == "Jan"
     assert user.last_name == "Kowalski"
     assert user.is_staff is False
@@ -212,9 +218,9 @@ def test_create_user_email_z_mail_po_normalizacji():
     user = backend.create_user(
         backend._normalized(
             {
-                "preferred_username": "99999@student-afm.edu.pl",
-                "mail": "99999@student-afm.edu.pl",
-                "email": "99999@student-afm.edu.pl",
+                "preferred_username": "99999@student.uczelnia.example.org",
+                "mail": "99999@student.uczelnia.example.org",
+                "email": "99999@student.uczelnia.example.org",
                 "email_verified": True,
                 "given_name": "Test",
                 "family_name": "Testowy",
@@ -223,8 +229,8 @@ def test_create_user_email_z_mail_po_normalizacji():
         )
     )
 
-    assert user.username == "99999@student-afm.edu.pl"
-    assert user.email == "99999@student-afm.edu.pl"
+    assert user.username == "99999@student.uczelnia.example.org"
+    assert user.email == "99999@student.uczelnia.example.org"
     assert user.first_name == "Test"
     assert user.last_name == "Testowy"
     assert user.is_staff is False
@@ -235,10 +241,10 @@ def test_get_userinfo_normalizuje_mail_na_email(mocker):
     mocker.patch.object(
         BppOIDCBackend.__bases__[0],
         "get_userinfo",
-        return_value={"mail": "jan@uafm.edu.pl", "sub": "1"},
+        return_value={"mail": "jan@uczelnia.example.org", "sub": "1"},
     )
     out = backend.get_userinfo("acc", "id", {"payload": True})
-    assert out["email"] == "jan@uafm.edu.pl"
+    assert out["email"] == "jan@uczelnia.example.org"
 
 
 @pytest.mark.django_db
@@ -252,7 +258,7 @@ def test_create_user_unika_kolizji_username():
     user = backend.create_user(
         {
             "preferred_username": "jkowalski",
-            "email": "jan@uafm.edu.pl",
+            "email": "jan@uczelnia.example.org",
             "email_verified": True,
             "_bpp_email_trusted": True,
         }
@@ -286,27 +292,27 @@ def test_create_user_username_z_settingu():
     user = backend.create_user(
         {
             "preferred_username": "jkowalski",
-            "email": "jan@uafm.edu.pl",
+            "email": "jan@uczelnia.example.org",
             "email_verified": True,
             "_bpp_email_trusted": True,
             "sub": "abc-123",
         }
     )
 
-    assert user.username == "jan@uafm.edu.pl"
+    assert user.username == "jan@uczelnia.example.org"
 
 
 @pytest.mark.django_db
-@override_settings(OIDC_LOGIN_SKROT="UAFM")
+@override_settings(OIDC_LOGIN_SKROT="UCZELNIA")
 def test_create_user_przypisuje_uczelnie_wg_skrotu():
-    uczelnia = baker.make("bpp.Uczelnia", skrot="UAFM")
+    uczelnia = baker.make("bpp.Uczelnia", skrot="UCZELNIA")
     backend = _backend()
     backend.UserModel = get_user_model()
 
     user = backend.create_user(
         {
             "preferred_username": "jkowalski",
-            "email": "jan@uafm.edu.pl",
+            "email": "jan@uczelnia.example.org",
             "email_verified": True,
             "_bpp_email_trusted": True,
         }
@@ -316,7 +322,7 @@ def test_create_user_przypisuje_uczelnie_wg_skrotu():
 
 
 @pytest.mark.django_db
-@override_settings(OIDC_LOGIN_SKROT="UAFM", OIDC_REQUIRE_EMAIL_VERIFIED=False)
+@override_settings(OIDC_LOGIN_SKROT="UCZELNIA", OIDC_REQUIRE_EMAIL_VERIFIED=False)
 def test_create_user_bez_pasujacej_uczelni_nie_przypisuje():
     # Uczelnia o innym skrócie — brak dopasowania, konto bez przypisania.
     baker.make("bpp.Uczelnia", skrot="INNA")
@@ -329,14 +335,14 @@ def test_create_user_bez_pasujacej_uczelni_nie_przypisuje():
 
 
 @pytest.mark.django_db
-@override_settings(OIDC_LOGIN_SKROT="UAFM")
+@override_settings(OIDC_LOGIN_SKROT="UCZELNIA")
 def test_create_user_dopasowuje_autora_w_uczelni():
-    # Po przypisaniu uczelni (skrot UAFM) konto dopasowuje autora z tej
+    # Po przypisaniu uczelni (skrot UCZELNIA) konto dopasowuje autora z tej
     # uczelni po e-mailu (= znormalizowany `mail`).
-    uczelnia = baker.make("bpp.Uczelnia", skrot="UAFM")
+    uczelnia = baker.make("bpp.Uczelnia", skrot="UCZELNIA")
     jednostka = baker.make("bpp.Jednostka", uczelnia=uczelnia)
     autor = baker.make(
-        "bpp.Autor", aktualna_jednostka=jednostka, email="jan@uafm.edu.pl"
+        "bpp.Autor", aktualna_jednostka=jednostka, email="jan@uczelnia.example.org"
     )
 
     backend = _backend()
@@ -346,8 +352,8 @@ def test_create_user_dopasowuje_autora_w_uczelni():
         backend._normalized(
             {
                 "preferred_username": "jkowalski",
-                "mail": "jan@uafm.edu.pl",
-                "email": "jan@uafm.edu.pl",
+                "mail": "jan@uczelnia.example.org",
+                "email": "jan@uczelnia.example.org",
                 "email_verified": True,
             }
         )
@@ -358,13 +364,15 @@ def test_create_user_dopasowuje_autora_w_uczelni():
 
 
 @pytest.mark.django_db
-@override_settings(OIDC_LOGIN_SKROT="UAFM")
+@override_settings(OIDC_LOGIN_SKROT="UCZELNIA")
 def test_create_user_nie_dopasowuje_autora_z_obcej_uczelni():
     # Autor istnieje w innej uczelni niż realm OIDC → konto bez powiązania.
-    baker.make("bpp.Uczelnia", skrot="UAFM")
+    baker.make("bpp.Uczelnia", skrot="UCZELNIA")
     obca = baker.make("bpp.Uczelnia", skrot="INNA")
     jednostka = baker.make("bpp.Jednostka", uczelnia=obca)
-    baker.make("bpp.Autor", aktualna_jednostka=jednostka, email="jan@uafm.edu.pl")
+    baker.make(
+        "bpp.Autor", aktualna_jednostka=jednostka, email="jan@uczelnia.example.org"
+    )
 
     backend = _backend()
     backend.UserModel = get_user_model()
@@ -373,8 +381,8 @@ def test_create_user_nie_dopasowuje_autora_z_obcej_uczelni():
         backend._normalized(
             {
                 "preferred_username": "jkowalski",
-                "mail": "jan@uafm.edu.pl",
-                "email": "jan@uafm.edu.pl",
+                "mail": "jan@uczelnia.example.org",
+                "email": "jan@uczelnia.example.org",
                 "email_verified": True,
             }
         )
@@ -385,22 +393,26 @@ def test_create_user_nie_dopasowuje_autora_z_obcej_uczelni():
 
 
 @pytest.mark.django_db
-@override_settings(OIDC_LOGIN_SKROT="UAFM")
+@override_settings(OIDC_LOGIN_SKROT="UCZELNIA")
 def test_update_user_dopasowuje_autora():
     # Konto założone wcześniej (bez autora) dostaje powiązanie przy kolejnym
     # logowaniu przez update_user.
-    uczelnia = baker.make("bpp.Uczelnia", skrot="UAFM")
+    uczelnia = baker.make("bpp.Uczelnia", skrot="UCZELNIA")
     jednostka = baker.make("bpp.Jednostka", uczelnia=uczelnia)
     autor = baker.make(
-        "bpp.Autor", aktualna_jednostka=jednostka, email="jan@uafm.edu.pl"
+        "bpp.Autor", aktualna_jednostka=jednostka, email="jan@uczelnia.example.org"
     )
 
     UserModel = get_user_model()
-    user = UserModel.objects.create_user(username="jkowalski", email="jan@uafm.edu.pl")
+    user = UserModel.objects.create_user(
+        username="jkowalski", email="jan@uczelnia.example.org"
+    )
 
     backend = _backend()
     backend.UserModel = UserModel
-    backend.update_user(user, {"email": "jan@uafm.edu.pl", "_bpp_email_trusted": True})
+    backend.update_user(
+        user, {"email": "jan@uczelnia.example.org", "_bpp_email_trusted": True}
+    )
 
     user.refresh_from_db()
     assert user.autor_id == autor.pk
@@ -409,7 +421,7 @@ def test_update_user_dopasowuje_autora():
 @pytest.mark.django_db
 @override_settings(OIDC_LOGIN_SKROT="", OIDC_REQUIRE_EMAIL_VERIFIED=False)
 def test_create_user_bez_skrotu_nie_przypisuje():
-    baker.make("bpp.Uczelnia", skrot="UAFM")
+    baker.make("bpp.Uczelnia", skrot="UCZELNIA")
     backend = _backend()
     backend.UserModel = get_user_model()
 
@@ -756,16 +768,20 @@ def test_link_mode_idempotent_same_identity(db):
     assert "oidc_link_mode" not in req.session
 
 
-# --- Task 10: UX odmowy (komunikat fail-closed w sesji) ---
+# --- Task 10: UX odmowy (komunikat fail-closed jako Django messages) ---
 
 
-def test_failclosed_sets_session_message(db):
+def test_failclosed_sets_error_message(db):
+    from django.contrib import messages
+    from django.contrib.messages import get_messages
+    from django.contrib.messages.storage.fallback import FallbackStorage
     from django.contrib.sessions.backends.db import SessionStore
 
     baker.make("bpp.BppUser", email="a@x.pl")
     b = _backend()
     req = RequestFactory().get("/oidc/callback/")
     req.session = SessionStore()
+    req._messages = FallbackStorage(req)
     b.request = req
     claims = {
         "sub": "S",
@@ -776,16 +792,20 @@ def test_failclosed_sets_session_message(db):
     }
     with pytest.raises(SuspiciousOperation):
         b.create_user(claims)
-    assert "oidc_error_message" in req.session
+    assert [m.level for m in get_messages(req)] == [messages.ERROR]
 
 
-def test_failclosed_untrusted_sets_session_message(db, settings):
+def test_failclosed_untrusted_sets_error_message(db, settings):
+    from django.contrib import messages
+    from django.contrib.messages import get_messages
+    from django.contrib.messages.storage.fallback import FallbackStorage
     from django.contrib.sessions.backends.db import SessionStore
 
     settings.OIDC_REQUIRE_EMAIL_VERIFIED = True
     b = _backend()
     req = RequestFactory().get("/oidc/callback/")
     req.session = SessionStore()
+    req._messages = FallbackStorage(req)
     b.request = req
     claims = {
         "sub": "S",
@@ -796,7 +816,7 @@ def test_failclosed_untrusted_sets_session_message(db, settings):
     }
     with pytest.raises(SuspiciousOperation):
         b.create_user(claims)
-    assert "oidc_error_message" in req.session
+    assert [m.level for m in get_messages(req)] == [messages.ERROR]
 
 
 def test_failclosed_without_request_still_raises(db):
@@ -953,20 +973,20 @@ def test_filter_excludes_inactive_account(db):
     assert list(b.filter_users_by_claims(claims)) == []
 
 
-# --- Zaufanie po domenie instytucjonalnej (realm UAFM) ---
+# --- Zaufanie po domenie instytucjonalnej (realm uczelni) ---
 #
-# Realm UAFM trzyma adres instytucjonalny w `mail`, a PRYWATNY w `email`
+# Realm uczelni trzyma adres instytucjonalny w `mail`, a PRYWATNY w `email`
 # (patrz a2124bf34). Stara reguła zaufania wymagała `email == payload_email`,
 # czyli równości instytucjonalnego z prywatnym — w tym realmie niespełnialnej.
 
-UAFM_ISS = "https://auth.uafm.edu.pl/auth/realms/KA"
+UCZELNIA_ISS = "https://auth.uczelnia.example.org/auth/realms/uczelnia"
 
 
-def _uafm_claims(**extra):
+def _uczelnia_claims(**extra):
     claims = {
         "sub": "P1",
-        "iss": UAFM_ISS,
-        "mail": "profesor@uafm.edu.pl",
+        "iss": UCZELNIA_ISS,
+        "mail": "profesor@uczelnia.example.org",
         "email": "prywatny@gmail.com",
         "email_verified": True,
         "preferred_username": "profesor",
@@ -975,52 +995,52 @@ def _uafm_claims(**extra):
     return claims
 
 
-@override_settings(OIDC_TRUSTED_EMAIL_DOMAINS=["uafm.edu.pl"])
+@override_settings(OIDC_TRUSTED_EMAIL_DOMAINS=["uczelnia.example.org"])
 def test_domena_czyni_email_zaufanym_mimo_prywatnego_email_claimu():
-    out = _backend()._normalized(_uafm_claims())
-    assert out["email"] == "profesor@uafm.edu.pl"
+    out = _backend()._normalized(_uczelnia_claims())
+    assert out["email"] == "profesor@uczelnia.example.org"
     assert out["_bpp_email_domain_trusted"] is True
     assert out["_bpp_email_trusted"] is True
 
 
-def test_bez_listy_domen_realm_uafm_nie_jest_zaufany():
+def test_bez_listy_domen_realm_uczelni_nie_jest_zaufany():
     # Regresja: udokumentowanie stanu sprzed poprawki.
-    out = _backend()._normalized(_uafm_claims())
+    out = _backend()._normalized(_uczelnia_claims())
     assert out["_bpp_email_trusted"] is False
 
 
-@override_settings(OIDC_TRUSTED_EMAIL_DOMAINS=["uafm.edu.pl"])
+@override_settings(OIDC_TRUSTED_EMAIL_DOMAINS=["uczelnia.example.org"])
 def test_domena_spoza_listy_nie_daje_zaufania():
-    out = _backend()._normalized(_uafm_claims(mail="ktos@obca.pl"))
+    out = _backend()._normalized(_uczelnia_claims(mail="ktos@obca.pl"))
     assert out["_bpp_email_domain_trusted"] is False
     assert out["_bpp_email_trusted"] is False
 
 
-@override_settings(OIDC_TRUSTED_EMAIL_DOMAINS=["uafm.edu.pl"])
+@override_settings(OIDC_TRUSTED_EMAIL_DOMAINS=["uczelnia.example.org"])
 def test_domena_porownywana_bez_wzgledu_na_wielkosc_liter():
-    out = _backend()._normalized(_uafm_claims(mail="Profesor@UAFM.Edu.PL"))
+    out = _backend()._normalized(_uczelnia_claims(mail="Profesor@Uczelnia.Example.ORG"))
     assert out["_bpp_email_domain_trusted"] is True
 
 
-@override_settings(OIDC_TRUSTED_EMAIL_DOMAINS=["student-afm.edu.pl"])
+@override_settings(OIDC_TRUSTED_EMAIL_DOMAINS=["student.uczelnia.example.org"])
 def test_domena_nie_ufa_adresowi_z_preferred_username():
     # Adres z fallbacku (UPN) pozostaje niezaufany — niezmiennik sprzed zmiany.
     claims = {
         "sub": "S1",
-        "iss": UAFM_ISS,
-        "preferred_username": "99999@student-afm.edu.pl",
+        "iss": UCZELNIA_ISS,
+        "preferred_username": "99999@student.uczelnia.example.org",
     }
     out = _backend()._normalized(claims)
-    assert out["email"] == "99999@student-afm.edu.pl"
+    assert out["email"] == "99999@student.uczelnia.example.org"
     assert out["_bpp_email_domain_trusted"] is False
     assert out["_bpp_email_trusted"] is False
 
 
-@override_settings(OIDC_TRUSTED_EMAIL_DOMAINS=["uafm.edu.pl"])
+@override_settings(OIDC_TRUSTED_EMAIL_DOMAINS=["uczelnia.example.org"])
 def test_domena_zaufana_nie_wymaga_email_verified():
     # `email_verified` dotyczy prywatnego claimu `email` — dla adresu z
     # katalogu instytucjonalnego jest nieadekwatne, więc nie blokuje.
-    out = _backend()._normalized(_uafm_claims(email_verified=False))
+    out = _backend()._normalized(_uczelnia_claims(email_verified=False))
     assert out["_bpp_email_trusted"] is True
 
 
@@ -1030,25 +1050,25 @@ def test_domena_zaufana_nie_wymaga_email_verified():
 def _privileged_settings(settings):
     settings.OIDC_GRACE_BIND_ENABLED = True
     settings.OIDC_GRACE_BIND_PRIVILEGED = True
-    settings.OIDC_TRUSTED_EMAIL_DOMAINS = ["uafm.edu.pl"]
+    settings.OIDC_TRUSTED_EMAIL_DOMAINS = ["uczelnia.example.org"]
 
 
 def test_grace_wiaze_konto_staff_gdy_domena_zaufana(db, settings):
     _privileged_settings(settings)
-    u = baker.make("bpp.BppUser", email="profesor@uafm.edu.pl", is_staff=True)
+    u = baker.make("bpp.BppUser", email="profesor@uczelnia.example.org", is_staff=True)
     u.set_unusable_password()
     u.save()
     b = _backend()
-    out = b._try_grace_bind(b._normalized(_uafm_claims()))
+    out = b._try_grace_bind(b._normalized(_uczelnia_claims()))
     assert out == u
-    assert u.oidc_identities.filter(issuer=UAFM_ISS, sub="P1").exists()
+    assert u.oidc_identities.filter(issuer=UCZELNIA_ISS, sub="P1").exists()
 
 
 def test_grace_wiaze_superusera_z_grupami_uprawnieniami_i_pbn(db, settings):
     _privileged_settings(settings)
     u = baker.make(
         "bpp.BppUser",
-        email="profesor@uafm.edu.pl",
+        email="profesor@uczelnia.example.org",
         is_staff=True,
         is_superuser=True,
         # Wartości bez znaczenia — liczy się tylko to, że pola są NIEPUSTE
@@ -1060,28 +1080,28 @@ def test_grace_wiaze_superusera_z_grupami_uprawnieniami_i_pbn(db, settings):
     u.groups.add(baker.make("auth.Group"))
     u.save()
     b = _backend()
-    assert b._try_grace_bind(b._normalized(_uafm_claims())) == u
+    assert b._try_grace_bind(b._normalized(_uczelnia_claims())) == u
 
 
 def test_create_user_wiaze_staff_zamiast_odmawiac(db, settings):
     # Właściwy bug: create_user odmawiał ("konto z tym adresem już istnieje"),
     # bo grace bind odpadał na is_staff i na niezaufanej domenie.
     _privileged_settings(settings)
-    u = baker.make("bpp.BppUser", email="profesor@uafm.edu.pl", is_staff=True)
+    u = baker.make("bpp.BppUser", email="profesor@uczelnia.example.org", is_staff=True)
     u.set_unusable_password()
     u.save()
     b = _backend()
-    assert b.create_user(b._normalized(_uafm_claims())) == u
+    assert b.create_user(b._normalized(_uczelnia_claims())) == u
 
 
 def test_grace_nie_wiaze_staff_gdy_privileged_wylaczony(db, settings):
     _privileged_settings(settings)
     settings.OIDC_GRACE_BIND_PRIVILEGED = False
-    u = baker.make("bpp.BppUser", email="profesor@uafm.edu.pl", is_staff=True)
+    u = baker.make("bpp.BppUser", email="profesor@uczelnia.example.org", is_staff=True)
     u.set_unusable_password()
     u.save()
     b = _backend()
-    assert b._try_grace_bind(b._normalized(_uafm_claims())) is None
+    assert b._try_grace_bind(b._normalized(_uczelnia_claims())) is None
 
 
 def test_grace_nie_wiaze_staff_bez_listy_domen(db, settings):
@@ -1089,44 +1109,47 @@ def test_grace_nie_wiaze_staff_bez_listy_domen(db, settings):
     settings.OIDC_GRACE_BIND_ENABLED = True
     settings.OIDC_GRACE_BIND_PRIVILEGED = True
     settings.OIDC_TRUSTED_EMAIL_DOMAINS = []
-    u = baker.make("bpp.BppUser", email="profesor@uafm.edu.pl", is_staff=True)
+    u = baker.make("bpp.BppUser", email="profesor@uczelnia.example.org", is_staff=True)
     u.set_unusable_password()
     u.save()
     b = _backend()
-    assert b._try_grace_bind(b._normalized(_uafm_claims())) is None
+    assert b._try_grace_bind(b._normalized(_uczelnia_claims())) is None
 
 
 def test_grace_privileged_odmawia_gdy_konto_ma_tozsamosc_w_tym_realmie(db, settings):
     from oidc_integration.models import OIDCIdentity
 
     _privileged_settings(settings)
-    u = baker.make("bpp.BppUser", email="profesor@uafm.edu.pl", is_staff=True)
+    u = baker.make("bpp.BppUser", email="profesor@uczelnia.example.org", is_staff=True)
     u.set_unusable_password()
     u.save()
-    OIDCIdentity.objects.create(user=u, issuer=UAFM_ISS, sub="INNY-SUB")
+    OIDCIdentity.objects.create(user=u, issuer=UCZELNIA_ISS, sub="INNY-SUB")
     b = _backend()
-    assert b._try_grace_bind(b._normalized(_uafm_claims())) is None
+    assert b._try_grace_bind(b._normalized(_uczelnia_claims())) is None
 
 
 def test_grace_privileged_pozwala_gdy_tozsamosc_w_innym_realmie(db, settings):
     from oidc_integration.models import OIDCIdentity
 
     _privileged_settings(settings)
-    u = baker.make("bpp.BppUser", email="profesor@uafm.edu.pl", is_staff=True)
+    u = baker.make("bpp.BppUser", email="profesor@uczelnia.example.org", is_staff=True)
     u.set_unusable_password()
     u.save()
     OIDCIdentity.objects.create(user=u, issuer="https://inny-realm", sub="Z")
     b = _backend()
-    assert b._try_grace_bind(b._normalized(_uafm_claims())) == u
+    assert b._try_grace_bind(b._normalized(_uczelnia_claims())) == u
 
 
 def test_grace_privileged_odmawia_gdy_dwa_konta_z_tym_adresem(db, settings):
     _privileged_settings(settings)
     for i in range(2):
         u = baker.make(
-            "bpp.BppUser", username=f"u{i}", email="profesor@uafm.edu.pl", is_staff=True
+            "bpp.BppUser",
+            username=f"u{i}",
+            email="profesor@uczelnia.example.org",
+            is_staff=True,
         )
         u.set_unusable_password()
         u.save()
     b = _backend()
-    assert b._try_grace_bind(b._normalized(_uafm_claims())) is None
+    assert b._try_grace_bind(b._normalized(_uczelnia_claims())) is None

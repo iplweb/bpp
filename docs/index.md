@@ -62,6 +62,7 @@ zalogowaniu.
 - [Sloty](redaktor/sloty.md)
 - [Eksportowanie do DSpace](redaktor/eksportowanie-do-dspace.md)
 - [Dwudyscyplinowcy](redaktor/dwudyscyplinowcy.md)
+- [Przemapowanie prac autora](redaktor/przemapowanie-prac-autora.md)
 - [Duplikaty publikacji](redaktor/duplikaty-publikacji.md)
 
 ### 🛠️ Instrukcja administratora
