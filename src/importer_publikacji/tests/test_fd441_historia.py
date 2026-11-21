@@ -142,6 +142,15 @@ def test_autor_utworzony_przez_importer_ma_historie(
     assert wersja.revision.comment == komunikat
     assert wersja.revision.user == importer_user
 
+    # Wersja początkowa ma stan z bazy, łącznie z kolumnami ustawianymi
+    # przez triggery (aktualna jednostka po dodaniu zatrudnienia).
+    autor.refresh_from_db()
+    assert autor.aktualna_jednostka_id is not None
+    assert wersja.field_dict["aktualna_jednostka_id"] == autor.aktualna_jednostka_id
+
     res = admin_client.get(reverse("admin:bpp_autor_history", args=[autor.pk]))
     assert res.status_code == 200
-    assert komunikat in res.content.decode()
+    content = res.content.decode()
+    # Jeden wpis — nie powtórzony w sekcji „Wcześniejsza historia".
+    assert content.count(komunikat) == 1
+    assert "Wcześniejsza historia" not in content

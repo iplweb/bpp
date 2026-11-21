@@ -35,6 +35,25 @@ def zapisz_utworzenie(user, obj, komunikat):
     też wpis historii. Dla modeli wersjonowanych (reversion) zapisuje
     również wersję z komentarzem ``komunikat``.
     """
+    if not reversion.is_registered(type(obj)):
+        _zapisz_log_entry(user, obj, komunikat)
+        return
+
+    # Wersję zapisujemy ze świeżo pobranego obiektu: triggery bazy (np.
+    # ``aktualna_jednostka`` autora) ustawiają kolumny, których instancja
+    # w pamięci nie zna. ``LogEntry`` musi powstać WEWNĄTRZ bloku
+    # ``create_revision`` — reversion bierze datę wersji przy wejściu
+    # w blok, a wpis starszy od najstarszej wersji strona „Historia"
+    # pokazuje drugi raz jako „Wcześniejszą historię".
+    swiezy = type(obj)._default_manager.get(pk=obj.pk)
+    with reversion.create_revision():
+        reversion.add_to_revision(swiezy)
+        reversion.set_user(user)
+        reversion.set_comment(komunikat)
+        _zapisz_log_entry(user, swiezy, komunikat)
+
+
+def _zapisz_log_entry(user, obj, komunikat):
     LogEntry.objects.log_actions(
         user.pk,
         [obj],
@@ -42,8 +61,3 @@ def zapisz_utworzenie(user, obj, komunikat):
         change_message=komunikat,
         single_object=True,
     )
-    if reversion.is_registered(type(obj)):
-        with reversion.create_revision():
-            reversion.add_to_revision(obj)
-            reversion.set_user(user)
-            reversion.set_comment(komunikat)
