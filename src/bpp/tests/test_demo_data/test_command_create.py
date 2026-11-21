@@ -13,6 +13,7 @@ from bpp.models import (
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
+from bpp.tests.test_demo_data._flagi import BEZ_DODATKOW
 
 
 @pytest.fixture
@@ -35,6 +36,7 @@ def test_command_smoke_minimal(fixtures_loaded, tmp_path):
     manifest = tmp_path / "m.json"
     call_command(
         "create_demo_data",
+        *BEZ_DODATKOW,
         "--wydzialow=1",
         "--jednostek-na-wydzial=1",
         "--autorow=3",
@@ -75,6 +77,7 @@ def test_command_preflight_fails_when_no_dyscyplina():
     with pytest.raises(SystemExit):
         call_command(
             "create_demo_data",
+            *BEZ_DODATKOW,
             "--wydzialow=1",
             "--jednostek-na-wydzial=1",
             "--autorow=1",
@@ -96,6 +99,7 @@ def test_command_aborts_without_flags_non_tty(fixtures_loaded, tmp_path):
     with pytest.raises(SystemExit):
         call_command(
             "create_demo_data",
+            *BEZ_DODATKOW,
             "--wydzialow=1",
             "--jednostek-na-wydzial=1",
             "--autorow=1",
@@ -114,6 +118,7 @@ def test_command_aborts_wrong_db_name(fixtures_loaded):
     with pytest.raises(SystemExit):
         call_command(
             "create_demo_data",
+            *BEZ_DODATKOW,
             "--wydzialow=1",
             "--jednostek-na-wydzial=1",
             "--autorow=1",
@@ -141,6 +146,7 @@ def test_command_with_theme_and_streszczenia(fixtures_loaded, tmp_path):
     manifest = tmp_path / "m.json"
     call_command(
         "create_demo_data",
+        *BEZ_DODATKOW,
         "--motyw=wiedzmin",
         "--bez-prefiksu",
         "--procent-ze-streszczeniem=100",
@@ -176,6 +182,7 @@ def test_cleanup_removes_streszczenia(fixtures_loaded, tmp_path):
     manifest = tmp_path / "m.json"
     call_command(
         "create_demo_data",
+        *BEZ_DODATKOW,
         "--motyw=lem",
         "--procent-ze-streszczeniem=100",
         "--wydzialow=1",

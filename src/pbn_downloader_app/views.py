@@ -159,7 +159,7 @@ class TaskStatusView(View):
                     else None
                 ),
                 "error_message": latest_task.error_message,
-                "user": latest_task.user.username,
+                "user": latest_task.user.username if latest_task.user else "system",
                 "current_step": latest_task.current_step,
                 "progress_percentage": latest_task.progress_percentage,
                 "publications_processed": latest_task.publications_processed,
@@ -314,7 +314,7 @@ class PeopleTaskStatusView(View):
                     else None
                 ),
                 "error_message": latest_task.error_message,
-                "user": latest_task.user.username,
+                "user": latest_task.user.username if latest_task.user else "system",
                 "current_step": latest_task.current_step,
                 "progress_percentage": latest_task.progress_percentage,
                 "people_processed": latest_task.people_processed,
@@ -471,7 +471,7 @@ class JournalsTaskStatusView(View):
                     else None
                 ),
                 "error_message": latest_task.error_message,
-                "user": latest_task.user.username,
+                "user": latest_task.user.username if latest_task.user else "system",
                 "current_step": latest_task.current_step,
                 "progress_percentage": latest_task.progress_percentage,
                 "journals_processed": latest_task.journals_processed,

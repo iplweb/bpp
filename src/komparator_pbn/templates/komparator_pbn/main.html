@@ -36,7 +36,7 @@
                                 <i class="fi-check komparator-pbn__status-icon--success"></i> <strong class="komparator-pbn__status-title--success">Ostatnie pobieranie zakończone pomyślnie</strong>
                                 <div class="komparator-pbn__status-details komparator-pbn__status-details--success">
                                     Data: {{ latest_task.completed_at|date:"d.m.Y H:i:s" }}<br>
-                                    Użytkownik: {{ latest_task.user.username }}
+                                    Użytkownik: {{ latest_task.user.username|default:"system" }}
                                 </div>
                             </div>
                         {% elif latest_task.status == 'failed' %}

@@ -36,6 +36,13 @@ MODELE_Z_HISTORIA = (
     ("bpp.Wydawnictwo_Ciagle", ()),
     ("bpp.Wydawnictwo_Zwarte", ()),
     ("zglos_publikacje.Zgloszenie_Publikacji", ()),
+    # Rzadsze typy rekordów (dodatek ``rzadkie_typy``):
+    ("bpp.Praca_Doktorska", ("autor__tytul",)),
+    ("bpp.Praca_Habilitacyjna", ("autor__tytul",)),
+    ("bpp.Patent", ()),
+    ("bpp.Konferencja", ()),
+    ("bpp.Seria_Wydawnicza", ()),
+    ("bpp.Grant", ()),
 )
 
 

@@ -16,6 +16,7 @@ from bpp.models import (
     Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Autor,
 )
+from bpp.tests.test_demo_data._flagi import BEZ_DODATKOW
 
 
 @pytest.fixture
@@ -35,6 +36,7 @@ def test_e2e_medium_scale(fixtures_loaded, tmp_path):
     db_name = connection.settings_dict["NAME"]
     call_command(
         "create_demo_data",
+        *BEZ_DODATKOW,
         "--wydzialow=2",
         "--jednostek-na-wydzial=3",
         "--autorow=20",
@@ -82,6 +84,7 @@ def test_e2e_maly_motyw_wymusza_cyklowanie_nazw(fixtures_loaded, tmp_path):
     db_name = connection.settings_dict["NAME"]
     call_command(
         "create_demo_data",
+        *BEZ_DODATKOW,
         "--motyw=wiedzmin",
         "--wydzialow=8",
         "--jednostek-na-wydzial=8",
