@@ -229,6 +229,23 @@ class PublicAutorAutocomplete(AutorAutocompleteBase):
         return str(result)
 
 
+class WyszukiwarkaAutorAutocomplete(PublicAutorAutocomplete):
+    """Picker autora w publicznej wyszukiwarce (pole „Nazwisko i imię”).
+
+    Jak ``PublicAutorAutocomplete``, ale pomija autorów z
+    ``pokazuj_w_wyszukiwaniu=False`` (FD#561); redakcja widzi wszystkich.
+    Raporty i formularz zgłaszania publikacji celowo zostają przy
+    ``PublicAutorAutocomplete`` — ukryty autor musi móc wybrać sam siebie.
+    """
+
+    def get_queryset(self):
+        return widoczni_autorzy(
+            super().get_queryset(),
+            getattr(self, "request", None),
+            lookup="pokazuj_w_wyszukiwaniu",
+        )
+
+
 class AutorAktualnieZatrudnionyNaUczelni(AutorAutocomplete):
     """Autocomplete autorów AKTUALNIE zatrudnionych w oglądającej uczelni.
 
