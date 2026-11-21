@@ -464,9 +464,25 @@ class Jednostka(
         )
 
     def kierownik(self):
+        """Obecny kierownik jednostki do nagłówka publicznej strony.
+
+        Pomija autorów z ``pokazuj_na_stronie_jednostki=False`` (FD#561).
+        Warunki na przypisanie (jednostka, daty, funkcja) w JEDNYM
+        ``filter()`` — tak dotyczą tego samego wiersza ``Autor_Jednostka``,
+        a nie np. funkcji „kierownik" pełnionej w innej jednostce.
+        """
+        dzis = timezone.now().date()
         return (
-            self.obecni_autorzy()
-            .filter(autor_jednostka__funkcja__nazwa="kierownik")
+            Autor.objects.filter(
+                Q(autor_jednostka__zakonczyl_prace__gte=dzis)
+                | Q(autor_jednostka__zakonczyl_prace=None),
+                Q(autor_jednostka__rozpoczal_prace__lte=dzis)
+                | Q(autor_jednostka__rozpoczal_prace=None),
+                autor_jednostka__jednostka=self,
+                autor_jednostka__funkcja__nazwa="kierownik",
+                pokazuj_na_stronie_jednostki=True,
+            )
+            .distinct()
             .first()
         )
 

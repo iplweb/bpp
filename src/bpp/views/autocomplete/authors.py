@@ -218,7 +218,10 @@ class PublicAutorAutocomplete(AutorAutocompleteBase):
 
         request = getattr(self, "request", None)
         uczelnia = Uczelnia.objects.get_for_request(request) if request else None
-        return super().get_queryset().kiedykolwiek_zwiazani(uczelnia)
+        qs = super().get_queryset().kiedykolwiek_zwiazani(uczelnia)
+        # „Pokazuj w wyszukiwaniu" obejmuje też publiczne listy wyboru
+        # (FD#561); redakcja widzi wszystkich.
+        return widoczni_autorzy(qs, request, lookup="pokazuj_w_wyszukiwaniu")
 
     def get_results(self, context):
         """Płaska lista wyników — bez optgroupów (kontrakt: brak duplikacji)."""

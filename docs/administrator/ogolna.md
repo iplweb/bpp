@@ -46,8 +46,20 @@ osobę, która nie jest pracownikiem danej jednostki):
 
 ![Sekcja „Widoczność” w formularzu autora z zaznaczonym polem „Pokazuj na stronie jednostki”](../images/administrator/ogolna/01-pokazuj-na-stronie-jednostki.png)
 
+Pole „Pokazuj na stronie jednostki” obejmuje wszystkie listy autorów na
+stronie jednostki (obecni i byli pracownicy, autorzy publikacji) oraz
+kierownika wyświetlanego w nagłówku strony.
+
 W tej samej sekcji ukryjesz autora także w rankingu, w indeksie autorów,
-w wyszukiwaniu i w API, a nawet całą jego stronę.
+w wyszukiwaniu i w API, a nawet całą jego stronę. Pole „Pokazuj
+w wyszukiwaniu” dotyczy zarówno wyszukiwarki w górnym pasku strony, jak
+i publicznych list wyboru autora (np. pole „Nazwisko i imię” w formularzu
+wyszukiwania, formularz „Zgłoś nową publikację”). Redakcja (użytkownicy
+z uprawnieniami do wprowadzania danych) nadal widzi wszystkich autorów.
+
+Ukrycie autora jest widoczne na stronach publicznych od razu po zapisaniu
+rekordu — także wtedy, gdy kilku autorów ukrywasz naraz akcją „Ukryj
+wybranych autorów na stronach jednostek i w rankingu” na liście autorów.
 
 #### Ukrywanie lub wyświetlanie raportów na stronie głównej
 
