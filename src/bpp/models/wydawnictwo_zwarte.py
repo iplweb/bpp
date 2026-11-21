@@ -7,7 +7,7 @@ from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import CASCADE, PROTECT, JSONField
+from django.db.models import CASCADE, PROTECT, JSONField, Q
 from django.db.models.expressions import RawSQL
 
 from bpp import const
@@ -53,6 +53,11 @@ from bpp.models.abstract import (
 )
 from bpp.models.autor import Autor
 from bpp.models.nagroda import Nagroda
+from bpp.models.soft_delete import (
+    BppDzieckoPublikacjiMixin,
+    BppPublikacjaSoftDeleteMixin,
+    BppSoftDeleteManager,
+)
 from bpp.models.system import Zewnetrzna_Baza_Danych
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 from bpp.models.wydawca import Wydawca
@@ -60,6 +65,7 @@ from bpp.models.wydawca import Wydawca
 
 class Wydawnictwo_Zwarte_Autor(
     DirtyFieldsMixin,
+    BppDzieckoPublikacjiMixin,
     BazaModeluOdpowiedzialnosciAutorow,
 ):
     """Model zawierający informację o przywiązaniu autorów do wydawnictwa
@@ -176,7 +182,18 @@ class ModelZOpenAccessWydawnictwoZwarte(ModelZOpenAccess):
 rok_regex = re.compile(r"\s[12]\d\d\d")
 
 
-class Wydawnictwo_Zwarte_Manager(ManagerModeliZOplataZaPublikacjeMixin, models.Manager):
+class Wydawnictwo_Zwarte_Manager(
+    ManagerModeliZOplataZaPublikacjeMixin, BppSoftDeleteManager
+):
+    """Jak ``Wydawnictwo_Ciagle_Manager`` — uzasadnienie doboru bazy
+    (i tego, dlaczego kolejność NIE jest nośna) w jego docstringu
+    (``wydawnictwo_ciagle.py``).
+
+    ``wydawnictwa_nadrzedne_dla_innych()`` też korzysta na przepleceniu:
+    po fazie 02 nie zwróci już książki-matki, której jedyne rozdziały
+    trafiły do kosza.
+    """
+
     def wydawnictwa_nadrzedne_dla_innych(self):
         return (
             self.exclude(wydawnictwo_nadrzedne_id=None)
@@ -186,6 +203,7 @@ class Wydawnictwo_Zwarte_Manager(ManagerModeliZOplataZaPublikacjeMixin, models.M
 
 
 class Wydawnictwo_Zwarte(
+    BppPublikacjaSoftDeleteMixin,
     ZapobiegajNiewlasciwymCharakterom,
     Wydawnictwo_Zwarte_Baza,
     ModelZCharakterem,
@@ -211,9 +229,13 @@ class Wydawnictwo_Zwarte(
     autor_rekordu_klass = Wydawnictwo_Zwarte_Autor
     autorzy = models.ManyToManyField(Autor, through=autor_rekordu_klass)
 
+    # PROTECT, nie CASCADE (faza 04 soft-delete): skasowanie książki-matki nie
+    # ma prawa zabrać ze sobą rozdziałów — to osobne rekordy bibliograficzne,
+    # każdy z własnymi autorami, punktacją i historią w PBN. Miękkie kasowanie
+    # blokuje guard w ``Wydawnictwo_Zwarte.delete()``.
     wydawnictwo_nadrzedne = models.ForeignKey(
         "self",
-        CASCADE,
+        PROTECT,
         blank=True,
         null=True,
         help_text="""Jeżeli dodajesz rozdział,
@@ -261,6 +283,52 @@ class Wydawnictwo_Zwarte(
         verbose_name = "wydawnictwo zwarte"
         verbose_name_plural = "wydawnictwa zwarte"
         app_label = "bpp"
+        indexes = [
+            # Indeks CZĘŚCIOWY — uzasadnienie przy `wc_deleted_at_idx`
+            # (`wydawnictwo_ciagle.py`, Meta klasy Wydawnictwo_Ciagle).
+            models.Index(
+                fields=["deleted_at"],
+                name="wz_deleted_at_idx",
+                condition=Q(deleted_at__isnull=False),
+            ),
+        ]
+
+    def delete(self, *args, user=None, reason="", **kwargs):
+        """Soft-delete książki — zablokowany, dopóki wiszą na niej rozdziały.
+
+        DLACZEGO TU, A NIE WE WSPÓLNYM MIXINIE: ``BppPublikacjaSoftDelete
+        Mixin`` dzielą wszystkie pięć modeli publikacji. Guard wstawiony tam
+        odpytywałby dla ``Wydawnictwo_Ciagle``, ``Patent`` czy prac
+        dyplomowych ``Wydawnictwo_Zwarte.global_objects.filter(
+        wydawnictwo_nadrzedne=<obiekt innego modelu>)`` — zapytanie
+        międzytypowe, w najlepszym razie zawsze puste, w gorszym wyjątek.
+        Self-FK jest cechą TEGO modelu, więc guard jest jego metodą.
+
+        Guard idzie PRZED ``super().delete()``, czyli przed zapisem
+        ``deleted_at`` i przed kaskadą fazy 02 na ``*_Autor`` — odmowa ma
+        być odmową, a nie odmową po fakcie. Kaskady nie gubimy: cała reszta
+        pracy zostaje w mixinie, tutaj dokładamy wyłącznie warunek wstępny.
+
+        Rozdział w koszu też blokuje (liczymy przez ``global_objects``,
+        spec §2.6): inaczej książkę dałoby się usunąć w dwóch krokach —
+        najpierw rozdział, potem ją — a przywrócenie rozdziału zostawiłoby
+        go bez książki-matki.
+
+        ``user``/``reason`` przepuszczamy dalej do mixinu (kontrakt PINNED
+        faz 06/07) — własny ``delete()`` przesłania tamten, więc gdyby ich
+        tu zabrakło, kasowanie z powodem z panelu admina wywaliłoby się
+        ``TypeError``-em na każdej książce.
+        """
+        from bpp.models.soft_delete import raise_if_has_protected_children
+
+        raise_if_has_protected_children(
+            self,
+            [(Wydawnictwo_Zwarte, "wydawnictwo_nadrzedne")],
+            label="książki (ma rozdziały)",
+        )
+        return super().delete(*args, user=user, reason=reason, **kwargs)
+
+    delete.alters_data = True
 
     def wydawnictwa_powiazane_posortowane(self):
         """
@@ -404,7 +472,9 @@ class Wydawnictwo_Zwarte(
             return True
 
 
-class Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych(models.Model):
+class Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych(
+    BppDzieckoPublikacjiMixin, models.Model
+):
     rekord = models.ForeignKey(
         Wydawnictwo_Zwarte, CASCADE, related_name="zewnetrzna_baza_danych"
     )
@@ -432,7 +502,7 @@ class Wydawnictwo_Zwarte_Tytul(BazaModeluTytulow):
         return f"Tytuł rekordu {self.rekord_id} w języku {self.kod_jezyka_pbn}"
 
 
-class Wydawnictwo_Zwarte_Streszczenie(BazaModeluStreszczen):
+class Wydawnictwo_Zwarte_Streszczenie(BppDzieckoPublikacjiMixin, BazaModeluStreszczen):
     rekord = models.ForeignKey(Wydawnictwo_Zwarte, CASCADE, related_name="streszczenia")
 
     class Meta:

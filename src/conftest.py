@@ -900,6 +900,55 @@ def superuser_client(client, superuser):
     return client
 
 
+STAFF_USERNAME = "staff"
+STAFF_PASSWORD = "staffpass"
+
+
+@pytest.fixture
+def staff_user(db):
+    """Uzytkownik z dostepem do admina, ale BEZ ``is_superuser``.
+
+    Potrzebny wszedzie tam, gdzie testujemy roznice miedzy „staff" a
+    „superuser" — sam ``is_staff`` nie wystarczy, bo bez uprawnien
+    modelowych Django nie wpuszcza nawet na changeliste i test mierzylby
+    brak dostepu zamiast badanej reguly.
+    """
+    from django.contrib.auth.models import Group, Permission
+
+    from bpp.const import GR_WPROWADZANIE_DANYCH
+
+    u = User.objects.create_user(
+        username=STAFF_USERNAME,
+        password=STAFF_PASSWORD,
+        email="staff@example.com",
+    )
+    u.is_staff = True
+    u.save()
+    u.user_permissions.add(
+        *Permission.objects.filter(
+            content_type__app_label="bpp",
+            content_type__model__in=("wydawnictwo_ciagle", "autor"),
+        )
+    )
+    # Grupa „wprowadzanie danych" to nie ozdobnik. Staff BEZ zadnej grupy
+    # wywraca render menu admina 500-tka: `_add_group_submenus` dokleja
+    # submenu tylko czlonkom grupy, a zaraz potem bezwarunkowo robi
+    # `del menu.children[-1].children[-1]` (src/django_bpp/menu.py:302) —
+    # przy pustym `menu.children` leci IndexError. To bug niezalezny od
+    # soft-delete; fixture modeluje realnego redaktora, ktory te grupe ma.
+    grupa, _ = Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)
+    u.groups.add(grupa)
+    return u
+
+
+@pytest.fixture
+def staff_client(client, staff_user):
+    """Zalogowany ``staff_user`` (nie-superuser)."""
+    if not client.login(username=STAFF_USERNAME, password=STAFF_PASSWORD):
+        raise Exception("Cannot login staff")
+    return client
+
+
 @pytest.fixture
 def user_request_factory(test_user):
     """Fixture zwracający UserRequestFactory."""
@@ -1386,3 +1435,54 @@ def django_db_setup(django_db_setup, django_db_blocker):
                     for sn, lv, ic in rows
                 ]
                 cursor.execute("\n".join(alter_stmts))
+
+
+@pytest.fixture
+def bez_reinstalacji_denorma():
+    """Odpina globalną przebudowę triggerów ``django-denorm`` na czas testu.
+
+    PO CO: ``denorm`` podpina się pod ``post_migrate`` i po KAŻDYM ``migrate``
+    odbudowuje wszystkie swoje triggery — zawsze z AKTUALNYCH definicji
+    modeli (``denorm/apps.py``: ``denorm_install_triggers_after_migrate``).
+    Test, który zejdzie migracjami poniżej ``bpp.0509``, ma wtedy bazę bez
+    kolumny ``deleted_at`` na tabelach publikacji, ale modele Pythona nadal ją
+    deklarują — więc ``denorm`` generuje bramkę
+    ``WHEN (OLD."deleted_at" IS DISTINCT FROM ...)``, a ``CREATE TRIGGER``
+    pada na ``UndefinedColumn``.
+
+    KTO TEGO POTRZEBUJE — dwie różne rodziny testów, stąd fixture siedzi
+    w GLOBALNYM conftescie, a nie przy testach soft-delete:
+
+    1. testy odwracalności migracji (``bpp/tests/test_soft_delete/``), które
+       schodzą poniżej ``0509`` świadomie;
+    2. testy e2e migracji w INNYCH aplikacjach (``pbn_api``), które cofają
+       swoją aplikację ``MigrationExecutor``-em — a że migracje ``bpp``
+       zależą od ``pbn_api``, Django cofa razem z nimi także ``0509``.
+       Tam wybuchało to dopiero w TEARDOWNIE i o przyczynie nie mówiło nic.
+
+    DLACZEGO TO NIE JEST PROBLEM PRODUKCYJNY: w prawdziwym rollbacku wycofuje
+    się KOD razem ze schematem, a stare modele nie mają ``deleted_at`` —
+    ``denorm`` wygeneruje wtedy poprawne triggery. Kombinacja „nowy kod +
+    stary schemat" powstaje wyłącznie w teście, który rusza sam schemat.
+
+    Po teście wpinamy handler z powrotem i odpalamy przebudowę RĘCZNIE — baza
+    testowa jest współdzielona przez cały przebieg, więc nie wolno zostawić
+    jej z triggerami niepasującymi do modeli.
+    """
+    from denorm import denorms
+    from denorm.apps import denorm_install_triggers_after_migrate
+
+    sender = apps.get_app_config("denorm")
+    post_migrate.disconnect(denorm_install_triggers_after_migrate, sender=sender)
+    try:
+        yield
+    finally:
+        post_migrate.connect(denorm_install_triggers_after_migrate, sender=sender)
+        # Doprowadzamy schemat z powrotem do najnowszej migracji SAMI, zamiast
+        # ufać, że test zdążył to zrobić: gdy asercja padnie w połowie, test
+        # przerywa przed swoim `migrate` i baza zostaje w stanie sprzed
+        # docelowej migracji. Wywołanie jest idempotentne (no-op, gdy już
+        # jesteśmy na szczycie), a bez niego przebudowa niżej wywaliłaby się
+        # na brakującej kolumnie, przykrywając PRAWDZIWY powód porażki testu.
+        call_command("migrate", "bpp", verbosity=0)
+        denorms.install_triggers()

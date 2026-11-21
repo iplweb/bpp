@@ -1,7 +1,7 @@
 from denorm import denormalized, depend_on_fields, depend_on_related
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
-from django.db.models import CASCADE, SET_NULL, JSONField
+from django.db.models import CASCADE, SET_NULL, JSONField, Q
 from django.utils.functional import cached_property
 
 from bpp.models import (
@@ -26,11 +26,15 @@ from bpp.models.abstract import (
 )
 from bpp.models.autor import Autor
 from bpp.models.slowniki_stale import cached_if_found, wpis_slownika
+from bpp.models.soft_delete import (
+    BppDzieckoPublikacjiMixin,
+    BppPublikacjaSoftDeleteMixin,
+)
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.util import safe_tytul_html
 
 
-class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
+class Patent_Autor(BppDzieckoPublikacjiMixin, BazaModeluOdpowiedzialnosciAutorow):
     """Powiązanie autora do patentu."""
 
     rekord = models.ForeignKey(
@@ -71,6 +75,7 @@ _Patent_PropertyCache = _Patent_PropertyCache()
 
 
 class Patent(
+    BppPublikacjaSoftDeleteMixin,
     RekordBPPBaza,
     ModelZRokiem,
     ModelZeStatusem,
@@ -124,6 +129,15 @@ class Patent(
         verbose_name = "patent"
         verbose_name_plural = "patenty"
         app_label = "bpp"
+        indexes = [
+            # Indeks CZĘŚCIOWY — uzasadnienie przy `wc_deleted_at_idx`
+            # (`wydawnictwo_ciagle.py`, Meta klasy Wydawnictwo_Ciagle).
+            models.Index(
+                fields=["deleted_at"],
+                name="patent_deleted_at_idx",
+                condition=Q(deleted_at__isnull=False),
+            ),
+        ]
 
     def __str__(self):
         return self.tytul_oryginalny
