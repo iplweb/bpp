@@ -11,7 +11,7 @@
 |---|---|
 | Stan fazy 06 | gałąź `feat/soft-delete-06`, odbita od `feat/soft-delete-05b` |
 | Plan fazy 06 | [`plans/2026-06-04-soft-delete-06-softdeletelog.md`](plans/2026-06-04-soft-delete-06-softdeletelog.md) — wykonany, z odstępstwami opisanymi w §3 |
-| Migracja fazy 06 | `bpp/0523_softdeletelog` (jedna, tylko `CreateModel`) |
+| Migracja fazy 06 | `bpp/0524_softdeletelog` (jedna, tylko `CreateModel`) |
 | Task 5 planu | **POMINIĘTY** zgodnie z handoffem fazy 06 — `zakolejkuj_*` istnieją z fazy 05a |
 
 ### Stos PR-ów
@@ -27,7 +27,7 @@
 ⚠️ Żaden PR ze stosu nie jest scalony. Faza 06 dziedziczy commity 05b.
 
 ⚠️ **Baseline (`baseline-sql/`) nadal NIEŚWIEŻY** — stoi na `bpp/0487`.
-Doszła `0523`. Odświeżenie robi się **raz, przy scalaniu** całego
+Doszła `0524`. Odświeżenie robi się **raz, przy scalaniu** całego
 `feat/soft-delete` do `dev`.
 
 ⚠️ **CI NIE URUCHAMIA SIĘ na PR-ach do gałęzi `feat/soft-delete*`** — bez

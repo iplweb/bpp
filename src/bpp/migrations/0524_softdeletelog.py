@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('bpp', '0522_autor_soft_delete'),
+        ('bpp', '0523_autor_soft_delete'),
         ('contenttypes', '0002_remove_content_type_name'),
         ('pbn_export_queue', '0011_pbn_export_queue_operacja'),
     ]

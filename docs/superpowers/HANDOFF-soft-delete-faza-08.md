@@ -30,7 +30,7 @@ własny PR — [#792](https://github.com/iplweb/bpp/pull/792). Wcześniej była
 jedynym ogniwem stosu bez numeru, bo faza 06 nigdy nie została wypchnięta.
 
 ⚠️ **Baseline (`baseline-sql/`) nadal NIEŚWIEŻY** — stoi na `bpp/0487`, ostatnia
-migracja to `0523` (faza 06). Faza 07 nic tu nie zmieniła. Odświeżenie robi się
+migracja to `0524` (faza 06). Faza 07 nic tu nie zmieniła. Odświeżenie robi się
 **raz, przy scalaniu** całego `feat/soft-delete` do `dev`.
 
 ⚠️ **CI NIE URUCHAMIA SIĘ na PR-ach do gałęzi `feat/soft-delete*`** — bez zmian.

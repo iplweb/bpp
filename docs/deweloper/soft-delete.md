@@ -71,7 +71,7 @@ Legenda kolumny „Soft-delete": **TAK** — model ma `deleted_at`;
     reaguje na `deleted_at` publikacji, edycja autorów w adminie zostaje
     twardym kasowaniem. Zachowuje to ochronę ~89 miejsc w ewaluacji bez
     warunkowych constraintów. Zmiana dotyka fazy 01 (migracje
-    0508–0513 + widoki 0509/0514/0515), więc decyzja musi zapaść **przed**
+    0509–0514 + widoki 0510/0515/0516), więc decyzja musi zapaść **przed**
     scaleniem #312. Szczegóły w raporcie z przeglądu (PR #312).
 
 ### Autorzy i struktura
