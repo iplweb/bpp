@@ -28,7 +28,9 @@ wyszukiwanie, własny dorobek, punkty, raporty.
 - [Mój profil autora](uzytkownik/moj-profil-autora.md)
 - [Nie mogę się zalogować](uzytkownik/logowanie.md)
 - [Widget publikacji na stronie WWW](uzytkownik/widget-publikacji.md)
+- [Sieć powiązań autorów](uzytkownik/powiazania-autorow.md)
 - [Tabela krzyżowa (zestawienia)](uzytkownik/tabela-krzyzowa.md)
+- [Bibliografia w asystencie AI](uzytkownik/asystent-ai.md)
 
 ### ✏️ Instrukcja redaktora
 
@@ -55,6 +57,7 @@ zalogowaniu.
 - [Wydawnictwa](redaktor/wydawnictwa.md)
 - [Sloty](redaktor/sloty.md)
 - [Eksportowanie do DSpace](redaktor/eksportowanie-do-dspace.md)
+- [Dwudyscyplinowcy](redaktor/dwudyscyplinowcy.md)
 
 ### 🛠️ Instrukcja administratora
 
@@ -68,6 +71,8 @@ Konfiguracja, importy i integracje — dla administratorów wdrożenia.
 - [Integracja z PBN](administrator/integracja-pbn.md)
 - [Integracja z DSpace](administrator/integracja-dspace.md)
 - [Konfiguracja zaawansowana](administrator/zaawansowane.md)
+- [Metody logowania (LDAP, AD, Keycloak, ORCID…)](administrator/metody-logowania.md)
+- [Pulpit administratora](administrator/panel-administracyjny.md)
 
 ### 🔌 API
 

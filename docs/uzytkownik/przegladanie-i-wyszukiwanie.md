@@ -88,6 +88,11 @@ wypełnionymi warunkami, które można dalej zmieniać.
     zalogowanych redaktorów, pozwalający wpisać zapytanie w języku BPP-QL.
     Dla zwykłego odwiedzającego nie jest widoczny.
 
+!!! tip "Wyszukiwanie przez asystenta AI"
+    Bibliografię można też przeszukiwać, rozmawiając z asystentem AI
+    (np. Claude, ChatGPT) — zobacz [Bibliografia w asystencie
+    AI](asystent-ai.md).
+
 ## Przeglądanie
 
 Menu **przeglądaj** pozwala wędrować po bazie bez wpisywania zapytania —
@@ -149,7 +154,9 @@ W układzie domyślnym, od góry:
   zdjęcia ani biogramu, wykresy stają obok afiliacji, jeden pod drugim.
 - **Statystyki wg charakteru formalnego** (np. ile artykułów, ile
   rozdziałów) oraz **najczęstsi współautorzy** — z odnośnikiem do
-  wizualnej sieci powiązań.
+  wizualnej sieci powiązań. Jak czytać tę sieć i co można w niej
+  sprawdzić, opisuje strona
+  [Sieć powiązań autorów](powiazania-autorow.md).
 - **Liczba cytowań** (o ile uczelnia pobiera takie dane) oraz **metryki
   ewaluacyjne** — te ostatnie widzi tylko zalogowany autor na własnej
   stronie i osoby uprawnione do metryk.

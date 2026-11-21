@@ -101,7 +101,9 @@ nav:
       - Mój profil autora: uzytkownik/moj-profil-autora.md
       - Nie mogę się zalogować: uzytkownik/logowanie.md
       - Widget publikacji na stronie WWW: uzytkownik/widget-publikacji.md
+      - Sieć powiązań autorów: uzytkownik/powiazania-autorow.md
       - Tabela krzyżowa (zestawienia): uzytkownik/tabela-krzyzowa.md
+      - Bibliografia w asystencie AI: uzytkownik/asystent-ai.md
   - Instrukcja redaktora:
       - Wyszukiwanie i redagowanie: redaktor/wyszukiwanie-redagowanie.md
       - Jak dodać publikację importerem: redaktor/importer-publikacji.md
@@ -123,6 +125,7 @@ nav:
       - Wydawnictwa: redaktor/wydawnictwa.md
       - Sloty: redaktor/sloty.md
       - Eksportowanie do DSpace: redaktor/eksportowanie-do-dspace.md
+      - Dwudyscyplinowcy: redaktor/dwudyscyplinowcy.md
   - Instrukcja administratora:
       - Konfiguracja ogólna: administrator/ogolna.md
       - Importer publikacji: administrator/importer-publikacji.md
@@ -136,6 +139,8 @@ nav:
       - Widget wsparcia Freshdesk: administrator/widget-wsparcia-freshdesk.md
       - Konfiguracja zaawansowana: administrator/zaawansowane.md
       - Grupy uprawnień: administrator/grupy-uprawnien.md
+      - Metody logowania (LDAP, AD, Keycloak, ORCID…): administrator/metody-logowania.md
+      - Pulpit administratora: administrator/panel-administracyjny.md
   - API: api/index.md
   - Dla deweloperów i agentów:
       - deweloper/index.md
