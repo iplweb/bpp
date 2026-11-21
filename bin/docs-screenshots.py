@@ -8495,6 +8495,161 @@ def wyszukiwanie_precyzyjne_zapisane(page: Page, base: str, out: Path) -> None:
     adm.context.close()
 
 
+def przemapowanie_prac_autora(page: Page, base: str, out: Path) -> None:
+    """docs/redaktor/przemapowanie-prac-autora.md: moving an author's works between units (editor).
+
+    Needs bin/docs-demo-przemapowanie-prac-autora.py. Remaps and undoes for
+    real; run it on a fresh copy of the demo DB (the history table grows)."""
+    d = new_session(page, base, DEMO_USER_REDAKTOR)
+    d.on("dialog", lambda dialog: dialog.accept())  # "Cofnąć to przemapowanie…?"
+    eskel = 136
+
+    # 1. Author page: the "Przemapuj prace" button
+    d.goto(f"{base}/bpp/autor/{eskel}/")
+    d.wait_for_load_state("networkidle")
+    d.mouse.move(5, 5)
+    mark(
+        d,
+        [
+            {
+                "sel": ".jednostka-remap-button",
+                "arrow": "left",
+                "label": "Przemapuj prace",
+                "dx": -40,
+                "dy": -40,
+            }
+        ],
+    )
+    shot(d, out / "01-strona-autora.png", 0, bottom_of(d, ".author-header", 15))
+
+    # 2. Author search: two different people with the same name
+    d.goto(f"{base}/przemapuj_prace_autora/?q=Eskel")
+    wiersz = "table tbody tr:has(a[href$='/autor/{}/'])"
+    d.wait_for_load_state("networkidle")
+    d.mouse.move(5, 5)
+    rows = "table tbody tr"
+    mark(
+        d,
+        [
+            {
+                "sel": "#search-input",
+                "arrow": "below",
+                "label": "1. nazwisko lub imię",
+                "dx": 100,
+                "dy": -80,
+            },
+            {"sel": wiersz.format(240)},
+            {"sel": wiersz.format(eskel)},
+            {
+                "sel": f"{rows} a.button[href$='/autor/{eskel}/']",
+                "arrow": "right",
+                "label": "2. wybierz",
+                "dx": 0,
+                "dy": -40,
+            },
+        ],
+    )
+    shot(d, out / "02-wybierz-autora.png", 0, bottom_of(d, "table", 40))
+
+    # 3. Form: distribution per unit, source/target pre-filled
+    d.goto(f"{base}/przemapuj_prace_autora/autor/{eskel}/")
+    d.wait_for_load_state("networkidle")
+    d.mouse.move(5, 5)
+    mark(
+        d,
+        [
+            {"sel": "table tbody tr", "text": "Jednostka Domyślna"},
+            {
+                "sel": "select[name=jednostka_z]",
+                "arrow": "above",
+                "label": "1. skąd",
+                "dx": 100,
+                "dy": 55,
+            },
+            {
+                "sel": "select[name=jednostka_do]",
+                "arrow": "above",
+                "label": "2. dokąd",
+                "dx": 100,
+                "dy": 55,
+            },
+            {
+                "sel": "button[name=preview]",
+                "arrow": "below",
+                "label": "3. podgląd",
+                "dx": 0,
+                "dy": -40,
+            },
+        ],
+    )
+    shot(d, out / "03-formularz.png", 0, bottom_of(d, "button[name=preview]", 120))
+
+    # 4. Preview
+    d.locator("button[name=preview]").click()
+    d.wait_for_load_state("networkidle")
+    d.mouse.move(5, 5)
+    mark(
+        d,
+        [
+            {"sel": "h4 + ul"},
+            {
+                "sel": "button[name=confirm]",
+                "arrow": "below",
+                "label": "potwierdź",
+                "dx": 250,
+                "dy": -95,
+            },
+        ],
+    )
+    shot(d, out / "04-podglad.png", 0, bottom_of(d, "button[name=confirm]", 110))
+
+    # 5. Result: message + history with "Cofnij"
+    d.locator("button[name=confirm]").click()
+    d.wait_for_load_state("networkidle")
+    d.mouse.move(5, 5)
+    mark(
+        d,
+        [
+            {"sel": ".callout.success"},
+            {
+                "sel": "form[action*=cofnij] button",
+                "arrow": "below",
+                "label": "cofnij",
+                "dx": -200,
+                "dy": -40,
+            },
+        ],
+    )
+    hist = page_box(d, "h3", "Historia przemapowań")
+    shot(d, out / "05-wynik.png", 0, hist["y"] + 260)
+
+    # 6. History details in the editing module (superuser only)
+    adm = new_session(page, base, DEMO_USER_ADMIN)
+    adm.goto(f"{base}/admin/przemapuj_prace_autora/przemapoaniepracautora/")
+    adm.wait_for_load_state("networkidle")
+    adm.locator("#result_list tbody tr a").first.click()
+    adm.wait_for_load_state("networkidle")
+    for h in adm.locator("h2.grp-collapse-handler, .grp-collapse-handler").all():
+        if "Historia" in h.inner_text():
+            h.click()
+    adm.wait_for_timeout(500)
+    adm.mouse.move(5, 5)
+    koniec = page_box(adm, "fieldset", "Historia przemapowanych prac zwartych")
+    dol = koniec["y"] + koniec["height"] + 20
+    # tall viewport: Grappelli's fixed "Zapisz" bar goes below the clip
+    adm.set_viewport_size({"width": VIEWPORT["width"], "height": int(dol) + 200})
+    shot(adm, out / "06-szczegoly-historii.png", 0, dol)
+    adm.context.close()
+
+    # 7. Undo
+    d.locator("form[action*=cofnij] button").first.click()
+    d.wait_for_load_state("networkidle")
+    d.mouse.move(5, 5)
+    mark(d, [{"sel": ".callout.success"}, {"sel": "table tbody tr", "text": "JD"}])
+    shot(d, out / "07-cofnieto.png", 0, bottom_of(d, "table", 30))
+    d.context.close()
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -8830,6 +8985,10 @@ SCENARIOS = {
     "wyszukiwanie-precyzyjne-zapisane": (
         "uzytkownik/wyszukiwanie-precyzyjne-zapisane",
         wyszukiwanie_precyzyjne_zapisane,
+    ),
+    "przemapowanie-prac-autora": (
+        "redaktor/przemapowanie-prac-autora",
+        przemapowanie_prac_autora,
     ),
 }
 

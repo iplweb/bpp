@@ -3,6 +3,17 @@ from django.core.exceptions import ValidationError
 
 from bpp.models import Jednostka
 
+# Importy zakładają jednostkę domyślną jako "Jednostka Domyślna" (stare bazy)
+# albo "Jednostka Domyślna <skrót uczelni>" (pbn_import, multi-hosted).
+# Model nie ma flagi, więc rozpoznajemy ją po prefiksie nazwy.
+PREFIKS_JEDNOSTKI_DOMYSLNEJ = "Jednostka Domyślna"
+
+
+def jest_jednostka_domyslna(jednostka):
+    return jednostka is not None and jednostka.nazwa.lower().startswith(
+        PREFIKS_JEDNOSTKI_DOMYSLNEJ.lower()
+    )
+
 
 class PrzemapoaniePracAutoraForm(forms.Form):
     jednostka_z = forms.ModelChoiceField(
@@ -49,7 +60,7 @@ class PrzemapoaniePracAutoraForm(forms.Form):
 
             # Dla jednostki docelowej pokaż wszystkie jednostki OPRÓCZ "Jednostka Domyślna"
             self.fields["jednostka_do"].queryset = Jednostka.objects.exclude(
-                nazwa="Jednostka Domyślna"
+                nazwa__istartswith=PREFIKS_JEDNOSTKI_DOMYSLNEJ
             ).order_by("nazwa")
 
             # Ustaw domyślne wartości
@@ -65,34 +76,34 @@ class PrzemapoaniePracAutoraForm(forms.Form):
             # Jeśli autor ma aktualną jednostkę różną od źródłowej, ustaw ją jako docelową
             if autor.aktualna_jednostka and autor.aktualna_jednostka.id != jednostka_id:
                 # Upewnij się, że aktualna jednostka nie jest Jednostką Domyślną
-                if autor.aktualna_jednostka.nazwa != "Jednostka Domyślna":
+                if not jest_jednostka_domyslna(autor.aktualna_jednostka):
                     self.fields["jednostka_do"].initial = autor.aktualna_jednostka.id
             return
 
-        # W przeciwnym razie, spróbuj znaleźć "Jednostkę Domyślną"
-        try:
-            jednostka_domyslna = Jednostka.objects.get(nazwa="Jednostka Domyślna")
+        # W przeciwnym razie: jeśli autor ma prace w jednostce domyślnej,
+        # ustaw ją jako źródłową.
+        jednostka_domyslna = (
+            Jednostka.objects.filter(
+                id__in=jednostki_ids,
+                nazwa__istartswith=PREFIKS_JEDNOSTKI_DOMYSLNEJ,
+            )
+            .order_by("nazwa")
+            .first()
+        )
+        if jednostka_domyslna is not None:
+            self.fields["jednostka_z"].initial = jednostka_domyslna.id
 
-            # Sprawdź czy autor ma prace w jednostce domyślnej
-            has_works_in_default = jednostka_domyslna.id in jednostki_ids
-
-            if has_works_in_default:
-                self.fields["jednostka_z"].initial = jednostka_domyslna.id
-
-                # Jeśli autor ma aktualną jednostkę (i nie jest to Jednostka Domyślna), ustaw ją jako docelową
-                if (
-                    autor.aktualna_jednostka
-                    and autor.aktualna_jednostka != jednostka_domyslna
-                ):
-                    self.fields["jednostka_do"].initial = autor.aktualna_jednostka.id
-        except Jednostka.DoesNotExist:
-            pass
+            # Aktualna jednostka autora (o ile nie jest domyślną) = docelowa
+            if autor.aktualna_jednostka and not jest_jednostka_domyslna(
+                autor.aktualna_jednostka
+            ):
+                self.fields["jednostka_do"].initial = autor.aktualna_jednostka.id
 
     def clean_jednostka_do(self):
         """Walidacja jednostki docelowej"""
         jednostka_do = self.cleaned_data.get("jednostka_do")
 
-        if jednostka_do and jednostka_do.nazwa == "Jednostka Domyślna":
+        if jest_jednostka_domyslna(jednostka_do):
             raise ValidationError(
                 'Nie można przemapować prac do "Jednostki Domyślnej". '
                 "Jednostka Domyślna jest przeznaczona tylko dla prac importowanych."
