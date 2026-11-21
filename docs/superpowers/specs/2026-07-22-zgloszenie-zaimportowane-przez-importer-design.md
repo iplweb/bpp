@@ -1,8 +1,7 @@
 # Domknięcie pętli: zgłoszenie publikacji ↔ importer prac
 
 **Zgłoszenie:** FD#443 „Oznaczanie zgłoszeń jako zużyte"
-(<https://iplweb.freshdesk.com/a/tickets/443>), zgłaszający Jan Bichałowicz
-(`jbihalowicz@apoz.edu.pl`), klient `bpp.apoz.edu.pl`.
+(<https://iplweb.freshdesk.com/a/tickets/443>).
 Powiązane: FD#430 (przycisk „Użyj importera" nad tabelą), FD#425 (oryginał).
 
 **Data:** 2026-07-22 · **Wersja bazowa:** `202607.1398` · **Gałąź:**
@@ -168,8 +167,10 @@ i nowy widok nie powielały reguł. Kontrakt publiczny:
 def kandydaci_dla_sesji(session) -> QuerySet:
     """Zgłoszenia, które ta sesja importu mogłaby domknąć."""
 
+
 def zwiaz_automatycznie(session) -> bool:
     """Ustawia session.zgloszenie, gdy kandydat jest dokładnie jeden."""
+
 
 def oznacz_jako_zaimportowane(session, record) -> bool:
     """Zapis zwrotny na zgłoszeniu. Idempotentny."""

@@ -37,14 +37,17 @@ istniało, nie by były zapełnione.
 
 ## Zależność: `fix/oai-identyfikator-repozytorium`
 
-Ta gałąź naprawia zaszytą domenę `bpp.umlub.pl` w `src/bpp/views/oai.py`
+Ta gałąź naprawia zaszytą domenę jednej instalacji w `src/bpp/views/oai.py`
 (feed do Primo) i wprowadza na `Uczelnia`:
 
 ```python
 oai_identyfikator_repozytorium = models.CharField(
     "Identyfikator repozytorium OAI-PMH",
-    max_length=255, blank=True, default="",
+    max_length=255,
+    blank=True,
+    default="",
 )
+
 
 def oai_repository_identifier(self):
     return self.oai_identyfikator_repozytorium.strip() or self.site.domain
@@ -203,13 +206,16 @@ OpenAIRE zobaczy duplikat całego korpusu jako „nowe" rekordy.
 `identyfikatory.py` eksportuje:
 
 ```python
-SLUGI: dict[type[models.Model], tuple[str, str]]   # model → (typ_cerif, slug)
-MODELE_WG_SLUGU: dict[str, type[models.Model]]     # odwrotność SLUGI
+SLUGI: dict[type[models.Model], tuple[str, str]]  # model → (typ_cerif, slug)
+MODELE_WG_SLUGU: dict[str, type[models.Model]]  # odwrotność SLUGI
+
 
 class BlednyIdentyfikator(ValueError): ...
 
+
 def zbuduj(namespace: str, obj) -> str: ...
-def rozbierz(oai_id: str) -> tuple[str, type[models.Model], int]: ...
+def rozbierz(oai_id: str) -> tuple[str, type[models.Model], int]:
+    ...
     # (namespace, model, pk); podnosi BlednyIdentyfikator
 ```
 
@@ -342,7 +348,7 @@ class ZbioryWidocznosci:
     jednostki: frozenset[int]
     zrodla: frozenset[int]
     konferencje: frozenset[int]
-    publikacje: frozenset[tuple[str, int]]   # (slug, pk)
+    publikacje: frozenset[tuple[str, int]]  # (slug, pk)
 
 
 @dataclass(frozen=True)
@@ -455,8 +461,9 @@ JOURNAL = "http://purl.org/coar/resource_type/c_0640"
 DOCTORAL_THESIS = "http://purl.org/coar/resource_type/c_db06"
 THESIS = "http://purl.org/coar/resource_type/c_46ec"
 
-def typ_publikacji(coar_type: str | None) -> str: ...   # fallback TEKST_ROOT
-def typ_patentu(coar_type: str | None) -> str: ...      # fallback PATENT_ROOT
+
+def typ_publikacji(coar_type: str | None) -> str: ...  # fallback TEKST_ROOT
+def typ_patentu(coar_type: str | None) -> str: ...  # fallback PATENT_ROOT
 def znany(uri: str) -> bool: ...
 ```
 
@@ -493,8 +500,15 @@ Sety: `openaire_cris_publications`, `openaire_cris_products`,
 Keyset, nie offset. Ładunek podpisany `django.core.signing` z TTL:
 
 ```python
-{"set": str, "prefix": str, "od": str | None, "do": str | None,
- "slug": str, "ts": str, "pk": int}
+{
+    "set": str,
+    "prefix": str,
+    "od": str | None,
+    "do": str | None,
+    "slug": str,
+    "ts": str,
+    "pk": int,
+}
 ```
 
 `slug` jest obowiązkowy — bez niego kursor w secie łączącym pięć modeli jest
