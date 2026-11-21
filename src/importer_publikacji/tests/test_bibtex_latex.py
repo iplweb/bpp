@@ -110,3 +110,32 @@ def test_split_input_title_matches_fetch_title():
     provider = BibTeXProvider()
     [record] = provider.split_input(SAMPLE_LATEX_ARTICLE)
     assert record.title == provider.fetch(record.raw).title
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("One line.", "One line."),
+        ("First  line\n   second line", "First line\nsecond line"),
+        ("Para one.\n\n\n\nPara two.", "Para one.\n\nPara two."),
+        ("  \n{U}kraine ---\n\n  NATO~policy \n ", "Ukraine —\n\nNATO policy"),
+    ],
+)
+def test_clean_latex_keep_lines(raw, expected):
+    assert _clean_latex(raw, keep_lines=True) == expected
+
+
+def test_fetch_abstract_keeps_line_breaks_other_fields_do_not():
+    pub = BibTeXProvider().fetch(
+        "@article{x,\n"
+        "  title = {Wrapped\n           title},\n"
+        "  abstract = {Background: {U}kraine.\n\n"
+        "              Methods: ``survey''.\n"
+        "              Results: 50% --- done.},\n"
+        "  year = {2024},\n"
+        "}\n"
+    )
+    assert pub.title == "Wrapped title"
+    assert pub.abstract == (
+        "Background: Ukraine.\n\nMethods: “survey”.\nResults: 50% — done."
+    )

@@ -220,7 +220,9 @@ class BibTeXProvider(DataProvider):
             publisher=_clean_optional(_get_field(fields, "publisher", "")),
             publication_type=publication_type,
             language=_get_field(fields, "language", "") or None,
-            abstract=_clean_optional(_get_field(fields, "abstract", "")),
+            abstract=_clean_optional(
+                _get_field(fields, "abstract", ""), keep_lines=True
+            ),
             volume=_get_field(fields, "volume", "") or None,
             issue=_get_field(fields, "number", "") or None,
             pages=pages or None,
@@ -281,9 +283,8 @@ def _parse_authors(author_str: str) -> list[dict]:
     return authors
 
 
-# Konwerter LaTeX -> Unicode. ``pylatexenc`` jest juz zainstalowany jako
-# zaleznosc ``bibtexparser`` (2.x uzywa go we wlasnym middleware'ze
-# ``LatexDecodingMiddleware``), wiec nie dokladamy nowej paczki.
+# Konwerter LaTeX -> Unicode (``pylatexenc``, jawna zaleznosc w
+# ``pyproject.toml``; ``bibtexparser`` 2.x i tak go uzywa).
 # ``math_mode="verbatim"`` zostawia wzory ``$...$`` nietkniete;
 # ``strict_latex_spaces`` nie zjada spacji po makrach typu ``\L``.
 _LATEX_TO_TEXT = LatexNodes2Text(math_mode="verbatim", strict_latex_spaces=True)
@@ -293,8 +294,11 @@ _LATEX_TO_TEXT = LatexNodes2Text(math_mode="verbatim", strict_latex_spaces=True)
 # odpowiednio komentarz (ucina reszte pola) i separator kolumn tabeli.
 _UNESCAPED_SPECIAL = re.compile(r"(?<!\\)([%&])")
 
+# Dwie lub wiecej pustych linii pod rzad (po normalizacji wierszy).
+_MULTI_BLANK_LINES = re.compile(r"\n{3,}")
 
-def _clean_latex(text: str) -> str:
+
+def _clean_latex(text: str, keep_lines: bool = False) -> str:
     r"""Zamien znaczniki LaTeX z pola BibTeX na zwykly tekst Unicode.
 
     Obsluguje m.in. (Freshdesk #458):
@@ -309,21 +313,26 @@ def _clean_latex(text: str) -> str:
     - proste makra formatujace (``\textit{x}``, ``\emph{x}``) -> ``x``,
     - escapowane znaki specjalne: ``\%``, ``\&``, ``\_`` itd.
 
-    Wzory matematyczne ``$...$`` zostaja bez zmian. Bialy znak (w tym
-    twarda spacja z ``~`` i lamanie wierszy) jest sprowadzany do
-    pojedynczych spacji, a miekki dywiz ``\-`` usuwany.
+    Wzory matematyczne ``$...$`` zostaja bez zmian, a miekki dywiz ``\-``
+    jest usuwany. Bialy znak (w tym twarda spacja z ``~``) jest sprowadzany
+    do pojedynczych spacji. Lamanie wierszy tez -- chyba ze
+    ``keep_lines=True`` (abstrakt): wtedy podzialy wierszy zostaja,
+    a puste linie miedzy akapitami sa sprowadzane do jednej.
     """
     if not text:
         return ""
     text = _UNESCAPED_SPECIAL.sub(r"\\\1", text)
     text = _LATEX_TO_TEXT.latex_to_text(text)
     text = text.replace("\xad", "")
-    return " ".join(text.split())
+    if not keep_lines:
+        return " ".join(text.split())
+    lines = [" ".join(line.split()) for line in text.splitlines()]
+    return _MULTI_BLANK_LINES.sub("\n\n", "\n".join(lines)).strip()
 
 
-def _clean_optional(text: str) -> str | None:
+def _clean_optional(text: str, keep_lines: bool = False) -> str | None:
     """``_clean_latex`` dla pol opcjonalnych: pusty wynik -> ``None``."""
-    return _clean_latex(text) or None
+    return _clean_latex(text, keep_lines=keep_lines) or None
 
 
 def _parse_year(year_str: str) -> int | None:
