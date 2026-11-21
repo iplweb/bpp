@@ -87,6 +87,7 @@ WYKAZ_DEMO_WIERSZE = [
     (201001, "Acta Wiedźmińska", "6746-8071", 100, "filozofia, nauki teologiczne"),
 ]
 DEMO_USER_REDAKTOR = "vesemir"  # demo editor: is_staff + "wprowadzanie danych"
+DEMO_USER_ADMIN = "regis"  # demo superuser for administrator pages
 # The fake POL-on export of the demo university (docs/deweloper/dane-demo.md,
 # "Plik POL-on do importu"); generate it with
 # `manage.py generuj_plik_polon_demo --out <dir>` and point this at it.
@@ -4809,6 +4810,460 @@ def optymalizacja_ewaluacji(page: Page, base: str, out: Path) -> None:
     red.context.close()
 
 
+# Demo author with three workplaces (bin/docs-demo-panel-uczelnia.py).
+AUTOR_MIEJSCA_PRACY = 187  # Margarita Merigold
+# Demo article with three authors, for reordering them.
+REKORD_TRZECH_AUTOROW = 1130
+
+
+def open_admin_menu(page: Page, icon: str) -> str:
+    """Hover a top-bar dropdown of the editing module ("menu-icon-structure",
+    ...) and wait for it. Returns the selector of the menu's <li>."""
+    li = f"#grp-navigation li.{icon}"
+    if not page.locator(li).count():
+        li = f"li.menu-item.{icon}"
+    page.hover(f"{li} > a")
+    page.wait_for_selector(f"{li} > ul", state="visible")
+    page.wait_for_timeout(600)
+    return li
+
+
+def open_fieldset(page: Page, nazwa: str) -> str:
+    """Expand a collapsible admin fieldset by its heading and tag it with an
+    id; returns a plain CSS selector (usable by mark/page_box too)."""
+    fid = page.evaluate(
+        """(nazwa) => {
+        const h = [...document.querySelectorAll('fieldset.grp-module > h2')]
+            .find(e => e.textContent.trim() === nazwa);
+        const fs = h.parentElement;
+        fs.id = fs.id || 'kb-fs-' + [...document.querySelectorAll('fieldset')].indexOf(fs);
+        return fs.id; }""",
+        nazwa,
+    )
+    sel = f"#{fid}"
+    if "grp-closed" in (page.get_attribute(sel, "class") or ""):
+        page.click(f"{sel} > h2")
+        page.wait_for_timeout(500)
+    return sel
+
+
+def panel_uczelnia_ogolna(page: Page, base: str, out: Path) -> None:
+    """docs/administrator/ogolna.md: author visibility, "Strona wizualna",
+    the author page tile editor and the column picker.
+
+    Needs bin/docs-demo-panel-uczelnia.py (accounts vesemir and regis).
+    """
+    w = VIEWPORT["width"]
+    red = new_session(page, base, DEMO_USER_REDAKTOR)
+    adm = new_session(page, base, DEMO_USER_ADMIN)
+
+    # 1. author form: "Pokazuj na stronie jednostki" in "Widoczność"
+    red.goto(f"{base}/admin/bpp/autor/{AUTOR_MIEJSCA_PRACY}/change/")
+    red.wait_for_load_state("networkidle")
+    sekcja = open_fieldset(red, "Widoczność")
+    mark(
+        red,
+        [
+            {
+                "sel": ".form-row.pokazuj_na_stronie_jednostki label",
+                "arrow": "right",
+                "label": "odznacz, by ukryć autora",
+                "dx": 200,
+                "dy": -40,
+            }
+        ],
+    )
+    box = page_box(red, sekcja)
+    shot(
+        red,
+        out / "01-pokazuj-na-stronie-jednostki.png",
+        box["y"] - 15,
+        box["height"] + 30,
+    )
+
+    # 2. university form: "Strona wizualna" - who sees what
+    uczelnia = f"{base}/admin/bpp/uczelnia/"
+    adm.goto(uczelnia)
+    adm.wait_for_load_state("networkidle")
+    adm.locator("#result_list tbody a").first.click()
+    adm.wait_for_load_state("networkidle")
+    sekcja = open_fieldset(adm, "Strona wizualna")
+    mark(
+        adm,
+        [
+            {
+                "sel": ".form-row.pokazuj_status_korekty select",
+                "arrow": "right",
+                "label": "zawsze / zalogowani / zespół / nigdy",
+                "dx": 40,
+                "dy": 10,
+            },
+            {"sel": ".form-row.pokazuj_ranking_autorow select"},
+        ],
+    )
+    gora = page_box(adm, sekcja)
+    od = page_box(adm, ".form-row.pokazuj_status_korekty")
+    do = page_box(adm, ".form-row.pokazuj_formularz_zglaszania_publikacji")
+    stitch(
+        adm,
+        [
+            shot(adm, None, gora["y"] - 10, 140),
+            shot(adm, None, od["y"] - 10, do["y"] + do["height"] - od["y"] + 20),
+        ],
+        out / "02-strona-wizualna.png",
+        "niżej w tej samej sekcji",
+    )
+
+    # 3. "Profil autora (podstrona)": the tile editor
+    sekcja = open_fieldset(adm, "Profil autora (podstrona)")
+    kafelek = ".uklad-profilu-kafelek[data-klucz]"
+    mark(
+        adm,
+        [
+            {
+                "sel": f"{kafelek}:nth-child(2) .uklad-uchwyt",
+                "arrow": "left",
+                "label": "1",
+                "dx": 40,
+                "dy": -40,
+            },
+            {
+                "sel": f"{kafelek}:nth-child(3) .uklad-widoczna",
+                "arrow": "left",
+                "label": "2",
+                "dx": 40,
+                "dy": 30,
+            },
+            {
+                "sel": f"{kafelek}:nth-child(4) .uklad-szerokosc-select",
+                "arrow": "right",
+                "label": "3",
+                "dx": 260,
+                "dy": -60,
+            },
+            {
+                "sel": f"{kafelek}:nth-child(6) .uklad-limit-select",
+                "arrow": "right",
+                "label": "4",
+                "dx": 120,
+                "dy": 0,
+            },
+        ],
+    )
+    box = page_box(adm, sekcja)
+    shot(adm, out / "03-profil-autora-kafelki.png", box["y"] - 10, box["height"] + 20)
+
+    # 4. any list in the editing module: the "Kolumny" button
+    lista = f"{base}/admin/bpp/wydawnictwo_ciagle/"
+    adm.goto(lista)
+    adm.wait_for_load_state("networkidle")
+    mark(
+        adm,
+        [
+            {
+                "sel": "#dyncol-button",
+                "arrow": "below",
+                "label": "Kolumny",
+                "dx": -220,
+                "dy": 20,
+            }
+        ],
+    )
+    adm.screenshot(
+        path=out / "04-przycisk-kolumny.png",
+        clip={"x": 0, "y": 0, "width": w, "height": 420},
+    )
+
+    # 5. the column picker (superuser: also the global defaults)
+    adm.click("#dyncol-button")
+    adm.wait_for_selector(
+        "#dyncol-modal:not([hidden]) #dyncol-list li", state="visible"
+    )
+    adm.wait_for_timeout(800)
+    mark(
+        adm,
+        [
+            {
+                "sel": ".dyncol-scope",
+                "arrow": "right",
+                "label": "1. dla mnie / dla wszystkich",
+                "dx": -170,
+                "dy": -110,
+            },
+            {
+                "sel": "#dyncol-list li:nth-child(3) .dyncol-handle, #dyncol-list li:nth-child(3) [class*=handle]",
+                "arrow": "left",
+                "label": "2. przeciągnij",
+                "dx": -40,
+                "dy": -20,
+            },
+            {
+                "sel": "#dyncol-list li:nth-child(8) input[type=checkbox]",
+                "arrow": "left",
+                "label": "3. pokaż / ukryj",
+                "dx": -40,
+                "dy": 20,
+            },
+            {
+                "sel": "#dyncol-save",
+                "arrow": "right",
+                "label": "4. Zapisz",
+                "dx": 40,
+                "dy": -60,
+            },
+        ],
+    )
+    adm.screenshot(path=out / "05-okno-kolumn.png")
+    adm.keyboard.press("Escape")
+
+    # 6. Administracja -> Kolumny w module redagowania: saved layouts
+    adm.goto(f"{base}/admin/")
+    adm.wait_for_load_state("networkidle")
+    li = open_admin_menu(adm, "menu-icon-admin")
+    mark(
+        adm,
+        [
+            {
+                "sel": f"{li} > ul a[href*='dynamic_admin_columns']",
+                "arrow": "left",
+                "label": "Kolumny w module redagowania",
+                "dx": 0,
+                "dy": -180,
+            }
+        ],
+    )
+    menu = page_box(adm, f"{li} > ul")
+    adm.screenshot(
+        path=out / "06-menu-kolumny.png",
+        clip={"x": 0, "y": 0, "width": w, "height": menu["y"] + menu["height"] + 60},
+    )
+
+
+def panel_uczelnia_redaktor(page: Page, base: str, out: Path) -> None:
+    """docs/redaktor/uczelnia.md: opening the university settings, PBN section,
+    "Obca jednostka". Needs bin/docs-demo-panel-uczelnia.py (superuser regis:
+    the PBN section is shown to superusers only)."""
+    w = VIEWPORT["width"]
+
+    # 1. anonymous visitor: "zaloguj" in the top bar
+    anon = new_session(page, base)
+    zaloguj = TOP_MENU.format(icon="fi-lock")
+    if anon.locator(f"{zaloguj} > ul").count():
+        zaloguj = open_top_menu(anon, "fi-lock")
+    mark(
+        anon,
+        [
+            {
+                "sel": f"{zaloguj} > a",
+                "arrow": "right",
+                "label": "1. zaloguj",
+                "dx": 330,
+                "dy": -40,
+            },
+            {
+                "sel": f"{zaloguj} > ul a[href*='login']",
+                "arrow": "right",
+                "label": "2. logowanie",
+                "dx": 60,
+                "dy": -20,
+            },
+        ],
+    )
+    anon.screenshot(
+        path=out / "01-zaloguj.png", clip={"x": 0, "y": 0, "width": w, "height": 330}
+    )
+    anon.context.close()
+
+    # 2. logged in: "redagowanie" -> "redagowanie" opens the editing module
+    adm = new_session(page, base, DEMO_USER_ADMIN)
+    li = open_top_menu(adm, "fi-pencil")
+    mark(
+        adm,
+        [
+            {
+                "sel": f"{li} > ul a[href='/admin/']",
+                "arrow": "left",
+                "label": "moduł redagowania",
+                "dx": -30,
+                "dy": 60,
+            }
+        ],
+    )
+    menu = page_box(adm, f"{li} > ul")
+    shot(adm, out / "02-menu-redagowanie.png", 0, menu["y"] + menu["height"] + 30)
+
+    # 3. editing module: Struktura -> Uczelnia
+    adm.mouse.move(5, 700)
+    adm.goto(f"{base}/admin/")
+    adm.wait_for_load_state("networkidle")
+    li = open_admin_menu(adm, "menu-icon-structure")
+    mark(
+        adm,
+        [
+            {"sel": f"{li} > a"},
+            {
+                "sel": f"{li} > ul a[href='/admin/bpp/uczelnia/']",
+                "arrow": "right",
+                "label": "Struktura ➡ Uczelnia",
+                "dx": 40,
+                "dy": 30,
+            },
+        ],
+    )
+    adm.screenshot(
+        path=out / "03-menu-struktura.png",
+        clip={"x": 0, "y": 0, "width": w, "height": 260},
+    )
+
+    # 4. the list has one university: click its name
+    adm.mouse.move(5, 700)
+    adm.goto(f"{base}/admin/bpp/uczelnia/")
+    adm.wait_for_load_state("networkidle")
+    mark(
+        adm,
+        [
+            {
+                "sel": "#result_list tbody tr:first-child th a, #result_list tbody tr:first-child td a",
+                "arrow": "below",
+                "label": "kliknij nazwę uczelni",
+                "dx": 40,
+                "dy": 0,
+            }
+        ],
+    )
+    adm.screenshot(
+        path=out / "04-lista-uczelni.png",
+        clip={"x": 0, "y": 0, "width": w, "height": 400},
+    )
+
+    # 5. the "PBN API" section
+    adm.locator("#result_list tbody a").first.click()
+    adm.wait_for_load_state("networkidle")
+    sekcja = open_fieldset(adm, "PBN API")
+    mark(
+        adm,
+        [
+            {"sel": ".form-row.pbn_integracja"},
+            {
+                "sel": ".form-row.pbn_app_token input",
+                "arrow": "right",
+                "label": "token z PBN (nie jest wyświetlany)",
+                "dx": 120,
+                "dy": -40,
+            },
+        ],
+    )
+    box = page_box(adm, sekcja)
+    shot(adm, out / "05-pbn-api.png", box["y"] - 10, box["height"] + 20)
+
+    # 6. "Obca jednostka" at the top of the form
+    adm.add_style_tag(content=".grp-fixed-footer{display:none!important}")
+    mark(
+        adm,
+        [
+            {
+                "sel": ".form-row.obca_jednostka .select2-selection",
+                "arrow": "above",
+                "label": "Obca jednostka",
+                "dx": 300,
+                "dy": 50,
+            }
+        ],
+    )
+    box = page_box(adm, ".form-row.obca_jednostka")
+    shot(adm, out / "06-obca-jednostka.png", 0, box["y"] + box["height"] + 15)
+
+
+def panel_uczelnia_autorzy(page: Page, base: str, out: Path) -> None:
+    """docs/redaktor/autorzy.md: "Aktualna jednostka" and the author's workplaces.
+    Needs bin/docs-demo-panel-uczelnia.py."""
+    red = new_session(page, base, DEMO_USER_REDAKTOR)
+    red.goto(f"{base}/admin/bpp/autor/{AUTOR_MIEJSCA_PRACY}/change/")
+    red.wait_for_load_state("networkidle")
+    red.add_style_tag(content=".grp-fixed-footer{display:none!important}")
+
+    # 1. read-only "Aktualna jednostka"
+    mark(
+        red,
+        [
+            {
+                "sel": ".form-row.aktualna_jednostka .grp-readonly, .form-row.aktualna_jednostka a",
+                "arrow": "right",
+                "label": "wyliczane z miejsc pracy",
+                "dx": 60,
+                "dy": -30,
+            }
+        ],
+    )
+    box = page_box(red, ".form-row.aktualna_jednostka")
+    shot(red, out / "01-aktualna-jednostka.png", box["y"] - 140, box["height"] + 200)
+
+    # 2. the workplaces table - wider than the window, so widen it for this shot
+    szer = 1720
+    red.set_viewport_size({"width": szer, "height": VIEWPORT["height"]})
+    red.wait_for_timeout(500)
+    grupa = "#autor_jednostka_set-group"
+    mark(
+        red,
+        [
+            {
+                "sel": "#autor_jednostka_set0 .grp-td.zakonczyl_prace input",
+                "arrow": "below",
+                "label": "praca zakończona",
+                "dx": -330,
+                "dy": 70,
+            },
+            {
+                "sel": "#autor_jednostka_set1 .grp-td.podstawowe_miejsce_pracy select",
+                "arrow": "left",
+                "label": "podstawowe miejsce pracy",
+                "dx": 0,
+                "dy": 160,
+            },
+        ],
+    )
+    box = page_box(red, grupa)
+    red.evaluate("window.scrollTo(0, 0)")
+    red.screenshot(
+        path=out / "02-miejsca-pracy.png",
+        full_page=True,
+        clip={"x": 0, "y": box["y"] - 10, "width": szer, "height": box["height"] + 100},
+    )
+    red.set_viewport_size(VIEWPORT)
+
+
+def panel_uczelnia_wydawnictwa(page: Page, base: str, out: Path) -> None:
+    """docs/redaktor/wydawnictwa.md: adding authors and changing their order."""
+    red = new_session(page, base, DEMO_USER_REDAKTOR)
+    red.goto(f"{base}/admin/bpp/wydawnictwo_ciagle/{REKORD_TRZECH_AUTOROW}/change/")
+    red.wait_for_load_state("networkidle")
+    grupa = "#autorzy_set-group"
+    # collapsed authors are easier to reorder
+    red.click(f"{grupa} > .grp-tools .grp-close-handler")
+    red.wait_for_timeout(600)
+    mark(
+        red,
+        [
+            {
+                "sel": "#autorzy_set1 .grp-drag-handler",
+                "arrow": "left",
+                "label": "chwyć i przeciągnij w górę lub w dół",
+                "dx": -420,
+                "dy": -210,
+            },
+            {
+                "sel": f"{grupa} a.grp-add-handler:not(.grp-icon)",
+                "arrow": "right",
+                "label": "dodaj autora",
+                "dx": 200,
+                "dy": 0,
+            },
+        ],
+    )
+    box = page_box(red, grupa)
+    shot(red, out / "01-kolejnosc-autorow.png", box["y"] - 110, box["height"] + 170)
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -5101,6 +5556,10 @@ SCENARIOS = {
         "redaktor/optymalizacja-ewaluacji",
         optymalizacja_ewaluacji,
     ),
+    "panel-uczelnia-ogolna": ("administrator/ogolna", panel_uczelnia_ogolna),
+    "panel-uczelnia-redaktor": ("redaktor/uczelnia", panel_uczelnia_redaktor),
+    "panel-uczelnia-autorzy": ("redaktor/autorzy", panel_uczelnia_autorzy),
+    "panel-uczelnia-wydawnictwa": ("redaktor/wydawnictwa", panel_uczelnia_wydawnictwa),
 }
 
 
