@@ -63,6 +63,20 @@ class CreateOptions:
     # Login uzytkownika, któremu przypisujemy wpisy „utworzono" w historii
     # (admin „Historia"). None → konto techniczne ``bpp-system``.
     uzytkownik: str | None = None
+    # Dodatki (kazdy z wlasnym RNG „<seed>-<nazwa>", wiec nie zmieniaja
+    # danych powyzej dla danego --seed):
+    dwudyscyplinowcow: int = 8
+    bez_rzadkich_typow: bool = False
+    bez_brudow: bool = False
+    bez_pbn: bool = False
+    konta_demo: bool = False
+
+
+def rng_dodatku(seed: int | None, nazwa: str) -> random.Random:
+    """Osobny RNG dla dodatku — deterministyczny przy podanym --seed."""
+    if seed is None:
+        return random.Random()
+    return random.Random(f"{seed}-{nazwa}")
 
 
 def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
@@ -75,9 +89,11 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
     4. Generatory w sztywnej kolejnosci dependency: uczelnia → wydzialy →
        jednostki → autorzy → dyscypliny → zrodla (+ punktacja) → wydawcy
        (+ poziomy) → WC → WZ → streszczenia → zgloszenia publikacji.
-    5. Przeliczenie ewaluacji (cache punktow/slotow, liczba N, metryki) —
-       pomijane z `--bez-ewaluacji`.
-    6. Manifest save + summary do stdout.
+    5. Dodatki zmieniajace dane ewaluacji: rzadsze typy rekordow,
+       dwudyscyplinowcy, celowe brudy. Potem przeliczenie ewaluacji (cache
+       punktow/slotow, liczba N, metryki) — pomijane z `--bez-ewaluacji`.
+    6. Konta demo (opt-in), lustro PBN.
+    7. Manifest save + summary do stdout (i opcjonalny plik POL-on).
     """
     stdin = stdin or sys.stdin
     stdout = stdout or sys.stdout
@@ -265,7 +281,51 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         disable_progress=opts.disable_progress,
     )
 
-    # Ślad w historii (admin „Historia") — bulk_create go nie zostawia:
+    # 5. Dodatki zmieniajace dane liczone w slotach/liczbie N:
+    dwu_autorzy, dwu_prace = _dodatki_przed_ewaluacja(
+        opts,
+        autorzy=autorzy,
+        jednostki=jednostki,
+        zrodla=zrodla,
+        wc=wc,
+        wz=wz,
+        theme=theme,
+        prefix=prefix,
+        manifest=manifest,
+        stdout=stdout,
+    )
+
+    if not opts.bez_ewaluacji:
+        from bpp.demo_data.ewaluacja import przelicz_ewaluacje
+
+        przelicz_ewaluacje(
+            uczelnia=uczelnia,
+            prace_wc=wc + dwu_prace,
+            prace_wz=wz,
+            od_roku=opts.od_roku,
+            do_roku=opts.do_roku,
+            manifest=manifest,
+            stdout=stdout,
+            disable_progress=opts.disable_progress,
+        )
+
+    # 6. Konta (opt-in), lustro PBN:
+    _dodatki_po_ewaluacji(
+        opts,
+        uczelnia=uczelnia,
+        autorzy=autorzy + dwu_autorzy,
+        zrodla=zrodla,
+        wydawcy=wydawcy,
+        wc=wc + dwu_prace,
+        wz=wz,
+        theme=theme,
+        prefix=prefix,
+        manifest=manifest,
+        stdout=stdout,
+    )
+
+    # 7. Ślad w historii (admin „Historia") — bulk_create go nie zostawia;
+    # PO wszystkich dodatkach, żeby objął też ich rekordy:
     from bpp.demo_data.historia import (
         komentarz_utworzenia,
         zapisz_historie_utworzenia,
@@ -281,20 +341,6 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         f'[OK] Historia: {sum(wpisy_historii.values())} wpisow „utworzono" '
         f"(uzytkownik: {autor_historii.username}).\n"
     )
-
-    if not opts.bez_ewaluacji:
-        from bpp.demo_data.ewaluacja import przelicz_ewaluacje
-
-        przelicz_ewaluacje(
-            uczelnia=uczelnia,
-            prace_wc=wc,
-            prace_wz=wz,
-            od_roku=opts.od_roku,
-            do_roku=opts.do_roku,
-            manifest=manifest,
-            stdout=stdout,
-            disable_progress=opts.disable_progress,
-        )
 
     manifest.save()
     stdout.write(
@@ -324,6 +370,124 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
             theme=theme,
         )
         stdout.write("\n" + podsumowanie.tekst())
+
+
+def _dodatki_przed_ewaluacja(
+    opts: CreateOptions,
+    *,
+    autorzy,
+    jednostki,
+    zrodla,
+    wc,
+    wz,
+    theme,
+    prefix,
+    manifest,
+    stdout,
+):
+    """Rzadsze typy rekordow, dwudyscyplinowcy, celowe brudy.
+
+    Zwraca (dwudyscyplinowcy, ich prace)."""
+    lata_lista = list(range(opts.od_roku, opts.do_roku + 1))
+    if not opts.bez_rzadkich_typow:
+        from bpp.demo_data.generators.rzadkie_typy import create_rzadkie_typy
+
+        rzadkie = create_rzadkie_typy(
+            autorzy=autorzy,
+            prace_wc=wc,
+            prace_wz=wz,
+            lata=lata_lista,
+            theme=theme,
+            manifest=manifest,
+            rng=rng_dodatku(opts.seed, "rzadkie"),
+            prefix=prefix,
+            batch_size=opts.batch_size,
+            disable_progress=opts.disable_progress,
+        )
+        stdout.write(rzadkie.tekst())
+
+    dwu_autorzy, dwu_prace = [], []
+    if opts.dwudyscyplinowcow > 0:
+        from bpp.demo_data.generators.dwudyscyplinowcy import create_dwudyscyplinowcy
+
+        dwu_autorzy, dwu_prace = create_dwudyscyplinowcy(
+            n=opts.dwudyscyplinowcow,
+            jednostki=jednostki,
+            zrodla=zrodla,
+            wspolautorzy=autorzy,
+            lata=lata_lista,
+            theme=theme,
+            manifest=manifest,
+            rng=rng_dodatku(opts.seed, "dwudyscyplinowcy"),
+            idx_start=len(wc),
+            marker=prefix,
+            batch_size=opts.batch_size,
+            disable_progress=opts.disable_progress,
+        )
+        stdout.write(
+            f"[OK] Dwudyscyplinowcy: {len(dwu_autorzy)} autorów "
+            f"(pseudonim „dwudyscyplinowy”), {len(dwu_prace)} artykułów.\n"
+        )
+
+    if not opts.bez_brudow:
+        from bpp.demo_data.generators.brudy import create_brudy
+
+        brudy = create_brudy(
+            autorzy=autorzy,
+            zrodla=zrodla,
+            prace_wc=wc,
+            idx_start=len(wc) + len(dwu_prace),
+            manifest=manifest,
+            rng=rng_dodatku(opts.seed, "brudy"),
+            batch_size=opts.batch_size,
+            disable_progress=opts.disable_progress,
+        )
+        stdout.write(brudy.tekst())
+    return dwu_autorzy, dwu_prace
+
+
+def _dodatki_po_ewaluacji(
+    opts: CreateOptions,
+    *,
+    uczelnia,
+    autorzy,
+    zrodla,
+    wydawcy,
+    wc,
+    wz,
+    theme,
+    prefix,
+    manifest,
+    stdout,
+):
+    """Konta demo (opt-in), lustro PBN.
+
+    Generator tylko tworzy dane. Porownania BPP-PBN i skany deduplikatorow
+    uruchamia uzytkownik (przyciski na ich ekranach)."""
+    lata_lista = list(range(opts.od_roku, opts.do_roku + 1))
+    if opts.konta_demo:
+        from bpp.demo_data.generators.konta import create_konta
+
+        create_konta(autorzy=autorzy, manifest=manifest, stdout=stdout)
+
+    if not opts.bez_pbn:
+        from bpp.demo_data.generators.pbn import create_lustro_pbn
+
+        lustro = create_lustro_pbn(
+            uczelnia=uczelnia,
+            autorzy=autorzy,
+            zrodla=zrodla,
+            wydawcy=wydawcy,
+            prace_wc=wc,
+            prace_wz=wz,
+            lata=lata_lista,
+            theme=theme,
+            manifest=manifest,
+            rng=rng_dodatku(opts.seed, "pbn"),
+            batch_size=opts.batch_size,
+            disable_progress=opts.disable_progress,
+        )
+        stdout.write(lustro.tekst())
 
 
 def _autor_historii(username: str | None, stdout):

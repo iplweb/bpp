@@ -36,7 +36,7 @@
                                 <i class="fi-check komparator-pbn__status-icon--success"></i> <strong class="komparator-pbn__status-title--success">Ostatnie pobieranie zakończone pomyślnie</strong>
                                 <div class="komparator-pbn__status-details komparator-pbn__status-details--success">
                                     Data: {{ latest_task.completed_at|date:"d.m.Y H:i:s" }}<br>
-                                    Użytkownik: {{ latest_task.user.username }}
+                                    Użytkownik: {{ latest_task.user.username|default:"system" }}
                                 </div>
                             </div>
                         {% elif latest_task.status == 'failed' %}
@@ -119,7 +119,7 @@
                 Praca <strong>musi</strong> mieć punkty PK, zgodnie z ustawieniami obiektu Uczelnia.<br/>
                 Praca <strong>musi</strong> mieć DOI lub adres strony WWW (pole WWW lub Dostęp płatny).<br/>
                 Praca <strong>musi</strong> mieć charakter formalny jeden z:
-                {% for charakter in  charaktery_wysylane_do_pbn %}{{ charakter.nazwa }}, {% endfor %}
+                {% for charakter in charaktery_wysylane_do_pbn %}{{ charakter.nazwa }}, {% endfor %}
             {% endif %}
             <div class="row">
                 <div class="medium-6 columns">

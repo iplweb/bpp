@@ -58,6 +58,10 @@ class PbnDownloadTask(PbnTaskMixin, models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="pbn_downloader_tasks",
+        # Puste = pobranie bez użytkownika (np. dane demo „pobrane” przy
+        # generowaniu — create_demo_data); ekrany pokazują wtedy „system”.
+        null=True,
+        blank=True,
     )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="running")
     started_at = models.DateTimeField(auto_now_add=True)
@@ -95,6 +99,10 @@ class PbnInstitutionPeopleTask(PbnTaskMixin, models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="pbn_people_tasks",
+        # Puste = pobranie bez użytkownika (np. dane demo „pobrane” przy
+        # generowaniu — create_demo_data); ekrany pokazują wtedy „system”.
+        null=True,
+        blank=True,
     )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="running")
     started_at = models.DateTimeField(auto_now_add=True)
@@ -130,6 +138,10 @@ class PbnJournalsDownloadTask(PbnTaskMixin, models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="pbn_journals_tasks",
+        # Puste = pobranie bez użytkownika (np. dane demo „pobrane” przy
+        # generowaniu — create_demo_data); ekrany pokazują wtedy „system”.
+        null=True,
+        blank=True,
     )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="running")
     started_at = models.DateTimeField(auto_now_add=True)

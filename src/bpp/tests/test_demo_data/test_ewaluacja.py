@@ -41,6 +41,7 @@ from bpp.models.sloty.core import ISlot
 from bpp.models.sloty.exceptions import CannotAdapt
 from bpp.models.wydawca import Poziom_Wydawcy
 from bpp.punktacja_sugestia import PROGI_ZWARTE
+from bpp.tests.test_demo_data._flagi import BEZ_DODATKOW
 from ewaluacja_liczba_n.models import (
     IloscUdzialowDlaAutoraZaCalosc,
     IloscUdzialowDlaAutoraZaRok,
@@ -51,6 +52,10 @@ from ewaluacja_metryki.models import MetrykaAutora
 OD_ROKU, DO_ROKU = 2022, 2026
 
 
+# Słownik z baseline; test transakcyjny na tym samym workerze go wymiata.
+@pytest.mark.usefixtures(
+    "rodzaj_autora_n", "rodzaj_autora_b", "rodzaj_autora_d", "rodzaj_autora_z"
+)
 @pytest.mark.django_db
 def test_rodzaj_autora_proporcje(tmp_manifest_path):
     """~60% N, ~30% B, ~10% D; jeden rodzaj na autora we wszystkich latach."""
@@ -110,6 +115,7 @@ def _create_demo(tmp_path, *extra):
     db_name = connection.settings_dict["NAME"]
     call_command(
         "create_demo_data",
+        *BEZ_DODATKOW,
         "--wydzialow=1",
         "--jednostek-na-wydzial=2",
         "--autorow=30",
