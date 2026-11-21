@@ -1,9 +1,9 @@
 """Matchowanie źródeł (czasopism) po ISSN/e-ISSN, mniswId i tytule."""
 
-from django.db.models import F, Q, Value
-from django.db.models.functions import Replace, Upper
+from django.db.models import Q
 
 from bpp.models import Zrodlo
+from bpp.models.zrodlo import issn_norm_expr
 
 from ..normalization import normalize_tytul_zrodla
 
@@ -15,18 +15,8 @@ def _normalize_issn_value(value: str | None) -> str | None:
     return value.replace("-", "").replace(" ", "").strip().upper() or None
 
 
-def _normalized_issn_expr(field: str):
-    """Wyrażenie SQL normalizujące pole ISSN tak jak ``_normalize_issn_value``."""
-    return Upper(
-        Replace(Replace(F(field), Value("-"), Value("")), Value(" "), Value(""))
-    )
-
-
-def _single_or_none(qs) -> Zrodlo | None:
-    kandydaci = list(qs[:2])
-    if len(kandydaci) == 1:
-        return kandydaci[0]
-    return None
+def _jedyny(kandydaci: list[Zrodlo]) -> Zrodlo | None:
+    return kandydaci[0] if len(kandydaci) == 1 else None
 
 
 def _try_match_zrodlo_by_issn(issn: str | None, e_issn: str | None) -> Zrodlo | None:
@@ -38,6 +28,12 @@ def _try_match_zrodlo_by_issn(issn: str | None, e_issn: str | None) -> Zrodlo | 
     co do tego, który numer jest drukowany, a który elektroniczny (np.
     CrossRef podaje dla MDPI tylko e-ISSN, a w BPP numer siedzi w polu
     ``issn``) — FD#451. Zwraca źródło tylko przy dokładnie jednym trafieniu.
+
+    Wydajność: jedno zapytanie pobiera wszystkich kandydatów (dowolny numer
+    w dowolnym polu), a priorytety rozstrzygane są w Pythonie. Filtr używa
+    tych samych wyrażeń co indeksy funkcyjne na ``Zrodlo`` (``zrodlo_issn_norm``,
+    ``zrodlo_e_issn_norm``), więc to dwa index scany zamiast przeglądania
+    całej tabeli — ważne przy importach list z dziesiątkami tysięcy wierszy.
     """
     issn = _normalize_issn_value(issn)
     e_issn = _normalize_issn_value(e_issn)
@@ -45,24 +41,24 @@ def _try_match_zrodlo_by_issn(issn: str | None, e_issn: str | None) -> Zrodlo | 
     if not numery:
         return None
 
-    qs = Zrodlo.objects.annotate(
-        _issn_norm=_normalized_issn_expr("issn"),
-        _e_issn_norm=_normalized_issn_expr("e_issn"),
+    kandydaci = list(
+        Zrodlo.objects.annotate(
+            _issn_norm=issn_norm_expr("issn"),
+            _e_issn_norm=issn_norm_expr("e_issn"),
+        ).filter(Q(_issn_norm__in=numery) | Q(_e_issn_norm__in=numery))
     )
 
     if issn is not None:
-        result = _single_or_none(qs.filter(_issn_norm=issn))
+        result = _jedyny([z for z in kandydaci if z._issn_norm == issn])
         if result:
             return result
 
     if e_issn is not None:
-        result = _single_or_none(qs.filter(_e_issn_norm=e_issn))
+        result = _jedyny([z for z in kandydaci if z._e_issn_norm == e_issn])
         if result:
             return result
 
-    return _single_or_none(
-        qs.filter(Q(_issn_norm__in=numery) | Q(_e_issn_norm__in=numery))
-    )
+    return _jedyny(kandydaci)
 
 
 def _try_match_zrodlo_by_mnisw_id(mnisw_id: int | str | None) -> Zrodlo | None:

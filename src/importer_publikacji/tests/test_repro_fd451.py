@@ -103,3 +103,30 @@ def test_fd451_matchuj_zrodlo_eissn_w_polu_issn():
         Zrodlo, nazwa="Applied Sciences-Basel", issn="2076-3417", e_issn=""
     )
     assert matchuj_zrodlo("Applied Sciences", e_issn="2076-3417") == dobre
+
+
+@pytest.mark.django_db
+def test_issn_matcher_uses_functional_indexes():
+    """The matcher's filter must hit the ``zrodlo_*issn_norm`` indexes.
+
+    PostgreSQL uses an expression index only when the query expression is
+    identical to the indexed one; this guards against the two drifting apart.
+    """
+    from django.db import connection
+
+    from bpp.models.zrodlo import issn_norm_expr
+
+    qs = Zrodlo.objects.annotate(
+        _issn_norm=issn_norm_expr("issn"),
+        _e_issn_norm=issn_norm_expr("e_issn"),
+    ).filter(_issn_norm__in=["20763417"]) | Zrodlo.objects.annotate(
+        _issn_norm=issn_norm_expr("issn"),
+        _e_issn_norm=issn_norm_expr("e_issn"),
+    ).filter(_e_issn_norm__in=["20763417"])
+
+    with connection.cursor() as cursor:
+        cursor.execute("SET LOCAL enable_seqscan = off")
+    plan = qs.explain()
+
+    assert "zrodlo_issn_norm" in plan
+    assert "zrodlo_e_issn_norm" in plan
