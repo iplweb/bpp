@@ -36,16 +36,15 @@ def test_kosz_i_przywrocenie_autora_to_rewizje_reversion(admin_user):
     autor.restore(user=admin_user)
 
     komentarze = [
-        v.revision.comment
-        for v in Version.objects.get_for_object(autor).order_by("pk")
+        v.revision.comment for v in Version.objects.get_for_object(autor).order_by("pk")
     ]
     assert komentarze == [
         "Przeniesiono do kosza (powód: duplikat)",
         "Przywrócono z kosza",
     ]
-    assert {
-        v.revision.user_id for v in Version.objects.get_for_object(autor)
-    } == {admin_user.pk}
+    assert {v.revision.user_id for v in Version.objects.get_for_object(autor)} == {
+        admin_user.pk
+    }
 
 
 @pytest.mark.django_db
