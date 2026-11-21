@@ -288,6 +288,16 @@ class BppUserAdmin(UserAdmin):
             {"fields": ("przedstawiaj_w_pbn_jako",)},
         ),
         (
+            "Metryki jednostek",
+            {
+                "fields": ("jednostki_metryk",),
+                "description": "Wgląd w zestawienie „Metryki jednostek” (PDF "
+                "z imiennymi ocenami pracowników) wybranych jednostek, bez "
+                "innych uprawnień. Kierownik jednostki ma wgląd w swoją "
+                "jednostkę automatycznie.",
+            },
+        ),
+        (
             "Dostęp do uczelni",
             {
                 "fields": ("accessible_uczelnie",),
@@ -297,7 +307,7 @@ class BppUserAdmin(UserAdmin):
         ),
     )
 
-    autocomplete_fields = ["autor"]
+    autocomplete_fields = ["autor", "jednostki_metryk"]
 
     list_filter = (*UserAdmin.list_filter, filters.KontaStaffBezUczelniFilter)
 
