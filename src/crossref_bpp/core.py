@@ -1,3 +1,4 @@
+import unicodedata
 from typing import Any
 
 from django.db import models
@@ -496,6 +497,18 @@ class Komparator:
 
         return BRAK_DOPASOWANIA
 
+    @staticmethod
+    def _nazwa_bez_diakrytykow(s):
+        """Klucz grupowania duplikatów źródeł ignorujący diakrytyki.
+
+        „Védelem Tudomány" i „Vedelem Tudomany" to ten sam tytuł; drugi
+        wariant mógł powstać przy wcześniejszym, nieudanym dopasowaniu
+        (FD#460). Bez tego oba lądowały w osobnych grupach i źródło
+        zostawało niedopasowane.
+        """
+        s = unicodedata.normalize("NFKD", normalize_zrodlo_nazwa_for_db_lookup(s))
+        return "".join(c for c in s if not unicodedata.combining(c))
+
     @classmethod
     def porownaj_container_title(cls, wartosc):
         poszukiwania = [wartosc]
@@ -512,7 +525,7 @@ class Komparator:
                 zgodne = list(zgodne[:6])
             if zgodne:
                 rekordy, zduplikowane = cls._scal_duplikaty_zrodel(
-                    zgodne, "nazwa", normalize_zrodlo_nazwa_for_db_lookup
+                    zgodne, "nazwa", cls._nazwa_bez_diakrytykow
                 )
                 return WynikPorownania(
                     StatusPorownania.LUZNE,

@@ -95,6 +95,33 @@ def test_fd460_komparator_tytul_bez_diakrytykow(w_bazie, z_importu):
 
 
 @pytest.mark.django_db
+def test_fd460_komparator_duplikat_bez_akcentow_scalony():
+    """Duplikat bez akcentów (np. z wcześniejszego nieudanego importu) nie
+    blokuje dopasowania: wygrywa rekord z większą liczbą prac."""
+    from bpp.models import Wydawnictwo_Ciagle
+
+    uzywane = baker.make(Zrodlo, nazwa="Védelem Tudomány", issn="", e_issn="")
+    baker.make(Zrodlo, nazwa="Vedelem Tudomany", issn="", e_issn="")
+    baker.make(Wydawnictwo_Ciagle, zrodlo=uzywane)
+
+    wynik = Komparator.porownaj_container_title("Vedelem Tudomany")
+
+    assert wynik.rekord_po_stronie_bpp == uzywane
+    assert not wynik.zduplikowane_zrodla
+
+
+@pytest.mark.django_db
+def test_fd460_komparator_duplikat_bez_akcentow_rozne_issn_blokuje():
+    baker.make(Zrodlo, nazwa="Védelem Tudomány", issn="1111-1111", e_issn="")
+    baker.make(Zrodlo, nazwa="Vedelem Tudomany", issn="2222-2222", e_issn="")
+
+    wynik = Komparator.porownaj_container_title("Vedelem Tudomany")
+
+    assert wynik.rekord_po_stronie_bpp is None
+    assert len(wynik.zduplikowane_zrodla) == 2
+
+
+@pytest.mark.django_db
 def test_fd460_importer_auto_match_zrodla():
     zrodlo = baker.make(Zrodlo, nazwa="Védelem Tudomány", issn="", e_issn="")
     initial = _source_initial_auto_match(_Sesja({"source_title": "Vedelem Tudomany"}))
