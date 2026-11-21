@@ -14,7 +14,7 @@
 {% block breadcrumbs %}
     {{ block.super }}
     <li {% if wybrana == None %}class="current"{% endif %}>
-        {% if wybrana != None %}<a href="{% url "bpp:browse_jednostki" %}">{% endif %}
+        {% if wybrana != None %}<a href="{% url browse_url_name|default:"bpp:browse_jednostki" %}">{% endif %}
             {% odmien nazwa_jednostki "mianownik" liczba="mnoga" %}
         {% if wybrana != None %}</a>{% endif %}
     </li>
@@ -25,7 +25,7 @@
 {% endblock %}
 
 {% block content %}
-    {% url "bpp:browse_jednostki" as browse_jednostki %}
+    {% url browse_url_name|default:"bpp:browse_jednostki" as browse_jednostki %}
 
     <!-- Modern Header Section -->
     <div class="modern-header">
@@ -145,7 +145,7 @@
             <p>
                 Brak {% odmien nazwa_jednostki "dopelniacz" liczba="mnoga" %} spełniających podane kryteria wyszukiwania.
             </p>
-            <a href="{% url "bpp:browse_jednostki" %}" class="button">
+            <a href="{% url browse_url_name|default:"bpp:browse_jednostki" %}" class="button">
                 <i class="fi-arrow-left"></i>Pokaż wszystkie {% odmien nazwa_jednostki "wolacz" liczba="mnoga" %}
             </a>
         </div>
