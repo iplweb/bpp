@@ -433,9 +433,7 @@ def test_fetch_jawne_zgloszenie_w_dozwolonym_statusie_wiaze(importer_client, sta
 @pytest.mark.django_db
 def test_fetch_jawne_zgloszenie_soft_usuniete_bez_wiazania(importer_client):
     zgl = _zgl(strona_www=f"https://doi.org/{DOI}")
-    Zgloszenie_Publikacji.global_objects.filter(pk=zgl.pk).update(
-        deleted_at=timezone.now()
-    )
+    zgl.delete(reason="test")
 
     response = _post_fetch(importer_client, zgloszenie=zgl.pk)
 

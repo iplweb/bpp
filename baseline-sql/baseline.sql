@@ -16679,6 +16679,52 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+643	easyaudit	0010_repr_text	2000-01-01 00:00:00+00
+615	django_celery_results	0006_taskresult_date_created	2000-01-01 00:00:00+00
+709	flexible_reports	0001_initial	2000-01-01 00:00:00+00
+159	bpp	0078_django110_py3k	2000-01-01 00:00:00+00
+160	bpp	0079_wydzial_skrot_nazwy	2000-01-01 00:00:00+00
+161	bpp	0080_auto_20170708_2147	2000-01-01 00:00:00+00
+162	bpp	0081_konferencje	2000-01-01 00:00:00+00
+163	bpp	0082_konferencja_opcjonalne	2000-01-01 00:00:00+00
+164	bpp	0083_afiliuje_zatrudniony	2000-01-01 00:00:00+00
+165	bpp	0084_strona_tom_nr_zeszytu	2000-01-01 00:00:00+00
+166	bpp	0085_strony_help_text	2000-01-01 00:00:00+00
+375	bpp	0282_auto_20210808_2334	2000-01-01 00:00:00+00
+377	bpp	0284_auto_20210814_0023	2000-01-01 00:00:00+00
+430	bpp	0335_autorzy_oswiadczenie_ken	2000-01-01 00:00:00+00
+477	bpp	0370_alter_autor_dyscyplina_options_jezyk_widoczny	2000-01-01 00:00:00+00
+478	bpp	0371_usun_spacje_z_nazw_dyscyplin	2000-01-01 00:00:00+00
+479	bpp	0372_autor_dyscyplina_dni_absencji_and_more	2000-01-01 00:00:00+00
+480	bpp	0373_alter_praca_doktorska_jezyk_and_more	2000-01-01 00:00:00+00
+481	bpp	0374_remove_autor_dyscyplina_dni_absencji_and_more	2000-01-01 00:00:00+00
+1140	bpp	0490_usun_unique_autor_kolejnosc	2000-01-01 00:00:00+00
+1141	importer_publikacji	0021_importsession_powrot_do_zgloszen	2000-01-01 00:00:00+00
+1142	bpp	0491_uczelnia_kreator_czeka_na_pbn	2000-01-01 00:00:00+00
+1143	nowe_raporty	0002_definicjaraportu_ikona	2000-01-01 00:00:00+00
+1144	bpp	0444_autor_biogram_autor_biogram_format_and_more	2000-01-01 00:00:00+00
+1145	bpp	0445_remove_autor_uklad_profilu_and_more	2000-01-01 00:00:00+00
+1146	bpp	0446_merge_20260619_2128	2000-01-01 00:00:00+00
+1147	bpp	0447_autoreksporttask	2000-01-01 00:00:00+00
+1148	bpp	0448_uczelnia_szerokosc_lewej_kolumny_and_more	2000-01-01 00:00:00+00
+1149	bpp	0454_merge_20260706_0757	2000-01-01 00:00:00+00
+1150	bpp	0487_merge_20260805_1305	2000-01-01 00:00:00+00
+1151	bpp	0491_merge_20261021_2141	2000-01-01 00:00:00+00
+1152	bpp	0492_autor_identyfikatory_profili	2000-01-01 00:00:00+00
+1153	bpp	0493_merge_20261024_0915	2000-01-01 00:00:00+00
+1154	bpp	0494_autor_opis_do_adnotacji	2000-01-01 00:00:00+00
+1155	bpp	0495_uczelnia_adresy_integracji_https	2000-01-01 00:00:00+00
+1156	bpp	0496_autoreksporttask_ukryte_statusy	2000-01-01 00:00:00+00
+1157	bpp	0497_uczelnia_bppuser_szyfrowanie_sekretow	2000-01-01 00:00:00+00
+1158	bpp	0498_autoreksporttask_tylko_dla_redakcji	2000-01-01 00:00:00+00
+1159	bpp	0499_autoreksporttask_zlecone_anonimowo	2000-01-01 00:00:00+00
+1160	bpp	0500_autor_flagi_widocznosci	2000-01-01 00:00:00+00
+1161	bpp	0501_autor_usun_pokazuj	2000-01-01 00:00:00+00
+1162	bpp	0502_autoreksporttask_xlsx	2000-01-01 00:00:00+00
+1163	bpp	0503_charakter_ogolny_rozdzialy_ksiazki	2000-01-01 00:00:00+00
+1164	taggit	0007_alter_taggeditem_options	2000-01-01 00:00:00+00
+1165	bpp	0504_wydawca_slug	2000-01-01 00:00:00+00
+1206	zglos_publikacje	0031_zgloszenie_kosz_zamrozony_trigger	2000-01-01 00:00:00+00
 314	bpp	0224_auto_20201007_0956	2000-01-01 00:00:00+00
 744	import_dyscyplin	0015_auto_20190326_0553	2000-01-01 00:00:00+00
 1166	bpp	0505_wydawca_slug_dane	2000-01-01 00:00:00+00
@@ -16942,6 +16988,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1118	import_pracownikow	0028_nadpisuj_daty_zatrudnienia	2000-01-01 00:00:00+00
 388	bpp	0295_instaluj_szablony	2000-01-01 00:00:00+00
 1052	importer_publikacji	0016_alter_importsession_status	2000-01-01 00:00:00+00
+249	bpp	0166_auto_20190702_1200	2000-01-01 00:00:00+00
 1053	pbn_api	0075_sentdata_fee_sent_sentdata_fee_uploaded_okay	2000-01-01 00:00:00+00
 1054	przemapuj_prace_autora	0003_przemapoaniepracautora_zrodlowy_import	2000-01-01 00:00:00+00
 1055	import_pracownikow	0016_importpracownikow_tworz_brakujace_jednostki_and_more	2000-01-01 00:00:00+00
@@ -17260,7 +17307,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 246	bpp	0163_cachequeue	2000-01-01 00:00:00+00
 247	bpp	0164_auto_20190701_1303	2000-01-01 00:00:00+00
 248	bpp	0165_cache_punktacja_autora_cache_punktacja_dyscypliny	2000-01-01 00:00:00+00
-249	bpp	0166_auto_20190702_1200	2000-01-01 00:00:00+00
 251	bpp	0166_auto_20190708_0022	2000-01-01 00:00:00+00
 373	bpp	0280_auto_20210725_2217	2000-01-01 00:00:00+00
 376	bpp	0283_auto_20210809_0142	2000-01-01 00:00:00+00
@@ -17492,7 +17538,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 528	bpp	0414_uczelnia_pbn_kasuj_dyscypliny_selektywnie	2000-01-01 00:00:00+00
 1138	oauth2_provider	0021_translatable_field_labels	2000-01-01 00:00:00+00
 1139	oauth2_provider	0022_refreshtoken_token_family_index	2000-01-01 00:00:00+00
-643	easyaudit	0010_repr_text	2000-01-01 00:00:00+00
 529	bpp	0416_merge_20260504_1024	2000-01-01 00:00:00+00
 530	bpp	0417_merge_20260601_0632	2000-01-01 00:00:00+00
 532	bpp	0418_autor_dyscyplina_trigger_on_conflict	2000-01-01 00:00:00+00
@@ -17567,7 +17612,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 612	django_celery_results	0003_auto_20181106_1101	2000-01-01 00:00:00+00
 613	django_celery_results	0004_auto_20190516_0412	2000-01-01 00:00:00+00
 614	django_celery_results	0005_taskresult_worker	2000-01-01 00:00:00+00
-615	django_celery_results	0006_taskresult_date_created	2000-01-01 00:00:00+00
 616	django_celery_results	0007_remove_taskresult_hidden	2000-01-01 00:00:00+00
 617	django_celery_results	0008_chordcounter	2000-01-01 00:00:00+00
 618	django_celery_results	0009_groupresult	2000-01-01 00:00:00+00
@@ -17658,7 +17702,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 702	ewaluacja_optymalizacja	0015_remove_disciplineswapopportunity_ewaluacja_o_uczelni_ed0a90_idx_and_more	2000-01-01 00:00:00+00
 703	ewaluacja_optymalizuj_publikacje	0001_initial	2000-01-01 00:00:00+00
 707	favicon	0004_faviconimg_favicon_size_rel_unique	2000-01-01 00:00:00+00
-709	flexible_reports	0001_initial	2000-01-01 00:00:00+00
 710	flexible_reports	0002_auto_20170823_2225	2000-01-01 00:00:00+00
 711	flexible_reports	0003_table_attrs	2000-01-01 00:00:00+00
 712	flexible_reports	0004_auto_20170823_2342	2000-01-01 00:00:00+00
@@ -17837,53 +17880,11 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 156	bpp	0075_auto_20170622_0057	2000-01-01 00:00:00+00
 157	bpp	0076_auto_20170622_0058	2000-01-01 00:00:00+00
 158	bpp	0077_auto_20170624_0130	2000-01-01 00:00:00+00
-159	bpp	0078_django110_py3k	2000-01-01 00:00:00+00
-160	bpp	0079_wydzial_skrot_nazwy	2000-01-01 00:00:00+00
-161	bpp	0080_auto_20170708_2147	2000-01-01 00:00:00+00
-162	bpp	0081_konferencje	2000-01-01 00:00:00+00
-163	bpp	0082_konferencja_opcjonalne	2000-01-01 00:00:00+00
-164	bpp	0083_afiliuje_zatrudniony	2000-01-01 00:00:00+00
-165	bpp	0084_strona_tom_nr_zeszytu	2000-01-01 00:00:00+00
-166	bpp	0085_strony_help_text	2000-01-01 00:00:00+00
-375	bpp	0282_auto_20210808_2334	2000-01-01 00:00:00+00
-377	bpp	0284_auto_20210814_0023	2000-01-01 00:00:00+00
-430	bpp	0335_autorzy_oswiadczenie_ken	2000-01-01 00:00:00+00
-477	bpp	0370_alter_autor_dyscyplina_options_jezyk_widoczny	2000-01-01 00:00:00+00
-478	bpp	0371_usun_spacje_z_nazw_dyscyplin	2000-01-01 00:00:00+00
-479	bpp	0372_autor_dyscyplina_dni_absencji_and_more	2000-01-01 00:00:00+00
-480	bpp	0373_alter_praca_doktorska_jezyk_and_more	2000-01-01 00:00:00+00
-481	bpp	0374_remove_autor_dyscyplina_dni_absencji_and_more	2000-01-01 00:00:00+00
-1140	bpp	0490_usun_unique_autor_kolejnosc	2000-01-01 00:00:00+00
-1141	importer_publikacji	0021_importsession_powrot_do_zgloszen	2000-01-01 00:00:00+00
-1142	bpp	0491_uczelnia_kreator_czeka_na_pbn	2000-01-01 00:00:00+00
-1143	nowe_raporty	0002_definicjaraportu_ikona	2000-01-01 00:00:00+00
-1144	bpp	0444_autor_biogram_autor_biogram_format_and_more	2000-01-01 00:00:00+00
-1145	bpp	0445_remove_autor_uklad_profilu_and_more	2000-01-01 00:00:00+00
-1146	bpp	0446_merge_20260619_2128	2000-01-01 00:00:00+00
-1147	bpp	0447_autoreksporttask	2000-01-01 00:00:00+00
-1148	bpp	0448_uczelnia_szerokosc_lewej_kolumny_and_more	2000-01-01 00:00:00+00
-1149	bpp	0454_merge_20260706_0757	2000-01-01 00:00:00+00
-1150	bpp	0487_merge_20260805_1305	2000-01-01 00:00:00+00
-1151	bpp	0491_merge_20261021_2141	2000-01-01 00:00:00+00
-1152	bpp	0492_autor_identyfikatory_profili	2000-01-01 00:00:00+00
-1153	bpp	0493_merge_20261024_0915	2000-01-01 00:00:00+00
-1154	bpp	0494_autor_opis_do_adnotacji	2000-01-01 00:00:00+00
-1155	bpp	0495_uczelnia_adresy_integracji_https	2000-01-01 00:00:00+00
-1156	bpp	0496_autoreksporttask_ukryte_statusy	2000-01-01 00:00:00+00
-1157	bpp	0497_uczelnia_bppuser_szyfrowanie_sekretow	2000-01-01 00:00:00+00
-1158	bpp	0498_autoreksporttask_tylko_dla_redakcji	2000-01-01 00:00:00+00
-1159	bpp	0499_autoreksporttask_zlecone_anonimowo	2000-01-01 00:00:00+00
-1160	bpp	0500_autor_flagi_widocznosci	2000-01-01 00:00:00+00
-1161	bpp	0501_autor_usun_pokazuj	2000-01-01 00:00:00+00
-1162	bpp	0502_autoreksporttask_xlsx	2000-01-01 00:00:00+00
-1163	bpp	0503_charakter_ogolny_rozdzialy_ksiazki	2000-01-01 00:00:00+00
-1164	taggit	0007_alter_taggeditem_options	2000-01-01 00:00:00+00
-1165	bpp	0504_wydawca_slug	2000-01-01 00:00:00+00
-1206	deduplikator_autorow	0013_okres_skanu	2000-01-01 00:00:00+00
-1207	ewaluacja_metryki	0014_status_generowania_per_okres	2000-01-01 00:00:00+00
-1208	oswiadczenia	0006_oswiadczenie_lata_z_okresu	2000-01-01 00:00:00+00
-1209	oswiadczenia	0007_szablon_oswiadczenia_2026_2030	2000-01-01 00:00:00+00
-1210	snapshot_odpiec	0003_snapshot_okres_ewaluacji	2000-01-01 00:00:00+00
+1207	deduplikator_autorow	0013_okres_skanu	2000-01-01 00:00:00+00
+1208	ewaluacja_metryki	0014_status_generowania_per_okres	2000-01-01 00:00:00+00
+1209	oswiadczenia	0006_oswiadczenie_lata_z_okresu	2000-01-01 00:00:00+00
+1210	oswiadczenia	0007_szablon_oswiadczenia_2026_2030	2000-01-01 00:00:00+00
+1211	snapshot_odpiec	0003_snapshot_okres_ewaluacji	2000-01-01 00:00:00+00
 \.
 
 
@@ -19956,7 +19957,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1210, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1211, true);
 
 
 --
@@ -34120,6 +34121,13 @@ CREATE TRIGGER ts_post_bpp_wydawnictwo_zwarte_search BEFORE INSERT OR UPDATE ON 
 --
 
 CREATE TRIGGER ts_post_bpp_zrodlo_search BEFORE INSERT OR UPDATE ON public.bpp_zrodlo FOR EACH ROW EXECUTE FUNCTION public.ts_post_bpp_zrodlo_search();
+
+
+--
+-- Name: zglos_publikacje_zgloszenie_publikacji zglos_publikacje_zgloszenie_publikacji_kosz_straznik; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER zglos_publikacje_zgloszenie_publikacji_kosz_straznik BEFORE DELETE OR UPDATE ON public.zglos_publikacje_zgloszenie_publikacji FOR EACH ROW EXECUTE FUNCTION public.bpp_kosz_straznik();
 
 
 --

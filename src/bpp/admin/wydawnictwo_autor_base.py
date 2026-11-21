@@ -1,5 +1,3 @@
-import logging
-
 from adminsortable2.admin import SortableAdminMixin
 from django.contrib import admin
 from django.contrib.admin.templatetags.admin_urls import add_preserved_filters
@@ -10,9 +8,7 @@ from django.utils.text import Truncator
 
 from bpp.admin.core import DynamicAdminFilterMixin, generuj_formularz_dla_autorow
 from bpp.admin.helpers import get_rekord_id_from_GET_qs
-from bpp.util import safe_tytul_html, zaloguj_polkniety_wyjatek
-
-logger = logging.getLogger(__name__)
+from bpp.util import safe_tytul_html
 
 
 class Wydawnictwo_Autor_Base(
@@ -87,23 +83,30 @@ class Wydawnictwo_Autor_Base(
             extra_context = {}
 
         # Jeżeli jest podany parametr z ID rekordu w filtrowaniu, to można
-        # przekazać go do templatki celem pokazania przycisku "Edycja rekordu"
-        v = None
-        if request.GET.get("rekord__id__exact"):
-            v = request.GET.get("rekord__id__exact")
+        # przekazać go do templatki celem pokazania przycisku "Edycja rekordu".
+        # Rodzica szukamy przez ``global_objects`` — rekord w koszu nadal
+        # istnieje (szablon pokazuje wtedy komunikat zamiast listy autorów).
+        v = request.GET.get("rekord__id__exact")
+        if v:
             try:
-                extra_context["rekord_id"] = int(v)
-                try:
-                    rec = self.base_rekord_class.objects.get(pk=int(v))
-                    extra_context["rekord"] = rec
-                except Exception:
-                    zaloguj_polkniety_wyjatek(
-                        f"Pobieranie rekordu dla przycisku 'Edycja rekordu' "
-                        f"w changelist autorów (rekord__id__exact={v})",
-                        logger=logger,
-                    )
+                rekord_id = int(v)
             except (ValueError, TypeError):
-                pass
+                rekord_id = None  # śmieciowy parametr — zwykła lista bez rekordu
+
+            if rekord_id is not None:
+                extra_context["rekord_id"] = rekord_id
+                try:
+                    rec = self.base_rekord_class.global_objects.get(pk=rekord_id)
+                except self.base_rekord_class.DoesNotExist:
+                    extra_context["rekord_nie_istnieje"] = True
+                else:
+                    extra_context["rekord"] = rec
+                    extra_context["rekord_w_koszu"] = rec.deleted_at is not None
+                    extra_context["rekord_change_url"] = reverse(
+                        f"admin:{rec._meta.app_label}_{rec._meta.model_name}_change",
+                        args=(rec.pk,),
+                        current_app=self.admin_site.name,
+                    )
 
         return super().changelist_view(request=request, extra_context=extra_context)
 

@@ -7,8 +7,9 @@ i oknem serwisowym): ``docs/deweloper/soft-delete.md``. Skrót:
   (``BppPublikacjaSoftDeleteMixin``), ``Autor`` (tylko autor bez prac),
   ``Uczelnia`` i słowniki ``Zrodlo``,
   ``Wydawca``, ``Konferencja``, ``Seria_Wydawnicza``
-  (``BppSoftDeleteSlownikMixin`` — tylko rekord nieużywany); niezależnie od
-  dawna ``Element_Repozytorium`` i ``Zgloszenie_Publikacji``.
+  (``BppSoftDeleteSlownikMixin`` — tylko rekord nieużywany), zgłoszenia
+  publikacji (ten sam mixin, guard nic nie blokuje); niezależnie od dawna
+  ``Element_Repozytorium``.
 - NIE: tabele łączące ``*_Autor`` i dzieci publikacji
   (``*_Streszczenie``, ``*_Zewnetrzna_Baza_Danych``) — NIE mają własnego
   kosza; ich domyślny menedżer (``BppDzieckoPublikacjiMixin``) ukrywa
@@ -35,6 +36,7 @@ import threading
 import uuid
 from collections import defaultdict
 from contextlib import contextmanager
+from dataclasses import dataclass, field
 
 from django.core.exceptions import (
     NON_FIELD_ERRORS,
@@ -42,8 +44,16 @@ from django.core.exceptions import (
     ValidationError,
 )
 from django.db import IntegrityError, connection, models, transaction
-from django.db.models import ProtectedError
+from django.db.models import (
+    BooleanField,
+    Count,
+    ExpressionWrapper,
+    ProtectedError,
+    Q,
+    Window,
+)
 from django.utils import timezone
+from django.utils.text import capfirst
 from django_softdelete.managers import (
     DeletedManager,
     DeletedQuerySet,
@@ -177,12 +187,177 @@ def manager_z_koszem(model):
 LIMIT_PROBKI_CHRONIONYCH = 20
 
 
+#: Ile pozycji na relację pokazuje strona „Nie można przenieść do kosza".
+#: Resztę streszcza „…i jeszcze N" (liczba z tego samego zapytania).
+LIMIT_POZYCJI_BLOKADY = 15
+
+#: Czytelne etykiety grup na stronie blokady kosza (``"app.Model.pole"``).
+#: Relacje spoza słownika dostają etykietę z ``_meta``:
+#: „<verbose_name_plural> (<verbose_name pola>)".
+ETYKIETY_RELACJI_KOSZA = {
+    "bpp.Wydawnictwo_Ciagle_Autor.autor": "Autorstwa w wydawnictwach ciągłych",
+    "bpp.Wydawnictwo_Zwarte_Autor.autor": "Autorstwa w wydawnictwach zwartych",
+    "bpp.Patent_Autor.autor": "Autorstwa patentów",
+    "bpp.Praca_Doktorska.autor": "Doktoraty (autor)",
+    "bpp.Praca_Doktorska.promotor": "Doktoraty (promotor)",
+    "bpp.Praca_Habilitacyjna.autor": "Habilitacje (autor)",
+    "bpp.Wydawnictwo_Zwarte.wydawnictwo_nadrzedne": (
+        "Rozdziały i części (wydawnictwo nadrzędne)"
+    ),
+    "bpp.Wydawnictwo_Ciagle.zrodlo": "Artykuły w tym źródle",
+}
+
+
+def url_w_adminie(obj):
+    """URL strony zmiany ``obj`` w adminie albo ``None`` (model bez admina)."""
+    from django.urls import NoReverseMatch, reverse
+
+    try:
+        return reverse(
+            f"admin:{obj._meta.app_label}_{obj._meta.model_name}_change",
+            args=[obj.pk],
+        )
+    except NoReverseMatch:
+        return None
+
+
+@dataclass(frozen=True)
+class PozycjaBlokady:
+    """Jeden rekord blokujący kosz.
+
+    ``obj`` — co pokazać i dokąd linkować: dla wiersza dziecka publikacji
+    (``*_Autor``) to publikacja-rodzic, inaczej sam ``wiersz``.
+    ``w_koszu`` — ``obj`` (albo rodzic wiersza) jest w koszu.
+    """
+
+    obj: object
+    w_koszu: bool = False
+    wiersz: object = None
+    #: Tekst pozycji, gdy ``str(obj)`` nie wystarcza (np. wpis kolejki PBN).
+    opis: str = ""
+
+    @property
+    def url(self):
+        return url_w_adminie(self.obj)
+
+    @property
+    def tekst(self):
+        return self.opis or str(self.obj)
+
+
+@dataclass
+class GrupaBlokady:
+    """Rekordy jednej relacji blokujące kosz (próbka + liczby z bazy)."""
+
+    etykieta: str
+    liczba: int
+    w_koszu: int = 0
+    pozycje: list = field(default_factory=list)
+
+    @property
+    def reszta(self):
+        return max(0, self.liczba - len(self.pozycje))
+
+
+class BlokadaKosza(ProtectedError):
+    """``ProtectedError`` guardu kosza z listą blokujących powiązań
+    pogrupowaną per relacja (``grupy``) — admin pokazuje ją na stronie
+    „Nie można przenieść do kosza", żeby operator mógł je odszukać."""
+
+    def __init__(self, msg, protected_objects, grupy=()):
+        super().__init__(msg, protected_objects)
+        self.grupy = list(grupy)
+
+
+def _pole_rodzica(model):
+    """Pole FK do publikacji-rodzica dla dziecka publikacji, inaczej ``None``."""
+    manager = model._default_manager
+    if isinstance(manager, BppZywyRodzicManager):
+        return manager.pole_rodzica
+    return None
+
+
+def _ma_kosz(model):
+    try:
+        model._meta.get_field("deleted_at")
+    except FieldDoesNotExist:
+        return False
+    return True
+
+
+def etykieta_relacji_kosza(model, pole):
+    klucz = f"{model._meta.label}.{pole}"
+    if klucz in ETYKIETY_RELACJI_KOSZA:
+        return ETYKIETY_RELACJI_KOSZA[klucz]
+    nazwa_pola = model._meta.get_field(pole).verbose_name
+    return f"{capfirst(model._meta.verbose_name_plural)} ({nazwa_pola})"
+
+
+def grupa_blokady(
+    instance, model, pole, limit=None, qs=None, rodzic=None, etykieta=None
+):
+    """Powiązania ``instance`` w relacji ``(model, pole)`` jako
+    ``GrupaBlokady`` albo ``None`` (brak powiązań).
+
+    JEDNO zapytanie na relację: próbka ``limit`` wierszy (najpierw te
+    w koszu) z liczbą wszystkich i liczbą tych w koszu policzonymi funkcją
+    okna (``COUNT(*) OVER ()``) — przed ``LIMIT``, więc niezależnie od
+    próbki.
+
+    ``_base_manager`` widzi WSZYSTKO: kosz, autorstwa publikacji z kosza
+    (domyślny menedżer ``*_Autor`` je ukrywa) i wiersze modeli spoza
+    soft-delete.
+
+    ``qs``/``rodzic``/``etykieta`` — dla powiązań spoza ``_meta`` (GenericFK):
+    gotowy queryset, pole rekordu do pokazania i nazwa grupy.
+    """
+    if limit is None:
+        limit = LIMIT_POZYCJI_BLOKADY
+    if qs is None:
+        qs = model._base_manager.filter(**{pole: instance})
+    if rodzic is None:
+        rodzic = _pole_rodzica(model)
+    lookup_kosza = None
+    if rodzic is not None:
+        lookup_kosza = f"{rodzic}__deleted_at__isnull"
+        qs = qs.select_related(rodzic)
+    elif _ma_kosz(model):
+        lookup_kosza = "deleted_at__isnull"
+
+    adnotacje = {"_bpp_razem": Window(Count("pk"))}
+    kolejnosc = ["pk"]
+    if lookup_kosza is not None:
+        w_koszu = Q(**{lookup_kosza: False})
+        adnotacje["_bpp_w_koszu"] = Window(Count("pk", filter=w_koszu))
+        adnotacje["_bpp_jest_w_koszu"] = ExpressionWrapper(
+            w_koszu, output_field=BooleanField()
+        )
+        kolejnosc = ["-_bpp_jest_w_koszu", "pk"]
+    wiersze = list(qs.annotate(**adnotacje).order_by(*kolejnosc)[:limit])
+    if not wiersze:
+        return None
+    return GrupaBlokady(
+        etykieta=etykieta or etykieta_relacji_kosza(model, pole),
+        liczba=wiersze[0]._bpp_razem,
+        w_koszu=getattr(wiersze[0], "_bpp_w_koszu", 0),
+        pozycje=[
+            PozycjaBlokady(
+                obj=getattr(w, rodzic) if rodzic else w,
+                w_koszu=bool(getattr(w, "_bpp_jest_w_koszu", False)),
+                wiersz=w,
+            )
+            for w in wiersze
+        ],
+    )
+
+
 def raise_if_has_protected_children(instance, relations, label):
     """Blokuje soft-delete ``instance``, jeśli ma „chronione" dzieci.
 
     ``relations`` to lista krotek ``(Model, "pole_fk")``. Rzuca
-    ``django.db.models.ProtectedError`` z komunikatem PL, gdy w którejkolwiek
-    z relacji jest co najmniej jedno dziecko.
+    ``BlokadaKosza`` (``ProtectedError``) z komunikatem PL i listą powiązań
+    pogrupowaną per relacja, gdy w którejkolwiek z relacji jest co
+    najmniej jedno dziecko.
 
     DLACZEGO GUARD W OGÓLE MUSI ISTNIEĆ, SKORO FK SĄ ``PROTECT``: ``on_delete``
     obsługuje wyłącznie kolektor Django dla kasowania TWARDEGO. Miękkie
@@ -195,29 +370,25 @@ def raise_if_has_protected_children(instance, relations, label):
     prace są w koszu, wyglądałby przez ``objects`` na pustego — a przywrócenie
     takiej pracy dałoby publikację wskazującą na autora z kosza.
     """
-    ile = 0
-    probka = []
-    opisy = []
-    for model, pole in relations:
-        # ``_base_manager`` widzi WSZYSTKO: kosz publikacji, autorstwa
-        # publikacji z kosza (domyślny menedżer ``*_Autor`` je ukrywa)
-        # i wiersze modeli spoza soft-delete.
-        qs = model._base_manager.filter(**{pole: instance})
-        n = qs.count()
-        if not n:
-            continue
-        ile += n
-        opisy.append(f"{model._meta.verbose_name_plural}: {n}")
-        if len(probka) < LIMIT_PROBKI_CHRONIONYCH:
-            probka.extend(qs[: LIMIT_PROBKI_CHRONIONYCH - len(probka)])
-
-    if ile:
-        raise ProtectedError(
-            f"Nie można usunąć {label} „{instance}” — rekord ma {ile} "
-            f"powiązanych rekordów, także tych w koszu "
-            f"({'; '.join(opisy)}). Najpierw przenieś lub usuń te powiązania.",
-            probka,
-        )
+    grupy = [
+        g
+        for g in (grupa_blokady(instance, model, pole) for model, pole in relations)
+        if g is not None
+    ]
+    if not grupy:
+        return
+    ile = sum(g.liczba for g in grupy)
+    ile_w_koszu = sum(g.w_koszu for g in grupy)
+    opisy = "; ".join(f"{g.etykieta}: {g.liczba}" for g in grupy)
+    w_tym = f", w tym {ile_w_koszu} w koszu" if ile_w_koszu else ""
+    probka = [p.wiersz for g in grupy for p in g.pozycje][:LIMIT_PROBKI_CHRONIONYCH]
+    raise BlokadaKosza(
+        f"Nie można usunąć {label} „{instance}” — rekord ma {ile} "
+        f"powiązanych rekordów{w_tym} ({opisy}). Najpierw przenieś lub usuń "
+        f"te powiązania.",
+        probka,
+        grupy,
+    )
 
 
 def hard_delete_per_instancja(queryset):
@@ -541,23 +712,11 @@ def zapisz_przywrocenie(instance, update_fields):
         raise KonfliktPrzywracania(komunikat) from e
 
 
-def _url_rekordu_w_koszu(obj):
-    from django.urls import NoReverseMatch, reverse
-
-    try:
-        return reverse(
-            f"admin:{obj._meta.app_label}_{obj._meta.model_name}_change",
-            args=[obj.pk],
-        )
-    except NoReverseMatch:
-        return None
-
-
 def komunikat_wartosc_w_koszu(obj):
     """Komunikat walidacji: wartość należy do rekordu z kosza."""
     from django.utils.html import format_html
 
-    url = _url_rekordu_w_koszu(obj)
+    url = url_w_adminie(obj)
     if url:
         return format_html(
             'Ta wartość należy do rekordu w koszu: <a href="{}">{}</a>. '
@@ -795,18 +954,25 @@ class BppPublikacjaSoftDeleteMixin(
 
         from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 
-        odwolania = list(
-            Publikacja_Habilitacyjna.objects.filter(
-                content_type=ContentType.objects.get_for_model(self),
-                object_id=self.pk,
-            )
+        qs = Publikacja_Habilitacyjna.objects.filter(
+            content_type=ContentType.objects.get_for_model(self),
+            object_id=self.pk,
         )
-        if odwolania:
-            raise ProtectedError(
+        grupa = grupa_blokady(
+            self,
+            Publikacja_Habilitacyjna,
+            None,
+            qs=qs,
+            rodzic="praca_habilitacyjna",
+            etykieta="Habilitacje wskazujące tę publikację",
+        )
+        if grupa is not None:
+            raise BlokadaKosza(
                 f"Nie można przenieść do kosza „{self}” — publikacja jest "
-                f"wskazana w habilitacji ({len(odwolania)}× powiązanie "
+                f"wskazana w habilitacji ({grupa.liczba}× powiązanie "
                 f"publikacji z habilitacją). Najpierw usuń te powiązania.",
-                odwolania,
+                [p.wiersz for p in grupa.pozycje],
+                [grupa],
             )
 
     def sprawdz_czy_mozna_do_kosza(self, *args, **kwargs):
@@ -828,21 +994,39 @@ class BppPublikacjaSoftDeleteMixin(
         rel = self._relacja_autorstw()
         if rel is None:
             return
+        autorstwa = rel.related_model.all_objects.filter(**{rel.field.name: self})
         uczelnie = {
             u
-            for u in rel.related_model.all_objects.filter(
-                **{rel.field.name: self}
-            ).values_list("jednostka__uczelnia__nazwa", flat=True)
+            for u in autorstwa.values_list("jednostka__uczelnia__nazwa", flat=True)
             if u
         }
         if len(uczelnie) > 1:
-            raise ProtectedError(
+            raise BlokadaKosza(
                 f"Nie można przenieść do kosza „{self}” — rekord ma autorów "
                 f"z kilku uczelni ({', '.join(sorted(uczelnie))}). Zamiast "
                 f"usuwać cały rekord, usuń z niego autorów swojej uczelni "
                 f"i zapisz rekord.",
                 [],
+                self._grupy_autorow_per_uczelnia(autorstwa),
             )
+
+    def _grupy_autorow_per_uczelnia(self, autorstwa):
+        """Autorzy rekordu pogrupowani per uczelnia (do strony blokady)."""
+        grupy = {}
+        for wiersz in autorstwa.select_related("autor", "jednostka__uczelnia").order_by(
+            "jednostka__uczelnia__nazwa", "kolejnosc", "pk"
+        ):
+            uczelnia = wiersz.jednostka.uczelnia if wiersz.jednostka_id else None
+            if uczelnia is None:
+                continue
+            grupa = grupy.setdefault(
+                uczelnia.pk,
+                GrupaBlokady(etykieta=f"Autorzy z uczelni: {uczelnia}", liczba=0),
+            )
+            grupa.liczba += 1
+            if len(grupa.pozycje) < LIMIT_POZYCJI_BLOKADY:
+                grupa.pozycje.append(PozycjaBlokady(obj=wiersz.autor, wiersz=wiersz))
+        return list(grupy.values())
 
     def delete(self, *args, user=None, reason="", **kwargs):
         """Soft-delete publikacji. BEZ kaskady na dzieci.
@@ -907,7 +1091,10 @@ class BppSoftDeleteSlownikMixin(
     BppUnikalnoscZKoszemMixin, BppPkPrzedHardDeleteMixin, SoftDeleteModel
 ):
     """Kosz dla uczelni i słowników (``Uczelnia``, ``Zrodlo``, ``Wydawca``,
-    ``Konferencja``, ``Seria_Wydawnicza``). ``Jednostka`` NIE ma kosza
+    ``Konferencja``, ``Seria_Wydawnicza``) oraz zgłoszeń publikacji
+    (``zglos_publikacje.Zgloszenie_Publikacji`` — wszystkie jego relacje
+    przychodzące są pominięte, więc guard nic nie blokuje).
+    ``Jednostka`` NIE ma kosza
     (nie kasuje się jej wcale — ``JednostkaNieDoUsuniecia``).
 
     Do kosza trafia wyłącznie rekord NIEUŻYWANY: guard bierze WSZYSTKIE

@@ -71,6 +71,12 @@ from bpp.multiseek_registry.fields.constants import UNION_NONE
 from bpp.nazwy import lemat
 from bpp.permissions import moze_wprowadzac_dane
 from bpp.punkty_ewaluacji import punkty_ewaluacji_wydawcy, punkty_ewaluacji_zrodla
+from bpp.rekord_usuniety import (
+    RekordUsunietyDetailMixin,
+    kosz_modelu,
+    rzuc_jesli_obiekt_w_koszu,
+    rzuc_jesli_publikacja_w_koszu_po_slugu,
+)
 from bpp.sekcje_zrodla_wydawcy import sekcje_wydawcy, sekcje_zrodla
 from bpp.util import sanitize_multiseek_title
 from bpp.util.uczelnia_scope import (
@@ -197,7 +203,7 @@ def conditional(**kwargs):
 
 
 @method_decorator(cache_publiczny(), name="dispatch")
-class UczelniaView(DetailView):
+class UczelniaView(RekordUsunietyDetailMixin, DetailView):
     model = Uczelnia
     template_name = "browse/uczelnia.html"
 
@@ -296,7 +302,7 @@ class JednostkaView(DetailView):
 
 
 @method_decorator(cache_publiczny(), name="dispatch")
-class AutorView(DetailView):
+class AutorView(RekordUsunietyDetailMixin, DetailView):
     template_name = "browse/autor.html"
     model = Autor
 
@@ -306,6 +312,11 @@ class AutorView(DetailView):
         # redaktorskimi, reszta dostaje 404. Pozostałe flagi ``pokazuj_*``
         # (jednostka, ranking, indeks, …) NIE wpływają na tę stronę.
         return widoczni_autorzy(super().get_queryset(), getattr(self, "request", None))
+
+    def get_queryset_kosza(self):
+        # Te same reguły widoczności co dla żywego autora: schowana strona
+        # zostaje 404 także w koszu (410 zdradziłby, że autor istniał).
+        return widoczni_autorzy(kosz_modelu(Autor), getattr(self, "request", None))
 
     def get_context_data(self, **kwargs):
         from powiazania_autorow.models import AuthorConnection
@@ -986,7 +997,7 @@ class WydzialyView(JednostkiView):
 
 
 @method_decorator(cache_publiczny(), name="dispatch")
-class ZrodloView(DetailView):
+class ZrodloView(RekordUsunietyDetailMixin, DetailView):
     model = Zrodlo
     template_name = "browse/zrodlo.html"
 
@@ -1067,7 +1078,7 @@ class WydawcyView(Browser):
 
 
 @method_decorator(cache_publiczny(), name="dispatch")
-class WydawcaView(DetailView):
+class WydawcaView(RekordUsunietyDetailMixin, DetailView):
     model = Wydawca
     template_name = "browse/wydawca.html"
 
@@ -1570,11 +1581,16 @@ class PracaViewBySlug(PracaViewMixin, DetailView):
                     try:
                         obj = Rekord.objects.get(pk=[content_type_id, object_id])
                     except Rekord.DoesNotExist as e:
+                        rzuc_jesli_publikacja_w_koszu_po_slugu(self.kwargs["slug"])
+                        rzuc_jesli_obiekt_w_koszu(content_type_id, object_id)
                         raise Http404 from e
                     except Rekord.MultipleObjectsReturned as e:
                         raise NotImplementedError("This should never happen") from e
 
                     return obj
+
+            # Rekordu nie ma w ``bpp_rekord_mat`` — może jest w koszu (410).
+            rzuc_jesli_publikacja_w_koszu_po_slugu(self.kwargs["slug"])
 
         raise Http404
 
@@ -1598,6 +1614,7 @@ class PracaView(PracaViewMixin, DetailView):
         try:
             obj = Rekord.objects.get(pk=[model, self.kwargs["pk"]])
         except Rekord.DoesNotExist as e:
+            rzuc_jesli_obiekt_w_koszu(model, self.kwargs["pk"])
             raise Http404 from e
 
         return obj
