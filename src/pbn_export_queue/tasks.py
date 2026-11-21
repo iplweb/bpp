@@ -211,12 +211,20 @@ def queue_watchdog():
     woken = 0
 
     # Scenariusz 1: elementy nigdy nie podjęte
-    never_started = PBN_Export_Queue.objects.filter(
-        wysylke_podjeto=None,
-        wysylke_zakonczono=None,
-        wykluczone=False,
-        retry_after_user_authorised=False,
-    ).order_by("zamowiono")[:20]
+    #
+    # ``retry_after_user_authorised`` przyjmuje tylko True (czeka na
+    # zalogowanie do PBN) albo None (domyślnie, także po resecie) — nigdy
+    # False. Filtr ``=False`` w SQL wyklucza NULL, więc nie budził niczego;
+    # pomijamy wyłącznie wpisy czekające na autoryzację.
+    never_started = (
+        PBN_Export_Queue.objects.filter(
+            wysylke_podjeto=None,
+            wysylke_zakonczono=None,
+            wykluczone=False,
+        )
+        .exclude(retry_after_user_authorised=True)
+        .order_by("zamowiono")[:20]
+    )
 
     for item in never_started:
         lock_key = f"{LOCK_PREFIX}{item.pk}"
@@ -227,12 +235,15 @@ def queue_watchdog():
     # Scenariusz 2: elementy z utraconymi retry'ami
     # Najdłuższy retry to 3h (PraceSerwisoweException), więc 4h to bezpieczny margines
     stale_threshold = timezone.now() - timedelta(hours=4)
-    stuck_retries = PBN_Export_Queue.objects.filter(
-        wysylke_podjeto__lt=stale_threshold,
-        wysylke_zakonczono=None,
-        wykluczone=False,
-        retry_after_user_authorised=False,
-    ).order_by("wysylke_podjeto")[:10]
+    stuck_retries = (
+        PBN_Export_Queue.objects.filter(
+            wysylke_podjeto__lt=stale_threshold,
+            wysylke_zakonczono=None,
+            wykluczone=False,
+        )
+        .exclude(retry_after_user_authorised=True)
+        .order_by("wysylke_podjeto")[:10]
+    )
 
     for item in stuck_retries:
         lock_key = f"{LOCK_PREFIX}{item.pk}"
