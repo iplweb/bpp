@@ -108,7 +108,7 @@ u, _ = BppUser.objects.get_or_create(
     defaults=dict(email="vesemir@example.com", first_name="Vesemir"),
 )
 u.is_staff = True
-u.set_password("vesemir")  # demo DB only; password == login
+u.set_password(u.username)  # demo DB only; password == login
 u.save()
 u.groups.add(Group.objects.get(name="wprowadzanie danych"))
 if not PasswordHistory.objects.filter(user=u).exists():

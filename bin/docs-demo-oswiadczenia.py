@@ -48,7 +48,7 @@ user, _ = BppUser.objects.get_or_create(
         email="vesemir@example.com", first_name="Vesemir", last_name="z Kaer Morhen"
     ),
 )
-user.set_password("vesemir")  # demo DB only: password == login
+user.set_password(user.username)  # demo DB only: password == login
 user.is_staff = True
 user.save()
 user.groups.add(Group.objects.get(name="wprowadzanie danych"))

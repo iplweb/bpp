@@ -48,7 +48,7 @@ with transaction.atomic():
             last_name="z Kaer Morhen",
         ),
     )
-    u.set_password("vesemir")
+    u.set_password(u.username)
     u.is_staff = True
     u.save()
     u.groups.add(Group.objects.get(name="wprowadzanie danych"))
@@ -91,7 +91,10 @@ with transaction.atomic():
     )
     main.save()
     dup = Zrodlo.objects.create(
-        nazwa="ACTA OXENFURCKA", skrot="Acta Oxenf.", issn="2337-4989", rodzaj=main.rodzaj
+        nazwa="ACTA OXENFURCKA",
+        skrot="Acta Oxenf.",
+        issn="2337-4989",
+        rodzaj=main.rodzaj,
     )
     for p in Wydawnictwo_Ciagle.objects.filter(zrodlo=main).order_by("-pk")[:4]:
         p.zrodlo = dup

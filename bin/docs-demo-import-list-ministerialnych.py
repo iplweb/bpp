@@ -33,7 +33,7 @@ u, _ = BppUser.objects.get_or_create(
     ),
 )
 u.is_staff = True
-u.set_password("vesemir")
+u.set_password(u.username)
 u.save()
 u.groups.add(Group.objects.get(name="wprowadzanie danych"))
 if not PasswordHistory.objects.filter(user=u).exists():
