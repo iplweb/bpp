@@ -12,7 +12,12 @@ KLUCZ_SESJI = "okres_ewaluacji_pk"
 #: Przestrzenie nazw URL stron, na których w górnej belce pokazujemy wybór
 #: okresu (i które liczą dane dla wybranego okresu).
 APLIKACJE_Z_OKRESEM = frozenset(
-    {"ewaluacja_metryki", "ewaluacja_liczba_n", "ewaluacja_optymalizacja"}
+    {
+        "ewaluacja_metryki",
+        "ewaluacja_liczba_n",
+        "ewaluacja_optymalizacja",
+        "ewaluacja_dwudyscyplinowcy",
+    }
 )
 
 
