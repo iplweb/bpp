@@ -21,6 +21,10 @@ APLIKACJE_Z_OKRESEM = frozenset(
         "ewaluacja_dwudyscyplinowcy",
         "snapshot_odpiec",
         "oswiadczenia:wydruk",
+        "pbn_wysylka_oswiadczen",
+        "komparator_pbn",
+        "pbn_komparator_zrodel",
+        "deduplikator_autorow",
     }
 )
 

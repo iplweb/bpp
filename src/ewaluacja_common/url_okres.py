@@ -36,6 +36,10 @@ APLIKACJE_W_URL = (
     "ewaluacja_dwudyscyplinowcy/",
     "snapshot_odpiec/",
     "oswiadczenia/",
+    "pbn-wysylka-oswiadczen/",
+    "komparator_pbn/",
+    "komparator-zrodel-pbn/",
+    "deduplikator_autorow/",
 )
 
 _SLUG = r"(?P<rok_od>\d{4})-(?P<rok_do>\d{4})"
