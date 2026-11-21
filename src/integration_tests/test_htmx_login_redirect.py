@@ -7,16 +7,37 @@ the fragment it was loading (e.g. the admin filter panel).
 import re
 
 from django.contrib.sessions.models import Session
+from django.contrib.staticfiles import finders
 from playwright.sync_api import Page, expect
 
 CHANGELIST = "/admin/bpp/autor/?nazwisko=Kowalski"
 
 
+def _htmx_z_liveops(route):
+    """Serve htmx.org from django-liveops when node_modules is missing.
+
+    The admin loads ``htmx.org/dist/htmx.min.js``, found by YarnFinder in
+    ``node_modules``. The CI test image has no ``node_modules``, so the script
+    404s and ``window.htmx`` never exists. django-liveops (a Python dep,
+    always installed) vendors the same htmx 1.x - use it as a fallback.
+    """
+    response = route.fetch()
+    if response.ok:
+        route.fulfill(response=response)
+        return
+    route.fulfill(
+        path=finders.find("liveops/vendor/htmx.min.js"),
+        content_type="application/javascript",
+    )
+
+
 def test_htmx_po_wygasnieciu_sesji_przechodzi_na_logowanie(
     channels_live_server, admin_page: Page, transactional_db
 ):
+    admin_page.route("**/htmx.org/dist/htmx.min*.js", _htmx_z_liveops)
     admin_page.goto(channels_live_server.url + CHANGELIST)
     expect(admin_page.locator("#grp-content-container")).to_be_visible()
+    admin_page.wait_for_function("() => window.htmx !== undefined")
     # Let the page's own background requests finish first, so none of them
     # can save a fresh authenticated session after we drop it.
     admin_page.wait_for_load_state("networkidle")
