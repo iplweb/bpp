@@ -16679,6 +16679,35 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+180	bpp	0099_nagrody	2000-01-01 00:00:00+00
+249	bpp	0166_auto_20190702_1200	2000-01-01 00:00:00+00
+617	django_celery_results	0008_chordcounter	2000-01-01 00:00:00+00
+799	importer_publikacji	0006_merge_20260421_1100	2000-01-01 00:00:00+00
+800	importer_publikacji	0007_async_import_state	2000-01-01 00:00:00+00
+801	importer_publikacji	0008_identifier_textfield	2000-01-01 00:00:00+00
+1133	bpp	0485_projekt_finansowanie	2000-01-01 00:00:00+00
+1134	bpp	0486_seed_instytucje_finansujace	2000-01-01 00:00:00+00
+1089	import_pracownikow	0027_profil_uczelnia	2000-01-01 00:00:00+00
+520	bpp	0411_nowy_formularz_zgloszenia	2000-01-01 00:00:00+00
+802	importer_publikacji	0009_importedauthor_candidate	2000-01-01 00:00:00+00
+803	importer_publikacji	0010_importedauthor_zapisany_jako	2000-01-01 00:00:00+00
+804	importer_publikacji	0006_merge_20260420_2212	2000-01-01 00:00:00+00
+806	importer_publikacji	0011_merge_20260601_0632	2000-01-01 00:00:00+00
+807	importer_publikacji	0012_alter_importedauthor_session	2000-01-01 00:00:00+00
+810	integrator2	0003_django110_py3k	2000-01-01 00:00:00+00
+812	integrator2	0005_nullbooleanfield	2000-01-01 00:00:00+00
+813	integrator2	0006_move_files_to_protected	2000-01-01 00:00:00+00
+815	komparator_pbn	0002_pbndownloadtask_current_step_and_more	2000-01-01 00:00:00+00
+816	komparator_pbn	0003_delete_pbndownloadtask	2000-01-01 00:00:00+00
+817	pbn_api	0069_sentdata_api_url	2000-01-01 00:00:00+00
+818	pbn_api	0070_drop_unused_indexes	2000-01-01 00:00:00+00
+819	pbn_api	0071_alter_institution_addresspostalcode_and_more	2000-01-01 00:00:00+00
+820	pbn_api	0072_pbn_search_gin_indexes	2000-01-01 00:00:00+00
+821	komparator_pbn_udzialy	0001_initial	2000-01-01 00:00:00+00
+822	komparator_pbn_udzialy	0002_add_brakautora_model	2000-01-01 00:00:00+00
+919	rozbieznosci_dyscyplin	0018_recreate	2000-01-01 00:00:00+00
+823	komparator_pbn_udzialy	0003_remove_brakautorawpublikacji_komparator__autor_i_e007d7_idx_and_more	2000-01-01 00:00:00+00
+825	messages_extends	0001_initial	2000-01-01 00:00:00+00
 312	bpp	0222_auto_20200812_1927	2000-01-01 00:00:00+00
 638	easyaudit	0005_auto_20170713_1155	2000-01-01 00:00:00+00
 826	siteblog	0001_initial	2000-01-01 00:00:00+00
@@ -16982,7 +17011,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 974	bpp	0421_alter_uczelnia_theme_name	2000-01-01 00:00:00+00
 975	bpp	0422_alter_uczelnia_theme_name	2000-01-01 00:00:00+00
 976	bpp	0423_merge_20260602_1430	2000-01-01 00:00:00+00
-180	bpp	0099_nagrody	2000-01-01 00:00:00+00
 288	bpp	0201_rekord_mat_z_www	2000-01-01 00:00:00+00
 1103	import_list_if	0005_liveops	2000-01-01 00:00:00+00
 978	bpp	0425_per_uczelnia_cache_view	2000-01-01 00:00:00+00
@@ -17382,7 +17410,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 246	bpp	0163_cachequeue	2000-01-01 00:00:00+00
 247	bpp	0164_auto_20190701_1303	2000-01-01 00:00:00+00
 248	bpp	0165_cache_punktacja_autora_cache_punktacja_dyscypliny	2000-01-01 00:00:00+00
-249	bpp	0166_auto_20190702_1200	2000-01-01 00:00:00+00
 251	bpp	0166_auto_20190708_0022	2000-01-01 00:00:00+00
 373	bpp	0280_auto_20210725_2217	2000-01-01 00:00:00+00
 376	bpp	0283_auto_20210809_0142	2000-01-01 00:00:00+00
@@ -17687,7 +17714,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 613	django_celery_results	0004_auto_20190516_0412	2000-01-01 00:00:00+00
 614	django_celery_results	0005_taskresult_worker	2000-01-01 00:00:00+00
 616	django_celery_results	0007_remove_taskresult_hidden	2000-01-01 00:00:00+00
-617	django_celery_results	0008_chordcounter	2000-01-01 00:00:00+00
 618	django_celery_results	0009_groupresult	2000-01-01 00:00:00+00
 619	django_celery_results	0010_remove_duplicate_indices	2000-01-01 00:00:00+00
 620	django_celery_results	0011_taskresult_periodic_task_name	2000-01-01 00:00:00+00
@@ -17860,32 +17886,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 796	importer_publikacji	0004_rename_user_to_created_by_add_modified_by	2000-01-01 00:00:00+00
 797	importer_publikacji	0005_importsession_wydawnictwo_nadrzedne	2000-01-01 00:00:00+00
 798	importer_publikacji	0005_alter_importsession_created_by	2000-01-01 00:00:00+00
-799	importer_publikacji	0006_merge_20260421_1100	2000-01-01 00:00:00+00
-800	importer_publikacji	0007_async_import_state	2000-01-01 00:00:00+00
-801	importer_publikacji	0008_identifier_textfield	2000-01-01 00:00:00+00
-1133	bpp	0485_projekt_finansowanie	2000-01-01 00:00:00+00
-1134	bpp	0486_seed_instytucje_finansujace	2000-01-01 00:00:00+00
-1089	import_pracownikow	0027_profil_uczelnia	2000-01-01 00:00:00+00
-520	bpp	0411_nowy_formularz_zgloszenia	2000-01-01 00:00:00+00
-802	importer_publikacji	0009_importedauthor_candidate	2000-01-01 00:00:00+00
-803	importer_publikacji	0010_importedauthor_zapisany_jako	2000-01-01 00:00:00+00
-804	importer_publikacji	0006_merge_20260420_2212	2000-01-01 00:00:00+00
-806	importer_publikacji	0011_merge_20260601_0632	2000-01-01 00:00:00+00
-807	importer_publikacji	0012_alter_importedauthor_session	2000-01-01 00:00:00+00
-810	integrator2	0003_django110_py3k	2000-01-01 00:00:00+00
-812	integrator2	0005_nullbooleanfield	2000-01-01 00:00:00+00
-813	integrator2	0006_move_files_to_protected	2000-01-01 00:00:00+00
-815	komparator_pbn	0002_pbndownloadtask_current_step_and_more	2000-01-01 00:00:00+00
-816	komparator_pbn	0003_delete_pbndownloadtask	2000-01-01 00:00:00+00
-817	pbn_api	0069_sentdata_api_url	2000-01-01 00:00:00+00
-818	pbn_api	0070_drop_unused_indexes	2000-01-01 00:00:00+00
-819	pbn_api	0071_alter_institution_addresspostalcode_and_more	2000-01-01 00:00:00+00
-820	pbn_api	0072_pbn_search_gin_indexes	2000-01-01 00:00:00+00
-821	komparator_pbn_udzialy	0001_initial	2000-01-01 00:00:00+00
-822	komparator_pbn_udzialy	0002_add_brakautora_model	2000-01-01 00:00:00+00
-919	rozbieznosci_dyscyplin	0018_recreate	2000-01-01 00:00:00+00
-823	komparator_pbn_udzialy	0003_remove_brakautorawpublikacji_komparator__autor_i_e007d7_idx_and_more	2000-01-01 00:00:00+00
-825	messages_extends	0001_initial	2000-01-01 00:00:00+00
+1213	first_run_wizard	0002_stamp_existing_superuser	2000-01-01 00:00:00+00
 \.
 
 
@@ -19958,7 +19959,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1212, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1213, true);
 
 
 --
