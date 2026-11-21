@@ -16,6 +16,7 @@ elements, so re-running after a UI change re-places them automatically.
 from __future__ import annotations
 
 import argparse
+from urllib.parse import quote
 import base64
 import os
 import sys
@@ -5137,6 +5138,200 @@ def rest_api(page: Page, base: str, out: Path) -> None:
     adm.context.close()
 
 
+def redaktor_wyszukiwanie_redagowanie(page: Page, base: str, out: Path) -> None:
+    """docs/redaktor/wyszukiwanie-redagowanie.md: global search, list filters, DjangoQL.
+
+    Needs bin/docs-demo-redaktor-wyszukiwanie-redagowanie.py (editor account).
+    """
+    red = new_session(page, base, DEMO_USER_REDAKTOR)
+    lista = f"{base}/admin/bpp/wydawnictwo_ciagle/"
+    pole_ql = "#grp-changelist-search-form"
+
+    # 1. the global search box in the editing module's top bar
+    red.goto(f"{base}/admin/")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": "#search-container .select2-selection",
+                "arrow": "below",
+                "label": "wyszukiwanie globalne",
+                "dx": -500,
+                "dy": -50,
+            }
+        ],
+    )
+    shot(red, out / "01-wyszukiwanie-globalne.png", 0, 200)
+
+    # 2. results of the global search, grouped by record type
+    red.goto(f"{base}/admin/")
+    red.wait_for_load_state("networkidle")
+    red.click("#search-container .select2-selection")
+    red.locator(".select2-container--open .select2-search__field").fill("Brokilon")
+    red.wait_for_selector(".select2-results__group")
+    red.wait_for_timeout(1200)
+    mark(
+        red,
+        [
+            {"sel": ".select2-results__group", "text": "Wydawnictwo zwarte"},
+            {"sel": ".select2-results__group", "text": "Wydawnictwo ciągłe"},
+        ],
+    )
+    # only the drop-down: the dashboard behind it is noise here
+    red.screenshot(
+        path=out / "02-wyszukiwanie-globalne-wyniki.png",
+        clip={"x": 360, "y": 0, "width": VIEWPORT["width"] - 360, "height": 560},
+    )
+
+    # 3. the text filter of one table
+    red.goto(f"{lista}?q=Brokilon")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": pole_ql,
+                "arrow": "left",
+                "label": "filtr tekstowy",
+                "dy": -88,
+            },
+            {"sel": ".grp-pagination li:first-child"},
+        ],
+    )
+    shot(red, out / "03-filtr-tekstowy.png", 0, 470)
+
+    # 4. the filter panel
+    red.goto(lista)
+    red.wait_for_load_state("networkidle")
+    red.click("#filter-panel-toggle")
+    red.wait_for_timeout(900)
+    mark(red, [{"sel": ".filter-panel-content"}])
+    red.screenshot(path=out / "04-filtry.png")
+
+    # 5. one filter opened: "Język"
+    red.locator(".filter-title-text", has_text="Język").click()
+    red.wait_for_timeout(900)
+    grupa = page_box(red, ".filter-group", "Język")
+    mark(red, [{"sel": ".filter-group", "text": "Język"}])
+    red.screenshot(
+        path=out / "05-filtr-jezyk.png",
+        clip={
+            "x": grupa["x"] - 20,
+            "y": grupa["y"] - 20,
+            "width": grupa["width"] + 40,
+            "height": grupa["height"] + 40,
+        },
+    )
+
+    # 6. the DjangoQL switch in the search box
+    red.goto(lista)
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": "input.djangoql-toggle",
+                "arrow": "left",
+                "label": "włącz DjangoQL",
+                "dy": -88,
+            }
+        ],
+    )
+    shot(red, out / "06-djangoql-przelacznik.png", 0, 330)
+
+    def zapytanie(q: str) -> None:
+        red.goto(lista)
+        red.wait_for_load_state("networkidle")
+        red.check("input.djangoql-toggle")
+        red.fill("textarea[name=q]", q)
+        red.press("textarea[name=q]", "Enter")
+        red.wait_for_load_state("networkidle")
+        red.mouse.move(5, 400)
+
+    # 7. a simple query and its result
+    zapytanie("rok = 2022 or rok = 2024")
+    mark(
+        red,
+        [
+            {"sel": pole_ql},
+            {"sel": "#result_list thead th.column-rok"},
+        ],
+    )
+    shot(red, out / "07-djangoql-wynik.png", 0, 520)
+
+    # 8.-9. completion: field names, then the fields of a related object
+    red.goto(lista)
+    red.wait_for_load_state("networkidle")
+    red.check("input.djangoql-toggle")
+    red.click("textarea[name=q]")
+    red.keyboard.type("(charakt", delay=60)
+    red.wait_for_selector(".djangoql-completion li")
+    red.wait_for_timeout(800)
+    mark(red, [{"sel": ".djangoql-completion"}])
+    shot(red, out / "08-djangoql-podpowiedzi.png", 0, 360)
+    red.keyboard.type("er_formalny.", delay=60)
+    red.wait_for_timeout(1200)
+    mark(red, [{"sel": ".djangoql-completion"}])
+    shot(red, out / "09-djangoql-podpowiedzi-pola.png", 0, 560)
+
+    # 10. the finished, more complex query
+    zapytanie(
+        '(charakter_formalny.skrot = "KSP" or charakter_formalny.skrot = "AC")'
+        " and punkty_kbn >= 100"
+    )
+    mark(
+        red,
+        [
+            {"sel": pole_ql},
+            {"sel": "#result_list thead th.column-charakter_formalny__skrot"},
+            {"sel": ".grp-pagination li:first-child"},
+        ],
+    )
+    shot(red, out / "10-djangoql-wynik-zlozony.png", 0, 520)
+
+    # 11. a syntax error ("lub" instead of "or")
+    zapytanie("rok = 2024 lub rok = 2025")
+    mark(
+        red,
+        [
+            {"sel": ".grp-messagelist, ul.messagelist"},
+            {"sel": pole_ql},
+        ],
+    )
+    shot(red, out / "11-djangoql-blad.png", 0, 300)
+
+    # 12. the public "szukaj -> zapytaniem" menu entry
+    red.goto(f"{base}/")
+    red.wait_for_load_state("networkidle")
+    li = open_top_menu(red, "fi-magnifying-glass")
+    mark(
+        red,
+        [{"sel": f"{li} a[href*='zapytanie']"}],
+    )
+    menu = page_box(red, f"{li} > ul")
+    shot(red, out / "12-menu-zapytaniem.png", 0, menu["y"] + menu["height"] + 40)
+
+    # 13. the "Szukaj zapytaniem" page with a query and its result
+    q = (
+        '(charakter_formalny.skrot = "KSP" or charakter_formalny.skrot = "AC")'
+        " and punkty_kbn >= 100"
+    )
+    red.goto(f"{base}/bpp/zapytanie/?model=rekord&query={quote(q)}")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {"sel": ".zapytanie-model-group"},
+            {"sel": "textarea[name=query]"},
+            {"sel": "#id_postac"},
+            {"sel": "h2, h3, h4", "text": "Wyniki ("},
+        ],
+    )
+    wynik = page_box(red, "h2, h3, h4", "Wyniki (")
+    shot(red, out / "13-szukaj-zapytaniem.png", 0, wynik["y"] + 330)
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -5435,6 +5630,10 @@ SCENARIOS = {
     ),
     "api-index": ("api/index", api_index),
     "rest-api": ("administrator/rest-api", rest_api),
+    "redaktor-wyszukiwanie-redagowanie": (
+        "redaktor/wyszukiwanie-redagowanie",
+        redaktor_wyszukiwanie_redagowanie,
+    ),
 }
 
 
