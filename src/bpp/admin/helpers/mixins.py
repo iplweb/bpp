@@ -366,6 +366,13 @@ class BppSoftDeleteAdminMixin:
             return False
         return super().has_change_permission(request, obj)
 
+    def get_view_on_site_url(self, obj=None):
+        """Rekord z kosza nie ma „Pokaż na stronie" — strona publiczna daje
+        dla niego 404."""
+        if obj is not None and getattr(obj, "deleted_at", None) is not None:
+            return None
+        return super().get_view_on_site_url(obj)
+
     def has_delete_permission(self, request, obj=None):
         """Rekord już w koszu nie ma przycisku „Usuń" (opróżnianie kosza to
         osobna akcja superusera)."""

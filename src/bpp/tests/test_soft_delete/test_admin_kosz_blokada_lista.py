@@ -3,6 +3,7 @@
 stron kosza w markupie Grappelli."""
 
 import pytest
+from django.contrib.contenttypes.models import ContentType
 from django.db.models import ProtectedError
 from django.urls import reverse
 from model_bakery import baker
@@ -307,3 +308,20 @@ def test_filtr_kosza_jest_ostatni(model, rf, superuser):
     assert filtry[-1] is PokazSkasowaneFilter
     assert filtry.count(PokazSkasowaneFilter) == 1
     assert PokazSkasowaneFilter.title == "♻️ Kosz"
+
+
+# --- „Pokaż na stronie" tylko dla żywych rekordów ---------------------------
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("model", [Wydawnictwo_Ciagle, Autor])
+def test_rekord_z_kosza_bez_linku_na_strone(model, superuser_client, bez_celery):
+    obj = baker.make(model)
+    view_on_site = reverse(
+        "admin:view_on_site",
+        args=[ContentType.objects.get_for_model(model).pk, obj.pk],
+    )
+    assert view_on_site in superuser_client.get(_url(obj)).content.decode()
+
+    obj.delete()
+    assert view_on_site not in superuser_client.get(_url(obj)).content.decode()
