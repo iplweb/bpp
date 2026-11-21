@@ -425,7 +425,7 @@ Modify `importpracownikowrow_list.html` (usuń sekcję odpięć).
 - [ ] `ruff format . && ruff check .` (tylko zmienione pliki — nie `--all-files`).
 - [ ] Pełne `uv run pytest src/import_pracownikow -n auto` + smoke reszty.
 - [ ] Weryfikacja na `run-site` (jeśli biegnie): hub, dopasowanie autora, ekran
-  tytułów, odpięcia — realny plik IHIT.
+  tytułów, odpięcia — realny plik klienta.
 - [ ] `grunt build` jeśli dotknięto SCSS (kafelki mogą wymagać stylu — Foundation
   callout/grid zwykle wystarcza bez SCSS).
 - [ ] **NIE** odświeżać baseline (przy scaleniu). **NIE** commitować bez zgody

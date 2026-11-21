@@ -115,7 +115,7 @@ najbliższej zmianie lub resecie hasła.
 | `DJANGO_BPP_PASSWORD_DURATION_SECONDS` | `0` | co ile sekund wymuszać zmianę hasła; `0` = nigdy (np. `2592000` = 30 dni) |
 | `DJANGO_BPP_USE_PASSWORD_HISTORY` | `true` | czy pamiętać poprzednie hasła |
 | `DJANGO_BPP_PASSWORD_HISTORY_COUNT` | `12` | ile poprzednich haseł pamiętać |
-| `DJANGO_BPP_PASSWORD_CONTEXT_WORDS` | (puste) | dodatkowe słowa zakazane w hasłach, rozdzielone przecinkami (np. `umlub,lublin`) |
+| `DJANGO_BPP_PASSWORD_CONTEXT_WORDS` | (puste) | dodatkowe słowa zakazane w hasłach, rozdzielone przecinkami (np. skrót uczelni i nazwa miasta: `abc,miasto`) |
 | `DJANGO_BPP_PASSWORD_CHECK_PWNED` | `true` | sprawdzanie haseł w Have I Been Pwned; `false` wyłącza |
 | `DJANGO_BPP_PASSWORD_MIN_ZXCVBN_SCORE` | `3` | minimalna ocena siły hasła wg zxcvbn (0–4); `0` wyłącza |
 

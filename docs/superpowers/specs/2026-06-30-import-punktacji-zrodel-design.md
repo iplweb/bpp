@@ -1,6 +1,6 @@
 # Import punktacji źródeł z pliku JCR (Journal Citation Reports) — projekt
 
-- **Zgłoszenie:** Freshdesk FD#388 (Biblioteka Naukowa IHiT)
+- **Zgłoszenie:** Freshdesk FD#388 (biblioteka jednego z klientów)
 - **Gałąź / worktree:** `fix-fd388-import-punktacji-zrodel`
 - **Data:** 2026-06-30
 - **Nowa aplikacja:** `src/import_punktacji_zrodel/`
@@ -122,9 +122,9 @@ wiersze wyników). **Nie ruszamy baseline** (decyzja użytkownika:
 
 ```python
 class ImportPunktacjiZrodel(ASGINotificationMixin, Operation):
-    rok = YearField(null=True, blank=True)        # autodetekcja z pliku
+    rok = YearField(null=True, blank=True)  # autodetekcja z pliku
     plik = models.FileField(upload_to="protected/import_punktacji_zrodel/")
-    zapisz_zmiany_do_bazy = models.BooleanField(default=False)   # dry-run gdy False
+    zapisz_zmiany_do_bazy = models.BooleanField(default=False)  # dry-run gdy False
     importuj_impact_factor = models.BooleanField(default=True)
     importuj_kwartyl_wos = models.BooleanField(default=True)
     ignoruj_zrodla_bez_odpowiednika = models.BooleanField(default=False)
@@ -134,17 +134,21 @@ class ImportPunktacjiZrodel(ASGINotificationMixin, Operation):
     # "{app_label}:{model_name_lowercased}", więc nazwy URL muszą być
     # "importpunktacjizrodel-router/-details/-results" (patrz §6).
 
-    def perform(self): ...        # → core.analyze_jcr_file(self.plik.path, self)
-    def on_reset(self): self.get_details_set().delete()
-    def get_details_set(self): return self.wierszimportupunktacjizrodel_set.all()
+    def perform(self): ...  # → core.analyze_jcr_file(self.plik.path, self)
+    def on_reset(self):
+        self.get_details_set().delete()
+
+    def get_details_set(self):
+        return self.wierszimportupunktacjizrodel_set.all()
+
 
 class WierszImportuPunktacjiZrodel(models.Model):
     parent = FK(ImportPunktacjiZrodel, CASCADE)
-    dane_z_xls = JSONField()        # zgrupowany dict czasopisma
+    dane_z_xls = JSONField()  # zgrupowany dict czasopisma
     nr_wiersza = PositiveIntegerField()
     zrodlo = FK(Zrodlo, SET_NULL, null=True, blank=True)
     rezultat = TextField(blank=True, default="")
-    wymaga_zmian = BooleanField(default=False)   # do filtra „tylko do aktualizacji"
+    wymaga_zmian = BooleanField(default=False)  # do filtra „tylko do aktualizacji"
     is_duplicate = BooleanField(default=False)
     duplicate_of_row = PositiveIntegerField(null=True, blank=True)
     duplicate_reason = CharField(max_length=100, blank=True)

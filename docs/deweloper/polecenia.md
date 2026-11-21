@@ -118,7 +118,7 @@ Note: The script requires `expect` to be installed on the system.
 ## Running a local script on a client's server
 
 ```bash
-scripts/bpp-remote-shell bpp.apoz.edu.pl my_script.py --some-arg value
+scripts/bpp-remote-shell bpp.example.edu.pl my_script.py --some-arg value
 ```
 
 Streams a local Python script over SSH into the Django shell of a remote

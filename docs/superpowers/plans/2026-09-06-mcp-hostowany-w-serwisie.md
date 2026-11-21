@@ -655,14 +655,14 @@ def test_api_root_bierze_sie_z_hosta_zadania():
     """Sedno D9: adres API zależy od hosta KONKRETNEGO żądania (spec §5.3)."""
 
     async def scenariusz():
-        zeton = dane_zadania.set(_dane(host="bpp.umlub.pl"))
+        zeton = dane_zadania.set(_dane(host="bpp.example.edu.pl"))
         try:
             klient = zbuduj_klienta()
             return str(klient._full_url("autor/"))
         finally:
             dane_zadania.reset(zeton)
 
-    assert uruchom(scenariusz) == "https://bpp.umlub.pl/api/v1/autor/"
+    assert uruchom(scenariusz) == "https://bpp.example.edu.pl/api/v1/autor/"
 
 
 def test_dwa_zadania_dwa_rozne_adresy():

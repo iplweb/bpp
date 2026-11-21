@@ -146,13 +146,13 @@ def test_stan_zmapowany_istnieje():
 @pytest.mark.django_db
 def test_profil_mapowania_zapis_i_odczyt(admin_user):
     p = ProfilMapowania.objects.create(
-        nazwa="Uczelnia Vizja Q3",
+        nazwa="Uczelnia Przykładowa Q3",
         mapowanie={"jedn_org": "nazwa_jednostki", "nazwisko": "nazwisko"},
         utworzony_przez=admin_user,
     )
     p.refresh_from_db()
     assert p.mapowanie["jedn_org"] == "nazwa_jednostki"
-    assert str(p) == "Uczelnia Vizja Q3"
+    assert str(p) == "Uczelnia Przykładowa Q3"
 ```
 
 - [ ] **Step 2: Uruchom — czerwone**
@@ -174,9 +174,9 @@ stanu (po `STAN_UTWORZONY`) i choice:
 W `STAN_CHOICES` dodaj (po `utworzony`):
 
 ```python
-        (STAN_UTWORZONY, "utworzony"),
-        (STAN_ZMAPOWANY, "zmapowany (kolumny określone)"),
-        (STAN_PRZEANALIZOWANY, "przeanalizowany (dry-run gotowy)"),
+((STAN_UTWORZONY, "utworzony"),)
+((STAN_ZMAPOWANY, "zmapowany (kolumny określone)"),)
+((STAN_PRZEANALIZOWANY, "przeanalizowany (dry-run gotowy)"),)
 ```
 
 Po polu `stan` dodaj pole mapowania:
@@ -306,9 +306,9 @@ def test_waliduj_mapowanie_wymaga_nazwisko_imie_jednostka():
     bledy = waliduj_mapowanie({"a": "nazwisko", "b": "imię"})
     assert any("jednostk" in e.lower() for e in bledy)
     # komplet identyfikacji → OK
-    assert waliduj_mapowanie(
-        {"a": "nazwisko", "b": "imię", "c": "nazwa_jednostki"}
-    ) == []
+    assert (
+        waliduj_mapowanie({"a": "nazwisko", "b": "imię", "c": "nazwa_jednostki"}) == []
+    )
 
 
 def test_waliduj_mapowanie_odrzuca_duplikat_pola():
@@ -437,8 +437,7 @@ def waliduj_mapowanie(mapowanie):
     brakujace = _POLA_IDENTYFIKACJI - set(uzyte)
     if brakujace:
         bledy.append(
-            "Brak wymaganych pól identyfikacji: "
-            + ", ".join(sorted(brakujace))
+            "Brak wymaganych pól identyfikacji: " + ", ".join(sorted(brakujace))
         )
     if _POLE_JEDNOSTKA not in uzyte:
         bledy.append("Brak wymaganego pola: nazwa jednostki")
@@ -650,8 +649,12 @@ def test_autorform_pola_nieidentyfikacyjne_opcjonalne():
     f = AutorForm()
     assert f.fields["nazwisko"].required is True
     assert f.fields["imię"].required is True
-    for pole in ["stanowisko", "grupa_pracownicza", "data_zatrudnienia",
-                 "wymiar_etatu"]:
+    for pole in [
+        "stanowisko",
+        "grupa_pracownicza",
+        "data_zatrudnienia",
+        "wymiar_etatu",
+    ]:
         assert f.fields[pole].required is False, pole
 
 
@@ -664,8 +667,7 @@ def test_jednostkaform_wydzial_opcjonalny():
 @pytest.mark.django_db
 def test_naglowki_i_probka(admin_user):
     csv = (
-        "Nazwisko;Imię;Nazwa jednostki\n"
-        "Kowalski;Jan;Katedra\nNowak;Ewa;Zakład\n"
+        "Nazwisko;Imię;Nazwa jednostki\nKowalski;Jan;Katedra\nNowak;Ewa;Zakład\n"
     ).encode("utf-8")
     imp = ImportPracownikow(owner=admin_user)
     imp.plik_xls = SimpleUploadedFile("p.csv", csv)
@@ -685,9 +687,7 @@ def test_brak_stanowiska_nie_kasuje_funkcji_przy_integracji():
     funkcja = baker.make(Funkcja_Autora)
     jednostka = baker.make(Jednostka)
     autor = baker.make(Autor)
-    aj = baker.make(
-        Autor_Jednostka, autor=autor, jednostka=jednostka, funkcja=funkcja
-    )
+    aj = baker.make(Autor_Jednostka, autor=autor, jednostka=jednostka, funkcja=funkcja)
     row = baker.make(
         ImportPracownikowRow,
         autor=autor,
@@ -936,8 +936,7 @@ def test_analiza_z_mapowaniem_inaczej_nazwanych_kolumn(
     autor, jednostka = dwa_autory_z_jednostka
     # plik z NIESTANDARDOWYMI nazwami kolumn — bez mapowania nie zadziała
     csv = (
-        f"Nazwisko;Imie;Jedn org\n"
-        f"{autor.nazwisko};{autor.imiona};{jednostka.nazwa}\n"
+        f"Nazwisko;Imie;Jedn org\n{autor.nazwisko};{autor.imiona};{jednostka.nazwa}\n"
     ).encode("utf-8")
     imp = ImportPracownikow(
         owner=admin_user,
@@ -1009,9 +1008,7 @@ analiza potem nie znajdzie nagłówka):
 na:
 
 ```python
-    zrodlo = otworz_zrodlo(
-        parent.plik_xls.path, try_names=TRY_NAMES, min_points=MIN_POINTS
-    )
+zrodlo = otworz_zrodlo(parent.plik_xls.path, try_names=TRY_NAMES, min_points=MIN_POINTS)
 ```
 
 oraz pętlę:
@@ -1193,9 +1190,7 @@ class MapowanieForm(forms.Form):
         for e in bledy:
             self.add_error(None, e)
         if cleaned.get("zapisz_profil") and not cleaned.get("nazwa_profilu"):
-            self.add_error(
-                "nazwa_profilu", "Podaj nazwę profilu, aby go zapisać."
-            )
+            self.add_error("nazwa_profilu", "Podaj nazwę profilu, aby go zapisać.")
         return cleaned
 ```
 
@@ -1394,9 +1389,7 @@ _PATCH_RUN = patch.object(ImportPracownikow, "run", lambda self, p: None)
 
 def _upload_csv(admin_user):
     csv = ("Nazwisko;Imie;Jedn org\nKowalski;Jan;Katedra\n").encode("utf-8")
-    imp = ImportPracownikow(
-        owner=admin_user, stan=ImportPracownikow.STAN_UTWORZONY
-    )
+    imp = ImportPracownikow(owner=admin_user, stan=ImportPracownikow.STAN_UTWORZONY)
     imp.plik_xls = SimpleUploadedFile("p.csv", csv)
     imp.save()
     return imp
@@ -1413,9 +1406,7 @@ def test_mapowanie_get_pokazuje_kolumny(admin_client, admin_user):
 
 
 @pytest.mark.django_db
-def test_mapowanie_post_zapisuje_i_przechodzi_w_zmapowany(
-    admin_client, admin_user
-):
+def test_mapowanie_post_zapisuje_i_przechodzi_w_zmapowany(admin_client, admin_user):
     imp = _upload_csv(admin_user)
     url = reverse("import_pracownikow:mapowanie", kwargs={"pk": imp.pk})
     data = {
@@ -1647,11 +1638,13 @@ grupy user nie dotyka pliku ani `owner`-lookupu. Wynik nagłówków/próbki jest
 W `src/import_pracownikow/urls.py` dodaj (po `new/`):
 
 ```python
+(
     path(
         "<uuid:pk>/mapowanie/",
         views.MapowanieView.as_view(),
         name="mapowanie",
     ),
+)
 ```
 
 - [ ] **Step 5: Template**
@@ -1764,9 +1757,7 @@ def test_e2e_upload_mapowanie_analiza(admin_client, admin_user, dwa_autory_z_jed
     csv = (
         f"Nazwisko;Imie;Jedn org\n{autor.nazwisko};{autor.imiona};{jednostka.nazwa}\n"
     ).encode("utf-8")
-    imp = ImportPracownikow(
-        owner=admin_user, stan=ImportPracownikow.STAN_UTWORZONY
-    )
+    imp = ImportPracownikow(owner=admin_user, stan=ImportPracownikow.STAN_UTWORZONY)
     imp.plik_xls = SimpleUploadedFile("p.csv", csv)
     imp.save()
 

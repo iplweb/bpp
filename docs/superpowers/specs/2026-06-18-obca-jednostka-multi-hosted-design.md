@@ -40,15 +40,15 @@ Dwa fakty się zderzają:
    Zawartość `defaults` (w tym `uczelnia`) jest stosowana tylko przy INSERT.
    Przy trafieniu zwraca istniejący rekord z **cudzą** uczelnią.
 
-Scenariusz awarii (MWSL jako druga uczelnia w instalacji): pierwsza/oryginalna
-uczelnia już ma `"Obca jednostka"`. Import MWSL tworzy własny wydział i jednostkę
+Scenariusz awarii (uczelnia B jako druga uczelnia w instalacji): pierwsza/oryginalna
+uczelnia już ma `"Obca jednostka"`. Import uczelni B tworzy własny wydział i jednostkę
 domyślną (scoped per-uczelnia, OK), ale `get_or_create(nazwa="Obca jednostka")`
 trafia w jednostkę **innej** uczelni (`created=False`, `defaults` zignorowane).
 Potem `Jednostka_Wydzial.get_or_create(jednostka=obca[inna uczelnia],
-wydzial=wydzial[MWSL])` → trigger → assertion (`institution_import.py:209`).
+wydzial=wydzial[B])` → trigger → assertion (`institution_import.py:209`).
 
 Latentny błąd obok: nawet gdyby trigger nie zadziałał, kod ustawiłby
-`MWSL.obca_jednostka = <jednostka innej uczelni>` (`institution_import.py:216`).
+`B.obca_jednostka = <jednostka innej uczelni>` (`institution_import.py:216`).
 
 ### Drugi, latentny błąd tej samej klasy
 
@@ -59,7 +59,7 @@ domyślnego wydziału dostałaby `IntegrityError` na unikalnej nazwie/skrócie.
 ## Cel
 
 1. Obca jednostka ma być **per-uczelnia**, z nazwą `"Obca jednostka " +
-   uczelnia.skrot` (np. `"Obca jednostka UML"`, `"Obca jednostka UCZELNIA"`).
+   uczelnia.skrot` (np. `"Obca jednostka ABC"`, `"Obca jednostka UCZELNIA"`).
 2. Provisioning (utworzenie + podpięcie do wydziału + ustawienie FK) ma być
    **idempotentny** i dostępny jako osobne polecenie `create_obca_jednostka`
    działające dla **wszystkich** uczelni.
@@ -116,7 +116,7 @@ Zwraca `(obca_jednostka, created)`.
 compatible, zero churnu na istniejących instalacjach). Ścieżka CREATE dostaje
 nazwy unikalne per-uczelnia:
 
-- `nazwa=f"{nazwa_domyslna} {uczelnia.skrot}"` (np. `"Wydział Domyślny UML"`),
+- `nazwa=f"{nazwa_domyslna} {uczelnia.skrot}"` (np. `"Wydział Domyślny ABC"`),
 - `skrot=f"WD-{uczelnia.skrot}"` (≤128 znaków, unikalne dzięki sufiksowi).
 
 ### 3. Walidator pre-import — `institution_import.py`
