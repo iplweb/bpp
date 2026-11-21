@@ -28,6 +28,22 @@ MODELE_NAGROBKOW = {
     "autor": Autor,
 }
 
+#: Ścieżki ORM do ``Uczelnia`` — reguła atrybucji jak w pozostałych
+#: endpointach (``bpp.util.uczelnia_scope``): rekord należy do uczelni, gdy
+#: którakolwiek jednostka na autorstwie do niej należy; autor — gdy był
+#: kiedykolwiek zatrudniony w jej jednostce (FD#390) albo ma ją aktualnie.
+ATRYBUCJA_UCZELNI = {
+    "wydawnictwo_ciagle": ("autorzy_set__jednostka__uczelnia",),
+    "wydawnictwo_zwarte": ("autorzy_set__jednostka__uczelnia",),
+    "patent": ("autorzy_set__jednostka__uczelnia",),
+    "praca_doktorska": ("jednostka__uczelnia",),
+    "praca_habilitacyjna": ("jednostka__uczelnia",),
+    "autor": (
+        "autor_jednostka__jednostka__uczelnia",
+        "aktualna_jednostka__uczelnia",
+    ),
+}
+
 #: Parametr zapytania -> lookup na ``deleted_at``. Nazwy jak
 #: ``DateTimeFromToRangeFilter`` w pozostałych viewsetach
 #: (``?ostatnio_zmieniony_after=``), żeby klient nie musiał się uczyć
@@ -95,9 +111,12 @@ class UsunieteViewSet(viewsets.ViewSet):
         gdzie wcześniej stawiał je sort w Pythonie.
         """
         warunki = self._warunki_zakresu(self.request)
+        uczelnia = self._uczelnia_do_zawezenia(self.request)
 
         galezie = [
-            model.deleted_objects.filter(**warunki)
+            self._zawez_do_uczelni(
+                model.deleted_objects.filter(**warunki), nazwa, uczelnia
+            )
             # ``order_by()`` bez argumentów CZYŚCI porządek domyślny modelu.
             # Bez tego każda gałąź wnosi swoje ``Meta.ordering``
             # (``Autor.sort``, ``Praca_Doktorska.rok, tytul_oryginalny``) —
@@ -133,6 +152,40 @@ class UsunieteViewSet(viewsets.ViewSet):
         if not hasattr(self, "_paginator"):
             self._paginator = self.pagination_class()
         return self._paginator
+
+    @staticmethod
+    def _uczelnia_do_zawezenia(request):
+        """Uczelnia oglądającego albo ``None`` (≤1 uczelnia: bez zawężania).
+
+        Kosz jest per uczelnia: w instalacji wielouczelnianej endpoint
+        pokazuje WYŁĄCZNIE nagrobki rekordów bieżącej uczelni (z domeny).
+        Gdy uczelni nie da się ustalić przy kilku uczelniach — pusto
+        (fail-closed: identyfikatory cudzych skasowanych rekordów nie
+        wyciekają).
+        """
+        from bpp.models import Uczelnia
+
+        if Uczelnia.objects.count() <= 1:
+            return None
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        return uczelnia if uczelnia is not None else False
+
+    @staticmethod
+    def _zawez_do_uczelni(qs, nazwa, uczelnia):
+        from django.db.models import Q
+
+        if uczelnia is None:
+            return qs
+        if uczelnia is False:
+            return qs.none()
+        warunek = Q()
+        for sciezka in ATRYBUCJA_UCZELNI[nazwa]:
+            warunek |= Q(**{sciezka: uczelnia})
+        # Podzapytanie po pk (bez JOIN + DISTINCT w gałęzi UNION). Lookup
+        # przez relację nie pyta menedżera dziecka, więc autorstwa
+        # publikacji z kosza są widoczne — i o to tu chodzi.
+        pasujace = qs.model.global_objects.filter(warunek).values("pk")
+        return qs.filter(pk__in=pasujace)
 
     def _warunki_zakresu(self, request):
         """Przetłumacz parametry zakresu na filtry ``deleted_at``.

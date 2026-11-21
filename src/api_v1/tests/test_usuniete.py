@@ -4,6 +4,7 @@ from datetime import timedelta
 from urllib.parse import urlencode
 
 import pytest
+from model_bakery import baker
 from django.urls import reverse
 
 
@@ -238,3 +239,36 @@ def test_usuniete_tnie_strone_w_bazie_a_nie_w_pythonie(api_client, kosz_szesciu)
         "złączone zapytanie poszło bez LIMIT-u — strona jest wycinana "
         f"w Pythonie po pobraniu całego kosza:\n{zlaczone}"
     )
+
+
+@pytest.mark.django_db
+def test_usuniete_pokazuje_tylko_kosz_biezacej_uczelni(
+    api_client,
+    uczelnia,
+    jednostka,
+    autor_jan_kowalski,
+    autor_jan_nowak,
+    typy_odpowiedzialnosci,
+):
+    """Multi-hosted: kosz jest per uczelnia — nagrobki cudzej uczelni nie
+    wyciekają (``uczelnia`` A jest zmapowana na Site ``testserver``)."""
+    from django.contrib.sites.models import Site
+
+    from bpp.models import Jednostka, Uczelnia
+
+    site_b = Site.objects.create(domain="uczelnia-b.example.com", name="B")
+    uczelnia_b = Uczelnia.objects.create(nazwa="Uczelnia B", skrot="BB", site=site_b)
+    jednostka_b = Jednostka.objects.create(
+        nazwa="Jedn. B", skrot="JB", uczelnia=uczelnia_b
+    )
+    nasza = baker.make("bpp.Wydawnictwo_Ciagle")
+    nasza.dodaj_autora(autor_jan_kowalski, jednostka)
+    cudza = baker.make("bpp.Wydawnictwo_Ciagle")
+    cudza.dodaj_autora(autor_jan_nowak, jednostka_b)
+    nasza.delete()
+    cudza.delete()
+
+    res = api_client.get(reverse("api_v1:usuniete-list"))
+    pk = {(w["model"], w["pk"]) for w in res.json()["results"]}
+    assert ("wydawnictwo_ciagle", nasza.pk) in pk
+    assert ("wydawnictwo_ciagle", cudza.pk) not in pk
