@@ -1,0 +1,27 @@
+{# Punkty za artykuł w bieżącej ewaluacji (bpp.punkty_ewaluacji). #}
+{# Oczekuje: ewaluacja = punkty_ewaluacji_zrodla(zrodlo). #}
+<div class="callout punkty-ewaluacji">
+    <div class="punkty-ewaluacji__naglowek">
+        <i class="fi-trophy autor-page__icon--mr-sm"></i>Ewaluacja {{ ewaluacja.od }}–{{ ewaluacja.do }}
+    </div>
+    {% if ewaluacja.aktualne %}
+        <p class="punkty-ewaluacji__glowne">
+            Artykuł jednego autora ({{ ewaluacja.aktualne.rok }}):
+            <strong class="punkty-ewaluacji__liczba">{{ ewaluacja.aktualne.punkty|floatformat:"-2" }} pkt</strong>
+        </p>
+        {% if ewaluacja.lata|length > 1 %}
+            <ul class="punkty-ewaluacji__lata">
+                {% for wpis in ewaluacja.lata %}
+                    <li><span>{{ wpis.rok }}</span> {{ wpis.punkty|floatformat:"-2" }} pkt</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+        <p class="punkty-ewaluacji__przypis">
+            Punktacja czasopisma z wykazu; przy kilku autorach punkty dzielą się wg zasad ewaluacji.
+        </p>
+    {% else %}
+        <p class="punkty-ewaluacji__glowne">
+            Czasopisma nie ma w punktacji za lata {{ ewaluacja.od }}–{{ ewaluacja.do }}.
+        </p>
+    {% endif %}
+</div>

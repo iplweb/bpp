@@ -23,6 +23,7 @@ from bpp.models import (
     Wydawnictwo_Zwarte,
 )
 
+from ..historia import komunikat_utworzenia, zapisz_utworzenie
 from ..models import ImportedAuthor, ImportSession
 from .helpers import _detect_language
 from .pbn_check import _link_pbn_uid
@@ -394,8 +395,12 @@ def waliduj_afiliacje_sesji(session, uczelnia=None):
 
 
 @transaction.atomic
-def _create_publication(session):
-    """Utwórz rekord publikacji na podstawie sesji."""
+def _create_publication(session, user=None):
+    """Utwórz rekord publikacji na podstawie sesji.
+
+    ``user`` — kto prowadzi import (autor wpisu w historii zmian rekordu,
+    FD#441); domyślnie twórca sesji.
+    """
     # Twardy guard afiliacji — przed jakimkolwiek zapisem do bazy (transakcja
     # atomowa i tak by wycofała, ale tu odmawiamy zanim cokolwiek powstanie).
     waliduj_afiliacje_sesji(session)
@@ -484,5 +489,8 @@ def _create_publication(session):
     # mają) — bez tego guardu stale pbn_mongo_id wywaliłby save(pbn_uid_id).
     if not is_patent:
         _link_pbn_uid(session, record)
+
+    # FD#441: ślad na stronie „Historia" rekordu w adminie (kto, skąd).
+    zapisz_utworzenie(user or session.created_by, record, komunikat_utworzenia(session))
 
     return record

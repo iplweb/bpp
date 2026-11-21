@@ -8,6 +8,9 @@ API jest domyślnie dostępne dla użytkowników niezalogowanych. Administrator 
 całe API lub jego części albo udostępnić je tylko zalogowanym — zobacz
 [REST API (/api/v1/)](../administrator/rest-api.md).
 
+Dla asystentów AI (Claude, ChatGPT i inne programy obsługujące MCP) zobacz
+[Bibliografia w asystencie AI](../uzytkownik/asystent-ai.md).
+
 API dostępne jest w formie „przyjaznej developerom”: po wejściu pod adres `/api/v1/`
 w zwykłej przeglądarce WWW zobaczymy listę dostępnych zasobów, pogrupowanych tematycznie.
 Klikając adres (1) przejdziemy do danych, a z menu przy przycisku **GET** (2) przełączymy

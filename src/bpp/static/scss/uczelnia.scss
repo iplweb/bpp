@@ -59,6 +59,17 @@ button.uczelnia__button--invisible.main-page-button-secondary {
 }
 
 // Browse tile container
+// Kafle „Przeglądaj bazę publikacji”: siatka CSS zamiast komórek Foundation,
+// bo grid-auto-rows: 1fr wyrównuje wysokość także między wierszami (wąskie
+// ekrany, gdzie opisy zawijają się w różną liczbę linii).
+.uczelnia__kafle {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    grid-auto-rows: 1fr;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
 .uczelnia__tile {
     padding: 20px;
     background: #f8f9fa;

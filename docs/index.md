@@ -28,6 +28,13 @@ wyszukiwanie, własny dorobek, punkty, raporty.
 - [Mój profil autora](uzytkownik/moj-profil-autora.md)
 - [Nie mogę się zalogować](uzytkownik/logowanie.md)
 - [Widget publikacji na stronie WWW](uzytkownik/widget-publikacji.md)
+- [Wyszukiwanie precyzyjne — podstawy](uzytkownik/wyszukiwanie-precyzyjne.md)
+- [Wyszukiwanie precyzyjne — przykłady zapytań](uzytkownik/wyszukiwanie-precyzyjne-przyklady.md)
+- [Wyszukiwanie precyzyjne — praca z wynikami](uzytkownik/wyszukiwanie-precyzyjne-wyniki.md)
+- [Wyszukiwanie precyzyjne — zapisane formularze](uzytkownik/wyszukiwanie-precyzyjne-zapisane.md)
+- [Tabela krzyżowa (zestawienia)](uzytkownik/tabela-krzyzowa.md)
+- [Sieć powiązań autorów](uzytkownik/powiazania-autorow.md)
+- [Bibliografia w asystencie AI](uzytkownik/asystent-ai.md)
 
 ### ✏️ Instrukcja redaktora
 
@@ -54,6 +61,7 @@ zalogowaniu.
 - [Wydawnictwa](redaktor/wydawnictwa.md)
 - [Sloty](redaktor/sloty.md)
 - [Eksportowanie do DSpace](redaktor/eksportowanie-do-dspace.md)
+- [Dwudyscyplinowcy](redaktor/dwudyscyplinowcy.md)
 - [Duplikaty publikacji](redaktor/duplikaty-publikacji.md)
 
 ### 🛠️ Instrukcja administratora
@@ -68,6 +76,8 @@ Konfiguracja, importy i integracje — dla administratorów wdrożenia.
 - [Integracja z PBN](administrator/integracja-pbn.md)
 - [Integracja z DSpace](administrator/integracja-dspace.md)
 - [Konfiguracja zaawansowana](administrator/zaawansowane.md)
+- [Metody logowania (LDAP, AD, Keycloak, ORCID…)](administrator/metody-logowania.md)
+- [Pulpit administratora](administrator/panel-administracyjny.md)
 
 ### 🔌 API
 

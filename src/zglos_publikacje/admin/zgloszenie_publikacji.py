@@ -123,7 +123,7 @@ class Zgloszenie_PublikacjiAdmin(
         + MODEL_Z_OPLATA_ZA_PUBLIKACJE
         + (
             "email",
-            "strona_www",
+            "strona_www_link",
             "pliki_do_pobrania",
             "wydawca_zgloszenia",
             "wydawca_bpp",
@@ -145,6 +145,7 @@ class Zgloszenie_PublikacjiAdmin(
     # rekordu i dwa komplety zapytań na każdy render strony.
     readonly_fields = [
         "pliki_do_pobrania",
+        "strona_www_link",
     ]
 
     inlines = [
@@ -432,6 +433,21 @@ class Zgloszenie_PublikacjiAdmin(
             '<a href="{}">{}</a>',
             url,
             display_name,
+        )
+
+    @admin.display(description="Dostępna w sieci pod adresem")
+    def strona_www_link(self, obj):
+        """Adres pracy otwierany w nowej karcie (FD#456).
+
+        Domyślny render ``URLField`` w adminie to link w tej samej karcie —
+        klik wyrzucał operatora z oglądanego zgłoszenia.
+        """
+        if not obj.strona_www:
+            return "-"
+        return format_html(
+            '<a href="{}" target="_blank" rel="noopener noreferrer">{}</a>',
+            obj.strona_www,
+            obj.strona_www,
         )
 
     @admin.display(description="Pliki")
