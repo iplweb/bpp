@@ -208,7 +208,9 @@ def _zgloszenie_dla_prefilla(session):
     ich zachowanie jest bez zmian.
     """
     if session.zgloszenie_id:
-        return session.zgloszenie
+        # FK access goes through ``_base_manager``, which keeps trashed rows.
+        zgloszenie = session.zgloszenie
+        return zgloszenie if zgloszenie.deleted_at is None else None
     return _find_matching_zgloszenie(session)
 
 

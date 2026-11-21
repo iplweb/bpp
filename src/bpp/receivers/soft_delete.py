@@ -5,8 +5,8 @@ rejestrowane bez ``sender=``, więc nowy model soft-delete jest logowany bez
 dopisywania czegokolwiek tutaj. Rejestracja: ``BppConfig.ready()``.
 
 Objęte modele: wszystkie ``SoftDeleteModel`` (publikacje, ``Autor``,
-struktura i słowniki, ``Element_Repozytorium``,
-``zglos_publikacje.Zgloszenie_Publikacji``). Nie wypisuj tej listy nigdzie
+struktura i słowniki, ``zglos_publikacje.Zgloszenie_Publikacji``,
+``Element_Repozytorium``). Nie wypisuj tej listy nigdzie
 w kodzie — źródłem prawdy jest asercja
 ``test_kazdy_model_soft_delete_zachowuje_pk`` nad ``apps.get_models()``.
 
