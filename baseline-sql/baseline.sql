@@ -16613,6 +16613,10 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+598	denorm	0006_auto_20211003_0346	2000-01-01 00:00:00+00
+863	pbn_komparator_zrodel	0002_add_brakujaca_dyscyplina_pbn	2000-01-01 00:00:00+00
+864	pbn_komparator_zrodel	0003_remove_rozbieznosczrodlapbn_pbn_kompara_zrodlo__8665da_idx_and_more	2000-01-01 00:00:00+00
+865	pbn_wysylka_oswiadczen	0001_initial	2000-01-01 00:00:00+00
 266	bpp	0179_auto_20190910_1416	2000-01-01 00:00:00+00
 234	bpp	0152_merge	2000-01-01 00:00:00+00
 875	przemapuj_zrodla_pbn	0001_initial	2000-01-01 00:00:00+00
@@ -17425,7 +17429,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 595	denorm	0003_auto_20211002_1955	2000-01-01 00:00:00+00
 596	denorm	0004_alter_dirtyinstance_success	2000-01-01 00:00:00+00
 597	denorm	0005_dirtyinstance_created_on	2000-01-01 00:00:00+00
-598	denorm	0006_auto_20211003_0346	2000-01-01 00:00:00+00
 599	denorm	0007_auto_created_on_now	2000-01-01 00:00:00+00
 600	denorm	0008_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
 601	denorm	0009_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
@@ -17697,9 +17700,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 155	bpp	0074_django110	2000-01-01 00:00:00+00
 861	pbn_import	0011_alter_importinconsistency_session_and_more	2000-01-01 00:00:00+00
 862	pbn_komparator_zrodel	0001_initial	2000-01-01 00:00:00+00
-863	pbn_komparator_zrodel	0002_add_brakujaca_dyscyplina_pbn	2000-01-01 00:00:00+00
-864	pbn_komparator_zrodel	0003_remove_rozbieznosczrodlapbn_pbn_kompara_zrodlo__8665da_idx_and_more	2000-01-01 00:00:00+00
-865	pbn_wysylka_oswiadczen	0001_initial	2000-01-01 00:00:00+00
 866	pbn_wysylka_oswiadczen	0002_add_tytul_field	2000-01-01 00:00:00+00
 867	pbn_wysylka_oswiadczen	0003_add_synchronized_count	2000-01-01 00:00:00+00
 868	pbn_wysylka_oswiadczen	0004_alter_pbnwysylkalog_content_type_and_more	2000-01-01 00:00:00+00
@@ -18194,6 +18194,13 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 449	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 450	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 451	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+459	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+460	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
+461	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+462	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+463	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+464	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+465	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
 \.
 
 
@@ -20062,7 +20069,7 @@ SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 54,
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 458, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 465, true);
 
 
 --
