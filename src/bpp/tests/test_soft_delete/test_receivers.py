@@ -211,28 +211,26 @@ def test_restore_kolejkuje_wysylke(wydawnictwo_ciagle, superuser, bez_celery):
 
 
 @pytest.mark.django_db
-def test_restore_przy_niezakonczonym_wycofaniu_nie_dubluje_wpisu(
+def test_restore_przy_niezakonczonym_wycofaniu_wysyla_po_nim(
     wydawnictwo_ciagle, superuser, bez_celery
 ):
-    """Przywrócenie, gdy wycofanie WCIĄŻ czeka w kolejce, nie tworzy wpisu.
+    """Przywrócenie, gdy wycofanie WCIĄŻ czeka w kolejce: wycofanie NIE jest
+    przerywane, a wpis dostaje flagę „wyślij ponownie po zakończeniu".
 
-    ``sprobuj_utowrzyc_wpis`` odrzuca drugi AKTYWNY wpis dla tego samego
-    rekordu (``AlreadyEnqueuedError`` → ``None``), więc szybkie
-    „usuń i cofnij" zostawia w kolejce samo wycofanie. Log mówi wtedy
-    ``pbn_status=""``.
-
-    ⚠️ To ta sama pusta wartość, co przy „nie było czego kolejkować" —
-    z samego logu nie odróżnisz „pominięto (już w kolejce)" od
-    „nie dotyczy". Świadome uproszczenie: obie funkcje kolejkujące zwracają
-    ``None`` i receiver nie ma ich jak rozróżnić bez dodatkowego zapytania.
+    Po zakończeniu wycofania system sam zleca świeżą wysyłkę — żadna
+    operacja PBN nie ginie po cichu (decyzja właściciela).
     """
+    from pbn_export_queue.models import PBN_Export_Queue
+
     _z_pbn_uid(wydawnictwo_ciagle)
     wydawnictwo_ciagle.delete(user=superuser)
     wydawnictwo_ciagle.restore(user=superuser)
 
     log = _logi(wydawnictwo_ciagle, SoftDeleteLog.Akcja.RESTORE).get()
-    assert log.pbn_queue_entry is None
-    assert log.pbn_status == ""
+    assert log.pbn_status == "WYSYLKA_PO_WYCOFANIU"
+    wycofanie = log.pbn_queue_entry
+    assert wycofanie.operacja == PBN_Export_Queue.Operacja.WYCOFANIE
+    assert wycofanie.wyslij_ponownie_po_zakonczeniu is True
 
 
 @pytest.mark.django_db

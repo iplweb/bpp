@@ -165,7 +165,14 @@ def test_sprzataczka_nie_kasuje_zlecen_wycofania(
     )
 
     wydawnictwo_ciagle.delete()
-    wydawnictwo_zwarte.delete()
+    # Aktywna WYSYŁKA blokuje kosz bez zgody operatora — tu ją wyrażamy.
+    # Wpis zostaje zamknięty jako anulowany (wykluczony), nie skasowany.
+    wydawnictwo_zwarte.delete(anuluj_wysylke_pbn=True)
+    wysylka.refresh_from_db()
+    assert wysylka.wysylke_zakonczono is not None and wysylka.wykluczone
+    # Symulujemy stary, wiszący wpis WYSYLKA rekordu z kosza (sprzed tej
+    # bramki) — taki sprzątaczka ma nadal usuwać.
+    PBN_Export_Queue.objects.filter(pk=wysylka.pk).update(wysylke_zakonczono=None)
 
     kolejka_wyczysc_wpisy_bez_rekordow()
 

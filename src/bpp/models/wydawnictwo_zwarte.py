@@ -293,31 +293,14 @@ class Wydawnictwo_Zwarte(
             ),
         ]
 
-    def delete(self, *args, user=None, reason="", **kwargs):
-        """Soft-delete książki — zablokowany, dopóki wiszą na niej rozdziały.
+    def sprawdz_czy_mozna_do_kosza(self, *args, **kwargs):
+        """Książka z rozdziałami NIE trafia do kosza.
 
-        DLACZEGO TU, A NIE WE WSPÓLNYM MIXINIE: ``BppPublikacjaSoftDelete
-        Mixin`` dzielą wszystkie pięć modeli publikacji. Guard wstawiony tam
-        odpytywałby dla ``Wydawnictwo_Ciagle``, ``Patent`` czy prac
-        dyplomowych ``Wydawnictwo_Zwarte.global_objects.filter(
-        wydawnictwo_nadrzedne=<obiekt innego modelu>)`` — zapytanie
-        międzytypowe, w najlepszym razie zawsze puste, w gorszym wyjątek.
-        Self-FK jest cechą TEGO modelu, więc guard jest jego metodą.
-
-        Guard idzie PRZED ``super().delete()``, czyli przed zapisem
-        ``deleted_at`` i przed kaskadą fazy 02 na ``*_Autor`` — odmowa ma
-        być odmową, a nie odmową po fakcie. Kaskady nie gubimy: cała reszta
-        pracy zostaje w mixinie, tutaj dokładamy wyłącznie warunek wstępny.
-
-        Rozdział w koszu też blokuje (liczymy przez ``global_objects``,
-        spec §2.6): inaczej książkę dałoby się usunąć w dwóch krokach —
-        najpierw rozdział, potem ją — a przywrócenie rozdziału zostawiłoby
-        go bez książki-matki.
-
-        ``user``/``reason`` przepuszczamy dalej do mixinu (kontrakt PINNED
-        faz 06/07) — własny ``delete()`` przesłania tamten, więc gdyby ich
-        tu zabrakło, kasowanie z powodem z panelu admina wywaliłoby się
-        ``TypeError``-em na każdej książce.
+        Guard jest metodą TEGO modelu (self-FK ``wydawnictwo_nadrzedne``),
+        a nie wspólnego mixinu — dla innych typów publikacji zapytanie byłoby
+        międzytypowe. Rozdział w koszu też blokuje (``_base_manager``):
+        inaczej książkę dałoby się usunąć w dwóch krokach, a przywrócenie
+        rozdziału zostawiłoby go bez książki-matki.
         """
         from bpp.models.soft_delete import raise_if_has_protected_children
 
@@ -326,9 +309,7 @@ class Wydawnictwo_Zwarte(
             [(Wydawnictwo_Zwarte, "wydawnictwo_nadrzedne")],
             label="książki (ma rozdziały)",
         )
-        return super().delete(*args, user=user, reason=reason, **kwargs)
-
-    delete.alters_data = True
+        return super().sprawdz_czy_mozna_do_kosza(*args, **kwargs)
 
     def wydawnictwa_powiazane_posortowane(self):
         """

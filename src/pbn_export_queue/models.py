@@ -213,6 +213,14 @@ class PBN_Export_Queue(models.Model):
         "publikacji w PBN — ten jest współdzielony między instytucjami.",
     )
 
+    wyslij_ponownie_po_zakonczeniu = models.BooleanField(
+        default=False,
+        verbose_name="Wyślij ponownie po zakończeniu",
+        help_text="Ustawiane, gdy rekord przywrócono z kosza, zanim zakończyło "
+        "się wycofanie jego oświadczeń z PBN. Po zakończeniu tego wpisu "
+        "system sam zleca ponowną wysyłkę rekordu.",
+    )
+
     objects = PBN_Export_QueueManager()
 
     class Meta:
@@ -232,6 +240,18 @@ class PBN_Export_Queue(models.Model):
 
     def __str__(self):
         return f"Zlecenie wysyłki do PBN dla {self.rekord_do_wysylki}"
+
+    def save(self, *args, **kwargs):
+        """Wpis zakończony z flagą ``wyslij_ponownie_po_zakonczeniu`` zleca
+        (po commicie) ponowną wysyłkę rekordu — patrz
+        ``operacje.zakolejkuj_wysylke_po_przywroceniu``."""
+        ret = super().save(*args, **kwargs)
+        if self.wyslij_ponownie_po_zakonczeniu and self.wysylke_zakonczono:
+            from pbn_export_queue.operacje import wyslij_ponownie_po_wycofaniu
+
+            pk = self.pk
+            transaction.on_commit(lambda: wyslij_ponownie_po_wycofaniu(pk))
+        return ret
 
     @property
     def ostatnia_aktualizacja(self):
