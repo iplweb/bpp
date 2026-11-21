@@ -542,4 +542,13 @@ def test_serializacja_publikacji_nie_rosnie_z_liczba_projektow(
                     cerif_publication.serializuj(obiekt, kontekst)
         return len(licznik.captured_queries)
 
+    # Warm-up round, not measured. The provider resolves content types of
+    # all publication models via ``ContentType.objects.get_for_model``,
+    # which is served from a process-wide cache. Plenty of tests clear that
+    # cache (``rebuild_contenttypes()``, ``flush`` -> ``post_migrate`` ->
+    # ``create_contenttypes``); when one of them ran earlier on the same
+    # xdist worker, the first measured round paid one extra query
+    # (``wydawnictwo_zwarte`` content type) and the test failed 21 != 20.
+    # That is a one-off per process, not N+1 — so compare warm rounds only.
+    zapytania_dla(1)
     assert zapytania_dla(1) == zapytania_dla(5)
