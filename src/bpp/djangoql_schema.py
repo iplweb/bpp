@@ -25,6 +25,7 @@ from django.db.models import Q
 from django.utils.html import strip_tags
 from djangoql.extras import AutocompleteField, ExtrasSchema
 
+from bpp.djangoql_soft_delete import WykluczSkasowaneMixin
 from bpp.models import Charakter_Formalny, Jednostka
 
 #: Jedyne pola modelu użytkownika (``settings.AUTH_USER_MODEL``) widoczne
@@ -353,13 +354,21 @@ class SekretyWykluczoneSchemaMixin:
         ]
 
 
-class BppQLSchema(SekretyWykluczoneSchemaMixin, RelPickerSchemaMixin, ExtrasSchema):
+class BppQLSchema(
+    SekretyWykluczoneSchemaMixin,
+    WykluczSkasowaneMixin,
+    RelPickerSchemaMixin,
+    ExtrasSchema,
+):
     """ExtrasSchema (agregaty + części dat) + auto-pickery ``<fk>__rel``.
 
     Wspólny dla widoku „Szukaj zapytaniem" i adminów (``djangoql_schema =
     BppQLSchema``). Mapa modeli jest budowana lazy per-model, więc ten sam
     schemat obsługuje dowolny model (Rekord, Autor, Wydawnictwo_*, Patent,
     Praca_Doktorska/Habilitacyjna, …).
+
+    ``WykluczSkasowaneMixin`` domyślnie odsiewa kosz (soft-delete) —
+    kontrakt „jak zobaczyć kosz" w ``bpp/djangoql_soft_delete.py``.
     """
 
     # Biała lista pól modelu użytkownika, wykluczenie modeli uwierzytelniania
@@ -670,7 +679,10 @@ _LLM_HIDDEN_FIELDS_LABELS = {
 
 
 class RekordLLMSchema(
-    DeprecatedAndRestrictedFieldsMixin, SekretyWykluczoneSchemaMixin, ExtrasSchema
+    WykluczSkasowaneMixin,
+    DeprecatedAndRestrictedFieldsMixin,
+    SekretyWykluczoneSchemaMixin,
+    ExtrasSchema,
 ):
     """Schemat dla eksportu opisu DjangoQL do promptu LLM.
 

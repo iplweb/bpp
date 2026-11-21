@@ -443,10 +443,16 @@ class Command(PBNBaseCommand):
     def _get_publications_by_year(self, year):
         """Get all publications (Wydawnictwo_Zwarte and Wydawnictwo_Ciagle) by year."""
 
+        # ``autorzy_set__deleted_at__isnull=True``: lookup przez relację to
+        # JOIN po SUROWEJ tabeli ``*_autor`` — manager soft-delete nie jest
+        # pytany. Bez tego predykatu do wysyłki oświadczeń trafiałaby
+        # publikacja, której jedyne autorstwo z dyscypliną zostało
+        # skasowane (a więc bez czego wysłać).
         filter_kw = dict(
             rok=year,
             pbn_uid_id__isnull=False,
             autorzy_set__dyscyplina_naukowa__isnull=False,
+            autorzy_set__deleted_at__isnull=True,
         )
         # Get Wydawnictwo_Zwarte publications
         zwarte_qs = Wydawnictwo_Zwarte.objects.filter(**filter_kw).select_related(

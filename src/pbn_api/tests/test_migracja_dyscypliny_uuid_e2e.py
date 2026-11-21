@@ -58,7 +58,10 @@ def _przywroc_pelny_stan_migracji():
 
 
 @pytest.mark.django_db(transaction=True)
-def test_migracja_przechodzi_na_bazie_z_duplikatami():
+# Odtwarza migracje w obie strony; solo ~35-55 s, pod obciążeniem xdist
+# przekraczał globalne `--timeout 90` (por. test_migracja_0509_rewers.py).
+@pytest.mark.timeout(300)
+def test_migracja_przechodzi_na_bazie_z_duplikatami(bez_reinstalacji_denorma):
     try:
         _test_migracji_na_bazie_z_duplikatami()
     finally:

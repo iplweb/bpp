@@ -60,11 +60,19 @@ def database_verification_view(request):
     ).select_related("rekord", "autor", "dyscyplina_naukowa")
 
     # Liczba publikacji z rok >= 2022, gdzie autor ma dyscyplinę, ale brak daty oświadczenia
+    #
+    # ``autorzy_set__deleted_at__isnull=True`` jest KONIECZNE: filtr przez
+    # relację buduje JOIN po SUROWEJ tabeli ``*_autor`` i nie pyta managera
+    # soft-delete. Bez tego licznik obejmowałby publikacje, których jedyne
+    # „problematyczne" autorstwo zostało skasowane — a przycisk obok
+    # (changelist admina z tym samym zestawem lookupów) też jest o to
+    # rozszerzony, żeby liczba i lista się zgadzały.
     brak_oswiadczenia_ciagle_count = (
         Wydawnictwo_Ciagle.objects.filter(
             rok__gte=2022,
             autorzy_set__dyscyplina_naukowa__isnull=False,
             autorzy_set__data_oswiadczenia__isnull=True,
+            autorzy_set__deleted_at__isnull=True,
         )
         .distinct()
         .count()
@@ -75,6 +83,7 @@ def database_verification_view(request):
             rok__gte=2022,
             autorzy_set__dyscyplina_naukowa__isnull=False,
             autorzy_set__data_oswiadczenia__isnull=True,
+            autorzy_set__deleted_at__isnull=True,
         )
         .distinct()
         .count()

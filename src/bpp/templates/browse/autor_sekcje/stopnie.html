@@ -1,5 +1,10 @@
 {# Stopnie naukowe (praca doktorska / habilitacyjna). Brak → nic. #}
-{% if autor.praca_doktorska_set.exists or autor.praca_habilitacyjna %}
+{# `praca_habilitacyjna_set`, a nie `praca_habilitacyjna`: pole `autor` #}
+{# jest od soft-delete zwyklym ForeignKey (warunkowy unique zamiast #}
+{# twardego), wiec akcesor odwrotny to manager, nie obiekt. Manager #}
+{# relacji filtruje kosz — odwrotne OneToOne szlo przez `_base_manager` #}
+{# i pokazywalo rekordy skasowane. #}
+{% if autor.praca_doktorska_set.exists or autor.praca_habilitacyjna_set.exists %}
     <div class="author-info-section">
         <h3><i class="fi-trophy"></i> Stopnie naukowe</h3>
         {% if autor.praca_doktorska_set.exists %}
@@ -12,14 +17,14 @@
                 </p>
             {% endfor %}
         {% endif %}
-        {% if autor.praca_habilitacyjna %}
+        {% for praca_habilitacyjna in autor.praca_habilitacyjna_set.all %}
             <p>
                 <strong>Praca habilitacyjna:</strong>
-                <a href="{% url "bpp:browse_praca_old" "praca_habilitacyjna" autor.praca_habilitacyjna.pk %}">
-                    {{ autor.praca_habilitacyjna|safe }}
+                <a href="{% url "bpp:browse_praca_old" "praca_habilitacyjna" praca_habilitacyjna.pk %}">
+                    {{ praca_habilitacyjna|safe }}
                 </a>
             </p>
-        {% endif %}
+        {% endfor %}
     </div>
     <div class="shaded-hr-div-small"></div>
 {% endif %}

@@ -3,6 +3,11 @@
 # Wygenerowano: manage.py opisz_schemat_djangoql_dla_llm
 # Plik generowany — nie edytuj ręcznie.
 
+# Rekordy skasowane (soft-delete, pole `deleted_at`) są DOMYŚLNIE pomijane.
+# Zapytanie bez wzmianki o `deleted_at` widzi tylko żywe wiersze — nie dopisuj
+# `deleted_at = None`, to już działa. Żeby zajrzeć do kosza, wymień to pole na
+# wybranej relacji: `autorzy_set.deleted_at != None` = TYLKO skasowane autorstwa.
+
 # DjangoQL schema
 # Query: <field> <op> <value>, combined with and/or, grouped with ().
 # Negate with != / !~ / not in / not startswith / not endswith (no standalone `not`).
@@ -22,30 +27,32 @@
 start model: bpp.autor
 
 bpp.autor:
-  aktualna_funkcja             -> bpp.funkcja_autora?  match nazwa
-  aktualna_jednostka           -> bpp.jednostka?
-  autor_dyscyplina             -> bpp.autor_dyscyplina?
-  autor_jednostka              -> bpp.autor_jednostka?
-  autorzy                      -> bpp.autorzy?
-  cache_punktacja_autora       -> bpp.cache_punktacja_autora?
-  expertus_id                  str?  "Identyfikator w bazie Expertus"
-  id                           int
-  imiona                       str
-  jednostki                    -> bpp.jednostka
-  nazwisko                     str
-  orcid                        str?  "Identyfikator ORCID" — Open Researcher and Contributor ID, vide http://www.orcid.org
-  orcid_w_pbn                  bool?  "ORCID jest w bazie PBN?" — Jeżeli ORCID jest w bazie PBN, to pole powinno być zaznaczone. Zaznaczenie następuje
+  aktualna_funkcja              -> bpp.funkcja_autora?
+  aktualna_jednostka            -> bpp.jednostka?
+  autor_dyscyplina              -> bpp.autor_dyscyplina?
+  autor_jednostka               -> bpp.autor_jednostka?
+  autorzy                       -> bpp.autorzy?
+  biogram                       str
+  biogram_format                str  "Format biogramu"  choices: Markdown | HTML
+  cache_punktacja_autora        -> bpp.cache_punktacja_autora?
+  expertus_id                   str?  "Identyfikator w bazie Expertus"
+  google_scholar_id             str  "Identyfikator Google Scholar" — Np. qc6CJjYAAAAJ. Można wkleić cały adres profilu w Google Scholar.
+  id                            int
+  imiona                        str
+  jednostki                     -> bpp.jednostka
+  nazwisko                      str
+  orcid                         str?  "Identyfikator ORCID" — Open Researcher and Contributor ID, vide http://www.orcid.org
+  orcid_w_pbn                   bool?  "ORCID jest w bazie PBN?" — Jeżeli ORCID jest w bazie PBN, to pole powinno być zaznaczone. Zaznaczenie następuje
         automatycznie, przez procedury integrujące bazę danych z PBNem w nocy. Można też zaznaczyć ręcznie.
         Pole wykorzystywane jest gdy autor nie ma odpowiednika w PBN (pole 'PBN UID' rekordu autora jest puste,
         zaś eksport danych powoduje komunikat zwrotny z PBN o nieistniejącym w ich bazie ORCID). W takich sytuacjach
         należy w polu wybrać "Nie".
-  ostatnio_zmieniony           datetime?
-  patent                       -> bpp.patent?
-  patent_autor                 -> bpp.patent_autor?
-  pbn_uid                      -> pbn_api.scientist?
-  plec                         -> bpp.plec?  match nazwa
+  ostatnio_zmieniony            datetime?
+  patent                        -> bpp.patent?
+  patent_autor                  -> bpp.patent_autor?
+  pbn_uid                       -> pbn_api.scientist?
+  plec                          -> bpp.plec?
   pokazuj_na_stronie_jednostki  bool
-  pokazuj_opis                  bool
   pokazuj_poprzednie_nazwiska   bool
   pokazuj_siec_powiazan         bool?  "Pokazuj sieć powiązań" — Czy udostępniać sieć współautorstwa dla tego autora. Puste = użyj ustawienia uczelni; TAK/NIE nadpisuje je dla tego autora.
   pokazuj_strone_autora         bool  "Pokazuj stronę autora" — Gdy odznaczone, publiczna strona autora nie istnieje (404), a jego nazwisko nie jest nigdzie linkowane. Wymaga wcześniejszego wyłączenia pokazywania w wyszukiwaniu i w indeksie.
@@ -53,23 +60,26 @@ bpp.autor:
   pokazuj_w_indeksie            bool  "Pokazuj w indeksie autorów" — Pokazuj autora na alfabetycznej liście autorów.
   pokazuj_w_rankingu            bool
   pokazuj_w_wyszukiwaniu        bool
-  poprzednie_nazwiska          str
-  praca_doktorska              -> bpp.praca_doktorska?
-  praca_habilitacyjna          -> bpp.praca_habilitacyjna?
-  promotor_doktoratu           -> bpp.praca_doktorska?
-  pseudonim                    str
-  search                       unknown
-  slug                         str
-  sort                         str
-  system_kadrowy_id            int?  "Identyfikator w systemie kadrowym" — Identyfikator cyfrowy, używany do matchowania autora z danymi z systemu kadrowego Uczelni
-  tytul                        -> bpp.tytul?  match nazwa
-  urodzony                     date?
-  www                          str
-  wydawnictwo_ciagle           -> bpp.wydawnictwo_ciagle?
-  wydawnictwo_ciagle_autor     -> bpp.wydawnictwo_ciagle_autor?
-  wydawnictwo_zwarte           -> bpp.wydawnictwo_zwarte?
-  wydawnictwo_zwarte_autor     -> bpp.wydawnictwo_zwarte_autor?
-  zmarl                        date?
+  poprzednie_nazwiska           str
+  praca_doktorska               -> bpp.praca_doktorska?
+  praca_habilitacyjna           -> bpp.praca_habilitacyjna?
+  promotor_doktoratu            -> bpp.praca_doktorska?
+  pseudonim                     str
+  scopus_author_id              str
+  search                        unknown
+  slug                          str
+  sort                          str
+  system_kadrowy_id             int?  "Identyfikator w systemie kadrowym" — Identyfikator cyfrowy, używany do matchowania autora z danymi z systemu kadrowego Uczelni
+  tytul                         -> bpp.tytul?
+  url_profilu_uczelni           str  "Adres profilu w portalu uczelni" — Pełny adres profilu w uczelnianym portalu (np. PPM). Etykietę linku ustawia się w konfiguracji uczelni.
+  wos_researcherid              str  "Web of Science ResearcherID" — Np. A-1234-2008. Można wkleić cały adres profilu w WoS.
+  www                           str
+  wydawnictwo_ciagle            -> bpp.wydawnictwo_ciagle?
+  wydawnictwo_ciagle_autor      -> bpp.wydawnictwo_ciagle_autor?
+  wydawnictwo_zwarte            -> bpp.wydawnictwo_zwarte?
+  wydawnictwo_zwarte_autor      -> bpp.wydawnictwo_zwarte_autor?
+  zdjecie                       unknown?  "Zdjęcie" — Zdjęcie profilowe autora. Przy zapisie przez formularz jest przeskalowane do kwadratu.
+  zmarl                         date?
 
 bpp.funkcja_autora:
   aktualna_funkcja       -> bpp.autor?
@@ -95,6 +105,7 @@ bpp.jednostka:
   level                        int
   lft                          int
   nazwa                        str
+  nie_eksportuj_przez_api      bool
   obca_jednostka               -> bpp.uczelnia?
   opis                         str?
   ostatnio_zmieniony           datetime?
@@ -107,7 +118,8 @@ bpp.jednostka:
   praca_doktorska              -> bpp.praca_doktorska?
   praca_habilitacyjna          -> bpp.praca_habilitacyjna?
   rght                         int
-  rodzaj                       -> bpp.rodzajjednostki?  match nazwa
+  rodzaj                       -> bpp.rodzajjednostki?
+  ror_id                       str  "Identyfikator ROR" — Identyfikator w Research Organization Registry (ROR), np. https://ror.org/016f61126 — ma wbudowaną sumę kontrolną, więc literówka zostanie odrzucona. Używany w eksporcie CERIF/OpenAIRE jako identyfikator zewnętrzny jednostki organizacyjnej; gdy pusty, nie zostanie wyeksportowany.
   search                       unknown?
   skrot                        str  "Skrót"
   skrot_nazwy                  str?
@@ -128,20 +140,20 @@ bpp.jednostka:
 
 bpp.autor_dyscyplina:
   autor                  -> bpp.autor
-  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa  match nazwa
+  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa
   id                     int
   procent_dyscypliny     float?
   procent_subdyscypliny  float?
-  rodzaj_autora          -> ewaluacja_common.rodzaj_autora?  match nazwa
+  rodzaj_autora          -> ewaluacja_common.rodzaj_autora?
   rok                    int
-  subdyscyplina_naukowa  -> bpp.dyscyplina_naukowa?  match nazwa
+  subdyscyplina_naukowa  -> bpp.dyscyplina_naukowa?
   wymiar_etatu           float?
   zatrudnienie_do        datetime?
   zatrudnienie_od        datetime?
 
 bpp.autor_jednostka:
   autor                     -> bpp.autor
-  funkcja                   -> bpp.funkcja_autora?  match nazwa
+  funkcja                   -> bpp.funkcja_autora?
   grupa_pracownicza         -> bpp.grupa_pracownicza?
   id                        int
   jednostka                 -> bpp.jednostka
@@ -154,7 +166,7 @@ bpp.autorzy:
   afiliuje               bool
   autor                  -> bpp.autor
   data_oswiadczenia      date
-  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa  match nazwa
+  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa
   id                     unknown
   jednostka              -> bpp.jednostka
   kierunek_studiow       -> bpp.kierunek_studiow
@@ -163,14 +175,14 @@ bpp.autorzy:
   profil_orcid           bool
   przypieta              bool
   rekord                 -> bpp.rekord
-  typ_odpowiedzialnosci  -> bpp.typ_odpowiedzialnosci  match nazwa
+  typ_odpowiedzialnosci  -> bpp.typ_odpowiedzialnosci
   upowaznienie_pbn       bool
   zapisany_jako          str
   zatrudniony            bool
 
 bpp.cache_punktacja_autora:
   autor       -> bpp.autor
-  dyscyplina  -> bpp.dyscyplina_naukowa  match nazwa
+  dyscyplina  -> bpp.dyscyplina_naukowa
   id          int
   jednostka   -> bpp.jednostka
   pkdaut      float
@@ -183,11 +195,12 @@ bpp.patent:
   cached_punkty_dyscyplin                      unknown?
   data_decyzji                                 date?
   data_zgloszenia                              date?  "Data zgłoszenia"
+  deleted_at                                   datetime?
   dostep_dnia                                  date?  "Dostęp dnia (płatny dostęp)" — Data dostępu do strony WWW.
   id                                           int
   impact_factor                                float
   index_copernicus                             float
-  informacja_z                                 -> bpp.zrodlo_informacji?  match nazwa
+  informacja_z                                 -> bpp.zrodlo_informacji?
   informacje                                   str
   nie_eksportuj_przez_api                      bool
   numer_prawa_wylacznego                       str?  "Numer prawa wyłącznego"
@@ -202,18 +215,20 @@ bpp.patent:
   punktacja_wewnetrzna                         float  "Punktacja wewnętrzna"
   punkty_kbn                                   float  "punkty MNiSW/MEiN"
   recenzowana                                  bool
-  rodzaj_prawa                                 -> bpp.rodzaj_prawa_patentowego?  match nazwa
+  restored_at                                  datetime?
+  rodzaj_prawa                                 -> bpp.rodzaj_prawa_patentowego?
   rok                                          int
   search_index                                 unknown
   slowa_kluczowe                               -> taggit.tag?  "Słowa kluczowe -- język polski" — Lista słów kluczowych -- język polski.
   slowa_kluczowe_eng                           unknown?  "Słowa kluczowe -- język angielski" — Lista słów kluczowych -- język angielski
   slug                                         str?
-  status_korekty                               -> bpp.status_korekty  match nazwa
+  status_korekty                               -> bpp.status_korekty
   strony                                       str
   szczegoly                                    str  "Szczegóły" — Np. str. 23-45
   tekst_po_ostatnim_autorze                    str?
   tekst_przed_pierwszym_autorem                str?
   tom                                          str
+  transaction_id                               str?
   tytul_oryginalny                             str  "Tytuł oryginalny"
   tytul_oryginalny_sort                        str
   utworzono                                    datetime?
@@ -227,7 +242,8 @@ bpp.patent_autor:
   afiliuje               bool
   autor                  -> bpp.autor
   data_oswiadczenia      date?  "Data oświadczenia" — Informacja eksportowana do PBN, gdy uzupełniono
-  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa?  match nazwa
+  deleted_at             datetime?
+  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa?
   id                     int
   jednostka              -> bpp.jednostka
   kierunek_studiow       -> bpp.kierunek_studiow?
@@ -238,7 +254,9 @@ bpp.patent_autor:
   profil_orcid           bool  "Praca w profilu ORCID autora" — Zaznacz, jeżeli praca znajdje się na profilu ORCID autora
   przypieta              bool
   rekord                 -> bpp.patent
-  typ_odpowiedzialnosci  -> bpp.typ_odpowiedzialnosci  match nazwa  "Typ odpowiedzialności"
+  restored_at            datetime?
+  transaction_id         str?
+  typ_odpowiedzialnosci  -> bpp.typ_odpowiedzialnosci  "Typ odpowiedzialności"
   upowaznienie_pbn       bool  "Upoważnienie PBN" — Tik w polu "upoważnienie PBN" oznacza, że dany autor upoważnił Uczelnię do sprawozdania tej publikacji w ocenie parametrycznej Uczelni
   zapisany_jako          str
   zatrudniony            bool
@@ -268,19 +286,20 @@ bpp.plec:
 
 bpp.praca_doktorska:
   autor                                        -> bpp.autor
+  deleted_at                                   datetime?
   doi                                          str?
   dostep_dnia                                  date?  "Dostęp dnia (płatny dostęp)" — Data dostępu do strony WWW.
   e_isbn                                       str  "E-ISBN"
   id                                           int
   impact_factor                                float
   index_copernicus                             float
-  informacja_z                                 -> bpp.zrodlo_informacji?  match nazwa
+  informacja_z                                 -> bpp.zrodlo_informacji?
   informacje                                   str
   isbn                                         str
   jednostka                                    -> bpp.jednostka
-  jezyk                                        -> bpp.jezyk  match nazwa  "Język"
-  jezyk_alt                                    -> bpp.jezyk?  match nazwa  "Język alternatywny"
-  jezyk_orig                                   -> bpp.jezyk?  match nazwa  "Język oryginalny" — Dla tłumaczeń. Wartość eksportowana do PBN.
+  jezyk                                        -> bpp.jezyk  "Język"
+  jezyk_alt                                    -> bpp.jezyk?  "Język alternatywny"
+  jezyk_orig                                   -> bpp.jezyk?  "Język oryginalny" — Dla tłumaczeń. Wartość eksportowana do PBN.
   liczba_cytowan                               int?  "Liczba cytowań" — Wartość aktualizowana jest automatycznie raz na kilka dni w przypadku
         skonfigurowania dostępu do API WOS AMR (przez obiekt 'Uczelnia'). Możesz również
         czaktualizować tą wartość ręcznie, naciskając przycisk.
@@ -308,18 +327,20 @@ bpp.praca_doktorska:
   punkty_kbn                                   float  "punkty MNiSW/MEiN"
   recenzowana                                  bool
   redakcja                                     str
+  restored_at                                  datetime?
   rok                                          int
   search_index                                 unknown
   slowa_kluczowe                               -> taggit.tag?  "Słowa kluczowe -- język polski" — Lista słów kluczowych -- język polski.
   slowa_kluczowe_eng                           unknown?  "Słowa kluczowe -- język angielski" — Lista słów kluczowych -- język angielski
   slug                                         str?
-  status_korekty                               -> bpp.status_korekty  match nazwa
+  status_korekty                               -> bpp.status_korekty
   strony                                       str
   szczegoly                                    str  "Szczegóły" — Np. str. 23-45
   tekst_po_ostatnim_autorze                    str?
   tekst_przed_pierwszym_autorem                str?
   tom                                          str
-  typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW/MEiN"
+  transaction_id                               str?
+  typ_kbn                                      -> bpp.typ_kbn  "typ MNiSW/MEiN"
   tytul                                        str  "Tytuł"
   tytul_oryginalny                             str  "Tytuł oryginalny"
   tytul_oryginalny_sort                        str
@@ -332,19 +353,20 @@ bpp.praca_doktorska:
 
 bpp.praca_habilitacyjna:
   autor                                        -> bpp.autor
+  deleted_at                                   datetime?
   doi                                          str?
   dostep_dnia                                  date?  "Dostęp dnia (płatny dostęp)" — Data dostępu do strony WWW.
   e_isbn                                       str  "E-ISBN"
   id                                           int
   impact_factor                                float
   index_copernicus                             float
-  informacja_z                                 -> bpp.zrodlo_informacji?  match nazwa
+  informacja_z                                 -> bpp.zrodlo_informacji?
   informacje                                   str
   isbn                                         str
   jednostka                                    -> bpp.jednostka
-  jezyk                                        -> bpp.jezyk  match nazwa  "Język"
-  jezyk_alt                                    -> bpp.jezyk?  match nazwa  "Język alternatywny"
-  jezyk_orig                                   -> bpp.jezyk?  match nazwa  "Język oryginalny" — Dla tłumaczeń. Wartość eksportowana do PBN.
+  jezyk                                        -> bpp.jezyk  "Język"
+  jezyk_alt                                    -> bpp.jezyk?  "Język alternatywny"
+  jezyk_orig                                   -> bpp.jezyk?  "Język oryginalny" — Dla tłumaczeń. Wartość eksportowana do PBN.
   liczba_cytowan                               int?  "Liczba cytowań" — Wartość aktualizowana jest automatycznie raz na kilka dni w przypadku
         skonfigurowania dostępu do API WOS AMR (przez obiekt 'Uczelnia'). Możesz również
         czaktualizować tą wartość ręcznie, naciskając przycisk.
@@ -371,18 +393,20 @@ bpp.praca_habilitacyjna:
   punkty_kbn                                   float  "punkty MNiSW/MEiN"
   recenzowana                                  bool
   redakcja                                     str
+  restored_at                                  datetime?
   rok                                          int
   search_index                                 unknown
   slowa_kluczowe                               -> taggit.tag?  "Słowa kluczowe -- język polski" — Lista słów kluczowych -- język polski.
   slowa_kluczowe_eng                           unknown?  "Słowa kluczowe -- język angielski" — Lista słów kluczowych -- język angielski
   slug                                         str?
-  status_korekty                               -> bpp.status_korekty  match nazwa
+  status_korekty                               -> bpp.status_korekty
   strony                                       str
   szczegoly                                    str  "Szczegóły" — Np. str. 23-45
   tekst_po_ostatnim_autorze                    str?
   tekst_przed_pierwszym_autorem                str?
   tom                                          str
-  typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW/MEiN"
+  transaction_id                               str?
+  typ_kbn                                      -> bpp.typ_kbn  "typ MNiSW/MEiN"
   tytul                                        str  "Tytuł"
   tytul_oryginalny                             str  "Tytuł oryginalny"
   tytul_oryginalny_sort                        str
@@ -403,7 +427,8 @@ bpp.wydawnictwo_ciagle:
   autorzy                                      -> bpp.autor
   autorzy_set                                  -> bpp.wydawnictwo_ciagle_autor?
   cached_punkty_dyscyplin                      unknown?
-  charakter_formalny                           -> bpp.charakter_formalny  match nazwa
+  charakter_formalny                           -> bpp.charakter_formalny
+  deleted_at                                   datetime?
   dodatkowe_tytuly                             -> bpp.wydawnictwo_ciagle_tytul?
   doi                                          str?
   dostep_dnia                                  date?  "Dostęp dnia (płatny dostęp)" — Data dostępu do strony WWW.
@@ -411,12 +436,12 @@ bpp.wydawnictwo_ciagle:
   id                                           int
   impact_factor                                float
   index_copernicus                             float
-  informacja_z                                 -> bpp.zrodlo_informacji?  match nazwa
+  informacja_z                                 -> bpp.zrodlo_informacji?
   informacje                                   str
   issn                                         str
-  jezyk                                        -> bpp.jezyk  match nazwa  "Język"
-  jezyk_alt                                    -> bpp.jezyk?  match nazwa  "Język alternatywny"
-  jezyk_orig                                   -> bpp.jezyk?  match nazwa  "Język oryginalny" — Dla tłumaczeń. Wartość eksportowana do PBN.
+  jezyk                                        -> bpp.jezyk  "Język"
+  jezyk_alt                                    -> bpp.jezyk?  "Język alternatywny"
+  jezyk_orig                                   -> bpp.jezyk?  "Język oryginalny" — Dla tłumaczeń. Wartość eksportowana do PBN.
   konferencja                                  -> bpp.konferencja?
   kwartyl_w_scopus                             int?  choices: brak | Q1 | Q2 | Q3 | Q4
   kwartyl_w_wos                                int?  choices: brak | Q1 | Q2 | Q3 | Q4
@@ -427,12 +452,12 @@ bpp.wydawnictwo_ciagle:
   nie_eksportuj_przez_api                      bool
   nr_zeszytu                                   str
   numer_odbitki                                str
-  openaccess_czas_publikacji                   -> bpp.czas_udostepnienia_openaccess?  match nazwa  "OpenAccess: czas udostępnienia"
+  openaccess_czas_publikacji                   -> bpp.czas_udostepnienia_openaccess?  "OpenAccess: czas udostępnienia"
   openaccess_data_opublikowania                date?  "OpenAccess: data publikacji"
   openaccess_ilosc_miesiecy                    int?  "OpenAccess: ilość miesięcy" — Ilość miesięcy jakie upłynęły od momentu opublikowania do momentu udostępnienia
-  openaccess_licencja                          -> bpp.licencja_openaccess?  match nazwa  "OpenAccess: licencja"
-  openaccess_tryb_dostepu                      -> bpp.tryb_openaccess_wydawnictwo_ciagle?  match nazwa  "OpenAccess: tryb dostępu"
-  openaccess_wersja_tekstu                     -> bpp.wersja_tekstu_openaccess?  match nazwa  "OpenAccess: wersja tekstu"
+  openaccess_licencja                          -> bpp.licencja_openaccess?  "OpenAccess: licencja"
+  openaccess_tryb_dostepu                      -> bpp.tryb_openaccess_wydawnictwo_ciagle?  "OpenAccess: tryb dostępu"
+  openaccess_wersja_tekstu                     -> bpp.wersja_tekstu_openaccess?  "OpenAccess: wersja tekstu"
   opis_bibliograficzny_autorzy_cache           unknown?
   opis_bibliograficzny_cache                   str
   opis_bibliograficzny_zapisani_autorzy_cache  str?
@@ -459,19 +484,21 @@ bpp.wydawnictwo_ciagle:
   punktacja_wewnetrzna                         float  "Punktacja wewnętrzna"
   punkty_kbn                                   float  "punkty MNiSW/MEiN"
   recenzowana                                  bool
+  restored_at                                  datetime?
   rok                                          int
   search_index                                 unknown
   slowa_kluczowe                               -> taggit.tag?  "Słowa kluczowe -- język polski" — Lista słów kluczowych -- język polski.
   slowa_kluczowe_eng                           unknown?  "Słowa kluczowe -- język angielski" — Lista słów kluczowych -- język angielski
   slug                                         str?
-  status_korekty                               -> bpp.status_korekty  match nazwa
+  status_korekty                               -> bpp.status_korekty
   streszczenia                                 -> bpp.wydawnictwo_ciagle_streszczenie?
   strony                                       str
   szczegoly                                    str  "Szczegóły" — Np. str. 23-45
   tekst_po_ostatnim_autorze                    str?
   tekst_przed_pierwszym_autorem                str?
   tom                                          str
-  typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW/MEiN"
+  transaction_id                               str?
+  typ_kbn                                      -> bpp.typ_kbn  "typ MNiSW/MEiN"
   tytul                                        str  "Tytuł"
   tytul_oryginalny                             str  "Tytuł oryginalny"
   tytul_oryginalny_sort                        str
@@ -488,7 +515,8 @@ bpp.wydawnictwo_ciagle_autor:
   afiliuje               bool
   autor                  -> bpp.autor
   data_oswiadczenia      date?  "Data oświadczenia" — Informacja eksportowana do PBN, gdy uzupełniono
-  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa?  match nazwa
+  deleted_at             datetime?
+  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa?
   id                     int
   jednostka              -> bpp.jednostka
   kierunek_studiow       -> bpp.kierunek_studiow?
@@ -499,7 +527,9 @@ bpp.wydawnictwo_ciagle_autor:
   profil_orcid           bool  "Praca w profilu ORCID autora" — Zaznacz, jeżeli praca znajdje się na profilu ORCID autora
   przypieta              bool
   rekord                 -> bpp.wydawnictwo_ciagle
-  typ_odpowiedzialnosci  -> bpp.typ_odpowiedzialnosci  match nazwa  "Typ odpowiedzialności"
+  restored_at            datetime?
+  transaction_id         str?
+  typ_odpowiedzialnosci  -> bpp.typ_odpowiedzialnosci  "Typ odpowiedzialności"
   upowaznienie_pbn       bool  "Upoważnienie PBN" — Tik w polu "upoważnienie PBN" oznacza, że dany autor upoważnił Uczelnię do sprawozdania tej publikacji w ocenie parametrycznej Uczelni
   zapisany_jako          str
   zatrudniony            bool
@@ -510,7 +540,8 @@ bpp.wydawnictwo_zwarte:
   cached_punkty_dyscyplin                      unknown?
   calkowita_liczba_autorow                     int?
   calkowita_liczba_redaktorow                  int?
-  charakter_formalny                           -> bpp.charakter_formalny  match nazwa
+  charakter_formalny                           -> bpp.charakter_formalny
+  deleted_at                                   datetime?
   dodatkowe_tytuly                             -> bpp.wydawnictwo_zwarte_tytul?
   doi                                          str?
   dostep_dnia                                  date?  "Dostęp dnia (płatny dostęp)" — Data dostępu do strony WWW.
@@ -519,13 +550,13 @@ bpp.wydawnictwo_zwarte:
   id                                           int
   impact_factor                                float
   index_copernicus                             float
-  informacja_z                                 -> bpp.zrodlo_informacji?  match nazwa
+  informacja_z                                 -> bpp.zrodlo_informacji?
   informacje                                   str
   isbn                                         str
   issn                                         str
-  jezyk                                        -> bpp.jezyk  match nazwa  "Język"
-  jezyk_alt                                    -> bpp.jezyk?  match nazwa  "Język alternatywny"
-  jezyk_orig                                   -> bpp.jezyk?  match nazwa  "Język oryginalny" — Dla tłumaczeń. Wartość eksportowana do PBN.
+  jezyk                                        -> bpp.jezyk  "Język"
+  jezyk_alt                                    -> bpp.jezyk?  "Język alternatywny"
+  jezyk_orig                                   -> bpp.jezyk?  "Język oryginalny" — Dla tłumaczeń. Wartość eksportowana do PBN.
   konferencja                                  -> bpp.konferencja?
   liczba_cytowan                               int?  "Liczba cytowań" — Wartość aktualizowana jest automatycznie raz na kilka dni w przypadku
         skonfigurowania dostępu do API WOS AMR (przez obiekt 'Uczelnia'). Możesz również
@@ -536,12 +567,12 @@ bpp.wydawnictwo_zwarte:
   nie_eksportuj_przez_api                      bool
   numer_odbitki                                str
   numer_w_serii                                str
-  openaccess_czas_publikacji                   -> bpp.czas_udostepnienia_openaccess?  match nazwa  "OpenAccess: czas udostępnienia"
+  openaccess_czas_publikacji                   -> bpp.czas_udostepnienia_openaccess?  "OpenAccess: czas udostępnienia"
   openaccess_data_opublikowania                date?  "OpenAccess: data publikacji"
   openaccess_ilosc_miesiecy                    int?  "OpenAccess: ilość miesięcy" — Ilość miesięcy jakie upłynęły od momentu opublikowania do momentu udostępnienia
-  openaccess_licencja                          -> bpp.licencja_openaccess?  match nazwa  "OpenAccess: licencja"
-  openaccess_tryb_dostepu                      -> bpp.tryb_openaccess_wydawnictwo_zwarte?  match nazwa
-  openaccess_wersja_tekstu                     -> bpp.wersja_tekstu_openaccess?  match nazwa  "OpenAccess: wersja tekstu"
+  openaccess_licencja                          -> bpp.licencja_openaccess?  "OpenAccess: licencja"
+  openaccess_tryb_dostepu                      -> bpp.tryb_openaccess_wydawnictwo_zwarte?
+  openaccess_wersja_tekstu                     -> bpp.wersja_tekstu_openaccess?  "OpenAccess: wersja tekstu"
   opis_bibliograficzny_autorzy_cache           unknown?
   opis_bibliograficzny_cache                   str
   opis_bibliograficzny_zapisani_autorzy_cache  str?
@@ -571,20 +602,22 @@ bpp.wydawnictwo_zwarte:
   recenzowana                                  bool
   redakcja                                     str
   rekord                                       -> bpp.rekord?
+  restored_at                                  datetime?
   rok                                          int
   search_index                                 unknown
   seria_wydawnicza                             -> bpp.seria_wydawnicza?
   slowa_kluczowe                               -> taggit.tag?  "Słowa kluczowe -- język polski" — Lista słów kluczowych -- język polski.
   slowa_kluczowe_eng                           unknown?  "Słowa kluczowe -- język angielski" — Lista słów kluczowych -- język angielski
   slug                                         str?
-  status_korekty                               -> bpp.status_korekty  match nazwa
+  status_korekty                               -> bpp.status_korekty
   streszczenia                                 -> bpp.wydawnictwo_zwarte_streszczenie?
   strony                                       str
   szczegoly                                    str  "Szczegóły" — Np. str. 23-45
   tekst_po_ostatnim_autorze                    str?
   tekst_przed_pierwszym_autorem                str?
   tom                                          str
-  typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW/MEiN"
+  transaction_id                               str?
+  typ_kbn                                      -> bpp.typ_kbn  "typ MNiSW/MEiN"
   tytul                                        str  "Tytuł"
   tytul_oryginalny                             str  "Tytuł oryginalny"
   tytul_oryginalny_sort                        str
@@ -608,7 +641,8 @@ bpp.wydawnictwo_zwarte_autor:
   afiliuje               bool
   autor                  -> bpp.autor
   data_oswiadczenia      date?  "Data oświadczenia" — Informacja eksportowana do PBN, gdy uzupełniono
-  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa?  match nazwa
+  deleted_at             datetime?
+  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa?
   id                     int
   jednostka              -> bpp.jednostka
   kierunek_studiow       -> bpp.kierunek_studiow?
@@ -619,7 +653,9 @@ bpp.wydawnictwo_zwarte_autor:
   profil_orcid           bool  "Praca w profilu ORCID autora" — Zaznacz, jeżeli praca znajdje się na profilu ORCID autora
   przypieta              bool
   rekord                 -> bpp.wydawnictwo_zwarte
-  typ_odpowiedzialnosci  -> bpp.typ_odpowiedzialnosci  match nazwa  "Typ odpowiedzialności"
+  restored_at            datetime?
+  transaction_id         str?
+  typ_odpowiedzialnosci  -> bpp.typ_odpowiedzialnosci  "Typ odpowiedzialności"
   upowaznienie_pbn       bool  "Upoważnienie PBN" — Tik w polu "upoważnienie PBN" oznacza, że dany autor upoważnił Uczelnię do sprawozdania tej publikacji w ocenie parametrycznej Uczelni
   zapisany_jako          str
   zatrudniony            bool
@@ -702,7 +738,7 @@ bpp.wymiar_etatu:
 
 bpp.rekord:
   autorzy                                      -> bpp.autorzy?
-  charakter_formalny                           -> bpp.charakter_formalny  match nazwa
+  charakter_formalny                           -> bpp.charakter_formalny
   doi                                          str?
   dostep_dnia                                  date?  "Dostęp dnia (płatny dostęp)" — Data dostępu do strony WWW.
   e_isbn                                       str  "E-ISBN"
@@ -711,18 +747,18 @@ bpp.rekord:
   index_copernicus                             float
   informacje                                   str
   isbn                                         str
-  jezyk                                        -> bpp.jezyk  match nazwa  "Język"
+  jezyk                                        -> bpp.jezyk  "Język"
   konferencja                                  -> bpp.konferencja?
   kwartyl_w_scopus                             int?  choices: brak | Q1 | Q2 | Q3 | Q4
   kwartyl_w_wos                                int?  choices: brak | Q1 | Q2 | Q3 | Q4
   liczba_autorow                               int
   liczba_cytowan                               int
   liczba_znakow_wydawniczych                   int?  "Liczba znaków wydawniczych"
-  openaccess_czas_publikacji                   -> bpp.czas_udostepnienia_openaccess?  match nazwa  "OpenAccess: czas udostępnienia"
+  openaccess_czas_publikacji                   -> bpp.czas_udostepnienia_openaccess?  "OpenAccess: czas udostępnienia"
   openaccess_data_opublikowania                date?  "OpenAccess: data publikacji"
   openaccess_ilosc_miesiecy                    int?  "OpenAccess: ilość miesięcy" — Ilość miesięcy jakie upłynęły od momentu opublikowania do momentu udostępnienia
-  openaccess_licencja                          -> bpp.licencja_openaccess?  match nazwa  "OpenAccess: licencja"
-  openaccess_wersja_tekstu                     -> bpp.wersja_tekstu_openaccess?  match nazwa  "OpenAccess: wersja tekstu"
+  openaccess_licencja                          -> bpp.licencja_openaccess?  "OpenAccess: licencja"
+  openaccess_wersja_tekstu                     -> bpp.wersja_tekstu_openaccess?  "OpenAccess: wersja tekstu"
   opis_bibliograficzny_autorzy_cache           unknown
   opis_bibliograficzny_cache                   str
   opis_bibliograficzny_zapisani_autorzy_cache  str
@@ -739,9 +775,9 @@ bpp.rekord:
   slowa_kluczowe                               -> taggit.tag?  "Słowa kluczowe" — A comma-separated list of tags.
   slowa_kluczowe_eng                           unknown?  "Słowa kluczowe -- język angielski" — Lista słów kluczowych -- język angielski
   slug                                         str
-  status_korekty                               -> bpp.status_korekty  match nazwa
+  status_korekty                               -> bpp.status_korekty
   szczegoly                                    str  "Szczegóły" — Np. str. 23-45
-  typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW/MEiN"
+  typ_kbn                                      -> bpp.typ_kbn  "typ MNiSW/MEiN"
   tytul                                        str
   tytul_oryginalny                             str
   tytul_oryginalny_sort                        str
@@ -776,9 +812,11 @@ bpp.zrodlo_informacji:
   wydawnictwo_zwarte   -> bpp.wydawnictwo_zwarte?
 
 bpp.rodzaj_prawa_patentowego:
-  id      int
-  nazwa   str
-  patent  -> bpp.patent?
+  coar_type              str  "Typ COAR" — Pełny identyfikator typu zasobu ze słownika COAR Resource Types, np. http://purl.org/coar/resource_type/c_15cd dla patentu. Używany w eksporcie CERIF/OpenAIRE; gdy pusty, patenty o tym rodzaju prawa zostaną wyeksportowane bez typu zasobu.
+  eksportuj_jako_patent  bool  "Eksportuj do CERIF jako patent" — Odznacz dla praw, które nie są patentami w rozumieniu słownika COAR (np. znak towarowy). Takie rekordy nie trafią do eksportu CERIF/OpenAIRE — profil wymaga dla każdego rekordu typu z gałęzi „patent”, więc jedyną alternatywą byłoby zadeklarowanie ich patentami wbrew prawdzie.
+  id                     int
+  nazwa                  str
+  patent                 -> bpp.patent?
 
 taggit.tag:
   id                   int
@@ -803,6 +841,7 @@ bpp.status_korekty:
 
 bpp.jezyk:
   id                               int
+  kod_bcp47                        str  "Kod języka wg BCP 47" — Kod języka w notacji BCP 47 (RFC 5646), np. „pl”, „en”, „en-GB”. Używany w eksporcie CERIF/OpenAIRE jako wartość atrybutu xml:lang; gdy pusty, elementy w tym języku zostaną wyeksportowane bez oznaczenia języka.
   nazwa                            str
   pbn_uid                          -> pbn_api.language?
   praca_doktorska                  -> bpp.praca_doktorska?
@@ -841,7 +880,7 @@ pbn_api.publication:
 bpp.typ_kbn:
   artykul_pbn          bool  "Artykuł w PBN" — Wydawnictwa ciągłe posiadające
     ten typ MNiSW/MEiN zostaną włączone do eksportu PBN jako artykuły
-  charakter_pbn        -> bpp.charakter_pbn?  match help_text
+  charakter_pbn        -> bpp.charakter_pbn?
   id                   int
   nazwa                str
   praca_doktorska      -> bpp.praca_doktorska?
@@ -866,20 +905,22 @@ bpp.wydawca:
   praca_doktorska      -> bpp.praca_doktorska?
   praca_habilitacyjna  -> bpp.praca_habilitacyjna?
   rekord               -> bpp.rekord?
+  slug                 str
   wydawca              -> bpp.wydawca?
   wydawnictwo_zwarte   -> bpp.wydawnictwo_zwarte?
 
 bpp.charakter_formalny:
   charakter_ogolny     str  choices: Artykuł | Książka | Rozdział | Inne
-  charakter_pbn        -> bpp.charakter_pbn?  match help_text
+  charakter_pbn        -> bpp.charakter_pbn?
   charakter_sloty      int?  "Charakter dla slotów" — Jak potraktować ten charakter przy kalkulacji slotów dla wydawnictwa zwartego?  choices: Książka | Rozdział | Referat
   children             -> bpp.charakter_formalny?
+  coar_type            str  "Typ COAR" — Pełny identyfikator typu zasobu ze słownika COAR Resource Types, np. http://purl.org/coar/resource_type/c_6501 dla artykułu naukowego. Używany w eksporcie CERIF/OpenAIRE; gdy pusty, prace o tym charakterze formalnym zostaną wyeksportowane bez typu zasobu.
   id                   int
   level                int
   lft                  int
   nazwa                str
   nazwa_w_primo        str  choices:  | Artykuł | Książka | Zasób tekstowy | Rozprawa naukowa | Recenzja | Artykuł prasowy | Rozdział | Czasopismo | Dane badawcze | Materiał konferencyjny | Obraz | Baza | Zestaw danych statystycznych | Multimedia | Inny
-  parent               -> bpp.charakter_formalny?  match nazwa  "Charakter nadrzędny"
+  parent               -> bpp.charakter_formalny?  "Charakter nadrzędny"
   publikacja           bool
   rekord               -> bpp.rekord?
   rght                 int
@@ -897,7 +938,7 @@ bpp.charakter_formalny:
 
 bpp.wydawnictwo_ciagle_tytul:
   id              int
-  jezyk           -> bpp.jezyk?  match nazwa
+  jezyk           -> bpp.jezyk?
   kod_jezyka_pbn  str  "Kod języka wg PBN"
   rekord          -> bpp.wydawnictwo_ciagle
   tytul           str  "Tytuł"
@@ -934,11 +975,13 @@ bpp.licencja_openaccess:
   nazwa               str
   rekord              -> bpp.rekord?
   skrot               str
+  uri                 str  "Adres URI licencji" — Kanoniczny adres URI licencji, np. https://creativecommons.org/licenses/by/4.0/ . Używany w eksporcie CERIF/OpenAIRE; gdy pusty, prace na tej licencji zostaną wyeksportowane bez odnośnika do jej treści.
   wydawnictwo_ciagle  -> bpp.wydawnictwo_ciagle?
   wydawnictwo_zwarte  -> bpp.wydawnictwo_zwarte?
   zrodlo              -> bpp.zrodlo?
 
 bpp.tryb_openaccess_wydawnictwo_ciagle:
+  coar_access_right   str  "Prawo dostępu wg COAR" — Pełny identyfikator prawa dostępu ze słownika COAR Access Rights, np. http://purl.org/coar/access_right/c_abf2 dla „open access”. Używany w eksporcie CERIF/OpenAIRE; gdy pusty, prace o tym trybie zostaną wyeksportowane bez określonego prawa dostępu.
   id                  int
   nazwa               str
   skrot               str
@@ -954,12 +997,12 @@ bpp.wersja_tekstu_openaccess:
 
 bpp.wydawnictwo_ciagle_streszczenie:
   id                  int
-  jezyk_streszczenia  -> bpp.jezyk?  match nazwa
+  jezyk_streszczenia  -> bpp.jezyk?
   rekord              -> bpp.wydawnictwo_ciagle
   streszczenie        str
 
 bpp.wydawnictwo_ciagle_zewnetrzna_baza_danych:
-  baza    -> bpp.zewnetrzna_baza_danych  match nazwa
+  baza    -> bpp.zewnetrzna_baza_danych
   id      int
   info    str  "Informacje dodatkowe"
   rekord  -> bpp.wydawnictwo_ciagle
@@ -970,16 +1013,16 @@ bpp.zrodlo:
   e_issn                     str  "e-ISSN"
   id                         int
   issn                       str
-  jezyk                      -> bpp.jezyk?  match nazwa
+  jezyk                      -> bpp.jezyk?
   nazwa                      str
   nazwa_alternatywna         str?
-  openaccess_licencja        -> bpp.licencja_openaccess?  match nazwa  "OpenAccess: licencja"
+  openaccess_licencja        -> bpp.licencja_openaccess?  "OpenAccess: licencja"
   openaccess_tryb_dostepu    str  "OpenAccess: tryb dostępu"  choices: pełny | częściowy
   ostatnio_zmieniony         datetime?
   pbn_uid                    -> pbn_api.journal?  "Odpowiednik w PBN"
   poprzednia_nazwa           str?  "Poprzedni tytuł"
   rekord                     -> bpp.rekord?
-  rodzaj                     -> bpp.rodzaj_zrodla  match nazwa
+  rodzaj                     -> bpp.rodzaj_zrodla
   search                     unknown
   skrot                      str  "Skrót"
   skrot_nazwy_alternatywnej  str?
@@ -987,11 +1030,11 @@ bpp.zrodlo:
   www                        str?
   wydawca                    str
   wydawnictwo_ciagle         -> bpp.wydawnictwo_ciagle?
-  zasieg                     -> bpp.zasieg_zrodla?  match nazwa
+  zasieg                     -> bpp.zasieg_zrodla?
 
 bpp.wydawnictwo_zwarte_tytul:
   id              int
-  jezyk           -> bpp.jezyk?  match nazwa
+  jezyk           -> bpp.jezyk?
   kod_jezyka_pbn  str  "Kod języka wg PBN"
   rekord          -> bpp.wydawnictwo_zwarte
   tytul           str  "Tytuł"
@@ -1006,6 +1049,7 @@ bpp.nagroda:
   uzasadnienie       str
 
 bpp.tryb_openaccess_wydawnictwo_zwarte:
+  coar_access_right   str  "Prawo dostępu wg COAR" — Pełny identyfikator prawa dostępu ze słownika COAR Access Rights, np. http://purl.org/coar/access_right/c_abf2 dla „open access”. Używany w eksporcie CERIF/OpenAIRE; gdy pusty, prace o tym trybie zostaną wyeksportowane bez określonego prawa dostępu.
   id                  int
   nazwa               str
   skrot               str
@@ -1018,18 +1062,18 @@ bpp.seria_wydawnicza:
 
 bpp.wydawnictwo_zwarte_streszczenie:
   id                  int
-  jezyk_streszczenia  -> bpp.jezyk?  match nazwa
+  jezyk_streszczenia  -> bpp.jezyk?
   rekord              -> bpp.wydawnictwo_zwarte
   streszczenie        str
 
 bpp.wydawnictwo_zwarte_zewnetrzna_baza_danych:
-  baza    -> bpp.zewnetrzna_baza_danych  match nazwa
+  baza    -> bpp.zewnetrzna_baza_danych
   id      int
   info    str  "Informacje dodatkowe"
   rekord  -> bpp.wydawnictwo_zwarte
 
 bpp.zewnetrznebazydanychview:
-  baza    -> bpp.zewnetrzna_baza_danych  match nazwa
+  baza    -> bpp.zewnetrzna_baza_danych
   id      int
   info    str
   rekord  -> bpp.rekord
