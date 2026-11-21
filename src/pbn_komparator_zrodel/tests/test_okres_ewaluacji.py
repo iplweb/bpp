@@ -144,3 +144,24 @@ def test_aktualizuj_wszystkie_dyscypliny_wg_okresu(admin_client, zrodla):
     assert list(pks) == [
         RozbieznoscZrodlaPBN.objects.get(zrodlo=nowe, rok=2027).pk,
     ]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "slug,oczekiwane",
+    [
+        ("2022-2025", [("Źródło stare", 2024)]),
+        ("2026-2030", [("Źródło nowe", 2027)]),
+    ],
+)
+def test_eksport_punktow_jak_lista(admin_client, zrodla, slug, oczekiwane):
+    """Eksport XLSX punktów stosuje te same filtry co lista, łącznie
+    z „tylko źródła z publikacjami w okresie” — obejmuje to, co widać."""
+    lista = admin_client.get(URL.format(slug=slug))
+    assert _wiersze(lista) == oczekiwane
+
+    response = admin_client.get(URL.format(slug=slug) + "eksport-xlsx/")
+    assert response.status_code == 200
+    ws = load_workbook(BytesIO(response.content)).active
+    wiersze = sorted((r[0], r[3]) for r in ws.iter_rows(min_row=2, values_only=True))
+    assert wiersze == oczekiwane

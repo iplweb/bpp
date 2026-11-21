@@ -436,3 +436,29 @@ def test_szablony_oswiadczenia_task(db):
     assert szablony_oswiadczenia(None) == [
         "oswiadczenia/tresc_jednego_oswiadczenia.html"
     ]
+
+
+@pytest.mark.django_db
+def test_szablon_2026_2030_w_bazie_z_adnotacja(zwarte_z_dyscyplinami, admin_client):
+    """Migracja zakłada szablon 2026–2030 w bazie (edytowalny w panelu):
+    lata nowego okresu i adnotacja o starej podstawie prawnej."""
+    from dbtemplates.models import Template
+
+    t = Template.objects.get(
+        name="oswiadczenia/tresc_jednego_oswiadczenia_2026_2030.html"
+    )
+    assert "za lata <strong>2026-2030</strong>" in t.content
+    assert "[stara podstawa prawna]" in t.content
+
+    type(zwarte_z_dyscyplinami).objects.filter(pk=zwarte_z_dyscyplinami.pk).update(
+        rok=2027
+    )
+    rekord = Rekord.objects.get_for_model(zwarte_z_dyscyplinami)
+    autor = rekord.autorzy_set.first()
+    url = reverse(
+        "oswiadczenia:jedno-oswiadczenie",
+        args=(rekord.pk[0], rekord.pk[1], autor.autor.pk, autor.dyscyplina_naukowa.pk),
+    )
+    html = admin_client.get(url).content.decode()
+    assert "[stara podstawa prawna]" in html
+    assert "za lata <strong>2026-2030</strong>" in html

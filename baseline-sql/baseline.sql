@@ -16646,6 +16646,9 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
 346	bpp	0254_uczelnia_pbn_uid	2000-01-01 00:00:00+00
+361	bpp	0268_auto_20210519_0238	2000-01-01 00:00:00+00
+704	favicon	0001_initial	2000-01-01 00:00:00+00
+1186	deduplikator_autorow	0013_okres_skanu	2000-01-01 00:00:00+00
 472	bpp	0365_bppuser_pbn_token_updated	2000-01-01 00:00:00+00
 1004	bpp	0460_faza_b_ii2_repoint	2000-01-01 00:00:00+00
 1184	snapshot_odpiec	0003_snapshot_okres_ewaluacji	2000-01-01 00:00:00+00
@@ -16744,7 +16747,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1005	bpp	0461_faza_b_iii1_usun_rodzaj_jednostki	2000-01-01 00:00:00+00
 1006	bpp	0462_faza_b_iv1_przelicz_aktualna	2000-01-01 00:00:00+00
 1062	oauth2_provider	0002_auto_20190406_1805	2000-01-01 00:00:00+00
-361	bpp	0268_auto_20210519_0238	2000-01-01 00:00:00+00
 20	axes	0001_initial	2000-01-01 00:00:00+00
 705	favicon	0002_favicon_site	2000-01-01 00:00:00+00
 945	zglos_publikacje	0011_auto_20220910_1646	2000-01-01 00:00:00+00
@@ -17638,7 +17640,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 759	import_list_ministerialnych	0003_rename_wierszimportudyscyplinzrodel_wierszimportulistyministerialnej	2000-01-01 00:00:00+00
 760	import_list_ministerialnych	0004_importlistministerialnych_ignoruj_zrodla_bez_odpowiednika	2000-01-01 00:00:00+00
 970	bpp	0417_ensure_uczelnia_site_not_null	2000-01-01 00:00:00+00
-704	favicon	0001_initial	2000-01-01 00:00:00+00
 761	import_list_ministerialnych	0005_add_duplicate_tracking_fields	2000-01-01 00:00:00+00
 762	import_list_ministerialnych	0006_importlistministerialnych_nie_porownuj_po_tytulach	2000-01-01 00:00:00+00
 763	import_list_ministerialnych	0007_move_files_to_protected	2000-01-01 00:00:00+00
@@ -17825,7 +17826,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1181	ewaluacja_optymalizacja	0019_okres_ewaluacji_wymagany	2000-01-01 00:00:00+00
 1182	ewaluacja_common	0007_wybrany_okres_ewaluacji	2000-01-01 00:00:00+00
 1183	oswiadczenia	0006_oswiadczenie_lata_z_okresu	2000-01-01 00:00:00+00
-1186	deduplikator_autorow	0013_okres_skanu	2000-01-01 00:00:00+00
+1187	oswiadczenia	0007_szablon_oswiadczenia_2026_2030	2000-01-01 00:00:00+00
 \.
 
 
@@ -17844,6 +17845,7 @@ COPY public.django_site (id, domain, name) FROM stdin;
 
 COPY public.django_template (id, name, content, creation_date, last_changed) FROM stdin;
 3	oswiadczenia/tresc_jednego_oswiadczenia.html	{% load oswiadczenia_tags %}<h1>Oświadczenie upoważaniające podmiot do wykazania osiągnięć w ewaluacji jakości działalności naukowej</h1>\n<hr>\n<h2>{{ autor.nazwisko }} {{ autor.imiona }}</h2>\n<p>ORCID: <strong>{{ autor.orcid }}</strong></p>\n<p>Dyscypliny:</p>\n<ul>\n    <li>{{ dyscyplina_naukowa }}</li>\n    {% if subdyscyplina_naukowa %}\n        <li>{{ subdyscyplina_naukowa }}</li>\n    {% endif %}\n</ul>\n<p>\n    Ja, <strong>{{ autor.nazwisko }} {{ autor.imiona }}</strong>, zgodnie z art. 265 ust. 13 ustawy z dnia\n    20 lipca 2018 r. – Prawo  o szkolnictwie\n    wyższym i nauce (Dz. U. z 2021 r. poz. 478, z późn. zm.) upoważniam do wykazania na potrzeby\n    ewaluacji jakości działalności naukowej za lata <strong>{{ object.rok|lata_ewaluacji }}</strong> moich, wymienionych w niniejszym\n    oświadczeniu osiągnięć przez <strong>{{ uczelnia.nazwa }}</strong> w dyscyplinie:\n    <strong>{{ dyscyplina_pracy }}</strong>.\n</p>\n<p>\n    Oświadczam, że osiągnięcia te powstały w związku z prowadzeniem przeze mnie działalności naukowej\n    w tym podmiocie (nie dotyczy osiągnięć artystycznych).\n</p>\n<div width="10%" style="text-align: center; width:50%; float: right;">\n    <p>{{ data_oswiadczenia|default:"" }}...........................................................</p>\n    <p>(data i podpis)</p>\n</div>\n<div style="clear:both;"></div>\n<strong>Dotyczy:</strong><br/>\n{{ object.opis_bibliograficzny_cache|safe }}\n	2000-01-01 00:00:00+00	2000-01-01 00:00:00+00
+4	oswiadczenia/tresc_jednego_oswiadczenia_2026_2030.html	{% load oswiadczenia_tags %}<h1>Oświadczenie upoważaniające podmiot do wykazania osiągnięć w ewaluacji jakości działalności naukowej</h1>\n<hr>\n<h2>{{ autor.nazwisko }} {{ autor.imiona }}</h2>\n<p>ORCID: <strong>{{ autor.orcid }}</strong></p>\n<p>Dyscypliny:</p>\n<ul>\n    <li>{{ dyscyplina_naukowa }}</li>\n    {% if subdyscyplina_naukowa %}\n        <li>{{ subdyscyplina_naukowa }}</li>\n    {% endif %}\n</ul>\n<p>\n    Ja, <strong>{{ autor.nazwisko }} {{ autor.imiona }}</strong>, zgodnie z art. 265 ust. 13 ustawy z dnia\n    20 lipca 2018 r. – Prawo  o szkolnictwie\n    wyższym i nauce (Dz. U. z 2021 r. poz. 478, z późn. zm.) [stara podstawa prawna] upoważniam do wykazania na potrzeby\n    ewaluacji jakości działalności naukowej za lata <strong>2026-2030</strong> moich, wymienionych w niniejszym\n    oświadczeniu osiągnięć przez <strong>{{ uczelnia.nazwa }}</strong> w dyscyplinie:\n    <strong>{{ dyscyplina_pracy }}</strong>.\n</p>\n<p>\n    Oświadczam, że osiągnięcia te powstały w związku z prowadzeniem przeze mnie działalności naukowej\n    w tym podmiocie (nie dotyczy osiągnięć artystycznych).\n</p>\n<div width="10%" style="text-align: center; width:50%; float: right;">\n    <p>{{ data_oswiadczenia|default:"" }}...........................................................</p>\n    <p>(data i podpis)</p>\n</div>\n<div style="clear:both;"></div>\n<strong>Dotyczy:</strong><br/>\n{{ object.opis_bibliograficzny_cache|safe }}\n	2000-01-01 00:00:00+00	2000-01-01 00:00:00+00
 \.
 
 
@@ -19875,7 +19877,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1186, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1187, true);
 
 
 --
@@ -19889,7 +19891,7 @@ SELECT pg_catalog.setval('public.django_site_id_seq', 1, true);
 -- Name: django_template_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_template_id_seq', 3, true);
+SELECT pg_catalog.setval('public.django_template_id_seq', 4, true);
 
 
 --

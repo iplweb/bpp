@@ -109,10 +109,12 @@ mają w tej pracy punkty.
     jakości działalności naukowej za lata …”) podaje lata okresu, do którego
     należy praca — dla pracy z 2027 r. „2026-2030”, dla pracy z 2024 r.
     „2022-2025”. Prace z okresu 2026–2030 drukują się z osobnego szablonu
-    treści (`oswiadczenia/tresc_jednego_oswiadczenia_2026_2030.html`) —
-    gdy przepisy dla tego okresu wymagają innej treści, administrator może
-    go nadpisać w panelu administracyjnym (**Szablony**), nie ruszając
-    treści oświadczeń za 2022–2025.
+    treści (`oswiadczenia/tresc_jednego_oswiadczenia_2026_2030.html`,
+    w panelu administracyjnym: **Szablony**). Na start ma treść jak dla
+    2022–2025, lata „2026-2030” i adnotację **„[stara podstawa prawna]”**
+    przy podstawie prawnej — administrator uzupełnia ją, gdy będzie
+    obowiązujący tekst dla nowego okresu, bez ruszania treści oświadczeń
+    za 2022–2025.
 
     Kolumna **Alt. dyscyplina** pokazuje drugą dyscyplinę autora, jeśli ją
     ma. W kolumnie **Akcje** zielona drukarka drukuje jedno oświadczenie,

@@ -1,5 +1,5 @@
 {
-  "git_sha": "a898ded9314c5582762ad41b30ebde5cdef9d827",
+  "git_sha": "73be09b768668a5ad51d1539e9c44957986dc7cc",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
@@ -50,7 +50,7 @@
     "oauth2_provider": "0022_refreshtoken_token_family_index",
     "oidc_integration": "0001_initial",
     "orcid_integration": "0001_initial",
-    "oswiadczenia": "0006_oswiadczenie_lata_z_okresu",
+    "oswiadczenia": "0007_szablon_oswiadczenia_2026_2030",
     "password_policies": "0003_update_passwordprofile",
     "pbn_api": "0079_constraint_publikacja_instytucji",
     "pbn_downloader_app": "0004_alter_error_message_fields",

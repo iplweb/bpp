@@ -161,29 +161,39 @@ class ExportXlsxView(GroupRequiredMixin, View):
     group_required = "wprowadzanie danych"
 
     def get_filter_params(self):
-        """Pobiera parametry filtrów z request (jak w ListView)."""
-        # Przy pierwszym wejściu (brak GET params) domyślnie checkbox zaznaczony
+        """Pobiera parametry filtrów z request — te same co lista, łącznie
+        z filtrami publikacji, żeby eksport obejmował dokładnie to, co widać
+        na liście."""
+        # Przy pierwszym wejściu (brak GET params) domyślne wartości jak na liście
         okres_od, okres_do = lata_okresu(self.request)
+        domyslne = (okres_od, okres_do, "", "", True, False, True)
         if not self.request.GET:
-            return okres_od, okres_do, "", "", True
+            return domyslne
 
         form = FilterForm(self.request.GET, domyslne_lata=(okres_od, okres_do))
         if form.is_valid():
-            tylko_rozbieznosci = "tylko_rozbieznosci" in self.request.GET
             return (
                 form.cleaned_data["rok_od"],
                 form.cleaned_data["rok_do"],
                 form.cleaned_data["search"],
                 form.cleaned_data["dyscyplina"],
-                tylko_rozbieznosci,
+                "tylko_rozbieznosci" in self.request.GET,
+                "bez_publikacji" in self.request.GET,
+                tylko_z_publikacjami_w_okresie(self.request),
             )
-        return okres_od, okres_do, "", "", True
+        return domyslne
 
     def get_queryset(self):
         """Buduje queryset z zastosowanymi filtrami."""
-        rok_od, rok_do, search, dyscyplina, tylko_rozbieznosci = (
-            self.get_filter_params()
-        )
+        (
+            rok_od,
+            rok_do,
+            search,
+            dyscyplina,
+            tylko_rozbieznosci,
+            bez_publikacji,
+            z_publikacjami_w_okresie,
+        ) = self.get_filter_params()
 
         queryset = RozbieznoscZrodlaPBN.objects.select_related(
             "zrodlo", "zrodlo__pbn_uid"
@@ -206,6 +216,20 @@ class ExportXlsxView(GroupRequiredMixin, View):
         # Filtr tylko rozbieżności punktów
         if tylko_rozbieznosci:
             queryset = queryset.filter(ma_rozbieznosc_punktow=True)
+
+        # Filtr tylko źródła z publikacjami (jak na liście)
+        if bez_publikacji:
+            queryset = queryset.filter(
+                Exists(
+                    Wydawnictwo_Ciagle.objects.filter(zrodlo_id=OuterRef("zrodlo_id"))
+                )
+            )
+
+        # Filtr tylko źródła z publikacjami z lat wybranego okresu ewaluacji
+        if z_publikacjami_w_okresie:
+            queryset = filtruj_publikacje_w_okresie(
+                queryset, *lata_okresu(self.request)
+            )
 
         return queryset.order_by("zrodlo__nazwa", "rok")
 
