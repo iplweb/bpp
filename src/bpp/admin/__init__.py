@@ -477,6 +477,15 @@ class SearchFormAdmin(admin.ModelAdmin):
 
 SearchForm._meta.verbose_name = "formularz wyszukiwania"
 SearchForm._meta.verbose_name_plural = "formularze wyszukiwania"
+# Model pochodzi z pakietu multiseek: pole „owner” nie ma tam etykiety, więc
+# w panelu wyświetlało się angielskie „Owner”. Nadajemy polskie nazwy kolumn.
+for _pole, _etykieta in (
+    ("name", "nazwa"),
+    ("owner", "właściciel"),
+    ("public", "publiczny"),
+    ("data", "dane formularza (JSON)"),
+):
+    SearchForm._meta.get_field(_pole).verbose_name = _etykieta
 
 admin.site.register(SearchForm, SearchFormAdmin)
 

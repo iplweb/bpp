@@ -100,3 +100,39 @@ def autor_jednostka_mapping(autorzy: list[Autor]) -> dict[int, int]:
             autor_id__in=[a.pk for a in autorzy]
         ).values_list("autor_id", "jednostka_id")
     )
+
+
+def autor_dyscyplina_mapping(autorzy: list[Autor]) -> dict[tuple[int, int], int]:
+    """Mapping (autor_id, rok) -> dyscyplina_naukowa_id z Autor_Dyscyplina.
+
+    Uzywane do przypiecia dyscypliny autorowi publikacji (dyscyplina z roku
+    publikacji). Autor_Dyscyplina ma unique (rok, autor), wiec mapa jest
+    jednoznaczna."""
+    from bpp.models import Autor_Dyscyplina
+
+    return {
+        (autor_id, rok): dyscyplina_id
+        for autor_id, rok, dyscyplina_id in Autor_Dyscyplina.objects.filter(
+            autor_id__in=[a.pk for a in autorzy]
+        ).values_list("autor_id", "rok", "dyscyplina_naukowa_id")
+    }
+
+
+def typy_kbn_liczone(typy_kbn: list) -> list:
+    """Typy KBN bez „PW" (prace wieloosrodkowe — ISlot ich nie liczy)."""
+    return [t for t in typy_kbn if t.skrot != "PW"] or typy_kbn
+
+
+def charaktery_wg(charaktery: list, *, charakter_ogolny: str, charakter_sloty=None):
+    """Charaktery formalne pasujace do kalkulatora slotow.
+
+    Filtruje po `charakter_ogolny` (i opcjonalnie `charakter_sloty`); gdy nic
+    nie pasuje (np. minimalne slowniki w testach), zwraca wszystkie."""
+    pasujace = [
+        c
+        for c in charaktery
+        if c.charakter_ogolny == charakter_ogolny
+        and (charakter_sloty is None or c.charakter_sloty == charakter_sloty)
+    ]
+    publikacje = [c for c in pasujace if c.publikacja]
+    return publikacje or pasujace or charaktery

@@ -2,7 +2,7 @@
 
 Data: 2026-07-08
 Obszar: `src/pbn_import/`
-Issue źródłowy: zgłoszenie użytkownika (uczelnia MWSL, konfiguracja bez wydziałów)
+Issue źródłowy: zgłoszenie użytkownika (uczelnia z konfiguracją bez wydziałów)
 
 ## Problem
 

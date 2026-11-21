@@ -24,6 +24,7 @@ def _analyze_multi_author_works_impl(  # noqa: C901
     progress_offset=0,
     parallel=True,
     num_workers=4,
+    okres_pk=None,
 ):
     """
     Implementacja analizy prac wieloautorskich - wydzielona do wielokrotnego użycia.
@@ -36,6 +37,8 @@ def _analyze_multi_author_works_impl(  # noqa: C901
         progress_offset: Bazowy offset dla progressu (0-100)
         parallel: Czy używać równoległego przetwarzania (domyślnie True)
         num_workers: Liczba workerów dla przetwarzania równoległego (domyślnie 4)
+        okres_pk: PK okresu ewaluacji (``None`` = okres domyślny); analizowane
+            są tylko prace z lat okresu
 
     Returns:
         Dictionary z wynikami analizy
@@ -45,8 +48,10 @@ def _analyze_multi_author_works_impl(  # noqa: C901
     from ewaluacja_metryki.models import MetrykaAutora
 
     from ...models import UnpinningOpportunity
+    from ...okres import filtr_lat, pobierz_okres
 
     uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
+    okres = pobierz_okres(okres_pk)
 
     logger.info(
         f"Starting unpinning analysis for {uczelnia}, dyscyplina_id={dyscyplina_id}"
@@ -67,6 +72,7 @@ def _analyze_multi_author_works_impl(  # noqa: C901
     metryki_qs = MetrykaAutora.objects.select_related(
         "autor", "dyscyplina_naukowa"
     ).filter(
+        okres=okres,
         slot_maksymalny__gt=0,
         slot_nazbierany__gte=F("slot_maksymalny") * Decimal(str(min_slot_filled)),
     )
@@ -96,10 +102,10 @@ def _analyze_multi_author_works_impl(  # noqa: C901
     # Usuń stare wyniki dla tej uczelni
     if dyscyplina_id:
         UnpinningOpportunity.objects.filter(
-            uczelnia=uczelnia, dyscyplina_naukowa_id=dyscyplina_id
+            uczelnia=uczelnia, okres=okres, dyscyplina_naukowa_id=dyscyplina_id
         ).delete()
     else:
-        UnpinningOpportunity.objects.filter(uczelnia=uczelnia).delete()
+        UnpinningOpportunity.objects.filter(uczelnia=uczelnia, okres=okres).delete()
 
     # Przygotuj słownik: rekord_id -> [(autor_id, dyscyplina_id, slot, metryka)]
     works_by_rekord = {}
@@ -128,7 +134,9 @@ def _analyze_multi_author_works_impl(  # noqa: C901
 
         # Pobierz wszystkie prace dla tego autora i dyscypliny
         for cache_entry in Cache_Punktacja_Autora_Query.objects.filter(
-            autor_id=autor_id, dyscyplina_id=dyscyplina_id_key
+            autor_id=autor_id,
+            dyscyplina_id=dyscyplina_id_key,
+            **filtr_lat(okres, "rekord__"),
         ).select_related("rekord"):
             rekord_tuple = cache_entry.rekord_id
 
@@ -177,6 +185,7 @@ def _analyze_multi_author_works_impl(  # noqa: C901
             works_by_rekord=works_by_rekord,
             metryki_dict=metryki_dict,
             progress_offset=progress_offset,
+            okres=okres,
         )
 
     # =========================================================================
@@ -189,6 +198,7 @@ def _analyze_multi_author_works_impl(  # noqa: C901
         dyscyplina_id=dyscyplina_id,
         works_by_rekord=works_by_rekord,
         progress_offset=progress_offset,
+        okres=okres,
     )
 
 
@@ -201,6 +211,7 @@ def _run_parallel_analysis(  # noqa: C901
     works_by_rekord,
     metryki_dict,
     progress_offset,
+    okres,
 ):
     """Uruchamia równoległą analizę unpinning."""
     from time import sleep
@@ -278,13 +289,14 @@ def _run_parallel_analysis(  # noqa: C901
             dyscyplina_id=dyscyplina_id,
             works_by_rekord=works_by_rekord,
             progress_offset=progress_offset,
+            okres=okres,
         )
 
     logger.info(f"Launching {len(worker_tasks)} chunk tasks")
 
     workflow = chord(worker_tasks)(
         collect_unpinning_results.s(
-            uczelnia_id=uczelnia_id, dyscyplina_id=dyscyplina_id
+            uczelnia_id=uczelnia_id, dyscyplina_id=dyscyplina_id, okres_pk=okres.pk
         )
     )
 
@@ -411,6 +423,7 @@ def _run_sequential_analysis(  # noqa: C901
     dyscyplina_id,
     works_by_rekord,
     progress_offset,
+    okres,
 ):
     """Uruchamia sekwencyjną analizę unpinning."""
     from ...models import UnpinningOpportunity
@@ -575,6 +588,7 @@ def _run_sequential_analysis(  # noqa: C901
         unpinning_objs.append(
             UnpinningOpportunity(
                 uczelnia=uczelnia,
+                okres=okres,
                 dyscyplina_naukowa_id=opp["autor_a"]["dyscyplina_id"],
                 rekord_id=opp["rekord_id"],
                 rekord_tytul=opp["rekord_tytul"],

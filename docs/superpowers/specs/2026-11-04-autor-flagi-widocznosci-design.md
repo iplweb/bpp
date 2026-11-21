@@ -4,14 +4,14 @@ Data: 2026-11-04
 
 ## Dlaczego
 
-Rollbar (#5235 i pokrewne, bpp.umlub.pl / apoz / piwet) zgłasza tysiące
+Rollbar (#5235 i pokrewne, kilka instalacji produkcyjnych) zgłasza tysiące
 `Http404` na `/bpp/autor/<slug>/`. Przyczyna:
 
 - commit #899 (`73fc5216e`, 2026-10-24) sprawił, że `AutorView` zwraca 404
   dla autora z `pokazuj=False` każdemu poza redakcją (`moze_wprowadzac_dane`);
 - tymczasem `pokazuj` z założenia znaczyło tylko „pokazuj na stronach
   jednostek oraz w rankingu” (help_text pola), a takich autorów jest dużo
-  (UML: 28 320 z 67 891, w tym 25 892 obcych, jednostka 118);
+  (jedna z instalacji: 28 320 z 67 891, w tym 25 892 obcych, jednostka 118);
 - ci autorzy są dalej linkowani: opis pracy (`browse/praca_tabela.html:33`),
   globalne wyszukiwanie (nie filtruje po `pokazuj`), sitemap
   (`django_bpp/sitemaps.py` `AutorSitemap` — bez filtra) i inne → użytkownicy

@@ -12,23 +12,29 @@ from ewaluacja_optymalizacja.models import (
     OptimizationPublication,
     OptimizationRun,
 )
+from ewaluacja_optymalizacja.okres import pobierz_okres
 
 
-def save_optimization_to_database(stdout, style, results, dyscyplina):
+def save_optimization_to_database(stdout, style, results, dyscyplina, okres=None):
     """Save optimization results to the database.
 
-    Removes any previous ``OptimizationRun`` rows for this discipline,
+    Removes any previous ``OptimizationRun`` rows for this discipline
+    (w tym samym okresie ewaluacji; ``None`` = okres domyślny),
     then writes a fresh run with per-author and per-publication detail.
 
     Returns the freshly created ``OptimizationRun`` instance.
     """
     dyscyplina_obj = Dyscyplina_Naukowa.objects.get(nazwa=dyscyplina)
+    okres = pobierz_okres(okres)
 
-    # Usun stare optymalizacje dla tej dyscypliny
-    OptimizationRun.objects.filter(dyscyplina_naukowa=dyscyplina_obj).delete()
+    # Usun stare optymalizacje dla tej dyscypliny (w tym okresie)
+    OptimizationRun.objects.filter(
+        dyscyplina_naukowa=dyscyplina_obj, okres=okres
+    ).delete()
 
     opt_run = OptimizationRun.objects.create(
         dyscyplina_naukowa=dyscyplina_obj,
+        okres=okres,
         status="completed",
         total_points=Decimal(str(results.total_points)),
         total_slots=Decimal(str(results.total_slots)),
@@ -45,7 +51,7 @@ def save_optimization_to_database(stdout, style, results, dyscyplina):
 
         record = (
             IloscUdzialowDlaAutoraZaCalosc.objects.filter(
-                autor_id=author_id, dyscyplina_naukowa=dyscyplina_obj
+                autor_id=author_id, dyscyplina_naukowa=dyscyplina_obj, okres=okres
             )
             .order_by("-ilosc_udzialow")
             .first()

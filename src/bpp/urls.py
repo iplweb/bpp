@@ -87,6 +87,7 @@ from bpp.views.browse import (
     UczelniaView,
     WydawcaView,
     WydawcyView,
+    WydzialyView,
     WyswietlDeklaracjeDostepnosci,
     ZrodlaView,
     ZrodloView,
@@ -293,6 +294,12 @@ urlpatterns = [
         r"^jednostki/(?P<literka>.)/$",
         JednostkiView.as_view(),
         name="browse_jednostki_literka",
+    ),
+    url(r"^wydzialy/$", WydzialyView.as_view(), name="browse_wydzialy"),
+    url(
+        r"^wydzialy/(?P<literka>.)/$",
+        WydzialyView.as_view(),
+        name="browse_wydzialy_literka",
     ),
     url(
         r"^wydzial/(?P<slug>[\w-]+)/$",

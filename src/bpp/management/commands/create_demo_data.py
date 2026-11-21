@@ -71,6 +71,12 @@ class Command(BaseCommand):
             action="store_true",
             help="Nie dodawaj do pliku POL-on celowo blednych wierszy.",
         )
+        parser.add_argument(
+            "--bez-ewaluacji",
+            action="store_true",
+            help="Nie przeliczaj cache punktów/slotów, liczby N ani metryk "
+            "na końcu generowania.",
+        )
 
     def handle(self, *args, **options):
         manifest_out = options.get("manifest_out")
@@ -104,6 +110,7 @@ class Command(BaseCommand):
             ),
             polon_dyscypliny=options.get("polon_dyscypliny"),
             polon_bez_blednych_wierszy=options.get("polon_bez_blednych_wierszy", False),
+            bez_ewaluacji=options["bez_ewaluacji"],
         )
         # BaseCommand ma self.stdout (OutputWrapper) ale NIE ma self.stdin —
         # passujemy sys.stdin explicit (potrzebne dla double_confirm w trybie

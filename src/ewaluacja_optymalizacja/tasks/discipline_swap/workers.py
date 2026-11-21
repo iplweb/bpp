@@ -181,13 +181,14 @@ def analyze_discipline_swap_worker_task(  # noqa: C901
 
 
 @shared_task(bind=True)
-def collect_discipline_swap_results(self, worker_results, uczelnia_id):
+def collect_discipline_swap_results(self, worker_results, uczelnia_id, okres_pk=None):
     """
     Zbiera wyniki ze wszystkich workerów i zapisuje do bazy.
 
     Args:
         worker_results: Lista wyników z analyze_discipline_swap_worker_task
         uczelnia_id: ID uczelni
+        okres_pk: PK okresu ewaluacji (``None`` = okres domyślny)
 
     Returns:
         dict: Podsumowanie wyników
@@ -195,13 +196,15 @@ def collect_discipline_swap_results(self, worker_results, uczelnia_id):
     from bpp.models import Autor, Dyscyplina_Naukowa, Uczelnia
 
     from ...models import DisciplineSwapOpportunity, StatusDisciplineSwapAnalysis
+    from ...okres import pobierz_okres
 
     uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
+    okres = pobierz_okres(okres_pk)
 
     logger.info(f"Collecting results from {len(worker_results)} workers for {uczelnia}")
 
-    # Usuń stare wyniki
-    DisciplineSwapOpportunity.objects.filter(uczelnia=uczelnia).delete()
+    # Usuń stare wyniki (z tego okresu)
+    DisciplineSwapOpportunity.objects.filter(uczelnia=uczelnia, okres=okres).delete()
 
     # Zbierz wszystkie opportunities
     all_opportunities = []
@@ -240,6 +243,7 @@ def collect_discipline_swap_results(self, worker_results, uczelnia_id):
             objs.append(
                 DisciplineSwapOpportunity(
                     uczelnia=uczelnia,
+                    okres=okres,
                     rekord_id=tuple(opp["rekord_id"]),
                     rekord_tytul=opp["rekord_tytul"],
                     rekord_rok=opp["rekord_rok"],

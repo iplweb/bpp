@@ -11,6 +11,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
+from ewaluacja_common.okres import okres_dla_request
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
 logger = logging.getLogger(__name__)
@@ -148,7 +149,9 @@ def unpinning_opportunities_list(request):
         )
 
     # Podstawowe filtrowanie
-    opportunities_qs = UnpinningOpportunity.objects.filter(uczelnia=uczelnia)
+    opportunities_qs = UnpinningOpportunity.objects.filter(
+        uczelnia=uczelnia, okres=okres_dla_request(request)
+    )
 
     # Filtr po dyscyplinie
     dyscyplina_id = _get_dyscyplina_filter(request)
@@ -194,9 +197,11 @@ def unpinning_opportunities_list(request):
     opportunities = paginator.get_page(page_number)
 
     # Statystyki
-    total_count = UnpinningOpportunity.objects.filter(uczelnia=uczelnia).count()
+    total_count = UnpinningOpportunity.objects.filter(
+        uczelnia=uczelnia, okres=okres_dla_request(request)
+    ).count()
     sensible_count = UnpinningOpportunity.objects.filter(
-        uczelnia=uczelnia, makes_sense=True
+        uczelnia=uczelnia, okres=okres_dla_request(request), makes_sense=True
     ).count()
     sensible_percentage = (
         round((sensible_count / total_count) * 100, 1) if total_count > 0 else 0
@@ -204,9 +209,9 @@ def unpinning_opportunities_list(request):
 
     # Lista dyscyplin dla filtra
     dyscypliny = Dyscyplina_Naukowa.objects.filter(
-        pk__in=UnpinningOpportunity.objects.filter(uczelnia=uczelnia).values_list(
-            "dyscyplina_naukowa_id", flat=True
-        )
+        pk__in=UnpinningOpportunity.objects.filter(
+            uczelnia=uczelnia, okres=okres_dla_request(request)
+        ).values_list("dyscyplina_naukowa_id", flat=True)
     ).order_by("nazwa")
 
     context = {
@@ -458,7 +463,9 @@ def _get_export_opportunities(request, uczelnia):
     """Pobierz i przefiltruj możliwości odpinania zgodnie z parametrami GET."""
     from ..models import UnpinningOpportunity
 
-    opportunities_qs = UnpinningOpportunity.objects.filter(uczelnia=uczelnia)
+    opportunities_qs = UnpinningOpportunity.objects.filter(
+        uczelnia=uczelnia, okres=okres_dla_request(request)
+    )
 
     dyscyplina_id = _get_dyscyplina_filter(request)
     if dyscyplina_id:

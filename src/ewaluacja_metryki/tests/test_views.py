@@ -369,12 +369,15 @@ def test_statystyki_view(admin_user, client):
 
 @pytest.mark.django_db
 def test_statystyki_autorzy_zerowi_tylko_z_jest_w_n(
-    admin_user, client, rodzaj_autora_n, rodzaj_autora_d
+    admin_user, client, rodzaj_autora_n, rodzaj_autora_d, okres_2022
 ):
     """Test że autorzy zerowi zawierają tylko autorów i lata z jest_w_n=True"""
     from bpp.models import Autor_Dyscyplina
 
+    from .conftest import wybierz_okres
+
     client.force_login(admin_user)
+    wybierz_okres(client, okres_2022)
 
     # Stwórz autora z zerową metryką
     autor = baker.make(Autor, nazwisko="Kowalski", imiona="Jan")
@@ -390,6 +393,7 @@ def test_statystyki_autorzy_zerowi_tylko_z_jest_w_n(
         srednia_za_slot_nazbierana=Decimal("0.0"),
         rok_min=2022,
         rok_max=2025,
+        okres=okres_2022,
     )
 
     # Stwórz przypisania autor-dyscyplina z różnymi rodzajami

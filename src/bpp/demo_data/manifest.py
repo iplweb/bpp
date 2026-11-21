@@ -8,6 +8,11 @@ import os
 from pathlib import Path
 
 CLEANUP_ORDER = (
+    # Wyniki ewaluacji dla autorow demo (kaskadowalyby z Autor, ale
+    # kasujemy jawnie, zeby manifest byl kompletny):
+    "ewaluacja_metryki.MetrykaAutora",
+    "ewaluacja_liczba_n.IloscUdzialowDlaAutoraZaCalosc",
+    "ewaluacja_liczba_n.IloscUdzialowDlaAutoraZaRok",
     # Najpierw M2M-through:
     "bpp.Wydawnictwo_Ciagle_Autor",
     "bpp.Wydawnictwo_Zwarte_Autor",
@@ -29,6 +34,10 @@ CLEANUP_ORDER = (
     # Faza C (#438): „wydziały" to jednostki top-level — wszystkie (rooty +
     # dzieci) idą jako bpp.Jednostka; jeden delete() kaskaduje po MPTT parent.
     "bpp.Jednostka",
+    # Punktacja/dyscypliny zrodel i poziomy wydawcow (przed slownikami):
+    "bpp.Punktacja_Zrodla",
+    "bpp.Dyscyplina_Zrodla",
+    "bpp.Poziom_Wydawcy",
     # Slowniki "Demo —":
     "bpp.Zrodlo",
     "bpp.Wydawca",

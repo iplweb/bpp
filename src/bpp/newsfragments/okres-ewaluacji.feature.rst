@@ -1,0 +1,1 @@
+Okresy ewaluacji (2022–2025, 2026–2030) są zdefiniowane w panelu administracyjnym; na stronach metryk ewaluacyjnych, liczby N i optymalizacji w górnej belce można wybrać okres — domyślny to okres obejmujący bieżący rok.

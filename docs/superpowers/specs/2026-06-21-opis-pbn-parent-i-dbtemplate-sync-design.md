@@ -5,7 +5,7 @@ Ticket: Freshdesk #329 ("wyd. zwarte - problem")
 
 ## Kontekst
 
-Zgłoszenie #329 (Biblioteka Naukowa IHiT): dodano rozdział książki, którego
+Zgłoszenie #329 (biblioteka jednego z klientów): dodano rozdział książki, którego
 **wydawnictwo nadrzędne pobrano z PBN**, ale nie wyświetla się ono jako
 wydawnictwo nadrzędne w opisie bibliograficznym BPP.
 
@@ -97,6 +97,7 @@ Plik: `src/pbn_api/models/publication.py`. Wzorowany 1:1 na istniejącym
 @cached_property
 def book(self):
     return self.value_or_none("object", "book")
+
 
 @cached_property
 def book_title(self):
@@ -201,10 +202,10 @@ Plik: `src/bpp/admin/templates.py` (`BppTemplateAdmin`) + szablon
 1. **Część A** (akcesor + gałąź szablonu + testy) — to właściwa poprawka #329
    na poziomie kodu/dysku.
 2. **Część B** (komenda + admin) — mechanizm dystrybucji.
-3. **Wdrożenie na instalację IHiT:** `update_dbtemplates opis_bibliograficzny.html
+3. **Wdrożenie na instalację klienta:** `update_dbtemplates opis_bibliograficzny.html
    --pull` (albo `--reset-to-disk`, skoro nie kastomizują) → przebudowa cache →
    weryfikacja na realnym rekordzie
-   (`bpp.ihit.waw.pl/.../Niedokrwistosc-u-ciezarnych-...`). Jeśli rekord
+   (`bpp.example.edu.pl/.../Niedokrwistosc-u-ciezarnych-...`). Jeśli rekord
    okaże się scenariuszem (a) (ustawiony kurowany FK), sama Część B go naprawia;
    Część A zabezpiecza scenariusz (b) i przyszłe importy.
 

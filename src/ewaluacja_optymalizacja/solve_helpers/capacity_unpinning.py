@@ -9,11 +9,13 @@ from ewaluacja_optymalizacja.tasks.unpinning.capacity_analysis import (
 )
 
 
-def handle_capacity_based_unpinning(stdout, style, dyscyplina_obj, dry_run=True):
+def handle_capacity_based_unpinning(
+    stdout, style, dyscyplina_obj, dry_run=True, okres=None
+):
     """Analyze and optionally apply capacity-based unpinning.
 
     For each multi-author publication, keep the author with most
-    remaining capacity (= 4.0 - current_slots) and unpin others.
+    remaining capacity (= limit okresu - current_slots) and unpin others.
     Returns the list of ``UnpinningCandidate`` objects identified.
     """
     stdout.write("\n" + "=" * 80)
@@ -21,7 +23,7 @@ def handle_capacity_based_unpinning(stdout, style, dyscyplina_obj, dry_run=True)
     stdout.write("=" * 80)
     stdout.write(f"Analyzing discipline: {dyscyplina_obj.nazwa}")
 
-    candidates = identify_unpinning_candidates(dyscyplina_obj)
+    candidates = identify_unpinning_candidates(dyscyplina_obj, okres=okres)
 
     preview_text = format_unpinning_preview(candidates)
     stdout.write(preview_text)

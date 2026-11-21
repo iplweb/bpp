@@ -98,6 +98,8 @@ Dostępne są widoki:
 - **Uczelnia** — strona główna z danymi i logo uczelni oraz jej strukturą.
 - **Jednostki** — alfabetyczna lista wydziałów i jednostek; po wejściu
   w jednostkę zobaczysz przypisane do niej publikacje i pracowników.
+  Na stronie głównej niektórych uczelni zamiast kafla „Jednostki” jest
+  kafel **„Wydziały”** — prowadzi do listy samych wydziałów tej uczelni.
 - **Autorzy** — alfabetyczna lista autorów; strona pojedynczego autora to
   jego pełna bibliografia (patrz niżej).
 - **Źródła** — wydawnictwa ciągłe (czasopisma) i inne źródła; po wejściu

@@ -60,7 +60,9 @@ def _autor(nazwisko, **kw):
 
 
 @pytest.fixture
-def dorobek_zrodla(uczelnia, zrodlo, jednostka, jednostka_podrzedna, denorms):
+def dorobek_zrodla(
+    uczelnia, zrodlo, jednostka, jednostka_podrzedna, denorms, typy_odpowiedzialnosci
+):
     """Kowalski: 3 prace, Nowak: 2, Wiśniewski: 1; praca w innym źródle
     się nie liczy."""
     kowalski = _autor("Kowalski")
@@ -209,7 +211,7 @@ def test_build_search_autor_w_zrodle(client, dorobek_zrodla, zrodlo):
 
 
 @pytest.fixture
-def wydawca_z_aliasem(uczelnia, jednostka, denorms):
+def wydawca_z_aliasem(uczelnia, jednostka, denorms, typy_odpowiedzialnosci):
     glowny = baker.make(Wydawca, nazwa="Wydawnictwo Główne")
     alias = baker.make(Wydawca, nazwa="Wyd. Gł.", alias_dla=glowny)
     autor = _autor("Zwarty")

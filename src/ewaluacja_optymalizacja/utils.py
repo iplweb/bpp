@@ -294,9 +294,22 @@ class ProcessSafeProgressTracker:
         self.pbar.close()
 
 
-def wszystkie_wersje_rekordow(
-    rok_min=2022,
-    rok_max=2025,
+def _zakres_lat_okresu(rok_min, rok_max):
+    """Uzupełnij brakujące granice lat latami okresu domyślnego."""
+    if rok_min is not None and rok_max is not None:
+        return rok_min, rok_max
+    from ewaluacja_optymalizacja.okres import pobierz_okres
+
+    okres = pobierz_okres(None)
+    return (
+        okres.rok_od if rok_min is None else rok_min,
+        okres.rok_do if rok_max is None else rok_max,
+    )
+
+
+def wszystkie_wersje_rekordow(  # noqa: C901
+    rok_min=None,
+    rok_max=None,
     max_workers=None,
     batch_size=50,
     use_multiprocessing=True,
@@ -305,8 +318,8 @@ def wszystkie_wersje_rekordow(
     Process all publication records with optional multiprocessing support.
 
     Args:
-        rok_min: Minimum year to process (default: 2022)
-        rok_max: Maximum year to process (default: 2025)
+        rok_min: Minimum year to process (default: pierwszy rok okresu domyślnego)
+        rok_max: Maximum year to process (default: ostatni rok okresu domyślnego)
         max_workers: Number of processes to use (default: CPU count)
         batch_size: Number of records per batch (default: 200)
         use_multiprocessing: Whether to use multiprocessing (default: True)
@@ -314,6 +327,8 @@ def wszystkie_wersje_rekordow(
     Yields:
         Results from processing each publication record
     """
+    rok_min, rok_max = _zakres_lat_okresu(rok_min, rok_max)
+
     # Determine worker count
     if max_workers is None:
         max_workers = int(2 * os.cpu_count()) or 1

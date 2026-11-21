@@ -14,16 +14,21 @@ from bpp import const
 from bpp.models import Cache_Punktacja_Autora_Query, Dyscyplina_Naukowa
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
+from ..okres import filtr_lat, limity_slotow_autora, pobierz_okres
 from .data_structures import Pub
 
 
-def generate_pub_data(dyscyplina_nazwa: str, verbose: bool = False) -> list[Pub]:
+def generate_pub_data(
+    dyscyplina_nazwa: str, verbose: bool = False, okres=None
+) -> list[Pub]:
     """
     Generate publication data from cache_punktacja_autora table.
 
     Args:
         dyscyplina_nazwa: Name of the scientific discipline to filter by
         verbose: Show progress bar if True
+        okres: OkresEwaluacji (albo jego pk); ``None`` = okres domyślny.
+            Do solvera trafiają tylko prace z lat tego okresu.
 
     Returns:
         List of Pub objects with data from database
@@ -36,12 +41,13 @@ def generate_pub_data(dyscyplina_nazwa: str, verbose: bool = False) -> list[Pub]
             f"Discipline '{dyscyplina_nazwa}' not found in database"
         ) from e
 
-    # Query cache data for years 2022-2025 and given discipline
+    okres = pobierz_okres(okres)
+
+    # Prace z lat okresu ewaluacji dla danej dyscypliny
     cache_entries = (
         Cache_Punktacja_Autora_Query.objects.filter(
             dyscyplina=dyscyplina,
-            rekord__rok__gte=2022,
-            rekord__rok__lte=2025,
+            **filtr_lat(okres, "rekord__"),
         )
         .select_related(
             "autor",
@@ -61,6 +67,7 @@ def generate_pub_data(dyscyplina_nazwa: str, verbose: bool = False) -> list[Pub]
             IloscUdzialowDlaAutoraZaCalosc.objects.filter(
                 autor_id=autor_id,
                 dyscyplina_naukowa=dyscyplina,
+                okres=okres,
             )
             .select_related("rodzaj_autora")
             .order_by("-ilosc_udzialow")
@@ -107,7 +114,9 @@ def generate_pub_data(dyscyplina_nazwa: str, verbose: bool = False) -> list[Pub]
     return pubs
 
 
-def load_author_slot_limits(authors: list[int], dyscyplina_obj, log_func) -> dict:
+def load_author_slot_limits(
+    authors: list[int], dyscyplina_obj, log_func, okres=None
+) -> dict:
     """
     Load per-author slot limits from database.
 
@@ -115,11 +124,15 @@ def load_author_slot_limits(authors: list[int], dyscyplina_obj, log_func) -> dic
         authors: List of author IDs
         dyscyplina_obj: Dyscyplina_Naukowa object
         log_func: Function to call for logging
+        okres: OkresEwaluacji (albo pk); ``None`` = okres domyślny. Wyznacza
+            regulaminowe maksimum slotów (skalowane liczbą lat okresu).
 
     Returns:
         Dictionary mapping author_id to {"total": float, "mono": float}
     """
     log_func("Loading author slot limits from database...")
+    okres = pobierz_okres(okres)
+    max_total, max_mono = limity_slotow_autora(okres)
     author_slot_limits = {}
     custom_limit_count = 0
 
@@ -128,21 +141,22 @@ def load_author_slot_limits(authors: list[int], dyscyplina_obj, log_func) -> dic
         aggregated = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
             autor_id=author_id,
             dyscyplina_naukowa=dyscyplina_obj,
+            okres=okres,
         ).aggregate(
             total_slots=Sum("ilosc_udzialow"),
             total_mono_slots=Sum("ilosc_udzialow_monografie"),
         )
 
         if aggregated["total_slots"] is not None:
-            # Apply regulatory caps: max 4.0 total, max 2.0 monographs
-            total = min(round(float(aggregated["total_slots"]), 2), 4.0)
-            mono = min(round(float(aggregated["total_mono_slots"]), 2), 2.0)
+            # Limity regulaminowe (4.0 / 2.0 dla okresu 4-letniego)
+            total = min(round(float(aggregated["total_slots"]), 2), max_total)
+            mono = min(round(float(aggregated["total_mono_slots"]), 2), max_mono)
 
             author_slot_limits[author_id] = {"total": total, "mono": mono}
             custom_limit_count += 1
         else:
             # Use default limits if not specified
-            author_slot_limits[author_id] = {"total": 4.0, "mono": 2.0}
+            author_slot_limits[author_id] = {"total": max_total, "mono": max_mono}
 
     log_func(f"Found custom slot limits for {custom_limit_count} authors")
     return author_slot_limits

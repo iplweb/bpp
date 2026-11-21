@@ -787,6 +787,16 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
     pokazuj_jednostki_na_pierwszej_stronie = models.BooleanField(default=False)
     pokazuj_wydzialy_na_pierwszej_stronie = models.BooleanField(default=True)
+    kafel_wydzialy_zamiast_jednostek = models.BooleanField(
+        verbose_name="Kafel „Wydziały” zamiast „Jednostki” na stronie głównej",
+        default=False,
+        help_text="Zaznacz, aby w sekcji „Przeglądaj bazę publikacji” na "
+        "stronie głównej kafel „Jednostki” zastąpić kafelkiem prowadzącym do "
+        "indeksu wydziałów (jednostek najwyższego poziomu tej uczelni). "
+        "Nazwa kafla to nazwa wydziału w liczbie mnogiej, wg nazewnictwa "
+        "ustawionego w systemie. Działa niezależnie od opcji „Używaj "
+        "wydziałów”.",
+    )
 
     pokazuj_siec_powiazan = models.BooleanField(
         verbose_name="Pokazuj sieć powiązań autorów",

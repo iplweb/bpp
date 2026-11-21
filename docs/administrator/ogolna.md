@@ -34,6 +34,26 @@ ORCID) i ich konfigurację opisuje strona [Metody logowania](metody-logowania.md
 - pozostałe części serwisu dla użytkowników niezalogowanych wyświetlają
   dane w formacie kolumnowym, posortowane alfabetycznie.
 
+#### Kafel „Wydziały” zamiast „Jednostki” na stronie głównej
+
+Na stronie głównej, w sekcji „Przeglądaj bazę publikacji”, domyślnie jest
+kafel **„Jednostki”**, prowadzący do indeksu wszystkich jednostek uczelni
+(wydziałów, katedr, zakładów itd.). Uczelnia z wydziałami może zamiast niego
+pokazać kafel **„Wydziały”**:
+
+1. otwórz Redagowanie ➡ Struktura ➡ Uczelnia i kliknij swoją uczelnię,
+2. w sekcji „Strona wizualna” zaznacz pole **„Kafel „Wydziały” zamiast
+   „Jednostki” na stronie głównej”**,
+3. zapisz rekord.
+
+Kafel prowadzi do indeksu wydziałów (adres `/bpp/wydzialy/`) — listy
+widocznych jednostek najwyższego poziomu **tej** uczelni; w instalacji
+z kilkoma uczelniami każda widzi tylko swoje wydziały. Nazwa kafla to
+nazwa wydziału w liczbie mnogiej, zgodna z nazewnictwem ustawionym
+w systemie (np. „Instytuty”, jeśli wydział nazywa się u Was „instytut”).
+Pozostałe kafle, menu „przeglądaj” i indeks jednostek (`/bpp/jednostki/`)
+się nie zmieniają. Opcja jest domyślnie wyłączona.
+
 #### Ukrywanie autorów na stronach jednostek
 
 Aby ukryć autora na liście autorów na stronie jednostki (np. doktoranta albo
@@ -63,6 +83,56 @@ Ukrycie autora jest widoczne na stronach publicznych od razu po zapisaniu
 rekordu — także wtedy, gdy kilku autorów ukrywasz naraz akcją „Ukryj
 wybranych autorów na stronach jednostek i w rankingu” na liście autorów.
 To samo dotyczy akcji zmiany statusu korekty na listach publikacji.
+
+##### Ukrywanie autorów naraz (akcje na liście autorów)
+
+Na liście autorów (Redagowanie ➡ Wprowadzanie danych ➡ Autorzy) zaznacz
+autorów i wybierz akcję z listy „Akcja”:
+
+- **„Ukryj wybranych autorów na stronach jednostek i w rankingu”** /
+  **„Pokaż wybranych autorów na stronach jednostek i w rankingu”** —
+  zmieniają tylko pola „Pokazuj na stronie jednostki” i „Pokazuj
+  w rankingu”; pozostałe ustawienia widoczności zostają bez zmian,
+- **„Ukryj wybranych autorów wszędzie (strony jednostek, ranking,
+  wyszukiwanie, indeks, API, strona autora)”** — odznacza wszystkie pola
+  sekcji „Widoczność”: „Pokazuj na stronie jednostki”, „Pokazuj
+  w rankingu”, „Pokazuj w wyszukiwaniu”, „Pokazuj w indeksie autorów”,
+  „Pokazuj w API” i „Pokazuj stronę autora”. Autor znika ze wszystkich
+  publicznych miejsc, a jego strona przestaje istnieć,
+- **„Pokaż wybranych autorów wszędzie (…)”** — zaznacza z powrotem
+  wszystkie te pola.
+
+Wszystkie cztery akcje są dostępne dla użytkowników, którzy mogą edytować
+autorów. Każda zmiana trafia do „Historii” autora (przycisk „Historia” na
+stronie edycji autora) z wpisem „Ukryto na stronach jednostek i w rankingu
+(akcja masowa)”, „Pokazano na stronach jednostek i w rankingu (akcja
+masowa)”, „Ukryto wszędzie (akcja masowa)” albo „Pokazano wszędzie (akcja
+masowa)”, więc w razie pomyłki można przywrócić poprzedni stan
+pojedynczego autora. Wpis dostają tylko autorzy, u których coś się
+faktycznie zmieniło. Pole „Pokazuj sieć powiązań” nie jest przez te akcje
+zmieniane — sieć powiązań autora ze schowaną stroną i tak nie jest
+pokazywana.
+
+Jedną akcją można zmienić najwyżej 2000 autorów — przy większym
+zaznaczeniu akcja niczego nie zmienia i prosi o zawężenie listy filtrami.
+
+##### Zmiana statusu korekty wielu publikacji naraz
+
+Na listach wydawnictw ciągłych, wydawnictw zwartych i prac doktorskich
+akcje **„Ustaw status korekty: przed korektą”**, **„Ustaw status
+korekty: w trakcie korekty”** i **„Ustaw status korekty: po korekcie”**
+zmieniają status wszystkich zaznaczonych rekordów. Każdy zmieniony rekord
+dostaje w swojej „Historii” wpis, np. „Ustawiono status korekty: po
+korekcie (akcja masowa)” — z nazwą użytkownika i datą. Publikacje nie mają
+zapisywanych wersji, więc z „Historii” widać kto i kiedy zmienił status,
+ale nie ma tam przycisku przywracania — poprzedni status ustawia się
+ponownie akcją albo w formularzu rekordu. Akcje wymagają uprawnienia do
+edycji publikacji; jedną akcją można zmienić najwyżej 20000 rekordów.
+
+Ustawienia widoczności są zapisane na autorze, a nie na jego powiązaniu
+z uczelnią. W instalacji z kilkoma uczelniami ukrycie autora (zarówno
+w formularzu, jak i akcjami na liście) działa więc na stronach WSZYSTKICH
+uczelni, w których autor występuje.
 
 #### Ukrywanie lub wyświetlanie raportów na stronie głównej
 

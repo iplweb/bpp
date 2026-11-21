@@ -68,6 +68,7 @@ from bpp.multiseek_registry import (
     registry,
 )
 from bpp.multiseek_registry.fields.constants import UNION_NONE
+from bpp.nazwy import lemat
 from bpp.permissions import moze_wprowadzac_dane
 from bpp.punkty_ewaluacji import punkty_ewaluacji_wydawcy, punkty_ewaluacji_zrodla
 from bpp.sekcje_zrodla_wydawcy import sekcje_wydawcy, sekcje_zrodla
@@ -338,7 +339,23 @@ class AutorView(DetailView):
         # ``uczelnia.skrot`` twardo). Gdy uczelnia istnieje — przekaż ją jawnie.
         if uczelnia is not None:
             context["uczelnia"] = uczelnia
+        if context["pokazuj_metryki"]:
+            context["metryki_autora"] = self._metryki_autora(request)
         return context
+
+    def _metryki_autora(self, request):
+        """Metryki autora z uczelni oglądającego i wybranego okresu ewaluacji
+        — tego samego, który pokaże ``MetrykaDetailView`` po kliknięciu (przy
+        kilku okresach dyscypliny inaczej by się dublowały)."""
+        from ewaluacja_common.okres import okres_dla_request
+        from ewaluacja_metryki.uczelnia_scope import scope_metryki
+        from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
+
+        return scope_metryki(
+            self.object.metryki.all(),
+            uczelnia_dla_odczytu(request),
+            okres_dla_request(request),
+        ).select_related("dyscyplina_naukowa", "jednostka")
 
     def _pokazuj_metryki(self, request):
         """Przycisk metryk ewaluacyjnych tylko dla tych, których wpuści
@@ -866,6 +883,10 @@ class JednostkiView(Browser):
     param = "search"
     literka_field = "nazwa"
     paginate_by = 150
+    browse_url_name = "bpp:browse_jednostki"
+
+    def tylko_jednostki_nadrzedne(self, uczelnia):
+        return bool(uczelnia and uczelnia.pokazuj_tylko_jednostki_nadrzedne)
 
     def get_paginate_by(self, queryset):
         uczelnia = Uczelnia.objects.get_for_request(getattr(self, "request", None))
@@ -884,8 +905,8 @@ class JednostkiView(Browser):
             if uczelnia.sortuj_jednostki_alfabetycznie:
                 ordering = ("nazwa",)
 
-            if uczelnia.pokazuj_tylko_jednostki_nadrzedne:
-                qry = qry.filter(parent=None)
+        if self.tylko_jednostki_nadrzedne(uczelnia):
+            qry = qry.filter(parent=None)
 
         # ``liczba_autorow`` liczona JEDNYM agregatem, a nie per wiersz w
         # szablonie. Wcześniej `browse/jednostki.html` wołał
@@ -926,10 +947,34 @@ class JednostkiView(Browser):
 
         uczelnia = Uczelnia.objects.get_for_request(self.request)
         base_qry = scope_jednostki_do_uczelni(base_qry, uczelnia)
-        if uczelnia and uczelnia.pokazuj_tylko_jednostki_nadrzedne:
+        if self.tylko_jednostki_nadrzedne(uczelnia):
             base_qry = base_qry.filter(parent=None)
 
         context["available_letters"] = self.zapamietane_literki(base_qry)
+        context["browse_url_name"] = self.browse_url_name
+        return context
+
+
+# ``dispatch`` z cache'em publicznym dziedziczy po ``JednostkiView`` (klucz
+# cache'a zawiera ścieżkę żądania, więc indeksy się nie mieszają).
+class WydzialyView(JednostkiView):
+    """Indeks wydziałów — widoczne jednostki najwyższego poziomu
+    (``parent=None``) uczelni bieżącego hosta. Cel kafla „Wydziały” na
+    stronie głównej (opcja ``Uczelnia.kafel_wydzialy_zamiast_jednostek``,
+    FD#391). Ten sam szablon co indeks jednostek, tylko z nazwą wydziału
+    (lemat ``WYDZIAL``) w nagłówkach i z własnymi adresami literek."""
+
+    browse_url_name = "bpp:browse_wydzialy"
+
+    def tylko_jednostki_nadrzedne(self, uczelnia):
+        return True
+
+    def get_context_data(self, *args, **kw):
+        context = super().get_context_data(*args, **kw)
+        # Osobna zmienna, NIE nadpisanie ``nazwa_jednostki`` z context
+        # processora — tę czyta też menu „przeglądaj” (top_bar.html), którego
+        # pozycja „jednostki” ma zostać „jednostkami” także na tej stronie.
+        context["nazwa_indeksu"] = lemat("WYDZIAL")
         return context
 
 

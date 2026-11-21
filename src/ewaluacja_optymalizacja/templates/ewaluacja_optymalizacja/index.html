@@ -14,6 +14,7 @@
     <div class="large-12 columns">
         <h1>
             <span class="fi-target-two"></span> Optymalizacja ewaluacji
+            <small>okres {{ okres_ewaluacji }}</small>
         </h1>
 
         {% if liczba_n_count == 0 %}
@@ -237,12 +238,12 @@
                     const href = btn.getAttribute('href');
                     if (href.includes('reset-all-pins')) {
                         btn.setAttribute('data-confirm',
-                            'Czy na pewno chcesz zresetowac przypiecia dla WSZYSTKICH dyscyplin?\n\nTa operacja:\n1. Utworzy snapshot obecnego stanu\n2. Ustawi przypieta=True dla wszystkich rekordow z lat 2022-2025\n3. Dotyczy autorow ktorzy maja dyscypline, sa zatrudnieni i afiliuja\n4. Automatycznie przeliczy punktacje\n\nProces moze potrwac kilkanascie minut.');
+                            'Czy na pewno chcesz zresetowac przypiecia dla WSZYSTKICH dyscyplin?\n\nTa operacja:\n1. Utworzy snapshot obecnego stanu\n2. Ustawi przypieta=True dla wszystkich rekordow z lat {{ okres_ewaluacji.rok_od }}-{{ okres_ewaluacji.rok_do }}\n3. Dotyczy autorow ktorzy maja dyscypline, sa zatrudnieni i afiliuja\n4. Automatycznie przeliczy punktacje\n\nProces moze potrwac kilkanascie minut.');
                     } else {
                         // Dla przycisków per-dyscyplina - potrzebujemy pobrać nazwę dyscypliny z kontekstu
                         // Użyjemy prostszego komunikatu bez nazwy dyscypliny
                         btn.setAttribute('data-confirm',
-                            'Czy na pewno chcesz zresetowac przypiecia dla tej dyscypliny?\n\nTa operacja:\n1. Utworzy snapshot obecnego stanu\n2. Ustawi przypieta=True dla wszystkich rekordow z lat 2022-2025\n3. Automatycznie przeliczy punktacje\n\nProces moze potrwac kilka minut.');
+                            'Czy na pewno chcesz zresetowac przypiecia dla tej dyscypliny?\n\nTa operacja:\n1. Utworzy snapshot obecnego stanu\n2. Ustawi przypieta=True dla wszystkich rekordow z lat {{ okres_ewaluacji.rok_od }}-{{ okres_ewaluacji.rok_do }}\n3. Automatycznie przeliczy punktacje\n\nProces moze potrwac kilka minut.');
                     }
                 });
 
@@ -414,7 +415,7 @@
                         {% if run.pin_stats.unpinned > 0 %}
                         <a href="{% url 'ewaluacja_optymalizacja:reset-discipline-pins' run.dyscyplina_naukowa.pk %}"
                            class="button tiny warning reset-pins-btn{% if dirty_count > 0 %} disabled{% endif %}"
-                           {% if dirty_count > 0 %}data-disabled-alert="Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia."{% else %}data-confirm="Czy na pewno chcesz zresetować przypięcia dla dyscypliny '{{ run.dyscyplina_naukowa.nazwa }}'?\n\nTa operacja:\n1. Utworzy snapshot obecnego stanu\n2. Ustawi przypieta=True dla wszystkich {{ run.pin_stats.total }} rekordów z lat 2022-2025\n3. Automatycznie przeliczy punktację\n\nProces może potrwać kilka minut."{% endif %}>
+                           {% if dirty_count > 0 %}data-disabled-alert="Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia."{% else %}data-confirm="Czy na pewno chcesz zresetować przypięcia dla dyscypliny '{{ run.dyscyplina_naukowa.nazwa }}'?\n\nTa operacja:\n1. Utworzy snapshot obecnego stanu\n2. Ustawi przypieta=True dla wszystkich {{ run.pin_stats.total }} rekordów z lat {{ okres_ewaluacji.rok_od }}-{{ okres_ewaluacji.rok_do }}\n3. Automatycznie przeliczy punktację\n\nProces może potrwać kilka minut."{% endif %}>
                             <span class="fi-refresh"></span> Resetuj przypięcia
                         </a>
                         {% endif %}
@@ -446,7 +447,7 @@
                         <a href="{% url 'ewaluacja_optymalizacja:reset-all-pins' %}"
                            class="button tiny warning reset-pins-btn{% if dirty_count > 0 %} disabled{% endif %}"
                            id="reset-all-pins-btn"
-                           {% if dirty_count > 0 %}data-disabled-alert="Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia."{% else %}data-confirm="Czy na pewno chcesz zresetować przypięcia dla WSZYSTKICH dyscyplin?\n\nTa operacja:\n1. Utworzy snapshot obecnego stanu\n2. Ustawi przypieta=True dla wszystkich rekordów z lat 2022-2025\n3. Dotyczy autorów którzy mają dyscyplinę, są zatrudnieni i afiliują\n4. Automatycznie przeliczy punktację\n\nProces może potrwać kilkanaście minut."{% endif %}>
+                           {% if dirty_count > 0 %}data-disabled-alert="Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia."{% else %}data-confirm="Czy na pewno chcesz zresetować przypięcia dla WSZYSTKICH dyscyplin?\n\nTa operacja:\n1. Utworzy snapshot obecnego stanu\n2. Ustawi przypieta=True dla wszystkich rekordów z lat {{ okres_ewaluacji.rok_od }}-{{ okres_ewaluacji.rok_do }}\n3. Dotyczy autorów którzy mają dyscyplinę, są zatrudnieni i afiliują\n4. Automatycznie przeliczy punktację\n\nProces może potrwać kilkanaście minut."{% endif %}>
                             <span class="fi-refresh"></span> Resetuj przypięcia
                         </a>
                         {% else %}

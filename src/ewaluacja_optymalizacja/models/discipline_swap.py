@@ -8,6 +8,7 @@ from django.db import models
 
 from bpp.models import Autor
 from bpp.models.fields import TupleField
+from ewaluacja_optymalizacja.okres import domyslny_okres_pk
 
 
 class DisciplineSwapOpportunity(models.Model):
@@ -30,6 +31,12 @@ class DisciplineSwapOpportunity(models.Model):
         verbose_name="Uczelnia",
     )
 
+    okres = models.ForeignKey(
+        "ewaluacja_common.OkresEwaluacji",
+        on_delete=models.PROTECT,
+        default=domyslny_okres_pk,
+        verbose_name="Okres ewaluacji",
+    )
     # Informacje o publikacji
     rekord_id = TupleField(
         models.IntegerField(),
