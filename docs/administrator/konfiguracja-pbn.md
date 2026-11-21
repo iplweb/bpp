@@ -4,6 +4,11 @@ System BPP oferuje integrację z Polską Bibliografią Naukową (PBN), umożliwi
 wysyłanie publikacji do PBN oraz pobieranie danych ze źródeł PBN. Niniejsza dokumentacja
 przedstawia sposób konfiguracji tej integracji przez panel administracyjny.
 
+Ta strona opisuje formularz krok po kroku. Zwięzłą listę czynności po
+stronie PBN (rejestracja aplikacji, adres zwrotny), warunki, jakie musi
+spełniać rekord wysyłany do PBN, oraz polecenia do wgrywania opłat znajdziesz
+na stronie [Integracja z PBN API](integracja-pbn.md).
+
 ## Wymagania wstępne
 
 Przed rozpoczęciem konfiguracji należy:
@@ -16,92 +21,105 @@ Przed rozpoczęciem konfiguracji należy:
 
 ## Dostęp do konfiguracji
 
-Konfigurację integracji z PBN wykonuje się w module Redagowania:
+Ustawienia PBN widzi i zmienia wyłącznie **superużytkownik** — innym
+redaktorom ta sekcja formularza w ogóle się nie wyświetla.
 
-1.  Zaloguj się do panelu administracyjnego BPP
-2.  Przejdź do sekcji **BPP**
-3.  Wybierz z górnej belki menu **Struktura** a następnie **Uczelnia (Instytut)**
-4.  Kliknij na nazwę swojej instytucji, aby edytować jej ustawienia
-5.  Przewiń do sekcji **Konfiguracja PBN**
+1.  Zaloguj się do modułu redagowania jako superużytkownik.
+2.  Z górnego menu wybierz **Struktura** → **Uczelnia** i otwórz swoją uczelnię.
+3.  Przewiń do sekcji **PBN API**.
+
+![Sekcja „PBN API” w formularzu uczelni](../images/administrator/konfiguracja-pbn/01-sekcja-pbn-api.png)
 
 ## Konfiguracja parametrów PBN
 
-W formularzu edycji uczelni/instytucji znajdziesz następujące pola związane z integracją PBN:
+Pola sekcji **PBN API** (w kolejności, w jakiej występują w formularzu):
 
-### Podstawowe ustawienia API
+**Czy używać integracji z PBN?**
+- Główny przełącznik. Wymaga wypełnionych pól „Adres API w PBN”, „Nazwa
+  aplikacji w PBN”, „Token aplikacji w PBN” oraz łączności między serwerem
+  BPP a serwerem PBN. Dopiero po jego włączeniu na stronie głównej pojawia
+  się menu **PBN**.
+
+**Włącz opcjonalną aktualizację przy edycji**
+- Na stronach edycji wydawnictw w module redagowania pojawiają się przyciski
+  **„Zapisz i wyślij do PBN”**. Można je zaznaczyć tylko razem z integracją
+  z PBN.
 
 **Adres API w PBN**
-- **Pole:** `pbn_api_root`
-- **Domyślna wartość:** `https://pbn-micro-alpha.opi.org.pl`
-- **Opis:** Adres serwera testowego API PBN. W wersji produkcyjnej należy ustawić `https://pbn.nauka.gov.pl/`
-- **Format:** Pełny adres URL (np. `https://pbn-micro-alpha.opi.org.pl`)
+- **Domyślna wartość:** `https://pbn-micro-alpha.opi.org.pl` (serwer testowy PBN).
+- W instalacji produkcyjnej należy ustawić adres produkcyjny PBN
+  (`https://pbn.nauka.gov.pl/`).
 
 **Nazwa aplikacji w PBN**
-- **Pole:** `pbn_app_name`
-- **Wymagane:** Tak
-- **Opis:** Identyfikator aplikacji otrzymany przy rejestracji w PBN
-- **Maksymalna długość:** 128 znaków
+- Identyfikator aplikacji nadany przy jej rejestracji w PBN (maks. 128 znaków).
 
 **Token aplikacji w PBN**
-- **Pole:** `pbn_app_token`
-- **Wymagane:** Tak
-- **Opis:** Token bezpieczeństwa aplikacji otrzymany z PBN
-- **Maksymalna długość:** 128 znaków
-- **Uwaga:** Pole to zawiera dane poufne
-
-**Odpowiednik w PBN**
-- **Pole:** `pbn_uid`
-- **Opis:** Instytucja w bazie PBN odpowiadająca Twojej uczelni
-- **Uwaga:** Pole to zostanie automatycznie wypełnione po zaimportowaniu danych instytucji z PBN
-
-Opcje eksportu danych
---------------------
-
-**Kasuj oświadczenia rekordu przed wysłaniem do PBN**
-- **Pole:** `pbn_api_kasuj_przed_wysylka`
-- **Domyślnie:** Nie zaznaczone
-- **Opis:** Gdy zaznaczone, system usunie wszystkie istniejące oświadczenia publikacji w PBN przed przesłaniem nowych danych
-
-**Nie wysyłaj do PBN prac z punktami MNISW = 0**
-- **Pole:** `pbn_api_nie_wysylaj_prac_bez_pk`
-- **Domyślnie:** Nie zaznaczone
-- **Opis:** Blokuje wysyłanie do PBN publikacji bez punktów MNiSW
-
-**Wysyłaj prace bez oświadczeń**
-- **Pole:** `pbn_wysylaj_bez_oswiadczen`
-- **Domyślnie:** Nie zaznaczone
-- **Opis:** Umożliwia wysyłanie do PBN publikacji bez oświadczeń dyscyplinowych. Takie publikacje trafiają do repozytorium PBN zamiast do systemu ewaluacyjnego i nie zawierają informacji o dyscyplinach naukowych autorów
-
-**Wysyłaj zawsze PBN UID uczelni jako afiliację**
-- **Pole:** `pbn_api_afiliacja_zawsze_na_uczelnie`
-- **Domyślnie:** Zaznaczone
-- **Opis:** Gdy zaznaczone, wszystkie publikacje będą afiliowane do uczelni, a nie do konkretnych jednostek organizacyjnych;
-  zachowanie to jest obecnie domyślne - pole używane było w czasach, gdy publikacja mogła być afiliowana na konkretną
-  jednostkę uczelni/instytucji w PBN (na Klinikę, Dział, Katedrę itp...).
+- Token bezpieczeństwa aplikacji otrzymany z PBN (maks. 128 znaków).
+- Zapisany token **nie jest wyświetlany** — pole jest puste, a pod nim widać
+  komunikat „Wartość jest zapisana i nie jest wyświetlana. Pozostaw puste, aby
+  jej nie zmieniać”. Wpisz token tylko wtedy, gdy chcesz go zmienić.
 
 **Użytkownik BPP dla PBN API**
-- **Pole:** `pbn_api_user`
-- **Opis:** Użytkownik systemu BPP odpowiedzialny za automatyczne operacje z PBN wykonywane przez procesy systemowe
-- **Uwaga:** Ten użytkownik musi wykonać autoryzację w PBN, aby umożliwić automatyczne operacje (w tle)
+- Konto BPP, w imieniu którego działają operacje wykonywane w tle (np. nocne
+  pobieranie danych z PBN). Ten użytkownik musi raz wykonać autoryzację w PBN
+  (patrz niżej); dopiero wtedy w tle możliwe jest także wysyłanie rekordów.
+
+**Kasuj oświadczenia selektywnie (per osoba)**
+- **Domyślnie:** zaznaczone.
+- Gdy zaznaczone, przy aktualizacji publikacji w PBN usuwane są tylko
+  oświadczenia, które się zmieniły, i dosyłane brakujące — pozostałe
+  zostają nietknięte. Gdy odznaczone, przed wysyłką usuwane są **wszystkie**
+  oświadczenia publikacji w PBN i wysyłane od nowa.
+
+**Nie wysyłaj do PBN prac z PK=0**
+- **Domyślnie:** nie zaznaczone. Blokuje wysyłanie do PBN publikacji bez
+  punktów MNiSW.
+
+**Wysyłaj zawsze PBN UID uczelni jako afiliację**
+- **Domyślnie:** zaznaczone.
+- Gdy zaznaczone, wszystkie publikacje są afiliowane do uczelni, a nie do
+  konkretnych jednostek organizacyjnych. Zachowanie to jest obecnie
+  domyślne — pole używane było w czasach, gdy publikacja mogła być afiliowana
+  na konkretną jednostkę uczelni/instytucji w PBN (na Klinikę, Dział,
+  Katedrę itp.).
+
+**Wysyłaj prace bez oświadczeń**
+- **Domyślnie:** nie zaznaczone.
+- Umożliwia wysyłanie do PBN publikacji bez oświadczeń dyscyplinowych. Takie
+  publikacje trafiają do repozytorium PBN zamiast do systemu ewaluacyjnego
+  i nie zawierają informacji o dyscyplinach naukowych autorów.
+
+Poza tą sekcją, w pierwszej (bez nagłówka) części formularza uczelni, jest
+pole **Odpowiednik w PBN** — instytucja w bazie PBN odpowiadająca Twojej
+uczelni. Wybierasz ją z listy instytucji pobranych z PBN, więc można je
+uzupełnić dopiero po pierwszym pobraniu danych z PBN.
 
 ## Zapisywanie konfiguracji
 
-Po wypełnieniu wszystkich wymaganych pól:
-
-1.  Sprawdź poprawność wprowadzonych danych
-2.  Kliknij **Zapisz** u dołu formularza
-3.  System wyświetli komunikat potwierdzający zapisanie zmian
+1.  Sprawdź poprawność wprowadzonych danych.
+2.  Kliknij **Zapisz** u dołu formularza.
+3.  Przy włączonej integracji system od razu próbuje pobrać przykładowe dane
+    z PBN. Jeżeli to się nie uda, zobaczysz ostrzeżenie z kodem błędu —
+    konfiguracja i tak zostaje zapisana. Brak nazwy aplikacji lub tokena
+    zgłaszany jest osobnym komunikatem „konfiguracja jest niekompletna”.
 
 ## Autoryzacja w systemie PBN
 
-Po skonfigurowaniu podstawowych parametrów należy wykonać autoryzację:
+Po skonfigurowaniu podstawowych parametrów każdy użytkownik, który ma
+wysyłać dane do PBN (w tym **Użytkownik BPP dla PBN API**), wykonuje
+autoryzację:
 
-1.  Przejdź do głównej strony systemu BPP
-2.  W menu wybierz **Operacje** → **Autoryzuj w PBN**
-3.  System przekieruje Cię do strony logowania PBN
-4.  Zaloguj się używając swoich danych dostępowych PBN
-5.  Potwierdź udzielenie uprawnień aplikacji BPP
-6.  Zostaniesz automatycznie przekierowany z powrotem do BPP
+1.  Przejdź do głównej strony systemu BPP.
+2.  Z górnego menu wybierz **PBN** → **autoryzuj PBN API**.
+3.  System przekieruje Cię do strony logowania PBN.
+4.  Zaloguj się swoimi danymi dostępowymi PBN.
+5.  Potwierdź udzielenie uprawnień aplikacji BPP.
+6.  Zostaniesz automatycznie przekierowany z powrotem do BPP.
+
+![Menu „PBN” → „autoryzuj PBN API” na stronie głównej](../images/administrator/konfiguracja-pbn/02-menu-autoryzuj.png)
+
+Menu **PBN** widzą superużytkownicy i członkowie grupy „wprowadzanie
+danych”, i tylko wtedy, gdy integracja z PBN jest włączona.
 
 Po pomyślnej autoryzacji system będzie mógł komunikować się z PBN w Twoim imieniu.
 
@@ -109,17 +127,18 @@ Po pomyślnej autoryzacji system będzie mógł komunikować się z PBN w Twoim 
 
 Aby sprawdzić czy konfiguracja działa prawidłowo:
 
-1.  W panelu administracyjnym przejdź do **PBN API** → **Instytucje**
-2.  Jeśli lista nie jest pusta, oznacza to, że komunikacja z PBN działa
-3.  Sprawdź czy w polu **Odpowiednik w PBN** w ustawieniach uczelni została automatycznie wybrana odpowiednia instytucja
+1.  W module redagowania przejdź do **PBN API** → **Instytucje**.
+2.  Jeśli lista nie jest pusta, oznacza to, że komunikacja z PBN działa.
+3.  Sprawdź, czy w polu **Odpowiednik w PBN** w ustawieniach uczelni jest
+    wybrana właściwa instytucja.
 
-## Import danych słownikowych
+## Import danych z PBN
 
-Po skonfigurowaniu integracji zaleca się import podstawowych danych słownikowych z PBN:
+Po skonfigurowaniu integracji zaleca się pobranie danych z PBN:
 
-1.  Przejdź do **Operacje** → **Import danych PBN**
-2.  Wybierz **Importuj dyscypliny i punkty źródeł**
-3.  System automatycznie pobierze aktualne słowniki z PBN
+1.  Z górnego menu wybierz **PBN** → **Import z PBN**.
+2.  Wybierz zakres danych do importu i uruchom go — import działa w tle
+    i może potrwać od kilku minut do kilku godzin.
 
 ## Typowe problemy i rozwiązania
 
@@ -129,11 +148,11 @@ Po skonfigurowaniu integracji zaleca się import podstawowych danych słownikowy
 **Problem:** Komunikat "Brak tokena aplikacji dla API PBN"
 - **Rozwiązanie:** Wypełnij pole "Token aplikacji w PBN" w ustawieniach uczelni
 
-**Problem:** Komunikat "Token aplikacji PBN nieprawidłowy"
+**Problem:** PBN odrzuca token aplikacji (ostrzeżenie z kodem błędu po zapisaniu formularza)
 - **Rozwiązanie:** Sprawdź poprawność skopiowanego tokena w PBN, upewnij się że nie ma dodatkowych spacji
 
 **Problem:** Komunikat "Najpierw wykonaj autoryzację w PBN API"
-- **Rozwiązanie:** Wykonaj proces autoryzacji opisany w sekcji "Autoryzacja w systemie PBN"
+- **Rozwiązanie:** Wykonaj proces autoryzacji opisany w sekcji "Autoryzacja w systemie PBN" (menu **PBN** → **autoryzuj PBN API**)
 
 **Problem:** Brak możliwości wysyłania publikacji do PBN
 - **Rozwiązanie:** Upewnij się, że pole "Odpowiednik w PBN" jest wypełnione i że wykonano autoryzację użytkownika
@@ -144,7 +163,8 @@ Po skonfigurowaniu integracji możesz:
 
 **Wysyłać pojedyncze publikacje do PBN:**
 1.  Otwórz publikację w panelu administracyjnym
-2.  Użyj przycisku **Wyślij do PBN** (jeśli dostępny)
+2.  Użyj przycisku **Zapisz i wyślij do PBN** (widoczny, gdy zaznaczono
+    „Włącz opcjonalną aktualizację przy edycji”)
 3.  System automatycznie wyśle publikację i pobierze z powrotem dane wraz z PBN UID
 
 **Importować dane publikacji z PBN:**

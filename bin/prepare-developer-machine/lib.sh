@@ -22,6 +22,18 @@ YARN_VERSION="1.22.22"
 # Node z obrazów Dockera to 24 (NODEJS_VERSION w docker/bpp_base/Dockerfile).
 MIN_NODE_MAJOR=20
 
+# Skanery bezpieczeństwa. trufflehog woła hook pre-commit (`language: system`,
+# więc musi być na PATH), a grype, osv-scanner i trivy — bin/scan-deps.sh,
+# czyli lokalny gate CVE w `make release-candidate`. pip-audit nie wymaga
+# instalacji: scan-deps.sh uruchamia go przez uvx. Na macOS skanery idą
+# z brew; na Linuksie z GitHub Releases w poniższych wersjach (do
+# ~/.local/bin), bo dystrybucje ich nie pakują albo mają stare wersje.
+SECURITY_TOOLS="trufflehog grype osv-scanner trivy"
+TRUFFLEHOG_VERSION="3.99.9"
+GRYPE_VERSION="0.122.1"
+OSV_SCANNER_VERSION="2.7.1"
+TRIVY_VERSION="0.76.2"
+
 log() { printf '\n==> %s\n' "$*"; }
 warn() { printf 'UWAGA: %s\n' "$*" >&2; }
 die() {
@@ -189,4 +201,84 @@ check_playwright_browsers() {
         warn "Zainstaluj (jednorazowo): make playwright-install"
         return 1
     fi
+}
+
+# Pobiera binarkę z GitHub Releases, sprawdza jej SHA-256 z pliku sum
+# kontrolnych tego samego wydania i instaluje do ~/.local/bin. Paczki
+# .tar.gz mają binarkę w korzeniu archiwum.
+# Argumenty: <narzędzie> <repo> <tag> <plik wydania> <plik sum kontrolnych>
+install_release_binary() {
+    local tool="$1" repo="$2" tag="$3" asset="$4" sums="$5"
+    local base="https://github.com/$repo/releases/download/$tag"
+    local tmp expected actual
+    tmp="$(mktemp -d)"
+
+    if ! curl -LsSf --proto '=https' --tlsv1.2 -o "$tmp/$asset" "$base/$asset" ||
+        ! curl -LsSf --proto '=https' --tlsv1.2 -o "$tmp/$sums" "$base/$sums"; then
+        rm -rf "$tmp"
+        die "Nie udało się pobrać $tool $tag ($base/$asset)."
+    fi
+
+    expected="$(awk -v a="$asset" '$2 == a || $2 == "*" a { print $1 }' "$tmp/$sums")"
+    actual="$(sha256_of "$tmp/$asset")"
+    if [ -z "$expected" ] || [ "$actual" != "$expected" ]; then
+        rm -rf "$tmp"
+        die "Zła suma SHA-256 $asset: $actual (oczekiwana: ${expected:-brak w $sums})."
+    fi
+
+    case "$asset" in
+        *.tar.gz) tar -xzf "$tmp/$asset" -C "$tmp" "$tool" ;;
+        *) mv "$tmp/$asset" "$tmp/$tool" ;;
+    esac
+    mkdir -p "$HOME/.local/bin"
+    install -m 0755 "$tmp/$tool" "$HOME/.local/bin/$tool"
+    rm -rf "$tmp"
+}
+
+# Linux: skanery z GitHub Releases. Już obecne na PATH zostawiamy w spokoju
+# (mogły przyjść z innego źródła, np. z menedżera pakietów).
+install_security_tools_linux() {
+    export PATH="$HOME/.local/bin:$PATH"
+
+    local arch trivy_arch tool
+    case "$(uname -m)" in
+        x86_64 | amd64) arch=amd64 trivy_arch=64bit ;;
+        aarch64 | arm64) arch=arm64 trivy_arch=ARM64 ;;
+        *)
+            warn "Brak gotowych binarek skanerów dla $(uname -m) — pomijam" \
+                "($SECURITY_TOOLS). Zainstaluj je ręcznie."
+            return
+            ;;
+    esac
+
+    for tool in $SECURITY_TOOLS; do
+        if command -v "$tool" >/dev/null 2>&1; then
+            log "$tool już zainstalowany ($(command -v "$tool")) — pomijam."
+            continue
+        fi
+        log "Instaluję $tool do ~/.local/bin"
+        case "$tool" in
+            trufflehog)
+                install_release_binary trufflehog trufflesecurity/trufflehog \
+                    "v$TRUFFLEHOG_VERSION" \
+                    "trufflehog_${TRUFFLEHOG_VERSION}_linux_${arch}.tar.gz" \
+                    "trufflehog_${TRUFFLEHOG_VERSION}_checksums.txt"
+                ;;
+            grype)
+                install_release_binary grype anchore/grype "v$GRYPE_VERSION" \
+                    "grype_${GRYPE_VERSION}_linux_${arch}.tar.gz" \
+                    "grype_${GRYPE_VERSION}_checksums.txt"
+                ;;
+            osv-scanner)
+                install_release_binary osv-scanner google/osv-scanner \
+                    "v$OSV_SCANNER_VERSION" "osv-scanner_linux_${arch}" \
+                    osv-scanner_SHA256SUMS
+                ;;
+            trivy)
+                install_release_binary trivy aquasecurity/trivy "v$TRIVY_VERSION" \
+                    "trivy_${TRIVY_VERSION}_Linux-${trivy_arch}.tar.gz" \
+                    "trivy_${TRIVY_VERSION}_checksums.txt"
+                ;;
+        esac
+    done
 }

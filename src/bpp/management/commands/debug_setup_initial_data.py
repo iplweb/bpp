@@ -37,8 +37,8 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--email",
-            default="michal.dtz@gmail.com",
-            help="Admin email (default: michal.dtz@gmail.com)",
+            default="admin@example.invalid",
+            help="Admin email (default: admin@example.invalid)",
         )
         parser.add_argument(
             "--password",

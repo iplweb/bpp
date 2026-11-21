@@ -28,6 +28,8 @@ from bpp.admin.helpers.fieldsets import (
     MODEL_Z_ROKIEM,
     MODEL_ZE_SZCZEGOLAMI,
     OPENACCESS_FIELDSET,
+    OPENACCESS_HELP_TEXTS,
+    OPENACCESS_LABELS,
     POZOSTALE_MODELE_WYDAWNICTWO_CIAGLE_FIELDSET,
     PRACA_WYBITNA_FIELDSET,
     PRZED_PO_LISCIE_AUTOROW_FIELDSET,
@@ -247,6 +249,8 @@ class Wydawnictwo_CiagleForm(CleanDOIWWWPublicWWWMixin, forms.ModelForm):
             "nr_zeszytu": forms.TextInput(attrs={"class": "bpp-input-narrow"}),
             "slowa_kluczowe": TextareaTagWidget(attrs={"rows": 2}),
         }
+        labels = OPENACCESS_LABELS
+        help_texts = OPENACCESS_HELP_TEXTS
 
 
 class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychForm(forms.ModelForm):

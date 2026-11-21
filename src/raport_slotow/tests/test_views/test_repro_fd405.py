@@ -1,6 +1,6 @@
 """Repro dla FD#405 — eksport PDF raportu slotów-autora.
 
-Objaw zgłoszony przez klienta (publikacje.up.lublin.pl): wygenerowany PDF
+Objaw zgłoszony przez klienta: wygenerowany PDF
 zawiera „chrome" strony WWW — górne menu, surowy szablon mustache
 ``{{#clickURL}}``, link „Przejdź do głównej zawartości" i stopkę serwisu —
 zamiast samego raportu. Przyczyna: gałąź PDF renderowała pełny szablon

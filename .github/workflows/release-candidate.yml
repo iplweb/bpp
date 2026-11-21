@@ -69,7 +69,7 @@ jobs:
       # To samo repo obrazów co tests.yml; cache RC czyta m.in. z
       # `:cache-dev` (szczegóły przy kroku build&push niżej).
       IMAGE_REPO: ghcr.io/iplweb/bpp-test-runner
-      PYTHON_VERSION: "3.12"
+      PYTHON_VERSION: "3.14"
       DEBIAN_VERSION: trixie
       NODEJS_VERSION: "24"
     outputs:

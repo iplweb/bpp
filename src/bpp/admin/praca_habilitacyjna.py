@@ -98,7 +98,7 @@ class Publikacja_Habilitacyjna_Inline(admin.TabularInline):
 class Praca_HabilitacyjnaForm(forms.ModelForm):
     autor = forms.ModelChoiceField(
         queryset=Autor.objects.all(),
-        widget=autocomplete.ModelSelect2(url="bpp:autor-z-uczelni-autocomplete"),
+        widget=autocomplete.ModelSelect2(url="bpp:autor-autocomplete"),
     )
 
     jednostka = forms.ModelChoiceField(

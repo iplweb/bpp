@@ -127,7 +127,7 @@ class Praca_DoktorskaForm(
 ):
     autor = forms.ModelChoiceField(
         queryset=Autor.objects.all(),
-        widget=autocomplete.ModelSelect2(url="bpp:autor-z-uczelni-autocomplete"),
+        widget=autocomplete.ModelSelect2(url="bpp:autor-autocomplete"),
     )
 
     jednostka = forms.ModelChoiceField(
@@ -137,7 +137,7 @@ class Praca_DoktorskaForm(
 
     promotor = forms.ModelChoiceField(
         queryset=Autor.objects.all(),
-        widget=autocomplete.ModelSelect2(url="bpp:autor-z-uczelni-autocomplete"),
+        widget=autocomplete.ModelSelect2(url="bpp:autor-autocomplete"),
     )
 
     status_korekty = DomyslnyStatusKorektyMixin.status_korekty

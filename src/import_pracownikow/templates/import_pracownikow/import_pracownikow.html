@@ -2,13 +2,13 @@
 {% load static liveops %}
 
 {% block extratitle %}
-    Import pracowników i jednostek - {{ object.plik_xls.name }}
+    Import pracowników i jednostek - {{ object.nazwa_pliku }}
 {% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
     <li><a href="{% url "import_pracownikow:index" %}">import pracowników i jednostek</a></li>
-    <li class="current">import {{ object.plik_xls.name }}</li>
+    <li class="current">import {{ object.nazwa_pliku }}</li>
 {% endblock %}
 
 {% block content %}
