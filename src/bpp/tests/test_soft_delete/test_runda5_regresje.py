@@ -274,6 +274,15 @@ def _worker_trzyma_blokade(rekord):
             cur.execute("SELECT pg_try_advisory_lock(%s)", [klucz])
             assert cur.fetchone()[0]
         yield
+        # Release the lock explicitly instead of relying on ``close()``:
+        # closing only sends a Terminate message, and the server backend
+        # drops its session locks asynchronously while exiting. The test's
+        # next ``pg_try_advisory_xact_lock`` could still see the lock held
+        # (flaky ``WpisWTrakcieWysylki``). ``pg_advisory_unlock`` returns
+        # only after the lock is gone.
+        with inne.cursor() as cur:
+            cur.execute("SELECT pg_advisory_unlock(%s)", [klucz])
+            assert cur.fetchone()[0]
     finally:
         inne.close()
 
