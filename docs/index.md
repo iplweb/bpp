@@ -54,6 +54,7 @@ zalogowaniu.
 - [Wydawnictwa](redaktor/wydawnictwa.md)
 - [Sloty](redaktor/sloty.md)
 - [Eksportowanie do DSpace](redaktor/eksportowanie-do-dspace.md)
+- [Dwudyscyplinowcy](redaktor/dwudyscyplinowcy.md)
 
 ### 🛠️ Instrukcja administratora
 
