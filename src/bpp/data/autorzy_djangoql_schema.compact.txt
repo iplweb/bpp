@@ -53,6 +53,7 @@ bpp.autor:
   biogram                       str
   biogram_format                str  "Format biogramu"  choices: Markdown | HTML
   cache_punktacja_autora        -> bpp.cache_punktacja_autora?
+  deleted_at                    datetime?
   expertus_id                   str?  "Identyfikator w bazie Expertus"
   google_scholar_id             str  "Identyfikator Google Scholar" — Np. qc6CJjYAAAAJ. Można wkleić cały adres profilu w Google Scholar.
   id                            int
@@ -83,11 +84,13 @@ bpp.autor:
   praca_habilitacyjna           -> bpp.praca_habilitacyjna?
   promotor_doktoratu            -> bpp.praca_doktorska?
   pseudonim                     str
+  restored_at                   datetime?
   scopus_author_id              str
   search                        unknown
   slug                          str
   sort                          str
   system_kadrowy_id             int?  "Identyfikator w systemie kadrowym" — Identyfikator cyfrowy, używany do matchowania autora z danymi z systemu kadrowego Uczelni
+  transaction_id                str?
   tytul                         -> bpp.tytul?
   url_profilu_uczelni           str  "Adres profilu w portalu uczelni" — Pełny adres profilu w uczelnianym portalu (np. PPM). Etykietę linku ustawia się w konfiguracji uczelni.
   wos_researcherid              str  "Web of Science ResearcherID" — Np. A-1234-2008. Można wkleić cały adres profilu w WoS.

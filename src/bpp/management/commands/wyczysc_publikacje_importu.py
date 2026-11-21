@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import FieldDoesNotExist
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, transaction
 from django.db.models import Q
@@ -308,9 +309,34 @@ class Command(BaseCommand):
         hard = getattr(queryset, "hard_delete", None)
         return hard() if hard is not None else queryset.delete()
 
+    def _odepnij_rozdzialy(self, model):
+        """Zeruje self-FK ``wydawnictwo_nadrzedne`` przed kasowaniem.
+
+        Od fazy 04 to pole jest ``PROTECT``: książki-matki nie da się usunąć,
+        dopóki wisi na niej rozdział. Ta komenda i tak kasuje WSZYSTKO, więc
+        powiązanie rozdział→książka nie ma czego chronić — ale kolektor
+        Django sprawdza ``PROTECT`` zanim zauważy, że dziecko również jest
+        w zbiorze do usunięcia, i przerywa całą operację.
+
+        Zerujemy hurtem, jednym ``UPDATE``, zamiast sortować kasowanie od
+        liści w górę: działa dla dowolnego zagnieżdżenia i nie zależy od
+        kolejności ``pk`` (rozdział bywa starszy od książki, np. po imporcie
+        z PBN). Gate na ``update()`` z fazy 01 blokuje wyłącznie
+        ``deleted_at``/``restored_at``, więc ta ścieżka jest dozwolona.
+        """
+        try:
+            model._meta.get_field("wydawnictwo_nadrzedne")
+        except FieldDoesNotExist:
+            return
+
+        self._wszystkie_wiersze(model).filter(
+            wydawnictwo_nadrzedne__isnull=False
+        ).update(wydawnictwo_nadrzedne=None)
+
     def _delete_publications(self, publication_models, batch_size):
         deleted = {}
         for model in publication_models:
+            self._odepnij_rozdzialy(model)
             manager = self._wszystkie_wiersze(model)
             pks = list(manager.order_by("pk").values_list("pk", flat=True))
             total = len(pks)

@@ -283,9 +283,13 @@ class Wydawnictwo_Zwarte(
     autor_rekordu_klass = Wydawnictwo_Zwarte_Autor
     autorzy = models.ManyToManyField(Autor, through=autor_rekordu_klass)
 
+    # PROTECT, nie CASCADE (faza 04 soft-delete): skasowanie książki-matki nie
+    # ma prawa zabrać ze sobą rozdziałów — to osobne rekordy bibliograficzne,
+    # każdy z własnymi autorami, punktacją i historią w PBN. Miękkie kasowanie
+    # blokuje guard w ``Wydawnictwo_Zwarte.delete()``.
     wydawnictwo_nadrzedne = models.ForeignKey(
         "self",
-        CASCADE,
+        PROTECT,
         blank=True,
         null=True,
         help_text="""Jeżeli dodajesz rozdział,
@@ -342,6 +346,43 @@ class Wydawnictwo_Zwarte(
                 condition=Q(deleted_at__isnull=False),
             ),
         ]
+
+    def delete(self, *args, user=None, reason="", **kwargs):
+        """Soft-delete książki — zablokowany, dopóki wiszą na niej rozdziały.
+
+        DLACZEGO TU, A NIE WE WSPÓLNYM MIXINIE: ``BppPublikacjaSoftDelete
+        Mixin`` dzielą wszystkie pięć modeli publikacji. Guard wstawiony tam
+        odpytywałby dla ``Wydawnictwo_Ciagle``, ``Patent`` czy prac
+        dyplomowych ``Wydawnictwo_Zwarte.global_objects.filter(
+        wydawnictwo_nadrzedne=<obiekt innego modelu>)`` — zapytanie
+        międzytypowe, w najlepszym razie zawsze puste, w gorszym wyjątek.
+        Self-FK jest cechą TEGO modelu, więc guard jest jego metodą.
+
+        Guard idzie PRZED ``super().delete()``, czyli przed zapisem
+        ``deleted_at`` i przed kaskadą fazy 02 na ``*_Autor`` — odmowa ma
+        być odmową, a nie odmową po fakcie. Kaskady nie gubimy: cała reszta
+        pracy zostaje w mixinie, tutaj dokładamy wyłącznie warunek wstępny.
+
+        Rozdział w koszu też blokuje (liczymy przez ``global_objects``,
+        spec §2.6): inaczej książkę dałoby się usunąć w dwóch krokach —
+        najpierw rozdział, potem ją — a przywrócenie rozdziału zostawiłoby
+        go bez książki-matki.
+
+        ``user``/``reason`` przepuszczamy dalej do mixinu (kontrakt PINNED
+        faz 06/07) — własny ``delete()`` przesłania tamten, więc gdyby ich
+        tu zabrakło, kasowanie z powodem z panelu admina wywaliłoby się
+        ``TypeError``-em na każdej książce.
+        """
+        from bpp.models.soft_delete import raise_if_has_protected_children
+
+        raise_if_has_protected_children(
+            self,
+            [(Wydawnictwo_Zwarte, "wydawnictwo_nadrzedne")],
+            label="książki (ma rozdziały)",
+        )
+        return super().delete(*args, user=user, reason=reason, **kwargs)
+
+    delete.alters_data = True
 
     def wydawnictwa_powiazane_posortowane(self):
         """

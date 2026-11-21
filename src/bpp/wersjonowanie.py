@@ -15,7 +15,12 @@ Rejestracja jest jawna (a nie automatyczna przez ``VersionAdmin``), bo:
   jest zawężony per uczelnia, FD#390) oraz cofnęłoby po cichu przypisania
   dyscyplin zrobione w międzyczasie (ewaluacja, sloty). Ich zmiany są
   widoczne w historii (komentarz z ``LogEntry``), ale się ich nie cofa,
-* ``IloscUdzialowDlaAutoraZaRok`` to dane wyliczane — nieśledzone.
+* ``IloscUdzialowDlaAutoraZaRok`` to dane wyliczane — nieśledzone,
+* pola soft-delete (``deleted_at``, ``restored_at``, ``transaction_id``)
+  NIE są wersjonowane. Kosz to osobny przepływ (``Autor.delete()`` /
+  ``restore()``: guard, ``SoftDeleteLog``, kolejka PBN). Gdyby te pola były
+  w wersji, „przywróć wersję" sprzed skasowania po cichu wyjąłby autora
+  z kosza (albo do niego wrzucił) z pominięciem tego przepływu.
 
 ``aktualna_jednostka``/``aktualna_funkcja`` wylicza trigger na
 ``bpp_autor_jednostka``; po przywróceniu wersji trzeba je przeliczyć
@@ -40,7 +45,11 @@ if not reversion.is_registered(WybranaPublikacjaAutora):
     reversion.register(WybranaPublikacjaAutora)
 
 if not reversion.is_registered(Autor):
-    reversion.register(Autor, exclude=("search",), follow=("wybrane_publikacje",))
+    reversion.register(
+        Autor,
+        exclude=("search", "deleted_at", "restored_at", "transaction_id"),
+        follow=("wybrane_publikacje",),
+    )
 
 
 def przelicz_aktualna_jednostke(autor_id):

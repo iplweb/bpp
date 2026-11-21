@@ -205,16 +205,37 @@ def test_wca_delete_cache(wydawnictwo_ciagle_z_dwoma_autorami, denorms):
 
 
 @pytest.mark.django_db
-def test_caching_kasowanie_autorow(wydawnictwo_ciagle_z_dwoma_autorami):
-    for wca in Wydawnictwo_Ciagle_Autor.objects.all().only("autor"):
-        wca.autor.delete()
+def test_caching_kasowanie_autorow_z_pracami_jest_zablokowane(
+    wydawnictwo_ciagle_z_dwoma_autorami, denorms
+):
+    """Autora z pracami NIE DA SIĘ usunąć — i opis publikacji ma to przeżyć.
 
-    assert Wydawnictwo_Ciagle_Autor.objects.count() == 0
+    Do fazy 04 ten test kasował autorów i sprawdzał, że nazwiska znikają
+    z ``opis_bibliograficzny_cache``. Opierał się więc na kaskadzie
+    ``Autor`` → ``*_Autor``: usunięcie osoby po cichu zabierało jej
+    autorstwa, a publikacja zostawała bez autorów. Faza 04 właśnie tę
+    kaskadę likwiduje (``PROTECT`` + guard w ``Autor.delete()``), bo
+    publikacja bez autorów to uszkodzony rekord bibliograficzny, a nie
+    poprawny efekt uboczny kasowania osoby.
+
+    Czyszczenie cache'u przy znikaniu autorstw pilnuje nadal
+    ``test_wca_delete_cache`` — tam autorstwa kasuje się wprost, czyli
+    ścieżką, która pozostaje dozwolona.
+    """
+    from django.db.models import ProtectedError
+
+    denorms.flush()
+
+    for wca in Wydawnictwo_Ciagle_Autor.objects.all().only("autor"):
+        with pytest.raises(ProtectedError):
+            wca.autor.delete()
+
+    assert Wydawnictwo_Ciagle_Autor.objects.count() == 2
     assert Rekord.objects.all().count() == 1
 
     r = Rekord.objects.all()[0]
-    assert "NOWAK" not in r.opis_bibliograficzny_cache
-    assert "KOWALSKI" not in r.opis_bibliograficzny_cache
+    assert "NOWAK" in r.opis_bibliograficzny_cache
+    assert "KOWALSKI" in r.opis_bibliograficzny_cache
 
 
 @pytest.mark.django_db
@@ -344,30 +365,52 @@ def test_caching_kasowanie_charakteru_formalnego(
 
 
 @pytest.mark.django_db
-def test_caching_kasowanie_wydzialu(
+def test_kasowanie_wydzialu_nie_kasuje_juz_autorow_z_pracami(
     autor_jan_kowalski, jednostka, wydzial, wydawnictwo_ciagle, typy_odpowiedzialnosci
 ):
-    # Faza C (#438): ``jednostka.wydzial`` (denorm) to korzeń MPTT = jednostka
-    # top-level pełniąca rolę wydziału (fixture ``wydzial``). Żeby przetestować
-    # inwalidację cache przy usunięciu jednostki, kasujemy ten korzeń — CASCADE
-    # po MPTT ``parent`` usuwa dziecko.
+    """Skasowanie wydziału nie ma prawa zabrać ze sobą ludzi ani ich dorobku.
+
+    Do fazy 04 zabierało — i to trzeciego rzędu kaskadą, którą ten test
+    asertował jako poprawną (``autorzy.count() == 0``)::
+
+        Jednostka.delete()
+          → Jednostka.parent      CASCADE  (jednostka podrzędna)
+          → Autor.aktualna_jednostka CASCADE (autorzy tej jednostki!)
+          → Wydawnictwo_Ciagle_Autor.autor CASCADE (ich autorstwa)
+
+    ``Autor.aktualna_jednostka`` to pole DENORMALIZOWANE, liczone triggerem
+    ``bpp_autor_jednostka_aktualna_jednostka()`` z wpisów ``Autor_Jednostka``
+    — kasowanie po nim autora nigdy nie było zamierzone (migracja
+    ``0153_django21`` miała tu ``PROTECT``; hurtowa ``0155_CASCADE`` z 2019
+    przestawiła to razem z kilkunastoma innymi polami).
+
+    Faza 04 nie rusza tego pola — przestawia ``*_Autor.autor`` na ``PROTECT``,
+    co zamienia cichą utratę danych w głośny ``ProtectedError``. Odkręcenie
+    samego ``aktualna_jednostka`` zostaje jako osobna decyzja właściciela
+    (patrz handoff fazy 05).
+    """
+    from django.db.models import ProtectedError
+
     korzen = jednostka.wydzial
     assert korzen == wydzial
 
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
 
     assert Rekord.objects.all().count() == 1
-    # wydział (root) + realna jednostka:
     assert Jednostka.objects.all().count() == 2
-    korzen.delete()
 
+    with pytest.raises(ProtectedError):
+        korzen.delete()
+
+    # Nic nie zniknęło: ani jednostki, ani autor, ani jego autorstwo.
+    assert Jednostka.objects.all().count() == 2
+    assert Autor.objects.filter(pk=autor_jan_kowalski.pk).exists()
     assert Rekord.objects.all().count() == 1
-    assert Rekord.objects.all()[0].original.autorzy.all().count() == 0
-    assert Jednostka.objects.all().count() == 0
+    assert Rekord.objects.all()[0].original.autorzy.all().count() == 1
 
 
 @pytest.mark.django_db
-def test_caching_kasowanie_uczelni(
+def test_kasowanie_uczelni_nie_kasuje_juz_autorow_z_pracami(
     autor_jan_kowalski,
     jednostka,
     wydzial,
@@ -375,19 +418,29 @@ def test_caching_kasowanie_uczelni(
     wydawnictwo_ciagle,
     typy_odpowiedzialnosci,
 ):
+    """To samo, co przy wydziale, tylko o szczebel wyżej.
+
+    Kaskada szła ``Uczelnia`` → ``Jednostka`` → ``Autor`` → autorstwa.
+    Pełne uzasadnienie w
+    ``test_kasowanie_wydzialu_nie_kasuje_juz_autorow_z_pracami``.
+    """
+    from django.db.models import ProtectedError
+
     assert wydzial.uczelnia == uczelnia
     # Faza C (#438): ``jednostka.wydzial`` (denorm) to korzeń = wydział fixture.
     assert jednostka.wydzial == wydzial
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
 
     assert Rekord.objects.all().count() == 1
-    # wydział (root) + realna jednostka (obie CASCADE po uczelni):
     assert Jednostka.objects.all().count() == 2
-    uczelnia.delete()
 
+    with pytest.raises(ProtectedError):
+        uczelnia.delete()
+
+    assert Jednostka.objects.all().count() == 2
+    assert Autor.objects.filter(pk=autor_jan_kowalski.pk).exists()
     assert Rekord.objects.all().count() == 1
-    assert Rekord.objects.all()[0].original.autorzy.all().count() == 0
-    assert Jednostka.objects.all().count() == 0
+    assert Rekord.objects.all()[0].original.autorzy.all().count() == 1
 
 
 @pytest.mark.django_db
