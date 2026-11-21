@@ -189,7 +189,7 @@ dependencies = [
     # testy w workerze xdista — zakleszczenia i RuntimeError z asyncio.run).
     "django-channels-broadcast>=0.3.1",
     "django-countdown>=0.4.0",
-    "django-formdefaults>=0.6.4",
+    "django-formdefaults>=0.6.5",
     # django-pg-baseline: zewnetrzny pakiet zarzadzajacy baseline.sql + monkey-patch
     # tworzenia testowej bazy. Dawniej wewnetrzny `src/django_pg_baseline/`.
     # Dependency runtime, bo INSTALLED_APPS odwoluje sie do niego z kazdego srodowiska
