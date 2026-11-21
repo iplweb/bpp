@@ -214,6 +214,18 @@ docker compose up db redis -d
 # Testing (full suite takes UP TO 10 MINUTES):
 uv run pytest
 make tests-without-playwright    # fast, no browser tests
+```
+
+**Full-suite runs: never hard-code `-n 16` (or any large `-n`).** Use
+`make tests-without-playwright` — it sizes xdist workers from free RAM via
+`--xdist-memory`. If you must call pytest directly, use at most `-n 6`.
+Each worker takes ~600–800 MB plus its own Postgres container, and all
+Claude sessions on the dev box share one tmux cgroup capped at 20 GB:
+a 16-worker run throttles every other session to a standstill.
+(These numbers assume the current 29 GB RAM dev box — revisit them, and the
+tmux slice limit, after a RAM upgrade.)
+
+```bash
 
 # Code quality:
 ruff format .
