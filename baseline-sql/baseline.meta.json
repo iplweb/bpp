@@ -1,5 +1,5 @@
 {
-  "git_sha": "d6c93afa235ce7ab7acf6bb0f81063e4c56648b7",
+  "git_sha": "c767782795ecbd021e23ca5848b14ecbf4800506",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",

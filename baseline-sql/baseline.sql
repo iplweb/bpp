@@ -16679,6 +16679,35 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+312	bpp	0222_auto_20200812_1927	2000-01-01 00:00:00+00
+638	easyaudit	0005_auto_20170713_1155	2000-01-01 00:00:00+00
+826	siteblog	0001_initial	2000-01-01 00:00:00+00
+827	miniblog	0001_initial	2000-01-01 00:00:00+00
+828	miniblog	0002_auto_20180101_2017	2000-01-01 00:00:00+00
+829	miniblog	0003_alter_article_article_body	2000-01-01 00:00:00+00
+830	miniblog	0004_migrate_to_siteblog_and_delete	2000-01-01 00:00:00+00
+832	oswiadczenia	0001_add_export_task_model	2000-01-01 00:00:00+00
+833	oswiadczenia	0002_add_offset_limit	2000-01-01 00:00:00+00
+834	oswiadczenia	0003_fix_export_format_max_length	2000-01-01 00:00:00+00
+835	oswiadczenia	0004_add_przypieta_filter	2000-01-01 00:00:00+00
+1122	bpp	0480_cerif_mapowania_slownikow	2000-01-01 00:00:00+00
+1123	bpp	0481_uczelnia_eksport_cerif_osoby	2000-01-01 00:00:00+00
+1124	bpp	0482_alter_jednostka_ror_id_alter_uczelnia_ror_id	2000-01-01 00:00:00+00
+1125	bpp	0483_cerif_znak_towarowy	2000-01-01 00:00:00+00
+1126	bpp	0484_cerif_walidacja_ror	2000-01-01 00:00:00+00
+1127	oauth2_provider	0015_refreshtoken_token_checksum	2000-01-01 00:00:00+00
+1128	oauth2_provider	0016_alter_devicegrant_scope	2000-01-01 00:00:00+00
+1129	oauth2_provider	0017_application_dcr_created	2000-01-01 00:00:00+00
+1131	oauth2_provider	0019_application_registration_source	2000-01-01 00:00:00+00
+1132	oauth2_provider	0020_cimd_application_fields	2000-01-01 00:00:00+00
+114	bpp	0037_auto_20160124_1336	2000-01-01 00:00:00+00
+836	oswiadczenia	0005_migrate_template_to_dbtemplate	2000-01-01 00:00:00+00
+837	password_policies	0001_initial	2000-01-01 00:00:00+00
+1208	deduplikator_autorow	0013_okres_skanu	2000-01-01 00:00:00+00
+1209	ewaluacja_metryki	0014_status_generowania_per_okres	2000-01-01 00:00:00+00
+1210	oswiadczenia	0006_oswiadczenie_lata_z_okresu	2000-01-01 00:00:00+00
+1211	oswiadczenia	0007_szablon_oswiadczenia_2026_2030	2000-01-01 00:00:00+00
+1212	snapshot_odpiec	0003_snapshot_okres_ewaluacji	2000-01-01 00:00:00+00
 1190	bpp	0515_drop_kronika_views	2000-01-01 00:00:00+00
 361	bpp	0268_auto_20210519_0238	2000-01-01 00:00:00+00
 469	bpp	0362_rzeczownik	2000-01-01 00:00:00+00
@@ -16878,7 +16907,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 894	raport_slotow	0015_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
 895	raport_slotow	0016_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
 896	raport_slotow	0017_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-312	bpp	0222_auto_20200812_1927	2000-01-01 00:00:00+00
 452	bpp	0345_alter_wydzial_opis	2000-01-01 00:00:00+00
 653	ewaluacja2021	0001_initial	2000-01-01 00:00:00+00
 1017	ewaluacja_liczba_n	0010_merge_20260604_1952	2000-01-01 00:00:00+00
@@ -17682,7 +17710,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 635	easyaudit	0002_auto_20170125_0759	2000-01-01 00:00:00+00
 636	easyaudit	0003_auto_20170228_1505	2000-01-01 00:00:00+00
 637	easyaudit	0004_auto_20170620_1354	2000-01-01 00:00:00+00
-638	easyaudit	0005_auto_20170713_1155	2000-01-01 00:00:00+00
 639	easyaudit	0006_auto_20171018_1242	2000-01-01 00:00:00+00
 640	easyaudit	0007_auto_20180105_0838	2000-01-01 00:00:00+00
 641	easyaudit	0008_auto_20180220_1908	2000-01-01 00:00:00+00
@@ -17859,33 +17886,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 919	rozbieznosci_dyscyplin	0018_recreate	2000-01-01 00:00:00+00
 823	komparator_pbn_udzialy	0003_remove_brakautorawpublikacji_komparator__autor_i_e007d7_idx_and_more	2000-01-01 00:00:00+00
 825	messages_extends	0001_initial	2000-01-01 00:00:00+00
-826	siteblog	0001_initial	2000-01-01 00:00:00+00
-827	miniblog	0001_initial	2000-01-01 00:00:00+00
-828	miniblog	0002_auto_20180101_2017	2000-01-01 00:00:00+00
-829	miniblog	0003_alter_article_article_body	2000-01-01 00:00:00+00
-830	miniblog	0004_migrate_to_siteblog_and_delete	2000-01-01 00:00:00+00
-832	oswiadczenia	0001_add_export_task_model	2000-01-01 00:00:00+00
-833	oswiadczenia	0002_add_offset_limit	2000-01-01 00:00:00+00
-834	oswiadczenia	0003_fix_export_format_max_length	2000-01-01 00:00:00+00
-835	oswiadczenia	0004_add_przypieta_filter	2000-01-01 00:00:00+00
-1122	bpp	0480_cerif_mapowania_slownikow	2000-01-01 00:00:00+00
-1123	bpp	0481_uczelnia_eksport_cerif_osoby	2000-01-01 00:00:00+00
-1124	bpp	0482_alter_jednostka_ror_id_alter_uczelnia_ror_id	2000-01-01 00:00:00+00
-1125	bpp	0483_cerif_znak_towarowy	2000-01-01 00:00:00+00
-1126	bpp	0484_cerif_walidacja_ror	2000-01-01 00:00:00+00
-1127	oauth2_provider	0015_refreshtoken_token_checksum	2000-01-01 00:00:00+00
-1128	oauth2_provider	0016_alter_devicegrant_scope	2000-01-01 00:00:00+00
-1129	oauth2_provider	0017_application_dcr_created	2000-01-01 00:00:00+00
-1131	oauth2_provider	0019_application_registration_source	2000-01-01 00:00:00+00
-1132	oauth2_provider	0020_cimd_application_fields	2000-01-01 00:00:00+00
-114	bpp	0037_auto_20160124_1336	2000-01-01 00:00:00+00
-836	oswiadczenia	0005_migrate_template_to_dbtemplate	2000-01-01 00:00:00+00
-837	password_policies	0001_initial	2000-01-01 00:00:00+00
-1208	deduplikator_autorow	0013_okres_skanu	2000-01-01 00:00:00+00
-1209	ewaluacja_metryki	0014_status_generowania_per_okres	2000-01-01 00:00:00+00
-1210	oswiadczenia	0006_oswiadczenie_lata_z_okresu	2000-01-01 00:00:00+00
-1211	oswiadczenia	0007_szablon_oswiadczenia_2026_2030	2000-01-01 00:00:00+00
-1212	snapshot_odpiec	0003_snapshot_okres_ewaluacji	2000-01-01 00:00:00+00
 \.
 
 
