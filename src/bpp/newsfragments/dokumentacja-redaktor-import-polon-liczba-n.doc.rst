@@ -1,1 +1,0 @@
-Dokumentacja dla redaktorów: nowa strona „Import danych z POL-on i liczba N” ze zrzutami ekranu — eksport z POL-on, podgląd i zapis importu, komunikaty błędów, obliczanie liczby N i różnice względem SEDN.

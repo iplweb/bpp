@@ -1,1 +1,0 @@
-Podbito django-denorm-iplweb do 1.16.0: restart lub krótka niedostępność bazy danych nie generuje już błędów w zadaniach denorm, a demon ``denorm_queue`` zgłasza do Rollbara dopiero niedostępność dłuższą niż 15 minut (potem co 30 minut).
