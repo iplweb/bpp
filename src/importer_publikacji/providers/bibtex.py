@@ -4,6 +4,7 @@ import re
 import bibtexparser
 from bibtexparser.middlewares import NormalizeFieldKeys
 from bibtexparser.model import Entry, ParsingFailedBlock
+from pylatexenc.latex2text import LatexNodes2Text
 
 from bpp.util import zaloguj_polkniety_wyjatek
 
@@ -170,7 +171,7 @@ class BibTeXProvider(DataProvider):
         entry = library.entries[0]
         fields = entry.fields_dict
 
-        title = _get_field(fields, "title", "")
+        title = _clean_latex(_get_field(fields, "title", ""))
         if not title:
             return None
 
@@ -181,7 +182,7 @@ class BibTeXProvider(DataProvider):
 
         keywords_raw = _get_field(fields, "keywords", "")
         keywords = (
-            [k.strip() for k in keywords_raw.split(",") if k.strip()]
+            [_clean_latex(k) for k in keywords_raw.split(",") if k.strip()]
             if keywords_raw
             else []
         )
@@ -199,8 +200,8 @@ class BibTeXProvider(DataProvider):
         filing_date = None
         if bibtex_type == "patent":
             patent_number = _get_field(fields, "number", "") or None
-            patent_holder = _clean_latex(_get_field(fields, "holder", "")) or None
-            jurisdiction = _get_field(fields, "location", "") or None
+            patent_holder = _clean_optional(_get_field(fields, "holder", ""))
+            jurisdiction = _clean_optional(_get_field(fields, "location", ""))
             patent_type = _get_field(fields, "type", "") or None
             filing_date = _parse_bibtex_date(_get_field(fields, "date", ""))
 
@@ -211,16 +212,15 @@ class BibTeXProvider(DataProvider):
             year=year,
             authors=authors,
             source_title=(
-                _get_field(fields, "journal", "")
-                or _get_field(fields, "booktitle", "")
-                or None
+                _clean_optional(_get_field(fields, "journal", ""))
+                or _clean_optional(_get_field(fields, "booktitle", ""))
             ),
             issn=_get_field(fields, "issn", "") or None,
             isbn=_get_field(fields, "isbn", "") or None,
-            publisher=_get_field(fields, "publisher", "") or None,
+            publisher=_clean_optional(_get_field(fields, "publisher", "")),
             publication_type=publication_type,
             language=_get_field(fields, "language", "") or None,
-            abstract=_get_field(fields, "abstract", "") or None,
+            abstract=_clean_optional(_get_field(fields, "abstract", "")),
             volume=_get_field(fields, "volume", "") or None,
             issue=_get_field(fields, "number", "") or None,
             pages=pages or None,
@@ -281,15 +281,49 @@ def _parse_authors(author_str: str) -> list[dict]:
     return authors
 
 
+# Konwerter LaTeX -> Unicode. ``pylatexenc`` jest juz zainstalowany jako
+# zaleznosc ``bibtexparser`` (2.x uzywa go we wlasnym middleware'ze
+# ``LatexDecodingMiddleware``), wiec nie dokladamy nowej paczki.
+# ``math_mode="verbatim"`` zostawia wzory ``$...$`` nietkniete;
+# ``strict_latex_spaces`` nie zjada spacji po makrach typu ``\L``.
+_LATEX_TO_TEXT = LatexNodes2Text(math_mode="verbatim", strict_latex_spaces=True)
+
+# Nieescapowane ``%`` i ``&`` sa w realnych eksportach (WoS, Scopus)
+# zwyklymi znakami ("50% of patients", "Smith & Jones"), a dla LaTeX-a to
+# odpowiednio komentarz (ucina reszte pola) i separator kolumn tabeli.
+_UNESCAPED_SPECIAL = re.compile(r"(?<!\\)([%&])")
+
+
 def _clean_latex(text: str) -> str:
-    """Usuń proste polecenia LaTeX z tekstu."""
-    # Usuń klamry
-    text = text.replace("{", "").replace("}", "")
-    # Usuń \~ \' \" itp.
-    text = re.sub(r"\\[`'^\"~=.uvHtcdbr]", "", text)
-    # Usuń \command z jednym argumentem
-    text = re.sub(r"\\[a-zA-Z]+\s*", "", text)
-    return text.strip()
+    r"""Zamien znaczniki LaTeX z pola BibTeX na zwykly tekst Unicode.
+
+    Obsluguje m.in. (Freshdesk #458):
+
+    - klamry chroniace wielkie litery: ``{U}kraine`` -> ``Ukraine``,
+    - cudzyslowy LaTeX-a (dwa grawisy ... dwa apostrofy) -> ``“tekst”``
+      (typograficzne cudzyslowy angielskie; neutralne wzgledem jezyka
+      tekstu, a niosace te sama informacje co znacznik LaTeX-owy),
+    - polpauze i pauze: ``--`` -> ``–``, ``---`` -> ``—``,
+    - akcenty i znaki diakrytyczne: ``{\k a}`` -> ``ą``, ``{\l}`` -> ``ł``,
+      ``\'{n}`` -> ``ń``, ``\.{z}`` -> ``ż``, ``\"{o}`` -> ``ö``,
+    - proste makra formatujace (``\textit{x}``, ``\emph{x}``) -> ``x``,
+    - escapowane znaki specjalne: ``\%``, ``\&``, ``\_`` itd.
+
+    Wzory matematyczne ``$...$`` zostaja bez zmian. Bialy znak (w tym
+    twarda spacja z ``~`` i lamanie wierszy) jest sprowadzany do
+    pojedynczych spacji, a miekki dywiz ``\-`` usuwany.
+    """
+    if not text:
+        return ""
+    text = _UNESCAPED_SPECIAL.sub(r"\\\1", text)
+    text = _LATEX_TO_TEXT.latex_to_text(text)
+    text = text.replace("\xad", "")
+    return " ".join(text.split())
+
+
+def _clean_optional(text: str) -> str | None:
+    """``_clean_latex`` dla pol opcjonalnych: pusty wynik -> ``None``."""
+    return _clean_latex(text) or None
 
 
 def _parse_year(year_str: str) -> int | None:
