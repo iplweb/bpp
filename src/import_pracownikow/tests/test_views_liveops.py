@@ -408,6 +408,7 @@ def test_importpracownikow_results_renderuje_liste_modyfikacji(
         owner=admin_user,
         finished_successfully=True,
         stan=ImportPracownikow.STAN_ZINTEGROWANY,
+        plik_xls="protected/import_pracownikow/kadry.xlsx",
     )
     autor = baker.make(Autor, nazwisko="Testowy", imiona="Jan")
     jednostka = baker.make(Jednostka, nazwa="Testowa Jednostka", skrot="Test. Jedn.")
@@ -425,7 +426,8 @@ def test_importpracownikow_results_renderuje_liste_modyfikacji(
     assert resp.status_code == 200
     content = resp.content.decode()
     assert "Lista modyfikacji" in content
-    assert imp.plik_xls.name in content
+    assert "kadry.xlsx" in content
+    assert "protected/import_pracownikow" not in content
 
 
 @pytest.mark.django_db
@@ -670,6 +672,8 @@ def test_panel_wyniku_pelny_sukces_jest_zielony(admin_user):
     )
     assert "panel callout success" in html
     assert "częściowo" not in html
+    # bez spacji przed kropką („5 .")
+    assert "Zintegrowano wierszy: <strong>5</strong>." in html
     # „Zobacz szczegóły" i „Log zmian" w jednej linii (button-group).
     assert "button-group" in html
     assert "Zobacz szczegóły" in html

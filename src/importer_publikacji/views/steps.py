@@ -240,15 +240,27 @@ def _source_initial_from_session(session):
     return initial
 
 
+def _porownaj_zrodlo_sesji(session):
+    """Dopasuj źródło sesji: ISSN/e-ISSN ma pierwszeństwo przed tytułem (FD#451).
+
+    Zwraca ``None``, gdy dane nie mają ani tytułu źródła, ani ISSN-u.
+    """
+    nd = session.normalized_data or {}
+    source_title = nd.get("source_title")
+    issn = nd.get("issn")
+    e_issn = nd.get("e_issn")
+    if not (source_title or issn or e_issn):
+        return None
+    return Komparator.porownaj_zrodlo(source_title, issn=issn, e_issn=e_issn)
+
+
 def _source_initial_auto_match(session):
     """Auto-matching źródła i wydawcy z normalized_data."""
     initial = {}
     nd = session.normalized_data
-    source_title = nd.get("source_title")
-    if source_title:
-        src = Komparator.porownaj_container_title(source_title)
-        if src.rekord_po_stronie_bpp:
-            initial["zrodlo"] = src.rekord_po_stronie_bpp.pk
+    src = _porownaj_zrodlo_sesji(session)
+    if src is not None and src.rekord_po_stronie_bpp:
+        initial["zrodlo"] = src.rekord_po_stronie_bpp.pk
 
     publisher = nd.get("publisher")
     if publisher:
@@ -263,12 +275,7 @@ def _source_initial_auto_match(session):
 def _ostrzez_o_duplikatach_zrodla(request, session):
     """Po auto-matchu źródła odeślij do deduplikatora, jeśli dopasowanie
     zablokowały zduplikowane źródła (ta sama nazwa, różne ISSN)."""
-    source_title = (session.normalized_data or {}).get("source_title")
-    if not source_title:
-        return
-    ostrzez_o_zduplikowanych_zrodlach(
-        request, Komparator.porownaj_container_title(source_title)
-    )
+    ostrzez_o_zduplikowanych_zrodlach(request, _porownaj_zrodlo_sesji(session))
 
 
 def _source_context(request, session, form=None):

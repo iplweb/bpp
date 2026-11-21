@@ -89,6 +89,29 @@ def test_zapytanie_view_renders_radio_buttons(superuser_client):
 
 
 @pytest.mark.django_db
+def test_zapytanie_view_ikony_modeli(superuser_client):
+    """Rekord ma ikonę dokumentu, Autor — osoby (wcześniej oba „torso",
+    bo szablon czytał nieistniejące ``radio.choice_value``)."""
+    html = superuser_client.get(reverse(URL)).content.decode("utf-8")
+
+    def etykieta(model):
+        return html.split(f'value="{model}"')[1].split("</label>")[0]
+
+    assert "fi-page-multiple" in etykieta("rekord")
+    assert "fi-torso" not in etykieta("rekord")
+    assert "fi-torso" in etykieta("autor")
+
+
+@pytest.mark.django_db
+def test_zapytanie_view_polskie_znaki(superuser_client):
+    html = superuser_client.get(reverse(URL)).content.decode("utf-8")
+    for tekst in ("Podgląd technologiczny", "Wyjaśnij liczby", "Historia zapytań"):
+        assert tekst in html
+    for tekst in ("Podglad", "Wyjasnij", "Wyczysc"):
+        assert tekst not in html
+
+
+@pytest.mark.django_db
 def test_zapytanie_query_autor_matches(superuser_client):
     baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
     baker.make("bpp.Autor", nazwisko="Nowak", imiona="Anna")
