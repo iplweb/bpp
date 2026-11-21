@@ -123,7 +123,7 @@ def _liczba_w_autorzy_mat(cur, model, pk):
 
 
 @pytest.mark.django_db
-def test_soft_delete_publikacji_znika_z_rekord_mat_restore_wraca():
+def test_soft_delete_publikacji_znika_z_rekord_mat_restore_wraca(typ_odpowiedzialnosci_autor):
     jednostka = baker.make(Jednostka)
     autor = baker.make("bpp.Autor", imiona="Jan", nazwisko="Kowalski")
     wc = baker.make(Wydawnictwo_Ciagle, szczegoly="sz", uwagi="u")
@@ -157,7 +157,7 @@ def test_soft_delete_publikacji_znika_z_rekord_mat_restore_wraca():
 
 
 @pytest.mark.django_db
-def test_edycja_autorstwa_publikacji_z_kosza_nie_wraca_do_autorzy_mat():
+def test_edycja_autorstwa_publikacji_z_kosza_nie_wraca_do_autorzy_mat(typ_odpowiedzialnosci_autor):
     """Trigger tabeli ``*_autor`` upsertuje z widoku ``*_autorzy`` — a ten
     (``0513``) odcina autorstwa publikacji z kosza. Zapis takiego autorstwa
     (np. przez ``all_objects``) nie może go wskrzesić w cache."""
