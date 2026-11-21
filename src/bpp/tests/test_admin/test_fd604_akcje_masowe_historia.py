@@ -1,6 +1,7 @@
 """FD#604: akcje masowe admina zmieniające dane hurtem zostawiają ślad
 w „Historii” rekordu (``LogEntry``; dla autorów także wersje reversion)."""
 
+from datetime import timedelta
 from unittest import mock
 
 import pytest
@@ -12,6 +13,7 @@ from django.contrib.messages.storage.fallback import FallbackStorage
 from django.db import connection, transaction
 from django.test import RequestFactory
 from django.test.utils import CaptureQueriesContext
+from django.utils import timezone
 from model_bakery import baker
 from reversion.models import Version
 
@@ -148,9 +150,10 @@ def test_widocznosc_jednostki_ranking_stala_liczba_zapytan(
             _post_akcji(
                 admin_client, URL_AUTORA, "ustaw_pokazuj_false", [a.pk for a in autorzy]
             )
-        assert LogEntry.objects.filter(
-            object_id__in=[str(a.pk) for a in autorzy]
-        ).count() == n
+        assert (
+            LogEntry.objects.filter(object_id__in=[str(a.pk) for a in autorzy]).count()
+            == n
+        )
         return len(ctx.captured_queries)
 
     zmierz(1)  # rozgrzewka: sesja, cache ContentType itp.
@@ -289,9 +292,10 @@ def test_status_korekty_stala_liczba_zapytan(
         )
         with CaptureQueriesContext(connection) as ctx:
             _post_akcji(admin_client, url, "ustaw_po_korekcie", [r.pk for r in rekordy])
-        assert LogEntry.objects.filter(
-            object_id__in=[str(r.pk) for r in rekordy]
-        ).count() == n
+        assert (
+            LogEntry.objects.filter(object_id__in=[str(r.pk) for r in rekordy]).count()
+            == n
+        )
         return len(ctx.captured_queries)
 
     zmierz(1)  # rozgrzewka
@@ -355,9 +359,59 @@ def test_status_korekty_powyzej_limitu_autorow_przechodzi_w_partiach(
     for rekord in rekordy:
         rekord.refresh_from_db()
         assert rekord.status_korekty == po_korekcie
-    assert LogEntry.objects.filter(
-        object_id__in=[str(r.pk) for r in rekordy],
-        change_message="Ustawiono status korekty: po korekcie (akcja masowa)",
-    ).count() == 5
+    assert (
+        LogEntry.objects.filter(
+            object_id__in=[str(r.pk) for r in rekordy],
+            change_message="Ustawiono status korekty: po korekcie (akcja masowa)",
+        ).count()
+        == 5
+    )
     komunikaty = [str(m) for m in get_messages(res.wsgi_request)]
     assert komunikaty == ["Ustawiono status 'po korekcie' dla 5 rekordów"]
+
+
+def test_object_repr_publikacji_z_tytulu_oryginalnego():
+    """Akcja statusu ładuje do ``object_repr`` tylko ``tytul_oryginalny`` —
+    to musi być pole, którego używa ``__str__`` każdego z tych modeli."""
+    from bpp.models.abstract.records import Wydawnictwo_Baza
+
+    for model, _url in PUBLIKACJE:
+        assert model.__str__ is Wydawnictwo_Baza.__str__
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("model,url", PUBLIKACJE)
+def test_status_korekty_aktualizuje_ostatnio_zmieniony(
+    admin_client, przed_korekta, po_korekcie, model, url
+):
+    rekord = baker.make(model, status_korekty=przed_korekta)
+    model.objects.filter(pk=rekord.pk).update(
+        ostatnio_zmieniony=timezone.now() - timedelta(days=30)
+    )
+    bez_zmian = baker.make(model, status_korekty=po_korekcie)
+    model.objects.filter(pk=bez_zmian.pk).update(
+        ostatnio_zmieniony=timezone.now() - timedelta(days=30)
+    )
+    przed = timezone.now()
+
+    _post_akcji(admin_client, url, "ustaw_po_korekcie", [rekord.pk, bez_zmian.pk])
+
+    rekord.refresh_from_db()
+    bez_zmian.refresh_from_db()
+    assert rekord.ostatnio_zmieniony >= przed
+    # Rekord, w którym nic się nie zmieniło, zachowuje stary znacznik.
+    assert bez_zmian.ostatnio_zmieniony < przed
+
+
+@pytest.mark.django_db
+def test_widocznosc_aktualizuje_ostatnio_zmieniony_autora(admin_client):
+    autor = baker.make(Autor)
+    Autor.objects.filter(pk=autor.pk).update(
+        ostatnio_zmieniony=timezone.now() - timedelta(days=30)
+    )
+    przed = timezone.now()
+
+    _post_akcji(admin_client, URL_AUTORA, "ustaw_pokazuj_false", [autor.pk])
+
+    autor.refresh_from_db()
+    assert autor.ostatnio_zmieniony >= przed

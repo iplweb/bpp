@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.contrib.admin.models import CHANGE, LogEntry
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
+from django.utils import timezone
 from django.utils.translation import ngettext
 
 from bpp.admin.helpers.pbn_api.gui import (
@@ -60,7 +61,9 @@ def _zapisz_logentry(user_id, model, obiekty, komentarz):
     )
 
 
-def zmien_hurtowo_z_historia(request, queryset, zmiany, komentarz, select_related=()):
+def zmien_hurtowo_z_historia(
+    request, queryset, zmiany, komentarz, select_related=(), pola_repr=None
+):
     """Ustaw ``zmiany`` (pole → wartość) w rekordach ``queryset`` jednym
     ``UPDATE`` i zostaw po tym ślad w „Historii” każdego zmienionego rekordu.
 
@@ -77,9 +80,16 @@ def zmien_hurtowo_z_historia(request, queryset, zmiany, komentarz, select_relate
       poczatkowe``) i „po” w jednej rewizji — zmianę da się cofnąć,
     * publiczny cache jest unieważniany raz, po COMMIT.
 
+    * pola ``auto_now`` (``ostatnio_zmieniony``), które ``update()`` pomija,
+      dostają bieżący czas — synchronizacja przyrostowa przez API
+      (``?ostatnio_zmieniony_after=``) widzi zmianę.
+
     Liczba zapytań nie zależy od liczby rekordów (poza partiami INSERT
     ``LogEntry`` po ``PARTIA_LOGENTRY``). ``select_related`` — relacje
-    potrzebne do ``__str__`` (``object_repr``).
+    potrzebne do ``__str__`` (``object_repr``). ``pola_repr`` — dla modeli
+    bez wersji: jedyne pola potrzebne do ``__str__``; wtedy do
+    ``object_repr`` nie ładuje się pełnych rekordów (przy dziesiątkach
+    tysięcy publikacji to istotne).
 
     Zwraca liczbę zmienionych rekordów albo ``None``, gdy rekordów do
     zmiany jest więcej niż ``limit_akcji_masowej(model)`` (wtedy nic nie
@@ -106,11 +116,23 @@ def zmien_hurtowo_z_historia(request, queryset, zmiany, komentarz, select_relate
             follow = reversion.revisions._get_options(model).follow
         rewizja = reversion.create_revision() if wersjonowany else nullcontext()
         with rewizja:
-            updated = model._default_manager.filter(pk__in=pks).update(**zmiany)
+            # ``update()`` nie ustawia pól ``auto_now``. Tylko w wartościach,
+            # nie w ``exclude`` powyżej — inaczej każdy rekord byłby „zmieniony”.
+            teraz = timezone.now()
+            auto_now = {
+                pole.name: teraz
+                for pole in model._meta.concrete_fields
+                if getattr(pole, "auto_now", False) and pole.name not in zmiany
+            }
+            updated = model._default_manager.filter(pk__in=pks).update(
+                **zmiany, **auto_now
+            )
+            obiekty = model._default_manager.filter(pk__in=pks)
+            if pola_repr is not None and not wersjonowany:
+                # Wersje potrzebują pełnych rekordów; sam ``object_repr`` nie.
+                obiekty = obiekty.only("pk", *pola_repr)
             obiekty = list(
-                model._default_manager.filter(pk__in=pks)
-                .select_related(*select_related)
-                .prefetch_related(*follow)
+                obiekty.select_related(*select_related).prefetch_related(*follow)
             )
             if wersjonowany:
                 for obiekt in obiekty:
@@ -146,6 +168,8 @@ def ustaw_status(request, queryset, nazwa_statusu):
         queryset,
         {"status_korekty": status},
         f"Ustawiono status korekty: {nazwa_statusu} (akcja masowa)",
+        # ``Wydawnictwo_Baza.__str__`` → ``tytul_oryginalny``.
+        pola_repr=("tytul_oryginalny",),
     )
 
 
