@@ -13,6 +13,11 @@ CLEANUP_ORDER = (
     "ewaluacja_metryki.MetrykaAutora",
     "ewaluacja_liczba_n.IloscUdzialowDlaAutoraZaCalosc",
     "ewaluacja_liczba_n.IloscUdzialowDlaAutoraZaRok",
+    # Zgloszenia publikacji: autor zgloszenia ma PROTECT na Autor/Jednostka,
+    # wiec musi zniknac przed nimi; zgloszenie wskazuje prace przez
+    # GenericFK / SET_NULL, wiec moze isc pierwsze.
+    "zglos_publikacje.Zgloszenie_Publikacji_Autor",
+    "zglos_publikacje.Zgloszenie_Publikacji",
     # Najpierw M2M-through:
     "bpp.Wydawnictwo_Ciagle_Autor",
     "bpp.Wydawnictwo_Zwarte_Autor",
