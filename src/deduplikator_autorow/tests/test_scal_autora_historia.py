@@ -9,9 +9,7 @@ from deduplikator_autorow.utils.merge import scal_autora
 
 
 def _wpisy(model_name, pk):
-    return LogEntry.objects.filter(
-        content_type__model=model_name, object_id=str(pk)
-    )
+    return LogEntry.objects.filter(content_type__model=model_name, object_id=str(pk))
 
 
 @pytest.mark.django_db
