@@ -87,6 +87,7 @@ WYKAZ_DEMO_WIERSZE = [
     (201001, "Acta Wiedźmińska", "6746-8071", 100, "filozofia, nauki teologiczne"),
 ]
 DEMO_USER_REDAKTOR = "vesemir"  # demo editor: is_staff + "wprowadzanie danych"
+DEMO_USER_ADMIN = "regis"  # demo superuser for administrator pages
 # The fake POL-on export of the demo university (docs/deweloper/dane-demo.md,
 # "Plik POL-on do importu"); generate it with
 # `manage.py generuj_plik_polon_demo --out <dir>` and point this at it.
@@ -4809,6 +4810,261 @@ def optymalizacja_ewaluacji(page: Page, base: str, out: Path) -> None:
     red.context.close()
 
 
+UCZELNIA_ZMIANA = "/admin/bpp/uczelnia/"
+
+
+def otworz_uczelnie(page: Page, base: str) -> None:
+    """The university change form (the demo DB has exactly one)."""
+    page.goto(f"{base}{UCZELNIA_ZMIANA}")
+    page.wait_for_load_state("networkidle")
+    page.locator("#result_list a[href*='/change/']").first.click()
+    page.wait_for_load_state("networkidle")
+
+
+def fieldset_shot(page: Page, path: Path, legend: str, below: float = 20) -> None:
+    """One collapsible fieldset of a Grappelli form, by its heading."""
+    box = page.evaluate(
+        """legend => {
+        const fs = [...document.querySelectorAll('fieldset.grp-module')].find(
+            f => f.querySelector(':scope > h2')?.textContent.trim() === legend);
+        const r = fs.getBoundingClientRect();
+        return {y: r.top + scrollY, height: r.height}; }""",
+        legend,
+    )
+    shot(page, path, box["y"] - 16, box["height"] + 16 + below)
+
+
+def konfiguracja_pbn(page: Page, base: str, out: Path) -> None:
+    """docs/administrator/konfiguracja-pbn.md: the "PBN API" section of the university, menu "autoryzuj PBN API"."""
+    adm = new_session(page, base, DEMO_USER_ADMIN)
+
+    # 1. Uczelnia form, "PBN API" section (fake app name and token)
+    otworz_uczelnie(adm, base)
+    mark(
+        adm,
+        [
+            {
+                "sel": "label[for=id_pbn_integracja]",
+                "arrow": "right",
+                "label": "1. włącz integrację",
+                "dx": 560,
+                "dy": -40,
+            },
+            {
+                "sel": "#id_pbn_app_name",
+                "arrow": "right",
+                "label": "2. nazwa i token",
+                "dx": -70,
+                "dy": 0,
+            },
+            {"sel": "#id_pbn_app_token"},
+            {
+                "sel": "#id_pbn_api_user",
+                "arrow": "right",
+                "label": "3. konto do pracy w tle",
+                "dy": -50,
+            },
+        ],
+    )
+    fieldset_shot(adm, out / "01-sekcja-pbn-api.png", "PBN API")
+
+    # 2. top bar on the main page: "PBN" -> "autoryzuj PBN API"
+    adm.goto(f"{base}/")
+    adm.wait_for_load_state("networkidle")
+    li = open_top_menu(adm, "fi-link")
+    mark(
+        adm,
+        [
+            {"sel": f"{li} > a"},
+            {
+                "sel": f"{li} a[href*='authorize']",
+                "arrow": "left",
+                "label": "PBN → autoryzuj PBN API",
+                "dx": -20,
+                "dy": 190,
+            },
+        ],
+    )
+    shot(
+        adm,
+        out / "02-menu-autoryzuj.png",
+        0,
+        bottom_of(adm, f"{li} .column-1 li:last-child", 2),
+    )
+    adm.context.close()
+
+
+def integracja_dspace(page: Page, base: str, out: Path) -> None:
+    """docs/administrator/integracja-dspace.md: the "DSpace" section of the university, adding a collection mapping."""
+    adm = new_session(page, base, DEMO_USER_ADMIN)
+
+    # 1. Uczelnia form, "DSpace" section
+    otworz_uczelnie(adm, base)
+    mark(
+        adm,
+        [
+            {
+                "sel": "label[for=id_dspace_aktywny]",
+                "arrow": "right",
+                "label": "1. włącz eksport",
+                "dx": 350,
+                "dy": -40,
+            },
+            {
+                "sel": "#id_dspace_api_endpoint",
+                "arrow": "right",
+                "label": "2. adres i konto API",
+                "dx": -100,
+            },
+            {"sel": "#id_dspace_api_username"},
+            {"sel": "#id_dspace_api_password"},
+        ],
+    )
+    fieldset_shot(adm, out / "01-sekcja-dspace.png", "DSpace")
+
+    # 2. "Dodaj mapowanie DSpace": no DSpace behind the demo, so the live
+    # collection list fails and the field stays a plain UUID input.
+    adm.goto(f"{base}/admin/dspace_api/mapowanie_dspace/add/")
+    adm.wait_for_load_state("networkidle")
+    status = ".dspace-collection-picker-status"
+    adm.wait_for_function(
+        "s => { const e = document.querySelector(s);"
+        " return e && e.textContent && !e.textContent.startsWith('Pobieranie'); }",
+        arg=status,
+        timeout=30000,
+    )
+    select2(adm, "#id_charakter_formalny", "Artykuł w czasopismie")
+    adm.fill("#id_collection_uuid", "8f0c1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b")
+    mark(
+        adm,
+        [
+            {
+                "sel": "#id_charakter_formalny + .select2",
+                "arrow": "right",
+                "label": "1. charakter formalny",
+                "dx": -100,
+            },
+            {
+                "sel": "#id_collection_uuid",
+                "arrow": "below",
+                "label": "2. UUID kolekcji — wpisany ręcznie",
+                "dx": 120,
+                "dy": -10,
+            },
+            {
+                "sel": ".dspace-collection-picker-status",
+            },
+        ],
+    )
+    shot(adm, out / "02-mapowanie-dodaj.png", 0, bottom_of(adm, "form fieldset", 90))
+    adm.context.close()
+
+
+def eksport_cerif(page: Page, base: str, out: Path) -> None:
+    """docs/administrator/eksport-cerif.md: the CERIF/OpenAIRE section of the university."""
+    adm = new_session(page, base, DEMO_USER_ADMIN)
+    otworz_uczelnie(adm, base)
+    mark(
+        adm,
+        [
+            {
+                "sel": "label[for=id_eksport_cerif_wlaczony]",
+                "arrow": "right",
+                "label": "1. główny przełącznik",
+                "dx": 410,
+                "dy": -40,
+            },
+            {
+                "sel": "label[for=id_eksport_cerif_osoby]",
+                "arrow": "right",
+                "label": "2. dane osób (RODO)",
+                "dx": 420,
+                "dy": -40,
+            },
+            {
+                "sel": "#id_ror_id",
+                "arrow": "right",
+                "label": "3. ROR uczelni",
+                "dx": -100,
+                "dy": -40,
+            },
+        ],
+    )
+    fieldset_shot(
+        adm, out / "01-sekcja-cerif.png", "Eksport CERIF / OpenAIRE (/cerif-oai/)"
+    )
+    adm.context.close()
+
+
+def grupy_uprawnien(page: Page, base: str, out: Path) -> None:
+    """docs/administrator/grupy-uprawnien.md: Administracja -> Użytkownicy, the group column and the "grupy" filter."""
+    adm = new_session(page, base, DEMO_USER_ADMIN)
+    adm.goto(f"{base}/admin/bpp/bppuser/")
+    adm.wait_for_load_state("networkidle")
+    w = VIEWPORT["width"]
+
+    # 1. the list: "Lista grup" column (the table is wider than the window)
+    mark(
+        adm,
+        [
+            {"sel": "th.column-lista_grup"},
+            {"sel": "th.column-is_superuser"},
+            {
+                "sel": "#result_list tbody tr:nth-child(5) td.field-lista_grup",
+                "arrow": "below",
+                "label": "grupy konta",
+                "dx": -180,
+                "dy": -20,
+            },
+            {
+                "sel": "#result_list tbody tr:nth-child(4) td.field-is_superuser",
+                "arrow": "below",
+                "label": "superużytkownik",
+                "dx": -170,
+                "dy": 40,
+            },
+        ],
+    )
+    tabela = page_box(adm, "#result_list")
+    adm.evaluate("window.scrollTo(0, 0)")
+    szer = max(w, tabela["x"] + tabela["width"] + 40)
+    adm.screenshot(
+        path=out / "01-lista-uzytkownikow.png",
+        full_page=True,
+        clip={
+            "x": szer - w,
+            "y": 0,
+            "width": w,
+            "height": bottom_of(adm, "#result_list", 140),
+        },
+    )
+
+    # 2. filter panel, "grupy" expanded
+    adm.reload()
+    adm.wait_for_load_state("networkidle")
+    adm.click("#filter-panel-toggle")
+    adm.wait_for_timeout(800)
+    adm.locator(".filter-title", has_text="grupy").click()
+    adm.wait_for_timeout(800)
+    mark(
+        adm,
+        [
+            {
+                "sel": ".filter-group",
+                "text": "grupy",
+                "arrow": "left",
+                "label": "członkowie wybranej grupy",
+                "dy": -60,
+            },
+        ],
+    )
+    adm.screenshot(
+        path=out / "02-filtr-grupy.png",
+        clip={"x": 0, "y": 0, "width": w, "height": VIEWPORT["height"]},
+    )
+    adm.context.close()
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -5101,6 +5357,10 @@ SCENARIOS = {
         "redaktor/optymalizacja-ewaluacji",
         optymalizacja_ewaluacji,
     ),
+    "konfiguracja-pbn": ("administrator/konfiguracja-pbn", konfiguracja_pbn),
+    "integracja-dspace": ("administrator/integracja-dspace", integracja_dspace),
+    "eksport-cerif": ("administrator/eksport-cerif", eksport_cerif),
+    "grupy-uprawnien": ("administrator/grupy-uprawnien", grupy_uprawnien),
 }
 
 
