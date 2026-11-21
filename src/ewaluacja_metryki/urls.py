@@ -23,6 +23,16 @@ urlpatterns = [
     ),
     path("statystyki/", views.StatystykiView.as_view(), name="statystyki"),
     path(
+        "raport-jednostki/",
+        views.RaportJednostkiListaView.as_view(),
+        name="raport_jednostki_lista",
+    ),
+    path(
+        "raport-jednostki/<int:jednostka_pk>/",
+        views.RaportJednostkiView.as_view(),
+        name="raport_jednostki",
+    ),
+    path(
         "uruchom-generowanie/",
         views.UruchomGenerowanieView.as_view(),
         name="uruchom_generowanie",

@@ -1,0 +1,230 @@
+"""Raport ewaluacyjny jednostki — PDF dla kierownika (FD#617)."""
+
+from decimal import Decimal
+
+import pytest
+from django.urls import reverse
+from model_bakery import baker
+
+from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka, Uczelnia
+from bpp.models.profile import BppUser
+from ewaluacja_metryki import raport_jednostki as r
+from ewaluacja_metryki import raport_jednostki_svg as svg
+from ewaluacja_metryki.models import MetrykaAutora
+from ewaluacja_metryki.raport_jednostki import zbuduj_raport
+
+from .conftest import wybierz_okres
+
+
+def _metryka(jednostka, dyscyplina, okres, nazwisko, slot_max, slot, punkty):
+    autor = baker.make(Autor, nazwisko=nazwisko, imiona="Jan")
+    return MetrykaAutora.objects.create(
+        autor=autor,
+        dyscyplina_naukowa=dyscyplina,
+        jednostka=jednostka,
+        uczelnia=jednostka.uczelnia,
+        okres=okres,
+        slot_maksymalny=Decimal(slot_max),
+        slot_nazbierany=Decimal(slot),
+        punkty_nazbierane=Decimal(punkty),
+        slot_wszystkie=Decimal(slot),
+        punkty_wszystkie=Decimal(punkty),
+        rodzaj_autora="N",
+    )
+
+
+@pytest.fixture
+def klinika(db, okres_2022):
+    uczelnia = baker.make(Uczelnia)
+    jednostka = baker.make(Jednostka, nazwa="Klinika Testowa", uczelnia=uczelnia)
+    dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="nauki medyczne", kod="3.2")
+    metryki = {
+        # pełne sloty, średnia 100 (powyżej mediany) → filar
+        "Filarowa": _metryka(jednostka, dyscyplina, okres_2022, "Filarowa", 4, 4, 400),
+        # pełne sloty, średnia 40 (poniżej mediany) → ilość ponad jakość
+        "Ilosciowa": _metryka(
+            jednostka, dyscyplina, okres_2022, "Ilosciowa", 4, 4, 160
+        ),
+        # 1 z 4 slotów, średnia 140 → dobre prace, niewykorzystane sloty
+        "Potencjalna": _metryka(
+            jednostka, dyscyplina, okres_2022, "Potencjalna", 4, 1, 140
+        ),
+        # 1 z 4 slotów, średnia 20 → wymaga wsparcia
+        "Wsparcie": _metryka(jednostka, dyscyplina, okres_2022, "Wsparcie", 4, 1, 20),
+        # zero prac
+        "Zerowa": _metryka(jednostka, dyscyplina, okres_2022, "Zerowa", 4, 0, 0),
+    }
+    # Metryka innej jednostki tej samej uczelni — nie może trafić do raportu
+    inna = baker.make(Jednostka, nazwa="Inna Klinika", uczelnia=uczelnia)
+    _metryka(inna, dyscyplina, okres_2022, "Obca", 4, 4, 800)
+    return jednostka, dyscyplina, metryki
+
+
+def _wiersz(raport, nazwisko):
+    (grupa,) = raport.grupy
+    return next(w for w in grupa.wiersze if w.autor.nazwisko == nazwisko)
+
+
+@pytest.mark.django_db
+def test_raport_przypisuje_cwiartki_i_statusy(klinika, okres_2022):
+    jednostka, _, _ = klinika
+    raport = zbuduj_raport(jednostka, jednostka.uczelnia, okres_2022)
+
+    (grupa,) = raport.grupy
+    assert {w.autor.nazwisko for w in grupa.wiersze} == {
+        "Filarowa",
+        "Ilosciowa",
+        "Potencjalna",
+        "Wsparcie",
+        "Zerowa",
+    }
+    # mediana średnich osób z pracami: 20, 40, 100, 140 → 70
+    assert grupa.mediana_sredniej == Decimal(70)
+
+    assert _wiersz(raport, "Filarowa").kwadrant == r.KWADRANT_FILAR
+    assert _wiersz(raport, "Ilosciowa").kwadrant == r.KWADRANT_ILOSC
+    assert _wiersz(raport, "Potencjalna").kwadrant == r.KWADRANT_POTENCJAL
+    assert _wiersz(raport, "Wsparcie").kwadrant == r.KWADRANT_WSPARCIE
+    assert _wiersz(raport, "Zerowa").kwadrant == r.KWADRANT_BRAK
+
+    assert _wiersz(raport, "Filarowa").status_wypelnienia == r.DOBRY
+    assert _wiersz(raport, "Wsparcie").status_wypelnienia == r.SLABY
+    assert _wiersz(raport, "Zerowa").status_wypelnienia == r.BRAK
+    assert _wiersz(raport, "Potencjalna").status_jakosci == r.DOBRY
+    assert _wiersz(raport, "Ilosciowa").status_jakosci == r.SLABY
+
+
+@pytest.mark.django_db
+def test_raport_liczy_sumy_i_potencjal(klinika, okres_2022):
+    jednostka, _, _ = klinika
+    (grupa,) = zbuduj_raport(jednostka, jednostka.uczelnia, okres_2022).grupy
+
+    assert grupa.slot_maksymalny == Decimal(20)
+    assert grupa.slot_nazbierany == Decimal(10)
+    assert grupa.wypelnienie == Decimal(50)
+    assert grupa.punkty == Decimal(720)
+    # wolne sloty: 0 + 0 + 3 + 3 + 4 = 10, wartość slotu = mediana 70
+    assert grupa.brakujace_sloty == Decimal(10)
+    assert grupa.potencjal_punktow == Decimal(700)
+    # potencjał zaczyna się od osoby z największą liczbą wolnych slotów
+    assert grupa.wiersze_wg_potencjalu[0].autor.nazwisko == "Zerowa"
+    # lista efektywności: od najwyższej średniej za slot
+    assert [w.autor.nazwisko for w in grupa.wiersze_wg_sredniej][:2] == [
+        "Potencjalna",
+        "Filarowa",
+    ]
+    # średnia uczelni obejmuje też drugą jednostkę: (720 + 800) / (10 + 4)
+    assert grupa.srednia_uczelni == Decimal(1520) / Decimal(14)
+    assert any("wypełnia 50%" in w for w in grupa.wnioski)
+    assert any("bez żadnej pracy" in w for w in grupa.wnioski)
+
+
+@pytest.mark.django_db
+def test_raport_pomija_inne_okresy(klinika, okres_2022, okres_2026):
+    jednostka, _, _ = klinika
+    assert zbuduj_raport(jednostka, jednostka.uczelnia, okres_2026).pusty
+
+
+def _uzytkownik(client, **kwargs):
+    user = baker.make(BppUser, **kwargs)
+    client.force_login(user)
+    return user
+
+
+@pytest.mark.django_db
+def test_raport_wymaga_pelnych_uprawnien(client, klinika):
+    jednostka, _, _ = klinika
+    _uzytkownik(client)
+    for url in (
+        reverse("ewaluacja_metryki:raport_jednostki_lista"),
+        reverse("ewaluacja_metryki:raport_jednostki", args=[jednostka.pk]),
+    ):
+        assert client.get(url).status_code in (302, 403)
+
+
+@pytest.mark.django_db
+def test_raport_html_i_pdf(client, klinika, okres_2022):
+    jednostka, _, _ = klinika
+    _uzytkownik(client, is_superuser=True, is_staff=True)
+    wybierz_okres(client, okres_2022)
+    url = reverse("ewaluacja_metryki:raport_jednostki", args=[jednostka.pk])
+
+    html = client.get(url, {"format": "html"})
+    assert html.status_code == 200
+    tresc = html.content.decode()
+    assert "Klinika Testowa" in tresc
+    assert "Filarowa" in tresc
+    assert "Obca" not in tresc
+    assert "<svg" in tresc
+
+    pdf = client.get(url)
+    assert pdf.status_code == 200
+    assert pdf["Content-Type"] == "application/pdf"
+    assert pdf.content.startswith(b"%PDF")
+    assert "raport_ewaluacyjny_" in pdf["Content-Disposition"]
+
+
+@pytest.mark.django_db
+def test_raport_jednostki_bez_metryk_to_404(client, klinika, okres_2022):
+    jednostka, _, _ = klinika
+    pusta = baker.make(Jednostka, uczelnia=jednostka.uczelnia)
+    _uzytkownik(client, is_superuser=True, is_staff=True)
+    wybierz_okres(client, okres_2022)
+    url = reverse("ewaluacja_metryki:raport_jednostki", args=[pusta.pk])
+    assert client.get(url).status_code == 404
+
+
+@pytest.mark.django_db
+def test_lista_jednostek_do_raportu(client, klinika, okres_2022):
+    jednostka, _, _ = klinika
+    _uzytkownik(client, is_superuser=True, is_staff=True)
+    wybierz_okres(client, okres_2022)
+    res = client.get(reverse("ewaluacja_metryki:raport_jednostki_lista"))
+    assert res.status_code == 200
+    tresc = res.content.decode()
+    assert "Klinika Testowa" in tresc
+    assert reverse("ewaluacja_metryki:raport_jednostki", args=[jednostka.pk]) in tresc
+
+
+def test_pierscien_pelny_czesciowy_i_pusty():
+    assert "<path" not in svg.pierscien(100, "#000", "100%")
+    assert svg.pierscien(100, "#000", "100%").count("<circle") == 2
+    assert "<path" in svg.pierscien(40, "#000", "40%")
+    assert svg.pierscien(0, "#000", "0%").count("<circle") == 1
+
+
+@pytest.mark.django_db
+def test_wykres_babelkowy_escapuje_nazwiska(klinika, okres_2022):
+    jednostka, _, metryki = klinika
+    autor = metryki["Filarowa"].autor
+    autor.nazwisko = "<script>x</script>"
+    autor.save()
+    (grupa,) = zbuduj_raport(jednostka, jednostka.uczelnia, okres_2022).grupy
+    wykres = svg.wykres_babelkowy(grupa)
+    assert "<script>" not in wykres
+    assert "&lt;script&gt;" in wykres
+
+
+def test_rozklad_punktacji_przedzialy_i_slabe_prace():
+    przedzialy, slabe = r.rozklad_punktacji(
+        [
+            (Decimal(1), Decimal(200)),
+            (Decimal(1), Decimal(140)),
+            (Decimal("0.5"), Decimal(120)),  # 100–139
+            (Decimal("0.5"), Decimal(70)),
+            (Decimal(1), Decimal(40)),  # słaba (< 70)
+            (Decimal(1), Decimal(20)),  # słaba
+            (Decimal(1), None),  # brak punktacji → poniżej 40, słaba
+        ]
+    )
+    assert [p.liczba_prac for p in przedzialy] == [1, 1, 1, 1, 1, 2]
+    assert przedzialy[2].sloty == Decimal("0.5")
+    assert sum(p.procent_slotow for p in przedzialy) == Decimal(100)
+    # 3 z 6 slotów to prace poniżej 70 pkt
+    assert slabe == Decimal(50)
+
+
+def test_rozklad_punktacji_pusty():
+    przedzialy, slabe = r.rozklad_punktacji([])
+    assert slabe is None
+    assert all(p.liczba_prac == 0 for p in przedzialy)

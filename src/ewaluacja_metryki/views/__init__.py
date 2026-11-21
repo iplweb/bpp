@@ -20,6 +20,7 @@ from .mixins import (
     ma_uprawnienia_ewaluacji,
 )
 from .pin_unpin import OdepnijDyscyplineView, PrzypnijDyscyplineView
+from .raport_jednostki import RaportJednostkiListaView, RaportJednostkiView
 from .statistics import StatystykiView
 
 __all__ = [
@@ -36,6 +37,9 @@ __all__ = [
     "OdepnijDyscyplineView",
     # Statistics view
     "StatystykiView",
+    # Raport ewaluacyjny jednostki (FD#617)
+    "RaportJednostkiListaView",
+    "RaportJednostkiView",
     # Generation views
     "UruchomGenerowanieView",
     "StatusGenerowaniaView",

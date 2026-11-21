@@ -275,6 +275,50 @@ Każda sekcja ma własny przycisk **„Export XLSX”**.
 
 ![Statystyki globalne i tabela „Top 20 autorów PKDaut/slot” z przyciskiem „Export XLSX”](../images/redaktor/metryki-ewaluacyjne/10-statystyki.png)
 
+## Raport ewaluacyjny jednostki (PDF) {#raport-jednostki}
+
+Raport dla kierownika jednostki (np. kliniki), z którego może on wyciągnąć
+wnioski przed ewaluacją: kto wypełnia sloty, kto pisze lepiej punktowane
+prace, gdzie są wolne sloty i ile punktów można jeszcze zdobyć.
+
+Otwórz menu **ewaluacja → raporty jednostek (PDF)** albo kliknij przycisk
+**„Raporty jednostek (PDF)”** nad tabelą metryk. Na liście są tylko jednostki,
+które mają metryki w wybranym okresie. Przy każdej jednostce są dwa przyciski:
+**„PDF”** pobiera plik, a **„podgląd”** otwiera ten sam raport w przeglądarce.
+Raport jest dostępny dla osób z pełnymi uprawnieniami do ewaluacji (grupa
+„wprowadzanie danych” albo superużytkownik).
+
+Raport zawiera osobną część dla każdej dyscypliny jednostki (średnie za slot
+w różnych dyscyplinach nie są porównywalne). Każda część ma:
+
+- **podsumowanie** — kółko z wypełnieniem slotów całej jednostki, sumę punktów,
+  średnią punktów za slot na tle całej uczelni i szacowany potencjał
+  (wolne sloty × mediana jakości jednostki),
+- **najważniejsze wnioski** — kilka zdań wyliczonych z danych, np. że trzy
+  osoby dają ponad połowę punktów albo że duża część slotów to prace poniżej
+  70 pkt,
+- **kółka dla każdej osoby** — wypełnienie slotów (zielone od 90%, żółte
+  50–89%, czerwone poniżej 50%) i punkty nazbierane (pełne kółko ma osoba
+  z największą liczbą punktów w jednostce) oraz ocenę jakości prac,
+- **wykres bąbelkowy** — w prawo pełniejsze sloty, w górę wyżej punktowane
+  prace, wielkość bąbla to punkty. Linie dzielą osoby na cztery grupy:
+  „Filar jednostki”, „Dobre prace, niewykorzystane sloty”, „Pełne sloty,
+  słabsze prace” i „Wymaga wsparcia”. Granica jakości to mediana osób w tej
+  jednostce, więc ocena jest zeskalowana do realiów jednostki, a nie całej
+  uczelni,
+- **listę efektywności** — osoby od najwyższej średniej punktów za slot,
+  z porównaniem do mediany jednostki (100% = typowa osoba),
+- **strukturę punktacji prac** — jaka część wypełnionych slotów to prace
+  za 200, 140, 100, 70, 40 i mniej punktów,
+- **„Gdzie leży potencjał”** — osoby z największą liczbą wolnych slotów
+  i szacunkiem punktów do zdobycia,
+- **zalecenia wg grup** — co robić z osobami z każdej grupy.
+
+Raport zawiera imienne oceny pracowników — przekazuj go tylko osobom
+uprawnionym. Liczby są tak aktualne jak ostatnie
+[przeliczenie metryk](#przeliczenie-metryk). Raport nie porównuje jeszcze
+wyników z poprzednim okresem.
+
 ## Typowe pytania {#typowe-pytania}
 
 **Dlaczego autor ma średnią 200, a wykorzystanie tylko 38%?**
