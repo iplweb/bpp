@@ -378,6 +378,27 @@ def _zeruj_cache_nazw_dbtemplates():
     invalidate_known_names()
 
 
+@pytest.fixture(autouse=True)
+def _zeruj_cache_swiezosci_formdefaults():
+    """Każdy test zaczyna z zimnym cache „świeżości" django-formdefaults.
+
+    formdefaults odświeża reprezentację formularza w bazie najwyżej raz na
+    60 s na proces (``formdefaults.core._LAST_SNAPSHOT``, klucz =
+    ``full_name`` klasy). Ten znacznik przeżywa rollback / flush bazy
+    między testami: test A renderuje formularz (snapshot + znacznik), teardown
+    testu transakcyjnego wymiata reprezentacje z baseline, a test B w ciągu
+    60 s dostaje świeżo utworzoną, PUSTĄ ``FormRepresentation`` — bo
+    znacznik mówi „świeże", więc pola się nie zapisują (okno „Moje wartości
+    domyślne" bez pól). Pod xdist zależało to od kolejności testów na
+    workerze (PR #1070, shard 7).
+    """
+    from formdefaults import core
+
+    core._LAST_SNAPSHOT.clear()
+    yield
+    core._LAST_SNAPSHOT.clear()
+
+
 # =============================================================================
 # Izolacja pod xdist: neutralizacja WYCIEKŁYCH scommitowanych danych domenowych.
 #
