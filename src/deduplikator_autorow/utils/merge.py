@@ -11,7 +11,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 
 from bpp.models import Autor
-from bpp.models.soft_delete import manager_z_koszem
+from bpp.models.soft_delete import manager_z_koszem, operacja_kosza
 from bpp.util import zaloguj_polkniety_wyjatek
 
 from .analysis import analiza_duplikatow
@@ -319,9 +319,11 @@ def _transfer_simple_authorship(
         ):
             raise KonfliktScalania(f"Nie można scalić autorów: {opis_konfliktu}.")
 
-        # Przemapuj autora
+        # Przemapuj autora. Praca z kosza jest zamrożona w bazie (trigger
+        # kosza) — przepięcie przy scalaniu to świadoma operacja na koszu.
         praca.autor = glowny_autor
-        praca.save()
+        with operacja_kosza():
+            praca.save()
 
         # Dodaj do kolejki PBN — z pominięciem kosza, jak w
         # `_transfer_authorship_record`.

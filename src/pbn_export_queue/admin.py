@@ -89,6 +89,14 @@ class PBN_Export_QueueAdmin(
     ]
 
     def has_delete_permission(self, request, obj=None):
+        # Aktywne zlecenie WYCOFANIA blokuje rekord — nie da się go usunąć
+        # z kolejki (``PBN_Export_Queue.delete``).
+        if (
+            obj is not None
+            and obj.operacja == PBN_Export_Queue.Operacja.WYCOFANIE
+            and obj.wysylke_zakonczono is None
+        ):
+            return False
         if request.user.is_superuser:
             return True
         if obj is not None and obj.zamowil == request.user:
@@ -145,6 +153,13 @@ class PBN_Export_QueueAdmin(
     resend_to_pbn_action.short_description = "Wyślij ponownie"
 
     actions = [resend_to_pbn_action]
+
+    def delete_queryset(self, request, queryset):
+        """Masowe usuwanie pomija aktywne zlecenia wycofania (zostają)."""
+        queryset.exclude(
+            operacja=PBN_Export_Queue.Operacja.WYCOFANIE,
+            wysylke_zakonczono__isnull=True,
+        ).delete()
 
     def save_form(self, request, form, change):
         return form.save(commit=False)

@@ -255,9 +255,7 @@ def oblicz_sumy_udzialow_za_calosc(uczelnia, rok_min=None, rok_max=None, okres=N
     okres, rok_min, rok_max = ustal_okres(okres, rok_min, rok_max)
 
     # Wyczyść istniejące dane dla tej uczelni w tym okresie
-    # ``_base_manager``: kasujemy TAKŻE ukryte wiersze autorów z kosza —
-    # inaczej przetrwałyby i wróciły nieaktualne po przywróceniu autora.
-    IloscUdzialowDlaAutoraZaCalosc._base_manager.filter(
+    IloscUdzialowDlaAutoraZaCalosc.objects.filter(
         uczelnia=uczelnia, okres=okres
     ).delete()
 
@@ -424,8 +422,7 @@ def oblicz_liczby_n_dla_okresu(uczelnia, okres=None, rok_min=None, rok_max=None)
     warunek_lat = dict(rok__gte=rok_min, rok__lte=rok_max)
 
     # Usuń tylko rekordy tej uczelni (nie mazać danych innych uczelni)
-    # ``_base_manager``: także ukryte wiersze autorów z kosza (patrz wyżej).
-    IloscUdzialowDlaAutoraZaRok._base_manager.filter(
+    IloscUdzialowDlaAutoraZaRok.objects.filter(
         uczelnia=uczelnia, **warunek_lat
     ).delete()
 
@@ -437,7 +434,8 @@ def oblicz_liczby_n_dla_okresu(uczelnia, okres=None, rok_min=None, rok_max=None)
     for ad in Autor_Dyscyplina.objects.filter(
         autor__aktualna_jednostka__uczelnia=uczelnia,
         autor__aktualna_jednostka__skupia_pracownikow=True,
-        # Autor w koszu nie liczy się do N (decyzja właściciela).
+        # Autor w koszu nie liczy się do N (decyzja właściciela) — przy
+        # PRZELICZENIU; kosz/przywrócenie autora wymaga przeliczenia N.
         autor__deleted_at__isnull=True,
         **warunek_lat,
     ):

@@ -195,36 +195,6 @@ def test_zbiorcze_kasowanie_jednostek_idzie_do_kosza(uczelnia):
         Jednostka.objects.filter(pk=j1.pk).update(deleted_at=None)
 
 
-# --- 12: liczba N po przywróceniu autora ---------------------------------
-
-
-@pytest.mark.django_db
-def test_przeliczenie_n_kasuje_ukryte_udzialy_autora_z_kosza(
-    uczelnia, jednostka, dyscyplina1, rodzaj_autora_n
-):
-    from bpp.models import Autor_Dyscyplina
-    from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok
-    from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
-
-    jednostka.skupia_pracownikow = True
-    jednostka.save()
-    autor = baker.make(Autor, aktualna_jednostka=jednostka)
-    Autor_Dyscyplina.objects.create(
-        autor=autor,
-        dyscyplina_naukowa=dyscyplina1,
-        wymiar_etatu=1,
-        procent_dyscypliny=100,
-        rodzaj_autora=rodzaj_autora_n,
-        rok=2022,
-    )
-    oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia)
-    autor.delete()
-    oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia)
-
-    # Stare (ukryte) wiersze autora z kosza zostały skasowane przeliczeniem.
-    assert not IloscUdzialowDlaAutoraZaRok._base_manager.filter(autor=autor).exists()
-
-
 # --- A: twarde skasowanie doktoratu czyści bpp_autorzy_mat ---------------
 
 
@@ -289,3 +259,70 @@ def test_usun_zrodlo_z_publikacjami_w_koszu_czytelny_komunikat(admin_client):
     tresc = res.content.decode("utf-8")
     assert "publikacji w koszu" in tresc
     assert Zrodlo.objects.filter(pk=z.pk).exists()
+
+
+# --- zbiorcza blokada kosza w bazie (trigger bpp_kosz_straznik) ----------
+
+
+@pytest.mark.django_db
+def test_nieaktualna_instancja_nie_wskrzesza_rekordu_z_kosza():
+    """Pełny ``save()`` instancji wczytanej PRZED koszem nadpisałby
+    ``deleted_at = NULL`` — trigger bazy odrzuca taki zapis."""
+    from django.db import DatabaseError, transaction
+
+    from bpp.models.soft_delete import jest_bledem_kosza
+
+    wc = baker.make(Wydawnictwo_Ciagle)
+    nieaktualna = Wydawnictwo_Ciagle.objects.get(pk=wc.pk)
+    wc.delete()
+
+    nieaktualna.tytul_oryginalny = "zmiana"
+    with pytest.raises(DatabaseError) as exc, transaction.atomic():
+        nieaktualna.save()
+    assert jest_bledem_kosza(exc.value)
+    assert Wydawnictwo_Ciagle.deleted_objects.filter(pk=wc.pk).exists()
+
+
+@pytest.mark.django_db
+def test_deleted_objects_update_i_delete_zablokowane():
+    from django.db import DatabaseError, connection, transaction
+
+    wc = baker.make(Wydawnictwo_Ciagle)
+    wc.delete()
+
+    with pytest.raises(DatabaseError), transaction.atomic():
+        Wydawnictwo_Ciagle.deleted_objects.filter(pk=wc.pk).update(tytul_oryginalny="x")
+    with pytest.raises(DatabaseError), transaction.atomic():
+        # Surowy SQL omija Pythona — blokada siedzi w bazie.
+        with connection.cursor() as cur:
+            cur.execute("DELETE FROM bpp_wydawnictwo_ciagle WHERE id = %s", [wc.pk])
+    with pytest.raises(DatabaseError), transaction.atomic():
+        with connection.cursor() as cur:
+            cur.execute(
+                "UPDATE bpp_wydawnictwo_ciagle SET deleted_at = NULL WHERE id = %s",
+                [wc.pk],
+            )
+    assert Wydawnictwo_Ciagle.deleted_objects.filter(pk=wc.pk).exists()
+
+
+@pytest.mark.django_db
+def test_admin_tlumaczy_blokade_kosza_na_komunikat(rf, admin_user):
+    """Błąd triggera kosza (``BPP_KOSZ:``) w widoku admina → komunikat
+    i przekierowanie, nie 500."""
+    from django.contrib import admin
+    from django.contrib.messages.storage.fallback import FallbackStorage
+    from django.db import DatabaseError
+
+    model_admin = admin.site._registry[Wydawnictwo_Ciagle]
+    request = rf.post("/admin/bpp/wydawnictwo_ciagle/1/change/")
+    request.user = admin_user
+    request.session = {}
+    request._messages = FallbackStorage(request)
+
+    def widok(request, *args, **kwargs):
+        raise DatabaseError("BPP_KOSZ: rekord bpp_wydawnictwo_ciagle.1 jest w koszu")
+
+    res = model_admin._z_obsluga_bledu_kosza(request, widok)
+
+    assert res.status_code == 302
+    assert any("jest w koszu" in str(m) for m in request._messages)

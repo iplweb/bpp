@@ -4,7 +4,7 @@ Tabele łączące ``*_autor`` NIE mają własnego kosza (decyzja właściciela,
 listopad 2026) — wiersz autorstwa „znika" razem z publikacją. Ta migracja
 robi to samo po stronie SQL dla trzech typów z through-modelem
 (``wydawnictwo_ciagle``, ``wydawnictwo_zwarte``, ``patent``). Doktoraty
-i habilitacje (autor na wierszu publikacji) obsłużyła już ``0510``.
+i habilitacje (autor na wierszu publikacji) obsłużyła już ``0511``.
 
 Trzy kroki:
 
@@ -18,17 +18,17 @@ Trzy kroki:
 
    - publikacja poszła do kosza -> ``DELETE FROM bpp_autorzy_mat`` dla
      wszystkich jej autorstw (obok ``bpp_rekord_mat``, które kasuje już
-     ``0510``);
+     ``0511``);
    - publikacja wróciła z kosza (``OLD.deleted_at IS NOT NULL``) -> upsert
      jej autorstw z widoku z kroku 1.
 
    Zwykła edycja publikacji (``deleted_at`` bez zmian) NIE dotyka
    ``bpp_autorzy_mat`` — koszt triggera się nie zmienia;
 3) bramki WHEN nie trzeba regenerować: ``deleted_at`` tabeli publikacji jest
-   w bramce od ``0510`` (widok ``bpp_<typ>_view``), a kolumny tabel
+   w bramce od ``0511`` (widok ``bpp_<typ>_view``), a kolumny tabel
    ``*_autor`` referowane przez widoki ``*_autorzy`` się nie zmieniają.
 
-Definicje są generowane z introspekcji (jak w ``0432``/``0433``/``0510``),
+Definicje są generowane z introspekcji (jak w ``0432``/``0433``/``0511``),
 a nie przepisane do ``.sql`` — kopia rozjechałaby się przy najbliższej
 zmianie kolumn.
 """
@@ -38,7 +38,7 @@ import importlib
 from django.db import connection, migrations
 
 _p0432 = importlib.import_module("bpp.migrations.0432_cache_trigger_plpgsql")
-_p0510 = importlib.import_module("bpp.migrations.0510_soft_delete_rekord_views")
+_p0510 = importlib.import_module("bpp.migrations.0511_soft_delete_rekord_views")
 
 #: (tabela publikacji, model content_type, tabela through, widok autorzy)
 SITES = [
@@ -139,7 +139,7 @@ def _sprzataj_kosz(cur):
     """Jednorazowe sprzątanie: wiersze ``_mat`` publikacji, które JUŻ są
     w koszu. Na świeżo dodanej kolumnie ``deleted_at`` to no-op; chroni
     przed stanem po migracjach stosowanych etapami (rekord skasowany
-    między ``0509`` a tą migracją zostałby w ``_mat``)."""
+    między ``0510`` a tą migracją zostałby w ``_mat``)."""
     for tabela, model, _through, _widok in SITES:
         for mat, kolumna in (
             ("bpp_rekord_mat", "id"),
@@ -167,7 +167,7 @@ def backward(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0510_soft_delete_rekord_views"),
+        ("bpp", "0511_soft_delete_rekord_views"),
     ]
 
     operations = [

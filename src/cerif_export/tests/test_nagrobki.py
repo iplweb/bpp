@@ -492,3 +492,21 @@ def test_getrecord_z_nagrobkiem_przechodzi_xsd(schemat_koperty, uczelnia):
         metadataPrefix=const.METADATA_PREFIX,
     )
     _zwaliduj(schemat_koperty, korzen)
+
+
+@pytest.mark.django_db
+def test_jednostka_w_koszu_dostaje_nagrobek(uczelnia):
+    """Recenzja: przyrostowy harvest musi dostać nagrobek jednostki z kosza
+    (``nalezace_jednostki`` przez ``global_objects``)."""
+    from model_bakery import baker
+
+    from bpp.models import Jednostka
+    from cerif_export import const
+
+    j = baker.make(Jednostka, uczelnia=uczelnia)
+    provider = rejestr_providerow()[const.SET_ORGUNITS]
+    assert not provider.nagrobki(uczelnia, Jednostka).filter(pk=j.pk).exists()
+
+    j.delete()
+
+    assert provider.nagrobki(uczelnia, Jednostka).filter(pk=j.pk).exists()

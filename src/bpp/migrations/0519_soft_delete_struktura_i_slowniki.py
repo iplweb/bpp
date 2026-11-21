@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('bpp', '0517_softdeletelog'),
+        ('bpp', '0518_softdeletelog'),
     ]
 
     operations = [

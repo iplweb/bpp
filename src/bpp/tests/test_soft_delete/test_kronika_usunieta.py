@@ -1,4 +1,4 @@
-"""Rodzina ``bpp_kronika_*`` została skasowana (migracja ``0513``).
+"""Rodzina ``bpp_kronika_*`` została skasowana (migracja ``0514``).
 
 Siedem martwych widoków, kasowanych jednym cięciem, bo graf zależności
 (``bpp_kronika_view`` <- ``bpp_kronika_all_unsorted_view`` <- pięć liści)
@@ -38,9 +38,9 @@ def test_rodzina_kronika_nie_istnieje():
 
 @pytest.mark.django_db
 # Odtwarza migracje w obie strony; solo ~35-55 s, pod obciążeniem xdist
-# przekraczał globalne `--timeout 90` (por. test_migracja_0510_rewers.py).
+# przekraczał globalne `--timeout 90` (por. test_migracja_0511_rewers.py).
 @pytest.mark.timeout(300)
-def test_0513_odwracalna(bez_reinstalacji_denorma):
+def test_0514_odwracalna(bez_reinstalacji_denorma):
     """``backward`` odtwarza całą siódemkę z sidecara ``.sql``.
 
     Sidecar był generowany maszynowo z ``pg_get_viewdef()``, ale to nie
@@ -49,14 +49,16 @@ def test_0513_odwracalna(bez_reinstalacji_denorma):
     z siebie. Ten test jest jedynym sprawdzeniem tej kolejności.
     """
     try:
-        call_command("migrate", "bpp", "0512", verbosity=0)
+        call_command(
+            "migrate", "bpp", "0513_nowe_sumy_bez_skasowanych_publikacji", verbosity=0
+        )
 
         with connection.cursor() as cur:
             odtworzone = _istniejace(cur)
         brakujace = set(RODZINA) - odtworzone
         assert not brakujace, (
             f"backward nie odtworzyl: {sorted(brakujace)} — sprawdz kolejnosc "
-            f"CREATE VIEW w sidecarze 0513_drop_kronika_views.sql"
+            f"CREATE VIEW w sidecarze 0514_drop_kronika_views.sql"
         )
     finally:
         # ZAWSZE wracamy na szczyt: baza testowa jest wspoldzielona przez

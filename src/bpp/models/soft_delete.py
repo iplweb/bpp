@@ -31,15 +31,17 @@ INWARIANTY:
   i PBN.
 """
 
+import threading
 import uuid
 from collections import defaultdict
+from contextlib import contextmanager
 
 from django.core.exceptions import (
     NON_FIELD_ERRORS,
     FieldDoesNotExist,
     ValidationError,
 )
-from django.db import IntegrityError, models, transaction
+from django.db import IntegrityError, connection, models, transaction
 from django.db.models import ProtectedError
 from django.utils import timezone
 from django_softdelete.managers import (
@@ -65,6 +67,43 @@ NAZWA_RELACJI_AUTORSTW = "autorzy_set"
 #: ``ModelZAdnotacjami`` (``abstract/metadata.py``), więc jedna stała
 #: obsługuje autorstwa (faza 01), publikacje (faza 02) i ``Autor`` (04).
 POLE_ZNACZNIKA_ZMIANY = "ostatnio_zmieniony"
+
+
+_flaga_kosza = threading.local()
+
+
+@contextmanager
+def operacja_kosza():
+    """Zezwolenie bazy na operację kosza (``bpp.kosz_operacja = 'on'``).
+
+    Trigger ``bpp_kosz_straznik`` (migracja ``0522``) zamraża rekordy
+    w koszu i odrzuca każdą zmianę ``deleted_at`` poza tym blokiem. Flagę
+    ustawiają WYŁĄCZNIE ``delete()``/``restore()``/``hard_delete()`` (i testy,
+    które muszą „cofnąć zegar" rekordu w koszu).
+
+    Flaga jest transakcyjna (``set_config(..., true)``) i wyłączana na końcu
+    bloku — nie „przecieka" na resztę transakcji wołającego. Przy wyjątku
+    zdejmuje ją wycofanie savepointu. Zagnieżdżenie: flagę zdejmuje dopiero
+    najbardziej zewnętrzny blok.
+    """
+    glebokosc = getattr(_flaga_kosza, "glebokosc", 0)
+    with transaction.atomic():
+        if glebokosc == 0:
+            with connection.cursor() as cur:
+                cur.execute("SELECT set_config('bpp.kosz_operacja', 'on', true)")
+        _flaga_kosza.glebokosc = glebokosc + 1
+        try:
+            yield
+        finally:
+            _flaga_kosza.glebokosc = glebokosc
+        if glebokosc == 0:
+            with connection.cursor() as cur:
+                cur.execute("SELECT set_config('bpp.kosz_operacja', 'off', true)")
+
+
+def jest_bledem_kosza(exc):
+    """Czy wyjątek bazy pochodzi z triggera ``bpp_kosz_straznik``."""
+    return "BPP_KOSZ:" in str(exc)
 
 
 def dopisz_znacznik_zmiany(instance, update_fields):
@@ -359,7 +398,10 @@ class BppPkPrzedHardDeleteMixin:
 
     def hard_delete(self, *args, **kwargs):
         setattr(self, ATRYBUT_PK_PRZED_HARD_DELETE, self.pk)
-        return super().hard_delete(*args, **kwargs)
+        # Fizyczne usunięcie (także rekordu z kosza) — jedyna dozwolona droga
+        # poza delete()/restore(); trigger kosza przepuszcza je z flagą.
+        with operacja_kosza():
+            return super().hard_delete(*args, **kwargs)
 
     hard_delete.alters_data = True
 
@@ -484,7 +526,7 @@ def zapisz_przywrocenie(instance, update_fields):
     """``save(update_fields=...)`` przywrócenia w savepoincie;
     ``IntegrityError`` (naruszenie unikalności) → ``KonfliktPrzywracania``."""
     try:
-        with transaction.atomic():
+        with operacja_kosza():
             instance.save(update_fields=update_fields)
     except IntegrityError as e:
         nazwa = getattr(getattr(e.__cause__, "diag", None), "constraint_name", "")
@@ -809,7 +851,8 @@ class BppPublikacjaSoftDeleteMixin(
             self.deleted_at = timezone.now()
             self.restored_at = None
             self.transaction_id = txid
-            self.save(update_fields=["deleted_at", "restored_at", "transaction_id"])
+            with operacja_kosza():
+                self.save(update_fields=["deleted_at", "restored_at", "transaction_id"])
             post_soft_delete.send(sender=self.__class__, instance=self)
         return 1, {self._meta.label: 1}
 
@@ -893,7 +936,8 @@ class BppSoftDeleteSlownikMixin(
             self.deleted_at = timezone.now()
             self.restored_at = None
             self.transaction_id = txid
-            self.save(update_fields=["deleted_at", "restored_at", "transaction_id"])
+            with operacja_kosza():
+                self.save(update_fields=["deleted_at", "restored_at", "transaction_id"])
             post_soft_delete.send(sender=self.__class__, instance=self)
         return 1, {self._meta.label: 1}
 

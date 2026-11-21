@@ -65,7 +65,7 @@ def backward(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0519_slug_unikalny_razem_z_koszem"),
+        ("bpp", "0520_slug_unikalny_razem_z_koszem"),
     ]
 
     operations = [

@@ -35,9 +35,12 @@ def wpis_wycofania(wydawnictwo_ciagle, admin_user, uczelnia):
     # w bazie i ręcznie tworzymy zlecenie wycofania — stan jak w produkcji
     # tuż po kasowaniu.
     wydawnictwo_ciagle.delete()
-    type(wydawnictwo_ciagle).global_objects.filter(pk=wydawnictwo_ciagle.pk).update(
-        pbn_uid=baker.make(Publication)
-    )
+    from bpp.models.soft_delete import operacja_kosza
+
+    with operacja_kosza():
+        type(wydawnictwo_ciagle).global_objects.filter(pk=wydawnictwo_ciagle.pk).update(
+            pbn_uid=baker.make(Publication)
+        )
     wydawnictwo_ciagle.refresh_from_db()
     wpis = baker.make(
         PBN_Export_Queue,
@@ -384,9 +387,12 @@ def test_konto_techniczne_bez_tokenu_konczy_glosno(wydawnictwo_ciagle, uczelnia)
     from pbn_export_queue.operacje import pobierz_konto_techniczne
 
     wydawnictwo_ciagle.delete()
-    type(wydawnictwo_ciagle).global_objects.filter(pk=wydawnictwo_ciagle.pk).update(
-        pbn_uid=baker.make(Publication)
-    )
+    from bpp.models.soft_delete import operacja_kosza
+
+    with operacja_kosza():
+        type(wydawnictwo_ciagle).global_objects.filter(pk=wydawnictwo_ciagle.pk).update(
+            pbn_uid=baker.make(Publication)
+        )
     wydawnictwo_ciagle.refresh_from_db()
     wpis = baker.make(
         PBN_Export_Queue,

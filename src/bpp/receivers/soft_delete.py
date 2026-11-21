@@ -190,11 +190,15 @@ def on_post_restore(sender, instance, **kwargs):
     if _wylicza_punktacje(instance):
         instance.przelicz_punkty_dyscyplin()
 
-    wpis, status = _kolejkuj_pbn(
-        instance,
-        lambda obj, **kw: zakolejkuj_wysylke(obj, po_przywroceniu=True, **kw),
-        STATUS_WYSYLKA,
-    )
+    wpis, status = None, ""
+    if getattr(instance, "pbn_uid_id", None):
+        # Wysyłka TYLKO dla rekordu, który był w PBN (ma PBN UID) — rekord
+        # nigdy niewysłany nie dostaje po przywróceniu żadnego zlecenia.
+        wpis, status = _kolejkuj_pbn(
+            instance,
+            lambda obj, **kw: zakolejkuj_wysylke(obj, po_przywroceniu=True, **kw),
+            STATUS_WYSYLKA,
+        )
     _utworz_log(
         instance,
         SoftDeleteLog.Akcja.RESTORE,

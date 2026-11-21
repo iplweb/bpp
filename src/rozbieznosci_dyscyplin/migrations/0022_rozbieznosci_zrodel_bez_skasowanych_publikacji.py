@@ -35,7 +35,7 @@ class Migration(migrations.Migration):
         # Kolumna `deleted_at` na tabelach publikacji powstaje w bpp.0509;
         # bez tej zależności migracja mogłaby pójść przed nią i wywalić się
         # na nieznanej kolumnie.
-        ("bpp", "0509_publikacje_soft_delete_fields"),
+        ("bpp", "0510_publikacje_soft_delete_fields"),
     ]
 
     operations = [

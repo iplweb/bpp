@@ -163,22 +163,3 @@ def test_usun_w_adminie_nie_zapisuje_deletion_tylko_change(
     assert wpisy.filter(
         action_flag=CHANGE, change_message="Przeniesiono do kosza (powód: dubel)"
     ).exists()
-
-
-@pytest.mark.django_db
-def test_usun_trwale_ostrzega_o_przepadajacym_wycofaniu(
-    superuser, superuser_client, bez_celery
-):
-    """Recenzja #2: trwałe usunięcie rekordu z niezakończonym wycofaniem
-    z PBN jest dozwolone, ale strona potwierdzenia wyraźnie ostrzega."""
-    wc = _z_pbn_uid(baker.make(Wydawnictwo_Ciagle))
-    wc.delete(user=superuser)
-    url = reverse("admin:bpp_wydawnictwo_ciagle_changelist") + "?is_deleted=true"
-    dane = {"action": "usun_trwale_zaznaczone", "_selected_action": [str(wc.pk)]}
-
-    tresc = superuser_client.post(url, dane).content.decode("utf-8")
-    assert "wycofanie z PBN przepadnie" in tresc
-    assert Wydawnictwo_Ciagle.global_objects.filter(pk=wc.pk).exists()
-
-    superuser_client.post(url, {**dane, "trwale_potwierdzone": "1"})
-    assert not Wydawnictwo_Ciagle.global_objects.filter(pk=wc.pk).exists()

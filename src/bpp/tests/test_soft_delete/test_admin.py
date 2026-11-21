@@ -139,79 +139,21 @@ def test_akcja_przywroc_dziala_i_zapisuje_usera(superuser, superuser_client):
 
 
 @pytest.mark.django_db
-def test_usun_trwale_dostepne_dla_superusera(superuser, superuser_client):
-    obj = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Do trwałego usunięcia")
+def test_usun_trwale_wylaczone_takze_dla_superusera(superuser_client):
+    """Trwałe usuwanie z kosza jest WYŁĄCZONE (decyzja właściciela,
+    listopad 2026): akcji nie ma, a wymuszony POST niczego nie usuwa."""
+    obj = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Próba trwałego")
     pk = obj.pk
     obj.delete(reason="test")
 
     url = reverse("admin:bpp_wydawnictwo_ciagle_changelist") + "?is_deleted=true"
-    assert b"usun_trwale_zaznaczone" in superuser_client.get(url).content
+    assert b"usun_trwale_zaznaczone" not in superuser_client.get(url).content
 
     resp = superuser_client.post(
-        url,
-        {
-            "action": "usun_trwale_zaznaczone",
-            "_selected_action": [str(pk)],
-            "trwale_potwierdzone": "1",
-        },
+        url, {"action": "usun_trwale_zaznaczone", "_selected_action": [str(pk)]}
     )
     assert resp.status_code in (200, 302)
-    assert not Wydawnictwo_Ciagle.global_objects.filter(pk=pk).exists()
-
-    # Rekord zniknal fizycznie, wiec wpis audytu jest jedynym sladem, ze
-    # istnial — i ma nosic, KTO go skasowal.
-    wpis = _log(Wydawnictwo_Ciagle, pk, "hard_delete")
-    assert wpis is not None
-    assert wpis.user_id == superuser.pk
-
-
-@pytest.mark.django_db
-def test_usun_trwale_niedostepne_dla_staff(staff_client):
-    obj = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Próba przez staff")
-    pk = obj.pk
-    obj.delete(reason="test")
-
-    url = reverse("admin:bpp_wydawnictwo_ciagle_changelist") + "?is_deleted=true"
-    assert b"usun_trwale_zaznaczone" not in staff_client.get(url).content
-
-    # Wymuszony POST tez nie usuwa trwale — akcji nie ma w get_actions,
-    # wiec Django odrzuca ja jako niedozwolony wybor.
-    resp = staff_client.post(
-        url,
-        {
-            "action": "usun_trwale_zaznaczone",
-            "_selected_action": [str(pk)],
-            "trwale_potwierdzone": "1",
-        },
-    )
-    assert resp.status_code in (200, 302, 403)
     assert Wydawnictwo_Ciagle.global_objects.filter(pk=pk).exists()
-
-
-@pytest.mark.django_db
-def test_usun_trwale_pomija_rekordy_spoza_kosza(superuser_client):
-    """Trwale kasujemy WYLACZNIE z kosza.
-
-    ``Cache_Punktacja_*`` nie ma FK do publikacji, wiec sprzata ja dopiero
-    receiver ``post_soft_delete``. Twarde skasowanie rekordu zywego
-    zostawiloby wiersze punktacji wskazujace na nieistniejacy rekord.
-    """
-    zywy = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Żywy, nie do kosza")
-    pk = zywy.pk
-
-    url = reverse("admin:bpp_wydawnictwo_ciagle_changelist") + "?is_deleted=all"
-    resp = superuser_client.post(
-        url,
-        {
-            "action": "usun_trwale_zaznaczone",
-            "_selected_action": [str(pk)],
-            "trwale_potwierdzone": "1",
-        },
-        follow=True,
-    )
-    assert resp.status_code == 200
-    assert Wydawnictwo_Ciagle.objects.filter(pk=pk).exists()
-    assert "Pominięto rekordów spoza kosza: 1" in resp.content.decode("utf-8")
 
 
 @pytest.mark.django_db
@@ -279,7 +221,7 @@ def test_kosz_w_adminie_dla_kazdego_modelu(model_name, admin_slug, superuser_cli
     resp = superuser_client.get(url_list)
     assert resp.status_code == 200
     assert b"przywroc_zaznaczone" in resp.content
-    assert b"usun_trwale_zaznaczone" in resp.content
+    assert b"usun_trwale_zaznaczone" not in resp.content
     assert b"usun_do_kosza" in resp.content
 
     # Przywracanie dziala:

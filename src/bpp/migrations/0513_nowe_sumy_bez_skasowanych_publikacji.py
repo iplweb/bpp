@@ -46,7 +46,7 @@ def backward(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0511_soft_delete_autorzy_przez_publikacje"),
+        ("bpp", "0512_soft_delete_autorzy_przez_publikacje"),
     ]
 
     operations = [

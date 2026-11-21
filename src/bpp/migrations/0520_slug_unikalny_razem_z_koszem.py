@@ -14,7 +14,7 @@ import bpp.util.text
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0518_soft_delete_struktura_i_slowniki"),
+        ("bpp", "0519_soft_delete_struktura_i_slowniki"),
     ]
 
     # Zmiana ``manager_name`` AutoSlugField to wyłącznie stan Pythona

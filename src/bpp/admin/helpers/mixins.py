@@ -273,13 +273,13 @@ class BppSoftDeleteAdminMixin:
     struktura uczelni, słowniki).
 
     Daje: changelistę nad ``global_objects`` z filtrem kosza, akcje
-    „przywróć" / „usuń do kosza (z powodem)" / „usuń trwale"
-    (superuser-only), stronę potwierdzenia kasowania z informacją o PBN
-    i pytaniem o aktywne zlecenie wysyłki, rekord z kosza tylko do odczytu
-    oraz JEDEN punkt wstrzyknięcia ``request.user``.
+    „przywróć" / „usuń do kosza (z powodem)", stronę potwierdzenia
+    kasowania z informacją o PBN i pytaniem o aktywne zlecenie wysyłki,
+    rekord z kosza tylko do odczytu, tłumaczenie błędu blokady kosza z bazy
+    (``BPP_KOSZ:``) na komunikat oraz JEDEN punkt wstrzyknięcia
+    ``request.user``. Trwałe usuwanie z kosza jest wyłączone.
 
-    UPRAWNIENIA: kosz = ``delete``; przywracanie = ``delete`` + ``change``;
-    trwałe usuwanie = superuser. Akcje są dokładane do listy tylko, gdy
+    UPRAWNIENIA: kosz = ``delete``; przywracanie = ``delete`` + ``change``. Akcje są dokładane do listy tylko, gdy
     user ma uprawnienie, a każda akcja dodatkowo sprawdza
     ``has_delete_permission(request, obj)`` PER REKORD (np. FD#539: rekord
     z PBN UID nie trafi do kosza także akcją masową).
@@ -318,6 +318,37 @@ class BppSoftDeleteAdminMixin:
         if PokazSkasowaneFilter not in list_filter:
             list_filter.insert(0, PokazSkasowaneFilter)
         return list_filter
+
+    # --- blokada kosza z bazy → komunikat zamiast 500 ---------------------
+
+    def _z_obsluga_bledu_kosza(self, request, widok, *args, **kwargs):
+        from django.db import DatabaseError
+        from django.http import HttpResponseRedirect
+
+        from bpp.models.soft_delete import jest_bledem_kosza
+
+        try:
+            return widok(request, *args, **kwargs)
+        except DatabaseError as e:
+            if not jest_bledem_kosza(e):
+                raise
+            self.message_user(
+                request,
+                "Operacja odrzucona: rekord jest w koszu (zamrożony) — najpierw "
+                "go przywróć. " + str(e).split("BPP_KOSZ:", 1)[1].split("\n")[0],
+                level=messages.ERROR,
+            )
+            return HttpResponseRedirect(request.get_full_path())
+
+    def changeform_view(self, request, *args, **kwargs):
+        return self._z_obsluga_bledu_kosza(
+            request, super().changeform_view, *args, **kwargs
+        )
+
+    def changelist_view(self, request, *args, **kwargs):
+        return self._z_obsluga_bledu_kosza(
+            request, super().changelist_view, *args, **kwargs
+        )
 
     # --- rekord w koszu: tylko do odczytu --------------------------------
 
@@ -649,87 +680,6 @@ class BppSoftDeleteAdminMixin:
         }
         return TemplateResponse(request, "admin/bpp/soft_delete_powod.html", context)
 
-    @admin.action(description="❌ Usuń TRWALE (nieodwracalnie, tylko superuser)")
-    def usun_trwale_zaznaczone(self, request, queryset):
-        """Opróżnianie kosza: fizyczne skasowanie rekordów — TYLKO z kosza
-        (receiver kosza sprząta ``Cache_Punktacja_*``, której nie sprząta
-        kolektor Django). Podwójny gate na superusera: ``get_actions``
-        decyduje o widoczności, ta metoda o wykonaniu."""
-        if not request.user.is_superuser:
-            self.message_user(
-                request,
-                "Trwałe usuwanie jest dostępne wyłącznie dla superużytkownika.",
-                level=messages.ERROR,
-            )
-            return
-
-        if not request.POST.get("trwale_potwierdzone"):
-            return self._potwierdz_usuniecie_trwale(request, queryset)
-
-        with self._soft_delete_user_context(request):
-            usunieto = 0
-            pominieto = 0
-            for obj in queryset:
-                if obj.deleted_at is None:
-                    pominieto += 1
-                    continue
-                obj.hard_delete()
-                usunieto += 1
-
-        if pominieto:
-            self.message_user(
-                request,
-                f"Pominięto rekordów spoza kosza: {pominieto}. Trwale usuwać "
-                "można wyłącznie to, co jest już w koszu — najpierw „🗑️ Usuń "
-                "do kosza”, potem „❌ Usuń TRWALE”.",
-                level=messages.WARNING,
-            )
-        if usunieto:
-            self.message_user(
-                request,
-                f"Usunięto trwale (nieodwracalnie): {usunieto}.",
-                level=messages.SUCCESS,
-            )
-
-    def _potwierdz_usuniecie_trwale(self, request, queryset):
-        """Strona potwierdzenia „Usuń TRWALE".
-
-        Rekord z NIEZAKOŃCZONYM wycofaniem z PBN wolno usunąć trwale (decyzja
-        właściciela: „trudno"), ale operator musi to zobaczyć: po trwałym
-        usunięciu nie da się już odczytać PBN UID, więc zlecone wycofanie
-        przepadnie, a oświadczenia instytucji mogą zostać w PBN.
-        """
-        from pbn_export_queue.models import PBN_Export_Queue
-        from pbn_export_queue.operacje import aktywny_wpis
-
-        podglad = list(queryset[: self.LIMIT_PODGLADU_KOSZA])
-        wiersze = []
-        for obj in podglad:
-            wpis = aktywny_wpis(obj) if hasattr(obj, "pbn_uid_id") else None
-            wiersze.append(
-                {
-                    "obj": obj,
-                    "poza_koszem": obj.deleted_at is None,
-                    "wycofanie_przepadnie": wpis is not None
-                    and wpis.operacja == PBN_Export_Queue.Operacja.WYCOFANIE,
-                }
-            )
-        ile = queryset.count()
-        context = {
-            **self.admin_site.each_context(request),
-            "title": "Usuń TRWALE",
-            "wiersze": wiersze,
-            "jest_wycofanie": any(w["wycofanie_przepadnie"] for w in wiersze),
-            "ile_obiektow": ile,
-            "ile_ukrytych": max(0, ile - len(podglad)),
-            "wybrane_pk": request.POST.getlist(admin_helpers.ACTION_CHECKBOX_NAME),
-            "opts": self.model._meta,
-            "action_checkbox_name": admin_helpers.ACTION_CHECKBOX_NAME,
-            "action_index": request.POST.get("index", 0),
-            "select_across": request.POST.get("select_across", "0"),
-        }
-        return TemplateResponse(request, "admin/bpp/soft_delete_trwale.html", context)
-
     def get_actions(self, request):
         """Dokłada akcje kosza — WYŁĄCZNIE gdy user ma do nich uprawnienia.
 
@@ -744,10 +694,7 @@ class BppSoftDeleteAdminMixin:
         else:
             actions.pop("usun_do_kosza", None)
             actions.pop("przywroc_zaznaczone", None)
-        if request.user.is_superuser:
-            actions["usun_trwale_zaznaczone"] = self.get_action(
-                "usun_trwale_zaznaczone"
-            )
-        else:
-            actions.pop("usun_trwale_zaznaczone", None)
+        # Trwałe usuwanie z kosza jest WYŁĄCZONE (decyzja właściciela,
+        # listopad 2026) — patrz docs/deweloper/soft-delete.md.
+        actions.pop("usun_trwale_zaznaczone", None)
         return actions

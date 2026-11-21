@@ -127,6 +127,10 @@
                                 <td>
                                     {% if export_queue_item.rekord_do_wysylki %}
                                         {% with rekord=export_queue_item.rekord_do_wysylki %}
+                                            {# Rekord w koszu: bez opisu i linku (kosz ukrywa treść). #}
+                                            {% if rekord.deleted_at %}
+                                                <em>🗑️ rekord w koszu</em>
+                                            {% else %}
                                             {% if rekord.slug %}
                                                 <a href="{% url 'bpp:browse_praca_by_slug' rekord.slug %}"
                                                    target="_blank"
@@ -141,6 +145,7 @@
                                             {% endif %}
                                             {% if rekord.slug %}
                                                 </a>
+                                            {% endif %}
                                             {% endif %}
                                         {% endwith %}
                                         <br>

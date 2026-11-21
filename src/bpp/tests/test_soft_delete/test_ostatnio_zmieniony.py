@@ -24,7 +24,11 @@ def _znacznik(model, pk):
 
 def _cofnij_znacznik(model, pk):
     stary = timezone.now() - datetime.timedelta(hours=1)
-    model.global_objects.filter(pk=pk).update(ostatnio_zmieniony=stary)
+    from bpp.models.soft_delete import operacja_kosza
+
+    # Rekord bywa w koszu (zamrożony triggerem) — test „cofa zegar" z flagą.
+    with operacja_kosza():
+        model.global_objects.filter(pk=pk).update(ostatnio_zmieniony=stary)
     return stary
 
 

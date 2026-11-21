@@ -192,22 +192,20 @@ def test_soft_delete_bez_pbn_uid_nie_kolejkuje(wydawnictwo_ciagle, superuser):
 
 
 @pytest.mark.django_db
-def test_restore_kolejkuje_wysylke(wydawnictwo_ciagle, superuser, bez_celery):
-    """RESTORE kolejkuje wysyłkę także BEZ ``pbn_uid``.
-
-    ``zakolejkuj_wysylke`` świadomie nie ma gate'u na ``pbn_uid`` (faza 05a):
-    rekord, który nigdy nie był w PBN, po przywróceniu ma prawo pojechać —
-    wysyłka dopiero nadaje UID.
-    """
+def test_restore_rekordu_spoza_pbn_niczego_nie_kolejkuje(
+    wydawnictwo_ciagle, superuser, bez_celery
+):
+    """Rekord, który nigdy nie był w PBN (bez PBN UID), po przywróceniu
+    NIE dostaje zlecenia wysyłki (decyzja właściciela)."""
     from pbn_export_queue.models import PBN_Export_Queue
 
     wydawnictwo_ciagle.delete(user=superuser)
     wydawnictwo_ciagle.restore(user=superuser)
 
     log = _logi(wydawnictwo_ciagle, SoftDeleteLog.Akcja.RESTORE).get()
-    assert log.pbn_queue_entry is not None
-    assert log.pbn_status == "WYSYLKA"
-    assert log.pbn_queue_entry.operacja == PBN_Export_Queue.Operacja.WYSYLKA
+    assert log.pbn_queue_entry is None
+    assert log.pbn_status == ""
+    assert not PBN_Export_Queue.objects.exists()
 
 
 @pytest.mark.django_db

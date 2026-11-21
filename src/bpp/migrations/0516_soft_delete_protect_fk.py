@@ -25,7 +25,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0514_praca_habilitacyjna_warunkowy_unique_autora"),
+        ("bpp", "0515_praca_habilitacyjna_warunkowy_unique_autora"),
     ]
 
     operations = [

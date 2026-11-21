@@ -16,7 +16,7 @@ from django.views.decorators.http import require_POST
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.exceptions import AlreadyEnqueuedError
-from pbn_export_queue.models import RodzajBledu
+from pbn_export_queue.models import RodzajBledu, WycofanieZablokowane
 
 from .mixins import PBNExportQueuePermissionMixin, kolejka_dla_requestu
 
@@ -37,7 +37,13 @@ def delete_from_queue(request, pk):
         return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
 
     queue_item = get_object_or_404(kolejka_dla_requestu(request), pk=pk)
-    queue_item.delete()
+    try:
+        queue_item.delete()
+    except WycofanieZablokowane as e:
+        messages.error(request, str(e))
+        return HttpResponseRedirect(
+            reverse_lazy("pbn_export_queue:export-queue-detail", args=[pk])
+        )
     messages.success(request, "Usunięto element z kolejki.")
     return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
 
@@ -57,6 +63,11 @@ def resend_to_pbn(request, pk):
     try:
         queue_item.prepare_for_resend(
             user=request.user, message_suffix=f" przez {request.user}"
+        )
+    except WycofanieZablokowane as e:
+        messages.info(request, str(e))
+        return HttpResponseRedirect(
+            reverse_lazy("pbn_export_queue:export-queue-detail", args=[pk])
         )
     except AlreadyEnqueuedError:
         messages.info(
@@ -86,9 +97,15 @@ def prepare_for_resend(request, pk):
         )
 
     queue_item = get_object_or_404(kolejka_dla_requestu(request), pk=pk)
-    queue_item.prepare_for_resend(
-        user=request.user, message_suffix=f" przez {request.user}"
-    )
+    try:
+        queue_item.prepare_for_resend(
+            user=request.user, message_suffix=f" przez {request.user}"
+        )
+    except AlreadyEnqueuedError as e:
+        messages.info(request, str(e))
+        return HttpResponseRedirect(
+            reverse_lazy("pbn_export_queue:export-queue-detail", args=[pk])
+        )
     messages.success(request, "Przygotowano rekord do ponownej wysyłki.")
     return HttpResponseRedirect(
         reverse_lazy("pbn_export_queue:export-queue-detail", args=[pk])
@@ -152,6 +169,10 @@ def resend_all_waiting(request):
                 count += 1
             else:
                 skipped += 1
+        except AlreadyEnqueuedError:
+            # Wycofania i rekordy już w kolejce pomijamy (nie błąd).
+            skipped += 1
+            continue
         except Exception:
             # Log the error but continue processing other items
             rollbar.report_exc_info(sys.exc_info())
@@ -211,6 +232,10 @@ def resend_all_errors(request):
                 count += 1
             else:
                 skipped += 1
+        except AlreadyEnqueuedError:
+            # Wycofania i rekordy już w kolejce pomijamy (nie błąd).
+            skipped += 1
+            continue
         except Exception:
             # Log the error but continue processing other items
             rollbar.report_exc_info(sys.exc_info())
@@ -263,6 +288,10 @@ def wake_up_queue(request):
                 count += 1
             else:
                 skipped += 1
+        except AlreadyEnqueuedError:
+            # Wycofania i rekordy już w kolejce pomijamy (nie błąd).
+            skipped += 1
+            continue
         except Exception:
             # Log the error but continue processing other items
             rollbar.report_exc_info(sys.exc_info())
@@ -464,6 +493,9 @@ def resend_filtered(request):
                 count += 1
             else:
                 skipped += 1
+        except AlreadyEnqueuedError:
+            skipped += 1
+            continue
         except Exception:
             rollbar.report_exc_info(sys.exc_info())
             continue

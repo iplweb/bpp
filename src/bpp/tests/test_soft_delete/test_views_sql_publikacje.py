@@ -1,5 +1,5 @@
 """Kontrakt DDL soft-delete publikacji: widok filtruje, funkcja kasuje,
-bramka przepuszcza (migracje ``0510`` i ``0511``).
+bramka przepuszcza (migracje ``0511`` i ``0512``).
 
 Testy „substringowe" (``pg_get_functiondef``/``pg_get_triggerdef``) pilnują,
 że migracje się odbyły; wyrocznią zachowania są testy SEMANTYCZNE na końcu
@@ -73,7 +73,7 @@ def test_funkcja_refresh_ma_galaz_kasujaca(fn, autor_na_wierszu):
     assert "NEW.deleted_at IS NOT NULL" in src, f"{fn}: brak gałęzi kasującej"
     assert "DELETE FROM bpp_rekord_mat" in src, f"{fn}: brak DELETE z rekord_mat"
     # Soft-delete publikacji czyści OBIE tabele _mat — także dla typów
-    # z through-modelem (0511): *_autor nie ma własnego kosza.
+    # z through-modelem (0512): *_autor nie ma własnego kosza.
     assert "DELETE FROM bpp_autorzy_mat" in src, f"{fn}: brak DELETE z autorzy_mat"
     if not autor_na_wierszu:
         assert "OLD.deleted_at IS NOT NULL" in src, f"{fn}: brak gałęzi restore"
@@ -159,7 +159,7 @@ def test_soft_delete_publikacji_znika_z_rekord_mat_restore_wraca():
 @pytest.mark.django_db
 def test_edycja_autorstwa_publikacji_z_kosza_nie_wraca_do_autorzy_mat():
     """Trigger tabeli ``*_autor`` upsertuje z widoku ``*_autorzy`` — a ten
-    (``0511``) odcina autorstwa publikacji z kosza. Zapis takiego autorstwa
+    (``0512``) odcina autorstwa publikacji z kosza. Zapis takiego autorstwa
     (np. przez ``all_objects``) nie może go wskrzesić w cache."""
     from bpp.models import Wydawnictwo_Ciagle_Autor
 

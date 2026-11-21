@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('bpp', '0508_uczelnia_help_texty_pbn_profil'),
+        ('bpp', '0509_uczelnia_kafel_wydzialy'),
         ('pbn_api', '0079_constraint_publikacja_instytucji'),
         ('taggit', '0006_rename_taggeditem_content_type_object_id_taggit_tagg_content_8fc721_idx'),
     ]

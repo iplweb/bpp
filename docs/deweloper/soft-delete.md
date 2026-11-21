@@ -7,6 +7,31 @@
     handoffy, recenzje) została na gałęzi `feat/soft-delete-06` — tutaj jest
     stan docelowy, nie kronika.
 
+## Zasady (w skrócie)
+
+1. **Kosz jest zamrożony w bazie.** Trigger `bpp_kosz_straznik`
+   (`BEFORE UPDATE OR DELETE`, migracja `0522`) na każdej tabeli z koszem:
+   zmiana `deleted_at`, jakikolwiek `UPDATE` wiersza w koszu i fizyczny
+   `DELETE` wiersza w koszu są odrzucane, chyba że transakcja ustawiła
+   `bpp.kosz_operacja = 'on'` — robi to wyłącznie `operacja_kosza()`
+   w `delete()`/`restore()`/`hard_delete()`. Nieaktualna instancja nie
+   „wskrzesi" rekordu, `deleted_objects.update()` ani surowy SQL nic nie
+   zmienią. Błąd ma prefiks `BPP_KOSZ:`; admin tłumaczy go na komunikat.
+   Wyjątek: zmiany robione przez inne triggery (dane wyliczane).
+2. **Worker PBN sprawdza stan w chwili wysyłki.** Pod blokadą tuż przed
+   rozmową z PBN czyta rekord od nowa: wysyłka rekordu z kosza i wycofanie
+   rekordu żywego kończą się bez wysyłania („rekord w koszu" / „rekord
+   przywrócony").
+3. **„W trakcie" = blokada doradcza.** Worker trzyma sesyjną
+   `pg_advisory_lock` na kluczu rekordu (`klucz_blokady_rekordu` —
+   jednoargumentowy `bigint`, rozłączny z blokadami triggerów cache) przez
+   całą próbę; padnięcie workera ją zwalnia. Kosz i przywrócenie biorą
+   `pg_try_advisory_xact_lock` — zajęta → „trwa wysyłka/wycofywanie w PBN,
+   spróbuj za chwilę".
+4. **Bez trwałego usuwania z kosza w adminie** (wyłączone; w przyszłości
+   — patrz „Etap 2"). `hard_delete()` zostaje dla kodu (np. czyszczenie
+   przed pełnym re-importem z PBN).
+
 ## Mechanizm w jednym akapicie
 
 Modele z koszem dziedziczą `SoftDeleteModel` z pakietu
@@ -22,8 +47,8 @@ Modele z koszem dziedziczą `SoftDeleteModel` z pakietu
 
 `obj.delete()` to `UPDATE ... SET deleted_at = now()` (przez
 `save(update_fields=...)`), `obj.restore()` czyści znacznik,
-`obj.hard_delete()` naprawdę kasuje wiersz (w adminie: tylko z kosza, tylko
-superuser). **Kaskady pakietu nie używamy** — kasowałaby twardo dzieci
+`obj.hard_delete()` naprawdę kasuje wiersz (tylko z kodu — w adminie
+wyłączone). **Kaskady pakietu nie używamy** — kasowałaby twardo dzieci
 spoza kosza; każdy model ma własne `delete()`/`restore()`. Kod wspólny:
 `src/bpp/models/soft_delete.py`; receivery (`SoftDeleteLog`, punktacja, PBN,
 historia): `src/bpp/receivers/soft_delete.py`; audyt:
@@ -71,7 +96,7 @@ sprawdzany w bazie pod blokadą wiersza (`SELECT … FOR UPDATE`,
 
 | Model | Dlaczego bez kosza | Jak znika |
 |---|---|---|
-| `Wydawnictwo_Ciagle_Autor`, `Wydawnictwo_Zwarte_Autor`, `Patent_Autor` | Są częścią publikacji. Własny kosz oznaczał wiersze-śmieci po każdej edycji inline'a, warunkowe constrainty (`ExclusionConstraint`) i migracje największych tabel. | `BppDzieckoPublikacjiMixin`: domyślny `objects` filtruje `rekord__deleted_at IS NULL`; `all_objects` widzi wszystko. W SQL widoki `bpp_*_autorzy` mają `EXISTS` na żywą publikację (migracja `0511`). Usunięcie autora z inline'a to zwykłe, twarde kasowanie wiersza (jak przed soft-delete). |
+| `Wydawnictwo_Ciagle_Autor`, `Wydawnictwo_Zwarte_Autor`, `Patent_Autor` | Są częścią publikacji. Własny kosz oznaczał wiersze-śmieci po każdej edycji inline'a, warunkowe constrainty (`ExclusionConstraint`) i migracje największych tabel. | `BppDzieckoPublikacjiMixin`: domyślny `objects` filtruje `rekord__deleted_at IS NULL`; `all_objects` widzi wszystko. W SQL widoki `bpp_*_autorzy` mają `EXISTS` na żywą publikację (migracja `0512`). Usunięcie autora z inline'a to zwykłe, twarde kasowanie wiersza (jak przed soft-delete). |
 | `*_Streszczenie`, `*_Zewnetrzna_Baza_Danych` | jw. | jw. — pod-zasoby API i „ostatnie streszczenia" ich nie pokazują. |
 | `Nagroda`, `WybranaPublikacjaAutora`, `Publikacja_Habilitacyjna` (GenericFK) | jw. | GenericFK rozwiązuje się przez `_base_manager` (widzi kosz), więc filtrujemy jawnie: API nagród i profil autora (wyróżnione prace) pomijają obiekty z kosza. |
 
@@ -90,7 +115,7 @@ w reversion).
 
 | Model | Zasady |
 |---|---|
-| `Autor` | Guard: wskazuje na niego jakikolwiek rekord — autorstwo (także publikacji z kosza), doktorat (także jako **promotor**), habilitacja, projekt, **redakcja źródła**, **autor zgłoszenia**, konto użytkownika — → `ProtectedError`. Lista generyczna z `_meta`; pomijane jawnie (`POMIJANE_RELACJE_KOSZA_AUTORA`) tylko dane kadrowe, dane wyliczane, logi i wiersze importów/deduplikacji. Do kosza trafiają duplikaty, literówki, puste rekordy po scaleniu. Udziały autora z kosza **nie liczą się do liczby N** ani kalkulatora (`IloscUdzialowDlaAutora*` mają menedżer z filtrem, przeliczenie pomija autora). |
+| `Autor` | Liczba N: autor w koszu nie liczy się do N przy **przeliczeniu** — kosz/przywrócenie autora wymaga ręcznego przeliczenia N (jak ewaluacji). Guard: wskazuje na niego jakikolwiek rekord — autorstwo (także publikacji z kosza), doktorat (także jako **promotor**), habilitacja, projekt, **redakcja źródła**, **autor zgłoszenia**, konto użytkownika — → `ProtectedError`. Lista generyczna z `_meta`; pomijane jawnie (`POMIJANE_RELACJE_KOSZA_AUTORA`) tylko dane kadrowe, dane wyliczane, logi i wiersze importów/deduplikacji. Do kosza trafiają duplikaty, literówki, puste rekordy po scaleniu.  |
 | `Autor_Jednostka`, `Autor_Dyscyplina`, `Autor_Absencja`, `Projekt_Autor` | **NIE** — dane kadrowe żyją z autorem: zostają przy nim w koszu i wracają z nim. |
 
 ### Struktura i słowniki — TAK, tylko rekord nieużywany
@@ -113,7 +138,7 @@ i liczy powiązania przez `_base_manager` (czyli także te w koszu). Zbiorcze
 `Wydzial` nie istnieje (usunięty w #438 — wydział to korzeń drzewa
 `Jednostka`). FK publikacji do `Konferencja` i `Seria_Wydawnicza` zmieniły
 się z `CASCADE` na `PROTECT`: skasowanie konferencji/serii **nie kaskaduje
-już twardo na publikacje** (migracja `0518`; bez zmian w bazie —
+już twardo na publikacje** (migracja `0519`; bez zmian w bazie —
 `on_delete` żyje tylko w ORM). Import (np. dopasowanie źródła po ISSN)
 kosza słowników nie widzi — może utworzyć nowy rekord obok tego z kosza.
 
@@ -154,26 +179,26 @@ PBN UID, `pbn_id`, `expertus_id`, `system_kadrowy_id` — też.
 
 ## PBN a kosz
 
-Twarde niezmienniki egzekwowane w warstwie modelu (nie tylko w adminie):
+Twarde niezmienniki egzekwowane w warstwie modelu i bazy (nie tylko w adminie):
 dopóki rekord ma aktywny wpis kolejki (wysyłka lub wycofanie, podjęty czy
 nie), **nie trafi do kosza** (wyjątek: jawnie anulowana, niepodjęta
 wysyłka) i **nie zostanie przywrócony**, dopóki wycofanie się nie
-zakończy. Reguła jest **symetryczna i oparta na blokadzie wiersza kolejki**
-(`select_for_update`, w tej samej transakcji co zapis kosza/przywrócenia;
-`pbn_export_queue/operacje.py`). Worker zajmuje wpis atomowo i oznacza go
-`w_trakcie` na czas rozmowy z PBN (znacznik zdejmowany po każdej próbie,
-także przy ponowieniu później; po 30 min uznawany za porzucony).
+zakończy. Sprawdzenie idzie pod blokadą wiersza kolejki (`select_for_update`) i pod
+blokadą doradczą rekordu, w tej samej transakcji co zapis
+kosza/przywrócenia (`pbn_export_queue/operacje.py`). Aktywnego zlecenia
+WYCOFANIA nie da się usunąć z kolejki ani wysłać ponownie ręcznie
+(`WycofanieZablokowane`) — „kolejka blokuje rekord". Ręczne „wyślij
+ponownie" innych wpisów przechodzi przez ten sam test stanu w workerze.
 
 | Sytuacja | Co się dzieje |
 |---|---|
 | Kosz publikacji z PBN UID | Receiver zleca `WYCOFANIE` — usuwa **oświadczenia naszej instytucji** (profil instytucji). Obiektu publikacji w repozytorium PBN nie da się usunąć (jest współdzielony). Strona potwierdzenia mówi o tym wprost. |
 | Kosz, gdy czeka **niepodjęta** wysyłka (także czekająca na ponowienie: RETRY_LATER / RETRY_MUCH_LATER / po zalogowaniu do PBN) | Admin pyta: „rekord jest w kolejce wysyłki do PBN — trzeba go wycofać. Wycofać? Tak / Nie". **Nie** → rekord NIE trafia do kosza. **Tak** (`anuluj_wysylke_pbn=True`) → wpis zamknięty jako anulowany, zlecone wycofanie, rekord w koszu. Bez zgody: `RekordWKolejcePBN`. |
-| Kosz, gdy wpis jest **w trakcie** (worker go podjął) | Zablokowany także ze zgodą — „trwa przetwarzanie, spróbuj za chwilę". |
+| Kosz, gdy worker **właśnie wysyła** (trzyma blokadę doradczą) | Zablokowany także ze zgodą — „trwa przetwarzanie, spróbuj za chwilę". |
 | Kosz żywego rekordu z aktywnym wycofaniem | Zablokowany do końca wycofania. |
 | Kosz, gdy trwa wysyłka zlecona przy **przywróceniu** (`po_przywroceniu`) | Zablokowany do końca tej wysyłki (sukces albo błąd); jej anulować nie można. |
 | Przywrócenie, gdy wycofanie **jeszcze się nie zakończyło** (podjęte czy nie) | Zablokowane, dopóki się nie zakończy (`RekordWKolejcePBN`). Żadnych flag „wyślij później". |
-| Przywrócenie po **zakończonym** wycofaniu | Od razu zlecana wysyłka (`po_przywroceniu=True`). |
-| „Usuń TRWALE" rekordu z czekającym wycofaniem | Dozwolone („trudno"), ale strona potwierdzenia ostrzega: po trwałym usunięciu nie da się odczytać PBN UID, więc wycofanie przepadnie, a oświadczenia mogą zostać w PBN. |
+| Przywrócenie po **zakończonym** wycofaniu | Od razu zlecana wysyłka (`po_przywroceniu=True`) — **tylko gdy rekord ma PBN UID**. Rekord nigdy niewysłany nie dostaje żadnego zlecenia. |
 | Import z PBN trafia na rekord, który u nas jest w koszu | **Pomija i raportuje** (decyzja właściciela): „W PBN jest rekord X, ale u nas jest usunięty (w koszu)". Raport: admin `RekordWKoszuPominietyPrzezImport` (jeden wpis na rekord i ścieżkę, z licznikiem), log (`WARNING`), nieścisłość `record_in_trash` w raporcie sesji `pbn_import`. Rekordów z kosza import **nie wskrzesza**. Rozdział książki z kosza też jest pomijany. |
 | Rekord z PBN UID w adminie (FD#539) | Usuwanie zablokowane (`RestrictDeletionWhenPBNUIDSetMixin`), ale przycisk „Usuń" jest **wyszarzony z wyjaśnieniem** zamiast znikać. Akcje masowe sprawdzają to uprawnienie per rekord. |
 
@@ -213,11 +238,11 @@ wersję" jest zablokowane (najpierw „Przywróć" z kosza).
 - Lista nad `global_objects` z filtrem „Kosz" (domyślnie: tylko żywe).
 - „Usuń" na rekordzie → strona potwierdzenia kosza (powód, PBN, pytanie
   o kolejkę); guard daje komunikat zamiast 500.
-- „❌ Usuń TRWALE" ma własną stronę potwierdzenia (z ostrzeżeniem
-  o przepadającym wycofaniu z PBN).
 - Akcje: „🗑️ Usuń do kosza (z powodem)" (uprawnienie `delete`),
-  „♻️ Przywróć zaznaczone" (`delete` + `change`), „❌ Usuń TRWALE"
-  (superuser, tylko z kosza). Uprawnienie sprawdzane per rekord.
+  „♻️ Przywróć zaznaczone" (`delete` + `change`). Uprawnienie sprawdzane
+  per rekord. Trwałego usuwania z kosza w adminie nie ma.
+- Lista i szczegóły kolejki eksportu PBN dla rekordu z kosza pokazują
+  „rekord w koszu" zamiast opisu.
 - Rekord z kosza: tylko do odczytu, z komunikatem.
 - `/api/v1/usuniete/` pokazuje wyłącznie kosz **bieżącej uczelni**
   (instalacja wielouczelniana; brak uczelni z domeny → pusto);
@@ -226,7 +251,7 @@ wersję" jest zablokowane (najpierw „Przywróć" z kosza).
 
 ## Wdrożenie: okno serwisowe
 
-Migracje `bpp/0509`–`0520` (oraz `pbn_export_queue/0011`–`0012`,
+Migracje `bpp/0510`–`0522` (oraz `pbn_export_queue/0011`–`0012`,
 `pbn_api/0080`, `rozbieznosci_dyscyplin/0022`, `zglos_publikacje/0029`,
 `pbn_integrator/0001`, `pbn_import/0013`) dodają kolumny
 `deleted_at`/`restored_at`/`transaction_id` (bez wartości domyślnej —
@@ -261,7 +286,25 @@ nie są migrowane wcale.
    nowa relacja do modelu z koszem jest chroniona przez guard domyślnie —
    jeśli to dane „przy rekordzie", dopisz ją do listy pomijanych.
 
+## Świadomie zaakceptowane
+
+- **Wyścig guard ↔ zapis**: między sprawdzeniem „nic nie wskazuje na ten
+  słownik/publikację" a zapisem kosza równoległy zapis może dodać
+  odwołanie (milisekundy). Nie blokujemy tego dodatkowo.
+- **Migracje `0511`/`0512`**: cofnięcie przywraca widoki i funkcje
+  triggerów (potrzebne, żeby `0510` mogło zdjąć kolumnę `deleted_at`),
+  ale jednorazowego sprzątania `_mat` nie odtwarza — to dane wyliczane
+  (odbuduje je przebudowa cache).
+- **Przyszłe migracje danych** na tabelach z koszem, które mają objąć
+  rekordy z kosza, muszą ustawić `bpp.kosz_operacja` (trigger).
+- **Zmiany słowników „przez" rekord z kosza** (np. skasowanie słownika
+  z `SET_NULL`/`CASCADE` do rekordu w koszu) są odrzucane — rekord
+  w koszu jest zamrożony.
+
 ## Etap 2 (poza tym PR)
+
+- **Trwałe usuwanie z kosza w adminie** (opróżnianie kosza) — wymaga
+  decyzji co do niezakończonych wycofań z PBN.
 
 - **Rejestracja modeli w reversion** (publikacje, struktura, słowniki) —
   kosz automatycznie przejdzie z `LogEntry` na rewizje.

@@ -1444,7 +1444,7 @@ def bez_reinstalacji_denorma():
     PO CO: ``denorm`` podpina się pod ``post_migrate`` i po KAŻDYM ``migrate``
     odbudowuje wszystkie swoje triggery — zawsze z AKTUALNYCH definicji
     modeli (``denorm/apps.py``: ``denorm_install_triggers_after_migrate``).
-    Test, który zejdzie migracjami poniżej ``bpp.0509``, ma wtedy bazę bez
+    Test, który zejdzie migracjami poniżej ``bpp.0510``, ma wtedy bazę bez
     kolumny ``deleted_at`` na tabelach publikacji, ale modele Pythona nadal ją
     deklarują — więc ``denorm`` generuje bramkę
     ``WHEN (OLD."deleted_at" IS DISTINCT FROM ...)``, a ``CREATE TRIGGER``
@@ -1454,10 +1454,10 @@ def bez_reinstalacji_denorma():
     w GLOBALNYM conftescie, a nie przy testach soft-delete:
 
     1. testy odwracalności migracji (``bpp/tests/test_soft_delete/``), które
-       schodzą poniżej ``0509`` świadomie;
+       schodzą poniżej ``0510`` świadomie;
     2. testy e2e migracji w INNYCH aplikacjach (``pbn_api``), które cofają
        swoją aplikację ``MigrationExecutor``-em — a że migracje ``bpp``
-       zależą od ``pbn_api``, Django cofa razem z nimi także ``0509``.
+       zależą od ``pbn_api``, Django cofa razem z nimi także ``0510``.
        Tam wybuchało to dopiero w TEARDOWNIE i o przyczynie nie mówiło nic.
 
     DLACZEGO TO NIE JEST PROBLEM PRODUKCYJNY: w prawdziwym rollbacku wycofuje

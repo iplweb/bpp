@@ -36,6 +36,7 @@ from bpp.models.soft_delete import (
     BppSoftDeleteQuerySet,
     BppUnikalnoscZKoszemMixin,
     dopisz_znacznik_zmiany,
+    operacja_kosza,
     raise_if_has_protected_children,
     relacje_przychodzace,
     sprawdz_stan_kosza,
@@ -816,7 +817,8 @@ class Autor(
             self.deleted_at = timezone.now()
             self.restored_at = None
             self.transaction_id = txid
-            self.save(update_fields=["deleted_at", "restored_at", "transaction_id"])
+            with operacja_kosza():
+                self.save(update_fields=["deleted_at", "restored_at", "transaction_id"])
             post_soft_delete.send(sender=self.__class__, instance=self)
         return 1, {self._meta.label: 1}
 
