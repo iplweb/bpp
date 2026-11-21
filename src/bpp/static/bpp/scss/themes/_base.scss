@@ -89,6 +89,14 @@ ul.grp-object-tools li a#dyncol-button::before {
     font-size: 16px;
 }
 
+/* Przyciski modala kolumn (np. „Usuń osobisty układ") dostają display  */
+/* ze stylów grappelli/picker'a, co przebija atrybut `hidden` (arkusz    */
+/* przeglądarki ma niższy priorytet) — przycisk był widoczny mimo        */
+/* `hidden`. Przywracamy semantykę atrybutu wewnątrz modala.             */
+.dyncol-modal [hidden] {
+    display: none !important;
+}
+
 /* Smooth color transitions for theme switching */
 body,
 #grp-navigation,

@@ -126,10 +126,10 @@ wykryły defekty. Poniższe decyzje **nadpisują** szczegóły w sekcjach faz ni
   `rodzaj_zrodla`, `poziom_wydawcy`, `funkcja_autora`, `tytul`,
   `czas_udostepnienia_openaccess`), jednym żądaniem `?limit=500`.
   `konferencja`/`wydawca`/`nagroda` to dane wolumenowe — **poza `slownik`**.
-- **[W1/D5] Wydawalność:** 5 z 7 narzędzi działa na dzisiejszym umlub;
+- **[W1/D5] Wydawalność:** 5 z 7 narzędzi działa na dzisiejszej instancji produkcyjnej;
   `szukaj_*` degraduje miękko (404 → „ta instancja BPP nie ma /szukaj/;
   wymaga wersji ≥ X"). Smoke `szukaj_*` odroczony do **wdrożenia** (nie tylko
-  merge'a) Fazy 0 na umlub. Testy respx muszą pokrywać: auto-follow paginacji
+  merge'a) Fazy 0 na instancji produkcyjnej. Testy respx muszą pokrywać: auto-follow paginacji
   wielostronicowej, `next=null`, 404-degradację.
 - **[D1] Trailing slash** — zawsze `/` na końcu (DefaultRouter; brak → 301 =
   podwojone żądania).
@@ -218,7 +218,7 @@ generatora z jednego YAML (YAGNI na tym etapie). Rdzeń obejmuje:
 - mapę ~30 endpointów + kategorie,
 - konwencje filtrów (`rok_min`/`rok_max`, `ostatnio_zmieniony_after`/`_before`),
 - strategię hyperlinków (kiedy podążać za URL, kiedy nie),
-- konfigurowalny `base_url` (wielo-instancyjność: umlub + inne wdrożenia BPP),
+- konfigurowalny `base_url` (wielo-instancyjność: instancja produkcyjna + inne wdrożenia BPP),
 - pułapki: `nie_eksportuj_przez_api`, ukryte statusy, `?format=json`,
   LimitOffset,
 - ścieżki odkrywania (po Fazie 0: `/szukaj/` + `autor?nazwisko=`).
@@ -300,7 +300,7 @@ stronicowane (`LimitOffsetPagination`).
 
 ### Struktura
 
-- `SKILL.md` — nazwa, opis (trigger: „praca z API BPP / bpp.umlub.pl/api /
+- `SKILL.md` — nazwa, opis (trigger: „praca z API BPP / bpp.example.edu.pl/api /
   pobieranie publikacji/autorów z BPP"), sekcje:
   - jak wołać (`?format=json`, `curl`/WebFetch, host konfigurowalny),
   - paginacja LimitOffset,
@@ -321,7 +321,7 @@ stronicowane (`LimitOffsetPagination`).
   wyzwalający).
 - `references/endpoints.md` pokrywa wszystkie endpointy z `api_v1/urls.py`
   (w tym `/szukaj/` z Fazy 0) z poprawnymi nazwami filtrów.
-- Przepisy w `przyklady.md` są wykonywalne wobec `bpp.umlub.pl` (host
+- Przepisy w `przyklady.md` są wykonywalne wobec `bpp.example.edu.pl` (host
   parametryzowany).
 - README + LICENSE (skill jako repo OSS, spójnie z resztą pakietów iplweb).
 
@@ -336,7 +336,7 @@ rozwija paginację i hyperlinki.
 
 ### Konfiguracja
 
-- `BPP_BASE_URL` (env, domyślnie `https://bpp.umlub.pl`) — wielo-instancyjność.
+- `BPP_BASE_URL` (env, domyślnie `https://bpp.example.edu.pl`) — wielo-instancyjność.
 - Opcjonalnie `BPP_BASIC_AUTH` (user:pass) — tylko dla raportów slotów
   (poza v1 rdzeniem; patrz „poza zakresem").
 
@@ -366,7 +366,7 @@ rozwija paginację i hyperlinki.
   narzędzie — happy path + błąd sieci + pusty wynik.
 - `pobierz_rekord` udowodniony test-em: z hyperlinked detalu buduje
   zagnieżdżony obiekt (autorzy jako nazwy, nie URL-e).
-- `szukaj_publikacji`/`szukaj_autora` działają wobec żywego umlub (test
+- `szukaj_publikacji`/`szukaj_autora` działają wobec żywej instancji produkcyjnej (test
   smoke, oznaczony/opcjonalny — nie w domyślnym CI offline).
 - README (konfiguracja `BPP_BASE_URL`, instrukcja podpięcia do Claude
   Desktop/Code) + LICENSE + GitHub Actions (matryca pytest).

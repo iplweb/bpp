@@ -45,6 +45,32 @@ class Command(BaseCommand):
         )
         parser.add_argument("--procent-ze-streszczeniem", type=int, default=70)
         parser.add_argument("--bez-prefiksu", action="store_true")
+        parser.add_argument(
+            "--polon-plik",
+            type=str,
+            default=None,
+            metavar="SCIEZKA",
+            help=(
+                "Na koniec zapisz falszywy eksport POL-on (Rozszerzone "
+                "zestawienie pracownikow podmiotu) do pliku albo katalogu."
+            ),
+        )
+        parser.add_argument(
+            "--polon-dyscypliny",
+            nargs="+",
+            default=None,
+            metavar="NAZWA[=FTE]",
+            help=(
+                "Dyscypliny pliku POL-on z celem FTE N na rok (domyslnie: "
+                "filozofia=16, 'nauki teologiczne=5', biotechnologia=15, "
+                "archeologia=14)."
+            ),
+        )
+        parser.add_argument(
+            "--polon-bez-blednych-wierszy",
+            action="store_true",
+            help="Nie dodawaj do pliku POL-on celowo blednych wierszy.",
+        )
 
     def handle(self, *args, **options):
         manifest_out = options.get("manifest_out")
@@ -73,6 +99,11 @@ class Command(BaseCommand):
             motyw=options["motyw"],
             procent_ze_streszczeniem=options["procent_ze_streszczeniem"],
             bez_prefiksu=options["bez_prefiksu"],
+            polon_plik=(
+                Path(options["polon_plik"]) if options.get("polon_plik") else None
+            ),
+            polon_dyscypliny=options.get("polon_dyscypliny"),
+            polon_bez_blednych_wierszy=options.get("polon_bez_blednych_wierszy", False),
         )
         # BaseCommand ma self.stdout (OutputWrapper) ale NIE ma self.stdin —
         # passujemy sys.stdin explicit (potrzebne dla double_confirm w trybie

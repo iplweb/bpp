@@ -158,6 +158,13 @@ Co robi `make prepare-developer-machine` (skrypty:
   [docs/deweloper/weasyprint-macos.md](docs/deweloper/weasyprint-macos.md));
   na końcu `uv sync --frozen --no-install-project --all-extras` +
   `uv run playwright install --only-shell chromium`.
+- **Skanery bezpieczeństwa** (oba systemy): `trufflehog` (hook pre-commit)
+  oraz `grype`, `osv-scanner`, `trivy` i `jq` (`bin/scan-deps.sh`, lokalny
+  gate CVE w `make release-candidate`). Na macOS z `brew`, na Linuksie
+  `jq` z menedżera pakietów, a skanery z GitHub Releases w wersjach
+  przypiętych w `bin/prepare-developer-machine/lib.sh` (do `~/.local/bin`,
+  z weryfikacją SHA-256; już obecne na PATH są pomijane). `pip-audit`
+  nie wymaga instalacji — leci przez `uvx`.
 - **Linux** — pakiety systemowe (kompilator, nagłówki LDAP/SASL/SSL dla
   `python-ldap`, libki WeasyPrint, Node, yarn, gettext, pandoc) i `grunt-cli`
   przez menedżer pakietów dystrybucji: `apt` (Debian, Ubuntu i pochodne),
@@ -310,7 +317,7 @@ tylko podczas trwania komendy (chyba że `--reuse`).
 
 | | |
 |---|---|
-| **Backend** | Python 3.10+, Django 4.2, Celery, Django Channels |
+| **Backend** | Python 3.11.5+, Django 5.2, Celery, Django Channels |
 | **Baza danych** | PostgreSQL |
 | **Cache / broker** | Redis |
 | **Frontend** | Foundation CSS, jQuery, HTMX, Select2 |

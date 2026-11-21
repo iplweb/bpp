@@ -3,7 +3,7 @@
 RP-Initiated Logout: po lokalnym wylogowaniu Django przekierowujemy usera na
 ``end_session_endpoint`` Keycloaka z ``id_token_hint`` (z sesji) i
 ``post_logout_redirect_uri``. Dzięki temu wylogowanie z BPP kończy też sesję
-SSO w Keycloaku — inaczej kolejne „Zaloguj przez UAFM" logowałoby bez pytania
+SSO w Keycloaku — inaczej kolejne „Zaloguj przez uczelnię" logowałoby bez pytania
 o hasło (cicha re-autoryzacja z żywej sesji KC).
 """
 

@@ -324,6 +324,7 @@ class UczelniaAdmin(
                     "uzywaj_wydzialow",
                     "pokazuj_jednostki_na_pierwszej_stronie",
                     "pokazuj_wydzialy_na_pierwszej_stronie",
+                    "kafel_wydzialy_zamiast_jednostek",
                     "pokazuj_siec_powiazan",
                     "wyszukiwanie_rekordy_na_strone_anonim",
                     "wyszukiwanie_rekordy_na_strone_zalogowany",
@@ -520,7 +521,7 @@ class UczelniaAdmin(
                     request,
                     f"Integracja z PBN jest włączona, ale konfiguracja jest niekompletna: {e}. "
                     f"Uzupełnij brakujące dane (nazwa aplikacji i token) lub wyłącz "
-                    f"integrację z PBN w sekcji „Integracja z PBN API”.",
+                    f"integrację z PBN w sekcji „PBN API”.",
                 )
                 return ret
 

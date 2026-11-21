@@ -6,11 +6,26 @@ with code in this repository.
 ## Project Overview
 
 BPP (Bibliografia Publikacji Pracownikow) is a Polish academic bibliography
-management system built with Django. Python >=3.10,<3.15.
+management system built with Django. Python >=3.11.5,<3.15 (production and CI: 3.14).
 
 - Architecture: [docs/deweloper/mapa-kodu.md](docs/deweloper/mapa-kodu.md)
 - Commands reference: [docs/deweloper/polecenia.md](docs/deweloper/polecenia.md)
 - CSS/SCSS build: [docs/deweloper/budowanie-css.md](docs/deweloper/budowanie-css.md)
+
+## Polityka języka
+
+BPP to polski produkt — **nowe** teksty piszemy po polsku:
+
+- komunikaty programu i teksty interfejsu (UI, komunikaty błędów, e-maile),
+- komentarze w kodzie i docstringi,
+- opisy commitów i pull requestów,
+- dokumentacja (`docs/`), newsfragmenty.
+
+Nazwy w kodzie (zmienne, funkcje, klasy) — zgodnie z konwencją danego modułu.
+
+**Nie przepisujemy istniejących tekstów** tylko po to, żeby zmienić język:
+angielskie komentarze i commity zostają, dopóki i tak nie zmieniasz danego
+fragmentu z innego powodu.
 
 ## Pokazywanie ścieżek do plików `.md` (linki `file://`)
 
@@ -176,6 +191,18 @@ checkoucie. Przed klikaniem przeczytaj opis PR-a (`gh pr view N`) i odpal
 testy dotknięte zmianą w worktree PR-a. Szczegóły:
 [docs/deweloper/polecenia.md](docs/deweloper/polecenia.md#testowanie-pull-requestów).
 
+## Zrzuty ekranu do dokumentacji i bazy wiedzy
+
+Zrzuty z oznaczeniami (strzałki, ramki, podpisy) do `docs/` i do artykułów
+Freshdeska robi **wyłącznie** `bin/docs-screenshots.py` (scenariusz na
+artykuł) — nie ręcznie i nie ad hoc innym skryptem. Dane demo motyw
+`wiedzmin` z `--bez-prefiksu`, zwykłe konto `yennefer` (nie admin), PNG do
+`docs/images/<sekcja>/<scenariusz>/`. Freshdesk linkuje te pliki z GitHub
+Pages, więc **nie przenoś/nie zmieniaj nazw** istniejących obrazków.
+Każdy wygenerowany zrzut obejrzyj (nakładające się podpisy, niedokończone
+animacje menu). Reguły i setup:
+[docs/deweloper/zrzuty-ekranu.md](docs/deweloper/zrzuty-ekranu.md).
+
 ## Key Commands (Quick Reference)
 
 Full details: [docs/deweloper/polecenia.md](docs/deweloper/polecenia.md)
@@ -244,6 +271,11 @@ Nazwa pliku: `<slug>.<typ>.rst` (albo `.md`), gdzie `<typ>`:
 
 Treść po polsku, zwięźle (jedno zdanie/akapit). Numer zgłoszenia w slugu
 dla ticketów (np. `fd407.bugfix.rst`); `#443` linkuje się do GitHub Issues.
+
+CI (workflow `Newsfragments`, `bin/check-fd-newsfragments.py`) wymaga
+fragmentu `fd<N>.<typ>.rst` dla każdego `FD#<N>` w tytule PR-a. Świadomy
+wyjątek: etykieta `bez-newsfragmentu`. Dla ticketów opis ma być dokładny
+(co było źle, co jest teraz, gdzie to widać w UI) — trafia do klientów.
 
 ## Autologin dla agentów (WebFetch / curl bez logowania)
 

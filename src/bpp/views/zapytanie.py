@@ -209,8 +209,8 @@ EXAMPLES = [
     },
     {
         "level": 2,
-        "title": "Srednie",
-        "subtitle": "wiele warunkow, relacje, listy in (...)",
+        "title": "Średnie",
+        "subtitle": "wiele warunków, relacje, listy in (...)",
         "groups": [
             {
                 "model": MODEL_REKORD,
@@ -225,24 +225,24 @@ EXAMPLES = [
                         "impact_factor > 5 and rok in (2022, 2023, 2024)",
                     ),
                     (
-                        "Brak DOI mimo wysokiej punktacji (do uzupelnienia)",
+                        "Brak DOI mimo wysokiej punktacji (do uzupełnienia)",
                         'punkty_kbn >= 70 and doi = ""',
                     ),
                     (
-                        "Czesto cytowane, ale nierecenzowane",
+                        "Często cytowane, ale nierecenzowane",
                         "liczba_cytowan > 10 and recenzowana = False",
                     ),
                     (
-                        "Konkretny charakter + zakres punktow",
+                        "Konkretny charakter + zakres punktów",
                         'charakter_formalny.skrot = "AC" and punkty_kbn >= 40 '
                         "and punkty_kbn <= 100",
                     ),
                     (
-                        "Konkretne zrodlo + lata",
+                        "Konkretne źródło + lata",
                         'zrodlo.nazwa ~ "Nature" and rok >= 2020',
                     ),
                     (
-                        "Polskojezyczne artykuly",
+                        "Polskojęzyczne artykuły",
                         'jezyk.skrot = "pol" and charakter_formalny.skrot = "AC"',
                     ),
                     (
@@ -250,7 +250,7 @@ EXAMPLES = [
                         "openaccess_tryb_dostepu != None and rok >= 2023",
                     ),
                     (
-                        "Slowa kluczowe w tytule (combo OR)",
+                        "Słowa kluczowe w tytule (combo OR)",
                         'tytul_oryginalny ~ "COVID" or tytul_oryginalny ~ "SARS-CoV"',
                     ),
                     (
@@ -268,7 +268,7 @@ EXAMPLES = [
                         'tytul.skrot = "prof." and orcid != ""',
                     ),
                     (
-                        "Maja ORCID ale brak go w PBN",
+                        "Mają ORCID, ale brak go w PBN",
                         'orcid != "" and orcid_w_pbn = False',
                     ),
                     (
@@ -277,16 +277,16 @@ EXAMPLES = [
                         'tytul.skrot startswith "dr"',
                     ),
                     (
-                        "Brak emaila, ale jest ORCID",
+                        "Brak e-maila, ale jest ORCID",
                         'email = "" and orcid != ""',
                     ),
                     (
-                        "Konkretna jednostka po skrocie + filtr po nazwisku",
+                        "Konkretna jednostka po skrócie + filtr po nazwisku",
                         'nazwisko startswith "Now" and '
                         'aktualna_jednostka.skrot = "II WL"',
                     ),
                     (
-                        "Doktoraty + asystenci (zbior tytulow)",
+                        "Doktoraty + asystenci (zbiór tytułów)",
                         'tytul.skrot in ("dr", "dr hab.", "mgr")',
                     ),
                 ],
@@ -296,7 +296,7 @@ EXAMPLES = [
     {
         "level": 3,
         "title": "Zaawansowane",
-        "subtitle": "grupowanie nawiasami, negacja, zlozone audyty",
+        "subtitle": "grupowanie nawiasami, negacja, złożone audyty",
         "groups": [
             {
                 "model": MODEL_REKORD,
@@ -315,18 +315,18 @@ EXAMPLES = [
                         'charakter_formalny.skrot = "AOR") and punkty_kbn >= 100',
                     ),
                     (
-                        "Negacja: wszystko poza artykulami z czasopism, IF>=3, od 2023",
+                        "Negacja: wszystko poza artykułami z czasopism, IF>=3, od 2023",
                         'charakter_formalny.skrot != "AC" and rok >= 2023 '
                         "and impact_factor > 3",
                     ),
                     (
-                        "Wieloklauzulowo: tytul × jezyk × liczba autorow × rok",
+                        "Wieloklauzulowo: tytuł × język × liczba autorów × rok",
                         '(tytul_oryginalny ~ "COVID" or tytul_oryginalny ~ "SARS") '
                         'and jezyk.skrot in ("ang", "pol") and '
                         "liczba_autorow >= 3 and rok = 2023",
                     ),
                     (
-                        "Wydawcy Elsevier/Springer/Wiley + przedzial punktow",
+                        "Wydawcy Elsevier/Springer/Wiley + przedział punktów",
                         '(wydawca.nazwa ~ "Elsevier" or wydawca.nazwa ~ "Springer" '
                         'or wydawca.nazwa ~ "Wiley") and rok >= 2022 '
                         "and punkty_kbn >= 70 and punkty_kbn <= 200",
@@ -336,7 +336,7 @@ EXAMPLES = [
                         "liczba_cytowan > 50 and rok >= 2020 and impact_factor > 5",
                     ),
                     (
-                        "Audyt jakosci danych — artykuly 2024+ bez DOI/WWW",
+                        "Audyt jakości danych — artykuły 2024+ bez DOI/WWW",
                         'charakter_formalny.skrot = "AC" and rok >= 2024 '
                         'and doi = "" and www = "" and recenzowana = True',
                     ),
@@ -347,7 +347,7 @@ EXAMPLES = [
                         "openaccess_tryb_dostepu != None",
                     ),
                     (
-                        "Zmienione od poczatku roku z adnotacjami",
+                        "Zmienione od początku roku z adnotacjami",
                         'ostatnio_zmieniony >= "2025-01-01" and adnotacje != ""',
                     ),
                     (
@@ -368,22 +368,22 @@ EXAMPLES = [
                         'orcid != "" and orcid_w_pbn = False',
                     ),
                     (
-                        "Dwie jednostki + tytul dr/dr hab. + jest orcid",
+                        "Dwie jednostki + tytuł dr/dr hab. + jest ORCID",
                         '(aktualna_jednostka.skrot = "II WL" or '
                         'aktualna_jednostka.skrot = "WLS") and '
                         'tytul.skrot startswith "dr" and orcid != ""',
                     ),
                     (
-                        "Brak emaila ale jest ORCID (do uzupelnienia kontaktu)",
+                        "Brak e-maila, ale jest ORCID (do uzupełnienia kontaktu)",
                         'email = "" and orcid != "" and '
                         'tytul.skrot in ("dr", "dr hab.", "prof.")',
                     ),
                     (
-                        "Format ORCID nieprawidlowy (nie zaczyna sie od '0000-')",
+                        "Format ORCID nieprawidłowy (nie zaczyna się od '0000-')",
                         'orcid != "" and orcid not startswith "0000-"',
                     ),
                     (
-                        "Wszystkie z aktualna jednostka, oprocz mgr/mgr inz.",
+                        "Wszystkie z aktualną jednostką, oprócz mgr/mgr inż.",
                         "aktualna_jednostka != None and "
                         'tytul.skrot not in ("mgr", "mgr inz.")',
                     ),
@@ -502,14 +502,14 @@ class ZapytanieForm(forms.Form):
         ),
         required=False,
         help_text=(
-            "Skladnia DjangoQL: pole operator wartosc, laczone przez "
+            "Składnia DjangoQL: pole operator wartość, łączone przez "
             "<code>and</code> / <code>or</code>. "
             "Operatory: <code>=</code>, <code>!=</code>, <code>&gt;</code>, "
             "<code>&gt;=</code>, <code>&lt;</code>, <code>&lt;=</code>, "
             "<code>~</code> (zawiera), <code>!~</code> (nie zawiera), "
             "<code>in</code>, <code>not in</code>. "
-            "Stringi w cudzyslowach. "
-            'Przyklady: <code>tytul_oryginalny ~ "rak"</code>, '
+            "Stringi w cudzysłowach. "
+            'Przykłady: <code>tytul_oryginalny ~ "rak"</code>, '
             '<code>rok = 2024 and charakter_formalny.skrot = "AC"</code>, '
             '<code>nazwisko ~ "Kowal" or imiona ~ "Jan"</code>.'
         ),

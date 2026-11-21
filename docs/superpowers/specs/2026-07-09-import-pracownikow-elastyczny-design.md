@@ -3,7 +3,7 @@
 **Data:** 2026-07-09
 **Autor:** Michał Pasternak + Claude (brainstorming) + subagent Fable (review)
 **Status:** wstępnie zaakceptowany, po 3 iteracjach self-review
-**Zgłoszenie źródłowe:** mail od `michal.dtz@gmail.com` (w chwili pisania NIE dotarł
+**Zgłoszenie źródłowe:** e-mail od klienta (w chwili pisania NIE dotarł
 jeszcze do Freshdeska — patrz §13 „Dane wejściowe / chaos").
 
 ---
@@ -225,8 +225,8 @@ Protokół `TabularSource` w `import_common/sources.py` (duck-typing / `typing.P
 ```python
 class TabularSource(Protocol):
     # nagłówki-kandydaci PER ARKUSZ (XLSX ma N arkuszy; CSV = 1 „arkusz")
-    def sheet_headers(self) -> list[list[list[str]]]: ...   # [arkusz][wiersz][komórka]
-    def rows(self, mapping) -> Iterator[dict]: ...          # wiersze danych po zmapowaniu
+    def sheet_headers(self) -> list[list[list[str]]]: ...  # [arkusz][wiersz][komórka]
+    def rows(self, mapping) -> Iterator[dict]: ...  # wiersze danych po zmapowaniu
     def count(self) -> int: ...
 ```
 
@@ -553,13 +553,12 @@ Po każdej zmianie schematu: `make baseline-update`.
 
 ## 13. Dane wejściowe / chaos do obsłużenia (§D10)
 
-W chwili pisania **mail zgłoszeniowy od `michal.dtz@gmail.com` NIE dotarł** do
-Freshdeska (brak kontaktu, brak ticketu). Tickety wskazanych osób (Anna Wołodko
-[IHIT] #417/#420, Jan Bihalowicz #428/#422) dotyczą innych tematów (IF, CrossRef)
-i **nie zawierają** Exceli personalnych. Firm „VIZJA"/„UAFM" nie ma w Freshdesku
-pod tymi nazwami. Właściciel wskazał dodatkowo pliki na Freshdesku: Kowalczewski
-„Wydziały i ludzie z nich" oraz „przyporządkowanie do wydziałów - uniwersytet
-vizja" — ale **Freshdesk MCP nie ma full-text search po temacie/treści ani
+W chwili pisania **mail zgłoszeniowy NIE dotarł** do
+Freshdeska (brak kontaktu, brak ticketu). Tickety wskazanych osób (dwóch klientów,
+cztery zgłoszenia) dotyczą innych tematów (IF, CrossRef)
+i **nie zawierają** Exceli personalnych. Wskazanych firm nie ma w Freshdesku
+pod tymi nazwami. Właściciel wskazał dodatkowo pliki na Freshdesku: jednego z klientów
+„Wydziały i ludzie z nich" oraz „przyporządkowanie do wydziałów" — ale **Freshdesk MCP nie ma full-text search po temacie/treści ani
 listowania załączników**, a te tematy nie występują wśród ~70 zwracanych ticketów
 (367–434); prawdopodobnie zamknięte/zarchiwizowane. **Do pobrania ręcznego przy
 implementacji** (numery ticketów albo przesłanie plików).
@@ -568,8 +567,8 @@ implementacji** (numery ticketów albo przesłanie plików).
 **fixtures testowe** (§7, §5) — NIE zmieniają architektury. Implementacja startuje
 na podstawie znanych wariantów (niżej); po dostarczeniu plików: dopisać synonimy
 + fixtures i ponowić testy tabelaryczne parsera. **Znane źródła danych do zebrania:**
-Wołodko (kliniki), Bihałowicz (pracownicy), Kowalczewski (wydziały+ludzie),
-uniwersytet Vizja (przyporządkowanie do wydziałów), UAFM, wzorzec BPP (mamy).
+klient A (kliniki), klient B (pracownicy), klient z pliku „wydziały+ludzie",
+klient C (przyporządkowanie do wydziałów), klient D, wzorzec BPP (mamy).
 
 ### Katalog znanych wariantów „chaosu" (do rozszerzenia z realnych plików)
 

@@ -1,4 +1,5 @@
 # Create your models here.
+import os
 from datetime import date
 
 from django import forms
@@ -210,6 +211,12 @@ class ImportPracownikow(LiveOperation):
     )
 
     stages = ["Wczytywanie", "Integracja"]
+
+    @property
+    def nazwa_pliku(self):
+        """Sama nazwa pliku do pokazania użytkownikowi — bez wewnętrznej
+        ścieżki w storage (``protected/import_pracownikow/…``)."""
+        return os.path.basename(self.plik_xls.name or "")
 
     @property
     def faza_struktury(self):

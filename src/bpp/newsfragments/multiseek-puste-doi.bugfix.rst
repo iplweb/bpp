@@ -1,0 +1,1 @@
+Wyszukiwanie precyzyjne: warunek „DOI równe (puste)” (podobnie dla pól Adnotacje, Informacje, Szczegóły i Uwagi) znajduje teraz także rekordy, w których pole w ogóle nie zostało wypełnione; na liście zapisanych formularzy wyszukiwania w module redagowania kolumny mają polskie nazwy („właściciel” zamiast „Owner”).

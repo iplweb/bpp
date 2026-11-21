@@ -12,7 +12,7 @@ from pbn_import.utils.institution_import import sprawdz_obca_jednostka
 @pytest.fixture
 def dwie_uczelnie(db):
     u1 = baker.make(Uczelnia, skrot="UML")
-    u2 = baker.make(Uczelnia, skrot="UAFM")
+    u2 = baker.make(Uczelnia, skrot="UCZELNIA")
     return u1, u2
 
 
@@ -26,7 +26,7 @@ def test_command_provisions_all_uczelnie(dwie_uczelnie):
     assert sprawdz_obca_jednostka(u1) is None
     assert sprawdz_obca_jednostka(u2) is None
     assert u1.obca_jednostka.nazwa == "Obca jednostka UML"
-    assert u2.obca_jednostka.nazwa == "Obca jednostka UAFM"
+    assert u2.obca_jednostka.nazwa == "Obca jednostka UCZELNIA"
 
 
 def test_command_is_idempotent(dwie_uczelnie):

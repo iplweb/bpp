@@ -55,6 +55,7 @@ from bpp.models import (
 from bpp.models.util import prefetch_dane_strony_rekordu
 from bpp.multiseek_registry import (
     CharakterFormalnyQueryObject,
+    CharakterOgolnyQueryObject,
     JednostkaNadrzednaQueryObject,
     JednostkaQueryObject,
     NazwiskoIImieQueryObject,
@@ -67,7 +68,9 @@ from bpp.multiseek_registry import (
     registry,
 )
 from bpp.multiseek_registry.fields.constants import UNION_NONE
+from bpp.nazwy import lemat
 from bpp.permissions import moze_wprowadzac_dane
+from bpp.punkty_ewaluacji import punkty_ewaluacji_wydawcy, punkty_ewaluacji_zrodla
 from bpp.sekcje_zrodla_wydawcy import sekcje_wydawcy, sekcje_zrodla
 from bpp.util import sanitize_multiseek_title
 from bpp.util.uczelnia_scope import (
@@ -880,6 +883,10 @@ class JednostkiView(Browser):
     param = "search"
     literka_field = "nazwa"
     paginate_by = 150
+    browse_url_name = "bpp:browse_jednostki"
+
+    def tylko_jednostki_nadrzedne(self, uczelnia):
+        return bool(uczelnia and uczelnia.pokazuj_tylko_jednostki_nadrzedne)
 
     def get_paginate_by(self, queryset):
         uczelnia = Uczelnia.objects.get_for_request(getattr(self, "request", None))
@@ -898,8 +905,8 @@ class JednostkiView(Browser):
             if uczelnia.sortuj_jednostki_alfabetycznie:
                 ordering = ("nazwa",)
 
-            if uczelnia.pokazuj_tylko_jednostki_nadrzedne:
-                qry = qry.filter(parent=None)
+        if self.tylko_jednostki_nadrzedne(uczelnia):
+            qry = qry.filter(parent=None)
 
         # ``liczba_autorow`` liczona JEDNYM agregatem, a nie per wiersz w
         # szablonie. Wcześniej `browse/jednostki.html` wołał
@@ -940,10 +947,34 @@ class JednostkiView(Browser):
 
         uczelnia = Uczelnia.objects.get_for_request(self.request)
         base_qry = scope_jednostki_do_uczelni(base_qry, uczelnia)
-        if uczelnia and uczelnia.pokazuj_tylko_jednostki_nadrzedne:
+        if self.tylko_jednostki_nadrzedne(uczelnia):
             base_qry = base_qry.filter(parent=None)
 
         context["available_letters"] = self.zapamietane_literki(base_qry)
+        context["browse_url_name"] = self.browse_url_name
+        return context
+
+
+# ``dispatch`` z cache'em publicznym dziedziczy po ``JednostkiView`` (klucz
+# cache'a zawiera ścieżkę żądania, więc indeksy się nie mieszają).
+class WydzialyView(JednostkiView):
+    """Indeks wydziałów — widoczne jednostki najwyższego poziomu
+    (``parent=None``) uczelni bieżącego hosta. Cel kafla „Wydziały” na
+    stronie głównej (opcja ``Uczelnia.kafel_wydzialy_zamiast_jednostek``,
+    FD#391). Ten sam szablon co indeks jednostek, tylko z nazwą wydziału
+    (lemat ``WYDZIAL``) w nagłówkach i z własnymi adresami literek."""
+
+    browse_url_name = "bpp:browse_wydzialy"
+
+    def tylko_jednostki_nadrzedne(self, uczelnia):
+        return True
+
+    def get_context_data(self, *args, **kw):
+        context = super().get_context_data(*args, **kw)
+        # Osobna zmienna, NIE nadpisanie ``nazwa_jednostki`` z context
+        # processora — tę czyta też menu „przeglądaj” (top_bar.html), którego
+        # pozycja „jednostki” ma zostać „jednostkami” także na tej stronie.
+        context["nazwa_indeksu"] = lemat("WYDZIAL")
         return context
 
 
@@ -968,6 +999,7 @@ class ZrodloView(DetailView):
                 context["wykresy"] = {"wykresy": wykresy}
                 context["szukaj_pola"] = [("zrodlo", self.object.pk)]
                 context["szukaj_tytul"] = str(self.object)
+        context["ewaluacja"] = punkty_ewaluacji_zrodla(self.object)
         # Sekcje „Najczęściej publikujący autorzy” / „Jednostki” + chipy typów.
         context["typy"] = TYPY
         context.update(sekcje_zrodla(self.object, getattr(self, "request", None)))
@@ -1042,6 +1074,7 @@ class WydawcaView(DetailView):
         return self.render_to_response(self.get_context_data(object=self.object))
 
     def get_context_data(self, **kwargs):
+        from bpp.podzial_wydawcy import podzial_wydawcy
         from bpp.wykresy_lat import wykresy_w_latach
 
         context = super().get_context_data(**kwargs)
@@ -1050,15 +1083,25 @@ class WydawcaView(DetailView):
         context["liczba_prac"] = prace.count()
         context["aliasy"] = Wydawca.objects.filter(alias_dla=wydawca).order_by("nazwa")
         context["poziomy"] = wydawca.poziom_wydawcy_set.order_by("-rok")
+        request = getattr(self, "request", None)
         if context["liczba_prac"]:
-            wykresy = wykresy_w_latach(prace, getattr(self, "request", None))
+            # Książki i rozdziały osobno (licznik, przyciski, chipy, wykresy).
+            podzial = podzial_wydawcy(prace, request)
+            context["podzial"] = podzial["podzial"]
+            wykresy = wykresy_w_latach(prace, request)
+            if podzial["wykresy_kategorii"]:
+                # „Książki/Rozdziały w latach” zastępują wspólny wykres prac.
+                wykresy = podzial["wykresy_kategorii"] + [
+                    w for w in wykresy if w["nazwa"] != "Publikacje w latach"
+                ]
             if wykresy:
                 context["wykresy"] = {"wykresy": wykresy}
                 context["szukaj_pola"] = [("wydawca", wydawca.pk)]
                 context["szukaj_tytul"] = str(wydawca)
         # Sekcje autorów/jednostek, znaczek poziomu, chipy typów publikacji.
         context["typy"] = TYPY
-        context.update(sekcje_wydawcy(wydawca, getattr(self, "request", None)))
+        context.update(sekcje_wydawcy(wydawca, request))
+        context["ewaluacja"] = punkty_ewaluacji_wydawcy(wydawca)
         return context
 
 
@@ -1358,6 +1401,10 @@ class BuildSearch(RedirectView):
             self.request.POST, "wydawca", WydawcaQueryObject
         )
         typy_box = zrob_box_z_requestu(self.request.POST, "typ", TypRekorduObject)
+        # Strona wydawcy: „książka” / „rozdział” / … (charakter ogólny).
+        charakter_ogolny_box = zrob_box_z_requestu(
+            self.request.POST, "charakter_ogolny", CharakterOgolnyQueryObject
+        )
         lata_box = zrob_box_lat(self.request)
         jednostki_box = zrob_box_z_requestu(
             self.request.POST, "jednostka", JednostkaQueryObject
@@ -1419,6 +1466,7 @@ class BuildSearch(RedirectView):
             autorzy_box,
             *wspolautorzy_boxy,
             typy_box,
+            charakter_ogolny_box,
             charakter_box,
             jednostki_box,
             wydzialy_box,

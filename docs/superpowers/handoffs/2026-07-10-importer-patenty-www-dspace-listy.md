@@ -49,7 +49,7 @@ To dokładnie kształt, jaki przyjmie „wykryj stronę-listę" — tyle że w
   **twardo odrzuca** URL-e nie-itemowe (kolekcja/browse/discover). To jest
   bramka PRZED `split_input` (`views/wizard.py:177-187`), więc **musi być
   poluzowana**, inaczej `split_input` się nie odpali.
-- Cel `dspace.piwet.pulawy.pl` = **DSpace 6 XMLUI** (server-rendered, nie SPA).
+- Cel `dspace.example.edu.pl` = **DSpace 6 XMLUI** (server-rendered, nie SPA).
   URL-e prac `/handle/123456789/N` **już działają dziś** w pojedynczym imporcie.
 - `split_input` nienadpisane (dziedziczy default 1-rekord).
 - **Latentny bug (osobny):** `_parse_handle_url` regex `r"/handle/(\d+/\d+)"`
@@ -69,7 +69,7 @@ To dokładnie kształt, jaki przyjmie „wykryj stronę-listę" — tyle że w
 3. `fetch()` **bez zmian** — już rozwiązuje item-handle jeden po drugim.
 
 ### Otwarte pytania
-- Czy `piwet` ma włączony OAI-PMH (`/oai/request`)? (standard w DSpace 6, ale
+- Czy to repozytorium ma włączony OAI-PMH (`/oai/request`)? (standard w DSpace 6, ale
   zweryfikować na żywo). Jeśli tak — najczystsza droga.
 - Jak user wskaże „którą kolekcję/zapytanie" — wkleja URL kolekcji? browse?
   całe repo? Zdecydować zakres (kolekcja vs cały serwer).
@@ -170,7 +170,7 @@ BibTeX brak/stratne).
   (Omega-PSIR). `input_mode=IDENTIFIER` (URL). `validate_identifier` akceptuje
   **dowolny** poprawny URL (`network.py:31-51`) — więc URL listy przejdzie
   walidację, ale `fetch()` zwróci 0/1 rekord (brak pojęcia „lista").
-- `https://ppm.umlub.pl/globalResultList.seam?...` = **JBoss Seam/JSF**. Pobrany
+- `https://ppm.example.edu.pl/globalResultList.seam?...` = **JBoss Seam/JSF**. Pobrany
   HTML dla tego URL pokazuje tylko zakładki z licznikami, **brak linków do
   pojedynczych prac** — grid wyników renderowany prawdopodobnie AJAX-em
   (JSF/RichFaces) na bazie server-side `javax.faces.ViewState`, którego

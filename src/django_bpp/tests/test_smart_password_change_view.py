@@ -24,13 +24,15 @@ def test_external_provider_info_orcid():
     assert url
 
 
-@override_settings(OIDC_ACCOUNT_CONSOLE_URL="https://kc.example/realms/uafm/account")
+@override_settings(
+    OIDC_ACCOUNT_CONSOLE_URL="https://kc.example/realms/uczelnia/account"
+)
 def test_external_provider_info_oidc_uses_account_console_url():
     # Regresja na KeyError → 500: backend OIDC jest w EXTERNAL_AUTH_BACKENDS, ale
     # brakowało go w mapie URL-i, więc dispatch wywalał się na słowniku.
     provider, url = SmartPasswordChangeView._external_provider_info(OIDC_BACKEND)
     assert "Keycloak" in provider
-    assert url == "https://kc.example/realms/uafm/account"
+    assert url == "https://kc.example/realms/uczelnia/account"
 
 
 def test_external_provider_info_oidc_without_console_url_does_not_crash():
@@ -52,3 +54,18 @@ def test_oidc_session_does_not_500_on_password_change(client, test_user):
     assert "registration/password_change_external.html" in [
         t.name for t in response.templates
     ]
+
+
+def test_password_change_form_has_password_manager_hints(client, test_user):
+    # Bitwarden (and other password managers) only offer a generated password
+    # when the fields carry autocomplete hints and the username is present.
+    client.force_login(test_user)
+
+    response = client.get(reverse("password_change"))
+
+    html = response.content.decode()
+    assert response.status_code == 200
+    assert 'autocomplete="current-password"' in html
+    assert html.count('autocomplete="new-password"') == 2
+    assert 'autocomplete="username"' in html
+    assert f'value="{test_user.get_username()}"' in html

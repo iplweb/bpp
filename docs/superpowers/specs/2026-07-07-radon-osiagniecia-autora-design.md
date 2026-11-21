@@ -61,7 +61,7 @@ Wszystkie endpointy: baza `https://radon.nauka.gov.pl/opendata`, odpowiedź
   `firstName`, `middleName`, `lastName`, **`ORCID`**, `kindManager`,
   `institutionName`, `startDate`, `endDate`.
 - **Weryfikacja:** `projectManagers[].ORCID == autor.orcid` (potwierdzone na
-  żywo: Kowalczewski → 3 projekty, manager ORCID = `0000-0002-0153-4624`,
+  żywo: przykładowy autor → 3 projekty, manager ORCID = `0000-0002-1825-0097`,
   kwoty w `totalFunds`).
 
 ### C. `polon/products` — PATENTY I PRAWA OCHRONNE (filtr po wynalazcy)

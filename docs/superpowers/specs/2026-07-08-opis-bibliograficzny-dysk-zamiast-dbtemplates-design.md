@@ -8,7 +8,7 @@ Recenzja: adversarialny self-review (Fable) — ustalenia P1–P9 wchłonięte n
 
 ## Kontekst
 
-Zgłoszenie #329 (Biblioteka Naukowa IHiT): rozdział książki z wydawnictwem
+Zgłoszenie #329 (biblioteka jednego z klientów): rozdział książki z wydawnictwem
 nadrzędnym pobranym z PBN nie pokazuje rodzica w opisie bibliograficznym.
 
 PR #409 naprawił **render** (szablon `opis_bibliograficzny.html` czyta rodzica
@@ -111,11 +111,13 @@ Nowa, izolowana jednostka (np. `src/bpp/util/dbtemplates_disk.py`). Module-level
 
 ```python
 from django.template import Engine
+
 _disk_engine = Engine(dirs=list(TEMPLATES_DIRS), app_dirs=True)
 # UWAGA: NIE 'loaders=[...] + app_dirs=True' — to ImproperlyConfigured w Dj5.2.
 # Domyślne loadery Engine to dokładnie filesystem + app_directories (bez
 # dbtemplates), owinięte w cached.Loader. Cached zamraża źródło w procesie —
 # dla compare (one-shot) i clean() bez znaczenia.
+
 
 def disk_template_source(name: str) -> str | None:
     """Źródło szablonu `name` z DYSKU, z pominięciem loadera dbtemplates.
@@ -267,7 +269,7 @@ forsujemy tam disk-only. Disk-only żyje tylko w compare (§3).
 - `browse/praca_tabela.html` i inne dbtemplates — zostają.
 - Usunięcie aplikacji dbtemplates — nie.
 - Logika PBN `object.book` w szablonie — bez zmian (już w #409).
-- Weryfikacja/wgranie u klienta (IHiT) i zamknięcie zgłoszenia — osobno
+- Weryfikacja/wgranie u klienta i zamknięcie zgłoszenia — osobno
   („skill #2"). Tu dostarczamy kod + migrację, która po podbiciu wydania
   samoczynnie kasuje wiersz, czyści cache i oznacza rekordy dirty; opisy
   odświeży async kolejka `denorm`.

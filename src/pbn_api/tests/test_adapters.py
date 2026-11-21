@@ -10,6 +10,7 @@ from bpp.models import (
     Czas_Udostepnienia_OpenAccess,
     Licencja_OpenAccess,
     Tryb_OpenAccess_Wydawnictwo_Ciagle,
+    Tryb_OpenAccess_Wydawnictwo_Zwarte,
     Wersja_Tekstu_OpenAccess,
     Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Autor,
@@ -421,3 +422,95 @@ def test_WydawnictwoAutorToStatementPBNAdapter_nie_zwraca_orcid(
 
     assert result is not None
     assert "orcid" not in result
+
+
+def _ustaw_pelne_openaccess(rekord, klasa_trybu, skrot_trybu):
+    rekord.openaccess_licencja = Licencja_OpenAccess.objects.first()
+    rekord.openaccess_tryb_dostepu = klasa_trybu.objects.get(skrot=skrot_trybu)
+    rekord.openaccess_wersja_tekstu = Wersja_Tekstu_OpenAccess.objects.first()
+    rekord.openaccess_czas_publikacji = Czas_Udostepnienia_OpenAccess.objects.get(
+        skrot="AT_PUBLICATION"
+    )
+    rekord.save()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "fixture_name,expected_type",
+    [
+        ("pbn_wydawnictwo_zwarte_ksiazka", "BOOK"),
+        ("pbn_rozdzial_z_autorem_z_dyscyplina", "CHAPTER"),
+    ],
+)
+def test_WydawnictwoPBNAdapter_openaccess_monografia_i_rozdzial(
+    request, fixture_name, expected_type, openaccess_data
+):
+    """FD#281: OA monografii i rozdziałów musi trafiać do PBN (modeMonograph)."""
+    rekord = request.getfixturevalue(fixture_name)
+    _ustaw_pelne_openaccess(
+        rekord, Tryb_OpenAccess_Wydawnictwo_Zwarte, "PUBLISHER_WEBSITE"
+    )
+
+    res = WydawnictwoPBNAdapter(rekord).pbn_get_json()
+
+    assert res["type"] == expected_type
+    oa = res["openAccess"]
+    assert oa["modeMonograph"] == "PUBLISHER_WEBSITE"
+    assert "modeArticle" not in oa
+    assert oa["releaseDateMode"] == "AT_PUBLICATION"
+    assert oa["license"]
+    assert oa["textVersion"]
+
+
+@pytest.mark.django_db
+def test_WydawnictwoPBNAdapter_openaccess_artykul_mode_article(
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina, openaccess_data
+):
+    rekord = pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
+    _ustaw_pelne_openaccess(
+        rekord, Tryb_OpenAccess_Wydawnictwo_Ciagle, "OPEN_JOURNAL"
+    )
+
+    res = WydawnictwoPBNAdapter(rekord).pbn_get_json()
+
+    assert res["type"] == "ARTICLE"
+    assert res["openAccess"]["modeArticle"] == "OPEN_JOURNAL"
+    assert "modeMonograph" not in res["openAccess"]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "brakujace_pole",
+    [
+        "openaccess_licencja",
+        "openaccess_tryb_dostepu",
+        "openaccess_wersja_tekstu",
+        "openaccess_czas_publikacji",
+    ],
+)
+def test_WydawnictwoPBNAdapter_openaccess_monografia_niepelne_dane(
+    pbn_wydawnictwo_zwarte_ksiazka, openaccess_data, brakujace_pole
+):
+    rekord = pbn_wydawnictwo_zwarte_ksiazka
+    _ustaw_pelne_openaccess(
+        rekord, Tryb_OpenAccess_Wydawnictwo_Zwarte, "PUBLISHER_WEBSITE"
+    )
+    setattr(rekord, brakujace_pole, None)
+    rekord.save()
+
+    assert WydawnictwoPBNAdapter(rekord)._build_open_access("BOOK") is None
+    assert "openAccess" not in WydawnictwoPBNAdapter(rekord).pbn_get_json()
+
+
+@pytest.mark.django_db
+def test_WydawnictwoPBNAdapter_openaccess_artykul_bez_trybu(
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina, openaccess_data
+):
+    rekord = pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
+    _ustaw_pelne_openaccess(
+        rekord, Tryb_OpenAccess_Wydawnictwo_Ciagle, "OPEN_JOURNAL"
+    )
+    rekord.openaccess_tryb_dostepu = None
+    rekord.save()
+
+    assert "openAccess" not in WydawnictwoPBNAdapter(rekord).pbn_get_json()

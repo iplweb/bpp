@@ -5,7 +5,7 @@ Branch: `feature/oidc-login` → PR do `feature/multi-hosted-config`
 
 ## Problem
 
-Logowanie OIDC (Keycloak, realm KA) nie działa. Z logów:
+Logowanie OIDC (Keycloak, realm uczelni) nie działa. Z logów:
 
 1. **„Claims verification failed"** — `mozilla_django_oidc.verify_claims`
    sprawdza `"email" in claims`, bo scope zawiera `email`. Keycloak wysyła

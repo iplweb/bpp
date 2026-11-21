@@ -5,20 +5,46 @@ logowania. Dane można wyszukiwać na dwa sposoby oraz przeglądać według
 autorów, jednostek, źródeł i lat. Czynności redakcyjne (dodawanie i edycja
 rekordów) opisuje osobna [Instrukcja redaktora](../redaktor/uczelnia.md).
 
+## Gdzie szukać jakich danych
+
+| Chcę znaleźć… | Gdzie |
+|---|---|
+| konkretną pracę — znam fragment tytułu, DOI albo ISBN | **szukaj → szybko** (albo klawisz `/`) |
+| dorobek konkretnej osoby | **szukaj → szybko** i nazwisko, albo **przeglądaj → autorzy** — otworzy się [strona autora](#strona-autora) |
+| prace spełniające kilka warunków naraz (autor + lata + typ…) | **szukaj → precyzyjnie** |
+| publikacje wydziału, katedry, zakładu | **przeglądaj → jednostki** |
+| prace opublikowane w danym czasopiśmie | **przeglądaj → źródła** |
+| książki danego wydawnictwa | **przeglądaj → wydawcy** |
+| wszystkie prace z danego roku | **przeglądaj → wg roku** |
+| DOI, punkty, licencję, dane bibliograficzne jednej pracy | [strona publikacji](#strona-publikacji) |
+| listę swoich prac do sprawozdania lub wniosku (Word, Excel) | [Jak pobrać listę publikacji](pobieranie-listy-publikacji.md) |
+| zestawienia, rankingi, punkty i sloty | menu **raporty** i **ewaluacja** — patrz [Raporty krok po kroku](raporty-krok-po-kroku.md) |
+
 ## Dwa tryby wyszukiwania
 
 Menu **szukaj** na górnej belce udostępnia dwa tryby. Różnią się one tym,
 *jak precyzyjnie* formułujemy zapytanie.
 
+![Menu „szukaj” z pozycjami „szybko” i „precyzyjnie”](../images/uzytkownik/wyszukiwanie/01-menu-szukaj.png)
+
 ### Wyszukiwanie szybkie (klawisz `/`)
 
-Pozycja **szukaj → szybko** otwiera okno błyskawicznej wyszukiwarki po
-tytule. To samo okno otworzysz z dowolnego miejsca na stronie, naciskając
-klawisz `/` (ukośnik).
+Pozycja **szukaj → szybko** otwiera okno błyskawicznej wyszukiwarki. To samo
+okno otworzysz z dowolnego miejsca na stronie, naciskając klawisz `/`
+(ukośnik).
 
-Wyszukiwanie szybkie jest *jednopolowe* — wpisujesz fragment tytułu
-(minimum 3 znaki), a system natychmiast podpowiada pasujące prace. Obsługuje
-kilka prostych operatorów:
+Wyszukiwanie szybkie jest *jednopolowe* — wpisujesz co najmniej 3 znaki,
+a system od razu podpowiada wyniki, pogrupowane według rodzaju:
+
+- **publikacje** — po fragmencie tytułu, a także po pełnym **DOI**,
+  **ISBN** albo identyfikatorze PBN,
+- **autorów** — po nazwisku,
+- **jednostki** — po nazwie,
+- **źródła** (czasopisma) — po nazwie.
+
+![Okno szybkiego wyszukiwania z wynikami pogrupowanymi na jednostki i publikacje](../images/uzytkownik/wyszukiwanie/02-szukaj-szybko.png)
+
+W tytułach działa kilka prostych operatorów:
 
 - **Od początku wyrazu** — `preane` znajdzie „preanestetyczny", ale
   `anestetyczny` już nie (dopasowanie jest od początku słowa).
@@ -31,39 +57,55 @@ Po wynikach poruszasz się strzałkami `↑` `↓`, `ENTER` przechodzi do
 wybranej pozycji, a `ESC` zamyka okno.
 
 !!! tip "Kiedy używać"
-    Wyszukiwanie szybkie sprawdza się, gdy znasz fragment tytułu i chcesz
-    w jednej chwili trafić do konkretnej pracy.
+    Wyszukiwanie szybkie sprawdza się, gdy znasz fragment tytułu, DOI albo
+    nazwisko i chcesz w jednej chwili trafić do konkretnej pracy lub osoby.
 
 ### Wyszukiwanie precyzyjne (formularz)
 
-Pozycja **szukaj → precyzyjnie** otwiera rozbudowany formularz, w którym
-budujesz zapytanie z wielu warunków jednocześnie — np. autor *oraz* rok
-*oraz* typ pracy *oraz* jednostka. Poszczególne kryteria łączysz spójnikami
-(i / lub), a całość możesz dowolnie zagnieżdżać. Wyniki da się sortować
-i wyeksportować.
+Pozycja **szukaj → precyzyjnie** otwiera formularz, w którym budujesz
+zapytanie z wielu warunków jednocześnie — np. autor *i* lata *i* typ pracy —
+łącząc je spójnikami i / lub / i nie oraz grupując w ramki. Najprościej
+zacząć od strony autora albo jednostki: przycisk **„Szukaj publikacji”**
+otwiera formularz z już wpisanymi warunkami.
 
-!!! tip "Kiedy używać"
-    Wyszukiwanie precyzyjne sprawdza się, gdy chcesz zawęzić wyniki po
-    kilku polach naraz (np. „artykuły danego autora z lat 2020–2023") —
-    czego pojedyncze pole szybkiego wyszukiwania nie potrafi.
+Szczegóły w pięciu artykułach:
+[podstawy](wyszukiwanie-precyzyjne.md),
+[przykłady zapytań](wyszukiwanie-precyzyjne-przyklady.md),
+[praca z wynikami](wyszukiwanie-precyzyjne-wyniki.md),
+[zapisane formularze](wyszukiwanie-precyzyjne-zapisane.md) oraz
+[tabela krzyżowa](tabela-krzyzowa.md) — zestawienie wyników w tabeli,
+np. punkty według jednostki i charakteru formalnego.
 
 !!! note "Wyszukiwanie zapytaniem"
     W menu może pojawić się dodatkowo pozycja **zapytaniem** — to tryb dla
     zalogowanych redaktorów, pozwalający wpisać zapytanie w języku BPP-QL.
     Dla zwykłego odwiedzającego nie jest widoczny.
 
+!!! tip "Wyszukiwanie przez asystenta AI"
+    Bibliografię można też przeszukiwać, rozmawiając z asystentem AI
+    (np. Claude, ChatGPT) — zobacz [Bibliografia w asystencie
+    AI](asystent-ai.md).
+
 ## Przeglądanie
 
 Menu **przeglądaj** pozwala wędrować po bazie bez wpisywania zapytania —
-od listy do listy aż do konkretnego rekordu. Dostępne są widoki:
+od listy do listy aż do konkretnego rekordu.
+
+![Menu „przeglądaj”: uczelnia, jednostki, autorzy, źródła, wydawcy, wg roku](../images/uzytkownik/wyszukiwanie/03-menu-przegladaj.png)
+
+Dostępne są widoki:
 
 - **Uczelnia** — strona główna z danymi i logo uczelni oraz jej strukturą.
 - **Jednostki** — alfabetyczna lista wydziałów i jednostek; po wejściu
   w jednostkę zobaczysz przypisane do niej publikacje i pracowników.
+  Na stronie głównej niektórych uczelni zamiast kafla „Jednostki” jest
+  kafel **„Wydziały”** — prowadzi do listy samych wydziałów tej uczelni.
 - **Autorzy** — alfabetyczna lista autorów; strona pojedynczego autora to
   jego pełna bibliografia (patrz niżej).
 - **Źródła** — wydawnictwa ciągłe (czasopisma) i inne źródła; po wejściu
   w źródło zobaczysz opublikowane w nim prace.
+- **Wydawcy** — wydawnictwa książek; po wejściu zobaczysz wydane przez
+  nie publikacje.
 - **Wg roku** — prace pogrupowane według roku wydania.
 
 ## Strona autora („raport autora") {#strona-autora}
@@ -88,9 +130,7 @@ się jedna pod drugą. **Które sekcje są widoczne, w jakiej kolejności i jak
 szerokie**, ustala uczelnia (patrz
 [instrukcja administratora — układ podstrony autora](../administrator/ogolna.md#układ-podstrony-autora-profil-autora)).
 
-!!! note "Zrzut ekranu"
-    W tym miejscu można w przyszłości umieścić zrzut ekranu przedstawiający
-    typowy układ strony autora.
+![Strona autora: przycisk „Pokaż wszystkie prace”, podsumowanie dorobku, wyszukiwarka prac autora i eksport](../images/uzytkownik/wyszukiwanie/04-strona-autora.png)
 
 ### Sekcje strony autora
 
@@ -109,15 +149,18 @@ W układzie domyślnym, od góry:
   zdjęcia ani biogramu, wykresy stają obok afiliacji, jeden pod drugim.
 - **Statystyki wg charakteru formalnego** (np. ile artykułów, ile
   rozdziałów) oraz **najczęstsi współautorzy** — z odnośnikiem do
-  wizualnej sieci powiązań.
+  wizualnej sieci powiązań. Jak czytać tę sieć i co można w niej
+  sprawdzić, opisuje strona
+  [Sieć powiązań autorów](powiazania-autorow.md).
 - **Liczba cytowań** (o ile uczelnia pobiera takie dane) oraz **metryki
   ewaluacyjne** — te ostatnie widzi tylko zalogowany autor na własnej
   stronie i osoby uprawnione do metryk.
 - **Osiągnięcia naukowe** pobierane z systemu RAD-on (dla autorów z ORCID).
 - Formularz **„Wyszukaj publikacje autora”** — zawężenie listy prac
   m.in. po typie, jednostce, roku.
-- Odnośniki do **raportu autora** oraz **eksport (BibTeX / RIS)** —
-  patrz [Eksport publikacji autora](#eksport-publikacji-autora-bibtex-i-ris).
+- Odnośniki do **raportu autora** oraz **eksport (BibTeX / RIS / XLSX
+  z punktacją)** — patrz
+  [Eksport publikacji autora](#eksport-publikacji-autora-bibtex-i-ris).
 - Listy prac: **najlepsze prace** wg punktacji i wg Impact Factor,
   **najnowsze artykuły**, **najnowsze książki i rozdziały** oraz **ostatnio
   edytowane** rekordy (domyślnie po 5 pozycji), a jeśli uczelnia włączyła
@@ -144,13 +187,34 @@ widzą tylko zalogowani.
   wyszukiwarkę precyzyjną (multiseek) z gotowym zapytaniem „ten autor +
   ten charakter" — od razu zobaczysz wszystkie prace danego rodzaju.
 
+## Strona publikacji {#strona-publikacji}
+
+Kliknięcie w dowolną pracę — na liście wyników, na stronie autora,
+jednostki czy źródła — otwiera **stronę publikacji** ze wszystkimi danymi
+o niej: opisem bibliograficznym, autorami (każde nazwisko prowadzi do strony
+autora), źródłem, rokiem, charakterem formalnym, danymi Open Access
+(licencja, wersja tekstu) oraz **punktami MNiSW/MEiN** i Impact Factor.
+
+![Strona publikacji: przycisk otwierający DOI, metryki z punktami i eksport cytowania](../images/uzytkownik/wyszukiwanie/05-strona-publikacji.png)
+
+- **„Otwórz”** przy DOI (i przy innych linkach zewnętrznych, np. PubMed,
+  PBN) prowadzi do pełnego tekstu lub rekordu w danym serwisie; ikona obok
+  kopiuje identyfikator do schowka.
+- **Kliknięcie w opis bibliograficzny** kopiuje go do schowka — gotowy do
+  wklejenia np. do wniosku.
+- **„Pokaż BibTeX”** / **„Skopiuj do schowka”** — cytowanie dla LaTeX-a
+  i menedżerów bibliografii (Zotero, Mendeley, EndNote). Z zainstalowanym
+  dodatkiem do przeglądarki Zotero/Mendeley pracę zapiszesz też jednym
+  kliknięciem w ikonę dodatku.
+
 ## Eksport publikacji autora (BibTeX i RIS) {#eksport-publikacji-autora-bibtex-i-ris}
 
-Na stronie autora znajdują się przyciski **„BibTeX"** i
-**„RIS"**. Przygotowują one plik zawierający **wszystkie publikacje autora**
-(odpowiednio w formacie `.bib` oraz `.ris`), gotowy do zaimportowania
-w menedżerach bibliografii — np. Zotero, Mendeley, EndNote, a w przypadku
-BibTeX-a także w środowisku LaTeX.
+Na stronie autora, w sekcji **„Eksport publikacji”**, znajdują się przyciski
+**„BibTeX"**, **„RIS"** i **„XLSX z punktacją"**. Przygotowują one plik
+zawierający **wszystkie publikacje autora**: `.bib` i `.ris` — gotowe do
+zaimportowania w menedżerach bibliografii (np. Zotero, Mendeley, EndNote,
+a w przypadku BibTeX-a także w środowisku LaTeX), `.xlsx` — arkusz Excel
+z punktacją, wygodny do sprawozdań.
 
 Po kliknięciu przycisku otwiera się strona eksportu:
 

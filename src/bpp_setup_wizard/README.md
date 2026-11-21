@@ -110,7 +110,7 @@ registration call required.
 
 Auto-configured fields (always set to `True` during initial setup):
 
-- `pbn_api_kasuj_przed_wysylka`
+- `pbn_kasuj_dyscypliny_selektywnie`
 - `pbn_api_nie_wysylaj_prac_bez_pk`
 - `pbn_api_afiliacja_zawsze_na_uczelnie`
 - `pbn_wysylaj_bez_oswiadczen`

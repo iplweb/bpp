@@ -115,6 +115,20 @@ Note: The script requires `expect` to be installed on the system.
   - To modify the error page, edit `src/bpp/templates/50x.html` and run
     `make generate-500-page`
 
+## Running a local script on a client's server
+
+```bash
+scripts/bpp-remote-shell bpp.example.edu.pl my_script.py --some-arg value
+```
+
+Streams a local Python script over SSH into the Django shell of a remote
+deployment (`docker compose exec -T appserver python src/manage.py shell`
+in `~/bpp-deploy`). Script arguments land in `sys.argv`. Nothing is copied
+to the server and no secrets leave it — useful for anything that needs the
+client's settings, e.g. calling PBN with the institution's app token and a
+user's PBN session (both encrypted with the server's key). Override the
+deploy path / service with `BPP_REMOTE_DEPLOY_PATH` / `BPP_REMOTE_SERVICE`.
+
 ## Git Worktree Setup
 
 ```bash
