@@ -29,6 +29,7 @@ from django.contrib.admin.models import CHANGE, LogEntry
 from django.db import transaction
 from django.db.models import F
 from reversion.models import Version
+from reversion.revisions import _stack as _stos_rewizji
 
 from bpp.models import Autor, Autor_Jednostka, WybranaPublikacjaAutora
 
@@ -66,21 +67,71 @@ def zapewnij_wersje_poczatkowa(obj):
 
     Rekordy sprzed włączenia wersjonowania nie mają żadnej wersji, a
     reversion zapisuje stan PO zmianie — bez tego pierwszej edycji nie
-    dałoby się cofnąć. Wołać PRZED zapisem i POZA aktywnym blokiem
-    ``create_revision`` (zagnieżdżony blok scaliłby się z zewnętrznym
-    i zapisał stan po zmianie).
+    dałoby się cofnąć. Wołać PRZED zapisem. Patrz
+    ``zapewnij_wersje_poczatkowe``.
     """
     if obj is None or obj.pk is None:
         return
-    if Version.objects.get_for_object(obj).exists():
+    zapewnij_wersje_poczatkowe(type(obj), [obj.pk])
+
+
+def zapewnij_wersje_poczatkowe(model, pks, select_related=()):
+    """Hurtowy wariant ``zapewnij_wersje_poczatkowa``: zapisz bieżący stan
+    tych rekordów ``model`` o kluczach ``pks``, które nie mają żadnej wersji.
+
+    Stała liczba zapytań niezależnie od liczby rekordów: jedno o rekordy
+    z wersjami, jedno (+ prefetch śledzonych relacji) o rekordy bez wersji
+    i jedna rewizja z wieloma wersjami. ``select_related`` — relacje
+    potrzebne do ``__str__`` (``object_repr`` wersji), żeby nie pytać
+    o nie osobno dla każdego rekordu.
+
+    Wolno wołać także wewnątrz aktywnego ``create_revision`` (np. akcja
+    admina — ``VersionAdmin.changelist_view`` owija ją w rewizję): wersję
+    początkową zapisujemy wtedy z pustym stosem rewizji reversion. Inaczej
+    zagnieżdżony blok scaliłby się z zewnętrznym, a późniejsze
+    ``add_to_revision`` tego samego obiektu nadpisałoby stan „przed” stanem
+    „po”. Transakcja bazy jest ta sama.
+    """
+    pks = list(pks)
+    if not pks:
         return
-    swiezy = type(obj)._default_manager.filter(pk=obj.pk).first()
-    if swiezy is None:
+    z_wersjami = set(
+        Version.objects.get_for_model(model)
+        .filter(object_id__in=[str(pk) for pk in pks])
+        .values_list("object_id", flat=True)
+    )
+    brakujace = [pk for pk in pks if str(pk) not in z_wersjami]
+    if not brakujace:
         return
-    with transaction.atomic(), reversion.create_revision():
-        reversion.add_to_revision(swiezy)
-        # Bez użytkownika — to nie jest niczyja zmiana, tylko punkt odniesienia.
-        reversion.set_comment(KOMENTARZ_WERSJI_POCZATKOWEJ)
+    follow = reversion.revisions._get_options(model).follow
+    obiekty = list(
+        model._default_manager.filter(pk__in=brakujace)
+        .select_related(*select_related)
+        .prefetch_related(*follow)
+    )
+    if not obiekty:
+        return
+
+    def _zapisz():
+        with transaction.atomic(), reversion.create_revision():
+            for obiekt in obiekty:
+                reversion.add_to_revision(obiekt)
+            # Bez użytkownika — to nie jest niczyja zmiana, tylko punkt
+            # odniesienia.
+            reversion.set_comment(KOMENTARZ_WERSJI_POCZATKOWEJ)
+
+    if not reversion.is_active():
+        _zapisz()
+        return
+    # Odłóż stos rewizji na czas zapisu i przywróć go potem. Celowo NIE
+    # ``contextvars.Context().run``: w świeżym kontekście Django potrafi
+    # dać INNE połączenie z bazą (poza bieżącą transakcją) — zapis wersji
+    # by przepadł albo poszedł obok transakcji.
+    token = _stos_rewizji.set([])
+    try:
+        _zapisz()
+    finally:
+        _stos_rewizji.reset(token)
 
 
 @contextmanager

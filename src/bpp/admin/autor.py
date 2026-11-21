@@ -24,7 +24,12 @@ from ..models import (  # Publikacja_Habilitacyjna
 from ..util.identyfikatory import IdentyfikatoryProfiliFormMixin
 from ..util.obrazy import MAKS_ROZMIAR_PLIKU_ZDJECIA, przetworz_zdjecie_autora
 from ..wersjonowanie import przelicz_aktualna_jednostke
-from .actions import ustaw_pokazuj_false, ustaw_pokazuj_true
+from .actions import (
+    pokaz_autorow_wszedzie,
+    ukryj_autorow_wszedzie,
+    ustaw_pokazuj_false,
+    ustaw_pokazuj_true,
+)
 from .core import BaseBppAdminMixin
 from .filters import (
     AutorZmarlFilter,
@@ -381,7 +386,12 @@ class AutorAdmin(
     form = AutorForm
     autocomplete_fields = ["pbn_uid"]
     resource_classes = [resources.AutorResource]
-    actions = [ustaw_pokazuj_true, ustaw_pokazuj_false]
+    actions = [
+        ustaw_pokazuj_true,
+        ustaw_pokazuj_false,
+        pokaz_autorow_wszedzie,
+        ukryj_autorow_wszedzie,
+    ]
 
     list_display_always = ["nazwisko", "imiona"]
 
