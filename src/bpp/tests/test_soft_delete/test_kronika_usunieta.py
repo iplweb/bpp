@@ -6,7 +6,6 @@ nie daje się rozciąć na raty bez ``CASCADE``.
 """
 
 import pytest
-from django.core.management import call_command
 from django.db import connection
 
 RODZINA = [
@@ -34,37 +33,3 @@ def test_rodzina_kronika_nie_istnieje():
     with connection.cursor() as cur:
         zostale = _istniejace(cur)
     assert not zostale, f"widoki kronika nadal istnieja: {sorted(zostale)}"
-
-
-@pytest.mark.django_db
-# Odtwarza migracje w obie strony; solo ~35-55 s, pod obciążeniem xdist
-# przekraczał globalne `--timeout 90` (por. test_migracja_0511_rewers.py).
-@pytest.mark.timeout(300)
-def test_0514_odwracalna(bez_reinstalacji_denorma):
-    """``backward`` odtwarza całą siódemkę z sidecara ``.sql``.
-
-    Sidecar był generowany maszynowo z ``pg_get_viewdef()``, ale to nie
-    dowodzi, że da się go ODTWORZYĆ — kolejność ``CREATE VIEW`` musi
-    respektować graf zależności, a ``pg_get_viewdef`` nie zwraca jej sam
-    z siebie. Ten test jest jedynym sprawdzeniem tej kolejności.
-    """
-    try:
-        call_command(
-            "migrate", "bpp", "0513_nowe_sumy_bez_skasowanych_publikacji", verbosity=0
-        )
-
-        with connection.cursor() as cur:
-            odtworzone = _istniejace(cur)
-        brakujace = set(RODZINA) - odtworzone
-        assert not brakujace, (
-            f"backward nie odtworzyl: {sorted(brakujace)} — sprawdz kolejnosc "
-            f"CREATE VIEW w sidecarze 0514_drop_kronika_views.sql"
-        )
-    finally:
-        # ZAWSZE wracamy na szczyt: baza testowa jest wspoldzielona przez
-        # caly przebieg, wiec zostawienie jej z odtworzona kronika psuloby
-        # test_rodzina_kronika_nie_istnieje w kolejnych plikach.
-        call_command("migrate", "bpp", verbosity=0)
-
-    with connection.cursor() as cur:
-        assert not _istniejace(cur), "po ponownym forward kronika nie znikla"

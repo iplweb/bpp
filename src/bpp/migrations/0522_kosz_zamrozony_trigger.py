@@ -20,6 +20,9 @@ Błąd ma komunikat zaczynający się od ``BPP_KOSZ:`` — admin tłumaczy go na
 czytelny komunikat. UWAGA dla przyszłych migracji danych: ``UPDATE`` na tych
 tabelach, który ma objąć rekordy z kosza, musi ustawić flagę
 (``SELECT set_config('bpp.kosz_operacja', 'on', true)``).
+
+NIEODWRACALNA (brak ``reverse_sql``) — jak cały łańcuch soft-delete
+``0510``–``0522``; powrót wyłącznie z kopii bazy.
 """
 
 from django.db import migrations
@@ -80,17 +83,11 @@ def _sql_forward():
     return "\n".join(sql)
 
 
-def _sql_backward():
-    sql = [f"DROP TRIGGER IF EXISTS {t}_kosz_straznik ON {t};" for t in TABELE]
-    sql.append("DROP FUNCTION IF EXISTS bpp_kosz_straznik();")
-    return "\n".join(sql)
-
-
 class Migration(migrations.Migration):
     dependencies = [
         ("bpp", "0521_kasowanie_prac_dyplomowych_z_autorzy_mat"),
     ]
 
     operations = [
-        migrations.RunSQL(_sql_forward(), _sql_backward()),
+        migrations.RunSQL(_sql_forward()),
     ]

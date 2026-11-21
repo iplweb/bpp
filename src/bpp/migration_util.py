@@ -86,17 +86,23 @@ def widok_dopisz_warunek(cur, widok, warunek):
     cur.execute(f"CREATE OR REPLACE VIEW {widok} AS {definicja} AND {warunek}")
 
 
-def widok_usun_warunek(cur, widok, warunek):
-    """Odwrotność ``widok_dopisz_warunek`` (dla ``backward()``).
+def _bez_zmian(apps, schema_editor):
+    """Krok w przód nic nie robi — liczy się tylko brak kroku wstecz."""
 
-    Wycina DOKŁADNIE dopisany sufiks ``AND <warunek>``; gdy go nie ma — no-op
-    (migracja cofana dwa razy albo widok w międzyczasie przebudowany).
+
+def nieodwracalna():
+    """Operacja-znacznik: migracja, która ją zawiera, jest NIEODWRACALNA.
+
+    Migracje czysto schematowe (``AddField``, ``AddIndex``…) Django cofa
+    samo. Łańcuch soft-delete (``bpp/0510``–``0522`` i migracje kolejki /
+    wycofań PBN) cofać się NIE MA: rozjechałby dane kosza i wycofań z kodem.
+    ``RunPython`` bez ``reverse_code`` sprawia, że ``migrate`` w tył rzuca
+    ``IrreversibleError`` ZANIM cokolwiek zmieni. Powrót — tylko z kopii bazy
+    (``docs/deweloper/soft-delete.md``).
     """
-    definicja = viewdef(cur, widok)
-    sufiks = f" AND {warunek}"
-    if not definicja.endswith(sufiks):
-        return
-    cur.execute(f"CREATE OR REPLACE VIEW {widok} AS {definicja[: -len(sufiks)]}")
+    from django.db import migrations
+
+    return migrations.RunPython(_bez_zmian)
 
 
 def load_fixture_as_json(fixture_name):

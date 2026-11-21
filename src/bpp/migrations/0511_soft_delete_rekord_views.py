@@ -32,6 +32,10 @@ samym słowie — widoki mają ``WHERE`` w podzapytaniach skalarnych.
 Autorstwa trzech typów z tabelą łączącą (``*_autor``, bez własnego kosza)
 obsługuje ``0512``. Definicje są GENEROWANE z introspekcji (jak w
 ``0432``/``0433``), a nie przepisane do ``.sql``.
+
+NIEODWRACALNA (brak ``reverse_code``): cofnięcie przez ``migrate`` rzuca
+``IrreversibleError``. Powrót sprzed soft-delete — wyłącznie z kopii bazy
+(patrz ``docs/deweloper/soft-delete.md``).
 """
 
 import importlib
@@ -99,39 +103,6 @@ def _z_filtrem(orig, tabela, widok):
     )
 
 
-def _bez_filtra(orig, tabela, widok):
-    """Odwrotność ``_z_filtrem`` — usuwa DOKŁADNIE ten tekst, który tamta
-    wstawiła. Symetria jest tu ważniejsza od elegancji: odtwarzanie
-    oryginału z plików ``.sql`` nie zadziała, bo widoki publikacji były
-    redefiniowane w kilku migracjach i nie ma jednego pliku źródłowego.
-
-    ⚠️ Szukamy DWÓCH form predykatu, bo katalog nie przechowuje tekstu, który
-    wstawiliśmy, tylko jego postać ZNORMALIZOWANĄ. Gdy w zasięgu zapytania
-    jest jedna tabela (rodzina B), Postgres usuwa zbędną kwalifikację i
-    ``bpp_praca_doktorska.deleted_at IS NULL`` wraca jako gołe
-    ``deleted_at IS NULL``.
-
-    ⚠️ KOLEJNOŚĆ KANDYDATÓW JEST NOŚNA, nie kosmetyczna. Wariant z ``AND``
-    (rodzina C) MUSI być sprawdzany pierwszy: w definicji
-    ``WHERE <predykat> AND bpp_autor.id = ...`` wzorzec
-    ``\\n  WHERE <predykat>`` pasuje jako PREFIKS, a usunięcie samego prefiksu
-    zostawiłoby ``WHERE`` zaczynające się od ``AND`` — składniowy gruz.
-    """
-    kandydaci = []
-    for predykat in (f"{tabela}.deleted_at IS NULL", "deleted_at IS NULL"):
-        kandydaci.append(f"{predykat} AND ")  # rodzina C — NAJPIERW
-    for predykat in (f"{tabela}.deleted_at IS NULL", "deleted_at IS NULL"):
-        kandydaci.append(f"\n  WHERE {predykat}")  # rodziny A i B
-
-    for wstawka in kandydaci:
-        if orig.count(wstawka) == 1:
-            return orig.replace(wstawka, "", 1)
-    raise RuntimeError(
-        f"{widok}: nie znalazlem (dokladnie jednej) wstawki z filtrem "
-        f"soft-delete -- definicja zmieniona poza ta migracja?"
-    )
-
-
 def _funkcja_z_galezia_kasujaca(cur, table, model, autor_na_wierszu):
     """``bpp_refresh_rekord_<model>()`` z ``0432`` + gałąź kasująca.
 
@@ -192,8 +163,8 @@ def _regeneruj_bramke():
     """Ta sama logika co ``0433.forward``, ale tylko dla tabel PUBLIKACJI.
 
     Bramka jest wyliczana z ``pg_depend``, więc po zmianie definicji widoku
-    (krok 1) sama wciągnie ``deleted_at``; po cofnięciu widoku (backward)
-    sama ją zgubi. Bramek tabel ``*_autor`` ta migracja nie rusza.
+    (krok 1) sama wciągnie ``deleted_at``. Bramek tabel ``*_autor`` ta
+    migracja nie rusza.
     """
     with connection.cursor() as cur:
         for tabela, refresh_fn, widoki in _p0433.GATED:
@@ -252,21 +223,11 @@ def forward(apps, schema_editor):
     _regeneruj_bramke()  # 3) bramka
 
 
-def backward(apps, schema_editor):
-    with connection.cursor() as cur:
-        _przebuduj_widoki(cur, _bez_filtra)  # 1) widoki bez filtra
-        for tabela, model, autor_na_wierszu in REKORD_SITES:  # 2) funkcje
-            cur.execute(
-                _p0432._create_rekord_function(cur, tabela, model, autor_na_wierszu)
-            )
-    _regeneruj_bramke()  # 3) bramka (deleted_at zniknie z pg_depend samo)
-
-
 class Migration(migrations.Migration):
     dependencies = [
         ("bpp", "0510_publikacje_soft_delete_fields"),
     ]
 
     operations = [
-        migrations.RunPython(forward, backward),
+        migrations.RunPython(forward),
     ]

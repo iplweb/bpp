@@ -31,6 +31,9 @@ Trzy kroki:
 Definicje są generowane z introspekcji (jak w ``0432``/``0433``/``0511``),
 a nie przepisane do ``.sql`` — kopia rozjechałaby się przy najbliższej
 zmianie kolumn.
+
+NIEODWRACALNA (brak ``reverse_code``) — jak cały łańcuch soft-delete
+``0510``–``0522``; powrót wyłącznie z kopii bazy.
 """
 
 import importlib
@@ -38,7 +41,6 @@ import importlib
 from django.db import connection, migrations
 
 _p0432 = importlib.import_module("bpp.migrations.0432_cache_trigger_plpgsql")
-_p0510 = importlib.import_module("bpp.migrations.0511_soft_delete_rekord_views")
 
 #: (tabela publikacji, model content_type, tabela through, widok autorzy)
 SITES = [
@@ -57,8 +59,8 @@ SITES = [
     ("bpp_patent", "patent", "bpp_patent_autor", "bpp_patent_autorzy"),
 ]
 
-#: Początek wstawki rozpoznawany przy cofaniu (format pg_get_viewdef
-#: pretty=true: klauzula główna na wcięciu dwóch spacji).
+#: Początek wstawki — po nim poznajemy widok już przefiltrowany (format
+#: pg_get_viewdef pretty=true: klauzula główna na wcięciu dwóch spacji).
 MARKER = "\n  WHERE (EXISTS ("
 
 
@@ -88,13 +90,6 @@ def _filtruj_widok(cur, tabela, through, widok):
         f"CREATE OR REPLACE VIEW {widok} AS {orig}\n"
         f"  WHERE {_predykat(tabela, through)}"
     )
-
-
-def _odfiltruj_widok(cur, widok):
-    orig = _viewdef(cur, widok)
-    if MARKER not in orig:
-        return
-    cur.execute(f"CREATE OR REPLACE VIEW {widok} AS {orig[: orig.rindex(MARKER)]}")
 
 
 def _funkcja(cur, tabela, model, widok_autorzy):
@@ -157,19 +152,11 @@ def _sprzataj_kosz(cur):
             )
 
 
-def backward(apps, schema_editor):
-    with connection.cursor() as cur:
-        for _tabela, _model, _through, widok in SITES:
-            _odfiltruj_widok(cur, widok)
-        for tabela, model, _through, _widok in SITES:
-            cur.execute(_p0510._funkcja_z_galezia_kasujaca(cur, tabela, model, False))
-
-
 class Migration(migrations.Migration):
     dependencies = [
         ("bpp", "0511_soft_delete_rekord_views"),
     ]
 
     operations = [
-        migrations.RunPython(forward, backward),
+        migrations.RunPython(forward),
     ]

@@ -263,6 +263,27 @@ widoki SQL i funkcje triggerów `bpp_rekord_mat`/`bpp_autorzy_mat`.
 zacznie obsługiwać ruch. Tabele łączące `*_autor` (największe w systemie)
 nie są migrowane wcale.
 
+### Migracje nieodwracalne — przed wdrożeniem zrób kopię bazy; powrót tylko z kopii
+
+Łańcuch `bpp/0510`–`0522` oraz `pbn_api/0080`,
+`pbn_export_queue/0011`–`0012` i `rozbieznosci_dyscyplin/0022` **nie mają
+kroku wstecz** (decyzja właściciela). `migrate` w tył przez którąkolwiek
+z nich rzuca `IrreversibleError`, zanim cokolwiek zmieni w bazie.
+Migracje z kodem (`RunPython`/`RunSQL`) po prostu nie mają
+`reverse_code`/`reverse_sql`; czysto schematowe kończą się operacją
+`bpp.migration_util.nieodwracalna()`. Powód: cofnięcie zgubiłoby dane,
+których stary kod nie umie odtworzyć — rekordy w koszu wróciłyby jako
+żywe, wpisy „wycofanie" w kolejce PBN zamieniłyby się w wysyłki, a
+sprzątnięte wiersze `_mat`, skasowane widoki `bpp_kronika_*` i trigger
+zamrożenia kosza musiałyby być odtwarzane ręcznie.
+
+**Przed wdrożeniem zrób kopię bazy; powrót do wersji sprzed kosza — tylko
+z tej kopii** (razem z obrazem aplikacji sprzed wdrożenia). Pilnuje tego
+`bpp/tests/test_soft_delete/test_migracje_nieodwracalne.py`. Testy e2e
+migracji `pbn_api` cofają i ponownie stosują wyłącznie własne migracje
+(`pbn_api/tests/migracje_e2e_utils.py`: `cofnij_tylko`/`zastosuj_tylko`),
+nie cały graf — „`migrate pbn_api 0077`" pociągnęłoby za sobą ten łańcuch.
+
 ## Zasady dla kodu, który dopisujesz
 
 1. Czytasz publikacje/autorów do wyświetlenia, eksportu, liczenia →
@@ -291,10 +312,9 @@ nie są migrowane wcale.
 - **Wyścig guard ↔ zapis**: między sprawdzeniem „nic nie wskazuje na ten
   słownik/publikację" a zapisem kosza równoległy zapis może dodać
   odwołanie (milisekundy). Nie blokujemy tego dodatkowo.
-- **Migracje `0511`/`0512`**: cofnięcie przywraca widoki i funkcje
-  triggerów (potrzebne, żeby `0510` mogło zdjąć kolumnę `deleted_at`),
-  ale jednorazowego sprzątania `_mat` nie odtwarza — to dane wyliczane
-  (odbuduje je przebudowa cache).
+- **Migracje nieodwracalne**: zamiast utrzymywać kroki wstecz (widoki,
+  funkcje triggerów, sidecar `bpp_kronika_*`), których nikt nie użyje
+  produkcyjnie — powrót wyłącznie z kopii bazy (patrz „Wdrożenie").
 - **Przyszłe migracje danych** na tabelach z koszem, które mają objąć
   rekordy z kosza, muszą ustawić `bpp.kosz_operacja` (trigger).
 - **Zmiany słowników „przez" rekord z kosza** (np. skasowanie słownika

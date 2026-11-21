@@ -5,8 +5,11 @@ z ``bpp_rekord_mat``. Dla ``praca_doktorska``/``praca_habilitacyjna`` autor
 leży na wierszu samej pracy — nie ma tabeli ``*_autor``, której trigger
 sprzątnąłby ``bpp_autorzy_mat`` — więc po twardym skasowaniu zostawał tam
 osierocony wiersz (np. ``Jednostka.wspolpracowali()`` dalej listował pracę).
-Do soft-delete twarde kasowanie prac dyplomowych było rzadkie; teraz jest
-osiągalne z kosza („Usuń TRWALE") i przez ponowny import z PBN.
+Twarde kasowanie prac dyplomowych jest rzadkie (m.in. ponowny import z PBN),
+ale sprzątać trzeba poprawnie.
+
+NIEODWRACALNA (brak ``reverse_code``) — jak cały łańcuch soft-delete
+``bpp/0510``–``0522``; powrót wyłącznie z kopii bazy.
 """
 
 import importlib
@@ -57,17 +60,11 @@ def forward(apps, schema_editor):
         _sprzataj_osierocone(cur)
 
 
-def backward(apps, schema_editor):
-    with connection.cursor() as cur:
-        for model in MODELE:
-            cur.execute(_p0432._create_delete_rekord_function(model))
-
-
 class Migration(migrations.Migration):
     dependencies = [
         ("bpp", "0520_slug_unikalny_razem_z_koszem"),
     ]
 
     operations = [
-        migrations.RunPython(forward, backward),
+        migrations.RunPython(forward),
     ]

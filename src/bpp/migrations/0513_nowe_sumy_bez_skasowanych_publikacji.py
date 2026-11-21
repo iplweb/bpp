@@ -12,11 +12,14 @@ kosza — znika razem z publikacją). Widoki nie mają ``LEFT JOIN``-ów ani
 agregatów (sumowanie dzieje się w Django nad ``UNION ALL``), więc zwykły
 warunek w ``WHERE`` jest poprawny: skasowana publikacja MA wypaść
 z rankingu.
+
+NIEODWRACALNA (brak ``reverse_code``) — jak cały łańcuch soft-delete
+``0510``–``0522``; powrót wyłącznie z kopii bazy.
 """
 
 from django.db import connection, migrations
 
-from bpp.migration_util import widok_dopisz_warunek, widok_usun_warunek
+from bpp.migration_util import widok_dopisz_warunek
 
 # (widok sum, tabela PUBLIKACJI, którą joinuje)
 SUMY = [
@@ -38,17 +41,11 @@ def forward(apps, schema_editor):
             widok_dopisz_warunek(cur, widok, _warunek(tabela))
 
 
-def backward(apps, schema_editor):
-    with connection.cursor() as cur:
-        for widok, tabela in SUMY:
-            widok_usun_warunek(cur, widok, _warunek(tabela))
-
-
 class Migration(migrations.Migration):
     dependencies = [
         ("bpp", "0512_soft_delete_autorzy_przez_publikacje"),
     ]
 
     operations = [
-        migrations.RunPython(forward, backward),
+        migrations.RunPython(forward),
     ]

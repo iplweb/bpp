@@ -41,10 +41,9 @@ z komentarzami w ``lib-pg-collation-migrate.sh`` i
 „5 widoków ``bpp_kronika_*``". Sam ``sed`` celuje we wzorzec ``COLLATE``,
 a nie w nazwy widoków, więc skrypty NIE przestają działać.
 
-ODWRACALNOŚĆ: ``backward`` odtwarza całą siódemkę z sidecara
-``0514_drop_kronika_views.sql``. Plik został WYGENEROWANY z
-``pg_get_viewdef()`` na żywym katalogu, a nie przepisany ręcznie — przy
-7 KB SQL-a przepisywanie byłoby proszeniem się o cichą literówkę.
+NIEODWRACALNA (brak ``reverse_code``) — jak cały łańcuch soft-delete
+``0510``–``0522``. Definicje skasowanych widoków są w historii gita
+(``baseline-sql/`` sprzed tej migracji); powrót wyłącznie z kopii bazy.
 
 ⚠️ Po tej migracji trzeba usunąć trzy wpisy ``WYJATKI`` z kanarka
 katalogowego (``test_kanarek_katalogowy.py``) — wskazują na widoki, których
@@ -53,10 +52,7 @@ już nie ma.
 
 from django.db import connection, migrations
 
-from bpp.migration_util import load_custom_sql
-
 # Kolejnosc KASOWANIA: od szczytu w dol (parasole przed liscmi).
-# Odwrotna kolejnosc (odtwarzania) siedzi w sidecarze .sql.
 RODZINA_OD_SZCZYTU = [
     "bpp_kronika_view",
     "bpp_kronika_all_unsorted_view",
@@ -84,15 +80,11 @@ def forward(apps, schema_editor):
             cur.execute(f"DROP VIEW IF EXISTS {widok}")
 
 
-def backward(apps, schema_editor):
-    load_custom_sql("0514_drop_kronika_views")
-
-
 class Migration(migrations.Migration):
     dependencies = [
         ("bpp", "0513_nowe_sumy_bez_skasowanych_publikacji"),
     ]
 
     operations = [
-        migrations.RunPython(forward, backward),
+        migrations.RunPython(forward),
     ]

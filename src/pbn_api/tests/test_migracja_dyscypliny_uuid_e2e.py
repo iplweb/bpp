@@ -1,4 +1,4 @@
-"""Prawdziwy ``migrate`` 0075 → 0077 na bazie, która JUŻ zawiera duplikaty.
+"""Prawdziwy ``migrate`` 0076 + 0077 na bazie, która JUŻ zawiera duplikaty.
 
 Ten test nie jest ozdobą: pierwotna wersja poprawki trzymała deduplikację i
 ``ADD CONSTRAINT`` w JEDNEJ migracji i wywalała się tutaj na
@@ -6,18 +6,26 @@ Ten test nie jest ozdobą: pierwotna wersja poprawki trzymała deduplikację i
 (PostgreSQL nie pozwala na DDL w transakcji, w której ``DELETE`` na tabeli z FK
 zostawił deferred trigger events). Testy wołające samą funkcję ``deduplikuj``
 tego nie łapią — trzeba przepuścić prawdziwy ``MigrationExecutor``.
+
+Cofamy i stosujemy ponownie TYLKO ``0076``/``0077`` (``cofnij_tylko`` /
+``zastosuj_tylko``): „``migrate pbn_api 0075``" cofnęłoby też zależny,
+nieodwracalny łańcuch soft-delete w ``bpp``. Każda z migracji nadal idzie
+we własnej transakcji executora — dokładnie to, co ten test sprawdza.
 """
 
 from uuid import uuid4
 
 import pytest
 from django.db import connection
-from django.db.migrations.executor import MigrationExecutor
 
-from pbn_api.tests.migracje_e2e_utils import przywroc_czubek_migracji
+from pbn_api.tests.migracje_e2e_utils import (
+    cofnij_tylko,
+    przywroc_czubek_migracji,
+    zastosuj_tylko,
+)
 
-PRZED = ("pbn_api", "0075_sentdata_fee_sent_sentdata_fee_uploaded_okay")
-PO = ("pbn_api", "0077_constrainty_uuid_dyscyplin")
+DEDUPLIKACJA = ("pbn_api", "0076_unikalne_uuid_dyscyplin")
+CONSTRAINTY = ("pbn_api", "0077_constrainty_uuid_dyscyplin")
 
 
 def _wstaw_duplikaty(uuid_slownika, uuid_dyscypliny):
@@ -46,35 +54,13 @@ def _policz(sql, *params):
         return cursor.fetchone()[0]
 
 
-def _przywroc_pelny_stan_migracji():
-    """Doprowadź bazę z powrotem do najnowszych migracji (liści grafu).
-
-    Test cofa ``pbn_api`` do ``PRZED`` i podnosi tylko do ``PO`` — bez tego
-    późniejsze migracje (np. constraint trójki w ``PublikacjaInstytucji``,
-    0079) zostałyby niezaaplikowane do końca sesji na tym workerze xdist
-    i kolejne testy widziałyby okrojony schemat.
-    """
-    executor = MigrationExecutor(connection)
-    executor.loader.build_graph()
-    executor.migrate(executor.loader.graph.leaf_nodes())
-
-
 @pytest.mark.django_db(transaction=True)
-# Odtwarza migracje w obie strony; solo ~35-55 s, pod obciążeniem xdist
-# przekraczał globalne `--timeout 90` (por. test_migracja_0509_rewers.py).
-@pytest.mark.timeout(300)
-def test_migracja_przechodzi_na_bazie_z_duplikatami(bez_reinstalacji_denorma):
-    try:
-        _test_migracji_na_bazie_z_duplikatami()
-    finally:
-        _przywroc_pelny_stan_migracji()
-
-
-def _test_migracji_na_bazie_z_duplikatami():
+def test_migracja_przechodzi_na_bazie_z_duplikatami():
     uuid_slownika, uuid_dyscypliny = uuid4(), uuid4()
 
     try:
-        MigrationExecutor(connection).migrate([PRZED])
+        # zdejmij constrainty — dopiero wtedy baza wpuści duplikaty
+        cofnij_tylko(CONSTRAINTY, DEDUPLIKACJA)
         _wstaw_duplikaty(uuid_slownika, uuid_dyscypliny)
 
         assert (
@@ -86,9 +72,7 @@ def _test_migracji_na_bazie_z_duplikatami():
         )
 
         # to jest właściwy asert: migracja NIE wywala się na bazie z duplikatami
-        executor = MigrationExecutor(connection)
-        executor.loader.build_graph()
-        executor.migrate([PO])
+        zastosuj_tylko(DEDUPLIKACJA, CONSTRAINTY)
 
         assert (
             _policz(
