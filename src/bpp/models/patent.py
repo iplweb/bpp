@@ -1,7 +1,7 @@
 from denorm import denormalized, depend_on_fields, depend_on_related
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
-from django.db.models import CASCADE, SET_NULL, JSONField
+from django.db.models import CASCADE, PROTECT, SET_NULL, JSONField
 from django.utils.functional import cached_property
 
 from bpp.models import (
@@ -110,7 +110,7 @@ class Patent(
     )
 
     rodzaj_prawa = models.ForeignKey(
-        "bpp.Rodzaj_Prawa_Patentowego", CASCADE, null=True, blank=True
+        "bpp.Rodzaj_Prawa_Patentowego", PROTECT, null=True, blank=True
     )
 
     wdrozenie = models.BooleanField("Wdrożenie", null=True, blank=True, default=None)

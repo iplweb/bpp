@@ -2,7 +2,7 @@ from denorm import denormalized, depend_on_fields, depend_on_related
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
-from django.db.models import CASCADE, SET_NULL, JSONField
+from django.db.models import CASCADE, PROTECT, SET_NULL, JSONField
 
 from bpp.models import (
     BazaModeluStreszczen,
@@ -288,7 +288,7 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych(models.Model):
     rekord = models.ForeignKey(
         Wydawnictwo_Ciagle, CASCADE, related_name="zewnetrzna_baza_danych"
     )
-    baza = models.ForeignKey(Zewnetrzna_Baza_Danych, CASCADE)
+    baza = models.ForeignKey(Zewnetrzna_Baza_Danych, PROTECT)
     info = models.CharField(
         verbose_name="Informacje dodatkowe", max_length=512, blank=True, default=""
     )

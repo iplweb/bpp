@@ -1,7 +1,7 @@
 from denorm import denormalized, depend_on_fields, depend_on_related
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
-from django.db.models import CASCADE, SET_NULL
+from django.db.models import CASCADE, PROTECT, SET_NULL
 from django.utils.functional import cached_property
 
 from bpp.models import (
@@ -25,7 +25,7 @@ class Praca_Doktorska_Baza(
     ModelZOplataZaPublikacje,
     Wydawnictwo_Zwarte_Baza,
 ):
-    jednostka = models.ForeignKey(Jednostka, CASCADE)
+    jednostka = models.ForeignKey(Jednostka, PROTECT)
 
     @property
     def autorzy_set(self):
