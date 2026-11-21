@@ -11,7 +11,7 @@ from django.contrib import messages
 from django.urls import reverse
 from django.utils.html import format_html
 
-from crossref_bpp.core import Komparator
+from crossref_bpp.admin.helpers import porownaj_zrodlo_crossref
 
 
 def ostrzez_o_zduplikowanych_zrodlach(request, wynik):
@@ -47,13 +47,4 @@ def ostrzez_o_zduplikowanych_zrodlach(request, wynik):
 
 def ostrzez_o_zduplikowanych_zrodlach_crossref(request, z):
     """Wariant przyjmujący surowy słownik CrossRef API (admin prefill)."""
-    try:
-        tytul_kontenera = z.get("container-title")[0]
-    except (IndexError, TypeError):
-        # IndexError: pusta lista; TypeError: brak klucza (None nie indeksujemy).
-        return
-    if not tytul_kontenera:
-        return
-    ostrzez_o_zduplikowanych_zrodlach(
-        request, Komparator.porownaj_container_title(tytul_kontenera)
-    )
+    ostrzez_o_zduplikowanych_zrodlach(request, porownaj_zrodlo_crossref(z))

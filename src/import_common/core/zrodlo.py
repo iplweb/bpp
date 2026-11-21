@@ -1,27 +1,68 @@
 """Matchowanie źródeł (czasopism) po ISSN/e-ISSN, mniswId i tytule."""
 
-from django.db.models import Q
+from django.db.models import F, Q, Value
+from django.db.models.functions import Replace, Upper
 
 from bpp.models import Zrodlo
 
 from ..normalization import normalize_tytul_zrodla
 
 
+def _normalize_issn_value(value: str | None) -> str | None:
+    """ISSN do porównań: bez myślników/spacji, wielkie litery (cyfra kontr. X)."""
+    if not value or not isinstance(value, str):
+        return None
+    return value.replace("-", "").replace(" ", "").strip().upper() or None
+
+
+def _normalized_issn_expr(field: str):
+    """Wyrażenie SQL normalizujące pole ISSN tak jak ``_normalize_issn_value``."""
+    return Upper(
+        Replace(Replace(F(field), Value("-"), Value("")), Value(" "), Value(""))
+    )
+
+
+def _single_or_none(qs) -> Zrodlo | None:
+    kandydaci = list(qs[:2])
+    if len(kandydaci) == 1:
+        return kandydaci[0]
+    return None
+
+
 def _try_match_zrodlo_by_issn(issn: str | None, e_issn: str | None) -> Zrodlo | None:
-    """Próbuje dopasować źródło po ISSN lub e-ISSN."""
+    """Próbuje jednoznacznie dopasować źródło po ISSN lub e-ISSN.
+
+    Porównanie ignoruje myślniki/spacje i wielkość liter. Kolejność:
+    ISSN → pole ``issn``, e-ISSN → pole ``e_issn``, a na końcu dowolny z
+    numerów → dowolne z pól (cross-field). Źródła danych bywają niespójne
+    co do tego, który numer jest drukowany, a który elektroniczny (np.
+    CrossRef podaje dla MDPI tylko e-ISSN, a w BPP numer siedzi w polu
+    ``issn``) — FD#451. Zwraca źródło tylko przy dokładnie jednym trafieniu.
+    """
+    issn = _normalize_issn_value(issn)
+    e_issn = _normalize_issn_value(e_issn)
+    numery = [n for n in (issn, e_issn) if n]
+    if not numery:
+        return None
+
+    qs = Zrodlo.objects.annotate(
+        _issn_norm=_normalized_issn_expr("issn"),
+        _e_issn_norm=_normalized_issn_expr("e_issn"),
+    )
+
     if issn is not None:
-        try:
-            return Zrodlo.objects.get(issn=issn)
-        except (Zrodlo.DoesNotExist, Zrodlo.MultipleObjectsReturned):
-            pass
+        result = _single_or_none(qs.filter(_issn_norm=issn))
+        if result:
+            return result
 
     if e_issn is not None:
-        try:
-            return Zrodlo.objects.get(e_issn=e_issn)
-        except (Zrodlo.DoesNotExist, Zrodlo.MultipleObjectsReturned):
-            pass
+        result = _single_or_none(qs.filter(_e_issn_norm=e_issn))
+        if result:
+            return result
 
-    return None
+    return _single_or_none(
+        qs.filter(Q(_issn_norm__in=numery) | Q(_e_issn_norm__in=numery))
+    )
 
 
 def _try_match_zrodlo_by_mnisw_id(mnisw_id: int | str | None) -> Zrodlo | None:
