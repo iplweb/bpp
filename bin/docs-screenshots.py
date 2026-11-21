@@ -7738,6 +7738,195 @@ def logowanie_metody(page: Page, base: str, out: Path) -> None:
     adm.context.close()
 
 
+def dwudyscyplinowcy(page: Page, base: str, out: Path) -> None:
+    """docs/redaktor/dwudyscyplinowcy.md: authors with two disciplines (editor).
+
+    Run bin/docs-demo-dwudyscyplinowcy.py first. The last step really changes
+    an author's discipline on one work and then changes it back, so the
+    scenario can be re-run on the same DB.
+    """
+    red = new_session(page, base, DEMO_USER_REDAKTOR)
+    idx = f"{base}/ewaluacja_dwudyscyplinowcy/"
+
+    # 1. ewaluacja menu -> optymalizacja ewaluacji
+    red.goto(f"{base}/")
+    red.wait_for_load_state("networkidle")
+    li = open_top_menu(red, "fi-graph-bar")
+    mark(
+        red,
+        [
+            {
+                "sel": f"{li} a[href$='/ewaluacja_optymalizacja/']",
+                "arrow": "right",
+                "label": "1. optymalizacja ewaluacji",
+                "dx": 40,
+            }
+        ],
+    )
+    menu = page_box(red, f"{li} > .menu-columns-wrapper")
+    shot(red, out / "01-menu-ewaluacja.png", 0, menu["y"] + menu["height"] + 40)
+
+    # 2. the "Dwudyscyplinowcy" button on the optimisation page
+    red.goto(f"{base}/ewaluacja_optymalizacja/")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": "a[href$='/ewaluacja_dwudyscyplinowcy/']",
+                "arrow": "above",
+                "label": "2. Dwudyscyplinowcy",
+                "dx": 60,
+            }
+        ],
+    )
+    grupa = page_box(red, "a[href$='/ewaluacja_dwudyscyplinowcy/']")
+    shot(red, out / "02-przycisk.png", 0, grupa["y"] + grupa["height"] + 170)
+
+    # 3. the list: explanation and the number of authors found
+    red.goto(idx)
+    red.wait_for_load_state("networkidle")
+    red.add_style_tag(content=".callout.success h4 { width: fit-content; }")
+    mark(
+        red,
+        [
+            {"sel": ".callout.secondary"},
+            {
+                "sel": ".callout.success h4",
+                "arrow": "right",
+                "label": "tylko autorzy z pracami zgodnymi",
+                "dx": 20,
+                "dy": 10,
+            },
+        ],
+    )
+    karta = page_box(red, ".ewaluacja-dwudyscyplinowcy__author-card")
+    shot(red, out / "03-lista.png", 0, karta["y"] + 200)
+
+    # 4. one author's card
+    karta_sel = ".ewaluacja-dwudyscyplinowcy__author-card"
+    red.evaluate(
+        """(sel) => { const c = [...document.querySelectorAll(sel)]
+            .find(e => e.textContent.includes('Merigold Yennefer'));
+            c.id = 'kb-karta'; }""",
+        karta_sel,
+    )
+    # shrink the full-width blocks to their text, so the boxes hug it
+    red.add_style_tag(
+        content="#kb-karta .ewaluacja-dwudyscyplinowcy__disciplines-section,"
+        " #kb-karta .ewaluacja-dwudyscyplinowcy__publications-summary"
+        " { width: fit-content; }"
+    )
+    mark(
+        red,
+        [
+            {
+                "sel": "#kb-karta .ewaluacja-dwudyscyplinowcy__disciplines-section",
+                "arrow": "right",
+                "label": "1. dyscypliny w każdym roku",
+                "dx": 200,
+                "dy": -60,
+            },
+            {
+                "sel": "#kb-karta .ewaluacja-dwudyscyplinowcy__publications-summary",
+                "arrow": "right",
+                "label": "2. zgodne / niezgodne",
+                "dx": 200,
+                "dy": -50,
+            },
+            {"sel": "#kb-karta th", "text": "Status"},
+            {"sel": "#kb-karta th", "text": "Sloty"},
+        ],
+    )
+    k = page_box(red, "#kb-karta")
+    r = page_box(red, "#kb-karta tbody tr:nth-child(6)")
+    shot(
+        red,
+        out / "04-karta-autora.png",
+        k["y"] - 20,
+        r["y"] + r["height"] - k["y"] + 40,
+    )
+
+    # 5. the only action: "Optymalizuj" on a matching 2022 work
+    red.evaluate(
+        """() => { const row = [...document.querySelectorAll('#kb-karta tbody tr')]
+            .find(r => r.querySelector('.fi-check') && r.children[1].textContent.trim() === '2022');
+            row.id = 'kb-wiersz'; }"""
+    )
+    mark(
+        red,
+        [
+            {"sel": "#kb-wiersz"},
+            {
+                "sel": "#kb-wiersz a.button",
+                "arrow": "left",
+                "label": "Optymalizuj",
+                "dy": 30,
+            },
+        ],
+    )
+    w = page_box(red, "#kb-wiersz")
+    shot(red, out / "05-optymalizuj.png", w["y"] - 230, w["height"] + 400)
+
+    # 6. "Optymalizacja publikacji": switch the author to the second discipline
+    red.locator("#kb-wiersz a.button").click()
+    red.wait_for_load_state("networkidle")
+    red.wait_for_timeout(800)
+    zmien = ".ewaluacja-optymalizuj__badge--change-discipline"
+    autor_karta = red.locator(
+        ".ewaluacja-optymalizuj__author-card", has_text="Merigold"
+    )
+    autor_karta.evaluate("e => e.id = 'kb-autor'")
+    mark(
+        red,
+        [
+            {
+                "sel": f"#kb-autor {zmien}",
+                "arrow": "below",
+                "label": "zmień na drugą dyscyplinę",
+                "dx": -380,
+                "dy": -68,
+            }
+        ],
+    )
+    a = page_box(red, "#kb-autor")
+    top = shot(red, None, 0, 300)
+    bottom = shot(red, None, a["y"] - 70, a["height"] + 150)
+    stitch(red, [top, bottom], out / "06-zmien-dyscypline.png", "karta autora")
+
+    # 7. after the change: the work counts in the second discipline
+    red.locator(f"#kb-autor {zmien}").click()
+    red.wait_for_load_state("networkidle")
+    red.wait_for_timeout(1500)
+    autor_karta = red.locator(
+        ".ewaluacja-optymalizuj__author-card", has_text="Merigold"
+    )
+    autor_karta.evaluate("e => e.id = 'kb-autor'")
+    mark(
+        red,
+        [
+            {
+                "sel": f"#kb-autor {zmien}",
+                "arrow": "below",
+                "label": "powrót do dyscypliny głównej",
+                "dx": -420,
+                "dy": -68,
+            }
+        ],
+    )
+    a = page_box(red, "#kb-autor")
+    h = page_box(red, ".ewaluacja-optymalizuj__discipline-header", "archeologia")
+    shot(
+        red, out / "07-po-zmianie.png", h["y"] - 20, a["y"] + a["height"] - h["y"] + 150
+    )
+
+    # restore the demo state: back to the main discipline
+    red.locator(f"#kb-autor {zmien}").click()
+    red.wait_for_load_state("networkidle")
+    red.wait_for_timeout(1000)
+    red.context.close()
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -8057,6 +8246,7 @@ SCENARIOS = {
     ),
     "powiazania-autorow": ("uzytkownik/powiazania-autorow", powiazania_autorow),
     "logowanie-metody": ("administrator/logowanie-metody", logowanie_metody),
+    "dwudyscyplinowcy": ("redaktor/dwudyscyplinowcy", dwudyscyplinowcy),
 }
 
 
