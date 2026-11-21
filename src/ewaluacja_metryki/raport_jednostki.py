@@ -256,7 +256,10 @@ def _struktura_punktacji(metryki) -> tuple[list[PrzedzialPunktow], Decimal | Non
         return rozklad_punktacji([])
 
     dyscyplina_id = metryki[0].dyscyplina_naukowa_id
-    wszystkie_rekordy = list({rekord_id for _, rekord_id in pary})
+    # TupleField przyjmuje identyfikatory jako LISTY [content_type, pk] (tak
+    # jak przychodzą z JSON-a) — krotki Django rozwija i zapytanie pada na
+    # „operator nie istnieje: integer[] = integer”.
+    wszystkie_rekordy = [list(rekord_id) for rekord_id in {r for _, r in pary}]
     prace = Cache_Punktacja_Autora_Query.objects.filter(
         dyscyplina_id=dyscyplina_id,
         autor_id__in={autor_id for autor_id, _ in pary},

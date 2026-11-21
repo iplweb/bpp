@@ -228,3 +228,36 @@ def test_rozklad_punktacji_pusty():
     przedzialy, slabe = r.rozklad_punktacji([])
     assert slabe is None
     assert all(p.liczba_prac == 0 for p in przedzialy)
+
+
+@pytest.mark.django_db
+def test_struktura_punktacji_z_tabeli_cache(klinika, okres_2022):
+    """Regresja: identyfikatory prac idą do zapytania jako listy — krotki
+    wywracały raport na prawdziwych danych (``integer[] = integer``)."""
+    from bpp.models import Cache_Punktacja_Autora, Wydawnictwo_Ciagle
+    from bpp.models.cache import Rekord
+
+    jednostka, dyscyplina, metryki = klinika
+    metryka = metryki["Filarowa"]
+    prace = []
+    for punkty in (140, 40):
+        wc = baker.make(Wydawnictwo_Ciagle, rok=2023, punkty_kbn=punkty)
+        rekord_id = list(Rekord.objects.get_for_model(wc).pk)
+        Cache_Punktacja_Autora.objects.create(
+            rekord_id=rekord_id,
+            autor=metryka.autor,
+            jednostka=jednostka,
+            dyscyplina=dyscyplina,
+            pkdaut=punkty,
+            slot=1,
+        )
+        prace.append(rekord_id)
+    metryka.prace_nazbierane = prace
+    metryka.save()
+
+    (grupa,) = zbuduj_raport(jednostka, jednostka.uczelnia, okres_2022).grupy
+
+    liczby = {p.etykieta: p.liczba_prac for p in grupa.struktura}
+    assert liczby["140–199"] == 1
+    assert liczby["40–69"] == 1
+    assert grupa.procent_slotow_slabych_prac == Decimal(50)
