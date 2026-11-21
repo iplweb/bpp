@@ -29,8 +29,6 @@ from bpp.models.soft_delete_log import SoftDeleteLog
 #: z tym wpisem zrobił.
 STATUS_WYCOFANIE = "WYCOFANIE"
 STATUS_WYSYLKA = "WYSYLKA"
-#: Przywrócono, zanim zakończyło się wycofanie — wysyłka pójdzie po nim.
-STATUS_WYSYLKA_PO_WYCOFANIU = "WYSYLKA_PO_WYCOFANIU"
 
 
 def _kolejkuj_pbn(instance, zakolejkuj, status):
@@ -172,9 +170,10 @@ def on_post_soft_delete(sender, instance, **kwargs):
 def on_post_restore(sender, instance, **kwargs):
     """Przywrócenie → ponowna wysyłka do PBN, punktacja i wpis audytu.
 
-    Trwające jeszcze wycofanie oświadczeń (zlecone przy kasowaniu) NIE jest
-    przerywane — wysyłka zostaje zlecona po jego zakończeniu
-    (``zakolejkuj_wysylke_po_przywroceniu``).
+    Aktywne wycofanie blokuje przywrócenie (``restore()`` rzuca
+    ``RekordWKolejcePBN``), więc tutaj kolejka jest wolna. Wysyłka po
+    przywróceniu ma ``po_przywroceniu=True`` — do jej końca rekordu nie da
+    się znów usunąć.
 
     Punktację PRZELICZAMY, a nie odtwarzamy z kopii: wiersze
     ``Cache_Punktacja_*`` zostały skasowane, a przez czas pobytu w koszu
@@ -184,8 +183,7 @@ def on_post_restore(sender, instance, **kwargs):
     ⚠️ To operacja LICZĄCA, nie ``UPDATE``. Przy masowym przywracaniu
     z admina koszt rośnie liniowo.
     """
-    from pbn_export_queue.models import PBN_Export_Queue
-    from pbn_export_queue.operacje import zakolejkuj_wysylke_po_przywroceniu
+    from pbn_export_queue.operacje import zakolejkuj_wysylke
 
     _zapisz_wersje(instance, KOMENTARZ_WERSJI_PRZYWROCENIE)
 
@@ -193,10 +191,10 @@ def on_post_restore(sender, instance, **kwargs):
         instance.przelicz_punkty_dyscyplin()
 
     wpis, status = _kolejkuj_pbn(
-        instance, zakolejkuj_wysylke_po_przywroceniu, STATUS_WYSYLKA
+        instance,
+        lambda obj, **kw: zakolejkuj_wysylke(obj, po_przywroceniu=True, **kw),
+        STATUS_WYSYLKA,
     )
-    if wpis is not None and wpis.operacja == PBN_Export_Queue.Operacja.WYCOFANIE:
-        status = STATUS_WYSYLKA_PO_WYCOFANIU
     _utworz_log(
         instance,
         SoftDeleteLog.Akcja.RESTORE,

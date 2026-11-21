@@ -1,3 +1,4 @@
+import datetime
 import logging
 import sys
 import traceback
@@ -88,7 +89,9 @@ class PBN_Export_QueueManager(models.Manager.from_queryset(PBN_Export_QueueQuery
             wysylke_zakonczono=None,
         )
 
-    def sprobuj_utowrzyc_wpis(self, user, rekord, uczelnia=None, operacja=None):
+    def sprobuj_utowrzyc_wpis(
+        self, user, rekord, uczelnia=None, operacja=None, **dodatkowe
+    ):
         # Szybka ścieżka (przyjazny błąd bez trafiania w constraint bazy).
         if self.filter_rekord_do_wysylki(rekord).exists():
             raise AlreadyEnqueuedError("ten rekord jest już w kolejce do wysyłki")
@@ -102,6 +105,7 @@ class PBN_Export_QueueManager(models.Manager.from_queryset(PBN_Export_QueueQuery
             # Pominięcie zostawia default modelu (WYSYLKA), więc wszystkie
             # dotychczasowe wywołania działają bez zmian.
             kwargs["operacja"] = operacja
+        kwargs.update(dodatkowe)
 
         # Właściwe zabezpieczenie przed wyścigiem: między exists() a create()
         # inny proces mógł dodać aktywny wpis. Częściowy unikat
@@ -213,12 +217,20 @@ class PBN_Export_Queue(models.Model):
         "publikacji w PBN — ten jest współdzielony między instytucjami.",
     )
 
-    wyslij_ponownie_po_zakonczeniu = models.BooleanField(
+    w_trakcie = models.BooleanField(
         default=False,
-        verbose_name="Wyślij ponownie po zakończeniu",
-        help_text="Ustawiane, gdy rekord przywrócono z kosza, zanim zakończyło "
-        "się wycofanie jego oświadczeń z PBN. Po zakończeniu tego wpisu "
-        "system sam zleca ponowną wysyłkę rekordu.",
+        verbose_name="W trakcie przetwarzania",
+        help_text="Worker podjął wpis i właśnie rozmawia z PBN. Ustawiane "
+        "atomowo przy zajęciu wpisu, zdejmowane po zakończeniu próby (także "
+        "przy ponowieniu później). Wpis w trakcie blokuje kosz/przywrócenie "
+        "rekordu.",
+    )
+    po_przywroceniu = models.BooleanField(
+        default=False,
+        verbose_name="Wysyłka po przywróceniu z kosza",
+        help_text="Wysyłka zlecona przy przywróceniu rekordu z kosza. Dopóki "
+        "się nie zakończy, rekordu nie można ponownie przenieść do kosza "
+        "(ani anulować tej wysyłki).",
     )
 
     objects = PBN_Export_QueueManager()
@@ -241,17 +253,40 @@ class PBN_Export_Queue(models.Model):
     def __str__(self):
         return f"Zlecenie wysyłki do PBN dla {self.rekord_do_wysylki}"
 
-    def save(self, *args, **kwargs):
-        """Wpis zakończony z flagą ``wyslij_ponownie_po_zakonczeniu`` zleca
-        (po commicie) ponowną wysyłkę rekordu — patrz
-        ``operacje.zakolejkuj_wysylke_po_przywroceniu``."""
-        ret = super().save(*args, **kwargs)
-        if self.wyslij_ponownie_po_zakonczeniu and self.wysylke_zakonczono:
-            from pbn_export_queue.operacje import wyslij_ponownie_po_wycofaniu
+    #: Po tylu minutach znacznik ``w_trakcie`` uznajemy za porzucony
+    #: (worker padł w środku próby) — wpis znów można anulować.
+    W_TRAKCIE_WAZNE_MINUT = 30
 
-            pk = self.pk
-            transaction.on_commit(lambda: wyslij_ponownie_po_wycofaniu(pk))
-        return ret
+    def jest_w_trakcie(self):
+        """Czy worker właśnie przetwarza ten wpis (świeży znacznik
+        ``w_trakcie``). Wpis czekający na ponowienie (RETRY_LATER,
+        RETRY_MUCH_LATER, RETRY_AFTER_USER_AUTHORISED) NIE jest w trakcie —
+        ``wysylke_podjeto`` zostaje wtedy ustawione, ale znacznik zdjęty."""
+        if not self.w_trakcie or self.wysylke_zakonczono is not None:
+            return False
+        if self.wysylke_podjeto is None:
+            return True
+        granica = timezone.now() - datetime.timedelta(
+            minutes=self.W_TRAKCIE_WAZNE_MINUT
+        )
+        return self.wysylke_podjeto >= granica
+
+    def anuluj(self, msg):
+        """Zamyka NIEPODJĘTY wpis jako anulowany (wykluczony z eksportu).
+
+        Wołać wyłącznie z zablokowanym wierszem (``select_for_update``)
+        i po sprawdzeniu ``jest_w_trakcie()`` — worker zajmuje wpis przez
+        ``select_for_update(skip_locked=True)``, więc trzymając blokadę
+        mamy pewność, że nikt go w tej chwili nie podejmie.
+        """
+        type(self).objects.filter(pk=self.pk).update(
+            wysylke_zakonczono=timezone.now(),
+            zakonczono_pomyslnie=False,
+            wykluczone=True,
+            rodzaj_bledu=None,
+            komunikat=(self.komunikat or "") + msg,
+        )
+        self.refresh_from_db()
 
     @property
     def ostatnia_aktualizacja(self):
@@ -628,12 +663,14 @@ class PBN_Export_Queue(models.Model):
                 return False
 
             zablokowany.wysylke_podjeto = timezone.now()
+            zablokowany.w_trakcie = True
             if zablokowany.retry_after_user_authorised:
                 zablokowany.retry_after_user_authorised = None
             zablokowany.ilosc_prob += 1
             zablokowany.save(
                 update_fields=[
                     "wysylke_podjeto",
+                    "w_trakcie",
                     "retry_after_user_authorised",
                     "ilosc_prob",
                 ]
@@ -689,6 +726,18 @@ class PBN_Export_Queue(models.Model):
             # Inny worker zdążył zająć ten wiersz (row lock) albo go zakończył.
             # On dokończy — bieżące zadanie kończymy bez ponawiania.
             return SendStatus.LOCKED_ELSEWHERE
+
+        try:
+            return self._wyslij_zajety()
+        finally:
+            # Koniec próby (sukces, błąd albo ponowienie później) — wpis
+            # przestaje być „w trakcie". ``update()``, nie ``save()``: nie
+            # nadpisujemy pól zapisanych przez gałęzie wysyłki.
+            type(self).objects.filter(pk=self.pk).update(w_trakcie=False)
+            self.w_trakcie = False
+
+    def _wyslij_zajety(self):
+        """Właściwa wysyłka/wycofanie wpisu już zajętego przez tego workera."""
 
         # Rozgałęzienie PO zajęciu wiersza: wycofanie dziedziczy za darmo
         # licznik `ilosc_prob`, znacznik `wysylke_podjeto` i ochronę przed

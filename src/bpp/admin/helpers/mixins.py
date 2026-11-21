@@ -381,28 +381,37 @@ class BppSoftDeleteAdminMixin:
         ubocznych).
 
         ``wycofanie``: rekord ma odpowiednik w PBN, więc receiver zleci
-        wycofanie oświadczeń instytucji. ``wysylka``: aktywny wpis wysyłki
-        (wymaga zgody na anulowanie), ``w_toku``: wysyłka już trwa.
+        wycofanie oświadczeń instytucji. ``wysylka``: niepodjęta wysyłka,
+        którą operator może anulować (pytanie „tak/nie"). ``blokada``:
+        komunikat, gdy kolejka blokuje kosz (wpis w trakcie przetwarzania
+        albo wysyłka po przywróceniu z kosza). ``w_toku`` — zgodność wstecz.
         """
         from bpp.models.soft_delete import BppPublikacjaSoftDeleteMixin
-        from pbn_export_queue.operacje import aktywna_wysylka
+        from pbn_export_queue.operacje import (
+            RekordWKolejcePBN,
+            stan_kolejki_przed_koszem,
+        )
 
+        stan = {"wycofanie": False, "wysylka": None, "w_toku": False, "blokada": None}
         if not isinstance(obj, BppPublikacjaSoftDeleteMixin):
-            return {"wycofanie": False, "wysylka": None, "w_toku": False}
-        wysylka = aktywna_wysylka(obj)
-        return {
-            "wycofanie": bool(getattr(obj, "pbn_uid_id", None)),
-            "wysylka": wysylka,
-            "w_toku": wysylka is not None and wysylka.wysylke_podjeto is not None,
-        }
+            return stan
+        stan["wycofanie"] = bool(getattr(obj, "pbn_uid_id", None))
+        wpis, powod = stan_kolejki_przed_koszem(obj)
+        if powod == "oczekuje":
+            stan["wysylka"] = wpis
+        elif powod is not None:
+            stan["w_toku"] = powod == "w_trakcie"
+            stan["blokada"] = str(RekordWKolejcePBN(wpis, powod))
+        return stan
 
     def blokada_kosza(self, obj):
-        """Komunikat, dlaczego rekord NIE może trafić do kosza, albo ``None``."""
+        """Komunikat, dlaczego rekord NIE może trafić do kosza, albo ``None``
+        (guard modelu albo kolejka PBN)."""
         try:
             obj.sprawdz_czy_mozna_do_kosza()
         except ProtectedError as e:
             return e.args[0]
-        return None
+        return self.stan_pbn_przed_koszem(obj)["blokada"]
 
     # --- kasowanie = kosz -----------------------------------------------
 
@@ -429,9 +438,17 @@ class BppSoftDeleteAdminMixin:
         Per instancja: jeden zablokowany rekord nie przewraca całego
         zaznaczenia. Uprawnienie sprawdzane PER REKORD (FD#539 itd.).
         """
-        from bpp.models.soft_delete import BppPublikacjaSoftDeleteMixin
+        from bpp.models.soft_delete import (
+            BppPublikacjaSoftDeleteMixin,
+            NiedozwolonaZmianaKosza,
+        )
         from pbn_export_queue.operacje import RekordWKolejcePBN
 
+        if getattr(obj, "deleted_at", None) is not None:
+            self.message_user(
+                request, f"Pominięto „{obj}” — jest już w koszu.", messages.WARNING
+            )
+            return False
         if not self.has_delete_permission(request, obj):
             self.message_user(
                 request,
@@ -446,7 +463,7 @@ class BppSoftDeleteAdminMixin:
         try:
             obj.delete(**kwargs)
             return True
-        except (ProtectedError, RekordWKolejcePBN) as e:
+        except (ProtectedError, RekordWKolejcePBN, NiedozwolonaZmianaKosza) as e:
             self.message_user(request, e.args[0], level=messages.ERROR)
             return False
 
@@ -478,7 +495,6 @@ class BppSoftDeleteAdminMixin:
             }
             if request.method == "POST" and (
                 blokada
-                or stan["w_toku"]
                 or (stan["wysylka"] and not self._anuluj_wysylke_z_requestu(request))
             ):
                 # POST bez spełnionych warunków (np. ręcznie spreparowany)
@@ -538,7 +554,11 @@ class BppSoftDeleteAdminMixin:
     def przywroc_zaznaczone(self, request, queryset):
         """Przywraca rekordy z kosza (pomija żywe — ``restore()`` przelicza
         punktację i kolejkuje PBN, więc no-op byłby kosztowny)."""
-        from bpp.models.soft_delete import KonfliktPrzywracania
+        from bpp.models.soft_delete import (
+            KonfliktPrzywracania,
+            NiedozwolonaZmianaKosza,
+        )
+        from pbn_export_queue.operacje import RekordWKolejcePBN
 
         przywrocono = 0
         with self._soft_delete_user_context(request):
@@ -547,7 +567,11 @@ class BppSoftDeleteAdminMixin:
                     continue
                 try:
                     obj.restore(user=request.user)
-                except KonfliktPrzywracania as e:
+                except (
+                    KonfliktPrzywracania,
+                    RekordWKolejcePBN,
+                    NiedozwolonaZmianaKosza,
+                ) as e:
                     self.message_user(request, str(e), level=messages.ERROR)
                     continue
                 przywrocono += 1
@@ -639,6 +663,9 @@ class BppSoftDeleteAdminMixin:
             )
             return
 
+        if not request.POST.get("trwale_potwierdzone"):
+            return self._potwierdz_usuniecie_trwale(request, queryset)
+
         with self._soft_delete_user_context(request):
             usunieto = 0
             pominieto = 0
@@ -663,6 +690,45 @@ class BppSoftDeleteAdminMixin:
                 f"Usunięto trwale (nieodwracalnie): {usunieto}.",
                 level=messages.SUCCESS,
             )
+
+    def _potwierdz_usuniecie_trwale(self, request, queryset):
+        """Strona potwierdzenia „Usuń TRWALE".
+
+        Rekord z NIEZAKOŃCZONYM wycofaniem z PBN wolno usunąć trwale (decyzja
+        właściciela: „trudno"), ale operator musi to zobaczyć: po trwałym
+        usunięciu nie da się już odczytać PBN UID, więc zlecone wycofanie
+        przepadnie, a oświadczenia instytucji mogą zostać w PBN.
+        """
+        from pbn_export_queue.models import PBN_Export_Queue
+        from pbn_export_queue.operacje import aktywny_wpis
+
+        podglad = list(queryset[: self.LIMIT_PODGLADU_KOSZA])
+        wiersze = []
+        for obj in podglad:
+            wpis = aktywny_wpis(obj) if hasattr(obj, "pbn_uid_id") else None
+            wiersze.append(
+                {
+                    "obj": obj,
+                    "poza_koszem": obj.deleted_at is None,
+                    "wycofanie_przepadnie": wpis is not None
+                    and wpis.operacja == PBN_Export_Queue.Operacja.WYCOFANIE,
+                }
+            )
+        ile = queryset.count()
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Usuń TRWALE",
+            "wiersze": wiersze,
+            "jest_wycofanie": any(w["wycofanie_przepadnie"] for w in wiersze),
+            "ile_obiektow": ile,
+            "ile_ukrytych": max(0, ile - len(podglad)),
+            "wybrane_pk": request.POST.getlist(admin_helpers.ACTION_CHECKBOX_NAME),
+            "opts": self.model._meta,
+            "action_checkbox_name": admin_helpers.ACTION_CHECKBOX_NAME,
+            "action_index": request.POST.get("index", 0),
+            "select_across": request.POST.get("select_across", "0"),
+        }
+        return TemplateResponse(request, "admin/bpp/soft_delete_trwale.html", context)
 
     def get_actions(self, request):
         """Dokłada akcje kosza — WYŁĄCZNIE gdy user ma do nich uprawnienia.

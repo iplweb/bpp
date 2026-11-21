@@ -19,8 +19,7 @@
       {{ w.obj }}
       {% if w.blokada %}<br><strong>⛔ Nie trafi do kosza:</strong> {{ w.blokada }}{% endif %}
       {% if w.pbn.wycofanie %}<br>⚠️ Zostanie wycofany z PBN (oświadczenia instytucji); przywrócenie zleci ponowną wysyłkę.{% endif %}
-      {% if w.pbn.w_toku %}<br>📤 Trwa wysyłka do PBN — nie trafi do kosza, spróbuj po jej zakończeniu.
-      {% elif w.pbn.wysylka %}<br>📤 Jest w kolejce wysyłki do PBN — trzeba go z niej wycofać (patrz pytanie niżej).{% endif %}
+      {% if w.pbn.wysylka and not w.blokada %}<br>📤 Jest w kolejce wysyłki do PBN — trzeba go z niej wycofać (patrz pytanie niżej).{% endif %}
     </li>
   {% endfor %}
 </ul>

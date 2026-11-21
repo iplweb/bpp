@@ -14,12 +14,6 @@
     <p><a href="{% add_preserved_filters object_url %}" class="grp-button grp-cancel-link">Wróć do rekordu</a></p>
   {% elif protected or perms_lacking %}
     {{ block.super }}
-  {% elif kosz_pbn.w_toku %}
-    <div class="grp-group">
-      <h2>📤 Trwa wysyłka rekordu do PBN</h2>
-      <p>Rekord „{{ object }}” jest właśnie wysyłany do PBN. Poczekaj, aż wysyłka się zakończy, i usuń go ponownie.</p>
-    </div>
-    <p><a href="{% add_preserved_filters object_url %}" class="grp-button grp-cancel-link">Wróć do rekordu</a></p>
   {% else %}
     <div class="grp-group">
       <h2>🗑️ Przenieść „{{ object }}” do kosza?</h2>

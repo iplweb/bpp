@@ -211,26 +211,24 @@ def test_restore_kolejkuje_wysylke(wydawnictwo_ciagle, superuser, bez_celery):
 
 
 @pytest.mark.django_db
-def test_restore_przy_niezakonczonym_wycofaniu_wysyla_po_nim(
+def test_restore_przy_aktywnym_wycofaniu_jest_zablokowany(
     wydawnictwo_ciagle, superuser, bez_celery
 ):
-    """Przywrócenie, gdy wycofanie WCIĄŻ czeka w kolejce: wycofanie NIE jest
-    przerywane, a wpis dostaje flagę „wyślij ponownie po zakończeniu".
-
-    Po zakończeniu wycofania system sam zleca świeżą wysyłkę — żadna
-    operacja PBN nie ginie po cichu (decyzja właściciela).
-    """
-    from pbn_export_queue.models import PBN_Export_Queue
+    """Przywrócenie, gdy wycofanie z PBN jeszcze się nie zakończyło (podjęte
+    czy nie) — zablokowane (twardy niezmiennik właściciela). Po zakończeniu
+    wycofania przywrócenie od razu zleca wysyłkę (test niżej)."""
+    from pbn_export_queue.operacje import RekordWKolejcePBN
 
     _z_pbn_uid(wydawnictwo_ciagle)
     wydawnictwo_ciagle.delete(user=superuser)
-    wydawnictwo_ciagle.restore(user=superuser)
 
-    log = _logi(wydawnictwo_ciagle, SoftDeleteLog.Akcja.RESTORE).get()
-    assert log.pbn_status == "WYSYLKA_PO_WYCOFANIU"
-    wycofanie = log.pbn_queue_entry
-    assert wycofanie.operacja == PBN_Export_Queue.Operacja.WYCOFANIE
-    assert wycofanie.wyslij_ponownie_po_zakonczeniu is True
+    with pytest.raises(RekordWKolejcePBN) as exc:
+        wydawnictwo_ciagle.restore(user=superuser)
+
+    assert exc.value.powod == "wycofanie"
+    wydawnictwo_ciagle.refresh_from_db()
+    assert wydawnictwo_ciagle.deleted_at is not None
+    assert not _logi(wydawnictwo_ciagle, SoftDeleteLog.Akcja.RESTORE).exists()
 
 
 @pytest.mark.django_db
@@ -351,7 +349,7 @@ def test_uczelnia_czytana_mimo_skasowanych_autorstw(
 
 
 @pytest.mark.django_db
-def test_uczelnia_niejednoznaczna_daje_none(
+def test_praca_kilku_uczelni_nie_trafia_do_kosza(
     wydawnictwo_ciagle_z_autorem,
     autor_uczelnia2,
     jednostka_uczelnia2,
@@ -359,19 +357,22 @@ def test_uczelnia_niejednoznaczna_daje_none(
     superuser,
     bez_celery,
 ):
-    """Praca współautorska między uczelniami → ``uczelnia=None``, nie zgadywanie.
+    """Recenzja #8: praca współautorska między uczelniami NIE trafia do kosza
+    (kosz jest per instalacja — jedna uczelnia wyrzuciłaby rekord drugiej).
+    Komunikat każe usunąć z rekordu autorów swojej uczelni."""
+    from django.db.models import ProtectedError
 
-    Wybranie „pierwszej z brzegu" wysłałoby wycofanie przez konto PBN
-    niewłaściwego tenanta. ``None`` degraduje do zachowania sprzed fazy 06:
-    jedna uczelnia w bazie → działa, kilka → głośny błąd na wpisie kolejki.
-    """
     from pbn_export_queue.models import PBN_Export_Queue
 
     wydawnictwo_ciagle_z_autorem.dodaj_autora(autor_uczelnia2, jednostka_uczelnia2)
     _z_pbn_uid(wydawnictwo_ciagle_z_autorem)
-    wydawnictwo_ciagle_z_autorem.delete(user=superuser)
 
-    assert PBN_Export_Queue.objects.get().uczelnia is None
+    with pytest.raises(ProtectedError, match="autorów swojej uczelni"):
+        wydawnictwo_ciagle_z_autorem.delete(user=superuser)
+
+    assert not PBN_Export_Queue.objects.exists()
+    wydawnictwo_ciagle_z_autorem.refresh_from_db()
+    assert wydawnictwo_ciagle_z_autorem.deleted_at is None
 
 
 @pytest.mark.django_db

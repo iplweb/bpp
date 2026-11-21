@@ -23,8 +23,6 @@ def wpis_wycofania(wydawnictwo_ciagle, admin_user, uczelnia):
     """
     from pbn_api.models import Publication, SentData
 
-    wydawnictwo_ciagle.pbn_uid = baker.make(Publication)
-    wydawnictwo_ciagle.save()
     SentData.objects.create(
         object=wydawnictwo_ciagle,
         data_sent={},
@@ -32,6 +30,15 @@ def wpis_wycofania(wydawnictwo_ciagle, admin_user, uczelnia):
         uploaded_okay=True,
         uczelnia=uczelnia,
     )
+    # Kosz PRZED wpisem: aktywny wpis kolejki blokuje kosz (niezmiennik),
+    # a receiver bez PBN UID niczego nie kolejkuje. PBN UID dopisujemy
+    # w bazie i ręcznie tworzymy zlecenie wycofania — stan jak w produkcji
+    # tuż po kasowaniu.
+    wydawnictwo_ciagle.delete()
+    type(wydawnictwo_ciagle).global_objects.filter(pk=wydawnictwo_ciagle.pk).update(
+        pbn_uid=baker.make(Publication)
+    )
+    wydawnictwo_ciagle.refresh_from_db()
     wpis = baker.make(
         PBN_Export_Queue,
         rekord_do_wysylki=wydawnictwo_ciagle,
@@ -40,7 +47,6 @@ def wpis_wycofania(wydawnictwo_ciagle, admin_user, uczelnia):
         operacja=PBN_Export_Queue.Operacja.WYCOFANIE,
         wysylke_zakonczono=None,
     )
-    wydawnictwo_ciagle.delete()
     return wpis
 
 
@@ -147,6 +153,7 @@ def test_sprzataczka_nie_kasuje_zlecen_wycofania(
     """
     from pbn_export_queue.tasks import kolejka_wyczysc_wpisy_bez_rekordow
 
+    wydawnictwo_ciagle.delete()  # kosz PRZED wpisem (niezmiennik kolejki)
     wycofanie = baker.make(
         PBN_Export_Queue,
         rekord_do_wysylki=wydawnictwo_ciagle,
@@ -164,7 +171,6 @@ def test_sprzataczka_nie_kasuje_zlecen_wycofania(
         wysylke_zakonczono=None,
     )
 
-    wydawnictwo_ciagle.delete()
     # Aktywna WYSYŁKA blokuje kosz bez zgody operatora — tu ją wyrażamy.
     # Wpis zostaje zamknięty jako anulowany (wykluczony), nie skasowany.
     wydawnictwo_zwarte.delete(anuluj_wysylke_pbn=True)
@@ -377,8 +383,11 @@ def test_konto_techniczne_bez_tokenu_konczy_glosno(wydawnictwo_ciagle, uczelnia)
     from pbn_export_queue.models import RodzajBledu
     from pbn_export_queue.operacje import pobierz_konto_techniczne
 
-    wydawnictwo_ciagle.pbn_uid = baker.make(Publication)
-    wydawnictwo_ciagle.save()
+    wydawnictwo_ciagle.delete()
+    type(wydawnictwo_ciagle).global_objects.filter(pk=wydawnictwo_ciagle.pk).update(
+        pbn_uid=baker.make(Publication)
+    )
+    wydawnictwo_ciagle.refresh_from_db()
     wpis = baker.make(
         PBN_Export_Queue,
         rekord_do_wysylki=wydawnictwo_ciagle,
@@ -387,7 +396,6 @@ def test_konto_techniczne_bez_tokenu_konczy_glosno(wydawnictwo_ciagle, uczelnia)
         operacja=PBN_Export_Queue.Operacja.WYCOFANIE,
         wysylke_zakonczono=None,
     )
-    wydawnictwo_ciagle.delete()
 
     with patch.object(
         PBN_Export_Queue,

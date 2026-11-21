@@ -149,7 +149,11 @@ def test_usun_trwale_dostepne_dla_superusera(superuser, superuser_client):
 
     resp = superuser_client.post(
         url,
-        {"action": "usun_trwale_zaznaczone", "_selected_action": [str(pk)]},
+        {
+            "action": "usun_trwale_zaznaczone",
+            "_selected_action": [str(pk)],
+            "trwale_potwierdzone": "1",
+        },
     )
     assert resp.status_code in (200, 302)
     assert not Wydawnictwo_Ciagle.global_objects.filter(pk=pk).exists()
@@ -174,7 +178,11 @@ def test_usun_trwale_niedostepne_dla_staff(staff_client):
     # wiec Django odrzuca ja jako niedozwolony wybor.
     resp = staff_client.post(
         url,
-        {"action": "usun_trwale_zaznaczone", "_selected_action": [str(pk)]},
+        {
+            "action": "usun_trwale_zaznaczone",
+            "_selected_action": [str(pk)],
+            "trwale_potwierdzone": "1",
+        },
     )
     assert resp.status_code in (200, 302, 403)
     assert Wydawnictwo_Ciagle.global_objects.filter(pk=pk).exists()
@@ -194,7 +202,11 @@ def test_usun_trwale_pomija_rekordy_spoza_kosza(superuser_client):
     url = reverse("admin:bpp_wydawnictwo_ciagle_changelist") + "?is_deleted=all"
     resp = superuser_client.post(
         url,
-        {"action": "usun_trwale_zaznaczone", "_selected_action": [str(pk)]},
+        {
+            "action": "usun_trwale_zaznaczone",
+            "_selected_action": [str(pk)],
+            "trwale_potwierdzone": "1",
+        },
         follow=True,
     )
     assert resp.status_code == 200
