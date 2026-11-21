@@ -28,6 +28,10 @@ wyszukiwanie, własny dorobek, punkty, raporty.
 - [Mój profil autora](uzytkownik/moj-profil-autora.md)
 - [Nie mogę się zalogować](uzytkownik/logowanie.md)
 - [Widget publikacji na stronie WWW](uzytkownik/widget-publikacji.md)
+- [Wyszukiwanie precyzyjne — podstawy](uzytkownik/wyszukiwanie-precyzyjne.md)
+- [Wyszukiwanie precyzyjne — przykłady zapytań](uzytkownik/wyszukiwanie-precyzyjne-przyklady.md)
+- [Wyszukiwanie precyzyjne — praca z wynikami](uzytkownik/wyszukiwanie-precyzyjne-wyniki.md)
+- [Wyszukiwanie precyzyjne — zapisane formularze](uzytkownik/wyszukiwanie-precyzyjne-zapisane.md)
 
 ### ✏️ Instrukcja redaktora
 
