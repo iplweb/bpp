@@ -87,6 +87,7 @@ WYKAZ_DEMO_WIERSZE = [
     (201001, "Acta Wiedźmińska", "6746-8071", 100, "filozofia, nauki teologiczne"),
 ]
 DEMO_USER_REDAKTOR = "vesemir"  # demo editor: is_staff + "wprowadzanie danych"
+DEMO_USER_ADMIN = "regis"  # demo superuser for administrator pages
 # The fake POL-on export of the demo university (docs/deweloper/dane-demo.md,
 # "Plik POL-on do importu"); generate it with
 # `manage.py generuj_plik_polon_demo --out <dir>` and point this at it.
@@ -4809,6 +4810,400 @@ def optymalizacja_ewaluacji(page: Page, base: str, out: Path) -> None:
     red.context.close()
 
 
+# A made-up staff file in the layout of the template
+# (src/import_pracownikow/static/import_pracownikow/import_pracownikow_przyklad.xlsx)
+# for docs/administrator/import-pracownikow.md. bin/docs-demo-admin-import-pracownikow.py
+# leaves "Zarządzaj automatycznie" on "Klinika Mutacji" only, so the two people
+# of that unit missing here (Eskel z Cintry, Cahir z Vengerbergu) are the whole
+# "odpięcia" proposal. Ciri has a namesake, so she is matched by "BPP ID"; Leo
+# Merigold has a namesake too and no ID ("wielu kandydatów"); Vilgefortz is not
+# in BPP and his unit does not exist yet.
+IMPORT_PRAC_NAGLOWEK = [
+    "Numer",
+    "Nazwisko",
+    "Imię",
+    "ORCID",
+    "Tytuł/Stopień",
+    "Stanowisko",
+    "Grupa pracownicza",
+    "Nazwa jednostki",
+    "Wydział",
+    "Data zatrudnienia",
+    "Data końca zatrudnienia",
+    "Podstawowe miejsce pracy",
+    "PBN UUID",
+    "BPP ID",
+    "Wymiar etatu",
+]
+IMPORT_PRAC_WIERSZE = [
+    # numer, nazwisko, imię, tytuł, jednostka, wydział, od, BPP ID
+    (1001, "Merigold", "Margarita", "dr hab.", "Klinika Mutacji", "2019-10-01", None),
+    (1002, "van der Eretein", "Ciri", "dr", "Klinika Mutacji", "2021-03-01", 209),
+    (1003, "z Rivii", "Renfri", "mgr", "Klinika Mutacji", "2023-10-01", None),
+    (
+        1004,
+        "z Roggeveen",
+        "Eredin",
+        "dr n. med.",
+        "Klinika Mutacji",
+        "2018-02-01",
+        None,
+    ),
+    (1005, "ze Stygga", "Renfri", "dr", "Klinika Mutacji", "2020-10-01", None),
+    (1006, "Merigold", "Leo", "dr", "Klinika Eliksirologii", "2017-10-01", None),
+    (
+        1007,
+        "z Roggeveen",
+        "Vilgefortz",
+        "dr",
+        "Pracownia Eliksirów Bojowych",
+        "2026-10-01",
+        None,
+    ),
+]
+IMPORT_PRAC_WYDZIAL = "Wydział Magii i Eliksirów"
+
+
+def plik_pracownikow_demo(path: Path) -> Path:
+    """Write the made-up staff XLSX used by the import-pracownikow scenario."""
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Pracownicy"
+    ws.append(IMPORT_PRAC_NAGLOWEK)
+    for numer, nazwisko, imie, tytul, jedn, od, bpp_id in IMPORT_PRAC_WIERSZE:
+        ws.append(
+            [numer, nazwisko, imie, None, tytul, None, None, jedn]
+            + [IMPORT_PRAC_WYDZIAL, od, None, "TAK", None, bpp_id, "Pełny etat"]
+        )
+    wb.save(path)
+    return path
+
+
+def import_pracownikow(page: Page, base: str, out: Path) -> None:
+    """docs/administrator/import-pracownikow.md: staff import end to end; run bin/docs-demo-admin-import-pracownikow.py first."""
+    import tempfile
+
+    red = new_session(page, base, DEMO_USER_REDAKTOR)
+    plik = plik_pracownikow_demo(
+        Path(tempfile.mkdtemp()) / "pracownicy-wydzial-magii.xlsx"
+    )
+
+    def przeglad(url: str) -> None:
+        """Wait out the background run; liveops.js usually redirects by itself."""
+        try:
+            red.wait_for_url("**/przeglad/**", timeout=120_000)
+        except PlaywrightTimeoutError:
+            red.goto(url)  # the "finished" push did not arrive; go by hand
+        red.wait_for_load_state("networkidle")
+        red.goto(url)  # drop the one-off flash message, same view each run
+        red.wait_for_load_state("networkidle")
+
+    # 1. "operacje" menu
+    li = open_top_menu(red, "fi-wrench")
+    mark(red, [{"sel": f"{li} .column-1 a", "text": "import pracowników"}])
+    menu = page_box(red, f"{li} .menu-columns-wrapper")
+    shot(red, out / "01-menu-operacje.png", 0, menu["y"] + menu["height"] + 30)
+
+    # 2. new import: template, file, date, advanced options
+    red.goto(f"{base}/import_pracownikow/new/")
+    red.wait_for_load_state("networkidle")
+    red.set_input_files("input[name=plik_xls]", str(plik))
+    mark(
+        red,
+        [
+            {
+                "sel": "#download-example-file",
+                "arrow": "right",
+                "label": "plik wzorcowy",
+                "dx": 20,
+                "dy": -40,
+            },
+            {
+                "sel": "input[name=plik_xls]",
+                "arrow": "above",
+                "label": "1. plik XLSX",
+                "dx": -300,
+                "dy": 30,
+            },
+            {
+                "sel": "details.callout summary",
+                "arrow": "below",
+                "label": "opcje zaawansowane (rzadko potrzebne)",
+                "dx": -250,
+                "dy": -70,
+            },
+            {
+                "sel": "#id_submit",
+                "arrow": "right",
+                "label": "2. Utwórz import",
+                "dx": 20,
+            },
+        ],
+    )
+    shot(red, out / "02-nowy-import.png", 100, bottom_of(red, "#id_submit", 40) - 100)
+
+    # 3. column mapping: sample of the file + the field for every column
+    red.click("#id_submit")
+    red.wait_for_url("**/mapowanie/**")
+    red.wait_for_load_state("networkidle")
+    url = red.url.replace("/mapowanie/", "/")
+    mark(red, [{"sel": "h2", "text": "Próbka danych"}])
+    top = shot(red, None, 100, bottom_of(red, "table", 30) - 100)
+    submit = "input[type=submit][value*='Zapisz mapowanie']"
+    mark(
+        red,
+        [
+            {
+                "sel": submit,
+                "arrow": "right",
+                "label": "Zapisz mapowanie i analizuj",
+                "dx": 20,
+                "dy": -40,
+            },
+        ],
+    )
+    pola = page_box(red, "label[for=id_kol__wymiar_etatu]")
+    dol = shot(red, None, pola["y"] - 20, bottom_of(red, submit, 30) - pola["y"] + 20)
+    mark(
+        red,
+        [
+            {"sel": "#id_kol__nazwisko"},
+            {"sel": "label[for=id_tworz_brakujace_jednostki]"},
+        ],
+    )
+    poczatek = page_box(red, "label[for=id_zapisz_profil]")["y"] - 30
+    srodek = shot(
+        red, None, poczatek, bottom_of(red, "#id_kol__nazwisko", 30) - poczatek
+    )
+    stitch(red, [top, srodek, dol], out / "03-mapowanie-kolumn.png", "przewiń w dół")
+
+    # 4. analysis done: step 1, the structure (a unit to create)
+    red.click(submit)
+    przeglad(url + "przeglad/")
+    mark(
+        red,
+        [
+            {
+                "sel": ".callout.primary a.button",
+                "text": "Zweryfikuj jednostki",
+                "arrow": "right",
+                "label": "1. sprawdź nowe jednostki",
+                "dx": 20,
+            },
+            {
+                "sel": "button[name=zakres][value=jednostki]",
+                "arrow": "right",
+                "label": "2. zapisz strukturę",
+                "dx": 20,
+            },
+            {"sel": ".callout.secondary h2", "text": "Krok 2"},
+        ],
+    )
+    shot(
+        red,
+        out / "04-krok-1-struktura.png",
+        100,
+        bottom_of(red, ".callout.secondary", 30) - 100,
+    )
+
+    # 5. unit verification: create it under the right faculty
+    red.goto(url + "jednostki/")
+    red.wait_for_load_state("networkidle")
+    red.locator("select.js-wydzial").first.select_option(label=IMPORT_PRAC_WYDZIAL)
+    red.wait_for_timeout(300)
+    mark(
+        red,
+        [
+            {"sel": "select.js-decyzja"},
+            {
+                "sel": "select.js-wydzial",
+                "arrow": "below",
+                "label": "wydział nadrzędny",
+                "dx": -150,
+                "dy": -20,
+            },
+            {
+                "sel": "button[type=submit]",
+                "text": "Zapisz decyzje",
+                "arrow": "below",
+                "label": "Zapisz decyzje",
+                "dx": 40,
+                "dy": -50,
+            },
+        ],
+    )
+    shot(
+        red,
+        out / "05-weryfikacja-jednostek.png",
+        100,
+        bottom_of(red, "form button[type=submit]", 110) - 100,
+    )
+    red.locator("button[type=submit]", has_text="Zapisz decyzje").click()
+    red.wait_for_load_state("networkidle")
+
+    # 6. save the structure -> step 2, people
+    red.goto(url + "przeglad/")
+    red.wait_for_load_state("networkidle")
+    red.click("button[name=zakres][value=jednostki]")
+    przeglad(url + "przeglad/")
+    mark(
+        red,
+        [
+            {
+                "sel": ".callout a.button",
+                "text": "Zobacz wiersze",
+                "arrow": "right",
+                "label": "1. osoby z pliku",
+                "dx": 20,
+                "dy": -40,
+            },
+            {
+                "sel": ".callout a.button",
+                "text": "Zobacz powiązania",
+                "arrow": "right",
+                "label": "2. osoby spoza pliku",
+                "dx": 20,
+                "dy": -40,
+            },
+        ],
+    )
+    kafle = page_box(red, ".callout.primary .row")
+    shot(red, out / "06-krok-2-osoby.png", 100, kafle["y"] + kafle["height"] + 20 - 100)
+
+    # 7. rows of the file: confirm a namesake, create a new author
+    red.goto(url + "rezultaty/")
+    red.wait_for_load_state("networkidle")
+    leo = red.locator("tbody[data-rekord]", has_text="Leo")
+    vilgefortz = red.locator("tbody[data-rekord]", has_text="Vilgefortz")
+    leo_id = leo.get_attribute("id")
+    vil_id = vilgefortz.get_attribute("id")
+    mark(
+        red,
+        [
+            {"sel": f"#{leo_id} .label", "text": "wielu"},
+            {
+                "sel": f"#{leo_id} button",
+                "text": "potwierdź",
+                "arrow": "right",
+                "label": "potwierdź wybór",
+                "dx": 20,
+                "dy": 40,
+            },
+            {"sel": f"#{vil_id} .label", "text": "brak"},
+            {
+                "sel": f"#{vil_id} label",
+                "text": "Utwórz nowego",
+                "arrow": "right",
+                "label": "lub nowy autor",
+                "dx": 20,
+                "dy": 30,
+            },
+        ],
+    )
+    tabela = page_box(red, "#tabela-autorow")
+    koniec = page_box(red, f"#{vil_id}")
+    shot(
+        red,
+        out / "07-wiersze-importu.png",
+        tabela["y"] - 20,
+        koniec["y"] + koniec["height"] - tabela["y"] + 40,
+    )
+    leo.locator("button", has_text="potwierdź").click()
+    red.wait_for_timeout(1000)
+    red.locator(f"#{vil_id} input[name=wybor][value=utworz]").check()
+    red.wait_for_timeout(1000)
+
+    # 8. people missing from the file: proposed unlinking
+    red.goto(url + "odpiecia/")
+    red.wait_for_load_state("networkidle")
+    cahir = red.locator("#tabela-odpiec tbody tr", has_text="Cahir")
+    cahir.locator("input[type=checkbox]").check()
+    red.wait_for_timeout(1000)
+    mark(
+        red,
+        [
+            {
+                "sel": "#tabela-odpiec tbody tr:nth-child(2) td:last-child",
+                "arrow": "below",
+                "label": "zaznacz, kogo odpiąć",
+                "dx": -500,
+                "dy": -50,
+            },
+            {
+                "sel": "#btn-zaznacz-filtr",
+                "arrow": "below",
+                "label": "albo wszystkich naraz",
+                "dx": 300,
+                "dy": -70,
+            },
+        ],
+    )
+    shot(red, out / "08-odpiecia.png", 100, bottom_of(red, "#tabela-odpiec", 110) - 100)
+
+    # 9. save the people: confirmation at the bottom of the overview
+    red.goto(url + "przeglad/")
+    red.wait_for_load_state("networkidle")
+    red.check("input[name=potwierdzenie_zapisu]")
+    mark(
+        red,
+        [
+            {
+                "sel": "input[name=potwierdzenie_zapisu]",
+                "arrow": "left",
+                "label": "1. potwierdź",
+                "dx": -20,
+                "dy": -40,
+            },
+            {
+                "sel": "button.alert[type=submit]",
+                "arrow": "right",
+                "label": "2. Zapisz osoby do bazy",
+                "dx": 60,
+            },
+        ],
+    )
+    top = shot(red, None, 100, bottom_of(red, ".callout.primary h2", 60) - 100)
+    ostrz = page_box(red, ".callout.warning")
+    dol = shot(red, None, ostrz["y"] - 20, ostrz["height"] + 40)
+    stitch(red, [top, dol], out / "09-zapis-osob.png", "przewiń na sam dół")
+
+    # 10. result of the run
+    red.click("button.alert[type=submit]")
+    red.wait_for_selector("#op-result .callout", state="visible", timeout=180_000)
+    red.reload()
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": "#op-result a.button",
+                "text": "Log zmian",
+                "arrow": "right",
+                "label": "co dokładnie zmieniono",
+                "dx": 30,
+            }
+        ],
+    )
+    shot(red, out / "10-import-zakonczony.png", 0, bottom_of(red, "#op-result", 30))
+
+    # 11. change log
+    red.goto(url + "audyt/")
+    red.wait_for_load_state("networkidle")
+    shot(
+        red,
+        out / "11-log-zmian.png",
+        100,
+        red.evaluate(
+            "(() => { const t = [...document.querySelectorAll('table')].pop();"
+            " const r = t.getBoundingClientRect(); return r.bottom + scrollY + 30; })()"
+        )
+        - 100,
+    )
+    red.context.close()
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -5101,6 +5496,7 @@ SCENARIOS = {
         "redaktor/optymalizacja-ewaluacji",
         optymalizacja_ewaluacji,
     ),
+    "import-pracownikow": ("administrator/import-pracownikow", import_pracownikow),
 }
 
 
