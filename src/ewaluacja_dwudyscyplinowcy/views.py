@@ -25,7 +25,7 @@ def index(request):
     # Przygotuj dane dla template
     autorzy_dane = []
 
-    for autor_id, autor_data in autorzy_dict.items():
+    for autor_data in autorzy_dict.values():
         # Pobierz wszystkie publikacje autora z wszystkich lat
         publikacje = pobierz_publikacje_dla_wszystkich_lat(autor_data)
 
