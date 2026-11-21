@@ -12,6 +12,7 @@ from pbn_client.const import ACTIVE, DELETED
 from bpp.models import Rekord, Rodzaj_Zrodla, Uczelnia, Wydawnictwo_Ciagle, Zrodlo
 from bpp.permissions import wprowadzanie_danych_wymagane
 from bpp.util import zaloguj_polkniety_wyjatek
+from bpp.wersjonowanie import zarejestruj_utworzenie
 from pbn_api.models import Journal
 from pbn_export_queue.models import PBN_Export_Queue
 
@@ -471,6 +472,11 @@ def _utworz_zrodlo_z_journala(request, journal_docelowy):
         e_issn=journal_docelowy.eissn or "",
         pbn_uid=journal_docelowy,
         rodzaj=rodzaj_czasopismo,
+    )
+    zarejestruj_utworzenie(
+        request.user,
+        zrodlo_nowe,
+        f"Utworzono z czasopisma PBN {journal_docelowy.pk} (przemapowanie źródeł PBN).",
     )
     messages.info(
         request,

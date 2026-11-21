@@ -15,6 +15,7 @@ from pbn_client.const import DELETED
 
 from bpp.models import Autor, Autor_Dyscyplina, Tytul, Uczelnia
 from bpp.util import pbar
+from bpp.wersjonowanie import zarejestruj_utworzenie
 from pbn_api.models import Scientist
 from pbn_integrator.utils.constants import CPU_COUNT
 from pbn_integrator.utils.django_imports import _ensure_django_imports
@@ -304,6 +305,7 @@ def utworz_wpis_dla_jednego_autora(person):
     from pbn_integrator.importer import assert_dictionary_empty
 
     assert_dictionary_empty(cv["object"])
+    zarejestruj_utworzenie(None, autor, "Zaimportowano z PBN.")
     return autor
 
 

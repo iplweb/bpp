@@ -14,6 +14,7 @@ from bpp.models.patent import Patent, Patent_Autor
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
 from bpp.permissions import WprowadzanieDanychRequiredMixin
+from bpp.wersjonowanie import zarejestruj_utworzenie
 
 
 class TozView(WprowadzanieDanychRequiredMixin, View):
@@ -49,6 +50,13 @@ class TozView(WprowadzanieDanychRequiredMixin, View):
             wca_copy.id = None
             wca_copy.rekord = w_copy
             wca_copy.save()
+
+        # Autor wpisu: zalogowany użytkownik (UzytkownikHistoriiMiddleware).
+        zarejestruj_utworzenie(
+            None,
+            w_copy,
+            f"Utworzono jako kopię rekordu nr {w.pk} („Toż”).",
+        )
 
         return reverse(f"admin:bpp_{self.klass_name}_change", args=(w_copy.pk,))
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextvars
 import logging
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -489,7 +490,10 @@ def pobierz_brakujace_publikacje_batch(
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all tasks
         futures = {
+            # copy_context: wątek roboczy nie dziedziczy ContextVar-ów, a z nich
+            # bierze się autor wpisów historii (bpp.wersjonowanie).
             executor.submit(
+                contextvars.copy_context().run,
                 _download_and_import_single_publication,
                 client,
                 pbn_uid_id,

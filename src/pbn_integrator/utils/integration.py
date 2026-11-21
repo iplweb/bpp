@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextvars
 import logging
 import os
 import sys
@@ -224,8 +225,12 @@ def _integruj_publikacje_threaded(  # noqa: C901
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Submit all tasks
             futures = {
+                # copy_context: wątek roboczy nie dziedziczy ContextVar-ów,
+                # a z nich bierze się autor wpisów historii (bpp.wersjonowanie).
                 executor.submit(
-                    _thread_safe_integruj_single_part, batch_data
+                    contextvars.copy_context().run,
+                    _thread_safe_integruj_single_part,
+                    batch_data,
                 ): batch_data[1]
                 for batch_data in batches
             }

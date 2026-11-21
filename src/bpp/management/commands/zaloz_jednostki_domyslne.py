@@ -21,6 +21,7 @@ from bpp.models import (
     Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte_Autor,
 )
+from bpp.wersjonowanie import zarejestruj_utworzenie
 
 
 class Command(BaseCommand):
@@ -168,6 +169,12 @@ class Command(BaseCommand):
                     skupia_pracownikow=True,
                 ),
             )
+            if utworzona:
+                zarejestruj_utworzenie(
+                    None,
+                    target,
+                    "Utworzono poleceniem manage.py zaloz_jednostki_domyslne.",
+                )
             zachowane_pk.append(target.pk)
             self.stdout.write(
                 self.style.SUCCESS(

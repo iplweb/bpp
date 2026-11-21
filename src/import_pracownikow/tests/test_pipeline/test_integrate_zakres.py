@@ -213,3 +213,44 @@ def test_on_restart_resetuje_zakres_do_pelny():
     imp.on_restart()
     imp.refresh_from_db()
     assert imp.zakres_integracji == ImportPracownikow.ZAKRES_PELNY
+
+
+@pytest.mark.django_db
+def test_zakres_pelny_zapisuje_historie_utworzonych_rekordow(uczelnia):
+    """Utworzone autor i jednostka mają wpis w historii admina, przypisany
+    właścicielowi importu (``ImportPracownikow.run`` ustawia
+    ``jako_uzytkownik(owner)``)."""
+    from django.contrib.admin.models import ADDITION, CHANGE, LogEntry
+    from reversion.models import Version
+
+    from bpp.wersjonowanie import jako_uzytkownik
+
+    imp = _imp(ImportPracownikow.ZAKRES_PELNY)
+    dec_j = _decyzja_jednostki(imp)
+    row = _wiersz_nowy_autor(imp, dec_j)
+
+    with jako_uzytkownik(imp.owner):
+        integruj(imp, MockProgress(imp))
+
+    row.refresh_from_db()
+    wpisy_autora = LogEntry.objects.filter(
+        content_type__model="autor", object_id=str(row.autor_id)
+    )
+    assert {w.action_flag for w in wpisy_autora} == {ADDITION, CHANGE}
+    assert {w.user for w in wpisy_autora} == {imp.owner}
+    # Dodanie zatrudnienia ma własną wersję — inaczej strona „Historia"
+    # autora (wersje + LogEntry tylko sprzed pierwszej wersji) by go nie
+    # pokazała.
+    komentarze = [
+        w.revision.comment
+        for w in Version.objects.get_for_object(Autor.objects.get(pk=row.autor_id))
+    ]
+    assert len(komentarze) == 2
+    assert komentarze[0].startswith("Dodano zatrudnienie")
+
+    jednostka = Jednostka.objects.get(nazwa=dec_j.nazwa_zrodlowa)
+    wpis = LogEntry.objects.get(
+        content_type__model="jednostka", object_id=str(jednostka.pk)
+    )
+    assert wpis.action_flag == ADDITION
+    assert f"Import pracowników nr {imp.pk}" in wpis.change_message

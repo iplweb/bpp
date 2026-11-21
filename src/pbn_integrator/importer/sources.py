@@ -1,5 +1,6 @@
 """Journal/source handling for PBN importer."""
 
+import contextvars
 import logging
 import os
 import sys
@@ -19,6 +20,7 @@ from bpp.models import (
     Zrodlo,
 )
 from bpp.util import pbar
+from bpp.wersjonowanie import zarejestruj_utworzenie
 from pbn_api.models import Journal
 from pbn_integrator.utils import integruj_zrodla
 
@@ -96,6 +98,8 @@ def dopisz_jedno_zrodlo(pbn_journal, rodzaj_periodyk, dyscypliny_cache):
     if dyscypliny_zrodel:
         Dyscyplina_Zrodla.objects.bulk_create(dyscypliny_zrodel, ignore_conflicts=True)
 
+    zarejestruj_utworzenie(None, zrodlo, "Zaimportowano z PBN.")
+
 
 def _process_journal_thread_safe(journal_id, rodzaj_periodyk, dyscypliny_cache):
     """Thread-safe wrapper for processing a single journal.
@@ -167,7 +171,10 @@ def importuj_zrodla(max_workers=None, disable_threading=False):
         errors = []
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {
+                # copy_context: wątek roboczy nie dziedziczy ContextVar-ów,
+                # a z nich bierze się autor wpisów historii (bpp.wersjonowanie).
                 executor.submit(
+                    contextvars.copy_context().run,
                     _process_journal_thread_safe,
                     journal_id,
                     rodzaj_periodyk,
