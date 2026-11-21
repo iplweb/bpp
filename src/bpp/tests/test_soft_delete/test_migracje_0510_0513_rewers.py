@@ -73,6 +73,9 @@ def _sprawdz_stan_po(cur):
 
 
 @pytest.mark.django_db
+# Odtwarza migracje w obie strony; solo ~35-55 s, pod obciążeniem xdist
+# przekraczał globalne `--timeout 90` (por. test_migracja_0509_rewers.py).
+@pytest.mark.timeout(300)
 def test_migracje_0510_0513_odwracalne(bez_reinstalacji_denorma):
     with connection.cursor() as cur:
         _sprawdz_stan_po(cur)

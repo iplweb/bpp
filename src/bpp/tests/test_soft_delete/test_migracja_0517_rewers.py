@@ -47,6 +47,9 @@ def _pary_zalezne():
 
 
 @pytest.mark.django_db
+# Odtwarza migracje w obie strony; solo ~35-55 s, pod obciążeniem xdist
+# przekraczał globalne `--timeout 90` (por. test_migracja_0509_rewers.py).
+@pytest.mark.timeout(300)
 def test_0517_odwracalna(bez_reinstalacji_denorma):
     # Stan wyjsciowy: wszystkie 7 widokow zalezy od deleted_at swojej tabeli.
     assert OCZEKIWANE_PARY <= _pary_zalezne(), (

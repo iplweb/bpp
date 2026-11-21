@@ -37,6 +37,9 @@ def test_rodzina_kronika_nie_istnieje():
 
 
 @pytest.mark.django_db
+# Odtwarza migracje w obie strony; solo ~35-55 s, pod obciążeniem xdist
+# przekraczał globalne `--timeout 90` (por. test_migracja_0509_rewers.py).
+@pytest.mark.timeout(300)
 def test_0519_odwracalna():
     """``backward`` odtwarza całą siódemkę z sidecara ``.sql``.
 
