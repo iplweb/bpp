@@ -401,3 +401,38 @@ def test_wydruk_lata_i_pasek_wg_wybranego_okresu(admin_client):
     assert res.context["rok_do"] == 2030
     assert 'class="pasek-okresu"' in html
     assert "<h1>Wydruk oświadczeń</h1>" in html
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "rok_pracy,szablon",
+    [
+        (2023, "oswiadczenia/tresc_jednego_oswiadczenia.html"),
+        (2027, "oswiadczenia/tresc_jednego_oswiadczenia_2026_2030.html"),
+    ],
+)
+def test_oswiadczenie_szablon_okresu(
+    zwarte_z_dyscyplinami, admin_client, rok_pracy, szablon
+):  # noqa
+    """Praca z okresu 2026–2030 dostaje osobny szablon treści oświadczenia;
+    okres bez własnego szablonu — wspólny."""
+    type(zwarte_z_dyscyplinami).objects.filter(pk=zwarte_z_dyscyplinami.pk).update(
+        rok=rok_pracy
+    )
+    rekord = Rekord.objects.get_for_model(zwarte_z_dyscyplinami)
+    autor = rekord.autorzy_set.first()
+    url = reverse(
+        "oswiadczenia:jedno-oswiadczenie",
+        args=(rekord.pk[0], rekord.pk[1], autor.autor.pk, autor.dyscyplina_naukowa.pk),
+    )
+    res = admin_client.get(url)
+    assert szablon in [t.name for t in res.templates]
+
+
+def test_szablony_oswiadczenia_task(db):
+    from oswiadczenia.templatetags.oswiadczenia_tags import szablony_oswiadczenia
+
+    assert szablony_oswiadczenia(2028)[0].endswith("_2026_2030.html")
+    assert szablony_oswiadczenia(None) == [
+        "oswiadczenia/tresc_jednego_oswiadczenia.html"
+    ]

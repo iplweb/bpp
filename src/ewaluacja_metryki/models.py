@@ -207,15 +207,21 @@ class MetrykaAutora(models.Model):
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
-        """Zwraca URL do widoku szczegółów metryki używając stabilnych identyfikatorów"""
+        """URL szczegółów metryki (stabilne identyfikatory) z okresem metryki
+        w adresie — otwiera dokładnie ten okres, niezależnie od okresu
+        wybranego przez oglądającego."""
         from django.urls import reverse
 
-        return reverse(
-            "ewaluacja_metryki:szczegoly",
-            kwargs={
-                "autor_slug": self.autor.slug,
-                "dyscyplina_kod": self.dyscyplina_naukowa.kod,
-            },
+        from ewaluacja_common.url_okres import reverse_w_okresie
+
+        kwargs = {
+            "autor_slug": self.autor.slug,
+            "dyscyplina_kod": self.dyscyplina_naukowa.kod,
+        }
+        if self.okres_id is None:
+            return reverse("ewaluacja_metryki:szczegoly", kwargs=kwargs)
+        return reverse_w_okresie(
+            "ewaluacja_metryki:szczegoly", self.okres, kwargs=kwargs
         )
 
     @property

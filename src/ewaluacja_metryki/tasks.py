@@ -6,7 +6,7 @@ from celery import chord, group, shared_task
 from django.utils import timezone
 
 from bpp.models import Uczelnia
-from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
+from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_okresu
 
 from .models import StatusGenerowania
 from .utils import generuj_metryki, rozstrzygnij_okres
@@ -253,7 +253,7 @@ def generuj_metryki_task_parallel(
             status.ostatni_komunikat = "Przeliczanie liczby N..."
             status.save()
 
-            oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia=uczelnia, okres=okres)
+            oblicz_liczby_n_dla_okresu(uczelnia=uczelnia, okres=okres)
             logger.info("Przeliczono liczby N pomyślnie")
 
         # Krok 2: Pobierz wszystkie IDs autorów-dyscyplin do przetworzenia
@@ -408,7 +408,7 @@ def generuj_metryki_task(
             status.ostatni_komunikat = "Przeliczanie liczby N..."
             status.save()
 
-            oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia=uczelnia, okres=okres)
+            oblicz_liczby_n_dla_okresu(uczelnia=uczelnia, okres=okres)
             logger.info("Przeliczono liczby N pomyślnie")
 
         # Krok 2: Oblicz metryki używając wspólnej funkcji

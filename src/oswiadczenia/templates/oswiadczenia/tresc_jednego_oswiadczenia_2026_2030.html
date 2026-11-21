@@ -1,0 +1,33 @@
+{# Treść oświadczenia dla prac z okresu ewaluacji 2026–2030. Do zmiany, gdy #}
+{# przepisy dla tego okresu będą wymagały innej treści; uczelnia może go też #}
+{# nadpisać w panelu (Szablony / DBTemplates) pod tą samą nazwą. #}
+{% load oswiadczenia_tags %}<h1>Oświadczenie upoważaniające podmiot do wykazania osiągnięć w ewaluacji jakości działalności naukowej</h1>
+<hr>
+<h2>{{ autor.nazwisko }} {{ autor.imiona }}</h2>
+<p>ORCID: <strong>{{ autor.orcid }}</strong></p>
+<p>Dyscypliny:</p>
+<ul>
+    <li>{{ dyscyplina_naukowa }}</li>
+    {% if subdyscyplina_naukowa %}
+        <li>{{ subdyscyplina_naukowa }}</li>
+    {% endif %}
+</ul>
+<p>
+    Ja, <strong>{{ autor.nazwisko }} {{ autor.imiona }}</strong>, zgodnie z art. 265 ust. 13 ustawy z dnia
+    20 lipca 2018 r. – Prawo  o szkolnictwie
+    wyższym i nauce (Dz. U. z 2021 r. poz. 478, z późn. zm.) upoważniam do wykazania na potrzeby
+    ewaluacji jakości działalności naukowej za lata <strong>{{ object.rok|lata_ewaluacji }}</strong> moich, wymienionych w niniejszym
+    oświadczeniu osiągnięć przez <strong>{{ uczelnia.nazwa }}</strong> w dyscyplinie:
+    <strong>{{ dyscyplina_pracy }}</strong>.
+</p>
+<p>
+    Oświadczam, że osiągnięcia te powstały w związku z prowadzeniem przeze mnie działalności naukowej
+    w tym podmiocie (nie dotyczy osiągnięć artystycznych).
+</p>
+<div width="10%" style="text-align: center; width:50%; float: right;">
+    <p>{{ data_oswiadczenia|default:"" }}...........................................................</p>
+    <p>(data i podpis)</p>
+</div>
+<div style="clear:both;"></div>
+<strong>Dotyczy:</strong><br/>
+{{ object.opis_bibliograficzny_cache|safe }}

@@ -108,7 +108,11 @@ mają w tej pracy punkty.
     Treść oświadczenia („upoważniam do wykazania na potrzeby ewaluacji
     jakości działalności naukowej za lata …”) podaje lata okresu, do którego
     należy praca — dla pracy z 2027 r. „2026-2030”, dla pracy z 2024 r.
-    „2022-2025”.
+    „2022-2025”. Prace z okresu 2026–2030 drukują się z osobnego szablonu
+    treści (`oswiadczenia/tresc_jednego_oswiadczenia_2026_2030.html`) —
+    gdy przepisy dla tego okresu wymagają innej treści, administrator może
+    go nadpisać w panelu administracyjnym (**Szablony**), nie ruszając
+    treści oświadczeń za 2022–2025.
 
     Kolumna **Alt. dyscyplina** pokazuje drugą dyscyplinę autora, jeśli ją
     ma. W kolumnie **Akcje** zielona drukarka drukuje jedno oświadczenie,
@@ -171,8 +175,9 @@ wyboru publikacji” na stronie wysyłki tak sugeruje.
 
     ![Menu „PBN”: autoryzuj PBN API i wysyłka oświadczeń do PBN](../images/redaktor/oswiadczenia/07-menu-pbn.png)
 
-2. W panelu **Parametry** wpisz zakres lat (**Rok od**, **Rok do**;
-   domyślnie 2022–2025) i ewentualnie fragment tytułu (**Tytul
+2. Na pasku **Okres ewaluacji** (pod ścieżką nawigacji) wybierz okres.
+   W panelu **Parametry** wpisz zakres lat (**Rok od**, **Rok do**;
+   domyślnie cały wybrany okres, tylko w jego obrębie) i ewentualnie fragment tytułu (**Tytul
    (zawiera)**), kliknij **Odswiez**. Pod spodem zobaczysz, ile prac
    (z PBN UID, czyli już wysłanych do PBN) obejmie wysyłka i ile mają
    oświadczeń. Na dole strony, w **Podglad publikacji**, jest lista tych

@@ -75,8 +75,9 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
             # Redirect to main list with error message instead of showing 404 page
             messages.error(
                 request,
-                "Nie znaleziono metryki ewaluacyjnej dla tego autora i dyscypliny. "
-                "Proszę o wygenerowanie metryk ponownie.",
+                "Nie znaleziono metryki ewaluacyjnej dla tego autora i dyscypliny "
+                f"w okresie {okres_dla_request(request)}. Autor mógł nie mieć "
+                "metryki w tym okresie albo metryki trzeba wygenerować ponownie.",
             )
             return redirect("ewaluacja_metryki:lista")
 
@@ -419,6 +420,15 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
             .order_by("dyscyplina_naukowa__nazwa")
         )
         context["inne_dyscypliny"] = inne_dyscypliny
+
+        # Ten sam autor w innych okresach ewaluacji (porównanie „jak poszło
+        # w poprzedniej ewaluacji”) — tylko tej samej uczelni
+        context["inne_okresy"] = (
+            MetrykaAutora.objects.filter(autor=metryka.autor, uczelnia=metryka.uczelnia)
+            .exclude(okres=metryka.okres_id)
+            .select_related("dyscyplina_naukowa", "okres", "autor")
+            .order_by("-okres__rok_od", "dyscyplina_naukowa__nazwa")
+        )
 
         # Dodaj dostępne rodzaje autorów dla szablonu
         context["rodzaje_autorow"] = Rodzaj_Autora.objects.all().order_by("skrot")

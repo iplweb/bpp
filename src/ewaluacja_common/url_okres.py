@@ -96,6 +96,17 @@ def urlconf_dla_okresu(okres):
     return _urlconfy[klucz]
 
 
+def reverse_w_okresie(viewname, okres, args=None, kwargs=None):
+    """``reverse()`` adresu strony aplikacji z okresem w URL dla podanego
+    okresu — niezależnie od okresu bieżącego żądania (np. linki do metryk
+    autora z różnych okresów na jednej stronie)."""
+    from django.urls import reverse
+
+    return reverse(
+        viewname, urlconf=urlconf_dla_okresu(okres), args=args, kwargs=kwargs
+    )
+
+
 def rozbierz_adres(sciezka):
     """``(prefiks, slug albo None, reszta)`` dla adresu strony aplikacji
     z okresem w URL, inaczej ``None``."""

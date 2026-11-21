@@ -225,7 +225,9 @@ ewaluacji zakończone pomyślnie! Przeliczono … dyscyplin.”
     snapshotów pokazuje snapshoty wybranego okresu oraz starsze snapshoty
     sprzed podziału na okresy (kolumna **Okres**: „wszystkie lata”) — te
     przywracają przypięcia prac ze wszystkich lat. Reset przypięć i odpinanie
-    też działają tylko na pracach z lat wybranego okresu.
+    też działają tylko na pracach z lat wybranego okresu. Patenty nie biorą
+    udziału w przypięciach i odpięciach — reset ani odpinanie ich nie
+    zmieniają.
     Uwaga: snapshot nadpisuje **wszystkie** ręczne przypięcia i odpięcia
     zrobione po jego utworzeniu. Przycisk **„Resetuj przypięcia”** w tabeli
     wyników działa inaczej — przypina z powrotem wszystkie prace z lat

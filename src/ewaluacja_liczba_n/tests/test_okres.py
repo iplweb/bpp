@@ -1,6 +1,7 @@
 """Liczba N per okres ewaluacji: współistnienie okresów, filtrowanie widoków
 po okresie wybranym w sesji, limit udziałów zależny od długości okresu."""
 
+import datetime
 from decimal import Decimal
 
 import pytest
@@ -20,7 +21,6 @@ from ewaluacja_liczba_n.tests.test_per_uczelnia import _make_autor_dyscyplina
 from ewaluacja_liczba_n.utils import (
     oblicz_dyscypliny_nieraportowane,
     oblicz_liczbe_n_na_koniec_okresu,
-    oblicz_liczby_n_dla_ewaluacji_2022_2025,
     oblicz_liczby_n_dla_okresu,
 )
 
@@ -46,8 +46,12 @@ def _request(rf, uczelnia, okres):
 
 @pytest.mark.django_db
 def test_dwa_okresy_wspolistnieja_sankcje_przetrwaja(
-    uczelnia_z_autorem, okres_2022_2025, okres_2026_2030
+    uczelnia_z_autorem, okres_2022_2025, okres_2026_2030, monkeypatch
 ):
+    # Po zakończeniu okresu 2026–2030 — średnia z całych 5 lat.
+    monkeypatch.setattr(
+        "django.utils.timezone.localdate", lambda *a, **kw: datetime.date(2031, 1, 1)
+    )
     uczelnia, _autor, dyscyplina = uczelnia_z_autorem
 
     oblicz_liczby_n_dla_okresu(uczelnia, okres=okres_2022_2025)
@@ -74,7 +78,7 @@ def test_dwa_okresy_wspolistnieja_sankcje_przetrwaja(
     assert IloscUdzialowDlaAutoraZaCalosc.objects.filter(uczelnia=uczelnia).count() == 2
 
     # Ponowne przeliczenie 2022–2025 zachowuje sankcje tego okresu
-    oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia)
+    oblicz_liczby_n_dla_okresu(uczelnia, rok_min=2022, rok_max=2025)
     # (wiersze są kasowane i tworzone od nowa, więc pobieramy ponownie)
     stary = LiczbaNDlaUczelni.objects.get(
         uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina, okres=okres_2022_2025
@@ -84,10 +88,50 @@ def test_dwa_okresy_wspolistnieja_sankcje_przetrwaja(
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    "dzis,oczekiwana",
+    [
+        # 2026 r.: liczy się tylko 2026 (1 udział / 1 rok) — autor wnosi maks. 1
+        (datetime.date(2026, 11, 21), Decimal("1.00")),
+        # 2027 r.: 2026 i 2027 (2 udziały / 2 lata)
+        (datetime.date(2027, 3, 1), Decimal("1.00")),
+        # 2028 r.: dane tylko za 2026–2027 (2 udziały / 3 lata)
+        (datetime.date(2028, 3, 1), Decimal("0.67")),
+    ],
+)
+def test_liczba_n_okresu_trwajacego_proporcjonalnie(
+    uczelnia_z_autorem, okres_2026_2030, monkeypatch, dzis, oczekiwana
+):
+    """W trwającym okresie średnia dzieli się przez lata, które minęły albo
+    trwają — nie przez wszystkie lata okresu."""
+    monkeypatch.setattr("django.utils.timezone.localdate", lambda *a, **kw: dzis)
+    uczelnia, _autor, dyscyplina = uczelnia_z_autorem
+
+    oblicz_liczby_n_dla_okresu(uczelnia, okres=okres_2026_2030)
+
+    liczba = LiczbaNDlaUczelni.objects.get(
+        uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina, okres=okres_2026_2030
+    )
+    assert liczba.liczba_n.quantize(Decimal("0.01")) == oczekiwana
+
+
+@pytest.mark.django_db
+def test_okres_niezaczety_bez_liczby_n(
+    uczelnia_z_autorem, okres_2026_2030, monkeypatch
+):
+    monkeypatch.setattr(
+        "django.utils.timezone.localdate", lambda *a, **kw: datetime.date(2025, 6, 1)
+    )
+    uczelnia, _autor, _dyscyplina = uczelnia_z_autorem
+    oblicz_liczby_n_dla_okresu(uczelnia, okres=okres_2026_2030)
+    assert not LiczbaNDlaUczelni.objects.filter(okres=okres_2026_2030).exists()
+
+
+@pytest.mark.django_db
 def test_lata_jako_argumenty_wybieraja_okres(uczelnia_z_autorem, okres_2026_2030):
     uczelnia, _autor, _dyscyplina = uczelnia_z_autorem
 
-    oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia, rok_min=2026, rok_max=2030)
+    oblicz_liczby_n_dla_okresu(uczelnia, rok_min=2026, rok_max=2030)
 
     assert LiczbaNDlaUczelni.objects.filter(okres=okres_2026_2030).count() == 1
     assert not LiczbaNDlaUczelni.objects.exclude(okres=okres_2026_2030).exists()

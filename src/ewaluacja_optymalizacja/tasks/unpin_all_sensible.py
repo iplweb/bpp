@@ -69,7 +69,6 @@ def _unpin_all_sensible(  # noqa: C901
 
     from bpp.models import (
         Patent,
-        Patent_Autor,
         Uczelnia,
         Wydawnictwo_Ciagle,
         Wydawnictwo_Ciagle_Autor,
@@ -158,7 +157,6 @@ def _unpin_all_sensible(  # noqa: C901
     unpinned_count = 0
     unpinned_ciagle = 0
     unpinned_zwarte = 0
-    unpinned_patent = 0
 
     for idx, opportunity in enumerate(opportunities, 1):
         try:
@@ -181,11 +179,9 @@ def _unpin_all_sensible(  # noqa: C901
                 ).update(przypieta=False)
                 unpinned_zwarte += updated
             elif content_type_id == ct_patent.pk:
-                # Patent_Autor
-                updated = Patent_Autor.objects.filter(
-                    rekord_id=object_id, autor=autor, dyscyplina_naukowa=dyscyplina
-                ).update(przypieta=False)
-                unpinned_patent += updated
+                # Patenty nie biorą udziału w przypięciach/odpięciach.
+                logger.info(f"Pomijam patent w możliwości odpięcia {opportunity.pk}")
+                continue
             else:
                 logger.warning(
                     f"Unknown content_type_id {content_type_id} for opportunity {opportunity.pk}"
@@ -216,7 +212,7 @@ def _unpin_all_sensible(  # noqa: C901
 
     logger.info(
         f"Unpinning complete. Total unpinned: {unpinned_count} "
-        f"(Ciągłe: {unpinned_ciagle}, Zwarte: {unpinned_zwarte}, Patent: {unpinned_patent})"
+        f"(Ciągłe: {unpinned_ciagle}, Zwarte: {unpinned_zwarte})"
     )
 
     # Update task state
@@ -230,7 +226,6 @@ def _unpin_all_sensible(  # noqa: C901
             "unpinned_count": unpinned_count,
             "unpinned_ciagle": unpinned_ciagle,
             "unpinned_zwarte": unpinned_zwarte,
-            "unpinned_patent": unpinned_patent,
         },
     )
 
@@ -246,7 +241,6 @@ def _unpin_all_sensible(  # noqa: C901
             "unpinned_count": unpinned_count,
             "unpinned_ciagle": unpinned_ciagle,
             "unpinned_zwarte": unpinned_zwarte,
-            "unpinned_patent": unpinned_patent,
         },
         logger_func=logger.info,
     )
@@ -372,7 +366,6 @@ def _unpin_all_sensible(  # noqa: C901
         "unpinned_count": unpinned_count,
         "unpinned_ciagle": unpinned_ciagle,
         "unpinned_zwarte": unpinned_zwarte,
-        "unpinned_patent": unpinned_patent,
         "workflow_task_id": workflow_result.id,
         "workflow_result": workflow_final_result,
         "completed_at": datetime.now().isoformat(),

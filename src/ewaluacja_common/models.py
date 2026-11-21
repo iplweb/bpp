@@ -68,6 +68,15 @@ class OkresEwaluacji(models.Model):
     def liczba_lat(self):
         return self.rok_do - self.rok_od + 1
 
+    def ostatni_rok_liczenia(self, dzis=None):
+        """Ostatni rok okresu, za który liczymy liczbę N: rok bieżący dla
+        okresu trwającego, ``rok_do`` dla zakończonego (``rok_od - 1``, gdy
+        okres się jeszcze nie zaczął — wtedy nie ma lat do liczenia)."""
+        from django.utils import timezone
+
+        biezacy = (dzis or timezone.localdate()).year
+        return max(min(self.rok_do, biezacy), self.rok_od - 1)
+
     def zawiera(self, rok):
         return self.rok_od <= rok <= self.rok_do
 

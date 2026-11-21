@@ -39,8 +39,10 @@ class LiczbaNIndexView(GroupRequiredMixin, TemplateView):
             .order_by("-liczba_n")
         )
 
-        # Oblicz liczby N na koniec okresu dla każdej dyscypliny
+        # Oblicz liczby N na koniec okresu dla każdej dyscypliny (dla okresu
+        # trwającego — na koniec roku bieżącego)
         liczby_n_koniec = oblicz_liczbe_n_na_koniec_okresu(uczelnia, okres=okres)
+        context["rok_liczby_n_koniec"] = okres.ostatni_rok_liczenia()
 
         # Dodaj liczby N na koniec okresu do każdego obiektu i podziel na
         # raportowane/nieraportowane

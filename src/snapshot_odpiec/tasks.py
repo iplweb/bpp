@@ -1,4 +1,4 @@
-from bpp.models import Patent_Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
+from bpp.models import Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
 
 
 def _policz(przypieta, okres=None):
@@ -11,7 +11,8 @@ def _policz(przypieta, okres=None):
         model.objects.exclude(dyscyplina_naukowa=None)
         .filter(przypieta=przypieta, **filtr)
         .count()
-        for model in (Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, Patent_Autor)
+        # Patenty nie biorą udziału w przypięciach/odpięciach.
+        for model in (Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor)
     )
 
 
