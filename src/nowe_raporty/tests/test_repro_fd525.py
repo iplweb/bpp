@@ -81,9 +81,11 @@ def _migracja():
 @pytest.mark.django_db
 def test_fd525_migracja_podmienia_domyslny_szablon_i_nie_rusza_wlasnych():
     m = _migracja()
-    domyslna = baker.make(Column, template=STARY)
+    domyslna = baker.make(Column, template=STARY, strip_html_on_export=True)
     z_odstepami = baker.make(
-        Column, template="{{record.opis_bibliograficzny_cache|safe}}\n"
+        Column,
+        template="{{record.opis_bibliograficzny_cache|safe}}\n",
+        strip_html_on_export=True,
     )
     wlasna = baker.make(
         Column, template="<b>{{ record.opis_bibliograficzny_cache|safe }}</b>"
@@ -124,3 +126,14 @@ def test_fd525_docx_nie_przepuszcza_linkow():
     )
     assert "href" not in html
     assert "Opis" in html
+
+
+@pytest.mark.django_db
+def test_fd525_migracja_nie_rusza_kolumn_bez_stripowania_html():
+    m = _migracja()
+    bez_strip = baker.make(Column, template=STARY, strip_html_on_export=False)
+
+    m.naprzod(django_apps, None)
+
+    bez_strip.refresh_from_db()
+    assert bez_strip.template == STARY

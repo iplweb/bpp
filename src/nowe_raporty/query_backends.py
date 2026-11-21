@@ -14,6 +14,7 @@ wygląda na składnię DRUGIEGO języka (``__rel``/kropka w django-dsl,
 ``pole__podpole`` w DjangoQL) — to najczęstsza przyczyna odrzucenia.
 """
 
+import logging
 import re
 
 from django.core.exceptions import ValidationError
@@ -24,8 +25,9 @@ from flexible_reports import query_backends as fr
 #: znaki składni DjangoQL.
 _SKLADNIA_DJANGOQL = re.compile(r"\w__rel\b|\b[a-z_]+\.[a-z_]+\b")
 
-#: ``Unknown field: a__b`` w komunikacie DjangoQL — ścieżka w notacji ORM.
-_NIEZNANE_POLE_ORM = re.compile(r"Unknown field: (\w+?)__(\w+)")
+logger = logging.getLogger(__name__)
+
+_REL = "__rel"
 
 PODPOWIEDZ_DSL = (
     "Zapytanie wygląda na składnię DjangoQL (pole „…__rel” albo ścieżka "
@@ -40,6 +42,44 @@ def _bez_napisow(query):
     (``{{ obiekt.pk }}``) — kropki/``__`` w nich nie mogą udawać składni."""
     query = re.sub(r"\{\{.*?\}\}|\{%.*?%\}", "", query or "", flags=re.S)
     return re.sub(r'"(?:[^"\\]|\\.)*"', '""', query)
+
+
+def podpowiedz_notacja_orm(nazwa):
+    """Podpowiedź dla nieznanego pola DjangoQL zapisanego w notacji ORM.
+
+    ``nazwa`` to nazwa pola z wyjątku (``DjangoQLSchemaError.value``), a NIE
+    tekst komunikatu — ten bywa przetłumaczony („Nieznane pole: …").
+    ``autorzy__autor__nazwisko`` → ``autorzy.autor.nazwisko`` (+ picker
+    ``autorzy.autor__rel``); końcowe ``__rel`` zostaje na miejscu.
+    Zwraca ``None``, gdy nazwa nie wygląda na ścieżkę ORM.
+    """
+    if not nazwa or not isinstance(nazwa, str):
+        return None
+    rel = _REL if nazwa.endswith(_REL) else ""
+    czesci = nazwa[: len(nazwa) - len(rel)].split("__")
+    if len(czesci) < 2 or not all(czesci):
+        return None
+    tekst = (
+        "W DjangoQL pola powiązanych obiektów zapisuje się z kropką: zamiast "
+        f"„{nazwa}” wpisz „{'.'.join(czesci)}{rel}”."
+    )
+    if not rel:
+        tekst += (
+            " Konkretny obiekt z listy wybiera się końcówką „__rel”, np. "
+            f"„{'.'.join(czesci[:-1])}{_REL}”."
+        )
+    return tekst
+
+
+class BladZapytaniaZrodlaDanych(Exception):
+    """Zapisane zapytanie źródła danych nie daje się wykonać przy generowaniu
+    raportu (np. pole zniknęło ze schematu po aktualizacji). Widok raportu
+    zamienia go na czytelny komunikat zamiast błędu 500."""
+
+    def __init__(self, query, blad):
+        self.query = query
+        self.blad = blad
+        super().__init__(f"{blad} (zapytanie: {query!r})")
 
 
 def _dopisz(error, podpowiedz):
@@ -65,16 +105,25 @@ class BppDjangoQLQueryBackend(fr.DjangoQLQueryBackend):
         return BppQLSchema
 
     def filter_queryset(self, base_queryset, query, context=None):
+        from djangoql.exceptions import DjangoQLError
         from djangoql.queryset import apply_search
 
-        return apply_search(
-            base_queryset, self._render(query, context), schema=self._schema()
-        )
+        rendered = self._render(query, context)
+        try:
+            return apply_search(base_queryset, rendered, schema=self._schema())
+        except DjangoQLError as e:
+            # Zapytanie zapisane wcześniej, którego schemat już nie przyjmuje
+            # (albo model bazowy wycięty ze schematu) — logujemy z tracebackiem
+            # i zgłaszamy błąd, który widok raportu pokaże jako komunikat.
+            logger.exception(
+                "Źródło danych raportu: niepoprawne zapytanie DjangoQL %r", rendered
+            )
+            raise BladZapytaniaZrodlaDanych(rendered, e) from e
 
     def validate(self, query, model, context=None):
         # Kopia logiki z flexible_reports, ale na ``BppQLSchema``; komunikaty
         # zostają te same (tłumaczone przez flexible_reports).
-        from djangoql.exceptions import DjangoQLError
+        from djangoql.exceptions import DjangoQLError, DjangoQLSchemaError
         from djangoql.queryset import apply_search
 
         fr._check_not_empty(query)
@@ -92,14 +141,13 @@ class BppDjangoQLQueryBackend(fr.DjangoQLQueryBackend):
                     ]
                 }
             )
-            orm = _NIEZNANE_POLE_ORM.search(str(e))
-            if orm and orm.group(2) != "rel":
-                blad = _dopisz(
-                    blad,
-                    "W DjangoQL pola powiązanych obiektów zapisuje się "
-                    f"z kropką, np. „{orm.group(1)}.{orm.group(2)}”, a obiekt "
-                    f"z listy wybiera się przez „{orm.group(1)}__rel”.",
-                )
+            podpowiedz = (
+                podpowiedz_notacja_orm(e.value)
+                if isinstance(e, DjangoQLSchemaError)
+                else None
+            )
+            if podpowiedz:
+                blad = _dopisz(blad, podpowiedz)
             raise blad from e
         except Exception as e:
             # Błąd samego zapytania SQL (np. niepoprawny typ wartości) —

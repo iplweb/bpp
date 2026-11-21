@@ -49,14 +49,14 @@ def test_fd528_moje_wartosci_domyslne_zapisuja_sie(
     edit_url = _otworz_formularz(admin_client)
 
     res = admin_client.post(
-        edit_url, {"_override_od_roku": "on", "od_roku": "2019"}
+        edit_url, {"_override_sortowanie": "on", "sortowanie": "autorzy"}
     )
 
     assert res.status_code == 200
     v = FormFieldDefaultValue.objects.get(
-        parent__full_name=FULL_NAME, field__name="od_roku", user=admin_user
+        parent__full_name=FULL_NAME, field__name="sortowanie", user=admin_user
     )
-    assert v.value == 2019
+    assert v.value == "autorzy"
 
 
 @pytest.mark.django_db
@@ -102,3 +102,17 @@ def test_fd528_nieaktualny_autor_w_wartosciach_domyslnych_nie_wywala(
         reverse("nowe_raporty:raport_form", args=["raport-autorow"])
     )
     assert res.status_code == 200
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("widok", ["formdefaults:user-edit", "formdefaults:system-edit"])
+def test_fd528_nieaktualna_klasa_formularza_daje_404(admin_client, widok):
+    """Raport po zmianie sluga / usunięciu definicji: zapisany ``full_name``
+    wskazuje na klasę, której już nie ma → 404, nie 500."""
+    for full_name in (
+        "nowe_raporty.forms_dynamiczne.RaportForm_usuniety_raport",
+        "nie_ma.takiego_modulu.Formularz",
+    ):
+        FormRepresentation.objects.create(full_name=full_name, label=full_name)
+        res = admin_client.get(reverse(widok, args=[full_name]))
+        assert res.status_code == 404

@@ -26,7 +26,12 @@ def _znormalizowany(szablon):
 def _podmien(apps, z, na):
     Column = apps.get_model("flexible_reports", "Column")
     wzorzec = _znormalizowany(z)
-    for kolumna in Column.objects.filter(template__contains="opis_bibliograficzny"):
+    # Tylko kolumny ze stripowaniem HTML w eksporcie — inaczej <a> trafiłby do
+    # komórek XLSX tam, gdzie ktoś stripowanie wyłączył.
+    kolumny = Column.objects.filter(
+        template__contains="opis_bibliograficzny", strip_html_on_export=True
+    )
+    for kolumna in kolumny:
         if _znormalizowany(kolumna.template) == wzorzec:
             kolumna.template = na
             kolumna.save(update_fields=["template"])

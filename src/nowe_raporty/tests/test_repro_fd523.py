@@ -102,3 +102,74 @@ def test_fd523_backendy_zainstalowane():
 
     assert isinstance(get_backend(DJANGOQL), BppDjangoQLQueryBackend)
     assert isinstance(get_backend(DSL), BppDSLQueryBackend)
+
+
+@pytest.mark.django_db
+def test_fd523_podpowiedz_orm_dziala_po_polsku():
+    # djangoql tłumaczy komunikat („Nieznane pole: …"), więc podpowiedź
+    # nie może zależeć od tekstu wyjątku.
+    from django.utils import translation
+
+    with translation.override("pl"):
+        with pytest.raises(ValidationError) as e:
+            _ds('charakter_formalny__skrot = "AC"').clean()
+    tekst = " ".join(e.value.messages)
+    assert "Unknown field" not in tekst
+    assert "„charakter_formalny.skrot”" in tekst
+    assert "„charakter_formalny__rel”" in tekst
+
+
+@pytest.mark.parametrize(
+    "nazwa,oczekiwane",
+    [
+        ("charakter_formalny__skrot", ["„charakter_formalny.skrot”"]),
+        (
+            "autorzy__autor__nazwisko",
+            ["„autorzy.autor.nazwisko”", "„autorzy.autor__rel”"],
+        ),
+        ("autorzy__autor__rel", ["„autorzy.autor__rel”"]),
+    ],
+)
+def test_fd523_podpowiedz_z_calej_nazwy_pola(nazwa, oczekiwane):
+    from nowe_raporty.query_backends import podpowiedz_notacja_orm
+
+    tekst = podpowiedz_notacja_orm(nazwa)
+    for o in oczekiwane:
+        assert o in tekst
+
+
+@pytest.mark.parametrize("nazwa", [None, "", "rok", "charakter_formalny__rel"])
+def test_fd523_bez_podpowiedzi_dla_zwyklych_nazw(nazwa):
+    from nowe_raporty.query_backends import podpowiedz_notacja_orm
+
+    assert podpowiedz_notacja_orm(nazwa) is None
+
+
+@pytest.mark.django_db
+def test_fd523_zepsute_zrodlo_danych_przy_generowaniu_nie_daje_500(
+    admin_client, typy_odpowiedzialnosci, uczelnia, caplog
+):
+    from django.urls import reverse
+
+    from bpp.models import Autor
+    from nowe_raporty.seeding import seed_default_reports
+
+    seed_default_reports()
+    # Zapytanie zapisane z pominięciem walidacji (np. sprzed aktualizacji),
+    # którego schemat już nie przyjmuje.
+    ds = Datasource.objects.exclude(dsl_query="").first()
+    ds.query_language = DJANGOQL
+    ds.dsl_query = 'nie_ma_takiego_pola = "x"'
+    ds.save()
+    autor = baker.make(Autor)
+    url = reverse(
+        "nowe_raporty:raport_generuj", args=["raport-autorow", autor.pk, 2020, 2020]
+    )
+
+    for export in ("", "?_export=xlsx", "?_export=docx"):
+        res = admin_client.get(url + export)
+        assert res.status_code == 200, export
+        html = res.content.decode()
+        assert "Nie udało się wygenerować raportu" in html
+        assert "nie_ma_takiego_pola" in html
+    assert "niepoprawne zapytanie DjangoQL" in caplog.text
