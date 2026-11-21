@@ -1,0 +1,23 @@
+Deduplikator publikacji (menu **operacje → deduplikator publikacji**) znajduje
+teraz duplikaty w obrębie tego samego rodzaju rekordu. Dotąd prawie nie
+wykrywał par artykuł–artykuł ani książka–książka: np. ten sam artykuł z 2024 r.
+wpisany dwa razy, raz z tytułem kończącym się „… w populacji wielkopolskiej”,
+raz „… w populacji małopolskiej”, nie trafiał na listę, bo za najbardziej
+podobny rekord program uznawał… ten sam artykuł i go pomijał. W praktyce
+wykrywane były tylko pary z tym samym DOI zapisanym inaczej, z identycznym
+tytułem albo pary artykuł–rozdział. Teraz każda praca jest porównywana
+z kilkoma najbardziej podobnymi pracami z tego samego roku (z pominięciem jej
+samej), a na listę trafiają pary o podobieństwie tytułu co najmniej 80% albo
+zgodnym DOI, ISBN, adresie WWW lub źródle. Każda para pojawia się na liście
+raz (bez osobnego wiersza „B ↔ A”), a gdy tę samą pracę wpisano trzy razy,
+widać wszystkie trzy pary. Naprawiono też drugi problem: nowe skanowanie
+kasowało wcześniejsze decyzje **Nie jest duplikatem**, więc odrzucone pary
+wracały na listę. Teraz taka decyzja jest zapamiętana na stałe — para nie
+wróci przy kolejnych skanowaniach (także dla innego zakresu lat); decyzja jest
+usuwana dopiero, gdy jeden z rekordów pary zostanie skasowany. Bez zmian:
+prace różniące się numerem części
+(„cz. II” i „cz. III”) nie są parowane, deduplikator niczego nie scala ani nie
+usuwa, a pary potwierdzone przyciskiem **Potwierdź jako duplikat** nowe
+skanowanie tego samego zakresu lat nadal zastępuje. Po aktualizacji warto
+uruchomić skanowanie ponownie — lista może być dłuższa niż dotąd, a samo
+skanowanie potrwać nieco dłużej.

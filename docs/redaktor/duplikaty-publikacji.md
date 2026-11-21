@@ -50,7 +50,9 @@ skanowania” i formularz **Skanowanie duplikatów**.
 
 Jeśli są już wyniki poprzedniego skanowania, przeglądarka najpierw zapyta: „Czy na
 pewno chcesz uruchomić nowe skanowanie? Poprzednie wyniki zostaną
-zastąpione.”. Formularz pamięta ustawienia ostatniego skanowania.
+zastąpione.”. Zastąpiona zostaje lista par do sprawdzenia — pary
+oznaczone jako „nie jest duplikatem” nie wrócą (patrz [krok 5](#krok-5)).
+Formularz pamięta ustawienia ostatniego skanowania.
 
 ## Krok 3. Poczekaj na wynik {#krok-3}
 
@@ -91,26 +93,32 @@ w [kroku 6](#krok-6).
 ### Co deduplikator uznaje za parę {#kryteria}
 
 BPP porównuje każdą pracę z wybranych lat z artykułami oraz z książkami
-i rozdziałami **z tego samego roku** i szuka najbardziej podobnej. Para
-trafia na listę, gdy:
+i rozdziałami **z tego samego roku** — także z pracami tego samego rodzaju
+(artykuł z artykułem, książka z książką) — i szuka kilku najbardziej
+podobnych. Para trafia na listę, gdy:
 
 - **DOI** jest ten sam (także zapisany inaczej, np. jako link
   `https://doi.org/…`), a tytuły są wyraźnie podobne,
 - **ISBN** (lub e-ISBN) jest ten sam, a tytuły są wyraźnie podobne,
 - **adres WWW** jest ten sam, a tytuły są niemal identyczne,
 - prace mają to samo **źródło** i ten sam początek tytułu,
-- **sam tytuł** jest niemal identyczny (różnice w wielkości liter,
-  interpunkcji, końcówce).
+- **sam tytuł** jest bardzo podobny — podobieństwo co najmniej 80%
+  (różnice w wielkości liter, interpunkcji, końcówce, jedno inne lub
+  dodatkowe słowo w dłuższym tytule).
 
 Do porównania po tytule tytuł musi być dość długi (co najmniej 25 znaków,
 a jednowyrazowy — 15). Prace różniące się numerem części („cz. II”
-i „cz. III”) **nie** są parowane.
+i „cz. III”) **nie** są parowane. Każda para pojawia się na liście
+**raz** — nie ma osobnych wierszy „A ↔ B” i „B ↔ A”. Gdy tę samą pracę
+wpisano trzy razy, na liście są wszystkie trzy pary.
 
 !!! tip "Czego deduplikator może nie znaleźć"
-    Gdy oba rekordy są tego samego rodzaju (np. dwa artykuły), a drugi
-    ma w tytule literówkę albo inne słowo, para może nie trafić na listę.
-    Taki duplikat najłatwiej znaleźć, wpisując DOI albo początek tytułu
-    w wyszukiwarce — patrz [Wyszukiwanie i
+    Gdy tytuły różnią się bardziej (np. kilka słów w krótkim tytule, inny
+    język tytułu) i rekordy nie mają wspólnego DOI, ISBN, adresu WWW ani
+    źródła, para może nie trafić na listę. Przy bardzo popularnym tytule
+    deduplikator pokazuje dla jednej pracy tylko kilka najbardziej
+    podobnych rekordów. Taki duplikat najłatwiej znaleźć, wpisując DOI
+    albo początek tytułu w wyszukiwarce — patrz [Wyszukiwanie i
     redagowanie](wyszukiwanie-redagowanie.md).
 
 ## Krok 5. Porównaj rekordy i zdecyduj {#krok-5}
@@ -133,13 +141,16 @@ W obu przypadkach para znika z listy, a u góry pojawia się komunikat
 
 ![Komunikat „Duplikat potwierdzony” po kliknięciu zielonego przycisku](../images/redaktor/duplikaty-publikacji/06-potwierdzony-duplikat.png)
 
-!!! warning "Nowe skanowanie zapomina Twoje decyzje"
-    Decyzje dotyczą tylko bieżących wyników. Nowe skanowanie dla tego
-    samego zakresu lat **kasuje** poprzednią listę razem z decyzjami
-    i znów pokaże każdą parę, która nadal jest w bazie — także te
-    oznaczone jako „nie jest duplikatem”. Dlatego przejrzyj całą listę,
-    zanim uruchomisz skanowanie ponownie, a potwierdzone duplikaty od razu
-    usuwaj ([krok 6](#krok-6)).
+!!! note "Co nowe skanowanie robi z Twoimi decyzjami"
+    Decyzja **Nie jest duplikatem** jest zapamiętana na stałe: para
+    oznaczona w ten sposób **nie wróci** na listę przy kolejnych
+    skanowaniach (także przy innym zakresie lat). Decyzja znika dopiero
+    wtedy, gdy jeden z rekordów pary zostanie usunięty.
+
+    Pary potwierdzone przyciskiem **Potwierdź jako duplikat** nowe
+    skanowanie tego samego zakresu lat zastępuje — jeśli oba rekordy
+    nadal są w bazie, para wróci na listę. Dlatego potwierdzone duplikaty
+    od razu usuwaj ([krok 6](#krok-6)).
 
 ## Krok 6. Usuń zbędny rekord {#krok-6}
 
@@ -196,5 +207,4 @@ Tytuły różnią się tylko numerem, a na stronach rekordów widać innych
 autorów.
 
 To różne prace z serii o podobnych tytułach: kliknij **Nie jest
-duplikatem**. Pamiętaj, że przy następnym skanowaniu tych lat para wróci
-na listę.
+duplikatem**. Przy następnym skanowaniu ta para już się nie pojawi.
