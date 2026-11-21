@@ -60,12 +60,10 @@ def _skasuj_trwale(obj):
     """Kasowanie w teardownie musi być NIEODWRACALNE.
 
     Te testy nie działają w transakcji (``transaction.set_autocommit(True)``
-    + live server), więc sprzątają po sobie ręcznie. Od fazy 02 ``delete()``
-    na publikacji jest MIĘKKIE: wiersz zostaje, a razem z nim jego autorstwa
-    ``*_Autor`` — tyle że z ustawionym ``deleted_at``. Od fazy 04 te wiersze
-    chronią autora przez ``PROTECT``, więc kasowanie jednostki (kaskada
-    ``Jednostka`` → ``Autor.aktualna_jednostka`` → autorstwa) wywala się
-    ``ProtectedError`` i teardown nie sprząta do końca.
+    + live server), więc sprzątają po sobie ręcznie. ``delete()`` publikacji,
+    autora, jednostki czy uczelni jest MIĘKKIE (kosz): wiersz zostaje razem
+    z autorstwami ``*_Autor``, które chronią autora przez ``PROTECT`` —
+    teardown nie posprzątałby do końca.
 
     ``hard_delete()`` istnieje na modelach soft-delete; dla pozostałych
     zwykłe ``delete()`` i tak jest twarde.

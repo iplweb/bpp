@@ -48,9 +48,11 @@ def test_admin_kasuje_autora_z_policzonymi_udzialami(
     assert not Autor.objects.filter(pk=pk).exists()
     # Autor bez prac idzie do kosza (soft-delete), a nie jest kasowany
     # twardo — wiersz zostaje, więc udziały (CASCADE tylko przy kasowaniu
-    # twardym) też zostają i wrócą przy ``restore()``.
+    # twardym) też fizycznie zostają; domyślny menedżer je ukrywa (autor
+    # z kosza nie liczy się do N), a wrócą przy ``restore()``.
     assert Autor.deleted_objects.filter(pk=pk).exists()
-    assert model.objects.filter(autor_id=pk).exists()
+    assert not model.objects.filter(autor_id=pk).exists()
+    assert model._base_manager.filter(autor_id=pk).exists()
 
 
 @pytest.mark.django_db
