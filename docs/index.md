@@ -67,6 +67,7 @@ Konfiguracja, importy i integracje — dla administratorów wdrożenia.
 - [Integracja z PBN](administrator/integracja-pbn.md)
 - [Integracja z DSpace](administrator/integracja-dspace.md)
 - [Konfiguracja zaawansowana](administrator/zaawansowane.md)
+- [Metody logowania (LDAP, AD, Keycloak, ORCID…)](administrator/metody-logowania.md)
 
 ### 🔌 API
 
