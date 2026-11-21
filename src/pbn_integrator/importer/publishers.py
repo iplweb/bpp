@@ -16,7 +16,21 @@ logger = logging.getLogger("pbn_import")
 
 
 def _utworz_nowego_wydawce(publisher, points_to_poziom_map, verbosity):
-    """Create a new publisher in BPP from PBN data."""
+    """Create a new publisher in BPP from PBN data.
+
+    Nazwa albo PBN UID należące do wydawcy z KOSZA → pomiń i zgłoś (nie
+    tworzymy duplikatu, nie wskrzeszamy)."""
+    from pbn_integrator.kosz import pomin_jesli_koliduje
+
+    if pomin_jesli_koliduje(
+        Wydawca,
+        "publishers",
+        f"wydawca „{publisher.publisherName}”",
+        nazwa=publisher.publisherName,
+        pbn_uid=publisher,
+    ):
+        return None
+
     nowy_wydawca = Wydawca.objects.create(
         nazwa=publisher.publisherName, pbn_uid=publisher
     )

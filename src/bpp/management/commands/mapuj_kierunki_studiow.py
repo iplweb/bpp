@@ -57,8 +57,10 @@ class Command(BaseCommand):
                     )
                     wa.save()
 
-                jednostka.delete()
-            wydzialokierunek.delete()
+                # Jednostek nie kasuje się (``JednostkaNieDoUsuniecia``) —
+                # przeniesiona jednostka zostaje, ukryta.
+                Jednostka.objects.filter(pk=jednostka.pk).update(widoczna=False)
+            Jednostka.objects.filter(pk=wydzialokierunek.pk).update(widoczna=False)
 
         # Skasuj nieuzywane kierunki studiow
         wykorzystane = AutorzyView.objects.values_list(

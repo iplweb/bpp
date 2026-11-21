@@ -349,7 +349,9 @@ def _get_ilosc_udzialow_queryset(ilosc_udzialow_queryset, uczelnia=None, okres=N
     if ilosc_udzialow_queryset is not None:
         qs = ilosc_udzialow_queryset
     else:
-        qs = IloscUdzialowDlaAutoraZaCalosc.objects.all()
+        qs = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
+            autor__deleted_at__isnull=True
+        )
         if uczelnia is not None:
             qs = qs.filter(uczelnia=uczelnia)
     if okres is not None:

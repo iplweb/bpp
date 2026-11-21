@@ -11,7 +11,7 @@ from denorm import denorms
 from django.contrib.sites.models import Site
 from django.urls import reverse
 
-from bpp.models import Uczelnia
+from bpp.models import Autor, Uczelnia
 from bpp.models.system import Charakter_Formalny, Typ_Odpowiedzialnosci
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.tests.util import any_autor, any_ciagle, any_jednostka
@@ -178,10 +178,12 @@ def test_oai_bez_uczelni_to_404(client, oai_url, settings):
         jednostka=any_jednostka(),
         typ_odpowiedzialnosci=aut,
     )
-    # Jednostka.uczelnia is CASCADE but the authorship's jednostka is
-    # PROTECT, so the authorships have to go before the university does.
-    Wydawnictwo_Ciagle_Autor.objects.all().delete()
-    Uczelnia.objects.all().delete()
+    # Autorstwa najpierw (``*_Autor.jednostka`` i ``.autor`` są PROTECT),
+    # ``aktualna_jednostka`` odpięta (CASCADE do autora); uczelnia twardo
+    # (``delete()`` to kosz z guardem).
+    Wydawnictwo_Ciagle_Autor.all_objects.all().delete()
+    Autor.objects.all().update(aktualna_jednostka=None)
+    Uczelnia.global_objects.all().hard_delete()
     denorms.flush()
 
     res = client.get(

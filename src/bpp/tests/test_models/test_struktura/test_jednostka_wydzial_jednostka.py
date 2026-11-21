@@ -118,10 +118,7 @@ def test_jednostka_before_insert():
     j.refresh_from_db()
     assert j.wydzial == w1
 
-    j2 = baker.make(Jednostka, uczelnia=u2, parent=w2)
-
-    for elem in [j, j2, w2, w1, u2, u1]:
-        elem.delete()
+    baker.make(Jednostka, uczelnia=u2, parent=w2)
 
 
 @pytest.mark.django_db
@@ -148,10 +145,7 @@ def test_jednostka_wydzial_before_insert():
     j1.refresh_from_db()
     jw_cross.delete()
 
-    jw = Jednostka_Rodzic.objects.create(jednostka=j1, parent=w1)
-
-    for elem in (jw, j1, w2, w1, u2, u1):
-        elem.delete()
+    Jednostka_Rodzic.objects.create(jednostka=j1, parent=w1)
 
 
 @pytest.mark.django_db
@@ -165,7 +159,7 @@ def test_jednostka_wydzial_time_trigger():
     w2 = baker.make(Jednostka, uczelnia=u1, parent=None)
     j1 = baker.make(Jednostka, uczelnia=u1)
 
-    jw1 = Jednostka_Rodzic.objects.create(
+    Jednostka_Rodzic.objects.create(
         jednostka=j1,
         parent=w1,
     )
@@ -177,9 +171,6 @@ def test_jednostka_wydzial_time_trigger():
     jw2 = Jednostka_Rodzic(jednostka=j1, parent=w2, do=date(2001, 1, 1))
     with pytest.raises(IntegrityError), transaction.atomic():
         jw2.save()
-
-    for elem in u1, w1, j1, jw1:
-        elem.delete()
 
 
 @pytest.mark.django_db
@@ -197,9 +188,6 @@ def test_jednostka_wydzial_bez_dat_do_w_przyszlosci_constraint():
 
     with pytest.raises(IntegrityError), transaction.atomic():
         jw.save()
-
-    for elem in u1, w1, j1:
-        elem.delete()
 
 
 @pytest.mark.django_db
@@ -230,9 +218,6 @@ def test_jednostka_wydzial_time_trigger_delete_1():
     # Faza B (#438), II-1: ``wydzial`` nie jest już derywatem historii.
     assert j2.aktualna is True
 
-    for elem in u1, w1, j1, j2, jw1:
-        elem.delete()
-
 
 @pytest.mark.django_db
 def test_jednostka_wydzial_time_trigger_delete_2():
@@ -256,9 +241,6 @@ def test_jednostka_wydzial_time_trigger_delete_2():
     # IV-1 (#438): brak wpisów Jednostka_Rodzic → aktualna=True (finalna,
     # ujednolicona logika; dawniej interim sygnał dawał False).
     assert j1.aktualna is True
-
-    for elem in u1, w1, j1:
-        elem.delete()
 
 
 @pytest.mark.django_db

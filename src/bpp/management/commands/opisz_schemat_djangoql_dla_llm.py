@@ -208,6 +208,23 @@ class Command(BaseCommand):
             f"Zapisano opis schematu ({fmt}, BPP {VERSION}) → {target}",
         )
 
+    #: Nota o kontrakcie soft-delete doklejana do nagłówka ``compact``.
+    #: Samo pojawienie się ``deleted_at`` w opisie pól nie mówi konsumentowi
+    #: (LLM, integrator API), CO to pole robi domyślnie — a robi dużo:
+    #: zapytanie bez wzmianki o nim nie widzi kosza. Bez tej noty klient
+    #: dopisywałby ``deleted_at = None`` w kółko albo — gorzej — sądziłby,
+    #: że wyniki obejmują skasowane. Treść odzwierciedla kontrakt z
+    #: ``bpp/djangoql_soft_delete.py``.
+    NOTA_SOFT_DELETE = (
+        "# Rekordy skasowane (soft-delete, pole `deleted_at`) są DOMYŚLNIE pomijane.",
+        "# Zapytanie bez wzmianki o `deleted_at` widzi tylko żywe wiersze — "
+        "nie dopisuj",
+        "# `deleted_at = None`, to już działa. Żeby zajrzeć do kosza, wymień "
+        "to pole na",
+        "# wybranej relacji: `autorzy_set.deleted_at != None` = TYLKO "
+        "skasowane autorstwa.",
+    )
+
     def _render(self, bundle, *, fmt, model_label, schema_path, indent):
         if fmt == "compact":
             header = "\n".join(
@@ -216,6 +233,8 @@ class Command(BaseCommand):
                     f"# Model: {model_label}   Schemat: {schema_path}",
                     "# Wygenerowano: manage.py opisz_schemat_djangoql_dla_llm",
                     "# Plik generowany — nie edytuj ręcznie.",
+                    "",
+                    *self.NOTA_SOFT_DELETE,
                     "",
                     "",
                 )

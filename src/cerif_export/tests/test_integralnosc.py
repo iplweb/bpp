@@ -87,8 +87,23 @@ def harvest(uczelnia):
 
 
 def identyfikatory_naglowkow(rekordy):
+    """Identyfikatory rekordów, które realnie coś wystawiają.
+
+    Nagrobki (faza 05b) świadomie POMIJAMY. Ich identyfikator jest w
+    odpowiedzi, ale znaczy „usuń to u siebie", nie „oto rekord" — zaliczenie
+    go do zbioru wydanych osłabiłoby
+    ``test_kazde_powiazanie_da_sie_rozwiazac``: referencja do rekordu, który
+    właśnie kasujemy, przechodziłaby jako rozwiązywalna. Serializer i tak
+    osadza ``@id`` wyłącznie dla encji ze zbioru widoczności, więc żadne
+    powiązanie nie ma prawa wskazywać na nagrobek.
+    """
     wynik = set()
     for rekord in rekordy:
+        naglowek = next(
+            (el for el in rekord.iter() if el.tag.endswith("}header")), None
+        )
+        if naglowek is not None and naglowek.get("status") == "deleted":
+            continue
         for el in rekord.iter():
             if el.tag.endswith("}identifier") and el.text:
                 wynik.add(el.text)

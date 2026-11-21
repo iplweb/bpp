@@ -1,7 +1,7 @@
 from denorm import denormalized, depend_on_fields, depend_on_related
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
-from django.db.models import CASCADE, PROTECT, SET_NULL
+from django.db.models import PROTECT, SET_NULL, Q
 from django.utils.functional import cached_property
 
 from bpp.models import (
@@ -12,6 +12,7 @@ from bpp.models import (
 )
 from bpp.models.abstract import DwaTytuly
 from bpp.models.slowniki_stale import cached_if_found, wpis_slownika
+from bpp.models.soft_delete import BppPublikacjaSoftDeleteMixin
 
 from .autor import Autor
 from .struktura import Jednostka
@@ -151,8 +152,10 @@ class _Praca_Doktorska_PropertyCache:
 _Praca_Doktorska_PropertyCache = _Praca_Doktorska_PropertyCache()
 
 
-class Praca_Doktorska(Praca_Doktorska_Baza):
-    autor = models.ForeignKey(Autor, CASCADE)
+class Praca_Doktorska(BppPublikacjaSoftDeleteMixin, Praca_Doktorska_Baza):
+    # PROTECT — patrz komentarz przy ``BazaModeluOdpowiedzialnosciAutorow.
+    # autor``. Doktorat bez autora nie ma sensu jako rekord bibliograficzny.
+    autor = models.ForeignKey(Autor, PROTECT)
 
     promotor = models.ForeignKey(
         Autor, SET_NULL, related_name="promotor_doktoratu", blank=True, null=True
@@ -167,6 +170,15 @@ class Praca_Doktorska(Praca_Doktorska_Baza):
         verbose_name_plural = "prace doktorskie"
         app_label = "bpp"
         ordering = ("rok", "tytul_oryginalny")
+        indexes = [
+            # Indeks CZĘŚCIOWY — uzasadnienie przy `wc_deleted_at_idx`
+            # (`wydawnictwo_ciagle.py`, Meta klasy Wydawnictwo_Ciagle).
+            models.Index(
+                fields=["deleted_at"],
+                name="pdok_deleted_at_idx",
+                condition=Q(deleted_at__isnull=False),
+            ),
+        ]
 
     def clean(self):
         DwaTytuly.clean(self)

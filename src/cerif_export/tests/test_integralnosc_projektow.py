@@ -197,6 +197,11 @@ def harvest(uczelnia):
 
         for rekord in korzen.iter(p("record")):
             naglowek = rekord.find(p("header"))
+            if naglowek.get("status") == "deleted":
+                # Nagrobek (faza 05b) to z definicji sam nagłówek — nie ma
+                # ładunku, więc i nie ma referencji, które mogłyby zawisnąć.
+                # Integralność referencyjną sprawdzamy na rekordach żywych.
+                continue
             metadane = rekord.find(p("metadata"))
             assert metadane is not None and len(metadane), (
                 "rekord bez ładunku metadanych"
