@@ -59,6 +59,13 @@ Menu **ewaluacja → metryki ewaluacyjne**.
 
 ![Menu „ewaluacja” z pozycją „metryki ewaluacyjne”](../images/redaktor/metryki-ewaluacyjne/01-menu-ewaluacja.png)
 
+Pod ścieżką nawigacji jest pasek **Okres ewaluacji** — kliknij okres
+(np. 2022–2025 albo 2026–2030), a cała strona pokaże dane tego okresu.
+Okres jest też w adresie strony, np.
+`/ewaluacja_metryki/2026-2030/`: taki link można wysłać komuś innemu
+i otworzy się u niego dokładnie ten okres. To samo dotyczy liczby N,
+optymalizacji, snapshotów odpięć i wydruku oświadczeń.
+
 ## Przeliczenie metryk {#przeliczenie-metryk}
 
 1. Pod tytułem strony jest ramka statusu. Po ostatnim przeliczeniu mówi

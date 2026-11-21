@@ -61,7 +61,7 @@
                 <span class="fi-arrow-left"></span> Powrót do optymalizacji
             </a>
             {% if success %}
-                <a href="/snapshot_odpiec/" class="button warning">
+                <a href="{% url 'snapshot_odpiec:index' %}" class="button warning">
                     <span class="fi-camera"></span> Snapshoty odpięć
                 </a>
             {% endif %}

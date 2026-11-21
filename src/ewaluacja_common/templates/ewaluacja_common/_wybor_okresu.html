@@ -1,24 +1,23 @@
 {# Pasek wyboru okresu ewaluacji pod breadcrumbs (ewaluacja_common.okres). #}
 {# Na całą szerokość ekranu: od wybranego okresu zależy wszystko poniżej. #}
-{# Każdy okres to osobny przycisk POST — wybór jest zapamiętywany dla użytkownika. #}
-<section class="pasek-okresu" aria-label="Okres ewaluacji">
-    <form method="post" action="{% url "ewaluacja_common:wybierz_okres" %}" class="pasek-okresu__formularz">
-        {% csrf_token %}
-        <input type="hidden" name="next" value="{{ request.get_full_path }}"/>
+{# Okres jest w adresie strony (ewaluacja_common.url_okres) — każdy okres #}
+{# to zwykły link do tej samej strony w innym okresie; adres można wysłać. #}
+<nav class="pasek-okresu" aria-label="Okres ewaluacji">
+    <div class="pasek-okresu__formularz">
         <span class="pasek-okresu__etykieta">
             <i class="fi-calendar" aria-hidden="true"></i> Okres ewaluacji
         </span>
         <span class="pasek-okresu__opcje" role="group" aria-label="Wybierz okres ewaluacji">
-            {% for okres in okresy_ewaluacji %}
-                <button type="submit" name="okres" value="{{ okres.pk }}"
-                        class="pasek-okresu__opcja{% if okres.pk == okres_ewaluacji.pk %} pasek-okresu__opcja--aktywna{% endif %}"
-                        aria-pressed="{% if okres.pk == okres_ewaluacji.pk %}true{% else %}false{% endif %}">
+            {% for okres, adres in linki_okresow %}
+                <a href="{{ adres }}"
+                   class="pasek-okresu__opcja{% if okres.pk == okres_ewaluacji.pk %} pasek-okresu__opcja--aktywna{% endif %}"
+                   {% if okres.pk == okres_ewaluacji.pk %}aria-current="page"{% endif %}>
                     {{ okres }}
-                </button>
+                </a>
             {% empty %}
                 <span>Brak zdefiniowanych okresów ewaluacji.</span>
             {% endfor %}
         </span>
         <span class="pasek-okresu__opis">dane na tej stronie dotyczą wybranego okresu</span>
-    </form>
-</section>
+    </div>
+</nav>

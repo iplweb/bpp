@@ -56,6 +56,11 @@ class OkresEwaluacji(models.Model):
         return f"{self.rok_od}–{self.rok_do}"
 
     @property
+    def slug(self):
+        """Okres w adresie URL stron ewaluacji, np. ``2026-2030``."""
+        return f"{self.rok_od}-{self.rok_do}"
+
+    @property
     def lata(self):
         return list(range(self.rok_od, self.rok_do + 1))
 

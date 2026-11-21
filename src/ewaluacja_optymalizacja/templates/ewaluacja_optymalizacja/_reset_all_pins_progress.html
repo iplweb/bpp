@@ -135,7 +135,7 @@
                 <p><span class="fi-info"></span> <strong>Ważne:</strong>
                 Utworzono snapshot nr {{ result.snapshot_id }} przed zmianami.
                 W razie potrzeby możesz go przywrócić w module
-                <a href="/snapshot_odpiec/">Snapshoty odpięć</a>.</p>
+                <a href="{% url 'snapshot_odpiec:index' %}">Snapshoty odpięć</a>.</p>
             </div>
         {% endif %}
     </div>
