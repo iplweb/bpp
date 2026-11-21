@@ -28,7 +28,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0502_autor_soft_delete"),
+        ("bpp", "0522_autor_soft_delete"),
         ("zglos_publikacje", "0027_zgloszenie_zaimportowane"),
     ]
 
