@@ -225,7 +225,7 @@ def scan_status_view(request, scan_id):
                 time_per_pub = elapsed.total_seconds() / scan_run.publications_scanned
                 eta_seconds = int(time_per_pub * remaining_pubs)
                 eta_datetime = now + timedelta(seconds=eta_seconds)
-                eta_time = eta_datetime.strftime("%H:%M:%S")
+                eta_time = timezone.localtime(eta_datetime).strftime("%H:%M:%S")
 
         return JsonResponse(
             {

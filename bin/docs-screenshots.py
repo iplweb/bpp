@@ -6522,7 +6522,7 @@ def duplikaty_publikacji(page: Page, base: str, out: Path) -> None:
         mark(
             red,
             [
-                {"sel": "#scan-progress-container"},
+                {"sel": "#scan-progress-container form button"},
                 {
                     "sel": "#scan-eta-content",
                     "arrow": "right",
@@ -6536,7 +6536,7 @@ def duplikaty_publikacji(page: Page, base: str, out: Path) -> None:
             red,
             out / "03-skanowanie-w-toku.png",
             0,
-            bottom_of(red, "#scan-progress-container", 10),
+            bottom_of(red, "#scan-progress-container form button", 12),
         )
     # the page reloads itself when the scan is done; don't rely on its timer
     # (throttled in a background browser context) - reload until the list shows

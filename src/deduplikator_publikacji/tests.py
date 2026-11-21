@@ -1,4 +1,5 @@
 import re
+from datetime import timedelta
 
 import pytest
 from django.contrib.contenttypes.models import ContentType
@@ -197,3 +198,33 @@ def test_running_scan_has_no_stale_progress_message(admin_client):
     response = admin_client.get(url)
     assert "scan-progress-container" in response.content.decode()
     assert not [str(m) for m in response.context["messages"]]
+
+
+@pytest.mark.django_db
+def test_scan_status_eta_time_is_local(admin_client, settings):
+    """ETA clock time is shown in the local time zone, not UTC."""
+    settings.TIME_ZONE = "Europe/Warsaw"
+    scan_run = baker.make(
+        PublicationDuplicateScanRun,
+        status=PublicationDuplicateScanRun.Status.RUNNING,
+        total_publications_to_scan=100,
+        publications_scanned=50,
+    )
+    PublicationDuplicateScanRun.objects.filter(pk=scan_run.pk).update(
+        started_at=timezone.now() - timedelta(seconds=100)
+    )
+    url = reverse(
+        "deduplikator_publikacji:scan_status", kwargs={"scan_id": scan_run.pk}
+    )
+    data = admin_client.get(url).json()
+
+    expected = timezone.localtime(
+        timezone.now() + timedelta(seconds=data["eta_seconds"])
+    )
+
+    def sekundy(hms):
+        h, m, s = (int(x) for x in hms.split(":"))
+        return h * 3600 + m * 60 + s
+
+    roznica = abs(sekundy(data["eta_time"]) - sekundy(expected.strftime("%H:%M:%S")))
+    assert min(roznica, 86400 - roznica) <= 5
