@@ -1,34 +1,36 @@
 from django.urls import path, re_path
+from django.views.generic import RedirectView
 
 from . import views
 
 app_name = "oswiadczenia"
 
 urlpatterns = [
-    # New views for 2022-2025 declarations
+    # Wydruk oświadczeń — lata wg okresu ewaluacji wybranego na pasku okresu
+    path("wydruk/", views.WydrukOswiadczenView.as_view(), name="wydruk"),
+    path(
+        "wydruk/export/",
+        views.WydrukOswiadczenExportView.as_view(),
+        name="wydruk-export",
+    ),
+    # Stary adres (zakładki użytkowników) — przekierowanie z query stringiem
     path(
         "wydruk-2022-25/",
-        views.WydrukOswiadczen2022View.as_view(),
-        name="wydruk-2022-25",
-    ),
-    path(
-        "wydruk-2022-25/export/",
-        views.WydrukOswiadczenExportView.as_view(),
-        name="wydruk-2022-25-export",
+        RedirectView.as_view(pattern_name="oswiadczenia:wydruk", query_string=True),
     ),
     # Background task views
     path(
-        "wydruk-2022-25/start-export/",
+        "wydruk/start-export/",
         views.StartExportTaskView.as_view(),
         name="start-export",
     ),
     path(
-        "wydruk-2022-25/task/<int:task_id>/",
+        "wydruk/task/<int:task_id>/",
         views.TaskStatusView.as_view(),
         name="task-status",
     ),
     path(
-        "wydruk-2022-25/download/<int:task_id>/",
+        "wydruk/download/<int:task_id>/",
         views.DownloadResultView.as_view(),
         name="download-result",
     ),

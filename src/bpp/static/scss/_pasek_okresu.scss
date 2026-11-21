@@ -1,0 +1,90 @@
+// =============================================================================
+// PASEK OKRESU EWALUACJI (ewaluacja_common/_wybor_okresu.html)
+// Pas na całą szerokość pod breadcrumbs, wyśrodkowany przełącznik okresów.
+// Mocne dolne obramowanie: od wybranego okresu zależy cała treść poniżej.
+// =============================================================================
+
+.pasek-okresu {
+  background: linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%);
+  border-bottom: 3px solid $primary-color;
+  padding: 0.6rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.pasek-okresu__formularz {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 1rem;
+  margin: 0;
+}
+
+.pasek-okresu__etykieta {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.85rem;
+  color: #444;
+}
+
+// Przełącznik segmentowy: okresy jako sklejone przyciski.
+.pasek-okresu__opcje {
+  display: inline-flex;
+  border: 1px solid $primary-color;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.pasek-okresu__opcja {
+  padding: 0.4rem 1.1rem;
+  font-size: 1rem;
+  color: $primary-color;
+  background: #fff;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  & + & {
+    border-left: 1px solid $primary-color;
+  }
+
+  &:hover,
+  &:focus {
+    background: rgba($primary-color, 0.1);
+  }
+
+  &:focus-visible {
+    outline: 2px solid $primary-color;
+    outline-offset: -4px;
+  }
+}
+
+.pasek-okresu__opcja--aktywna {
+  color: #fff;
+  font-weight: 700;
+  background: $primary-color;
+  cursor: default;
+
+  &:hover,
+  &:focus {
+    background: $primary-color;
+  }
+}
+
+.pasek-okresu__opis {
+  font-size: 0.85rem;
+  color: #666;
+  font-style: italic;
+}
+
+@media print {
+  .pasek-okresu {
+    background: none;
+    border-bottom-width: 1px;
+  }
+
+  .pasek-okresu__opcja:not(.pasek-okresu__opcja--aktywna),
+  .pasek-okresu__opis {
+    display: none;
+  }
+}

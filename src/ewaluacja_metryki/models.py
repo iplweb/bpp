@@ -1,4 +1,6 @@
 from django.db import models
+from django.db.models import Value
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from bpp.models.autor import Autor
@@ -278,7 +280,7 @@ class StatusGenerowania(models.Model):
     # (views/unpinning_analysis.py:39,149, views/unpinning_list.py:137),
     # co rozwiązuje się do wiersza uczelnia=None. Pełny per-uczelnia status
     # należy do późniejszych prac federacyjnych.
-    uczelnia = models.OneToOneField(
+    uczelnia = models.ForeignKey(
         "bpp.Uczelnia",
         on_delete=models.CASCADE,
         null=True,
@@ -286,38 +288,35 @@ class StatusGenerowania(models.Model):
         help_text="Uczelnia, której dotyczy ten status (multi-hosted)",
     )
 
-    # Status jest per uczelnia (jedno generowanie naraz na uczelnię, bo i tak
-    # przelicza wspólną liczbę N); tu zapamiętujemy, dla którego okresu
-    # uruchomiono ostatnie generowanie.
+    # Status jest per (uczelnia, okres): generowanie metryk jednego okresu nie
+    # blokuje przeglądania ani generowania metryk innego okresu (metryki,
+    # liczba N i udziały są przechowywane osobno dla każdego okresu).
     okres = models.ForeignKey(
         "ewaluacja_common.OkresEwaluacji",
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name="+",
-        help_text="Okres ewaluacji ostatniego (lub trwającego) generowania",
+        help_text="Okres ewaluacji, którego dotyczy ten status",
     )
 
     class Meta:
         verbose_name = "Status generowania metryk"
         verbose_name_plural = "Status generowania metryk"
         constraints = [
-            # OneToOneField(null=True) daje zwykły indeks unikalny, a w
-            # PostgreSQL NULL-e są w nim wzajemnie rozróżnialne — nie
-            # ogranicza więc liczby wierszy z ``uczelnia IS NULL``. Dwa
-            # równoległe żądania tworzyły dwa takie wiersze i od tej chwili
-            # każde ``get_or_create()`` bez argumentu rzucało
-            # ``MultipleObjectsReturned`` (trwałe 500).
-            #
-            # Wyrażenie ``uczelnia IS NULL`` jest dla wierszy objętych
-            # warunkiem zawsze równe TRUE, więc częściowy indeks unikalny na
-            # nim dopuszcza dokładnie jeden taki wiersz. (Indeksu na samej
-            # kolumnie ``uczelnia`` użyć nie można — znów porównywałby NULL-e.)
+            # Jeden status na (uczelnia, okres). NULL-e w zwykłym indeksie
+            # unikalnym PostgreSQL są wzajemnie rozróżnialne — stąd COALESCE
+            # i osobny indeks częściowy dla wierszy bez uczelni (dwa
+            # równoległe ``get_or_create()`` bez argumentu tworzyły kiedyś
+            # dwa takie wiersze → trwałe ``MultipleObjectsReturned``).
             models.UniqueConstraint(
-                models.ExpressionWrapper(
-                    models.Q(uczelnia__isnull=True),
-                    output_field=models.BooleanField(),
-                ),
+                "uczelnia",
+                Coalesce("okres", Value(0)),
+                condition=models.Q(uczelnia__isnull=False),
+                name="ewaluacja_metryki_status_uczelnia_okres",
+            ),
+            models.UniqueConstraint(
+                Coalesce("okres", Value(0)),
                 condition=models.Q(uczelnia__isnull=True),
                 name="ewaluacja_metryki_status_jeden_wiersz_bez_uczelni",
             ),
@@ -332,9 +331,11 @@ class StatusGenerowania(models.Model):
             return "Brak informacji o generowaniu"
 
     @classmethod
-    def get_or_create(cls, uczelnia=None):
-        """Pobierz lub utwórz status dla danej uczelni (per-uczelnia, multi-hosted)."""
-        obj, created = cls.objects.get_or_create(uczelnia=uczelnia)
+    def get_or_create(cls, uczelnia=None, okres=None):
+        """Pobierz lub utwórz status generowania dla uczelni i okresu
+        ewaluacji (obiekt albo pk)."""
+        okres_id = getattr(okres, "pk", okres)
+        obj, created = cls.objects.get_or_create(uczelnia=uczelnia, okres_id=okres_id)
         return obj
 
     def rozpocznij_generowanie(self, task_id="", liczba_do_przetworzenia=0, okres=None):

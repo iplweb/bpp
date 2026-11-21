@@ -88,10 +88,10 @@ def oblicz_metryki_dla_autora_task(
             okres=okres_pk,
         )
 
-        # Atomowo zwiększ licznik przetworzonych tasków (per uczelnia)
-        StatusGenerowania.objects.filter(uczelnia_id=uczelnia_id).update(
-            liczba_przetworzonych=F("liczba_przetworzonych") + 1
-        )
+        # Atomowo zwiększ licznik przetworzonych tasków (per uczelnia i okres)
+        StatusGenerowania.objects.filter(
+            uczelnia_id=uczelnia_id, okres_id=okres_pk
+        ).update(liczba_przetworzonych=F("liczba_przetworzonych") + 1)
 
         return {
             "status": result,
@@ -105,10 +105,10 @@ def oblicz_metryki_dla_autora_task(
             f"IloscUdzialowDlaAutoraZaCalosc o ID {ilosc_udzialow_id} nie istnieje"
         )
         logger.error(error_msg)
-        # Atomowo zwiększ licznik przetworzonych tasków (per uczelnia)
-        StatusGenerowania.objects.filter(uczelnia_id=uczelnia_id).update(
-            liczba_przetworzonych=F("liczba_przetworzonych") + 1
-        )
+        # Atomowo zwiększ licznik przetworzonych tasków (per uczelnia i okres)
+        StatusGenerowania.objects.filter(
+            uczelnia_id=uczelnia_id, okres_id=okres_pk
+        ).update(liczba_przetworzonych=F("liczba_przetworzonych") + 1)
         return {
             "status": "error",
             "autor": "Unknown",
@@ -119,10 +119,10 @@ def oblicz_metryki_dla_autora_task(
         error_msg = f"Błąd przy przetwarzaniu ID {ilosc_udzialow_id}: {str(e)}"
         logger.error(error_msg)
         rollbar.report_exc_info(sys.exc_info())
-        # Atomowo zwiększ licznik przetworzonych tasków (per uczelnia)
-        StatusGenerowania.objects.filter(uczelnia_id=uczelnia_id).update(
-            liczba_przetworzonych=F("liczba_przetworzonych") + 1
-        )
+        # Atomowo zwiększ licznik przetworzonych tasków (per uczelnia i okres)
+        StatusGenerowania.objects.filter(
+            uczelnia_id=uczelnia_id, okres_id=okres_pk
+        ).update(liczba_przetworzonych=F("liczba_przetworzonych") + 1)
         return {
             "status": "error",
             "autor": "Unknown",
@@ -132,19 +132,20 @@ def oblicz_metryki_dla_autora_task(
 
 
 @shared_task
-def finalizuj_generowanie_metryk(results, uczelnia_id=None):
+def finalizuj_generowanie_metryk(results, uczelnia_id=None, okres_pk=None):
     """
     Callback task wywoływany po zakończeniu wszystkich tasków obliczania metryk.
 
     Args:
         results: Lista wyników z tasków oblicz_metryki_dla_autora_task
         uczelnia_id: ID uczelni — per-uczelnia scope StatusGenerowania
+        okres_pk: ID okresu ewaluacji — status jest per (uczelnia, okres)
 
     Returns:
         Dict z podsumowaniem: processed, skipped, errors, total
     """
     uczelnia = _resolve_uczelnia(uczelnia_id)
-    status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
+    status = StatusGenerowania.get_or_create(uczelnia=uczelnia, okres=okres_pk)
 
     # Odśwież status z bazy danych aby pobrać aktualną wartość liczba_przetworzonych
     # zaktualizowaną atomowo przez poszczególne taski
@@ -243,7 +244,7 @@ def generuj_metryki_task_parallel(
             "message": f"Nie można ustalić okresu ewaluacji: {e}",
             "error": str(e),
         }
-    status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
+    status = StatusGenerowania.get_or_create(uczelnia=uczelnia, okres=okres)
 
     try:
         # Krok 1: Przelicz liczby N jeśli włączone
@@ -306,7 +307,9 @@ def generuj_metryki_task_parallel(
         )
 
         # Krok 6: Uruchom chord (group + callback) i zapisz group_id
-        job = chord(task_group)(finalizuj_generowanie_metryk.s(uczelnia_id=uczelnia.pk))
+        job = chord(task_group)(
+            finalizuj_generowanie_metryk.s(uczelnia_id=uczelnia.pk, okres_pk=okres.pk)
+        )
 
         # Group ID jest dostępny w job.parent
         group_id = job.parent.id if hasattr(job, "parent") and job.parent else None
@@ -393,7 +396,7 @@ def generuj_metryki_task(
             "message": f"Nie można ustalić okresu ewaluacji: {e}",
             "error": str(e),
         }
-    status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
+    status = StatusGenerowania.get_or_create(uczelnia=uczelnia, okres=okres)
 
     # NOTE: Sprawdzanie w_trakcie przeniesione do widoku UruchomGenerowanie
     # Status jest ustawiany w widoku przed uruchomieniem taska, więc tutaj nie sprawdzamy

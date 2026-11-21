@@ -1,5 +1,5 @@
 {
-  "git_sha": "7f01c37aaf37bf1a1d064333c374872ee201d2d3",
+  "git_sha": "092d929d5f09603ccd4ee2b8bddddff4ba010ebf",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
@@ -24,7 +24,7 @@
     "ewaluacja2021": "0020_delete_ewaluacja2021_models",
     "ewaluacja_common": "0007_wybrany_okres_ewaluacji",
     "ewaluacja_liczba_n": "0012_okres_ewaluacji_wymagany",
-    "ewaluacja_metryki": "0013_metrykaautora_okres_notnull",
+    "ewaluacja_metryki": "0014_status_generowania_per_okres",
     "ewaluacja_optymalizacja": "0019_okres_ewaluacji_wymagany",
     "ewaluacja_optymalizuj_publikacje": "0001_initial",
     "favicon": "0005_leftover_changes",
@@ -50,7 +50,7 @@
     "oauth2_provider": "0022_refreshtoken_token_family_index",
     "oidc_integration": "0001_initial",
     "orcid_integration": "0001_initial",
-    "oswiadczenia": "0005_migrate_template_to_dbtemplate",
+    "oswiadczenia": "0006_oswiadczenie_lata_z_okresu",
     "password_policies": "0003_update_passwordprofile",
     "pbn_api": "0079_constraint_publikacja_instytucji",
     "pbn_downloader_app": "0004_alter_error_message_fields",
@@ -69,7 +69,7 @@
     "sessions": "0001_initial",
     "siteblog": "0001_initial",
     "sites": "0002_alter_domain_unique",
-    "snapshot_odpiec": "0002_alter_snapshotodpiec_owner",
+    "snapshot_odpiec": "0003_snapshot_okres_ewaluacji",
     "taggit": "0007_alter_taggeditem_options",
     "test_bpp": "0003_testreport",
     "zglos_publikacje": "0028_obslugujacy_verbose_name"

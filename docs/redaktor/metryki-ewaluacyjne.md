@@ -59,13 +59,6 @@ Menu **ewaluacja → metryki ewaluacyjne**.
 
 ![Menu „ewaluacja” z pozycją „metryki ewaluacyjne”](../images/redaktor/metryki-ewaluacyjne/01-menu-ewaluacja.png)
 
-Przy pierwszym wejściu nad tabelą pojawia się żółta ramka **„Ważna
-informacja o charakterze prezentowanych danych”**. Przypomina, że to
-wskaźniki orientacyjne, a nie wynik ewaluacji ministerialnej. Krzyżyk
-w prawym rogu ją chowa; w tej przeglądarce wróci po 14 dniach.
-
-![Zastrzeżenie o charakterze danych z krzyżykiem do zamknięcia](../images/redaktor/metryki-ewaluacyjne/02-zastrzezenie.png)
-
 ## Przeliczenie metryk {#przeliczenie-metryk}
 
 1. Pod tytułem strony jest ramka statusu. Po ostatnim przeliczeniu mówi

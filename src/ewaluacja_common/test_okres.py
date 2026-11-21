@@ -1,4 +1,4 @@
-"""Okres ewaluacji: domyślny wg roku, wybór w sesji, przełącznik w belce."""
+"""Okres ewaluacji: domyślny wg roku, wybór w sesji, pasek wyboru okresu."""
 
 import pytest
 from django.urls import reverse
@@ -161,3 +161,23 @@ def test_admin_okresow_tylko_do_odczytu(admin_client):
     )
     okres.refresh_from_db()
     assert okres.rok_do != 2099
+
+
+@pytest.mark.django_db
+def test_pasek_okresu_pod_breadcrumbs_a_nie_w_gornej_belce(admin_client):
+    """Wybór okresu to pasek na całą szerokość pod breadcrumbs, nie pozycja
+    menu górnej belki; aktywny okres jest oznaczony."""
+    resp = admin_client.get(reverse("ewaluacja_metryki:lista"))
+    html = resp.content.decode()
+    assert html.count('class="pasek-okresu"') == 1
+    assert html.index('id="breadcrumbs-wrapper"') < html.index('class="pasek-okresu"')
+    assert "wybor-okresu" not in html
+    aktywny = resp.context["okres_ewaluacji"]
+    assert f'value="{aktywny.pk}"' in html
+    assert 'aria-pressed="true"' in html
+
+
+@pytest.mark.django_db
+def test_pasek_okresu_tylko_na_stronach_ewaluacji(admin_client):
+    resp = admin_client.get("/")
+    assert 'class="pasek-okresu"' not in resp.content.decode()

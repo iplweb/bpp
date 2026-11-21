@@ -14,7 +14,7 @@ def index(request):
     """
     Widok główny modułu dwudyscyplinowców.
     Pokazuje listę autorów z dwiema dyscyplinami i ich publikacje w okresie ewaluacji wybranym
-    w górnej belce (domyślnie: okres obejmujący bieżący rok).
+    na pasku okresu (domyślnie: okres obejmujący bieżący rok).
     """
     # Pobierz wszystkich autorów z dwiema dyscyplinami
     okres = okres_dla_request(request)

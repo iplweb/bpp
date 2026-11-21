@@ -29,7 +29,7 @@ class OkresEwaluacji(models.Model):
     nowelizacji ustawy (projekt z 2026 r. wydłuża okres z 4 do 5 lat).
     Okresy definiujemy MY — w adminie są tylko do odczytu (bez dodawania,
     edycji i usuwania); zmiana przepisów = migracja danych w wydaniu.
-    Użytkownik przełącza okres w górnej belce stron ewaluacji; wybór jest
+    Użytkownik przełącza okres na pasku okresu pod ścieżką nawigacji stron ewaluacji; wybór jest
     zapamiętywany na stałe (``WybranyOkresEwaluacji``). Bez wyboru — okres,
     w którym mieści się bieżący rok (``ewaluacja_common.okres.okres_domyslny``).
     """

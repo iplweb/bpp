@@ -131,7 +131,11 @@ def _unpin_all_sensible(  # noqa: C901
         # Create snapshot before unpinning
         snapshot = SnapshotOdpiec.objects.create(
             owner=None,  # System tworzy snapshot
-            comment=f"przed odpięciem wszystkich sensownych możliwości - uczelnia {uczelnia}",
+            comment=(
+                "przed odpięciem wszystkich sensownych możliwości - uczelnia "
+                f"{uczelnia} ({okres})"
+            ),
+            okres=okres,
         )
 
         logger.info(

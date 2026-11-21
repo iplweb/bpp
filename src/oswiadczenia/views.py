@@ -20,9 +20,8 @@ from bpp.models import (
     Rekord,
 )
 from bpp.util import worksheet_columns_autosize, worksheet_create_table
+from ewaluacja_common.okres import okres_dla_request
 
-DEFAULT_ROK_OD = 2022
-DEFAULT_ROK_DO = 2025
 EXPORT_CHUNK_SIZE = 5000
 
 
@@ -35,16 +34,12 @@ PRZYPIETA_CHOICES = [
 
 class WydrukOswiadczenFilterForm(forms.Form):
     rok_od = forms.IntegerField(
-        min_value=2022,
-        max_value=2025,
         required=False,
         widget=forms.NumberInput(
             attrs={"class": "input-group-field", "style": "width: 80px"}
         ),
     )
     rok_do = forms.IntegerField(
-        min_value=2022,
-        max_value=2025,
         required=False,
         widget=forms.NumberInput(
             attrs={"class": "input-group-field", "style": "width: 80px"}
@@ -70,11 +65,24 @@ class WydrukOswiadczenFilterForm(forms.Form):
         required=False,
     )
 
+    def __init__(self, *args, okres, **kwargs):
+        """``okres`` — okres ewaluacji wybrany na pasku okresu; lata filtra
+        są do niego przycinane (domyślnie: cały okres)."""
+        super().__init__(*args, **kwargs)
+        self.okres = okres
+        for nazwa in ("rok_od", "rok_do"):
+            self.fields[nazwa].widget.attrs.update(min=okres.rok_od, max=okres.rok_do)
+
+    def _rok_w_okresie(self, rok, domyslny):
+        if rok is None:
+            return domyslny
+        return min(max(rok, self.okres.rok_od), self.okres.rok_do)
+
     def clean_rok_od(self):
-        return self.cleaned_data.get("rok_od") or DEFAULT_ROK_OD
+        return self._rok_w_okresie(self.cleaned_data.get("rok_od"), self.okres.rok_od)
 
     def clean_rok_do(self):
-        return self.cleaned_data.get("rok_do") or DEFAULT_ROK_DO
+        return self._rok_w_okresie(self.cleaned_data.get("rok_do"), self.okres.rok_do)
 
     def clean_szukaj_autor(self):
         return self.cleaned_data.get("szukaj_autor") or ""
@@ -86,6 +94,25 @@ class WydrukOswiadczenFilterForm(forms.Form):
         return self.cleaned_data.get("przypieta") or ""
 
 
+def parametry_filtra(request):
+    """Okres ewaluacji z paska i filtry z query stringu:
+    ``(okres, rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina, przypieta)``.
+    Przy błędnych filtrach — cały okres bez dodatkowych filtrów."""
+    okres = okres_dla_request(request)
+    form = WydrukOswiadczenFilterForm(request.GET, okres=okres)
+    if form.is_valid():
+        return (
+            okres,
+            form.cleaned_data["rok_od"],
+            form.cleaned_data["rok_do"],
+            form.cleaned_data["szukaj_autor"],
+            form.cleaned_data["szukaj_tytul"],
+            form.cleaned_data.get("dyscyplina"),
+            form.cleaned_data.get("przypieta", ""),
+        )
+    return okres, okres.rok_od, okres.rok_do, "", "", None, ""
+
+
 def get_base_queryset(uczelnia=None):
     """Return base queryset for declarations (Autorzy with discipline assigned).
 
@@ -94,7 +121,6 @@ def get_base_queryset(uczelnia=None):
     """
     qs = (
         Autorzy.objects.exclude(dyscyplina_naukowa=None)
-        .filter(rekord__rok__gte=DEFAULT_ROK_OD, rekord__rok__lte=DEFAULT_ROK_DO)
         .select_related("autor", "rekord", "dyscyplina_naukowa")
         .order_by("rekord__rok", "autor__nazwisko", "autor__imiona")
     )
@@ -165,31 +191,19 @@ def get_autor_dyscyplina_info(autor, rok):
         }
 
 
-class WydrukOswiadczen2022View(GroupRequiredMixin, ListView):
-    """Main list view for declaration printing 2022-2025."""
+class WydrukOswiadczenView(GroupRequiredMixin, ListView):
+    """Lista oświadczeń do wydruku — prace z lat okresu ewaluacji wybranego
+    na pasku okresu."""
 
-    template_name = "oswiadczenia/wydruk_oswiadczen_2022_25.html"
+    template_name = "oswiadczenia/wydruk_oswiadczen.html"
     group_required = "wprowadzanie danych"
     paginate_by = 25
 
     def get_filter_params(self):
-        """Get filter parameters from request."""
-        form = WydrukOswiadczenFilterForm(self.request.GET)
-        if form.is_valid():
-            rok_od = form.cleaned_data["rok_od"]
-            rok_do = form.cleaned_data["rok_do"]
-            szukaj_autor = form.cleaned_data["szukaj_autor"]
-            szukaj_tytul = form.cleaned_data["szukaj_tytul"]
-            dyscyplina = form.cleaned_data.get("dyscyplina")
-            przypieta = form.cleaned_data.get("przypieta", "")
-        else:
-            rok_od = DEFAULT_ROK_OD
-            rok_do = DEFAULT_ROK_DO
-            szukaj_autor = ""
-            szukaj_tytul = ""
-            dyscyplina = None
-            przypieta = ""
-        return rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina, przypieta
+        """``(rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina,
+        przypieta)``; okres ewaluacji z paska w ``self.okres``."""
+        self.okres, *parametry = parametry_filtra(self.request)
+        return tuple(parametry)
 
     def get_queryset(self):
         from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
@@ -222,8 +236,8 @@ class WydrukOswiadczen2022View(GroupRequiredMixin, ListView):
         context["przypieta_choices"] = PRZYPIETA_CHOICES
         context["dyscypliny"] = (
             Dyscyplina_Naukowa.objects.filter(
-                autorzy__rekord__rok__gte=DEFAULT_ROK_OD,
-                autorzy__rekord__rok__lte=DEFAULT_ROK_DO,
+                autorzy__rekord__rok__gte=self.okres.rok_od,
+                autorzy__rekord__rok__lte=self.okres.rok_do,
             )
             .distinct()
             .order_by("nazwa")
@@ -231,10 +245,10 @@ class WydrukOswiadczen2022View(GroupRequiredMixin, ListView):
 
         # Build query string for export links
         query_params = []
-        if rok_od != DEFAULT_ROK_OD:
-            query_params.append(f"rok_od={rok_od}")
-        if rok_do != DEFAULT_ROK_DO:
-            query_params.append(f"rok_do={rok_do}")
+        # Lata zawsze jawnie: eksport ma dotyczyć dokładnie tych lat, nawet
+        # gdy w międzyczasie użytkownik przełączy okres w innej karcie.
+        query_params.append(f"rok_od={rok_od}")
+        query_params.append(f"rok_do={rok_do}")
         if szukaj_autor:
             query_params.append(f"szukaj_autor={quote(szukaj_autor)}")
         if szukaj_tytul:
@@ -363,23 +377,10 @@ class WydrukOswiadczenExportView(GroupRequiredMixin, View):
     group_required = "wprowadzanie danych"
 
     def get_filter_params(self):
-        """Get filter parameters from request."""
-        form = WydrukOswiadczenFilterForm(self.request.GET)
-        if form.is_valid():
-            rok_od = form.cleaned_data["rok_od"]
-            rok_do = form.cleaned_data["rok_do"]
-            szukaj_autor = form.cleaned_data["szukaj_autor"]
-            szukaj_tytul = form.cleaned_data["szukaj_tytul"]
-            dyscyplina = form.cleaned_data.get("dyscyplina")
-            przypieta = form.cleaned_data.get("przypieta", "")
-        else:
-            rok_od = DEFAULT_ROK_OD
-            rok_do = DEFAULT_ROK_DO
-            szukaj_autor = ""
-            szukaj_tytul = ""
-            dyscyplina = None
-            przypieta = ""
-        return rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina, przypieta
+        """``(rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina,
+        przypieta)``; okres ewaluacji z paska w ``self.okres``."""
+        self.okres, *parametry = parametry_filtra(self.request)
+        return tuple(parametry)
 
     def get(self, request):
         from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
@@ -395,7 +396,7 @@ class WydrukOswiadczenExportView(GroupRequiredMixin, View):
 
         wb = Workbook()
         ws = wb.active
-        ws.title = "Oświadczenia 2022-25"
+        ws.title = f"Oświadczenia {rok_od}-{rok_do}"
 
         # Headers
         headers = [
@@ -448,7 +449,7 @@ class WydrukOswiadczenExportView(GroupRequiredMixin, View):
             )
 
         worksheet_columns_autosize(ws)
-        worksheet_create_table(ws, title="Oswiadczenia2022_25")
+        worksheet_create_table(ws, title=f"Oswiadczenia{rok_od}_{rok_do}")
 
         # Create response
         response = HttpResponse(
@@ -481,22 +482,10 @@ class StartExportTaskView(GroupRequiredMixin, View):
 
         export_format = request.POST.get("format", "html")
 
-        # Get filter params from GET (query string)
-        form = WydrukOswiadczenFilterForm(request.GET)
-        if form.is_valid():
-            rok_od = form.cleaned_data["rok_od"]
-            rok_do = form.cleaned_data["rok_do"]
-            szukaj_autor = form.cleaned_data["szukaj_autor"]
-            szukaj_tytul = form.cleaned_data["szukaj_tytul"]
-            dyscyplina = form.cleaned_data.get("dyscyplina")
-            przypieta = form.cleaned_data.get("przypieta", "")
-        else:
-            rok_od = DEFAULT_ROK_OD
-            rok_do = DEFAULT_ROK_DO
-            szukaj_autor = ""
-            szukaj_tytul = ""
-            dyscyplina = None
-            przypieta = ""
+        # Filtry z query stringu, lata w obrębie okresu z paska
+        _okres, rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina, przypieta = (
+            parametry_filtra(request)
+        )
 
         # Get offset and limit for chunked exports
         try:

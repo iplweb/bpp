@@ -196,6 +196,11 @@
             </div>
         </div>
     {% endblock %}
+    {# Wybór okresu ewaluacji — tylko na stronach ewaluacji (poza blokiem #}
+    {# breadcrumbs-html, żeby nadpisanie breadcrumbs go nie usuwało). #}
+    {% if pokaz_wybor_okresu and request.user.is_authenticated %}
+        {% include "ewaluacja_common/_wybor_okresu.html" %}
+    {% endif %}
 
     {% comment %}Countdown banner - handles both active and maintenance countdowns{% endcomment %}
     {% include "django_countdown/countdown_banner.html" %}

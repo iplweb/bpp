@@ -106,9 +106,11 @@
 
     <h1>Snapshoty odpiętych dyscyplin</h1>
     <a class="button warning" href="./nowy/">Utwórz nowy</a><br/>
+    Lista pokazuje snapshoty okresu {{ okres_ewaluacji }} oraz starsze snapshoty
+    sprzed podziału na okresy (obejmujące wszystkie lata).<br/>
     Kliknij wybrany snapshot, aby zaaplikować go na bazę danych. <span hx-get="{% url "stan_systemu:ilosc_obiektow_w_denorm_queue" %}" hx-trigger="every 2s">...
     </span><br/>
-    <strong>Stan przypięć w bazie: </strong>
+    <strong>Stan przypięć w bazie (prace z lat {{ okres_ewaluacji }}): </strong>
     przypiętych: {{ przypiete }},
     odpiętych: {{ odpiete }}<p></p>
 
@@ -159,6 +161,7 @@
         <tr>
             <th>Snapshot</th>
             <th>Utworzony</th>
+            <th>Okres</th>
             <th>Adnotacje</th>
             <th>Przypiętych</th>
             <th>Odpiętych</th>
@@ -170,7 +173,8 @@
                 <td>
                     <a href="{% url "snapshot_odpiec:aplikuj" elem.pk %}">snapshot {{ elem.pk }}</a>
                 </td>
-                <td>{{ elem.created_on }}<br><small>{{ elem.created_on|naturaltime }}</td>
+                <td>{{ elem.created_on }}<br><small>{{ elem.created_on|naturaltime }}</small></td>
+                <td>{% if elem.okres %}{{ elem.okres }}{% else %}<em>wszystkie lata</em>{% endif %}</td>
                 <td>{{ elem.comment|capfirst }}</td>
                 <td>{{ elem.przypiete }}</td>
                 <td>{{ elem.odpiete }}</td>

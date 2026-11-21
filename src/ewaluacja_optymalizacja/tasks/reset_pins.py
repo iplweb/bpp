@@ -171,6 +171,7 @@ def reset_discipline_pins_task(
         snapshot = SnapshotOdpiec.objects.create(
             owner=owner,
             comment=f"przed resetem przypięć - {dyscyplina.nazwa} ({okres})",
+            okres=okres,
         )
 
     self.update_state(
@@ -318,6 +319,7 @@ def reset_all_pins_task(self, uczelnia_id, algorithm_mode="two-phase", okres_pk=
                 f"przed resetem przypięć - wszystkie dyscypliny uczelni {uczelnia} "
                 f"({okres})"
             ),
+            okres=okres,
         )
 
         logger.info(
