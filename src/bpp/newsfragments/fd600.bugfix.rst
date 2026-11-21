@@ -1,0 +1,1 @@
+Gdy importer publikacji dopasuje istniejącego autora po ORCID i dopisze mu zatrudnienie w jednostce obcej, w historii autora pojawia się wpis: kto, kiedy i przy której sesji importu (FD#600).

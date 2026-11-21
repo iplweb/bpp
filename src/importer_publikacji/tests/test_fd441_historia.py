@@ -3,14 +3,14 @@ stronie „Historia" w adminie (``LogEntry`` ADDITION w imieniu importującego,
 z informacją o sesji i źródle danych)."""
 
 import pytest
-from django.contrib.admin.models import ADDITION, LogEntry
+from django.contrib.admin.models import ADDITION, CHANGE, LogEntry
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from model_bakery import baker
 from reversion.models import Version
 
 from bpp.models import Autor, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
-from importer_publikacji.historia import komunikat_utworzenia
+from importer_publikacji.historia import komunikat_utworzenia, komunikat_zatrudnienia
 from importer_publikacji.models import ImportSession
 from importer_publikacji.tasks import create_publication_task
 from importer_publikacji.tests.test_views_authors import (
@@ -154,3 +154,60 @@ def test_autor_utworzony_przez_importer_ma_historie(
     # Jeden wpis — nie powtórzony w sekcji „Wcześniejsza historia".
     assert content.count(komunikat) == 1
     assert "Wcześniejsza historia" not in content
+
+
+def _sesja_z_orcid(importer_user, orcid):
+    sesja = _make_session_with_unmatched(importer_user, count=1)
+    sesja.authors.update(orcid=orcid)
+    return sesja
+
+
+@pytest.mark.django_db
+def test_autor_dopasowany_po_orcid_ma_wpis_o_nowym_zatrudnieniu(
+    importer_client, importer_user, uczelnia_z_obca_jednostka, admin_client
+):
+    """FD#600: istniejący autor dopasowany po ORCID dostaje zatrudnienie
+    w jednostce obcej — historia ma pokazać kto, kiedy i przy jakim imporcie."""
+    from bpp.models import Autor_Jednostka
+
+    autor = baker.make(Autor, nazwisko="Istniejacy", orcid="0000-0002-1825-0097")
+    obca = uczelnia_z_obca_jednostka.obca_jednostka
+    sesja = _sesja_z_orcid(importer_user, autor.orcid)
+
+    res = importer_client.post(
+        reverse(
+            "importer_publikacji:authors-create-unmatched",
+            kwargs={"session_id": sesja.pk},
+        )
+    )
+    assert res.status_code == 200
+    assert Autor_Jednostka.objects.filter(autor=autor, jednostka=obca).exists()
+
+    komunikat = komunikat_zatrudnienia(sesja, obca)
+    wpis = _wpisy(autor).get()
+    assert wpis.action_flag == CHANGE
+    assert wpis.user == importer_user
+    assert wpis.change_message == komunikat
+    assert f"sesja #{sesja.pk}" in komunikat
+
+    res = admin_client.get(reverse("admin:bpp_autor_history", args=[autor.pk]))
+    assert komunikat in res.content.decode()
+
+
+@pytest.mark.django_db
+def test_autor_dopasowany_po_orcid_juz_zatrudniony_bez_wpisu(
+    importer_client, importer_user, uczelnia_z_obca_jednostka
+):
+    """Nic się nie zmieniło — nie ma czego wpisywać do historii."""
+    autor = baker.make(Autor, nazwisko="Istniejacy", orcid="0000-0002-1825-0097")
+    autor.dodaj_jednostke(uczelnia_z_obca_jednostka.obca_jednostka)
+    sesja = _sesja_z_orcid(importer_user, autor.orcid)
+
+    importer_client.post(
+        reverse(
+            "importer_publikacji:authors-create-unmatched",
+            kwargs={"session_id": sesja.pk},
+        )
+    )
+
+    assert not _wpisy(autor).exists()

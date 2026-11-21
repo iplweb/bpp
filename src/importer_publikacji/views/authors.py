@@ -9,11 +9,17 @@ pobraniu danych) oraz z ``CreateUnmatchedAuthorsView.post``
 from django.db import transaction
 from django.db.models import Count, Q
 
-from bpp.models import Autor
+from bpp.models import Autor, Autor_Jednostka
+from bpp.wersjonowanie import zapewnij_wersje_poczatkowa
 from crossref_bpp.core import Komparator, StatusPorownania
 from import_common.normalization import normalize_doi
 
-from ..historia import komunikat_utworzenia, zapisz_utworzenie
+from ..historia import (
+    komunikat_utworzenia,
+    komunikat_zatrudnienia,
+    zapisz_utworzenie,
+    zapisz_zmiane,
+)
 from ..models import ImportedAuthor, ImportedAuthor_Candidate
 
 
@@ -264,7 +270,18 @@ def _create_single_author(imported, obca, user=None):
     if orcid:
         existing = Autor.objects.filter(orcid=orcid).first()
         if existing:
+            # Zatrudnienie dopisane istniejącemu autorowi też ma być widać
+            # w jego historii: kto, kiedy, przy którym imporcie (FD#600).
+            zatrudnienia = Autor_Jednostka.objects.filter(autor=existing)
+            przed = zatrudnienia.count()
+            zapewnij_wersje_poczatkowa(existing)
             existing.dodaj_jednostke(obca)
+            if zatrudnienia.count() != przed:
+                zapisz_zmiane(
+                    user or imported.session.created_by,
+                    existing,
+                    komunikat_zatrudnienia(imported.session, obca),
+                )
             imported.matched_autor = existing
             imported.matched_jednostka = obca
             imported.match_status = ImportedAuthor.MatchStatus.MANUAL
