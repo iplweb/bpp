@@ -1,0 +1,1 @@
+Importer publikacji i porównanie z CrossRef dopasowują źródło po tytule bez uwzględniania wielkości liter i znaków diakrytycznych (np. „Vedelem Tudomany” ↔ „Védelem Tudomány”); dopasowanie po ISSN/e-ISSN nadal ma pierwszeństwo.
