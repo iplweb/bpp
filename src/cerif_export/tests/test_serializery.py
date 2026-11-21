@@ -31,6 +31,7 @@ from cerif_export.cerif import (
 )
 from cerif_export.kontekst import KontekstSerializacji
 from cerif_export.providers import provider_dla_setu
+from cerif_export.tests.pomocnicze import strona_zywych
 
 KATALOG_XSD = pathlib.Path(__file__).parent / "xsd"
 NAMESPACE = "cerif.example.org"
@@ -81,7 +82,7 @@ def sprawdz(schemat, element):
 
 def kontekst_setu(uczelnia, set_spec):
     provider = provider_dla_setu(set_spec)
-    obiekty, _ = provider.strona(uczelnia, rozmiar=1000)
+    obiekty, _ = strona_zywych(provider, uczelnia, rozmiar=1000)
     kontekst = KontekstSerializacji(
         namespace=NAMESPACE,
         uczelnia=uczelnia,
