@@ -499,7 +499,7 @@ requires-dist = [
     { name = "django-extensions", specifier = ">=3.2,<5" },
     { name = "django-favicon-plus-reloaded", specifier = ">=1.2,<2" },
     { name = "django-filter", specifier = ">=26.2,<26.3" },
-    { name = "django-first-run-wizard", specifier = ">=0.2.1" },
+    { name = "django-first-run-wizard", specifier = ">=0.3.0" },
     { name = "django-flexible-reports", specifier = ">=0.5.1" },
     { name = "django-formdefaults", specifier = ">=0.6.5" },
     { name = "django-formtools", specifier = ">=2.7,<3" },
@@ -1873,14 +1873,14 @@ wheels = [
 
 [[package]]
 name = "django-first-run-wizard"
-version = "0.2.1"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/68/a4/9c87cd899e7cc9843f7280d1f52afafdd3e86d135a4d9461d7b59a5aca45/django_first_run_wizard-0.2.1.tar.gz", hash = "sha256:84eec6363ca6bd35f9df129dc1702ea9a1915f8ef2f1304c31e08e678d35d321", size = 27833, upload-time = "2026-08-07T08:17:01.189Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/39/d9/8dba0d2db19fc776ab5e5873b8f16dd180da6058738fb0880be993882e02/django_first_run_wizard-0.3.0.tar.gz", hash = "sha256:3cbcb2766945a31f6a9b442f585684e6a1baa80e4183fe6339ab9748646886cc", size = 29375, upload-time = "2026-11-21T18:13:23.005Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7d/3d/73917b76e4a88848a93e9fe79d4f4e5ab36344032c6fda03a3865cd9732c/django_first_run_wizard-0.2.1-py3-none-any.whl", hash = "sha256:6b8cef154ac9bde7edf6976ae91b0c2b39fa5c895509425b53176cb69fd118b7", size = 26316, upload-time = "2026-08-07T08:16:59.919Z" },
+    { url = "https://files.pythonhosted.org/packages/5e/62/eb72c227ef5da4c20ead5a0e53a8afeb351520692a14a7bfed2d821c77d2/django_first_run_wizard-0.3.0-py3-none-any.whl", hash = "sha256:b9934bfb81a04c18172dd373b09be77a39710a0c1acdaf1cf891eede61dfe82b", size = 28009, upload-time = "2026-11-21T18:13:21.883Z" },
 ]
 
 [[package]]
