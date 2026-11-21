@@ -22,8 +22,10 @@ from .mixins import EwaluacjaRequiredMixin
 from .statistics import PelneUprawnieniaEwaluacjiMixin
 
 
+# Kolejność mixinów: najpierw logowanie (niezalogowany → strona logowania),
+# dopiero potem pełne uprawnienia (zalogowany bez uprawnień → 403).
 class RaportJednostkiListaView(
-    PelneUprawnieniaEwaluacjiMixin, EwaluacjaRequiredMixin, TemplateView
+    EwaluacjaRequiredMixin, PelneUprawnieniaEwaluacjiMixin, TemplateView
 ):
     """Wybór jednostki — tylko te, które mają metryki w wybranym okresie."""
 
@@ -49,7 +51,7 @@ class RaportJednostkiListaView(
         return context
 
 
-class RaportJednostkiView(PelneUprawnieniaEwaluacjiMixin, EwaluacjaRequiredMixin, View):
+class RaportJednostkiView(EwaluacjaRequiredMixin, PelneUprawnieniaEwaluacjiMixin, View):
     """Raport jednej jednostki: domyślnie PDF, ``?format=html`` — podgląd."""
 
     template_name = "ewaluacja_metryki/raport_jednostki_pdf.html"

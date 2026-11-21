@@ -261,3 +261,15 @@ def test_struktura_punktacji_z_tabeli_cache(klinika, okres_2022):
     assert liczby["140–199"] == 1
     assert liczby["40–69"] == 1
     assert grupa.procent_slotow_slabych_prac == Decimal(50)
+
+
+@pytest.mark.django_db
+def test_niezalogowany_trafia_na_logowanie(client, klinika):
+    jednostka, _, _ = klinika
+    for url in (
+        reverse("ewaluacja_metryki:raport_jednostki_lista"),
+        reverse("ewaluacja_metryki:raport_jednostki", args=[jednostka.pk]),
+    ):
+        res = client.get(url)
+        assert res.status_code == 302
+        assert "login" in res["Location"]
