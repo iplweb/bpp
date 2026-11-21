@@ -377,6 +377,7 @@ MIDDLEWARE = [
     # login page instead of a login form swapped into a fragment.
     "django_bpp.middleware.HtmxLoginRedirectMiddleware",
     "bpp.middleware.SiteResolutionMiddleware",  # After auth - resolves Site/Uczelnia from hostname
+    "bpp.middleware.UzytkownikHistoriiMiddleware",  # After auth - author of history entries
     # After auth: okres ewaluacji z adresu URL (/ewaluacja_metryki/2026-2030/...)
     "ewaluacja_common.url_okres.OkresWUrlMiddleware",
     "django_countdown.middleware.CountdownBlockingMiddleware",  # After auth - needs request.user

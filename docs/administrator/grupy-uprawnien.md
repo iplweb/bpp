@@ -56,6 +56,18 @@ superużytkownik.
       oraz które pola — **bez** poprzedniej treści. Jeżeli potrzebny jest
       pełny ślad zmian, rozważ dopisanie tych modeli do
       `DJANGO_EASY_AUDIT_REGISTERED_CLASSES`.
+    - Rekordy utworzone poza formularzami panelu — przez importery (PBN,
+      importer publikacji, import pracowników, importer autorów PBN,
+      import patentów), przycisk „Toż” i niektóre polecenia `manage.py` —
+      też mają wpis „dodano” w historii, z opisem, skąd pochodzą. Autorem
+      wpisu jest osoba, która uruchomiła import.
+- **Konta `system-user-…`.** Gdy import uruchomiono poleceniem
+  `manage.py` (bez zalogowanej osoby), wpisy historii są przypisywane
+  kontu `system-user-<login>`, gdzie `<login>` to login systemowy, z którego
+  uruchomiono polecenie (np. `system-user-biblio`). Konto powstaje
+  automatycznie przy pierwszym takim rekordzie, jest nieaktywne i nie ma
+  hasła — nie da się na nie zalogować. Nie usuwaj go: usunięcie skasuje
+  powiązane wpisy historii.
 
 ## Przegląd członków grup
 

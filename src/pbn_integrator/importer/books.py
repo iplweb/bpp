@@ -12,6 +12,7 @@ from bpp.models import (
     Wydawnictwo_Zwarte,
 )
 from bpp.util import safe_tytul_html
+from bpp.wersjonowanie import zarejestruj_utworzenie
 from pbn_api.client import PBNClient
 from pbn_integrator.kosz import pomin_jesli_w_koszu
 
@@ -111,6 +112,7 @@ def importuj_ksiazke(
     ustaw_jezyk_oryginalny(ret, pbn_json)
 
     ret.save()
+    zarejestruj_utworzenie(None, ret, "Zaimportowano z PBN.")
 
     utworz_autorow(ret, pbn_json, client, default_jednostka, inconsistency_callback)
 

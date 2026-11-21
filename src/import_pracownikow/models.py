@@ -298,10 +298,12 @@ class ImportPracownikow(LiveOperation):
             with p.stage("Wczytywanie"):
                 analizuj(self, p)
         elif self.stan == self.STAN_ZATWIERDZONY:
+            from bpp.wersjonowanie import jako_uzytkownik
             from import_pracownikow.pipeline.integrate import integruj
 
-            # Etap „Integracja" (zapis do bazy).
-            with p.stage("Integracja"):
+            # Etap „Integracja" (zapis do bazy). Utworzone rekordy mają
+            # w historii (admin „Historia") właściciela importu.
+            with p.stage("Integracja"), jako_uzytkownik(self.owner):
                 integruj(self, p)
         else:
             p.log(f"run() w nieoczekiwanym stanie: {self.stan!r} — pomijam")

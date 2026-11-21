@@ -40,6 +40,14 @@ def komunikat_zatrudnienia(session, jednostka):
     )
 
 
+def komunikat_orcid(session, orcid):
+    """Treść wpisu historii, gdy importer ustawił autorowi ORCID."""
+    return (
+        f"Ustawiono ORCID {orcid} przez importer publikacji "
+        f"({_szczegoly_sesji(session)})"
+    )
+
+
 def zapisz_utworzenie(user, obj, komunikat):
     """Zapisz ``LogEntry`` (ADDITION) dla ``obj`` w imieniu ``user``.
 

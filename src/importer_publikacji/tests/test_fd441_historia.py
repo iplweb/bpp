@@ -211,3 +211,56 @@ def test_autor_dopasowany_po_orcid_juz_zatrudniony_bez_wpisu(
     )
 
     assert not _wpisy(autor).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("zbiorczo", [False, True])
+def test_ustawienie_orcid_z_importera_trafia_do_historii(
+    importer_client, importer_user, admin_client, zbiorczo
+):
+    """Importer przepisuje ORCID dostawcy dopasowanemu autorowi — zmiana musi
+    być widoczna na stronie „Historia" autora (wersja + LogEntry), a stan
+    sprzed zmiany musi dać się przywrócić."""
+    from importer_publikacji.models import ImportedAuthor
+
+    autor = baker.make(Autor, nazwisko="Bezorcidowy", imiona="Jan", orcid=None)
+    session = ImportSession.objects.create(
+        created_by=importer_user,
+        provider_name="CrossRef",
+        identifier="10.1234/orcid-historia",
+        raw_data={},
+        normalized_data={},
+    )
+    ia = ImportedAuthor.objects.create(
+        session=session,
+        order=0,
+        family_name="Bezorcidowy",
+        given_name="Jan",
+        orcid="0000-0002-0000-0004",
+        matched_autor=autor,
+        match_status=ImportedAuthor.MatchStatus.MANUAL,
+    )
+
+    if zbiorczo:
+        url = reverse(
+            "importer_publikacji:authors-set-orcids",
+            kwargs={"session_id": session.pk},
+        )
+    else:
+        url = reverse(
+            "importer_publikacji:author-set-orcid",
+            kwargs={"session_id": session.pk, "author_id": ia.pk},
+        )
+    assert importer_client.post(url).status_code == 200
+
+    autor.refresh_from_db()
+    assert autor.orcid == "0000-0002-0000-0004"
+    wpis = _wpisy(autor).get()
+    assert wpis.action_flag == CHANGE
+    assert wpis.user == importer_user
+    assert "Ustawiono ORCID 0000-0002-0000-0004" in wpis.change_message
+    wersje = Version.objects.get_for_object(autor)
+    assert [w.field_dict["orcid"] for w in wersje] == ["0000-0002-0000-0004", None]
+
+    resp = admin_client.get(reverse("admin:bpp_autor_history", args=[autor.pk]))
+    assert "Ustawiono ORCID" in resp.content.decode()

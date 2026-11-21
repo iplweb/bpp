@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from bpp.models import Uczelnia
 from bpp.util import zaloguj_polkniety_wyjatek
+from bpp.wersjonowanie import jako_uzytkownik
 
 from .models import ImportLog, ImportSession
 from .utils import ImportManager
@@ -61,8 +62,10 @@ def run_pbn_import(self, session_id, uczelnia_id=None):
         # Create and run ImportManager
         import_manager = ImportManager(session, pbn_client, config, uczelnia=uczelnia)
 
-        # Run the import
-        result = import_manager.run()
+        # Run the import. Rekordy tworzone przez import mają w historii
+        # (admin „Historia") użytkownika, który uruchomił sesję.
+        with jako_uzytkownik(session.user):
+            result = import_manager.run()
 
         # Update session status based on result
         session.refresh_from_db()

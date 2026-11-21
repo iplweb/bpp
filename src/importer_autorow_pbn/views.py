@@ -15,6 +15,7 @@ from django.views.generic import DetailView, ListView, TemplateView, View
 
 from bpp.models import Autor, Tytul, Uczelnia
 from bpp.util import zaloguj_polkniety_wyjatek
+from bpp.wersjonowanie import zarejestruj_utworzenie
 from import_common.core import matchuj_autora
 from pbn_api.models import Scientist
 from pbn_downloader_app.freshness import is_pbn_people_data_fresh
@@ -494,6 +495,11 @@ def create_all_unmatched_scientists(request):
                 autor = Autor.objects.create(**autor_data)
                 employment_data = view._get_employment_data(scientist)
                 _create_autor_jednostka(autor, employment_data)
+                zarejestruj_utworzenie(
+                    request.user,
+                    autor,
+                    f"Utworzono z naukowca PBN {scientist.pk} (importer autorów PBN).",
+                )
                 created_count += 1
             except Exception:
                 # Loguj pełne szczegóły do Rollbara i logu (standard dev), ale

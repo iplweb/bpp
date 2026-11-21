@@ -475,3 +475,23 @@ class RekordUsunietyMiddleware:
         )
         response["X-Robots-Tag"] = "noindex"
         return response
+
+
+class UzytkownikHistoriiMiddleware:
+    """Zalogowany użytkownik jest autorem wpisów historii (``LogEntry``,
+    reversion) dla rekordów, które widoki tworzą poza formularzami admina
+    (importy, „Toż", tworzenie autorów z PBN itd.) — patrz
+    ``bpp.wersjonowanie.jako_uzytkownik``. Bez zalogowanego użytkownika nic
+    nie ustawia (historia trafi wtedy do konta systemowego)."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from bpp.wersjonowanie import jako_uzytkownik
+
+        user = getattr(request, "user", None)
+        if user is None or not user.is_authenticated:
+            return self.get_response(request)
+        with jako_uzytkownik(user):
+            return self.get_response(request)

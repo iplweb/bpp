@@ -39,6 +39,7 @@ from .authors import (
     _create_single_author,
     _create_unmatched_authors,
     _orcid_settable_qs,
+    _ustaw_orcid_autora,
 )
 from .helpers import (
     BATCH_DETAIL,
@@ -1074,8 +1075,7 @@ class AuthorSetOrcidView(ImporterPermissionMixin, View):
         ):
             return HttpResponseBadRequest("Warunki ustawienia ORCID nie są spełnione.")
 
-        imported.matched_autor.orcid = imported.orcid
-        imported.matched_autor.save(update_fields=["orcid"])
+        _ustaw_orcid_autora(imported, request.user)
 
         return render(
             request,
@@ -1093,9 +1093,8 @@ class AuthorsSetOrcidsView(ImporterPermissionMixin, View):
             pk=session_id,
         )
         settable = _orcid_settable_qs(session)
-        for imported in settable.select_related("matched_autor"):
-            imported.matched_autor.orcid = imported.orcid
-            imported.matched_autor.save(update_fields=["orcid"])
+        for imported in settable.select_related("matched_autor", "session"):
+            _ustaw_orcid_autora(imported, request.user)
 
         return _render_authors_step(request, session)
 
