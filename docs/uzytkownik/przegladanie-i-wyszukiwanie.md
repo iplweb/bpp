@@ -62,26 +62,19 @@ wybranej pozycji, a `ESC` zamyka okno.
 
 ### Wyszukiwanie precyzyjne (formularz)
 
-Pozycja **szukaj → precyzyjnie** otwiera rozbudowany formularz, w którym
-budujesz zapytanie z wielu warunków jednocześnie — np. autor *oraz* rok
-*oraz* typ pracy *oraz* jednostka. Poszczególne kryteria łączysz spójnikami
-(i / lub), a całość możesz dowolnie zagnieżdżać. Wyniki da się sortować,
-wydrukować, a po zalogowaniu — pobrać jako plik Word lub Excel (krok po
-kroku: [Jak pobrać listę publikacji](pobieranie-listy-publikacji.md)).
+Pozycja **szukaj → precyzyjnie** otwiera formularz, w którym budujesz
+zapytanie z wielu warunków jednocześnie — np. autor *i* lata *i* typ pracy —
+łącząc je spójnikami i / lub / i nie oraz grupując w ramki. Najprościej
+zacząć od strony autora albo jednostki: przycisk **„Szukaj publikacji”**
+otwiera formularz z już wpisanymi warunkami.
 
-Zamiast listy prac możesz dostać zestawienie: rodzaj raportu **tabela
-krzyżowa** podsumowuje wyniki w tabeli, np. punkty według jednostki
-i charakteru formalnego (krok po kroku:
-[Tabela krzyżowa](tabela-krzyzowa.md)).
-
-Najprościej zacząć od strony autora albo jednostki: przycisk **„Szukaj
-publikacji”** w sekcji „Wyszukaj publikacje…” otwiera ten formularz z już
-wypełnionymi warunkami, które można dalej zmieniać.
-
-!!! tip "Kiedy używać"
-    Wyszukiwanie precyzyjne sprawdza się, gdy chcesz zawęzić wyniki po
-    kilku polach naraz (np. „artykuły danego autora z lat 2020–2023") —
-    czego pojedyncze pole szybkiego wyszukiwania nie potrafi.
+Szczegóły w pięciu artykułach:
+[podstawy](wyszukiwanie-precyzyjne.md),
+[przykłady zapytań](wyszukiwanie-precyzyjne-przyklady.md),
+[praca z wynikami](wyszukiwanie-precyzyjne-wyniki.md),
+[zapisane formularze](wyszukiwanie-precyzyjne-zapisane.md) oraz
+[tabela krzyżowa](tabela-krzyzowa.md) — zestawienie wyników w tabeli,
+np. punkty według jednostki i charakteru formalnego.
 
 !!! note "Wyszukiwanie zapytaniem"
     W menu może pojawić się dodatkowo pozycja **zapytaniem** — to tryb dla

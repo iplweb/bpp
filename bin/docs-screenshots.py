@@ -7927,6 +7927,574 @@ def dwudyscyplinowcy(page: Page, base: str, out: Path) -> None:
     red.context.close()
 
 
+MS_AUTOR = "Merigold Yennefer"  # the demo author linked to the "yennefer" account
+
+
+MS_WSPOLAUTOR = "van der Eretein Regis"  # her most frequent co-author
+
+
+MS_JEDNOSTKA = "Klinika Eliksirologii"
+
+
+def ms_reset(page: Page, base: str) -> None:
+    """Fresh multiseek form: no conditions, no hand-removed records, default
+    title - what the "Resetuj formularz" button does."""
+    page.goto(f"{base}/multiseek/")
+    page.wait_for_load_state("networkidle")
+    page.once("dialog", lambda dialog: dialog.accept())
+    with page.expect_navigation():
+        page.click("#resetFormButton")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(800)  # the first field slides in
+
+
+def ms_dodaj(page: Page, frame: int = 0, ramka: bool = False) -> None:
+    """Click "Dodaj pole" (or "Dodaj ramkę") of the given frame."""
+    klasa = "multiseek-add-frame-button" if ramka else "multiseek-add-field-button"
+    # frame-0's own buttons come last in document order (nested frames first)
+    przyciski = page.locator(f"#frame-{frame} .{klasa}")
+    (przyciski.last if frame == 0 else przyciski.first).click()
+    page.wait_for_timeout(800)
+
+
+def ms_warunek(
+    page: Page,
+    nr: int,
+    pole: str,
+    operator: str | None = None,
+    wartosc: str | list | None = None,
+    szukaj: str | None = None,
+    spojnik: str | None = None,
+) -> None:
+    """Fill condition #field-<nr>: field, operator, value (text, list option,
+    [from, to] range or an autocomplete picked by typing `szukaj`)."""
+    f = f"#field-{nr}"
+    page.select_option(f"{f} select.multiseek-type", label=pole)
+    page.wait_for_timeout(300)
+    if operator:
+        page.select_option(f"{f} select.multiseek-op", label=operator)
+    if spojnik:
+        page.select_option(f"{f} select.multiseek-prev-op", label=spojnik)
+    if szukaj:
+        page.locator(f"{f} .select2-selection").click()
+        page.locator(".select2-container--open .select2-search__field").fill(szukaj)
+        page.locator(
+            ".select2-results__option", has_text=wartosc or szukaj
+        ).first.click()
+    elif isinstance(wartosc, list):
+        page.fill(f"{f} #value_min", wartosc[0])
+        page.fill(f"{f} #value_max", wartosc[1])
+    elif wartosc is not None:
+        if page.locator(f"{f} #value-placeholder select").count():
+            page.select_option(f"{f} #value-placeholder select", label=wartosc)
+        else:
+            page.fill(f"{f} #value-placeholder input", wartosc)
+    page.wait_for_timeout(300)
+
+
+def ms_podglad(page: Page) -> None:
+    """Click "Odśwież podgląd" and wait for the results frame."""
+    page.click("#sendQueryButton")
+    page.wait_for_timeout(1500)
+    page.frame_locator("#if").locator("text=/Razem: \\d+/").first.wait_for()
+    page.wait_for_timeout(1000)  # the frame resizes itself to its content
+
+
+def ms_odstep(page: Page, px: int = 140) -> None:
+    """Empty space below the conditions, for the labels of the marks."""
+    page.evaluate(
+        "px => { document.getElementById('frame-0').style.marginBottom = px + 'px' }",
+        px,
+    )
+
+
+def ms_formularz_shot(
+    page: Page, path: Path, z_podgladem: bool = False, pod: float = 30
+) -> None:
+    """Crop: the conditions (and optionally the preview header with "Razem")."""
+    top = page_box(page, "#frame-0")["y"] - 20
+    if z_podgladem:
+        frame = page_box(page, "#if")
+        bottom = frame["y"] + 190
+    else:
+        bottom = bottom_of(page, "#frame-0", pod)
+    shot(page, path, top, bottom - top)
+
+
+def ms_razem(page: Page) -> str:
+    """The "Razem: N" counter of the live preview."""
+    return page.frame_locator("#if").locator("text=/Razem: \\d+/").first.inner_text()
+
+
+def wyszukiwanie_precyzyjne(page: Page, base: str, out: Path) -> None:
+    """docs/uzytkownik/wyszukiwanie-precyzyjne.md: the multiseek form, basics."""
+    anon = new_session(page, base)
+
+    # 1. one condition: field, operator, value
+    ms_reset(anon, base)
+    ms_warunek(anon, 0, "Nazwisko i imię", "równe", MS_AUTOR, szukaj="Merigold Yen")
+    ms_odstep(anon)
+    mark(
+        anon,
+        [
+            {
+                "sel": "#field-0 select.multiseek-type",
+                "arrow": "below",
+                "label": "1. pole",
+                "dx": -40,
+                "dy": 30,
+            },
+            {
+                "sel": "#field-0 select.multiseek-op",
+                "arrow": "below",
+                "label": "2. operator",
+                "dx": -20,
+                "dy": 30,
+            },
+            {
+                "sel": "#field-0 .select2-container",
+                "arrow": "below",
+                "label": "3. wartość",
+                "dx": -150,
+                "dy": 30,
+            },
+            {
+                "sel": "#field-0 #close-button",
+                "arrow": "below",
+                "label": "usuń warunek",
+                "dx": -260,
+                "dy": 30,
+            },
+        ],
+    )
+    ms_formularz_shot(anon, out / "01-warunek.png", pod=130)
+
+    # 2. "i" between conditions, a frame with "lub" inside
+    anon.evaluate("document.getElementById('kb-overlay')?.remove()")
+    ms_odstep(anon, 0)
+    ms_dodaj(anon, ramka=True)
+    ms_warunek(anon, 1, "Charakter formalny ogólny", "równy", "książka")
+    ms_dodaj(anon, frame=1)
+    ms_warunek(anon, 2, "Charakter formalny ogólny", "równy", "rozdział", spojnik="lub")
+    # empty bands above the frame and below the form, for the labels
+    ms_odstep(anon, 90)
+    anon.evaluate("document.getElementById('frame-1').style.marginTop = '80px'")
+    przyciski = "#frame-0 > fieldset > .button-group > "
+    # the outer button group spans the whole row; shrink it to the two buttons
+    anon.evaluate(
+        "sel => { document.querySelector(sel).style.display = 'inline-flex' }",
+        przyciski[:-3],
+    )
+    mark(
+        anon,
+        [
+            {
+                "sel": "#frame-1 select.multiseek-prev-op",
+                "arrow": "above",
+                "label": "1. spójnik i/lub/i nie",
+                "dx": 40,
+                "dy": 45,
+            },
+            {"sel": "#field-2 select.multiseek-prev-op"},
+            {
+                "sel": "#frame-1 > fieldset",
+                "arrow": "above",
+                "label": "2. ramka = warunki w nawiasie",
+                "dx": 60,
+                "dy": 45,
+            },
+            {
+                "sel": przyciski[:-3],
+                "arrow": "right",
+                "label": "3. Dodaj pole / Dodaj ramkę",
+                "dx": -40,
+                "dy": 30,
+            },
+        ],
+    )
+    ms_formularz_shot(anon, out / "02-spojniki-ramka.png", pod=75)
+    anon.evaluate("document.getElementById('kb-overlay')?.remove()")
+    anon.evaluate("document.getElementById('frame-1').style.marginTop = ''")
+    ms_odstep(anon, 0)
+
+    # 3. report type, sorting, the buttons and the live preview
+    ms_podglad(anon)
+    ms_odstep(anon, 150)
+    mark(
+        anon,
+        [
+            {
+                "sel": "#id_report_type",
+                "arrow": "above",
+                "label": "rodzaj raportu",
+                "dx": -30,
+                "dy": -30,
+            },
+            {
+                "sel": "#id_ordering_0",
+                "arrow": "above",
+                "label": "sortowanie",
+                "dx": 40,
+                "dy": -30,
+            },
+            {
+                "sel": "#resetFormButton",
+                "arrow": "above",
+                "label": "wyczyść formularz",
+                "dx": 400,
+                "dy": -100,
+            },
+            {
+                "sel": "#multiseek-szukaj",
+                "arrow": "below",
+                "label": "pełna strona wyników",
+                "dx": -60,
+                "dy": -30,
+            },
+            {
+                "sel": "#sendQueryButton",
+                "arrow": "below",
+                "label": "podgląd poniżej",
+                "dx": 220,
+                "dy": -30,
+            },
+            {"sel": "#if"},
+        ],
+    )
+    top = bottom_of(anon, "#frame-0", 0) - 150
+    frame = page_box(anon, "#if")
+    shot(anon, out / "03-raport-przyciski.png", top, frame["y"] + 330 - top)
+    anon.context.close()
+
+    # 4. the form opened from the author page "Szukaj publikacji" button
+    page.goto(f"{base}/bpp/autor/Yennefer-Merigold/")
+    page.wait_for_load_state("networkidle")
+    for rok in ("2023", "2024"):
+        page.locator(f"label.autor-page__chip:has(input[value='{rok}'])").click()
+    page.click("button.autor-page__search-btn")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(1500)
+    ms_odstep(page)
+    mark(
+        page,
+        [
+            {
+                "sel": "#frame-0 fieldset",
+                "arrow": "below",
+                "label": "warunki wpisane ze strony autora",
+                "dx": 100,
+                "dy": 0,
+            }
+        ],
+    )
+    ms_formularz_shot(page, out / "04-formularz-ze-strony-autora.png", pod=130)
+
+
+def wyszukiwanie_precyzyjne_przyklady(page: Page, base: str, out: Path) -> None:
+    """docs/uzytkownik/wyszukiwanie-precyzyjne-przyklady.md: worked queries."""
+    # 1. two co-authors: "równe" + "równe+wspólne"
+    ms_reset(page, base)
+    ms_warunek(page, 0, "Nazwisko i imię", "równe", MS_AUTOR, szukaj="Merigold Yen")
+    ms_dodaj(page)
+    ms_warunek(
+        page,
+        1,
+        "Nazwisko i imię",
+        "równe+wspólne",
+        MS_WSPOLAUTOR,
+        szukaj="Eretein Regis",
+    )
+    ms_podglad(page)
+    print("  współautorzy:", ms_razem(page))
+    ms_odstep(page, 110)
+    mark(
+        page,
+        [
+            {
+                "sel": "#field-1 select.multiseek-op",
+                "arrow": "below",
+                "label": "równe+wspólne",
+                "dx": 80,
+                "dy": 10,
+            }
+        ],
+    )
+    ms_formularz_shot(page, out / "01-dwoch-wspolautorow.png", z_podgladem=True)
+
+    # 2. a unit without conference abstracts: "i nie"
+    ms_reset(page, base)
+    ms_warunek(page, 0, "Jednostka", "równa", MS_JEDNOSTKA, szukaj="Eliksirologii")
+    ms_dodaj(page)
+    ms_warunek(page, 1, "Typ rekordu", "równy", "streszczenia", spojnik="i nie")
+    ms_podglad(page)
+    print("  bez streszczeń:", ms_razem(page))
+    ms_odstep(page, 110)
+    mark(
+        page,
+        [
+            {
+                "sel": "#field-1 select.multiseek-prev-op",
+                "arrow": "below",
+                "label": "i nie",
+                "dx": 250,
+                "dy": 10,
+            }
+        ],
+    )
+    ms_formularz_shot(page, out / "02-bez-streszczen.png", z_podgladem=True)
+
+    # 3. works without a DOI (logged-in field)
+    ms_reset(page, base)
+    ms_warunek(page, 0, "DOI", "nie zaczyna się od", "10.")
+    ms_podglad(page)
+    print("  bez DOI:", ms_razem(page))
+    ms_odstep(page, 110)
+    mark(
+        page,
+        [
+            {
+                "sel": "#field-0 select.multiseek-op",
+                "arrow": "below",
+                "label": "nie zaczyna się od „10.”",
+                "dx": 80,
+                "dy": 0,
+            }
+        ],
+    )
+    ms_formularz_shot(page, out / "03-bez-doi.png", z_podgladem=True)
+
+
+def wyszukiwanie_precyzyjne_wyniki(page: Page, base: str, out: Path) -> None:
+    """docs/uzytkownik/wyszukiwanie-precyzyjne-wyniki.md: the results page."""
+    ms_reset(page, base)
+    ms_warunek(page, 0, "Nazwisko i imię", "równe", MS_AUTOR, szukaj="Merigold Yen")
+    ms_dodaj(page)
+    ms_warunek(page, 1, "Zakres lat", "w zakresie", ["2020", "2024"])
+    page.click("#multiseek-szukaj")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(800)
+    wiersz = ".multiseek-list-report li.multiseek-row:nth-child({})"
+
+    # 1. the results page: title, print, export, remove control
+    page.evaluate(
+        "sel => { document.querySelector(sel).style.marginBottom = '110px' }",
+        wiersz.format(2),
+    )
+    page.hover(wiersz.format(2))
+    page.wait_for_timeout(400)
+    mark(
+        page,
+        [
+            {
+                "sel": "#edit-activator",
+                "arrow": "right",
+                "label": "zmień tytuł",
+                "dx": 300,
+                "dy": -40,
+            },
+            {
+                "sel": ".multiseek-pagination-wrapper a",
+                "text": "Drukuj",
+                "arrow": "below",
+                "label": "drukuj",
+                "dx": 280,
+                "dy": -60,
+            },
+            {
+                "sel": "button.dropdown[data-toggle='multiseek-export-menu']",
+                "arrow": "right",
+                "label": "pobierz plik",
+                "dx": 30,
+                "dy": -30,
+            },
+            {
+                "sel": wiersz.format(2) + " .multiseek-remove-from-results a",
+                "arrow": "below",
+                "label": "usuń z wyników",
+                "dx": -330,
+                "dy": -20,
+            },
+        ],
+    )
+    top = page_box(page, ".multiseek-report-title")["y"] - 20
+    shot(page, out / "01-wyniki.png", top, bottom_of(page, wiersz.format(2), 115) - top)
+    page.evaluate(
+        "sel => { document.querySelector(sel).style.marginBottom = '' }",
+        wiersz.format(2),
+    )
+
+    # 2. editing the title: type, then click outside the field to save
+    page.evaluate("document.getElementById('kb-overlay')?.remove()")
+    page.mouse.move(5, 5)
+    page.click("#edit-activator")
+    page.wait_for_timeout(500)
+    pole = page.locator(".multiseek-report-title textarea")
+    pole.fill("Yennefer z Vengerbergu — publikacje 2020–2024")
+    mark(
+        page,
+        [
+            {
+                "sel": ".multiseek-report-title textarea",
+                "arrow": "right",
+                "label": "wpisz tytuł, kliknij obok",
+                "dx": 150,
+                "dy": -40,
+            }
+        ],
+    )
+    top = page_box(page, ".multiseek-report-title")["y"] - 20
+    shot(
+        page,
+        out / "02-edycja-tytulu.png",
+        top,
+        bottom_of(page, ".multiseek-report-title", 20) - top,
+    )
+    page.evaluate("document.getElementById('kb-overlay')?.remove()")
+    page.mouse.click(1200, 700)
+    page.wait_for_timeout(1000)
+
+    # 3. hand-removed records: the panel above the list
+    for n in (2, 3):
+        page.hover(wiersz.format(n))
+        page.click(wiersz.format(n) + " .multiseek-remove-from-results a", force=True)
+        page.wait_for_timeout(600)
+    page.reload()
+    page.wait_for_load_state("networkidle")
+    print("  tytuł po odświeżeniu:", page.inner_text(".bpp-multiseek-title"))
+    page.click("#pokaz-jakie")
+    page.wait_for_timeout(500)
+    mark(
+        page,
+        [
+            {
+                "sel": "#panel-removed-by-hand .removed-actions",
+                "arrow": "above",
+                "label": "pokaż / przywróć / wydrukuj",
+                "dx": -100,
+                "dy": 70,
+            },
+            {
+                "sel": "#rekordy-usuniete li:nth-child(2) a",
+                "arrow": "below",
+                "label": "przywróć ten jeden",
+                "dx": 100,
+                "dy": -75,
+            },
+        ],
+    )
+    panel = page_box(page, "#panel-removed-by-hand")
+    shot(page, out / "03-usuniete-recznie.png", panel["y"] - 20, panel["height"] + 120)
+    page.goto(f"{base}/multiseek/reenable-removed-ids/")
+
+
+def wyszukiwanie_precyzyjne_zapisane(page: Page, base: str, out: Path) -> None:
+    """docs/uzytkownik/wyszukiwanie-precyzyjne-zapisane.md: saved search forms."""
+    red = new_session(page, base, DEMO_USER_REDAKTOR)
+
+    # 1. "Zapisz formularz" (staff only)
+    ms_reset(red, base)
+    ms_warunek(red, 0, "Jednostka", "równa", MS_JEDNOSTKA, szukaj="Eliksirologii")
+    ms_dodaj(red)
+    ms_warunek(red, 1, "Charakter formalny ogólny", "równy", "artykuł")
+    mark(
+        red,
+        [
+            {
+                "sel": "#saveFormButton",
+                "arrow": "below",
+                "label": "Zapisz formularz",
+                "dx": 40,
+                "dy": -30,
+            }
+        ],
+    )
+    top = page_box(red, "#frame-0")["y"] - 20
+    shot(
+        red,
+        out / "01-zapisz-formularz.png",
+        top,
+        bottom_of(red, "#saveFormButton", 120) - top,
+    )
+
+    # save it: name prompt, then "public?" confirm (answered: no)
+    pytania = []
+
+    def odpowiedz(dialog):
+        pytania.append(f"{dialog.type}: {dialog.message}")
+        if dialog.type == "prompt":
+            dialog.accept("Klinika Eliksirologii — artykuły")
+        elif "dostępny dla wszystkich" in dialog.message:
+            dialog.dismiss()
+        else:
+            dialog.accept()
+
+    red.on("dialog", odpowiedz)
+    red.evaluate("mark => document.getElementById('kb-overlay')?.remove()", None)
+    red.click("#saveFormButton")
+    red.wait_for_timeout(3500)
+    for p in pytania:
+        print("  ", p)
+
+    # 2. "Wczytaj formularz" list
+    red.goto(f"{base}/multiseek/")
+    red.wait_for_load_state("networkidle")
+    red.evaluate(
+        "() => { document.getElementById('saveFormButton')"
+        ".closest('.grid-x').style.marginTop = '80px' }"
+    )
+    red.click("button[data-toggle='multiseek-form-menu']")
+    red.wait_for_selector("#multiseek-form-menu", state="visible")
+    red.wait_for_timeout(500)
+    mark(
+        red,
+        [
+            {
+                "sel": "button[data-toggle='multiseek-form-menu']",
+                "arrow": "above",
+                "label": "1. Wczytaj formularz",
+                "dx": -260,
+                "dy": 40,
+            },
+            {
+                "sel": "#multiseek-form-menu ul",
+                "arrow": "right",
+                "label": "2. wybierz",
+                "dx": -60,
+                "dy": 10,
+            },
+        ],
+    )
+    menu = page_box(red, "#multiseek-form-menu")
+    top = page_box(red, "#saveFormButton")["y"] - 110
+    shot(
+        red,
+        out / "02-wczytaj-formularz.png",
+        top,
+        menu["y"] + menu["height"] + 60 - top,
+    )
+    red.context.close()
+
+    # 3. admin list of saved forms (deleting, owner, "public")
+    adm = new_session(page, base, DEMO_USER_ADMIN)
+    adm.goto(f"{base}/admin/multiseek/searchform/")
+    adm.wait_for_load_state("networkidle")
+    mark(
+        adm,
+        [
+            {
+                "sel": "#result_list",
+                "arrow": "below",
+                "label": "nazwa, właściciel, publiczny",
+                "dx": 100,
+                "dy": -20,
+            }
+        ],
+    )
+    lista = page_box(adm, "#result_list")
+    shot(adm, out / "03-lista-w-panelu.png", 0, lista["y"] + lista["height"] + 120)
+    adm.context.close()
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -8247,6 +8815,22 @@ SCENARIOS = {
     "powiazania-autorow": ("uzytkownik/powiazania-autorow", powiazania_autorow),
     "logowanie-metody": ("administrator/logowanie-metody", logowanie_metody),
     "dwudyscyplinowcy": ("redaktor/dwudyscyplinowcy", dwudyscyplinowcy),
+    "wyszukiwanie-precyzyjne": (
+        "uzytkownik/wyszukiwanie-precyzyjne",
+        wyszukiwanie_precyzyjne,
+    ),
+    "wyszukiwanie-precyzyjne-przyklady": (
+        "uzytkownik/wyszukiwanie-precyzyjne-przyklady",
+        wyszukiwanie_precyzyjne_przyklady,
+    ),
+    "wyszukiwanie-precyzyjne-wyniki": (
+        "uzytkownik/wyszukiwanie-precyzyjne-wyniki",
+        wyszukiwanie_precyzyjne_wyniki,
+    ),
+    "wyszukiwanie-precyzyjne-zapisane": (
+        "uzytkownik/wyszukiwanie-precyzyjne-zapisane",
+        wyszukiwanie_precyzyjne_zapisane,
+    ),
 }
 
 
