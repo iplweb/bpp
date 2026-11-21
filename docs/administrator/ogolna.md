@@ -102,16 +102,32 @@ autorów i wybierz akcję z listy „Akcja”:
 - **„Pokaż wybranych autorów wszędzie (…)”** — zaznacza z powrotem
   wszystkie te pola.
 
-Akcje „… wszędzie” są dostępne dla użytkowników, którzy mogą edytować
-autorów. Każda zmiana trafia do „Historii” autora (wpis „Ukryto wszędzie
-(akcja masowa)” albo „Pokazano wszędzie (akcja masowa)”), więc w razie
-pomyłki można przywrócić poprzedni stan pojedynczego autora. Pole „Pokazuj
-sieć powiązań” nie jest przez te akcje zmieniane — sieć powiązań autora ze
-schowaną stroną i tak nie jest pokazywana.
+Wszystkie cztery akcje są dostępne dla użytkowników, którzy mogą edytować
+autorów. Każda zmiana trafia do „Historii” autora (przycisk „Historia” na
+stronie edycji autora) z wpisem „Ukryto na stronach jednostek i w rankingu
+(akcja masowa)”, „Pokazano na stronach jednostek i w rankingu (akcja
+masowa)”, „Ukryto wszędzie (akcja masowa)” albo „Pokazano wszędzie (akcja
+masowa)”, więc w razie pomyłki można przywrócić poprzedni stan
+pojedynczego autora. Wpis dostają tylko autorzy, u których coś się
+faktycznie zmieniło. Pole „Pokazuj sieć powiązań” nie jest przez te akcje
+zmieniane — sieć powiązań autora ze schowaną stroną i tak nie jest
+pokazywana.
 
-Jedną akcją „… wszędzie” można zmienić najwyżej 2000 autorów — przy
-większym zaznaczeniu akcja niczego nie zmienia i prosi o zawężenie listy
-filtrami.
+Jedną akcją można zmienić najwyżej 2000 autorów — przy większym
+zaznaczeniu akcja niczego nie zmienia i prosi o zawężenie listy filtrami.
+
+##### Zmiana statusu korekty wielu publikacji naraz
+
+Na listach wydawnictw ciągłych, wydawnictw zwartych i prac doktorskich
+akcje **„Ustaw status korekty: przed korektą”**, **„Ustaw status
+korekty: w trakcie korekty”** i **„Ustaw status korekty: po korekcie”**
+zmieniają status wszystkich zaznaczonych rekordów. Każdy zmieniony rekord
+dostaje w swojej „Historii” wpis, np. „Ustawiono status korekty: po
+korekcie (akcja masowa)” — z nazwą użytkownika i datą. Publikacje nie mają
+zapisywanych wersji, więc z „Historii” widać kto i kiedy zmienił status,
+ale nie ma tam przycisku przywracania — poprzedni status ustawia się
+ponownie akcją albo w formularzu rekordu. Akcje wymagają uprawnienia do
+edycji publikacji; jedną akcją można zmienić najwyżej 20000 rekordów.
 
 Ustawienia widoczności są zapisane na autorze, a nie na jego powiązaniu
 z uczelnią. W instalacji z kilkoma uczelniami ukrycie autora (zarówno

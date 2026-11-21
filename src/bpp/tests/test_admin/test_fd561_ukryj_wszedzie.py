@@ -248,7 +248,7 @@ def test_akcja_wszedzie_odmawia_powyzej_limitu(admin_user):
     autorzy = baker.make(Autor, _quantity=3)
     request = _request(admin_user)
 
-    with mock.patch.object(actions, "MAKS_AUTOROW_AKCJI_WSZEDZIE", 2):
+    with mock.patch.object(actions, "MAKS_REKORDOW_AKCJI_MASOWEJ", 2):
         actions.ukryj_autorow_wszedzie(_admin(), request, Autor.objects.all())
 
     for autor in autorzy:
@@ -256,7 +256,7 @@ def test_akcja_wszedzie_odmawia_powyzej_limitu(admin_user):
     assert not LogEntry.objects.exists()
     assert not Version.objects.exists()
     (komunikat,) = list(get_messages(request))
-    assert "zbyt wielu" in str(komunikat)
+    assert "zbyt wiele" in str(komunikat)
     assert "Nic nie zostało zmienione" in str(komunikat)
 
 
