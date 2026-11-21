@@ -1,5 +1,5 @@
 {# Przełącznik okresu ewaluacji w górnej belce (ewaluacja_common.okres). #}
-{# Każdy okres to osobny przycisk POST — wybór trafia do sesji. #}
+{# Każdy okres to osobny przycisk POST — wybór jest zapamiętywany dla użytkownika. #}
 <!-- djlint:disable=H025 -->
 <li class="has-submenu wybor-okresu">
     <a href="#" data-toggle aria-haspopup="menu" title="Okres ewaluacji, dla którego liczone są dane">
@@ -19,7 +19,7 @@
                         </button>
                     </li>
                 {% empty %}
-                    <li>Brak zdefiniowanych okresów — dodaj je w panelu administracyjnym.</li>
+                    <li>Brak zdefiniowanych okresów ewaluacji.</li>
                 {% endfor %}
             </ul>
         </form>
