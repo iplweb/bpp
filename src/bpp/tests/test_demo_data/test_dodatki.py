@@ -1,5 +1,5 @@
 """Dodatki create_demo_data: dwudyscyplinowcy, rzadsze typy, celowe brudy,
-lustro PBN, zgłoszenia, konta demo i sprzątanie tego wszystkiego.
+lustro PBN, konta demo i sprzątanie tego wszystkiego.
 
 Skany deduplikatorów i porównania BPP↔PBN uruchamia użytkownik — testy
 uruchamiają je tak jak przyciski na ekranach i sprawdzają, że dane demo
@@ -217,19 +217,6 @@ def test_lustro_pbn(demo):
     assert RozbieznoscZrodlaPBN.objects.exists()
 
 
-def test_zgloszenia(demo):
-    from zglos_publikacje.models import (
-        Zgloszenie_Publikacji,
-        Zgloszenie_Publikacji_Autor,
-    )
-
-    assert Zgloszenie_Publikacji.objects.count() == 10
-    assert Zgloszenie_Publikacji.objects.filter(
-        status=Zgloszenie_Publikacji.Statusy.WYMAGA_ZMIAN
-    ).exclude(kod_do_edycji=None)
-    assert Zgloszenie_Publikacji_Autor.objects.count() >= 10
-
-
 def test_konta_demo(demo):
     User = get_user_model()
     for login in ("admin", "redaktor", "raporty", "user"):
@@ -257,7 +244,7 @@ def test_konta_demo_nie_zmieniaja_istniejacego(tmp_path):
         "--bez-rzadkich-typow",
         "--bez-brudow",
         "--bez-pbn",
-        "--bez-zgloszen",
+        "--zgloszen=0",
     )
     admin = User.objects.get(username="admin")
     assert not admin.has_usable_password()

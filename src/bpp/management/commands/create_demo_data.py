@@ -18,7 +18,7 @@ from bpp.demo_data.themes.registry import THEMES
 class Command(BaseCommand):
     help = (
         "Generuje syntetyczne dane demo (wydzialy, jednostki, autorzy, "
-        "prace WC+WZ). Wymaga PODWOJNEGO potwierdzenia interaktywnie "
+        "prace WC+WZ, zgloszenia publikacji). Wymaga PODWOJNEGO potwierdzenia interaktywnie "
         "(prompt + exact DB name) lub flag --yes-i-am-sure + --confirm-db."
     )
 
@@ -45,6 +45,13 @@ class Command(BaseCommand):
         )
         parser.add_argument("--procent-ze-streszczeniem", type=int, default=70)
         parser.add_argument("--bez-prefiksu", action="store_true")
+        parser.add_argument(
+            "--zgloszen",
+            type=int,
+            default=40,
+            help="Ile zgloszen publikacji (zglos_publikacje) utworzyc; "
+            "0 = bez zgloszen.",
+        )
         parser.add_argument(
             "--polon-plik",
             type=str,
@@ -103,16 +110,10 @@ class Command(BaseCommand):
             help="Bez lokalnego lustra danych PBN (i porównań BPP↔PBN).",
         )
         parser.add_argument(
-            "--bez-zgloszen",
-            action="store_true",
-            help="Bez przykładowych zgłoszeń publikacji.",
-        )
-        parser.add_argument(
             "--bez-dodatkow",
             action="store_true",
-            help="Tylko rdzeń danych demo: bez dwudyscyplinowców, rzadszych "
-            "typów, brudów, lustra PBN i zgłoszeń (jak przed ich dodaniem — "
-            "np. dla zrzutów ekranu do dokumentacji).",
+            help="Bez dodatków: dwudyscyplinowców, rzadszych typów, brudów "
+            "i lustra PBN (np. dla zrzutów ekranu do dokumentacji).",
         )
         parser.add_argument(
             "--konta-demo",
@@ -134,7 +135,6 @@ class Command(BaseCommand):
                 bez_rzadkich_typow=True,
                 bez_brudow=True,
                 bez_pbn=True,
-                bez_zgloszen=True,
             )
 
         opts = CreateOptions(
@@ -164,11 +164,11 @@ class Command(BaseCommand):
             polon_dyscypliny=options.get("polon_dyscypliny"),
             polon_bez_blednych_wierszy=options.get("polon_bez_blednych_wierszy", False),
             bez_ewaluacji=options["bez_ewaluacji"],
+            zgloszen=options["zgloszen"],
             dwudyscyplinowcow=options["dwudyscyplinowcow"],
             bez_rzadkich_typow=options["bez_rzadkich_typow"],
             bez_brudow=options["bez_brudow"],
             bez_pbn=options["bez_pbn"],
-            bez_zgloszen=options["bez_zgloszen"],
             konta_demo=options["konta_demo"],
         )
         # BaseCommand ma self.stdout (OutputWrapper) ale NIE ma self.stdin —

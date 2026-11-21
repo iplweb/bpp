@@ -261,8 +261,10 @@ def generuj_metryki_task_parallel(
         from .models import MetrykaAutora
 
         # Filtruj wpisy dla tej uczelni oraz (opcjonalnie) rodzajów autorów
+        # Autor z kosza nie dostaje metryk (do przeliczenia N wiersze
+        # udziałów mogą go jeszcze zawierać).
         queryset = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
-            uczelnia=uczelnia, okres=okres
+            uczelnia=uczelnia, okres=okres, autor__deleted_at__isnull=True
         )
         if rodzaje_autora:
             queryset = queryset.filter(rodzaj_autora__skrot__in=rodzaje_autora)
@@ -414,8 +416,10 @@ def generuj_metryki_task(
         from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
         # Policz tylko wpisy tej uczelni z odpowiednimi rodzajami autorów
+        # Autor z kosza nie dostaje metryk (do przeliczenia N wiersze
+        # udziałów mogą go jeszcze zawierać).
         queryset = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
-            uczelnia=uczelnia, okres=okres
+            uczelnia=uczelnia, okres=okres, autor__deleted_at__isnull=True
         )
         if rodzaje_autora:
             queryset = queryset.filter(rodzaj_autora__skrot__in=rodzaje_autora)

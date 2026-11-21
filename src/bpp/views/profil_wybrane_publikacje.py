@@ -63,7 +63,13 @@ def _wiersze_wybrane(autor):
     wiersze = list(
         autor.wybrane_publikacje.select_related("content_type").order_by("kolejnosc")
     )
-    return [w for w in wiersze if w.publikacja is not None]
+    # Praca z kosza znika z listy (GenericFK widzi kosz przez _base_manager).
+    return [
+        w
+        for w in wiersze
+        if w.publikacja is not None
+        and getattr(w.publikacja, "deleted_at", None) is None
+    ]
 
 
 def _opis_rekordu(rekord):

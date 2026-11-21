@@ -118,8 +118,12 @@ body.theme-classic-light {
         background: #f8f9fa !important;
         border-top: 1px solid #dee2e6 !important;
 
+        // Text colour must be set here too: this rule also repaints
+        // .grp-default ("Zapisz") and the "Wybrano x z y" counter, which
+        // otherwise keep their own light text on this background.
         .grp-button {
             background: #0066cc !important;
+            color: #ffffff !important;
             border: 1px solid #0056b3 !important;
 
             &:hover {
@@ -187,7 +191,7 @@ body.theme-classic-light {
         }
 
         .selected-filter-value {
-            color: #0066cc !important;
+            color: #0052a3 !important;
         }
     }
 
@@ -207,10 +211,10 @@ body.theme-classic-light {
 
     /* Link colors for Classic Light theme */
     a {
-        color: #0066cc !important;
+        color: #0059b3 !important;
 
         &:hover {
-            color: #0056b3 !important;
+            color: #004494 !important;
         }
     }
 

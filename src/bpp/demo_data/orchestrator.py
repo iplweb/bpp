@@ -8,6 +8,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from django.core.exceptions import FieldDoesNotExist
 from django.db import connection
 
 from bpp.demo_data.confirm import ConfirmAborted, double_confirm
@@ -27,6 +28,7 @@ from bpp.demo_data.generators.zrodla import create_zrodla
 from bpp.demo_data.manifest import Manifest
 from bpp.demo_data.preflight import check_required
 from bpp.demo_data.progress import make_progress
+from bpp.models.soft_delete import manager_z_koszem
 
 
 @dataclass
@@ -57,13 +59,13 @@ class CreateOptions:
     polon_dyscypliny: list[str] | None = None
     polon_bez_blednych_wierszy: bool = False
     bez_ewaluacji: bool = False
+    zgloszen: int = 40
     # Dodatki (kazdy z wlasnym RNG „<seed>-<nazwa>", wiec nie zmieniaja
     # danych powyzej dla danego --seed):
     dwudyscyplinowcow: int = 8
     bez_rzadkich_typow: bool = False
     bez_brudow: bool = False
     bez_pbn: bool = False
-    bez_zgloszen: bool = False
     konta_demo: bool = False
 
 
@@ -83,11 +85,11 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
     3. Manifest + RNG init.
     4. Generatory w sztywnej kolejnosci dependency: uczelnia → wydzialy →
        jednostki → autorzy → dyscypliny → zrodla (+ punktacja) → wydawcy
-       (+ poziomy) → WC → WZ.
+       (+ poziomy) → WC → WZ → streszczenia → zgloszenia publikacji.
     5. Dodatki zmieniajace dane ewaluacji: rzadsze typy rekordow,
        dwudyscyplinowcy, celowe brudy. Potem przeliczenie ewaluacji (cache
        punktow/slotow, liczba N, metryki) — pomijane z `--bez-ewaluacji`.
-    6. Konta demo (opt-in), zgloszenia publikacji, lustro PBN.
+    6. Konta demo (opt-in), lustro PBN.
     7. Manifest save + summary do stdout (i opcjonalny plik POL-on).
     """
     stdin = stdin or sys.stdin
@@ -108,7 +110,8 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         f"Stworzy: {opts.wydzialow} wydz., "
         f"{opts.wydzialow * opts.jednostek_na_wydzial} jedn., "
         f"{opts.autorow} aut., {opts.ile_ciaglych} prac ciaglych, "
-        f"{opts.ile_zwartych} prac zwartych w bazie '{db_name}'."
+        f"{opts.ile_zwartych} prac zwartych, {opts.zgloszen} zgloszen "
+        f"publikacji w bazie '{db_name}'."
     )
     try:
         double_confirm(
@@ -256,6 +259,22 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         disable_progress=opts.disable_progress,
     )
 
+    from bpp.demo_data.generators.zgloszenia import create_zgloszenia
+
+    create_zgloszenia(
+        n=opts.zgloszen,
+        autorzy=autorzy,
+        prace_wc=wc,
+        prace_wz=wz,
+        lata=lata,
+        theme=theme,
+        prefix=prefix,
+        manifest=manifest,
+        rng=rng,
+        batch_size=opts.batch_size,
+        disable_progress=opts.disable_progress,
+    )
+
     # 5. Dodatki zmieniajace dane liczone w slotach/liczbie N:
     dwu_autorzy, dwu_prace = _dodatki_przed_ewaluacja(
         opts,
@@ -284,7 +303,7 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
             disable_progress=opts.disable_progress,
         )
 
-    # 6. Konta (opt-in), zgloszenia, lustro PBN:
+    # 6. Konta (opt-in), lustro PBN:
     _dodatki_po_ewaluacji(
         opts,
         uczelnia=uczelnia,
@@ -417,7 +436,7 @@ def _dodatki_po_ewaluacji(
     manifest,
     stdout,
 ):
-    """Konta demo (opt-in), zgloszenia publikacji, lustro PBN.
+    """Konta demo (opt-in), lustro PBN.
 
     Generator tylko tworzy dane. Porownania BPP-PBN i skany deduplikatorow
     uruchamia uzytkownik (przyciski na ich ekranach)."""
@@ -426,21 +445,6 @@ def _dodatki_po_ewaluacji(
         from bpp.demo_data.generators.konta import create_konta
 
         create_konta(autorzy=autorzy, manifest=manifest, stdout=stdout)
-
-    if not opts.bez_zgloszen:
-        from bpp.demo_data.generators.zgloszenia import create_zgloszenia
-
-        zgloszenia = create_zgloszenia(
-            autorzy=autorzy,
-            lata=lata_lista,
-            theme=theme,
-            manifest=manifest,
-            rng=rng_dodatku(opts.seed, "zgloszenia"),
-            prefix=prefix,
-            batch_size=opts.batch_size,
-            disable_progress=opts.disable_progress,
-        )
-        stdout.write(f"[OK] Zgłoszenia publikacji: {len(zgloszenia)}.\n")
 
     if not opts.bez_pbn:
         from bpp.demo_data.generators.pbn import create_lustro_pbn
@@ -462,6 +466,27 @@ def _dodatki_po_ewaluacji(
         stdout.write(lustro.tekst())
 
 
+def _odepnij_rozdzialy(manager, pks: list[int], batch_size: int) -> None:
+    """Zeruje self-FK `wydawnictwo_nadrzedne` rozdzialow demo przed kasowaniem.
+
+    Pole jest PROTECT (soft-delete, #1054), a `hard_delete()` na modelu
+    soft-delete kasuje wiersz po wierszu w kolejnosci `Meta.ordering`, NIE
+    po pk. Ksiazka-matka bywa wiec kasowana przed swoim rozdzialem i kolektor
+    Django rzuca `ProtectedError`. Odpinamy rozdzialy UPDATE-em na paczke,
+    zamiast polegac na kolejnosci (jak
+    `wyczysc_publikacje_importu._odepnij_rozdzialy`).
+    """
+    try:
+        manager.model._meta.get_field("wydawnictwo_nadrzedne")
+    except FieldDoesNotExist:
+        return
+    for start in range(0, len(pks), batch_size):
+        manager.filter(
+            pk__in=pks[start : start + batch_size],
+            wydawnictwo_nadrzedne__isnull=False,
+        ).update(wydawnictwo_nadrzedne=None)
+
+
 @dataclass
 class CleanupOptions:
     manifest: Path
@@ -476,10 +501,9 @@ def run_cleanup(opts: CleanupOptions, *, stdin=None, stdout=None):
     usuwa obiekty w bezpiecznej kolejnosci, renamuje manifest do
     `.applied.<TS>`.
 
-    Wewnatrz jednego modelu PK sortowane DESC — dla
-    `bpp.Wydawnictwo_Zwarte` rozdzialy zazwyczaj maja wyzsze PK niz
-    ich nadrzedne (sa tworzone po), wiec usuwajac od konca nie
-    zlamiemy FK `wydawnictwo_nadrzedne`.
+    Przed kasowaniem `bpp.Wydawnictwo_Zwarte` rozdzialy sa odpinane od
+    ksiazek nadrzednych (`_odepnij_rozdzialy`) — FK `wydawnictwo_nadrzedne`
+    jest PROTECT, a kolejnosc kasowania per-instancja nie jest gwarantowana.
     """
     stdin = stdin or sys.stdin
     stdout = stdout or sys.stdout
@@ -551,16 +575,25 @@ def run_cleanup(opts: CleanupOptions, *, stdin=None, stdout=None):
             total=n_batches,
             disable=opts.disable_progress,
         )
+        # Manager widzący RÓWNIEŻ kosz i kasowanie NIEODWRACALNE — patrz
+        # komentarz niżej. `getattr` zamiast `isinstance`, bo lista modeli
+        # przychodzi z manifestu i miesza modele soft-delete z resztą.
+        manager = manager_z_koszem(model)
+        _odepnij_rozdzialy(manager, sorted_pks, opts.batch_size)
+
         for start in pbar:
             chunk = sorted_pks[start : start + opts.batch_size]
             with transaction.atomic():
-                if hasattr(model, "hard_delete"):
-                    # django-softdelete: zwykly delete() tylko oznacza
-                    # rekord jako usuniety — demo kasujemy na twardo.
-                    for obj in model.global_objects.filter(pk__in=chunk):
-                        obj.hard_delete()
-                else:
-                    model.objects.filter(pk__in=chunk).delete()
+                qs = manager.filter(pk__in=chunk)
+                # ⚠️ Na modelu soft-delete `QuerySet.delete()` jest MIĘKKIE:
+                # wiersz zostaje. Cleanup danych demo musi kasować trwale,
+                # i to z dwóch powodów. Po pierwsze zostawione publikacje
+                # trzymają FK z PROTECT (np. `Wydawnictwo_Zwarte.wydawca`),
+                # więc kasowanie słowników dalej w manifeście wywala się na
+                # `ProtectedError`. Po drugie „posprzątane" dane demo, które
+                # nadal siedzą w bazie, mijają się z celem komendy.
+                hard = getattr(qs, "hard_delete", None)
+                (hard or qs.delete)()
 
     przelicz_liczbe_n_po_cleanup(manifest, stdout)
 

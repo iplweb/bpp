@@ -113,7 +113,7 @@ def test_top_autorzy_pomija_ukrytych_w_rankingu(dorobek_zrodla, zrodlo, admin_us
 
 
 def test_top_pomija_prace_o_ukrytym_statusie(
-    uczelnia, zrodlo, jednostka, denorms, admin_user
+    uczelnia, zrodlo, jednostka, denorms, admin_user, typy_odpowiedzialnosci
 ):
     ukryty = baker.make(Status_Korekty, nazwa="ukryty-test")
     Ukryj_Status_Korekty.objects.create(
@@ -282,7 +282,12 @@ def test_formularz_zrodla_nowy_styl(client, dorobek_zrodla, zrodlo):
 
 
 def test_formularz_jednostki_nowy_styl(
-    client, jednostka, jednostka_podrzedna, autor_jan_kowalski, autor_jan_nowak
+    client,
+    jednostka,
+    jednostka_podrzedna,
+    autor_jan_kowalski,
+    autor_jan_nowak,
+    typy_odpowiedzialnosci,
 ):
     from bpp.models import Autor_Jednostka
 

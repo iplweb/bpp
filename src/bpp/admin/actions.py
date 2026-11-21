@@ -111,6 +111,10 @@ def zmien_hurtowo_z_historia(
     jest zmieniane).
     """
     model = queryset.model
+    if hasattr(model, "deleted_objects"):
+        # Rekord w koszu jest zamrożony (trigger ``bpp_kosz_straznik``
+        # odrzuciłby UPDATE) — akcje masowe go pomijają.
+        queryset = queryset.filter(deleted_at__isnull=True)
     pks = list(
         dict.fromkeys(
             queryset.exclude(**zmiany).order_by().values_list("pk", flat=True)

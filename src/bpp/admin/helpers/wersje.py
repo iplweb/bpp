@@ -31,7 +31,11 @@ from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from reversion.models import Version
 
-from bpp.wersjonowanie import FOLLOW_REVERSION, zapewnij_wersje_poczatkowa
+from bpp.wersjonowanie import (
+    FOLLOW_REVERSION,
+    POLA_KOSZA,
+    zapewnij_wersje_poczatkowa,
+)
 
 
 class HistoriaWersjiMixin:
@@ -41,8 +45,19 @@ class HistoriaWersjiMixin:
         return super().change_view(request, object_id, form_url, extra_context)
 
     def revision_view(self, request, object_id, version_id, extra_context=None):
-        if self.get_object(request, unquote(object_id)) is None:
+        obj = self.get_object(request, unquote(object_id))
+        if obj is None:
             raise Http404("Brak takiego rekordu w zakresie Twojej uczelni.")
+        # Soft-delete: przywrócenie wersji zapisuje CAŁY obiekt z wersji
+        # (``DeserializedObject.save()``), więc pola kosza wracają do
+        # wartości domyślnych i rekord po cichu wychodzi z kosza — z
+        # pominięciem ``restore()`` (guard, SoftDeleteLog, kolejka PBN).
+        # Najpierw przywróć z kosza, potem cofaj wersje.
+        if getattr(obj, "deleted_at", None) is not None:
+            raise PermissionDenied(
+                "Rekord jest w koszu — najpierw przywróć go z kosza, "
+                "potem przywracaj wcześniejsze wersje."
+            )
         # reversion szuka wersji po pk i object_id, ale NIE po typie modelu —
         # bez tego przez URL autora dałoby się cofnąć rewizję innego modelu
         # (np. uczelni) o tym samym numerze ID.
@@ -93,6 +108,9 @@ class HistoriaWersjiMixin:
 
     def reversion_register(self, model, **kwargs):
         FOLLOW_REVERSION.setdefault(model, tuple(kwargs.get("follow", ())))
+        if hasattr(model, "deleted_objects"):
+            # Pola kosza nie wchodzą do wersji (patrz ``POLA_KOSZA``).
+            kwargs["exclude"] = (*kwargs.get("exclude", ()), *POLA_KOSZA)
         super().reversion_register(model, **kwargs)
 
     def create_revision(self, request):

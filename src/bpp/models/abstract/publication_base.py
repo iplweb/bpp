@@ -85,6 +85,9 @@ class ModelZRokiem(models.Model):
 
 
 class ModelZSeria_Wydawnicza(models.Model):
+    # PROTECT (soft-delete): skasowanie serii/konferencji nie może po cichu
+    # zabrać publikacji. Kosz serii/konferencji blokuje osobno guard
+    # (``relacje_chronione_kosza``).
     seria_wydawnicza = models.ForeignKey(
         "bpp.Seria_Wydawnicza", PROTECT, blank=True, null=True
     )

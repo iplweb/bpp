@@ -34,6 +34,24 @@ bo skrypty zrzutów ekranu (`bin/docs-demo-*.py`) szukają ich po nazwisku.
 - `--procent-ze-streszczeniem 70` — odsetek prac ze streszczeniem
 - `--od-roku 2020 --do-roku 2026` — zakres lat prac
 - `--seed 123` — deterministyczny wynik
+- `--zgloszen 40` — liczba zgłoszeń publikacji (`zglos_publikacje`);
+  `0` wyłącza ich generowanie
+
+## Zgłoszenia publikacji (`--zgloszen`)
+
+Generator tworzy zgłoszenia publikacji rozłożone po wszystkich statusach
+obiegu (nowe, wymaga zmian, po zmianach, zaakceptowane, zaimportowane,
+odrzucone, spam) — przy `--zgloszen` ≥ 7 każdy status występuje co
+najmniej raz:
+
+- zaakceptowane i zaimportowane są podpięte (`odpowiednik_w_bpp`) do
+  wygenerowanych prac WC/WZ i przejmują ich tytuł, rok, DOI i autorów;
+- pozostałe mają tytuły z wybranego motywu i 1–5 autorów demo
+  z jednostkami i dyscyplinami;
+- część ma DOI, adres „Dostępna w sieci pod adresem", formę dostępu
+  i informację o opłatach; zwrócone mają przyczynę zwrotu i kod edycji;
+- adresy e-mail zgłaszających są w domenie `demo.example.org`;
+- pliki załączników nie są tworzone.
 
 ## Co jeszcze powstaje (dodatki)
 
@@ -91,8 +109,6 @@ więc dla danego `--seed` rdzeń danych jest taki sam jak bez dodatków.
   (dyscypliny z oświadczeń, czasopisma) wypełniają się po kliknięciu
   „Przebuduj”/„Przelicz” na ich ekranach. Przyciski wysyłki do PBN nadal
   wymagają prawdziwego PBN.
-- **Zgłoszenia publikacji** (`--bez-zgloszen`): 10 zgłoszeń w różnych
-  stanach (nowe, do poprawy, po zmianach, odrzucone, spam) z autorami.
 - **Konta demo** (`--konta-demo`, domyślnie WYŁĄCZONE): `admin`
   (superużytkownik), `redaktor` (wprowadzanie danych, zgłoszenia
   publikacji, indeks autorów), `raporty` (generowanie raportów), `user`

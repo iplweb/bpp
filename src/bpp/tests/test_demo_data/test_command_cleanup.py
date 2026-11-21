@@ -143,3 +143,33 @@ def test_cleanup_aborts_wrong_db(fixtures_loaded, tmp_path):
         )
     assert Jednostka.objects.filter(parent__isnull=True).count() == 1
     assert manifest.exists()  # NIE renamowany
+
+
+@pytest.mark.django_db
+def test_cleanup_kasuje_ksiazke_nadrzedna_razem_z_rozdzialami(tmp_path):
+    """`wydawnictwo_nadrzedne` jest PROTECT, a hard_delete modelu soft-delete
+    kasuje per-instancja w kolejnosci z bazy (nie po pk) — cleanup musi
+    odpiac rozdzialy, zanim skasuje ksiazke, niezaleznie od kolejnosci."""
+    from bpp.demo_data.manifest import Manifest
+
+    db_name = connection.settings_dict["NAME"]
+    ksiazka = baker.make(Wydawnictwo_Zwarte)
+    rozdzialy = [
+        baker.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=ksiazka) for _ in range(3)
+    ]
+    # Ksiazka ma NAJWYZSZE pk w manifescie (nie tylko w bazie) — nie ma
+    # znaczenia, bo kolejnosc kasowania nie moze zalezec od pk:
+    pks = [r.pk for r in rozdzialy] + [ksiazka.pk]
+    manifest = tmp_path / "m.json"
+    m = Manifest(path=manifest, database=db_name, command_args={})
+    m.append("bpp.Wydawnictwo_Zwarte", pks)
+    m.save()
+
+    call_command(
+        "cleanup_demo_data",
+        f"--manifest={manifest}",
+        "--yes-i-am-sure",
+        f"--confirm-db={db_name}",
+    )
+
+    assert not Wydawnictwo_Zwarte.global_objects.filter(pk__in=pks).exists()

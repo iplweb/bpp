@@ -5,7 +5,7 @@ import rollbar
 from django.contrib import messages
 from django.contrib.postgres.search import TrigramSimilarity
 from django.db import models, transaction
-from django.db.models import Count, Q
+from django.db.models import Count, ProtectedError, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from pbn_client.const import ACTIVE, DELETED
 
@@ -686,14 +686,26 @@ def usun_zrodlo(request, zrodlo_id):
         )
         return redirect("przemapuj_zrodla_pbn:lista_skasowanych_zrodel")
 
-    # Policz liczbę rekordów
+    # Policz liczbę rekordów — RAZEM z koszem. ``Rekord`` kosza nie widzi,
+    # a źródło używane przez publikację z kosza nie może trafić do kosza
+    # (guard ``Zrodlo``), więc bez tego operator dostałby ogólny błąd.
     liczba_rekordow = Rekord.objects.filter(zrodlo=zrodlo).count()
+    liczba_w_koszu = Wydawnictwo_Ciagle.deleted_objects.filter(zrodlo=zrodlo).count()
 
     if liczba_rekordow > 0:
         messages.error(
             request,
             f"To źródło ma {liczba_rekordow} rekordów. "
             f"Nie można usunąć źródła z rekordami. Użyj funkcji przemapowania.",
+        )
+        return redirect("przemapuj_zrodla_pbn:lista_skasowanych_zrodel")
+
+    if liczba_w_koszu > 0:
+        messages.error(
+            request,
+            f"Źródła nie można usunąć — używa go {liczba_w_koszu} publikacji "
+            f"w koszu. Przemapuj je na inne źródło (przywróć je z kosza) albo "
+            f"usuń je z kosza trwale, a potem usuń źródło.",
         )
         return redirect("przemapuj_zrodla_pbn:lista_skasowanych_zrodel")
 
@@ -723,6 +735,11 @@ def usun_zrodlo(request, zrodlo_id):
                 )
                 return redirect("przemapuj_zrodla_pbn:lista_skasowanych_zrodel")
 
+        except ProtectedError as e:
+            # Guard kosza: źródło nadal jest gdzieś używane — czytelny
+            # komunikat zamiast ogólnego „wystąpił błąd".
+            messages.error(request, e.args[0])
+            return redirect("przemapuj_zrodla_pbn:lista_skasowanych_zrodel")
         except Exception as e:
             rollbar.report_exc_info(sys.exc_info())
             messages.error(request, f"Wystąpił błąd podczas usuwania: {str(e)}")

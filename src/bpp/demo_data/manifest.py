@@ -16,9 +16,6 @@ CLEANUP_ORDER = (
     "pbn_downloader_app.PbnDownloadTask",
     "pbn_downloader_app.PbnInstitutionPeopleTask",
     "pbn_downloader_app.PbnJournalsDownloadTask",
-    # Zgloszenia publikacji (soft-delete — cleanup kasuje na twardo):
-    "zglos_publikacje.Zgloszenie_Publikacji_Autor",
-    "zglos_publikacje.Zgloszenie_Publikacji",
     # Rzadsze typy: powiazania generyczne i autorzy patentow, potem rekordy
     # (jednostka/autor PROTECT):
     "bpp.Grant_Rekordu",
@@ -32,6 +29,11 @@ CLEANUP_ORDER = (
     "ewaluacja_metryki.MetrykaAutora",
     "ewaluacja_liczba_n.IloscUdzialowDlaAutoraZaCalosc",
     "ewaluacja_liczba_n.IloscUdzialowDlaAutoraZaRok",
+    # Zgloszenia publikacji: autor zgloszenia ma PROTECT na Autor/Jednostka,
+    # wiec musi zniknac przed nimi; zgloszenie wskazuje prace przez
+    # GenericFK / SET_NULL, wiec moze isc pierwsze.
+    "zglos_publikacje.Zgloszenie_Publikacji_Autor",
+    "zglos_publikacje.Zgloszenie_Publikacji",
     # Najpierw M2M-through:
     "bpp.Wydawnictwo_Ciagle_Autor",
     "bpp.Wydawnictwo_Zwarte_Autor",

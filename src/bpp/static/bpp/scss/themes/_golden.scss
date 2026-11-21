@@ -74,7 +74,7 @@ body.theme-golden {
         border-bottom: 1px solid #f5f0dc !important;
 
         ul li {
-            color: #8a7a4f !important;
+            color: #6e6140 !important;
 
             a {
                 color: #5c4f2d !important;
@@ -117,8 +117,12 @@ body.theme-golden {
         background: linear-gradient(180deg, #f5f0dc 0%, #ebe3c8 100%) !important;
         border-top: 1px solid #d4c9a5 !important;
 
+        // Text colour must be set here too: this rule also repaints
+        // .grp-default ("Zapisz") and the "Wybrano x z y" counter, which
+        // otherwise keep their own light text on this background.
         .grp-button {
             background: linear-gradient(180deg, #d4af37 0%, #c19b2d 100%) !important;
+            color: #2c2416 !important;
             border: 1px solid #b08c25 !important;
 
             &:hover {
@@ -187,7 +191,7 @@ body.theme-golden {
         }
 
         .selected-filter-value {
-            color: #b08c25 !important;
+            color: #6e5610 !important;
             font-weight: 500 !important;
         }
     }
@@ -208,7 +212,7 @@ body.theme-golden {
 
     /* Link colors for Golden theme */
     a {
-        color: #f57c00 !important; /* Warm amber */
+        color: #9a4d00 !important; /* Warm amber */
 
         &:hover {
             color: #795548 !important; /* Brown on hover */
@@ -220,10 +224,10 @@ body.theme-golden {
     ul.grp-messagelist li.info {
         background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%) !important;
         border-left: 3px solid #f57c00 !important;
-        color: #e65100 !important;
+        color: #8f3800 !important;
 
         a {
-            color: #bf6516 !important;
+            color: #7a3a00 !important;
             font-weight: bold !important;
 
             &:hover {

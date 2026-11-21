@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Schemat spinający: koperta OAI-PMH 2.0 + ładunek profilu OpenAIRE CERIF 1.2.
+
+  Potrzebny, bo `OAI-PMH.xsd` deklaruje `<metadata>` jako
+  `<any namespace="##other" processContents="strict"/>`. „Strict" znaczy, że
+  walidator MUSI znać schemat ładunku — sama koperta nie wystarczy, a
+  walidacja rekordu żywego kończyłaby się błędem „no matching global
+  declaration".
+
+  Ten plik nie definiuje niczego własnego. Jest wyłącznie punktem wejścia,
+  który wciąga oba namespace'y do jednego `XMLSchema`.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import
+      namespace="http://www.openarchives.org/OAI/2.0/"
+      schemaLocation="OAI-PMH.xsd"/>
+  <xs:import
+      namespace="https://www.openaire.eu/cerif-profile/1.2/"
+      schemaLocation="openaire-cerif-profile.xsd"/>
+</xs:schema>
