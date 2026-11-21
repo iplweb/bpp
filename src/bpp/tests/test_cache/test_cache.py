@@ -2,6 +2,7 @@ import datetime
 
 import pytest
 from django.conf import settings
+from django.db.models import ProtectedError
 from model_bakery import baker
 
 from bpp.models import (
@@ -267,7 +268,11 @@ def test_caching_kasowanie_zrodla(
     assert Zrodlo.objects.all().count() == 1
 
     z = Zrodlo.objects.all()[0]
-    z.delete()  # WCA ma zrodlo.on_delete=SET_NULL
+    # Kosz źródła z publikacjami jest zablokowany (guard soft-delete);
+    # tu sprawdzamy twarde skasowanie (``zrodlo.on_delete=SET_NULL``).
+    with pytest.raises(ProtectedError):
+        z.delete()
+    z.hard_delete()
 
     denorms.flush()
     assert Rekord.objects.all().count() == 1

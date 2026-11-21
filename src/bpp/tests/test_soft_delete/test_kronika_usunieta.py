@@ -40,7 +40,7 @@ def test_rodzina_kronika_nie_istnieje():
 # Odtwarza migracje w obie strony; solo ~35-55 s, pod obciążeniem xdist
 # przekraczał globalne `--timeout 90` (por. test_migracja_0510_rewers.py).
 @pytest.mark.timeout(300)
-def test_0513_odwracalna():
+def test_0513_odwracalna(bez_reinstalacji_denorma):
     """``backward`` odtwarza całą siódemkę z sidecara ``.sql``.
 
     Sidecar był generowany maszynowo z ``pg_get_viewdef()``, ale to nie

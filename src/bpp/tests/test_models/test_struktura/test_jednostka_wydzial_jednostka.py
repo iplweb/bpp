@@ -121,7 +121,7 @@ def test_jednostka_before_insert():
     j2 = baker.make(Jednostka, uczelnia=u2, parent=w2)
 
     for elem in [j, j2, w2, w1, u2, u1]:
-        elem.delete()
+        getattr(elem, "hard_delete", elem.delete)()
 
 
 @pytest.mark.django_db
@@ -151,7 +151,7 @@ def test_jednostka_wydzial_before_insert():
     jw = Jednostka_Rodzic.objects.create(jednostka=j1, parent=w1)
 
     for elem in (jw, j1, w2, w1, u2, u1):
-        elem.delete()
+        getattr(elem, "hard_delete", elem.delete)()
 
 
 @pytest.mark.django_db
@@ -179,7 +179,7 @@ def test_jednostka_wydzial_time_trigger():
         jw2.save()
 
     for elem in u1, w1, j1, jw1:
-        elem.delete()
+        getattr(elem, "hard_delete", elem.delete)()
 
 
 @pytest.mark.django_db
@@ -199,7 +199,7 @@ def test_jednostka_wydzial_bez_dat_do_w_przyszlosci_constraint():
         jw.save()
 
     for elem in u1, w1, j1:
-        elem.delete()
+        getattr(elem, "hard_delete", elem.delete)()
 
 
 @pytest.mark.django_db
@@ -231,7 +231,7 @@ def test_jednostka_wydzial_time_trigger_delete_1():
     assert j2.aktualna is True
 
     for elem in u1, w1, j1, j2, jw1:
-        elem.delete()
+        getattr(elem, "hard_delete", elem.delete)()
 
 
 @pytest.mark.django_db
@@ -258,7 +258,7 @@ def test_jednostka_wydzial_time_trigger_delete_2():
     assert j1.aktualna is True
 
     for elem in u1, w1, j1:
-        elem.delete()
+        getattr(elem, "hard_delete", elem.delete)()
 
 
 @pytest.mark.django_db

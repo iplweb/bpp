@@ -178,17 +178,11 @@ def test_oai_bez_uczelni_to_404(client, oai_url, settings):
         jednostka=any_jednostka(),
         typ_odpowiedzialnosci=aut,
     )
-    # Odpięcie autorów od jednostek PRZED skasowaniem uczelni.
-    #
-    # ``Autor.aktualna_jednostka`` (pole denormalizowane, liczone triggerem
-    # z ``Autor_Jednostka``) ma ``on_delete=CASCADE``, więc skasowanie
-    # uczelni ciągnęło kaskadę Uczelnia → Jednostka → Autor → autorstwa.
-    # Do fazy 04 przechodziło to po cichu; od flipu ``*_Autor.autor`` na
-    # ``PROTECT`` kończy się ``ProtectedError``. Test dotyczy OAI, a nie
-    # polityki kaskad — więc rozłączamy tę przypadkową krawędź jawnie,
-    # zamiast liczyć na to, że kasowanie uczelni zabierze ludzi.
+    # Twarde skasowanie (``hard_delete``): ``delete()`` uczelni z jednostkami
+    # to kosz z guardem (``ProtectedError``). Odpinamy ``aktualna_jednostka``
+    # (CASCADE do autora), bo ``*_Autor.autor`` jest ``PROTECT``.
     Autor.objects.all().update(aktualna_jednostka=None)
-    Uczelnia.objects.all().delete()
+    Uczelnia.global_objects.all().hard_delete()
     denorms.flush()
 
     res = client.get(
