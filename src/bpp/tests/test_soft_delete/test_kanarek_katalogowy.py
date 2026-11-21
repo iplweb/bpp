@@ -18,8 +18,8 @@ więc dopasowanie tekstowe daje fałszywe trafienia w obie strony.
 ``pg_depend`` widzi też zależność z podzapytania ``EXISTS``.
 
 Nowy widok bez filtra to FAIL do naprawy (wzorce:
-``bpp.migration_util.widok_dopisz_warunek`` i migracje ``0511``/``0512``/
-``0513``), a nie sygnał do dopisania wyjątku.
+``bpp.migration_util.widok_dopisz_warunek`` i migracje ``0512``/``0513``/
+``0514``), a nie sygnał do dopisania wyjątku.
 """
 
 import pytest
@@ -115,7 +115,7 @@ def test_kanarek_widzi_znane_zaleznosci():
         zalezne = _widoki_zalezne_od_deleted_at(cur, set(RODZIC.values()))
     para = ("bpp_wydawnictwo_ciagle_autorzy", "bpp_wydawnictwo_ciagle_autor")
     assert para in czytajace
-    # Widok autorstw sprawdza deleted_at RODZICA (EXISTS z migracji 0512).
+    # Widok autorstw sprawdza deleted_at RODZICA (EXISTS z migracji 0513).
     assert ("bpp_wydawnictwo_ciagle_autorzy", "bpp_wydawnictwo_ciagle") in zalezne
 
 

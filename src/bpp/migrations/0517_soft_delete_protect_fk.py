@@ -27,7 +27,7 @@ from bpp.migration_util import nieodwracalna
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0515_praca_habilitacyjna_warunkowy_unique_autora"),
+        ("bpp", "0516_praca_habilitacyjna_warunkowy_unique_autora"),
     ]
 
     operations = [

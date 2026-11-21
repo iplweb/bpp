@@ -14,19 +14,19 @@ from django.db.migrations.exceptions import IrreversibleError
 from django.db.migrations.loader import MigrationLoader
 
 NIEODWRACALNE = [
-    ("bpp", "0510_publikacje_soft_delete_fields"),
-    ("bpp", "0511_soft_delete_rekord_views"),
-    ("bpp", "0512_soft_delete_autorzy_przez_publikacje"),
-    ("bpp", "0513_nowe_sumy_bez_skasowanych_publikacji"),
-    ("bpp", "0514_drop_kronika_views"),
-    ("bpp", "0515_praca_habilitacyjna_warunkowy_unique_autora"),
-    ("bpp", "0516_soft_delete_protect_fk"),
-    ("bpp", "0517_autor_soft_delete"),
-    ("bpp", "0518_softdeletelog"),
-    ("bpp", "0519_soft_delete_struktura_i_slowniki"),
-    ("bpp", "0520_slug_unikalny_razem_z_koszem"),
-    ("bpp", "0521_kasowanie_prac_dyplomowych_z_autorzy_mat"),
-    ("bpp", "0522_kosz_zamrozony_trigger"),
+    ("bpp", "0511_publikacje_soft_delete_fields"),
+    ("bpp", "0512_soft_delete_rekord_views"),
+    ("bpp", "0513_soft_delete_autorzy_przez_publikacje"),
+    ("bpp", "0514_nowe_sumy_bez_skasowanych_publikacji"),
+    ("bpp", "0515_drop_kronika_views"),
+    ("bpp", "0516_praca_habilitacyjna_warunkowy_unique_autora"),
+    ("bpp", "0517_soft_delete_protect_fk"),
+    ("bpp", "0518_autor_soft_delete"),
+    ("bpp", "0519_softdeletelog"),
+    ("bpp", "0520_soft_delete_struktura_i_slowniki"),
+    ("bpp", "0521_slug_unikalny_razem_z_koszem"),
+    ("bpp", "0522_kasowanie_prac_dyplomowych_z_autorzy_mat"),
+    ("bpp", "0523_kosz_zamrozony_trigger"),
     ("cerif_export", "0001_odpieta_przynaleznosc"),
     ("pbn_api", "0080_sentdata_withdrawn_at"),
     ("pbn_export_queue", "0011_pbn_export_queue_operacja"),
@@ -34,7 +34,7 @@ NIEODWRACALNE = [
     ("pbn_import", "0013_alter_importinconsistency_inconsistency_type"),
     ("pbn_integrator", "0001_initial"),
     ("rozbieznosci_dyscyplin", "0022_rozbieznosci_zrodel_bez_skasowanych_publikacji"),
-    ("zglos_publikacje", "0029_zgloszenie_autor_protect"),
+    ("zglos_publikacje", "0030_zgloszenie_autor_protect"),
 ]
 
 
@@ -52,8 +52,8 @@ def test_migracja_soft_delete_jest_nieodwracalna(graf, klucz):
 
 
 def test_cofniecie_ponizej_0510_blokuje_juz_najwyzsza_migracja(graf):
-    """Każda droga w tył przez ``bpp/0510``–``0522`` zaczyna się od
-    ``0522`` (najwyższej w łańcuchu) — i tam od razu staje."""
-    migracja = graf.nodes[("bpp", "0522_kosz_zamrozony_trigger")]
+    """Każda droga w tył przez ``bpp/0511``–``0523`` zaczyna się od
+    ``0523`` (najwyższej w łańcuchu) — i tam od razu staje."""
+    migracja = graf.nodes[("bpp", "0523_kosz_zamrozony_trigger")]
     with pytest.raises(IrreversibleError):
         migracja.unapply(project_state=None, schema_editor=None)

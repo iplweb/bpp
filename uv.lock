@@ -501,7 +501,7 @@ requires-dist = [
     { name = "django-filter", specifier = ">=26.2,<26.3" },
     { name = "django-first-run-wizard", specifier = ">=0.2.1" },
     { name = "django-flexible-reports", specifier = ">=0.5.1" },
-    { name = "django-formdefaults", specifier = ">=0.6.4" },
+    { name = "django-formdefaults", specifier = ">=0.6.5" },
     { name = "django-formtools", specifier = ">=2.7,<3" },
     { name = "django-fsm-2", specifier = ">=4.3.0,<5" },
     { name = "django-grappelli", specifier = ">=5.0.1,<6" },
@@ -1904,14 +1904,14 @@ wheels = [
 
 [[package]]
 name = "django-formdefaults"
-version = "0.6.4"
+version = "0.6.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b5/07/dbf6937eb3f54491649c1e2b13e447c29a6b5653cb90514e702f55b0d7ef/django_formdefaults-0.6.4.tar.gz", hash = "sha256:ca05e3097089ab2039dcd263669654685557754dfe87d8ad7ee9433ef99f5187", size = 29878, upload-time = "2026-11-21T14:34:06.884Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/48/7b/1c529597d852e948a4b46b82e0b1e0ed0fc20db9e064b5039cbed95cc648/django_formdefaults-0.6.5.tar.gz", hash = "sha256:13e7c79a752c93eba449410a9f9caed6d96c068daf93f1ea30e5212aced8f9f1", size = 31495, upload-time = "2026-11-21T15:21:18.384Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f0/b8/ae52c3a54a41b1bb7dc556b04b773c73b0ac6cc41a13361bd51cbf7da4ec/django_formdefaults-0.6.4-py3-none-any.whl", hash = "sha256:4c7708a6e3b3f8f98d6210a83898d98873021b237fb562c732c647ae894b9dfa", size = 35327, upload-time = "2026-11-21T14:34:05.587Z" },
+    { url = "https://files.pythonhosted.org/packages/a3/9e/fd4941f701e157b2802949fa80d04d2a0a7ea2f8a246340c13da7e96e42f/django_formdefaults-0.6.5-py3-none-any.whl", hash = "sha256:6c3707808cc450d9188bfc20afe9c916f9c5f348cb5de394db34133d28777af2", size = 36745, upload-time = "2026-11-21T15:21:17.195Z" },
 ]
 
 [[package]]

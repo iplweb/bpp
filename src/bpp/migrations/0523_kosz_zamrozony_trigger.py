@@ -22,7 +22,7 @@ tabelach, który ma objąć rekordy z kosza, musi ustawić flagę
 (``SELECT set_config('bpp.kosz_operacja', 'on', true)``).
 
 NIEODWRACALNA (brak ``reverse_sql``) — jak cały łańcuch soft-delete
-``0510``–``0522``; powrót wyłącznie z kopii bazy.
+``0511``–``0523``; powrót wyłącznie z kopii bazy.
 """
 
 from django.db import migrations
@@ -84,7 +84,7 @@ def _sql_forward():
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0521_kasowanie_prac_dyplomowych_z_autorzy_mat"),
+        ("bpp", "0522_kasowanie_prac_dyplomowych_z_autorzy_mat"),
     ]
 
     operations = [

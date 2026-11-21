@@ -10,7 +10,7 @@
 ## Zasady (w skrócie)
 
 1. **Kosz jest zamrożony w bazie.** Trigger `bpp_kosz_straznik`
-   (`BEFORE UPDATE OR DELETE`, migracja `0522`) na każdej tabeli z koszem:
+   (`BEFORE UPDATE OR DELETE`, migracja `0523`) na każdej tabeli z koszem:
    zmiana `deleted_at`, jakikolwiek `UPDATE` wiersza w koszu i fizyczny
    `DELETE` wiersza w koszu są odrzucane, chyba że transakcja ustawiła
    `bpp.kosz_operacja = 'on'` — robi to wyłącznie `operacja_kosza()`
@@ -112,7 +112,7 @@ sprawdzany w bazie pod blokadą wiersza (`SELECT … FOR UPDATE`,
 
 | Model | Dlaczego bez kosza | Jak znika |
 |---|---|---|
-| `Wydawnictwo_Ciagle_Autor`, `Wydawnictwo_Zwarte_Autor`, `Patent_Autor` | Są częścią publikacji. Własny kosz oznaczał wiersze-śmieci po każdej edycji inline'a, warunkowe constrainty (`ExclusionConstraint`) i migracje największych tabel. | `BppDzieckoPublikacjiMixin`: domyślny `objects` filtruje `rekord__deleted_at IS NULL`; `all_objects` widzi wszystko. W SQL widoki `bpp_*_autorzy` mają `EXISTS` na żywą publikację (migracja `0512`). Usunięcie autora z inline'a to zwykłe, twarde kasowanie wiersza (jak przed soft-delete). |
+| `Wydawnictwo_Ciagle_Autor`, `Wydawnictwo_Zwarte_Autor`, `Patent_Autor` | Są częścią publikacji. Własny kosz oznaczał wiersze-śmieci po każdej edycji inline'a, warunkowe constrainty (`ExclusionConstraint`) i migracje największych tabel. | `BppDzieckoPublikacjiMixin`: domyślny `objects` filtruje `rekord__deleted_at IS NULL`; `all_objects` widzi wszystko. W SQL widoki `bpp_*_autorzy` mają `EXISTS` na żywą publikację (migracja `0513`). Usunięcie autora z inline'a to zwykłe, twarde kasowanie wiersza (jak przed soft-delete). |
 | `*_Streszczenie`, `*_Zewnetrzna_Baza_Danych` | jw. | jw. — pod-zasoby API i „ostatnie streszczenia" ich nie pokazują. |
 | `Nagroda`, `WybranaPublikacjaAutora`, `Publikacja_Habilitacyjna` (GenericFK) | jw. | GenericFK rozwiązuje się przez `_base_manager` (widzi kosz), więc filtrujemy jawnie: API nagród i profil autora (wyróżnione prace) pomijają obiekty z kosza. |
 
@@ -162,7 +162,7 @@ nie ma uprawnienia ani akcji usuwania.
 `Wydzial` nie istnieje (usunięty w #438 — wydział to korzeń drzewa
 `Jednostka`). FK publikacji do `Konferencja` i `Seria_Wydawnicza` zmieniły
 się z `CASCADE` na `PROTECT`: skasowanie konferencji/serii **nie kaskaduje
-już twardo na publikacje** (migracja `0519`; bez zmian w bazie —
+już twardo na publikacje** (migracja `0510_slowniki_protect`; bez zmian w bazie —
 `on_delete` żyje tylko w ORM). Import (np. dopasowanie źródła po ISSN)
 kosza słowników nie widzi przy dopasowaniu, ale **nie tworzy duplikatu
 wartości unikalnej trzymanej przez rekord z kosza**: import PBN (wydawcy,
@@ -299,7 +299,7 @@ wersję" jest zablokowane (najpierw „Przywróć" z kosza).
 
 ## Wdrożenie: okno serwisowe
 
-Migracje `bpp/0510`–`0522` (oraz `pbn_export_queue/0011`–`0012`,
+Migracje `bpp/0511`–`0523` (oraz `pbn_export_queue/0011`–`0012`,
 `pbn_api/0080`, `rozbieznosci_dyscyplin/0022`, `zglos_publikacje/0029`,
 `pbn_integrator/0001`, `pbn_import/0013`) dodają kolumny
 `deleted_at`/`restored_at`/`transaction_id` (bez wartości domyślnej —
@@ -313,7 +313,7 @@ nie są migrowane wcale.
 
 ### Migracje nieodwracalne — przed wdrożeniem zrób kopię bazy; powrót tylko z kopii
 
-Wszystkie migracje tego PR-a — `bpp/0510`–`0522`, `cerif_export/0001`,
+Wszystkie migracje tego PR-a — `bpp/0511`–`0523`, `cerif_export/0001`,
 `pbn_api/0080`, `pbn_export_queue/0011`–`0012`, `pbn_integrator/0001`,
 `rozbieznosci_dyscyplin/0022`, `zglos_publikacje/0029` — **nie mają kroku
 wstecz** (decyzja właściciela). Wyjątek: `pbn_import/0013` zmienia tylko

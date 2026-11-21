@@ -30,7 +30,7 @@ SPACJI (klauzula główna w ``pg_get_viewdef(..., pretty=true)``), nie po
 samym słowie — widoki mają ``WHERE`` w podzapytaniach skalarnych.
 
 Autorstwa trzech typów z tabelą łączącą (``*_autor``, bez własnego kosza)
-obsługuje ``0512``. Definicje są GENEROWANE z introspekcji (jak w
+obsługuje ``0513``. Definicje są GENEROWANE z introspekcji (jak w
 ``0432``/``0433``), a nie przepisane do ``.sql``.
 
 NIEODWRACALNA (brak ``reverse_code``): cofnięcie przez ``migrate`` rzuca
@@ -225,7 +225,7 @@ def forward(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0510_publikacje_soft_delete_fields"),
+        ("bpp", "0511_publikacje_soft_delete_fields"),
     ]
 
     operations = [

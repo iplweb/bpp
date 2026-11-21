@@ -10,7 +10,7 @@ from bpp.migration_util import nieodwracalna
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('bpp', '0517_autor_soft_delete'),
+        ('bpp', '0518_autor_soft_delete'),
         ('contenttypes', '0002_remove_content_type_name'),
         ('pbn_export_queue', '0011_pbn_export_queue_operacja'),
     ]

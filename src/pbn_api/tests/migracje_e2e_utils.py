@@ -4,7 +4,7 @@ Testy puszczają prawdziwy ``MigrationExecutor``, ale cofają i ponownie
 stosują WYŁĄCZNIE badane migracje ``pbn_api`` (jawny ``plan``), a nie
 „wszystko do migracji X". Cofnięcie ``pbn_api`` do X pociągnęłoby za sobą
 wszystkie zależne migracje innych aplikacji — w tym łańcuch soft-delete
-``bpp/0510``–``0522``, który jest NIEODWRACALNY (``IrreversibleError``).
+``bpp/0511``–``0523``, który jest NIEODWRACALNY (``IrreversibleError``).
 
 Testy MUSZĄ też posprzątać po sobie — inaczej worker testowy zostaje
 z niezastosowaną migracją i psuje wszystkie kolejne testy w tym procesie.

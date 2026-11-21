@@ -30,8 +30,8 @@ from bpp.migration_util import nieodwracalna
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0517_autor_soft_delete"),
-        ("zglos_publikacje", "0028_obslugujacy_verbose_name"),
+        ("bpp", "0518_autor_soft_delete"),
+        ("zglos_publikacje", "0029_autor_slowniki_protect"),
     ]
 
     operations = [

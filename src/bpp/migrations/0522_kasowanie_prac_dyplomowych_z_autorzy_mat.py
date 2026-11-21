@@ -9,7 +9,7 @@ Twarde kasowanie prac dyplomowych jest rzadkie (m.in. ponowny import z PBN),
 ale sprzątać trzeba poprawnie.
 
 NIEODWRACALNA (brak ``reverse_code``) — jak cały łańcuch soft-delete
-``bpp/0510``–``0522``; powrót wyłącznie z kopii bazy.
+``bpp/0511``–``0523``; powrót wyłącznie z kopii bazy.
 """
 
 import importlib
@@ -62,7 +62,7 @@ def forward(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0520_slug_unikalny_razem_z_koszem"),
+        ("bpp", "0521_slug_unikalny_razem_z_koszem"),
     ]
 
     operations = [

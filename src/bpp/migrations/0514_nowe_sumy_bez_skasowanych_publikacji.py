@@ -14,7 +14,7 @@ warunek w ``WHERE`` jest poprawny: skasowana publikacja MA wypaść
 z rankingu.
 
 NIEODWRACALNA (brak ``reverse_code``) — jak cały łańcuch soft-delete
-``0510``–``0522``; powrót wyłącznie z kopii bazy.
+``0511``–``0523``; powrót wyłącznie z kopii bazy.
 """
 
 from django.db import connection, migrations
@@ -43,7 +43,7 @@ def forward(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0512_soft_delete_autorzy_przez_publikacje"),
+        ("bpp", "0513_soft_delete_autorzy_przez_publikacje"),
     ]
 
     operations = [

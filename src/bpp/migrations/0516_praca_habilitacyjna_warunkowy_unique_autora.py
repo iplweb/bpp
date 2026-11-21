@@ -8,7 +8,7 @@ from bpp.migration_util import nieodwracalna
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0514_drop_kronika_views"),
+        ("bpp", "0515_drop_kronika_views"),
         ("pbn_api", "0079_constraint_publikacja_instytucji"),
         (
             "taggit",

@@ -13,7 +13,7 @@ from bpp.admin.helpers.pbn_api.gui import (
 )
 from bpp.models import Status_Korekty, Uczelnia
 from bpp.views.cache_publiczny import uniewaznij_cache_publiczny
-from bpp.wersjonowanie import zapewnij_wersje_poczatkowe
+from bpp.wersjonowanie import sledzone_relacje, zapewnij_wersje_poczatkowe
 from pbn_export_queue.tasks import queue_pbn_export_batch
 
 #: Górna granica liczby rekordów WERSJONOWANYCH (reversion, np. autorów)
@@ -29,6 +29,19 @@ MAKS_REKORDOW_AKCJI_MASOWEJ_BEZ_WERSJI = 20000
 
 #: Rozmiar partii ``bulk_create`` wpisów ``LogEntry``.
 PARTIA_LOGENTRY = 1000
+
+
+def zapisuje_historie(akcja):
+    """Oznacz akcję admina, która sama zapisuje wersje (reversion) i wpisy
+    historii (``zmien_hurtowo_z_historia``).
+
+    ``VersionAdmin.changelist_view`` owija każdą akcję w jedną rewizję;
+    wtedy wersja „przed” i „po” scaliłyby się w jedną i zmiany nie dałoby
+    się cofnąć. ``HistoriaWersjiMixin.create_revision`` nie otwiera rewizji
+    dla tak oznaczonych akcji — akcja otwiera własne.
+    """
+    akcja.zapisuje_historie = True
+    return akcja
 
 
 def limit_akcji_masowej(model):
@@ -77,7 +90,9 @@ def zmien_hurtowo_z_historia(
       komentarzem ``komentarz`` — widoczny na stronie „Historia”,
     * dla modeli zarejestrowanych w django-reversion (np. ``Autor``) także
       wersje: „przed” (jeśli rekord nie miał żadnej — ``zapewnij_wersje_
-      poczatkowe``) i „po” w jednej rewizji — zmianę da się cofnąć,
+      poczatkowe``, osobna rewizja) i „po” w jednej rewizji — zmianę da się
+      cofnąć. Wołać POZA aktywną rewizją reversion: akcję admina trzeba
+      oznaczyć ``@zapisuje_historie``,
     * publiczny cache jest unieważniany raz, po COMMIT.
 
     * pola ``auto_now`` (``ostatnio_zmieniony``), które ``update()`` pomija,
@@ -117,7 +132,7 @@ def zmien_hurtowo_z_historia(
             # Stan sprzed zmiany dla rekordów bez historii — żeby dało się
             # do niego wrócić z „Historii”.
             zapewnij_wersje_poczatkowe(model, pks, select_related=select_related)
-            follow = reversion.revisions._get_options(model).follow
+            follow = sledzone_relacje(model)
         rewizja = reversion.create_revision() if wersjonowany else nullcontext()
         with rewizja:
             # ``update()`` nie ustawia pól ``auto_now``. Tylko w wartościach,
@@ -188,6 +203,7 @@ def _akcja_ustaw_status(modeladmin, request, queryset, nazwa_statusu):
     )
 
 
+@zapisuje_historie
 def ustaw_przed_korekta(modeladmin, request, queryset):
     _akcja_ustaw_status(modeladmin, request, queryset, "przed korektą")
 
@@ -196,6 +212,7 @@ ustaw_przed_korekta.short_description = "Ustaw status korekty: przed korektą"
 ustaw_przed_korekta.allowed_permissions = ("change",)
 
 
+@zapisuje_historie
 def ustaw_po_korekcie(modeladmin, request, queryset):
     _akcja_ustaw_status(modeladmin, request, queryset, "po korekcie")
 
@@ -204,6 +221,7 @@ ustaw_po_korekcie.short_description = "Ustaw status korekty: po korekcie"
 ustaw_po_korekcie.allowed_permissions = ("change",)
 
 
+@zapisuje_historie
 def ustaw_w_trakcie_korekty(modeladmin, request, queryset):
     _akcja_ustaw_status(modeladmin, request, queryset, "w trakcie korekty")
 
@@ -301,6 +319,7 @@ def _ustaw_widocznosc_jednostki_ranking(modeladmin, request, queryset, widoczny)
     )
 
 
+@zapisuje_historie
 def ustaw_pokazuj_true(modeladmin, request, queryset):
     _ustaw_widocznosc_jednostki_ranking(modeladmin, request, queryset, True)
 
@@ -311,6 +330,7 @@ ustaw_pokazuj_true.short_description = (
 ustaw_pokazuj_true.allowed_permissions = ("change",)
 
 
+@zapisuje_historie
 def ustaw_pokazuj_false(modeladmin, request, queryset):
     _ustaw_widocznosc_jednostki_ranking(modeladmin, request, queryset, False)
 
@@ -355,6 +375,7 @@ def _ustaw_widocznosc_wszedzie(request, queryset, widoczny, komentarz):
     )
 
 
+@zapisuje_historie
 def ukryj_autorow_wszedzie(modeladmin, request, queryset):
     updated = _ustaw_widocznosc_wszedzie(
         request, queryset, False, KOMUNIKAT_UKRYTO_WSZEDZIE
@@ -374,6 +395,7 @@ ukryj_autorow_wszedzie.short_description = (
 ukryj_autorow_wszedzie.allowed_permissions = ("change",)
 
 
+@zapisuje_historie
 def pokaz_autorow_wszedzie(modeladmin, request, queryset):
     updated = _ustaw_widocznosc_wszedzie(
         request, queryset, True, KOMUNIKAT_POKAZANO_WSZEDZIE

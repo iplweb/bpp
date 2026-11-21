@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('bpp', '0522_kosz_zamrozony_trigger'),
+        ('bpp', '0523_kosz_zamrozony_trigger'),
         ('contenttypes', '0002_remove_content_type_name'),
     ]
 

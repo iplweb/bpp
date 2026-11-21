@@ -1,4 +1,4 @@
-"""Rodzina ``bpp_kronika_*`` została skasowana (migracja ``0514``).
+"""Rodzina ``bpp_kronika_*`` została skasowana (migracja ``0515``).
 
 Siedem martwych widoków, kasowanych jednym cięciem, bo graf zależności
 (``bpp_kronika_view`` <- ``bpp_kronika_all_unsorted_view`` <- pięć liści)

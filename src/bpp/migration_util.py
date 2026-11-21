@@ -94,7 +94,7 @@ def nieodwracalna():
     """Operacja-znacznik: migracja, która ją zawiera, jest NIEODWRACALNA.
 
     Migracje czysto schematowe (``AddField``, ``AddIndex``…) Django cofa
-    samo. Łańcuch soft-delete (``bpp/0510``–``0522`` i migracje kolejki /
+    samo. Łańcuch soft-delete (``bpp/0511``–``0523`` i migracje kolejki /
     wycofań PBN) cofać się NIE MA: rozjechałby dane kosza i wycofań z kodem.
     ``RunPython`` bez ``reverse_code`` sprawia, że ``migrate`` w tył rzuca
     ``IrreversibleError`` ZANIM cokolwiek zmieni. Powrót — tylko z kopii bazy

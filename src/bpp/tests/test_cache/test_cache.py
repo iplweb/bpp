@@ -243,6 +243,8 @@ def test_caching_kasowanie_autorow_z_pracami_jest_zablokowane(
 def test_caching_kasowanie_typu_odpowiedzialnosci_autorow(
     wydawnictwo_ciagle_z_dwoma_autorami,
 ):
+    # Typ_Odpowiedzialnosci is PROTECT: deleting a used one is refused and
+    # the authorships survive.
     assert (
         Wydawnictwo_Ciagle_Autor.objects.filter(
             rekord=wydawnictwo_ciagle_z_dwoma_autorami
@@ -250,14 +252,11 @@ def test_caching_kasowanie_typu_odpowiedzialnosci_autorow(
         == 2
     )
 
-    Typ_Odpowiedzialnosci.objects.all().delete()
+    with pytest.raises(ProtectedError):
+        Typ_Odpowiedzialnosci.objects.all().delete()
 
-    assert Wydawnictwo_Ciagle_Autor.objects.count() == 0
+    assert Wydawnictwo_Ciagle_Autor.objects.count() == 2
     assert Rekord.objects.all().count() == 1
-
-    r = Rekord.objects.all()[0]
-    assert "NOWAK" not in r.opis_bibliograficzny_cache
-    assert "KOWALSKI" not in r.opis_bibliograficzny_cache
 
 
 @pytest.mark.django_db
@@ -292,24 +291,31 @@ def test_caching_kasowanie_jezyka(wydawnictwo_ciagle_z_dwoma_autorami):
     wydawnictwo_ciagle_z_dwoma_autorami.save()
 
     assert Rekord.objects.all().count() == 1
-    xng.delete()
+    with pytest.raises(ProtectedError):
+        xng.delete()
+    assert Rekord.objects.all().count() == 1
 
+    # Once the record is gone, nothing (including the Rekord cache) holds
+    # on to the language any more. ``hard_delete()``: zwykłe ``delete()``
+    # przenosi do kosza, a rekord w koszu dalej trzyma język.
+    wydawnictwo_ciagle_z_dwoma_autorami.hard_delete()
     assert Rekord.objects.all().count() == 0
+    xng.delete()
+    assert not Jezyk.objects.filter(pk=500).exists()
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    "attrname, klass, skrot, ma_zostac",
+    "attrname, klass, skrot",
     [
-        ("typ_kbn", Typ_KBN, "PO", 0),
-        ("charakter_formalny", Charakter_Formalny, "PAT", 0),
-        ("openaccess_wersja_tekstu", Wersja_Tekstu_OpenAccess, "FINAL_AUTHOR", 1),
-        ("openaccess_licencja", Licencja_OpenAccess, "CC-BY-ND", 1),
+        ("typ_kbn", Typ_KBN, "PO"),
+        ("charakter_formalny", Charakter_Formalny, "PAT"),
+        ("openaccess_wersja_tekstu", Wersja_Tekstu_OpenAccess, "FINAL_AUTHOR"),
+        ("openaccess_licencja", Licencja_OpenAccess, "CC-BY-ND"),
         (
             "openaccess_czas_publikacji",
             Czas_Udostepnienia_OpenAccess,
             "AT_PUBLICATION",
-            1,
         ),
     ],
 )
@@ -321,7 +327,6 @@ def test_usuwanie_powiazanych_vs_rekord(
     attrname,
     klass,
     skrot,
-    ma_zostac,
 ):
     o = klass.objects.get(skrot=skrot)
     setattr(wydawnictwo_ciagle_z_dwoma_autorami, attrname, o)
@@ -331,8 +336,9 @@ def test_usuwanie_powiazanych_vs_rekord(
     patent.save()
 
     assert Rekord.objects.all().count() == 2
-    o.delete()
-    assert Rekord.objects.all().count() == ma_zostac
+    with pytest.raises(ProtectedError):
+        o.delete()
+    assert Rekord.objects.all().count() == 2
 
 
 @pytest.mark.django_db
@@ -343,9 +349,10 @@ def test_caching_kasowanie_typu_kbn(wydawnictwo_ciagle_z_dwoma_autorami, standar
     wydawnictwo_ciagle_z_dwoma_autorami.save()
 
     assert Rekord.objects.all().count() == 1
-    tk.delete()
+    with pytest.raises(ProtectedError):
+        tk.delete()
 
-    assert Rekord.objects.all().count() == 0
+    assert Rekord.objects.all().count() == 1
 
 
 @pytest.mark.django_db
@@ -364,9 +371,10 @@ def test_caching_kasowanie_charakteru_formalnego(
     wydawnictwo_ciagle_z_dwoma_autorami.save()
 
     assert Rekord.objects.all().count() == 2
-    Charakter_Formalny.objects.all().delete()
+    with pytest.raises(ProtectedError):
+        Charakter_Formalny.objects.all().delete()
 
-    assert Rekord.objects.all().count() == 0
+    assert Rekord.objects.all().count() == 2
 
 
 @pytest.mark.django_db

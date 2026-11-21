@@ -42,7 +42,7 @@ z komentarzami w ``lib-pg-collation-migrate.sh`` i
 a nie w nazwy widoków, więc skrypty NIE przestają działać.
 
 NIEODWRACALNA (brak ``reverse_code``) — jak cały łańcuch soft-delete
-``0510``–``0522``. Definicje skasowanych widoków są w historii gita
+``0511``–``0523``. Definicje skasowanych widoków są w historii gita
 (``baseline-sql/`` sprzed tej migracji); powrót wyłącznie z kopii bazy.
 
 ⚠️ Po tej migracji trzeba usunąć trzy wpisy ``WYJATKI`` z kanarka
@@ -82,7 +82,7 @@ def forward(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0513_nowe_sumy_bez_skasowanych_publikacji"),
+        ("bpp", "0514_nowe_sumy_bez_skasowanych_publikacji"),
     ]
 
     operations = [

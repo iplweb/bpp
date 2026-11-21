@@ -4,7 +4,7 @@ Modele abstrakcyjne związane z podstawowymi polami publikacji.
 
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import CASCADE, PROTECT, SET_NULL
+from django.db.models import PROTECT, SET_NULL
 
 from bpp.fields import YearField
 
@@ -40,12 +40,12 @@ class ModelTypowany(models.Model):
 
     typ_kbn = models.ForeignKey(
         "Typ_KBN",
-        CASCADE,
+        PROTECT,
         verbose_name="typ MNiSW/MEiN",
         limit_choices_to={"ukryty": False},
     )
     jezyk = models.ForeignKey(
-        "Jezyk", CASCADE, verbose_name="Język", limit_choices_to={"widoczny": True}
+        "Jezyk", PROTECT, verbose_name="Język", limit_choices_to={"widoczny": True}
     )
     jezyk_alt = models.ForeignKey(
         "Jezyk",

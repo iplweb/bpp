@@ -76,7 +76,7 @@ _flaga_kosza = threading.local()
 def operacja_kosza():
     """Zezwolenie bazy na operację kosza (``bpp.kosz_operacja = 'on'``).
 
-    Trigger ``bpp_kosz_straznik`` (migracja ``0522``) zamraża rekordy
+    Trigger ``bpp_kosz_straznik`` (migracja ``0523``) zamraża rekordy
     w koszu i odrzuca każdą zmianę ``deleted_at`` poza tym blokiem. Flagę
     ustawiają WYŁĄCZNIE ``delete()``/``restore()``/``hard_delete()`` (i testy,
     które muszą „cofnąć zegar" rekordu w koszu).

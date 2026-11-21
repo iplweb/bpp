@@ -34,9 +34,8 @@ from django.contrib.admin.models import CHANGE, LogEntry
 from django.db import transaction
 from django.db.models import F
 from reversion.models import Version
-from reversion.revisions import _stack as _stos_rewizji
 
-from bpp.models import Autor, Autor_Jednostka, Uczelnia, WybranaPublikacjaAutora
+from bpp.models import Autor, Autor_Jednostka, WybranaPublikacjaAutora
 
 KOMENTARZ_WERSJI_POCZATKOWEJ = (
     "Stan sprzed pierwszej zarejestrowanej zmiany (zapisany automatycznie)."
@@ -48,6 +47,8 @@ if not reversion.is_registered(WybranaPublikacjaAutora):
 #: Pola kosza NIE wchodzą do wersji żadnego modelu z koszem: przywrócenie
 #: wersji „z kosza" żywego rekordu (albo odwrotnie) ominęłoby
 #: ``delete()``/``restore()`` i zderzyło się z triggerem zamrożenia kosza.
+#: Modele rejestrowane przez ``VersionAdmin`` (np. ``Uczelnia``) wyłączają je
+#: w ``HistoriaWersjiMixin.reversion_register``.
 POLA_KOSZA = ("deleted_at", "restored_at", "transaction_id")
 
 if not reversion.is_registered(Autor):
@@ -56,12 +57,6 @@ if not reversion.is_registered(Autor):
         exclude=("search", *POLA_KOSZA),
         follow=("wybrane_publikacje",),
     )
-
-# Rejestracja jawna (zamiast automatycznej z ``VersionAdmin``) — tylko po to,
-# żeby wyłączyć pola kosza. ``bpp.admin.uczelnia`` importuje ten moduł przed
-# definicją ``UczelniaAdmin``.
-if not reversion.is_registered(Uczelnia):
-    reversion.register(Uczelnia, exclude=POLA_KOSZA)
 
 
 def przelicz_aktualna_jednostke(autor_id):
@@ -80,6 +75,28 @@ def przelicz_aktualna_jednostke(autor_id):
         )
         return
     Autor_Jednostka.objects.filter(pk=pierwszy).update(autor_id=F("autor_id"))
+
+
+#: Relacje śledzone razem z modelem (``follow`` z ``reversion.register``).
+#: Trzymane po stronie BPP, bo reversion nie udostępnia ich publicznie —
+#: potrzebne do ``prefetch_related`` przy hurtowym zapisie wersji. Modele
+#: rejestrowane automatycznie przez ``VersionAdmin`` dopisuje tu
+#: ``HistoriaWersjiMixin.reversion_register``; brak wpisu = brak prefetchu
+#: (wolniej, ale poprawnie). Zgodność z ``reversion.register`` wyżej
+#: pilnuje test (wersja autora zawiera jego wyróżnione prace).
+FOLLOW_REVERSION = {
+    WybranaPublikacjaAutora: (),
+    Autor: ("wybrane_publikacje",),
+}
+
+
+def sledzone_relacje(model):
+    """Relacje ``model`` zapisywane w wersjach razem z nim (do prefetchu)."""
+    return FOLLOW_REVERSION.get(model, ())
+
+
+class WersjaPoczatkowaWAktywnejRewizji(RuntimeError):
+    """``zapewnij_wersje_poczatkowe`` zawołane wewnątrz aktywnej rewizji."""
 
 
 def zapewnij_wersje_poczatkowa(obj):
@@ -105,13 +122,20 @@ def zapewnij_wersje_poczatkowe(model, pks, select_related=()):
     potrzebne do ``__str__`` (``object_repr`` wersji), żeby nie pytać
     o nie osobno dla każdego rekordu.
 
-    Wolno wołać także wewnątrz aktywnego ``create_revision`` (np. akcja
-    admina — ``VersionAdmin.changelist_view`` owija ją w rewizję): wersję
-    początkową zapisujemy wtedy z pustym stosem rewizji reversion. Inaczej
-    zagnieżdżony blok scaliłby się z zewnętrznym, a późniejsze
-    ``add_to_revision`` tego samego obiektu nadpisałoby stan „przed” stanem
-    „po”. Transakcja bazy jest ta sama.
+    NIE wolno wołać wewnątrz aktywnego ``create_revision``: zagnieżdżony
+    blok reversion scala się z zewnętrznym, a późniejsze ``add_to_revision``
+    tego samego obiektu nadpisałoby stan „przed” stanem „po” — po cichu
+    znikałaby możliwość cofnięcia zmiany. Dlatego wtedy rzucamy
+    ``WersjaPoczatkowaWAktywnejRewizji``. Akcje masowe admina oznaczone
+    ``zapisuje_historie`` wykonują się bez rewizji z ``changelist_view``
+    (patrz ``HistoriaWersjiMixin.create_revision``).
     """
+    if reversion.is_active():
+        raise WersjaPoczatkowaWAktywnejRewizji(
+            "Wersję początkową trzeba zapisać PRZED otwarciem rewizji "
+            "reversion — w aktywnej rewizji stan „przed” scaliłby się ze "
+            "stanem „po”."
+        )
     pks = list(pks)
     if not pks:
         return
@@ -123,35 +147,20 @@ def zapewnij_wersje_poczatkowe(model, pks, select_related=()):
     brakujace = [pk for pk in pks if str(pk) not in z_wersjami]
     if not brakujace:
         return
-    follow = reversion.revisions._get_options(model).follow
     obiekty = list(
         model._default_manager.filter(pk__in=brakujace)
         .select_related(*select_related)
-        .prefetch_related(*follow)
+        .prefetch_related(*sledzone_relacje(model))
     )
     if not obiekty:
         return
 
-    def _zapisz():
-        with transaction.atomic(), reversion.create_revision():
-            for obiekt in obiekty:
-                reversion.add_to_revision(obiekt)
-            # Bez użytkownika — to nie jest niczyja zmiana, tylko punkt
-            # odniesienia.
-            reversion.set_comment(KOMENTARZ_WERSJI_POCZATKOWEJ)
-
-    if not reversion.is_active():
-        _zapisz()
-        return
-    # Odłóż stos rewizji na czas zapisu i przywróć go potem. Celowo NIE
-    # ``contextvars.Context().run``: w świeżym kontekście Django potrafi
-    # dać INNE połączenie z bazą (poza bieżącą transakcją) — zapis wersji
-    # by przepadł albo poszedł obok transakcji.
-    token = _stos_rewizji.set([])
-    try:
-        _zapisz()
-    finally:
-        _stos_rewizji.reset(token)
+    with transaction.atomic(), reversion.create_revision():
+        for obiekt in obiekty:
+            reversion.add_to_revision(obiekt)
+        # Bez użytkownika — to nie jest niczyja zmiana, tylko punkt
+        # odniesienia.
+        reversion.set_comment(KOMENTARZ_WERSJI_POCZATKOWEJ)
 
 
 @contextmanager

@@ -7,7 +7,7 @@ from bpp.migration_util import nieodwracalna
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0516_soft_delete_protect_fk"),
+        ("bpp", "0517_soft_delete_protect_fk"),
         ("pbn_api", "0079_constraint_publikacja_instytucji"),
     ]
 

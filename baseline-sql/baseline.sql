@@ -17855,26 +17855,28 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1181	ewaluacja_optymalizacja	0019_okres_ewaluacji_wymagany	2000-01-01 00:00:00+00
 1182	ewaluacja_common	0007_wybrany_okres_ewaluacji	2000-01-01 00:00:00+00
 1183	pbn_export_queue	0011_pbn_export_queue_operacja	2000-01-01 00:00:00+00
-1184	bpp	0510_publikacje_soft_delete_fields	2000-01-01 00:00:00+00
-1185	bpp	0511_soft_delete_rekord_views	2000-01-01 00:00:00+00
-1186	bpp	0512_soft_delete_autorzy_przez_publikacje	2000-01-01 00:00:00+00
-1187	bpp	0513_nowe_sumy_bez_skasowanych_publikacji	2000-01-01 00:00:00+00
-1188	bpp	0514_drop_kronika_views	2000-01-01 00:00:00+00
-1189	bpp	0515_praca_habilitacyjna_warunkowy_unique_autora	2000-01-01 00:00:00+00
-1190	bpp	0516_soft_delete_protect_fk	2000-01-01 00:00:00+00
-1191	bpp	0517_autor_soft_delete	2000-01-01 00:00:00+00
-1192	bpp	0518_softdeletelog	2000-01-01 00:00:00+00
-1193	bpp	0519_soft_delete_struktura_i_slowniki	2000-01-01 00:00:00+00
-1194	bpp	0520_slug_unikalny_razem_z_koszem	2000-01-01 00:00:00+00
-1195	bpp	0521_kasowanie_prac_dyplomowych_z_autorzy_mat	2000-01-01 00:00:00+00
-1196	bpp	0522_kosz_zamrozony_trigger	2000-01-01 00:00:00+00
-1197	cerif_export	0001_odpieta_przynaleznosc	2000-01-01 00:00:00+00
-1198	pbn_api	0080_sentdata_withdrawn_at	2000-01-01 00:00:00+00
-1199	pbn_export_queue	0012_zamowil_protect	2000-01-01 00:00:00+00
-1200	pbn_import	0013_alter_importinconsistency_inconsistency_type	2000-01-01 00:00:00+00
-1201	pbn_integrator	0001_initial	2000-01-01 00:00:00+00
-1202	rozbieznosci_dyscyplin	0022_rozbieznosci_zrodel_bez_skasowanych_publikacji	2000-01-01 00:00:00+00
-1203	zglos_publikacje	0029_zgloszenie_autor_protect	2000-01-01 00:00:00+00
+1184	bpp	0510_slowniki_protect	2000-01-01 00:00:00+00
+1185	bpp	0511_publikacje_soft_delete_fields	2000-01-01 00:00:00+00
+1186	bpp	0512_soft_delete_rekord_views	2000-01-01 00:00:00+00
+1187	bpp	0513_soft_delete_autorzy_przez_publikacje	2000-01-01 00:00:00+00
+1188	bpp	0514_nowe_sumy_bez_skasowanych_publikacji	2000-01-01 00:00:00+00
+1189	bpp	0515_drop_kronika_views	2000-01-01 00:00:00+00
+1190	bpp	0516_praca_habilitacyjna_warunkowy_unique_autora	2000-01-01 00:00:00+00
+1191	bpp	0517_soft_delete_protect_fk	2000-01-01 00:00:00+00
+1192	bpp	0518_autor_soft_delete	2000-01-01 00:00:00+00
+1193	bpp	0519_softdeletelog	2000-01-01 00:00:00+00
+1194	bpp	0520_soft_delete_struktura_i_slowniki	2000-01-01 00:00:00+00
+1195	bpp	0521_slug_unikalny_razem_z_koszem	2000-01-01 00:00:00+00
+1196	bpp	0522_kasowanie_prac_dyplomowych_z_autorzy_mat	2000-01-01 00:00:00+00
+1197	bpp	0523_kosz_zamrozony_trigger	2000-01-01 00:00:00+00
+1198	cerif_export	0001_odpieta_przynaleznosc	2000-01-01 00:00:00+00
+1199	pbn_api	0080_sentdata_withdrawn_at	2000-01-01 00:00:00+00
+1200	pbn_export_queue	0012_zamowil_protect	2000-01-01 00:00:00+00
+1201	pbn_import	0013_alter_importinconsistency_inconsistency_type	2000-01-01 00:00:00+00
+1202	pbn_integrator	0001_initial	2000-01-01 00:00:00+00
+1203	rozbieznosci_dyscyplin	0022_rozbieznosci_zrodel_bez_skasowanych_publikacji	2000-01-01 00:00:00+00
+1204	zglos_publikacje	0029_autor_slowniki_protect	2000-01-01 00:00:00+00
+1205	zglos_publikacje	0030_zgloszenie_autor_protect	2000-01-01 00:00:00+00
 \.
 
 
@@ -19946,7 +19948,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1203, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1205, true);
 
 
 --
