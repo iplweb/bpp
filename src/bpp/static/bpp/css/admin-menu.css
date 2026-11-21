@@ -619,9 +619,11 @@ header#grp-header #grp-navigation ul#grp-user-tools {
    context - the z-index: 99999 of the submenus only counts inside the header.
    Select2 dropdowns (global quick search, autocomplete fields) are attached to
    <body> with z-index: 1051 and therefore covered the open menu. While a menu
-   item is open, lift the whole header above them. */
+   item is open, lift the whole header above them. No :focus-within: a clicked
+   href="#" item keeps focus after the menu closes and would leave the header
+   lifted (above the HTMX loading overlay). Keyboard focus is handled by the
+   focusin handler in admin/base_site.html, which closes the dropdown. */
 #grp-header:has(#navigation-menu > li:hover),
-#grp-header:has(#navigation-menu > li.over),
-#grp-header:has(#navigation-menu > li:focus-within) {
+#grp-header:has(#navigation-menu > li.over) {
     z-index: 100000;
 }

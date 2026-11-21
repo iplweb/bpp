@@ -66,6 +66,4 @@ def test_autor_dyscyplina_add_form_bez_linku_i_zapis_dziala(
         },
     )
     assert res.status_code == 302, res.content.decode()[:3000]
-    assert Autor_Dyscyplina.objects.filter(
-        autor=autor_jan_kowalski, rok=2021
-    ).exists()
+    assert Autor_Dyscyplina.objects.filter(autor=autor_jan_kowalski, rok=2021).exists()
