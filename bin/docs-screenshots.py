@@ -16,11 +16,11 @@ elements, so re-running after a UI change re-places them automatically.
 from __future__ import annotations
 
 import argparse
-from urllib.parse import quote
 import base64
 import os
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 from playwright.sync_api import Page, sync_playwright
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
