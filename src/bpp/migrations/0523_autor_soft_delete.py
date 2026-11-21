@@ -5,7 +5,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0521_soft_delete_protect_fk"),
+        ("bpp", "0522_soft_delete_protect_fk"),
         ("pbn_api", "0079_constraint_publikacja_instytucji"),
     ]
 
