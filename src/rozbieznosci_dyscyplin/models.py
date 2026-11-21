@@ -1,8 +1,36 @@
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.db.models import DO_NOTHING
+from django.utils.html import strip_tags
+from django.utils.text import Truncator
 
 from bpp.fields import YearField
 from bpp.models import BazaModeluOdpowiedzialnosciAutorow, TupleField
+
+DLUGOSC_TYTULU = 80
+
+
+def _opis(obj, pole, tekst, brak):
+    """Text for a related object of a DB-view row, or ``brak`` when it is gone.
+
+    The views use DO_NOTHING foreign keys, so the related row may have been
+    deleted after the view row was read.
+    """
+    try:
+        powiazany = getattr(obj, pole)
+    except ObjectDoesNotExist:
+        return brak
+    return tekst(powiazany)
+
+
+def _tytul(rekord):
+    return Truncator(strip_tags(rekord.tytul_oryginalny or "").strip()).chars(
+        DLUGOSC_TYTULU
+    )
+
+
+def _autor(autor):
+    return f"{autor.nazwisko} {autor.imiona}"
 
 
 class RozbieznosciViewBase(models.Model):
@@ -26,6 +54,11 @@ class RozbieznosciViewBase(models.Model):
         managed = False
         abstract = True
         ordering = ["id"]
+
+    def __str__(self):
+        tytul = _opis(self, "rekord", _tytul, f"rekord #{self.rekord_id}")
+        autor = _opis(self, "autor", _autor, f"autor #{self.autor_id}")
+        return f"{tytul} — {autor} ({self.rok})"
 
 
 class BrakPrzypisaniaView(RozbieznosciViewBase):
@@ -93,3 +126,13 @@ class RozbieznosciZrodelView(models.Model):
         managed = False
         verbose_name = "rozbieżność dyscyplin źródeł"
         verbose_name_plural = "rozbieżności dyscyplin źródeł"
+
+    def __str__(self):
+        tytul = _opis(
+            self,
+            "wydawnictwo_ciagle",
+            _tytul,
+            f"wydawnictwo ciągłe #{self.wydawnictwo_ciagle_id}",
+        )
+        zrodlo = _opis(self, "zrodlo", lambda z: z.nazwa, f"źródło #{self.zrodlo_id}")
+        return f"{tytul} — {zrodlo} ({self.rok})"
