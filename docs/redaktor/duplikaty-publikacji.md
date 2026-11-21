@@ -48,7 +48,7 @@ skanowania” i formularz **Skanowanie duplikatów**.
    i tytuły.
 3. Kliknij **Uruchom skanowanie**.
 
-Jeśli są już wyniki poprzedniego skanowania, przeglądarka zapyta: „Czy na
+Jeśli są już wyniki poprzedniego skanowania, przeglądarka najpierw zapyta: „Czy na
 pewno chcesz uruchomić nowe skanowanie? Poprzednie wyniki zostaną
 zastąpione.”. Formularz pamięta ustawienia ostatniego skanowania.
 
@@ -79,16 +79,10 @@ Twoją decyzję. Na stronie mieści się 25 par.
 
 | Kolumna | Co znaczy |
 |---|---|
-| **Podobieństwo** | ocena podobieństwa pary; lista jest ułożona od par najbardziej podobnych |
-| **Oryginał** / **Potencjalny duplikat** | oba rekordy: rodzaj (`wydawnictwo_ciagle` — artykuł, `wydawnictwo_zwarte` — książka lub rozdział), tytuł i rok. Kliknięcie tytułu otwiera stronę rekordu w nowej karcie |
+| **Podobieństwo** | ocena podobieństwa pary w procentach (zgodny DOI daje 100%); lista jest ułożona od par najbardziej podobnych |
+| **Oryginał** / **Potencjalny duplikat** | oba rekordy: rodzaj (**Wydawnictwo ciągłe** — artykuł, **Wydawnictwo zwarte** — książka lub rozdział), tytuł i rok. Kliknięcie tytułu otwiera stronę rekordu w nowej karcie |
 | **Powody** | co się zgadza: **DOI**, **ISBN**, **WWW**, **źródło** albo sam **tytuł** |
 | **Akcje** | Twoja decyzja — patrz [krok 5](#krok-5) |
-
-!!! note "„1%” w kolumnie Podobieństwo"
-    W obecnej wersji kolumna **Podobieństwo** pokazuje przy każdej parze
-    „1%” albo „0%” zamiast pełnej wartości procentowej. To błąd
-    wyświetlania — **kolejność** listy jest poprawna: na górze są pary
-    najbardziej podobne (najpierw zgodne DOI, potem podobne tytuły).
 
 „Oryginał” to tylko rekord, od którego BPP zaczął porównanie — **nie**
 znaczy, że jest lepszy albo starszy. Który rekord zostawić, decydujesz
@@ -174,7 +168,7 @@ ręcznie:
 ### Przykład 1. Ten sam artykuł wpisany dwa razy {#przyklad-1}
 
 Na liście jest para „Wpływ mutacji na tolerancję eliksirów (nr 28)”
-(2024), oba rekordy to artykuły, **Powody**: **DOI**, **źródło**. Na
+(2024), oba rekordy to artykuły, **Powody**: **DOI**, **źródło**, podobieństwo 100%. Na
 stronach rekordów widać ten sam tytuł i czasopismo „Folia Temerska”;
 jeden ma DOI zapisany jako link i 2 autorów, drugi — DOI bez linku
 i 8 autorów.
@@ -186,8 +180,8 @@ dyscypliny, potem usuń rekord z 2 autorami.
 ### Przykład 2. Artykuł wpisany ponownie jako rozdział {#przyklad-2}
 
 Para „Perspektywy rozwoju bestii w lochach Novigradu (nr 10)” (artykuł,
-`wydawnictwo_ciagle`) i „Perspektywy rozwoju bestii w lochach Novigradu”
-(`wydawnictwo_zwarte`), **Powody**: **tytuł**. Tytuły różnią się tylko
+Wydawnictwo ciągłe) i „Perspektywy rozwoju bestii w lochach Novigradu”
+(Wydawnictwo zwarte), **Powody**: **tytuł**, podobieństwo ok. 90%. Tytuły różnią się tylko
 końcówką, rok ten sam.
 
 Sprawdź, czy rozdział nie jest przypadkiem osobną publikacją (np. ta sama

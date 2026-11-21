@@ -79,15 +79,10 @@ def duplicate_publications_view(request):
         "ignore_zrodlo": False,
     }
 
-    # If no completed scan, show "run scan first" message
+    # If no completed scan, show "run scan first" message. A running scan
+    # has its own progress panel in the template, so no extra flash message
+    # (it was rendered once with stale 0/0 numbers).
     if not completed_scan:
-        if running_scan:
-            messages.info(
-                request,
-                f"Skanowanie w toku: {running_scan.progress_percent}% "
-                f"({running_scan.publications_scanned}/"
-                f"{running_scan.total_publications_to_scan} publikacji)",
-            )
         return render(
             request,
             "deduplikator_publikacji/duplicate_publications.html",

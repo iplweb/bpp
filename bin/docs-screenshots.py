@@ -6538,9 +6538,14 @@ def duplikaty_publikacji(page: Page, base: str, out: Path) -> None:
             0,
             bottom_of(red, "#scan-progress-container", 10),
         )
-    # the page reloads itself when the scan is done
-    red.wait_for_selector("table.deduplikator-publikacji__table", timeout=120000)
-    red.wait_for_load_state("networkidle")
+    # the page reloads itself when the scan is done; don't rely on its timer
+    # (throttled in a background browser context) - reload until the list shows
+    for _ in range(60):
+        if red.locator("table.deduplikator-publikacji__table").count():
+            break
+        red.wait_for_timeout(2000)
+        red.goto(dedup)
+        red.wait_for_load_state("networkidle")
 
     # 4. the results list
     red.goto(dedup)
