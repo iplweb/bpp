@@ -137,10 +137,8 @@ class PublicationImporter(ImportStepBase):
         # ma dać czysty stan przed pełnym re-importem z PBN.
         #
         # `global_objects`, bo `objects` nie widzi kosza: publikacje PBN
-        # skasowane wcześniej przez operatora przetrwałyby „usuwanie
-        # istniejących", a potem re-import by je wskrzesił (patrz
-        # `przywroc_jesli_w_koszu`) — operator zobaczyłby z powrotem rekordy,
-        # które usunął, i to bez śladu, że przeżyły czyszczenie.
+        # z kosza przetrwałyby „usuwanie istniejących", a re-import by je
+        # pominął (``pbn_integrator/kosz.py``) — ten krok ma dać czysty stan.
         deleted_zwarte = Wydawnictwo_Zwarte.global_objects.exclude(
             pbn_uid_id=None
         ).hard_delete()[0]

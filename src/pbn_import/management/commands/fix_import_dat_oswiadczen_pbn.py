@@ -218,7 +218,7 @@ PRZYKŁADY UŻYCIA:
         self._print_missing_details(
             missing_link,
             "Brak powiązania autor-publikacja",
-            lambda x: (f"{x[1]}: {x[0]}{f', {x[2]}' if x[2] else ''} (PBN ID: {x[3]})"),
+            lambda x: f"{x[1]}: {x[0]}{f', {x[2]}' if x[2] else ''} (PBN ID: {x[3]})",
         )
 
     def _should_skip_by_year(self, wa, year_range):

@@ -13,7 +13,7 @@ from bpp.models import (
 )
 from bpp.util import safe_tytul_html
 from pbn_api.client import PBNClient
-from pbn_integrator.kosz import znajdz_lub_wskrzes_rekord
+from pbn_integrator.kosz import pomin_jesli_w_koszu
 
 from .authors import utworz_autorow
 from .cache import (
@@ -65,16 +65,13 @@ def importuj_ksiazke(
         )
         return None
 
-    if not force:
-        # Kosz jest niewidoczny dla matchingu (``Rekord`` filtruje po
-        # ``deleted_at``), ale widoczny dla unique na ``pbn_uid``. Bez zajrzenia
-        # tam re-import ksiazki z kosza wywala sie ``IntegrityError``-em.
-        # Szczegoly: docstring ``znajdz_lub_wskrzes_rekord``.
-        istniejacy = znajdz_lub_wskrzes_rekord(
-            pbn_publication, Wydawnictwo_Zwarte, "books"
-        )
-        if istniejacy is not None:
-            return istniejacy
+    ret = pbn_publication.rekord_w_bpp
+    if ret is not None and not force:
+        return ret
+
+    # Rekord w koszu BPP: pomijamy i raportujemy (``pbn_integrator/kosz.py``).
+    if pomin_jesli_w_koszu(pbn_publication, "books", inconsistency_callback):
+        return None
 
     pbn_json = pbn_publication.current_version["object"]
     orig_pbn_json = copy.deepcopy(pbn_json)  # noqa

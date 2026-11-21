@@ -16,7 +16,7 @@ from bpp.models import (
 from bpp.util import safe_tytul_html
 from pbn_api.client import PBNClient
 from pbn_api.models import Publication
-from pbn_integrator.kosz import przywroc_jesli_w_koszu, znajdz_lub_wskrzes_rekord
+from pbn_integrator.kosz import pomin_jesli_w_koszu, zglos_rekord_w_koszu
 
 from .authors import utworz_autorow
 from .books import importuj_ksiazke
@@ -39,25 +39,29 @@ logger = logging.getLogger(__name__)
 
 
 def znajdz_ksiazke_nadrzedna(pbn_book_id):
-    """Książka-matka rozdziału, po ``pbn_uid`` — RAZEM Z KOSZEM.
+    """Książka-matka rozdziału po ``pbn_uid`` — RAZEM Z KOSZEM.
 
-    Wydzielone z ``importuj_rozdzial`` po to, żeby dało się to przetestować
-    bez budowania całego JSON-a z PBN.
-
-    Bez widzenia kosza re-import rozdziału, którego książka-matka została
-    skasowana, uznawał ją za nieistniejącą i importował PONOWNIE — tworząc
-    duplikat książki, a przy okazji odpinając rozdziały od oryginału.
-
-    Trafienie w kosz oznacza wskrzeszenie (decyzja właściciela, 2026-08-08):
-    skoro PBN nadal ma tę książkę, ma ją mieć też BPP. Fakt ląduje
-    w rejestrze ``RekordPrzywroconyPrzezImport``.
+    Bez widzenia kosza re-import rozdziału, którego książka-matka jest
+    w koszu, uznawał ją za nieistniejącą i importował ponownie (duplikat
+    książki). Książki z kosza NIE wskrzeszamy — wołający pomija rozdział
+    i raportuje (``pbn_integrator/kosz.py``).
     """
-    ksiazka = Wydawnictwo_Zwarte.global_objects.filter(pbn_uid_id=pbn_book_id).first()
-    if ksiazka is None:
-        return None
+    return Wydawnictwo_Zwarte.global_objects.filter(pbn_uid_id=pbn_book_id).first()
 
-    przywroc_jesli_w_koszu(ksiazka, ksiazka.pbn_uid, "chapters:ksiazka-nadrzedna")
-    return ksiazka
+
+def _ksiazka_w_koszu(ksiazka, pbn_book_id, pbn_publication, inconsistency_callback):
+    """``True`` (i raport), gdy książka nadrzędna rozdziału jest w koszu."""
+    if ksiazka is None or ksiazka.deleted_at is None:
+        return False
+    zglos_rekord_w_koszu(
+        ksiazka,
+        pbn_book_id,
+        "chapters:ksiazka-nadrzedna",
+        inconsistency_callback,
+        dopisek=f"To książka nadrzędna rozdziału {pbn_publication.pk} — "
+        f"rozdział też pominięto. ",
+    )
+    return True
 
 
 def _chapter_json_z_nadrzednego(wydawnictwo_nadrzedne, mongoId):
@@ -110,20 +114,23 @@ def importuj_rozdzial(
     except Publication.DoesNotExist as err:
         raise NotImplementedError(f"Publikacja {mongoId=} nie istnieje") from err
 
-    if not force:
-        # Jak w ksiazkach: kosz jest niewidoczny dla matchingu, ale widoczny dla
-        # unique na ``pbn_uid``. Szczegoly: docstring
-        # ``znajdz_lub_wskrzes_rekord``.
-        istniejacy = znajdz_lub_wskrzes_rekord(
-            pbn_publication, Wydawnictwo_Zwarte, "chapters"
-        )
-        if istniejacy is not None:
-            return istniejacy
+    ret = pbn_publication.rekord_w_bpp
+    if ret is not None and not force:
+        return ret
 
     pbn_json = pbn_publication.current_version["object"]
     orig_pbn_json = copy.deepcopy(pbn_json)  # noqa
     pbn_book_id = pbn_json.pop("book")["id"]
     wydawnictwo_nadrzedne = znajdz_ksiazke_nadrzedna(pbn_book_id)
+
+    # Rozdział albo jego książka w koszu BPP: pomijamy i raportujemy
+    # (``pbn_integrator/kosz.py``) — z kosza nie wskrzeszamy.
+    if pomin_jesli_w_koszu(
+        pbn_publication, "chapters", inconsistency_callback
+    ) or _ksiazka_w_koszu(
+        wydawnictwo_nadrzedne, pbn_book_id, pbn_publication, inconsistency_callback
+    ):
+        return None
     if wydawnictwo_nadrzedne is None:
         wydawnictwo_nadrzedne = importuj_ksiazke(
             pbn_book_id,

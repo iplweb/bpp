@@ -3,37 +3,36 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
 
-class RekordPrzywroconyPrzezImport(models.Model):
-    """Rejestr publikacji WSKRZESZONYCH z kosza przez import z PBN.
+class RekordWKoszuPominietyPrzezImport(models.Model):
+    """Raport: import z PBN trafił na rekord, który u nas jest w koszu.
 
-    PO CO TO ISTNIEJE. Plan fazy 03 zakładał pierwotnie, że import ma rekord
-    w koszu POMIJAĆ (decyzja #14), bo auto-restore pozwala „wskrzeszać rzeczy
-    skasowane celowo". Właściciel systemu rozstrzygnął inaczej — PBN jest dla
-    tych publikacji źródłem prawdy, więc skoro rekord tam jest, ma wrócić
-    także do BPP.
+    DECYZJA WŁAŚCICIELA (listopad 2026): import NIE wskrzesza rekordów
+    z kosza. Rekord usunięty w BPP został usunięty świadomie, więc import go
+    POMIJA i zgłasza JAWNIE: „w PBN jest rekord X, ale u nas jest usunięty".
+    Operator decyduje sam — przywraca rekord z kosza (wtedy kolejny import
+    go zaktualizuje) albo zostawia go w koszu.
 
-    Ryzyko wskazane w tamtej decyzji nie znika, tylko zmienia postać:
-    z „nie róbmy tego" na „róbmy, ale zostawmy ślad". Ten model JEST tym
-    śladem. Operator, który znajdzie w bazie publikację skasowaną przez siebie
-    tydzień wcześniej, ma gdzie sprawdzić, że wróciła z importu, kiedy
-    i z którego źródła — zamiast zakładać, że coś mu się przywidziało.
+    Bez pominięcia import albo tworzyłby duplikat (dopasowanie idzie po
+    ``Rekord``, który kosza nie widzi), albo wywracał się na unikalnym
+    ``pbn_uid`` (rekord w koszu nadal go trzyma).
 
-    Wpis powstaje WYŁĄCZNIE przy realnym wskrzeszeniu. Zwykły re-import
-    żywego rekordu nie zostawia tu nic — inaczej rejestr zapełniłby się szumem
-    i przestałby cokolwiek znaczyć.
+    Jeden wiersz na (rekord, ścieżka importu) — kolejne importy aktualizują
+    datę i licznik, zamiast zalewać raport duplikatami.
     """
 
     content_type = models.ForeignKey(ContentType, models.CASCADE)
     object_id = models.PositiveIntegerField()
-    #: Publikacja, która wróciła z kosza. GenericFK, bo import dotyka kilku
-    #: modeli (wydawnictwa ciągłe, zwarte, prace doktorskie/habilitacyjne).
+    #: Rekord w koszu. GenericFK, bo import dotyka kilku modeli publikacji.
     rekord = GenericForeignKey("content_type", "object_id")
 
-    przywrocono = models.DateTimeField(
-        "Przywrócono",
-        auto_now_add=True,
+    pominieto = models.DateTimeField(
+        "Ostatnio pominięto",
+        auto_now=True,
         db_index=True,
-        help_text="Kiedy import wskrzesił ten rekord.",
+        help_text="Kiedy import ostatnio trafił na ten rekord w koszu.",
+    )
+    ile_razy = models.PositiveIntegerField(
+        "Ile razy", default=1, help_text="Ile razy import pominął ten rekord."
     )
     pbn_uid = models.ForeignKey(
         "pbn_api.Publication",
@@ -41,36 +40,25 @@ class RekordPrzywroconyPrzezImport(models.Model):
         null=True,
         blank=True,
         verbose_name="Publikacja w PBN",
-        help_text="Rekord PBN, przez który import trafił na tę publikację.",
+        help_text="Rekord PBN, przez który import trafił na rekord w koszu.",
     )
     zrodlo_importu = models.CharField(
         "Źródło importu",
         max_length=50,
-        help_text="Która ścieżka importu wskrzesiła rekord (articles / books / "
-        "chapters).",
+        help_text="Ścieżka importu (articles / books / chapters / …).",
     )
+    komunikat = models.TextField("Komunikat")
 
     class Meta:
-        verbose_name = "rekord przywrócony przez import"
-        verbose_name_plural = "rekordy przywrócone przez import"
-        ordering = ("-przywrocono",)
-        indexes = [
-            # Najczęstsze pytanie operatora brzmi „co wróciło ostatnio" —
-            # stąd indeks po dacie malejąco razem z typem rekordu.
-            models.Index(
-                fields=["-przywrocono", "content_type"],
-                name="pbnint_przywr_data_ct_idx",
-            ),
-            # Drugie pytanie, i jedyne zadawane WPROST o konkretną publikację:
-            # „czy TEN rekord wrócił?". Indeks po dacie go nie obsługuje, a sam
-            # `content_type_id` (indeks domyślny FK) zawęża do typu, nie do
-            # wiersza — przy jednym typie publikacji to praktycznie skan całej
-            # tabeli, która rośnie z każdym importem.
-            models.Index(
-                fields=["content_type", "object_id"],
-                name="pbnint_przywr_ct_objid_idx",
+        verbose_name = "rekord w koszu pominięty przez import PBN"
+        verbose_name_plural = "rekordy w koszu pominięte przez import PBN"
+        ordering = ("-pominieto",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=["content_type", "object_id", "zrodlo_importu"],
+                name="pbnint_kosz_jeden_wpis_na_rekord",
             ),
         ]
 
     def __str__(self):
-        return f"{self.rekord} (przywrócono: {self.przywrocono})"
+        return self.komunikat
