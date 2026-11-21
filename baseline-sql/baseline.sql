@@ -16566,6 +16566,23 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+361	bpp	0268_auto_20210519_0238	2000-01-01 00:00:00+00
+20	axes	0001_initial	2000-01-01 00:00:00+00
+705	favicon	0002_favicon_site	2000-01-01 00:00:00+00
+945	zglos_publikacje	0011_auto_20220910_1646	2000-01-01 00:00:00+00
+946	zglos_publikacje	0012_auto_20220910_1654	2000-01-01 00:00:00+00
+947	zglos_publikacje	0013_auto_20220910_2114	2000-01-01 00:00:00+00
+948	zglos_publikacje	0014_zgloszenie_publikacji_autor_kierunek_studiow	2000-01-01 00:00:00+00
+949	zglos_publikacje	0015_zgloszenie_publikacji_autor_oswiadczenie_ken	2000-01-01 00:00:00+00
+950	zglos_publikacje	0016_zgloszenie_publikacji_deleted_at_and_more	2000-01-01 00:00:00+00
+951	zglos_publikacje	0017_zgloszenie_publikacji_zgoda_na_publikacje_pelnego_tekstu	2000-01-01 00:00:00+00
+952	zglos_publikacje	0018_alter_zgloszenie_publikacji_rodzaj_zglaszanej_publikacji	2000-01-01 00:00:00+00
+953	zglos_publikacje	0019_zgloszenie_publikacji_autor_ostatnio_zmieniony	2000-01-01 00:00:00+00
+954	zglos_publikacje	0020_move_files_to_protected	2000-01-01 00:00:00+00
+955	zglos_publikacje	0021_fix_file_paths	2000-01-01 00:00:00+00
+956	zglos_publikacje	0022_uuid_filenames	2000-01-01 00:00:00+00
+957	zglos_publikacje	0023_nowy_formularz_zgloszenia	2000-01-01 00:00:00+00
+958	zglos_publikacje	0024_migracja_danych_nowy_formularz	2000-01-01 00:00:00+00
 999	bpp	0456_faza_b_i3	2000-01-01 00:00:00+00
 397	bpp	0304_auto_20211010_2247	2000-01-01 00:00:00+00
 779	import_polon	0015_move_files_to_protected	2000-01-01 00:00:00+00
@@ -17092,7 +17109,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 358	bpp	0265_rekord_mat_doi	2000-01-01 00:00:00+00
 359	bpp	0266_auto_20210519_0236	2000-01-01 00:00:00+00
 360	bpp	0267_auto_20210519_0237	2000-01-01 00:00:00+00
-361	bpp	0268_auto_20210519_0238	2000-01-01 00:00:00+00
 362	bpp	0269_wyzeruj_zrodlo_pbn_uid	2000-01-01 00:00:00+00
 363	bpp	0270_auto_20210530_0114	2000-01-01 00:00:00+00
 364	bpp	0271_auto_20210530_0225	2000-01-01 00:00:00+00
@@ -17325,7 +17341,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 625	django_countdown	0001_initial	2000-01-01 00:00:00+00
 626	django_countdown	0002_alter_sitecountdown_countdown_time	2000-01-01 00:00:00+00
 1136	bpp	0488_purge_praca_tabela_dbtemplate	2000-01-01 00:00:00+00
-20	axes	0001_initial	2000-01-01 00:00:00+00
 76	taggit	0001_initial	2000-01-01 00:00:00+00
 627	django_countdown	0003_sitecountdown_maintenance_until	2000-01-01 00:00:00+00
 628	django_countdown	0004_alter_sitecountdown_long_description	2000-01-01 00:00:00+00
@@ -17379,6 +17394,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 674	ewaluacja_liczba_n	0002_rename_dyscyplinanieraportowana_2022_2025_dyscyplinanieraportowana_and_more	2000-01-01 00:00:00+00
 675	ewaluacja_liczba_n	0003_add_liczba_n_to_dyscyplina_nieraportowana	2000-01-01 00:00:00+00
 676	ewaluacja_liczba_n	0004_add_ilosc_udzialow_za_calosc	2000-01-01 00:00:00+00
+765	import_polon	0001_initial	2000-01-01 00:00:00+00
 677	ewaluacja_liczba_n	0005_iloscudzialowdlaautorazarok_autor_dyscyplina	2000-01-01 00:00:00+00
 678	ewaluacja_liczba_n	0006_alter_iloscudzialowdlaautorazacalosc_unique_together_and_more	2000-01-01 00:00:00+00
 679	ewaluacja_liczba_n	0007_alter_iloscudzialowdlaautorazacalosc_komentarz	2000-01-01 00:00:00+00
@@ -17405,7 +17421,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 701	ewaluacja_optymalizacja	0014_add_optimality_gap_to_optimization_run	2000-01-01 00:00:00+00
 702	ewaluacja_optymalizacja	0015_remove_disciplineswapopportunity_ewaluacja_o_uczelni_ed0a90_idx_and_more	2000-01-01 00:00:00+00
 703	ewaluacja_optymalizuj_publikacje	0001_initial	2000-01-01 00:00:00+00
-705	favicon	0002_favicon_site	2000-01-01 00:00:00+00
 707	favicon	0004_faviconimg_favicon_size_rel_unique	2000-01-01 00:00:00+00
 708	favicon	0005_leftover_changes	2000-01-01 00:00:00+00
 709	flexible_reports	0001_initial	2000-01-01 00:00:00+00
@@ -17467,7 +17482,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 762	import_list_ministerialnych	0006_importlistministerialnych_nie_porownuj_po_tytulach	2000-01-01 00:00:00+00
 763	import_list_ministerialnych	0007_move_files_to_protected	2000-01-01 00:00:00+00
 764	import_list_ministerialnych	0008_remove_null_from_string_fields	2000-01-01 00:00:00+00
-765	import_polon	0001_initial	2000-01-01 00:00:00+00
 766	import_polon	0002_remove_wierszimportuplikupolon_orig_and_more	2000-01-01 00:00:00+00
 767	import_polon	0003_wierszimportuplikupolon_dyscyplina_naukowa_and_more	2000-01-01 00:00:00+00
 768	import_polon	0004_importplikupolon_rok	2000-01-01 00:00:00+00
@@ -17649,20 +17663,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 941	zglos_publikacje	0007_auto_20220816_1019	2000-01-01 00:00:00+00
 943	zglos_publikacje	0009_alter_zgloszenie_publikacji_status	2000-01-01 00:00:00+00
 944	zglos_publikacje	0010_auto_20220818_0012	2000-01-01 00:00:00+00
-945	zglos_publikacje	0011_auto_20220910_1646	2000-01-01 00:00:00+00
-946	zglos_publikacje	0012_auto_20220910_1654	2000-01-01 00:00:00+00
-947	zglos_publikacje	0013_auto_20220910_2114	2000-01-01 00:00:00+00
-948	zglos_publikacje	0014_zgloszenie_publikacji_autor_kierunek_studiow	2000-01-01 00:00:00+00
-949	zglos_publikacje	0015_zgloszenie_publikacji_autor_oswiadczenie_ken	2000-01-01 00:00:00+00
-950	zglos_publikacje	0016_zgloszenie_publikacji_deleted_at_and_more	2000-01-01 00:00:00+00
-951	zglos_publikacje	0017_zgloszenie_publikacji_zgoda_na_publikacje_pelnego_tekstu	2000-01-01 00:00:00+00
-952	zglos_publikacje	0018_alter_zgloszenie_publikacji_rodzaj_zglaszanej_publikacji	2000-01-01 00:00:00+00
-953	zglos_publikacje	0019_zgloszenie_publikacji_autor_ostatnio_zmieniony	2000-01-01 00:00:00+00
-954	zglos_publikacje	0020_move_files_to_protected	2000-01-01 00:00:00+00
-955	zglos_publikacje	0021_fix_file_paths	2000-01-01 00:00:00+00
-956	zglos_publikacje	0022_uuid_filenames	2000-01-01 00:00:00+00
-957	zglos_publikacje	0023_nowy_formularz_zgloszenia	2000-01-01 00:00:00+00
-958	zglos_publikacje	0024_migracja_danych_nowy_formularz	2000-01-01 00:00:00+00
 959	zglos_publikacje	0025_alter_obslugujacy_zgloszenia_wydzialow_user	2000-01-01 00:00:00+00
 977	bpp	0424_cache_punktacja_dyscypliny_uczelnia_and_more	2000-01-01 00:00:00+00
 1003	bpp	0459_faza_b_ii1_retarget	2000-01-01 00:00:00+00
@@ -18108,21 +18108,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 314	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 315	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 316	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-422	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
-423	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
-424	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-425	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-426	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-427	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-428	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-429	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-430	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-431	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-432	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-433	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-434	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-435	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-436	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
