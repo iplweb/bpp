@@ -12,7 +12,11 @@ from pbn_client.const import ACTIVE, DELETED
 from bpp.models import Rekord, Rodzaj_Zrodla, Uczelnia, Wydawnictwo_Ciagle, Zrodlo
 from bpp.permissions import wprowadzanie_danych_wymagane
 from bpp.util import zaloguj_polkniety_wyjatek
-from bpp.wersjonowanie import zarejestruj_utworzenie
+from bpp.wersjonowanie import (
+    zarejestruj_usuniecie,
+    zarejestruj_utworzenie,
+    zmiany_rekordow,
+)
 from pbn_api.models import Journal
 from pbn_export_queue.models import PBN_Export_Queue
 
@@ -553,19 +557,25 @@ def _obsluz_confirm(request, zrodlo, form):
                 zrodlo
             )
 
-            liczba_rekordow_updated = Wydawnictwo_Ciagle.objects.filter(
-                zrodlo=zrodlo
-            ).update(zrodlo=zrodlo_nowe)
+            prace = Wydawnictwo_Ciagle.objects.filter(zrodlo=zrodlo)
+            with zmiany_rekordow(
+                request.user,
+                Wydawnictwo_Ciagle,
+                list(prace.values_list("pk", flat=True)),
+                f"Przemapowano źródło skasowane w PBN „{zrodlo}” → "
+                f"„{zrodlo_nowe}” (przemapowanie źródeł PBN).",
+            ):
+                liczba_rekordow_updated = prace.update(zrodlo=zrodlo_nowe)
 
-            # Zapisz log operacji
-            PrzeMapowanieZrodla.objects.create(
-                zrodlo_skasowane_pbn_uid=zrodlo.pbn_uid,
-                zrodlo_stare=zrodlo,
-                zrodlo_nowe=zrodlo_nowe,
-                liczba_rekordow=liczba_rekordow_updated,
-                utworzono_przez=request.user,
-                rekordy_historia=rekordy_historia,
-            )
+                # Zapisz log operacji
+                PrzeMapowanieZrodla.objects.create(
+                    zrodlo_skasowane_pbn_uid=zrodlo.pbn_uid,
+                    zrodlo_stare=zrodlo,
+                    zrodlo_nowe=zrodlo_nowe,
+                    liczba_rekordow=liczba_rekordow_updated,
+                    utworzono_przez=request.user,
+                    rekordy_historia=rekordy_historia,
+                )
 
             sukces_pbn, bledy_pbn = _dodaj_rekordy_do_kolejki_pbn(
                 request, rekordy_do_wyslania
@@ -732,7 +742,14 @@ def usun_zrodlo(request, zrodlo_id):
                 # Zapisz informacje o źródle przed usunięciem
                 nazwa_zrodla = str(zrodlo)
 
-                # Usuń źródło
+                # Usuń źródło (z wpisem w historii — inaczej zniknęłoby bez
+                # śladu w adminie).
+                zarejestruj_usuniecie(
+                    request.user,
+                    zrodlo,
+                    "Usunięto źródło skasowane w PBN, bez rekordów "
+                    "(przemapowanie źródeł PBN).",
+                )
                 zrodlo.delete()
 
                 messages.success(

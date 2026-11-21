@@ -12,6 +12,7 @@ from django.views.generic import FormView, View
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Uczelnia, Wydawnictwo_Ciagle, Zrodlo
 from bpp.util import zaloguj_polkniety_wyjatek
+from bpp.wersjonowanie import zmiany_rekordow
 from pbn_api.exceptions import AlreadyEnqueuedError
 from pbn_export_queue.models import PBN_Export_Queue
 
@@ -212,17 +213,30 @@ class PrzemapujZrodloView(WprowadzanieDanychRequiredMixin, FormView):
                     )
                 )
 
-                # Wykonaj przemapowanie
-                liczba_przemapowanych = publikacje.update(zrodlo=zrodlo_docelowe)
-
-                # Zapisz historię przemapowania
-                PrzemapowaZrodla.objects.create(
-                    zrodlo_z=self.zrodlo_zrodlowe,
-                    zrodlo_do=zrodlo_docelowe,
-                    liczba_publikacji=liczba_przemapowanych,
-                    publikacje_historia=publikacje_historia,
-                    utworzono_przez=self.request.user,
+                # Wykonaj przemapowanie (z wpisem w historii każdej pracy).
+                komentarz = (
+                    f"Przemapowano źródło „{self.zrodlo_zrodlowe}” → "
+                    f"„{zrodlo_docelowe}”"
                 )
+                with zmiany_rekordow(
+                    self.request.user,
+                    Wydawnictwo_Ciagle,
+                    list(publikacje.values_list("pk", flat=True)),
+                    komentarz + ".",
+                ) as zmiana:
+                    liczba_przemapowanych = publikacje.update(zrodlo=zrodlo_docelowe)
+
+                    # Zapisz historię przemapowania
+                    przemapowanie = PrzemapowaZrodla.objects.create(
+                        zrodlo_z=self.zrodlo_zrodlowe,
+                        zrodlo_do=zrodlo_docelowe,
+                        liczba_publikacji=liczba_przemapowanych,
+                        publikacje_historia=publikacje_historia,
+                        utworzono_przez=self.request.user,
+                    )
+                    zmiana.komentarz = (
+                        f"{komentarz} (przemapowanie źródeł nr {przemapowanie.pk})."
+                    )
 
                 # Dodaj publikacje do kolejki PBN jeśli checkbox zaznaczony
                 sukces_pbn, bledy_pbn = 0, []
@@ -331,9 +345,19 @@ class CofnijPrzemapowaView(WprowadzanieDanychRequiredMixin, View):
                 publikacje_ids = [p["id"] for p in przemapowanie.publikacje_historia]
 
                 # Cofnij przemapowanie: zmień z powrotem źródło
-                liczba_cofnietych = Wydawnictwo_Ciagle.objects.filter(
+                do_cofniecia = Wydawnictwo_Ciagle.objects.filter(
                     pk__in=publikacje_ids, zrodlo=przemapowanie.zrodlo_do
-                ).update(zrodlo=przemapowanie.zrodlo_z)
+                )
+                with zmiany_rekordow(
+                    request.user,
+                    Wydawnictwo_Ciagle,
+                    list(do_cofniecia.values_list("pk", flat=True)),
+                    f"Cofnięto przemapowanie źródeł nr {przemapowanie.pk}: "
+                    f"„{przemapowanie.zrodlo_do}” → „{przemapowanie.zrodlo_z}”.",
+                ):
+                    liczba_cofnietych = do_cofniecia.update(
+                        zrodlo=przemapowanie.zrodlo_z
+                    )
 
                 # Oznacz przemapowanie jako cofnięte
                 przemapowanie.cofnieto = timezone.now()

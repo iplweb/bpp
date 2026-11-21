@@ -11,6 +11,7 @@ from pbn_client.const import ACTIVE, DELETED
 
 from bpp.models import Zrodlo
 from bpp.util import pbar
+from bpp.wersjonowanie import zmiana_rekordu
 from pbn_api.models import Journal
 from pbn_integrator.utils.threaded_page_getter import (
     ThreadedMongoDBSaver,
@@ -135,8 +136,11 @@ def integruj_zrodla(disable_progress_bar=False):
         u = _najlepszy_journal(zrodlo, _zrodlo_query(zrodlo))
 
         if u is not None:
-            zrodlo.pbn_uid = u
-            zrodlo.save()
+            with zmiana_rekordu(
+                None, zrodlo, f"Powiązano z czasopismem PBN {u.pk} (integracja)."
+            ):
+                zrodlo.pbn_uid = u
+                zrodlo.save()
             print(f"\nZNALEZIONO dopasowania w PBN dla {zrodlo} -> {zrodlo.pbn_uid}")
             continue
 

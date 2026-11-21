@@ -11,6 +11,7 @@ from bpp.views.api.forms import (
     UstawStronyRekorduForm,
     UstawTomRekorduForm,
 )
+from bpp.wersjonowanie import zmiana_rekordu
 
 
 class UstawParametrBaseView(JSONResponseMixin, GroupRequiredMixin, BaseFormView):
@@ -19,9 +20,22 @@ class UstawParametrBaseView(JSONResponseMixin, GroupRequiredMixin, BaseFormView)
     def form_invalid(self, form):
         return self.render_json_response({"status": "error", "errors": form.errors})
 
+    #: Opis zmiany w historii rekordu (admin „Historia").
+    opis_zmiany = None
+
     def form_valid(self, form):
-        self.modify_object(form.cleaned_data)
+        obj = self.zmieniany_obiekt(form.cleaned_data)
+        with zmiana_rekordu(
+            self.request.user,
+            obj,
+            f"{self.opis_zmiany} (porównanie z CrossRef).",
+        ) as zmiana:
+            # ``modify_object`` zwraca False, gdy nic nie zmienił.
+            zmiana.pomin = self.modify_object(form.cleaned_data) is False
         return self.render_json_response({"status": "ok"})
+
+    def zmieniany_obiekt(self, data):
+        return data["rekord"].original
 
     def modify_object(self, data):
         raise NotImplementedError
@@ -29,6 +43,10 @@ class UstawParametrBaseView(JSONResponseMixin, GroupRequiredMixin, BaseFormView)
 
 class UstawiORCIDAutoraView(UstawParametrBaseView):
     form_class = UstawORCIDAutoraForm
+    opis_zmiany = "Ustawiono ORCID"
+
+    def zmieniany_obiekt(self, data):
+        return data["autor"]
 
     def modify_object(self, data):
         autor = data["autor"]
@@ -38,6 +56,7 @@ class UstawiORCIDAutoraView(UstawParametrBaseView):
 
 class UstawStronyView(UstawParametrBaseView):
     form_class = UstawStronyRekorduForm
+    opis_zmiany = "Ustawiono strony"
 
     def modify_object(self, data):
         rekord = data["rekord"]
@@ -49,6 +68,7 @@ class UstawStronyView(UstawParametrBaseView):
 
 class UstawTomView(UstawParametrBaseView):
     form_class = UstawTomRekorduForm
+    opis_zmiany = "Ustawiono tom"
 
     def modify_object(self, data):
         rekord = data["rekord"]
@@ -60,6 +80,7 @@ class UstawTomView(UstawParametrBaseView):
 
 class UstawNrZeszytuView(UstawParametrBaseView):
     form_class = UstawNrZeszytuRekorduForm
+    opis_zmiany = "Ustawiono numer zeszytu"
 
     def modify_object(self, data):
         rekord = data["rekord"]
@@ -71,10 +92,12 @@ class UstawNrZeszytuView(UstawParametrBaseView):
 
 class UstawStreszczenieView(UstawParametrBaseView):
     form_class = UstawStreszczenieRekorduForm
+    opis_zmiany = "Dodano streszczenie"
 
     def modify_object(self, data):
         rekord = data["rekord"]
 
         ro = rekord.original
-        if not ro.streszczenia.filter(streszczenie=data["streszczenie"]).exists():
-            ro.streszczenia.create(streszczenie=data["streszczenie"])
+        if ro.streszczenia.filter(streszczenie=data["streszczenie"]).exists():
+            return False
+        ro.streszczenia.create(streszczenie=data["streszczenie"])

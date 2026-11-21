@@ -5,6 +5,7 @@ Funkcje scalania duplikatów autorów.
 import logging
 import sys
 import traceback
+from collections import defaultdict
 
 import rollbar
 from django.contrib.contenttypes.models import ContentType
@@ -13,6 +14,11 @@ from django.db import transaction
 from bpp.models import Autor
 from bpp.models.soft_delete import manager_z_koszem, operacja_kosza
 from bpp.util import zaloguj_polkniety_wyjatek
+from bpp.wersjonowanie import (
+    zarejestruj_usuniecie,
+    zmiana_rekordu,
+    zmiany_rekordow,
+)
 
 from .analysis import analiza_duplikatow
 
@@ -340,6 +346,22 @@ def _transfer_simple_authorship(
         results["total_updated"] += 1
 
 
+def _prace_autora(autor, authorship_models, simple_models):
+    """Klucze prac (rekordów publikacji) ``autor``-a, pogrupowane po modelu
+    publikacji: ``{model: {pk, ...}}``."""
+    prace = defaultdict(set)
+    for _label, model, _log in authorship_models:
+        rekord_model = model._meta.get_field("rekord").related_model
+        prace[rekord_model].update(
+            wiersze_do_transferu(model, autor).values_list("rekord_id", flat=True)
+        )
+    for _label, model, _opis in simple_models:
+        prace[model].update(
+            wiersze_do_transferu(model, autor).values_list("pk", flat=True)
+        )
+    return prace
+
+
 def scal_autora(
     glowny_autor,
     autor_duplikat,
@@ -422,40 +444,71 @@ def scal_autora(
                 "duplicate_scientist": duplicate_scientist,
             }
 
-            # 0. Transfer disciplines from duplicate to main author
-            _transfer_disciplines(glowny_autor, autor_duplikat, user, log_ctx, results)
-
-            # 1-3. Rekordy autorstwa (ciągłe, zwarte, patenty)
-            for model_label, model, log_publication in authorship_models:
-                for record in wiersze_do_transferu(model, autor_duplikat):
-                    _transfer_authorship_record(
-                        record,
-                        glowny_autor,
-                        user,
-                        skip_pbn,
-                        auto_assign_discipline,
-                        use_subdiscipline,
-                        model_label,
-                        log_publication,
-                        log_ctx,
-                        results,
-                        uczelnia=uczelnia,
-                    )
-
-            # 4-5. Prace doktorskie / habilitacyjne
-            for model_label, model, opis_konfliktu in simple_models:
-                _transfer_simple_authorship(
-                    model,
-                    model_label,
-                    glowny_autor,
-                    autor_duplikat,
-                    user,
-                    skip_pbn,
-                    results,
-                    uczelnia=uczelnia,
-                    opis_konfliktu=opis_konfliktu,
+            # Historia admina: zmiana na autorze głównym (z wersją — Autor jest
+            # wersjonowany), zmiana na każdej przeniesionej pracy i usunięcie
+            # duplikatu. Prace zbieramy PRZED przeniesieniem.
+            prace = _prace_autora(autor_duplikat, authorship_models, simple_models)
+            komentarz = (
+                f"Scalono z duplikatem „{duplicate_autor_str}” "
+                f"(ID {duplicate_autor_id}) — deduplikator autorów."
+            )
+            with zmiana_rekordu(user, glowny_autor, komentarz) as zmiana:
+                # 0. Transfer disciplines from duplicate to main author
+                _transfer_disciplines(
+                    glowny_autor, autor_duplikat, user, log_ctx, results
                 )
 
+                # 1-3. Rekordy autorstwa (ciągłe, zwarte, patenty)
+                for model_label, model, log_publication in authorship_models:
+                    for record in wiersze_do_transferu(model, autor_duplikat):
+                        _transfer_authorship_record(
+                            record,
+                            glowny_autor,
+                            user,
+                            skip_pbn,
+                            auto_assign_discipline,
+                            use_subdiscipline,
+                            model_label,
+                            log_publication,
+                            log_ctx,
+                            results,
+                            uczelnia=uczelnia,
+                        )
+
+                # 4-5. Prace doktorskie / habilitacyjne
+                for model_label, model, opis_konfliktu in simple_models:
+                    _transfer_simple_authorship(
+                        model,
+                        model_label,
+                        glowny_autor,
+                        autor_duplikat,
+                        user,
+                        skip_pbn,
+                        results,
+                        uczelnia=uczelnia,
+                        opis_konfliktu=opis_konfliktu,
+                    )
+
+                zmiana.komentarz = (
+                    f"{komentarz} Przeniesiono rekordów: {results['total_updated']}."
+                )
+
+            for model, pks in prace.items():
+                # Prace nie są wersjonowane — wystarczą wpisy po fakcie.
+                with zmiany_rekordow(
+                    user,
+                    model,
+                    pks,
+                    f"Autor „{duplicate_autor_str}” zastąpiony przez "
+                    f"„{glowny_autor}” (scalenie autorów).",
+                ):
+                    pass
+            zarejestruj_usuniecie(
+                user,
+                autor_duplikat,
+                f"Usunięto po scaleniu z autorem „{glowny_autor}” "
+                f"(ID {glowny_autor.pk}) — deduplikator autorów.",
+            )
             autor_duplikat.delete()
 
             return results

@@ -507,3 +507,21 @@ def test_apply_filters_charaktery_zaweza():
     )
     assert wc1 in wszystkie
     assert wc2 in wszystkie
+
+
+@pytest.mark.django_db
+def test_ustaw_ze_zrodla_zapisuje_historie_rekordu(admin_user):
+    from django.contrib.admin.models import CHANGE, LogEntry
+
+    m = METRYKI_BY_SLUG["if"]
+    wc = _wc_ze_zrodlem(
+        2023, praca_val="1.500", zrodlo_val="2.500", field="impact_factor"
+    )
+    ustaw_ze_zrodla([wc.pk], m, user_id=admin_user.pk)
+
+    wpis = LogEntry.objects.get(
+        content_type__model="wydawnictwo_ciagle", object_id=str(wc.pk)
+    )
+    assert wpis.action_flag == CHANGE
+    assert wpis.user == admin_user
+    assert "impact_factor: 1.500 → 2.500" in wpis.change_message

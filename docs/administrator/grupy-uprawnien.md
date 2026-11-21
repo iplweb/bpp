@@ -61,6 +61,14 @@ superużytkownik.
       import patentów), przycisk „Toż” i niektóre polecenia `manage.py` —
       też mają wpis „dodano” w historii, z opisem, skąd pochodzą. Autorem
       wpisu jest osoba, która uruchomiła import.
+    - Zmiany istniejących rekordów robione poza formularzami — scalanie
+      autorów, przemapowania źródeł i prac autora (oraz ich cofnięcia),
+      aktualizacje z importu pracowników, POLON-u i importu dyscyplin,
+      ustawienia z porównania z CrossRef i modułu rozbieżności, powiązania
+      z PBN — mają wpis „zmieniono” z opisem operacji. U autorów taka
+      zmiana zapisuje też wersję, więc można ją cofnąć przyciskiem
+      „Historia”. Usunięcie duplikatu przy scalaniu zostawia wpis
+      „usunięto”.
 - **Konta `system-user-…`.** Gdy import uruchomiono poleceniem
   `manage.py` (bez zalogowanej osoby), wpisy historii są przypisywane
   kontu `system-user-<login>`, gdzie `<login>` to login systemowy, z którego

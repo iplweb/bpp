@@ -35,7 +35,7 @@ from contextvars import ContextVar
 from types import SimpleNamespace
 
 import reversion
-from django.contrib.admin.models import ADDITION, CHANGE, LogEntry
+from django.contrib.admin.models import ADDITION, CHANGE, DELETION, LogEntry
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.db.models import F
@@ -307,25 +307,80 @@ def zmiana_rekordu(user, obj, komentarz):
     Przed blokiem zapisuje stan wyjściowy (``zapewnij_wersje_poczatkowa``),
     żeby pierwszą taką zmianę dało się cofnąć.
 
-    Blok dostaje obiekt z polem ``pomin``; ustaw ``pomin = True``, gdy
-    okazało się, że nic się nie zmieniło — wtedy nic nie zostanie zapisane.
+    Blok dostaje obiekt z polami ``pomin`` i ``komentarz``; ustaw
+    ``pomin = True``, gdy okazało się, że nic się nie zmieniło — wtedy nic nie
+    zostanie zapisane. ``komentarz`` można uzupełnić w bloku (np. o liczby
+    przeniesionych rekordów, znane dopiero po zmianie).
     ``user=None`` — operator z ``jako_uzytkownik`` albo konto systemowe.
     Nie wołać wewnątrz aktywnego ``reversion.create_revision``.
     """
     if reversion.is_registered(type(obj)):
         zapewnij_wersje_poczatkowa(obj)
-    zmiana = SimpleNamespace(pomin=False)
+    zmiana = SimpleNamespace(pomin=False, komentarz=komentarz)
     yield zmiana
     if zmiana.pomin:
         return
     user = user or uzytkownik_historii()
-    _zapisz_wersje(user, obj, komentarz)
+    _zapisz_wersje(user, obj, zmiana.komentarz)
     LogEntry.objects.log_actions(
         user.pk,
         [obj],
         CHANGE,
-        change_message=komentarz,
+        change_message=zmiana.komentarz,
         single_object=True,
+    )
+
+
+@contextmanager
+def zmiany_rekordow(user, model, pks, komentarz, select_related=()):
+    """Hurtowy wariant ``zmiana_rekordu`` dla zbiorczych zmian poza adminem
+    (przemapowania, scalanie, ``.update()`` na wielu rekordach): po bloku
+    każdy rekord ``model`` o kluczu z ``pks`` dostaje wpis ``LogEntry``
+    CHANGE (jeden ``bulk_create``), a dla modeli wersjonowanych — wersję
+    początkową przed blokiem (``zapewnij_wersje_poczatkowe``) i własną
+    wersję po nim (``zapisz_wersje_utworzenia`` — osobna rewizja na rekord,
+    żeby cofnięcie jednego nie cofało pozostałych).
+
+    Pola ``pomin``/``komentarz`` obiektu z bloku — jak w ``zmiana_rekordu``.
+    ``select_related`` — relacje potrzebne do ``__str__`` (``object_repr``).
+    Nie wołać wewnątrz aktywnego ``reversion.create_revision``.
+    """
+    pks = list(pks)
+    wersjonowany = reversion.is_registered(model)
+    if wersjonowany and pks:
+        zapewnij_wersje_poczatkowe(model, pks, select_related=select_related)
+    zmiana = SimpleNamespace(pomin=False, komentarz=komentarz)
+    yield zmiana
+    if zmiana.pomin or not pks:
+        return
+    user = user or uzytkownik_historii()
+    if wersjonowany:
+        zapisz_wersje_utworzenia(
+            model,
+            pks,
+            user=user,
+            komentarz=zmiana.komentarz,
+            select_related=select_related,
+        )
+    obiekty = list(
+        model._default_manager.filter(pk__in=pks).select_related(*select_related)
+    )
+    if obiekty:
+        LogEntry.objects.log_actions(
+            user.pk,
+            obiekty,
+            CHANGE,
+            change_message=zmiana.komentarz,
+            single_object=False,
+        )
+
+
+def zarejestruj_usuniecie(user, obj, komentarz):
+    """Wpis ``LogEntry`` DELETION dla rekordu usuwanego poza adminem. Wołać
+    PRZED ``delete()`` (potrzebny ``pk`` i ``str(obj)``)."""
+    user = user or uzytkownik_historii()
+    LogEntry.objects.log_actions(
+        user.pk, [obj], DELETION, change_message=komentarz, single_object=True
     )
 
 

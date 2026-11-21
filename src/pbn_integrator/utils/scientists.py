@@ -15,7 +15,7 @@ from pbn_client.const import DELETED
 
 from bpp.models import Autor, Autor_Dyscyplina, Tytul, Uczelnia
 from bpp.util import pbar
-from bpp.wersjonowanie import zarejestruj_utworzenie
+from bpp.wersjonowanie import zarejestruj_utworzenie, zmiana_rekordu
 from pbn_api.models import Scientist
 from pbn_integrator.utils.constants import CPU_COUNT
 from pbn_integrator.utils.django_imports import _ensure_django_imports
@@ -256,6 +256,15 @@ def pobierz_ludzi_z_uczelni(
         _zapisz_osobe_z_instytucji(person)
 
 
+def _powiaz_autora_z_pbn(autor, scientist_pk, skad):
+    """Ustaw autorowi ``pbn_uid`` — z wpisem i wersją w historii autora."""
+    with zmiana_rekordu(
+        None, autor, f"Powiązano z naukowcem PBN {scientist_pk} ({skad})."
+    ):
+        autor.pbn_uid_id = scientist_pk
+        autor.save()
+
+
 def utworz_wpis_dla_jednego_autora(person):
     """Create a BPP author entry for a PBN person.
 
@@ -356,8 +365,7 @@ def integruj_autorow_z_uczelni(
 
         if autor is not None:
             if autor.pbn_uid_id is None:
-                autor.pbn_uid_id = person.mongoId
-                autor.save()
+                _powiaz_autora_z_pbn(autor, person.mongoId, "integracja autorów")
             else:
                 if autor.pbn_uid_id != person.pk:
                     logger.info(
@@ -401,8 +409,7 @@ def weryfikuj_orcidy(client: PBNClient, instutition_id):
             continue
 
         sciencist = zapisz_mongodb(res[0], Scientist)
-        autor.pbn_uid = sciencist
-        autor.save()
+        _powiaz_autora_z_pbn(autor, sciencist.pk, "weryfikacja ORCID w PBN")
         logger.info(
             f"Dla autora {autor} utworzono powiazanie z rekordem PBN {sciencist} po ORCID"
         )
@@ -592,5 +599,4 @@ def integruj_wszystkich_niezintegrowanych_autorow():
             logger.info(
                 f"==> integracja wszystkich: ustawiam {autor} na {sciencist.pk}"
             )
-            autor.pbn_uid = sciencist
-            autor.save()
+            _powiaz_autora_z_pbn(autor, sciencist.pk, "integracja niezintegrowanych")

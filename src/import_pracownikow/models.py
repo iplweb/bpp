@@ -1604,9 +1604,22 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         if self.stany_pol_snapshot is None:
             self.stany_pol_snapshot = self.stany_pol()
         self.log_zmian = {"autor": [], "autor_jednostka": []}
-        self._integrate_autor()
-        self._przepnij_aj_po_defragmentacji()
-        self._integrate_autor_jednostka()
+        # Historia autora w adminie (LogEntry + wersja). Autor wpisu:
+        # właściciel importu (``jako_uzytkownik`` w ``run``) albo konto
+        # systemowe.
+        from bpp.wersjonowanie import zmiana_rekordu
+
+        with zmiana_rekordu(None, self.autor, "") as zmiana:
+            self._integrate_autor()
+            self._przepnij_aj_po_defragmentacji()
+            self._integrate_autor_jednostka()
+            zmiany = self.log_zmian["autor"] + [
+                f"zatrudnienie: {z}" for z in self.log_zmian["autor_jednostka"]
+            ]
+            zmiana.pomin = not zmiany
+            zmiana.komentarz = (
+                f"Import pracowników nr {self.parent_id}: {'; '.join(zmiany)}."
+            )
         self.save()
 
     def _przepnij_aj_po_defragmentacji(self):

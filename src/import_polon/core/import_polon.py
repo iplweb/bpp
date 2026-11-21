@@ -1,6 +1,8 @@
 import decimal
 import sys
+from contextlib import nullcontext
 from decimal import Decimal
+from types import SimpleNamespace
 
 import rollbar
 from django.utils import timezone
@@ -10,6 +12,7 @@ from bpp.models import (
     Uczelnia,
     przebuduj_prace_autora_po_udanej_transakcji,
 )
+from bpp.wersjonowanie import zmiana_rekordu
 from ewaluacja_common.models import Rodzaj_Autora
 from import_common.core import matchuj_autora, matchuj_dyscypline, normalize_date
 from import_polon.models import ImportPlikuPolon, WierszImportuPlikuPolon
@@ -648,30 +651,44 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon, p):
             rezultat = ". ".join(bledy)
             statystyki["z_bledem"] += 1
         else:
-            # Sync author discipline data
-            ops = _sync_autor_dyscyplina(
-                autor,
-                parent_model,
-                dyscyplina_xlsx,
-                subdyscyplina_xlsx,
-                procent_dyscypliny,
-                procent_subdyscypliny,
-                wymiar_etatu,
-                zatrudnienie_od,
-                zatrudnienie_do,
-                jest_w_n_xlsx,
-                jest_badawczy_xlsx,
+            # Historia autora w adminie (LogEntry + wersja) — tylko gdy import
+            # faktycznie zapisuje do bazy.
+            historia = (
+                zmiana_rekordu(None, autor, "")
+                if parent_model.zapisz_zmiany_do_bazy
+                else nullcontext(SimpleNamespace())
             )
+            with historia as zmiana:
+                # Sync author discipline data
+                ops = _sync_autor_dyscyplina(
+                    autor,
+                    parent_model,
+                    dyscyplina_xlsx,
+                    subdyscyplina_xlsx,
+                    procent_dyscypliny,
+                    procent_subdyscypliny,
+                    wymiar_etatu,
+                    zatrudnienie_od,
+                    zatrudnienie_do,
+                    jest_w_n_xlsx,
+                    jest_badawczy_xlsx,
+                )
 
-            # Update ORCID if needed
-            orcid_ops = _update_autor_orcid(autor, orcid, parent_model)
-            ops.extend(orcid_ops)
+                # Update ORCID if needed
+                orcid_ops = _update_autor_orcid(autor, orcid, parent_model)
+                ops.extend(orcid_ops)
 
-            # Klasyfikujemy po STRUKTURZE ``ops``, nie po sklejonym ``rezultat``.
-            # Parsowanie tekstu dałoby tu błąd: operacja ORCID doklejana jest PO
-            # sentinelu, więc wiersz zmieniający wyłącznie ORCID ma ``rezultat``
-            # zaczynający się od „W BPP jest identycznie…", choć jest zmianą.
-            zmieniono = any(op not in KOMUNIKATY_BEZ_ZMIAN for op in ops)
+                # Klasyfikujemy po STRUKTURZE ``ops``, nie po sklejonym
+                # ``rezultat``. Parsowanie tekstu dałoby tu błąd: operacja ORCID
+                # doklejana jest PO sentinelu, więc wiersz zmieniający wyłącznie
+                # ORCID ma ``rezultat`` zaczynający się od „W BPP jest
+                # identycznie…", choć jest zmianą.
+                zmieniono = any(op not in KOMUNIKATY_BEZ_ZMIAN for op in ops)
+                zmiana.pomin = not zmieniono
+                zmiana.komentarz = (
+                    f"Import POLON nr {parent_model.pk} (rok {parent_model.rok}, "
+                    f"wiersz {n_row + 1}): {', '.join(ops)}"
+                )
             statystyki["ze_zmianami" if zmieniono else "bez_zmian"] += 1
 
             rezultat = ", ".join(ops)

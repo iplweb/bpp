@@ -317,9 +317,15 @@ def _wykonaj_odpiecia(parent):
                 # pomijający tę osobę nie może jej po cichu skasować. Dawny
                 # warunek `<= today` przepuszczał przyszłe daty do nadpisania.
                 continue
-            aj.zakonczyl_prace = yesterday
-            aj.podstawowe_miejsce_pracy = False
-            aj.save()
+            with zmiana_rekordu(
+                None,
+                aj.autor,
+                f"Zakończono zatrudnienie: {aj.jednostka} z dniem {yesterday} "
+                f"(osoba spoza pliku). {_opis_importu(parent)}",
+            ):
+                aj.zakonczyl_prace = yesterday
+                aj.podstawowe_miejsce_pracy = False
+                aj.save()
             odp.wykonane = True
             odp.save(update_fields=["wykonane"])
             odpieto += 1
