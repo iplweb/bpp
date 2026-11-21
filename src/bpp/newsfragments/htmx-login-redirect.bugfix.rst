@@ -1,0 +1,1 @@
+Po wygaśnięciu sesji (np. po restarcie serwera) doładowywane przez HTMX fragmenty stron — np. panel filtrów w module redagowania — nie pokazują już formularza logowania wewnątrz fragmentu: przeglądarka przechodzi na pełną stronę logowania, a po zalogowaniu wraca do oglądanej strony.
