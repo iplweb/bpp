@@ -4900,6 +4900,243 @@ def admin_zglaszanie_publikacji(page: Page, base: str, out: Path) -> None:
     adm.context.close()
 
 
+def api_session(page: Page, base: str, user: str | None = None) -> Page:
+    """A browser session on the browsable API at PUBLIC_BPP.
+
+    The slot-report endpoints accept HTTP Basic auth only (no session
+    cookie), so a logged-in user is passed as an Authorization header."""
+    headers = {}
+    if user:
+        token = base64.b64encode(f"{user}:{user}".encode()).decode()
+        headers["Authorization"] = f"Basic {token}"
+    ctx = page.context.browser.new_context(
+        viewport=VIEWPORT,
+        device_scale_factor=2,
+        locale="pl-PL",
+        extra_http_headers=headers,
+    )
+    ctx.add_init_script(HIDE_HELP_LAUNCHER)
+    other = ctx.new_page()
+    proxy_public_bpp(other, base)
+    # The dev server's live-reload stream never ends; proxying it would leave
+    # a route in flight and break closing the context.
+    other.route(f"{PUBLIC_BPP}/__dev_reload__/**", lambda route: route.abort())
+    return other
+
+
+def close_api_session(other: Page) -> None:
+    other.unroute_all(behavior="ignoreErrors")
+    other.context.close()
+
+
+def api_index(page: Page, base: str, out: Path) -> None:
+    """docs/api/index.md: the browsable /api/v1/ root and the slot report over the API."""
+    # 1. anonymous visitor: the API root, with the format menu open
+    anon = api_session(page, base)
+    anon.goto(f"{PUBLIC_BPP}/api/v1/")
+    anon.wait_for_load_state("networkidle")
+    # Bootstrap opens the format menu to the right, past the page edge
+    anon.evaluate(
+        "document.querySelector('.format-selection .dropdown-menu')"
+        ".classList.add('dropdown-menu-right')"
+    )
+    anon.locator(".format-selection .dropdown-toggle").first.click()
+    anon.wait_for_selector(".format-selection .dropdown-menu", state="visible")
+    anon.mouse.move(5, 790)  # no tooltip over the open menu
+    anon.wait_for_timeout(600)
+    mark(
+        anon,
+        [
+            {
+                "sel": '.response-info a[href$="/api/v1/autor/"]',
+                "arrow": "right",
+                "label": "1. kliknij adres, aby obejrzeć dane",
+                "dx": 100,
+            },
+            {
+                "sel": ".format-selection .dropdown-menu a[href*='format=json']",
+                "arrow": "left",
+                "label": "2. te same dane jako JSON",
+                "dy": 40,
+            },
+        ],
+    )
+    shot(
+        anon,
+        out / "01-strona-glowna-api.png",
+        0,
+        bottom_of(anon, '.response-info a[href$="/api/v1/uczelnia/"]', 40),
+    )
+    close_api_session(anon)
+
+    # 2. slot report: the form at the bottom of the list (group "generowanie raportów")
+    rap = api_session(page, base, DEMO_USER_RAPORTY)
+    rap.goto(f"{PUBLIC_BPP}/api/v1/raport_slotow_uczelnia/")
+    rap.wait_for_load_state("networkidle")
+    form = "#post-object-form"
+    rap.fill(f"{form} input[name=od_roku]", "2022")
+    rap.fill(f"{form} input[name=do_roku]", "2025")
+    rap.fill(f"{form} input[name=slot]", "1")
+    mark(
+        rap,
+        [
+            {
+                "sel": f"{form} input[name=od_roku]",
+                "arrow": "below",
+                "label": "1. parametry raportu",
+                "dx": 150,
+                "dy": 20,
+            },
+            {
+                "sel": f"{form} button",
+                "arrow": "left",
+                "label": "2. utwórz raport",
+                "dy": -60,
+            },
+        ],
+    )
+    title = bottom_of(rap, ".page-header")
+    top = shot(rap, None, 0, title + 10)
+    box = page_box(rap, ".nav-tabs")
+    bottom = shot(rap, None, box["y"] - 20, bottom_of(rap, form) - box["y"] + 40)
+    stitch(
+        rap,
+        [top, bottom],
+        out / "02-formularz-raportu-slotow.png",
+        "przewiń na sam dół strony",
+    )
+
+    # 3. rows of the finished report (bin/docs-demo-api-index.py made one)
+    resp = rap.context.request.get(
+        f"{base}/api/v1/raport_slotow_uczelnia/",
+        headers={"Accept": "application/json"},
+    )
+    url = resp.json()["results"][0]["id"]
+    raport_id = url.split("/raport_slotow_uczelnia/")[1].split("/")[0]
+    rap.goto(f"{PUBLIC_BPP}/api/v1/raport_slotow_uczelnia_wiersz/?parent={raport_id}")
+    rap.wait_for_load_state("networkidle")
+    mark(
+        rap,
+        [
+            {
+                "sel": ".pagination",
+                "arrow": "left",
+                "label": "kolejne strony wyników",
+                "dx": -40,
+                "dy": 40,
+            },
+        ],
+    )
+    shot(rap, out / "03-wiersze-raportu.png", 0, 900)
+    close_api_session(rap)
+
+
+def rest_api(page: Page, base: str, out: Path) -> None:
+    """docs/administrator/rest-api.md: the six REST API switches and a switched-off group."""
+    adm = new_session(page, base, DEMO_USER_ADMIN)
+    adm.goto(f"{base}/admin/bpp/uczelnia/")
+    adm.wait_for_load_state("networkidle")
+    adm.locator("#result_list tbody th a, #result_list tbody td a").first.click()
+    adm.wait_for_load_state("networkidle")
+    form_url = adm.url
+    sekcja = "fieldset.grp-module"
+    tytul = "REST API (/api/v1/)"
+
+    def otworz_sekcje() -> None:
+        # grappelli collapses the fieldset; open it the way its handler does
+        adm.evaluate(
+            """(t) => { const h = [...document.querySelectorAll('h2.grp-collapse-handler')]
+                .find(e => e.textContent.trim() === t);
+              h.parentElement.classList.remove('grp-closed');
+              h.parentElement.classList.add('grp-open'); }""",
+            tytul,
+        )
+        adm.wait_for_timeout(300)
+
+    # 1. the fieldset with the six switches, numbered as on the page
+    otworz_sekcje()
+    pola = [
+        "api_v1_wlaczone",
+        "api_v1_tylko_zalogowani",
+        "api_v1_dane_bibliograficzne",
+        "api_v1_wyszukiwanie",
+        "api_v1_kafelki",
+        "api_v1_narzedzia_redaktorskie",
+    ]
+    mark(
+        adm,
+        [
+            {
+                "sel": f"label[for=id_{pole}]",
+                "arrow": "right",
+                "label": str(n),
+                "dy": -48,
+            }
+            for n, pole in enumerate(pola, 1)
+        ],
+    )
+    box = page_box(adm, sekcja, tytul)
+    shot(adm, out / "01-przelaczniki.png", box["y"] - 10, box["height"] + 20)
+
+    # 2. switch "dane bibliograficzne" off, look at /api/v1/ anonymously,
+    #    then switch it back on
+    def ustaw(pole: str, wartosc: bool) -> None:
+        adm.goto(form_url)
+        adm.wait_for_load_state("networkidle")
+        otworz_sekcje()
+        adm.locator(f"#id_{pole}").set_checked(wartosc)
+        adm.locator("input[name=_continue]").click()
+        adm.wait_for_load_state("networkidle")
+        if adm.locator(".errornote, .grp-errornote").count():
+            raise SystemExit("Uczelnia form did not save - see the admin page.")
+
+    ustaw("api_v1_dane_bibliograficzne", False)
+    try:
+        anon = api_session(page, base)
+        anon.goto(f"{PUBLIC_BPP}/api/v1/")
+        anon.wait_for_load_state("networkidle")
+        mark(
+            anon,
+            [
+                {"sel": ".response-info pre"},
+            ],
+        )
+        req = page_box(anon, ".request-info")
+        top = shot(
+            anon, None, req["y"] - 8, bottom_of(anon, ".response-info") - req["y"] + 30
+        )
+        anon.goto(f"{PUBLIC_BPP}/api/v1/autor/")
+        anon.wait_for_load_state("networkidle")
+        mark(
+            anon,
+            [
+                {"sel": ".response-info pre"},
+                {
+                    "sel": ".response-info pre span",
+                    "text": "grupa_wylaczona",
+                    "arrow": "right",
+                    "label": "404 i powód: wyłączona grupa",
+                    "dx": 320,
+                    "dy": -40,
+                },
+            ],
+        )
+        req = page_box(anon, ".request-info")
+        bottom = shot(
+            anon, None, req["y"] - 8, bottom_of(anon, ".response-info") - req["y"] + 30
+        )
+        stitch(
+            anon,
+            [top, bottom],
+            out / "02-wylaczona-grupa.png",
+            "adres z wyłączonej grupy: /api/v1/autor/",
+        )
+        close_api_session(anon)
+    finally:
+        ustaw("api_v1_dane_bibliograficzne", True)
+    adm.context.close()
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -5196,6 +5433,8 @@ SCENARIOS = {
         "administrator/zglaszanie-publikacji",
         admin_zglaszanie_publikacji,
     ),
+    "api-index": ("api/index", api_index),
+    "rest-api": ("administrator/rest-api", rest_api),
 }
 
 
