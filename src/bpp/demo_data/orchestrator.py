@@ -60,6 +60,9 @@ class CreateOptions:
     polon_bez_blednych_wierszy: bool = False
     bez_ewaluacji: bool = False
     zgloszen: int = 40
+    # Login uzytkownika, któremu przypisujemy wpisy „utworzono" w historii
+    # (admin „Historia"). None → konto techniczne ``bpp-system``.
+    uzytkownik: str | None = None
     # Dodatki (kazdy z wlasnym RNG „<seed>-<nazwa>", wiec nie zmieniaja
     # danych powyzej dla danego --seed):
     dwudyscyplinowcow: int = 8
@@ -125,6 +128,9 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
     except ConfirmAborted as e:
         stdout.write(f"[ABORT] {e}\n")
         raise SystemExit(1) from None
+
+    # PRZED generatorami — bledny --uzytkownik nie moze zostawic polowy demo:
+    autor_historii = _autor_historii(opts.uzytkownik, stdout)
 
     # 3. Manifest + RNG:
     rng = random.Random(opts.seed)
@@ -318,6 +324,24 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         stdout=stdout,
     )
 
+    # 7. Ślad w historii (admin „Historia") — bulk_create go nie zostawia;
+    # PO wszystkich dodatkach, żeby objął też ich rekordy:
+    from bpp.demo_data.historia import (
+        komentarz_utworzenia,
+        zapisz_historie_utworzenia,
+    )
+
+    wpisy_historii = zapisz_historie_utworzenia(
+        manifest,
+        user=autor_historii,
+        komentarz=komentarz_utworzenia(seed=opts.seed, motyw=opts.motyw),
+        batch_size=opts.batch_size,
+    )
+    stdout.write(
+        f'[OK] Historia: {sum(wpisy_historii.values())} wpisow „utworzono" '
+        f"(uzytkownik: {autor_historii.username}).\n"
+    )
+
     manifest.save()
     stdout.write(
         f"\n[OK] Motyw: {theme.label}. "
@@ -466,6 +490,24 @@ def _dodatki_po_ewaluacji(
         stdout.write(lustro.tekst())
 
 
+def _autor_historii(username: str | None, stdout):
+    """Użytkownik, któremu przypisujemy wpisy „utworzono" w historii:
+    podany ``--uzytkownik`` albo konto techniczne ``bpp-system`` (to samo,
+    które podpisuje inne operacje systemowe)."""
+    if username is None:
+        from pbn_export_queue.operacje import pobierz_konto_techniczne
+
+        return pobierz_konto_techniczne()
+
+    from django.contrib.auth import get_user_model
+
+    try:
+        return get_user_model().objects.get(username=username)
+    except get_user_model().DoesNotExist:
+        stdout.write(f"[BLAD] Nie ma uzytkownika '{username}' (--uzytkownik).\n")
+        raise SystemExit(1) from None
+
+
 def _odepnij_rozdzialy(manager, pks: list[int], batch_size: int) -> None:
     """Zeruje self-FK `wydawnictwo_nadrzedne` rozdzialow demo przed kasowaniem.
 
@@ -548,6 +590,7 @@ def run_cleanup(opts: CleanupOptions, *, stdin=None, stdout=None):
         przelicz_liczbe_n_po_cleanup,
         usun_cache_punktacji,
     )
+    from bpp.demo_data.historia import usun_historie
 
     # Cache punktacji nie ma FK do rekordu (klucz-krotka) — kasujemy jawnie
     # PRZED rekordami.
@@ -594,6 +637,9 @@ def run_cleanup(opts: CleanupOptions, *, stdin=None, stdout=None):
                 # nadal siedzą w bazie, mijają się z celem komendy.
                 hard = getattr(qs, "hard_delete", None)
                 (hard or qs.delete)()
+                # Historia (LogEntry + wersje reversion) skasowanych obiektów
+                # — inaczej zostałaby osierocona:
+                usun_historie(model, chunk)
 
     przelicz_liczbe_n_po_cleanup(manifest, stdout)
 

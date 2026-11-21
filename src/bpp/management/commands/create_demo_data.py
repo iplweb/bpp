@@ -79,6 +79,14 @@ class Command(BaseCommand):
             help="Nie dodawaj do pliku POL-on celowo blednych wierszy.",
         )
         parser.add_argument(
+            "--uzytkownik",
+            type=str,
+            default=None,
+            metavar="LOGIN",
+            help="Komu przypisac wpisy 'utworzono' w historii rekordow "
+            "(admin 'Historia'); domyslnie konto techniczne bpp-system.",
+        )
+        parser.add_argument(
             "--bez-ewaluacji",
             action="store_true",
             help="Nie przeliczaj cache punktów/slotów, liczby N ani metryk "
@@ -170,6 +178,7 @@ class Command(BaseCommand):
             bez_brudow=options["bez_brudow"],
             bez_pbn=options["bez_pbn"],
             konta_demo=options["konta_demo"],
+            uzytkownik=options.get("uzytkownik"),
         )
         # BaseCommand ma self.stdout (OutputWrapper) ale NIE ma self.stdin —
         # passujemy sys.stdin explicit (potrzebne dla double_confirm w trybie
