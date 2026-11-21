@@ -273,3 +273,103 @@ def test_niezalogowany_trafia_na_logowanie(client, klinika):
         res = client.get(url)
         assert res.status_code == 302
         assert "login" in res["Location"]
+
+
+# --- Dostęp: jednostki wskazane w profilu i kierownik jednostki -------------
+
+
+def _url(jednostka):
+    return reverse("ewaluacja_metryki:metryki_jednostki", args=[jednostka.pk])
+
+
+@pytest.mark.django_db
+def test_jednostki_wskazane_w_profilu(client, klinika, okres_2022):
+    jednostka, _, _ = klinika
+    inna = Jednostka.objects.get(nazwa="Inna Klinika")
+    user = _uzytkownik(client)
+    user.jednostki_metryk.add(jednostka)
+    wybierz_okres(client, okres_2022)
+
+    lista = client.get(reverse("ewaluacja_metryki:metryki_jednostek"))
+    assert lista.status_code == 200
+    tresc = lista.content.decode()
+    assert "Klinika Testowa" in tresc
+    assert "Inna Klinika" not in tresc
+
+    assert client.get(_url(jednostka), {"format": "html"}).status_code == 200
+    assert client.get(_url(inna), {"format": "html"}).status_code == 403
+
+
+@pytest.mark.django_db
+def test_wglad_obejmuje_podjednostki(client, klinika, okres_2022):
+    jednostka, dyscyplina, _ = klinika
+    poradnia = baker.make(
+        Jednostka, nazwa="Poradnia", parent=jednostka, uczelnia=jednostka.uczelnia
+    )
+    _metryka(poradnia, dyscyplina, okres_2022, "Poradniana", 4, 4, 300)
+    user = _uzytkownik(client)
+    user.jednostki_metryk.add(jednostka)
+    wybierz_okres(client, okres_2022)
+
+    assert client.get(_url(poradnia), {"format": "html"}).status_code == 200
+
+
+@pytest.mark.django_db
+def test_bez_wgladu_403_a_nie_404(client, klinika, okres_2022):
+    """Bez wglądu nie zdradzamy, czy jednostka w ogóle ma metryki."""
+    jednostka, _, _ = klinika
+    pusta = baker.make(Jednostka, uczelnia=jednostka.uczelnia)
+    user = _uzytkownik(client)
+    user.jednostki_metryk.add(jednostka)
+    wybierz_okres(client, okres_2022)
+    assert client.get(_url(pusta)).status_code == 403
+
+
+def _kierownik(jednostka, **daty):
+    from bpp.models import Autor_Jednostka, Funkcja_Autora
+
+    funkcja, _ = Funkcja_Autora.objects.get_or_create(
+        nazwa="kierownik", defaults={"skrot": "kier."}
+    )
+    autor = baker.make(Autor, nazwisko="Kierownicza", imiona="Anna")
+    Autor_Jednostka.objects.create(
+        autor=autor, jednostka=jednostka, funkcja=funkcja, **daty
+    )
+    return autor
+
+
+@pytest.mark.django_db
+def test_kierownik_widzi_swoja_jednostke(client, klinika, okres_2022):
+    jednostka, _, _ = klinika
+    inna = Jednostka.objects.get(nazwa="Inna Klinika")
+    user = _uzytkownik(client, autor=_kierownik(jednostka))
+    wybierz_okres(client, okres_2022)
+
+    assert client.get(_url(jednostka), {"format": "html"}).status_code == 200
+    assert client.get(_url(inna), {"format": "html"}).status_code == 403
+
+    profil = client.get(reverse("bpp:profil-uzytkownika"))
+    tresc = profil.content.decode()
+    assert "Metryki jednostek" in tresc
+    assert _url(jednostka) in tresc
+    assert _url(inna) not in tresc
+    assert user.jednostki_metryk.count() == 0
+
+
+@pytest.mark.django_db
+def test_byly_kierownik_nie_ma_wgladu(client, klinika, okres_2022):
+    import datetime
+
+    jednostka, _, _ = klinika
+    _uzytkownik(
+        client,
+        autor=_kierownik(jednostka, zakonczyl_prace=datetime.date(2020, 12, 31)),
+    )
+    wybierz_okres(client, okres_2022)
+
+    assert client.get(_url(jednostka)).status_code == 403
+    assert client.get(reverse("ewaluacja_metryki:metryki_jednostek")).status_code == 403
+    assert (
+        "Metryki jednostek"
+        not in client.get(reverse("bpp:profil-uzytkownika")).content.decode()
+    )

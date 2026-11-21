@@ -285,8 +285,24 @@ Otwórz menu **ewaluacja → metryki jednostek (PDF)** albo kliknij przycisk
 **„Metryki jednostek (PDF)”** nad tabelą metryk. Na liście są tylko jednostki,
 które mają metryki w wybranym okresie. Przy każdej jednostce są dwa przyciski:
 **„PDF”** pobiera plik, a **„podgląd”** otwiera to samo w przeglądarce.
-Dostęp mają osoby z pełnymi uprawnieniami do ewaluacji (grupa „wprowadzanie
-danych” albo superużytkownik).
+
+### Kto ma dostęp {#metryki-jednostek-dostep}
+
+- **Osoby z pełnymi uprawnieniami do ewaluacji** (grupa „wprowadzanie danych”
+  albo superużytkownik) widzą wszystkie jednostki.
+- **Kierownik jednostki** widzi swoją jednostkę i jej podjednostki
+  automatycznie, jeśli jego konto jest powiązane z autorem, a autor ma
+  w tej jednostce funkcję „kierownik” w bieżących datach zatrudnienia.
+  Po zakończeniu kierowania (data „zakończył pracę”) wgląd znika.
+- **Każdy inny użytkownik** widzi jednostki, które administrator wskaże mu
+  w panelu administracyjnym: **Użytkownicy → (konto) → „Metryki jednostek”**,
+  pole „Metryki jednostek — jednostki do wglądu”. Wgląd obejmuje też
+  podjednostki. To pole nie daje żadnych innych uprawnień (np. do edycji
+  danych ani do metryk pozostałych jednostek).
+
+Kierownik i osoby ze wskazanymi jednostkami znajdą swoje zestawienia na
+stronie **Mój profil**, w bloku „Metryki jednostek”. Lista jednostek
+i pobieranie pokazują tylko jednostki, do których dana osoba ma wgląd.
 
 Pierwsza strona to nagłówek jednostki, a gdy jednostka ma kilka dyscyplin —
 także podsumowanie całej jednostki i tabela dyscyplin. Potem każda dyscyplina

@@ -83,6 +83,19 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
         "systemu BPP; wybierz konto z którego ma być wysyłane w tym polu. ",
     )
 
+    jednostki_metryk = models.ManyToManyField(
+        "bpp.Jednostka",
+        verbose_name="Metryki jednostek — jednostki do wglądu",
+        blank=True,
+        related_name="uzytkownicy_metryk",
+        help_text="Jednostki, których zestawienie „Metryki jednostek” (PDF "
+        "z imiennymi ocenami pracowników) ten użytkownik może pobierać — "
+        "razem z ich podjednostkami. Do pozostałych metryk i do edycji danych "
+        "pole nie daje dostępu. Kierownik jednostki (funkcja „kierownik” "
+        "u powiązanego autora) widzi swoją jednostkę automatycznie. "
+        "Osoby z grupy „wprowadzanie danych” widzą wszystkie jednostki.",
+    )
+
     autor = models.OneToOneField(
         "bpp.Autor",
         on_delete=models.SET_NULL,
