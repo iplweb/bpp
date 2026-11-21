@@ -8,6 +8,25 @@ import os
 from pathlib import Path
 
 CLEANUP_ORDER = (
+    # Lustro PBN — historia wysylki i oswiadczenia (wyniki porownan
+    # BPP-PBN, jesli user je uruchomil, kasuja sie z nimi kaskadowo),
+    # znaczniki pobrania:
+    "pbn_api.SentData",
+    "pbn_api.OswiadczenieInstytucji",
+    "pbn_downloader_app.PbnDownloadTask",
+    "pbn_downloader_app.PbnInstitutionPeopleTask",
+    "pbn_downloader_app.PbnJournalsDownloadTask",
+    # Zgloszenia publikacji (soft-delete — cleanup kasuje na twardo):
+    "zglos_publikacje.Zgloszenie_Publikacji_Autor",
+    "zglos_publikacje.Zgloszenie_Publikacji",
+    # Rzadsze typy: powiazania generyczne i autorzy patentow, potem rekordy
+    # (jednostka/autor PROTECT):
+    "bpp.Grant_Rekordu",
+    "bpp.Nagroda",
+    "bpp.Patent_Autor",
+    "bpp.Patent",
+    "bpp.Praca_Doktorska",
+    "bpp.Praca_Habilitacyjna",
     # Wyniki ewaluacji dla autorow demo (kaskadowalyby z Autor, ale
     # kasujemy jawnie, zeby manifest byl kompletny):
     "ewaluacja_metryki.MetrykaAutora",
@@ -26,6 +45,13 @@ CLEANUP_ORDER = (
     # command (T14) implementuje to przez `sorted(pks, reverse=True)`.
     "bpp.Wydawnictwo_Ciagle",
     "bpp.Wydawnictwo_Zwarte",
+    # Slowniki podpinane do prac (PROTECT z WC/WZ) i reszta rzadszych typow:
+    "bpp.Konferencja",
+    "bpp.Seria_Wydawnicza",
+    "bpp.Grant",
+    "bpp.OrganPrzyznajacyNagrody",
+    # Konta demo (przed autorem — konto „user" jest z nim powiazane):
+    "bpp.BppUser",
     # Powiazania autorow:
     "bpp.Autor_Dyscyplina",
     "bpp.Autor_Jednostka",
@@ -41,6 +67,12 @@ CLEANUP_ORDER = (
     # Slowniki "Demo —":
     "bpp.Zrodlo",
     "bpp.Wydawca",
+    # Lustro PBN (pbn_uid w BPP to SET_NULL):
+    "pbn_api.Publication",
+    "pbn_api.Scientist",
+    "pbn_api.Journal",
+    "pbn_api.Publisher",
+    "pbn_api.Institution",
     # Singleton tylko jesli stworzony przez nas:
     "bpp.Uczelnia",
 )

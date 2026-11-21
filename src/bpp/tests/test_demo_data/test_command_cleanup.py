@@ -17,6 +17,7 @@ from bpp.models import (
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
+from bpp.tests.test_demo_data._flagi import BEZ_DODATKOW
 
 
 @pytest.fixture
@@ -40,6 +41,7 @@ def test_roundtrip_create_then_cleanup(fixtures_loaded, tmp_path):
 
     call_command(
         "create_demo_data",
+        *BEZ_DODATKOW,
         "--wydzialow=1",
         "--jednostek-na-wydzial=1",
         "--autorow=3",
@@ -118,6 +120,7 @@ def test_cleanup_aborts_wrong_db(fixtures_loaded, tmp_path):
     db_name = connection.settings_dict["NAME"]
     call_command(
         "create_demo_data",
+        *BEZ_DODATKOW,
         "--wydzialow=1",
         "--jednostek-na-wydzial=1",
         "--autorow=1",

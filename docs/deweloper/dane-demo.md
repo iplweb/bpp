@@ -18,6 +18,15 @@ uv run python src/manage.py create_demo_data \
 - `wiedzmin` — Wiedźmin
 - `harry-potter` — Harry Potter
 - `disney` — Disney
+- `mitologia` — mitologia grecka, rzymska, słowiańska i nordycka
+- `trylogia` — Trylogia Sienkiewicza
+- `miks` — wszystkie motywy fabularne naraz (bez `realistyczny`):
+  największa różnorodność imion, nazwisk i tytułów
+
+Motyw może mieć „autorów obowiązkowych” (`autorzy_obowiazkowi`), tworzonych
+zawsze jako pierwsi i nigdy nie losowanych drugi raz. `wiedzmin` (i `miks`)
+ma ich kilku — Yennefer Merigold, Regis z Cintry, Cahir z Aretuzy itd. —
+bo skrypty zrzutów ekranu (`bin/docs-demo-*.py`) szukają ich po nazwisku.
 
 ## Wybrane flagi
 
@@ -25,6 +34,76 @@ uv run python src/manage.py create_demo_data \
 - `--procent-ze-streszczeniem 70` — odsetek prac ze streszczeniem
 - `--od-roku 2020 --do-roku 2026` — zakres lat prac
 - `--seed 123` — deterministyczny wynik
+
+## Co jeszcze powstaje (dodatki)
+
+Poza uczelnią, autorami, czasopismami i pracami generator dokłada kilka
+rzeczy, dzięki którym na bazie demo nie są puste narzędzia redakcyjne
+i porządkowe. Każdy dodatek ma własny generator losowy (`<seed>-<nazwa>`),
+więc dla danego `--seed` rdzeń danych jest taki sam jak bez dodatków.
+`--bez-dodatkow` wyłącza wszystkie naraz.
+
+- **Dwudyscyplinowcy** (`--dwudyscyplinowcow 8`, `0` — wcale): autorzy
+  z pseudonimem „dwudyscyplinowy” (widać go przy nazwisku w całym BPP),
+  dyscyplina 60% + subdyscyplina 40% w każdym roku (rodzaj „N”), po 6
+  artykułów — połowa przypisana do subdyscypliny i opublikowana
+  w czasopiśmie, które ma tę dyscyplinę (praca „zgodna” w module
+  dwudyscyplinowców). Ekran pokazuje okres wybrany na górnym pasku.
+- **Rzadsze rodzaje rekordów** (`--bez-rzadkich-typow`): prace doktorskie
+  (z promotorem) i habilitacyjne, patenty z autorami, konferencje (przy
+  ~5% prac), serie wydawnicze (~10% książek, z numerem w serii), granty
+  (~3% prac), nagrody (kilka książek).
+- **Celowe „brudy”** (`--bez-brudow`):
+  - zdublowani autorzy — to samo imię i nazwisko, inicjał zamiast imienia
+    albo nazwisko dwuczłonowe; jedna praca oryginału przeniesiona na
+    duplikat (duplikat nie ma dyscypliny, więc ta praca jest też
+    rozbieżnością „brak przypisania”);
+  - zdublowane czasopisma — ten sam ISSN, inna nazwa, bez odpowiednika
+    w PBN, z jedną przeniesioną pracą;
+  - zdublowane prace ciągłe — ten sam tytuł, rok, czasopismo i autorzy
+    (co druga także z tym samym DOI);
+  - rozbieżne dyscypliny autorów prac (dyscyplina spoza przypisań autora
+    albo jej brak) i punkty pracy inne niż punktacja czasopisma.
+
+  Generator ich nie wyszukuje — deduplikatory i porównania uruchamia
+  użytkownik („Skanuj” na ekranie deduplikatora). Skan znajdzie też
+  trochę „naturalnych” podobieństw: losowe nazwiska i tytuły czasem się
+  powtarzają.
+- **Lustro PBN** (`--bez-pbn`) — lokalne tabele PBN wypełnione tak, jakby
+  BPP pobrało je z PBN; bez sieci i bez tokenu:
+  - instytucja (uczelnia demo), czasopisma z punktami i dyscyplinami,
+    wydawcy z punktami, naukowcy (autorzy z dyscypliną), publikacje
+    (~70% prac), oświadczenia instytucji, historia wysyłki (~85% wysłane,
+    ~10% błąd, ~5% w toku);
+  - celowe różnice: inna punktacja (~10% czasopism, jeden rok) lub
+    dodatkowa dyscyplina (~5%), literówka w tytule / brakujący autor /
+    inny DOI (~5% publikacji), inna dyscyplina w oświadczeniu (~4%),
+    oświadczenie autora spoza publikacji, 5 publikacji i 3 naukowców
+    tylko w PBN, 2 czasopisma usunięte w PBN (z aktywnym następcą o tym
+    samym ISSN — do przemapowania);
+  - dane wyglądają na pobrane z PBN w chwili generowania: wpisy
+    o pobraniu publikacji, osób z instytucji i czasopism mają tę datę
+    i użytkownika „system” (na świeżej instalacji nie ma jeszcze kont).
+    Jak po prawdziwym pobraniu, po 7 dniach ekrany PBN zaczną prosić
+    o świeże dane.
+
+  Porównań BPP↔PBN generator nie uruchamia — listy rozbieżności
+  (dyscypliny z oświadczeń, czasopisma) wypełniają się po kliknięciu
+  „Przebuduj”/„Przelicz” na ich ekranach. Przyciski wysyłki do PBN nadal
+  wymagają prawdziwego PBN.
+- **Zgłoszenia publikacji** (`--bez-zgloszen`): 10 zgłoszeń w różnych
+  stanach (nowe, do poprawy, po zmianach, odrzucone, spam) z autorami.
+- **Konta demo** (`--konta-demo`, domyślnie WYŁĄCZONE): `admin`
+  (superużytkownik), `redaktor` (wprowadzanie danych, zgłoszenia
+  publikacji, indeks autorów), `raporty` (generowanie raportów), `user`
+  (bez uprawnień, powiązany z autorem demo). Hasło = login. Istniejącego
+  konta generator nie zmienia. Hasła są jawne, więc to opcja tylko dla
+  instancji demonstracyjnych — i nie dla bpp-wsl, gdzie pierwsze konto
+  zakłada kreator (kreator pomija ten krok, gdy w bazie jest już
+  jakiekolwiek konto).
+
+Na skali bpp-wsl (200 autorów, 1000 + 500 prac) dodatki wydłużają
+generowanie o kilka sekund.
 
 ## Plik POL-on do importu (`--polon-plik`)
 
@@ -89,5 +168,8 @@ uv run python src/manage.py cleanup_demo_data \
 ```
 
 > Cleanup usuwa wyłącznie obiekty z manifestu (po PK) — bezpieczny dla
-> istniejących danych. Po `create_demo_data` uruchom `denorm_flush`, by
+> istniejących danych; razem z nimi znikają konta demo, lustro PBN
+> i wpisy o pobraniu danych z PBN. Wyniki skanów i porównań uruchomionych
+> przez użytkownika mogą potem wskazywać na usunięte rekordy — wystarczy
+> uruchomić je ponownie. Po `create_demo_data` uruchom `denorm_flush`, by
 > wypełnić cache opisów bibliograficznych.

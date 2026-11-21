@@ -41,6 +41,7 @@ from bpp.models.sloty.core import ISlot
 from bpp.models.sloty.exceptions import CannotAdapt
 from bpp.models.wydawca import Poziom_Wydawcy
 from bpp.punktacja_sugestia import PROGI_ZWARTE
+from bpp.tests.test_demo_data._flagi import BEZ_DODATKOW
 from ewaluacja_liczba_n.models import (
     IloscUdzialowDlaAutoraZaCalosc,
     IloscUdzialowDlaAutoraZaRok,
@@ -110,6 +111,7 @@ def _create_demo(tmp_path, *extra):
     db_name = connection.settings_dict["NAME"]
     call_command(
         "create_demo_data",
+        *BEZ_DODATKOW,
         "--wydzialow=1",
         "--jednostek-na-wydzial=2",
         "--autorow=30",

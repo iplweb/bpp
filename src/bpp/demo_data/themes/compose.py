@@ -78,8 +78,15 @@ def wydawca_nazwy(theme: Theme, rng: random.Random, n: int) -> list[str]:
 
 
 def compose_autor(theme: Theme, rng: random.Random) -> tuple[str, str]:
-    """('<imiona>', '<nazwisko>'); nazwisko nigdy puste (gwarantuje motyw)."""
-    return rng.choice(theme.autor_imiona), rng.choice(theme.autor_nazwiska)
+    """('<imiona>', '<nazwisko>'); nazwisko nigdy puste (gwarantuje motyw).
+
+    Nie zwraca autorów obowiązkowych motywu (ci powstają raz, osobno) —
+    skrypty zrzutów ekranu szukają ich po nazwisku i liczą na jednego."""
+    zajete = set(theme.autorzy_obowiazkowi)
+    while True:
+        para = rng.choice(theme.autor_imiona), rng.choice(theme.autor_nazwiska)
+        if para not in zajete:
+            return para
 
 
 def compose_tytul(theme: Theme, rng: random.Random) -> str:

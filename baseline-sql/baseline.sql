@@ -12534,7 +12534,7 @@ CREATE TABLE public.pbn_downloader_app_pbndownloadtask (
     total_publications integer,
     total_statements integer,
     last_updated timestamp with time zone NOT NULL,
-    user_id integer NOT NULL
+    user_id integer
 );
 
 
@@ -12567,7 +12567,7 @@ CREATE TABLE public.pbn_downloader_app_pbninstitutionpeopletask (
     people_processed integer NOT NULL,
     total_people integer,
     last_updated timestamp with time zone NOT NULL,
-    user_id integer NOT NULL
+    user_id integer
 );
 
 
@@ -12601,7 +12601,7 @@ CREATE TABLE public.pbn_downloader_app_pbnjournalsdownloadtask (
     total_journals integer,
     zrodla_integrated integer NOT NULL,
     last_updated timestamp with time zone NOT NULL,
-    user_id integer NOT NULL
+    user_id integer
 );
 
 
@@ -16643,6 +16643,10 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+1041	bpp	0466_bppuser_zwijaj_dlugie_listy_autorow_and_more	2000-01-01 00:00:00+00
+852	pbn_import	0002_add_task_id_field	2000-01-01 00:00:00+00
+853	pbn_import	0003_add_import_inconsistency	2000-01-01 00:00:00+00
+866	pbn_wysylka_oswiadczen	0002_add_tytul_field	2000-01-01 00:00:00+00
 680	ewaluacja_liczba_n	0008_add_sankcje	2000-01-01 00:00:00+00
 854	pbn_import	0004_add_bpp_publication_content_type	2000-01-01 00:00:00+00
 855	pbn_import	0005_remove_importstatistics	2000-01-01 00:00:00+00
@@ -16834,7 +16838,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1038	rozbieznosci	0001_initial	2000-01-01 00:00:00+00
 1039	rozbieznosci	0002_usun_stare_rozbieznosci	2000-01-01 00:00:00+00
 1040	zglos_publikacje	0026_faza_b_ii2_repoint_wydzial	2000-01-01 00:00:00+00
-1041	bpp	0466_bppuser_zwijaj_dlugie_listy_autorow_and_more	2000-01-01 00:00:00+00
 1042	bpp	0467_seed_crossref_mapper_rows	2000-01-01 00:00:00+00
 1043	import_pracownikow	0010_liveops	2000-01-01 00:00:00+00
 1058	import_pracownikow	0019_alter_importpracownikow_stan	2000-01-01 00:00:00+00
@@ -16928,6 +16931,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 442	pbn_api	0045_pbn_export_queue	2000-01-01 00:00:00+00
 447	taggit	0005_auto_20220424_2025	2000-01-01 00:00:00+00
 903	rozbieznosci_dyscyplin	0002_rok_2017_i_wyzej	2000-01-01 00:00:00+00
+110	bpp	0033_auto_20151001_1425	2000-01-01 00:00:00+00
 904	rozbieznosci_dyscyplin	0003_brakprzypisaniaview_rozbiezneprzypisaniaview_rozbieznosciview	2000-01-01 00:00:00+00
 905	rozbieznosci_dyscyplin	0004_recreate	2000-01-01 00:00:00+00
 350	bpp	0258_auto_20210407_2320	2000-01-01 00:00:00+00
@@ -17036,7 +17040,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 107	bpp	0030_auto_20150923_1351	2000-01-01 00:00:00+00
 108	bpp	0031_zrodlo_openaccess_licencja	2000-01-01 00:00:00+00
 109	bpp	0032_auto_20151001_1413	2000-01-01 00:00:00+00
-110	bpp	0033_auto_20151001_1425	2000-01-01 00:00:00+00
 111	bpp	0034_auto_20151011_1514	2000-01-01 00:00:00+00
 112	bpp	0035_nomorefixtures_data_migration	2000-01-01 00:00:00+00
 147	bpp	0066_wydawnictwo_zwarte_calkowita_liczba_autorow	2000-01-01 00:00:00+00
@@ -17148,6 +17151,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 218	bpp	0136_ranking_liczba_cytowan	2000-01-01 00:00:00+00
 219	bpp	0137_auto_20180613_0015	2000-01-01 00:00:00+00
 220	bpp	0138_uczelnia_pokazuj_liczbe_cytowan_w_rankingu	2000-01-01 00:00:00+00
+345	bpp	0253_rekord_mat_slug	2000-01-01 00:00:00+00
 221	bpp	0139_uczelnia_pokazuj_liczbe_cytowan_na_stronie_autora	2000-01-01 00:00:00+00
 222	bpp	0140_auto_20180624_1620	2000-01-01 00:00:00+00
 351	bpp	0259_auto_20210421_2323	2000-01-01 00:00:00+00
@@ -17261,7 +17265,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 342	bpp	0249_dyscyplina_zrodla	2000-01-01 00:00:00+00
 343	bpp	0250_auto_20210315_2104	2000-01-01 00:00:00+00
 344	bpp	0252_slug	2000-01-01 00:00:00+00
-345	bpp	0253_rekord_mat_slug	2000-01-01 00:00:00+00
 347	bpp	0255_auto_20210407_1138	2000-01-01 00:00:00+00
 349	bpp	0257_wydawca_pbn_uid	2000-01-01 00:00:00+00
 352	bpp	0260_jednostka_pbn_uid	2000-01-01 00:00:00+00
@@ -17728,9 +17731,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 847	pbn_export_queue	0004_add_wykluczone_field	2000-01-01 00:00:00+00
 849	pbn_export_queue	0006_reclassify_list_format_validation_errors	2000-01-01 00:00:00+00
 850	pbn_export_queue	0007_reclassify_doiorwwwmissing_errors	2000-01-01 00:00:00+00
-852	pbn_import	0002_add_task_id_field	2000-01-01 00:00:00+00
-853	pbn_import	0003_add_import_inconsistency	2000-01-01 00:00:00+00
-866	pbn_wysylka_oswiadczen	0002_add_tytul_field	2000-01-01 00:00:00+00
 867	pbn_wysylka_oswiadczen	0003_add_synchronized_count	2000-01-01 00:00:00+00
 868	pbn_wysylka_oswiadczen	0004_alter_pbnwysylkalog_content_type_and_more	2000-01-01 00:00:00+00
 869	powiazania_autorow	0001_initial	2000-01-01 00:00:00+00
@@ -17822,6 +17822,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1182	ewaluacja_common	0007_wybrany_okres_ewaluacji	2000-01-01 00:00:00+00
 1183	bpp	0510_slowniki_protect	2000-01-01 00:00:00+00
 1184	zglos_publikacje	0029_autor_slowniki_protect	2000-01-01 00:00:00+00
+1185	pbn_downloader_app	0005_task_user_opcjonalny	2000-01-01 00:00:00+00
 \.
 
 
@@ -19871,7 +19872,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1184, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1185, true);
 
 
 --
