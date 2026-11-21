@@ -29,27 +29,27 @@ def test_bez_skrotu_dziala_globalnie():
 
 
 @pytest.mark.django_db
-@override_settings(OIDC_LOGIN_ENABLED=True, OIDC_LOGIN_SKROT="UAFM")
+@override_settings(OIDC_LOGIN_ENABLED=True, OIDC_LOGIN_SKROT="UCZELNIA")
 def test_dopasowanie_skrotu_uczelni_true():
-    uczelnia = baker.make("bpp.Uczelnia", skrot="UAFM")
+    uczelnia = baker.make("bpp.Uczelnia", skrot="UCZELNIA")
     assert oidc_enabled_for_request(_Req(uczelnia)) is True
 
 
 @pytest.mark.django_db
-@override_settings(OIDC_LOGIN_ENABLED=True, OIDC_LOGIN_SKROT="uafm")
+@override_settings(OIDC_LOGIN_ENABLED=True, OIDC_LOGIN_SKROT="uczelnia")
 def test_dopasowanie_skrotu_ignoruje_wielkosc_liter():
-    uczelnia = baker.make("bpp.Uczelnia", skrot="UAFM")
+    uczelnia = baker.make("bpp.Uczelnia", skrot="UCZELNIA")
     assert oidc_enabled_for_request(_Req(uczelnia)) is True
 
 
 @pytest.mark.django_db
-@override_settings(OIDC_LOGIN_ENABLED=True, OIDC_LOGIN_SKROT="UAFM")
+@override_settings(OIDC_LOGIN_ENABLED=True, OIDC_LOGIN_SKROT="UCZELNIA")
 def test_inna_uczelnia_nie_widzi_oidc():
     uczelnia = baker.make("bpp.Uczelnia", skrot="INNA")
     assert oidc_enabled_for_request(_Req(uczelnia)) is False
 
 
-@override_settings(OIDC_LOGIN_ENABLED=True, OIDC_LOGIN_SKROT="UAFM")
+@override_settings(OIDC_LOGIN_ENABLED=True, OIDC_LOGIN_SKROT="UCZELNIA")
 def test_brak_uczelni_w_requescie_false():
     assert oidc_enabled_for_request(_Req(None)) is False
 
@@ -59,32 +59,14 @@ def test_context_processor_krotkie_spiecie_gdy_wylaczone():
     out = oidc_auth_status(_Req(None))
     assert out["oidc_login_enabled"] is False
     assert out["oidc_login_skrot"] == ""
-    assert out["oidc_error_message"] is None
 
 
 @pytest.mark.django_db
-@override_settings(OIDC_LOGIN_ENABLED=True, OIDC_LOGIN_SKROT="UAFM")
+@override_settings(OIDC_LOGIN_ENABLED=True, OIDC_LOGIN_SKROT="UCZELNIA")
 def test_context_processor_per_uczelnia():
-    uafm = baker.make("bpp.Uczelnia", skrot="UAFM")
+    uczelnia = baker.make("bpp.Uczelnia", skrot="UCZELNIA")
     inna = baker.make("bpp.Uczelnia", skrot="INNA")
 
-    assert oidc_auth_status(_Req(uafm))["oidc_login_enabled"] is True
+    assert oidc_auth_status(_Req(uczelnia))["oidc_login_enabled"] is True
     assert oidc_auth_status(_Req(inna))["oidc_login_enabled"] is False
-    assert oidc_auth_status(_Req(uafm))["oidc_login_skrot"] == "UAFM"
-
-
-@pytest.mark.django_db
-@override_settings(OIDC_LOGIN_ENABLED=False)
-def test_context_processor_popuje_komunikat_bledu():
-    from django.contrib.sessions.backends.db import SessionStore
-    from django.test import RequestFactory
-
-    req = RequestFactory().get("/accounts/login/")
-    req.session = SessionStore()
-    req.session["oidc_error_message"] = "OIDC: odmowa"
-    # pierwsze wywołanie zwraca i KASUJE komunikat (flash-once)
-    out = oidc_auth_status(req)
-    assert out["oidc_error_message"] == "OIDC: odmowa"
-    assert "oidc_error_message" not in req.session
-    # kolejne wywołanie już bez komunikatu
-    assert oidc_auth_status(req)["oidc_error_message"] is None
+    assert oidc_auth_status(_Req(uczelnia))["oidc_login_skrot"] == "UCZELNIA"

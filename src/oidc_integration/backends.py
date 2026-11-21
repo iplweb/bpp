@@ -3,6 +3,7 @@ import os
 import re
 
 from django.conf import settings
+from django.contrib import messages
 from django.core.exceptions import SuspiciousOperation
 from django.db import IntegrityError, transaction
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
@@ -16,6 +17,49 @@ logger = logging.getLogger(__name__)
 # części domenowej). Świadomie minimalistyczne: to nie walidacja RFC, tylko
 # odsianie loginów bez domeny (np. ``jkowalski``) od UPN-ów (``j@uczelnia.pl``).
 _EMAIL_SHAPE_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+# Komunikaty odmowy pokazywane UŻYTKOWNIKOWI (Django ``messages`` przez
+# ``BppOIDCBackend._fail``). Prostym językiem: co się stało i co zrobić —
+# bez żargonu. Techniczny powód idzie osobno do logu.
+_SSO_POMOC = "albo poproś administratora BPP o pomoc."
+MSG_KONTO_ISTNIEJE = (
+    "Konto z tym adresem e-mail już istnieje w BPP. Zaloguj się hasłem "
+    "i połącz je z logowaniem instytucjonalnym w „Mój profil” → "
+    f"„Połącz konto z SSO”, {_SSO_POMOC}"
+)
+MSG_EMAIL_NIEPOTWIERDZONY = (
+    "Nie możemy założyć konta w BPP, bo adres e-mail przekazany przez "
+    "logowanie instytucjonalne nie jest potwierdzony ani nie należy do "
+    "zaufanej domeny uczelni. Poproś administratora BPP o pomoc."
+)
+MSG_BRAK_EMAILA = (
+    "Logowanie instytucjonalne nie przekazało adresu e-mail, więc nie możemy "
+    "zalogować Cię do BPP. Poproś administratora BPP o pomoc."
+)
+MSG_KONTO_NIEAKTYWNE = (
+    "Twoje konto w BPP jest nieaktywne. Skontaktuj się z administratorem BPP."
+)
+MSG_LINK_NIEUDANY = (
+    "Nie udało się połączyć konta z logowaniem instytucjonalnym. Spróbuj "
+    "ponownie w „Mój profil” → „Połącz konto z SSO”, " + _SSO_POMOC
+)
+MSG_KONTO_MA_JUZ_SSO = (
+    "To konto w BPP jest już połączone z innym kontem logowania "
+    "instytucjonalnego. Jeśli to pomyłka, poproś administratora BPP o pomoc."
+)
+MSG_SSO_ZAJETE = (
+    "To konto logowania instytucjonalnego jest już połączone z innym kontem "
+    "w BPP. Poproś administratora BPP o pomoc."
+)
+MSG_BLAD_TECHNICZNY = (
+    "Logowanie instytucjonalne nie powiodło się z przyczyn technicznych. "
+    "Spróbuj ponownie za chwilę, a jeśli problem się powtarza, poproś "
+    "administratora BPP o pomoc."
+)
+
+
+class OIDCBrakEmaila(SuspiciousOperation):
+    """W claimach nie ma adresu e-mail (ani UPN-a z domeną) — odmowa."""
 
 
 def _email_claim_keys():
@@ -105,7 +149,7 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
     tworzenie nowych odbywa się po e-mailu; ``username`` bierzemy z
     ``preferred_username``.
 
-    ⚠️ „Konto każdemu" oznacza, że dowolna osoba z realmu KA (potencjalnie też
+    ⚠️ „Konto każdemu" oznacza, że dowolna osoba z realmu uczelni (potencjalnie też
     studenci — patrz scope ``kierunek-oidc``) dostanie konto BPP. Bezpieczne o
     tyle, że bez ``is_staff`` nie ma dostępu do panelu/edycji.
 
@@ -118,14 +162,14 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
     mail-first: ``mail`` → ``email`` → ``e-mail`` → ``e_mail``), a w
     ostateczności ``preferred_username`` jeśli zawiera domenę. Brak adresu →
     ``SuspiciousOperation`` (login failure). Default mail-first, bo w realmach
-    LDAP-owych (np. UAFM) ``email`` bywa adresem prywatnym, a instytucjonalny
+    LDAP-owych ``email`` bywa adresem prywatnym, a instytucjonalny
     siedzi pod ``mail`` — instalacje z odwrotną konwencją przestawiają
     kolejność env-em ``DJANGO_BPP_OIDC_<SKROT>_EMAIL_CLAIMS``.
 
     Przypisanie uczelni: konto dostaje ``accessible_uczelnie`` (M2M z PR #189)
     z uczelnią o ``skrot`` == skrótowi z konfiguracji OIDC. Ten sam skrót
-    (np. ``UAFM``), który wybrał ``client_id``/``client_secret``, mapuje 1:1 na
-    ``Uczelnia.skrot`` — dzięki czemu docelowe „3 backendy = 3 uczelnie" same
+    (np. ``UCZELNIA``), który wybrał ``client_id``/``client_secret``, mapuje
+    1:1 na ``Uczelnia.skrot`` — dzięki czemu docelowe „3 backendy = 3 uczelnie" same
     przypisują właściwą uczelnię, bez dodatkowej konfiguracji.
 
     ⚠️ GATE PRZED PRODUKCJĄ (TODO): obecnie konto powstaje KAŻDEMU ważnemu
@@ -152,7 +196,7 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         ``mail`` → ``email`` → ``e-mail`` → ``e_mail``; pierwszy niepusty
         wygrywa). Gdy żaden nie niesie wartości, spada na
         ``preferred_username`` — ale tylko jeśli ten wygląda jak adres
-        (zawiera domenę, np. UPN ``99999@student-afm.edu.pl``).
+        (zawiera domenę, np. UPN ``99999@student.uczelnia.example.org``).
 
         Zwraca krotkę ``(email, from_fallback)``, gdzie ``from_fallback`` jest
         ``True``, gdy adres pochodzi z ``preferred_username`` (a nie z
@@ -175,7 +219,7 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         if _EMAIL_SHAPE_RE.match(username):
             return username, True
 
-        raise SuspiciousOperation(
+        raise OIDCBrakEmaila(
             "OIDC: nie znaleziono adresu e-mail w claimach "
             f"({'/'.join(keys)}), a preferred_username={username!r} "
             "nie zawiera domeny — odrzucam logowanie."
@@ -191,8 +235,8 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         """Czy domena adresu jest na liście ``OIDC_TRUSTED_EMAIL_DOMAINS``.
 
         Dopasowanie DOKŁADNE (case-insensitive), bez wieloznaczników i bez
-        obejmowania subdomen: ``student-afm.edu.pl`` trzeba wypisać osobno,
-        obok ``uafm.edu.pl``. Świadomie — lista domen jest jedyną bramką
+        obejmowania subdomen: ``student.uczelnia.example.org`` trzeba wypisać
+        osobno, obok ``uczelnia.example.org``. Świadomie — lista domen jest jedyną bramką
         chroniącą wiązanie kont uprzywilejowanych, więc nie chcemy w niej
         reguł, które łatwo napisać szerzej, niż się zamierzało.
         """
@@ -225,7 +269,7 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
           Reguła historyczna sama w sobie jest niespełnialna w realmie, dla
           którego ustawiono mail-first (``a2124bf34``): wymaga równości adresu
           instytucjonalnego (``mail``) z prywatnym (``email``). Dlatego
-          instalacje takie jak UAFM muszą wskazać domeny jawnie,
+          takie instalacje muszą wskazać domeny jawnie,
         * ``iss`` — issuer bez końcowego ``/`` (do dopasowania po ``(iss, sub)``).
         """
         email, from_fallback = cls._resolve_email_with_source(claims)
@@ -295,9 +339,10 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         payload_sub = payload.get("sub")
         userinfo_sub = userinfo.get("sub")
         if payload_sub and userinfo_sub and userinfo_sub != payload_sub:
-            raise SuspiciousOperation(
+            self._fail(
+                MSG_BLAD_TECHNICZNY,
                 f"OIDC: userinfo sub={userinfo_sub!r} != id_token "
-                f"sub={payload_sub!r} (OIDC Core §5.3.2)"
+                f"sub={payload_sub!r} (OIDC Core §5.3.2)",
             )
 
         # Autorytatywne z podpisanego payloadu (userinfo tylko fallback).
@@ -309,7 +354,10 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         if merged.get("email") is None and payload.get("email") is not None:
             merged["email"] = payload.get("email")
 
-        return self._normalized(merged)
+        try:
+            return self._normalized(merged)
+        except OIDCBrakEmaila as exc:
+            self._fail(MSG_BRAK_EMAILA, str(exc))
 
     @staticmethod
     def _clear_link_session(session):
@@ -334,7 +382,7 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
             # WSZYSTKICH gałęziach wyjścia — sukces, ``SuspiciousOperation``
             # (przez ``_fail``) czy nieoczekiwany wyjątek — żeby przerwany link
             # nie „przeciekł" na następne, zwykłe logowanie OIDC. ``_fail`` sam
-            # zapisuje ``oidc_error_message`` przed rzuceniem, a ``finally``
+            # dodaje komunikat (``messages``) przed rzuceniem, a ``finally``
             # jedynie usuwa flagi link (nie rusza komunikatu).
             try:
                 user_info = self.get_userinfo(access_token, id_token, payload)
@@ -345,11 +393,13 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
                     or request_user is None
                     or request_user.pk != target_pk
                 ):
-                    self._fail("OIDC: cel linkowania niezgodny")
+                    self._fail(MSG_LINK_NIEUDANY, "OIDC: cel linkowania niezgodny")
                 issuer = user_info.get("iss") or ""
                 sub = user_info.get("sub") or ""
                 if not issuer or not sub:
-                    self._fail("OIDC: brak (issuer, sub) do związania")
+                    self._fail(
+                        MSG_LINK_NIEUDANY, "OIDC: brak (issuer, sub) do związania"
+                    )
                 try:
                     with transaction.atomic():
                         identity, created = OIDCIdentity.objects.get_or_create(
@@ -361,12 +411,14 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
                     # (user, issuer) już zajęte innym sub — konto ma już
                     # tożsamość z tego realmu (jeden realm = jedno konto).
                     self._fail(
-                        "OIDC: to konto ma już powiązaną tożsamość z tego realmu"
+                        MSG_KONTO_MA_JUZ_SSO,
+                        "OIDC: to konto ma już powiązaną tożsamość z tego realmu",
                     )
                 if not created and identity.user_id != request_user.pk:
                     # Ta (issuer, sub) należy do innego konta — NIE przejmujemy.
                     self._fail(
-                        "OIDC: ta tożsamość SSO jest już powiązana z innym kontem"
+                        MSG_SSO_ZAJETE,
+                        "OIDC: ta tożsamość SSO jest już powiązana z innym kontem",
                     )
                 return request_user
             finally:
@@ -440,20 +492,27 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         user.sprobuj_dopasowac_autora(match_email=trusted, match_names=trusted)
         return user
 
-    def _fail(self, message):
-        """Zapisz komunikat odmowy do sesji (jeśli jest) i podnieś wyjątek.
+    def _fail(self, user_message, detail):
+        """Zgłoś użytkownikowi powód odmowy (Django ``messages``) i podnieś wyjątek.
 
         ``mozilla_django_oidc.authenticate`` łapie ``SuspiciousOperation`` i
-        degraduje do *login failure* — użytkownik ląduje z powrotem na stronie
-        logowania bez żadnej wskazówki, DLACZEGO się nie udało. Zapisujemy
-        powód w sesji (``oidc_error_message``, flash-once), a context processor
-        ``oidc_auth_status`` go POP-uje i pokazuje na stronie logowania.
+        degraduje do *login failure* — użytkownik ląduje na
+        ``LOGIN_REDIRECT_URL_FAILURE`` bez żadnej wskazówki, DLACZEGO się nie
+        udało. Dokładamy ``user_message`` (prosty język, co zrobić) jako
+        ``messages.error`` na tym samym requeście callbacku;
+        ``MessageMiddleware`` utrwala go w odpowiedzi (redirect), a
+        ``base.html`` pokazuje go raz na stronie docelowej, jak każdy inny
+        komunikat. Techniczny powód (``detail``) trafia do logu i do wyjątku.
+
+        ``fail_silently=True`` obsługuje wyłącznie request bez
+        ``MessageMiddleware`` (np. ``RequestFactory`` w testach jednostkowych) —
+        wtedy wyjątek i tak leci, tylko bez komunikatu.
         """
-        session = getattr(getattr(self, "request", None), "session", None)
-        if session is not None:
-            session["oidc_error_message"] = message
-            session.save()
-        raise SuspiciousOperation(message)
+        logger.warning("OIDC: odmowa logowania: %s", detail)
+        request = getattr(self, "request", None)
+        if request is not None:
+            messages.error(request, user_message, fail_silently=True)
+        raise SuspiciousOperation(detail)
 
     def _unique_username(self, base):
         """Zwróć ``base`` albo ``base-2``/``base-3``… jeśli zajęty.
@@ -562,21 +621,45 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         issuer = claims.get("iss") or ""
         sub = claims.get("sub") or ""
 
+        # Tożsamość już związana, ale konto zdezaktywowane:
+        # ``filter_users_by_claims`` je pomija, więc trafiamy tutaj — powiedz
+        # wprost, że konto jest nieaktywne (a nie „konto już istnieje").
+        if (
+            issuer
+            and sub
+            and OIDCIdentity.objects.filter(
+                issuer=issuer, sub=sub, user__is_active=False
+            ).exists()
+        ):
+            self._fail(
+                MSG_KONTO_NIEAKTYWNE,
+                "OIDC: konto związane z (issuer, sub) jest nieaktywne",
+            )
+
         graced = self._try_grace_bind(claims)
         if graced is not None:
             return graced
 
-        if email and self.UserModel.objects.filter(email__iexact=email).exists():
-            self._fail(
-                "OIDC: konto z tym adresem już istnieje — połącz je z SSO "
-                "przez profil (re-auth hasłem), nie tworzę konta."
-            )
+        if email:
+            same_email = self.UserModel.objects.filter(email__iexact=email)
+            if same_email.exists():
+                if not same_email.filter(is_active=True).exists():
+                    self._fail(
+                        MSG_KONTO_NIEAKTYWNE,
+                        "OIDC: jedyne konto z tym adresem jest nieaktywne",
+                    )
+                self._fail(
+                    MSG_KONTO_ISTNIEJE,
+                    "OIDC: konto z tym adresem już istnieje i nie jest "
+                    "związane z (issuer, sub) — nie tworzę drugiego",
+                )
 
         require = getattr(settings, "OIDC_REQUIRE_EMAIL_VERIFIED", True)
         if require and not claims.get("_bpp_email_trusted"):
             self._fail(
-                "OIDC: e-mail niezweryfikowany (email_verified) — "
-                "odrzucam założenie konta."
+                MSG_EMAIL_NIEPOTWIERDZONY,
+                "OIDC: e-mail niezweryfikowany (email_verified) i spoza "
+                "zaufanych domen — odrzucam założenie konta",
             )
 
         base_username = _first_claim(claims, _username_claim_keys())
@@ -607,7 +690,7 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
                     return existing.user
                 continue
         else:
-            raise SuspiciousOperation("OIDC: nie udało się utworzyć konta")
+            self._fail(MSG_BLAD_TECHNICZNY, "OIDC: nie udało się utworzyć konta")
 
         self._assign_uczelnia(user)
         # Powiąż autora po przypisaniu uczelni — dopasowanie jest scope'owane
