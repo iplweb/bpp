@@ -1,5 +1,5 @@
 {
-  "git_sha": "883e915c12efc1af7cca1c961f1d7e57399793d1",
+  "git_sha": "b1683e32a4263c70827b491863b3014504089511",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
@@ -29,7 +29,7 @@
     "ewaluacja_optymalizacja": "0019_okres_ewaluacji_wymagany",
     "ewaluacja_optymalizuj_publikacje": "0001_initial",
     "favicon": "0005_leftover_changes",
-    "first_run_wizard": "0001_initial",
+    "first_run_wizard": "0002_stamp_existing_superuser",
     "flexible_reports": "0014_alter_datasource_sample_context",
     "formdefaults": "0007_backfill_is_auto_snapshot",
     "import_dyscyplin": "0024_faza_b_ii2_repoint_wydzial",
