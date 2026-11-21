@@ -117,16 +117,24 @@ input[type=radio] {
 
 // --- Styl ATOM 2.0 ------------------------------------------------------------
 
-// Pasek nawigacji jak w ATOM-ie: pełne tło w kolorze głównym z białym
-// tekstem (biały na #0073a6 = 5.25:1, AA), cienka złota linia u dołu
-// i lekki cień. Rozwijane podmenu zostają białe z ciemnym tekstem — jak
-// w pozostałych motywach i jak dropdowny ATOM-a.
-$apoz-navbar: $primary-color;
+// Pasek nawigacji odwzorowany z żywego ATOM-a (computed styles z
+// test-atom, 2026-11-22): tło granatowe #1f3a5f (--atom-navy), bez linii
+// u dołu, tylko cień 0 1px 0 rgba(0,0,0,.12); pozycje 16 px, waga 400,
+// kolor rgba(255,255,255,.82) (8.3:1 na granacie), po najechaniu biały
+// (11.5:1) bez zmiany tła; nazwa systemu pogrubiona (700), 1.3rem,
+// letter-spacing 0.02em. Rozwijane podmenu zostają białe z ciemnym
+// tekstem, jak dropdowny Bootstrapa w ATOM-ie (zaokrąglenie 0.375rem).
+$apoz-navbar: #1f3a5f;
+$apoz-navbar-link: rgba($white, 0.82);
 
 nav.sticky-header {
   background: $apoz-navbar;
-  border-bottom: 3px solid $apoz-gold;
-  box-shadow: 0 1px 4px rgba($black, 0.18);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
+}
+
+.top-bar {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
 }
 
 .top-bar,
@@ -136,29 +144,65 @@ nav.sticky-header {
 }
 
 .top-bar .dropdown.menu > li > a {
-  color: $white;
+  color: $apoz-navbar-link;
+  font-size: 1rem;
+  font-weight: 400;
+  padding: 0.5rem;
 
   &:hover,
   &:focus-visible {
-    background-color: rgba($white, 0.14);
+    background-color: transparent;
     color: $white;
   }
 }
 
-// Strzałki rozwijania pozycji najwyższego poziomu (Foundation rysuje je
-// obramowaniem w kolorze linków — na niebieskim tle byłyby niewidoczne).
-.top-bar .dropdown.menu > li.is-dropdown-submenu-parent > a::after {
-  border-top-color: $white;
+.top-bar .dropdown.menu > li.is-active > a,
+.top-bar .dropdown.menu > li:hover > a {
+  color: $white;
 }
 
-// Wylogowanie na najwyższym poziomie (gdyby tam trafiło) — biały, nie szary.
-.top-bar .dropdown.menu > li > a[href*="logout"] {
+// Nazwa systemu jak .navbar-brand w ATOM-ie.
+.top-bar .dropdown.menu > li:first-child > a {
   color: $white;
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-right: 1rem;
+}
+
+// Strzałki rozwijania pozycji najwyższego poziomu (Foundation rysuje je
+// obramowaniem w kolorze linków — na granacie byłyby niewidoczne).
+.top-bar .dropdown.menu > li.is-dropdown-submenu-parent > a::after,
+.top-bar .dropdown.menu > li.has-submenu > a::after {
+  border-top-color: currentColor;
+}
+
+// Foundation rysuje strzałkę absolutnie w prawym paddingu — musi zostać
+// miejsce, inaczej wchodzi na tekst.
+.top-bar .dropdown.menu > li.is-dropdown-submenu-parent > a {
+  padding-right: 1.5rem;
+}
+
+// Wylogowanie na najwyższym poziomie (gdyby tam trafiło) — jak inne pozycje.
+.top-bar .dropdown.menu > li > a[href*="logout"] {
+  color: $apoz-navbar-link;
 }
 
 // Logo BPP: na ciemnym tle szara (grayscale) ikona ginie — rozjaśniamy.
 .top-bar .bpp-logo {
   filter: grayscale(100%) brightness(1.6);
+}
+
+// Podmenu: zaokrąglenie jak dropdown Bootstrapa (zamiast 12 px).
+.top-bar .dropdown.menu .menu.vertical,
+.top-bar .dropdown.menu ul.menu.vertical,
+.top-bar .menu-columns-wrapper {
+  border-radius: $global-radius;
+}
+
+// Pasek „Menu” na telefonie w tym samym granacie.
+.title-bar {
+  background: $apoz-navbar;
 }
 
 // Cyfry w tabelach w równych kolumnach (lata, punkty, liczby cytowań).
@@ -180,11 +224,6 @@ table thead th {
 
 .card-divider {
   border-bottom: 1px solid #dde3ea;
-  font-weight: 600;
-}
-
-// Przyciski: półgruba czcionka jak w ATOM-ie.
-.button {
   font-weight: 600;
 }
 

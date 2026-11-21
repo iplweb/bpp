@@ -19,8 +19,9 @@ Co pokazuje strona startowa modułu redagowania („Panel Sterowania”) i jakie
   (kolory, a w niektórych motywach także czcionkę i zaokrąglenia). Zmiana
   działa po zapisaniu rekordu i odświeżeniu strony; nie wpływa na dane ani
   na wygląd modułu redagowania (tam każdy użytkownik wybiera własny motyw).
-  Motyw „Błękitno-złoty (styl ATOM)” ma niebieski pasek menu ze złotą linią,
-  czcionkę IBM Plex Sans i lekko zaokrąglone przyciski oraz pola formularzy.
+  Motyw „Błękitno-złoty (styl ATOM)” wygląda jak system ATOM 2.0: granatowy
+  pasek menu, czcionka IBM Plex Sans (16 px), lekko zaokrąglone przyciski
+  i pola formularzy, przyciski i linki w niebieskim kolorze uczelni.
 
 Sposoby logowania (konta BPP, LDAP/Active Directory, Keycloak, Microsoft,
 ORCID) i ich konfigurację opisuje strona [Metody logowania](metody-logowania.md).
