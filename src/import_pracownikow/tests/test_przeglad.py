@@ -93,8 +93,36 @@ def test_kafelek_jednostki_widoczny_z_licznikami(admin_client, admin_user):
     resp = admin_client.get(_url(imp))
     tresc = resp.content.decode("utf-8")
     assert reverse("import_pracownikow:jednostki", kwargs={"pk": imp.pk}) in tresc
-    assert "2 jednostek do utworzenia" in tresc
+    assert "2 jednostki do utworzenia" in tresc
     assert "1 do sprawdzenia" in tresc
+
+
+@pytest.mark.django_db
+def test_licznik_jednostek_odmienia_liczebnik(admin_client, admin_user):
+    """„1 jednostka", nie „1 jednostek" — odmiana przez polish_inflection."""
+    imp = _imp(admin_user)
+    baker.make(
+        ImportPracownikowJednostka,
+        parent=imp,
+        nazwa_zrodlowa="A",
+        tryb=ImportPracownikowJednostka.TRYB_BRAK,
+        utworzona=None,
+    )
+    tresc = admin_client.get(_url(imp)).content.decode("utf-8")
+    assert "1 jednostka do utworzenia" in tresc
+    assert "1 jednostek" not in tresc
+
+
+@pytest.mark.django_db
+def test_przeglad_pokazuje_nazwe_pliku_bez_sciezki_storage(admin_client, admin_user):
+    """Użytkownik widzi samą nazwę pliku, nie wewnętrzną ścieżkę w storage."""
+    imp = _imp(admin_user)
+    imp.plik_xls.name = "protected/import_pracownikow/kadry-2026.xlsx"
+    imp.save(update_fields=["plik_xls"])
+
+    tresc = admin_client.get(_url(imp)).content.decode("utf-8")
+    assert "kadry-2026.xlsx" in tresc
+    assert "protected/import_pracownikow" not in tresc
 
 
 @pytest.mark.django_db
