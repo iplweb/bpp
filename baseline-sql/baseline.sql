@@ -16643,10 +16643,15 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+155	bpp	0074_django110	2000-01-01 00:00:00+00
+359	bpp	0266_auto_20210519_0236	2000-01-01 00:00:00+00
+595	denorm	0003_auto_20211002_1955	2000-01-01 00:00:00+00
+856	pbn_import	0006_remove_importstep	2000-01-01 00:00:00+00
+858	pbn_import	0008_add_importsession_indexes	2000-01-01 00:00:00+00
+859	pbn_import	0009_fix_error_fields_default	2000-01-01 00:00:00+00
 708	favicon	0005_leftover_changes	2000-01-01 00:00:00+00
 773	import_polon	0009_wierszimportuplikuabsencji	2000-01-01 00:00:00+00
 860	pbn_import	0010_alter_importinconsistency_inconsistency_type	2000-01-01 00:00:00+00
-155	bpp	0074_django110	2000-01-01 00:00:00+00
 861	pbn_import	0011_alter_importinconsistency_session_and_more	2000-01-01 00:00:00+00
 598	denorm	0006_auto_20211003_0346	2000-01-01 00:00:00+00
 863	pbn_komparator_zrodel	0002_add_brakujaca_dyscyplina_pbn	2000-01-01 00:00:00+00
@@ -17262,7 +17267,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 356	bpp	0264_auto_20210428_0011	2000-01-01 00:00:00+00
 357	bpp	0266_auto_20210504_0040	2000-01-01 00:00:00+00
 358	bpp	0265_rekord_mat_doi	2000-01-01 00:00:00+00
-359	bpp	0266_auto_20210519_0236	2000-01-01 00:00:00+00
 360	bpp	0267_auto_20210519_0237	2000-01-01 00:00:00+00
 362	bpp	0269_wyzeruj_zrodlo_pbn_uid	2000-01-01 00:00:00+00
 363	bpp	0270_auto_20210530_0114	2000-01-01 00:00:00+00
@@ -17461,7 +17465,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 589	deduplikator_autorow	0012_alter_duplicatecandidate_main_autor_and_more	2000-01-01 00:00:00+00
 590	deduplikator_publikacji	0001_initial	2000-01-01 00:00:00+00
 591	deduplikator_publikacji	0002_remove_publicationduplicatecandidate_deduplikato_similar_17e420_idx_and_more	2000-01-01 00:00:00+00
-595	denorm	0003_auto_20211002_1955	2000-01-01 00:00:00+00
 596	denorm	0004_alter_dirtyinstance_success	2000-01-01 00:00:00+00
 597	denorm	0005_dirtyinstance_created_on	2000-01-01 00:00:00+00
 599	denorm	0007_auto_created_on_now	2000-01-01 00:00:00+00
@@ -17726,9 +17729,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 853	pbn_import	0003_add_import_inconsistency	2000-01-01 00:00:00+00
 854	pbn_import	0004_add_bpp_publication_content_type	2000-01-01 00:00:00+00
 855	pbn_import	0005_remove_importstatistics	2000-01-01 00:00:00+00
-856	pbn_import	0006_remove_importstep	2000-01-01 00:00:00+00
-858	pbn_import	0008_add_importsession_indexes	2000-01-01 00:00:00+00
-859	pbn_import	0009_fix_error_fields_default	2000-01-01 00:00:00+00
 862	pbn_komparator_zrodel	0001_initial	2000-01-01 00:00:00+00
 866	pbn_wysylka_oswiadczen	0002_add_tytul_field	2000-01-01 00:00:00+00
 867	pbn_wysylka_oswiadczen	0003_add_synchronized_count	2000-01-01 00:00:00+00
@@ -18171,6 +18171,12 @@ COPY public.formdefaults_formfielddefaultvalue (id, value, field_id, parent_id, 
 52	2026	449	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek	\N	t
 53	2026	450	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow	\N	t
 54	2026	451	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow	\N	t
+55	2026	466	raport_slotow.forms.autor.AutorRaportSlotowForm	\N	t
+56	2026	467	raport_slotow.forms.autor.AutorRaportSlotowForm	\N	t
+57	2026	468	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm	\N	t
+58	2026	469	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm	\N	t
+59	2026	470	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm	\N	t
+60	2026	471	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm	\N	t
 \.
 
 
@@ -18233,6 +18239,13 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 449	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 450	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 451	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+466	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+467	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
+468	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+469	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+470	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+471	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+472	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
 \.
 
 
@@ -20101,14 +20114,14 @@ SELECT pg_catalog.setval('public.favicon_faviconimg_id_seq', 1, false);
 -- Name: formdefaults_formfielddefaultvalue_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 54, true);
+SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 60, true);
 
 
 --
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 465, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 472, true);
 
 
 --
