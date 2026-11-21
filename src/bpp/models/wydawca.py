@@ -6,10 +6,16 @@ from django.db.models import JSONField
 
 from bpp.fields import YearField
 from bpp.models import ModelZNazwa, ModelZPBN_UID
+from bpp.models.soft_delete import BppSoftDeleteSlownikMixin
 from bpp.util.text import slugify_wydawca
 
 
-class Wydawca(ModelZNazwa, ModelZPBN_UID):
+class Wydawca(BppSoftDeleteSlownikMixin, ModelZNazwa, ModelZPBN_UID):
+    """Wydawca. Kosz: tylko wydawca bez publikacji i bez aliasów (także
+    w koszu); poziomy wydawcy zostają przy nim."""
+
+    pola_unikalne_kosza = ("slug", "nazwa")
+
     alias_dla = models.ForeignKey(
         "self", on_delete=models.CASCADE, null=True, blank=True
     )
@@ -31,6 +37,11 @@ class Wydawca(ModelZNazwa, ModelZPBN_UID):
         verbose_name_plural = "wydawcy"
         verbose_name = "wydawca"
         ordering = ("nazwa",)
+
+    def relacje_chronione_kosza(self):
+        from bpp.models import Wydawnictwo_Zwarte
+
+        return [(Wydawnictwo_Zwarte, "wydawca"), (Wydawca, "alias_dla")]
 
     def clean(self):
         if self.pk:

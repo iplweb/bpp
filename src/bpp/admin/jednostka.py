@@ -12,6 +12,7 @@ from mptt.admin import DraggableMPTTAdmin
 from mptt.forms import MPTTAdminForm
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
+from bpp.admin.helpers.mixins import BppSoftDeleteAdminMixin
 from bpp.admin.helpers.ror_field import czysc_ror
 from bpp.models import Autor_Jednostka, Uczelnia
 
@@ -115,6 +116,7 @@ class JednostkaAdmin(
     ZapiszZAdnotacjaMixin,
     EksportDanychMixin,
     BaseBppAdminMixin,
+    BppSoftDeleteAdminMixin,
     DraggableMPTTAdmin,
 ):
     form = JednostkaAdminForm

@@ -26,6 +26,7 @@ from tinymce.models import HTMLField
 from bpp.models import ModelZAdnotacjami, ModelZPBN_UID
 from bpp.models.abstract import ModelOpcjonalnieNieEksportowanyDoAPI, ModelZPBN_ID
 from bpp.models.autor import Autor, Autor_Jednostka
+from bpp.models.soft_delete import BppSoftDeleteSlownikMixin
 from bpp.util import FulltextSearchMixin, safe_opis_html, sanityzuj_jesli_html
 from bpp.util.ror import waliduj as waliduj_ror
 
@@ -57,7 +58,15 @@ class JednostkaManager(FulltextSearchMixin, TreeManager):
         return ordering
 
     def get_queryset(self, *args, **kwargs):
-        return super().get_queryset(*args, **kwargs).select_related("wydzial")
+        # Kosz ukryty. Zapisy drzewa MPTT (lft/rght) idą przez
+        # niefiltrujący menedżer — mptt podstawia go sam, gdy
+        # ``get_queryset`` jest nadpisane (mptt#853).
+        return (
+            super()
+            .get_queryset(*args, **kwargs)
+            .filter(deleted_at__isnull=True)
+            .select_related("wydzial")
+        )
 
     def rebuild(self, *args, **kwargs):
         # TreeManager.rebuild() internally runs `.only("pk")` on the queryset
@@ -81,6 +90,7 @@ class JednostkaManager(FulltextSearchMixin, TreeManager):
 
 
 class Jednostka(
+    BppSoftDeleteSlownikMixin,
     ModelZAdnotacjami,
     ModelZPBN_ID,
     ModelZPBN_UID,
@@ -354,6 +364,23 @@ class Jednostka(
     def czy_mozna_skasowac(self):
         """True ⇔ jednostka jest w pełni pusta (brak przeszkód w kasowaniu)."""
         return not self.przeszkody_w_kasowaniu()
+
+    #: Kosz: ``nazwa``/``skrot``/``slug`` mają bezwarunkowe UNIQUE.
+    pola_unikalne_kosza = ("slug", "nazwa", "skrot")
+
+    def sprawdz_czy_mozna_do_kosza(self, *args, **kwargs):
+        """Do kosza — tylko jednostka PUSTA (ta sama reguła „ściśle zero",
+        co przy dotychczasowym kasowaniu: ``przeszkody_w_kasowaniu``)."""
+        from django.db.models import ProtectedError
+
+        przeszkody = self.przeszkody_w_kasowaniu()
+        if przeszkody:
+            szczegoly = ", ".join(f"{n}× {etykieta}" for etykieta, n in przeszkody)
+            raise ProtectedError(
+                f"Nie można usunąć jednostki „{self}” — są do niej przypięte "
+                f"inne obiekty (także w koszu): {szczegoly}.",
+                [],
+            )
 
     def dodaj_autora(
         self, autor, funkcja=None, rozpoczal_prace=None, zakonczyl_prace=None

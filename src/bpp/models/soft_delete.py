@@ -31,6 +31,7 @@ INWARIANTY:
   i PBN.
 """
 
+import re
 import uuid
 from collections import defaultdict
 
@@ -154,21 +155,25 @@ def raise_if_has_protected_children(instance, relations, label):
     """
     ile = 0
     probka = []
+    opisy = []
     for model, pole in relations:
         # ``_base_manager`` widzi WSZYSTKO: kosz publikacji, autorstwa
         # publikacji z kosza (domyślny menedżer ``*_Autor`` je ukrywa)
         # i wiersze modeli spoza soft-delete.
         qs = model._base_manager.filter(**{pole: instance})
-        ile += qs.count()
+        n = qs.count()
+        if not n:
+            continue
+        ile += n
+        opisy.append(f"{model._meta.verbose_name_plural}: {n}")
         if len(probka) < LIMIT_PROBKI_CHRONIONYCH:
             probka.extend(qs[: LIMIT_PROBKI_CHRONIONYCH - len(probka)])
 
     if ile:
         raise ProtectedError(
             f"Nie można usunąć {label} „{instance}” — rekord ma {ile} "
-            f"powiązanych rekordów (autorstwa / doktorat / habilitacja / "
-            f"rozdziały / projekty), także tych w koszu. Najpierw przenieś "
-            f"lub usuń te powiązania.",
+            f"powiązanych rekordów, także tych w koszu "
+            f"({'; '.join(opisy)}). Najpierw przenieś lub usuń te powiązania.",
             probka,
         )
 
@@ -530,8 +535,16 @@ class BppPublikacjaSoftDeleteMixin(BppPkPrzedHardDeleteMixin, SoftDeleteModel):
 
     # --- soft-delete / restore ------------------------------------------
 
-    def delete(self, *args, user=None, reason="", **kwargs):
+    def sprawdz_czy_mozna_do_kosza(self, *args, **kwargs):
+        """Guard kosza (BEZ efektów ubocznych) — rzuca ``ProtectedError``,
+        gdy publikacji nie wolno wyrzucić. Bazowo brak warunków; nadpisuje
+        ``Wydawnictwo_Zwarte`` (książka z rozdziałami)."""
+
+    def delete(self, *args, user=None, reason="", anuluj_wysylke_pbn=False, **kwargs):
         """Soft-delete publikacji. BEZ kaskady na dzieci.
+
+        ``anuluj_wysylke_pbn=True`` — zgoda operatora na anulowanie
+        aktywnego zlecenia wysyłki do PBN (patrz ``RekordWKolejcePBN``).
 
         Pakietowy ``SoftDeleteModel.delete()`` przechodzi po wszystkich
         relacjach odwrotnych i dzieci spoza soft-delete kasowałby TWARDO
@@ -545,6 +558,16 @@ class BppPublikacjaSoftDeleteMixin(BppPkPrzedHardDeleteMixin, SoftDeleteModel):
         """
         txid = kwargs.pop("transaction_id", None) or uuid.uuid4()
         with soft_delete_context(user=user, reason=reason), transaction.atomic():
+            from pbn_export_queue.operacje import przygotuj_kolejke_do_kosza
+
+            self.sprawdz_czy_mozna_do_kosza()
+            # Aktywne zlecenie WYSYŁKI do PBN blokuje kosz, chyba że operator
+            # świadomie zgodził się je anulować — wtedy wpis jest zamykany,
+            # a receiver zleca wycofanie oświadczeń. Bez tej bramki zlecenie
+            # wycofania ginęłoby po cichu (jeden aktywny wpis na rekord).
+            przygotuj_kolejke_do_kosza(
+                self, anuluj_wysylke_pbn=anuluj_wysylke_pbn, user=user
+            )
             self.deleted_at = timezone.now()
             self.restored_at = None
             self.transaction_id = txid
@@ -567,6 +590,183 @@ class BppPublikacjaSoftDeleteMixin(BppPkPrzedHardDeleteMixin, SoftDeleteModel):
             self.restored_at = timezone.now()
             self.transaction_id = None
             self.save(update_fields=["deleted_at", "restored_at", "transaction_id"])
+            post_restore.send(sender=self.__class__, instance=self, transaction_id=txid)
+
+    restore.alters_data = True
+
+
+# --- pola unikalne (slug, nazwa) rekordów w koszu --------------------------
+
+#: Sufiks sluga rekordu w koszu: ``jan-kowalski-unexistent-1``, ``-2``, …
+SUFIKS_SLUGA_KOSZA = "-unexistent-"
+#: Sufiks pola tekstowego (nazwa, skrót) rekordu w koszu: ``Nazwa [kosz-1]``.
+SUFIKS_NAZWY_KOSZA = " [kosz-"
+
+_RE_SLUG_KOSZA = re.compile(re.escape(SUFIKS_SLUGA_KOSZA) + r"\d+$")
+_RE_NAZWA_KOSZA = re.compile(re.escape(SUFIKS_NAZWY_KOSZA) + r"\d+\]$")
+
+
+class KonfliktPrzywracania(ValueError):
+    """Rekordu nie da się przywrócić z kosza, bo jego unikalna nazwa jest
+    już zajęta przez inny, żywy rekord. Operator musi najpierw zmienić
+    nazwę jednego z nich."""
+
+
+def _jest_slugiem(pole):
+    return isinstance(pole, models.SlugField) or pole.__class__.__name__ in (
+        "AutoSlugField",
+    )
+
+
+def _sufiks_kosza(pole, n):
+    if _jest_slugiem(pole):
+        return f"{SUFIKS_SLUGA_KOSZA}{n}"
+    return f"{SUFIKS_NAZWY_KOSZA}{n}]"
+
+
+def _wzorzec_kosza(pole):
+    return _RE_SLUG_KOSZA if _jest_slugiem(pole) else _RE_NAZWA_KOSZA
+
+
+def zwolnij_pola_unikalne(instance, nazwy_pol):
+    """Przy przenoszeniu do kosza zmienia wartości pól UNIKALNYCH na wolne
+    warianty „kosza" i zwraca listę zmienionych pól (do ``update_fields``).
+
+    Rekord w koszu fizycznie zostaje w tabeli, a bezwarunkowe ``UNIQUE``
+    (np. ``bpp_autor_slug_key``) widzi go dalej. Bez tego nowy „Jan Kowalski"
+    po wyrzuceniu starego do kosza dostałby ``IntegrityError`` (autoslug
+    sprawdza unikalność przez domyślny menedżer, który kosza nie widzi).
+
+    Slug: ``jan-kowalski`` -> ``jan-kowalski-unexistent-1`` (pierwszy wolny
+    numer — skan po prefiksie, pełny skan tabeli jest akceptowalny).
+    Pole tekstowe (nazwa, skrót): ``Nazwa`` -> ``Nazwa [kosz-1]``.
+    Wartość przycinana tak, żeby zmieściła się w ``max_length``.
+    """
+    zmienione = []
+    menedzer = type(instance)._base_manager
+    for nazwa in nazwy_pol:
+        pole = instance._meta.get_field(nazwa)
+        wartosc = getattr(instance, pole.attname)
+        if not wartosc or _wzorzec_kosza(pole).search(wartosc):
+            continue
+        n = 1
+        while True:
+            sufiks = _sufiks_kosza(pole, n)
+            kandydat = wartosc[: pole.max_length - len(sufiks)] + sufiks
+            if not menedzer.filter(**{nazwa: kandydat}).exists():
+                break
+            n += 1
+        setattr(instance, pole.attname, kandydat)
+        zmienione.append(nazwa)
+    return zmienione
+
+
+def odzyskaj_pola_unikalne(instance, nazwy_pol):
+    """Odwrotność ``zwolnij_pola_unikalne`` przy ``restore()``.
+
+    Slug: wraca oryginał, jeśli wolny; inaczej autoslug generuje nowy
+    (``pre_save`` pola przy pustej wartości). Pole tekstowe: wraca oryginał,
+    jeśli wolny; inaczej ``KonfliktPrzywracania`` (nazwy nie da się
+    „wygenerować" — decyzja należy do operatora).
+    """
+    zmienione = []
+    menedzer = type(instance)._base_manager
+    for nazwa in nazwy_pol:
+        pole = instance._meta.get_field(nazwa)
+        wartosc = getattr(instance, pole.attname)
+        if not wartosc or not _wzorzec_kosza(pole).search(wartosc):
+            continue
+        oryginal = _wzorzec_kosza(pole).sub("", wartosc)
+        zajety = menedzer.filter(**{nazwa: oryginal}).exclude(pk=instance.pk).exists()
+        if not zajety:
+            setattr(instance, pole.attname, oryginal)
+        elif _jest_slugiem(pole) and hasattr(pole, "populate_from"):
+            setattr(instance, pole.attname, "")
+            setattr(instance, pole.attname, pole.pre_save(instance, add=False))
+        else:
+            raise KonfliktPrzywracania(
+                f"Nie można przywrócić „{oryginal}” z kosza: pole "
+                f"„{pole.verbose_name}” ma już tę wartość w innym rekordzie. "
+                f"Zmień nazwę jednego z nich i spróbuj ponownie."
+            )
+        zmienione.append(nazwa)
+    return zmienione
+
+
+class BppSoftDeleteSlownikMixin(BppPkPrzedHardDeleteMixin, SoftDeleteModel):
+    """Kosz dla struktury uczelni i słowników (``Uczelnia``, ``Jednostka``,
+    ``Zrodlo``, ``Wydawca``, ``Konferencja``, ``Seria_Wydawnicza``).
+
+    Zasada jak przy ``Autor``: do kosza trafia wyłącznie rekord
+    NIEUŻYWANY — guard (``relacje_chronione_kosza``) liczy powiązania przez
+    ``_base_manager``, czyli także te w koszu. Używanego źródła/wydawcy/
+    konferencji nie da się wyrzucić, więc żadna żywa publikacja nie wskazuje
+    na rekord z kosza. Dane „przy" rekordzie (punktacja źródła, poziomy
+    wydawcy, …) zostają nietknięte i wracają z nim.
+
+    Kaskady pakietu NIE wołamy (kasowałaby twardo dzieci spoza kosza).
+    Pola unikalne (``pola_unikalne_kosza``) dostają przy kasowaniu wolny
+    wariant „kosza", a przy przywracaniu wracają — patrz
+    ``zwolnij_pola_unikalne``.
+
+    Model z własnym menedżerem ``objects`` musi go oprzeć na
+    ``BppSoftDeleteManager`` (inaczej kosz nie jest ukryty).
+    """
+
+    #: Pola z bezwarunkowym ``UNIQUE``, które trzeba zwolnić w koszu.
+    pola_unikalne_kosza = ("slug",)
+
+    objects = BppSoftDeleteManager()
+    global_objects = BppGlobalManager()
+    deleted_objects = BppDeletedManager()
+
+    class Meta:
+        abstract = True
+
+    def relacje_chronione_kosza(self):
+        """``[(Model, "pole_fk"), …]`` — powiązania blokujące kosz."""
+        return []
+
+    def sprawdz_czy_mozna_do_kosza(self, *args, **kwargs):
+        """Guard: rzuca ``ProtectedError``, gdy rekord jest używany."""
+        raise_if_has_protected_children(
+            self,
+            self.relacje_chronione_kosza(),
+            label=f"rekordu „{self._meta.verbose_name}”",
+        )
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get("update_fields")
+        if update_fields:
+            kwargs["update_fields"] = dopisz_znacznik_zmiany(self, update_fields)
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, user=None, reason="", **kwargs):
+        self.sprawdz_czy_mozna_do_kosza()
+        txid = kwargs.pop("transaction_id", None) or uuid.uuid4()
+        with soft_delete_context(user=user, reason=reason), transaction.atomic():
+            pola = zwolnij_pola_unikalne(self, self.pola_unikalne_kosza)
+            self.deleted_at = timezone.now()
+            self.restored_at = None
+            self.transaction_id = txid
+            self.save(
+                update_fields=["deleted_at", "restored_at", "transaction_id", *pola]
+            )
+            post_soft_delete.send(sender=self.__class__, instance=self)
+        return 1, {self._meta.label: 1}
+
+    delete.alters_data = True
+
+    def restore(self, *args, strict: bool = False, user=None, **kwargs):
+        txid = self.transaction_id
+        with soft_delete_context(user=user), transaction.atomic():
+            pola = odzyskaj_pola_unikalne(self, self.pola_unikalne_kosza)
+            self.deleted_at = None
+            self.restored_at = timezone.now()
+            self.transaction_id = None
+            self.save(
+                update_fields=["deleted_at", "restored_at", "transaction_id", *pola]
+            )
             post_restore.send(sender=self.__class__, instance=self, transaction_id=txid)
 
     restore.alters_data = True

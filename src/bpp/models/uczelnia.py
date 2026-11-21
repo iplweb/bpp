@@ -20,6 +20,7 @@ from tinymce.models import HTMLField
 from bpp.fields import EncryptedTextField
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID, NazwaWDopelniaczu
+from bpp.models.soft_delete import BppSoftDeleteManager, BppSoftDeleteSlownikMixin
 from bpp.util.ror import waliduj as waliduj_ror
 from bpp.util.ssrf import waliduj_url_integracji_offline
 from pbn_api.exceptions import WillNotExportError
@@ -33,7 +34,7 @@ if TYPE_CHECKING:
     import pbn_api  # noqa
 
 
-class UczelniaManager(models.Manager):
+class UczelniaManager(BppSoftDeleteManager):
     # Multi-hosted: NIE MA „uczelni domyślnej". Realne stany systemu to:
     # brak uczelni (pusta baza / setup_wizard), jedna uczelnia (zwykle) albo
     # wiele uczelni (1 instalacja, kilka uczelni). Uczelnię ustala się z
@@ -113,9 +114,14 @@ class UczelniaManager(models.Manager):
         if site is None:
             return None
         try:
-            return site.uczelnia
+            uczelnia = site.uczelnia
         except ObjectDoesNotExist:
             return None
+        # Odwrotny OneToOne idzie przez ``_base_manager`` (widzi kosz) —
+        # uczelnia w koszu nie obsługuje swojej domeny.
+        if uczelnia.deleted_at is not None:
+            return None
+        return uczelnia
 
     def uczelnia_dla_site(self, site):
         """Uczelnia dla Site, a gdy się nie da — jedyna-albo-None.
@@ -218,7 +224,22 @@ class GrupaApiV1(models.TextChoices):
     NARZEDZIA_REDAKTORSKIE = "narzedzia_redaktorskie", "narzędzia redaktorskie"
 
 
-class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
+class Uczelnia(
+    BppSoftDeleteSlownikMixin,
+    ModelZAdnotacjami,
+    ModelZPBN_ID,
+    NazwaISkrot,
+    NazwaWDopelniaczu,
+):
+    """Uczelnia (tenant). Kosz: tylko uczelnia bez jednostek (także w koszu).
+
+    Uczelnia w koszu NIE obsługuje swojej domeny (``get_for_site``), ale
+    dalej trzyma ``site`` (OneToOne NOT NULL) — żeby podpiąć domenę pod inną
+    uczelnię, trzeba ją najpierw usunąć trwale z kosza.
+    """
+
+    pola_unikalne_kosza = ("slug", "nazwa", "skrot")
+
     site = models.OneToOneField(
         "sites.Site",
         verbose_name="Strona (domena)",
@@ -885,6 +906,11 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         verbose_name = "uczelnia"
         verbose_name_plural = "uczelnie"
         app_label = "bpp"
+
+    def relacje_chronione_kosza(self):
+        from bpp.models import Jednostka
+
+        return [(Jednostka, "uczelnia")]
 
     def get_absolute_url(self):
         return reverse("bpp:browse_uczelnia", args=(self.slug,))

@@ -19,6 +19,7 @@ from bpp.models.abstract import (
     ModelZISSN,
     ModelZNazwa,
 )
+from bpp.models.soft_delete import BppSoftDeleteManager, BppSoftDeleteSlownikMixin
 from bpp.models.system import Jezyk
 from bpp.util import FulltextSearchMixin
 
@@ -127,7 +128,7 @@ class Dyscyplina_Zrodla(models.Model):
         return f'Przypisanie dyscypliny "{self.dyscyplina}" do źródła "{self.zrodlo}" dla roku {self.rok}'
 
 
-class ZrodloManager(FulltextSearchMixin, models.Manager):
+class ZrodloManager(FulltextSearchMixin, BppSoftDeleteManager):
     pass
 
 
@@ -143,7 +144,10 @@ def issn_norm_expr(field: str):
     )
 
 
-class Zrodlo(LinkDoPBNMixin, ModelZAdnotacjami, ModelZISSN):
+class Zrodlo(BppSoftDeleteSlownikMixin, LinkDoPBNMixin, ModelZAdnotacjami, ModelZISSN):
+    """Źródło (czasopismo). Kosz: tylko źródło bez publikacji (także
+    w koszu); punktacja, dyscypliny i redakcja zostają przy nim."""
+
     url_do_pbn = const.LINK_PBN_DO_ZRODLA
 
     nazwa = models.CharField(max_length=1024, db_index=True)
@@ -233,6 +237,11 @@ class Zrodlo(LinkDoPBNMixin, ModelZAdnotacjami, ModelZISSN):
             models.Index(issn_norm_expr("issn"), name="zrodlo_issn_norm"),
             models.Index(issn_norm_expr("e_issn"), name="zrodlo_e_issn_norm"),
         ]
+
+    def relacje_chronione_kosza(self):
+        from bpp.models import Wydawnictwo_Ciagle
+
+        return [(Wydawnictwo_Ciagle, "zrodlo")]
 
     def prace_w_latach(self):
         from bpp.models import Wydawnictwo_Ciagle

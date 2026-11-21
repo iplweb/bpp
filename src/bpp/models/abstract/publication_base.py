@@ -4,7 +4,7 @@ Modele abstrakcyjne związane z podstawowymi polami publikacji.
 
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import CASCADE, SET_NULL
+from django.db.models import CASCADE, PROTECT, SET_NULL
 
 from bpp.fields import YearField
 
@@ -85,8 +85,11 @@ class ModelZRokiem(models.Model):
 
 
 class ModelZSeria_Wydawnicza(models.Model):
+    # PROTECT (soft-delete): skasowanie serii/konferencji nie może po cichu
+    # zabrać publikacji. Kosz serii/konferencji blokuje osobno guard
+    # (``relacje_chronione_kosza``).
     seria_wydawnicza = models.ForeignKey(
-        "bpp.Seria_Wydawnicza", CASCADE, blank=True, null=True
+        "bpp.Seria_Wydawnicza", PROTECT, blank=True, null=True
     )
 
     numer_w_serii = models.CharField(max_length=512, blank=True, default="")
@@ -96,7 +99,7 @@ class ModelZSeria_Wydawnicza(models.Model):
 
 
 class ModelZKonferencja(models.Model):
-    konferencja = models.ForeignKey("bpp.Konferencja", CASCADE, blank=True, null=True)
+    konferencja = models.ForeignKey("bpp.Konferencja", PROTECT, blank=True, null=True)
 
     class Meta:
         abstract = True

@@ -4,13 +4,11 @@ JEDEN punkt podpięcia dla WSZYSTKICH modeli soft-delete — receivery są
 rejestrowane bez ``sender=``, więc nowy model soft-delete jest logowany bez
 dopisywania czegokolwiek tutaj. Rejestracja: ``BppConfig.ready()``.
 
-Objęte modele (stan 2026-08-16): 5 publikacji + 3 ``*_Autor`` (fazy 02/01),
-``Autor`` (04), ``Element_Repozytorium`` (01) oraz
-``zglos_publikacje.Zgloszenie_Publikacji`` — ten ostatni jest soft-delete
-NIEZALEŻNIE od faz 01-04 i nie było go na żadnej liście w planach; znalazła
-go dopiero asercja ``test_kazdy_model_soft_delete_zachowuje_pk`` nad
-``apps.get_models()``. Nie wypisuj tej listy nigdzie w kodzie — to ta
-asercja jest źródłem prawdy.
+Objęte modele: wszystkie ``SoftDeleteModel`` (publikacje, ``Autor``,
+struktura i słowniki, ``Element_Repozytorium``,
+``zglos_publikacje.Zgloszenie_Publikacji``). Nie wypisuj tej listy nigdzie
+w kodzie — źródłem prawdy jest asercja
+``test_kazdy_model_soft_delete_zachowuje_pk`` nad ``apps.get_models()``.
 
 Usera i powód wnosi thread-local ``soft_delete_context`` — sygnały pakietu
 ich nie niosą (patrz ``bpp/models/soft_delete_context.py``).
@@ -31,6 +29,8 @@ from bpp.models.soft_delete_log import SoftDeleteLog
 #: z tym wpisem zrobił.
 STATUS_WYCOFANIE = "WYCOFANIE"
 STATUS_WYSYLKA = "WYSYLKA"
+#: Przywrócono, zanim zakończyło się wycofanie — wysyłka pójdzie po nim.
+STATUS_WYSYLKA_PO_WYCOFANIU = "WYSYLKA_PO_WYCOFANIU"
 
 
 def _kolejkuj_pbn(instance, zakolejkuj, status):
@@ -45,8 +45,8 @@ def _kolejkuj_pbn(instance, zakolejkuj, status):
 
     Sam ``pbn_uid`` nie wystarczyłby też od drugiej strony: przy RESTORE
     wołamy ``zakolejkuj_wysylke``, która świadomie NIE MA gate'u na
-    ``pbn_uid`` (faza 05a) — przyjęłaby więc każdy wiersz ``*_Autor``
-    przywracany kaskadą i publikacja z N autorami dałaby N zbędnych zleceń.
+    ``pbn_uid`` — przyjęłaby więc każdy przywracany rekord
+    i dałaby zbędne zlecenia dla modeli, które nie są publikacjami.
 
     ``uczelnia`` wyprowadzana z rekordu, bo receiver nie ma requestu —
     patrz ``BppPublikacjaSoftDeleteMixin.uczelnia_rekordu()``.
@@ -86,9 +86,6 @@ def _wylicza_punktacje(instance):
     nie mają nawet metody ``przelicz_punkty_dyscyplin()``, więc bez gate'u
     receiver wywracałby się na ``AttributeError``.
 
-    Gate załatwia przy okazji drugą rzecz: kaskada ``*_Autor`` emituje
-    własne sygnały, a te wiersze tego abstraktu nie dziedziczą — więc
-    przeliczenie zachodzi RAZ, przy sygnale rodzica, a nie 1 + N razy.
     """
     from bpp.models.abstract import ModelZPrzeliczaniemDyscyplin
 
@@ -100,8 +97,7 @@ def _skasuj_punktacje(instance):
 
     ``Cache_Punktacja_*`` nie ma FK do publikacji (klucz to tablica
     ``rekord_id = [content_type_id, pk]``), więc nie sprząta jej ani
-    kaskada Django, ani kaskada ``*_Autor`` z fazy 02, ani triggery
-    denormalizacji. Bez tego praca w koszu nadal liczyłaby się do
+    kaskada Django, ani triggery denormalizacji. Bez tego praca w koszu nadal liczyłaby się do
     ewaluacji.
     """
     from bpp.models.sloty.core import IPunktacjaCacher
@@ -109,9 +105,57 @@ def _skasuj_punktacje(instance):
     IPunktacjaCacher(instance).removeEntries()
 
 
+KOMENTARZ_WERSJI_KOSZ = "Przeniesiono do kosza"
+KOMENTARZ_WERSJI_PRZYWROCENIE = "Przywrócono z kosza"
+
+
+def _zapisz_wersje(instance, komentarz):
+    """Kosz i przywrócenie zostawiają ślad w historii rekordu.
+
+    - model zarejestrowany w django-reversion (dziś ``Autor`` i ``Uczelnia``
+      — jawnie w ``bpp/wersjonowanie.py`` albo przez ``VersionAdmin``):
+      zwykła REWIZJA z ``set_user`` + ``set_comment`` („Przeniesiono do
+      kosza" / „Przywrócono z kosza" + powód). Strona „Historia" pokazuje
+      ją jak każdą inną zmianę;
+    - pozostałe modele (publikacje, słowniki, jednostki) NIE są w reversion
+      i ta zmiana ich tam nie dopisuje (osobna, większa decyzja) — dostają
+      wpis ``LogEntry`` (CHANGE) z tym samym komunikatem, widoczny
+      w standardowej historii obiektu w adminie. Bez usera (operacja
+      systemowa) ``LogEntry`` nie powstaje (``user_id`` jest NOT NULL);
+      śladem zostaje wtedy ``SoftDeleteLog``.
+
+    Pola kosza (``deleted_at`` …) są wykluczone z treści wersji —
+    przywrócenie starej wersji nie może po cichu wyjąć rekordu z kosza ani
+    go tam wrzucić (``wersjonowanie.py``); stan kosza niesie komentarz.
+    """
+    import reversion
+    from django.contrib.admin.models import CHANGE, LogEntry
+
+    powod = current_soft_delete_reason()
+    if powod:
+        komentarz = f"{komentarz} (powód: {powod})"
+    user = current_soft_delete_user()
+    ma_usera = user is not None and getattr(user, "pk", None) is not None
+
+    if reversion.is_registered(type(instance)):
+        with reversion.create_revision():
+            reversion.add_to_revision(instance)
+            reversion.set_comment(komentarz)
+            if ma_usera:
+                reversion.set_user(user)
+        return
+
+    if ma_usera:
+        LogEntry.objects.log_actions(
+            user.pk, [instance], CHANGE, change_message=komentarz, single_object=True
+        )
+
+
 def on_post_soft_delete(sender, instance, **kwargs):
     """Kosz → zlecenie wycofania oświadczeń z PBN + wpis audytu."""
     from pbn_export_queue.operacje import zakolejkuj_wycofanie
+
+    _zapisz_wersje(instance, KOMENTARZ_WERSJI_KOSZ)
 
     if _wylicza_punktacje(instance):
         _skasuj_punktacje(instance)
@@ -128,20 +172,31 @@ def on_post_soft_delete(sender, instance, **kwargs):
 def on_post_restore(sender, instance, **kwargs):
     """Przywrócenie → ponowna wysyłka do PBN, punktacja i wpis audytu.
 
+    Trwające jeszcze wycofanie oświadczeń (zlecone przy kasowaniu) NIE jest
+    przerywane — wysyłka zostaje zlecona po jego zakończeniu
+    (``zakolejkuj_wysylke_po_przywroceniu``).
+
     Punktację PRZELICZAMY, a nie odtwarzamy z kopii: wiersze
     ``Cache_Punktacja_*`` zostały skasowane, a przez czas pobytu w koszu
     mogły się zmienić dyscypliny autorów albo progi punktowe. Odtworzenie
     starych wartości przywróciłoby nieaktualny stan.
 
     ⚠️ To operacja LICZĄCA, nie ``UPDATE``. Przy masowym przywracaniu
-    z admina (faza 07) koszt rośnie liniowo — patrz notatka w handoffie.
+    z admina koszt rośnie liniowo.
     """
-    from pbn_export_queue.operacje import zakolejkuj_wysylke
+    from pbn_export_queue.models import PBN_Export_Queue
+    from pbn_export_queue.operacje import zakolejkuj_wysylke_po_przywroceniu
+
+    _zapisz_wersje(instance, KOMENTARZ_WERSJI_PRZYWROCENIE)
 
     if _wylicza_punktacje(instance):
         instance.przelicz_punkty_dyscyplin()
 
-    wpis, status = _kolejkuj_pbn(instance, zakolejkuj_wysylke, STATUS_WYSYLKA)
+    wpis, status = _kolejkuj_pbn(
+        instance, zakolejkuj_wysylke_po_przywroceniu, STATUS_WYSYLKA
+    )
+    if wpis is not None and wpis.operacja == PBN_Export_Queue.Operacja.WYCOFANIE:
+        status = STATUS_WYSYLKA_PO_WYCOFANIU
     _utworz_log(
         instance,
         SoftDeleteLog.Akcja.RESTORE,

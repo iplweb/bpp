@@ -138,13 +138,7 @@ def test_seed_determinism(jednostki_fixture, tmp_manifest_path):
     )
     names_1 = [(a.imiona, a.nazwisko) for a in autorzy_1]
 
-    # ``hard_delete()``, nie ``delete()``: od fazy 04 ``Autor`` jest modelem
-    # soft-delete. Miękkie kasowanie zostawiłoby wiersze w bazie razem z ich
-    # slugami — a ``Autor.slug`` jest ``unique=True`` BEZWARUNKOWO, więc
-    # drugie ``create_autorzy()`` z tym samym ziarnem wywaliłoby się
-    # ``IntegrityError``-em na `bpp_autor_slug_key`. Ten test sprawdza
-    # determinizm generatora, więc chce autorów usuniętych naprawdę.
-    Autor.objects.filter(pk__in=[a.pk for a in autorzy_1]).hard_delete()
+    Autor.objects.filter(pk__in=[a.pk for a in autorzy_1]).delete()
 
     autorzy_2 = create_autorzy(
         n=5,

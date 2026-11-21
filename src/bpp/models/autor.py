@@ -35,7 +35,9 @@ from bpp.models.soft_delete import (
     BppPkPrzedHardDeleteMixin,
     BppSoftDeleteQuerySet,
     dopisz_znacznik_zmiany,
+    odzyskaj_pola_unikalne,
     raise_if_has_protected_children,
+    zwolnij_pola_unikalne,
 )
 from bpp.models.soft_delete_context import soft_delete_context
 from bpp.util import FulltextSearchMixin, zaloguj_polkniety_wyjatek
@@ -738,6 +740,14 @@ class Autor(
 
         return ret
 
+    def sprawdz_czy_mozna_do_kosza(self, *args, **kwargs):
+        """Guard: autor z jakąkolwiek pracą (także w koszu) → ``ProtectedError``."""
+        raise_if_has_protected_children(
+            self,
+            _relacje_chronione_autora(),
+            label="autora",
+        )
+
     def delete(self, *args, user=None, reason="", **kwargs):
         """Soft-delete autora — DOZWOLONY wyłącznie dla autora bez prac.
 
@@ -766,18 +776,19 @@ class Autor(
         atrybuować. (Poprawność nie zależy od tej kolejności — context
         manager sprząta w ``finally`` — ale węższy zakres jest uczciwszy.)
         """
-        raise_if_has_protected_children(
-            self,
-            _relacje_chronione_autora(),
-            label="autora",
-        )
+        self.sprawdz_czy_mozna_do_kosza()
 
         txid = kwargs.pop("transaction_id", None) or uuid.uuid4()
         with soft_delete_context(user=user, reason=reason), transaction.atomic():
+            # Slug ma bezwarunkowe UNIQUE — zwalniamy go dla nowego autora
+            # o tym samym nazwisku (``jan-kowalski-unexistent-1``).
+            pola = zwolnij_pola_unikalne(self, ("slug",))
             self.deleted_at = timezone.now()
             self.restored_at = None
             self.transaction_id = txid
-            self.save(update_fields=["deleted_at", "restored_at", "transaction_id"])
+            self.save(
+                update_fields=["deleted_at", "restored_at", "transaction_id", *pola]
+            )
             post_soft_delete.send(sender=self.__class__, instance=self)
         return 1, {self._meta.label: 1}
 
@@ -799,10 +810,14 @@ class Autor(
         """
         txid = self.transaction_id
         with soft_delete_context(user=user), transaction.atomic():
+            # Oryginalny slug wraca, jeśli wolny; inaczej autoslug generuje nowy.
+            pola = odzyskaj_pola_unikalne(self, ("slug",))
             self.deleted_at = None
             self.restored_at = timezone.now()
             self.transaction_id = None
-            self.save(update_fields=["deleted_at", "restored_at", "transaction_id"])
+            self.save(
+                update_fields=["deleted_at", "restored_at", "transaction_id", *pola]
+            )
             post_restore.send(sender=self.__class__, instance=self, transaction_id=txid)
 
     restore.alters_data = True
