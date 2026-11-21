@@ -327,11 +327,40 @@ wersję" jest zablokowane (najpierw „Przywróć" z kosza).
   `/api/v1/autor_jednostka/` i `/api/v1/poziom_wydawcy/` pomijają wiersze
   rodziców z kosza.
 - Autocomplete admina nie podsuwa rekordów z kosza; przekierowanie
-  `global-nav-redir` dla rekordu z kosza daje 404 (nie zdradza sluga).
+  `global-nav-redir` dla rekordu z kosza daje 410 (bez przekierowania,
+  więc nie zdradza sluga).
 - Publikacja wskazana w habilitacji (`Publikacja_Habilitacyjna`, GenericFK)
   nie trafi do kosza — GenericFK sprawdzamy jawnie.
 - Scalanie autorów przepina pracę dyplomową z kosza wyłącznie w kolumnie
   autora (`update`), bez pełnego `save()` nieaktualnej instancji.
+
+## Publiczne strony rekordu z kosza — HTTP 410 Gone
+
+Publiczny adres rekordu, który JEST w koszu, odpowiada **410 Gone** ze
+stroną „Ten rekord został usunięty z bibliografii" (zdanie dopasowane do
+typu: publikacja / autor / źródło / wydawca / uczelnia), linkami do
+wyszukiwania i strony głównej oraz `noindex` (meta + `X-Robots-Tag`).
+Strona nie pokazuje ŻADNYCH danych rekordu — także w `<title>`, meta
+i `og:url` (slug publikacji zawiera tytuł). Adres, który nigdy nie
+istniał, i rekord usunięty trwale z kosza dalej dają 404.
+
+Mechanizm (`src/bpp/rekord_usuniety.py`): widok po chybionym lookupie
+w domyślnym menedżerze pyta `deleted_objects` (tylko na ścieżce chybienia
+— żywy rekord nie płaci ani jednego dodatkowego zapytania) i rzuca
+`RekordUsuniety`; `bpp.middleware.RekordUsunietyMiddleware` renderuje
+`rekord_usuniety.html` ze statusem 410. `cache_publiczny` zapisuje tylko
+200, a kosz bumpuje generację cache'a, więc zapamiętana strona rekordu
+nie przeżyje przeniesienia go do kosza.
+
+Objęte: rekord po slugu, po `model,pk`, stare adresy (`/<model>/<pk>/`,
+`/rekord/<ct>,<pk>/` — przekierowują na `browse_praca`, które daje 410),
+slug ze starym sufiksem `-<ct>-<pk>`, autor (slug/pk) i jego sieć
+powiązań, źródło, wydawca (slug/pk), uczelnia, `global-nav-redir`.
+Autor ze schowaną stroną zostaje dla anonima 404 także w koszu (te same
+reguły widoczności). Poza zakresem: OAI-PMH i API (mają nagrobki).
+
+Nowy publiczny widok szczegółów modelu z koszem: dodaj
+`RekordUsunietyDetailMixin` (albo wołaj `rzuc_jesli_w_koszu` po chybieniu).
 
 ## Wdrożenie: okno serwisowe
 

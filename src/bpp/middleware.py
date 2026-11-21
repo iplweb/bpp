@@ -440,3 +440,38 @@ class NotificationsMiddleware(MiddlewareMixin):
 
         url = request.get_full_path()
         nieprzeczytane.filter(message__icontains=url).update(read=True)
+
+
+class RekordUsunietyMiddleware:
+    """Render :class:`bpp.rekord_usuniety.RekordUsuniety` as HTTP 410 Gone.
+
+    Sits below ``CustomRollbarNotifierMiddleware`` in ``MIDDLEWARE``, so its
+    ``process_exception`` runs first and the expected "record is in the
+    trash" signal never reaches Rollbar as an error. The page carries no
+    record data and ``noindex``; ``cache_publiczny`` stores only 200s, so a
+    410 is never cached under the shared public key.
+    """
+
+    TEMPLATE_NAME = "rekord_usuniety.html"
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        return self.get_response(request)
+
+    def process_exception(self, request, exception):
+        from django.shortcuts import render
+
+        from bpp.rekord_usuniety import RekordUsuniety
+
+        if not isinstance(exception, RekordUsuniety):
+            return None
+        response = render(
+            request,
+            self.TEMPLATE_NAME,
+            {"komunikat": exception.komunikat},
+            status=410,
+        )
+        response["X-Robots-Tag"] = "noindex"
+        return response
