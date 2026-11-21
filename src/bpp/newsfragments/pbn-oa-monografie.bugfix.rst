@@ -1,0 +1,1 @@
+Dane Open Access monografii i rozdziałów (tryb dostępu, licencja, wersja tekstu, czas udostępnienia) są teraz wysyłane do PBN — wcześniej blok ``openAccess`` był pomijany dla wszystkich wydawnictw zwartych (FD#281).
