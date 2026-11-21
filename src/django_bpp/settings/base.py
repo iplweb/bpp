@@ -372,6 +372,10 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Right after auth (needs request.user), outside every middleware that may
+    # redirect to a login page: anonymous HTMX requests get HX-Redirect to the
+    # login page instead of a login form swapped into a fragment.
+    "django_bpp.middleware.HtmxLoginRedirectMiddleware",
     "bpp.middleware.SiteResolutionMiddleware",  # After auth - resolves Site/Uczelnia from hostname
     "django_countdown.middleware.CountdownBlockingMiddleware",  # After auth - needs request.user
     # After auth middleware to have request.user. BPP-owa podklasa: dopóki
