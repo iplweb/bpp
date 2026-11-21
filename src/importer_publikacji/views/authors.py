@@ -9,7 +9,8 @@ pobraniu danych) oraz z ``CreateUnmatchedAuthorsView.post``
 from django.db import transaction
 from django.db.models import Count, Q
 
-from bpp.models import Autor
+from bpp.models import Autor, Autor_Jednostka
+from bpp.wersjonowanie import zarejestruj_utworzenie, zarejestruj_zmiane
 from crossref_bpp.core import Komparator, StatusPorownania
 from import_common.normalization import normalize_doi
 
@@ -242,8 +243,16 @@ def _prefill_dyscypliny_z_zgloszen(session):
         imported.save()
 
 
+def _opis_importu(session):
+    """Komentarz do historii rekordu (``LogEntry``/reversion) — skąd rekord
+    trafił do systemu."""
+    return (
+        f"Importer publikacji ({session.provider_name}), sesja importu nr {session.pk}"
+    )
+
+
 @transaction.atomic
-def _create_single_author(imported, obca):
+def _create_single_author(imported, obca, user=None):
     """Utwórz (lub dopasuj po ORCID) rekord ``Autor`` dla pojedynczego
     ``ImportedAuthor`` i przypisz go do obcej jednostki.
 
@@ -254,13 +263,30 @@ def _create_single_author(imported, obca):
 
     Jeśli dostawca podał ORCID i istnieje już ``Autor`` z tym ORCID-em,
     dopasowuje istniejącego zamiast tworzyć duplikat.
+
+    Utworzenie autora (i dopisanie zatrudnienia istniejącemu) trafia do
+    historii w adminie — inaczej autor „pojawiał się znikąd". ``user`` to
+    operator wykonujący akcję; domyślnie twórca sesji importu.
     """
+    session = imported.session
+    if user is None:
+        user = session.created_by
     orcid = imported.orcid.strip() or None
 
     if orcid:
         existing = Autor.objects.filter(orcid=orcid).first()
         if existing:
+            mial_jednostke = Autor_Jednostka.objects.filter(
+                autor=existing, jednostka=obca
+            ).exists()
             existing.dodaj_jednostke(obca)
+            if not mial_jednostke:
+                zarejestruj_zmiane(
+                    user,
+                    existing,
+                    f"Dopisano jednostkę „{obca}” (dopasowanie po ORCID). "
+                    f"{_opis_importu(session)}",
+                )
             imported.matched_autor = existing
             imported.matched_jednostka = obca
             imported.match_status = ImportedAuthor.MatchStatus.MANUAL
@@ -273,6 +299,7 @@ def _create_single_author(imported, obca):
         orcid=orcid,
     )
     autor.dodaj_jednostke(obca)
+    zarejestruj_utworzenie(user, autor, f"Utworzono autora. {_opis_importu(session)}")
 
     imported.matched_autor = autor
     imported.matched_jednostka = obca
@@ -282,11 +309,11 @@ def _create_single_author(imported, obca):
 
 
 @transaction.atomic
-def _create_unmatched_authors(session, obca):
+def _create_unmatched_authors(session, obca, user=None):
     """Utwórz rekordy Autor dla niedopasowanych
     autorów i przypisz do obcej jednostki."""
     unmatched = session.authors.filter(
         match_status=(ImportedAuthor.MatchStatus.UNMATCHED)
     )
     for imported in unmatched:
-        _create_single_author(imported, obca)
+        _create_single_author(imported, obca, user=user)

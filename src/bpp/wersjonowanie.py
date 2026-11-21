@@ -25,7 +25,7 @@ Rejestracja jest jawna (a nie automatyczna przez ``VersionAdmin``), bo:
 from contextlib import contextmanager
 
 import reversion
-from django.contrib.admin.models import CHANGE, LogEntry
+from django.contrib.admin.models import ADDITION, CHANGE, LogEntry
 from django.db import transaction
 from django.db.models import F
 from reversion.models import Version
@@ -81,6 +81,44 @@ def zapewnij_wersje_poczatkowa(obj):
         reversion.add_to_revision(swiezy)
         # Bez użytkownika — to nie jest niczyja zmiana, tylko punkt odniesienia.
         reversion.set_comment(KOMENTARZ_WERSJI_POCZATKOWEJ)
+
+
+def zarejestruj_utworzenie(user, obj, komentarz):
+    """Zarejestruj rekord ``obj`` utworzony poza adminem (importer, task itp.):
+    wpis ``LogEntry`` ADDITION + — dla modeli wersjonowanych — pierwsza
+    wersja w reversion.
+
+    Bez tego rekord „pojawia się znikąd": strona „Historia" w adminie jest
+    pusta, nie wiadomo kto i kiedy go dodał. Wersja jest serializowana ze
+    świeżego odczytu z bazy, żeby zawierała pola wyliczane przez triggery
+    (np. ``aktualna_jednostka`` autora). Wołać PO zapisie (i po zapisie
+    powiązań, które mają być w wersji)."""
+    if reversion.is_registered(type(obj)):
+        swiezy = type(obj)._default_manager.get(pk=obj.pk)
+        with transaction.atomic(), reversion.create_revision():
+            reversion.add_to_revision(swiezy)
+            reversion.set_user(user)
+            reversion.set_comment(komentarz)
+    LogEntry.objects.log_actions(
+        user.pk,
+        [obj],
+        ADDITION,
+        change_message=komentarz,
+        single_object=True,
+    )
+
+
+def zarejestruj_zmiane(user, obj, komentarz):
+    """Wpis ``LogEntry`` CHANGE dla zmiany ``obj`` wykonanej poza adminem,
+    która nie zmienia pól samego rekordu (np. dopisanie zatrudnienia), więc
+    nie wymaga nowej wersji w reversion."""
+    LogEntry.objects.log_actions(
+        user.pk,
+        [obj],
+        CHANGE,
+        change_message=komentarz,
+        single_object=True,
+    )
 
 
 @contextmanager

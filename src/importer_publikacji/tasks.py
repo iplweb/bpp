@@ -267,7 +267,7 @@ def create_publication_task(self, session_id, request_user_id, also_pbn):
     try:
         report_progress(self, "prepare", stages=CREATE_STAGES)
         report_progress(self, "create_record", stages=CREATE_STAGES)
-        record = _create_publication(session)
+        record = _create_publication(session, user=request_user)
 
         if also_pbn:
             report_progress(self, "link_pbn", stages=CREATE_STAGES)
@@ -343,7 +343,7 @@ def _oznacz_zgloszenie_nie_wywracajac_importu(session, record):
         rollbar.report_exc_info()
 
 
-def _create_publication(session):
+def _create_publication(session, user=None):
     """Thin wrapper na ``views.publikacja._create_publication``.
     Wydzielone do osobnej funkcji żeby testy mogły patchować
     ``importer_publikacji.tasks._create_publication`` bez naruszania
@@ -352,7 +352,7 @@ def _create_publication(session):
     """
     from .views.publikacja import _create_publication as _impl
 
-    return _impl(session)
+    return _impl(session, user=user)
 
 
 class _NoopMessageStorage:

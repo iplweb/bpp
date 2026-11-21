@@ -1,0 +1,1 @@
+Autorzy i prace utworzone przez importer publikacji (CrossRef, BibTeX, PBN) mają teraz wpis na stronie „Historia” w adminie: kto, kiedy i z której sesji importu je utworzył. Dopisanie jednostki istniejącemu autorowi (dopasowanemu po ORCID) też trafia do historii. Wcześniej takie rekordy pojawiały się w systemie bez śladu.
