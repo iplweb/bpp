@@ -16,6 +16,9 @@ Co pokazuje strona startowa modułu redagowania („Panel Sterowania”) i jakie
 - w sekcji „Opcje edycji” ustawisz domyślną wartość pola „Afiliuje” dla
   powiązań autorów z pracami (wydawnictwo ciągłe, zwarte, patent).
 
+Sposoby logowania (konta BPP, LDAP/Active Directory, Keycloak, Microsoft,
+ORCID) i ich konfigurację opisuje strona [Metody logowania](metody-logowania.md).
+
 #### Kolejność i zakres wyświetlanych wydziałów
 
 - wydziały to jednostki najwyższego poziomu w strukturze uczelni. Ich listę

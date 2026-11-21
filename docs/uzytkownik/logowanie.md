@@ -19,6 +19,22 @@ W górnym menu kliknij **zaloguj → logowanie** (konto w BPP).
 Konto w BPP zakłada redaktor albo administrator BPP na Twojej uczelni
 (zwykle w bibliotece) — samodzielnej rejestracji nie ma.
 
+## Logowanie przez ORCID / konto uczelniane (SSO) {#orcid-sso}
+
+- **„logowanie instytucjonalne”** przenosi Cię na uczelnianą stronę
+  logowania (to samo konto co np. do poczty). Po zalogowaniu wracasz do BPP.
+- **„logowanie ORCID”** (albo zielony przycisk **„Zaloguj się przez
+  ORCID”** pod formularzem) loguje przez Twoje konto ORCID — ale tylko
+  wtedy, gdy wcześniej połączyłeś ORCID ze swoim kontem BPP.
+
+**Konto nie jest połączone?** Jeśli masz hasło do BPP, zaloguj się przez
+**zaloguj → logowanie BPP**, otwórz **konto → mój profil** i na dole strony
+kliknij **„Połącz konto z SSO”** albo **„Połącz konto z ORCID”**. Potwierdź
+hasło BPP i zaloguj się na stronie uczelni lub ORCID — od tej pory przycisk
+działa. Jeśli hasła do BPP nie masz albo logowanie uczelniane „przechodzi”,
+a mimo to zostajesz niezalogowany, napisz do administratora BPP — szczegóły
+dla administratora: [Metody logowania](../administrator/metody-logowania.md).
+
 ## Nie pamiętam hasła {#nie-pamietam-hasla}
 
 1. Na stronie logowania kliknij **„Zapomniałem/am hasła.”**

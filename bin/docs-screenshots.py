@@ -7567,6 +7567,173 @@ def powiazania_autorow(page: Page, base: str, out: Path) -> None:
     shot(page, out / "09-widok-3d.png", 100, 770)
 
 
+def logowanie_metody(page: Page, base: str, out: Path) -> None:
+    """docs/administrator/metody-logowania.md: login menu with every method,
+    the BPP login form, linking an account with SSO/ORCID, the ORCID section
+    of the university, the lockout list.
+
+    Needs bin/docs-demo-logowanie-metody.py and a run-site started with the
+    fake DJANGO_BPP_OIDC_* variables described there (closed local issuer).
+    """
+    # 1. "zaloguj" menu with institutional, ORCID and BPP login
+    anon = new_session(page, base)
+    li = open_top_menu(anon, "fi-lock")
+    menu = f"{li} > ul"
+    mark(
+        anon,
+        [
+            {
+                "sel": f"{menu} a[href*='/oidc/authenticate'] i",
+                "arrow": "left",
+                "label": "Keycloak / Microsoft",
+                "dx": -10,
+                "dy": -40,
+            },
+            {
+                "sel": f"{menu} a[href*='/orcid/login'] span",
+                "arrow": "left",
+                "label": "ORCID",
+                "dx": -10,
+                "dy": 0,
+            },
+            {
+                "sel": f"{menu} a[href*='/accounts/login/local'] i",
+                "arrow": "left",
+                "label": "login i hasło BPP",
+                "dx": -10,
+                "dy": 30,
+            },
+        ],
+    )
+    box = page_box(anon, menu)
+    shot(anon, out / "01-menu-zaloguj.png", 0, box["y"] + box["height"] + 70)
+
+    # 2. the BPP login form ("logowanie BPP")
+    anon.goto(f"{base}/accounts/login/local/")
+    anon.wait_for_load_state("networkidle")
+    mark(
+        anon,
+        [
+            {
+                "sel": "form input[name=username]",
+                "arrow": "left",
+                "label": "login BPP / LDAP",
+                "dx": -10,
+                "dy": -20,
+            },
+            {
+                "sel": "a.button[href*='/orcid/login']",
+                "arrow": "left",
+                "label": "ORCID",
+                "dx": -10,
+                "dy": -20,
+            },
+            {
+                "sel": "a[href*='password_reset']",
+                "arrow": "right",
+                "label": "reset hasła",
+                "dx": 30,
+                "dy": -30,
+            },
+        ],
+    )
+    shot(
+        anon,
+        out / "02-logowanie-bpp.png",
+        0,
+        bottom_of(anon, "a[href*='password_reset']", 50),
+    )
+    anon.context.close()
+
+    # 3. "Mój profil": SSO and ORCID linking (an account with a local password)
+    usr = new_session(page, base, DEMO_USER)
+    usr.goto(f"{base}/bpp/profil/")
+    usr.wait_for_load_state("networkidle")
+    close_cookie_banner(usr)
+    mark(
+        usr,
+        [
+            {
+                "sel": "a[href*='/oidc/polacz']",
+                "arrow": "right",
+                "label": "1. połącz z SSO",
+                "dx": 40,
+                "dy": -40,
+            },
+            {
+                "sel": "a[href*='/orcid/polacz']",
+                "arrow": "right",
+                "label": "połącz z ORCID",
+                "dx": 40,
+                "dy": -40,
+            },
+        ],
+    )
+    top = shot(usr, None, 0, bottom_of(usr, "h2 + .callout", 12))
+    sso = page_box(usr, "h3", "Logowanie SSO")
+    dol = bottom_of(usr, "a[href*='/orcid/polacz']", 30)
+    sekcja = shot(usr, None, sso["y"] - 20, dol - sso["y"] + 20)
+    stitch(
+        usr, [top, sekcja], out / "03-profil-polacz.png", "na dole strony „Mój profil”"
+    )
+
+    # 4. confirming the local password before going to the identity provider
+    usr.goto(f"{base}/oidc/polacz/")
+    usr.wait_for_load_state("networkidle")
+    mark(
+        usr,
+        [
+            {"sel": "#id_password"},
+            {
+                "sel": "form button[type=submit]",
+                "arrow": "right",
+                "label": "2. hasło do BPP i kliknij",
+                "dx": 40,
+                "dy": -30,
+            },
+        ],
+    )
+    shot(
+        usr,
+        out / "04-polacz-sso-haslo.png",
+        0,
+        bottom_of(usr, "form button[type=submit]", 70),
+    )
+    usr.context.close()
+
+    # 5. Uczelnia: the "ORCID" section (fake client id, secret never shown)
+    adm = new_session(page, base, DEMO_USER_ADMIN)
+    otworz_uczelnie(adm, base)
+    sel = open_fieldset(adm, "ORCID")
+    mark(
+        adm,
+        [
+            # whole row, no label: an arrow would cross the field's own text
+            {"sel": "div.grp-row.orcid_sandbox"},
+        ],
+    )
+    box = page_box(adm, sel)
+    shot(adm, out / "05-uczelnia-orcid.png", box["y"] - 16, box["height"] + 40)
+
+    # 6. Axes: list of blocked logins, unlocking by deleting the row
+    adm.goto(f"{base}/admin/axes/accessattempt/")
+    adm.wait_for_load_state("networkidle")
+    mark(
+        adm,
+        [
+            {
+                "sel": "#result_list tbody tr",
+                "arrow": "below",
+                "label": "zaznacz i usuń = odblokuj",
+                "dx": 60,
+                "dy": 0,
+            },
+        ],
+    )
+    shot(adm, out / "06-blokady-logowania.png", 0, bottom_of(adm, "#result_list", 160))
+    adm.context.close()
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -7885,6 +8052,7 @@ SCENARIOS = {
         panel_administracyjny,
     ),
     "powiazania-autorow": ("uzytkownik/powiazania-autorow", powiazania_autorow),
+    "logowanie-metody": ("administrator/logowanie-metody", logowanie_metody),
 }
 
 
