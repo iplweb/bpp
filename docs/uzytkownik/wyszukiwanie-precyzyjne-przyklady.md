@@ -158,3 +158,4 @@ wystąpić w tytule, w dowolnej kolejności. Gdy znasz początek tytułu, użyj
 - [Wyszukiwanie precyzyjne — podstawy](wyszukiwanie-precyzyjne.md)
 - [Wyszukiwanie precyzyjne — praca z wynikami](wyszukiwanie-precyzyjne-wyniki.md)
 - [Wyszukiwanie precyzyjne — zapisane formularze](wyszukiwanie-precyzyjne-zapisane.md)
+- [Tabela krzyżowa (zestawienia)](tabela-krzyzowa.md)

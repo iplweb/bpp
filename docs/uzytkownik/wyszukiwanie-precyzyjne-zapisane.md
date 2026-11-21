@@ -95,3 +95,4 @@ prywatny bez ponownego zapisywania — poproś administratora.
 - [Wyszukiwanie precyzyjne — podstawy](wyszukiwanie-precyzyjne.md)
 - [Wyszukiwanie precyzyjne — przykłady zapytań](wyszukiwanie-precyzyjne-przyklady.md)
 - [Wyszukiwanie precyzyjne — praca z wynikami](wyszukiwanie-precyzyjne-wyniki.md)
+- [Tabela krzyżowa (zestawienia)](tabela-krzyzowa.md)

@@ -129,3 +129,4 @@ Dokładny zakres pól dla każdej grupy ustala uczelnia.
 - [Wyszukiwanie precyzyjne — podstawy](wyszukiwanie-precyzyjne.md)
 - [Wyszukiwanie precyzyjne — przykłady zapytań](wyszukiwanie-precyzyjne-przyklady.md)
 - [Wyszukiwanie precyzyjne — zapisane formularze](wyszukiwanie-precyzyjne-zapisane.md)
+- [Tabela krzyżowa (zestawienia)](tabela-krzyzowa.md)

@@ -268,7 +268,9 @@ Na stronie głównej są też narzędzia do analiz przed ostatecznym wyborem:
   (główna ↔ druga dyscyplina) da więcej punktów,
 - **„Analiza capacity”** — propozycje odpięć według wolnego miejsca
   w limitach autorów,
-- **„Dwudyscyplinowcy”** — autorzy z dwiema dyscyplinami,
+- **„Dwudyscyplinowcy”** — autorzy z dwiema dyscyplinami i ich artykuły,
+  które mogą liczyć się w drugiej dyscyplinie; jak z tego korzystać:
+  [Autorzy z dwiema dyscyplinami](dwudyscyplinowcy.md),
 - **„Weryfikacja bazy danych”** — prace z autorami o slocie poniżej 0,1;
   przycisk jest czerwony, gdy takie prace są — popraw je przed
   optymalizacją.

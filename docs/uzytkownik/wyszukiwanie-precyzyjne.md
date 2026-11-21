@@ -5,14 +5,16 @@ warunków naraz — np. „prace tego autora **i** z lat 2020–2024 **i** będ�
 artykułami”. Działa bez logowania; po zalogowaniu dostępnych jest więcej pól
 i rodzajów raportu.
 
-To pierwszy z czterech artykułów o wyszukiwaniu precyzyjnym:
+To pierwszy z pięciu artykułów o wyszukiwaniu precyzyjnym:
 
 - podstawy formularza — ten artykuł,
 - [przykłady zapytań](wyszukiwanie-precyzyjne-przyklady.md) — gotowe przepisy,
 - [praca z wynikami](wyszukiwanie-precyzyjne-wyniki.md) — tytuł, drukowanie,
   ręczne usuwanie rekordów, eksport,
 - [zapisane formularze](wyszukiwanie-precyzyjne-zapisane.md) — zapisywanie
-  i wczytywanie gotowych zapytań.
+  i wczytywanie gotowych zapytań,
+- [tabela krzyżowa](tabela-krzyzowa.md) — zestawienie wyników w tabeli
+  (np. punkty według jednostki i roku).
 
 ## Jak otworzyć formularz
 
@@ -130,8 +132,8 @@ Pod warunkami znajdziesz:
   **punktacja sumaryczna** (tabela z sumami punktów), **BibTeX** (do
   skopiowania przyciskiem „Skopiuj wszystko do schowka”) oraz **tabela
   krzyżowa** — zestawienie liczb w wierszach i kolumnach (osobny artykuł:
-  Tabela krzyżowa). Zalogowani mają dodatkowo m.in. „numerowaną listę
-  z uwagami” i warianty z liczbą cytowań.
+  [Tabela krzyżowa](tabela-krzyzowa.md)). Zalogowani mają dodatkowo
+  m.in. „numerowaną listę z uwagami” i warianty z liczbą cytowań.
 - **Sortuj według** oraz dwa razy **„a następnie”** — do trzech poziomów
   sortowania (rok, tytuł, punkty, impact factor, liczba cytowań, charakter
   formalny…). Pole **„malejąco”** odwraca kolejność. Domyślnie: rok,
@@ -184,3 +186,4 @@ i lista ręcznie usuniętych rekordów są zastępowane.
 - [Wyszukiwanie precyzyjne — przykłady zapytań](wyszukiwanie-precyzyjne-przyklady.md)
 - [Wyszukiwanie precyzyjne — praca z wynikami](wyszukiwanie-precyzyjne-wyniki.md)
 - [Wyszukiwanie precyzyjne — zapisane formularze](wyszukiwanie-precyzyjne-zapisane.md)
+- [Tabela krzyżowa (zestawienia)](tabela-krzyzowa.md)
