@@ -16712,6 +16712,32 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+299	bpp	0211_oznaczenie_wydania	2000-01-01 00:00:00+00
+745	import_dyscyplin	0016_auto_20190327_0129	2000-01-01 00:00:00+00
+746	import_dyscyplin	0017_auto_20190327_2246	2000-01-01 00:00:00+00
+747	import_dyscyplin	0018_auto_20200329_1719	2000-01-01 00:00:00+00
+748	import_dyscyplin	0019_drop_pesel_md5	2000-01-01 00:00:00+00
+749	import_dyscyplin	0020_django32	2000-01-01 00:00:00+00
+750	import_dyscyplin	0021_import_pustych_do_skasowania	2000-01-01 00:00:00+00
+751	import_dyscyplin	0022_move_files_to_protected	2000-01-01 00:00:00+00
+752	import_dyscyplin	0023_remove_null_from_string_fields	2000-01-01 00:00:00+00
+754	import_list_if	0002_auto_20210308_1246	2000-01-01 00:00:00+00
+755	import_list_if	0003_django32	2000-01-01 00:00:00+00
+756	import_list_if	0004_alter_importlistif_plik_xls	2000-01-01 00:00:00+00
+757	import_list_ministerialnych	0001_initial	2000-01-01 00:00:00+00
+758	import_list_ministerialnych	0002_alter_wierszimportudyscyplinzrodel_nr_wiersza	2000-01-01 00:00:00+00
+759	import_list_ministerialnych	0003_rename_wierszimportudyscyplinzrodel_wierszimportulistyministerialnej	2000-01-01 00:00:00+00
+760	import_list_ministerialnych	0004_importlistministerialnych_ignoruj_zrodla_bez_odpowiednika	2000-01-01 00:00:00+00
+970	bpp	0417_ensure_uczelnia_site_not_null	2000-01-01 00:00:00+00
+761	import_list_ministerialnych	0005_add_duplicate_tracking_fields	2000-01-01 00:00:00+00
+762	import_list_ministerialnych	0006_importlistministerialnych_nie_porownuj_po_tytulach	2000-01-01 00:00:00+00
+763	import_list_ministerialnych	0007_move_files_to_protected	2000-01-01 00:00:00+00
+764	import_list_ministerialnych	0008_remove_null_from_string_fields	2000-01-01 00:00:00+00
+766	import_polon	0002_remove_wierszimportuplikupolon_orig_and_more	2000-01-01 00:00:00+00
+767	import_polon	0003_wierszimportuplikupolon_dyscyplina_naukowa_and_more	2000-01-01 00:00:00+00
+768	import_polon	0004_importplikupolon_rok	2000-01-01 00:00:00+00
+769	import_polon	0005_alter_wierszimportuplikupolon_options_and_more	2000-01-01 00:00:00+00
+1214	bpp	0524_bppuser_jednostki_metryk	2000-01-01 00:00:00+00
 1203	pbn_integrator	0001_initial	2000-01-01 00:00:00+00
 102	bpp	0025_auto_20150830_1740	2000-01-01 00:00:00+00
 25	axes	0006_remove_accesslog_trusted	2000-01-01 00:00:00+00
@@ -17513,7 +17539,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 296	bpp	0208_auto_20200329_1719	2000-01-01 00:00:00+00
 297	bpp	0209_auto_20200421_0013	2000-01-01 00:00:00+00
 298	bpp	0210_uczelnia_sortuj_jednostki_alfabetycznie	2000-01-01 00:00:00+00
-299	bpp	0211_oznaczenie_wydania	2000-01-01 00:00:00+00
 300	bpp	0212_upowaznienie_pbn	2000-01-01 00:00:00+00
 301	bpp	0212_charakter_formalny_charakter_ogolny	2000-01-01 00:00:00+00
 302	bpp	0213_merge_20200607_2047	2000-01-01 00:00:00+00
@@ -17896,31 +17921,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 741	import_dyscyplin	0012_import_dyscyplin_row_dyscyplina_ostateczna	2000-01-01 00:00:00+00
 742	import_dyscyplin	0013_auto_20190324_1826	2000-01-01 00:00:00+00
 743	import_dyscyplin	0014_auto_20190324_1906	2000-01-01 00:00:00+00
-745	import_dyscyplin	0016_auto_20190327_0129	2000-01-01 00:00:00+00
-746	import_dyscyplin	0017_auto_20190327_2246	2000-01-01 00:00:00+00
-747	import_dyscyplin	0018_auto_20200329_1719	2000-01-01 00:00:00+00
-748	import_dyscyplin	0019_drop_pesel_md5	2000-01-01 00:00:00+00
-749	import_dyscyplin	0020_django32	2000-01-01 00:00:00+00
-750	import_dyscyplin	0021_import_pustych_do_skasowania	2000-01-01 00:00:00+00
-751	import_dyscyplin	0022_move_files_to_protected	2000-01-01 00:00:00+00
-752	import_dyscyplin	0023_remove_null_from_string_fields	2000-01-01 00:00:00+00
-754	import_list_if	0002_auto_20210308_1246	2000-01-01 00:00:00+00
-755	import_list_if	0003_django32	2000-01-01 00:00:00+00
-756	import_list_if	0004_alter_importlistif_plik_xls	2000-01-01 00:00:00+00
-757	import_list_ministerialnych	0001_initial	2000-01-01 00:00:00+00
-758	import_list_ministerialnych	0002_alter_wierszimportudyscyplinzrodel_nr_wiersza	2000-01-01 00:00:00+00
-759	import_list_ministerialnych	0003_rename_wierszimportudyscyplinzrodel_wierszimportulistyministerialnej	2000-01-01 00:00:00+00
-760	import_list_ministerialnych	0004_importlistministerialnych_ignoruj_zrodla_bez_odpowiednika	2000-01-01 00:00:00+00
-970	bpp	0417_ensure_uczelnia_site_not_null	2000-01-01 00:00:00+00
-761	import_list_ministerialnych	0005_add_duplicate_tracking_fields	2000-01-01 00:00:00+00
-762	import_list_ministerialnych	0006_importlistministerialnych_nie_porownuj_po_tytulach	2000-01-01 00:00:00+00
-763	import_list_ministerialnych	0007_move_files_to_protected	2000-01-01 00:00:00+00
-764	import_list_ministerialnych	0008_remove_null_from_string_fields	2000-01-01 00:00:00+00
-766	import_polon	0002_remove_wierszimportuplikupolon_orig_and_more	2000-01-01 00:00:00+00
-767	import_polon	0003_wierszimportuplikupolon_dyscyplina_naukowa_and_more	2000-01-01 00:00:00+00
-768	import_polon	0004_importplikupolon_rok	2000-01-01 00:00:00+00
-769	import_polon	0005_alter_wierszimportuplikupolon_options_and_more	2000-01-01 00:00:00+00
-1214	bpp	0524_bppuser_jednostki_metryk	2000-01-01 00:00:00+00
 \.
 
 
