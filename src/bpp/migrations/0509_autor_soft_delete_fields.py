@@ -14,7 +14,7 @@ from django.db.models import Q
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0507_zrodlo_issn_norm_indexes"),
+        ("bpp", "0508_uczelnia_help_texty_pbn_profil"),
     ]
 
     operations = [

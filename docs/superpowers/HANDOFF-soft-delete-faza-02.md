@@ -15,7 +15,7 @@
 | Gałąź | `feat/soft-delete`, worktree `~/Programowanie/bpp-soft-delete` |
 | PR | #312, **CI 23/23 SUCCESS** |
 | Commity fazy 01 | 41 (od `7119a766f`) |
-| Migracje | `bpp/0508`…`0516`, `rozbieznosci_dyscyplin/0022` |
+| Migracje | `bpp/0509`…`0517`, `rozbieznosci_dyscyplin/0022` |
 | Testy | 9409 passed (+157 Playwright), 0 failed |
 
 **Faza 01 objęła TYLKO autorstwa** — 3 through-modele `Wydawnictwo_Ciagle_Autor`,
@@ -194,7 +194,7 @@ ale przy okazji fazy 02 warto potwierdzić, bo `dev` żyje.
 |---|---|
 | **Strategia wydania** | Rekomendacja: scalać fazami do `dev`, **wydać dopiero po 04**. Faza 01 sama nie daje wartości użytkownikowi (kosz bez UI — admin to faza 07), a kosztuje okno serwisowe i narzut GiST. Faza 03 jest obowiązkowa razem z 02 (bez niej re-import tworzy duplikaty). |
 | Ręczne GET-y changelistu admina (`?autorzy_set__…=`) | `lookup_allowed` przepuszcza surowy lookup; decyzja produktowa |
-| Pomiar `0512` na kopii produkcyjnej | **przed wdrożeniem**, patrz runbook §1 |
+| Pomiar `0513` na kopii produkcyjnej | **przed wdrożeniem**, patrz runbook §1 |
 | Pomiar narzutu GiST | nikt nie zmierzył; testy tego nie wykryją |
 | A2 — zmiana składu autorów nie podnosi znacznika publikacji | prekursorskie, w runbooku |
 

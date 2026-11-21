@@ -12,10 +12,10 @@ DELETE) i 0433 (bramka WHEN na liscie kolumn z pg_depend). Poczatkowo (przed
 faza 01) ponizsze dwa testy to PRZYPINALY -- byly ZIELONE na ówczesnym
 kodzie, dokumentujac stan "soft-delete by nie zadzialal".
 
-Faza 01 objela WYLACZNIE tabele ``*_Autor`` (migracja 0509: widok filtruje,
+Faza 01 objela WYLACZNIE tabele ``*_Autor`` (migracja 0510: widok filtruje,
 funkcja refresh ma galaz kasujaca, bramka WHEN zna ``deleted_at`` -- patrz
 ``test_soft_delete/test_views_sql.py``), a faza 02 -- 5 tabel PUBLIKACJI
-(migracje 0516 i 0517, patrz ``test_soft_delete/test_views_sql_publikacje.py``).
+(migracje 0517 i 0518, patrz ``test_soft_delete/test_views_sql_publikacje.py``).
 
 Historia tego pliku, bo tlumaczy jego ksztalt:
 
@@ -70,8 +70,8 @@ def test_update_samego_deleted_at_odpala_trigger():
     Odwrocenie ``test_update_samego_deleted_at_nie_odpala_triggera`` (nazwa
     i asercja sprzed fazy 01). Do fazy 02 test byl ``xfail(strict=True)``,
     a kolumne ``deleted_at`` dokladal ALTER-em w transakcji testowej --
-    faza 01 dotknela wylacznie tabel ``*_Autor``. Faza 02 (migracje 0516
-    i 0517) dodala kolumne i bramke NAPRAWDE, wiec symulacja zniknela,
+    faza 01 dotknela wylacznie tabel ``*_Autor``. Faza 02 (migracje 0517
+    i 0518) dodala kolumne i bramke NAPRAWDE, wiec symulacja zniknela,
     a marker ``xfail`` razem z nia.
     """
     wc = any_ciagle(tytul_oryginalny="Bramka a soft-delete")
@@ -102,7 +102,7 @@ def test_soft_delete_usuwa_wiersz_z_mat():
     Odwrocenie ``test_filtr_widoku_sam_nie_usuwa_wiersza_z_mat`` (nazwa i
     asercja sprzed fazy 01). Jak w tescie wyzej: do fazy 02 byl to
     ``xfail(strict=True)`` z symulacja (ALTER + owijka widoku); faza 02
-    dostarczyla filtr i galaz kasujaca naprawde (migracja 0517).
+    dostarczyla filtr i galaz kasujaca naprawde (migracja 0518).
 
     Filtr widoku jest aktywny juz przy tworzeniu rekordu, ale ``deleted_at``
     jest wtedy NULL, wiec wiersz normalnie wchodzi do bpp_rekord_mat.
@@ -136,7 +136,7 @@ def _ctid_autor(cur, ct, wca_pk):
     type modelu PUBLIKACJI (np. wydawnictwo_ciagle), a ``wca_pk`` to pk
     wiersza through (``*_Autor``), NIE pk publikacji ani autora -- patrz
     migracje 0432 (``_create_rekord_function``/``bpp_refresh_autor_*``) i
-    0509 (``_funkcja_z_galezia_kasujaca``: ``DELETE ... WHERE id =
+    0510 (``_funkcja_z_galezia_kasujaca``: ``DELETE ... WHERE id =
     ARRAY[ct, NEW.id]``).
     """
     cur.execute(
@@ -150,15 +150,15 @@ def _ctid_autor(cur, ct, wca_pk):
 @pytest.mark.django_db
 def test_update_samego_deleted_at_odpala_trigger_autor(wydawnictwo_ciagle_z_autorem):
     """Odpowiednik ``test_update_samego_deleted_at_odpala_trigger`` (wyzej,
-    xfail) dla ``*_Autor`` -- TU juz dziala (faza 01, migracja 0509).
+    xfail) dla ``*_Autor`` -- TU juz dziala (faza 01, migracja 0510).
 
     W przeciwienstwie do ``bpp_wydawnictwo_ciagle``, bramka WHEN triggera
     ``bpp_wydawnictwo_ciagle_autor_cache_upd`` ZNA ``deleted_at`` (dopisana
-    do widoku ``bpp_wydawnictwo_ciagle_autorzy`` w kroku 1 migracji 0509,
+    do widoku ``bpp_wydawnictwo_ciagle_autorzy`` w kroku 1 migracji 0510,
     wciagnieta do bramki w kroku 3 przez ``pg_depend``). Goly UPDATE samego
     ``deleted_at`` odpala trigger i usuwa wiersz z ``bpp_autorzy_mat``.
 
-    Wyrocznia: gdyby bramka regenerowana w 0509 nie objela ``deleted_at``
+    Wyrocznia: gdyby bramka regenerowana w 0510 nie objela ``deleted_at``
     (np. ktos odwrocil krok 3 migracji), UPDATE ponizej w ogole nie
     dotarlby do funkcji triggera -- ``po`` zostaloby rowne ``przed``.
     """
@@ -188,18 +188,18 @@ def test_soft_delete_autor_usuwa_wiersz_z_mat_mimo_reedycji(
     wydawnictwo_ciagle_z_autorem,
 ):
     """Odpowiednik ``test_soft_delete_usuwa_wiersz_z_mat`` (wyzej, xfail)
-    dla ``*_Autor`` -- TU juz dziala (faza 01, migracja 0509).
+    dla ``*_Autor`` -- TU juz dziala (faza 01, migracja 0510).
 
     Rozszerzony o krok, ktorego oryginal (dla publikacji) nie mial szans
     wykonac: PO soft-delete wymuszamy PONOWNE odpalenie triggera zmiana
     INNEJ, bramkowanej kolumny (``kolejnosc``). Galaz kasujaca w funkcji
-    ``bpp_refresh_autor_wydawnictwo_ciagle`` (0509) jest bezwarunkowa --
+    ``bpp_refresh_autor_wydawnictwo_ciagle`` (0510) jest bezwarunkowa --
     ``IF NEW.deleted_at IS NOT NULL THEN DELETE ...; RETURN NULL; END IF;``
     -- wiec kazde kolejne odpalenie triggera na juz skasowanym wierszu
     tylko PONAWIA DELETE (no-op), nigdy nie dochodzi do upsertu.
 
     Wyrocznia: gdyby galaz kasujaca nie konczyla sie ``RETURN NULL`` (czyli
-    leciala dalej do upsertu tak jak w mutancie sprzed 0509), drugi UPDATE
+    leciala dalej do upsertu tak jak w mutancie sprzed 0510), drugi UPDATE
     ponizej przywrocilby wiersz do ``bpp_autorzy_mat`` -- to dokladnie
     "inwariant delete-first", ktorego brak dla publikacji dokumentuje
     xfail-owany test wyzej.

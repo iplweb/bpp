@@ -36,7 +36,7 @@ przed/po).
 Naprawa: zamiast szukać substringa w tekście, pytamy katalog Postgresa
 ``pg_depend``, czy widok FAKTYCZNIE zależy od KOLUMNY ``deleted_at``
 KONKRETNEJ tabeli — dokładnie to samo narzędzie, którego migracje
-``0433``/``0509``/``0514`` używają do budowy bramek ``WHEN`` (kolumny
+``0433``/``0510``/``0515`` używają do budowy bramek ``WHEN`` (kolumny
 bazowe referowane przez widok, na poziomie ``pg_rewrite`` → ``pg_depend``
 → ``pg_attribute``). Tej samej techniki (bez filtra po nazwie kolumny)
 używamy też do wykrycia relacji „widok W czyta tabelę T" — ``pg_depend``
@@ -52,7 +52,7 @@ więc treść ``.sql`` w katalogu migracji nie musi być tym, co faktycznie
 stoi w bazie; ``baseline-sql/baseline.sql`` też zawodzi jako źródło — to
 snapshot sprzed części migracji (sprawdzone: ``baseline.sql`` ma
 ``NULL::bigint AS liczba_autorow`` zamiast realnego ``count()`` z migracji
-``0514``).
+``0515``).
 
 ## Niezmiennik
 
@@ -63,15 +63,15 @@ a T jest w ``TABELE_SOFT_DELETE`` — musi istnieć zależność W od kolumny
 ## Wzorzec naprawy
 
 - widok źródłowy (filtr ``WHERE deleted_at IS NULL`` po WŁASNEJ kolumnie
-  tabeli) — ``src/bpp/migrations/0509_soft_delete_autorzy_views.py``;
+  tabeli) — ``src/bpp/migrations/0510_soft_delete_autorzy_views.py``;
 - widok pochodny z agregatem po ``LEFT JOIN`` (``count()`` itp.) — UŻYJ
   ``FILTER (WHERE deleted_at IS NULL)``, NIE warunku w ``WHERE``/``JOIN``:
   ten drugi zamienia ``LEFT JOIN`` w efektywny ``INNER JOIN`` i wywala z
   widoku cały wiersz nadrzędny, któremu soft-deletowano WSZYSTKICH
-  potomków — ``src/bpp/migrations/0514_liczba_autorow_bez_skasowanych.py``;
+  potomków — ``src/bpp/migrations/0515_liczba_autorow_bez_skasowanych.py``;
 - widok pochodny z prostym ``WHERE``/``JOIN ... ON`` (bez agregatu) —
   dopisz warunek do ``WHERE`` —
-  ``src/bpp/migrations/0515_nowe_sumy_bez_skasowanych.py``;
+  ``src/bpp/migrations/0516_nowe_sumy_bez_skasowanych.py``;
 - helper do bezpiecznego dopisania warunku przez introspekcję (zamiast
   przepisywania SQL-a ręcznie, co rozjeżdża się przy zmianie kolumn) —
   ``src/bpp/migration_util.py`` (``viewdef``, ``widok_dopisz_warunek``,
@@ -122,7 +122,7 @@ from bpp.migration_util import viewdef
 # ``bpp_kronika_praca_{doktorska,habilitacyjna}_view``, których żywotności
 # nikt wcześniej nie badał. Nie zostały wyciszone wyjątkiem — okazały się
 # martwe i cała siedmioelementowa rodzina ``bpp_kronika_*`` została
-# skasowana migracją ``0519``.
+# skasowana migracją ``0520``.
 TABELE_SOFT_DELETE = [
     "bpp_wydawnictwo_ciagle_autor",
     "bpp_wydawnictwo_zwarte_autor",
@@ -155,7 +155,7 @@ TABELE_SOFT_DELETE = [
 # martwe, ale niemożliwe do skasowania w tamtej fazie: zależały od nich dwa
 # widoki nadrzędne, więc goły ``DROP VIEW`` nie przechodził, a ``CASCADE``
 # zabrałby po cichu także je. Faza 02 rozcięła cały graf jedną migracją
-# (``0519_drop_kronika_views``) — po siódemce nie ma śladu, więc wyjątki
+# (``0520_drop_kronika_views``) — po siódemce nie ma śladu, więc wyjątki
 # straciły przedmiot.
 #
 # Jeśli kanarek zacznie zgłaszać NOWY widok, to jest FAIL do zbadania, a nie
@@ -227,7 +227,7 @@ def _widoki_zalezne_od_deleted_at(cur, tabele):
     KOLUMNOWĄ (``pg_depend`` → ``pg_attribute``) na ``tabela.deleted_at``.
 
     Dokładnie to samo narzędzie katalogowe, którego migracje
-    ``0433``/``0509``/``0514`` używają do wyliczenia kolumn bramki ``WHEN``
+    ``0433``/``0510``/``0515`` używają do wyliczenia kolumn bramki ``WHEN``
     — patrz docstring modułu."""
     cur.execute(
         """
@@ -292,14 +292,14 @@ def _komunikat_naprawy(winowajcy):
         f"{linie}\n\n"
         "NAPRAW jednym z wzorców (src/bpp/migration_util.py + przykłady):\n"
         "  - widok źródłowy / prosty WHERE-JOIN: widok_dopisz_warunek()\n"
-        "    (patrz migracje 0509_soft_delete_autorzy_views.py,\n"
-        "    0515_nowe_sumy_bez_skasowanych.py),\n"
+        "    (patrz migracje 0510_soft_delete_autorzy_views.py,\n"
+        "    0516_nowe_sumy_bez_skasowanych.py),\n"
         "  - widok z agregatem (count() itp.) po LEFT JOIN: użyj\n"
         "    'FILTER (WHERE ... deleted_at IS NULL)', NIE warunku w\n"
         "    WHERE/JOIN — inaczej LEFT JOIN staje się efektywnym INNER\n"
         "    JOIN i wywala z widoku cały wiersz nadrzędny, któremu\n"
         "    soft-deletowano WSZYSTKICH potomków (patrz\n"
-        "    0514_liczba_autorow_bez_skasowanych.py).\n\n"
+        "    0515_liczba_autorow_bez_skasowanych.py).\n\n"
         "Jeśli widok jest MARTWY i naprawa byłaby czystym churnem — "
         "dopisz go do WYJATKI w tym pliku z uzasadnieniem i datą "
         "weryfikacji (sprawdź pg_depend / realnych konsumentów w "
@@ -439,11 +439,11 @@ def test_matcher_prefiks_tabeli_publikacji_kontra_tabela_autorstwa(tekst, oczeki
 
 # --- Test dowodowy: fałszywa zieleń starego rdzenia ---------------------
 
-# Funkcje transformujące definicję widoku, wzięte WPROST z migracji 0517 —
+# Funkcje transformujące definicję widoku, wzięte WPROST z migracji 0518 —
 # zamiast kopii, która rozjechałaby się przy pierwszej zmianie kształtu
 # widoku. Nazwy modułów migracji zaczynają się od cyfry, więc zwykły import
 # nie przejdzie.
-_p0517 = importlib.import_module("bpp.migrations.0517_soft_delete_rekord_views")
+_p0518 = importlib.import_module("bpp.migrations.0518_soft_delete_rekord_views")
 
 
 def _winowajcy_starym_algorytmem(widoki, tabele, wyjatki):
@@ -478,12 +478,12 @@ def test_stary_rdzen_przepuszczal_widok_dziedziczacy_deleted_at_z_joina():
     Wersja obecna wytwarza tę usterkę SAMA, w transakcji testowej, więc
     zostaje prawdziwa niezależnie od stanu bazy. Zdejmujemy z
     ``bpp_wydawnictwo_ciagle_view`` filtr po WŁASNYM ``deleted_at``
-    (dokładnie tę wstawkę, którą zakłada migracja ``0517``) i pytamy oba
+    (dokładnie tę wstawkę, którą zakłada migracja ``0518``) i pytamy oba
     warianty algorytmu.
 
     Sedno fałszywej zieleni: po zdjęciu filtra w definicji NADAL jest słowo
     ``deleted_at`` — bo widok liczy ``count(...) FILTER (WHERE
-    bpp_wydawnictwo_ciagle_autor.deleted_at IS NULL)`` (migracja ``0514``).
+    bpp_wydawnictwo_ciagle_autor.deleted_at IS NULL)`` (migracja ``0515``).
     Matcher tekstowy widzi więc „jest deleted_at, jest OK", mimo że filtr
     dotyczy INNEJ tabeli — tej po drugiej stronie JOIN-a. Zależność
     kolumnowa w ``pg_depend`` takiej pomyłki nie popełnia.
@@ -494,7 +494,7 @@ def test_stary_rdzen_przepuszczal_widok_dziedziczacy_deleted_at_z_joina():
 
     with connection.cursor() as cur:
         oryginal = viewdef(cur, widok)
-        zepsuta = _p0517._bez_filtra(oryginal, tabela, widok)
+        zepsuta = _p0518._bez_filtra(oryginal, tabela, widok)
 
         assert "deleted_at" in zepsuta, (
             "po zdjęciu filtra w definicji NIE MA już słowa 'deleted_at' — "

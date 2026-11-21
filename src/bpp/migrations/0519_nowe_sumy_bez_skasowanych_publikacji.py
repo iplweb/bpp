@@ -1,18 +1,18 @@
 """Ranking autorów przestaje punktować soft-deletowane PUBLIKACJE.
 
-Dopełnienie migracji ``0515``, która zamknęła w tych widokach wymiar
+Dopełnienie migracji ``0516``, która zamknęła w tych widokach wymiar
 AUTORSTWA (``*_autor.deleted_at``). Wymiar PUBLIKACJI został wtedy otwarty,
-bo publikacje stały się soft-delete dopiero w fazie 02 (``0516``).
+bo publikacje stały się soft-delete dopiero w fazie 02 (``0517``).
 
 Bez tego filtra soft-deletowana publikacja dalej wnosi punkty do sum:
 ``bpp_nowe_sumy_<typ>_view`` -> UNION ALL ``bpp_nowe_sumy_view`` -> modele
 ``Nowe_Sumy_View``/``Sumy`` (``bpp/models/sumy_views.py``) ->
 ``ranking_autorow/views.py``.
 
-Zakres jest SZERSZY niż w ``0515``: tamta objęła 3 widoki (tylko typy
+Zakres jest SZERSZY niż w ``0516``: tamta objęła 3 widoki (tylko typy
 z through-modelem), ta obejmuje wszystkie 5. ``praca_doktorska`` i
 ``praca_habilitacyjna`` nie mają tabeli ``*_autor`` — autor leży na wierszu
-publikacji — więc ``0515`` nie miała tam czego filtrować, ale soft-delete
+publikacji — więc ``0516`` nie miała tam czego filtrować, ale soft-delete
 samej pracy dotyczy ich tak samo jak reszty.
 
 Widoki ustalone INWENTARYZACJĄ kanarka katalogowego na starcie fazy 02
@@ -66,7 +66,7 @@ def backward(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0517_soft_delete_rekord_views"),
+        ("bpp", "0518_soft_delete_rekord_views"),
     ]
 
     operations = [

@@ -1,6 +1,6 @@
 """Task 3c, krok 3/4: ``ExclusionConstraint`` (rekord, kolejnosc), DEFERRED.
 
-Rozbicie migracji i ``atomic = False`` — patrz docstring 0510. To najdroższy
+Rozbicie migracji i ``atomic = False`` — patrz docstring 0511. To najdroższy
 krok całej serii: ``ADD CONSTRAINT ... EXCLUDE USING GIST`` buduje indeks
 GiST pod ``ACCESS EXCLUSIVE`` (blokuje również ODCZYTY) i nie ma wariantu
 współbieżnego. Dzięki ``atomic = False`` blokada każdej z trzech tabel jest
@@ -10,7 +10,7 @@ migracji.
 Zastępuje legacy ``RunSQL`` z migracji 0132 (2018) — DODATKOWY, poza Django
 ORM, ``UNIQUE (rekord_id, kolejnosc) DEFERRABLE INITIALLY DEFERRED`` (nigdy
 nie było go w żadnym ``Meta``, więc ``makemigrations`` go nie widziało);
-legacy constraint zdejmuje 0513. ``UniqueConstraint`` nie umie połączyć
+legacy constraint zdejmuje 0514. ``UniqueConstraint`` nie umie połączyć
 ``condition`` z ``deferrable`` (Django to blokuje), a ``deferrable`` jest
 wymagany przez drag&drop reorder autorów w adminie (adminsortable2,
 ``sortable_field_name = "kolejnosc"``) — zamiana kolejności dwóch wierszy
@@ -28,7 +28,7 @@ class Migration(migrations.Migration):
     atomic = False
 
     dependencies = [
-        ("bpp", "0511_autor_unique_rekord_autor_typ"),
+        ("bpp", "0512_autor_unique_rekord_autor_typ"),
     ]
 
     operations = [

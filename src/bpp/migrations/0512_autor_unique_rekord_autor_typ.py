@@ -1,16 +1,16 @@
 """Task 3c, krok 2/4: warunkowy ``UniqueConstraint`` (rekord, autor, typ).
 
-Rozbicie migracji i ``atomic = False`` — patrz docstring 0510.
+Rozbicie migracji i ``atomic = False`` — patrz docstring 0511.
 
 ``unique_together`` widziałby też wiersze soft-deleted (fizycznie wciąż są w
 tabeli) i blokowałby wzorzec „skasuj i wstaw od nowa" (re-import, korekta
 kolejności, edycja inline). Warunkowy ``UniqueConstraint``
 (``condition=deleted_at__isnull``) pilnuje unikalności TYLKO wśród żywych
-wierszy. Stare ``unique_together`` zdejmuje dopiero 0513 — tu jeszcze
+wierszy. Stare ``unique_together`` zdejmuje dopiero 0514 — tu jeszcze
 obowiązuje, więc nie ma okna bez ochrony.
 
 Drugiej pary z ``unique_together`` — ``(rekord, autor, kolejnosc)`` — NIE
-odtwarzamy: ``ExclusionConstraint`` po ``(rekord, kolejnosc)`` z 0512 jest
+odtwarzamy: ``ExclusionConstraint`` po ``(rekord, kolejnosc)`` z 0513 jest
 ściśle silniejszy (nie patrzy na autora), więc taki unique byłby w 100%
 redundantny — trzeci indeks do zbudowania w oknie serwisowym i stały narzut
 na najgorętszej ścieżce zapisu.
@@ -23,7 +23,7 @@ class Migration(migrations.Migration):
     atomic = False
 
     dependencies = [
-        ("bpp", "0510_autor_indeks_fk_rekord"),
+        ("bpp", "0511_autor_indeks_fk_rekord"),
     ]
 
     operations = [

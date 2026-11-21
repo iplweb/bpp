@@ -3,7 +3,7 @@
 Dopełnienie migracji ``0022``, która zamknęła w tym widoku wymiar AUTORSTWA
 (``bpp_wydawnictwo_ciagle_autor.deleted_at``). Wymiar PUBLIKACJI został
 wtedy otwarty, bo publikacje stały się soft-delete dopiero w fazie 02
-(``bpp.0516``).
+(``bpp.0517``).
 
 Bez tego warunku skasowane wydawnictwo ciągłe dalej generuje pozycje
 w raporcie rozbieżności — operator dostaje do rozstrzygnięcia rekord,
@@ -41,10 +41,10 @@ def backward(apps, schema_editor):
 class Migration(migrations.Migration):
     dependencies = [
         ("rozbieznosci_dyscyplin", "0022_rozbieznosci_zrodel_bez_skasowanych"),
-        # Kolumna `deleted_at` na tabelach publikacji powstaje w bpp.0516;
+        # Kolumna `deleted_at` na tabelach publikacji powstaje w bpp.0517;
         # bez tej zależności migracja mogłaby pójść przed nią i wywalić się
         # na nieznanej kolumnie.
-        ("bpp", "0516_publikacje_soft_delete_fields"),
+        ("bpp", "0517_publikacje_soft_delete_fields"),
     ]
 
     operations = [

@@ -165,7 +165,7 @@ Soft-delete to uogólnienie tej samej sytuacji na wszystkie 8 tabel.
 > (`bpp_<typ>_view.liczba_autorow`, `bpp_nowe_sumy_*_view`,
 > `rozbieznosci_dyscyplin_zrodel`), które czytały surową tabelę `*_autor`
 > niezależnie od widoku źródłowego z punktu 3 i wymagały osobnych migracji
-> `0514`/`0515`/`rozbieznosci_dyscyplin/0022`. Punkt 4 poniżej domyka ten
+> `0515`/`0516`/`rozbieznosci_dyscyplin/0022`. Punkt 4 poniżej domyka ten
 > wzorzec jako STAŁY element checklisty, nie jednorazową łatkę):
 
 1. **Gałąź kasująca w 8 funkcjach refresh.** Prolog przed upsertem:
@@ -201,7 +201,7 @@ Soft-delete to uogólnienie tej samej sytuacji na wszystkie 8 tabel.
    `FILTER (WHERE deleted_at IS NULL)`, NIE warunku w `JOIN`/`WHERE` — ten
    drugi zamienia `LEFT JOIN` w efektywny `INNER JOIN` i wywala z widoku
    całą publikację, której WSZYSTKIM autorom soft-deletowano wiersz
-   (patrz `bpp/migrations/0514_liczba_autorow_bez_skasowanych.py`).
+   (patrz `bpp/migrations/0515_liczba_autorow_bez_skasowanych.py`).
    **Źródłem prawdy o tym, co jeszcze nie jest naprawione, jest żywy
    `pg_views` — nie pliki migracji** (późniejsze migracje nadpisują
    wcześniejsze definicje widoków, a `baseline.sql` bywa snapshotem sprzed

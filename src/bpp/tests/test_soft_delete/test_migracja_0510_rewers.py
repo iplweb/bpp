@@ -1,4 +1,4 @@
-"""Odwracalność migracji 0509 (widoki + gałąź kasująca + bramka WHEN).
+"""Odwracalność migracji 0510 (widoki + gałąź kasująca + bramka WHEN).
 
 ``backward`` musi zdjąć WSZYSTKIE trzy zmiany — inaczej rollback zostawia
 niespójny stan: np. widok bez filtra, ale funkcja z gałęzią kasującą (kasowałaby
@@ -59,11 +59,11 @@ def _stan_ddl(cur):
 
 
 @pytest.mark.django_db
-def test_migracja_0509_odwracalna(bez_reinstalacji_denorma):
+def test_migracja_0510_odwracalna(bez_reinstalacji_denorma):
     with connection.cursor() as cur:
         przed = _stan_ddl(cur)
 
-    call_command("migrate", "bpp", "0508_autor_soft_delete_fields", verbosity=0)
+    call_command("migrate", "bpp", "0509_autor_soft_delete_fields", verbosity=0)
 
     with connection.cursor() as cur:
         for widok in WIDOKI:

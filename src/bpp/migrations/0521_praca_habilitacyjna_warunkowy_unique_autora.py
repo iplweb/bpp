@@ -6,7 +6,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0519_drop_kronika_views"),
+        ("bpp", "0520_drop_kronika_views"),
         ("pbn_api", "0079_constraint_publikacja_instytucji"),
         (
             "taggit",

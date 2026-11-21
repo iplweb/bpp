@@ -46,7 +46,7 @@ def backward(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0514_liczba_autorow_bez_skasowanych"),
+        ("bpp", "0515_liczba_autorow_bez_skasowanych"),
     ]
 
     operations = [

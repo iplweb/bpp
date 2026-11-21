@@ -42,7 +42,7 @@ z komentarzami w ``lib-pg-collation-migrate.sh`` i
 a nie w nazwy widoków, więc skrypty NIE przestają działać.
 
 ODWRACALNOŚĆ: ``backward`` odtwarza całą siódemkę z sidecara
-``0519_drop_kronika_views.sql``. Plik został WYGENEROWANY z
+``0520_drop_kronika_views.sql``. Plik został WYGENEROWANY z
 ``pg_get_viewdef()`` na żywym katalogu, a nie przepisany ręcznie — przy
 7 KB SQL-a przepisywanie byłoby proszeniem się o cichą literówkę.
 
@@ -85,12 +85,12 @@ def forward(apps, schema_editor):
 
 
 def backward(apps, schema_editor):
-    load_custom_sql("0519_drop_kronika_views")
+    load_custom_sql("0520_drop_kronika_views")
 
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0518_nowe_sumy_bez_skasowanych_publikacji"),
+        ("bpp", "0519_nowe_sumy_bez_skasowanych_publikacji"),
     ]
 
     operations = [

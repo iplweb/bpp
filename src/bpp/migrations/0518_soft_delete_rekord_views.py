@@ -1,6 +1,6 @@
 """Soft-delete PUBLIKACJI: filtr w widokach + gałąź kasująca + bramka WHEN.
 
-Odpowiednik migracji ``0509`` (faza 01) dla drugiej ścieżki: tamta objęła
+Odpowiednik migracji ``0510`` (faza 01) dla drugiej ścieżki: tamta objęła
 3 tabele ``*_autor``, ta obejmuje 5 tabel publikacji. Kolejność operacji jest
 WYMUSZONA z dokładnie tego samego powodu:
 
@@ -11,13 +11,13 @@ WYMUSZONA z dokładnie tego samego powodu:
 Odwrócenie 1<->3 daje bramkę bez ``deleted_at``, czyli cichy staleness:
 soft-deletowana publikacja zostaje w ``bpp_rekord_mat``.
 
-Żadna z trzech zmian nie wystarcza sama — uzasadnienie jak w ``0509``:
+Żadna z trzech zmian nie wystarcza sama — uzasadnienie jak w ``0510``:
 funkcja refresh po ``0432`` robi wyłącznie ``INSERT ... ON CONFLICT DO
 UPDATE``, więc wypadnięcie wiersza ze źródła jest dla niej no-opem; a bez
 ``deleted_at`` w bramce ``WHEN`` UPDATE soft-delete w ogóle nie dochodzi do
 funkcji triggera.
 
-DLACZEGO NIE DA SIĘ UŻYĆ ``_filtruj_widok`` Z ``0509``
+DLACZEGO NIE DA SIĘ UŻYĆ ``_filtruj_widok`` Z ``0510``
 ------------------------------------------------------
 Tamta funkcja dopisuje ``WHERE`` na KOŃCU definicji i asertuje, że definicja
 kończy się gołym ``FROM <tabela>``. Dla widoków publikacji to założenie jest
@@ -30,7 +30,7 @@ FAŁSZYWE — występują tu trzy różne kształty (zweryfikowane introspekcją
   na końcu byłoby błędem składni (``WHERE`` po ``GROUP BY``), więc predykat
   wstawiamy PRZED ``GROUP BY``.
 - **B**: ``bpp_praca_doktorska_view``, ``bpp_praca_habilitacyjna_view`` —
-  kończą się gołym ``FROM <tabela>``; tu wzorzec z ``0509`` działa wprost.
+  kończą się gołym ``FROM <tabela>``; tu wzorzec z ``0510`` działa wprost.
 - **C**: ``bpp_praca_doktorska_autorzy``,
   ``bpp_praca_habilitacyjna_autorzy`` — mają WŁASNY ``WHERE`` najwyższego
   poziomu (join po przecinku z ``bpp_autor``), więc predykat wstawiamy do
@@ -38,7 +38,7 @@ FAŁSZYWE — występują tu trzy różne kształty (zweryfikowane introspekcją
 
 ⚠️ Rozpoznawanie kształtu NIE może iść po samym wystąpieniu słowa ``WHERE``:
 widoki rodziny A zawierają ``count(...) FILTER (WHERE ... deleted_at IS
-NULL)`` (migracja ``0514``), a wszystkie zawierają ``WHERE`` w skalarnych
+NULL)`` (migracja ``0515``), a wszystkie zawierają ``WHERE`` w skalarnych
 podzapytaniach o ``django_content_type``. Dyskryminatorem jest ``WHERE``/
 ``GROUP BY`` na WCIĘCIU DWÓCH SPACJI, czyli na poziomie klauzuli głównej
 w formacie ``pg_get_viewdef(..., pretty=true)``.
@@ -48,7 +48,7 @@ w formacie ``pg_get_viewdef(..., pretty=true)``.
 handoffie (§3.2) dotyczy filtrowania strony PRAWEJ (``*_autor``): warunek na
 niej zdegenerowałby ``LEFT JOIN`` do ``INNER JOIN`` i publikacja, której
 wszystkich autorów skasowano, wypadłaby z widoku. Dlatego ``liczba_autorow``
-jest liczona przez ``count(...) FILTER (...)`` (``0514``) i tej konstrukcji
+jest liczona przez ``count(...) FILTER (...)`` (``0515``) i tej konstrukcji
 tutaj NIE ruszamy.
 
 ⚠️ KLUCZ w rodzinie C: ``object_id_raw`` to id PUBLIKACJI (autor leży na jej
@@ -57,7 +57,7 @@ jest poprawny. To INNA sytuacja niż w widokach ``*_autorzy`` trzech typów
 z through-modelem (faza 01), gdzie filtrowano po kolumnie wiersza through.
 Nie kopiować klucza między fazami bez sprawdzenia, co dana kolumna znaczy.
 
-Definicje są GENEROWANE z introspekcji (jak w ``0432``/``0433``/``0509``),
+Definicje są GENEROWANE z introspekcji (jak w ``0432``/``0433``/``0510``),
 a nie przepisane do ``.sql`` — kopia rozjechałaby się przy najbliższej
 zmianie kolumn.
 """
@@ -130,8 +130,8 @@ def _z_filtrem(orig, tabela, widok):
 def _bez_filtra(orig, tabela, widok):
     """Odwrotność ``_z_filtrem`` — usuwa DOKŁADNIE ten tekst, który tamta
     wstawiła. Symetria jest tu ważniejsza od elegancji: odtwarzanie
-    oryginału z plików ``.sql`` (jak w ``0509.backward``) nie zadziała, bo
-    widoki publikacji były redefiniowane w kilku migracjach (m.in. ``0514``
+    oryginału z plików ``.sql`` (jak w ``0510.backward``) nie zadziała, bo
+    widoki publikacji były redefiniowane w kilku migracjach (m.in. ``0515``
     dokładająca ``count(...) FILTER``) i nie ma jednego pliku źródłowego.
 
     ⚠️ Szukamy DWÓCH form predykatu, bo katalog nie przechowuje tekstu, który
@@ -169,7 +169,7 @@ def _funkcja_z_galezia_kasujaca(cur, table, model, autor_na_wierszu):
     wiersz jest soft-deletowany, kasujemy go z tabel ``_mat`` i wychodzimy.
 
     ``pg_advisory_xact_lock`` stoi PRZED rozgałęzieniem — kasowanie musi brać
-    ten sam lock co upsert (uzasadnienie w ``0509``).
+    ten sam lock co upsert (uzasadnienie w ``0510``).
 
     ⚠️ Doktorat i habilitacja (``autor_na_wierszu=True``) dotykają OBU tabel
     ``_mat``, bo autor leży na wierszu publikacji. Nazwy kluczy są RÓŻNE:
@@ -275,7 +275,7 @@ def backward(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0516_publikacje_soft_delete_fields"),
+        ("bpp", "0517_publikacje_soft_delete_fields"),
     ]
 
     operations = [

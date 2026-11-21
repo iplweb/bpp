@@ -1,6 +1,6 @@
 """Widoki POCHODNE (spoza rodziny ``bpp_*_autorzy``) po soft-delete autorstwa.
 
-Faza 01 przefiltrowała widoki ``bpp_*_autorzy`` (migracja 0509) — ale to nie
+Faza 01 przefiltrowała widoki ``bpp_*_autorzy`` (migracja 0510) — ale to nie
 jedyne miejsce, gdzie SQL czyta SUROWĄ tabelę ``*_autor``. Ponieważ
 ``delete()`` jest miękki od pierwszej sekundy po wdrożeniu (żadnej feature
 flagi), każdy taki widok wycieka skasowane autorstwa od dnia 1.
@@ -27,8 +27,8 @@ from bpp.tests.test_soft_delete.test_kanarek_katalogowy import (
     _widoki_zalezne_od_deleted_at,
 )
 
-# (widok sum, tabela PUBLIKACJI) — wymiar domkniety w fazie 02 (bpp.0518).
-# Wymiar AUTORSTWA (0515) obejmowal tylko pierwsze trzy, bo pozostale dwa
+# (widok sum, tabela PUBLIKACJI) — wymiar domkniety w fazie 02 (bpp.0519).
+# Wymiar AUTORSTWA (0516) obejmowal tylko pierwsze trzy, bo pozostale dwa
 # nie maja tabeli *_autor.
 SUMY_PUBLIKACJE = [
     ("bpp_nowe_sumy_wydawnictwo_ciagle_view", "bpp_wydawnictwo_ciagle"),
@@ -109,16 +109,16 @@ def test_sumy_rankingu_wracaja_po_restore(wydawnictwo_ciagle_z_autorem):
     assert Sumy.objects.filter(autor_id=autor_id).exists()
 
 
-# --- wymiar PUBLIKACJI (faza 02, migracja 0518) -------------------------
+# --- wymiar PUBLIKACJI (faza 02, migracja 0519) -------------------------
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("widok,tabela", SUMY_PUBLIKACJE)
 def test_sumy_zaleza_od_deleted_at_publikacji(widok, tabela):
-    """Kontrakt DDL: dowód, że ``0518`` w ogóle się wykonała.
+    """Kontrakt DDL: dowód, że ``0519`` w ogóle się wykonała.
 
     Pytamy ``pg_depend`` o zależność KOLUMNOWĄ, nie tekst definicji — trzy
-    z tych widoków zawierają już ``deleted_at`` z migracji ``0515`` (wymiar
+    z tych widoków zawierają już ``deleted_at`` z migracji ``0516`` (wymiar
     autorstwa), więc test substringowy dawałby dla nich fałszywą zieleń.
     """
     with connection.cursor() as cur:
@@ -135,9 +135,9 @@ def test_sumy_pomijaja_soft_deletowana_publikacje_IZOLOWANE(
 
     ⚠️ Kasujemy publikację SUROWYM UPDATE-em, a nie ``wc.delete()``, i jest
     to celowe. ``delete()`` kaskaduje na autorstwa, więc wiersz zniknąłby
-    z sum z DWÓCH niezależnych powodów: przez filtr publikacji (``0518``,
+    z sum z DWÓCH niezależnych powodów: przez filtr publikacji (``0519``,
     czyli to, co ten test ma sprawdzać) ORAZ przez filtr autorstwa
-    (``0515``). Test przechodziłby wtedy nawet po cofnięciu ``0518`` — czyli
+    (``0516``). Test przechodziłby wtedy nawet po cofnięciu ``0519`` — czyli
     nie byłby wyrocznią niczego.
 
     Surowy SQL omija też gate na ``.update(deleted_at=...)``

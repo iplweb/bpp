@@ -9,7 +9,7 @@ ruszyć — dokładamy warunek osobną migracją, przez introspekcję.
 
 Pozostałe widoki tej aplikacji (``rozbieznosciview``,
 ``brakprzypisaniaview``, ``rozbiezneprzypisaniaview``) czytają widok
-``bpp_autorzy``, przefiltrowany już w migracji ``bpp.0509`` — sprawdzone przez
+``bpp_autorzy``, przefiltrowany już w migracji ``bpp.0510`` — sprawdzone przez
 ``pg_depend`` (żaden z nich nie zależy od surowej tabeli ``*_autor``).
 """
 
@@ -34,10 +34,10 @@ def backward(apps, schema_editor):
 class Migration(migrations.Migration):
     dependencies = [
         ("rozbieznosci_dyscyplin", "0021_alter_rozbieznosciview_options"),
-        # Kolumna `deleted_at` na *_autor powstaje w bpp.0508; bez tej
+        # Kolumna `deleted_at` na *_autor powstaje w bpp.0509; bez tej
         # zależności migracja mogłaby pójść przed nią i wywalić się na
         # nieznanej kolumnie.
-        ("bpp", "0508_autor_soft_delete_fields"),
+        ("bpp", "0509_autor_soft_delete_fields"),
     ]
 
     operations = [

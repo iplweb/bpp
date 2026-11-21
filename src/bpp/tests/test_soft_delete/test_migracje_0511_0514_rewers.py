@@ -1,16 +1,16 @@
-"""Odwracalność serii 0510-0513 (Task 3c): warunkowe ograniczenia na *_Autor.
+"""Odwracalność serii 0511-0514 (Task 3c): warunkowe ograniczenia na *_Autor.
 
-Task 3c był pierwotnie jedną migracją (0510); jest rozbity na cztery
+Task 3c był pierwotnie jedną migracją (0511); jest rozbity na cztery
 (indeks FK / unique po typie / exclusion po kolejności / zdjęcie starych),
-każda z ``atomic = False`` — patrz docstring ``0510_autor_indeks_fk_rekord``.
+każda z ``atomic = False`` — patrz docstring ``0511_autor_indeks_fk_rekord``.
 
 ``backward`` całej serii musi przywrócić DOKŁADNIE stan sprzed niej:
 bezwarunkowy ``unique_together`` ORAZ legacy ``UNIQUE (rekord_id, kolejnosc)
 DEFERRABLE INITIALLY DEFERRED`` — inaczej rollback zostawia bazę bez żadnego
 z dwóch mechanizmów pilnujących unikalności kolejności autorów.
 
-Test zjeżdża do 0509 i wraca do NAJNOWSZEJ migracji ``bpp`` (``migrate bpp``
-bez numeru). Powrót „do 0510" byłby błędem: baza testowa jest współdzielona
+Test zjeżdża do 0510 i wraca do NAJNOWSZEJ migracji ``bpp`` (``migrate bpp``
+bez numeru). Powrót „do 0511" byłby błędem: baza testowa jest współdzielona
 przez cały przebieg (``--reuse-db``), więc pozostawienie migracji późniejszych
 niż cel jako niezastosowanych psułoby kolejne testy.
 """
@@ -74,13 +74,13 @@ def _sprawdz_stan_po(cur):
 
 @pytest.mark.django_db
 # Odtwarza migracje w obie strony; solo ~35-55 s, pod obciążeniem xdist
-# przekraczał globalne `--timeout 90` (por. test_migracja_0509_rewers.py).
+# przekraczał globalne `--timeout 90` (por. test_migracja_0510_rewers.py).
 @pytest.mark.timeout(300)
-def test_migracje_0510_0513_odwracalne(bez_reinstalacji_denorma):
+def test_migracje_0511_0514_odwracalne(bez_reinstalacji_denorma):
     with connection.cursor() as cur:
         _sprawdz_stan_po(cur)
 
-    call_command("migrate", "bpp", "0509", verbosity=0)
+    call_command("migrate", "bpp", "0510", verbosity=0)
 
     with connection.cursor() as cur:
         for tabela in TABELE:

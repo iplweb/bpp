@@ -50,17 +50,17 @@ Gałęzie `UNION` w `bpp_rekord` per typ publikacji NIE filtrują po `*_autor.de
 - ⚠️ **`transactional_db` NIE jest wymagany** do oglądania efektów triggera — triggery bazodanowe działają wewnątrz transakcji testowej (dowód: kanarki `test_soft_delete_preconditions.py` chodzą pod zwykłym `django_db`). Używaj `django_db`; `transactional_db` tylko spowalnia. Fixture `denorms` (`src/fixtures/conftest_system.py:255`) daje `denorms.flush()`. Fixtury: `wydawnictwo_ciagle_z_dwoma_autorami`, `wydawnictwo_ciagle_z_autorem`, `autor_jan_kowalski`, `jednostka`, `standard_data`, `typy_odpowiedzialnosci`.
 - ⚠️ **Numeracja migracji (stan po zakończeniu fazy, 2026-08-06):** liść przed
   fazą to był `0487_api_v1_przelaczniki`. Faza 01 dołożyła w praktyce OSIEM
-  migracji `bpp` — `0508_autor_soft_delete_fields` →
-  `0509_soft_delete_autorzy_views` → `0510_autor_indeks_fk_rekord` →
-  `0511_autor_unique_rekord_autor_typ` → `0512_autor_excl_rekord_kolejnosc` →
-  `0513_autor_zdjecie_starych_unique` → `0514_liczba_autorow_bez_skasowanych`
-  → `0515_nowe_sumy_bez_skasowanych` — plus
+  migracji `bpp` — `0509_autor_soft_delete_fields` →
+  `0510_soft_delete_autorzy_views` → `0511_autor_indeks_fk_rekord` →
+  `0512_autor_unique_rekord_autor_typ` → `0513_autor_excl_rekord_kolejnosc` →
+  `0514_autor_zdjecie_starych_unique` → `0515_liczba_autorow_bez_skasowanych`
+  → `0516_nowe_sumy_bez_skasowanych` — plus
   `rozbieznosci_dyscyplin/0022_rozbieznosci_zrodel_bez_skasowanych.py` w
-  osobnej aplikacji. `0510`-`0513` to rozbite (jedna migracja na `ALTER
+  osobnej aplikacji. `0511`-`0514` to rozbite (jedna migracja na `ALTER
   TABLE`, każda `atomic = False`) to, co ten plan opisuje niżej jako
-  jednolite `0510_autor_warunkowy_unique` (Task 3c) — patrz `progress.md` i
+  jednolite `0511_autor_warunkowy_unique` (Task 3c) — patrz `progress.md` i
   `naprawa-finalna-report.md` w katalogu SDD tej fazy po uzasadnienie
-  rozbicia. `0514`/`0515` naprawiają blokery znalezione dopiero w finalnej
+  rozbicia. `0515`/`0516` naprawiają blokery znalezione dopiero w finalnej
   recenzji (widoki pochodne `liczba_autorow` i `bpp_nowe_sumy_*`, poza
   pierwotnym zakresem tego planu). Wszystkie numery w tym planie są
   orientacyjne; kanoniczna jest kolejność, nie cyfra.
@@ -223,7 +223,7 @@ Wpięcie `SoftDeleteModel` w abstrakcyjną bazę → Django doda `deleted_at`/`r
 - Modify: `src/bpp/models/soft_delete.py` (dopisz `BppAutorstwoSoftDeleteMixin`)
 - Modify: `src/bpp/models/wydawnictwo_ciagle.py:53`, `wydawnictwo_zwarte.py` (`Wydawnictwo_Zwarte_Autor`), `patent.py:32` — wepnij mixin w bazy klas
 - ⚠️ **NIE modyfikuj** `src/bpp/models/abstract/authors.py` — abstrakt ma czwartego potomka poza zakresem
-- Create: `src/bpp/migrations/0508_autor_soft_delete_fields.py`
+- Create: `src/bpp/migrations/0509_autor_soft_delete_fields.py`
 - Test (create): `src/bpp/tests/test_soft_delete/test_autor_softdelete_model.py`
 
 **Steps:**
@@ -350,7 +350,7 @@ Wpięcie `SoftDeleteModel` w abstrakcyjną bazę → Django doda `deleted_at`/`r
   ```bash
   uv run python src/manage.py makemigrations bpp --name autor_soft_delete_fields
   ```
-  (Spodziewany plik: `src/bpp/migrations/0508_autor_soft_delete_fields.py`, 3 pola × 3 modele = 9 `AddField`. Manager-y są `use_in_migrations=False` domyślnie, więc nie pojawią się w migracji.)
+  (Spodziewany plik: `src/bpp/migrations/0509_autor_soft_delete_fields.py`, 3 pola × 3 modele = 9 `AddField`. Manager-y są `use_in_migrations=False` domyślnie, więc nie pojawią się w migracji.)
 
 - [ ] Zweryfikuj treść wygenerowanej migracji — musi zawierać `AddField` `deleted_at`/`restored_at`/`transaction_id` dla `wydawnictwo_ciagle_autor`, `wydawnictwo_zwarte_autor`, `patent_autor`. Jeśli Django dorzuciło `AlterModelManagers` — usuń tę operację ręcznie (Edit), bo managery soft-delete nie idą do schematu. Dependency MUSI wskazywać na **aktualny liść** migracji `bpp` (na 2026-08-06: `("bpp", "0487_api_v1_przelaczniki")`) — zweryfikuj `ls src/bpp/migrations/*.py | tail -3` przed commitem.
 
@@ -362,7 +362,7 @@ Wpięcie `SoftDeleteModel` w abstrakcyjną bazę → Django doda `deleted_at`/`r
   wyłącznie kosztem (rozmiar + wpis przy każdym zapisie autorstwa).
   Selektywne jest zapytanie ODWROTNE (`deleted_objects`,
   `deleted_at IS NOT NULL`) i to jemu służy indeks. Dopisz do `operations`
-  w `0508_autor_soft_delete_fields.py` (po `AddField`-ach), używając
+  w `0509_autor_soft_delete_fields.py` (po `AddField`-ach), używając
   `AddIndex`:
   ```python
           migrations.AddIndex(
@@ -416,7 +416,7 @@ Wpięcie `SoftDeleteModel` w abstrakcyjną bazę → Django doda `deleted_at`/`r
 
 - [ ] Commit:
   ```bash
-  git add src/bpp/models/abstract/authors.py src/bpp/migrations/0508_autor_soft_delete_fields.py src/bpp/tests/test_soft_delete/test_autor_softdelete_model.py
+  git add src/bpp/models/abstract/authors.py src/bpp/migrations/0509_autor_soft_delete_fields.py src/bpp/tests/test_soft_delete/test_autor_softdelete_model.py
   git commit -m "feat(soft-delete): *_Autor → SoftDeleteModel + migracja pól deleted_at + indeks
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
@@ -443,7 +443,7 @@ Jedna migracja, trzy zmiany, w **wymuszonej kolejności**:
    kroku 1**, bo bramka czyta kolumny z `pg_depend` po definicji widoku.
 
 **Files:**
-- Create: `src/bpp/migrations/0509_soft_delete_autorzy_views.py` (numer
+- Create: `src/bpp/migrations/0510_soft_delete_autorzy_views.py` (numer
   zweryfikuj — patrz „Fakty z kodu")
 - Test: `src/bpp/tests/test_soft_delete/test_views_sql.py` (nowy),
   plus odwrócenie kanarków w
@@ -566,7 +566,7 @@ dokładnie ten problem, który `0432`/`0433` rozwiązały — patrz
   ls src/bpp/migrations/*.py | tail -3
   ```
 
-- [ ] Utwórz `src/bpp/migrations/0509_soft_delete_autorzy_views.py`.
+- [ ] Utwórz `src/bpp/migrations/0510_soft_delete_autorzy_views.py`.
   **Reużyj generatorów z `0432`/`0433`** zamiast przepisywać SQL — nazwy
   modułów zaczynają się od cyfry, więc zwykły `import` nie zadziała; użyj
   `importlib.import_module` (moduły mają na poziomie modułu wyłącznie stałe
@@ -738,7 +738,7 @@ dokładnie ten problem, który `0432`/`0433` rozwiązały — patrz
 
 - [ ] Commit:
   ```bash
-  git add src/bpp/migrations/0509_soft_delete_autorzy_views.py src/bpp/tests/test_soft_delete/test_views_sql.py
+  git add src/bpp/migrations/0510_soft_delete_autorzy_views.py src/bpp/tests/test_soft_delete/test_views_sql.py
   git commit -m "feat(soft-delete): widoki + galaz kasujaca + bramka WHEN dla *_Autor
 
 Trzy zmiany w jednej migracji, w wymuszonej kolejnosci: filtr deleted_at
@@ -897,7 +897,7 @@ więc komunikat błędu mówi o rekordzie, którego nie widać.
 **Files:**
 - Modify: `src/bpp/models/wydawnictwo_ciagle.py` (`Wydawnictwo_Ciagle_Autor.Meta`),
   `wydawnictwo_zwarte.py` (`Wydawnictwo_Zwarte_Autor.Meta`), `patent.py` (`Patent_Autor.Meta`)
-- Create: `src/bpp/migrations/0510_autor_warunkowy_unique.py` (zweryfikuj liść!)
+- Create: `src/bpp/migrations/0511_autor_warunkowy_unique.py` (zweryfikuj liść!)
 - Test: `src/bpp/tests/test_soft_delete/test_autor_unique.py`
 
 **Steps:**
@@ -1216,7 +1216,7 @@ grep -rEn --include='*.py' "$P" src/ | grep -vcE '/tests?/|test_'
    regresję na żywym przepływie (`import_sqlite`) już na HEAD Taska 2, więc
    zamiana `unique_together` → warunkowy `UniqueConstraint` +
    `ExclusionConstraint` (plus zdjęcie legacy `UNIQUE` z migracji `0132`)
-   wylądowała migracjami `0510`-`0513` W TEJ fazie. Faza 02 dziedziczy
+   wylądowała migracjami `0511`-`0514` W TEJ fazie. Faza 02 dziedziczy
    gotowy wzorzec — nie musi go powtarzać dla `*_Autor` (tylko ewentualnie
    dla analogicznych `unique_together` na samych tabelach publikacji, jeśli
    takie istnieją).
