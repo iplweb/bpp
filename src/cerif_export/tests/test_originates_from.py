@@ -542,4 +542,9 @@ def test_serializacja_publikacji_nie_rosnie_z_liczba_projektow(
                     cerif_publication.serializuj(obiekt, kontekst)
         return len(licznik.captured_queries)
 
+    # Rozgrzewka: pierwsze wywołanie w procesie może dociągnąć do cache
+    # (ContentType, Site itp.) jedno zapytanie więcej — zależnie od tego,
+    # jakie testy wykonały się wcześniej na tym workerze/shardzie. Liczymy
+    # dopiero po niej; test sprawdza brak wzrostu z liczbą projektów.
+    zapytania_dla(1)
     assert zapytania_dla(1) == zapytania_dla(5)
