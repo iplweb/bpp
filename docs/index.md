@@ -54,6 +54,7 @@ zalogowaniu.
 - [Wydawnictwa](redaktor/wydawnictwa.md)
 - [Sloty](redaktor/sloty.md)
 - [Eksportowanie do DSpace](redaktor/eksportowanie-do-dspace.md)
+- [Przemapowanie prac autora](redaktor/przemapowanie-prac-autora.md)
 
 ### 🛠️ Instrukcja administratora
 
