@@ -48,6 +48,10 @@ class CreateOptions:
     procent_ze_streszczeniem: int = 70
     bez_prefiksu: bool = False
     disable_progress: bool = False
+    # Opcjonalny plik POL-on (import_polon) dla uczelni demo:
+    polon_plik: Path | None = None
+    polon_dyscypliny: list[str] | None = None
+    polon_bez_blednych_wierszy: bool = False
 
 
 def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
@@ -222,6 +226,21 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         f"slowa_kluczowe_z_autorow_cache)\nsa puste. Zeby je wypelnic, "
         f"uruchom: uv run python src/manage.py denorm_flush\n"
     )
+
+    # 6. Opcjonalnie plik POL-on — NA SAMYM KONCU, z wlasnym RNG
+    # (random.Random(f"{seed}-polon")), wiec nie zmienia niczego powyzej.
+    if opts.polon_plik is not None:
+        from bpp.demo_data.generators.polon import parsuj_dyscypliny, write_polon_file
+
+        podsumowanie = write_polon_file(
+            opts.polon_plik,
+            uczelnia=uczelnia,
+            dyscypliny=parsuj_dyscypliny(opts.polon_dyscypliny),
+            seed=opts.seed,
+            bledne_wiersze=not opts.polon_bez_blednych_wierszy,
+            theme=theme,
+        )
+        stdout.write("\n" + podsumowanie.tekst())
 
 
 @dataclass
