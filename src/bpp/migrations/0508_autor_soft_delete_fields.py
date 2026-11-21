@@ -14,7 +14,7 @@ from django.db.models import Q
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0487_api_v1_przelaczniki"),
+        ("bpp", "0507_zrodlo_issn_norm_indexes"),
     ]
 
     operations = [

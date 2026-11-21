@@ -24,8 +24,8 @@
 > odkrywać je po raz drugi przez awarie na produkcji.
 >
 > **(b) Sprawdź `count()`/agregaty w widokach pochodnych pod kątem
-> `FILTER` vs warunek w `JOIN`/`WHERE`.** Wzorzec z migracji `0494`
-> (`bpp/migrations/0494_liczba_autorow_bez_skasowanych.py`, faza 01):
+> `FILTER` vs warunek w `JOIN`/`WHERE`.** Wzorzec z migracji `0514`
+> (`bpp/migrations/0514_liczba_autorow_bez_skasowanych.py`, faza 01):
 > `bpp_<typ>_view` liczy `count(<tabela>_autor.autor_id) AS liczba_autorow`
 > przez `LEFT JOIN` do tabeli `*_autor`. Dopisanie `deleted_at IS NULL` do
 > `WHERE`/`JOIN ... ON` zamieniłoby `LEFT JOIN` w efektywny `INNER JOIN` dla
@@ -39,7 +39,7 @@
 >
 > **(c) Przejrzyj `bpp_nowe_sumy_*` i `rozbieznosci_dyscyplin` pod kątem
 > `deleted_at` PUBLIKACJI** (nie tylko autora — to już zrobione w fazie 01,
-> migracje `0495_nowe_sumy_bez_skasowanych` i
+> migracje `0515_nowe_sumy_bez_skasowanych` i
 > `rozbieznosci_dyscyplin/0022_rozbieznosci_zrodel_bez_skasowanych`). Te
 > same widoki (i prawdopodobnie inne w `ranking_autorow`) czytają też
 > kolumny/joiny do tabel publikacji — sprawdź `pg_depend`, nie tylko grep,
@@ -135,9 +135,9 @@ migracją: `ls src/bpp/migrations/*.py | tail -3`.
 - **`slug` jest polem `@denormalized(models.SlugField, max_length=400, unique=True, db_index=True, null=True, blank=True)`** (denorm z `django-denorm-iplweb`), w: `wydawnictwo_ciagle.py:246`, `wydawnictwo_zwarte.py:325` (w `Wydawnictwo_Zwarte`), `patent.py:180`, `praca_doktorska.py:105` (w `Praca_Doktorska_Baza` → dziedziczone przez `Praca_Doktorska` **i** `Praca_Habilitacyjna`). Denorm field jest fizyczną kolumną w DB → migracja zmiany `unique=True`→`UniqueConstraint` jest realną migracją schematu.
 - `Praca_Habilitacyjna` i `Praca_Doktorska` dziedziczą slug z `Praca_Doktorska_Baza` (abstract) — zmiana atrybutu pola w abstrakcie dotyka OBU modeli; migracje per model (każdy ma własną kolumnę `slug`).
 - ⚠️ **Numeracja migracji (stan po zakończeniu fazy 01, 2026-08-06):** faza
-  01 zajęła ostatecznie `0488`-`0495` w `bpp` (nie tylko `0488`/`0489` —
+  01 zajęła ostatecznie `0508`-`0515` w `bpp` (nie tylko `0508`/`0509` —
   patrz naprawa blokerów finalnej recenzji) plus
-  `rozbieznosci_dyscyplin/0022`, więc ta faza startuje od `0496` w `bpp`.
+  `rozbieznosci_dyscyplin/0022`, więc ta faza startuje od `0516` w `bpp`.
   **Zweryfikuj liść przed startem** (`ls src/bpp/migrations/*.py | tail -3`)
   — `dev` żyje. Numery w tym planie są orientacyjne; kanoniczna jest
   kolejność. NIE modyfikuj istniejących migracji.
@@ -319,7 +319,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - Modify: `src/bpp/models/patent.py:62` (klasa `Patent`)
 - Modify: `src/bpp/models/praca_doktorska.py:135` (klasa `Praca_Doktorska`)
 - Modify: `src/bpp/models/praca_habilitacyjna.py:41` (klasa `Praca_Habilitacyjna`)
-- Create: `src/bpp/migrations/0490_publikacje_soft_delete_fields.py`
+- Create: `src/bpp/migrations/0510_publikacje_soft_delete_fields.py`
 - Test path: `src/bpp/tests/test_soft_delete_publikacje.py`
 
 > **Kolejność MRO:** mixin dopisujemy jako **pierwszą** bazę (przed pozostałymi mixinami modelu), żeby jego `delete()`/`restore()` wygrały w MRO nad `models.Model.delete()`. NIE jako ostatnią. `BppPublikacjaSoftDeleteMixin(SoftDeleteModel)` wnosi też pola `deleted_at`/`restored_at`/`transaction_id` i menedżery — ale menedżery dla `Wydawnictwo_*` nadpiszemy w Task 4 (interleaving fees); dla `Patent`/`Praca_*` zostaną menedżery z `SoftDeleteModel`.
@@ -342,7 +342,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
   ```bash
   uv run python src/manage.py makemigrations bpp --name publikacje_soft_delete_fields
   ```
-  Oczekiwane: nowa migracja `0490_publikacje_soft_delete_fields.py` z `AddField` `deleted_at`/`restored_at`/`transaction_id` dla 5 modeli. Zweryfikuj nazwę pliku (`0490_`); jeśli numer inny — użyj faktycznego.
+  Oczekiwane: nowa migracja `0510_publikacje_soft_delete_fields.py` z `AddField` `deleted_at`/`restored_at`/`transaction_id` dla 5 modeli. Zweryfikuj nazwę pliku (`0510_`); jeśli numer inny — użyj faktycznego.
 - [ ] **Krok 2.3 — dopisz indeks per model na `deleted_at`.** Do wygenerowanej migracji dołóż operacje `AddIndex` (lub edytuj `Meta.indexes` modeli i przegeneruj). Ręcznie w migracji, po `AddField`-ach:
   ```python
   from django.db import migrations, models
@@ -370,7 +370,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
   Oczekiwane: PASS.
 - [ ] **Krok 2.6 — commit:**
   ```bash
-  git add src/bpp/models/wydawnictwo_ciagle.py src/bpp/models/wydawnictwo_zwarte.py src/bpp/models/patent.py src/bpp/models/praca_doktorska.py src/bpp/models/praca_habilitacyjna.py src/bpp/migrations/0490_publikacje_soft_delete_fields.py
+  git add src/bpp/models/wydawnictwo_ciagle.py src/bpp/models/wydawnictwo_zwarte.py src/bpp/models/patent.py src/bpp/models/praca_doktorska.py src/bpp/models/praca_habilitacyjna.py src/bpp/migrations/0510_publikacje_soft_delete_fields.py
   git commit -m "feat(soft-delete): 5 modeli publikacji -> SoftDeleteModel + migracje pol/indeksow
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
@@ -412,7 +412,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - Modify: `src/bpp/models/wydawnictwo_zwarte.py:325`
 - Modify: `src/bpp/models/patent.py:180`
 - Modify: `src/bpp/models/praca_doktorska.py:105` (w `Praca_Doktorska_Baza`)
-- Create: `src/bpp/migrations/0491_publikacje_slug_warunkowy_unique.py`
+- Create: `src/bpp/migrations/0511_publikacje_slug_warunkowy_unique.py`
 - Test path: `src/bpp/tests/test_soft_delete_publikacje.py`
 
 Zamiana `unique=True` na `models.UniqueConstraint(fields=["slug"], condition=Q(deleted_at__isnull=True), name="...")` per model. Skasowany rekord trzyma slug → nowy rekord z tym samym slug-iem nie koliduje (constraint pomija `deleted_at IS NOT NULL`).
@@ -459,7 +459,7 @@ Zamiana `unique=True` na `models.UniqueConstraint(fields=["slug"], condition=Q(d
   ```bash
   uv run python src/manage.py makemigrations bpp --name publikacje_slug_warunkowy_unique
   ```
-  Oczekiwane: `RemoveField`/`AlterField` (zdjęcie `unique`) + `AddConstraint` dla 5 modeli. Zweryfikuj numer `0491_`.
+  Oczekiwane: `RemoveField`/`AlterField` (zdjęcie `unique`) + `AddConstraint` dla 5 modeli. Zweryfikuj numer `0511_`.
 - [ ] **Krok 3.5 — uruchom test (PASS) + check migracji:**
   ```bash
   uv run pytest src/bpp/tests/test_soft_delete_publikacje.py::test_reuse_slug_po_soft_delete -x
@@ -468,7 +468,7 @@ Zamiana `unique=True` na `models.UniqueConstraint(fields=["slug"], condition=Q(d
   Oczekiwane: PASS + `No changes detected`.
 - [ ] **Krok 3.6 — commit:**
   ```bash
-  git add src/bpp/models/wydawnictwo_ciagle.py src/bpp/models/wydawnictwo_zwarte.py src/bpp/models/patent.py src/bpp/models/praca_doktorska.py src/bpp/models/praca_habilitacyjna.py src/bpp/migrations/0491_publikacje_slug_warunkowy_unique.py
+  git add src/bpp/models/wydawnictwo_ciagle.py src/bpp/models/wydawnictwo_zwarte.py src/bpp/models/patent.py src/bpp/models/praca_doktorska.py src/bpp/models/praca_habilitacyjna.py src/bpp/migrations/0511_publikacje_slug_warunkowy_unique.py
   git commit -m "feat(soft-delete): slug -> warunkowy UniqueConstraint (reuse po soft-delete)
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
@@ -507,7 +507,7 @@ filtrowaliśmy tam po pk wiersza through (`(id)[2]`). Nie kopiuj klucza
 między fazami bez sprawdzenia, co dana kolumna znaczy.
 
 **Files:**
-- Create: `src/bpp/migrations/0493_soft_delete_rekord_views.py`
+- Create: `src/bpp/migrations/0513_soft_delete_rekord_views.py`
 - Test: `src/bpp/tests/test_soft_delete/test_views_sql_publikacje.py`
 - Test (modify): `src/bpp/tests/test_cache/test_soft_delete_preconditions.py` —
   **zdejmij `xfail`** z oryginalnych kanarków i odwróć ich asercje (operują na
@@ -602,7 +602,7 @@ którego nie widać.
 - Modify: `src/bpp/models/wydawnictwo_ciagle.py:73-77` (`Wydawnictwo_Ciagle_Autor.Meta`)
 - Modify: `src/bpp/models/wydawnictwo_zwarte.py` (`Wydawnictwo_Zwarte_Autor.Meta`)
 - Modify: `src/bpp/models/patent.py` (`Patent_Autor.Meta`)
-- Create: `src/bpp/migrations/0492_autor_warunkowy_unique.py`
+- Create: `src/bpp/migrations/0512_autor_warunkowy_unique.py`
 - Test: `src/bpp/tests/test_soft_delete/test_autor_unique.py`
 
 - [ ] **Krok 3b.1 — padający test: re-add autorstwa po soft-delete.**
@@ -919,7 +919,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ## Definition of Done (faza 02)
 
-- [ ] 5 modeli publikacji to `SoftDeleteModel` (przez `BppPublikacjaSoftDeleteMixin`); migracje `deleted_at`/`restored_at`/`transaction_id` + indeks per model (`0490_`).
+- [ ] 5 modeli publikacji to `SoftDeleteModel` (przez `BppPublikacjaSoftDeleteMixin`); migracje `deleted_at`/`restored_at`/`transaction_id` + indeks per model (`0510_`).
 - [ ] `delete(self, *args, user=None, reason="", **kwargs)` / `restore(self, *args, user=None, **kwargs)` — per-instancja `save()`, wąska kaskada na `autorzy_set` pod wspólnym `transaction_id`, BEZ refleksyjnej kaskady pakietu, BEZ bulk `update(deleted_at=)`.
 - [ ] `*_Streszczenie` (i pozostałe nie-soft dzieci) nietknięte; `delete()` nie rzuca `SoftDeleteException`.
 - [x] ~~`slug` → warunkowy `UniqueConstraint`~~ — **świadomie NIEwykonane.** `slug` zostaje `unique=True`; slug zawiera `pk`, więc kolizja jest konstrukcyjnie niemożliwa i warunkowanie tylko osłabiłoby gwarancję. Uzasadnienie w boxie przy Tasku 3.

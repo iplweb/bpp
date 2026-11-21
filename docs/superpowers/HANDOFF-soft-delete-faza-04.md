@@ -12,7 +12,7 @@
 | Stan fazy 03 | ✅ **SCALONA** 2026-08-09, merge commit `774f1a72d`, PR #742 MERGED |
 | Punkt startowy fazy 04 | gałąź `feat/soft-delete` (zawiera fazy 01, 02, 03) |
 | Gałąź do założenia | `feat/soft-delete-04`, worktree `~/Programowanie/bpp-soft-delete-04` |
-| Migracje fazy 03 | `pbn_integrator/0001` (rejestr wskrzeszeń), `pbn_integrator/0002` (indeks), `bpp/0500` (warunkowy unique na habilitacji) |
+| Migracje fazy 03 | `pbn_integrator/0001` (rejestr wskrzeszeń), `pbn_integrator/0002` (indeks), `bpp/0520` (warunkowy unique na habilitacji) |
 | Plan fazy 04 | `docs/superpowers/plans/2026-06-04-soft-delete-04-guardy-protect.md` — ⚠️ **czytaj razem z §4c**, plan jest starszy niż fazy 02–03 |
 
 Faza 03 domknęła **blocker wydania**: re-import z PBN publikacji, której rekord
@@ -22,7 +22,7 @@ niż brzmiała pierwotna obietnica „re-import nie tworzy duplikatów" — patr
 §3, „Czego faza 03 NIE naprawia".
 
 ⚠️ **Baseline (`baseline-sql/`) jest NIEŚWIEŻY** — stoi na `bpp/0487`, gałąź na
-`bpp/0500`. Był taki już przed fazą 03 (fazy 01–02 dołożyły `0488`–`0499`).
+`bpp/0520`. Był taki już przed fazą 03 (fazy 01–02 dołożyły `0508`–`0519`).
 Zgodnie z CLAUDE.md odświeżenie (`make baseline-update`) robi się **raz, przy
 scalaniu**, a nie w równoległych feature-branchach.
 
@@ -95,7 +95,7 @@ na całej changeliście, a w szablonie (`change_form.html`) to samo dawało pust
 | `pbn_integrator/importer/{articles,books,chapters}.py` | wspólna preambuła `znajdz_lub_wskrzes_rekord()` w gałęzi `ret is None` |
 | `pbn_integrator/importer/chapters.py` | `znajdz_ksiazke_nadrzedna()` — wydzielony, widzi kosz, wskrzesza |
 | `pbn_import/utils/publication_import.py` | `global_objects` + `hard_delete()` przy czyszczeniu przed re-importem |
-| `bpp/models/praca_habilitacyjna.py` | `autor`: `OneToOneField` → `ForeignKey` + warunkowy `phab_uniq_autor_zywy` (migracja `bpp/0500`) |
+| `bpp/models/praca_habilitacyjna.py` | `autor`: `OneToOneField` → `ForeignKey` + warunkowy `phab_uniq_autor_zywy` (migracja `bpp/0520`) |
 | `bpp/admin/praca_habilitacyjna.py` | `clean_autor()` — jawna walidacja „jeden autor, jedna żywa habilitacja" |
 | `bpp/views/api/__init__.py` | `RokHabilitacjiView` pyta `Praca_Habilitacyjna.objects`, nie akcesor odwrotny |
 | `bpp/templates/browse/autor.html` | pętla po `praca_habilitacyjna_set` (jak doktorat) |
@@ -279,7 +279,7 @@ commitami zostaje zepsuty merge.
 Plan, sekcja „Stan zweryfikowany w kodzie": „`OneToOneField(Autor, PROTECT)` —
 **już PROTECT, nie ruszamy**; reverse `autor.praca_habilitacyjna`".
 
-Po fazie 03 (migracja `bpp/0500`) to `ForeignKey(Autor, PROTECT)` + warunkowy
+Po fazie 03 (migracja `bpp/0520`) to `ForeignKey(Autor, PROTECT)` + warunkowy
 `phab_uniq_autor_zywy`. `PROTECT` się zgadza, więc **konkluzja planu („nie
 ruszamy") zostaje słuszna** — ale dwie rzeczy w niej nie:
 
@@ -362,7 +362,7 @@ Ta sama pułapka, co w fazie 03. Szukaj po nazwach, nie po numerach.
   go osierocić), ale faza 04 musi to obsłużyć w UI, a nie zostawić jako gołe
   500.
 - **`Praca_Habilitacyjna.autor` NIE jest już `OneToOneField`** (faza 03,
-  migracja `bpp/0500`). Akcesor odwrotny to `autor.praca_habilitacyjna_set`.
+  migracja `bpp/0520`). Akcesor odwrotny to `autor.praca_habilitacyjna_set`.
   Ścieżka filtrowania w ORM/DjangoQL się nie zmieniła
   (`related_query_name` = nazwa modelu), ale każdy kod sięgający po
   `autor.praca_habilitacyjna` jako po OBIEKT jest zepsuty. Dwa znane miejsca
@@ -378,8 +378,8 @@ Ta sama pułapka, co w fazie 03. Szukaj po nazwach, nie po numerach.
 |---|---|
 | **Wycieki ORM (kanarek `xfail(strict=True)`)** | `test_kanarek_orm_join_po_publikacji_ma_predykat_deleted_at` dalej `xfail`. ⚠️ Tabelka 10 wycieków w `reviews/2026-08-07-faza-02-inwentaryzacja-orm.md` NIE jest listą zadań — patrz self-review w tym pliku. Potrzebne narzędzie model-aware (pytające `_meta`), nie rozszerzanie listy nazw |
 | **PR upstream `django-easy-audit`** | **WYSTAWIONY 2026-08-08: [soynatan/django-easy-audit#348](https://github.com/soynatan/django-easy-audit/pull/348)** (fork `mpasternak`). Gdy zostanie scalony — skasować `src/bpp/easyaudit_shim.py`, wywołanie `zainstaluj()` w `BppConfig.ready()` i `test_easyaudit_shim.py`. Przypomni o tym test `test_upstream_nadal_ma_blad_czyli_shim_jest_potrzebny`, który wtedy zacznie padać |
-| **`bpp-deploy`** | kontrolka „kronika views: N” po `bpp.0499` wypisze 0 i może zmylić operatora |
-| Pomiar `0492` i narzutu GiST | wciąż nikt nie zmierzył (dług fazy 01) |
+| **`bpp-deploy`** | kontrolka „kronika views: N” po `bpp.0519` wypisze 0 i może zmylić operatora |
+| Pomiar `0512` i narzutu GiST | wciąż nikt nie zmierzył (dług fazy 01) |
 | **Rejestr wskrzeszeń niewidoczny w adminie** | `pbn_integrator/admin.py` to nadal `# Register your models here.`. Brak też indeksu `(content_type, object_id)` pod pytanie „czy TEN rekord wrócił?". Rejestr, do którego nie da się zajrzeć, nie spełnia swojej roli — a to ona uzasadniała zmianę decyzji #14 |
 | **`force=True` omija wskrzeszenie** | Guard to `if not force`, więc `--force` idzie prosto do tworzenia nowego rekordu — i przy rekordzie w koszu wywali się na unikalności `pbn_uid` (tak samo jak przy rekordzie żywym; to nie jest regresja fazy 03). Niespójność: `znajdz_ksiazke_nadrzedna` leży ZA tym guardem, więc przy `force` książka-matka JEST wskrzeszana, a sam rozdział nie |
 | **`Oswiadczenie_Instytucji.get_bpp_publication`** | `pbn_api/models/oswiadczenie_instytucji.py:51-74` iteruje po 4 modelach po `pbn_uid` przez `.objects`. Nie jest ani na liście zmienionych, ani „świadomie zostawionych" — po prostu nikt go nie rozpatrzył |

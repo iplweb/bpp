@@ -1,6 +1,6 @@
 """``liczba_autorow`` w ``bpp_<typ>_view`` przestaje liczyć soft-deletowane.
 
-Migracja 0489 przefiltrowała widoki ``bpp_*_autorzy`` (te karmią
+Migracja 0509 przefiltrowała widoki ``bpp_*_autorzy`` (te karmią
 ``bpp_autorzy_mat``), ale ``liczba_autorow`` bierze się z INNEJ rodziny
 widoków — ``bpp_wydawnictwo_ciagle_view`` / ``bpp_wydawnictwo_zwarte_view`` /
 ``bpp_patent_view`` (migracja 0421) — i tam agregat liczył SUROWĄ tabelę
@@ -28,7 +28,7 @@ było. Poza licznikiem żadna kolumna tych widoków nie sięga do ``*_autor``,
 więc to jedyne miejsce wymagające zmiany.
 
 Definicje są GENEROWANE z introspekcji (``pg_get_viewdef``), nie przepisane
-do ``.sql`` — patrz docstring 0489. ``CREATE OR REPLACE VIEW`` zachowuje
+do ``.sql`` — patrz docstring 0509. ``CREATE OR REPLACE VIEW`` zachowuje
 listę kolumn (``count()`` to ``bigint`` w obu wariantach), więc zależny
 ``bpp_rekord`` (UNION po pięciu widokach) nie jest kasowany.
 
@@ -93,7 +93,7 @@ def _regeneruj_bramke():
 
     Bramka jest wyliczana z ``pg_depend`` PO definicji widoku, więc każda
     zmiana definicji musi być domknięta jej regeneracją — inaczej wraca błąd,
-    który ta faza już raz naprawiała (0489, krok 3).
+    który ta faza już raz naprawiała (0509, krok 3).
 
     Tu regeneracja jest z konstrukcji NO-OPEM: ``_gate_columns`` pyta o
     kolumny TABELI PUBLIKACJI referowane przez widok, a ``FILTER (WHERE
@@ -139,7 +139,7 @@ def backward(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0493_autor_zdjecie_starych_unique"),
+        ("bpp", "0513_autor_zdjecie_starych_unique"),
     ]
 
     operations = [

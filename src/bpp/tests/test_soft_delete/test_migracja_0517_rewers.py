@@ -1,8 +1,8 @@
-"""Odwracalność ``0497``: filtr soft-delete w widokach publikacji.
+"""Odwracalność ``0517``: filtr soft-delete w widokach publikacji.
 
-``0497.backward`` nie odtwarza definicji widoków z plików ``.sql`` (jak robi
-to ``0489.backward`` dla ścieżki autorstwa), bo widoki publikacji były
-redefiniowane w kilku migracjach — m.in. ``0494`` dokładająca
+``0517.backward`` nie odtwarza definicji widoków z plików ``.sql`` (jak robi
+to ``0509.backward`` dla ścieżki autorstwa), bo widoki publikacji były
+redefiniowane w kilku migracjach — m.in. ``0514`` dokładająca
 ``count(...) FILTER`` — i nie ma jednego pliku źródłowego. Zamiast tego
 usuwa DOKŁADNIE ten tekst, który wstawiła ``_z_filtrem``.
 
@@ -12,8 +12,8 @@ wyjątkiem, albo (gorzej) zostawi widok z filtrem. Ten test jest jedynym
 dowodem, że cykl forward->backward->forward faktycznie domyka się na żywym
 katalogu.
 
-Test zjeżdża do ``0496`` i wraca do NAJNOWSZEJ migracji ``bpp``
-(``migrate bpp`` bez numeru) — powrót „do 0497" byłby błędem, bo baza
+Test zjeżdża do ``0516`` i wraca do NAJNOWSZEJ migracji ``bpp``
+(``migrate bpp`` bez numeru) — powrót „do 0517" byłby błędem, bo baza
 testowa jest współdzielona przez cały przebieg i migracje późniejsze niż cel
 zostałyby niezastosowane, psując kolejne testy.
 """
@@ -47,15 +47,15 @@ def _pary_zalezne():
 
 
 @pytest.mark.django_db
-def test_0497_odwracalna(bez_reinstalacji_denorma):
+def test_0517_odwracalna(bez_reinstalacji_denorma):
     # Stan wyjsciowy: wszystkie 7 widokow zalezy od deleted_at swojej tabeli.
     assert OCZEKIWANE_PARY <= _pary_zalezne(), (
-        "stan przed testem juz jest niepoprawny — migracja 0497 nie jest "
+        "stan przed testem juz jest niepoprawny — migracja 0517 nie jest "
         "zastosowana albo widoki zostaly zmienione"
     )
 
     try:
-        call_command("migrate", "bpp", "0496", verbosity=0)
+        call_command("migrate", "bpp", "0516", verbosity=0)
 
         po_cofnieciu = _pary_zalezne()
         nadmiarowe = OCZEKIWANE_PARY & po_cofnieciu
@@ -65,7 +65,7 @@ def test_0497_odwracalna(bez_reinstalacji_denorma):
         )
     finally:
         # ZAWSZE wracamy do najnowszej, nawet gdy asercja wyzej padnie —
-        # inaczej zostawiamy wspoldzielona baze testowa w stanie sprzed 0497
+        # inaczej zostawiamy wspoldzielona baze testowa w stanie sprzed 0517
         # i psujemy kazdy kolejny test w przebiegu.
         call_command("migrate", "bpp", verbosity=0)
 

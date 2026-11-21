@@ -85,7 +85,7 @@ def _filtruj_widok(cur, tabela, widok):
     testowej i nie uogólnia się: pierwotnie zanotowano tam „2.36 — trafia w
     indeks na ``deleted_at``". Na produkcji tak NIE będzie. ``deleted_at IS
     NULL`` pasuje do ~100% wierszy, więc planner pod ten predykat wybierze
-    seq scan, a nie indeks — i właśnie dlatego indeks z 0488 jest CZĘŚCIOWY
+    seq scan, a nie indeks — i właśnie dlatego indeks z 0508 jest CZĘŚCIOWY
     (``WHERE deleted_at IS NOT NULL``, pod ``deleted_objects``). Filtr
     wewnętrzny wybieramy z powodu hot-pathu triggera, nie z powodu pełnego
     skanu.
@@ -219,7 +219,7 @@ def backward(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0488_autor_soft_delete_fields"),
+        ("bpp", "0508_autor_soft_delete_fields"),
     ]
 
     operations = [

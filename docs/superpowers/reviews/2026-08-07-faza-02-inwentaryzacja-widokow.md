@@ -45,7 +45,7 @@ Autor leży na wierszu publikacji, więc filtr jest tu „po własnej kolumnie".
 
 Plan miał dla nich wyłącznie ostrzeżenie (c) „sprawdź, czy wymagają poprawki".
 Sprawdzone: **wymagają, wszystkie pięć.** Faza 01 poprawiła w tych widokach
-wyłącznie wymiar *autora* (migracja `0495`); wymiar *publikacji* nadal
+wyłącznie wymiar *autora* (migracja `0515`); wymiar *publikacji* nadal
 przecieka.
 
 - `bpp_nowe_sumy_wydawnictwo_ciagle_view`

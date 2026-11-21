@@ -1,10 +1,10 @@
--- Odtworzenie rodziny widokow bpp_kronika_* (backward migracji 0499).
+-- Odtworzenie rodziny widokow bpp_kronika_* (backward migracji 0519).
 --
 -- WYGENEROWANE z pg_get_viewdef() na zywym katalogu, nie przepisane recznie.
 -- Kolejnosc jest WYMUSZONA grafem zaleznosci: piec widokow lisci, potem
 -- bpp_kronika_all_unsorted_view (UNION po nich), na koncu bpp_kronika_view.
 --
--- Ta rodzina jest MARTWA (zero konsumentow) i migracja 0499 ja kasuje.
+-- Ta rodzina jest MARTWA (zero konsumentow) i migracja 0519 ja kasuje.
 -- Plik istnieje wylacznie po to, zeby ta migracja byla odwracalna.
 
 CREATE VIEW bpp_kronika_wydawnictwo_ciagle_view AS

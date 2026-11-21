@@ -2,7 +2,7 @@
 
 BPP ma DWA niezależne systemy triggerów na tabelach `*_Autor`:
 
-1. cache ``_mat`` (nasz) — naprawiony w Tasku 3 (migracja 0489).
+1. cache ``_mat`` (nasz) — naprawiony w Tasku 3 (migracja 0509).
 2. ``django-denorm`` — bramka WHEN budowana z list ``only=`` w
    ``@depend_on_related``. Naprawiany właśnie tutaj (Task 3b).
 

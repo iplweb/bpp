@@ -1315,7 +1315,7 @@ def constance_cache_warmed_up(db):
 # Tabele powiązań autorstwa, na które triggery denorm (denorm_always_only =
 # ("deleted_at",) w Patent, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte) generują
 # SQL referujący NEW."deleted_at". Kolumna przyszła w migracji
-# bpp.0488_autor_soft_delete_fields — patrz guard w django_db_setup niżej.
+# bpp.0508_autor_soft_delete_fields — patrz guard w django_db_setup niżej.
 _AUTOR_TABELE_Z_DELETED_AT = (
     "bpp_patent_autor",
     "bpp_wydawnictwo_ciagle_autor",
@@ -1388,7 +1388,7 @@ def django_db_setup(django_db_setup, django_db_blocker):
                 "Pomijam denorm.drop_triggers()/install_triggers(): tabele "
                 + ", ".join(_AUTOR_TABELE_Z_DELETED_AT)
                 + " nie mają jeszcze kolumny deleted_at (migracja "
-                "bpp.0488_autor_soft_delete_fields nie została zastosowana "
+                "bpp.0508_autor_soft_delete_fields nie została zastosowana "
                 "na tej bazie testowej — najczęściej reużyty kontener "
                 "testcontainers albo baza --reuse-db ze starym schematem). "
                 'Triggery denorm referują NEW."deleted_at" '

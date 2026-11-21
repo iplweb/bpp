@@ -3,7 +3,7 @@
 Odpowiednik ``test_views_sql.py`` (faza 01, ścieżka autorstwa) dla ścieżki
 PUBLIKACJI. Podział ról jest ten sam: testy „substringowe"
 (``pg_get_viewdef``/``pg_get_functiondef``/``pg_get_triggerdef``) pilnują
-wyłącznie tego, że migracja ``0497`` w ogóle się odbyła, a wyrocznią
+wyłącznie tego, że migracja ``0517`` w ogóle się odbyła, a wyrocznią
 zachowania są testy SEMANTYCZNE na końcu pliku.
 
 Najważniejszy z nich to ``test_publikacja_bez_zywych_autorow_ZOSTAJE``. Broni
@@ -62,7 +62,7 @@ def test_widok_zalezy_od_wlasnego_deleted_at(widok, tabela):
 
     1. Samo ``"deleted_at" in defn`` daje FAŁSZYWĄ ZIELEŃ: widoki rekordowe
        trzech typów z through-modelem zawierają ``count(...) FILTER (WHERE
-       <tabela>_autor.deleted_at IS NULL)`` z migracji ``0494``, więc to
+       <tabela>_autor.deleted_at IS NULL)`` z migracji ``0514``, więc to
        słowo jest w nich obecne niezależnie od tej fazy.
     2. Dopisanie kwalifikacji (``<tabela>.deleted_at``) też nie działa:
        w widokach rodziny B (jedna tabela w zasięgu, bez JOIN-a) Postgres

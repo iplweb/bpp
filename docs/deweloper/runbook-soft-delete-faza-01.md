@@ -1,6 +1,6 @@
 # Runbook wdrożeniowy — soft-delete, faza 01 (autorstwa)
 
-> Dotyczy migracji `bpp/0488` … `bpp/0495` oraz
+> Dotyczy migracji `bpp/0508` … `bpp/0515` oraz
 > `rozbieznosci_dyscyplin/0022`. Przeczytaj **przed** wdrożeniem na produkcję.
 >
 > Powstał 2026-08-06 z ustaleń finalnej recenzji gałęzi. Zastrzeżenia niżej
@@ -18,9 +18,9 @@ zacznie serwować ruch (patrz §3).
 
 ---
 
-## 1. `0492` wymaga OKNA SERWISOWEGO
+## 1. `0512` wymaga OKNA SERWISOWEGO
 
-`0492_autor_excl_rekord_kolejnosc` zakłada `ExclusionConstraint` (GiST):
+`0512_autor_excl_rekord_kolejnosc` zakłada `ExclusionConstraint` (GiST):
 
 ```sql
 ALTER TABLE bpp_wydawnictwo_ciagle_autor
@@ -38,20 +38,20 @@ ALTER TABLE bpp_wydawnictwo_ciagle_autor
 
 Dotyczy trzech największych tabel systemu.
 
-> **DO ZROBIENIA PRZED WDROŻENIEM:** zmierzyć czas `0492` na kopii bazy
+> **DO ZROBIENIA PRZED WDROŻENIEM:** zmierzyć czas `0512` na kopii bazy
 > produkcyjnej. To jedyna operacja w tej serii bez planu B.
 
 Ustaw `lock_timeout` + retry — jeden długi `SELECT` na tabeli `*_autor`
 zatrzyma migrację i wszystko za nią (kolejka blokad).
 
-## 2. Procedura po PRZERWANEJ migracji z serii `0490`–`0493`
+## 2. Procedura po PRZERWANEJ migracji z serii `0510`–`0513`
 
 Te cztery migracje mają `atomic = False` (świadomie — żeby blokady nie
 kumulowały się do jednego `COMMIT`). Cena: **awaria w środku kroku nie cofa
 się sama.**
 
 Objaw: obiekt istnieje w bazie, ale wpisu w `django_migrations` nie ma →
-ponowny `migrate` pada na „already exists" (albo, dla `0493`, na
+ponowny `migrate` pada na „already exists" (albo, dla `0513`, na
 „Found wrong number (0) of constraints").
 
 Naprawa — usuń ręcznie obiekty z częściowo wykonanego kroku, potem powtórz
@@ -59,10 +59,10 @@ Naprawa — usuń ręcznie obiekty z częściowo wykonanego kroku, potem powtór
 
 | Krok | Obiekty do sprawdzenia |
 |---|---|
-| `0490` | indeksy `*_autor_rekord_id_*` |
-| `0491` | `*_autor_uniq_rekord_autor_typ` |
-| `0492` | `*_autor_excl_rekord_kolejnosc` |
-| `0493` | (same `DROP`-y metadanowe — praktycznie nie pada) |
+| `0510` | indeksy `*_autor_rekord_id_*` |
+| `0511` | `*_autor_uniq_rekord_autor_typ` |
+| `0512` | `*_autor_excl_rekord_kolejnosc` |
+| `0513` | (same `DROP`-y metadanowe — praktycznie nie pada) |
 
 ```sql
 -- przykład diagnostyki przed retry
@@ -74,7 +74,7 @@ SELECT indexname FROM pg_indexes
 
 ## 3. Kolejność: migracje PRZED startem nowego kodu
 
-Między `0492` a `0493` obowiązuje **jeszcze stare, bezwarunkowe**
+Między `0512` a `0513` obowiązuje **jeszcze stare, bezwarunkowe**
 `UNIQUE (rekord_id, kolejnosc)`. Jeśli w tym oknie nowy kod zdąży zrobić
 soft-delete i wstawić wiersz zastępczy, dostanie `IntegrityError`.
 
@@ -88,7 +88,7 @@ przypilnować.
 
 `django-denorm` buduje triggery z modeli Pythona przy sygnale `post_migrate`.
 Modele po tej fazie mają `deleted_at` w `denorm_always_only`, więc po
-cofnięciu `0488` (usunięcie kolumny) najbliższy `post_migrate` próbuje
+cofnięciu `0508` (usunięcie kolumny) najbliższy `post_migrate` próbuje
 zbudować trigger odwołujący się do nieistniejącej kolumny:
 
 ```
@@ -98,37 +98,37 @@ ProgrammingError: kolumna old.deleted_at nie istnieje
 To jedyny nieudany rewers w całej serii — pozostałe wracają do stanu
 wyjściowego bit-w-bit (zweryfikowane zrzutem katalogu przed/po).
 
-> **Faza 02 rozszerza to na tabele publikacji.** Migracja `0496` dokłada
+> **Faza 02 rozszerza to na tabele publikacji.** Migracja `0516` dokłada
 > `deleted_at` do pięciu tabel publikacji, więc **każdy** zjazd poniżej
-> `0496` — nie tylko poniżej `0488` — wpada w ten sam mechanizm. Zasada
+> `0516` — nie tylko poniżej `0508` — wpada w ten sam mechanizm. Zasada
 > pozostaje ta sama i nie zmienia procedury: rollback wycofuje KOD razem ze
 > schematem, a stare modele nie deklarują `deleted_at`, więc `denorm`
 > wygeneruje poprawne triggery. Kombinacja „nowy kod + stary schemat"
 > powstaje wyłącznie sztucznie.
 >
 > Skutek uboczny w testach: testy odwracalności fazy 01
-> (`test_migracja_0489_rewers`, `test_migracje_0490_0493_rewers`) schodzą
-> poniżej `0496`, trzymając kod na miejscu — czyli produkują dokładnie tę
+> (`test_migracja_0509_rewers`, `test_migracje_0510_0513_rewers`) schodzą
+> poniżej `0516`, trzymając kod na miejscu — czyli produkują dokładnie tę
 > zakazaną kombinację. Dlatego korzystają z fixtury
 > `bez_reinstalacji_denorma` (`src/bpp/tests/test_soft_delete/conftest.py`),
 > która odpina handler `post_migrate` na czas testu i przebudowuje triggery
 > ręcznie na końcu. To obejście **testowe** — nie zmienia niczego we
 > wdrożeniu.
 
-Dodatkowo: rewers `0493` przywraca **bezwarunkowe** `UNIQUE (rekord_id,
+Dodatkowo: rewers `0513` przywraca **bezwarunkowe** `UNIQUE (rekord_id,
 kolejnosc)`, które padnie, jeśli ktokolwiek zdążył skorzystać z soft-delete
 (soft-deletowane wiersze wyglądają wtedy jak duplikaty). Rollback po realnym
 użyciu funkcji wymaga ręcznego wyczyszczenia kosza.
 
 ## 5. Maszyny deweloperskie na tej gałęzi
 
-Kto zaaplikował **starą** wersję `0490_autor_warunkowy_unique` (plik został
-skasowany, a numer użyty ponownie przy rozbiciu na `0490`–`0493`), ma
+Kto zaaplikował **starą** wersję `0510_autor_warunkowy_unique` (plik został
+skasowany, a numer użyty ponownie przy rozbiciu na `0510`–`0513`), ma
 osierocony wpis w `django_migrations`. Dotyczy wyłącznie maszyn, na których
 ta gałąź była wdrażana w trakcie prac — nie produkcji.
 
 Naprawa: `DELETE FROM django_migrations WHERE app='bpp' AND name LIKE
-'0490_autor_warunkowy_unique';` i ponowny `migrate`, albo świeża baza.
+'0510_autor_warunkowy_unique';` i ponowny `migrate`, albo świeża baza.
 
 ---
 
@@ -149,7 +149,7 @@ od użytkowników.
   (admin przenumerowuje przy zapisie formsetu, deduplikator nie).
 - **Narzut GiST.** Btree `UNIQUE (rekord_id, kolejnosc)` zastąpiono indeksem
   GiST. Każdy `INSERT`/`UPDATE` na najgorętszych tabelach (import publikacji,
-  PBN, deduplikator) płaci teraz za jego utrzymanie. `0490` dokłada btree po
+  PBN, deduplikator) płaci teraz za jego utrzymanie. `0510` dokłada btree po
   `rekord_id`, co część kosztu łagodzi. **Nikt tego nie zmierzył** — testy
   z definicji tego nie wykryją.
 - **DjangoQL: kosz domyślnie niewidoczny (ZAMKNIĘTE 2026-08-07).**

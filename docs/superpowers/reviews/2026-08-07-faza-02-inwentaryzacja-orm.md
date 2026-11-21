@@ -48,7 +48,7 @@ Nazwa `rekord` jest wieloznaczna i kanarek nie umie tych znaczeń rozróżnić:
 1. `*_Autor.rekord` → publikacja (zakres fazy 01),
 2. `*_Streszczenie.rekord` i pokrewne → publikacja (**realny zakres fazy 02**),
 3. `Cache_Punktacja_Autora.rekord` → widok `Rekord`, **już przefiltrowany**
-   migracją 0497 — czyli bezpieczne,
+   migracją 0517 — czyli bezpieczne,
 4. `request.GET.get("rekord__id__exact")`, `cleaned_data.get("rekord")` —
    parametry HTTP i formularzy, w ogóle nie ORM.
 

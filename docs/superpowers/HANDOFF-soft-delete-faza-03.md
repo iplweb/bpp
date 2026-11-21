@@ -13,7 +13,7 @@
 |---|---|
 | Gałąź | `feat/soft-delete-02`, worktree `~/Programowanie/bpp-soft-delete-02` |
 | Baza | `feat/soft-delete` (faza 01, PR #312) — PR fazy 02 jest **stackowany**, nie na `dev` |
-| Migracje | `bpp/0496`…`0499`, `rozbieznosci_dyscyplin/0023` |
+| Migracje | `bpp/0516`…`0519`, `rozbieznosci_dyscyplin/0023` |
 | Testy | 306 passed / 1 xfailed (soft-delete+cache+rozbieżności), 416 passed (regresja publikacji) |
 
 **Faza 02 objęła 5 modeli publikacji** — `Wydawnictwo_Ciagle`,
@@ -71,7 +71,7 @@ dystynktywne (`autorzy_set`). W fazie 02 to zwykłe słowa (`patent`,
 - lista 5 nazw daje 14 znalezisk,
 - dołożenie `rekord` i `wydawnictwo_nadrzedne` daje **120**,
 - z czego większość to fałszywe trafienia, bo `rekord` oznacza raz
-  publikację, raz widok `Rekord` (**już przefiltrowany** przez `0497`),
+  publikację, raz widok `Rekord` (**już przefiltrowany** przez `0517`),
   a raz parametr GET albo klucz formularza.
 
 **Nie rozszerzaj listy `RELACJE` i nie triażuj 120 pozycji ręcznie.**
@@ -112,8 +112,8 @@ jawnie odradzany (rozwaliłby deserializację i `refresh_from_db`).
   `("self", "wydawnictwo_nadrzedne")` bez `only=`. Brak `only=` = wszystkie
   kolumny w bramce, więc `deleted_at` wchodzi sam. Nie dokładaj
   `denorm_always_only` — byłby martwym kodem.
-- **Widoki publikacji mają TRZY różne kształty** (patrz docstring `0497`).
-  Wzorzec z `0489` pasuje tylko do dwóch z siedmiu.
+- **Widoki publikacji mają TRZY różne kształty** (patrz docstring `0517`).
+  Wzorzec z `0509` pasuje tylko do dwóch z siedmiu.
 - **Postgres normalizuje predykaty w definicjach widoków** — przy jednej
   tabeli w zasięgu usuwa kwalifikację. Wywróciło to najpierw asercję testu,
   potem funkcję `backward` migracji.
@@ -168,8 +168,8 @@ stałej modułowej — czyli bez commitowania czerwonego testu.
 |---|---|
 | **PR upstream do easyauditu** | gałąź gotowa w `~/Programowanie/django-easy-audit` (`fix/175-use-base-manager-in-pre-save`), przetestowana na Django 5.2 i 6.1. **Nie wypchnięta** — czeka na decyzję o koncie/forku. Tekst zgłoszenia gotowy |
 | **Strategia wydania** | rekomendacja z fazy 01 bez zmian: scalać fazami, **wydać dopiero po 04**. Faza 03 jest obowiązkowa razem z 02 (bez niej re-import tworzy duplikaty) |
-| Pomiar `0492` i narzutu GiST na kopii produkcyjnej | wciąż nikt nie zmierzył (dług fazy 01) |
-| `bpp-deploy`: kontrolka „kronika views: N" | po `0499` wypisze 0 i może zmylić operatora. Nieblokujące, opisane w docstringu `0499` |
+| Pomiar `0512` i narzutu GiST na kopii produkcyjnej | wciąż nikt nie zmierzył (dług fazy 01) |
+| `bpp-deploy`: kontrolka „kronika views: N" | po `0519` wypisze 0 i może zmylić operatora. Nieblokujące, opisane w docstringu `0519` |
 
 ## 7. Długi pozostałych faz
 

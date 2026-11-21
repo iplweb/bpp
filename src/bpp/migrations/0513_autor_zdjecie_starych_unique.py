@@ -1,17 +1,17 @@
 """Task 3c, krok 4/4: zdjęcie bezwarunkowych ograniczeń unikalności.
 
-Rozbicie migracji i ``atomic = False`` — patrz docstring 0490. Ten krok jest
-wyłącznie ODEJMUJĄCY i idzie na końcu, żeby przez całą serię 0490-0493
+Rozbicie migracji i ``atomic = False`` — patrz docstring 0510. Ten krok jest
+wyłącznie ODEJMUJĄCY i idzie na końcu, żeby przez całą serię 0510-0513
 tabela miała ochronę unikalności (najpierw stare, potem stare + nowe, na
 końcu same nowe).
 
 Zdejmujemy:
 
 1. ``unique_together`` — zastąpione warunkowymi ``UniqueConstraint``/
-   ``ExclusionConstraint`` z 0491/0492;
+   ``ExclusionConstraint`` z 0511/0512;
 2. legacy ``UNIQUE (rekord_id, kolejnosc) DEFERRABLE INITIALLY DEFERRED``
    dołożone gołym ``RunSQL`` w migracji 0132 (2018) — zastąpione
-   ``ExclusionConstraint`` z 0492. ``IF EXISTS`` na DROP: instancja, na
+   ``ExclusionConstraint`` z 0512. ``IF EXISTS`` na DROP: instancja, na
    której ten constraint zdjęto już kiedyś ręcznie (spoza Django), nie może
    wywalić migracji.
 
@@ -32,7 +32,7 @@ class Migration(migrations.Migration):
     atomic = False
 
     dependencies = [
-        ("bpp", "0492_autor_excl_rekord_kolejnosc"),
+        ("bpp", "0512_autor_excl_rekord_kolejnosc"),
     ]
 
     operations = [

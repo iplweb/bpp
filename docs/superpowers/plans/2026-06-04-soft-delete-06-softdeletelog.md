@@ -207,7 +207,7 @@ def test_context_zagniezdzony_przywraca_zewnetrzny(django_user_model, db):
 - Create: `src/bpp/models/soft_delete_log.py`
 - Modify: `src/bpp/models/__init__.py` (dopisz import, wzorzec `oplaty_log`
   na `:52`)
-- Create: `src/bpp/migrations/0494_softdeletelog.py` (NUMER: sprawdź najwyższą
+- Create: `src/bpp/migrations/0514_softdeletelog.py` (NUMER: sprawdź najwyższą
   istniejącą migrację `bpp` przez `ls src/bpp/migrations/ | grep -E '^04' |
   sort | tail -1` i nadaj kolejny — **NIE modyfikuj istniejących migracji**)
 - Test: `src/bpp/tests/test_soft_delete/test_soft_delete_log_model.py`
@@ -903,7 +903,7 @@ istnieją, Task 5 pomijamy. (ii) **Faza 02 wpina** `SoftDeleteModel` + override
 owijający `soft_delete_context` na publikacjach — jeśli nie ma jeszcze tego
 w worktree, testy receiverów Tasków 4/6 idą przez ręczny
 `post_soft_delete.send(...)` w izolacji (wariant udokumentowany w docstringu
-testu). (iii) Numer migracji `0494_*` orientacyjny — wykonawca nadaje kolejny
+testu). (iii) Numer migracji `0514_*` orientacyjny — wykonawca nadaje kolejny
 po sprawdzeniu `ls src/bpp/migrations/`. (iv) `soft_delete_context.py` tworzy
 ta faza; gdy fazy 02/04 dodały wcześniej stub — scalić VERBATIM z kontraktem.
 

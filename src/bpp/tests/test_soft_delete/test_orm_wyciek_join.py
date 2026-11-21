@@ -7,7 +7,7 @@ ale **wyłącznie gdy pytamy o sam through-model**. Kiedy filtrujemy publikację
 ``annotate(Count("autorzy_set"))``, ``Autor.objects.annotate(Count(
 "wydawnictwo_ciagle_autor"))``), Django buduje JOIN po SUROWEJ tabeli i
 managera **w ogóle nie pyta** — dokładnie ta sama klasa błędu, co widoki SQL
-naprawione migracjami 0494/0495/rozbieznosci-0022, tylko w Pythonie.
+naprawione migracjami 0514/0515/rozbieznosci-0022, tylko w Pythonie.
 
 Moduł ma dwie części:
 
