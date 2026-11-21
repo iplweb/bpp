@@ -41,8 +41,11 @@ def favicon_file(settings):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(FAVICON)
     cache.clear()  # /favicon.ico is wrapped in cache_page
+    # Patch the manager class, not ``Uczelnia.objects``: Django hands out copies
+    # of managers (Options.managers_map), which are rebuilt when the app
+    # registry cache is cleared, so a patched instance attribute can be lost.
     with mock.patch(
-        "bpp.views.Uczelnia.objects.get",
+        "bpp.models.uczelnia.UczelniaManager.get",
         return_value=SimpleNamespace(favicon_ico=SimpleNamespace(path=str(path))),
     ):
         yield path
@@ -68,7 +71,17 @@ async def _asgi_get(path):
         "server": ("testserver", 80),
     }
 
+    request_sent = False
+
     async def receive():
+        # Django reads the body, then keeps calling receive() to detect a client
+        # disconnect. A second http.request trips its assertion, cancels the
+        # request and deadlocks ThreadSensitiveContext; a client that is still
+        # connected simply sends nothing more.
+        nonlocal request_sent
+        if request_sent:
+            await asyncio.Event().wait()
+        request_sent = True
         return {"type": "http.request", "body": b"", "more_body": False}
 
     async def send(message):
@@ -79,7 +92,7 @@ async def _asgi_get(path):
     body = b"".join(
         m.get("body", b"") for m in messages if m["type"] == "http.response.body"
     )
-    return dict(start["headers"]), body
+    return {k.lower(): v for k, v in start["headers"]}, body
 
 
 @pytest.mark.django_db(transaction=True)
@@ -101,7 +114,7 @@ def test_favicon_przez_klienta_content_length_zgodny_z_trescia(
     for _ in range(2):  # second hit comes from the cache_page entry
         response = client.get("/favicon.ico")
         assert response.status_code == 200
-        assert response.has_header("X-Accel-Redirect")
+        assert response.has_header("X-Accel-Redirect"), response.content[:200]
         assert int(response["Content-Length"]) == len(response.content)
 
 
@@ -132,7 +145,7 @@ def test_simple_backend_dalej_wysyla_plik(client, favicon_file):
     _get_sendfile.cache_clear()
     try:
         response = client.get("/favicon.ico")
-        body = b"".join(response.streaming_content)
+        body = response.content
     finally:
         _get_sendfile.cache_clear()
 
