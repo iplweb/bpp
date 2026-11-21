@@ -6,12 +6,17 @@ from bpp.admin.helpers.pbn_api.gui import (
     sprobuj_wyslac_do_pbn_gui,
 )
 from bpp.models import Status_Korekty, Uczelnia
+from bpp.views.cache_publiczny import uniewaznij_cache_publiczny
 from pbn_export_queue.tasks import queue_pbn_export_batch
 
 
 def ustaw_status(queryset, nazwa_statusu):
     status = Status_Korekty.objects.get(nazwa=nazwa_statusu)
-    return queryset.exclude(status_korekty=status).update(status_korekty=status)
+    updated = queryset.exclude(status_korekty=status).update(status_korekty=status)
+    # ``update()`` nie wysyła ``post_save`` — status korekty decyduje
+    # o widoczności rekordu publicznie, więc cache stron musi się odświeżyć.
+    uniewaznij_cache_publiczny()
+    return updated
 
 
 def ustaw_przed_korekta(modeladmin, request, queryset):
@@ -113,6 +118,9 @@ def ustaw_pokazuj_true(modeladmin, request, queryset):
     updated = queryset.filter(
         Q(pokazuj_na_stronie_jednostki=False) | Q(pokazuj_w_rankingu=False)
     ).update(pokazuj_na_stronie_jednostki=True, pokazuj_w_rankingu=True)
+    # ``update()`` nie wysyła ``post_save`` — bez jawnej inwalidacji
+    # publiczne strony (jednostki, indeks) pokazywałyby stary stan do TTL.
+    uniewaznij_cache_publiczny()
     modeladmin.message_user(
         request,
         f"Ustawiono {updated} {ngettext('autora', 'autorów', updated)} jako widocznych",
@@ -128,6 +136,8 @@ def ustaw_pokazuj_false(modeladmin, request, queryset):
     updated = queryset.filter(
         Q(pokazuj_na_stronie_jednostki=True) | Q(pokazuj_w_rankingu=True)
     ).update(pokazuj_na_stronie_jednostki=False, pokazuj_w_rankingu=False)
+    # Patrz ``ustaw_pokazuj_true``: ``update()`` omija sygnały.
+    uniewaznij_cache_publiczny()
     modeladmin.message_user(
         request,
         f"Ustawiono {updated} {ngettext('autora', 'autorów', updated)} jako ukrytych",

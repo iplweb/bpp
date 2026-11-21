@@ -24,6 +24,7 @@ from .authors import (  # noqa: F401
     ImportAutorAutocomplete,
     PodrzednaPublikacjaHabilitacyjnaAutocomplete,
     PublicAutorAutocomplete,
+    WyszukiwarkaAutorAutocomplete,
     ZapisanyJakoAutocomplete,
 )
 from .base import (  # noqa: F401

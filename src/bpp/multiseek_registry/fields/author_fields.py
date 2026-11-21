@@ -83,7 +83,8 @@ class NazwiskoIImieQueryObject(
     model = Autor
     search_fields = ["nazwisko", "imiona"]
     field_name = "autor"
-    url = "bpp:public-autor-autocomplete"
+    # Bez autorów z odznaczonym „Pokazuj w wyszukiwaniu” (FD#561).
+    url = "bpp:wyszukiwarka-autor-autocomplete"
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:

@@ -359,11 +359,13 @@
         <div class="grid-x grid-margin-x align-middle">
             <div class="cell auto">
                 <h1 class="jednostka__title">{{ jednostka }}</h1>
-                {% if jednostka.kierownik %}
+                {% with kierownik=jednostka.kierownik %}
+                {% if kierownik %}
                     <div class="subheader jednostka__subheader">
-                        <i class="fi-torso jednostka__icon--mr-xs"></i>Kierownik: {{ jednostka.kierownik }}
+                        <i class="fi-torso jednostka__icon--mr-xs"></i>Kierownik: {{ kierownik }}
                     </div>
                 {% endif %}
+                {% endwith %}
             </div>
             <div class="cell shrink">
                 {% include "browse/go_to_admin_change.html" with url="admin:bpp_jednostka_change" pk=jednostka.pk group="struktura" %}

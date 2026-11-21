@@ -60,6 +60,7 @@ from bpp.views.autocomplete import (
     Wydawnictwo_Nadrzedne_W_PBNAutocomplete,
     Wydawnictwo_NadrzedneAutocomplete,
     Wydawnictwo_ZwarteAdminAutocomplete,
+    WyszukiwarkaAutorAutocomplete,
     ZapisanyJakoAutocomplete,
     Zewnetrzna_Baza_DanychAutocomplete,
     ZrodloAutocomplete,
@@ -558,6 +559,11 @@ urlpatterns = [
         r"^public-autor-autocomplete/$",
         PublicAutorAutocomplete.as_view(),
         name="public-autor-autocomplete",
+    ),
+    url(
+        r"^wyszukiwarka-autor-autocomplete/$",
+        WyszukiwarkaAutorAutocomplete.as_view(),
+        name="wyszukiwarka-autor-autocomplete",
     ),
     url(
         r"^import-autor-autocomplete/$",
