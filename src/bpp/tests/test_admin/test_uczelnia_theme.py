@@ -70,18 +70,17 @@ def test_motyw_app_apoz_jest_na_liscie():
 
 
 def test_motyw_app_apoz_fonty_self_hostowane():
-    """IBM Plex Sans jest serwowany z naszych plików statycznych — każdy
-    plik wskazany w @font-face istnieje, a motyw nie sięga do Google Fonts."""
+    """Inter jest serwowany z naszych plików statycznych — każdy plik
+    wskazany w @font-face istnieje, a motyw nie sięga do Google Fonts."""
     src = (SCSS_DIR / "app-apoz.scss").read_text(encoding="utf-8")
     assert "fonts.googleapis.com" not in src
     assert "fonts.gstatic.com" not in src
 
-    font_dir = REPO / "src" / "bpp" / "static" / "bpp" / "fonts" / "ibm-plex-sans"
-    weights = re.search(r"@each \$weight, \$style in \(([^)]*)\)", src).group(1)
-    pary = [p.split() for p in weights.split(",")]
-    assert pary, "brak listy wag fontu w app-apoz.scss"
-    for weight, style in pary:
+    font_dir = REPO / "src" / "bpp" / "static" / "bpp" / "fonts" / "inter"
+    wagi = re.search(r"@each \$weight in \(([^)]*)\)", src).group(1)
+    wagi = [w.strip() for w in wagi.split(",") if w.strip()]
+    assert wagi, "brak listy wag fontu w app-apoz.scss"
+    for weight in wagi:
         for subset in ("latin", "latin-ext"):
-            plik = font_dir / f"ibm-plex-sans-{subset}-{weight}-{style}.woff2"
+            plik = font_dir / f"inter-{weight}-{subset}.woff2"
             assert plik.is_file(), plik
-    assert (font_dir / "LICENSE.txt").is_file()

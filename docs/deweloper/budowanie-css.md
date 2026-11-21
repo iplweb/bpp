@@ -20,7 +20,7 @@ trzyma `BPP_THEMES` w `src/django_bpp/settings/base.py`):
 | `app-vizja.scss` | `_settings_vizja.scss` | `#efa402` |
 | `app-mwsl.scss` | `_settings_mwsl.scss` | `#e35b00` |
 | `app-uafm.scss` | `_settings_uafm.scss` | `#b41906` |
-| `app-apoz.scss` | `_settings_apoz.scss` | `#0073a6` (przyciemniony `#009ee0` dla WCAG AA), drugorzędny złoty `#b99a4b` |
+| `app-apoz.scss` | `_settings_apoz.scss` | `#284fab` (niebieski ze strony uczelni), pasek `#12203d`, drugorzędny złoty `#b99a4b` |
 
 Each theme imports: settings -> common.scss -> components -> Foundation framework.
 
@@ -40,12 +40,11 @@ z `BPP_THEMES` ma plik SCSS i target Grunta.
 
 ### Czcionka motywu `app-apoz`
 
-`app-apoz` używa IBM Plex Sans (licencja SIL OFL 1.1), hostowanej lokalnie
-w `src/bpp/static/bpp/fonts/ibm-plex-sans/` — pliki `.woff2` skopiowane
-z paczki npm `@fontsource/ibm-plex-sans` 5.3.0 (podzbiory latin + latin-ext,
-wagi 400/600/700 oraz kursywa 400/700; licencja w `LICENSE.txt`). Reguły
-`@font-face` generuje pętla w `app-apoz.scss`; żadne zapytanie nie idzie do
-Google Fonts.
+`app-apoz` używa czcionki Inter (licencja SIL OFL 1.1), tej samej co strona
+uczelni. Pliki `.woff2` leżą już w repo w `src/bpp/static/bpp/fonts/inter/`
+(używają ich też motywy modułu redagowania): podzbiory latin + latin-ext,
+wagi 400/500/600/700. Reguły `@font-face` generuje pętla w `app-apoz.scss`;
+żadne zapytanie nie idzie do Google Fonts.
 
 ## Common.scss
 

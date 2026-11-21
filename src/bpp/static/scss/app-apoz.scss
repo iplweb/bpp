@@ -1,23 +1,24 @@
 @use "sass:color";
 @import "settings_apoz";
 
-// IBM Plex Sans — ten sam krój co w ATOM 2.0. Pliki .woff2 są
-// self-hostowane (src/bpp/static/bpp/fonts/ibm-plex-sans/, z paczki npm
-// @fontsource/ibm-plex-sans 5.3.0, licencja SIL OFL 1.1 — LICENSE.txt obok),
-// bez odpytywania Google Fonts. Tylko podzbiory latin + latin-ext
-// (latin-ext = polskie znaki). Ścieżki względem tego pliku: scss/ → bpp/fonts/.
-$apoz-font-dir: "../bpp/fonts/ibm-plex-sans";
+// Inter — ten sam krój co na stronie uczelni (apoz.edu.pl, gdzie idzie
+// z Google Fonts). U nas self-hostowany: pliki .woff2 leżą już w repo
+// (src/bpp/static/bpp/fonts/inter/, używane też przez motywy admina,
+// licencja SIL OFL 1.1), bez odpytywania Google. Podzbiory latin + latin-ext
+// (latin-ext = polskie znaki). Kursywę przeglądarka syntetyzuje.
+// Ścieżki względem tego pliku: scss/ → bpp/fonts/.
+$apoz-font-dir: "../bpp/fonts/inter";
 $apoz-range-latin-ext: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 $apoz-range-latin: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 
-@each $weight, $style in (400 normal, 400 italic, 600 normal, 700 normal, 700 italic) {
+@each $weight in (400, 500, 600, 700) {
   @each $subset, $range in (latin-ext $apoz-range-latin-ext, latin $apoz-range-latin) {
     @font-face {
-      font-family: 'IBM Plex Sans';
-      font-style: $style;
+      font-family: 'Inter';
+      font-style: normal;
       font-weight: $weight;
       font-display: swap;
-      src: url('#{$apoz-font-dir}/ibm-plex-sans-#{$subset}-#{$weight}-#{$style}.woff2') format('woff2');
+      src: url('#{$apoz-font-dir}/inter-#{$weight}-#{$subset}.woff2') format('woff2');
       unicode-range: $range;
     }
   }
@@ -115,17 +116,14 @@ input[type=radio] {
   color: white;
 }
 
-// --- Styl ATOM 2.0 ------------------------------------------------------------
+// --- Pasek menu jak na stronie uczelni ------------------------------------
 
-// Pasek nawigacji odwzorowany z żywego ATOM-a (computed styles z
-// test-atom, 2026-11-22): tło granatowe #1f3a5f (--atom-navy), bez linii
-// u dołu, tylko cień 0 1px 0 rgba(0,0,0,.12); pozycje 16 px, waga 400,
-// kolor rgba(255,255,255,.82) (8.3:1 na granacie), po najechaniu biały
-// (11.5:1) bez zmiany tła; nazwa systemu pogrubiona (700), 1.3rem,
-// letter-spacing 0.02em. Rozwijane podmenu zostają białe z ciemnym
-// tekstem, jak dropdowny Bootstrapa w ATOM-ie (zaokrąglenie 0.375rem).
-$apoz-navbar: #1f3a5f;
-$apoz-navbar-link: rgba($white, 0.82);
+// Kolory paska jak górny pasek apoz.edu.pl (computed styles, 2026-11-22):
+// tło #12203d, linki białe, waga 500; ciemniejszy granat #28354f
+// (przycisk „Logowanie” na stronie uczelni) jako hover.
+$apoz-navbar: #12203d;
+$apoz-navbar-hover: #28354f;
+$apoz-navbar-link: $white;
 
 nav.sticky-header {
   background: $apoz-navbar;
@@ -146,7 +144,7 @@ nav.sticky-header {
 .top-bar .dropdown.menu > li > a {
   color: $apoz-navbar-link;
   font-size: 1rem;
-  font-weight: 400;
+  font-weight: 500;
   padding: 0.5rem;
 
   &:hover,
@@ -161,7 +159,7 @@ nav.sticky-header {
   color: $white;
 }
 
-// Nazwa systemu jak .navbar-brand w ATOM-ie.
+// Nazwa systemu „BPP” pogrubiona.
 .top-bar .dropdown.menu > li:first-child > a {
   color: $white;
   font-size: 1.3rem;
@@ -188,9 +186,33 @@ nav.sticky-header {
   color: $apoz-navbar-link;
 }
 
-// Logo BPP: na ciemnym tle szara (grayscale) ikona ginie — rozjaśniamy.
-.top-bar .bpp-logo {
-  filter: grayscale(100%) brightness(1.6);
+// Logo BPP: zawsze w oryginalnym, pomarańczowym kolorze (bez grayscale z
+// top_bar.scss) — na granatowym pasku szara/biała ikona ginie.
+.top-bar .bpp-logo,
+.dropdown.menu > li > a:hover .bpp-logo {
+  filter: none !important;
+}
+
+// Ikony Foundation (fi-*) w pasku menu i podmenu ukryte — menu jak na
+// stronie uczelni, sam tekst. Logo BPP to <img>, nie fi-*, więc zostaje.
+// !important, bo top_bar.scss ustawia ikonom w podmenu display: inline-block
+// regułą o wyższej specyficzności (.top-bar … li a i).
+.top-bar {
+  [class^="fi-"], [class*=" fi-"] {
+    display: none !important;
+  }
+}
+
+// W treści stron ikony zostają, ale „odchudzone”: font ikon nie ma
+// lżejszych grubości, więc zjadamy krawędź glifu obrysem w kolorze tła
+// (-webkit-text-stroke; Chrome, Firefox, Safari).
+$apoz-ikona-odchudzenie: 0.6px;
+
+// W treści stron (białe tło) — ikony nagłówków i list.
+.modern-header, .section-header, .jednostka-name {
+  [class^="fi-"], [class*=" fi-"] {
+    -webkit-text-stroke: $apoz-ikona-odchudzenie $white;
+  }
 }
 
 // Podmenu: zaokrąglenie jak dropdown Bootstrapa (zamiast 12 px).
@@ -203,6 +225,19 @@ nav.sticky-header {
 // Pasek „Menu” na telefonie w tym samym granacie.
 .title-bar {
   background: $apoz-navbar;
+}
+
+// „Masz nową publikację? Zgłoś ją do bazy!” — w kolorze paska menu
+// (granat uczelni), bez gradientu i kolorowego cienia.
+.main-page-button-primary {
+  background: $apoz-navbar;
+  box-shadow: 0 1px 2px rgba($black, 0.15);
+
+  &:hover,
+  &:focus {
+    background: $apoz-navbar-hover;
+    color: $white;
+  }
 }
 
 // Cyfry w tabelach w równych kolumnach (lata, punkty, liczby cytowań).

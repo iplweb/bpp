@@ -1,8 +1,8 @@
-// Motyw app-apoz (FD#609). Wzorowany na systemie ATOM 2.0
-// (src/atom_runner/static/atom_runner/css/theme.css w repo ATOM-a):
-// font IBM Plex Sans 16 px, nagłówki w wadze 600 i rozmiarach Bootstrapa,
-// zaokrąglenia 0.375rem. Pasek menu — patrz app-apoz.scss: granatowy
-// #1f3a5f jak na żywym ATOM-ie (test-atom, sprawdzone 2026-11-22).
+// Motyw app-apoz (FD#609). Wygląd zbliżony do strony uczelni (apoz.edu.pl,
+// computed styles sprawdzone 2026-11-22): czcionka Inter 16 px (self-hosted,
+// patrz app-apoz.scss), granatowy pasek menu #12203d z białymi pozycjami
+// w wadze 500, menu bez ikon. Primary #284fab — niebieski ze strony uczelni
+// (biały na nim ok. 7.4:1, AA z zapasem). Zaokrąglenia 0.375rem jak w ATOM 2.0.
 //
 // Kolory identyfikacji uczelni:
 //   niebieski #009ee0 (Process Cyan), złoty #b99a4b, czerwony #e2001a,
@@ -11,10 +11,9 @@
 // Kontrast WCAG 2.x (AA: 4.5:1 dla zwykłego tekstu, 3:1 dla dużego tekstu
 // i elementów graficznych):
 //   - biały na #009ee0 to tylko 3.0:1 — za mało dla tekstu przycisków
-//     i linków. Dlatego primary = #0073a6: ten sam odcień (hue) co #009ee0,
-//     przyciemniony; biały na nim 5.25:1, a on sam na białym 5.25:1 i na
-//     tle strony #f4f6f9 4.85:1. Czysty #009ee0 zostaje w roli dekoracyjnej
-//     (pasek pod menu, ikony, obwódki) — patrz $apoz-blue w app-apoz.scss.
+//     i linków, dlatego primary to #284fab (niebieski ze strony uczelni).
+//     Czysty #009ee0 zostaje w roli dekoracyjnej (obwódka fokusa) — patrz
+//     $apoz-blue w app-apoz.scss.
 //   - złoty #b99a4b: na białym 2.7:1, więc NIE jako kolor tekstu. Jako tło
 //     przycisków „secondary” z czarnym tekstem (#1a171b na złotym 6.6:1 —
 //     Foundation sam wybiera ciemny tekst, color-pick-contrast). Do tekstu
@@ -99,7 +98,7 @@ $global-font-size: 100%;
 $global-width: rem-calc(1200);
 $global-lineheight: 1.5;
 $foundation-palette: (
-  primary: #0073a6,
+  primary: #284fab,
   secondary: #b99a4b,
   success: #3adb76,
   warning: #ffae00,
@@ -110,9 +109,9 @@ $medium-gray: #cacaca;
 $dark-gray: #8a8a8a;
 $black: #1a171b;
 $white: #fefefe;
-$body-background: #f4f6f9;
+$body-background: #f1f5f9;
 $body-font-color: $black;
-$body-font-family: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+$body-font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 $body-antialiased: true;
 $global-margin: 1rem;
 $global-padding: 1rem;
@@ -472,7 +471,7 @@ $input-border: 1px solid $medium-gray;
 $input-border-focus: 1px solid #8aa3c2;
 $input-padding: calc($form-spacing / 2);
 $input-shadow: inset 0 1px 2px rgba($black, 0.1);
-$input-shadow-focus: 0 0 0 0.25rem rgba(#0073a6, 0.25);
+$input-shadow-focus: 0 0 0 0.25rem rgba(#284fab, 0.25);
 $input-cursor-disabled: not-allowed;
 $input-transition: box-shadow 0.5s, border-color 0.25s ease-in-out;
 $input-number-spinners: true;
