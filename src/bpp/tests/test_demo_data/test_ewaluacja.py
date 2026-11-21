@@ -52,6 +52,10 @@ from ewaluacja_metryki.models import MetrykaAutora
 OD_ROKU, DO_ROKU = 2022, 2026
 
 
+# Słownik z baseline; test transakcyjny na tym samym workerze go wymiata.
+@pytest.mark.usefixtures(
+    "rodzaj_autora_n", "rodzaj_autora_b", "rodzaj_autora_d", "rodzaj_autora_z"
+)
 @pytest.mark.django_db
 def test_rodzaj_autora_proporcje(tmp_manifest_path):
     """~60% N, ~30% B, ~10% D; jeden rodzaj na autora we wszystkich latach."""

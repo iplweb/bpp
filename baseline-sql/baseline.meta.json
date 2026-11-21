@@ -1,5 +1,5 @@
 {
-  "git_sha": "2528345c564ba568ac946e4c03f61de69783b06f",
+  "git_sha": "fc1fd85ceca4619be54620b408b906a85269593d",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
@@ -54,7 +54,7 @@
     "oswiadczenia": "0005_migrate_template_to_dbtemplate",
     "password_policies": "0003_update_passwordprofile",
     "pbn_api": "0080_sentdata_withdrawn_at",
-    "pbn_downloader_app": "0004_alter_error_message_fields",
+    "pbn_downloader_app": "0005_task_user_opcjonalny",
     "pbn_export_queue": "0012_zamowil_protect",
     "pbn_import": "0013_alter_importinconsistency_inconsistency_type",
     "pbn_integrator": "0001_initial",
