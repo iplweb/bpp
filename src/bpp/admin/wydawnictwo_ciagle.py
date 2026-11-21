@@ -28,8 +28,6 @@ from bpp.admin.helpers.fieldsets import (
     MODEL_Z_ROKIEM,
     MODEL_ZE_SZCZEGOLAMI,
     OPENACCESS_FIELDSET,
-    OPENACCESS_HELP_TEXTS,
-    OPENACCESS_LABELS,
     POZOSTALE_MODELE_WYDAWNICTWO_CIAGLE_FIELDSET,
     PRACA_WYBITNA_FIELDSET,
     PRZED_PO_LISCIE_AUTOROW_FIELDSET,
@@ -40,6 +38,7 @@ from bpp.admin.helpers.mixins import (
     DomyslnyStatusKorektyMixin,
     OdroczPunktyDyscyplinMixin,
 )
+from bpp.admin.helpers.openaccess import OpenAccessDataUdostepnieniaFormMixin
 from bpp.admin.helpers.pbn_api.gui import sprobuj_policzyc_sloty
 from bpp.admin.helpers.widgets import (
     COMMA_DECIMAL_FIELD_OVERRIDE,
@@ -136,7 +135,9 @@ class CleanDOIWWWPublicWWWMixin:
         return v
 
 
-class Wydawnictwo_CiagleForm(CleanDOIWWWPublicWWWMixin, forms.ModelForm):
+class Wydawnictwo_CiagleForm(
+    OpenAccessDataUdostepnieniaFormMixin, CleanDOIWWWPublicWWWMixin, forms.ModelForm
+):
     zrodlo = forms.ModelChoiceField(
         queryset=Zrodlo.objects.all(),
         widget=autocomplete.ModelSelect2(url="bpp:admin-zrodlo-autocomplete"),
@@ -237,8 +238,6 @@ class Wydawnictwo_CiagleForm(CleanDOIWWWPublicWWWMixin, forms.ModelForm):
             "openaccess_licencja",
             "openaccess_czas_publikacji",
             "openaccess_ilosc_miesiecy",
-            "openaccess_data_opublikowania",
-            "openaccess_rok_udostepnienia",
             "liczba_cytowan",
             "numer_odbitki",
             "nie_eksportuj_przez_api",
@@ -254,8 +253,6 @@ class Wydawnictwo_CiagleForm(CleanDOIWWWPublicWWWMixin, forms.ModelForm):
             "nr_zeszytu": forms.TextInput(attrs={"class": "bpp-input-narrow"}),
             "slowa_kluczowe": TextareaTagWidget(attrs={"rows": 2}),
         }
-        labels = OPENACCESS_LABELS
-        help_texts = OPENACCESS_HELP_TEXTS
 
 
 class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychForm(forms.ModelForm):

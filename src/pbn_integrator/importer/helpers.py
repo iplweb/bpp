@@ -15,6 +15,7 @@ from bpp.models import (
     Wersja_Tekstu_OpenAccess,
     Zrodlo,
 )
+from pbn_api.adapters.wydawnictwo import PBN_MIESIACE
 from pbn_api.models import Journal
 from pbn_integrator.utils import zapisz_mongodb
 
@@ -513,42 +514,36 @@ def _importuj_openaccess_daty(ret, oa_json):
         oa_json.pop("releaseDateMonth", None)
         return
 
-    if "releaseDateYear" in oa_json and oa_json.get("releaseDateMonth"):
-        strMonth = {
-            "JANUARY": 1,
-            "FEBRUARY": 2,
-            "MARCH": 3,
-            "APRIL": 4,
-            "MAY": 5,
-            "JUNE": 6,
-            "JULY": 7,
-            "AUGUST": 8,
-            "SEPTEMBER": 9,
-            "OCTOBER": 10,
-            "NOVEMBER": 11,
-            "DECEMBER": 12,
-        }
+    # Freshdesk #281: miesiąc i rok zapisujemy w osobnych polach — bez
+    # zmyślania dnia 1 (taka data wracałaby potem do PBN jako pełna data).
+    rok = oa_json.pop("releaseDateYear", None)
+    miesiac = oa_json.pop("releaseDateMonth", None)
+    if rok is None:
+        return
 
-        assert ret.openaccess_data_opublikowania is None
+    if not miesiac:
+        # Sam rok (stare dane PBN). Dziś PBN odrzuca taki zapis („pełna data
+        # albo miesiąc i rok jest wymagana”), a BPP nie przyjmuje samego
+        # roku w formularzu — nie zmyślamy miesiąca ani dnia, tylko
+        # pomijamy datę. Redakcja uzupełni ją przed wysyłką do PBN (raport
+        # kompletności POL-on pokaże brak daty udostępnienia OA).
+        logger.warning(
+            "PBN podaje sam rok udostępnienia OA (%s) bez miesiąca dla %r — "
+            "pomijam, data udostępnienia do uzupełnienia ręcznie",
+            rok,
+            ret,
+        )
+        return
 
-        reldate_year = oa_json.pop("releaseDateYear")
-        if reldate_year is None:
-            logger.info("bez zartow BLAD DDATY")
-        else:
-            ret.openaccess_data_opublikowania = date(
-                int(reldate_year),
-                strMonth.get(oa_json.pop("releaseDateMonth")),
-                1,
-            )
+    try:
+        numer_miesiaca = PBN_MIESIACE.index(miesiac) + 1
+    except ValueError as err:
+        raise ValueError(
+            f"Nieznany miesiąc udostępnienia OpenAccess z PBN: {miesiac=}"
+        ) from err
 
-    if "releaseDateYear" in oa_json:  # sam rok
-        # Freshdesk #281: PBN zna tylko rok udostępnienia — zapisujemy go
-        # w polu na sam rok, zamiast zmyślać datę 1 stycznia (która potem
-        # wracałaby do PBN jako pełna data udostępnienia).
-        rok = oa_json.pop("releaseDateYear")
-        oa_json.pop("releaseDateMonth", None)  # ew. jawne ``null``
-        if rok is not None:
-            ret.openaccess_rok_udostepnienia = int(rok)
+    ret.openaccess_rok_udostepnienia = int(rok)
+    ret.openaccess_miesiac_udostepnienia = numer_miesiaca
 
 
 def get_or_download_publication(mongoId, client):

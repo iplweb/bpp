@@ -38,29 +38,12 @@ OPENACCESS_FIELDSET = (
             "openaccess_wersja_tekstu",
             "openaccess_czas_publikacji",
             "openaccess_ilosc_miesiecy",
-            "openaccess_data_opublikowania",
-            "openaccess_rok_udostepnienia",
+            # Jedno pole formularza (FD#281) zamiast data/miesiąc/rok
+            # modelu — zob. ``bpp.admin.helpers.openaccess``.
+            "openaccess_data_udostepnienia",
         ),
     },
 )
-
-# Freshdesk #281: the model's verbose_name ("data publikacji") is misleading --
-# PBN sends this date as the open access release date ("data udostępnienia").
-# Relabel it in the admin forms instead of altering the model (no migration).
-OPENACCESS_LABELS = {
-    "openaccess_data_opublikowania": "OpenAccess: data udostępnienia",
-}
-
-OPENACCESS_HELP_TEXTS = {
-    "openaccess_data_opublikowania": (
-        "Data udostępnienia pracy w otwartym dostępie, wysyłana do PBN jako "
-        "data udostępnienia OpenAccess. Gdy znasz tylko rok, zostaw to pole "
-        "puste i wpisz rok w polu „OpenAccess: rok udostępnienia” (nie "
-        "wypełniaj obu). Gdy puste są oba pola, eksport użyje daty "
-        "dostępu do strony WWW (o ile ją podano); w przeciwnym razie "
-        "data udostępnienia nie zostanie wysłana."
-    ),
-}
 
 DWA_TYTULY = (
     "tytul_oryginalny",

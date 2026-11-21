@@ -652,21 +652,34 @@ def test_pole_szczegoly_ratuje_puste_strony():
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("kod", ["ART_OA_DATA", "MON_OA_DATA"])
-def test_sam_rok_udostepnienia_ratuje_brak_daty_oa(kod):
-    """FD#281: sam rok udostępnienia OA to dopuszczalna alternatywa daty."""
+def test_miesiac_i_rok_udostepnienia_ratuja_brak_daty_oa(kod):
+    """FD#281: miesiąc i rok udostępnienia OA to dopuszczalna alternatywa."""
     powiazanie = _zbuduj_kompletne_powiazanie(REGULA_PO_KODZIE[kod].dotyczy)
     _psuj_oa("openaccess_data_opublikowania")(powiazanie)
     rekord = powiazanie.rekord
     rekord.openaccess_rok_udostepnienia = ROK
+    rekord.openaccess_miesiac_udostepnienia = 12
     rekord.save()
 
     assert not _lapie(kod, powiazanie)
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("kod", ["ART_OA_DATA", "MON_OA_DATA"])
+def test_sam_rok_udostepnienia_nie_ratuje_braku_daty_oa(kod):
+    """FD#281: sam rok nie wystarcza (PBN wymaga miesiąca i roku)."""
+    powiazanie = _zbuduj_kompletne_powiazanie(REGULA_PO_KODZIE[kod].dotyczy)
+    _psuj_oa("openaccess_data_opublikowania")(powiazanie)
+    rekord = powiazanie.rekord
+    type(rekord).objects.filter(pk=rekord.pk).update(openaccess_rok_udostepnienia=ROK)
+
+    assert _lapie(kod, powiazanie)
+
+
+@pytest.mark.django_db
 @pytest.mark.parametrize("kod", ["ART_OA_TRYB", "MON_OA_TRYB"])
-def test_sam_rok_udostepnienia_bez_trybu_to_zaczete_oa(kod):
-    """FD#281: rok udostępnienia OA jest sygnałem otwartego dostępu."""
+def test_miesiac_i_rok_bez_trybu_to_zaczete_oa(kod):
+    """FD#281: miesiąc i rok udostępnienia OA są sygnałem otwartego dostępu."""
     powiazanie = _zbuduj_kompletne_powiazanie(REGULA_PO_KODZIE[kod].dotyczy)
     rekord = powiazanie.rekord
     rekord.openaccess_tryb_dostepu = None
@@ -676,6 +689,7 @@ def test_sam_rok_udostepnienia_bez_trybu_to_zaczete_oa(kod):
     rekord.openaccess_czas_publikacji = None
     rekord.openaccess_ilosc_miesiecy = None
     rekord.openaccess_rok_udostepnienia = ROK
+    rekord.openaccess_miesiac_udostepnienia = 12
     rekord.save()
 
     assert _lapie(kod, powiazanie)

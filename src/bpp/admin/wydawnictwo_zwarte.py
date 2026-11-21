@@ -23,6 +23,7 @@ from bpp.admin.filters import (
 from bpp.admin.helpers import fieldsets
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.admin.helpers.dynamic_columns import BppDynamicColumnsMixin
+from bpp.admin.helpers.openaccess import OpenAccessDataUdostepnieniaFormMixin
 from bpp.admin.helpers.widgets import COMMA_DECIMAL_FIELD_OVERRIDE
 from bpp.models import (
     Charakter_Formalny,
@@ -202,6 +203,7 @@ class Wydawnictwo_ZwarteAdmin_Baza(
 
 
 class Wydawnictwo_ZwarteForm(
+    OpenAccessDataUdostepnieniaFormMixin,
     helpers.mixins.Wycinaj_W_z_InformacjiMixin,
     CleanDOIWWWPublicWWWMixin,
     forms.ModelForm,
@@ -452,8 +454,6 @@ class Wydawnictwo_ZwarteForm(
             "openaccess_licencja",
             "openaccess_czas_publikacji",
             "openaccess_ilosc_miesiecy",
-            "openaccess_data_opublikowania",
-            "openaccess_rok_udostepnienia",
             "liczba_cytowan",
             "numer_odbitki",
             "nie_eksportuj_przez_api",
@@ -474,8 +474,6 @@ class Wydawnictwo_ZwarteForm(
             "tom": forms.TextInput(attrs={"class": "bpp-input-narrow"}),
             "slowa_kluczowe": TextareaTagWidget(attrs={"rows": 2}),
         }
-        labels = fieldsets.OPENACCESS_LABELS
-        help_texts = fieldsets.OPENACCESS_HELP_TEXTS
 
     class Media:
         # Freshdesk #385: podświetlenie wymaganego pola "wydawca" przy

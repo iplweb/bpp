@@ -5,7 +5,7 @@ Modele abstrakcyjne związane z Open Access.
 import datetime
 
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import PROTECT
 
@@ -59,15 +59,18 @@ class ModelZOpenAccess(models.Model):
         abstract = True
 
 
-class ModelZOpenAccessRokUdostepnienia(models.Model):
-    """Sam rok udostępnienia w otwartym dostępie (Freshdesk #281).
+class ModelZOpenAccessMiesiacIRokUdostepnienia(models.Model):
+    """Miesiąc i rok udostępnienia w otwartym dostępie (Freshdesk #281).
 
-    Alternatywa dla ``openaccess_data_opublikowania``, gdy redakcja zna
-    tylko rok udostępnienia. Do PBN wysyłany jako ``releaseDateYear``.
+    Alternatywa dla pełnej daty ``openaccess_data_opublikowania``, gdy
+    redakcja zna tylko miesiąc i rok udostępnienia. Do PBN wysyłane jako
+    ``releaseDateMonth`` + ``releaseDateYear``. Sam rok NIE wystarcza: PBN
+    odrzuca go walidacją „pełna data albo miesiąc i rok jest wymagana”
+    (sprawdzone na produkcyjnym PBN, FD#281).
 
     Celowo NIE w ``ModelZOpenAccess``: z tamtej klasy dziedziczy też
-    ``Rekord`` (zmaterializowany widok ``bpp_rekord_mat``), więc nowe pole
-    wymagałoby przebudowy widoku. Pole jest potrzebne tylko w wydawnictwach
+    ``Rekord`` (zmaterializowany widok ``bpp_rekord_mat``), więc nowe pola
+    wymagałyby przebudowy widoku. Pola są potrzebne tylko w wydawnictwach
     ciągłych i zwartych (formularz, eksport do PBN, import z PBN).
     """
 
@@ -76,9 +79,17 @@ class ModelZOpenAccessRokUdostepnienia(models.Model):
         blank=True,
         null=True,
         validators=[MinValueValidator(OPENACCESS_ROK_MIN)],
-        help_text="Sam rok udostępnienia pracy w otwartym dostępie — wypełnij "
-        "zamiast daty udostępnienia, gdy znasz tylko rok. Wysyłany do PBN "
-        "jako rok udostępnienia (bez miesiąca i dnia).",
+        help_text="Rok udostępnienia w otwartym dostępie — razem z miesiącem, "
+        "gdy nie jest znana pełna data udostępnienia.",
+    )
+
+    openaccess_miesiac_udostepnienia = models.PositiveSmallIntegerField(
+        "OpenAccess: miesiąc udostępnienia",
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(1), MaxValueValidator(12)],
+        help_text="Miesiąc (1–12) udostępnienia w otwartym dostępie — razem "
+        "z rokiem, gdy nie jest znana pełna data udostępnienia.",
     )
 
     class Meta:
@@ -86,23 +97,54 @@ class ModelZOpenAccessRokUdostepnienia(models.Model):
 
     def clean(self):
         rok = self.openaccess_rok_udostepnienia
-        if rok is None:
+        miesiac = self.openaccess_miesiac_udostepnienia
+        if rok is None and miesiac is None:
             return
 
         if getattr(self, "openaccess_data_opublikowania", None) is not None:
             komunikat = (
-                "Podaj albo datę udostępnienia w otwartym dostępie, albo sam "
-                "rok udostępnienia — nie oba naraz. Wyczyść jedno z tych pól."
+                "Podaj albo pełną datę udostępnienia w otwartym dostępie, "
+                "albo miesiąc i rok — nie oba naraz."
             )
             raise ValidationError(
                 {
                     "openaccess_data_opublikowania": komunikat,
                     "openaccess_rok_udostepnienia": komunikat,
+                    "openaccess_miesiac_udostepnienia": komunikat,
                 }
             )
 
-        # Zakres sprawdzany także tutaj, nie tylko walidatorem pola: część
+        if miesiac is None:
+            raise ValidationError(
+                {
+                    "openaccess_miesiac_udostepnienia": (
+                        "PBN wymaga co najmniej miesiąca i roku udostępnienia "
+                        "— sam rok nie wystarczy. Podaj też miesiąc."
+                    )
+                }
+            )
+
+        if rok is None:
+            raise ValidationError(
+                {
+                    "openaccess_rok_udostepnienia": (
+                        "Podano miesiąc udostępnienia bez roku. Podaj też rok."
+                    )
+                }
+            )
+
+        # Zakresy sprawdzane także tutaj, nie tylko walidatorami pól: część
         # modeli publikacji nadpisuje ``clean_fields`` bez wołania ``super()``.
+        if not 1 <= miesiac <= 12:
+            raise ValidationError(
+                {
+                    "openaccess_miesiac_udostepnienia": (
+                        f"Miesiąc udostępnienia {miesiac} jest nieprawidłowy "
+                        "— dopuszczalne wartości to 1–12."
+                    )
+                }
+            )
+
         rok_max = datetime.date.today().year + OPENACCESS_ROK_MAX_W_PRZOD
         if not OPENACCESS_ROK_MIN <= rok <= rok_max:
             raise ValidationError(

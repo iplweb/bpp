@@ -43,7 +43,7 @@ from bpp.models.abstract import (
     ModelZKonferencja,
     ModelZLiczbaCytowan,
     ModelZOpenAccess,
-    ModelZOpenAccessRokUdostepnienia,
+    ModelZOpenAccessMiesiacIRokUdostepnienia,
     ModelZPolamiEwaluacjiPBN,
     ModelZPrzeliczaniemDyscyplin,
     ModelZPubmedID,
@@ -172,7 +172,7 @@ class Wydawnictwo_Zwarte_Baza(
 
 
 class ModelZOpenAccessWydawnictwoZwarte(
-    ModelZOpenAccess, ModelZOpenAccessRokUdostepnienia
+    ModelZOpenAccess, ModelZOpenAccessMiesiacIRokUdostepnienia
 ):
     openaccess_tryb_dostepu = models.ForeignKey(
         "Tryb_OpenAccess_Wydawnictwo_Zwarte", PROTECT, blank=True, null=True
@@ -399,7 +399,7 @@ class Wydawnictwo_Zwarte(
         DwaTytuly.clean(self)
         ModelZeSzczegolami.clean(self)
         ModelZOplataZaPublikacje.clean(self)
-        ModelZOpenAccessRokUdostepnienia.clean(self)
+        ModelZOpenAccessMiesiacIRokUdostepnienia.clean(self)
 
         if (
             self.wydawnictwo_nadrzedne_w_pbn_id is not None
