@@ -11,7 +11,7 @@
 |---|---|
 | Stan fazy 04 | gałąź `feat/soft-delete-04`, PR do `feat/soft-delete` |
 | Punkt startowy fazy 05 | `feat/soft-delete` (fazy 01–04) |
-| Migracje fazy 04 | `bpp/0501` (flip FK, **state-only**), `bpp/0502` (`Autor` → soft-delete + indeks częściowy) |
+| Migracje fazy 04 | `bpp/0521` (flip FK, **state-only**), `bpp/0522` (`Autor` → soft-delete + indeks częściowy) |
 | Plan fazy 05 | wycofanie z PBN + nagrobki na zewnątrz (OAI-PMH / CERIF / REST) |
 
 Faza 04 domknęła obie warstwy ochrony przed osieroceniem rekordów:
@@ -28,7 +28,7 @@ w kolektorze Django dla kasowania twardego. Miękkie `delete()` to `UPDATE`
 na `deleted_at` i o `PROTECT` się nawet nie dowiaduje.
 
 ⚠️ **Baseline (`baseline-sql/`) jest NIEŚWIEŻY** — stoi na `bpp/0487`, gałąź na
-`bpp/0502`. Zgodnie z CLAUDE.md odświeżenie robi się **raz, przy scalaniu**
+`bpp/0522`. Zgodnie z CLAUDE.md odświeżenie robi się **raz, przy scalaniu**
 całego `feat/soft-delete` do `dev`, a nie w równoległych feature-branchach.
 
 ⚠️ **CI NIE URUCHAMIA SIĘ na PR-ach do `feat/soft-delete`** — bez zmian
