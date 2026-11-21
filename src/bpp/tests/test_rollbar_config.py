@@ -6,7 +6,7 @@ from rollbar.lib.transforms.scruburl import ScrubUrlTransform
 from bpp.rollbar_config import collapse_noisy_fingerprints
 
 
-def _docx_payload(host="publikacje.up.lublin.pl"):
+def _docx_payload(host="bpp.example.org"):
     """Payload zbliżony do realnego DocxConversionError (chained exc)."""
     return {
         "data": {
@@ -37,7 +37,7 @@ def test_docx_error_dostaje_staly_fingerprint_per_host():
     result = collapse_noisy_fingerprints(_docx_payload())
 
     assert (
-        result["data"]["fingerprint"] == "DocxConversionError:publikacje.up.lublin.pl"
+        result["data"]["fingerprint"] == "DocxConversionError:bpp.example.org"
     )
 
 
@@ -141,7 +141,7 @@ def test_widok_nie_trafia_do_fingerprintu_pozostalych_wyjatkow():
     result = collapse_noisy_fingerprints(payload)
 
     assert (
-        result["data"]["fingerprint"] == "DocxConversionError:publikacje.up.lublin.pl"
+        result["data"]["fingerprint"] == "DocxConversionError:bpp.example.org"
     )
 
 

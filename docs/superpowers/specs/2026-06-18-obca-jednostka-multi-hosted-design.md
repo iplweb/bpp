@@ -25,7 +25,7 @@ Faktyczna przyczyna jest w `institution_import.py:196`:
 
 ```python
 obca_jednostka, created = Jednostka.objects.get_or_create(
-    nazwa="Obca jednostka",                       # lookup TYLKO po nazwie
+    nazwa="Obca jednostka",  # lookup TYLKO po nazwie
     defaults={"skrot": "O", "uczelnia": uczelnia, "skupia_pracownikow": False},
 )
 ```
@@ -59,7 +59,7 @@ domyślnego wydziału dostałaby `IntegrityError` na unikalnej nazwie/skrócie.
 ## Cel
 
 1. Obca jednostka ma być **per-uczelnia**, z nazwą `"Obca jednostka " +
-   uczelnia.skrot` (np. `"Obca jednostka UML"`, `"Obca jednostka UAFM"`).
+   uczelnia.skrot` (np. `"Obca jednostka UML"`, `"Obca jednostka UCZELNIA"`).
 2. Provisioning (utworzenie + podpięcie do wydziału + ustawienie FK) ma być
    **idempotentny** i dostępny jako osobne polecenie `create_obca_jednostka`
    działające dla **wszystkich** uczelni.

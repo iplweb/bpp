@@ -1,34 +1,43 @@
 # Edycja danych autorów
 
-## Pole *Aktualne miejsce pracy* dla autora
+## Pole *Aktualna jednostka* dla autora {#pole-aktualne-miejsce-pracy-dla-autora}
 
-Wartość pola *Aktualne miejsce pracy* która widnieje w module redagowania
-dla Autora jest wartością tylko-do-odczytu a jej wartość obliczana jest na podstawie
-wpisów powiązań autora z jednostką:
+Pole *Aktualna jednostka* w formularzu autora (**Redagowanie ➡ Wprowadzanie
+danych ➡ Autorzy**) jest tylko do odczytu — nie wpisuje się go ręcznie.
+System wylicza je z miejsc pracy autora, wpisanych w tabeli
+**„Powiązania autor-jednostka”** niżej w tym samym formularzu:
 
-![Zrzut ekranu przedstawiający kilka powiązań autora z jednostkami.](../images/admin/autor_jednostka/autor_jednostka.png)
+![Pole „Aktualna jednostka” w formularzu autora](../images/redaktor/autorzy/01-aktualna-jednostka.png)
+
+![Tabela „Powiązania autor-jednostka”: zakończone miejsce pracy i podstawowe miejsce pracy](../images/redaktor/autorzy/02-miejsca-pracy.png)
+
+W przykładzie powyżej autorka zakończyła pracę w pierwszej jednostce, a z
+dwóch bieżących miejsc pracy jedno ma ustawione *Podstawowe miejsce pracy*
+na „Tak” — to ono staje się aktualną jednostką.
 
 !!! note
 
-    Pole *Aktualne miejsce pracy* używane jest w raportach oraz do
+    Pole *Aktualna jednostka* używane jest w raportach oraz do
     podpowiadania jednostki przy dopisywaniu autora do rekordu publikacji.
 
 
-Algorytm ustalania aktualnego miejsca pracy działa w sposób następujący:
+Algorytm ustalania aktualnej jednostki działa w sposób następujący:
 
-1.  jeżeli któreś z miejsc pracy ma atrybut *Podstawowe miejce pracy* ustawiony na "TAK" i data
-    zakończenia pracy jest pusta lub większa od obecnej, to takie miejsce będzie wybrane jako aktualne
-2.  jeżeli autor nie ma żadnego miejsca pracy ustawionego jako podstawowe, to system jako aktualne
-    miejsce pracy wybierze to, w którym autor nie zakończył pracy (data zakończenia pracy jest pusta
-    lub większa od obecnej) i gdzie autor rozpoczął pracę najpóźniej (data rozpoczęcia pracy jest
-    najwyższa)
-3.  jeżeli autor ma kilka miejsc pracy i w żadnym nie ma ustawionego atrybutu *Podstawowe miejsce pracy*
-    oraz daty rozpoczęcia i zakończenia pracy są puste, system jako *Aktualne miejsce pracy* wybierze
-    to powiązanie, które do systemu BPP zostało dopisane najpóźniej (jego numer ID jest największy)
+1.  pod uwagę brane są tylko miejsca pracy, w których autor nie zakończył
+    pracy (data zakończenia pracy jest pusta lub późniejsza niż dzisiejsza);
+2.  pierwszeństwo ma miejsce pracy z atrybutem *Podstawowe miejsce pracy*
+    ustawionym na „Tak”;
+3.  w drugiej kolejności jednostka, która skupia pracowników uczelni, wygrywa
+    z jednostką obcą (patrz [Obca jednostka](uczelnia.md#obca-jednostka));
+4.  dalej decyduje najpóźniejsza data rozpoczęcia pracy, a potem najpóźniejsza
+    data zakończenia pracy;
+5.  gdy i to nie rozstrzyga (np. daty rozpoczęcia i zakończenia pracy są
+    puste), system wybierze to powiązanie, które do systemu BPP zostało
+    dopisane najpóźniej (jego numer ID jest największy).
 
 !!! warning
 
-    dany autor może mieć tylko jedno powiązanie oznaczone jako *Podstawowe miejsce pracy*.
+    Dany autor może mieć tylko jedno powiązanie oznaczone jako *Podstawowe miejsce pracy*.
 
 ## Profil autora (zdjęcie, biogram, linki do profili)
 

@@ -1,13 +1,13 @@
 {% extends "base.html" %}{% load render_table from django_tables2 %}{% load static %}
 
 {% block extratitle %}
-    Import pracowników i jednostek - szczegóły {{ parent_object.plik_xls.name }}
+    Import pracowników i jednostek - szczegóły {{ parent_object.nazwa_pliku }}
 {% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
     <li><a href="{% url "import_pracownikow:index" %}">import pracowników i jednostek</a></li>
-    <li class="current">import {{ parent_object.plik_xls.name }}</li>
+    <li class="current">import {{ parent_object.nazwa_pliku }}</li>
 {% endblock %}
 
 
@@ -15,7 +15,7 @@
     <p>
         <a href="{% url "import_pracownikow:przeglad" pk=parent_object.pk %}">&larr; wróć do przeglądu</a>
     </p>
-    <h1>Import danych {{ parent_object.plik_xls.name }}</h1>
+    <h1>Import danych {{ parent_object.nazwa_pliku }}</h1>
 
     <div class="button-group">
         {# Pobranie oryginalnego, wgranego pliku XLSX (chroniony). #}

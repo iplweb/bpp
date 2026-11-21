@@ -5,7 +5,8 @@
 from autoslug import AutoSlugField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.db import models
-from django.db.models import CASCADE, SET_NULL
+from django.db.models import CASCADE, SET_NULL, F, Value
+from django.db.models.functions import Replace, Upper
 from django.urls.base import reverse
 
 from bpp import const
@@ -130,6 +131,18 @@ class ZrodloManager(FulltextSearchMixin, models.Manager):
     pass
 
 
+def issn_norm_expr(field: str):
+    """SQL expression normalising an ISSN field: no hyphens/spaces, upper case.
+
+    Shared by the functional indexes on ``Zrodlo`` and the ISSN matcher in
+    ``import_common.core.zrodlo`` -- PostgreSQL uses an expression index only
+    when the query expression is identical, so keep a single definition.
+    """
+    return Upper(
+        Replace(Replace(F(field), Value("-"), Value("")), Value(" "), Value(""))
+    )
+
+
 class Zrodlo(LinkDoPBNMixin, ModelZAdnotacjami, ModelZISSN):
     url_do_pbn = const.LINK_PBN_DO_ZRODLA
 
@@ -215,6 +228,11 @@ class Zrodlo(LinkDoPBNMixin, ModelZAdnotacjami, ModelZISSN):
         verbose_name_plural = "źródła"
         ordering = ["nazwa"]
         app_label = "bpp"
+        # ISSN matching ignoring hyphens/spaces/case (FD#451).
+        indexes = [
+            models.Index(issn_norm_expr("issn"), name="zrodlo_issn_norm"),
+            models.Index(issn_norm_expr("e_issn"), name="zrodlo_e_issn_norm"),
+        ]
 
     def prace_w_latach(self):
         from bpp.models import Wydawnictwo_Ciagle

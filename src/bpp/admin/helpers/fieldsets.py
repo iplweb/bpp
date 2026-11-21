@@ -38,9 +38,26 @@ OPENACCESS_FIELDSET = (
             "openaccess_wersja_tekstu",
             "openaccess_czas_publikacji",
             "openaccess_ilosc_miesiecy",
+            "openaccess_data_opublikowania",
         ),
     },
 )
+
+# Freshdesk #281: the model's verbose_name ("data publikacji") is misleading --
+# PBN sends this date as the open access release date ("data udostępnienia").
+# Relabel it in the admin forms instead of altering the model (no migration).
+OPENACCESS_LABELS = {
+    "openaccess_data_opublikowania": "OpenAccess: data udostępnienia",
+}
+
+OPENACCESS_HELP_TEXTS = {
+    "openaccess_data_opublikowania": (
+        "Data udostępnienia pracy w otwartym dostępie, wysyłana do PBN jako "
+        "data udostępnienia OpenAccess. Gdy puste, eksport użyje daty "
+        "dostępu do strony WWW (o ile ją podano); w przeciwnym razie "
+        "data udostępnienia nie zostanie wysłana."
+    ),
+}
 
 DWA_TYTULY = (
     "tytul_oryginalny",

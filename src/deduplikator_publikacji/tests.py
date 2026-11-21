@@ -1,6 +1,10 @@
+import re
+from datetime import timedelta
+
 import pytest
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
+from django.utils import timezone
 from model_bakery import baker
 
 from deduplikator_publikacji.models import (
@@ -123,3 +127,104 @@ def test_scan_status_view_not_found(admin_client):
     )
     response = admin_client.get(url)
     assert response.status_code == 404
+
+
+def _candidate(scan_run, rekord, score):
+    ct = ContentType.objects.get_for_model(rekord)
+    return PublicationDuplicateCandidate.objects.create(
+        scan_run=scan_run,
+        original_content_type=ct,
+        original_object_id=rekord.pk,
+        duplicate_content_type=ct,
+        duplicate_object_id=rekord.pk,
+        similarity_score=score,
+        match_reasons=["tytuł"],
+        original_title="Tytuł oryginału",
+        duplicate_title="Tytuł duplikatu",
+        original_type=ct.model,
+        duplicate_type=ct.model,
+    )
+
+
+@pytest.mark.django_db
+def test_duplicate_publications_view_shows_percent_and_type_label(
+    admin_client, wydawnictwo_ciagle
+):
+    """Score 0.92 is shown as "92%"; the type as the model's verbose name."""
+    scan_run = baker.make(
+        PublicationDuplicateScanRun,
+        status=PublicationDuplicateScanRun.Status.COMPLETED,
+        finished_at=timezone.now(),
+    )
+    _candidate(scan_run, wydawnictwo_ciagle, 0.92)
+
+    url = reverse("deduplikator_publikacji:duplicate_publications")
+    content = admin_client.get(url).content.decode()
+
+    assert "92%" in content
+    typy = re.findall(r'pub-type">([^<]*)<', content)
+    assert typy == ["Wydawnictwo ciągłe", "Wydawnictwo ciągłe"]
+
+
+@pytest.mark.django_db
+def test_first_scan_button_has_no_empty_confirm(admin_client):
+    """Without earlier results the start button must not ask confirm("")."""
+    url = reverse("deduplikator_publikacji:duplicate_publications")
+    content = admin_client.get(url).content.decode()
+    assert 'data-confirm=""' not in content
+    assert "Poprzednie wyniki zostaną zastąpione" not in content
+
+
+@pytest.mark.django_db
+def test_new_scan_button_confirms_when_results_exist(admin_client):
+    baker.make(
+        PublicationDuplicateScanRun,
+        status=PublicationDuplicateScanRun.Status.COMPLETED,
+        finished_at=timezone.now(),
+    )
+    url = reverse("deduplikator_publikacji:duplicate_publications")
+    content = admin_client.get(url).content.decode()
+    assert 'data-confirm="Czy na pewno chcesz uruchomić nowe skanowanie?' in content
+
+
+@pytest.mark.django_db
+def test_running_scan_has_no_stale_progress_message(admin_client):
+    """The progress panel is enough - no flash message with 0/0 numbers."""
+    baker.make(
+        PublicationDuplicateScanRun,
+        status=PublicationDuplicateScanRun.Status.RUNNING,
+    )
+    url = reverse("deduplikator_publikacji:duplicate_publications")
+    response = admin_client.get(url)
+    assert "scan-progress-container" in response.content.decode()
+    assert not [str(m) for m in response.context["messages"]]
+
+
+@pytest.mark.django_db
+def test_scan_status_eta_time_is_local(admin_client, settings):
+    """ETA clock time is shown in the local time zone, not UTC."""
+    settings.TIME_ZONE = "Europe/Warsaw"
+    scan_run = baker.make(
+        PublicationDuplicateScanRun,
+        status=PublicationDuplicateScanRun.Status.RUNNING,
+        total_publications_to_scan=100,
+        publications_scanned=50,
+    )
+    PublicationDuplicateScanRun.objects.filter(pk=scan_run.pk).update(
+        started_at=timezone.now() - timedelta(seconds=100)
+    )
+    url = reverse(
+        "deduplikator_publikacji:scan_status", kwargs={"scan_id": scan_run.pk}
+    )
+    data = admin_client.get(url).json()
+
+    expected = timezone.localtime(
+        timezone.now() + timedelta(seconds=data["eta_seconds"])
+    )
+
+    def sekundy(hms):
+        h, m, s = (int(x) for x in hms.split(":"))
+        return h * 3600 + m * 60 + s
+
+    roznica = abs(sekundy(data["eta_time"]) - sekundy(expected.strftime("%H:%M:%S")))
+    assert min(roznica, 86400 - roznica) <= 5

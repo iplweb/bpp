@@ -7,9 +7,9 @@
         {% endif %}
         <li class="current">{{ results.number }} / {{ results.paginator.num_pages }}</li>
         {% if results.has_next %}
-            <li><a href="?model={{ model_key }}&query={{ query|urlencode }}&postac={{ postac }}&page={{ results.next_page_number }}">nastepna &raquo;</a></li>
+            <li><a href="?model={{ model_key }}&query={{ query|urlencode }}&postac={{ postac }}&page={{ results.next_page_number }}">następna &raquo;</a></li>
         {% else %}
-            <li class="disabled">nastepna &raquo;</li>
+            <li class="disabled">następna &raquo;</li>
         {% endif %}
     </ul>
 {% endif %}

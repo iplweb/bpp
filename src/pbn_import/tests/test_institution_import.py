@@ -62,14 +62,14 @@ def test_find_or_create_default_wydzial_creates_with_generated_short_name(uczeln
 
 def test_find_or_create_default_wydzial_create_path_is_uczelnia_unique(db):
     u1 = baker.make(Uczelnia, skrot="UML")
-    u2 = baker.make(Uczelnia, skrot="UAFM")
+    u2 = baker.make(Uczelnia, skrot="UCZELNIA")
 
     w1, c1 = znajdz_lub_utworz_wydzial_domyslny(u1)
     w2, c2 = znajdz_lub_utworz_wydzial_domyslny(u2)
 
     assert c1 is True and c2 is True
     assert w1.nazwa == "Wydział Domyślny UML"
-    assert w2.nazwa == "Wydział Domyślny UAFM"
+    assert w2.nazwa == "Wydział Domyślny UCZELNIA"
     # Globalnie unikalne nazwa/skrot — drugi create nie może wywalić IntegrityError.
     assert w1.skrot != w2.skrot
     assert w1.skrot == "WD-UML"
@@ -101,14 +101,14 @@ def test_find_or_create_default_jednostka_creates_for_uczelnia(uczelnia):
 
 def test_find_or_create_default_jednostka_create_path_is_uczelnia_unique(db):
     u1 = baker.make(Uczelnia, skrot="UML")
-    u2 = baker.make(Uczelnia, skrot="UAFM")
+    u2 = baker.make(Uczelnia, skrot="UCZELNIA")
 
     j1, c1 = znajdz_lub_utworz_jednostke_domyslna(u1)
     j2, c2 = znajdz_lub_utworz_jednostke_domyslna(u2)
 
     assert c1 is True and c2 is True
     assert j1.nazwa == "Jednostka Domyślna UML"
-    assert j2.nazwa == "Jednostka Domyślna UAFM"
+    assert j2.nazwa == "Jednostka Domyślna UCZELNIA"
     # Globalnie unikalne nazwa/skrot — drugi create nie wywala IntegrityError.
     assert j1.skrot != j2.skrot
     assert j1.skrot == "JD-UML"
@@ -195,13 +195,13 @@ def test_obca_jednostka_helper_reuses_legacy_by_prefix(uczelnia):
 
 def test_obca_jednostka_helper_two_uczelnie_no_collision(db):
     u1 = baker.make(Uczelnia, skrot="UML")
-    u2 = baker.make(Uczelnia, skrot="UAFM")
+    u2 = baker.make(Uczelnia, skrot="UCZELNIA")
 
     o1, _ = znajdz_lub_utworz_obca_jednostke(u1)
     o2, _ = znajdz_lub_utworz_obca_jednostke(u2)
 
     assert o1.nazwa == "Obca jednostka UML"
-    assert o2.nazwa == "Obca jednostka UAFM"
+    assert o2.nazwa == "Obca jednostka UCZELNIA"
     assert o1 != o2
 
 

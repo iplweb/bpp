@@ -5,7 +5,7 @@ Status: zaimplementowane
 
 ## Problem
 
-Dla uczelni (np. UAFM, `Uczelnia.skrot == "UAFM"`) należy zlikwidować
+Dla uczelni (np. UCZELNIA, `Uczelnia.skrot == "UCZELNIA"`) należy zlikwidować
 jednostki organizacyjne w wydziałach i zostawić w każdym wydziale jedną
 „jednostkę domyślną". **Założenie biznesowe: likwidowane jednostki są PUSTE**
 (nie ma w nich zatrudnień, publikacji, patentów ani prac doktorskich). Jeżeli
@@ -48,8 +48,8 @@ ginie razem z jednostką i nie blokuje usunięcia.
 Komenda: `src/bpp/management/commands/zaloz_jednostki_domyslne.py`
 
 ```
-uv run python src/manage.py zaloz_jednostki_domyslne UAFM --dry-run
-uv run python src/manage.py zaloz_jednostki_domyslne UAFM
+uv run python src/manage.py zaloz_jednostki_domyslne UCZELNIA --dry-run
+uv run python src/manage.py zaloz_jednostki_domyslne UCZELNIA
 ```
 
 Algorytm (cały w `@transaction.atomic`):

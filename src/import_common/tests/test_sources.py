@@ -174,12 +174,12 @@ def test_xlsxsource_pomija_puste_wiersze(tmp_path):
 
 def test_xlsxsource_liczba_arkuszy_z_danymi_dwa(tmp_path):
     # Dwa arkusze, każdy z rozpoznanym nagłówkiem → 2 arkusze z danymi (baza
-    # reguły „jeden arkusz = jeden import"). Odzwierciedla plik UAFM_x_MWSL.
+    # reguły „jeden arkusz = jeden import"). Odzwierciedla plik UCZELNIA_x_MWSL.
     import openpyxl
 
     wb = openpyxl.Workbook()
     ws0 = wb.active
-    ws0.title = "UAFM"
+    ws0.title = "UCZELNIA"
     ws0.append(["Nazwisko", "Imię", "Stanowisko"])
     ws0.append(["Kowalski", "Jan", "Adiunkt"])
     ws1 = wb.create_sheet("MWSL")

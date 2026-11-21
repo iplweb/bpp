@@ -1,0 +1,30 @@
+{# Punkty za monografię / rozdział / redakcję w bieżącej ewaluacji. #}
+{# Oczekuje: ewaluacja = punkty_ewaluacji_wydawcy(wydawca). #}
+{% with a=ewaluacja.aktualne %}
+<div class="callout punkty-ewaluacji">
+    <div class="punkty-ewaluacji__naglowek">
+        <i class="fi-trophy autor-page__icon--mr-sm"></i>Ewaluacja {{ ewaluacja.od }}–{{ ewaluacja.do }}
+        {% if ewaluacja.w_wykazie %}
+            · {{ a.nazwa }} ({{ a.rok }})
+        {% else %}
+            · wydawca spoza wykazu
+        {% endif %}
+    </div>
+    <p class="punkty-ewaluacji__glowne">
+        Jeden autor:
+        monografia <strong class="punkty-ewaluacji__liczba">{{ a.monografia }} pkt</strong>
+        · rozdział <strong class="punkty-ewaluacji__liczba">{{ a.rozdzial }} pkt</strong>
+        · redakcja monografii <strong class="punkty-ewaluacji__liczba">{{ a.redakcja }} pkt</strong>
+    </p>
+    {% if ewaluacja.w_wykazie %}
+        <ul class="punkty-ewaluacji__lata">
+            {% for wpis in ewaluacja.lata %}
+                <li><span>{{ wpis.rok }}</span> {{ wpis.nazwa }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    <p class="punkty-ewaluacji__przypis">
+        Poziom z wykazu wydawnictw; przy kilku autorach punkty dzielą się wg zasad ewaluacji.
+    </p>
+</div>
+{% endwith %}

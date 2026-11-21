@@ -24,8 +24,9 @@ _FIELDS = ("CLIENT_ID", "CLIENT_SECRET", "ISSUER")
 
 # Domyślne źródła claimów (kolejność = preferencja, pierwszy niepusty wygrywa).
 # E-mail: `mail` (instytucjonalny w realmach LDAP-owych) PRZED `email`
-# (bywa prywatny). Realm UAFM dowiódł, że `email` to adres prywatny, a
-# instytucjonalny siedzi pod `mail` — stąd mail-first jako default. Override:
+# (bywa prywatny). Produkcyjny realm uczelni dowiódł, że `email` to adres
+# prywatny, a instytucjonalny siedzi pod `mail` — stąd mail-first jako default.
+# Override:
 # DJANGO_BPP_OIDC_<SKROT>_EMAIL_CLAIMS / DJANGO_BPP_OIDC_EMAIL_CLAIMS (CSV).
 DEFAULT_EMAIL_CLAIMS = ("mail", "email", "e-mail", "e_mail")
 DEFAULT_USERNAME_CLAIMS = ("preferred_username", "email", "sub")
@@ -91,7 +92,7 @@ def _get_domain_list(environ, field, skrot):
     """Rozwiąż listę domen e-mail (CSV) wg precedencji prefiks-skrót > bare.
 
     Normalizuje wpisy operatora: obcina białe znaki, wiodącą ``@`` (naturalne
-    jest wpisać ``@uafm.edu.pl``) i sprowadza do małych liter — porównanie
+    jest wpisać ``@uczelnia.example.org``) i sprowadza do małych liter — porównanie
     domen jest case-insensitive. Brak/pusto → pusta krotka (bramka wyłączona).
     """
     raw = _get(environ, field, skrot)

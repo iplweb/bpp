@@ -74,7 +74,9 @@ env = environ.Env(
     #
     # Administratorzy
     #
-    ADMINS=(str, "Michał Pasternak <michal.dtz@gmail.com>"),
+    # Placeholder only: set ADMINS in .env. The default is public (e.g. as
+    # adminEmail in /cerif-oai/?verb=Identify), so it must not be a real address.
+    ADMINS=(str, "Administrator BPP <ustaw-email-admina@example.invalid>"),
     #
     #
     # Theme
@@ -693,7 +695,7 @@ BPP_THEMES = [
     ("app-orange", "Pomarańczowy"),
     ("app-vizja", "Bursztynowo-granatowy (VIZJA)"),
     ("app-mwsl", "Pomarańczowo-granatowy (MWSL)"),
-    ("app-uafm", "Czerwono-błękitny (UAFM)"),
+    ("app-uafm", "Czerwono-błękitny"),
 ]
 
 COMPRESS_OFFLINE_CONTEXT = [

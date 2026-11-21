@@ -26,10 +26,10 @@ def test_pomija_autora_z_przypisanym_userem():
     # Autor już zajęty przez inne konto — kolejne konto o tym samym e-mailu
     # NIE może go przejąć (i nie wolno rzucić IntegrityError).
     uczelnia = baker.make("bpp.Uczelnia")
-    autor = _autor_w_uczelni(uczelnia, email="jan@uafm.edu.pl")
+    autor = _autor_w_uczelni(uczelnia, email="jan@uczelnia.example.org")
     baker.make("bpp.BppUser", autor=autor, username="pierwszy")
 
-    drugi = baker.make("bpp.BppUser", username="drugi", email="jan@uafm.edu.pl")
+    drugi = baker.make("bpp.BppUser", username="drugi", email="jan@uczelnia.example.org")
     drugi.accessible_uczelnie.add(uczelnia)
 
     drugi.sprobuj_dopasowac_autora()  # nie może rzucić wyjątku
@@ -41,9 +41,9 @@ def test_pomija_autora_z_przypisanym_userem():
 @pytest.mark.django_db
 def test_dopasowuje_autora_w_uczelni_z_uprawnieniem():
     uczelnia = baker.make("bpp.Uczelnia")
-    autor = _autor_w_uczelni(uczelnia, email="jan@uafm.edu.pl")
+    autor = _autor_w_uczelni(uczelnia, email="jan@uczelnia.example.org")
 
-    user = baker.make("bpp.BppUser", email="jan@uafm.edu.pl")
+    user = baker.make("bpp.BppUser", email="jan@uczelnia.example.org")
     user.accessible_uczelnie.add(uczelnia)
 
     user.sprobuj_dopasowac_autora()
@@ -58,9 +58,9 @@ def test_nie_dopasowuje_autora_z_obcej_uczelni():
     # dopasowania (scope po uczelni).
     uczelnia_a = baker.make("bpp.Uczelnia")
     uczelnia_b = baker.make("bpp.Uczelnia")
-    _autor_w_uczelni(uczelnia_b, email="jan@uafm.edu.pl")
+    _autor_w_uczelni(uczelnia_b, email="jan@uczelnia.example.org")
 
-    user = baker.make("bpp.BppUser", email="jan@uafm.edu.pl")
+    user = baker.make("bpp.BppUser", email="jan@uczelnia.example.org")
     user.accessible_uczelnie.add(uczelnia_a)
 
     user.sprobuj_dopasowac_autora()
@@ -75,10 +75,10 @@ def test_scope_rozroznia_autorow_o_tym_samym_emailu():
     # (bez scope byłby count()==2 i żadnego dopasowania).
     uczelnia_a = baker.make("bpp.Uczelnia")
     uczelnia_b = baker.make("bpp.Uczelnia")
-    autor_a = _autor_w_uczelni(uczelnia_a, email="jan@uafm.edu.pl")
-    _autor_w_uczelni(uczelnia_b, email="jan@uafm.edu.pl")
+    autor_a = _autor_w_uczelni(uczelnia_a, email="jan@uczelnia.example.org")
+    _autor_w_uczelni(uczelnia_b, email="jan@uczelnia.example.org")
 
-    user = baker.make("bpp.BppUser", email="jan@uafm.edu.pl")
+    user = baker.make("bpp.BppUser", email="jan@uczelnia.example.org")
     user.accessible_uczelnie.add(uczelnia_a)
 
     user.sprobuj_dopasowac_autora()
@@ -91,9 +91,9 @@ def test_scope_rozroznia_autorow_o_tym_samym_emailu():
 def test_bez_accessible_uczelnie_dopasowuje_globalnie():
     # Kompatybilność wsteczna: puste accessible_uczelnie = bez ograniczenia.
     uczelnia = baker.make("bpp.Uczelnia")
-    autor = _autor_w_uczelni(uczelnia, email="jan@uafm.edu.pl")
+    autor = _autor_w_uczelni(uczelnia, email="jan@uczelnia.example.org")
 
-    user = baker.make("bpp.BppUser", email="jan@uafm.edu.pl")
+    user = baker.make("bpp.BppUser", email="jan@uczelnia.example.org")
 
     user.sprobuj_dopasowac_autora()
 
@@ -105,13 +105,13 @@ def test_bez_accessible_uczelnie_dopasowuje_globalnie():
 def test_dopasowanie_po_imieniu_nazwisku_scope():
     # Brak dopasowania po e-mailu → fallback po imieniu+nazwisku, też scope.
     uczelnia = baker.make("bpp.Uczelnia")
-    autor = _autor_w_uczelni(uczelnia, imiona="Przemysław", nazwisko="Kowalczewski")
+    autor = _autor_w_uczelni(uczelnia, imiona="Przemysław", nazwisko="Nowak")
 
     user = baker.make(
         "bpp.BppUser",
         email="",
         first_name="Przemysław",
-        last_name="Kowalczewski",
+        last_name="Nowak",
     )
     user.accessible_uczelnie.add(uczelnia)
 
@@ -125,7 +125,7 @@ def test_dopasowanie_po_imieniu_nazwisku_scope():
 def test_po_imieniu_nazwisku_pomija_zajetego():
     # Fallback po nazwisku też respektuje guard user__isnull=True.
     uczelnia = baker.make("bpp.Uczelnia")
-    autor = _autor_w_uczelni(uczelnia, imiona="Przemysław", nazwisko="Kowalczewski")
+    autor = _autor_w_uczelni(uczelnia, imiona="Przemysław", nazwisko="Nowak")
     baker.make("bpp.BppUser", autor=autor, username="pierwszy")
 
     user = baker.make(
@@ -133,7 +133,7 @@ def test_po_imieniu_nazwisku_pomija_zajetego():
         username="drugi",
         email="",
         first_name="Przemysław",
-        last_name="Kowalczewski",
+        last_name="Nowak",
     )
     user.accessible_uczelnie.add(uczelnia)
 

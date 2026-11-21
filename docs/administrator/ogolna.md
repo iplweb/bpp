@@ -1,58 +1,66 @@
 # Instrukcja dla administratora
 
+Co pokazuje strona startowa modułu redagowania („Panel Sterowania”) i jakie dane o kliknięciach w menu oraz logowaniach przy tym zapisuje, opisuje strona [Pulpit administratora](panel-administracyjny.md).
+
 ## Konfiguracja sposobu prezentacji danych dla użytkowników niezalogowanych
 
 ### Ustawienia globalne - rekord uczelni
 
 - po zainstalowaniu systemu, gdy baza danych jest pusta, potrzebujesz
-  utworzyć obiekt "Uczelnia" za pomocą funkcji Redagowanie➡Struktura➡Uczelnia,
-- za pomocą tejże opcji możesz ustawić logo uczelni oraz ikonę favicon (czyli
-  zmniejszoną ikonę strony wyświetlającą się w pasku adresu przeglądarki oraz
-  na urządzeniach przenośnych),
-- za pomocą tej opcji ustawić możesz domyślą wartość pola "afiliuje" dla rekordów
-  wiążących rekordy prac (wydawnictwo ciągłe, zwarte i patent) z autorami
+  utworzyć obiekt „Uczelnia” za pomocą funkcji Redagowanie ➡ Struktura ➡ Uczelnia
+  (jak do niego dojść — patrz [Edycja danych uczelni](../redaktor/uczelnia.md)),
+- w tym rekordzie ustawisz ikonę favicon (pole „Ikona ulubionych (favicon)”,
+  czyli zmniejszoną ikonę strony wyświetlaną w pasku adresu przeglądarki oraz
+  na urządzeniach przenośnych), a w sekcji „Strona wizualna” — logo uczelni
+  („Logo na stronę WWW”, „Logo wektorowe (SVG)”),
+- w sekcji „Opcje edycji” ustawisz domyślną wartość pola „Afiliuje” dla
+  powiązań autorów z pracami (wydawnictwo ciągłe, zwarte, patent).
 
-#### Kolejnośc i zakres wyświetlanych wydziałów
+Sposoby logowania (konta BPP, LDAP/Active Directory, Keycloak, Microsoft,
+ORCID) i ich konfigurację opisuje strona [Metody logowania](metody-logowania.md).
 
-- aby ustalić kolejność i zakres wyświetlanych wydziałów uczelni, potrzebujesz
-  przejrzeć obiekty "Wydział" znajdujące się poniżej formularza dla rekordu
-  Uczelni. Skorzystaj z funkcji Redagowanie➡Struktura➡Uczelnie. Wydziały mogą
-  być wyświetlane lub nie, możesz za pomocą tej funkcji ustawić je w określonej
-  kolejności.
+#### Kolejność i zakres wyświetlanych wydziałów
 
-    !!! note
-
-        wydziały w module interfejsu uzytkownika niezalogowanego nie są wyświelane
-        alfabetycznie a zgodnie z ustaloną kolejnością.
-
-
-- aby obejrzeć szczegóły wydziału skorzystaj z opcji
-  Redagowanie➡Struktura➡Wydział
-
+- wydziały to jednostki najwyższego poziomu w strukturze uczelni. Ich listę
+  otworzysz funkcją Redagowanie ➡ Struktura ➡ Wydziały; szczegóły wydziału
+  zobaczysz, klikając jego nazwę,
+- wydział (jak każda jednostka) może być wyświetlany lub nie — decyduje o tym
+  pole „Widoczna” w formularzu jednostki,
+- kolejność wydziałów i jednostek ustala opcja „Sortuj jednostki
+  alfabetycznie” w sekcji „Strona wizualna” rekordu uczelni. Gdy jest
+  odznaczona, obowiązuje kolejność ustalona ręcznie — jednostki na liście
+  Redagowanie ➡ Struktura ➡ Jednostki przestawia się, przeciągając je
+  myszą,
 - pozostałe części serwisu dla użytkowników niezalogowanych wyświetlają
   dane w formacie kolumnowym, posortowane alfabetycznie.
 
 #### Ukrywanie autorów na stronach jednostek
 
-Aby ukryć informacje na temat autora na stronie jednostki, należy skorzystać
-z opcji "Pokazuj na stronach jednostek". W przypadku doktorantów lub autorów
-którzy nie są pracownikami danej jednostki należy je odznaczyć.
+Aby ukryć autora na liście autorów na stronie jednostki (np. doktoranta albo
+osobę, która nie jest pracownikiem danej jednostki):
 
-Po wybraniu dowolnego autora w module Redagowanie➡Wprowadzanie danych➡Autorzy
-odznacz to pole i zapisz rekord, aby nie wyświetlać autora na stronie jednostki.
+1. otwórz autora: Redagowanie ➡ Wprowadzanie danych ➡ Autorzy, wyszukaj go
+   i kliknij,
+2. w sekcji **„Widoczność”** odznacz pole **„Pokazuj na stronie jednostki”**,
+3. zapisz rekord.
 
-![image](../images/admin/pokazuj_na_stronach_jednostek.png)
+![Sekcja „Widoczność” w formularzu autora z zaznaczonym polem „Pokazuj na stronie jednostki”](../images/administrator/ogolna/01-pokazuj-na-stronie-jednostki.png)
+
+W tej samej sekcji ukryjesz autora także w rankingu, w indeksie autorów,
+w wyszukiwaniu i w API, a nawet całą jego stronę.
 
 #### Ukrywanie lub wyświetlanie raportów na stronie głównej
 
 Celem konfiguracji sposobu wyświetlania strony głównej jak i innych elementów
-serwisu, skorzystaj z opcji Redagowanie➡Struktura➡Uczelnie, a następnie w sekcji
-"Strona wizualna" wyedytuj ustawienia dotyczące pokazywania różnych opcji
-(rankingi, raporty, opcje rekordu). Niektóre ustawienia umożliwiają wyświetlanie
-lub chowanie danego elementu, niektóre umożliwiają wyświetlenie danego elementu
-tylko dla użytkowników zalogowanych.
+serwisu, skorzystaj z opcji Redagowanie ➡ Struktura ➡ Uczelnia, a następnie w sekcji
+„Strona wizualna” wyedytuj ustawienia dotyczące pokazywania różnych opcji
+(ranking autorów, raporty slotów, status korekty i tabela slotów na stronie
+rekordu, liczba cytowań, opcja „Zgłoś nową publikację”). Część ustawień to
+pola wyboru „pokazuj / nie pokazuj”, a część pozwala wybrać, komu dany
+element jest widoczny: **zawsze**, **tylko dla zalogowanych**, **tylko dla
+zespołu** albo **nigdy**.
 
-![image](../images/admin/uczelnia_strona_wizualna.png)
+![Sekcja „Strona wizualna” rekordu uczelni: ustawienia widoczności elementów serwisu](../images/administrator/ogolna/02-strona-wizualna.png)
 
 #### Ukrywanie lub wyświetlanie formularzy wyszukiwania
 
@@ -63,12 +71,12 @@ określenia, czy chcesz, aby ten formularz widoczny był również dla innych
 osób.
 
 Jeżeli chcesz później schować lub pokazać takie formularze, skorzystaj z opcji
-Redagowanie➡Administracja➡Formularze wyszukiwania. Kliknij nazwę takiego
-formularza, następnie zaznacz lub odznacz opcję "Publiczny" i zapisz rekord
+Redagowanie ➡ Administracja ➡ Formularze wyszukiwania. Kliknij nazwę takiego
+formularza, następnie zaznacz lub odznacz opcję „Publiczny” i zapisz rekord.
 
 #### Układ podstrony autora (profil autora) {#układ-podstrony-autora-profil-autora}
 
-W rekordzie uczelni (Redagowanie➡Struktura➡Uczelnia, edycja rekordu) znajduje
+W rekordzie uczelni (Redagowanie ➡ Struktura ➡ Uczelnia, edycja rekordu) znajduje
 się zwijana sekcja **„Profil autora (podstrona)"**. Zawiera ona **kafelkowy
 edytor układu** publicznych podstron autorów (patrz
 [opis strony autora w instrukcji użytkownika](../uzytkownik/przegladanie-i-wyszukiwanie.md#strona-autora)).
@@ -79,14 +87,18 @@ Podstrona autora to ciąg **pasów**: sekcja na całą szerokość albo dwie
 sekcje obok siebie. Edytor to jedna lista kafelków w kolejności, w jakiej
 sekcje pojawią się na stronie:
 
-- **przeciągnij** kafelek uchwytem ⠿ (ang. *drag and drop*), aby zmienić
-  kolejność,
-- przy każdym kafelku wybierz **szerokość**: „½” (pół) albo „cała
-  szerokość” — **dwie kolejne sekcje „½” stają obok siebie**, a sekcja „cała
-  szerokość” zajmuje własny pas,
-- **odznacz checkbox**, aby ukryć sekcję,
-- dla sekcji listowych ustaw **limit** liczby pozycji (5, 10, 20, 30 lub 50;
-  domyślnie listy prac mają 5 pozycji, współautorzy — 10).
+1. **przeciągnij** kafelek uchwytem ⠿ (ang. *drag and drop*), aby zmienić
+   kolejność,
+2. **odznacz pole wyboru** przy nazwie sekcji, aby ją ukryć,
+3. przy każdym kafelku wybierz **szerokość**: „½ — obok sąsiada” albo
+   „cała szerokość” — **dwie kolejne sekcje „½” stają obok siebie**, a sekcja
+   „cała szerokość” zajmuje własny pas,
+4. dla sekcji listowych ustaw **limit** liczby pozycji (5, 10, 20, 30 lub 50;
+   domyślnie listy prac mają 5 pozycji, współautorzy — 10).
+
+Na koniec zapisz rekord uczelni.
+
+![Kafelkowy edytor układu podstrony autora w sekcji „Profil autora (podstrona)”](../images/administrator/ogolna/03-profil-autora-kafelki.png)
 
 Strona sama dba o to, by nie powstawały puste miejsca:
 
@@ -131,14 +143,10 @@ i wyróżnione publikacje.
     uczelnią ta uwaga nie ma znaczenia.
 
 W tej samej sekcji ustawisz **etykietę linku do profilu w portalu uczelni**
-(np. „PPM UML"). Pokazuje się ona przy linku z pola „Adres profilu w portalu
+(pole „Etykieta linku do profilu w portalu uczelni”, np. nazwa portalu
+pracowników Twojej uczelni). Pokazuje się ona przy linku z pola „Adres profilu w portalu
 uczelni" w rekordzie autora; gdy jest pusta, link opisany jest jako „Profil
 w portalu uczelni".
-
-!!! note "Zrzut ekranu"
-    W tym miejscu można w przyszłości umieścić zrzut ekranu kafelkowego
-    edytora układu podstrony autora.
-
 ## Sposób kalkulacji dyscyplin
 
 1.  Dyscyplina i subdyscyplina naukowa przypisana autorowi na dany rok zawiera się w rekordzie `Autor_Dyscyplina`.
@@ -233,30 +241,33 @@ potrzeby procedur liczących, raportujących, eksportujących dane itp.
 
 ## Konfiguracja rodzaju i kolejności wyświetlanych kolumn w module redagowania
 
-System umożliwia zmianę rodzaju i ilości wyświetlanych kolumn w module redagowania. W tym celu
-użytkownik posiadający uprawnienia administratora po zalogowaniu się powinien w module redagowania
-wejść w opcję Administracja -> Kolumny w module redagowania:
+Na listach w module redagowania (np. Wprowadzanie danych ➡ Wydawnictwa ciągłe,
+Wydawnictwa zwarte, Autorzy) można wybrać, które kolumny są widoczne i w jakiej
+kolejności. Służy do tego przycisk **„Kolumny”** w prawym górnym rogu listy:
 
-![image](../images/admin/dynamic_columns/dynamic_columns_1.png)
+![Przycisk „Kolumny” nad listą wydawnictw ciągłych](../images/administrator/ogolna/04-przycisk-kolumny.png)
 
-Następnie wyświetli się nam tabelka. W prawym górnym rogu, za pomocą opcji "Filtruj" wybieramy,
-dla którego modułu chcemy skonfigurować kolumny. Klikamy na przycisk "Filtruj"
+Otworzy się okno „Konfiguruj kolumny”:
 
-![image](../images/admin/dynamic_columns/dynamic_columns_2.png)
+1. Wybierz, czego dotyczy zmiana: **„Mój osobisty układ”** (tylko Twoje
+   konto) albo **„Domyślne globalne”** (układ dla wszystkich użytkowników,
+   którzy nie mają osobistego układu). Wybór układu globalnego widzi tylko
+   superużytkownik — pozostali użytkownicy zawsze zapisują układ osobisty.
+2. Przeciągnij wiersz za uchwyt ⠿ po lewej stronie, aby zmienić kolejność
+   kolumn (ang. *drag and drop*).
+3. Zaznacz lub odznacz pole wyboru, aby pokazać lub ukryć kolumnę.
+4. Kliknij **„Zapisz”**.
 
-I wybieramy interesujący nas moduł:
+![Okno „Konfiguruj kolumny”: wybór układu, uchwyt przeciągania, pola wyboru i przycisk „Zapisz”](../images/administrator/ogolna/05-okno-kolumn.png)
 
-![image](../images/admin/dynamic_columns/dynamic_columns_3.png)
+Gdy masz osobisty układ, przy przycisku „Kolumny” widać gwiazdkę ★.
+Przycisk **„Usuń osobisty układ”** w tym samym oknie przywraca układ
+globalny.
 
-Następnie możemy - za pomocą szarego prostokątu po prawej stronie - zmieniać kolejność kolumn.
-Wystarczy najechac na niego myszą i przeciągnąć (ang. *drag and drop*):
+Zapisane układy (globalne i osobiste) superużytkownik przejrzy w opcji
+Redagowanie ➡ Administracja ➡ Kolumny w module redagowania:
 
-![image](../images/admin/dynamic_columns/dynamic_columns_4.png)
-
-Można też wybrane kolumny podświetlić za pomocą ptaszków (ang. *checkbox*) po lewej stronie i
-na dole tabeli wybrać jedno z działań np włączyć lub wyłączyć grupowo wiele pól na raz.
-
-![image](../images/admin/dynamic_columns/dynamic_columns_5.png)
+![Menu „Administracja” z pozycją „Kolumny w module redagowania”](../images/administrator/ogolna/06-menu-kolumny.png)
 
 !!! note
 

@@ -24,13 +24,13 @@ def test_radon_w_domyslnym_ukladzie():
 
 def test_kontener_renderuje_sie_gdy_autor_ma_orcid(client):
     autor = baker.make(
-        Autor, imiona="Przemysław", nazwisko="Kowalczewski",
-        orcid="0000-0002-0153-4624",
+        Autor, imiona="Przemysław", nazwisko="Nowak",
+        orcid="0000-0002-1825-0097",
     )
     tresc = client.get(autor.get_absolute_url()).content.decode()
     assert "data-radon-osiagniecia" in tresc
-    assert 'data-orcid="0000-0002-0153-4624"' in tresc
-    assert 'data-nazwisko="Kowalczewski"' in tresc
+    assert 'data-orcid="0000-0002-1825-0097"' in tresc
+    assert 'data-nazwisko="Nowak"' in tresc
     assert "informacje pobrane z RAD-on" in tresc
 
 

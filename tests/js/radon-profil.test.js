@@ -21,9 +21,9 @@ beforeEach(() => {
 function makeContainer(dataset = {}) {
     const el = document.createElement("div");
     el.setAttribute("data-radon-osiagniecia", "");
-    el.dataset.orcid = dataset.orcid ?? "0000-0002-0153-4624";
+    el.dataset.orcid = dataset.orcid ?? "0000-0002-1825-0097";
     el.dataset.imie = dataset.imie ?? "Przemysław Jan";
-    el.dataset.nazwisko = dataset.nazwisko ?? "Kowalczewski";
+    el.dataset.nazwisko = dataset.nazwisko ?? "Nowak";
     el.hidden = true;
     const wynik = document.createElement("div");
     wynik.className = "radon-osiagniecia__wynik";
@@ -88,8 +88,8 @@ describe("wireRadonSections", () => {
         });
         expect(seen).toEqual({
             firstName: "Przemysław",
-            lastName: "Kowalczewski",
-            orcid: "0000-0002-0153-4624",
+            lastName: "Nowak",
+            orcid: "0000-0002-1825-0097",
         });
         expect(el.hidden).toBe(false);
     });

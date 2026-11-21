@@ -69,6 +69,7 @@ from bpp.multiseek_registry import (
 )
 from bpp.multiseek_registry.fields.constants import UNION_NONE
 from bpp.permissions import moze_wprowadzac_dane
+from bpp.punkty_ewaluacji import punkty_ewaluacji_wydawcy, punkty_ewaluacji_zrodla
 from bpp.sekcje_zrodla_wydawcy import sekcje_wydawcy, sekcje_zrodla
 from bpp.util import sanitize_multiseek_title
 from bpp.util.uczelnia_scope import (
@@ -953,6 +954,7 @@ class ZrodloView(DetailView):
                 context["wykresy"] = {"wykresy": wykresy}
                 context["szukaj_pola"] = [("zrodlo", self.object.pk)]
                 context["szukaj_tytul"] = str(self.object)
+        context["ewaluacja"] = punkty_ewaluacji_zrodla(self.object)
         # Sekcje „Najczęściej publikujący autorzy” / „Jednostki” + chipy typów.
         context["typy"] = TYPY
         context.update(sekcje_zrodla(self.object, getattr(self, "request", None)))
@@ -1054,6 +1056,7 @@ class WydawcaView(DetailView):
         # Sekcje autorów/jednostek, znaczek poziomu, chipy typów publikacji.
         context["typy"] = TYPY
         context.update(sekcje_wydawcy(wydawca, request))
+        context["ewaluacja"] = punkty_ewaluacji_wydawcy(wydawca)
         return context
 
 

@@ -9,7 +9,7 @@ from oidc_integration.conf import (
     fetch_well_known_endpoints,
 )
 
-ISSUER = "https://auth.uafm.edu.pl/auth/realms/KA"
+ISSUER = "https://auth.uczelnia.example.org/auth/realms/uczelnia"
 
 
 def test_brak_konfiguracji_zwraca_none():
@@ -40,21 +40,21 @@ def test_bare_konfiguracja():
 
 def test_konfiguracja_z_prefiksem_skrotu():
     env = {
-        "DJANGO_BPP_OIDC_UAFM_CLIENT_ID": "abc",
-        "DJANGO_BPP_OIDC_UAFM_CLIENT_SECRET": "sekret",
-        "DJANGO_BPP_OIDC_UAFM_ISSUER": ISSUER,
+        "DJANGO_BPP_OIDC_UCZELNIA_CLIENT_ID": "abc",
+        "DJANGO_BPP_OIDC_UCZELNIA_CLIENT_SECRET": "sekret",
+        "DJANGO_BPP_OIDC_UCZELNIA_ISSUER": ISSUER,
     }
     cfg = discover_oidc_config(env)
     assert cfg is not None
-    assert cfg["skrot"] == "UAFM"
+    assert cfg["skrot"] == "UCZELNIA"
     assert cfg["client_id"] == "abc"
 
 
 def test_prefiks_ma_pierwszenstwo_nad_bare():
     env = {
-        "DJANGO_BPP_OIDC_UAFM_CLIENT_ID": "specyficzny",
-        "DJANGO_BPP_OIDC_UAFM_CLIENT_SECRET": "sekret",
-        "DJANGO_BPP_OIDC_UAFM_ISSUER": ISSUER,
+        "DJANGO_BPP_OIDC_UCZELNIA_CLIENT_ID": "specyficzny",
+        "DJANGO_BPP_OIDC_UCZELNIA_CLIENT_SECRET": "sekret",
+        "DJANGO_BPP_OIDC_UCZELNIA_ISSUER": ISSUER,
         "DJANGO_BPP_OIDC_CLIENT_ID": "generyczny",
     }
     cfg = discover_oidc_config(env)
@@ -65,9 +65,9 @@ def test_dwa_skroty_nie_wykrywaja_jednego():
     # Niejednoznaczność: dwa komplety prefiksowane → skrot None, a wtedy
     # liczą się tylko wartości bare (których tu nie ma) → None.
     env = {
-        "DJANGO_BPP_OIDC_UAFM_CLIENT_ID": "a",
-        "DJANGO_BPP_OIDC_UAFM_CLIENT_SECRET": "s",
-        "DJANGO_BPP_OIDC_UAFM_ISSUER": ISSUER,
+        "DJANGO_BPP_OIDC_UCZELNIA_CLIENT_ID": "a",
+        "DJANGO_BPP_OIDC_UCZELNIA_CLIENT_SECRET": "s",
+        "DJANGO_BPP_OIDC_UCZELNIA_ISSUER": ISSUER,
         "DJANGO_BPP_OIDC_INNA_CLIENT_ID": "b",
         "DJANGO_BPP_OIDC_INNA_CLIENT_SECRET": "s2",
         "DJANGO_BPP_OIDC_INNA_ISSUER": ISSUER,
@@ -119,10 +119,10 @@ def test_email_claims_z_env_csv():
 
 def test_email_claims_prefiks_ma_pierwszenstwo_nad_bare():
     env = {
-        "DJANGO_BPP_OIDC_UAFM_CLIENT_ID": "abc",
-        "DJANGO_BPP_OIDC_UAFM_CLIENT_SECRET": "sekret",
-        "DJANGO_BPP_OIDC_UAFM_ISSUER": ISSUER,
-        "DJANGO_BPP_OIDC_UAFM_EMAIL_CLAIMS": "mail",
+        "DJANGO_BPP_OIDC_UCZELNIA_CLIENT_ID": "abc",
+        "DJANGO_BPP_OIDC_UCZELNIA_CLIENT_SECRET": "sekret",
+        "DJANGO_BPP_OIDC_UCZELNIA_ISSUER": ISSUER,
+        "DJANGO_BPP_OIDC_UCZELNIA_EMAIL_CLAIMS": "mail",
         "DJANGO_BPP_OIDC_EMAIL_CLAIMS": "email",
     }
     cfg = discover_oidc_config(env)
@@ -185,10 +185,10 @@ def test_fetch_well_known_niekompletny_to_none(monkeypatch):
 
 def test_get_bool_prefers_skrot_variant():
     env = {
-        "DJANGO_BPP_OIDC_UAFM_GRACE_BIND": "1",
+        "DJANGO_BPP_OIDC_UCZELNIA_GRACE_BIND": "1",
         "DJANGO_BPP_OIDC_GRACE_BIND": "0",
     }
-    assert _get_bool(env, "GRACE_BIND", "UAFM", default=False) is True
+    assert _get_bool(env, "GRACE_BIND", "UCZELNIA", default=False) is True
 
 
 def test_get_bool_default_when_absent():
@@ -216,29 +216,34 @@ def test_trusted_email_domains_domyslnie_puste():
 def test_trusted_email_domains_z_csv():
     cfg = discover_oidc_config(
         _base_env(
-            DJANGO_BPP_OIDC_TRUSTED_EMAIL_DOMAINS="uafm.edu.pl, student-afm.edu.pl"
+            DJANGO_BPP_OIDC_TRUSTED_EMAIL_DOMAINS="uczelnia.example.org, student.uczelnia.example.org"
         )
     )
-    assert cfg["trusted_email_domains"] == ("uafm.edu.pl", "student-afm.edu.pl")
+    assert cfg["trusted_email_domains"] == (
+        "uczelnia.example.org",
+        "student.uczelnia.example.org",
+    )
 
 
 def test_trusted_email_domains_normalizuje_malpe_i_wielkosc():
-    # Operator równie dobrze wpisze "@UAFM.edu.pl" — ma zadziałać tak samo.
+    # Operator równie dobrze wpisze "@UCZELNIA.example.org" — ma zadziałać tak samo.
     cfg = discover_oidc_config(
-        _base_env(DJANGO_BPP_OIDC_TRUSTED_EMAIL_DOMAINS="@UAFM.edu.pl")
+        _base_env(DJANGO_BPP_OIDC_TRUSTED_EMAIL_DOMAINS="@UCZELNIA.example.org")
     )
-    assert cfg["trusted_email_domains"] == ("uafm.edu.pl",)
+    assert cfg["trusted_email_domains"] == ("uczelnia.example.org",)
 
 
 def test_trusted_email_domains_prefiks_ma_pierwszenstwo():
     env = {
-        "DJANGO_BPP_OIDC_UAFM_CLIENT_ID": "abc",
-        "DJANGO_BPP_OIDC_UAFM_CLIENT_SECRET": "sekret",
-        "DJANGO_BPP_OIDC_UAFM_ISSUER": ISSUER,
-        "DJANGO_BPP_OIDC_UAFM_TRUSTED_EMAIL_DOMAINS": "uafm.edu.pl",
+        "DJANGO_BPP_OIDC_UCZELNIA_CLIENT_ID": "abc",
+        "DJANGO_BPP_OIDC_UCZELNIA_CLIENT_SECRET": "sekret",
+        "DJANGO_BPP_OIDC_UCZELNIA_ISSUER": ISSUER,
+        "DJANGO_BPP_OIDC_UCZELNIA_TRUSTED_EMAIL_DOMAINS": "uczelnia.example.org",
         "DJANGO_BPP_OIDC_TRUSTED_EMAIL_DOMAINS": "inna.edu.pl",
     }
-    assert discover_oidc_config(env)["trusted_email_domains"] == ("uafm.edu.pl",)
+    assert discover_oidc_config(env)["trusted_email_domains"] == (
+        "uczelnia.example.org",
+    )
 
 
 def test_grace_bind_privileged_domyslnie_false():

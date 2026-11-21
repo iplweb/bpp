@@ -131,9 +131,12 @@ class MapowanieForm(forms.Form):
             (k, etykieta) for k, etykieta in POLA_DOCELOWE
         ]
         for h in self.naglowki:
-            self.fields[f"kol__{h}"] = forms.ChoiceField(
+            # „— pomiń —" jest zawsze poprawnym wyborem, więc pole nie jest
+            # „wymagane" (bez gwiazdki); brak wartości oznacza po prostu pomiń.
+            self.fields[f"kol__{h}"] = forms.TypedChoiceField(
                 choices=wybory,
-                required=True,
+                required=False,
+                empty_value=POLE_POMIN,
                 label=h,
                 initial=propozycja.get(h, POLE_POMIN),
             )
