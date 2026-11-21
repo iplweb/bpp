@@ -278,6 +278,19 @@ class Autor(
     ModelZPBN_ID,
     SoftDeleteModel,
 ):
+    """Autor (osoba) w bibliografii.
+
+    Soft-delete (kosz) obejmuje WYŁĄCZNIE autora bez prac — duplikaty,
+    literówki, husk po scaleniu. ``delete()`` odmawia (``ProtectedError``),
+    gdy autor ma jakiekolwiek autorstwo (także w koszu), doktorat,
+    habilitację albo udział w projekcie (``_relacje_chronione_autora``).
+    Dane kadrowe autora (``Autor_Jednostka``, ``Autor_Dyscyplina``,
+    ``Autor_Absencja``, udziały do liczby N) NIE są ruszane — zostają przy
+    autorze w koszu i wracają z nim. Pola kosza nie są wersjonowane przez
+    django-reversion (``bpp/wersjonowanie.py``). Pełna mapa:
+    ``docs/deweloper/soft-delete.md``.
+    """
+
     url_do_pbn = const.LINK_PBN_DO_AUTORA
 
     imiona = models.CharField(max_length=512, db_index=True)

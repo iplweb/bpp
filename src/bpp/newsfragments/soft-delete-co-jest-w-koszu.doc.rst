@@ -1,0 +1,1 @@
+Dokumentacja deweloperska: nowa strona „Soft-delete (kosz)" opisuje, które modele są kasowane miękko, które nie, i co dzieje się z danymi powiązanymi, PBN i historią wersji przy usunięciu i przywróceniu.

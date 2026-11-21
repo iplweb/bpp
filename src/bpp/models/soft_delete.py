@@ -2,6 +2,29 @@
 ustawienie deleted_at/restored_at + managery przepleciające filtr soft-delete
 z naszą podklasą queryset (gate). Guard zależności (PROTECT) dokłada faza 04.
 
+ZAKRES — CO JEST, A CO NIE JEST KASOWANE MIĘKKO (pełna tabela z
+uzasadnieniem, skutkami dla dzieci, PBN i reversion:
+``docs/deweloper/soft-delete.md``):
+
+- TAK (``deleted_at``): pięć modeli publikacji
+  (``BppPublikacjaSoftDeleteMixin``: ``Wydawnictwo_Ciagle``,
+  ``Wydawnictwo_Zwarte``, ``Patent``, ``Praca_Doktorska``,
+  ``Praca_Habilitacyjna``); ``Autor`` — wyłącznie autor BEZ prac (z pracami:
+  ``ProtectedError``); tabele łączące ``Wydawnictwo_Ciagle_Autor``,
+  ``Wydawnictwo_Zwarte_Autor``, ``Patent_Autor``
+  (``BppAutorstwoSoftDeleteMixin`` — OTWARTE PYTANIE, czy mają zostać
+  soft-delete, patrz dokumentacja); niezależnie od tego stosu od dawna
+  ``Element_Repozytorium`` i ``Zgloszenie_Publikacji``.
+- NIE: dzieci publikacji (``*_Streszczenie``, ``*_Zewnetrzna_Baza_Danych``,
+  ``Nagroda``, ``Publikacja_Habilitacyjna``, ``WybranaPublikacjaAutora``) —
+  nie są ruszane, „znikają" razem z rodzicem i wracają z nim; dane kadrowe
+  autora (``Autor_Jednostka``, ``Autor_Dyscyplina``, ``Autor_Absencja``,
+  ``Projekt_Autor``); struktura (``Uczelnia``, ``Wydzial``, ``Jednostka``)
+  i słowniki (``Zrodlo``, ``Wydawca``, ``Konferencja``, …) — kasowanie
+  twarde jak dotąd; tabele cache (``bpp_rekord_mat``, ``bpp_autorzy_mat``,
+  ``Cache_Punktacja_*``) — trigger/receiver usuwa wiersze przy soft-delete
+  i odtwarza je przy restore.
+
 INWARIANT (dot. ``restore()``): żadna ścieżka przywracania w BPP — instancja
 (``obj.restore()``), ``deleted_objects`` ani ``global_objects`` — nie może
 rzucić ``SoftDeleteException`` tylko dlatego, że model powiązany (np.
@@ -334,6 +357,15 @@ def pk_dla_audytu(instance):
 
 class BppAutorstwoSoftDeleteMixin(BppPkPrzedHardDeleteMixin, SoftDeleteModel):
     """SoftDeleteModel + nasze managery dla through-modeli *_Autor.
+
+    Po co kosz na tabeli łączącej: ~89 miejsc (głównie ewaluacja) czyta
+    ``*_Autor.objects`` bezpośrednio, a domyślny menedżer ukrywający kosz
+    sprawia, że autorstwa publikacji w koszu przestają się liczyć bez
+    ręcznych filtrów. Skutek uboczny: usunięcie autora z inline'a w adminie
+    też trafia do kosza (stąd warunkowe ``UniqueConstraint``/
+    ``ExclusionConstraint`` zamiast ``unique_together``). Alternatywa
+    (menedżer filtrujący po ``rekord__deleted_at``, bez własnego kosza) jest
+    opisana jako otwarte pytanie w ``docs/deweloper/soft-delete.md``.
 
     Wpinany w 3 KONKRETNE modele (Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte_Autor, Patent_Autor), NIE w abstrakt
