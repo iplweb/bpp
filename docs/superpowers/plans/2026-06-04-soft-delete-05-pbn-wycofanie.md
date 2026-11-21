@@ -24,6 +24,94 @@
 > Dopóki kasowanie jest rzadkie, luka w OAI-PMH jest teoretyczna; faza 07
 > czyni kasowanie rutynowym i dopiero wtedy zaczyna realnie boleć.
 
+> ✂️ **PODZIAŁ ZAKRESU 2026-08-10 (decyzja właściciela).** Ten plan realizuje
+> **wyłącznie wycofanie z PBN** (Taski 05.0–05.9). **Nagrobki wychodzą do
+> osobnej fazy 05b** i dostają własny cykl brainstorming → spec → plan → PR.
+>
+> Powód: to dwa niezależne podsystemy, które łączy tylko motyw („systemy
+> zewnętrzne dowiadują się, że coś zniknęło"), a nie wspólny kod. Wycofanie
+> z PBN ma gotowy, drobiazgowy plan; nagrobki miały **zero tasków** — sam
+> baner rozszerzenia zakresu z 2026-08-08 nigdy nie doczekał się projektu.
+> Wrzucenie obu w jeden PR dałoby PR-a nie do przejrzenia. Termin nagrobków
+> (przed fazą 07) jest zachowany — nie zwalniamy z nich, tylko rozdzielamy.
+
+---
+
+## ⚠️ REWIZJA 2026-08-10 — DWA BLOKERY, których ten plan nie znał
+
+> Ten plan powstał **2026-06-04**, a jego rewizje (08-06, 08-07) sprawdzały
+> kolejkę i klienta PBN. Żadna nie sprawdziła, **co faza 02 dopisała do
+> `check_if_record_still_exists()`** — a to przesądza o wykonalności Taska
+> 05.3. Oba blokery mają jedną przyczynę: predykat „czy rekord nadal
+> istnieje" nie wie, po co pytamy.
+
+`src/pbn_export_queue/models.py:190` (commit `2e3b38611`, faza 02, PR #741):
+
+```python
+if getattr(obiekt, "deleted_at", None) is not None:
+    return False
+```
+
+Wycofanie oświadczeń zlecamy **wyłącznie dla rekordów, które właśnie trafiły
+do kosza**. Ten guard odrzuca więc dokładnie te wpisy, które faza 05 tworzy.
+
+**Bloker #1 — gałąź WYCOFANIE nigdy się nie wykona.** `send_to_pbn()`
+(`:473`) woła guard **przed** `_zajmij_atomowo()` (`:479`), a Task 05.3 każe
+wstawić rozgałęzienie *po* `_zajmij_atomowo()`. Każdy wpis `WYCOFANIE`
+kończyłby się na `error("Rekord został usunięty nim wysyłka była możliwa.")`
+→ `FINISHED_ERROR`, a `withdraw_from_pbn()` byłby martwym kodem.
+
+**Bloker #2 — sprzątaczka kasuje zlecenia wycofania (CICHY).**
+`kolejka_wyczysc_wpisy_bez_rekordow()` (`tasks.py:105`) iteruje po CAŁEJ
+kolejce i `delete()`-uje wpisy, dla których guard zwraca `False`. Wpis
+`WYCOFANIE` znika z kolejki, oświadczenia zostają w PBN, nie ma po tym
+śladu. Wyścig między beatem sprzątającym a workerem, rozstrzygany losowo.
+Ten jest gorszy od #1, bo #1 zostawia przynajmniej `FINISHED_ERROR`
+z komunikatem.
+
+**ROZSTRZYGNIĘCIE (Opcja A): guard staje się świadomy operacji.**
+Odrzucenie soft-deleted obowiązuje tylko dla `WYSYLKA`:
+
+```python
+if (
+    self.operacja != self.Operacja.WYCOFANIE
+    and getattr(obiekt, "deleted_at", None) is not None
+):
+    return False
+```
+
+Dlaczego tak, a nie „rozgałęzienie na starcie `send_to_pbn()`":
+
+- naprawia **oba** blokery jedną zmianą — sprzątaczka woła tę samą metodę na
+  instancji, więc dziedziczy świadomość operacji **za darmo**; wariant
+  z wczesnym rozgałęzieniem leczy tylko #1 i zostawia #2 cichym,
+- ścieżka `WYSYLKA` nietknięta (default pola to `WYSYLKA`), istniejący
+  `test_check_if_record_still_exists_with_deleted_record`
+  (`test_pbn_queue_status.py:97`) zostaje zielony bez zmian,
+- kolejność wstawki w `send_to_pbn()` **dokładnie jak w oryginalnym Tasku
+  05.3** — wycofanie nadal dziedziczy `_zajmij_atomowo()`, `ilosc_prob`
+  i ochronę przed dwoma workerami,
+- brak duplikacji `_zajmij_atomowo()` i drugiego guardu „rekord zniknął".
+
+**Świadomie zaakceptowana konsekwencja:** wpis `WYCOFANIE` dla rekordu
+skasowanego **twardo** (wiersza nie ma) nadal kończy się `FINISHED_ERROR` —
+bez wiersza nie odczytamy `pbn_uid`. Oświadczenia zostają wtedy w PBN.
+To poprawna „głośna porażka", ale należy ją odnotować w handoffie fazy 06:
+`SoftDeleteLog` i tak ma nieść `pbn_status`, więc to on jest właściwym
+miejscem na przechowanie `pbn_uid` niezależnie od rekordu.
+
+**Odrzucona opcja C:** trzymać `pbn_uid` na samym wpisie kolejki (nowe pole
++ migracja), żeby wycofanie w ogóle nie zależało od rekordu. Przeżyłoby
+twarde kasowanie, ale rozjeżdża się z kontraktem, którego oczekuje faza 06,
+a twarde kasowanie publikacji jest po fazach 02/04 zablokowane guardami.
+
+**Zmiany w tym planie wynikające z rewizji:** Task 05.3 dostaje krok
+„guard świadomy operacji" **przed** krokiem z rozgałęzieniem; dochodzi
+**Task 05.3a** (regresja sprzątaczki). Numery linii w „Stanie zastanym"
+dryfnęły o ~10 w górę względem 2026-08-07 — patrz nagłówek tej sekcji.
+
+---
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. TDD: każdy krok najpierw PRAWDZIWY failing test → komenda + FAIL → PRAWDZIWA implementacja → komenda + PASS → commit.
 
 **Goal:** Rozszerzyć `pbn_export_queue` o operację `WYCOFANIE` (obok dotychczasowej `WYSYLKA`), tak by soft-delete publikacji mógł asynchronicznie wycofać oświadczenia dyscyplin z profilu instytucji PBN przez `client.delete_all_publication_statements(pbn_uid)`, z retry/locking/błędami jak istniejąca ścieżka wysyłki. Dostarczyć publiczne funkcje zakolejkowujące (`zakolejkuj_wycofanie`, `zakolejkuj_wysylke`) wołane potem z fazy 06, oraz zaktualizować `SentData` po udanym wycofaniu (`submitted_successfully=False` + znacznik `withdrawn_at`), bez kasowania wiersza.
@@ -104,9 +192,11 @@
   gdy wiersz trzyma inny worker. ⚠️ **Bloku
   „`wysylke_podjeto`/`ilosc_prob`" wewnątrz `send_to_pbn()` JUŻ NIE MA** —
   nie ma czego „przenosić" (Task 05.3 dawniej tak kazał).
-- **`send_to_pbn()` (`:456`)**, kolejność: `refresh_from_db()` → wczesny zwrot
+- **`send_to_pbn()` (`:466` — plan pisał `:456`)**, kolejność:
+  `refresh_from_db()` → wczesny zwrot
   `FINISHED_OKAY` gdy `wysylke_zakonczono is not None` →
-  `check_if_record_still_exists()` → `error(...)` →
+  **`check_if_record_still_exists()` (`:473` — ⚠️ BLOKER #1, patrz rewizja
+  2026-08-10)** → `error(...)` →
   `if not self._zajmij_atomowo(): return SendStatus.LOCKED_ELSEWHERE` →
   import + `sprobuj_wyslac_do_pbn_celery(user=self.zamowil.get_pbn_user(),
   obj=self.rekord_do_wysylki, force_upload=True, **uczelnia=self.uczelnia**)`
@@ -123,6 +213,20 @@
   **`_handle_pbn_exception` jest wspólną klasyfikacją błędów dla obu
   operacji** — wycofanie ma z niej korzystać, nie budować własnej drabinki
   `except`.
+
+⚠️ **`check_if_record_still_exists()` (`:170`) ma DWÓCH konsumentów, nie
+jednego.** Poza `send_to_pbn()` woła go `kolejka_wyczysc_wpisy_bez_rekordow()`
+(`tasks.py:105`, BLOKER #2) oraz renderer alarmu Rollbara (`tasks.py:301`,
+etykieta `<rekord usunięty>` — po zmianie wpis WYCOFANIE pokaże prawdziwe
+`str(rekord)`, co jest ulepszeniem: widać, czego dotyczy błąd). Każda zmiana
+tego predykatu dotyka wszystkich trzech.
+
+📌 **GFK rozwiązuje rekord z kosza — sprawdzone w źródle Django, nie
+założone.** `GenericForeignKey.__get__` (`contenttypes/fields.py:262`) woła
+`ct.get_object_for_this_type()`, a ta (`contenttypes/models.py:179`) idzie
+przez `_base_manager`, który faza 04 przypięła jako **niefiltrujący**
+(handoff fazy 04, §4). Dlatego `self.rekord_do_wysylki` w gałęzi wycofania
+zwróci soft-skasowaną publikację razem z jej `pbn_uid_id`.
 
 `src/pbn_export_queue/tasks.py`:
 - `task_sprobuj_wyslac_do_pbn(pk)` — lock przez `cache.add(LOCK_PREFIX+pk)`,
@@ -483,6 +587,12 @@ Lock/`ilosc_prob`/`task_sprobuj_wyslac_do_pbn` działają niezmienione
           wysylke_zakonczono=None,
       )
 
+      # ⚠️ KLUCZOWE (rewizja 2026-08-10): rekord MUSI być w koszu.
+      # Wycofania zlecamy wyłącznie dla soft-skasowanych publikacji, więc
+      # test bez tego kroku NIE odtwarza blokera #1 — przeszedłby także
+      # przed poprawką guardu i niczego by nie pilnował.
+      wydawnictwo_ciagle.delete()
+
       mock_client = MagicMock()
       with patch.object(
           PBN_Export_Queue, "_pozyskaj_klienta_pbn", return_value=mock_client
@@ -573,10 +683,31 @@ Lock/`ilosc_prob`/`task_sprobuj_wyslac_do_pbn` działają niezmienione
   (`POMINIETO` też kończy wpis sukcesem — prymityw zwraca wtedy komunikat
   „rekord nie ma PBN UID". To gate obronny: `zakolejkuj_wycofanie` takich
   wpisów nie tworzy.)
+- [ ] ⚠️ **Implementacja — guard świadomy operacji (BLOKER #1, rewizja
+  2026-08-10). ZRÓB TO PRZED ROZGAŁĘZIENIEM** — bez tego gałąź niżej jest
+  martwym kodem. W `check_if_record_still_exists()` (`models.py:190`) zawęź
+  warunek odrzucający rekordy z kosza:
+  ```python
+          # Dla WYCOFANIA soft-delete to stan OCZEKIWANY, nie powód
+          # przerwania: wycofujemy oświadczenia z PBN właśnie dlatego, że
+          # operator usunął rekord. Wiersz w bazie nadal jest (kasowanie
+          # miękkie to UPDATE deleted_at), więc pbn_uid da się odczytać —
+          # GenericForeignKey idzie przez _base_manager, który NIE filtruje.
+          #
+          # Dla WYSYŁKI przesłanka jest ta sama, a wniosek przeciwny:
+          # rekordu w koszu nie pchamy do PBN. Stąd warunek na operacji.
+          if (
+              self.operacja != self.Operacja.WYCOFANIE
+              and getattr(obiekt, "deleted_at", None) is not None
+          ):
+              return False
+  ```
+  Twardo skasowany rekord (`ObjectDoesNotExist`) nadal daje `False` dla obu
+  operacji — bez wiersza nie ma `pbn_uid`, więc nie ma czego wycofać.
 - [ ] **Implementacja — rozgałęzienie w `send_to_pbn`.** ⚠️ **Niczego nie
   przenosimy.** Wstaw DOKŁADNIE dwie linie między `_zajmij_atomowo()`
-  (`models.py:469-472`) a importem `sprobuj_wyslac_do_pbn_celery`
-  (`models.py:474`):
+  (`models.py:479-482`) a importem `sprobuj_wyslac_do_pbn_celery`
+  (`models.py:484`):
   ```python
           if not self._zajmij_atomowo():
               # Inny worker zdążył zająć ten wiersz (row lock) albo go zakończył.
@@ -598,6 +729,82 @@ Lock/`ilosc_prob`/`task_sprobuj_wyslac_do_pbn` działają niezmienione
   `get_default()`/`first()`).
 - [ ] **Lint:** `uv run ruff check src/pbn_export_queue/models.py && uv run ruff format src/pbn_export_queue/models.py src/pbn_export_queue/tests/test_operacja_wycofanie.py`
 - [ ] **Commit** (jawne ścieżki): `git commit -m "feat(pbn_export_queue): withdraw_from_pbn + gałąź WYCOFANIE w send_to_pbn"`
+
+---
+
+### Task 05.3a — Sprzątaczka nie kasuje zleceń wycofania (BLOKER #2)
+
+> **Dodane 2026-08-10.** Tego tasku nie było w planie, bo plan nie wiedział
+> o drugim konsumencie `check_if_record_still_exists()`.
+
+`kolejka_wyczysc_wpisy_bez_rekordow()` (`tasks.py:105`) iteruje po CAŁEJ
+kolejce i kasuje wpisy, dla których guard zwraca `False`. Przed poprawką
+z Taska 05.3 każdy wpis `WYCOFANIE` (rekord z definicji w koszu) padał jej
+ofiarą: zlecenie znikało, oświadczenia zostawały w PBN, śladu brak.
+
+Poprawka guardu z 05.3 rozbraja to **automatycznie** — sprzątaczka woła tę
+samą metodę na instancji wpisu. Ten task **nie dokłada implementacji**;
+dokłada test, który to przypina, żeby przyszła zmiana guardu nie wskrzesiła
+cichej utraty zleceń.
+
+**Files:**
+- Test path: `src/pbn_export_queue/tests/test_operacja_wycofanie.py`
+
+- [ ] **Test regresyjny — wpis WYCOFANIE przeżywa sprzątaczkę, wpis WYSYLKA
+  nie.** Jeden test, dwie asercje — bo dowodem jest RÓŻNICA między
+  operacjami, nie samo przetrwanie:
+  ```python
+  @pytest.mark.django_db
+  def test_sprzataczka_nie_kasuje_zlecen_wycofania(
+      wydawnictwo_ciagle, wydawnictwo_zwarte, admin_user, uczelnia
+  ):
+      """Regresja blokera #2 (rewizja planu 2026-08-10).
+
+      kolejka_wyczysc_wpisy_bez_rekordow() kasuje wpisy, których rekord
+      „już nie istnieje". Zanim guard poznał operację, soft-delete
+      publikacji sprawiał, że sprzątaczka kasowała WŁAŚNIE UTWORZONE
+      zlecenie wycofania — oświadczenia zostawały w PBN, a wyścig
+      z workerem celery rozstrzygał się losowo.
+      """
+      from pbn_export_queue.tasks import kolejka_wyczysc_wpisy_bez_rekordow
+
+      wycofanie = baker.make(
+          PBN_Export_Queue,
+          rekord_do_wysylki=wydawnictwo_ciagle,
+          zamowil=admin_user,
+          uczelnia=uczelnia,
+          operacja=PBN_Export_Queue.Operacja.WYCOFANIE,
+          wysylke_zakonczono=None,
+      )
+      wysylka = baker.make(
+          PBN_Export_Queue,
+          rekord_do_wysylki=wydawnictwo_zwarte,
+          zamowil=admin_user,
+          uczelnia=uczelnia,
+          operacja=PBN_Export_Queue.Operacja.WYSYLKA,
+          wysylke_zakonczono=None,
+      )
+
+      wydawnictwo_ciagle.delete()
+      wydawnictwo_zwarte.delete()
+
+      kolejka_wyczysc_wpisy_bez_rekordow()
+
+      assert PBN_Export_Queue.objects.filter(pk=wycofanie.pk).exists(), (
+          "sprzątaczka skasowała zlecenie WYCOFANIA — oświadczenia "
+          "zostaną w PBN i nikt się o tym nie dowie"
+      )
+      assert not PBN_Export_Queue.objects.filter(pk=wysylka.pk).exists(), (
+          "wpis WYSYLKA rekordu z kosza ma nadal znikać — to zachowanie "
+          "z fazy 02, którego nie wolno zepsuć przy okazji"
+      )
+  ```
+- [ ] **Komenda + PASS:** `uv run pytest src/pbn_export_queue/tests/test_operacja_wycofanie.py::test_sprzataczka_nie_kasuje_zlecen_wycofania -x` → PASS (poprawka guardu z 05.3 już to załatwia).
+- [ ] **Dowód, że test faktycznie pilnuje (mutacja obowiązkowa):** tymczasowo
+  cofnij warunek `self.operacja != self.Operacja.WYCOFANIE` w
+  `check_if_record_still_exists()` → test MUSI paść na pierwszej asercji.
+  Przywróć. Test, który przechodzi także bez poprawki, nie jest regresją.
+- [ ] **Lint + Commit** (jawne ścieżki): `git commit -m "test(pbn_export_queue): sprzataczka kolejki nie kasuje zlecen wycofania"`
 
 ---
 
@@ -1190,7 +1397,40 @@ Rekord bywa wysyłany do PBN bez kolejki — ta sama ścieżka musi umieć wycof
   `grep -rn --include='*.py' "synchronizuj_publikacje" src/`)
 - Test: `src/pbn_integrator/tests/test_wycofanie_sync.py`
 
-- [ ] **Krok 05.9.1 — ustal realny zbiór ścieżek synchronicznych.** Nie zgaduj;
+> ✅ **USTALONE 2026-08-10 — ta faza NIE dokłada tu kodu. Uzasadnienie niżej.**
+>
+> `synchronizuj_publikacje` (`pbn_integrator/utils/synchronization.py:180`)
+> to **wsadowy uploader**, nie ścieżka kasowania: iteruje publikacje „do
+> synchronizacji" i je wysyła. Wołają go dwie komendy CLI
+> (`pbn_uploader.py:12`, `pbn_integrator.py:392`) — stan bez zmian względem
+> 2026-08-07.
+>
+> Decyzja #16 była trafna co do FAKTU (rekord bywa wysyłany **poza kolejką**),
+> ale wysyłka synchroniczna nie rodzi potrzeby wycofania synchronicznego:
+> **wycofanie wyzwala soft-delete, a ten zawsze idzie przez kolejkę**
+> (receivery fazy 06 → `zakolejkuj_wycofanie`). Żadna ścieżka wsadowa nie
+> kasuje dziś rekordów.
+>
+> Dodatkowo `wydawnictwa_zwarte_do_synchronizacji()` (`:46-47`) filtruje przez
+> `Wydawnictwo_Zwarte.objects`, czyli menedżer, który od fazy 02 **pomija
+> kosz** — rekord soft-skasowany po prostu wypada z wsadu. Nie ma tam czego
+> podpinać.
+>
+> **Co ta faza faktycznie dostarcza dla wejścia synchronicznego:** prymityw
+> `wycofaj_oswiadczenia(publikacja, client, uczelnia=None)` przyjmuje klienta
+> **od wywołującego**, więc jest gotowym kontraktem dla dowolnej przyszłej
+> ścieżki poza kolejką. `src/pbn_api/tests/test_wycofanie.py` woła go
+> dokładnie w ten sposób (własny klient, bez kolejki) — czyli testuje
+> właśnie kształt wejścia synchronicznego. Równoważność obu wejść jest więc
+> zagwarantowana konstrukcyjnie: kolejka nie ma własnej implementacji, tylko
+> cienki wrapper.
+>
+> ⚠️ Gdy kiedyś powstanie realna ścieżka synchronicznego kasowania (np.
+> komenda „wyczyść rekordy z PBN"), MUSI wołać prymityw, a NIE
+> `client.delete_all_publication_statements()` — inaczej `SentData`
+> rozjedzie się między wejściami (niezmiennik §4.2 specu).
+
+- [ ] ~~**Krok 05.9.1 — ustal realny zbiór ścieżek synchronicznych.**~~ Nie zgaduj;
   wypisz wywołujących i rozstrzygnij, które z nich mogą wystąpić w kontekście
   soft-delete (management command? admin action? import?). Stan na 2026-08-07
   (`grep`): `synchronizuj_publikacje` definiowana w
@@ -1223,6 +1463,12 @@ Rekord bywa wysyłany do PBN bez kolejki — ta sama ścieżka musi umieć wycof
   wystąpienia w prymitywie** — żadne w `pbn_export_queue/` ani
   `pbn_integrator/`. (`pbn_client` jest w site-packages, więc się tu nie
   pokaże — to poprawne.)
+
+  ✅ **Wynik 2026-08-10:** w produkcji doszła DOKŁADNIE jedna linia —
+  `src/pbn_api/wycofanie.py:68`. Trzy baseline'owe wystąpienia bez zmian.
+  W `pbn_export_queue/` są 3 trafienia, ale wszystkie w
+  `tests/test_operacja_wycofanie.py` (asercje na `MagicMock`), zero
+  w kodzie produkcyjnym. W `pbn_integrator/` — zero.
 
 ---
 
@@ -1270,6 +1516,11 @@ Rekord bywa wysyłany do PBN bez kolejki — ta sama ścieżka musi umieć wycof
   `submitted_successfully=False`, wiersz NIE skasowany — **na wierszu TEJ
   uczelni**. Restore→WYSYLKA→`mark_as_successful` zeruje `withdrawn_at`.
 
+- **Guard `check_if_record_still_exists()` jest świadomy operacji** —
+  soft-delete blokuje WYSYŁKĘ, ale nie WYCOFANIE. Faza 06, dokładając
+  receivery sygnałów, dostaje to gotowe; nie musi omijać sprzątaczki
+  kolejki ani duplikować `_zajmij_atomowo()`.
+
 ## Otwarte / do zgłoszenia poza tą fazą
 
 - **Spec §4.1 i indeks 00 cytują martwą ścieżkę**
@@ -1279,6 +1530,22 @@ Rekord bywa wysyłany do PBN bez kolejki — ta sama ścieżka musi umieć wycof
   `retry w pbn_api/client/publication_sync.py`, gdzie
   `_delete_statements_with_retry` już nie mieszka. Poprawka specu/indeksu —
   poza zakresem tego planu (inny właściciel plików).
+- **Nagrobki (OAI-PMH / CERIF / REST) wyszły do fazy 05b** — decyzja
+  właściciela 2026-08-10, patrz baner „PODZIAŁ ZAKRESU" na górze. Termin
+  (przed fazą 07) bez zmian. Punkt startowy dla 05b: `const.DELETED_RECORD`
+  = `"no"` w `src/cerif_export/const.py:115` (repozytorium **deklaruje
+  w `Identify`**, że usunięć nie ogłasza — zmiana tej wartości to zmiana
+  kontraktu wobec harvesterów, nie tylko dopisanie atrybutu do nagłówka).
+  Architektura providerów jest gotowa: `ProviderEncji.strona()` stronicuje
+  keysetem po `(COALESCE(ostatnio_zmieniony, EPOKA), pk)`, a soft-delete
+  bumpuje `ostatnio_zmieniony` — brakuje tylko poszerzenia `queryset()`
+  o kosz i flagi „to nagrobek" na obiekcie.
+- **Twarde skasowanie publikacji zostawia oświadczenia w PBN na zawsze.**
+  Wycofanie czyta `pbn_uid` z rekordu, więc bez wiersza nie ma czego wołać
+  (kończy się `FINISHED_ERROR` — głośno, ale bezradnie). Właściwe
+  rozwiązanie to `SoftDeleteLog` fazy 06 niosący `pbn_uid` niezależnie od
+  rekordu. Po fazach 02/04 twarde kasowanie publikacji jest zablokowane
+  guardami, więc dziś to teoretyczne.
 - **Plan 06** nie wymaga zmian sygnatur (przypięliśmy jego wariant), ale jego
   **Task 5 (shim `operacje.py`) jest teraz martwy** i jego uwaga
   „`zamowil`… **To dług fazy 05**" jest już spełniona przez Task 05.4a —
