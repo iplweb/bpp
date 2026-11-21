@@ -7,6 +7,14 @@
                 {% url opts|admin_urlname:'delete' original.pk|admin_urlquote as delete_url %}
                 <li class="grp-float-left"><a href="{% add_preserved_filters delete_url %}"
                                               class="grp-button grp-delete-link">{% trans "Delete" %}</a></li>
+            {% elif usun_zablokowany_powod %}
+                {# FD#539: zamiast znikać, przycisk jest wyszarzony z wyjaśnieniem. #}
+                <li class="grp-float-left">
+                    <span class="grp-button grp-delete-link" aria-disabled="true"
+                          title="{{ usun_zablokowany_powod }}"
+                          style="opacity: .45; cursor: not-allowed;">{% trans "Delete" %}</span>
+                    <small style="display: block; max-width: 28em;">{{ usun_zablokowany_powod }}</small>
+                </li>
             {% endif %}
             {% if show_save %}
                 <li><input type="submit" value="{% trans 'Save' %}" class="grp-button grp-default" name="_save"/></li>

@@ -97,12 +97,42 @@ class OptionalPBNSaveMixin:
         return HttpResponseRedirect(post_url)
 
 
+#: Wyjaśnienie przy wyszarzonym przycisku „Usuń" (FD#539).
+POWOD_BLOKADY_USUWANIA_PBN = (
+    "Rekordu nie można usunąć, bo ma odpowiednik w PBN (PBN UID). PBN nie "
+    "pozwala kasować prac z repozytorium — jeżeli rekord ma zniknąć, usuń go "
+    "najpierw ręcznie po stronie PBN, a potem odepnij PBN UID w tym "
+    "formularzu."
+)
+
+
 class RestrictDeletionWhenPBNUIDSetMixin:
+    """Rekord z PBN UID nie jest usuwalny (ani do kosza, ani trwale).
+
+    FD#539: zamiast znikać, przycisk „Usuń" na formularzu jest WYSZARZONY
+    z wyjaśnieniem (``usun_zablokowany_powod`` w ``admin/submit_line.html``).
+    Docelowo (poza zakresem): kolejka usuwania z PBN — wycofanie rekordu
+    z profilu instytucji — która pozwoli kasować także takie rekordy.
+    """
+
     def has_delete_permission(self, request, obj=None):
         if obj is not None:
             if obj.pbn_uid_id is not None:
                 return False
         return super().has_delete_permission(request, obj)
+
+    def render_change_form(
+        self, request, context, add=False, change=False, form_url="", obj=None
+    ):
+        if (
+            obj is not None
+            and obj.pbn_uid_id is not None
+            and getattr(obj, "deleted_at", None) is None
+        ):
+            context["usun_zablokowany_powod"] = POWOD_BLOKADY_USUWANIA_PBN
+        return super().render_change_form(
+            request, context, add=add, change=change, form_url=form_url, obj=obj
+        )
 
 
 class BlokujRekordPrzedZapisemMixin:
@@ -239,60 +269,49 @@ class PokazSkasowaneFilter(SoftDeleteFilter):
 
 
 class BppSoftDeleteAdminMixin:
-    """Kosz w adminie dla modeli soft-delete (5 publikacji + ``Autor``).
+    """Kosz w adminie dla modeli soft-delete (publikacje, ``Autor``,
+    struktura uczelni, słowniki).
 
     Daje: changelistę nad ``global_objects`` z filtrem kosza, akcje
     „przywróć" / „usuń do kosza (z powodem)" / „usuń trwale"
-    (superuser-only) oraz JEDEN punkt wstrzyknięcia ``request.user``.
+    (superuser-only), stronę potwierdzenia kasowania z informacją o PBN
+    i pytaniem o aktywne zlecenie wysyłki, rekord z kosza tylko do odczytu
+    oraz JEDEN punkt wstrzyknięcia ``request.user``.
+
+    UPRAWNIENIA: kosz = ``delete``; przywracanie = ``delete`` + ``change``;
+    trwałe usuwanie = superuser. Akcje są dokładane do listy tylko, gdy
+    user ma uprawnienie, a każda akcja dodatkowo sprawdza
+    ``has_delete_permission(request, obj)`` PER REKORD (np. FD#539: rekord
+    z PBN UID nie trafi do kosza także akcją masową).
 
     ⚠️ MIEJSCE W LIŚCIE BAZ: **OSTATNIE**, tuż przed terminalnym
-    ``admin.ModelAdmin`` (albo przed konkretną klasą bazową admina, np.
-    ``Wydawnictwo_ZwarteAdmin_Baza``). NIE pierwsze.
-
-    Plan fazy 07 kazał wpinać mixin jako PIERWSZY — to był błąd i wpiąłby
-    lukę wielotenantową. ``get_queryset`` poniżej nie woła ``super()``
-    (nie ma jak: musi podmienić manager bazowy na ``global_objects``),
-    więc postawiony na początku MRO uciąłby cały łańcuch — w tym
-    ``SiteFilteredAdminMixin.get_queryset`` w ``AutorAdmin``, które zawęża
-    widok nie-superusera do jego uczelni (FD#390). Personel uczelni A
-    zobaczyłby i skasował autorów uczelni B.
-
-    Na końcu łańcucha ``get_queryset`` tego mixinu jest jego PODSTAWĄ:
-    zwraca ``global_objects``, a wszystkie mixiny stojące wyżej nakładają
-    na to swoje filtry normalnie. Pozostałe nadpisane metody
-    (``get_actions``, ``get_list_filter``) działają z tej pozycji tak samo,
-    bo tamte implementacje w łańcuchu wołają ``super()`` i tylko DOKŁADAJĄ
-    pozycje. Strażnikiem tej decyzji jest
+    ``admin.ModelAdmin`` (albo przed konkretną klasą bazową admina).
+    ``get_queryset`` poniżej nie woła ``super()`` (musi podmienić menedżer
+    bazowy na ``global_objects``), więc postawiony na początku MRO uciąłby
+    cały łańcuch — w tym ``SiteFilteredAdminMixin.get_queryset``, które
+    zawęża widok nie-superusera do jego uczelni (FD#390). Strażnik:
     ``test_admin.py::test_staff_widzi_tylko_autorow_swojej_uczelni``.
     """
+
+    delete_confirmation_template = "admin/bpp/kosz_delete_confirmation.html"
 
     def get_queryset(self, request):
         """Podstawa łańcucha: ``global_objects`` (żywe + kosz).
 
         Skasowanego rekordu nie da się inaczej ani otworzyć, ani
-        przywrócić — changeform szuka obiektu w tym samym querysecie.
-        Kosz chowa dopiero ``PokazSkasowaneFilter``, więc domyślny widok
-        listy się nie zmienia.
+        przywrócić. Kosz chowa dopiero ``PokazSkasowaneFilter``.
         """
-        qs = self.model.global_objects.get_queryset()
+        tree_manager = getattr(self.model, "_tree_manager", None)
+        if tree_manager is not None:
+            # MPTT (``Jednostka``): niefiltrujący menedżer drzewa — zachowuje
+            # porządek drzewa i ``TreeQuerySet`` wymagany przez admina MPTT.
+            qs = tree_manager._unfiltered().get_queryset()
+        else:
+            qs = self.model.global_objects.get_queryset()
         ordering = self.get_ordering(request)
         if ordering:
             qs = qs.order_by(*ordering)
         return qs
-
-    def get_urls(self):
-        """# SZEW reversion (odłożone).
-
-        Gdy włączymy ``django-reversion``, jego widok „recover deleted"
-        (URL ``recover/``) musi tu zostać UKRYTY albo przekierowany na
-        ``restore()``. Recover wskrzesza rekord POZA przepływem
-        soft-delete: bez zlecenia ``WYSYLKA`` do PBN, bez wpisu
-        ``SoftDeleteLog``, bez przeliczenia punktacji i z pominięciem
-        warunkowego unique na ``Autor.slug`` (husk trzyma slug
-        zarezerwowany). Byłaby to druga, cicha ścieżka przywracania —
-        dokładnie to, czemu ta faza ma zapobiegać.
-        """
-        return super().get_urls()
 
     def get_list_filter(self, request):
         list_filter = list(super().get_list_filter(request) or [])
@@ -300,84 +319,210 @@ class BppSoftDeleteAdminMixin:
             list_filter.insert(0, PokazSkasowaneFilter)
         return list_filter
 
+    # --- rekord w koszu: tylko do odczytu --------------------------------
+
+    def has_change_permission(self, request, obj=None):
+        """Rekordu z kosza nie edytujemy — najpierw „Przywróć".
+
+        Edycja rekordu w koszu ominęłaby przepływ przywracania (punktacja,
+        PBN, ``SoftDeleteLog``), a inline'y dzieci i tak są puste (domyślny
+        menedżer ``*_Autor`` ukrywa wiersze publikacji z kosza).
+        """
+        if obj is not None and getattr(obj, "deleted_at", None) is not None:
+            return False
+        return super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        """Rekord już w koszu nie ma przycisku „Usuń" (opróżnianie kosza to
+        osobna akcja superusera)."""
+        if obj is not None and getattr(obj, "deleted_at", None) is not None:
+            return False
+        return super().has_delete_permission(request, obj)
+
+    def render_change_form(
+        self, request, context, add=False, change=False, form_url="", obj=None
+    ):
+        if obj is not None and getattr(obj, "deleted_at", None) is not None:
+            context["rekord_w_koszu"] = obj
+            self.message_user(
+                request,
+                f"🗑️ Rekord jest w koszu (od {obj.deleted_at:%Y-%m-%d %H:%M}). "
+                "Aby go edytować, przywróć go akcją „♻️ Przywróć zaznaczone” "
+                "na liście z filtrem „Kosz → 🗑️ Tylko skasowane”.",
+                level=messages.WARNING,
+            )
+        return super().render_change_form(
+            request, context, add=add, change=change, form_url=form_url, obj=obj
+        )
+
     # --- jeden punkt wstrzykniecia usera --------------------------------
 
     @contextmanager
     def _soft_delete_user_context(self, request):
-        """JEDEN punkt wstrzyknięcia ``request.user`` dla całego przepływu
-        kosza w adminie: ``delete_model``, ``delete_queryset``,
-        ``usun_do_kosza``, ``przywroc_zaznaczone``, ``usun_trwale_zaznaczone``.
-
-        Deleguje do ``soft_delete_context`` z fazy 06 — thread-locala czytają
-        receivery sygnałów, bo sygnały pakietu ``django-soft-delete`` niosą
-        wyłącznie ``sender`` i ``instance``.
-
-        DLACZEGO KONTEKST, SKORO ``delete()`` PRZYJMUJE ``user=``: bo
-        ``hard_delete()`` go NIE przyjmuje. ``BppPkPrzedHardDeleteMixin.
-        hard_delete()`` przekazuje argumenty prosto do pakietu, który o
-        żadnym userze nie wie — atrybucja trwałego usunięcia ma więc tylko
-        ten jeden kanał. Plan fazy 07 zakładał tu ``hard_delete(user=,
-        reason=)``; taka sygnatura nie istnieje.
-
-        # SZEW reversion: tutaj (i tylko tutaj) dojdzie w przyszłości
-        # ``reversion.set_user(request.user)`` — jeden hook, nie dwa
-        # konkurencyjne. Patrz overview, „Kontrakty z reversion".
-        """
+        """JEDEN punkt wstrzyknięcia ``request.user`` (i powodu) dla całego
+        przepływu kosza w adminie. Deleguje do ``soft_delete_context`` —
+        thread-locala czytają receivery (``SoftDeleteLog``, reversion).
+        ``hard_delete()`` nie przyjmuje ``user=``, więc atrybucja trwałego
+        usunięcia ma tylko ten kanał."""
         with soft_delete_context(
             user=request.user, reason=self._powod_z_requestu(request)
         ):
             yield
 
     def _powod_z_requestu(self, request):
-        """Powód operacji podany na stronie pośredniej (``usun_do_kosza``).
-
-        Puste, gdy ścieżka nie pyta o powód — ``soft_delete_context``
-        traktuje pusty łańcuch jako „nie wnoszę informacji" i dziedziczy
-        powód z kontekstu zewnętrznego, zamiast go zerować.
-        """
         if request.method != "POST":
             return ""
         return request.POST.get("powod", "")
 
+    # --- PBN a kosz -----------------------------------------------------
+
+    def stan_pbn_przed_koszem(self, obj):
+        """Co kosz zrobi z PBN — do strony potwierdzenia (bez efektów
+        ubocznych).
+
+        ``wycofanie``: rekord ma odpowiednik w PBN, więc receiver zleci
+        wycofanie oświadczeń instytucji. ``wysylka``: aktywny wpis wysyłki
+        (wymaga zgody na anulowanie), ``w_toku``: wysyłka już trwa.
+        """
+        from bpp.models.soft_delete import BppPublikacjaSoftDeleteMixin
+        from pbn_export_queue.operacje import aktywna_wysylka
+
+        if not isinstance(obj, BppPublikacjaSoftDeleteMixin):
+            return {"wycofanie": False, "wysylka": None, "w_toku": False}
+        wysylka = aktywna_wysylka(obj)
+        return {
+            "wycofanie": bool(getattr(obj, "pbn_uid_id", None)),
+            "wysylka": wysylka,
+            "w_toku": wysylka is not None and wysylka.wysylke_podjeto is not None,
+        }
+
+    def blokada_kosza(self, obj):
+        """Komunikat, dlaczego rekord NIE może trafić do kosza, albo ``None``."""
+        try:
+            obj.sprawdz_czy_mozna_do_kosza()
+        except ProtectedError as e:
+            return e.args[0]
+        return None
+
     # --- kasowanie = kosz -----------------------------------------------
 
-    def _soft_delete_jeden(self, request, obj, powod):
-        """Soft-delete jednego rekordu; ``False`` gdy guard fazy 04 zablokował.
+    def get_deleted_objects(self, objs, request):
+        """Kosz NIE kaskaduje — strona potwierdzenia (i ``delete_selected``)
+        pokazuje same rekordy, a nie drzewo kolektora Django.
 
-        POKAZUJEMY KOMUNIKAT Z WYJĄTKU, nie własny. ``raise_if_has_protected_
-        children`` zna liczbę i rodzaj powiązań i już je opisuje po polsku;
-        drugi tekst tutaj byłby kopią tej samej reguły, która rozjedzie się
-        z oryginałem przy pierwszej zmianie listy relacji.
-
-        Łapiemy per instancja, żeby jeden zablokowany autor nie przewracał
-        całego zaznaczenia — reszta ma trafić do kosza.
+        Kolektor wyliczałby twardą kaskadę (np. punktację źródła), której
+        nie ma, i żądał uprawnień do kasowania modeli, których nikt nie
+        rusza. Guardy kosza (``sprawdz_czy_mozna_do_kosza``) i tak
+        sprawdzamy osobno.
         """
+        objs = list(objs)
+        return (
+            [str(o) for o in objs],
+            {str(self.model._meta.verbose_name_plural): len(objs)},
+            set(),
+            [],
+        )
+
+    def _soft_delete_jeden(self, request, obj, powod, anuluj_wysylke_pbn=False):
+        """Soft-delete jednego rekordu; ``False`` gdy nie wolno/zablokowano.
+
+        Per instancja: jeden zablokowany rekord nie przewraca całego
+        zaznaczenia. Uprawnienie sprawdzane PER REKORD (FD#539 itd.).
+        """
+        from bpp.models.soft_delete import BppPublikacjaSoftDeleteMixin
+        from pbn_export_queue.operacje import RekordWKolejcePBN
+
+        if not self.has_delete_permission(request, obj):
+            self.message_user(
+                request,
+                f"Pominięto „{obj}” — brak uprawnień do usunięcia tego rekordu"
+                f"{self._dlaczego_nie_mozna_usunac(obj)}.",
+                level=messages.ERROR,
+            )
+            return False
+        kwargs = {"user": request.user, "reason": powod}
+        if isinstance(obj, BppPublikacjaSoftDeleteMixin):
+            kwargs["anuluj_wysylke_pbn"] = anuluj_wysylke_pbn
         try:
-            obj.delete(user=request.user, reason=powod)
+            obj.delete(**kwargs)
             return True
-        except ProtectedError as e:
+        except (ProtectedError, RekordWKolejcePBN) as e:
             self.message_user(request, e.args[0], level=messages.ERROR)
             return False
 
-    def delete_model(self, request, obj):
-        """Przycisk „Usuń" na changeformie przenosi do kosza.
+    def _dlaczego_nie_mozna_usunac(self, obj):
+        if getattr(obj, "pbn_uid_id", None):
+            return " (ma odpowiednik w PBN — patrz przycisk „Usuń” na rekordzie)"
+        return ""
 
-        Bez tego nadpisania rekord i tak trafiłby do kosza (``delete()``
-        modelu jest miękkie), ale BEZ atrybucji — wpis ``SoftDeleteLog``
-        powstawałby z ``user=None``.
+    def _anuluj_wysylke_z_requestu(self, request):
+        return request.method == "POST" and bool(request.POST.get("anuluj_wysylke_pbn"))
+
+    def delete_view(self, request, object_id, extra_context=None):
+        """„Usuń" na rekordzie = kosz, ze stroną potwierdzenia, która:
+
+        - pokazuje, że rekord zostanie WYCOFANY z PBN (gdy ma odpowiednik),
+        - pyta „wycofać z kolejki wysyłki? tak/nie", gdy rekord czeka
+          w kolejce eksportu do PBN (bez zgody rekord NIE trafia do kosza),
+        - odmawia od razu, gdy guard blokuje (autor z pracami, książka
+          z rozdziałami, używany słownik).
         """
+        obj = self.get_object(request, unquote(object_id))
+        if obj is not None and self.has_delete_permission(request, obj):
+            blokada = self.blokada_kosza(obj)
+            stan = self.stan_pbn_przed_koszem(obj)
+            extra_context = {
+                **(extra_context or {}),
+                "kosz_blokada": blokada,
+                "kosz_pbn": stan,
+            }
+            if request.method == "POST" and (
+                blokada
+                or stan["w_toku"]
+                or (stan["wysylka"] and not self._anuluj_wysylke_z_requestu(request))
+            ):
+                # POST bez spełnionych warunków (np. ręcznie spreparowany)
+                # — nie wołamy super(), żeby Django nie zameldowało
+                # „usunięto pomyślnie".
+                return self.render_delete_form(
+                    request,
+                    {
+                        **self.admin_site.each_context(request),
+                        "object": obj,
+                        "opts": self.model._meta,
+                        "object_name": str(self.model._meta.verbose_name),
+                        "title": "Usuń do kosza",
+                        **extra_context,
+                    },
+                )
+        return super().delete_view(request, object_id, extra_context)
+
+    def log_deletion(self, request, obj, object_repr):
+        """Brak wpisu DELETION — rekord nie został usunięty, tylko trafił do
+        kosza; ślad („Przeniesiono do kosza") zapisuje receiver kosza
+        (rewizja reversion albo ``LogEntry`` CHANGE)."""
+        return None
+
+    def log_deletions(self, request, queryset):
+        """Jak ``log_deletion`` (Django >= 5.1 woła wersję zbiorczą)."""
+        return None
+
+    def delete_model(self, request, obj):
+        """Przycisk „Usuń" na changeformie przenosi do kosza (z userem,
+        powodem i decyzją o kolejce PBN ze strony potwierdzenia)."""
         with self._soft_delete_user_context(request):
-            # Guard rzuca ProtectedError takze tutaj — Django zrobi wtedy
-            # redirect z komunikatem bledu, a rekord zostanie.
-            self._soft_delete_jeden(request, obj, self._powod_z_requestu(request))
+            self._soft_delete_jeden(
+                request,
+                obj,
+                self._powod_z_requestu(request),
+                anuluj_wysylke_pbn=self._anuluj_wysylke_z_requestu(request),
+            )
 
     def delete_queryset(self, request, queryset):
-        """Akcja ``delete_selected`` — soft-delete PER INSTANCJA.
+        """Akcja ``delete_selected`` — kosz PER INSTANCJA (nigdy zbiorczo).
 
-        Nigdy zbiorczo: kaskada ``*_Autor`` (faza 02), ``SoftDeleteLog``
-        i sprzątanie ``Cache_Punktacja_*`` wiszą na sygnałach per obiekt,
-        a gate w ``BppSoftDeleteQuerySet.update()`` i tak blokuje bulk
-        ustawienie ``deleted_at``.
+        Bez zgody na anulowanie wysyłki do PBN — rekordy z aktywnym
+        zleceniem zostają (komunikat); do nich służy „Usuń" na rekordzie.
         """
         with self._soft_delete_user_context(request):
             powod = self._powod_z_requestu(request)
@@ -386,34 +531,32 @@ class BppSoftDeleteAdminMixin:
 
     # --- akcje kosza ----------------------------------------------------
 
-    @admin.action(description="♻️ Przywróć zaznaczone (z kosza)")
+    @admin.action(
+        description="♻️ Przywróć zaznaczone (z kosza)",
+        permissions=["change", "delete"],
+    )
     def przywroc_zaznaczone(self, request, queryset):
-        """Przywraca rekordy z kosza przez ten sam hook usera.
+        """Przywraca rekordy z kosza (pomija żywe — ``restore()`` przelicza
+        punktację i kolejkuje PBN, więc no-op byłby kosztowny)."""
+        from bpp.models.soft_delete import KonfliktPrzywracania
 
-        Zaznaczenie idzie z ``global_objects``, więc może zawierać rekordy
-        żywe — te pomijamy zamiast wołać na nich ``restore()``. To nie jest
-        kosmetyka: ``restore()`` publikacji przelicza punktację dyscyplin
-        (operacja licząca, nie ``UPDATE``) i kolejkuje wysyłkę do PBN,
-        więc „przywrócenie" nieskasowanego rekordu byłoby kosztownym
-        no-opem z fałszywym wpisem w ``SoftDeleteLog``.
-        """
+        przywrocono = 0
         with self._soft_delete_user_context(request):
-            przywrocono = 0
             for obj in queryset:
                 if obj.deleted_at is None:
                     continue
-                obj.restore(user=request.user)
+                try:
+                    obj.restore(user=request.user)
+                except KonfliktPrzywracania as e:
+                    self.message_user(request, str(e), level=messages.ERROR)
+                    continue
                 przywrocono += 1
         if not przywrocono:
-            # Najczestsza przyczyna: operator zaznaczyl rekordy na liscie
-            # bez filtra kosza, wiec do akcji nie doszedl ani jeden
-            # skasowany wiersz. Ciche "przywrocono: 0" wygladaloby jak
-            # awaria przywracania.
             self.message_user(
                 request,
                 "Nie przywrócono nic — w zaznaczeniu nie było rekordów "
-                "z kosza. Ustaw filtr „Kosz” na „🗑️ Tylko skasowane”, "
-                "zaznacz rekordy i powtórz akcję.",
+                "z kosza (albo przywrócenie było niemożliwe). Ustaw filtr "
+                "„Kosz” na „🗑️ Tylko skasowane”, zaznacz rekordy i powtórz.",
                 level=messages.WARNING,
             )
             return
@@ -423,31 +566,26 @@ class BppSoftDeleteAdminMixin:
             level=messages.SUCCESS,
         )
 
-    #: Ile rekordow wypisac na stronie posredniej z powodem. Zaznaczenie
-    #: "wszystkie pasujace" (``select_across``) potrafi objac dziesiatki
-    #: tysiecy wierszy — wypisanie wszystkich zabiloby te strone, a nikt
-    #: i tak nie czyta takiej listy.
+    #: Ile rekordów wypisać na stronie pośredniej z powodem.
     LIMIT_PODGLADU_KOSZA = 50
 
-    @admin.action(description="🗑️ Usuń do kosza (z powodem)")
+    @admin.action(description="🗑️ Usuń do kosza (z powodem)", permissions=["delete"])
     def usun_do_kosza(self, request, queryset):
-        """Kasowanie do kosza z powodem podanym na stronie pośredniej.
+        """Kosz z powodem podanym na stronie pośredniej (``SoftDeleteLog.powod``).
 
-        DLACZEGO OSOBNA AKCJA, SKORO ``delete_selected`` TEŻ IDZIE DO KOSZA:
-        bo Django nie ma gdzie zapytać o powód. Jego strona potwierdzenia
-        jest zbudowana wokół kolektora (co jeszcze zniknie), nie wokół
-        metadanych operacji, a ``SoftDeleteLog.powod`` odpowiada na pytanie
-        „dlaczego", na które sam kolektor nie odpowie.
-
-        ``delete_selected`` zostaje działające (kosz bez powodu) — to ta
-        sama operacja, tylko uboższa o uzasadnienie.
+        Strona pośrednia pokazuje też, które rekordy zostaną wycofane
+        z PBN i które czekają w kolejce wysyłki (zgoda na anulowanie —
+        checkbox; bez niej te rekordy zostają).
         """
         if request.POST.get("powod_potwierdzony"):
             with self._soft_delete_user_context(request):
                 powod = self._powod_z_requestu(request)
+                anuluj = self._anuluj_wysylke_z_requestu(request)
                 usunieto = 0
                 for obj in queryset:
-                    if self._soft_delete_jeden(request, obj, powod):
+                    if self._soft_delete_jeden(
+                        request, obj, powod, anuluj_wysylke_pbn=anuluj
+                    ):
                         usunieto += 1
             if usunieto:
                 self.message_user(
@@ -459,18 +597,29 @@ class BppSoftDeleteAdminMixin:
 
         ile = queryset.count()
         podglad = list(queryset[: self.LIMIT_PODGLADU_KOSZA])
+        wiersze = [
+            {
+                "obj": obj,
+                "blokada": (
+                    None
+                    if self.has_delete_permission(request, obj)
+                    else "brak uprawnień" + self._dlaczego_nie_mozna_usunac(obj)
+                )
+                or self.blokada_kosza(obj),
+                "pbn": self.stan_pbn_przed_koszem(obj),
+            }
+            for obj in podglad
+        ]
         context = {
             **self.admin_site.each_context(request),
             "title": "Usuń do kosza",
-            "obiekty": podglad,
+            "wiersze": wiersze,
+            "jest_wysylka_pbn": any(w["pbn"]["wysylka"] for w in wiersze),
             "ile_obiektow": ile,
             "ile_ukrytych": max(0, ile - len(podglad)),
             "wybrane_pk": request.POST.getlist(admin_helpers.ACTION_CHECKBOX_NAME),
             "opts": self.model._meta,
             "action_checkbox_name": admin_helpers.ACTION_CHECKBOX_NAME,
-            # Przenosimy stan zaznaczenia dalej — bez ``select_across``
-            # potwierdzenie zawezilo by "wszystkie pasujace" do biezacej
-            # strony i czesc rekordow po cichu nie trafilaby do kosza.
             "action_index": request.POST.get("index", 0),
             "select_across": request.POST.get("select_across", "0"),
         }
@@ -478,21 +627,10 @@ class BppSoftDeleteAdminMixin:
 
     @admin.action(description="❌ Usuń TRWALE (nieodwracalnie, tylko superuser)")
     def usun_trwale_zaznaczone(self, request, queryset):
-        """Opróżnianie kosza: fizyczne skasowanie rekordów.
-
-        TYLKO Z KOSZA, nigdy wprost z rekordu żywego — i nie jest to
-        ostrożnościowy rytuał. ``Cache_Punktacja_*`` nie ma FK do
-        publikacji (klucz to tablica ``[content_type_id, pk]``), więc nie
-        sprząta jej ani kolektor Django, ani triggery. Kasuje ją dopiero
-        receiver ``post_soft_delete`` (faza 06). Twarde skasowanie rekordu
-        z pominięciem kosza zostawiłoby więc wiersze punktacji wskazujące
-        na nieistniejący rekord — i liczące się do ewaluacji.
-
-        Podwójny gate na superusera (tu i w ``get_actions``) jest celowy:
-        ``get_actions`` decyduje o WIDOCZNOŚCI, ta metoda o WYKONANIU.
-        Django odrzuca akcje spoza ``get_actions``, ale to jest operacja
-        nieodwracalna — jeden mechanizm obronny na nią za mało.
-        """
+        """Opróżnianie kosza: fizyczne skasowanie rekordów — TYLKO z kosza
+        (receiver kosza sprząta ``Cache_Punktacja_*``, której nie sprząta
+        kolektor Django). Podwójny gate na superusera: ``get_actions``
+        decyduje o widoczności, ta metoda o wykonaniu."""
         if not request.user.is_superuser:
             self.message_user(
                 request,
@@ -508,8 +646,6 @@ class BppSoftDeleteAdminMixin:
                 if obj.deleted_at is None:
                     pominieto += 1
                     continue
-                # hard_delete() NIE przyjmuje user=/reason= — atrybucję
-                # niesie wyłącznie kontekst powyżej.
                 obj.hard_delete()
                 usunieto += 1
 
@@ -529,21 +665,23 @@ class BppSoftDeleteAdminMixin:
             )
 
     def get_actions(self, request):
-        """Dokłada akcje kosza do tych zebranych przez resztę łańcucha.
+        """Dokłada akcje kosza — WYŁĄCZNIE gdy user ma do nich uprawnienia.
 
-        Wołamy ``super()`` i tylko DOKŁADAMY klucze — dlatego mixin działa
-        także z ostatniej pozycji w MRO (patrz docstring klasy), mimo że
-        wyżej stoją ``AutorAdmin.get_actions`` i ``ExportActionsMixin.
-        get_actions``.
+        ``ModelAdmin.get_actions`` filtruje akcje po ``permissions`` tylko
+        dla tych, które sam zebrał; akcje dopisane tutaj filtrujemy sami.
         """
         actions = super().get_actions(request)
-        actions["usun_do_kosza"] = self.get_action("usun_do_kosza")
-        actions["przywroc_zaznaczone"] = self.get_action("przywroc_zaznaczone")
+        if self.has_delete_permission(request):
+            actions["usun_do_kosza"] = self.get_action("usun_do_kosza")
+            if self.has_change_permission(request):
+                actions["przywroc_zaznaczone"] = self.get_action("przywroc_zaznaczone")
+        else:
+            actions.pop("usun_do_kosza", None)
+            actions.pop("przywroc_zaznaczone", None)
         if request.user.is_superuser:
             actions["usun_trwale_zaznaczone"] = self.get_action(
                 "usun_trwale_zaznaczone"
             )
         else:
-            # Gdyby ktos dopisal ta akcje wyzej w lancuchu — zdejmij.
             actions.pop("usun_trwale_zaznaczone", None)
         return actions
