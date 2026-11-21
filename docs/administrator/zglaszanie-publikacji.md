@@ -14,7 +14,7 @@
 Moduł "zgłoś publikację" umożliwia zgłaszanie publikacji użytkownikom nie mającym loginu do systemu, np
 pracownikom naukowym uczelni.
 
-![image](../images/admin/zglos_publikacje/zglos_publikacje_0.png)
+![Przycisk „Masz nową publikację? Zgłoś ją do bazy!” na stronie głównej](../images/uzytkownik/zgloszenie-publikacji/01-strona-glowna.png)
 
 Formularz ma kilka kroków: **Rodzaj** (artykuł, książka / monografia,
 rozdział, inne), **Dostęp** (otwarty — zgłaszający poda link albo DOI;
@@ -22,18 +22,6 @@ ograniczony — dołączy plik PDF), **Dane** (tytuł, rok, link lub DOI,
 e-mail), **Autorzy** (autor, jednostka, dyscyplina) i — zależnie od rodzaju
 pracy i ustawień uczelni — **Płatności**. Aktualne zrzuty ekranu i opis
 krok po kroku: [Jak zgłosić nową publikację](../uzytkownik/zgloszenie-publikacji.md).
-
-Poniższe zrzuty pochodzą z poprzedniej wersji formularza.
-
-![image](../images/admin/zglos_publikacje/zglos_publikacje_2.png)
-
-![image](../images/admin/zglos_publikacje/zglos_publikacje_3.png)
-
-![image](../images/admin/zglos_publikacje/zglos_publikacje_4.png)
-
-![image](../images/admin/zglos_publikacje/zglos_publikacje_5.png)
-
-![image](../images/admin/zglos_publikacje/zglos_publikacje_6.png)
 
 Jak redaktor obsługuje zgłoszenia (lista, import, zwrot do autora, usuwanie):
 [Obsługa zgłoszeń publikacji](../redaktor/obsluga-zgloszen.md).
@@ -50,23 +38,31 @@ Po wysłaniu zgłoszenia (i po każdej poprawce zwróconego zgłoszenia) system 
 z linkiem do zgłoszenia. Kto go otrzymuje?
 
 1. Jeżeli do wydziału, którego dotyczy zgłoszenie, przypisano osoby w Redagowanie ->
-   Administracja -> Obsługa zgłoszeń prac - wydziały — tylko te osoby.
-2. W przeciwnym razie — wszystkie osoby z grupy **„zgłoszenia publikacji”**.
+   Administracja -> **Obsługa zgłoszeń prac - wydziały** — tylko te osoby.
+2. W przeciwnym razie (także wtedy, gdy żadna z przypisanych osób nie ma adresu e-mail) —
+   wszystkie osoby z grupy **„zgłoszenia publikacji”**.
 3. Jeżeli w grupie „zgłoszenia publikacji” nie ma nikogo z adresem e-mail — wszystkie osoby
    z grupy **„wprowadzanie danych”**.
 
 Powiadomienia trafiają tylko do osób, które mają wpisany adres e-mail.
 
-O wydziale decyduje pierwszy w kolejności autor zgłoszenia, którego jednostka skupia
-pracowników uczelni. Czyli, jeżeli pierwszych kilku autorów ma przypisaną "Obcą jednostkę",
-a kolejny ma przypisaną jednostkę należącą do wydziału X, to powiadamiane będą osoby przypisane
-do wydziału X. Przypisanie obejmuje wydział razem z jego jednostkami podrzędnymi (w formularzu
-pole nazywa się „Jednostka (i podrzędne)”).
+Aby przypisać osobę do wydziału:
 
-Jeżeli żaden autor nie jest z jednostki uczelni, liczy się jednostka ostatniego autora. Nic nie stoi
-na przeszkodzie, aby przypisać też osoby powiadamiane w przypadku dodania pracy do obcej jednostki
-(przypisując je do wydziału, w którym jest obca jednostka) - w tej sytuacji powiadomienia będą
-mogły otrzymać osoby gdy np praca nie ma żadnego autora z uczelni.
+1. Wejdź w Redagowanie -> Administracja -> **Obsługa zgłoszeń prac - wydziały** i kliknij
+   „Dodaj”.
+2. W polu **„Użytkownik”** wybierz osobę, która ma dostawać powiadomienia.
+3. W polu **„Jednostka (i podrzędne)”** wybierz wydział — przypisanie obejmuje wydział razem
+   z jego jednostkami podrzędnymi.
+4. Kliknij „Zapisz”. Jedną osobę można przypisać do kilku wydziałów, a do jednego wydziału
+   — kilka osób.
+
+![Formularz dodawania osoby obsługującej zgłoszenia dla wydziału](../images/administrator/zglaszanie-publikacji/03-obsluga-zgloszen-wydzialy.png)
+
+O wydziale decyduje pierwszy w kolejności autor zgłoszenia, którego jednostka skupia
+pracowników uczelni — powiadamiane są osoby przypisane do wydziału, do którego należy jego
+jednostka. Formularz zgłoszenia i tak wymaga przy każdym autorze jednostki uczelni, do której
+można afiliować (nie przyjmie jednostki obcej ani samego wydziału), więc w praktyce decyduje
+jednostka pierwszego autora.
 
 ## Zwracanie zgłoszenia
 
@@ -80,13 +76,13 @@ Szczegóły: [Obsługa zgłoszeń publikacji](../redaktor/obsluga-zgloszen.md).
 
 W [edycji danych uczelni](../redaktor/uczelnia.md) opcja **„Pokazuj opcję 'Zgłoś nową publikację'”**
 decyduje, komu pokazywać przycisk zgłaszania na stronie głównej: **„zawsze”**, **„tylko dla
-zalogowanych”** albo **„nigdy”**.
+zalogowanych”** albo **„nigdy”**. Opcja jest w sekcji **„Strona wizualna”**.
 
-![image](../images/admin/zglos_publikacje/zglos_publikacje_1.png)
+![Opcja „Pokazuj opcję 'Zgłoś nową publikację'” w sekcji „Strona wizualna” danych uczelni](../images/administrator/zglaszanie-publikacji/01-widocznosc-przycisku.png)
 
 Ta opcja steruje tylko widocznością przycisku. Żeby **wymagać zalogowania** przed wypełnieniem
-formularza (także gdy ktoś wejdzie na niego bezpośrednim linkiem), zaznacz w zakładce
-**„Zgłaszanie publikacji”** pole **„Wymagaj zalogowania użytkownika dla formularza zgłaszania
+formularza (także gdy ktoś wejdzie na niego bezpośrednim linkiem), zaznacz w sekcji
+**„Zgłaszanie publikacji”** (1 na zrzucie poniżej) pole **„Wymagaj zalogowania użytkownika dla formularza zgłaszania
 publikacji”** — niezalogowani zostaną przekierowani na stronę logowania. Przy włączonej
 integracji z [LDAP (ActiveDirectory)](zaawansowane.md#konfiguracja-ldap-activedirectory)
 użytkownicy logują się kontem sieci intranet — nie trzeba każdemu zakładać loginu i hasła.
@@ -94,8 +90,9 @@ użytkownicy logują się kontem sieci intranet — nie trzeba każdemu zakłada
 ## Wymaganie wpisania informacji o opłatach za publikację
 
 To, czy formularz pyta o opłaty, ustawiamy osobno dla każdego rodzaju pracy. W [edycji danych
-uczelni](../redaktor/uczelnia.md), w zakładce **„Zgłaszanie publikacji”**, są pola
+uczelni](../redaktor/uczelnia.md), w sekcji **„Zgłaszanie publikacji”**, są pola
 **„Wymagaj informacji o opłatach: artykuł”**, **„… monografia”**, **„… rozdział”**
-i **„… inne”**. Dla rodzajów bez zaznaczonego pola krok płatności jest pomijany.
+i **„… inne”** (2 na zrzucie). Dla rodzajów bez zaznaczonego pola krok płatności jest
+pomijany. Domyślnie formularz pyta o opłaty za artykuły i monografie.
 
-![image](../images/admin/zglos_publikacje/zglos_publikacje_7.png)
+![Sekcja „Zgłaszanie publikacji” w danych uczelni: wymaganie zalogowania i pytania o opłaty](../images/administrator/zglaszanie-publikacji/02-zglaszanie-publikacji.png)

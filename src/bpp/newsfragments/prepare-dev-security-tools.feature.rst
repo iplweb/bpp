@@ -1,1 +1,0 @@
-``make prepare-developer-machine`` instaluje skanery bezpieczeństwa: ``trufflehog`` (hook pre-commit) oraz ``grype``, ``osv-scanner``, ``trivy`` i ``jq`` (``bin/scan-deps.sh``); na Linuksie z GitHub Releases z weryfikacją SHA-256, na macOS z Homebrew.

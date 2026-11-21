@@ -2,40 +2,60 @@
 
 ## Wejście do ustawień Uczelni
 
-Aby wejść do ustawień Uczelni, musimy najpierw się zalogować do systemu. W tym celu na pierwszym ekranie
-na górnej belce nawigacji klikamy w "zaloguj"
+1. Zaloguj się do systemu: na górnej belce nawigacji kliknij **„zaloguj”**,
+   a następnie **„logowanie”** (szczegóły: [Logowanie](../uzytkownik/logowanie.md)).
 
-![image](../images/admin/edycja_uczelnia/edycja_uczelnia_0.png)
+    ![Menu „zaloguj” na górnej belce strony](../images/redaktor/uczelnia/01-zaloguj.png)
 
-Po zalogowaniu się, na górnej belce nawigacji pojawi się opcja "redagowanie":
+2. Po zalogowaniu na górnej belce pojawi się menu **„redagowanie”**. Wybierz
+   z niego pozycję **„redagowanie”** — moduł redagowania otworzy się w nowej
+   karcie przeglądarki.
 
-![image](../images/admin/edycja_uczelnia/edycja_uczelnia_1.png)
+    ![Menu „redagowanie” z pozycją otwierającą moduł redagowania](../images/redaktor/uczelnia/02-menu-redagowanie.png)
 
-Po wejściu w redagowanie, z górnej belki nawigacji wybieramy "Struktura" a następnie "Uczelnia":
+3. W module redagowania z górnej belki wybierz **„Struktura”**, a następnie
+   **„Uczelnia”**.
 
-![image](../images/admin/edycja_uczelnia/edycja_uczelnia_2.png)
+    ![Menu „Struktura” w module redagowania z pozycją „Uczelnia”](../images/redaktor/uczelnia/03-menu-struktura.png)
 
-W systemie powinien być jeden rekord określający dane uczelni. Aby wejśc dalej, klikamy w nazwę Uczelni:
+4. W systemie powinien być jeden rekord określający dane uczelni. Kliknij
+   nazwę uczelni.
 
-![image](../images/admin/edycja_uczelnia/edycja_uczelnia_3.png)
+    ![Lista uczelni z zaznaczoną nazwą uczelni](../images/redaktor/uczelnia/04-lista-uczelni.png)
 
-Następnie otworzy nam się puszka Pandory tzn. formularz ustawień uczelni. W chwili tworzenia niniejszej dokumentacji
-zajmuje on około 5 ekranów. Użytkownicy końcowi a nawet administratorzy nie będą tu zaglądać zbyt często, ale mimo
-to doradzamy rozwagę w edycji ustawień obiektu uczelnia.
+Otworzy się formularz ustawień uczelni. Jest długi i podzielony na zwijane
+sekcje (np. „Strona wizualna”, „Profil autora (podstrona)”, „Wydruki”) —
+kliknij nagłówek sekcji, aby ją rozwinąć lub zwinąć. Użytkownicy końcowi, a
+nawet administratorzy, nie będą tu zaglądać zbyt często, ale mimo to doradzamy
+rozwagę w edycji ustawień obiektu uczelnia.
+
+!!! note "Sekcje integracji widzi tylko superużytkownik"
+    Sekcje **„PBN API”**, **„Clarivate Analytics API”**, **„ORCID”**
+    i **„DSpace”** są widoczne w formularzu wyłącznie dla superużytkownika.
+    Inni użytkownicy edytujący rekord uczelni ich nie widzą, a zapis
+    formularza nie zmienia tych ustawień.
 
 ## Integracja z Web Of Science
 
-Po rozwinięciu zakładki "Clarivate Analytics API" możemy uzupełnić nazwę użytkownika i hasło do Clarivate Analytics
-API. W ten sposób będziemy mogli zaciągać liczbę cytowań dla rekordów i autorów.
+Po rozwinięciu sekcji „Clarivate Analytics API” możemy uzupełnić nazwę
+użytkownika i hasło do Clarivate Analytics API. W ten sposób będziemy mogli
+zaciągać liczbę cytowań dla rekordów i autorów.
 
 ## Integracja z PBN
 
-Jeżeli w PBN uzyskaliśmy rolę "Menedżer aplikacji", możemy utworzyc token aplikacji i wpisać te dane do BPP. Umożliwi
-to autoryzowanie użytkownika loginem w PBN (na głównej stronie, menu **PBN** → **autoryzuj PBN API**) a następnie
-możliwe będzie wysyłanie prac do PBN przy ich zapisywaniu. W ten sposób dane publikacji wpisujemy tylko raz (do BPP),
-a ręczne ich wysyłanie do PBN nie jest potrzebne.
+Jeżeli w PBN uzyskaliśmy rolę „Menedżer aplikacji”, możemy utworzyć token
+aplikacji i wpisać te dane do BPP w sekcji **„PBN API”**: zaznacz „Czy używać
+integracji z PBN?”, uzupełnij „Adres API w PBN”, „Nazwa aplikacji w PBN”
+i „Token aplikacji w PBN”, wskaż „Użytkownik BPP dla PBN API” i zapisz rekord.
+Umożliwi to autoryzowanie użytkownika loginem w PBN (na głównej stronie, menu
+**PBN ➡ autoryzuj PBN API**), a następnie wysyłanie prac do PBN przy ich zapisywaniu.
+W ten sposób dane publikacji wpisujemy tylko raz (do BPP), a ręczne ich
+wysyłanie do PBN nie jest potrzebne. Więcej: [Konfiguracja PBN](../administrator/konfiguracja-pbn.md).
 
-![image](../images/admin/edycja_uczelnia/edycja_uczelnia_4.png)
+![Sekcja „PBN API” w formularzu uczelni](../images/redaktor/uczelnia/05-pbn-api.png)
+
+Zapisany token nie jest później wyświetlany w formularzu. Aby go nie zmieniać,
+zostaw pole „Token aplikacji w PBN” puste.
 
 ## Obca jednostka
 
@@ -43,9 +63,12 @@ W systemie BPP powinna znajdować się jedna i wyłącznie jedna *Obca jednostka
 
 Jest to taka jednostka, do której trafiają autorzy, którzy afiliują na jednostkę nie będącą w strukturach uczelni.
 
-Aby określić *Obcą jednostkę* należy wejść w module Redagowanie➡Struktura➡Uczelnie, wybrać nasza uczelnię i
-następnie wybrać jednostkę w polu *Obca jednostka* i zapisać taki rekord.
+Aby określić *Obcą jednostkę*, otwórz rekord uczelni (Redagowanie ➡ Struktura ➡ Uczelnia, jak opisano
+wyżej), wybierz jednostkę w polu *Obca jednostka* (na końcu pierwszej części formularza) i zapisz rekord.
+
+![Pole „Obca jednostka” w formularzu uczelni](../images/redaktor/uczelnia/06-obca-jednostka.png)
 
 !!! note
 
     warto, aby *Obca jednostka* miała odznaczone [Pole *Skupia pracowników*](jednostki.md#pole-skupia-pracowników) oraz [Pole *Zarządzaj automatycznie*](jednostki.md#pole-zarządzaj-automatycznie)
+
