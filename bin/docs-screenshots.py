@@ -6429,6 +6429,384 @@ def import_pracownikow(page: Page, base: str, out: Path) -> None:
     red.context.close()
 
 
+# Co-author network (docs/uzytkownik/powiazania-autorow.md). Overlay marks
+# need CSS selectors, but graph nodes are drawn on a canvas - so we drop
+# invisible "pins" (absolutely positioned divs) over the nodes/edges we want
+# to point at, using Cytoscape's rendered coordinates.
+PIN_CY_JS = r"""
+([pid, kind, a, b, pad]) => {
+  const c = document.getElementById('cytoscape-container');
+  const cy = c._cyreg.cy;
+  let x1, y1, x2, y2;
+  if (kind === 'node') {
+    const bb = cy.getElementById(String(a)).renderedBoundingBox({includeLabels: false});
+    [x1, y1, x2, y2] = [bb.x1, bb.y1, bb.x2, bb.y2];
+  } else {
+    const lo = Math.min(a, b), hi = Math.max(a, b);
+    const m = cy.getElementById('e' + lo + '_' + hi).renderedMidpoint();
+    [x1, y1, x2, y2] = [m.x - 4, m.y - 4, m.x + 4, m.y + 4];
+  }
+  const r = c.getBoundingClientRect();
+  let d = document.getElementById(pid);
+  if (!d) { d = document.createElement('div'); d.id = pid; document.body.appendChild(d); }
+  d.style.cssText = 'position:absolute;pointer-events:none;'
+    + `left:${r.left + scrollX + x1 - pad}px;top:${r.top + scrollY + y1 - pad}px;`
+    + `width:${x2 - x1 + 2 * pad}px;height:${y2 - y1 + 2 * pad}px`;
+  return {x: r.left + scrollX + (x1 + x2) / 2, y: r.top + scrollY + (y1 + y2) / 2};
+}
+"""
+# The centre's strongest co-author (thickest line), as a node id.
+NAJSILNIEJSZY_JS = r"""
+(centrum) => {
+  const cy = document.getElementById('cytoscape-container')._cyreg.cy;
+  const e = cy.getElementById(String(centrum)).connectedEdges()
+    .sort((p, q) => q.data('shared') - p.data('shared'))[0];
+  return Number(e.source().id() === String(centrum) ? e.target().id() : e.source().id());
+}
+"""
+# Node id by its label (first match).
+WEZEL_JS = r"""
+(label) => {
+  const cy = document.getElementById('cytoscape-container')._cyreg.cy;
+  return Number(cy.nodes().filter(n => n.data('label') === label)[0].id());
+}
+"""
+
+
+def czekaj_na_graf(page: Page) -> None:
+    """Wait until the 2D graph is drawn and its layout animation has settled."""
+    page.wait_for_function(
+        "() => { const c = document.getElementById('cytoscape-container');"
+        " return c && c._cyreg && c._cyreg.cy.nodes().length > 1; }"
+    )
+    pozycje = None
+    for _ in range(20):
+        page.wait_for_timeout(500)
+        teraz = page.evaluate(
+            "() => document.getElementById('cytoscape-container')._cyreg.cy"
+            ".nodes().map(n => Math.round(n.position('x')) + ',' + Math.round(n.position('y'))).join(';')"
+        )
+        if teraz == pozycje:
+            break
+        pozycje = teraz
+    page.wait_for_timeout(500)  # fade-in of edges
+
+
+def powiazania_autorow(page: Page, base: str, out: Path) -> None:
+    """docs/uzytkownik/powiazania-autorow.md: the co-author network (2D and 3D).
+
+    Run bin/docs-demo-powiazania-autorow.py first (fills the network table).
+    The 3D view needs WebGL: headless Chromium has it (SwiftShader) only when
+    no X display is configured, so run this scenario as `env -u DISPLAY …`.
+    """
+    autor = f"{base}/bpp/autor/{AUTOR_NOWY_ROK}/"  # Yennefer Merigold
+    page.goto(autor)
+    page.wait_for_load_state("networkidle")
+
+    # 1. author page: the button next to "Pokaż wszystkie prace"
+    mark(
+        page,
+        [
+            {
+                "sel": ".autor-page__quick-actions .autor-page__network-btn",
+                "arrow": "below",
+                "label": "Zobacz sieć powiązań",
+                "dx": 40,
+                "dy": -20,
+            }
+        ],
+    )
+    przyciski = page_box(page, ".autor-page__quick-actions")
+    shot(page, out / "01-strona-autora-przycisk.png", 0, przyciski["y"] + 200)
+
+    # 2. "Najczęstsi współautorzy" section further down: top of the page + the section
+    page.goto(autor)
+    page.wait_for_load_state("networkidle")
+    sekcja = ".author-info-section"
+    box = page_box(page, sekcja, "współautorzy")
+    page.evaluate(
+        """(t) => { const el = [...document.querySelectorAll('.author-info-section')]
+             .find(e => e.textContent.includes(t)); el.id = 'kb-wspolautorzy';
+           el.querySelector('.autor-page__wspolautor').id = 'kb-pierwszy';
+           el.querySelector('.autor-page__wspolautor-liczba').id = 'kb-liczba'; }""",
+        "współautorzy",
+    )
+    mark(
+        page,
+        [
+            {
+                "sel": "#kb-liczba",
+                "arrow": "below",
+                "label": "liczba wspólnych prac",
+                "dx": -420,
+                "dy": 230,
+            },
+            {
+                "sel": "#kb-wspolautorzy .autor-page__network-btn",
+                "arrow": "below",
+                "label": "otwiera sieć",
+                "dx": 40,
+                "dy": 20,
+            },
+        ],
+    )
+    gora = shot(page, None, 0, 230)
+    dol = shot(page, None, box["y"] - 20, box["height"] + 260)
+    stitch(
+        page,
+        [gora, dol],
+        out / "02-najczestsi-wspolautorzy.png",
+        "przewiń w dół do sekcji „Najczęstsi współautorzy”",
+    )
+
+    # 3. the graph: centre, thickest line, legend
+    page.goto(f"{autor}powiazania/")
+    page.wait_for_load_state("networkidle")
+    czekaj_na_graf(page)
+    centrum = AUTOR_NOWY_ROK
+    silny = page.evaluate(NAJSILNIEJSZY_JS, centrum)
+    page.evaluate(PIN_CY_JS, ["kb-centrum", "node", centrum, 0, -2])
+    page.evaluate(PIN_CY_JS, ["kb-krawedz", "edge", centrum, silny, 6])
+    mark(
+        page,
+        [
+            {
+                "sel": "#kb-centrum",
+                "arrow": "left",
+                "label": "1. autor, od którego zaczynasz",
+                "dx": -100,
+                "dy": -200,
+            },
+            {
+                "sel": "#kb-krawedz",
+                "arrow": "below",
+                "label": "2. więcej wspólnych prac",
+                "dx": 92,
+                "dy": 92,
+            },
+            {
+                "sel": "#graf-legenda",
+                "arrow": "below",
+                "label": "3. legenda",
+                "dx": -20,
+                "dy": 0,
+            },
+        ],
+    )
+    graf = page_box(page, "#graf-wrapper")
+    shot(page, out / "03-graf-elementy.png", 100, graf["y"] + graf["height"] + 10 - 100)
+
+    # 4. controls above the graph
+    page.goto(f"{autor}powiazania/")
+    page.wait_for_load_state("networkidle")
+    czekaj_na_graf(page)
+    mark(
+        page,
+        [
+            {
+                "sel": "label[for=graf-topn]",
+                "arrow": "below",
+                "label": "1",
+                "dx": -40,
+                "dy": -40,
+            },
+            {
+                "sel": "label[for=graf-glebokosc]",
+                "arrow": "below",
+                "label": "2",
+                "dx": -40,
+                "dy": -40,
+            },
+            {"sel": "#graf-uklad", "arrow": "above", "label": "3", "dx": -40, "dy": 30},
+            {
+                "sel": "#graf-metryka",
+                "arrow": "above",
+                "label": "4",
+                "dx": -40,
+                "dy": 30,
+            },
+            {
+                "sel": "#graf-zaawansowane-toggle",
+                "arrow": "above",
+                "label": "5",
+                "dx": -40,
+                "dy": 30,
+            },
+            {
+                "sel": "a[href$='/powiazania/3d/']",
+                "arrow": "above",
+                "label": "6",
+                "dx": -40,
+                "dy": 30,
+            },
+        ],
+    )
+    shot(page, out / "04-kontrolki.png", 80, 300)
+
+    # 5. hover over a line: how many joint works
+    page.goto(f"{autor}powiazania/")
+    page.wait_for_load_state("networkidle")
+    czekaj_na_graf(page)
+    silny = page.evaluate(NAJSILNIEJSZY_JS, centrum)
+    srodek = page.evaluate(PIN_CY_JS, ["kb-krawedz", "edge", centrum, silny, 6])
+    page.mouse.move(srodek["x"], srodek["y"])
+    page.wait_for_selector("#graf-tooltip", state="visible")
+    page.wait_for_timeout(400)
+    mark(
+        page,
+        [
+            {
+                "sel": "#graf-tooltip",
+                "arrow": "right",
+                "label": "najechanie na linię",
+                "dx": -50,
+                "dy": 40,
+            }
+        ],
+    )
+    x0 = srodek["x"] - 300
+    page.screenshot(
+        path=out / "05-linia-wspolne-prace.png",
+        clip={
+            "x": x0,
+            "y": srodek["y"] - 170,
+            "width": min(940, VIEWPORT["width"] - x0),
+            "height": 340,
+        },
+    )
+
+    # 6. click on a node: action panel + its co-authors unfold around it
+    page.goto(f"{autor}powiazania/")
+    page.wait_for_load_state("networkidle")
+    czekaj_na_graf(page)
+    silny = page.evaluate(NAJSILNIEJSZY_JS, centrum)
+    srodek = page.evaluate(PIN_CY_JS, ["kb-klik", "node", silny, 0, 4])
+    page.mouse.click(srodek["x"], srodek["y"])
+    page.wait_for_selector("#graf-panel", state="visible")
+    page.mouse.move(graf["x"] + 5, graf["y"] + graf["height"] - 5)
+    czekaj_na_graf(page)
+    page.evaluate("document.getElementById('graf-tooltip').style.display = 'none'")
+    page.evaluate(PIN_CY_JS, ["kb-klik", "node", silny, 0, 4])
+    mark(
+        page,
+        [
+            {
+                "sel": "#graf-panel",
+                "arrow": "right",
+                "label": "menu akcji",
+                "dx": 10,
+                "dy": -30,
+            },
+            {
+                "sel": "#kb-klik",
+                "arrow": "right",
+                "label": "kliknięty autor",
+                "dx": 150,
+                "dy": 20,
+            },
+        ],
+    )
+    shot(page, out / "06-klik-menu-akcji.png", graf["y"] - 10, graf["height"] + 20)
+
+    # 7. advanced options: links inside the group (orange, dashed)
+    page.goto(f"{autor}powiazania/")
+    page.wait_for_load_state("networkidle")
+    czekaj_na_graf(page)
+    page.click("#graf-zaawansowane-toggle")
+    page.check("#graf-wewnetrzne-chk")
+    page.wait_for_timeout(1500)
+    mark(
+        page,
+        [
+            {
+                "sel": "label:has(#graf-wewnetrzne-chk)",
+                "arrow": "below",
+                "label": "przerywane pomarańczowe linie",
+                "dx": -560,
+                "dy": 40,
+            },
+        ],
+    )
+    zaaw = page_box(page, "#graf-zaawansowane")
+    shot(page, out / "07-opcje-zaawansowane.png", zaaw["y"] - 70, 560)
+
+    # 8. search: two authors with the same name light up (possible duplicate)
+    page.goto(f"{autor}powiazania/")
+    page.wait_for_load_state("networkidle")
+    czekaj_na_graf(page)
+    page.click("#graf-zaawansowane-toggle")
+    page.fill("#graf-szukaj", "Cahir z Vengerbergu")
+    page.wait_for_timeout(1000)
+    ids = page.evaluate(
+        "() => document.getElementById('cytoscape-container')._cyreg.cy"
+        ".nodes('.znaleziony').map(n => Number(n.id()))"
+    )
+    for i, wid in enumerate(ids[:2]):
+        page.evaluate(PIN_CY_JS, [f"kb-szukany-{i}", "node", wid, 0, 4])
+    marks = [
+        {
+            "sel": "#graf-szukaj",
+            "arrow": "below",
+            "label": "wpisz nazwisko",
+            "dx": -300,
+            "dy": 20,
+        }
+    ]
+    piny = [f"#kb-szukany-{i}" for i in range(min(2, len(ids)))]
+    marks += [{"sel": p} for p in piny]
+    if len(piny) == 2:
+        # label under the upper of the two hits, in the faded part of the graph
+        gorny = min(piny, key=lambda p: page_box(page, p)["y"])
+        next(m for m in marks if m["sel"] == gorny).update(
+            arrow="below", label="ten sam autor dwa razy?", dx=-100, dy=20
+        )
+    mark(page, marks)
+    zaaw = page_box(page, "#graf-zaawansowane")
+    graf = page_box(page, "#graf-wrapper")
+    shot(
+        page,
+        out / "08-szukaj-autora.png",
+        zaaw["y"] - 10,
+        graf["y"] + graf["height"] - zaaw["y"] + 20,
+    )
+
+    # 9. 3D view (WebGL): labels on, after the force layout cooled down
+    page.goto(f"{autor}powiazania/3d/")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_selector("#siec3d-container canvas")
+    page.check("#siec3d-etykiety-chk")
+    page.wait_for_timeout(9000)
+    # zoom in a little (mouse wheel), so the cloud fills the scene
+    scena = page_box(page, "#siec3d-container")
+    page.mouse.move(scena["x"] + scena["width"] / 2, scena["y"] + scena["height"] / 2)
+    for _ in range(2):
+        page.mouse.wheel(0, -150)
+        page.wait_for_timeout(300)
+    # move off the scene, or a node tooltip stays in the shot
+    page.mouse.move(scena["x"] + 5, scena["y"] + scena["height"] - 5)
+    page.wait_for_timeout(1500)
+    mark(
+        page,
+        [
+            {
+                "sel": "label:has(#siec3d-etykiety-chk)",
+                "arrow": "below",
+                "label": "nazwiska najważniejszych autorów",
+                "dx": -380,
+                "dy": 30,
+            },
+            {
+                "sel": "a[href$='/powiazania/'].button",
+                "arrow": "below",
+                "label": "powrót do 2D",
+                "dx": -20,
+                "dy": 40,
+            },
+        ],
+    )
+    shot(page, out / "09-widok-3d.png", 110, 760)
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -6740,6 +7118,7 @@ SCENARIOS = {
     "panel-uczelnia-autorzy": ("redaktor/autorzy", panel_uczelnia_autorzy),
     "panel-uczelnia-wydawnictwa": ("redaktor/wydawnictwa", panel_uczelnia_wydawnictwa),
     "import-pracownikow": ("administrator/import-pracownikow", import_pracownikow),
+    "powiazania-autorow": ("uzytkownik/powiazania-autorow", powiazania_autorow),
 }
 
 
