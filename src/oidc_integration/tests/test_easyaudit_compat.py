@@ -11,9 +11,9 @@ from oidc_integration import easyaudit_compat
 
 def test_ensure_username_dorabia_z_preferred_username():
     out = easyaudit_compat._ensure_username(
-        {"nonce": "x", "preferred_username": "jkowalski@uafm.edu.pl"}
+        {"nonce": "x", "preferred_username": "jkowalski@uczelnia.example.org"}
     )
-    assert out["username"] == "jkowalski@uafm.edu.pl"
+    assert out["username"] == "jkowalski@uczelnia.example.org"
     # oryginalne klucze zachowane
     assert out["nonce"] == "x"
 
@@ -41,11 +41,11 @@ def test_guard_dokłada_username_i_deleguje_do_oryginalu():
     guard = easyaudit_compat._make_guard(fake_original)
     guard(
         sender="bpp",
-        credentials={"nonce": "x", "preferred_username": "u@uafm.edu.pl"},
+        credentials={"nonce": "x", "preferred_username": "u@uczelnia.example.org"},
     )
 
     assert captured["sender"] == "bpp"
-    assert captured["credentials"]["username"] == "u@uafm.edu.pl"
+    assert captured["credentials"]["username"] == "u@uczelnia.example.org"
 
 
 def test_install_zwraca_callable_i_nie_wybucha():

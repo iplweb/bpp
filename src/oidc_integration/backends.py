@@ -3,6 +3,7 @@ import os
 import re
 
 from django.conf import settings
+from django.contrib import messages
 from django.core.exceptions import SuspiciousOperation
 from django.db import IntegrityError, transaction
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
@@ -105,7 +106,7 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
     tworzenie nowych odbywa się po e-mailu; ``username`` bierzemy z
     ``preferred_username``.
 
-    ⚠️ „Konto każdemu" oznacza, że dowolna osoba z realmu KA (potencjalnie też
+    ⚠️ „Konto każdemu" oznacza, że dowolna osoba z realmu uczelni (potencjalnie też
     studenci — patrz scope ``kierunek-oidc``) dostanie konto BPP. Bezpieczne o
     tyle, że bez ``is_staff`` nie ma dostępu do panelu/edycji.
 
@@ -118,14 +119,14 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
     mail-first: ``mail`` → ``email`` → ``e-mail`` → ``e_mail``), a w
     ostateczności ``preferred_username`` jeśli zawiera domenę. Brak adresu →
     ``SuspiciousOperation`` (login failure). Default mail-first, bo w realmach
-    LDAP-owych (np. UAFM) ``email`` bywa adresem prywatnym, a instytucjonalny
+    LDAP-owych ``email`` bywa adresem prywatnym, a instytucjonalny
     siedzi pod ``mail`` — instalacje z odwrotną konwencją przestawiają
     kolejność env-em ``DJANGO_BPP_OIDC_<SKROT>_EMAIL_CLAIMS``.
 
     Przypisanie uczelni: konto dostaje ``accessible_uczelnie`` (M2M z PR #189)
     z uczelnią o ``skrot`` == skrótowi z konfiguracji OIDC. Ten sam skrót
-    (np. ``UAFM``), który wybrał ``client_id``/``client_secret``, mapuje 1:1 na
-    ``Uczelnia.skrot`` — dzięki czemu docelowe „3 backendy = 3 uczelnie" same
+    (np. ``UCZELNIA``), który wybrał ``client_id``/``client_secret``, mapuje
+    1:1 na ``Uczelnia.skrot`` — dzięki czemu docelowe „3 backendy = 3 uczelnie" same
     przypisują właściwą uczelnię, bez dodatkowej konfiguracji.
 
     ⚠️ GATE PRZED PRODUKCJĄ (TODO): obecnie konto powstaje KAŻDEMU ważnemu
@@ -152,7 +153,7 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         ``mail`` → ``email`` → ``e-mail`` → ``e_mail``; pierwszy niepusty
         wygrywa). Gdy żaden nie niesie wartości, spada na
         ``preferred_username`` — ale tylko jeśli ten wygląda jak adres
-        (zawiera domenę, np. UPN ``99999@student-afm.edu.pl``).
+        (zawiera domenę, np. UPN ``99999@student.uczelnia.example.org``).
 
         Zwraca krotkę ``(email, from_fallback)``, gdzie ``from_fallback`` jest
         ``True``, gdy adres pochodzi z ``preferred_username`` (a nie z
@@ -191,8 +192,8 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         """Czy domena adresu jest na liście ``OIDC_TRUSTED_EMAIL_DOMAINS``.
 
         Dopasowanie DOKŁADNE (case-insensitive), bez wieloznaczników i bez
-        obejmowania subdomen: ``student-afm.edu.pl`` trzeba wypisać osobno,
-        obok ``uafm.edu.pl``. Świadomie — lista domen jest jedyną bramką
+        obejmowania subdomen: ``student.uczelnia.example.org`` trzeba wypisać
+        osobno, obok ``uczelnia.example.org``. Świadomie — lista domen jest jedyną bramką
         chroniącą wiązanie kont uprzywilejowanych, więc nie chcemy w niej
         reguł, które łatwo napisać szerzej, niż się zamierzało.
         """
@@ -225,7 +226,7 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
           Reguła historyczna sama w sobie jest niespełnialna w realmie, dla
           którego ustawiono mail-first (``a2124bf34``): wymaga równości adresu
           instytucjonalnego (``mail``) z prywatnym (``email``). Dlatego
-          instalacje takie jak UAFM muszą wskazać domeny jawnie,
+          takie instalacje muszą wskazać domeny jawnie,
         * ``iss`` — issuer bez końcowego ``/`` (do dopasowania po ``(iss, sub)``).
         """
         email, from_fallback = cls._resolve_email_with_source(claims)
@@ -334,7 +335,7 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
             # WSZYSTKICH gałęziach wyjścia — sukces, ``SuspiciousOperation``
             # (przez ``_fail``) czy nieoczekiwany wyjątek — żeby przerwany link
             # nie „przeciekł" na następne, zwykłe logowanie OIDC. ``_fail`` sam
-            # zapisuje ``oidc_error_message`` przed rzuceniem, a ``finally``
+            # dodaje komunikat (``messages``) przed rzuceniem, a ``finally``
             # jedynie usuwa flagi link (nie rusza komunikatu).
             try:
                 user_info = self.get_userinfo(access_token, id_token, payload)
@@ -441,18 +442,23 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         return user
 
     def _fail(self, message):
-        """Zapisz komunikat odmowy do sesji (jeśli jest) i podnieś wyjątek.
+        """Zgłoś użytkownikowi powód odmowy (Django ``messages``) i podnieś wyjątek.
 
         ``mozilla_django_oidc.authenticate`` łapie ``SuspiciousOperation`` i
-        degraduje do *login failure* — użytkownik ląduje z powrotem na stronie
-        logowania bez żadnej wskazówki, DLACZEGO się nie udało. Zapisujemy
-        powód w sesji (``oidc_error_message``, flash-once), a context processor
-        ``oidc_auth_status`` go POP-uje i pokazuje na stronie logowania.
+        degraduje do *login failure* — użytkownik ląduje na
+        ``LOGIN_REDIRECT_URL_FAILURE`` bez żadnej wskazówki, DLACZEGO się nie
+        udało. Dokładamy powód jako komunikat ``messages.error`` na tym samym
+        requeście callbacku; ``MessageMiddleware`` utrwala go w odpowiedzi
+        (redirect), a ``base.html`` pokazuje go raz na stronie docelowej, tak
+        jak każdy inny komunikat.
+
+        ``fail_silently=True`` obsługuje wyłącznie request bez
+        ``MessageMiddleware`` (np. ``RequestFactory`` w testach jednostkowych) —
+        wtedy wyjątek i tak leci, tylko bez komunikatu.
         """
-        session = getattr(getattr(self, "request", None), "session", None)
-        if session is not None:
-            session["oidc_error_message"] = message
-            session.save()
+        request = getattr(self, "request", None)
+        if request is not None:
+            messages.error(request, message, fail_silently=True)
         raise SuspiciousOperation(message)
 
     def _unique_username(self, base):
