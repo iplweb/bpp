@@ -135,6 +135,7 @@ nav:
       - Widget wsparcia Freshdesk: administrator/widget-wsparcia-freshdesk.md
       - Konfiguracja zaawansowana: administrator/zaawansowane.md
       - Grupy uprawnień: administrator/grupy-uprawnien.md
+      - Pulpit administratora: administrator/panel-administracyjny.md
   - API: api/index.md
   - Dla deweloperów i agentów:
       - deweloper/index.md
