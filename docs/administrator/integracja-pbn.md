@@ -1,4 +1,7 @@
-# Integracja z PBN API - dla adminsitratora
+# Integracja z PBN API — dla administratora
+
+Zwięzła lista kroków. Opis formularza pole po polu, ze zrzutami ekranu,
+znajdziesz na stronie [Konfiguracja integracji z serwisami PBN](konfiguracja-pbn.md).
 
 1.  Celem uzyskania dostępu do PBN API, należy po stronie PBN z użytkownika mającego
     rolę "Menadżer aplikacji" utworzyć aplikację o danym identyfikatorze (np. "BPP") oraz
@@ -8,7 +11,8 @@
 2.  Adres zwrotny ("callback") dla aplikacji należy ustawić jako <https://nazwa.serwera.bpp/pbn_api/callback>
 
 3.  Identyfikator i token aplikacji należy wpisać do ustawień obiektu Uczelnia w module
-    "Redagowanie" (Redagowanie -> Struktura -> Uczelnia -> zakładka "PBN API")
+    redagowania (**Struktura** → **Uczelnia** → sekcja **„PBN API”**, widoczna tylko
+    dla superużytkownika)
 
 4.  Podczas edycji powyższych ustawień należy zwrócić uwagę na adres PBN API,
     dla serwisu testowego w momencie tworzenia niniejszej dokumentacji jest to
@@ -17,28 +21,28 @@
 
 5.  Integrację z PBN API kontrolują dwa ustawienia obiektu "Uczelnia".
 
-    - "integracja z PBN API": gdy zaznaczone, system będzie cyklicznie pobierał
+    - „Czy używać integracji z PBN?”: gdy zaznaczone, system będzie cyklicznie pobierał
       informacje z PBNu do bazy BPP; dane te można obejrzeć w module redagowania
-      oraz użyć ich do ręcznego ustawiania odpowiedników PBN dla rekordów z BPP
-    - "aktualizuj rekordy w PBN na bieżąco": to ustawienie sprawia, że po zapisywaniu
-      rekordów w BPP są one na bieżąco wysyłane do PBN. W chwili tworzenia niniejszej
-      dokumentacji ta opcja może nieco spowolnić zapisywanie rekordów w module redagowania,
-      gdyż system każdorazowo wysyła dane do PBN i czeka na potwierdzenie. W przypadku
-      niepowodzenia użytkownik dostaje adekwatny komunikat, ale brak dostępności serwerów
-      PBN czy prowadzone na nich prace serwisowe nie powinien mieć wpływu na edycję bazy
-      BPP
+      oraz użyć ich do ręcznego ustawiania odpowiedników PBN dla rekordów z BPP.
+      Na stronie głównej pojawia się też menu **PBN**
+    - „Włącz opcjonalną aktualizację przy edycji”: na stronach edycji wydawnictw
+      pojawiają się przyciski „Zapisz i wyślij do PBN”. Rekord trafia do PBN
+      wtedy, gdy redaktor kliknie taki przycisk. W przypadku niepowodzenia
+      użytkownik dostaje adekwatny komunikat, a brak dostępności serwerów PBN
+      czy prowadzone na nich prace serwisowe nie mają wpływu na edycję bazy BPP
 
 6.  Dla integracji z PBN warto podać również konto użytkownika BPP które będzie używane
     do celów wgrywania danych na serwer - pod warunkiem, że ów użytkownik wcześniej
-    zaloguje się do BPP i dokona autoryzacji swojego konta w PBN API.
+    zaloguje się do BPP i dokona autoryzacji swojego konta w PBN API
+    (menu **PBN** → **autoryzuj PBN API** na stronie głównej).
 
-7.  Rekordy publikacji aby były dodane do PBN musza spełniać następujące warunki:
+7.  Rekordy publikacji aby były dodane do PBN muszą spełniać następujące warunki:
 
     - określony DOI lub strona WWW,
     - charakter formalny musi mieć określony rodzaj dla PBN,
     - język musi mieć określony odpowiednik dla PBN,
     - jednostki muszą mieć określony odpowiednik dla PBN,
-    - zrodlo musi mieć okreslony odpowiednik dla PBN,
+    - źródło musi mieć określony odpowiednik dla PBN,
     - wydawca musi mieć określony odpowiednik dla PBN,
     - autorzy mogą lecz nie muszą mieć określony odpowiednik dla PBN,
     - autorzy powinni mieć uzupełnione numery ORCID,
@@ -51,8 +55,8 @@
     wysłana bez oświadczeń.
 
     Możliwość wysyłki prac bez oświadczeń zależy od **konfiguracji systemu** - należy
-    ją włączyć w panelu Redagowania, w zakładce Struktura → Uczelnia/Instytut, w sekcji
-    ustawień PBN API.
+    ją włączyć w module redagowania: **Struktura** → **Uczelnia**, sekcja **PBN API**,
+    pole „Wysyłaj prace bez oświadczeń”.
 
 ## Wgrywanie wyłącznie opłat do PBN przez API
 

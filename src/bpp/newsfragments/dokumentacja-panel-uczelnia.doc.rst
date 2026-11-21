@@ -1,0 +1,1 @@
+Dokumentacja: odświeżono zrzuty ekranu ustawień uczelni, widoczności autorów, konfiguracji kolumn w module redagowania, miejsc pracy autora i kolejności autorów rekordu na danych demonstracyjnych oraz zaktualizowano opisy do obecnego interfejsu.

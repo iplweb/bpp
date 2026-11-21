@@ -236,8 +236,9 @@ class AutorAktualnieZatrudnionyNaUczelni(AutorAutocomplete):
     i tylko tyle. Bez grup „naszej/historycznie/zewnętrzni", bez autorów spoza
     uczelni, bez historycznie związanych. Lista jest płaska (override
     ``get_results``), więc nagłówki optgroup nie powielają się przy przewijaniu
-    Select2. Używany w adminie prac doktorskich/habilitacyjnych, gdzie kandydat
-    z definicji jest pracownikiem uczelni.
+    Select2. Admin prac doktorskich/habilitacyjnych NIE używa go od FD#445 —
+    autor/promotor bywa z obcej jednostki albo jest byłym pracownikiem, więc
+    tam działa pełny ``autor-autocomplete`` (``AutorAutocomplete``).
 
     Dziedziczy po ``AutorAutocomplete`` dla kontroli dostępu (``group_required``)
     i możliwości tworzenia nowego autora — ale całkowicie nadpisuje wybór i

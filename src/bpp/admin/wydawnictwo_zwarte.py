@@ -472,6 +472,8 @@ class Wydawnictwo_ZwarteForm(
             "tom": forms.TextInput(attrs={"class": "bpp-input-narrow"}),
             "slowa_kluczowe": TextareaTagWidget(attrs={"rows": 2}),
         }
+        labels = fieldsets.OPENACCESS_LABELS
+        help_texts = fieldsets.OPENACCESS_HELP_TEXTS
 
     class Media:
         # Freshdesk #385: podświetlenie wymaganego pola "wydawca" przy

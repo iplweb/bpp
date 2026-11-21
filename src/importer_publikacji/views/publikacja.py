@@ -15,6 +15,7 @@ from django.db.models import Q
 from bpp import const
 from bpp.models import (
     Jednostka,
+    ModelZOplataZaPublikacje,
     Patent,
     Rodzaj_Prawa_Patentowego,
     Status_Korekty,
@@ -22,6 +23,7 @@ from bpp.models import (
     Wydawnictwo_Zwarte,
 )
 
+from ..historia import komunikat_utworzenia, zapisz_utworzenie
 from ..models import ImportedAuthor, ImportSession
 from .helpers import _detect_language
 from .pbn_check import _link_pbn_uid
@@ -110,6 +112,38 @@ def _create_streszczenia(session, record):
             streszczenie=text,
             jezyk_streszczenia=jezyk,
         )
+
+
+def _oplaty_ze_zgloszenia(session):
+    """Publication-fee declaration from the submission bound to the session.
+
+    In the "Zgłoś publikację" form the author declares whether the work was
+    cost-free, which funds paid for it and the gross amount
+    (``ModelZOplataZaPublikacje``). Data providers (CrossRef, PBN, BibTeX...)
+    do not carry this information, so the submission is its only source
+    during an import -- without copying it the declaration was lost
+    (FD#453).
+
+    Only the submission explicitly bound to the session is used (FD#443:
+    the "Użyj importera" button or auto-binding by DOI) -- the same one the
+    import marks as imported. The title heuristic
+    (``_find_matching_zgloszenie``) could attach someone else's financial
+    declaration, which the operator never sees in the wizard.
+
+    Returns a ``{field: value}`` dict (empty when there is nothing to copy).
+    """
+    if not session.zgloszenie_id:
+        return {}
+
+    # FK access goes through ``_base_manager``, which keeps soft-deleted rows.
+    zgloszenie = session.zgloszenie
+    if zgloszenie.deleted_at is not None:
+        return {}
+
+    return {
+        field.name: getattr(zgloszenie, field.name)
+        for field in ModelZOplataZaPublikacje._meta.fields
+    }
 
 
 def _create_wydawnictwo_ciagle(session, common_fields, normalized_data):
@@ -361,8 +395,12 @@ def waliduj_afiliacje_sesji(session, uczelnia=None):
 
 
 @transaction.atomic
-def _create_publication(session):
-    """Utwórz rekord publikacji na podstawie sesji."""
+def _create_publication(session, user=None):
+    """Utwórz rekord publikacji na podstawie sesji.
+
+    ``user`` — kto prowadzi import (autor wpisu w historii zmian rekordu,
+    FD#441); domyślnie twórca sesji.
+    """
     # Twardy guard afiliacji — przed jakimkolwiek zapisem do bazy (transakcja
     # atomowa i tak by wycofała, ale tu odmawiamy zanim cokolwiek powstanie).
     waliduj_afiliacje_sesji(session)
@@ -412,10 +450,14 @@ def _create_publication(session):
     # dispatchują dokładnie jak dawniej).
     if session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT:
         record = _create_patent(session, common_fields, normalized_data)
-    elif session.jest_wydawnictwem_zwartym:
-        record = _create_wydawnictwo_zwarte(session, common_fields, normalized_data)
     else:
-        record = _create_wydawnictwo_ciagle(session, common_fields, normalized_data)
+        # Patent has no fee fields (no ``ModelZOplataZaPublikacje``), so the
+        # submission's fee declaration is applied to Wydawnictwo_* only.
+        common_fields.update(_oplaty_ze_zgloszenia(session))
+        if session.jest_wydawnictwem_zwartym:
+            record = _create_wydawnictwo_zwarte(session, common_fields, normalized_data)
+        else:
+            record = _create_wydawnictwo_ciagle(session, common_fields, normalized_data)
 
     is_patent = session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT
 
@@ -447,5 +489,8 @@ def _create_publication(session):
     # mają) — bez tego guardu stale pbn_mongo_id wywaliłby save(pbn_uid_id).
     if not is_patent:
         _link_pbn_uid(session, record)
+
+    # FD#441: ślad na stronie „Historia" rekordu w adminie (kto, skąd).
+    zapisz_utworzenie(user or session.created_by, record, komunikat_utworzenia(session))
 
     return record
