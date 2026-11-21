@@ -83,6 +83,11 @@ wypełnionymi warunkami, które można dalej zmieniać.
     zalogowanych redaktorów, pozwalający wpisać zapytanie w języku BPP-QL.
     Dla zwykłego odwiedzającego nie jest widoczny.
 
+!!! tip "Wyszukiwanie przez asystenta AI"
+    Bibliografię można też przeszukiwać, rozmawiając z asystentem AI
+    (np. Claude, ChatGPT) — zobacz [Bibliografia w asystencie
+    AI](asystent-ai.md).
+
 ## Przeglądanie
 
 Menu **przeglądaj** pozwala wędrować po bazie bez wpisywania zapytania —

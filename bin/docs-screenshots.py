@@ -17,10 +17,11 @@ from __future__ import annotations
 
 import argparse
 import base64
+import hashlib
 import os
 import sys
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 from playwright.sync_api import Page, sync_playwright
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
@@ -6429,6 +6430,226 @@ def import_pracownikow(page: Page, base: str, out: Path) -> None:
     red.context.close()
 
 
+def asystent_ai(page: Page, base: str, out: Path) -> None:
+    """docs/uzytkownik/asystent-ai.md: the /mcp/ page (public and logged-in), the OAuth consent screen, MCP switched off; run bin/docs-demo-asystent-ai.py first."""
+
+    def sesja(user: str | None = None) -> Page:
+        # The page prints absolute MCP addresses, so it is shown at PUBLIC_BPP.
+        # Logging in through the proxy would trip CSRF (Origin != Host), so we
+        # log in on the local stack and hand the cookies to PUBLIC_BPP.
+        other = api_session(page, base)
+        if user:
+            log = other.context.new_page()
+            login(log, base, user)
+            other.context.add_cookies(
+                [
+                    {"name": c["name"], "value": c["value"], "url": PUBLIC_BPP}
+                    for c in other.context.cookies(base)
+                ]
+            )
+            log.close()
+        other.goto(f"{PUBLIC_BPP}/mcp/")
+        other.wait_for_load_state("networkidle")
+        close_cookie_banner(other)
+        other.wait_for_load_state("networkidle")
+        other.wait_for_selector("h1")
+        return other
+
+    # 1. anonymous: the public variant and the "Zaloguj się" button
+    anon = sesja()
+    mark(
+        anon,
+        [
+            {
+                "sel": "#mcp-bez-konta a.button",
+                "arrow": "below",
+                "label": "masz konto? zaloguj się",
+                "dx": 60,
+                "dy": -50,
+            },
+        ],
+    )
+    top = page_box(anon, "h1")["y"] - 20
+    shot(
+        anon,
+        out / "01-bez-logowania.png",
+        top,
+        bottom_of(anon, "#mcp-bez-konta", 45) - top,
+    )
+    close_api_session(anon)
+
+    # 2.-3. logged in (an ordinary author account): the message for the
+    #       assistant, the server address and the Claude instructions
+    zal = sesja(DEMO_USER)
+    mark(
+        zal,
+        [
+            {
+                "sel": "#mcp-prompt",
+                "arrow": "below",
+                "label": "kliknij w pole, aby skopiować",
+                "dx": 40,
+                "dy": -78,
+            },
+        ],
+    )
+    top = page_box(zal, "#mcp-najprosciej")["y"] - 30
+    shot(
+        zal,
+        out / "02-wiadomosc-dla-asystenta.png",
+        top,
+        bottom_of(zal, "#mcp-prompt", 68) - top,
+    )
+
+    zal.locator("#mcp-klient-claude summary").click()
+    zal.wait_for_timeout(300)
+    mark(
+        zal,
+        [
+            {
+                "sel": "#mcp-adres",
+                "arrow": "above",
+                "label": "1. adres serwera — kliknij, aby skopiować",
+                "dx": -120,
+                "dy": 50,
+            },
+            {
+                "sel": "#mcp-klient-claude a.mcp-strona__instaluj",
+                "arrow": "right",
+                "label": "2. Claude: „Dodaj serwer”",
+                "dx": 60,
+                "dy": -40,
+            },
+        ],
+    )
+    top = page_box(zal, "#mcp-adresy")["y"] - 70
+    shot(
+        zal,
+        out / "03-adres-i-claude.png",
+        top,
+        bottom_of(zal, "#mcp-klient-claude") - top,
+    )
+    close_api_session(zal)
+
+    # 4. the consent screen a client opens after "/mcp/auth" (a client
+    #    registered the way Claude does it: dynamic registration, PKCE S256)
+    rejestracja = page.request.post(
+        f"{base}/o/register/",
+        data={
+            "client_name": "Claude",
+            "redirect_uris": ["https://claude.ai/api/mcp/auth_callback"],
+            "grant_types": ["authorization_code", "refresh_token"],
+            "response_types": ["code"],
+            "token_endpoint_auth_method": "none",
+        },
+    )
+    if not rejestracja.ok:
+        raise SystemExit(f"DCR failed: {rejestracja.status} {rejestracja.text()}")
+    client_id = rejestracja.json()["client_id"]
+    weryfikator = base64.urlsafe_b64encode(os.urandom(32)).rstrip(b"=")
+    wyzwanie = (
+        base64.urlsafe_b64encode(hashlib.sha256(weryfikator).digest())
+        .rstrip(b"=")
+        .decode()
+    )
+    zgoda = new_session(page, base, DEMO_USER)
+    zgoda.goto(
+        f"{base}/o/authorize/?"
+        + urlencode(
+            {
+                "response_type": "code",
+                "client_id": client_id,
+                "redirect_uri": "https://claude.ai/api/mcp/auth_callback",
+                "scope": "read",
+                "code_challenge": wyzwanie,
+                "code_challenge_method": "S256",
+                "state": "demo",
+            }
+        )
+    )
+    zgoda.wait_for_load_state("networkidle")
+    mark(
+        zgoda,
+        [
+            {
+                "sel": "p strong",
+                "text": "claude.ai",
+                "arrow": "right",
+                "label": "sprawdź, dokąd trafi zgoda",
+                "dx": 60,
+                "dy": -40,
+            },
+            {
+                "sel": "button[value=Authorize]",
+                "arrow": "right",
+                "label": "zezwól na odczyt",
+                "dx": 60,
+                "dy": -40,
+            },
+        ],
+    )
+    top = page_box(zgoda, "h3:has(.fi-key)")["y"] - 20
+    shot(
+        zgoda,
+        out / "04-zgoda.png",
+        top,
+        bottom_of(zgoda, "form[action*='/o/authorize/']") - top,
+    )
+    zgoda.context.close()
+
+    # 5.-6. the switch in the university form, and the page with MCP off
+    adm = new_session(page, base, DEMO_USER_ADMIN)
+    otworz_uczelnie(adm, base)
+    form_url = adm.url
+    tytul = "Serwer MCP dla asystentów AI (/mcp)"
+
+    def ustaw(wartosc: bool | None) -> None:
+        adm.goto(form_url)
+        adm.wait_for_load_state("networkidle")
+        adm.evaluate(
+            """(t) => { const h = [...document.querySelectorAll('h2.grp-collapse-handler')]
+                .find(e => e.textContent.trim() === t);
+              h.parentElement.classList.remove('grp-closed');
+              h.parentElement.classList.add('grp-open'); }""",
+            tytul,
+        )
+        adm.wait_for_timeout(300)
+        if wartosc is not None:
+            adm.locator("#id_mcp_wlaczone").set_checked(wartosc)
+
+    ustaw(None)
+    mark(
+        adm,
+        [
+            {
+                "sel": "label[for=id_mcp_wlaczone]",
+                "arrow": "right",
+                "label": "odznacz, aby wyłączyć",
+                "dx": 260,
+                "dy": -40,
+            },
+        ],
+    )
+    fieldset_shot(adm, out / "05-przelacznik-uczelnia.png", tytul)
+
+    ustaw(False)
+    adm.locator("input[name=_continue]").click()
+    adm.wait_for_load_state("networkidle")
+    try:
+        if adm.locator(".errornote, .grp-errornote").count():
+            raise SystemExit("Uczelnia form did not save - see the admin page.")
+        wyl = sesja()
+        mark(wyl, [{"sel": ".row p", "text": "wyłączony"}])
+        top = page_box(wyl, "h1")["y"] - 20
+        shot(wyl, out / "06-wylaczony.png", top, 130)
+        close_api_session(wyl)
+    finally:
+        ustaw(True)
+        adm.locator("input[name=_continue]").click()
+        adm.wait_for_load_state("networkidle")
+    adm.context.close()
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -6740,6 +6961,7 @@ SCENARIOS = {
     "panel-uczelnia-autorzy": ("redaktor/autorzy", panel_uczelnia_autorzy),
     "panel-uczelnia-wydawnictwa": ("redaktor/wydawnictwa", panel_uczelnia_wydawnictwa),
     "import-pracownikow": ("administrator/import-pracownikow", import_pracownikow),
+    "asystent-ai": ("uzytkownik/asystent-ai", asystent_ai),
 }
 
 
