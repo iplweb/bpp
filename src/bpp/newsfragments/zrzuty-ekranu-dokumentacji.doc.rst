@@ -1,1 +1,0 @@
-Instrukcja „Mój profil autora” ma zrzuty ekranu z oznaczeniami i opisuje nowe menu „konto” (dawniej „wyloguj”); zrzuty do dokumentacji generuje skrypt ``bin/docs-screenshots.py`` według reguł z „Zrzuty ekranu do dokumentacji”.

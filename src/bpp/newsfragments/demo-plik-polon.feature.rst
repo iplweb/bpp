@@ -1,1 +1,0 @@
-Generator danych demo zapisuje fałszywy plik POL-on („Rozszerzone zestawienie pracowników podmiotu”) dla uczelni demo — opcja ``--polon-plik`` w ``create_demo_data`` albo osobne polecenie ``generuj_plik_polon_demo`` na istniejącej bazie demo; po imporcie dla lat 2022–2025 liczba N wychodzi ≥ 12 w trzech dyscyplinach i < 12 w czwartej.
