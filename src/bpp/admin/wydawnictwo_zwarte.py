@@ -62,6 +62,7 @@ from .helpers import (
 from .helpers.constance_field_mixin import ConstanceScoringFieldsMixin
 from .helpers.mixins import (
     BlokujRekordPrzedZapisemMixin,
+    BppSoftDeleteAdminMixin,
     OdroczPunktyDyscyplinMixin,
     OptionalPBNSaveMixin,
     RestrictDeletionWhenPBNUIDSetMixin,
@@ -509,6 +510,8 @@ class Wydawnictwo_ZwarteAdmin(
     AdminCrossrefAPIMixin,
     AdminCrossrefPBNAPIMixin,
     RestrictDeletionWhenPBNUIDSetMixin,
+    # OSTATNI przed baza terminalna — patrz docstring BppSoftDeleteAdminMixin.
+    BppSoftDeleteAdminMixin,
     Wydawnictwo_ZwarteAdmin_Baza,
 ):
     change_list_template = "admin/bpp/wydawnictwo_zwarte/change_list.html"

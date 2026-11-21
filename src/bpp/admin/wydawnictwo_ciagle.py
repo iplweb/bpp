@@ -92,7 +92,11 @@ from .helpers.fieldsets import (
     MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
     MODEL_Z_POLAMI_EWALUACJI_PBN_FIELDSET,
 )
-from .helpers.mixins import OptionalPBNSaveMixin, RestrictDeletionWhenPBNUIDSetMixin
+from .helpers.mixins import (
+    BppSoftDeleteAdminMixin,
+    OptionalPBNSaveMixin,
+    RestrictDeletionWhenPBNUIDSetMixin,
+)
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychZFormatowanieMixin, ExportActionsMixin
 from .zglos_publikacje_helpers import UzupelniajWstepneDanePoNumerzeZgloszeniaMixin
@@ -296,6 +300,8 @@ class Wydawnictwo_CiagleAdmin(
     ExportActionsMixin,
     BppDynamicColumnsMixin,
     RestrictDeletionWhenPBNUIDSetMixin,
+    # OSTATNI przed ModelAdmin — patrz docstring BppSoftDeleteAdminMixin.
+    BppSoftDeleteAdminMixin,
     admin.ModelAdmin,
 ):
     change_list_template = "admin/bpp/wydawnictwo_ciagle/change_list.html"
