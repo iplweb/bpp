@@ -16,7 +16,6 @@ elements, so re-running after a UI change re-places them automatically.
 from __future__ import annotations
 
 import argparse
-from urllib.parse import quote
 import base64
 import hashlib
 import os
@@ -319,7 +318,12 @@ def mark(page: Page, marks: list[dict]) -> None:
 
 
 def login(page: Page, base: str, user: str = DEMO_USER) -> None:
-    page.goto(f"{base}/accounts/login/")
+    url = f"{base}/accounts/login/"
+    # With institutional login (OIDC/Microsoft) on, this URL bounces to the
+    # identity provider; the BPP form then lives under /accounts/login/local/.
+    if page.request.get(url, max_redirects=0).status in (301, 302):
+        url = f"{base}/accounts/login/local/"
+    page.goto(url)
     page.fill("input[name=username]", user)
     page.fill("input[name=password]", user)  # demo accounts: password == login
     page.locator("form [type=submit]").first.click()
