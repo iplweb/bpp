@@ -125,6 +125,18 @@
                                 focusSelect2SearchField();
                             });
 
+                            // FD#526: opening the admin menu closes the quick
+                            // search suggestions, so they never cover the menu.
+                            $('#navigation-menu > li').on(
+                                'mouseenter focusin',
+                                function() {
+                                    var s2 = $select.data('select2');
+                                    if (s2 && s2.isOpen()) {
+                                        $select.select2('close');
+                                    }
+                                }
+                            );
+
                             // Add "/" hotkey to open global search
                             $(document).on('keydown', function(e) {
                                 // Don't trigger if user is typing in an input/textarea

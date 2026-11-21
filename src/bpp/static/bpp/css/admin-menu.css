@@ -610,3 +610,18 @@ header#grp-header #grp-navigation ul#grp-user-tools {
         padding-top: 120px !important;
     }
 }
+
+/* -------------------------------------------------------------------------------- */
+/* FD#526: an open admin menu stays on top of autocomplete dropdowns */
+/* -------------------------------------------------------------------------------- */
+
+/* #grp-header is position: fixed with z-index: 1000, so it forms its own stacking
+   context - the z-index: 99999 of the submenus only counts inside the header.
+   Select2 dropdowns (global quick search, autocomplete fields) are attached to
+   <body> with z-index: 1051 and therefore covered the open menu. While a menu
+   item is open, lift the whole header above them. */
+#grp-header:has(#navigation-menu > li:hover),
+#grp-header:has(#navigation-menu > li.over),
+#grp-header:has(#navigation-menu > li:focus-within) {
+    z-index: 100000;
+}
