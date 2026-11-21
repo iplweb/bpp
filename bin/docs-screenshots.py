@@ -6488,13 +6488,13 @@ def tabela_krzyzowa(page: Page, base: str, out: Path) -> None:
     mark(
         page,
         [
-            {"sel": "#frame-0"},
             {
+                # label right of "Dodaj ramkę", so the arrow passes below it
                 "sel": "#id_report_type",
                 "arrow": "above",
                 "label": "3. Rodzaj raportu: tabela krzyżowa",
-                "dx": 150,
-                "dy": 47,
+                "dx": 350,
+                "dy": 55,
             },
             {
                 "sel": "#multiseek-szukaj",
@@ -6559,12 +6559,12 @@ def tabela_krzyzowa(page: Page, base: str, out: Path) -> None:
     mark(
         page,
         [
+            # just a box: an arrow to an inner cell would cross the table
+            # (the page text explains the cell)
             {
-                "sel": "table.multiseek-pivot tbody tr:first-child td:not(.pivot-total)",
-                "arrow": "below",
-                "label": "punkty jednostki za artykuły",
-                "dx": -300,
-                "dy": 80,
+                "sel": (
+                    "table.multiseek-pivot tbody tr:first-child td:not(.pivot-total)"
+                )
             },
             {
                 "sel": "table.multiseek-pivot thead th.pivot-total",
@@ -6581,7 +6581,7 @@ def tabela_krzyzowa(page: Page, base: str, out: Path) -> None:
         ],
     )
     tabela = page_box(page, ".multiseek-pivot-scroll")
-    shot(page, out / "04-wynik-razem.png", tabela["y"] - 20, tabela["height"] + 210)
+    shot(page, out / "04-wynik-razem.png", tabela["y"] - 20, tabela["height"] + 110)
 
     # 5. export (logged-in users only)
     mark(
