@@ -28,6 +28,7 @@ wyszukiwanie, własny dorobek, punkty, raporty.
 - [Mój profil autora](uzytkownik/moj-profil-autora.md)
 - [Nie mogę się zalogować](uzytkownik/logowanie.md)
 - [Widget publikacji na stronie WWW](uzytkownik/widget-publikacji.md)
+- [Tabela krzyżowa (zestawienia)](uzytkownik/tabela-krzyzowa.md)
 - [Bibliografia w asystencie AI](uzytkownik/asystent-ai.md)
 
 ### ✏️ Instrukcja redaktora

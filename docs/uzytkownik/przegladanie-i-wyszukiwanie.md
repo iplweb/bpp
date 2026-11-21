@@ -69,6 +69,11 @@ budujesz zapytanie z wielu warunków jednocześnie — np. autor *oraz* rok
 wydrukować, a po zalogowaniu — pobrać jako plik Word lub Excel (krok po
 kroku: [Jak pobrać listę publikacji](pobieranie-listy-publikacji.md)).
 
+Zamiast listy prac możesz dostać zestawienie: rodzaj raportu **tabela
+krzyżowa** podsumowuje wyniki w tabeli, np. punkty według jednostki
+i charakteru formalnego (krok po kroku:
+[Tabela krzyżowa](tabela-krzyzowa.md)).
+
 Najprościej zacząć od strony autora albo jednostki: przycisk **„Szukaj
 publikacji”** w sekcji „Wyszukaj publikacje…” otwiera ten formularz z już
 wypełnionymi warunkami, które można dalej zmieniać.
