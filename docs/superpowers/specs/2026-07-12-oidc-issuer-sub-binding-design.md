@@ -50,19 +50,22 @@ w Keycloaku nie ma znaczenia i nikt nie przejmie cudzego konta.
 ```python
 class OIDCIdentity(models.Model):
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
         related_name="oidc_identities",
     )
-    issuer = models.CharField(max_length=255)   # znormalizowany iss (§4.0)
-    sub = models.CharField(max_length=255)      # subject z id_token (niezmienny)
+    issuer = models.CharField(max_length=255)  # znormalizowany iss (§4.0)
+    sub = models.CharField(max_length=255)  # subject z id_token (niezmienny)
     linked_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["issuer", "sub"],
-                                    name="uniq_oidc_identity"),
-            models.UniqueConstraint(fields=["user", "issuer"],
-                                    name="uniq_user_per_issuer"),
+            models.UniqueConstraint(
+                fields=["issuer", "sub"], name="uniq_oidc_identity"
+            ),
+            models.UniqueConstraint(
+                fields=["user", "issuer"], name="uniq_user_per_issuer"
+            ),
         ]
 ```
 
@@ -120,11 +123,12 @@ Issuer do zapisu i do filtrowania musi być identyczny. Zasady:
 ```python
 def filter_users_by_claims(self, claims):
     sub = claims.get("sub")
-    issuer = claims.get("iss")   # wstrzyknięty w get_userinfo (§4.0)
+    issuer = claims.get("iss")  # wstrzyknięty w get_userinfo (§4.0)
     if not sub or not issuer:
         return self.UserModel.objects.none()
     return self.UserModel.objects.filter(
-        oidc_identities__issuer=issuer, oidc_identities__sub=sub)
+        oidc_identities__issuer=issuer, oidc_identities__sub=sub
+    )
 ```
 
 ### 4.2 `create_user` — atomowo, fail-closed na kolizję e-maila
@@ -149,7 +153,7 @@ NIE jest w transakcji, więc atomic zakładamy tu). Kolejność:
            with transaction.atomic():  # savepoint
                OIDCIdentity.objects.create(user=user, issuer=issuer, sub=sub)
        except IntegrityError:
-           raise _RaceLost()   # savepoint wycofany
+           raise _RaceLost()  # savepoint wycofany
    ```
 
    Przy `_RaceLost` (przegrany wyścig na `uniq_oidc_identity`): zewnętrzny
@@ -334,7 +338,7 @@ grace:** management command wiążący `OIDCIdentity` dla znanych kont ręcznie.
 
 1. **Grace Bind default OFF + residual risk (§7)** — akceptowalny kompromis,
    czy wolisz w ogóle bez grace (odzysk tylko management-command)?
-2. **`email_verified` default `True`** — czy realmy (UAFM LDAP itd.) emitują
+2. **`email_verified` default `True`** — czy realmy (LDAP uczelni itd.) emitują
    `email_verified` w id_token i czy `mail` == `email`? Jeśli nie, per-realm
    `REQUIRE_EMAIL_VERIFIED=0`.
 3. **Re-auth hasłem przy linkowaniu (§2.1/§5)** — potwierdź, że konta bez hasła

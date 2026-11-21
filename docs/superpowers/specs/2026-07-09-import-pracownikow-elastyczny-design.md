@@ -225,8 +225,8 @@ Protokół `TabularSource` w `import_common/sources.py` (duck-typing / `typing.P
 ```python
 class TabularSource(Protocol):
     # nagłówki-kandydaci PER ARKUSZ (XLSX ma N arkuszy; CSV = 1 „arkusz")
-    def sheet_headers(self) -> list[list[list[str]]]: ...   # [arkusz][wiersz][komórka]
-    def rows(self, mapping) -> Iterator[dict]: ...          # wiersze danych po zmapowaniu
+    def sheet_headers(self) -> list[list[list[str]]]: ...  # [arkusz][wiersz][komórka]
+    def rows(self, mapping) -> Iterator[dict]: ...  # wiersze danych po zmapowaniu
     def count(self) -> int: ...
 ```
 
@@ -556,8 +556,8 @@ Po każdej zmianie schematu: `make baseline-update`.
 W chwili pisania **mail zgłoszeniowy od `michal.dtz@gmail.com` NIE dotarł** do
 Freshdeska (brak kontaktu, brak ticketu). Tickety wskazanych osób (Anna Wołodko
 [IHIT] #417/#420, Jan Bihalowicz #428/#422) dotyczą innych tematów (IF, CrossRef)
-i **nie zawierają** Exceli personalnych. Firm „VIZJA"/„UAFM" nie ma w Freshdesku
-pod tymi nazwami. Właściciel wskazał dodatkowo pliki na Freshdesku: Kowalczewski
+i **nie zawierają** Exceli personalnych. Firm „VIZJA"/„UCZELNIA" nie ma w Freshdesku
+pod tymi nazwami. Właściciel wskazał dodatkowo pliki na Freshdesku: jednego z klientów
 „Wydziały i ludzie z nich" oraz „przyporządkowanie do wydziałów - uniwersytet
 vizja" — ale **Freshdesk MCP nie ma full-text search po temacie/treści ani
 listowania załączników**, a te tematy nie występują wśród ~70 zwracanych ticketów
@@ -568,8 +568,8 @@ implementacji** (numery ticketów albo przesłanie plików).
 **fixtures testowe** (§7, §5) — NIE zmieniają architektury. Implementacja startuje
 na podstawie znanych wariantów (niżej); po dostarczeniu plików: dopisać synonimy
 + fixtures i ponowić testy tabelaryczne parsera. **Znane źródła danych do zebrania:**
-Wołodko (kliniki), Bihałowicz (pracownicy), Kowalczewski (wydziały+ludzie),
-uniwersytet Vizja (przyporządkowanie do wydziałów), UAFM, wzorzec BPP (mamy).
+Wołodko (kliniki), Bihałowicz (pracownicy), klient z pliku „wydziały+ludzie",
+uniwersytet Vizja (przyporządkowanie do wydziałów), UCZELNIA, wzorzec BPP (mamy).
 
 ### Katalog znanych wariantów „chaosu" (do rozszerzenia z realnych plików)
 

@@ -137,7 +137,7 @@ def _process_disciplines_from_row(row):
         jest_w_n = True
         dyscyplina_naukowa = row.get("DYSCYPLINA_N")
         subdyscyplina_naukowa = row.get("DYSCYPLINA_N_KOLEJNA")
-    elif row.get("OSWIADCZENIE_O_DYSCYPLINACH", "").lower() == "tak":
+    elif (row.get("OSWIADCZENIE_O_DYSCYPLINACH") or "").strip().lower() == "tak":
         dyscyplina_naukowa = row.get("OSWIADCZONA_DYSCYPLINA_PIERWSZA")
         subdyscyplina_naukowa = row.get("OSWIADCZONA_DYSCYPLINA_DRUGA")
 
